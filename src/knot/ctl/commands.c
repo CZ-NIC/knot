@@ -930,9 +930,9 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	free(zonefile);
 
 	// Purge the zone journal.
-	char *journalfile = conf_journalfile(conf(), zone->name);
-	(void)unlink(journalfile);
-	free(journalfile);
+	if (journal_open(zone->journal, zone->journal_db, zone->name) == KNOT_EOK) {
+		(void)scrape_journal(zone->journal);
+	}
 
 	// Purge the zone timers.
 	(void)remove_timer_db(args->server->timers_db, args->server->zone_db,

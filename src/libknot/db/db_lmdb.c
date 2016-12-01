@@ -34,6 +34,8 @@
 
 _public_ const unsigned KNOT_DB_LMDB_NOTLS = MDB_NOTLS;
 _public_ const unsigned KNOT_DB_LMDB_RDONLY = MDB_RDONLY;
+_public_ const unsigned KNOT_DB_LMDB_INTEGERKEY = MDB_INTEGERKEY;
+_public_ const unsigned KNOT_DB_LMDB_NOSYNC = MDB_NOSYNC;
 
 struct lmdb_env
 {
@@ -61,7 +63,11 @@ static int lmdb_error_to_knot(int error)
 		return KNOT_ENOENT;
 	}
 
-	if (error == MDB_MAP_FULL || error == MDB_TXN_FULL || error == ENOSPC) {
+	if (error == MDB_TXN_FULL) {
+		return KNOT_ELIMIT;
+	}
+
+	if (error == MDB_MAP_FULL || error == ENOSPC) {
 		return KNOT_ESPACE;
 	}
 
@@ -180,7 +186,7 @@ static int dbase_open(struct lmdb_env *env, struct knot_db_lmdb_opts *opts)
 		return lmdb_error_to_knot(ret);
 	}
 
-	ret = mdb_dbi_open(txn, opts->dbname, opts->flags.db, &env->dbi);
+	ret = mdb_dbi_open(txn, opts->dbname, opts->flags.db | MDB_CREATE, &env->dbi);
 	if (ret != MDB_SUCCESS) {
 		mdb_txn_abort(txn);
 		mdb_env_close(env->env);
@@ -489,6 +495,37 @@ static int del(knot_db_txn_t *txn, knot_db_val_t *key)
 	}
 
 	return KNOT_EOK;
+}
+
+_public_
+size_t knot_db_lmdb_get_mapsize(knot_db_t *db)
+{
+	struct lmdb_env *env = db;
+	MDB_envinfo info;
+	if (mdb_env_info(env->env, &info) != MDB_SUCCESS) {
+		return 0;
+	}
+
+	return info.me_mapsize;
+}
+
+// you should SUM all the usages of DBs sharing one mapsize
+_public_
+size_t knot_db_lmdb_get_usage(knot_db_t * db)
+{
+	struct lmdb_env *env = db;
+	knot_db_txn_t txn;
+	knot_db_lmdb_txn_begin(db, &txn, NULL, KNOT_DB_RDONLY);
+	MDB_stat st;
+	if (mdb_stat(txn.txn, env->dbi, &st) != MDB_SUCCESS) {
+		txn_abort(&txn);
+		return 0;
+	}
+	txn_abort(&txn);
+
+	size_t pgs_used = st.ms_branch_pages + st.ms_leaf_pages + st.ms_overflow_pages + st.ms_entries;
+
+	return (pgs_used * st.ms_psize);
 }
 
 _public_

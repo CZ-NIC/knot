@@ -1048,22 +1048,19 @@ char* conf_zonefile_txn(
 
 char* conf_journalfile_txn(
 	conf_t *conf,
-	knot_db_txn_t *txn,
-	const knot_dname_t *zone)
+	knot_db_txn_t *txn)
 {
-	if (zone == NULL) {
-		return NULL;
-	}
+	conf_val_t val;
 
-	conf_val_t val = conf_zone_get_txn(conf, txn, C_JOURNAL, zone);
-	const char *journal = conf_str(&val);
+	val = conf_default_get_txn(conf, txn, C_STORAGE);
+	char *storage = conf_abs_path(&val, NULL);
 
-	// Use default journalfile name pattern if not specified.
-	if (journal == NULL) {
-		journal = "%s.db";
-	}
+	val = conf_default_get_txn(conf, txn, C_JOURNAL);
 
-	return get_filename(conf, txn, zone, journal);
+	char *journaldir = conf_abs_path(&val, storage);
+	free(storage);
+
+	return journaldir;
 }
 
 size_t conf_udp_threads_txn(

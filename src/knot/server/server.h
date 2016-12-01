@@ -95,6 +95,7 @@ typedef struct server {
 	/*! \brief Zone database. */
 	knot_zonedb_t *zone_db;
 	knot_db_t *timers_db;
+	journal_db_t *journal_db;
 
 	/*! \brief I/O handlers. */
 	struct {

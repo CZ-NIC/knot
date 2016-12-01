@@ -1013,9 +1013,13 @@ is a master server for the zone.
 max-journal-size
 ----------------
 
-Maximum size of the zone journal file.
+Maximum size of the journal DB.
 
-*Default:* 2^64
+*Default:* 1 GiB
+
+.. NOTE::
+   Decreasing this value will lead to discarding
+   whole journal history of all zones.
 
 .. _zone_max_zone_size:
 

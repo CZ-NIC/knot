@@ -225,10 +225,14 @@ static const yp_item_t desc_remote[] = {
 	{ NULL }
 };
 
+
+#define VIRT_MEM_TOP (2LLU * 1024 * 1204 * 1204)
+#define VIRT_MEM_LIMIT(x) (((sizeof(void *) < 8) && ((x) > VIRT_MEM_TOP)) ? VIRT_MEM_TOP : (x))
+
+
 #define ZONE_ITEMS(FLAGS) \
 	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR }, FLAGS }, \
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
-	{ C_JOURNAL,             YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
 	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } }, \
 	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
@@ -237,8 +241,6 @@ static const yp_item_t desc_remote[] = {
 	{ C_DISABLE_ANY,         YP_TBOOL, YP_VNONE }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
-	{ C_MAX_JOURNAL_SIZE,    YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE }, \
-	                                   FLAGS }, \
 	{ C_MAX_ZONE_SIZE,       YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE }, \
 	                                   FLAGS }, \
 	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" }, FLAGS }, \
@@ -256,6 +258,9 @@ static const yp_item_t desc_template[] = {
 	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" }, CONF_IO_FRLD_ZONES }, \
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } }, \
+	{ C_JOURNAL,             YP_TSTR,  YP_VSTR = { "journal.db" }, CONF_IO_FRLD_ZONES }, \
+	{ C_MAX_JOURNAL_SIZE,    YP_TINT,  YP_VINT = { 1024 * 1024, VIRT_MEM_LIMIT(100LLU * 1024 * 1024 * 1024 * 1024), \
+	                                               VIRT_MEM_LIMIT(20LLU * 1024 * 1024 * 1024), YP_SSIZE } }, \
 	{ NULL }
 };
 

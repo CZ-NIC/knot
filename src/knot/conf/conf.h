@@ -584,16 +584,12 @@ static inline char* conf_zonefile(
  *
  * \return Absolute journal file path string pointer.
  */
-char* conf_journalfile_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn,
-	const knot_dname_t *zone
-);
+char* conf_journalfile_txn(conf_t *conf,
+	knot_db_txn_t *txn);
 static inline char* conf_journalfile(
-	conf_t *conf,
-	const knot_dname_t *zone)
+	conf_t *conf)
 {
-	return conf_journalfile_txn(conf, &conf->read_txn, zone);
+	return conf_journalfile_txn(conf, &conf->read_txn);
 }
 
 /*!

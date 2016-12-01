@@ -42,6 +42,7 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 
 	/* Insert root zone. */
 	zone_t *root = zone_new(ROOT_DNAME);
+	root->journal_db = &server->journal_db;
 	root->contents = zone_contents_new(root->name);
 
 	knot_rrset_t *soa = knot_rrset_new(root->name, KNOT_RRTYPE_SOA, KNOT_CLASS_IN, mm);
@@ -62,16 +63,18 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 /* Create fake server. */
 static inline int create_fake_server(server_t *server, knot_mm_t *mm)
 {
-	/* Create name server. */
-	int ret = server_init(server, 1);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	int ret;
 
 	/* Load test configuration. */
 	const char *conf_str = "server:\n identity: bogus.ns\n version: 0.11\n nsid: ""\n"
 	                       "zone:\n - domain: .\n   zonefile-sync: -1\n";
 	ret = test_conf(conf_str, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Create name server. */
+	ret = server_init(server, 1);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -15,7 +15,7 @@
 */
 
 #include "knot/common/log.h"
-#include "knot/server/journal.h"
+#include "knot/journal/journal.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
@@ -96,11 +96,8 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 		return KNOT_EINVAL;
 	}
 
-	/* Check if journal is used and zone is not empty. */
-	char *journal_name = conf_journalfile(conf, zone->name);
-	if (!journal_exists(journal_name) ||
-	    zone_contents_is_empty(contents)) {
-		free(journal_name);
+	/* Check if journal is used (later in zone_changes_load() and zone is not empty. */
+	if (zone_contents_is_empty(contents)) {
 		return KNOT_EOK;
 	}
 
@@ -111,13 +108,8 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 	list_t chgs;
 	init_list(&chgs);
 
-	pthread_mutex_lock(&zone->journal_lock);
-	int ret = journal_load_changesets(journal_name, zone->name, &chgs, serial,
-	                                  serial - 1);
-	pthread_mutex_unlock(&zone->journal_lock);
-	free(journal_name);
-
-	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chgs)) {
+	int ret = zone_changes_load(conf, zone, &chgs, serial);
+	if (ret != KNOT_EOK) {
 		changesets_free(&chgs);
 		/* Absence of records is not an error. */
 		if (ret == KNOT_ENOENT) {

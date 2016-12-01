@@ -871,9 +871,17 @@ This option has no effect with enabled
 \fIDefault:\fP off
 .SS max\-journal\-size
 .sp
-Maximum size of the zone journal file.
+Maximum size of the journal DB.
 .sp
-\fIDefault:\fP 2^64
+\fIDefault:\fP 1 GiB
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Decreasing this value will lead to discarding
+whole journal history of all zones.
+.UNINDENT
+.UNINDENT
 .SS max\-zone\-size
 .sp
 Maximum size of the zone. The size is measured as size of the zone records

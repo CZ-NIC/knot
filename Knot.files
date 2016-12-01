@@ -258,6 +258,10 @@ src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
 src/knot/events/replan.c
 src/knot/events/replan.h
+src/knot/journal/serialization.c
+src/knot/journal/serialization.h
+src/knot/journal/journal.c
+src/knot/journal/journal.h
 src/knot/modules/dnsproxy/dnsproxy.c
 src/knot/modules/dnsproxy/dnsproxy.h
 src/knot/modules/dnstap/dnstap.c
@@ -312,10 +316,6 @@ src/knot/query/requestor.c
 src/knot/query/requestor.h
 src/knot/server/dthreads.c
 src/knot/server/dthreads.h
-src/knot/server/journal.c
-src/knot/server/journal.h
-src/knot/server/serialization.c
-src/knot/server/serialization.h
 src/knot/server/server.c
 src/knot/server/server.h
 src/knot/server/tcp-handler.c
@@ -562,7 +562,7 @@ tests/contrib/test_wire_ctx.c
 tests/dthreads.c
 tests/fake_server.h
 tests/fdset.c
-tests/journal.c
+tests/journal_lmdb.c
 tests/libknot/test_control.c
 tests/libknot/test_cookies-client.c
 tests/libknot/test_cookies-opt.c

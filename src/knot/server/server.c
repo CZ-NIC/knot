@@ -379,6 +379,16 @@ int server_init(server_t *server, int bg_workers)
 		return KNOT_ENOMEM;
 	}
 
+	char * journal_dir = conf_journalfile(conf());
+	conf_val_t journal_size = conf_default_get(conf(), C_MAX_JOURNAL_SIZE);
+	int ret = init_journal_db(&server->journal_db, journal_dir, conf_int(&journal_size));
+	free(journal_dir);
+	if (ret != KNOT_EOK) {
+		worker_pool_destroy(server->workers);
+		evsched_deinit(&server->sched);
+		return ret;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -405,6 +415,9 @@ void server_deinit(server_t *server)
 
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
+
+	/* Close journal database if open. */
+	close_journal_db(&server->journal_db);
 
 	/* Close persistent timers database. */
 	close_timers_db(server->timers_db);
