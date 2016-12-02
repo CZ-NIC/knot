@@ -18,7 +18,7 @@
 #include <getopt.h>
 
 #include "libknot/libknot.h"
-#include "knot/server/serialization.h"
+#include "knot/journal/journal.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/exec.h"
 #include "contrib/strtonum.h"
@@ -57,41 +57,51 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		return KNOT_ENOMEM;
 	}
 
-	// Open journal for reading.
-	journal_t *journal = NULL;
-	int ret = journal_open(&journal, path, ~((size_t)0));
+	journal_db_t * jdb = NULL;
+	journal_t *j = journal_new();
+	int ret;
+
+	ret = init_journal_db(&jdb, path, KNOT_JOURNAL_FSLIMIT_SAMEASLAST);
 	if (ret != KNOT_EOK) {
 		free(buff);
 		return ret;
 	}
 
-	// Load changesets from journal.
-	if (journal->qtail == journal->qhead) {
-		journal_close(journal);
-		free(buff);
-		return KNOT_ENOENT;
+	if (!journal_exists(&jdb, name)) {
+		fprintf(stderr, "This zone does not exist in DB %s\n", path);
+		ret = KNOT_ENOENT;
 	}
 
-	size_t i = (limit && journal->qtail - limit) ?
-	           journal->qtail - limit : journal->qhead;
-	for (; i < journal->qtail; i = (i + 1) % journal->max_nodes) {
-		// Skip invalid nodes.
-		journal_node_t *n = journal->nodes + i;
-		if (!(n->flags & JOURNAL_VALID)) {
-			printf("%zu. node invalid\n", i);
+	if (ret == KNOT_EOK) {
+		ret = journal_open(j, &jdb, name);
+	}
+	if (ret != KNOT_EOK) {
+		close_journal_db(&jdb);
+		free(buff);
+		return ret;
+	}
+
+	uint32_t serial_from, serial_to;
+	journal_metadata_info(j, &ret, &serial_from, &serial_to);
+	ret *= KNOT_ENOENT;
+	if (ret != KNOT_EOK) {
+		goto pj_finally;
+	}
+
+	ret = journal_load_changesets(j, &db, serial_from);
+	if (ret != KNOT_EOK) {
+		goto pj_finally;
+	}
+
+	changeset_t *chs = NULL;
+
+	size_t db_remains = list_size(&db);
+
+	WALK_LIST(chs, db) {
+		if (--db_remains >= limit && limit > 0) {
 			continue;
 		}
-		load_changeset(journal, n, name, &db);
-	}
-
-	// Unpack and print changsets.
-	changeset_t *chs = NULL;
-	for (chs = (void *)(db.head); (node_t *)((node_t *)chs)->next; chs = (void *)((node_t *) chs)->next) {
-		ret = changesets_unpack(chs);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-
+	
 		printf(color ? YLW : "");
 		printf(";; Changes between zone versions: %u -> %u\n",
 		       knot_soa_serial(&chs->soa_from->rrs),
@@ -111,9 +121,13 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		printf(color ? RESET : "");
 	}
 
-	free(buff);
 	changesets_free(&db);
-	journal_close(journal);
+
+pj_finally:
+	free(buff);
+	journal_close(j);
+	journal_free(&j);
+	close_journal_db(&jdb);
 
 	return ret;
 }
