@@ -358,7 +358,7 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 		return ret;
 	}
 
-	ret = zone_dump_text(zone, file);
+	ret = zone_dump_text(zone, file, true);
 	fclose(file);
 	if (ret != KNOT_EOK) {
 		unlink(tmp_name);
