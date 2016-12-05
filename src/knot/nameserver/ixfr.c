@@ -177,7 +177,7 @@ static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
 
 	char *path = conf_journalfile(conf(), zone->name);
 	pthread_mutex_lock((pthread_mutex_t *)&zone->journal_lock);
-	ret = journal_load_changesets(path, zone, chgsets, serial_from, serial_to);
+	ret = journal_load_changesets(path, zone->name, chgsets, serial_from, serial_to);
 	pthread_mutex_unlock((pthread_mutex_t *)&zone->journal_lock);
 	free(path);
 

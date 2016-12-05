@@ -180,8 +180,12 @@ bool journal_exists(const char *path);
  * \retval KNOT_ERANGE if given entry was not found.
  * \return < KNOT_EOK on error.
  */
-int journal_load_changesets(const char *path, const struct zone *zone, list_t *dst,
+int journal_load_changesets(const char *path, const knot_dname_t *zone, list_t *dst,
                             uint32_t from, uint32_t to);
+
+// TODO: :-/
+int load_changeset(journal_t *journal, journal_node_t *n, const knot_dname_t *zone, list_t *chgs);
+int changesets_unpack(changeset_t *chs);
 
 /*!
  * \brief Store changesets in journal.

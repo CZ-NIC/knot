@@ -700,7 +700,7 @@ bool journal_exists(const char *path)
 }
 
 /*! \brief No doc here. Moved from zones.h (@mvavrusa) */
-static int changesets_unpack(changeset_t *chs)
+int changesets_unpack(changeset_t *chs)
 {
 
 	/* Read changeset flags. */
@@ -870,9 +870,9 @@ static int changeset_pack(const changeset_t *chs, journal_t *j)
 }
 
 /*! \brief Helper for iterating journal (this is temporary until #80) */
-typedef int (*journal_apply_t)(journal_t *, journal_node_t *, const zone_t *, list_t *);
+typedef int (*journal_apply_t)(journal_t *, journal_node_t *, const knot_dname_t *, list_t *);
 static int journal_walk(const char *fn, uint32_t from, uint32_t to,
-                        journal_apply_t cb, const zone_t *zone, list_t *chgs)
+			journal_apply_t cb, const knot_dname_t *zone, list_t *chgs)
 {
 	/* Open journal for reading. */
 	journal_t *journal = NULL;
@@ -917,9 +917,9 @@ finish:
 	return ret;
 }
 
-static int load_changeset(journal_t *journal, journal_node_t *n, const zone_t *zone, list_t *chgs)
+int load_changeset(journal_t *journal, journal_node_t *n, const knot_dname_t *zone, list_t *chgs)
 {
-	changeset_t *ch = changeset_new(zone->name);
+	changeset_t *ch = changeset_new(zone);
 	if (ch == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -945,7 +945,7 @@ static int load_changeset(journal_t *journal, journal_node_t *n, const zone_t *z
 	return KNOT_EOK;
 }
 
-int journal_load_changesets(const char *path, const zone_t *zone, list_t *dst,
+int journal_load_changesets(const char *path, const knot_dname_t *zone, list_t *dst,
                             uint32_t from, uint32_t to)
 {
 	int ret = journal_walk(path, from, to, &load_changeset, zone, dst);

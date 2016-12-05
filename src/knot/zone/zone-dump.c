@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -136,7 +136,7 @@ static int node_dump_text(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-int zone_dump_text(zone_contents_t *zone, FILE *file)
+int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments)
 {
 	if (zone == NULL || file == NULL) {
 		return KNOT_EINVAL;
@@ -148,7 +148,9 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 		return KNOT_ENOMEM;
 	}
 
-	fprintf(file, ";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
+	if (comments) {
+		fprintf(file, ";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
+	}
 
 	// Set structure with parameters.
 	zone_node_t *apex = zone->apex;
@@ -172,7 +174,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 	// Dump RRSIG records if available.
 	params.dump_rrsig = true;
 	params.dump_nsec = false;
-	params.first_comment = ";; DNSSEC signatures\n";
+	params.first_comment = comments ? ";; DNSSEC signatures\n" : NULL;
 	ret = zone_contents_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -181,7 +183,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 	// Dump NSEC chain if available.
 	params.dump_rrsig = false;
 	params.dump_nsec = true;
-	params.first_comment = ";; DNSSEC NSEC chain\n";
+	params.first_comment = comments ? ";; DNSSEC NSEC chain\n" : NULL;
 	ret = zone_contents_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -190,7 +192,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 	// Dump NSEC3 chain if available.
 	params.dump_rrsig = false;
 	params.dump_nsec = true;
-	params.first_comment = ";; DNSSEC NSEC3 chain\n";
+	params.first_comment = comments ? ";; DNSSEC NSEC3 chain\n" : NULL;
 	ret = zone_contents_nsec3_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -198,23 +200,25 @@ int zone_dump_text(zone_contents_t *zone, FILE *file)
 
 	params.dump_rrsig = true;
 	params.dump_nsec = false;
-	params.first_comment = ";; DNSSEC NSEC3 signatures\n";
+	params.first_comment = comments ? ";; DNSSEC NSEC3 signatures\n" : NULL;
 	ret = zone_contents_nsec3_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	// Create formatted date-time string.
-	time_t now = time(NULL);
-	struct tm tm;
-	localtime_r(&now, &tm);
-	char date[64];
-	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
+	if (comments) {
+		// Create formatted date-time string.
+		time_t now = time(NULL);
+		struct tm tm;
+		localtime_r(&now, &tm);
+		char date[64];
+		strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
-	// Dump trailing statistics.
-	fprintf(file, ";; Written %"PRIu64" records\n"
-	              ";; Time %s\n",
-	        params.rr_count, date);
+		// Dump trailing statistics.
+		fprintf(file, ";; Written %"PRIu64" records\n"
+		              ";; Time %s\n",
+	        	params.rr_count, date);
+	}
 
 	free(params.buf); // params.buf may be != buf because of knot_rrset_txt_dump_dynamic()
 
