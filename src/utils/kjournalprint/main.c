@@ -61,12 +61,14 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 	journal_t *journal = NULL;
 	int ret = journal_open(&journal, path, ~((size_t)0));
 	if (ret != KNOT_EOK) {
+		free(buff);
 		return ret;
 	}
 
 	// Load changesets from journal.
 	if (journal->qtail == journal->qhead) {
 		journal_close(journal);
+		free(buff);
 		return KNOT_ENOENT;
 	}
 
