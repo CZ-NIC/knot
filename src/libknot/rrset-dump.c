@@ -39,6 +39,8 @@
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
+#define RRSET_DUMP_LIMIT (2 * 1024 * 1024)
+
 #define TAB_WIDTH		8
 #define BLOCK_WIDTH		40
 #define BLOCK_INDENT		"\n\t\t\t\t"
@@ -2051,6 +2053,10 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 		}
 
 		size_t new_dst_size = 2 * (*dst_size);
+		if (new_dst_size > RRSET_DUMP_LIMIT) {
+			return KNOT_ESPACE;
+		}
+
 		char * new_dst = malloc(new_dst_size);
 		if (new_dst == NULL) {
 			return KNOT_ENOMEM;
