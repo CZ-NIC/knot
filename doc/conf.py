@@ -220,6 +220,7 @@ man_pages = [
     ('man_kdig', 'kdig', 'Advanced DNS lookup utility', author, 1),
     ('man_keymgr', 'keymgr', ' DNSSEC key management utility', author, 8),
     ('man_khost', 'khost', 'Simple DNS lookup utility', author, 1),
+    ('man_kjournalprint', 'kjournalprint', 'Knot DNS journal print utility', author, 1),
     ('man_knot1to2', 'knot1to2', 'Knot DNS configuration conversion utility', author, 1),
     ('man_knotc', 'knotc', 'Knot DNS control utility', author, 8),
     ('man_knotd', 'knotd', 'Knot DNS server daemon', author, 8),

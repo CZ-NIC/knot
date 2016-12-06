@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,12 +29,13 @@
 /*!
  * \brief Dumps given zone to text file.
  *
- * \param zone Zone to be saved.
- * \param file File to write to.
+ * \param zone      Zone to be saved.
+ * \param file      File to write to.
+ * \param comments  Add separating comments indicator.
  *
  * \retval KNOT_EOK on success.
  * \retval < 0 if error.
  */
-int zone_dump_text(zone_contents_t *zone, FILE *file);
+int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments);
 
 /*! @} */

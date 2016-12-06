@@ -112,7 +112,7 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 	init_list(&chgs);
 
 	pthread_mutex_lock(&zone->journal_lock);
-	int ret = journal_load_changesets(journal_name, zone, &chgs, serial,
+	int ret = journal_load_changesets(journal_name, zone->name, &chgs, serial,
 	                                  serial - 1);
 	pthread_mutex_unlock(&zone->journal_lock);
 	free(journal_name);

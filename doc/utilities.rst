@@ -13,6 +13,7 @@ the server. This section collects manual pages for all provided binaries:
    man_kdig
    man_keymgr
    man_khost
+   man_kjournalprint
    man_knot1to2
    man_knotc
    man_knotd

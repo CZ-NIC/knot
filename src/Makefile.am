@@ -482,7 +482,7 @@ endif # HAVE_DAEMON
 
 if HAVE_UTILS
 
-bin_PROGRAMS = kdig khost knsec3hash knsupdate kzonecheck
+bin_PROGRAMS = kdig khost knsec3hash knsupdate kzonecheck kjournalprint
 if !HAVE_DAEMON
 noinst_LTLIBRARIES += libknotd.la
 endif
@@ -519,16 +519,21 @@ kzonecheck_SOURCES =				\
 	utils/kzonecheck/zone_check.c		\
 	utils/kzonecheck/zone_check.h
 
+kjournalprint_SOURCES = 			\
+	utils/kjournalprint/main.c
+
 # bin programs
-kdig_CPPFLAGS       = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-kdig_LDADD          = $(libidn_LIBS) libknotus.la
-khost_CPPFLAGS      = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-khost_LDADD         = $(libidn_LIBS) libknotus.la
-knsupdate_CPPFLAGS  = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-knsupdate_LDADD     = zscanner/libzscanner.la libknotus.la
-knsec3hash_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
-knsec3hash_LDADD    = dnssec/libdnssec.la dnssec/libshared.la
-kzonecheck_LDADD = libknotd.la
+kdig_CPPFLAGS          = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+kdig_LDADD             = $(libidn_LIBS) libknotus.la
+khost_CPPFLAGS         = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+khost_LDADD            = $(libidn_LIBS) libknotus.la
+knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+knsupdate_LDADD        = zscanner/libzscanner.la libknotus.la
+knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
+knsec3hash_LDADD       = dnssec/libdnssec.la dnssec/libshared.la
+kzonecheck_LDADD       = libknotd.la
+kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+kjournalprint_LDADD    = $(libidn_LIBS) libknotd.la
 
 #######################################
 # Optional Knot DNS Utilities modules #
