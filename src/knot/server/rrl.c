@@ -143,6 +143,8 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 	/* Found associated zone. */
 	if (zone != NULL) {
 		dn = zone->name;
+	} else if (req->name != NULL) {
+		dn = req->name;
 	}
 
 	switch (cls) {
