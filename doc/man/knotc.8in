@@ -193,7 +193,7 @@ The utility provides interactive mode with basic line editing functionality,
 command completion, and command history.
 .sp
 Interactive mode behavior can be customized in \fI~/.editrc\fP\&. Refer to
-\fIeditrc(5)\fP for details.
+\fBeditrc(5)\fP for details.
 .sp
 Command history is saved in \fI~/.knotc_history\fP\&.
 .SH EXAMPLES
@@ -279,7 +279,7 @@ $ knotc zone\-read \-\- @ SOA
 .UNINDENT
 .SH SEE ALSO
 .sp
-\fIknotd(8)\fP, \fIknot.conf(5)\fP, \fIeditrc(5)\fP\&.
+\fBknotd(8)\fP, \fBknot.conf(5)\fP, \fBeditrc(5)\fP\&.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT

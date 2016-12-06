@@ -63,7 +63,7 @@ Print the program version.
 .UNINDENT
 .SH SEE ALSO
 .sp
-\fIknotc(8)\fP, \fIknot.conf(5)\fP\&.
+\fBknotc(8)\fP, \fBknot.conf(5)\fP\&.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT
