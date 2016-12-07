@@ -477,11 +477,14 @@ static int initial_md_check(journal_t *j, int *dirty_present)
 {
 	*dirty_present = 0;
 
+	int something_updated = 0;
+
 	local_txn_t(txn, j);
 	txn_begin(txn, 1);
 	txn_key_str(txn, NULL, MDKEY_GLOBAL_VERSION);
 	if (!txn_find(txn)) {
 		md_set(txn, NULL, MDKEY_GLOBAL_VERSION, JOURNAL_VERSION);
+		something_updated = 1;
 	}
 	else {
 		uint32_t jver;
@@ -494,9 +497,16 @@ static int initial_md_check(journal_t *j, int *dirty_present)
 	txn_key_str(txn, j->zone, MDKEY_PERZONE_FLAGS);
 	if (!txn_find(txn)) {
 		md_update_journal_count(txn, +1);
+		something_updated = 1;
 	}
 	*dirty_present = md_flag(txn, DIRTY_SERIAL_VALID);
-	txn_commit(txn);
+
+	if (something_updated) {
+		txn_commit(txn);
+	}
+	else { // abort to gain up speed when opening a lot of zones
+		txn_abort(txn);
+	}
 
 	txn_ret(txn);
 }
