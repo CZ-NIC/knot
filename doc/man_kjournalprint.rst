@@ -22,6 +22,9 @@ Parameters
 **-l**, **--limit** *limit*
   Limits the number of displayed changes.
 
+**-t**, **--list-zones**
+  Instead of reading jurnal, display the list of zones in the DB (*zone_name* not needed)
+
 **-h**, **--help**
   Print the program help.
 
