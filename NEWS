@@ -1,4 +1,17 @@
 
+Knot DNS 2.3.3 (2016-12-08)
+===========================
+
+Bugfixes:
+---------
+
+Improvements:
+-------------
+
+Features:
+---------
+ - New kjournalprint utility
+
 Knot DNS 2.3.2 (2016-11-04)
 ===========================
 
