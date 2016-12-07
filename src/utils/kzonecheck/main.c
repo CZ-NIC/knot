@@ -28,23 +28,21 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] <zonefile>\n"
+	printf("Usage: %s [parameters] <filename>\n"
 	       "\n"
 	       "Parameters:\n"
-	       " -o, --origin <zone_origin>           Zone name\n"
-	       "                                      (default filename or\n"
-	       "                                      filename without trailing .zone)\n"
-	       " -v, --verbose                        Enable debug output.\n"
-	       " -h, --help                           Print the program help.\n"
-	       " -V, --version                        Print the program version.\n"
+	       " -o, --origin <zone_origin>  Zone name.\n"
+	       "                              (default filename or filename without .zone)\n"
+	       " -v, --verbose               Enable debug output.\n"
+	       " -h, --help                  Print the program help.\n"
+	       " -V, --version               Print the program version.\n"
 	       "\n",
 	       PROGRAM_NAME);
 }
 
 int main(int argc, char *argv[])
 {
-	char *filename = NULL;
-	char *zonename = NULL;
+	const char *origin = NULL;
 	bool verbose = false;
 	FILE *outfile = stdout;
 
@@ -58,11 +56,11 @@ int main(int argc, char *argv[])
 	};
 
 	/* Parse command line arguments */
-	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "o:vVh", opts, &li)) != -1) {
+	int opt = 0;
+	while ((opt = getopt_long(argc, argv, "o:vVh", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'o':
-			zonename = strdup(optarg);
+			origin = optarg;
 			break;
 		case 'v':
 			verbose = true;
@@ -86,15 +84,20 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	filename = argv[optind];
+	char *filename = argv[optind];
 
-	if (zonename == NULL) {
-		/* Get zone name from file name */
+	char *zonename;
+	if (origin == NULL) {
+		/* Get zone name from file name. */
 		const char *ext = ".zone";
 		zonename = basename(filename);
 		if (strcmp(zonename + strlen(zonename) - strlen(ext), ext) == 0) {
 			zonename = strndup(zonename, strlen(zonename) - strlen(ext));
+		} else {
+			zonename = strdup(zonename);
 		}
+	} else {
+		zonename = strdup(origin);
 	}
 
 	/* TODO: Remove logging from zone loading. */

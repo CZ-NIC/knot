@@ -6,7 +6,7 @@ kzonecheck – Knot DNS zone file checking tool
 Synopsis
 --------
 
-:program:`kzonecheck` [*options*] *zone-file*
+:program:`kzonecheck` [*options*] *filename*
 
 Description
 -----------
@@ -19,7 +19,7 @@ Please, refer to the ``semantic-checks`` configuration option in
 :manpage:`knot.conf(5)` for the full list of available semantic checks.
 
 Options
-..........
+.......
 
 **-o**, **--origin** *origin*
   Zone origin. If not specified, the origin is determined from the file name
@@ -37,4 +37,4 @@ Options
 See Also
 --------
 
-:manpage:`knotd(8)`, :manpage:`knot.conf(5)`
+:manpage:`knotd(8)`, :manpage:`knot.conf(5)`.
