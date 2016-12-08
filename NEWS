@@ -4,9 +4,15 @@ Knot DNS 2.3.3 (2016-12-08)
 
 Bugfixes:
 ---------
+ - Double free when failed to apply zone journal
+ - Zone bootstrap retry interval not preserved upon zone reload
+ - DNSSEC related records not flushed if not signed
+ - False semantic checks warning about incorrect type in NSEC bitmap
+ - Memory leak in kzonecheck
 
 Improvements:
 -------------
+ - All zone names are fully-qualified in log
 
 Features:
 ---------
