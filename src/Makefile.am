@@ -183,19 +183,19 @@ libknot_la_SOURCES =				\
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
 libknot_la_CFLAGS = $(AM_CFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS) $(LDFLAG_EXCLUDE_LIBS)
-libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la
+libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la $(lmdb_LTLIBS)
 
 # pkg-config
 pkgconfig_DATA = libknot.pc
 
 if !HAVE_LMDB
-libknot_la_SOURCES +=				\
+noinst_LTLIBRARIES += liblmdb.la
+liblmdb_la_SOURCES =				\
 	contrib/lmdb/lmdb.h			\
 	contrib/lmdb/mdb.c			\
 	contrib/lmdb/midl.c			\
 	contrib/lmdb/midl.h
-libknot_la_CPPFLAGS +=				\
-	-I$(srcdir)/contrib/lmdb/
+lmdb_LTLIBS = liblmdb.la
 endif
 
 # static: utilities shared
@@ -380,7 +380,7 @@ libknotd_la_SOURCES =				\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
-libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(liburcu_CFLAGS)
+libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(liburcu_CFLAGS) $(lmdb_CFLAGS)
 libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS)
 libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(liburcu_LIBS)
 
@@ -466,6 +466,7 @@ if HAVE_ROSEDB
 libknotd_la_SOURCES +=				\
 	knot/modules/rosedb.c			\
 	knot/modules/rosedb.h
+libknotd_la_LIBADD += liblmdb.la
 endif # HAVE_ROSEDB
 
 # Create storage and run-time directories
@@ -549,7 +550,7 @@ endif # HAVE_DNSTAP
 if HAVE_ROSEDB
 bin_PROGRAMS += rosedb_tool
 rosedb_tool_SOURCES = knot/modules/rosedb_tool.c
-rosedb_tool_LDADD = libknotd.la libcontrib.la
+rosedb_tool_LDADD = libknotd.la libcontrib.la $(lmdb_LTLIBS)
 rosedb_tool_CFLAGS = $(AM_CFLAGS) $(lmdb_CFLAGS) $(DNSTAP_CFLAGS)
 rosedb_tool_LDFLAGS = $(AM_LDFLAGS) $(lmdb_LIBS)
 endif # HAVE_ROSEDB
