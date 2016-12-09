@@ -19,6 +19,7 @@ knotd_stdio_SOURCES = wrap/server.c wrap/tcp-handler.c wrap/udp-handler.c
 knotd_stdio_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_stdio_LDADD = \
 	$(top_builddir)/src/utils/knotd/knotd-main.o \
-	$(top_builddir)/src/libknotd.la $(liburcu_LIBS)
+	$(top_builddir)/src/libknotd.la $(top_builddir)/src/libcontrib.la \
+	$(liburcu_LIBS)
 
 check-compile: $(check_PROGRAMS)

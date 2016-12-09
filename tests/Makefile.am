@@ -8,6 +8,7 @@ LDADD = \
 	$(top_builddir)/libtap/libtap.la \
 	$(top_builddir)/src/libknot.la \
 	$(top_builddir)/src/libknotd.la \
+	$(top_builddir)/src/libcontrib.la \
 	$(libcrypto_LIBS)
 
 check_PROGRAMS = \
