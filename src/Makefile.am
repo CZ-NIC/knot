@@ -182,7 +182,7 @@ libknot_la_SOURCES =				\
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
 libknot_la_CFLAGS = $(AM_CFLAGS)
-libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS)
+libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS) $(LDFLAG_EXCLUDE_LIBS)
 libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la
 
 # pkg-config
@@ -445,7 +445,7 @@ keymgr_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnsse
 keymgr_LDADD = libknotd.la libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
                zscanner/libzscanner.la $(gnutls_LIBS)
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
-knotd_LDADD = libknotd.la $(liburcu_LIBS)
+knotd_LDADD = libknotd.la libcontrib.la $(liburcu_LIBS)
 knotc_CPPFLAGS = $(AM_CPPFLAGS) $(libedit_CFLAGS)
 knotc_LDADD = libknotd.la libknotus.la $(libedit_LIBS)
 knot1to2_LDADD = libcontrib.la
@@ -531,9 +531,9 @@ knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 knsupdate_LDADD        = zscanner/libzscanner.la libknotus.la
 knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
 knsec3hash_LDADD       = dnssec/libdnssec.la dnssec/libshared.la
-kzonecheck_LDADD       = libknotd.la
+kzonecheck_LDADD       = libknotd.la libcontrib.la
 kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-kjournalprint_LDADD    = $(libidn_LIBS) libknotd.la
+kjournalprint_LDADD    = $(libidn_LIBS) libknotd.la libcontrib.la
 
 #######################################
 # Optional Knot DNS Utilities modules #
@@ -549,7 +549,7 @@ endif # HAVE_DNSTAP
 if HAVE_ROSEDB
 bin_PROGRAMS += rosedb_tool
 rosedb_tool_SOURCES = knot/modules/rosedb_tool.c
-rosedb_tool_LDADD = libknotd.la
+rosedb_tool_LDADD = libknotd.la libcontrib.la
 rosedb_tool_CFLAGS = $(AM_CFLAGS) $(lmdb_CFLAGS) $(DNSTAP_CFLAGS)
 rosedb_tool_LDFLAGS = $(AM_LDFLAGS) $(lmdb_LIBS)
 endif # HAVE_ROSEDB

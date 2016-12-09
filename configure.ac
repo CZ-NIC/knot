@@ -172,6 +172,8 @@ AS_IF([test "$enable_reuseport" = yes],[
    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])])
 
 AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
+AX_CHECK_LINK_FLAG(["-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs="-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs=""], "")
+AC_SUBST([LDFLAG_EXCLUDE_LIBS], $ldflag_exclude_libs)
 
 # Default directories
 run_dir="${localstatedir}/run/knot"
