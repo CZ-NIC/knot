@@ -72,7 +72,7 @@ Records are synthesized only if the query can't be satisfied from the zone.
 Both IPv4 and IPv6 are supported.
 
 Automatic forward records
--------------------------
+.........................
 
 Example::
 
@@ -115,7 +115,7 @@ further resolved:
    dynamic-2620-0000-0b61-0100-0000-0000-0000-0002.test. 400 IN AAAA 2620:0:b61:100::2
 
 Automatic reverse records
--------------------------
+.........................
 
 Example::
 
