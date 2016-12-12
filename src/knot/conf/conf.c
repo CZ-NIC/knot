@@ -223,6 +223,7 @@ conf_val_t conf_default_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		break;
 	}
 
@@ -276,6 +277,7 @@ bool conf_id_exists_txn(
 		CONF_LOG(LOG_ERR, "failed to check '%s' for identifier (%s)",
 		         key0_name + 1, knot_strerror(ret));
 		// FALLTHROUGH
+	case KNOT_ENOENT:
 	case KNOT_YP_EINVAL_ID:
 		return false;
 	}

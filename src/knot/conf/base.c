@@ -405,6 +405,7 @@ void conf_activate_modules(
 	case KNOT_EOK:
 		break;
 	case KNOT_ENOENT: // Check if a module is configured at all.
+	case KNOT_YP_EINVAL_ID:
 		return;
 	default:
 		ret = val.code;
