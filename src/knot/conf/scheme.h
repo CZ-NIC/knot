@@ -63,6 +63,8 @@
 #define C_MANUAL		"\x06""manual"
 #define C_MASTER		"\x06""master"
 #define C_MAX_JOURNAL_SIZE	"\x10""max-journal-size"
+#define C_MAX_JOURNAL_USAGE	"\x11""max-journal-usage"
+#define C_MAX_JOURNAL_DEPTH	"\x11""max-journal-depth"
 #define C_MAX_TCP_CLIENTS	"\x0F""max-tcp-clients"
 #define C_MAX_UDP_PAYLOAD	"\x0F""max-udp-payload"
 #define C_MAX_ZONE_SIZE		"\x0D""max-zone-size"

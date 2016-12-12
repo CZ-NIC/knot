@@ -48,6 +48,7 @@ typedef struct {
 	uint32_t last_flushed;		// serial_from of the last flushed (or merged) chengeset
 	uint32_t merged_serial;		// "serial_from" of merged changeset
 	uint32_t dirty_serial;		// serial_from of an incompletely inserted changeset which shall be deleted (see DB_MAX_INSERT_TXN)
+	uint32_t changeset_count;	// # of changesets in this journal
 	uint32_t flags;			// LAST_FLUSHED_VALID, SERIAL_TO_VALID, MERGED_SERIAL_VALID
 	// specific metadata: occupied
 } journal_metadata_t;

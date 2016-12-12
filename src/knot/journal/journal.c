@@ -52,13 +52,25 @@ enum {
 static int journal_flush_allowed(journal_t *j) {
 	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, j->zone);
 	if (val.item == NULL || conf_int(&val) >= 0) {
-		return 1; // val->item == NULL  --->  default behaviour, ie standard flush, no merge.
+		return 1;
 	}
 	return 0;
 }
 
 static int journal_merge_allowed(journal_t *j) {
 	return !journal_flush_allowed(j); // TODO think of other behaviour, e.g. setting
+}
+
+static size_t journal_max_usage(journal_t * j)
+{
+	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_USAGE, j->zone);
+	return conf_int(&val);
+}
+
+static size_t journal_max_changesets(journal_t * j)
+{
+	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_DEPTH, j->zone);
+	return conf_int(&val);
 }
 
 static float journal_tofree_factor(journal_t *j)
@@ -194,6 +206,7 @@ static void txn_begin(txn_t *txn, int write_allowed)
 	txn_begin_md(last_flushed);
 	txn_begin_md(merged_serial);
 	txn_begin_md(dirty_serial);
+	txn_begin_md(changeset_count);
 	txn_begin_md(flags);
 }
 
@@ -301,6 +314,7 @@ static void txn_commit(txn_t *txn)
 		txn_commit_md(last_flushed);
 		txn_commit_md(merged_serial);
 		txn_commit_md(dirty_serial);
+		txn_commit_md(changeset_count);
 		txn_commit_md(flags);
 	}
 
@@ -451,13 +465,6 @@ static void unmake_header(const knot_db_val_t *from, uint32_t *serial_to,
 	assert(be32toh(h->chunk_count) <= INT_MAX);
 	if (chunk_count != NULL) *chunk_count = (int)be32toh(h->chunk_count);
 	if (header_size != NULL) *header_size = sizeof(*h);
-}
-
-static size_t journal_max_occupied(journal_t *j, txn_t *txn)
-{
-	uint32_t jcnt;
-	md_get(txn, NULL, MDKEY_GLOBAL_JOURNAL_COUNT, &jcnt);
-	return (txn->ret == KNOT_EOK ? (j->db->fslimit / (jcnt + 1)) : 0);
 }
 
 static uint32_t first_digit(uint32_t of)
@@ -758,8 +765,10 @@ static int del_upto_itercb(iteration_ctx_t *ctx)
 	// one whole changeset has been deleted => update metadata. We are sure that the deleted changeset is first at this time. If it's not merged changeset, point first_serial to next one
 	if (ctx->chunk_index == ctx->chunk_count - 1) {
 		if (!md_flag(ctx->txn, MERGED_SERIAL_VALID) ||
-		    serial_compare(ctx->txn->shadow_md.merged_serial,ctx->serial) != 0)
+		    serial_compare(ctx->txn->shadow_md.merged_serial,ctx->serial) != 0) {
 			ctx->txn->shadow_md.first_serial = ctx->serial_to;
+			ctx->txn->shadow_md.changeset_count--;
+		}
 		if (serial_compare(ctx->txn->shadow_md.last_flushed, ctx->serial) == 0) ctx->txn->shadow_md.flags &= ~LAST_FLUSHED_VALID;
 		if (serial_compare(ctx->txn->shadow_md.last_serial,  ctx->serial) == 0) ctx->txn->shadow_md.flags &= ~SERIAL_TO_VALID;
 		if (serial_compare(ctx->txn->shadow_md.merged_serial,ctx->serial) == 0) ctx->txn->shadow_md.flags &= ~MERGED_SERIAL_VALID;
@@ -817,6 +826,7 @@ static int del_tofree_itercb(iteration_ctx_t *ctx)
 	// when whole changeset deleted, check target and update metadata
 	if (ctx->chunk_index == ctx->chunk_count - 1) {
 		ctx->txn->shadow_md.first_serial = ctx->serial_to;
+		ctx->txn->shadow_md.changeset_count--;
 		if (serial_compare(ctx->txn->shadow_md.last_flushed, ctx->serial) == 0) {
 			ctx->txn->shadow_md.flags &= ~LAST_FLUSHED_VALID;
 			ds->to_be_freed = 0; // prevents deleting unflushed changesets
@@ -852,6 +862,55 @@ static int delete_tofree(journal_t *j, txn_t *_txn, size_t to_be_freed, size_t *
 	unreuse_txn(txn, _txn);
 
 	if (txn->ret == KNOT_EOK) *really_freed = ds.freed_approx;
+	txn_ret(txn);
+}
+
+static int del_count_itercb(iteration_ctx_t *ctx)
+{
+	delete_status_t *ds = ctx->iter_context;
+	if (ds->freed_approx >= ds->to_be_freed) {
+		return KNOT_EOK;
+	}
+	txn_key_2u32(ctx->txn, ctx->txn->j->zone, ctx->serial, ctx->chunk_index);
+	txn_del(ctx->txn);
+	txn_check_ret(ctx->txn);
+
+	// when whole changeset deleted, check target and update metadata
+	if (ctx->chunk_index == ctx->chunk_count - 1) {
+		ctx->txn->shadow_md.first_serial = ctx->serial_to;
+		ctx->txn->shadow_md.changeset_count--;
+		if (serial_compare(ctx->txn->shadow_md.last_flushed, ctx->serial) == 0) {
+			ctx->txn->shadow_md.flags &= ~LAST_FLUSHED_VALID;
+			ds->to_be_freed = ds->freed_approx; // prevents deleting unflushed changesets
+		}
+		if (serial_compare(ctx->txn->shadow_md.last_serial, ctx->serial) == 0) {
+			ctx->txn->shadow_md.flags &= ~SERIAL_TO_VALID;
+		}
+		ds->freed_approx++;
+	}
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Deletes specified number of changesets
+ *
+ * It tries deleting olny flushed changesets, preserves all unflushed ones.
+ *
+ * \retval KNOT_EOK if no error, even if too little or nothing deleted (check really_deleted for result); KNOT_E* if error
+ */
+static int delete_count(journal_t *j, txn_t *_txn, size_t to_be_deleted, size_t *really_deleted)
+{
+	reuse_txn(txn, j, _txn, 1);
+
+	if (!md_flag(txn, LAST_FLUSHED_VALID)) {
+		*really_deleted = 0;
+		return KNOT_EOK;
+	}
+	delete_status_t ds = { .freed_approx = 0, .to_be_freed = to_be_deleted };
+	iterate(j, txn, del_count_itercb, JOURNAL_ITERATION_CHUNKS, &ds, txn->shadow_md.first_serial, txn->shadow_md.last_serial);
+	unreuse_txn(txn, _txn);
+
+	if (txn->ret == KNOT_EOK) *really_deleted = ds.freed_approx;
 	txn_ret(txn);
 }
 
@@ -988,7 +1047,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	// PART 3 : check if we exceeded designed occupation and delete some
 	uint32_t occupied, occupied_max;
 	md_get(txn, j->zone, MDKEY_PERZONE_OCCUPIED, &occupied);
-	occupied_max = journal_max_occupied(j, txn);
+	occupied_max = journal_max_usage(j);
 	occupied += serialized_size_total;
 	if (occupied > occupied_max) {
 		size_t freed;
@@ -1005,6 +1064,20 @@ static int store_changesets(journal_t *j, list_t *changesets)
                                 log_zone_warning(j->zone, "journal: unable to make free space for insert");
                                 goto store_changeset_cleanup;
 			}
+		}
+	}
+
+	// PART 3.5 : check if we exceeded history depth
+	long over_limit = (long)txn->shadow_md.changeset_count - journal_max_changesets(j) +
+			  list_size(changesets) - (inserting_merged ? 1 : 0);
+	if (over_limit > 0) {
+		size_t deled;
+		delete_count(j, txn, over_limit, &deled);
+		over_limit -= deled;
+		if (over_limit > 0) {
+			try_flush
+			delete_count(j, txn, over_limit, &deled);
+			// ignore further errors here, the limit is not so important
 		}
 	}
 
@@ -1094,6 +1167,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			txn->shadow_md.flags |= SERIAL_TO_VALID;
 			txn->shadow_md.last_serial = serial;
 			txn->shadow_md.last_serial_to = serial_to;
+			txn->shadow_md.changeset_count++;
 		}
 
 		free(allchunks);
@@ -1511,6 +1585,7 @@ int journal_check(journal_t *j, int warn_level)
 	changeset_t *ch;
 	uint32_t sfrom, sto;
 	uint32_t first_unflushed;
+	uint32_t chcount;
 
 	jch_info("started");
 
@@ -1523,9 +1598,10 @@ int journal_check(journal_t *j, int warn_level)
 	txn_begin(txn, 1);
 	jch_txn("begin", 1);
 
-	jch_info("metadata: flags >> %d << fs %u ls %u lst %u lf %u ms %u ds %u", txn->shadow_md.flags, txn->shadow_md.first_serial, txn->shadow_md.last_serial, txn->shadow_md.last_serial_to,
-                 txn->shadow_md.last_flushed, txn->shadow_md.merged_serial, txn->shadow_md.dirty_serial);
+	jch_info("metadata: flags >> %d << fs %u ls %u lst %u lf %u ms %u ds %u cnt %u", txn->shadow_md.flags, txn->shadow_md.first_serial, txn->shadow_md.last_serial, txn->shadow_md.last_serial_to,
+                 txn->shadow_md.last_flushed, txn->shadow_md.merged_serial, txn->shadow_md.dirty_serial, txn->shadow_md.changeset_count);
 
+	chcount = txn->shadow_md.changeset_count;
 	first_unflushed = txn->shadow_md.first_serial;
 
 	if (md_flag(txn, DIRTY_SERIAL_VALID)) {
@@ -1592,6 +1668,10 @@ int journal_check(journal_t *j, int warn_level)
 		goto check_merged;
 	}
 	jch_info("listed %zu changesets", list_size(&l));
+	if (list_size(&l) != chcount) {
+		jch_warn("expected %u changesets but found %zu", chcount, list_size(&l));
+	}
+
 	ch = HEAD(l);
 	if (serial_compare(sfrom, knot_soa_serial(&ch->soa_from->rrs)) != 0) {
 		jch_warn("first listed changeset's serial 'from' %u is not ok", knot_soa_serial(&ch->soa_from->rrs));

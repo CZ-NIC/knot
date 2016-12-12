@@ -25,7 +25,6 @@
 #include <tap/files.h>
 
 #include "libknot/libknot.h"
-//#define JOURNAL_TEST_ENV
 #include "knot/journal/journal.c"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-diff.h"
@@ -42,6 +41,16 @@ const char * test_dir_name;
 journal_db_t * db; // global
 journal_t * j;
 uint8_t *apex = (uint8_t *)"\4test";
+
+static void set_conf(int zonefile_sync, size_t journal_usage)
+{
+	char conf_str[512];
+	snprintf(conf_str, 512, "zone:\n  - domain: %s\n    zonefile-sync: %d\n"
+		 "    max-journal-usage: %zu\n    max-journal-depth: 1000\n",
+		      (const char *)(apex + 1), zonefile_sync, journal_usage);
+	int ret = test_conf(conf_str, NULL);
+	assert(ret == KNOT_EOK);
+}
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
@@ -261,6 +270,8 @@ static void test_store_load(void)
 	ret = init_journal_db(&db, test_dir_name, 1024 * 1024);
 	if (ret == KNOT_EOK) ret2 = journal_open(j, &db, apex);
 	ok(ret == KNOT_EOK, "journal: open (%d, %d)", ret, ret2);
+
+	set_conf(1000, 512 * 1024);
 
 	/* Save and load changeset. */
 	changeset_t *m_ch = changeset_new(apex);
@@ -537,12 +548,7 @@ static void test_merge(void)
 	list_t l;
 
 	// allow merge
-	const char *conf_str =
-		"zone:\n"
-		"  - domain: test\n"
-		"    zonefile-sync: -1\n";
-	ret = test_conf(conf_str, NULL);
-	assert(ret == KNOT_EOK);
+	set_conf(-1, 512 * 1024);
 	ok(journal_merge_allowed(j), "journal: merge allowed");
 
 	ret = drop_journal(j, NULL);
@@ -574,12 +580,7 @@ static void test_merge(void)
 	assert(ret == KNOT_EOK);
 
 	// disallow merge
-	const char *conf_str2 =
-		"zone:\n"
-		"  - domain: test\n"
-		"    zonefile-sync: 10\n";
-	ret = test_conf(conf_str2, NULL);
-	assert(ret == KNOT_EOK);
+	set_conf(1000, 512 * 1024);
 	ok(!journal_merge_allowed(j), "journal: merge disallowed");
 }
 
@@ -597,6 +598,8 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 	assert(ret == KNOT_EOK);
 	ret = journal_open(j, &db, apex);
 	assert(ret == KNOT_EOK);
+
+	set_conf(1000, file_size / 2);
 
 	changeset_t ch;
 	changeset_init(&ch, apex);

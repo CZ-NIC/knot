@@ -45,6 +45,12 @@
 #define HOURS(x)	((x) * 3600)
 #define DAYS(x)		((x) * HOURS(24))
 
+#define GIGA		(1024LLU * 1024 * 1024)
+#define TERA		(1024 * GIGA)
+
+#define VIRT_MEM_TOP_32BIT (2 * GIGA)
+#define VIRT_MEM_LIMIT(x) (((sizeof(void *) < 8) && ((x) > VIRT_MEM_TOP_32BIT)) ? VIRT_MEM_TOP_32BIT : (x))
+
 #define FMOD		(YP_FMULTI | CONF_IO_FRLD_MOD | CONF_IO_FRLD_ZONES)
 
 static const knot_lookup_t keystore_backends[] = {
@@ -225,11 +231,6 @@ static const yp_item_t desc_remote[] = {
 	{ NULL }
 };
 
-
-#define VIRT_MEM_TOP (2LLU * 1024 * 1204 * 1204)
-#define VIRT_MEM_LIMIT(x) (((sizeof(void *) < 8) && ((x) > VIRT_MEM_TOP)) ? VIRT_MEM_TOP : (x))
-
-
 #define ZONE_ITEMS(FLAGS) \
 	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR }, FLAGS }, \
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
@@ -243,6 +244,9 @@ static const yp_item_t desc_remote[] = {
 	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
 	{ C_MAX_ZONE_SIZE,       YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE }, \
 	                                   FLAGS }, \
+	{ C_MAX_JOURNAL_USAGE,   YP_TINT,  YP_VINT = { 40 * 1024, INT64_MAX, 100 * 1024 * 1024, \
+	                                               YP_SSIZE } }, \
+	{ C_MAX_JOURNAL_DEPTH,   YP_TINT,  YP_VINT = { 2, INT64_MAX, INT64_MAX, YP_SSIZE } }, \
 	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" }, FLAGS }, \
 	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, FLAGS, { check_ref_dflt } }, \
@@ -258,9 +262,10 @@ static const yp_item_t desc_template[] = {
 	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" }, CONF_IO_FRLD_ZONES }, \
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } }, \
-	{ C_JOURNAL,             YP_TSTR,  YP_VSTR = { "journal.db" }, CONF_IO_FRLD_ZONES }, \
-	{ C_MAX_JOURNAL_SIZE,    YP_TINT,  YP_VINT = { 1024 * 1024, VIRT_MEM_LIMIT(100LLU * 1024 * 1024 * 1024 * 1024), \
-	                                               VIRT_MEM_LIMIT(20LLU * 1024 * 1024 * 1024), YP_SSIZE } }, \
+	{ C_JOURNAL,             YP_TSTR,  YP_VSTR = { "journal.db" }, CONF_IO_FRLD_SRV }, \
+	{ C_MAX_JOURNAL_SIZE,    YP_TINT,  YP_VINT = { 1024 * 1024, VIRT_MEM_LIMIT(100 * TERA), \
+	                                               VIRT_MEM_LIMIT(20 * GIGA), YP_SSIZE }, \
+	                                               CONF_IO_FRLD_SRV }, \
 	{ NULL }
 };
 
