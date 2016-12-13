@@ -188,7 +188,9 @@ libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la $(lmdb_LTLIBS)
 # pkg-config
 pkgconfig_DATA = libknot.pc
 
-if !HAVE_LMDB
+if HAVE_LMDB
+lmdb_LTLIBS =
+else !HAVE_LMDB
 noinst_LTLIBRARIES += liblmdb.la
 liblmdb_la_SOURCES =				\
 	contrib/lmdb/lmdb.h			\
@@ -196,7 +198,7 @@ liblmdb_la_SOURCES =				\
 	contrib/lmdb/midl.c			\
 	contrib/lmdb/midl.h
 lmdb_LTLIBS = liblmdb.la
-endif
+endif !HAVE_LMDB
 
 # static: utilities shared
 libknotus_la_SOURCES =				\
