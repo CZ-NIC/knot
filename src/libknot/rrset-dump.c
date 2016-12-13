@@ -2004,6 +2004,8 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	size_t len = 0;
 	int    ret;
 
+	dst[0] = '\0';
+
 	// Loop over rdata in rrset.
 	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; i++) {
