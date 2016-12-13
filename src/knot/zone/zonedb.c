@@ -22,7 +22,6 @@
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
-#include "knot/common/log.h"
 
 /*! \brief Discard zone in zone database. */
 static void discard_zone(zone_t *zone)
