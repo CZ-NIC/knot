@@ -52,6 +52,11 @@ static void set_conf(int zonefile_sync, size_t journal_usage)
 	assert(ret == KNOT_EOK);
 }
 
+static void unset_conf(void)
+{
+	conf_update(NULL, CONF_UPD_FNONE);
+}
+
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
 {
@@ -290,7 +295,7 @@ static void test_store_load(void)
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
 	changesets_free(&l);
-	changeset_free(m_ch);
+	changesets_free(&k);
 	/* Flush the journal. */
 	ret = journal_flush(j);
 	ok(ret == KNOT_EOK, "journal: first and simple flush (%d)", ret);
@@ -303,14 +308,14 @@ static void test_store_load(void)
 	ret = KNOT_EOK;
 	uint32_t serial = 1;
 	for (; ret == KNOT_EOK; ++serial) {
-		m_ch = changeset_new(apex);
-		init_random_changeset(m_ch, serial, serial + 1, 128, apex);
-		ret = journal_store_changeset(j, m_ch);
+		changeset_t *m_ch2 = changeset_new(apex);
+		init_random_changeset(m_ch2, serial, serial + 1, 128, apex);
+		ret = journal_store_changeset(j, m_ch2);
 		if (ret != KNOT_EOK) {
-			changeset_free(m_ch);
+			changeset_free(m_ch2);
 			break;
 		}
-		add_tail(&k, &m_ch->n);
+		add_tail(&k, &m_ch2->n);
 	}
 	ok(ret == KNOT_EBUSY, "journal: overfill with changesets (%d inserted) (%d should= %d)", serial, ret, KNOT_EBUSY);
 	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
@@ -348,7 +353,7 @@ static void test_store_load(void)
 	changeset_init(&ch, apex);
 	init_random_changeset(&ch, serial, serial + 1, 128, apex);
 	ret = journal_store_changeset(j, &ch);
-		changeset_clear(&ch);
+	changeset_clear(&ch);
 	ok(ret == KNOT_EOK, "journal: store after flush (%d)", ret);
 	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
@@ -368,9 +373,9 @@ static void test_store_load(void)
 	/* Fill the journal using a list. */
 	uint32_t m_serial = 1;
 	for (; m_serial < serial / 2; ++m_serial) {
-		m_ch = changeset_new(apex);
-		init_random_changeset(m_ch, m_serial, m_serial + 1, 128, apex);
-		add_tail(&l, &m_ch->n);
+		changeset_t *m_ch7 = changeset_new(apex);
+		init_random_changeset(m_ch7, m_serial, m_serial + 1, 128, apex);
+		add_tail(&l, &m_ch7->n);
 	}
 	ret = journal_store_changesets(j, &l);
 	ok(ret == KNOT_EOK, "journal: fill with changesets using a list (%d inserted)", m_serial);
@@ -401,42 +406,31 @@ static void test_store_load(void)
 	 * remove changesets 0->1 and 1->2. */
 	assert(EMPTY_LIST(k));
 	assert(EMPTY_LIST(l));
-	m_ch = changeset_new(apex);
-	init_random_changeset(m_ch, 0, 1, 128, apex);
-	assert(journal_store_changeset(j, m_ch) == KNOT_EOK);
-	changeset_set_soa_serials(m_ch, 1, 2, apex);
-	assert(journal_store_changeset(j, m_ch) == KNOT_EOK);
-	changeset_set_soa_serials(m_ch, 2, 2147483647, apex);
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
-	add_tail(&k, &m_ch->n);
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
-	assert(journal_store_changeset(j, m_ch) == KNOT_EOK);
-	m_ch = changeset_new(apex);
-	init_random_changeset(m_ch, 2147483647, 4294967294, 128, apex);
-	add_tail(&k, &m_ch->n);
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
-	assert(journal_store_changeset(j, m_ch) == KNOT_EOK);
-	m_ch = changeset_new(apex);
-	init_random_changeset(m_ch, 4294967294, 1, 128, apex);
-	add_tail(&k, &m_ch->n);
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
-	assert(journal_store_changeset(j, m_ch) == KNOT_EBUSY);
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
+	changeset_t *m_ch3 = changeset_new(apex);
+	init_random_changeset(m_ch3, 0, 1, 128, apex);
+	assert(journal_store_changeset(j, m_ch3) == KNOT_EOK);
+	changeset_set_soa_serials(m_ch3, 1, 2, apex);
+	assert(journal_store_changeset(j, m_ch3) == KNOT_EOK);
+	changeset_set_soa_serials(m_ch3, 2, 2147483647, apex);
+	add_tail(&k, &m_ch3->n);
+	assert(journal_store_changeset(j, m_ch3) == KNOT_EOK);
+	changeset_t *m_ch4 = changeset_new(apex);
+	init_random_changeset(m_ch4, 2147483647, 4294967294, 128, apex);
+	add_tail(&k, &m_ch4->n);
+	assert(journal_store_changeset(j, m_ch4) == KNOT_EOK);
+	changeset_t *m_ch5 = changeset_new(apex);
+	init_random_changeset(m_ch5, 4294967294, 1, 128, apex);
+	add_tail(&k, &m_ch5->n);
+	assert(journal_store_changeset(j, m_ch5) == KNOT_EBUSY);
 	assert(journal_flush(j) == KNOT_EOK);
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
-	assert(journal_store_changeset(j, m_ch) == KNOT_EOK);
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
+	assert(journal_store_changeset(j, m_ch5) == KNOT_EOK);
 	assert(journal_flush(j) == KNOT_EOK);
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
 	ret = journal_load_changesets(j, &l, 0);
 	assert(EMPTY_LIST(l));
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
 	ret2 = journal_load_changesets(j, &l, 1);
 	assert(EMPTY_LIST(l));
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
 	int ret3 = journal_load_changesets(j, &l, 2);
 	fprintf(stderr, "ret=%d ret2=%d ret3=%d\n", ret, ret2, ret3);
-	fprintf(stderr, "ksize=%zu\n", list_size(&k));
 	ok(ret == KNOT_ENOENT && ret2 == KNOT_ENOENT && ret3 == KNOT_EOK &&
 	   changesets_list_eq(&l, &k), "journal: serial collision");
 	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
@@ -445,16 +439,24 @@ static void test_store_load(void)
 	/* Cleanup. */
 	changesets_free(&l);
 	changesets_free(&k);
+
+	//changeset_free(m_ch);
+
+
 	init_list(&l);
 	init_list(&k);
+
+	unset_conf();
 }
 
 const uint8_t * rdA = (const uint8_t *) "\x01\x02\x03\x04", * rdB = (const uint8_t *) "\x01\x02\x03\x05", * rdC = (const uint8_t *) "\x01\x02\x03\x06";
 
-static knot_rrset_t * tm_rrset(const knot_dname_t * owner, const uint8_t * rdata)
+// frees owner
+static knot_rrset_t * tm_rrset(knot_dname_t * owner, const uint8_t * rdata)
 {
 	knot_rrset_t * rrs = knot_rrset_new(owner, KNOT_RRTYPE_A, KNOT_CLASS_IN, NULL);
 	knot_rrset_add_rdata(rrs, rdata, 4, 3600, NULL);
+	free(owner);
 	return rrs;
 }
 
@@ -472,6 +474,15 @@ static knot_rrset_t * tm_rrs(const knot_dname_t * apex, int x)
 	static knot_rrset_t * rrsA = NULL;
 	static knot_rrset_t * rrsB = NULL;
 	static knot_rrset_t * rrsC = NULL;
+
+	if (apex == NULL) {
+		knot_rrset_free(&rrsA, NULL);
+		knot_rrset_free(&rrsB, NULL);
+		knot_rrset_free(&rrsC, NULL);
+		rrsA = rrsB = rrsC = NULL;
+		return NULL;
+	}
+
 	if (rrsA == NULL) rrsA = tm_rrset(tm_owner("aaaaaaaaaaaaaaaaa", apex), rdA);
 	if (rrsB == NULL) rrsB = tm_rrset(tm_owner("bbbbbbbbbbbbbbbbb", apex), rdB);
 	if (rrsC == NULL) rrsC = tm_rrset(tm_owner("ccccccccccccccccc", apex), rdC);
@@ -492,6 +503,8 @@ int tm_rrcnt(const changeset_t * ch, int flg)
 
 	knot_rrset_t rri;
 	while (rri = changeset_iter_next(&it), !knot_rrset_empty(&rri)) i++;
+
+	changeset_iter_clear(&it);
 	return i;
 }
 
@@ -499,7 +512,15 @@ static changeset_t * tm_chs(const knot_dname_t * apex, int x)
 {
 	static changeset_t * chsI = NULL, * chsX = NULL, * chsY = NULL;
 	static uint32_t serial = 0;
-	//int err;
+
+	if (apex == NULL) {
+		changeset_free(chsI);
+		changeset_free(chsX);
+		changeset_free(chsY);
+		chsI = chsX = chsY = NULL;
+		return NULL;
+	}
+
 //#define tm_chs_check(what) if ((err = (what)) != KNOT_EOK) printf("error: %s returned %d\n", #what, err)
 #define tm_chs_check(what) (what)
 
@@ -575,13 +596,19 @@ static void test_merge(void)
 	init_list(&l);
 	ret = journal_load_changesets(j, &l, (uint32_t) (i - 3));
 	ok(list_size(&l) == 4, "journal: read short history of merged/unmerged changesets");
+	changesets_free(&l);
 
 	ret = drop_journal(j, NULL);
 	assert(ret == KNOT_EOK);
 
 	// disallow merge
+	unset_conf();
 	set_conf(1000, 512 * 1024);
 	ok(!journal_merge_allowed(j), "journal: merge disallowed");
+
+	tm_rrs(NULL, 0);
+	tm_chs(NULL, 0);
+	unset_conf();
 }
 
 static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
@@ -626,6 +653,8 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 	}
 
 	changeset_clear(&ch);
+
+	unset_conf();
 }
 
 
