@@ -85,6 +85,14 @@ libcontrib_la_SOURCES = 			\
 	contrib/ucw/mempool.c			\
 	contrib/ucw/mempool.h
 
+if !HAVE_LMDB
+libcontrib_la_SOURCES +=			\
+	contrib/lmdb/lmdb.h			\
+	contrib/lmdb/mdb.c			\
+	contrib/lmdb/midl.c			\
+	contrib/lmdb/midl.h
+endif !HAVE_LMDB
+
 # static: libknot-yparser sources
 libknot_yparser_la_SOURCES = 			\
 	libknot/yparser/yparser.c		\
@@ -183,22 +191,10 @@ libknot_la_SOURCES =				\
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
 libknot_la_CFLAGS = $(AM_CFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS) $(LDFLAG_EXCLUDE_LIBS)
-libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la $(lmdb_LTLIBS)
+libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la
 
 # pkg-config
 pkgconfig_DATA = libknot.pc
-
-if HAVE_LMDB
-lmdb_LTLIBS =
-else !HAVE_LMDB
-noinst_LTLIBRARIES += liblmdb.la
-liblmdb_la_SOURCES =				\
-	contrib/lmdb/lmdb.h			\
-	contrib/lmdb/mdb.c			\
-	contrib/lmdb/midl.c			\
-	contrib/lmdb/midl.h
-lmdb_LTLIBS = liblmdb.la
-endif !HAVE_LMDB
 
 # static: utilities shared
 libknotus_la_SOURCES =				\
@@ -468,7 +464,6 @@ if HAVE_ROSEDB
 libknotd_la_SOURCES +=				\
 	knot/modules/rosedb.c			\
 	knot/modules/rosedb.h
-libknotd_la_LIBADD += liblmdb.la
 endif # HAVE_ROSEDB
 
 # Create storage and run-time directories
@@ -552,7 +547,7 @@ endif # HAVE_DNSTAP
 if HAVE_ROSEDB
 bin_PROGRAMS += rosedb_tool
 rosedb_tool_SOURCES = knot/modules/rosedb_tool.c
-rosedb_tool_LDADD = libknotd.la libcontrib.la $(lmdb_LTLIBS)
+rosedb_tool_LDADD = libknotd.la libcontrib.la
 rosedb_tool_CFLAGS = $(AM_CFLAGS) $(lmdb_CFLAGS) $(DNSTAP_CFLAGS)
 rosedb_tool_LDFLAGS = $(AM_LDFLAGS) $(lmdb_LIBS)
 endif # HAVE_ROSEDB
