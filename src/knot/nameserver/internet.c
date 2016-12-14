@@ -621,13 +621,6 @@ static int answer_query(knot_pkt_t *pkt, struct query_data *qdata)
 	struct query_plan *global_plan = conf()->query_plan;
 	struct query_step *step = NULL;
 
-	/* Before query processing code. */
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[QPLAN_BEGIN]) {
-			SOLVE_STEP(step->process, state, step->ctx);
-		}
-	}
-
 	/* Resolve ANSWER. */
 	knot_pkt_begin(pkt, KNOT_ANSWER);
 	if (global_plan != NULL) {
@@ -669,13 +662,6 @@ static int answer_query(knot_pkt_t *pkt, struct query_data *qdata)
 	SOLVE_STEP(solve_additional_dnssec, state, NULL);
 	if (plan != NULL) {
 		WALK_LIST(step, plan->stage[QPLAN_ADDITIONAL]) {
-			SOLVE_STEP(step->process, state, step->ctx);
-		}
-	}
-
-	/* After query processing code. */
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[QPLAN_END]) {
 			SOLVE_STEP(step->process, state, step->ctx);
 		}
 	}

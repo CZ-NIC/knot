@@ -50,6 +50,7 @@ struct query_data {
 	const zone_t *zone;   /*!< Zone from which is answered. */
 	list_t wildcards;     /*!< Visited wildcards. */
 	list_t rrsigs;        /*!< Section RRSIGs. */
+	bool err_truncated;   /*!< Set TC bit if error reply. */
 
 	/* Current processed name and nodes. */
 	const zone_node_t *node, *encloser, *previous;
