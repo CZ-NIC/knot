@@ -757,6 +757,8 @@ if a zone doesn't have another template specified.
  template:
    - id: STR
      timer-db: STR
+     journal-db: STR
+     max-journal-db-size: SIZE
      global-module: STR/STR ...
      # All zone options (excluding 'template' item)
 
@@ -779,6 +781,38 @@ as a relative path to the *default* template :ref:`storage<zone_storage>`.
    This option is only available in the *default* template.
 
 *Default:* :ref:`storage<zone_storage>`/timers
+
+.. _template_journal-db:
+
+journal-db
+----------
+
+Specifies a path of the persistent journal database. The path can be specified
+as a relative path to the *default* template :ref:`storage<zone_storage>`.
+
+.. NOTE::
+   This option is only available in the *default* template.
+
+*Default:* :ref:`storage<zone_storage>`/journal
+
+.. _template_max-journal-db-size:
+
+max-journal-db-size
+-------------------
+
+Hard limit for the common journal DB. There is no cleanup logic in journal
+to recover from reaching this limit: journal simply starts refusing changes
+across all zones. Decreasing this value has no effect if lower than actual
+DB file size.
+
+It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
+per-zone instead of max-journal-size in most cases. Please keep this value
+large enough. This value also influences server's usage of virtual memory.
+
+.. NOTE::
+   This option is only available in the *default* template.
+
+*Default:* 20 GiB
 
 .. _template_global-module:
 
@@ -807,7 +841,6 @@ Definition of zones served by the server.
      template: template_id
      storage: STR
      file: STR
-     journal: STR
      master: remote_id ...
      ddns-master: remote_id
      notify: remote_id ...
@@ -816,7 +849,8 @@ Definition of zones served by the server.
      disable-any: BOOL
      zonefile-sync: TIME
      ixfr-from-differences: BOOL
-     max-journal-size: SIZE
+     max-journal-usage: SIZE
+     max-journal-depth: INT
      max-zone-size : SIZE
      dnssec-signing: BOOL
      dnssec-policy: STR
@@ -873,17 +907,6 @@ A path to the zone file. Non absolute path is relative to
 - ``%%`` – means the ``%`` character
 
 *Default:* :ref:`storage<zone_storage>`/``%s``\ .zone
-
-.. _zone_journal:
-
-journal
--------
-
-A path to the zone journal. Non absolute path is relative to
-:ref:`storage<zone_storage>`. The same set of formatters as for
-:ref:`file<zone_file>` is supported.
-
-*Default:* :ref:`storage<zone_storage>`/``%s``\ .db
 
 .. _zone_master:
 
@@ -1008,18 +1031,27 @@ is a master server for the zone.
 
 *Default:* off
 
-.. _zone_max_journal_size:
+.. _zone_max-journal-usage:
 
-max-journal-size
-----------------
+max-journal-usage
+-----------------
 
-Maximum size of the journal DB.
+Policy how much space in journal DB will the zone's journal occupy.
 
-*Default:* 1 GiB
+*Default:* 100 MiB
 
 .. NOTE::
-   Decreasing this value will lead to discarding
-   whole journal history of all zones.
+   Journal DB may grow far above the sum of max-journal-usage across
+   all zones, because of DB free space fragmentation.
+
+.. _zone_max_journal_depth:
+
+max-journal-depth
+-----------------
+
+Maximum history length of journal.
+
+*Default:* 2^64
 
 .. _zone_max_zone_size:
 

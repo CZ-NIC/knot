@@ -635,6 +635,8 @@ if a zone doesn\(aqt have another template specified.
 template:
   \- id: STR
     timer\-db: STR
+    journal: STR
+    max\-journal\-size: SIZE
     global\-module: STR/STR ...
     # All zone options (excluding \(aqtemplate\(aq item)
 .ft P
@@ -657,6 +659,38 @@ This option is only available in the \fIdefault\fP template.
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%storage\fP/timers
+.SS journal\-db
+.sp
+Specifies a path of the persistent journal database. The path can be specified
+as a relative path to the \fIdefault\fP template \fI\%storage\fP\&.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP \fI\%storage\fP/journal
+.SS max\-journal\-db\-size
+.sp
+Hard limit for the common journal DB. There is no cleanup logic in journal
+to recover from reaching this limit: journal simply starts refusing changes
+across all zones. Decreasing this value has no effect if lower than actual
+DB file size.
+.sp
+It is recommended to limit \fI\%max\-journal\-usage\fP
+per\-zone instead of max\-journal\-size in most cases. Please keep this value
+large enough. This value also influences server\(aqs usage of virtual memory.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP 20 GiB
 .SS global\-module
 .sp
 An ordered list of references to query modules in the form of \fImodule_name\fP or
@@ -683,7 +717,6 @@ zone:
     template: template_id
     storage: STR
     file: STR
-    journal: STR
     master: remote_id ...
     ddns\-master: remote_id
     notify: remote_id ...
@@ -692,7 +725,8 @@ zone:
     disable\-any: BOOL
     zonefile\-sync: TIME
     ixfr\-from\-differences: BOOL
-    max\-journal\-size: SIZE
+    max\-journal\-usage: SIZE
+    max\-journal\-depth: SIZE
     max\-zone\-size : SIZE
     dnssec\-signing: BOOL
     dnssec\-policy: STR
@@ -742,13 +776,6 @@ terminating dot (the result for the root zone is the empty string!).
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.zone
-.SS journal
-.sp
-A path to the zone journal. Non absolute path is relative to
-\fI\%storage\fP\&. The same set of formatters as for
-\fI\%file\fP is supported.
-.sp
-\fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.db
 .SS master
 .sp
 An ordered list of \fI\%references\fP to zone master servers.
@@ -869,19 +896,24 @@ This option has no effect with enabled
 .UNINDENT
 .sp
 \fIDefault:\fP off
-.SS max\-journal\-size
+.SS max\-journal\-usage
 .sp
-Maximum size of the journal DB.
+Policy how much space in journal DB will the zone\(aqs journal occupy.
 .sp
-\fIDefault:\fP 1 GiB
+\fIDefault:\fP 100 MiB
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-Decreasing this value will lead to discarding
-whole journal history of all zones.
+Journal DB may grow far above the sum of max\-journal\-usage across
+all zones, because of DB free space fragmentation.
 .UNINDENT
 .UNINDENT
+.SS max\-journal\-depth
+.sp
+Maximum history length of journal.
+.sp
+\fIDefault:\fP 2^64
 .SS max\-zone\-size
 .sp
 Maximum size of the zone. The size is measured as size of the zone records
