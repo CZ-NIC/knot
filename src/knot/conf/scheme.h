@@ -53,7 +53,8 @@
 #define C_IDENT			"\x08""identity"
 #define C_INCL			"\x07""include"
 #define C_IXFR_DIFF		"\x15""ixfr-from-differences"
-#define C_JOURNAL		"\x07""journal"
+#define C_JOURNAL		"\x07""journal" /* obsolete, old journal compat */
+#define C_JOURNAL_DB		"\x0A""journal-db"
 #define C_KASP_DB		"\x07""kasp-db"
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
@@ -62,7 +63,8 @@
 #define C_LOG			"\x03""log"
 #define C_MANUAL		"\x06""manual"
 #define C_MASTER		"\x06""master"
-#define C_MAX_JOURNAL_SIZE	"\x10""max-journal-size"
+#define C_MAX_JOURNAL_SIZE	"\x10""max-journal-size" /* obsolete, old journal compat */
+#define C_MAX_JOURNAL_DB_SIZE	"\x13""max-journal-db-size"
 #define C_MAX_JOURNAL_USAGE	"\x11""max-journal-usage"
 #define C_MAX_JOURNAL_DEPTH	"\x11""max-journal-depth"
 #define C_MAX_TCP_CLIENTS	"\x0F""max-tcp-clients"

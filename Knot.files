@@ -258,10 +258,12 @@ src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
 src/knot/events/replan.c
 src/knot/events/replan.h
-src/knot/journal/serialization.c
-src/knot/journal/serialization.h
 src/knot/journal/journal.c
 src/knot/journal/journal.h
+src/knot/journal/old_journal.c
+src/knot/journal/old_journal.h
+src/knot/journal/serialization.c
+src/knot/journal/serialization.h
 src/knot/modules/dnsproxy/dnsproxy.c
 src/knot/modules/dnsproxy/dnsproxy.h
 src/knot/modules/dnstap/dnstap.c

@@ -118,8 +118,8 @@ class Server(object):
         self.max_udp6_payload = None
         self.disable_any = None
         self.disable_notify = None
-        self.zonefile_sync = None
-        self.journal_size = 20 * 1024 * 1024
+        self.zonefile_sync = "1d"
+        self.journal_db_size = 20 * 1024 * 1024
         self.zone_size_limit = None
 
         self.inquirer = None
@@ -1044,10 +1044,8 @@ class Knot(Server):
         s.id_item("id", "default")
         s.item_str("storage", self.dir)
         s.item_str("kasp-db", self.keydir)
-        if self.zonefile_sync:
-            s.item_str("zonefile-sync", self.zonefile_sync)
-        else:
-            s.item_str("zonefile-sync", "1d")
+        s.item_str("zonefile-sync", self.zonefile_sync)
+        s.item_str("max-journal-db-size", self.journal_db_size)
         s.item_str("semantic-checks", "on")
         if self.disable_any:
             s.item_str("disable-any", "on")
@@ -1060,7 +1058,6 @@ class Knot(Server):
             s.item("global-module", "[%s]" % modules)
         if self.zone_size_limit:
             s.item("max-zone-size", self.zone_size_limit)
-        s.item_str("max-journal-usage", self.journal_size)
         s.end()
 
         s.begin("zone")

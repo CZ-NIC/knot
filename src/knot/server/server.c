@@ -380,7 +380,7 @@ int server_init(server_t *server, int bg_workers)
 	}
 
 	char * journal_dir = conf_journalfile(conf());
-	conf_val_t journal_size = conf_default_get(conf(), C_MAX_JOURNAL_SIZE);
+	conf_val_t journal_size = conf_default_get(conf(), C_MAX_JOURNAL_DB_SIZE);
 	int ret = init_journal_db(&server->journal_db, journal_dir, conf_int(&journal_size));
 	free(journal_dir);
 	if (ret != KNOT_EOK) {
