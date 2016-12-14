@@ -29,8 +29,7 @@ enum process_query_flag {
 	NS_QUERY_NO_AXFR    = 1 << 0, /* Don't process AXFR */
 	NS_QUERY_NO_IXFR    = 1 << 1, /* Don't process IXFR */
 	NS_QUERY_LIMIT_ANY  = 1 << 2, /* Limit ANY QTYPE (respond with TC=1) */
-	NS_QUERY_LIMIT_RATE = 1 << 3, /* Apply rate limits. */
-	NS_QUERY_LIMIT_SIZE = 1 << 4  /* Apply UDP size limit. */
+	NS_QUERY_LIMIT_SIZE = 1 << 3  /* Apply UDP size limit. */
 };
 
 /* Module load parameters. */

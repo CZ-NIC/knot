@@ -46,12 +46,12 @@
 /fdset
 /journal
 /modules/online_sign
+/modules/rrl
 /node
 /process_answer
 /process_query
 /query_module
 /requestor
-/rrl
 /semantic_check
 /server
 /utils/test_cert

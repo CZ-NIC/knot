@@ -413,52 +413,6 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	return KNOT_STATE_DONE;
 }
 
-/*!
- * \brief Apply rate limit.
- */
-static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
-{
-	/* Check if rate limiting applies. */
-	struct query_data *qdata = QUERY_DATA(ctx);
-	server_t *server = qdata->param->server;
-	if (server->rrl == NULL) {
-		return state;
-	}
-
-	/* Exempt clients. */
-	conf_val_t *whitelist = &conf()->cache.srv_rate_limit_whitelist;
-	if (conf_addr_range_match(whitelist, qdata->param->remote)) {
-		return state;
-	}
-
-	rrl_req_t rrl_rq = {0};
-	rrl_rq.w = pkt->wire;
-	rrl_rq.query = qdata->query;
-	if (!EMPTY_LIST(qdata->wildcards)) {
-		rrl_rq.flags = RRL_WILDCARD;
-	}
-	if (rrl_query(server->rrl, qdata->param->remote,
-	              &rrl_rq, qdata->zone) == KNOT_EOK) {
-		/* Rate limiting not applied. */
-		return state;
-	}
-
-	/* Now it is slip or drop. */
-	int slip = conf()->cache.srv_rate_limit_slip;
-	if (slip > 0 && rrl_slip_roll(slip)) {
-		/* Answer slips. */
-		if (process_query_err(ctx, pkt) != KNOT_STATE_DONE) {
-			return KNOT_STATE_FAIL;
-		}
-		knot_wire_set_tc(pkt->wire);
-	} else {
-		/* Drop answer. */
-		pkt->size = 0;
-	}
-
-	return KNOT_STATE_DONE;
-}
-
 static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
@@ -556,11 +510,6 @@ finish:
 		WALK_LIST(step, plan->stage[QPLAN_END]) {
 			next_state = step->process(next_state, pkt, qdata, step->ctx);
 		}
-	}
-
-	/* Rate limits (if applicable). */
-	if (qdata->param->proc_flags & NS_QUERY_LIMIT_RATE) {
-		next_state = ratelimit_apply(next_state, pkt, ctx);
 	}
 
 	rcu_read_unlock();

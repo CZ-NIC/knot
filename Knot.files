@@ -218,6 +218,8 @@ src/knot/conf/confdb.c
 src/knot/conf/confdb.h
 src/knot/conf/confio.c
 src/knot/conf/confio.h
+src/knot/conf/migration.c
+src/knot/conf/migration.h
 src/knot/conf/scheme.c
 src/knot/conf/scheme.h
 src/knot/conf/tools.c
@@ -269,6 +271,10 @@ src/knot/modules/online_sign/online_sign.h
 src/knot/modules/rosedb/rosedb.c
 src/knot/modules/rosedb/rosedb.h
 src/knot/modules/rosedb/rosedb_tool.c
+src/knot/modules/rrl/functions.c
+src/knot/modules/rrl/functions.h
+src/knot/modules/rrl/rrl.c
+src/knot/modules/rrl/rrl.h
 src/knot/modules/stats/stats.c
 src/knot/modules/stats/stats.h
 src/knot/modules/synth_record/synth_record.c
@@ -308,8 +314,6 @@ src/knot/server/dthreads.c
 src/knot/server/dthreads.h
 src/knot/server/journal.c
 src/knot/server/journal.h
-src/knot/server/rrl.c
-src/knot/server/rrl.h
 src/knot/server/serialization.c
 src/knot/server/serialization.h
 src/knot/server/server.c
@@ -579,12 +583,12 @@ tests/libknot/test_yparser.c
 tests/libknot/test_ypscheme.c
 tests/libknot/test_yptrafo.c
 tests/modules/online_sign.c
+tests/modules/rrl.c
 tests/node.c
 tests/process_answer.c
 tests/process_query.c
 tests/query_module.c
 tests/requestor.c
-tests/rrl.c
 tests/server.c
 tests/test_conf.h
 tests/utils/test_cert.c

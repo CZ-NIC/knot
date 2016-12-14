@@ -36,6 +36,7 @@
 #include "libknot/libknot.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
+#include "knot/conf/migration.h"
 #include "knot/common/log.h"
 #include "knot/common/process.h"
 #include "knot/common/stats.h"
@@ -352,6 +353,12 @@ static int set_config(const char *confdb, const char *config)
 			conf_free(new_conf);
 			return ret;
 		}
+	}
+
+	// Migrate from old schema.
+	ret = conf_migrate(new_conf);
+	if (ret != KNOT_EOK) {
+		log_error("failed to migrate configuration (%s)", knot_strerror(ret));
 	}
 
 	/* Activate global query modules. */

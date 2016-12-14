@@ -109,6 +109,36 @@ class ModDnstap(KnotModule):
 
         return conf
 
+class ModRRL(KnotModule):
+    '''RRL module'''
+
+    src_name = "rrl_load"
+    conf_name = "mod-rrl"
+
+    def __init__(self, rate_limit, slip=None, table_size=None, whitelist=None):
+        super().__init__()
+        self.rate_limit = rate_limit
+        self.slip = slip
+        self.table_size = table_size
+        self.whitelist = whitelist
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        conf.item_str("rate-limit", self.rate_limit)
+        if self.slip or self.slip == 0:
+            conf.item_str("slip", self.slip)
+        if self.table_size:
+            conf.item_str("table-size", self.table_size)
+        if self.whitelist:
+            conf.item_str("whitelist", self.whitelist)
+        conf.end()
+
+        return conf
+
 class ModDnsproxy(KnotModule):
     '''Dnsproxy module'''
 

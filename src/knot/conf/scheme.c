@@ -23,12 +23,12 @@
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
-#include "knot/server/rrl.h"
 #include "knot/updates/acl.h"
 #include "libknot/rrtype/opt.h"
 #include "dnssec/lib/dnssec/tsig.h"
 #include "dnssec/lib/dnssec/key.h"
 
+#include "knot/modules/rrl/rrl.h"
 #include "knot/modules/stats/stats.h"
 #include "knot/modules/synth_record/synth_record.h"
 #include "knot/modules/dnsproxy/dnsproxy.h"
@@ -122,13 +122,14 @@ static const yp_item_t desc_server[] = {
 	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_UDP_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                                4096, YP_SSIZE } },
+	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
+	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
+	/* Obsolete items. */
 	{ C_RATE_LIMIT,           YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
-	{ C_RATE_LIMIT_SLIP,      YP_TINT,  YP_VINT = { 0, RRL_SLIP_MAX, 1 } },
+	{ C_RATE_LIMIT_SLIP,      YP_TINT,  YP_VINT = { 0, 100, 1 } },
 	{ C_RATE_LIMIT_TBL_SIZE,  YP_TINT,  YP_VINT = { 1, INT32_MAX, 393241 } },
 	{ C_RATE_LIMIT_WHITELIST, YP_TDATA, YP_VDATA = { 0, NULL, addr_range_to_bin,
 	                                                 addr_range_to_txt }, YP_FMULTI },
-	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
-	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
@@ -266,7 +267,7 @@ static const yp_item_t desc_zone[] = {
 };
 
 const yp_item_t conf_scheme[] = {
-	{ C_SRV,      YP_TGRP, YP_VGRP = { desc_server }, CONF_IO_FRLD_SRV },
+	{ C_SRV,      YP_TGRP, YP_VGRP = { desc_server }, CONF_IO_FRLD_SRV, { check_server } },
 	{ C_CTL,      YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_LOG,      YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI | CONF_IO_FRLD_LOG },
 	{ C_STATS,    YP_TGRP, YP_VGRP = { desc_stats }, CONF_IO_FRLD_SRV },
@@ -276,6 +277,8 @@ const yp_item_t conf_scheme[] = {
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_RMT,      YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 /* MODULES */
+	{ C_MOD_RRL,          YP_TGRP, YP_VGRP = { scheme_mod_rrl }, FMOD,
+	                                         { check_mod_rrl } },
 	{ C_MOD_STATS,        YP_TGRP, YP_VGRP = { scheme_mod_stats }, FMOD },
 	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, FMOD,
 	                               { check_mod_synth_record } },

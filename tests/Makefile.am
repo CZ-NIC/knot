@@ -49,6 +49,7 @@ check_PROGRAMS += \
 
 check_PROGRAMS += \
 	modules/online_sign		\
+	modules/rrl			\
 	utils/test_cert			\
 	utils/test_lookup		\
 	acl				\
@@ -65,7 +66,6 @@ check_PROGRAMS += \
 	process_query			\
 	query_module			\
 	requestor			\
-	rrl				\
 	server				\
 	worker_pool			\
 	worker_queue			\

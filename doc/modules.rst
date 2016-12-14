@@ -31,7 +31,36 @@ an identifier must be created and then referenced in the form of
 
 .. NOTE::
    Query modules are processed in the order they are specified in the
-   zone/template configuration.
+   zone/template configuration. In most cases, the recommended order is::
+
+      mod-synth-record, mod-online-sign, mod-rrl, mod-dnstap, mod-stats
+
+``rrl`` — Response rate limiting
+--------------------------------
+
+Response rate limiting (RRL) is a method to combat DNS reflection amplification
+attacks. These attacks rely on the fact that source address of a UDP query
+can be forged, and without a worldwide deployment of `BCP38
+<https://tools.ietf.org/html/bcp38>`_, such a forgery cannot be prevented.
+An attacker can use a DNS server (or multiple servers) as an amplification
+source and can flood a victim with a large number of unsolicited DNS responses.
+The RRL lowers the amplification factor of these attacks by sending some of
+the responses as truncated or by dropping them altogether.
+
+The module introduces two counters. The number of slipped and dropped responses.
+
+You can enable RRL by setting the :ref:`mod-rrl<mod-rrl>` module globally or per zone.
+
+::
+
+    mod-rrl:
+      - id: default
+        rate-limit: 200   # Allow 200 resp/s for each flow
+        slip: 2           # Every other response slips
+
+    template:
+      - id: default
+        global-module: mod-rrl/default   # Enable RRL globally
 
 ``dnstap`` – dnstap-enabled query logging
 -----------------------------------------
@@ -503,7 +532,7 @@ AAAA-only glue records.
 ------------------------
 
 The module sends empty truncated response to any UDP query. This is similar
-to a slipped answer in :ref:`response rate limiting<server_rate-limit>`.
+to a slipped answer in :ref:`response rate limiting<mod-rrl_rate-limit>`.
 TCP queries are not affected.
 
 To enable this module globally, you need to add something like the following

@@ -59,19 +59,15 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
                        struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	struct process_query_param param = {0};
-	param.remote = ss;
-	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
-	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
-	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
-	param.socket = fd;
-	param.server = udp->server;
-	param.thread_id = udp->thread_id;
-
-	/* Rate limit is applied? */
-	if (unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
-		param.proc_flags |= NS_QUERY_LIMIT_RATE;
-	}
+	struct process_query_param param = {
+		.remote = ss,
+		.proc_flags = NS_QUERY_NO_AXFR | NS_QUERY_NO_IXFR | /* No transfers. */
+		              NS_QUERY_LIMIT_SIZE | /* Enforce UDP packet size limit. */
+		              NS_QUERY_LIMIT_ANY,  /* Limit ANY over UDP (depends on zone as well). */
+		.socket = fd,
+		.server = udp->server,
+		.thread_id = udp->thread_id
+	};
 
 	/* Start query processing. */
 	udp->layer.state = knot_layer_begin(&udp->layer, &param);

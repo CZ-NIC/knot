@@ -365,7 +365,7 @@ static void test_conf_io_set(void)
 	   KNOT_YP_EINVAL_ITEM, "set unknown key1");
 	ok(conf_io_set("include", NULL, NULL, NULL) ==
 	   KNOT_YP_ENODATA, "set non-group without data");
-	ok(conf_io_set("server", "rate-limit", NULL, "x") ==
+	ok(conf_io_set("server", "background-workers", NULL, "x") ==
 	   KNOT_EINVAL, "set invalid data");
 
 	// ERR callback
@@ -459,7 +459,7 @@ static void test_conf_io_unset(void)
 	   KNOT_YP_EINVAL_ITEM, "unset unknown key1");
 	ok(conf_io_unset("include", NULL, NULL, "file") ==
 	   KNOT_ENOTSUP, "unset non-group item");
-	ok(conf_io_unset("server", "rate-limit", NULL, "x") ==
+	ok(conf_io_unset("server", "background-workers", NULL, "x") ==
 	   KNOT_EINVAL, "unset invalid data");
 
 	// Single group, single value.
@@ -885,7 +885,7 @@ static void test_conf_io_list(void)
 	ok(conf_io_list("server", &io) ==
 	   KNOT_EOK, "list group");
 	ref = "server.version\n"
-	      "server.rate-limit\n"
+	      "server.background-workers\n"
 	      "server.listen\n"
 	      "server.tcp-handshake-timeout\n"
 	      "server.tcp-idle-timeout\n"
@@ -893,14 +893,13 @@ static void test_conf_io_list(void)
 	      "server.max-tcp-clients\n"
 	      "server.max-udp-payload\n"
 	      "server.max-ipv4-udp-payload\n"
-	      "server.max-ipv6-udp-payload\n"
-	      "server.rate-limit-slip";
+	      "server.max-ipv6-udp-payload";
 	ok(strcmp(ref, out) == 0, "compare result");
 }
 
 static const yp_item_t desc_server[] = {
 	{ C_VERSION,              YP_TSTR,  YP_VNONE },
-	{ C_RATE_LIMIT,           YP_TINT,  YP_VNONE },
+	{ C_BG_WORKERS,           YP_TINT,  YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VNONE, YP_FMULTI },
 	// Required config cache items - assert fix.
 	{ C_TCP_HSHAKE_TIMEOUT,   YP_TINT,  YP_VNONE },
@@ -910,7 +909,6 @@ static const yp_item_t desc_server[] = {
 	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VNONE },
 	{ C_MAX_IPV4_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
 	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
-	{ C_RATE_LIMIT_SLIP,	  YP_TINT,  YP_VNONE },
 	{ NULL }
 };
 

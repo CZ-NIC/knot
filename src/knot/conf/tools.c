@@ -353,6 +353,40 @@ int check_modref(
 	return KNOT_EOK;
 }
 
+int check_server(
+	conf_check_t *args)
+{
+	bool present = false;
+
+	conf_val_t val;
+	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT);
+	if (val.code == KNOT_EOK) {
+		present = true;
+	}
+
+	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT_SLIP);
+	if (val.code == KNOT_EOK) {
+		present = true;
+	}
+
+	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT_TBL_SIZE);
+	if (val.code == KNOT_EOK) {
+		present = true;
+	}
+
+	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT_WHITELIST);
+	if (val.code == KNOT_EOK) {
+		present = true;
+	}
+
+	if (present) {
+		CONF_LOG(LOG_NOTICE, "obsolete RRL configuration in the server, "
+		                     "use module mod-rrl instead");
+	}
+
+	return KNOT_EOK;
+}
+
 int check_keystore(
 	conf_check_t *args)
 {
@@ -503,8 +537,8 @@ int check_zone(
 	                                       C_DNSSEC_POLICY, args->id);
 	if (conf_bool(&signing) && policy.code != KNOT_EOK) {
 		CONF_LOG(LOG_NOTICE, "DNSSEC policy settings in KASP database "
-		         "is obsolete and will be removed in the next major release. "
-		         "Use zone.dnssec-policy in server configuration instead.");
+		         "is obsolete and will be removed in the next major release, "
+		         "use zone.dnssec-policy in server configuration instead");
 	}
 
 	return KNOT_EOK;

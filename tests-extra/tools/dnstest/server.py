@@ -64,6 +64,9 @@ class Zone(object):
     def add_module(self, module):
         self.modules.append(module)
 
+    def clear_modules(self):
+        self.modules.clear()
+
     def disable_master(self, new_zone_file):
         self.zfile.remove()
         self.zfile = new_zone_file
@@ -660,6 +663,14 @@ class Server(object):
             self.zones[zone.name].add_module(module)
         else:
             self.modules.append(module)
+
+    def clear_modules(self, zone):
+        zone = zone_arg_check(zone)
+
+        if zone:
+            self.zones[zone.name].clear_modules()
+        else:
+            self.modules.clear()
 
     def clean(self, zone=True, timers=True):
         if zone:

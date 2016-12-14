@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,13 +17,11 @@
 #include <assert.h>
 #include <time.h>
 
-#include "dnssec/random.h"
-#include "knot/common/log.h"
-#include "knot/server/rrl.h"
-#include "knot/zone/zone.h"
-#include "libknot/libknot.h"
 #include "contrib/murmurhash3/murmurhash3.h"
 #include "contrib/sockaddr.h"
+#include "dnssec/random.h"
+#include "knot/modules/rrl/functions.h"
+#include "knot/common/log.h"
 
 /* Hopscotch defines. */
 #define HOP_LEN (sizeof(unsigned)*8)
@@ -33,7 +31,6 @@
 #define RRL_V4_PREFIX ((uint32_t)0x00ffffff)         /* /24 */
 #define RRL_V6_PREFIX ((uint64_t)0x00ffffffffffffff) /* /56 */
 /* Defaults */
-#define RRL_DEFAULT_RATE 100
 #define RRL_CAPACITY 4 /* N seconds. */
 #define RRL_SSTART 2 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
@@ -60,16 +57,16 @@ struct cls_name {
 };
 
 static const struct cls_name rrl_cls_names[] = {
-        {CLS_NORMAL,  "POSITIVE" },
-        {CLS_ERROR,   "ERROR" },
-        {CLS_NXDOMAIN,"NXDOMAIN"},
-        {CLS_EMPTY,   "EMPTY"},
-        {CLS_LARGE,   "LARGE"},
-        {CLS_WILDCARD,"WILDCARD"},
-        {CLS_ANY,     "ANY"},
-        {CLS_DNSSEC,  "DNSSEC"},
-        {CLS_NULL,    "NULL"},
-        {CLS_NULL,    NULL}
+	{ CLS_NORMAL,   "POSITIVE" },
+	{ CLS_ERROR,    "ERROR" },
+	{ CLS_NXDOMAIN, "NXDOMAIN"},
+	{ CLS_EMPTY,    "EMPTY"},
+	{ CLS_LARGE,    "LARGE"},
+	{ CLS_WILDCARD, "WILDCARD"},
+	{ CLS_ANY,      "ANY"},
+	{ CLS_DNSSEC,   "DNSSEC"},
+	{ CLS_NULL,     "NULL"},
+	{ CLS_NULL,     NULL}
 };
 
 static inline const char *rrl_clsstr(int code)
@@ -134,15 +131,12 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	return ret;
 }
 
-static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
-                       rrl_req_t *req, const zone_t *zone)
+static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls, rrl_req_t *req,
+                       const knot_dname_t *name)
 {
-	/* Fallback zone (for errors etc.) */
-	const knot_dname_t *dn = (const knot_dname_t *)"\x00";
-
-	/* Found associated zone. */
-	if (zone != NULL) {
-		dn = zone->name;
+	if (name == NULL) {
+		/* Fallback for errors etc. */
+		name = (const knot_dname_t *)"\x00";
 	}
 
 	switch (cls) {
@@ -153,17 +147,17 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 	default:
 		/* Use QNAME */
 		if (req->query) {
-			dn = knot_pkt_qname(req->query);
+			name = knot_pkt_qname(req->query);
 		}
 		break;
 	}
 
 	/* Write to wire */
-	return knot_dname_to_wire((uint8_t *)dst, dn, maxlen);
+	return knot_dname_to_wire((uint8_t *)dst, name, maxlen);
 }
 
 static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage *a,
-                        rrl_req_t *p, const zone_t *z, uint32_t seed)
+                        rrl_req_t *p, const knot_dname_t *z, uint32_t seed)
 {
 	if (!dst || !p || !a || maxlen == 0) {
 		return KNOT_EINVAL;
@@ -295,7 +289,7 @@ static void rrl_log_state(const struct sockaddr_storage *ss, uint16_t flags, uin
 		what = "enters";
 	}
 
-	log_notice("rate limiting, address '%s' class '%s' %s limiting",
+	log_notice("mod-rrl, address '%s' class '%s' %s limiting",
 	           addr_str, rrl_clsstr(cls), what);
 #endif
 }
@@ -375,7 +369,7 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
 }
 
 rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
-                     const zone_t *zone, uint32_t stamp, int *lock)
+                     const knot_dname_t *zone, uint32_t stamp, int *lock)
 {
 	char buf[RRL_CLSBLK_MAXLEN];
 	int len = rrl_classify(buf, sizeof(buf), a, p, zone, t->seed);
@@ -437,7 +431,7 @@ rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 }
 
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
-              const zone_t *zone)
+              const knot_dname_t *zone)
 {
 	if (!rrl || !req || !a) {
 		return KNOT_EINVAL;

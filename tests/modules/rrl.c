@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,17 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <tap/basic.h>
 
 #include "dnssec/crypto.h"
 #include "dnssec/random.h"
-#include "knot/conf/conf.h"
-#include "knot/server/rrl.h"
-#include "knot/zone/zone.h"
-#include "libknot/descriptor.h"
+#include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
+#include "knot/modules/rrl/functions.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
@@ -50,12 +46,12 @@ struct runnable_data {
 	rrl_table_t *rrl;
 	struct sockaddr_storage *addr;
 	rrl_req_t *rq;
-	zone_t *zone;
+	knot_dname_t *zone;
 };
 
 static void* rrl_runnable(void *arg)
 {
-	struct runnable_data* d = (struct runnable_data*)arg;
+	struct runnable_data *d = (struct runnable_data *)arg;
 	struct sockaddr_storage addr;
 	memcpy(&addr, d->addr, sizeof(struct sockaddr_storage));
 	int lock = -1;
@@ -143,9 +139,7 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "rrl: setlocks");
 
 	/* 4. N unlimited requests. */
-	knot_dname_t *zone_name = knot_dname_from_str_alloc("rrl.");
-	zone_t *zone = zone_new(zone_name);
-	knot_dname_free(&zone_name, NULL);
+	knot_dname_t *zone = knot_dname_from_str_alloc("rrl.");
 
 	struct sockaddr_storage addr;
 	struct sockaddr_storage addr6;
@@ -199,7 +193,7 @@ int main(int argc, char *argv[])
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
 #endif
 
-	zone_free(&zone);
+	knot_dname_free(&zone, NULL);
 	knot_pkt_free(&query);
 	rrl_destroy(rrl);
 	dnssec_crypto_cleanup();

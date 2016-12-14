@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,22 +13,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file rrl.h
- *
- * \author Marek Vavrusa <marek.vavusa@nic.cz>
- *
- * \brief Response-rate limiting API.
- *
- * \addtogroup network
- * @{
- */
 
 #pragma once
 
 #include <stdint.h>
 #include <pthread.h>
 #include <sys/socket.h>
+
+#include "libknot/dname.h"
 #include "libknot/packet/pkt.h"
 
 /* Defaults */
@@ -41,19 +33,17 @@ enum {
 	RRL_WILDCARD  = 1 << 1  /*!< Query to wildcard name. */
 };
 
-struct zone;
-
 /*!
  * \brief RRL hash bucket.
  */
-typedef struct rrl_item {
+typedef struct {
 	unsigned hop;        /* Hop bitmap. */
 	uint64_t netblk;     /* Prefix associated. */
-	uint16_t ntok;       /* Tokens available */
-	uint8_t  cls;        /* Bucket class */
-	uint8_t  flags;      /* Flags */
-	uint32_t qname;      /* imputed(QNAME) hash */
-	uint32_t time;       /* Timestamp */
+	uint16_t ntok;       /* Tokens available. */
+	uint8_t  cls;        /* Bucket class. */
+	uint8_t  flags;      /* Flags. */
+	uint32_t qname;      /* imputed(QNAME) hash. */
+	uint32_t time;       /* Timestamp. */
 } rrl_item_t;
 
 /*!
@@ -68,20 +58,20 @@ typedef struct rrl_item {
  * As of now lock K for bucket N is calculated as K = N % (num_buckets).
  */
 
-typedef struct rrl_table {
-	uint32_t rate;       /* Configured RRL limit */
+typedef struct {
+	uint32_t rate;       /* Configured RRL limit. */
 	uint32_t seed;       /* Pseudorandom seed for hashing. */
 	pthread_mutex_t ll;
-	pthread_mutex_t *lk;      /* Table locks. */
+	pthread_mutex_t *lk; /* Table locks. */
 	unsigned lk_count;   /* Table lock count (granularity). */
-	size_t size;         /* Number of buckets */
-	rrl_item_t arr[];    /* Buckets */
+	size_t size;         /* Number of buckets. */
+	rrl_item_t arr[];    /* Buckets. */
 } rrl_table_t;
 
 /*!
  * \brief RRL request descriptor.
  */
-typedef struct rrl_req {
+typedef struct {
 	const uint8_t *w;
 	uint16_t len;
 	unsigned flags;
@@ -128,13 +118,13 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity);
  * \param t RRL table.
  * \param a Source address.
  * \param p RRL request.
- * \param zone Relate zone.
+ * \param zone Relate zone name.
  * \param stamp Timestamp (current time).
  * \param lock Held lock.
  * \return assigned bucket
  */
-rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
-                     const struct zone *zone, uint32_t stamp, int* lock);
+rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
+                     const knot_dname_t *zone, uint32_t stamp, int *lock);
 
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
@@ -142,12 +132,12 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
  * \param rrl RRL table.
  * \param a Source address.
  * \param req RRL request (containing resp., flags and question).
- * \param zone Zone related to the response (or NULL).
+ * \param zone Zone name related to the response (or NULL).
  * \retval KNOT_EOK if passed.
  * \retval KNOT_ELIMIT when the limit is reached.
  */
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
-              const struct zone *zone);
+              const knot_dname_t *zone);
 
 /*!
  * \brief Roll a dice whether answer slips or not.
@@ -187,5 +177,3 @@ int rrl_lock(rrl_table_t *rrl, int lk_id);
  * \retval KNOT_ERROR
  */
 int rrl_unlock(rrl_table_t *rrl, int lk_id);
-
-/*! @} */
