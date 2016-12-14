@@ -27,13 +27,9 @@ static int whoami_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	knot_rrset_t *rrset = NULL;
 
 	/* Sanity checks. */
-	if (pkt == NULL ||
-	    qdata == NULL ||
-	    qdata->query == NULL ||
-	    qdata->param == NULL || qdata->param->remote == NULL ||
-	    qdata->zone == NULL || qdata->zone->name == NULL ||
-	    qdata->zone->contents == NULL || qdata->zone->contents->apex == NULL)
-	{
+	assert(pkt && qdata);
+	if (qdata->zone == NULL || qdata->zone->contents == NULL ||
+	    qdata->zone->contents->apex == NULL) {
 		return ERROR;
 	}
 
@@ -129,23 +125,13 @@ static int whoami_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 int whoami_load(struct query_plan *plan, struct query_module *self,
                 const knot_dname_t *zone)
 {
-	/* Sanity checks. */
-	if (plan == NULL || self == NULL) {
-		return KNOT_EINVAL;
-	}
-
 	/* Hook to the query plan. */
 	query_plan_step(plan, QPLAN_ANSWER, whoami_query, NULL);
 
 	return KNOT_EOK;
 }
 
-int whoami_unload(struct query_module *self)
+void whoami_unload(struct query_module *self)
 {
-	/* Sanity check. */
-	if (self == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return KNOT_EOK;
+	return;
 }

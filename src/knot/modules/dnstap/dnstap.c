@@ -64,11 +64,8 @@ typedef struct {
 static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdata,
                        dnstap_ctx_t *ctx)
 {
-	if (pkt == NULL || qdata == NULL || ctx == NULL) {
-		return KNOT_STATE_FAIL;
-	}
+	assert(pkt && qdata && ctx);
 
-	int ret = KNOT_ERROR;
 	struct fstrm_iothr_queue *ioq =
 		fstrm_iothr_get_input_queue_idx(ctx->iothread, qdata->param->thread_id);
 
@@ -91,17 +88,17 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 
 	/* Create a dnstap message. */
 	Dnstap__Message msg;
-	ret = dt_message_fill(&msg, msgtype,
-	                      (const struct sockaddr *)qdata->param->remote,
-	                      NULL, /* todo: fill me! */
-	                      protocol,
-	                      pkt->wire, pkt->size, &tv, &tv);
+	int ret = dt_message_fill(&msg, msgtype,
+	                          (const struct sockaddr *)qdata->param->remote,
+	                          NULL, /* todo: fill me! */
+	                          protocol, pkt->wire, pkt->size, &tv, &tv);
 	if (ret != KNOT_EOK) {
-		return KNOT_STATE_FAIL;
+		return state;
 	}
+
 	Dnstap__Dnstap dnstap = DNSTAP__DNSTAP__INIT;
 	dnstap.type = DNSTAP__DNSTAP__TYPE__MESSAGE;
-	dnstap.message = (Dnstap__Message *)&msg;
+	dnstap.message = &msg;
 
 	/* Set message version and identity. */
 	if (ctx->identity_len > 0) {
@@ -120,7 +117,7 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	size_t size = 0;
 	dt_pack(&dnstap, &frame, &size);
 	if (frame == NULL) {
-		return KNOT_STATE_FAIL;
+		return state;
 	}
 
 	/* Submit a request. */
@@ -128,7 +125,7 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	                                   fstrm_free_wrapper, NULL);
 	if (res != fstrm_res_success) {
 		free(frame);
-		state = KNOT_STATE_FAIL;
+		return state;
 	}
 
 	return state;
@@ -138,9 +135,7 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 static int dnstap_message_log_query(int state, knot_pkt_t *pkt, struct query_data *qdata,
                                     void *ctx)
 {
-	if (qdata == NULL) {
-		return KNOT_STATE_FAIL;
-	}
+	assert(qdata);
 
 	return log_message(state, qdata->query, qdata, ctx);
 }
@@ -223,9 +218,7 @@ static struct fstrm_writer* dnstap_writer(const char *path)
 int dnstap_load(struct query_plan *plan, struct query_module *self,
                 const knot_dname_t *zone)
 {
-	if (plan == NULL || self == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(self);
 
 	/* Create dnstap context. */
 	dnstap_ctx_t *ctx = mm_alloc(self->mm, sizeof(*ctx));
@@ -306,11 +299,9 @@ fail:
 	return KNOT_ENOMEM;
 }
 
-int dnstap_unload(struct query_module *self)
+void dnstap_unload(struct query_module *self)
 {
-	if (self == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(self);
 
 	dnstap_ctx_t *ctx = self->ctx;
 
@@ -318,6 +309,4 @@ int dnstap_unload(struct query_module *self)
 	free(ctx->identity);
 	free(ctx->version);
 	mm_free(self->mm, ctx);
-
-	return KNOT_EOK;
 }

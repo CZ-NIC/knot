@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,18 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file
- *
- * \brief Static resource records
- *
- * Accepted configurations:
- *  * "<path_to_database>"
- *
  * The module provides a mean to override responses for certain queries before
  * the record is searched in the available zones.
- *
- * \addtogroup query_processing
- * @{
  */
 
 #pragma once
@@ -40,6 +30,4 @@ int check_mod_rosedb(conf_check_t *args);
 /*! \brief Module interface. */
 int rosedb_load(struct query_plan *plan, struct query_module *self,
                 const knot_dname_t *zone);
-int rosedb_unload(struct query_module *self);
-
-/*! @} */
+void rosedb_unload(struct query_module *self);

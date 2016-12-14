@@ -385,11 +385,10 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 	return HIT;
 }
 
-static int solve_synth_record(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static int solve_synth_record(int state, knot_pkt_t *pkt, struct query_data *qdata,
+                              void *ctx)
 {
-	if (pkt == NULL || qdata == NULL || ctx == NULL) {
-		return ERROR;
-	}
+	assert(pkt && qdata && ctx);
 
 	/* Applicable when search in zone fails. */
 	if (state != MISS) {
@@ -403,9 +402,7 @@ static int solve_synth_record(int state, knot_pkt_t *pkt, struct query_data *qda
 int synth_record_load(struct query_plan *plan, struct query_module *self,
                       const knot_dname_t *zone)
 {
-	if (plan == NULL || self == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(self);
 
 	/* Create synthesis template. */
 	struct synth_template *tpl = mm_alloc(self->mm, sizeof(struct synth_template));
@@ -447,15 +444,13 @@ int synth_record_load(struct query_plan *plan, struct query_module *self,
 	return query_plan_step(plan, QPLAN_ANSWER, solve_synth_record, self->ctx);
 }
 
-int synth_record_unload(struct query_module *self)
+void synth_record_unload(struct query_module *self)
 {
-	if (self == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(self);
 
-	synth_template_t *tpl = (synth_template_t *)self->ctx;
+	synth_template_t *tpl = self->ctx;
+
 	free(tpl->zone);
 	free(tpl->prefix);
 	mm_free(self->mm, tpl);
-	return KNOT_EOK;
 }

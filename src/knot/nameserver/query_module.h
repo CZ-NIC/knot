@@ -78,7 +78,7 @@ struct query_plan;
 
 /* Module callback required API. */
 typedef int (*qmodule_load_t)(struct query_plan *plan, struct query_module *self, const knot_dname_t *zone);
-typedef int (*qmodule_unload_t)(struct query_module *self);
+typedef void (*qmodule_unload_t)(struct query_module *self);
 typedef int (*qmodule_process_t)(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx);
 
 typedef struct static_module {

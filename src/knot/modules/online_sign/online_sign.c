@@ -71,11 +71,9 @@ const yp_item_t scheme_mod_online_sign[] = {
 	{ NULL }
 };
 
-struct online_sign_ctx {
+typedef struct {
 	dnssec_key_t *key;
-};
-
-typedef struct online_sign_ctx online_sign_ctx_t;
+} online_sign_ctx_t;
 
 static bool want_dnssec(struct query_data *qdata)
 {
@@ -542,7 +540,7 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr,
 
 static char *conf_kasp_path(const knot_dname_t *zone)
 {
-	conf_val_t val = { 0 };
+	conf_val_t val;
 
 	val = conf_zone_get(conf(), C_STORAGE, zone);
 	char *storage = conf_abs_path(&val, NULL);
@@ -556,7 +554,6 @@ static char *conf_kasp_path(const knot_dname_t *zone)
 int online_sign_load(struct query_plan *plan, struct query_module *module,
                      const knot_dname_t *zone)
 {
-	assert(plan);
 	assert(module);
 	assert(zone);
 
@@ -594,12 +591,11 @@ int online_sign_load(struct query_plan *plan, struct query_module *module,
 	return KNOT_EOK;
 }
 
-int online_sign_unload(struct query_module *module)
+void online_sign_unload(struct query_module *module)
 {
 	assert(module);
 
-	online_sign_ctx_free(module->ctx);
-	module->ctx = NULL;
+	online_sign_ctx_t *ctx = module->ctx;
 
-	return KNOT_EOK;
+	online_sign_ctx_free(ctx);
 }

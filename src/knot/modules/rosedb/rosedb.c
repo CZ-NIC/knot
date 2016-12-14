@@ -585,11 +585,10 @@ static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct q
 	return ret;
 }
 
-static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata,
+                        void *ctx)
 {
-	if (pkt == NULL || qdata == NULL || ctx == NULL) {
-		return KNOT_STATE_FAIL;
-	}
+	assert(pkt && qdata && ctx);
 
 	struct cache *cache = ctx;
 
@@ -613,9 +612,7 @@ static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 int rosedb_load(struct query_plan *plan, struct query_module *self,
                 const knot_dname_t *zone)
 {
-	if (plan == NULL || self == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(self);
 
 	conf_val_t val = conf_mod_get(self->config, MOD_DBDIR, self->id);
 	struct cache *cache = cache_open(conf_str(&val), 0, self->mm);
@@ -629,12 +626,11 @@ int rosedb_load(struct query_plan *plan, struct query_module *self,
 	return query_plan_step(plan, QPLAN_BEGIN, rosedb_query, self->ctx);
 }
 
-int rosedb_unload(struct query_module *self)
+void rosedb_unload(struct query_module *self)
 {
-	if (self == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(self);
 
-	cache_close(self->ctx);
-	return KNOT_EOK;
+	struct cache *cache = self->ctx;
+
+	cache_close(cache);
 }

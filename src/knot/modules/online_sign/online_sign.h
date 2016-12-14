@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,4 +23,4 @@ extern const yp_item_t scheme_mod_online_sign[];
 
 int online_sign_load(struct query_plan *plan, struct query_module *self,
                      const knot_dname_t *zone);
-int online_sign_unload(struct query_module *self);
+void online_sign_unload(struct query_module *self);
