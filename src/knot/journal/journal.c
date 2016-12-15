@@ -42,6 +42,8 @@
 #define MDKEY_PERZONE_OCCUPIED "occupied"
 #define MDKEY_PERZONE_FLAGS "flags" // this one is also hardcoded in macro txn_commit_md()
 
+#define DB_KEY_UNUSED_ZERO (4)
+
 enum {
 	LAST_FLUSHED_VALID  = 1 << 0, /* "last flush is valid" flag. */
 	SERIAL_TO_VALID     = 1 << 1, /* "last serial_to is valid" flag. */
@@ -133,34 +135,49 @@ static void txn_init(txn_t *txn, knot_db_txn_t *db_txn, journal_t *j)
 	txn_t *txn_name = &__local_txn_ ## txn_name; \
 	txn_init(txn_name, &__db_txn_ ## txn_name, (journal))
 
+/*
+ * Structure of the DB key:
+ * Metadata:
+ * | [ zone_name | \0 ] | unused zero 4B | metadata_key | \0 |
+ *
+ * Changeset:
+ * | zone_name | \0 | unused zero 4B | (be32)serial_from | (be32)chunk_index |
+ *
+ * Structure of the changeset:
+ * | (be32)serial_to | (be32)#of_chunks | unused zero 24B | serialized_changeset...
+ *
+ */
 
 static void txn_key_str(txn_t *txn, const knot_dname_t *zone, const char *key)
 {
 	size_t zone_size = 0;
 	if (zone != NULL) zone_size = knot_dname_size(zone);
-	txn->key.len = zone_size + strlen(key) + 1;
+	txn->key.len = zone_size + DB_KEY_UNUSED_ZERO + strlen(key) + 1;
 	if (txn->key.len > 512) {
 		txn->ret = KNOT_ERROR;
 		return;
 	}
 	if (zone != NULL) memcpy(txn->key.data, zone, zone_size);
-	strcpy(txn->key.data + zone_size, key);
+	memset(txn->key.data + zone_size, 0, DB_KEY_UNUSED_ZERO);
+	strcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO, key);
 }
 
 static void txn_key_2u32(txn_t *txn, const knot_dname_t *zone, uint32_t key1, uint32_t key2)
 {
 	size_t zone_size = 0;
 	if (zone != NULL) zone_size = knot_dname_size(zone);
-	txn->key.len = zone_size + 2*sizeof(uint32_t);
+	txn->key.len = zone_size + DB_KEY_UNUSED_ZERO + 2*sizeof(uint32_t);
 	if (txn->key.len > 512) {
 		txn->ret = KNOT_ERROR;
 		return;
 	}
 	if (zone != NULL) memcpy(txn->key.data, zone, zone_size);
+	memset(txn->key.data + zone_size, 0, DB_KEY_UNUSED_ZERO);
 	uint32_t key_be1 = htobe32(key1);
 	uint32_t key_be2 = htobe32(key2);
-	memcpy(txn->key.data + zone_size, &key_be1, sizeof(uint32_t));
-	memcpy(txn->key.data + zone_size + sizeof(uint32_t), &key_be2, sizeof(uint32_t));
+	memcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO, &key_be1, sizeof(uint32_t));
+	memcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO + sizeof(uint32_t),
+	       &key_be2, sizeof(uint32_t));
 }
 
 static int txn_cmpkey(txn_t *txn, knot_db_val_t *key2)
