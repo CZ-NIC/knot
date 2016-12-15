@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,20 +15,14 @@
  */
 
 #include "libknot/libknot.h"
-#include "libknot/descriptor.h"
-#include "libknot/rrtype/rdname.h"
-#include "libknot/rrtype/soa.h"
 #include "knot/common/log.h"
-#include "knot/dnssec/rrset-sign.h"
+#include "knot/query/query.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
-#include "knot/query/query.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/zone/serial.h"
-#include "knot/zone/zonedb.h"
 #include "contrib/mempattern.h"
-#include "contrib/sockaddr.h"
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(struct query_data *qdata, const zone_node_t *node)
@@ -128,47 +122,6 @@ static bool have_dnssec(struct query_data *qdata)
 	       zone_contents_is_signed(qdata->zone->contents);
 }
 
-/*! \brief Synthesize RRSIG for given parameters, store in 'qdata' for later use */
-static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
-                     const knot_rrset_t *rrsigs,
-                     knot_rrinfo_t *rrinfo,
-                     struct query_data *qdata)
-{
-	knot_rdataset_t synth_rrs;
-	knot_rdataset_init(&synth_rrs);
-	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_rrs, qdata->mm);
-	if (ret == KNOT_ENOENT) {
-		// No signature
-		return KNOT_EOK;
-	}
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	/* Create rrsig info structure. */
-	struct rrsig_info *info = mm_alloc(qdata->mm, sizeof(struct rrsig_info));
-	if (info == NULL) {
-		knot_rdataset_clear(&synth_rrs, qdata->mm);
-		return KNOT_ENOMEM;
-	}
-
-	/* Store RRSIG into info structure. */
-	knot_dname_t *owner_copy = knot_dname_copy(sig_owner, qdata->mm);
-	if (owner_copy == NULL) {
-		mm_free(qdata->mm, info);
-		knot_rdataset_clear(&synth_rrs, qdata->mm);
-		return KNOT_ENOMEM;
-	}
-	knot_rrset_init(&info->synth_rrsig, owner_copy, rrsigs->type, rrsigs->rclass);
-	/* Store filtered signature. */
-	info->synth_rrsig.rrs = synth_rrs;
-
-	info->rrinfo = rrinfo;
-	add_tail(&qdata->rrsigs, &info->n);
-
-	return KNOT_EOK;
-}
-
 /*! \brief This is a wildcard-covered or any other terminal node for QNAME.
  *         e.g. positive answer.
  */
@@ -200,7 +153,8 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 		}
 		for (unsigned i = 0; i < qdata->node->rrset_count; ++i) {
 			rrset = node_rrset_at(qdata->node, i);
-			ret = ns_put_rr(pkt, &rrset, NULL, compr_hint, 0, qdata);
+			ret = process_query_put_rr(pkt, qdata, &rrset, NULL,
+			                           compr_hint, 0);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -211,7 +165,8 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 		rrset = node_rrset(qdata->node, type);
 		if (!knot_rrset_empty(&rrset)) {
 			knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-			ret = ns_put_rr(pkt, &rrset, &rrsigs, compr_hint, 0, qdata);
+			ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
+			                           compr_hint, 0);
 		}
 		break;
 	}
@@ -251,7 +206,8 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 		soa_rrset = copy;
 	}
 
-	ret = ns_put_rr(pkt, &soa_rrset, &rrsigs, KNOT_COMPR_HINT_NONE, flags, qdata);
+	ret = process_query_put_rr(pkt, qdata, &soa_rrset, &rrsigs,
+	                           KNOT_COMPR_HINT_NONE, flags);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
 		knot_rrset_clear(&soa_rrset, &pkt->mm);
 	}
@@ -270,7 +226,8 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Insert NS record. */
 	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_NS);
 	knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-	return ns_put_rr(pkt, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
+	return process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
+	                            KNOT_COMPR_HINT_NONE, 0);
 }
 
 /*! \brief Put additional records for given RR. */
@@ -308,7 +265,8 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			if (knot_rrset_empty(&rrset)) {
 				continue;
 			}
-			ret = ns_put_rr(pkt, &rrset, &rrsigs, hint, flags, qdata);
+			ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
+			                           hint, flags);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -331,7 +289,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 
 	/* Now, try to put CNAME to answer. */
 	uint16_t rr_count_before = pkt->rrset_count;
-	int ret = ns_put_rr(pkt, &cname_rr, &rrsigs, 0, flags, qdata);
+	int ret = process_query_put_rr(pkt, qdata, &cname_rr, &rrsigs, 0, flags);
 	switch (ret) {
 	case KNOT_EOK:    break;
 	case KNOT_ESPACE: return TRUNC;
@@ -357,7 +315,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 			qdata->rcode = KNOT_RCODE_SERVFAIL;
 			return ERROR;
 		}
-		ret = ns_put_rr(pkt, &cname_rr, NULL, 0, KNOT_PF_FREE, qdata);
+		ret = process_query_put_rr(pkt, qdata, &cname_rr, NULL, 0, KNOT_PF_FREE);
 		switch (ret) {
 		case KNOT_EOK:    break;
 		case KNOT_ESPACE: return TRUNC;
@@ -647,72 +605,16 @@ static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data
 	}
 }
 
-int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
-              const knot_rrset_t *rrsigs, uint16_t compr_hint,
-              uint32_t flags, struct query_data *qdata)
-{
-	if (rr->rrs.rr_count < 1) {
-		return KNOT_EMALF;
-	}
-
-	/* Wildcard expansion applies only for answers. */
-	bool expand = false;
-	if (pkt->current == KNOT_ANSWER) {
-		/* Expand if RR is wildcard & we didn't query for wildcard. */
-		expand = (knot_dname_is_wildcard(rr->owner) && !knot_dname_is_wildcard(qdata->name));
-	}
-
-	int ret = KNOT_EOK;
-
-	/* If we already have compressed name on the wire and compression hint,
-	 * we can just insert RRSet and fake synthesis by using compression
-	 * hint. */
-	knot_rrset_t to_add;
-	if (compr_hint == KNOT_COMPR_HINT_NONE && expand) {
-		knot_dname_t *qname_cpy = knot_dname_copy(qdata->name, &pkt->mm);
-		if (qname_cpy == NULL) {
-			return KNOT_ENOMEM;
-		}
-		knot_rrset_init(&to_add, qname_cpy, rr->type, rr->rclass);
-		ret = knot_rdataset_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
-		if (ret != KNOT_EOK) {
-			knot_dname_free(&qname_cpy, &pkt->mm);
-			return ret;
-		}
-		to_add.additional = rr->additional;
-		flags |= KNOT_PF_FREE;
-	} else {
-		to_add = *rr;
-	}
-
-	uint16_t prev_count = pkt->rrset_count;
-	ret = knot_pkt_put(pkt, compr_hint, &to_add, flags);
-	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
-		knot_rrset_clear(&to_add, &pkt->mm);
-		return ret;
-	}
-
-	const bool inserted = (prev_count != pkt->rrset_count);
-	if (inserted &&
-	    !knot_rrset_empty(rrsigs) && rr->type != KNOT_RRTYPE_RRSIG) {
-		// Get rrinfo of just inserted RR.
-		knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count - 1];
-		ret = put_rrsig(rr->owner, rr->type, rrsigs, rrinfo, qdata);
-	}
-
-	return ret;
-}
-
 /*! \brief Helper for internet_query repetitive code. */
 #define SOLVE_STEP(solver, state, context) \
-	state = (solver)(state, response, qdata, context); \
+	state = (solver)(state, pkt, qdata, context); \
 	if (state == TRUNC) { \
 		return KNOT_STATE_DONE; \
 	} else if (state == ERROR) { \
 		return KNOT_STATE_FAIL; \
 	}
 
-static int answer_query(struct query_plan *plan, knot_pkt_t *response, struct query_data *qdata)
+static int answer_query(struct query_plan *plan, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int state = BEGIN;
 	struct query_plan *global_plan = conf()->query_plan;
@@ -726,7 +628,7 @@ static int answer_query(struct query_plan *plan, knot_pkt_t *response, struct qu
 	}
 
 	/* Resolve ANSWER. */
-	knot_pkt_begin(response, KNOT_ANSWER);
+	knot_pkt_begin(pkt, KNOT_ANSWER);
 	if (global_plan != NULL) {
 		WALK_LIST(step, global_plan->stage[QPLAN_ANSWER]) {
 			SOLVE_STEP(step->process, state, step->ctx);
@@ -741,7 +643,7 @@ static int answer_query(struct query_plan *plan, knot_pkt_t *response, struct qu
 	}
 
 	/* Resolve AUTHORITY. */
-	knot_pkt_begin(response, KNOT_AUTHORITY);
+	knot_pkt_begin(pkt, KNOT_AUTHORITY);
 	if (global_plan != NULL) {
 		WALK_LIST(step, global_plan->stage[QPLAN_AUTHORITY]) {
 			SOLVE_STEP(step->process, state, step->ctx);
@@ -756,7 +658,7 @@ static int answer_query(struct query_plan *plan, knot_pkt_t *response, struct qu
 	}
 
 	/* Resolve ADDITIONAL. */
-	knot_pkt_begin(response, KNOT_ADDITIONAL);
+	knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 	if (global_plan != NULL) {
 		WALK_LIST(step, global_plan->stage[QPLAN_ADDITIONAL]) {
 			SOLVE_STEP(step->process, state, step->ctx);
@@ -778,16 +680,16 @@ static int answer_query(struct query_plan *plan, knot_pkt_t *response, struct qu
 	}
 
 	/* Write resulting RCODE. */
-	knot_wire_set_rcode(response->wire, qdata->rcode);
+	knot_wire_set_rcode(pkt->wire, qdata->rcode);
 
 	return KNOT_STATE_DONE;
 }
 
 #undef SOLVE_STEP
 
-int internet_process_query(knot_pkt_t *response, struct query_data *qdata)
+int internet_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	if (response == NULL || qdata == NULL) {
+	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
 	}
 
@@ -800,7 +702,7 @@ int internet_process_query(knot_pkt_t *response, struct query_data *qdata)
 		NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_NONE);
 
 		/* Reserve space for TSIG. */
-		knot_pkt_reserve(response, knot_tsig_wire_maxsize(&qdata->sign.tsig_key));
+		knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(&qdata->sign.tsig_key));
 	}
 
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
@@ -808,7 +710,7 @@ int internet_process_query(knot_pkt_t *response, struct query_data *qdata)
 	/* Get answer to QNAME. */
 	qdata->name = knot_pkt_qname(qdata->query);
 
-	return answer_query(qdata->zone->query_plan, response, qdata);
+	return answer_query(qdata->zone->query_plan, pkt, qdata);
 }
 
 #include "knot/nameserver/log.h"

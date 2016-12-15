@@ -18,6 +18,7 @@
 
 #include "dnssec/tsig.h"
 #include "knot/common/log.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/chaos.h"
@@ -746,6 +747,102 @@ int process_query_qname_case_lower(knot_pkt_t *pkt)
 {
 	knot_dname_t *qname = (knot_dname_t *)knot_pkt_qname(pkt);
 	return knot_dname_to_lower(qname);
+}
+
+/*! \brief Synthesize RRSIG for given parameters, store in 'qdata' for later use */
+static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
+                     const knot_rrset_t *rrsigs, knot_rrinfo_t *rrinfo,
+                     struct query_data *qdata)
+{
+	knot_rdataset_t synth_rrs;
+	knot_rdataset_init(&synth_rrs);
+	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_rrs, qdata->mm);
+	if (ret == KNOT_ENOENT) {
+		// No signature
+		return KNOT_EOK;
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Create rrsig info structure. */
+	struct rrsig_info *info = mm_alloc(qdata->mm, sizeof(struct rrsig_info));
+	if (info == NULL) {
+		knot_rdataset_clear(&synth_rrs, qdata->mm);
+		return KNOT_ENOMEM;
+	}
+
+	/* Store RRSIG into info structure. */
+	knot_dname_t *owner_copy = knot_dname_copy(sig_owner, qdata->mm);
+	if (owner_copy == NULL) {
+		mm_free(qdata->mm, info);
+		knot_rdataset_clear(&synth_rrs, qdata->mm);
+		return KNOT_ENOMEM;
+	}
+	knot_rrset_init(&info->synth_rrsig, owner_copy, rrsigs->type, rrsigs->rclass);
+	/* Store filtered signature. */
+	info->synth_rrsig.rrs = synth_rrs;
+
+	info->rrinfo = rrinfo;
+	add_tail(&qdata->rrsigs, &info->n);
+
+	return KNOT_EOK;
+}
+
+int process_query_put_rr(knot_pkt_t *pkt, struct query_data *qdata,
+                         const knot_rrset_t *rr, const knot_rrset_t *rrsigs,
+                         uint16_t compr_hint, uint32_t flags)
+{
+	if (rr->rrs.rr_count < 1) {
+		return KNOT_EMALF;
+	}
+
+	/* Wildcard expansion applies only for answers. */
+	bool expand = false;
+	if (pkt->current == KNOT_ANSWER) {
+		/* Expand if RR is wildcard & we didn't query for wildcard. */
+		expand = (knot_dname_is_wildcard(rr->owner) && !knot_dname_is_wildcard(qdata->name));
+	}
+
+	int ret = KNOT_EOK;
+
+	/* If we already have compressed name on the wire and compression hint,
+	 * we can just insert RRSet and fake synthesis by using compression
+	 * hint. */
+	knot_rrset_t to_add;
+	if (compr_hint == KNOT_COMPR_HINT_NONE && expand) {
+		knot_dname_t *qname_cpy = knot_dname_copy(qdata->name, &pkt->mm);
+		if (qname_cpy == NULL) {
+			return KNOT_ENOMEM;
+		}
+		knot_rrset_init(&to_add, qname_cpy, rr->type, rr->rclass);
+		ret = knot_rdataset_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
+		if (ret != KNOT_EOK) {
+			knot_dname_free(&qname_cpy, &pkt->mm);
+			return ret;
+		}
+		to_add.additional = rr->additional;
+		flags |= KNOT_PF_FREE;
+	} else {
+		to_add = *rr;
+	}
+
+	uint16_t prev_count = pkt->rrset_count;
+	ret = knot_pkt_put(pkt, compr_hint, &to_add, flags);
+	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
+		knot_rrset_clear(&to_add, &pkt->mm);
+		return ret;
+	}
+
+	const bool inserted = (prev_count != pkt->rrset_count);
+	if (inserted &&
+	    !knot_rrset_empty(rrsigs) && rr->type != KNOT_RRTYPE_RRSIG) {
+		// Get rrinfo of just inserted RR.
+		knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count - 1];
+		ret = put_rrsig(rr->owner, rr->type, rrsigs, rrinfo, qdata);
+	}
+
+	return ret;
 }
 
 /*! \brief Module implementation. */

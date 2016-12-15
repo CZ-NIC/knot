@@ -13,24 +13,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief IN zone lookup.
- *
- * \addtogroup query_processing
- * @{
- */
 
 #pragma once
 
 #include "libknot/packet/pkt.h"
-#include "knot/query/layer.h"
 
-/* Query data (from query processing). */
 struct query_data;
-struct query_plan;
-struct query_module;
 struct answer_data;
 
 /*! \brief Internet query processing states. */
@@ -48,36 +36,19 @@ enum {
 /*!
  * \brief Answer query from an IN class zone.
  *
- * \retval FAIL if it encountered an error.
- * \retval DONE if finished.
+ * \retval KNOT_STATE_FAIL if it encountered an error.
+ * \retval KNOT_STATE_DONE if finished.
  */
-int internet_process_query(knot_pkt_t *resp, struct query_data *qdata);
+int internet_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
  * \brief Process answer in an IN class zone.
  *
- * \retval FAIL if it encountered an error.
- * \retval DONE if finished.
- * \retval NOOP if not supported.
+ * \retval KNOT_STATE_FAIL if it encountered an error.
+ * \retval KNOT_STATE_DONE if finished.
+ * \retval KNOT_STATE_NOOP if not supported.
  */
 int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data);
-
-/*!
- * \brief Puts RRSet to packet, will store its RRSIG for later use.
- *
- * \param pkt         Packet to store RRSet into.
- * \param rr          RRSet to be stored.
- * \param rrsigs      RRSIGs to be stored.
- * \param compr_hint  Compression hint.
- * \param flags       Flags.
- * \param expand      Set to true if wildcards should be expanded.
- * \param qdata       Query data structure.
- *
- * \return KNOT_E*
- */
-int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
-              const knot_rrset_t *rrsigs, uint16_t compr_hint,
-              uint32_t flags, struct query_data *qdata);
 
 /*! \brief Require given QUERY TYPE or return error code. */
 #define NS_NEED_QTYPE(qdata, qtype_want, error_rcode) \
@@ -117,9 +88,8 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		} \
 	}
 
+/*! \brief Require maximum number of unsigned messages. */
 #define NS_NEED_TSIG_SIGNED(tsig_ctx, max_unsigned) \
 	if (tsig_unsigned_count(tsig_ctx) > max_unsigned) { \
 		return KNOT_STATE_FAIL; \
 	}
-
-/*! @} */

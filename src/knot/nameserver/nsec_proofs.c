@@ -173,8 +173,8 @@ static int put_nxt_from_node(const zone_node_t *node,
 
 	knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
 
-	return ns_put_rr(resp, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE,
-	                 KNOT_PF_CHECKDUP, qdata);
+	return process_query_put_rr(resp, qdata, &rrset, &rrsigs,
+	                            KNOT_COMPR_HINT_NONE, KNOT_PF_CHECKDUP);
 }
 
 /*!
@@ -667,7 +667,8 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_DS);
 	if (!knot_rrset_empty(&rrset)) {
 		knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-		return ns_put_rr(pkt, &rrset, &rrsigs, KNOT_COMPR_HINT_NONE, 0, qdata);
+		return process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
+		                            KNOT_COMPR_HINT_NONE, 0);
 	}
 
 	// Alternatively prove that DS doesn't exist.

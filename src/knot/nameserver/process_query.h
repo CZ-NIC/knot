@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,14 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file
- *
- * \brief Query processor.
- *
- * \addtogroup query_processing
- * @{
  */
 
 #pragma once
@@ -145,4 +137,18 @@ void process_query_qname_case_restore(knot_pkt_t *pkt, struct query_data *qdata)
  */
 int process_query_qname_case_lower(knot_pkt_t *pkt);
 
-/*! @} */
+/*!
+ * \brief Puts RRSet to packet, will store its RRSIG for later use.
+ *
+ * \param pkt         Packet to store RRSet into.
+ * \param qdata       Query data structure.
+ * \param rr          RRSet to be stored.
+ * \param rrsigs      RRSIGs to be stored.
+ * \param compr_hint  Compression hint.
+ * \param flags       Flags.
+ *
+ * \return KNOT_E*
+ */
+int process_query_put_rr(knot_pkt_t *pkt, struct query_data *qdata,
+                         const knot_rrset_t *rr, const knot_rrset_t *rrsigs,
+                         uint16_t compr_hint, uint32_t flags);
