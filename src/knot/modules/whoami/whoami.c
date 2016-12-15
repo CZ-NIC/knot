@@ -14,10 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "knot/modules/whoami.h"
-#include "knot/nameserver/process_query.h"
-#include "knot/nameserver/internet.h"
-#include "libknot/libknot.h"
+#include "knot/modules/whoami/whoami.h"
 
 const yp_item_t scheme_mod_whoami[] = {
 	{ C_ID,         YP_TSTR, YP_VNONE },

@@ -272,18 +272,18 @@ libknotd_la_SOURCES =				\
 	knot/events/handlers/update.c		\
 	knot/events/replan.c			\
 	knot/events/replan.h			\
-	knot/modules/dnsproxy.c			\
-	knot/modules/dnsproxy.h			\
-	knot/modules/noudp.c			\
-	knot/modules/noudp.h			\
-	knot/modules/online_sign/module.c	\
-	knot/modules/online_sign/module.h	\
+	knot/modules/dnsproxy/dnsproxy.c	\
+	knot/modules/dnsproxy/dnsproxy.h	\
+	knot/modules/noudp/noudp.c		\
+	knot/modules/noudp/noudp.h		\
+	knot/modules/online_sign/online_sign.c	\
+	knot/modules/online_sign/online_sign.h	\
 	knot/modules/online_sign/nsec_next.c	\
 	knot/modules/online_sign/nsec_next.h	\
-	knot/modules/synth_record.c		\
-	knot/modules/synth_record.h		\
-	knot/modules/whoami.c			\
-	knot/modules/whoami.h			\
+	knot/modules/synth_record/synth_record.c\
+	knot/modules/synth_record/synth_record.h\
+	knot/modules/whoami/whoami.c		\
+	knot/modules/whoami/whoami.h		\
 	knot/nameserver/axfr.c			\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/chaos.c			\
@@ -454,16 +454,16 @@ knot1to2_LDADD = libcontrib.la
 
 if HAVE_DNSTAP
 libknotd_la_SOURCES +=				\
-	knot/modules/dnstap.c			\
-	knot/modules/dnstap.h
+	knot/modules/dnstap/dnstap.c		\
+	knot/modules/dnstap/dnstap.h
 libknotd_la_CPPFLAGS += $(DNSTAP_CFLAGS)
 libknotd_la_LIBADD += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
 endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB
 libknotd_la_SOURCES +=				\
-	knot/modules/rosedb.c			\
-	knot/modules/rosedb.h
+	knot/modules/rosedb/rosedb.c		\
+	knot/modules/rosedb/rosedb.h
 endif # HAVE_ROSEDB
 
 # Create storage and run-time directories
@@ -546,7 +546,7 @@ endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB
 bin_PROGRAMS += rosedb_tool
-rosedb_tool_SOURCES = knot/modules/rosedb_tool.c
+rosedb_tool_SOURCES = knot/modules/rosedb/rosedb_tool.c
 rosedb_tool_LDADD = libknotd.la libcontrib.la
 rosedb_tool_CFLAGS = $(AM_CFLAGS) $(lmdb_CFLAGS) $(DNSTAP_CFLAGS)
 rosedb_tool_LDFLAGS = $(AM_LDFLAGS) $(lmdb_LIBS)

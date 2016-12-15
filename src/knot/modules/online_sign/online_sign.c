@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,21 +16,15 @@
 
 #include <assert.h>
 
-#include "knot/common/log.h"
-
-#include "knot/dnssec/rrset-sign.h"
-#include "knot/modules/online_sign/module.h"
-#include "knot/modules/online_sign/nsec_next.h"
-#include "knot/nameserver/internet.h"
-#include "knot/nameserver/process_query.h"
-
-#include "libknot/dname.h"
-#include "contrib/string.h"
-
 #include "dnssec/error.h"
 #include "dnssec/kasp.h"
 #include "dnssec/sign.h"
 #include "dnssec/nsec.h"
+
+#include "contrib/string.h"
+#include "knot/modules/online_sign/online_sign.h"
+#include "knot/modules/online_sign/nsec_next.h"
+#include "knot/dnssec/rrset-sign.h"
 
 #define module_zone_error(zone, msg...) \
 	MODULE_ZONE_ERR(C_MOD_ONLINE_SIGN, zone, msg)

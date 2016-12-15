@@ -14,8 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/modules/noudp.h"
-#include "knot/nameserver/process_query.h"
+#include "knot/modules/noudp/noudp.h"
 
 const yp_item_t scheme_mod_noudp[] = {
 	{ C_ID, YP_TSTR, YP_VNONE },

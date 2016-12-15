@@ -16,15 +16,12 @@
 
 #include <sys/stat.h>
 
-#include "knot/common/log.h"
-#include "knot/modules/dnstap.h"
-#include "knot/nameserver/process_query.h"
 #include "contrib/dnstap/dnstap.pb-c.h"
 #include "contrib/dnstap/writer.h"
 #include "contrib/dnstap/message.h"
 #include "contrib/dnstap/dnstap.h"
 #include "contrib/mempattern.h"
-#include "libknot/libknot.h"
+#include "knot/modules/dnstap/dnstap.h"
 
 /* Module configuration scheme. */
 #define MOD_SINK	"\x04""sink"

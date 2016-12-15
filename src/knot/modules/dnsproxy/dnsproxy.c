@@ -14,13 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/query/requestor.h"
-#include "knot/common/log.h"
-#include "knot/modules/dnsproxy.h"
-#include "knot/query/capture.h"
-#include "knot/nameserver/process_query.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
+#include "knot/modules/dnsproxy/dnsproxy.h"
+#include "knot/query/capture.h"
+#include "knot/query/requestor.h"
 
 /* Module configuration scheme. */
 #define MOD_REMOTE		"\x06""remote"

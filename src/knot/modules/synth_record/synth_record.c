@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,14 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/modules/synth_record.h"
-#include "knot/nameserver/process_query.h"
-#include "knot/nameserver/internet.h"
-#include "knot/common/log.h"
-#include "libknot/descriptor.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+#include "knot/modules/synth_record/synth_record.h"
 
 /* Module configuration scheme. */
 #define MOD_NET		"\x07""network"

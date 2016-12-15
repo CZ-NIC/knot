@@ -29,17 +29,17 @@
 #include "dnssec/lib/dnssec/tsig.h"
 #include "dnssec/lib/dnssec/key.h"
 
-#include "knot/modules/synth_record.h"
-#include "knot/modules/dnsproxy.h"
-#include "knot/modules/online_sign/module.h"
+#include "knot/modules/synth_record/synth_record.h"
+#include "knot/modules/dnsproxy/dnsproxy.h"
+#include "knot/modules/online_sign/online_sign.h"
 #ifdef HAVE_ROSEDB
-#include "knot/modules/rosedb.h"
+#include "knot/modules/rosedb/rosedb.h"
 #endif
 #if USE_DNSTAP
-#include "knot/modules/dnstap.h"
+#include "knot/modules/dnstap/dnstap.h"
 #endif
-#include "knot/modules/whoami.h"
-#include "knot/modules/noudp.h"
+#include "knot/modules/whoami/whoami.h"
+#include "knot/modules/noudp/noudp.h"
 
 #define HOURS(x)	((x) * 3600)
 #define DAYS(x)		((x) * HOURS(24))

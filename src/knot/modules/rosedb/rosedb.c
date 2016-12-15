@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,13 +17,10 @@
 #include <lmdb.h>
 
 #include "dnssec/random.h"
-#include "knot/common/log.h"
-#include "knot/modules/rosedb.h"
-#include "knot/nameserver/process_query.h"
-#include "libknot/libknot.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/wire.h"
+#include "knot/modules/rosedb/rosedb.h"
 
 /* Module configuration scheme. */
 #define MOD_DBDIR		"\x05""dbdir"
