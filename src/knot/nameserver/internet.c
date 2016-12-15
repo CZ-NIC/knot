@@ -614,9 +614,10 @@ static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data
 		return KNOT_STATE_FAIL; \
 	}
 
-static int answer_query(struct query_plan *plan, knot_pkt_t *pkt, struct query_data *qdata)
+static int answer_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int state = BEGIN;
+	struct query_plan *plan = qdata->zone->query_plan;
 	struct query_plan *global_plan = conf()->query_plan;
 	struct query_step *step = NULL;
 
@@ -710,7 +711,7 @@ int internet_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Get answer to QNAME. */
 	qdata->name = knot_pkt_qname(qdata->query);
 
-	return answer_query(qdata->zone->query_plan, pkt, qdata);
+	return answer_query(pkt, qdata);
 }
 
 #include "knot/nameserver/log.h"
