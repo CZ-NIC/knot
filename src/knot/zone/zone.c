@@ -250,7 +250,7 @@ bool zone_expired(const zone_t *zone)
 
 	const zone_timers_t *timers = &zone->timers;
 
-	return timers->soa_expire > 0 && timers->last_refresh > 0 &&
+	return timers->last_refresh > 0 && timers->soa_expire > 0 &&
 	       timers->last_refresh + timers->soa_expire <= time(NULL);
 }
 
