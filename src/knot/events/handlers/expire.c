@@ -38,6 +38,7 @@ int event_expire(conf_t *conf, zone_t *zone)
 	zone->zonefile.exists = false;
 	mem_trim();
 
+	// NOTE: must preserve zone->timers.soa_expire
 	zone->timers.next_refresh = time(NULL);
 	replan_from_timers(conf, zone);
 
