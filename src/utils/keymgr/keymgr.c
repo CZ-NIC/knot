@@ -48,6 +48,9 @@
 
 #define MANUAL_POLICY "default_manual"
 
+static const uint16_t DNSKEY_FLAGS_KSK = 257;
+static const uint16_t DNSKEY_FLAGS_ZSK = 256;
+
 /* -- global options ------------------------------------------------------- */
 
 static options_t options = { 0 };
@@ -328,17 +331,24 @@ static int print_list(dnssec_list_t *list, const char *filter,
 static int print_list_filtered(dnssec_list_t *list, const char *filter1, const char *filter2, list_print_cb print)
 {
 	assert(list);
+	// TODO: error if only one is valid filter when both filters defined
 	key_state_t state = str_to_keystate(filter1);
 	if (state == DNSSEC_KEY_STATE_INVALID) {
-	state = str_to_keystate(filter2);
+		state = str_to_keystate(filter2);
 	}
 	uint16_t flag;
+
 	if ((filter1 && strcmp(filter1, "+ksk") == 0) || (filter2 && strcmp(filter2, "+ksk") == 0)) {
-		flag = 257;
+		flag = DNSKEY_FLAGS_KSK;
 	} else if ((filter1 && strcmp(filter1, "+zsk") == 0) || (filter2 && strcmp(filter2, "+zsk") == 0)) {
-		flag = 256;
+		flag = DNSKEY_FLAGS_ZSK;
 	} else {
 		flag = 0;
+	}
+
+	if (state == DNSSEC_KEY_STATE_INVALID && flag == 0)
+	{
+		return DNSSEC_ERROR;
 	}
 
 	int found = 0;
@@ -924,6 +934,11 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
 	int count = print_list_filtered(zone_keys, filter1, filter2, item_print_key);
 	if (count < 0) { // Look only if filter isnt state
+		if ((filter1 && filter1[0] == '+') || filter2)
+		{
+			error("Invalid filter.");
+			return 1;
+		}
 		count = print_list(zone_keys, filter1, item_match_key, item_print_key);
 	}
 	if (count == 0) {
@@ -1053,6 +1068,10 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 
 	key_state_t state = str_to_keystate(key_name);
 	if (state == DNSSEC_KEY_STATE_INVALID) {
+		if (key_name[0] == '+') {
+			error("Wrong filter");
+			return 1;
+		}
 		int r = search_unique_key(keys, key_name, &key);
 		if (r != DNSSEC_EOK) {
 			return 1;
@@ -1066,7 +1085,7 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 			key = dnssec_item_get(item);
 			uint16_t flags = dnssec_key_get_flags(key->key);
 			const void *value = dnssec_item_get(item);
-			if (get_key_state(key, current) == state && flags == 257) {
+			if (get_key_state(key, current) == state && flags == DNSKEY_FLAGS_KSK) {
 				item_print_key(value);
 				for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {
 					create_and_print_ds(key->key, *d);
@@ -1075,6 +1094,7 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 		}
 	} else { // if onther state than active or published
 		error("Wrong filter.");
+		return 1;
 	}
 
 	return 0;
@@ -1174,7 +1194,7 @@ static int cmd_zone_key_generate(int argc, char *argv[])
 		return 1;
 	}
 
-	uint16_t flags = config.is_ksk ? 257 : 256;
+	uint16_t flags = config.is_ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK;
 
 	dnssec_key_t *dnskey = NULL;
 	dnssec_key_new(&dnskey);

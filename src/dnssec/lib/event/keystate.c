@@ -25,8 +25,10 @@
 _public_
 key_state_t get_key_state(const dnssec_kasp_key_t *key, time_t moment)
 {
-	assert(key);
-	assert(time > 0);
+	if (!key || time <= 0)
+	{
+		return DNSSEC_KEY_STATE_INVALID;
+	}
 
 	/*
 	 * The meaning of unset timing parameter is different for key

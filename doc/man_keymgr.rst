@@ -119,13 +119,15 @@ zone commands
 .............
 
 **zone** **key** **list** *zone-name* [**filter** [**filter**]]
-  List key IDs and tags of zone keys. The **filter** can be a key tag, a key ID prefix, a key state (active, published, retired, removed) or ksk/zsk. Key state and ksk/zsk combination is possible, also these filters require '+' prefix.
+  List key IDs and tags of zone keys. The **filter** can be a key tag, a key ID prefix, a key state (active, published, retired, removed) or ksk/zsk. Key state and ksk/zsk combination is possible.
+  Use these key state and ksk/zsk with prefix '+' ('+ksk', '+active').
 
 **zone** **key** **show** *zone-name* *key*
   Show zone key details. The *key* can be a key tag or a key ID prefix.
 
 **zone** **key** **ds** *zone-name* *filter*
-  Show DS records for a zone key. The *filter* can be a key tag, a key ID prefix or state with '+' prefix (limited to active and published ksk).
+  Show DS records for a zone key. The *filter* can be a key tag, a key ID prefix or key state (limited to active and published ksk).
+  Use these key state as '+active' or '+published'.
 
 **zone** **key** **generate** *zone-name* [*key-parameter*...]
   Generate a new key for a zone.

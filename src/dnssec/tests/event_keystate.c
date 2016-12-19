@@ -17,7 +17,7 @@
 #include <tap/basic.h>
 #include <string.h>
 
-#include "event/keystate.h"
+#include "dnssec/keystate.h"
 
 #define PAST   1426852710
 #define NOW    1426852711
