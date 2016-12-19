@@ -208,7 +208,7 @@ typedef struct conf_t {
 	/*
 	 * System
 	 */
-	char *filename; /*!< Name of the config file. */
+	const char *filename; /*!< Name of the config file. */
 	char *identity; /*!< Identity to return on CH TXT id.server. or hostname.bind. */
 	char *version;  /*!< Version for CH TXT version.{bind|server}. */
 	char *rundir;   /*!< Run-time directory path. */
@@ -312,7 +312,7 @@ typedef struct conf_hook_t {
  * \retval new structure if successful.
  * \retval NULL on error.
  */
-conf_t *conf_new(char *path);
+conf_t *conf_new(const char *path);
 
 /*!
  * \brief Register on-update callback.

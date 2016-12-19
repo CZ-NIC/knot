@@ -64,7 +64,7 @@ static void cf_print_error(void *scanner, int priority, const char *msg)
 	conf_extra_t *extra = NULL;
 	int lineno = -1;
 	char *text = "?";
-	char *filename = NULL;
+	const char *filename = NULL;
 	conf_include_t *inc = NULL;
 
 	if (scanner) {
@@ -512,14 +512,27 @@ static int conf_fparser(conf_t *conf)
 		return KNOT_EINVAL;
 	}
 
+	/* Find real path of the config file */
+	char *config_realpath = realpath(conf->filename, NULL);
+	if (config_realpath == NULL) {
+		return knot_map_errno(EINVAL, ENOENT);
+	}
+
+	/* Check if accessible. */
+	if (access(config_realpath, F_OK | R_OK) != 0) {
+		free(config_realpath);
+		return KNOT_EACCES;
+	}
+
 	int ret = KNOT_EOK;
 	pthread_mutex_lock(&_parser_lock);
 
 	// {
 	// Hook new configuration
 	new_config = conf;
-	FILE *f = fopen(conf->filename, "r");
+	FILE *f = fopen(config_realpath, "r");
 	if (f == NULL) {
+		free(config_realpath);
 		pthread_mutex_unlock(&_parser_lock);
 		return KNOT_ENOENT;
 	}
@@ -528,12 +541,13 @@ static int conf_fparser(conf_t *conf)
 	_parser_res = KNOT_EOK;
 	new_config->filename = conf->filename;
 	void *sc = NULL;
-	conf_extra_t *extra = conf_extra_init(conf->filename);
+	conf_extra_t *extra = conf_extra_init(config_realpath);
 	cf_lex_init_extra(extra, &sc);
 	cf_set_in(f, sc);
 	cf_parse(sc);
 	cf_lex_destroy(sc);
 	conf_extra_free(extra);
+	free(config_realpath);
 	ret = _parser_res;
 	fclose(f);
 	// }
@@ -559,7 +573,7 @@ static int conf_strparser(conf_t *conf, const char *src)
 
 	// Parse config
 	_parser_res = KNOT_EOK;
-	char *oldfn = new_config->filename;
+	const char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
 	void *sc = NULL;
 	conf_extra_t *extra = conf_extra_init("");
@@ -579,7 +593,7 @@ static int conf_strparser(conf_t *conf, const char *src)
  * API functions.
  */
 
-conf_t *conf_new(char* path)
+conf_t *conf_new(const char *path)
 {
 	conf_t *c = malloc(sizeof(conf_t));
 	memset(c, 0, sizeof(conf_t));
@@ -718,7 +732,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 
 	conf->dnssec_enable = -1;
 	if (conf->filename) {
-		free(conf->filename);
 		conf->filename = NULL;
 	}
 	if (conf->identity) {
@@ -784,21 +797,9 @@ const char* conf_find_default()
 
 int conf_open(const char* path)
 {
-	/* Find real path of the config file */
-	char *config_realpath = realpath(path, NULL);
-	if (config_realpath == NULL) {
-		return knot_map_errno(EINVAL, ENOENT);
-	}
-
-	/* Check if accessible. */
-	if (access(path, F_OK | R_OK) != 0) {
-		return KNOT_EACCES;
-	}
-
 	/* Create new config. */
-	conf_t *nconf = conf_new(config_realpath);
+	conf_t *nconf = conf_new(path);
 	if (nconf == NULL) {
-		free(config_realpath);
 		return KNOT_ENOMEM;
 	}
 
