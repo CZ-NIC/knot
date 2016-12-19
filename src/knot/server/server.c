@@ -152,11 +152,11 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)addr);
 
 	int udp_socket_count = 1;
-	int bind_flags = 0;
+	int udp_bind_flags = 0;
 
 #ifdef ENABLE_REUSEPORT
 	udp_socket_count = udp_thread_count;
-	bind_flags |= NET_BIND_MULTIPLE;
+	udp_bind_flags |= NET_BIND_MULTIPLE;
 #endif
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
@@ -175,10 +175,10 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 
 	/* Create bound UDP sockets. */
 	for (int i = 0; i < udp_socket_count; i++ ) {
-		int sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, bind_flags);
+		int sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, udp_bind_flags);
 		if (sock == KNOT_EADDRNOTAVAIL) {
-			bind_flags |= NET_BIND_NONLOCAL;
-			sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, bind_flags);
+			udp_bind_flags |= NET_BIND_NONLOCAL;
+			sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, udp_bind_flags);
 			if (sock >= 0 && !warn_bind) {
 				log_warning("address '%s' is not available", addr_str);
 				warn_bind = true;
@@ -207,7 +207,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	}
 
 	/* Create bound TCP socket. */
-	int sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, bind_flags);
+	int sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, 0);
 	if (sock < 0) {
 		log_error("cannot bind address '%s' (%s)", addr_str,
 		          knot_strerror(sock));
