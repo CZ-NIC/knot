@@ -29,6 +29,75 @@
 #include "knot/journal/serialization.h"
 #include "libknot/libknot.h"
 
+static int deserialize_rr(knot_rrset_t *rrset, const uint8_t *stream, uint32_t rdata_size)
+{
+	uint32_t ttl;
+	memcpy(&ttl, stream, sizeof(uint32_t));
+	return knot_rrset_add_rdata(rrset, stream + sizeof(uint32_t),
+	                            rdata_size - sizeof(uint32_t), ttl, NULL);
+}
+
+static int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
+                             knot_rrset_t *rrset)
+{
+	if (stream == NULL || stream_size == NULL || rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (sizeof(uint64_t) > *stream_size) {
+		return KNOT_ESPACE;
+	}
+	uint64_t rrset_length = 0;
+	memcpy(&rrset_length, stream, sizeof(uint64_t));
+	if (rrset_length > *stream_size) {
+		return KNOT_ESPACE;
+	}
+
+	size_t offset = sizeof(uint64_t);
+	uint16_t rdata_count = 0;
+	memcpy(&rdata_count, stream + offset, sizeof(uint16_t));
+	offset += sizeof(uint16_t);
+	/* Read owner from the stream. */
+	unsigned owner_size = knot_dname_size(stream + offset);
+	knot_dname_t *owner = knot_dname_copy_part(stream + offset, owner_size, NULL);
+	assert(owner);
+	offset += owner_size;
+	/* Read type. */
+	uint16_t type = 0;
+	memcpy(&type, stream + offset, sizeof(uint16_t));
+	offset += sizeof(uint16_t);
+	/* Read class. */
+	uint16_t rclass = 0;
+	memcpy(&rclass, stream + offset, sizeof(uint16_t));
+	offset += sizeof(uint16_t);
+
+	/* Create new RRSet. */
+	knot_rrset_init(rrset, owner, type, rclass);
+
+	/* Read RRs. */
+	for (uint16_t i = 0; i < rdata_count; i++) {
+		/*
+		 * There's always size of rdata in the beginning.
+		 * Needed because of remainders.
+		 */
+		uint32_t rdata_size = 0;
+		memcpy(&rdata_size, stream + offset, sizeof(uint32_t));
+		offset += sizeof(uint32_t);
+		int ret = deserialize_rr(rrset, stream + offset, rdata_size);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(rrset, NULL);
+			return ret;
+		}
+		offset += rdata_size;
+	}
+
+	*stream_size = *stream_size - offset;
+
+	return KNOT_EOK;
+}
+
+
+
 typedef enum {
 	JOURNAL_NULL  = 0 << 0, /*!< Invalid journal entry. */
 	JOURNAL_FREE  = 1 << 0, /*!< Free journal entry. */

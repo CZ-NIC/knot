@@ -686,7 +686,7 @@ static int vals_to_changeset(knot_db_val_t *vals, int nvals, const knot_dname_t 
 		return KNOT_ENOMEM;
 	}
 
-	int ret = changeset_deserialize_chunks(t_ch, valps, vallens, nvals);
+	int ret = changeset_deserialize(t_ch, valps, vallens, nvals);
 
 	if (ret != KNOT_EOK) {
 		changeset_free(t_ch);
@@ -1145,7 +1145,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			break;
 		}
 
-		int maxchunks = changeset_serialized_size(ch) * 2 / CHUNK_MAX + 1, chunks; // twice chsize seems like enough room to store all chunks together
+		size_t maxchunks = changeset_serialized_size(ch) * 2 / CHUNK_MAX + 1, chunks; // twice chsize seems like enough room to store all chunks together
 		allchunks = malloc(maxchunks * CHUNK_MAX);
 		chunkptrs = malloc(maxchunks * sizeof(uint8_t *));
 		chunksizes = malloc(maxchunks * sizeof(size_t));
@@ -1157,7 +1157,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		for (int i = 0; i < maxchunks; i++) {
 			chunkptrs[i] = allchunks + i*CHUNK_MAX + sizeof(journal_header_t);
 		}
-		txn->ret = changeset_serialize_chunks(ch, chunkptrs, CHUNK_MAX - sizeof(journal_header_t), maxchunks, chunksizes, &chunks);
+		txn->ret = changeset_serialize(ch, chunkptrs, CHUNK_MAX - sizeof(journal_header_t), maxchunks, chunksizes, &chunks);
 
 		uint32_t serial = knot_soa_serial(&ch->soa_from->rrs);
 		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
@@ -1633,8 +1633,8 @@ int journal_check(journal_t *j, int warn_level)
 	jch_txn("begin", 1);
 
 	jch_info("metadata: flags >> %d << fs %u ls %u lst %u lf %u ms %u ds %u cnt %u", txn->shadow_md.flags,
-		 txn->shadow_md.first_serial, txn->shadow_md.last_serial, txn->shadow_md.last_serial_to,
-                 txn->shadow_md.last_flushed, txn->shadow_md.merged_serial, txn->shadow_md.dirty_serial, txn->shadow_md.changeset_count);
+	         txn->shadow_md.first_serial, txn->shadow_md.last_serial, txn->shadow_md.last_serial_to,
+	         txn->shadow_md.last_flushed, txn->shadow_md.merged_serial, txn->shadow_md.dirty_serial, txn->shadow_md.changeset_count);
 
 	chcount = txn->shadow_md.changeset_count;
 	first_unflushed = txn->shadow_md.first_serial;
