@@ -342,9 +342,9 @@ How to use the online signing module:
 
   .. code-block:: console
 
-   $ cd /path/to/kasp
-   $ keymgr zone add example.com
-   $ keymgr zone key generate example.com algorithm ecdsap256sha256 size 256
+   $ keymgr -d /path/to/kasp -l init
+   $ keymgr -d /path/to/kasp -l zone add example.com
+   $ keymgr -d /path/to/kasp -l zone key generate example.com algorithm ecdsap256sha256 size 256
 
 * Enable the module in server configuration and hook it to the zone::
 
