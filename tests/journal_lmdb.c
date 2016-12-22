@@ -243,24 +243,24 @@ static void test_journal_db(void)
 {
 	int ret, ret2 = KNOT_EOK;
 
-	ret = init_journal_db(&db, test_dir_name, 2 * 1024 * 1024);
+	ret = journal_db_init(&db, test_dir_name, 2 * 1024 * 1024);
 	ok(ret == KNOT_EOK, "journal: init db (%d)", ret);
 
 	ret = open_journal_db(&db);
 	ok(ret == KNOT_EOK, "journal: open db (%d)", ret);
 
-	close_journal_db(&db);
+	journal_db_close(&db);
 	ok(db == NULL, "journal: close and destroy db");
 
-	ret = init_journal_db(&db, test_dir_name, 4 * 1024 * 1024);
+	ret = journal_db_init(&db, test_dir_name, 4 * 1024 * 1024);
 	if (ret == KNOT_EOK) ret2 = open_journal_db(&db);
 	ok(ret == KNOT_EOK && ret2 == KNOT_EOK, "journal: open with bigger mapsize (%d, %d)", ret, ret2);
-	close_journal_db(&db);
+	journal_db_close(&db);
 
-	ret = init_journal_db(&db, test_dir_name, 1024 * 1024);
+	ret = journal_db_init(&db, test_dir_name, 1024 * 1024);
 	if (ret == KNOT_EOK) ret2 = open_journal_db(&db);
 	ok(ret == KNOT_EOK && ret2 == KNOT_EOK, "journal: open with smaller mapsize (%d, %d)", ret, ret2);
-	close_journal_db(&db);
+	journal_db_close(&db);
 } // journal db is initialized and closed afterwards, ready for test_store_load()
 
 
@@ -272,7 +272,7 @@ static void test_store_load(void)
 	j = journal_new();
 	ok(j != NULL, "journal: new");
 
-	ret = init_journal_db(&db, test_dir_name, 1024 * 1024);
+	ret = journal_db_init(&db, test_dir_name, 1024 * 1024);
 	if (ret == KNOT_EOK) ret2 = journal_open(j, &db, apex);
 	ok(ret == KNOT_EOK, "journal: open (%d, %d)", ret, ret2);
 
@@ -283,7 +283,7 @@ static void test_store_load(void)
 	init_random_changeset(m_ch, 0, 1, 128, apex);
 	ret = journal_store_changeset(j, m_ch);
 	ok(ret == KNOT_EOK, "journal: store changeset (%d)", ret);
-	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 	list_t l, k;
 	init_list(&l);
@@ -291,7 +291,7 @@ static void test_store_load(void)
 	ret = journal_load_changesets(j, &l, 0);
 	add_tail(&k, &m_ch->n);
 	ok(ret == KNOT_EOK && changesets_list_eq(&l, &k), "journal: load changeset (%d)", ret);
-	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
 	changesets_free(&l);
@@ -299,7 +299,7 @@ static void test_store_load(void)
 	/* Flush the journal. */
 	ret = journal_flush(j);
 	ok(ret == KNOT_EOK, "journal: first and simple flush (%d)", ret);
-	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 	init_list(&l);
 	init_list(&k);
@@ -318,7 +318,7 @@ static void test_store_load(void)
 		add_tail(&k, &m_ch2->n);
 	}
 	ok(ret == KNOT_EBUSY, "journal: overfill with changesets (%d inserted) (%d should= %d)", serial, ret, KNOT_EBUSY);
-	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
 	/* Load all changesets stored until now. */
@@ -336,7 +336,7 @@ static void test_store_load(void)
 	/* Flush the journal. */
 	ret = journal_flush(j);
 	ok(ret == KNOT_EOK, "journal: second flush (%d)", ret);
-	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
 	/* Test whether the journal kept changesets after flush. */
@@ -355,7 +355,7 @@ static void test_store_load(void)
 	ret = journal_store_changeset(j, &ch);
 	changeset_clear(&ch);
 	ok(ret == KNOT_EOK, "journal: store after flush (%d)", ret);
-	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
 	/* Load last changesets. */
@@ -367,7 +367,7 @@ static void test_store_load(void)
 	/* Flush the journal again. */
 	ret = journal_flush(j);
 	ok(ret == KNOT_EOK, "journal: flush again (%d)", ret);
-	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
 	/* Fill the journal using a list. */
@@ -379,7 +379,7 @@ static void test_store_load(void)
 	}
 	ret = journal_store_changesets(j, &l);
 	ok(ret == KNOT_EOK, "journal: fill with changesets using a list (%d inserted)", m_serial);
-	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
 	/* Cleanup. */
@@ -433,7 +433,7 @@ static void test_store_load(void)
 	fprintf(stderr, "ret=%d ret2=%d ret3=%d\n", ret, ret2, ret3);
 	ok(ret == KNOT_ENOENT && ret2 == KNOT_ENOENT && ret3 == KNOT_EOK &&
 	   changesets_list_eq(&l, &k), "journal: serial collision");
-	ret = journal_check(j, KNOT_JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
 	/* Cleanup. */
@@ -617,9 +617,9 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 	uint32_t serial = 0;
 
 	journal_close(j);
-	close_journal_db(&db);
+	journal_db_close(&db);
 	db = NULL;
-	ret = init_journal_db(&db, test_dir_name, file_size);
+	ret = journal_db_init(&db, test_dir_name, file_size);
 	assert(ret == KNOT_EOK);
 	ret = open_journal_db(&db);
 	assert(ret == KNOT_EOK);
@@ -686,7 +686,7 @@ int main(int argc, char *argv[])
 	test_stress(j);
 
 	journal_close(j);
-	close_journal_db(&db);
+	journal_db_close(&db);
 
 	return 0;
 }

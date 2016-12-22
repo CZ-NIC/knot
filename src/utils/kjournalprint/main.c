@@ -63,7 +63,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 	journal_t *j = journal_new();
 	int ret;
 
-	ret = init_journal_db(&jdb, path, KNOT_JOURNAL_FSLIMIT_SAMEASLAST);
+	ret = journal_db_init(&jdb, path, 1);
 	if (ret != KNOT_EOK) {
 		journal_free(&j);
 		free(buff);
@@ -80,7 +80,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 	}
 	if (ret != KNOT_EOK) {
 		journal_free(&j);
-		close_journal_db(&jdb);
+		journal_db_close(&jdb);
 		free(buff);
 		return ret;
 	}
@@ -105,7 +105,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		if (--db_remains >= limit && limit > 0) {
 			continue;
 		}
-	
+
 		printf(color ? YLW : "");
 		printf(";; Changes between zone versions: %u -> %u\n",
 		       knot_soa_serial(&chs->soa_from->rrs),
@@ -131,7 +131,7 @@ pj_finally:
 	free(buff);
 	journal_close(j);
 	journal_free(&j);
-	close_journal_db(&jdb);
+	journal_db_close(&jdb);
 
 	return ret;
 }
@@ -139,7 +139,7 @@ pj_finally:
 int list_zones(char * path)
 {
 	journal_db_t * jdb = NULL;
-	int ret = init_journal_db(&jdb, path, KNOT_JOURNAL_FSLIMIT_SAMEASLAST);
+	int ret = journal_db_init(&jdb, path, 1);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -156,7 +156,7 @@ int list_zones(char * path)
 		ptrlist_free(&zones, NULL);
 	}
 
-	close_journal_db(&jdb);
+	journal_db_close(&jdb);
 	return ret;
 }
 
