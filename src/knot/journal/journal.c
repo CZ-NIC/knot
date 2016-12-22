@@ -27,7 +27,7 @@
 /*! \brief Journal version. */
 #define JOURNAL_VERSION	"1.0"
 /*! \brief Changeset chunk size. */
-#define CHUNK_MAX	(60 * 1024)
+#define CHUNK_MAX	(70 * 1024)
 
 /*! \brief Various metadata DB key strings. Also hardcoded in macro txn_commit()! */
 #define MDKEY_GLOBAL_VERSION			"version"
@@ -37,7 +37,7 @@
 #define MDKEY_PERZONE_OCCUPIED			"occupied"
 #define MDKEY_PERZONE_FLAGS			"flags"
 
-/*! \brief The number of unused DB key items. */
+/*! \brief The number of unused bytes in DB key. */
 #define DB_KEY_UNUSED_ZERO (4)
 
 enum {
@@ -1173,6 +1173,9 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		}
 		txn->ret = changeset_serialize(ch, chunkptrs, CHUNK_MAX - sizeof(journal_header_t),
 		                               maxchunks, chunksizes, &chunks);
+		if (txn->ret != KNOT_EOK) {
+			break;
+		}
 
 		uint32_t serial = knot_soa_serial(&ch->soa_from->rrs);
 		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
