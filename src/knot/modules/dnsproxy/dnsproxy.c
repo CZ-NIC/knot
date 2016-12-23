@@ -101,8 +101,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	return KNOT_STATE_DONE;
 }
 
-int dnsproxy_load(struct query_plan *plan, struct query_module *self,
-                  const knot_dname_t *zone)
+int dnsproxy_load(struct query_module *self)
 {
 	assert(self);
 
@@ -122,7 +121,7 @@ int dnsproxy_load(struct query_plan *plan, struct query_module *self,
 
 	self->ctx = proxy;
 
-	return query_plan_step(plan, QPLAN_END, dnsproxy_fwd, self->ctx);
+	return query_module_step(self, QPLAN_END, dnsproxy_fwd);
 }
 
 void dnsproxy_unload(struct query_module *self)

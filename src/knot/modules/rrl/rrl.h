@@ -24,6 +24,5 @@ extern const yp_item_t scheme_mod_rrl[];
 int check_mod_rrl(conf_check_t *args);
 
 /*! \brief Module interface. */
-int rrl_load(struct query_plan *plan, struct query_module *self,
-             const knot_dname_t *zone);
+int rrl_load(struct query_module *self);
 void rrl_unload(struct query_module *self);

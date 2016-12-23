@@ -426,7 +426,8 @@ void conf_activate_modules(
 		}
 
 		// Open the module.
-		struct query_module *mod = query_module_open(conf, mod_id, conf->mm);
+		struct query_module *mod = query_module_open(conf, mod_id, *query_plan,
+		                                             zone_name, conf->mm);
 		if (mod == NULL) {
 			ret = KNOT_ENOMEM;
 			goto activate_error;
@@ -451,7 +452,7 @@ void conf_activate_modules(
 		}
 
 		// Load the module.
-		ret = mod->load(*query_plan, mod, zone_name);
+		ret = mod->load(mod);
 		if (ret != KNOT_EOK) {
 			if (zone_name != NULL) {
 				log_zone_error(zone_name,

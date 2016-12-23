@@ -399,8 +399,7 @@ static int solve_synth_record(int state, knot_pkt_t *pkt, struct query_data *qda
 	return template_match(state, (synth_template_t *)ctx, pkt, qdata);
 }
 
-int synth_record_load(struct query_plan *plan, struct query_module *self,
-                      const knot_dname_t *zone)
+int synth_record_load(struct query_module *self)
 {
 	assert(self);
 
@@ -441,7 +440,7 @@ int synth_record_load(struct query_plan *plan, struct query_module *self,
 
 	self->ctx = tpl;
 
-	return query_plan_step(plan, QPLAN_ANSWER, solve_synth_record, self->ctx);
+	return query_module_step(self, QPLAN_ANSWER, solve_synth_record);
 }
 
 void synth_record_unload(struct query_module *self)

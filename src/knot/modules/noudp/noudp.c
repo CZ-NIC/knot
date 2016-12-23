@@ -38,10 +38,9 @@ int noudp_begin(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 	return state;
 }
 
-int noudp_load(struct query_plan *plan, struct query_module *self,
-               const knot_dname_t *zone)
+int noudp_load(struct query_module *self)
 {
-	query_plan_step(plan, QPLAN_BEGIN, noudp_begin, NULL);
+	query_module_step(self, QPLAN_BEGIN, noudp_begin);
 
 	return KNOT_EOK;
 }

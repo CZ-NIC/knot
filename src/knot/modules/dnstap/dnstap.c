@@ -215,8 +215,7 @@ static struct fstrm_writer* dnstap_writer(const char *path)
 	return dnstap_file_writer(path);
 }
 
-int dnstap_load(struct query_plan *plan, struct query_module *self,
-                const knot_dname_t *zone)
+int dnstap_load(struct query_module *self)
 {
 	assert(self);
 
@@ -282,10 +281,10 @@ int dnstap_load(struct query_plan *plan, struct query_module *self,
 
 	/* Hook to the query plan. */
 	if (log_queries) {
-		query_plan_step(plan, QPLAN_BEGIN, dnstap_message_log_query, self->ctx);
+		query_module_step(self, QPLAN_BEGIN, dnstap_message_log_query);
 	}
 	if (log_responses) {
-		query_plan_step(plan, QPLAN_END, dnstap_message_log_response, self->ctx);
+		query_module_step(self, QPLAN_END, dnstap_message_log_response);
 	}
 
 	return KNOT_EOK;

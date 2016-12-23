@@ -28,6 +28,5 @@ extern const yp_item_t scheme_mod_synth_record[];
 int check_mod_synth_record(conf_check_t *args);
 
 /*! \brief Module interface. */
-int synth_record_load(struct query_plan *plan, struct query_module *self,
-                      const knot_dname_t *zone);
+int synth_record_load(struct query_module *self);
 void synth_record_unload(struct query_module *self);

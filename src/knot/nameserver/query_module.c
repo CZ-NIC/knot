@@ -110,6 +110,11 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 	return KNOT_EOK;
 }
 
+int query_module_step(struct query_module *module, int stage, qmodule_process_t process)
+{
+	return query_plan_step(module->plan, stage, process, module->ctx);
+}
+
 int mod_stats_add(struct query_module *module, const char *name, uint32_t count,
                   mod_idx_to_str_f idx)
 {
@@ -187,9 +192,10 @@ static_module_t *find_module(const yp_name_t *name)
 }
 
 struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
+                                       struct query_plan *plan, const knot_dname_t *zone,
                                        knot_mm_t *mm)
 {
-	if (config == NULL || mod_id == NULL) {
+	if (config == NULL || mod_id == NULL || plan == NULL) {
 		return NULL;
 	}
 
@@ -206,8 +212,10 @@ struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
 	}
 	memset(module, 0, sizeof(struct query_module));
 
+	module->plan = plan;
 	module->mm = mm;
 	module->config = config;
+	module->zone = zone;
 	module->id = mod_id;
 	module->load = found->load;
 	module->unload = found->unload;

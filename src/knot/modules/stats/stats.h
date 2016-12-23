@@ -23,6 +23,5 @@
 extern const yp_item_t scheme_mod_stats[];
 
 /*! \brief Module interface. */
-int stats_load(struct query_plan *plan, struct query_module *self,
-               const knot_dname_t *zone);
+int stats_load(struct query_module *self);
 void stats_unload(struct query_module *self);

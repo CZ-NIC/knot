@@ -77,7 +77,7 @@ struct query_module;
 struct query_plan;
 
 /* Module callback required API. */
-typedef int (*qmodule_load_t)(struct query_plan *plan, struct query_module *self, const knot_dname_t *zone);
+typedef int (*qmodule_load_t)(struct query_module *self);
 typedef void (*qmodule_unload_t)(struct query_module *self);
 typedef int (*qmodule_process_t)(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx);
 
@@ -110,9 +110,11 @@ typedef struct {
  */
 struct query_module {
 	node_t node;
+	struct query_plan *plan;
 	knot_mm_t *mm;
 	void *ctx;
 	conf_t *config;
+	const knot_dname_t *zone;
 	conf_mod_id_t *id;
 	qmodule_load_t load;
 	qmodule_unload_t unload;
@@ -196,8 +198,11 @@ void query_plan_free(struct query_plan *plan);
 int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t process,
                     void *ctx);
 
+int query_module_step(struct query_module *module, int stage, qmodule_process_t process);
+
 /*! \brief Open query module identified by name. */
 struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
+                                       struct query_plan *plan, const knot_dname_t *zone,
                                        knot_mm_t *mm);
 
 /*! \brief Close query module. */

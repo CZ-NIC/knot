@@ -22,7 +22,5 @@
 
 extern const yp_item_t scheme_mod_noudp[];
 
-int noudp_load(struct query_plan *plan, struct query_module *self,
-               const knot_dname_t *zone);
-
+int noudp_load(struct query_module *self);
 void noudp_unload(struct query_module *self);

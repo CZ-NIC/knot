@@ -23,6 +23,5 @@
 extern const yp_item_t scheme_mod_whoami[];
 
 /*! \brief Module interface. */
-int whoami_load(struct query_plan *plan, struct query_module *self,
-                const knot_dname_t *zone);
+int whoami_load(struct query_module *self);
 void whoami_unload(struct query_module *self);
