@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,23 +13,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file zone-events.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * \brief DNSSEC operations triggered on zone events.
- *
- * \addtogroup dnssec
- * @{
- */
 
 #pragma once
 
 #include "knot/zone/zone.h"
 #include "knot/updates/changesets.h"
+#include "knot/dnssec/context.h"
 
 enum zone_sign_flags {
 	ZONE_SIGN_NONE = 0,
@@ -38,6 +27,17 @@ enum zone_sign_flags {
 };
 
 typedef enum zone_sign_flags zone_sign_flags_t;
+
+/*!
+ * \brief Generate/rollover keys in keystore as needed.
+ *
+ * \param kctx       Pointers to the keytore, policy, etc.
+ * \param zone_name  Zone name.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
+                                    const knot_dname_t *zone_name);
 
 /*!
  * \brief DNSSEC resign zone, store new records into changeset. Valid signatures
@@ -67,5 +67,3 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                const changeset_t *in_ch,
                                changeset_t *out_ch,
                                uint32_t *refresh_at);
-
-/*! @} */

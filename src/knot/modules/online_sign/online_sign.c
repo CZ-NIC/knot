@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,16 +15,25 @@
 */
 
 #include <assert.h>
+#include <stddef.h>
 
 #include "dnssec/error.h"
-#include "dnssec/kasp.h"
-#include "dnssec/sign.h"
-#include "dnssec/nsec.h"
 
 #include "contrib/string.h"
 #include "knot/modules/online_sign/online_sign.h"
 #include "knot/modules/online_sign/nsec_next.h"
 #include "knot/dnssec/rrset-sign.h"
+#include "knot/dnssec/zone-keys.h"
+#include "knot/dnssec/zone-events.h"
+
+#define MOD_POLICY	C_POLICY
+
+const yp_item_t scheme_mod_online_sign[] = {
+	{ C_ID,       YP_TSTR, YP_VNONE },
+	{ MOD_POLICY, YP_TREF, YP_VREF = { C_POLICY }, YP_FNONE, { check_ref_dflt } },
+	{ C_COMMENT,  YP_TSTR, YP_VNONE },
+	{ NULL }
+};
 
 #define module_zone_error(zone, msg...) \
 	MODULE_ZONE_ERR(C_MOD_ONLINE_SIGN, zone, msg)
@@ -66,13 +75,9 @@ static const uint16_t NSEC_FORCE_TYPES[] = {
 	0
 };
 
-const yp_item_t scheme_mod_online_sign[] = {
-	{ C_ID, YP_TSTR, YP_VNONE },
-	{ NULL }
-};
-
 typedef struct {
 	dnssec_key_t *key;
+	uint32_t rrsig_lifetime;
 } online_sign_ctx_t;
 
 static bool want_dnssec(struct query_data *qdata)
@@ -247,7 +252,7 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 	// compatible context
 
 	dnssec_kasp_policy_t policy = {
-		.rrsig_lifetime = RRSIG_LIFETIME
+		.rrsig_lifetime = module_ctx->rrsig_lifetime
 	};
 
 	kdnssec_ctx_t ksign_ctx = {
@@ -421,63 +426,26 @@ static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	return state;
 }
 
-static int get_online_key(dnssec_key_t **key_ptr, const knot_dname_t *zone_name,
-                          const char *kasp_path)
+static int get_online_key(dnssec_key_t **key_ptr, struct query_module *module)
 {
-	dnssec_kasp_t *kasp = NULL;
-	dnssec_kasp_zone_t *zone = NULL;
-	dnssec_kasp_policy_t *policy = NULL;
-	dnssec_kasp_keystore_t *kasp_keystore = NULL;
-	dnssec_keystore_t *keystore = NULL;
+	kdnssec_ctx_t kctx = { 0 };
 
-	// KASP database
+	conf_val_t policy = conf_mod_get(module->config, MOD_POLICY, module->id);
 
-	int r = dnssec_kasp_init_dir(&kasp);
+	int r = kdnssec_ctx_init(&kctx, module->zone, &policy, true);
 	if (r != DNSSEC_EOK) {
 		goto fail;
 	}
 
-	r = dnssec_kasp_open(kasp, kasp_path);
+	// Force Singe-Type signing scheme.
+	kctx.policy->singe_type_signing = true;
+
+	r = knot_dnssec_sign_process_events(&kctx, module->zone);
 	if (r != DNSSEC_EOK) {
 		goto fail;
 	}
 
-	// KASP zone
-
-	char *zone_str = knot_dname_to_str_alloc(zone_name);
-	if (!zone_str) {
-		r = KNOT_ENOMEM;
-		goto fail;
-	}
-
-	r = dnssec_kasp_zone_load(kasp, zone_str, &zone);
-	free(zone_str);
-	if (r != DNSSEC_EOK) {
-		goto fail;
-	}
-
-	// KASP keystore
-
-	const char *policy_id = dnssec_kasp_zone_get_policy(zone);
-	r = dnssec_kasp_policy_load(kasp, policy_id, &policy);
-	if (r != DNSSEC_EOK) {
-		goto fail;
-	}
-
-	r = dnssec_kasp_keystore_load(kasp, policy->keystore, &kasp_keystore);
-	if (r != DNSSEC_EOK) {
-		goto fail;
-	}
-
-	r = dnssec_kasp_keystore_open(kasp, kasp_keystore->backend,
-	                              kasp_keystore->config, &keystore);
-	if (r != DNSSEC_EOK) {
-		goto fail;
-	}
-
-	// DNSSEC key
-
-	dnssec_list_t *list = dnssec_kasp_zone_get_keys(zone);
+	dnssec_list_t *list = dnssec_kasp_zone_get_keys(kctx.zone);
 	assert(list);
 	dnssec_item_t *item = dnssec_list_nth(list, 0);
 	if (!item) {
@@ -494,7 +462,7 @@ static int get_online_key(dnssec_key_t **key_ptr, const knot_dname_t *zone_name,
 		goto fail;
 	}
 
-	r = dnssec_key_import_keystore(key, keystore, kasp_key->id);
+	r = dnssec_key_import_keystore(key, kctx.keystore, kasp_key->id);
 	if (r != DNSSEC_EOK) {
 		dnssec_key_free(key);
 		goto fail;
@@ -503,11 +471,7 @@ static int get_online_key(dnssec_key_t **key_ptr, const knot_dname_t *zone_name,
 	*key_ptr = key;
 
 fail:
-	dnssec_keystore_deinit(keystore);
-	dnssec_kasp_keystore_free(kasp_keystore);
-	dnssec_kasp_policy_free(policy);
-	dnssec_kasp_zone_free(zone);
-	dnssec_kasp_deinit(kasp);
+	kdnssec_ctx_deinit(&kctx);
 
 	return r;
 }
@@ -519,18 +483,26 @@ static void online_sign_ctx_free(online_sign_ctx_t *ctx)
 	free(ctx);
 }
 
-static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr,
-                               const knot_dname_t *zone, const char *kasp_path)
+static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, struct query_module *module)
 {
 	online_sign_ctx_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx) {
 		return KNOT_ENOMEM;
 	}
 
-	int r = get_online_key(&ctx->key, zone, kasp_path);
+	int r = get_online_key(&ctx->key, module);
 	if (r != KNOT_EOK) {
 		online_sign_ctx_free(ctx);
 		return r;
+	}
+
+	ctx->rrsig_lifetime = RRSIG_LIFETIME;
+	conf_val_t policy = conf_mod_get(module->config, MOD_POLICY, module->id);
+	if (policy.code == KNOT_EOK) {
+		conf_val_t val = conf_id_get(module->config, C_POLICY, C_RRSIG_LIFETIME, &policy);
+		if (val.code == KNOT_EOK) {
+			ctx->rrsig_lifetime = conf_int(&val);
+		}
 	}
 
 	*ctx_ptr = ctx;
@@ -538,39 +510,19 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr,
 	return KNOT_EOK;
 }
 
-static char *conf_kasp_path(const knot_dname_t *zone)
-{
-	conf_val_t val;
-
-	val = conf_zone_get(conf(), C_STORAGE, zone);
-	char *storage = conf_abs_path(&val, NULL);
-	val = conf_zone_get(conf(), C_KASP_DB, zone);
-	char *kasp_db = conf_abs_path(&val, storage);
-	free(storage);
-
-	return kasp_db;
-}
-
 int online_sign_load(struct query_module *module)
 {
 	assert(module);
 	assert(module->zone);
 
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, module->zone);
+	conf_val_t val = conf_zone_get(module->config, C_DNSSEC_SIGNING, module->zone);
 	if (conf_bool(&val)) {
 		module_zone_error(module->zone, "incompatible with automatic signing");
 		return KNOT_ENOTSUP;
 	}
 
-	char *kasp_path = conf_kasp_path(module->zone);
-	if (!kasp_path) {
-		module_zone_error(module->zone, "KASP database is not configured");
-		return KNOT_ERROR;
-	}
-
 	online_sign_ctx_t *ctx = NULL;
-	int r = online_sign_ctx_new(&ctx, module->zone, kasp_path);
-	free(kasp_path);
+	int r = online_sign_ctx_new(&ctx, module);
 	if (r != KNOT_EOK) {
 		module_zone_error(module->zone, "failed to initialize signing key (%s)",
 		                  dnssec_strerror(r));

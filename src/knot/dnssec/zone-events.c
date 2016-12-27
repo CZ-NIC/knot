@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,7 +38,9 @@ static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 
 	const knot_dname_t *zone_name = zone->apex->owner;
 
-	int r = kdnssec_ctx_init(ctx, zone_name);
+	conf_val_t policy = conf_zone_get(conf(), C_DNSSEC_POLICY, zone_name);
+
+	int r = kdnssec_ctx_init(ctx, zone_name, &policy, false);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -77,9 +79,13 @@ static dnssec_event_ctx_t kctx2ctx(const kdnssec_ctx_t *kctx)
 	return ctx;
 }
 
-static int sign_process_events(const knot_dname_t *zone_name,
-                               const kdnssec_ctx_t *kctx)
+int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
+                                    const knot_dname_t *zone_name)
 {
+	if (kctx == NULL || zone_name == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	dnssec_event_t event = { 0 };
 	dnssec_event_ctx_t ctx = kctx2ctx(kctx);
 
@@ -166,7 +172,7 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
 		goto done;
 	}
 
-	result = sign_process_events(zone_name, &ctx);
+	result = knot_dnssec_sign_process_events(&ctx, zone_name);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to process events (%s)",
 		               knot_strerror(result));

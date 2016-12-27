@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -203,6 +203,12 @@ int kdnssec_kasp_init(kdnssec_ctx_t *ctx, const char *kasp_path, const char *zon
 		return r;
 	}
 
+	// Overide policy name if provided.
+	if (ctx->policy_name != NULL) {
+		free(ctx->zone->policy);
+		ctx->zone->policy = strdup(ctx->policy_name);
+	}
+
 	r = dnssec_kasp_policy_load(ctx->kasp, ctx->zone->policy, &ctx->policy);
 	if (r != DNSSEC_EOK) {
 		return r;
@@ -218,6 +224,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		return;
 	}
 
+	free(ctx->policy_name);
 	dnssec_keystore_deinit(ctx->keystore);
 	dnssec_kasp_policy_free(ctx->policy);
 	dnssec_kasp_zone_free(ctx->zone);
@@ -226,26 +233,29 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 	memset(ctx, 0, sizeof(*ctx));
 }
 
-int kdnssec_ctx_init(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name)
+int kdnssec_ctx_init(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
+                     conf_val_t *policy, bool disable_legacy)
 {
 	if (ctx == NULL || zone_name == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	// Check for legacy configuration.
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_POLICY, zone_name);
-	bool legacy = val.code != KNOT_EOK;
-
-	kdnssec_ctx_t new_ctx = {
-		.legacy = legacy
-	};
 
 	char zone_str[KNOT_DNAME_TXT_MAXLEN + 1];
 	if (knot_dname_to_str(zone_str, zone_name, sizeof(zone_str)) == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	val = conf_zone_get(conf(), C_STORAGE, zone_name);
+	kdnssec_ctx_t new_ctx = { 0 };
+
+	if (!disable_legacy && policy->code != KNOT_EOK) {
+		new_ctx.legacy = true;
+	}
+
+	if (conf_str(policy) != NULL) {
+		new_ctx.policy_name = strdup(conf_str(policy));
+	}
+
+	conf_val_t val = conf_zone_get(conf(), C_STORAGE, zone_name);
 	char *storage = conf_abs_path(&val, NULL);
 	val = conf_zone_get(conf(), C_KASP_DB, zone_name);
 	char *kasp_path = conf_abs_path(&val, storage);
