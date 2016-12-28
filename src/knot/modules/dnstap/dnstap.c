@@ -66,6 +66,11 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 {
 	assert(pkt && qdata && ctx);
 
+	/* Skip empty packet. */
+	if (pkt->size == 0) {
+		return state;
+	}
+
 	struct fstrm_iothr_queue *ioq =
 		fstrm_iothr_get_input_queue_idx(ctx->iothread, qdata->param->thread_id);
 
