@@ -366,24 +366,31 @@ Records synthesized by the module:
 
 How to use the online signing module:
 
-* First add the zone into the server's KASP database and generate a key to be
-  used for signing:
-
-  .. code-block:: console
-
-   $ keymgr -d /path/to/kasp -l init
-   $ keymgr -d /path/to/kasp -l zone add example.com
-   $ keymgr -d /path/to/kasp -l zone key generate example.com algorithm ecdsap256sha256 size 256
-
-* Enable the module in server configuration and hook it to the zone::
+* Enable the module in the zone configuration with the default signing policy::
 
    zone:
      - domain: example.com
        module: mod-online-sign
-       dnssec-signing: false
+
+  Or with an explicit signing policy::
+
+   policy:
+     - id: rsa
+       algorithm: RSASHA256
+       zsk-size: 2048
+
+   mod-online-sign:
+     - id: explicit
+       policy: rsa
+
+   zone:
+     - domain: example.com
+       module: mod-online-sign/explicit
 
   .. NOTE::
-     This module is not configurable.
+     Only keystore, algorithm, zsk-size, and rrsig-lifetime policy items are
+     relevant to this module. If no rrsig-lifetime is configured, the
+     default value is 25 hours.
 
 * Make sure the zone is not signed and also that the automatic signing is
   disabled. All is set, you are good to go. Reload (or start) the server:
@@ -402,10 +409,6 @@ module::
      ttl: 1200
      network: 192.168.100.0/24
 
- template:
-   - id: default
-     dnssec-signing: false
-
  zone:
    - domain: corp.example.net
      module: [mod-synth-record/lan-forward, mod-online-sign]
@@ -415,6 +418,9 @@ Known issues:
 * The delegations are not signed correctly.
 
 * Some CNAME records are not signed correctly.
+
+* The automatic policy-based key rotation does not work. The rotation events are
+  invoked just at server (re)load.
 
 Limitations:
 
