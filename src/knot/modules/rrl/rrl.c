@@ -55,6 +55,32 @@ typedef struct {
 	conf_val_t whitelist;
 } rrl_ctx_t;
 
+static const knot_dname_t *name_from_rrsig(const knot_rrset_t *rr)
+{
+	if (rr == NULL) {
+		return NULL;
+	}
+	if (rr->type != KNOT_RRTYPE_RRSIG) {
+		return NULL;
+	}
+
+	// This is a signature.
+	return knot_rrsig_signer_name(&rr->rrs, 0);
+}
+
+static const knot_dname_t *name_from_authrr(const knot_rrset_t *rr)
+{
+	if (rr == NULL) {
+		return NULL;
+	}
+	if (rr->type != KNOT_RRTYPE_NS && rr->type != KNOT_RRTYPE_SOA) {
+		return NULL;
+	}
+
+	// This is a valid authority RR.
+	return rr->owner;
+}
+
 static int ratelimit_apply(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	assert(pkt && qdata && ctx);
@@ -80,7 +106,30 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, struct query_data *qdata,
 		req.flags = RRL_WILDCARD;
 	}
 
+	// Take the zone name if known.
 	const knot_dname_t *zone_name = (qdata->zone != NULL) ? qdata->zone->name : NULL;
+
+	// Take the signer name as zone name if there is an RRSIG.
+	if (zone_name == NULL) {
+		const knot_pktsection_t *ans = knot_pkt_section(pkt, KNOT_ANSWER);
+		for (int i = 0; i < ans->count; i++) {
+			zone_name = name_from_rrsig(knot_pkt_rr(ans, i));
+			if (zone_name != NULL) {
+				break;
+			}
+		}
+	}
+
+	// Take the NS or SOA owner name if there is no RRSIG.
+	if (zone_name == NULL) {
+		const knot_pktsection_t *auth = knot_pkt_section(pkt, KNOT_AUTHORITY);
+		for (int i = 0; i < auth->count; i++) {
+			zone_name = name_from_authrr(knot_pkt_rr(auth, i));
+			if (zone_name != NULL) {
+				break;
+			}
+		}
+	}
 
 	if (rrl_query(context->rrl, qdata->param->remote, &req, zone_name) == KNOT_EOK) {
 		// Rate limiting not applied.
