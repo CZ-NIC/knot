@@ -545,6 +545,7 @@ int stats_load(struct query_module *self)
 		int ret = mod_stats_add(self, enabled ? desc->conf_name + 1 : NULL,
 		                        desc->count, desc->fcn);
 		if (ret != KNOT_EOK) {
+			mm_free(self->mm, stats);
 			return ret;
 		}
 	}
