@@ -21,7 +21,6 @@
 #include "test_conf.h"
 #include "contrib/macros.h"
 #include "contrib/getline.h"
-#include "contrib/openbsd/strlcat.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/node.h"
 #include "zscanner/scanner.h"
@@ -288,21 +287,22 @@ int main(int argc, char *argv[])
 	char *temp_dir = test_mkdtemp();
 	ok(temp_dir != NULL, "make temporary directory");
 
-	char conf_str[512] = "zone:\n - domain: test.\n   storage: ";
-	strlcat(conf_str, temp_dir, 512);
-	strlcat(conf_str, "\n", 512);
-	strlcat(conf_str, "template:\n - id: default\n   storage: ", 512);
-	strlcat(conf_str, temp_dir, 512);
-	strlcat(conf_str, "\n", 512);
+	char conf_str[512];
+	snprintf(conf_str, sizeof(conf_str),
+	         "zone:\n"
+	         " - domain: test.\n"
+	         "template:\n"
+	         " - id: default\n"
+	         "   storage: %s\n",
+	         temp_dir);
 
 	/* Load test configuration. */
 	int ret = test_conf(conf_str, NULL);
-	(void)ret;
-	assert(ret == KNOT_EOK);
+	ok(ret == KNOT_EOK, "load configuration");
 
 	server_t server;
 	ret = server_init(&server, 1);
-	assert(ret == KNOT_EOK);
+	ok(ret == KNOT_EOK, "server init");
 
 	/* Set up empty zone */
 	knot_dname_t *apex = knot_dname_from_str_alloc("test");

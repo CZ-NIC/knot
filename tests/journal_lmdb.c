@@ -35,19 +35,21 @@
 #define RAND_RR_PAYLOAD 64
 #define MIN_SOA_SIZE 22
 
-/*! \todo fix valgrind errors throughall this test (changeset allocations) */
-
-const char * test_dir_name;
-journal_db_t * db; // global
-journal_t * j;
-uint8_t *apex = (uint8_t *)"\4test";
+char *test_dir_name;
+journal_db_t *db;
+journal_t *j;
+const knot_dname_t *apex = (const uint8_t *)"\4test";
 
 static void set_conf(int zonefile_sync, size_t journal_usage)
 {
 	char conf_str[512];
-	snprintf(conf_str, 512, "zone:\n  - domain: %s\n    zonefile-sync: %d\n"
-		 "    max-journal-usage: %zu\n    max-journal-depth: 1000\n",
-		      (const char *)(apex + 1), zonefile_sync, journal_usage);
+	snprintf(conf_str, sizeof(conf_str),
+	         "zone:\n"
+	         " - domain: %s\n"
+	         "   zonefile-sync: %d\n"
+	         "   max-journal-usage: %zu\n"
+	         "   max-journal-depth: 1000\n",
+	         (const char *)(apex + 1), zonefile_sync, journal_usage);
 	int ret = test_conf(conf_str, NULL);
 	assert(ret == KNOT_EOK);
 }
@@ -73,7 +75,6 @@ static void init_soa(knot_rrset_t *rr, const uint32_t serial, const knot_dname_t
 {
 	knot_rrset_init(rr, knot_dname_copy(apex, NULL), KNOT_RRTYPE_SOA, KNOT_CLASS_IN);
 
-	//assert(serial < 256);
 	uint8_t soa_data[MIN_SOA_SIZE] = { 0 };
 	int ret = knot_rrset_add_rdata(rr, soa_data, sizeof(soa_data), 3600, NULL);
 	knot_soa_serial_set(&rr->rrs, serial);
@@ -105,12 +106,9 @@ static void init_random_rr(knot_rrset_t *rr , const knot_dname_t *apex)
 }
 
 /*! \brief Init changeset with random changes. */
-static void init_random_changeset(changeset_t *ch, const uint32_t from, const uint32_t to, const size_t size, const knot_dname_t *apex)
+static void init_random_changeset(changeset_t *ch, const uint32_t from, const uint32_t to,
+                                  const size_t size, const knot_dname_t *apex)
 {
-	int ret = changeset_init(ch, apex);
-	(void)ret;
-	assert(ret == KNOT_EOK);
-
 	// Add SOAs
 	knot_rrset_t soa;
 	init_soa(&soa, from, apex);
@@ -261,13 +259,14 @@ static void test_journal_db(void)
 	if (ret == KNOT_EOK) ret2 = open_journal_db(&db);
 	ok(ret == KNOT_EOK && ret2 == KNOT_EOK, "journal: open with smaller mapsize (%d, %d)", ret, ret2);
 	journal_db_close(&db);
-} // journal db is initialized and closed afterwards, ready for test_store_load()
-
+}
 
 /*! \brief Test behavior with real changesets. */
 static void test_store_load(void)
 {
 	int ret, ret2 = KNOT_EOK;
+
+	set_conf(1000, 512 * 1024);
 
 	j = journal_new();
 	ok(j != NULL, "journal: new");
@@ -275,8 +274,6 @@ static void test_store_load(void)
 	ret = journal_db_init(&db, test_dir_name, 1024 * 1024);
 	if (ret == KNOT_EOK) ret2 = journal_open(j, &db, apex);
 	ok(ret == KNOT_EOK, "journal: open (%d, %d)", ret, ret2);
-
-	set_conf(1000, 512 * 1024);
 
 	/* Save and load changeset. */
 	changeset_t *m_ch = changeset_new(apex);
@@ -296,6 +293,7 @@ static void test_store_load(void)
 
 	changesets_free(&l);
 	changesets_free(&k);
+
 	/* Flush the journal. */
 	ret = journal_flush(j);
 	ok(ret == KNOT_EOK, "journal: first and simple flush (%d)", ret);
@@ -317,7 +315,8 @@ static void test_store_load(void)
 		}
 		add_tail(&k, &m_ch2->n);
 	}
-	ok(ret == KNOT_EBUSY, "journal: overfill with changesets (%d inserted) (%d should= %d)", serial, ret, KNOT_EBUSY);
+	ok(ret == KNOT_EBUSY, "journal: overfill with changesets (%d inserted) (%d should= %d)",
+	   serial, ret, KNOT_EBUSY);
 	ret = journal_check(j, JOURNAL_CHECK_INFO);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
@@ -440,16 +439,15 @@ static void test_store_load(void)
 	changesets_free(&l);
 	changesets_free(&k);
 
-	//changeset_free(m_ch);
-
-
 	init_list(&l);
 	init_list(&k);
 
 	unset_conf();
 }
 
-const uint8_t * rdA = (const uint8_t *) "\x01\x02\x03\x04", * rdB = (const uint8_t *) "\x01\x02\x03\x05", * rdC = (const uint8_t *) "\x01\x02\x03\x06";
+const uint8_t *rdA = (const uint8_t *) "\x01\x02\x03\x04";
+const uint8_t *rdB = (const uint8_t *) "\x01\x02\x03\x05";
+const uint8_t *rdC = (const uint8_t *) "\x01\x02\x03\x06";
 
 // frees owner
 static knot_rrset_t * tm_rrset(knot_dname_t * owner, const uint8_t * rdata)
@@ -521,26 +519,23 @@ static changeset_t * tm_chs(const knot_dname_t * apex, int x)
 		return NULL;
 	}
 
-//#define tm_chs_check(what) if ((err = (what)) != KNOT_EOK) printf("error: %s returned %d\n", #what, err)
-#define tm_chs_check(what) (what)
-
 	if (chsI == NULL) {
 		chsI = changeset_new(apex);
 		assert(chsI != NULL);
-		tm_chs_check(changeset_add_addition(chsI, tm_rrs(apex, 0), 0));
-		tm_chs_check(changeset_add_addition(chsI, tm_rrs(apex, 1), 0));
+		changeset_add_addition(chsI, tm_rrs(apex, 0), 0);
+		changeset_add_addition(chsI, tm_rrs(apex, 1), 0);
 	}
 	if (chsX == NULL) {
 		chsX = changeset_new(apex);
 		assert(chsX != NULL);
-		tm_chs_check(changeset_add_removal(chsX, tm_rrs(apex, 1), 0));
-		tm_chs_check(changeset_add_addition(chsX, tm_rrs(apex, 2), 0));
+		changeset_add_removal(chsX, tm_rrs(apex, 1), 0);
+		changeset_add_addition(chsX, tm_rrs(apex, 2), 0);
 	}
 	if (chsY == NULL) {
 		chsY = changeset_new(apex);
 		assert(chsY != NULL);
-		tm_chs_check(changeset_add_removal(chsY, tm_rrs(apex, 2), 0));
-		tm_chs_check(changeset_add_addition(chsY, tm_rrs(apex, 1), 0));
+		changeset_add_removal(chsY, tm_rrs(apex, 2), 0);
+		changeset_add_addition(chsY, tm_rrs(apex, 1), 0);
 	}
 	assert(x >= 0);
 	changeset_t * ret;
@@ -638,8 +633,10 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 			changeset_set_soa_serials(&ch, serial, serial + 1, apex);
 			ret = journal_store_changeset(j, &ch);
 
-			if (ret != KNOT_EOK) fprintf(stderr, "store failed %d serial=%d (espace=%d ebusy=%d)\n", ret, serial, KNOT_ESPACE, KNOT_EBUSY);
-
+			if (ret != KNOT_EOK) {
+				fprintf(stderr, "store failed %d serial=%d (espace=%d ebusy=%d)\n",
+				        ret, serial, KNOT_ESPACE, KNOT_EBUSY);
+			}
 
 			if (ret == KNOT_EOK) {
 				serial++;
@@ -656,7 +653,6 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 
 	unset_conf();
 }
-
 
 /*! \brief Test behavior when writing to jurnal and flushing it. */
 static void test_stress(journal_t *j)
@@ -686,7 +682,11 @@ int main(int argc, char *argv[])
 	test_stress(j);
 
 	journal_close(j);
+	journal_free(&j);
 	journal_db_close(&db);
+
+	test_rm_rf(test_dir_name);
+	free(test_dir_name);
 
 	return 0;
 }

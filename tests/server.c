@@ -32,9 +32,7 @@ int main(int argc, char *argv[])
 	int ret = 0;
 
 	/* Some random configuration just to apply the default conf scheme */
-	const char *conf_str = "server:\n identity: bogus.ns\n version: 0.11\n nsid: ""\n"
-	                       "zone:\n - domain: .\n   zonefile-sync: -1\n";
-	ret = test_conf(conf_str, NULL);
+	ret = test_conf("", NULL);
 	assert(ret == KNOT_EOK);
 
 	/* Register service and signal handler */
