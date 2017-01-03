@@ -133,7 +133,7 @@ inline static void mod_ctr_incr(mod_ctr_t *stats, uint32_t idx, uint64_t val)
 	mod_ctr_t *ctr = stats + idx;
 	assert(ctr->count == 1);
 
-	__sync_fetch_and_add(&ctr->counter, val);
+	__atomic_add_fetch(&ctr->counter, val, __ATOMIC_RELAXED);
 }
 
 inline static void mod_ctr_decr(mod_ctr_t *stats, uint32_t idx, uint64_t val)
@@ -141,7 +141,7 @@ inline static void mod_ctr_decr(mod_ctr_t *stats, uint32_t idx, uint64_t val)
 	mod_ctr_t *ctr = stats + idx;
 	assert(ctr->count == 1);
 
-	__sync_fetch_and_sub(&ctr->counter, val);
+	__atomic_sub_fetch(&ctr->counter, val, __ATOMIC_RELAXED);
 }
 
 inline static void mod_ctrs_incr(mod_ctr_t *stats, uint32_t idx, uint32_t offset, uint64_t val)
@@ -151,9 +151,9 @@ inline static void mod_ctrs_incr(mod_ctr_t *stats, uint32_t idx, uint32_t offset
 
 	// Increment the last counter if offset overflows.
 	if (offset < ctr->count) {
-		__sync_fetch_and_add(&ctr->counters[offset], val);
+		__atomic_add_fetch(&ctr->counters[offset], val, __ATOMIC_RELAXED);
 	} else {
-		__sync_fetch_and_add(&ctr->counters[ctr->count - 1], val);
+		__atomic_add_fetch(&ctr->counters[ctr->count - 1], val, __ATOMIC_RELAXED);
 	}
 }
 
@@ -164,9 +164,9 @@ inline static void mod_ctrs_decr(mod_ctr_t *stats, uint32_t idx, uint32_t offset
 
 	// Increment the last counter if offset overflows.
 	if (offset < ctr->count) {
-		__sync_fetch_and_sub(&ctr->counters[offset], val);
+		__atomic_sub_fetch(&ctr->counters[offset], val, __ATOMIC_RELAXED);
 	} else {
-		__sync_fetch_and_sub(&ctr->counters[ctr->count - 1], val);
+		__atomic_sub_fetch(&ctr->counters[ctr->count - 1], val, __ATOMIC_RELAXED);
 	}
 }
 
