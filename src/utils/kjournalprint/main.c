@@ -32,13 +32,13 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameter] <journal> <zone_name>\n"
+	printf("Usage: %s [parameter] <journal_db> <zone_name>\n"
 	       "\n"
 	       "Parameters:\n"
-	       " -n, --no-color       Get output without terminal coloring.\n"
-	       " -l, --limit <Limit>  Read only x newest changes.\n"
-	       " -t, --list-zones     Instead of reading jurnal, display the list\n"
-	       "                      of zones in the DB (<zone_name> not needed)\n",
+	       " -l, --limit <num>  Read only <num> newest changes.\n"
+	       " -n, --no-color     Get output without terminal coloring.\n"
+	       " -z, --zone-list    Instead of reading jurnal, display the list\n"
+	       "                    of zones in the DB (<zone_name> not needed).\n",
 	       PROGRAM_NAME);
 }
 
@@ -167,20 +167,17 @@ int main(int argc, char *argv[])
 	bool color = true, justlist = false;
 
 	struct option opts[] = {
-		{ "list-zones", no_argument,       NULL, 't' },
-		{ "limit",      required_argument, NULL, 'l' },
-		{ "no-color",   no_argument,       NULL, 'n' },
-		{ "help",       no_argument,       NULL, 'h' },
-		{ "version",    no_argument,       NULL, 'V' },
+		{ "limit",     required_argument, NULL, 'l' },
+		{ "no-color",  no_argument,       NULL, 'n' },
+		{ "zone-list", no_argument,       NULL, 'z' },
+		{ "help",      no_argument,       NULL, 'h' },
+		{ "version",   no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "tl:nhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "l:nzhV", opts, NULL)) != -1) {
 		switch (opt) {
-		case 't':
-			justlist = true;
-			break;
 		case 'l':
 			if (str_to_u32(optarg, &limit) != KNOT_EOK) {
 				print_help();
@@ -189,6 +186,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'n':
 			color = false;
+			break;
+		case 'z':
+			justlist = true;
 			break;
 		case 'h':
 			print_help();
