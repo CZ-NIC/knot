@@ -4,3 +4,4 @@
 /knotd_stdio
 /packet
 /packet_libfuzzer
+/wrap/main.c
