@@ -20,10 +20,11 @@
 #include <signal.h>
 
 #include "libknot/libknot.h"
+#include "afl-loop.h"
 
 int main(void)
 {
-	for(;;) {
+	while (__AFL_LOOP(1000)) {
 		uint8_t buffer[UINT16_MAX + 1] = { 0 };
 		size_t len = fread(buffer, 1, sizeof(buffer), stdin);
 
@@ -32,10 +33,6 @@ int main(void)
 		int r = knot_pkt_parse(pkt, 0);
 		knot_pkt_free(&pkt);
 
-		if (getenv("AFL_PERSISTENT")) {
-			raise(SIGSTOP);
-		} else {
-			return (r == KNOT_EOK ? 0 : 1);
-		}
+		return (r == KNOT_EOK ? 0 : 1);
 	}
 }
