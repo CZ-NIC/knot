@@ -216,18 +216,8 @@ static void setup_capabilities(void)
 }
 
 /*! \brief Event loop listening for signals and remote commands. */
-static void event_loop(server_t *server, char *socket)
+static void event_loop(server_t *server, const char *socket)
 {
-	/* Get control socket configuration. */
-	char *listen = socket;
-	if (socket == NULL) {
-		conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
-		conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
-		char *rundir = conf_abs_path(&rundir_val, NULL);
-		listen = conf_abs_path(&listen_val, rundir);
-		free(rundir);
-	}
-
 	knot_ctl_t *ctl = knot_ctl_alloc();
 	if (ctl == NULL) {
 		log_fatal("control, failed to initialize (%s)",
@@ -238,6 +228,22 @@ static void event_loop(server_t *server, char *socket)
 	// Set control timeout.
 	knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
 
+	/* Get control socket configuration. */
+	char *listen;
+	if (socket == NULL) {
+		conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
+		conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
+		char *rundir = conf_abs_path(&rundir_val, NULL);
+		listen = conf_abs_path(&listen_val, rundir);
+		free(rundir);
+	} else {
+		listen = strdup(socket);
+	}
+	if (listen == NULL) {
+		log_fatal("control, empty socket path");
+		return;
+	}
+
 	log_info("control, binding to '%s'", listen);
 
 	/* Bind the control socket. */
@@ -246,12 +252,10 @@ static void event_loop(server_t *server, char *socket)
 		knot_ctl_free(ctl);
 		log_fatal("control, failed to bind socket '%s' (%s)",
 		          listen, knot_strerror(ret));
+		free(listen);
 		return;
 	}
-
-	if (socket == NULL) {
-		free(listen);
-	}
+	free(listen);
 
 	enable_signals();
 
