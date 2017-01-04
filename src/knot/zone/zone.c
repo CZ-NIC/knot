@@ -37,17 +37,17 @@
 #define JOURNAL_LOCK_RW pthread_mutex_lock(JOURNAL_LOCK_MUTEX);
 #define JOURNAL_UNLOCK_RW pthread_mutex_unlock(JOURNAL_LOCK_MUTEX);
 
-static void free_ddns_queue(zone_t *z)
+static void free_ddns_queue(zone_t *zone)
 {
 	ptrnode_t *node = NULL, *nxt = NULL;
-	WALK_LIST_DELSAFE(node, nxt, z->ddns_queue) {
+	WALK_LIST_DELSAFE(node, nxt, zone->ddns_queue) {
 		knot_request_free(node->d, NULL);
 	}
-	ptrlist_free(&z->ddns_queue, NULL);
+	ptrlist_free(&zone->ddns_queue, NULL);
 }
 
 /*! \brief Open journal for zone. */
-static int open_journal(conf_t *conf, zone_t *zone)
+static int open_journal(zone_t *zone)
 {
 	assert(zone);
 
@@ -71,10 +71,11 @@ static int flush_journal(conf_t *conf, zone_t *zone)
 {
 	/*! @note Function expects nobody will change zone contents meanwile. */
 
+	assert(zone);
+
 	bool force = zone->flags & ZONE_FORCE_FLUSH;
 	zone->flags &= ~ZONE_FORCE_FLUSH;
 
-	assert(zone);
 	if (zone_contents_is_empty(zone->contents)) {
 		return KNOT_EINVAL;
 	}
@@ -98,24 +99,24 @@ static int flush_journal(conf_t *conf, zone_t *zone)
 	int ret = zonefile_write(zonefile, contents);
 	if (ret != KNOT_EOK) {
 		log_zone_warning(zone->name, "failed to update zone file (%s)",
-				 knot_strerror(ret));
+		                 knot_strerror(ret));
 		free(zonefile);
 		return ret;
 	}
 
 	if (zone->zonefile.exists) {
 		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
-			      zone->zonefile.serial, serial_to);
+		              zone->zonefile.serial, serial_to);
 	} else {
 		log_zone_info(zone->name, "zone file updated, serial %u",
-			      serial_to);
+		              serial_to);
 	}
 
 	/* Update zone version. */
 	struct stat st;
 	if (stat(zonefile, &st) < 0) {
 		log_zone_warning(zone->name, "failed to update zone file (%s)",
-				 knot_strerror(knot_map_errno()));
+		                 knot_strerror(knot_map_errno()));
 		free(zonefile);
 		return KNOT_EACCES;
 	}
@@ -238,8 +239,7 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
 
 	JOURNAL_LOCK_RW
 
-	int ret = open_journal(conf, zone);
-
+	int ret = open_journal(zone);
 	if (ret == KNOT_EOK) {
 		ret = journal_store_changeset(zone->journal, change);
 		if (ret == KNOT_EBUSY) {
@@ -252,6 +252,7 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
 			}
 		}
 	}
+
 	JOURNAL_UNLOCK_RW
 
 	return ret;
@@ -265,8 +266,7 @@ int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs)
 
 	JOURNAL_LOCK_RW
 
-	int ret = open_journal(conf, zone);
-
+	int ret = open_journal(zone);
 	if (ret == KNOT_EOK) {
 		ret = journal_store_changesets(zone->journal, chgs);
 		if (ret == KNOT_EBUSY) {
@@ -278,8 +278,8 @@ int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs)
 				ret = journal_store_changesets(zone->journal, chgs);
 			}
 		}
-
 	}
+
 	JOURNAL_UNLOCK_RW
 
 	return ret;
@@ -291,13 +291,10 @@ int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from)
 		return KNOT_EINVAL;
 	}
 
-	int ret;
+	int ret = KNOT_ENOENT;
 
-	if (!journal_exists(zone->journal_db, zone->name)) {
-		ret = KNOT_ENOENT;
-	}
-	else {
-		ret = open_journal(conf, zone);
+	if (journal_exists(zone->journal_db, zone->name)) {
+		ret = open_journal(zone);
 	}
 
 	if (ret == KNOT_EOK) {

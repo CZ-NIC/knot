@@ -511,7 +511,7 @@ size_t knot_db_lmdb_get_mapsize(knot_db_t *db)
 
 // you should SUM all the usages of DBs sharing one mapsize
 _public_
-size_t knot_db_lmdb_get_usage(knot_db_t * db)
+size_t knot_db_lmdb_get_usage(knot_db_t *db)
 {
 	struct lmdb_env *env = db;
 	knot_db_txn_t txn;

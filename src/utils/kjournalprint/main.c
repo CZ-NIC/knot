@@ -59,7 +59,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		return KNOT_ENOMEM;
 	}
 
-	journal_db_t * jdb = NULL;
+	journal_db_t *jdb = NULL;
 	journal_t *j = journal_new();
 	int ret;
 
@@ -137,9 +137,9 @@ pj_finally:
 	return ret;
 }
 
-int list_zones(char * path)
+int list_zones(char *path)
 {
-	journal_db_t * jdb = NULL;
+	journal_db_t *jdb = NULL;
 	int ret = journal_db_init(&jdb, path, 1);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -149,7 +149,7 @@ int list_zones(char * path)
 	init_list(&zones);
 	ret = journal_db_list_zones(&jdb, &zones);
 	if (ret == KNOT_EOK) {
-		ptrnode_t * zn;
+		ptrnode_t *zn;
 		WALK_LIST(zn, zones) {
 			printf("%s\n", (char *)zn->d);
 			free(zn->d);
@@ -160,7 +160,6 @@ int list_zones(char * path)
 	journal_db_close(&jdb);
 	return ret;
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -219,7 +218,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (db == NULL) {
-		fprintf(stderr, "Journal file not specified\n");
+		fprintf(stderr, "Journal DB path not specified\n");
 		return EXIT_FAILURE;
 	}
 
@@ -227,15 +226,15 @@ int main(int argc, char *argv[])
 		int ret = list_zones(db);
 		switch (ret) {
 		case KNOT_ENOENT:
-			printf("No zones in journal DB.\n");
+			printf("No zones in journal DB\n");
 			// FALLTHROUGH
 		case KNOT_EOK:
 			return EXIT_SUCCESS;
 		case KNOT_EMALF:
-			fprintf(stderr, "The journal DB is broken.\n");
+			fprintf(stderr, "The journal DB is broken\n");
 			return EXIT_FAILURE;
 		default:
-			fprintf(stderr, "Failed to load zone list (%s).\n", knot_strerror(ret));
+			fprintf(stderr, "Failed to load zone list (%s)\n", knot_strerror(ret));
 			return EXIT_FAILURE;
 		}
 	}
@@ -250,15 +249,15 @@ int main(int argc, char *argv[])
 
 	switch (ret) {
 	case KNOT_ENOENT:
-		printf("The journal is empty.\n");
+		printf("The journal is empty\n");
 		break;
 	case KNOT_EOUTOFZONE:
-		fprintf(stderr, "The specified journal DB does not contain the specified zone.\n");
+		fprintf(stderr, "The specified journal DB does not contain the specified zone\n");
 		return EXIT_FAILURE;
 	case KNOT_EOK:
 		break;
 	default:
-		fprintf(stderr, "Failed to load changesets (%s).\n", knot_strerror(ret));
+		fprintf(stderr, "Failed to load changesets (%s)\n", knot_strerror(ret));
 		return EXIT_FAILURE;
 	}
 

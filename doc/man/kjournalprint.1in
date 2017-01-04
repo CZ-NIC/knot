@@ -32,20 +32,21 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkjournalprint\fP [\fIparameters\fP] \fIjournal\fP \fIzone_name\fP
+\fBkjournalprint\fP [\fIoptions\fP] \fIjournal_db\fP \fIzone_name\fP
 .SH DESCRIPTION
 .sp
-Program requires journal. As default, changes are colored for terminal.
-.SS Parameters
+The program prints zone history stored in a journal database. As default,
+changes are colored for terminal.
+.SS Options
 .INDENT 0.0
-.TP
-\fB\-n\fP, \fB\-\-no\-color\fP
-Removes changes coloring.
 .TP
 \fB\-l\fP, \fB\-\-limit\fP \fIlimit\fP
 Limits the number of displayed changes.
 .TP
-\fB\-t\fP, \fB\-\-list\-zones\fP
+\fB\-n\fP, \fB\-\-no\-color\fP
+Removes changes coloring.
+.TP
+\fB\-z\fP, \fB\-\-zone\-list\fP
 Instead of reading jurnal, display the list of zones in the DB.
 (\fIzone_name\fP not needed)
 .TP
@@ -55,20 +56,24 @@ Print the program help.
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
 .UNINDENT
-.SS Journal
-.sp
-Requires journal in the form of path/zone\-name.db
-.SS Zone name
-.sp
-Requires name of the zone contained in the journal.
+.SS Parameters
+.INDENT 0.0
+.TP
+\fIjournal_db\fP
+A path to the journal database.
+.TP
+\fIzone_name\fP
+A name of the zone to print the history for.
+.UNINDENT
 .SH EXAMPLES
-.SS Last (\fImost recent\fP) 5 changes without colors
+.sp
+Last (most recent) 5 changes without colors:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-$ kjournalprint \-nl 5 example.com.db example.com.
+$ kjournalprint \-nl 5 /var/lib/knot/journal example.com.
 .ft P
 .fi
 .UNINDENT

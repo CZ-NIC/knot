@@ -635,8 +635,8 @@ if a zone doesn\(aqt have another template specified.
 template:
   \- id: STR
     timer\-db: STR
-    journal: STR
-    max\-journal\-size: SIZE
+    journal\-db: STR
+    max\-journal\-db\-size: SIZE
     global\-module: STR/STR ...
     # All zone options (excluding \(aqtemplate\(aq item)
 .ft P
@@ -726,7 +726,7 @@ zone:
     zonefile\-sync: TIME
     ixfr\-from\-differences: BOOL
     max\-journal\-usage: SIZE
-    max\-journal\-depth: SIZE
+    max\-journal\-depth: INT
     max\-zone\-size : SIZE
     dnssec\-signing: BOOL
     dnssec\-policy: STR

@@ -54,4 +54,4 @@ int knot_db_lmdb_txn_begin(knot_db_t *db, knot_db_txn_t *txn, knot_db_txn_t *par
                            unsigned flags);
 int knot_db_lmdb_iter_del(knot_db_iter_t *iter);
 size_t knot_db_lmdb_get_mapsize(knot_db_t *db);
-size_t knot_db_lmdb_get_usage(knot_db_t * db);
+size_t knot_db_lmdb_get_usage(knot_db_t *db);

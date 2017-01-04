@@ -114,13 +114,13 @@ static void try_old_journal(conf_t *conf, zone_t *zone, uint32_t zone_c_serial, 
 
 	// determine serial to load from
 	if (!EMPTY_LIST(*chgs)) {
-		changeset_t * lastch = TAIL(*chgs);
+		changeset_t *lastch = TAIL(*chgs);
 		zone_c_serial = knot_soa_serial(&lastch->soa_to->rrs);
 	}
 
 	// load changesets from old journal
 	int ret = old_journal_load_changesets(jfile, zone->name, &old_chgs,
-	                                  zone_c_serial, zone_c_serial - 1);
+	                                      zone_c_serial, zone_c_serial - 1);
 	if (ret != KNOT_ERANGE && ret != KNOT_ENOENT && ret != KNOT_EOK) {
 		log_zone_warning(zone->name, "journal, failed to load obsolete history (%s)",
 		                 knot_strerror(ret));
