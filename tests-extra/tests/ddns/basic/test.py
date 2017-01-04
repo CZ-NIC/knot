@@ -438,7 +438,7 @@ def do_refusal_tests(master, zone, dnssec=False):
     for f in forbidden:
         up = master.update(zone)
         up.add("forbidden.ddns.", 3600, f['type'], f['data'])
-        up.send("REFUSED")
+        up.send("NOERROR")
         resp = master.dig("forbidden.ddns", "ANY")
         resp.check(rcode="NXDOMAIN")
         check_soa(master, prev_soa)
@@ -448,17 +448,14 @@ def do_refusal_tests(master, zone, dnssec=False):
     for f in forbidden:
         up = master.update(zone)
         up.delete("forbidden.ddns.", f['type'])
-        up.send("REFUSED")
+        up.send("NOERROR")
         check_soa(master, prev_soa)
 
     # Add normal records and then forbidden one
     check_log("Refusal rollback")
     up = master.update(zone)
-    up.add("rollback.ddns.", 3600, "TXT", "do not add me")
     up.add("forbidden.ddns.", 3600, forbidden[0]['type'], forbidden[0]['data'])
-    up.send("REFUSED")
-    resp = master.dig("rollback.ddns", "ANY")
-    resp.check(rcode="NXDOMAIN")
+    up.send("NOERROR")
     resp = master.dig("forbidden.ddns", "ANY")
     resp.check(rcode="NXDOMAIN")
     check_soa(master, prev_soa)
@@ -466,18 +463,15 @@ def do_refusal_tests(master, zone, dnssec=False):
     # Add DNAME children
     check_log("Add DNAME children rollback")
     up = master.update(zone)
-    up.add("rollback.ddns.", 3600, "TXT", "do not add me")
     up.add("under.dname.ddns.", 3600, "DNAME", "ddns.")
-    up.send("REFUSED")
-    resp = master.dig("rollback.ddns", "ANY")
-    resp.check(rcode="NXDOMAIN")
+    up.send("NOERROR")
     check_soa(master, prev_soa)
 
     # Out-of-zone data
     check_log("Out-of-zone data")
     up = master.update(zone)
     up.add("what.the.hell.am.i.doing.here.", "3600", "TXT", "I don't belong here")
-    up.send("NOTZONE")
+    up.send("NOERROR")
     check_soa(master, prev_soa)
 
     # Remove 'all' SOA, ignore
@@ -500,7 +494,7 @@ def do_refusal_tests(master, zone, dnssec=False):
         up = master.update(zone)
         up.add("ddns.", "3600", "DNSKEY",
                "256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
-        up.send("REFUSED")
+        up.send("NOERROR")
         resp = master.dig("ddns.", "DNSKEY")
         resp.check(rcode="NOERROR",
                    nordata="256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
@@ -509,10 +503,9 @@ def do_refusal_tests(master, zone, dnssec=False):
         check_log("NSEC3PARAM addition")
         up = master.update(zone)
         up.add("ddns.", "0", "NSEC3PARAM", "1 0 10 B8399FF56C1C0C7E")
-        up.send("REFUSED")
+        up.send("NOERROR")
         resp = master.dig("ddns.", "NSEC3PARAM")
         resp.check(rcode="NOERROR", nordata="1 0 10 B8399FF56C1C0C7E")
-
         check_soa(master, prev_soa)
 
         # Add DNSKEY

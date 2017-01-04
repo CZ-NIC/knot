@@ -404,7 +404,7 @@ static int process_add_nsec3param(const zone_node_t *node,
 		log_warning("DDNS, refusing to add NSEC3PARAM to non-apex "
 		            "node '%s'", owner);
 		free(owner);
-		return KNOT_EDENIED;
+		return KNOT_EOK;
 	}
 	knot_rrset_t param = node_rrset(node, KNOT_RRTYPE_NSEC3PARAM);
 	if (knot_rrset_empty(&param)) {
@@ -590,17 +590,17 @@ static int process_remove(const knot_rrset_t *rr,
 	} else if (is_node_removal(rr)) {
 		return process_rem_node(rr, node, update);
 	} else {
-		return KNOT_EINVAL;
+		return KNOT_EOK;
 	}
 }
 
 /* --------------------------- validity checks ------------------------------ */
 
-/*!< \brief Checks whether addition has not violated DNAME rules. */
-static bool sem_check(const knot_rrset_t *rr, const zone_node_t *zone_node,
-                      zone_update_t *update)
+/*< \brief Checks whether addition will not violate DNAME rules. */
+static bool sem_precheck(const knot_rrset_t *rr, const zone_node_t *zone_node,
+			 zone_update_t *update)
 {
-	// Check that we have not added DNAME child
+	// Check that we will not add DNAME child
 	const knot_dname_t *parent_dname = knot_wire_next_label(rr->owner, NULL);
 	const zone_node_t *parent = zone_update_get_node(update, parent_dname);
 	if (parent == NULL) {
@@ -616,9 +616,9 @@ static bool sem_check(const knot_rrset_t *rr, const zone_node_t *zone_node,
 		return true;
 	}
 
-	// Check that we have not created node with DNAME children.
+	// Check that we will not create node with DNAME children.
 	if (zone_node->children > 0) {
-		// Updated node has children and DNAME was added, refuse update
+		// Updated node has children and DNAME will be added, refuse update
 		return false;
 	}
 
@@ -677,17 +677,15 @@ static int process_rr(const knot_rrset_t *rr, zone_update_t *update)
 	const zone_node_t *node = zone_update_get_node(update, rr->owner);
 
 	if (is_addition(rr)) {
-		int ret = process_add(rr, node, update);
-		if (ret == KNOT_EOK) {
-			if (!sem_check(rr, node, update)) {
-				return KNOT_EDENIED;
-			}
+		if (!sem_precheck(rr, node, update)) {
+			return KNOT_EOK;
 		}
+		int ret = process_add(rr, node, update);
 		return ret;
 	} else if (is_removal(rr)) {
 		return process_remove(rr, node, update);
 	} else {
-		return KNOT_EMALF;
+		return KNOT_EOK;
 	}
 }
 
@@ -754,8 +752,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		// Check if RR is correct.
 		int ret = check_update(rr, query, rcode);
 		if (ret != KNOT_EOK) {
-			assert(*rcode != KNOT_RCODE_NOERROR);
-			return ret;
+			continue;
 		}
 
 		if (skip_soa(rr, sn_old)) {
