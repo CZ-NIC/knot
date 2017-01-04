@@ -24,6 +24,8 @@
 /* LMDB specific flags. */
 extern const unsigned KNOT_DB_LMDB_NOTLS;
 extern const unsigned KNOT_DB_LMDB_RDONLY;
+extern const unsigned KNOT_DB_LMDB_INTEGERKEY;
+extern const unsigned KNOT_DB_LMDB_NOSYNC;
 
 /* Native options. */
 struct knot_db_lmdb_opts {
@@ -51,3 +53,5 @@ const knot_db_api_t *knot_db_lmdb_api(void);
 int knot_db_lmdb_txn_begin(knot_db_t *db, knot_db_txn_t *txn, knot_db_txn_t *parent,
                            unsigned flags);
 int knot_db_lmdb_iter_del(knot_db_iter_t *iter);
+size_t knot_db_lmdb_get_mapsize(knot_db_t *db);
+size_t knot_db_lmdb_get_usage(knot_db_t *db);

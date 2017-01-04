@@ -15,6 +15,7 @@
  */
 
 #include <dirent.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>

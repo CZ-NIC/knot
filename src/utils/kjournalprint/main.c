@@ -18,7 +18,7 @@
 #include <getopt.h>
 
 #include "libknot/libknot.h"
-#include "knot/server/serialization.h"
+#include "knot/journal/journal.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/exec.h"
 #include "contrib/strtonum.h"
@@ -32,11 +32,13 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameter] <journal> <zone_name>\n"
+	printf("Usage: %s [parameter] <journal_db> <zone_name>\n"
 	       "\n"
 	       "Parameters:\n"
-	       " -n, --no-color       Get output without terminal coloring.\n"
-	       " -l, --limit <Limit>  Read only x newest changes.\n",
+	       " -l, --limit <num>  Read only <num> newest changes.\n"
+	       " -n, --no-color     Get output without terminal coloring.\n"
+	       " -z, --zone-list    Instead of reading jurnal, display the list\n"
+	       "                    of zones in the DB (<zone_name> not needed).\n",
 	       PROGRAM_NAME);
 }
 
@@ -57,39 +59,52 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		return KNOT_ENOMEM;
 	}
 
-	// Open journal for reading.
-	journal_t *journal = NULL;
-	int ret = journal_open(&journal, path, ~((size_t)0));
+	journal_db_t *jdb = NULL;
+	journal_t *j = journal_new();
+	int ret;
+
+	ret = journal_db_init(&jdb, path, 1);
 	if (ret != KNOT_EOK) {
+		journal_free(&j);
 		free(buff);
 		return ret;
 	}
 
-	// Load changesets from journal.
-	if (journal->qtail == journal->qhead) {
-		journal_close(journal);
+	if (!journal_exists(&jdb, name)) {
+		fprintf(stderr, "This zone does not exist in DB %s\n", path);
+		ret = KNOT_ENOENT;
+	}
+
+	if (ret == KNOT_EOK) {
+		ret = journal_open(j, &jdb, name);
+	}
+	if (ret != KNOT_EOK) {
+		journal_free(&j);
+		journal_db_close(&jdb);
 		free(buff);
-		return KNOT_ENOENT;
+		return ret;
 	}
 
-	size_t i = (limit && journal->qtail - limit) ?
-	           journal->qtail - limit : journal->qhead;
-	for (; i < journal->qtail; i = (i + 1) % journal->max_nodes) {
-		// Skip invalid nodes.
-		journal_node_t *n = journal->nodes + i;
-		if (!(n->flags & JOURNAL_VALID)) {
-			printf("%zu. node invalid\n", i);
-			continue;
-		}
-		load_changeset(journal, n, name, &db);
+	bool is_empty;
+	uint32_t serial_from, serial_to;
+	journal_metadata_info(j, &is_empty, &serial_from, &serial_to);
+	if (is_empty) {
+		ret = KNOT_ENOENT;
+		goto pj_finally;
 	}
 
-	// Unpack and print changsets.
+	ret = journal_load_changesets(j, &db, serial_from);
+	if (ret != KNOT_EOK) {
+		goto pj_finally;
+	}
+
 	changeset_t *chs = NULL;
-	for (chs = (void *)(db.head); (node_t *)((node_t *)chs)->next; chs = (void *)((node_t *) chs)->next) {
-		ret = changesets_unpack(chs);
-		if (ret != KNOT_EOK) {
-			break;
+
+	size_t db_remains = list_size(&db);
+
+	WALK_LIST(chs, db) {
+		if (--db_remains >= limit && limit > 0) {
+			continue;
 		}
 
 		printf(color ? YLW : "");
@@ -111,28 +126,57 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		printf(color ? RESET : "");
 	}
 
-	free(buff);
 	changesets_free(&db);
-	journal_close(journal);
 
+pj_finally:
+	free(buff);
+	journal_close(j);
+	journal_free(&j);
+	journal_db_close(&jdb);
+
+	return ret;
+}
+
+int list_zones(char *path)
+{
+	journal_db_t *jdb = NULL;
+	int ret = journal_db_init(&jdb, path, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	list_t zones;
+	init_list(&zones);
+	ret = journal_db_list_zones(&jdb, &zones);
+	if (ret == KNOT_EOK) {
+		ptrnode_t *zn;
+		WALK_LIST(zn, zones) {
+			printf("%s\n", (char *)zn->d);
+			free(zn->d);
+		}
+		ptrlist_free(&zones, NULL);
+	}
+
+	journal_db_close(&jdb);
 	return ret;
 }
 
 int main(int argc, char *argv[])
 {
 	uint32_t limit = 0;
-	bool color = true;
+	bool color = true, justlist = false;
 
 	struct option opts[] = {
-		{ "limit",    required_argument, NULL, 'l' },
-		{ "no-color", no_argument,       NULL, 'n' },
-		{ "help",     no_argument,       NULL, 'h' },
-		{ "version",  no_argument,       NULL, 'V' },
+		{ "limit",     required_argument, NULL, 'l' },
+		{ "no-color",  no_argument,       NULL, 'n' },
+		{ "zone-list", no_argument,       NULL, 'z' },
+		{ "help",      no_argument,       NULL, 'h' },
+		{ "version",   no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "l:nhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "l:nzhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
 			if (str_to_u32(optarg, &limit) != KNOT_EOK) {
@@ -142,6 +186,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'n':
 			color = false;
+			break;
+		case 'z':
+			justlist = true;
 			break;
 		case 'h':
 			print_help();
@@ -171,9 +218,27 @@ int main(int argc, char *argv[])
 	}
 
 	if (db == NULL) {
-		fprintf(stderr, "Journal file not specified\n");
+		fprintf(stderr, "Journal DB path not specified\n");
 		return EXIT_FAILURE;
 	}
+
+	if (justlist) {
+		int ret = list_zones(db);
+		switch (ret) {
+		case KNOT_ENOENT:
+			printf("No zones in journal DB\n");
+			// FALLTHROUGH
+		case KNOT_EOK:
+			return EXIT_SUCCESS;
+		case KNOT_EMALF:
+			fprintf(stderr, "The journal DB is broken\n");
+			return EXIT_FAILURE;
+		default:
+			fprintf(stderr, "Failed to load zone list (%s)\n", knot_strerror(ret));
+			return EXIT_FAILURE;
+		}
+	}
+
 	if (name == NULL) {
 		fprintf(stderr, "Zone not specified\n");
 		return EXIT_FAILURE;
@@ -184,15 +249,15 @@ int main(int argc, char *argv[])
 
 	switch (ret) {
 	case KNOT_ENOENT:
-		printf("The journal is empty.\n");
+		printf("The journal is empty\n");
 		break;
 	case KNOT_EOUTOFZONE:
-		fprintf(stderr, "The specified journal DB does not contain the specified zone.\n");
+		fprintf(stderr, "The specified journal DB does not contain the specified zone\n");
 		return EXIT_FAILURE;
 	case KNOT_EOK:
 		break;
 	default:
-		fprintf(stderr, "Failed to load changesets (%s).\n", knot_strerror(ret));
+		fprintf(stderr, "Failed to load changesets (%s)\n", knot_strerror(ret));
 		return EXIT_FAILURE;
 	}
 

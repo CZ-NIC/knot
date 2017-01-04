@@ -28,16 +28,10 @@ static void discard_zone(zone_t *zone)
 {
 	// Don't flush if removed zone (no previous configuration available).
 	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name))) {
-		char *journal_file = conf_journalfile(conf(), zone->name);
-
-		/* Flush if bootstrapped or if the journal doesn't exist. */
-		if (!zone->zonefile.exists || !journal_exists(journal_file)) {
-			pthread_mutex_lock(&zone->journal_lock);
+		// Flush if bootstrapped or if the journal doesn't exist.
+		if (!zone->zonefile.exists || !journal_exists(zone->journal_db, zone->name)) {
 			zone_flush_journal(conf(), zone);
-			pthread_mutex_unlock(&zone->journal_lock);
 		}
-
-		free(journal_file);
 	}
 
 	zone_free(&zone);

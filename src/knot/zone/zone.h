@@ -30,7 +30,7 @@
 
 #include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
-#include "knot/server/journal.h"
+#include "knot/journal/journal.h"
 #include "knot/events/events.h"
 #include "knot/zone/contents.h"
 #include "libknot/dname.h"
@@ -80,8 +80,14 @@ typedef struct zone
 	/*! \brief Control update context. */
 	struct zone_update *control_update;
 
+	/*! \brief Journal structure. */
+	journal_t *journal;
+
 	/*! \brief Journal access lock. */
 	pthread_mutex_t journal_lock;
+
+	/*! \brief Ptr to journal DB (in struct server) */
+	journal_db_t **journal_db;
 
 	/*! \brief Preferred master lock. */
 	pthread_mutex_t preferred_lock;
@@ -123,8 +129,13 @@ void zone_control_clear(zone_t *zone);
  * \ref #223 New zone API
  * \todo get rid of this
  */
-int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs);
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
+int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs);
+int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from);
+
+/*! \brief Synchronize zone file with journal. */
+int zone_flush_journal(conf_t *conf, zone_t *zone);
+
 /*!
  * \brief Atomically switch the content of the zone.
  */
@@ -154,8 +165,6 @@ typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *r
 int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
                     void *callback_data, const char *err_str);
 
-/*! \brief Synchronize zone file with journal. */
-int zone_flush_journal(conf_t *conf, zone_t *zone);
 
 /*! \brief Enqueue UPDATE request for processing. */
 int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param);

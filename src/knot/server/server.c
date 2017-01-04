@@ -379,6 +379,17 @@ int server_init(server_t *server, int bg_workers)
 		return KNOT_ENOMEM;
 	}
 
+	char *journal_dir = conf_journalfile(conf());
+	conf_val_t journal_size = conf_default_get(conf(), C_MAX_JOURNAL_DB_SIZE);
+	int ret = journal_db_init(&server->journal_db, journal_dir,
+	                          conf_int(&journal_size));
+	free(journal_dir);
+	if (ret != KNOT_EOK) {
+		worker_pool_destroy(server->workers);
+		evsched_deinit(&server->sched);
+		return ret;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -405,6 +416,9 @@ void server_deinit(server_t *server)
 
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
+
+	/* Close journal database if open. */
+	journal_db_close(&server->journal_db);
 
 	/* Close persistent timers database. */
 	close_timers_db(server->timers_db);
@@ -660,6 +674,34 @@ static int reconfigure_threads(conf_t *conf, server_t *server)
 	return reset_handler(server, IO_TCP, conf_tcp_threads(conf), tcp_master);
 }
 
+static int reconfigure_journal_db(conf_t *conf, server_t *server)
+{
+	char *journal_dir = conf_journalfile(conf);
+	conf_val_t journal_size = conf_default_get(conf, C_MAX_JOURNAL_DB_SIZE);
+	bool changed_path = (strcmp(journal_dir, server->journal_db->path) != 0);
+	bool changed_size = (conf_int(&journal_size) != server->journal_db->fslimit);
+	int ret = KNOT_EOK;
+
+	if (server->journal_db->db != NULL) {
+		if (changed_path) {
+			log_warning("journal, ignored reconfiguration of journal DB path (already open)");
+		}
+		if (changed_size) {
+			log_warning("journal, ignored reconfiguration of journal DB max size (already open)");
+		}
+	} else if (changed_path || changed_size) {
+		journal_db_t *newjdb = NULL;
+		ret = journal_db_init(&newjdb, journal_dir, conf_int(&journal_size));
+		if (ret == KNOT_EOK) {
+			journal_db_close(&server->journal_db);
+			server->journal_db = newjdb;
+		}
+	}
+	free(journal_dir);
+
+	return ret;
+}
+
 void server_reconfigure(conf_t *conf, server_t *server)
 {
 	if (conf == NULL || server == NULL) {
@@ -675,6 +717,12 @@ void server_reconfigure(conf_t *conf, server_t *server)
 	int ret;
 	if ((ret = reconfigure_threads(conf, server)) < 0) {
 		log_error("failed to reconfigure server threads (%s)",
+		          knot_strerror(ret));
+	}
+
+	/* Reconfigure journal DB. */
+	if ((ret = reconfigure_journal_db(conf, server)) < 0) {
+		log_error("failed to reconfigure journal DB (%s)",
 		          knot_strerror(ret));
 	}
 

@@ -161,7 +161,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 #undef IXFR_SAFE_PUT
 
 /*! \brief Loads IXFRs from journal. */
-static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
+static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
                             const knot_rrset_t *their_soa)
 {
 	assert(chgsets);
@@ -175,12 +175,7 @@ static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
 		return KNOT_EUPTODATE;
 	}
 
-	char *path = conf_journalfile(conf(), zone->name);
-	pthread_mutex_lock((pthread_mutex_t *)&zone->journal_lock);
-	ret = journal_load_changesets(path, zone->name, chgsets, serial_from, serial_to);
-	pthread_mutex_unlock((pthread_mutex_t *)&zone->journal_lock);
-	free(path);
-
+	ret = zone_changes_load(conf(), zone, chgsets, serial_from);
 	if (ret != KNOT_EOK) {
 		changesets_free(chgsets);
 	}
@@ -582,12 +577,6 @@ static int ixfrin_step(const knot_rrset_t *rr, struct ixfr_proc *proc)
 	return ret;
 }
 
-/*! \brief Checks whether journal node limit has not been exceeded. */
-static bool journal_limit_exceeded(struct ixfr_proc *proc)
-{
-	return proc->change_count > JOURNAL_NCOUNT;
-}
-
 /*! \brief Checks whether RR belongs into zone. */
 static bool out_of_zone(const knot_rrset_t *rr, struct ixfr_proc *proc)
 {
@@ -617,11 +606,6 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 	// Process RRs in the message.
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	for (uint16_t i = 0; i < answer->count; ++i) {
-		if (journal_limit_exceeded(ixfr)) {
-			IXFRIN_LOG(LOG_WARNING, "journal is full");
-			return KNOT_STATE_FAIL;
-		}
-
 		const knot_rrset_t *rr = knot_pkt_rr(answer, i);
 		if (out_of_zone(rr, ixfr)) {
 			continue;

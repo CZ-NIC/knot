@@ -16,6 +16,7 @@
 
 #include <tap/basic.h>
 #include "knot/server/server.h"
+#include "test_conf.h"
 
 // Signal handler
 static void interrupt_handle(int s)
@@ -29,6 +30,10 @@ int main(int argc, char *argv[])
 
 	server_t server;
 	int ret = 0;
+
+	/* Some random configuration just to apply the default conf scheme */
+	ret = test_conf("", NULL);
+	assert(ret == KNOT_EOK);
 
 	/* Register service and signal handler */
 	struct sigaction sa;

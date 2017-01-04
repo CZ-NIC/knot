@@ -115,6 +115,8 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 		return NULL;
 	}
 
+	zone->journal_db = &server->journal_db;
+
 	int result = zone_events_setup(zone, server->workers, &server->sched,
 	                               server->timers_db);
 	if (result != KNOT_EOK) {

@@ -6,21 +6,26 @@ kjournalprint – Knot DNS journal print utility
 Synopsis
 --------
 
-:program:`kjournalprint` [*parameters*] *journal* *zone_name*
+:program:`kjournalprint` [*options*] *journal_db* *zone_name*
 
 Description
 -----------
 
-Program requires journal. As default, changes are colored for terminal.
+The program prints zone history stored in a journal database. As default,
+changes are colored for terminal.
 
-Parameters
-..........
+Options
+.......
+
+**-l**, **--limit** *limit*
+  Limits the number of displayed changes.
 
 **-n**, **--no-color**
   Removes changes coloring.
 
-**-l**, **--limit** *limit*
-  Limits the number of displayed changes.
+**-z**, **--zone-list**
+  Instead of reading jurnal, display the list of zones in the DB.
+  (*zone_name* not needed)
 
 **-h**, **--help**
   Print the program help.
@@ -28,25 +33,21 @@ Parameters
 **-V**, **--version**
   Print the program version.
 
-Journal
-.......
+Parameters
+..........
 
-Requires journal in the form of path/zone-name.db
+*journal_db*
+  A path to the journal database.
 
-Zone name
-.........
-
-Requires name of the zone contained in the journal.
+*zone_name*
+  A name of the zone to print the history for.
 
 Examples
 --------
 
-Last (*most recent*) 5 changes without colors
-.............................................
+Last (most recent) 5 changes without colors::
 
-::
-
-  $ kjournalprint -nl 5 example.com.db example.com.
+  $ kjournalprint -nl 5 /var/lib/knot/journal example.com.
 
 See Also
 --------

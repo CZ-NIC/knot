@@ -134,7 +134,7 @@ int changeset_remove_addition(changeset_t *ch, const knot_rrset_t *rrset);
 int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
 
 /*!
- * \brief Merges two changesets together. Legacy, to be removed with new zone API.
+ * \brief Merges two changesets together.
  *
  * \param ch1  Merge into this changeset.
  * \param ch2  Merge this changeset.

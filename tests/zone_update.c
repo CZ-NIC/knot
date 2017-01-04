@@ -21,10 +21,10 @@
 #include "test_conf.h"
 #include "contrib/macros.h"
 #include "contrib/getline.h"
-#include "contrib/openbsd/strlcat.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/node.h"
 #include "zscanner/scanner.h"
+#include "knot/server/server.h"
 
 static const char *zone_str1 = "test. 600 IN SOA ns.test. m.test. 1 900 300 4800 900 \n";
 static const char *zone_str2 = "test. IN TXT \"test\"\n";
@@ -287,19 +287,28 @@ int main(int argc, char *argv[])
 	char *temp_dir = test_mkdtemp();
 	ok(temp_dir != NULL, "make temporary directory");
 
-	char conf_str[256] = "zone:\n - domain: test.\n   storage: ";
-	strlcat(conf_str, temp_dir, 256);
-	strlcat(conf_str, "\n", 256);
+	char conf_str[512];
+	snprintf(conf_str, sizeof(conf_str),
+	         "zone:\n"
+	         " - domain: test.\n"
+	         "template:\n"
+	         " - id: default\n"
+	         "   storage: %s\n",
+	         temp_dir);
 
 	/* Load test configuration. */
 	int ret = test_conf(conf_str, NULL);
-	(void)ret;
-	assert(ret == KNOT_EOK);
+	ok(ret == KNOT_EOK, "load configuration");
+
+	server_t server;
+	ret = server_init(&server, 1);
+	ok(ret == KNOT_EOK, "server init");
 
 	/* Set up empty zone */
 	knot_dname_t *apex = knot_dname_from_str_alloc("test");
 	assert(apex);
 	zone_t *zone = zone_new(apex);
+	zone->journal_db = &server.journal_db;
 
 	/* Setup zscanner */
 	zs_scanner_t sc;
@@ -314,6 +323,7 @@ int main(int argc, char *argv[])
 
 	zs_deinit(&sc);
 	zone_free(&zone);
+	server_deinit(&server);
 	knot_dname_free(&apex, NULL);
 	conf_free(conf());
 	test_rm_rf(temp_dir);

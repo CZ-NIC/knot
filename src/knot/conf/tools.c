@@ -495,24 +495,19 @@ int check_template(
 		return KNOT_EOK;
 	}
 
-	// Check global-module.
-	conf_val_t g_module = conf_rawid_get_txn(args->conf, args->txn, C_TPL,
-	                                         C_GLOBAL_MODULE, args->id,
-	                                         args->id_len);
+	conf_val_t val;
+	#define CHECK_DFLT(item, name) \
+		val = conf_rawid_get_txn(args->conf, args->txn, C_TPL, item, \
+		                         args->id, args->id_len); \
+		if (val.code == KNOT_EOK) { \
+			args->err_str = name " in non-default template"; \
+			return KNOT_EINVAL; \
+		}
 
-	if (g_module.code == KNOT_EOK) {
-		args->err_str = "global module in non-default template";
-		return KNOT_EINVAL;
-	}
-
-	// Check timer-db.
-	conf_val_t timer_db = conf_rawid_get_txn(args->conf, args->txn, C_TPL,
-	                                         C_TIMER_DB, args->id, args->id_len);
-
-	if (timer_db.code == KNOT_EOK) {
-		args->err_str = "timer database location in non-default template";
-		return KNOT_EINVAL;
-	}
+	CHECK_DFLT(C_TIMER_DB, "timer database");
+	CHECK_DFLT(C_GLOBAL_MODULE, "global module");
+	CHECK_DFLT(C_JOURNAL_DB, "journal database path");
+	CHECK_DFLT(C_MAX_JOURNAL_DB_SIZE, "journal database maximum size");
 
 	return KNOT_EOK;
 }
