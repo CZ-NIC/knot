@@ -85,10 +85,11 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		return ret;
 	}
 
+	bool is_empty;
 	uint32_t serial_from, serial_to;
-	journal_metadata_info(j, &ret, &serial_from, &serial_to);
-	ret *= KNOT_ENOENT;
-	if (ret != KNOT_EOK) {
+	journal_metadata_info(j, &is_empty, &serial_from, &serial_to);
+	if (is_empty) {
+		ret = KNOT_ENOENT;
 		goto pj_finally;
 	}
 

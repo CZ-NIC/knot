@@ -178,11 +178,11 @@ int scrape_journal(journal_t *j);
 /*! \brief Obtain public information from journal metadata
  *
  * \param[in]  j            Journal
- * \param[out] is_empty     1 if j contains no changesets
+ * \param[out] is_empty     True if j contains no changesets
  * \param[out] serial_from  [if !is_empty] starting serial of changesets history
  * \param[out] serial_to    [if !is_empty] ending serial of changesets history
  */
-void journal_metadata_info(journal_t *j, int *is_empty, uint32_t *serial_from, uint32_t *serial_to);
+void journal_metadata_info(journal_t *j, bool *is_empty, uint32_t *serial_from, uint32_t *serial_to);
 
 /*! \brief Check the journal consistency, errors to stderr.
  *
