@@ -568,14 +568,16 @@ static void test_merge(void)
 	ok(journal_merge_allowed(j), "journal: merge allowed");
 
 	ret = drop_journal(j, NULL);
-	assert(ret == KNOT_EOK);
+	ok(ret == KNOT_EOK, "journal: drop_journal must be ok");
 
 	// insert stuff and check the merge
 	for (i = 0; !merged_present(); i++) {
 		ret = journal_store_changeset(j, tm_chs(apex, i));
+		ok(ret == KNOT_EOK, "journal: journal_store_changeset must be ok");
 	}
 	init_list(&l);
 	ret = journal_load_changesets(j, &l, 0);
+	ok(ret == KNOT_EOK, "journal: journal_load_changesets must be ok");
 	ok(list_size(&l) == 2, "journal: read the merged and one following");
 	changeset_t * mch = (changeset_t *)HEAD(l);
 	ok(list_size(&l) >= 1 && tm_rrcnt(mch, 1) == 2, "journal: merged additions # = 2");
@@ -586,10 +588,12 @@ static void test_merge(void)
 	journal_store_changeset(j, tm_chs(apex, i));
 	init_list(&l);
 	ret = journal_load_changesets(j, &l, 0);
+	ok(ret == KNOT_EOK, "journal: journal_load_changesets2 must be ok");
 	ok(list_size(&l) == 3, "journal: read merged together with new changeset");
 	changesets_free(&l);
 	init_list(&l);
 	ret = journal_load_changesets(j, &l, (uint32_t) (i - 3));
+	ok(ret == KNOT_EOK, "journal: journal_load_changesets3 must be ok");
 	ok(list_size(&l) == 4, "journal: read short history of merged/unmerged changesets");
 	changesets_free(&l);
 
