@@ -40,6 +40,10 @@
 /*! \brief The number of unused bytes in DB key. */
 #define DB_KEY_UNUSED_ZERO (4)
 
+/*! \brief Metadata inserted on the beginning of each chunk:
+ * uint32_t serial_to + uint32_t chunk_count + 24B unused */
+#define JOURNAL_HEADER_SIZE (32)
+
 enum {
 	LAST_FLUSHED_VALID  = 1 << 0, /* "last flush is valid" flag. */
 	SERIAL_TO_VALID     = 1 << 1, /* "last serial_to is valid" flag. */
@@ -203,7 +207,9 @@ static void txn_val_u32(txn_t *txn, uint32_t *res)
 	if (txn->val.len != sizeof(uint32_t)) {
 		txn->ret = KNOT_EMALF;
 	}
-	*res = be32toh(*(uint32_t *)txn->val.data);
+	uint32_t beval;
+	memcpy(&beval, (uint32_t *)txn->val.data, sizeof(beval));
+	*res = be32toh(beval);
 }
 
 #define txn_begin_md(md) md_get(txn, txn->j->zone, #md, &txn->shadow_md.md)
@@ -467,36 +473,39 @@ static int md_flushed(txn_t *txn)
 		 serial_compare(txn->shadow_md.last_flushed, txn->shadow_md.last_serial) == 0));
 }
 
-/*! \brief some "metadata" inserted to the beginning of each chunk */
-typedef struct {
-	uint32_t serial_to;       // changeset's SOA-to serial
-	uint32_t chunk_count;     // # of changeset's chunks
-	uint8_t unused_for_future[24];
-} journal_header_t;
-
 static void make_header(knot_db_val_t *to, uint32_t serial_to, int chunk_count)
 {
-	assert(to->len >= sizeof(journal_header_t));
+	assert(to->len >= JOURNAL_HEADER_SIZE);
 	assert(chunk_count > 0);
 
-	journal_header_t h;
-	memset(&h, 0, sizeof(h));
-	h.serial_to = htobe32(serial_to);
-	h.chunk_count = htobe32((uint32_t)chunk_count);
-	memcpy(to->data, &h, sizeof(h));
+	uint32_t be_serial_to = htobe32(serial_to);
+	uint32_t be_chunk_count = htobe32((uint32_t)chunk_count);
+
+	memcpy(to->data, &be_serial_to, sizeof(be_serial_to));
+	memcpy(to->data + sizeof(be_serial_to), &be_chunk_count, sizeof(be_chunk_count));
+	memset(to->data + sizeof(be_serial_to) + sizeof(be_chunk_count), 0,
+	       JOURNAL_HEADER_SIZE - sizeof(be_serial_to) - sizeof(be_chunk_count));
 }
 
 /*! \brief read properties from chunk header "from". All the output params are optional */
 static void unmake_header(const knot_db_val_t *from, uint32_t *serial_to,
 			  int *chunk_count, size_t *header_size)
 {
-	assert(from->len >= sizeof(journal_header_t));
-	journal_header_t *h = (journal_header_t *)from->data;
+	assert(from->len >= JOURNAL_HEADER_SIZE);
 
-	if (serial_to != NULL) *serial_to = be32toh(h->serial_to);
-	assert(be32toh(h->chunk_count) <= INT_MAX);
-	if (chunk_count != NULL) *chunk_count = (int)be32toh(h->chunk_count);
-	if (header_size != NULL) *header_size = sizeof(*h);
+	uint32_t be_serial_to, be_chunk_count;
+	if (serial_to != NULL) {
+		memcpy(&be_serial_to, from->data, sizeof(be_serial_to));
+		*serial_to = be32toh(be_serial_to);
+	}
+	if (chunk_count != NULL) {
+		memcpy(&be_chunk_count, from->data + sizeof(be_serial_to), sizeof(be_chunk_count));
+		assert(be32toh(be_chunk_count) <= INT_MAX);
+		*chunk_count = (int)be32toh(be_chunk_count);
+	}
+	if (header_size != NULL) {
+		*header_size = JOURNAL_HEADER_SIZE;
+	}
 }
 
 static int first_digit(char * of)
@@ -688,8 +697,8 @@ static int vals_to_changeset(knot_db_val_t *vals, int nvals,
 	uint8_t *valps[nvals];
 	size_t vallens[nvals];
 	for (int i = 0; i < nvals; i++) {
-		valps[i] = vals[i].data + sizeof(journal_header_t);
-		vallens[i] = vals[i].len - sizeof(journal_header_t);
+		valps[i] = vals[i].data + JOURNAL_HEADER_SIZE;
+		vallens[i] = vals[i].len - JOURNAL_HEADER_SIZE;
 	}
 
 	changeset_t *t_ch = changeset_new(zone_name);
@@ -1187,9 +1196,9 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			break;
 		}
 		for (int i = 0; i < maxchunks; i++) {
-			chunkptrs[i] = allchunks + i*CHUNK_MAX + sizeof(journal_header_t);
+			chunkptrs[i] = allchunks + i*CHUNK_MAX + JOURNAL_HEADER_SIZE;
 		}
-		txn->ret = changeset_serialize(ch, chunkptrs, CHUNK_MAX - sizeof(journal_header_t),
+		txn->ret = changeset_serialize(ch, chunkptrs, CHUNK_MAX - JOURNAL_HEADER_SIZE,
 		                               maxchunks, chunksizes, &chunks);
 		if (txn->ret != KNOT_EOK) {
 			break;
@@ -1200,7 +1209,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 		for (int i = 0; i < chunks; i++) {
 			vals[i].data = allchunks + i*CHUNK_MAX;
-			vals[i].len = sizeof(journal_header_t) + chunksizes[i];
+			vals[i].len = JOURNAL_HEADER_SIZE + chunksizes[i];
 			make_header(vals + i, serial_to, chunks);
 		}
 
