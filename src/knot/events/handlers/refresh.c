@@ -102,8 +102,10 @@ struct refresh_data {
 	const struct sockaddr *remote;    //!< Remote endpoint.
 	struct query_edns_data edns;      //!< EDNS data to be used in queries.
 	const knot_rrset_t *soa;          //!< Local SOA (NULL for AXFR).
+	const size_t max_zone_size;       //!< Maximal zone size.
 
 	struct xfr_stats stats;           //!< Transfer statistics.
+	size_t change_size;               //!< Size of added and removed RRs.
 
 	struct {
 		struct ixfr_proc *proc;   //!< IXFR processing context.
@@ -164,12 +166,18 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
-static int axfr_consume_packet(knot_pkt_t *pkt, zone_contents_t *zone)
+static int axfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
 {
 	assert(pkt);
-	assert(zone);
+	assert(data);
 
-	zcreator_t zc = { .z = zone, .master = false, .ret = KNOT_EOK };
+	assert(data->result.zone);
+
+	zcreator_t zc = {
+		.z = data->result.zone,
+		.master = false,
+		.ret = KNOT_EOK
+	};
 
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	const knot_rrset_t *answer_rr = knot_pkt_rr(answer, 0);
@@ -181,6 +189,13 @@ static int axfr_consume_packet(knot_pkt_t *pkt, zone_contents_t *zone)
 
 		int ret = zcreator_step(&zc, &answer_rr[i]);
 		if (ret != KNOT_EOK) {
+			return KNOT_STATE_FAIL;
+		}
+
+		data->change_size += knot_rrset_size(&answer_rr[i]);
+		if (data->change_size > data->max_zone_size) {
+			AXFRIN_LOG(LOG_WARNING, data->zone, data->remote,
+			           "zone size exceeded");
 			return KNOT_STATE_FAIL;
 		}
 	}
@@ -212,11 +227,12 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 
 		AXFRIN_LOG(LOG_INFO, data->zone, data->remote, "starting");
 		xfr_stats_begin(&data->stats);
+		data->change_size = 0;
 	}
 
 	// Process answer packet
 	xfr_stats_add(&data->stats, pkt->size);
-	int next = axfr_consume_packet(pkt, data->result.zone);
+	int next = axfr_consume_packet(pkt, data);
 
 	// Finalize
 	if (next == KNOT_STATE_DONE) {
@@ -420,6 +436,13 @@ static int ixfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
 			return KNOT_STATE_FAIL;
 		}
 
+		data->change_size += knot_rrset_size(rr);
+		if (data->change_size / 2 > data->max_zone_size) {
+			IXFRIN_LOG(LOG_WARNING, data->zone, data->remote,
+			           "transfer size exceeded");
+			return KNOT_STATE_FAIL;
+		}
+
 		if (data->ixfr.proc->state == IXFR_DONE) {
 			return KNOT_STATE_DONE;
 		}
@@ -481,6 +504,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 
 		IXFRIN_LOG(LOG_INFO, data->zone, data->remote, "starting");
 		xfr_stats_begin(&data->stats);
+		data->change_size = 0;
 	}
 
 	// Process answer packet
@@ -649,6 +673,12 @@ static const knot_layer_api_t REFRESH_API = {
 	.reset = refresh_reset,
 };
 
+static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
+{
+	conf_val_t val = conf_zone_get(conf, C_MAX_ZONE_SIZE, zone);
+	return conf_int(&val);
+}
+
 static int publish_zone(conf_t *conf, zone_t *zone, const struct sockaddr *remote,
                         struct transfer_result *result)
 {
@@ -679,6 +709,13 @@ static int publish_zone(conf_t *conf, zone_t *zone, const struct sockaddr *remot
 	handler._cb.cb = err_handler_logger;
 	ret = zone_do_sem_checks(new_zone, false, &handler._cb);
 	if (ret != KNOT_EOK) {
+		goto fail;
+	}
+
+	// Enforce zone size limit
+
+	if (new_zone->size > max_zone_size(conf, zone->name)) {
+		REFRESH_LOG(LOG_INFO, zone->name, remote, "zone size exceeded");
 		goto fail;
 	}
 
@@ -748,6 +785,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		.remote = (struct sockaddr *)&master->addr,
 		.zone = zone->name,
 		.soa = zone->contents ? &soa : NULL,
+		.max_zone_size = max_zone_size(conf, zone->name),
 	};
 
 	transfer_result_init(&data.result);
