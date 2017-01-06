@@ -272,6 +272,7 @@ key_state_t str_to_keystate(const char *filter) {
 	if (!filter) {
 		return DNSSEC_KEY_STATE_INVALID;
 	}
+
 	if (strcmp(filter, "+removed") == 0) {
 		return DNSSEC_KEY_STATE_REMOVED;
 	}
@@ -328,26 +329,51 @@ static int print_list(dnssec_list_t *list, const char *filter,
  *
  * \return Number of printed items.
  */
-static int print_list_filtered(dnssec_list_t *list, const char *filter1, const char *filter2, list_print_cb print)
+static int print_list_filtered(dnssec_list_t *list, const char *filter1,
+                               const char *filter2, list_print_cb print)
 {
 	assert(list);
-	// TODO: error if only one is valid filter when both filters defined
+	uint16_t flag;   /* error	possible    error	ok */
+	int filters = 0; /* 0 - none, 1 - first, 2 - second, 3 - both */
+
+	/* Keystate */
 	key_state_t state = str_to_keystate(filter1);
 	if (state == DNSSEC_KEY_STATE_INVALID) {
 		state = str_to_keystate(filter2);
-	}
-	uint16_t flag;
-
-	if ((filter1 && strcmp(filter1, "+ksk") == 0) || (filter2 && strcmp(filter2, "+ksk") == 0)) {
-		flag = DNSKEY_FLAGS_KSK;
-	} else if ((filter1 && strcmp(filter1, "+zsk") == 0) || (filter2 && strcmp(filter2, "+zsk") == 0)) {
-		flag = DNSKEY_FLAGS_ZSK;
+		if (state != DNSSEC_KEY_STATE_INVALID) {
+			filters += 2;
+		}
 	} else {
-		flag = 0;
+		filters += 1;
 	}
 
-	if (state == DNSSEC_KEY_STATE_INVALID && flag == 0)
-	{
+	const char *tmp = NULL;
+	int tmp_step = 0;
+
+	if (filters == 2 || filter1) {
+		tmp = filter1;
+		tmp_step = 1;
+	} else if (filters == 1) {
+		tmp = filter2;
+		tmp_step = 2;
+	}
+
+	/* ksk / zsk */
+	if (tmp) {
+		if (strcmp(tmp, "+ksk") == 0) {
+			filters += tmp_step;
+			flag = DNSKEY_FLAGS_KSK;
+		} else if (strcmp(tmp, "+zsk") == 0) {
+			filters += tmp_step;
+			flag = DNSKEY_FLAGS_ZSK;
+		} else {
+			flag = 0;
+		}
+	}
+
+	/* invalid filters */
+	if (filters == 0 || filters == 2 || (filters == 1 && filter2)) {
+		error("One or two invalid filters.");
 		return DNSSEC_ERROR;
 	}
 
@@ -357,7 +383,9 @@ static int print_list_filtered(dnssec_list_t *list, const char *filter1, const c
 		dnssec_kasp_key_t *key = dnssec_item_get(item);
 		const void *value = dnssec_item_get(item);
 		uint16_t flags = dnssec_key_get_flags(key->key);
-		if ((state == DNSSEC_KEY_STATE_INVALID || get_key_state(key, current) == state) && (flags == flag || flag == 0)) {
+		if ((state == DNSSEC_KEY_STATE_INVALID ||
+		     get_key_state(key, current) == state) &&
+			(flags == flag || flag == 0)) {
 			print(value);
 			found+=1;
 		}
@@ -919,8 +947,6 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	const char *filter1 = (argc >= 2 ? argv[1] : NULL);
 	const char *filter2 = (argc == 3 ? argv[2] : NULL);
 
-	// list the keys
-
 	_cleanup_kasp_ dnssec_kasp_t *kasp = get_zone_kasp(zone_name);
 	if (!kasp) {
 		return 1;
@@ -932,15 +958,18 @@ static int cmd_zone_key_list(int argc, char *argv[])
 	}
 
 	dnssec_list_t *zone_keys = dnssec_kasp_zone_get_keys(zone);
-	int count = print_list_filtered(zone_keys, filter1, filter2, item_print_key);
-	if (count < 0) { // Look only if filter isnt state
-		if ((filter1 && filter1[0] == '+') || filter2)
-		{
-			error("Invalid filter.");
-			return 1;
-		}
+	int count = 0;
+	/* No filter */
+	if ((!filter1 || filter1[0] != '+') && !filter2) {
 		count = print_list(zone_keys, filter1, item_match_key, item_print_key);
+	/* with filters */
+	} else if (filter1 && filter1[0] == '+' && (!filter2 || filter2[0] == '+')) {
+		count = print_list_filtered(zone_keys, filter1, filter2, item_print_key);
+	} else {
+		error("Invalid argument combination");
+		return 1;
 	}
+
 	if (count == 0) {
 		error("No matching zone key found.");
 		return 1;
@@ -1072,25 +1101,35 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 			error("Wrong filter");
 			return 1;
 		}
+
 		int r = search_unique_key(keys, key_name, &key);
 		if (r != DNSSEC_EOK) {
 			return 1;
 		}
+
 		for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {
 			create_and_print_ds(key->key, *d);
 		}
-	} else if (state == DNSSEC_KEY_STATE_ACTIVE || state == DNSSEC_KEY_STATE_PUBLISHED){
+	} else if (state == DNSSEC_KEY_STATE_ACTIVE || state == DNSSEC_KEY_STATE_PUBLISHED) {
+		int found = 0;
 		time_t current = time(NULL);
+
 		dnssec_list_foreach(item, keys) {
 			key = dnssec_item_get(item);
 			uint16_t flags = dnssec_key_get_flags(key->key);
 			const void *value = dnssec_item_get(item);
 			if (get_key_state(key, current) == state && flags == DNSKEY_FLAGS_KSK) {
+				found++;
 				item_print_key(value);
 				for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {
 					create_and_print_ds(key->key, *d);
 				}
 			}
+		}
+
+		if (found == 0) {
+			error ("No key matching filter.");
+			return 1;
 		}
 	} else { // if onther state than active or published
 		error("Wrong filter.");
