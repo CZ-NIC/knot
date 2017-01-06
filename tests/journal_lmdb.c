@@ -51,6 +51,7 @@ static void set_conf(int zonefile_sync, size_t journal_usage)
 	         "   max-journal-depth: 1000\n",
 	         (const char *)(apex + 1), zonefile_sync, journal_usage);
 	int ret = test_conf(conf_str, NULL);
+	(void)ret;
 	assert(ret == KNOT_EOK);
 }
 
@@ -396,38 +397,46 @@ static void test_store_load(void)
 	/* Cleanup. */
 	changesets_free(&l);
 	init_list(&l);
-	assert(journal_flush(j) == KNOT_EOK);
-	assert(drop_journal(j, NULL) == KNOT_EOK); /* Clear the journal for the collision test */
+	ret = journal_flush(j);
+	ok(ret == KNOT_EOK, "journal: allways ok journal_flush 0");
+	ret = drop_journal(j, NULL); /* Clear the journal for the collision test */
+	ok(ret == KNOT_EOK, "journal: allways ok drop_journal");
 
 	/* Test for serial number collision handling. We insert changesets
 	 * with valid serial sequence that overflows and then collides with itself.
 	 * The sequence is 0 -> 1 -> 2 -> 2147483647 -> 4294967294 -> 1 which should
 	 * remove changesets 0->1 and 1->2. */
-	assert(EMPTY_LIST(k));
-	assert(EMPTY_LIST(l));
+	ok(EMPTY_LIST(k), "journal: empty list k");
+	ok(EMPTY_LIST(l), "journal: empty list l");
 	changeset_t *m_ch3 = changeset_new(apex);
 	init_random_changeset(m_ch3, 0, 1, 128, apex);
-	assert(journal_store_changeset(j, m_ch3) == KNOT_EOK);
+	ret = journal_store_changeset(j, m_ch3);
+	ok(ret == KNOT_EOK, "journal: allways ok journal_store_changeset 1");
 	changeset_set_soa_serials(m_ch3, 1, 2, apex);
-	assert(journal_store_changeset(j, m_ch3) == KNOT_EOK);
+	ret = journal_store_changeset(j, m_ch3);
+	ok(ret == KNOT_EOK, "journal: allways ok journal_store_changeset 2");
 	changeset_set_soa_serials(m_ch3, 2, 2147483647, apex);
 	add_tail(&k, &m_ch3->n);
-	assert(journal_store_changeset(j, m_ch3) == KNOT_EOK);
+	ret = journal_store_changeset(j, m_ch3);
+	ok(ret == KNOT_EOK, "journal: allways ok journal_store_changeset 3");
 	changeset_t *m_ch4 = changeset_new(apex);
 	init_random_changeset(m_ch4, 2147483647, 4294967294, 128, apex);
 	add_tail(&k, &m_ch4->n);
-	assert(journal_store_changeset(j, m_ch4) == KNOT_EOK);
+	ret = journal_store_changeset(j, m_ch4);
+	ok(ret == KNOT_EOK, "journal: allways ok journal_store_changeset 4");
 	changeset_t *m_ch5 = changeset_new(apex);
 	init_random_changeset(m_ch5, 4294967294, 1, 128, apex);
 	add_tail(&k, &m_ch5->n);
-	assert(journal_store_changeset(j, m_ch5) == KNOT_EBUSY);
-	assert(journal_flush(j) == KNOT_EOK);
-	assert(journal_store_changeset(j, m_ch5) == KNOT_EOK);
-	assert(journal_flush(j) == KNOT_EOK);
+	ret = journal_store_changeset(j, m_ch5);
+	ok(ret == KNOT_EBUSY, "journal: allways ok journal_store_changeset 5");
+	ret = journal_flush(j);
+	ok(ret == KNOT_EOK, "journal: allways ok journal_flush 1");
+	ret = journal_store_changeset(j, m_ch5);
+	ok(ret == KNOT_EOK, "journal: allways ok journal_store_changeset 6");
+	ret = journal_flush(j);
+	ok(ret == KNOT_EOK, "journal: allways ok journal_flush 2");
 	ret = journal_load_changesets(j, &l, 0);
-	assert(EMPTY_LIST(l));
 	ret2 = journal_load_changesets(j, &l, 1);
-	assert(EMPTY_LIST(l));
 	int ret3 = journal_load_changesets(j, &l, 2);
 	fprintf(stderr, "ret=%d ret2=%d ret3=%d\n", ret, ret2, ret3);
 	ok(ret == KNOT_ENOENT && ret2 == KNOT_ENOENT && ret3 == KNOT_EOK &&

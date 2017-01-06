@@ -159,6 +159,7 @@ static struct sockaddr_storage addr_init(const char *addr)
 	struct addrinfo hints = { .ai_flags = AI_NUMERICHOST };
 	struct addrinfo *info = NULL;
 	int r = getaddrinfo(addr, NULL, &hints, &info);
+	(void)r;
 	assert(r == 0);
 	memcpy(&sa, info->ai_addr, info->ai_addrlen);
 	freeaddrinfo(info);
