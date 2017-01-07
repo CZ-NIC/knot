@@ -693,7 +693,7 @@ static int publish_zone(conf_t *conf, zone_t *zone, const struct sockaddr *remot
 	if (axfr) {
 		new_zone = result->zone;
 	} else {
-		apply_init_ctx(&apply_ctx, NULL, 0);
+		apply_init_ctx(&apply_ctx, NULL, APPLY_STRICT);
 		ret = apply_changesets(&apply_ctx, zone->contents,
 		                       &result->changesets, &new_zone);
 		if (ret != KNOT_EOK) {
