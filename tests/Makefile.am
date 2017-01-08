@@ -48,33 +48,37 @@ check_PROGRAMS += \
 	libknot/test_yptrafo
 
 check_PROGRAMS += \
-	modules/online_sign		\
-	modules/rrl			\
+	modules/test_online_sign	\
+	modules/test_rrl
+
+check_PROGRAMS += \
 	utils/test_cert			\
-	utils/test_lookup		\
-	acl				\
-	changeset			\
-	conf				\
-	conf_tools			\
-	confdb				\
-	confio				\
-	dthreads			\
-	fdset				\
-	journal_lmdb			\
-	node				\
-	process_answer			\
-	process_query			\
-	query_module			\
-	requestor			\
-	server				\
-	worker_pool			\
-	worker_queue			\
-	zone_events			\
-	zone_serial			\
-	zone_timers			\
-	zone_update			\
-	zonedb				\
-	ztree
+	utils/test_lookup
+
+check_PROGRAMS += \
+	test_acl			\
+	test_changeset			\
+	test_conf			\
+	test_conf_tools			\
+	test_confdb			\
+	test_confio			\
+	test_dthreads			\
+	test_fdset			\
+	test_journal			\
+	test_node			\
+	test_process_answer		\
+	test_process_query		\
+	test_query_module		\
+	test_requestor			\
+	test_server			\
+	test_worker_pool		\
+	test_worker_queue		\
+	test_zone-tree			\
+	test_zone-update		\
+	test_zone_events		\
+	test_zone_serial		\
+	test_zone_timers		\
+	test_zonedb
 
 utils_test_lookup_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
@@ -107,9 +111,9 @@ check-local: $(check_PROGRAMS) $(check_SCRIPTS)
 					-L $(top_builddir)/tests/runtests.log \
 					$(check_PROGRAMS) $(check_SCRIPTS)
 
-acl_SOURCES = acl.c test_conf.h
-conf_SOURCES = conf.c test_conf.h
-confdb_SOURCES = confdb.c test_conf.h
-confio_SOURCES = confio.c test_conf.h
-process_query_SOURCES = process_query.c fake_server.h test_conf.h
-process_answer_SOURCES = process_answer.c fake_server.h test_conf.h
+test_acl_SOURCES = test_acl.c test_conf.h
+test_conf_SOURCES = test_conf.c test_conf.h
+test_confdb_SOURCES = test_confdb.c test_conf.h
+test_confio_SOURCES = test_confio.c test_conf.h
+test_process_query_SOURCES = test_process_query.c test_server.h test_conf.h
+test_process_answer_SOURCES = test_process_answer.c test_server.h test_conf.h

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "knot/query/query.h"
-#include "fake_server.h"
+#include "test_server.h"
 #include "contrib/ucw/mempool.h"
 
 /* @note Test helpers. */
