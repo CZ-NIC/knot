@@ -80,6 +80,7 @@ conf_val_t conf_rawid_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		return val;
 	}
 }
@@ -110,6 +111,7 @@ conf_val_t conf_id_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		return val;
 	}
 }
@@ -137,6 +139,7 @@ conf_val_t conf_mod_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		return val;
 	}
 }
@@ -195,6 +198,7 @@ conf_val_t conf_zone_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		break;
 	}
 
