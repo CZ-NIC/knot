@@ -360,6 +360,7 @@ class KnotCtl(object):
         """
 
         out = dict()
+        err_reply = None
 
         while True:
             reply = KnotCtlData()
@@ -371,9 +372,13 @@ class KnotCtl(object):
 
             # Check for an error.
             if reply[KnotCtlDataIdx.ERROR]:
-                raise KnotCtlError(reply[KnotCtlDataIdx.ERROR], reply)
+                err_reply = reply
+                continue
 
             self._receive_stats(out, reply)
+
+        if err_reply:
+            raise KnotCtlError(err_reply[KnotCtlDataIdx.ERROR], err_reply)
 
         return out
 
@@ -384,17 +389,20 @@ class KnotCtl(object):
         """
 
         out = dict()
+        err_reply = None
 
         while True:
             reply = KnotCtlData()
             reply_type = self.receive(reply)
+
             # Stop if not data type.
             if reply_type not in [KnotCtlType.DATA, KnotCtlType.EXTRA]:
                 break
 
             # Check for an error.
             if reply[KnotCtlDataIdx.ERROR]:
-                raise KnotCtlError(reply[KnotCtlDataIdx.ERROR], reply)
+                err_reply = reply
+                continue
 
             # Check for config data.
             if reply[KnotCtlDataIdx.SECTION]:
@@ -407,5 +415,8 @@ class KnotCtl(object):
                     self._receive_zone_status(out, reply)
             else:
                 continue
+
+        if err_reply:
+            raise KnotCtlError(err_reply[KnotCtlDataIdx.ERROR], err_reply)
 
         return out
