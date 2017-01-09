@@ -21,6 +21,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/log.h"
 #include "knot/nameserver/tsig_ctx.h"
+#include "knot/zone/serial.h"
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
 
@@ -65,12 +66,18 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(&qdata->sign.tsig_key));
 
 	/* SOA RR in answer may be included, recover serial. */
+	zone_t *zone = (zone_t *)qdata->zone;
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);
 	if (answer->count > 0) {
 		const knot_rrset_t *soa = knot_pkt_rr(answer, 0);
 		if (soa->type == KNOT_RRTYPE_SOA) {
 			uint32_t serial = knot_soa_serial(&soa->rrs);
+			uint32_t zone_serial = zone_contents_serial(zone->contents);
 			NOTIFY_IN_LOG(LOG_INFO, qdata, "received, serial %u", serial);
+			if (serial_compare(serial, zone_serial) == 0) {
+				// NOTIFY serial == zone serial => ignore, keep timers
+				return KNOT_STATE_DONE;
+			}
 		} else { /* Complain, but accept N/A record. */
 			NOTIFY_IN_LOG(LOG_NOTICE, qdata, "received, bad record in answer section");
 		}
@@ -79,7 +86,6 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
-	zone_t *zone = (zone_t *)qdata->zone;
 	zone_set_preferred_master(zone, qdata->param->remote);
 	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 
