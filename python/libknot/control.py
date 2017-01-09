@@ -80,6 +80,22 @@ def load_lib(path="libknot.so"):
     CTL_ERROR.argtypes = [c_int]
 
 
+class KnotCtlError(Exception):
+    """Libknot server control error."""
+
+    def __init__(self, message, data=None):
+        """
+        @type message: str
+        @type data: KnotCtlData
+        """
+
+        self.message = message
+        self.data = data
+
+    def __str__(self):
+        return "message: %s\ndata: %s" % (self.message, self.data)
+
+
 class KnotCtlType(IntEnum):
     """Libknot server control data unit types."""
 
@@ -112,6 +128,17 @@ class KnotCtlData(object):
 
     def __init__(self):
         self.data = self.DataArray()
+
+    def __str__(self):
+        string = str()
+
+        for idx in KnotCtlDataIdx:
+            if self.data[idx]:
+                if string:
+                    string += ", "
+                string += "%s = %s" % (idx.name, self.data[idx])
+
+        return string
 
     def __getitem__(self, index):
         """Data unit item getter.
@@ -162,7 +189,7 @@ class KnotCtl(object):
         ret = CTL_CONNECT(self.obj, path.encode())
         if ret != 0:
             err = CTL_ERROR(ret)
-            raise Exception(err if isinstance(err, str) else err.decode())
+            raise KnotCtlError(err if isinstance(err, str) else err.decode())
 
     def close(self):
         """Disconnects from the current control socket."""
@@ -180,7 +207,7 @@ class KnotCtl(object):
                        data.data if data else c_char_p())
         if ret != 0:
             err = CTL_ERROR(ret)
-            raise Exception(err if isinstance(err, str) else err.decode())
+            raise KnotCtlError(err if isinstance(err, str) else err.decode())
 
     def receive(self, data=None):
         """Receives a data unit from the connected control socket.
@@ -194,7 +221,7 @@ class KnotCtl(object):
                           data.data if data else c_char_p())
         if ret != 0:
             err = CTL_ERROR(ret)
-            raise Exception(err if isinstance(err, str) else err.decode())
+            raise KnotCtlError(err if isinstance(err, str) else err.decode())
         return KnotCtlType(data_type.value)
 
     def send_block(self, cmd, section=None, item=None, identifier=None, zone=None,
@@ -344,7 +371,7 @@ class KnotCtl(object):
 
             # Check for an error.
             if reply[KnotCtlDataIdx.ERROR]:
-                raise Exception(reply[KnotCtlDataIdx.ERROR])
+                raise KnotCtlError(reply[KnotCtlDataIdx.ERROR], reply)
 
             self._receive_stats(out, reply)
 
@@ -361,14 +388,13 @@ class KnotCtl(object):
         while True:
             reply = KnotCtlData()
             reply_type = self.receive(reply)
-
             # Stop if not data type.
             if reply_type not in [KnotCtlType.DATA, KnotCtlType.EXTRA]:
                 break
 
             # Check for an error.
             if reply[KnotCtlDataIdx.ERROR]:
-                raise Exception(reply[KnotCtlDataIdx.ERROR])
+                raise KnotCtlError(reply[KnotCtlDataIdx.ERROR], reply)
 
             # Check for config data.
             if reply[KnotCtlDataIdx.SECTION]:
