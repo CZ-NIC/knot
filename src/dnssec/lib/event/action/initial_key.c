@@ -22,6 +22,7 @@
 #include "shared.h"
 #include "event/action.h"
 #include "event/utils.h"
+#include "dnssec/keyusage.h"
 
 /*!
  * Scan zone keys and check if ZSK and KSK key exists.
@@ -56,6 +57,19 @@ static int generate_initial_key(dnssec_event_ctx_t *ctx, bool ksk)
 	int r = generate_key(ctx, ksk, &key);
 	if (r != DNSSEC_EOK) {
 		return r;
+	}
+
+	if (!ksk) {
+		char *path;
+		if (asprintf(&path, "%s/keyusage", ctx->kasp->functions->base_path(ctx->kasp->ctx)) == -1){
+			return DNSSEC_ENOMEM;
+		}
+		dnssec_keyusage_t *keyusage = dnssec_keyusage_new();
+		dnssec_keyusage_load(keyusage, path);
+		dnssec_keyusage_add(keyusage, key->id, ctx->zone->name);
+		dnssec_keyusage_save(keyusage, path);
+		dnssec_keyusage_free(keyusage);
+		free(path);
 	}
 
 	key->timing.active  = ctx->now;

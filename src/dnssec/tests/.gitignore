@@ -9,6 +9,7 @@
 /event_nsec3_resalt
 /kasp_dir_escape
 /kasp_dir_file
+/keyusage
 /kasp_policy
 /kasp_store
 /key

@@ -18,6 +18,7 @@
 
 #include "dnssec/error.h"
 #include "dnssec/event.h"
+#include "dnssec/keyusage.h"
 #include "event/action.h"
 #include "dnssec/keystate.h"
 #include "event/utils.h"
@@ -169,6 +170,17 @@ static int exec_new_signatures(dnssec_event_ctx_t *ctx)
 	active->timing.retire = ctx->now;
 	rolling->timing.active = ctx->now;
 
+	char *path;
+	if (asprintf(&path, "%s/keyusage", ctx->kasp->functions->base_path(ctx->kasp->ctx)) == -1){
+		return DNSSEC_ENOMEM;
+	}
+	dnssec_keyusage_t *keyusage = dnssec_keyusage_new();
+	dnssec_keyusage_load(keyusage, path);
+	dnssec_keyusage_add(keyusage, rolling->id, ctx->zone->name);
+	dnssec_keyusage_save(keyusage, path);
+	dnssec_keyusage_free(keyusage);
+	free(path);
+
 	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
 }
 
@@ -179,7 +191,33 @@ static int exec_remove_old_key(dnssec_event_ctx_t *ctx)
 		return DNSSEC_EINVAL;
 	}
 
+	char *path;
+	if (asprintf(&path, "%s/keyusage", ctx->kasp->functions->base_path(ctx->kasp->ctx)) == -1){
+		return DNSSEC_ENOMEM;
+	}
+
+	dnssec_keyusage_t *keyusage = dnssec_keyusage_new();
+	dnssec_keyusage_load(keyusage, path);
+	dnssec_keyusage_remove(keyusage, retired->id, ctx->zone->name);
+	dnssec_keyusage_save(keyusage, path);
+
 	retired->timing.remove = ctx->now;
+	dnssec_list_foreach(item, ctx->zone->keys) {
+		dnssec_kasp_key_t *key = dnssec_item_get(item);
+		if (key->id == retired->id) {
+			dnssec_list_remove(item);
+		}
+	}
+
+	if (dnssec_keyusage_is_used(keyusage, retired->id)) {
+		dnssec_keyusage_free(keyusage);
+		free(path);
+		return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
+	}
+	dnssec_keyusage_free(keyusage);
+	free(path);
+
+	dnssec_keystore_remove_key(ctx->keystore, retired->id);
 
 	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
 }
