@@ -15,6 +15,7 @@
  */
 
 #include <tap/basic.h>
+#include <tap/files.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -22,21 +23,21 @@
 #include "dnssec/error.h"
 #include "dnssec.h"
 
+char *json_path = NULL, *json_file = NULL;
+
 static void test_keyusage_empty(void)
 {
 	diag("%s", __func__);
 
 	dnssec_keyusage_t *k = dnssec_keyusage_new();
 
-	remove("/tmp/keyusage.json");
-
-	ok(dnssec_keyusage_load(k, "/tmp/keyusage.json")== DNSSEC_NOT_FOUND, "kayusage_load empty, no keyusage");
+	ok(dnssec_keyusage_load(k, json_file)== DNSSEC_NOT_FOUND, "kayusage_load empty, no keyusage");
 
 	ok(dnssec_list_is_empty(k), "List of records is empty.");
 
-	ok(dnssec_keyusage_save(k, "/tmp/keyusage.json") == DNSSEC_EOK , "kayusage_save empty");
+	ok(dnssec_keyusage_save(k, json_file) == DNSSEC_EOK , "kayusage_save empty");
 
-	ok(dnssec_keyusage_load(k, "/tmp/keyusage.json")== DNSSEC_EOK , "kayusage_load empty");
+	ok(dnssec_keyusage_load(k, json_file)== DNSSEC_EOK , "kayusage_load empty");
 
 	ok(dnssec_list_is_empty(k), "List of records is empty.");
 
@@ -82,7 +83,7 @@ static void test_keyusage_file(void)
 	dnssec_keyusage_add(k, "prvni", "zona2");
 	dnssec_keyusage_add(k, "druhy", "zona");
 
-	ok(dnssec_keyusage_save(k, "/tmp/keyusage.json") == DNSSEC_EOK , "kayusage_save");
+	ok(dnssec_keyusage_save(k, json_file) == DNSSEC_EOK , "kayusage_save");
 
 	dnssec_keyusage_free(k);
 	k = dnssec_keyusage_new();
@@ -90,7 +91,7 @@ static void test_keyusage_file(void)
 	ok(!dnssec_keyusage_is_used(k, "prvni"), "Key is not used - freed succesfully.");
 	ok(!dnssec_keyusage_is_used(k, "druhy"), "Key is not used - freed succesfully.");
 
-	ok(dnssec_keyusage_load(k, "/tmp/keyusage.json")== DNSSEC_EOK , "kayusage_load");
+	ok(dnssec_keyusage_load(k, json_file)== DNSSEC_EOK , "kayusage_load");
 
 	ok(dnssec_keyusage_is_used(k, "prvni"), "Key is used - loaded succesfully.");
 	ok(dnssec_keyusage_is_used(k, "druhy"), "Key is used - loaded succesfully.");
@@ -101,8 +102,20 @@ static void test_keyusage_file(void)
 int main(int argc, char *argv[])
 {
 	plan_lazy();
+
+	json_path = test_mkdtemp();
+	asprintf(&json_file, "%s/keyusage.json", json_path ? json_path : "/tmp");
+
 	test_keyusage_empty();
 	test_keyusage_basic();
 	test_keyusage_file();
+
+	remove(json_file);
+	free(json_file);
+	if (json_path) {
+		remove(json_path);
+		free(json_path);
+	}
+
 	return 0;
 }
