@@ -333,47 +333,29 @@ static int print_list_filtered(dnssec_list_t *list, const char *filter1,
                                const char *filter2, list_print_cb print)
 {
 	assert(list);
-	uint16_t flag;   /* error	possible    error	ok */
-	int filters = 0; /* 0 - none, 1 - first, 2 - second, 3 - both */
+	uint16_t flag = 0;
+	bool first_valid = true;
 
-	/* Keystate */
 	key_state_t state = str_to_keystate(filter1);
 	if (state == DNSSEC_KEY_STATE_INVALID) {
+		first_valid = false;
 		state = str_to_keystate(filter2);
-		if (state != DNSSEC_KEY_STATE_INVALID) {
-			filters += 2;
-		}
-	} else {
-		filters += 1;
-	}
-
-	const char *tmp = NULL;
-	int tmp_step = 0;
-
-	if (filters == 2 || filter1) {
-		tmp = filter1;
-		tmp_step = 1;
-	} else if (filters == 1) {
-		tmp = filter2;
-		tmp_step = 2;
-	}
-
-	/* ksk / zsk */
-	if (tmp) {
-		if (strcmp(tmp, "+ksk") == 0) {
-			filters += tmp_step;
-			flag = DNSKEY_FLAGS_KSK;
-		} else if (strcmp(tmp, "+zsk") == 0) {
-			filters += tmp_step;
-			flag = DNSKEY_FLAGS_ZSK;
-		} else {
-			flag = 0;
+		if (filter2 && state == DNSSEC_KEY_STATE_INVALID) {
+			error("Invalid filters.");
+			return DNSSEC_ERROR;
 		}
 	}
 
-	/* invalid filters */
-	if (filters == 0 || filters == 2 || (filters == 1 && filter2)) {
-		error("One or two invalid filters.");
+	const char *flag_def = (first_valid ? filter2 : filter1);
+
+	if (flag_def && !strcmp(flag_def, "+ksk")) {
+		flag = DNSKEY_FLAGS_KSK;
+	} else if (flag_def && !strcmp(flag_def, "+zsk")) {
+		flag = DNSKEY_FLAGS_ZSK;
+	}
+
+	if ((!first_valid || filter2) && !flag) {
+		error("Invalid filters.");
 		return DNSSEC_ERROR;
 	}
 
