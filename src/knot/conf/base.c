@@ -374,6 +374,10 @@ void conf_free(
 	free(conf);
 }
 
+#define LOG_ARGS(mod_id, msg, ...) "module '%s%s%.*s', " msg, \
+	mod_id->name + 1, (mod_id->len > 0) ? "/" : "", (int)mod_id->len, \
+	mod_id->data
+
 void conf_activate_modules(
 	conf_t *conf,
 	const knot_dname_t *zone_name,
@@ -437,14 +441,9 @@ void conf_activate_modules(
 		if ((zone_name == NULL && (mod->scope & MOD_SCOPE_GLOBAL) == 0) ||
 		    (zone_name != NULL && (mod->scope & MOD_SCOPE_ZONE) == 0)) {
 			if (zone_name != NULL) {
-				log_zone_warning(zone_name,
-				                 "out of scope module '%s/%.*s'",
-				                 mod_id->name + 1, (int)mod_id->len,
-				                 mod_id->data);
+				log_zone_warning(zone_name, LOG_ARGS(mod_id, "out of scope"));
 			} else {
-				log_warning("out of scope module '%s/%.*s'",
-				            mod_id->name + 1, (int)mod_id->len,
-				            mod_id->data);
+				log_warning(LOG_ARGS(mod_id, "out of scope"));
 			}
 			query_module_close(mod);
 			conf_val_next(&val);
@@ -455,14 +454,9 @@ void conf_activate_modules(
 		ret = mod->load(mod);
 		if (ret != KNOT_EOK) {
 			if (zone_name != NULL) {
-				log_zone_error(zone_name,
-				               "failed to load module '%s/%.*s' (%s)",
-				               mod_id->name + 1, (int)mod_id->len,
-				               mod_id->data, knot_strerror(ret));
+				log_zone_error(zone_name, LOG_ARGS(mod_id, "failed to load"));
 			} else {
-				log_error("failed to load global module '%s/%.*s' (%s)",
-				          mod_id->name + 1, (int)mod_id->len,
-				          mod_id->data, knot_strerror(ret));
+				log_error(LOG_ARGS(mod_id, "failed to load"));
 			}
 			query_module_close(mod);
 			conf_val_next(&val);
