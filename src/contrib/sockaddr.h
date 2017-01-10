@@ -18,7 +18,7 @@
 
 /* BSD IPv6 */
 #ifndef __POSIX_VISIBLE
-#define __POSIX_VISIBLE = 200112
+#define __POSIX_VISIBLE 200112
 #endif
 
 #include <stdbool.h>
