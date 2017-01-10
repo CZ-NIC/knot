@@ -25,6 +25,14 @@
 #include "shared.h"
 #include <string.h>
 
+char *dnssec_keyusage_path(dnssec_kasp_t *kasp) {
+	char *res;
+	if (asprintf(&res, "%s/keyusage.json", kasp->functions->base_path(kasp->ctx)) == -1) {
+		res = NULL;
+	}
+	return res;
+}
+
 int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *keytag, char *zone) {
 
 	char *lzone = strdup(zone);

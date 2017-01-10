@@ -17,6 +17,7 @@
 #pragma once
 
 #include <dnssec/list.h>
+#include "kasp.h"
 
 typedef struct record {
 	char *keytag;
@@ -24,6 +25,8 @@ typedef struct record {
 } record_keyusage_t;
 
 typedef dnssec_list_t dnssec_keyusage_t;
+
+char *dnssec_keyusage_path(dnssec_kasp_t *kasp);
 
 int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *keytag, char *zone);
 

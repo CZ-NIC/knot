@@ -366,7 +366,7 @@ static int print_list_filtered(dnssec_list_t *list, const char *filter1,
 		const void *value = dnssec_item_get(item);
 		uint16_t flags = dnssec_key_get_flags(key->key);
 		if ((state == DNSSEC_KEY_STATE_INVALID ||
-		     get_key_state(key, current) == state) &&
+		     dnssec_get_key_state(key, current) == state) &&
 			(flags == flag || flag == 0)) {
 			print(value);
 			found+=1;
@@ -1100,7 +1100,7 @@ static int cmd_zone_key_ds(int argc, char *argv[])
 			key = dnssec_item_get(item);
 			uint16_t flags = dnssec_key_get_flags(key->key);
 			const void *value = dnssec_item_get(item);
-			if (get_key_state(key, current) == state && flags == DNSKEY_FLAGS_KSK) {
+			if (dnssec_get_key_state(key, current) == state && flags == DNSKEY_FLAGS_KSK) {
 				found++;
 				item_print_key(value);
 				for (const dnssec_key_digest_t *d = digests; *d != 0; d++) {

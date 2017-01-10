@@ -60,8 +60,8 @@ static int generate_initial_key(dnssec_event_ctx_t *ctx, bool ksk)
 	}
 
 	if (!ksk) {
-		char *path;
-		if (asprintf(&path, "%s/keyusage", ctx->kasp->functions->base_path(ctx->kasp->ctx)) == -1){
+		char *path = dnssec_keyusage_path(ctx->kasp);
+		if (path == NULL) {
 			return DNSSEC_ENOMEM;
 		}
 		dnssec_keyusage_t *keyusage = dnssec_keyusage_new();

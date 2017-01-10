@@ -30,4 +30,4 @@ enum key_state {
 
 typedef enum key_state key_state_t;
 
-key_state_t get_key_state(const dnssec_kasp_key_t *key, time_t moment);
+key_state_t dnssec_get_key_state(const dnssec_kasp_key_t *key, time_t moment);

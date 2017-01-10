@@ -23,7 +23,7 @@
 #include "shared.h"
 
 _public_
-key_state_t get_key_state(const dnssec_kasp_key_t *key, time_t moment)
+key_state_t dnssec_get_key_state(const dnssec_kasp_key_t *key, time_t moment)
 {
 	if (!key || time <= 0)
 	{

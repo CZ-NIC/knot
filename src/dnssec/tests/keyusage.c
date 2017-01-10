@@ -31,13 +31,13 @@ static void test_keyusage_empty(void)
 
 	dnssec_keyusage_t *k = dnssec_keyusage_new();
 
-	ok(dnssec_keyusage_load(k, json_file)== DNSSEC_NOT_FOUND, "kayusage_load empty, no keyusage");
+	ok(dnssec_keyusage_load(k, json_file)== DNSSEC_NOT_FOUND, "keyusage_load empty, no keyusage");
 
 	ok(dnssec_list_is_empty(k), "List of records is empty.");
 
-	ok(dnssec_keyusage_save(k, json_file) == DNSSEC_EOK , "kayusage_save empty");
+	ok(dnssec_keyusage_save(k, json_file) == DNSSEC_EOK , "keyusage_save empty");
 
-	ok(dnssec_keyusage_load(k, json_file)== DNSSEC_EOK , "kayusage_load empty");
+	ok(dnssec_keyusage_load(k, json_file)== DNSSEC_EOK , "keyusage_load empty");
 
 	ok(dnssec_list_is_empty(k), "List of records is empty.");
 

@@ -46,7 +46,7 @@ static bool newer_key(const dnssec_kasp_key_t *prev, const dnssec_kasp_key_t *cu
 static bool zsk_match(const dnssec_kasp_key_t *key, time_t now, key_state_t state)
 {
 	return dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
-	       get_key_state(key, now) == state;
+	       dnssec_get_key_state(key, now) == state;
 }
 
 static dnssec_kasp_key_t *last_key(dnssec_event_ctx_t *ctx, key_state_t state)
@@ -170,8 +170,8 @@ static int exec_new_signatures(dnssec_event_ctx_t *ctx)
 	active->timing.retire = ctx->now;
 	rolling->timing.active = ctx->now;
 
-	char *path;
-	if (asprintf(&path, "%s/keyusage", ctx->kasp->functions->base_path(ctx->kasp->ctx)) == -1){
+	char *path = dnssec_keyusage_path(ctx->kasp);
+	if (path == NULL) {
 		return DNSSEC_ENOMEM;
 	}
 	dnssec_keyusage_t *keyusage = dnssec_keyusage_new();
@@ -191,11 +191,10 @@ static int exec_remove_old_key(dnssec_event_ctx_t *ctx)
 		return DNSSEC_EINVAL;
 	}
 
-	char *path;
-	if (asprintf(&path, "%s/keyusage", ctx->kasp->functions->base_path(ctx->kasp->ctx)) == -1){
+	char *path = dnssec_keyusage_path(ctx->kasp);
+	if (path == NULL) {
 		return DNSSEC_ENOMEM;
 	}
-
 	dnssec_keyusage_t *keyusage = dnssec_keyusage_new();
 	dnssec_keyusage_load(keyusage, path);
 	dnssec_keyusage_remove(keyusage, retired->id, ctx->zone->name);
