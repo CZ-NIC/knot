@@ -1186,6 +1186,12 @@
 	action _write8_14 {
 		*(rdata_tail++) = 14;
 	}
+	action _write8_15 {
+		*(rdata_tail++) = 15;
+	}
+	action _write8_16 {
+		*(rdata_tail++) = 16;
+	}
 	action _write8_252 {
 		*(rdata_tail++) = 252;
 	}
@@ -1663,6 +1669,8 @@
 		| "ECC-GOST"i           %_write8_12
 		| "ECDSAP256SHA256"i    %_write8_13
 		| "ECDSAP384SHA384"i    %_write8_14
+		| "ED25519"i            %_write8_15
+		| "ED448"i              %_write8_16
 		| "INDIRECT"i           %_write8_252
 		| "PRIVATEDNS"i         %_write8_253
 		| "PRIVATEOID"i         %_write8_254

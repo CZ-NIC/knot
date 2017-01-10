@@ -68,6 +68,18 @@ static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 		.def = 384,
 	};
 
+	static const struct limits ED25519 = {
+		.min = 256,
+		.max = 256,
+		.def = 256,
+	};
+
+	static const struct limits ED448 = {
+		.min = 456,
+		.max = 456,
+		.def = 456,
+	};
+
 	switch (algorithm) {
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
@@ -82,6 +94,10 @@ static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 		return &EC256;
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return &EC384;
+	case DNSSEC_KEY_ALGORITHM_ED25519:
+		return &ED25519;
+	case DNSSEC_KEY_ALGORITHM_ED448:
+		return &ED448;
 	default:
 		return NULL;
 	}
@@ -103,6 +119,8 @@ gnutls_pk_algorithm_t algorithm_to_gnutls(dnssec_key_algorithm_t dnssec)
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return GNUTLS_PK_EC;
+	case DNSSEC_KEY_ALGORITHM_ED25519:
+	case DNSSEC_KEY_ALGORITHM_ED448:
 	default:
 		return GNUTLS_PK_UNKNOWN;
 	}
