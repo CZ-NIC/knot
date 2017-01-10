@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,8 @@
 #include "shared.h"
 #include <string.h>
 
-char *dnssec_keyusage_path(dnssec_kasp_t *kasp) {
+char *dnssec_keyusage_path(dnssec_kasp_t *kasp)
+{
 	char *res;
 	if (asprintf(&res, "%s/keyusage.json", kasp->functions->base_path(kasp->ctx)) == -1) {
 		res = NULL;
@@ -33,8 +34,8 @@ char *dnssec_keyusage_path(dnssec_kasp_t *kasp) {
 	return res;
 }
 
-int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *keytag, char *zone) {
-
+int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *keytag, char *zone)
+{
 	char *lzone = strdup(zone);
 	dnssec_list_foreach(item, keyusage) {
 
@@ -59,8 +60,8 @@ int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *keytag, char *z
 	return DNSSEC_EOK;
 }
 
-int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *keytag, char *zone) {
-
+int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *keytag, char *zone)
+{
 	dnssec_list_foreach(item, keyusage) {
 		record_keyusage_t *record = dnssec_item_get(item);
 
@@ -90,8 +91,8 @@ int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *keytag, char
 	return DNSSEC_ENOENT;
 }
 
-bool dnssec_keyusage_is_used(dnssec_keyusage_t *keyusage, const char *keytag) {
-
+bool dnssec_keyusage_is_used(dnssec_keyusage_t *keyusage, const char *keytag)
+{
 	if (dnssec_list_is_empty(keyusage)) {
 		return false;
 	}
@@ -235,7 +236,6 @@ error:
 	json_array_clear(jzones);
 	json_array_clear(jrecords);
 	return r;
-
 }
 
 int dnssec_keyusage_load(dnssec_keyusage_t *keyusage, const char *filename)
@@ -279,8 +279,7 @@ int dnssec_keyusage_save(dnssec_keyusage_t *keyusage, const char *filename)
 		return DNSSEC_NOT_FOUND;
 	}
 
-	if (json)
-	{
+	if (json) {
 		r = json_dumpf(json, file, JSON_DUMP_OPTIONS);
 		if (r != DNSSEC_EOK) {
 			return r;
