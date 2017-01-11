@@ -175,6 +175,7 @@ int conf_new(
 	out->api = knot_db_lmdb_api();
 	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
 	lmdb_opts.mapsize = (size_t)CONF_MAPSIZE * 1024 * 1024;
+	lmdb_opts.maxreaders = CONF_MAX_DB_READERS;
 	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
 
 	// Open the database.

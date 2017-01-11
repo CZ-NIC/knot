@@ -38,6 +38,8 @@
 #define CONF_DEFAULT_DBDIR	(STORAGE_DIR "/confdb")
 /*! Maximum depth of nested transactions. */
 #define CONF_MAX_TXN_DEPTH	5
+/*! Maximum number of concurrent DB readers. */
+#define CONF_MAX_DB_READERS	630
 
 /*! Configuration specific logging. */
 #define CONF_LOG(severity, msg, ...) do { \

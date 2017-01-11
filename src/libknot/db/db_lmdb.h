@@ -33,6 +33,7 @@ struct knot_db_lmdb_opts {
 	const char *dbname;   /*!< Database name (or NULL). */
 	size_t mapsize;       /*!< Environment map size. */
 	unsigned maxdbs;      /*!< Maximum number of databases in the env. */
+	unsigned maxreaders;  /*!< Maximum number of concurrent readers */
 	struct {
 		unsigned env; /*!< Environment flags. */
 		unsigned db;  /*!< Database flags. */
@@ -44,6 +45,7 @@ struct knot_db_lmdb_opts {
 	NULL, NULL, \
 	KNOT_DB_LMDB_MAPSIZE, \
 	0, \
+	126, /* = contrib/lmdb/mdb.c DEFAULT_READERS */ \
 	{ 0, 0 } \
 }
 

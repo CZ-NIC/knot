@@ -140,6 +140,12 @@ static int dbase_open_env(struct lmdb_env *env, struct knot_db_lmdb_opts *opts)
 		return lmdb_error_to_knot(ret);
 	}
 
+	ret = mdb_env_set_maxreaders(mdb_env, opts->maxreaders);
+	if (ret != MDB_SUCCESS) {
+		mdb_env_close(mdb_env);
+		return lmdb_error_to_knot(ret);
+	}
+
 #ifdef __OpenBSD__
 	/*
 	 * Enforce that MDB_WRITEMAP is set.
