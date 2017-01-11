@@ -1,3 +1,34 @@
+Knot DNS 2.4.0-dev (unreleased)
+===============================
+
+Bugfixes:
+--------
+ - Schedule zone refresh after load only if not already scheduled
+ - Purge the timers together with zone-purge
+ - Don't preserve CD flag in the answers
+ - Fix incorrect type bitmap in NSEC
+ - Dump DNSSEC related records also if DNSSEC is not active
+ - Preserve bootstrap_retry interval after zone reload
+ - Don't set SO_REUSEPORT on the TCP socket as SO_REUSEPORT on TCP
+   is buggy
+ - Allow deleting non-apex DNSKEY and NSEC3PARAM records via DDNS
+
+Improvements:
+-------------
+ - Lower memory consumption when used with many zones due hat-trie
+   replacement with qp-trie in zone-tree
+ - Improve the event scheduler
+ - Store the XFER timer between restarts
+ - Print all zone names in the FQDN format
+ - Improve and simplify modules interface
+
+Features:
+---------
+ - New unified LMDB-based zone journal
+ - Add kjournalprint utility
+ - New mod-stats module for detailed server metrics
+ - Automatically delete retired DNSSEC keys
+
 Knot DNS 2.3.1 (2016-10-07)
 ===========================
 
