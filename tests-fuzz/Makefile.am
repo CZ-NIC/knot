@@ -29,6 +29,6 @@ BUILT_SOURCES = wrap/main.c
 CLEANFILES = wrap/main.c
 wrap/main.c: Makefile $(top_builddir)/src/utils/knotd/main.c
 	echo '#include "afl-loop.h"' > $@
-	sed -e 's/for (;;)/while (__AFL_LOOP(1000))/' $(top_builddir)/src/utils/knotd/main.c >>$@
+	$(SED) -e 's/for (;;)/while (__AFL_LOOP(1000))/' $(top_srcdir)/src/utils/knotd/main.c >>$@
 
 check-compile: $(check_PROGRAMS)
