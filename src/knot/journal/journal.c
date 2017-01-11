@@ -28,6 +28,8 @@
 #define JOURNAL_VERSION	"1.0"
 /*! \brief Changeset chunk size. */
 #define CHUNK_MAX	(70 * 1024)
+/*! \brief Max number of concurrent DB readers. */
+#define JOURNAL_MAX_READERS 630
 
 /*! \brief Various metadata DB key strings. Also hardcoded in macro txn_commit()! */
 #define MDKEY_GLOBAL_VERSION			"version"
@@ -1351,6 +1353,7 @@ static int open_journal_db_unsafe(journal_db_t **db)
 	opts.path = (*db)->path;
 	opts.mapsize = (*db)->fslimit;
 	opts.maxdbs = 1;
+	opts.maxreaders = JOURNAL_MAX_READERS;
 
 	int ret = (*db)->db_api->init(&(*db)->db, NULL, &opts);
 	if (ret != KNOT_EOK) {
