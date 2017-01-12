@@ -88,29 +88,34 @@ enum state {
 	STATE_TRANSFER,
 };
 
-struct transfer_result {
-	zone_contents_t *zone;  //!< AXFR, new zone
-	list_t changesets;      //!< IXFR, zone updates
-};
-
 struct refresh_data {
-	enum state state;                 //!< Event processing state.
-	struct transfer_result result;    //!< Result of the refresh event.
-	bool is_ixfr;                     //!< Transfer is IXFR not AXFR.
+	// transfer configuration, initialize appropriately:
 
-	const knot_dname_t *zone;         //!< Zone name.
+	zone_t *zone;                     //!< Zone to eventually updated.
+	conf_t *conf;                     //!< Server configuration.
 	const struct sockaddr *remote;    //!< Remote endpoint.
-	struct query_edns_data edns;      //!< EDNS data to be used in queries.
 	const knot_rrset_t *soa;          //!< Local SOA (NULL for AXFR).
 	const size_t max_zone_size;       //!< Maximal zone size.
+	struct query_edns_data edns;      //!< EDNS data to be used in queries.
 
+	// internal state, initialize with zeroes:
+
+	enum state state;                 //!< Event processing state.
+	bool is_ixfr;                     //!< Transfer is IXFR not AXFR.
 	struct xfr_stats stats;           //!< Transfer statistics.
 	size_t change_size;               //!< Size of added and removed RRs.
 
 	struct {
+		zone_contents_t *zone;    //!< AXFR result, new zone.
+	} axfr;
+
+	struct {
 		struct ixfr_proc *proc;   //!< IXFR processing context.
 		knot_rrset_t *final_soa;  //!< SOA denoting end of transfer.
+		list_t changesets;        //!< IXFR result, zone updates.
 	} ixfr;
+
+	bool updated;  // TODO: knockin' on the sillicon heaven's door
 
 	knot_mm_t *mm; // TODO: check where this should be used
 };
@@ -126,24 +131,6 @@ static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 	return serial_compare(local_serial, remote_serial) >= 0;
 }
 
-static void transfer_result_init(struct transfer_result *result)
-{
-	result->zone = NULL;
-	init_list(&result->changesets);
-}
-
-static void transfer_result_cleanup(struct transfer_result *result)
-{
-	zone_contents_deep_free(&result->zone);
-	changesets_free(&result->changesets);
-	memset(result, 0, sizeof(*result));
-}
-
-static bool transfer_result_has_data(const struct transfer_result *result)
-{
-	return result->zone || !EMPTY_LIST(result->changesets);
-}
-
 static time_t bootstrap_next(const zone_timers_t *timers)
 {
 	time_t expired_at = timers->last_refresh + timers->soa_expire;
@@ -154,7 +141,7 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 		interval = 0;
 	}
 
-	// exponentional backoff
+	// exponential backoff
 	interval *= 2;
 	if (interval > BOOTSTRAP_MAXTIME) {
 		interval = BOOTSTRAP_MAXTIME;
@@ -166,15 +153,93 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
+static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
+{
+	err_handler_logger_t handler;
+	handler._cb.cb = err_handler_logger;
+	int ret = zone_do_sem_checks(zone, false, &handler._cb);
+	if (ret != KNOT_EOK) {
+		// error is logged by the error handler
+		return ret;
+	}
+
+	if (zone->size > data->max_zone_size) {
+		ns_log(LOG_WARNING, data->zone->name,
+		       data->is_ixfr ? LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
+		       LOG_DIRECTION_IN, data->remote, "zone size exceeded");
+		return KNOT_EZONESIZE;
+	}
+
+	return KNOT_EOK;
+}
+
+static void xfr_log_publish(const knot_dname_t *zone_name,
+                            const struct sockaddr *remote,
+                            const zone_contents_t *old_zone,
+                            const zone_contents_t *new_zone)
+{
+	if (old_zone) {
+		REFRESH_LOG(LOG_INFO, zone_name, remote,
+		            "zone updated, serial %u -> %u",
+		            zone_contents_serial(old_zone),
+		            zone_contents_serial(new_zone));
+	} else {
+		REFRESH_LOG(LOG_INFO, zone_name, remote,
+		            "zone updated, serial none -> %u",
+		            zone_contents_serial(new_zone));
+	}
+}
+
+static int axfr_init(struct refresh_data *data)
+{
+	zone_contents_t *new_zone = zone_contents_new(data->zone->name);
+	if (new_zone == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	data->axfr.zone = new_zone;
+	return KNOT_EOK;
+}
+
+static void axfr_cleanup(struct refresh_data *data)
+{
+	zone_contents_deep_free(&data->axfr.zone);
+}
+
+static int axfr_finalize(struct refresh_data *data)
+{
+	zone_contents_t *new_zone = data->axfr.zone;
+
+	int ret = zone_contents_adjust_full(new_zone);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = xfr_validate(new_zone, data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	zone_contents_t *old_zone = zone_switch_contents(data->zone, new_zone);
+	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
+
+	synchronize_rcu();
+
+	data->axfr.zone = NULL; // seized
+	zone_contents_deep_free(&old_zone);
+
+	return KNOT_EOK;
+}
+
 static int axfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
 {
 	assert(pkt);
 	assert(data);
 
-	assert(data->result.zone);
+	assert(data->axfr.zone);
 
 	zcreator_t zc = {
-		.z = data->result.zone,
+		.z = data->axfr.zone,
 		.master = false,
 		.ret = KNOT_EOK
 	};
@@ -194,7 +259,7 @@ static int axfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
 
 		data->change_size += knot_rrset_size(&answer_rr[i]);
 		if (data->change_size > data->max_zone_size) {
-			AXFRIN_LOG(LOG_WARNING, data->zone, data->remote,
+			AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "zone size exceeded");
 			return KNOT_STATE_FAIL;
 		}
@@ -211,21 +276,22 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	// Check RCODE
 	uint16_t rcode = knot_pkt_get_ext_rcode(pkt);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		AXFRIN_LOG(LOG_WARNING, data->zone, data->remote,
+		AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "server responded with %s", rcode_name(rcode));
 		return KNOT_STATE_FAIL;
 	}
 
 	// Initialize with first packet
-	if (data->result.zone == NULL) {
-		data->result.zone = zone_contents_new(data->zone);
-		if (!data->result.zone) {
-			AXFRIN_LOG(LOG_WARNING, data->zone, data->remote,
-			           "failed to initialize (%s)", knot_strerror(KNOT_ENOMEM));
+	if (data->axfr.zone == NULL) {
+		int ret = axfr_init(data);
+		if (ret != KNOT_EOK) {
+			AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			           "failed to initialize (%s)",
+			           knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		}
 
-		AXFRIN_LOG(LOG_INFO, data->zone, data->remote, "starting");
+		AXFRIN_LOG(LOG_INFO, data->zone->name, data->remote, "starting");
 		xfr_stats_begin(&data->stats);
 		data->change_size = 0;
 	}
@@ -236,11 +302,6 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 
 	// Finalize
 	if (next == KNOT_STATE_DONE) {
-		int ret = zone_contents_adjust_full(data->result.zone);
-		if (ret != KNOT_EOK) {
-			return KNOT_STATE_FAIL;
-		}
-
 		xfr_stats_end(&data->stats);
 	}
 
@@ -254,6 +315,7 @@ static int ixfr_init(struct refresh_data *data)
 	if (proc == NULL) {
 		return KNOT_ENOMEM;
 	}
+
 	memset(proc, 0, sizeof(struct ixfr_proc));
 	proc->state = IXFR_START;
 	proc->mm = data->mm;
@@ -261,15 +323,69 @@ static int ixfr_init(struct refresh_data *data)
 	data->ixfr.proc = proc;
 	data->ixfr.final_soa = NULL;
 
+	init_list(&data->ixfr.changesets);
+
 	return KNOT_EOK;
 }
 
 /*! \brief Clean up data allocated by IXFR-in processing. */
 static void ixfr_cleanup(struct refresh_data *data)
 {
+	if (data->ixfr.proc == NULL) {
+		return;
+	}
+
 	knot_rrset_free(&data->ixfr.final_soa, data->mm);
 	mm_free(data->mm, data->ixfr.proc);
 	data->ixfr.proc = NULL;
+
+	changesets_free(&data->ixfr.changesets);
+}
+
+static int ixfr_finalize(struct refresh_data *data)
+{
+	zone_contents_t *new_zone = NULL;
+	apply_ctx_t ctx = { 0 };
+
+	apply_init_ctx(&ctx, NULL, APPLY_STRICT);
+	int ret = apply_changesets(&ctx, data->zone->contents,
+				   &data->ixfr.changesets, &new_zone);
+	if (ret != KNOT_EOK) {
+		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+		           "failed to apply changes to zone (%s)",
+		           knot_strerror(ret));
+		return ret;
+	}
+
+	assert(new_zone != NULL);
+
+	ret = xfr_validate(new_zone, data);
+	if (ret != KNOT_EOK) {
+		update_rollback(&ctx);
+		update_free_zone(&new_zone);
+		return ret;
+	}
+
+	// TODO: zone_changes_store() takes monster object with configuration
+	ret = zone_changes_store(data->conf, data->zone, &data->ixfr.changesets);
+	if (ret != KNOT_EOK) {
+		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+		           "failed to write changes to journal (%s)",
+		           knot_strerror(ret));
+		update_rollback(&ctx);
+		update_free_zone(&new_zone);
+		return ret;
+	}
+
+	zone_contents_t *old_zone = zone_switch_contents(data->zone, new_zone);
+	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
+
+	synchronize_rcu();
+
+	update_free_zone(&old_zone);
+	update_cleanup(&ctx);
+
+	return KNOT_EOK;
 }
 
 /*! \brief Stores starting SOA into changesets structure. */
@@ -287,7 +403,7 @@ static int ixfr_solve_start(const knot_rrset_t *rr, struct refresh_data *data)
 	}
 
 	// Initialize list for changes
-	init_list(&data->result.changesets);
+	init_list(&data->ixfr.changesets);
 
 	return KNOT_EOK;
 }
@@ -300,7 +416,7 @@ static int ixfr_solve_soa_del(const knot_rrset_t *rr, struct refresh_data *data)
 	}
 
 	// Create new changeset.
-	changeset_t *change = changeset_new(data->zone);
+	changeset_t *change = changeset_new(data->zone->name);
 	if (change == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -313,7 +429,7 @@ static int ixfr_solve_soa_del(const knot_rrset_t *rr, struct refresh_data *data)
 	}
 
 	// Add changeset.
-	add_tail(&data->result.changesets, &change->n);
+	add_tail(&data->ixfr.changesets, &change->n);
 
 	return KNOT_EOK;
 }
@@ -391,7 +507,7 @@ static int ixfr_next_state(struct refresh_data *data, const knot_rrset_t *rr)
 static int ixfr_step(const knot_rrset_t *rr, struct refresh_data *data)
 {
 	data->ixfr.proc->state = ixfr_next_state(data, rr);
-	changeset_t *change = TAIL(data->result.changesets);
+	changeset_t *change = TAIL(data->ixfr.changesets);
 
 	switch (data->ixfr.proc->state) {
 	case IXFR_START:
@@ -425,20 +541,20 @@ static int ixfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	for (uint16_t i = 0; i < answer->count; ++i) {
 		const knot_rrset_t *rr = knot_pkt_rr(answer, i);
-		if (!knot_dname_in(data->zone, rr->owner)) {
+		if (!knot_dname_in(data->zone->name, rr->owner)) {
 			continue;
 		}
 
 		int ret = ixfr_step(rr, data);
 		if (ret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_WARNING, data->zone, data->remote,
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "failed (%s)", knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		}
 
 		data->change_size += knot_rrset_size(rr);
 		if (data->change_size / 2 > data->max_zone_size) {
-			IXFRIN_LOG(LOG_WARNING, data->zone, data->remote,
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "transfer size exceeded");
 			return KNOT_STATE_FAIL;
 		}
@@ -474,7 +590,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	if (rcode != KNOT_RCODE_NOERROR) {
 		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
 		if (lut != NULL) {
-			IXFRIN_LOG(LOG_WARNING, data->zone, data->remote,
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "server responded with %s", lut->name);
 		}
 		return KNOT_STATE_FAIL;
@@ -485,24 +601,26 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
 		if (!ixfr_check_header(answer)) {
-			IXFRIN_LOG(LOG_WARNING, data->zone, data->remote, "malformed response");
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			           "malformed response");
 			return KNOT_STATE_FAIL;
 		}
 
 		if (ixfr_is_axfr(answer)) {
-			IXFRIN_LOG(LOG_NOTICE, data->zone, data->remote, "receiving AXFR-style IXFR");
+			IXFRIN_LOG(LOG_NOTICE, data->zone->name, data->remote,
+			           "receiving AXFR-style IXFR");
 			data->is_ixfr = false;
 			return axfr_consume(pkt, data);
 		}
 
 		int ret = ixfr_init(data);
 		if (ret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_WARNING, data->zone, data->remote,
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "failed to initialize (%s)", knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		}
 
-		IXFRIN_LOG(LOG_INFO, data->zone, data->remote, "starting");
+		IXFRIN_LOG(LOG_INFO, data->zone->name, data->remote, "starting");
 		xfr_stats_begin(&data->stats);
 		data->change_size = 0;
 	}
@@ -525,7 +643,7 @@ static int soa_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	query_init_pkt(pkt);
 
-	int r = knot_pkt_put_question(pkt, data->zone, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
+	int r = knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	if (r != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
@@ -544,7 +662,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	uint16_t rcode = knot_pkt_get_ext_rcode(pkt);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		REFRESH_LOG(LOG_WARNING, data->zone, data->remote,
+		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
 		            "server responded with %s", rcode_name(rcode));
 		return KNOT_STATE_FAIL;
 	}
@@ -552,7 +670,8 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	const knot_rrset_t *rr = answer->count == 1 ? knot_pkt_rr(answer, 0) : NULL;
 	if (!rr || rr->type != KNOT_RRTYPE_SOA || rr->rrs.rr_count != 1) {
-		REFRESH_LOG(LOG_WARNING, data->zone, data->remote, "malformed message");
+		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
+		            "malformed message");
 		return KNOT_STATE_FAIL;
 	}
 
@@ -560,8 +679,8 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	uint32_t remote_serial = knot_soa_serial(&rr->rrs);
 	bool current = serial_is_current(local_serial, remote_serial);
 
-	REFRESH_LOG(LOG_INFO, data->zone, data->remote, "remote serial %u, %s",
-	            remote_serial,
+	REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
+	            "remote serial %u, %s", remote_serial,
 	            current ? "zone is up-to-date" : "zone is outdated");
 
 	if (current) {
@@ -579,7 +698,7 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 	bool ixfr = data->is_ixfr;
 
 	query_init_pkt(pkt);
-	knot_pkt_put_question(pkt, data->zone, KNOT_CLASS_IN,
+	knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN,
 			      ixfr ? KNOT_RRTYPE_IXFR : KNOT_RRTYPE_AXFR);
 
 	if (ixfr) {
@@ -599,6 +718,22 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	int next = data->is_ixfr ? ixfr_consume(pkt, data) : axfr_consume(pkt, data);
 
+	// Transfer completed
+	if (next == KNOT_STATE_DONE) {
+		// Log transfer even if we still can fail
+		xfr_log_finished(data->zone->name,
+		                 data->is_ixfr ? LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
+		                 LOG_DIRECTION_IN, data->remote, &data->stats);
+
+		// Finalize and publish the zone
+		int ret = data->is_ixfr ? ixfr_finalize(data) : axfr_finalize(data);
+		if (ret == KNOT_EOK) {
+			data->updated = true;
+		} else {
+			next = KNOT_STATE_FAIL;
+		}
+	}
+
 	// IXFR to AXFR failover
 	if (data->is_ixfr && next == KNOT_STATE_FAIL) {
 		ixfr_cleanup(data);
@@ -606,15 +741,9 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_RESET;
 	}
 
-	// Log result, no failover after the transfer is complete
-	if (next == KNOT_STATE_DONE) {
-		xfr_log_finished(data->zone,
-		                 data->is_ixfr ? LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
-		                 LOG_DIRECTION_IN, data->remote, &data->stats);
-	}
-
 	// Cleanup processing context
 	if (next == KNOT_STATE_DONE || next == KNOT_STATE_FAIL) {
+		axfr_cleanup(data);
 		ixfr_cleanup(data);
 	}
 
@@ -679,94 +808,6 @@ static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 	return conf_int(&val);
 }
 
-static int publish_zone(conf_t *conf, zone_t *zone, const struct sockaddr *remote,
-                        struct transfer_result *result)
-{
-	int ret = KNOT_ERROR;
-	bool axfr = result->zone != NULL;
-	apply_ctx_t apply_ctx = { 0 };
-
-	// Construct new zone
-
-	zone_contents_t *new_zone = NULL;
-
-	if (axfr) {
-		new_zone = result->zone;
-	} else {
-		apply_init_ctx(&apply_ctx, NULL, APPLY_STRICT);
-		ret = apply_changesets(&apply_ctx, zone->contents,
-		                       &result->changesets, &new_zone);
-		if (ret != KNOT_EOK) {
-			goto fail;
-		}
-	}
-
-	assert(new_zone != NULL);
-
-	// Run semantic checks
-
-	err_handler_logger_t handler;
-	handler._cb.cb = err_handler_logger;
-	ret = zone_do_sem_checks(new_zone, false, &handler._cb);
-	if (ret != KNOT_EOK) {
-		goto fail;
-	}
-
-	// Enforce zone size limit
-
-	if (new_zone->size > max_zone_size(conf, zone->name)) {
-		REFRESH_LOG(LOG_INFO, zone->name, remote, "zone size exceeded");
-		goto fail;
-	}
-
-	// Write journal for IXFR
-
-	if (!axfr) {
-		ret = zone_changes_store(conf, zone, &result->changesets);
-		if (ret != KNOT_EOK) {
-			goto fail;
-		}
-	}
-
-	// Publish new zone
-
-	zone_contents_t *old_zone = zone_switch_contents(zone, new_zone);
-
-	if (old_zone) {
-		REFRESH_LOG(LOG_INFO, zone->name, remote,
-		            "zone updated, serial %u -> %u",
-		            zone_contents_serial(old_zone),
-		            zone_contents_serial(new_zone));
-	} else {
-		REFRESH_LOG(LOG_INFO, zone->name, remote,
-		            "zone updated, serial none -> %u",
-		            zone_contents_serial(new_zone));
-	}
-
-	// Clean up old resources
-
-	assert(ret == KNOT_EOK);
-	synchronize_rcu();
-
-fail:
-	if (axfr) {
-		if (ret == KNOT_EOK) {
-			zone_contents_deep_free(&old_zone);
-			result->zone = NULL; // seized
-		}
-	} else {
-		if (ret == KNOT_EOK) {
-			update_free_zone(&old_zone);
-			update_cleanup(&apply_ctx);
-		} else {
-			update_rollback(&apply_ctx);
-			update_free_zone(&new_zone);
-		}
-	}
-
-	return ret;
-}
-
 #include "knot/query/requestor.h"
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx)
@@ -782,13 +823,13 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	}
 
 	struct refresh_data data = {
+		.zone = zone,
+		.conf = conf,
 		.remote = (struct sockaddr *)&master->addr,
-		.zone = zone->name,
 		.soa = zone->contents ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 	};
 
-	transfer_result_init(&data.result);
 	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
 
 	// TODO: temporary until we can get event specific flags
@@ -821,15 +862,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
 
-	bool updated = transfer_result_has_data(&data.result);
-	if (ret == KNOT_EOK && updated) {
-		ret = publish_zone(conf, zone, data.remote, &data.result);
-	}
-
-	transfer_result_cleanup(&data.result);
-
 	if (ret == KNOT_EOK && ctx) {
-		*(bool *)ctx = updated;
+		*(bool *)ctx = data.updated;
 	}
 
 	return ret;
