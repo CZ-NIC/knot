@@ -1318,6 +1318,12 @@ static size_t dnskey_len(const uint8_t *rdata,
 	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
 		// RFC 6605.
 		return 384;
+	case KNOT_DNSSEC_ALG_ED25519:
+		// RFC TBD, an Ed25519 public key consists of a 32-octet value.
+		return 256;
+	case KNOT_DNSSEC_ALG_ED448:
+		// RFC TBD, an Ed448 public key consists of a 57-octet value.
+		return 456;
 	default:
 		return 0;
 	}
