@@ -20,7 +20,7 @@
 #include "kasp.h"
 
 typedef struct record {
-	char *keytag;
+	char *key_id;
 	dnssec_list_t *zones;
 } record_keyusage_t;
 
@@ -28,11 +28,11 @@ typedef dnssec_list_t dnssec_keyusage_t;
 
 char *dnssec_keyusage_path(dnssec_kasp_t *kasp);
 
-int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *keytag, char *zone);
+int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *key_id, char *zone);
 
-int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *keytag, char *zone);
+int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *key_id, char *zone);
 
-bool dnssec_keyusage_is_used(dnssec_keyusage_t *keyusage, const char *keytag);
+bool dnssec_keyusage_is_used(dnssec_keyusage_t *keyusage, const char *key_id);
 
 int dnssec_keyusage_load(dnssec_keyusage_t *keyusage, const char *filename);
 

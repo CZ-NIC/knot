@@ -34,13 +34,13 @@ char *dnssec_keyusage_path(dnssec_kasp_t *kasp)
 	return res;
 }
 
-int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *keytag, char *zone)
+int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *key_id, char *zone)
 {
 	char *lzone = strdup(zone);
 	dnssec_list_foreach(item, keyusage) {
 
 		record_keyusage_t *record = dnssec_item_get(item);
-		if (strcmp(record->keytag, keytag) == 0) {
+		if (strcmp(record->key_id, key_id) == 0) {
 
 			if(!dnssec_list_contains(record->zones, lzone)) {
 				dnssec_list_append(record->zones, lzone);
@@ -51,7 +51,7 @@ int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *keytag, char *z
 	}
 
 	record_keyusage_t *record = malloc(sizeof(*record));
-	record->keytag = strdup(keytag);
+	record->key_id = strdup(key_id);
 	record->zones = dnssec_list_new();
 
 	dnssec_list_append(record->zones, lzone);
@@ -60,12 +60,12 @@ int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *keytag, char *z
 	return DNSSEC_EOK;
 }
 
-int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *keytag, char *zone)
+int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *key_id, char *zone)
 {
 	dnssec_list_foreach(item, keyusage) {
 		record_keyusage_t *record = dnssec_item_get(item);
 
-		if (strcmp(record->keytag, keytag) == 0) {
+		if (strcmp(record->key_id, key_id) == 0) {
 			dnssec_list_foreach(item2, record->zones) {
 
 				char *tmp = dnssec_item_get(item2);
@@ -76,7 +76,7 @@ int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *keytag, char
 					dnssec_list_remove(item2);
 
 					if (dnssec_list_is_empty(record->zones)) {
-						free(record->keytag);
+						free(record->key_id);
 						dnssec_list_free(record->zones);
 						free(record);
 						dnssec_list_remove(item);
@@ -91,7 +91,7 @@ int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *keytag, char
 	return DNSSEC_ENOENT;
 }
 
-bool dnssec_keyusage_is_used(dnssec_keyusage_t *keyusage, const char *keytag)
+bool dnssec_keyusage_is_used(dnssec_keyusage_t *keyusage, const char *key_id)
 {
 	if (dnssec_list_is_empty(keyusage)) {
 		return false;
@@ -100,11 +100,11 @@ bool dnssec_keyusage_is_used(dnssec_keyusage_t *keyusage, const char *keytag)
 	dnssec_list_foreach(item, keyusage) {
 		record_keyusage_t *record = dnssec_item_get(item);
 
-		if(record == NULL || record->keytag == NULL) {
+		if(record == NULL || record->key_id == NULL) {
 			return false;
 		}
 
-		if (strcmp(record->keytag, keytag) == 0) {
+		if (strcmp(record->key_id, key_id) == 0) {
 			return !dnssec_list_is_empty(record->zones);
 		}
 	}
@@ -123,15 +123,15 @@ static int import_keyusage(dnssec_keyusage_t *keyusage, const json_t *json)
 		}
 	}
 	json_array_foreach(json, a, jrecord) {
-		json_t *jkeytag = NULL;
-		jkeytag = json_object_get(jrecord, "keytag");
+		json_t *jkey_id = NULL;
+		jkey_id = json_object_get(jrecord, "key_id");
 
 		record_keyusage_t *record = malloc(sizeof(*record));
 		if (record == NULL) {
 			return DNSSEC_ENOMEM;
 		}
 
-		int r = decode_string(jkeytag, &record->keytag);
+		int r = decode_string(jkey_id, &record->key_id);
 		if (r != DNSSEC_EOK) {
 			return r;
 		}
@@ -170,7 +170,7 @@ static int export_keyusage(dnssec_keyusage_t *keyusage, json_t **json)
 		return DNSSEC_ENOMEM;
 	}
 
-	json_t *jkeytag = NULL;
+	json_t *jkey_id = NULL;
 	json_t *jzone = NULL;
 	json_t *jzones = NULL;
 
@@ -183,9 +183,9 @@ static int export_keyusage(dnssec_keyusage_t *keyusage, json_t **json)
 			return DNSSEC_ENOMEM;
 		}
 
-		r = encode_string(&record->keytag, &jkeytag);
+		r = encode_string(&record->key_id, &jkey_id);
 		if (r != DNSSEC_EOK) {
-			json_decref(jkeytag);
+			json_decref(jkey_id);
 			goto error;
 		}
 		dnssec_list_foreach(item, record->zones) {
@@ -209,12 +209,12 @@ static int export_keyusage(dnssec_keyusage_t *keyusage, json_t **json)
 			goto error;
 		}
 
-		if (json_object_set(jrecord, "keytag",jkeytag)) {
+		if (json_object_set(jrecord, "key_id",jkey_id)) {
 			json_object_clear(jrecord);
 			r = DNSSEC_ENOMEM;
 			goto error;
 		}
-		json_decref(jkeytag);
+		json_decref(jkey_id);
 
 		if (json_object_set(jrecord, "zones",jzones)) {
 			json_object_clear(jrecord);
@@ -310,7 +310,7 @@ void dnssec_keyusage_free(dnssec_keyusage_t *keyusage)
 		dnssec_list_foreach(item, keyusage) {
 			record_keyusage_t *record = dnssec_item_get(item);
 
-			free(record->keytag);
+			free(record->key_id);
 			dnssec_list_foreach(item2, record->zones) {
 				char *zone = dnssec_item_get(item2);
 				free(zone);
