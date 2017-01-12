@@ -88,7 +88,33 @@ Access control list (ACL)
 
 An ACL list specifies which remotes are allowed to send the server a specific
 request. A remote can be a single IP address or a network subnet. Also a TSIG
-key can be assigned (see :doc:`keymgr <man_keymgr>` how to generate a TSIG key)::
+key can be assigned (see :doc:`keymgr <man_keymgr>` how to generate a TSIG key).
+
+With no ACL rule, all the actions are denied for the zone. Each ACL rule
+can allow one or more actions for given address/subnet/TSIG, or deny them.
+
+The rule precendence, if multiple rules match (e.g. overlapping address ranges),
+is not for stricter or more specific rules. In any case, just the first -- in the
+order of rules in zone or template acl configuration item, not in the order of
+declarations in acl section -- matching rule applies and the rest is ignored.
+
+See following examples and :ref:`ACL section`.::
+
+    acl:
+      - id: address_rule
+        address: [2001:db8::1, 192.168.2.0/24]
+        action: transfer
+
+      - id: deny_rule
+        address: 192.168.2.100
+        action: transfer
+        deny: on
+
+    zone:
+      - domain: acl1.example.com.
+        acl: [deny_rule, address_rule] # deny_rule first here to take precendence
+
+::
 
     key:
       - id: key1
@@ -96,24 +122,17 @@ key can be assigned (see :doc:`keymgr <man_keymgr>` how to generate a TSIG key):
         secret: Wg==
 
     acl:
-      - id: address_rule
-        address: [2001:db8::1, 192.168.2.0/24] # Allowed IP address list
-        action: [transfer, update]  # Allow zone transfers and updates
-
-      - id: deny_rule             # Negative match rule
-        address: 192.168.2.100
-        action: transfer
-        deny: on                  # The request is denied
+      - id: deny_all
+        address: 192.168.3.0/24
+        deny: on # no action specified and deny on implies denial of all actions
 
       - id: key_rule
         key: key1                 # Access based just on TSIG key
-        action: transfer
-
-These rules can then be referenced from a zone :ref:`zone_acl`::
+        action: [transfer, notify]
 
     zone:
-      - domain: example.com
-        acl: [address_rule, deny_rule, key_rule]
+      - domain: acl2.example.com
+        acl: [deny_all, key_rule]
 
 Slave zone
 ==========

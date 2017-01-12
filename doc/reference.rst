@@ -373,8 +373,7 @@ match one of them. Empty value means that TSIG key is not required.
 action
 ------
 
-An ordered list of allowed actions. Empty action list is only allowed if
-:ref:`deny<acl_deny>` is set.
+An ordered list of allowed (or denied) actions.
 
 Possible values:
 
@@ -389,8 +388,9 @@ Possible values:
 deny
 ----
 
-Deny if :ref:`address<acl_address>`, :ref:`key<acl_key>` and
-:ref:`action<acl_action>` match.
+If enabled, instead of allowing, deny the specified :ref:`action<acl_action>`,
+:ref:`address<acl_address>`, :ref:`key<acl_key>`, or combination if these
+items. If no action is specified, deny all actions.
 
 *Default:* off
 

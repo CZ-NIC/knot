@@ -328,8 +328,7 @@ match one of them. Empty value means that TSIG key is not required.
 \fIDefault:\fP not set
 .SS action
 .sp
-An ordered list of allowed actions. Empty action list is only allowed if
-\fI\%deny\fP is set.
+An ordered list of allowed (or denied) actions.
 .sp
 Possible values:
 .INDENT 0.0
@@ -344,8 +343,9 @@ Possible values:
 \fIDefault:\fP not set
 .SS deny
 .sp
-Deny if \fI\%address\fP, \fI\%key\fP and
-\fI\%action\fP match.
+If enabled, instead of allowing, deny the specified \fI\%action\fP,
+\fI\%address\fP, \fI\%key\fP, or combination if these
+items. If no action is specified, deny all actions.
 .sp
 \fIDefault:\fP off
 .SH CONTROL SECTION
