@@ -59,6 +59,9 @@ static int policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 	val = conf_rawid_get(conf(), C_POLICY, C_MANUAL, id, id_len);
 	policy->manual = conf_bool(&val);
 
+	val = conf_rawid_get(conf(), C_POLICY, C_SINGLE_TYPE_SIGNING, id, id_len);
+	policy->singe_type_signing = conf_bool(&val);
+
 	val = conf_rawid_get(conf(), C_POLICY, C_ALG, id, id_len);
 	policy->algorithm = conf_opt(&val);
 

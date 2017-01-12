@@ -66,12 +66,13 @@ the following symbols:
 | – Choice
 .UNINDENT
 .sp
-There are 10 main sections (\fBserver\fP, \fBcontrol\fP, \fBlog\fP, \fBkeystore\fP,
-\fBpolicy\fP, \fBkey\fP, \fBacl\fP, \fBremote\fP, \fBtemplate\fP, and \fBzone\fP) and
-module sections with the \fBmod\-\fP prefix. Most of the sections (excluding
-\fBserver\fP and \fBcontrol\fP) are sequences of settings blocks. Each settings block
-begins with a unique identifier, which can be used as a reference from other
-sections (such identifier must be defined in advance).
+There are 11 main sections (\fBserver\fP, \fBcontrol\fP, \fBlog\fP, \fBstatistics\fP,
+\fBkeystore\fP, \fBpolicy\fP, \fBkey\fP, \fBacl\fP, \fBremote\fP, \fBtemplate\fP, and
+\fBzone\fP) and module sections with the \fBmod\-\fP prefix. Most of the sections
+(excluding \fBserver\fP, \fBcontrol\fP, and \fBstatistics\fP) are sequences of
+settings blocks. Each settings block begins with a unique identifier,
+which can be used as a reference from other sections (such identifier
+must be defined in advance).
 .sp
 A multi\-valued item can be specified either as a YAML sequence:
 .INDENT 0.0
@@ -466,6 +467,7 @@ policy:
   \- id: STR
     keystore: STR
     manual: BOOL
+    single\-type\-signing: BOOL
     algorithm: dsa | rsasha1 | dsa\-nsec3\-sha1 | rsasha1\-nsec3\-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
     ksk\-size: SIZE
     zsk\-size: SIZE
@@ -494,6 +496,20 @@ for zones. A special \fIdefault\fP value can be used for the default keystore se
 .SS manual
 .sp
 If enabled, automatic key management is not used.
+.sp
+\fIDefault:\fP off
+.SS single\-type\-signing
+.sp
+If enabled, Single\-Type Signing Scheme is used in the automatic key management
+mode.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Because key rollover is not supported yet, just one combined signing key is
+generated if none is available.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP off
 .SS algorithm

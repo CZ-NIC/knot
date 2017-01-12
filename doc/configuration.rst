@@ -362,8 +362,7 @@ with manual key management flag has to be set::
       dnssec-policy: manual
 
 To generate signing keys, use the :doc:`keymgr <man_keymgr>` utility.
-Let's use the Single-Type Signing scheme with two algorithms, which is
-a scheme currently not supported by the automatic key management. Run:
+Let's use the Single-Type Signing scheme with two algorithms. Run:
 
 .. code-block:: console
 
@@ -443,7 +442,7 @@ of the limitations will be hopefully removed in the near future.
 - Automatic key management:
 
   - Only one DNSSEC algorithm can be used per zone.
-  - Single-Type Signing scheme is not supported.
+  - CSK rollover with Single-Type Signing scheme is not implemented.
   - ZSK rollover always uses key pre-publish method (actually a feature).
   - KSK rollover is not implemented.
 
