@@ -736,6 +736,8 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	// IXFR to AXFR failover
 	if (data->is_ixfr && next == KNOT_STATE_FAIL) {
+		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
+		            "fallback to AXFR");
 		ixfr_cleanup(data);
 		data->is_ixfr = false;
 		return KNOT_STATE_RESET;
