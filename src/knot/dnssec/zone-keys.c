@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,9 @@
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
 #include "libknot/rrtype/dnskey.h"
+#include "contrib/dynarray.h"
+
+dynarray_define(keyptr, zone_key_t *, 1)
 
 /*!
  * \brief Get key feature flags from key parameters.
@@ -319,22 +322,20 @@ void free_zone_keys(zone_keyset_t *keyset)
 }
 
 /*!
- * \brief Get zone key by a keytag.
+ * \brief Get zone keys by keytag.
  */
-const zone_key_t *get_zone_key(const zone_keyset_t *keyset, uint16_t search)
+struct keyptr_dynarray get_zone_keys(const zone_keyset_t *keyset, uint16_t search)
 {
-	if (!keyset) {
-		return NULL;
-	}
+	struct keyptr_dynarray res = { 0 };
 
-	for (size_t i = 0; i < keyset->count; i++) {
+	for (size_t i = 0; keyset && i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
-		if (dnssec_key_get_keytag(key->key) == search) {
-			return key;
+		if (key != NULL && dnssec_key_get_keytag(key->key) == search) {
+			keyptr_dynarray_add(&res, &key);
 		}
 	}
 
-	return NULL;
+	return res;
 }
 
 /*!

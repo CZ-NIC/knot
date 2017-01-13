@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,14 +72,14 @@ int load_zone_keys(dnssec_kasp_zone_t *zone, dnssec_keystore_t *store,
                    bool nsec3_enabled, time_t now, zone_keyset_t *keyset_ptr);
 
 /*!
- * \brief Get zone key by a keytag.
+ * \brief Get zone keys by a keytag.
  *
- * \param keys    Zone keys.
- * \param keytag  Keytag to lookup a key for.
+ * \param keyset  Zone keyset.
+ * \param search  Keytag to lookup a key for.
  *
- * \return Pointer to key or NULL if not found.
+ * \return Dynarray of pointers to keys.
  */
-const zone_key_t *get_zone_key(const zone_keyset_t *keyset, uint16_t keytag);
+struct keyptr_dynarray get_zone_keys(const zone_keyset_t *keyset, uint16_t search);
 
 /*!
  * \brief Free structure with zone keys and associated DNSSEC contexts.
