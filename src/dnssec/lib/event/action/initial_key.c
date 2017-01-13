@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,7 +91,7 @@ static int plan(dnssec_event_ctx_t *ctx, dnssec_event_t *event)
 	bool has_ksk, has_zsk;
 	scan_keys(ctx->zone, &has_ksk, &has_zsk);
 
-	if (!has_ksk || !has_zsk) {
+	if (!has_zsk || (!ctx->policy->singe_type_signing && !has_ksk)) {
 		event->type = DNSSEC_EVENT_GENERATE_INITIAL_KEY;
 		event->time = ctx->now;
 	} else {
@@ -114,7 +114,7 @@ static int exec(dnssec_event_ctx_t *ctx, const dnssec_event_t *event)
 
 	int r = DNSSEC_EOK;
 
-	if (!has_ksk) {
+	if (!ctx->policy->singe_type_signing && !has_ksk) {
 		r = generate_initial_key(ctx, true);
 	}
 

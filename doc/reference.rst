@@ -31,12 +31,13 @@ the following symbols:
 - [ ] – Optional value
 - \| – Choice
 
-There are 10 main sections (``server``, ``control``, ``log``, ``keystore``,
-``policy``, ``key``, ``acl``, ``remote``, ``template``, and ``zone``) and
-module sections with the ``mod-`` prefix. Most of the sections (excluding
-``server`` and ``control``) are sequences of settings blocks. Each settings block
-begins with a unique identifier, which can be used as a reference from other
-sections (such identifier must be defined in advance).
+There are 11 main sections (``server``, ``control``, ``log``, ``statistics``,
+``keystore``, ``policy``, ``key``, ``acl``, ``remote``, ``template``, and
+``zone``) and module sections with the ``mod-`` prefix. Most of the sections
+(excluding ``server``, ``control``, and ``statistics``) are sequences of
+settings blocks. Each settings block begins with a unique identifier,
+which can be used as a reference from other sections (such identifier
+must be defined in advance).
 
 A multi-valued item can be specified either as a YAML sequence::
 
@@ -528,6 +529,7 @@ DNSSEC policy configuration.
    - id: STR
      keystore: STR
      manual: BOOL
+     single-type-signing: BOOL
      algorithm: dsa | rsasha1 | dsa-nsec3-sha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
      ksk-size: SIZE
      zsk-size: SIZE
@@ -564,6 +566,20 @@ manual
 ------
 
 If enabled, automatic key management is not used.
+
+*Default:* off
+
+.. _policy_single-type-signing:
+
+single-type-signing
+-------------------
+
+If enabled, Single-Type Signing Scheme is used in the automatic key management
+mode.
+
+.. NOTE::
+   Because key rollover is not supported yet, just one combined signing key is
+   generated if none is available.
 
 *Default:* off
 
@@ -1401,6 +1417,36 @@ log-responses
 If enabled, response messages will be logged.
 
 *Default:* on
+
+.. _Module online-sign:
+
+Module online-sign
+==================
+
+The module provides online DNSSEC signing. Instead of pre-computing the zone signatures
+when the zone is loaded into the server or instead of loading an externally signed zone,
+the signatures are computed on-the-fly during answering.
+
+::
+
+ mod-online-sign:
+   - id: STR
+     policy: STR
+
+.. _mod-online-sign_id:
+
+id
+--
+
+A module identifier.
+
+.. _mod-online-sign_policy:
+
+policy
+------
+
+A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
+value can be used for the default policy settings.
 
 .. _Module synth-record:
 

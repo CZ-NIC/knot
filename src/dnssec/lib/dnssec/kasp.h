@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -299,6 +299,7 @@ typedef struct dnssec_kasp_policy {
 	uint16_t zsk_size;
 	uint32_t dnskey_ttl;
 	uint32_t zsk_lifetime;
+	bool singe_type_signing;
 	// RRSIG
 	uint32_t rrsig_lifetime;
 	uint32_t rrsig_refresh_before;

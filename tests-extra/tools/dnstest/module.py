@@ -179,6 +179,35 @@ class ModWhoami(KnotModule):
     def __init__(self):
         super().__init__()
 
+class ModOnlineSign(KnotModule):
+    '''Online-sign module'''
+
+    src_name = "online_sign_load"
+    conf_name = "mod-online-sign"
+
+    def __init__(self, algorithm=None):
+        super().__init__()
+        self.algorithm = algorithm
+        if not algorithm:
+            self.empty = True
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        if self.algorithm:
+            conf.begin("policy")
+            conf.id_item("id", "%s_%s" % (self.conf_name, self.conf_id))
+            conf.item_str("algorithm", self.algorithm)
+            conf.end()
+
+            conf.begin(self.conf_name)
+            conf.id_item("id", self.conf_id)
+            conf.item_str("policy", "%s_%s" % (self.conf_name, self.conf_id))
+            conf.end()
+
+        return conf
+
 class ModRosedb(KnotModule):
     '''Rosedb module'''
 

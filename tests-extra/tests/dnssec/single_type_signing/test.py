@@ -8,7 +8,7 @@ from dnstest.test import Test
 t = Test()
 
 knot = t.server("knot")
-zones = t.zone_rnd(4, dnssec=False, records=10)
+zones = t.zone_rnd(5, dnssec=False, records=10)
 t.link(zones, knot)
 t.start()
 
@@ -27,9 +27,13 @@ knot.gen_key(zones[3], ksk=True, alg="RSASHA256", key_len="1024")
 knot.gen_key(zones[3], ksk=False, alg="RSASHA256", key_len="1024")
 knot.gen_key(zones[3], ksk=False, alg="RSASHA512", key_len="1024")
 
-for zone in zones:
+for zone in zones[:-1]:
     knot.dnssec(zone).enable = True
     knot.dnssec(zone).manual = True
+
+# enable automatic Single-Type signing scheme on the last zone
+knot.dnssec(zones[-1]).enable = True
+knot.dnssec(zones[-1]).single_type_signing = True
 
 knot.gen_confile()
 knot.reload()

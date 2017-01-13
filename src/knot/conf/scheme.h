@@ -95,6 +95,7 @@
 #define C_SEM_CHECKS		"\x0F""semantic-checks"
 #define C_SERIAL_POLICY		"\x0D""serial-policy"
 #define C_SERVER		"\x06""server"
+#define C_SINGLE_TYPE_SIGNING	"\x13""single-type-signing"
 #define C_SRV			"\x06""server"
 #define C_STATS			"\x0A""statistics"
 #define C_TIMER			"\x05""timer"

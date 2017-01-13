@@ -37,6 +37,7 @@ class ZoneDnssec(object):
     def __init__(self):
         self.enable = None
         self.manual = None
+        self.single_type_signing = None
         self.alg = None
         self.ksk_size = None
         self.zsk_size = None
@@ -1031,6 +1032,7 @@ class Knot(Server):
                 continue
             s.id_item("id", z.name)
             self._bool(s, "manual", z.dnssec.manual)
+            self._bool(s, "single-type-signing", z.dnssec.single_type_signing)
             self._str(s, "algorithm", z.dnssec.alg)
             self._str(s, "ksk_size", z.dnssec.ksk_size)
             self._str(s, "zsk_size", z.dnssec.zsk_size)
