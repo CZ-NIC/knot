@@ -1418,6 +1418,36 @@ If enabled, response messages will be logged.
 
 *Default:* on
 
+.. _Module online-sign:
+
+Module online-sign
+==================
+
+The module provides online DNSSEC signing. Instead of pre-computing the zone signatures
+when the zone is loaded into the server or instead of loading an externally signed zone,
+the signatures are computed on-the-fly during answering.
+
+::
+
+ mod-online-sign:
+   - id: STR
+     policy: STR
+
+.. _mod-online-sign_id:
+
+id
+--
+
+A module identifier.
+
+.. _mod-online-sign_policy:
+
+policy
+------
+
+A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
+value can be used for the default policy settings.
+
 .. _Module synth-record:
 
 Module synth-record

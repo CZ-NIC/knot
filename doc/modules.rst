@@ -387,8 +387,11 @@ How to use the online signing module:
      - domain: example.com
        module: mod-online-sign/explicit
 
+  Or use manual policy in an analogous manner, see
+  :ref:`Manual key management<dnssec-manual-key-management>`.
+
   .. NOTE::
-     Only keystore, algorithm, zsk-size, and rrsig-lifetime policy items are
+     Only id, manual, keystore, algorithm, zsk-size, and rrsig-lifetime policy items are
      relevant to this module. If no rrsig-lifetime is configured, the
      default value is 25 hours.
 
@@ -424,7 +427,7 @@ Known issues:
 
 Limitations:
 
-* Only a Single-Type Signing scheme is supported.
+* Online-sign module always enforces Single-Type Signing scheme.
 
 * Only one active signing key can be used.
 

@@ -1213,6 +1213,30 @@ If enabled, query messages will be logged.
 If enabled, response messages will be logged.
 .sp
 \fIDefault:\fP on
+.SH MODULE ONLINE-SIGN
+.sp
+The module provides online DNSSEC signing. Instead of pre\-computing the zone signatures
+when the zone is loaded into the server or instead of loading an externally signed zone,
+the signatures are computed on\-the\-fly during answering.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mod\-online\-sign:
+  \- id: STR
+    policy: STR
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A module identifier.
+.SS policy
+.sp
+A \fI\%reference\fP to DNSSEC signing policy. A special \fIdefault\fP
+value can be used for the default policy settings.
 .SH MODULE SYNTH-RECORD
 .sp
 This module is able to synthesize either forward or reverse records for the
