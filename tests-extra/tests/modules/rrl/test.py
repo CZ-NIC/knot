@@ -134,6 +134,7 @@ cmp_stats(knot, res)
 time.sleep(2)
 res = send_queries(knot, zones[1].name)
 check_result("global, zone 2, all drop", res, 5, 0)
+detail_log(SEP)
 
 # All slip
 reconfigure(knot, None, 5, 1)
@@ -143,6 +144,7 @@ cmp_stats(knot, res)
 time.sleep(2)
 res = send_queries(knot, zones[1].name)
 check_result("global, zone 2, all slip", res, 5, 1)
+detail_log(SEP)
 
 # 50% slip
 reconfigure(knot, None, 5, 2)
@@ -152,6 +154,7 @@ cmp_stats(knot, res)
 time.sleep(2)
 res = send_queries(knot, zones[1].name)
 check_result("global, zone 2, 50% slip", res, 5, 2)
+detail_log(SEP)
 
 # Whitelist
 reconfigure(knot, None, 5, 0, whitelist=knot.addr)
@@ -161,6 +164,7 @@ check_result("global, zone 1, whitelist", res, 0)
 time.sleep(2)
 res = send_queries(knot, zones[1].name)
 check_result("global, zone 2, whitelist", res, 0)
+detail_log(SEP)
 
 ### RRL zone module
 
@@ -172,6 +176,7 @@ cmp_stats(knot, res, zones[0].name)
 time.sleep(2)
 res = send_queries(knot, zones[1].name)
 check_result("zone 2, disabled", res)
+detail_log(SEP)
 
 # All slip
 reconfigure(knot, zones[0], 5, 1)
@@ -181,6 +186,7 @@ cmp_stats(knot, res, zones[0].name)
 time.sleep(2)
 res = send_queries(knot, zones[1].name)
 check_result("zone 2, disabled", res)
+detail_log(SEP)
 
 # 50% slip
 reconfigure(knot, zones[0], 5, 2)
@@ -190,6 +196,7 @@ cmp_stats(knot, res, zones[0].name)
 time.sleep(2)
 res = send_queries(knot, zones[1].name)
 check_result("zone 2, disabled", res)
+detail_log(SEP)
 
 # Whitelist
 reconfigure(knot, zones[0], 5, 0, whitelist=knot.addr)
@@ -199,5 +206,6 @@ cmp_stats(knot, res, zones[0].name)
 time.sleep(2)
 res = send_queries(knot, zones[1].name)
 check_result("zone 2, disabled", res)
+detail_log(SEP)
 
 t.end()
