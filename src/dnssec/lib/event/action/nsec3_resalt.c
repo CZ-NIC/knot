@@ -38,12 +38,6 @@ static int plan(dnssec_event_ctx_t *ctx, dnssec_event_t *event)
 	assert(ctx);
 	assert(event);
 
-	// Not supported with Single-Type signing.
-	if (ctx->policy->singe_type_signing) {
-		event->type = DNSSEC_EVENT_NONE;
-		return DNSSEC_EOK;
-	}
-
 	if (!ctx->policy->nsec3_enabled || ctx->policy->nsec3_salt_length == 0) {
 		return DNSSEC_EOK;
 	}

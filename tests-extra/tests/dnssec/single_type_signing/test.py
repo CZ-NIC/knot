@@ -31,8 +31,9 @@ for zone in zones[:-1]:
     knot.dnssec(zone).enable = True
     knot.dnssec(zone).manual = True
 
-# enable automatic Single-Type signing scheme on the last zone
+# enable automatic Single-Type signing scheme with NSEC3 on the last zone
 knot.dnssec(zones[-1]).enable = True
+knot.dnssec(zones[-1]).nsec3 = True
 knot.dnssec(zones[-1]).single_type_signing = True
 
 knot.gen_confile()
