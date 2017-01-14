@@ -743,12 +743,6 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_RESET;
 	}
 
-	// Cleanup processing context
-	if (next == KNOT_STATE_DONE || next == KNOT_STATE_FAIL) {
-		axfr_cleanup(data);
-		ixfr_cleanup(data);
-	}
-
 	return next;
 }
 
@@ -797,11 +791,23 @@ static int refresh_reset(knot_layer_t *layer)
 	return KNOT_STATE_PRODUCE;
 }
 
+static int refresh_finish(knot_layer_t *layer)
+{
+	struct refresh_data *data = layer->data;
+
+	// clean processing context
+	axfr_cleanup(data);
+	ixfr_cleanup(data);
+
+	return KNOT_STATE_NOOP;
+}
+
 static const knot_layer_api_t REFRESH_API = {
 	.begin = refresh_begin,
 	.produce = refresh_produce,
 	.consume = refresh_consume,
 	.reset = refresh_reset,
+	.finish = refresh_finish,
 };
 
 static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
