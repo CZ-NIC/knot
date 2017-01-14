@@ -1,4 +1,4 @@
 $ORIGIN example.
 $TTL 3600
 
-@	SOA	dns1 hostmaster 1 1 1 16 600
+@	SOA	dns1 hostmaster 1 1 1 15 600

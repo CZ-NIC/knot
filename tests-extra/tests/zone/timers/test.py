@@ -6,116 +6,110 @@ from dnstest.test import Test
 import random
 
 EXPIRE_SLEEP = 20
-RETRY_SLEEP = 10
-START_SLEEP = 5
+RESYNC_SLEEP = 10
 
 def restart_server(s):
     s.stop()
     s.start()
 
-def set_master(t, master, slave, zone):
-    t.link(zone, master)
+def remove_zone(server, zone):
+    if zone.name in server.zones:
+        server.zones.pop(zone.name)
 
-def set_slave(t, master, slave, zone):
-    t.link(zone, master, slave)
+def make_master(server, zone):
+    remove_zone(server, zone)
+    server.set_master(zone)
+    server.gen_confile()
 
-def role_switch(t, master, slave, zone, action):
-    slave.zones = {}
-    master.zones = {}
-    slave.tcp_reply_timeout = "1s"
-    master.tcp_reply_timeout = "1s"
-    action(t, master, slave, zone)
-    t.generate_conf()
+def make_slave(server, zone, master):
+    remove_zone(server, zone)
+    server.set_slave(zone, master)
+    server.gen_confile()
 
-def test_expire(zone, server):
-    resp = server.dig("example.", "SOA")
+def test_expired(zone, server):
+    resp = server.dig(zone.name, "SOA")
     resp.check(rcode="SERVFAIL")
 
 def test_alive(zone, server):
     server.zone_wait(zone)
 
 def expire_tests(t, zone, master, slave):
-    # There are 3 ways for zone to expire:
-    #  - zone expires while server is alive
-    #  - zone expire is planned before server restart and occurs when the server is alive again
-    #  - zone expires while server is down
-
-    # Stop the master and let the zone expire (alive expire).
+    # Stop the master and let the zone expire.
     master.stop()
     t.sleep(EXPIRE_SLEEP)
+    test_expired(zone, slave)
 
-    # Restart and make sure the zone is not served.
-    restart_server(slave)
-    test_expire(zone, slave)
+    # Reload shoudn't affect.
+    slave.reload()
+    test_expired(zone, slave)
 
-    # Switch slave to master and check that the zone is alive again.
-    role_switch(t, slave, master, zone, set_master)
+    # Restart shoudn't affect.
     restart_server(slave)
+    test_expired(zone, slave)
+
+    # Make the server master, zone should appear.
+    make_master(slave, zone)
+    slave.reload()
     test_alive(zone, slave)
 
-    # Switch roles back - state of servers same as the beginning of the test.
-    role_switch(t, master, slave, zone, set_slave)
-    restart_server(slave)
+    # Make it slave again, return to initial state.
+    make_slave(slave, zone, master)
     master.start()
-    master.zone_wait(zone)
-    slave.zone_wait(zone)
+    slave.reload()
+    t.sleep(RESYNC_SLEEP)
 
-    # Stop the master, let refresh fail (= expire planned) then restart the slave and wait for expire.
-    master.stop()
-    t.sleep(EXPIRE_SLEEP // 2)
-    restart_server(slave)
-    t.sleep((EXPIRE_SLEEP // 2) + 1 - START_SLEEP)
-    test_expire(zone, slave)
-
-    # Start the master and wait for sync with slave.
-    master.start()
-    slave.zone_wait(zone)
-
-    # Stop both servers.
+    # Let the zone expire while the server is down.
     slave.stop()
     master.stop()
-
-    # Let the zone expire while servers are down.
-    t.sleep(EXPIRE_SLEEP * 2)
+    t.sleep(EXPIRE_SLEEP)
     slave.start()
-    test_expire(zone, slave)
+    test_expired(zone, slave)
+
+    # Reload shoudn't affect.
+    slave.reload()
+    test_expired(zone, slave)
+
+    # Restart shoudn't affect.
+    restart_server(slave)
+    test_expired(zone, slave)
+
+    # Start master, wait for next bootstrap.
+    master.start()
+    test_alive(zone, slave) # may take about a minute
 
 def refresh_tests(t, zone, master, slave):
-    # Replace the SOA - set higher retry.
-    master.zones[zone[0].name].zfile.update_soa(serial=2, refresh=1, retry=20, expire=10)
-    master.start()
-    slave.zone_wait(zone, 1)
+    # Set long refresh interval
+    master.zones[zone.name].zfile.update_soa(serial=2, refresh=1200, retry=1200, expire=3600)
+    master.reload()
+    slave.zone_wait(zone, 2, equal=True)
 
-    # Stop the master.
-    master.stop()
-    # Wait for refresh to fail - expire will be planned in ~12s on the slave.
-    t.sleep(2)
-    # Restart the slave - there should be no refresh on startup.
-    restart_server(slave) # comes with START_SLEEP sleep.
-    # Start the master again.
-    master.start() # comes with START_SLEEP sleep.
-    t.sleep(2)
-    # Zone should be expired by now, ~8s to refresh retry.
-    test_expire(zone, slave)
+    # Bump serial
+    master.zones[zone.name].zfile.update_soa(serial=3, refresh=1, retry=1, expire=15)
+    master.reload()
 
-    t.sleep(10)
-    # Zone should be loaded again once refresh timer triggers the event.
-    test_alive(zone, slave)
+    # Restart and reload shoudn't cause refresh
+    restart_server(slave)
+    slave.reload()
+    slave.ctl("zone-reload %s" % zone.name)
+    slave.zone_wait(zone, 2, equal=True)
+
+    # Force refresh should work
+    slave.ctl("zone-refresh %s" % zone.name)
+    slave.zone_wait(zone, 3, equal=True)
 
 t = Test()
 
-# this zone has refresh = 1s, retry = 1s and expire = 16s
-zone = t.zone("example.", storage=".")
+# this zone has refresh = 1s, retry = 1s and expire = 15s
+[zone] = t.zone("example.", storage=".")
 
 master = t.server("knot")
-master.disable_notify = True
-master.tcp_reply_timeout = "1s"
-
 slave = t.server("knot")
-slave.disable_notify = True
-slave.tcp_reply_timeout = "1s"
 
-t.link(zone, master, slave)
+for server in [master, slave]:
+    server.disable_notify = True
+    server.tcp_reply_timeout = "1s"
+
+t.link([zone], master, slave)
 
 t.start()
 
