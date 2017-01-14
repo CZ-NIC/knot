@@ -575,9 +575,22 @@ static bool ixfr_check_header(const knot_pktsection_t *answer)
 
 static bool ixfr_is_axfr(const knot_pktsection_t *answer)
 {
-	return answer->count >= 2 &&
-	       knot_pkt_rr(answer, 0)->type == KNOT_RRTYPE_SOA &&
-	       knot_pkt_rr(answer, 1)->type != KNOT_RRTYPE_SOA;
+	if (answer->count < 2) {
+		return false;
+	}
+
+	const knot_rrset_t *rr_one = knot_pkt_rr(answer, 0);
+	const knot_rrset_t *rr_two = knot_pkt_rr(answer, 1);
+
+	return (
+		rr_one->type == KNOT_RRTYPE_SOA &&
+		rr_two->type != KNOT_RRTYPE_SOA
+	       ) || (
+		answer->count == 2 &&
+		rr_one->type == KNOT_RRTYPE_SOA &&
+		rr_two->type == KNOT_RRTYPE_SOA &&
+		knot_rrset_equal(rr_one, rr_two, KNOT_RRSET_COMPARE_WHOLE)
+	       );
 }
 
 static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
