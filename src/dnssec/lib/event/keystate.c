@@ -25,7 +25,7 @@
 _public_
 key_state_t dnssec_get_key_state(const dnssec_kasp_key_t *key, time_t moment)
 {
-	if (!key || time <= 0)
+	if (!key || moment <= 0)
 	{
 		return DNSSEC_KEY_STATE_INVALID;
 	}

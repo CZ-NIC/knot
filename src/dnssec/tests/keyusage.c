@@ -19,13 +19,9 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "dnssec/keyusage.h"
-#include "dnssec/error.h"
 #include "dnssec.h"
 
-char *json_path = NULL, *json_file = NULL;
-
-static void test_keyusage_empty(void)
+static void test_keyusage_empty(const char *json_file)
 {
 	diag("%s", __func__);
 
@@ -75,7 +71,7 @@ static void test_keyusage_basic(void)
 	dnssec_keyusage_free(k);
 }
 
-static void test_keyusage_file(void)
+static void test_keyusage_file(const char *json_file)
 {
 	dnssec_keyusage_t *k = NULL;
 	k = dnssec_keyusage_new();
@@ -99,23 +95,30 @@ static void test_keyusage_file(void)
 	dnssec_keyusage_free(k);
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	plan_lazy();
 
+	char *json_path = NULL, *json_file = NULL;
+
 	json_path = test_mkdtemp();
-	asprintf(&json_file, "%s/keyusage.json", json_path ? json_path : "/tmp");
-
-	test_keyusage_empty();
-	test_keyusage_basic();
-	test_keyusage_file();
-
-	remove(json_file);
-	free(json_file);
-	if (json_path) {
-		remove(json_path);
-		free(json_path);
+	if (!json_path) {
+		fprintf(stderr, "Failed to create teporary path.");
+		return -1;
 	}
+
+	int r = asprintf(&json_file, "%s/keyusage.json", json_path);
+	if (r == -1) {
+		fprintf(stderr, "Failed to create teporary file path.");
+		return -1;
+	}
+
+	test_keyusage_empty(json_file);
+	test_keyusage_basic();
+	test_keyusage_file(json_file);
+
+	test_rm_rf(json_path);
+	free(json_path);
 
 	return 0;
 }
