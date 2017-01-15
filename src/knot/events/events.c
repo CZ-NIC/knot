@@ -310,11 +310,6 @@ void _zone_events_schedule_at(zone_t *zone, ...)
 	va_end(args);
 }
 
-bool zone_events_is_scheduled(zone_t *zone, zone_event_type_t type)
-{
-	return zone_events_get_time(zone, type) > 0;
-}
-
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 {
 	if (!zone || !valid_event(type)) {
@@ -338,11 +333,6 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 
 	/* Execute as soon as possible. */
 	zone_events_schedule_at(zone, type, time(NULL));
-}
-
-void zone_events_cancel(zone_t *zone, zone_event_type_t type)
-{
-	zone_events_schedule_at(zone, type, 0);
 }
 
 void zone_events_freeze(zone_t *zone)

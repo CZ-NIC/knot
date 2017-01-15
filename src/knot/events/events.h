@@ -118,23 +118,6 @@ void _zone_events_schedule_at(struct zone *zone, ...);
 #define zone_events_schedule_now(zone, type) \
 	zone_events_schedule_at(zone, type, time(NULL))
 
-
-///*!
-// * \brief Check if zone event is scheduled.
-// *
-// * \param zone  Zone to check event of.
-// * \param type  Type of event.
-// */
-//bool zone_events_is_scheduled(struct zone *zone, zone_event_type_t type);
-
-///*!
-// * \brief Cancel one zone event.
-// *
-// * \param zone  Zone to cancel event in.
-// * \param type  Type of event to cancel.
-// */
-//void zone_events_cancel(struct zone *zone, zone_event_type_t type);
-
 /*!
  * \brief Freeze all zone events and prevent new events from running.
  *
