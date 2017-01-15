@@ -18,6 +18,9 @@
 
 #include "knot/events/replan.h"
 
+#define TIME_CANCEL 0
+#define TIME_IGNORE (-1)
+
 /*!
  * \brief Move DDNS queue from old zone to new zone and replan if necessary.
  *
@@ -88,18 +91,20 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	assert(conf);
 	assert(zone);
 
-	time_t refresh = 0;
+	time_t refresh = TIME_CANCEL;
 	if (zone_is_slave(conf, zone)) {
 		refresh = zone->timers.next_refresh;
 		assert(refresh > 0);
 	}
 
-	time_t expire = 0;
+	time_t expire_pre = TIME_IGNORE;
+	time_t expire = TIME_IGNORE;
 	if (zone_is_slave(conf, zone) && can_expire(zone)) {
+		expire_pre = TIME_CANCEL;
 		expire = zone->timers.last_refresh + zone->timers.soa_expire;
 	}
 
-	time_t flush = 0;
+	time_t flush = TIME_CANCEL;
 	if (!zone_is_slave(conf, zone) || can_expire(zone)) {
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		int64_t sync_timeout = conf_int(&val);
@@ -108,9 +113,11 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	zone_events_schedule_at(zone, ZONE_EVENT_REFRESH, refresh,
-	                              ZONE_EVENT_EXPIRE, expire,
-	                              ZONE_EVENT_FLUSH, flush);
+	zone_events_schedule_at(zone,
+	                        ZONE_EVENT_REFRESH, refresh,
+		                ZONE_EVENT_EXPIRE, expire_pre,
+		                ZONE_EVENT_EXPIRE, expire,
+	                        ZONE_EVENT_FLUSH, flush);
 }
 
 void replan_load_new(zone_t *zone)
