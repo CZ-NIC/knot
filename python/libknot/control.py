@@ -93,7 +93,7 @@ class KnotCtlError(Exception):
         self.data = data
 
     def __str__(self):
-        return "message: %s\ndata: %s" % (self.message, self.data)
+        return "%s (data: %s)" % (self.message, self.data)
 
 
 class KnotCtlType(IntEnum):
