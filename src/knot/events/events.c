@@ -332,7 +332,7 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 	pthread_mutex_unlock(&events->mx);
 
 	/* Execute as soon as possible. */
-	zone_events_schedule_at(zone, type, time(NULL));
+	zone_events_schedule_now(zone, type);
 }
 
 void zone_events_freeze(zone_t *zone)
