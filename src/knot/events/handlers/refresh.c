@@ -29,8 +29,6 @@
 #include "knot/zone/zone.h"
 #include "libknot/errcode.h"
 
-/// TODO. Memory context.
-/// TODO. Adjusting.
 
 #include "contrib/mempattern.h" // mm_free()
 #include "knot/nameserver/ixfr.h" // struct ixfr_proc
@@ -115,9 +113,8 @@ struct refresh_data {
 		list_t changesets;        //!< IXFR result, zone updates.
 	} ixfr;
 
-	bool updated;  // TODO: knockin' on the sillicon heaven's door
-
-	knot_mm_t *mm; // TODO: check where this should be used
+	bool updated;  // TODO: Can we fid a better way to check if zone was updated?
+	knot_mm_t *mm; // TODO: This used to be used in IXFR. Remove or reuse.
 };
 
 static const char *rcode_name(uint16_t rcode)
@@ -366,7 +363,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
-	// TODO: zone_changes_store() takes monster object with configuration
+	// TODO: Refactor zone_changes_store() not to take monster object with config.
 	ret = zone_changes_store(data->conf, data->zone, &data->ixfr.changesets);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
@@ -833,7 +830,7 @@ static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx)
 {
-	// XXX: COPY PASTED
+	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
 
 	assert(zone);
 	assert(master);
@@ -853,7 +850,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
 
-	// TODO: temporary until we can get event specific flags
+	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
 	if (zone->flags & ZONE_FORCE_AXFR) {
 		zone->flags &= ~ZONE_FORCE_AXFR;
 		data.soa = NULL;
