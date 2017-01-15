@@ -18,22 +18,21 @@
 #include <stdint.h>
 #include <urcu.h>
 
+#include "contrib/mempattern.h"
 #include "contrib/trim.h"
 #include "dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/events/replan.h"
+#include "knot/nameserver/ixfr.h"
 #include "knot/query/layer.h"
 #include "knot/query/query.h"
+#include "knot/query/requestor.h"
 #include "knot/updates/apply.h"
+#include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
+#include "knot/zone/zonefile.h"
 #include "libknot/errcode.h"
-
-
-#include "contrib/mempattern.h" // mm_free()
-#include "knot/nameserver/ixfr.h" // struct ixfr_proc
-#include "knot/zone/zonefile.h" // err_handler_logger_t
-#include "knot/zone/serial.h" // serial_compare (move to libknot)
 
 /*!
  * \brief Refresh event processing.
@@ -825,8 +824,6 @@ static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 	conf_val_t val = conf_zone_get(conf, C_MAX_ZONE_SIZE, zone);
 	return conf_int(&val);
 }
-
-#include "knot/query/requestor.h"
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx)
 {
