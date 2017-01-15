@@ -14,16 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "dnssec/keyusage.h"
-#include "error.h"
-#include "string.h"
-#include "dnssec.h"
 #include <assert.h>
+#include <string.h>
+
+#include "dnssec.h"
 #include "error.h"
 #include "kasp/dir/json.h"
 #include "kasp/internal.h"
 #include "shared.h"
-#include <string.h>
 
 char *dnssec_keyusage_path(dnssec_kasp_t *kasp)
 {
@@ -42,7 +40,7 @@ int dnssec_keyusage_add(dnssec_keyusage_t *keyusage, const char *key_id, char *z
 		record_keyusage_t *record = dnssec_item_get(item);
 		if (strcmp(record->key_id, key_id) == 0) {
 
-			if(!dnssec_list_contains(record->zones, lzone)) {
+			if (!dnssec_list_contains(record->zones, lzone)) {
 				dnssec_list_append(record->zones, lzone);
 			}
 
@@ -70,7 +68,7 @@ int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *key_id, char
 
 				char *tmp = dnssec_item_get(item2);
 
-				if(strcmp(tmp,zone)==0) {
+				if (strcmp(tmp, zone) == 0) {
 
 					free(tmp);
 					dnssec_list_remove(item2);
@@ -85,9 +83,9 @@ int dnssec_keyusage_remove(dnssec_keyusage_t *keyusage, const char *key_id, char
 					return DNSSEC_EOK;
 				}
 			}
-
 		}
 	}
+
 	return DNSSEC_ENOENT;
 }
 
@@ -100,7 +98,7 @@ bool dnssec_keyusage_is_used(dnssec_keyusage_t *keyusage, const char *key_id)
 	dnssec_list_foreach(item, keyusage) {
 		record_keyusage_t *record = dnssec_item_get(item);
 
-		if(record == NULL || record->key_id == NULL) {
+		if (record == NULL || record->key_id == NULL) {
 			return false;
 		}
 
@@ -115,6 +113,7 @@ static int import_keyusage(dnssec_keyusage_t *keyusage, const json_t *json)
 {
 	json_t *jrecord = NULL;
 	int a, b;
+
 	if (!json_is_array(json)) {
 		if (json_is_null(json)) {
 			return DNSSEC_EOK;
@@ -122,6 +121,7 @@ static int import_keyusage(dnssec_keyusage_t *keyusage, const json_t *json)
 			return DNSSEC_CONFIG_MALFORMED;
 		}
 	}
+
 	json_array_foreach(json, a, jrecord) {
 		json_t *jkey_id = NULL;
 		jkey_id = json_object_get(jrecord, "key_id");
@@ -133,6 +133,7 @@ static int import_keyusage(dnssec_keyusage_t *keyusage, const json_t *json)
 
 		int r = decode_string(jkey_id, &record->key_id);
 		if (r != DNSSEC_EOK) {
+			free(record);
 			return r;
 		}
 
@@ -144,6 +145,7 @@ static int import_keyusage(dnssec_keyusage_t *keyusage, const json_t *json)
 			char *zone;
 			int r = decode_string(jzone, &zone);
 			if (r != DNSSEC_EOK) {
+				free(record);
 				return r;
 			}
 			dnssec_list_append(record->zones, zone);
@@ -209,14 +211,14 @@ static int export_keyusage(dnssec_keyusage_t *keyusage, json_t **json)
 			goto error;
 		}
 
-		if (json_object_set(jrecord, "key_id",jkey_id)) {
+		if (json_object_set(jrecord, "key_id", jkey_id)) {
 			json_object_clear(jrecord);
 			r = DNSSEC_ENOMEM;
 			goto error;
 		}
 		json_decref(jkey_id);
 
-		if (json_object_set(jrecord, "zones",jzones)) {
+		if (json_object_set(jrecord, "zones", jzones)) {
 			json_object_clear(jrecord);
 			r = DNSSEC_ENOMEM;
 			goto error;
