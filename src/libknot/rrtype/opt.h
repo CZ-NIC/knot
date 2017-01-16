@@ -428,7 +428,7 @@ int knot_edns_client_subnet_write(uint8_t *option, size_t option_len,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_edns_client_subnet_parse(knot_edns_client_subnet_t *ecs,
-                                  const uint8_t *option, size_t option_len);
+                                  const uint8_t *option, uint16_t option_len);
 
 /*!
  * \brief Set address to the ECS structure.
