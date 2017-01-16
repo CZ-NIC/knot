@@ -740,7 +740,7 @@ int knot_edns_client_subnet_get_addr(struct sockaddr_storage *addr,
 _public_
 size_t knot_edns_keepalive_size(uint16_t timeout)
 {
-	return (timeout == 0) ? sizeof(uint16_t) : 2 * sizeof(uint16_t);
+	return (timeout > 0) ? sizeof(uint16_t) : 0;
 }
 
 _public_
@@ -750,35 +750,81 @@ int knot_edns_keepalive_write(uint8_t *option, size_t option_len, uint16_t timeo
 		return KNOT_EINVAL;
 	}
 
-	wire_ctx_t wire = wire_ctx_init(option, option_len);
 	if (timeout == 0) {
-		wire_ctx_write_u16(&wire, 0);
-	} else {
-		wire_ctx_write_u16(&wire, 2);
-		wire_ctx_write_u16(&wire, timeout);
+		return KNOT_EOK;
 	}
+
+	wire_ctx_t wire = wire_ctx_init(option, option_len);
+	wire_ctx_write_u16(&wire, timeout);
 
 	return wire.error;
 }
 
 _public_
-int knot_edns_keepalive_parse(uint16_t *timeout, const uint8_t *option, size_t option_len)
+int knot_edns_keepalive_parse(uint16_t *timeout, const uint8_t *option,
+                              uint16_t option_len)
 {
 	if (timeout == NULL || option == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	wire_ctx_t wire = wire_ctx_init_const(option, option_len);
+	*timeout = 0;
 
-	uint16_t len = wire_ctx_read_u16(&wire);
-	if (len == 0) {
-		*timeout = 0;
-	} else {
+	if (option_len > 0) {
+		wire_ctx_t wire = wire_ctx_init_const(option, option_len);
 		*timeout = wire_ctx_read_u16(&wire);
+
+		if (wire.error != KNOT_EOK) {
+			return KNOT_EMALF;
+		}
 	}
 
-	if (wire.error != KNOT_EOK || wire_ctx_available(&wire) != 0) {
+	return KNOT_EOK;
+}
+
+_public_
+size_t knot_edns_chain_size(const knot_dname_t *point)
+{
+	int size = knot_dname_size(point);
+
+	return (size > 0) ? size : 0;
+}
+
+_public_
+int knot_edns_chain_write(uint8_t *option, size_t option_len,
+                          const knot_dname_t *point)
+{
+	if (option == NULL || point == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int size = knot_dname_size(point);
+	if (size <= 0) {
+		return KNOT_EINVAL;
+	}
+
+	wire_ctx_t wire = wire_ctx_init(option, option_len);
+	wire_ctx_write(&wire, point, size);
+
+	return wire.error;
+}
+
+_public_
+int knot_edns_chain_parse(knot_dname_t **point, const uint8_t *option,
+                          uint16_t option_len)
+{
+	if (point == NULL || option == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = knot_dname_wire_check(option, option + option_len, NULL);
+	if (ret <= 0) {
 		return KNOT_EMALF;
+	}
+
+	*point = knot_dname_copy(option, NULL);
+	if (*point == NULL) {
+		return KNOT_ENOMEM;
 	}
 
 	return KNOT_EOK;

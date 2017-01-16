@@ -62,6 +62,8 @@ enum knot_edns_const {
 	KNOT_EDNS_OPTION_TCP_KEEPALIVE = 11,
 	/*! \brief EDNS Padding option code. */
 	KNOT_EDNS_OPTION_PADDING       = 12,
+	/*! \brief EDNS Chain query option code. */
+	KNOT_EDNS_OPTION_CHAIN         = 13,
 };
 
 /* Helpers for splitting extended RCODE. */
@@ -482,6 +484,40 @@ int knot_edns_keepalive_write(uint8_t *option, size_t option_len, uint16_t timeo
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_keepalive_parse(uint16_t *timeout, const uint8_t *option, size_t option_len);
+int knot_edns_keepalive_parse(uint16_t *timeout, const uint8_t *option,
+                              uint16_t option_len);
+
+/*!
+ * \brief Get size of the EDNS Chain option wire size.
+ *
+ * \param[in] point  EDNS Chain closest trusted point.
+ *
+ * \return Size of the EDNS option data or 0 if invalid input.
+ */
+size_t knot_edns_chain_size(const knot_dname_t *point);
+
+/*!
+ * \brief Writes EDNS Chain wire data.
+ *
+ * \param[out] option      EDNS option data buffer.
+ * \param[in]  option_len  EDNS option data buffer size.
+ * \param[in]  point       EDNS Chain closest trusted point.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_edns_chain_write(uint8_t *option, size_t option_len,
+                          const knot_dname_t *point);
+
+/*!
+ * \brief Parses EDNS Chain wire data.
+ *
+ * \param[out] point       EDNS Chain closest trusted point.
+ * \param[in]  option      EDNS option data.
+ * \param[in]  option_len  EDNS option size.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_edns_chain_parse(knot_dname_t **point, const uint8_t *option,
+                          uint16_t option_len);
 
 /*! @} */
