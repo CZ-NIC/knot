@@ -44,7 +44,6 @@ static void cmds_lookup(EditLine *el, const char *str, size_t str_len)
 		}
 	}
 
-	lookup_index(&lookup);
 	lookup_complete(&lookup, str, str_len, el, true);
 
 cmds_lookup_finish:
@@ -73,7 +72,6 @@ static void local_zones_lookup(EditLine *el, const char *str, size_t str_len)
 		}
 	}
 
-	lookup_index(&lookup);
 	lookup_complete(&lookup, str, str_len, el, true);
 
 local_zones_lookup_finish:
@@ -173,7 +171,6 @@ static void id_lookup(EditLine *el, const char *str, size_t str_len,
 		}
 	}
 
-	lookup_index(&lookup);
 	lookup_complete(&lookup, str, str_len, el, add_space);
 
 id_lookup_finish:
@@ -229,7 +226,6 @@ static void list_lookup(EditLine *el, const char *section, const char *item)
 		}
 	}
 
-	lookup_index(&lookup);
 	lookup_complete(&lookup, item, strlen(item), el, section != NULL);
 
 list_lookup_finish:
@@ -345,7 +341,7 @@ static unsigned char complete(EditLine *el, int ch)
 	}
 
 complete_exit:
-	conf_update(NULL);
+	conf_update(NULL, CONF_UPD_FNONE);
 	tok_reset(tok);
 	tok_end(tok);
 

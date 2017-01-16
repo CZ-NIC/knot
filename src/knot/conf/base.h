@@ -27,6 +27,7 @@
 
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypscheme.h"
+#include "contrib/hat-trie/hat-trie.h"
 #include "contrib/ucw/lists.h"
 
 /*! Default template identifier. */
@@ -37,10 +38,16 @@
 #define CONF_DEFAULT_DBDIR	(STORAGE_DIR "/confdb")
 /*! Maximum depth of nested transactions. */
 #define CONF_MAX_TXN_DEPTH	5
+/*! Maximum number of concurrent DB readers. */
+#define CONF_MAX_DB_READERS	630
 
 /*! Configuration specific logging. */
 #define CONF_LOG(severity, msg, ...) do { \
 	log_msg(severity, "config, " msg, ##__VA_ARGS__); \
+	} while (0)
+
+#define CONF_LOG_ZONE(severity, zone, msg, ...) do { \
+	log_msg_zone(severity, zone, "config, " msg, ##__VA_ARGS__); \
 	} while (0)
 
 /*! Configuration getter output. */
@@ -81,6 +88,10 @@ typedef struct {
 		knot_db_txn_t *txn;
 		/*! Stack of nested writing transactions. */
 		knot_db_txn_t txn_stack[CONF_MAX_TXN_DEPTH];
+		/*! Master transaction flags. */
+		yp_flag_t flags;
+		/*! Changed zones. */
+		hattrie_t *zones;
 	} io;
 
 	/*! Current config file (for reload if started with config file). */
@@ -97,10 +108,8 @@ typedef struct {
 		int32_t srv_tcp_idle_timeout;
 		int32_t srv_tcp_reply_timeout;
 		int32_t srv_max_tcp_clients;
-		int32_t srv_rate_limit_slip;
 		int32_t ctl_timeout;
 		conf_val_t srv_nsid;
-		conf_val_t srv_rate_limit_whitelist;
 	} cache;
 
 	/*! List of active query modules. */
@@ -118,6 +127,15 @@ typedef enum {
 	CONF_FNOCHECK     = 1 << 1, /*!< Disabled confdb check. */
 	CONF_FNOHOSTNAME  = 1 << 2, /*!< Don't set the hostname. */
 } conf_flag_t;
+
+/*!
+ * Configuration update flags.
+ */
+typedef enum {
+	CONF_UPD_FNONE    = 0,      /*!< Empty flag. */
+	CONF_UPD_FMODULES = 1 << 0, /*!< Reuse previous global modules. */
+	CONF_UPD_FCONFIO  = 1 << 1, /*!< Reuse previous cofio reload context. */
+} conf_update_flag_t;
 
 /*!
  * Returns the active configuration.
@@ -177,10 +195,12 @@ int conf_clone(
 /*!
  * Replaces the active configuration with the specified one.
  *
- * \param[in] conf  New configuration.
+ * \param[in] conf   New configuration.
+ * \param[in] flags  Update flags.
  */
 void conf_update(
-	conf_t *conf
+	conf_t *conf,
+	conf_update_flag_t flags
 );
 
 /*!

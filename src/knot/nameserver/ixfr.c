@@ -93,7 +93,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 	/* Put REMOVE RRSets. */
 	if (ixfr->state == IXFR_DEL) {
 		if (iter_empty(ixfr)) {
-			ret = changeset_iter_rem(&ixfr->cur, chgset, false);
+			ret = changeset_iter_rem(&ixfr->cur, chgset);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -115,7 +115,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 	/* Put Add RRSets. */
 	if (ixfr->state == IXFR_ADD) {
 		if (iter_empty(ixfr)) {
-			ret = changeset_iter_add(&ixfr->cur, chgset, false);
+			ret = changeset_iter_add(&ixfr->cur, chgset);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -139,7 +139,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 #undef IXFR_SAFE_PUT
 
 /*! \brief Loads IXFRs from journal. */
-static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
+static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
                             const knot_rrset_t *their_soa)
 {
 	assert(chgsets);
@@ -153,12 +153,7 @@ static int ixfr_load_chsets(list_t *chgsets, const zone_t *zone,
 		return KNOT_EUPTODATE;
 	}
 
-	char *path = conf_journalfile(conf(), zone->name);
-	pthread_mutex_lock((pthread_mutex_t *)&zone->journal_lock);
-	ret = journal_load_changesets(path, zone, chgsets, serial_from, serial_to);
-	pthread_mutex_unlock((pthread_mutex_t *)&zone->journal_lock);
-	free(path);
-
+	ret = zone_changes_load(conf(), zone, chgsets, serial_from);
 	if (ret != KNOT_EOK) {
 		changesets_free(chgsets);
 	}

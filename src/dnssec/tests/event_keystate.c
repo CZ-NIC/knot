@@ -17,7 +17,7 @@
 #include <tap/basic.h>
 #include <string.h>
 
-#include "event/keystate.h"
+#include "dnssec/keystate.h"
 
 #define PAST   1426852710
 #define NOW    1426852711
@@ -40,28 +40,28 @@ int main(int argc, char *argv[])
 	// valid states
 
 	key.timing.publish = PAST;
-	ok(get_key_state(&key, NOW) == DNSSEC_KEY_STATE_PUBLISHED, "published");
+	ok(dnssec_get_key_state(&key, NOW) == DNSSEC_KEY_STATE_PUBLISHED, "published");
 
 	key.timing.active = PAST;
-	ok(get_key_state(&key, NOW) == DNSSEC_KEY_STATE_ACTIVE, "active");
+	ok(dnssec_get_key_state(&key, NOW) == DNSSEC_KEY_STATE_ACTIVE, "active");
 
 	key.timing.retire = PAST;
-	ok(get_key_state(&key, NOW) == DNSSEC_KEY_STATE_RETIRED, "retired");
+	ok(dnssec_get_key_state(&key, NOW) == DNSSEC_KEY_STATE_RETIRED, "retired");
 
 	key.timing.remove = PAST;
-	ok(get_key_state(&key, NOW) == DNSSEC_KEY_STATE_REMOVED, "removed");
+	ok(dnssec_get_key_state(&key, NOW) == DNSSEC_KEY_STATE_REMOVED, "removed");
 
 	memset(&key.timing, 0, sizeof(key.timing));
-	ok(get_key_state(&key, NOW) == DNSSEC_KEY_STATE_ACTIVE, "default (active)");
+	ok(dnssec_get_key_state(&key, NOW) == DNSSEC_KEY_STATE_ACTIVE, "default (active)");
 
 	// currently unsupported
 
 	key.timing = INITIAL_TIMING;
-	ok(get_key_state(&key, NOW) == DNSSEC_KEY_STATE_INVALID, "created");
+	ok(dnssec_get_key_state(&key, NOW) == DNSSEC_KEY_STATE_INVALID, "created");
 
 	key.timing.publish = FUTURE;
 	key.timing.active = PAST;
-	ok(get_key_state(&key, NOW) == DNSSEC_KEY_STATE_INVALID, "signature pre-publish");
+	ok(dnssec_get_key_state(&key, NOW) == DNSSEC_KEY_STATE_INVALID, "signature pre-publish");
 
 	return 0;
 }

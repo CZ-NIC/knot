@@ -409,7 +409,7 @@ static int check_rrsig(const zone_node_t *node, semchecks_data_t *data)
 static void bitmap_add_all_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
                                        const zone_node_t *node)
 {
-	bool deleg = node->flags && NODE_FLAGS_DELEG;
+	bool deleg = node->flags & NODE_FLAGS_DELEG;
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rr = node_rrset_at(node, i);
 		if (deleg && (rr.type != KNOT_RRTYPE_NS &&
@@ -823,6 +823,7 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 		.fatal_error = false,
 		.level = MANDATORY,
 		};
+
 	if (optional) {
 		data.level |= OPTIONAL;
 		if (zone_contents_is_signed(zone)) {
@@ -834,9 +835,7 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 		}
 	}
 
-	int ret = zone_contents_tree_apply_inorder(zone, do_checks_in_tree,
-	                                           &data);
-
+	int ret = zone_contents_apply(zone, do_checks_in_tree, &data);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

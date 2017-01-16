@@ -42,3 +42,8 @@ class Update(object):
         if self.upd.keyring and not resp.had_tsig:
             set_err("INVALID RESPONSE")
             check_log("ERROR: Expected TSIG signed response")
+
+    def query_size(self):
+        '''Return update query size.'''
+
+        return len(self.upd.to_wire())

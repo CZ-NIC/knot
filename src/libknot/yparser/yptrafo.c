@@ -409,7 +409,7 @@ int yp_addr_noport_to_txt(
 		}
 		break;
 	case 4:
-		wire_ctx_read(in, (uint8_t *)&(addr4.s_addr), sizeof(addr4.s_addr));
+		wire_ctx_read(in, &(addr4.s_addr), sizeof(addr4.s_addr));
 		if (inet_ntop(AF_INET, &addr4, (char *)out->position,
 		    wire_ctx_available(out)) == NULL) {
 			return KNOT_EINVAL;
@@ -417,7 +417,7 @@ int yp_addr_noport_to_txt(
 		wire_ctx_skip(out, strlen((char *)out->position));
 		break;
 	case 6:
-		wire_ctx_read(in, (uint8_t *)&(addr6.s6_addr), sizeof(addr6.s6_addr));
+		wire_ctx_read(in, &(addr6.s6_addr), sizeof(addr6.s6_addr));
 		if (inet_ntop(AF_INET6, &addr6, (char *)out->position,
 		    wire_ctx_available(out)) == NULL) {
 			return KNOT_EINVAL;

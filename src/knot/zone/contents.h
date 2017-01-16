@@ -193,37 +193,23 @@ int zone_contents_adjust_full(zone_contents_t *contents);
 /*!
  * \brief Applies the given function to each regular node in the zone.
  *
- * This function uses in-order depth-first forward traversal, i.e. the function
- * is first recursively applied to left subtree, then to the root and then to
- * the right subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param zone Nodes of this zone will be used as parameters for the function.
+ * \param contents Nodes of this zone will be used as parameters for the function.
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int zone_contents_tree_apply_inorder(zone_contents_t *zone,
-                                     zone_contents_apply_cb_t function, void *data);
+int zone_contents_apply(zone_contents_t *contents,
+                        zone_contents_apply_cb_t function, void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.
  *
- * This function uses in-order depth-first forward traversal, i.e. the function
- * is first recursively applied to left subtree, then to the root and then to
- * the right subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param zone NSEC3 nodes of this zone will be used as parameters for the
- *             function.
+ * \param contents NSEC3 nodes of this zone will be used as parameters for the
+ *                 function.
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
-                                      zone_contents_apply_cb_t function, void *data);
+int zone_contents_nsec3_apply(zone_contents_t *contents,
+                              zone_contents_apply_cb_t function, void *data);
 
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).

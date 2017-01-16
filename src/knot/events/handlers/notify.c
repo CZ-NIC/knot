@@ -31,7 +31,6 @@ struct notify_data {
 	const knot_rrset_t *soa;
 	const struct sockaddr *remote;
 	struct query_edns_data edns;
-	uint16_t response_rcode;
 };
 
 static int notify_begin(knot_layer_t *layer, void *params)
@@ -64,13 +63,6 @@ static int notify_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 static int notify_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
-	struct notify_data *data = layer->data;
-
-	data->response_rcode = knot_pkt_get_ext_rcode(pkt);
-	if (data->response_rcode != KNOT_RCODE_NOERROR) {
-		return KNOT_STATE_FAIL;
-	}
-
 	return KNOT_STATE_DONE;
 }
 
@@ -80,8 +72,12 @@ static const knot_layer_api_t NOTIFY_API = {
 	.consume = notify_consume,
 };
 
+#define NOTIFY_LOG(priority, zone, remote, fmt, ...) \
+	ns_log(priority, zone, LOG_OPERATION_NOTIFY, LOG_DIRECTION_OUT, remote, \
+	       fmt, ## __VA_ARGS__)
+
 static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
-                       const conf_remote_t *slave, int timeout, uint16_t *rcode)
+                       const conf_remote_t *slave, int timeout)
 {
 	struct notify_data data = {
 		.zone = zone->name,
@@ -110,35 +106,23 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 	}
 
 	int ret = knot_requestor_exec(&requestor, req, timeout);
+
+	if (ret == KNOT_EOK) {
+		NOTIFY_LOG(LOG_INFO, zone->name, dst,
+		           "serial %d", knot_soa_serial(&soa->rrs));
+	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
+		NOTIFY_LOG(LOG_WARNING, zone->name, dst,
+		           "failed (%s)", knot_strerror(ret));
+	} else {
+		NOTIFY_LOG(LOG_WARNING, zone->name, dst,
+		           "server responded withi error '%s",
+		           knot_pkt_ext_rcode_name(req->resp));
+	}
+
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
 
-	*rcode = data.response_rcode;
-
 	return ret;
-}
-
-#define NOTIFY_LOG(priority, zone, remote, fmt, ...) \
-	ns_log(priority, zone, LOG_OPERATION_NOTIFY, LOG_DIRECTION_OUT, remote, \
-	       fmt, ## __VA_ARGS__)
-
-static void log_notify_result(int ret, uint16_t rcode, const knot_dname_t *zone,
-                              const struct sockaddr_storage *_remote, uint32_t serial)
-{
-	const struct sockaddr *remote = (struct sockaddr *)_remote;
-
-	if (ret == KNOT_EOK) {
-		NOTIFY_LOG(LOG_INFO, zone, remote, "serial %u", serial);
-	} else if (rcode == 0) {
-		NOTIFY_LOG(LOG_WARNING, zone, remote, "failed (%s)", knot_strerror(ret));
-	} else {
-		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
-		if (lut) {
-			NOTIFY_LOG(LOG_WARNING, zone, remote, "server responded with %s", lut->name);
-		} else {
-			NOTIFY_LOG(LOG_WARNING, zone, remote, "server responded with RCODE %u", rcode);
-		}
-	}
 }
 
 int event_notify(conf_t *conf, zone_t *zone)
@@ -152,7 +136,6 @@ int event_notify(conf_t *conf, zone_t *zone)
 	// NOTIFY content
 	int timeout = conf->cache.srv_tcp_reply_timeout * 1000;
 	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
-	uint32_t serial = zone_contents_serial(zone->contents);
 
 	// send NOTIFY to each remote, use working address
 	conf_val_t notify = conf_zone_get(conf, C_NOTIFY, zone->name);
@@ -161,10 +144,8 @@ int event_notify(conf_t *conf, zone_t *zone)
 		size_t addr_count = conf_val_count(&addr);
 
 		for (int i = 0; i < addr_count; i++) {
-			uint16_t rcode = 0;
 			conf_remote_t slave = conf_remote(conf, &notify, i);
-			int ret = send_notify(conf, zone, &soa, &slave, timeout, &rcode);
-			log_notify_result(ret, rcode, zone->name, &slave.addr, serial);
+			int ret = send_notify(conf, zone, &soa, &slave, timeout);
 			if (ret == KNOT_EOK) {
 				break;
 			}

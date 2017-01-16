@@ -15,6 +15,7 @@
  */
 
 #include <dirent.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -36,8 +37,10 @@
 #include "libknot/libknot.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
+#include "knot/conf/migration.h"
 #include "knot/common/log.h"
 #include "knot/common/process.h"
+#include "knot/common/stats.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/timers.h"
@@ -214,18 +217,8 @@ static void setup_capabilities(void)
 }
 
 /*! \brief Event loop listening for signals and remote commands. */
-static void event_loop(server_t *server, char *socket)
+static void event_loop(server_t *server, const char *socket)
 {
-	/* Get control socket configuration. */
-	char *listen = socket;
-	if (socket == NULL) {
-		conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
-		conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
-		char *rundir = conf_abs_path(&rundir_val, NULL);
-		listen = conf_abs_path(&listen_val, rundir);
-		free(rundir);
-	}
-
 	knot_ctl_t *ctl = knot_ctl_alloc();
 	if (ctl == NULL) {
 		log_fatal("control, failed to initialize (%s)",
@@ -236,6 +229,22 @@ static void event_loop(server_t *server, char *socket)
 	// Set control timeout.
 	knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
 
+	/* Get control socket configuration. */
+	char *listen;
+	if (socket == NULL) {
+		conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
+		conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
+		char *rundir = conf_abs_path(&rundir_val, NULL);
+		listen = conf_abs_path(&listen_val, rundir);
+		free(rundir);
+	} else {
+		listen = strdup(socket);
+	}
+	if (listen == NULL) {
+		log_fatal("control, empty socket path");
+		return;
+	}
+
 	log_info("control, binding to '%s'", listen);
 
 	/* Bind the control socket. */
@@ -244,12 +253,10 @@ static void event_loop(server_t *server, char *socket)
 		knot_ctl_free(ctl);
 		log_fatal("control, failed to bind socket '%s' (%s)",
 		          listen, knot_strerror(ret));
+		free(listen);
 		return;
 	}
-
-	if (socket == NULL) {
-		free(listen);
-	}
+	free(listen);
 
 	enable_signals();
 
@@ -261,7 +268,7 @@ static void event_loop(server_t *server, char *socket)
 		}
 		if (sig_req_reload) {
 			sig_req_reload = false;
-			server_reload(server, conf()->filename, true);
+			server_reload(server);
 		}
 
 		// Update control timeout.
@@ -353,12 +360,18 @@ static int set_config(const char *confdb, const char *config)
 		}
 	}
 
+	// Migrate from old schema.
+	ret = conf_migrate(new_conf);
+	if (ret != KNOT_EOK) {
+		log_error("failed to migrate configuration (%s)", knot_strerror(ret));
+	}
+
 	/* Activate global query modules. */
 	conf_activate_modules(new_conf, NULL, &new_conf->query_modules,
 	                      &new_conf->query_plan);
 
 	/* Update to the new config. */
-	conf_update(new_conf);
+	conf_update(new_conf, CONF_UPD_FNONE);
 
 	return KNOT_EOK;
 }
@@ -456,7 +469,7 @@ int main(int argc, char **argv)
 	/* Initialize logging subsystem. */
 	log_init();
 	if (verbose) {
-		log_levels_add(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
+		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_MASK(LOG_DEBUG));
 	}
 
 	/* Set up the configuration */
@@ -530,6 +543,8 @@ int main(int argc, char **argv)
 		log_warning("no zones loaded");
 	}
 
+	stats_reconfigure(conf(), &server);
+
 	/* Start it up. */
 	log_info("starting server");
 	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
@@ -537,6 +552,7 @@ int main(int argc, char **argv)
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to start server (%s)", knot_strerror(ret));
 		server_wait(&server);
+		stats_deinit();
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup();
@@ -558,6 +574,7 @@ int main(int argc, char **argv)
 	/* Teardown server. */
 	server_stop(&server);
 	server_wait(&server);
+	stats_deinit();
 
 	// TODO: will be very slow, each write is in separate transation
 	log_info("updating zone timers database");

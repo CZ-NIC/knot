@@ -102,7 +102,7 @@ static int options_init_modern(options_t *options)
 	}
 
 	// Update to the new config.
-	conf_update(new_conf);
+	conf_update(new_conf, CONF_UPD_FNONE);
 
 	return DNSSEC_EOK;
 }
@@ -127,7 +127,7 @@ void options_cleanup(options_t *options)
 	}
 
 	if (!options->legacy) {
-		conf_update(NULL);
+		conf_update(NULL, CONF_UPD_FNONE);
 	}
 
 	free(options->kasp_dir);

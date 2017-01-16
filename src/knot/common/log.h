@@ -40,26 +40,27 @@
 /*! \brief Format for timestamps in log files. */
 #define KNOT_LOG_TIME_FORMAT "%Y-%m-%dT%H:%M:%S"
 
-/*! \brief Logging facility types. */
+/*! \brief Logging targets. */
 typedef enum {
-	LOGT_SYSLOG = 0, /*!< Logging to syslog(3) facility. */
-	LOGT_STDERR = 1, /*!< Print log messages to the stderr. */
-	LOGT_STDOUT = 2, /*!< Print log messages to the stdout. */
-	LOGT_FILE   = 3  /*!< Generic logging to (unbuffered) file on the disk. */
-} logfacility_t;
+	LOG_TARGET_SYSLOG = 0, /*!< System log. */
+	LOG_TARGET_STDERR = 1, /*!< Standard error stream. */
+	LOG_TARGET_STDOUT = 2, /*!< Standard output stream. */
+	LOG_TARGET_FILE   = 3  /*!< Generic logging to a file (unbuffered). */
+} log_target_t;
 
 /*! \brief Logging sources. */
 typedef enum {
-	LOG_SERVER = 0, /*!< Server module. */
-	LOG_ZONE   = 1, /*!< Zone manipulation module. */
-	LOG_ANY    = 2  /*!< Any module. */
-} logsrc_t;
+	LOG_SOURCE_SERVER  = 0, /*!< Server module. */
+	LOG_SOURCE_CONTROL = 1, /*!< Server control module. */
+	LOG_SOURCE_ZONE    = 2, /*!< Zone manipulation module. */
+	LOG_SOURCE_ANY     = 3  /*!< Any module. */
+} log_source_t;
 
 /*! \brief Logging format flags. */
 typedef enum {
-	LOG_FNO_TIMESTAMP = 1 << 0, /*!< Don't print timestamp prefix. */
-	LOG_FNO_INFO      = 1 << 1  /*!< Don't print info level prefix. */
-} logflag_t;
+	LOG_FLAG_NOTIMESTAMP = 1 << 0, /*!< Don't print timestamp prefix. */
+	LOG_FLAG_NOINFO      = 1 << 1  /*!< Don't print info level prefix. */
+} log_flag_t;
 
 /*!
  * \brief Setup logging subsystem.
@@ -74,28 +75,28 @@ void log_close(void);
 /*!
  * \brief Set logging format flag.
  */
-void log_flag_set(logflag_t flag);
+void log_flag_set(log_flag_t flag);
 
 /*!
- * \brief Set log levels for given facility.
+ * \brief Set log levels for given target.
  *
- * \param facility  Logging facility index (LOGT_SYSLOG...).
- * \param src       Logging source (LOG_SERVER...LOG_ANY).
- * \param levels    Bitmask of specified log levels.
+ * \param target  Logging target index (LOG_TARGET_SYSLOG...).
+ * \param src     Logging source (LOG_SOURCE_SERVER...LOG_SOURCE_ANY).
+ * \param levels  Bitmask of specified log levels.
  */
-void log_levels_set(logfacility_t facility, logsrc_t src, int levels);
+void log_levels_set(log_target_t target, log_source_t src, int levels);
 
 /*!
- * \brief Add log levels to a given facility.
+ * \brief Add log levels to a given target.
  *
  * New levels are added on top of existing, the resulting levels set is
  * "old_levels OR new_levels".
  *
- * \param facility  Logging facility index (LOGT_SYSLOG...).
- * \param src       Logging source (LOG_SERVER...LOG_ANY).
- * \param levels    Bitmask of specified log levels.
+ * \param target  Logging target index (LOG_TARGET_SYSLOG...).
+ * \param src     Logging source (LOG_SOURCE_SERVER...LOG_SOURCE_ANY).
+ * \param levels  Bitmask of specified log levels.
  */
-void log_levels_add(logfacility_t facility, logsrc_t src, int levels);
+void log_levels_add(log_target_t target, log_source_t src, int levels);
 
 /*!
  * \brief Log message into server category.
@@ -103,54 +104,71 @@ void log_levels_add(logfacility_t facility, logsrc_t src, int levels);
  * Function follows printf() format.
  *
  * \param priority  Message priority.
+ * \param src       Message source.
  * \param fmt       Content of the logged message.
  */
-void log_msg(int priority, const char *fmt, ...)
-	__attribute__((format(printf, 2, 3)));
+void log_fmt(int priority, log_source_t src, const char *fmt, ...)
+__attribute__((format(printf, 3, 4)));
 
 /*!
  * \brief Log message into zone category.
  *
- * \see log_msg
+ * \see log_fmt
  *
  * \param zone  Zone name in wire format.
  */
-void log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
-	__attribute__((format(printf, 3, 4)));
+void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone, const char *fmt, ...)
+__attribute__((format(printf, 4, 5)));
 
 /*!
  * \brief Log message into zone category.
  *
- * \see log_msg
+ * \see log_fmt
  *
  * \param zone  Zone name as an ASCII string.
  */
-void log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
-	__attribute__((format(printf, 3, 4)));
+void log_fmt_zone_str(int priority, log_source_t src, const char *zone, const char *fmt, ...)
+__attribute__((format(printf, 4, 5)));
+
+/* Compatibility wrappers. */
+#define log_msg(priority, fmt, ...) log_fmt(priority, LOG_SOURCE_SERVER, fmt, ##__VA_ARGS__)
+#define log_msg_zone(priority, zone, fmt, ...) log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, fmt, ##__VA_ARGS__)
+#define log_msg_zone_str(priority, zone, fmt, ...) log_fmt_zone_str(priority, LOG_SOURCE_ZONE, zone, fmt, ##__VA_ARGS__)
 
 /*!
  * \brief Convenient logging macros.
  */
-#define log_fatal(msg, ...)   log_msg(LOG_CRIT,    msg, ##__VA_ARGS__)
-#define log_error(msg, ...)   log_msg(LOG_ERR,     msg, ##__VA_ARGS__)
-#define log_warning(msg, ...) log_msg(LOG_WARNING, msg, ##__VA_ARGS__)
-#define log_notice(msg, ...)  log_msg(LOG_NOTICE,  msg, ##__VA_ARGS__)
-#define log_info(msg, ...)    log_msg(LOG_INFO,    msg, ##__VA_ARGS__)
-#define log_debug(msg, ...)   log_msg(LOG_DEBUG,   msg, ##__VA_ARGS__)
+#define log_fatal(msg, ...)   log_fmt(LOG_CRIT,    LOG_SOURCE_SERVER, msg, ##__VA_ARGS__)
+#define log_error(msg, ...)   log_fmt(LOG_ERR,     LOG_SOURCE_SERVER, msg, ##__VA_ARGS__)
+#define log_warning(msg, ...) log_fmt(LOG_WARNING, LOG_SOURCE_SERVER, msg, ##__VA_ARGS__)
+#define log_notice(msg, ...)  log_fmt(LOG_NOTICE,  LOG_SOURCE_SERVER, msg, ##__VA_ARGS__)
+#define log_info(msg, ...)    log_fmt(LOG_INFO,    LOG_SOURCE_SERVER, msg, ##__VA_ARGS__)
+#define log_debug(msg, ...)   log_fmt(LOG_DEBUG,   LOG_SOURCE_SERVER, msg, ##__VA_ARGS__)
 
-#define log_zone_fatal(zone, msg, ...)   log_msg_zone(LOG_CRIT,    zone, msg, ##__VA_ARGS__)
-#define log_zone_error(zone, msg, ...)   log_msg_zone(LOG_ERR,     zone, msg, ##__VA_ARGS__)
-#define log_zone_warning(zone, msg, ...) log_msg_zone(LOG_WARNING, zone, msg, ##__VA_ARGS__)
-#define log_zone_notice(zone, msg, ...)  log_msg_zone(LOG_NOTICE,  zone, msg, ##__VA_ARGS__)
-#define log_zone_info(zone, msg, ...)    log_msg_zone(LOG_INFO,    zone, msg, ##__VA_ARGS__)
-#define log_zone_debug(zone, msg, ...)   log_msg_zone(LOG_DEBUG,   zone, msg, ##__VA_ARGS__)
+#define log_ctl_fatal(msg, ...)   log_fmt(LOG_CRIT,    LOG_SOURCE_CONTROL, msg, ##__VA_ARGS__)
+#define log_ctl_error(msg, ...)   log_fmt(LOG_ERR,     LOG_SOURCE_CONTROL, msg, ##__VA_ARGS__)
+#define log_ctl_warning(msg, ...) log_fmt(LOG_WARNING, LOG_SOURCE_CONTROL, msg, ##__VA_ARGS__)
+#define log_ctl_notice(msg, ...)  log_fmt(LOG_NOTICE,  LOG_SOURCE_CONTROL, msg, ##__VA_ARGS__)
+#define log_ctl_info(msg, ...)    log_fmt(LOG_INFO,    LOG_SOURCE_CONTROL, msg, ##__VA_ARGS__)
+#define log_ctl_debug(msg, ...)   log_fmt(LOG_DEBUG,   LOG_SOURCE_CONTROL, msg, ##__VA_ARGS__)
 
-#define log_zone_str_fatal(zone, msg, ...)   log_msg_zone_str(LOG_CRIT,    zone, msg, ##__VA_ARGS__)
-#define log_zone_str_error(zone, msg, ...)   log_msg_zone_str(LOG_ERR,     zone, msg, ##__VA_ARGS__)
-#define log_zone_str_warning(zone, msg, ...) log_msg_zone_str(LOG_WARNING, zone, msg, ##__VA_ARGS__)
-#define log_zone_str_notice(zone, msg, ...)  log_msg_zone_str(LOG_NOTICE,  zone, msg, ##__VA_ARGS__)
-#define log_zone_str_info(zone, msg, ...)    log_msg_zone_str(LOG_INFO,    zone, msg, ##__VA_ARGS__)
-#define log_zone_str_debug(zone, msg, ...)   log_msg_zone_str(LOG_DEBUG,   zone, msg, ##__VA_ARGS__)
+#define log_ctl_zone_str_error(zone, msg, ...) log_fmt_zone_str(LOG_ERR,   LOG_SOURCE_CONTROL, zone, msg, ##__VA_ARGS__)
+#define log_ctl_zone_str_info(zone, msg, ...)  log_fmt_zone_str(LOG_INFO,  LOG_SOURCE_CONTROL, zone, msg, ##__VA_ARGS__)
+#define log_ctl_zone_str_debug(zone, msg, ...) log_fmt_zone_str(LOG_DEBUG, LOG_SOURCE_CONTROL, zone, msg, ##__VA_ARGS__)
+
+#define log_zone_fatal(zone, msg, ...)   log_fmt_zone(LOG_CRIT,    LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_error(zone, msg, ...)   log_fmt_zone(LOG_ERR,     LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_warning(zone, msg, ...) log_fmt_zone(LOG_WARNING, LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_notice(zone, msg, ...)  log_fmt_zone(LOG_NOTICE,  LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_info(zone, msg, ...)    log_fmt_zone(LOG_INFO,    LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_debug(zone, msg, ...)   log_fmt_zone(LOG_DEBUG,   LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+
+#define log_zone_str_fatal(zone, msg, ...)   log_fmt_zone_str(LOG_CRIT,    LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_str_error(zone, msg, ...)   log_fmt_zone_str(LOG_ERR,     LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_str_warning(zone, msg, ...) log_fmt_zone_str(LOG_WARNING, LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_str_notice(zone, msg, ...)  log_fmt_zone_str(LOG_NOTICE,  LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_str_info(zone, msg, ...)    log_fmt_zone_str(LOG_INFO,    LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_str_debug(zone, msg, ...)   log_fmt_zone_str(LOG_DEBUG,   LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
 
 /*!
  * \brief Update open files ownership.

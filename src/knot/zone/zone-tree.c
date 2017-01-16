@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,17 +24,21 @@
 
 zone_tree_t* zone_tree_create()
 {
-	return hattrie_create();
+	return hattrie_create(NULL);
 }
 
-size_t zone_tree_weight(const zone_tree_t* tree)
+size_t zone_tree_count(const zone_tree_t *tree)
 {
+	if (tree == NULL) {
+		return 0;
+	}
+
 	return hattrie_weight(tree);
 }
 
 int zone_tree_is_empty(const zone_tree_t *tree)
 {
-	return zone_tree_weight(tree) == 0;
+	return zone_tree_count(tree) == 0;
 }
 
 int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
@@ -96,22 +100,23 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	if (fval) {
 		*found = (zone_node_t *)(*fval);
 	}
+
 	int exact_match = 0;
-	if (ret == 0) {
+	if (ret == KNOT_EOK) {
 		if (fval) {
 			*previous = (*found)->prev;
 		}
 		exact_match = 1;
-	} else if (ret < 0) {
+	} else if (ret == 1) {
 		*previous = *found;
 		*found = NULL;
-	} else if (ret > 0) {
+	} else {
 		/* Previous should be the rightmost node.
 		 * For regular zone it is the node left of apex, but for some
 		 * cases like NSEC3, there is no such sort of thing (name wise).
 		 */
 		/*! \todo We could store rightmost node in zonetree probably. */
-		hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
+		hattrie_iter_t *i = hattrie_iter_begin(tree);
 		*previous = *(zone_node_t **)hattrie_iter_val(i); /* leftmost */
 		*previous = (*previous)->prev; /* rightmost */
 		*found = NULL;
@@ -143,7 +148,7 @@ int zone_tree_remove(zone_tree_t *tree,
 		*removed = (zone_node_t *)(*rval);
 	}
 
-	hattrie_del(tree, (char*)lf+1, *lf);
+	hattrie_del(tree, (char*)lf+1, *lf, NULL);
 	return KNOT_EOK;
 }
 
@@ -186,9 +191,7 @@ int zone_tree_delete_empty_node(zone_tree_t *tree, zone_node_t *node)
 	return KNOT_EOK;
 }
 
-int zone_tree_apply_inorder(zone_tree_t *tree,
-                            zone_tree_apply_cb_t function,
-                            void *data)
+int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data)
 {
 	if (function == NULL) {
 		return KNOT_EINVAL;
@@ -198,34 +201,7 @@ int zone_tree_apply_inorder(zone_tree_t *tree,
 		return KNOT_EOK;
 	}
 
-	int result = KNOT_EOK;
-
-	hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
-	while(!hattrie_iter_finished(i)) {
-		result = function((zone_node_t **)hattrie_iter_val(i), data);
-		if (result != KNOT_EOK) {
-			break;
-		}
-		hattrie_iter_next(i);
-	}
-	hattrie_iter_free(i);
-
-	return result;
-}
-
-int zone_tree_apply(zone_tree_t *tree,
-                    zone_tree_apply_cb_t function,
-                    void *data)
-{
-	if (function == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (zone_tree_is_empty(tree)) {
-		return KNOT_EOK;
-	}
-
-	return hattrie_apply_rev(tree, (int (*)(value_t*,void*))function, data);
+	return hattrie_apply_rev(tree, (int (*)(value_t *, void *))function, data);
 }
 
 void zone_tree_free(zone_tree_t **tree)

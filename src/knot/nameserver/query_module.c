@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,45 +14,41 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/nameserver/query_module.h"
-#include "libknot/libknot.h"
-#include "contrib/mempattern.h"
-#include "contrib/openbsd/strlcpy.h"
+#include <assert.h>
 
-/* Compiled-in module headers. */
-#include "knot/modules/synth_record.h"
-#include "knot/modules/dnsproxy.h"
-#include "knot/modules/online_sign/module.h"
+#include "knot/nameserver/query_module.h"
+#include "contrib/mempattern.h"
+
+#include "knot/modules/rrl/rrl.h"
+#include "knot/modules/stats/stats.h"
+#include "knot/modules/synth_record/synth_record.h"
+#include "knot/modules/dnsproxy/dnsproxy.h"
+#include "knot/modules/online_sign/online_sign.h"
 #ifdef HAVE_ROSEDB
-#include "knot/modules/rosedb.h"
+#include "knot/modules/rosedb/rosedb.h"
 #endif
 #if USE_DNSTAP
-#include "knot/modules/dnstap.h"
+#include "knot/modules/dnstap/dnstap.h"
 #endif
-#include "knot/modules/whoami.h"
-#include "knot/modules/noudp.h"
-
-typedef struct static_module {
-	const yp_name_t *name;
-	qmodule_load_t load;
-	qmodule_unload_t unload;
-	unsigned scope;
-} static_module_t;
+#include "knot/modules/whoami/whoami.h"
+#include "knot/modules/noudp/noudp.h"
 
 /*! \note All modules should be dynamically loaded later on. */
 static_module_t MODULES[] = {
-        { C_MOD_SYNTH_RECORD, &synth_record_load, &synth_record_unload, MOD_SCOPE_ANY },
-        { C_MOD_DNSPROXY,     &dnsproxy_load,     &dnsproxy_unload,     MOD_SCOPE_ANY },
-        { C_MOD_ONLINE_SIGN,  &online_sign_load,  &online_sign_unload,  MOD_SCOPE_ZONE },
+	{ C_MOD_RRL,          &rrl_load,          &rrl_unload,          MOD_SCOPE_ANY },
+	{ C_MOD_SYNTH_RECORD, &synth_record_load, &synth_record_unload, MOD_SCOPE_ANY },
+	{ C_MOD_DNSPROXY,     &dnsproxy_load,     &dnsproxy_unload,     MOD_SCOPE_ANY },
+	{ C_MOD_ONLINE_SIGN,  &online_sign_load,  &online_sign_unload,  MOD_SCOPE_ZONE, true },
+	{ C_MOD_STATS,        &stats_load,        &stats_unload,        MOD_SCOPE_ANY, true },
 #ifdef HAVE_ROSEDB
-        { C_MOD_ROSEDB,       &rosedb_load,       &rosedb_unload,       MOD_SCOPE_ANY },
+	{ C_MOD_ROSEDB,       &rosedb_load,       &rosedb_unload,       MOD_SCOPE_ANY },
 #endif
 #if USE_DNSTAP
-        { C_MOD_DNSTAP,       &dnstap_load,       &dnstap_unload,       MOD_SCOPE_ANY },
+	{ C_MOD_DNSTAP,       &dnstap_load,       &dnstap_unload,       MOD_SCOPE_ANY },
 #endif
-        { C_MOD_WHOAMI,       &whoami_load,       &whoami_unload,       MOD_SCOPE_ANY },
-	{ C_MOD_NOUDP,        &noudp_load,        &noudp_unload,        MOD_SCOPE_ANY },
-        { NULL }
+	{ C_MOD_WHOAMI,       &whoami_load,       &whoami_unload,       MOD_SCOPE_ANY, true },
+	{ C_MOD_NOUDP,        &noudp_load,        &noudp_unload,        MOD_SCOPE_ANY, true },
+	{ NULL }
 };
 
 struct query_plan *query_plan_create(knot_mm_t *mm)
@@ -114,7 +110,73 @@ int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t proces
 	return KNOT_EOK;
 }
 
-static static_module_t *find_module(const yp_name_t *name)
+int query_module_step(struct query_module *module, int stage, qmodule_process_t process)
+{
+	return query_plan_step(module->plan, stage, process, module->ctx);
+}
+
+int mod_stats_add(struct query_module *module, const char *name, uint32_t count,
+                  mod_idx_to_str_f idx)
+{
+	if (module == NULL || count < 1) {
+		return KNOT_EINVAL;
+	}
+
+	mod_ctr_t *stats = NULL;
+	if (module->stats == NULL) {
+		assert(module->stats_count == 0);
+		stats = mm_alloc(module->mm, sizeof(*stats));
+		if (stats == NULL) {
+			return KNOT_ENOMEM;
+		}
+		module->stats = stats;
+	} else {
+		assert(module->stats_count > 0);
+		size_t old_size = module->stats_count * sizeof(*stats);
+		size_t new_size = old_size + sizeof(*stats);
+		stats = mm_realloc(module->mm, module->stats, new_size, old_size);
+		if (stats == NULL) {
+			mod_stats_free(module);
+			return KNOT_ENOMEM;
+		}
+		module->stats = stats;
+		stats += module->stats_count;
+	}
+
+	module->stats_count++;
+
+	if (count > 1) {
+		size_t size = count * sizeof(((mod_ctr_t *)0)->counter);
+		stats->counters = mm_alloc(module->mm, size);
+		if (stats->counters == NULL) {
+			mod_stats_free(module);
+			return KNOT_ENOMEM;
+		}
+		memset(stats->counters, 0, size);
+		stats->idx_to_str = idx;
+	}
+	stats->name = name;
+	stats->count = count;
+
+	return KNOT_EOK;
+}
+
+void mod_stats_free(struct query_module *module)
+{
+	if (module == NULL || module->stats == NULL) {
+		return;
+	}
+
+	for (int i = 0; i < module->stats_count; i++) {
+		if (module->stats[i].count > 1) {
+			mm_free(module->mm, module->stats[i].counters);
+		}
+	}
+
+	mm_free(module->mm, module->stats);
+}
+
+static_module_t *find_module(const yp_name_t *name)
 {
 	/* Search for the module by name. */
 	static_module_t *module = NULL;
@@ -130,9 +192,10 @@ static static_module_t *find_module(const yp_name_t *name)
 }
 
 struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
+                                       struct query_plan *plan, const knot_dname_t *zone,
                                        knot_mm_t *mm)
 {
-	if (config == NULL || mod_id == NULL) {
+	if (config == NULL || mod_id == NULL || plan == NULL) {
 		return NULL;
 	}
 
@@ -149,8 +212,10 @@ struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
 	}
 	memset(module, 0, sizeof(struct query_module));
 
+	module->plan = plan;
 	module->mm = mm;
 	module->config = config;
+	module->zone = zone;
 	module->id = mod_id;
 	module->load = found->load;
 	module->unload = found->unload;
@@ -165,6 +230,7 @@ void query_module_close(struct query_module *module)
 		return;
 	}
 
+	mod_stats_free(module);
 	conf_free_mod_id(module->id);
 	mm_free(module->mm, module);
 }

@@ -124,7 +124,7 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 			return ret;
 		}
 
-		process_query_qname_case_restore(&qdata, req->query);
+		process_query_qname_case_restore(req->query, &qdata);
 	}
 
 	return KNOT_EOK;
@@ -418,7 +418,7 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
 	/* Restore original QNAME for DDNS ACL checks. */
-	process_query_qname_case_restore(qdata, qdata->query);
+	process_query_qname_case_restore(qdata->query, qdata);
 	/* Store update into DDNS queue. */
 	int ret = zone_update_enqueue(zone, qdata->query, qdata->param);
 	if (ret != KNOT_EOK) {

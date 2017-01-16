@@ -193,14 +193,8 @@ size_t knot_rdataset_size(const knot_rdataset_t *rrs)
 		return 0;
 	}
 
-	size_t total_size = 0;
-	for (size_t i = 0; i < rrs->rr_count; ++i) {
-		const knot_rdata_t *rr = knot_rdataset_at(rrs, i);
-		assert(rr);
-		total_size += knot_rdata_array_size(knot_rdata_rdlen(rr));
-	}
-
-	return total_size;
+	const knot_rdata_t *rr_end = rr_seek(rrs->data, rrs->rr_count);
+	return rr_end - rrs->data;
 }
 
 _public_

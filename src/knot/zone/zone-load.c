@@ -15,7 +15,8 @@
 */
 
 #include "knot/common/log.h"
-#include "knot/server/journal.h"
+#include "knot/journal/journal.h"
+#include "knot/journal/old_journal.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
@@ -90,41 +91,96 @@ int zone_load_check(conf_t *conf, zone_contents_t *contents)
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief If old journal exists, warn the user and append the changes to chgs
+ *
+ * \todo Remove in the future together with journal/old_journal.[ch] and conf_old_journalfile()
+ */
+static void try_old_journal(conf_t *conf, zone_t *zone, uint32_t zone_c_serial, list_t *chgs)
+{
+	list_t old_chgs;
+	init_list(&old_chgs);
+
+	// fetch old journal name
+	char *jfile = conf_old_journalfile(conf, zone->name);
+	if (jfile == NULL) {
+		return;
+	}
+
+	if (!old_journal_exists(jfile)) {
+		goto toj_end;
+	}
+	log_zone_notice(zone->name, "journal, obsolete exists, file '%s'", jfile);
+
+	// determine serial to load from
+	if (!EMPTY_LIST(*chgs)) {
+		changeset_t *lastch = TAIL(*chgs);
+		zone_c_serial = knot_soa_serial(&lastch->soa_to->rrs);
+	}
+
+	// load changesets from old journal
+	int ret = old_journal_load_changesets(jfile, zone->name, &old_chgs,
+	                                      zone_c_serial, zone_c_serial - 1);
+	if (ret != KNOT_ERANGE && ret != KNOT_ENOENT && ret != KNOT_EOK) {
+		log_zone_warning(zone->name, "journal, failed to load obsolete history (%s)",
+		                 knot_strerror(ret));
+		goto toj_end;
+	}
+
+	if (EMPTY_LIST(old_chgs)) {
+		goto toj_end;
+	}
+	log_zone_notice(zone->name, "journal, loaded obsolete history since serial '%u'",
+	                zone_c_serial);
+
+	// store them to new journal
+	ret = zone_changes_store(conf, zone, &old_chgs);
+	if (ret != KNOT_EOK) {
+		log_zone_warning(zone->name, "journal, failed to store obsolete history (%s)",
+		                 knot_strerror(ret));
+		goto toj_end;
+	}
+
+	// append them to chgs
+	changeset_t *ch, *nxt;
+	WALK_LIST_DELSAFE(ch, nxt, old_chgs) {
+		rem_node(&ch->n);
+		add_tail(chgs, &ch->n);
+	}
+
+toj_end:
+	changesets_free(&old_chgs);
+	free(jfile);
+}
+
 int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 {
 	if (conf == NULL || zone == NULL || contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Check if journal is used and zone is not empty. */
-	char *journal_name = conf_journalfile(conf, zone->name);
-	if (!journal_exists(journal_name) ||
-	    zone_contents_is_empty(contents)) {
-		free(journal_name);
+	/* Check if journal is used (later in zone_changes_load() and zone is not empty. */
+	if (zone_contents_is_empty(contents)) {
 		return KNOT_EOK;
 	}
 
 	/* Fetch SOA serial. */
 	uint32_t serial = zone_contents_serial(contents);
 
-	/*! \todo Check what should be the upper bound. */
+	/* Load journal */
 	list_t chgs;
 	init_list(&chgs);
-
-	pthread_mutex_lock(&zone->journal_lock);
-	int ret = journal_load_changesets(journal_name, zone, &chgs, serial,
-	                                  serial - 1);
-	pthread_mutex_unlock(&zone->journal_lock);
-	free(journal_name);
-
-	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chgs)) {
+	int ret = zone_changes_load(conf, zone, &chgs, serial);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		changesets_free(&chgs);
-		/* Absence of records is not an error. */
-		if (ret == KNOT_ENOENT) {
-			return KNOT_EOK;
-		} else {
-			return ret;
-		}
+		return ret;
+	}
+
+	/* Load old journal (to be obsoleted) */
+	try_old_journal(conf, zone, serial, &chgs);
+
+	if (EMPTY_LIST(chgs)) {
+		return KNOT_EOK;
 	}
 
 	/* Apply changesets. */
@@ -136,7 +192,7 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 		log_zone_info(zone->name, "changes from journal applied %u -> %u",
 		              serial, zone_contents_serial(contents));
 	} else {
-		log_zone_error(zone->name, "changes from journal applied %u -> %u (%s)",
+		log_zone_error(zone->name, "failed to apply journal changes %u -> %u (%s)",
 		               serial, zone_contents_serial(contents),
 		               knot_strerror(ret));
 	}

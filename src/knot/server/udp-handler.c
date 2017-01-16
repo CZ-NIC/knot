@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/syscall.h>
 #include <string.h>
 #include <assert.h>
 #include <sys/param.h>
@@ -50,10 +49,10 @@ enum {
 };
 
 /*! \brief UDP context data. */
-typedef struct udp_context {
-	struct knot_layer layer;     /*!< Query processing layer. */
-	server_t *server;            /*!< Name server structure. */
-	unsigned thread_id;          /*!< Thread identifier. */
+typedef struct {
+	knot_layer_t layer; /*!< Query processing layer. */
+	server_t *server;   /*!< Name server structure. */
+	unsigned thread_id; /*!< Thread identifier. */
 } udp_context_t;
 
 static bool udp_state_active(int state)
@@ -65,19 +64,15 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
                        struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	struct process_query_param param = {0};
-	param.remote = ss;
-	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
-	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
-	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
-	param.socket = fd;
-	param.server = udp->server;
-	param.thread_id = udp->thread_id;
-
-	/* Rate limit is applied? */
-	if (unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
-		param.proc_flags |= NS_QUERY_LIMIT_RATE;
-	}
+	struct process_query_param param = {
+		.remote = ss,
+		.proc_flags = NS_QUERY_NO_AXFR | NS_QUERY_NO_IXFR | /* No transfers. */
+		              NS_QUERY_LIMIT_SIZE | /* Enforce UDP packet size limit. */
+		              NS_QUERY_LIMIT_ANY,  /* Limit ANY over UDP (depends on zone as well). */
+		.socket = fd,
+		.server = udp->server,
+		.thread_id = udp->thread_id
+	};
 
 	/* Start query processing. */
 	knot_layer_begin(&udp->layer, &param);
@@ -109,15 +104,6 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	knot_pkt_free(&query);
 	knot_pkt_free(&ans);
 }
-
-/* Check for sendmmsg syscall. */
-#ifdef HAVE_SENDMMSG
-  #define ENABLE_SENDMMSG 1
-#else
-  #ifdef SYS_sendmmsg
-    #define ENABLE_SENDMMSG 1
-  #endif
-#endif
 
 /*! \brief Pointer to selected UDP master implementation. */
 static void* (*_udp_init)(void) = 0;
@@ -244,49 +230,7 @@ static int udp_recvfrom_send(void *d)
 	return 0;
 }
 
-#ifdef HAVE_RECVMMSG
-
-/*! \brief Pointer to selected UDP send implementation. */
-static int (*_send_mmsg)(int, struct sockaddr *, struct mmsghdr *, size_t) = 0;
-
-/*!
- * \brief Send multiple packets.
- *
- * Basic, sendmsg() based implementation.
- */
-static int udp_sendmsg(int sock, struct sockaddr *addrs, struct mmsghdr *msgs, size_t count)
-{
-	int sent = 0;
-	for (unsigned i = 0; i < count; ++i) {
-		if (sendmsg(sock, &msgs[i].msg_hdr, 0) > 0) {
-			++sent;
-		}
-	}
-
-	return sent;
-}
-
-#ifdef ENABLE_SENDMMSG
-/*! \brief sendmmsg() syscall interface. */
-#ifndef HAVE_SENDMMSG
-static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
-                           unsigned flags)
-{
-	return syscall(SYS_sendmmsg, fd, mmsg, vlen, flags, NULL);
-}
-#endif /* HAVE_SENDMMSG */
-
-/*!
- * \brief Send multiple packets.
- *
- * sendmmsg() implementation.
- */
-static int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size_t count)
-{
-	UNUSED(_);
-	return sendmmsg(sock, msgs, count, 0);
-}
-#endif /* ENABLE_SENDMMSG */
+#ifdef ENABLE_RECVMMSG
 
 /* UDP recvmmsg() request struct. */
 struct udp_recvmmsg {
@@ -362,7 +306,7 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
 		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
 
-		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr,&rq->msgs[TX][i].msg_hdr);
+		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr, &rq->msgs[TX][i].msg_hdr);
 
 		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
 		rq->msgs[TX][i].msg_len = tx->iov_len;
@@ -379,7 +323,7 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 static int udp_recvmmsg_send(void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
-	int rc = _send_mmsg(rq->fd, (struct sockaddr *)rq->addrs, rq->msgs[TX], rq->rcvd);
+	int rc = sendmmsg(rq->fd, rq->msgs[TX], rq->rcvd, 0);
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		/* Reset buffer size and address len. */
 		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
@@ -394,38 +338,25 @@ static int udp_recvmmsg_send(void *d)
 	}
 	return rc;
 }
-#endif /* HAVE_RECVMMSG */
+#endif /* ENABLE_RECVMMSG */
 
 /*! \brief Initialize UDP master routine on run-time. */
 void __attribute__ ((constructor)) udp_master_init(void)
 {
 	/* Initialize defaults. */
-	_udp_init = udp_recvfrom_init;
+	_udp_init =   udp_recvfrom_init;
 	_udp_deinit = udp_recvfrom_deinit;
-	_udp_recv = udp_recvfrom_recv;
-	_udp_send = udp_recvfrom_send;
+	_udp_recv =   udp_recvfrom_recv;
 	_udp_handle = udp_recvfrom_handle;
+	_udp_send =   udp_recvfrom_send;
 
-	/* Optimized functions. */
-#ifdef HAVE_RECVMMSG
-	recvmmsg(0, NULL, 0, 0, 0);
-	if (errno != ENOSYS) {
-		_udp_init = udp_recvmmsg_init;
-		_udp_deinit = udp_recvmmsg_deinit;
-		_udp_recv = udp_recvmmsg_recv;
-		_udp_send = udp_recvmmsg_send;
-		_udp_handle = udp_recvmmsg_handle;
-	}
-
-	/* Check for sendmmsg() support. */
-	_send_mmsg = udp_sendmsg;
-#ifdef ENABLE_SENDMMSG
-	sendmmsg(0, 0, 0, 0); /* Just check if syscall exists */
-	if (errno != ENOSYS) {
-		_send_mmsg = udp_sendmmsg;
-	}
-#endif /* ENABLE_SENDMMSG */
-#endif /* HAVE_RECVMMSG */
+#ifdef ENABLE_RECVMMSG
+	_udp_init =   udp_recvmmsg_init;
+	_udp_deinit = udp_recvmmsg_deinit;
+	_udp_recv =   udp_recvmmsg_recv;
+	_udp_handle = udp_recvmmsg_handle;
+	_udp_send =   udp_recvmmsg_send;
+#endif /* ENABLE_RECVMMSG */
 }
 
 /*! \brief Get interface UDP descriptor for a given thread. */

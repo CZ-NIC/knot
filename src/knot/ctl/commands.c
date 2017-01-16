@@ -18,16 +18,20 @@
 #include <unistd.h>
 
 #include "knot/common/log.h"
+#include "knot/common/stats.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
 #include "knot/events/handlers.h"
+#include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
+#include "knot/zone/timers.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/string.h"
 #include "zscanner/scanner.h"
+#include "contrib/strtonum.h"
 
 void ctl_log_data(knot_ctl_data_t *data)
 {
@@ -40,15 +44,25 @@ void ctl_log_data(knot_ctl_data_t *data)
 	const char *item = (*data)[KNOT_CTL_IDX_ITEM];
 	const char *id = (*data)[KNOT_CTL_IDX_ID];
 
+	if (section == NULL) {
+		return;
+	}
+
 	if (zone != NULL) {
-		log_debug("control, zone '%s'", zone);
-	} else if (section != NULL) {
-		log_debug("control, item '%s%s%s%s%s%s'", section,
-		          (id   != NULL ? "["  : ""),
-		          (id   != NULL ? id   : ""),
-		          (id   != NULL ? "]"  : ""),
-		          (item != NULL ? "."  : ""),
-		          (item != NULL ? item : ""));
+		log_ctl_zone_str_debug(zone,
+		              "control, item '%s%s%s%s%s%s'", section,
+		              (id   != NULL ? "["  : ""),
+		              (id   != NULL ? id   : ""),
+		              (id   != NULL ? "]"  : ""),
+		              (item != NULL ? "."  : ""),
+		              (item != NULL ? item : ""));
+	} else {
+		log_ctl_debug("control, item '%s%s%s%s%s%s'", section,
+		              (id   != NULL ? "["  : ""),
+		              (id   != NULL ? id   : ""),
+		              (id   != NULL ? "]"  : ""),
+		              (item != NULL ? "."  : ""),
+		              (item != NULL ? item : ""));
 	}
 }
 
@@ -61,7 +75,7 @@ static void send_error(ctl_args_t *args, const char *msg)
 
 	int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
 	if (ret != KNOT_EOK) {
-		log_debug("control, failed to send error (%s)", knot_strerror(ret));
+		log_ctl_debug("control, failed to send error (%s)", knot_strerror(ret));
 	}
 }
 
@@ -107,8 +121,8 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 			ret = fcn(zone, args);
 		}
 		if (ret != KNOT_EOK) {
-			log_zone_str_debug(args->data[KNOT_CTL_IDX_ZONE],
-			                   "control, (%s)", knot_strerror(ret));
+			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
+			                       "control, error (%s)", knot_strerror(ret));
 			send_error(args, knot_strerror(ret));
 		}
 
@@ -338,6 +352,11 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 
 	int ret = zone_update_commit(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
+		/* Invalidate the transaction if aborted. */
+		if (zone->control_update->zone == NULL) {
+			free(zone->control_update);
+			zone->control_update = NULL;
+		}
 		return ret;
 	}
 
@@ -548,7 +567,7 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 
 		ret = send_node((zone_node_t *)node, ctx);
 	} else if (zone->contents != NULL) {
-		ret = zone_contents_tree_apply_inorder(zone->contents, send_node, ctx);
+		ret = zone_contents_apply(zone->contents, send_node, ctx);
 	}
 
 zone_read_failed:
@@ -645,8 +664,7 @@ static int send_changeset_part(changeset_t *ch, send_ctx_t *ctx, bool from)
 
 	// Send other records.
 	changeset_iter_t it;
-	int ret = from ? changeset_iter_rem(&it, ch, true) :
-	                 changeset_iter_add(&it, ch, true);
+	int ret = from ? changeset_iter_rem(&it, ch) : changeset_iter_add(&it, ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -903,6 +921,9 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	// Abort possible editing transaction.
 	(void)zone_txn_abort(zone, args);
 
+	// Purge the zone timers.
+	memset(&zone->timers, 0, sizeof(zone->timers));
+
 	// Expire the zone.
 	event_expire(conf(), zone);
 
@@ -912,13 +933,155 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	free(zonefile);
 
 	// Purge the zone journal.
-	char *journalfile = conf_journalfile(conf(), zone->name);
-	(void)unlink(journalfile);
-	free(journalfile);
-
-	// TODO: Purge the zone timers (after zone events refactoring).
+	if (journal_open(zone->journal, zone->journal_db, zone->name) == KNOT_EOK) {
+		(void)scrape_journal(zone->journal);
+	}
 
 	return KNOT_EOK;
+}
+
+static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *data)
+{
+	char index[128];
+	char value[32];
+
+	if (ctr->count == 1) {
+		int ret = snprintf(value, sizeof(value), "%"PRIu64, ctr->counter);
+		if (ret <= 0 || ret >= sizeof(value)) {
+			return ret;
+		}
+
+		(*data)[KNOT_CTL_IDX_ID] = NULL;
+		(*data)[KNOT_CTL_IDX_DATA] = value;
+
+		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
+		bool force = ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS],
+		                          CTL_FLAG_FORCE);
+
+		for (uint32_t i = 0; i < ctr->count; i++) {
+			// Skip empty counters.
+			if (ctr->counters[i] == 0 && !force) {
+				continue;
+			}
+
+			int ret;
+			if (ctr->idx_to_str) {
+				char *str = ctr->idx_to_str(i, ctr->count);
+				if (str == NULL) {
+					continue;
+				}
+				ret = snprintf(index, sizeof(index), "%s", str);
+				free(str);
+			} else {
+				ret = snprintf(index, sizeof(index), "%u", i);
+			}
+			if (ret <= 0 || ret >= sizeof(index)) {
+				return ret;
+			}
+
+			ret = snprintf(value, sizeof(value),  "%"PRIu64,
+			               ctr->counters[i]);
+			if (ret <= 0 || ret >= sizeof(value)) {
+				return ret;
+			}
+
+			(*data)[KNOT_CTL_IDX_ID] = index;
+			(*data)[KNOT_CTL_IDX_DATA] = value;
+
+			knot_ctl_type_t type = (i == 0) ? KNOT_CTL_TYPE_DATA :
+			                                  KNOT_CTL_TYPE_EXTRA;
+			ret = knot_ctl_send(args->ctl, type, data);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static int modules_stats(list_t *query_modules, ctl_args_t *args, knot_dname_t *zone)
+{
+	if (query_modules == NULL) {
+		return KNOT_EOK;
+	}
+
+	const char *section = args->data[KNOT_CTL_IDX_SECTION];
+	const char *item = args->data[KNOT_CTL_IDX_ITEM];
+
+	char name[KNOT_DNAME_TXT_MAXLEN + 1] = { 0 };
+	knot_ctl_data_t data = { 0 };
+
+	bool section_found = (section == NULL) ? true : false;
+	bool item_found = (item == NULL) ? true : false;
+
+	struct query_module *mod = NULL;
+	WALK_LIST(mod, *query_modules) {
+		// Skip modules without statistics.
+		if (mod->stats_count == 0) {
+			continue;
+		}
+
+		// Check for specific module.
+		if (section != NULL) {
+			if (section_found) {
+				break;
+			} else if (strcasecmp(mod->id->name + 1, section) == 0) {
+				section_found = true;
+			} else {
+				continue;
+			}
+		}
+
+		data[KNOT_CTL_IDX_SECTION] = mod->id->name + 1;
+
+		for (int i = 0; i < mod->stats_count; i++) {
+			mod_ctr_t *ctr = mod->stats + i;
+
+			// Skip empty counter.
+			if (ctr->name == NULL) {
+				continue;
+			}
+
+			// Check for specific counter.
+			if (item != NULL) {
+				if (item_found) {
+					break;
+				} else if (strcasecmp(ctr->name, item) == 0) {
+					item_found = true;
+				} else {
+					continue;
+				}
+			}
+
+			// Prepare zone name if not already prepared.
+			if (zone != NULL && name[0] == '\0') {
+				if (knot_dname_to_str(name, zone, sizeof(name)) == NULL) {
+					return KNOT_EINVAL;
+				}
+				data[KNOT_CTL_IDX_ZONE] = name;
+			}
+
+			data[KNOT_CTL_IDX_ITEM] = ctr->name;
+
+			// Send the counters.
+			int ret = send_stats_ctr(ctr, args, &data);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	return (section_found && item_found) ? KNOT_EOK : KNOT_ENOENT;
+}
+
+static int zone_stats(zone_t *zone, ctl_args_t *args)
+{
+	return modules_stats(&zone->query_modules, args, zone->name);
 }
 
 static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
@@ -954,6 +1117,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_txn_unset);
 	case CTL_ZONE_PURGE:
 		return zones_apply(args, zone_purge);
+	case CTL_ZONE_STATS:
+		return zones_apply(args, zone_stats);
 	default:
 		assert(0);
 		return KNOT_EINVAL;
@@ -972,7 +1137,7 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 		ret = KNOT_CTL_ESTOP;
 		break;
 	case CTL_RELOAD:
-		ret = server_reload(args->server, conf()->filename, true);
+		ret = server_reload(args->server);
 		if (ret != KNOT_EOK) {
 			send_error(args, knot_strerror(ret));
 		}
@@ -983,6 +1148,69 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 	}
 
 	return ret;
+}
+
+static int ctl_stats(ctl_args_t *args, ctl_cmd_t cmd)
+{
+	const char *section = args->data[KNOT_CTL_IDX_SECTION];
+	const char *item = args->data[KNOT_CTL_IDX_ITEM];
+
+	bool found = (section == NULL) ? true : false;
+
+	// Process server metrics.
+	if (section == NULL || strcasecmp(section, "server") == 0) {
+		char value[32];
+		knot_ctl_data_t data = {
+			[KNOT_CTL_IDX_SECTION] = "server",
+			[KNOT_CTL_IDX_DATA] = value
+		};
+
+		for (const stats_item_t *i = server_stats; i->name != NULL; i++) {
+			if (item != NULL) {
+				if (found) {
+					break;
+				} else if (strcmp(i->name, item) == 0) {
+					found = true;
+				} else {
+					continue;
+				}
+			} else {
+				found = true;
+			}
+
+			data[KNOT_CTL_IDX_ITEM] = i->name;
+			int ret = snprintf(value, sizeof(value), "%"PRIu64,
+			                   i->val(args->server));
+			if (ret <= 0 || ret >= sizeof(value)) {
+				send_error(args, knot_strerror(ret));
+				return ret;
+			}
+
+			ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+			if (ret != KNOT_EOK) {
+				send_error(args, knot_strerror(ret));
+				return ret;
+			}
+		}
+	}
+
+	// Process modules metrics.
+	if (section == NULL || strncasecmp(section, "mod-", strlen("mod-")) == 0) {
+		int ret = modules_stats(&conf()->query_modules, args, NULL);
+		if (ret != KNOT_EOK) {
+			send_error(args, knot_strerror(ret));
+			return ret;
+		}
+
+		found = true;
+	}
+
+	if (!found) {
+		send_error(args, knot_strerror(KNOT_EINVAL));
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 
 static int send_block_data(conf_io_t *io, knot_ctl_data_t *data)
@@ -1125,7 +1353,7 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 			break;
 		}
 
-		ret = server_reload(args->server, NULL, false);
+		ret = server_reload(args->server);
 		break;
 	default:
 		assert(0);
@@ -1188,11 +1416,6 @@ static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 
 static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	conf_io_t io = {
-		.fcn = send_block,
-		.misc = args->ctl
-	};
-
 	// Start child transaction.
 	int ret = conf_io_begin(true);
 	if (ret != KNOT_EOK) {
@@ -1208,7 +1431,7 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 
 		switch (cmd) {
 		case CTL_CONF_SET:
-			ret = conf_io_set(key0, key1, id, data, &io);
+			ret = conf_io_set(key0, key1, id, data);
 			break;
 		case CTL_CONF_UNSET:
 			ret = conf_io_unset(key0, key1, id, data);
@@ -1254,6 +1477,7 @@ static const desc_t cmd_table[] = {
 	[CTL_STATUS]          = { "status",          ctl_server },
 	[CTL_STOP]            = { "stop",            ctl_server },
 	[CTL_RELOAD]          = { "reload",          ctl_server },
+	[CTL_STATS]           = { "stats",           ctl_stats },
 
 	[CTL_ZONE_STATUS]     = { "zone-status",     ctl_zone },
 	[CTL_ZONE_RELOAD]     = { "zone-reload",     ctl_zone },
@@ -1271,6 +1495,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_SET]        = { "zone-set",        ctl_zone },
 	[CTL_ZONE_UNSET]      = { "zone-unset",      ctl_zone },
 	[CTL_ZONE_PURGE]      = { "zone-purge",      ctl_zone },
+	[CTL_ZONE_STATS]      = { "zone-stats",	     ctl_zone },
 
 	[CTL_CONF_LIST]       = { "conf-list",       ctl_conf_read },
 	[CTL_CONF_READ]       = { "conf-read",       ctl_conf_read },

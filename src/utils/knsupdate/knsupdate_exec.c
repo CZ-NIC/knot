@@ -892,16 +892,10 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 	knsupdate_reset(params);
 
 	/* Check return code. */
-	uint8_t rc = knot_wire_get_rcode(params->answer->wire);
-	if (rc != KNOT_RCODE_NOERROR) {
-		const char *rcode_str = "Unknown";
-		const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, rc);
-		if (rcode != NULL) {
-			rcode_str = rcode->name;
-		}
-
+	if (knot_pkt_ext_rcode(params->answer) != KNOT_RCODE_NOERROR) {
 		print_packet(params->answer, NULL, 0, -1, 0, true, &params->style);
-		ERR("update failed with '%s'\n", rcode_str);
+		ERR("update failed with error '%s'\n",
+		    knot_pkt_ext_rcode_name(params->answer));
 		ret = KNOT_ERROR;
 	} else {
 		DBG("update success\n");

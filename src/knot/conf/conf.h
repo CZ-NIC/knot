@@ -580,21 +580,22 @@ static inline char* conf_zonefile(
  *
  * \param[in] conf  Configuration.
  * \param[in] txn   Configuration DB transaction.
- * \param[in] zone  Zone name.
  *
  * \return Absolute journal file path string pointer.
  */
 char* conf_journalfile_txn(
 	conf_t *conf,
-	knot_db_txn_t *txn,
+	knot_db_txn_t *txn);
+static inline char* conf_journalfile(
+	conf_t *conf)
+{
+	return conf_journalfile_txn(conf, &conf->read_txn);
+}
+
+char* conf_old_journalfile(
+	conf_t *conf,
 	const knot_dname_t *zone
 );
-static inline char* conf_journalfile(
-	conf_t *conf,
-	const knot_dname_t *zone)
-{
-	return conf_journalfile_txn(conf, &conf->read_txn, zone);
-}
 
 /*!
  * Gets the configured number of UDP threads.

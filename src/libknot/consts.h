@@ -69,10 +69,6 @@ typedef enum {
  * \brief DNS reply codes (RCODEs).
  *
  * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
- *
- * \note Here, only RCODEs present in Header or as an Extended RCODE in
- *       OPT + Header are listed. Other codes are used in dedicated fields of
- *       other RRs.
  */
 typedef enum {
 	KNOT_RCODE_NOERROR   =  0, /*!< No error. */
@@ -87,30 +83,15 @@ typedef enum {
 	KNOT_RCODE_NOTAUTH   =  9, /*!< Server not authoritative. / Query not authorized. */
 	KNOT_RCODE_NOTZONE   = 10, /*!< Name is not inside zone. */
 	KNOT_RCODE_BADVERS   = 16, /*!< Bad OPT Version. */
+	KNOT_RCODE_BADSIG    = 16, /*!< (TSIG) Signature failure. */
+	KNOT_RCODE_BADKEY    = 17, /*!< (TSIG) Key is not supported. */
+	KNOT_RCODE_BADTIME   = 18, /*!< (TSIG) Signature out of time window. */
+	KNOT_RCODE_BADMODE   = 19, /*!< (TKEY) Bad mode. */
+	KNOT_RCODE_BADNAME   = 20, /*!< (TKEY) Duplicate key name. */
+	KNOT_RCODE_BADALG    = 21, /*!< (TKEY) Algorithm not supported. */
+	KNOT_RCODE_BADTRUNC  = 22, /*!< (TSIG) Bad truncation. */
 	KNOT_RCODE_BADCOOKIE = 23  /*!< Bad/missing server cookie. */
 } knot_rcode_t;
-
-/*!
- * \brief TSIG error codes to be set in the TSIG RR's RDATA.
- *
- * Defined in RFC 2845 and RFC 4635.
- * See also https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
- */
-typedef enum {
-	KNOT_TSIG_ERR_BADSIG   = 16, /*!< TSIG signature failed. */
-	KNOT_TSIG_ERR_BADKEY   = 17, /*!< Key is not supported. */
-	KNOT_TSIG_ERR_BADTIME  = 18, /*!< Signature out of time window. */
-	KNOT_TSIG_ERR_BADTRUNC = 22  /*!< Bad truncation. */
-} knot_tsig_error_t;
-
-/*!
- * \brief TKEY error codes. (Defined in RFC 2930.)
- */
-typedef enum {
-	KNOT_TKEY_ERR_BADMODE  = 19, /*!< Bad TKEY mode. */
-	KNOT_TKEY_ERR_BADNAME  = 20, /*!< Duplicate key name. */
-	KNOT_TKEY_ERR_BADALG   = 21  /*!< Algorithm not supported. */
-} knot_tkey_error_t;
 
 /*!
  * \brief DNS packet section identifiers.
@@ -164,6 +145,9 @@ typedef enum {
 	KNOT_DNSSEC_ALG_ECC_GOST           =  12,
 	KNOT_DNSSEC_ALG_ECDSAP256SHA256    =  13,
 	KNOT_DNSSEC_ALG_ECDSAP384SHA384    =  14,
+
+	KNOT_DNSSEC_ALG_ED25519            =  15,
+	KNOT_DNSSEC_ALG_ED448              =  16,
 
 	KNOT_DNSSEC_ALG_INDIRECT           = 252,
 	KNOT_DNSSEC_ALG_PRIVATEDNS         = 253,

@@ -34,6 +34,7 @@ check_PROGRAMS = \
 	keystore_pkcs8	\
 	keystore_pkcs8_dir \
 	keytag		\
+	keyusage	\
 	list		\
 	nsec_bitmap	\
 	nsec_hash	\

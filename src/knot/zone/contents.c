@@ -114,22 +114,23 @@ static int create_nsec3_name(const zone_contents_t *zone,
 }
 
 /*! \brief Link pointers to additional nodes for this RRSet. */
-static int discover_additionals(struct rr_data *rr_data, zone_contents_t *zone)
+static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_data,
+                                zone_contents_t *zone)
 {
 	assert(rr_data != NULL);
 
+	/* Drop possible previous additional nodes. */
+	additional_clear(rr_data->additional);
+
 	const knot_rdataset_t *rrs = &rr_data->rrs;
-
-	/* Create new additional nodes. */
 	uint16_t rdcount = rrs->rr_count;
-	if (rr_data->additional) {
-		free(rr_data->additional);
-	}
-	rr_data->additional = malloc(rdcount * sizeof(zone_node_t *));
-	if (rr_data->additional == NULL) {
-		return KNOT_ENOMEM;
-	}
 
+	uint16_t mandatory_count = 0;
+	uint16_t others_count = 0;
+	glue_t mandatory[rdcount];
+	glue_t others[rdcount];
+
+	/* Scan new additional nodes. */
 	for (uint16_t i = 0; i < rdcount; i++) {
 		const knot_dname_t *dname = knot_rdata_name(rrs, i, rr_data->type);
 		const zone_node_t *node = NULL, *encloser = NULL, *prev = NULL;
@@ -143,7 +144,44 @@ static int discover_additionals(struct rr_data *rr_data, zone_contents_t *zone)
 			assert(node != NULL);
 		}
 
-		rr_data->additional[i] = (zone_node_t *)node;
+		if (node == NULL) {
+			continue;
+		}
+
+		glue_t *glue;
+		if ((node->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH)) &&
+		    rr_data->type == KNOT_RRTYPE_NS &&
+		    knot_dname_in(owner, node->owner)) {
+			glue = &mandatory[mandatory_count++];
+			glue->optional = false;
+		} else {
+			glue = &others[others_count++];
+			glue->optional = true;
+		}
+		glue->node = node;
+		glue->ns_pos = i;
+	}
+
+	/* Store sorted additionals by the type, mandatory first. */
+	size_t total_count = mandatory_count + others_count;
+	if (total_count > 0) {
+		rr_data->additional = malloc(sizeof(additional_t));
+		if (rr_data->additional == NULL) {
+			return KNOT_ENOMEM;
+		}
+		rr_data->additional->count = total_count;
+
+		size_t size = total_count * sizeof(glue_t);
+		rr_data->additional->glues = malloc(size);
+		if (rr_data->additional->glues == NULL) {
+			free(rr_data->additional);
+			return KNOT_ENOMEM;
+		}
+
+		size_t mandatory_size = mandatory_count * sizeof(glue_t);
+		memcpy(rr_data->additional->glues, mandatory, mandatory_size);
+		memcpy(rr_data->additional->glues + mandatory_count, others,
+		       size - mandatory_size);
 	}
 
 	return KNOT_EOK;
@@ -305,7 +343,7 @@ static int adjust_additional(zone_node_t **tnode, void *data)
 	for(uint16_t i = 0; i < node->rrset_count; ++i) {
 		struct rr_data *rr_data = &node->rrs[i];
 		if (knot_rrtype_additional_needed(rr_data->type)) {
-			int ret = discover_additionals(rr_data, args->zone);
+			int ret = discover_additionals(node->owner, rr_data, args->zone);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -614,7 +652,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nodes = hattrie_dup(z->nodes, NULL);
+	out->nodes = hattrie_create(NULL);
 	if (out->nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -634,7 +672,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 	out->apex = apex_cpy;
 
-	hattrie_iter_t *itt = hattrie_iter_begin(z->nodes, true);
+	hattrie_iter_t *itt = hattrie_iter_begin(z->nodes);
 	if (itt == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -662,19 +700,18 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 
 	hattrie_iter_free(itt);
-	hattrie_build_index(out->nodes);
 
 	return KNOT_EOK;
 }
 
 static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nsec3_nodes = hattrie_dup(z->nsec3_nodes, NULL);
+	out->nsec3_nodes = hattrie_create(NULL);
 	if (out->nsec3_nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	hattrie_iter_t *itt = hattrie_iter_begin(z->nsec3_nodes, false);
+	hattrie_iter_t *itt = hattrie_iter_begin(z->nsec3_nodes);
 	if (itt == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -697,7 +734,6 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 
 	hattrie_iter_free(itt);
-	hattrie_build_index(out->nsec3_nodes);
 
 	return KNOT_EOK;
 }
@@ -914,8 +950,7 @@ static int adjust_nodes(zone_tree_t *nodes, zone_adjust_arg_t *adjust_arg,
 	adjust_arg->first_node = NULL;
 	adjust_arg->previous_node = NULL;
 
-	hattrie_build_index(nodes);
-	int ret = zone_tree_apply_inorder(nodes, callback, adjust_arg);
+	int ret = zone_tree_apply(nodes, callback, adjust_arg);
 
 	if (adjust_arg->first_node) {
 		adjust_arg->first_node->prev = adjust_arg->previous_node;
@@ -1001,10 +1036,10 @@ int zone_contents_adjust_full(zone_contents_t *contents)
 	return contents_adjust(contents, true);
 }
 
-int zone_contents_tree_apply_inorder(zone_contents_t *zone,
-                                     zone_contents_apply_cb_t function, void *data)
+int zone_contents_apply(zone_contents_t *contents,
+                        zone_contents_apply_cb_t function, void *data)
 {
-	if (zone == NULL) {
+	if (contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1013,13 +1048,13 @@ int zone_contents_tree_apply_inorder(zone_contents_t *zone,
 		.data = data
 	};
 
-	return zone_tree_apply_inorder(zone->nodes, tree_apply_cb, &f);
+	return zone_tree_apply(contents->nodes, tree_apply_cb, &f);
 }
 
-int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
-                                      zone_contents_apply_cb_t function, void *data)
+int zone_contents_nsec3_apply(zone_contents_t *contents,
+                              zone_contents_apply_cb_t function, void *data)
 {
-	if (zone == NULL) {
+	if (contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1028,7 +1063,7 @@ int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
 		.data = data
 	};
 
-	return zone_tree_apply_inorder(zone->nsec3_nodes, tree_apply_cb, &f);
+	return zone_tree_apply(contents->nsec3_nodes, tree_apply_cb, &f);
 }
 
 int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to)
@@ -1130,6 +1165,6 @@ bool zone_contents_is_empty(const zone_contents_t *zone)
 size_t zone_contents_measure_size(zone_contents_t *zone)
 {
 	zone->size = 0;
-	zone_contents_tree_apply_inorder(zone, measure_size, &zone->size);
+	zone_contents_apply(zone, measure_size, &zone->size);
 	return zone->size;
 }

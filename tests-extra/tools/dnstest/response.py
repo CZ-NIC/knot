@@ -392,3 +392,13 @@ class Response(object):
                 for rr in nsec3_rrs:
                     detail_log("  %s" % rr)
                 detail_log(SEP)
+
+    def query_size(self):
+        '''Return query size.'''
+
+        return len(self.query.to_wire())
+
+    def response_size(self):
+        '''Return response size.'''
+
+        return len(self.resp.to_wire())

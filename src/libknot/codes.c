@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,36 +30,31 @@ const knot_lookup_t knot_opcode_names[] = {
 
 _public_
 const knot_lookup_t knot_rcode_names[] = {
-	{ KNOT_RCODE_NOERROR,  "NOERROR" },
-	{ KNOT_RCODE_FORMERR,  "FORMERR" },
-	{ KNOT_RCODE_SERVFAIL, "SERVFAIL" },
-	{ KNOT_RCODE_NXDOMAIN, "NXDOMAIN" },
-	{ KNOT_RCODE_NOTIMPL,  "NOTIMPL" },
-	{ KNOT_RCODE_REFUSED,  "REFUSED" },
-	{ KNOT_RCODE_YXDOMAIN, "YXDOMAIN" },
-	{ KNOT_RCODE_YXRRSET,  "YXRRSET" },
-	{ KNOT_RCODE_NXRRSET,  "NXRRSET" },
-	{ KNOT_RCODE_NOTAUTH,  "NOTAUTH" },
-	{ KNOT_RCODE_NOTZONE,  "NOTZONE" },
-	{ KNOT_RCODE_BADVERS,  "BADVERS" },
+	{ KNOT_RCODE_NOERROR,   "NOERROR" },
+	{ KNOT_RCODE_FORMERR,   "FORMERR" },
+	{ KNOT_RCODE_SERVFAIL,  "SERVFAIL" },
+	{ KNOT_RCODE_NXDOMAIN,  "NXDOMAIN" },
+	{ KNOT_RCODE_NOTIMPL,   "NOTIMPL" },
+	{ KNOT_RCODE_REFUSED,   "REFUSED" },
+	{ KNOT_RCODE_YXDOMAIN,  "YXDOMAIN" },
+	{ KNOT_RCODE_YXRRSET,   "YXRRSET" },
+	{ KNOT_RCODE_NXRRSET,   "NXRRSET" },
+	{ KNOT_RCODE_NOTAUTH,   "NOTAUTH" },
+	{ KNOT_RCODE_NOTZONE,   "NOTZONE" },
+	{ KNOT_RCODE_BADVERS,   "BADVERS" },
+	{ KNOT_RCODE_BADKEY,    "BADKEY" },
+	{ KNOT_RCODE_BADTIME,   "BADTIME" },
+	{ KNOT_RCODE_BADMODE,   "BADMODE" },
+	{ KNOT_RCODE_BADNAME,   "BADNAME" },
+	{ KNOT_RCODE_BADALG,    "BADALG" },
+	{ KNOT_RCODE_BADTRUNC,  "BADTRUNC" },
 	{ KNOT_RCODE_BADCOOKIE, "BADCOOKIE" },
 	{ 0, NULL }
 };
 
 _public_
-const knot_lookup_t knot_tsig_err_names[] = {
-	{ KNOT_TSIG_ERR_BADSIG,   "BADSIG" },
-	{ KNOT_TSIG_ERR_BADKEY,   "BADKEY" },
-	{ KNOT_TSIG_ERR_BADTIME,  "BADTIME" },
-	{ KNOT_TSIG_ERR_BADTRUNC, "BADTRUNC" },
-	{ 0, NULL }
-};
-
-_public_
-const knot_lookup_t knot_tkey_err_names[] = {
-	{ KNOT_TKEY_ERR_BADMODE,  "BADMODE" },
-	{ KNOT_TKEY_ERR_BADNAME,  "BADNAME" },
-	{ KNOT_TKEY_ERR_BADALG,   "BADALG" },
+const knot_lookup_t knot_tsig_rcode_names[] = {
+	{ KNOT_RCODE_BADSIG, "BADSIG" },
 	{ 0, NULL }
 };
 
@@ -76,6 +71,8 @@ const knot_lookup_t knot_dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_ECC_GOST,           "ECC_GOST" },
 	{ KNOT_DNSSEC_ALG_ECDSAP256SHA256,    "ECDSAP256SHA256" },
 	{ KNOT_DNSSEC_ALG_ECDSAP384SHA384,    "ECDSAP384SHA384" },
+	{ KNOT_DNSSEC_ALG_ED25519,            "ED25519" },
+	{ KNOT_DNSSEC_ALG_ED448,              "ED448" },
 	{ KNOT_DNSSEC_ALG_INDIRECT,           "INDIRECT" },
 	{ KNOT_DNSSEC_ALG_PRIVATEDNS,         "PRIVATEDNS" },
 	{ KNOT_DNSSEC_ALG_PRIVATEOID,         "PRIVATEOID" },

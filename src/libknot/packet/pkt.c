@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 #include "libknot/attribute.h"
 #include "libknot/packet/pkt.h"
+#include "libknot/codes.h"
 #include "libknot/descriptor.h"
 #include "libknot/errcode.h"
 #include "libknot/rrtype/tsig.h"
@@ -332,6 +333,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 
 	/* Clear payload. */
 	knot_pkt_clear_payload(pkt);
+
 	return KNOT_EOK;
 }
 
@@ -402,7 +404,6 @@ int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size)
 	} else {
 		return KNOT_ERANGE;
 	}
-
 }
 
 _public_
@@ -438,7 +439,6 @@ uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 	return ret;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 {
@@ -449,7 +449,6 @@ uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 	return pkt->qname_size + 2 * sizeof(uint16_t);
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
 {
@@ -460,7 +459,6 @@ const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
 	return pkt->wire + KNOT_WIRE_HEADER_SIZE;
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 {
@@ -472,7 +470,6 @@ uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 	return wire_read_u16(pkt->wire + off);
 }
 
-/*----------------------------------------------------------------------------*/
 _public_
 uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 {
@@ -487,17 +484,17 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 _public_
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 {
-	if (pkt == NULL) {
+	if (pkt == NULL || section_id < pkt->current) {
 		return KNOT_EINVAL;
 	}
 
-	/* Cannot step to lower section. */
-	assert(section_id >= pkt->current);
-	pkt->current = section_id;
-
-	/* Remember watermark. */
+	/* Remember watermark but not on repeated calls. */
 	pkt->sections[section_id].pkt = pkt;
-	pkt->sections[section_id].pos = pkt->rrset_count;
+	if (section_id > pkt->current) {
+		pkt->sections[section_id].pos = pkt->rrset_count;
+	}
+
+	pkt->current = section_id;
 
 	return KNOT_EOK;
 }
@@ -563,8 +560,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	memcpy(pkt->rr + pkt->rrset_count, rr, sizeof(knot_rrset_t));
 
 	/* Check for double insertion. */
-	if ((flags & KNOT_PF_CHECKDUP) &&
-	    pkt_contains(pkt, rr)) {
+	if ((flags & KNOT_PF_CHECKDUP) && pkt_contains(pkt, rr)) {
 		return KNOT_EOK; /*! \todo return rather a number of added RRs */
 	}
 
@@ -584,7 +580,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	if (ret < 0) {
 		/* Truncate packet if required. */
 		if (ret == KNOT_ESPACE && !(flags & KNOT_PF_NOTRUNC)) {
-				knot_wire_set_tc(pkt->wire);
+			knot_wire_set_tc(pkt->wire);
 		}
 		return ret;
 	}
@@ -722,7 +718,7 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
                                 unsigned flags)
 {
 	/* Check RR constraints. */
-	switch(rr->type) {
+	switch (rr->type) {
 	case KNOT_RRTYPE_TSIG:
 		CHECK_AR_CONSTRAINTS(pkt, rr, tsig_rr, knot_tsig_rdata_is_ok);
 
@@ -865,18 +861,56 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 }
 
 _public_
-uint16_t knot_pkt_get_ext_rcode(const knot_pkt_t *pkt)
+uint16_t knot_pkt_ext_rcode(const knot_pkt_t *pkt)
 {
 	if (pkt == NULL) {
 		return 0;
 	}
 
-	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
+	/* Get header RCODE. */
+	uint16_t rcode = knot_wire_get_rcode(pkt->wire);
 
-	if (pkt->opt_rr) {
+	/* Update to extended RCODE if EDNS is available. */
+	if (pkt->opt_rr != NULL) {
 		uint8_t opt_rcode = knot_edns_get_ext_rcode(pkt->opt_rr);
-		return knot_edns_whole_rcode(opt_rcode, rcode);
+		rcode = knot_edns_whole_rcode(opt_rcode, rcode);
+	}
+
+	/* Return if not NOTAUTH. */
+	if (rcode != KNOT_RCODE_NOTAUTH) {
+		return rcode;
+	}
+
+	/* Get TSIG RCODE. */
+	uint16_t tsig_rcode = KNOT_RCODE_NOERROR;
+	if (pkt->tsig_rr != NULL) {
+		tsig_rcode = knot_tsig_rdata_error(pkt->tsig_rr);
+	}
+
+	/* Return proper RCODE. */
+	if (tsig_rcode != KNOT_RCODE_NOERROR) {
+		return tsig_rcode;
 	} else {
 		return rcode;
 	}
+}
+
+_public_
+const char *knot_pkt_ext_rcode_name(const knot_pkt_t *pkt)
+{
+	if (pkt == NULL) {
+		return "";
+	}
+
+	uint16_t rcode = knot_pkt_ext_rcode(pkt);
+
+	const knot_lookup_t *item = NULL;
+	if (pkt->tsig_rr != NULL) {
+		item = knot_lookup_by_id(knot_tsig_rcode_names, rcode);
+	}
+	if (item == NULL) {
+		item = knot_lookup_by_id(knot_rcode_names, rcode);
+	}
+
+	return (item != NULL) ? item->name : "";
 }

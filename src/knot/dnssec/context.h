@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
 
+#include "knot/conf/conf.h"
 #include "libknot/dname.h"
 
 /*!
@@ -30,6 +31,8 @@ struct kdnssec_ctx {
 	time_t now;
 
 	bool legacy;
+	char *policy_name;
+
 	dnssec_kasp_t *kasp;
 	dnssec_kasp_zone_t *zone;
 	dnssec_kasp_policy_t *policy;
@@ -57,10 +60,13 @@ int kdnssec_kasp_init(kdnssec_ctx_t *ctx, const char *kasp_path, const char *zon
 /*!
  * \brief Initialize DNSSEC signing context.
  *
- * \param ctx        Signing context to be initialized.
- * \param zone_name  Name of the zone.
+ * \param ctx             Signing context to be initialized.
+ * \param zone_name       Name of the zone.
+ * \param policy          DNSSEC policy configuration reference.
+ * \param disable_legacy  Disable legacy detection indication.
  */
-int kdnssec_ctx_init(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name);
+int kdnssec_ctx_init(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
+                     conf_val_t *policy, bool disable_legacy);
 
 /*!
  * \brief Cleanup DNSSEC signing context.

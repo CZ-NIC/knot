@@ -88,6 +88,7 @@ static const struct error errors[] = {
 	{ KNOT_EOF,          "end of file" },
 	{ KNOT_ESYSTEM,      "system error" },
 	{ KNOT_EFILE,        "file error" },
+	{ KNOT_ESOAINVAL,    "SOA mismatch" },
 
 	/* Control states. */
 	{ KNOT_CTL_ESTOP,     "stopping server" },

@@ -48,24 +48,21 @@ static knot_lookup_t rtypes[] = {
 	{ 0, NULL }
 };
 
-static void print_header(const knot_pkt_t *packet, const style_t *style,
-                         const uint16_t ext_rcode)
+static void print_header(const knot_pkt_t *packet, const style_t *style)
 {
 	char flags[64] = "";
-	uint8_t opcode_id;
 	const char *rcode_str = "Unknown";
 	const char *opcode_str = "Unknown";
-	const knot_lookup_t *rcode, *opcode;
 
-	// Get RCODE from Header and check for Extended RCODE from OPT RR.
-	rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode);
-	if (rcode != NULL) {
-		rcode_str = rcode->name;
+	// Get extended RCODE.
+	const char *code_name = knot_pkt_ext_rcode_name(packet);
+	if (code_name[0] != '\0') {
+		rcode_str = code_name;
 	}
 
 	// Get OPCODE.
-	opcode_id = knot_wire_get_opcode(packet->wire);
-	opcode = knot_lookup_by_id(knot_opcode_names, opcode_id);
+	uint8_t code = knot_wire_get_opcode(packet->wire);
+	const knot_lookup_t *opcode = knot_lookup_by_id(knot_opcode_names, code);
 	if (opcode != NULL) {
 		opcode_str = opcode->name;
 	}
@@ -143,7 +140,7 @@ static void print_footer(const size_t total_len,
 		exec_time = time(NULL);
 	}
 
-	// Create formated date-time string.
+	// Create formatted date-time string.
 	localtime_r(&exec_time, &tm);
 	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
@@ -198,29 +195,28 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 	printf("%s/%u/%u\n", addr_str, ecs.source_len, ecs.scope_len);
 }
 
-static void print_section_opt(const knot_rrset_t *rr, const uint8_t rcode)
+static void print_section_opt(const knot_pkt_t *packet)
 {
-	uint8_t ercode = knot_edns_get_ext_rcode(rr);
-	uint16_t ext_rcode_id = knot_edns_whole_rcode(ercode, rcode);
-	const char *ext_rcode_str = "Unused";
-	const knot_lookup_t *ext_rcode;
+	const char *ercode_str = "Unknown";
 
+	uint16_t ercode = knot_edns_get_ext_rcode(packet->opt_rr);
 	if (ercode > 0) {
-		ext_rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode_id);
-		if (ext_rcode != NULL) {
-			ext_rcode_str = ext_rcode->name;
-		} else {
-			ext_rcode_str = "Unknown";
-		}
+		ercode = knot_edns_whole_rcode(ercode,
+		                               knot_wire_get_rcode(packet->wire));
+	}
+
+	const knot_lookup_t *item = knot_lookup_by_id(knot_rcode_names, ercode);
+	if (item != NULL) {
+		ercode_str = item->name;
 	}
 
 	printf("Version: %u; flags: %s; UDP size: %u B; ext-rcode: %s\n",
-	       knot_edns_get_version(rr),
-	       (knot_edns_do(rr) != 0) ? "do" : "",
-	       knot_edns_get_payload(rr),
-	       ext_rcode_str);
+	       knot_edns_get_version(packet->opt_rr),
+	       (knot_edns_do(packet->opt_rr) != 0) ? "do" : "",
+	       knot_edns_get_payload(packet->opt_rr),
+	       ercode_str);
 
-	knot_rdata_t *rdata = knot_rdataset_at(&rr->rrs, 0);
+	knot_rdata_t *rdata = knot_rdataset_at(&packet->opt_rr->rrs, 0);
 	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
 	                                      knot_rdata_rdlen(rdata));
 
@@ -306,21 +302,10 @@ static void print_section_full(const knot_rrset_t *rrsets,
 			continue;
 		}
 
-		while (knot_rrset_txt_dump(&rrsets[i], buf, buflen,
-		                           &(style->style)) < 0) {
-			buflen += 4096;
-			// Oversize protection.
-			if (buflen > 100000) {
+		if (knot_rrset_txt_dump(&rrsets[i], &buf, &buflen,
+		                        &(style->style)) < 0) {
 				WARN("can't print whole section\n");
 				break;
-			}
-
-			char *newbuf = realloc(buf, buflen);
-			if (newbuf == NULL) {
-				WARN("can't print whole section\n");
-				break;
-			}
-			buf = newbuf;
 		}
 		printf("%s", buf);
 	}
@@ -421,27 +406,26 @@ static void print_section_host(const knot_rrset_t *rrsets,
 	free(buf);
 }
 
-static void print_error_host(const uint16_t   code,
-                             const knot_pkt_t *packet,
-                             const style_t    *style)
+static void print_error_host(const knot_pkt_t *packet, const style_t *style)
 {
-	const char *rcode_str = "Unknown";
 	char type[32] = "Unknown";
-	char *owner;
-	const knot_lookup_t *rcode;
+	const char *rcode_str = "Unknown";
 
-	owner = knot_dname_to_str_alloc(knot_pkt_qname(packet));
+	knot_rrtype_to_string(knot_pkt_qtype(packet), type, sizeof(type));
+
+	// Get extended RCODE.
+	const char *code_name = knot_pkt_ext_rcode_name(packet);
+	if (code_name[0] != '\0') {
+		rcode_str = code_name;
+	}
+
+	// Get record owner.
+	char *owner = knot_dname_to_str_alloc(knot_pkt_qname(packet));
 	if (style->style.ascii_to_idn != NULL) {
 		style->style.ascii_to_idn(&owner);
 	}
 
-	rcode = knot_lookup_by_id(knot_rcode_names, code);
-	if (rcode != NULL) {
-		rcode_str = rcode->name;
-	}
-	knot_rrtype_to_string(knot_pkt_qtype(packet), type, sizeof(type));
-
-	if (code == KNOT_RCODE_NOERROR) {
+	if (knot_pkt_ext_rcode(packet) == KNOT_RCODE_NOERROR) {
 		printf("Host %s has no %s record\n", owner, type);
 	} else {
 		printf("Host %s type %s error: %s\n", owner, type, rcode_str);
@@ -465,7 +449,7 @@ knot_pkt_t *create_empty_packet(const uint16_t max_size)
 	return packet;
 }
 
-void print_header_xfr(const knot_pkt_t *packet, const style_t  *style)
+void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -504,8 +488,7 @@ void print_data_xfr(const knot_pkt_t *packet,
 		return;
 	}
 
-	const knot_pktsection_t *answers = knot_pkt_section(packet,
-	                                                    KNOT_ANSWER);
+	const knot_pktsection_t *answers = knot_pkt_section(packet, KNOT_ANSWER);
 
 	switch (style->format) {
 	case FORMAT_DIG:
@@ -571,9 +554,6 @@ void print_packet(const knot_pkt_t *packet,
 	uint16_t nscount = knot_wire_get_nscount(packet->wire);
 	uint16_t arcount = knot_wire_get_arcount(packet->wire);
 
-	// Get Extended RCODE from the packet.
-	uint16_t rcode = knot_pkt_get_ext_rcode(packet);
-
 	// Disable additionals printing if there are no other records.
 	// OPT record may be placed anywhere within additionals!
 	if (knot_pkt_has_edns(packet) && arcount == 1) {
@@ -585,14 +565,13 @@ void print_packet(const knot_pkt_t *packet,
 		if (net != NULL) {
 			print_tls(&net->tls);
 		}
-		print_header(packet, style, rcode);
+		print_header(packet, style);
 	}
 
 	// Print EDNS section.
 	if (style->show_edns && knot_pkt_has_edns(packet)) {
 		printf("\n;; EDNS PSEUDOSECTION:\n;; ");
-		print_section_opt(packet->opt_rr,
-		                  knot_wire_get_rcode(packet->wire));
+		print_section_opt(packet);
 	}
 
 	// Print DNS sections.
@@ -606,7 +585,7 @@ void print_packet(const knot_pkt_t *packet,
 		if (ancount > 0) {
 			print_section_host(knot_pkt_rr(answers, 0), ancount, style);
 		} else {
-			print_error_host(rcode, packet, style);
+			print_error_host(packet, style);
 		}
 		break;
 	case FORMAT_NSUPDATE:

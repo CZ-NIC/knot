@@ -16,6 +16,7 @@
 
 #include "files.h"
 
+#include "../../src/contrib/string.c"
 #include "../../src/contrib/files.c"
 
 #include <stdlib.h>

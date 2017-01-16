@@ -26,8 +26,8 @@
 #include <inttypes.h>
 
 #include "libknot/libknot.h"
+#include "contrib/files.h"
 #include "contrib/macros.h"
-#include "contrib/string.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
@@ -298,73 +298,6 @@ int zonefile_exists(const char *path, time_t *mtime)
 	return KNOT_EOK;
 }
 
-/*! \brief Open a temporary zonefile. */
-static int open_tmp_filename(const char *name, char **tmp_name, FILE **file)
-{
-	int ret;
-
-	*tmp_name = sprintf_alloc("%s.XXXXXX", name);
-	if (*tmp_name == NULL) {
-		ret = KNOT_ENOMEM;
-		goto open_tmp_failed;
-	}
-
-	int fd = mkstemp(*tmp_name);
-	if (fd < 0) {
-		ret = knot_map_errno();
-		goto open_tmp_failed;
-	}
-
-	if (fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) != 0) {
-		ret = knot_map_errno();
-		close(fd);
-		unlink(*tmp_name);
-		goto open_tmp_failed;
-	}
-
-	*file = fdopen(fd, "w");
-	if (*file == NULL) {
-		ret = knot_map_errno();
-		close(fd);
-		unlink(*tmp_name);
-		goto open_tmp_failed;
-	}
-
-	return KNOT_EOK;
-open_tmp_failed:
-	free(*tmp_name);
-	*tmp_name = NULL;
-
-	assert(ret != KNOT_EOK);
-	return ret;
-}
-
-/*! \brief Prepare a directory for the file. */
-static int make_path(const char *path, mode_t mode)
-{
-	if (path == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	char *dir = strdup(path);
-	if (dir == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	for (char *p = strchr(dir + 1, '/'); p != NULL; p = strchr(p + 1, '/')) {
-		*p = '\0';
-		if (mkdir(dir, mode) == -1 && errno != EEXIST) {
-			free(dir);
-			return knot_map_errno();
-		}
-		*p = '/';
-	}
-
-	free(dir);
-
-	return KNOT_EOK;
-}
-
 int zonefile_write(const char *path, zone_contents_t *zone)
 {
 	if (!zone || !path) {
@@ -378,12 +311,12 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 
 	FILE *file = NULL;
 	char *tmp_name = NULL;
-	ret = open_tmp_filename(path, &tmp_name, &file);
+	ret = open_tmp_file(path, &tmp_name, &file, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = zone_dump_text(zone, file);
+	ret = zone_dump_text(zone, file, true);
 	fclose(file);
 	if (ret != KNOT_EOK) {
 		unlink(tmp_name);

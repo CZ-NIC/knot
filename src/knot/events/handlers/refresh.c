@@ -116,12 +116,6 @@ struct refresh_data {
 	knot_mm_t *mm; // TODO: This used to be used in IXFR. Remove or reuse.
 };
 
-static const char *rcode_name(uint16_t rcode)
-{
-	const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
-	return lut ? lut->name : "unknown RCODE";
-}
-
 static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 {
 	return serial_compare(local_serial, remote_serial) >= 0;
@@ -270,10 +264,10 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	assert(data);
 
 	// Check RCODE
-	uint16_t rcode = knot_pkt_get_ext_rcode(pkt);
-	if (rcode != KNOT_RCODE_NOERROR) {
+	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
 		AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-		           "server responded with %s", rcode_name(rcode));
+		           "server responded with error '%s'",
+		           knot_pkt_ext_rcode_name(pkt));
 		return KNOT_STATE_FAIL;
 	}
 
@@ -595,13 +589,10 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	assert(data);
 
 	// Check RCODE
-	uint8_t rcode = knot_wire_get_rcode(pkt->wire);
-	if (rcode != KNOT_RCODE_NOERROR) {
-		const knot_lookup_t *lut = knot_lookup_by_id(knot_rcode_names, rcode);
-		if (lut != NULL) {
-			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			           "server responded with %s", lut->name);
-		}
+	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
+		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+		           "server responded with error '%s'",
+		           knot_pkt_ext_rcode_name(pkt));
 		return KNOT_STATE_FAIL;
 	}
 
@@ -669,10 +660,10 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
 
-	uint16_t rcode = knot_pkt_get_ext_rcode(pkt);
-	if (rcode != KNOT_RCODE_NOERROR) {
+	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
 		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
-		            "server responded with %s", rcode_name(rcode));
+		            "server responded with error '%s'",
+		            knot_pkt_ext_rcode_name(pkt));
 		return KNOT_STATE_FAIL;
 	}
 

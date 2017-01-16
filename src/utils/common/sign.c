@@ -92,13 +92,13 @@ int verify_packet(const knot_pkt_t *pkt, const sign_context_t *sign_ctx)
 	}
 
 	switch (knot_tsig_rdata_error(pkt->tsig_rr)) {
-	case KNOT_TSIG_ERR_BADSIG:
+	case KNOT_RCODE_BADSIG:
 		return KNOT_TSIG_EBADSIG;
-	case KNOT_TSIG_ERR_BADKEY:
+	case KNOT_RCODE_BADKEY:
 		return KNOT_TSIG_EBADKEY;
-	case KNOT_TSIG_ERR_BADTIME:
+	case KNOT_RCODE_BADTIME:
 		return KNOT_TSIG_EBADTIME;
-	case KNOT_TSIG_ERR_BADTRUNC:
+	case KNOT_RCODE_BADTRUNC:
 		return KNOT_TSIG_EBADTRUNC;
 	default:
 		return KNOT_EOK;

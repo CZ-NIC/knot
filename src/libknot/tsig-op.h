@@ -38,7 +38,7 @@
  * the message size.
  *
  * \note This function does not save the new digest to the 'digest' parameter
- *       unless everything went OK. This allows to sent the same buffer to
+ *       unless everything went OK. This allows sending the same buffer to
  *       the 'request_mac' and 'digest' parameters.
  *
  * \param msg Message to be signed.
@@ -72,7 +72,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  * the message size.
  *
  * \note This function does not save the new digest to the 'digest' parameter
- *       unless everything went OK. This allows to sent the same buffer to
+ *       unless everything went OK. This allows sending the same buffer to
  *       the 'request_mac' and 'digest' parameters.
  *
  * \param msg Message to be signed.
@@ -173,7 +173,7 @@ int knot_tsig_append(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  *  \todo Proper documentation.
  */
 static inline bool knot_tsig_can_sign(uint16_t tsig_rcode) {
-	return (tsig_rcode == KNOT_RCODE_NOERROR || tsig_rcode == KNOT_TSIG_ERR_BADTIME);
+	return tsig_rcode == KNOT_RCODE_NOERROR || tsig_rcode == KNOT_RCODE_BADTIME;
 }
 
 /*! @} */

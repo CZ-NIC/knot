@@ -276,7 +276,7 @@ static inline void knot_wire_set_rd(uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void knot_wire_flags_clear_rd(uint8_t *packet)
+static inline void knot_wire_clear_rd(uint8_t *packet)
 {
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) &= ~KNOT_WIRE_RD_MASK;
 }
@@ -588,7 +588,7 @@ static inline void knot_wire_flags_set_rd(uint8_t *flags1)
  *
  * \param flags1 First byte of DNS header flags.
  */
-static inline void knot_wire_flags_flags_clear_rd(uint8_t *flags1)
+static inline void knot_wire_flags_clear_rd(uint8_t *flags1)
 {
 	*flags1 &= ~KNOT_WIRE_RD_MASK;
 }

@@ -66,12 +66,13 @@ the following symbols:
 | – Choice
 .UNINDENT
 .sp
-There are 10 main sections (\fBserver\fP, \fBcontrol\fP, \fBlog\fP, \fBkeystore\fP,
-\fBpolicy\fP, \fBkey\fP, \fBacl\fP, \fBremote\fP, \fBtemplate\fP, and \fBzone\fP) and
-module sections with the \fBmod\-\fP prefix. Most of the sections (excluding
-\fBserver\fP and \fBcontrol\fP) are sequences of settings blocks. Each settings block
-begins with a unique identifier, which can be used as a reference from other
-sections (such identifier must be defined in advance).
+There are 11 main sections (\fBserver\fP, \fBcontrol\fP, \fBlog\fP, \fBstatistics\fP,
+\fBkeystore\fP, \fBpolicy\fP, \fBkey\fP, \fBacl\fP, \fBremote\fP, \fBtemplate\fP, and
+\fBzone\fP) and module sections with the \fBmod\-\fP prefix. Most of the sections
+(excluding \fBserver\fP, \fBcontrol\fP, and \fBstatistics\fP) are sequences of
+settings blocks. Each settings block begins with a unique identifier,
+which can be used as a reference from other sections (such identifier
+must be defined in advance).
 .sp
 A multi\-valued item can be specified either as a YAML sequence:
 .INDENT 0.0
@@ -103,8 +104,8 @@ to enclose such value within double quotes \fB"\fP \fB"\fP\&.
 .SH COMMENTS
 .sp
 A comment begins with a \fB#\fP character and is ignored during processing.
-Also each configuration section or sequence block allows to specify permanent
-comment using \fBcomment\fP item which is stored in the server beside the
+Also each configuration section or sequence block allows a permanent
+comment using the \fBcomment\fP item which is stored in the server beside the
 configuration.
 .SH INCLUDES
 .sp
@@ -149,10 +150,6 @@ server:
     max\-udp\-payload: SIZE
     max\-ipv4\-udp\-payload: SIZE
     max\-ipv6\-udp\-payload: SIZE
-    rate\-limit: INT
-    rate\-limit\-slip: INT
-    rate\-limit\-table\-size: INT
-    rate\-limit\-whitelist: ADDR[/INT] | ADDR\-ADDR ...
     listen: ADDR[@INT] ...
 .ft P
 .fi
@@ -243,69 +240,6 @@ A maximum number of TCP clients connected in parallel, set this below the file
 descriptor limit to avoid resource exhaustion.
 .sp
 \fIDefault:\fP 100
-.SS rate\-limit
-.sp
-Rate limiting is based on the token bucket scheme. A rate basically
-represents a number of tokens available each second. Each response is
-processed and classified (based on several discriminators, e.g.
-source netblock, query type, zone name, rcode, etc.). Classified responses are
-then hashed and assigned to a bucket containing number of available
-tokens, timestamp and metadata. When available tokens are exhausted,
-response is dropped or sent as truncated (see \fI\%rate\-limit\-slip\fP).
-Number of available tokens is recalculated each second.
-.sp
-\fIDefault:\fP 0 (disabled)
-.SS rate\-limit\-table\-size
-.sp
-Size of the hash table in a number of buckets. The larger the hash table, the lesser
-the probability of a hash collision, but at the expense of additional memory costs.
-Each bucket is estimated roughly to 32 bytes. The size should be selected as
-a reasonably large prime due to better hash function distribution properties.
-Hash table is internally chained and works well up to a fill rate of 90 %, general
-rule of thumb is to select a prime near 1.2 * maximum_qps.
-.sp
-\fIDefault:\fP 393241
-.SS rate\-limit\-slip
-.sp
-As attacks using DNS/UDP are usually based on a forged source address,
-an attacker could deny services to the victim\(aqs netblock if all
-responses would be completely blocked. The idea behind SLIP mechanism
-is to send each N\s-2\uth\d\s0 response as truncated, thus allowing client to
-reconnect via TCP for at least some degree of service. It is worth
-noting, that some responses can\(aqt be truncated (e.g. SERVFAIL).
-.INDENT 0.0
-.IP \(bu 2
-Setting the value to \fB0\fP will cause that all rate\-limited responses will
-be dropped. The outbound bandwidth and packet rate will be strictly capped
-by the \fI\%rate\-limit\fP option. All legitimate requestors affected
-by the limit will face denial of service and will observe excessive timeouts.
-Therefore this setting is not recommended.
-.IP \(bu 2
-Setting the value to \fB1\fP will cause that all rate\-limited responses will
-be sent as truncated. The amplification factor of the attack will be reduced,
-but the outbound data bandwidth won\(aqt be lower than the incoming bandwidth.
-Also the outbound packet rate will be the same as without RRL.
-.IP \(bu 2
-Setting the value to \fB2\fP will cause that half of the rate\-limited responses
-will be dropped, the other half will be sent as truncated. With this
-configuration, both outbound bandwidth and packet rate will be lower than the
-inbound. On the other hand, the dropped responses enlarge the time window
-for possible cache poisoning attack on the resolver.
-.IP \(bu 2
-Setting the value to anything \fBlarger than 2\fP will keep on decreasing
-the outgoing rate\-limited bandwidth, packet rate, and chances to notify
-legitimate requestors to reconnect using TCP. These attributes are inversely
-proportional to the configured value. Setting the value high is not advisable.
-.UNINDENT
-.sp
-\fIDefault:\fP 1
-.SS rate\-limit\-whitelist
-.sp
-A list of IP addresses, network subnets, or network ranges to exempt from
-rate limiting. Empty list means that no incoming connection will be
-white\-listed.
-.sp
-\fIDefault:\fP not set
 .SS max\-udp\-payload
 .sp
 Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
@@ -395,8 +329,7 @@ match one of them. Empty value means that TSIG key is not required.
 \fIDefault:\fP not set
 .SS action
 .sp
-An ordered list of allowed actions. Empty action list is only allowed if
-\fI\%deny\fP is set.
+An ordered list of allowed (or denied) actions.
 .sp
 Possible values:
 .INDENT 0.0
@@ -411,8 +344,9 @@ Possible values:
 \fIDefault:\fP not set
 .SS deny
 .sp
-Deny if \fI\%address\fP, \fI\%key\fP and
-\fI\%action\fP match.
+If enabled, instead of allowing, deny the specified \fI\%action\fP,
+\fI\%address\fP, \fI\%key\fP, or combination if these
+items. If no action is specified, deny all actions.
 .sp
 \fIDefault:\fP off
 .SH CONTROL SECTION
@@ -440,6 +374,39 @@ A UNIX socket path where the server listens for control commands.
 Maximum time the control socket operations can take. Set 0 for infinity.
 .sp
 \fIDefault:\fP 5
+.SH STATISTICS SECTION
+.sp
+Periodic server statistics dumping.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+statistics:
+    timer: TIME
+    file: STR
+    append: BOOL
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS timer
+.sp
+A period after which all available statistics metrics will by written to the
+\fI\%file\fP\&.
+.sp
+\fIDefault:\fP not set
+.SS file
+.sp
+A file path of statistics output in the YAML format.
+.sp
+\fIDefault:\fP \fI\%rundir\fP/stats.yaml
+.SS append
+.sp
+If enabled, the output will be appended to the \fI\%file\fP
+instead of file replacement.
+.sp
+\fIDefault:\fP off
 .SH KEYSTORE SECTION
 .sp
 DNSSEC keystore configuration.
@@ -500,18 +467,19 @@ policy:
   \- id: STR
     keystore: STR
     manual: BOOL
+    single\-type\-signing: BOOL
     algorithm: dsa | rsasha1 | dsa\-nsec3\-sha1 | rsasha1\-nsec3\-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
     ksk\-size: SIZE
     zsk\-size: SIZE
     dnskey\-ttl: TIME
     zsk\-lifetime: TIME
+    propagation\-delay: TIME
     rrsig\-lifetime: TIME
     rrsig\-refresh: TIME
     nsec3: BOOL
     nsec3\-iterations: INT
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
-    propagation\-delay: TIME
 .ft P
 .fi
 .UNINDENT
@@ -528,6 +496,20 @@ for zones. A special \fIdefault\fP value can be used for the default keystore se
 .SS manual
 .sp
 If enabled, automatic key management is not used.
+.sp
+\fIDefault:\fP off
+.SS single\-type\-signing
+.sp
+If enabled, Single\-Type Signing Scheme is used in the automatic key management
+mode.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Because key rollover is not supported yet, just one combined signing key is
+generated if none is available.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP off
 .SS algorithm
@@ -550,11 +532,38 @@ A length of newly generated ZSK keys.
 A TTL value for DNSKEY records added into zone apex.
 .sp
 \fIDefault:\fP zone SOA TTL
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+has infuence over ZSK key lifetime
+.UNINDENT
+.UNINDENT
 .SS zsk\-lifetime
 .sp
 A period between ZSK publication and the next rollover initiation.
 .sp
 \fIDefault:\fP 30 days
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+ZSK key lifetime is also infuenced by propagation\-delay and dnskey\-ttl
+.UNINDENT
+.UNINDENT
+.SS propagation\-delay
+.sp
+An extra delay added for each key rollover step. This value should be high
+enough to cover propagation of data from the master server to all slaves.
+.sp
+\fIDefault:\fP 1 day
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+has infuence over ZSK key lifetime
+.UNINDENT
+.UNINDENT
 .SS rrsig\-lifetime
 .sp
 A validity period of newly issued signatures.
@@ -586,12 +595,6 @@ name before hashing.
 A validity period of newly issued salt field.
 .sp
 \fIDefault:\fP 30 days
-.SS propagation\-delay
-.sp
-An extra delay added for each key rollover step. This value should be high
-enough to cover propagation of data from the master server to all slaves.
-.sp
-\fIDefault:\fP 1 day
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone
@@ -630,7 +633,7 @@ can be appended to the address using \fB@\fP separator.
 \fIDefault:\fP not set
 .SS key
 .sp
-A \fI\%reference\fP to the TSIG key which ise used to autenticate
+A \fI\%reference\fP to the TSIG key which is used to authenticate
 the communication with the remote server.
 .sp
 \fIDefault:\fP not set
@@ -648,6 +651,8 @@ if a zone doesn\(aqt have another template specified.
 template:
   \- id: STR
     timer\-db: STR
+    journal\-db: STR
+    max\-journal\-db\-size: SIZE
     global\-module: STR/STR ...
     # All zone options (excluding \(aqtemplate\(aq item)
 .ft P
@@ -670,9 +675,41 @@ This option is only available in the \fIdefault\fP template.
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%storage\fP/timers
+.SS journal\-db
+.sp
+Specifies a path of the persistent journal database. The path can be specified
+as a relative path to the \fIdefault\fP template \fI\%storage\fP\&.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP \fI\%storage\fP/journal
+.SS max\-journal\-db\-size
+.sp
+Hard limit for the common journal DB. There is no cleanup logic in journal
+to recover from reaching this limit: journal simply starts refusing changes
+across all zones. Decreasing this value has no effect if lower than actual
+DB file size.
+.sp
+It is recommended to limit \fI\%max\-journal\-usage\fP
+per\-zone instead of max\-journal\-size in most cases. Please keep this value
+large enough. This value also influences server\(aqs usage of virtual memory.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP 20 GiB
 .SS global\-module
 .sp
-An ordered list of references to query modules in the form
+An ordered list of references to query modules in the form of \fImodule_name\fP or
 \fImodule_name/module_id\fP\&. These modules apply to all queries.
 .sp
 \fBNOTE:\fP
@@ -694,8 +731,8 @@ Definition of zones served by the server.
 zone:
   \- domain: DNAME
     template: template_id
-    file: STR
     storage: STR
+    file: STR
     master: remote_id ...
     ddns\-master: remote_id
     notify: remote_id ...
@@ -704,7 +741,8 @@ zone:
     disable\-any: BOOL
     zonefile\-sync: TIME
     ixfr\-from\-differences: BOOL
-    max\-journal\-size: SIZE
+    max\-journal\-usage: SIZE
+    max\-journal\-depth: INT
     max\-zone\-size : SIZE
     dnssec\-signing: BOOL
     dnssec\-policy: STR
@@ -724,6 +762,11 @@ A zone name identifier.
 A \fI\%reference\fP to a configuration template.
 .sp
 \fIDefault:\fP not set or \fIdefault\fP (if the template exists)
+.SS storage
+.sp
+A data directory for storing zone files, journal files and timers database.
+.sp
+\fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS file
 .sp
 A path to the zone file. Non absolute path is relative to
@@ -733,8 +776,8 @@ A path to the zone file. Non absolute path is relative to
 \fB%c[\fP\fIN\fP\fB]\fP or \fB%c[\fP\fIN\fP\fB\-\fP\fIM\fP\fB]\fP – means the \fIN\fPth
 character or a sequence of characters beginning from the \fIN\fPth and ending
 with the \fIM\fPth character of the textual zone name (see \fB%s\fP). The
-indexes are counted from 0 from the left. If the character is not available,
-the formatter has no effect.
+indexes are counted from 0 from the left. All dots (including the terminal
+one) are considered. If the character is not available, the formatter has no effect.
 .IP \(bu 2
 \fB%l[\fP\fIN\fP\fB]\fP – means the \fIN\fPth label of the textual zone name
 (see \fB%s\fP). The index is counted from 0 from the right (0 ~ TLD).
@@ -749,11 +792,6 @@ terminating dot (the result for the root zone is the empty string!).
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.zone
-.SS storage
-.sp
-A data directory for storing zone files, journal files and timers database.
-.sp
-\fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS master
 .sp
 An ordered list of \fI\%references\fP to zone master servers.
@@ -849,6 +887,15 @@ the immediate sync with a zone file is not desirable, increase the value.
 .UNINDENT
 .UNINDENT
 .sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+If the zone file is not up\-to\-date, the zone should be flushed before its
+zone file editation or the SOA record must be untouched after editation.
+Otherwise the journal can\(aqt be applied.
+.UNINDENT
+.UNINDENT
+.sp
 \fIDefault:\fP 0 (immediate)
 .SS ixfr\-from\-differences
 .sp
@@ -865,9 +912,22 @@ This option has no effect with enabled
 .UNINDENT
 .sp
 \fIDefault:\fP off
-.SS max\-journal\-size
+.SS max\-journal\-usage
 .sp
-Maximum size of the zone journal file.
+Policy how much space in journal DB will the zone\(aqs journal occupy.
+.sp
+\fIDefault:\fP 100 MiB
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Journal DB may grow far above the sum of max\-journal\-usage across
+all zones, because of DB free space fragmentation.
+.UNINDENT
+.UNINDENT
+.SS max\-journal\-depth
+.sp
+Maximum history length of journal.
 .sp
 \fIDefault:\fP 2^64
 .SS max\-zone\-size
@@ -938,7 +998,7 @@ done by hand (see RFC 1982).
 \fIDefault:\fP increment
 .SS module
 .sp
-An ordered list of references to query modules in the form
+An ordered list of references to query modules in the form of \fImodule_name\fP or
 \fImodule_name/module_id\fP\&. These modules apply only to the current zone queries.
 .sp
 \fIDefault:\fP not set
@@ -975,6 +1035,7 @@ will be logged to both standard error output and syslog. The \fBinfo\fP and
 log:
   \- target: stdout | stderr | syslog | STR
     server: critical | error | warning | notice | info | debug
+    control: critical | error | warning | notice | info | debug
     zone: critical | error | warning | notice | info | debug
     any: critical | error | warning | notice | info | debug
 .ft P
@@ -1002,6 +1063,11 @@ Minimum severity level for messages related to general operation of the server
 that are logged.
 .sp
 \fIDefault:\fP not set
+.SS control
+.sp
+Minimum severity level for messages related to server control that are logged.
+.sp
+\fIDefault:\fP not set
 .SS zone
 .sp
 Minimum severity level for messages related to zones that are logged.
@@ -1010,6 +1076,90 @@ Minimum severity level for messages related to zones that are logged.
 .SS any
 .sp
 Minimum severity level for all message types that are logged.
+.sp
+\fIDefault:\fP not set
+.SH MODULE RRL
+.sp
+A response rate limiting module.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mod\-rrl:
+  \- id: STR
+    rate\-limit: INT
+    slip: INT
+    table\-size: INT
+    whitelist: ADDR[/INT] | ADDR\-ADDR ...
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A module identifier.
+.SS rate\-limit
+.sp
+Rate limiting is based on the token bucket scheme. A rate basically
+represents a number of tokens available each second. Each response is
+processed and classified (based on several discriminators, e.g.
+source netblock, query type, zone name, rcode, etc.). Classified responses are
+then hashed and assigned to a bucket containing number of available
+tokens, timestamp and metadata. When available tokens are exhausted,
+response is dropped or sent as truncated (see \fI\%slip\fP).
+Number of available tokens is recalculated each second.
+.sp
+\fIRequired\fP
+.SS table\-size
+.sp
+Size of the hash table in a number of buckets. The larger the hash table, the lesser
+the probability of a hash collision, but at the expense of additional memory costs.
+Each bucket is estimated roughly to 32 bytes. The size should be selected as
+a reasonably large prime due to better hash function distribution properties.
+Hash table is internally chained and works well up to a fill rate of 90 %, general
+rule of thumb is to select a prime near 1.2 * maximum_qps.
+.sp
+\fIDefault:\fP 393241
+.SS slip
+.sp
+As attacks using DNS/UDP are usually based on a forged source address,
+an attacker could deny services to the victim\(aqs netblock if all
+responses would be completely blocked. The idea behind SLIP mechanism
+is to send each N\s-2\uth\d\s0 response as truncated, thus allowing client to
+reconnect via TCP for at least some degree of service. It is worth
+noting, that some responses can\(aqt be truncated (e.g. SERVFAIL).
+.INDENT 0.0
+.IP \(bu 2
+Setting the value to \fB0\fP will cause that all rate\-limited responses will
+be dropped. The outbound bandwidth and packet rate will be strictly capped
+by the \fI\%rate\-limit\fP option. All legitimate requestors affected
+by the limit will face denial of service and will observe excessive timeouts.
+Therefore this setting is not recommended.
+.IP \(bu 2
+Setting the value to \fB1\fP will cause that all rate\-limited responses will
+be sent as truncated. The amplification factor of the attack will be reduced,
+but the outbound data bandwidth won\(aqt be lower than the incoming bandwidth.
+Also the outbound packet rate will be the same as without RRL.
+.IP \(bu 2
+Setting the value to \fB2\fP will cause that half of the rate\-limited responses
+will be dropped, the other half will be sent as truncated. With this
+configuration, both outbound bandwidth and packet rate will be lower than the
+inbound. On the other hand, the dropped responses enlarge the time window
+for possible cache poisoning attack on the resolver.
+.IP \(bu 2
+Setting the value to anything \fBlarger than 2\fP will keep on decreasing
+the outgoing rate\-limited bandwidth, packet rate, and chances to notify
+legitimate requestors to reconnect using TCP. These attributes are inversely
+proportional to the configured value. Setting the value high is not advisable.
+.UNINDENT
+.sp
+\fIDefault:\fP 1
+.SS whitelist
+.sp
+A list of IP addresses, network subnets, or network ranges to exempt from
+rate limiting. Empty list means that no incoming connection will be
+white\-listed.
 .sp
 \fIDefault:\fP not set
 .SH MODULE DNSTAP
@@ -1063,6 +1213,30 @@ If enabled, query messages will be logged.
 If enabled, response messages will be logged.
 .sp
 \fIDefault:\fP on
+.SH MODULE ONLINE-SIGN
+.sp
+The module provides online DNSSEC signing. Instead of pre\-computing the zone signatures
+when the zone is loaded into the server or instead of loading an externally signed zone,
+the signatures are computed on\-the\-fly during answering.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mod\-online\-sign:
+  \- id: STR
+    policy: STR
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A module identifier.
+.SS policy
+.sp
+A \fI\%reference\fP to DNSSEC signing policy. A special \fIdefault\fP
+value can be used for the default policy settings.
 .SH MODULE SYNTH-RECORD
 .sp
 This module is able to synthesize either forward or reverse records for the
@@ -1139,6 +1313,7 @@ server for resolution.
 mod\-dnsproxy:
   \- id: STR
     remote: remote_id
+    timeout: INT
     catch\-nxdomain: BOOL
 .ft P
 .fi
@@ -1153,6 +1328,11 @@ A \fI\%reference\fP to a remote server where the queries are
 forwarded to.
 .sp
 \fIRequired\fP
+.SS timeout
+.sp
+A remote response timeout in milliseconds.
+.sp
+\fIDefault:\fP 500
 .SS catch\-nxdomain
 .sp
 If enabled, all unsatisfied queries (also applies to local zone lookups)
@@ -1183,16 +1363,34 @@ A module identifier.
 A path to the directory where the database is stored.
 .sp
 \fIRequired\fP
-.SH MODULE ONLINE-SIGN
+.SH MODULE STATS
 .sp
-The module provides online DNSSEC signing.
+The module provides incoming query processing statistics.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Leading 16\-bit message size over TCP is not considered.
+.UNINDENT
+.UNINDENT
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-mod\-online\-sign:
+mod\-stats:
   \- id: STR
+    request\-protocol: BOOL
+    server\-operation: BOOL
+    request\-bytes: BOOL
+    response\-bytes: BOOL
+    edns\-presence: BOOL
+    flag\-presence: BOOL
+    response\-code: BOOL
+    reply\-nodata: BOOL
+    query\-type: BOOL
+    query\-size: BOOL
+    reply\-size: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -1200,44 +1398,220 @@ mod\-online\-sign:
 .SS id
 .sp
 A module identifier.
-.SH MODULE WHOAMI
+.SS request\-protocol
 .sp
-The module synthesizes an A or AAAA record containing the query source IP address,
-at the apex of the zone being served.
+If enabled, all incoming requests are counted by the network protocol:
+.INDENT 0.0
+.IP \(bu 2
+udp4 \- UDP over IPv4
+.IP \(bu 2
+tcp4 \- TCP over IPv4
+.IP \(bu 2
+udp6 \- UDP over IPv6
+.IP \(bu 2
+tcp6 \- TCP over IPv6
+.UNINDENT
+.sp
+\fIDefault:\fP on
+.SS server\-operation
+.sp
+If enabled, all incoming requests are counted by the server operation. The
+server operation is based on message header OpCode and message query (meta) type:
+.INDENT 0.0
+.IP \(bu 2
+query \- Normal query operation
+.IP \(bu 2
+update \- Dynamic update operation
+.IP \(bu 2
+notify \- NOTIFY request operation
+.IP \(bu 2
+axfr \- Full zone transfer operation
+.IP \(bu 2
+ixfr \- Incremental zone transfer operation
+.IP \(bu 2
+invalid \- Invalid server operation
+.UNINDENT
+.sp
+\fIDefault:\fP on
+.SS request\-bytes
+.sp
+If enabled, all incoming request bytes are counted by the server operation:
+.INDENT 0.0
+.IP \(bu 2
+query \- Normal query bytes
+.IP \(bu 2
+update \- Dynamic update bytes
+.IP \(bu 2
+other \- Other request bytes
+.UNINDENT
+.sp
+\fIDefault:\fP on
+.SS response\-bytes
+.sp
+If enabled, outgoing response bytes are counted by the server operation:
+.INDENT 0.0
+.IP \(bu 2
+reply \- Normal response bytes
+.IP \(bu 2
+transfer \- Zone transfer bytes
+.IP \(bu 2
+other \- Other response bytes
+.UNINDENT
+.sp
+\fBWARNING:\fP
 .INDENT 0.0
 .INDENT 3.5
-.sp
-.nf
-.ft C
-mod\-whoami:
-  \- id: STR
-.ft P
-.fi
+Dynamic update response bytes are not counted by this module.
 .UNINDENT
 .UNINDENT
-.SS id
 .sp
-A module identifier.
-.SH MODULE NOUDP
+\fIDefault:\fP on
+.SS edns\-presence
 .sp
-The module sends empty truncated response to any UDP query.
+If enabled, EDNS pseudo section presence is counted by the message direction:
+.INDENT 0.0
+.IP \(bu 2
+request \- EDNS present in request
+.IP \(bu 2
+response \- EDNS present in response
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS flag\-presence
+.sp
+If enabled, some message header flags are counted:
+.INDENT 0.0
+.IP \(bu 2
+TC \- Truncated Answer in response
+.IP \(bu 2
+DO \- DNSSEC OK in request
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS response\-code
+.sp
+If enabled, outgoing response code is counted:
+.INDENT 0.0
+.IP \(bu 2
+NOERROR
+.IP \(bu 2
+\&...
+.IP \(bu 2
+NOTZONE
+.IP \(bu 2
+BADVERS
+.IP \(bu 2
+\&...
+.IP \(bu 2
+BADCOOKIE
+.IP \(bu 2
+other \- All other codes
+.UNINDENT
+.sp
+\fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-.sp
-.nf
-.ft C
-mod\-noudp:
-  \- id: STR
-.ft P
-.fi
+In the case of multi\-message zone transfer response, just one counter is
+incremented.
 .UNINDENT
 .UNINDENT
-.SS id
 .sp
-A module identifier.
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Dynamic update response code is not counted by this module.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP on
+.SS reply\-nodata
+.sp
+If enabled, NODATA pseudo RCODE (see RFC 2308, Section 2.2) is counted by the
+query type:
+.INDENT 0.0
+.IP \(bu 2
+A
+.IP \(bu 2
+AAAA
+.IP \(bu 2
+other \- All other types
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS query\-type
+.sp
+If enabled, normal query type is counted:
+.INDENT 0.0
+.IP \(bu 2
+A (TYPE1)
+.IP \(bu 2
+\&...
+.IP \(bu 2
+TYPE65
+.IP \(bu 2
+SPF (TYPE99)
+.IP \(bu 2
+\&...
+.IP \(bu 2
+TYPE110
+.IP \(bu 2
+ANY (TYPE255)
+.IP \(bu 2
+\&...
+.IP \(bu 2
+TYPE260
+.IP \(bu 2
+other \- All other types
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Not all assigned meta types (IXFR, AXFR,...) have their own counters,
+because such types are not processed as normal query.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS query\-size
+.sp
+If enabled, normal query message size distribution is counted by the size range
+in bytes:
+.INDENT 0.0
+.IP \(bu 2
+0\-15
+.IP \(bu 2
+16\-31
+.IP \(bu 2
+\&...
+.IP \(bu 2
+272\-287
+.IP \(bu 2
+288\-65535
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS reply\-size
+.sp
+If enabled, normal reply message size distribution is counted by the size range
+in bytes:
+.INDENT 0.0
+.IP \(bu 2
+0\-15
+.IP \(bu 2
+16\-31
+.IP \(bu 2
+\&...
+.IP \(bu 2
+4080\-4095
+.IP \(bu 2
+4096\-65535
+.UNINDENT
+.sp
+\fIDefault:\fP off
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT
-Copyright 2010–2016, CZ.NIC, z.s.p.o.
+Copyright 2010–2017, CZ.NIC, z.s.p.o.
 .\" Generated by docutils manpage writer.
 .

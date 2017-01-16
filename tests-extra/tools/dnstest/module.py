@@ -16,6 +16,8 @@ class KnotModule(object):
     src_name = None
     # Module name in the configuration.
     conf_name = None
+    # Empty configuration
+    empty = False
 
     def __init__(self):
         self.conf_id = "id%s" % type(self).count
@@ -47,9 +49,12 @@ class KnotModule(object):
             raise Skip("Module '%s' not detected" % cls.conf_name)
 
     def get_conf_ref(self):
-        return "%s/%s" % (self.conf_name, self.conf_id)
+        if self.empty:
+            return str(self.conf_name)
+        else:
+            return "%s/%s" % (self.conf_name, self.conf_id)
 
-    def get_conf(self): pass
+    def get_conf(self, conf=None): pass
 
 class ModSynthRecord(KnotModule):
     '''Automatic forward/reverse records module'''
@@ -104,6 +109,36 @@ class ModDnstap(KnotModule):
 
         return conf
 
+class ModRRL(KnotModule):
+    '''RRL module'''
+
+    src_name = "rrl_load"
+    conf_name = "mod-rrl"
+
+    def __init__(self, rate_limit, slip=None, table_size=None, whitelist=None):
+        super().__init__()
+        self.rate_limit = rate_limit
+        self.slip = slip
+        self.table_size = table_size
+        self.whitelist = whitelist
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        conf.item_str("rate-limit", self.rate_limit)
+        if self.slip or self.slip == 0:
+            conf.item_str("slip", self.slip)
+        if self.table_size:
+            conf.item_str("table-size", self.table_size)
+        if self.whitelist:
+            conf.item_str("whitelist", self.whitelist)
+        conf.end()
+
+        return conf
+
 class ModDnsproxy(KnotModule):
     '''Dnsproxy module'''
 
@@ -139,17 +174,37 @@ class ModWhoami(KnotModule):
 
     src_name = "whoami_load"
     conf_name = "mod-whoami"
+    empty = True
 
     def __init__(self):
         super().__init__()
+
+class ModOnlineSign(KnotModule):
+    '''Online-sign module'''
+
+    src_name = "online_sign_load"
+    conf_name = "mod-online-sign"
+
+    def __init__(self, algorithm=None):
+        super().__init__()
+        self.algorithm = algorithm
+        if not algorithm:
+            self.empty = True
 
     def get_conf(self, conf=None):
         if not conf:
             conf = dnstest.config.KnotConf()
 
-        conf.begin(self.conf_name)
-        conf.id_item("id", self.conf_id)
-        conf.end()
+        if self.algorithm:
+            conf.begin("policy")
+            conf.id_item("id", "%s_%s" % (self.conf_name, self.conf_id))
+            conf.item_str("algorithm", self.algorithm)
+            conf.end()
+
+            conf.begin(self.conf_name)
+            conf.id_item("id", self.conf_id)
+            conf.item_str("policy", "%s_%s" % (self.conf_name, self.conf_id))
+            conf.end()
 
         return conf
 
@@ -185,3 +240,36 @@ class ModRosedb(KnotModule):
             set_err("ROSEDB_TOOL")
             detail_log("!Failed to add a record into rosedb '%s'" % self.dbdir)
             detail_log(SEP)
+
+class ModStats(KnotModule):
+    '''Stats module'''
+
+    src_name = "stats_load"
+    conf_name = "mod-stats"
+
+    def __init__(self):
+        super().__init__()
+
+    def _bool(self, conf, name, value=True):
+        conf.item_str(name, "on" if value else "off")
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        self._bool(conf, "request-protocol", True)
+        self._bool(conf, "server-operation", True)
+        self._bool(conf, "request-bytes", True)
+        self._bool(conf, "response-bytes", True)
+        self._bool(conf, "edns-presence", True)
+        self._bool(conf, "flag-presence", True)
+        self._bool(conf, "response-code", True)
+        self._bool(conf, "reply-nodata", True)
+        self._bool(conf, "query-type", True)
+        self._bool(conf, "query-size", True)
+        self._bool(conf, "reply-size", True)
+        conf.end()
+
+        return conf

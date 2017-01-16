@@ -51,10 +51,8 @@ static int free_additional(zone_node_t **node, void *data)
 
 	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
 		struct rr_data *data = &(*node)->rrs[i];
-		if (data->additional) {
-			free(data->additional);
-			data->additional = NULL;
-		}
+		additional_clear(data->additional);
+		data->additional = NULL;
 	}
 
 	return KNOT_EOK;
@@ -149,7 +147,7 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 static int apply_remove(apply_ctx_t *ctx, changeset_t *chset)
 {
 	changeset_iter_t itt;
-	changeset_iter_rem(&itt, chset, false);
+	changeset_iter_rem(&itt, chset);
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
@@ -170,7 +168,7 @@ static int apply_remove(apply_ctx_t *ctx, changeset_t *chset)
 static int apply_add(apply_ctx_t *ctx, changeset_t *chset)
 {
 	changeset_iter_t itt;
-	changeset_iter_add(&itt, chset, false);
+	changeset_iter_add(&itt, chset);
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while(!knot_rrset_empty(&rr)) {
@@ -380,7 +378,7 @@ int apply_replace_soa(apply_ctx_t *ctx, changeset_t *chset)
 
 	// Check for SOA with proper serial but different rdata.
 	if (node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA)) {
-		return KNOT_EINVAL;
+		return KNOT_ESOAINVAL;
 	}
 
 	return apply_add_rr(ctx, chset->soa_to);
@@ -475,17 +473,11 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets)
 	WALK_LIST(set, *chsets) {
 		int ret = apply_single(ctx, set);
 		if (ret != KNOT_EOK) {
-			update_rollback(ctx);
 			return ret;
 		}
 	}
 
-	int ret = zone_contents_adjust_full(ctx->contents);
-	if (ret != KNOT_EOK) {
-		update_rollback(ctx);
-	}
-
-	return ret;
+	return zone_contents_adjust_full(ctx->contents);
 }
 
 int apply_changeset_directly(apply_ctx_t *ctx, changeset_t *ch)

@@ -491,7 +491,7 @@ static int receive_item_value(knot_ctl_t *ctx, char **value)
 	if (*value == NULL) {
 		return KNOT_ENOMEM;
 	}
-	wire_ctx_read(w, (uint8_t *)*value, data_len);
+	wire_ctx_read(w, *value, data_len);
 	if (w->error != KNOT_EOK) {
 		return w->error;
 	}

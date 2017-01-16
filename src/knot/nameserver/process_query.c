@@ -18,6 +18,7 @@
 
 #include "dnssec/tsig.h"
 #include "knot/common/log.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/chaos.h"
@@ -122,32 +123,18 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
-	int next_state = KNOT_STATE_FAIL;
 
 	switch(data->packet_type) {
-	case KNOT_QUERY_NORMAL:
-		next_state = internet_process_query(pkt, data);
-		break;
-	case KNOT_QUERY_NOTIFY:
-		next_state = notify_process_query(pkt, data);
-		break;
-	case KNOT_QUERY_AXFR:
-		next_state = axfr_process_query(pkt, data);
-		break;
-	case KNOT_QUERY_IXFR:
-		next_state = ixfr_process_query(pkt, data);
-		break;
-	case KNOT_QUERY_UPDATE:
-		next_state = update_process_query(pkt, data);
-		break;
+	case KNOT_QUERY_NORMAL: return internet_process_query(pkt, data);
+	case KNOT_QUERY_NOTIFY: return notify_process_query(pkt, data);
+	case KNOT_QUERY_AXFR:   return axfr_process_query(pkt, data);
+	case KNOT_QUERY_IXFR:   return ixfr_process_query(pkt, data);
+	case KNOT_QUERY_UPDATE: return update_process_query(pkt, data);
 	default:
 		/* Nothing else is supported. */
 		data->rcode = KNOT_RCODE_NOTIMPL;
-		next_state = KNOT_STATE_FAIL;
-		break;
+		return KNOT_STATE_FAIL;
 	}
-
-	return next_state;
 }
 
 /*!
@@ -321,6 +308,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	knot_wire_clear_cd(resp->wire);
 
 	/* Query MUST carry a question. */
 	const knot_dname_t *qname = knot_pkt_qname(query);
@@ -373,24 +361,21 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	return ret;
 }
 
-static int set_rcode_to_packet(knot_pkt_t *pkt, struct query_data *qdata)
+static void set_rcode_to_packet(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	int ret = KNOT_EOK;
 	uint8_t ext_rcode = KNOT_EDNS_RCODE_HI(qdata->rcode);
 
 	if (ext_rcode != 0) {
 		/* No OPT RR and Ext RCODE results in SERVFAIL. */
 		if (qdata->opt_rr_pos == NULL) {
-			qdata->rcode = KNOT_RCODE_SERVFAIL;
-			ret = KNOT_ERROR;
-		} else {
-			knot_edns_set_ext_rcode_wire(qdata->opt_rr_pos, ext_rcode);
+			knot_wire_set_rcode(pkt->wire, KNOT_RCODE_SERVFAIL);
+			return;
 		}
+
+		knot_edns_set_ext_rcode_wire(qdata->opt_rr_pos, ext_rcode);
 	}
 
 	knot_wire_set_rcode(pkt->wire, KNOT_EDNS_RCODE_LO(qdata->rcode));
-
-	return ret;
 }
 
 static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
@@ -401,9 +386,15 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	/* Initialize response from query packet. */
 	knot_pkt_t *query = qdata->query;
 	knot_pkt_init_response(pkt, query);
+	knot_wire_clear_cd(pkt->wire);
+
+	/* Set TC bit if required. */
+	if (qdata->err_truncated) {
+		knot_wire_set_tc(pkt->wire);
+	}
 
 	/* Restore original QNAME. */
-	process_query_qname_case_restore(qdata, pkt);
+	process_query_qname_case_restore(pkt, qdata);
 
 	/* Add OPT and TSIG (best effort, send reply anyway if fails). */
 	if (pkt->current != KNOT_ADDITIONAL) {
@@ -412,63 +403,30 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Put OPT RR to the additional section. */
 	if (answer_edns_reserve(pkt, qdata) == KNOT_EOK) {
-		(void) answer_edns_put(pkt, qdata);
+		(void)answer_edns_put(pkt, qdata);
+	} else {
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}
 
 	/* Set final RCODE to packet. */
-	(void) set_rcode_to_packet(pkt, qdata);
+	set_rcode_to_packet(pkt, qdata);
 
 	/* Transaction security (if applicable). */
-	(void) process_query_sign_response(pkt, qdata);
+	(void)process_query_sign_response(pkt, qdata);
 
 	return KNOT_STATE_DONE;
 }
 
-/*!
- * \brief Apply rate limit.
- */
-static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
-{
-	/* Check if rate limiting applies. */
-	struct query_data *qdata = QUERY_DATA(ctx);
-	server_t *server = qdata->param->server;
-	if (server->rrl == NULL) {
-		return state;
+/*! \brief Helper for repetitive code. */
+#define PROCESS_STAGE(plan, query_stage, step, next_state, qdata) \
+	if (plan != NULL) { \
+		WALK_LIST(step, plan->stage[query_stage]) { \
+			next_state = step->process(next_state, pkt, qdata, step->ctx); \
+			if (next_state == KNOT_STATE_FAIL) { \
+				next_state = process_query_err(ctx, pkt); \
+			} \
+		} \
 	}
-
-	/* Exempt clients. */
-	conf_val_t *whitelist = &conf()->cache.srv_rate_limit_whitelist;
-	if (conf_addr_range_match(whitelist, qdata->param->remote)) {
-		return state;
-	}
-
-	rrl_req_t rrl_rq = {0};
-	rrl_rq.w = pkt->wire;
-	rrl_rq.query = qdata->query;
-	if (!EMPTY_LIST(qdata->wildcards)) {
-		rrl_rq.flags = RRL_WILDCARD;
-	}
-	if (rrl_query(server->rrl, qdata->param->remote,
-	              &rrl_rq, qdata->zone) == KNOT_EOK) {
-		/* Rate limiting not applied. */
-		return state;
-	}
-
-	/* Now it is slip or drop. */
-	int slip = conf()->cache.srv_rate_limit_slip;
-	if (slip > 0 && rrl_slip_roll(slip)) {
-		/* Answer slips. */
-		if (process_query_err(ctx, pkt) != KNOT_STATE_DONE) {
-			return KNOT_STATE_FAIL;
-		}
-		knot_wire_set_tc(pkt->wire);
-	} else {
-		/* Drop answer. */
-		pkt->size = 0;
-	}
-
-	return KNOT_STATE_DONE;
-}
 
 static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
@@ -478,33 +436,32 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	struct query_data *qdata = QUERY_DATA(ctx);
 	struct query_plan *plan = conf()->query_plan;
+	struct query_plan *zone_plan = NULL;
 	struct query_step *step = NULL;
+
+	int next_state = KNOT_STATE_PRODUCE;
 
 	/* Check parse state. */
 	knot_pkt_t *query = qdata->query;
-	int next_state = KNOT_STATE_PRODUCE;
 	if (query->parsed < query->size) {
-		knot_pkt_clear(pkt);
 		qdata->rcode = KNOT_RCODE_FORMERR;
 		next_state = KNOT_STATE_FAIL;
 		goto finish;
 	}
 
-	/*
-	 * Preprocessing.
-	 */
-
+	/* Preprocessing. */
 	if (prepare_answer(query, pkt, ctx) != KNOT_EOK) {
 		next_state = KNOT_STATE_FAIL;
 		goto finish;
 	}
 
-	/* Before query processing code. */
-	if (plan) {
-		WALK_LIST(step, plan->stage[QPLAN_BEGIN]) {
-			next_state = step->process(next_state, pkt, qdata, step->ctx);
-		}
+	if (qdata->zone != NULL && qdata->zone->query_plan != NULL) {
+		zone_plan = qdata->zone->query_plan;
 	}
+
+	/* Before query processing code. */
+	PROCESS_STAGE(plan, QPLAN_BEGIN, step, next_state, qdata);
+	PROCESS_STAGE(zone_plan, QPLAN_BEGIN, step, next_state, qdata);
 
 	/* Answer based on qclass. */
 	if (next_state != KNOT_STATE_DONE) {
@@ -523,14 +480,11 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 		}
 	}
 
-	/*
-	 * Postprocessing.
-	 */
-
+	/* Postprocessing. */
 	if (next_state == KNOT_STATE_DONE || next_state == KNOT_STATE_PRODUCE) {
 
 		/* Restore original QNAME. */
-		process_query_qname_case_restore(qdata, pkt);
+		process_query_qname_case_restore(pkt, qdata);
 
 		if (pkt->current != KNOT_ADDITIONAL) {
 			knot_pkt_begin(pkt, KNOT_ADDITIONAL);
@@ -545,34 +499,28 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 		/* Transaction security (if applicable). */
 		if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
 			next_state = KNOT_STATE_FAIL;
+			goto finish;
 		}
 	}
 
 finish:
-	/* Default RCODE is SERVFAIL if not specified otherwise. */
-	if (next_state == KNOT_STATE_FAIL && qdata->rcode == KNOT_RCODE_NOERROR) {
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
-	}
-
-	/* Store Extended RCODE - divide between header and OPT if possible. */
-	if (next_state != KNOT_STATE_FAIL) {
-		if (set_rcode_to_packet(pkt, qdata) != KNOT_EOK) {
-			next_state = KNOT_STATE_FAIL;
+	/* Error processing. */
+	switch (next_state) {
+	case KNOT_STATE_FAIL:
+		/* Default RCODE is SERVFAIL if not otherwise specified. */
+		if (qdata->rcode == KNOT_RCODE_NOERROR) {
+			qdata->rcode = KNOT_RCODE_SERVFAIL;
 		}
+		process_query_err(ctx, pkt);
+		break;
+	default:
+		/* Store Extended RCODE - divide between header and OPT. */
+		set_rcode_to_packet(pkt, qdata);
 	}
-	/* In case of NS_PROC_FAIL, RCODE is set in the error-processing function. */
 
 	/* After query processing code. */
-	if (plan) {
-		WALK_LIST(step, plan->stage[QPLAN_END]) {
-			next_state = step->process(next_state, pkt, qdata, step->ctx);
-		}
-	}
-
-	/* Rate limits (if applicable). */
-	if (qdata->param->proc_flags & NS_QUERY_LIMIT_RATE) {
-		next_state = ratelimit_apply(next_state, pkt, ctx);
-	}
+	PROCESS_STAGE(zone_plan, QPLAN_END, step, next_state, qdata);
+	PROCESS_STAGE(plan, QPLAN_END, step, next_state, qdata);
 
 	rcu_read_unlock();
 
@@ -616,7 +564,7 @@ bool process_query_acl_check(conf_t *conf, const knot_dname_t *zone_name,
 		free(key_name);
 
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_TSIG_ERR_BADKEY;
+		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
 		return false;
 	}
 
@@ -642,7 +590,7 @@ int process_query_verify(struct query_data *qdata)
 	ctx->tsig_digestlen = knot_tsig_rdata_mac_length(query->tsig_rr);
 
 	/* Checking query. */
-	process_query_qname_case_restore(qdata, query);
+	process_query_qname_case_restore(query, qdata);
 	int ret = knot_tsig_server_check(query->tsig_rr, query->wire,
 	                                 query->size, &ctx->tsig_key);
 	process_query_qname_case_lower(query);
@@ -654,15 +602,15 @@ int process_query_verify(struct query_data *qdata)
 		break;
 	case KNOT_TSIG_EBADKEY:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_TSIG_ERR_BADKEY;
+		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
 		break;
 	case KNOT_TSIG_EBADSIG:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_TSIG_ERR_BADSIG;
+		qdata->rcode_tsig = KNOT_RCODE_BADSIG;
 		break;
 	case KNOT_TSIG_EBADTIME:
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_TSIG_ERR_BADTIME;
+		qdata->rcode_tsig = KNOT_RCODE_BADTIME;
 		ctx->tsig_time_signed = knot_tsig_rdata_time_signed(query->tsig_rr);
 		break;
 	case KNOT_EMALF:
@@ -729,7 +677,7 @@ fail:
 	return ret;
 }
 
-void process_query_qname_case_restore(struct query_data *qdata, knot_pkt_t *pkt)
+void process_query_qname_case_restore(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* If original QNAME is empty, Query is either unparsed or for root domain.
 	 * Either way, letter case doesn't matter. */
@@ -743,6 +691,102 @@ int process_query_qname_case_lower(knot_pkt_t *pkt)
 {
 	knot_dname_t *qname = (knot_dname_t *)knot_pkt_qname(pkt);
 	return knot_dname_to_lower(qname);
+}
+
+/*! \brief Synthesize RRSIG for given parameters, store in 'qdata' for later use */
+static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
+                     const knot_rrset_t *rrsigs, knot_rrinfo_t *rrinfo,
+                     struct query_data *qdata)
+{
+	knot_rdataset_t synth_rrs;
+	knot_rdataset_init(&synth_rrs);
+	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_rrs, qdata->mm);
+	if (ret == KNOT_ENOENT) {
+		// No signature
+		return KNOT_EOK;
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Create rrsig info structure. */
+	struct rrsig_info *info = mm_alloc(qdata->mm, sizeof(struct rrsig_info));
+	if (info == NULL) {
+		knot_rdataset_clear(&synth_rrs, qdata->mm);
+		return KNOT_ENOMEM;
+	}
+
+	/* Store RRSIG into info structure. */
+	knot_dname_t *owner_copy = knot_dname_copy(sig_owner, qdata->mm);
+	if (owner_copy == NULL) {
+		mm_free(qdata->mm, info);
+		knot_rdataset_clear(&synth_rrs, qdata->mm);
+		return KNOT_ENOMEM;
+	}
+	knot_rrset_init(&info->synth_rrsig, owner_copy, rrsigs->type, rrsigs->rclass);
+	/* Store filtered signature. */
+	info->synth_rrsig.rrs = synth_rrs;
+
+	info->rrinfo = rrinfo;
+	add_tail(&qdata->rrsigs, &info->n);
+
+	return KNOT_EOK;
+}
+
+int process_query_put_rr(knot_pkt_t *pkt, struct query_data *qdata,
+                         const knot_rrset_t *rr, const knot_rrset_t *rrsigs,
+                         uint16_t compr_hint, uint32_t flags)
+{
+	if (rr->rrs.rr_count < 1) {
+		return KNOT_EMALF;
+	}
+
+	/* Wildcard expansion applies only for answers. */
+	bool expand = false;
+	if (pkt->current == KNOT_ANSWER) {
+		/* Expand if RR is wildcard & we didn't query for wildcard. */
+		expand = (knot_dname_is_wildcard(rr->owner) && !knot_dname_is_wildcard(qdata->name));
+	}
+
+	int ret = KNOT_EOK;
+
+	/* If we already have compressed name on the wire and compression hint,
+	 * we can just insert RRSet and fake synthesis by using compression
+	 * hint. */
+	knot_rrset_t to_add;
+	if (compr_hint == KNOT_COMPR_HINT_NONE && expand) {
+		knot_dname_t *qname_cpy = knot_dname_copy(qdata->name, &pkt->mm);
+		if (qname_cpy == NULL) {
+			return KNOT_ENOMEM;
+		}
+		knot_rrset_init(&to_add, qname_cpy, rr->type, rr->rclass);
+		ret = knot_rdataset_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
+		if (ret != KNOT_EOK) {
+			knot_dname_free(&qname_cpy, &pkt->mm);
+			return ret;
+		}
+		to_add.additional = rr->additional;
+		flags |= KNOT_PF_FREE;
+	} else {
+		to_add = *rr;
+	}
+
+	uint16_t prev_count = pkt->rrset_count;
+	ret = knot_pkt_put(pkt, compr_hint, &to_add, flags);
+	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
+		knot_rrset_clear(&to_add, &pkt->mm);
+		return ret;
+	}
+
+	const bool inserted = (prev_count != pkt->rrset_count);
+	if (inserted &&
+	    !knot_rrset_empty(rrsigs) && rr->type != KNOT_RRTYPE_RRSIG) {
+		// Get rrinfo of just inserted RR.
+		knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count - 1];
+		ret = put_rrsig(rr->owner, rr->type, rrsigs, rrinfo, qdata);
+	}
+
+	return ret;
 }
 
 /*! \brief Module implementation. */

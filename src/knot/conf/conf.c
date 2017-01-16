@@ -30,15 +30,6 @@
 #include "contrib/wire_ctx.h"
 #include "contrib/openbsd/strlcat.h"
 
-/*! Configuration specific logging. */
-#define CONF_LOG(severity, msg, ...) do { \
-	log_msg(severity, "config, " msg, ##__VA_ARGS__); \
-	} while (0)
-
-#define CONF_LOG_ZONE(severity, zone, msg, ...) do { \
-	log_msg_zone(severity, zone, "config, " msg, ##__VA_ARGS__); \
-	} while (0)
-
 conf_val_t conf_get_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
@@ -89,6 +80,7 @@ conf_val_t conf_rawid_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		return val;
 	}
 }
@@ -119,6 +111,7 @@ conf_val_t conf_id_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		return val;
 	}
 }
@@ -146,6 +139,7 @@ conf_val_t conf_mod_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		return val;
 	}
 }
@@ -204,6 +198,7 @@ conf_val_t conf_zone_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		break;
 	}
 
@@ -232,6 +227,7 @@ conf_val_t conf_default_get_txn(
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		break;
 	}
 
@@ -285,6 +281,7 @@ bool conf_id_exists_txn(
 		CONF_LOG(LOG_ERR, "failed to check '%s' for identifier (%s)",
 		         key0_name + 1, knot_strerror(ret));
 		// FALLTHROUGH
+	case KNOT_ENOENT:
 	case KNOT_YP_EINVAL_ID:
 		return false;
 	}
@@ -841,9 +838,10 @@ static void replace_slashes(
 		}
 	}
 
-	// Remove trailing dot if not root zone.
-	if (remove_dot && ch - name > 1) {
-		*(--ch) = '\0';
+	// Remove trailing dot.
+	if (remove_dot && ch > name) {
+		assert(*(ch - 1) == '.');
+		*(ch - 1) = '\0';
 	}
 }
 
@@ -858,10 +856,8 @@ static int str_char(
 		return KNOT_EINVAL;
 	}
 
-	// Remove the trailing dot.
 	size_t zone_len = strlen(buff);
 	assert(zone_len > 0);
-	buff[zone_len--] = '\0';
 
 	// Get the block length.
 	size_t len = index2 - index1 + 1;
@@ -1054,16 +1050,45 @@ char* conf_zonefile_txn(
 	return get_filename(conf, txn, zone, file);
 }
 
-char* conf_journalfile_txn(
+char* conf_old_journalfile(
 	conf_t *conf,
-	knot_db_txn_t *txn,
 	const knot_dname_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
 	}
 
-	return get_filename(conf, txn, zone, "%s.db");
+	conf_val_t val = conf_zone_get(conf, C_JOURNAL, zone);
+	const char *journal = conf_str(&val);
+
+	// Use default journalfile name pattern if not specified.
+	if (journal == NULL) {
+		journal = "%s.db";
+	} else {
+		CONF_LOG_ZONE(LOG_NOTICE, zone, "obsolete configuration 'journal', "
+		              "use 'template.journal-db'' instead");
+	}
+
+	val = conf_zone_get(conf, C_MAX_JOURNAL_SIZE, zone);
+	if (val.code == KNOT_EOK) {
+		CONF_LOG_ZONE(LOG_NOTICE, zone, "obsolete configuration 'max-journal-size', "
+		              "use 'max-journal-usage' and 'template.journal-db' instead");
+	}
+
+	return get_filename(conf, &conf->read_txn, zone, journal);
+}
+
+char* conf_journalfile_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_default_get_txn(conf, txn, C_STORAGE);
+	char *storage = conf_abs_path(&val, NULL);
+	val = conf_default_get_txn(conf, txn, C_JOURNAL_DB);
+	char *journaldir = conf_abs_path(&val, storage);
+	free(storage);
+
+	return journaldir;
 }
 
 size_t conf_udp_threads_txn(

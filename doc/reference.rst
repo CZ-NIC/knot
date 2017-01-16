@@ -31,12 +31,13 @@ the following symbols:
 - [ ] – Optional value
 - \| – Choice
 
-There are 10 main sections (``server``, ``control``, ``log``, ``keystore``,
-``policy``, ``key``, ``acl``, ``remote``, ``template``, and ``zone``) and
-module sections with the ``mod-`` prefix. Most of the sections (excluding
-``server`` and ``control``) are sequences of settings blocks. Each settings block
-begins with a unique identifier, which can be used as a reference from other
-sections (such identifier must be defined in advance).
+There are 11 main sections (``server``, ``control``, ``log``, ``statistics``,
+``keystore``, ``policy``, ``key``, ``acl``, ``remote``, ``template``, and
+``zone``) and module sections with the ``mod-`` prefix. Most of the sections
+(excluding ``server``, ``control``, and ``statistics``) are sequences of
+settings blocks. Each settings block begins with a unique identifier,
+which can be used as a reference from other sections (such identifier
+must be defined in advance).
 
 A multi-valued item can be specified either as a YAML sequence::
 
@@ -56,8 +57,8 @@ Comments
 ========
 
 A comment begins with a ``#`` character and is ignored during processing.
-Also each configuration section or sequence block allows to specify permanent
-comment using ``comment`` item which is stored in the server beside the
+Also each configuration section or sequence block allows a permanent
+comment using the ``comment`` item which is stored in the server beside the
 configuration.
 
 .. _Includes:
@@ -102,10 +103,6 @@ General options related to the server.
      max-udp-payload: SIZE
      max-ipv4-udp-payload: SIZE
      max-ipv6-udp-payload: SIZE
-     rate-limit: INT
-     rate-limit-slip: INT
-     rate-limit-table-size: INT
-     rate-limit-whitelist: ADDR[/INT] | ADDR-ADDR ...
      listen: ADDR[@INT] ...
 
 .. _server_identity:
@@ -249,83 +246,6 @@ descriptor limit to avoid resource exhaustion.
 
 *Default:* 100
 
-.. _server_rate-limit:
-
-rate-limit
-----------
-
-Rate limiting is based on the token bucket scheme. A rate basically
-represents a number of tokens available each second. Each response is
-processed and classified (based on several discriminators, e.g.
-source netblock, query type, zone name, rcode, etc.). Classified responses are
-then hashed and assigned to a bucket containing number of available
-tokens, timestamp and metadata. When available tokens are exhausted,
-response is dropped or sent as truncated (see :ref:`server_rate-limit-slip`).
-Number of available tokens is recalculated each second.
-
-*Default:* 0 (disabled)
-
-.. _server_rate-limit-table-size:
-
-rate-limit-table-size
----------------------
-
-Size of the hash table in a number of buckets. The larger the hash table, the lesser
-the probability of a hash collision, but at the expense of additional memory costs.
-Each bucket is estimated roughly to 32 bytes. The size should be selected as
-a reasonably large prime due to better hash function distribution properties.
-Hash table is internally chained and works well up to a fill rate of 90 %, general
-rule of thumb is to select a prime near 1.2 * maximum_qps.
-
-*Default:* 393241
-
-.. _server_rate-limit-slip:
-
-rate-limit-slip
----------------
-
-As attacks using DNS/UDP are usually based on a forged source address,
-an attacker could deny services to the victim's netblock if all
-responses would be completely blocked. The idea behind SLIP mechanism
-is to send each N\ :sup:`th` response as truncated, thus allowing client to
-reconnect via TCP for at least some degree of service. It is worth
-noting, that some responses can't be truncated (e.g. SERVFAIL).
-
-- Setting the value to **0** will cause that all rate-limited responses will
-  be dropped. The outbound bandwidth and packet rate will be strictly capped
-  by the :ref:`server_rate-limit` option. All legitimate requestors affected
-  by the limit will face denial of service and will observe excessive timeouts.
-  Therefore this setting is not recommended.
-
-- Setting the value to **1** will cause that all rate-limited responses will
-  be sent as truncated. The amplification factor of the attack will be reduced,
-  but the outbound data bandwidth won't be lower than the incoming bandwidth.
-  Also the outbound packet rate will be the same as without RRL.
-
-- Setting the value to **2** will cause that half of the rate-limited responses
-  will be dropped, the other half will be sent as truncated. With this
-  configuration, both outbound bandwidth and packet rate will be lower than the
-  inbound. On the other hand, the dropped responses enlarge the time window
-  for possible cache poisoning attack on the resolver.
-
-- Setting the value to anything **larger than 2** will keep on decreasing
-  the outgoing rate-limited bandwidth, packet rate, and chances to notify
-  legitimate requestors to reconnect using TCP. These attributes are inversely
-  proportional to the configured value. Setting the value high is not advisable.
-
-*Default:* 1
-
-.. _server_rate-limit-whitelist:
-
-rate-limit-whitelist
---------------------
-
-A list of IP addresses, network subnets, or network ranges to exempt from
-rate limiting. Empty list means that no incoming connection will be
-white-listed.
-
-*Default:* not set
-
 .. _server_max-udp-payload:
 
 max-udp-payload
@@ -454,8 +374,7 @@ match one of them. Empty value means that TSIG key is not required.
 action
 ------
 
-An ordered list of allowed actions. Empty action list is only allowed if
-:ref:`deny<acl_deny>` is set.
+An ordered list of allowed (or denied) actions.
 
 Possible values:
 
@@ -470,8 +389,9 @@ Possible values:
 deny
 ----
 
-Deny if :ref:`address<acl_address>`, :ref:`key<acl_key>` and
-:ref:`action<acl_action>` match.
+If enabled, instead of allowing, deny the specified :ref:`action<acl_action>`,
+:ref:`address<acl_address>`, :ref:`key<acl_key>`, or combination if these
+items. If no action is specified, deny all actions.
 
 *Default:* off
 
@@ -505,6 +425,49 @@ timeout
 Maximum time the control socket operations can take. Set 0 for infinity.
 
 *Default:* 5
+
+.. _statistics_section:
+
+Statistics section
+==================
+
+Periodic server statistics dumping.
+
+::
+
+  statistics:
+      timer: TIME
+      file: STR
+      append: BOOL
+
+.. _statistics_timer:
+
+timer
+-----
+
+A period after which all available statistics metrics will by written to the
+:ref:`file<statistics_file>`.
+
+*Default:* not set
+
+.. _statistics_file:
+
+file
+----
+
+A file path of statistics output in the YAML format.
+
+*Default:* :ref:`rundir<server_rundir>`/stats.yaml
+
+.. _statistics_append:
+
+append
+------
+
+If enabled, the output will be appended to the :ref:`file<statistics_file>`
+instead of file replacement.
+
+*Default:* off
 
 .. _Keystore section:
 
@@ -566,18 +529,19 @@ DNSSEC policy configuration.
    - id: STR
      keystore: STR
      manual: BOOL
+     single-type-signing: BOOL
      algorithm: dsa | rsasha1 | dsa-nsec3-sha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
      ksk-size: SIZE
      zsk-size: SIZE
      dnskey-ttl: TIME
      zsk-lifetime: TIME
+     propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
      nsec3: BOOL
      nsec3-iterations: INT
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
-     propagation-delay: TIME
 
 .. _policy_id:
 
@@ -602,6 +566,20 @@ manual
 ------
 
 If enabled, automatic key management is not used.
+
+*Default:* off
+
+.. _policy_single-type-signing:
+
+single-type-signing
+-------------------
+
+If enabled, Single-Type Signing Scheme is used in the automatic key management
+mode.
+
+.. NOTE::
+   Because key rollover is not supported yet, just one combined signing key is
+   generated if none is available.
 
 *Default:* off
 
@@ -641,6 +619,9 @@ A TTL value for DNSKEY records added into zone apex.
 
 *Default:* zone SOA TTL
 
+.. NOTE::
+   has infuence over ZSK key lifetime
+
 .. _policy_zsk-lifetime:
 
 zsk-lifetime
@@ -649,6 +630,22 @@ zsk-lifetime
 A period between ZSK publication and the next rollover initiation.
 
 *Default:* 30 days
+
+.. NOTE::
+   ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
+
+.. _policy_propagation-delay:
+
+propagation-delay
+-----------------
+
+An extra delay added for each key rollover step. This value should be high
+enough to cover propagation of data from the master server to all slaves.
+
+*Default:* 1 day
+
+.. NOTE::
+   has infuence over ZSK key lifetime
 
 .. _policy_rrsig-lifetime:
 
@@ -705,16 +702,6 @@ A validity period of newly issued salt field.
 
 *Default:* 30 days
 
-.. _policy_propagation-delay:
-
-propagation-delay
------------------
-
-An extra delay added for each key rollover step. This value should be high
-enough to cover propagation of data from the master server to all slaves.
-
-*Default:* 1 day
-
 .. _Remote section:
 
 Remote section
@@ -766,7 +753,7 @@ can be appended to the address using ``@`` separator.
 key
 ---
 
-A :ref:`reference<key_id>` to the TSIG key which ise used to autenticate
+A :ref:`reference<key_id>` to the TSIG key which is used to authenticate
 the communication with the remote server.
 
 *Default:* not set
@@ -786,6 +773,8 @@ if a zone doesn't have another template specified.
  template:
    - id: STR
      timer-db: STR
+     journal-db: STR
+     max-journal-db-size: SIZE
      global-module: STR/STR ...
      # All zone options (excluding 'template' item)
 
@@ -809,12 +798,44 @@ as a relative path to the *default* template :ref:`storage<zone_storage>`.
 
 *Default:* :ref:`storage<zone_storage>`/timers
 
+.. _template_journal-db:
+
+journal-db
+----------
+
+Specifies a path of the persistent journal database. The path can be specified
+as a relative path to the *default* template :ref:`storage<zone_storage>`.
+
+.. NOTE::
+   This option is only available in the *default* template.
+
+*Default:* :ref:`storage<zone_storage>`/journal
+
+.. _template_max-journal-db-size:
+
+max-journal-db-size
+-------------------
+
+Hard limit for the common journal DB. There is no cleanup logic in journal
+to recover from reaching this limit: journal simply starts refusing changes
+across all zones. Decreasing this value has no effect if lower than actual
+DB file size.
+
+It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
+per-zone instead of max-journal-size in most cases. Please keep this value
+large enough. This value also influences server's usage of virtual memory.
+
+.. NOTE::
+   This option is only available in the *default* template.
+
+*Default:* 20 GiB
+
 .. _template_global-module:
 
 global-module
 -------------
 
-An ordered list of references to query modules in the form
+An ordered list of references to query modules in the form of *module_name* or
 *module_name/module_id*. These modules apply to all queries.
 
 .. NOTE::
@@ -834,8 +855,8 @@ Definition of zones served by the server.
  zone:
    - domain: DNAME
      template: template_id
-     file: STR
      storage: STR
+     file: STR
      master: remote_id ...
      ddns-master: remote_id
      notify: remote_id ...
@@ -844,7 +865,8 @@ Definition of zones served by the server.
      disable-any: BOOL
      zonefile-sync: TIME
      ixfr-from-differences: BOOL
-     max-journal-size: SIZE
+     max-journal-usage: SIZE
+     max-journal-depth: INT
      max-zone-size : SIZE
      dnssec-signing: BOOL
      dnssec-policy: STR
@@ -869,6 +891,15 @@ A :ref:`reference<template_id>` to a configuration template.
 
 *Default:* not set or *default* (if the template exists)
 
+.. _zone_storage:
+
+storage
+-------
+
+A data directory for storing zone files, journal files and timers database.
+
+*Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
+
 .. _zone_file:
 
 file
@@ -880,8 +911,8 @@ A path to the zone file. Non absolute path is relative to
 - ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – means the *N*\ th
   character or a sequence of characters beginning from the *N*\ th and ending
   with the *M*\ th character of the textual zone name (see ``%s``). The
-  indexes are counted from 0 from the left. If the character is not available,
-  the formatter has no effect.
+  indexes are counted from 0 from the left. All dots (including the terminal
+  one) are considered. If the character is not available, the formatter has no effect.
 - ``%l[``\ *N*\ ``]`` – means the *N*\ th label of the textual zone name
   (see ``%s``). The index is counted from 0 from the right (0 ~ TLD).
   If the label is not available, the formatter has no effect.
@@ -892,15 +923,6 @@ A path to the zone file. Non absolute path is relative to
 - ``%%`` – means the ``%`` character
 
 *Default:* :ref:`storage<zone_storage>`/``%s``\ .zone
-
-.. _zone_storage:
-
-storage
--------
-
-A data directory for storing zone files, journal files and timers database.
-
-*Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 
 .. _zone_master:
 
@@ -1003,6 +1025,11 @@ can be used (manual zone flush is still possible).
    If you are serving large zones with frequent updates where
    the immediate sync with a zone file is not desirable, increase the value.
 
+.. WARNING::
+   If the zone file is not up-to-date, the zone should be flushed before its
+   zone file editation or the SOA record must be untouched after editation.
+   Otherwise the journal can't be applied.
+
 *Default:* 0 (immediate)
 
 .. _zone_ixfr-from-differences:
@@ -1020,12 +1047,25 @@ is a master server for the zone.
 
 *Default:* off
 
-.. _zone_max_journal_size:
+.. _zone_max-journal-usage:
 
-max-journal-size
-----------------
+max-journal-usage
+-----------------
 
-Maximum size of the zone journal file.
+Policy how much space in journal DB will the zone's journal occupy.
+
+*Default:* 100 MiB
+
+.. NOTE::
+   Journal DB may grow far above the sum of max-journal-usage across
+   all zones, because of DB free space fragmentation.
+
+.. _zone_max_journal_depth:
+
+max-journal-depth
+-----------------
+
+Maximum history length of journal.
 
 *Default:* 2^64
 
@@ -1113,7 +1153,7 @@ Possible values:
 module
 ------
 
-An ordered list of references to query modules in the form
+An ordered list of references to query modules in the form of *module_name* or
 *module_name/module_id*. These modules apply only to the current zone queries.
 
 *Default:* not set
@@ -1150,6 +1190,7 @@ will be logged to both standard error output and syslog. The ``info`` and
  log:
    - target: stdout | stderr | syslog | STR
      server: critical | error | warning | notice | info | debug
+     control: critical | error | warning | notice | info | debug
      zone: critical | error | warning | notice | info | debug
      any: critical | error | warning | notice | info | debug
 
@@ -1177,6 +1218,15 @@ that are logged.
 
 *Default:* not set
 
+.. _log_control:
+
+control
+-------
+
+Minimum severity level for messages related to server control that are logged.
+
+*Default:* not set
+
 .. _log_zone:
 
 zone
@@ -1192,6 +1242,106 @@ any
 ---
 
 Minimum severity level for all message types that are logged.
+
+*Default:* not set
+
+.. _mod-rrl:
+
+Module rrl
+==========
+
+A response rate limiting module.
+
+::
+
+ mod-rrl:
+   - id: STR
+     rate-limit: INT
+     slip: INT
+     table-size: INT
+     whitelist: ADDR[/INT] | ADDR-ADDR ...
+
+.. _mod-rrl_id:
+
+id
+--
+
+A module identifier.
+
+.. _mod-rrl_rate-limit:
+
+rate-limit
+----------
+
+Rate limiting is based on the token bucket scheme. A rate basically
+represents a number of tokens available each second. Each response is
+processed and classified (based on several discriminators, e.g.
+source netblock, query type, zone name, rcode, etc.). Classified responses are
+then hashed and assigned to a bucket containing number of available
+tokens, timestamp and metadata. When available tokens are exhausted,
+response is dropped or sent as truncated (see :ref:`mod-rrl_slip`).
+Number of available tokens is recalculated each second.
+
+*Required*
+
+.. _mod-rrl_table-size:
+
+table-size
+----------
+
+Size of the hash table in a number of buckets. The larger the hash table, the lesser
+the probability of a hash collision, but at the expense of additional memory costs.
+Each bucket is estimated roughly to 32 bytes. The size should be selected as
+a reasonably large prime due to better hash function distribution properties.
+Hash table is internally chained and works well up to a fill rate of 90 %, general
+rule of thumb is to select a prime near 1.2 * maximum_qps.
+
+*Default:* 393241
+
+.. _mod-rrl_slip:
+
+slip
+----
+
+As attacks using DNS/UDP are usually based on a forged source address,
+an attacker could deny services to the victim's netblock if all
+responses would be completely blocked. The idea behind SLIP mechanism
+is to send each N\ :sup:`th` response as truncated, thus allowing client to
+reconnect via TCP for at least some degree of service. It is worth
+noting, that some responses can't be truncated (e.g. SERVFAIL).
+
+- Setting the value to **0** will cause that all rate-limited responses will
+  be dropped. The outbound bandwidth and packet rate will be strictly capped
+  by the :ref:`mod-rrl_rate-limit` option. All legitimate requestors affected
+  by the limit will face denial of service and will observe excessive timeouts.
+  Therefore this setting is not recommended.
+
+- Setting the value to **1** will cause that all rate-limited responses will
+  be sent as truncated. The amplification factor of the attack will be reduced,
+  but the outbound data bandwidth won't be lower than the incoming bandwidth.
+  Also the outbound packet rate will be the same as without RRL.
+
+- Setting the value to **2** will cause that half of the rate-limited responses
+  will be dropped, the other half will be sent as truncated. With this
+  configuration, both outbound bandwidth and packet rate will be lower than the
+  inbound. On the other hand, the dropped responses enlarge the time window
+  for possible cache poisoning attack on the resolver.
+
+- Setting the value to anything **larger than 2** will keep on decreasing
+  the outgoing rate-limited bandwidth, packet rate, and chances to notify
+  legitimate requestors to reconnect using TCP. These attributes are inversely
+  proportional to the configured value. Setting the value high is not advisable.
+
+*Default:* 1
+
+.. _mod-rrl_whitelist:
+
+whitelist
+---------
+
+A list of IP addresses, network subnets, or network ranges to exempt from
+rate limiting. Empty list means that no incoming connection will be
+white-listed.
 
 *Default:* not set
 
@@ -1267,6 +1417,36 @@ log-responses
 If enabled, response messages will be logged.
 
 *Default:* on
+
+.. _Module online-sign:
+
+Module online-sign
+==================
+
+The module provides online DNSSEC signing. Instead of pre-computing the zone signatures
+when the zone is loaded into the server or instead of loading an externally signed zone,
+the signatures are computed on-the-fly during answering.
+
+::
+
+ mod-online-sign:
+   - id: STR
+     policy: STR
+
+.. _mod-online-sign_id:
+
+id
+--
+
+A module identifier.
+
+.. _mod-online-sign_policy:
+
+policy
+------
+
+A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
+value can be used for the default policy settings.
 
 .. _Module synth-record:
 
@@ -1360,6 +1540,7 @@ server for resolution.
  mod-dnsproxy:
    - id: STR
      remote: remote_id
+     timeout: INT
      catch-nxdomain: BOOL
 
 .. _mod-dnsproxy_id:
@@ -1378,6 +1559,15 @@ A :ref:`reference<remote_id>` to a remote server where the queries are
 forwarded to.
 
 *Required*
+
+.. _mod-dnsproxy_timeout:
+
+timeout
+-------
+
+A remote response timeout in milliseconds.
+
+*Default:* 500
 
 .. _mod-dnsproxy_catch-nxdomain:
 
@@ -1419,60 +1609,213 @@ A path to the directory where the database is stored.
 
 *Required*
 
-.. _mod-online-sign:
+.. _mod-stats:
 
-Module online-sign
-==================
-
-The module provides online DNSSEC signing.
-
-::
-
- mod-online-sign:
-   - id: STR
-
-.. _mod-online-sign_id:
-
-id
---
-
-A module identifier.
-
-.. _mod-whoami:
-
-Module whoami
-=============
-
-The module synthesizes an A or AAAA record containing the query source IP address, 
-at the apex of the zone being served.
-
-::
-
- mod-whoami:
-   - id: STR
-
-.. _mod-whoami_id:
-
-id
---
-
-A module identifier.
-
-.. _mod-noudp:
-
-Module noudp
+Module stats
 ============
 
-The module sends empty truncated response to any UDP query.
+The module provides incoming query processing statistics.
+
+.. NOTE::
+   Leading 16-bit message size over TCP is not considered.
 
 ::
 
- mod-noudp:
+ mod-stats:
    - id: STR
+     request-protocol: BOOL
+     server-operation: BOOL
+     request-bytes: BOOL
+     response-bytes: BOOL
+     edns-presence: BOOL
+     flag-presence: BOOL
+     response-code: BOOL
+     reply-nodata: BOOL
+     query-type: BOOL
+     query-size: BOOL
+     reply-size: BOOL
 
-.. _mod-noudp_id:
+.. _mod-stats_id:
 
 id
 --
 
 A module identifier.
+
+.. _mod-stats_request-protocol:
+
+request-protocol
+----------------
+
+If enabled, all incoming requests are counted by the network protocol:
+
+* udp4 - UDP over IPv4
+* tcp4 - TCP over IPv4
+* udp6 - UDP over IPv6
+* tcp6 - TCP over IPv6
+
+*Default:* on
+
+.. _mod-stats_server-operation:
+
+server-operation
+----------------
+
+If enabled, all incoming requests are counted by the server operation. The
+server operation is based on message header OpCode and message query (meta) type:
+
+* query - Normal query operation
+* update - Dynamic update operation
+* notify - NOTIFY request operation
+* axfr - Full zone transfer operation
+* ixfr - Incremental zone transfer operation
+* invalid - Invalid server operation
+
+*Default:* on
+
+.. _mod-stats_request-bytes:
+
+request-bytes
+-------------
+
+If enabled, all incoming request bytes are counted by the server operation:
+
+* query - Normal query bytes
+* update - Dynamic update bytes
+* other - Other request bytes
+
+*Default:* on
+
+.. _mod-stats_response-bytes:
+
+response-bytes
+--------------
+
+If enabled, outgoing response bytes are counted by the server operation:
+
+* reply - Normal response bytes
+* transfer - Zone transfer bytes
+* other - Other response bytes
+
+.. WARNING::
+   Dynamic update response bytes are not counted by this module.
+
+*Default:* on
+
+.. _mod-stats_edns-presence:
+
+edns-presence
+-------------
+
+If enabled, EDNS pseudo section presence is counted by the message direction:
+
+* request - EDNS present in request
+* response - EDNS present in response
+
+*Default:* off
+
+.. _mod-stats_flag-presence:
+
+flag-presence
+-------------
+
+If enabled, some message header flags are counted:
+
+* TC - Truncated Answer in response
+* DO - DNSSEC OK in request
+
+*Default:* off
+
+.. _mod-stats_response-code:
+
+response-code
+-------------
+
+If enabled, outgoing response code is counted:
+
+* NOERROR
+* ...
+* NOTZONE
+* BADVERS
+* ...
+* BADCOOKIE
+* other - All other codes
+
+.. NOTE::
+   In the case of multi-message zone transfer response, just one counter is
+   incremented.
+
+.. WARNING::
+   Dynamic update response code is not counted by this module.
+
+*Default:* on
+
+.. _mod-stats_reply-nodata:
+
+reply-nodata
+------------
+
+If enabled, NODATA pseudo RCODE (see RFC 2308, Section 2.2) is counted by the
+query type:
+
+* A
+* AAAA
+* other - All other types
+
+*Default:* off
+
+.. _mod-stats_query-type:
+
+query-type
+----------
+
+If enabled, normal query type is counted:
+
+* A (TYPE1)
+* ...
+* TYPE65
+* SPF (TYPE99)
+* ...
+* TYPE110
+* ANY (TYPE255)
+* ...
+* TYPE260
+* other - All other types
+
+.. NOTE::
+   Not all assigned meta types (IXFR, AXFR,...) have their own counters,
+   because such types are not processed as normal query.
+
+*Default:* off
+
+.. _mod-stats_query-size:
+
+query-size
+----------
+
+If enabled, normal query message size distribution is counted by the size range
+in bytes:
+
+* 0-15
+* 16-31
+* ...
+* 272-287
+* 288-65535
+
+*Default:* off
+
+.. _mod-stats_reply-size:
+
+reply-size
+----------
+
+If enabled, normal reply message size distribution is counted by the size range
+in bytes:
+
+* 0-15
+* 16-31
+* ...
+* 4080-4095
+* 4096-65535
+
+*Default:* off

@@ -14,7 +14,7 @@ DIR = os.path.dirname(__file__)
 FLAGS = [
     '-std=gnu99',
     '-Wall', '-Wno-unused', '-Werror=implicit', '-Wno-#warnings',
-    '-DCONFIG_DIR=', '-DRUN_DIR=', '-DSTORAGE_DIR=',
+    '-DCONFIG_DIR=', '-DRUN_DIR=', '-DSTORAGE_DIR=', '-DPACKAGE_VERSION=',
 ]
 
 CONFIG_H = 'src/config.h'

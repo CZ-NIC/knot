@@ -1,6 +1,9 @@
 """Libknot server control interface wrapper.
 
 Example:
+    import json
+    from libknot.control import *
+
     ctl = KnotCtl()
     ctl.connect("/var/run/knot/knot.sock")
 
@@ -25,35 +28,72 @@ Example:
 from ctypes import cdll, c_void_p, c_int, c_char_p, c_uint, byref
 from enum import IntEnum
 
-LIB = cdll.LoadLibrary('libknot.so')
+CTL_ALLOC = None
+CTL_FREE = None
+CTL_SET_TIMEOUT = None
+CTL_CONNECT = None
+CTL_CLOSE = None
+CTL_SEND = None
+CTL_RECEIVE = None
+CTL_ERROR = None
 
-CTL_ALLOC = LIB.knot_ctl_alloc
-CTL_ALLOC.restype = c_void_p
 
-CTL_FREE = LIB.knot_ctl_free
-CTL_FREE.argtypes = [c_void_p]
+def load_lib(path="libknot.so"):
+    """Loads the libknot library."""
 
-CTL_SET_TIMEOUT = LIB.knot_ctl_set_timeout
-CTL_SET_TIMEOUT.argtypes = [c_void_p, c_int]
+    LIB = cdll.LoadLibrary(path)
 
-CTL_CONNECT = LIB.knot_ctl_connect
-CTL_CONNECT.restype = c_int
-CTL_CONNECT.argtypes = [c_void_p, c_char_p]
+    global CTL_ALLOC
+    CTL_ALLOC = LIB.knot_ctl_alloc
+    CTL_ALLOC.restype = c_void_p
 
-CTL_CLOSE = LIB.knot_ctl_close
-CTL_CLOSE.argtypes = [c_void_p]
+    global CTL_FREE
+    CTL_FREE = LIB.knot_ctl_free
+    CTL_FREE.argtypes = [c_void_p]
 
-CTL_SEND = LIB.knot_ctl_send
-CTL_SEND.restype = c_int
-CTL_SEND.argtypes = [c_void_p, c_uint, c_void_p]
+    global CTL_SET_TIMEOUT
+    CTL_SET_TIMEOUT = LIB.knot_ctl_set_timeout
+    CTL_SET_TIMEOUT.argtypes = [c_void_p, c_int]
 
-CTL_RECEIVE = LIB.knot_ctl_receive
-CTL_RECEIVE.restype = c_int
-CTL_RECEIVE.argtypes = [c_void_p, c_void_p, c_void_p]
+    global CTL_CONNECT
+    CTL_CONNECT = LIB.knot_ctl_connect
+    CTL_CONNECT.restype = c_int
+    CTL_CONNECT.argtypes = [c_void_p, c_char_p]
 
-CTL_ERROR = LIB.knot_strerror
-CTL_ERROR.restype = c_char_p
-CTL_ERROR.argtypes = [c_int]
+    global CTL_CLOSE
+    CTL_CLOSE = LIB.knot_ctl_close
+    CTL_CLOSE.argtypes = [c_void_p]
+
+    global CTL_SEND
+    CTL_SEND = LIB.knot_ctl_send
+    CTL_SEND.restype = c_int
+    CTL_SEND.argtypes = [c_void_p, c_uint, c_void_p]
+
+    global CTL_RECEIVE
+    CTL_RECEIVE = LIB.knot_ctl_receive
+    CTL_RECEIVE.restype = c_int
+    CTL_RECEIVE.argtypes = [c_void_p, c_void_p, c_void_p]
+
+    global CTL_ERROR
+    CTL_ERROR = LIB.knot_strerror
+    CTL_ERROR.restype = c_char_p
+    CTL_ERROR.argtypes = [c_int]
+
+
+class KnotCtlError(Exception):
+    """Libknot server control error."""
+
+    def __init__(self, message, data=None):
+        """
+        @type message: str
+        @type data: KnotCtlData
+        """
+
+        self.message = message
+        self.data = data
+
+    def __str__(self):
+        return "%s (data: %s)" % (self.message, self.data)
 
 
 class KnotCtlType(IntEnum):
@@ -89,6 +129,17 @@ class KnotCtlData(object):
     def __init__(self):
         self.data = self.DataArray()
 
+    def __str__(self):
+        string = str()
+
+        for idx in KnotCtlDataIdx:
+            if self.data[idx]:
+                if string:
+                    string += ", "
+                string += "%s = %s" % (idx.name, self.data[idx])
+
+        return string
+
     def __getitem__(self, index):
         """Data unit item getter.
 
@@ -114,6 +165,8 @@ class KnotCtl(object):
     """Libknot server control interface."""
 
     def __init__(self):
+        if not CTL_ALLOC:
+            load_lib()
         self.obj = CTL_ALLOC()
 
     def __del__(self):
@@ -136,7 +189,7 @@ class KnotCtl(object):
         ret = CTL_CONNECT(self.obj, path.encode())
         if ret != 0:
             err = CTL_ERROR(ret)
-            raise Exception(err if isinstance(err, str) else err.decode())
+            raise KnotCtlError(err if isinstance(err, str) else err.decode())
 
     def close(self):
         """Disconnects from the current control socket."""
@@ -154,7 +207,7 @@ class KnotCtl(object):
                        data.data if data else c_char_p())
         if ret != 0:
             err = CTL_ERROR(ret)
-            raise Exception(err if isinstance(err, str) else err.decode())
+            raise KnotCtlError(err if isinstance(err, str) else err.decode())
 
     def receive(self, data=None):
         """Receives a data unit from the connected control socket.
@@ -168,11 +221,11 @@ class KnotCtl(object):
                           data.data if data else c_char_p())
         if ret != 0:
             err = CTL_ERROR(ret)
-            raise Exception(err if isinstance(err, str) else err.decode())
+            raise KnotCtlError(err if isinstance(err, str) else err.decode())
         return KnotCtlType(data_type.value)
 
     def send_block(self, cmd, section=None, item=None, identifier=None, zone=None,
-                   owner=None, ttl=None, rtype=None, data=None):
+                   owner=None, ttl=None, rtype=None, data=None, flags=None):
         """Sends a control query block.
 
         @type cmd: str
@@ -196,6 +249,7 @@ class KnotCtl(object):
         query[KnotCtlDataIdx.TTL] = ttl
         query[KnotCtlDataIdx.TYPE] = rtype
         query[KnotCtlDataIdx.DATA] = data
+        query[KnotCtlDataIdx.FLAGS] = flags
 
         self.send(KnotCtlType.DATA, query)
         self.send(KnotCtlType.BLOCK)
@@ -212,18 +266,19 @@ class KnotCtl(object):
             out[section] = dict()
 
         # Add the identifier if not exists.
-        if ident and ident not in section:
-            section[ident] = dict()
+        if ident and ident not in out[section]:
+            out[section][ident] = dict()
 
         # Return if no item/value.
         if not item:
             return
 
-        item_level = section[ident] if ident else section
+        item_level = out[section][ident] if ident else out[section]
 
         # Treat alone identifier item differently.
         if item in ["id", "domain", "target"]:
-            section[data] = dict()
+            if data not in out[section]:
+                out[section][data] = dict()
         else:
             if item not in item_level:
                 item_level[item] = list()
@@ -269,13 +324,43 @@ class KnotCtl(object):
         else:
             out[zone][owner][rtype]["data"].append(data)
 
-    def receive_block(self):
-        """Receives a control answer and returns it as a structured dictionary.
+    def _receive_stats(self, out, reply):
+
+        zone = reply[KnotCtlDataIdx.ZONE]
+        section = reply[KnotCtlDataIdx.SECTION]
+        item = reply[KnotCtlDataIdx.ITEM]
+        idx = reply[KnotCtlDataIdx.ID]
+        data = reply[KnotCtlDataIdx.DATA]
+
+        # Add the zone if not exists.
+        if zone:
+            if "zone" not in out:
+                out["zone"] = dict()
+
+            if zone not in out["zone"]:
+                out["zone"][zone] = dict()
+
+        section_level = out["zone"][zone] if zone else out
+
+        if section not in section_level:
+            section_level[section] = dict()
+
+        if idx:
+            if item not in section_level[section]:
+                section_level[section][item] = dict()
+
+            section_level[section][item][idx] = data
+        else:
+            section_level[section][item] = data
+
+    def receive_stats(self):
+        """Receives statistics answer and returns it as a structured dictionary.
 
         @rtype: dict
         """
 
         out = dict()
+        err_reply = None
 
         while True:
             reply = KnotCtlData()
@@ -287,7 +372,37 @@ class KnotCtl(object):
 
             # Check for an error.
             if reply[KnotCtlDataIdx.ERROR]:
-                raise Exception(reply[KnotCtlDataIdx.ERROR])
+                err_reply = reply
+                continue
+
+            self._receive_stats(out, reply)
+
+        if err_reply:
+            raise KnotCtlError(err_reply[KnotCtlDataIdx.ERROR], err_reply)
+
+        return out
+
+    def receive_block(self):
+        """Receives a control answer and returns it as a structured dictionary.
+
+        @rtype: dict
+        """
+
+        out = dict()
+        err_reply = None
+
+        while True:
+            reply = KnotCtlData()
+            reply_type = self.receive(reply)
+
+            # Stop if not data type.
+            if reply_type not in [KnotCtlType.DATA, KnotCtlType.EXTRA]:
+                break
+
+            # Check for an error.
+            if reply[KnotCtlDataIdx.ERROR]:
+                err_reply = reply
+                continue
 
             # Check for config data.
             if reply[KnotCtlDataIdx.SECTION]:
@@ -300,5 +415,8 @@ class KnotCtl(object):
                     self._receive_zone_status(out, reply)
             else:
                 continue
+
+        if err_reply:
+            raise KnotCtlError(err_reply[KnotCtlDataIdx.ERROR], err_reply)
 
         return out

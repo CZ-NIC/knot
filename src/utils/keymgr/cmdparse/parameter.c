@@ -41,7 +41,7 @@ static const parameter_t *param_match(const parameter_t *params, const char *sea
 		}
 
 		if (match) {
-			error("Ambigious parameter '%s' ('%s' or '%s').",
+			error("Ambiguous parameter '%s' ('%s' or '%s').",
 			      search, match->name, p->name);
 			return NULL;
 		}

@@ -515,6 +515,16 @@ def do_refusal_tests(master, zone, dnssec=False):
 
         check_soa(master, prev_soa)
 
+        # Add DNSKEY
+        check_log("non-apex DNSKEY addition")
+        up = master.update(zone)
+        up.add("nonapex.ddns.", "3600", "DNSKEY",
+               "256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
+        up.send("NOERROR")
+        resp = master.dig("nonapex.ddns.", "DNSKEY")
+        resp.check(rcode="NOERROR",
+                   rdata="256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
+
 zone = t.zone("ddns.", storage=".")
 
 master_plain = t.server("knot")

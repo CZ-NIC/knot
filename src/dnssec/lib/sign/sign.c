@@ -266,6 +266,8 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return &ecdsa_functions;
+	case DNSSEC_KEY_ALGORITHM_ED25519:
+	case DNSSEC_KEY_ALGORITHM_ED448:
 	default:
 		return NULL;
 	}
@@ -291,6 +293,8 @@ static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 		return GNUTLS_DIG_SHA512;
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return GNUTLS_DIG_SHA384;
+	case DNSSEC_KEY_ALGORITHM_ED25519:
+	case DNSSEC_KEY_ALGORITHM_ED448:
 	default:
 		return GNUTLS_DIG_UNKNOWN;
 	}

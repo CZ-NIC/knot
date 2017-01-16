@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,8 +18,9 @@
 
 #include "dnssec/error.h"
 #include "dnssec/event.h"
+#include "dnssec/keyusage.h"
 #include "event/action.h"
-#include "event/keystate.h"
+#include "dnssec/keystate.h"
 #include "event/utils.h"
 #include "key/internal.h"
 #include "shared.h"
@@ -45,7 +46,7 @@ static bool newer_key(const dnssec_kasp_key_t *prev, const dnssec_kasp_key_t *cu
 static bool zsk_match(const dnssec_kasp_key_t *key, time_t now, key_state_t state)
 {
 	return dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
-	       get_key_state(key, now) == state;
+	       dnssec_get_key_state(key, now) == state;
 }
 
 static dnssec_kasp_key_t *last_key(dnssec_event_ctx_t *ctx, key_state_t state)
@@ -86,6 +87,12 @@ static int plan(dnssec_event_ctx_t *ctx, dnssec_event_t *event)
 {
 	assert(ctx);
 	assert(event);
+
+	// Not supported with Single-Type signing.
+	if (ctx->policy->singe_type_signing) {
+		event->type = DNSSEC_EVENT_NONE;
+		return DNSSEC_EOK;
+	}
 
 	/*
 	 * We should not start another rollover, if there is a rollover
@@ -169,6 +176,17 @@ static int exec_new_signatures(dnssec_event_ctx_t *ctx)
 	active->timing.retire = ctx->now;
 	rolling->timing.active = ctx->now;
 
+	char *path = dnssec_keyusage_path(ctx->kasp);
+	if (path == NULL) {
+		return DNSSEC_ENOMEM;
+	}
+	dnssec_keyusage_t *keyusage = dnssec_keyusage_new();
+	dnssec_keyusage_load(keyusage, path);
+	dnssec_keyusage_add(keyusage, rolling->id, ctx->zone->name);
+	dnssec_keyusage_save(keyusage, path);
+	dnssec_keyusage_free(keyusage);
+	free(path);
+
 	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
 }
 
@@ -179,7 +197,32 @@ static int exec_remove_old_key(dnssec_event_ctx_t *ctx)
 		return DNSSEC_EINVAL;
 	}
 
+	char *path = dnssec_keyusage_path(ctx->kasp);
+	if (path == NULL) {
+		return DNSSEC_ENOMEM;
+	}
+	dnssec_keyusage_t *keyusage = dnssec_keyusage_new();
+	dnssec_keyusage_load(keyusage, path);
+	dnssec_keyusage_remove(keyusage, retired->id, ctx->zone->name);
+	dnssec_keyusage_save(keyusage, path);
+
 	retired->timing.remove = ctx->now;
+	dnssec_list_foreach(item, ctx->zone->keys) {
+		dnssec_kasp_key_t *key = dnssec_item_get(item);
+		if (key->id == retired->id) {
+			dnssec_list_remove(item);
+		}
+	}
+
+	if (dnssec_keyusage_is_used(keyusage, retired->id)) {
+		dnssec_keyusage_free(keyusage);
+		free(path);
+		return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
+	}
+	dnssec_keyusage_free(keyusage);
+	free(path);
+
+	dnssec_keystore_remove_key(ctx->keystore, retired->id);
 
 	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
 }

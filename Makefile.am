@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = libtap src tests tests-fuzz samples doc
+SUBDIRS = libtap src tests tests-fuzz python samples doc
 
 .PHONY: singlehtml install-singlehtml
 singlehtml install-singlehtml:

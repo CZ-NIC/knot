@@ -32,7 +32,7 @@
  */
 typedef enum {
 	ZONE_STATUS_NOT_FOUND = 0,  //!< Zone file does not exist.
-	ZONE_STATUS_BOOSTRAP,       //!< Zone file does not exist, can boostrap.
+	ZONE_STATUS_BOOTSTRAP,      //!< Zone file does not exist, can bootstrap.
 	ZONE_STATUS_FOUND_NEW,      //!< Zone file exists, not loaded yet.
 	ZONE_STATUS_FOUND_CURRENT,  //!< Zone file exists, same as loaded.
 	ZONE_STATUS_FOUND_UPDATED,  //!< Zone file exists, newer than loaded.
@@ -64,7 +64,7 @@ static zone_status_t zone_file_status(conf_t *conf, const zone_t *old_zone,
 			return ZONE_STATUS_FOUND_CURRENT;
 		} else {
 			return zone_load_can_bootstrap(conf, name) ?
-			       ZONE_STATUS_BOOSTRAP : ZONE_STATUS_NOT_FOUND;
+			       ZONE_STATUS_BOOTSTRAP : ZONE_STATUS_NOT_FOUND;
 		}
 	} else {
 		if (old_zone == NULL) {
@@ -91,7 +91,7 @@ static void log_zone_load_info(const zone_t *zone, zone_status_t status)
 
 	switch (status) {
 	case ZONE_STATUS_NOT_FOUND:     action = "not found";            break;
-	case ZONE_STATUS_BOOSTRAP:      action = "will be bootstrapped"; break;
+	case ZONE_STATUS_BOOTSTRAP:     action = "will be bootstrapped"; break;
 	case ZONE_STATUS_FOUND_NEW:     action = "will be loaded";       break;
 	case ZONE_STATUS_FOUND_CURRENT: action = "is up-to-date";        break;
 	case ZONE_STATUS_FOUND_UPDATED: action = "will be reloaded";     break;
@@ -113,6 +113,8 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	if (!zone) {
 		return NULL;
 	}
+
+	zone->journal_db = &server->journal_db;
 
 	int result = zone_events_setup(zone, server->workers, &server->sched,
 	                               server->timers_db);
@@ -227,14 +229,14 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 	zone_status_t zstatus = zone_file_status(conf, NULL, name);
 	if (zone_expired(zone)) {
 		assert(zone_is_slave(conf, zone));
-		zstatus = ZONE_STATUS_BOOSTRAP;
+		zstatus = ZONE_STATUS_BOOTSTRAP;
 	}
 
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
 		replan_load_new(zone);
 		break;
-	case ZONE_STATUS_BOOSTRAP:
+	case ZONE_STATUS_BOOTSTRAP:
 		replan_load_bootstrap(conf, zone);
 		break;
 	case ZONE_STATUS_NOT_FOUND:
@@ -271,6 +273,27 @@ static zone_t *create_zone(conf_t *conf, const knot_dname_t *name, server_t *ser
 	}
 }
 
+static void mark_changed_zones(knot_zonedb_t *zonedb, hattrie_t *changed)
+{
+	if (changed == NULL) {
+		return;
+	}
+
+	hattrie_iter_t *it = hattrie_iter_begin(changed);
+	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		const knot_dname_t *name =
+			(const knot_dname_t *)hattrie_iter_key(it, NULL);
+
+		zone_t *zone = knot_zonedb_find(zonedb, name);
+		if (zone != NULL) {
+			conf_io_type_t type = (conf_io_type_t)(*hattrie_iter_val(it));
+			assert(!(type & CONF_IO_TSET));
+			zone->change_type = type;
+		}
+	}
+	hattrie_iter_free(it);
+}
+
 /*!
  * \brief Create new zone database.
  *
@@ -293,13 +316,31 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 		return NULL;
 	}
 
+	bool full = !(conf->io.flags & CONF_IO_FACTIVE) ||
+	            (conf->io.flags & CONF_IO_FRLD_ZONES);
+
+	/* Mark changed zones. */
+	if (!full) {
+		mark_changed_zones(server->zone_db, conf->io.zones);
+	}
+
 	for (conf_iter_t iter = conf_iter(conf, C_ZONE); iter.code == KNOT_EOK;
 	     conf_iter_next(conf, &iter)) {
 		conf_val_t id = conf_iter_id(conf, &iter);
-		zone_t *old_zone = knot_zonedb_find(db_old, conf_dname(&id));
-		zone_t *zone = create_zone(conf, conf_dname(&id), server, old_zone);
-		if (!zone) {
-			log_zone_error(id.data, "zone cannot be created");
+		const knot_dname_t *name = conf_dname(&id);
+
+		zone_t *old_zone = knot_zonedb_find(db_old, name);
+		if (old_zone != NULL && !full) {
+			/* Reuse unchanged zone. */
+			if (!(old_zone->change_type & CONF_IO_TRELOAD)) {
+				knot_zonedb_insert(db_new, old_zone);
+				continue;
+			}
+		}
+
+		zone_t *zone = create_zone(conf, name, server, old_zone);
+		if (zone == NULL) {
+			log_zone_error(name, "zone cannot be created");
 			continue;
 		}
 
@@ -318,30 +359,52 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
  * \note Zone content may be preserved in the new zone database, in this case
  *       new and old zone share the contents. Shared content is not freed.
  *
- * \param db_new New zone database.
- * \param db_old Old zone database.
+ * \param conf    New server configuration.
+ * \param db_old  Old zone database to remove.
+ * \param db_new  New zone database for comparison if full reload.
   */
-static void remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
+static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
+                              knot_zonedb_t *db_new)
 {
 	if (db_old == NULL) {
 		return;
 	}
 
+	bool full = !(conf->io.flags & CONF_IO_FACTIVE) ||
+	            (conf->io.flags & CONF_IO_FRLD_ZONES);
+
 	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(db_new, &it);
+	knot_zonedb_iter_begin(db_old, &it);
 
-	while(!knot_zonedb_iter_finished(&it)) {
-		zone_t *new_zone = knot_zonedb_iter_val(&it);
-		zone_t *old_zone = knot_zonedb_find(db_old, new_zone->name);
+	while (!knot_zonedb_iter_finished(&it)) {
+		zone_t *zone = knot_zonedb_iter_val(&it);
 
-		if (old_zone) {
-			old_zone->contents = NULL;
+		if (full) {
+			/* Check if reloaded (reused contents). */
+			if (knot_zonedb_find(db_new, zone->name)) {
+				zone->contents = NULL;
+			}
+			/* Completely new zone. */
+		} else {
+			/* Check if reloaded (reused contents). */
+			if (zone->change_type & CONF_IO_TRELOAD) {
+				zone->contents = NULL;
+				zone_free(&zone);
+			/* Check if removed (drop also contents). */
+			} else if (zone->change_type & CONF_IO_TUNSET) {
+				zone_free(&zone);
+			}
+			/* Completely reused zone. */
 		}
 
 		knot_zonedb_iter_next(&it);
 	}
 
-	knot_zonedb_deep_free(&db_old);
+	if (full) {
+		knot_zonedb_deep_free(&db_old);
+	} else {
+		knot_zonedb_free(&db_old);
+	}
 }
 
 static bool zone_exists(const knot_dname_t *zone, void *data)
@@ -356,7 +419,6 @@ static bool zone_exists(const knot_dname_t *zone, void *data)
 
 void zonedb_reload(conf_t *conf, server_t *server)
 {
-	/* Check parameters */
 	if (conf == NULL || server == NULL) {
 		return;
 	}
@@ -385,10 +447,6 @@ void zonedb_reload(conf_t *conf, server_t *server)
 		            knot_strerror(ret));
 	}
 
-	/*
-	 * Remove all zones present in the new DB from the old DB.
-	 * No new thread can access these zones in the old DB, as the
-	 * databases are already switched.
-	 */
-	remove_old_zonedb(db_new, db_old);
+	/* Remove old zone DB. */
+	remove_old_zonedb(conf, db_old, db_new);
 }

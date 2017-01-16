@@ -63,7 +63,9 @@ include_dnssec_HEADERS = \
 	lib/dnssec/kasp.h \
 	lib/dnssec/key.h \
 	lib/dnssec/keyid.h \
+	lib/dnssec/keystate.h \
 	lib/dnssec/keystore.h \
+	lib/dnssec/keyusage.h \
 	lib/dnssec/keytag.h \
 	lib/dnssec/list.h \
 	lib/dnssec/nsec.h \
@@ -82,7 +84,6 @@ libdnssec_la_SOURCES = \
 	lib/event/action/zsk_rollover.c \
 	lib/event/event.c \
 	lib/event/keystate.c \
-	lib/event/keystate.h \
 	lib/event/utils.c \
 	lib/event/utils.h \
 	lib/kasp/dir/dir.c \
@@ -124,6 +125,7 @@ libdnssec_la_SOURCES = \
 	lib/keystore/pkcs11.c \
 	lib/keystore/pkcs8.c \
 	lib/keystore/pkcs8_dir.c \
+	lib/keyusage/keyusage.c	 \
 	lib/list/list.c \
 	lib/list/ucw_clists.h \
 	lib/nsec/bitmap.c \

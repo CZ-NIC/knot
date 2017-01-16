@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,6 @@
 #include "knot/common/fdset.h"
 #include "knot/server/dthreads.h"
 #include "knot/common/ref.h"
-#include "knot/server/rrl.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/zonedb.h"
 #include "contrib/ucw/lists.h"
@@ -96,6 +95,7 @@ typedef struct server {
 	/*! \brief Zone database. */
 	knot_zonedb_t *zone_db;
 	knot_db_t *timers_db;
+	journal_db_t *journal_db;
 
 	/*! \brief I/O handlers. */
 	struct {
@@ -110,10 +110,7 @@ typedef struct server {
 	evsched_t sched;
 
 	/*! \brief List of interfaces. */
-	ifacelist_t* ifaces;
-
-	/*! \brief Rate limiting. */
-	rrl_table_t *rrl;
+	ifacelist_t *ifaces;
 
 } server_t;
 
@@ -155,12 +152,11 @@ void server_wait(server_t *server);
 /*!
  * \brief Reload server configuration.
  *
- * \param server            Server instance.
- * \param cf                Config file path.
- * \param refresh_hostname  Refresh hostname indicator.
- * \return
+ * \param server  Server instance.
+ *
+ * \return Error code, KNOT_EOK if success.
  */
-int server_reload(server_t *server, const char *cf, bool refresh_hostname);
+int server_reload(server_t *server);
 
 /*!
  * \brief Requests server to stop.
@@ -174,7 +170,7 @@ void server_stop(server_t *server);
  *
  * Routine for dynamic server reconfiguration.
  */
-void server_reconfigure(conf_t *conf, server_t *data);
+void server_reconfigure(conf_t *conf, server_t *server);
 
 /*!
  * \brief Reconfigure zone database.

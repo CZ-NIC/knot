@@ -78,7 +78,7 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item,
 	struct axfr_proc *axfr = (struct axfr_proc*)state;
 
 	if (axfr->i == NULL) {
-		axfr->i = hattrie_iter_begin(item, true);
+		axfr->i = hattrie_iter_begin((hattrie_t *)item);
 	}
 
 	/* Put responses. */

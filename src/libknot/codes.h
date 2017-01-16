@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,14 +37,9 @@ extern const knot_lookup_t knot_opcode_names[];
 extern const knot_lookup_t knot_rcode_names[];
 
 /*!
- * \brief TSIG error names.
+ * \brief TSIG exceptions to reply code names.
  */
-extern const knot_lookup_t knot_tsig_err_names[];
-
-/*!
- * \brief TKEY error names.
- */
-extern const knot_lookup_t knot_tkey_err_names[];
+extern const knot_lookup_t knot_tsig_rcode_names[];
 
 /*!
  * \brief DNSSEC algorithm names.

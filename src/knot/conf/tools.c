@@ -34,6 +34,7 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/scheme.h"
 #include "knot/common/log.h"
+#include "knot/nameserver/query_module.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/wire_ctx.h"
@@ -77,33 +78,31 @@ int mod_id_to_bin(
 
 	// Check for "mod_name/mod_id" format.
 	const uint8_t *pos = (uint8_t *)strchr((char *)in->position, '/');
-	if (pos == NULL || pos >= stop) {
-		return KNOT_EINVAL;
-	}
-
-	// Check for missing module name.
 	if (pos == in->position) {
+		// Missing module name.
+		return KNOT_EINVAL;
+	} else if (pos >= stop - 1) {
+		// Missing module identifier after slash.
 		return KNOT_EINVAL;
 	}
 
 	// Write mod_name in the yp_name_t format.
-	uint8_t name_len = pos - in->position;
+	uint8_t name_len = (pos != NULL) ? (pos - in->position) :
+	                                   wire_ctx_available(in);
 	wire_ctx_write_u8(out, name_len);
 	wire_ctx_write(out, in->position, name_len);
 	wire_ctx_skip(in, name_len);
 
-	// Skip the separator.
-	wire_ctx_skip(in, sizeof(uint8_t));
+	// Check for mod_id.
+	if (pos != NULL) {
+		// Skip the separator.
+		wire_ctx_skip(in, sizeof(uint8_t));
 
-	// Check for missing id.
-	if (wire_ctx_available(in) == 0) {
-		return KNOT_EINVAL;
-	}
-
-	// Write mod_id as a zero terminated string.
-	int ret = yp_str_to_bin(in, out, stop);
-	if (ret != KNOT_EOK) {
-		return ret;
+		// Write mod_id as a zero terminated string.
+		int ret = yp_str_to_bin(in, out, stop);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	YP_CHECK_RET;
@@ -119,13 +118,16 @@ int mod_id_to_txt(
 	wire_ctx_write(out, in->position, name_len);
 	wire_ctx_skip(in, name_len);
 
-	// Write the separator.
-	wire_ctx_write_u8(out, '/');
+	// Check for mod_id.
+	if (wire_ctx_available(in) > 0) {
+		// Write the separator.
+		wire_ctx_write_u8(out, '/');
 
-	// Write mod_id.
-	int ret = yp_str_to_txt(in, out);
-	if (ret != KNOT_EOK) {
-		return ret;
+		// Write mod_id.
+		int ret = yp_str_to_txt(in, out);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	YP_CHECK_RET;
@@ -332,10 +334,54 @@ int check_modref(
 	const uint8_t *id = args->data + 1 + args->data[0];
 	size_t id_len = args->data_len - 1 - args->data[0];
 
+	// Check if the module requires some configuration.
+	if (id_len == 0) {
+		static_module_t *mod = find_module(mod_name);
+		if (mod == NULL) {
+			return KNOT_EINVAL;
+		}
+
+		return mod->opt_conf ? KNOT_EOK : KNOT_YP_ENOID;
+	}
+
 	// Try to find a module with the id.
 	if (!conf_rawid_exists_txn(args->conf, args->txn, mod_name, id, id_len)) {
 		args->err_str = "invalid module reference";
 		return KNOT_ENOENT;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_server(
+	conf_check_t *args)
+{
+	bool present = false;
+
+	conf_val_t val;
+	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT);
+	if (val.code == KNOT_EOK) {
+		present = true;
+	}
+
+	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT_SLIP);
+	if (val.code == KNOT_EOK) {
+		present = true;
+	}
+
+	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT_TBL_SIZE);
+	if (val.code == KNOT_EOK) {
+		present = true;
+	}
+
+	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT_WHITELIST);
+	if (val.code == KNOT_EOK) {
+		present = true;
+	}
+
+	if (present) {
+		CONF_LOG(LOG_NOTICE, "obsolete RRL configuration in the server, "
+		                     "use module mod-rrl instead");
 	}
 
 	return KNOT_EOK;
@@ -449,24 +495,19 @@ int check_template(
 		return KNOT_EOK;
 	}
 
-	// Check global-module.
-	conf_val_t g_module = conf_rawid_get_txn(args->conf, args->txn, C_TPL,
-	                                         C_GLOBAL_MODULE, args->id,
-	                                         args->id_len);
+	conf_val_t val;
+	#define CHECK_DFLT(item, name) \
+		val = conf_rawid_get_txn(args->conf, args->txn, C_TPL, item, \
+		                         args->id, args->id_len); \
+		if (val.code == KNOT_EOK) { \
+			args->err_str = name " in non-default template"; \
+			return KNOT_EINVAL; \
+		}
 
-	if (g_module.code == KNOT_EOK) {
-		args->err_str = "global module in non-default template";
-		return KNOT_EINVAL;
-	}
-
-	// Check timer-db.
-	conf_val_t timer_db = conf_rawid_get_txn(args->conf, args->txn, C_TPL,
-	                                         C_TIMER_DB, args->id, args->id_len);
-
-	if (timer_db.code == KNOT_EOK) {
-		args->err_str = "timer database location in non-default template";
-		return KNOT_EINVAL;
-	}
+	CHECK_DFLT(C_TIMER_DB, "timer database");
+	CHECK_DFLT(C_GLOBAL_MODULE, "global module");
+	CHECK_DFLT(C_JOURNAL_DB, "journal database path");
+	CHECK_DFLT(C_MAX_JOURNAL_DB_SIZE, "journal database maximum size");
 
 	return KNOT_EOK;
 }
@@ -491,8 +532,8 @@ int check_zone(
 	                                       C_DNSSEC_POLICY, args->id);
 	if (conf_bool(&signing) && policy.code != KNOT_EOK) {
 		CONF_LOG(LOG_NOTICE, "DNSSEC policy settings in KASP database "
-		         "is obsolete and will be removed in the next major release. "
-		         "Use zone.dnssec-policy in server configuration instead.");
+		         "is obsolete and will be removed in the next major release, "
+		         "use zone.dnssec-policy in server configuration instead");
 	}
 
 	return KNOT_EOK;

@@ -25,6 +25,8 @@ $TTL	1
 @	CERT	0	0	ECC-GOST	AA==		; Algorithm mnemo
 @	CERT	0	0	ECDSAP256SHA256	AA==		; Algorithm mnemo
 @	CERT	0	0	ECDSAP384SHA384	AA==		; Algorithm mnemo
+@	CERT	0	0	ED25519		AA==		; Algorithm mnemo
+@	CERT	0	0	ED448		AA==		; Algorithm mnemo
 @	CERT	0	0	INDIRECT	AA==		; Algorithm mnemo
 @	CERT	0	0	PRIVATEDNS	AA==		; Algorithm mnemo
 @	CERT	0	0	PRIVATEOID	AA==		; Algorithm mnemo

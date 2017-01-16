@@ -39,6 +39,8 @@
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
+#define RRSET_DUMP_LIMIT (2 * 1024 * 1024)
+
 #define TAB_WIDTH		8
 #define BLOCK_WIDTH		40
 #define BLOCK_INDENT		"\n\t\t\t\t"
@@ -1243,7 +1245,7 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 {
 	uint16_t data;
 	size_t   in_len = sizeof(data);
-	const char *rcode_str = "NULL";
+	const char *rcode_str = "Unknown";
 
 	// Check input size.
 	if (in_len > p->in_max) {
@@ -1255,9 +1257,10 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 
 	// Find RCODE name.
 	const knot_lookup_t *rcode = NULL;
-	rcode = knot_lookup_by_id((data >= ((knot_lookup_t *)knot_tsig_err_names)->id) ?
-	                          knot_tsig_err_names : knot_rcode_names,
-	                          data);
+	rcode = knot_lookup_by_id(knot_tsig_rcode_names, data);
+	if (rcode == NULL) {
+		rcode = knot_lookup_by_id(knot_rcode_names, data);
+	}
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
@@ -1315,6 +1318,12 @@ static size_t dnskey_len(const uint8_t *rdata,
 	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
 		// RFC 6605.
 		return 384;
+	case KNOT_DNSSEC_ALG_ED25519:
+		// RFC TBD, an Ed25519 public key consists of a 32-octet value.
+		return 256;
+	case KNOT_DNSSEC_ALG_ED448:
+		// RFC TBD, an Ed448 public key consists of a 57-octet value.
+		return 456;
 	default:
 		return 0;
 	}
@@ -1991,26 +2000,26 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	return len;
 }
 
-_public_
-int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
-                        char                    *dst,
-                        const size_t            maxlen,
-                        const knot_dump_style_t *style)
+static int rrset_txt_dump(const knot_rrset_t      *rrset,
+                          char                    *dst,
+                          const size_t            maxlen,
+                          const knot_dump_style_t *style)
 {
 	if (rrset == NULL || dst == NULL || style == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	size_t len = 0;
-	int    ret;
+
+	dst[0] = '\0';
 
 	// Loop over rdata in rrset.
 	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; i++) {
 		// Dump rdata owner, class, ttl and type.
 		const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, i);
-		ret = knot_rrset_txt_dump_header(rrset, knot_rdata_ttl(rr_data),
-		                                 dst + len, maxlen - len, style);
+		int ret = knot_rrset_txt_dump_header(rrset, knot_rdata_ttl(rr_data),
+		                                     dst + len, maxlen - len, style);
 		if (ret < 0) {
 			return KNOT_ESPACE;
 		}
@@ -2033,4 +2042,36 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	}
 
 	return len;
+}
+
+_public_
+int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
+                        char                    **dst,
+                        size_t                  *dst_size,
+                        const knot_dump_style_t *style)
+{
+	if (dst == NULL || dst_size == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	while (1) {
+		int ret = rrset_txt_dump(rrset, *dst, *dst_size, style);
+		if (ret != KNOT_ESPACE) {
+			return ret;
+		}
+
+		size_t new_dst_size = 2 * (*dst_size);
+		if (new_dst_size > RRSET_DUMP_LIMIT) {
+			return KNOT_ESPACE;
+		}
+
+		char * new_dst = malloc(new_dst_size);
+		if (new_dst == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		free(*dst);
+		*dst = new_dst;
+		*dst_size = new_dst_size;
+	}
 }

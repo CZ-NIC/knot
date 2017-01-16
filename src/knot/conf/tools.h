@@ -84,6 +84,10 @@ int check_modref(
 	conf_check_t *args
 );
 
+int check_server(
+	conf_check_t *args
+);
+
 int check_keystore(
 	conf_check_t *args
 );

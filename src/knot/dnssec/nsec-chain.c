@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -162,9 +162,7 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 	assert(nodes);
 	assert(callback);
 
-	bool sorted = true;
-	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
-
+	hattrie_iter_t *it = hattrie_iter_begin(nodes);
 	if (!it) {
 		return KNOT_ENOMEM;
 	}

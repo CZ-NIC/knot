@@ -43,11 +43,11 @@ int use_journal = 0;
 
 /*! Log context. */
 typedef struct {
-	size_t facility_count; /*!< Log sink count. */
-	int *facility;         /*!< Log sinks. */
-	size_t file_count;     /*!< Open files count. */
-	FILE **file;           /*!< Open files. */
-	logflag_t flags;       /*!< Formatting flags. */
+	size_t target_count; /*!< Log target count. */
+	int *target;         /*!< Log targets. */
+	size_t file_count;   /*!< Open files count. */
+	FILE **file;         /*!< Open files. */
+	log_flag_t flags;    /*!< Formatting flags. */
 } log_t;
 
 /*! Log singleton. */
@@ -68,13 +68,13 @@ static void sink_free(log_t *log)
 	for (int i = 0; i < log->file_count; ++i) {
 		fclose(log->file[i]);
 	}
-	free(log->facility);
+	free(log->target);
 	free(log->file);
 	free(log);
 }
 
 /*!
- * \brief Create logging facilities respecting their canonical order.
+ * \brief Create logging targets respecting their canonical order.
  *
  * Facilities ordering: Syslog, Stderr, Stdout, File0...
  */
@@ -86,20 +86,20 @@ static log_t *sink_setup(size_t file_count)
 	}
 	memset(log, 0, sizeof(*log));
 
-	// Reserve space for facilities.
-	log->facility_count = LOGT_FILE + file_count;
-	log->facility = malloc(LOG_ANY * sizeof(int) * log->facility_count);
-	if (!log->facility) {
+	// Reserve space for targets.
+	log->target_count = LOG_TARGET_FILE + file_count;
+	log->target = malloc(LOG_SOURCE_ANY * sizeof(int) * log->target_count);
+	if (!log->target) {
 		free(log);
 		return NULL;
 	}
-	memset(log->facility, 0, LOG_ANY * sizeof(int) * log->facility_count);
+	memset(log->target, 0, LOG_SOURCE_ANY * sizeof(int) * log->target_count);
 
 	// Reserve space for log files.
 	if (file_count > 0) {
 		log->file = malloc(sizeof(FILE *) * file_count);
 		if (!log->file) {
-			free(log->facility);
+			free(log->target);
 			free(log);
 			return NULL;
 		}
@@ -117,34 +117,34 @@ static void sink_publish(log_t *log)
 	sink_free(old_log);
 }
 
-static int *src_levels(log_t *log, logfacility_t facility, logsrc_t src)
+static int *src_levels(log_t *log, log_target_t target, log_source_t src)
 {
-	assert(src < LOG_ANY);
-	return &log->facility[LOG_ANY * facility + src];
+	assert(src < LOG_SOURCE_ANY);
+	return &log->target[LOG_SOURCE_ANY * target + src];
 }
 
-static void sink_levels_set(log_t *log, logfacility_t facility, logsrc_t src, int levels)
+static void sink_levels_set(log_t *log, log_target_t target, log_source_t src, int levels)
 {
 	// Assign levels to the specified source.
-	if (src != LOG_ANY) {
-		*src_levels(log, facility, src) = levels;
+	if (src != LOG_SOURCE_ANY) {
+		*src_levels(log, target, src) = levels;
 	} else {
 		// ANY ~ set levels to all sources.
-		for (int i = 0; i < LOG_ANY; ++i) {
-			*src_levels(log, facility, i) = levels;
+		for (int i = 0; i < LOG_SOURCE_ANY; ++i) {
+			*src_levels(log, target, i) = levels;
 		}
 	}
 }
 
-static void sink_levels_add(log_t *log, logfacility_t facility, logsrc_t src, int levels)
+static void sink_levels_add(log_t *log, log_target_t target, log_source_t src, int levels)
 {
 	// Add levels to the specified source.
-	if (src != LOG_ANY) {
-		*src_levels(log, facility, src) |= levels;
+	if (src != LOG_SOURCE_ANY) {
+		*src_levels(log, target, src) |= levels;
 	} else {
 		// ANY ~ add levels to all sources.
-		for (int i = 0; i < LOG_ANY; ++i) {
-			*src_levels(log, facility, i) |= levels;
+		for (int i = 0; i < LOG_SOURCE_ANY; ++i) {
+			*src_levels(log, target, i) |= levels;
 		}
 	}
 }
@@ -167,9 +167,9 @@ void log_init(void)
 	use_journal = sd_booted();
 #endif
 
-	sink_levels_set(log, LOGT_SYSLOG, LOG_ANY, emask);
-	sink_levels_set(log, LOGT_STDERR, LOG_ANY, emask);
-	sink_levels_set(log, LOGT_STDOUT, LOG_ANY, imask);
+	sink_levels_set(log, LOG_TARGET_SYSLOG, LOG_SOURCE_ANY, emask);
+	sink_levels_set(log, LOG_TARGET_STDERR, LOG_SOURCE_ANY, emask);
+	sink_levels_set(log, LOG_TARGET_STDOUT, LOG_SOURCE_ANY, imask);
 	sink_publish(log);
 
 	setlogmask(LOG_UPTO(LOG_DEBUG));
@@ -186,34 +186,34 @@ void log_close(void)
 	closelog();
 }
 
-void log_flag_set(logflag_t flag)
+void log_flag_set(log_flag_t flag)
 {
 	if (log_isopen()) {
 		s_log->flags |= flag;
 	}
 }
 
-void log_levels_set(logfacility_t facility, logsrc_t src, int levels)
+void log_levels_set(log_target_t target, log_source_t src, int levels)
 {
 	if (log_isopen()) {
-		sink_levels_set(s_log, facility, src, levels);
+		sink_levels_set(s_log, target, src, levels);
 	}
 }
 
-void log_levels_add(logfacility_t facility, logsrc_t src, int levels)
+void log_levels_add(log_target_t target, log_source_t src, int levels)
 {
 	if (log_isopen()) {
-		sink_levels_add(s_log, facility, src, levels);
+		sink_levels_add(s_log, target, src, levels);
 	}
 }
 
-static void emit_log_msg(int level, const char *zone, size_t zone_len, const char *msg)
+static void emit_log_msg(int level, log_source_t src, const char *zone,
+                         size_t zone_len, const char *msg)
 {
 	log_t *log = s_log;
-	logsrc_t src = zone ? LOG_ZONE : LOG_SERVER;
 
-	// Syslog facility.
-	if (*src_levels(log, LOGT_SYSLOG, src) & LOG_MASK(level)) {
+	// Syslog target.
+	if (*src_levels(log, LOG_TARGET_SYSLOG, src) & LOG_MASK(level)) {
 #ifdef ENABLE_SYSTEMD
 		if (use_journal) {
 			char *zone_fmt = zone ? "ZONE=%.*s" : NULL;
@@ -230,7 +230,7 @@ static void emit_log_msg(int level, const char *zone, size_t zone_len, const cha
 
 	// Prefix date and time.
 	char tstr[LOG_BUFLEN] = { 0 };
-	if (!(s_log->flags & LOG_FNO_TIMESTAMP)) {
+	if (!(s_log->flags & LOG_FLAG_NOTIMESTAMP)) {
 		struct tm lt;
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
@@ -240,14 +240,14 @@ static void emit_log_msg(int level, const char *zone, size_t zone_len, const cha
 		}
 	}
 
-	// Other log facilities.
-	for (int i = LOGT_STDERR; i < LOGT_FILE + log->file_count; ++i) {
+	// Other log targets.
+	for (int i = LOG_TARGET_STDERR; i < LOG_TARGET_FILE + log->file_count; ++i) {
 		if (*src_levels(log, i, src) & LOG_MASK(level)) {
 			FILE *stream;
 			switch (i) {
-			case LOGT_STDERR: stream = stderr; break;
-			case LOGT_STDOUT: stream = stdout; break;
-			default: stream = log->file[i - LOGT_FILE]; break;
+			case LOG_TARGET_STDERR: stream = stderr; break;
+			case LOG_TARGET_STDOUT: stream = stdout; break;
+			default: stream = log->file[i - LOG_TARGET_FILE]; break;
 			}
 
 			// Print the message.
@@ -289,7 +289,8 @@ static int log_msg_add(char **write, size_t *capacity, const char *fmt, ...)
 	return KNOT_EOK;
 }
 
-static void log_msg_text(int level, const char *zone, const char *fmt, va_list args)
+static void log_msg_text(int level, log_source_t src, const char *zone,
+                         const char *fmt, va_list args)
 {
 	if (!log_isopen()) {
 		return;
@@ -303,7 +304,7 @@ static void log_msg_text(int level, const char *zone, const char *fmt, va_list a
 	rcu_read_lock();
 
 	// Prefix error level.
-	if (level != LOG_INFO || !(s_log->flags & LOG_FNO_INFO)) {
+	if (level != LOG_INFO || !(s_log->flags & LOG_FLAG_NOINFO)) {
 		const char *prefix = level_prefix(level);
 		int ret = log_msg_add(&write, &capacity, "%s: ", prefix);
 		if (ret != KNOT_EOK) {
@@ -315,13 +316,10 @@ static void log_msg_text(int level, const char *zone, const char *fmt, va_list a
 	// Prefix zone name.
 	size_t zone_len = 0;
 	if (zone != NULL) {
-		// Strip terminating dot (unless root zone).
 		zone_len = strlen(zone);
-		if (zone_len > 1 && zone[zone_len - 1] == '.') {
-			zone_len -= 1;
-		}
+		const char *trailing_dot = zone[zone_len - 1] == '.' ? "" : ".";
 
-		int ret = log_msg_add(&write, &capacity, "[%.*s] ", zone_len, zone);
+		int ret = log_msg_add(&write, &capacity, "[%.*s%s] ", zone_len, zone, trailing_dot);
 		if (ret != KNOT_EOK) {
 			rcu_read_unlock();
 			return;
@@ -331,37 +329,46 @@ static void log_msg_text(int level, const char *zone, const char *fmt, va_list a
 	// Compile log message.
 	int ret = vsnprintf(write, capacity, fmt, args);
 	if (ret >= 0) {
-		// Send to logging facilities.
-		emit_log_msg(level, zone, zone_len, buff);
+		// Send to logging targets.
+		emit_log_msg(level, src, zone, zone_len, buff);
 	}
 
 	rcu_read_unlock();
 }
 
-void log_msg(int priority, const char *fmt, ...)
+void log_fmt(int priority, log_source_t src, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	log_msg_text(priority, NULL, fmt, args);
+	log_msg_text(priority, src, NULL, fmt, args);
 	va_end(args);
 }
 
-void log_msg_zone(int priority, const knot_dname_t *zone, const char *fmt, ...)
+void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone,
+                  const char *fmt, ...)
 {
 	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
 	char *zone_str = knot_dname_to_str(buff, zone, sizeof(buff));
+	if (zone_str == NULL) {
+		zone_str = NULL_ZONE_STR;
+	}
 
 	va_list args;
 	va_start(args, fmt);
-	log_msg_text(priority, zone_str ? zone_str : NULL_ZONE_STR, fmt, args);
+	log_msg_text(priority, src, zone_str, fmt, args);
 	va_end(args);
 }
 
-void log_msg_zone_str(int priority, const char *zone, const char *fmt, ...)
+void log_fmt_zone_str(int priority, log_source_t src, const char *zone,
+                      const char *fmt, ...)
 {
+	if (zone == NULL) {
+		zone = NULL_ZONE_STR;
+	}
+
 	va_list args;
 	va_start(args, fmt);
-	log_msg_text(priority, zone ? zone : NULL_ZONE_STR, fmt, args);
+	log_msg_text(priority, src, zone, fmt, args);
 	va_end(args);
 }
 
@@ -380,24 +387,24 @@ int log_update_privileges(int uid, int gid)
 	return KNOT_EOK;
 }
 
-static logfacility_t get_logtype(const char *logname)
+static log_target_t get_logtype(const char *logname)
 {
 	assert(logname);
 
 	if (strcasecmp(logname, "syslog") == 0) {
-		return LOGT_SYSLOG;
+		return LOG_TARGET_SYSLOG;
 	} else if (strcasecmp(logname, "stderr") == 0) {
-		return LOGT_STDERR;
+		return LOG_TARGET_STDERR;
 	} else if (strcasecmp(logname, "stdout") == 0) {
-		return LOGT_STDOUT;
+		return LOG_TARGET_STDOUT;
 	} else {
-		return LOGT_FILE;
+		return LOG_TARGET_FILE;
 	}
 }
 
 static int log_open_file(log_t *log, const char *filename)
 {
-	assert(LOGT_FILE + log->file_count < log->facility_count);
+	assert(LOG_TARGET_FILE + log->file_count < log->target_count);
 
 	// Open the file.
 	log->file[log->file_count] = fopen(filename, "a");
@@ -408,7 +415,7 @@ static int log_open_file(log_t *log, const char *filename)
 	// Disable buffering.
 	setvbuf(log->file[log->file_count], NULL, _IONBF, 0);
 
-	return LOGT_FILE + log->file_count++;
+	return LOG_TARGET_FILE + log->file_count++;
 }
 
 void log_reconfigure(conf_t *conf)
@@ -420,12 +427,12 @@ void log_reconfigure(conf_t *conf)
 		return;
 	}
 
-	// Find maximum log facility id.
+	// Find maximum log target id.
 	unsigned files = 0;
 	for (conf_iter_t iter = conf_iter(conf, C_LOG); iter.code == KNOT_EOK;
 	     conf_iter_next(conf, &iter)) {
 		conf_val_t id = conf_iter_id(conf, &iter);
-		if (get_logtype(conf_str(&id)) == LOGT_FILE) {
+		if (get_logtype(conf_str(&id)) == LOG_TARGET_FILE) {
 			++files;
 		}
 	}
@@ -443,13 +450,13 @@ void log_reconfigure(conf_t *conf)
 		conf_val_t id = conf_iter_id(conf, &iter);
 		const char *logname = conf_str(&id);
 
-		// Get facility.
-		int facility = get_logtype(logname);
-		if (facility == LOGT_FILE) {
-			facility = log_open_file(log, logname);
-			if (facility < 0) {
+		// Get target.
+		int target = get_logtype(logname);
+		if (target == LOG_TARGET_FILE) {
+			target = log_open_file(log, logname);
+			if (target < 0) {
 				log_error("failed to open log, file '%s' (%s)",
-				          logname, knot_strerror(facility));
+				          logname, knot_strerror(target));
 				continue;
 			}
 		}
@@ -460,17 +467,22 @@ void log_reconfigure(conf_t *conf)
 		// Set SERVER logging.
 		levels_val = conf_id_get(conf, C_LOG, C_SERVER, &id);
 		levels = conf_opt(&levels_val);
-		sink_levels_add(log, facility, LOG_SERVER, levels);
+		sink_levels_add(log, target, LOG_SOURCE_SERVER, levels);
+
+		// Set CONTROL logging.
+		levels_val = conf_id_get(conf, C_LOG, C_CTL, &id);
+		levels = conf_opt(&levels_val);
+		sink_levels_add(log, target, LOG_SOURCE_CONTROL, levels);
 
 		// Set ZONE logging.
 		levels_val = conf_id_get(conf, C_LOG, C_ZONE, &id);
 		levels = conf_opt(&levels_val);
-		sink_levels_add(log, facility, LOG_ZONE, levels);
+		sink_levels_add(log, target, LOG_SOURCE_ZONE, levels);
 
 		// Set ANY logging.
 		levels_val = conf_id_get(conf, C_LOG, C_ANY, &id);
 		levels = conf_opt(&levels_val);
-		sink_levels_add(log, facility, LOG_ANY, levels);
+		sink_levels_add(log, target, LOG_SOURCE_ANY, levels);
 	}
 
 	sink_publish(log);

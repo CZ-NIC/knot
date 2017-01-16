@@ -13,22 +13,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief IN zone lookup.
- *
- * \addtogroup query_processing
- * @{
- */
 
 #pragma once
 
 #include "libknot/packet/pkt.h"
-#include "knot/query/layer.h"
 
-/* Query data (from query processing). */
 struct query_data;
+struct answer_data;
 
 /*! \brief Internet query processing states. */
 enum {
@@ -45,10 +36,10 @@ enum {
 /*!
  * \brief Answer query from an IN class zone.
  *
- * \retval FAIL if it encountered an error.
- * \retval DONE if finished.
+ * \retval KNOT_STATE_FAIL if it encountered an error.
+ * \retval KNOT_STATE_DONE if finished.
  */
-int internet_process_query(knot_pkt_t *resp, struct query_data *qdata);
+int internet_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
  * \brief Puts RRSet to packet, will store its RRSIG for later use.
@@ -105,9 +96,8 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		} \
 	}
 
+/*! \brief Require maximum number of unsigned messages. */
 #define NS_NEED_TSIG_SIGNED(tsig_ctx, max_unsigned) \
 	if (tsig_unsigned_count(tsig_ctx) > max_unsigned) { \
 		return KNOT_STATE_FAIL; \
 	}
-
-/*! @} */

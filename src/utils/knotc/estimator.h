@@ -35,7 +35,6 @@ typedef struct {
 	size_t rdata_size;     /*!< Estimated RDATA size. */
 	size_t dname_size;     /*!< Estimated DNAME size. */
 	size_t node_size;      /*!< Estimated node size. */
-	size_t htable_size;    /*!< Estimated ahtable size. */
 	size_t record_count;   /*!< Total record count for zone. */
 } zone_estim_t;
 
@@ -56,13 +55,6 @@ void *estimator_malloc(void *ctx, size_t len);
  * \param p Data to free.
  */
 void estimator_free(void *p);
-
-/*!
- * \brief Goes through trie's ahtables and estimates their memory requirements.
- *
- * \param table Trie to traverse.
- */
-size_t estimator_trie_htable_memsize(hattrie_t *table);
 
 /*!
  * \brief For use with scanner - counts memsize of RRSets.

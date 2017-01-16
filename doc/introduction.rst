@@ -48,6 +48,7 @@ Server features:
 * Automatic DNSSEC signing
 * PKCS #11 interface
 * Forward and reverse records synthesis
+* DNS request traffic statistics
 
 For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 

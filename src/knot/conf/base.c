@@ -133,15 +133,10 @@ static void init_cache(
 	val = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
 	conf->cache.srv_max_tcp_clients = conf_int(&val);
 
-	val = conf_get(conf, C_SRV, C_RATE_LIMIT_SLIP);
-	conf->cache.srv_rate_limit_slip = conf_int(&val);
-
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
 
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
-
-	conf->cache.srv_rate_limit_whitelist = conf_get(conf, C_SRV, C_RATE_LIMIT_WHITELIST);
 }
 
 int conf_new(
@@ -180,6 +175,7 @@ int conf_new(
 	out->api = knot_db_lmdb_api();
 	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
 	lmdb_opts.mapsize = (size_t)CONF_MAPSIZE * 1024 * 1024;
+	lmdb_opts.maxreaders = CONF_MAX_DB_READERS;
 	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
 
 	// Open the database.
@@ -309,11 +305,22 @@ int conf_clone(
 }
 
 void conf_update(
-	conf_t *conf)
+	conf_t *conf,
+	conf_update_flag_t flags)
 {
 	// Remove the clone flag for new master configuration.
 	if (conf != NULL) {
 		conf->is_clone = false;
+
+		if ((flags & CONF_UPD_FCONFIO) && s_conf != NULL) {
+			conf->io.flags = s_conf->io.flags;
+			conf->io.zones = s_conf->io.zones;
+		}
+		if ((flags & CONF_UPD_FMODULES) && s_conf != NULL) {
+			list_dup(&conf->query_modules, &s_conf->query_modules,
+			         sizeof(struct query_module));
+			conf->query_plan = s_conf->query_plan;
+		}
 	}
 
 	conf_t **current_conf = &s_conf;
@@ -324,6 +331,15 @@ void conf_update(
 	if (old_conf != NULL) {
 		// Remove the clone flag if a single configuration.
 		old_conf->is_clone = (conf != NULL) ? true : false;
+
+		if (flags & CONF_UPD_FCONFIO) {
+			old_conf->io.zones = NULL;
+		}
+		if (flags & CONF_UPD_FMODULES) {
+			init_list(&old_conf->query_modules);
+			old_conf->query_plan = NULL;
+		}
+
 		conf_free(old_conf);
 	}
 }
@@ -343,6 +359,10 @@ void conf_free(
 	if (conf->io.txn != NULL) {
 		conf->api->txn_abort(conf->io.txn_stack);
 	}
+	if (conf->io.zones != NULL) {
+		hattrie_free(conf->io.zones);
+		mm_free(conf->mm, conf->io.zones);
+	}
 
 	conf_deactivate_modules(&conf->query_modules, &conf->query_plan);
 
@@ -354,6 +374,10 @@ void conf_free(
 
 	free(conf);
 }
+
+#define LOG_ARGS(mod_id, msg, ...) "module '%s%s%.*s', " msg, \
+	mod_id->name + 1, (mod_id->len > 0) ? "/" : "", (int)mod_id->len, \
+	mod_id->data
 
 void conf_activate_modules(
 	conf_t *conf,
@@ -381,6 +405,7 @@ void conf_activate_modules(
 	case KNOT_EOK:
 		break;
 	case KNOT_ENOENT: // Check if a module is configured at all.
+	case KNOT_YP_EINVAL_ID:
 		return;
 	default:
 		ret = val.code;
@@ -406,7 +431,8 @@ void conf_activate_modules(
 		}
 
 		// Open the module.
-		struct query_module *mod = query_module_open(conf, mod_id, conf->mm);
+		struct query_module *mod = query_module_open(conf, mod_id, *query_plan,
+		                                             zone_name, conf->mm);
 		if (mod == NULL) {
 			ret = KNOT_ENOMEM;
 			goto activate_error;
@@ -416,14 +442,9 @@ void conf_activate_modules(
 		if ((zone_name == NULL && (mod->scope & MOD_SCOPE_GLOBAL) == 0) ||
 		    (zone_name != NULL && (mod->scope & MOD_SCOPE_ZONE) == 0)) {
 			if (zone_name != NULL) {
-				log_zone_warning(zone_name,
-				                 "out of scope module '%s/%.*s'",
-				                 mod_id->name + 1, (int)mod_id->len,
-				                 mod_id->data);
+				log_zone_warning(zone_name, LOG_ARGS(mod_id, "out of scope"));
 			} else {
-				log_warning("out of scope module '%s/%.*s'",
-				            mod_id->name + 1, (int)mod_id->len,
-				            mod_id->data);
+				log_warning(LOG_ARGS(mod_id, "out of scope"));
 			}
 			query_module_close(mod);
 			conf_val_next(&val);
@@ -431,17 +452,12 @@ void conf_activate_modules(
 		}
 
 		// Load the module.
-		ret = mod->load(*query_plan, mod, zone_name);
+		ret = mod->load(mod);
 		if (ret != KNOT_EOK) {
 			if (zone_name != NULL) {
-				log_zone_error(zone_name,
-				               "failed to load module '%s/%.*s' (%s)",
-				               mod_id->name + 1, (int)mod_id->len,
-				               mod_id->data, knot_strerror(ret));
+				log_zone_error(zone_name, LOG_ARGS(mod_id, "failed to load"));
 			} else {
-				log_error("failed to load global module '%s/%.*s' (%s)",
-				          mod_id->name + 1, (int)mod_id->len,
-				          mod_id->data, knot_strerror(ret));
+				log_error(LOG_ARGS(mod_id, "failed to load"));
 			}
 			query_module_close(mod);
 			conf_val_next(&val);

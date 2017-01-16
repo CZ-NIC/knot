@@ -101,17 +101,17 @@ static int entity_list(const char *entity, void *_ctx, dnssec_list_t *names)
 		return DNSSEC_NOT_FOUND;
 	}
 
-	int error;
-	struct dirent entry, *result;
-	while (error = readdir_r(dir, &entry, &result), error == 0 && result) {
-		char *zone = file_to_entity(entity, entry.d_name);
+	errno = 0;
+	struct dirent *result;
+	while ((result = readdir(dir)) != NULL) {
+		char *zone = file_to_entity(entity, result->d_name);
 		if (zone) {
 			dnssec_list_append(names, zone);
 		}
 	}
 
-	if (error != 0) {
-		return dnssec_errno_to_error(error);
+	if (errno != 0) {
+		return dnssec_errno_to_error(errno);
 	}
 
 	return DNSSEC_EOK;

@@ -109,8 +109,10 @@
 #include <dnssec/kasp.h>
 #include <dnssec/key.h>
 #include <dnssec/keyid.h>
+#include <dnssec/keystate.h>
 #include <dnssec/keystore.h>
 #include <dnssec/keytag.h>
+#include <dnssec/keyusage.h>
 #include <dnssec/list.h>
 #include <dnssec/nsec.h>
 #include <dnssec/random.h>

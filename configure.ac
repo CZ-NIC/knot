@@ -28,7 +28,7 @@ AC_CONFIG_FILES([src/libknot/version.h
 
 # Updating version info
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST([libknot_VERSION_INFO],["-version-info 3:0:0"])
+AC_SUBST([libknot_VERSION_INFO],["-version-info 4:0:0"])
 AC_SUBST([libdnssec_VERSION_INFO],["-version-info 2:0:0"])
 AC_SUBST([libzscanner_VERSION_INFO],["-version-info 1:0:0"])
 
@@ -123,27 +123,21 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3 nettle], [
 # JSON for DNSSEC status storage
 PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
 
-# recvmmsg() (valgrind doesn't support it, so disable for debugging)
-# The check for struct mmsghdr is required when libc doesn't have an API but the function links
 AC_ARG_ENABLE([recvmmsg],
-    AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() network API under Linux (kernel support required) (set to 'no' if you have trouble running server under valgrind) [default=yes]]),
-    [case "${enableval}" in
-      yes)
-          AC_CHECK_FUNCS([sendmmsg])
-          AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[struct mmsghdr v; recvmmsg(0,0,0,0,0);]])],
-          [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
-          ;;
-      no)
-          ;;
-      *)
-          AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg])
-          ;;
-    esac],
-    [
-      AC_CHECK_FUNCS([sendmmsg])
-      AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[struct mmsghdr v; recvmmsg(0,0,0,0,0);]])],
-      [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
-    ])
+   AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
+   [], [enable_recvmmsg=auto])
+
+AS_CASE([$enable_recvmmsg],
+   [auto|yes],[
+      AC_CHECK_FUNC([recvmmsg],
+                    [AC_CHECK_FUNC([sendmmsg],[enable_recvmmsg=yes],[enable_recvmmsg=no])],
+                    [enable_recvmmsg=no])],
+   [no],[],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-recvmmsg.]
+ )])
+
+AS_IF([test "$enable_recvmmsg" = yes],[
+   AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
 
 AC_ARG_ENABLE([reuseport],
     AS_HELP_STRING([--enable-reuseport=auto|yes|no], [enable Linux SO_REUSEPORT support [default=auto]]),
@@ -178,6 +172,8 @@ AS_IF([test "$enable_reuseport" = yes],[
    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])])
 
 AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
+AX_CHECK_LINK_FLAG(["-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs="-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs=""], "")
+AC_SUBST([LDFLAG_EXCLUDE_LIBS], $ldflag_exclude_libs)
 
 # Default directories
 run_dir="${localstatedir}/run/knot"
@@ -353,13 +349,14 @@ AS_IF([test "$with_lmdb" != "no"],[
     ])
 
 AS_IF([test "$have_lmdb" != "no"],[
-    AC_SUBST([lmdb_CFLAGS])
     AC_SUBST([lmdb_LIBS])
     enable_lmdb=shared
     ],[
     enable_lmdb=embedded
+    lmdb_CFLAGS='-I$(srcdir)/contrib/lmdb'
     ])
-AM_CONDITIONAL([HAVE_LMDB], test "$have_lmdb" != "no")
+AM_CONDITIONAL([HAVE_LMDB], test "$enable_lmdb" = "shared")
+AC_SUBST([lmdb_CFLAGS])
 
 # LMDB mapping sizes
 conf_mapsize_default=500
@@ -534,6 +531,7 @@ AC_CONFIG_FILES([Makefile
                  tests/Makefile
                  tests-fuzz/Makefile
                  samples/Makefile
+                 python/Makefile
                  src/Makefile
                  src/contrib/dnstap/Makefile
                  src/dnssec/Makefile
@@ -572,6 +570,7 @@ AC_MSG_RESULT([
     Knot DNS utils:         ${enable_utilities}
     Knot DNS documentation: ${enable_documentation}
 
+    Use recvmmsg:        ${enable_recvmmsg}
     Use SO_REUSEPORT:    ${enable_reuseport}
     Fast zone parser:    ${enable_fastparser}
     Utilities with IDN:  ${with_libidn}

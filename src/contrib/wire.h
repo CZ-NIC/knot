@@ -38,7 +38,9 @@
  */
 inline static uint16_t wire_read_u16(const uint8_t *pos)
 {
-	return be16toh(*(uint16_t *)pos);
+	uint16_t result;
+	memcpy(&result, pos, sizeof(result));
+	return be16toh(result);
 }
 
 /*!
@@ -50,7 +52,9 @@ inline static uint16_t wire_read_u16(const uint8_t *pos)
  */
 inline static uint32_t wire_read_u32(const uint8_t *pos)
 {
-	return be32toh(*(uint32_t *)pos);
+	uint32_t result;
+	memcpy(&result, pos, sizeof(result));
+	return be32toh(result);
 }
 
 /*!
@@ -76,7 +80,9 @@ inline static uint64_t wire_read_u48(const uint8_t *pos)
  */
 inline static uint64_t wire_read_u64(const uint8_t *pos)
 {
-	return be64toh(*(uint64_t *)pos);
+	uint64_t result;
+	memcpy(&result, pos, sizeof(result));
+	return be64toh(result);
 }
 
 /*!
@@ -89,7 +95,8 @@ inline static uint64_t wire_read_u64(const uint8_t *pos)
  */
 inline static void wire_write_u16(uint8_t *pos, uint16_t data)
 {
-	*(uint16_t *)pos = htobe16(data);
+	uint16_t beval = htobe16(data);
+	memcpy(pos, &beval, sizeof(beval));
 }
 
 /*!
@@ -102,7 +109,8 @@ inline static void wire_write_u16(uint8_t *pos, uint16_t data)
  */
 inline static void wire_write_u32(uint8_t *pos, uint32_t data)
 {
-	*(uint32_t *)pos = htobe32(data);
+	uint32_t beval = htobe32(data);
+	memcpy(pos, &beval, sizeof(beval));
 }
 
 /*!
@@ -129,7 +137,8 @@ inline static void wire_write_u48(uint8_t *pos, uint64_t data)
  */
 inline static void wire_write_u64(uint8_t *pos, uint64_t data)
 {
-	*(uint64_t *)pos = htobe64(data);
+	uint64_t beval = htobe64(data);
+	memcpy(pos, &beval, sizeof(beval));
 }
 
 /*! @} */

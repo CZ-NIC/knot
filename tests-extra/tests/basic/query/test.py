@@ -56,6 +56,11 @@ resp = knot.dig("ns.sub.flags", "A", udp=True)
 resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
 resp.cmp(bind, additional=True)
 
+# Positive (REFERRAL, below delegation, ignoring empty-nonterminal during lookup)
+resp = knot.dig("bellow.ns.sub.flags", "A", udp=True)
+resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
+resp.cmp(bind, additional=True)
+
 ''' ANY query type. '''
 
 # ANY to SOA record
