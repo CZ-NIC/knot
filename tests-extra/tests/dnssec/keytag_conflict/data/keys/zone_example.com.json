@@ -1,0 +1,41 @@
+{
+  "policy": "manual",
+  "keys": [
+    {
+      "id": "7a3500c7feac3fd99f09a208a83b97f7455fa3e0",
+      "keytag": 58041,
+      "algorithm": 7,
+      "public_key": "AwEAAbvXqLB1/wIPCdK+9ZU/bc0HlmxGUQDmWPMPswuIak77QGXhPUrAfqaaDTPG73WsS1UDSCCiqjsbLXjmWMTBYnE=",
+      "ksk": true,
+      "publish": "1970-01-01T00:00:01+0000",
+      "active": "1970-01-01T00:00:01+0000"
+    },
+    {
+      "id": "712d0d0d57fa0aa006b5e20cd84e23941e5f3ab2",
+      "keytag": 55574,
+      "algorithm": 7,
+      "public_key": "AwEAAcm6ymueOZwLH7LvZkWLsk4NFplKrj9jCMBwgkRRwU1+8faMbo+/Ml7QmYIWY5vhkpevfJDAcJtFf9iWxqQKYA8=",
+      "ksk": false,
+      "publish": "2040-01-01T00:00:00+0000",
+      "active": "2040-01-01T00:00:00+0000"
+    },
+    {
+      "id": "301d3fc5392e83ea02312dc5bdc1a9f0b7937ddf",
+      "keytag": 950,
+      "algorithm": 7,
+      "public_key": "AwEAAbA0LpTdaJ5OF5xhhS4VpkbnUgaQbcuF2zshQYpHhPTd0tTDKs7M7jGznol13VcCHD4Jg5eTdbdwpQSSYEh/viU=",
+      "ksk": false,
+      "publish": "2009-12-31T23:00:00+0000",
+      "active": "2009-12-31T23:00:00+0000"
+    },
+    {
+      "id": "6abddc73bcb46c4e6078cf764290ac315fff03f0",
+      "keytag": 950,
+      "algorithm": 7,
+      "public_key": "AwEAAaJjbo9IB+R2I3QtK+4tJsbQaea6/Xczz0lMEu9mQhT7Kt2/LHXwIdnGbLxkIJGAjz2VdGcfpFD91shhcvcaogk=",
+      "ksk": false,
+      "publish": "2009-12-31T23:00:00+0000",
+      "active": "2009-12-31T23:00:00+0000"
+    }
+  ]
+}
