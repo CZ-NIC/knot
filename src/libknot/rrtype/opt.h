@@ -58,8 +58,10 @@ enum knot_edns_const {
 	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8,
 	/*! \brief EDNS DNS Cookie option code. */
 	KNOT_EDNS_OPTION_COOKIE        = 10,
+	/*! \brief EDNS TCP Keepalive option code. */
+	KNOT_EDNS_OPTION_TCP_KEEPALIVE = 11,
 	/*! \brief EDNS Padding option code. */
-	KNOT_EDNS_OPTION_PADDING       = 12
+	KNOT_EDNS_OPTION_PADDING       = 12,
 };
 
 /* Helpers for splitting extended RCODE. */
