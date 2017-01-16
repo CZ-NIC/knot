@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -733,6 +733,53 @@ int knot_edns_client_subnet_get_addr(struct sockaddr_storage *addr,
 	ecs_write_address(&dst, &src, ecs->source_len);
 
 	assert(dst.error == KNOT_EOK);
+
+	return KNOT_EOK;
+}
+
+_public_
+size_t knot_edns_keepalive_size(uint16_t timeout)
+{
+	return (timeout == 0) ? sizeof(uint16_t) : 2 * sizeof(uint16_t);
+}
+
+_public_
+int knot_edns_keepalive_write(uint8_t *option, size_t option_len, uint16_t timeout)
+{
+	if (option == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	wire_ctx_t wire = wire_ctx_init(option, option_len);
+	if (timeout == 0) {
+		wire_ctx_write_u16(&wire, 0);
+	} else {
+		wire_ctx_write_u16(&wire, 2);
+		wire_ctx_write_u16(&wire, timeout);
+	}
+
+	return wire.error;
+}
+
+_public_
+int knot_edns_keepalive_parse(uint16_t *timeout, const uint8_t *option, size_t option_len)
+{
+	if (timeout == NULL || option == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	wire_ctx_t wire = wire_ctx_init_const(option, option_len);
+
+	uint16_t len = wire_ctx_read_u16(&wire);
+	if (len == 0) {
+		*timeout = 0;
+	} else {
+		*timeout = wire_ctx_read_u16(&wire);
+	}
+
+	if (wire.error != KNOT_EOK || wire_ctx_available(&wire) != 0) {
+		return KNOT_EMALF;
+	}
 
 	return KNOT_EOK;
 }
