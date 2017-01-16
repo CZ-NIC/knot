@@ -48,8 +48,10 @@ struct knot_request {
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
 	tsig_ctx_t tsig;
-	knot_sign_context_t sign; // TODO: WIPE?
 	knot_layer_t layer;
+
+	knot_sign_context_t sign; /* TODO: Remove. Used in updates only, should
+	                             be part of the zone update context. */
 };
 
 /*!
