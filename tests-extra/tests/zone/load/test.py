@@ -16,6 +16,9 @@ zone_upd = t.zone_rnd(1, dnssec=False)
 zones = zone_del + zone_upd
 t.link(zones, master, slave)
 
+# Decrease the zone refresh timer.
+master.zones[zone_del[0].name].zfile.update_soa(refresh=4)
+
 t.start()
 
 serial_del_init = master.zone_wait(zone_del)
@@ -33,7 +36,7 @@ slave.clean(zone=zone_del, timers=False)
 
 slave.start()
 
-# Check for immediate zone transfer if deleted.
+# Check for planned zone transfer if zone file deleted.
 slave.zone_wait(zone_del, serial=serial_del_init, equal=True, greater=False)
 
 # Check for untouched zone if retransfer already scheduled.
