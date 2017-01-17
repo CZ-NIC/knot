@@ -21,6 +21,7 @@ src/contrib/dnstap/reader.c
 src/contrib/dnstap/reader.h
 src/contrib/dnstap/writer.c
 src/contrib/dnstap/writer.h
+src/contrib/dynarray.h
 src/contrib/endian.h
 src/contrib/files.c
 src/contrib/files.h
