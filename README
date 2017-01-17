@@ -4,7 +4,7 @@ Dependencies
 Knot DNS has several dependencies:
 * libtool
 * autoconf > 2.65
-* pkgconf
+* pkg-config
 * liburcu >= 0.5.4
 * gnutls >= 3.0
 * jansson >= 2.3
@@ -41,7 +41,7 @@ $ sudo apt-get upgrade
 
 Install prerequisites:
 $ sudo apt-get install \
-  libtool autoconf pkgconf liburcu-dev libgnutls28-dev libjansson-dev libedit-dev
+  libtool autoconf make pkg-config liburcu-dev libgnutls28-dev libjansson-dev libedit-dev
 
 Install optional packages to override embedded libraries:
 $ sudo apt-get install liblmdb-dev

@@ -23,6 +23,7 @@ check_PROGRAMS = \
 	contrib/test_sockaddr		\
 	contrib/test_string		\
 	contrib/test_strtonum		\
+	contrib/test_time		\
 	contrib/test_wire		\
 	contrib/test_wire_ctx
 
@@ -66,7 +67,6 @@ check_PROGRAMS += \
 	test_fdset			\
 	test_journal			\
 	test_node			\
-	test_process_answer		\
 	test_process_query		\
 	test_query_module		\
 	test_requestor			\
@@ -116,4 +116,3 @@ test_conf_SOURCES = test_conf.c test_conf.h
 test_confdb_SOURCES = test_confdb.c test_conf.h
 test_confio_SOURCES = test_confio.c test_conf.h
 test_process_query_SOURCES = test_process_query.c test_server.h test_conf.h
-test_process_answer_SOURCES = test_process_answer.c test_server.h test_conf.h

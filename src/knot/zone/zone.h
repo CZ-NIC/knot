@@ -33,6 +33,7 @@
 #include "knot/journal/journal.h"
 #include "knot/events/events.h"
 #include "knot/zone/contents.h"
+#include "knot/zone/timers.h"
 #include "libknot/dname.h"
 #include "libknot/packet/pkt.h"
 
@@ -46,7 +47,6 @@ typedef enum zone_flag_t {
 	ZONE_FORCE_AXFR   = 1 << 0, /* Force AXFR as next transfer. */
 	ZONE_FORCE_RESIGN = 1 << 1, /* Force zone resign. */
 	ZONE_FORCE_FLUSH  = 1 << 2, /* Force zone flush. */
-	ZONE_EXPIRED      = 1 << 3, /* Zone is expired. */
 } zone_flag_t;
 
 /*!
@@ -69,8 +69,8 @@ typedef struct zone
 	} zonefile;
 
 	/*! \brief Zone events. */
-	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
-	zone_events_t events;     /*!< Zone events timers. */
+	zone_timers_t timers;      //!< Persistent zone timers.
+	zone_events_t events;      //!< Zone events timers.
 
 	/*! \brief DDNS queue and lock. */
 	pthread_mutex_t ddns_lock;
@@ -150,6 +150,12 @@ void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr
 /*! \brief Clears the current preferred master address. */
 void zone_clear_preferred_master(zone_t *zone);
 
+/*! \brief Get zone SOA RR. */
+const knot_rdataset_t *zone_soa(const zone_t *zone);
+
+/*! \brief Check if zone is expired according to timers. */
+bool zone_expired(const zone_t *zone);
+
 typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *remote,
                               void *data);
 
@@ -171,8 +177,5 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 
 /*! \brief Dequeue UPDATE request. Returns number of queued updates. */
 size_t zone_update_dequeue(zone_t *zone, list_t *updates);
-
-/*! \brief Returns true if final SOA in transfer has newer serial than zone */
-bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);
 
 /*! @} */

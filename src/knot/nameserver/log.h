@@ -18,15 +18,70 @@
 
 #include "contrib/sockaddr.h"
 #include "knot/common/log.h"
+#include "libknot/dname.h"
+
+enum log_operation {
+	LOG_OPERATION_AXFR,
+	LOG_OPERATION_IXFR,
+	LOG_OPERATION_NOTIFY,
+	LOG_OPERATION_REFRESH,
+	LOG_OPERATION_UPDATE,
+};
+
+enum log_direction {
+	LOG_DIRECTION_IN,
+	LOG_DIRECTION_OUT,
+};
+
+static inline const char *log_operation_name(enum log_operation operation)
+{
+	switch (operation) {
+	case LOG_OPERATION_AXFR:
+		return "AXFR";
+	case LOG_OPERATION_IXFR:
+		return "IXFR";
+	case LOG_OPERATION_NOTIFY:
+		return "notify";
+	case LOG_OPERATION_REFRESH:
+		return "refresh";
+	case LOG_OPERATION_UPDATE:
+		return "DDNS";
+	default:
+		return "?";
+	}
+}
+
+static inline const char *log_direction_name(enum log_direction direction)
+{
+	switch (direction) {
+	case LOG_DIRECTION_IN:
+		return "incoming";
+	case LOG_DIRECTION_OUT:
+		return "outgoing";
+	default:
+		return "?";
+	}
+}
 
 /*!
- * \brief Base log message format for network communication.
+ * \brief Generate log message for server communication.
  *
- * Emits a message in the following format:
- * > [zone] operation, address: custom formatted message
+ * If this macro was a function:
+ *
+ * void ns_log(int priority, const knot_dname_t *zone, enum log_operation op,
+ *             enum log_direction dir, const struct sockaddr *remote,
+ *             const char *fmt, ...);
+ *
+ * Example output:
+ *
+ * [example.com] NOTIFY, outgoing, 2001:db8::1@53: serial 123
+ *
  */
-#define NS_PROC_LOG(priority, zone, remote, operation, msg, ...) do { \
-	char addr[SOCKADDR_STRLEN] = ""; \
-	sockaddr_tostr(addr, sizeof(addr), (struct sockaddr *)remote); \
-	log_msg_zone(priority, zone, "%s, %s: " msg, operation, addr, ##__VA_ARGS__); \
+#define ns_log(priority, zone, op, dir, remote, fmt, ...) \
+	do { \
+		char address[SOCKADDR_STRLEN] = ""; \
+		sockaddr_tostr(address, sizeof(address), remote); \
+		log_msg_zone(priority, zone, "%s, %s, %s: " fmt, \
+		             log_operation_name(op), log_direction_name(dir), address, \
+		             ## __VA_ARGS__); \
 	} while (0)

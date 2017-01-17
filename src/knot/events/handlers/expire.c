@@ -21,6 +21,7 @@
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/events/handlers.h"
+#include "knot/events/replan.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zone.h"
 
@@ -29,16 +30,17 @@ int event_expire(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
-	synchronize_rcu();
-
-	/* Expire zonefile information. */
-	zone->zonefile.exists = false;
-	zone->flags |= ZONE_EXPIRED;
-	zone_contents_deep_free(&expired);
-
 	log_zone_info(zone->name, "zone expired");
 
+	synchronize_rcu();
+	zone_contents_deep_free(&expired);
+
+	zone->zonefile.exists = false;
 	mem_trim();
+
+	// NOTE: must preserve zone->timers.soa_expire
+	zone->timers.next_refresh = time(NULL);
+	replan_from_timers(conf, zone);
 
 	return KNOT_EOK;
 }

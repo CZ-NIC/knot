@@ -55,6 +55,11 @@ typedef struct {
 	unsigned thread_id; /*!< Thread identifier. */
 } udp_context_t;
 
+static bool udp_state_active(int state)
+{
+	return (state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL);
+}
+
 static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
                        struct iovec *rx, struct iovec *tx)
 {
@@ -70,7 +75,7 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	};
 
 	/* Start query processing. */
-	udp->layer.state = knot_layer_begin(&udp->layer, &param);
+	knot_layer_begin(&udp->layer, &param);
 
 	/* Create packets. */
 	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, udp->layer.mm);
@@ -78,15 +83,15 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 
 	/* Input packet. */
 	(void) knot_pkt_parse(query, 0);
-	int state = knot_layer_consume(&udp->layer, query);
+	knot_layer_consume(&udp->layer, query);
 
 	/* Process answer. */
-	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
-		state = knot_layer_produce(&udp->layer, ans);
+	while (udp_state_active(udp->layer.state)) {
+		knot_layer_produce(&udp->layer, ans);
 	}
 
 	/* Send response only if finished successfully. */
-	if (state == KNOT_STATE_DONE) {
+	if (udp->layer.state == KNOT_STATE_DONE) {
 		tx->iov_len = ans->size;
 	} else {
 		tx->iov_len = 0;

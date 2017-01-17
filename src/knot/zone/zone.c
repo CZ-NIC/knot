@@ -272,9 +272,18 @@ int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs)
 		if (ret == KNOT_EBUSY) {
 			log_zone_notice(zone->name, "journal is full, flushing");
 
+			/*
+			 * TODO: Check where zone_flush_journal is used beyond
+			 * event_flush(). zone->timers.last flush needs to be
+			 * updated and flush event rescheduled.
+			 *
+			 * The code bellow does only half of it.
+			 */
+
 			/* Transaction rolled back, journal released, we may flush. */
 			ret = flush_journal(conf, zone);
 			if (ret == KNOT_EOK) {
+				zone->timers.last_flush = time(NULL);
 				ret = journal_store_changesets(zone->journal, chgs);
 			}
 		}
@@ -367,6 +376,27 @@ void zone_clear_preferred_master(zone_t *zone)
 	free(zone->preferred_master);
 	zone->preferred_master = NULL;
 	pthread_mutex_unlock(&zone->preferred_lock);
+}
+
+const knot_rdataset_t *zone_soa(const zone_t *zone)
+{
+	if (!zone || zone_contents_is_empty(zone->contents)) {
+		return NULL;
+	}
+
+	return node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
+}
+
+bool zone_expired(const zone_t *zone)
+{
+	if (!zone) {
+		return false;
+	}
+
+	const zone_timers_t *timers = &zone->timers;
+
+	return timers->last_refresh > 0 && timers->soa_expire > 0 &&
+	       timers->last_refresh + timers->soa_expire <= time(NULL);
 }
 
 /*!
@@ -492,7 +522,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	pthread_mutex_unlock(&zone->ddns_lock);
 
 	/* Schedule UPDATE event. */
-	zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_UPDATE);
 
 	return KNOT_EOK;
 }
@@ -518,28 +548,4 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 	pthread_mutex_unlock(&zone->ddns_lock);
 
 	return update_count;
-}
-
-bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
-{
-	if (zone == NULL || pkt == NULL) {
-		return false;
-	}
-
-	if (zone_contents_is_empty(zone->contents)) {
-		return true;
-	}
-
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	if (answer->count < 1) {
-		return false;
-	}
-
-	const knot_rrset_t *soa = knot_pkt_rr(answer, 0);
-	if (soa->type != KNOT_RRTYPE_SOA) {
-		return false;
-	}
-
-	return serial_compare(zone_contents_serial(zone->contents),
-	                           knot_soa_serial(&soa->rrs)) < 0;
 }

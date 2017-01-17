@@ -56,6 +56,7 @@ src/contrib/sockaddr.h
 src/contrib/string.c
 src/contrib/string.h
 src/contrib/strtonum.h
+src/contrib/time.c
 src/contrib/time.h
 src/contrib/tolower.h
 src/contrib/trim.h
@@ -89,7 +90,6 @@ src/dnssec/lib/dnssec/nsec.h
 src/dnssec/lib/dnssec/random.h
 src/dnssec/lib/dnssec/sign.h
 src/dnssec/lib/dnssec/tsig.h
-src/dnssec/lib/dnssec/version.h
 src/dnssec/lib/error.c
 src/dnssec/lib/event/action.h
 src/dnssec/lib/event/action/initial_key.c
@@ -97,7 +97,6 @@ src/dnssec/lib/event/action/nsec3_resalt.c
 src/dnssec/lib/event/action/zsk_rollover.c
 src/dnssec/lib/event/event.c
 src/dnssec/lib/event/keystate.c
-src/dnssec/lib/event/keystate.h
 src/dnssec/lib/event/utils.c
 src/dnssec/lib/event/utils.h
 src/dnssec/lib/kasp/dir/dir.c
@@ -261,6 +260,8 @@ src/knot/events/handlers/load.c
 src/knot/events/handlers/notify.c
 src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
+src/knot/events/log.c
+src/knot/events/log.h
 src/knot/events/replan.c
 src/knot/events/replan.h
 src/knot/journal/journal.c
@@ -313,6 +314,8 @@ src/knot/nameserver/tsig_ctx.c
 src/knot/nameserver/tsig_ctx.h
 src/knot/nameserver/update.c
 src/knot/nameserver/update.h
+src/knot/nameserver/xfr.c
+src/knot/nameserver/xfr.h
 src/knot/query/capture.c
 src/knot/query/capture.h
 src/knot/query/layer.c
@@ -559,6 +562,7 @@ tests/contrib/test_qp-trie.c
 tests/contrib/test_sockaddr.c
 tests/contrib/test_string.c
 tests/contrib/test_strtonum.c
+tests/contrib/test_time.c
 tests/contrib/test_wire.c
 tests/contrib/test_wire_ctx.c
 tests/libknot/test_control.c
@@ -593,7 +597,6 @@ tests/test_dthreads.c
 tests/test_fdset.c
 tests/test_journal.c
 tests/test_node.c
-tests/test_process_answer.c
 tests/test_process_query.c
 tests/test_query_module.c
 tests/test_requestor.c

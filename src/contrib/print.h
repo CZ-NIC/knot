@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include <sys/time.h>
 #include <stdint.h>
 
 /*!
@@ -52,15 +51,5 @@ void short_hex_print(const uint8_t *data, unsigned length);
  * \param length	Size of the \a data array.
  */
 void txt_print(const uint8_t *data, unsigned length);
-
-/*!
- * \brief Get time difference in miliseconds.
- *
- * \param begin
- * \param end
- *
- * \return time diff
- */
-float time_diff(struct timeval *begin, struct timeval *end);
 
 /*! @} */

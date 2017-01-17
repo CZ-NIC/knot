@@ -17,7 +17,7 @@
 #include "contrib/mempattern.h"
 #include "libknot/libknot.h"
 #include "knot/modules/stats/stats.h"
-#include "knot/nameserver/axfr.h"
+#include "knot/nameserver/xfr.h"
 
 #define MOD_PROTOCOL	"\x10""request-protocol"
 #define MOD_OPERATION	"\x10""server-operation"
@@ -343,13 +343,13 @@ static int update_counters(int state, knot_pkt_t *pkt, struct query_data *qdata,
 	case KNOT_QUERY_AXFR:
 		operation = OPERATION_AXFR;
 		if (qdata->ext != NULL) {
-			xfr_packets = ((struct xfr_proc *)qdata->ext)->npkts;
+			xfr_packets = ((struct xfr_proc *)qdata->ext)->stats.messages;
 		}
 		break;
 	case KNOT_QUERY_IXFR:
 		operation = OPERATION_IXFR;
 		if (qdata->ext != NULL) {
-			xfr_packets = ((struct xfr_proc *)qdata->ext)->npkts;
+			xfr_packets = ((struct xfr_proc *)qdata->ext)->stats.messages;
 		}
 		break;
 	default:

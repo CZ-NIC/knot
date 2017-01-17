@@ -19,7 +19,6 @@
 #include "libknot/packet/pkt.h"
 
 struct query_data;
-struct answer_data;
 
 /*! \brief Internet query processing states. */
 enum {
@@ -40,15 +39,6 @@ enum {
  * \retval KNOT_STATE_DONE if finished.
  */
 int internet_process_query(knot_pkt_t *pkt, struct query_data *qdata);
-
-/*!
- * \brief Process answer in an IN class zone.
- *
- * \retval KNOT_STATE_FAIL if it encountered an error.
- * \retval KNOT_STATE_DONE if finished.
- * \retval KNOT_STATE_NOOP if not supported.
- */
-int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data);
 
 /*! \brief Require given QUERY TYPE or return error code. */
 #define NS_NEED_QTYPE(qdata, qtype_want, error_rcode) \

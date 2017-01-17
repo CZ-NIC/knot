@@ -21,10 +21,8 @@
 
 /*! \brief Loads or reloads potentially changed zone. */
 int event_load(conf_t *conf, zone_t *zone);
-/*! \brief Sends a SOA query to master. */
+/*! \brief Refresh a zone from a master. */
 int event_refresh(conf_t *conf, zone_t *zone);
-/*! \brief Initiates transfer with master. */
-int event_xfer(conf_t *conf, zone_t *zone);
 /*! \brief Processes DDNS updates in the zone's DDNS queue. */
 int event_update(conf_t *conf, zone_t *zone);
 /*! \brief Empties in-memory zone contents. */
@@ -35,7 +33,3 @@ int event_flush(conf_t *conf, zone_t *zone);
 int event_notify(conf_t *conf, zone_t *zone);
 /*! \brief Signs the zone using its DNSSEC keys. */
 int event_dnssec(conf_t *conf, zone_t *zone);
-void schedule_dnssec(zone_t *zone, time_t refresh_at);
-
-/*! \brief Get next bootstrap interval. */
-uint32_t bootstrap_next(uint32_t interval);

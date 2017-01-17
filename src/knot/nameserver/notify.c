@@ -24,15 +24,9 @@
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
 
-/* NOTIFY-specific logging (internal, expects 'qdata' variable set). */
-#define NOTIFY_IN_LOG(priority, msg, ...) \
-	NS_PROC_LOG(priority, knot_pkt_qname(qdata->query), qdata->param->remote, \
-	            "NOTIFY, incoming", msg, ##__VA_ARGS__)
-
-/* NOTIFY-specific logging (internal, expects 'adata' variable set). */
-#define NOTIFY_OUT_LOG(priority, msg, ...) \
-	NS_PROC_LOG(priority, adata->param->zone->name, adata->param->remote, \
-	            "NOTIFY, outgoing", msg, ##__VA_ARGS__)
+#define NOTIFY_IN_LOG(priority, qdata, fmt...) \
+	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_NOTIFY, \
+	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->param->remote, fmt)
 
 static int notify_check_query(struct query_data *qdata)
 {
@@ -58,7 +52,7 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	if (state == KNOT_STATE_FAIL) {
 		switch (qdata->rcode) {
 		case KNOT_RCODE_NOTAUTH: /* Not authoritative or ACL check failed. */
-			NOTIFY_IN_LOG(LOG_NOTICE, "unauthorized request");
+			NOTIFY_IN_LOG(LOG_NOTICE, qdata, "unauthorized request");
 			break;
 		case KNOT_RCODE_FORMERR: /* Silently ignore bad queries. */
 		default:
@@ -76,36 +70,18 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 		const knot_rrset_t *soa = knot_pkt_rr(answer, 0);
 		if (soa->type == KNOT_RRTYPE_SOA) {
 			uint32_t serial = knot_soa_serial(&soa->rrs);
-			NOTIFY_IN_LOG(LOG_INFO, "received serial %u", serial);
+			NOTIFY_IN_LOG(LOG_INFO, qdata, "received, serial %u", serial);
 		} else { /* Complain, but accept N/A record. */
-			NOTIFY_IN_LOG(LOG_NOTICE, "received, bad record in answer section");
+			NOTIFY_IN_LOG(LOG_NOTICE, qdata, "received, bad record in answer section");
 		}
 	} else {
-		NOTIFY_IN_LOG(LOG_INFO, "received, doesn't have SOA");
+		NOTIFY_IN_LOG(LOG_INFO, qdata, "received, serial none");
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
 	zone_t *zone = (zone_t *)qdata->zone;
 	zone_set_preferred_master(zone, qdata->param->remote);
-	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 
 	return KNOT_STATE_DONE;
-}
-
-int notify_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
-{
-	if (pkt == NULL || adata == NULL) {
-		return KNOT_STATE_FAIL;
-	}
-
-	/* Check RCODE. */
-	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
-		NOTIFY_OUT_LOG(LOG_WARNING, "server responded with error '%s'",
-		               knot_pkt_ext_rcode_name(pkt));
-		return KNOT_STATE_FAIL;
-	}
-
-	NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
-
-	return KNOT_STATE_DONE; /* No processing. */
 }

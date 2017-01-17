@@ -57,6 +57,11 @@ void tsig_init(tsig_ctx_t *ctx, const knot_tsig_key_t *key);
 void tsig_cleanup(tsig_ctx_t *ctx);
 
 /*!
+ * \brief Reset TSIG context for new message exchange.
+ */
+void tsig_reset(tsig_ctx_t *ctx);
+
+/*!
  * \brief Sign outgoing packet.
  *
  * \param ctx     TSIG signing context.

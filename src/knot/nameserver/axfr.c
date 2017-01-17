@@ -17,14 +17,22 @@
 #include <urcu.h>
 
 #include "contrib/mempattern.h"
-#include "contrib/print.h"
 #include "contrib/sockaddr.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
+#include "knot/nameserver/log.h"
+#include "knot/nameserver/xfr.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
+
+#define ZONE_NAME(qdata) knot_pkt_qname((qdata)->query)
+#define REMOTE(qdata) (struct sockaddr *)(qdata)->param->remote
+
+#define AXFROUT_LOG(priority, qdata, fmt...) \
+	ns_log(priority, ZONE_NAME(qdata), LOG_OPERATION_AXFR, \
+               LOG_DIRECTION_OUT, REMOTE(qdata), fmt)
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
@@ -142,7 +150,7 @@ static int axfr_query_init(struct query_data *qdata)
 	init_list(&axfr->proc.nodes);
 
 	/* Put data to process. */
-	gettimeofday(&axfr->proc.tstamp, NULL);
+	xfr_stats_begin(&axfr->proc.stats);
 	ptrlist_add(&axfr->proc.nodes, zone->nodes, mm);
 	/* Put NSEC3 data if exists. */
 	if (!zone_tree_is_empty(zone->nsec3_nodes)) {
@@ -160,53 +168,6 @@ static int axfr_query_init(struct query_data *qdata)
 	return KNOT_EOK;
 }
 
-int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
-                     struct query_data *qdata)
-{
-	if (pkt == NULL || qdata == NULL || qdata->ext == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_EOK;
-	knot_mm_t *mm = qdata->mm;
-	struct xfr_proc *xfer = qdata->ext;
-
-	zone_contents_t *zone = qdata->zone->contents;
-	knot_rrset_t soa_rr = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-
-	/* Prepend SOA on first packet. */
-	if (xfer->npkts == 0) {
-		ret = knot_pkt_put(pkt, 0, &soa_rr, KNOT_PF_NOTRUNC);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	/* Process all items in the list. */
-	while (!EMPTY_LIST(xfer->nodes)) {
-		ptrnode_t *head = HEAD(xfer->nodes);
-		ret = process_item(pkt, head->d, xfer);
-		if (ret == KNOT_EOK) { /* Finished. */
-			/* Complete change set. */
-			rem_node((node_t *)head);
-			mm_free(mm, head);
-		} else { /* Packet full or other error. */
-			break;
-		}
-	}
-
-	/* Append SOA on last packet. */
-	if (ret == KNOT_EOK) {
-		ret = knot_pkt_put(pkt, 0, &soa_rr, KNOT_PF_NOTRUNC);
-	}
-
-	/* Update counters. */
-	xfer->npkts  += 1;
-	xfer->nbytes += pkt->size;
-
-	return ret;
-}
-
 int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
@@ -214,7 +175,6 @@ int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	int ret = KNOT_EOK;
-	struct timeval now = {0};
 
 	/* If AXFR is disabled, respond with NOTIMPL. */
 	if (qdata->param->proc_flags & NS_QUERY_NO_AXFR) {
@@ -227,11 +187,11 @@ int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 		ret = axfr_query_init(qdata);
 		if (ret != KNOT_EOK) {
-			AXFROUT_LOG(LOG_ERR, "failed to start (%s)",
+			AXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
 			            knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		} else {
-			AXFROUT_LOG(LOG_INFO, "started, serial %u",
+			AXFROUT_LOG(LOG_INFO, qdata, "started, serial %u",
 			           zone_contents_serial(qdata->zone->contents));
 		}
 	}
@@ -246,198 +206,13 @@ int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return KNOT_STATE_PRODUCE; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
-		gettimeofday(&now, NULL);
-		AXFROUT_LOG(LOG_INFO,
-		            "finished, %.02f seconds, %u messages, %u bytes",
-		            time_diff(&axfr->proc.tstamp, &now) / 1000.0,
-		            axfr->proc.npkts, axfr->proc.nbytes);
+		xfr_stats_end(&axfr->proc.stats);
+		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_AXFR, LOG_DIRECTION_OUT,
+		                 REMOTE(qdata), &axfr->proc.stats);
 		return KNOT_STATE_DONE;
 		break;
 	default:          /* Generic error. */
-		AXFROUT_LOG(LOG_ERR, "failed (%s)", knot_strerror(ret));
+		AXFROUT_LOG(LOG_ERR, qdata, "failed (%s)", knot_strerror(ret));
 		return KNOT_STATE_FAIL;
 	}
-}
-
-static void axfr_answer_cleanup(struct answer_data *data)
-{
-	assert(data != NULL);
-
-	struct xfr_proc *proc = data->ext;
-	if (proc) {
-		zone_contents_deep_free(&proc->contents);
-		mm_free(data->mm, proc);
-		data->ext = NULL;
-	}
-}
-
-static int axfr_answer_init(struct answer_data *data)
-{
-	assert(data);
-
-	/* Create new zone contents. */
-	zone_t *zone = data->param->zone;
-	zone_contents_t *new_contents = zone_contents_new(zone->name);
-	if (new_contents == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	/* Create new processing context. */
-	struct xfr_proc *proc = mm_alloc(data->mm, sizeof(struct xfr_proc));
-	if (proc == NULL) {
-		zone_contents_deep_free(&new_contents);
-		return KNOT_ENOMEM;
-	}
-
-	memset(proc, 0, sizeof(struct xfr_proc));
-	proc->contents = new_contents;
-	gettimeofday(&proc->tstamp, NULL);
-
-	/* Set up cleanup callback. */
-	data->ext = proc;
-	data->ext_cleanup = &axfr_answer_cleanup;
-
-	return KNOT_EOK;
-}
-
-static int axfr_answer_finalize(struct answer_data *adata)
-{
-	struct timeval now;
-	gettimeofday(&now, NULL);
-
-	/*
-	 * Adjust zone so that node count is set properly and nodes are
-	 * marked authoritative / delegation point.
-	 */
-	struct xfr_proc *proc = adata->ext;
-	int rc = zone_contents_adjust_full(proc->contents);
-	if (rc != KNOT_EOK) {
-		return rc;
-	}
-
-	err_handler_logger_t handler;
-	handler._cb.cb = err_handler_logger;
-	rc = zone_do_sem_checks(proc->contents, false, &handler._cb);
-
-	if (rc != KNOT_EOK) {
-		return rc;
-	}
-
-	conf_val_t val = conf_zone_get(adata->param->conf, C_MAX_ZONE_SIZE,
-	                               proc->contents->apex->owner);
-	int64_t size_limit = conf_int(&val);
-
-	if (proc->contents->size > size_limit) {
-		AXFRIN_LOG(LOG_WARNING, "zone size exceeded");
-		return KNOT_STATE_FAIL;
-	}
-
-	/* Switch contents. */
-	zone_t *zone = adata->param->zone;
-	zone_contents_t *old_contents =
-	                zone_switch_contents(zone, proc->contents);
-	zone->flags &= ~ZONE_EXPIRED;
-	synchronize_rcu();
-
-	if (old_contents != NULL) {
-		AXFRIN_LOG(LOG_INFO, "finished, "
-		           "serial %u -> %u, %.02f seconds, %u messages, %u bytes",
-		           zone_contents_serial(old_contents),
-		           zone_contents_serial(proc->contents),
-		           time_diff(&proc->tstamp, &now) / 1000.0,
-		           proc->npkts, proc->nbytes);
-	} else {
-		AXFRIN_LOG(LOG_INFO, "finished, "
-		           "serial %u, %.02f seconds, %u messages, %u bytes",
-		           zone_contents_serial(proc->contents),
-		           time_diff(&proc->tstamp, &now) / 1000.0,
-		           proc->npkts, proc->nbytes);
-	}
-
-	/* Do not free new contents with cleanup. */
-	zone_contents_deep_free(&old_contents);
-	proc->contents = NULL;
-
-	return KNOT_EOK;
-}
-
-static int axfr_answer_packet(knot_pkt_t *pkt, struct answer_data *adata)
-{
-	assert(adata != NULL);
-	struct xfr_proc *proc = adata->ext;
-	assert(pkt != NULL);
-	assert(proc != NULL);
-
-	/* Update counters. */
-	proc->npkts  += 1;
-	proc->nbytes += pkt->size;
-
-	conf_val_t val = conf_zone_get(adata->param->conf, C_MAX_ZONE_SIZE,
-	                               proc->contents->apex->owner);
-	int64_t size_limit = conf_int(&val);
-
-	/* Init zone creator. */
-	zcreator_t zc = {.z = proc->contents, .master = false, .ret = KNOT_EOK };
-
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	const knot_rrset_t *answer_rr = knot_pkt_rr(answer, 0);
-	for (uint16_t i = 0; i < answer->count; ++i) {
-		if (answer_rr[i].type == KNOT_RRTYPE_SOA &&
-		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
-			return KNOT_STATE_DONE;
-		} else {
-			int ret = zcreator_step(&zc, &answer_rr[i]);
-			if (ret != KNOT_EOK) {
-				return KNOT_STATE_FAIL;
-			}
-		}
-		proc->contents->size += knot_rrset_size(&answer_rr[i]);
-		if (proc->contents->size > size_limit) {
-			AXFRIN_LOG(LOG_WARNING, "zone size exceeded");
-			return KNOT_STATE_FAIL;
-		}
-	}
-
-	return KNOT_STATE_CONSUME;
-}
-
-int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
-{
-	if (pkt == NULL || adata == NULL) {
-		return KNOT_STATE_FAIL;
-	}
-
-	/* Check RCODE. */
-	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
-		AXFRIN_LOG(LOG_WARNING, "server responded with error '%s'",
-		           knot_pkt_ext_rcode_name(pkt));
-		return KNOT_STATE_FAIL;
-	}
-
-	/* Initialize processing with first packet. */
-	if (adata->ext == NULL) {
-		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
-		AXFRIN_LOG(LOG_INFO, "starting");
-
-		int ret = axfr_answer_init(adata);
-		if (ret != KNOT_EOK) {
-			AXFRIN_LOG(LOG_WARNING, "failed (%s)", knot_strerror(ret));
-			return KNOT_STATE_FAIL;
-		}
-	} else {
-		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 100);
-	}
-
-	/* Process answer packet. */
-	int ret = axfr_answer_packet(pkt, adata);
-	if (ret == KNOT_STATE_DONE) {
-		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
-		/* This was the last packet, finalize zone and publish it. */
-		int fret = axfr_answer_finalize(adata);
-		if (fret != KNOT_EOK) {
-			ret = KNOT_STATE_FAIL;
-		}
-	}
-
-	return ret;
 }

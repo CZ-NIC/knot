@@ -15,25 +15,33 @@
  */
 
 #include <assert.h>
+#include <time.h>
 
 #include "knot/conf/conf.h"
 #include "knot/zone/zone.h"
 
 int event_flush(conf_t *conf, zone_t *zone)
 {
+	assert(conf);
 	assert(zone);
 
-	/* Reschedule. */
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
-	if (sync_timeout > 0) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
-	}
-
-	/* Check zone contents. */
 	if (zone_contents_is_empty(zone->contents)) {
 		return KNOT_EOK;
 	}
 
-	return zone_flush_journal(conf, zone);
+	int ret = zone_flush_journal(conf, zone);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	zone->timers.last_flush = time(NULL);
+
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	int64_t sync_timeout = conf_int(&val);
+	if (sync_timeout > 0) {
+		time_t next_flush = zone->timers.last_flush + sync_timeout;
+		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, next_flush);
+	}
+
+	return KNOT_EOK;
 }

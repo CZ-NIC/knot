@@ -8,10 +8,11 @@ import os, shutil
 
 module_path = os.path.dirname(os.path.realpath(__file__))
 repo_path = os.path.realpath(os.path.join(module_path, "..", "..", ".."))
+build_path = os.environ.get("KNOT_TEST_BUILD_PATH", repo_path)
 
 def repo_binary(name):
     """Get absolute path to a binary in Knot DNS sources."""
-    return os.path.join(repo_path, name)
+    return os.path.join(build_path, name)
 
 def get_binary(env_name, default):
     env = os.environ.get(env_name)

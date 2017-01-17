@@ -254,11 +254,11 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	if (zone->flags & ZONE_EXPIRED) {
+	if (zone_expired(zone)) {
 		return KNOT_ENOTSUP;
 	}
 
-	zone_events_schedule(zone, ZONE_EVENT_LOAD, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
 
 	return KNOT_EOK;
 }
@@ -271,7 +271,7 @@ static int zone_refresh(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 
 	return KNOT_EOK;
 }
@@ -285,7 +285,7 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_AXFR;
-	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 
 	return KNOT_EOK;
 }
@@ -298,7 +298,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		zone->flags |= ZONE_FORCE_FLUSH;
 	}
 
-	zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
 
 	return KNOT_EOK;
 }
@@ -313,7 +313,7 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_RESIGN;
-	zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 
 	return KNOT_EOK;
 }
@@ -367,10 +367,10 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	/* Sync zonefile immediately if configured. */
 	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
 	if (conf_int(&val) == 0) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+		zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
 	}
 
-	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 
 	return KNOT_EOK;
 }
@@ -921,6 +921,9 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	// Abort possible editing transaction.
 	(void)zone_txn_abort(zone, args);
 
+	// Purge the zone timers.
+	memset(&zone->timers, 0, sizeof(zone->timers));
+
 	// Expire the zone.
 	event_expire(conf(), zone);
 
@@ -933,10 +936,6 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	if (journal_open(zone->journal, zone->journal_db, zone->name) == KNOT_EOK) {
 		(void)scrape_journal(zone->journal);
 	}
-
-	// Purge the zone timers.
-	(void)remove_timer_db(args->server->timers_db, args->server->zone_db,
-	                      zone->name);
 
 	return KNOT_EOK;
 }

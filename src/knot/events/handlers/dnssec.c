@@ -20,34 +20,24 @@
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/events/log.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/zone.h"
 #include "libknot/errcode.h"
 
-/*!
- * \todo Separate signing from zone loading and drop this function.
- *
- * DNSSEC signing is planned from two places - after zone loading and after
- * successful resign. This function just logs the message and reschedules the
- * DNSSEC timer.
- *
- * I would rather see the invocation of the signing from event_dnssec()
- * function. This would require to split refresh event to zone load and zone
- * publishing.
- */
-void schedule_dnssec(zone_t *zone, time_t refresh_at)
+static void reschedule(conf_t *conf, zone_t *zone,
+                       time_t dnssec_refresh, bool zone_changed)
 {
-	// log a message
+	time_t now = time(NULL);
+	time_t ignore = -1;
 
-	char time_str[64] = { 0 };
-	struct tm time_gm = { 0 };
-	localtime_r(&refresh_at, &time_gm);
-	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
-	log_zone_info(zone->name, "DNSSEC, next signing on %s", time_str);
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 
-	// schedule
-
-	zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, refresh_at);
+	zone_events_schedule_at(zone,
+	        ZONE_EVENT_DNSSEC, dnssec_refresh,
+	        ZONE_EVENT_NOTIFY, zone_changed ? now : ignore,
+	        ZONE_EVENT_FLUSH,  conf_int(&val) == 0 ? now : ignore
+	);
 }
 
 int event_dnssec(conf_t *conf, zone_t *zone)
@@ -85,10 +75,10 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		apply_init_ctx(&a_ctx, NULL, APPLY_STRICT);
 
 		zone_contents_t *new_contents = NULL;
-		int ret = apply_changeset(&a_ctx, zone, &ch, &new_contents);
+		int ret = apply_changeset(&a_ctx, zone->contents, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
-				       knot_strerror(ret));
+			               knot_strerror(ret));
 			goto done;
 		}
 
@@ -96,7 +86,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		ret = zone_change_store(conf, zone, &ch);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
-				       knot_strerror(ret));
+			               knot_strerror(ret));
 			update_rollback(&a_ctx);
 			update_free_zone(&new_contents);
 			goto done;
@@ -104,23 +94,15 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 
 		/* Switch zone contents. */
 		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
-		zone->flags &= ~ZONE_EXPIRED;
 		synchronize_rcu();
 		update_free_zone(&old_contents);
 
 		update_cleanup(&a_ctx);
 	}
 
-	// Schedule dependent events.
-
-	schedule_dnssec(zone, refresh_at);
-	if (zone_changed) {
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
-		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-		if (conf_int(&val) == 0) {
-			zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
-		}
-	}
+	// Schedule dependent events
+	log_dnssec_next(zone->name, refresh_at);
+	reschedule(conf, zone, refresh_at, zone_changed);
 
 done:
 	changeset_clear(&ch);

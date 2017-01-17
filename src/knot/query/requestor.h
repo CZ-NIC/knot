@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include "knot/nameserver/tsig_ctx.h"
 #include "knot/query/layer.h"
 #include "libknot/mm_ctx.h"
 #include "libknot/rrtype/tsig.h"
@@ -46,7 +47,11 @@ struct knot_request {
 	struct sockaddr_storage remote, source;
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
-	knot_sign_context_t sign;
+	tsig_ctx_t tsig;
+	knot_layer_t layer;
+
+	knot_sign_context_t sign; /* TODO: Remove. Used in updates only, should
+	                             be part of the zone update context. */
 };
 
 /*!
@@ -56,6 +61,7 @@ struct knot_request {
  * \param dst    Remote endpoint address.
  * \param src    Source address (or NULL).
  * \param query  Query message.
+ * \param key    TSIG key for authentication.
  * \param flags  Request flags.
  *
  * \return Prepared request or NULL in case of error.
@@ -64,6 +70,7 @@ struct knot_request *knot_request_make(knot_mm_t *mm,
                                        const struct sockaddr *dst,
                                        const struct sockaddr *src,
                                        knot_pkt_t *query,
+                                       const knot_tsig_key_t *key,
                                        unsigned flags);
 
 /*!

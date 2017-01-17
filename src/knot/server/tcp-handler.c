@@ -47,14 +47,14 @@
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
-	knot_layer_t layer;         /*!< Query processing layer. */
-	server_t *server;           /*!< Name server structure. */
-	struct iovec iov[2];        /*!< TX/RX buffers. */
-	unsigned client_threshold;  /*!< Index of first TCP client. */
-	timev_t last_poll_time;     /*!< Time of the last socket poll. */
-	timev_t throttle_end;       /*!< End of accept() throttling. */
-	fdset_t set;                /*!< Set of server/client sockets. */
-	unsigned thread_id;         /*!< Thread identifier. */
+	knot_layer_t layer;              /*!< Query processing layer. */
+	server_t *server;                /*!< Name server structure. */
+	struct iovec iov[2];             /*!< TX/RX buffers. */
+	unsigned client_threshold;       /*!< Index of first TCP client. */
+	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
+	struct timespec throttle_end;    /*!< End of accept() throttling. */
+	fdset_t set;                     /*!< Set of server/client sockets. */
+	unsigned thread_id;              /*!< Thread identifier. */
 } tcp_context_t;
 
 /*
@@ -87,6 +87,16 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	close(fd);
 
 	return FDSET_SWEEP;
+}
+
+static bool tcp_active_state(int state)
+{
+	return (state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL);
+}
+
+static bool tcp_send_state(int state)
+{
+	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
 }
 
 /*!
@@ -132,8 +142,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Initialize processing layer. */
-
-	tcp->layer.state = knot_layer_begin(&tcp->layer, &param);
+	knot_layer_begin(&tcp->layer, &param);
 
 	/* Create packets. */
 	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
@@ -141,15 +150,14 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	/* Input packet. */
 	(void) knot_pkt_parse(query, 0);
-	int state = knot_layer_consume(&tcp->layer, query);
+	knot_layer_consume(&tcp->layer, query);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
-	while (state & (KNOT_STATE_PRODUCE|KNOT_STATE_FAIL)) {
-		state = knot_layer_produce(&tcp->layer, ans);
-
+	while (tcp_active_state(tcp->layer.state)) {
+		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
-		if (ans->size > 0 && !(state & (KNOT_STATE_FAIL|KNOT_STATE_NOOP))) {
+		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
 			if (net_dns_tcp_send(fd, ans->wire, ans->size, timeout) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
@@ -241,7 +249,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 	int nfds = poll(set->pfd, set->n, TCP_SWEEP_INTERVAL * 1000);
 
 	/* Mark the time of last poll call. */
-	time_now(&tcp->last_poll_time);
+	tcp->last_poll_time = time_now();
 	bool is_throttled = (tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec);
 	if (!is_throttled) {
 		/* Configuration limit, infer maximal pool size. */
@@ -265,7 +273,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 			/* Master sockets */
 			if (i < tcp->client_threshold) {
 				if (!is_throttled && tcp_event_accept(tcp, i) == KNOT_EBUSY) {
-					time_now(&tcp->throttle_end);
+					tcp->throttle_end = time_now();
 					tcp->throttle_end.tv_sec += tcp_throttle();
 				}
 			/* Client sockets */
@@ -327,8 +335,7 @@ int tcp_master(dthread_t *thread)
 	}
 
 	/* Initialize sweep interval. */
-	timev_t next_sweep = {0};
-	time_now(&next_sweep);
+	struct timespec next_sweep = time_now();
 	next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
 
 	for(;;) {
@@ -362,7 +369,7 @@ int tcp_master(dthread_t *thread)
 		/* Sweep inactive clients. */
 		if (tcp.last_poll_time.tv_sec >= next_sweep.tv_sec) {
 			fdset_sweep(&tcp.set, &tcp_sweep, NULL);
-			time_now(&next_sweep);
+			next_sweep = time_now();
 			next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
 		}
 	}

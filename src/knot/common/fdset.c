@@ -24,16 +24,16 @@
 
 /* Realloc memory or return error (part of fdset_resize). */
 #define MEM_RESIZE(tmp, p, n) \
-	if ((tmp = realloc((p), (n))) == NULL) \
+	if ((tmp = realloc((p), (n) * sizeof(*p))) == NULL) \
 		return KNOT_ENOMEM; \
 	(p) = tmp;
 
 static int fdset_resize(fdset_t *set, unsigned size)
 {
 	void *tmp = NULL;
-	MEM_RESIZE(tmp, set->ctx, size * sizeof(void*));
-	MEM_RESIZE(tmp, set->pfd, size * sizeof(struct pollfd));
-	MEM_RESIZE(tmp, set->timeout, size * sizeof(timev_t));
+	MEM_RESIZE(tmp, set->ctx, size);
+	MEM_RESIZE(tmp, set->pfd, size);
+	MEM_RESIZE(tmp, set->timeout, size);
 	set->size = size;
 	return KNOT_EOK;
 }
@@ -117,9 +117,7 @@ int fdset_set_watchdog(fdset_t* set, int i, int interval)
 	}
 
 	/* Update clock. */
-	timev_t now;
-	if (time_now(&now) < 0)
-		return KNOT_ERROR;
+	struct timespec now = time_now();
 
 	set->timeout[i] = now.tv_sec + interval; /* Only seconds precision. */
 	return KNOT_EOK;
@@ -132,10 +130,7 @@ int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data)
 	}
 
 	/* Get time threshold. */
-	timev_t now;
-	if (time_now(&now) < 0) {
-		return KNOT_ERROR;
-	}
+	struct timespec now = time_now();
 
 	unsigned i = 0;
 	while (i < set->n) {

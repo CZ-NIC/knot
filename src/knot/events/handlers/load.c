@@ -20,6 +20,8 @@
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/events/handlers.h"
+#include "knot/events/log.h"
+#include "knot/events/replan.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -75,7 +77,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	/* Everything went alright, switch the contents. */
-	zone->flags &= ~ZONE_EXPIRED;
 	zone->zonefile.exists = true;
 	zone_contents_t *old = zone_switch_contents(zone, contents);
 	bool old_contents = (old != NULL);
@@ -83,30 +84,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	if (old != NULL) {
 		synchronize_rcu();
 		zone_contents_deep_free(&old);
-	}
-
-	/* Schedule refresh after load if not already scheduled. */
-	if (zone_is_slave(conf, zone) &&
-	    zone_events_get_time(zone, ZONE_EVENT_REFRESH) == 0) {
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-	}
-	/* Schedule notify. */
-	if (!zone_contents_is_empty(contents)) {
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
-		zone->bootstrap_retry = ZONE_EVENT_NOW;
-	}
-
-	/* Schedule zone resign. */
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
-		schedule_dnssec(zone, dnssec_refresh);
-	}
-
-	/* Periodic execution. */
-	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
-	if (sync_timeout >= 0) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, sync_timeout);
 	}
 
 	uint32_t current_serial = zone_contents_serial(zone->contents);
@@ -122,6 +99,23 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone_control_clear(zone);
 	}
 
+	/* Schedule depedent events. */
+
+	const knot_rdataset_t *soa = zone_soa(zone);
+	zone->timers.soa_expire = knot_soa_expire(soa);
+	replan_from_timers(conf, zone);
+
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	if (conf_bool(&val)) {
+		log_dnssec_next(zone->name, dnssec_refresh);
+		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, dnssec_refresh);
+	}
+
+	// TODO: track serial across restart and avoid unnecessary notify
+	if (!old_contents || old_serial != current_serial) {
+		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
+	}
+
 	return KNOT_EOK;
 
 fail:
@@ -129,9 +123,7 @@ fail:
 	zone_contents_deep_free(&contents);
 
 	/* Try to bootstrap the zone if local error. */
-	if (zone_is_slave(conf, zone) && !zone_events_is_scheduled(zone, ZONE_EVENT_XFER)) {
-		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
-	}
+	replan_from_timers(conf, zone);
 
 	return ret;
 }

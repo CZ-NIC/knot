@@ -29,12 +29,11 @@
 #include "knot/events/events.h"
 #include "libknot/libknot.h"
 #include "contrib/net.h"
-#include "contrib/print.h"
+#include "contrib/time.h"
 
-/* UPDATE-specific logging (internal, expects 'qdata' variable set). */
-#define UPDATE_LOG(severity, msg, ...) \
-	NS_PROC_LOG(severity, knot_pkt_qname(qdata->query), qdata->param->remote, \
-	            "DDNS", msg, ##__VA_ARGS__)
+#define UPDATE_LOG(priority, qdata, fmt...) \
+	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_UPDATE, \
+	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->param->remote, fmt)
 
 static void init_qdata_from_request(struct query_data *qdata,
                                     const zone_t *zone,
@@ -55,7 +54,7 @@ static int check_prereqs(struct knot_request *request,
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_prereqs(request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
-		UPDATE_LOG(LOG_WARNING, "prerequisites not met (%s)",
+		UPDATE_LOG(LOG_WARNING, qdata, "prerequisites not met (%s)",
 		           knot_strerror(ret));
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
@@ -72,7 +71,7 @@ static int process_single_update(struct knot_request *request,
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_update(zone, request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
-		UPDATE_LOG(LOG_WARNING, "failed to apply (%s)",
+		UPDATE_LOG(LOG_WARNING, qdata, "failed to apply (%s)",
 		           knot_strerror(ret));
 		assert(rcode != KNOT_RCODE_NOERROR);
 		knot_wire_set_rcode(request->resp->wire, rcode);
@@ -166,7 +165,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 	/* Sync zonefile immediately if configured. */
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	if (conf_int(&val) == 0) {
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+		zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
 	}
 
 	return KNOT_EOK;
@@ -178,8 +177,7 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	assert(requests);
 
 	/* Keep original state. */
-	struct timeval t_start, t_end;
-	gettimeofday(&t_start, NULL);
+	struct timespec t_start = time_now();
 	const uint32_t old_serial = zone_contents_serial(zone->contents);
 
 	/* Process authenticated packet. */
@@ -197,12 +195,12 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 		return;
 	}
 
-	gettimeofday(&t_end, NULL);
+	struct timespec t_end = time_now();
 	log_zone_info(zone->name, "DDNS, update finished, serial %u -> %u, "
 	              "%.02f seconds", old_serial, new_serial,
-	              time_diff(&t_start, &t_end) / 1000.0);
+	              time_diff_ms(&t_start, &t_end));
 
-	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
+	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 }
 
 static int remote_forward(conf_t *conf, struct knot_request *request, conf_remote_t *remote)
@@ -234,7 +232,7 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 	/* Create a request. */
 	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	struct knot_request *req = knot_request_make(re.mm, dst, src, query, 0);
+	struct knot_request *req = knot_request_make(re.mm, dst, src, query, NULL, 0);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
 		knot_pkt_free(&query);
@@ -306,14 +304,14 @@ static bool update_tsig_check(conf_t *conf, struct query_data *qdata, struct kno
 {
 	// Check that ACL is still valid.
 	if (!process_query_acl_check(conf, qdata->zone->name, ACL_ACTION_UPDATE, qdata)) {
-		UPDATE_LOG(LOG_WARNING, "ACL check failed");
+		UPDATE_LOG(LOG_WARNING, qdata, "ACL check failed");
 		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 		return false;
 	} else {
 		// Check TSIG validity.
 		int ret = process_query_verify(qdata);
 		if (ret != KNOT_EOK) {
-			UPDATE_LOG(LOG_WARNING, "failed (%s)",
+			UPDATE_LOG(LOG_WARNING, qdata, "failed (%s)",
 			           knot_strerror(ret));
 			knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 			return false;

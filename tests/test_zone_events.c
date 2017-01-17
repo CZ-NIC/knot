@@ -34,7 +34,7 @@ static void test_scheduling(zone_t *zone)
 
 	// scheduling
 
-	zone_events_schedule(zone, ZONE_EVENT_EXPIRE, offset);
+	zone_events_schedule_at(zone, ZONE_EVENT_EXPIRE, now + offset);
 	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH,  now + (offset / 2));
 
 	for (int i = 0; i < ZONE_EVENT_COUNT; i++) {
@@ -51,12 +51,12 @@ static void test_scheduling(zone_t *zone)
 	timestamp = zone_events_get_next(zone, &event);
 	ok(timestamp >= now + (offset / 2) && event == ZONE_EVENT_FLUSH, "flush is next");
 
-	zone_events_cancel(zone, ZONE_EVENT_FLUSH);
+	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, 0);
 
 	timestamp = zone_events_get_next(zone, &event);
 	ok(timestamp >= now + offset && event == ZONE_EVENT_EXPIRE, "expire is next");
 
-	zone_events_cancel(zone, ZONE_EVENT_EXPIRE);
+	zone_events_schedule_at(zone, ZONE_EVENT_EXPIRE, 0);
 
 	timestamp = zone_events_get_next(zone, &event);
 	ok(timestamp < 0 && event == ZONE_EVENT_INVALID, "nothing planned");

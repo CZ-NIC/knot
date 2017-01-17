@@ -65,6 +65,7 @@ libcontrib_la_SOURCES = 			\
 	contrib/string.c			\
 	contrib/string.h			\
 	contrib/strtonum.h			\
+	contrib/time.c				\
 	contrib/time.h				\
 	contrib/tolower.h			\
 	contrib/trim.h				\
@@ -272,6 +273,8 @@ libknotd_la_SOURCES =				\
 	knot/events/handlers/notify.c		\
 	knot/events/handlers/refresh.c		\
 	knot/events/handlers/update.c		\
+	knot/events/log.c			\
+	knot/events/log.h			\
 	knot/events/replan.c			\
 	knot/events/replan.h			\
 	knot/modules/dnsproxy/dnsproxy.c	\
@@ -313,6 +316,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/tsig_ctx.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
+	knot/nameserver/xfr.c			\
+	knot/nameserver/xfr.h			\
 	knot/query/capture.c			\
 	knot/query/capture.h			\
 	knot/query/layer.c			\

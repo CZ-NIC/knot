@@ -6,7 +6,7 @@ from dnstest.utils import *
 from dnstest.test import Test
 import random
 
-EXPIRE_SLEEP = 5
+EXPIRE_SLEEP = 15
 
 def test_ok(slave):
     resp = slave.dig("example.", "SOA")
@@ -61,19 +61,16 @@ def test_run_case(t, master, slave, action):
 def test_run(t, servers, zone, action):
     master, slave = servers
 
-    check_log("ZONE SOA TIMERS: REFRESH = 1, RETRY = 1, EXPIRE = 3")
-    check_log("===================================================")
+    check_log("ZONE SOA TIMERS: REFRESH = 1, RETRY = 1, EXPIRE = 10")
     init_servers(master, slave)
     test_run_case(t, master, slave, action)
 
-    check_log("ZONE SOA TIMERS: REFRESH = 10, RETRY = 1, EXPIRE = 3")
-    check_log("====================================================")
+    check_log("ZONE SOA TIMERS: REFRESH = 20, RETRY = 1, EXPIRE = 10")
     master.update_zonefile(zone, version=1)
     init_servers(master, slave)
     test_run_case(t, master, slave, action)
 
-    check_log("ZONE SOA TIMERS: REFRESH = 1, RETRY = 10, EXPIRE = 3")
-    check_log("====================================================")
+    check_log("ZONE SOA TIMERS: REFRESH = 1, RETRY = 20, EXPIRE = 10")
     master.update_zonefile(zone, version=2)
     init_servers(master, slave)
     test_run_case(t, master, slave, action)

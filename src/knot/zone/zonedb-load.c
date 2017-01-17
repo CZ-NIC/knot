@@ -17,14 +17,14 @@
 #include <assert.h>
 #include <urcu.h>
 
-#include "knot/conf/confio.h"
-#include "knot/zone/zonedb-load.h"
+#include "knot/common/log.h"
+#include "knot/events/replan.h"
+#include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/zonefile.h"
+#include "knot/zone/zonedb-load.h"
 #include "knot/zone/zonedb.h"
-#include "knot/zone/timers.h"
-#include "knot/common/log.h"
+#include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 
 /*!
@@ -98,13 +98,12 @@ static void log_zone_load_info(const zone_t *zone, zone_status_t status)
 	}
 	assert(action);
 
-	if (zone->contents && zone->contents->apex) {
-		const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
-		                                           KNOT_RRTYPE_SOA);
+	if (!zone_contents_is_empty(zone->contents)) {
+		const knot_rdataset_t *soa = zone_soa(zone);
 		uint32_t serial = knot_soa_serial(soa);
 		log_zone_info(zone->name, "zone %s, serial %u", action, serial);
 	} else {
-		log_zone_info(zone->name, "zone %s", action);
+		log_zone_info(zone->name, "zone %s, serial none", action);
 	}
 }
 
@@ -127,6 +126,48 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	return zone;
 }
 
+/*!
+ * \brief Set timer if unset (value is 0).
+ */
+static void time_set_default(time_t *time, time_t value)
+{
+	assert(time);
+
+	if (*time == 0) {
+		*time = value;
+	}
+}
+
+/*!
+ * \brief Set default timers for new zones or invalidate if not valid.
+ */
+static void timers_sanitize(conf_t *conf, zone_t *zone)
+{
+	assert(conf);
+	assert(zone);
+
+	time_t now = time(NULL);
+
+	// replace SOA expire if we have better knowledge
+	if (!zone_contents_is_empty(zone->contents)) {
+		const knot_rdataset_t *soa = zone_soa(zone);
+		zone->timers.soa_expire = knot_soa_expire(soa);
+	}
+
+	// assume now if we don't know when we flushed
+	time_set_default(&zone->timers.last_flush, now);
+
+	if (zone_is_slave(conf, zone)) {
+		// assume now if we don't know
+		time_set_default(&zone->timers.last_refresh, now);
+		time_set_default(&zone->timers.next_refresh, now);
+	} else {
+		// invalidate if we don't have a master
+		zone->timers.last_refresh = 0;
+		zone->timers.next_refresh = 0;
+	}
+}
+
 static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
                                   server_t *server, zone_t *old_zone)
 {
@@ -134,12 +175,14 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	if (!zone) {
 		return NULL;
 	}
+
 	zone->contents = old_zone->contents;
-	zone->bootstrap_retry = old_zone->bootstrap_retry;
+
+	zone->timers = old_zone->timers;
+	timers_sanitize(conf, zone);
 
 	zone_status_t zstatus;
-	if (zone_is_slave(conf, zone) && old_zone->flags & ZONE_EXPIRED) {
-		zone->flags |= ZONE_EXPIRED;
+	if (zone_expired(zone)) {
 		zstatus = ZONE_STATUS_FOUND_CURRENT;
 	} else {
 		zstatus = zone_file_status(conf, old_zone, name);
@@ -147,15 +190,11 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_UPDATED:
-		/* Enqueueing makes the first zone load waitable. */
-		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
-		/* Replan DDNS processing if there are pending updates. */
-		zone_events_replan_ddns(zone, old_zone);
+		replan_load_updated(zone, old_zone);
 		break;
 	case ZONE_STATUS_FOUND_CURRENT:
 		zone->zonefile = old_zone->zonefile;
-		/* Reuse events from old zone. */
-		zone_events_update(conf, zone, old_zone);
+		replan_load_current(conf, zone, old_zone);
 		break;
 	default:
 		assert(0);
@@ -169,42 +208,6 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	return zone;
 }
 
-static bool slave_event(zone_event_type_t event)
-{
-	return event == ZONE_EVENT_EXPIRE || event == ZONE_EVENT_REFRESH;
-}
-
-static int reuse_events(conf_t *conf, knot_db_t *timer_db, zone_t *zone)
-{
-	// Get persistent timers
-
-	time_t timers[ZONE_EVENT_COUNT] = { 0 };
-	int ret = read_zone_timers(timer_db, zone, timers);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	for (zone_event_type_t event = 0; event < ZONE_EVENT_COUNT; ++event) {
-		if (timers[event] == 0) {
-			// Timer unset.
-			continue;
-		}
-		if (slave_event(event) && !zone_is_slave(conf, zone)) {
-			// Slave-only event.
-			continue;
-		}
-
-		if (event == ZONE_EVENT_EXPIRE && timers[event] <= time(NULL)) {
-			zone->flags |= ZONE_EXPIRED;
-			continue;
-		}
-
-		zone_events_schedule_at(zone, event, timers[event]);
-	}
-
-	return KNOT_EOK;
-}
-
 static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
                                server_t *server)
 {
@@ -213,29 +216,28 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	int ret = reuse_events(conf, server->timers_db, zone);
-	if (ret != KNOT_EOK) {
-		log_zone_error(zone->name, "cannot read zone timers (%s)",
+	int ret = zone_timers_read(server->timers_db, name, &zone->timers);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		log_zone_error(zone->name, "failed to load persistent timers (%s)",
 		               knot_strerror(ret));
 		zone_free(&zone);
 		return NULL;
 	}
 
+	timers_sanitize(conf, zone);
+
 	zone_status_t zstatus = zone_file_status(conf, NULL, name);
-	if (zone->flags & ZONE_EXPIRED) {
+	if (zone_expired(zone)) {
 		assert(zone_is_slave(conf, zone));
 		zstatus = ZONE_STATUS_BOOTSTRAP;
 	}
 
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
-		/* Enqueueing makes the first zone load waitable. */
-		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
+		replan_load_new(zone);
 		break;
 	case ZONE_STATUS_BOOTSTRAP:
-		if (zone_events_get_time(zone, ZONE_EVENT_XFER) == 0) {
-			zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-		}
+		replan_load_bootstrap(conf, zone);
 		break;
 	case ZONE_STATUS_NOT_FOUND:
 		break;
@@ -405,6 +407,16 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 	}
 }
 
+static bool zone_exists(const knot_dname_t *zone, void *data)
+{
+	assert(zone);
+	assert(data);
+
+	knot_zonedb_t *db = data;
+
+	return knot_zonedb_find(db, zone) != NULL;
+}
+
 void zonedb_reload(conf_t *conf, server_t *server)
 {
 	if (conf == NULL || server == NULL) {
@@ -429,7 +441,11 @@ void zonedb_reload(conf_t *conf, server_t *server)
 	synchronize_rcu();
 
 	/* Sweep the timer database. */
-	sweep_timer_db(server->timers_db, db_new);
+	int ret = zone_timers_sweep(server->timers_db, zone_exists, db_new);
+	if (ret != KNOT_EOK) {
+		log_warning("failed to clear persistent timers for removed zones (%s)",
+		            knot_strerror(ret));
+	}
 
 	/* Remove old zone DB. */
 	remove_old_zonedb(conf, db_old, db_new);

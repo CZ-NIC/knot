@@ -24,16 +24,21 @@
 
 #pragma once
 
-#ifdef HAVE_CLOCK_GETTIME
 #include <time.h>
-#define time_now(x) clock_gettime(CLOCK_MONOTONIC, (x))
-typedef struct timespec timev_t;
-#elif HAVE_GETTIMEOFDAY
-#include <sys/time.h>
-#define time_now(x) gettimeofday((x), NULL)
-typedef struct timeval timev_t;
-#else
-#error Neither clock_gettime() nor gettimeofday() found. At least one is required.
-#endif
+
+/*!
+ * \brief Get current time.
+ */
+struct timespec time_now(void);
+
+/*!
+ * \brief Get time elapsed between two events.
+ */
+struct timespec time_diff(const struct timespec *begin, const struct timespec *end);
+
+/*!
+ * \brief Get time elapsed between two events in miliseconds.
+ */
+double time_diff_ms(const struct timespec *begin, const struct timespec *end);
 
 /*! @} */

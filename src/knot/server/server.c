@@ -421,7 +421,7 @@ void server_deinit(server_t *server)
 	journal_db_close(&server->journal_db);
 
 	/* Close persistent timers database. */
-	close_timers_db(server->timers_db);
+	zone_timers_close(server->timers_db);
 
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
@@ -735,7 +735,7 @@ void server_reconfigure(conf_t *conf, server_t *server)
 
 static void reopen_timers_database(conf_t *conf, server_t *server)
 {
-	close_timers_db(server->timers_db);
+	zone_timers_close(server->timers_db);
 	server->timers_db = NULL;
 
 	conf_val_t val = conf_default_get(conf, C_STORAGE);
@@ -744,7 +744,7 @@ static void reopen_timers_database(conf_t *conf, server_t *server)
 	char *timer_db = conf_abs_path(&val, storage);
 	free(storage);
 
-	int ret = open_timers_db(timer_db, &server->timers_db);
+	int ret = zone_timers_open(timer_db, &server->timers_db);
 	if (ret != KNOT_EOK) {
 		log_warning("cannot open persistent timers DB '%s' (%s)",
 		            timer_db, knot_strerror(ret));
