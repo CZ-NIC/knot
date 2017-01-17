@@ -67,12 +67,10 @@ int query_edns_data_init(struct query_edns_data *edns_ptr, conf_t *conf,
 	if (opt_data != NULL) {
 		wire_ctx_t ctx = wire_ctx_init_const(opt_data, opt_len);
 		edns.custom_code = wire_ctx_read_u64(&ctx);
-		#warning No boundary check in the yparser API.
-		edns.custom_len  = yp_bin_len(ctx.position);
-		edns.custom_data = yp_bin(ctx.position);
-		if (ctx.error != KNOT_EOK) {
-			return KNOT_EINVAL;
-		}
+		edns.custom_len  = wire_ctx_read_u16(&ctx);
+		edns.custom_data = ctx.position;
+		assert(ctx.error == KNOT_EOK);
+		assert(wire_ctx_available(&ctx) == edns.custom_len);
 	}
 
 	*edns_ptr = edns;
