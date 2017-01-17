@@ -9,6 +9,7 @@ dnssec-verify
 Bind 9.9.x
 lsof
 gawk
+objdump
 (valgrind)
 (gdb)
 
