@@ -30,7 +30,7 @@ static void test_diff(void)
 	struct timespec t2 = { 50, 1500 };
 	struct timespec t3 = { 70, 500 };
 
-	struct timespec res = { 0 };
+	struct timespec res;
 
 	res = time_diff(&t1, &t2);
 	ok(res.tv_sec = 40 && res.tv_nsec == 500, "time_diff()");
