@@ -33,16 +33,16 @@ static void test_diff(void)
 	struct timespec res;
 
 	res = time_diff(&t1, &t2);
-	ok(res.tv_sec = 40 && res.tv_nsec == 500, "time_diff()");
+	ok(res.tv_sec == 40 && res.tv_nsec == 500, "time_diff()");
 
 	res = time_diff(&t2, &t3);
-	ok(res.tv_sec = 19 && res.tv_nsec == 999999000, "time_diff() ns overflow");
+	ok(res.tv_sec == 19 && res.tv_nsec == 999999000, "time_diff() ns overflow");
 
 	res = time_diff(&t3, &t1);
-	ok(res.tv_sec = -60 && res.tv_nsec == 500, "time_diff() negative");
+	ok(res.tv_sec == -60 && res.tv_nsec == 500, "time_diff() negative");
 
 	res = time_diff(&t2, &t1);
-	ok(res.tv_sec = -41 && res.tv_nsec == 999999500, "time_diff() negative");
+	ok(res.tv_sec == -41 && res.tv_nsec == 999999500, "time_diff() negative");
 }
 
 static void test_diff_ms(void)
