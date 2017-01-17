@@ -43,7 +43,7 @@ typedef struct zone_update {
 
 typedef struct {
 	zone_update_t *update;          /*!< The update we're iterating over. */
-	hattrie_iter_t *tree_it;        /*!< Iterator for the new zone. */
+	trie_it_t *tree_it;             /*!< Iterator for the new zone. */
 	const zone_node_t *cur_node;    /*!< Current node in the new zone. */
 	bool nsec3;                     /*!< Set when we're using the NSEC3 node tree. */
 } zone_update_iter_t;

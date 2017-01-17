@@ -19,7 +19,7 @@
 #include <time.h>
 #include <tap/basic.h>
 
-#include "contrib/qp-trie/qp.h"
+#include "contrib/qp-trie/trie.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 #include "libknot/errcode.h"

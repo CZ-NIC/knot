@@ -616,7 +616,7 @@ int server_reload(server_t *server)
 		// Reset confio reload context.
 		conf()->io.flags = YP_FNONE;
 		if (conf()->io.zones != NULL) {
-			hattrie_clear(conf()->io.zones);
+			trie_clear(conf()->io.zones);
 		}
 	}
 

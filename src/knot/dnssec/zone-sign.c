@@ -615,7 +615,7 @@ typedef struct {
 	const zone_keyset_t *zone_keys;
 	const kdnssec_ctx_t *dnssec_ctx;
 	changeset_t *changeset;
-	hattrie_t *signed_tree;
+	trie_t *signed_tree;
 } changeset_signing_data_t;
 
 /*- private API - DNSKEY handling --------------------------------------------*/
@@ -978,7 +978,7 @@ static int add_rr_type_to_list(const knot_rrset_t *rr, list_t *l)
  *
  * \return KNOT_E*
  */
-static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
+static int rr_already_signed(const knot_rrset_t *rrset, trie_t *t,
                              bool *rr_signed)
 {
 	assert(rrset);
@@ -987,7 +987,7 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 	// Create a key = RRSet owner converted to sortable format
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, rrset->owner, NULL);
-	value_t stored_info = (signed_info_t *)hattrie_tryget(t, (char *)lf+1,
+	trie_val_t stored_info = (signed_info_t *)trie_get_try(t, (char *)lf+1,
 	                                                      *lf);
 	if (stored_info == NULL) {
 		// Create new info struct
@@ -1018,7 +1018,7 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 			free(info);
 			return ret;
 		}
-		*hattrie_get(t, (char *)lf+1, *lf) = info;
+		*trie_get_ins(t, (char *)lf+1, *lf) = info;
 	} else {
 		signed_info_t *info = *((signed_info_t **)stored_info);
 		assert(info->type_list);
@@ -1107,7 +1107,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, changeset_signing_data_t
  * \param val  Node to free.
  * \param d    Unused.
  */
-static int free_helper_trie_node(value_t *val, void *d)
+static int free_helper_trie_node(trie_val_t *val, void *d)
 {
 	UNUSED(d);
 	signed_info_t *info = (signed_info_t *)*val;
@@ -1126,10 +1126,10 @@ static int free_helper_trie_node(value_t *val, void *d)
  *
  * \param t  Trie to clear.
  */
-static void knot_zone_clear_sorted_changes(hattrie_t *t)
+static void knot_zone_clear_sorted_changes(trie_t *t)
 {
 	if (t) {
-		hattrie_apply_rev(t, free_helper_trie_node, NULL);
+		trie_apply(t, free_helper_trie_node, NULL);
 	}
 }
 
@@ -1257,13 +1257,13 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	// Create args for wrapper function - hattrie for duplicate sigs
+	// Create args for wrapper function - trie for duplicate sigs
 	changeset_signing_data_t args = {
 		.zone = zone,
 		.zone_keys = zone_keys,
 		.dnssec_ctx = dnssec_ctx,
 		.changeset = out_ch,
-		.signed_tree = hattrie_create(NULL)
+		.signed_tree = trie_create(NULL)
 	};
 
 	if (args.signed_tree == NULL) {
@@ -1285,7 +1285,7 @@ int knot_zone_sign_changeset(const zone_contents_t *zone,
 	changeset_iter_clear(&itt);
 
 	knot_zone_clear_sorted_changes(args.signed_tree);
-	hattrie_free(args.signed_tree);
+	trie_free(args.signed_tree);
 
 	return KNOT_EOK;
 }

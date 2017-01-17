@@ -27,14 +27,14 @@
 #include <histedit.h>
 
 #include "libknot/mm_ctx.h"
-#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/qp-trie/trie.h"
 
 /*! Lookup context. */
 typedef struct {
 	/*! Memory pool context. */
 	knot_mm_t mm;
-	/*! Main hat-trie storage. */
-	hattrie_t *trie;
+	/*! Main trie storage. */
+	trie_t *trie;
 
 	/*! Current (iteration) data context. */
 	struct {
@@ -51,7 +51,7 @@ typedef struct {
 		/*! The first possibility. */
 		char *first_key;
 		/*! Hat-trie iterator. */
-		hattrie_iter_t *it;
+		trie_it_t *it;
 	} iter;
 } lookup_t;
 

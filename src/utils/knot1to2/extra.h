@@ -20,18 +20,18 @@
 
 #include "utils/knot1to2/includes.h"
 #include "utils/knot1to2/scheme.h"
-#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/qp-trie/trie.h"
 
 typedef struct {
 	FILE *out;
 	bool have_sections[S_LAST - S_FIRST + 1];
-	hattrie_t *ifaces;
-	hattrie_t *groups;
-	hattrie_t *remotes;
-	hattrie_t *acl_xfer;
-	hattrie_t *acl_notify;
-	hattrie_t *acl_update;
-	hattrie_t *acl_control;
+	trie_t *ifaces;
+	trie_t *groups;
+	trie_t *remotes;
+	trie_t *acl_xfer;
+	trie_t *acl_notify;
+	trie_t *acl_update;
+	trie_t *acl_control;
 } share_t;
 
 /*!
@@ -42,7 +42,7 @@ typedef struct {
 	conf_includes_t *includes; // Used to handle filenames in includes.
 	int run;                   // Current run number.
 	share_t *share;            // Variables shared among all runs.
-	hattrie_t *current_trie;
+	trie_t *current_trie;
 	const char *current_key;
 } conf_extra_t;
 

@@ -24,7 +24,7 @@
 
 zone_tree_t* zone_tree_create()
 {
-	return hattrie_create(NULL);
+	return trie_create(NULL);
 }
 
 size_t zone_tree_count(const zone_tree_t *tree)
@@ -33,7 +33,7 @@ size_t zone_tree_count(const zone_tree_t *tree)
 		return 0;
 	}
 
-	return hattrie_weight(tree);
+	return trie_weight(tree);
 }
 
 int zone_tree_is_empty(const zone_tree_t *tree)
@@ -51,7 +51,7 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, node->owner, NULL);
 
-	*hattrie_get(tree, (char*)lf+1, *lf) = node;
+	*trie_get_ins(tree, (char*)lf+1, *lf) = node;
 	return KNOT_EOK;
 }
 
@@ -69,7 +69,7 @@ int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, owner, NULL);
 
-	value_t *val = hattrie_tryget(tree, (char*)lf+1, *lf);
+	trie_val_t *val = trie_get_try(tree, (char*)lf+1, *lf);
 	if (val == NULL) {
 		*found = NULL;
 	} else {
@@ -95,8 +95,8 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, owner, NULL);
 
-	value_t *fval = NULL;
-	int ret = hattrie_find_leq(tree, (char*)lf+1, *lf, &fval);
+	trie_val_t *fval = NULL;
+	int ret = trie_get_leq(tree, (char*)lf+1, *lf, &fval);
 	if (fval) {
 		*found = (zone_node_t *)(*fval);
 	}
@@ -116,11 +116,11 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 		 * cases like NSEC3, there is no such sort of thing (name wise).
 		 */
 		/*! \todo We could store rightmost node in zonetree probably. */
-		hattrie_iter_t *i = hattrie_iter_begin(tree);
-		*previous = *(zone_node_t **)hattrie_iter_val(i); /* leftmost */
+		trie_it_t *i = trie_it_begin(tree);
+		*previous = *(zone_node_t **)trie_it_val(i); /* leftmost */
 		*previous = (*previous)->prev; /* rightmost */
 		*found = NULL;
-		hattrie_iter_free(i);
+		trie_it_free(i);
 	}
 
 	return exact_match;
@@ -141,14 +141,14 @@ int zone_tree_remove(zone_tree_t *tree,
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, owner, NULL);
 
-	value_t *rval = hattrie_tryget(tree, (char*)lf+1, *lf);
+	trie_val_t *rval = trie_get_try(tree, (char*)lf+1, *lf);
 	if (rval == NULL) {
 		return KNOT_ENOENT;
 	} else {
 		*removed = (zone_node_t *)(*rval);
 	}
 
-	hattrie_del(tree, (char*)lf+1, *lf, NULL);
+	trie_del(tree, (char*)lf+1, *lf, NULL);
 	return KNOT_EOK;
 }
 
@@ -201,7 +201,7 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 		return KNOT_EOK;
 	}
 
-	return hattrie_apply_rev(tree, (int (*)(value_t *, void *))function, data);
+	return trie_apply(tree, (int (*)(trie_val_t *, void *))function, data);
 }
 
 void zone_tree_free(zone_tree_t **tree)
@@ -209,7 +209,7 @@ void zone_tree_free(zone_tree_t **tree)
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
-	hattrie_free(*tree);
+	trie_free(*tree);
 	*tree = NULL;
 }
 

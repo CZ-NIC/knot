@@ -23,7 +23,7 @@
 #include "utils/common/params.h"
 #include "utils/knot1to2/extra.h"
 #include "utils/knot1to2/scheme.h"
-#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/qp-trie/trie.h"
 #include "contrib/string.h"
 
 #define PROGRAM_NAME "knot1to2"
@@ -75,12 +75,12 @@ static int convert(const char *file_out, const char *file_in)
 
 	share_t share = {
 		.out = out,
-		.ifaces = hattrie_create(NULL),
-		.groups = hattrie_create(NULL),
-		.remotes = hattrie_create(NULL),
-		.acl_xfer = hattrie_create(NULL),
-		.acl_notify = hattrie_create(NULL),
-		.acl_update = hattrie_create(NULL)
+		.ifaces = trie_create(NULL),
+		.groups = trie_create(NULL),
+		.remotes = trie_create(NULL),
+		.acl_xfer = trie_create(NULL),
+		.acl_notify = trie_create(NULL),
+		.acl_update = trie_create(NULL)
 	};
 
 	// Parse the input file multiple times to get some context.
@@ -93,28 +93,28 @@ static int convert(const char *file_out, const char *file_in)
 	}
 
 	// Remove ifaces data.
-	hattrie_iter_t *it = hattrie_iter_begin(share.ifaces);
-	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
-		char *data = *hattrie_iter_val(it);
+	trie_it_t *it = trie_it_begin(share.ifaces);
+	for (; !trie_it_finished(it); trie_it_next(it)) {
+		char *data = *trie_it_val(it);
 		free(data);
 	}
-	hattrie_iter_free(it);
+	trie_it_free(it);
 
 	// Remove groups data.
-	it = hattrie_iter_begin(share.groups);
-	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
-		hattrie_t *trie = *hattrie_iter_val(it);
-		hattrie_free(trie);
+	it = trie_it_begin(share.groups);
+	for (; !trie_it_finished(it); trie_it_next(it)) {
+		trie_t *trie = *trie_it_val(it);
+		trie_free(trie);
 	}
-	hattrie_iter_free(it);
+	trie_it_free(it);
 
 	// Remove empty tries without data.
-	hattrie_free(share.ifaces);
-	hattrie_free(share.groups);
-	hattrie_free(share.remotes);
-	hattrie_free(share.acl_xfer);
-	hattrie_free(share.acl_notify);
-	hattrie_free(share.acl_update);
+	trie_free(share.ifaces);
+	trie_free(share.groups);
+	trie_free(share.remotes);
+	trie_free(share.acl_xfer);
+	trie_free(share.acl_notify);
+	trie_free(share.acl_update);
 
 	fclose(out);
 

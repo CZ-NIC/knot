@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "contrib/qp-trie/qp.h"
+#include "contrib/qp-trie/trie.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "libknot/errcode.h"

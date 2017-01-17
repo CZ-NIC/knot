@@ -83,7 +83,7 @@ int conf_io_begin(
 	if (!child) {
 		conf()->io.flags = CONF_IO_FACTIVE;
 		if (conf()->io.zones != NULL) {
-			hattrie_clear(conf()->io.zones);
+			trie_clear(conf()->io.zones);
 		}
 	}
 
@@ -130,7 +130,7 @@ void conf_io_abort(
 	if (!child) {
 		conf()->io.flags = YP_FNONE;
 		if (conf()->io.zones != NULL) {
-			hattrie_clear(conf()->io.zones);
+			trie_clear(conf()->io.zones);
 		}
 	}
 }
@@ -442,18 +442,18 @@ static int diff_zone_section(
 		return KNOT_EOK;
 	}
 
-	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones);
-	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
-		io->id = (const uint8_t *)hattrie_iter_key(it, &io->id_len);
+	trie_it_t *it = trie_it_begin(conf()->io.zones);
+	for (; !trie_it_finished(it); trie_it_next(it)) {
+		io->id = (const uint8_t *)trie_it_key(it, &io->id_len);
 
 		// Get the difference for specific zone.
 		int ret = diff_section(io);
 		if (ret != KNOT_EOK) {
-			hattrie_iter_free(it);
+			trie_it_free(it);
 			return ret;
 		}
 	}
-	hattrie_iter_free(it);
+	trie_it_free(it);
 
 	return KNOT_EOK;
 }
@@ -818,9 +818,9 @@ static void upd_changes(
 	}
 
 	// Prepare zone changes storage if it doesn't exist.
-	hattrie_t *zones = conf()->io.zones;
+	trie_t *zones = conf()->io.zones;
 	if (zones == NULL) {
-		zones = hattrie_create(conf()->mm);
+		zones = trie_create(conf()->mm);
 		if (zones == NULL) {
 			return;
 		}
@@ -828,7 +828,7 @@ static void upd_changes(
 	}
 
 	// Get zone status or create new.
-	value_t *val = hattrie_get(zones, (const char *)io->id, io->id_len);
+	trie_val_t *val = trie_get_ins(zones, (const char *)io->id, io->id_len);
 	conf_io_type_t *current = (conf_io_type_t *)val;
 
 	switch (type) {
@@ -846,7 +846,7 @@ static void upd_changes(
 	case CONF_IO_TUNSET:
 		if (*current & CONF_IO_TSET) {
 			// Remove inserted zone -> no change.
-			hattrie_del(zones, (const char *)io->id, io->id_len, NULL);
+			trie_del(zones, (const char *)io->id, io->id_len, NULL);
 		} else {
 			// Remove existing zone.
 			*current |= type;
@@ -1399,12 +1399,12 @@ static int check_zone_section(
 		return KNOT_EOK;
 	}
 
-	hattrie_iter_t *it = hattrie_iter_begin(conf()->io.zones);
-	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+	trie_it_t *it = trie_it_begin(conf()->io.zones);
+	for (; !trie_it_finished(it); trie_it_next(it)) {
 		size_t id_len;
-		const uint8_t *id = (const uint8_t *)hattrie_iter_key(it, &id_len);
+		const uint8_t *id = (const uint8_t *)trie_it_key(it, &id_len);
 
-		conf_io_type_t type = (conf_io_type_t)(*hattrie_iter_val(it));
+		conf_io_type_t type = (conf_io_type_t)(*trie_it_val(it));
 		if (type == CONF_IO_TUNSET) {
 			// Nothing to check.
 			continue;
@@ -1413,11 +1413,11 @@ static int check_zone_section(
 		// Check specific zone.
 		int ret = check_section(item, id, id_len, io);
 		if (ret != KNOT_EOK) {
-			hattrie_iter_free(it);
+			trie_it_free(it);
 			return ret;
 		}
 	}
-	hattrie_iter_free(it);
+	trie_it_free(it);
 
 	return KNOT_EOK;
 }

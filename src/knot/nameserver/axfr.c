@@ -37,7 +37,7 @@
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
 	struct xfr_proc proc;
-	hattrie_iter_t *i;
+	trie_it_t *i;
 	unsigned cur_rrset;
 };
 
@@ -78,24 +78,24 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item,
 	struct axfr_proc *axfr = (struct axfr_proc*)state;
 
 	if (axfr->i == NULL) {
-		axfr->i = hattrie_iter_begin((hattrie_t *)item);
+		axfr->i = trie_it_begin((trie_t *)item);
 	}
 
 	/* Put responses. */
 	int ret = KNOT_EOK;
 	zone_node_t *node = NULL;
-	while (!hattrie_iter_finished(axfr->i)) {
-		node = (zone_node_t *)*hattrie_iter_val(axfr->i);
+	while (!trie_it_finished(axfr->i)) {
+		node = (zone_node_t *)*trie_it_val(axfr->i);
 		ret = axfr_put_rrsets(pkt, node, axfr);
 		if (ret != KNOT_EOK) {
 			break;
 		}
-		hattrie_iter_next(axfr->i);
+		trie_it_next(axfr->i);
 	}
 
 	/* Finished all nodes. */
 	if (ret == KNOT_EOK) {
-		hattrie_iter_free(axfr->i);
+		trie_it_free(axfr->i);
 		axfr->i = NULL;
 	}
 	return ret;
@@ -105,7 +105,7 @@ static void axfr_query_cleanup(struct query_data *qdata)
 {
 	struct axfr_proc *axfr = (struct axfr_proc *)qdata->ext;
 
-	hattrie_iter_free(axfr->i);
+	trie_it_free(axfr->i);
 	ptrlist_free(&axfr->proc.nodes, qdata->mm);
 	mm_free(qdata->mm, axfr);
 

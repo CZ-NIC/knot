@@ -120,10 +120,10 @@ static int copy_signatures(zone_tree_t *from, zone_tree_t *to)
 
 	assert(to);
 
-	hattrie_iter_t *it = hattrie_iter_begin(from);
+	trie_it_t *it = trie_it_begin(from);
 
-	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
-		zone_node_t *node_from = (zone_node_t *)*hattrie_iter_val(it);
+	for (/* NOP */; !trie_it_finished(it); trie_it_next(it)) {
+		zone_node_t *node_from = (zone_node_t *)*trie_it_val(it);
 		zone_node_t *node_to = NULL;
 
 		zone_tree_get(to, node_from->owner, &node_to);
@@ -137,12 +137,12 @@ static int copy_signatures(zone_tree_t *from, zone_tree_t *to)
 
 		int ret = shallow_copy_signature(node_from, node_to);
 		if (ret != KNOT_EOK) {
-			hattrie_iter_free(it);
+			trie_it_free(it);
 			return ret;
 		}
 	}
 
-	hattrie_iter_free(it);
+	trie_it_free(it);
 	return KNOT_EOK;
 }
 
@@ -154,9 +154,9 @@ static void free_nsec3_tree(zone_tree_t *nodes)
 {
 	assert(nodes);
 
-	hattrie_iter_t *it = hattrie_iter_begin(nodes);
-	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
-		zone_node_t *node = (zone_node_t *)*hattrie_iter_val(it);
+	trie_it_t *it = trie_it_begin(nodes);
+	for (/* NOP */; !trie_it_finished(it); trie_it_next(it)) {
+		zone_node_t *node = (zone_node_t *)*trie_it_val(it);
 		// newly allocated NSEC3 nodes
 		knot_rdataset_t *nsec3 = node_rdataset(node, KNOT_RRTYPE_NSEC3);
 		knot_rdataset_t *rrsig = node_rdataset(node, KNOT_RRTYPE_RRSIG);
@@ -165,7 +165,7 @@ static void free_nsec3_tree(zone_tree_t *nodes)
 		node_free(&node, NULL);
 	}
 
-	hattrie_iter_free(it);
+	trie_it_free(it);
 	zone_tree_free(&nodes);
 }
 
@@ -428,9 +428,9 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 
 	int result = KNOT_EOK;
 
-	hattrie_iter_t *it = hattrie_iter_begin(zone->nodes);
-	while (!hattrie_iter_finished(it)) {
-		zone_node_t *node = (zone_node_t *)*hattrie_iter_val(it);
+	trie_it_t *it = trie_it_begin(zone->nodes);
+	while (!trie_it_finished(it)) {
+		zone_node_t *node = (zone_node_t *)*trie_it_val(it);
 
 		/*!
 		 * Remove possible NSEC from the node. (Do not allow both NSEC
@@ -444,7 +444,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 			node->flags |= NODE_FLAGS_REMOVED_NSEC;
 		}
 		if (node->flags & NODE_FLAGS_NONAUTH || node->flags & NODE_FLAGS_EMPTY) {
-			hattrie_iter_next(it);
+			trie_it_next(it);
 			continue;
 		}
 
@@ -461,10 +461,10 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 			break;
 		}
 
-		hattrie_iter_next(it);
+		trie_it_next(it);
 	}
 
-	hattrie_iter_free(it);
+	trie_it_free(it);
 
 	return result;
 }

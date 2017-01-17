@@ -273,25 +273,25 @@ static zone_t *create_zone(conf_t *conf, const knot_dname_t *name, server_t *ser
 	}
 }
 
-static void mark_changed_zones(knot_zonedb_t *zonedb, hattrie_t *changed)
+static void mark_changed_zones(knot_zonedb_t *zonedb, trie_t *changed)
 {
 	if (changed == NULL) {
 		return;
 	}
 
-	hattrie_iter_t *it = hattrie_iter_begin(changed);
-	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+	trie_it_t *it = trie_it_begin(changed);
+	for (; !trie_it_finished(it); trie_it_next(it)) {
 		const knot_dname_t *name =
-			(const knot_dname_t *)hattrie_iter_key(it, NULL);
+			(const knot_dname_t *)trie_it_key(it, NULL);
 
 		zone_t *zone = knot_zonedb_find(zonedb, name);
 		if (zone != NULL) {
-			conf_io_type_t type = (conf_io_type_t)(*hattrie_iter_val(it));
+			conf_io_type_t type = (conf_io_type_t)(*trie_it_val(it));
 			assert(!(type & CONF_IO_TSET));
 			zone->change_type = type;
 		}
 	}
-	hattrie_iter_free(it);
+	trie_it_free(it);
 }
 
 /*!

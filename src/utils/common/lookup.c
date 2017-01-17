@@ -29,7 +29,7 @@ int lookup_init(lookup_t *lookup)
 	memset(lookup, 0, sizeof(*lookup));
 
 	mm_ctx_mempool(&lookup->mm, MM_DEFAULT_BLKSIZE);
-	lookup->trie = hattrie_create(&lookup->mm);
+	lookup->trie = trie_create(&lookup->mm);
 	if (lookup->trie == NULL) {
 		mp_delete(lookup->mm.ctx);
 		return KNOT_ENOMEM;
@@ -53,7 +53,7 @@ static void reset_output(lookup_t *lookup)
 	mm_free(&lookup->mm, lookup->iter.first_key);
 	lookup->iter.first_key = NULL;
 
-	hattrie_iter_free(lookup->iter.it);
+	trie_it_free(lookup->iter.it);
 	lookup->iter.it = NULL;
 }
 
@@ -65,7 +65,7 @@ void lookup_deinit(lookup_t *lookup)
 
 	reset_output(lookup);
 
-	hattrie_free(lookup->trie);
+	trie_free(lookup->trie);
 	mp_delete(lookup->mm.ctx);
 }
 
@@ -80,7 +80,7 @@ int lookup_insert(lookup_t *lookup, const char *str, void *data)
 		return KNOT_EINVAL;
 	}
 
-	value_t *val = hattrie_get(lookup->trie, str, str_len);
+	trie_val_t *val = trie_get_ins(lookup->trie, str, str_len);
 	if (val == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -118,10 +118,10 @@ int lookup_search(lookup_t *lookup, const char *str, size_t str_len)
 	reset_output(lookup);
 
 	size_t new_len = 0;
-	hattrie_iter_t *it = hattrie_iter_begin(lookup->trie);
-	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+	trie_it_t *it = trie_it_begin(lookup->trie);
+	for (; !trie_it_finished(it); trie_it_next(it)) {
 		size_t len;
-		const char *key = hattrie_iter_key(it, &len);
+		const char *key = trie_it_key(it, &len);
 
 		// Compare with a shorter key.
 		if (len < str_len) {
@@ -144,7 +144,7 @@ int lookup_search(lookup_t *lookup, const char *str, size_t str_len)
 				if (ret != KNOT_EOK) {
 					break;
 				}
-				lookup->found.data = *hattrie_iter_val(it);
+				lookup->found.data = *trie_it_val(it);
 				new_len = len;
 			// Another candidate.
 			} else if (new_len > str_len) {
@@ -160,7 +160,7 @@ int lookup_search(lookup_t *lookup, const char *str, size_t str_len)
 			break;
 		}
 	}
-	hattrie_iter_free(it);
+	trie_it_free(it);
 
 	switch (lookup->iter.count) {
 	case 0:
@@ -187,37 +187,37 @@ void lookup_list(lookup_t *lookup)
 	}
 
 	if (lookup->iter.it != NULL) {
-		if (hattrie_iter_finished(lookup->iter.it)) {
-			hattrie_iter_free(lookup->iter.it);
+		if (trie_it_finished(lookup->iter.it)) {
+			trie_it_free(lookup->iter.it);
 			lookup->iter.it = NULL;
 			return;
 		}
 
-		hattrie_iter_next(lookup->iter.it);
+		trie_it_next(lookup->iter.it);
 
 		size_t len;
-		const char *key = hattrie_iter_key(lookup->iter.it, &len);
+		const char *key = trie_it_key(lookup->iter.it, &len);
 
 		int ret = set_key(lookup, &lookup->found.key, key, len);
 		if (ret == KNOT_EOK) {
-			lookup->found.data = *hattrie_iter_val(lookup->iter.it);
+			lookup->found.data = *trie_it_val(lookup->iter.it);
 		}
 		return;
 	}
 
-	lookup->iter.it = hattrie_iter_begin(lookup->trie);
-	while (!hattrie_iter_finished(lookup->iter.it)) {
+	lookup->iter.it = trie_it_begin(lookup->trie);
+	while (!trie_it_finished(lookup->iter.it)) {
 		size_t len;
-		const char *key = hattrie_iter_key(lookup->iter.it, &len);
+		const char *key = trie_it_key(lookup->iter.it, &len);
 
 		if (memcmp(key, lookup->iter.first_key, len) == 0) {
 			int ret = set_key(lookup, &lookup->found.key, key, len);
 			if (ret == KNOT_EOK) {
-				lookup->found.data = *hattrie_iter_val(lookup->iter.it);
+				lookup->found.data = *trie_it_val(lookup->iter.it);
 			}
 			break;
 		}
-		hattrie_iter_next(lookup->iter.it);
+		trie_it_next(lookup->iter.it);
 	}
 }
 

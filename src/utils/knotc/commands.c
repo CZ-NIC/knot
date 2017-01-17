@@ -571,7 +571,7 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 
 	// Init memory estimation context.
 	zone_estim_t est = {
-		.node_table = hattrie_create(&mem_ctx),
+		.node_table = trie_create(&mem_ctx),
 	};
 
 	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
@@ -582,7 +582,7 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 	if (est.node_table == NULL || zone_name == NULL || zone_file == NULL ||
 	    zs == NULL) {
 		log_zone_error(dname, "%s", knot_strerror(KNOT_ENOMEM));
-		hattrie_free(est.node_table);
+		trie_free(est.node_table);
 		free(zone_file);
 		free(zs);
 		return KNOT_ENOMEM;
@@ -595,8 +595,8 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 	    zs_parse_all(zs) != 0) {
 		log_zone_error(dname, "failed to parse zone file '%s' (%s)",
 		               zone_file, zs_errorname(zs->error.code));
-		hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
-		hattrie_free(est.node_table);
+		trie_apply(est.node_table, estimator_free_trie_node, NULL);
+		trie_free(est.node_table);
 		free(zone_file);
 		zs_deinit(zs);
 		free(zs);
@@ -607,8 +607,8 @@ static int zone_memstats(const knot_dname_t *dname, void *data)
 	free(zs);
 
 	// Cleanup.
-	hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
-	hattrie_free(est.node_table);
+	trie_apply(est.node_table, estimator_free_trie_node, NULL);
+	trie_free(est.node_table);
 
 	double zone_size = (est.rdata_size + est.node_size + est.dname_size +
 	                    malloc_size) / (1024.0 * 1024.0);

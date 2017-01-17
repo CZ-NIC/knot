@@ -24,10 +24,10 @@
 
 #pragma once
 
-#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/qp-trie/trie.h"
 #include "knot/zone/node.h"
 
-typedef hattrie_t zone_tree_t;
+typedef trie_t zone_tree_t;
 
 /*!
  * \brief Signature of callback for zone apply functions.

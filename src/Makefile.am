@@ -49,7 +49,6 @@ libcontrib_la_SOURCES = 			\
 	contrib/fnv/longlong.h			\
 	contrib/getline.c			\
 	contrib/getline.h			\
-	contrib/hat-trie/hat-trie.h		\
 	contrib/hhash.c				\
 	contrib/hhash.h				\
 	contrib/macros.h			\
@@ -59,8 +58,8 @@ libcontrib_la_SOURCES = 			\
 	contrib/net.h				\
 	contrib/print.c				\
 	contrib/print.h				\
-	contrib/qp-trie/qp.c			\
-	contrib/qp-trie/qp.h			\
+	contrib/qp-trie/trie.c			\
+	contrib/qp-trie/trie.h			\
 	contrib/sockaddr.c			\
 	contrib/sockaddr.h			\
 	contrib/string.c			\

@@ -66,7 +66,7 @@ static int dummy_node_add_type(list_t *l, uint16_t t)
 }
 
 // return: 0 - unique, 1 - duplicate
-static int insert_dname_into_table(hattrie_t *table, const knot_dname_t *d,
+static int insert_dname_into_table(trie_t *table, const knot_dname_t *d,
                                    list_t **dummy_node)
 {
 	int d_size = knot_dname_size(d);
@@ -74,13 +74,13 @@ static int insert_dname_into_table(hattrie_t *table, const knot_dname_t *d,
 		return KNOT_EINVAL;
 	}
 
-	value_t *val = hattrie_tryget(table, (char *)d, d_size);
+	trie_val_t *val = trie_get_try(table, (char *)d, d_size);
 	if (val == NULL) {
 		// Create new dummy node to use for this dname
 		*dummy_node = malloc(sizeof(list_t));
 		assert(dummy_node != NULL);
 		init_list(*dummy_node);
-		*hattrie_get(table, (char *)d, d_size) = *dummy_node;
+		*trie_get_ins(table, (char *)d, d_size) = *dummy_node;
 		return 0;
 	} else {
 		// Return previously found dummy node
@@ -139,7 +139,7 @@ void estimator_rrset_memsize_wrap(zs_scanner_t *scanner)
 	rrset_memsize(scanner->process.data, scanner);
 }
 
-int estimator_free_trie_node(value_t *val, void *data)
+int estimator_free_trie_node(trie_val_t *val, void *data)
 {
 	UNUSED(data);
 	list_t *trie_n = (list_t *)(*val);

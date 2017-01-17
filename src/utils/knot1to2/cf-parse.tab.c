@@ -234,7 +234,7 @@ static void if_add(void *scanner, const char *key, const char *value)
 	conf_extra_t *extra = cf_get_extra(scanner);
 
 	if (extra->run == S_FIRST) {
-		*hattrie_get(extra->share->ifaces, key, strlen(key)) = strdup(value);
+		*trie_get_ins(extra->share->ifaces, key, strlen(key)) = strdup(value);
 	}
 }
 
@@ -243,7 +243,7 @@ static const char* if_get(void *scanner, int run, const char *key)
 	conf_extra_t *extra = cf_get_extra(scanner);
 
 	if (extra->run == run) {
-		return *hattrie_get(extra->share->ifaces, key, strlen(key));
+		return *trie_get_ins(extra->share->ifaces, key, strlen(key));
 	}
 
 	return NULL;
@@ -279,20 +279,20 @@ static void acl_next(void *scanner, const char *value)
 {
 	conf_extra_t *extra = cf_get_extra(scanner);
 
-	hattrie_t **trie = (hattrie_t **)hattrie_tryget(extra->share->groups,
+	trie_t **trie = (trie_t **)trie_get_try(extra->share->groups,
 	                                                value, strlen(value));
 
 	if (extra->run == S_FIRST) {
 		if (trie != NULL) {
-			hattrie_iter_t *it = hattrie_iter_begin(*trie);
-			for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+			trie_it_t *it = trie_it_begin(*trie);
+			for (; !trie_it_finished(it); trie_it_next(it)) {
 				size_t len = 0;
-				const char *data = hattrie_iter_key(it, &len);
-				*hattrie_get(extra->current_trie, data, len) = NULL;
+				const char *data = trie_it_key(it, &len);
+				*trie_get_ins(extra->current_trie, data, len) = NULL;
 			}
-			hattrie_iter_free(it);
+			trie_it_free(it);
 		} else {
-			*hattrie_get(extra->current_trie, value, strlen(value)) = NULL;
+			*trie_get_ins(extra->current_trie, value, strlen(value)) = NULL;
 		}
 	}
 
@@ -306,10 +306,10 @@ static void acl_next(void *scanner, const char *value)
 
 	if (trie != NULL) {
 		bool init = true;
-		hattrie_iter_t *it = hattrie_iter_begin(*trie);
-		for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		trie_it_t *it = trie_it_begin(*trie);
+		for (; !trie_it_finished(it); trie_it_next(it)) {
 			size_t len = 0;
-			const char *data = hattrie_iter_key(it, &len);
+			const char *data = trie_it_key(it, &len);
 			if (init) {
 				init = false;
 			} else {
@@ -318,7 +318,7 @@ static void acl_next(void *scanner, const char *value)
 			f_val(scanner, extra->run, false, "%s", _str);
 			f_val(scanner, extra->run, false, "%.*s", (int)len, data);
 		}
-		hattrie_iter_free(it);
+		trie_it_free(it);
 	} else {
 		f_val(scanner, extra->run, false, "%s", _str);
 		f_val(scanner, extra->run, false, "%s", value);
@@ -336,17 +336,17 @@ static void acl_end(void *scanner)
 static bool is_acl(void *scanner, const char *str) {
 	conf_extra_t *extra = cf_get_extra(scanner);
 
-	return hattrie_tryget(extra->share->acl_xfer, str, strlen(str))    != NULL ||
-	       hattrie_tryget(extra->share->acl_notify, str, strlen(str))  != NULL ||
-	       hattrie_tryget(extra->share->acl_update, str, strlen(str))  != NULL;
+	return trie_get_try(extra->share->acl_xfer, str, strlen(str))    != NULL ||
+	       trie_get_try(extra->share->acl_notify, str, strlen(str))  != NULL ||
+	       trie_get_try(extra->share->acl_update, str, strlen(str))  != NULL;
 }
 
 static bool have_acl(void *scanner) {
 	conf_extra_t *extra = cf_get_extra(scanner);
 
-	return (hattrie_weight(extra->share->acl_xfer) +
-	        hattrie_weight(extra->share->acl_notify) +
-	        hattrie_weight(extra->share->acl_update)) > 0;
+	return (trie_weight(extra->share->acl_xfer) +
+	        trie_weight(extra->share->acl_notify) +
+	        trie_weight(extra->share->acl_update)) > 0;
 }
 
 static char *acl_actions(void *scanner, const char *str) {
@@ -357,15 +357,15 @@ static char *acl_actions(void *scanner, const char *str) {
 
 	strlcpy(actions, "[", sizeof(actions));
 
-	if (hattrie_tryget(extra->share->acl_xfer, str, strlen(str)) != NULL) {
+	if (trie_get_try(extra->share->acl_xfer, str, strlen(str)) != NULL) {
 		strlcat(actions, _first ? "" : ", ", sizeof(actions)); _first = false;
 		strlcat(actions, "transfer", sizeof(actions));
 	}
-	if (hattrie_tryget(extra->share->acl_notify, str, strlen(str)) != NULL) {
+	if (trie_get_try(extra->share->acl_notify, str, strlen(str)) != NULL) {
 		strlcat(actions, _first ? "" : ", ", sizeof(actions)); _first = false;
 		strlcat(actions, "notify", sizeof(actions));
 	}
-	if (hattrie_tryget(extra->share->acl_update, str, strlen(str)) != NULL) {
+	if (trie_get_try(extra->share->acl_update, str, strlen(str)) != NULL) {
 		strlcat(actions, _first ? "" : ", ", sizeof(actions)); _first = false;
 		strlcat(actions, "update", sizeof(actions));
 	}
@@ -380,10 +380,10 @@ static void grp_init(void *scanner, const char *name)
 	conf_extra_t *extra = cf_get_extra(scanner);
 
 	if (extra->run == S_FIRST) {
-		hattrie_t **trie = (hattrie_t **)hattrie_get(extra->share->groups,
+		trie_t **trie = (trie_t **)trie_get_ins(extra->share->groups,
 		                                             name, strlen(name));
 		if (*trie == NULL) {
-			*trie = hattrie_create(NULL);
+			*trie = trie_create(NULL);
 		}
 		extra->current_trie = *trie;
 	}
@@ -394,7 +394,7 @@ static void grp_add(void *scanner, const char *value)
 	conf_extra_t *extra = cf_get_extra(scanner);
 
 	if (extra->run == S_FIRST) {
-		*hattrie_get(extra->current_trie, value, strlen(value)) = NULL;
+		*trie_get_ins(extra->current_trie, value, strlen(value)) = NULL;
 	}
 }
 

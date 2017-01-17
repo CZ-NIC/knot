@@ -360,7 +360,7 @@ void conf_free(
 		conf->api->txn_abort(conf->io.txn_stack);
 	}
 	if (conf->io.zones != NULL) {
-		hattrie_free(conf->io.zones);
+		trie_free(conf->io.zones);
 		mm_free(conf->mm, conf->io.zones);
 	}
 

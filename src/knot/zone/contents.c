@@ -21,7 +21,7 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
-#include "contrib/hat-trie/hat-trie.h"
+#include "contrib/qp-trie/trie.h"
 #include "contrib/macros.h"
 
 typedef struct {
@@ -652,7 +652,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nodes = hattrie_create(NULL);
+	out->nodes = trie_create(NULL);
 	if (out->nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -672,68 +672,68 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 	out->apex = apex_cpy;
 
-	hattrie_iter_t *itt = hattrie_iter_begin(z->nodes);
+	trie_it_t *itt = trie_it_begin(z->nodes);
 	if (itt == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	while (!hattrie_iter_finished(itt)) {
-		const zone_node_t *to_cpy = (zone_node_t *)*hattrie_iter_val(itt);
+	while (!trie_it_finished(itt)) {
+		const zone_node_t *to_cpy = (zone_node_t *)*trie_it_val(itt);
 		if (to_cpy == z->apex) {
 			// Inserted already.
-			hattrie_iter_next(itt);
+			trie_it_next(itt);
 			continue;
 		}
 		zone_node_t *to_add = node_shallow_copy(to_cpy, NULL);
 		if (to_add == NULL) {
-			hattrie_iter_free(itt);
+			trie_it_free(itt);
 			return KNOT_ENOMEM;
 		}
 
 		int ret = add_node(out, to_add, true);
 		if (ret != KNOT_EOK) {
 			node_free(&to_add, NULL);
-			hattrie_iter_free(itt);
+			trie_it_free(itt);
 			return ret;
 		}
-		hattrie_iter_next(itt);
+		trie_it_next(itt);
 	}
 
-	hattrie_iter_free(itt);
+	trie_it_free(itt);
 
 	return KNOT_EOK;
 }
 
 static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nsec3_nodes = hattrie_create(NULL);
+	out->nsec3_nodes = trie_create(NULL);
 	if (out->nsec3_nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	hattrie_iter_t *itt = hattrie_iter_begin(z->nsec3_nodes);
+	trie_it_t *itt = trie_it_begin(z->nsec3_nodes);
 	if (itt == NULL) {
 		return KNOT_ENOMEM;
 	}
-	while (!hattrie_iter_finished(itt)) {
-		const zone_node_t *to_cpy = (zone_node_t *)*hattrie_iter_val(itt);
+	while (!trie_it_finished(itt)) {
+		const zone_node_t *to_cpy = (zone_node_t *)*trie_it_val(itt);
 		zone_node_t *to_add = node_shallow_copy(to_cpy, NULL);
 		if (to_add == NULL) {
-			hattrie_iter_free(itt);
+			trie_it_free(itt);
 			return KNOT_ENOMEM;
 		}
 
 		int ret = add_nsec3_node(out, to_add);
 		if (ret != KNOT_EOK) {
-			hattrie_iter_free(itt);
+			trie_it_free(itt);
 			node_free(&to_add, NULL);
 			return ret;
 		}
 
-		hattrie_iter_next(itt);
+		trie_it_next(itt);
 	}
 
-	hattrie_iter_free(itt);
+	trie_it_free(itt);
 
 	return KNOT_EOK;
 }

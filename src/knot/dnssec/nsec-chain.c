@@ -162,25 +162,25 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 	assert(nodes);
 	assert(callback);
 
-	hattrie_iter_t *it = hattrie_iter_begin(nodes);
+	trie_it_t *it = trie_it_begin(nodes);
 	if (!it) {
 		return KNOT_ENOMEM;
 	}
 
-	if (hattrie_iter_finished(it)) {
-		hattrie_iter_free(it);
+	if (trie_it_finished(it)) {
+		trie_it_free(it);
 		return KNOT_EINVAL;
 	}
 
-	zone_node_t *first = (zone_node_t *)*hattrie_iter_val(it);
+	zone_node_t *first = (zone_node_t *)*trie_it_val(it);
 	zone_node_t *previous = first;
 	zone_node_t *current = first;
 
-	hattrie_iter_next(it);
+	trie_it_next(it);
 
 	int result = KNOT_EOK;
-	while (!hattrie_iter_finished(it)) {
-		current = (zone_node_t *)*hattrie_iter_val(it);
+	while (!trie_it_finished(it)) {
+		current = (zone_node_t *)*trie_it_val(it);
 
 		result = callback(previous, current, data);
 		if (result == NSEC_NODE_SKIP) {
@@ -189,13 +189,13 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 		} else if (result == KNOT_EOK) {
 			previous = current;
 		} else {
-			hattrie_iter_free(it);
+			trie_it_free(it);
 			return result;
 		}
-		hattrie_iter_next(it);
+		trie_it_next(it);
 	}
 
-	hattrie_iter_free(it);
+	trie_it_free(it);
 
 	return result == NSEC_NODE_SKIP ? callback(previous, first, data) :
 	                 callback(current, first, data);
