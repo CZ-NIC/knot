@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,28 +40,6 @@
 
 /* Forward decls */
 struct knot_pkt;
-
-/// XXX: server internal, wipe from the library
-/*!
- * \brief DNS query types (internal use only).
- *
- * This type encompasses the different query types distinguished by both the
- * OPCODE and the QTYPE.
- */
-typedef enum {
-	KNOT_QUERY_INVALID   =      0, /*!< Invalid query. */
-	KNOT_QUERY_NORMAL    = 1 << 1, /*!< Normal query. */
-	KNOT_QUERY_AXFR      = 1 << 2, /*!< Request for AXFR transfer. */
-	KNOT_QUERY_IXFR      = 1 << 3, /*!< Request for IXFR transfer. */
-	KNOT_QUERY_NOTIFY    = 1 << 4, /*!< NOTIFY query. */
-	KNOT_QUERY_UPDATE    = 1 << 5, /*!< Dynamic update. */
-	KNOT_RESPONSE        = 1 << 0, /*!< Is response. */
-	KNOT_RESPONSE_NORMAL = KNOT_RESPONSE|KNOT_QUERY_NORMAL,/*!< Normal response. */
-	KNOT_RESPONSE_AXFR   = KNOT_RESPONSE|KNOT_QUERY_AXFR,  /*!< AXFR transfer response. */
-	KNOT_RESPONSE_IXFR   = KNOT_RESPONSE|KNOT_QUERY_IXFR,  /*!< IXFR transfer response. */
-	KNOT_RESPONSE_NOTIFY = KNOT_RESPONSE|KNOT_QUERY_NOTIFY,/*!< NOTIFY response. */
-	KNOT_RESPONSE_UPDATE = KNOT_RESPONSE|KNOT_QUERY_UPDATE /*!< Dynamic update response. */
-} knot_pkt_type_t;
 
 /*!
  * \brief Packet flags.
@@ -181,12 +159,6 @@ int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size);
  * \return KNOT_ERANGE if size can't be reclaimed
  */
 int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size);
-
-// XXX: probably useless
-/*! \brief Classify packet according to the question.
- *  \return see enum knot_pkt_type_t
- */
-uint16_t knot_pkt_type(const knot_pkt_t *pkt);
 
 /*
  * Packet QUESTION accessors.

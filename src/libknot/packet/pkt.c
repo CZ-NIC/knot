@@ -407,39 +407,6 @@ int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size)
 }
 
 _public_
-uint16_t knot_pkt_type(const knot_pkt_t *pkt)
-{
-	if (pkt == NULL) {
-		return 0;
-	}
-
-	bool is_query = (knot_wire_get_qr(pkt->wire) == 0);
-	uint16_t ret = KNOT_QUERY_INVALID;
-	uint8_t opcode = knot_wire_get_opcode(pkt->wire);
-	uint16_t query_type = knot_pkt_qtype(pkt);
-
-	switch (opcode) {
-	case KNOT_OPCODE_QUERY:
-		switch (query_type) {
-		case 0 /* RESERVED */: /* INVALID */ break;
-		case KNOT_RRTYPE_AXFR: ret = KNOT_QUERY_AXFR; break;
-		case KNOT_RRTYPE_IXFR: ret = KNOT_QUERY_IXFR; break;
-		default:               ret = KNOT_QUERY_NORMAL; break;
-		}
-		break;
-	case KNOT_OPCODE_NOTIFY: ret = KNOT_QUERY_NOTIFY; break;
-	case KNOT_OPCODE_UPDATE: ret = KNOT_QUERY_UPDATE; break;
-	default: break;
-	}
-
-	if (!is_query) {
-		ret = ret|KNOT_RESPONSE;
-	}
-
-	return ret;
-}
-
-_public_
 uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 {
 	if (pkt == NULL || pkt->qname_size == 0) {

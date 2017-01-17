@@ -35,6 +35,36 @@
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
 
+static uint16_t pkt_type(const knot_pkt_t *pkt)
+{
+	assert(pkt);
+
+	bool is_query = (knot_wire_get_qr(pkt->wire) == 0);
+	uint16_t ret = KNOT_QUERY_INVALID;
+	uint8_t opcode = knot_wire_get_opcode(pkt->wire);
+	uint16_t query_type = knot_pkt_qtype(pkt);
+
+	switch (opcode) {
+	case KNOT_OPCODE_QUERY:
+		switch (query_type) {
+		case 0 /* RESERVED */: /* INVALID */ break;
+		case KNOT_RRTYPE_AXFR: ret = KNOT_QUERY_AXFR; break;
+		case KNOT_RRTYPE_IXFR: ret = KNOT_QUERY_IXFR; break;
+		default:               ret = KNOT_QUERY_NORMAL; break;
+		}
+		break;
+	case KNOT_OPCODE_NOTIFY: ret = KNOT_QUERY_NOTIFY; break;
+	case KNOT_OPCODE_UPDATE: ret = KNOT_QUERY_UPDATE; break;
+	default: break;
+	}
+
+	if (!is_query) {
+		ret = ret|KNOT_RESPONSE;
+	}
+
+	return ret;
+}
+
 /*! \brief Reinitialize query data structure. */
 static void query_data_init(knot_layer_t *ctx, void *module_param)
 {
@@ -111,7 +141,7 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Store for processing. */
 	qdata->query = pkt;
-	qdata->packet_type = knot_pkt_type(pkt);
+	qdata->packet_type = pkt_type(pkt);
 
 	/* Declare having response. */
 	return KNOT_STATE_PRODUCE;
@@ -187,7 +217,7 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 	}
 
 	if (zone == NULL) {
-		if (knot_pkt_type(query) == KNOT_QUERY_NORMAL) {
+		if (pkt_type(query) == KNOT_QUERY_NORMAL) {
 			zone = knot_zonedb_find_suffix(zonedb, qname);
 		} else {
 			// Direct match required.
