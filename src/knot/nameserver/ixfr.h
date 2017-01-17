@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,20 +13,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief IXFR processing.
- *
- * \addtogroup query_processing
- * @{
- */
 
 #pragma once
 
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/xfr.h"
-#include "knot/query/query.h"
 #include "libknot/packet/pkt.h"
 
 /*! \brief IXFR-in processing states. */
@@ -68,5 +59,3 @@ struct ixfr_proc {
  * \retval DONE if finished.
  */
 int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata);
-
-/*! @} */

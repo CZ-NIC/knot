@@ -34,9 +34,9 @@ static void reschedule(conf_t *conf, zone_t *zone,
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 
 	zone_events_schedule_at(zone,
-		ZONE_EVENT_DNSSEC, dnssec_refresh,
+	        ZONE_EVENT_DNSSEC, dnssec_refresh,
 	        ZONE_EVENT_NOTIFY, zone_changed ? now : ignore,
-		ZONE_EVENT_FLUSH,  conf_int(&val) == 0 ? now : ignore
+	        ZONE_EVENT_FLUSH,  conf_int(&val) == 0 ? now : ignore
 	);
 }
 
@@ -78,7 +78,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		int ret = apply_changeset(&a_ctx, zone->contents, &ch, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
-				       knot_strerror(ret));
+			               knot_strerror(ret));
 			goto done;
 		}
 
@@ -86,7 +86,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		ret = zone_change_store(conf, zone, &ch);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
-				       knot_strerror(ret));
+			               knot_strerror(ret));
 			update_rollback(&a_ctx);
 			update_free_zone(&new_contents);
 			goto done;

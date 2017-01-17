@@ -115,7 +115,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 		           "failed (%s)", knot_strerror(ret));
 	} else {
 		NOTIFY_LOG(LOG_WARNING, zone->name, dst,
-		           "server responded withi error '%s",
+		           "server responded with error '%s'",
 		           knot_pkt_ext_rcode_name(req->resp));
 	}
 

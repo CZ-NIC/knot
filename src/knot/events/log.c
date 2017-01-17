@@ -23,5 +23,5 @@ void log_dnssec_next(const knot_dname_t *zone, time_t refresh_at)
 	struct tm time_gm = { 0 };
 	localtime_r(&refresh_at, &time_gm);
 	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
-	log_zone_info(zone, "DNSSEC, next signing on %s", time_str);
+	log_zone_info(zone, "DNSSEC, next signing at %s", time_str);
 }

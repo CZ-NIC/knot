@@ -86,7 +86,6 @@ static bool can_expire(const zone_t *zone)
  * \brief Replan events that depend on zone timers (REFRESH, EXPIRE, FLUSH).
  */
 void replan_from_timers(conf_t *conf, zone_t *zone)
-
 {
 	assert(conf);
 	assert(zone);
@@ -115,8 +114,8 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 
 	zone_events_schedule_at(zone,
 	                        ZONE_EVENT_REFRESH, refresh,
-		                ZONE_EVENT_EXPIRE, expire_pre,
-		                ZONE_EVENT_EXPIRE, expire,
+	                        ZONE_EVENT_EXPIRE, expire_pre,
+	                        ZONE_EVENT_EXPIRE, expire,
 	                        ZONE_EVENT_FLUSH, flush);
 }
 

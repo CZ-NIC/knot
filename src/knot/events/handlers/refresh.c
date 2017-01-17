@@ -339,7 +339,7 @@ static int ixfr_finalize(struct refresh_data *data)
 
 	apply_init_ctx(&ctx, NULL, APPLY_STRICT);
 	int ret = apply_changesets(&ctx, data->zone->contents,
-				   &data->ixfr.changesets, &new_zone);
+	                           &data->ixfr.changesets, &new_zone);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to apply changes to zone (%s)",
@@ -699,7 +699,7 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	query_init_pkt(pkt);
 	knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN,
-			      ixfr ? KNOT_RRTYPE_IXFR : KNOT_RRTYPE_AXFR);
+	                      ixfr ? KNOT_RRTYPE_IXFR : KNOT_RRTYPE_AXFR);
 
 	if (ixfr) {
 		assert(data->soa);

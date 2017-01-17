@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,15 +16,12 @@
 
 #include <urcu.h>
 
-#include "knot/common/log.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/log.h"
 #include "knot/nameserver/xfr.h"
-#include "knot/updates/apply.h"
 #include "knot/zone/serial.h"
-#include "knot/zone/semantic-check.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "contrib/mempattern.h"
@@ -55,8 +52,9 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
 	if (knot_rrset_empty(&ixfr->cur_rr)) {
 		ixfr->cur_rr = changeset_iter_next(itt);
 	}
+
 	int ret = KNOT_EOK; // Declaration for IXFR_SAFE_PUT macro
-	while(!knot_rrset_empty(&ixfr->cur_rr)) {
+	while (!knot_rrset_empty(&ixfr->cur_rr)) {
 		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
 		ixfr->cur_rr = changeset_iter_next(itt);
 	}
@@ -301,7 +299,7 @@ int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	int ret = KNOT_EOK;
-	struct ixfr_proc *ixfr = (struct ixfr_proc*)qdata->ext;
+	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->ext;
 
 	/* If IXFR is disabled, respond with SOA. */
 	if (qdata->param->proc_flags & NS_QUERY_NO_IXFR) {
@@ -311,9 +309,9 @@ int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
 		ret = ixfr_answer_init(qdata);
-		switch(ret) {
+		switch (ret) {
 		case KNOT_EOK:      /* OK */
-			ixfr = (struct ixfr_proc*)qdata->ext;
+			ixfr = (struct ixfr_proc *)qdata->ext;
 			IXFROUT_LOG(LOG_INFO, qdata, "started, serial %u -> %u",
 			            knot_soa_serial(&ixfr->soa_from->rrs),
 			            knot_soa_serial(&ixfr->soa_to->rrs));
@@ -337,13 +335,13 @@ int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Answer current packet (or continue). */
 	ret = xfr_process_list(pkt, &ixfr_process_changeset, qdata);
-	switch(ret) {
+	switch (ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return KNOT_STATE_PRODUCE; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		xfr_stats_end(&ixfr->proc.stats);
 		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_IXFR, LOG_DIRECTION_OUT,
-				 REMOTE(qdata), &ixfr->proc.stats);
+		                 REMOTE(qdata), &ixfr->proc.stats);
 		ret = KNOT_STATE_DONE;
 		break;
 	default:          /* Generic error. */
