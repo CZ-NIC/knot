@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_ENOENT, "zone_timer_read() nonexistent");
 
 	// Write timers
-	ret = zone_timers_write(db, zone, &timers);
+	ret = zone_timers_write(db, zone, &timers, NULL);
 	ok(ret == KNOT_EOK, "zone_timers_write()");
 
 	// Read timers

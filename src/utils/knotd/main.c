@@ -376,9 +376,9 @@ static int set_config(const char *confdb, const char *config)
 	return KNOT_EOK;
 }
 
-static void write_timers(const zone_t *zone, zone_timers_t *db)
+static void write_timers(const zone_t *zone, knot_db_txn_t *txn)
 {
-	zone_timers_write(db, zone->name, &zone->timers);
+	zone_timers_write(NULL, zone->name, &zone->timers, txn);
 }
 
 int main(int argc, char **argv)
@@ -576,9 +576,11 @@ int main(int argc, char **argv)
 	server_wait(&server);
 	stats_deinit();
 
-	// TODO: will be very slow, each write is in separate transation
 	log_info("updating zone timers database");
-	knot_zonedb_foreach(server.zone_db, write_timers, server.timers_db);
+	knot_db_txn_t timers_txn;
+	zone_timers_write_begin(server.timers_db, &timers_txn);
+	knot_zonedb_foreach(server.zone_db, write_timers, &timers_txn);
+	zone_timers_write_end(&timers_txn);
 
 	/* Cleanup PID file. */
 	pid_cleanup();
