@@ -376,9 +376,24 @@ static int set_config(const char *confdb, const char *config)
 	return KNOT_EOK;
 }
 
-static void write_timers(const zone_t *zone, knot_db_txn_t *txn)
+static void write_timers(const zone_t *zone, knot_db_txn_t *txn, int *ret)
 {
-	zone_timers_write(NULL, zone->name, &zone->timers, txn);
+	if (*ret == KNOT_EOK) {
+		*ret = zone_timers_write(NULL, zone->name, &zone->timers, txn);
+	}
+}
+
+static void update_timerdb(server_t *server)
+{
+	log_info("updating zone timers database");
+	knot_db_txn_t timers_txn;
+	int timers_ret = zone_timers_write_begin(server->timers_db, &timers_txn);
+	knot_zonedb_foreach(server->zone_db, write_timers, &timers_txn, &timers_ret);
+	if (timers_ret == KNOT_EOK) {
+		zone_timers_write_end(&timers_txn);
+	} else {
+		log_warning("updating zone timers database failed (%s)", knot_strerror(timers_ret));
+	}
 }
 
 int main(int argc, char **argv)
@@ -576,11 +591,8 @@ int main(int argc, char **argv)
 	server_wait(&server);
 	stats_deinit();
 
-	log_info("updating zone timers database");
-	knot_db_txn_t timers_txn;
-	zone_timers_write_begin(server.timers_db, &timers_txn);
-	knot_zonedb_foreach(server.zone_db, write_timers, &timers_txn);
-	zone_timers_write_end(&timers_txn);
+	/* Update timers database. */
+	update_timerdb(&server);
 
 	/* Cleanup PID file. */
 	pid_cleanup();
