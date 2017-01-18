@@ -292,6 +292,8 @@ int knot_requestor_exec(struct knot_requestor *requestor,
 
 	int ret = KNOT_EOK;
 
+	requestor->layer.tsig = &request->tsig;
+
 	/* Do I/O until the processing is satisifed or fails. */
 	while (layer_active(requestor->layer.state)) {
 		ret = request_io(requestor, request, timeout_ms);

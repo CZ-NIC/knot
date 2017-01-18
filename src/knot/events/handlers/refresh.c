@@ -726,11 +726,13 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		                 LOG_DIRECTION_IN, data->remote, &data->stats);
 
 		/*
-		 * TODO: Add TSIG check, or move finialization into finish
+		 * TODO: Move finialization into finish
 		 * callback. And update requestor to allow reset from fallback
 		 * as we need IXFR to AXFR failover.
 		 */
-		#warning SECURITY: final TSIG packet is not verified yet
+		if (tsig_unsigned_count(layer->tsig) != 0) {
+			return KNOT_STATE_FAIL;
+		}
 
 		// Finalize and publish the zone
 		int ret = data->is_ixfr ? ixfr_finalize(data) : axfr_finalize(data);

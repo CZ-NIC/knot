@@ -18,6 +18,7 @@
 
 #include "libknot/packet/pkt.h"
 #include "libknot/mm_ctx.h"
+#include "knot/nameserver/tsig_ctx.h"
 
 /*!
  * \brief Layer processing states.
@@ -46,6 +47,7 @@ struct knot_layer {
 	enum knot_layer_state state;  //!< Processing state.
 	void *data;                   //!< Module specific.
 	const struct knot_layer_api *api;
+	tsig_ctx_t *tsig;             //!< TODO: remove
 };
 
 /*! \brief Packet processing module API. */
