@@ -33,18 +33,5 @@ int event_update(conf_t *conf, zone_t *zone)
 	/* Trim extra heap. */
 	mem_trim();
 
-	/* Replan event if next update waiting. */
-	pthread_mutex_lock(&zone->ddns_lock);
-
-	const bool empty = EMPTY_LIST(zone->ddns_queue);
-
-	pthread_mutex_unlock(&zone->ddns_lock);
-
-	if (!empty) {
-		// TODO: Race condition? What if the update was received after
-		// checking when this event was still running.
-		zone_events_schedule_now(zone, ZONE_EVENT_UPDATE);
-	}
-
 	return KNOT_EOK;
 }
