@@ -200,7 +200,7 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	              "%.02f seconds", old_serial, new_serial,
 	              time_diff_ms(&t_start, &t_end));
 
-	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
+	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
 }
 
 static int remote_forward(conf_t *conf, struct knot_request *request, conf_remote_t *remote)
