@@ -1,0 +1,54 @@
+variables:
+  DEBIAN_FRONTEND: noninteractive
+  LC_ALL: C.UTF-8
+  GIT_STRATEGY: fetch
+
+stages:
+  - configure
+  - build
+  - test
+
+.ubuntu: &ubuntu_image
+  image: cznic/ubuntu:16.04-knot
+  tags:
+    - docker
+    - linux
+    - amd64
+
+.configure: &configure_job
+  stage: configure
+  script:
+    - autoreconf -fi
+    - ./configure --disable-fastparser
+  artifacts:
+    untracked: true
+    expire_in: '1 hour'
+
+.build: &build_job
+  stage: build
+  script:
+    - make -k all
+  artifacts:
+    untracked: true
+    expire_in: '1 hour'
+
+.test: &test_job
+  stage: test
+  script:
+    - make -k check
+
+configure:ubuntu:amd64:
+  <<: *ubuntu_image
+  <<: *configure_job
+
+build:ubuntu:amd64:
+  <<: *ubuntu_image
+  <<: *build_job
+  dependencies:
+    - configure:ubuntu:amd64
+
+test:ubuntu:amd64:
+  <<: *ubuntu_image
+  <<: *test_job
+  dependencies:
+    - build:ubuntu:amd64
