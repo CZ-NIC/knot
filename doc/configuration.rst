@@ -468,3 +468,72 @@ when they retire in any zone.
 
 If keys are added manually as published, but not active (for next rollover event), they are added automatically.
 
+Performance Tuning
+==================
+
+Numbers of Workers
+------------------
+
+There are three types of workers ready for parallel execution of performance-oriented tasks:
+UDP workers, TCP workers, and Background workers. The first two types handle all network requests
+coming through UDP and TCP protocol (respectively) and do all the response job for common
+queries. Background workers process changes to the zone.
+
+By default, Knot determines well-fitting number of workers based on the number of CPU cores.
+The user can specify the numbers of workers for each type with configuration/server section:
+:ref:`server_udp-workers`, :ref:`server_tcp-workers`, :ref:`server_background-workers`.
+
+An indication on when to increase number of workers is a situation when the server is lagging behind
+the expected performance, while the CPU usage is low. This is usually because of waiting for network
+or I/O response during the operation. It may be caused by Knot design not fitting well the usecase.
+The user should try increasing the number of workers (of the related type) slightly above 100 and if
+the performance gets better, he can decide about further exact setting.
+
+Sysctl and NIC optimizations
+----------------------------
+
+There are several recommendations based on Knot developers' experience with their specific HW and SW
+(mainstream Intel-based servers, Debian-based GNU/Linux distribution). They may or may not positively
+(or negatively) influence performance in common use cases.
+
+If your NIC driver allows it (see /proc/interrupts for hint), set CPU affinity (/proc/irq/$IRQ/smp_affinity)
+manually so that each NIC channel is served by unique CPU core(s). You must turn off irqbalance service
+before to avoid configuration override.
+
+Configure sysctl as follows: ::
+
+    socket_bufsize=1048576
+    busy_latency=0
+    backlog=40000
+    optmem_max=20480
+
+    net.core.wmem_max     = $socket_bufsize
+    net.core.wmem_default = $socket_bufsize
+    net.core.rmem_max     = $socket_bufsize
+    net.core.rmem_default = $socket_bufsize
+    net.core.busy_read = $busy_latency
+    net.core.busy_poll = $busy_latency
+    net.core.netdev_max_backlog = $backlog
+    net.core.optmem_max = $optmem_max
+
+Disable huge pages.
+
+Configure your CPU to "performance" mode. This can be achieved depending on architecture, e.g. in BIOS,
+or e.g. configuring /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor to "performance".
+
+Tune your NIC device with ethtool: ::
+
+    ethtool -A $dev autoneg off rx off tx off
+    ethtool -K $dev tso off gro off ufo off
+    ethtool -G $dev rx 4096 tx 4096
+    ethtool -C $dev rx-usecs 75
+    ethtool -C $dev tx-usecs 75
+    ethtool -N $dev rx-flow-hash udp4 sdfn
+    ethtool -N $dev rx-flow-hash udp6 sdfn
+
+On FreeBSD you can just: ::
+
+    ifconfig ${dev} -rxcsum -txcsum -lro -tso
+
+Knot developers are open to hear about users' further suggestions about network devices tuning/optimization.
+
