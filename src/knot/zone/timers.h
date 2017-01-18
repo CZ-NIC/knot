@@ -65,16 +65,36 @@ int zone_timers_read(knot_db_t *db, const knot_dname_t *zone,
                      zone_timers_t *timers);
 
 /*!
+ * \brief Init txn for zone_timers_write()
+ *
+ * \param db      Timer database.
+ * \param txn     Handler to be initialized.
+ *
+ * \return KNOT_E*
+ */
+int zone_timers_write_begin(knot_db_t *db, knot_db_txn_t *txn);
+
+/*!
+ * \brief Close txn for zone_timers_write()
+ *
+ * \param txn     Handler to be closed.
+ *
+ * \return KNOT_E*
+ */
+void zone_timers_write_end(knot_db_txn_t *txn);
+
+/*!
  * \brief Write timers for one zone.
  *
  * \param db      Timer database.
  * \param zone    Zone name.
  * \param timers  Loaded timers
+ * \param txn     Transaction handler obtained from zone_timers_write_begin()
  *
  * \return KNOT_E*
  */
 int zone_timers_write(knot_db_t *db, const knot_dname_t *zone,
-                      const zone_timers_t *timers);
+                      const zone_timers_t *timers, knot_db_txn_t *txn);
 
 /*!
  * \brief Callback used in \ref zone_timers_sweep.

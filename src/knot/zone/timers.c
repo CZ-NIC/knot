@@ -195,29 +195,46 @@ int zone_timers_read(knot_db_t *db, const knot_dname_t *zone,
 	return ret;
 }
 
-int zone_timers_write(knot_db_t *db, const knot_dname_t *zone,
-                      const zone_timers_t *timers)
+int zone_timers_write_begin(knot_db_t *db, knot_db_txn_t *txn)
 {
-	if (!db || !zone || !timers) {
+	memset(txn, 0, sizeof(*txn));
+	return knot_db_lmdb_api()->txn_begin(db, txn, KNOT_DB_SORTED);
+}
+
+void zone_timers_write_end(knot_db_txn_t *txn)
+{
+	knot_db_lmdb_api()->txn_commit(txn);
+}
+
+int zone_timers_write(knot_db_t *db, const knot_dname_t *zone,
+                      const zone_timers_t *timers, knot_db_txn_t *txn)
+{
+	if (!zone || !timers || (!db && !txn)) {
 		return KNOT_EINVAL;
 	}
 
 	const knot_db_api_t *db_api = knot_db_lmdb_api();
 	assert(db_api);
 
-	knot_db_txn_t txn = { 0 };
-	int ret = db_api->txn_begin(db, &txn, KNOT_DB_SORTED);
+	knot_db_txn_t static_txn, *mytxn = txn;
+	if (txn == NULL) {
+		mytxn = &static_txn;
+		int ret = db_api->txn_begin(db, mytxn, KNOT_DB_SORTED);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	int ret = txn_write_timers(mytxn, zone, timers);
 	if (ret != KNOT_EOK) {
+		db_api->txn_abort(mytxn);
 		return ret;
 	}
 
-	ret = txn_write_timers(&txn, zone, timers);
-	if (ret != KNOT_EOK) {
-		db_api->txn_abort(&txn);
-		return ret;
+	if (txn == NULL) {
+		db_api->txn_commit(mytxn);
 	}
 
-	db_api->txn_commit(&txn);
 	return KNOT_EOK;
 }
 
