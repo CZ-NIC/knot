@@ -1,33 +1,80 @@
-Knot DNS 2.4.0-dev (unreleased)
-===============================
+Knot DNS 2.4.0 (2017-01-18)
+===========================
 
 Bugfixes:
 --------
- - Schedule zone refresh after load only if not already scheduled
- - Purge the timers together with zone-purge
- - Don't preserve CD flag in the answers
- - Fix incorrect type bitmap in NSEC
- - Dump DNSSEC related records also if DNSSEC is not active
- - Preserve bootstrap_retry interval after zone reload
- - Don't set SO_REUSEPORT on the TCP socket as SO_REUSEPORT on TCP
-   is buggy
- - Allow deleting non-apex DNSKEY and NSEC3PARAM records via DDNS
+ - False positive semantic-check warning about invalid bitmap in NSEC
+ - Unnecessary SOA queries upon notify with up to date serial
+ - Timers for expired zones are reset on reload
+ - Zone doesn't expire when the server is down
+ - Failed to handle keys with duplicate keytags
+ - Per zone module and global module insconsistency
+ - Obsolete online signing module configuration
+ - Malformed output from kjournalprint
+ - Redundant SO_REUSEPORT activation on the TCP socket
+ - Failed to use higher number of background workers
 
 Improvements:
 -------------
- - Lower memory consumption when used with many zones due hat-trie
-   replacement with qp-trie in zone-tree
- - Improve the event scheduler
- - Store the XFER timer between restarts
+ - Lower memory consumption with qp-trie
+ - Zone events and zone timers improvements
  - Print all zone names in the FQDN format
- - Improve and simplify modules interface
+ - Simplified query module interface
+ - Shared TCP connection between SOA query and transfer
+ - Response Rate Limiting as a module with statistics support
+ - Key filters in keymgr
 
 Features:
 ---------
  - New unified LMDB-based zone journal
- - Add kjournalprint utility
- - New mod-stats module for detailed server metrics
- - Automatically delete retired DNSSEC keys
+ - Server statistics support
+ - New statistics module for traffic measuring
+ - Automatic deletion of retired DNSSEC keys
+ - New control logging category
+
+Knot DNS 2.3.3 (2016-12-08)
+===========================
+
+Bugfixes:
+---------
+ - Double free when failed to apply zone journal
+ - Zone bootstrap retry interval not preserved upon zone reload
+ - DNSSEC related records not flushed if not signed
+ - False semantic checks warning about incorrect type in NSEC bitmap
+ - Memory leak in kzonecheck
+
+Improvements:
+-------------
+ - All zone names are fully-qualified in log
+
+Features:
+---------
+ - New kjournalprint utility
+
+Knot DNS 2.3.2 (2016-11-04)
+===========================
+
+Bugfixes:
+---------
+ - Incorrect %s expansion for the root zone
+ - Failed to refresh not existing slave zone after restart
+ - Immediate zone refresh upon restart if refresh already scheduled
+ - Early zone transfer after restart if transfer already scheduled
+ - Not ignoring empty non-terminal parents during delegation lookup
+ - CD bit preservation in responses
+ - Compilation error on GNU/kFreeBSD
+ - Server crash after double zone-commit if journal error
+
+Improvements:
+-------------
+ - Speed-up of knotc if control operation and known socket
+ - Zone purge operation purges also zone timers
+
+Features:
+---------
+ - Simple modules don't require empty configuration section
+ - New zone journal path configuration option
+ - New timeout configuration option for module dnsproxy
 
 Knot DNS 2.3.1 (2016-10-07)
 ===========================
