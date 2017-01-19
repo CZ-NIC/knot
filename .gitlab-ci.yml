@@ -89,7 +89,6 @@ build:documentation:
   script:
     - make -C doc html singlehtml pdf
   artifacts:
-    name: "knot-dns-$CI_BUILD_TAG-doc"
     paths:
       - doc/_build/
     expire_in: '1 hour'
@@ -106,6 +105,6 @@ deploy:documentation:
   script:
     - "curl --request POST --form token=$WEBSITE_TOKEN --form ref=master --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_BUILD_REF_NAME\" --form \"variables[RELEASE_CI_BUILD_ID]=$CI_BUILD_ID\" https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
   artifacts:
-    name: "knot-dns-$CI_BUILD_TAG-doc"
+    name: "knot-dns-$CI_BUILD_REF_NAME-doc"
     paths:
       - doc/_build/
