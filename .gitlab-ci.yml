@@ -48,18 +48,27 @@ stages:
 configure:ubuntu:amd64:
   <<: *ubuntu_xenial
   <<: *configure_job
+  except:
+    - gitlab-ci-documentation
+    - tags
 
 build:ubuntu:amd64:
   <<: *ubuntu_xenial
   <<: *build_job
   dependencies:
     - configure:ubuntu:amd64
+  except:
+    - gitlab-ci-documentation
+    - tags
 
 test:ubuntu:amd64:
   <<: *ubuntu_xenial
   <<: *test_job
   dependencies:
     - build:ubuntu:amd64
+  except:
+    - gitlab-ci-documentation
+    - tags
 
 configure:debian:stretch:amd64:
   <<: *debian_stretch
