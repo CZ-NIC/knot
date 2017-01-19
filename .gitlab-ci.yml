@@ -7,8 +7,16 @@ stages:
   - configure
   - build
   - test
+  - deploy
 
-.ubuntu: &ubuntu_image
+.debian_stretch: &debian_stretch
+  image: cznic/debian:stretch-knot
+  tags:
+    - docker
+    - linux
+    - amd64
+  
+.ubuntu_xenial: &ubuntu_xenial
   image: cznic/ubuntu:16.04-knot
   tags:
     - docker
@@ -38,17 +46,57 @@ stages:
     - make -k check
 
 configure:ubuntu:amd64:
-  <<: *ubuntu_image
+  <<: *ubuntu_xenial
   <<: *configure_job
 
 build:ubuntu:amd64:
-  <<: *ubuntu_image
+  <<: *ubuntu_xenial
   <<: *build_job
   dependencies:
     - configure:ubuntu:amd64
 
 test:ubuntu:amd64:
-  <<: *ubuntu_image
+  <<: *ubuntu_xenial
   <<: *test_job
   dependencies:
     - build:ubuntu:amd64
+
+configure:debian:stretch:amd64:
+  <<: *debian_stretch
+  <<: *configure_job
+
+build:debian:stretch:amd64:
+  <<: *debian_stretch
+  <<: *build_job
+  dependencies:
+    - configure:debian:stretch:amd64
+
+test:debian:stretch:amd64:
+  <<: *debian_stretch
+  <<: *test_job
+  dependencies:
+    - build:debian:stretch:amd64
+
+build:documentation:
+  <<: *debian_stretch
+  dependencies:
+    - configure:debian:stretch:amd64
+  only:
+    - gitlab-ci-documentation
+    - tags
+    - triggers
+  script:
+    - make -C doc html singlehtml pdf
+  artifacts:
+    name: "knot-dns-$CI_BUILD_TAG-doc"
+    paths:
+      - doc/_build/
+
+deploy:documentation:
+  <<: *debian_stretch
+  only:
+    - gitlab-ci-documentation
+    - tags
+    - triggers
+  script:
+    - "curl --request POST --form token=$WEBSITE_TOKEN --form ref=master https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
