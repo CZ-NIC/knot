@@ -104,7 +104,7 @@ deploy:documentation:
     - tags
     - triggers
   script:
-    - "curl --request POST --form token=$WEBSITE_TOKEN --form ref=master --form \"variables[RELEASE_CI_BUILD_TAG]=$CI_BUILD_TAG\" --form \"variables[RELEASE_CI_BUILD_ID]=$CI_BUILD_ID\" https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
+    - "curl --request POST --form token=$WEBSITE_TOKEN --form ref=master --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_BUILD_REF_NAME\" --form \"variables[RELEASE_CI_BUILD_ID]=$CI_BUILD_ID\" https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
   artifacts:
     name: "knot-dns-$CI_BUILD_TAG-doc"
     paths:
