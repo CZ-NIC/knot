@@ -139,7 +139,17 @@ static int flush_journal(conf_t *conf, zone_t *zone)
 	/* Trim extra heap. */
 	mem_trim();
 
-	return ret;
+	/* Plan next journal flush after proper period. */
+	zone->timers.last_flush = time(NULL);
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	int64_t sync_timeout = conf_int(&val);
+	if (sync_timeout > 0) {
+		time_t next_flush = zone->timers.last_flush + sync_timeout;
+		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, 0,
+		                              ZONE_EVENT_FLUSH, next_flush);
+	}
+
+	return KNOT_EOK;
 }
 
 zone_t* zone_new(const knot_dname_t *name)
@@ -271,19 +281,9 @@ int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs)
 		ret = journal_store_changesets(zone->journal, chgs);
 		if (ret == KNOT_EBUSY) {
 			log_zone_notice(zone->name, "journal is full, flushing");
-
-			/*
-			 * TODO: Check where zone_flush_journal is used beyond
-			 * event_flush(). zone->timers.last flush needs to be
-			 * updated and flush event rescheduled.
-			 *
-			 * The code bellow does only half of it.
-			 */
-
 			/* Transaction rolled back, journal released, we may flush. */
 			ret = flush_journal(conf, zone);
 			if (ret == KNOT_EOK) {
-				zone->timers.last_flush = time(NULL);
 				ret = journal_store_changesets(zone->journal, chgs);
 			}
 		}
