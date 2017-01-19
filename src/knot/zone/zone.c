@@ -141,7 +141,7 @@ static int flush_journal(conf_t *conf, zone_t *zone)
 
 	/* Plan next journal flush after proper period. */
 	zone->timers.last_flush = time(NULL);
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
 	if (sync_timeout > 0) {
 		time_t next_flush = zone->timers.last_flush + sync_timeout;
