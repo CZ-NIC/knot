@@ -10,7 +10,7 @@ stages:
   - deploy
 
 .debian_stretch: &debian_stretch
-  image: cznic/debian:stretch-knot
+  image: cznic/debian:stretch-knot-v2
   tags:
     - docker
     - linux
@@ -79,6 +79,7 @@ test:debian:stretch:amd64:
 
 build:documentation:
   <<: *debian_stretch
+  stage: build
   dependencies:
     - configure:debian:stretch:amd64
   only:
@@ -94,6 +95,7 @@ build:documentation:
 
 deploy:documentation:
   <<: *debian_stretch
+  stage: deploy
   only:
     - gitlab-ci-documentation
     - tags
