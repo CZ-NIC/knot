@@ -7,8 +7,16 @@ stages:
   - configure
   - build
   - test
+  - deploy
 
-.ubuntu: &ubuntu_image
+.debian_stretch: &debian_stretch
+  image: cznic/debian:stretch-knot-v2
+  tags:
+    - docker
+    - linux
+    - amd64
+  
+.ubuntu_xenial: &ubuntu_xenial
   image: cznic/ubuntu:16.04-knot
   tags:
     - docker
@@ -38,17 +46,73 @@ stages:
     - make -k check
 
 configure:ubuntu:amd64:
-  <<: *ubuntu_image
+  <<: *ubuntu_xenial
   <<: *configure_job
+  except:
+    - tags
 
 build:ubuntu:amd64:
-  <<: *ubuntu_image
+  <<: *ubuntu_xenial
   <<: *build_job
   dependencies:
     - configure:ubuntu:amd64
+  except:
+    - tags
 
 test:ubuntu:amd64:
-  <<: *ubuntu_image
+  <<: *ubuntu_xenial
   <<: *test_job
   dependencies:
     - build:ubuntu:amd64
+  except:
+    - tags
+
+configure:debian:stretch:amd64:
+  <<: *debian_stretch
+  <<: *configure_job
+
+build:debian:stretch:amd64:
+  <<: *debian_stretch
+  <<: *build_job
+  dependencies:
+    - configure:debian:stretch:amd64
+
+test:debian:stretch:amd64:
+  <<: *debian_stretch
+  <<: *test_job
+  dependencies:
+    - build:debian:stretch:amd64
+
+build:documentation:
+  <<: *debian_stretch
+  stage: build
+  dependencies:
+    - configure:debian:stretch:amd64
+  only:
+    - tags
+    - triggers
+  script:
+    - make -C doc html singlehtml pdf
+  artifacts:
+    paths:
+      - doc/_build/html/
+      - doc/_build/singlehtml/
+      - doc/_build/latex/knot.pdf
+    expire_in: '1 hour'
+
+deploy:documentation:
+  <<: *debian_stretch
+  stage: deploy
+  before_script:
+    - apt-get -y install curl
+  only:
+    - tags
+    - triggers
+  script:
+    - "curl --http1.1 --request POST --form token=$WEBSITE_TOKEN --form ref=master --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_BUILD_REF_NAME\" --form \"variables[RELEASE_CI_BUILD_ID]=$CI_BUILD_ID\" https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
+  artifacts:
+    name: "knot-dns-$CI_BUILD_REF_NAME-doc"
+    paths:
+      - doc/_build/html/
+      - doc/_build/singlehtml/
+      - doc/_build/latex/knot.pdf
