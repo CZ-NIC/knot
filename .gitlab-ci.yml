@@ -50,6 +50,7 @@ configure:ubuntu:amd64:
   <<: *configure_job
   except:
     - tags
+    - docs-*
 
 build:ubuntu:amd64:
   <<: *ubuntu_xenial
@@ -58,6 +59,7 @@ build:ubuntu:amd64:
     - configure:ubuntu:amd64
   except:
     - tags
+    - docs-*
 
 test:ubuntu:amd64:
   <<: *ubuntu_xenial
@@ -66,6 +68,7 @@ test:ubuntu:amd64:
     - build:ubuntu:amd64
   except:
     - tags
+    - docs-*
 
 configure:debian:stretch:amd64:
   <<: *debian_stretch
@@ -91,6 +94,7 @@ build:documentation:
   only:
     - tags
     - triggers
+    - docs-*
   script:
     - make -C doc html singlehtml pdf
   artifacts:
@@ -108,6 +112,7 @@ deploy:documentation:
   only:
     - tags
     - triggers
+    - docs-*
   script:
     - "curl --http1.1 --request POST --form token=$WEBSITE_TOKEN --form ref=master --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_BUILD_REF_NAME\" --form \"variables[RELEASE_CI_BUILD_ID]=$CI_BUILD_ID\" https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
   artifacts:
