@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -386,13 +386,17 @@ static void write_timers(const zone_t *zone, knot_db_txn_t *txn, int *ret)
 static void update_timerdb(server_t *server)
 {
 	log_info("updating zone timers database");
-	knot_db_txn_t timers_txn;
-	int timers_ret = zone_timers_write_begin(server->timers_db, &timers_txn);
-	knot_zonedb_foreach(server->zone_db, write_timers, &timers_txn, &timers_ret);
-	if (timers_ret == KNOT_EOK) {
-		zone_timers_write_end(&timers_txn);
-	} else {
-		log_warning("updating zone timers database failed (%s)", knot_strerror(timers_ret));
+
+	knot_db_txn_t txn;
+	int ret = zone_timers_write_begin(server->timers_db, &txn);
+	if (ret == KNOT_EOK) {
+		knot_zonedb_foreach(server->zone_db, write_timers, &txn, &ret);
+	}
+	if (ret == KNOT_EOK) {
+		ret = zone_timers_write_end(&txn);
+	}
+	if (ret != KNOT_EOK) {
+		log_warning("failed to update zone timers database (%s)", knot_strerror(ret));
 	}
 }
 

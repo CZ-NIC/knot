@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ int zone_timers_write_begin(knot_db_t *db, knot_db_txn_t *txn);
  *
  * \return KNOT_E*
  */
-void zone_timers_write_end(knot_db_txn_t *txn);
+int zone_timers_write_end(knot_db_txn_t *txn);
 
 /*!
  * \brief Write timers for one zone.

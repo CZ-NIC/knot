@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -201,9 +201,9 @@ int zone_timers_write_begin(knot_db_t *db, knot_db_txn_t *txn)
 	return knot_db_lmdb_api()->txn_begin(db, txn, KNOT_DB_SORTED);
 }
 
-void zone_timers_write_end(knot_db_txn_t *txn)
+int zone_timers_write_end(knot_db_txn_t *txn)
 {
-	knot_db_lmdb_api()->txn_commit(txn);
+	return knot_db_lmdb_api()->txn_commit(txn);
 }
 
 int zone_timers_write(knot_db_t *db, const knot_dname_t *zone,
