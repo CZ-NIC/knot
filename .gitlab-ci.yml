@@ -99,7 +99,9 @@ build:documentation:
     - make -C doc html singlehtml pdf
   artifacts:
     paths:
-      - doc/_build/
+      - doc/_build/html/
+      - doc/_build/singlehtml/
+      - doc/_build/latex/knot.pdf
     expire_in: '1 hour'
 
 deploy:documentation:
@@ -116,4 +118,6 @@ deploy:documentation:
   artifacts:
     name: "knot-dns-$CI_BUILD_REF_NAME-doc"
     paths:
-      - doc/_build/
+      - doc/_build/html/
+      - doc/_build/singlehtml/
+      - doc/_build/latex/knot.pdf
