@@ -23,6 +23,13 @@ stages:
     - linux
     - amd64
 
+.debian_stretch_armel: &debian_stretch_armel
+  image: cznic/armel-debian-knot
+  tags:
+    - docker
+    - linux
+    - arm
+
 .configure: &configure_job
   stage: configure
   script:
@@ -85,6 +92,22 @@ test:debian:stretch:amd64:
   <<: *test_job
   dependencies:
     - build:debian:stretch:amd64
+
+configure:debian:stretch:armel:
+  <<: *debian_stretch_armel
+  <<: *configure_job
+
+build:debian:stretch:armel:
+  <<: *debian_stretch_armel
+  <<: *build_job
+  dependencies:
+    - configure:debian:stretch:armel
+
+test:debian:stretch:armel:
+  <<: *debian_stretch_armel
+  <<: *test_job
+  dependencies:
+    - build:debian:stretch:armel
 
 build:documentation:
   <<: *debian_stretch
