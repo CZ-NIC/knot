@@ -122,6 +122,13 @@ Actions
   Show zone statistics counter(s). To print also counters with value 0, use
   force option.
 
+**zone-freeze** [*zone*...]
+  Temporarily postpone zone-changing events (load, refresh, update, flush, and
+  DNSSEC signing).
+
+**zone-thaw** [*zone*...]
+  Dismiss zone freeze.
+
 **conf-init**
   Initialize the configuration database. (*)
 

@@ -145,6 +145,13 @@ Purge zone data, file, journal, and timers.
 Show zone statistics counter(s). To print also counters with value 0, use
 force option.
 .TP
+\fBzone\-freeze\fP [\fIzone\fP\&...]
+Temporarily postpone zone\-changing events (load, refresh, update, flush, and
+DNSSEC signing).
+.TP
+\fBzone\-thaw\fP [\fIzone\fP\&...]
+Dismiss zone freeze.
+.TP
 \fBconf\-init\fP
 Initialize the configuration database. (*)
 .TP

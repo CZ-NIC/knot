@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,3 +33,7 @@ int event_flush(conf_t *conf, zone_t *zone);
 int event_notify(conf_t *conf, zone_t *zone);
 /*! \brief Signs the zone using its DNSSEC keys. */
 int event_dnssec(conf_t *conf, zone_t *zone);
+/*! \brief Freeze those events causing zone contents change. */
+int event_ufreeze(conf_t *conf, zone_t *zone);
+/*! \brief Unfreeze zone updates. */
+int event_uthaw(conf_t *conf, zone_t *zone);

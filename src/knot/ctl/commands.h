@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +46,8 @@ typedef enum {
 	CTL_ZONE_RETRANSFER,
 	CTL_ZONE_FLUSH,
 	CTL_ZONE_SIGN,
-	CTL_ZONE_STATS,
+	CTL_ZONE_FREEZE,
+	CTL_ZONE_THAW,
 
 	CTL_ZONE_READ,
 	CTL_ZONE_BEGIN,
@@ -57,6 +58,7 @@ typedef enum {
 	CTL_ZONE_SET,
 	CTL_ZONE_UNSET,
 	CTL_ZONE_PURGE,
+	CTL_ZONE_STATS,
 
 	CTL_CONF_LIST,
 	CTL_CONF_READ,

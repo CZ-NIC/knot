@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -258,7 +258,7 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+	zone_events_schedule_user(zone, ZONE_EVENT_LOAD);
 
 	return KNOT_EOK;
 }
@@ -271,7 +271,7 @@ static int zone_refresh(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
+	zone_events_schedule_user(zone, ZONE_EVENT_REFRESH);
 
 	return KNOT_EOK;
 }
@@ -285,7 +285,7 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_AXFR;
-	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
+	zone_events_schedule_user(zone, ZONE_EVENT_REFRESH);
 
 	return KNOT_EOK;
 }
@@ -298,7 +298,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		zone->flags |= ZONE_FORCE_FLUSH;
 	}
 
-	zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
+	zone_events_schedule_user(zone, ZONE_EVENT_FLUSH);
 
 	return KNOT_EOK;
 }
@@ -313,7 +313,25 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_RESIGN;
-	zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
+
+	return KNOT_EOK;
+}
+
+static int zone_freeze(zone_t *zone, ctl_args_t *args)
+{
+	UNUSED(args);
+
+	zone_events_schedule_now(zone, ZONE_EVENT_UFREEZE);
+
+	return KNOT_EOK;
+}
+
+static int zone_thaw(zone_t *zone, ctl_args_t *args)
+{
+	UNUSED(args);
+
+	zone_events_schedule_now(zone, ZONE_EVENT_UTHAW);
 
 	return KNOT_EOK;
 }
@@ -1099,6 +1117,10 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
+	case CTL_ZONE_FREEZE:
+		return zones_apply(args, zone_freeze);
+	case CTL_ZONE_THAW:
+		return zones_apply(args, zone_thaw);
 	case CTL_ZONE_READ:
 		return zones_apply(args, zone_read);
 	case CTL_ZONE_BEGIN:
@@ -1485,6 +1507,8 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer", ctl_zone },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",      ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",       ctl_zone },
+	[CTL_ZONE_FREEZE]     = { "zone-freeze",     ctl_zone },
+	[CTL_ZONE_THAW]       = { "zone-thaw",       ctl_zone },
 
 	[CTL_ZONE_READ]       = { "zone-read",       ctl_zone },
 	[CTL_ZONE_BEGIN]      = { "zone-begin",      ctl_zone },

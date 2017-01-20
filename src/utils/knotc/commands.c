@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,6 +46,8 @@
 #define CMD_ZONE_RETRANSFER	"zone-retransfer"
 #define CMD_ZONE_FLUSH		"zone-flush"
 #define CMD_ZONE_SIGN		"zone-sign"
+#define CMD_ZONE_FREEZE		"zone-freeze"
+#define CMD_ZONE_THAW		"zone-thaw"
 
 #define CMD_ZONE_READ		"zone-read"
 #define CMD_ZONE_BEGIN		"zone-begin"
@@ -337,6 +339,8 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_RETRANSFER:
 	case CTL_ZONE_FLUSH:
 	case CTL_ZONE_SIGN:
+	case CTL_ZONE_FREEZE:
+	case CTL_ZONE_THAW:
 	case CTL_ZONE_BEGIN:
 	case CTL_ZONE_COMMIT:
 	case CTL_ZONE_ABORT:
@@ -970,6 +974,8 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,      CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
 	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,      CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,      CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
+	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,      CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_THAW,       cmd_zone_ctl,      CTL_ZONE_THAW,       CMD_FOPT_ZONE },
 
 	{ CMD_ZONE_READ,       cmd_zone_node_ctl, CTL_ZONE_READ,       CMD_FREQ_ZONE },
 	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,      CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
@@ -1014,6 +1020,8 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check)." },
 	{ CMD_ZONE_FLUSH,      "[<zone>...]",                            "Flush zone journal into the zone file." },
 	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone." },
+	{ CMD_ZONE_FREEZE,     "[<zone>...]",                            "Temporarily postpone automatic zone-changing events." },
+	{ CMD_ZONE_THAW,       "[<zone>...]",                            "Dismiss zone freeze." },
 	{ "",                  "",                                       "" },
 	{ CMD_ZONE_READ,       "<zone> [<owner> [<type>]]",              "Get zone data that are currently being presented." },
 	{ CMD_ZONE_BEGIN,      "<zone>...",                              "Begin a zone transaction." },
