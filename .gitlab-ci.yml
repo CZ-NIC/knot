@@ -96,18 +96,24 @@ test:debian:stretch:amd64:
 configure:debian:stretch:armel:
   <<: *debian_stretch_armel
   <<: *configure_job
+  only:
+    - triggers
 
 build:debian:stretch:armel:
   <<: *debian_stretch_armel
   <<: *build_job
   dependencies:
     - configure:debian:stretch:armel
+  only:
+    - triggers
 
 test:debian:stretch:armel:
   <<: *debian_stretch_armel
   <<: *test_job
   dependencies:
     - build:debian:stretch:armel
+  only:
+    - triggers
 
 build:documentation:
   <<: *debian_stretch
