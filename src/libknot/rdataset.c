@@ -219,20 +219,20 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *m
 		return KNOT_EINVAL;
 	}
 
-	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
+	for (int i = rrs->rr_count - 1; i >= 0; i--) {
 		const knot_rdata_t *rrset_rr = knot_rdataset_at(rrs, i);
 		int cmp = knot_rdata_cmp(rrset_rr, rr);
 		if (cmp == 0) {
 			// Duplication - no need to add this RR
 			return KNOT_EOK;
-		} else if (cmp > 0) {
+		} else if (cmp < 0) {
 			// Found position to insert
-			return add_rr_at(rrs, rr, i, mm);
+			return add_rr_at(rrs, rr, i + 1, mm);
 		}
 	}
 
-	// If flow gets here, it means that we should insert at the last position
-	return add_rr_at(rrs, rr, rrs->rr_count, mm);
+	// If flow gets here, it means that we should insert at the first position
+	return add_rr_at(rrs, rr, 0, mm);
 }
 
 _public_
