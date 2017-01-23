@@ -15,10 +15,35 @@
  */
 
 #include <strings.h>
+#include <stdlib.h>
 
 #include "knot/nameserver/chaos.h"
 #include "knot/conf/conf.h"
 #include "libknot/libknot.h"
+
+#define WISH "Knot DNS developers wish you "
+#define HOPE "Knot DNS developers hope you "
+
+static const char *wishes[] = {
+	HOPE "have all your important life questions aswered without SERVFAIL.",
+	WISH "many wonderful people in your domain.",
+	WISH "non-empty lymph nodes.",
+	HOPE "resolve the . of your problems.",
+	WISH "long enough TTL.",
+	HOPE "become authoritative master in your domain.",
+	HOPE "always find useful PTR in CHAOS.",
+	"Canonical name is known to both DNS experts and Ubuntu users.",
+	HOPE "never forget both your name and address.",
+	"Don't fix broken CNAME chains with glue!",
+	WISH "no Additional section in your TODO list.",
+	HOPE "won't find surprising news in today's journal.",
+	HOPE "perform rollover often just when playing roulette.",
+	HOPE "get notified before your domain registration expires.",
+        /*! \todo add more */
+};
+
+#undef WISH
+#undef HOPE
 
 /*!
  * \brief Get a string result for a given TXT query.
@@ -46,6 +71,9 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
 		if (val.code != KNOT_EOK) {
 			response = "Knot DNS " PACKAGE_VERSION;
 		}
+	} else if (strcasecmp("fortune.", qname_str) == 0) {
+		int wishno = rand() % (sizeof(wishes) / sizeof(wishes[0]));
+		response = wishes[wishno];
 	}
 
 	free(qname_str);
