@@ -41,7 +41,7 @@ typedef struct {
 	knot_rrset_t *soa_to;     /*!< Destination SOA. */
 	zone_contents_t *add;     /*!< Change additions. */
 	zone_contents_t *remove;  /*!< Change removals. */
-	size_t size;              /*!< Size of serialized changeset. */
+	size_t size;              /*!< Size of serialized changeset. \todo Remove after old_journal removal! */
 	uint8_t *data;            /*!< Serialized changeset. */
 } changeset_t;
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -211,6 +211,11 @@ int changeset_serialize(const changeset_t *ch, uint8_t *dst_chunks[],
 	wire_ctx_t wire = wire_ctx_init(dst_chunks[0], chunk_size);
 	size_t cur_chunk = 0;
 
+	if (ch->soa_from == NULL) {
+		// serializing bootstrap changeset
+		goto serialize_to; // note: it & ret & rrset are uninitialized here, we don't care
+	}
+
 	// Serialize SOA 'from'.
 	int ret = serialize_rrset_chunks(&wire, ch->soa_from, dst_chunks, chunk_size,
 	                                 chunks_count, chunks_real_sizes, &cur_chunk);
@@ -237,6 +242,7 @@ int changeset_serialize(const changeset_t *ch, uint8_t *dst_chunks[],
 	}
 	changeset_iter_clear(&it);
 
+serialize_to:
 	// Serialize SOA 'to'.
 	ret = serialize_rrset_chunks(&wire, ch->soa_to, dst_chunks, chunk_size,
 	                             chunks_count, chunks_real_sizes, &cur_chunk);
@@ -282,7 +288,8 @@ int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],
 
 	// Deserialize SOA 'from'.
 	knot_rrset_t rrset;
-	int ret = deserialize_rrset_chunks(&wire, &rrset, src_chunks, chunks_sizes, chunks_count, &cur_chunk);
+	int ret = deserialize_rrset_chunks(&wire, &rrset, src_chunks, chunks_sizes,
+	                                   chunks_count, &cur_chunk);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -298,7 +305,8 @@ int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],
 	bool in_remove_section = true;
 	while (cur_chunk < chunks_count - 1 || wire_ctx_available(&wire) > 0) {
 		// Parse next RRSet.
-		ret = deserialize_rrset_chunks(&wire, &rrset, src_chunks, chunks_sizes, chunks_count, &cur_chunk);
+		ret = deserialize_rrset_chunks(&wire, &rrset, src_chunks, chunks_sizes,
+		                               chunks_count, &cur_chunk);
 		if (ret != KNOT_EOK) {
 			break;
 		}
@@ -323,6 +331,52 @@ int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],
 
 		knot_rrset_clear(&rrset, NULL);
 
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return wire.error;
+}
+
+int changeset_deserialize_bootstrap(changeset_t *ch, uint8_t *src_chunks[],
+                                    const size_t *chunks_sizes, size_t chunks_count)
+{
+	if (ch == NULL || src_chunks == NULL || chunks_sizes == NULL ||
+	    chunks_count == 0) {
+		return KNOT_EINVAL;
+	}
+
+	size_t cur_chunk = 0;
+	wire_ctx_t wire = wire_ctx_init_const(src_chunks[0], chunks_sizes[0]);
+
+	// Deserialize SOA 'to'.
+	knot_rrset_t rrset;
+	int ret = deserialize_rrset_chunks(&wire, &rrset, src_chunks, chunks_sizes,
+	                                   chunks_count, &cur_chunk);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	assert(rrset.type == KNOT_RRTYPE_SOA);
+
+	ch->soa_from = NULL;
+	ch->soa_to = knot_rrset_copy(&rrset, NULL);
+	knot_rrset_clear(&rrset, NULL);
+	if (ch->soa_to == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Read remaining RRSets.
+	while (cur_chunk < chunks_count - 1 || wire_ctx_available(&wire) > 0) {
+		// Parse next RRSet.
+		ret = deserialize_rrset_chunks(&wire, &rrset, src_chunks, chunks_sizes,
+		                               chunks_count, &cur_chunk);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+		assert(rrset.type != KNOT_RRTYPE_SOA);
+		ret = changeset_add_addition(ch, &rrset, 0);
+		knot_rrset_clear(&rrset, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
