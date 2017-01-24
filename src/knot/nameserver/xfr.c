@@ -57,14 +57,14 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 		ret = knot_pkt_put(pkt, 0, &soa_rr, KNOT_PF_NOTRUNC);
 	}
 
+	/* Update counters. */
+	xfr_stats_add(&xfer->stats, pkt->size);
+
 	/* If a rrset is larger than the message,
 	 * fail to avoid infinite loop of empty messages */
 	if (ret == KNOT_ESPACE && pkt->rrset_count < 1) {
 		return KNOT_ENOXFR;
 	}
-
-	/* Update counters. */
-	xfr_stats_add(&xfer->stats, pkt->size);
 
 	return ret;
 }
