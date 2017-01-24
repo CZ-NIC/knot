@@ -1758,6 +1758,7 @@ static void _jch_print(const knot_dname_t *zname, int warn_level, const char *fo
 {
 	static char buf[512];
 	strcpy(buf, "journal check: ");
+	char *zname_ch;
 
 	va_list args;
 	va_start(args, format);
@@ -1765,6 +1766,11 @@ static void _jch_print(const knot_dname_t *zname, int warn_level, const char *fo
 	va_end(args);
 
 	switch (warn_level) {
+	case JOURNAL_CHECK_STDERR:
+		zname_ch = knot_dname_to_str_alloc(zname);
+		fprintf(stderr, "[%s] %s\n", zname_ch, buf);
+		free(zname_ch);
+		break;
 	case JOURNAL_CHECK_INFO:
 		log_zone_info(zname, "%s", buf);
 		break;
@@ -1776,7 +1782,7 @@ static void _jch_print(const knot_dname_t *zname, int warn_level, const char *fo
 	}
 }
 
-#define jch_print(wl, fmt_args...) if ((wl) <= warn_level) _jch_print(j->zone, wl, fmt_args)
+#define jch_print(wl, fmt_args...) if ((wl) <= warn_level) _jch_print(j->zone, warn_level, fmt_args)
 #define jch_info(fmt_args...) jch_print(JOURNAL_CHECK_INFO, fmt_args)
 #define jch_warn(fmt_args...) jch_print((allok = 0, JOURNAL_CHECK_WARN), fmt_args)
 #define jch_txn(comment, fatal) do { if (txn->ret != KNOT_EOK && txn->ret != KNOT_ESEMCHECK) { \

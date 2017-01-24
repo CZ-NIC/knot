@@ -42,7 +42,8 @@ typedef struct {
 typedef enum {
 	JOURNAL_CHECK_SILENT = 0, // No logging, just curious for return value.
 	JOURNAL_CHECK_WARN   = 1, // Log journal inconsistencies.
-	JOURNAL_CHECK_INFO   = 2  // Log journal state.
+	JOURNAL_CHECK_INFO   = 2, // Log journal state.
+	JOURNAL_CHECK_STDERR = 3, // Log everything and redirect to stderr.
 } journal_check_level;
 
 /*!

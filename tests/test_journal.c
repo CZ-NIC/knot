@@ -293,7 +293,7 @@ static void test_store_load(void)
 	ret = journal_load_changesets(j, &l, 0);
 	add_tail(&k, &m_ch->n);
 	ok(ret == KNOT_EOK && changesets_list_eq(&l, &k), "journal: load changeset (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 
 	changesets_free(&l);
@@ -302,7 +302,7 @@ static void test_store_load(void)
 	/* Flush the journal. */
 	ret = journal_flush(j);
 	is_int(KNOT_EOK, ret, "journal: first and simple flush (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 	init_list(&l);
 	init_list(&k);
@@ -322,7 +322,7 @@ static void test_store_load(void)
 	}
 	is_int(KNOT_EBUSY, ret, "journal: overfill with changesets (%d inserted) (%d should= %d)",
 	   serial, ret, KNOT_EBUSY);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 
 	/* Load all changesets stored until now. */
@@ -340,7 +340,7 @@ static void test_store_load(void)
 	/* Flush the journal. */
 	ret = journal_flush(j);
 	is_int(KNOT_EOK, ret, "journal: second flush (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 
 	/* Test whether the journal kept changesets after flush. */
@@ -359,7 +359,7 @@ static void test_store_load(void)
 	ret = journal_store_changeset(j, &ch);
 	changeset_clear(&ch);
 	is_int(KNOT_EOK, ret, "journal: store after flush (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 
 	/* Load last changesets. */
@@ -371,7 +371,7 @@ static void test_store_load(void)
 	/* Flush the journal again. */
 	ret = journal_flush(j);
 	is_int(KNOT_EOK, ret, "journal: flush again (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 
 	/* Fill the journal using a list. */
@@ -383,7 +383,7 @@ static void test_store_load(void)
 	}
 	ret = journal_store_changesets(j, &l);
 	is_int(KNOT_EOK, ret, "journal: fill with changesets using a list (%d inserted)", m_serial);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 
 	/* Cleanup. */
@@ -445,7 +445,7 @@ static void test_store_load(void)
 	fprintf(stderr, "ret=%d ret2=%d ret3=%d\n", ret, ret2, ret3);
 	ok(ret == KNOT_ENOENT && ret2 == KNOT_ENOENT && ret3 == KNOT_EOK &&
 	   changesets_list_eq(&l, &k), "journal: serial collision");
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 
 	/* Cleanup. */
@@ -463,7 +463,7 @@ static void test_store_load(void)
 	init_random_changeset(m_ch6, 0, 1, 128, apex, true);
 	ret = journal_store_changeset(j, m_ch6);
 	ok(ret == KNOT_EOK, "journal: store bootstrap (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 	changeset_t *m_ch7 = changeset_new(apex);
 	init_random_changeset(m_ch7, 1, 2, 128, apex, false);
@@ -473,7 +473,7 @@ static void test_store_load(void)
 	add_tail(&k, &m_ch7->n);
 	ret = journal_load_bootstrap(j, &l);
 	ok(ret == KNOT_EOK && changesets_list_eq(&l, &k), "journal: load boostrap (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
+	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	ok(ret == KNOT_EOK, "journal check (%d)", ret);
 
 	changesets_free(&l);
