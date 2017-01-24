@@ -208,7 +208,6 @@ class Response(object):
         self.check_xfr()
 
         # 2) Check if Answer contains AXFR data (first SOA, second non-SOA)
-        soa_count = 0
         rr_count = 0
 
         self.resp, iter_copy = itertools.tee(self.resp)
@@ -219,16 +218,10 @@ class Response(object):
                         if rr.rdtype != dns.rdatatype.SOA:
                             set_err("First RR is not SOA")
                             return
-                        else:
-                            soa_count += 1
-
                     elif rr_count == 1:
                         if rr.rdtype == dns.rdatatype.SOA:
                             set_err("Second RR is SOA")
                             return
-                    else:
-                        # OK, it has the format of AXFR
-                        return
 
                     rr_count += 1
 
