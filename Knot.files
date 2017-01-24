@@ -553,6 +553,7 @@ tests-fuzz/wrap/tcp-handler.c
 tests-fuzz/wrap/udp-handler.c
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
+tests/contrib/test_dynarray.c
 tests/contrib/test_endian.c
 tests/contrib/test_heap.c
 tests/contrib/test_hhash.c
