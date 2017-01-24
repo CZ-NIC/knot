@@ -252,6 +252,13 @@ class ZoneFile(object):
 
         os.remove(old_name)
 
+    def append_rndAAAA(self, owner, rnd1=random.randint(1, 65000), rnd2=random.randint(1, 65000)):
+        '''Append AAAA record with owner owner and random IPv6'''
+
+        with open(self.path, "a") as file:
+            file.write("%s IN AAAA dead:beef:dead:beef:dead:beef:%04x:%04x\n" %
+                       (owner, rnd1, rnd2))
+
     def remove(self):
         '''Remove zone file.'''
 
