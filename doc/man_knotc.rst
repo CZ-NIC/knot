@@ -66,9 +66,6 @@ Actions
 **zone-memstats** [*zone*...]
   Estimate memory use for the zone. (*)
 
-**zone-status** [*zone*...]
-  Show the zone status. (*)
-
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For
   slave zone, the refresh from a master server is scheduled; for master zone,
@@ -121,6 +118,10 @@ Actions
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use
   force option.
+
+**zone-status** *zone* [*filter*]
+  Show the zone status. (*)
+  Filters are type, serial, next-event, auto-dnssec, transaction, event-timers.
 
 **zone-freeze** [*zone*...]
   Temporarily postpone zone-changing events (load, refresh, update, flush, and

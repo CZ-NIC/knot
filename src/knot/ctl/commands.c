@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
@@ -137,6 +138,43 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 	return ret;
 }
 
+typedef enum {
+	ZONE_STATUS_INVALID = -1,
+	ZONE_STATUS_NONE = 0,
+	ZONE_STATUS_TYPE = 1,
+	ZONE_STATUS_SERIAL,
+	ZONE_STATUS_NEXT_EVENT,
+	ZONE_STATUS_AUTO_DNSSEC,
+	ZONE_STATUS_TRANSACTION,
+	ZONE_STATUS_EVENT_TIMERS,
+} zone_status_param ;
+
+static zone_status_param zone_status_param_check(const char *param)
+{
+	if (param == NULL) {
+		return ZONE_STATUS_NONE;
+	}
+	if (strcmp(param, "type") == 0) {
+		return ZONE_STATUS_TYPE;
+	}
+	if (strcmp(param, "serial") == 0) {
+		return ZONE_STATUS_SERIAL;
+	}
+	if (strcmp(param, "next-event") == 0) {
+		return ZONE_STATUS_NEXT_EVENT;
+	}
+	if (strcmp(param, "auto-dnssec") == 0) {
+		return ZONE_STATUS_AUTO_DNSSEC;
+	}
+	if (strcmp(param, "transaction") == 0) {
+		return ZONE_STATUS_TRANSACTION;
+	}
+	if (strcmp(param, "event-timers") == 0) {
+		return ZONE_STATUS_EVENT_TIMERS;
+	}
+	return ZONE_STATUS_INVALID;
+}
+
 static int zone_status(zone_t *zone, ctl_args_t *args)
 {
 	// Zone name.
@@ -146,108 +184,166 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	}
 
 	knot_ctl_data_t data = {
-		[KNOT_CTL_IDX_ZONE] = name
+	    [KNOT_CTL_IDX_ZONE] = name
 	};
 
-	// Zone type.
-	data[KNOT_CTL_IDX_TYPE] = "type";
-
-	if (zone_is_slave(conf(), zone)) {
-		data[KNOT_CTL_IDX_DATA] = "slave";
-	} else {
-		data[KNOT_CTL_IDX_DATA] = "master";
+	zone_status_param param = zone_status_param_check(args->data[KNOT_CTL_IDX_OWNER]);
+	if (param == ZONE_STATUS_INVALID) {
+		data[KNOT_CTL_IDX_ERROR] = "Invalid parameters.";
+		int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		return KNOT_EINVAL;
 	}
 
-	int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Zone serial.
-	data[KNOT_CTL_IDX_TYPE] = "serial";
-
+	int ret;
 	char buff[128];
-	if (zone->contents != NULL) {
-		knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
-		                                     KNOT_RRTYPE_SOA);
-		ret = snprintf(buff, sizeof(buff), "%u", knot_soa_serial(soa));
-	} else {
-		ret = snprintf(buff, sizeof(buff), "none");
-	}
-	if (ret < 0 || ret >= sizeof(buff)) {
-		return KNOT_ESPACE;
-	}
+	knot_ctl_type_t type = KNOT_CTL_TYPE_DATA;
+	// Zone type.
+	if (param == ZONE_STATUS_TYPE || param == ZONE_STATUS_NONE) {
+		data[KNOT_CTL_IDX_TYPE] = "type";
 
-	data[KNOT_CTL_IDX_DATA] = buff;
-
-	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_EXTRA, &data);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Next event.
-	data[KNOT_CTL_IDX_TYPE] = "next-event";
-
-	zone_event_type_t next_type = ZONE_EVENT_INVALID;
-	time_t next_time = zone_events_get_next(zone, &next_type);
-	if (next_type != ZONE_EVENT_INVALID) {
-		const char *next_name = zone_events_get_name(next_type);
-
-		next_time = next_time - time(NULL);
-		if (next_time < 0) {
-			ret = snprintf(buff, sizeof(buff), "%s pending",
-			               next_name);
+		if (zone_is_slave(conf(), zone)) {
+			data[KNOT_CTL_IDX_DATA] = "slave";
 		} else {
-			ret = snprintf(buff, sizeof(buff), "%s in %lldh%lldm%llds",
-			               next_name,
-			               (long long)(next_time / 3600),
-			               (long long)(next_time % 3600) / 60,
-			               (long long)(next_time % 60));
+			data[KNOT_CTL_IDX_DATA] = "master";
+		}
+
+		ret = knot_ctl_send(args->ctl, type, &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		} else {
+			type = KNOT_CTL_TYPE_EXTRA;
+		}
+	}
+	// Zone serial.
+	if (param == ZONE_STATUS_SERIAL || param == ZONE_STATUS_NONE) {
+		data[KNOT_CTL_IDX_TYPE] = "serial";
+
+		if (zone->contents != NULL) {
+			knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
+							     KNOT_RRTYPE_SOA);
+			ret = snprintf(buff, sizeof(buff), "%u", knot_soa_serial(soa));
+		} else {
+			ret = snprintf(buff, sizeof(buff), "none");
 		}
 		if (ret < 0 || ret >= sizeof(buff)) {
 			return KNOT_ESPACE;
 		}
 
 		data[KNOT_CTL_IDX_DATA] = buff;
-	} else {
-		data[KNOT_CTL_IDX_DATA] = "idle";
+
+		ret = knot_ctl_send(args->ctl, type, &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		} else {
+			type = KNOT_CTL_TYPE_EXTRA;
+		}
 	}
+	// Next event.
+	if (param == ZONE_STATUS_NEXT_EVENT || param == ZONE_STATUS_NONE) {
+		data[KNOT_CTL_IDX_TYPE] = "next-event";
 
-	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_EXTRA, &data);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+		zone_event_type_t next_type = ZONE_EVENT_INVALID;
+		time_t next_time = zone_events_get_next(zone, &next_type);
+		if (next_type != ZONE_EVENT_INVALID) {
+			const char *next_name = zone_events_get_name(next_type);
 
-	// DNSSEC re-signing time.
-	data[KNOT_CTL_IDX_TYPE] = "auto-dnssec";
+			next_time = next_time - time(NULL);
+			if (next_time < 0) {
+				ret = snprintf(buff, sizeof(buff), "%s pending",
+					       next_name);
+			} else {
+				ret = snprintf(buff, sizeof(buff), "%s in %lldh%lldm%llds",
+					       next_name,
+					       (long long)(next_time / 3600),
+					       (long long)(next_time % 3600) / 60,
+					       (long long)(next_time % 60));
+			}
+			if (ret < 0 || ret >= sizeof(buff)) {
+				return KNOT_ESPACE;
+			}
 
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
-		struct tm time_gm = { 0 };
-		time_t refresh_at = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);
-		gmtime_r(&refresh_at, &time_gm);
-
-		size_t written = strftime(buff, sizeof(buff), KNOT_LOG_TIME_FORMAT,
-		                          &time_gm);
-		if (written == 0) {
-			return KNOT_ESPACE;
+			data[KNOT_CTL_IDX_DATA] = buff;
+		} else {
+			data[KNOT_CTL_IDX_DATA] = "idle";
 		}
 
-		data[KNOT_CTL_IDX_DATA] = buff;
-	} else {
-		data[KNOT_CTL_IDX_DATA] = "disabled";
+		ret = knot_ctl_send(args->ctl, type, &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		} else {
+			type = KNOT_CTL_TYPE_EXTRA;
+		}
 	}
+	// DNSSEC re-signing time.
+	if (param == ZONE_STATUS_AUTO_DNSSEC || param == ZONE_STATUS_NONE) {
+		data[KNOT_CTL_IDX_TYPE] = "auto-dnssec";
 
-	ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_EXTRA, &data);
-	if (ret != KNOT_EOK) {
-		return ret;
+		conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+		if (conf_bool(&val)) {
+			struct tm time_gm = { 0 };
+			time_t refresh_at = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);
+			gmtime_r(&refresh_at, &time_gm);
+
+			size_t written = strftime(buff, sizeof(buff), KNOT_LOG_TIME_FORMAT,
+						  &time_gm);
+			if (written == 0) {
+				return KNOT_ESPACE;
+			}
+
+			data[KNOT_CTL_IDX_DATA] = buff;
+		} else {
+			data[KNOT_CTL_IDX_DATA] = "disabled";
+		}
+
+		ret = knot_ctl_send(args->ctl, type, &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		} else {
+			type = KNOT_CTL_TYPE_EXTRA;
+		}
 	}
-
 	// Zone transaction.
-	data[KNOT_CTL_IDX_TYPE] = "transaction";
-	data[KNOT_CTL_IDX_DATA] = (zone->control_update != NULL) ? "open" : "none";
+	if (param == ZONE_STATUS_TRANSACTION || param == ZONE_STATUS_NONE) {
+		data[KNOT_CTL_IDX_TYPE] = "transaction";
+		data[KNOT_CTL_IDX_DATA] = (zone->control_update != NULL) ? "open" : "none";
+		ret = knot_ctl_send(args->ctl, type, &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+	// list modules
+	if (param == ZONE_STATUS_EVENT_TIMERS || param == ZONE_STATUS_NONE) {
+		time_t ev_time;
+		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
+			data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
 
-	return knot_ctl_send(args->ctl, KNOT_CTL_TYPE_EXTRA, &data);
+			ev_time = zone_events_get_time(zone, i);
+			ev_time = ev_time - time(NULL);
+			if (ev_time < 0) {
+				ret = snprintf(buff, sizeof(buff), "pending");
+			} else {
+				ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
+					       (long long)(ev_time / 3600),
+					       (long long)(ev_time % 3600) / 60,
+					       (long long)(ev_time % 60));
+			}
+			if (ret < 0 || ret >= sizeof(buff)) {
+				return KNOT_ESPACE;
+			}
+			data[KNOT_CTL_IDX_DATA] = buff;
+
+			ret = knot_ctl_send(args->ctl, !i? KNOT_CTL_TYPE_DATA : KNOT_CTL_TYPE_EXTRA, &data);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			type = KNOT_CTL_TYPE_EXTRA;
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 static int zone_reload(zone_t *zone, ctl_args_t *args)

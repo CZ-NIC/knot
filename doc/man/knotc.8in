@@ -89,9 +89,6 @@ in the configuration. (*)
 \fBzone\-memstats\fP [\fIzone\fP\&...]
 Estimate memory use for the zone. (*)
 .TP
-\fBzone\-status\fP [\fIzone\fP\&...]
-Show the zone status. (*)
-.TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
 Trigger a zone reload from a disk without checking its modification time. For
 slave zone, the refresh from a master server is scheduled; for master zone,
@@ -144,6 +141,10 @@ Purge zone data, file, journal, and timers.
 \fBzone\-stats\fP \fIzone\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
 Show zone statistics counter(s). To print also counters with value 0, use
 force option.
+.TP
+\fBzone\-status\fP \fIzone\fP [\fIfilter\fP]
+Show the zone status. (*)
+Filters are type, serial, next\-event, auto\-dnssec, transaction, event\-timers.
 .TP
 \fBzone\-freeze\fP [\fIzone\fP\&...]
 Temporarily postpone zone\-changing events (load, refresh, update, flush, and
