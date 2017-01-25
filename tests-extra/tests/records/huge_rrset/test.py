@@ -36,7 +36,7 @@ resp = master.dig(HUGE, "AAAA", udp=False)
 resp.check(rcode="SERVFAIL", noflags="TC")
 resp.check_count(0, section="answer")
 
-resp = master.dig(ZONE, "AXFR", tries=1, timeout=2)
+resp = master.dig(ZONE, "AXFR", tries=1, timeout=5)
 
 got_messages = 0
 
@@ -46,8 +46,6 @@ for msg in resp.resp:
         isset(msg.rcode() == dns.rcode.NOERROR, "NOERROR")
     elif got_messages is 2:
         isset(msg.rcode() == dns.rcode.SERVFAIL, "SERVFAIL")
-        break
-    else:
         break
 
 if got_messages != 2:
