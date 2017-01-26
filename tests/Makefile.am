@@ -14,6 +14,7 @@ LDADD = \
 check_PROGRAMS = \
 	contrib/test_base32hex		\
 	contrib/test_base64		\
+	contrib/test_dynarray		\
 	contrib/test_endian		\
 	contrib/test_heap		\
 	contrib/test_hhash		\
