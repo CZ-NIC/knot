@@ -78,6 +78,7 @@
 
 #define BOOTSTRAP_MAXTIME (24*60*60)
 #define BOOTSTRAP_JITTER (30)
+#define NEXT_REFRESH_MIN (2)
 
 enum state {
 	REFRESH_STATE_INVALID = 0,
@@ -915,6 +916,11 @@ int event_refresh(conf_t *conf, zone_t *zone)
 			next = bootstrap_next(&zone->timers);
 		}
 		zone->timers.next_refresh = now + next;
+	}
+
+	/* Security: avoid flooding master. */
+	if (zone->timers.next_refresh < now + NEXT_REFRESH_MIN) {
+		zone->timers.next_refresh = now + NEXT_REFRESH_MIN;
 	}
 
 	/* Rechedule events. */
