@@ -1,0 +1,14 @@
+[
+  {
+    "key_id": "f3b8db9d60fb412d0363dd0c0ac2ea72dc212777",
+    "zones": [
+      "example.com", "records"
+    ]
+  },
+  {
+    "key_id": "712d0d0d57fa0aa006b5e20cd84e23941e5f3ab2",
+    "zones": [
+      "example.com", "records"
+    ]
+  }
+]

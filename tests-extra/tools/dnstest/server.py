@@ -41,12 +41,15 @@ class ZoneDnssec(object):
         self.alg = None
         self.ksk_size = None
         self.zsk_size = None
+        self.dnskey_ttl = None
+        self.zsk_lifetime = None
+        self.propagation_delay = None
+        self.rrsig_lifetime = None
+        self.rrsig_refresh = None
         self.nsec3 = None
         self.nsec3_iters = None
         self.nsec3_salt_lifetime = None
         self.nsec3_salt_len = None
-        self.rrsig_lifetime = None
-        self.rrsig_refresh = None
 
 class Zone(object):
     '''DNS zone description'''
@@ -1042,12 +1045,15 @@ class Knot(Server):
             self._str(s, "algorithm", z.dnssec.alg)
             self._str(s, "ksk_size", z.dnssec.ksk_size)
             self._str(s, "zsk_size", z.dnssec.zsk_size)
+            self._str(s, "dnskey-ttl", z.dnssec.dnskey_ttl)
+            self._str(s, "zsk-lifetime", z.dnssec.zsk_lifetime)
+            self._str(s, "propagation-delay", z.dnssec.propagation_delay)
+            self._str(s, "rrsig-lifetime", z.dnssec.rrsig_lifetime)
+            self._str(s, "rrsig-refresh", z.dnssec.rrsig_refresh)
             self._bool(s, "nsec3", z.dnssec.nsec3)
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
             self._str(s, "nsec3-salt-lifetime", z.dnssec.nsec3_salt_lifetime)
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
-            self._str(s, "rrsig-lifetime", z.dnssec.rrsig_lifetime)
-            self._str(s, "rrsig-refresh", z.dnssec.rrsig_refresh)
         s.end()
 
         s.begin("template")

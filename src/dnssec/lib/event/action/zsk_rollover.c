@@ -217,12 +217,21 @@ static int exec_remove_old_key(dnssec_event_ctx_t *ctx)
 	if (dnssec_keyusage_is_used(keyusage, retired->id)) {
 		dnssec_keyusage_free(keyusage);
 		free(path);
+
+		dnssec_key_free(retired->key);
+		free(retired->id);
+		free(retired);
+
 		return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
 	}
 	dnssec_keyusage_free(keyusage);
 	free(path);
 
 	dnssec_keystore_remove_key(ctx->keystore, retired->id);
+
+	dnssec_key_free(retired->key);
+	free(retired->id);
+	free(retired);
 
 	return dnssec_kasp_zone_save(ctx->kasp, ctx->zone);
 }
