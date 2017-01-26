@@ -143,10 +143,10 @@ typedef enum {
 	ZONE_STATUS_NONE = 0,
 	ZONE_STATUS_TYPE = 1,
 	ZONE_STATUS_SERIAL,
-	ZONE_STATUS_NEXT_EVENT,
-	ZONE_STATUS_AUTO_DNSSEC,
 	ZONE_STATUS_TRANSACTION,
 	ZONE_STATUS_EVENT_TIMERS,
+	ZONE_STATUS_EVENT_STATUS,
+	ZONE_STATUS_FREEZE,
 } zone_status_param ;
 
 static zone_status_param zone_status_param_check(const char *param)
@@ -160,17 +160,17 @@ static zone_status_param zone_status_param_check(const char *param)
 	if (strcmp(param, "serial") == 0) {
 		return ZONE_STATUS_SERIAL;
 	}
-	if (strcmp(param, "next-event") == 0) {
-		return ZONE_STATUS_NEXT_EVENT;
-	}
-	if (strcmp(param, "auto-dnssec") == 0) {
-		return ZONE_STATUS_AUTO_DNSSEC;
-	}
 	if (strcmp(param, "transaction") == 0) {
 		return ZONE_STATUS_TRANSACTION;
 	}
 	if (strcmp(param, "event-timers") == 0) {
 		return ZONE_STATUS_EVENT_TIMERS;
+	}
+	if (strcmp(param, "event-status") == 0) {
+		return ZONE_STATUS_EVENT_STATUS;
+	}
+	if (strcmp(param, "freeze") == 0) {
+		return ZONE_STATUS_FREEZE;
 	}
 	return ZONE_STATUS_INVALID;
 }
@@ -241,70 +241,6 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			type = KNOT_CTL_TYPE_EXTRA;
 		}
 	}
-	// Next event.
-	if (param == ZONE_STATUS_NEXT_EVENT || param == ZONE_STATUS_NONE) {
-		data[KNOT_CTL_IDX_TYPE] = "next-event";
-
-		zone_event_type_t next_type = ZONE_EVENT_INVALID;
-		time_t next_time = zone_events_get_next(zone, &next_type);
-		if (next_type != ZONE_EVENT_INVALID) {
-			const char *next_name = zone_events_get_name(next_type);
-
-			next_time = next_time - time(NULL);
-			if (next_time < 0) {
-				ret = snprintf(buff, sizeof(buff), "%s pending",
-					       next_name);
-			} else {
-				ret = snprintf(buff, sizeof(buff), "%s in %lldh%lldm%llds",
-					       next_name,
-					       (long long)(next_time / 3600),
-					       (long long)(next_time % 3600) / 60,
-					       (long long)(next_time % 60));
-			}
-			if (ret < 0 || ret >= sizeof(buff)) {
-				return KNOT_ESPACE;
-			}
-
-			data[KNOT_CTL_IDX_DATA] = buff;
-		} else {
-			data[KNOT_CTL_IDX_DATA] = "idle";
-		}
-
-		ret = knot_ctl_send(args->ctl, type, &data);
-		if (ret != KNOT_EOK) {
-			return ret;
-		} else {
-			type = KNOT_CTL_TYPE_EXTRA;
-		}
-	}
-	// DNSSEC re-signing time.
-	if (param == ZONE_STATUS_AUTO_DNSSEC || param == ZONE_STATUS_NONE) {
-		data[KNOT_CTL_IDX_TYPE] = "auto-dnssec";
-
-		conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
-		if (conf_bool(&val)) {
-			struct tm time_gm = { 0 };
-			time_t refresh_at = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);
-			gmtime_r(&refresh_at, &time_gm);
-
-			size_t written = strftime(buff, sizeof(buff), KNOT_LOG_TIME_FORMAT,
-						  &time_gm);
-			if (written == 0) {
-				return KNOT_ESPACE;
-			}
-
-			data[KNOT_CTL_IDX_DATA] = buff;
-		} else {
-			data[KNOT_CTL_IDX_DATA] = "disabled";
-		}
-
-		ret = knot_ctl_send(args->ctl, type, &data);
-		if (ret != KNOT_EOK) {
-			return ret;
-		} else {
-			type = KNOT_CTL_TYPE_EXTRA;
-		}
-	}
 	// Zone transaction.
 	if (param == ZONE_STATUS_TRANSACTION || param == ZONE_STATUS_NONE) {
 		data[KNOT_CTL_IDX_TYPE] = "transaction";
@@ -314,32 +250,51 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			return ret;
 		}
 	}
+	// frozen
+	bool frozen = zone->events.frozen;
+	bool ufrozen = zone->events.ufrozen;
+	if (param == ZONE_STATUS_FREEZE || param == ZONE_STATUS_NONE) {
+		data[KNOT_CTL_IDX_TYPE] = "frozen";
+		if (frozen) {
+			data[KNOT_CTL_IDX_DATA] = "yes";
+		} else if (ufrozen) {
+			data[KNOT_CTL_IDX_DATA] = "frozen by user";
+		} else {
+			data[KNOT_CTL_IDX_DATA] = "no";
+		}
+		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
 	// list modules
 	if (param == ZONE_STATUS_EVENT_TIMERS || param == ZONE_STATUS_NONE) {
 		time_t ev_time;
 		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
-			data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
+			if (!frozen && (!ufrozen || !ufreeze_applies(i))) {
+				data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
 
-			ev_time = zone_events_get_time(zone, i);
-			ev_time = ev_time - time(NULL);
-			if (ev_time < 0) {
-				ret = snprintf(buff, sizeof(buff), "pending");
-			} else {
-				ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
-					       (long long)(ev_time / 3600),
-					       (long long)(ev_time % 3600) / 60,
-					       (long long)(ev_time % 60));
-			}
-			if (ret < 0 || ret >= sizeof(buff)) {
-				return KNOT_ESPACE;
-			}
-			data[KNOT_CTL_IDX_DATA] = buff;
+				ev_time = zone_events_get_time(zone, i);
+				ev_time = ev_time - time(NULL);
+				if (ev_time < 0) {
+					ret = snprintf(buff, sizeof(buff), "pending");
+				} else {
+					ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
+						       (long long)(ev_time / 3600),
+						       (long long)(ev_time % 3600) / 60,
+						       (long long)(ev_time % 60));
+				}
+				if (ret < 0 || ret >= sizeof(buff)) {
+					return KNOT_ESPACE;
+				}
+				data[KNOT_CTL_IDX_DATA] = buff;
 
-			ret = knot_ctl_send(args->ctl, !i? KNOT_CTL_TYPE_DATA : KNOT_CTL_TYPE_EXTRA, &data);
-			if (ret != KNOT_EOK) {
-				return ret;
+				ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_EXTRA, &data);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
+				type = KNOT_CTL_TYPE_EXTRA;
 			}
-			type = KNOT_CTL_TYPE_EXTRA;
 		}
 	}
 
