@@ -10,72 +10,116 @@ t = Test(stress=False)
 ModDnsproxy.check()
 
 # Initialize server configuration
-local_zone = t.zone("test", storage=".", file_name="test.local_zone")
-remote_zone1 = t.zone("test", storage=".", file_name="test.remote_zone")
-remote_zone2 = t.zone("example.com.")
+zone_common1 = t.zone("test", storage=".", file_name="test.local_zone")
+zone_common2 = t.zone("test", storage=".", file_name="test.remote_zone")
+zone_local = t.zone_rnd(1)
+zone_remote = t.zone_rnd(1)
 
-local1 = t.server("knot")
-t.link(local_zone, local1)
-
-local2 = t.server("knot")
-t.link(local_zone, local2)
+local = t.server("knot")
+t.link(zone_common1, local)
+t.link(zone_local, local)
 
 remote = t.server("knot")
-t.link(remote_zone1, remote)
-t.link(remote_zone2, remote)
+t.link(zone_common2, remote)
+t.link(zone_remote, remote)
+
+def fallback_checks(server, zone_local, zone_remote):
+    # Local preferred OK.
+    resp = server.dig("dns1.test", "A")
+    resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.1", nordata="192.0.2.2")
+
+    # Local record OK.
+    resp = server.dig("local.test", "A")
+    resp.check(rcode="NOERROR", flags="AA", rdata="1.1.1.1")
+
+    # Local OK.
+    resp = server.dig(zone_local.name, "SOA")
+    resp.check(rcode="NOERROR", flags="AA")
+
+    # Remote OK.
+    resp = server.dig(zone_remote.name, "SOA")
+    resp.check(rcode="NOERROR", flags="AA")
+
+    # Remote NOK, not existing zone.
+    resp = server.dig("z-o-n-e.", "SOA")
+    resp.check(rcode="REFUSED", noflags="AA")
 
 t.start()
 
+### No fallback
+
 # Only after successful start the remote address is known!
-local1.add_module(None, ModDnsproxy(remote.addr, remote.port))
-local1.gen_confile()
-local1.reload()
-local2.add_module(None, ModDnsproxy(remote.addr, remote.port, True))
-local2.gen_confile()
-local2.reload()
+local.add_module(None, ModDnsproxy(remote.addr, remote.port, fallback=False))
+local.gen_confile()
+local.reload()
 
-# Local1
+# Remote OK.
+resp = local.dig("dns1.test", "A")
+resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.2", nordata="192.0.2.1")
 
-# Local OK response.
-resp = local1.dig("dns1.test", "A")
-resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.1")
-
-# Local NOK response, not forwarded.
-resp = local1.dig("extra.test", "A")
+# Local record NOK.
+resp = local.dig("local.test", "A")
 resp.check(rcode="NXDOMAIN", flags="AA")
 
-# Remote OK response.
-resp = local1.dig("example.com", "SOA")
-resp.check(rcode="NOERROR", flags="AA")
+# Remote record OK.
+resp = local.dig("remote.test", "A")
+resp.check(rcode="NOERROR", flags="AA", rdata="1.1.1.2")
 
-# Remote NOK response, not existing owner.
-resp = local1.dig("extra.example.com", "A")
-resp.check(rcode="NXDOMAIN", flags="AA")
-
-# Remote NOK response, not existing zone.
-resp = local1.dig("unknown", "SOA")
+# Local NOK, unknown zone.
+resp = local.dig(zone_local[0].name, "SOA")
 resp.check(rcode="REFUSED", noflags="AA")
 
-# Local2
-
-# Local OK response.
-resp = local2.dig("dns1.test", "A")
-resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.1")
-
-# Local NOK response, but forwarded OK.
-resp = local2.dig("extra.test", "A")
-resp.check(rcode="NOERROR", flags="AA", rdata="1.1.1.1")
-
-# Remote OK response.
-resp = local2.dig("example.com", "SOA")
+# Remote OK.
+resp = local.dig(zone_remote[0].name, "SOA")
 resp.check(rcode="NOERROR", flags="AA")
 
-# Remote NOK response, not existing owner.
-resp = local2.dig("extra.example.com", "A")
+# Remote NOK, not existing owner.
+resp = local.dig("u-n-k-n-o-w-n." + zone_remote[0].name, "A")
 resp.check(rcode="NXDOMAIN", flags="AA")
 
-# Remote NOK response, not existing zone.
-resp = local2.dig("unknown", "SOA")
+# Remote NOK, unknown zone.
+resp = local.dig("z-o-n-e.", "SOA")
+resp.check(rcode="REFUSED", noflags="AA")
+
+### Fallback, no nxdomain
+
+local.clear_modules(None)
+local.add_module(None, ModDnsproxy(remote.addr, remote.port, fallback=True, nxdomain=False))
+local.gen_confile()
+local.reload()
+
+fallback_checks(local, zone_local[0], zone_remote[0])
+
+# Local NOK, not forwarded.
+resp = local.dig("remote.test", "A")
+resp.check(rcode="NXDOMAIN", flags="AA")
+
+### No fallback, nxdomain
+
+local.clear_modules(None)
+local.add_module(None, ModDnsproxy(remote.addr, remote.port, fallback=True, nxdomain=True))
+local.gen_confile()
+local.reload()
+
+fallback_checks(local, zone_local[0], zone_remote[0])
+
+# Local NOK, but forwarded OK.
+resp = local.dig("remote.test", "A")
+resp.check(rcode="NOERROR", flags="AA", rdata="1.1.1.2")
+
+### Per zone, fallback
+
+local.clear_modules(None)
+local.add_module(zone_common1[0], ModDnsproxy(remote.addr, remote.port, fallback=False))
+local.gen_confile()
+local.reload()
+
+# Remote OK.
+resp = local.dig("dns1.test", "A")
+resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.2", nordata="192.0.2.1")
+
+# Remote NOK, not forwarded.
+resp = local.dig(zone_remote[0].name, "SOA")
 resp.check(rcode="REFUSED", noflags="AA")
 
 t.end()

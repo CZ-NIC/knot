@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,12 +23,14 @@
 /* Module configuration scheme. */
 #define MOD_REMOTE		"\x06""remote"
 #define MOD_TIMEOUT		"\x07""timeout"
+#define MOD_FALLBACK		"\x08""fallback"
 #define MOD_CATCH_NXDOMAIN	"\x0E""catch-nxdomain"
 
 const yp_item_t scheme_mod_dnsproxy[] = {
 	{ C_ID,               YP_TSTR,  YP_VNONE },
 	{ MOD_REMOTE,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } },
 	{ MOD_TIMEOUT,        YP_TINT,  YP_VINT = { 0, INT32_MAX, 500 } },
+	{ MOD_FALLBACK,       YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_CATCH_NXDOMAIN, YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,          YP_TSTR,  YP_VNONE },
 	{ NULL }
@@ -48,6 +50,7 @@ int check_mod_dnsproxy(conf_check_t *args)
 
 typedef struct {
 	conf_remote_t remote;
+	bool fallback;
 	bool catch_nxdomain;
 	int timeout;
 } dnsproxy_t;
@@ -56,9 +59,10 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 {
 	assert(pkt && qdata && ctx);
 
-	/* Forward only queries ending with REFUSED (no zone) or NXDOMAIN (if configured) */
 	dnsproxy_t *proxy = ctx;
-	if (!(qdata->rcode == KNOT_RCODE_REFUSED ||
+
+	/* Forward only queries ending with REFUSED (no zone) or NXDOMAIN (if configured) */
+	if (proxy->fallback && !(qdata->rcode == KNOT_RCODE_REFUSED ||
 	     (qdata->rcode == KNOT_RCODE_NXDOMAIN && proxy->catch_nxdomain))) {
 		return state;
 	}
@@ -96,6 +100,8 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return KNOT_STATE_FAIL; /* Forwarding failed, SERVFAIL. */
+	} else {
+		qdata->rcode = knot_pkt_ext_rcode(pkt);
 	}
 
 	return KNOT_STATE_DONE;
@@ -116,12 +122,19 @@ int dnsproxy_load(struct query_module *self)
 	val = conf_mod_get(self->config, MOD_TIMEOUT, self->id);
 	proxy->timeout = conf_int(&val);
 
+	val = conf_mod_get(self->config, MOD_FALLBACK, self->id);
+	proxy->fallback = conf_bool(&val);
+
 	val = conf_mod_get(self->config, MOD_CATCH_NXDOMAIN, self->id);
 	proxy->catch_nxdomain = conf_bool(&val);
 
 	self->ctx = proxy;
 
-	return query_module_step(self, QPLAN_END, dnsproxy_fwd);
+	if (proxy->fallback) {
+		return query_module_step(self, QPLAN_END, dnsproxy_fwd);
+	} else {
+		return query_module_step(self, QPLAN_BEGIN, dnsproxy_fwd);
+	}
 }
 
 void dnsproxy_unload(struct query_module *self)
