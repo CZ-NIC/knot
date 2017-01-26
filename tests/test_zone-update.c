@@ -293,6 +293,7 @@ int main(int argc, char *argv[])
 	         " - domain: test.\n"
 	         "template:\n"
 	         " - id: default\n"
+		 "   max-journal-db-size: 100M\n"
 	         "   storage: %s\n",
 	         temp_dir);
 
