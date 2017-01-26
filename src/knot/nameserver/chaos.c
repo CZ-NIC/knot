@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ static const char *wishes[] = {
 	HOPE "won't find surprising news in today's journal.",
 	HOPE "perform rollover often just when playing roulette.",
 	HOPE "get notified before your domain registration expires.",
-        /*! \todo add more */
+	/*! \todo add more */
 };
 
 #undef WISH
@@ -72,8 +72,12 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
 			response = "Knot DNS " PACKAGE_VERSION;
 		}
 	} else if (strcasecmp("fortune.", qname_str) == 0) {
-		int wishno = rand() % (sizeof(wishes) / sizeof(wishes[0]));
-		response = wishes[wishno];
+		conf_val_t val = conf_get(conf(), C_SRV, C_VERSION);
+		/* No item means auto. */
+		if (val.code != KNOT_EOK) {
+			int wishno = rand() % (sizeof(wishes) / sizeof(wishes[0]));
+			response = wishes[wishno];
+		}
 	}
 
 	free(qname_str);
