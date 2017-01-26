@@ -495,10 +495,10 @@ endif # HAVE_DAEMON
 
 if HAVE_UTILS
 
-bin_PROGRAMS = kdig khost knsec3hash knsupdate kzonecheck kjournalprint
-if !HAVE_DAEMON
-noinst_LTLIBRARIES += libknotd.la
-endif
+bin_PROGRAMS = kdig khost knsec3hash knsupdate
+if HAVE_DAEMON
+bin_PROGRAMS += kzonecheck kjournalprint
+endif # HAVE_DAEMON
 
 kdig_SOURCES =					\
 	utils/kdig/kdig_exec.c			\
@@ -545,18 +545,18 @@ knsupdate_LDADD        = zscanner/libzscanner.la libknotus.la
 knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
 knsec3hash_LDADD       = dnssec/libdnssec.la dnssec/libshared.la
 kzonecheck_LDADD       = libknotd.la libcontrib.la
-kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-kjournalprint_LDADD    = $(libidn_LIBS) libknotd.la libcontrib.la
+kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(liburcu_CFLAGS) 
+kjournalprint_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la
 
 #######################################
 # Optional Knot DNS Utilities modules #
 #######################################
 
 if HAVE_DNSTAP
-kdig_LDADD     += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
-khost_LDADD    += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
-kdig_CPPFLAGS  += $(DNSTAP_CFLAGS)
-khost_CPPFLAGS += $(DNSTAP_CFLAGS)
+kdig_LDADD          += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
+khost_LDADD         += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
+kdig_CPPFLAGS       += $(DNSTAP_CFLAGS)
+khost_CPPFLAGS      += $(DNSTAP_CFLAGS)
 endif # HAVE_DNSTAP
 
 if HAVE_ROSEDB
