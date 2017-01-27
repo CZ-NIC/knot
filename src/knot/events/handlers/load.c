@@ -31,6 +31,8 @@ int event_load(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	zone_contents_t *contents = NULL;
+	bool load_from_journal = false;
+	uint32_t dnssec_refresh = time(NULL);
 
 	/* Take zone file mtime and load it. */
 	time_t mtime;
@@ -38,15 +40,18 @@ int event_load(conf_t *conf, zone_t *zone)
 	int ret = zonefile_exists(filename, &mtime);
 	free(filename);
 	if (ret != KNOT_EOK) {
-		if (zone_load_can_bootstrap(conf, zone->name)) {
-			log_zone_info(zone->name, "zone will be bootstrapped");
-		} else {
-			log_zone_info(zone->name, "zone not found");
+		load_from_journal = true;
+		ret = zone_load_from_journal(conf, zone, &contents);
+		if (ret != KNOT_EOK) {
+			if (zone_load_can_bootstrap(conf, zone->name)) {
+				log_zone_info(zone->name, "zone will be bootstrapped");
+			} else {
+				log_zone_info(zone->name, "zone not found");
+			}
+			goto fail;
 		}
-		goto fail;
+		goto load_post;
 	}
-
-	uint32_t dnssec_refresh = time(NULL);
 
 	ret = zone_load_contents(conf, zone->name, &contents);
 	if (ret != KNOT_EOK) {
@@ -68,6 +73,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	/* Store the zonefile mtime. */
 	zone->zonefile.mtime = mtime;
 
+load_post:
 	/* Post load actions - calculate delta, sign with DNSSEC... */
 	/*! \todo issue #242 dnssec signing should occur in the special event */
 	ret = zone_load_post(conf, zone, contents, &dnssec_refresh);
@@ -76,7 +82,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	/* Everything went alright, switch the contents. */
-	zone->zonefile.exists = true;
+	zone->zonefile.exists = !load_from_journal;
 	zone_contents_t *old = zone_switch_contents(zone, contents);
 	bool old_contents = (old != NULL);
 	uint32_t old_serial = zone_contents_serial(old);
@@ -111,7 +117,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	// TODO: track serial across restart and avoid unnecessary notify
-	if (!old_contents || old_serial != current_serial) {
+	if (!load_from_journal && (!old_contents || old_serial != current_serial)) {
 		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 	}
 
@@ -123,6 +129,11 @@ fail:
 
 	/* Try to bootstrap the zone if local error. */
 	replan_from_timers(conf, zone);
+
+	if (load_from_journal && ret == KNOT_ENOENT) {
+		// attempted zone-in-journal, not present = normal state
+		ret = KNOT_EOK;
+	}
 
 	return ret;
 }
