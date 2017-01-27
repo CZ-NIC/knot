@@ -52,8 +52,13 @@ keystore_pkcs11_CPPFLAGS = $(AM_CPPFLAGS) -DLIBDIR='"$(libdir)"'
 
 check-compile: $(check_PROGRAMS)
 
+AM_V_RUNTESTS = $(am__v_RUNTESTS_@AM_V@)
+am__v_RUNTESTS_ = $(am__v_RUNTESTS_@AM_DEFAULT_V@)
+am__v_RUNTESTS_0 =
+am__v_RUNTESTS_1 = RET=$$?; if [ "$$RET" != "0" ]; then cat "$(builddir)/runtests.log"; exit $$RET; fi
 check-local: $(check_PROGRAMS)
 	$(top_builddir)/libtap/runtests -s $(srcdir) \
 					-b $(builddir) \
 					-L $(builddir)/runtests.log \
-					$(check_PROGRAMS)
+					$(check_PROGRAMS); \
+	$(AM_V_RUNTESTS)
