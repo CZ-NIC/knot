@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,11 @@ int event_load(conf_t *conf, zone_t *zone)
 	int ret = zonefile_exists(filename, &mtime);
 	free(filename);
 	if (ret != KNOT_EOK) {
+		if (zone_load_can_bootstrap(conf, zone->name)) {
+			log_zone_info(zone->name, "zone will be bootstrapped");
+		} else {
+			log_zone_info(zone->name, "zone not found");
+		}
 		goto fail;
 	}
 
