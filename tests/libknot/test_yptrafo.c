@@ -35,10 +35,10 @@ static void int_test(const char *txt, int64_t num, yp_style_t s,
 
 	diag("integer \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ok(yp_int(b) == num, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, s | YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
@@ -68,10 +68,10 @@ static void bool_test(const char *txt, bool val)
 
 	diag("boolean \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ok(yp_bool(b) == val, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
@@ -100,11 +100,11 @@ static void opt_test(const char *txt, unsigned val, const knot_lookup_t *opts)
 
 	diag("option \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ok(b_len == 1, "compare length");
 	ok(yp_opt(b) == val, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
@@ -133,11 +133,11 @@ static void str_test(const char *txt, const char *val)
 
 	diag("string \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ok(b_len == strlen(txt) + 1, "compare length");
 	ok(memcmp(yp_str(b), val, b_len) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
@@ -154,12 +154,12 @@ static void addr_test(const char *txt, bool port)
 
 	diag("address \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	bool no_port;
 	yp_addr(b, &no_port);
 	ok(no_port == port, "compare port presence");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
@@ -188,10 +188,10 @@ static void dname_test(const char *txt, const char *val)
 
 	diag("dname \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ok(memcmp(yp_dname(b), val, b_len) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
@@ -212,10 +212,10 @@ static void hex_test(const char *txt, const char *val, const char *txt_out)
 
 	diag("hex \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ok(memcmp(yp_bin(b), val, yp_bin_len(b)) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt_out) == t_len, "txt length");
 	ok(memcmp(txt_out, t, t_len) == 0, "compare");
@@ -244,10 +244,10 @@ static void base64_test(const char *txt, const char *val)
 
 	diag("base64 \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ok(memcmp(yp_bin(b), val, yp_bin_len(b)) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
@@ -268,10 +268,10 @@ static void ref_test(const char *txt, bool val)
 
 	diag("reference to boolean \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ok(yp_bool(b) == val, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");

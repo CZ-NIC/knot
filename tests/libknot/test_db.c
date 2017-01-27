@@ -66,7 +66,7 @@ static void knot_db_test_set(unsigned nkeys, char **keys, void *opts,
 	/* Start WR transaction. */
 	knot_db_txn_t txn;
 	ret = api->txn_begin(db, &txn, 0);
-	ok(ret == KNOT_EOK, "%s: txn_begin(WR)", api->name);
+	is_int(KNOT_EOK, ret, "%s: txn_begin(WR)", api->name);
 
 	/* Insert keys */
 	knot_db_val_t key, val;
@@ -86,11 +86,11 @@ static void knot_db_test_set(unsigned nkeys, char **keys, void *opts,
 
 	/* Commit WR transaction. */
 	ret = api->txn_commit(&txn);
-	ok(ret == KNOT_EOK, "%s: txn_commit(WR)", api->name);
+	is_int(KNOT_EOK, ret, "%s: txn_commit(WR)", api->name);
 
 	/* Start RD transaction. */
 	ret = api->txn_begin(db, &txn, KNOT_DB_RDONLY);
-	ok(ret == KNOT_EOK, "%s: txn_begin(RD)", api->name);
+	is_int(KNOT_EOK, ret, "%s: txn_begin(RD)", api->name);
 
 	/* Lookup all keys */
 	passed = true;

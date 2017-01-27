@@ -37,10 +37,10 @@ static void mod_id_test(const char *txt, const char *val)
 
 	diag("module id \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ok(memcmp(b, val, b_len) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
@@ -73,13 +73,13 @@ static void edns_opt_test(const char *txt, uint16_t code, const char *val)
 
 	diag("edns option \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	uint64_t c = wire_read_u64(b);
 	ok(c == code, "compare code");
 	ok(memcmp(yp_bin(b + sizeof(uint64_t)), val,
 	          yp_bin_len(b + sizeof(uint64_t))) == 0, "compare");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");
@@ -112,9 +112,9 @@ static void addr_range_test(const char *txt)
 
 	diag("address range \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == KNOT_EOK, "txt to bin");
+	is_int(KNOT_EOK, ret, "txt to bin");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	ok(ret == KNOT_EOK, "bin to txt");
+	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
 	ok(strlen(txt) == t_len, "txt length");
 	ok(memcmp(txt, t, t_len) == 0, "compare");

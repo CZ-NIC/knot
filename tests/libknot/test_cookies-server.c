@@ -288,13 +288,13 @@ int main(int argc, char *argv[])
 	const int DUMMYVAL = 1;
 
 	ret = knot_sc_parse(0, NULL, 0, &sc_content);
-	ok(ret == KNOT_EINVAL, "cookies: parse server cookie no cookie");
+	is_int(KNOT_EINVAL, ret, "cookies: parse server cookie no cookie");
 
 	ret = knot_sc_parse(0, sc0, sizeof(sc0), NULL);
-	ok(ret == KNOT_EINVAL, "cookies: parse server cookie no content");
+	is_int(KNOT_EINVAL, ret, "cookies: parse server cookie no content");
 
 	ret = knot_sc_parse(sizeof(sc0), sc0, sizeof(sc0), &sc_content);
-	ok(ret == KNOT_EINVAL, "cookies: parse server cookie too large nonce");
+	is_int(KNOT_EINVAL, ret, "cookies: parse server cookie too large nonce");
 
 	sc_content.nonce = sc_content.hash = DUMMYPTR;
 	sc_content.nonce_len = sc_content.hash_len = DUMMYVAL;
@@ -317,21 +317,21 @@ int main(int argc, char *argv[])
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(1, &cookies, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - wrong nonce length");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - wrong nonce length");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(17, &cookies, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - too long nonce");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - too long nonce");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no cookies");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - no cookies");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	cookies.cc = NULL;
@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no client cookie");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - no client cookie");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	cookies.sc = NULL;
@@ -349,63 +349,63 @@ int main(int argc, char *argv[])
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no server cookie");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - no server cookie");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = NULL;
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, NULL, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no socket address");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - no socket address");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = NULL;
 	srvr_data.secret_len = 0;
 	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - no secret");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - no secret");
 
 	get_opt_cookies(ROPT(0), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad server cookie");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - bad server cookie");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&unspec_sa;
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad socket");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - bad socket");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret) - 1;
 	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad secret");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - bad secret");
 
 	get_opt_cookies(ROPT(1), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(0, &cookies, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie check");
+	is_int(KNOT_EOK, ret, "cookies: FNV64 server cookie check");
 
 	get_opt_cookies(ROPT(2), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(8, &cookies, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EINVAL, "cookies: FNV64 server cookie check - bad server cookie");
+	is_int(KNOT_EINVAL, ret, "cookies: FNV64 server cookie check - bad server cookie");
 
 	get_opt_cookies(ROPT(3), &cookies);
 	srvr_data.clnt_sockaddr = (struct sockaddr *)&c6_sa;
 	srvr_data.secret_data = secret;
 	srvr_data.secret_len = sizeof(secret);
 	ret = knot_sc_check(8, &cookies, &srvr_data, &knot_sc_alg_fnv64);
-	ok(ret == KNOT_EOK, "cookies: FNV64 server cookie check");
+	is_int(KNOT_EOK, ret, "cookies: FNV64 server cookie check");
 
 	return 0;
 }

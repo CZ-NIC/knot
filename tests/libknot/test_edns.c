@@ -217,31 +217,31 @@ static void test_setters(knot_rrset_t *opt_rr)
 	/* Proper option. */
 	int ret = knot_edns_add_option(opt_rr, KNOT_EDNS_OPTION_NSID,
 	                           E_NSID_LEN, (uint8_t *)E_NSID_STR, NULL);
-	ok(ret == KNOT_EOK, "OPT RR setters: add option with data (ret = %s)",
+	is_int(KNOT_EOK, ret, "OPT RR setters: add option with data (ret = %s)",
 	   knot_strerror(ret));
 
 	/* Wrong argument: no OPT RR. */
 	ret = knot_edns_add_option(NULL, E_OPT3_CODE, E_OPT3_FAKE_LEN,
 	                           (uint8_t *)E_OPT3_FAKE_DATA, NULL);
-	ok(ret == KNOT_EINVAL, "OPT RR setters: add option (rr == NULL) "
+	is_int(KNOT_EINVAL, ret, "OPT RR setters: add option (rr == NULL) "
 	   "(ret = %s)", knot_strerror(ret));
 
 	/* Wrong argument: option length != 0 && data == NULL. */
 	ret = knot_edns_add_option(opt_rr, E_OPT3_CODE, E_OPT3_FAKE_LEN, NULL,
 	                           NULL);
-	ok(ret == KNOT_EINVAL, "OPT RR setters: add option (data == NULL, "
+	is_int(KNOT_EINVAL, ret, "OPT RR setters: add option (data == NULL, "
 	   "len != 0) (ret = %s)", knot_strerror(ret));
 
 	/* Empty OPTION (length 0, data != NULL). */
 	ret = knot_edns_add_option(opt_rr, E_OPT3_CODE, E_OPT3_LEN,
 	                           (uint8_t *)E_OPT3_FAKE_DATA, NULL);
-	ok(ret == KNOT_EOK, "OPT RR setters: add empty option 1 (ret = %s)",
+	is_int(KNOT_EOK, ret, "OPT RR setters: add empty option 1 (ret = %s)",
 	   knot_strerror(ret));
 
 	/* Empty OPTION (length 0, data == NULL). */
 	ret = knot_edns_add_option(opt_rr, E_OPT4_CODE, E_OPT4_LEN,
 	                           (uint8_t *)E_OPT4_DATA, NULL);
-	ok(ret == KNOT_EOK, "OPT RR setters: add empty option 2 (ret = %s)",
+	is_int(KNOT_EOK, ret, "OPT RR setters: add empty option 2 (ret = %s)",
 	   knot_strerror(ret));
 
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
@@ -759,13 +759,13 @@ static void test_keepalive(void)
 
 		uint8_t wire[8] = { 0 };
 		int ret = knot_edns_keepalive_write(wire, sizeof(wire), t->val);
-		ok(ret == KNOT_EOK, "%s: %s, write, return", __func__, t->msg);
+		is_int(KNOT_EOK, ret, "%s: %s, write, return", __func__, t->msg);
 		ok(memcmp(wire, t->opt, t->opt_len) == 0, "%s: %s, write, value",
 		                                          __func__, t->msg);
 
 		uint16_t timeout = 0;
 		ret = knot_edns_keepalive_parse(&timeout, (uint8_t *)t->opt, t->opt_len);
-		ok(ret == KNOT_EOK, "%s: %s, parse, return", __func__, t->msg);
+		is_int(KNOT_EOK, ret, "%s: %s, parse, return", __func__, t->msg);
 		ok(timeout == t->val, "%s: %s, parse, value", __func__, t->msg);
 	}
 
@@ -808,13 +808,13 @@ static void test_chain(void)
 
 		uint8_t wire[8] = { 0 };
 		int ret = knot_edns_chain_write(wire, sizeof(wire), t->dname);
-		ok(ret == KNOT_EOK, "%s: dname %s, write, return", __func__, t->msg);
+		is_int(KNOT_EOK, ret, "%s: dname %s, write, return", __func__, t->msg);
 		ok(memcmp(wire, t->dname, t->opt_len) == 0, "%s: dname %s, write, value",
 		                                            __func__, t->msg);
 
 		knot_dname_t *dname = NULL;
 		ret = knot_edns_chain_parse(&dname, (uint8_t *)t->dname, t->opt_len);
-		ok(ret == KNOT_EOK, "%s: dname %s, parse, return", __func__, t->msg);
+		is_int(KNOT_EOK, ret, "%s: dname %s, parse, return", __func__, t->msg);
 		ok(knot_dname_cmp(dname, t->dname) == 0, "%s: dname %s, parse, value",
 		                                         __func__, t->msg);
 		knot_dname_free(&dname, NULL);
@@ -847,7 +847,7 @@ int main(int argc, char *argv[])
 
 	knot_rrset_t opt_rr;
 	int ret = knot_edns_init(&opt_rr, E_MAX_PLD, E_RCODE, E_VERSION, NULL);
-	ok(ret == KNOT_EOK, "OPT RR: init");
+	is_int(KNOT_EOK, ret, "OPT RR: init");
 
 	/* Check initialized values (no NSID yet). */
 	check_header(&opt_rr, E_MAX_PLD, E_VERSION, 0, E_RCODE, "OPT RR: check header");

@@ -53,10 +53,10 @@ int main(int argc, char *argv[])
 	knot_rrset_add_rdata(apex_txt_rr, data, sizeof(data), 3600, NULL);
 
 	int ret = changeset_add_addition(ch, apex_txt_rr, CHANGESET_CHECK);
-	ok(ret == KNOT_EOK, "changeset: add RRSet");
+	is_int(KNOT_EOK, ret, "changeset: add RRSet");
 	ok(changeset_size(ch) == 1, "changeset: size add");
 	ret = changeset_add_removal(ch, apex_txt_rr, CHANGESET_CHECK);
-	ok(ret == KNOT_EOK, "changeset: rem RRSet");
+	is_int(KNOT_EOK, ret, "changeset: rem RRSet");
 	ok(changeset_size(ch) == 1, "changeset: size remove");
 	ok(!changeset_empty(ch), "changeset: empty");
 	changeset_add_addition(ch, apex_txt_rr, CHANGESET_CHECK);
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 	assert(apex_spf_rr);
 	knot_rrset_add_rdata(apex_spf_rr, data, sizeof(data), 3600, NULL);
 	ret = changeset_add_addition(ch, apex_spf_rr, CHANGESET_CHECK);
-	ok(ret == KNOT_EOK, "changeset: add multiple");
+	is_int(KNOT_EOK, ret, "changeset: add multiple");
 
 	// Add another node.
 	knot_dname_free(&d, NULL);
@@ -76,12 +76,12 @@ int main(int argc, char *argv[])
 	assert(other_rr);
 	knot_rrset_add_rdata(other_rr, data, sizeof(data), 3600, NULL);
 	ret = changeset_add_addition(ch, other_rr, CHANGESET_CHECK);
-	ok(ret == KNOT_EOK, "changeset: remove multiple");
+	is_int(KNOT_EOK, ret, "changeset: remove multiple");
 
 	// Test add traversal.
 	changeset_iter_t it;
 	ret = changeset_iter_add(&it, ch);
-	ok(ret == KNOT_EOK, "changeset: create iter add");
+	is_int(KNOT_EOK, ret, "changeset: create iter add");
 	// Order: non.terminals.test. TXT, SPF, here.come.more.non.terminals.test. TXT.
 	knot_rrset_t iter = changeset_iter_next(&it);
 	bool trav_ok = knot_rrset_equal(&iter, apex_txt_rr, KNOT_RRSET_COMPARE_WHOLE);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 
 	// Test remove traversal.
 	ret = changeset_iter_rem(&it, ch);
-	ok(ret == KNOT_EOK, "changeset: create iter rem");
+	is_int(KNOT_EOK, ret, "changeset: create iter rem");
 	iter = changeset_iter_next(&it);
 	ok(knot_rrset_equal(&iter, apex_txt_rr, KNOT_RRSET_COMPARE_WHOLE),
 	   "changeset: rem traversal");
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 
 	// Test all traversal - just count.
 	ret = changeset_iter_all(&it, ch);
-	ok(ret == KNOT_EOK, "changest: create iter all");
+	is_int(KNOT_EOK, ret, "changest: create iter all");
 	size_t size = 0;
 	iter = changeset_iter_next(&it);
 	while (!knot_rrset_empty(&iter)) {

@@ -110,10 +110,10 @@ static void ctl_server(const char *socket, size_t argc, knot_ctl_data_t *argv)
 	ok(ctl != NULL, "Allocate control");
 
 	int ret = knot_ctl_bind(ctl, socket);
-	ok(ret == KNOT_EOK, "Bind control socket");
+	is_int(KNOT_EOK, ret, "Bind control socket");
 
 	ret = knot_ctl_accept(ctl);
-	ok(ret == KNOT_EOK, "Accept a connection");
+	is_int(KNOT_EOK, ret, "Accept a connection");
 
 	diag("BEGIN: Server <- Client");
 
@@ -143,7 +143,7 @@ static void ctl_server(const char *socket, size_t argc, knot_ctl_data_t *argv)
 		}
 		count++;
 	}
-	ok(ret == KNOT_EOK, "Receive OK check");
+	is_int(KNOT_EOK, ret, "Receive OK check");
 	ok(type == KNOT_CTL_TYPE_END, "Receive EOF type");
 	ok(count == argc, "Server compare input count '%zu'", argc);
 
@@ -155,16 +155,16 @@ static void ctl_server(const char *socket, size_t argc, knot_ctl_data_t *argv)
 			if (argv[i][KNOT_CTL_IDX_CMD] != NULL &&
 			    argv[i][KNOT_CTL_IDX_CMD][0] == '\0') {
 				ret = knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL);
-				ok(ret == KNOT_EOK, "Client send data block end type");
+				is_int(KNOT_EOK, ret, "Client send data block end type");
 			} else {
 				ret = knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &argv[i]);
-				ok(ret == KNOT_EOK, "Server send data %zu", i);
+				is_int(KNOT_EOK, ret, "Server send data %zu", i);
 			}
 		}
 	}
 
 	ret = knot_ctl_send(ctl, KNOT_CTL_TYPE_END, NULL);
-	ok(ret == KNOT_EOK, "Server send final data");
+	is_int(KNOT_EOK, ret, "Server send final data");
 
 	diag("END: Server -> Client");
 

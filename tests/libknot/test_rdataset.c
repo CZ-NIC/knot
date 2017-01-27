@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	knot_rdata_init(rdata_gt, 4, (uint8_t *)"wxyz", 3600);
 
 	int ret = knot_rdataset_add(NULL, NULL, NULL);
-	ok(ret == KNOT_EINVAL, "rdataset: add NULL.");
+	is_int(KNOT_EINVAL, ret, "rdataset: add NULL.");
 	ret = knot_rdataset_add(&rdataset, rdata_gt, NULL);
 	bool add_ok = ret == KNOT_EOK && rdataset.rr_count == 1 &&
 	              knot_rdata_cmp(rdata_gt, rdataset.data) == 0;
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 	ok(subtract_ok, "rdataset: subtract last.");
 
 	ret = knot_rdataset_reserve(&rdataset, 65536, NULL);
-	ok(ret == KNOT_EINVAL, "rdataset: reserve too much");
+	is_int(KNOT_EINVAL, ret, "rdataset: reserve too much");
 
 	RDATASET_INIT_WITH(rdataset, rdata_gt);
 

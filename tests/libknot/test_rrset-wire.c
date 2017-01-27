@@ -211,7 +211,7 @@ static void check_canon(uint8_t *wire, size_t size, size_t pos, bool canon,
 	knot_rrset_init_empty(&rrset);
 
 	int ret = knot_rrset_rr_from_wire(wire, &pos, size, NULL, &rrset, canon);
-	ok(ret == KNOT_EOK, "OK %s canonization", canon ? "with" : "without");
+	is_int(KNOT_EOK, ret, "OK %s canonization", canon ? "with" : "without");
 	ok(memcmp(rrset.owner, qname, knot_dname_size(qname)) == 0, "compare owner");
 
 	uint8_t *rdata = knot_rdata_data(knot_rdataset_at(&rrset.rrs, 0));
@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 
 	diag("Test NULL parameters");
 	int ret = knot_rrset_rr_from_wire(NULL, NULL, 0, NULL, NULL, true);
-	ok(ret == KNOT_EINVAL, "rr wire: Invalid params");
+	is_int(KNOT_EINVAL, ret, "rr wire: Invalid params");
 
 	diag("Test various inputs");
 	test_inputs();

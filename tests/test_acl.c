@@ -96,7 +96,7 @@ static void test_acl_allowed(void)
 		"    acl: [ acl_range_addr ]";
 
 	ret = test_conf(conf_str, NULL);
-	ok(ret == KNOT_EOK, "Prepare configuration");
+	is_int(KNOT_EOK, ret, "Prepare configuration");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");

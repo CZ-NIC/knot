@@ -88,12 +88,12 @@ int main(int argc, char *argv[])
 	/* Create OPT RR. */
 	knot_rrset_t opt_rr = { 0 };
 	ret = knot_edns_init(&opt_rr, 1024, 0, 0, &mm);
-	ok(ret == KNOT_EOK, "initialize OPT RR");
+	is_int(KNOT_EOK, ret, "initialize OPT RR");
 
 	/* Add NSID */
 	ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_NSID,
 	                           strlen((char *)edns_str), edns_str, &mm);
-	ok(ret == KNOT_EOK, "initialize NSID in OPT RR");
+	is_int(KNOT_EOK, ret, "initialize NSID in OPT RR");
 
 	/*
 	 * Packet writer tests.
@@ -115,30 +115,30 @@ int main(int argc, char *argv[])
 	tsig_key.secret.data = (uint8_t *)strdup(tsig_secret);
 	tsig_key.secret.size = strlen(tsig_secret);
 	ret = knot_pkt_reserve(out, knot_tsig_wire_size(&tsig_key));
-	ok(ret == KNOT_EOK, "pkt: set TSIG key");
+	is_int(KNOT_EOK, ret, "pkt: set TSIG key");
 
 	/* Write question. */
 	ret = knot_pkt_put_question(out, dnames[0], KNOT_CLASS_IN, KNOT_RRTYPE_A);
-	ok(ret == KNOT_EOK, "pkt: put question");
+	is_int(KNOT_EOK, ret, "pkt: put question");
 
 	/* Add OPT to packet (empty NSID). */
 	ret = knot_pkt_reserve(out, knot_edns_wire_size(&opt_rr));
-	ok(ret == KNOT_EOK, "pkt: reserve OPT RR");
+	is_int(KNOT_EOK, ret, "pkt: reserve OPT RR");
 
 	/* Begin ANSWER section. */
 	ret = knot_pkt_begin(out, KNOT_ANSWER);
-	ok(ret == KNOT_EOK, "pkt: begin ANSWER");
+	is_int(KNOT_EOK, ret, "pkt: begin ANSWER");
 
 	/* Write ANSWER section. */
 	rrsets[0] = knot_rrset_new(dnames[0], KNOT_RRTYPE_A, KNOT_CLASS_IN, NULL);
 	knot_dname_free(&dnames[0], NULL);
 	knot_rrset_add_rdata(rrsets[0], RDVAL(0), RDLEN(0), TTL, NULL);
 	ret = knot_pkt_put(out, KNOT_COMPR_HINT_QNAME, rrsets[0], 0);
-	ok(ret == KNOT_EOK, "pkt: write ANSWER");
+	is_int(KNOT_EOK, ret, "pkt: write ANSWER");
 
 	/* Begin AUTHORITY. */
 	ret = knot_pkt_begin(out, KNOT_AUTHORITY);
-	ok(ret == KNOT_EOK, "pkt: begin AUTHORITY");
+	is_int(KNOT_EOK, ret, "pkt: begin AUTHORITY");
 
 	/* Write rest to AUTHORITY. */
 	ret = KNOT_EOK;
@@ -148,15 +148,15 @@ int main(int argc, char *argv[])
 		knot_rrset_add_rdata(rrsets[i], RDVAL(i), RDLEN(i), TTL, NULL);
 		ret |= knot_pkt_put(out, KNOT_COMPR_HINT_NONE, rrsets[i], 0);
 	}
-	ok(ret == KNOT_EOK, "pkt: write AUTHORITY(%u)", NAMECOUNT - 1);
+	is_int(KNOT_EOK, ret, "pkt: write AUTHORITY(%u)", NAMECOUNT - 1);
 
 	/* Begin ADDITIONALS */
 	ret = knot_pkt_begin(out, KNOT_ADDITIONAL);
-	ok(ret == KNOT_EOK, "pkt: begin ADDITIONALS");
+	is_int(KNOT_EOK, ret, "pkt: begin ADDITIONALS");
 
 	/* Encode OPT RR. */
 	ret = knot_pkt_put(out, KNOT_COMPR_HINT_NONE, &opt_rr, 0);
-	ok(ret == KNOT_EOK, "pkt: write OPT RR");
+	is_int(KNOT_EOK, ret, "pkt: write OPT RR");
 
 	/*
 	 * Packet reader tests.
@@ -168,11 +168,11 @@ int main(int argc, char *argv[])
 
 	/* Read packet header. */
 	ret = knot_pkt_parse_question(in);
-	ok(ret == KNOT_EOK, "pkt: read header");
+	is_int(KNOT_EOK, ret, "pkt: read header");
 
 	/* Read packet payload. */
 	ret = knot_pkt_parse_payload(in, 0);
-	ok(ret == KNOT_EOK, "pkt: read payload");
+	is_int(KNOT_EOK, ret, "pkt: read payload");
 
 	/* Compare parsed packet to written packet. */
 	packet_match(in, out);
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
 	 */
 	knot_pkt_t *copy = knot_pkt_new(NULL, in->max_size, &in->mm);
 	ret = knot_pkt_copy(copy, in);
-	ok(ret == KNOT_EOK, "pkt: create packet copy");
+	is_int(KNOT_EOK, ret, "pkt: create packet copy");
 
 	/* Compare copied packet to original. */
 	packet_match(in, copy);
