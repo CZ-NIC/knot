@@ -19,6 +19,7 @@
 #include <stdarg.h>
 
 #include "knot/updates/changesets.h"
+#include "knot/updates/apply.h"
 #include "libknot/libknot.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
@@ -386,6 +387,55 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 	ch1->soa_to = soa_copy;
 
 	return KNOT_EOK;
+}
+
+zone_contents_t *changeset_to_contents(changeset_t *ch)
+{
+	assert(ch->soa_from == NULL);
+	assert(zone_contents_is_empty(ch->remove));
+
+	zone_contents_t *res = ch->add;
+	add_rr_to_contents(res, ch->soa_to);
+	knot_rrset_free(&ch->soa_to, NULL);
+
+	zone_contents_deep_free(&ch->remove);
+	free(ch->data);
+	free(ch);
+	return res;
+}
+
+changeset_t *changeset_from_contents(const zone_contents_t *contents)
+{
+	zone_contents_t *copy = NULL;
+	if (zone_contents_shallow_copy(contents, &copy) != KNOT_EOK) {
+		return NULL;
+	}
+
+	changeset_t *res = changeset_new(copy->apex->owner);
+
+	knot_rrset_t soa_rr = node_rrset(copy->apex, KNOT_RRTYPE_SOA);;
+	res->soa_to = knot_rrset_copy(&soa_rr, NULL);
+
+	node_remove_rdataset(copy->apex, KNOT_RRTYPE_SOA);
+
+	zone_contents_deep_free(&res->add);
+	res->add = copy;
+	return res;
+}
+
+void changeset_from_contents_free(changeset_t *ch)
+{
+	assert(ch);
+	assert(ch->soa_from == NULL);
+	assert(zone_contents_is_empty(ch->remove));
+
+	update_free_zone(&ch->add);
+
+	zone_contents_deep_free(&ch->remove);
+	knot_rrset_free(&ch->soa_from, NULL);
+	knot_rrset_free(&ch->soa_to, NULL);
+	free(ch->data);
+	free(ch);
 }
 
 void changesets_clear(list_t *chgs)
