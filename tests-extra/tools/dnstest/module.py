@@ -185,9 +185,10 @@ class ModOnlineSign(KnotModule):
     src_name = "online_sign_load"
     conf_name = "mod-online-sign"
 
-    def __init__(self, algorithm=None):
+    def __init__(self, algorithm=None, key_size=None):
         super().__init__()
         self.algorithm = algorithm
+        self.key_size = key_size
         if not algorithm:
             self.empty = True
 
@@ -199,6 +200,8 @@ class ModOnlineSign(KnotModule):
             conf.begin("policy")
             conf.id_item("id", "%s_%s" % (self.conf_name, self.conf_id))
             conf.item_str("algorithm", self.algorithm)
+            if self.key_size:
+                conf.item_str("zsk-size", self.key_size)
             conf.end()
 
             conf.begin(self.conf_name)

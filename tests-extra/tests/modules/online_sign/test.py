@@ -15,7 +15,7 @@ knot = t.server("knot")
 zones = t.zone_rnd(2, dnssec=False, records=5)
 t.link(zones, knot)
 knot.add_module(zones[0], ModOnlineSign())
-knot.add_module(zones[1], ModOnlineSign("RSASHA256"))
+knot.add_module(zones[1], ModOnlineSign("RSASHA256", key_size="512"))
 
 def check_zone(zone, dnskey_rdata_start):
     # Check SOA record.
