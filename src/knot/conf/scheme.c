@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -122,15 +122,15 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_IDLE_TIMEOUT,     YP_TINT,  YP_VINT = { 0, INT32_MAX, 20, YP_STIME } },
 	{ C_TCP_REPLY_TIMEOUT,    YP_TINT,  YP_VINT = { 0, INT32_MAX, 10, YP_STIME } },
 	{ C_MAX_TCP_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 100 } },
-	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_UDP_PAYLOAD,
+	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
-	                                                4096, YP_SSIZE } },
-	{ C_MAX_IPV4_UDP_PAYLOAD, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_UDP_PAYLOAD,
+	                                                KNOT_EDNS_MAX_UDP_PAYLOAD, YP_SSIZE } },
+	{ C_MAX_IPV4_UDP_PAYLOAD, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
-	                                                4096, YP_SSIZE } },
-	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_UDP_PAYLOAD,
+	                                                KNOT_EDNS_MAX_UDP_PAYLOAD, YP_SSIZE } },
+	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
-	                                                4096, YP_SSIZE } },
+	                                                KNOT_EDNS_MAX_UDP_PAYLOAD, YP_SSIZE } },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	/* Obsolete items. */

@@ -70,12 +70,6 @@ int event_load(conf_t *conf, zone_t *zone)
 		goto fail;
 	}
 
-	/* Check zone contents consistency. */
-	ret = zone_load_check(conf, contents);
-	if (ret != KNOT_EOK) {
-		goto fail;
-	}
-
 	/* Everything went alright, switch the contents. */
 	zone->zonefile.exists = true;
 	zone_contents_t *old = zone_switch_contents(zone, contents);

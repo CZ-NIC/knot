@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,15 +29,6 @@
  */
 int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
                        zone_contents_t **contents);
-
-/*!
- * \brief Check loaded zone contents validity.
- *
- * \param conf
- * \param contents
- * \return KNOT_EOK or an error
- */
-int zone_load_check(conf_t *conf, zone_contents_t *contents);
 
 /*!
  * \brief Update zone contents from the journal.

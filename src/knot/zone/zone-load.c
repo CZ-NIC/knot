@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,36 +56,6 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	zonefile_close(&zl);
 	if (*contents == NULL) {
 		return KNOT_ERROR;
-	}
-
-	return KNOT_EOK;
-}
-
-int zone_load_check(conf_t *conf, zone_contents_t *contents)
-{
-	if (conf == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Bootstrapped zone, no checks apply. */
-	if (contents == NULL) {
-		return KNOT_EOK;
-	}
-
-	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
-	if (zone_contents_is_signed(contents)) {
-		if (conf->cache.srv_max_ipv4_udp_payload < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
-			log_zone_error(contents->apex->owner, "EDNS payload size "
-			               "for IPv4 is lower than %u bytes for DNSSEC zone",
-			               KNOT_EDNS_MIN_DNSSEC_PAYLOAD);
-			return KNOT_EPAYLOAD;
-		}
-		if (conf->cache.srv_max_ipv6_udp_payload < KNOT_EDNS_MIN_DNSSEC_PAYLOAD) {
-			log_zone_error(contents->apex->owner, "EDNS payload size "
-			               "for IPv6 is lower than %u bytes for DNSSEC zone",
-			               KNOT_EDNS_MIN_DNSSEC_PAYLOAD);
-			return KNOT_EPAYLOAD;
-		}
 	}
 
 	return KNOT_EOK;
