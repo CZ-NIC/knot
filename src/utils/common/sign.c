@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ int sign_packet(knot_pkt_t *pkt, sign_context_t *sign_ctx)
 	size_t  *wire_size = &pkt->size;
 	size_t  max_size = pkt->max_size;
 
-	knot_pkt_reserve(pkt, knot_tsig_wire_maxsize(sign_ctx->tsig_key));
+	knot_pkt_reserve(pkt, knot_tsig_wire_size(sign_ctx->tsig_key));
 
 	return knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
 	                      sign_ctx->digest, &sign_ctx->digest_size,
