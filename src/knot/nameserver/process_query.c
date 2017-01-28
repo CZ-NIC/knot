@@ -541,7 +541,7 @@ finish:
 		if (qdata->rcode == KNOT_RCODE_NOERROR) {
 			qdata->rcode = KNOT_RCODE_SERVFAIL;
 		}
-		process_query_err(ctx, pkt);
+		next_state = process_query_err(ctx, pkt);
 		break;
 	default:
 		/* Store Extended RCODE - divide between header and OPT. */
