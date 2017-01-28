@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,9 +45,9 @@ typedef enum tsig_off_t {
 } tsig_off_t;
 
 /* Helpers for RDATA offset calculation. */
-#define TSIG_OTHER_MAXLEN (3 * sizeof(uint16_t))
 #define TSIG_OFF_MACLEN (4 * sizeof(uint16_t))
-#define TSIG_FIXED_RDLEN (11 * sizeof(uint16_t))
+#define TSIG_FIXED_RDLEN (8 * sizeof(uint16_t))
+#define TSIG_OTHER_MAXLEN (3 * sizeof(uint16_t))
 
 /*!
  * \brief Seek offset of a TSIG RR field.
@@ -71,7 +71,7 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 	int alg_len = knot_dname_size(wire.wire);
 
 	/* Not pretty, but fast. */
-	switch(id) {
+	switch (id) {
 	case TSIG_ALGNAME_O: break;
 	case TSIG_TSIGNED_O:
 		wire_ctx_skip(&wire, alg_len); break;
@@ -88,7 +88,6 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 		wire_ctx_skip(&wire, alg_len + 4 * sizeof(uint16_t));
 		wire_ctx_skip(&wire, wire_ctx_read_u16(&wire));
 		break;
-
 	case TSIG_ERROR_O:
 		wire_ctx_skip(&wire, alg_len + 4 * sizeof(uint16_t));
 		wire_ctx_skip(&wire, wire_ctx_read_u16(&wire));
@@ -138,11 +137,14 @@ int knot_tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg,
 		return KNOT_EINVAL;
 	}
 
-	/* We already checked rr and know rdlen > 0, no need to check rest. */
 	int alg_len = knot_dname_size(alg);
+	if (alg_len < 0) {
+		return alg_len;
+	}
+
 	size_t rdlen = alg_len + TSIG_FIXED_RDLEN + maclen;
-	if (tsig_err != KNOT_RCODE_BADTIME) {
-		rdlen -= TSIG_OTHER_MAXLEN;
+	if (tsig_err == KNOT_RCODE_BADTIME) {
+		rdlen += TSIG_OTHER_MAXLEN;
 	}
 	uint8_t rd[rdlen];
 	memset(rd, 0, rdlen);
@@ -225,7 +227,7 @@ int knot_tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t *rd = rdata_seek(tsig, TSIG_OLEN_O, len+sizeof(uint16_t));
+	uint8_t *rd = rdata_seek(tsig, TSIG_OLEN_O, len + sizeof(uint16_t));
 	if (!rd) {
 		return KNOT_ERROR;
 	}
@@ -369,29 +371,41 @@ size_t knot_tsig_rdata_tsig_timers_length(void)
 }
 
 _public_
-size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key)
+size_t knot_tsig_wire_size(const knot_tsig_key_t *key)
 {
 	if (key == NULL || key->name == NULL) {
 		return 0;
 	}
 
-	const uint8_t *alg_dname = dnssec_tsig_algorithm_to_dname(key->algorithm);
+	int key_len = knot_dname_size(key->name);
+	if (key_len < 0) {
+		return 0;
+	}
 
-	/*! \todo Used fixed size as a base. */
-	return knot_dname_size(key->name) +
-	sizeof(uint16_t) + /* TYPE */
-	sizeof(uint16_t) + /* CLASS */
-	sizeof(uint32_t) + /* TTL */
-	sizeof(uint16_t) + /* RDLENGTH */
-	knot_dname_size(alg_dname) + /* Alg. name */
-	6 * sizeof(uint8_t) + /* Time signed */
-	sizeof(uint16_t) + /* Fudge */
-	sizeof(uint16_t) + /* MAC size */
-	dnssec_tsig_algorithm_size(key->algorithm) + /* MAC */
-	sizeof(uint16_t) + /* Original ID */
-	sizeof(uint16_t) + /* Error */
-	sizeof(uint16_t) + /* Other len */
-	6* sizeof(uint8_t); /* uint48_t in case of BADTIME RCODE */
+	int alg_len = knot_dname_size(dnssec_tsig_algorithm_to_dname(key->algorithm));
+	if (alg_len < 0) {
+		return 0;
+	}
+
+	return key_len + TSIG_FIXED_RDLEN +
+	       sizeof(uint16_t) + /* TYPE */
+	       sizeof(uint16_t) + /* CLASS */
+	       sizeof(uint32_t) + /* TTL */
+	       sizeof(uint16_t) + /* RDATA length. */
+	       alg_len + /* Alg. name length. */
+	       dnssec_tsig_algorithm_size(key->algorithm); /* MAC length. */
+}
+
+_public_
+size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key)
+{
+	int size = knot_tsig_wire_size(key);
+	if (size == 0) {
+		return 0;
+	}
+
+	/* In case of BADTIME other data. */
+	return size + TSIG_OTHER_MAXLEN;
 }
 
 _public_

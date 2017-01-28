@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,7 +97,18 @@ size_t knot_tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
 size_t knot_tsig_rdata_tsig_timers_length(void);
 
 /*!
+ * \brief Return standard TSIG RRSET wire size for given algorithm.
+ *
+ * \param key Signing key descriptor.
+ *
+ * \return RRSET wire size.
+ */
+size_t knot_tsig_wire_size(const knot_tsig_key_t *key);
+
+/*!
  * \brief Return TSIG RRSET maximum wire size for given algorithm.
+ *
+ * This size is reached if error reply with BADTIME.
  *
  * \param key Signing key descriptor.
  *
