@@ -381,8 +381,7 @@ class Server(object):
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
             timeout=None, tries=3, flags="", bufsize=None, edns=None,
-            nsid=False, dnssec=False, log_no_sep=False):
-        key_params = self.tsig_test.key_params if self.tsig_test else dict()
+            nsid=False, dnssec=False, log_no_sep=False, tsig=None):
 
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
@@ -490,6 +489,24 @@ class Server(object):
 
         check_log("DIG %s %s %s @%s -p %i %s" %
                   (rname, rtype_str, rclass, self.addr, self.port, dig_flags))
+
+        # Set TSIG for a normal query if explicitly specified.
+        key_params = dict()
+        if tsig != None:
+            if type(tsig) is dnstest.keys.Tsig:
+                key_params = tsig.key_params
+            elif tsig and self.tsig_test:
+                key_params = self.tsig_test.key_params
+        if key_params:
+            query.use_tsig(keyring=key_params["keyring"],
+                           keyname=key_params["keyname"],
+                           algorithm=key_params["keyalgorithm"])
+
+        # Set TSIG for a transfer if available.
+        if rtype.upper() == "AXFR" or rtype.upper() == "IXFR":
+            if self.tsig_test and tsig != False:
+                key_params = self.tsig_test.key_params
+
         if key_params:
             detail_log("%s:%s:%s" %
                 (self.tsig_test.alg, self.tsig_test.name, self.tsig_test.key))
