@@ -1034,11 +1034,14 @@ class Knot(Server):
                 for module in z.modules:
                     module.get_conf(s)
 
-        s.begin("policy")
+        have_policy = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
             if not z.dnssec.enable:
                 continue
+            if not have_policy:
+                s.begin("policy")
+                have_policy = True
             s.id_item("id", z.name)
             self._bool(s, "manual", z.dnssec.manual)
             self._bool(s, "single-type-signing", z.dnssec.single_type_signing)
@@ -1054,7 +1057,8 @@ class Knot(Server):
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
             self._str(s, "nsec3-salt-lifetime", z.dnssec.nsec3_salt_lifetime)
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
-        s.end()
+        if have_policy:
+            s.end()
 
         s.begin("template")
         s.id_item("id", "default")
