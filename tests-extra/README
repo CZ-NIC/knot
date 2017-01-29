@@ -1,8 +1,9 @@
 Prerequisites:
-=============
+==============
+
 Python >=3.3
-python3-dnspython >=1.11.1
-psutil (sudo pip3 install psutil)
+dnspython >=1.16.0
+python3-psutil
 dnssec-signzone
 dnssec-keygen
 dnssec-verify
@@ -21,6 +22,7 @@ $ pip install -r requirements.txt
 
 Ubuntu:
 -------
+
 Disable apparmor protection for system Bind:
 # sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
 
