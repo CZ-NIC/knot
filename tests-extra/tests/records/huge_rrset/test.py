@@ -39,17 +39,18 @@ resp.check_count(0, section="answer")
 resp = master.dig(ZONE, "AXFR", tries=1, timeout=5)
 
 got_messages = 0
+last_rcode = None
 
-for msg in resp.resp:
+try:
+    for msg in resp.resp:
+        got_messages += 1
+        last_rcode = msg.rcode()
+        compare(msg.rcode(), dns.rcode.NOERROR, "rcode")
+except dns.query.TransferError as e:
     got_messages += 1
-    if got_messages is 1:
-        isset(msg.rcode() == dns.rcode.NOERROR, "NOERROR")
-    elif got_messages is 2:
-        isset(msg.rcode() == dns.rcode.SERVFAIL, "SERVFAIL")
-        break
+    last_rcode = e.rcode
 
-if got_messages != 2:
-    set_err("AXFR MSGCOUNT")
-    detail_log("!AXFR message count: %i != 1" % got_messages)
+compare(got_messages, 2, "axfr message count")
+compare(last_rcode, dns.rcode.SERVFAIL, "last rcode")
 
 t.end()
