@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -341,6 +341,25 @@ static int hex_encode_alloc(const uint8_t  *in,
 
 	// Encoding data.
 	return hex_encode(in, in_len, *out, out_len);
+}
+
+static int num48_encode(const uint8_t  *in,
+                        const uint32_t in_len,
+                        uint8_t        *out,
+                        const uint32_t out_len)
+{
+	if (in_len != 6) {
+		return -1;
+	}
+
+	uint64_t data = wire_read_u48(in);
+
+	int ret = snprintf((char *)out, out_len, "%"PRIu64"", data);
+	if (ret <= 0 || (size_t)ret >= out_len) {
+		return -1;
+	}
+
+	return ret;
 }
 
 typedef int (*encode_t)(const uint8_t *in, const uint32_t in_len,
@@ -1393,7 +1412,7 @@ static void dnskey_info(const uint8_t *rdata,
 				1, false, "-"); CHECK_RET(p);
 #define DUMP_TSIG_DGST	wire_len_data_encode_to_str(p, &base64_encode, \
 				2, true, ""); CHECK_RET(p);
-#define DUMP_TSIG_DATA	wire_len_data_encode_to_str(p, &hex_encode, \
+#define DUMP_TSIG_DATA	wire_len_data_encode_to_str(p, &num48_encode, \
 				2, true, ""); CHECK_RET(p);
 #define DUMP_TEXT	wire_text_to_str(p, true, true); CHECK_RET(p);
 #define DUMP_LONG_TEXT	wire_text_to_str(p, true, false); CHECK_RET(p);
