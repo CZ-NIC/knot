@@ -35,7 +35,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	zloader_t zl;
 	char *zonefile = conf_zonefile(conf, zone_name);
 	conf_val_t val = conf_zone_get(conf, C_SEM_CHECKS, zone_name);
-	int ret = zonefile_open(&zl, zonefile, zone_name, conf_bool(&val));
+	int ret = zonefile_open(&zl, zonefile, zone_name, conf_bool(&val), time(NULL));
 
 	err_handler_logger_t handler;
 	memset(&handler, 0, sizeof(handler));

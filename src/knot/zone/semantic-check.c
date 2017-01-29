@@ -120,6 +120,7 @@ typedef struct semchecks_data {
 	bool fatal_error;
 	const zone_node_t *next_nsec;
 	enum check_levels level;
+	time_t time;
 } semchecks_data_t;
 
 static int check_cname_multiple(const zone_node_t *node, semchecks_data_t *data);
@@ -170,7 +171,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
                              const zone_node_t *node,
                              const knot_rdataset_t *rrsig,
                              size_t rr_pos,
-                             const knot_rrset_t *rrset)
+                             const knot_rrset_t *rrset, time_t context)
 {
 	/* Prepare additional info string. */
 	char info_str[50] = { '\0' };
@@ -231,10 +232,8 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		}
 	}
 
-
-
 	/* Check for expired signature. */
-	if (knot_rrsig_sig_expiration(rrsig, rr_pos) < time(NULL)) {
+	if (knot_rrsig_sig_expiration(rrsig, rr_pos) < context) {
 		ret = handler->cb(handler, zone, node,
 		                  ZC_ERR_RRSIG_RDATA_EXPIRATION,
 		                  info_str);
@@ -280,7 +279,7 @@ static int check_signed_rrsig(const zone_node_t *node, semchecks_data_t *data)
 static int check_rrsig_in_rrset(err_handler_t *handler,
                                 const zone_contents_t *zone,
                                 const zone_node_t *node,
-                                const knot_rrset_t *rrset)
+                                const knot_rrset_t *rrset, time_t context)
 {
 	if (handler == NULL || node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -315,7 +314,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	}
 
 	for (uint16_t i = 0; ret == KNOT_EOK && i < (&rrsigs)->rr_count; ++i) {
-		ret = check_rrsig_rdata(handler, zone, node, &rrsigs, i, rrset);
+		ret = check_rrsig_rdata(handler, zone, node, &rrsigs, i, rrset, context);
 	}
 
 	knot_rdataset_clear(&rrsigs, NULL);
@@ -398,7 +397,8 @@ static int check_rrsig(const zone_node_t *node, semchecks_data_t *data)
 			continue;
 		}
 
-		ret = check_rrsig_in_rrset(data->handler, data->zone, node, &rrset);
+		ret = check_rrsig_in_rrset(data->handler, data->zone, node, &rrset,
+					   data->time);
 	}
 	return ret;
 }
@@ -810,9 +810,9 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 }
 
 int zone_do_sem_checks(zone_contents_t *zone, bool optional,
-                       err_handler_t *handler)
+                       err_handler_t *handler, time_t time)
 {
-	if (!zone || !handler) {
+	if (zone == NULL || handler == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -822,7 +822,8 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 		.next_nsec = zone->apex,
 		.fatal_error = false,
 		.level = MANDATORY,
-		};
+		.time = time,
+	};
 
 	if (optional) {
 		data.level |= OPTIONAL;
@@ -846,7 +847,6 @@ int zone_do_sem_checks(zone_contents_t *zone, bool optional,
 	if (data.level & NSEC) {
 		check_nsec_cyclic(&data);
 	}
-
 	if (data.fatal_error) {
 		return KNOT_ESEMCHECK;
 	}

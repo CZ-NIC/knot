@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 
 #include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
-#include "contrib/ucw/lists.h"
 #include "utils/kzonecheck/zone_check.h"
 
 typedef struct {
@@ -78,10 +77,10 @@ static void print_statistics(err_handler_stats_t *handler)
 }
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name,
-               FILE *outfile)
+               FILE *outfile, time_t time)
 {
 	zloader_t zl;
-	int ret = zonefile_open(&zl, zone_file, zone_name, true);
+	int ret = zonefile_open(&zl, zone_file, zone_name, true, time);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

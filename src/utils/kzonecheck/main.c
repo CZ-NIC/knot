@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,14 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <unistd.h>
 #include <getopt.h>
 #include <stdio.h>
-#include <libgen.h>
 
+#include "contrib/time.h"
 #include "libknot/libknot.h"
-#include "utils/common/params.h"
 #include "knot/common/log.h"
+#include "utils/common/params.h"
 #include "utils/kzonecheck/zone_check.h"
 
 #define PROGRAM_NAME "kzonecheck"
@@ -32,7 +31,9 @@ static void print_help(void)
 	       "\n"
 	       "Parameters:\n"
 	       " -o, --origin <zone_origin>  Zone name.\n"
-	       "                              (default filename or filename without .zone)\n"
+	       "                              (default filename without .zone)\n"
+	       " -t, --time <timestamp>      Current time specification.\n"
+	       "                              (default current UNIX time)\n"
 	       " -v, --verbose               Enable debug output.\n"
 	       " -h, --help                  Print the program help.\n"
 	       " -V, --version               Print the program version.\n"
@@ -44,11 +45,12 @@ int main(int argc, char *argv[])
 {
 	const char *origin = NULL;
 	bool verbose = false;
-	FILE *outfile = stdout;
+	knot_time_t check_time = (knot_time_t)time(NULL);
 
 	/* Long options. */
 	struct option opts[] = {
 		{ "origin",  required_argument, NULL, 'o' },
+		{ "time",    required_argument, NULL, 't' },
 		{ "verbose", no_argument,       NULL, 'v' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ "version", no_argument,       NULL, 'V' },
@@ -57,7 +59,7 @@ int main(int argc, char *argv[])
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "o:vVh", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "o:t:vVh", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'o':
 			origin = optarg;
@@ -71,6 +73,13 @@ int main(int argc, char *argv[])
 		case 'V':
 			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
+		case 't':
+			if (knot_time_parse("YMDhms|#|+-#U|+-#",
+			                    optarg, &check_time) != KNOT_EOK) {
+				fprintf(stderr, "Unknown time format.\n");
+				return EXIT_FAILURE;
+			}
+			break;
 		default:
 			print_help();
 			return EXIT_FAILURE;
@@ -79,7 +88,7 @@ int main(int argc, char *argv[])
 
 	/* Check if there's at least one remaining non-option. */
 	if (optind >= argc) {
-		fprintf(outfile, "Expected zone file name.\n");
+		fprintf(stderr, "Expected zone file name.\n");
 		print_help();
 		return EXIT_FAILURE;
 	}
@@ -112,7 +121,7 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
 	free(zonename);
-	int ret = zone_check(filename, dname, outfile);
+	int ret = zone_check(filename, dname, stdout, (time_t)check_time);
 	knot_dname_free(&dname, NULL);
 
 	log_close();
@@ -120,7 +129,7 @@ int main(int argc, char *argv[])
 	switch (ret) {
 	case KNOT_EOK:
 		if (verbose) {
-			fprintf(outfile, "No semantic error found.\n");
+			fprintf(stdout, "No semantic error found.\n");
 		}
 		return EXIT_SUCCESS;
 	case KNOT_ESEMCHECK:

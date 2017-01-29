@@ -166,7 +166,7 @@ static void process_data(zs_scanner_t *scanner)
 }
 
 int zonefile_open(zloader_t *loader, const char *source,
-                  const knot_dname_t *origin, bool semantic_checks)
+		  const knot_dname_t *origin, bool semantic_checks, time_t time)
 {
 	if (!loader) {
 		return KNOT_EINVAL;
@@ -219,6 +219,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 	loader->source = strdup(source);
 	loader->creator = zc;
 	loader->semantic_checks = semantic_checks;
+	loader->time = time;
 
 	return KNOT_EOK;
 }
@@ -265,7 +266,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	ret = zone_do_sem_checks(zc->z, loader->semantic_checks,
-	                         loader->err_handler);
+				 loader->err_handler, loader->time);
 
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to load zone, file '%s' (%s)",

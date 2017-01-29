@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,12 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file
- *
- * \addtogroup zone
- * @{
  */
 
 #pragma once
@@ -46,6 +40,7 @@ typedef struct zloader {
 	err_handler_t *err_handler;  /*!< Semantic checks error handler. */
 	zcreator_t *creator;         /*!< Loader context. */
 	zs_scanner_t scanner;        /*!< Zone scanner. */
+	time_t time;                 /*!< time for zone check. */
 } zloader_t;
 
 typedef struct {
@@ -64,12 +59,13 @@ int err_handler_logger(err_handler_t *handler, const zone_contents_t *zone,
  * \param source Source file name.
  * \param origin Zone origin.
  * \param semantic_checks Perform semantic checks.
+ * \param time Time for semantic check.
  *
  * \retval Initialized loader on success.
  * \retval NULL on error.
  */
 int zonefile_open(zloader_t *loader, const char *source,
-                  const knot_dname_t *origin, bool semantic_checks);
+                  const knot_dname_t *origin, bool semantic_checks, time_t time);
 
 /*!
  * \brief Loads zone from a zone file.
@@ -112,5 +108,3 @@ void zonefile_close(zloader_t *loader);
  * \return KNOT_E*
  */
 int zcreator_step(zcreator_t *zl, const knot_rrset_t *rr);
-
-/*! @} */

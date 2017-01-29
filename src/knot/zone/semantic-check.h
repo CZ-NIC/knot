@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,23 +13,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief DNS zone semantic checks.
- *
- * \addtogroup zone
- * @{
- */
 
 #pragma once
 
 #include "knot/zone/node.h"
 #include "knot/zone/contents.h"
-#include "contrib/ucw/lists.h"
-#include "libknot/mm_ctx.h"
-
-
 
 /*!
  *\brief Internal error constants. General errors are added for convenience,
@@ -111,14 +99,14 @@ struct err_handler {
  *
  * Errors are logged in error handler.
  *
- * \param zone Zone to be searched / checked
- * \param optional To do also optional check
- * \param handler Semantic error handler.
+ * \param zone      Zone to be searched / checked.
+ * \param optional  To do also optional check.
+ * \param handler   Semantic error handler.
+ * \param time      Check zone at given time (rrsig expiration).
+ *
  * \retval KNOT_EOK no error found
  * \retval KNOT_ESEMCHECK found semantic error
  * \retval KNOT_EINVAL or other error
  */
 int zone_do_sem_checks(zone_contents_t *zone, bool optional,
-                       err_handler_t *handler);
-
-/*! @} */
+                       err_handler_t *handler, time_t time);

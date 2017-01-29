@@ -25,6 +25,11 @@ Options
   Zone origin. If not specified, the origin is determined from the file name
   (possibly removing the ``.zone`` suffix).
 
+**-t**, **--time** *time*
+  Current time specification. Use UNIX timestamp, YYYYMMDDHHmmSS
+  format, or [+/-]\ *time*\ [unit] format, where unit can be **Y**, **M**,
+  **D**, **h**, **m**, or **s**. Default is current UNIX timestamp.
+
 **-v**, **--verbose**
   Enable debug output.
 
