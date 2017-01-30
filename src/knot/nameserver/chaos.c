@@ -20,6 +20,7 @@
 #include "knot/nameserver/chaos.h"
 #include "knot/conf/conf.h"
 #include "libknot/libknot.h"
+#include "dnssec/lib/dnssec/random.h"
 
 #define WISH "Knot DNS developers wish you "
 #define HOPE "Knot DNS developers hope you "
@@ -75,7 +76,8 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
 		conf_val_t val = conf_get(conf(), C_SRV, C_VERSION);
 		/* No item means auto. */
 		if (val.code != KNOT_EOK) {
-			int wishno = rand() % (sizeof(wishes) / sizeof(wishes[0]));
+			uint16_t wishno = dnssec_random_uint16_t() %
+			                  (sizeof(wishes) / sizeof(wishes[0]));
 			response = wishes[wishno];
 		}
 	}
