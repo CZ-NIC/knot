@@ -274,7 +274,7 @@ AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0),
 ])
 
 opt_dnstap=no
-AS_IF([test "$enable_daemon" = "yes"],[
+AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"],[
 dnl Check for dnstap.
 dt_DNSTAP([
     AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support])
