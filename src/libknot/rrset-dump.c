@@ -71,6 +71,8 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 
 static void dump_string(rrset_dump_params_t *p, const char *str)
 {
+	p->ret = -1;
+
 	size_t in_len = strlen(str);
 
 	// Check input size (+ 1 termination).
@@ -92,6 +94,8 @@ static void dump_string(rrset_dump_params_t *p, const char *str)
 
 static void wire_num8_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	uint8_t data = *(p->in);
 	size_t  in_len = sizeof(data);
 	size_t  out_len = 0;
@@ -119,6 +123,8 @@ static void wire_num8_to_str(rrset_dump_params_t *p)
 
 static void wire_num16_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	uint16_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
@@ -149,6 +155,8 @@ static void wire_num16_to_str(rrset_dump_params_t *p)
 
 static void wire_num32_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	uint32_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
@@ -179,6 +187,8 @@ static void wire_num32_to_str(rrset_dump_params_t *p)
 
 static void wire_num48_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	uint64_t data;
 	size_t   in_len = 6;
 	size_t   out_len = 0;
@@ -209,6 +219,8 @@ static void wire_num48_to_str(rrset_dump_params_t *p)
 
 static void wire_ipv4_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	struct in_addr addr4;
 	size_t in_len = sizeof(addr4.s_addr);
 	size_t out_len = 0;
@@ -240,6 +252,8 @@ static void wire_ipv4_to_str(rrset_dump_params_t *p)
 
 static void wire_ipv6_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	struct in6_addr addr6;
 	size_t in_len = sizeof(addr6.s6_addr);
 	size_t out_len = 0;
@@ -271,6 +285,8 @@ static void wire_ipv6_to_str(rrset_dump_params_t *p)
 
 static void wire_type_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	char     type[32];
 	uint16_t data;
 	size_t   in_len = sizeof(data);
@@ -371,6 +387,8 @@ typedef int (*encode_alloc_t)(const uint8_t *in, const uint32_t in_len,
 static void wire_data_encode_to_str(rrset_dump_params_t *p,
                                     encode_t enc, encode_alloc_t enc_alloc)
 {
+	p->ret = -1;
+
 	int    ret;
 	size_t in_len = p->in_max;
 
@@ -447,6 +465,8 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
                                         const bool          print_len,
                                         const char          *empty_str)
 {
+	p->ret = -1;
+
 	size_t in_len;
 
 	// First len_len bytes are data length.
@@ -531,6 +551,8 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 
 static void wire_unknown_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	int    ret;
 	size_t in_len = p->in_max;
 	size_t out_len = 0;
@@ -572,6 +594,8 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 
 static void wire_text_to_str(rrset_dump_params_t *p, bool quote, bool with_header)
 {
+	p->ret = -1;
+
 	size_t in_len = 0;
 
 	if (with_header) {
@@ -667,6 +691,8 @@ static void wire_text_to_str(rrset_dump_params_t *p, bool quote, bool with_heade
 
 static void wire_timestamp_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	uint32_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
@@ -774,6 +800,8 @@ static int time_to_human_str(char         *out,
 
 static void wire_ttl_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	uint32_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
@@ -815,6 +843,8 @@ static void wire_ttl_to_str(rrset_dump_params_t *p)
 
 static void wire_bitmap_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	int    ret;
 	char   type[32];
 	size_t i = 0;
@@ -878,6 +908,8 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 
 static void wire_dname_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	int in_len = knot_dname_size(p->in);
 	if (in_len < 0) {
 		return;
@@ -919,6 +951,8 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 
 static void wire_apl_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	struct in_addr addr4;
 	struct in6_addr addr6;
 	int    ret;
@@ -1015,7 +1049,7 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 
 static void wire_loc_to_str(rrset_dump_params_t *p)
 {
-	int    ret;
+	p->ret = -1;
 
 	// Read values.
 	wire_ctx_t wire = wire_ctx_init_const(p->in, p->in_max);
@@ -1074,9 +1108,9 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	double s2 = 0.001 * (lon - 3600000 * d2 - 60000 * m2);
 
 	// Write latitude and longitude.
-	ret = snprintf(p->out, p->out_max, "%u %u %.*f %c  %u %u %.*f %c",
-	               d1, m1, (uint32_t)s1 != s1 ? 3 : 0, s1, lat_mark,
-	               d2, m2, (uint32_t)s2 != s2 ? 3 : 0, s2, lon_mark);
+	int ret = snprintf(p->out, p->out_max, "%u %u %.*f %c  %u %u %.*f %c",
+	                   d1, m1, (uint32_t)s1 != s1 ? 3 : 0, s1, lat_mark,
+	                   d2, m2, (uint32_t)s2 != s2 ? 3 : 0, s2, lon_mark);
 	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
@@ -1124,6 +1158,8 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 
 static void wire_gateway_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	// Input check: type(1B) + algo(1B).
 	if (p->in_max < 2) {
 		return;
@@ -1200,6 +1236,8 @@ static void wire_gateway_to_str(rrset_dump_params_t *p)
 
 static void wire_l64_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	// Check input size (64-bit identifier).
 	if (p->in_max != 8) {
 		return;
@@ -1231,6 +1269,8 @@ static void wire_l64_to_str(rrset_dump_params_t *p)
 
 static void wire_eui_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	// Data can't have zero length.
 	if (p->in_max < 2) {
 		return;
@@ -1262,6 +1302,8 @@ static void wire_eui_to_str(rrset_dump_params_t *p)
 
 static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	uint16_t data;
 	size_t   in_len = sizeof(data);
 	const char *rcode_str = "Unknown";
@@ -1930,10 +1972,10 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 	}
 
 	// Terminate the string just in case.
-	if (ret >= 0) {
-		assert(ret < maxlen);
-		dst[ret] = '\0';
+	if (ret < 0 || ret >= maxlen) {
+		return KNOT_ESPACE;
 	}
+	dst[ret] = '\0';
 
 	return ret;
 }
@@ -2053,7 +2095,7 @@ static int rrset_txt_dump(const knot_rrset_t      *rrset,
 		len += ret;
 
 		// Terminate line.
-		if (len >= maxlen) {
+		if (len >= maxlen - 1) {
 			return KNOT_ESPACE;
 		}
 		dst[len++] = '\n';
