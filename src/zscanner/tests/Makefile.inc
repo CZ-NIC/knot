@@ -26,11 +26,18 @@ tests/unittests:
 
 check-compile: $(check_SCRIPTS) $(check_PROGRAMS)
 
+
+AM_V_RUNTESTS = $(am__v_RUNTESTS_@AM_V@)
+am__v_RUNTESTS_ = $(am__v_RUNTESTS_@AM_DEFAULT_V@)
+am__v_RUNTESTS_0 =
+am__v_RUNTESTS_1 = RET=$$?; if [ "$$RET" != "0" ]; then cat "$(top_builddir)/src/zscanner/tests/runtests.log"; exit $$RET; fi
 check-local: $(check_PROGRAMS)
 	$(top_builddir)/libtap/runtests \
 	-s $(top_srcdir)/src/zscanner/tests \
 	-b $(top_builddir)/src/zscanner/tests \
-	$(top_builddir)/src/zscanner/tests/unittests
+	-L $(top_builddir)/src/zscanner/tests/runtests.log \
+	$(top_builddir)/src/zscanner/tests/unittests; \
+	$(AM_V_RUNTESTS)
 
 EXTRA_DIST += \
 	tests/unittests.in \
