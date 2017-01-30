@@ -572,6 +572,12 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 		}
 	}
 
+	/* Store new zone contents in journal. */
+	ret = zone_in_journal_store(conf, update->zone, update->new_cont);
+	if (ret != KNOT_EOK && ret != KNOT_EEXIST && ret != KNOT_ENOTSUP) {
+		return ret;
+	}
+
 	*contents_out = update->new_cont;
 
 	return KNOT_EOK;
