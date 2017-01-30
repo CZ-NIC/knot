@@ -133,6 +133,7 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
 int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs);
 int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from);
 int zone_in_journal_load(conf_t *conf, zone_t *zone, list_t *dst);
+int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents);
 
 /*! \brief Synchronize zone file with journal. */
 int zone_flush_journal(conf_t *conf, zone_t *zone);
