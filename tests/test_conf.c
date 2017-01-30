@@ -134,7 +134,7 @@ static void test_conf_zonefile(void)
 		"  - domain: "ZONE_3LABEL"\n";
 
 	ret = test_conf(conf_str, NULL);
-	ok(ret == KNOT_EOK, "Prepare configuration");
+	is_int(KNOT_EOK, ret, "Prepare configuration");
 
 	// Relative path with formatters.
 	file = conf_zonefile(conf(), zone_arpa);

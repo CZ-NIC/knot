@@ -76,37 +76,37 @@ int main(int argc, char *argv[])
 	ok(data != NULL, "cookies: EDNS OPT data");
 
 	ret = knot_edns_opt_cookie_parse(NULL, 0, NULL, NULL, NULL, NULL);
-	ok(ret == KNOT_EINVAL, "cookies: EDNS OPT parse NULL");
+	is_int(KNOT_EINVAL, ret, "cookies: EDNS OPT parse NULL");
 
 	/* Malformed cookies. */
 
 	get_opt_data(ROPT(0), &data, &data_len);
 	ret = knot_edns_opt_cookie_parse(data, data_len, NULL, NULL, NULL, NULL);
-	ok(ret == KNOT_EMALF, "cookies: EDNS OPT parse zero length");
+	is_int(KNOT_EMALF, ret, "cookies: EDNS OPT parse zero length");
 
 	get_opt_data(ROPT(1), &data, &data_len);
 	ret = knot_edns_opt_cookie_parse(data, data_len, &cc, &cc_len, &sc, &sc_len);
-	ok(ret == KNOT_EMALF, "cookies: EDNS OPT parse 1B (short) cookie");
+	is_int(KNOT_EMALF, ret, "cookies: EDNS OPT parse 1B (short) cookie");
 
 	get_opt_data(ROPT(2), &data, &data_len);
 	ret = knot_edns_opt_cookie_parse(data, data_len, &cc, &cc_len, &sc, &sc_len);
-	ok(ret == KNOT_EMALF, "cookies: EDNS OPT parse 7B (short) cookie");
+	is_int(KNOT_EMALF, ret, "cookies: EDNS OPT parse 7B (short) cookie");
 
 	get_opt_data(ROPT(3), &data, &data_len);
 	ret = knot_edns_opt_cookie_parse(data, data_len, &cc, &cc_len, &sc, &sc_len);
-	ok(ret == KNOT_EMALF, "cookies: EDNS OPT parse 9B (short) cookie");
+	is_int(KNOT_EMALF, ret, "cookies: EDNS OPT parse 9B (short) cookie");
 
 	get_opt_data(ROPT(4), &data, &data_len);
 	ret = knot_edns_opt_cookie_parse(data, data_len, &cc, &cc_len, &sc, &sc_len);
-	ok(ret == KNOT_EMALF, "cookies: EDNS OPT parse 15B (short) cookie");
+	is_int(KNOT_EMALF, ret, "cookies: EDNS OPT parse 15B (short) cookie");
 
 	get_opt_data(ROPT(5), &data, &data_len);
 	ret = knot_edns_opt_cookie_parse(data, data_len, &cc, &cc_len, &sc, &sc_len);
-	ok(ret == KNOT_EMALF, "cookies: EDNS OPT parse 41B (long) cookie");
+	is_int(KNOT_EMALF, ret, "cookies: EDNS OPT parse 41B (long) cookie");
 
 	get_opt_data(ROPT(5), &data, &data_len);
 	ret = knot_edns_opt_cookie_parse(data, data_len, &cc, &cc_len, &sc, &sc_len);
-	ok(ret == KNOT_EMALF, "cookies: EDNS OPT parse 41B (long) cookie");
+	is_int(KNOT_EMALF, ret, "cookies: EDNS OPT parse 41B (long) cookie");
 
 	/* Testing combination of output parameters. */
 

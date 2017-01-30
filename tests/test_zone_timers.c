@@ -69,11 +69,11 @@ int main(int argc, char *argv[])
 
 	// Lookup nonexistent
 	ret = zone_timers_read(db, zone, &timers);
-	ok(ret == KNOT_ENOENT, "zone_timer_read() nonexistent");
+	is_int(KNOT_ENOENT, ret, "zone_timer_read() nonexistent");
 
 	// Write timers
 	ret = zone_timers_write(db, zone, &timers, NULL);
-	ok(ret == KNOT_EOK, "zone_timers_write()");
+	is_int(KNOT_EOK, ret, "zone_timers_write()");
 
 	// Read timers
 	memset(&timers, 0, sizeof(timers));
@@ -82,15 +82,15 @@ int main(int argc, char *argv[])
 
 	// Sweep none
 	ret = zone_timers_sweep(db, keep_all, NULL);
-	ok(ret == KNOT_EOK, "zone_timers_sweep() none");
+	is_int(KNOT_EOK, ret, "zone_timers_sweep() none");
 	ret = zone_timers_read(db, zone, &timers);
-	ok(ret == KNOT_EOK, "zone_timers_read()");
+	is_int(KNOT_EOK, ret, "zone_timers_read()");
 
 	// Sweep all
 	ret = zone_timers_sweep(db, remove_all, NULL);
-	ok(ret == KNOT_EOK, "zone_timers_sweep() all");
+	is_int(KNOT_EOK, ret, "zone_timers_sweep() all");
 	ret = zone_timers_read(db, zone, &timers);
-	ok(ret == KNOT_ENOENT, "zone_timers_read() nonexistent");
+	is_int(KNOT_ENOENT, ret, "zone_timers_read() nonexistent");
 
 	// Clean up.
 	zone_timers_close(db);

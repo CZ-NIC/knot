@@ -54,12 +54,12 @@ static void check_code(
 	case DB_GET:
 	case DB_SET:
 		ok(code == ref_code, "Compare DB code");
-		ok(ret == KNOT_EOK, "Find DB code");
+		is_int(KNOT_EOK, ret, "Find DB code");
 		ok(val.len == 1, "Compare DB code length");
 		ok(((uint8_t *)val.data)[0] == code, "Compare DB code value");
 		break;
 	case DB_DEL:
-		ok(ret == KNOT_ENOENT, "Find item code");
+		is_int(KNOT_ENOENT, ret, "Find item code");
 		break;
 	}
 }
@@ -306,11 +306,11 @@ static void check_unset(
 
 	ret = conf->api->find(txn, &key, &val, 0);
 	if (exp_data != NULL) {
-		ok(ret == KNOT_EOK, "Get deleted data");
+		is_int(KNOT_EOK, ret, "Get deleted data");
 		ok(val.len == exp_data_len, "Compare data length");
 		ok(memcmp(val.data, exp_data, exp_data_len) == 0, "Compare data");
 	} else {
-		ok(ret == KNOT_ENOENT, "Get deleted data");
+		is_int(KNOT_ENOENT, ret, "Get deleted data");
 	}
 
 	check_db_content(conf, txn, -1);
@@ -335,11 +335,11 @@ static void check_unset_key(
 	uint8_t section_code, item_code;
 	ret = db_code(conf, txn, KEY0_ROOT, key0, DB_GET, &section_code);
 	if (key1 == NULL && id_len == 0) {
-		ok(ret == KNOT_ENOENT, "Get DB section code");
+		is_int(KNOT_ENOENT, ret, "Get DB section code");
 	} else {
-		ok(ret == KNOT_EOK, "Get DB section code");
+		is_int(KNOT_EOK, ret, "Get DB section code");
 		ret = db_code(conf, txn, section_code, key1, DB_GET, &item_code);
-		ok(ret == KNOT_ENOENT, "Get DB item code");
+		is_int(KNOT_ENOENT, ret, "Get DB item code");
 	}
 
 	check_db_content(conf, txn, -1);
@@ -412,7 +412,7 @@ static void test_conf_db_iter(conf_t *conf, knot_db_txn_t *txn)
 	// Create section iterator.
 	conf_iter_t iter;
 	int ret = conf_db_iter_begin(conf, txn, C_RMT, &iter);
-	ok(ret == KNOT_EOK, "Create iterator");
+	is_int(KNOT_EOK, ret, "Create iterator");
 
 	// Iterate through the section.
 	size_t count = 0;
@@ -421,7 +421,7 @@ static void test_conf_db_iter(conf_t *conf, knot_db_txn_t *txn)
 		size_t id_len;
 		id = NULL, id_len = 0; // prevents Wuinitialized
 		ret = conf_db_iter_id(conf, &iter, &id, &id_len);
-		ok(ret == KNOT_EOK, "Get iteration id");
+		is_int(KNOT_EOK, ret, "Get iteration id");
 		ok(id_len == strlen(names[count]), "Compare iteration id length");
 		ok(memcmp(id, names[count], id_len) == 0, "Compare iteration id");
 
@@ -430,12 +430,12 @@ static void test_conf_db_iter(conf_t *conf, knot_db_txn_t *txn)
 		count++;
 		ret = conf_db_iter_next(conf, &iter);
 	}
-	ok(ret == KNOT_EOF, "Finished iteration");
+	is_int(KNOT_EOF, ret, "Finished iteration");
 	ok(count == total, "Check iteration count");
 
 	// Check empty section.
 	ret = conf_db_iter_begin(conf, txn, C_RMT, &iter);
-	ok(ret == KNOT_ENOENT, "Create iterator");
+	is_int(KNOT_ENOENT, ret, "Create iterator");
 
 	// ERR non-iterable section.
 	ok(conf_db_iter_begin(conf, txn, C_SERVER, &iter) == KNOT_ENOTSUP, "Create iterator");

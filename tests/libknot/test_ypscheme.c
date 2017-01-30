@@ -72,7 +72,7 @@ static void scheme_find_test(void)
 	yp_item_t *scheme = NULL;
 
 	int ret = yp_scheme_copy(&scheme, static_scheme);
-	ok(ret == KNOT_EOK, "scheme copy");
+	is_int(KNOT_EOK, ret, "scheme copy");
 
 	const yp_item_t *i = yp_scheme_find(C_OPT, NULL, scheme);
 	ok(i != NULL, "scheme find");
@@ -100,20 +100,20 @@ error_scheme:
 
 #define SET_INPUT_STR(str) \
 	ret = yp_set_input_string(yp, str, strlen(str)); \
-	ok(ret == KNOT_EOK, "set input string");
+	is_int(KNOT_EOK, ret, "set input string");
 
 #define PARSER_CHECK(depth) \
 	ret = yp_parse(yp); \
-	ok(ret == KNOT_EOK, "parse"); \
+	is_int(KNOT_EOK, ret, "parse"); \
 	ret = yp_scheme_check_parser(ctx, yp); \
-	ok(ret == KNOT_EOK, "check parser"); \
+	is_int(KNOT_EOK, ret, "check parser"); \
 	node = &ctx->nodes[ctx->current]; \
 	parent = node->parent; \
 	ok(ctx->current == depth, "depth check");
 
 #define PARSER_RET_CHECK(code) \
 	ret = yp_parse(yp); \
-	ok(ret == KNOT_EOK, "parse"); \
+	is_int(KNOT_EOK, ret, "parse"); \
 	ret = yp_scheme_check_parser(ctx, yp); \
 	ok(ret == code, "return check parser");
 
@@ -127,7 +127,7 @@ static void parser_test(void)
 	yp_init(yp);
 
 	int ret = yp_scheme_copy(&scheme, static_scheme);
-	ok(ret == KNOT_EOK, "scheme copy");
+	is_int(KNOT_EOK, ret, "scheme copy");
 	if (ret != KNOT_EOK) {
 		goto error_parser;
 	}
@@ -243,7 +243,7 @@ error_parser:
 
 #define STR_CHECK(depth, key0, key1, id, data) \
 	ret = yp_scheme_check_str(ctx, key0, key1, id, data); \
-	ok(ret == KNOT_EOK, "check str"); \
+	is_int(KNOT_EOK, ret, "check str"); \
 	ok(ctx->current == depth, "depth check"); \
 	node = &ctx->nodes[ctx->current]; \
 	parent = node->parent;
@@ -258,7 +258,7 @@ static void str_test(void)
 	yp_check_ctx_t *ctx = NULL;
 
 	int ret = yp_scheme_copy(&scheme, static_scheme);
-	ok(ret == KNOT_EOK, "scheme copy");
+	is_int(KNOT_EOK, ret, "scheme copy");
 	if (ret != KNOT_EOK) {
 		goto error_str;
 	}

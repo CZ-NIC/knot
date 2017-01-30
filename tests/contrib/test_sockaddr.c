@@ -54,7 +54,7 @@ static void check_sockaddr_set(struct sockaddr_storage *ss, int family,
                                const char *straddr, int port)
 {
 	int ret = sockaddr_set(ss, family, straddr, port);
-	ok(ret == KNOT_EOK, "set address '%s'", straddr);
+	is_int(KNOT_EOK, ret, "set address '%s'", straddr);
 }
 
 static void test_net_match(void)

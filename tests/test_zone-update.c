@@ -69,7 +69,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	zone_update_t update;
 	/* Init update */
 	int ret = zone_update_init(&update, zone, UPDATE_FULL);
-	ok(ret == KNOT_EOK, "zone update: init full");
+	is_int(KNOT_EOK, ret, "zone update: init full");
 
 	if (zs_set_input_string(sc, zone_str1, strlen(zone_str1)) != 0 ||
 	    zs_parse_all(sc) != 0) {
@@ -79,7 +79,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	/* First addition */
 	ret = zone_update_add(&update, &rrset);
 	knot_rdataset_clear(&rrset.rrs, NULL);
-	ok(ret == KNOT_EOK, "full zone update: first addition");
+	is_int(KNOT_EOK, ret, "full zone update: first addition");
 
 	if (zs_set_input_string(sc, zone_str2, strlen(zone_str2)) != 0 ||
 	    zs_parse_all(sc) != 0) {
@@ -134,7 +134,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	/* Test iteration */
 	zone_update_iter_t it;
 	ret = zone_update_iter(&it, &update);
-	ok(ret == KNOT_EOK, "full zone update: init iter");
+	is_int(KNOT_EOK, ret, "full zone update: init iter");
 
 	const zone_node_t *iter_node = zone_update_iter_val(&it);
 	assert(iter_node);
@@ -155,7 +155,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	knot_rdataset_clear(&rrset.rrs, NULL);
 
 	ret = zone_update_iter_next(&it);
-	ok(ret == KNOT_EOK, "full zone update: iter next");
+	is_int(KNOT_EOK, ret, "full zone update: iter next");
 
 	iter_node = zone_update_iter_val(&it);
 	ok(iter_node == NULL, "full zone update: iter val past end");
@@ -198,7 +198,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	/* Addition */
 	ret = zone_update_add(&update, &rrset);
 	knot_rdataset_clear(&rrset.rrs, NULL);
-	ok(ret == KNOT_EOK, "incremental zone update: addition");
+	is_int(KNOT_EOK, ret, "incremental zone update: addition");
 
 	const zone_node_t *synth_node = zone_update_get_apex(&update);
 	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 2,
@@ -210,7 +210,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	}
 	/* Removal */
 	ret = zone_update_remove(&update, &rrset);
-	ok(ret == KNOT_EOK, "incremental zone update: removal");
+	is_int(KNOT_EOK, ret, "incremental zone update: removal");
 	knot_rdataset_clear(&rrset.rrs, NULL);
 
 	synth_node = zone_update_get_apex(&update);
@@ -239,7 +239,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	/* Test iteration */
 	zone_update_iter_t it;
 	ret = zone_update_iter(&it, &update);
-	ok(ret == KNOT_EOK, "incremental zone update: init iter");
+	is_int(KNOT_EOK, ret, "incremental zone update: init iter");
 
 	if (zs_set_input_string(sc, del_str, strlen(del_str)) != 0 ||
 	    zs_parse_all(sc) != 0) {
@@ -262,9 +262,9 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	knot_rdataset_clear(&rrset.rrs, NULL);
 
 	ret = zone_update_iter_next(&it);
-	ok(ret == KNOT_EOK, "incremental zone update: iter next");
+	is_int(KNOT_EOK, ret, "incremental zone update: iter next");
 	ret = zone_update_iter_next(&it);
-	ok(ret == KNOT_EOK, "incremental zone update: iter next");
+	is_int(KNOT_EOK, ret, "incremental zone update: iter next");
 
 	iter_node = zone_update_iter_val(&it);
 	ok(iter_node == NULL, "incremental zone update: iter val past end");
@@ -299,11 +299,11 @@ int main(int argc, char *argv[])
 
 	/* Load test configuration. */
 	int ret = test_conf(conf_str, NULL);
-	ok(ret == KNOT_EOK, "load configuration");
+	is_int(KNOT_EOK, ret, "load configuration");
 
 	server_t server;
 	ret = server_init(&server, 1);
-	ok(ret == KNOT_EOK, "server init");
+	is_int(KNOT_EOK, ret, "server init");
 
 	/* Set up empty zone */
 	knot_dname_t *apex = knot_dname_from_str_alloc("test");

@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 
 	/* Insert single element. */
 	ret = hhash_insert(tbl, key, KEY_LEN(key), val);
-	ok(ret == KNOT_EOK, "hhash: insert single element");
+	is_int(KNOT_EOK, ret, "hhash: insert single element");
 
 	/* Retrieve nonexistent element. */
 	cur = "nokey";
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 
 	/* Delete key and retrieve it. */
 	ret = hhash_del(tbl, key, KEY_LEN(key));
-	ok(ret == KNOT_EOK, "hhash: remove key");
+	is_int(KNOT_EOK, ret, "hhash: remove key");
 	rval = hhash_find(tbl, key, KEY_LEN(key));
 	ok(rval == NULL, "hhash: find removed element");
 

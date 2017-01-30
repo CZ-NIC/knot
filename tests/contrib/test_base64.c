@@ -36,36 +36,36 @@ int main(int argc, char *argv[])
 
 	// 0. test invalid input
 	ret = base64_encode(NULL, 0, out, BUF_LEN);
-	ok(ret == KNOT_EINVAL, "base64_encode: NULL input buffer");
+	is_int(KNOT_EINVAL, ret, "base64_encode: NULL input buffer");
 	ret = base64_encode(in, BUF_LEN, NULL, 0);
-	ok(ret == KNOT_EINVAL, "base64_encode: NULL output buffer");
+	is_int(KNOT_EINVAL, ret, "base64_encode: NULL output buffer");
 	ret = base64_encode(in, MAX_BIN_DATA_LEN + 1, out, BUF_LEN);
-	ok(ret == KNOT_ERANGE, "base64_encode: input buffer too large");
+	is_int(KNOT_ERANGE, ret, "base64_encode: input buffer too large");
 	ret = base64_encode(in, BUF_LEN, out, BUF_LEN);
-	ok(ret == KNOT_ERANGE, "base64_encode: output buffer too small");
+	is_int(KNOT_ERANGE, ret, "base64_encode: output buffer too small");
 
 	ret = base64_encode_alloc(NULL, 0, &out3);
-	ok(ret == KNOT_EINVAL, "base64_encode_alloc: NULL input buffer");
+	is_int(KNOT_EINVAL, ret, "base64_encode_alloc: NULL input buffer");
 	ret = base64_encode_alloc(in, MAX_BIN_DATA_LEN + 1, &out3);
-	ok(ret == KNOT_ERANGE, "base64_encode_alloc: input buffer too large");
+	is_int(KNOT_ERANGE, ret, "base64_encode_alloc: input buffer too large");
 	ret = base64_encode_alloc(in, BUF_LEN, NULL);
-	ok(ret == KNOT_EINVAL, "base64_encode_alloc: NULL output buffer");
+	is_int(KNOT_EINVAL, ret, "base64_encode_alloc: NULL output buffer");
 
 	ret = base64_decode(NULL, 0, out, BUF_LEN);
-	ok(ret == KNOT_EINVAL, "base64_decode: NULL input buffer");
+	is_int(KNOT_EINVAL, ret, "base64_decode: NULL input buffer");
 	ret = base64_decode(in, BUF_LEN, NULL, 0);
-	ok(ret == KNOT_EINVAL, "base64_decode: NULL output buffer");
+	is_int(KNOT_EINVAL, ret, "base64_decode: NULL output buffer");
 	ret = base64_decode(in, UINT32_MAX, out, BUF_LEN);
-	ok(ret == KNOT_ERANGE, "base64_decode: input buffer too large");
+	is_int(KNOT_ERANGE, ret, "base64_decode: input buffer too large");
 	ret = base64_decode(in, BUF_LEN, out, 0);
-	ok(ret == KNOT_ERANGE, "base64_decode: output buffer too small");
+	is_int(KNOT_ERANGE, ret, "base64_decode: output buffer too small");
 
 	ret = base64_decode_alloc(NULL, 0, &out3);
-	ok(ret == KNOT_EINVAL, "base64_decode_alloc: NULL input buffer");
+	is_int(KNOT_EINVAL, ret, "base64_decode_alloc: NULL input buffer");
 	ret = base64_decode_alloc(in, UINT32_MAX, &out3);
-	ok(ret == KNOT_ERANGE, "base64_decode_aloc: input buffer too large");
+	is_int(KNOT_ERANGE, ret, "base64_decode_aloc: input buffer too large");
 	ret = base64_decode_alloc(in, BUF_LEN, NULL);
-	ok(ret == KNOT_EINVAL, "base64_decode_alloc: NULL output buffer");
+	is_int(KNOT_EINVAL, ret, "base64_decode_alloc: NULL output buffer");
 
 	// 1. test vector -> ENC -> DEC
 	strlcpy((char *)in, "", BUF_LEN);

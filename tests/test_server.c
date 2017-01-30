@@ -44,14 +44,14 @@ int main(int argc, char *argv[])
 
 	/* Test server for correct initialization */
 	ret = server_init(&server, 1);
-	ok(ret == KNOT_EOK, "server: initialized");
+	is_int(KNOT_EOK, ret, "server: initialized");
 	if (ret != KNOT_EOK) {
 		return 1;
 	}
 
 	/* Test server startup */
 	ret = server_start(&server, false);
-	ok(ret == KNOT_EOK, "server: started ok");
+	is_int(KNOT_EOK, ret, "server: started ok");
 	if (ret != KNOT_EOK) {
 	        return 1;
 	}

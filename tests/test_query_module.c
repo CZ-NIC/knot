@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-	ok(ret == KNOT_EOK, "query_plan: planned all steps");
+	is_int(KNOT_EOK, ret, "query_plan: planned all steps");
 
 	/* Execute the plan. */
 	int state = 0, next_state = 0;

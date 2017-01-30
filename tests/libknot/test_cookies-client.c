@@ -175,13 +175,13 @@ int main(int argc, char *argv[])
 	cc_in.secret_len = sizeof(secret);
 	{
 		ret = knot_cc_check(NULL, 0, &cc_in, &knot_cc_alg_fnv64);
-		ok(ret == KNOT_EINVAL, "cookies: FNV64 client cookie check no cookie");
+		is_int(KNOT_EINVAL, ret, "cookies: FNV64 client cookie check no cookie");
 	}
 
 	{
 		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x33 };
 		ret = knot_cc_check(cookie, sizeof(cookie), NULL, &knot_cc_alg_fnv64);
-		ok(ret == KNOT_EINVAL, "cookies: FNV64 client cookie check no input");
+		is_int(KNOT_EINVAL, ret, "cookies: FNV64 client cookie check no input");
 	}
 
 	memset(&cc_in, 0, sizeof(cc_in));
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
 	{
 		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x33 };
 		ret = knot_cc_check(cookie, sizeof(cookie), &cc_in, NULL);
-		ok(ret == KNOT_EINVAL, "cookies: FNV64 client cookie check no algorithm");
+		is_int(KNOT_EINVAL, ret, "cookies: FNV64 client cookie check no algorithm");
 	}
 
 	memset(&cc_in, 0, sizeof(cc_in));
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 	{
 		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x33 };
 		ret = knot_cc_check(cookie, sizeof(cookie), &cc_in, &knot_cc_alg_fnv64);
-		ok(ret == KNOT_EOK, "cookies: FNV64 client good cookie check");
+		is_int(KNOT_EOK, ret, "cookies: FNV64 client good cookie check");
 	}
 
 	memset(&cc_in, 0, sizeof(cc_in));
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 	{
 		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x33 };
 		ret = knot_cc_check(cookie, sizeof(cookie) - 1, &cc_in, &knot_cc_alg_fnv64);
-		ok(ret == KNOT_EINVAL, "cookies: FNV64 client cookie check invalid length");
+		is_int(KNOT_EINVAL, ret, "cookies: FNV64 client cookie check invalid length");
 	}
 
 	memset(&cc_in, 0, sizeof(cc_in));
@@ -225,6 +225,6 @@ int main(int argc, char *argv[])
 	{
 		uint8_t cookie[] = { 0xaf, 0xe5, 0x17, 0x94, 0x80, 0xa6, 0x0c, 0x32 };
 		ret = knot_cc_check(cookie, sizeof(cookie), &cc_in, &knot_cc_alg_fnv64);
-		ok(ret == KNOT_EINVAL, "cookies: FNV64 client cookie check invalid cookie");
+		is_int(KNOT_EINVAL, ret, "cookies: FNV64 client cookie check invalid cookie");
 	}
 }

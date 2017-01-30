@@ -25,7 +25,7 @@ static void check_search_ok(lookup_t *l, const char *in, const char *out)
 {
 	diag("Search for '%s'", in);
 	int ret = lookup_search(l, in, strlen(in));
-	ok(ret == KNOT_EOK, "Check found");
+	is_int(KNOT_EOK, ret, "Check found");
 	ok(strcmp(out, l->found.key) == 0, "Compare key");
 	ok(strcmp(out, l->found.data) == 0, "Compare data");
 	ok(l->iter.first_key == NULL, "Compare no first key");
@@ -37,7 +37,7 @@ static void check_search_multi(lookup_t *l, const char *in, const char *out,
 {
 	diag("Search for '%s'", in);
 	int ret = lookup_search(l, in, strlen(in));
-	ok(ret == KNOT_EFEWDATA, "Check found multi");
+	is_int(KNOT_EFEWDATA, ret, "Check found multi");
 	ok(strcmp(out, l->found.key) == 0, "Compare key");
 	ok(l->found.data == NULL, "Compare no data");
 	ok(strcmp(first, l->iter.first_key) == 0, "Compare first key");
@@ -48,7 +48,7 @@ static void check_search_none(lookup_t *l, const char *in)
 {
 	diag("Search for '%s'", in);
 	int ret = lookup_search(l, in, strlen(in));
-	ok(ret == KNOT_ENOENT, "Check not found");
+	is_int(KNOT_ENOENT, ret, "Check not found");
 	ok(l->found.key == NULL, "Check no key");
 	ok(l->found.data == NULL, "Check no data");
 }
@@ -56,11 +56,11 @@ static void check_search_none(lookup_t *l, const char *in)
 static void init(lookup_t *l, const char **table)
 {
 	int ret = lookup_init(l);
-	ok(ret == KNOT_EOK, "Init");
+	is_int(KNOT_EOK, ret, "Init");
 
 	while (*table != NULL) {
 		ret = lookup_insert(l, *table, (void *)*table);
-		ok(ret == KNOT_EOK, "Insert '%s'", *table);
+		is_int(KNOT_EOK, ret, "Insert '%s'", *table);
 		table++;
 	}
 }

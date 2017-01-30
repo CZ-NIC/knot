@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 	/* Create fake server environment. */
 	server_t server;
 	int ret = create_fake_server(&server, proc.mm);
-	ok(ret == KNOT_EOK, "ns: fake server initialization");
+	is_int(KNOT_EOK, ret, "ns: fake server initialization");
 
 	zone_t *zone = knot_zonedb_find(server.zone_db, ROOT_DNAME);
 
