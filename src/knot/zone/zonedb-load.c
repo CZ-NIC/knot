@@ -441,10 +441,12 @@ void zonedb_reload(conf_t *conf, server_t *server)
 	synchronize_rcu();
 
 	/* Sweep the timer database. */
-	int ret = zone_timers_sweep(server->timers_db, zone_exists, db_new);
-	if (ret != KNOT_EOK) {
-		log_warning("failed to clear persistent timers for removed zones (%s)",
-		            knot_strerror(ret));
+	if (server->timers_db != NULL) {
+		int ret = zone_timers_sweep(server->timers_db, zone_exists, db_new);
+		if (ret != KNOT_EOK) {
+			log_warning("failed to clear persistent timers DB (%s)",
+			            knot_strerror(ret));
+		}
 	}
 
 	/* Remove old zone DB. */

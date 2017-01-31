@@ -385,7 +385,11 @@ static void write_timers(const zone_t *zone, knot_db_txn_t *txn, int *ret)
 
 static void update_timerdb(server_t *server)
 {
-	log_info("updating zone timers database");
+	if (server->timers_db == NULL) {
+		return;
+	}
+
+	log_info("updating persistent timers DB");
 
 	knot_db_txn_t txn;
 	int ret = zone_timers_write_begin(server->timers_db, &txn);
@@ -396,7 +400,8 @@ static void update_timerdb(server_t *server)
 		ret = zone_timers_write_end(&txn);
 	}
 	if (ret != KNOT_EOK) {
-		log_warning("failed to update zone timers database (%s)", knot_strerror(ret));
+		log_warning("failed to update persistent timers DB (%s)",
+		            knot_strerror(ret));
 	}
 }
 
