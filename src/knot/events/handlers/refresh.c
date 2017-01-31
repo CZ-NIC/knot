@@ -86,6 +86,14 @@ enum state {
 	STATE_TRANSFER,
 };
 
+enum xfr_type {
+	XFR_TYPE_ERROR = -1,
+	XFR_TYPE_UNDETERMINED = 0,
+	XFR_TYPE_UPTODATE,
+	XFR_TYPE_AXFR,
+	XFR_TYPE_IXFR,
+};
+
 struct refresh_data {
 	// transfer configuration, initialize appropriately:
 
@@ -99,7 +107,8 @@ struct refresh_data {
 	// internal state, initialize with zeroes:
 
 	enum state state;                 //!< Event processing state.
-	bool is_ixfr;                     //!< Transfer is IXFR not AXFR.
+	enum xfr_type xfr_type;           //!< Transer type (mostly IXFR versus AXFR).
+	knot_rrset_t *initial_soa_copy;   //!< Copy of the received initial SOA.
 	struct xfr_stats stats;           //!< Transfer statistics.
 	size_t change_size;               //!< Size of added and removed RRs.
 
@@ -156,7 +165,7 @@ static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 
 	if (zone->size > data->max_zone_size) {
 		ns_log(LOG_WARNING, data->zone->name,
-		       data->is_ixfr ? LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
+		       data->xfr_type == XFR_TYPE_IXFR ? LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
 		       LOG_DIRECTION_IN, data->remote, "zone size exceeded");
 		return KNOT_EZONESIZE;
 	}
@@ -249,7 +258,7 @@ static int axfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 	data->change_size += knot_rrset_size(rr);
 	if (data->change_size > data->max_zone_size) {
 		AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			   "zone size exceeded");
+		           "zone size exceeded");
 		return KNOT_STATE_FAIL;
 	}
 
@@ -297,9 +306,19 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		data->change_size = 0;
 	}
 
+	int next;
+	// Process saved SOA if fallback from IXFR
+	if (data->initial_soa_copy != NULL) {
+		next = axfr_consume_rr(data->initial_soa_copy, data);
+		knot_rrset_free(&data->initial_soa_copy, data->mm);
+		if (next != KNOT_STATE_CONSUME) {
+			return next;
+		}
+	}
+
 	// Process answer packet
 	xfr_stats_add(&data->stats, pkt->size);
-	int next = axfr_consume_packet(pkt, data);
+	next = axfr_consume_packet(pkt, data);
 
 	// Finalize
 	if (next == KNOT_STATE_DONE) {
@@ -537,14 +556,14 @@ static int ixfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 	int ret = ixfr_step(rr, data);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			   "failed (%s)", knot_strerror(ret));
+		           "failed (%s)", knot_strerror(ret));
 		return KNOT_STATE_FAIL;
 	}
 
 	data->change_size += knot_rrset_size(rr);
 	if (data->change_size / 2 > data->max_zone_size) {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			   "transfer size exceeded");
+		           "transfer size exceeded");
 		return KNOT_STATE_FAIL;
 	}
 
@@ -574,30 +593,38 @@ static int ixfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
 	return ret;
 }
 
-static bool ixfr_check_header(const knot_pktsection_t *answer)
+static enum xfr_type determine_xfr_type(const knot_pktsection_t *answer,
+                                        uint32_t zone_serial, const knot_rrset_t *initial_soa)
 {
-	return answer->count >= 1 &&
-	       knot_pkt_rr(answer, 0)->type == KNOT_RRTYPE_SOA;
-}
-
-static bool ixfr_is_axfr(const knot_pktsection_t *answer)
-{
-	if (answer->count < 2) {
-		return false;
+	if (answer->count < 1) {
+		return XFR_TYPE_ERROR;
 	}
 
 	const knot_rrset_t *rr_one = knot_pkt_rr(answer, 0);
-	const knot_rrset_t *rr_two = knot_pkt_rr(answer, 1);
+	if (initial_soa != NULL) {
+		if (rr_one->type == KNOT_RRTYPE_SOA) {
+		        return knot_rrset_equal(initial_soa, rr_one, KNOT_RRSET_COMPARE_WHOLE) ?
+		               XFR_TYPE_AXFR : XFR_TYPE_IXFR;
+		}
+		return XFR_TYPE_AXFR;
+	}
 
-	return (
-		rr_one->type == KNOT_RRTYPE_SOA &&
-		rr_two->type != KNOT_RRTYPE_SOA
-	       ) || (
-		answer->count == 2 &&
-		rr_one->type == KNOT_RRTYPE_SOA &&
-		rr_two->type == KNOT_RRTYPE_SOA &&
-		knot_rrset_equal(rr_one, rr_two, KNOT_RRSET_COMPARE_WHOLE)
-	       );
+	if (answer->count == 1) {
+		if (rr_one->type == KNOT_RRTYPE_SOA) {
+			return serial_is_current(zone_serial, knot_soa_serial(&rr_one->rrs)) ?
+			       XFR_TYPE_UPTODATE : XFR_TYPE_UNDETERMINED;
+		}
+		return XFR_TYPE_ERROR;
+	}
+
+	const knot_rrset_t *rr_two = knot_pkt_rr(answer, 1);
+	if (answer->count == 2 && rr_one->type == KNOT_RRTYPE_SOA &&
+	    knot_rrset_equal(rr_one, rr_two, KNOT_RRSET_COMPARE_WHOLE)) {
+		return XFR_TYPE_AXFR;
+	}
+
+	return (rr_one->type == KNOT_RRTYPE_SOA && rr_two->type != KNOT_RRTYPE_SOA) ?
+	       XFR_TYPE_AXFR : XFR_TYPE_IXFR;
 }
 
 static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
@@ -617,17 +644,37 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	if (data->ixfr.proc == NULL) {
 		const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
-		if (!ixfr_check_header(answer)) {
+		data->xfr_type = determine_xfr_type(answer, knot_soa_serial(&data->soa->rrs),
+		                                    data->initial_soa_copy);
+		switch (data->xfr_type) {
+		case XFR_TYPE_ERROR:
 			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			           "malformed response");
+			           "malformed response SOA");
 			return KNOT_STATE_FAIL;
-		}
-
-		if (ixfr_is_axfr(answer)) {
-			IXFRIN_LOG(LOG_NOTICE, data->zone->name, data->remote,
+		case XFR_TYPE_UNDETERMINED:
+			// Store the SOA and check with next packet
+			data->initial_soa_copy = knot_rrset_copy(knot_pkt_rr(answer, 0), data->mm);
+			if (data->initial_soa_copy == NULL) {
+				return KNOT_STATE_FAIL;
+			}
+			xfr_stats_add(&data->stats, pkt->size);
+			return KNOT_STATE_CONSUME;
+		case XFR_TYPE_AXFR:
+			IXFRIN_LOG(LOG_INFO, data->zone->name, data->remote,
 			           "receiving AXFR-style IXFR");
-			data->is_ixfr = false;
 			return axfr_consume(pkt, data);
+		case XFR_TYPE_UPTODATE:
+			IXFRIN_LOG(LOG_INFO, data->zone->name, data->remote,
+			          "zone is up-to-date");
+			xfr_stats_begin(&data->stats);
+			xfr_stats_add(&data->stats, pkt->size);
+			xfr_stats_end(&data->stats);
+			return KNOT_STATE_DONE;
+		case XFR_TYPE_IXFR:
+			break;
+		default:
+			assert(0);
+			return KNOT_STATE_FAIL;
 		}
 
 		int ret = ixfr_init(data);
@@ -642,9 +689,19 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		data->change_size = 0;
 	}
 
+	int next;
+	// Process saved SOA if existing
+	if (data->initial_soa_copy != NULL) {
+		next = ixfr_consume_rr(data->initial_soa_copy, data);
+		knot_rrset_free(&data->initial_soa_copy, data->mm);
+		if (next != KNOT_STATE_CONSUME) {
+			return next;
+		}
+	}
+
 	// Process answer packet
 	xfr_stats_add(&data->stats, pkt->size);
-	int next = ixfr_consume_packet(pkt, data);
+	next = ixfr_consume_packet(pkt, data);
 
 	// Finalize
 	if (next == KNOT_STATE_DONE) {
@@ -712,7 +769,7 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
 
-	bool ixfr = data->is_ixfr;
+	bool ixfr = (data->xfr_type == XFR_TYPE_IXFR);
 
 	query_init_pkt(pkt);
 	knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN,
@@ -733,13 +790,16 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
 
-	int next = data->is_ixfr ? ixfr_consume(pkt, data) : axfr_consume(pkt, data);
+	int next = (data->xfr_type == XFR_TYPE_AXFR) ? axfr_consume(pkt, data) :
+	                                               ixfr_consume(pkt, data);
 
 	// Transfer completed
 	if (next == KNOT_STATE_DONE) {
 		// Log transfer even if we still can fail
 		xfr_log_finished(data->zone->name,
-		                 data->is_ixfr ? LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
+		                 data->xfr_type == XFR_TYPE_IXFR ||
+		                 data->xfr_type == XFR_TYPE_UPTODATE ?
+		                 LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
 		                 LOG_DIRECTION_IN, data->remote, &data->stats);
 
 		/*
@@ -752,7 +812,17 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		}
 
 		// Finalize and publish the zone
-		int ret = data->is_ixfr ? ixfr_finalize(data) : axfr_finalize(data);
+		int ret;
+		switch (data->xfr_type) {
+		case XFR_TYPE_IXFR:
+			ret = ixfr_finalize(data);
+			break;
+		case XFR_TYPE_AXFR:
+			ret = axfr_finalize(data);
+			break;
+		default:
+			return next;
+		}
 		if (ret == KNOT_EOK) {
 			data->updated = true;
 		} else {
@@ -761,11 +831,11 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	}
 
 	// IXFR to AXFR failover
-	if (data->is_ixfr && next == KNOT_STATE_FAIL) {
+	if (data->xfr_type == XFR_TYPE_IXFR && next == KNOT_STATE_FAIL) {
 		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
 		            "fallback to AXFR");
 		ixfr_cleanup(data);
-		data->is_ixfr = false;
+		data->xfr_type = XFR_TYPE_AXFR;
 		return KNOT_STATE_RESET;
 	}
 
@@ -779,10 +849,12 @@ static int refresh_begin(knot_layer_t *layer, void *_data)
 
 	if (data->soa) {
 		data->state = STATE_SOA_QUERY;
-		data->is_ixfr = true;
+		data->xfr_type = XFR_TYPE_IXFR;
+		data->initial_soa_copy = NULL;
 	} else {
 		data->state = STATE_TRANSFER;
-		data->is_ixfr = false;
+		data->xfr_type = XFR_TYPE_AXFR;
+		data->initial_soa_copy = NULL;
 	}
 
 	return KNOT_STATE_PRODUCE;
