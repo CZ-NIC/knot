@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,11 +15,22 @@
  */
 
 #include "contrib/time.h"
+#ifndef HAVE_CLOCK_GETTIME
+	#include <sys/time.h>
+#endif
 
 struct timespec time_now(void)
 {
 	struct timespec result = { 0 };
+
+#ifdef HAVE_CLOCK_GETTIME
 	clock_gettime(CLOCK_MONOTONIC, &result);
+#else // OS X < Sierra fallback.
+	struct timeval tmp = { 0 };
+	gettimeofday(&tmp, NULL);
+	result.tv_sec = tmp.tv_sec;
+	result.tv_nsec = 1000 * tmp.tv_usec;
+#endif
 
 	return result;
 }
