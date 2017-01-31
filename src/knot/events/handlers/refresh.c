@@ -222,41 +222,51 @@ static int axfr_finalize(struct refresh_data *data)
 	return KNOT_EOK;
 }
 
-static int axfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
+static int axfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 {
-	assert(pkt);
+	assert(rr);
 	assert(data);
-
 	assert(data->axfr.zone);
 
+	// zc is stateless structure which can be initialized for each rr
+	// the changes are stored only in data->axfr.zone (aka zc.z)
 	zcreator_t zc = {
 		.z = data->axfr.zone,
 		.master = false,
 		.ret = KNOT_EOK
 	};
 
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	const knot_rrset_t *answer_rr = knot_pkt_rr(answer, 0);
-	for (uint16_t i = 0; i < answer->count; ++i) {
-		if (answer_rr[i].type == KNOT_RRTYPE_SOA &&
-		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
-			return KNOT_STATE_DONE;
-		}
+	if (rr->type == KNOT_RRTYPE_SOA &&
+	    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
+		return KNOT_STATE_DONE;
+	}
 
-		int ret = zcreator_step(&zc, &answer_rr[i]);
-		if (ret != KNOT_EOK) {
-			return KNOT_STATE_FAIL;
-		}
+	int ret = zcreator_step(&zc, rr);
+	if (ret != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
 
-		data->change_size += knot_rrset_size(&answer_rr[i]);
-		if (data->change_size > data->max_zone_size) {
-			AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			           "zone size exceeded");
-			return KNOT_STATE_FAIL;
-		}
+	data->change_size += knot_rrset_size(rr);
+	if (data->change_size > data->max_zone_size) {
+		AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			   "zone size exceeded");
+		return KNOT_STATE_FAIL;
 	}
 
 	return KNOT_STATE_CONSUME;
+}
+
+static int axfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
+{
+	assert(pkt);
+	assert(data);
+
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	int ret = KNOT_STATE_CONSUME;
+	for (uint16_t i = 0; i < answer->count && ret == KNOT_STATE_CONSUME; ++i) {
+		ret = axfr_consume_rr(knot_pkt_rr(answer, i), data);
+	}
+	return ret;
 }
 
 static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
@@ -518,6 +528,33 @@ static int ixfr_step(const knot_rrset_t *rr, struct refresh_data *data)
 	}
 }
 
+static int ixfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
+{
+	if (!knot_dname_in(data->zone->name, rr->owner)) {
+		return KNOT_STATE_CONSUME;
+	}
+
+	int ret = ixfr_step(rr, data);
+	if (ret != KNOT_EOK) {
+		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			   "failed (%s)", knot_strerror(ret));
+		return KNOT_STATE_FAIL;
+	}
+
+	data->change_size += knot_rrset_size(rr);
+	if (data->change_size / 2 > data->max_zone_size) {
+		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			   "transfer size exceeded");
+		return KNOT_STATE_FAIL;
+	}
+
+	if (data->ixfr.proc->state == IXFR_DONE) {
+		return KNOT_STATE_DONE;
+	}
+
+	return KNOT_STATE_CONSUME;
+}
+
 /*!
  * \brief Processes IXFR reply packet and fills in the changesets structure.
  *
@@ -530,32 +567,11 @@ static int ixfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
 {
 	// Process RRs in the message.
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	for (uint16_t i = 0; i < answer->count; ++i) {
-		const knot_rrset_t *rr = knot_pkt_rr(answer, i);
-		if (!knot_dname_in(data->zone->name, rr->owner)) {
-			continue;
-		}
-
-		int ret = ixfr_step(rr, data);
-		if (ret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			           "failed (%s)", knot_strerror(ret));
-			return KNOT_STATE_FAIL;
-		}
-
-		data->change_size += knot_rrset_size(rr);
-		if (data->change_size / 2 > data->max_zone_size) {
-			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			           "transfer size exceeded");
-			return KNOT_STATE_FAIL;
-		}
-
-		if (data->ixfr.proc->state == IXFR_DONE) {
-			return KNOT_STATE_DONE;
-		}
+	int ret = KNOT_STATE_CONSUME;
+	for (uint16_t i = 0; i < answer->count && ret == KNOT_STATE_CONSUME; ++i) {
+		ret = ixfr_consume_rr(knot_pkt_rr(answer, i), data);
 	}
-
-	return KNOT_STATE_CONSUME;
+	return ret;
 }
 
 static bool ixfr_check_header(const knot_pktsection_t *answer)
