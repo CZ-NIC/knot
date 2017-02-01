@@ -36,7 +36,7 @@ resp = master.dig(HUGE, "AAAA", udp=False)
 resp.check(rcode="SERVFAIL", noflags="TC")
 resp.check_count(0, section="answer")
 
-resp = master.dig(ZONE, "AXFR", tries=1, timeout=5)
+resp = master.dig(ZONE, "AXFR", tries=1, timeout=15)
 
 got_messages = 0
 last_rcode = None
