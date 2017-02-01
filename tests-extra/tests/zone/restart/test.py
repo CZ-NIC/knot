@@ -27,7 +27,7 @@ master = t.server("knot")
 slave = t.server("knot")
 
 # Zone setup
-zone = t.zone_rnd(1, dnssec=False)
+zone = t.zone_rnd(1, records=5, dnssec=False)
 t.link(zone, master, slave, ixfr=True, ddns=True)
 
 # Turn automatic DNSSEC on

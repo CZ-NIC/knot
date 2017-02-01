@@ -106,7 +106,7 @@ class ZoneFile(object):
         if nsec3 == None:
             nsec3 = random.choice([True, False])
         if not records:
-            records = random.randint(1, 1000)
+            records = random.randint(1, 200)
         if not serial:
             serial = random.randint(1, 4294967295)
 
