@@ -1,9 +1,9 @@
 $ORIGIN test.
 $TTL 3600
 
-@	SOA	dns1 hostmaster 2010111201 10800 3600 1209600 7200
+@	SOA	dns1 hostmaster 2 10800 3600 1209600 7200
 	NS	dns1
 
 dns1	A	192.0.2.2
 
-extra	A	1.1.1.1
+remote	A	1.1.1.2

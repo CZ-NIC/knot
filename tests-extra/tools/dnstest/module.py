@@ -145,11 +145,12 @@ class ModDnsproxy(KnotModule):
     src_name = "dnsproxy_load"
     conf_name = "mod-dnsproxy"
 
-    def __init__(self, addr, port=53, catch_nxdomain=False):
+    def __init__(self, addr, port=53, nxdomain=False, fallback=True):
         super().__init__()
         self.addr = addr
         self.port = port
-        self.catch_nxdomain = catch_nxdomain
+        self.fallback = fallback
+        self.nxdomain = nxdomain
 
     def get_conf(self, conf=None):
         if not conf:
@@ -163,8 +164,8 @@ class ModDnsproxy(KnotModule):
         conf.begin(self.conf_name)
         conf.id_item("id", self.conf_id)
         conf.item_str("remote", "%s_%s" % (self.conf_name, self.conf_id))
-        if (self.catch_nxdomain):
-            conf.item_str("catch-nxdomain", "on")
+        conf.item_str("fallback", "on" if self.fallback else "off")
+        conf.item_str("catch-nxdomain", "on" if self.nxdomain else "off")
         conf.end()
 
         return conf

@@ -177,9 +177,10 @@ Result:
 ``dnsproxy`` – Tiny DNS proxy
 -----------------------------
 
-The module catches all unsatisfied queries and forwards them to the
-indicated server for resolution, i.e. a tiny DNS proxy. There are several
-uses of this feature:
+The module forwards all queries, or all specific zone queries if configured
+per zone, to the indicated server for resolution. If configured in the fallback
+mode, only localy unsatisfied queries are forwarded. I.e. a tiny DNS proxy.
+There are several uses of this feature:
 
 * A substitute public-facing server in front of the real one
 * Local zones (poor man's "views"), rest is forwarded to the public-facing server
@@ -199,6 +200,7 @@ required::
    mod-dnsproxy:
      - id: default
        remote: hidden
+       fallback: on
 
    template:
      - id: default

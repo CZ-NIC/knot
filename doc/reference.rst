@@ -1541,6 +1541,7 @@ server for resolution.
    - id: STR
      remote: remote_id
      timeout: INT
+     fallback: BOOL
      catch-nxdomain: BOOL
 
 .. _mod-dnsproxy_id:
@@ -1569,13 +1570,24 @@ A remote response timeout in milliseconds.
 
 *Default:* 500
 
+.. _mod-dnsproxy_fallback:
+
+fallback
+--------
+
+If enabled, localy unsatisfied queries leading to REFUSED (no zone) are forwarded.
+If disabled, all queries are directly forwarded without any local attempts
+to resolve them.
+
+*Default:* on
+
 .. _mod-dnsproxy_catch-nxdomain:
 
 catch-nxdomain
 --------------
 
-If enabled, all unsatisfied queries (also applies to local zone lookups)
-are forwarded.
+If enabled, localy unsatisfied queries leading to NXDOMAIN are forwarded.
+This option is only relevant in the fallback mode.
 
 *Default:* off
 
