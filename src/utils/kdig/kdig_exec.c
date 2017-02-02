@@ -860,6 +860,11 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			return 0;
 		}
 
+		// Print leading transfer information.
+		if (msg_count == 0) {
+			print_header_xfr(query, style);
+		}
+
 		// Check for error reply.
 		if (knot_pkt_ext_rcode(reply) != KNOT_RCODE_NOERROR) {
 			ERR("server replied with error '%s'\n",
@@ -871,9 +876,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 		// The first message has a special treatment.
 		if (msg_count == 0) {
-			// Print leading transfer information.
-			print_header_xfr(query, style);
-
 			// Verify 1. signature if a key was specified.
 			if (sign_ctx->digest != NULL) {
 				ret = verify_packet(reply, sign_ctx);
