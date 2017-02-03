@@ -186,21 +186,25 @@ class Response(object):
 
         self.resp, iter_copy = itertools.tee(self.resp)
 
+        if type(rcode) is not str:
+            rc = dns.rcode.to_text(rcode)
+        else:
+            rc = rcode
+
         # Get the first message.
-        for msg in iter_copy:
-            question = msg.question[0]
-            compare(question.rdclass, self.rclass, "QCLASS")
-            compare(question.rdtype, self.rtype, "QTYPE")
+        try:
+            for msg in iter_copy:
+                question = msg.question[0]
+                compare(question.rdclass, self.rclass, "QCLASS")
+                compare(question.rdtype, self.rtype, "QTYPE")
 
-            # Check rcode.
-            if type(rcode) is not str:
-                rc = dns.rcode.to_text(rcode)
-            else:
-                rc = rcode
-            compare(dns.rcode.to_text(msg.rcode()), rc, "RCODE")
+                # Check rcode.
+                compare(dns.rcode.to_text(msg.rcode()), rc, "RCODE")
 
-            # Check the first message only.
-            break
+                # Check the first message only.
+                break
+        except dns.query.TransferError as e:
+            compare(dns.rcode.to_text(e.rcode), rc, "RCODE")
 
     # Checks whether the transfer is an AXFR-style IXFR
     def check_axfr_style_ixfr(self, axfr=None):

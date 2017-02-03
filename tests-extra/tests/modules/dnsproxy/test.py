@@ -4,8 +4,9 @@
 
 from dnstest.test import Test
 from dnstest.module import ModDnsproxy
+import dnstest.keys
 
-t = Test(stress=False)
+t = Test(tsig=False)
 
 ModDnsproxy.check()
 
@@ -15,17 +16,19 @@ zone_common2 = t.zone("test", storage=".", file_name="test.remote_zone")
 zone_local = t.zone_rnd(1)
 zone_remote = t.zone_rnd(1)
 
-local = t.server("knot")
+key1 = dnstest.keys.Tsig(name="key1", alg="hmac-sha1", key="Zm9v")
+local = t.server("knot", tsig=key1)
 t.link(zone_common1, local)
 t.link(zone_local, local)
 
-remote = t.server("knot")
+key2 = dnstest.keys.Tsig(name="key2", alg="hmac-sha1", key="YmFy")
+remote = t.server("knot", tsig=key2)
 t.link(zone_common2, remote)
 t.link(zone_remote, remote)
 
 def fallback_checks(server, zone_local, zone_remote):
-    # Local preferred OK.
-    resp = server.dig("dns1.test", "A")
+    # Local preferred OK, try with local TSIG.
+    resp = server.dig("dns1.test", "A", tsig=key1)
     resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.1", nordata="192.0.2.2")
 
     # Local record OK.
@@ -36,15 +39,25 @@ def fallback_checks(server, zone_local, zone_remote):
     resp = server.dig(zone_local.name, "SOA")
     resp.check(rcode="NOERROR", flags="AA")
 
-    # Remote OK.
-    resp = server.dig(zone_remote.name, "SOA")
+    # Remote OK, TSIG not forwarded if fallback.
+    resp = server.dig(zone_remote.name, "SOA", tsig=key1)
     resp.check(rcode="NOERROR", flags="AA")
 
     # Remote NOK, not existing zone.
     resp = server.dig("z-o-n-e.", "SOA")
     resp.check(rcode="REFUSED", noflags="AA")
 
+    # Local XFR OK.
+    resp = server.dig("test", "AXFR", tsig=key1)
+    resp.check_xfr(rcode="NOERROR")
+
+    # Remote XFR NOK, no TSIG
+    resp = server.dig(zone_remote.name, "AXFR")
+    resp.check_xfr(rcode="NOTAUTH")
+
 t.start()
+
+remote.zone_wait(zone_common2)
 
 ### No fallback
 
@@ -53,9 +66,13 @@ local.add_module(None, ModDnsproxy(remote.addr, remote.port, fallback=False))
 local.gen_confile()
 local.reload()
 
-# Remote OK.
-resp = local.dig("dns1.test", "A")
+# Remote OK, try with remote TSIG.
+resp = local.dig("dns1.test", "A", tsig=key2)
 resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.2", nordata="192.0.2.1")
+
+# Remote XFR OK.
+resp = local.dig("test", "AXFR", tsig=key2)
+resp.check_xfr(rcode="NOERROR")
 
 # Local record NOK.
 resp = local.dig("local.test", "A")
@@ -94,7 +111,7 @@ fallback_checks(local, zone_local[0], zone_remote[0])
 resp = local.dig("remote.test", "A")
 resp.check(rcode="NXDOMAIN", flags="AA")
 
-### No fallback, nxdomain
+### Fallback, nxdomain
 
 local.clear_modules(None)
 local.add_module(None, ModDnsproxy(remote.addr, remote.port, fallback=True, nxdomain=True))

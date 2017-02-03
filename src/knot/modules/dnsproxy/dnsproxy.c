@@ -67,6 +67,12 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		return state;
 	}
 
+	/* Forward also original TSIG. */
+	if (qdata->query->tsig_rr != NULL && !proxy->fallback) {
+		knot_tsig_append(qdata->query->wire, &qdata->query->size,
+		                 qdata->query->max_size, qdata->query->tsig_rr);
+	}
+
 	/* Capture layer context. */
 	const knot_layer_api_t *capture = query_capture_api();
 	struct capture_param capture_param = {
@@ -102,6 +108,11 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		return KNOT_STATE_FAIL; /* Forwarding failed, SERVFAIL. */
 	} else {
 		qdata->rcode = knot_pkt_ext_rcode(pkt);
+	}
+
+	/* Respond also with TSIG. */
+	if (pkt->tsig_rr != NULL && !proxy->fallback) {
+		knot_tsig_append(pkt->wire, &pkt->size, pkt->max_size, pkt->tsig_rr);
 	}
 
 	return KNOT_STATE_DONE;
