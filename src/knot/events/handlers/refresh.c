@@ -835,6 +835,7 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
 		            "fallback to AXFR");
 		ixfr_cleanup(data);
+		layer->flags |= KNOT_RQ_LAYER_CLOSE;
 		data->xfr_type = XFR_TYPE_AXFR;
 		return KNOT_STATE_RESET;
 	}

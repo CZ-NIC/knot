@@ -48,6 +48,7 @@ struct knot_layer {
 	void *data;                   //!< Module specific.
 	const struct knot_layer_api *api;
 	tsig_ctx_t *tsig;             //!< TODO: remove
+	unsigned flags;               //!< Custom flags.
 };
 
 /*! \brief Packet processing module API. */

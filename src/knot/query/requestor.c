@@ -197,6 +197,14 @@ static int request_reset(struct knot_requestor *req,
 	knot_layer_reset(&req->layer);
 	tsig_reset(&last->tsig);
 
+	if (req->layer.flags & KNOT_RQ_LAYER_CLOSE) {
+		req->layer.flags &= ~KNOT_RQ_LAYER_CLOSE;
+		if (last->fd >= 0) {
+			close(last->fd);
+			last->fd = -1;
+		}
+	}
+
 	if (req->layer.state == KNOT_STATE_RESET) {
 		return KNOT_LAYER_ERROR;
 	}
