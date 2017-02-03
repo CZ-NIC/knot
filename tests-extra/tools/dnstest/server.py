@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import base64
 import glob
 import inspect
 import ipaddress
@@ -509,7 +510,8 @@ class Server(object):
 
         if key_params:
             detail_log("%s:%s:%s" %
-                (self.tsig_test.alg, self.tsig_test.name, self.tsig_test.key))
+                (key_params["keyalgorithm"], key_params["keyname"],
+                 base64.b64encode(list(key_params["keyring"].values())[0]).decode('ascii')))
 
         for t in range(tries):
             try:
@@ -867,7 +869,7 @@ class Bind(Server):
                     s.item("also-notify", "{ %s}" % slaves)
 
             if z.ddns:
-                if self.tsig:
+                if self.tsig_test:
                     upd = "key %s; " % self.tsig_test.name
                 else:
                     upd = "%s; " % params.test.addr
@@ -877,9 +879,10 @@ class Bind(Server):
                 else:
                     s.item("allow-update", "{ %s}" % upd)
 
-            if self.tsig:
-                s.item("allow-transfer", "{ key %s; key %s; }" %
-                       (self.tsig.name, self.tsig_test.name))
+            if self.tsig or self.tsig_test:
+                s.item("allow-transfer", "{%s%s }" %
+                       ((" key %s;" % self.tsig.name) if self.tsig else "",
+                        (" key %s;" % self.tsig_test.name) if self.tsig_test else ""))
             else:
                 s.item("allow-transfer", "{ any; }")
             s.end()
@@ -922,9 +925,10 @@ class Knot(Server):
             conf.item_str(name, value)
 
     def _key(self, conf, key):
-        conf.id_item("id", key.name)
-        conf.item_str("algorithm", key.alg)
-        conf.item_str("secret", key.key)
+        if key:
+            conf.id_item("id", key.name)
+            conf.item_str("algorithm", key.alg)
+            conf.item_str("secret", key.key)
 
     def _bool(self, conf, name, value):
         if value != None:
