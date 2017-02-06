@@ -14,7 +14,7 @@ check_PROGRAMS = \
 check_SCRIPTS = \
 	tests/unittests
 
-CLEANFILES += $(check_SCRIPTS)
+CLEANFILES += $(check_SCRIPTS) tests/runtests.log
 
 edit = sed \
 	-e 's|@top_srcdir[@]|$(abs_top_srcdir)|g' \
