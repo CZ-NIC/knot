@@ -320,8 +320,13 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	}
 
 	pkt->size = base_size;
-	pkt->qname_size = query->qname_size;
 	memcpy(pkt->wire, query->wire, base_size);
+
+	pkt->qname_size = query->qname_size;
+	if (query->qname_size == 0) {
+		/* Reset question count if malformed. */
+		knot_wire_set_qdcount(pkt->wire, 0);
+	}
 
 	/* Update size and flags. */
 	knot_wire_set_qr(pkt->wire);
