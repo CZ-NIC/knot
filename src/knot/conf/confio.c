@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -167,7 +167,7 @@ int conf_io_list(
 		return list_section(conf()->scheme, &io->key0, io);
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -497,7 +497,7 @@ int conf_io_diff(
 		return KNOT_EOK;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -696,7 +696,7 @@ int conf_io_get(
 		return KNOT_EOK;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -911,7 +911,7 @@ int conf_io_set(
 		return KNOT_EINVAL;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -1118,7 +1118,7 @@ int conf_io_unset(
 		return KNOT_EOK;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}

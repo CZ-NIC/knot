@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -660,7 +660,7 @@ int conf_parse(
 	}
 
 	// Initialize parser check context.
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf->scheme);
 	if (ctx == NULL) {
 		ret = KNOT_ENOMEM;
 		goto parse_error;

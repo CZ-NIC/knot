@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -98,6 +98,40 @@ error_scheme:
 	yp_scheme_free(scheme);
 }
 
+static void scheme_merge_test(void)
+{
+	static const yp_item_t items1[] = {
+		{ "\x01""1", YP_TSTR,  YP_VNONE },
+		{ "\x01""2", YP_TSTR,  YP_VNONE },
+		{ NULL }
+	};
+
+	static const yp_item_t items2[] = {
+		{ "\x01""3", YP_TSTR,  YP_VNONE },
+		{ "\x01""4", YP_TSTR,  YP_VNONE },
+		{ NULL }
+	};
+
+	yp_item_t *scheme = NULL;
+	yp_item_t *tmp = NULL;
+
+	int ret = yp_scheme_copy(&tmp, items1);
+	is_int(KNOT_EOK, ret, "scheme copy");
+
+	ret = yp_scheme_merge(&scheme, items1, items2);
+	is_int(KNOT_EOK, ret, "scheme merge");
+
+	yp_scheme_free(tmp);
+
+	for (uint8_t i = 0; i < 4; i++) {
+		yp_name_t name[3] = { '\x01', '1' + i };
+		const yp_item_t *item = yp_scheme_find(name, NULL, scheme);
+		ok(item != NULL, "scheme find");
+	}
+
+	yp_scheme_free(scheme);
+}
+
 #define SET_INPUT_STR(str) \
 	ret = yp_set_input_string(yp, str, strlen(str)); \
 	is_int(KNOT_EOK, ret, "set input string");
@@ -132,7 +166,7 @@ static void parser_test(void)
 		goto error_parser;
 	}
 
-	ctx = yp_scheme_check_init(scheme);
+	ctx = yp_scheme_check_init(&scheme);
 	ok(ctx != NULL, "create check ctx");
 	if (ctx == NULL) {
 		goto error_parser;
@@ -263,7 +297,7 @@ static void str_test(void)
 		goto error_str;
 	}
 
-	ctx = yp_scheme_check_init(scheme);
+	ctx = yp_scheme_check_init(&scheme);
 	ok(ctx != NULL, "create check ctx");
 	if (ctx == NULL) {
 		goto error_str;
@@ -375,6 +409,7 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	scheme_find_test();
+	scheme_merge_test();
 	parser_test();
 	str_test();
 

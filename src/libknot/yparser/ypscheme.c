@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,17 @@
 #include "libknot/yparser/ypscheme.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/errcode.h"
+
+static size_t scheme_count(
+	const yp_item_t *src)
+{
+	size_t count = 0;
+	for (const yp_item_t *item = src; item->name != NULL; item++) {
+		count++;
+	}
+
+	return count;
+}
 
 /*! Initializes the referenced item. */
 static int set_ref_item(
@@ -50,13 +61,10 @@ static int set_grp_item(
 	const yp_item_t *scheme)
 {
 	// Count subitems.
-	size_t num = 0;
-	while (src->var.g.sub_items[num].name != NULL) {
-		num++;
-	}
+	size_t count = scheme_count(src->var.g.sub_items);
 
 	// Allocate space for subitems + terminal zero item.
-	size_t memsize = (num + 1) * sizeof(yp_item_t);
+	size_t memsize = (count + 1) * sizeof(yp_item_t);
 	dst->sub_items = malloc(memsize);
 	if (dst->sub_items == NULL) {
 		return KNOT_ENOMEM;
@@ -64,7 +72,7 @@ static int set_grp_item(
 	memset(dst->sub_items, 0, memsize);
 
 	// Copy subitems.
-	for (size_t i = 0; i < num; i++) {
+	for (size_t i = 0; i < count; i++) {
 		// The first item is an identifier if multi group.
 		if (i == 0 && (dst->flags & YP_FMULTI)) {
 			dst->var.g.id = &dst->sub_items[0];
@@ -96,6 +104,16 @@ static int set_grp_item(
 		}
 	}
 
+	if (src->flags & YP_FALLOC) {
+		dst->var.g.sub_items = malloc(memsize);
+		if (dst->var.g.sub_items == NULL) {
+			free(dst->sub_items);
+			dst->sub_items = NULL;
+			return KNOT_ENOMEM;
+		}
+		memcpy((void *)dst->var.g.sub_items, src->var.g.sub_items, memsize);
+	}
+
 	return KNOT_EOK;
 }
 
@@ -112,6 +130,15 @@ static int set_item(
 	// Copy the static data.
 	*dst = *src;
 
+	// Copy item name into dynamic memory.
+	if (src->flags & YP_FALLOC) {
+		dst->name = malloc(src->name[0] + 2);
+		if (dst->name == NULL) {
+			return KNOT_ENOMEM;
+		}
+		memcpy((void *)dst->name, src->name, src->name[0] + 2);
+	}
+
 	// Item type specific preparation.
 	switch (src->type) {
 	case YP_TREF:
@@ -126,11 +153,33 @@ static int set_item(
 static void unset_item(
 	yp_item_t *item)
 {
+	if (item->flags & YP_FALLOC) {
+		free((void *)item->name);
+		if (item->flags & YP_FALLOC) {
+			free((void *)item->var.g.sub_items);
+		}
+	}
 	if (item->sub_items != NULL) {
 		free(item->sub_items);
 	}
 
 	memset(item, 0, sizeof(yp_item_t));
+}
+
+static int scheme_copy(
+	yp_item_t *dst,
+	const yp_item_t *src,
+	const yp_item_t *scheme)
+{
+	// Copy the scheme.
+	for (int i = 0; src[i].name != NULL; i++) {
+		int ret = set_item(dst + i, src + i, scheme);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 int yp_scheme_copy(
@@ -141,14 +190,8 @@ int yp_scheme_copy(
 		return KNOT_EINVAL;
 	}
 
-	// Count scheme items.
-	size_t scheme_items = 0;
-	for (const yp_item_t *item = src; item->name != NULL; item++) {
-		scheme_items++;
-	}
-
-	// Allocate space for new scheme.
-	size_t size = (scheme_items + 1) * sizeof(yp_item_t);
+	// Allocate space for new scheme (+ terminal NULL item).
+	size_t size = (scheme_count(src) + 1) * sizeof(yp_item_t);
 	*dst = malloc(size);
 	if (*dst == NULL) {
 		return KNOT_ENOMEM;
@@ -156,19 +199,61 @@ int yp_scheme_copy(
 	memset(*dst, 0, size);
 
 	// Copy the scheme.
-	for (int i = 0; i < scheme_items; i++) {
-		if (src[i].name == NULL) {
-			break;
-		}
-
-		int ret = set_item(*dst + i, src + i, *dst);
-		if (ret != KNOT_EOK) {
-			yp_scheme_free(*dst);
-			return ret;
-		}
+	int ret = scheme_copy(*dst, src, *dst);
+	if (ret != KNOT_EOK) {
+		yp_scheme_free(*dst);
 	}
 
 	return KNOT_EOK;
+}
+
+int yp_scheme_merge(
+	yp_item_t **dst,
+	const yp_item_t *src1,
+	const yp_item_t *src2)
+{
+	if (dst == NULL || src1 == NULL || src2 == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	size_t count1 = scheme_count(src1);
+	size_t count2 = scheme_count(src2);
+
+	// Allocate space for new scheme (+ terminal NULL item).
+	size_t size = (count1 + count2 + 1) * sizeof(yp_item_t);
+	*dst = malloc(size);
+	if (*dst == NULL) {
+		return KNOT_ENOMEM;
+	}
+	memset(*dst, 0, size);
+
+	// Copy the first scheme.
+	int ret = scheme_copy(*dst, src1, *dst);
+	if (ret != KNOT_EOK) {
+		yp_scheme_free(*dst);
+	}
+
+	// Copy the second scheme.
+	ret = scheme_copy(*dst + count1, src2, *dst);
+	if (ret != KNOT_EOK) {
+		yp_scheme_free(*dst);
+	}
+
+	return KNOT_EOK;
+}
+
+void yp_scheme_purge_dynamic(
+	yp_item_t *scheme)
+{
+	if (scheme == NULL) {
+		return;
+	}
+
+	for (yp_item_t *item = scheme; item->name != NULL; item++) {
+		if (item->flags & YP_FALLOC) {
+			unset_item(item);
+		}
+	}
 }
 
 void yp_scheme_free(
@@ -228,7 +313,7 @@ const yp_item_t* yp_scheme_find(
 }
 
 yp_check_ctx_t* yp_scheme_check_init(
-	const yp_item_t *scheme)
+	yp_item_t **scheme)
 {
 	if (scheme == NULL) {
 		return NULL;
@@ -287,7 +372,7 @@ static int check_item(
 		// Check if valid subitem.
 		node->item = find_item(key, key_len, parent->item->sub_items);
 	} else {
-		node->item = find_item(key, key_len, ctx->scheme);
+		node->item = find_item(key, key_len, *ctx->scheme);
 	}
 	if (node->item == NULL) {
 		return KNOT_YP_EINVAL_ITEM;
