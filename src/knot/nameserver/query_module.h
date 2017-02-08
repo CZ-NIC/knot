@@ -46,6 +46,14 @@
 #include "knot/nameserver/internet.h"
 #include "contrib/ucw/lists.h"
 
+#ifdef HAVE_ATOMIC
+ #define ATOMIC_ADD(dst, val) __atomic_add_fetch(dst, val, __ATOMIC_RELAXED);
+ #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(dst, val, __ATOMIC_RELAXED);
+#else
+ #define ATOMIC_ADD(dst, val) __sync_fetch_and_add(dst, val);
+ #define ATOMIC_SUB(dst, val) __sync_fetch_and_sub(dst, val);
+#endif
+
 #define MODULE_ERR(mod, msg, ...) \
 	log_error("module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
 
@@ -133,7 +141,7 @@ inline static void mod_ctr_incr(mod_ctr_t *stats, uint32_t idx, uint64_t val)
 	mod_ctr_t *ctr = stats + idx;
 	assert(ctr->count == 1);
 
-	__atomic_add_fetch(&ctr->counter, val, __ATOMIC_RELAXED);
+	ATOMIC_ADD(&ctr->counter, val);
 }
 
 inline static void mod_ctr_decr(mod_ctr_t *stats, uint32_t idx, uint64_t val)
@@ -141,7 +149,7 @@ inline static void mod_ctr_decr(mod_ctr_t *stats, uint32_t idx, uint64_t val)
 	mod_ctr_t *ctr = stats + idx;
 	assert(ctr->count == 1);
 
-	__atomic_sub_fetch(&ctr->counter, val, __ATOMIC_RELAXED);
+	ATOMIC_SUB(&ctr->counter, val);
 }
 
 inline static void mod_ctrs_incr(mod_ctr_t *stats, uint32_t idx, uint32_t offset, uint64_t val)
@@ -151,9 +159,9 @@ inline static void mod_ctrs_incr(mod_ctr_t *stats, uint32_t idx, uint32_t offset
 
 	// Increment the last counter if offset overflows.
 	if (offset < ctr->count) {
-		__atomic_add_fetch(&ctr->counters[offset], val, __ATOMIC_RELAXED);
+		ATOMIC_ADD(&ctr->counters[offset], val);
 	} else {
-		__atomic_add_fetch(&ctr->counters[ctr->count - 1], val, __ATOMIC_RELAXED);
+		ATOMIC_ADD(&ctr->counters[ctr->count - 1], val);
 	}
 }
 
@@ -164,9 +172,9 @@ inline static void mod_ctrs_decr(mod_ctr_t *stats, uint32_t idx, uint32_t offset
 
 	// Increment the last counter if offset overflows.
 	if (offset < ctr->count) {
-		__atomic_sub_fetch(&ctr->counters[offset], val, __ATOMIC_RELAXED);
+		ATOMIC_SUB(&ctr->counters[offset], val);
 	} else {
-		__atomic_sub_fetch(&ctr->counters[ctr->count - 1], val, __ATOMIC_RELAXED);
+		ATOMIC_SUB(&ctr->counters[ctr->count - 1], val);
 	}
 }
 
