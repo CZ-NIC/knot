@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 		case 't':
 			if (knot_time_parse("YMDhms|#|+-#U|+-#",
 			                    optarg, &check_time) != KNOT_EOK) {
-				fprintf(stderr, "Unknown time format.\n");
+				fprintf(stderr, "Unknown time format\n");
 				return EXIT_FAILURE;
 			}
 			break;
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 
 	/* Check if there's at least one remaining non-option. */
 	if (optind >= argc) {
-		fprintf(stderr, "Expected zone file name.\n");
+		fprintf(stderr, "Expected zone file name\n");
 		print_help();
 		return EXIT_FAILURE;
 	}
@@ -109,14 +109,13 @@ int main(int argc, char *argv[])
 		zonename = strdup(origin);
 	}
 
-	/* TODO: Remove logging from zone loading. */
 	log_init();
-	log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_MASK(LOG_ERR));
+	log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, 0);
 	log_levels_set(LOG_TARGET_STDERR, LOG_SOURCE_ANY, 0);
 	log_levels_set(LOG_TARGET_SYSLOG, LOG_SOURCE_ANY, 0);
 	log_flag_set(LOG_FLAG_NOTIMESTAMP | LOG_FLAG_NOINFO);
 	if (verbose) {
-		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_MASK(LOG_DEBUG));
+		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_UPTO(LOG_DEBUG));
 	}
 
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
@@ -129,17 +128,20 @@ int main(int argc, char *argv[])
 	switch (ret) {
 	case KNOT_EOK:
 		if (verbose) {
-			fprintf(stdout, "No semantic error found.\n");
+			fprintf(stdout, "No semantic error found\n");
 		}
 		return EXIT_SUCCESS;
+	case KNOT_EZONEINVAL:
+		fprintf(stdout, "Serious semantic error detected\n");
+		// FALLTHROUGH
 	case KNOT_ESEMCHECK:
 		return EXIT_FAILURE;
 	case KNOT_EACCES:
 	case KNOT_EFILE:
-		fprintf(stderr, "Failed to load the zone file.\n");
+		fprintf(stderr, "Failed to load the zone file\n");
 		return EXIT_FAILURE;
 	default:
-		fprintf(stderr, "Failed to run semantic checks (%s).\n", knot_strerror(ret));
+		fprintf(stderr, "Failed to run semantic checks (%s)\n", knot_strerror(ret));
 		return EXIT_FAILURE;
 	}
 }

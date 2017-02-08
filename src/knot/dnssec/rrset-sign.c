@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,22 +15,11 @@
  */
 
 #include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
 
 #include "contrib/wire_ctx.h"
 #include "dnssec/error.h"
-#include "dnssec/key.h"
-#include "dnssec/sign.h"
 #include "knot/dnssec/rrset-sign.h"
-#include "libknot/attribute.h"
-#include "libknot/descriptor.h"
 #include "libknot/libknot.h"
-#include "libknot/packet/rrset-wire.h"
-#include "libknot/packet/wire.h"
-#include "libknot/rrset.h"
-#include "libknot/rrtype/rrsig.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
@@ -189,24 +178,14 @@ static int sign_ctx_add_records(dnssec_sign_ctx_t *ctx, const knot_rrset_t *cove
 	return result;
 }
 
-/*!
- * \brief Add all data covered by signature into signing context.
- *
- * RFC 4034: The signature covers RRSIG RDATA field (excluding the signature)
- * and all matching RR records, which are ordered canonically.
- *
- * Requires all DNAMEs in canonical form and all RRs ordered canonically.
- *
- * \param ctx          Signing context.
- * \param rrsig_rdata  RRSIG RDATA with populated fields except signature.
- * \param covered      Covered RRs.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static int sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
-                             const uint8_t *rrsig_rdata,
-                             const knot_rrset_t *covered)
+int knot_sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
+                           const uint8_t *rrsig_rdata,
+                           const knot_rrset_t *covered)
 {
+	if (!ctx || !rrsig_rdata || knot_rrset_empty(covered)) {
+		return KNOT_EINVAL;
+	}
+
 	int result = sign_ctx_add_self(ctx, rrsig_rdata);
 	if (result != KNOT_EOK) {
 		return result;
@@ -259,7 +238,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 		return res;
 	}
 
-	res = sign_ctx_add_data(ctx, header, covered);
+	res = knot_sign_ctx_add_data(ctx, header, covered);
 	if (res != KNOT_EOK) {
 		return res;
 	}
@@ -385,7 +364,7 @@ int knot_check_signature(const knot_rrset_t *covered,
 		return result;
 	}
 
-	result = sign_ctx_add_data(sign_ctx, rdata, covered);
+	result = knot_sign_ctx_add_data(sign_ctx, rdata, covered);
 	if (result != KNOT_EOK) {
 		return result;
 	}

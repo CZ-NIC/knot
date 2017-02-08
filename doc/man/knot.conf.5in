@@ -1032,6 +1032,8 @@ Mandatory checks:
 .IP \(bu 2
 An extra record together with CNAME record (except for RRSIG and DS)
 .IP \(bu 2
+Multiple CNAME records with the same owner
+.IP \(bu 2
 SOA record missing in the zone (RFC 1034)
 .IP \(bu 2
 DNAME records having records under it (DNAME children) (RFC 2672)
@@ -1063,6 +1065,12 @@ Signer name in RRSIG RR not the same as in DNSKEY
 Signed RRSIG
 .IP \(bu 2
 Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
+.IP \(bu 2
+Invalid NSEC3PARAM flags or digest algorithm
+.IP \(bu 2
+Invalid DS algorithm or digest length
+.IP \(bu 2
+Not corresponding CDS and CDNSKEY records
 .UNINDENT
 .sp
 \fIDefault:\fP off

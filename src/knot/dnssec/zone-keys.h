@@ -13,25 +13,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file zone-keys.h
- *
- * \brief Loading of zone keys.
- *
- * \addtogroup dnssec
- * @{
- */
 
 #pragma once
-
-#include <stdbool.h>
-#include <stdint.h>
-#include <time.h>
 
 #include "contrib/dynarray.h"
 #include "dnssec/keystore.h"
 #include "dnssec/sign.h"
-
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/context.h"
@@ -160,5 +147,3 @@ knot_time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
  * \return Error code, KNOT_EOK if successful.
  */
 int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree);
-
-/*! @} */

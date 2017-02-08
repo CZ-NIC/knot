@@ -23,7 +23,7 @@
  *\brief Internal error constants. General errors are added for convenience,
  *       so that code does not have to change if new errors are added.
  */
-enum zonechecks_errors {
+typedef enum {
 	ZC_ERR_UNKNOWN = -50,
 
 	ZC_ERR_MISSING_SOA,
@@ -34,51 +34,63 @@ enum zonechecks_errors {
 	ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
 	ZC_ERR_RRSIG_RDATA_TTL,
 	ZC_ERR_RRSIG_RDATA_EXPIRATION,
+	ZC_ERR_RRSIG_RDATA_INCEPTION,
 	ZC_ERR_RRSIG_RDATA_LABELS,
-	ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
+	ZC_ERR_RRSIG_RDATA_OWNER,
 	ZC_ERR_RRSIG_NO_RRSIG,
 	ZC_ERR_RRSIG_SIGNED,
 	ZC_ERR_RRSIG_TTL,
+	ZC_ERR_RRSIG_UNVERIFIABLE,
 
 	ZC_ERR_RRSIG_GENERAL_ERROR, /* RRSIG error delimiter. */
 
-	ZC_ERR_NO_NSEC,
+	ZC_ERR_NSEC_NONE,
 	ZC_ERR_NSEC_RDATA_BITMAP,
 	ZC_ERR_NSEC_RDATA_MULTIPLE,
 	ZC_ERR_NSEC_RDATA_CHAIN,
 
 	ZC_ERR_NSEC_GENERAL_ERROR, /* NSEC error delimiter. */
 
-	ZC_ERR_NSEC3_NOT_FOUND,
+	ZC_ERR_NSEC3_NONE,
 	ZC_ERR_NSEC3_INSECURE_DELEGATION_OPT,
-	ZC_ERR_NSEC3_TTL,
-	ZC_ERR_NSEC3_RDATA_CHAIN,
 	ZC_ERR_NSEC3_EXTRA_RECORD,
+	ZC_ERR_NSEC3_RDATA_TTL,
+	ZC_ERR_NSEC3_RDATA_CHAIN,
+	ZC_ERR_NSEC3_RDATA_BITMAP,
+	ZC_ERR_NSEC3_RDATA_FLAGS,
+	ZC_ERR_NSEC3_RDATA_SALT,
+	ZC_ERR_NSEC3_RDATA_ALG,
+	ZC_ERR_NSEC3_RDATA_ITERS,
+
+	ZC_ERR_NSEC3_PARAM_RDATA_FLAGS,
+	ZC_ERR_NSEC3_PARAM_RDATA_ALG,
 
 	ZC_ERR_NSEC3_GENERAL_ERROR, /* NSEC3 error delimiter. */
 
 	ZC_ERR_CNAME_EXTRA_RECORDS,
-	ZC_ERR_DNAME_CHILDREN,
 	ZC_ERR_CNAME_MULTIPLE,
-	ZC_ERR_DNAME_MULTIPLE,
-	ZC_ERR_CNAME_WILDCARD_SELF,
-	ZC_ERR_DNAME_WILDCARD_SELF,
+	ZC_ERR_DNAME_CHILDREN,
 
 	ZC_ERR_CNAME_GENERAL_ERROR, /* CNAME/DNAME error delimiter. */
 
 	ZC_ERR_GLUE_RECORD,
 
+	ZC_ERR_DS_RDATA_ALG,
+	ZC_ERR_DS_RDATA_DIGLEN,
+
+	ZC_ERR_INVALID_KEY,
+
+	ZC_ERR_CDS_CDNSKEY,
+
 	ZC_ERR_LAST,
-};
+} zc_error_t;
 
 const char *semantic_check_error_msg(int ecode);
 
 /*!
  * \brief Structure for handling semantic errors.
  */
-
 typedef struct err_handler err_handler_t;
-
 
 /*!
  * \brief Callback for handle error.
@@ -86,13 +98,13 @@ typedef struct err_handler err_handler_t;
  * Return KNOT_EOK to continue in semantic checks.
  * Return other KNOT_E* to stop semantic check with error.
  */
-typedef int (*error_cb) (err_handler_t *ctx, const zone_contents_t *zone,
-                         const zone_node_t *node, int error, const char *data);
+typedef void (*error_cb) (err_handler_t *ctx, const zone_contents_t *zone,
+                          const zone_node_t *node, zc_error_t error, const char *data);
 
 struct err_handler {
 	error_cb cb;
+	bool fatal_error;
 };
-
 
 /*!
  * \brief Check zone for semantic errors.
