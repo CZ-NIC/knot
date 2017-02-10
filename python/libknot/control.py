@@ -330,7 +330,7 @@ class KnotCtl(object):
         section = reply[KnotCtlDataIdx.SECTION]
         item = reply[KnotCtlDataIdx.ITEM]
         idx = reply[KnotCtlDataIdx.ID]
-        data = reply[KnotCtlDataIdx.DATA]
+        data = int(reply[KnotCtlDataIdx.DATA])
 
         # Add the zone if not exists.
         if zone:
