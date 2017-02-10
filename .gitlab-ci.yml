@@ -137,6 +137,7 @@ deploy:documentation:
   <<: *debian_stretch
   stage: deploy
   before_script:
+    - apt-get update
     - apt-get -y install curl
   only:
     - tags
