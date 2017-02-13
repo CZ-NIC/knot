@@ -41,13 +41,26 @@
 		s->multiline = false;
 	}
 
+	action _comment {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
+			s->buffer[s->buffer_length++] = fc;
+		}
+	}
+	action _comment_exit {
+		s->buffer[s->buffer_length++] = 0;
+	}
+
+	action _rest_init {
+		s->buffer[0] = 0;
+		s->buffer_length = 0;
+	}
 	action _rest_error {
 		WARN(ZS_BAD_REST);
 		fhold; fgoto err_line;
 	}
 
 	newline = '\n' $_newline;
-	comment = ';' . (^newline)*;
+	comment = (';' . (^newline)* $_comment) %_comment_exit;
 
 	# White space separation. With respect to parentheses and included comments.
 	sep = ( [ \t]                                       # Blank characters.
@@ -56,7 +69,7 @@
 	      | ')' $_check_multiline_end                   # End of multiline.
 	      )+;                                           # Apply more times.
 
-	rest = (sep? :> comment?) $!_rest_error; # Useless text after record.
+	rest = (sep? :> comment?) >_rest_init $!_rest_error; # Comments.
 
 	# Artificial machines which are used for next state transition only!
 	all_wchar = [ \t\n;()];
