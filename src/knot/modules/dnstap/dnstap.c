@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 
 const yp_item_t scheme_mod_dnstap[] = {
 	{ C_ID,          YP_TSTR,  YP_VNONE },
-	{ MOD_SINK,      YP_TSTR,  YP_VNONE },
+	{ MOD_SINK,      YP_TSTR,  YP_VSTR = { "" } },
 	{ MOD_IDENTITY,  YP_TSTR,  YP_VNONE },
 	{ MOD_VERSION,   YP_TSTR,  YP_VSTR = { "Knot DNS " PACKAGE_VERSION } },
 	{ MOD_QUERIES,   YP_TBOOL, YP_VBOOL = { true } },
@@ -46,7 +46,7 @@ int check_mod_dnstap(conf_check_t *args)
 {
 	conf_val_t sink = conf_rawid_get_txn(args->conf, args->txn, C_MOD_DNSTAP,
 	                                     MOD_SINK, args->id, args->id_len);
-	if (sink.code != KNOT_EOK) {
+	if (conf_str(&sink)[0] == '\0') {
 		args->err_str = "no sink specified";
 		return KNOT_EINVAL;
 	}
@@ -235,17 +235,19 @@ int dnstap_load(struct query_module *self)
 	/* Set identity. */
 	val = conf_mod_get(self->config, MOD_IDENTITY, self->id);
 	if (val.code == KNOT_EOK) {
-		ctx->identity = strdup(conf_str(&val));
+		const char *ident = conf_str(&val);
+		ctx->identity = (ident != NULL) ? strdup(ident) : NULL;
 	} else {
-		ctx->identity = sockaddr_hostname();
+		ctx->identity = strdup(self->config->hostname);
 	}
 	ctx->identity_len = (ctx->identity != NULL) ? strlen(ctx->identity) : 0;
 
 	/* Set version. */
 	val = conf_mod_get(self->config, MOD_VERSION, self->id);
-	ctx->version = strdup(conf_str(&val));
+	ctx->version = strdup(conf_str(&val)); // Default ensures != NULL.
 	ctx->version_len = strlen(ctx->version);
 
+	/* Set sink. */
 	val = conf_mod_get(self->config, MOD_SINK, self->id);
 	const char *sink = conf_str(&val);
 
