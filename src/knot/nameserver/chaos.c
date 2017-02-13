@@ -20,7 +20,6 @@
 #include "knot/nameserver/chaos.h"
 #include "knot/conf/conf.h"
 #include "libknot/libknot.h"
-#include "dnssec/lib/dnssec/random.h"
 
 #define WISH "Knot DNS developers wish you "
 #define HOPE "Knot DNS developers hope you "
@@ -40,74 +39,61 @@ static const char *wishes[] = {
 	HOPE "won't find surprising news in today's journal.",
 	HOPE "perform rollover often just when playing roulette.",
 	HOPE "get notified before your domain registration expires.",
-	/*! \todo add more */
 };
 
 #undef WISH
 #undef HOPE
 
-/*!
- * \brief Get a string result for a given TXT query.
- */
-static const char *get_txt_response_string(const knot_dname_t *qname)
+static const char *get_txt_response_string(knot_pkt_t *response)
 {
-	char *qname_str = knot_dname_to_str_alloc(qname);
-	const char *response = NULL;
+	char qname[32];
+	if (knot_dname_to_str(qname, knot_pkt_qname(response), sizeof(qname)) == NULL) {
+		return NULL;
+	}
 
-	/* id.server and hostname.bind should have similar meaning. */
-	if (strcasecmp("id.server.",     qname_str) == 0 ||
-	    strcasecmp("hostname.bind.", qname_str) == 0) {
+	const char *response_str = NULL;
+
+	/* Allow hostname.bind. for compatibility. */
+	if (strcasecmp("id.server.",     qname) == 0 ||
+	    strcasecmp("hostname.bind.", qname) == 0) {
 		conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
-		response = conf_str(&val);
-		/* No item means auto. */
-		if (val.code != KNOT_EOK) {
-			response = conf()->hostname;
+		if (val.code == KNOT_EOK) {
+			response_str = conf_str(&val); // Can be NULL!
+		} else {
+			response_str = conf()->hostname;
 		}
-	/* Allow both version version.{server, bind}. for compatibility. */
-	} else if (strcasecmp("version.server.", qname_str) == 0 ||
-	           strcasecmp("version.bind.",   qname_str) == 0) {
+	/* Allow version.bind. for compatibility. */
+	} else if (strcasecmp("version.server.", qname) == 0 ||
+	           strcasecmp("version.bind.",   qname) == 0) {
 		conf_val_t val = conf_get(conf(), C_SRV, C_VERSION);
-		response = conf_str(&val);
-		/* No item means auto. */
-		if (val.code != KNOT_EOK) {
-			response = "Knot DNS " PACKAGE_VERSION;
+		if (val.code == KNOT_EOK) {
+			response_str = conf_str(&val); // Can be NULL!
+		} else {
+			response_str = "Knot DNS " PACKAGE_VERSION;
 		}
-	} else if (strcasecmp("fortune.", qname_str) == 0) {
+	} else if (strcasecmp("fortune.", qname) == 0) {
 		conf_val_t val = conf_get(conf(), C_SRV, C_VERSION);
-		/* No item means auto. */
 		if (val.code != KNOT_EOK) {
-			uint16_t wishno = dnssec_random_uint16_t() %
+			uint16_t wishno = knot_wire_get_id(response->wire) %
 			                  (sizeof(wishes) / sizeof(wishes[0]));
-			response = wishes[wishno];
+			response_str = wishes[wishno];
 		}
 	}
 
-	free(qname_str);
-
-	return response;
+	return response_str;
 }
 
-/*!
- * \brief Create TXT RR with a given string content.
- *
- * \param owner     RR owner name.
- * \param response  String to be saved in RDATA. Truncated to 255 chars.
- * \param mm        Memory context.
- * \param rrset     Store here.
- *
- * \return KNOT_EOK
- */
 static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
-                            const char *response, knot_mm_t *mm)
+                            const char *response_str, knot_mm_t *mm)
 {
 	/* Truncate response to one TXT label. */
-	size_t response_len = strlen(response);
-	if (response_len > KNOT_DNAME_MAXLEN) {
-		response_len = KNOT_DNAME_MAXLEN;
+	size_t response_len = strlen(response_str);
+	if (response_len > UINT8_MAX) {
+		response_len = UINT8_MAX;
 	}
 
 	knot_dname_t *rowner = knot_dname_copy(owner, mm);
-	if (!rowner) {
+	if (rowner == NULL) {
 		return KNOT_ENOMEM;
 	}
 
@@ -115,7 +101,7 @@ static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
 	uint8_t rdata[response_len + 1];
 
 	rdata[0] = response_len;
-	memcpy(&rdata[1], response, response_len);
+	memcpy(&rdata[1], response_str, response_len);
 
 	int ret = knot_rrset_add_rdata(rrset, rdata, response_len + 1, 0, mm);
 	if (ret != KNOT_EOK) {
@@ -126,22 +112,16 @@ static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Create a response for a TXT CHAOS query.
- *
- * \param return KNOT_RCODE_NOERROR if the response was successfully created,
- *               otherwise an RCODE representing the failure.
- */
 static int answer_txt(knot_pkt_t *response)
 {
-	const knot_dname_t *qname = knot_pkt_qname(response);
-	const char *response_str = get_txt_response_string(qname);
+	const char *response_str = get_txt_response_string(response);
 	if (response_str == NULL || response_str[0] == '\0') {
 		return KNOT_RCODE_REFUSED;
 	}
 
 	knot_rrset_t rrset;
-	int ret = create_txt_rrset(&rrset, qname, response_str, &response->mm);
+	int ret = create_txt_rrset(&rrset, knot_pkt_qname(response),
+	                           response_str, &response->mm);
 	if (ret != KNOT_EOK) {
 		return KNOT_RCODE_SERVFAIL;
 	}
