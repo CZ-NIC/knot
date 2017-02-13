@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 
 const yp_item_t scheme_mod_rosedb[] = {
 	{ C_ID,      YP_TSTR, YP_VNONE },
-	{ MOD_DBDIR, YP_TSTR, YP_VNONE },
+	{ MOD_DBDIR, YP_TSTR, YP_VSTR = { "" } },
 	{ C_COMMENT, YP_TSTR, YP_VNONE },
 	{ NULL }
 };
@@ -36,7 +36,7 @@ int check_mod_rosedb(conf_check_t *args)
 {
 	conf_val_t dir = conf_rawid_get_txn(args->conf, args->txn, C_MOD_ROSEDB,
 	                                    MOD_DBDIR, args->id, args->id_len);
-	if (dir.code != KNOT_EOK) {
+	if (conf_str(&dir)[0] == '\0') {
 		args->err_str = "no database directory specified";
 		return KNOT_EINVAL;
 	}
@@ -468,11 +468,11 @@ static int rosedb_send_log(int sock, struct sockaddr_storage *dst_addr, knot_pkt
 
 	/* Host name / Component. */
 	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
-	if (val.code != KNOT_EOK || val.len <= 1) {
-		STREAM_WRITE(stream, &maxlen, snprintf, "%s ", conf()->hostname);
-	} else {
-		STREAM_WRITE(stream, &maxlen, snprintf, "%s ", conf_str(&val));
+	const char *ident = conf_str(&val);
+	if (ident == NULL || ident[0] == '\0') {
+		ident = conf()->hostname;
 	}
+	STREAM_WRITE(stream, &maxlen, snprintf, "%s ", ident);
 	STREAM_WRITE(stream, &maxlen, snprintf, "%s[%lu]: ", PACKAGE_NAME, (unsigned long) getpid());
 
 	/* Prepare log message line. */

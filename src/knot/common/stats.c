@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -139,7 +139,7 @@ static void dump_to_file(FILE *fd, server_t *server)
 	// Get the server identity.
 	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
 	const char *ident = conf_str(&val);
-	if (val.code != KNOT_EOK || ident[0] == '\0') {
+	if (ident == NULL || ident[0] == '\0') {
 		ident = conf()->hostname;
 	}
 
