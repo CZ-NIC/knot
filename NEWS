@@ -1,3 +1,29 @@
+Knot DNS 2.5.0-dev (2017-xx-xx)
+===============================
+
+Knot DNS 2.4.1 (2017-02-10)
+===========================
+
+Improvements:
+-------------
+ - Speed-up of rdata addition into a huge rrset
+ - Introduce check of minumum timeout for next refresh
+ - Dnsproxy module can forward all queries without local resolving
+
+Bugfixes:
+--------
+ - Transfer of a huge rrset goes into an infinite loop
+ - Huge response over TCP contains useless TC bit instead of SERVFAIL
+ - Failed to build utilities with disabled daemon
+ - Memory leaks during keys removal
+ - Rough TSIG packet reservation causes early truncation
+ - Minor out-of-bounds string termination write in rrset dump
+ - Server crash during stop if failed to open timers DB
+ - Failed to compile on OS X older than Sierra
+ - Poor minimum UDP-max-size configuration check
+ - Failed to receive one-record-per-message IXFR-style AXFR
+ - Kdig timeouts when receiving RCODE != NOERROR on subsequent transfer message
+
 Knot DNS 2.4.0 (2017-01-18)
 ===========================
 
