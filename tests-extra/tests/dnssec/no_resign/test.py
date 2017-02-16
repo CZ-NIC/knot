@@ -31,6 +31,9 @@ static_zone = t.zone("example.", storage=".")
 t.link(nsec_zone, master)
 t.link(static_zone, master)
 
+master.dnssec(nsec_zone).alg = "rsasha1"
+master.dnssec(static_zone).alg = "rsasha1"
+
 t.start()
 
 # Get zone serial.
@@ -40,10 +43,14 @@ old_static_serial = master.zone_wait(static_zone)
 # Enable autosigning.
 master.dnssec(nsec_zone).enable = True
 master.dnssec(static_zone).enable = True
+master.dnssec(nsec_zone).manual = True
+master.dnssec(static_zone).manual = True
 master.use_keys(nsec_zone)
 master.use_keys(static_zone)
 master.gen_confile()
 master.reload()
+
+t.sleep(10)
 
 new_nsec_serial = master.zone_wait(nsec_zone)
 new_static_serial = master.zone_wait(static_zone)
