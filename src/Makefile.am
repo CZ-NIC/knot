@@ -251,6 +251,10 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/kasp/kasp_db.h		\
 	knot/dnssec/kasp/kasp_zone.c		\
 	knot/dnssec/kasp/kasp_zone.h		\
+	knot/dnssec/kasp/keystate.c		\
+	knot/dnssec/kasp/keystate.h		\
+	knot/dnssec/kasp/keystore.c		\
+	knot/dnssec/kasp/keystore.h		\
 	knot/dnssec/nsec-chain.c		\
 	knot/dnssec/nsec-chain.h		\
 	knot/dnssec/nsec3-chain.c		\

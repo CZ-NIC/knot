@@ -238,6 +238,10 @@ src/knot/dnssec/kasp/kasp_db.c
 src/knot/dnssec/kasp/kasp_db.h
 src/knot/dnssec/kasp/kasp_zone.c
 src/knot/dnssec/kasp/kasp_zone.h
+src/knot/dnssec/kasp/keystate.c
+src/knot/dnssec/kasp/keystate.h
+src/knot/dnssec/kasp/keystore.c
+src/knot/dnssec/kasp/keystore.h
 src/knot/dnssec/nsec-chain.c
 src/knot/dnssec/nsec-chain.h
 src/knot/dnssec/nsec3-chain.c
