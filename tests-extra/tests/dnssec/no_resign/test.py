@@ -30,6 +30,10 @@ nsec_zone = t.zone_rnd(1, dnssec=True, nsec3=False)
 static_zone = t.zone("example.", storage=".")
 t.link(nsec_zone, master)
 t.link(static_zone, master)
+master.dnssec_import_json()
+
+master.dnssec(nsec_zone).alg = "rsasha1"
+master.dnssec(static_zone).alg = "rsasha1"
 
 master.dnssec(nsec_zone).alg = "rsasha1"
 master.dnssec(static_zone).alg = "rsasha1"
@@ -48,6 +52,7 @@ master.dnssec(static_zone).manual = True
 master.use_keys(nsec_zone)
 master.use_keys(static_zone)
 master.gen_confile()
+master.dnssec_import_json(force=True)
 master.reload()
 
 t.sleep(10)
