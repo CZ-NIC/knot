@@ -20,7 +20,6 @@
 
 #include <dnssec/error.h>
 #include "knot/conf/conf.h"
-#include "knot/dnssec/context.h"
 #include "options.h"
 #include "shared/print.h"
 
@@ -189,16 +188,16 @@ int options_zone_kasp_init(options_t *options, const char *zone_name,
 		return DNSSEC_EINVAL;
 	}
 
-	kdnssec_ctx_t ctx = {
+	kdnssecold_ctx_t ctx = {
 		.legacy = options->legacy
 	};
 
-	int ret = kdnssec_kasp_init(&ctx, options->kasp_dir, zone_name);
-	kdnssec_ctx_deinit(&ctx);
+	int ret = kdnssecold_kasp_init(&ctx, options->kasp_dir, zone_name);
+	kdnssecold_ctx_deinit(&ctx);
 	if (ret != DNSSEC_EOK) {
 		error("Failed to initialize KASP directory '%s'.", options->kasp_dir);
 		return ret;
 	}
 
-	return kdnssec_kasp(kasp, options->legacy);
+	return kdnssecold_kasp(kasp, options->legacy);
 }

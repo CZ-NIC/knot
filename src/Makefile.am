@@ -420,6 +420,8 @@ keymgr_SOURCES =				\
 	utils/keymgr/cmdparse/parameter.h	\
 	utils/keymgr/cmdparse/value.c		\
 	utils/keymgr/cmdparse/value.h		\
+	utils/keymgr/legacy/context.c		\
+	utils/keymgr/legacy/context.h		\
 	utils/keymgr/legacy/key.c		\
 	utils/keymgr/legacy/key.h		\
 	utils/keymgr/legacy/privkey.c		\

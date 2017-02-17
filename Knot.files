@@ -492,6 +492,8 @@ src/utils/keymgr/cmdparse/parameter.h
 src/utils/keymgr/cmdparse/value.c
 src/utils/keymgr/cmdparse/value.h
 src/utils/keymgr/keymgr.c
+src/utils/keymgr/legacy/context.c
+src/utils/keymgr/legacy/context.h
 src/utils/keymgr/legacy/key.c
 src/utils/keymgr/legacy/key.h
 src/utils/keymgr/legacy/privkey.c

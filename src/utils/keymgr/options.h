@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "knot/dnssec/context.h"
+#include "utils/keymgr/legacy/context.h"
 
 struct options {
 	bool legacy;
