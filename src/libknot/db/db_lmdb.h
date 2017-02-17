@@ -28,6 +28,7 @@ extern const unsigned KNOT_DB_LMDB_INTEGERKEY;
 extern const unsigned KNOT_DB_LMDB_NOSYNC;
 extern const unsigned KNOT_DB_LMDB_WRITEMAP;
 extern const unsigned KNOT_DB_LMDB_MAPASYNC;
+extern const unsigned KNOT_DB_LMDB_DUPSORT;
 
 /* Native options. */
 struct knot_db_lmdb_opts {
@@ -54,6 +55,7 @@ struct knot_db_lmdb_opts {
 const knot_db_api_t *knot_db_lmdb_api(void);
 
 /* LMDB specific operations. */
+int knot_db_lmdb_del_exact(knot_db_txn_t *txn, knot_db_val_t *key, knot_db_val_t *val);
 int knot_db_lmdb_txn_begin(knot_db_t *db, knot_db_txn_t *txn, knot_db_txn_t *parent,
                            unsigned flags);
 int knot_db_lmdb_iter_del(knot_db_iter_t *iter);

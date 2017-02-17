@@ -38,6 +38,7 @@ _public_ const unsigned KNOT_DB_LMDB_INTEGERKEY = MDB_INTEGERKEY;
 _public_ const unsigned KNOT_DB_LMDB_NOSYNC = MDB_NOSYNC;
 _public_ const unsigned KNOT_DB_LMDB_WRITEMAP = MDB_WRITEMAP;
 _public_ const unsigned KNOT_DB_LMDB_MAPASYNC = MDB_MAPASYNC;
+_public_ const unsigned KNOT_DB_LMDB_DUPSORT = MDB_DUPSORT;
 
 struct lmdb_env
 {
@@ -350,8 +351,9 @@ static knot_db_iter_t *iter_set(knot_db_iter_t *iter, knot_db_val_t *key, unsign
 		db_key.mv_data = key->data;
 		db_key.mv_size = key->len;
 	}
+	MDB_val unused_key = { 0, NULL }, unused_val = { 0, NULL };
 
-	int ret = mdb_cursor_get(cursor, key ? &db_key : NULL, NULL, op);
+	int ret = mdb_cursor_get(cursor, key ? &db_key : &unused_key, &unused_val, op);
 
 	/* LEQ is not supported in LMDB, workaround using GEQ. */
 	if (flags == KNOT_DB_LEQ && key) {
@@ -496,6 +498,21 @@ static int del(knot_db_txn_t *txn, knot_db_val_t *key)
 	struct lmdb_env *env = txn->db;
 	MDB_val db_key = { key->len, key->data };
 	MDB_val data = { 0, NULL };
+
+	int ret = mdb_del(txn->txn, env->dbi, &db_key, &data);
+	if (ret != MDB_SUCCESS) {
+		return lmdb_error_to_knot(ret);
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_db_lmdb_del_exact(knot_db_txn_t *txn, knot_db_val_t *key, knot_db_val_t *val)
+{
+	struct lmdb_env *env = txn->db;
+	MDB_val db_key = { key->len, key->data };
+	MDB_val data = { val->len, val->data };
 
 	int ret = mdb_del(txn->txn, env->dbi, &db_key, &data);
 	if (ret != MDB_SUCCESS) {
