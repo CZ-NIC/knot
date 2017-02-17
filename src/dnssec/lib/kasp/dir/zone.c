@@ -29,19 +29,7 @@
 
 /* -- key parameters ------------------------------------------------------- */
 
-/*!
- * Key parameters as writing in zone config file.
- */
-struct key_params {
-	char *id;
-	uint16_t keytag;
-	uint8_t algorithm;
-	dnssec_binary_t public_key;
-	bool is_ksk;
-	dnssec_kasp_key_timing_t timing;
-};
 
-typedef struct key_params key_params_t;
 
 /*!
  * Free allocated key parameters and clear the structure.

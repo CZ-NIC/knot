@@ -92,6 +92,31 @@
 struct dnssec_kasp_store_functions;
 
 /*!
+ * KASP key timing information.
+ */
+typedef struct dnssec_kasp_key_timing {
+	time_t created;		/*!< Time the key was generated/imported. */
+	time_t publish;		/*!< Time of DNSKEY record publication. */
+	time_t active;		/*!< Start of RRSIG records generating. */
+	time_t retire;		/*!< End of RRSIG records generating. */
+	time_t remove;		/*!< Time of DNSKEY record removal. */
+} dnssec_kasp_key_timing_t;
+
+/*!
+ * Key parameters as writing in zone config file.
+ */
+struct key_params {
+	char *id;
+	uint16_t keytag;
+	uint8_t algorithm;
+	dnssec_binary_t public_key;
+	bool is_ksk;
+	struct dnssec_kasp_key_timing timing;
+};
+
+typedef struct key_params key_params_t;
+
+/*!
  * DNSSEC KASP reference.
  */
 typedef struct dnssec_kasp {
@@ -219,16 +244,6 @@ int dnssec_kasp_zone_list(dnssec_kasp_t *kasp, dnssec_list_t **list);
  */
 int dnssec_kasp_zone_exists(dnssec_kasp_t *kasp, const char *zone_name);
 
-/*!
- * KASP key timing information.
- */
-typedef struct dnssec_kasp_key_timing {
-	time_t created;		/*!< Time the key was generated/imported. */
-	time_t publish;		/*!< Time of DNSKEY record publication. */
-	time_t active;		/*!< Start of RRSIG records generating. */
-	time_t retire;		/*!< End of RRSIG records generating. */
-	time_t remove;		/*!< Time of DNSKEY record removal. */
-} dnssec_kasp_key_timing_t;
 
 /*!
  * Zone key.
