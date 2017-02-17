@@ -19,6 +19,7 @@
 #include <lmdb.h>
 #endif
 
+#include "dnssec/lib/dnssec/error.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
 #include "dnssec/error.h"
@@ -145,6 +146,16 @@ static const struct error errors[] = {
 	/* Processing errors. */
 	{ KNOT_LAYER_ERROR, "processing layer error" },
 
+	/* DNSSEC errors. */
+	{ KNOT_INVALID_PUBLIC_KEY,    "invalid public key" },
+	{ KNOT_INVALID_PRIVATE_KEY,   "invalid private key" },
+	{ KNOT_INVALID_KEY_ALGORITHM, "invalid key algorithm" },
+	{ KNOT_INVALID_KEY_SIZE,      "invalid key size" },
+	{ KNOT_INVALID_KEY_ID,        "invalid key ID" },
+	{ KNOT_INVALID_KEY_NAME,      "invalid key name" },
+	{ KNOT_NO_PUBLIC_KEY,         "no public key" },
+	{ KNOT_NO_PRIVATE_KEY,        "no private key" },
+
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
 
@@ -172,6 +183,30 @@ static const char *fallback_message(int code)
 		buffer[0] = '\0';
 	}
 	return buffer;
+}
+
+_public_
+int knot_error_from_libdnssec(int libdnssec_errcode)
+{
+	switch (libdnssec_errcode) {
+	case DNSSEC_ERROR:
+		return KNOT_ERROR;
+	case DNSSEC_MALFORMED_DATA:
+		return KNOT_EMALF;
+	case DNSSEC_OUT_OF_RANGE:
+		return KNOT_ERANGE;
+	case DNSSEC_NOT_FOUND:
+		return KNOT_ENOENT;
+	case DNSSEC_NO_PUBLIC_KEY:
+	case DNSSEC_NO_PRIVATE_KEY:
+		return KNOT_DNSSEC_ENOKEY;
+	// EOK, EINVAL, ENOMEM and ENOENT are identical, no need to translate
+	case DNSSEC_INVALID_PUBLIC_KEY ... DNSSEC_INVALID_KEY_NAME:
+		return libdnssec_errcode
+		       - DNSSEC_INVALID_PUBLIC_KEY + KNOT_INVALID_PUBLIC_KEY;
+	default:
+		return libdnssec_errcode;
+	}
 }
 
 _public_
