@@ -234,6 +234,10 @@ src/knot/ctl/process.c
 src/knot/ctl/process.h
 src/knot/dnssec/context.c
 src/knot/dnssec/context.h
+src/knot/dnssec/kasp/kasp_db.c
+src/knot/dnssec/kasp/kasp_db.h
+src/knot/dnssec/kasp/kasp_zone.c
+src/knot/dnssec/kasp/kasp_zone.h
 src/knot/dnssec/nsec-chain.c
 src/knot/dnssec/nsec-chain.h
 src/knot/dnssec/nsec3-chain.c
@@ -600,6 +604,7 @@ tests/test_confio.c
 tests/test_dthreads.c
 tests/test_fdset.c
 tests/test_journal.c
+tests/test_kasp_db.c
 tests/test_node.c
 tests/test_process_query.c
 tests/test_query_module.c

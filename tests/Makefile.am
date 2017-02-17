@@ -67,6 +67,7 @@ check_PROGRAMS += \
 	test_dthreads			\
 	test_fdset			\
 	test_journal			\
+	test_kasp_db			\
 	test_node			\
 	test_process_query		\
 	test_query_module		\
