@@ -592,6 +592,15 @@ static inline char* conf_journalfile(
 	return conf_journalfile_txn(conf, &conf->read_txn);
 }
 
+char* conf_kaspdir_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn);
+static inline char* conf_kaspdir(
+	conf_t *conf)
+{
+	return conf_kaspdir_txn(conf, &conf->read_txn);
+}
+
 char* conf_old_journalfile(
 	conf_t *conf,
 	const knot_dname_t *zone

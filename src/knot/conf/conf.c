@@ -1078,6 +1078,19 @@ char* conf_journalfile_txn(
 	return journaldir;
 }
 
+char* conf_kaspdir_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_default_get_txn(conf, txn, C_STORAGE);
+	char *storage = conf_abs_path(&val, NULL);
+	val = conf_default_get_txn(conf, txn, C_KASP_DB);
+	char *kaspdir = conf_abs_path(&val, storage);
+	free(storage);
+
+	return kaspdir;
+}
+
 size_t conf_udp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)

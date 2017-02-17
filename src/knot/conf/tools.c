@@ -509,6 +509,8 @@ int check_template(
 	CHECK_DFLT(C_JOURNAL_DB, "journal database path");
 	CHECK_DFLT(C_JOURNAL_DB_MODE, "journal database mode");
 	CHECK_DFLT(C_MAX_JOURNAL_DB_SIZE, "journal database maximum size");
+	CHECK_DFLT(C_KASP_DB, "KASP database path");
+	CHECK_DFLT(C_KASP_DB_MAPSIZE, "KASP database mapsize");
 
 	return KNOT_EOK;
 }
