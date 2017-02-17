@@ -36,6 +36,7 @@ knot = t.server("knot")
 keys_archive = os.path.join(t.data_dir, "keys.tgz")
 with tarfile.open(keys_archive, "r:*") as tar:
     tar.extractall(knot.keydir)
+knot.dnssec_import_json()
 
 # setup zones
 

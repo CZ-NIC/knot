@@ -37,6 +37,7 @@ knot.dnssec(zones[-1]).nsec3 = True
 knot.dnssec(zones[-1]).single_type_signing = True
 
 knot.gen_confile()
+knot.dnssec_import_json()
 knot.reload()
 t.sleep(2)
 knot.flush()
