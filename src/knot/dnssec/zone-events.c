@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "dnssec/error.h"
-#include "dnssec/event.h"
 #include "dnssec/random.h"
 #include "contrib/macros.h"
 #include "libknot/libknot.h"

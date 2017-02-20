@@ -457,17 +457,6 @@ of the limitations will be hopefully removed in the near future.
   - Legacy key export is not implemented.
   - DS record export is not implemented.
 
-.. _dnssec-keyusage:
-
-DNSSEC keys used by multiple zones 
-----------------------------------
-
-Using same key for multiple zones with automatic key management is possible. 
-However, all zones must be listed in keyusage (keys directory) or they will be deleted,
-when they retire in any zone.
-
-If keys are added manually as published, but not active (for next rollover event), they are added automatically.
-
 Performance Tuning
 ==================
 
