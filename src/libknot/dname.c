@@ -463,10 +463,11 @@ int knot_dname_to_lower(knot_dname_t *name)
 	if (name == NULL)
 		return KNOT_EINVAL;
 
-	/*! \todo Faster with \xdfdf mask. */
 	while (*name != '\0') {
-		for (uint8_t i = 0; i < *name; ++i)
-			name[1 + i] = knot_tolower(name[1 + i]);
+		uint8_t len = *name;
+		for (uint8_t i = 1; i <= len; ++i) {
+			name[i] = knot_tolower(name[i]);
+		}
 		name = (uint8_t *)knot_wire_next_label(name, NULL);
 		if (name == NULL) { /* Must not be used on compressed names. */
 			return KNOT_EMALF;
