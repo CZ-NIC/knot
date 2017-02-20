@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -381,7 +381,7 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
  *
  * Example:
  * Name: lake.example.com. Wire: \x04lake\x07example\x03com\x00
- * Lookup format com\x00example\x00lake\x00
+ * Lookup format \x11com\x00example\x00lake\x00
  *
  * Maximum length of such a domain name is KNOT_DNAME_MAXLEN characters.
  *

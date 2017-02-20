@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -791,28 +791,28 @@ int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 	uint8_t *len = dst++;
 	*len = '\0';
 	*dst = '\0';
-	const uint8_t* l = src;
-	/*! \todo This could be made as offsets to pkt? */
+	const uint8_t *l = src;
 	const uint8_t* lstack[KNOT_DNAME_MAXLABELS];
 	const uint8_t **sp = lstack;
-	while(*l != 0) { /* build label stack */
+	while (*l != 0) { /* build label stack */
 		*sp++ = l;
 		l = knot_wire_next_label(l, pkt);
 	}
-	while(sp != lstack) {          /* consume stack */
+	while (sp != lstack) { /* consume stack */
 		l = *--sp; /* fetch rightmost label */
-		memcpy(dst, l+1, *l);  /* write label */
-		for (int i = 0; i < *l; ++i) {   /* convert to lowercase */
-			dst[i] = knot_tolower(dst[i]);
+		uint8_t label_len = *l++;
+		for (int i = 0; i < label_len; ++i) {
+			dst[i] = knot_tolower(l[i]); /* write label in lowercase */
 		}
-		dst += *l;
-		*dst++ = '\0';         /* label separator */
-		*len += *l + 1;
+		dst += label_len;
+		*dst++ = '\0'; /* label separator */
+		*len += label_len + 1;
 	}
 
 	/* root label special case */
-	if (*len == 0)
+	if (*len == 0) {
 		*len = 1; /* \x00 */
+	}
 
 	return KNOT_EOK;
 }
