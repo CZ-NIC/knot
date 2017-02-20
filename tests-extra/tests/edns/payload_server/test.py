@@ -48,16 +48,16 @@ server6.gen_confile()
 server6.reload()
 
 # Check IP specific limit.
-resp = server4.dig("1220resp.flags", "TXT", udp=True, bufsize=4069)
+resp = server4.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
 resp.check(noflags="TC")
 
-resp = server4.dig("1221resp.flags", "TXT", udp=True, bufsize=4069)
+resp = server4.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
 resp.check(flags="TC")
 
-resp = server6.dig("1220resp.flags", "TXT", udp=True, bufsize=4069)
+resp = server6.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
 resp.check(noflags="TC")
 
-resp = server6.dig("1221resp.flags", "TXT", udp=True, bufsize=4069)
+resp = server6.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
 resp.check(flags="TC")
 
 t.end()
