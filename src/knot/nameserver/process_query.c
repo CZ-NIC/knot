@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -410,12 +410,13 @@ static void set_rcode_to_packet(knot_pkt_t *pkt, struct query_data *qdata)
 
 static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
-	assert(pkt && ctx);
+	assert(ctx && pkt);
+
 	struct query_data *qdata = QUERY_DATA(ctx);
 
 	/* Initialize response from query packet. */
 	knot_pkt_t *query = qdata->query;
-	knot_pkt_init_response(pkt, query);
+	(void)knot_pkt_init_response(pkt, query);
 	knot_wire_clear_cd(pkt->wire);
 
 	/* Set TC bit if required. */
@@ -426,31 +427,45 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	/* Restore original QNAME. */
 	process_query_qname_case_restore(pkt, qdata);
 
-	/* Add OPT and TSIG (best effort, send reply anyway if fails). */
+	/* Move to Additionals to add OPT and TSIG. */
 	if (pkt->current != KNOT_ADDITIONAL) {
-		knot_pkt_begin(pkt, KNOT_ADDITIONAL);
+		(void)knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 	}
 
 	/* Put OPT RR to the additional section. */
-	if (answer_edns_reserve(pkt, qdata) == KNOT_EOK) {
-		(void)answer_edns_put(pkt, qdata);
-	} else {
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
+	if (answer_edns_reserve(pkt, qdata) != KNOT_EOK ||
+	    answer_edns_put(pkt, qdata) != KNOT_EOK) {
+		qdata->rcode = KNOT_RCODE_FORMERR;
 	}
 
 	/* Set final RCODE to packet. */
+	if (qdata->rcode == KNOT_RCODE_NOERROR) {
+		/* Default RCODE is SERVFAIL if not otherwise specified. */
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
+	}
 	set_rcode_to_packet(pkt, qdata);
 
 	/* Transaction security (if applicable). */
-	(void)process_query_sign_response(pkt, qdata);
+	if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
+		set_rcode_to_packet(pkt, qdata);
+	}
 
 	return KNOT_STATE_DONE;
 }
 
-/*! \brief Helper for repetitive code. */
-#define PROCESS_STAGE(plan, query_stage, step, next_state, qdata) \
+#define PROCESS_BEGIN(plan, step, next_state, qdata) \
 	if (plan != NULL) { \
-		WALK_LIST(step, plan->stage[query_stage]) { \
+		WALK_LIST(step, plan->stage[QPLAN_BEGIN]) { \
+			next_state = step->process(next_state, pkt, qdata, step->ctx); \
+			if (next_state == KNOT_STATE_FAIL) { \
+				goto finish; \
+			} \
+		} \
+	}
+
+#define PROCESS_END(plan, step, next_state, qdata) \
+	if (plan != NULL) { \
+		WALK_LIST(step, plan->stage[QPLAN_END]) { \
 			next_state = step->process(next_state, pkt, qdata, step->ctx); \
 			if (next_state == KNOT_STATE_FAIL) { \
 				next_state = process_query_err(ctx, pkt); \
@@ -490,11 +505,11 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Before query processing code. */
-	PROCESS_STAGE(plan, QPLAN_BEGIN, step, next_state, qdata);
-	PROCESS_STAGE(zone_plan, QPLAN_BEGIN, step, next_state, qdata);
+	PROCESS_BEGIN(plan, step, next_state, qdata);
+	PROCESS_BEGIN(zone_plan, step, next_state, qdata);
 
 	/* Answer based on qclass. */
-	if (next_state != KNOT_STATE_DONE) {
+	if (next_state == KNOT_STATE_PRODUCE) {
 		switch (knot_pkt_qclass(pkt)) {
 		case KNOT_CLASS_CH:
 			next_state = query_chaos(pkt, ctx);
@@ -512,16 +527,17 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Postprocessing. */
 	if (next_state == KNOT_STATE_DONE || next_state == KNOT_STATE_PRODUCE) {
-
 		/* Restore original QNAME. */
 		process_query_qname_case_restore(pkt, qdata);
 
+		/* Move to Additionals to add OPT and TSIG. */
 		if (pkt->current != KNOT_ADDITIONAL) {
-			knot_pkt_begin(pkt, KNOT_ADDITIONAL);
+			(void)knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 		}
 
 		/* Put OPT RR to the additional section. */
 		if (answer_edns_put(pkt, qdata) != KNOT_EOK) {
+			qdata->rcode = KNOT_RCODE_FORMERR;
 			next_state = KNOT_STATE_FAIL;
 			goto finish;
 		}
@@ -534,23 +550,16 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 finish:
-	/* Error processing. */
-	switch (next_state) {
-	case KNOT_STATE_FAIL:
-		/* Default RCODE is SERVFAIL if not otherwise specified. */
-		if (qdata->rcode == KNOT_RCODE_NOERROR) {
-			qdata->rcode = KNOT_RCODE_SERVFAIL;
-		}
-		next_state = process_query_err(ctx, pkt);
-		break;
-	default:
-		/* Store Extended RCODE - divide between header and OPT. */
+	if (next_state != KNOT_STATE_FAIL) {
 		set_rcode_to_packet(pkt, qdata);
+	} else {
+		/* Error processing. */
+		next_state = process_query_err(ctx, pkt);
 	}
 
 	/* After query processing code. */
-	PROCESS_STAGE(zone_plan, QPLAN_END, step, next_state, qdata);
-	PROCESS_STAGE(plan, QPLAN_END, step, next_state, qdata);
+	PROCESS_END(plan, step, next_state, qdata);
+	PROCESS_END(zone_plan, step, next_state, qdata);
 
 	rcu_read_unlock();
 
@@ -698,7 +707,7 @@ int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 		}
 	}
 
-	return ret;
+	return KNOT_EOK;
 
 	/* Server failure in signing. */
 fail:
