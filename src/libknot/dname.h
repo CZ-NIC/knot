@@ -281,7 +281,11 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 void knot_dname_free(knot_dname_t **name, knot_mm_t *mm);
 
 /*!
- * \brief Compares two domain names (case sensitive).
+ * \brief Compares two domain names by labels (case sensitive).
+ *
+ * \warning Since it would be hard to catch errors, because negative value
+ *          is also a good result, there are assertions that expect neither
+ *          d1 or d2 to be NULL.
  *
  * \param d1 First domain name.
  * \param d2 Second domain name.
@@ -292,27 +296,6 @@ void knot_dname_free(knot_dname_t **name, knot_mm_t *mm);
  */
 _pure_
 int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2);
-
-/*!
- * \brief Compare domain name by labels.
- *
- * \todo No case insensitivity, flags...
- *
- * \warning Since it would be hard to catch errors, because negative value
- *          is also a good result, there are assertions that expect neither
- *          d1 or d2 to be NULL.
- *
- * \param d1 Domain name.
- * \param d2 Domain name.
- * \param pkt Packet wire related to names (or NULL).
- *
- * \retval 0 if they are identical
- * \retval 1 if d1 > d2
- * \retval -1 if d1 < d2
- */
-_pure_
-int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
-                        const uint8_t *pkt);
 
 /*!
  * \brief Compares two domain names (case sensitive).
