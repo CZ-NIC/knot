@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,8 +33,8 @@ static bool compr_label_match(const uint8_t *n, const uint8_t *p)
 	}
 
 	uint8_t len = *n;
-	for (uint8_t i = 0; i < len; ++i) {
-		if (knot_tolower(n[1 + i]) != knot_tolower(p[1 + i])) {
+	for (uint8_t i = 1; i <= len; ++i) {
+		if (knot_tolower(n[i]) != knot_tolower(p[i])) {
 			return false;
 		}
 	}
@@ -96,7 +96,7 @@ int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
 		const knot_dname_t *next_suffix = knot_wire_next_label(suffix, compr->wire);
 
 		/* Two labels match, extend suffix length. */
-		if (dname[0] != suffix[0] || !compr_label_match(dname, suffix)) {
+		if (!compr_label_match(dname, suffix)) {
 			/* If they don't match, write unmatched labels. */
 			uint16_t mismatch_len = (dname - match_begin) + (*dname + 1);
 			WRITE_LABEL(dst, written, match_begin, max, mismatch_len);

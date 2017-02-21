@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -281,7 +281,11 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 void knot_dname_free(knot_dname_t **name, knot_mm_t *mm);
 
 /*!
- * \brief Compares two domain names (case sensitive).
+ * \brief Compares two domain names by labels (case sensitive).
+ *
+ * \warning Since it would be hard to catch errors, because negative value
+ *          is also a good result, there are assertions that expect neither
+ *          d1 or d2 to be NULL.
  *
  * \param d1 First domain name.
  * \param d2 Second domain name.
@@ -292,27 +296,6 @@ void knot_dname_free(knot_dname_t **name, knot_mm_t *mm);
  */
 _pure_
 int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2);
-
-/*!
- * \brief Compare domain name by labels.
- *
- * \todo No case insensitivity, flags...
- *
- * \warning Since it would be hard to catch errors, because negative value
- *          is also a good result, there are assertions that expect neither
- *          d1 or d2 to be NULL.
- *
- * \param d1 Domain name.
- * \param d2 Domain name.
- * \param pkt Packet wire related to names (or NULL).
- *
- * \retval 0 if they are identical
- * \retval 1 if d1 > d2
- * \retval -1 if d1 < d2
- */
-_pure_
-int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
-                        const uint8_t *pkt);
 
 /*!
  * \brief Compares two domain names (case sensitive).
@@ -381,7 +364,7 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
  *
  * Example:
  * Name: lake.example.com. Wire: \x04lake\x07example\x03com\x00
- * Lookup format com\x00example\x00lake\x00
+ * Lookup format \x11com\x00example\x00lake\x00
  *
  * Maximum length of such a domain name is KNOT_DNAME_MAXLEN characters.
  *

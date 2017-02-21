@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -463,10 +463,11 @@ int knot_dname_to_lower(knot_dname_t *name)
 	if (name == NULL)
 		return KNOT_EINVAL;
 
-	/*! \todo Faster with \xdfdf mask. */
 	while (*name != '\0') {
-		for (uint8_t i = 0; i < *name; ++i)
-			name[1 + i] = knot_tolower(name[1 + i]);
+		uint8_t len = *name;
+		for (uint8_t i = 1; i <= len; ++i) {
+			name[i] = knot_tolower(name[i]);
+		}
 		name = (uint8_t *)knot_wire_next_label(name, NULL);
 		if (name == NULL) { /* Must not be used on compressed names. */
 			return KNOT_EMALF;
@@ -654,38 +655,34 @@ void knot_dname_free(knot_dname_t **name, knot_mm_t *mm)
 _public_
 int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	return knot_dname_cmp_wire(d1, d2, NULL);
-}
-
-/*----------------------------------------------------------------------------*/
-_public_
-int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
-                        const uint8_t *pkt)
-{
 	/* This would be hard to catch since -1 is a good result, assert instead. */
 	assert(d1 != NULL || d2 != NULL);
 
 	/* Convert to lookup format. */
 	uint8_t d1_lf[KNOT_DNAME_MAXLEN], d2_lf[KNOT_DNAME_MAXLEN];
-	if (knot_dname_lf(d1_lf, d1, pkt) < 0 || knot_dname_lf(d2_lf, d2, pkt) < 0) {
+	if (knot_dname_lf(d1_lf, d1, NULL) < 0 || knot_dname_lf(d2_lf, d2, NULL) < 0) {
 		assert(0); /* This must not happened as the d1, d2 are checked. */
 		return KNOT_EINVAL;
 	}
 
 	/* Compare common part. */
 	uint8_t common = d1_lf[0];
-	if (common > d2_lf[0])
+	if (common > d2_lf[0]) {
 		common = d2_lf[0];
-	int ret = memcmp(d1_lf+1, d2_lf+1, common);
-	if (ret != 0)
+	}
+	int ret = memcmp(d1_lf + 1, d2_lf + 1, common);
+	if (ret != 0) {
 		return ret;
+	}
 
 	/* If they match, compare lengths. */
-	if (d1_lf[0] < d2_lf[0])
+	if (d1_lf[0] < d2_lf[0]) {
 		return -1;
-	if (d1_lf[0] > d2_lf[0])
+	} else if (d1_lf[0] > d2_lf[0]) {
 		return 1;
-	return 0;
+	} else {
+		return 0;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -791,28 +788,28 @@ int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 	uint8_t *len = dst++;
 	*len = '\0';
 	*dst = '\0';
-	const uint8_t* l = src;
-	/*! \todo This could be made as offsets to pkt? */
+	const uint8_t *l = src;
 	const uint8_t* lstack[KNOT_DNAME_MAXLABELS];
 	const uint8_t **sp = lstack;
-	while(*l != 0) { /* build label stack */
+	while (*l != 0) { /* build label stack */
 		*sp++ = l;
 		l = knot_wire_next_label(l, pkt);
 	}
-	while(sp != lstack) {          /* consume stack */
+	while (sp != lstack) { /* consume stack */
 		l = *--sp; /* fetch rightmost label */
-		memcpy(dst, l+1, *l);  /* write label */
-		for (int i = 0; i < *l; ++i) {   /* convert to lowercase */
-			dst[i] = knot_tolower(dst[i]);
+		uint8_t label_len = *l++;
+		for (int i = 0; i < label_len; ++i) {
+			dst[i] = knot_tolower(l[i]); /* write label in lowercase */
 		}
-		dst += *l;
-		*dst++ = '\0';         /* label separator */
-		*len += *l + 1;
+		dst += label_len;
+		*dst++ = '\0'; /* label separator */
+		*len += label_len + 1;
 	}
 
 	/* root label special case */
-	if (*len == 0)
+	if (*len == 0) {
 		*len = 1; /* \x00 */
+	}
 
 	return KNOT_EOK;
 }
