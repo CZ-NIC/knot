@@ -763,6 +763,7 @@
 			    zs_parse_all(ss) != 0) {
 				// File internal errors are handled by error callback.
 				if (ss->error.counter > 0) {
+					s->error.counter += ss->error.counter;
 					ERR(ZS_UNPROCESSED_INCLUDE);
 				// General include file error.
 				} else {
