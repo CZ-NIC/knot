@@ -35,12 +35,13 @@ Main commands
   List zones configured in KASP db together with key IDs of the DNSSEC keys
   belonging to each of the zones.
 
-**-l**, **--list** *KASP_db_dir*
+**-l**, **--list** *KASP_db_dir* *filter*
   List DNSSEC keys stored in the KASP db together with their parameters
   (key ID, key tag, is KSK ?, timers).
 
 **-i**, **--import** *KASP_db_dir*
   Import the legacy JSON-format KASP database into the current LMDB-backed one.
+  (You can import multiple databases at once by repeating this option.)
 
 **-d**, **--ds** *KASP_db_dir* *zone_name* *key_spec*
   Calculate and print DS record for given key (used all SHA1, SHA256 and SHA384 digests).
@@ -61,6 +62,11 @@ Parameters
 
 *key_spec*
   Either the key tag, key ID, or a prefix of key ID.
+
+*filter*
+  Following key attributes delimited by '&' character: all, ksk, zsk, published,
+  active, retired. E.g. "all" means apply no filter; "zsk&active" filters the output
+  to display just ZSKs which are active.
 
 *param_name*
   A name for key parameter in question. Possible parameters are: `keytag`,
@@ -83,6 +89,15 @@ Examples
 2. Set retire time for a specified key to 10 hours ahead::
 
     $ pykeymgr.py -s ${knot_data_dir}/keys example.zone. 5a701f91 retire now+10h
+
+3. Display all published KSKs (for all zones)::
+
+    $ pykeymgr.py -l ${knot_data_dir}/keys 'published&ksk'
+
+4. Prepare DS records from key specified by tag (for all sha1, sha256, and sha384
+   digest algorithms)::
+
+    $ pykeymgr.py -d ${knot_data_dir}/keys 58041
 
 See Also
 --------

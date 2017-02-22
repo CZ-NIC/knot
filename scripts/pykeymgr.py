@@ -156,7 +156,10 @@ class Keyparams:
 
 	def getTimers(self):
 		self._check()
-		return [ from_bytes(self.raw[x:y]) for _, x, y in self.timers_dict.values() ]
+		res = [ 0, 0, 0, 0, 0 ]
+		for i, x, y in self.timers_dict.values():
+			res[i] = from_bytes(self.raw[x:y])
+		return res
 
 	def getTimersString(self):
 		self._check()
@@ -218,6 +221,26 @@ class Keyparams:
 			return
 		return zone_str + ' DS ' + str(self.getKeytag()) + ' ' + str(self.getAlgorithm()) + algno + ds_hash
 
+	def isPublished(self, moment):
+		tmrs = self.getTimers()
+		if tmrs[self.timers_dict["publish"][0]] <= moment:
+			if moment < tmrs[self.timers_dict["remove"][0]]:
+				return True
+		return False
+
+	def isActive(self, moment):
+		tmrs = self.getTimers()
+		if tmrs[self.timers_dict["active"][0]] <= moment:
+			if moment < tmrs[self.timers_dict["retire"][0]]:
+				return True
+		return False
+
+	def isRetired(self, moment):
+		tmrs = self.getTimers()
+		if tmrs[self.timers_dict["retire"][0]] <= moment:
+			return True
+		return False
+
 # static: just for use in following method
 def arr_ind2unix(arr, ind, defaul):
 	try:
@@ -247,7 +270,7 @@ def import_file(fname, env, db_keys, db_zones):
 				dbk2 = bytearray(zname)
 				dbk2.extend(b"nsec3salt_created")
 				dbk2.append(0)
-				dbv2 = to_bytes(arr_ind2unix(keys, "nsec3_salt_created"), 8)
+				dbv2 = to_bytes(arr_ind2unix(keys, "nsec3_salt_created", 0), 8)
 				txn_keys.put(dbk2, dbv2, dupdata=False, overwrite=True)
 		except (KeyError, AttributeError):
 			pass # nsec3salt not configured or set to null, no problem
@@ -314,11 +337,13 @@ def zone2keyids(dirname, zone_str):
 	return ret
 
 def key_matches(keyid, keyparam, key_spec, attrs):
-	base_key_tag = -1 if re.match(r"^\d+$", key_spec) is None else int(key_spec)
-	if len(key_spec) < 6 or not keyid.startswith(key_spec): # key id prefix not matches
-		if keyparam.getKeytag() != base_key_tag: # keytag not matches
-			return False
+	if key_spec is not None:
+		base_key_tag = -1 if re.match(r"^\d+$", key_spec) is None else int(key_spec)
+		if len(key_spec) < 6 or not keyid.startswith(key_spec): # key id prefix not matches
+			if keyparam.getKeytag() != base_key_tag: # keytag not matches
+				return False
 
+	now = int(time.time())
 	for attr in attrs.lower().split('&'):
 		if attr == "all" or attr == "":
 			pass
@@ -326,7 +351,13 @@ def key_matches(keyid, keyparam, key_spec, attrs):
 			return False
 		elif attr == "zsk" and keyparam.isKSK():
 			return False
-		else:
+		elif attr == "published" and not keyparam.isPublished(now):
+			return False
+		elif attr == "active" and not keyparam.isActive(now):
+			return False
+		elif attr == "retired" and not keyparam.isRetired(now):
+			return False
+		elif attr not in ("ksk", "zsk", "published", "active", "retired"):
 			print "Warning: unknown key attribute", attr
 			return False
 	return True
@@ -365,19 +396,22 @@ def calculate_ds(dirname, zone_str, key_spec):
 				return
 	print "Error finding specified key"
 
-def list_keys(dirname):
+def list_keys(dirname, keyattr):
 	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
 	db_keys = env.open_db("keys_db")
 	with lmdb.Transaction(env, db_keys, write=False) as txn_keys:
 		for k, v in txn_keys.cursor():
 			try:
 				kp = Keyparams(v)
-				print "id=%s ksk=%s tag=%i timers:" % (k, ("yes" if kp.isKSK() else "no"),
-				      kp.getKeytag()), kp.getTimersString()
+				if key_matches(k, kp, None, keyattr):
+					print ("id=%s ksk=%s tag=%i timers:" %
+					      (k, ("yes" if kp.isKSK() else "no"),
+					      kp.getKeytag())), kp.getTimersString()
 			except AssertionError:
 				pass # some key-val which is not proper key param
 
 def list_zones(dirname):
+	print "dirname:", dirname
 	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
 	db_zones = env.open_db("zones_db", dupsort=True)
 	zonedict = dict()
@@ -399,14 +433,15 @@ def main():
 	                                 formatter_class=argparse.RawTextHelpFormatter)
 	parser.add_argument("-i", "--import", action="append", nargs="?", dest="importdir",
 	                    help='''Import zone-key configuration from JSON.
-Syntax: -i <key_dir>''')
+Syntax: -i <key_dir>
+(You can import multiple key_dirs at once by repeating this option.)''')
 	parser.add_argument("-s", "--set", action="append", nargs=5, dest="setparam",
 	                    help='''Zone-key set params.
 Syntax: -s <key_dir> <zone_name> <key_id|key_tag> <parameter> <new_value>''')
-	parser.add_argument("-l", "--list", action="append", nargs="?", dest="listdir",
+	parser.add_argument("-l", "--list", action="append", nargs=2, dest="listdir",
 	                    help='''List zone-key configuration (no key-zone relation).
-Syntax: -l <key_dir>''')
-	parser.add_argument("-z", "--zones", action="append", nargs="?", dest="zonesdir",
+Syntax: -l <key_dir> <filter>''')
+	parser.add_argument("-z", "--zones", action="append", nargs=1, dest="zonesdir",
 	                    help='''List zones together with key IDs belonging to them.
 Syntax: -z <key_dir>''')
 	parser.add_argument("-d", "--ds", action="append", nargs=3, dest="ds",
@@ -426,22 +461,12 @@ Syntax: -d <key_dir> <zone_name> <key_id|key_tag>''')
 			import_dir(dirn)
 			
 	if args.listdir is not None:
-		if isinstance(args.listdir, (list, tuple)):
-			listdir = args.listdir
-		else:
-			listdir = [args.listdir]
-
-		for dirn in listdir:
-			list_keys(dirn)
+		for dirn, filte in args.listdir:
+			list_keys(dirn, filte)
 
 	if args.zonesdir is not None:
-		if isinstance(args.zonesdir, (list, tuple)):
-			zonesdir = args.zonesdir
-		else:
-			zonesdir = [args.zonesdir]
-
-		for dirn in zonesdir:
-			list_zones(dirn)
+		for dirn in args.zonesdir:
+			list_zones(dirn[0])
 
 	if args.setparam is not None:	
 		for dirn, zone, key, parmn, val in args.setparam:
