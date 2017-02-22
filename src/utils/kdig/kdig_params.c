@@ -1922,15 +1922,18 @@ static int parse_token(const char *value, kdig_params_t *params)
 	}
 
 	// Try to guess the meaning of the token.
-	if (parse_type(value, query) == KNOT_EOK) {
+	if (strlen(value) == 0) {
+		ERR("invalid empty parameter\n");
+	} else if (parse_type(value, query) == KNOT_EOK) {
 		return KNOT_EOK;
 	} else if (parse_class(value, query) == KNOT_EOK) {
 		return KNOT_EOK;
 	} else if (parse_name(value, &params->queries, params->config) == KNOT_EOK) {
 		return KNOT_EOK;
+	} else {
+		ERR("invalid parameter: %s\n", value);
 	}
 
-	ERR("invalid parameter: %s\n", value);
 	return KNOT_EINVAL;
 }
 
