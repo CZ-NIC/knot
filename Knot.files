@@ -503,6 +503,11 @@ src/utils/khost/khost_main.c
 src/utils/khost/khost_params.c
 src/utils/khost/khost_params.h
 src/utils/kjournalprint/main.c
+src/utils/kkeymgr/bind_privkey.c
+src/utils/kkeymgr/bind_privkey.h
+src/utils/kkeymgr/functions.c
+src/utils/kkeymgr/functions.h
+src/utils/kkeymgr/main.c
 src/utils/knot1to2/cf-lex.c
 src/utils/knot1to2/cf-lex.l
 src/utils/knot1to2/cf-parse.tab.c
