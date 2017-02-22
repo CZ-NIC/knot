@@ -75,6 +75,7 @@
 /src/keymgr
 /src/khost
 /src/kjournalprint
+/src/kkeymgr
 /src/knot1to2
 /src/knotc
 /src/knotd

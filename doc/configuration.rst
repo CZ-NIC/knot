@@ -88,7 +88,7 @@ Access control list (ACL)
 
 An ACL list specifies which remotes are allowed to send the server a specific
 request. A remote can be a single IP address or a network subnet. Also a TSIG
-key can be assigned (see :doc:`keymgr <man_keymgr>` how to generate a TSIG key).
+key can be assigned (see :doc:`kkeymgr <man_kkeymgr>` how to generate a TSIG key).
 
 With no ACL rule, all the actions are denied for the zone. Each ACL rule
 can allow one or more actions for given address/subnet/TSIG, or deny them.
@@ -361,7 +361,7 @@ with manual key management flag has to be set::
       dnssec-signing: on
       dnssec-policy: manual
 
-To generate signing keys, use the :doc:`keymgr <man_keymgr>` utility.
+To generate signing keys, use the :doc:`kkeymgr <man_kkeymgr>` utility.
 Let's use the Single-Type Signing scheme with two algorithms. Run:
 
 .. code-block:: console
