@@ -97,17 +97,18 @@ class Keyparams:
 
 	def __init__(self, raw_bytearray):
 		self.raw = bytearray(raw_bytearray)
-		self.timers_dict = { "created" : [ 0, 12, 20 ],
-		                     "publish" : [ 1, 20, 28 ],
-		                     "active"  : [ 2, 28, 36 ],
-		                     "retire"  : [ 3, 36, 44 ],
-		                     "remove"  : [ 4, 44, 52 ] }
+		self.timers_dict = { "created" : [ 0, 20, 28 ],
+		                     "publish" : [ 1, 28, 36 ],
+		                     "active"  : [ 2, 36, 44 ],
+		                     "retire"  : [ 3, 44, 52 ],
+		                     "remove"  : [ 4, 52, 60 ] }
 
 	@classmethod
 	def from_params(self, pubkey, keytag, algorithm, isksk, timers):
 		assert len(timers) == 5
 		pk = pubkey.decode("base64")
 		selfraw = to_bytes(len(pk), 8)
+		selfraw.extend(to_bytes(0, 8)) # zero length of unused-future
 		selfraw.extend(to_bytes(int(keytag), 2))
 		selfraw.extend(to_bytes(int(algorithm), 1))
 		selfraw.extend(to_bytes((1 if isksk else 0), 1))
@@ -121,10 +122,11 @@ class Keyparams:
 		return Keyparams(selfraw)
 
 	def _check(self):
-		assert len(self.raw) >= 8
+		assert len(self.raw) >= 16
 		pkl = from_bytes(self.raw[0:8])
-		assert len(self.raw) == 52 + pkl
-		assert self.raw[11] < 2
+		ufl = from_bytes(self.raw[8:16])
+		assert len(self.raw) == 60 + pkl + ufl
+		assert self.raw[19] < 2
 
 	def getRaw(self):
 		self._check()
@@ -132,15 +134,15 @@ class Keyparams:
 
 	def getAlgorithm(self):
 		self._check()
-		return int(self.raw[10])
+		return int(self.raw[18])
 
 	def setAlgorithm(self, algorithm):
 		self._check()
-		self.raw[10] = to_bytes(algorithm, 1)[0]
+		self.raw[18] = to_bytes(algorithm, 1)[0]
 
 	def isKSK(self):
 		self._check()
-		return 1 if self.raw[11] != 0 else 0
+		return 1 if self.raw[19] != 0 else 0
 
 	def setKSK(self, isksk):
 		self._check()
@@ -148,11 +150,11 @@ class Keyparams:
 
 	def getKeytag(self):
 		self._check()
-		return from_bytes(self.raw[8:10])
+		return from_bytes(self.raw[16:18])
 
 	def setKeytag(self, keytag):
 		self._check()
-		self.raw[8:10] = to_bytes(keytag, 2)
+		self.raw[16:18] = to_bytes(keytag, 2)
 
 	def getTimers(self):
 		self._check()
@@ -177,7 +179,8 @@ class Keyparams:
 
 	def getPubKey(self):
 		self._check()
-		return self.raw[52:].encode("base64")
+		pkl = from_bytes(self.raw[0:8])
+		return self.raw[60:60+pkl].encode("base64")
 
 	def getParams(self):
 		return [ self.getPubKey(), self.getKeytag(), self.getAlgorithm(),
@@ -205,8 +208,9 @@ class Keyparams:
 		ds_raw = bytearray(str2dname(zone_str))
 		ds_raw.extend(to_bytes(257 if self.isKSK() else 256, 2))
 		ds_raw.extend(b"\x03") # protocol is always == 3
-		ds_raw.extend(self.raw[10:11]) # algorithm
-		ds_raw.extend(self.raw[52:]) # pubkey
+		ds_raw.extend(self.raw[18:19]) # algorithm
+		pkl = from_bytes(self.raw[0:8])
+		ds_raw.extend(self.raw[60:60+pkl]) # pubkey
 		if digestalg == "sha1":
 			ds_hash = hashlib.sha1(ds_raw).hexdigest()
 			algno = " 1 "
