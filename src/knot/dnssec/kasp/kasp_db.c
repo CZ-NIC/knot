@@ -223,7 +223,7 @@ static bool val_eq(const knot_db_val_t *a, const knot_db_val_t *b)
 static int serialize_key_params(const key_params_t *params, knot_db_val_t *key, knot_db_val_t *val)
 {
 	*key = keyid2val(params->id);
-	val->len = sizeof(uint16_t) + 2 * sizeof(uint8_t) + 6 * sizeof(uint64_t) +
+	val->len = sizeof(uint16_t) + 2 * sizeof(uint8_t) + 7 * sizeof(uint64_t) +
 	            params->public_key.size;
 	val->data = malloc(val->len);
 	if (val->data == NULL) {
@@ -232,6 +232,7 @@ static int serialize_key_params(const key_params_t *params, knot_db_val_t *key, 
 	wire_ctx_t wire = wire_ctx_init(val->data, val->len);
 
 	wire_ctx_write_u64(&wire, params->public_key.size);
+	wire_ctx_write_u64(&wire, 0); // length of Unused-future block at the end
 	wire_ctx_write_u16(&wire, params->keytag);
 	wire_ctx_write_u8(&wire, params->algorithm);
 	wire_ctx_write_u8(&wire, (uint8_t)(params->is_ksk ? 0x01 : 0x00));
@@ -260,6 +261,7 @@ static int deserialize_key_params(key_params_t *params, const knot_db_val_t *key
 
 	wire_ctx_t wire = wire_ctx_init(val->data, val->len);
 	params->public_key.size = wire_ctx_read_u64(&wire);
+	uint64_t unused_future_length = wire_ctx_read_u64(&wire);
 	params->keytag = wire_ctx_read_u16(&wire);
 	params->algorithm = wire_ctx_read_u8(&wire);
 	params->is_ksk = (wire_ctx_read_u8(&wire) != (uint8_t)0x00);
@@ -285,7 +287,7 @@ static int deserialize_key_params(key_params_t *params, const knot_db_val_t *key
 		wire.error = KNOT_EMALF;
 	}
 
-	if (wire.error != KNOT_EOK || wire_ctx_available(&wire) != 0) {
+	if (wire.error != KNOT_EOK || wire_ctx_available(&wire) != unused_future_length) {
 		free(params->id);
 		free(params->public_key.data);
 		params->id = NULL;
