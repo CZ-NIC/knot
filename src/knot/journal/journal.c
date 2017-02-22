@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@
 #define MDKEY_GLOBAL_LAST_INSERTER_ZONE		"last_inserter_zone"
 #define MDKEY_PERZONE_OCCUPIED			"occupied"
 #define MDKEY_PERZONE_FLAGS			"flags"
+#define KEY_BOOTSTRAP_CHANGESET			"bootstrap"
 
 /*! \brief The number of unused bytes in DB key. */
 #define DB_KEY_UNUSED_ZERO (4)
@@ -47,10 +48,11 @@
 #define JOURNAL_HEADER_SIZE (32)
 
 enum {
-	LAST_FLUSHED_VALID  = 1 << 0, /* "last flush is valid" flag. */
-	SERIAL_TO_VALID     = 1 << 1, /* "last serial_to is valid" flag. */
-	MERGED_SERIAL_VALID = 1 << 2, /* "serial_from" of merged changeset. */
-	DIRTY_SERIAL_VALID  = 1 << 3, /* "dirty_serial" is present in the DB. */
+	LAST_FLUSHED_VALID   = 1 << 0, /* "last flush is valid" flag. */
+	SERIAL_TO_VALID      = 1 << 1, /* "last serial_to is valid" flag. */
+	MERGED_SERIAL_VALID  = 1 << 2, /* "serial_from" of merged changeset. */
+	DIRTY_SERIAL_VALID   = 1 << 3, /* "dirty_serial" is present in the DB. */
+	FIRST_SERIAL_INVALID = 1 << 4, /* "first_serial" is not valid. */
 };
 
 static bool journal_flush_allowed(journal_t *j) {
@@ -152,6 +154,8 @@ static void txn_init(txn_t *txn, knot_db_txn_t *db_txn, journal_t *j)
  *
  * Changeset:
  * | zone_name | \0 | unused zero 4B | (be32)serial_from | (be32)chunk_index |
+ *  or
+ * | zone_name | \0 | unused zero 4B | metadata_key | \0 | (be32)serial_from |
  *
  * Structure of the changeset:
  * | (be32)serial_to | (be32)#of_chunks | unused zero 24B | serialized_changeset...
@@ -187,6 +191,23 @@ static void txn_key_2u32(txn_t *txn, const knot_dname_t *zone, uint32_t key1, ui
 	uint32_t key_be2 = htobe32(key2);
 	memcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO, &key_be1, sizeof(uint32_t));
 	memcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO + sizeof(uint32_t),
+	       &key_be2, sizeof(uint32_t));
+}
+
+static void txn_key_str_u32(txn_t *txn, const knot_dname_t *zone, const char *key1, uint32_t key2)
+{
+	size_t zone_size = 0;
+	if (zone != NULL) zone_size = knot_dname_size(zone);
+	txn->key.len = zone_size + DB_KEY_UNUSED_ZERO + strlen(key1) + 1 + sizeof(uint32_t);
+	if (txn->key.len > 512) {
+		txn->ret = KNOT_ERROR;
+		return;
+	}
+	if (zone != NULL) memcpy(txn->key.data, zone, zone_size);
+	memset(txn->key.data + zone_size, 0, DB_KEY_UNUSED_ZERO);
+	strcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO, key1);
+	uint32_t key_be2 = htobe32(key2);
+	memcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO + strlen(key1) + 1,
 	       &key_be2, sizeof(uint32_t));
 }
 
@@ -462,7 +483,7 @@ static bool md_flag(txn_t *txn, int flag)
 /*! \brief Marks metadata as flushed */
 static void md_flush(txn_t *txn)
 {
-	if (md_flag(txn, SERIAL_TO_VALID)) {
+	if (md_flag(txn, SERIAL_TO_VALID) && !md_flag(txn, FIRST_SERIAL_INVALID)) {
 		txn->shadow_md.last_flushed = txn->shadow_md.last_serial;
 		txn->shadow_md.flags |= LAST_FLUSHED_VALID;
 	}
@@ -586,30 +607,31 @@ typedef struct {
 	void *iter_context;	// anything to send to the callback by the caller of iterate(), untouched by iterate()
 } iteration_ctx_t;
 
+typedef int (*iteration_cb_t)(iteration_ctx_t *ctx);
+
 /*!
  * \brief Move iter to next changeset chunk.
  *
  * Try optimisticly fast move to next DB item. But the changeset can be out of order,
  * so if we don't succeed (different serial or end of DB), we lookup next serial slowly.
  */
-static void get_iter_next(txn_t *txn, uint32_t expect_serial, int expect_chunk)
+
+static void get_iter_next(iteration_ctx_t *ctx, iteration_cb_t key_cb)
 {
 	knot_db_val_t other_key = { 0 };
 
-	txn_check(txn);
-	txn_iter_next(txn);
-	txn_iter_key(txn, &other_key);
-	txn_key_2u32(txn, txn->j->zone, expect_serial, (uint32_t)expect_chunk);
-	if (txn->ret == KNOT_ENOENT ||
-	    (txn->ret == KNOT_EOK && txn_cmpkey(txn, &other_key) != 0)) {
-			txn_iter_seek(txn);
+	txn_check(ctx->txn);
+	txn_iter_next(ctx->txn);
+	txn_iter_key(ctx->txn, &other_key);
+	key_cb(ctx);
+	if (ctx->txn->ret == KNOT_ENOENT ||
+	    (ctx->txn->ret == KNOT_EOK && txn_cmpkey(ctx->txn, &other_key) != 0)) {
+		txn_iter_seek(ctx->txn);
 	}
 }
 
-typedef int (*iteration_cb_t)(iteration_ctx_t *ctx);
-
 static int iterate(journal_t *j, txn_t *_txn, iteration_cb_t cb, int method,
-                   void *iter_context, uint32_t first, uint32_t last)
+                   void *iter_context, uint32_t first, uint32_t last, iteration_cb_t key_cb)
 {
 	reuse_txn(txn, j, _txn, true);
 
@@ -625,7 +647,7 @@ static int iterate(journal_t *j, txn_t *_txn, iteration_cb_t cb, int method,
 
 	txn_iter_begin(txn);
 
-	txn_key_2u32(txn, j->zone, ctx.serial, ctx.chunk_index);
+	key_cb(&ctx);
 	txn_iter_seek(txn);
 
 	ctx.val = &txn->val;
@@ -671,7 +693,7 @@ static int iterate(journal_t *j, txn_t *_txn, iteration_cb_t cb, int method,
 			ctx.chunk_index++;
 		}
 
-		get_iter_next(txn, ctx.serial, ctx.chunk_index);
+		get_iter_next(&ctx, key_cb);
 	}
 
 	if (vals != NULL) {
@@ -684,6 +706,12 @@ static int iterate(journal_t *j, txn_t *_txn, iteration_cb_t cb, int method,
 	txn_ret(txn);
 }
 
+static int normal_iterkeycb(iteration_ctx_t *ctx)
+{
+	txn_key_2u32(ctx->txn, ctx->txn->j->zone, ctx->serial, ctx->chunk_index);
+	return KNOT_EOK;
+}
+
 /*
  * ***************************** PART IV ******************************
  *
@@ -694,7 +722,7 @@ static int iterate(journal_t *j, txn_t *_txn, iteration_cb_t cb, int method,
 
 /*! \brief Deserialize changeset from chunks (in vals) */
 static int vals_to_changeset(knot_db_val_t *vals, int nvals,
-                             const knot_dname_t *zone_name, changeset_t **ch)
+                             const knot_dname_t *zone_name, changeset_t **ch, bool is_bootstrap)
 {
 	uint8_t *valps[nvals];
 	size_t vallens[nvals];
@@ -708,7 +736,8 @@ static int vals_to_changeset(knot_db_val_t *vals, int nvals,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = changeset_deserialize(t_ch, valps, vallens, nvals);
+	int ret = is_bootstrap ? changeset_deserialize_bootstrap(t_ch, valps, vallens, nvals)
+	                       : changeset_deserialize(t_ch, valps, vallens, nvals);
 
 	if (ret != KNOT_EOK) {
 		changeset_free(t_ch);
@@ -725,7 +754,7 @@ static int load_one_itercb(iteration_ctx_t *ctx)
 		return KNOT_EINVAL;
 	}
 
-	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch);
+	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch, false);
 	if (ret == KNOT_EOK) *targ = ch;
 	return ret;
 }
@@ -735,7 +764,7 @@ static int load_list_itercb(iteration_ctx_t *ctx)
 	changeset_t *ch = NULL;
 	list_t *chlist = *(list_t **) ctx->iter_context;
 
-	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch);
+	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch, false);
 
 	if (ret == KNOT_EOK) {
 		add_tail(chlist, &ch->n);
@@ -748,7 +777,7 @@ static int load_one(journal_t *j, txn_t *_txn, uint32_t serial, changeset_t **ch
 {
 	reuse_txn(txn, j, _txn, false);
 	changeset_t *rch = NULL;
-	iterate(j, txn, load_one_itercb, JOURNAL_ITERATION_CHANGESETS, &rch, serial, serial);
+	iterate(j, txn, load_one_itercb, JOURNAL_ITERATION_CHANGESETS, &rch, serial, serial, normal_iterkeycb);
 	unreuse_txn(txn, _txn);
 	if (txn_finished_ok(txn)) {
 		if (rch == NULL) txn->ret = KNOT_ENOENT;
@@ -775,7 +804,6 @@ static int load_merged_changeset(journal_t *j, txn_t *_txn, changeset_t **mch,
 	txn_ret(txn);
 }
 
-/*! \brief API: load all changesets since "from" serial into dst. */
 int journal_load_changesets(journal_t *j, list_t *dst, uint32_t from)
 {
 	if (j == NULL || j->db == NULL || dst == NULL) return KNOT_EINVAL;
@@ -791,9 +819,69 @@ int journal_load_changesets(journal_t *j, list_t *dst, uint32_t from)
 	}
 
 	uint32_t ls = txn->shadow_md.last_serial;
-	iterate(j, txn, load_list_itercb, JOURNAL_ITERATION_CHANGESETS, &dst, from, ls);
+	iterate(j, txn, load_list_itercb, JOURNAL_ITERATION_CHANGESETS, &dst, from,
+	        ls, normal_iterkeycb);
 	txn_commit(txn);
 
+	txn_ret(txn);
+}
+
+int load_bootstrap_iterkeycb(iteration_ctx_t *ctx)
+{
+	txn_key_str_u32(ctx->txn, ctx->txn->j->zone, KEY_BOOTSTRAP_CHANGESET, ctx->chunk_index);
+	return KNOT_EOK;
+}
+
+static int load_bootstrap_itercb(iteration_ctx_t *ctx)
+{
+	changeset_t *ch = NULL, **targ = ctx->iter_context;
+	if (*targ != NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch, true);
+	if (ret == KNOT_EOK) *targ = ch;
+	return ret;
+}
+
+static int load_bootstrap_changeset(journal_t *j, txn_t *_txn, changeset_t **ch)
+{
+	reuse_txn(txn, j, _txn, false);
+	changeset_t *rch = NULL;
+	iterate(j, txn, load_bootstrap_itercb, JOURNAL_ITERATION_CHANGESETS, &rch,
+	        0, 0, load_bootstrap_iterkeycb);
+	unreuse_txn(txn, _txn);
+	if (txn_finished_ok(txn)) {
+		if (rch == NULL) txn->ret = KNOT_ENOENT;
+		else *ch = rch;
+	}
+	txn_ret(txn);
+}
+
+int journal_load_bootstrap(journal_t *j, list_t *dst)
+{
+	if (j == NULL || j->db == NULL || dst == NULL) return KNOT_EINVAL;
+
+	local_txn_t(txn, j);
+	txn_begin(txn, false);
+
+	changeset_t *bch = NULL;
+	load_bootstrap_changeset(j, txn, &bch);
+	if (bch == NULL) {
+		txn->ret = KNOT_ENOENT;
+		goto jlb_end;
+	}
+	add_tail(dst, &bch->n);
+	uint32_t from = knot_soa_serial(&bch->soa_to->rrs);
+
+	uint32_t ls = txn->shadow_md.last_serial;
+	iterate(j, txn, load_list_itercb, JOURNAL_ITERATION_CHANGESETS, &dst,
+	        from, ls, normal_iterkeycb);
+	if (txn->ret == KNOT_ENOENT) {
+		txn->ret = KNOT_EOK;
+	}
+jlb_end:
+	txn_commit(txn);
 	txn_ret(txn);
 }
 
@@ -842,7 +930,8 @@ static int del_upto_itercb(iteration_ctx_t *ctx)
  * Please ensure (dbfirst == j->metadata.first_serial) */
 static int delete_upto(journal_t *j, txn_t *txn, uint32_t dbfirst, uint32_t last)
 {
-	return iterate(j, txn, del_upto_itercb, JOURNAL_ITERATION_CHUNKS, NULL, dbfirst, last);
+	return iterate(j, txn, del_upto_itercb, JOURNAL_ITERATION_CHUNKS, NULL,
+	               dbfirst, last, normal_iterkeycb);
 }
 
 static int delete_merged_changeset(journal_t *j, txn_t *t)
@@ -866,7 +955,7 @@ static int drop_journal(journal_t *j, txn_t *_txn)
 	if (md_flag(txn, MERGED_SERIAL_VALID)) {
 		delete_merged_changeset(j, txn);
 	}
-	if (md_flag(txn, SERIAL_TO_VALID)) {
+	if (md_flag(txn, SERIAL_TO_VALID) && !md_flag(txn, FIRST_SERIAL_INVALID)) {
 		delete_upto(j, txn, txn->shadow_md.first_serial, txn->shadow_md.last_serial);
 	}
 	unreuse_txn(txn, _txn);
@@ -924,7 +1013,7 @@ static int delete_tofree(journal_t *j, txn_t *_txn, size_t to_be_freed, size_t *
 	}
 	delete_status_t ds = { .freed_approx = 0, .to_be_freed = to_be_freed };
 	iterate(j, txn, del_tofree_itercb, JOURNAL_ITERATION_CHUNKS, &ds,
-	        txn->shadow_md.first_serial, txn->shadow_md.last_serial);
+	        txn->shadow_md.first_serial, txn->shadow_md.last_serial, normal_iterkeycb);
 	unreuse_txn(txn, _txn);
 
 	if (txn_finished_ok(txn)) *really_freed = ds.freed_approx;
@@ -976,7 +1065,7 @@ static int delete_count(journal_t *j, txn_t *_txn, size_t to_be_deleted, size_t 
 	}
 	delete_status_t ds = { .freed_approx = 0, .to_be_freed = to_be_deleted };
 	iterate(j, txn, del_count_itercb, JOURNAL_ITERATION_CHUNKS, &ds,
-	        txn->shadow_md.first_serial, txn->shadow_md.last_serial);
+	        txn->shadow_md.first_serial, txn->shadow_md.last_serial, normal_iterkeycb);
 	unreuse_txn(txn, _txn);
 
 	if (txn_finished_ok(txn)) *really_deleted = ds.freed_approx;
@@ -1016,7 +1105,7 @@ static int merge_itercb(iteration_ctx_t *ctx)
 {
 	changeset_t *ch = NULL, *mch = *(changeset_t **)ctx->iter_context;
 
-	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch);
+	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch, false);
 	if (ret == KNOT_EOK) {
 		ret = changeset_merge(mch, ch);
 		changeset_free(ch);
@@ -1050,7 +1139,7 @@ static int merge_unflushed_changesets(journal_t *j, txn_t *_txn, changeset_t **m
 	from = knot_soa_serial(&(*mch)->soa_to->rrs);
 
 	txn->ret = iterate(j, txn, merge_itercb, JOURNAL_ITERATION_CHANGESETS,
-	                   mch, from, txn->shadow_md.last_serial);
+	                   mch, from, txn->shadow_md.last_serial, normal_iterkeycb);
 
 m_u_ch_end:
 	unreuse_txn(txn, _txn);
@@ -1158,8 +1247,10 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 	// PART 4: continuity and duplicity check
 	changeset_t * chs_head = (HEAD(*changesets));
-	uint32_t serial = knot_soa_serial(&chs_head->soa_from->rrs);
-	if (md_flag(txn, SERIAL_TO_VALID) && serial_compare(txn->shadow_md.last_serial_to, serial) != 0) {
+	bool is_bootstrap = (chs_head->soa_from == NULL);
+	uint32_t serial = is_bootstrap ? 0 : knot_soa_serial(&chs_head->soa_from->rrs);
+	if (!is_bootstrap && md_flag(txn, SERIAL_TO_VALID) &&
+	    serial_compare(txn->shadow_md.last_serial_to, serial) != 0) {
 		log_zone_warning(j->zone, "discontinuity in chages history (%u -> %u), dropping older changesets",
 		                 txn->shadow_md.last_serial_to, serial);
 		try_flush
@@ -1168,7 +1259,9 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	}
 	WALK_LIST(ch, *changesets) {
 		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
-		if (inserting_merged && ch == TAIL(*changesets)) {
+		bool is_this_bootstrap = (is_bootstrap && ch == HEAD(*changesets));
+		bool is_this_merged = (inserting_merged && ch == TAIL(*changesets));
+		if (is_this_bootstrap || is_this_merged) {
 			continue;
 		}
 		txn_key_2u32(txn, j->zone, serial_to, 0);
@@ -1206,7 +1299,9 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			break;
 		}
 
-		uint32_t serial = knot_soa_serial(&ch->soa_from->rrs);
+		bool is_this_bootstrap = is_bootstrap && (ch == HEAD(*changesets));
+		bool is_this_merged = (inserting_merged && ch == TAIL(*changesets));
+		uint32_t serial = is_this_bootstrap ? 0 : knot_soa_serial(&ch->soa_from->rrs);
 		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
 
 		for (int i = 0; i < chunks; i++) {
@@ -1218,7 +1313,12 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	// PART 6: inserting vals into db
 		for (int i = 0; i < chunks; i++) {
 			if (txn->ret != KNOT_EOK) break;
-			txn_key_2u32(txn, j->zone, serial, i);
+			if (is_this_bootstrap) {
+				txn_key_str_u32(txn, j->zone, KEY_BOOTSTRAP_CHANGESET, i);
+			}
+			else {
+				txn_key_2u32(txn, j->zone, serial, i);
+			}
 			txn->val = vals[i];
 			txn_insert(txn);
 			inserted_size += (vals+i)->len;
@@ -1236,14 +1336,22 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		if (txn->ret != KNOT_EOK) {
 			break;
 		}
-		if (inserting_merged && ch == TAIL(*changesets)) {
+		if (is_this_merged) {
 			txn->shadow_md.flags |= MERGED_SERIAL_VALID;
 			txn->shadow_md.merged_serial = serial;
 		}
-		else {
+		else if (is_this_bootstrap) {
 			if (!md_flag(txn, SERIAL_TO_VALID)) {
+				txn->shadow_md.flags |= FIRST_SERIAL_INVALID;
+				txn->shadow_md.last_serial_to = serial_to;
+			}
+			txn->shadow_md.flags |= SERIAL_TO_VALID;
+		}
+		else {
+			if (!md_flag(txn, SERIAL_TO_VALID) || md_flag(txn, FIRST_SERIAL_INVALID)) {
 				txn->shadow_md.first_serial = serial;
 			}
+			txn->shadow_md.flags &= ~FIRST_SERIAL_INVALID;
 			txn->shadow_md.flags |= SERIAL_TO_VALID;
 			txn->shadow_md.last_serial = serial;
 			txn->shadow_md.last_serial_to = serial_to;
@@ -1650,6 +1758,7 @@ static void _jch_print(const knot_dname_t *zname, int warn_level, const char *fo
 {
 	static char buf[512];
 	strcpy(buf, "journal check: ");
+	char *zname_ch;
 
 	va_list args;
 	va_start(args, format);
@@ -1657,6 +1766,11 @@ static void _jch_print(const knot_dname_t *zname, int warn_level, const char *fo
 	va_end(args);
 
 	switch (warn_level) {
+	case JOURNAL_CHECK_STDERR:
+		zname_ch = knot_dname_to_str_alloc(zname);
+		fprintf(stderr, "[%s] %s\n", zname_ch, buf);
+		free(zname_ch);
+		break;
 	case JOURNAL_CHECK_INFO:
 		log_zone_info(zname, "%s", buf);
 		break;
@@ -1668,7 +1782,7 @@ static void _jch_print(const knot_dname_t *zname, int warn_level, const char *fo
 	}
 }
 
-#define jch_print(wl, fmt_args...) if ((wl) <= warn_level) _jch_print(j->zone, wl, fmt_args)
+#define jch_print(wl, fmt_args...) if ((wl) <= warn_level) _jch_print(j->zone, warn_level, fmt_args)
 #define jch_info(fmt_args...) jch_print(JOURNAL_CHECK_INFO, fmt_args)
 #define jch_warn(fmt_args...) jch_print((allok = 0, JOURNAL_CHECK_WARN), fmt_args)
 #define jch_txn(comment, fatal) do { if (txn->ret != KNOT_EOK && txn->ret != KNOT_ESEMCHECK) { \
@@ -1714,6 +1828,34 @@ int journal_check(journal_t *j, journal_check_level warn_level)
 			jch_warn("no other than merged changeset present, this should not happen");
 		}
 		goto check_merged;
+	}
+
+	if (md_flag(txn, FIRST_SERIAL_INVALID)) {
+		jch_info("there is just the bootstrap changeset in journal");
+		ret = load_bootstrap_changeset(j, txn, &ch);
+		if (ret != KNOT_EOK) {
+			jch_warn("can't read bootstrap changeset (%s)", knot_strerror(ret));
+		}
+		else {
+			changeset_free(ch);
+		}
+		goto check_merged;
+	}
+	else {
+		ret = load_bootstrap_changeset(j, txn, &ch);
+		switch (ret) {
+		case KNOT_EOK:
+			sto = knot_soa_serial(&ch->soa_to->rrs);
+			jch_info("bootstrap changeset loaded, sto %u", sto);
+			changeset_free(ch);
+			break;
+		case KNOT_ENOENT:
+			txn->ret = KNOT_EOK;
+			break;
+		default:
+			jch_info("failed to read bootstrap changeset (%s)", knot_strerror(ret));
+			break;
+		}
 	}
 
 	ret = load_one(j, txn, txn->shadow_md.first_serial, &ch);

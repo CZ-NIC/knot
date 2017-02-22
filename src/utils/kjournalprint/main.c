@@ -93,7 +93,10 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		goto pj_finally;
 	}
 
-	ret = journal_load_changesets(j, &db, serial_from);
+	ret = journal_load_bootstrap(j, &db);
+	if (ret == KNOT_ENOENT) {
+		ret = journal_load_changesets(j, &db, serial_from);
+	}
 	if (ret != KNOT_EOK) {
 		goto pj_finally;
 	}
@@ -108,22 +111,30 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		}
 
 		printf(color ? YLW : "");
-		printf(";; Changes between zone versions: %u -> %u\n",
-		       knot_soa_serial(&chs->soa_from->rrs),
-		       knot_soa_serial(&chs->soa_to->rrs));
+		if (chs->soa_from == NULL) {
+			printf(";; Zone-in-journal, serial: %u\n",
+			       knot_soa_serial(&chs->soa_to->rrs));
 
-		// Removed.
-		printf(color ? RED : "");
-		printf(";; Removed\n");
-		printf("%s", get_rrset(chs->soa_from, &buff, &buflen));
-		zone_dump_text(chs->remove, stdout, false);
+			printf(color ? GRN : "");
+			printf("%s", get_rrset(chs->soa_to, &buff, &buflen));
+			zone_dump_text(chs->add, stdout, false);
+			printf(color ? RESET : "");
+		} else {
+			printf(";; Changes between zone versions: %u -> %u\n",
+			       knot_soa_serial(&chs->soa_from->rrs),
+			       knot_soa_serial(&chs->soa_to->rrs));
 
-		// Added.
-		printf(color ? GRN : "");
-		printf(";; Added\n");
-		printf("%s", get_rrset(chs->soa_to, &buff, &buflen));
-		zone_dump_text(chs->add, stdout, false);
-		printf(color ? RESET : "");
+			printf(color ? RED : "");
+			printf(";; Removed\n");
+			printf("%s", get_rrset(chs->soa_from, &buff, &buflen));
+			zone_dump_text(chs->remove, stdout, false);
+
+			printf(color ? GRN : "");
+			printf(";; Added\n");
+			printf("%s", get_rrset(chs->soa_to, &buff, &buflen));
+			zone_dump_text(chs->add, stdout, false);
+			printf(color ? RESET : "");
+		}
 	}
 
 	changesets_free(&db);

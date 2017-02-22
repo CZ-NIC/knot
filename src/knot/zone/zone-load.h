@@ -43,6 +43,17 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents);
 
 /*!
+ * \brief Load zone contents from journal (headless).
+ *
+ * \param conf
+ * \param zone
+ * \param contents
+ * \return KNOT_EOK or an error
+ */
+int zone_load_from_journal(conf_t *conf, zone_t *zone,
+                           zone_contents_t **contents);
+
+/*!
  * \brief Zone loading post-actions (zone resign, calculation of delta)
  *
  * \param conf

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,7 +42,8 @@ typedef struct {
 typedef enum {
 	JOURNAL_CHECK_SILENT = 0, // No logging, just curious for return value.
 	JOURNAL_CHECK_WARN   = 1, // Log journal inconsistencies.
-	JOURNAL_CHECK_INFO   = 2  // Log journal state.
+	JOURNAL_CHECK_INFO   = 2, // Log journal state.
+	JOURNAL_CHECK_STDERR = 3, // Log everything and redirect to stderr.
 } journal_check_level;
 
 /*!
@@ -111,7 +112,7 @@ int journal_open(journal_t *j, journal_db_t **db, const knot_dname_t *zone_name)
 void journal_close(journal_t *journal);
 
 /*!
- * \brief Load changesets from journal.
+ * \brief Load changesets from journal since "from" serial.
  *
  * \param journal  Journal to load from.
  * \param dst      Store changesets here.
@@ -122,6 +123,18 @@ void journal_close(journal_t *journal);
  * \return < KNOT_EOK on other error.
  */
 int journal_load_changesets(journal_t *journal, list_t *dst, uint32_t from);
+
+/*!
+ * \brief Load changesets from journal, starting with bootstrap changeset.
+ *
+ * \param journal  Journal to load from.
+ * \param dst      Store changesets here, starting with bootstrap changeset.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOENT when there is no bootstrap changeset.
+ * \return < KNOT_EOK on other error.
+ */
+int journal_load_bootstrap(journal_t *j, list_t *dst);
 
 /*!
  * \brief Store changesets in journal.

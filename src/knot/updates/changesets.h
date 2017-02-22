@@ -41,7 +41,7 @@ typedef struct {
 	knot_rrset_t *soa_to;     /*!< Destination SOA. */
 	zone_contents_t *add;     /*!< Change additions. */
 	zone_contents_t *remove;  /*!< Change removals. */
-	size_t size;              /*!< Size of serialized changeset. */
+	size_t size;              /*!< Size of serialized changeset. \todo Remove after old_journal removal! */
 	uint8_t *data;            /*!< Serialized changeset. */
 } changeset_t;
 
@@ -142,6 +142,31 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
  * \return KNOT_E*
  */
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2);
+
+/*!
+ * \brief Loads zone contents from botstrap changeset.
+ *
+ * \param ch  Changeset to load from, will be freed!
+ *
+ * \return Zone contents.
+ */
+zone_contents_t *changeset_to_contents(changeset_t *ch);
+
+/*!
+ * \brief Creates a bootstrap changeset from zone.
+ *
+ * \param contents  Contents to include, will be freed!
+ *
+ * \return Changeset, which shall be freed with changeset_from_contents_free()
+ */
+changeset_t *changeset_from_contents(const zone_contents_t *contents);
+
+/*!
+ * \brief Frees single changeset.
+ *
+ * \param ch  Changeset from changeset_from_contents() to free.
+ */
+void changeset_from_contents_free(changeset_t *ch);
 
 /*!
  * \brief Clears changesets in list. Changesets are not free'd. Legacy.

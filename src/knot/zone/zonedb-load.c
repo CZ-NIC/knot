@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,84 +27,19 @@
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 
-/*!
- * \brief Zone file status.
- */
-typedef enum {
-	ZONE_STATUS_NOT_FOUND = 0,  //!< Zone file does not exist.
-	ZONE_STATUS_BOOTSTRAP,      //!< Zone file does not exist, can bootstrap.
-	ZONE_STATUS_FOUND_NEW,      //!< Zone file exists, not loaded yet.
-	ZONE_STATUS_FOUND_CURRENT,  //!< Zone file exists, same as loaded.
-	ZONE_STATUS_FOUND_UPDATED,  //!< Zone file exists, newer than loaded.
-} zone_status_t;
-
-/*!
- * \brief Check zone file status.
- *
- * \param conf      Zone configuration.
- * \param old_zone  Previous instance of the zone (can be NULL).
- *
- * \return Zone status.
- */
-static zone_status_t zone_file_status(conf_t *conf, const zone_t *old_zone,
-                                      const knot_dname_t *name)
+static bool zone_file_updated(conf_t *conf, const zone_t *old_zone,
+                              const knot_dname_t *zone_name)
 {
 	assert(conf);
-	assert(name);
+	assert(zone_name);
 
-	char *zonefile = conf_zonefile(conf, name);
+	char *zonefile = conf_zonefile(conf, zone_name);
 	time_t mtime;
 	int ret = zonefile_exists(zonefile, &mtime);
 	free(zonefile);
 
-	// Zone file does not exist.
-	if (ret != KNOT_EOK) {
-		if (old_zone) {
-			// Deferred flush.
-			return ZONE_STATUS_FOUND_CURRENT;
-		} else {
-			return zone_load_can_bootstrap(conf, name) ?
-			       ZONE_STATUS_BOOTSTRAP : ZONE_STATUS_NOT_FOUND;
-		}
-	} else {
-		if (old_zone == NULL) {
-			return ZONE_STATUS_FOUND_NEW;
-		} else if (old_zone->zonefile.exists && old_zone->zonefile.mtime == mtime) {
-			return ZONE_STATUS_FOUND_CURRENT;
-		} else {
-			return ZONE_STATUS_FOUND_UPDATED;
-		}
-	}
-}
-
-/*!
- * \brief Log message about loaded zone (name and status).
- *
- * \param zone    Zone structure.
- * \param status  Zone file status.
- */
-static void log_zone_load_info(const zone_t *zone, zone_status_t status)
-{
-	assert(zone);
-
-	const char *action = NULL;
-
-	switch (status) {
-	case ZONE_STATUS_NOT_FOUND:     action = "not found";            break;
-	case ZONE_STATUS_BOOTSTRAP:     action = "will be bootstrapped"; break;
-	case ZONE_STATUS_FOUND_NEW:     action = "will be loaded";       break;
-	case ZONE_STATUS_FOUND_CURRENT: action = "is up-to-date";        break;
-	case ZONE_STATUS_FOUND_UPDATED: action = "will be reloaded";     break;
-	}
-	assert(action);
-
-	if (!zone_contents_is_empty(zone->contents)) {
-		const knot_rdataset_t *soa = zone_soa(zone);
-		uint32_t serial = knot_soa_serial(soa);
-		log_zone_info(zone->name, "zone %s, serial %u", action, serial);
-	} else {
-		log_zone_info(zone->name, "zone %s, serial none", action);
-	}
+	return (ret == KNOT_EOK && old_zone != NULL &&
+	        !(old_zone->zonefile.exists && old_zone->zonefile.mtime == mtime));
 }
 
 static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
@@ -181,23 +116,11 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone->timers = old_zone->timers;
 	timers_sanitize(conf, zone);
 
-	zone_status_t zstatus;
-	if (zone_expired(zone)) {
-		zstatus = ZONE_STATUS_FOUND_CURRENT;
-	} else {
-		zstatus = zone_file_status(conf, old_zone, name);
-	}
-
-	switch (zstatus) {
-	case ZONE_STATUS_FOUND_UPDATED:
+	if (zone_file_updated(conf, old_zone, name) && !zone_expired(zone)) {
 		replan_load_updated(zone, old_zone);
-		break;
-	case ZONE_STATUS_FOUND_CURRENT:
+	} else {
 		zone->zonefile = old_zone->zonefile;
 		replan_load_current(conf, zone, old_zone);
-		break;
-	default:
-		assert(0);
 	}
 
 	if (old_zone->control_update != NULL) {
@@ -226,26 +149,15 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 
 	timers_sanitize(conf, zone);
 
-	zone_status_t zstatus = zone_file_status(conf, NULL, name);
 	if (zone_expired(zone)) {
+		// expired => force bootstrap, no load attempt
+		log_zone_info(zone->name, "zone will be bootstrapped");
 		assert(zone_is_slave(conf, zone));
-		zstatus = ZONE_STATUS_BOOTSTRAP;
-	}
-
-	switch (zstatus) {
-	case ZONE_STATUS_FOUND_NEW:
-		replan_load_new(zone);
-		break;
-	case ZONE_STATUS_BOOTSTRAP:
 		replan_load_bootstrap(conf, zone);
-		break;
-	case ZONE_STATUS_NOT_FOUND:
-		break;
-	default:
-		assert(0);
+	} else {
+		log_zone_info(zone->name, "zone will be loaded");
+		replan_load_new(zone); // if load fails, fallback to bootstrap
 	}
-
-	log_zone_load_info(zone, zstatus);
 
 	return zone;
 }

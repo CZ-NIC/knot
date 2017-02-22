@@ -173,6 +173,40 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 	return ret;
 }
 
+int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **contents)
+{
+	if (conf == NULL || zone == NULL || contents == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	list_t chgs;
+	init_list(&chgs);
+	int ret = zone_in_journal_load(conf, zone, &chgs);
+	if (ret != KNOT_EOK) {
+		changesets_free(&chgs);
+		return ret; // include ENOENT, which is normal operation
+	}
+
+	changeset_t *boo_ch = (changeset_t *)HEAD(chgs);
+	rem_node(&boo_ch->n);
+	*contents = changeset_to_contents(boo_ch);
+
+	apply_ctx_t a_ctx = { 0 };
+	apply_init_ctx(&a_ctx, *contents, 0);
+	ret = apply_changesets_directly(&a_ctx, &chgs);
+	if (ret == KNOT_EOK) {
+		log_zone_info(zone->name, "zone loaded from journal, serial %u",
+		              zone_contents_serial(*contents));
+	} else {
+		log_zone_error(zone->name, "failed to load zone from journal (%s)",
+		               knot_strerror(ret));
+	}
+	update_cleanup(&a_ctx);
+	changesets_free(&chgs);
+
+	return ret;
+}
+
 int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
                    uint32_t *dnssec_refresh)
 {
