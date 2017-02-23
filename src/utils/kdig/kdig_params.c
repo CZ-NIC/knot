@@ -680,7 +680,7 @@ static int opt_bufsize(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	uint16_t num;
+	uint16_t num = 0;
 	if (str_to_u16(arg, &num) != KNOT_EOK) {
 		ERR("invalid +bufsize=%s\n", arg);
 		return KNOT_EINVAL;
@@ -711,7 +711,7 @@ static int opt_padding(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	uint16_t num;
+	uint16_t num = 0;
 	if (str_to_u16(arg, &num) != KNOT_EOK) {
 		ERR("invalid +padding=%s\n", arg);
 		return KNOT_EINVAL;
@@ -739,7 +739,7 @@ static int opt_alignment(const char *arg, void *query)
 		q->alignment = DEFAULT_ALIGNMENT_SIZE;
 		return KNOT_EOK;
 	} else {
-		uint16_t num;
+		uint16_t num = 0;
 		if (str_to_u16(arg, &num) != KNOT_EOK || num < 2) {
 			ERR("invalid +alignment=%s\n", arg);
 			return KNOT_EINVAL;
@@ -841,7 +841,7 @@ static int opt_edns(const char *arg, void *query)
 		q->edns = 0;
 		return KNOT_EOK;
 	} else {
-		uint8_t num;
+		uint8_t num = 0;
 		if (str_to_u8(arg, &num) != KNOT_EOK) {
 			ERR("invalid +edns=%s\n", arg);
 			return KNOT_EINVAL;
