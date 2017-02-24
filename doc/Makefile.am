@@ -1,5 +1,5 @@
-MANPAGES_IN = man/knot.conf.5in man/knotc.8in man/knotd.8in man/kdig.1in man/khost.1in man/kjournalprint.1in man/knsupdate.1in man/knot1to2.1in man/knsec3hash.1in man/keymgr.8in man/kkeymgr.8in man/pykeymgr.8in man/kzonecheck.1in
-MANPAGES_RST = reference.rst man_knotc.rst man_knotd.rst man_kdig.rst man_khost.rst man_kjournalprint.rst man_knsupdate.rst man_knot1to2.rst man_knsec3hash.rst man_keymgr.rst man_kkeymgr.rst man_pykeymgr.rst man_kzonecheck.rst
+MANPAGES_IN = man/knot.conf.5in man/knotc.8in man/knotd.8in man/kdig.1in man/khost.1in man/kjournalprint.1in man/knsupdate.1in man/knot1to2.1in man/knsec3hash.1in man/kkeymgr.8in man/pykeymgr.8in man/kzonecheck.1in
+MANPAGES_RST = reference.rst man_knotc.rst man_knotd.rst man_kdig.rst man_khost.rst man_kjournalprint.rst man_knsupdate.rst man_knot1to2.rst man_knsec3hash.rst man_kkeymgr.rst man_pykeymgr.rst man_kzonecheck.rst
 
 EXTRA_DIST = \
 	conf.py		\
@@ -62,7 +62,7 @@ man_MANS += man/knot.conf.5 man/knotc.8 man/knotd.8
 endif # HAVE_DAEMON
 
 if HAVE_UTILS
-man_MANS += man/kdig.1 man/khost.1 man/kjournalprint.1 man/knsupdate.1 man/knot1to2.1 man/knsec3hash.1 man/keymgr.8 man/kkeymgr.8 man/pykeymgr.8 man/kzonecheck.1
+man_MANS += man/kdig.1 man/khost.1 man/kjournalprint.1 man/knsupdate.1 man/knot1to2.1 man/knsec3hash.1 man/kkeymgr.8 man/pykeymgr.8 man/kzonecheck.1
 endif # HAVE_UTILS
 
 man/knot.conf.5: man/knot.conf.5in
@@ -74,7 +74,6 @@ man/kjournalprint.1: man/kjournalprint.1in
 man/knsupdate.1: man/knsupdate.1in
 man/knot1to2.1: man/knot1to2.1in
 man/knsec3hash.1: man/knsec3hash.1in
-man/keymgr.8: man/keymgr.8in
 man/kkeymgr.8: man/kkeymgr.8in
 man/pykeymgr.8: man/pykeymgr.8in
 man/kzonecheck.1: man/kzonecheck.1in
