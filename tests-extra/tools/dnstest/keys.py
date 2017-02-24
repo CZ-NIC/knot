@@ -87,9 +87,9 @@ class Tsig(object):
 class Keymgr(object):
     @classmethod
     def run(cls, kasp_dir, *args):
-        cmdline = [dnstest.params.keymgr_bin]
+        cmdline = [dnstest.params.kkeymgr_bin]
         if kasp_dir:
-            cmdline += ["--dir", kasp_dir]
+            cmdline += ["-d", kasp_dir]
         cmdline += list(args)
 
         cmd = Popen(cmdline, stdout=PIPE, stderr=PIPE, universal_newlines=True)
@@ -120,13 +120,11 @@ class Key(object):
 
     def _gen_command(self):
         cmd = [
-            "zone", "key", "generate", self.zone_name,
-            "algorithm", str(self.alg),
-            "size", str(self.len)
+            self.zone_name, "generate",
+            "ksk=" + str(self.ksk),
+            "algorithm=" + str(self.alg),
+            "size=" + str(self.len)
         ]
-
-        if self.ksk:
-            cmd.append("ksk")
 
         return cmd
 

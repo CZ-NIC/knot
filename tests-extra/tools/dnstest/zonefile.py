@@ -96,7 +96,7 @@ class ZoneFile(object):
             pkey = os.path.basename(pkey_path)
             m = re.match(r'K(?P<name>[^+]+)\+(?P<algo>\d+)\+(?P<tag>\d+)\.private', pkey)
             if m and m.group("name") == zone_name.lower():
-                Keymgr.run_check(keydir, "zone", "key", "import", zone_name, pkey_path)
+                Keymgr.run_check(keydir, zone_name, "import-bind", pkey_path)
 
     def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None):
         '''Generate zone file.'''
