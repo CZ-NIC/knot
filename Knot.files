@@ -92,10 +92,6 @@ src/dnssec/lib/kasp/dir/escape.c
 src/dnssec/lib/kasp/dir/escape.h
 src/dnssec/lib/kasp/dir/file.c
 src/dnssec/lib/kasp/dir/file.h
-src/dnssec/lib/kasp/dir/json.c
-src/dnssec/lib/kasp/dir/json.h
-src/dnssec/lib/kasp/dir/policy.c
-src/dnssec/lib/kasp/dir/policy.h
 src/dnssec/lib/kasp/internal.h
 src/dnssec/lib/kasp/policy.c
 src/dnssec/lib/key/algorithm.c

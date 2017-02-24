@@ -10,8 +10,7 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/lib \
 	-I$(srcdir)/lib/dnssec \
 	-I$(top_srcdir)/src \
-	$(gnutls_CFLAGS) \
-	$(jansson_CFLAGS)
+	$(gnutls_CFLAGS)
 
 noinst_LTLIBRARIES = libshared.la
 lib_LTLIBRARIES = libdnssec.la
@@ -47,7 +46,6 @@ libdnssec_la_CPPFLAGS = \
 
 libdnssec_la_LDFLAGS = \
 	$(gnutls_LIBS) \
-	$(jansson_LIBS) \
 	$(libdnssec_VERSION_INFO)
 
 libdnssec_la_LIBADD = \
@@ -79,10 +77,6 @@ libdnssec_la_SOURCES = \
 	lib/kasp/dir/escape.h \
 	lib/kasp/dir/file.c \
 	lib/kasp/dir/file.h \
-	lib/kasp/dir/json.c \
-	lib/kasp/dir/json.h \
-	lib/kasp/dir/policy.c \
-	lib/kasp/dir/policy.h \
 	lib/kasp/internal.h \
 	lib/kasp/policy.c \
 	lib/key/algorithm.c \
