@@ -286,8 +286,8 @@ can operate in two modes:
    parameters must be assigned by the zone operator.
 
 The DNSSEC signing process maintains some metadata which is stored in the
-:abbr:`KASP (Key And Signature Policy)` database. This database is simply
-a directory in the file-system containing files in the JSON format.
+:abbr:`KASP (Key And Signature Policy)` database. This database is backed
+by LMDB.
 
 .. WARNING::
   Make sure to set the KASP database permissions correctly. For manual key

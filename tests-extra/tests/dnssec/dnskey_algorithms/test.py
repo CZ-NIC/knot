@@ -3,6 +3,7 @@
 Validate ZSK and KSK constrains checks.
 """
 
+import shutil
 import tarfile
 import os.path
 
@@ -31,12 +32,11 @@ t = Test()
 
 knot = t.server("knot")
 
-# setup keys
-
-keys_archive = os.path.join(t.data_dir, "keys.tgz")
+# install KASP db
+shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
+keys_archive = os.path.join(t.data_dir, "keys_priv.tgz")
 with tarfile.open(keys_archive, "r:*") as tar:
     tar.extractall(knot.keydir)
-knot.dnssec_import_json()
 
 # setup zones
 

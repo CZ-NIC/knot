@@ -53,9 +53,8 @@ knot.dnssec(zone).rrsig_lifetime = 5
 knot.dnssec(zone).rrsig_refresh = 2
 knot.zonefile_sync = "0"
 
-# install keys (one always enabled, one for testing)
+# install KASP db (one always enabled, one for testing)
 shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
-knot.dnssec_import_json()
 
 # parameters
 ZONE = "example.com"
