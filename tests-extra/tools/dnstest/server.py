@@ -1161,19 +1161,6 @@ class Knot(Server):
 
         return s.conf
 
-    def dnssec_import_json(self, force=False):
-        try:
-            pykeymgr_params = [params.pykeymgr_py, "-i", self.keydir]
-            if force:
-                pykeymgr_params.insert(1, "-f")
-            check_call(pykeymgr_params,
-                       stdout=open(self.dir + "/json_import.out", mode="a"),
-                       stderr=open(self.dir + "/json_import.err", mode="a"))
-        except CalledProcessError as e:
-            self.backtrace()
-            raise Failed("Can't import DNSSEC json ('%s') server='%s', ret='%i'" %
-                         (params.pykeymgr_py + " -i " + self.keydir, self.name, e.returncode))
-
 class Nsd(Server):
 
     def __init__(self, *args, **kwargs):
