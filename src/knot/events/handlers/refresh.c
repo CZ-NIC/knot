@@ -752,13 +752,15 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	uint32_t local_serial = knot_soa_serial(&data->soa->rrs);
 	uint32_t remote_serial = knot_soa_serial(&rr->rrs);
 	bool current = serial_is_current(local_serial, remote_serial);
+	bool master_uptodate = serial_is_current(remote_serial, local_serial);
 
 	REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
 	            "remote serial %u, %s", remote_serial,
-	            current ? "zone is up-to-date" : "zone is outdated");
+	            current ? (master_uptodate ? "zone is up-to-date" :
+	            "master is outdated") : "zone is outdated");
 
 	if (current) {
-		return KNOT_STATE_DONE;
+		return master_uptodate ? KNOT_STATE_DONE : KNOT_STATE_FAIL;
 	} else {
 		data->state = STATE_TRANSFER;
 		return KNOT_STATE_RESET;
