@@ -88,11 +88,6 @@ src/dnssec/lib/dnssec/random.h
 src/dnssec/lib/dnssec/sign.h
 src/dnssec/lib/dnssec/tsig.h
 src/dnssec/lib/error.c
-src/dnssec/lib/kasp/dir/escape.c
-src/dnssec/lib/kasp/dir/escape.h
-src/dnssec/lib/kasp/dir/file.c
-src/dnssec/lib/kasp/dir/file.h
-src/dnssec/lib/kasp/internal.h
 src/dnssec/lib/kasp/policy.c
 src/dnssec/lib/key/algorithm.c
 src/dnssec/lib/key/algorithm.h

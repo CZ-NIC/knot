@@ -73,11 +73,6 @@ libdnssec_la_SOURCES = \
 	lib/binary.c \
 	lib/crypto.c \
 	lib/error.c \
-	lib/kasp/dir/escape.c \
-	lib/kasp/dir/escape.h \
-	lib/kasp/dir/file.c \
-	lib/kasp/dir/file.h \
-	lib/kasp/internal.h \
 	lib/kasp/policy.c \
 	lib/key/algorithm.c \
 	lib/key/algorithm.h \
