@@ -416,33 +416,13 @@ libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(lib
 
 if HAVE_DAEMON
 
-sbin_PROGRAMS = keymgr knotc knotd
+sbin_PROGRAMS = knotc knotd
 libexec_PROGRAMS = knot1to2
 noinst_LTLIBRARIES += libknotd.la libknotus.la
 
 EXTRA_DIST += 					\
 	utils/knot1to2/cf-lex.l			\
 	utils/knot1to2/cf-parse.y
-
-keymgr_SOURCES =				\
-	utils/keymgr/cmdparse/command.c		\
-	utils/keymgr/cmdparse/command.h		\
-	utils/keymgr/cmdparse/match.h		\
-	utils/keymgr/cmdparse/parameter.c	\
-	utils/keymgr/cmdparse/parameter.h	\
-	utils/keymgr/cmdparse/value.c		\
-	utils/keymgr/cmdparse/value.h		\
-	utils/keymgr/legacy/context.c		\
-	utils/keymgr/legacy/context.h		\
-	utils/keymgr/legacy/key.c		\
-	utils/keymgr/legacy/key.h		\
-	utils/keymgr/legacy/privkey.c		\
-	utils/keymgr/legacy/privkey.h		\
-	utils/keymgr/legacy/pubkey.c		\
-	utils/keymgr/legacy/pubkey.h		\
-	utils/keymgr/options.c			\
-	utils/keymgr/options.h			\
-	utils/keymgr/keymgr.c
 
 knotc_SOURCES =					\
 	utils/knotc/commands.c			\
@@ -469,9 +449,6 @@ knot1to2_SOURCES =				\
 	utils/knot1to2/main.c			\
 	utils/knot1to2/scheme.h
 
-keymgr_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec $(gnutls_CFLAGS)
-keymgr_LDADD = libknotd.la libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
-               zscanner/libzscanner.la $(gnutls_LIBS)
 knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD = libknotd.la libcontrib.la $(liburcu_LIBS)
 knotc_CPPFLAGS = $(AM_CPPFLAGS) $(libedit_CFLAGS)
