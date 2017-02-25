@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ _public_
 void knot_wire_add_qdcount(uint8_t *packet, int16_t n)
 {
 	wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT,
-	                    knot_wire_get_qdcount(packet) + n);
+	               knot_wire_get_qdcount(packet) + n);
 }
 
 _public_
@@ -67,7 +67,7 @@ _public_
 void knot_wire_add_ancount(uint8_t *packet, int16_t n)
 {
 	wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT,
-	                    knot_wire_get_ancount(packet) + n);
+	               knot_wire_get_ancount(packet) + n);
 }
 
 _public_
@@ -86,7 +86,7 @@ _public_
 void knot_wire_add_nscount(uint8_t *packet, int16_t n)
 {
 	wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT,
-	                    knot_wire_get_nscount(packet) + n);
+	               knot_wire_get_nscount(packet) + n);
 }
 
 _public_
@@ -105,7 +105,7 @@ _public_
 void knot_wire_add_arcount(uint8_t *packet, int16_t n)
 {
 	wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT,
-	                    knot_wire_get_arcount(packet) + n);
+	               knot_wire_get_arcount(packet) + n);
 }
 
 _public_
@@ -119,7 +119,7 @@ void knot_wire_put_pointer(uint8_t *pos, uint16_t ptr)
 _public_
 uint16_t knot_wire_get_pointer(const uint8_t *pos)
 {
-	assert((pos[0] & KNOT_WIRE_PTR) == KNOT_WIRE_PTR);	// Check pointer.
+	assert(knot_wire_is_pointer(pos));			// Check pointer.
 	return (wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
 }
 
