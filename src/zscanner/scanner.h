@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -86,12 +86,12 @@ typedef struct {
 
 /*! \brief Scanner states describing the result. */
 typedef enum {
-	ZS_STATE_NONE,     /*!< Initial state. */
+	ZS_STATE_NONE,     /*!< Initial state (no data). */
 	ZS_STATE_DATA,     /*!< A record parsed. */
 	ZS_STATE_ERROR,    /*!< An error occurred. */
-	ZS_STATE_INCLUDE,  /*!< An include directive parsed. */
+	ZS_STATE_INCLUDE,  /*!< An include directive (see include_filename, buffer). */
 	ZS_STATE_EOF,      /*!< The end of the current input reached. */
-	ZS_STATE_STOP      /*!< Finished parsing. */
+	ZS_STATE_STOP      /*!< Early stop (possibly set from a callback). */
 } zs_state_t;
 
 /*!
