@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -334,9 +334,6 @@ static void parse(
 	// Initialization of the last r_data byte.
 	uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
 
-	// External processing interrupt indicator.
-	bool escape = false;
-
 	// Write scanner body (in C).
 	%% write exec;
 
@@ -391,39 +388,45 @@ int zs_parse_record(
 		return -1;
 	}
 
-	// Stop parsing if stop or after the final parsing.
-	if (s->state == ZS_STATE_STOP || s->input.eof) {
-		return -1;
+	// Check if parsing is possible.
+	switch (s->state) {
+	case ZS_STATE_NONE:
+	case ZS_STATE_DATA:
+	case ZS_STATE_INCLUDE:
+		break;
+	case ZS_STATE_ERROR:
+		if (s->error.fatal) {
+			return -1;
+		}
+		break;
+	default:
+		// Return if stop or end of file.
+		return 0;
 	}
 
 	// Check for the end of the input.
 	if (s->input.current != s->input.end) {
+		// Try to parse another item.
 		s->state = ZS_STATE_NONE;
-		// Parse the next item.
 		parse(s);
-		return 0;
-	}
 
-	switch (s->state) {
-	case ZS_STATE_NONE:
-		// Indicate end of the input.
+		// Finish if nothing was parsed.
+		if (s->state == ZS_STATE_NONE) {
+			// Parse the final block.
+			if (zs_set_input_string(s, "\n", 1) != 0) {
+				return -1;
+			}
+			s->input.eof = true;
+			parse(s);
+			if (s->state == ZS_STATE_NONE) {
+				s->state = ZS_STATE_EOF;
+			}
+		}
+	} else {
 		s->state = ZS_STATE_EOF;
-		return 0;
-	case ZS_STATE_EOF:
-		// Parse the final block.
-		if (zs_set_input_string(s, "\n", 1) != 0) {
-			return -1;
-		}
-		s->input.eof = true;
-
-		parse(s);
-		if (s->state == ZS_STATE_EOF) {
-			return -1;
-		}
-		return 0;
-	default:
-		return -1;;
 	}
+
+	return 0;
 }
 
 __attribute__((visibility("default")))
@@ -439,8 +442,8 @@ int zs_parse_all(
 	// Parse input block.
 	parse(s);
 
-	// Parse trailing newline-char block if not stop.
-	if (s->state != ZS_STATE_STOP) {
+	// Parse trailing newline-char block if it makes sense.
+	if (s->state != ZS_STATE_STOP && !s->error.fatal) {
 		if (zs_set_input_string(s, "\n", 1) != 0) {
 			return -1;
 		}
@@ -448,7 +451,7 @@ int zs_parse_all(
 		parse(s);
 	}
 
-	// Check if any errors has occurred.
+	// Check if any errors have occurred.
 	if (s->error.counter > 0) {
 		return -1;
 	}

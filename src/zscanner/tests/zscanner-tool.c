@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -70,11 +70,10 @@ static int time_test(void)
 	return EXIT_SUCCESS;
 }
 
-int state_parsing(
-	zs_scanner_t *s)
-{
-	zs_scanner_t *ss;
+static int include(zs_scanner_t *s);
 
+static int state_parsing(zs_scanner_t *s)
+{
 	while (zs_parse_record(s) == 0) {
 		switch (s->state) {
 		case ZS_STATE_DATA:
@@ -91,45 +90,50 @@ int state_parsing(
 			}
 			break;
 		case ZS_STATE_INCLUDE:
-			ss = malloc(sizeof(zs_scanner_t));
-			if (ss == NULL) {
+			if (include(s) != 0) {
 				return -1;
 			}
-			if (zs_init(ss, (char *)s->buffer, s->default_class, s->default_ttl) != 0 ||
-			    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
-			    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
-			    state_parsing(ss) != 0 ||
-			    ss->error.counter > 0) {
-				if (ss->error.counter > 0) {
-					s->error.code = ZS_UNPROCESSED_INCLUDE;
-				} else {
-					s->error.code = ss->error.code;
-				}
-
-				s->error.counter++;
-				s->error.fatal = true;
-				if (s->process.error != NULL) {
-					s->process.error(s);
-				}
-
-				zs_deinit(ss);
-				free(ss);
-				return -1;
-			}
-			zs_deinit(ss);
-			free(ss);
 			break;
-		case ZS_STATE_NONE:
-			break;
-		case ZS_STATE_EOF:
-			// Set the next input string block.
-			break;
-		case ZS_STATE_STOP:
-			return 0;
+		default:
+			return (s->error.counter == 0) ? 0 : -1;
 		}
 	}
 
-	return 0;
+	return -1;
+}
+
+static int include(zs_scanner_t *s)
+{
+	zs_scanner_t *ss;
+	int ret = 0;
+
+	if ((ss = malloc(sizeof(zs_scanner_t))) == NULL ||
+	    zs_init(ss, (char *)s->buffer, s->default_class, s->default_ttl) != 0 ||
+	    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
+	    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
+	    state_parsing(ss) != 0) {
+		if (ss->error.counter > 0) {
+			s->error.counter += ss->error.counter;
+			s->error.code = ZS_UNPROCESSED_INCLUDE;
+		} else {
+			s->error.code = ss->error.code;
+		}
+
+		if (s->process.error != NULL) {
+			s->buffer[0] = '\0'; // Clear unrelated content.
+			s->buffer_length = 0;
+			s->error.counter++;
+			s->error.fatal = true;
+			s->process.error(s);
+		}
+
+		ret = -1;
+	}
+
+	zs_deinit(ss);
+	free(ss);
+
+	return ret;
 }
 
 int main(int argc, char *argv[])
