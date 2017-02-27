@@ -152,7 +152,8 @@ int main(int argc, char *argv[])
 	/* Terminate responder. */
 	int conn = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&server, NULL);
 	assert(conn > 0);
-	net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT);
+	conn = net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT);
+	assert(conn > 0);
 	pthread_join(thread, NULL);
 	close(responder_fd);
 
