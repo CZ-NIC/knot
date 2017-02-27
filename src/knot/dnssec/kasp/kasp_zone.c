@@ -80,7 +80,7 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 }
 
 static int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
-			  dnssec_kasp_key_t *key)
+			  knot_kasp_key_t *key)
 {
 	int ret = params2dnskey(dname, params, &key->key);
 	if (ret != KNOT_EOK) {
@@ -97,7 +97,7 @@ static int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
 	return KNOT_EOK;
 }
 
-static void kaspkey2params(dnssec_kasp_key_t *key, key_params_t *params)
+static void kaspkey2params(knot_kasp_key_t *key, key_params_t *params)
 {
 	assert(key);
 	assert(params);
@@ -123,7 +123,7 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
 		   const knot_dname_t *zone_name,
 		   kasp_db_t *kdb)
 {
-	dnssec_kasp_key_t *dkeys = NULL;
+	knot_kasp_key_t *dkeys = NULL;
 	size_t num_dkeys = 0;
 	dnssec_binary_t salt = { 0 };
 	time_t sc = 0;
@@ -185,10 +185,10 @@ kzl_end:
 	return ret;
 }
 
-int kasp_zone_append(knot_kasp_zone_t *zone, const dnssec_kasp_key_t *appkey)
+int kasp_zone_append(knot_kasp_zone_t *zone, const knot_kasp_key_t *appkey)
 {
 	size_t new_num_keys = zone->num_keys + 1;
-	dnssec_kasp_key_t *new_keys = calloc(new_num_keys, sizeof(*new_keys));
+	knot_kasp_key_t *new_keys = calloc(new_num_keys, sizeof(*new_keys));
 	if (!new_keys) {
 		return KNOT_ENOMEM;
 	}

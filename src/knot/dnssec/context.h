@@ -18,11 +18,11 @@
 
 #include <time.h>
 
-#include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
 
 #include "knot/conf/conf.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
+#include "knot/dnssec/kasp/policy.h"
 #include "libknot/dname.h"
 
 /*!
@@ -33,7 +33,7 @@ struct kdnssec_ctx {
 
 	kasp_db_t **kasp_db;
 	knot_kasp_zone_t *zone;
-	dnssec_kasp_policy_t *policy;
+	knot_kasp_policy_t *policy;
 	dnssec_keystore_t *keystore;
 
 	char *kasp_zone_path;

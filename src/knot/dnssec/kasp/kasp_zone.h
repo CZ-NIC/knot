@@ -16,14 +16,13 @@
 
 #pragma once
 
-#include "dnssec/lib/dnssec/kasp.h"
 #include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/zone/zone.h"
 
 typedef struct knot_kasp_zone {
 	knot_dname_t *dname;
 
-	dnssec_kasp_key_t *keys;
+	knot_kasp_key_t *keys;
 	size_t num_keys;
 
 	dnssec_binary_t nsec3_salt;
@@ -39,7 +38,7 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 		   kasp_db_t *kdb);
 
 int kasp_zone_append(knot_kasp_zone_t *zone,
-		     const dnssec_kasp_key_t *appkey);
+		     const knot_kasp_key_t *appkey);
 
 void kasp_zone_clear(knot_kasp_zone_t *zone);
 void kasp_zone_free(knot_kasp_zone_t **zone);

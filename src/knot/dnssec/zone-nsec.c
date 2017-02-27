@@ -342,7 +342,7 @@ static int update_nsec3param(const zone_contents_t *zone,
  *
  * \note For NSEC, the algorithm number is set to 0.
  */
-static dnssec_nsec3_params_t nsec3param_init(const dnssec_kasp_policy_t *policy,
+static dnssec_nsec3_params_t nsec3param_init(const knot_kasp_policy_t *policy,
                                              const knot_kasp_zone_t *zone)
 {
 	assert(policy);

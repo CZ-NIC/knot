@@ -20,7 +20,6 @@ EXTRA_DIST = sample_keys.h
 check_PROGRAMS = \
 	binary		\
 	crypto		\
-	kasp_policy	\
 	key		\
 	key_algorithm	\
 	key_ds		\

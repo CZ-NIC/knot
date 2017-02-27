@@ -18,7 +18,7 @@
 
 #include <time.h>
 
-#include "dnssec/kasp.h"
+#include "knot/dnssec/kasp/policy.h"
 
 enum key_state {
 	DNSSEC_KEY_STATE_INVALID = 0,
@@ -30,4 +30,4 @@ enum key_state {
 
 typedef enum key_state key_state_t;
 
-key_state_t get_key_state(const dnssec_kasp_key_t *key, time_t moment);
+key_state_t get_key_state(const knot_kasp_key_t *key, time_t moment);

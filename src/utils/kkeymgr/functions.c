@@ -22,8 +22,9 @@
 #include <strings.h>
 #include <time.h>
 
-#include "dnssec/lib/dnssec/dnssec.h"
+#include "dnssec/lib/dnssec/error.h"
 #include "dnssec/shared/shared.h"
+#include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/zone-keys.h"
 #include "utils/kkeymgr/bind_privkey.h"
 #include "zscanner/scanner.h"
@@ -80,7 +81,7 @@ static time_t arg_timestamp(const char *arg)
 }
 
 static bool genkeyargs(int argc, char *argv[], bool *isksk, dnssec_key_algorithm_t *algorithm,
-		       uint16_t *keysize, dnssec_kasp_key_timing_t *timing)
+		       uint16_t *keysize, knot_kasp_key_timing_t *timing)
 {
 	// generate algorithms field
 	char *algnames[256] = { 0 };
@@ -162,7 +163,7 @@ static bool genkeyargs(int argc, char *argv[], bool *isksk, dnssec_key_algorithm
 // modifies ctx->policy options, so don't do anything afterwards !
 int kkeymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]) {
 	time_t now = time(NULL), infty = 0x0fffffffffffff00LLU;
-	dnssec_kasp_key_timing_t gen_timing = { now, now, now, infty, infty };
+	knot_kasp_key_timing_t gen_timing = { now, now, now, infty, infty };
 	bool isksk = false;
 	uint16_t keysize = 0;
 	if (!genkeyargs(argc, argv, &isksk, &ctx->policy->algorithm,
@@ -178,7 +179,7 @@ int kkeymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]) {
 	}
 	printf("alg %d\n", (int)ctx->policy->algorithm);
 
-	dnssec_kasp_key_t *key = NULL;
+	knot_kasp_key_t *key = NULL;
 	int ret = kdnssec_generate_key(ctx, isksk, &key);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -302,7 +303,7 @@ int kkeymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file)
 		goto fail;
 	}
 
-	dnssec_kasp_key_timing_t timing = { 0 };
+	knot_kasp_key_timing_t timing = { 0 };
 	bind_privkey_to_timing(&bpriv, &timing); // time created remains always zero
 
 	bind_privkey_free(&bpriv);
@@ -312,7 +313,7 @@ int kkeymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file)
 		goto fail;
 	}
 
-	dnssec_kasp_key_t *kkey = calloc(1, sizeof(*kkey));
+	knot_kasp_key_t *kkey = calloc(1, sizeof(*kkey));
 	if (!kkey) {
 		ret = KNOT_ENOMEM;
 		goto fail;

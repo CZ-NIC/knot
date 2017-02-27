@@ -370,7 +370,7 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 	}
 }
 
-void bind_privkey_to_timing(bind_privkey_t *params, dnssec_kasp_key_timing_t *timing)
+void bind_privkey_to_timing(bind_privkey_t *params, knot_kasp_key_timing_t *timing)
 {
 	// unsupported: time_created, time_revoke
 

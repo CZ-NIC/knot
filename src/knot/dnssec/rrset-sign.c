@@ -21,7 +21,6 @@
 
 #include "contrib/wire_ctx.h"
 #include "dnssec/error.h"
-#include "dnssec/kasp.h"
 #include "dnssec/key.h"
 #include "dnssec/sign.h"
 #include "knot/dnssec/rrset-sign.h"
