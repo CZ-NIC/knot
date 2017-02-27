@@ -20,7 +20,7 @@
 #include <time.h>
 
 #include "dnssec/binary.h"
-#include "dnssec/kasp.h"
+#include "knot/dnssec/kasp/policy.h"
 
 /*!
  * Legacy private key parameters.
@@ -76,4 +76,4 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 /*!
  * Extract timing info.
  */
-void bind_privkey_to_timing(bind_privkey_t *params, dnssec_kasp_key_timing_t *timing);
+void bind_privkey_to_timing(bind_privkey_t *params, knot_kasp_key_timing_t *timing);

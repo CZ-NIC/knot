@@ -18,10 +18,10 @@
 #include <time.h>
 #include <string.h>
 
-#include "dnssec/kasp.h"
+#include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/kasp/keystate.h"
 
-key_state_t get_key_state(const dnssec_kasp_key_t *key, time_t moment)
+key_state_t get_key_state(const knot_kasp_key_t *key, time_t moment)
 {
 	if (!key || moment <= 0)
 	{
@@ -38,7 +38,7 @@ key_state_t get_key_state(const dnssec_kasp_key_t *key, time_t moment)
 	 * meaning of unset parameter when policy is used, etc.).
 	 */
 
-	const dnssec_kasp_key_timing_t *t = &key->timing;
+	const knot_kasp_key_timing_t *t = &key->timing;
 
 	bool removed = t->remove != 0 && t->remove <= moment;
 	bool retired = t->retire != 0 && t->retire <= moment;

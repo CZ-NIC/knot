@@ -14,11 +14,33 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include <string.h>
 
-#include <dnssec/keystore.h>
-#include "knot/dnssec/kasp/kasp_zone.h"
-#include "libknot/dname.h"
+#include "knot/dnssec/kasp/policy.h"
 
-int keystore_load(const char *config, int backend,
-                  const char *kasp_base_path, dnssec_keystore_t **keystore);
+knot_kasp_policy_t *knot_kasp_policy_new(const char *name)
+{
+	knot_kasp_policy_t *policy = malloc(sizeof(*policy));
+	memset(policy, 0, sizeof(*policy));
+
+	if (name) {
+		policy->name = strdup(name);
+		if (!policy->name) {
+			free(policy);
+			return NULL;
+		}
+	}
+
+	return policy;
+}
+
+void knot_kasp_policy_free(knot_kasp_policy_t *policy)
+{
+	if (!policy) {
+		return;
+	}
+
+	free(policy->name);
+	free(policy->keystore);
+	free(policy);
+}

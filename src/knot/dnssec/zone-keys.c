@@ -36,7 +36,7 @@ uint16_t dnskey_flags(bool is_ksk)
 	return is_ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK;
 }
 
-int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_ptr)
+int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_kasp_key_t **key_ptr)
 {
 	assert(ctx);
 	assert(ctx->zone);
@@ -80,7 +80,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_p
 		return r;
 	}
 
-	dnssec_kasp_key_t *key = calloc(1, sizeof(*key));
+	knot_kasp_key_t *key = calloc(1, sizeof(*key));
 	if (!key) {
 		dnssec_key_free(dnskey);
 		free(id);
@@ -106,7 +106,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_p
 	return KNOT_EOK;
 }
 
-int kdnssec_delete_key(kdnssec_ctx_t *ctx, dnssec_kasp_key_t *key_ptr)
+int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 {
 	assert(ctx);
 	assert(ctx->zone);
@@ -143,12 +143,12 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, dnssec_kasp_key_t *key_ptr)
 /*!
  * \brief Get key feature flags from key parameters.
  */
-static int set_key(dnssec_kasp_key_t *kasp_key, time_t now, zone_key_t *zone_key)
+static int set_key(knot_kasp_key_t *kasp_key, time_t now, zone_key_t *zone_key)
 {
 	assert(kasp_key);
 	assert(zone_key);
 
-	dnssec_kasp_key_timing_t *timing = &kasp_key->timing;
+	knot_kasp_key_timing_t *timing = &kasp_key->timing;
 
 	// cryptographic context
 
@@ -383,7 +383,7 @@ int load_zone_keys(knot_kasp_zone_t *zone, dnssec_keystore_t *store,
 	}
 
 	for (size_t i = 0; i < zone->num_keys; i++) {
-		dnssec_kasp_key_t *kasp_key = &zone->keys[i];
+		knot_kasp_key_t *kasp_key = &zone->keys[i];
 		set_key(kasp_key, now, &keyset.keys[i]);
 		log_key_info(&keyset.keys[i], zone->dname);
 	}

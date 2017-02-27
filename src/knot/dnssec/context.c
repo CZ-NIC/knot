@@ -20,7 +20,6 @@
 #include <time.h>
 
 #include <dnssec/error.h>
-#include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
 
 #include "libknot/libknot.h"
@@ -29,7 +28,7 @@
 #include "knot/dnssec/kasp/keystore.h"
 #include "contrib/files.h"
 
-static int policy_load(dnssec_kasp_policy_t *policy)
+static int policy_load(knot_kasp_policy_t *policy)
 {
 	const uint8_t *id = (const uint8_t *)policy->name;
 	const size_t id_len = strlen(policy->name) + 1;
@@ -111,7 +110,7 @@ int kdnssec_kasp_init(kdnssec_ctx_t *ctx, const char *kasp_path, size_t kasp_map
 
 	ctx->kasp_zone_path = strdup(kasp_path);
 
-	ctx->policy = dnssec_kasp_policy_new(policy_name);
+	ctx->policy = knot_kasp_policy_new(policy_name);
 	if (ctx->policy == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -153,7 +152,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 	}
 
 	dnssec_keystore_deinit(ctx->keystore);
-	dnssec_kasp_policy_free(ctx->policy);
+	knot_kasp_policy_free(ctx->policy);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);
 

@@ -19,8 +19,8 @@
 #include <time.h>
 
 #include "contrib/ucw/lists.h"
-#include "dnssec/lib/dnssec/kasp.h"
 #include "libknot/db/db_lmdb.h"
+#include "knot/dnssec/kasp/policy.h"
 #include "knot/zone/zone.h"
 
 typedef struct kasp_db kasp_db_t;

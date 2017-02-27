@@ -28,15 +28,15 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/serial.h"
 
-static dnssec_kasp_key_t *last_key(kdnssec_ctx_t *ctx, key_state_t state)
+static knot_kasp_key_t *last_key(kdnssec_ctx_t *ctx, key_state_t state)
 {
 	assert(ctx);
 	assert(ctx->zone);
 
-	dnssec_kasp_key_t *match = NULL;
+	knot_kasp_key_t *match = NULL;
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		dnssec_kasp_key_t *key = &ctx->zone->keys[i];
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (match == NULL || key->timing.created == 0 ||
 		    key->timing.created >= match->timing.created) {
 			if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
@@ -54,7 +54,7 @@ static bool key_present(kdnssec_ctx_t *ctx, uint16_t flag)
 	assert(ctx);
 	assert(ctx->zone);
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		dnssec_kasp_key_t *key = &ctx->zone->keys[i];
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (dnssec_key_get_flags(key->key) == flag) {
 			return true;
 		}
@@ -64,7 +64,7 @@ static bool key_present(kdnssec_ctx_t *ctx, uint16_t flag)
 
 static int generate_initial_key(kdnssec_ctx_t *ctx, bool ksk)
 {
-	dnssec_kasp_key_t *key = NULL;
+	knot_kasp_key_t *key = NULL;
 	int r = kdnssec_generate_key(ctx, ksk, &key);
 	if (r != KNOT_EOK) {
 		return r;
@@ -91,7 +91,7 @@ inline static time_t time_max(time_t a, time_t b)
 static roll_action next_action(kdnssec_ctx_t *ctx, time_t *next_action_time)
 {
 	assert(next_action_time);
-	dnssec_kasp_key_t *kk = last_key(ctx, DNSSEC_KEY_STATE_RETIRED);
+	knot_kasp_key_t *kk = last_key(ctx, DNSSEC_KEY_STATE_RETIRED);
 	if (kk != NULL) {
 		if (ctx->now < kk->timing.retire) {
 			return KNOT_EINVAL;
@@ -128,7 +128,7 @@ static roll_action next_action(kdnssec_ctx_t *ctx, time_t *next_action_time)
 
 static int exec_new_key(kdnssec_ctx_t *ctx)
 {
-	dnssec_kasp_key_t *new_key = NULL;
+	knot_kasp_key_t *new_key = NULL;
 	int r = kdnssec_generate_key(ctx, false, &new_key);
 	if (r != KNOT_EOK) {
 		return r;
@@ -143,8 +143,8 @@ static int exec_new_key(kdnssec_ctx_t *ctx)
 
 static int exec_new_signatures(kdnssec_ctx_t *ctx)
 {
-	dnssec_kasp_key_t *active  = last_key(ctx, DNSSEC_KEY_STATE_ACTIVE);
-	dnssec_kasp_key_t *rolling = last_key(ctx, DNSSEC_KEY_STATE_PUBLISHED);
+	knot_kasp_key_t *active  = last_key(ctx, DNSSEC_KEY_STATE_ACTIVE);
+	knot_kasp_key_t *rolling = last_key(ctx, DNSSEC_KEY_STATE_PUBLISHED);
 	if (!active || !rolling) {
 		return KNOT_EINVAL;
 	}
@@ -160,7 +160,7 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx)
 
 static int exec_remove_old_key(kdnssec_ctx_t *ctx)
 {
-	dnssec_kasp_key_t *retired = last_key(ctx, DNSSEC_KEY_STATE_RETIRED);
+	knot_kasp_key_t *retired = last_key(ctx, DNSSEC_KEY_STATE_RETIRED);
 	if (!retired) {
 		return KNOT_EINVAL;
 	}

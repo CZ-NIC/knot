@@ -252,7 +252,7 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 
 	// compatible context
 
-	dnssec_kasp_policy_t policy = {
+	knot_kasp_policy_t policy = {
 		.rrsig_lifetime = module_ctx->rrsig_lifetime
 	};
 
@@ -452,7 +452,7 @@ static int get_online_key(dnssec_key_t **key_ptr, struct query_module *module)
 	}
 
 	assert(kctx.zone->num_keys > 0);
-	dnssec_kasp_key_t *kasp_key = &kctx.zone->keys[0];
+	knot_kasp_key_t *kasp_key = &kctx.zone->keys[0];
 	assert(kasp_key);
 
 	dnssec_key_t *key = dnssec_key_dup(kasp_key->key);

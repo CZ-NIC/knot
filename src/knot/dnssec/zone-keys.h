@@ -29,11 +29,11 @@
 #include <time.h>
 
 #include "contrib/dynarray.h"
-#include "dnssec/kasp.h"
 #include "dnssec/keystore.h"
 #include "dnssec/sign.h"
 
 #include "knot/dnssec/kasp/kasp_zone.h"
+#include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/context.h"
 
 /*!
@@ -79,7 +79,7 @@ uint16_t dnskey_flags(bool is_ksk);
  *
  * \return KNOT_E*
  */
-int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_ptr);
+int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_kasp_key_t **key_ptr);
 
 /*!
  * \brief Remove key from zone.
@@ -93,7 +93,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_p
  *
  * \return KNOT_E*
  */
-int kdnssec_delete_key(kdnssec_ctx_t *ctx, dnssec_kasp_key_t *key_ptr);
+int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
 
 /*!
  * \brief Load zone keys and init cryptographic context.

@@ -77,7 +77,6 @@ src/dnssec/lib/dnssec/binary.h
 src/dnssec/lib/dnssec/crypto.h
 src/dnssec/lib/dnssec/dnssec.h
 src/dnssec/lib/dnssec/error.h
-src/dnssec/lib/dnssec/kasp.h
 src/dnssec/lib/dnssec/key.h
 src/dnssec/lib/dnssec/keyid.h
 src/dnssec/lib/dnssec/keystore.h
@@ -88,7 +87,6 @@ src/dnssec/lib/dnssec/random.h
 src/dnssec/lib/dnssec/sign.h
 src/dnssec/lib/dnssec/tsig.h
 src/dnssec/lib/error.c
-src/dnssec/lib/kasp/policy.c
 src/dnssec/lib/key/algorithm.c
 src/dnssec/lib/key/algorithm.h
 src/dnssec/lib/key/convert.c
@@ -145,7 +143,6 @@ src/dnssec/tests/binary.c
 src/dnssec/tests/crypto.c
 src/dnssec/tests/kasp_dir_escape.c
 src/dnssec/tests/kasp_dir_file.c
-src/dnssec/tests/kasp_policy.c
 src/dnssec/tests/key.c
 src/dnssec/tests/key_algorithm.c
 src/dnssec/tests/key_ds.c
@@ -207,6 +204,8 @@ src/knot/dnssec/kasp/keystate.c
 src/knot/dnssec/kasp/keystate.h
 src/knot/dnssec/kasp/keystore.c
 src/knot/dnssec/kasp/keystore.h
+src/knot/dnssec/kasp/policy.c
+src/knot/dnssec/kasp/policy.h
 src/knot/dnssec/key-events.c
 src/knot/dnssec/key-events.h
 src/knot/dnssec/nsec-chain.c

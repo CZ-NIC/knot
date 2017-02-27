@@ -105,7 +105,6 @@
 #include <dnssec/binary.h>
 #include <dnssec/crypto.h>
 #include <dnssec/error.h>
-#include <dnssec/kasp.h>
 #include <dnssec/key.h>
 #include <dnssec/keyid.h>
 #include <dnssec/keystore.h>

@@ -22,5 +22,5 @@
 /*!
  * \brief Update policy parameters depending on zone content.
  */
-void update_policy_from_zone(dnssec_kasp_policy_t *policy,
+void update_policy_from_zone(knot_kasp_policy_t *policy,
                              const zone_contents_t *zone);
