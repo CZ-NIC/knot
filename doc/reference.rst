@@ -896,7 +896,7 @@ A :ref:`reference<template_id>` to a configuration template.
 storage
 -------
 
-A data directory for storing zone files, journal files and timers database.
+A data directory for storing zone files, journal database, and timers database.
 
 *Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 

@@ -764,7 +764,7 @@ A \fI\%reference\fP to a configuration template.
 \fIDefault:\fP not set or \fIdefault\fP (if the template exists)
 .SS storage
 .sp
-A data directory for storing zone files, journal files and timers database.
+A data directory for storing zone files, journal database, and timers database.
 .sp
 \fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS file
