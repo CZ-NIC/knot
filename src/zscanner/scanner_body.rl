@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,13 +41,26 @@
 		s->multiline = false;
 	}
 
+	action _comment {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
+			s->buffer[s->buffer_length++] = fc;
+		}
+	}
+	action _comment_exit {
+		s->buffer[s->buffer_length++] = 0;
+	}
+
+	action _rest_init {
+		s->buffer[0] = 0;
+		s->buffer_length = 0;
+	}
 	action _rest_error {
 		WARN(ZS_BAD_REST);
 		fhold; fgoto err_line;
 	}
 
 	newline = '\n' $_newline;
-	comment = ';' . (^newline)*;
+	comment = (';' . (^newline)* $_comment) %_comment_exit;
 
 	# White space separation. With respect to parentheses and included comments.
 	sep = ( [ \t]                                       # Blank characters.
@@ -56,7 +69,7 @@
 	      | ')' $_check_multiline_end                   # End of multiline.
 	      )+;                                           # Apply more times.
 
-	rest = (sep? :> comment?) $!_rest_error; # Useless text after record.
+	rest = (sep? :> comment?) >_rest_init $!_rest_error; # Comments.
 
 	# Artificial machines which are used for next state transition only!
 	all_wchar = [ \t\n;()];
@@ -96,33 +109,26 @@
 			if (s->process.error != NULL) {
 				s->process.error(s);
 
-				// Stop the scanner if required.
+				// Stop if required from the callback.
 				if (s->state == ZS_STATE_STOP) {
 					fbreak;
 				}
 			}
 
-			// Stop the scanner if fatal.
+			// Stop the scanner if fatal error.
 			if (s->error.fatal) {
-				s->state = ZS_STATE_STOP;
 				fbreak;
 			}
+			fgoto main;
 		} else {
 			// Return if external processing.
-			escape = true;
-		}
-	}
-	action _err_line_exit_final {
-		if (escape) {
-			fnext main; fbreak;
-		} else {
-			fgoto main;
+			fhold; fnext main; fbreak;
 		}
 	}
 
 	# Fill rest of the line to buffer and skip to main loop.
 	err_line := (^newline $_err_line)* >_err_line_init
-	            %_err_line_exit . newline @_err_line_exit_final;
+	            %_err_line_exit . newline;
 	# END
 
 	# BEGIN - Domain name labels processing
@@ -730,10 +736,7 @@
 		}
 
 		// Let the caller to solve the include.
-		if (!s->process.automatic) {
-			s->state = ZS_STATE_INCLUDE;
-			escape = true;
-		} else {
+		if (s->process.automatic) {
 			// Create new scanner for included zone file.
 			zs_scanner_t *ss = malloc(sizeof(zs_scanner_t));
 			if (ss == NULL) {
@@ -750,6 +753,7 @@
 			    zs_parse_all(ss) != 0) {
 				// File internal errors are handled by error callback.
 				if (ss->error.counter > 0) {
+					s->error.counter += ss->error.counter;
 					ERR(ZS_UNPROCESSED_INCLUDE);
 				// General include file error.
 				} else {
@@ -761,6 +765,9 @@
 			}
 			zs_deinit(ss);
 			free(ss);
+		} else {
+			s->state = ZS_STATE_INCLUDE;
+			fhold; fnext main; fbreak;
 		}
 	}
 
@@ -783,9 +790,6 @@
 	# Remove stop processing flag.
 	action _directive_exit {
 		NOERR;
-		if (escape) {
-			fnext main; fbreak;
-		}
 	}
 	action _directive_error {
 		ERR(ZS_BAD_DIRECTIVE);
@@ -2031,7 +2035,7 @@
 			if (s->process.record != NULL) {
 				s->process.record(s);
 
-				// Stop the scanner if required.
+				// Stop if required from the callback.
 				if (s->state == ZS_STATE_STOP) {
 					fbreak;
 				}

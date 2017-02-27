@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -86,12 +86,12 @@ typedef struct {
 
 /*! \brief Scanner states describing the result. */
 typedef enum {
-	ZS_STATE_NONE,     /*!< Initial state. */
+	ZS_STATE_NONE,     /*!< Initial state (no data). */
 	ZS_STATE_DATA,     /*!< A record parsed. */
 	ZS_STATE_ERROR,    /*!< An error occurred. */
-	ZS_STATE_INCLUDE,  /*!< An include directive parsed. */
+	ZS_STATE_INCLUDE,  /*!< An include directive (see include_filename, buffer). */
 	ZS_STATE_EOF,      /*!< The end of the current input reached. */
-	ZS_STATE_STOP      /*!< Finished parsing. */
+	ZS_STATE_STOP      /*!< Early stop (possibly set from a callback). */
 } zs_state_t;
 
 /*!
@@ -134,9 +134,9 @@ struct scanner {
 	uint32_t item_length_position;
 	/*! Auxiliary pointer to item length. */
 	uint8_t *item_length_location;
-	/*! Auxiliary buffer length. */
+	/*! Auxiliary buffer length. Is zero if no comment after a valid record. */
 	uint32_t buffer_length;
-	/*! Auxiliary buffer for data storing. */
+	/*! Auxiliary buffer. Contains a comment after a valid record. */
 	uint8_t  buffer[MAX_RDATA_LENGTH];
 	/*! Auxiliary buffer for current included file name. */
 	char     include_filename[MAX_RDATA_LENGTH];
@@ -246,7 +246,7 @@ struct scanner {
 	uint8_t  r_data[MAX_RDATA_LENGTH];
 
 	/*
-	 * Example: a. IN 60 MX 1 b.
+	 * Example: a. IN 60 MX 1 b. ; A comment
 	 *
 	 *          r_owner_length = 3
 	 *          r_owner = 016100
@@ -255,6 +255,8 @@ struct scanner {
 	 *          r_type = 15
 	 *          r_data_length = 5
 	 *          r_data = 0001016200
+	 *          buffer_length = 11
+	 *          buffer = " A comment"
 	 */
 };
 
