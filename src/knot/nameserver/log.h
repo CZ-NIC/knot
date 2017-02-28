@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ static inline const char *log_direction_name(enum log_direction direction)
 	do { \
 		char address[SOCKADDR_STRLEN] = ""; \
 		sockaddr_tostr(address, sizeof(address), remote); \
-		log_msg_zone(priority, zone, "%s, %s, %s: " fmt, \
+		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, "%s, %s, %s: " fmt, \
 		             log_operation_name(op), log_direction_name(dir), address, \
 		             ## __VA_ARGS__); \
 	} while (0)

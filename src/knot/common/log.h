@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -129,11 +129,6 @@ __attribute__((format(printf, 4, 5)));
  */
 void log_fmt_zone_str(int priority, log_source_t src, const char *zone, const char *fmt, ...)
 __attribute__((format(printf, 4, 5)));
-
-/* Compatibility wrappers. */
-#define log_msg(priority, fmt, ...) log_fmt(priority, LOG_SOURCE_SERVER, fmt, ##__VA_ARGS__)
-#define log_msg_zone(priority, zone, fmt, ...) log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, fmt, ##__VA_ARGS__)
-#define log_msg_zone_str(priority, zone, fmt, ...) log_fmt_zone_str(priority, LOG_SOURCE_ZONE, zone, fmt, ##__VA_ARGS__)
 
 /*!
  * \brief Convenient logging macros.

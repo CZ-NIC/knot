@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,11 +43,11 @@
 
 /*! Configuration specific logging. */
 #define CONF_LOG(severity, msg, ...) do { \
-	log_msg(severity, "config, " msg, ##__VA_ARGS__); \
+	log_fmt(severity, LOG_SOURCE_SERVER, "config, " msg, ##__VA_ARGS__); \
 	} while (0)
 
 #define CONF_LOG_ZONE(severity, zone, msg, ...) do { \
-	log_msg_zone(severity, zone, "config, " msg, ##__VA_ARGS__); \
+	log_fmt_zone(severity, LOG_SOURCE_ZONE, zone, "config, " msg, ##__VA_ARGS__); \
 	} while (0)
 
 /*! Configuration getter output. */
