@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -63,16 +63,20 @@ static void test_get_filename(void)
 	check_name(zone, "/%c[3]", "/.");
 	check_name(zone, "/%c[8]", "/g");
 	check_name(zone, "/%c[9]", "/.");
+	check_name(zone, "/%c[10]", "/");
+	check_name(zone, "/%c[255]", "/");
 	check_name(zone, "/%c[0-1]", "/ab");
 	check_name(zone, "/%c[1-1]", "/b");
 	check_name(zone, "/%c[1-3]", "/bc.");
 	check_name(zone, "/%c[1-4]", "/bc.d");
+	check_name(zone, "/%c[254-255]", "/");
 	check_name_err(zone, "/%c");
 	check_name_err(zone, "/%cx");
 	check_name_err(zone, "/%c[a]");
 	check_name_err(zone, "/%c[:]");
 	check_name_err(zone, "/%c[/]");
-	check_name_err(zone, "/%c[10]");
+	check_name_err(zone, "/%c[-1]");
+	check_name_err(zone, "/%c[256]");
 	check_name_err(zone, "/%c[");
 	check_name_err(zone, "/%c[1");
 	check_name_err(zone, "/%c[1-");
@@ -95,8 +99,11 @@ static void test_get_filename(void)
 	check_name(zone, "/%l[1]", "/def");
 	check_name(zone, "/%l[2]", "/abc");
 	check_name(zone, "/%l[3]", "/");
+	check_name(zone, "/%l[255]", "/");
 	check_name(zone, "/%l[0]-%l[1]-%l[2]", "/gh-def-abc");
 	check_name_err(zone, "/%l[0-1]");
+	check_name_err(zone, "/%l[-1]");
+	check_name_err(zone, "/%l[256]");
 
 	zone = ".";
 	check_name(zone, "/%l[0]", "/");
