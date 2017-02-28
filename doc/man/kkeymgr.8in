@@ -50,6 +50,9 @@ The databse is backed by LMDB.
 \fB\-h\fP
 Print the program help.
 .TP
+\fB\-V\fP
+Print the program version.
+.TP
 \fB\-t\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
 Generates TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
 bit length of the key by number (default: optimal length given by algorithm).
@@ -71,6 +74,9 @@ specified by config_storage.
 .SS Actions
 .INDENT 0.0
 .TP
+\fBlist\fP
+Prints the list of key IDs and parameters of keys belonging to the zone.
+.TP
 \fBgenerate\fP [\fIarguments\fP\&...]
 Generates new DNSSEC key and stores it in KASP database. Prints the key ID.
 This action takes some number of arguments (see below). Values for unspecified arguments are taken
@@ -79,6 +85,15 @@ from corresponding policy (if \fI\-c\fP or \fI\-C\fP options used) or from Knot 
 \fBimport\-bind\fP \fIBIND_key_file\fP
 Imports a BIND\-style key into KASP database (converting it to PEM format).
 Takes one argument: path to BIND key file (private or public, but both MUST exist).
+.TP
+\fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
+Changes a timing argument of an existing key to new timestamp. \fIKey_spec\fP is either the
+key tag or a prefix of key ID; \fIarguments\fP are like for \fBgenerate\fP, but just
+timing\-related ones.
+.TP
+\fBds\fP \fIkey_spec\fP
+Generate DS record (all digest algorithms together) from specified key. \fIKey_spec\fP
+is like for \fBset\fP\&.
 .UNINDENT
 .SS Generate arguments
 .sp

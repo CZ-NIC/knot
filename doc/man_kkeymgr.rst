@@ -27,6 +27,9 @@ Basic options
 **-h**
   Print the program help.
 
+**-V**
+  Print the program version.
+
 **-t** [*tsig_algorithm*] [*tsig_bits*]
   Generates TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
   bit length of the key by number (default: optimal length given by algorithm).
@@ -48,6 +51,9 @@ Config options
 Actions
 .......
 
+**list**
+  Prints the list of key IDs and parameters of keys belonging to the zone.
+
 **generate** [*arguments*...]
   Generates new DNSSEC key and stores it in KASP database. Prints the key ID.
   This action takes some number of arguments (see below). Values for unspecified arguments are taken
@@ -56,6 +62,15 @@ Actions
 **import-bind** *BIND_key_file*
   Imports a BIND-style key into KASP database (converting it to PEM format).
   Takes one argument: path to BIND key file (private or public, but both MUST exist).
+
+**set** *key_spec* [*arguments*...]
+  Changes a timing argument of an existing key to new timestamp. *Key_spec* is either the
+  key tag or a prefix of key ID; *arguments* are like for **generate**, but just
+  timing-related ones.
+
+**ds** *key_spec*
+  Generate DS record (all digest algorithms together) from specified key. *Key_spec*
+  is like for **set**.
 
 Generate arguments
 ..................
