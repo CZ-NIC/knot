@@ -22,3 +22,10 @@ int kkeymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file);
 
 int kkeymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits);
 
+int kkeymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key);
+
+int kkeymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[]);
+
+int kkeymgr_list_keys(kdnssec_ctx_t *ctx);
+
+int kkeymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key);

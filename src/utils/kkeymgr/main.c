@@ -17,8 +17,9 @@
 #include <stdlib.h>
 
 #include "knot/conf/conf.h"
-#include "utils/kkeymgr/functions.h"
 #include "libknot/libknot.h"
+#include "utils/common/params.h"
+#include "utils/kkeymgr/functions.h"
 
 #define PROGRAM_NAME	"kkeymgr"
 
@@ -28,6 +29,7 @@ static void print_help(void)
 	       "\n"
 	       "Parameters:\n"
 	       " -h	Display this help.\n"
+	       " -V	Print program version.\n"
 	       " -t	Generate TSIG key.\n"
 	       "	(syntax: -t <tsig_name> [<algorithm>] [<bits>]\n"
 	       " -d	Use specified KASP db path.\n"
@@ -38,10 +40,15 @@ static void print_help(void)
 	       "	(syntax: -C <confdb_dir> <zone> <command> options...)\n"
 	       "\n"
 	       "Commands:\n"
+	       "   list         List all zone's KASP keys.\n"
 	       "   generate	Generate new KASP key.\n"
 	       "		(syntax: generate <attribute_name>=<value>...)\n"
 	       "   import-bind	Import BIND-style key file pair (.key + .private).\n"
-	       "		(syntax: import_bind <key_file_name>)\n",
+	       "		(syntax: import_bind <key_file_name>)\n"
+	       "   ds           Generate DS record(s) for specified key.\n"
+	       "                (syntax: ds <key_spec>)\n"
+	       "   set		Set existing key's timing attribute.\n"
+	       "		(syntax: set <key_spec> <attribute_name>=<value>...)\n",
 	       PROGRAM_NAME);
 }
 
@@ -78,10 +85,6 @@ int main(int argc, char *argv[])
 {
 	char *kasp_path = NULL;
 
-	for (int i = 0; i < argc; i++) {
-		printf("%s\"%s\"%s", (i == 0 ? "[ " : ""), argv[i], (i == argc - 1 ? " ]\n" : ", "));
-	}
-
 	if (argc <= 1) {
 		print_help();
 		return EXIT_SUCCESS;
@@ -98,6 +101,9 @@ int main(int argc, char *argv[])
 	switch (argv[1][1]) {
 	case 'h':
 		print_help();
+		return EXIT_SUCCESS;
+	case 'V':
+		print_version(PROGRAM_NAME);
 		return EXIT_SUCCESS;
 	case 'd':
 		check_argc_three
@@ -178,6 +184,33 @@ int main(int argc, char *argv[])
 			goto main_end;
 		}
 		ret = kkeymgr_import_bind(&kctx, argv[5]);
+	} else if (strcmp(argv[4], "set") == 0) {
+		if (argc < 6) {
+			printf("Key is not specified.\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		knot_kasp_key_t *key2set;
+		ret = kkeymgr_get_key(&kctx, argv[5], &key2set);
+		if (ret == KNOT_EOK) {
+			ret = kkeymgr_set_timing(key2set, argc - 6, argv + 6);
+			if (ret == KNOT_EOK) {
+				ret = kdnssec_ctx_commit(&kctx);
+			}
+		}
+	} else if (strcmp(argv[4], "list") == 0) {
+		ret = kkeymgr_list_keys(&kctx);
+	} else if (strcmp(argv[4], "ds") == 0) {
+		if (argc < 6) {
+			printf("Key is not specified.\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		knot_kasp_key_t *key2ds;
+		ret = kkeymgr_get_key(&kctx, argv[5], &key2ds);
+		if (ret == KNOT_EOK) {
+			ret = kkeymgr_generate_ds(zone_name, key2ds);
+		}
 	} else {
 		printf("Wrong zone-key command: %s\n", argv[4]);
 		goto main_end;
