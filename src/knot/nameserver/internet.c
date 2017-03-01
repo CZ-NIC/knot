@@ -310,20 +310,20 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	if (rrtype == KNOT_RRTYPE_DNAME) {
 		if (dname_cname_cannot_synth(&cname_rr, qdata->name)) {
 			qdata->rcode = KNOT_RCODE_YXDOMAIN;
-			return ERROR;
-		}
-		knot_rrset_t dname_rr = cname_rr;
-		int ret = dname_cname_synth(&dname_rr, qdata->name, &cname_rr,
-		                            &pkt->mm);
-		if (ret != KNOT_EOK) {
-			qdata->rcode = KNOT_RCODE_SERVFAIL;
-			return ERROR;
-		}
-		ret = process_query_put_rr(pkt, qdata, &cname_rr, NULL, 0, KNOT_PF_FREE);
-		switch (ret) {
-		case KNOT_EOK:    break;
-		case KNOT_ESPACE: return TRUNC;
-		default:          return ERROR;
+		} else {
+			knot_rrset_t dname_rr = cname_rr;
+			int ret = dname_cname_synth(&dname_rr, qdata->name,
+			                            &cname_rr, &pkt->mm);
+			if (ret != KNOT_EOK) {
+				qdata->rcode = KNOT_RCODE_SERVFAIL;
+				return ERROR;
+			}
+			ret = process_query_put_rr(pkt, qdata, &cname_rr, NULL, 0, KNOT_PF_FREE);
+			switch (ret) {
+			case KNOT_EOK:    break;
+			case KNOT_ESPACE: return TRUNC;
+			default:          return ERROR;
+			}
 		}
 	}
 
