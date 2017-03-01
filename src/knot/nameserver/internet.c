@@ -105,10 +105,11 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
  */
 static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname_t *qname)
 {
-	if (knot_dname_labels(qname, NULL)
-		- knot_dname_labels(rrset->owner, NULL)
-		+ knot_dname_labels(knot_dname_target(&rrset->rrs), NULL)
-		> KNOT_DNAME_MAXLABELS) {
+	if (knot_dname_labels(qname, NULL) - knot_dname_labels(rrset->owner, NULL) +
+	    knot_dname_labels(knot_dname_target(&rrset->rrs), NULL) > KNOT_DNAME_MAXLABELS) {
+		return true;
+	} else if (knot_dname_size(qname) - knot_dname_size(rrset->owner) +
+	           knot_dname_size(knot_dname_target(&rrset->rrs)) > KNOT_DNAME_MAXLEN) {
 		return true;
 	} else {
 		return false;
