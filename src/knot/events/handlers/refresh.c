@@ -206,6 +206,35 @@ static void axfr_cleanup(struct refresh_data *data)
 	zone_contents_deep_free(&data->axfr.zone);
 }
 
+
+/*! \brief Routine for calling call_rcu() easier way.
+ *
+ * TODO: move elsewhere, as it has no direct relation to AXFR
+ */
+typedef struct {
+        struct rcu_head rcuhead;
+        void (*ptr_free_fun)(void **);
+        void *ptr;
+} callrcu_wrapper_t;
+
+static void callrcu_wrapper_cb(struct rcu_head *param)
+{
+        callrcu_wrapper_t * wrap = (callrcu_wrapper_t *)param;
+        wrap->ptr_free_fun(&wrap->ptr);
+        free(wrap);
+}
+
+/* note: does nothing if not-enough-memory */
+static void callrcu_wrapper(void *ptr, void (*ptr_free_fun)(void **))
+{
+	callrcu_wrapper_t * wrap = malloc(sizeof(callrcu_wrapper_t));
+	if (wrap != NULL) {
+		wrap->ptr = ptr;
+		wrap->ptr_free_fun = ptr_free_fun;
+		call_rcu((struct rcu_head *)wrap, callrcu_wrapper_cb);
+	}
+}
+
 static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
@@ -229,11 +258,9 @@ static int axfr_finalize(struct refresh_data *data)
 
 	zone_contents_t *old_zone = zone_switch_contents(data->zone, new_zone);
 	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
-
-	synchronize_rcu();
-
 	data->axfr.zone = NULL; // seized
-	zone_contents_deep_free(&old_zone);
+	callrcu_wrapper(old_zone, (void (*)(void **))zone_contents_deep_free);
+
 
 	return KNOT_EOK;
 }
