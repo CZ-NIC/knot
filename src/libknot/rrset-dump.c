@@ -47,6 +47,14 @@
 
 #define LOC_ZERO		2147483648	// 2^31
 
+/*! \brief macros with repetitive (mostly error-checking) code of methods from first section of this file */
+#define CHECK_PRET if (p->ret < 0) return;
+#define CHECK_INMAX(mininmax) if (p->in_max < (mininmax)) { p->ret = -1; return; }
+#define CHECK_RET_OUTMAX_SNPRINTF if (ret <= 0 || (size_t)ret >= p->out_max) { p->ret = -1; return; }
+#define STRING_TERMINATION if (p->out_max > 0) { *p->out = '\0'; } else { p->ret = -1; return; }
+#define FILL_IN_INPUT(pdata) if (memcpy(&(pdata), p->in, in_len) == NULL) { p->ret = -1; return; }
+#define CHECK_RET_POSITIVE if (ret <= 0) { p->ret = -1; return; }
+
 typedef struct {
 	const knot_dump_style_t *style;
 	const uint8_t *in;
@@ -71,17 +79,19 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 
 static void dump_string(rrset_dump_params_t *p, const char *str)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	size_t in_len = strlen(str);
 
 	// Check input size (+ 1 termination).
 	if (in_len >= p->out_max) {
+		p->ret = -1;
 		return;
 	}
 
 	// Copy string including termination '\0'!
 	if (memcpy(p->out, str, in_len + 1) == NULL) {
+		p->ret = -1;
 		return;
 	}
 
@@ -89,27 +99,21 @@ static void dump_string(rrset_dump_params_t *p, const char *str)
 	p->out += in_len;
 	p->out_max -= in_len;
 	p->total += in_len;
-	p->ret = 0;
 }
 
 static void wire_num8_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	uint8_t data = *(p->in);
 	size_t  in_len = sizeof(data);
 	size_t  out_len = 0;
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%u", data);
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	CHECK_RET_OUTMAX_SNPRINTF
 	out_len = ret;
 
 	// Fill in output.
@@ -118,30 +122,24 @@ static void wire_num8_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static void wire_num16_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	uint16_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
 	// Fill in input data.
 	data = wire_read_u16(p->in);
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%u", data);
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	CHECK_RET_OUTMAX_SNPRINTF
 	out_len = ret;
 
 	// Fill in output.
@@ -150,30 +148,24 @@ static void wire_num16_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static void wire_num32_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	uint32_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
 	// Fill in input data.
 	data = wire_read_u32(p->in);
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%u", data);
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	CHECK_RET_OUTMAX_SNPRINTF
 	out_len = ret;
 
 	// Fill in output.
@@ -182,30 +174,24 @@ static void wire_num32_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static void wire_num48_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	uint64_t data;
 	size_t   in_len = 6;
 	size_t   out_len = 0;
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
 	// Fill in input data.
 	data = wire_read_u48(p->in);
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%"PRIu64"", data);
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	CHECK_RET_OUTMAX_SNPRINTF
 	out_len = ret;
 
 	// Fill in output.
@@ -214,29 +200,23 @@ static void wire_num48_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static void wire_ipv4_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	struct in_addr addr4;
 	size_t in_len = sizeof(addr4.s_addr);
 	size_t out_len = 0;
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
-	// Fill in input data.
-	if (memcpy(&(addr4.s_addr), p->in, in_len) == NULL) {
-		return;
-	}
+	FILL_IN_INPUT(addr4.s_addr)
 
 	// Write address.
 	if (inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
+		p->ret = -1;
 		return;
 	}
 	out_len = strlen(p->out);
@@ -247,29 +227,23 @@ static void wire_ipv4_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static void wire_ipv6_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	struct in6_addr addr6;
 	size_t in_len = sizeof(addr6.s6_addr);
 	size_t out_len = 0;
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
-	// Fill in input data.
-	if (memcpy(&(addr6.s6_addr), p->in, in_len) == NULL) {
-		return;
-	}
+	FILL_IN_INPUT(addr6.s6_addr)
 
 	// Write address.
 	if (inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
+		p->ret = -1;
 		return;
 	}
 	out_len = strlen(p->out);
@@ -280,38 +254,28 @@ static void wire_ipv6_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static void wire_type_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	char     type[32];
 	uint16_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
-	// Fill in input data.
-	if (memcpy(&data, p->in, in_len) == NULL) {
-		return;
-	}
+	FILL_IN_INPUT(data)
 
 	// Get record type name string.
-	if (knot_rrtype_to_string(ntohs(data), type, sizeof(type)) <= 0) {
-		return;
-	}
+	int ret = knot_rrtype_to_string(ntohs(data), type, sizeof(type));
+	CHECK_RET_POSITIVE
 
 	// Write string.
-	int ret = snprintf(p->out, p->out_max, "%s", type);
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	ret = snprintf(p->out, p->out_max, "%s", type);
+	CHECK_RET_OUTMAX_SNPRINTF
 	out_len = ret;
 
 	// Fill in output.
@@ -320,7 +284,6 @@ static void wire_type_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static int hex_encode(const uint8_t  *in,
@@ -387,7 +350,7 @@ typedef int (*encode_alloc_t)(const uint8_t *in, const uint32_t in_len,
 static void wire_data_encode_to_str(rrset_dump_params_t *p,
                                     encode_t enc, encode_alloc_t enc_alloc)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	int    ret;
 	size_t in_len = p->in_max;
@@ -396,9 +359,7 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 	if (p->style->wrap == false) {
 		// Encode data directly to the output.
 		ret = enc(p->in, in_len, (uint8_t *)(p->out), p->out_max);
-		if (ret <= 0) {
-			return;
-		}
+		CHECK_RET_POSITIVE
 		size_t out_len = ret;
 
 		p->out += out_len;
@@ -410,16 +371,14 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 
 		// Encode data to the temporary buffer.
 		ret = enc_alloc(p->in, in_len, &buf);
-		if (ret <= 0) {
-			return;
-		}
+		CHECK_RET_POSITIVE
 
 		// Loop which wraps base64 block in more lines.
 		for (src_begin = 0; src_begin < ret; src_begin += BLOCK_WIDTH) {
 			if (src_begin > 0) {
 				// Write indent block.
 				dump_string(p, BLOCK_INDENT);
-				if (p->ret != 0) {
+				if (p->ret < 0) {
 					free(buf);
 					return;
 				}
@@ -431,6 +390,7 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 
 			if ((size_t)src_len > p->out_max) {
 				free(buf);
+				p->ret = -1;
 				return;
 			}
 
@@ -446,17 +406,11 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 		free(buf);
 	}
 
-	// String termination.
-	if (p->out_max > 0) {
-		*p->out = '\0';
-	} else {
-		return;
-	}
+	STRING_TERMINATION
 
 	// Fill in output.
 	p->in += in_len;
 	p->in_max -= in_len;
-	p->ret = 0;
 }
 
 static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
@@ -465,14 +419,12 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
                                         const bool          print_len,
                                         const char          *empty_str)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	size_t in_len;
 
 	// First len_len bytes are data length.
-	if (p->in_max < len_len) {
-		return;
-	}
+	CHECK_INMAX(len_len)
 
 	// Read data length.
 	switch (len_len) {
@@ -486,6 +438,7 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 		in_len = wire_read_u32(p->in);
 		break;
 	default:
+		p->ret = -1;
 		return;
 	}
 
@@ -503,16 +456,12 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 			break;
 		}
 
-		if (p->ret != 0) {
-			return;
-		}
+		CHECK_PRET
 
 		// If something follows, print one space character.
 		if (in_len > 0 || *empty_str != '\0') {
 			dump_string(p, " ");
-			if (p->ret != 0) {
-				return;
-			}
+			CHECK_PRET
 		}
 	} else {
 		p->in += len_len;
@@ -522,36 +471,25 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 	if (in_len > 0) {
 		// Encode data directly to the output.
 		int ret = enc(p->in, in_len, (uint8_t *)(p->out), p->out_max);
-		if (ret <= 0) {
-			return;
-		}
+		CHECK_RET_POSITIVE
 		p->out += ret;
 		p->out_max -= ret;
 		p->total += ret;
 
-		// String termination.
-		if (p->out_max > 0) {
-			*p->out = '\0';
-		} else {
-			return;
-		}
+		STRING_TERMINATION
 
 		// Fill in output.
 		p->in += in_len;
 		p->in_max -= in_len;
 	} else if (*empty_str != '\0') {
 		dump_string(p, empty_str);
-		if (p->ret != 0) {
-			return;
-		}
+		CHECK_PRET
 	}
-
-	p->ret = 0;
 }
 
 static void wire_unknown_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	int    ret;
 	size_t in_len = p->in_max;
@@ -563,9 +501,7 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 	} else {
 		ret = snprintf(p->out, p->out_max, "\\# 0");
 	}
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	CHECK_RET_OUTMAX_SNPRINTF
 	out_len = ret;
 
 	// Fill in output.
@@ -578,39 +514,29 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 		// If wrap mode wrap line.
 		if (p->style->wrap) {
 			dump_string(p, BLOCK_INDENT);
-			if (p->ret != 0) {
-				return;
-			}
+			CHECK_PRET
 		}
 
 		wire_data_encode_to_str(p, &hex_encode, &hex_encode_alloc);
-		if (p->ret != 0) {
-			return;
-		}
+		CHECK_PRET
 	}
-
-	p->ret = 0;
 }
 
 static void wire_text_to_str(rrset_dump_params_t *p, bool quote, bool with_header)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	size_t in_len = 0;
 
 	if (with_header) {
 		// First byte is string length.
-		if (p->in_max < 1) {
-			return;
-		}
+		CHECK_INMAX(1)
 		in_len = *(p->in);
 		p->in++;
 		p->in_max--;
 
 		// Check if the given length makes sense.
-		if (in_len > p->in_max) {
-			return;
-		}
+		CHECK_INMAX(in_len)
 	} else {
 		in_len = p->in_max;
 	}
@@ -628,9 +554,7 @@ static void wire_text_to_str(rrset_dump_params_t *p, bool quote, bool with_heade
 	// Opening quotation.
 	if (quote) {
 		dump_string(p, "\"");
-		if (p->ret != 0) {
-			return;
-		}
+		CHECK_PRET
 	}
 
 	// Loop over all characters.
@@ -641,13 +565,12 @@ static void wire_text_to_str(rrset_dump_params_t *p, bool quote, bool with_heade
 			// For special character print leading slash.
 			if (ch == '\\' || ch == '"') {
 				dump_string(p, "\\");
-				if (p->ret != 0) {
-					return;
-				}
+				CHECK_PRET
 			}
 
 			// Print text character.
 			if (p->out_max == 0) {
+				p->ret = -1;
 				return;
 			}
 
@@ -658,9 +581,7 @@ static void wire_text_to_str(rrset_dump_params_t *p, bool quote, bool with_heade
 		} else {
 			// Unprintable character encode via \ddd notation.
 			int ret = snprintf(p->out, p->out_max,"\\%03u", ch);
-			if (ret <= 0 || (size_t)ret >= p->out_max) {
-				return;
-			}
+			CHECK_RET_OUTMAX_SNPRINTF
 
 			p->out += ret;
 			p->out_max -= ret;
@@ -671,42 +592,28 @@ static void wire_text_to_str(rrset_dump_params_t *p, bool quote, bool with_heade
 	// Closing quotation.
 	if (quote) {
 		dump_string(p, "\"");
-		if (p->ret != 0) {
-			return;
-		}
+		CHECK_PRET
 	}
 
-	// String termination.
-	if (p->out_max > 0) {
-		*p->out = '\0';
-	} else {
-		return;
-	}
+	STRING_TERMINATION
 
 	// Fill in output.
 	p->in += in_len;
 	p->in_max -= in_len;
-	p->ret = 0;
 }
 
 static void wire_timestamp_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	uint32_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
 	int      ret;
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
-	// Fill in input data.
-	if (memcpy(&data, p->in, in_len) == NULL) {
-		return;
-	}
+	FILL_IN_INPUT(data)
 
 	time_t timestamp = ntohl(data);
 
@@ -715,15 +622,11 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 		// Write timestamp in YYYYMMDDhhmmss format.
 		ret = strftime(p->out, p->out_max, "%Y%m%d%H%M%S",
 		               gmtime_r(&timestamp, &result));
-		if (ret == 0) {
-			return;
-		}
+		CHECK_RET_POSITIVE
 	} else {
 		// Write timestamp only.
 		ret = snprintf(p->out, p->out_max, "%u", ntohl(data));
-		if (ret <= 0 || (size_t)ret >= p->out_max) {
-			return;
-		}
+		CHECK_RET_OUTMAX_SNPRINTF
 	}
 	out_len = ret;
 
@@ -733,7 +636,6 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static int time_to_human_str(char         *out,
@@ -744,91 +646,49 @@ static int time_to_human_str(char         *out,
 	uint32_t num;
 	int      ret;
 
-	// Process days.
-	num = data / 86400;
-	if (num > 0) {
-		ret = snprintf(out + total_len, out_len - total_len,
-		               "%ud", num);
-		if (ret <= 0 || (size_t)ret >= out_len - total_len) {
-			return -1;
-		}
-
-		total_len += ret;
-		data -= num * 86400;
+#define tths_process(unit_name, unit_size) \
+	num = data / (unit_size); \
+	if (num > 0) { \
+		ret = snprintf(out + total_len, out_len - total_len, \
+		               "%u%s", num, (unit_name)); \
+		if (ret <= 0 || (size_t)ret >= out_len - total_len) { \
+			return -1; \
+		} \
+		total_len += ret; \
+		data -= num * (unit_size); \
 	}
 
-	// Process hours.
-	num = data / 3600;
-	if (num > 0) {
-		ret = snprintf(out + total_len, out_len - total_len,
-		               "%uh", num);
-		if (ret <= 0 || (size_t)ret >= out_len - total_len) {
-			return -1;
-		}
+	tths_process("d", 86400);
+	tths_process("h", 3600);
+	tths_process("m", 60);
+	tths_process("s", 1);
 
-		total_len += ret;
-		data -= num * 3600;
-	}
+#undef tths_process
 
-	// Process minutes.
-	num = data / 60;
-	if (num > 0) {
-		ret = snprintf(out + total_len, out_len - total_len,
-		               "%um", num);
-		if (ret <= 0 || (size_t)ret >= out_len - total_len) {
-			return -1;
-		}
-
-		total_len += ret;
-		data -= num * 60;
-	}
-
-	// Process seconds.
-	num = data;
-	if (num > 0 || total_len == 0) {
-		ret = snprintf(out + total_len, out_len - total_len,
-		               "%us", num);
-		if (ret <= 0 || (size_t)ret >= out_len - total_len) {
-			return -1;
-		}
-
-		total_len += ret;
-	}
-
-	return total_len;
+	return total_len > 0 ? total_len : -1;
 }
 
 static void wire_ttl_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	uint32_t data;
 	size_t   in_len = sizeof(data);
 	size_t   out_len = 0;
 	int      ret;
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
-	// Fill in input data.
-	if (memcpy(&data, p->in, in_len) == NULL) {
-		return;
-	}
+	FILL_IN_INPUT(data)
 
 	if (p->style->human_ttl) {
 		// Write time in human readable format.
 		ret = time_to_human_str(p->out, p->out_max, ntohl(data));
-		if (ret <= 0) {
-			return;
-		}
+		CHECK_RET_POSITIVE
 	} else {
 		// Write timestamp only.
 		ret = snprintf(p->out, p->out_max, "%u", ntohl(data));
-		if (ret <= 0 || (size_t)ret >= p->out_max) {
-			return;
-		}
+		CHECK_RET_OUTMAX_SNPRINTF
 	}
 	out_len = ret;
 
@@ -838,12 +698,11 @@ static void wire_ttl_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static void wire_bitmap_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	int    ret;
 	char   type[32];
@@ -858,6 +717,7 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 
 		// Check window length (length must follow).
 		if (i >= in_len) {
+			p->ret = -1;
 			return;
 		}
 
@@ -866,6 +726,7 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 
 		// Check window length (len bytes must follow).
 		if (i + bitmap_len > in_len) {
+			p->ret = -1;
 			return;
 		}
 
@@ -874,10 +735,8 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 			if ((p->in[i + j / 8] & (128 >> (j % 8))) != 0) {
 				uint16_t type_num = win * 256 + j;
 
-				if (knot_rrtype_to_string(type_num, type,
-				                          sizeof(type)) <= 0) {
-					return;
-				}
+				ret = knot_rrtype_to_string(type_num, type, sizeof(type));
+				CHECK_RET_POSITIVE
 
 				// Print type name to type list.
 				if (out_len > 0) {
@@ -887,9 +746,7 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 					ret = snprintf(p->out, p->out_max,
 					               "%s", type);
 				}
-				if (ret <= 0 || (size_t)ret >= p->out_max) {
-					return;
-				}
+				CHECK_RET_OUTMAX_SNPRINTF
 				out_len += ret;
 				p->out += ret;
 				p->out_max -= ret;
@@ -903,28 +760,27 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 	p->in += in_len;
 	p->in_max -= in_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static void wire_dname_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	int in_len = knot_dname_size(p->in);
 	if (in_len < 0) {
+		p->ret = -1;
 		return;
 	}
 
 	size_t out_len = 0;
 
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
 	// Write dname string.
 	if (p->style->ascii_to_idn == NULL) {
 		char *dname_str = knot_dname_to_str(p->out, p->in, p->out_max);
 		if (dname_str == NULL) {
+			p->ret = -1;
 			return;
 		}
 		out_len = strlen(dname_str);
@@ -934,9 +790,7 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 
 		int ret = snprintf(p->out, p->out_max, "%s", dname_str);
 		free(dname_str);
-		if (ret < 0 || (size_t)ret >= p->out_max) {
-			return;
-		}
+		CHECK_RET_OUTMAX_SNPRINTF
 		out_len = ret;
 	}
 
@@ -946,12 +800,11 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 	p->out += out_len;
 	p->out_max -= out_len;
 	p->total += out_len;
-	p->ret = 0;
 }
 
 static void wire_apl_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	struct in_addr addr4;
 	struct in6_addr addr6;
@@ -959,9 +812,7 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 	size_t out_len = 0;
 
 	// Input check: family(2B) + prefix(1B) + afdlen(1B).
-	if (p->in_max < 4) {
-		return;
-	}
+	CHECK_INMAX(4)
 
 	// Read fixed size values.
 	uint16_t family   = wire_read_u16(p->in);
@@ -974,16 +825,12 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 	// Write negation mark.
 	if (negation != 0) {
 		dump_string(p, "!");
-		if (p->ret != 0) {
-			return;
-		}
+		CHECK_PRET
 	}
 
 	// Write address family with colon.
 	ret = snprintf(p->out, p->out_max, "%u:", family);
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	CHECK_RET_OUTMAX_SNPRINTF
 	p->out += ret;
 	p->out_max -= ret;
 	p->total += ret;
@@ -994,15 +841,18 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 		memset(&addr4, 0, sizeof(addr4));
 
 		if (afdlen > sizeof(addr4.s_addr) || afdlen > p->in_max) {
+			p->ret = -1;
 			return;
 		}
 
 		if (memcpy(&(addr4.s_addr), p->in, afdlen) == NULL) {
+			p->ret = -1;
 			return;
 		}
 
 		// Write address.
 		if (inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
+			p->ret = -1;
 			return;
 		}
 		out_len = strlen(p->out);
@@ -1012,21 +862,25 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 		memset(&addr6, 0, sizeof(addr6));
 
 		if (afdlen > sizeof(addr6.s6_addr) || afdlen > p->in_max) {
+			p->ret = -1;
 			return;
 		}
 
 		if (memcpy(&(addr6.s6_addr), p->in, afdlen) == NULL) {
+			p->ret = -1;
 			return;
 		}
 
 		// Write address.
 		if (inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
+			p->ret = -1;
 			return;
 		}
 		out_len = strlen(p->out);
 
 		break;
 	default:
+		p->ret = -1;
 		return;
 	}
 	p->in += afdlen;
@@ -1037,19 +891,15 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 
 	// Write prefix length with forward slash.
 	ret = snprintf(p->out, p->out_max, "/%u", prefix);
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	CHECK_RET_OUTMAX_SNPRINTF
 	p->out += ret;
 	p->out_max -= ret;
 	p->total += ret;
-
-	p->ret = 0;
 }
 
 static void wire_loc_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	// Read values.
 	wire_ctx_t wire = wire_ctx_init_const(p->in, p->in_max);
@@ -1058,6 +908,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	// Version check.
 	if (version != 0) {
 		wire_unknown_to_str(p);
+		p->ret = -1;
 		return;
 	}
 
@@ -1071,6 +922,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 
 	// Check if all reads are correct.
 	if (wire.error != KNOT_EOK) {
+		p->ret = -1;
 		return;
 	}
 
@@ -1111,9 +963,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	int ret = snprintf(p->out, p->out_max, "%u %u %.*f %c  %u %u %.*f %c",
 	                   d1, m1, (uint32_t)s1 != s1 ? 3 : 0, s1, lat_mark,
 	                   d2, m2, (uint32_t)s2 != s2 ? 3 : 0, s2, lon_mark);
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	CHECK_RET_OUTMAX_SNPRINTF
 	p->out += ret;
 	p->out_max -= ret;
 	p->total += ret;
@@ -1132,6 +982,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	// Sizes check.
 	if (size_m > 9 || size_e > 9 || hpre_m > 9 || hpre_e > 9 ||
 	    vpre_m > 9 || vpre_e > 9) {
+		p->ret = -1;
 		return;
 	}
 
@@ -1146,51 +997,37 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	               (uint32_t)size != size ? 2 : 0, size,
 	               (uint32_t)hpre != hpre ? 2 : 0, hpre,
 	               (uint32_t)vpre != vpre ? 2 : 0, vpre);
-	if (ret <= 0 || (size_t)ret >= p->out_max) {
-		return;
-	}
+	CHECK_RET_OUTMAX_SNPRINTF
 	p->out += ret;
 	p->out_max -= ret;
 	p->total += ret;
-
-	p->ret = 0;
 }
 
 static void wire_gateway_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	// Input check: type(1B) + algo(1B).
-	if (p->in_max < 2) {
-		return;
-	}
+	CHECK_INMAX(2)
 
 	uint8_t type = *p->in;
 	uint8_t alg = *(p->in + 1);
 
 	// Write gateway type.
 	wire_num8_to_str(p);
-	if (p->ret != 0) {
-		return;
-	}
+	CHECK_PRET
 
 	// Write space.
 	dump_string(p, " ");
-	if (p->ret != 0) {
-		return;
-	}
+	CHECK_PRET
 
 	// Write algorithm number.
 	wire_num8_to_str(p);
-	if (p->ret != 0) {
-		return;
-	}
+	CHECK_PRET
 
 	// Write space.
 	dump_string(p, " ");
-	if (p->ret != 0) {
-		return;
-	}
+	CHECK_PRET
 
 	// Write appropriate gateway.
 	switch (type) {
@@ -1207,11 +1044,9 @@ static void wire_gateway_to_str(rrset_dump_params_t *p)
 		wire_dname_to_str(p);
 		break;
 	default:
-		return;
+		p->ret = -1;
 	}
-	if (p->ret != 0) {
-		return;
-	}
+	CHECK_PRET
 
 	if (alg > 0) {
 		// If wrap mode wrap line.
@@ -1220,35 +1055,28 @@ static void wire_gateway_to_str(rrset_dump_params_t *p)
 		} else {
 			dump_string(p, " ");
 		}
-		if (p->ret != 0) {
-			return;
-		}
+		CHECK_PRET
 
 		// Write ipsec key.
 		wire_data_encode_to_str(p, &base64_encode, &base64_encode_alloc);
-		if (p->ret != 0) {
-			return;
-		}
+		CHECK_PRET
 	}
-
-	p->ret = 0;
 }
 
 static void wire_l64_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	// Check input size (64-bit identifier).
 	if (p->in_max != 8) {
+		p->ret = -1;
 		return;
 	}
 
 	// Write identifier (2-byte) labels separated with a colon.
 	while (p->in_max > 0) {
 		int ret = hex_encode(p->in, 2, (uint8_t *)(p->out), p->out_max);
-		if (ret <= 0) {
-			return;
-		}
+		CHECK_RET_POSITIVE
 		p->in += 2;
 		p->in_max -= 2;
 		p->out += ret;
@@ -1258,30 +1086,21 @@ static void wire_l64_to_str(rrset_dump_params_t *p)
 		// Write separation character.
 		if (p->in_max > 0) {
 			dump_string(p, ":");
-			if (p->ret != 0) {
-				return;
-			}
+			CHECK_PRET
 		}
 	}
-
-	p->ret = 0;
 }
 
 static void wire_eui_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
-	// Data can't have zero length.
-	if (p->in_max < 2) {
-		return;
-	}
+	CHECK_INMAX(2)
 
 	// Write EUI hexadecimal pairs.
 	while (p->in_max > 0) {
 		int ret = hex_encode(p->in, 1, (uint8_t *)(p->out), p->out_max);
-		if (ret <= 0) {
-			return;
-		}
+		CHECK_RET_POSITIVE
 		p->in++;
 		p->in_max--;
 		p->out += ret;
@@ -1291,27 +1110,20 @@ static void wire_eui_to_str(rrset_dump_params_t *p)
 		// Write separation character.
 		if (p->in_max > 0) {
 			dump_string(p, "-");
-			if (p->ret != 0) {
-				return;
-			}
+			CHECK_PRET
 		}
 	}
-
-	p->ret = 0;
 }
 
 static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 {
-	p->ret = -1;
+	CHECK_PRET
 
 	uint16_t data;
 	size_t   in_len = sizeof(data);
 	const char *rcode_str = "Unknown";
 
-	// Check input size.
-	if (in_len > p->in_max) {
-		return;
-	}
+	CHECK_INMAX(in_len)
 
 	// Fill in input data.
 	data = wire_read_u16(p->in);
@@ -1328,14 +1140,11 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 
 	// Dump RCODE name.
 	dump_string(p, rcode_str);
-	if (p->ret != 0) {
-		return;
-	}
+	CHECK_PRET
 
 	// Fill in output.
 	p->in += in_len;
 	p->in_max -= in_len;
-	p->ret = 0;
 }
 
 static size_t dnskey_len(const uint8_t *rdata,
@@ -1422,7 +1231,7 @@ static void dnskey_info(const uint8_t *rdata,
 #define DUMP_PARAMS	rrset_dump_params_t *const p
 #define	DUMP_END	return (p->in_max == 0 ? (int)p->total : KNOT_EPARSEFAIL);
 
-#define CHECK_RET(p)	if (p->ret != 0) return -1;
+#define CHECK_RET(p)	if (p->ret < 0) return p->ret;
 
 #define WRAP_INIT	dump_string(p, "(" BLOCK_INDENT); CHECK_RET(p);
 #define WRAP_END	dump_string(p, BLOCK_INDENT ")"); CHECK_RET(p);
@@ -1957,7 +1766,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		.out = dst,
 		.out_max = maxlen,
 		.total = 0,
-		.ret = -1
+		.ret = 0
 	};
 
 	int ret;
