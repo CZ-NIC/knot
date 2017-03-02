@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <grp.h>
 #include <pwd.h>
+#include <stdio.h>
 
 #include "knot/conf/base.h"
 #include "knot/conf/confdb.h"
@@ -782,48 +783,34 @@ void conf_free_mod_id(
 static int get_index(
 	const char **start,
 	const char *end,
-	uint8_t *index1,
-	uint8_t *index2)
+	unsigned *index1,
+	unsigned *index2)
 {
-	const char *pos = *start;
-	uint8_t i1, i2;
-
-	// At least [n] must fit into.
-	if (end - pos < 3 || pos[0] != '[') {
+	char c, *p;
+	if (sscanf(*start, "[%u%c", index1, &c) != 2) {
 		return KNOT_EINVAL;
 	}
-
-	// Check for the variant [n] or [m-n].
-	switch (pos[2]) {
-	case ']':
-		i1 = pos[1] - '0';
-		i2 = i1;
-		if (i1 > 9) {
-			return KNOT_EINVAL;
-		}
-		*start += 3;
-		break;
+	switch (c) {
 	case '-':
-		if (index2 == NULL || end - pos < 5 || pos[4] != ']') {
+		p = strchr(*start, '-') + 1;
+		if (end - p < 2 || index2 == NULL ||
+		    sscanf(p, "%u%c", index2, &c) != 2 || c != ']') {
 			return KNOT_EINVAL;
 		}
-		i1 = pos[1] - '0';
-		i2 = pos[3] - '0';
-		if (i1 > 9 || i2 > 9 || i1 > i2) {
-			return KNOT_EINVAL;
+		break;
+	case ']':
+		if (index2 != NULL) {
+			*index2 = *index1;
 		}
-		*start += 5;
 		break;
 	default:
 		return KNOT_EINVAL;
 	}
 
-	*index1 = i1;
-	if (index2 != NULL) {
-		*index2 = i2;
-	}
-
-	return KNOT_EOK;
+	*start = strchr(*start, ']') + 1;
+	return ((*index1 < 256 && (index2 == NULL || *index2 < 256)
+	         && end - *start >= 0 && (index2 == NULL || *index2 >= *index1))
+	        ? KNOT_EOK : KNOT_EINVAL);
 }
 
 static void replace_slashes(
@@ -849,8 +836,8 @@ static int str_char(
 	const knot_dname_t *zone,
 	char *buff,
 	size_t buff_len,
-	uint8_t index1,
-	uint8_t index2)
+	unsigned index1,
+	unsigned index2)
 {
 	if (knot_dname_to_str(buff, zone, buff_len) == NULL) {
 		return KNOT_EINVAL;
@@ -901,7 +888,7 @@ static int str_label(
 	const knot_dname_t *zone,
 	char *buff,
 	size_t buff_len,
-	uint8_t right_index)
+	unsigned right_index)
 {
 	int labels = knot_dname_labels(zone, NULL);
 
@@ -919,11 +906,11 @@ static int str_label(
 
 	// Compute the index from the left.
 	assert(labels > right_index);
-	uint8_t index = labels - right_index - 1;
+	unsigned index = labels - right_index - 1;
 
 	// Create a dname from the single label.
 	int prefix = (index > 0) ? knot_dname_prefixlen(zone, index, NULL) : 0;
-	uint8_t label_len = *(zone + prefix);
+	unsigned label_len = *(zone + prefix);
 	memcpy(label, zone + prefix, 1 + label_len);
 	label[1 + label_len] = '\0';
 
@@ -968,7 +955,7 @@ static char* get_filename(
 		name = pos + 2;
 
 		char buff[512] = "";
-		uint8_t idx1, idx2;
+		unsigned idx1, idx2;
 		bool failed = false;
 
 		const char type = *(pos + 1);

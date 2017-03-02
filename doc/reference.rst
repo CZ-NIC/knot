@@ -905,7 +905,7 @@ A data directory for storing zone files, journal database, and timers database.
 file
 ----
 
-A path to the zone file. Non absolute path is relative to
+A path to the zone file. Non-absolute path is relative to
 :ref:`storage<zone_storage>`. It is also possible to use the following formatters:
 
 - ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – means the *N*\ th
@@ -916,11 +916,14 @@ A path to the zone file. Non absolute path is relative to
 - ``%l[``\ *N*\ ``]`` – means the *N*\ th label of the textual zone name
   (see ``%s``). The index is counted from 0 from the right (0 ~ TLD).
   If the label is not available, the formatter has no effect.
-- ``%s`` – means the current zone name in the textual representation (beware
-  of special characters which are escaped or encoded in the \\DDD form where
-  DDD is corresponding decimal ASCII code). The zone name doesn't include the
-  terminating dot (the result for the root zone is the empty string!).
+- ``%s`` – means the current zone name in the textual representation.
+  The zone name doesn't include the terminating dot (the result for the root
+  zone is the empty string!).
 - ``%%`` – means the ``%`` character
+
+.. WARNING::
+  Beware of special characters which are escaped or encoded in the \\DDD form
+  where DDD is corresponding decimal ASCII code.
 
 *Default:* :ref:`storage<zone_storage>`/``%s``\ .zone
 
@@ -1111,7 +1114,7 @@ value can be used for the default policy settings.
 kasp-db
 -------
 
-A KASP database path. Non absolute path is relative to
+A KASP database path. Non-absolute path is relative to
 :ref:`storage<zone_storage>`.
 
 *Default:* :ref:`storage<zone_storage>`/keys

@@ -769,7 +769,7 @@ A data directory for storing zone files, journal database, and timers database.
 \fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS file
 .sp
-A path to the zone file. Non absolute path is relative to
+A path to the zone file. Non\-absolute path is relative to
 \fI\%storage\fP\&. It is also possible to use the following formatters:
 .INDENT 0.0
 .IP \(bu 2
@@ -783,12 +783,19 @@ one) are considered. If the character is not available, the formatter has no eff
 (see \fB%s\fP). The index is counted from 0 from the right (0 ~ TLD).
 If the label is not available, the formatter has no effect.
 .IP \(bu 2
-\fB%s\fP – means the current zone name in the textual representation (beware
-of special characters which are escaped or encoded in the \eDDD form where
-DDD is corresponding decimal ASCII code). The zone name doesn\(aqt include the
-terminating dot (the result for the root zone is the empty string!).
+\fB%s\fP – means the current zone name in the textual representation.
+The zone name doesn\(aqt include the terminating dot (the result for the root
+zone is the empty string!).
 .IP \(bu 2
 \fB%%\fP – means the \fB%\fP character
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Beware of special characters which are escaped or encoded in the \eDDD form
+where DDD is corresponding decimal ASCII code.
+.UNINDENT
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.zone
@@ -961,7 +968,7 @@ value can be used for the default policy settings.
 \fIRequired\fP
 .SS kasp\-db
 .sp
-A KASP database path. Non absolute path is relative to
+A KASP database path. Non\-absolute path is relative to
 \fI\%storage\fP\&.
 .sp
 \fIDefault:\fP \fI\%storage\fP/keys
