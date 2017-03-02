@@ -439,18 +439,18 @@ def main():
 	                    help='''Import zone-key configuration from JSON.
 Syntax: -i <key_dir>
 (You can import multiple key_dirs at once by repeating this option.)''')
-	parser.add_argument("-s", "--set", action="append", nargs=5, dest="setparam",
-	                    help='''Zone-key set params.
-Syntax: -s <key_dir> <zone_name> <key_id|key_tag> <parameter> <new_value>''')
-	parser.add_argument("-l", "--list", action="append", nargs=2, dest="listdir",
-	                    help='''List zone-key configuration (no key-zone relation).
-Syntax: -l <key_dir> <filter>''')
-	parser.add_argument("-z", "--zones", action="append", nargs=1, dest="zonesdir",
-	                    help='''List zones together with key IDs belonging to them.
-Syntax: -z <key_dir>''')
-	parser.add_argument("-d", "--ds", action="append", nargs=3, dest="ds",
-	                    help='''Calculate DS record for specified key.
-Syntax: -d <key_dir> <zone_name> <key_id|key_tag>''')
+#	parser.add_argument("-s", "--set", action="append", nargs=5, dest="setparam",
+#	                    help='''Zone-key set params.
+#Syntax: -s <key_dir> <zone_name> <key_id|key_tag> <parameter> <new_value>''')
+#	parser.add_argument("-l", "--list", action="append", nargs=2, dest="listdir",
+#	                    help='''List zone-key configuration (no key-zone relation).
+#Syntax: -l <key_dir> <filter>''')
+#	parser.add_argument("-z", "--zones", action="append", nargs=1, dest="zonesdir",
+#	                    help='''List zones together with key IDs belonging to them.
+#Syntax: -z <key_dir>''')
+#	parser.add_argument("-d", "--ds", action="append", nargs=3, dest="ds",
+#	                    help='''Calculate DS record for specified key.
+#Syntax: -d <key_dir> <zone_name> <key_id|key_tag>''')
 	parser.add_argument("-f", "--force", action="store_true", dest="force", help="Do stuff even if dangerous.")
 	args = parser.parse_args()
 	opt_force = args.force
@@ -464,21 +464,21 @@ Syntax: -d <key_dir> <zone_name> <key_id|key_tag>''')
 		for dirn in importdir:
 			import_dir(dirn)
 			
-	if args.listdir is not None:
-		for dirn, filte in args.listdir:
-			list_keys(dirn, filte)
+#	if args.listdir is not None:
+#		for dirn, filte in args.listdir:
+#			list_keys(dirn, filte)
 
-	if args.zonesdir is not None:
-		for dirn in args.zonesdir:
-			list_zones(dirn[0])
+#	if args.zonesdir is not None:
+#		for dirn in args.zonesdir:
+#			list_zones(dirn[0])
 
-	if args.setparam is not None:	
-		for dirn, zone, key, parmn, val in args.setparam:
-			update_param(dirn, zone, key, parmn, val)
+#	if args.setparam is not None:
+#		for dirn, zone, key, parmn, val in args.setparam:
+#			update_param(dirn, zone, key, parmn, val)
 
-	if args.ds is not None:
-		for dirn, zone, key in args.ds:
-			calculate_ds(dirn, zone, key)
+#	if args.ds is not None:
+#		for dirn, zone, key in args.ds:
+#			calculate_ds(dirn, zone, key)
 
 if __name__ == "__main__":
 	main()
