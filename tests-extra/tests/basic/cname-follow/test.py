@@ -6,6 +6,7 @@ Basic checks for CNAME following.
 - Query for CNAME, NSEC, RRSIG is not followed.
 - Query for ANY meta type is not followed.
 - Query for any other type is followed.
+- DNAME CNAME is too long.
 
 """
 
@@ -68,5 +69,15 @@ resp.check_rr("answer", "test.follow", "NSEC")
 resp.check_rr("answer", "test.follow", "RRSIG")
 resp.check_no_rr("answer", "test")
 resp.check_empty("authority")
+
+# DNAME systhetizes too long CNAME
+resp = knot.dig("63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx." +
+                "63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx." +
+                "63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx." +
+                "50o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.big.follow.",
+                "CNAME", udp=True, dnssec=True)
+resp.check(rcode="YXDOMAIN")
+resp.check_record(section="answer", rtype="DNAME", rdata="uhuh.follow.")
+resp.check_rr(section="answer", rname="big.follow.", rtype="RRSIG")
 
 t.end()
