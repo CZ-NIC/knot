@@ -917,6 +917,10 @@ class Knot(Server):
         self.ctl("zone-flush")
         time.sleep(Server.START_WAIT)
 
+    def key_set(self, zone_name, key_id, **new_values):
+        set_params = [ option + "=" + value for option, value in new_values.items() ]
+        dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "set", key_id, *set_params)
+
     def _on_str_hex(self, conf, name, value):
         if value == True:
             return

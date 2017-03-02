@@ -59,8 +59,6 @@ knot_bin = get_binary("KNOT_TEST_KNOT", repo_binary("src/knotd"))
 knot_ctl = get_binary("KNOT_TEST_KNOTC", repo_binary("src/knotc"))
 # KNOT_TEST_KKEYMGR - Knot key management binary.
 kkeymgr_bin = get_binary("KNOT_TEST_KKEYMGR", repo_binary("src/kkeymgr"))
-# KNOT_TEST_PYKEYMGR - Knot py key manager.
-pykeymgr_py = get_binary("KNOT_TEST_PYKEYMGR", repo_binary("scripts/pykeymgr.py"))
 # KNOT_TEST_BIND - Bind binary.
 bind_bin = get_binary("KNOT_TEST_BIND", "named")
 # KNOT_TEST_BINDC - Bind control binary.
