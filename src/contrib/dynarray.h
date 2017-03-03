@@ -34,14 +34,28 @@
 
 #pragma once
 
-#define dynarray_define(prefix, ntype, initial_capacity) \
-	\
-	struct prefix ## _dynarray { \
+#define DYNARRAY_VISIBILITY_STATIC static
+#define DYNARRAY_VISIBILITY_PUBLIC
+#define DYNARRAY_VISIBILITY_LIBRARAY __public__
+
+#define dynarray_declare(prefix, ntype, visibility, initial_capacity) \
+	typedef struct prefix ## _dynarray { \
 		ssize_t capacity; \
 		ssize_t size; \
 		ntype init[initial_capacity]; \
 		ntype *arr; \
-	}; \
+	} prefix ## _dynarray_t; \
+	\
+	visibility void prefix ## _dynarray_fix(prefix ## _dynarray_t *dynarray); \
+	visibility void prefix ## _dynarray_add(prefix ## _dynarray_t *dynarray, \
+						    ntype const *to_add); \
+	visibility void prefix ## _dynarray_free(prefix ## _dynarray_t *dynarray);
+
+#define dynarray_foreach(prefix, ntype, ptr, array) \
+	for (ntype *ptr = (prefix ## _dynarray_fix(&(array)), (array).arr); \
+	     ptr < (array).arr + (array).size; ptr++)
+
+#define dynarray_define(prefix, ntype, visibility, initial_capacity) \
 	\
 	static void prefix ## _dynarray_free__(struct prefix ## _dynarray *dynarray) \
 	{ \
@@ -51,7 +65,7 @@
 	} \
 	\
 	__attribute__((unused)) \
-	static void prefix ## _dynarray_fix(struct prefix ## _dynarray *dynarray) \
+	visibility void prefix ## _dynarray_fix(struct prefix ## _dynarray *dynarray) \
 	{ \
 		assert(dynarray->size <= dynarray->capacity); \
 		if (dynarray->capacity <= initial_capacity) { \
@@ -61,7 +75,7 @@
 	} \
 	\
 	__attribute__((unused)) \
-	static void prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
+	visibility void prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
 	                                    ntype const *to_add) \
 	{ \
 		prefix ## _dynarray_fix(dynarray); \
@@ -85,7 +99,7 @@
 	} \
 	\
 	__attribute__((unused)) \
-	static void prefix ## _dynarray_free(struct prefix ## _dynarray *dynarray) \
+	visibility void prefix ## _dynarray_free(struct prefix ## _dynarray *dynarray) \
 	{ \
 		prefix ## _dynarray_free__(dynarray); \
 		memset(dynarray, 0, sizeof(*dynarray)); \

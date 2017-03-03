@@ -38,8 +38,6 @@
 #include "contrib/dynarray.h"
 #include "contrib/macros.h"
 
-dynarray_define(keyptr, zone_key_t *, 1)
-
 typedef struct type_node {
 	node_t n;
 	uint16_t type;
@@ -189,7 +187,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
  *
  * \return Dynarray of such keys.
  */
-static struct keyptr_dynarray get_matching_zone_keys(const knot_rrset_t *rrsigs,
+static keyptr_dynarray_t get_matching_zone_keys(const knot_rrset_t *rrsigs,
                                                      size_t pos, const zone_keyset_t *keys)
 {
 	assert(rrsigs && rrsigs->type == KNOT_RRTYPE_RRSIG);
@@ -262,21 +260,22 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	uint16_t rrsig_rdata_count = synth_rrsig.rrs.rr_count;
 	for (uint16_t i = 0; i < rrsig_rdata_count; i++) {
 		struct keyptr_dynarray keys = get_matching_zone_keys(&synth_rrsig, i, zone_keys);
-		keyptr_dynarray_fix(&keys);
 		int endloop = 0; // 1 - continue; 2 - break
 
-		for (size_t j = 0; j < keys.size && endloop == 0; j++) {
-			if (!keys.arr[j]->is_active) {
+		dynarray_foreach(keyptr, zone_key_t *, key, keys) {
+			if (!(*key)->is_active) {
 				continue;
 			}
 			result = knot_check_signature(covered, &synth_rrsig, i,
-			                              keys.arr[j]->key, keys.arr[j]->ctx, dnssec_ctx);
+			                              (*key)->key, (*key)->ctx, dnssec_ctx);
 			if (result == KNOT_EOK) {
 				// valid signature
 				note_earliest_expiration(&synth_rrsig, i, expires_at);
 				endloop = 1;
+				break;
 			} else if (result != DNSSEC_INVALID_SIGNATURE) {
 				endloop = 2;
+				break;
 			}
 		}
 		keyptr_dynarray_free(&keys);
