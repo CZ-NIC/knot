@@ -134,7 +134,7 @@ Notes
 
 Options **-k** and **-y** can not be used simultaneously.
 
-Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
+Dnssec-keygen keyfile format is not supported. Use :manpage:`kkeymgr(8)` instead.
 
 Zone name/server guessing is not supported if the zone name/server is not specified.
 
@@ -161,4 +161,4 @@ Examples
 See Also
 --------
 
-:manpage:`kdig(1)`, :manpage:`khost(1)`, :manpage:`keymgr(8)`.
+:manpage:`kdig(1)`, :manpage:`khost(1)`, :manpage:`kkeymgr(8)`.
