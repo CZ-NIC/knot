@@ -232,7 +232,7 @@ Notes
 
 Options **-k** and **-y** can not be used simultaneously.
 
-Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
+Dnssec-keygen keyfile format is not supported. Use :manpage:`kkeymgr(8)` instead.
 
 Examples
 --------
@@ -265,4 +265,4 @@ Files
 See Also
 --------
 
-:manpage:`khost(1)`, :manpage:`knsupdate(1)`, :manpage:`keymgr(8)`.
+:manpage:`khost(1)`, :manpage:`knsupdate(1)`, :manpage:`kkeymgr(8)`.

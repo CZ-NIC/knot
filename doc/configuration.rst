@@ -339,7 +339,7 @@ the server logs to see whether everything went well.
 .. WARNING::
   This guide assumes that the zone *myzone.test* was not signed prior to
   enabling the automatic key management. If the zone was already signed, all
-  existing keys must be imported using ``keymgr zone key import`` command
+  existing keys must be imported using ``kkeymgr import-bind`` command
   before enabling the automatic signing. Also the algorithm in the policy must
   match the algorithm of all imported keys. Otherwise the zone will be resigned
   at all.
@@ -366,8 +366,8 @@ Let's use the Single-Type Signing scheme with two algorithms. Run:
 
 .. code-block:: console
 
-  $ keymgr zone key generate myzone.test algorithm RSASHA256 size 1024
-  $ keymgr zone key generate myzone.test algorithm ECDSAP256SHA256 size 256
+  $ kkeymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024
+  $ kkeymgr -d path/to/keydir myzone.test. generate algorithm=ECDSAP256SHA256 size=256
 
 And reload the server. The zone will be signed.
 
@@ -377,14 +377,14 @@ it yet:
 
 .. code-block:: console
 
-  $ keymgr zone key generate myzone.test algorithm RSASHA256 size 1024 active +1d
+  $ kkeymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024 active=now+1d
 
 Take the key ID (or key tag) of the old RSA key and disable it the same time
 the new key gets activated:
 
 .. code-block:: console
 
-  $ keymgr zone key set myzone.test <old_key_id> retire +1d remove +1d
+  $ kkeymgr -d path/to/keydir myzone.test. set <old_key_id> retire=now+1d remove=now+1d
 
 Reload the server again. The new key will be published (i.e. the DNSKEY record
 will be added into the zone). Do not forget to update the DS record in the
