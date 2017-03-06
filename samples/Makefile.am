@@ -15,7 +15,7 @@ knot.sample.conf: knot.sample.conf.in
 	  $(edit) $${srcdir}$@.in >$@.tmp
 	mv $@.tmp $@
 
-EXTRA_DIST = knot.sample.conf.in example.com.zone keymgr-completion.sh keymgr-completion.zsh
+EXTRA_DIST = knot.sample.conf.in example.com.zone
 
 if HAVE_DAEMON
 
@@ -24,19 +24,9 @@ install-data-local: knot.sample.conf
 	  $(INSTALL) -d $(DESTDIR)/$(config_dir); \
 	  $(INSTALL_DATA) knot.sample.conf $(srcdir)/example.com.zone $(DESTDIR)/$(config_dir); \
 	fi
-if HAVE_BASH_COMPLETIONS
-	if [ \! -f $(DESTDIR)/$(bash_completions_dir)/keymgr ]; then \
-	  $(INSTALL) -d $(DESTDIR)/$(bash_completions_dir); \
-	  $(INSTALL_DATA) $(srcdir)/keymgr-completion.sh $(DESTDIR)/$(bash_completions_dir)/keymgr; \
-	fi
-endif # HAVE_BASH_COMPLETIONS
-
 uninstall-local:
 	-rm -rf $(DESTDIR)/$(config_dir)/knot.sample.conf \
 	        $(DESTDIR)/$(config_dir)/example.com.zone
-if HAVE_BASH_COMPLETIONS
-	-rm -rf $(DESTDIR)/$(bash_completions_dir)/keymgr
-endif # HAVE_BASH_COMPLETIONS
 
 endif # HAVE_DAEMON
 
