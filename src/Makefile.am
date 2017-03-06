@@ -17,6 +17,8 @@ AM_CPPFLAGS = \
 	-DCONFIG_DIR='"${config_dir}"'		\
 	-DSTORAGE_DIR='"${storage_dir}"'	\
 	-DRUN_DIR='"${run_dir}"'		\
+	-DMODULE_DIR='"${module_dir}"'		\
+	-DMODULE_INSTDIR='"${module_instdir}"'	\
 	-I$(srcdir)/dnssec/lib
 
 ######################
@@ -93,6 +95,9 @@ libcontrib_la_SOURCES +=			\
 	contrib/lmdb/midl.c			\
 	contrib/lmdb/midl.h
 endif !HAVE_LMDB
+
+libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
+libcontrib_la_LDFLAGS = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 
 # static: libknot-yparser sources
 libknot_yparser_la_SOURCES = 			\
@@ -190,7 +195,6 @@ libknot_la_SOURCES =				\
 	$(nobase_libknot_la_HEADERS)
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
-libknot_la_CFLAGS = $(AM_CFLAGS)
 libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS) $(LDFLAG_EXCLUDE_LIBS)
 libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la
 
@@ -222,8 +226,8 @@ libknotus_la_SOURCES =				\
 	utils/common/token.c			\
 	utils/common/token.h
 
-libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(libidn_CFLAGS) $(libedit_CFLAGS) $(gnutls_CFLAGS)
-libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS)
+libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libidn_CFLAGS) $(libedit_CFLAGS) $(gnutls_CFLAGS)
+libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS) $(LDFLAG_EXCLUDE_LIBS)
 libknotus_la_LIBADD = libcontrib.la libknot.la
 
 libknotd_la_SOURCES =				\
@@ -407,8 +411,8 @@ libknotd_la_SOURCES =				\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
-libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(systemd_CFLAGS) $(liburcu_CFLAGS) $(lmdb_CFLAGS)
-libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS)
+libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(systemd_CFLAGS) $(liburcu_CFLAGS) $(lmdb_CFLAGS) -DKNOTD_MOD_STATIC
+libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS) -export-symbols-regex '^knotd_'
 libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(liburcu_LIBS)
 
 ###################
@@ -441,10 +445,12 @@ keymgr_SOURCES = 				\
 	utils/keymgr/functions.h		\
 	utils/keymgr/main.c
 
-knotd_CPPFLAGS  = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
+knotd_CPPFLAGS  = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(liburcu_CFLAGS)
 knotd_LDADD     = libknotd.la libcontrib.la $(liburcu_LIBS)
-knotc_CPPFLAGS  = $(AM_CPPFLAGS) $(libedit_CFLAGS)
-knotc_LDADD     = libknotd.la libknotus.la $(libedit_LIBS)
+knotd_LDFLAGS   = $(AM_LDFLAGS) -rdynamic
+knotc_CPPFLAGS  = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libedit_CFLAGS)
+knotc_LDADD     = libknotd.la libcontrib.la libknotus.la $(libedit_LIBS)
+knotc_LDFLAGS   = $(AM_LDFLAGS) -rdynamic
 keymgr_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS) -I$(srcdir)/dnssec/lib/dnssec \
                   -I$(srcdir)/dnssec $(gnutls_CFLAGS)
 keymgr_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la \

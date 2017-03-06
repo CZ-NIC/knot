@@ -7,8 +7,11 @@ AC_DEFUN([dt_DNSTAP],
 [
   AC_ARG_ENABLE([dnstap],
     AS_HELP_STRING([--enable-dnstap],
-                   [Enable dnstap support (requires fstrm, protobuf-c)]),
+                   [Enable dnstap support for kdig (requires fstrm, protobuf-c)]),
     [opt_dnstap=$enableval], [opt_dnstap=no])
+
+  AS_IF([test "$STATIC_MODULE_dnstap" != "no" -o "$SHARED_MODULE_dnstap" != "no"],
+        [opt_dnstap=yes])
 
   AS_IF([test "$opt_dnstap" != "no"],[
     AC_PATH_PROG([PROTOC_C], [protoc-c])

@@ -1,4 +1,5 @@
 /_build
+/modules.rst
 
 # sphinx-build manpages
 /man/knot.conf.5

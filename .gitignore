@@ -55,6 +55,7 @@
 /src/dnssec/libdnssec.pc
 /src/libknot.pc
 /src/libknot/version.h
+/src/knot/modules/static_modules.h
 
 # dnstap
 /src/contrib/dnstap/Makefile
