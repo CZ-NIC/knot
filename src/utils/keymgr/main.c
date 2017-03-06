@@ -60,7 +60,7 @@ static void print_help(void)
 
 static bool init_conf(const char *confdb)
 {
-	conf_flag_t flags = CONF_FNOHOSTNAME;
+	conf_flag_t flags = CONF_FNOHOSTNAME | CONF_FOPTMODULES;
 	if (confdb != NULL) {
 		flags |= CONF_FREADONLY;
 	}

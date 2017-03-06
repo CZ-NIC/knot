@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,18 +64,18 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
                        struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	struct process_query_param param = {
+	knotd_qdata_params_t params = {
 		.remote = ss,
-		.proc_flags = NS_QUERY_NO_AXFR | NS_QUERY_NO_IXFR | /* No transfers. */
-		              NS_QUERY_LIMIT_SIZE | /* Enforce UDP packet size limit. */
-		              NS_QUERY_LIMIT_ANY,  /* Limit ANY over UDP (depends on zone as well). */
+		.flags = KNOTD_QUERY_FLAG_NO_AXFR | KNOTD_QUERY_FLAG_NO_IXFR | /* No transfers. */
+		         KNOTD_QUERY_FLAG_LIMIT_SIZE | /* Enforce UDP packet size limit. */
+		         KNOTD_QUERY_FLAG_LIMIT_ANY,  /* Limit ANY over UDP (depends on zone as well). */
 		.socket = fd,
 		.server = udp->server,
 		.thread_id = udp->thread_id
 	};
 
 	/* Start query processing. */
-	knot_layer_begin(&udp->layer, &param);
+	knot_layer_begin(&udp->layer, &params);
 
 	/* Create packets. */
 	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, udp->layer.mm);

@@ -27,22 +27,22 @@
 
 #define NOTIFY_IN_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_NOTIFY, \
-	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->param->remote, fmt)
+	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->params->remote, fmt)
 
-static int notify_check_query(struct query_data *qdata)
+static int notify_check_query(knotd_qdata_t *qdata)
 {
 	/* RFC1996 requires SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
 	/* Check valid zone, transaction security. */
-	zone_t *zone = (zone_t *)qdata->zone;
+	zone_t *zone = (zone_t *)qdata->extra->zone;
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_NOTIFY);
 
 	return KNOT_STATE_DONE;
 }
 
-int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
+int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
@@ -66,7 +66,7 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
 
 	/* SOA RR in answer may be included, recover serial. */
-	zone_t *zone = (zone_t *)qdata->zone;
+	zone_t *zone = (zone_t *)qdata->extra->zone;
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);
 	if (answer->count > 0) {
 		const knot_rrset_t *soa = knot_pkt_rr(answer, 0);
@@ -86,7 +86,7 @@ int notify_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
-	zone_set_preferred_master(zone, qdata->param->remote);
+	zone_set_preferred_master(zone, qdata->params->remote);
 	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 
 	return KNOT_STATE_DONE;

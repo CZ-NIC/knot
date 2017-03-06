@@ -177,6 +177,8 @@ src/knot/conf/confio.c
 src/knot/conf/confio.h
 src/knot/conf/migration.c
 src/knot/conf/migration.h
+src/knot/conf/module.c
+src/knot/conf/module.h
 src/knot/conf/scheme.c
 src/knot/conf/scheme.h
 src/knot/conf/tools.c

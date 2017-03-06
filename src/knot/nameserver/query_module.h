@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,89 +13,52 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Query module interface
- *
- * The concept of query plan is simple - each query requires a finite
- * number of steps to be solved. For example IN query needs to find an answer and
- * based on the result, process authority and maybe supply additional records.
- * This can be represented by a query plan:
- * answer => { find_answer },
- * authority => { process_authority },
- * additional => { process_additional }
- *
- * The example is obvious, but if a state is passed between the callbacks,
- * same principle applies for every query processing.
- * This file provides an interface for basic query plan and more importantly
- * dynamically loaded modules that can alter query plans.
- * For a default internet zone query plan, see \file internet.h
- *
- * \addtogroup query_processing
- * @{
- */
 
 #pragma once
 
 #include "libknot/libknot.h"
-#include "knot/common/log.h"
 #include "knot/conf/conf.h"
-#include "knot/conf/tools.h"
-#include "knot/nameserver/process_query.h"
-#include "knot/nameserver/internet.h"
+#include "knot/include/module.h"
 #include "contrib/ucw/lists.h"
 
-#ifdef HAVE_ATOMIC
- #define ATOMIC_ADD(dst, val) __atomic_add_fetch(dst, val, __ATOMIC_RELAXED);
- #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(dst, val, __ATOMIC_RELAXED);
-#else
- #define ATOMIC_ADD(dst, val) __sync_fetch_and_add(dst, val);
- #define ATOMIC_SUB(dst, val) __sync_fetch_and_sub(dst, val);
-#endif
+#define KNOTD_STAGES (KNOTD_STAGE_END + 1)
 
-#define MODULE_ERR(mod, msg, ...) \
-	log_error("module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
+typedef unsigned (*query_step_process_f)
+	(unsigned state, knot_pkt_t *pkt, knotd_qdata_t *qdata, knotd_mod_t *mod);
 
-#define MODULE_ZONE_ERR(mod, zone, msg, ...) \
-	log_zone_error(zone, "module '%.*s', " msg, mod[0], mod + 1, ##__VA_ARGS__)
-
-/* Query module instance scopes. */
-enum {
-	MOD_SCOPE_GLOBAL = 1 << 0, /* Global quering (all zones). */
-	MOD_SCOPE_ZONE   = 1 << 1, /* Specific zone quering. */
-	MOD_SCOPE_ANY    = MOD_SCOPE_GLOBAL | MOD_SCOPE_ZONE
+/*! \brief Single processing step in query processing. */
+struct query_step {
+	node_t node;
+	void *ctx;
+	query_step_process_f process;
 };
 
-/* Query module processing stages. */
-enum query_stage {
-	QPLAN_BEGIN  = 0, /* Before query processing. */
-	QPLAN_STAGE  = 1, /* Class-specific processing stages. */
-	QPLAN_ANSWER = QPLAN_STAGE + KNOT_ANSWER, /* Answer section processing. */
-	QPLAN_AUTHORITY,  /* Authority section processing. */
-	QPLAN_ADDITIONAL, /* Additional section processing. */
-	QPLAN_END         /* After query processing. */
+/*! Query plan represents a sequence of steps needed for query processing
+ *  divided into several stages, where each stage represents a current response
+ *  assembly phase, for example 'before processing', 'answer section' and so on.
+ */
+struct query_plan {
+	knot_mm_t *mm;
+	list_t stage[KNOTD_STAGES];
 };
 
-#define QUERY_PLAN_STAGES (QPLAN_END + 1)
+/*! \brief Create an empty query plan. */
+struct query_plan *query_plan_create(knot_mm_t *mm);
 
-/* Forward declarations. */
-struct query_data;
-struct query_module;
-struct query_plan;
+/*! \brief Free query plan and all planned steps. */
+void query_plan_free(struct query_plan *plan);
 
-/* Module callback required API. */
-typedef int (*qmodule_load_t)(struct query_module *self);
-typedef void (*qmodule_unload_t)(struct query_module *self);
-typedef int (*qmodule_process_t)(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx);
+/*! \brief Plan another step for given stage. */
+int query_plan_step(struct query_plan *plan, knotd_stage_t stage,
+                    query_step_process_f process, void *ctx);
 
-typedef struct static_module {
-	const yp_name_t *name;
-	qmodule_load_t load;
-	qmodule_unload_t unload;
-	unsigned scope;
-	bool opt_conf;
-} static_module_t;
+/*! \brief Open query module identified by name. */
+knotd_mod_t *query_module_open(conf_t *conf, conf_mod_id_t *mod_id,
+                               struct query_plan *plan, const knot_dname_t *zone,
+                               knot_mm_t *mm);
+
+/*! \brief Close query module. */
+void query_module_close(knotd_mod_t *module);
 
 typedef char* (*mod_idx_to_str_f)(uint32_t idx, uint32_t count);
 
@@ -111,109 +74,17 @@ typedef struct {
 	uint32_t count;
 } mod_ctr_t;
 
-/*!
- * Query module is a dynamically loadable unit that can alter query processing plan.
- * Module requires load and unload callback handlers and is provided with a context
- * and configuration string.
- */
-struct query_module {
+struct knotd_mod {
 	node_t node;
-	struct query_plan *plan;
 	knot_mm_t *mm;
-	void *ctx;
 	conf_t *config;
-	const knot_dname_t *zone;
 	conf_mod_id_t *id;
-	qmodule_load_t load;
-	qmodule_unload_t unload;
+	struct query_plan *plan;
+	const knot_dname_t *zone;
+	const knotd_mod_api_t *api;
 	mod_ctr_t *stats;
 	uint32_t stats_count;
-	unsigned scope;
-};
-
-int mod_stats_add(struct query_module *module, const char *name, uint32_t count,
-                  mod_idx_to_str_f idx);
-
-void mod_stats_free(struct query_module *module);
-
-inline static void mod_ctr_incr(mod_ctr_t *stats, uint32_t idx, uint64_t val)
-{
-	mod_ctr_t *ctr = stats + idx;
-	assert(ctr->count == 1);
-
-	ATOMIC_ADD(&ctr->counter, val);
-}
-
-inline static void mod_ctr_decr(mod_ctr_t *stats, uint32_t idx, uint64_t val)
-{
-	mod_ctr_t *ctr = stats + idx;
-	assert(ctr->count == 1);
-
-	ATOMIC_SUB(&ctr->counter, val);
-}
-
-inline static void mod_ctrs_incr(mod_ctr_t *stats, uint32_t idx, uint32_t offset, uint64_t val)
-{
-	mod_ctr_t *ctr = stats + idx;
-	assert(ctr->count > 1);
-
-	// Increment the last counter if offset overflows.
-	if (offset < ctr->count) {
-		ATOMIC_ADD(&ctr->counters[offset], val);
-	} else {
-		ATOMIC_ADD(&ctr->counters[ctr->count - 1], val);
-	}
-}
-
-inline static void mod_ctrs_decr(mod_ctr_t *stats, uint32_t idx, uint32_t offset, uint64_t val)
-{
-	mod_ctr_t *ctr = stats + idx;
-	assert(ctr->count > 1);
-
-	// Increment the last counter if offset overflows.
-	if (offset < ctr->count) {
-		ATOMIC_SUB(&ctr->counters[offset], val);
-	} else {
-		ATOMIC_SUB(&ctr->counters[ctr->count - 1], val);
-	}
-}
-
-/*! \brief Single processing step in query processing. */
-struct query_step {
-	node_t node;
 	void *ctx;
-	qmodule_process_t process;
 };
 
-/*! Query plan represents a sequence of steps needed for query processing
- *  divided into several stages, where each stage represents a current response
- *  assembly phase, for example 'before processing', 'answer section' and so on.
- */
-struct query_plan {
-	knot_mm_t *mm;
-	list_t stage[QUERY_PLAN_STAGES];
-};
-
-static_module_t *find_module(const yp_name_t *name);
-
-/*! \brief Create an empty query plan. */
-struct query_plan *query_plan_create(knot_mm_t *mm);
-
-/*! \brief Free query plan and all planned steps. */
-void query_plan_free(struct query_plan *plan);
-
-/*! \brief Plan another step for given stage. */
-int query_plan_step(struct query_plan *plan, int stage, qmodule_process_t process,
-                    void *ctx);
-
-int query_module_step(struct query_module *module, int stage, qmodule_process_t process);
-
-/*! \brief Open query module identified by name. */
-struct query_module *query_module_open(conf_t *config, conf_mod_id_t *mod_id,
-                                       struct query_plan *plan, const knot_dname_t *zone,
-                                       knot_mm_t *mm);
-
-/*! \brief Close query module. */
-void query_module_close(struct query_module *module);
-
-/*! @} */
+void knotd_mod_stats_free(knotd_mod_t *mod);

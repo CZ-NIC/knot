@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,6 +64,6 @@ typedef int (*xfr_put_cb)(knot_pkt_t *pkt, const void *item, struct xfr_proc *xf
 /*!
  * \brief Put all items from xfr_proc.nodes to packet using a callback function.
  *
- * \note qdata->ext points to struct xfr_proc* (this is xfer-specific context)
+ * \note qdata->extra->ext points to struct xfr_proc* (this is xfer-specific context)
  */
-int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, struct query_data *qdata);
+int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata);

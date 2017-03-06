@@ -29,6 +29,8 @@
 #include "libknot/yparser/ypscheme.h"
 #include "contrib/qp-trie/trie.h"
 #include "contrib/ucw/lists.h"
+#include "contrib/dynarray.h"
+#include "knot/include/module.h"
 
 /*! Default template identifier. */
 #define CONF_DEFAULT_ID		((uint8_t *)"\x08""default\0")
@@ -66,6 +68,19 @@ typedef struct {
 	/*! Value getter return code. */
 	int code;
 } conf_val_t;
+
+/*! Query module context. */
+typedef struct {
+	/*! Module interface. */
+	const knotd_mod_api_t *api;
+	/*! Shared library dlopen handler. */
+	void *lib_handle;
+	/*! Indication of a temporary module created during confio check. */
+	bool temporary;
+} module_t;
+
+dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_PUBLIC, 16)
+dynarray_declare(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_PUBLIC, 16)
 
 /*! Configuration context. */
 typedef struct {
@@ -112,6 +127,10 @@ typedef struct {
 		conf_val_t srv_nsid;
 	} cache;
 
+	/*! List of dynamically loaded modules. */
+	mod_dynarray_t modules;
+	/*! List of old schemas (lazy freed). */
+	old_schema_dynarray_t old_schemas;
 	/*! List of active query modules. */
 	list_t query_modules;
 	/*! Default query modules plan. */
@@ -122,10 +141,12 @@ typedef struct {
  * Configuration access flags.
  */
 typedef enum {
-	CONF_FNONE        = 0,      /*!< Empty flag. */
-	CONF_FREADONLY    = 1 << 0, /*!< Read only access. */
-	CONF_FNOCHECK     = 1 << 1, /*!< Disabled confdb check. */
-	CONF_FNOHOSTNAME  = 1 << 2, /*!< Don't set the hostname. */
+	CONF_FNONE       = 0,      /*!< Empty flag. */
+	CONF_FREADONLY   = 1 << 0, /*!< Read only access. */
+	CONF_FNOCHECK    = 1 << 1, /*!< Disabled confdb check. */
+	CONF_FNOHOSTNAME = 1 << 2, /*!< Don't set the hostname. */
+	CONF_FREQMODULES = 1 << 3, /*!< Load module schemas (must succeed). */
+	CONF_FOPTMODULES = 1 << 4, /*!< Load module schemas (may fail). */
 } conf_flag_t;
 
 /*!
@@ -133,8 +154,9 @@ typedef enum {
  */
 typedef enum {
 	CONF_UPD_FNONE    = 0,      /*!< Empty flag. */
-	CONF_UPD_FMODULES = 1 << 0, /*!< Reuse previous global modules. */
-	CONF_UPD_FCONFIO  = 1 << 1, /*!< Reuse previous cofio reload context. */
+	CONF_UPD_FNOFREE  = 1 << 0, /*!< Disable auto-free of previous config. */
+	CONF_UPD_FMODULES = 1 << 1, /*!< Reuse previous global modules. */
+	CONF_UPD_FCONFIO  = 1 << 2, /*!< Reuse previous cofio reload context. */
 } conf_update_flag_t;
 
 /*!
@@ -197,8 +219,10 @@ int conf_clone(
  *
  * \param[in] conf   New configuration.
  * \param[in] flags  Update flags.
+ *
+ * \return Previous config if CONF_UPD_FNOFREE, else NULL.
  */
-void conf_update(
+conf_t *conf_update(
 	conf_t *conf,
 	conf_update_flag_t flags
 );
@@ -210,32 +234,6 @@ void conf_update(
  */
 void conf_free(
 	conf_t *conf
-);
-
-/*!
- * Activates configured query modules for the specified zone or for all zones.
- *
- * \param[in] conf           Configuration.
- * \param[in] zone_name      Zone name, NULL for all zones.
- * \param[in] query_modules  Destination query modules list.
- * \param[in] query_plan     Destination query plan.
- */
-void conf_activate_modules(
-	conf_t *conf,
-	const knot_dname_t *zone_name,
-	list_t *query_modules,
-	struct query_plan **query_plan
-);
-
-/*!
- * Deactivates query modules list.
- *
- * \param[in] query_modules  Destination query modules list.
- * \param[in] query_plan     Destination query plan.
- */
-void conf_deactivate_modules(
-	list_t *query_modules,
-	struct query_plan **query_plan
 );
 
 /*!

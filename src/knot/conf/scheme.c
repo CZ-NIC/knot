@@ -23,24 +23,11 @@
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
+#include "knot/journal/journal.h"
 #include "knot/updates/acl.h"
 #include "libknot/rrtype/opt.h"
 #include "dnssec/lib/dnssec/tsig.h"
 #include "dnssec/lib/dnssec/key.h"
-
-#include "knot/modules/rrl/rrl.h"
-#include "knot/modules/stats/stats.h"
-#include "knot/modules/synth_record/synth_record.h"
-#include "knot/modules/dnsproxy/dnsproxy.h"
-#include "knot/modules/online_sign/online_sign.h"
-#ifdef HAVE_ROSEDB
-#include "knot/modules/rosedb/rosedb.h"
-#endif
-#if USE_DNSTAP
-#include "knot/modules/dnstap/dnstap.h"
-#endif
-#include "knot/modules/whoami/whoami.h"
-#include "knot/modules/noudp/noudp.h"
 
 #define HOURS(x)	((x) * 3600)
 #define DAYS(x)		((x) * HOURS(24))
@@ -53,8 +40,6 @@
 #define VIRT_MEM_TOP_32BIT	GIGA(1)
 #define VIRT_MEM_LIMIT(x)	(((sizeof(void *) < 8) && ((x) > VIRT_MEM_TOP_32BIT)) \
 				 ? VIRT_MEM_TOP_32BIT : (x))
-
-#define FMOD		(YP_FMULTI | CONF_IO_FRLD_MOD | CONF_IO_FRLD_ZONES)
 
 static const knot_lookup_t keystore_backends[] = {
 	{ KEYSTORE_BACKEND_PEM,    "pem" },
@@ -111,6 +96,13 @@ static const knot_lookup_t journal_modes[] = {
 	{ JOURNAL_MODE_ROBUST, "robust" },
 	{ JOURNAL_MODE_ASYNC,  "asynchronous" },
 	{ 0, NULL }
+};
+
+static const yp_item_t desc_module[] = {
+	{ C_ID,      YP_TSTR, YP_VNONE, YP_FNONE, { check_module_id } },
+	{ C_FILE,    YP_TSTR, YP_VNONE },
+	{ C_COMMENT, YP_TSTR, YP_VNONE },
+	{ NULL }
 };
 
 static const yp_item_t desc_server[] = {
@@ -290,6 +282,8 @@ static const yp_item_t desc_zone[] = {
 };
 
 const yp_item_t conf_scheme[] = {
+	{ C_MODULE,   YP_TGRP, YP_VGRP = { desc_module }, YP_FMULTI | CONF_IO_FRLD_ALL |
+	                                                  CONF_IO_FCHECK_ZONES, { load_module } },
 	{ C_SRV,      YP_TGRP, YP_VGRP = { desc_server }, CONF_IO_FRLD_SRV, { check_server } },
 	{ C_CTL,      YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_LOG,      YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI | CONF_IO_FRLD_LOG },
@@ -299,28 +293,8 @@ const yp_item_t conf_scheme[] = {
 	{ C_KEY,      YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_RMT,      YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
-/* MODULES */
-	{ C_MOD_RRL,          YP_TGRP, YP_VGRP = { scheme_mod_rrl }, FMOD,
-	                                         { check_mod_rrl } },
-	{ C_MOD_STATS,        YP_TGRP, YP_VGRP = { scheme_mod_stats }, FMOD },
-	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, FMOD,
-	                               { check_mod_synth_record } },
-	{ C_MOD_DNSPROXY,     YP_TGRP, YP_VGRP = { scheme_mod_dnsproxy }, FMOD,
-	                               { check_mod_dnsproxy } },
-#if HAVE_ROSEDB
-	{ C_MOD_ROSEDB,       YP_TGRP, YP_VGRP = { scheme_mod_rosedb }, FMOD,
-	                               { check_mod_rosedb } },
-#endif
-#if USE_DNSTAP
-	{ C_MOD_DNSTAP,       YP_TGRP, YP_VGRP = { scheme_mod_dnstap }, FMOD,
-	                               { check_mod_dnstap } },
-#endif
-	{ C_MOD_ONLINE_SIGN,  YP_TGRP, YP_VGRP = { scheme_mod_online_sign }, FMOD },
-	{ C_MOD_WHOAMI,       YP_TGRP, YP_VGRP = { scheme_mod_whoami }, FMOD },
-	{ C_MOD_NOUDP,        YP_TGRP, YP_VGRP = { scheme_mod_noudp }, FMOD },
-/***********/
-	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
-	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI | CONF_IO_FZONE, { check_zone } },
-	{ C_INCL, YP_TSTR, YP_VNONE, CONF_IO_FDIFF_ZONES | CONF_IO_FRLD_ALL, { include_file } },
+	{ C_TPL,      YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
+	{ C_ZONE,     YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI | CONF_IO_FZONE, { check_zone } },
+	{ C_INCL,     YP_TSTR, YP_VNONE, CONF_IO_FDIFF_ZONES | CONF_IO_FRLD_ALL, { include_file } },
 	{ NULL }
 };

@@ -38,6 +38,7 @@
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/migration.h"
+#include "knot/conf/module.h"
 #include "knot/common/log.h"
 #include "knot/common/process.h"
 #include "knot/common/stats.h"
@@ -342,7 +343,7 @@ static int set_config(const char *confdb, const char *config)
 
 	/* Open confdb. */
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_scheme, confdb, CONF_FNONE);
+	int ret = conf_new(&new_conf, conf_scheme, confdb, CONF_FREQMODULES);
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to open configuration database '%s' (%s)",
 		          (confdb != NULL) ? confdb : "", knot_strerror(ret));

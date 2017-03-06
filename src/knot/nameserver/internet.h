@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,20 +17,7 @@
 #pragma once
 
 #include "libknot/packet/pkt.h"
-
-struct query_data;
-
-/*! \brief Internet query processing states. */
-enum {
-	BEGIN,   /* Begin name resolution. */
-	NODATA,  /* Positive result with NO data. */
-	HIT,     /* Positive result. */
-	MISS,    /* Negative result. */
-	DELEG,   /* Result is delegation. */
-	FOLLOW,  /* Resolution not complete (CNAME/DNAME chain). */
-	ERROR,   /* Resolution failed. */
-	TRUNC    /* Finished, packet size limit encountered. */
-};
+#include "knot/include/module.h"
 
 /*!
  * \brief Answer query from an IN class zone.
@@ -38,7 +25,7 @@ enum {
  * \retval KNOT_STATE_FAIL if it encountered an error.
  * \retval KNOT_STATE_DONE if finished.
  */
-int internet_process_query(knot_pkt_t *pkt, struct query_data *qdata);
+int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 
 /*! \brief Require given QUERY TYPE or return error code. */
 #define NS_NEED_QTYPE(qdata, qtype_want, error_rcode) \
@@ -56,14 +43,14 @@ int internet_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*! \brief Require existing zone or return failure. */
 #define NS_NEED_ZONE(qdata, error_rcode) \
-	if ((qdata)->zone == NULL) { \
+	if ((qdata)->extra->zone == NULL) { \
 		qdata->rcode = (error_rcode); \
 		return KNOT_STATE_FAIL; \
 	}
 
 /*! \brief Require existing zone contents or return failure. */
 #define NS_NEED_ZONE_CONTENTS(qdata, error_rcode) \
-	if ((qdata)->zone->contents == NULL) { \
+	if ((qdata)->extra->zone->contents == NULL) { \
 		qdata->rcode = (error_rcode); \
 		return KNOT_STATE_FAIL; \
 	}
@@ -86,7 +73,7 @@ int internet_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*! \brief Require the zone not to be frozen. */
 #define NS_NEED_NOT_FROZEN(qdata, error_rcode) \
-	if ((qdata)->zone->events.ufrozen) { \
+	if ((qdata)->extra->zone->events.ufrozen) { \
 		(qdata)->rcode = (error_rcode); \
 		return KNOT_STATE_FAIL; \
 	}

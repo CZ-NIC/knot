@@ -18,6 +18,7 @@
 
 #include "knot/conf/base.h"
 #include "knot/conf/confdb.h"
+#include "knot/conf/module.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
@@ -232,6 +233,27 @@ int conf_new(
 	// Initialize cached values.
 	init_cache(out);
 
+	// Load module schemas.
+	if (flags & (CONF_FREQMODULES | CONF_FOPTMODULES)) {
+		ret = conf_mod_load_common(out);
+		if (ret != KNOT_EOK && (flags & CONF_FREQMODULES)) {
+			goto new_error;
+		}
+
+		for (conf_iter_t iter = conf_iter(out, C_MODULE);
+		     iter.code == KNOT_EOK; conf_iter_next(out, &iter)) {
+			conf_val_t id = conf_iter_id(out, &iter);
+			conf_val_t file = conf_id_get(out, C_MODULE, C_FILE, &id);
+			ret = conf_mod_load_extra(out, conf_str(&id), conf_str(&file), false);
+			if (ret != KNOT_EOK && (flags & CONF_FREQMODULES)) {
+				conf_iter_finish(out, &iter);
+				goto new_error;
+			}
+		}
+
+		conf_mod_load_purge(out, false);
+	}
+
 	*conf = out;
 
 	return KNOT_EOK;
@@ -297,7 +319,7 @@ int conf_clone(
 	return KNOT_EOK;
 }
 
-void conf_update(
+conf_t *conf_update(
 	conf_t *conf,
 	conf_update_flag_t flags)
 {
@@ -311,7 +333,7 @@ void conf_update(
 		}
 		if ((flags & CONF_UPD_FMODULES) && s_conf != NULL) {
 			list_dup(&conf->query_modules, &s_conf->query_modules,
-			         sizeof(struct query_module));
+			         sizeof(knotd_mod_t));
 			conf->query_plan = s_conf->query_plan;
 		}
 	}
@@ -332,9 +354,13 @@ void conf_update(
 			WALK_LIST_FREE(old_conf->query_modules);
 			old_conf->query_plan = NULL;
 		}
-
-		conf_free(old_conf);
+		if (!(flags & CONF_UPD_FNOFREE)) {
+			conf_free(old_conf);
+			old_conf = NULL;
+		}
 	}
+
+	return old_conf;
 }
 
 void conf_free(
@@ -359,7 +385,9 @@ void conf_free(
 		mm_free(conf->mm, conf->io.zones);
 	}
 
+	conf_mod_load_purge(conf, false);
 	conf_deactivate_modules(&conf->query_modules, &conf->query_plan);
+	conf_mod_unload_shared(conf);
 
 	if (!conf->is_clone) {
 		if (conf->api != NULL) {
@@ -372,126 +400,6 @@ void conf_free(
 	}
 
 	free(conf);
-}
-
-#define LOG_ARGS(mod_id, msg, ...) "module '%s%s%.*s', " msg, \
-	mod_id->name + 1, (mod_id->len > 0) ? "/" : "", (int)mod_id->len, \
-	mod_id->data
-
-void conf_activate_modules(
-	conf_t *conf,
-	const knot_dname_t *zone_name,
-	list_t *query_modules,
-	struct query_plan **query_plan)
-{
-	int ret = KNOT_EOK;
-
-	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
-		ret = KNOT_EINVAL;
-		goto activate_error;
-	}
-
-	conf_val_t val;
-
-	// Get list of associated modules.
-	if (zone_name != NULL) {
-		val = conf_zone_get(conf, C_MODULE, zone_name);
-	} else {
-		val = conf_default_get(conf, C_GLOBAL_MODULE);
-	}
-
-	switch (val.code) {
-	case KNOT_EOK:
-		break;
-	case KNOT_ENOENT: // Check if a module is configured at all.
-	case KNOT_YP_EINVAL_ID:
-		return;
-	default:
-		ret = val.code;
-		goto activate_error;
-	}
-
-	// Create query plan.
-	*query_plan = query_plan_create(conf->mm);
-	if (*query_plan == NULL) {
-		ret = KNOT_ENOMEM;
-		goto activate_error;
-	}
-
-	// Initialize query modules list.
-	init_list(query_modules);
-
-	// Open the modules.
-	while (val.code == KNOT_EOK) {
-		conf_mod_id_t *mod_id = conf_mod_id(&val);
-		if (mod_id == NULL) {
-			ret = KNOT_ENOMEM;
-			goto activate_error;
-		}
-
-		// Open the module.
-		struct query_module *mod = query_module_open(conf, mod_id, *query_plan,
-		                                             zone_name, conf->mm);
-		if (mod == NULL) {
-			ret = KNOT_ENOMEM;
-			goto activate_error;
-		}
-
-		// Check the module scope.
-		if ((zone_name == NULL && (mod->scope & MOD_SCOPE_GLOBAL) == 0) ||
-		    (zone_name != NULL && (mod->scope & MOD_SCOPE_ZONE) == 0)) {
-			if (zone_name != NULL) {
-				log_zone_warning(zone_name, LOG_ARGS(mod_id, "out of scope"));
-			} else {
-				log_warning(LOG_ARGS(mod_id, "out of scope"));
-			}
-			query_module_close(mod);
-			conf_val_next(&val);
-			continue;
-		}
-
-		// Load the module.
-		ret = mod->load(mod);
-		if (ret != KNOT_EOK) {
-			if (zone_name != NULL) {
-				log_zone_error(zone_name, LOG_ARGS(mod_id, "failed to load"));
-			} else {
-				log_error(LOG_ARGS(mod_id, "failed to load"));
-			}
-			query_module_close(mod);
-			conf_val_next(&val);
-			continue;
-		}
-
-		add_tail(query_modules, &mod->node);
-
-		conf_val_next(&val);
-	}
-
-	return;
-activate_error:
-	CONF_LOG(LOG_ERR, "failed to activate modules (%s)", knot_strerror(ret));
-}
-
-void conf_deactivate_modules(
-	list_t *query_modules,
-	struct query_plan **query_plan)
-{
-	if (query_modules == NULL || query_plan == NULL) {
-		return;
-	}
-
-	// Free query plan.
-	query_plan_free(*query_plan);
-	*query_plan = NULL;
-
-	// Free query modules list.
-	struct query_module *mod = NULL, *next = NULL;
-	WALK_LIST_DELSAFE(mod, next, *query_modules) {
-		mod->unload(mod);
-		query_module_close(mod);
-	}
-	init_list(query_modules);
 }
 
 #define CONF_LOG_LINE(file, line, msg, ...) do { \
@@ -513,17 +421,17 @@ static void log_parser_err(
 
 static void log_call_err(
 	yp_parser_t *parser,
-	conf_check_t *args,
+	knotd_conf_check_args_t *args,
 	int ret)
 {
-	CONF_LOG_LINE(args->file_name, args->line,
+	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
 	              "item '%s', value '%.*s' (%s)", args->item->name + 1,
 	              (int)parser->data_len, parser->data,
 	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
 }
 
 static void log_prev_err(
-	conf_check_t *args,
+	knotd_conf_check_args_t *args,
 	int ret)
 {
 	char buff[512] = { 0 };
@@ -537,7 +445,7 @@ static void log_prev_err(
 		}
 	}
 
-	CONF_LOG_LINE(args->file_name, args->line,
+	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
 	              "%s '%s' (%s)", args->item->name + 1, buff,
 	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
 }
@@ -556,14 +464,17 @@ static int finalize_previous_section(
 		return KNOT_EOK;
 	}
 
-	conf_check_t args = {
+	knotd_conf_check_extra_t extra = {
 		.conf = conf,
 		.txn = txn,
+		.file_name = parser->file.name,
+		.line = parser->line_count
+	};
+	knotd_conf_check_args_t args = {
 		.item = node->item,
 		.id = node->id,
 		.id_len = node->id_len,
-		.file_name = parser->file.name,
-		.line = parser->line_count
+		.extra = &extra
 	};
 
 	int ret = conf_exec_callbacks(&args);
@@ -587,16 +498,19 @@ static int finalize_item(
 		return KNOT_EOK;
 	}
 
-	conf_check_t args = {
+	knotd_conf_check_extra_t extra = {
 		.conf = conf,
 		.txn = txn,
+		.file_name = parser->file.name,
+		.line = parser->line_count
+	};
+	knotd_conf_check_args_t args = {
 		.item = (parser->event == YP_EID) ? node->item->var.g.id : node->item,
 		.id = node->id,
 		.id_len = node->id_len,
 		.data = node->data,
 		.data_len = node->data_len,
-		.file_name = parser->file.name,
-		.line = parser->line_count
+		.extra = &extra
 	};
 
 	int ret = conf_exec_callbacks(&args);
@@ -693,6 +607,7 @@ int conf_parse(
 		ret = check_ret;
 	}
 
+	conf_mod_load_purge(conf, false);
 	yp_scheme_check_deinit(ctx);
 parse_error:
 	yp_deinit(parser);

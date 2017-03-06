@@ -79,7 +79,7 @@ static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr)
 static void dump_modules(dump_ctx_t *ctx)
 {
 	int level = 0;
-	struct query_module *mod = NULL;
+	knotd_mod_t *mod = NULL;
 	WALK_LIST(mod, *ctx->query_modules) {
 		// Skip modules without statistics.
 		if (mod->stats_count == 0) {

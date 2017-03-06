@@ -27,7 +27,7 @@
 #include "libknot/libknot.h"
 
 #define ZONE_NAME(qdata) knot_pkt_qname((qdata)->query)
-#define REMOTE(qdata) (struct sockaddr *)(qdata)->param->remote
+#define REMOTE(qdata) (struct sockaddr *)(qdata)->params->remote
 
 #define IXFROUT_LOG(priority, qdata, fmt...) \
 	ns_log(priority, ZONE_NAME(qdata), LOG_OPERATION_IXFR, \
@@ -156,7 +156,7 @@ static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
 	return ret;
 }
 
-static int ixfr_query_check(struct query_data *qdata)
+static int ixfr_query_check(knotd_qdata_t *qdata)
 {
 	/* Check if zone exists. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
@@ -174,27 +174,27 @@ static int ixfr_query_check(struct query_data *qdata)
 	NS_NEED_QNAME(qdata, their_soa->owner, KNOT_RCODE_FORMERR);
 
 	/* Check transcation security and zone contents. */
-	NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_TRANSFER);
+	NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_TRANSFER);
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 	return KNOT_STATE_DONE;
 }
 
-static void ixfr_answer_cleanup(struct query_data *qdata)
+static void ixfr_answer_cleanup(knotd_qdata_t *qdata)
 {
-	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->ext;
+	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->extra->ext;
 	knot_mm_t *mm = qdata->mm;
 
 	ptrlist_free(&ixfr->proc.nodes, mm);
 	changeset_iter_clear(&ixfr->cur);
 	changesets_free(&ixfr->changesets);
-	mm_free(mm, qdata->ext);
+	mm_free(mm, qdata->extra->ext);
 
 	/* Allow zone changes (finished). */
 	rcu_read_unlock();
 }
 
-static int ixfr_answer_init(struct query_data *qdata)
+static int ixfr_answer_init(knotd_qdata_t *qdata)
 {
 	assert(qdata);
 
@@ -212,7 +212,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	const knot_rrset_t *their_soa = knot_pkt_rr(authority, 0);
 	list_t chgsets;
 	init_list(&chgsets);
-	int ret = ixfr_load_chsets(&chgsets, (zone_t *)qdata->zone, their_soa);
+	int ret = ixfr_load_chsets(&chgsets, (zone_t *)qdata->extra->zone, their_soa);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -247,8 +247,8 @@ static int ixfr_answer_init(struct query_data *qdata)
 	xfer->soa_to = chs->soa_to;
 
 	/* Set up cleanup callback. */
-	qdata->ext = xfer;
-	qdata->ext_cleanup = &ixfr_answer_cleanup;
+	qdata->extra->ext = xfer;
+	qdata->extra->ext_cleanup = &ixfr_answer_cleanup;
 
 	/* No zone changes during multipacket answer (unlocked in ixfr_answer_cleanup) */
 	rcu_read_lock();
@@ -256,7 +256,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	return KNOT_EOK;
 }
 
-static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
+static int ixfr_answer_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	assert(pkt);
 	assert(qdata);
@@ -271,7 +271,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
 
 	/* Guaranteed to have zone contents. */
-	const zone_node_t *apex = qdata->zone->contents->apex;
+	const zone_node_t *apex = qdata->extra->zone->contents->apex;
 	knot_rrset_t soa_rr = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa_rr)) {
 		return KNOT_STATE_FAIL;
@@ -285,22 +285,22 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 	return KNOT_STATE_DONE;
 }
 
-int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
+int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
 	}
 
 	/* If IXFR is disabled, respond with SOA. */
-	if (qdata->param->proc_flags & NS_QUERY_NO_IXFR) {
+	if (qdata->params->flags & KNOTD_QUERY_FLAG_NO_IXFR) {
 		return ixfr_answer_soa(pkt, qdata);
 	}
 
 	/* Initialize on first call. */
-	struct ixfr_proc *ixfr = qdata->ext;
+	struct ixfr_proc *ixfr = qdata->extra->ext;
 	if (ixfr == NULL) {
 		int ret = ixfr_answer_init(qdata);
-		ixfr = qdata->ext;
+		ixfr = qdata->extra->ext;
 		switch (ret) {
 		case KNOT_EOK:      /* OK */
 			IXFROUT_LOG(LOG_INFO, qdata, "started, serial %u -> %u",
@@ -313,7 +313,7 @@ int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 		case KNOT_ERANGE:   /* No history -> AXFR. */
 		case KNOT_ENOENT:
 			IXFROUT_LOG(LOG_INFO, qdata, "incomplete history, fallback to AXFR");
-			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
+			qdata->type = KNOTD_QUERY_TYPE_AXFR; /* Solve as AXFR. */
 			return axfr_process_query(pkt, qdata);
 		default:            /* Server errors. */
 			IXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",

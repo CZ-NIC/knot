@@ -1073,9 +1073,9 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_STATS,      cmd_stats_ctl,       CTL_ZONE_STATS,      CMD_FREQ_ZONE },
 
 	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_FWRITE },
-	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_FREAD },
+	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_FREAD  | CMD_FREQ_MOD },
 	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,            CMD_FWRITE },
-	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_FREAD },
+	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_FREAD  | CMD_FOPT_MOD },
 	{ CMD_CONF_LIST,       cmd_conf_ctl,      CTL_CONF_LIST,       CMD_FOPT_ITEM },
 	{ CMD_CONF_READ,       cmd_conf_ctl,      CTL_CONF_READ,       CMD_FOPT_ITEM },
 	{ CMD_CONF_BEGIN,      cmd_conf_ctl,      CTL_CONF_BEGIN },

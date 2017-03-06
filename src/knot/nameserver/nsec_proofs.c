@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -161,7 +161,7 @@ static knot_dname_t *wildcard_child_name(const knot_dname_t *name)
  */
 static int put_nxt_from_node(const zone_node_t *node,
                              uint16_t type,
-                             struct query_data *qdata,
+                             knotd_qdata_t *qdata,
                              knot_pkt_t *resp)
 {
 	assert(type == KNOT_RRTYPE_NSEC || type == KNOT_RRTYPE_NSEC3);
@@ -181,7 +181,7 @@ static int put_nxt_from_node(const zone_node_t *node,
  * \brief Put NSEC record with corresponding RRSIG into the response.
  */
 static int put_nsec_from_node(const zone_node_t *node,
-                              struct query_data *qdata,
+                              knotd_qdata_t *qdata,
                               knot_pkt_t *resp)
 {
 	return put_nxt_from_node(node, KNOT_RRTYPE_NSEC, qdata, resp);
@@ -191,7 +191,7 @@ static int put_nsec_from_node(const zone_node_t *node,
  * \brief Put NSEC3 record with corresponding RRSIG into the response.
  */
 static int put_nsec3_from_node(const zone_node_t *node,
-                               struct query_data *qdata,
+                               knotd_qdata_t *qdata,
                                knot_pkt_t *resp)
 {
 	return put_nxt_from_node(node, KNOT_RRTYPE_NSEC3, qdata, resp);
@@ -206,7 +206,7 @@ static int put_nsec3_from_node(const zone_node_t *node,
  */
 static int put_covering_nsec(const zone_contents_t *zone,
                              const knot_dname_t *name,
-                             struct query_data *qdata,
+                             knotd_qdata_t *qdata,
                              knot_pkt_t *resp)
 {
 	const zone_node_t *match = NULL;
@@ -233,7 +233,7 @@ static int put_covering_nsec(const zone_contents_t *zone,
  */
 static int put_covering_nsec3(const zone_contents_t *zone,
                               const knot_dname_t *name,
-                              struct query_data *qdata,
+                              knotd_qdata_t *qdata,
                               knot_pkt_t *resp)
 {
 	const zone_node_t *prev = NULL;
@@ -266,7 +266,7 @@ static int put_covering_nsec3(const zone_contents_t *zone,
 static int put_nsec3_next_closer(const zone_node_t *cpe,
                                  const knot_dname_t *qname,
                                  const zone_contents_t *zone,
-                                 struct query_data *qdata,
+                                 knotd_qdata_t *qdata,
                                  knot_pkt_t *resp)
 {
 	knot_dname_t *next_closer = get_next_closer(cpe->owner, qname);
@@ -301,7 +301,7 @@ static int put_nsec3_next_closer(const zone_node_t *cpe,
 static int put_closest_encloser_proof(const knot_dname_t *qname,
                                       const zone_contents_t *zone,
                                       const zone_node_t *cpe,
-                                      struct query_data *qdata,
+                                      knotd_qdata_t *qdata,
                                       knot_pkt_t *resp)
 {
 	// An NSEC3 RR that matches the closest (provable) encloser.
@@ -330,7 +330,7 @@ static int put_closest_encloser_proof(const knot_dname_t *qname,
  * \return KNOT_E*
  */
 static int put_nsec_wildcard(const zone_node_t *previous,
-                             struct query_data *qdata,
+                             knotd_qdata_t *qdata,
                              knot_pkt_t *resp)
 {
 	return put_nsec_from_node(previous, qdata, resp);
@@ -352,7 +352,7 @@ static int put_nsec_wildcard(const zone_node_t *previous,
 static int put_nsec3_wildcard(const zone_node_t *wildcard,
                               const knot_dname_t *qname,
                               const zone_contents_t *zone,
-                              struct query_data *qdata,
+                              knotd_qdata_t *qdata,
                               knot_pkt_t *resp)
 {
 	const zone_node_t *cpe = nsec3_encloser(wildcard->parent);
@@ -369,7 +369,7 @@ static int put_wildcard_answer(const zone_node_t *wildcard,
                                const zone_node_t *previous,
                                const zone_contents_t *zone,
                                const knot_dname_t *qname,
-                               struct query_data *qdata,
+                               knotd_qdata_t *qdata,
                                knot_pkt_t *resp)
 {
 	if (!wildcard_expanded(wildcard, qname)) {
@@ -407,7 +407,7 @@ static int put_wildcard_answer(const zone_node_t *wildcard,
 static int put_nsec_nxdomain(const zone_contents_t *zone,
                              const zone_node_t *previous,
                              const zone_node_t *closest,
-                             struct query_data *qdata,
+                             knotd_qdata_t *qdata,
                              knot_pkt_t *resp)
 {
 	assert(previous);
@@ -456,7 +456,7 @@ static int put_nsec_nxdomain(const zone_contents_t *zone,
 static int put_nsec3_nxdomain(const knot_dname_t *qname,
                               const zone_contents_t *zone,
                               const zone_node_t *closest,
-                              struct query_data *qdata,
+                              knotd_qdata_t *qdata,
                               knot_pkt_t *resp)
 {
 	const zone_node_t *cpe = nsec3_encloser(closest);
@@ -497,7 +497,7 @@ static int put_nxdomain(const zone_contents_t *zone,
                         const zone_node_t *previous,
                         const zone_node_t *closest,
                         const knot_dname_t *qname,
-                        struct query_data *qdata,
+                        knotd_qdata_t *qdata,
                         knot_pkt_t *resp)
 {
 	int ret = 0;
@@ -534,7 +534,7 @@ static int put_nsec_nodata(const zone_contents_t *zone,
                            const zone_node_t *match,
                            const zone_node_t *closest,
                            const zone_node_t *previous,
-                           struct query_data *qdata,
+                           knotd_qdata_t *qdata,
                            knot_pkt_t *resp)
 {
 	if (empty_nonterminal(match)) {
@@ -560,7 +560,7 @@ static int put_nsec3_nodata(const knot_dname_t *qname,
                            const zone_contents_t *zone,
                            const zone_node_t *match,
                            const zone_node_t *closest,
-                           struct query_data *qdata,
+                           knotd_qdata_t *qdata,
                            knot_pkt_t *resp)
 {
 	int ret = KNOT_EOK;
@@ -596,7 +596,7 @@ static int put_nodata(const zone_node_t *node,
                       const zone_node_t *previous,
                       const zone_contents_t *zone,
                       const knot_dname_t *qname,
-                      struct query_data *qdata,
+                      knotd_qdata_t *qdata,
                       knot_pkt_t *resp)
 {
 	int ret = 0;
@@ -610,21 +610,21 @@ static int put_nodata(const zone_node_t *node,
 	return ret;
 }
 
-int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
+int nsec_prove_wildcards(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	if (qdata->zone->contents == NULL) {
+	if (qdata->extra->zone->contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = KNOT_EOK;
 	struct wildcard_hit *item = NULL;
 
-	WALK_LIST(item, qdata->wildcards) {
+	WALK_LIST(item, qdata->extra->wildcards) {
 		if (item->node == NULL) {
 			return KNOT_EINVAL;
 		}
 		ret = put_wildcard_answer(item->node, item->prev,
-		                          qdata->zone->contents,
+		                          qdata->extra->zone->contents,
 		                          item->sname, qdata, pkt);
 		if (ret != KNOT_EOK) {
 			break;
@@ -634,50 +634,50 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 	return ret;
 }
 
-int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
+int nsec_prove_nodata(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	if (qdata->zone->contents == NULL || qdata->node == NULL) {
+	if (qdata->extra->zone->contents == NULL || qdata->extra->node == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return put_nodata(qdata->node, qdata->encloser, qdata->previous,
-	                  qdata->zone->contents, qdata->name, qdata, pkt);
+	return put_nodata(qdata->extra->node, qdata->extra->encloser, qdata->extra->previous,
+	                  qdata->extra->zone->contents, qdata->name, qdata, pkt);
 }
 
-int nsec_prove_nxdomain(knot_pkt_t *pkt, struct query_data *qdata)
+int nsec_prove_nxdomain(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	if (qdata->zone->contents == NULL) {
+	if (qdata->extra->zone->contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return put_nxdomain(qdata->zone->contents,
-	                    qdata->previous, qdata->encloser,
+	return put_nxdomain(qdata->extra->zone->contents,
+	                    qdata->extra->previous, qdata->extra->encloser,
 	                    qdata->name, qdata, pkt);
 }
 
-int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
+int nsec_prove_dp_security(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	if (qdata->node == NULL || qdata->encloser == NULL ||
-	    qdata->zone->contents == NULL) {
+	if (qdata->extra->node == NULL || qdata->extra->encloser == NULL ||
+	    qdata->extra->zone->contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	// Add DS into the response.
 
-	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_DS);
+	knot_rrset_t rrset = node_rrset(qdata->extra->node, KNOT_RRTYPE_DS);
 	if (!knot_rrset_empty(&rrset)) {
-		knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
 		return process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
 		                            KNOT_COMPR_HINT_NONE, 0);
 	}
 
 	// Alternatively prove that DS doesn't exist.
 
-	return put_nodata(qdata->node, qdata->encloser, qdata->previous,
-	                  qdata->zone->contents, qdata->name, qdata, pkt);
+	return put_nodata(qdata->extra->node, qdata->extra->encloser, qdata->extra->previous,
+	                  qdata->extra->zone->contents, qdata->name, qdata, pkt);
 }
 
-int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
+int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)
 {
 	int ret = KNOT_EOK;
 	uint32_t flags = optional ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;
@@ -685,7 +685,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 
 	/* Append RRSIGs for section. */
 	struct rrsig_info *info = NULL;
-	WALK_LIST(info, qdata->rrsigs) {
+	WALK_LIST(info, qdata->extra->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
 		uint16_t compr_hint = info->rrinfo->compress_ptr[KNOT_COMPR_HINT_OWNER];
 		ret = knot_pkt_put(pkt, compr_hint, rrsig, flags);
@@ -702,18 +702,18 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 	return ret;
 }
 
-void nsec_clear_rrsigs(struct query_data *qdata)
+void nsec_clear_rrsigs(knotd_qdata_t *qdata)
 {
 	if (qdata == NULL) {
 		return;
 	}
 
 	struct rrsig_info *info = NULL;
-	WALK_LIST(info, qdata->rrsigs) {
+	WALK_LIST(info, qdata->extra->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
 		knot_rrset_clear(rrsig, qdata->mm);
 	};
 
-	ptrlist_free(&qdata->rrsigs, qdata->mm);
-	init_list(&qdata->rrsigs);
+	ptrlist_free(&qdata->extra->rrsigs, qdata->mm);
+	init_list(&qdata->extra->rrsigs);
 }

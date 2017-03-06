@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 
 	/* Mask relevant flags. */
 	cmd_flag_t flags = desc->flags & (CMD_FREAD | CMD_FWRITE);
+	cmd_flag_t mod_flags = desc->flags & (CMD_FOPT_MOD | CMD_FREQ_MOD);
 
 	/* Choose the optimal config source. */
 	struct stat st;
@@ -81,6 +82,11 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 	conf_flag_t conf_flags = CONF_FNOHOSTNAME;
 	if (params->confdb != NULL && !(flags & CMD_FWRITE)) {
 		conf_flags |= CONF_FREADONLY;
+	}
+	if (import || mod_flags & CMD_FOPT_MOD) {
+		conf_flags |= CONF_FOPTMODULES;
+	} else if (mod_flags & CMD_FREQ_MOD) {
+		conf_flags |= CONF_FREQMODULES;
 	}
 
 	/* Open confdb. */

@@ -241,6 +241,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/confio.h			\
 	knot/conf/migration.c			\
 	knot/conf/migration.h			\
+	knot/conf/module.h			\
+	knot/conf/module.c			\
 	knot/conf/scheme.c			\
 	knot/conf/scheme.h			\
 	knot/conf/tools.c			\
@@ -423,6 +425,10 @@ if HAVE_DAEMON
 
 sbin_PROGRAMS = knotc knotd keymgr
 noinst_LTLIBRARIES += libknotd.la libknotus.la
+
+knotddir = $(includedir)/knot
+knotd_HEADERS =					\
+	knot/include/module.h
 
 knotc_SOURCES =					\
 	utils/knotc/commands.c			\

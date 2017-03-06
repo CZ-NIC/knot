@@ -25,7 +25,7 @@
 #include "libknot/libknot.h"
 
 #define ZONE_NAME(qdata) knot_pkt_qname((qdata)->query)
-#define REMOTE(qdata) (struct sockaddr *)(qdata)->param->remote
+#define REMOTE(qdata) (struct sockaddr *)(qdata)->params->remote
 
 #define AXFROUT_LOG(priority, qdata, fmt...) \
 	ns_log(priority, ZONE_NAME(qdata), LOG_OPERATION_AXFR, \
@@ -93,9 +93,9 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item,
 	return ret;
 }
 
-static void axfr_query_cleanup(struct query_data *qdata)
+static void axfr_query_cleanup(knotd_qdata_t *qdata)
 {
-	struct axfr_proc *axfr = (struct axfr_proc *)qdata->ext;
+	struct axfr_proc *axfr = (struct axfr_proc *)qdata->extra->ext;
 
 	trie_it_free(axfr->i);
 	ptrlist_free(&axfr->proc.nodes, qdata->mm);
@@ -105,18 +105,18 @@ static void axfr_query_cleanup(struct query_data *qdata)
 	rcu_read_unlock();
 }
 
-static int axfr_query_check(struct query_data *qdata)
+static int axfr_query_check(knotd_qdata_t *qdata)
 {
 	/* Check valid zone, transaction security and contents. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(qdata, qdata->zone->name, ACL_ACTION_TRANSFER);
+	NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_TRANSFER);
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
 	return KNOT_STATE_DONE;
 }
 
-static int axfr_query_init(struct query_data *qdata)
+static int axfr_query_init(knotd_qdata_t *qdata)
 {
 	assert(qdata);
 
@@ -140,7 +140,7 @@ static int axfr_query_init(struct query_data *qdata)
 
 	/* Put data to process. */
 	xfr_stats_begin(&axfr->proc.stats);
-	zone_contents_t *zone = qdata->zone->contents;
+	zone_contents_t *zone = qdata->extra->zone->contents;
 	ptrlist_add(&axfr->proc.nodes, zone->nodes, mm);
 	/* Put NSEC3 data if exists. */
 	if (!zone_tree_is_empty(zone->nsec3_nodes)) {
@@ -148,8 +148,8 @@ static int axfr_query_init(struct query_data *qdata)
 	}
 
 	/* Set up cleanup callback. */
-	qdata->ext = axfr;
-	qdata->ext_cleanup = &axfr_query_cleanup;
+	qdata->extra->ext = axfr;
+	qdata->extra->ext_cleanup = &axfr_query_cleanup;
 
 	/* No zone changes during multipacket answer (unlocked in axfr_answer_cleanup) */
 	rcu_read_lock();
@@ -157,30 +157,30 @@ static int axfr_query_init(struct query_data *qdata)
 	return KNOT_EOK;
 }
 
-int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
+int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
 	}
 
 	/* If AXFR is disabled, respond with NOTIMPL. */
-	if (qdata->param->proc_flags & NS_QUERY_NO_AXFR) {
+	if (qdata->params->flags & KNOTD_QUERY_FLAG_NO_AXFR) {
 		qdata->rcode = KNOT_RCODE_NOTIMPL;
 		return KNOT_STATE_FAIL;
 	}
 
 	/* Initialize on first call. */
-	struct axfr_proc *axfr = qdata->ext;
+	struct axfr_proc *axfr = qdata->extra->ext;
 	if (axfr == NULL) {
 		int ret = axfr_query_init(qdata);
-		axfr = qdata->ext;
+		axfr = qdata->extra->ext;
 		if (ret != KNOT_EOK) {
 			AXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
 			            knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		} else {
 			AXFROUT_LOG(LOG_INFO, qdata, "started, serial %u",
-			           zone_contents_serial(qdata->zone->contents));
+			           zone_contents_serial(qdata->extra->zone->contents));
 		}
 	}
 

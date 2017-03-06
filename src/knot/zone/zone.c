@@ -20,6 +20,7 @@
 #include <urcu.h>
 
 #include "knot/common/log.h"
+#include "knot/conf/module.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/requestor.h"
 #include "knot/updates/zone-update.h"
@@ -28,6 +29,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
+#include "contrib/sockaddr.h"
 #include "contrib/trim.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
@@ -554,9 +556,9 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 	return success ? KNOT_EOK : KNOT_ENOMASTER;
 }
 
-int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param)
+int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *params)
 {
-	if (zone == NULL || pkt == NULL || param == NULL) {
+	if (zone == NULL || pkt == NULL || params == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -568,8 +570,8 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	memset(req, 0, sizeof(struct knot_request));
 
 	/* Copy socket and request. */
-	req->fd = dup(param->socket);
-	memcpy(&req->remote, param->remote, sizeof(struct sockaddr_storage));
+	req->fd = dup(params->socket);
+	memcpy(&req->remote, params->remote, sizeof(struct sockaddr_storage));
 
 	req->query = knot_pkt_new(NULL, pkt->max_size, NULL);
 	int ret = knot_pkt_copy(req->query, pkt);
