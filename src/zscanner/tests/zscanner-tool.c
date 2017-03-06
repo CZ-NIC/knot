@@ -112,7 +112,9 @@ static int include(zs_scanner_t *s)
 	    zs_set_input_file(ss, (char *)(s->include_filename)) != 0 ||
 	    zs_set_processing(ss, s->process.record, s->process.error, s->process.data) != 0 ||
 	    state_parsing(ss) != 0) {
-		if (ss->error.counter > 0) {
+		if (ss == NULL) {
+			s->error.code = ZS_ENOMEM;
+		} else if (ss->error.counter > 0) {
 			s->error.counter += ss->error.counter;
 			s->error.code = ZS_UNPROCESSED_INCLUDE;
 		} else {
