@@ -5,15 +5,15 @@
 from dnstest.test import Test
 
 EXPIRE_SLEEP = 13
-RESYNC_SLEEP = 5
-TEST_START_EXPECTED = 3
+RESYNC_SLEEP = 7
+TEST_START_EXPECTED = 4
 
 t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
 
-# this zone has refresh = 5s, retry = 5s and expire = 13s
+# this zone has refresh = 7s, retry = 7s and expire = 16s
 zone = t.zone("example.", storage=".")
 t.link(zone, master, slave)
 
