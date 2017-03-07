@@ -85,9 +85,7 @@ static int evsched_run(dthread_t *thread)
 
 		if (timercmp_ge(&dt, &ev->tv)) {
 			heap_delmin(&sched->heap);
-			pthread_mutex_unlock(&sched->heap_lock);
 			ev->cb(ev);
-			pthread_mutex_lock(&sched->heap_lock);
 		} else {
 			/* Wait for next event or interrupt. Unlock calendar. */
 			struct timespec ts;
