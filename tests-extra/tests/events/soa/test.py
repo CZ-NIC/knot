@@ -4,15 +4,21 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
+import dns.rcode
 import random
 
 EXPIRE_SLEEP = 15
+RECHECK_SLEEP = 0.5
 
 def test_ok(slave):
     resp = slave.dig("example.", "SOA")
     resp.check(rcode="NOERROR")
     t.sleep(EXPIRE_SLEEP)
     resp = slave.dig("example.", "SOA")
+    if resp.resp.rcode() == dns.rcode.SERVFAIL:
+        t.sleep(RECHECK_SLEEP)
+        # retry if we hit the query just in the middle of AXFR
+        resp = slave.dig("example.", "SOA")
     resp.check(rcode="NOERROR")
 
 def test_expired(slave):
