@@ -212,16 +212,16 @@ static void axfr_cleanup(struct refresh_data *data)
  * TODO: move elsewhere, as it has no direct relation to AXFR
  */
 typedef struct {
-        struct rcu_head rcuhead;
-        void (*ptr_free_fun)(void **);
-        void *ptr;
+	struct rcu_head rcuhead;
+	void (*ptr_free_fun)(void **);
+	void *ptr;
 } callrcu_wrapper_t;
 
 static void callrcu_wrapper_cb(struct rcu_head *param)
 {
-        callrcu_wrapper_t * wrap = (callrcu_wrapper_t *)param;
-        wrap->ptr_free_fun(&wrap->ptr);
-        free(wrap);
+	callrcu_wrapper_t * wrap = (callrcu_wrapper_t *)param;
+	wrap->ptr_free_fun(&wrap->ptr);
+	free(wrap);
 }
 
 /* note: does nothing if not-enough-memory */
@@ -396,18 +396,30 @@ static void ixfr_cleanup(struct refresh_data *data)
 	changesets_free(&data->ixfr.changesets);
 }
 
+static void ixfr_finalize_cleanup(void **ptr)
+{
+	apply_ctx_t *ctx = *ptr;
+	update_free_zone(&ctx->contents);
+	update_cleanup(ctx);
+	free(ctx);
+}
+
 static int ixfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = NULL;
-	apply_ctx_t ctx = { 0 };
+	apply_ctx_t *ctx = calloc(1, sizeof(apply_ctx_t));
+	if (ctx == NULL) {
+		return KNOT_ENOMEM;
+	}
 
-	apply_init_ctx(&ctx, NULL, APPLY_STRICT);
-	int ret = apply_changesets(&ctx, data->zone->contents,
+	apply_init_ctx(ctx, NULL, APPLY_STRICT);
+	int ret = apply_changesets(ctx, data->zone->contents,
 	                           &data->ixfr.changesets, &new_zone);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to apply changes to zone (%s)",
 		           knot_strerror(ret));
+		free(ctx);
 		return ret;
 	}
 
@@ -415,8 +427,9 @@ static int ixfr_finalize(struct refresh_data *data)
 
 	ret = xfr_validate(new_zone, data);
 	if (ret != KNOT_EOK) {
-		update_rollback(&ctx);
+		update_rollback(ctx);
 		update_free_zone(&new_zone);
+		free(ctx);
 		return ret;
 	}
 
@@ -426,18 +439,17 @@ static int ixfr_finalize(struct refresh_data *data)
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to write changes to journal (%s)",
 		           knot_strerror(ret));
-		update_rollback(&ctx);
+		update_rollback(ctx);
 		update_free_zone(&new_zone);
+		free(ctx);
 		return ret;
 	}
 
 	zone_contents_t *old_zone = zone_switch_contents(data->zone, new_zone);
 	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
 
-	synchronize_rcu();
-
-	update_free_zone(&old_zone);
-	update_cleanup(&ctx);
+	ctx->contents = old_zone;
+	callrcu_wrapper(ctx, ixfr_finalize_cleanup);	
 
 	return KNOT_EOK;
 }
