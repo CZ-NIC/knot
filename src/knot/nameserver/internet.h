@@ -83,3 +83,10 @@ int internet_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 	if (tsig_unsigned_count(tsig_ctx) > max_unsigned) { \
 		return KNOT_STATE_FAIL; \
 	}
+
+/*! \brief Require the zone not to be frozen. */
+#define NS_NEED_NOT_FROZEN(qdata, error_rcode) \
+	if ((qdata)->zone->events.ufrozen) { \
+		(qdata)->rcode = (error_rcode); \
+		return KNOT_STATE_FAIL; \
+	}

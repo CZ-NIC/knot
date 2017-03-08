@@ -256,6 +256,7 @@ src/knot/events/handlers.h
 src/knot/events/handlers/dnssec.c
 src/knot/events/handlers/expire.c
 src/knot/events/handlers/flush.c
+src/knot/events/handlers/freeze_thaw.c
 src/knot/events/handlers/load.c
 src/knot/events/handlers/notify.c
 src/knot/events/handlers/refresh.c

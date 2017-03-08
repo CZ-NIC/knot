@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,6 +37,8 @@ typedef enum zone_event_type {
 	ZONE_EVENT_FLUSH,
 	ZONE_EVENT_NOTIFY,
 	ZONE_EVENT_DNSSEC,
+	ZONE_EVENT_UFREEZE,
+	ZONE_EVENT_UTHAW,
 	// terminator
 	ZONE_EVENT_COUNT,
 } zone_event_type_t;
@@ -45,6 +47,7 @@ typedef struct zone_events {
 	pthread_mutex_t mx;		//!< Mutex protecting the struct.
 	bool running;			//!< Some zone event is being run.
 	bool frozen;			//!< Terminated, don't schedule new events.
+	bool ufrozen;			//!< Updates to the zone temporarily frozen by user.
 
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
@@ -52,6 +55,7 @@ typedef struct zone_events {
 
 	task_t task;			//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
+	bool forced[ZONE_EVENT_COUNT];  //!< Flag that the event was invoked by user ctl.
 } zone_events_t;
 
 /*!
@@ -123,6 +127,11 @@ void _zone_events_schedule_at(struct zone *zone, ...);
 
 #define zone_events_schedule_now(zone, type) \
 	zone_events_schedule_at(zone, type, time(NULL))
+
+/*!
+ * \brief Schedule zone event to now, with forced flag.
+ */
+void zone_events_schedule_user(struct zone *zone, zone_event_type_t type);
 
 /*!
  * \brief Freeze all zone events and prevent new events from running.

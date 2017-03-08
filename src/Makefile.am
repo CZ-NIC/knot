@@ -269,6 +269,7 @@ libknotd_la_SOURCES =				\
 	knot/events/handlers/dnssec.c		\
 	knot/events/handlers/expire.c		\
 	knot/events/handlers/flush.c		\
+	knot/events/handlers/freeze_thaw.c	\
 	knot/events/handlers/load.c		\
 	knot/events/handlers/notify.c		\
 	knot/events/handlers/refresh.c		\

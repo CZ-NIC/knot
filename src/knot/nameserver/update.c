@@ -417,6 +417,8 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
+	NS_NEED_NOT_FROZEN(qdata, KNOT_RCODE_REFUSED);
+
 	/* Restore original QNAME for DDNS ACL checks. */
 	process_query_qname_case_restore(qdata->query, qdata);
 	/* Store update into DDNS queue. */

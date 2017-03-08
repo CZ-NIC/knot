@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,8 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
 	{ ZONE_EVENT_NOTIFY,  event_notify,  "notify" },
 	{ ZONE_EVENT_DNSSEC,  event_dnssec,  "DNSSEC resign" },
+	{ ZONE_EVENT_UFREEZE, event_ufreeze, "update freeze" },
+	{ ZONE_EVENT_UTHAW,   event_uthaw,   "update thaw" },
 	{ 0 }
 };
 
@@ -63,6 +65,20 @@ static const event_info_t *get_event_info(zone_event_type_t type)
 static bool valid_event(zone_event_type_t type)
 {
 	return (type > ZONE_EVENT_INVALID && type < ZONE_EVENT_COUNT);
+}
+
+static bool ufreeze_applies(zone_event_type_t type)
+{
+	switch (type) {
+	case ZONE_EVENT_LOAD:
+	case ZONE_EVENT_REFRESH:
+	case ZONE_EVENT_UPDATE:
+	case ZONE_EVENT_FLUSH:
+	case ZONE_EVENT_DNSSEC:
+		return true;
+	default:
+		return false;
+	}
 }
 
 /*! \brief Return remaining time to planned event (seconds). */
@@ -97,6 +113,10 @@ static time_t event_get_time(zone_events_t *events, zone_event_type_t type)
 /*!
  * \brief Find next scheduled zone event.
  *
+ * \note Afer the UTHAW event, get_next_event() is also invoked. In that situation,
+ *       all the events are suddenly allowed, and those which were planned into
+ *       the ufrozen interval, start to be performed one-by-one sorted by their times.
+ *
  * \param events  Zone events.
  *
  * \return Zone event type, or ZONE_EVENT_INVALID if no event is scheduled.
@@ -112,11 +132,9 @@ static zone_event_type_t get_next_event(zone_events_t *events)
 
 	for (int i = 0; i < ZONE_EVENT_COUNT; i++) {
 		time_t current = events->time[i];
-		if (current == 0) {
-			continue;
-		}
 
-		if (next == 0 || current < next) {
+		if ((next == 0 || current < next) && (current != 0) &&
+		    (events->forced[i] || !events->ufrozen || !ufreeze_applies(i))) {
 			next = current;
 			next_type = i;
 		}
@@ -162,7 +180,7 @@ static void reschedule(zone_events_t *events)
  * \brief Zone event wrapper, expected to be called from a worker thread.
  *
  * 1. Takes the next planned event.
- * 2. Resets the event's scheduled time.
+ * 2. Resets the event's scheduled time (and forced flag).
  * 3. Perform the event's callback.
  * 4. Schedule next event planned event.
  */
@@ -182,6 +200,7 @@ static void event_wrap(task_t *task)
 		return;
 	}
 	event_set_time(events, type, 0);
+	events->forced[type] = false;
 	pthread_mutex_unlock(&events->mx);
 
 	const event_info_t *info = get_event_info(type);
@@ -310,6 +329,25 @@ void _zone_events_schedule_at(zone_t *zone, ...)
 	va_end(args);
 }
 
+void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
+{
+	if (!zone || !valid_event(type)) {
+		return;
+	}
+
+	zone_events_t *events = &zone->events;
+	pthread_mutex_lock(&events->mx);
+	events->forced[type] = true;
+	pthread_mutex_unlock(&events->mx);
+
+	zone_events_schedule_now(zone, type);
+
+	pthread_mutex_lock(&events->mx);
+	// reschedule because get_next_event result changed outside of _zone_events_schedule_at
+	reschedule(events);
+	pthread_mutex_unlock(&events->mx);
+}
+
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 {
 	if (!zone || !valid_event(type)) {
@@ -321,7 +359,8 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 	pthread_mutex_lock(&events->mx);
 
 	/* Bypass scheduler if no event is running. */
-	if (!events->running && !events->frozen) {
+	if (!events->running && !events->frozen &&
+	    (!events->ufrozen || !ufreeze_applies(type))) {
 		events->running = true;
 		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
 		worker_pool_assign(events->pool, &events->task);
