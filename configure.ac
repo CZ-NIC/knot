@@ -9,6 +9,7 @@ m4_define([knot_VERSION_EXTRA],-dev)dnl
 m4_define([knot_PKG_VERSION],[knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_VERSION_PATCH]knot_VERSION_EXTRA)dnl
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
+configure_params="$*"
 AM_INIT_AUTOMAKE([gnits subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot])
@@ -25,6 +26,10 @@ AC_SUBST([KNOT_VERSION_EXTRA], knot_VERSION_EXTRA)
 AC_CONFIG_FILES([src/libknot/version.h
                  src/zscanner/version.h
                  src/dnssec/lib/dnssec/version.h])
+
+# Store ./configure parameters into macro
+AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$configure_params"],[Params passed to configure])
+AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environment])
 
 # Updating version info
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
