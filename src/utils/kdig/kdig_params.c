@@ -531,6 +531,24 @@ static int opt_noignore(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_crypto(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.hide_crypto = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_nocrypto(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.hide_crypto = true;
+
+	return KNOT_EOK;
+}
+
 static int opt_tcp(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -991,6 +1009,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "ttl",            ARG_NONE,     opt_ttl },
 	{ "nottl",          ARG_NONE,     opt_nottl },
+
+	{ "crypto",         ARG_NONE,     opt_crypto },
+	{ "nocrypto",       ARG_NONE,     opt_nocrypto },
 
 	{ "tcp",            ARG_NONE,     opt_tcp },
 	{ "notcp",          ARG_NONE,     opt_notcp },
@@ -1607,6 +1628,7 @@ static void print_help(void)
 	       "       +[no]stats            Show trailing packet statistics.\n"
 	       "       +[no]class            Show DNS class.\n"
 	       "       +[no]ttl              Show TTL value.\n"
+	       "       +[no]crypto           Show binary parts of RRSIGs and DNSKEYs.\n"
 	       "       +[no]tcp              Use TCP protocol.\n"
 	       "       +[no]ignore           Don't use TCP automatically if truncated.\n"
 	       "       +[no]tls              Use TLS with Opportunistic privacy profile.\n"
