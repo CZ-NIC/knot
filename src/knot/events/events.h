@@ -45,6 +45,7 @@ typedef enum zone_event_type {
 
 typedef struct zone_events {
 	pthread_mutex_t mx;		//!< Mutex protecting the struct.
+	pthread_mutex_t reschedule_lock;//!< Prevent concurrent reschedule() making mess.
 	bool running;			//!< Some zone event is being run.
 	bool frozen;			//!< Terminated, don't schedule new events.
 	bool ufrozen;			//!< Updates to the zone temporarily frozen by user.
