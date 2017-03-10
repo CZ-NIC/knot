@@ -1,0 +1,9 @@
+{
+   liburcu/call_rcu
+   Memcheck:Leak
+   match-leak-kinds: possible,reachable
+   fun:calloc
+   ...
+   fun:call_rcu_memb
+}
+

@@ -167,6 +167,9 @@ class Test(object):
             srv.valgrind = [params.valgrind_bin] + \
                            params.valgrind_flags.split() + \
                            ["--log-file=%s" % srv.valgrind_log]
+            suppressions_file = "%s/%s.supp" % (params.common_data_dir, server)
+            if os.path.isfile(suppressions_file):
+                srv.valgrind.append("--suppressions=%s" % suppressions_file)
 
         self.servers.add(srv)
         return srv
