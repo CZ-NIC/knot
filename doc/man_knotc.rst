@@ -45,8 +45,10 @@ Parameters
 Actions
 .......
 
-**status**
+**status** [*detail*]
   Check if the server is running.
+  Moreover display either the running knotd version, numbers of worker threads,
+  or Knot DNS buid (configure) parameters, if the parameter is specified.
 
 **stop**
   Stop the server if running.
@@ -171,6 +173,8 @@ Empty or **--** *zone* parameter means all zones or all zones with a transaction
 Use **@** *owner* to denote the zone name.
 
 Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *name*].
+
+The *detail* option for **status** can be one of words: version, workers, configure.
 
 (*) indicates a local operation which requires a configuration.
 

@@ -68,8 +68,10 @@ Print the program version.
 .SS Actions
 .INDENT 0.0
 .TP
-\fBstatus\fP
+\fBstatus\fP [\fIdetail\fP]
 Check if the server is running.
+Moreover display either the running knotd version, numbers of worker threads,
+or Knot DNS buid (configure) parameters, if the parameter is specified.
 .TP
 \fBstop\fP
 Stop the server if running.
@@ -193,6 +195,8 @@ Empty or \fB\-\-\fP \fIzone\fP parameter means all zones or all zones with a tra
 Use \fB@\fP \fIowner\fP to denote the zone name.
 .sp
 Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIname\fP].
+.sp
+The \fIdetail\fP option for \fBstatus\fP can be one of words: version, workers, configure.
 .sp
 (*) indicates a local operation which requires a configuration.
 .SS Interactive mode
