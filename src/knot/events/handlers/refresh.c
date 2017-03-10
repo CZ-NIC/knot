@@ -206,7 +206,6 @@ static void axfr_cleanup(struct refresh_data *data)
 	zone_contents_deep_free(&data->axfr.zone);
 }
 
-
 /*! \brief Routine for calling call_rcu() easier way.
  *
  * TODO: move elsewhere, as it has no direct relation to AXFR
@@ -219,7 +218,7 @@ typedef struct {
 
 static void callrcu_wrapper_cb(struct rcu_head *param)
 {
-	callrcu_wrapper_t * wrap = (callrcu_wrapper_t *)param;
+	callrcu_wrapper_t *wrap = (callrcu_wrapper_t *)param;
 	wrap->ptr_free_fun(&wrap->ptr);
 	free(wrap);
 }
@@ -227,7 +226,7 @@ static void callrcu_wrapper_cb(struct rcu_head *param)
 /* note: does nothing if not-enough-memory */
 static void callrcu_wrapper(void *ptr, void (*ptr_free_fun)(void **))
 {
-	callrcu_wrapper_t * wrap = malloc(sizeof(callrcu_wrapper_t));
+	callrcu_wrapper_t *wrap = calloc(1, sizeof(callrcu_wrapper_t));
 	if (wrap != NULL) {
 		wrap->ptr = ptr;
 		wrap->ptr_free_fun = ptr_free_fun;
@@ -449,7 +448,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
 
 	ctx->contents = old_zone;
-	callrcu_wrapper(ctx, ixfr_finalize_cleanup);	
+	callrcu_wrapper(ctx, ixfr_finalize_cleanup);
 
 	return KNOT_EOK;
 }
