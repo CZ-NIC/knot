@@ -154,26 +154,34 @@ static time_t get_next_time(zone_events_t *events)
 
 /*!
  * \brief Cancel scheduled item, schedule first enqueued item.
- *
- * The events mutex must be locked when calling this function.
  */
 static void reschedule(zone_events_t *events)
 {
 	assert(events);
-	assert(pthread_mutex_trylock(&events->mx) == EBUSY);
+
+	pthread_mutex_lock(&events->reschedule_lock);
+	pthread_mutex_lock(&events->mx);
 
 	if (!events->event || events->running || events->frozen) {
+		pthread_mutex_unlock(&events->mx);
+		pthread_mutex_unlock(&events->reschedule_lock);
 		return;
 	}
 
 	zone_event_type_t type = get_next_event(events);
 	if (!valid_event(type)) {
+		pthread_mutex_unlock(&events->mx);
+		pthread_mutex_unlock(&events->reschedule_lock);
 		return;
 	}
 
 	time_t diff = time_until(event_get_time(events, type));
 
+	pthread_mutex_unlock(&events->mx);
+
 	evsched_schedule(events->event, diff * 1000);
+
+	pthread_mutex_unlock(&events->reschedule_lock);
 }
 
 /*!
@@ -223,8 +231,8 @@ static void event_wrap(task_t *task)
 
 	pthread_mutex_lock(&events->mx);
 	events->running = false;
-	reschedule(events);
 	pthread_mutex_unlock(&events->mx);
+	reschedule(events);
 }
 
 /*!
@@ -255,6 +263,7 @@ int zone_events_init(zone_t *zone)
 
 	memset(&zone->events, 0, sizeof(zone->events));
 	pthread_mutex_init(&events->mx, NULL);
+	pthread_mutex_init(&events->reschedule_lock, NULL);
 	events->task.ctx = zone;
 	events->task.run = event_wrap;
 
@@ -291,6 +300,7 @@ void zone_events_deinit(zone_t *zone)
 	evsched_event_free(zone->events.event);
 
 	pthread_mutex_destroy(&zone->events.mx);
+	pthread_mutex_destroy(&zone->events.reschedule_lock);
 
 	memset(&zone->events, 0, sizeof(zone->events));
 }
@@ -320,11 +330,10 @@ void _zone_events_schedule_at(zone_t *zone, ...)
 
 	// reschedule if changed
 	time_t next = get_next_time(events);
+	pthread_mutex_unlock(&events->mx);
 	if (old_next != next) {
 		reschedule(events);
 	}
-
-	pthread_mutex_unlock(&events->mx);
 
 	va_end(args);
 }
@@ -342,10 +351,8 @@ void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 
 	zone_events_schedule_now(zone, type);
 
-	pthread_mutex_lock(&events->mx);
 	// reschedule because get_next_event result changed outside of _zone_events_schedule_at
 	reschedule(events);
-	pthread_mutex_unlock(&events->mx);
 }
 
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
@@ -397,9 +404,7 @@ void zone_events_start(zone_t *zone)
 		return;
 	}
 
-	pthread_mutex_lock(&zone->events.mx);
 	reschedule(&zone->events);
-	pthread_mutex_unlock(&zone->events.mx);
 }
 
 time_t zone_events_get_time(const struct zone *zone, zone_event_type_t type)
