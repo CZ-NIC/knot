@@ -368,7 +368,7 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
  *
  * Maximum length of such a domain name is KNOT_DNAME_MAXLEN characters.
  *
- * \param dst Memory to store converted name into.
+ * \param dst Memory to store converted name into.  dst[0] will contain the length.
  * \param src Source domain name.
  * \param pkt Source name packet (NULL if not any).
  *

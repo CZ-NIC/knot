@@ -1756,6 +1756,10 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 	}
 
 	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, pos);
+	if (rr_data == NULL) {
+		return KNOT_EINVAL; /* bad pos or rrset->rrs */
+	}
+
 	uint8_t *data = knot_rdata_data(rr_data);
 	uint16_t data_len = knot_rdata_rdlen(rr_data);
 

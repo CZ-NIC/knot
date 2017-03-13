@@ -376,7 +376,7 @@ static inline void knot_wire_set_opcode(uint8_t *packet, short opcode)
  *
  * \param packet Wire format of the packet.
  *
- * \return Flags with only the QR bit according to its setting in the packet.
+ * \return Nonzero for responses and zero for queries.
  */
 static inline uint8_t knot_wire_get_qr(const uint8_t *packet)
 {
