@@ -154,22 +154,22 @@ static zone_status_param zone_status_param_check(const char *param)
 	if (param == NULL) {
 		return ZONE_STATUS_NONE;
 	}
-	if (strcmp(param, "type") == 0) {
+	if (strcmp(param, "+type") == 0) {
 		return ZONE_STATUS_TYPE;
 	}
-	if (strcmp(param, "serial") == 0) {
+	if (strcmp(param, "+serial") == 0) {
 		return ZONE_STATUS_SERIAL;
 	}
-	if (strcmp(param, "transaction") == 0) {
+	if (strcmp(param, "+transaction") == 0) {
 		return ZONE_STATUS_TRANSACTION;
 	}
-	if (strcmp(param, "event-timers") == 0) {
+	if (strcmp(param, "+event-timers") == 0) {
 		return ZONE_STATUS_EVENT_TIMERS;
 	}
-	if (strcmp(param, "event-status") == 0) {
+	if (strcmp(param, "+event-status") == 0) {
 		return ZONE_STATUS_EVENT_STATUS;
 	}
-	if (strcmp(param, "freeze") == 0) {
+	if (strcmp(param, "+freeze") == 0) {
 		return ZONE_STATUS_FREEZE;
 	}
 	return ZONE_STATUS_INVALID;
@@ -251,14 +251,11 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		}
 	}
 	// frozen
-	bool frozen = zone->events.frozen;
 	bool ufrozen = zone->events.ufrozen;
 	if (param == ZONE_STATUS_FREEZE || param == ZONE_STATUS_NONE) {
-		data[KNOT_CTL_IDX_TYPE] = "frozen";
-		if (frozen) {
+		data[KNOT_CTL_IDX_TYPE] = "freeze";
+		if (ufrozen) {
 			data[KNOT_CTL_IDX_DATA] = "yes";
-		} else if (ufrozen) {
-			data[KNOT_CTL_IDX_DATA] = "frozen by user";
 		} else {
 			data[KNOT_CTL_IDX_DATA] = "no";
 		}
@@ -271,13 +268,12 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	if (param == ZONE_STATUS_EVENT_TIMERS || param == ZONE_STATUS_NONE) {
 		time_t ev_time;
 		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
-			if (!frozen && (!ufrozen || !ufreeze_applies(i))) {
+			if (!ufrozen || !ufreeze_applies(i)) {
 				data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
-
 				ev_time = zone_events_get_time(zone, i);
 				ev_time = ev_time - time(NULL);
 				if (ev_time < 0) {
-					ret = snprintf(buff, sizeof(buff), "pending");
+					ret = snprintf(buff, sizeof(buff), "not scheduled");
 				} else {
 					ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
 						       (long long)(ev_time / 3600),

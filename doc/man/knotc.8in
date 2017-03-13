@@ -144,7 +144,7 @@ force option.
 .TP
 \fBzone\-status\fP \fIzone\fP [\fIfilter\fP]
 Show the zone status. (*)
-Filters are type, serial, next\-event, auto\-dnssec, transaction, event\-timers.
+Filters are type, serial, next\-event, auto\-dnssec, transaction, event\-timers with prefix \(aq+\(aq.
 .TP
 \fBzone\-freeze\fP [\fIzone\fP\&...]
 Temporarily postpone zone\-changing events (load, refresh, update, flush, and

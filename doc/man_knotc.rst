@@ -121,7 +121,7 @@ Actions
 
 **zone-status** *zone* [*filter*]
   Show the zone status. (*)
-  Filters are type, serial, next-event, auto-dnssec, transaction, event-timers.
+  Filters are type, serial, next-event, auto-dnssec, transaction, event-timers with prefix '+'.
 
 **zone-freeze** [*zone*...]
   Temporarily postpone zone-changing events (load, refresh, update, flush, and
