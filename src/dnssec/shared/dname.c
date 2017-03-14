@@ -23,8 +23,6 @@
 #include "dname.h"
 #include "shared.h"
 
-#define DNAME_MAX_LABEL_LENGTH 63
-
 /*!
  * Get length of a domain name in wire format.
  */
