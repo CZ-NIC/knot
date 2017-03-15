@@ -536,23 +536,7 @@ AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 
-AC_CONFIG_FILES([Makefile
-                 doc/Makefile
-                 libtap/Makefile
-                 tests/Makefile
-                 tests-fuzz/Makefile
-                 samples/Makefile
-                 python/Makefile
-                 src/Makefile
-                 src/contrib/dnstap/Makefile
-                 src/dnssec/Makefile
-                 src/dnssec/tests/Makefile
-                 src/zscanner/Makefile
-                 ])
-
-AC_OUTPUT
-
-AC_MSG_RESULT([
+result_msg_base="
   $PACKAGE $VERSION
 
     Target:   $host_os $host_cpu
@@ -590,6 +574,29 @@ AC_MSG_RESULT([
     Code coverage:       ${enable_code_coverage}
     Bash completions:    ${bash_completions_output}
     PKCS #11 support:    ${enable_pkcs11}
+"
 
+result_msg_esc=$(echo -n "$result_msg_base" | sed 's/$/\\n/' | tr -d '\n')
+result_msg_add="$result_msg_base
   Continue with 'make' command
-])
+"
+
+AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY],["$result_msg_esc"],[Configure summary])
+
+AC_CONFIG_FILES([Makefile
+                 doc/Makefile
+                 libtap/Makefile
+                 tests/Makefile
+                 tests-fuzz/Makefile
+                 samples/Makefile
+                 python/Makefile
+                 src/Makefile
+                 src/contrib/dnstap/Makefile
+                 src/dnssec/Makefile
+                 src/dnssec/tests/Makefile
+                 src/zscanner/Makefile
+                 ])
+
+AC_OUTPUT
+
+AC_MSG_RESULT([$result_msg_add])

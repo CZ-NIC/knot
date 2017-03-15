@@ -48,7 +48,7 @@ Actions
 **status** [*detail*]
   Check if the server is running.
   Moreover display either the running knotd version, numbers of worker threads,
-  or Knot DNS buid (configure) parameters, if the parameter is specified.
+  or Knot DNS buid (configure) summary, if the parameter is specified.
 
 **stop**
   Stop the server if running.

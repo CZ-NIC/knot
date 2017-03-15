@@ -1128,7 +1128,7 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 {
 	int ret = KNOT_EOK;
-	char outbuf[256] = { 0 };
+	char outbuf[2048] = { 0 };
 
 	switch (cmd) {
 	case CTL_STATUS:
@@ -1140,8 +1140,7 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 				 "background workers: %zu", conf_udp_threads(conf()),
 				 conf_tcp_threads(conf()), conf_bg_threads(conf()));
 		} else if (strcasecmp(args->data[KNOT_CTL_IDX_DATA], "configure") == 0) {
-			snprintf(outbuf, sizeof(outbuf), "Passed CFLAGS: %s; Configure parameters: %s",
-				 CONFIGURE_CFLAGS, CONFIGURE_PARAMS);
+			snprintf(outbuf, sizeof(outbuf), "%s", CONFIGURE_SUMMARY);
 		} else if (args->data[KNOT_CTL_IDX_DATA][0] != '\0') {
 			return KNOT_EINVAL;
 		}
