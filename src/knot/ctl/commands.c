@@ -1150,10 +1150,24 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 {
 	int ret = KNOT_EOK;
+	char outbuf[2048] = { 0 };
 
 	switch (cmd) {
 	case CTL_STATUS:
 		ret = KNOT_EOK;
+		if (strcasecmp(args->data[KNOT_CTL_IDX_DATA], "version") == 0) {
+			snprintf(outbuf, sizeof(outbuf), "Version: %s", PACKAGE_VERSION);
+		} else if (strcasecmp(args->data[KNOT_CTL_IDX_DATA], "workers") == 0) {
+			snprintf(outbuf, sizeof(outbuf), "UDP workers: %zu, TCP workers %zu, "
+				 "background workers: %zu", conf_udp_threads(conf()),
+				 conf_tcp_threads(conf()), conf_bg_threads(conf()));
+		} else if (strcasecmp(args->data[KNOT_CTL_IDX_DATA], "configure") == 0) {
+			snprintf(outbuf, sizeof(outbuf), "%s", CONFIGURE_SUMMARY);
+		} else if (args->data[KNOT_CTL_IDX_DATA][0] != '\0') {
+			return KNOT_EINVAL;
+		}
+		args->data[KNOT_CTL_IDX_DATA] = outbuf;
+		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &args->data);
 		break;
 	case CTL_STOP:
 		ret = KNOT_CTL_ESTOP;
