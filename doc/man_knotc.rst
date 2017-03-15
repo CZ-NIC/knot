@@ -59,6 +59,10 @@ Actions
   Show global statistics counter(s). To print also counters with value 0, use
   force option.
 
+**zone-status** *zone* [*filter*]
+  Show the zone status. (*)
+  Filters are type, serial, transaction, event-timers, and freeze with prefix '+'.
+
 **zone-check** [*zone*...]
   Test if the server can load the zone. Semantic checks are executed if enabled
   in the configuration. (*)
@@ -118,10 +122,6 @@ Actions
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use
   force option.
-
-**zone-status** *zone* [*filter*]
-  Show the zone status. (*)
-  Filters are type, serial, next-event, auto-dnssec, transaction, event-timers with prefix '+'.
 
 **zone-freeze** [*zone*...]
   Temporarily postpone zone-changing events (load, refresh, update, flush, and

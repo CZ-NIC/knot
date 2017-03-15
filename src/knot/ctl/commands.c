@@ -166,9 +166,6 @@ static zone_status_param zone_status_param_check(const char *param)
 	if (strcmp(param, "+event-timers") == 0) {
 		return ZONE_STATUS_EVENT_TIMERS;
 	}
-	if (strcmp(param, "+event-status") == 0) {
-		return ZONE_STATUS_EVENT_STATUS;
-	}
 	if (strcmp(param, "+freeze") == 0) {
 		return ZONE_STATUS_FREEZE;
 	}
@@ -265,6 +262,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		}
 	}
 	// list modules
+	bool ctl_type = (param == ZONE_STATUS_EVENT_TIMERS)? true : false; //for +event-status
 	if (param == ZONE_STATUS_EVENT_TIMERS || param == ZONE_STATUS_NONE) {
 		time_t ev_time;
 		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
@@ -285,7 +283,8 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 				}
 				data[KNOT_CTL_IDX_DATA] = buff;
 
-				ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_EXTRA, &data);
+				ret = knot_ctl_send(args->ctl, (ctl_type)? KNOT_CTL_TYPE_DATA : KNOT_CTL_TYPE_EXTRA, &data);
+				ctl_type = false;
 				if (ret != KNOT_EOK) {
 					return ret;
 				}
