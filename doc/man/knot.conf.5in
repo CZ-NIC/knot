@@ -652,6 +652,7 @@ template:
   \- id: STR
     timer\-db: STR
     journal\-db: STR
+    journal\-db\-mode: robust | asynchronous
     max\-journal\-db\-size: SIZE
     global\-module: STR/STR ...
     # All zone options (excluding \(aqtemplate\(aq item)
@@ -688,6 +689,30 @@ This option is only available in the \fIdefault\fP template.
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%storage\fP/journal
+.SS journal\-db\-mode
+.sp
+Specifies journal LMDB backend configuration, which influences performance
+and durability.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBrobust\fP – The journal DB disk sychronization ensures DB durability but is
+generally slower
+.IP \(bu 2
+\fBasynchronous\fP – The journal DB disk synchronization is optimized for
+better perfomance at the expense of lower DB durability; this mode is
+recommended only on slave nodes with many zones
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP robust
 .SS max\-journal\-db\-size
 .sp
 Hard limit for the common journal DB. There is no cleanup logic in journal

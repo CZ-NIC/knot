@@ -1462,6 +1462,8 @@ static int open_journal_db_unsafe(journal_db_t **db)
 	opts.mapsize = (*db)->fslimit;
 	opts.maxdbs = 1;
 	opts.maxreaders = JOURNAL_MAX_READERS;
+	opts.flags.env = ((*db)->mode == JOURNAL_MODE_ASYNC ?
+	                  KNOT_DB_LMDB_WRITEMAP | KNOT_DB_LMDB_MAPASYNC : 0);
 
 	int ret = (*db)->db_api->init(&(*db)->db, NULL, &opts);
 	if (ret != KNOT_EOK) {
@@ -1525,7 +1527,8 @@ void journal_close(journal_t *j)
 	j->zone = NULL;
 }
 
-int journal_db_init(journal_db_t **db, const char *lmdb_dir_path, size_t lmdb_fslimit)
+int journal_db_init(journal_db_t **db, const char *lmdb_dir_path, size_t lmdb_fslimit,
+                    journal_mode_t mode)
 {
 	if (*db != NULL) {
 		return KNOT_EOK;
@@ -1538,7 +1541,8 @@ int journal_db_init(journal_db_t **db, const char *lmdb_dir_path, size_t lmdb_fs
 		.db = NULL,
 		.db_api = knot_db_lmdb_api(),
 		.path = strdup(lmdb_dir_path),
-		.fslimit = ((lmdb_fslimit < JOURNAL_MIN_FSLIMIT) ? JOURNAL_MIN_FSLIMIT : lmdb_fslimit)
+		.fslimit = ((lmdb_fslimit < JOURNAL_MIN_FSLIMIT) ? JOURNAL_MIN_FSLIMIT : lmdb_fslimit),
+		.mode = mode,
 	};
 	memcpy(*db, &dbinit, sizeof(journal_db_t));
 	pthread_mutex_init(&(*db)->db_mutex, NULL);
@@ -1789,7 +1793,7 @@ static void _jch_print(const knot_dname_t *zname, int warn_level, const char *fo
                                      jch_warn("failed transaction: %s (%s)", (comment), knot_strerror(txn->ret)); \
                                      if (fatal) return txn->ret; } } while (0)
 
-int journal_check(journal_t *j, journal_check_level warn_level)
+int journal_check(journal_t *j, journal_check_level_t warn_level)
 {
 	int ret, allok = 1;
 	changeset_t *ch = NULL;

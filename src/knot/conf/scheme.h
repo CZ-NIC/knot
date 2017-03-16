@@ -55,6 +55,7 @@
 #define C_IXFR_DIFF		"\x15""ixfr-from-differences"
 #define C_JOURNAL		"\x07""journal" /* obsolete, old journal compat */
 #define C_JOURNAL_DB		"\x0A""journal-db"
+#define C_JOURNAL_DB_MODE	"\x0F""journal-db-mode"
 #define C_KASP_DB		"\x07""kasp-db"
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"

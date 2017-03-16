@@ -507,6 +507,7 @@ int check_template(
 	CHECK_DFLT(C_TIMER_DB, "timer database");
 	CHECK_DFLT(C_GLOBAL_MODULE, "global module");
 	CHECK_DFLT(C_JOURNAL_DB, "journal database path");
+	CHECK_DFLT(C_JOURNAL_DB_MODE, "journal database mode");
 	CHECK_DFLT(C_MAX_JOURNAL_DB_SIZE, "journal database maximum size");
 
 	return KNOT_EOK;
