@@ -124,7 +124,6 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	printf("deleted id=%.8s still_used=%d\n", key_ptr->id, key_still_used_in_keystore ? 1 : 0);
 
 	if (!key_still_used_in_keystore) {
 		ret = dnssec_keystore_remove_key(ctx->keystore, key_ptr->id);
