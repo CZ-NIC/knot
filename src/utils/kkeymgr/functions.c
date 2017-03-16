@@ -62,8 +62,8 @@ static time_t arg_timestamp(const char *arg)
 		return -1;
 	}
 	time_t now = time(NULL);
-	switch ((*unit == 'm') ? *(unit + 1) : *unit) {
-	case 'i':
+	switch ((*unit == 'm') ? 'm' + *(unit + 1) : *unit) {
+	case 'm' + 'i':
 		return now + amount * 60;
 	case 'h':
 		return now + amount * 3600;
@@ -71,7 +71,7 @@ static time_t arg_timestamp(const char *arg)
 		return now + amount * 3600 * 24;
 	case 'w':
 		return now + amount * 3600 * 24 * 7;
-	case 'o':
+	case 'm' + 'o':
 		return now + amount * 3600 * 24 * 30; // this is lame but same as keymgr
 	case 'y':
 		return now + amount * 3600 * 24 * 365;
