@@ -63,7 +63,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 	journal_t *j = journal_new();
 	int ret;
 
-	ret = journal_db_init(&jdb, path, 1);
+	ret = journal_db_init(&jdb, path, 1, JOURNAL_MODE_ROBUST);
 	if (ret != KNOT_EOK) {
 		journal_free(&j);
 		free(buff);
@@ -140,7 +140,7 @@ pj_finally:
 int list_zones(char *path)
 {
 	journal_db_t *jdb = NULL;
-	int ret = journal_db_init(&jdb, path, 1);
+	int ret = journal_db_init(&jdb, path, 1, JOURNAL_MODE_ROBUST);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

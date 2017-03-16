@@ -26,6 +26,8 @@ extern const unsigned KNOT_DB_LMDB_NOTLS;
 extern const unsigned KNOT_DB_LMDB_RDONLY;
 extern const unsigned KNOT_DB_LMDB_INTEGERKEY;
 extern const unsigned KNOT_DB_LMDB_NOSYNC;
+extern const unsigned KNOT_DB_LMDB_WRITEMAP;
+extern const unsigned KNOT_DB_LMDB_MAPASYNC;
 
 /* Native options. */
 struct knot_db_lmdb_opts {

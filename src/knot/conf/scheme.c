@@ -107,6 +107,12 @@ static const knot_lookup_t log_severities[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t journal_modes[] = {
+	{ JOURNAL_MODE_ROBUST, "robust" },
+	{ JOURNAL_MODE_ASYNC,  "asynchronous" },
+	{ 0, NULL }
+};
+
 static const yp_item_t desc_server[] = {
 	{ C_IDENT,                YP_TSTR,  YP_VNONE },
 	{ C_VERSION,              YP_TSTR,  YP_VNONE },
@@ -268,6 +274,8 @@ static const yp_item_t desc_template[] = {
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
 	{ C_JOURNAL_DB,          YP_TSTR,  YP_VSTR = { "journal" }, CONF_IO_FRLD_SRV },
+	{ C_JOURNAL_DB_MODE,     YP_TOPT,  YP_VOPT = { journal_modes, JOURNAL_MODE_ROBUST },
+	                                   CONF_IO_FRLD_SRV },
 	{ C_MAX_JOURNAL_DB_SIZE, YP_TINT,  YP_VINT = { JOURNAL_MIN_FSLIMIT, VIRT_MEM_LIMIT(TERA(100)),
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE },
 	                                               CONF_IO_FRLD_SRV },

@@ -36,6 +36,8 @@ _public_ const unsigned KNOT_DB_LMDB_NOTLS = MDB_NOTLS;
 _public_ const unsigned KNOT_DB_LMDB_RDONLY = MDB_RDONLY;
 _public_ const unsigned KNOT_DB_LMDB_INTEGERKEY = MDB_INTEGERKEY;
 _public_ const unsigned KNOT_DB_LMDB_NOSYNC = MDB_NOSYNC;
+_public_ const unsigned KNOT_DB_LMDB_WRITEMAP = MDB_WRITEMAP;
+_public_ const unsigned KNOT_DB_LMDB_MAPASYNC = MDB_MAPASYNC;
 
 struct lmdb_env
 {
