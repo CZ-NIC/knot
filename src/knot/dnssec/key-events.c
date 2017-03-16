@@ -28,6 +28,8 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/serial.h"
 
+#define TIME_INFINITY ((time_t)0x00ffffffffffff00LLU)
+
 static knot_kasp_key_t *last_key(kdnssec_ctx_t *ctx, key_state_t state)
 {
 	assert(ctx);
@@ -136,7 +138,7 @@ static int exec_new_key(kdnssec_ctx_t *ctx)
 
 	//! \todo Cannot set "active" to zero, using upper bound instead.
 	new_key->timing.publish = ctx->now;
-	new_key->timing.active = UINT64_MAX;
+	new_key->timing.active = TIME_INFINITY;
 
 	return KNOT_EOK;
 }
@@ -179,20 +181,20 @@ int knot_dnssec_zsk_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *nex
 	if (ctx->policy->manual) {
 		return KNOT_EOK;
 	}
-	int ret = KNOT_EOK;
+	int ret = KNOT_ESEMCHECK; // just an independent rcode not appearing normally
 
 	// generate initial keys if missing
 	if (!ctx->policy->singe_type_signing && !key_present(ctx, DNSKEY_FLAGS_KSK)) {
 		ret = generate_initial_key(ctx, true);
 	}
-	if (ret == KNOT_EOK && !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
+	if ((ret == KNOT_EOK || ret == KNOT_ESEMCHECK) && !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
 		ret = generate_initial_key(ctx, false);
 	}
 	if (ret == KNOT_EOK) {
 		*keys_changed = true;
 	}
 
-	if (ret != KNOT_EOK) {
+	if (ret != KNOT_EOK && ret != KNOT_ESEMCHECK) {
 		return ret;
 	}
 
@@ -224,5 +226,5 @@ int knot_dnssec_zsk_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *nex
 	if (*keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
 	}
-	return ret;
+	return (ret == KNOT_ESEMCHECK ? KNOT_EOK : ret);
 }
