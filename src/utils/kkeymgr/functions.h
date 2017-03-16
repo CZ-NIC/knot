@@ -29,3 +29,6 @@ int kkeymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[]);
 int kkeymgr_list_keys(kdnssec_ctx_t *ctx);
 
 int kkeymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key);
+
+int kkeymgr_share_key(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key,
+		      const char *zone_name_ch);

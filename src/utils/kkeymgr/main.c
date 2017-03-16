@@ -17,6 +17,7 @@
 #include <stdlib.h>
 
 #include "knot/conf/conf.h"
+#include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
 #include "utils/common/params.h"
 #include "utils/kkeymgr/functions.h"
@@ -28,27 +29,32 @@ static void print_help(void)
 	printf("Usage: %s [parameter] options/commands...\n"
 	       "\n"
 	       "Parameters:\n"
-	       " -h	Display this help.\n"
-	       " -V	Print program version.\n"
-	       " -t	Generate TSIG key.\n"
-	       "	(syntax: -t <tsig_name> [<algorithm>] [<bits>]\n"
-	       " -d	Use specified KASP db path.\n"
-	       "	(syntax: -d <KASP_dir> <zone> <command> options...)\n"
-	       " -c	Use specified Knot config file.\n"
-	       "	(syntax: -c <config_file> <zone> <command> options...)\n"
-	       " -C	Use specified Knot configuration database.\n"
-	       "	(syntax: -C <confdb_dir> <zone> <command> options...)\n"
+	       " -h     Display this help.\n"
+	       " -V     Print program version.\n"
+	       " -t     Generate TSIG key.\n"
+	       "        (syntax: -t <tsig_name> [<algorithm>] [<bits>]\n"
+	       " -d     Use specified KASP db path.\n"
+	       "        (syntax: -d <KASP_dir> <zone> <command> options...)\n"
+	       " -c     Use specified Knot config file.\n"
+	       "        (syntax: -c <config_file> <zone> <command> options...)\n"
+	       " -C     Use specified Knot configuration database.\n"
+	       "        (syntax: -C <confdb_dir> <zone> <command> options...)\n"
 	       "\n"
 	       "Commands:\n"
 	       "   list         List all zone's KASP keys.\n"
-	       "   generate	Generate new KASP key.\n"
-	       "		(syntax: generate <attribute_name>=<value>...)\n"
-	       "   import-bind	Import BIND-style key file pair (.key + .private).\n"
-	       "		(syntax: import_bind <key_file_name>)\n"
+	       "   generate     Generate new KASP key.\n"
+	       "                (syntax: generate <attribute_name>=<value>...)\n"
+	       "   import-bind  Import BIND-style key file pair (.key + .private).\n"
+	       "                (syntax: import_bind <key_file_name>)\n"
 	       "   ds           Generate DS record(s) for specified key.\n"
 	       "                (syntax: ds <key_spec>)\n"
-	       "   set		Set existing key's timing attribute.\n"
-	       "		(syntax: set <key_spec> <attribute_name>=<value>...)\n",
+	       "   share        Make an existing key of another zone to be shared with"
+	       " the specified zone.\n"
+	       "                (syntax: share <full_key_ID>\n"
+	       "   delete       Remove the specified key from zone.\n"
+	       "                (syntax: delete <key_spec>)\n"
+	       "   set          Set existing key's timing attribute.\n"
+	       "                (syntax: set <key_spec> <attribute_name>=<value>...)\n",
 	       PROGRAM_NAME);
 }
 
@@ -96,7 +102,11 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-#define check_argc_three if (argc < 3) { printf("Option %s requires an argument.\n", argv[1]); print_help(); return EXIT_FAILURE; }
+#define check_argc_three if (argc < 3) { \
+	printf("Option %s requires an argument.\n", argv[1]); \
+	print_help(); \
+	return EXIT_FAILURE; \
+}
 
 	switch (argv[1][1]) {
 	case 'h':
@@ -210,6 +220,24 @@ int main(int argc, char *argv[])
 		ret = kkeymgr_get_key(&kctx, argv[5], &key2ds);
 		if (ret == KNOT_EOK) {
 			ret = kkeymgr_generate_ds(zone_name, key2ds);
+		}
+	} else if (strcmp(argv[4], "share") == 0) {
+		if (argc < 6) {
+			printf("Key ID is not specified.\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		ret = kasp_db_share_key(*kctx.kasp_db, zone_name, argv[5]);
+	} else if (strcmp(argv[4], "delete") == 0) {
+		if (argc < 6) {
+			printf("Key is not specified.\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		knot_kasp_key_t *key2del;
+		ret = kkeymgr_get_key(&kctx, argv[5], &key2del);
+		if (ret == KNOT_EOK) {
+			ret = kdnssec_delete_key(&kctx, key2del);
 		}
 	} else {
 		printf("Wrong zone-key command: %s\n", argv[4]);

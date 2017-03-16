@@ -548,3 +548,12 @@ int kkeymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key)
 
 	return ret;
 }
+
+int kkeymgr_share_key(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key,
+		      const char *zone_name_ch)
+{
+	knot_dname_t *zone_name = knot_dname_from_str_alloc(zone_name_ch);
+	int ret = kasp_db_share_key(*ctx->kasp_db, zone_name, key->id);
+	free(zone_name);
+	return ret;
+}

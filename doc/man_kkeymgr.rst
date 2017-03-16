@@ -72,6 +72,13 @@ Actions
   Generate DS record (all digest algorithms together) from specified key. *Key_spec*
   is like for **set**.
 
+**delete** *key_spec*
+  Remove the specified key from zone. If the key was not shared, it is also deleted from keystore.
+
+**share** *key_ID*
+  Import a key (specified by full key ID) from another zone as shared. After this, the key is
+  owned by both zones equally.
+
 Generate arguments
 ..................
 
@@ -130,6 +137,14 @@ Examples
 
     $ kkeymgr -c ${knot_data_dir}/knot.conf example.com. generate algorithm=ECDSAP256SHA256 size=256 \
       ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
+
+4. Configure key timing::
+
+    $ kkeymgr -d ${knot_data_dir}/keys test.test. set 4208 active=t+2mi retire=t+4mi remove=t+5mi
+
+5. Share a KSK from another zone::
+
+    $ kkeymgr -c ${knot_data_dir}/knot.conf test.test. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
 
 See Also
 --------
