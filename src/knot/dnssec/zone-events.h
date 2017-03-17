@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <time.h>
+
 #include "knot/zone/zone.h"
 #include "knot/updates/changesets.h"
 #include "knot/dnssec/context.h"
@@ -67,3 +69,21 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                const changeset_t *in_ch,
                                changeset_t *out_ch,
                                uint32_t *refresh_at);
+
+/*!
+ * \brief Create new NCES3 salt if the old one is too old, and plan next resalt.
+ *
+ * For given zone, check NSEC3 salt in KASP db and decide if it shall be recreated
+ * and tell the user the next time it shall be called.
+ *
+ * This function is optimized to be called from NSEC3RESALT_EVENT,
+ * but also during zone load so that the zone gets loaded already with
+ * proper DNSSEC chain.
+ *
+ * \param ctx           zone signing context
+ * \param salt_changed  output if KNOT_EOK: was the salt changed ? (if so, please re-sign)
+ * \param next_resalt   output: tmestamp when next resalt takes place
+ *
+ * \return KNOT_E*
+ */
+int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, time_t *when_resalt);

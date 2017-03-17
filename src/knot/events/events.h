@@ -39,6 +39,8 @@ typedef enum zone_event_type {
 	ZONE_EVENT_DNSSEC,
 	ZONE_EVENT_UFREEZE,
 	ZONE_EVENT_UTHAW,
+	ZONE_EVENT_NSEC3RESALT,
+	ZONE_EVENT_ZSK_ROLLOVER,
 	// terminator
 	ZONE_EVENT_COUNT,
 } zone_event_type_t;

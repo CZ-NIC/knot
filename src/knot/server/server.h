@@ -32,6 +32,7 @@
 #include "knot/conf/conf.h"
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
+#include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/server/dthreads.h"
 #include "knot/common/ref.h"
 #include "knot/worker/pool.h"

@@ -20,6 +20,7 @@
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
+#include "knot/dnssec/key-events.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/apply.h"
 #include "libknot/libknot.h"
@@ -226,6 +227,31 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 	val = conf_zone_get(conf, C_IXFR_DIFF, zone->name);
 	bool build_diffs = conf_bool(&val);
 	if (dnssec_enable) {
+		/* Perform NSEC3 resalt and ZSK rollover if needed. */
+		conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
+		kdnssec_ctx_t kctx = { 0 };
+		ret = kdnssec_ctx_init(&kctx, zone->name, &policy);
+		if (ret != KNOT_EOK) {
+			changeset_clear(&change);
+			return ret;
+		}
+
+		bool ignore1 = false; time_t ignore2 = 0;
+		ret = knot_dnssec_nsec3resalt(&kctx, &ignore1, &ignore2);
+		if (ret != KNOT_EOK) {
+			kdnssec_ctx_deinit(&kctx);
+			changeset_clear(&change);
+			return ret;
+		}
+
+		ignore1 = false; ignore2 = 0;
+		ret = knot_dnssec_zsk_rollover(&kctx, &ignore1, &ignore2);
+		kdnssec_ctx_deinit(&kctx);
+		if (ret != KNOT_EOK) {
+			changeset_clear(&change);
+			return ret;
+		}
+
 		ret = knot_dnssec_zone_sign(contents, &change, 0, dnssec_refresh);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&change);

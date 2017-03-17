@@ -112,6 +112,10 @@ load_post:
 
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
+		zone_events_schedule_now(zone, ZONE_EVENT_ZSK_ROLLOVER);
+		zone_events_schedule_now(zone, ZONE_EVENT_NSEC3RESALT);
+		// if nothing to be done NOW for any of those, they will replan themselves for later
+
 		log_dnssec_next(zone->name, dnssec_refresh);
 		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, dnssec_refresh);
 	}
