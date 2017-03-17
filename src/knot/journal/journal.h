@@ -26,11 +26,17 @@
 /*! \brief Minimum journal size. */
 #define JOURNAL_MIN_FSLIMIT	(1 * 1024 * 1024)
 
+typedef enum {
+	JOURNAL_MODE_ROBUST = 0, // Robust journal DB disk synchronization.
+	JOURNAL_MODE_ASYNC  = 1, // Asynchronous journal DB disk synchronization.
+} journal_mode_t;
+
 typedef struct {
 	knot_db_t *db;
 	const knot_db_api_t *db_api;
 	char *path;
 	size_t fslimit;
+	journal_mode_t mode;
 	pthread_mutex_t db_mutex; // please delete this once you move DB opening from journal_open to db_init
 } journal_db_t;
 
@@ -44,7 +50,7 @@ typedef enum {
 	JOURNAL_CHECK_WARN   = 1, // Log journal inconsistencies.
 	JOURNAL_CHECK_INFO   = 2, // Log journal state.
 	JOURNAL_CHECK_STDERR = 3, // Log everything and redirect to stderr.
-} journal_check_level;
+} journal_check_level_t;
 
 /*!
  * \brief Initialize shared journal DB file. The DB will be open on first use.
@@ -52,10 +58,12 @@ typedef enum {
  * \param db             Database to be initialized. Must be (*db == NULL) before!
  * \param lmdb_dir_path  Path to the directory with DB
  * \param lmdb_fslimit   Maximum size of DB data file
+ * \param mode           Journal DB synchronization mode.
  *
  * \return KNOT_E*
  */
-int journal_db_init(journal_db_t **db, const char *lmdb_dir_path, size_t lmdb_fslimit);
+int journal_db_init(journal_db_t **db, const char *lmdb_dir_path, size_t lmdb_fslimit,
+                    journal_mode_t mode);
 
 /*!
  * \brief Close shared journal DB file.
@@ -204,6 +212,6 @@ void journal_metadata_info(journal_t *j, bool *is_empty, uint32_t *serial_from, 
  *
  * \return KNOT_E*
  */
-int journal_check(journal_t *j, journal_check_level warn_level);
+int journal_check(journal_t *j, journal_check_level_t warn_level);
 
 /*! @} */

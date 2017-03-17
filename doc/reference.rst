@@ -774,6 +774,7 @@ if a zone doesn't have another template specified.
    - id: STR
      timer-db: STR
      journal-db: STR
+     journal-db-mode: robust | asynchronous
      max-journal-db-size: SIZE
      global-module: STR/STR ...
      # All zone options (excluding 'template' item)
@@ -810,6 +811,27 @@ as a relative path to the *default* template :ref:`storage<zone_storage>`.
    This option is only available in the *default* template.
 
 *Default:* :ref:`storage<zone_storage>`/journal
+
+.. _template_journal-db-mode:
+
+journal-db-mode
+---------------
+
+Specifies journal LMDB backend configuration, which influences performance
+and durability.
+
+Possible values:
+
+- ``robust`` – The journal DB disk sychronization ensures DB durability but is
+  generally slower
+- ``asynchronous`` – The journal DB disk synchronization is optimized for
+  better perfomance at the expense of lower DB durability; this mode is
+  recommended only on slave nodes with many zones
+
+.. NOTE::
+   This option is only available in the *default* template.
+
+*Default:* robust
 
 .. _template_max-journal-db-size:
 
