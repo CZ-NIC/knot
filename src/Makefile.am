@@ -255,6 +255,8 @@ libknotd_la_SOURCES =				\
 	knot/dnssec/kasp/keystate.h		\
 	knot/dnssec/kasp/keystore.c		\
 	knot/dnssec/kasp/keystore.h		\
+	knot/dnssec/key-events.c		\
+	knot/dnssec/key-events.h		\
 	knot/dnssec/nsec-chain.c		\
 	knot/dnssec/nsec-chain.h		\
 	knot/dnssec/nsec3-chain.c		\
@@ -280,8 +282,10 @@ libknotd_la_SOURCES =				\
 	knot/events/handlers/freeze_thaw.c	\
 	knot/events/handlers/load.c		\
 	knot/events/handlers/notify.c		\
+	knot/events/handlers/nsec3resalt.c	\
 	knot/events/handlers/refresh.c		\
 	knot/events/handlers/update.c		\
+	knot/events/handlers/zsk_rollover.c	\
 	knot/events/log.c			\
 	knot/events/log.h			\
 	knot/events/replan.c			\

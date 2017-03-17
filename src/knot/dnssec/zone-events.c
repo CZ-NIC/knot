@@ -40,7 +40,7 @@ static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 
 	conf_val_t policy = conf_zone_get(conf(), C_DNSSEC_POLICY, zone_name);
 
-	int r = kdnssec_ctx_init(ctx, zone_name, &policy, false);
+	int r = kdnssec_ctx_init(ctx, zone_name, &policy);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -66,53 +66,6 @@ static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 	return KNOT_EOK;
 }
 
-static dnssec_event_ctx_t kctx2ctx(const kdnssec_ctx_t *kctx)
-{
-	dnssec_event_ctx_t ctx = {
-		.now      = kctx->now,
-		.kasp     = kctx->kasp,
-		.zone     = kctx->zone,
-		.policy   = kctx->policy,
-		.keystore = kctx->keystore
-	};
-
-	return ctx;
-}
-
-int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
-                                    const knot_dname_t *zone_name)
-{
-	if (kctx == NULL || zone_name == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	dnssec_event_t event = { 0 };
-	dnssec_event_ctx_t ctx = kctx2ctx(kctx);
-
-	for (;;) {
-		int r = dnssec_event_get_next(&ctx, &event);
-		if (r != DNSSEC_EOK) {
-			log_zone_error(zone_name, "DNSSEC, failed to get next event (%s)",
-			               dnssec_strerror(r));
-			return r;
-		}
-
-		if (event.type == DNSSEC_EVENT_NONE || kctx->now < event.time) {
-			return KNOT_EOK;
-		}
-
-		log_zone_info(zone_name, "DNSSEC, executing event '%s'",
-		              dnssec_event_name(event.type));
-
-		r = dnssec_event_execute(&ctx, &event);
-		if (r != DNSSEC_EOK) {
-			log_zone_error(zone_name, "DNSSEC, failed to execute event (%s)",
-			               dnssec_strerror(r));
-			return r;
-		}
-	}
-}
-
 static int sign_update_soa(const zone_contents_t *zone, changeset_t *chset,
                            kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 {
@@ -125,30 +78,74 @@ static int sign_update_soa(const zone_contents_t *zone, changeset_t *chset,
 static uint32_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
                               uint32_t zone_expire)
 {
-	// signatures refresh
-
 	uint32_t zone_refresh = zone_expire - kctx->policy->rrsig_refresh_before;
 	assert(zone_refresh > 0);
 
-	// DNSKEY modification
-
 	uint32_t dnskey_update = MIN(MAX(knot_get_next_zone_key_event(keyset), 0),
 	                             UINT32_MAX);
-
-	// zone events
-
-	dnssec_event_t event = { 0 };
-	dnssec_event_ctx_t ctx = kctx2ctx(kctx);
-	dnssec_event_get_next(&ctx, &event);
-
-	// result
-
 	uint32_t next = MIN(zone_refresh, dnskey_update);
-	if (event.type != DNSSEC_EVENT_NONE) {
-		next = MIN(next, event.time);
-	}
 
 	return next;
+}
+
+static int generate_salt(dnssec_binary_t *salt, uint16_t length)
+{
+	assert(salt);
+	dnssec_binary_t new_salt = { 0 };
+
+	if (length > 0) {
+		int r = dnssec_binary_alloc(&new_salt, length);
+		if (r != KNOT_EOK) {
+			return knot_error_from_libdnssec(r);
+		}
+
+		r = dnssec_random_binary(&new_salt);
+		if (r != KNOT_EOK) {
+			dnssec_binary_free(&new_salt);
+			return knot_error_from_libdnssec(r);
+		}
+	}
+
+	dnssec_binary_free(salt);
+	*salt = new_salt;
+
+	return KNOT_EOK;
+}
+
+// TODO preserve the resalt timeout in timers-db instead of kasp_db
+
+int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, time_t *when_resalt)
+{
+	int ret = KNOT_EOK;
+
+	if (!ctx->policy->nsec3_enabled || ctx->policy->nsec3_salt_length == 0) {
+		return KNOT_EOK;
+	}
+
+	if (ctx->policy->manual) {
+		return KNOT_EOK;
+	}
+
+	if (ctx->zone->nsec3_salt.size != ctx->policy->nsec3_salt_length) {
+		*when_resalt = ctx->now;
+	} else if (ctx->now < ctx->zone->nsec3_salt_created) {
+		return KNOT_EINVAL;
+	} else {
+		*when_resalt = ctx->zone->nsec3_salt_created + ctx->policy->nsec3_salt_lifetime;
+	}
+
+	if (*when_resalt <= ctx->now) {
+		ret = generate_salt(&ctx->zone->nsec3_salt, ctx->policy->nsec3_salt_length);
+		if (ret == KNOT_EOK) {
+			ctx->zone->nsec3_salt_created = ctx->now;
+			ret = kdnssec_ctx_commit(ctx);
+			*salt_changed = true;
+		}
+		// continue to planning next resalt even if NOK
+		*when_resalt = ctx->now + ctx->policy->nsec3_salt_lifetime;
+	}
+
+	return ret;
 }
 
 int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
@@ -168,13 +165,6 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
 	result = sign_init(zone, flags, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
-		               knot_strerror(result));
-		goto done;
-	}
-
-	result = knot_dnssec_sign_process_events(&ctx, zone_name);
-	if (result != KNOT_EOK) {
-		log_zone_error(zone_name, "DNSSEC, failed to process events (%s)",
 		               knot_strerror(result));
 		goto done;
 	}

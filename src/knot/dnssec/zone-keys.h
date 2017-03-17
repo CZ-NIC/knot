@@ -33,6 +33,9 @@
 #include "dnssec/keystore.h"
 #include "dnssec/sign.h"
 
+#include "knot/dnssec/kasp/kasp_zone.h"
+#include "knot/dnssec/context.h"
+
 /*!
  * \brief Zone key context used during signing.
  */
@@ -61,6 +64,38 @@ struct zone_keyset {
 typedef struct zone_keyset zone_keyset_t;
 
 /*!
+ * \brief Flags determining key type
+ */
+extern const uint16_t DNSKEY_FLAGS_KSK;
+extern const uint16_t DNSKEY_FLAGS_ZSK;
+uint16_t dnskey_flags(bool is_ksk);
+
+/*!
+ * \brief Generate new key, store all details in new kasp key structure.
+ *
+ * \param ctx           kasp context
+ * \param ksk           true = generate KSK, false = generate ZSK
+ * \param key_ptr       output if KNOT_EOK: new pointer to generated key
+ *
+ * \return KNOT_E*
+ */
+int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, dnssec_kasp_key_t **key_ptr);
+
+/*!
+ * \brief Remove key from zone.
+ *
+ * Deletes the key in keystore, unlinks the key from the zone in KASP db,
+ * moreover if no more zones use this key in KASP db, deletes it completely there
+ * and deletes it also from key storage (PKCS8dir/PKCS11).
+ *
+ * \param ctx           kasp context (zone, keystore, kaspdb) to be modified
+ * \param key_ptr       pointer to key to be removed, must be inside keystore structure, NOT a copy of it!
+ *
+ * \return KNOT_E*
+ */
+int kdnssec_delete_key(kdnssec_ctx_t *ctx, dnssec_kasp_key_t *key_ptr);
+
+/*!
  * \brief Load zone keys and init cryptographic context.
  *
  * \param zone           KASP zone.
@@ -71,7 +106,7 @@ typedef struct zone_keyset zone_keyset_t;
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int load_zone_keys(dnssec_kasp_zone_t *zone, dnssec_keystore_t *store,
+int load_zone_keys(knot_kasp_zone_t *zone, dnssec_keystore_t *store,
                    bool nsec3_enabled, time_t now, zone_keyset_t *keyset_ptr);
 
 /*!

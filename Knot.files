@@ -242,6 +242,8 @@ src/knot/dnssec/kasp/keystate.c
 src/knot/dnssec/kasp/keystate.h
 src/knot/dnssec/kasp/keystore.c
 src/knot/dnssec/kasp/keystore.h
+src/knot/dnssec/key-events.c
+src/knot/dnssec/key-events.h
 src/knot/dnssec/nsec-chain.c
 src/knot/dnssec/nsec-chain.h
 src/knot/dnssec/nsec3-chain.c
@@ -267,8 +269,10 @@ src/knot/events/handlers/flush.c
 src/knot/events/handlers/freeze_thaw.c
 src/knot/events/handlers/load.c
 src/knot/events/handlers/notify.c
+src/knot/events/handlers/nsec3resalt.c
 src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
+src/knot/events/handlers/zsk_rollover.c
 src/knot/events/log.c
 src/knot/events/log.h
 src/knot/events/replan.c

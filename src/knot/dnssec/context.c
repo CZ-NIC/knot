@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <time.h>
 
 #include <dnssec/error.h>
@@ -27,28 +26,10 @@
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
+#include "knot/dnssec/kasp/keystore.h"
 #include "contrib/files.h"
 
-static int zone_save(void *ctx, const dnssec_kasp_zone_t *zone)
-{
-	return dnssec_kasp_dir_api()->zone_save(ctx, zone);
-}
-
-static int zone_load(void *ctx, dnssec_kasp_zone_t *zone)
-{
-	int r = dnssec_kasp_dir_api()->zone_load(ctx, zone);
-	if (r != DNSSEC_EOK && r != DNSSEC_NOT_FOUND) {
-		return r;
-	}
-
-	free(zone->policy);
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_POLICY, zone->dname);
-	zone->policy = strdup(conf_str(&val));
-
-	return DNSSEC_EOK;
-}
-
-static int policy_load(void *ctx, dnssec_kasp_policy_t *policy)
+static int policy_load(dnssec_kasp_policy_t *policy)
 {
 	const uint8_t *id = (const uint8_t *)policy->name;
 	const size_t id_len = strlen(policy->name) + 1;
@@ -102,120 +83,67 @@ static int policy_load(void *ctx, dnssec_kasp_policy_t *policy)
 	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id, id_len);
 	policy->nsec3_salt_lifetime = conf_int(&val);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
-static int keystore_load(void *ctx, dnssec_kasp_keystore_t *keystore)
-{
-	const uint8_t *id = (const uint8_t *)keystore->name;
-	const size_t id_len = strlen(keystore->name) + 1;
-
-	conf_val_t val = conf_rawid_get(conf(), C_KEYSTORE, C_BACKEND, id, id_len);
-	switch (conf_opt(&val)) {
-	case KEYSTORE_BACKEND_PEM:
-		keystore->backend = strdup(DNSSEC_KASP_KEYSTORE_PKCS8);
-		break;
-	case KEYSTORE_BACKEND_PKCS11:
-		keystore->backend = strdup(DNSSEC_KASP_KEYSTORE_PKCS11);
-		break;
-	default:
-		return DNSSEC_EINVAL;
-	}
-
-	val = conf_rawid_get(conf(), C_KEYSTORE, C_CONFIG, id, id_len);
-	keystore->config = strdup(conf_str(&val));
-
-	return DNSSEC_EOK;
-}
-
-int kdnssec_kasp(dnssec_kasp_t **kasp, bool legacy)
-{
-	if (legacy) {
-		return dnssec_kasp_init_dir(kasp);
-	} else {
-		static dnssec_kasp_store_functions_t conf_api = {
-			.zone_load       = zone_load,
-			.zone_save       = zone_save,
-			.policy_load     = policy_load,
-			.keystore_load   = keystore_load
-		};
-
-		conf_api.init      = dnssec_kasp_dir_api()->init;
-		conf_api.open      = dnssec_kasp_dir_api()->open;
-		conf_api.close     = dnssec_kasp_dir_api()->close;
-		conf_api.base_path = dnssec_kasp_dir_api()->base_path;
-
-		return dnssec_kasp_init_custom(kasp, &conf_api);
-	}
-}
-
-static int get_keystore(dnssec_kasp_t *kasp, const char *name,
-                        dnssec_keystore_t **keystore, bool legacy)
-{
-	dnssec_kasp_keystore_t *info = NULL;
-	int r = dnssec_kasp_keystore_load(kasp, name, &info);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	// Initialize keystore directory.
-	if (!legacy) {
-		// TODO: A keystore should be initialized during the zone setup/load.
-		r = dnssec_kasp_keystore_init(kasp, info->backend, info->config,
-		                              keystore);
-		if (r != DNSSEC_EOK) {
-			dnssec_kasp_keystore_free(info);
-			return r;
-		}
-		dnssec_keystore_deinit(*keystore);
-	}
-
-	r = dnssec_kasp_keystore_open(kasp, info->backend, info->config, keystore);
-
-	dnssec_kasp_keystore_free(info);
-
-	return r;
-}
-
-int kdnssec_kasp_init(kdnssec_ctx_t *ctx, const char *kasp_path, const char *zone_name)
+int kdnssec_kasp_init(kdnssec_ctx_t *ctx, const char *kasp_path, size_t kasp_mapsize,
+		      const knot_dname_t *zone_name, const char *policy_name)
 {
 	if (ctx == NULL || kasp_path == NULL || zone_name == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int r = kdnssec_kasp(&ctx->kasp, ctx->legacy);
-	if (r != DNSSEC_EOK) {
-		return r;
+	ctx->zone = calloc(1, sizeof(*ctx->zone));
+	if (ctx->zone == NULL) {
+		return KNOT_ENOMEM;
 	}
+	ctx->kasp_db = kaspdb();
 
-	r = make_dir(kasp_path, S_IRWXU | S_IRGRP | S_IXGRP, true);
+	int r = kasp_db_open(*ctx->kasp_db);
 	if (r != KNOT_EOK) {
 		return r;
 	}
 
-	r = dnssec_kasp_open(ctx->kasp, kasp_path);
-	if (r != DNSSEC_EOK) {
+	r = kasp_zone_load(ctx->zone, zone_name, *ctx->kasp_db);
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
-	r = dnssec_kasp_zone_load(ctx->kasp, zone_name, &ctx->zone);
-	if (r != DNSSEC_EOK) {
+	ctx->kasp_zone_path = strdup(kasp_path);
+
+	ctx->policy = dnssec_kasp_policy_new(policy_name);
+	if (ctx->policy == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	r = policy_load(ctx->policy);
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
-	// Overide policy name if provided.
-	if (ctx->policy_name != NULL) {
-		free(ctx->zone->policy);
-		ctx->zone->policy = strdup(ctx->policy_name);
-	}
+	const uint8_t *id = (const uint8_t *)policy_name;
+	const size_t id_len = strlen(policy_name) + 1;
+	conf_val_t val = conf_rawid_get(conf(), C_KEYSTORE, C_BACKEND, id, id_len);
+	int backend = conf_opt(&val);
+	val = conf_rawid_get(conf(), C_KEYSTORE, C_CONFIG, id, id_len);
 
-	r = dnssec_kasp_policy_load(ctx->kasp, ctx->zone->policy, &ctx->policy);
-	if (r != DNSSEC_EOK) {
+	r = keystore_load(conf_str(&val), backend, kasp_path, &ctx->keystore);
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
-	return get_keystore(ctx->kasp, ctx->policy->keystore, &ctx->keystore,
-	                    ctx->legacy);
+	return KNOT_EOK;
+}
+
+int kdnssec_ctx_commit(kdnssec_ctx_t *ctx)
+{
+	if (ctx == NULL || ctx->kasp_zone_path == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// do something with keytore? Probably not..
+
+	return kasp_zone_save(ctx->zone, ctx->zone->dname, *ctx->kasp_db);
 }
 
 void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
@@ -224,45 +152,28 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		return;
 	}
 
-	free(ctx->policy_name);
 	dnssec_keystore_deinit(ctx->keystore);
 	dnssec_kasp_policy_free(ctx->policy);
-	dnssec_kasp_zone_free(ctx->zone);
-	dnssec_kasp_deinit(ctx->kasp);
+	kasp_zone_free(&ctx->zone);
+	free(ctx->kasp_zone_path);
 
 	memset(ctx, 0, sizeof(*ctx));
 }
 
 int kdnssec_ctx_init(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
-                     conf_val_t *policy, bool disable_legacy)
+                     conf_val_t *policy)
 {
 	if (ctx == NULL || zone_name == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	char zone_str[KNOT_DNAME_TXT_MAXLEN + 1];
-	if (knot_dname_to_str(zone_str, zone_name, sizeof(zone_str)) == NULL) {
-		return KNOT_ENOMEM;
-	}
-
 	kdnssec_ctx_t new_ctx = { 0 };
 
-	if (!disable_legacy && policy->code != KNOT_EOK) {
-		new_ctx.legacy = true;
-	}
+	char *kasp_dir = conf_kaspdir(conf());
+	conf_val_t kasp_db_mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
 
-	if (conf_str(policy) != NULL) {
-		new_ctx.policy_name = strdup(conf_str(policy));
-	}
-
-	conf_val_t val = conf_zone_get(conf(), C_STORAGE, zone_name);
-	char *storage = conf_abs_path(&val, NULL);
-	val = conf_zone_get(conf(), C_KASP_DB, zone_name);
-	char *kasp_path = conf_abs_path(&val, storage);
-	free(storage);
-
-	int r = kdnssec_kasp_init(&new_ctx, kasp_path, zone_str);
-	free(kasp_path);
+	int r = kdnssec_kasp_init(&new_ctx, kasp_dir, conf_int(&kasp_db_mapsize), zone_name, conf_str(policy));
+	free(kasp_dir);
 	if (r != KNOT_EOK) {
 		kdnssec_ctx_deinit(&new_ctx);
 		return r;
