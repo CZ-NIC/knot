@@ -546,6 +546,9 @@ static int check_digest(const knot_rrset_t *tsig_rr,
 	memset(wire_to_sign, 0, size);
 	memcpy(wire_to_sign, wire, size);
 
+	// restore message ID to which the signature had been created with
+	knot_wire_set_id(wire_to_sign, knot_tsig_rdata_orig_id(tsig_rr));
+
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
 	assert(tsig_rr->rrs.rr_count > 0);
