@@ -74,6 +74,7 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.empty_ttl = false,
 	.human_ttl = false,
 	.human_tmstamp = true,
+	.hide_crypto = false,
 	.ascii_to_idn = NULL
 };
 
@@ -485,6 +486,53 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 		dump_string(p, empty_str);
 		CHECK_PRET
 	}
+}
+
+static void wire_data_omit(rrset_dump_params_t *p)
+{
+	CHECK_PRET
+
+	const char *omit_message = "[omitted]";
+	const size_t omlen = strlen(omit_message);
+
+	if (p->out_max < omlen) {
+		p->ret = -1;
+		return;
+	}
+
+	memcpy(p->out, omit_message, omlen);
+	p->out += omlen;
+	p->out_max -= omlen;
+	p->total += omlen;
+
+	STRING_TERMINATION
+
+	p->in += p->in_max;
+	p->in_max = 0;
+}
+
+static void wire_dnskey_to_tag(rrset_dump_params_t *p)
+{
+	CHECK_PRET
+
+	int key_pos = -4; // we expect that key flags, 3 and algorithm
+	                  // have been already dumped
+
+	uint16_t key_tag = 0;
+	const dnssec_binary_t rdata_bin = {
+		.data = (uint8_t *)(p->in + key_pos),
+		.size = p->in_max - key_pos
+	};
+	dnssec_keytag(&rdata_bin, &key_tag);
+
+	int ret = snprintf(p->out, p->out_max, "[id = %hu]", key_tag);
+	CHECK_RET_OUTMAX_SNPRINTF
+
+	p->in += p->in_max;
+	p->in_max = 0;
+	p->out += ret;
+	p->out_max -= ret;
+	p->total += ret;
 }
 
 static void wire_unknown_to_str(rrset_dump_params_t *p)
@@ -1265,6 +1313,8 @@ static void dnskey_info(const uint8_t *rdata,
 				2, true, ""); CHECK_RET(p);
 #define DUMP_TSIG_DATA	wire_len_data_encode_to_str(p, &num48_encode, \
 				2, true, ""); CHECK_RET(p);
+#define DUMP_OMIT	wire_data_omit(p); CHECK_RET(p);
+#define DUMP_KEY_OMIT	wire_dnskey_to_tag(p); CHECK_RET(p);
 #define DUMP_TEXT	wire_text_to_str(p, true, true); CHECK_RET(p);
 #define DUMP_LONG_TEXT	wire_text_to_str(p, true, false); CHECK_RET(p);
 #define DUMP_UNQUOTED	wire_text_to_str(p, false, true); CHECK_RET(p);
@@ -1359,14 +1409,25 @@ static int dump_dnskey(DUMP_PARAMS)
 
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE;
-		DUMP_NUM8;  DUMP_SPACE; WRAP_INIT;
-		DUMP_BASE64;
-		WRAP_END; COMMENT(info);
+		DUMP_NUM8;  DUMP_SPACE;
+		if (p->style->hide_crypto) {
+			DUMP_OMIT;
+			WRAP_LINE;
+		} else {
+			WRAP_INIT;
+			DUMP_BASE64;
+			WRAP_END;
+		}
+		COMMENT(info);
 	} else {
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE;
-		DUMP_BASE64;
+		if (p->style->hide_crypto) {
+			DUMP_KEY_OMIT;
+		} else {
+			DUMP_BASE64;
+		}
 	}
 
 	DUMP_END;
@@ -1489,29 +1550,28 @@ static int dump_ipseckey(DUMP_PARAMS)
 
 static int dump_rrsig(DUMP_PARAMS)
 {
+	DUMP_TYPE;   DUMP_SPACE;
+	DUMP_NUM8;   DUMP_SPACE;
+	DUMP_NUM8;   DUMP_SPACE;
+	DUMP_NUM32;  DUMP_SPACE;
+	DUMP_TIMESTAMP; DUMP_SPACE;
 	if (p->style->wrap) {
-		DUMP_TYPE;   DUMP_SPACE;
-		DUMP_NUM8;   DUMP_SPACE;
-		DUMP_NUM8;   DUMP_SPACE;
-		DUMP_NUM32;  DUMP_SPACE;
-		DUMP_TIMESTAMP; DUMP_SPACE; WRAP_INIT;
-		DUMP_TIMESTAMP; DUMP_SPACE;
-		DUMP_NUM16;  DUMP_SPACE;
-		DUMP_DNAME;  WRAP_LINE;
-		DUMP_BASE64;
-		WRAP_END;
+		WRAP_INIT;
+	}
+	DUMP_TIMESTAMP; DUMP_SPACE;
+	DUMP_NUM16;  DUMP_SPACE;
+	DUMP_DNAME;  DUMP_SPACE;
+	if (p->style->wrap) {
+		WRAP_LINE;
+	}
+	if (p->style->hide_crypto) {
+		DUMP_OMIT;
 	} else {
-		DUMP_TYPE;   DUMP_SPACE;
-		DUMP_NUM8;   DUMP_SPACE;
-		DUMP_NUM8;   DUMP_SPACE;
-		DUMP_NUM32;  DUMP_SPACE;
-		DUMP_TIMESTAMP; DUMP_SPACE;
-		DUMP_TIMESTAMP; DUMP_SPACE;
-		DUMP_NUM16;  DUMP_SPACE;
-		DUMP_DNAME;  DUMP_SPACE;
 		DUMP_BASE64;
 	}
-
+	if (p->style->wrap) {
+		WRAP_END;
+	}
 	DUMP_END;
 }
 

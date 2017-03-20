@@ -46,6 +46,8 @@ typedef struct {
 	bool	human_tmstamp;
 	/*!< Force generic data representation. */
 	bool	generic;
+	/*!< Hide binary parts of RRSIGs and DNSKEYs. */
+	bool	hide_crypto;
 	/*!< ASCII string to IDN string transformation callback. */
 	void (*ascii_to_idn)(char **name);
 } knot_dump_style_t;

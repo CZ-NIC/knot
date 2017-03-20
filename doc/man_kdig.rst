@@ -109,6 +109,9 @@ Options
   Use the generic representation format when printing resource record types
   and data.
 
+**+**\ [\ **no**\ ]\ **crypto**
+  Display the DNSSEC keys and signatures values in hexdump, instead of omitting them.
+
 **+**\ [\ **no**\ ]\ **aaflag**
   Set the AA flag.
 
