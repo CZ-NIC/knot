@@ -700,7 +700,6 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 			pkt->size -= rr_size;
 			pkt->tsig_wire.pos = pkt->wire + pkt->parsed;
 			pkt->tsig_wire.len = rr_size;
-			knot_wire_set_id(pkt->wire, knot_tsig_rdata_orig_id(rr));
 			knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
 		}
 		break;
