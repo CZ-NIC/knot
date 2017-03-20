@@ -205,11 +205,15 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 
 	switch (cmd) {
 	case CTL_STATUS:
-		if (data_type == KNOT_CTL_TYPE_DATA &&
-		    value != NULL && *value != '\0') {
-			printf("%s\n", value);
+		if (error != NULL) {
+			printf("error: (%s)%s%s", error,
+			       (type != NULL) ? " "  : "",
+			       (type != NULL) ? type : "");
+		} else if (value != NULL) {
+			printf("%s", value);
+			*empty = false;
 		}
-		// FALLTHROUGH
+		break;
 	case CTL_STOP:
 	case CTL_RELOAD:
 	case CTL_CONF_BEGIN:
@@ -326,7 +330,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 {
 	switch (cmd) {
 	case CTL_STATUS:
-		printf("%s\n", failed ? "" : "Running");
+		printf("%s\n", (failed || !empty) ? "" : "Running");
 		break;
 	case CTL_STOP:
 		printf("%s\n", failed ? "" : "Stopped");
@@ -420,7 +424,7 @@ static int cmd_ctl(cmd_args_t *args)
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
 		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL,
-		[KNOT_CTL_IDX_DATA] = (args->argc > 0 ? args->argv[0] : "")
+		[KNOT_CTL_IDX_TYPE] = args->argc > 0 ? args->argv[0] : NULL
 	};
 
 	// Send the command.
