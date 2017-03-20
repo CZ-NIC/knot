@@ -198,7 +198,7 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	struct timespec t_end = time_now();
 	log_zone_info(zone->name, "DDNS, update finished, serial %u -> %u, "
 	              "%.02f seconds", old_serial, new_serial,
-	              time_diff_ms(&t_start, &t_end));
+	              time_diff_ms(&t_start, &t_end) / 1000.0);
 
 	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
 }
