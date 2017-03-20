@@ -948,7 +948,7 @@ static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *dat
 	if (ctr->count == 1) {
 		int ret = snprintf(value, sizeof(value), "%"PRIu64, ctr->counter);
 		if (ret <= 0 || ret >= sizeof(value)) {
-			return ret;
+			return KNOT_ESPACE;
 		}
 
 		(*data)[KNOT_CTL_IDX_ID] = NULL;
@@ -980,13 +980,13 @@ static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *dat
 				ret = snprintf(index, sizeof(index), "%u", i);
 			}
 			if (ret <= 0 || ret >= sizeof(index)) {
-				return ret;
+				return KNOT_ESPACE;
 			}
 
-			ret = snprintf(value, sizeof(value),  "%"PRIu64,
+			ret = snprintf(value, sizeof(value), "%"PRIu64,
 			               ctr->counters[i]);
 			if (ret <= 0 || ret >= sizeof(value)) {
-				return ret;
+				return KNOT_ESPACE;
 			}
 
 			(*data)[KNOT_CTL_IDX_ID] = index;
@@ -1125,27 +1125,47 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 	}
 }
 
+static int server_status(ctl_args_t *args)
+{
+	const char *type = args->data[KNOT_CTL_IDX_TYPE];
+
+	if (type == NULL || strlen(type) == 0) {
+		return KNOT_EOK;
+	}
+
+	char buff[2048] = "";
+
+	int ret;
+	if (strcasecmp(type, "version") == 0) {
+		ret = snprintf(buff, sizeof(buff), "Version: %s", PACKAGE_VERSION);
+	} else if (strcasecmp(type, "workers") == 0) {
+		ret = snprintf(buff, sizeof(buff), "UDP workers: %zu, TCP workers %zu, "
+		               "background workers: %zu", conf_udp_threads(conf()),
+		               conf_tcp_threads(conf()), conf_bg_threads(conf()));
+	} else if (strcasecmp(type, "configure") == 0) {
+		ret = snprintf(buff, sizeof(buff), "%s", CONFIGURE_SUMMARY);
+	} else {
+		return KNOT_EINVAL;
+	}
+	if (ret <= 0 || ret >= sizeof(buff)) {
+		return KNOT_ESPACE;
+	}
+
+	args->data[KNOT_CTL_IDX_DATA] = buff;
+
+	return knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &args->data);
+}
+
 static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 {
 	int ret = KNOT_EOK;
-	char outbuf[2048] = { 0 };
 
 	switch (cmd) {
 	case CTL_STATUS:
-		ret = KNOT_EOK;
-		if (strcasecmp(args->data[KNOT_CTL_IDX_DATA], "version") == 0) {
-			snprintf(outbuf, sizeof(outbuf), "Version: %s", PACKAGE_VERSION);
-		} else if (strcasecmp(args->data[KNOT_CTL_IDX_DATA], "workers") == 0) {
-			snprintf(outbuf, sizeof(outbuf), "UDP workers: %zu, TCP workers %zu, "
-				 "background workers: %zu", conf_udp_threads(conf()),
-				 conf_tcp_threads(conf()), conf_bg_threads(conf()));
-		} else if (strcasecmp(args->data[KNOT_CTL_IDX_DATA], "configure") == 0) {
-			snprintf(outbuf, sizeof(outbuf), "%s", CONFIGURE_SUMMARY);
-		} else if (args->data[KNOT_CTL_IDX_DATA][0] != '\0') {
-			return KNOT_EINVAL;
+		ret = server_status(args);
+		if (ret != KNOT_EOK) {
+			send_error(args, knot_strerror(ret));
 		}
-		args->data[KNOT_CTL_IDX_DATA] = outbuf;
-		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &args->data);
 		break;
 	case CTL_STOP:
 		ret = KNOT_CTL_ESTOP;
@@ -1196,6 +1216,7 @@ static int ctl_stats(ctl_args_t *args, ctl_cmd_t cmd)
 			int ret = snprintf(value, sizeof(value), "%"PRIu64,
 			                   i->val(args->server));
 			if (ret <= 0 || ret >= sizeof(value)) {
+				ret = KNOT_ESPACE;
 				send_error(args, knot_strerror(ret));
 				return ret;
 			}

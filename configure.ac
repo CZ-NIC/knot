@@ -536,8 +536,7 @@ AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 
-result_msg_base="
-  $PACKAGE $VERSION
+result_msg_base="  $PACKAGE $VERSION
 
     Target:   $host_os $host_cpu
     Compiler: ${CC}
@@ -573,11 +572,12 @@ result_msg_base="
     Dnstap support:      ${opt_dnstap}
     Code coverage:       ${enable_code_coverage}
     Bash completions:    ${bash_completions_output}
-    PKCS #11 support:    ${enable_pkcs11}
-"
+    PKCS #11 support:    ${enable_pkcs11}"
 
-result_msg_esc=$(echo -n "$result_msg_base" | sed 's/$/\\n/' | tr -d '\n')
-result_msg_add="$result_msg_base
+result_msg_esc=$(echo -n "$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
+result_msg_add="
+$result_msg_base
+
   Continue with 'make' command
 "
 
