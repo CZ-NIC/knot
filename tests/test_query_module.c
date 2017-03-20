@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,10 +25,11 @@
 #include "contrib/ucw/mempool.h"
 
 /* Universal processing stage. */
-int state_visit(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+unsigned state_visit(unsigned state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
+                     knotd_mod_t *mod)
 {
 	/* Visit current state */
-	bool *state_map = ctx;
+	bool *state_map = (bool *)mod;
 	state_map[state] = true;
 
 	return state + 1;
@@ -36,14 +37,14 @@ int state_visit(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 
 int main(int argc, char *argv[])
 {
-	plan(4);
+	plan_lazy();
 
 	/* Create processing context. */
 	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Create a map of expected steps. */
-	bool state_map[QUERY_PLAN_STAGES] = { false };
+	bool state_map[KNOTD_STAGES] = { false };
 
 	/* Prepare query plan. */
 	struct query_plan *plan = query_plan_create(&mm);
@@ -51,7 +52,7 @@ int main(int argc, char *argv[])
 
 	/* Register all stage visits. */
 	int ret = KNOT_EOK;
-	for (unsigned stage = QPLAN_BEGIN; stage < QUERY_PLAN_STAGES; ++stage) {
+	for (unsigned stage = KNOTD_STAGE_BEGIN; stage < KNOTD_STAGES; ++stage) {
 		ret = query_plan_step(plan, stage, state_visit, state_map);
 		if (ret != KNOT_EOK) {
 			break;
@@ -61,7 +62,7 @@ int main(int argc, char *argv[])
 
 	/* Execute the plan. */
 	int state = 0, next_state = 0;
-	for (unsigned stage = QPLAN_BEGIN; stage < QUERY_PLAN_STAGES; ++stage) {
+	for (unsigned stage = KNOTD_STAGE_BEGIN; stage < KNOTD_STAGES; ++stage) {
 		struct query_step *step = NULL;
 		WALK_LIST(step, plan->stage[stage]) {
 			next_state = step->process(state, NULL, NULL, step->ctx);
@@ -71,15 +72,15 @@ int main(int argc, char *argv[])
 			state = next_state;
 		}
 	}
-	ok(state == QUERY_PLAN_STAGES, "query_plan: executed all steps");
+	ok(state == KNOTD_STAGES, "query_plan: executed all steps");
 
 	/* Verify if all steps executed their callback. */
-	for (state = 0; state < QUERY_PLAN_STAGES; ++state) {
+	for (state = 0; state < KNOTD_STAGES; ++state) {
 		if (state_map[state] == false) {
 			break;
 		}
 	}
-	ok(state == QUERY_PLAN_STAGES, "query_plan: executed all callbacks");
+	ok(state == KNOTD_STAGES, "query_plan: executed all callbacks");
 
 	/* Free the query plan. */
 	query_plan_free(plan);

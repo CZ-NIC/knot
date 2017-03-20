@@ -38,7 +38,7 @@
 /libknot/test_ypscheme
 /libknot/test_yptrafo
 
-/modules/test_online_sign
+/modules/test_onlinesign
 /modules/test_rrl
 
 /utils/test_cert

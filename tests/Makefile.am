@@ -50,10 +50,6 @@ check_PROGRAMS += \
 	libknot/test_yptrafo
 
 check_PROGRAMS += \
-	modules/test_online_sign	\
-	modules/test_rrl
-
-check_PROGRAMS += \
 	utils/test_cert			\
 	utils/test_lookup
 
@@ -81,6 +77,26 @@ check_PROGRAMS += \
 	test_zone_serial		\
 	test_zone_timers		\
 	test_zonedb
+
+if STATIC_MODULE_onlinesign
+check_PROGRAMS += \
+	modules/test_onlinesign
+else
+if SHARED_MODULE_onlinesign
+check_PROGRAMS += \
+	modules/test_onlinesign
+endif
+endif
+
+if STATIC_MODULE_rrl
+check_PROGRAMS += \
+	modules/test_rrl
+else
+if SHARED_MODULE_rrl
+check_PROGRAMS += \
+	modules/test_rrl
+endif
+endif
 
 utils_test_lookup_CPPFLAGS = \
 	$(AM_CPPFLAGS) \

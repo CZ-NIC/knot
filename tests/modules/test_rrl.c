@@ -147,8 +147,8 @@ int main(int argc, char *argv[])
 	sockaddr_set(&addr6, AF_INET6, "1122:3344:5566:7788::aabb", 0);
 	ret = 0;
 	for (unsigned i = 0; i < rate; ++i) {
-		if (rrl_query(rrl, &addr, &rq, zone) != KNOT_EOK ||
-		    rrl_query(rrl, &addr6, &rq, zone) != KNOT_EOK) {
+		if (rrl_query(rrl, &addr, &rq, zone, NULL) != KNOT_EOK ||
+		    rrl_query(rrl, &addr6, &rq, zone, NULL) != KNOT_EOK) {
 			ret = KNOT_ELIMIT;
 			break;
 		}
@@ -157,11 +157,11 @@ int main(int argc, char *argv[])
 
 #ifdef ENABLE_TIMED_TESTS
 	/* 5. limited request */
-	ret = rrl_query(rrl, &addr, &rq, zone);
+	ret = rrl_query(rrl, &addr, &rq, zone, NULL);
 	is_int(KNOT_ELIMIT, ret, "rrl: throttled IPv4 request");
 
 	/* 6. limited IPv6 request */
-	ret = rrl_query(rrl, &addr6, &rq, zone);
+	ret = rrl_query(rrl, &addr6, &rq, zone, NULL);
 	is_int(KNOT_ELIMIT, ret, "rrl: throttled IPv6 request");
 #endif
 
@@ -171,9 +171,9 @@ int main(int argc, char *argv[])
 	ret += rrl_setrate(0, 0); // 0
 	ret += rrl_rate(0);       // 0
 	ret += rrl_setlocks(0,0); // -1
-	ret += rrl_query(0, 0, 0, 0); // -1
-	ret += rrl_query(rrl, 0, 0, 0); // -1
-	ret += rrl_query(rrl, (void*)0x1, 0, 0); // -1
+	ret += rrl_query(0, 0, 0, 0, NULL); // -1
+	ret += rrl_query(rrl, 0, 0, 0, NULL); // -1
+	ret += rrl_query(rrl, (void*)0x1, 0, 0, NULL); // -1
 	ret += rrl_destroy(0); // -1
 	is_int(-88, ret, "rrl: not crashed while executing functions on NULL context");
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 #include <tap/basic.h>
 #include <assert.h>
 
-#include "knot/modules/online_sign/nsec_next.h"
+#include "knot/modules/onlinesign/nsec_next.h"
 #include "libknot/consts.h"
 #include "libknot/dname.h"
 #include "libknot/errcode.h"

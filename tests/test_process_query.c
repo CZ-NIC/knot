@@ -23,6 +23,7 @@
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
 #include "test_server.h"
+#include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 
 /* Basic response check (4 TAP tests). */
@@ -101,12 +102,13 @@ int main(int argc, char *argv[])
 	struct sockaddr_storage ss;
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 	sockaddr_set(&ss, AF_INET, "127.0.0.1", 53);
-	struct process_query_param param = {0};
-	param.remote = &ss;
-	param.server = &server;
+	knotd_qdata_params_t params = {
+		.remote = &ss,
+		.server = &server
+	};
 
 	/* Query processor (CH zone) */
-	knot_layer_begin(&proc, &param);
+	knot_layer_begin(&proc, &params);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, IDSERVER_DNAME, KNOT_CLASS_CH, KNOT_RRTYPE_TXT);
 	exec_query(&proc, "CH TXT", query, KNOT_RCODE_NOERROR);
