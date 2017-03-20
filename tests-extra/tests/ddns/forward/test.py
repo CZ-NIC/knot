@@ -6,7 +6,7 @@ from dnstest.test import Test
 
 t = Test()
 
-master = t.server("bind")
+master = t.server("knot")
 slave = t.server("knot")
 zone = t.zone("example.com.")
 
