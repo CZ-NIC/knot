@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -645,12 +645,6 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 		while (true) {
 			changeset_set_soa_serials(&ch, serial, serial + 1, apex);
 			ret = journal_store_changeset(j, &ch);
-
-			if (ret != KNOT_EOK) {
-				fprintf(stderr, "store failed %d serial=%d (espace=%d ebusy=%d)\n",
-				        ret, serial, KNOT_ESPACE, KNOT_EBUSY);
-			}
-
 			if (ret == KNOT_EOK) {
 				serial++;
 			} else {
@@ -670,13 +664,13 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 /*! \brief Test behavior when writing to jurnal and flushing it. */
 static void test_stress(journal_t *j)
 {
-	printf("stress test: small data\n");
+	diag("stress test: small data");
 	test_stress_base(j, 40, 1024 * 1024 / 2);
 
-	printf("stress test: medium data\n");
+	diag("stress test: medium data");
 	test_stress_base(j, 400, 3 * 1024 * 1024);
 
-	printf("stress test: large data\n");
+	diag("stress test: large data");
 	test_stress_base(j, 4000, 10 * 1024 * 1024);
 }
 
