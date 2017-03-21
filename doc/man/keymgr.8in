@@ -1,8 +1,8 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "KKEYMGR" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
+.TH "KEYMGR" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
-kkeymgr \-  DNSSEC key management utility
+keymgr \-  DNSSEC key management utility
 .
 .nr rst2man-indent-level 0
 .
@@ -32,12 +32,12 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkkeymgr\fP \fIbasic_option\fP [\fIparameters\fP\&...]
+\fBkeymgr\fP \fIbasic_option\fP [\fIparameters\fP\&...]
 .sp
-\fBkkeymgr\fP \fIconfig_option\fP \fIconfig_storage\fP \fIzone_name\fP \fIaction\fP \fIparameters\fP\&...
+\fBkeymgr\fP \fIconfig_option\fP \fIconfig_storage\fP \fIzone_name\fP \fIaction\fP \fIparameters\fP\&...
 .SH DESCRIPTION
 .sp
-The \fBkkeymgr\fP utility serves for key management in Knot DNS server.
+The \fBkeymgr\fP utility serves for key management in Knot DNS server.
 .sp
 Functions for DNSSEC keys and KASP (Key And Signature Policy)
 management are provided.
@@ -154,7 +154,7 @@ Generate TSIG key:
 .sp
 .nf
 .ft C
-$ kkeymgr \-t my_name hmac\-sha384
+$ keymgr \-t my_name hmac\-sha384
 .ft P
 .fi
 .UNINDENT
@@ -166,7 +166,7 @@ Import a key from BIND:
 .sp
 .nf
 .ft C
-$ kkeymgr \-d ${knot_data_dir}/keys example.com. import\-bind ~/bind/Kharbinge4d5.+007+63089.key
+$ keymgr \-d ${knot_data_dir}/keys example.com. import\-bind ~/bind/Kharbinge4d5.+007+63089.key
 .ft P
 .fi
 .UNINDENT
@@ -178,7 +178,7 @@ Generate new key:
 .sp
 .nf
 .ft C
-$ kkeymgr \-c ${knot_data_dir}/knot.conf example.com. generate algorithm=ECDSAP256SHA256 size=256 \e
+$ keymgr \-c ${knot_data_dir}/knot.conf example.com. generate algorithm=ECDSAP256SHA256 size=256 \e
   ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
 .ft P
 .fi
@@ -191,7 +191,7 @@ Configure key timing:
 .sp
 .nf
 .ft C
-$ kkeymgr \-d ${knot_data_dir}/keys test.test. set 4208 active=t+2mi retire=t+4mi remove=t+5mi
+$ keymgr \-d ${knot_data_dir}/keys test.test. set 4208 active=t+2mi retire=t+4mi remove=t+5mi
 .ft P
 .fi
 .UNINDENT
@@ -203,7 +203,7 @@ Share a KSK from another zone:
 .sp
 .nf
 .ft C
-$ kkeymgr \-c ${knot_data_dir}/knot.conf test.test. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
+$ keymgr \-c ${knot_data_dir}/knot.conf test.test. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
 .ft P
 .fi
 .UNINDENT

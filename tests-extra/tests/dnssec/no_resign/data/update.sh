@@ -2,7 +2,7 @@
 
 set -e
 
-KKEYMGR=${KKEYMGR:-kkeymgr}
+KEYMGR=${KEYMGR:-keymgr}
 
 export BASEDIR=`mktemp -d "/tmp/zone_sign-XXX"`
 ../../../../tools/zone_sign.sh example. ../../../../data/example.zone nsec

@@ -88,7 +88,7 @@ Access control list (ACL)
 
 An ACL list specifies which remotes are allowed to send the server a specific
 request. A remote can be a single IP address or a network subnet. Also a TSIG
-key can be assigned (see :doc:`kkeymgr <man_kkeymgr>` how to generate a TSIG key).
+key can be assigned (see :doc:`keymgr <man_keymgr>` how to generate a TSIG key).
 
 With no ACL rule, all the actions are denied for the zone. Each ACL rule
 can allow one or more actions for given address/subnet/TSIG, or deny them.
@@ -339,7 +339,7 @@ the server logs to see whether everything went well.
 .. WARNING::
   This guide assumes that the zone *myzone.test* was not signed prior to
   enabling the automatic key management. If the zone was already signed, all
-  existing keys must be imported using ``kkeymgr import-bind`` command
+  existing keys must be imported using ``keymgr import-bind`` command
   before enabling the automatic signing. Also the algorithm in the policy must
   match the algorithm of all imported keys. Otherwise the zone will be resigned
   at all.
@@ -361,13 +361,13 @@ with manual key management flag has to be set::
       dnssec-signing: on
       dnssec-policy: manual
 
-To generate signing keys, use the :doc:`kkeymgr <man_kkeymgr>` utility.
+To generate signing keys, use the :doc:`keymgr <man_keymgr>` utility.
 Let's use the Single-Type Signing scheme with two algorithms. Run:
 
 .. code-block:: console
 
-  $ kkeymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024
-  $ kkeymgr -d path/to/keydir myzone.test. generate algorithm=ECDSAP256SHA256 size=256
+  $ keymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024
+  $ keymgr -d path/to/keydir myzone.test. generate algorithm=ECDSAP256SHA256 size=256
 
 And reload the server. The zone will be signed.
 
@@ -377,14 +377,14 @@ it yet:
 
 .. code-block:: console
 
-  $ kkeymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024 active=now+1d
+  $ keymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024 active=now+1d
 
 Take the key ID (or key tag) of the old RSA key and disable it the same time
 the new key gets activated:
 
 .. code-block:: console
 
-  $ kkeymgr -d path/to/keydir myzone.test. set <old_key_id> retire=now+1d remove=now+1d
+  $ keymgr -d path/to/keydir myzone.test. set <old_key_id> retire=now+1d remove=now+1d
 
 Reload the server again. The new key will be published (i.e. the DNSKEY record
 will be added into the zone). Do not forget to update the DS record in the

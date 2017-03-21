@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "utils/kkeymgr/functions.h"
+#include "utils/keymgr/functions.h"
 
 #include <ctype.h>
 #include <limits.h>
@@ -27,7 +27,7 @@
 #include "dnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/zone-keys.h"
-#include "utils/kkeymgr/bind_privkey.h"
+#include "utils/keymgr/bind_privkey.h"
 #include "zscanner/scanner.h"
 
 static time_t arg_timestamp(const char *arg)
@@ -163,7 +163,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 }
 
 // modifies ctx->policy options, so don't do anything afterwards !
-int kkeymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]) {
+int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]) {
 	time_t now = time(NULL), infty = 0x0fffffffffffff00LLU;
 	knot_kasp_key_timing_t gen_timing = { now, now, now, infty, infty };
 	bool isksk = false;
@@ -272,7 +272,7 @@ static char *genname(const char *orig, const char *wantsuff, const char *altsuff
 	return res;
 }
 
-int kkeymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file)
+int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file)
 {
 	char *pubname = genname(import_file, ".key", ".private");
 	char *privname = genname(import_file, ".private", ".key");
@@ -368,7 +368,7 @@ static void print_tsig(dnssec_tsig_algorithm_t mac, const char *name,
 	printf("    secret: %.*s\n", (int)secret->size, secret->data);
 }
 
-int kkeymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
+int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
 {
 	dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_name(alg_name);
 	if (alg == DNSSEC_TSIG_UNKNOWN) {
@@ -438,7 +438,7 @@ static bool is_hex(const char *string)
 	return (*string != '\0');
 }
 
-int kkeymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key)
+int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key)
 {
 	long spec_tag = is_uint32(key_spec), spec_len = strlen(key_spec);
 	if (spec_tag < 0 && !is_hex(key_spec)) {
@@ -467,7 +467,7 @@ int kkeymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **
 	return KNOT_EOK;
 }
 
-int kkeymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
+int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 {
 	knot_kasp_key_timing_t temp = key->timing;
 
@@ -478,7 +478,7 @@ int kkeymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 	return KNOT_EINVAL;
 }
 
-int kkeymgr_list_keys(kdnssec_ctx_t *ctx)
+int keymgr_list_keys(kdnssec_ctx_t *ctx)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
@@ -532,7 +532,7 @@ static int create_and_print_ds(const knot_dname_t *zone_name,
 	return print_ds(zone_name, &rdata);
 }
 
-int kkeymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key)
+int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key)
 {
 	static const dnssec_key_digest_t digests[] = {
 		DNSSEC_KEY_DIGEST_SHA1,
@@ -549,7 +549,7 @@ int kkeymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key)
 	return ret;
 }
 
-int kkeymgr_share_key(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key,
+int keymgr_share_key(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key,
 		      const char *zone_name_ch)
 {
 	knot_dname_t *zone_name = knot_dname_from_str_alloc(zone_name_ch);
