@@ -47,10 +47,10 @@ The databse is backed by LMDB.
 .SS Basic options
 .INDENT 0.0
 .TP
-\fB\-h\fP
+\fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
-\fB\-V\fP
+\fB\-V\fP, \fB\-\-version\fP
 Print the program version.
 .TP
 \fB\-t\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
