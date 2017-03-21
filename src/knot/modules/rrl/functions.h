@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,12 +26,6 @@
 /* Defaults */
 #define RRL_SLIP_MAX 100
 #define RRL_LOCK_GRANULARITY 32 /* Last digit granularity */
-
-/*! \brief RRL flags. */
-enum {
-	RRL_NOFLAG    = 0 << 0, /*!< No flags. */
-	RRL_WILDCARD  = 1 << 1  /*!< Query to wildcard name. */
-};
 
 /*!
  * \brief RRL hash bucket.
@@ -68,13 +62,19 @@ typedef struct {
 	rrl_item_t arr[];    /* Buckets. */
 } rrl_table_t;
 
+/*! \brief RRL request flags. */
+typedef enum {
+	RRL_REQ_NOFLAG    = 0 << 0, /*!< No flags. */
+	RRL_REQ_WILDCARD  = 1 << 1  /*!< Query to wildcard name. */
+} rrl_req_flag_t;
+
 /*!
  * \brief RRL request descriptor.
  */
 typedef struct {
 	const uint8_t *w;
 	uint16_t len;
-	unsigned flags;
+	rrl_req_flag_t flags;
 	knot_pkt_t *query;
 } rrl_req_t;
 

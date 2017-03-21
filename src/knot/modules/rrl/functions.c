@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -98,7 +98,7 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	}
 
 	/* Check if answered from a qname */
-	if (ret == CLS_NORMAL && p->flags & RRL_WILDCARD) {
+	if (ret == CLS_NORMAL && p->flags & RRL_REQ_WILDCARD) {
 		return CLS_WILDCARD;
 	}
 
@@ -385,10 +385,13 @@ rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 	/* Find an exact match in <id, id + HOP_LEN). */
 	uint16_t *qname = (uint16_t *)(buf + sizeof(uint8_t) + sizeof(uint64_t));
 	rrl_item_t match = {
-	        0, *((uint64_t *)(buf + 1)),             /* hop, netblk */
-		t->rate * RRL_CAPACITY,                  /* ntok */
-	        buf[0], RRL_BF_NULL,                     /* cls, flags */
-	        hash((char *)(qname + 1), *qname), stamp /* qname, time */
+		.hop = 0,
+		.netblk = *((uint64_t *)(buf + 1)),
+		.ntok = t->rate * RRL_CAPACITY,
+		.cls = buf[0],
+		.flags = RRL_BF_NULL,
+		.qname = hash((char *)(qname + 1), *qname),
+		.time = stamp
 	};
 
 	unsigned d = find_match(t, id, &match);

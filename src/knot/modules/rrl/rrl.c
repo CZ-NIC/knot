@@ -103,7 +103,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, struct query_data *qdata,
 	};
 
 	if (!EMPTY_LIST(qdata->wildcards)) {
-		req.flags = RRL_WILDCARD;
+		req.flags = RRL_REQ_WILDCARD;
 	}
 
 	// Take the zone name if known.
