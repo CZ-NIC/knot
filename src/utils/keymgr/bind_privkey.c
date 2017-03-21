@@ -22,7 +22,7 @@
 #include "dnssec/error.h"
 #include "shared/pem.h"
 #include "shared/shared.h"
-#include "utils/kkeymgr/bind_privkey.h"
+#include "utils/keymgr/bind_privkey.h"
 
 /* -- private key params conversion ---------------------------------------- */
 

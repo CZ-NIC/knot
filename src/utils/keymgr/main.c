@@ -20,9 +20,9 @@
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
 #include "utils/common/params.h"
-#include "utils/kkeymgr/functions.h"
+#include "utils/keymgr/functions.h"
 
-#define PROGRAM_NAME	"kkeymgr"
+#define PROGRAM_NAME	"keymgr"
 
 static void print_help(void)
 {
@@ -138,8 +138,8 @@ int main(int argc, char *argv[])
 		break;
 	case 't':
 		check_argc_three
-		int tret = kkeymgr_generate_tsig(argv[2], (argc >= 4 ? argv[3] : "hmac-sha256"),
-		                                 (argc >= 5 ? atol(argv[4]) : 0));
+		int tret = keymgr_generate_tsig(argv[2], (argc >= 4 ? argv[3] : "hmac-sha256"),
+		                                (argc >= 5 ? atol(argv[4]) : 0));
 		if (tret != KNOT_EOK) {
 			printf("Failed to generate TSIG (%s)\n", knot_strerror(tret));
 		}
@@ -186,14 +186,14 @@ int main(int argc, char *argv[])
 	}
 
 	if (strcmp(argv[4], "generate") == 0) {
-		ret = kkeymgr_generate_key(&kctx, argc - 5, argv + 5);
+		ret = keymgr_generate_key(&kctx, argc - 5, argv + 5);
 	} else if (strcmp(argv[4], "import-bind") == 0) {
 		if (argc < 6) {
 			printf("BIND-style key to import not specified.\n");
 			ret = KNOT_EINVAL;
 			goto main_end;
 		}
-		ret = kkeymgr_import_bind(&kctx, argv[5]);
+		ret = keymgr_import_bind(&kctx, argv[5]);
 	} else if (strcmp(argv[4], "set") == 0) {
 		if (argc < 6) {
 			printf("Key is not specified.\n");
@@ -201,15 +201,15 @@ int main(int argc, char *argv[])
 			goto main_end;
 		}
 		knot_kasp_key_t *key2set;
-		ret = kkeymgr_get_key(&kctx, argv[5], &key2set);
+		ret = keymgr_get_key(&kctx, argv[5], &key2set);
 		if (ret == KNOT_EOK) {
-			ret = kkeymgr_set_timing(key2set, argc - 6, argv + 6);
+			ret = keymgr_set_timing(key2set, argc - 6, argv + 6);
 			if (ret == KNOT_EOK) {
 				ret = kdnssec_ctx_commit(&kctx);
 			}
 		}
 	} else if (strcmp(argv[4], "list") == 0) {
-		ret = kkeymgr_list_keys(&kctx);
+		ret = keymgr_list_keys(&kctx);
 	} else if (strcmp(argv[4], "ds") == 0) {
 		if (argc < 6) {
 			printf("Key is not specified.\n");
@@ -217,9 +217,9 @@ int main(int argc, char *argv[])
 			goto main_end;
 		}
 		knot_kasp_key_t *key2ds;
-		ret = kkeymgr_get_key(&kctx, argv[5], &key2ds);
+		ret = keymgr_get_key(&kctx, argv[5], &key2ds);
 		if (ret == KNOT_EOK) {
-			ret = kkeymgr_generate_ds(zone_name, key2ds);
+			ret = keymgr_generate_ds(zone_name, key2ds);
 		}
 	} else if (strcmp(argv[4], "share") == 0) {
 		if (argc < 6) {
@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
 			goto main_end;
 		}
 		knot_kasp_key_t *key2del;
-		ret = kkeymgr_get_key(&kctx, argv[5], &key2del);
+		ret = keymgr_get_key(&kctx, argv[5], &key2del);
 		if (ret == KNOT_EOK) {
 			ret = kdnssec_delete_key(&kctx, key2del);
 		}

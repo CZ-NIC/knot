@@ -1,19 +1,19 @@
 .. highlight:: console
 
-kkeymgr – Key management utility
-=================================
+keymgr – Key management utility
+===============================
 
 Synopsis
 --------
 
-:program:`kkeymgr` *basic_option* [*parameters*...]
+:program:`keymgr` *basic_option* [*parameters*...]
 
-:program:`kkeymgr` *config_option* *config_storage* *zone_name* *action* *parameters*...
+:program:`keymgr` *config_option* *config_storage* *zone_name* *action* *parameters*...
 
 Description
 -----------
 
-The :program:`kkeymgr` utility serves for key management in Knot DNS server.
+The :program:`keymgr` utility serves for key management in Knot DNS server.
 
 Functions for DNSSEC keys and KASP (Key And Signature Policy)
 management are provided.
@@ -127,24 +127,24 @@ Examples
 
 1. Generate TSIG key::
 
-    $ kkeymgr -t my_name hmac-sha384
+    $ keymgr -t my_name hmac-sha384
 
 2. Import a key from BIND::
 
-    $ kkeymgr -d ${knot_data_dir}/keys example.com. import-bind ~/bind/Kharbinge4d5.+007+63089.key
+    $ keymgr -d ${knot_data_dir}/keys example.com. import-bind ~/bind/Kharbinge4d5.+007+63089.key
 
 3. Generate new key::
 
-    $ kkeymgr -c ${knot_data_dir}/knot.conf example.com. generate algorithm=ECDSAP256SHA256 size=256 \
+    $ keymgr -c ${knot_data_dir}/knot.conf example.com. generate algorithm=ECDSAP256SHA256 size=256 \
       ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
 
 4. Configure key timing::
 
-    $ kkeymgr -d ${knot_data_dir}/keys test.test. set 4208 active=t+2mi retire=t+4mi remove=t+5mi
+    $ keymgr -d ${knot_data_dir}/keys test.test. set 4208 active=t+2mi retire=t+4mi remove=t+5mi
 
 5. Share a KSK from another zone::
 
-    $ kkeymgr -c ${knot_data_dir}/knot.conf test.test. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
+    $ keymgr -c ${knot_data_dir}/knot.conf test.test. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
 
 See Also
 --------

@@ -11,7 +11,7 @@ the server. This section collects manual pages for all provided binaries:
    :titlesonly:
 
    man_kdig
-   man_kkeymgr
+   man_keymgr
    man_pykeymgr
    man_khost
    man_kjournalprint

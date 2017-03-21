@@ -87,7 +87,7 @@ class Tsig(object):
 class Keymgr(object):
     @classmethod
     def run(cls, kasp_dir, *args):
-        cmdline = [dnstest.params.kkeymgr_bin]
+        cmdline = [dnstest.params.keymgr_bin]
         if kasp_dir:
             cmdline += ["-d", kasp_dir]
         cmdline += list(args)

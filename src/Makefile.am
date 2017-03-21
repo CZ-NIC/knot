@@ -418,7 +418,7 @@ libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(lib
 
 if HAVE_DAEMON
 
-sbin_PROGRAMS = knotc knotd
+sbin_PROGRAMS = knotc knotd keymgr
 libexec_PROGRAMS = knot1to2
 noinst_LTLIBRARIES += libknotd.la libknotus.la
 
@@ -440,6 +440,13 @@ knotc_SOURCES =					\
 knotd_SOURCES =					\
 	utils/knotd/main.c
 
+keymgr_SOURCES = 				\
+	utils/keymgr/bind_privkey.c		\
+	utils/keymgr/bind_privkey.h		\
+	utils/keymgr/functions.c		\
+	utils/keymgr/functions.h		\
+	utils/keymgr/main.c
+
 knot1to2_SOURCES =				\
 	utils/knot1to2/cf-lex.c			\
 	utils/knot1to2/cf-parse.tab.c		\
@@ -451,11 +458,16 @@ knot1to2_SOURCES =				\
 	utils/knot1to2/main.c			\
 	utils/knot1to2/scheme.h
 
-knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
-knotd_LDADD = libknotd.la libcontrib.la $(liburcu_LIBS)
-knotc_CPPFLAGS = $(AM_CPPFLAGS) $(libedit_CFLAGS)
-knotc_LDADD = libknotd.la libknotus.la $(libedit_LIBS)
-knot1to2_LDADD = libcontrib.la
+knotd_CPPFLAGS  = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
+knotd_LDADD     = libknotd.la libcontrib.la $(liburcu_LIBS)
+knotc_CPPFLAGS  = $(AM_CPPFLAGS) $(libedit_CFLAGS)
+knotc_LDADD     = libknotd.la libknotus.la $(libedit_LIBS)
+keymgr_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS) -I$(srcdir)/dnssec/lib/dnssec \
+                  -I$(srcdir)/dnssec $(gnutls_CFLAGS)
+keymgr_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la \
+                  libknotd.la libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
+                  zscanner/libzscanner.la $(gnutls_LIBS)
+knot1to2_LDADD  = libcontrib.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
@@ -491,7 +503,7 @@ if HAVE_UTILS
 
 bin_PROGRAMS = kdig khost knsec3hash knsupdate
 if HAVE_DAEMON
-bin_PROGRAMS += kzonecheck kjournalprint kkeymgr
+bin_PROGRAMS += kzonecheck kjournalprint
 endif # HAVE_DAEMON
 
 kdig_SOURCES =					\
@@ -529,13 +541,6 @@ kzonecheck_SOURCES =				\
 kjournalprint_SOURCES = 			\
 	utils/kjournalprint/main.c
 
-kkeymgr_SOURCES = 				\
-	utils/kkeymgr/bind_privkey.c		\
-	utils/kkeymgr/bind_privkey.h		\
-	utils/kkeymgr/functions.c		\
-	utils/kkeymgr/functions.h		\
-	utils/kkeymgr/main.c
-
 # bin programs
 kdig_CPPFLAGS          = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 kdig_LDADD             = $(libidn_LIBS) libknotus.la
@@ -546,11 +551,8 @@ knsupdate_LDADD        = zscanner/libzscanner.la libknotus.la
 knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
 knsec3hash_LDADD       = dnssec/libdnssec.la dnssec/libshared.la
 kzonecheck_LDADD       = libknotd.la libcontrib.la
-kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(liburcu_CFLAGS) 
+kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(liburcu_CFLAGS)
 kjournalprint_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la
-kkeymgr_CPPFLAGS       = $(AM_CPPFLAGS) $(liburcu_CFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec $(gnutls_CFLAGS)
-kkeymgr_LDADD          = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la libknotd.la libknotus.la dnssec/libdnssec.la dnssec/libshared.la zscanner/libzscanner.la $(gnutls_LIBS)
-# TODO wrap
 
 #######################################
 # Optional Knot DNS Utilities modules #

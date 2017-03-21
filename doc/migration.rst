@@ -36,10 +36,10 @@ server configuration:
 3. Import all existing zone keys into the KASP database. Make sure that all
    the keys were imported correctly::
 
-   $ kkeymgr -d path/to/keydir example.com. import-bind path/to/Kexample.com.+013+11111
-   $ kkeymgr -d path/to/keydir example.com. import-bind path/to/Kexample.com.+013+22222
+   $ keymgr -d path/to/keydir example.com. import-bind path/to/Kexample.com.+013+11111
+   $ keymgr -d path/to/keydir example.com. import-bind path/to/Kexample.com.+013+22222
    $ ...
-   $ kkeymgr -d path/to/keydir example.com. list
+   $ keymgr -d path/to/keydir example.com. list
 
    .. NOTE::
       The server can be run under a dedicated user account, usually ``knot``.
@@ -47,6 +47,6 @@ server configuration:
       permissions must be set correctly. This can be achieved for instance by
       executing all KASP database management commands under sudo::
 
-      $ sudo -u knot kkeymgr ...
+      $ sudo -u knot keymgr ...
 
 4. Follow :ref:`Automatic DNSSEC signing` steps to configure DNSSEC signing.

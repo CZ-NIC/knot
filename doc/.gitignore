@@ -2,7 +2,7 @@
 
 # sphinx-build manpages
 /man/kdig.1
-/man/kkeymgr.8
+/man/keymgr.8
 /man/pykeymgr.8
 /man/khost.1
 /man/kjournalprint.1
