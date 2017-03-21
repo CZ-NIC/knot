@@ -96,6 +96,15 @@ int main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
+	if (strcmp(argv[1], "--help") == 0) {
+		print_help();
+		return EXIT_SUCCESS;
+	}
+	if (strcmp(argv[1], "--version") == 0) {
+		print_version(PROGRAM_NAME);
+		return EXIT_SUCCESS;
+	}
+
 	if (strlen(argv[1]) != 2 || argv[1][0] != '-') {
 		printf("Bad argument: %s\n", argv[1]);
 		print_help();

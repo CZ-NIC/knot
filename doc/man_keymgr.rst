@@ -22,12 +22,12 @@ The DNSSEC and KASP configuration is stored in a so called KASP database.
 The databse is backed by LMDB.
 
 Basic options
-..............
+.............
 
-**-h**
+**-h**, **--help**
   Print the program help.
 
-**-V**
+**-V**, **--version**
   Print the program version.
 
 **-t** [*tsig_algorithm*] [*tsig_bits*]
