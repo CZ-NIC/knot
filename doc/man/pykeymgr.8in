@@ -2,7 +2,7 @@
 .
 .TH "PYKEYMGR" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
-pykeymgr \-  DNSSEC key management utility
+pykeymgr \- Knot DNS key management utility
 .
 .nr rst2man-indent-level 0
 .
