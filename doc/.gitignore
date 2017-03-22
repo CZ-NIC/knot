@@ -1,15 +1,15 @@
 /_build
 
 # sphinx-build manpages
-/man/kdig.1
-/man/keymgr.8
-/man/pykeymgr.8
-/man/khost.1
-/man/kjournalprint.1
 /man/knot.conf.5
-/man/knot1to2.1
 /man/knotc.8
 /man/knotd.8
+/man/keymgr.8
+/man/pykeymgr.8
+/man/kdig.1
+/man/khost.1
+/man/kjournalprint.1
+/man/knot1to2.1
 /man/knsec3hash.1
 /man/knsupdate.1
 /man/kzonecheck.1

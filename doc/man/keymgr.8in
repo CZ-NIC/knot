@@ -2,7 +2,7 @@
 .
 .TH "KEYMGR" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
-keymgr \-  DNSSEC key management utility
+keymgr \- Knot DNS key management utility
 .
 .nr rst2man-indent-level 0
 .

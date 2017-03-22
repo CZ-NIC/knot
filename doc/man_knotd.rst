@@ -41,4 +41,5 @@ Parameters
 See Also
 --------
 
-:manpage:`knotc(8)`, :manpage:`knot.conf(5)`.
+:manpage:`knot.conf(5)`, :manpage:`knotc(8)`, :manpage:`keymgr(8)`,
+:manpage:`kjournalprint(1)`.
