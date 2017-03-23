@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -292,7 +292,7 @@ static int log_msg_add(char **write, size_t *capacity, const char *fmt, ...)
 static void log_msg_text(int level, log_source_t src, const char *zone,
                          const char *fmt, va_list args)
 {
-	if (!log_isopen()) {
+	if (!log_isopen() || src == LOG_SOURCE_ANY) {
 		return;
 	}
 

@@ -103,8 +103,10 @@ void log_levels_add(log_target_t target, log_source_t src, int levels);
  *
  * Function follows printf() format.
  *
+ * \note LOG_SOURCE_ANY is not a valid value for the src parameter.
+ *
  * \param priority  Message priority.
- * \param src       Message source.
+ * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
  * \param fmt       Content of the logged message.
  */
 void log_fmt(int priority, log_source_t src, const char *fmt, ...)
