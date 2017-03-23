@@ -164,14 +164,15 @@ static int set_key(knot_kasp_key_t *kasp_key, time_t now, zone_key_t *zone_key)
 	// next event computation
 
 	time_t next = LONG_MAX;
-	time_t timestamps[4] = {
+	time_t timestamps[5] = {
 	        timing->active,
 		timing->publish,
 	        timing->remove,
 	        timing->retire,
+		timing->ready,
 	};
 
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 5; i++) {
 		time_t ts = timestamps[i];
 		if (ts != 0 && now < ts && ts < next) {
 			next = ts;
@@ -190,6 +191,8 @@ static int set_key(knot_kasp_key_t *kasp_key, time_t now, zone_key_t *zone_key)
 	                      (timing->retire == 0 || now < timing->retire);
 	zone_key->is_public = timing->publish <= now &&
 	                      (timing->remove == 0 || now < timing->remove);
+	zone_key->is_ready = timing->ready <= now &&
+	                     (timing->retire == 0 || now < timing->retire);
 
 	return KNOT_EOK;
 }
@@ -257,6 +260,7 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 			                     dnssec_key_get_keytag(key->key));
 			key->is_public = false;
 			key->is_active = false;
+			key->is_ready = false;
 			continue;
 		}
 
