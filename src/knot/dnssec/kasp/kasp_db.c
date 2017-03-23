@@ -223,7 +223,7 @@ static bool val_eq(const knot_db_val_t *a, const knot_db_val_t *b)
 static int serialize_key_params(const key_params_t *params, knot_db_val_t *key, knot_db_val_t *val)
 {
 	*key = keyid2val(params->id);
-	val->len = sizeof(uint16_t) + 2 * sizeof(uint8_t) + 7 * sizeof(uint64_t) +
+	val->len = sizeof(uint16_t) + 2 * sizeof(uint8_t) + 8 * sizeof(uint64_t) +
 	            params->public_key.size;
 	val->data = malloc(val->len);
 	if (val->data == NULL) {
@@ -238,6 +238,7 @@ static int serialize_key_params(const key_params_t *params, knot_db_val_t *key, 
 	wire_ctx_write_u8(&wire, (uint8_t)(params->is_ksk ? 0x01 : 0x00));
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.created);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.publish);
+	wire_ctx_write_u64(&wire, (uint64_t)params->timing.ready);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.active);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.retire);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.remove);
@@ -267,6 +268,7 @@ static int deserialize_key_params(key_params_t *params, const knot_db_val_t *key
 	params->is_ksk = (wire_ctx_read_u8(&wire) != (uint8_t)0x00);
 	params->timing.created = (time_t)wire_ctx_read_u64(&wire);
 	params->timing.publish = (time_t)wire_ctx_read_u64(&wire);
+	params->timing.ready = (time_t)wire_ctx_read_u64(&wire);
 	params->timing.active = (time_t)wire_ctx_read_u64(&wire);
 	params->timing.retire = (time_t)wire_ctx_read_u64(&wire);
 	params->timing.remove = (time_t)wire_ctx_read_u64(&wire);

@@ -44,6 +44,7 @@ key_state_t get_key_state(const knot_kasp_key_t *key, time_t moment)
 	bool retired = t->retire != 0 && t->retire <= moment;
 
 	bool published = !removed && (t->publish == 0 || t->publish <= moment);
+	bool ready = !retired && (t->ready == 0 || t->ready <= moment);
 	bool activated = !retired && (t->active  == 0 || t->active  <= moment);
 
 	/*
@@ -63,8 +64,12 @@ key_state_t get_key_state(const knot_kasp_key_t *key, time_t moment)
 		return DNSSEC_KEY_STATE_ACTIVE;
 	}
 
-	if (published && !activated) {
+	if (published && !ready) {
 		return DNSSEC_KEY_STATE_PUBLISHED;
+	}
+
+	if (ready && !activated) {
+		return DNSSEC_KEY_STATE_READY;
 	}
 
 	return DNSSEC_KEY_STATE_INVALID;

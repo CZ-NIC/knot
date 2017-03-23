@@ -129,6 +129,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			*keysize = atol(argv[i] + 5);
 		} else if (strncasecmp(argv[i], "created=", 8) == 0 ||
 			   strncasecmp(argv[i], "publish=", 8) == 0 ||
+			   strncasecmp(argv[i], "ready=", 6) == 0 ||
 			   strncasecmp(argv[i], "active=", 7) == 0 ||
 			   strncasecmp(argv[i], "retire=", 7) == 0 ||
 			   strncasecmp(argv[i], "remove=", 7) == 0) {
@@ -137,20 +138,23 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				printf("Invalid timestamp: %s\n", argv[i]);
 				return false;
 			}
-			switch ((argv[i][0] == 'r') ? argv[i][2] : argv[i][0]) {
+			switch ((argv[i][0] == 'r') ? argv[i][3] : argv[i][0]) {
 			case 'c':
 				timing->created = stamp;
 				break;
 			case 'a':
 				timing->active = stamp;
 				break;
+			case 'd':
+				timing->ready = stamp;
+				break;
 			case 'p':
 				timing->publish = stamp;
 				break;
-			case 't':
+			case 'i':
 				timing->retire = stamp;
 				break;
-			case 'm':
+			case 'o':
 				timing->remove = stamp;
 				break;
 			}
@@ -165,7 +169,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 // modifies ctx->policy options, so don't do anything afterwards !
 int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]) {
 	time_t now = time(NULL), infty = 0x0fffffffffffff00LLU;
-	knot_kasp_key_timing_t gen_timing = { now, now, now, infty, infty };
+	knot_kasp_key_timing_t gen_timing = { now, now, now, now, infty, infty };
 	bool isksk = false;
 	uint16_t keysize = 0;
 	if (!genkeyargs(argc, argv, false, &isksk, &ctx->policy->algorithm,
@@ -482,11 +486,11 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		printf("%s ksk=%s tag=%05d created=%lld publish=%lld"
+		printf("%s ksk=%s tag=%05d created=%lld publish=%lld ready=%lld"
 		       " active=%lld retire=%lld remove=%lld\n", key->id,
 		       ((dnssec_key_get_flags(key->key) == dnskey_flags(true)) ? "yes" : "no "),
 		       dnssec_key_get_keytag(key->key), (long long)key->timing.created,
-		       (long long)key->timing.publish, (long long)key->timing.active,
+		       (long long)key->timing.publish, (long long)key->timing.ready, (long long)key->timing.active,
 		       (long long)key->timing.retire, (long long)key->timing.remove);
 	}
 	return KNOT_EOK;

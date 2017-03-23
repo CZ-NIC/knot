@@ -73,6 +73,7 @@ static int generate_initial_key(kdnssec_ctx_t *ctx, bool ksk)
 	}
 
 	key->timing.active  = ctx->now;
+	key->timing.ready   = ctx->now;
 	key->timing.publish = ctx->now;
 
 	return KNOT_EOK;
@@ -138,6 +139,7 @@ static int exec_new_key(kdnssec_ctx_t *ctx)
 
 	//! \todo Cannot set "active" to zero, using upper bound instead.
 	new_key->timing.publish = ctx->now;
+	new_key->timing.ready = TIME_INFINITY;
 	new_key->timing.active = TIME_INFINITY;
 
 	return KNOT_EOK;
@@ -155,6 +157,7 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx)
 	assert(dnssec_key_get_flags(rolling->key) == DNSKEY_FLAGS_ZSK);
 
 	active->timing.retire = ctx->now;
+	rolling->timing.ready = ctx->now;
 	rolling->timing.active = ctx->now;
 
 	return KNOT_EOK;

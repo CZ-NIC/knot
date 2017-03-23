@@ -99,13 +99,14 @@ class Keyparams:
 		self.raw = bytearray(raw_bytearray)
 		self.timers_dict = { "created" : [ 0, 20, 28 ],
 		                     "publish" : [ 1, 28, 36 ],
-		                     "active"  : [ 2, 36, 44 ],
-		                     "retire"  : [ 3, 44, 52 ],
-		                     "remove"  : [ 4, 52, 60 ] }
+		                     "ready"   : [ 2, 36, 44 ],
+		                     "active"  : [ 3, 44, 52 ],
+		                     "retire"  : [ 4, 52, 60 ],
+		                     "remove"  : [ 5, 60, 68 ] }
 
 	@classmethod
 	def from_params(self, pubkey, keytag, algorithm, isksk, timers):
-		assert len(timers) == 5
+		assert len(timers) == 6
 		pk = pubkey.decode("base64")
 		selfraw = to_bytes(len(pk), 8)
 		selfraw.extend(to_bytes(0, 8)) # zero length of unused-future
@@ -114,8 +115,8 @@ class Keyparams:
 		selfraw.extend(to_bytes((1 if isksk else 0), 1))
 		for t in timers:
 			if t < 0:
-				print "keytag=%i timers=(%i, %i, %i, %i, %i)" % (keytag,
-				timers[0], timers[1], timers[2], timers[3], timers[4])
+				print "keytag=%i timers=(%i, %i, %i, %i, %i, %i)" % (keytag,
+				timers[0], timers[1], timers[2], timers[3], timers[4], timers[5])
 				assert False
 			selfraw.extend(to_bytes(t, 8))
 		selfraw.extend(pk)
@@ -125,7 +126,7 @@ class Keyparams:
 		assert len(self.raw) >= 16
 		pkl = from_bytes(self.raw[0:8])
 		ufl = from_bytes(self.raw[8:16])
-		assert len(self.raw) == 60 + pkl + ufl
+		assert len(self.raw) == 68 + pkl + ufl
 		assert self.raw[19] < 2
 
 	def getRaw(self):
@@ -180,7 +181,7 @@ class Keyparams:
 	def getPubKey(self):
 		self._check()
 		pkl = from_bytes(self.raw[0:8])
-		return self.raw[60:60+pkl].encode("base64")
+		return self.raw[68:68+pkl].encode("base64")
 
 	def getParams(self):
 		return [ self.getPubKey(), self.getKeytag(), self.getAlgorithm(),
@@ -210,7 +211,7 @@ class Keyparams:
 		ds_raw.extend(b"\x03") # protocol is always == 3
 		ds_raw.extend(self.raw[18:19]) # algorithm
 		pkl = from_bytes(self.raw[0:8])
-		ds_raw.extend(self.raw[60:60+pkl]) # pubkey
+		ds_raw.extend(self.raw[68:68+pkl]) # pubkey
 		if digestalg == "sha1":
 			ds_hash = hashlib.sha1(ds_raw).hexdigest()
 			algno = " 1 "
@@ -229,6 +230,13 @@ class Keyparams:
 		tmrs = self.getTimers()
 		if tmrs[self.timers_dict["publish"][0]] <= moment:
 			if moment < tmrs[self.timers_dict["remove"][0]]:
+				return True
+		return False
+
+	def isReady(self, moment):
+		tmrs = self.getTimers()
+		if tmrs[self.timers_dict["ready"][0]] <= moment:
+			if moment < tmrs[self.timers_dict["ready"][0]]:
 				return True
 		return False
 
@@ -286,12 +294,13 @@ def import_file(fname, env, db_keys, db_zones):
 			with lmdb.Transaction(env, db_zones, write=True) as txn_zones:
 				txn_zones.put(zname, dbk3, dupdata=True, overwrite=True)
 
-			infty = 0x0fffffffffff00 # time infinity, this is year 142'715'360
+			infty = 0x00ffffffffffff00 # time infinity, this is year 142'715'360
 
 			dbv3 = Keyparams.from_params(key["public_key"], key["keytag"],
 			                             key["algorithm"], key["ksk"], [
 			                               arr_ind2unix(key, "created", 0),
 			                               arr_ind2unix(key, "publish", 0),
+			                               arr_ind2unix(key, "active", 0), # taking active for ready
 			                               arr_ind2unix(key, "active", 0),
 			                               arr_ind2unix(key, "retire", infty),
 			                               arr_ind2unix(key, "remove", infty)
@@ -356,6 +365,8 @@ def key_matches(keyid, keyparam, key_spec, attrs):
 		elif attr == "zsk" and keyparam.isKSK():
 			return False
 		elif attr == "published" and not keyparam.isPublished(now):
+			return False
+		elif attr == "ready" and not keyparam.isReady(now):
 			return False
 		elif attr == "active" and not keyparam.isActive(now):
 			return False

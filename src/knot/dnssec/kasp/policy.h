@@ -26,7 +26,8 @@
 typedef struct knot_kasp_key_timing {
 	time_t created;		/*!< Time the key was generated/imported. */
 	time_t publish;		/*!< Time of DNSKEY record publication. */
-	time_t active;		/*!< Start of RRSIG records generating. */
+	time_t ready;		/*!< Start of RRSIG generation, waiting for parent zone. */
+	time_t active;		/*!< RRSIG records generating, other keys can be retired */
 	time_t retire;		/*!< End of RRSIG records generating. */
 	time_t remove;		/*!< Time of DNSKEY record removal. */
 } knot_kasp_key_timing_t;
