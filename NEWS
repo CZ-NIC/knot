@@ -1,3 +1,24 @@
+Knot DNS 2.4.2 (2017-03-23)
+===========================
+
+Features:
+---------
+ - Zscanner can store record comments placed on the same line
+ - Knotc status extension with version, configure, and workers parameters
+
+Improvements:
+-------------
+ - Significant incoming XFR speed-up in the case of many zones
+
+Bugfixes:
+---------
+ - Double OPT RR insertion when a global module returns KNOT_STATE_FAIL
+ - User-driven zscanner parsing logic inconsistency
+ - Lower serial at master doesn't trigger any errors
+ - Queries with too long DNAME substitution do not return YXDOMAIN response
+ - Incorrect elapsed time in the DDNS log
+ - Failed to process forwarded DDNS request with TSIG
+
 Knot DNS 2.4.1 (2017-02-10)
 ===========================
 
