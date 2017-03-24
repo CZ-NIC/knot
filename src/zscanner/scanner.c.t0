@@ -5748,7 +5748,7 @@ _match:
 	{
 		if (s->multiline == true) {
 			ERR(ZS_LEFT_PARENTHESIS);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 		s->multiline = true;
 	}
@@ -5757,7 +5757,7 @@ _match:
 	{
 		if (s->multiline == false) {
 			ERR(ZS_RIGHT_PARENTHESIS);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 		s->multiline = false;
 	}
@@ -5783,7 +5783,7 @@ _match:
 	case 7:
 	{
 		WARN(ZS_BAD_REST);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 8:
@@ -5833,7 +5833,7 @@ _match:
 			if (s->error.fatal) {
 				{p++; goto _out; }
 			}
-			{cs = 1127; goto _again;}
+			{cs = 1127;goto _again;}
 		} else {
 			// Return if external processing.
 			p--; cs = 1127; {p++; goto _out; }
@@ -5854,7 +5854,7 @@ _match:
 			s->item_length++;
 		} else {
 			WARN(ZS_LABEL_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -5867,7 +5867,7 @@ _match:
 				(uint8_t)(s->item_length);
 		} else {
 			WARN(ZS_DNAME_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -5878,7 +5878,7 @@ _match:
 			s->item_length++;
 		} else {
 			WARN(ZS_LABEL_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -5896,7 +5896,7 @@ _match:
 	case 17:
 	{
 		WARN(ZS_BAD_NUMBER);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 18:
@@ -5916,7 +5916,7 @@ _match:
 			s->dname_tmp_length += s->zone_origin_length;
 		} else {
 			WARN(ZS_DNAME_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -5939,11 +5939,11 @@ _match:
 	case 22:
 	{
 		WARN(ZS_BAD_DNAME_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 23:
-	{ p--; {stack[top++] = cs; cs = 270; goto _again;} }
+	{ p--; {stack[top++] = cs; cs = 270;goto _again;} }
 	break;
 	case 24:
 	{
@@ -5951,7 +5951,7 @@ _match:
 			s->item_length_location = rdata_tail++;
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -5963,7 +5963,7 @@ _match:
 			*(s->item_length_location) = (uint8_t)(s->item_length);
 		} else {
 			WARN(ZS_ITEM_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -5982,7 +5982,7 @@ _match:
 	{
 		if (s->r_owner_length == 0) {
 			WARN(ZS_BAD_PREVIOUS_OWNER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -5990,7 +5990,7 @@ _match:
 	{
 		s->r_owner_length = 0;
 		WARN(ZS_BAD_OWNER);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 30:
@@ -6015,7 +6015,7 @@ _match:
 			s->number64 += digit_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_NUMBER64_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6027,7 +6027,7 @@ _match:
 	case 34:
 	{
 		WARN(ZS_BAD_NUMBER);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 35:
@@ -6055,7 +6055,7 @@ _match:
 			s->number64 += s->number64_tmp * pow(10, s->decimals);
 		} else {
 			WARN(ZS_FLOAT_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6076,7 +6076,7 @@ _match:
 			rdata_tail += 1;
 		} else {
 			WARN(ZS_NUMBER8_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6087,7 +6087,7 @@ _match:
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6098,7 +6098,7 @@ _match:
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6108,7 +6108,7 @@ _match:
 			s->r_type = (uint16_t)(s->number64);
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6118,14 +6118,14 @@ _match:
 			s->r_data_length = (uint16_t)(s->number64);
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
 	case 46:
 	{
 		WARN(ZS_BAD_TIME_UNIT);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 47:
@@ -6133,7 +6133,7 @@ _match:
 	                  s->number64 *= 60;
 	              } else {
 	                  WARN(ZS_NUMBER32_OVERFLOW);
-	                  p--; {cs = 268; goto _again;}
+	                  p--; {cs = 268;goto _again;}
 	              }
 	            }
 	break;
@@ -6142,7 +6142,7 @@ _match:
 	                  s->number64 *= 3600;
 	              } else {
 	                  WARN(ZS_NUMBER32_OVERFLOW);
-	                  p--; {cs = 268; goto _again;}
+	                  p--; {cs = 268;goto _again;}
 	              }
 	            }
 	break;
@@ -6151,7 +6151,7 @@ _match:
 	                  s->number64 *= 86400;
 	              } else {
 	                  WARN(ZS_NUMBER32_OVERFLOW);
-	                  p--; {cs = 268; goto _again;}
+	                  p--; {cs = 268;goto _again;}
 	              }
 	            }
 	break;
@@ -6160,7 +6160,7 @@ _match:
 	                  s->number64 *= 604800;
 	              } else {
 	                  WARN(ZS_NUMBER32_OVERFLOW);
-	                  p--; {cs = 268; goto _again;}
+	                  p--; {cs = 268;goto _again;}
 	              }
 	            }
 	break;
@@ -6175,7 +6175,7 @@ _match:
 			s->number64 += s->number64_tmp;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6190,7 +6190,7 @@ _match:
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6206,7 +6206,7 @@ _match:
 				rdata_tail += 4;
 			} else {
 				WARN(ret);
-				p--; {cs = 268; goto _again;}
+				p--; {cs = 268;goto _again;}
 			}
 		} else if (s->buffer_length <= 10) { // Timestamp format.
 			char *end;
@@ -6215,7 +6215,7 @@ _match:
 
 			if (end == (char *)(s->buffer) || *end != '\0') {
 				WARN(ZS_BAD_TIMESTAMP);
-				p--; {cs = 268; goto _again;}
+				p--; {cs = 268;goto _again;}
 			}
 
 			if (s->number64 <= UINT32_MAX) {
@@ -6223,18 +6223,18 @@ _match:
 				rdata_tail += 4;
 			} else {
 				WARN(ZS_NUMBER32_OVERFLOW);
-				p--; {cs = 268; goto _again;}
+				p--; {cs = 268;goto _again;}
 			}
 		} else {
 			WARN(ZS_BAD_TIMESTAMP_LENGTH);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
 	case 56:
 	{
 		WARN(ZS_BAD_TIMESTAMP_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 57:
@@ -6250,27 +6250,27 @@ _match:
 
 				if (rdata_tail > rdata_stop) {
 					WARN(ZS_TEXT_OVERFLOW);
-					p--; {cs = 268; goto _again;}
+					p--; {cs = 268;goto _again;}
 				}
 			}
 
 			*(rdata_tail++) = (*p);
 		} else {
 			WARN(ZS_TEXT_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
 	case 58:
 	{
 		WARN(ZS_BAD_TEXT_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 59:
 	{
 		WARN(ZS_BAD_TEXT);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 60:
@@ -6286,7 +6286,7 @@ _match:
 
 				if (rdata_tail > rdata_stop) {
 					WARN(ZS_TEXT_OVERFLOW);
-					p--; {cs = 268; goto _again;}
+					p--; {cs = 268;goto _again;}
 				}
 			}
 
@@ -6294,7 +6294,7 @@ _match:
 			s->item_length++;
 		} else {
 			WARN(ZS_TEXT_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6309,7 +6309,7 @@ _match:
 			*rdata_tail += digit_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_NUMBER8_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6321,11 +6321,11 @@ _match:
 	case 63:
 	{
 		WARN(ZS_BAD_NUMBER);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 64:
-	{ p--; {stack[top++] = cs; cs = 279; goto _again;} }
+	{ p--; {stack[top++] = cs; cs = 279;goto _again;} }
 	break;
 	case 65:
 	{
@@ -6343,18 +6343,18 @@ _match:
 			s->default_ttl = (uint32_t)(s->number64);
 		} else {
 			ERR(ZS_NUMBER32_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
 	case 68:
 	{
 		ERR(ZS_BAD_TTL);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 69:
-	{ p--; {stack[top++] = cs; cs = 291; goto _again;} }
+	{ p--; {stack[top++] = cs; cs = 291;goto _again;} }
 	break;
 	case 70:
 	{
@@ -6369,11 +6369,11 @@ _match:
 	case 72:
 	{
 		ERR(ZS_BAD_ORIGIN);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 73:
-	{ p--; {stack[top++] = cs; cs = 300; goto _again;} }
+	{ p--; {stack[top++] = cs; cs = 300;goto _again;} }
 	break;
 	case 74:
 	{
@@ -6385,7 +6385,7 @@ _match:
 		size_t len = rdata_tail - s->r_data;
 		if (len >= sizeof(s->include_filename)) {
 			ERR(ZS_BAD_INCLUDE_FILENAME);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 
 		// Store zero terminated include filename.
@@ -6399,7 +6399,7 @@ _match:
 	case 76:
 	{
 		ERR(ZS_BAD_INCLUDE_FILENAME);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 77:
@@ -6415,7 +6415,7 @@ _match:
 	case 79:
 	{
 		ERR(ZS_BAD_INCLUDE_ORIGIN);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 80:
@@ -6426,7 +6426,7 @@ _match:
 			               "%s/%s", s->path, s->include_filename);
 			if (ret <= 0 || ret > sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
-				p--; {cs = 268; goto _again;}
+				p--; {cs = 268;goto _again;}
 			}
 			memcpy(s->include_filename, s->buffer, ret);
 		}
@@ -6448,7 +6448,7 @@ _match:
 			zs_scanner_t *ss = malloc(sizeof(zs_scanner_t));
 			if (ss == NULL) {
 				ERR(ZS_UNPROCESSED_INCLUDE);
-				p--; {cs = 268; goto _again;}
+				p--; {cs = 268;goto _again;}
 			}
 
 			// Parse included zone file.
@@ -6468,7 +6468,7 @@ _match:
 				}
 				zs_deinit(ss);
 				free(ss);
-				p--; {cs = 268; goto _again;}
+				p--; {cs = 268;goto _again;}
 			}
 			zs_deinit(ss);
 			free(ss);
@@ -6479,7 +6479,7 @@ _match:
 	}
 	break;
 	case 81:
-	{ p--; {stack[top++] = cs; cs = 312; goto _again;} }
+	{ p--; {stack[top++] = cs; cs = 312;goto _again;} }
 	break;
 	case 82:
 	{
@@ -6494,7 +6494,7 @@ _match:
 	case 84:
 	{
 		ERR(ZS_BAD_DIRECTIVE);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 85:
@@ -6518,7 +6518,7 @@ _match:
 			s->r_ttl = (uint32_t)(s->number64);
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6534,14 +6534,14 @@ _match:
 		}
 		else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
 	case 91:
 	{
 		WARN(ZS_BAD_ADDRESS_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 92:
@@ -6550,7 +6550,7 @@ _match:
 
 		if (inet_pton(AF_INET, (char *)s->buffer, &addr4) <= 0) {
 			WARN(ZS_BAD_IPV4);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6566,7 +6566,7 @@ _match:
 
 		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6) <= 0) {
 			WARN(ZS_BAD_IPV6);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6603,7 +6603,7 @@ _match:
 			s->apl.prefix_length = (uint8_t)(s->number64);
 		} else {
 			WARN(ZS_BAD_APL);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6628,7 +6628,7 @@ _match:
 			break;
 		default:
 			WARN(ZS_BAD_APL);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 		// Find prefix without trailing zeroes.
 		while (len > 0) {
@@ -6648,7 +6648,7 @@ _match:
 	case 102:
 	{
 		WARN(ZS_BAD_APL);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 103:
@@ -6657,7 +6657,7 @@ _match:
 			*rdata_tail = first_hex_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6670,21 +6670,21 @@ _match:
 	case 105:
 	{
 		WARN(ZS_BAD_HEX_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 106:
 	{
 		if ((rdata_tail - s->r_data) != s->r_data_length) {
 			WARN(ZS_BAD_RDATA_LENGTH);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
 	case 107:
 	{
 		WARN(ZS_BAD_HEX_RDATA);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 108:
@@ -6693,7 +6693,7 @@ _match:
 			*rdata_tail = first_base64_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6705,7 +6705,7 @@ _match:
 			*rdata_tail = second_right_base64_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6717,7 +6717,7 @@ _match:
 			*rdata_tail = third_right_base64_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6729,11 +6729,11 @@ _match:
 	case 112:
 	{
 		WARN(ZS_BAD_BASE64_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 113:
-	{ p--; {stack[top++] = cs; cs = 329; goto _again;} }
+	{ p--; {stack[top++] = cs; cs = 329;goto _again;} }
 	break;
 	case 114:
 	{
@@ -6741,7 +6741,7 @@ _match:
 			*rdata_tail = first_base32hex_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6753,7 +6753,7 @@ _match:
 			*rdata_tail = second_right_base32hex_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6770,7 +6770,7 @@ _match:
 			*rdata_tail = fourth_right_base32hex_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6782,7 +6782,7 @@ _match:
 			*rdata_tail = fifth_right_base32hex_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6799,7 +6799,7 @@ _match:
 			*rdata_tail = seventh_right_base32hex_to_num[(uint8_t)(*p)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -6811,7 +6811,7 @@ _match:
 	case 122:
 	{
 		WARN(ZS_BAD_BASE32HEX_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 123:
@@ -6962,19 +6962,19 @@ _match:
 	case 150:
 	{
 		WARN(ZS_BAD_GATEWAY);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 151:
 	{
 		WARN(ZS_BAD_GATEWAY_KEY);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 152:
 	{
 		WARN(ZS_UNSUPPORTED_TYPE);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 153:
@@ -7109,7 +7109,7 @@ _match:
 			window_add_bit(s->number64, s);
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7264,7 +7264,7 @@ _match:
 					rdata_tail += (s->windows[window]).length;
 				} else {
 					WARN(ZS_RDATA_OVERFLOW);
-					p--; {cs = 268; goto _again;}
+					p--; {cs = 268;goto _again;}
 				}
 			}
 		}
@@ -7273,11 +7273,11 @@ _match:
 	case 240:
 	{
 		WARN(ZS_BAD_BITMAP);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 241:
-	{ p--; {stack[top++] = cs; cs = 336; goto _again;} }
+	{ p--; {stack[top++] = cs; cs = 336;goto _again;} }
 	break;
 	case 242:
 	{
@@ -7285,7 +7285,7 @@ _match:
 			s->loc.d1 = (uint32_t)(s->number64);
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7295,7 +7295,7 @@ _match:
 			s->loc.d2 = (uint32_t)(s->number64);
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7305,7 +7305,7 @@ _match:
 			s->loc.m1 = (uint32_t)(s->number64);
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7315,7 +7315,7 @@ _match:
 			s->loc.m2 = (uint32_t)(s->number64);
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7325,7 +7325,7 @@ _match:
 			s->loc.s1 = (uint32_t)(s->number64);
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7335,7 +7335,7 @@ _match:
 			s->loc.s2 = (uint32_t)(s->number64);
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7347,7 +7347,7 @@ _match:
 			s->loc.alt = (uint32_t)(s->number64);
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7357,7 +7357,7 @@ _match:
 			s->loc.siz = s->number64;
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7367,7 +7367,7 @@ _match:
 			s->loc.hp = s->number64;
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7377,7 +7377,7 @@ _match:
 			s->loc.vp = s->number64;
 		} else {
 			WARN(ZS_BAD_NUMBER);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7439,13 +7439,13 @@ _match:
 	case 257:
 	{
 		WARN(ZS_BAD_LOC_DATA);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 258:
 	{
 		WARN(ZS_BAD_HEX_RDATA);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 259:
@@ -7462,7 +7462,7 @@ _match:
 	{
 		if (s->item_length != 6) {
 			WARN(ZS_BAD_EUI_LENGTH);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7470,14 +7470,14 @@ _match:
 	{
 		if (s->item_length != 8) {
 			WARN(ZS_BAD_EUI_LENGTH);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
 	case 263:
 	{
 		WARN(ZS_BAD_CHAR_DASH);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 264:
@@ -7494,33 +7494,33 @@ _match:
 	{
 		if (s->item_length != 4) {
 			WARN(ZS_BAD_L64_LENGTH);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 	}
 	break;
 	case 267:
 	{
 		WARN(ZS_BAD_CHAR_COLON);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 268:
 	{
 		WARN(ZS_BAD_ALGORITHM);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 269:
 	{
 		WARN(ZS_BAD_CERT_TYPE);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 270:
-	{ p--; {stack[top++] = cs; cs = 487; goto _again;} }
+	{ p--; {stack[top++] = cs; cs = 487;goto _again;} }
 	break;
 	case 271:
-	{ p--; {stack[top++] = cs; cs = 591; goto _again;} }
+	{ p--; {stack[top++] = cs; cs = 591;goto _again;} }
 	break;
 	case 272:
 	{
@@ -7530,7 +7530,7 @@ _match:
 	case 273:
 	{
 		WARN(ZS_BAD_RDATA);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 274:
@@ -7538,79 +7538,79 @@ _match:
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
-			{stack[top++] = cs; cs = 632; goto _again;}
+			{stack[top++] = cs; cs = 632;goto _again;}
 		case KNOT_RRTYPE_NS:
 		case KNOT_RRTYPE_CNAME:
 		case KNOT_RRTYPE_PTR:
 		case KNOT_RRTYPE_DNAME:
-			{stack[top++] = cs; cs = 634; goto _again;}
+			{stack[top++] = cs; cs = 634;goto _again;}
 		case KNOT_RRTYPE_SOA:
-			{stack[top++] = cs; cs = 636; goto _again;}
+			{stack[top++] = cs; cs = 636;goto _again;}
 		case KNOT_RRTYPE_HINFO:
-			{stack[top++] = cs; cs = 668; goto _again;}
+			{stack[top++] = cs; cs = 668;goto _again;}
 		case KNOT_RRTYPE_MINFO:
 		case KNOT_RRTYPE_RP:
-			{stack[top++] = cs; cs = 673; goto _again;}
+			{stack[top++] = cs; cs = 673;goto _again;}
 		case KNOT_RRTYPE_MX:
 		case KNOT_RRTYPE_AFSDB:
 		case KNOT_RRTYPE_RT:
 		case KNOT_RRTYPE_KX:
 		case KNOT_RRTYPE_LP:
-			{stack[top++] = cs; cs = 678; goto _again;}
+			{stack[top++] = cs; cs = 678;goto _again;}
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
-			{stack[top++] = cs; cs = 683; goto _again;}
+			{stack[top++] = cs; cs = 683;goto _again;}
 		case KNOT_RRTYPE_AAAA:
-			{stack[top++] = cs; cs = 687; goto _again;}
+			{stack[top++] = cs; cs = 687;goto _again;}
 		case KNOT_RRTYPE_LOC:
-			{stack[top++] = cs; cs = 689; goto _again;}
+			{stack[top++] = cs; cs = 689;goto _again;}
 		case KNOT_RRTYPE_SRV:
-			{stack[top++] = cs; cs = 744; goto _again;}
+			{stack[top++] = cs; cs = 744;goto _again;}
 		case KNOT_RRTYPE_NAPTR:
-			{stack[top++] = cs; cs = 755; goto _again;}
+			{stack[top++] = cs; cs = 755;goto _again;}
 		case KNOT_RRTYPE_CERT:
-			{stack[top++] = cs; cs = 772; goto _again;}
+			{stack[top++] = cs; cs = 772;goto _again;}
 		case KNOT_RRTYPE_APL:
-			{stack[top++] = cs; cs = 783; goto _again;}
+			{stack[top++] = cs; cs = 783;goto _again;}
 		case KNOT_RRTYPE_DS:
 		case KNOT_RRTYPE_CDS:
-			{stack[top++] = cs; cs = 794; goto _again;}
+			{stack[top++] = cs; cs = 794;goto _again;}
 		case KNOT_RRTYPE_SSHFP:
-			{stack[top++] = cs; cs = 807; goto _again;}
+			{stack[top++] = cs; cs = 807;goto _again;}
 		case KNOT_RRTYPE_IPSECKEY:
-			{stack[top++] = cs; cs = 817; goto _again;}
+			{stack[top++] = cs; cs = 817;goto _again;}
 		case KNOT_RRTYPE_RRSIG:
-			{stack[top++] = cs; cs = 856; goto _again;}
+			{stack[top++] = cs; cs = 856;goto _again;}
 		case KNOT_RRTYPE_NSEC:
-			{stack[top++] = cs; cs = 1010; goto _again;}
+			{stack[top++] = cs; cs = 1010;goto _again;}
 		case KNOT_RRTYPE_KEY:
 		case KNOT_RRTYPE_DNSKEY:
 		case KNOT_RRTYPE_CDNSKEY:
-			{stack[top++] = cs; cs = 1013; goto _again;}
+			{stack[top++] = cs; cs = 1013;goto _again;}
 		case KNOT_RRTYPE_DHCID:
-			{stack[top++] = cs; cs = 1024; goto _again;}
+			{stack[top++] = cs; cs = 1024;goto _again;}
 		case KNOT_RRTYPE_NSEC3:
-			{stack[top++] = cs; cs = 1026; goto _again;}
+			{stack[top++] = cs; cs = 1026;goto _again;}
 		case KNOT_RRTYPE_NSEC3PARAM:
-			{stack[top++] = cs; cs = 1055; goto _again;}
+			{stack[top++] = cs; cs = 1055;goto _again;}
 		case KNOT_RRTYPE_TLSA:
-			{stack[top++] = cs; cs = 1068; goto _again;}
+			{stack[top++] = cs; cs = 1068;goto _again;}
 		case KNOT_RRTYPE_NID:
 		case KNOT_RRTYPE_L64:
-			{stack[top++] = cs; cs = 1086; goto _again;}
+			{stack[top++] = cs; cs = 1086;goto _again;}
 		case KNOT_RRTYPE_L32:
-			{stack[top++] = cs; cs = 1081; goto _again;}
+			{stack[top++] = cs; cs = 1081;goto _again;}
 		case KNOT_RRTYPE_EUI48:
-			{stack[top++] = cs; cs = 1099; goto _again;}
+			{stack[top++] = cs; cs = 1099;goto _again;}
 		case KNOT_RRTYPE_EUI64:
-			{stack[top++] = cs; cs = 1105; goto _again;}
+			{stack[top++] = cs; cs = 1105;goto _again;}
 		case KNOT_RRTYPE_URI:
-			{stack[top++] = cs; cs = 1111; goto _again;}
+			{stack[top++] = cs; cs = 1111;goto _again;}
 		case KNOT_RRTYPE_CAA:
-			{stack[top++] = cs; cs = 1119; goto _again;}
+			{stack[top++] = cs; cs = 1119;goto _again;}
 		default:
 			WARN(ZS_CANNOT_TEXT_DATA);
-			{cs = 268; goto _again;}
+			{cs = 268;goto _again;}
 		}
 	}
 	break;
@@ -7659,11 +7659,11 @@ _match:
 		case KNOT_RRTYPE_EUI64:
 		case KNOT_RRTYPE_URI:
 		case KNOT_RRTYPE_CAA:
-			{stack[top++] = cs; cs = 468; goto _again;}
+			{stack[top++] = cs; cs = 468;goto _again;}
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
 		default:
-			{stack[top++] = cs; cs = 477; goto _again;}
+			{stack[top++] = cs; cs = 477;goto _again;}
 		}
 	}
 	break;
@@ -7673,7 +7673,7 @@ _match:
 	case 277:
 	{
 		WARN(ZS_UNSUPPORTED_TYPE);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;goto _again;}
 	}
 	break;
 	case 278:
@@ -7806,7 +7806,7 @@ _match:
 	{
 		if (rdata_tail - s->r_data > UINT16_MAX) {
 			WARN(ZS_RDATA_OVERFLOW);
-			p--; {cs = 268; goto _again;}
+			p--; {cs = 268;goto _again;}
 		}
 		s->r_data_length = rdata_tail - s->r_data;
 
@@ -7846,62 +7846,82 @@ _again:
 	case 7:
 	{
 		WARN(ZS_BAD_REST);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 17:
 	{
 		WARN(ZS_BAD_NUMBER);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 22:
 	{
 		WARN(ZS_BAD_DNAME_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 29:
 	{
 		s->r_owner_length = 0;
 		WARN(ZS_BAD_OWNER);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 34:
 	{
 		WARN(ZS_BAD_NUMBER);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 46:
 	{
 		WARN(ZS_BAD_TIME_UNIT);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 56:
 	{
 		WARN(ZS_BAD_TIMESTAMP_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 58:
 	{
 		WARN(ZS_BAD_TEXT_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 59:
 	{
 		WARN(ZS_BAD_TEXT);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 63:
 	{
 		WARN(ZS_BAD_NUMBER);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 66:
@@ -7912,25 +7932,33 @@ _again:
 	case 68:
 	{
 		ERR(ZS_BAD_TTL);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 72:
 	{
 		ERR(ZS_BAD_ORIGIN);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 76:
 	{
 		ERR(ZS_BAD_INCLUDE_FILENAME);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 79:
 	{
 		ERR(ZS_BAD_INCLUDE_ORIGIN);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 83:
@@ -7941,115 +7969,153 @@ _again:
 	case 84:
 	{
 		ERR(ZS_BAD_DIRECTIVE);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 91:
 	{
 		WARN(ZS_BAD_ADDRESS_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 102:
 	{
 		WARN(ZS_BAD_APL);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 105:
 	{
 		WARN(ZS_BAD_HEX_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 107:
 	{
 		WARN(ZS_BAD_HEX_RDATA);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 112:
 	{
 		WARN(ZS_BAD_BASE64_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 122:
 	{
 		WARN(ZS_BAD_BASE32HEX_CHAR);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 150:
 	{
 		WARN(ZS_BAD_GATEWAY);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 151:
 	{
 		WARN(ZS_BAD_GATEWAY_KEY);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 152:
 	{
 		WARN(ZS_UNSUPPORTED_TYPE);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 240:
 	{
 		WARN(ZS_BAD_BITMAP);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 257:
 	{
 		WARN(ZS_BAD_LOC_DATA);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 258:
 	{
 		WARN(ZS_BAD_HEX_RDATA);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 263:
 	{
 		WARN(ZS_BAD_CHAR_DASH);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 267:
 	{
 		WARN(ZS_BAD_CHAR_COLON);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 268:
 	{
 		WARN(ZS_BAD_ALGORITHM);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 269:
 	{
 		WARN(ZS_BAD_CERT_TYPE);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 273:
 	{
 		WARN(ZS_BAD_RDATA);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 	case 277:
 	{
 		WARN(ZS_UNSUPPORTED_TYPE);
-		p--; {cs = 268; goto _again;}
+		p--; {cs = 268;	if ( p == pe )
+		goto _test_eof;
+goto _again;}
 	}
 	break;
 		}
