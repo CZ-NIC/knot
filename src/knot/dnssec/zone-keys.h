@@ -44,6 +44,8 @@ struct zone_key {
 	dnssec_key_t *key;
 	dnssec_sign_ctx_t *ctx;
 
+	dnssec_binary_t precomputed_ds;
+
 	time_t next_event;
 
 	bool is_ksk;
@@ -135,5 +137,10 @@ void free_zone_keys(zone_keyset_t *keyset);
  * \return Timestamp of next key event.
  */
 time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
+
+/*!
+ * \todo this comment (needed?)
+ */
+int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree);
 
 /*! @} */
