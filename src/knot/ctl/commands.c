@@ -250,11 +250,21 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	// frozen
 	bool ufrozen = zone->events.ufrozen;
 	if (param == ZONE_STATUS_FREEZE || param == ZONE_STATUS_NONE) {
+		time_t freeze = zone_events_get_time(zone, ZONE_EVENT_UFREEZE) - time(NULL);
+		time_t thaw = zone_events_get_time(zone, ZONE_EVENT_UTHAW) - time(NULL);
 		data[KNOT_CTL_IDX_TYPE] = "freeze";
 		if (ufrozen) {
-			data[KNOT_CTL_IDX_DATA] = "yes";
+			if (thaw < 0) {
+				data[KNOT_CTL_IDX_DATA] = "yes";
+			} else {
+				data[KNOT_CTL_IDX_DATA] = "thaw queued";
+			}
 		} else {
-			data[KNOT_CTL_IDX_DATA] = "no";
+			if (freeze < 0) {
+				data[KNOT_CTL_IDX_DATA] = "no";
+			} else {
+				data[KNOT_CTL_IDX_DATA] = "freeze queued";
+			}
 		}
 		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
 		if (ret != KNOT_EOK) {
@@ -262,33 +272,41 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		}
 	}
 	// list modules
-	bool ctl_type = (param == ZONE_STATUS_EVENT_TIMERS)? true : false; //for +event-status
+	bool ctl_type = (param == ZONE_STATUS_EVENT_TIMERS)? true : false;
 	if (param == ZONE_STATUS_EVENT_TIMERS || param == ZONE_STATUS_NONE) {
 		time_t ev_time;
 		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
-			if (!ufrozen || !ufreeze_applies(i)) {
-				data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
-				ev_time = zone_events_get_time(zone, i);
-				ev_time = ev_time - time(NULL);
-				if (ev_time < 0) {
-					ret = snprintf(buff, sizeof(buff), "not scheduled");
-				} else {
-					ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
-						       (long long)(ev_time / 3600),
-						       (long long)(ev_time % 3600) / 60,
-						       (long long)(ev_time % 60));
-				}
-				if (ret < 0 || ret >= sizeof(buff)) {
-					return KNOT_ESPACE;
-				}
-				data[KNOT_CTL_IDX_DATA] = buff;
+			// Events not worth showing or used elsewhere
+			if (!(i == ZONE_EVENT_LOAD || i == ZONE_EVENT_UFREEZE
+			      || i == ZONE_EVENT_UTHAW)) {
+				// Skip events affected by freeze
+				if (!ufrozen || !ufreeze_applies(i)) {
+					data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
+					ev_time = zone_events_get_time(zone, i);
+					ev_time = ev_time - time(NULL);
+					if (ev_time < 0) {
+						ret = snprintf(buff, sizeof(buff), "not scheduled");
+					} else {
+						ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
+							       (long long)(ev_time / 3600),
+							       (long long)(ev_time % 3600) / 60,
+							       (long long)(ev_time % 60));
+					}
+					if (ret < 0 || ret >= sizeof(buff)) {
+						return KNOT_ESPACE;
+					}
+					data[KNOT_CTL_IDX_DATA] = buff;
 
-				ret = knot_ctl_send(args->ctl, (ctl_type)? KNOT_CTL_TYPE_DATA : KNOT_CTL_TYPE_EXTRA, &data);
-				ctl_type = false;
-				if (ret != KNOT_EOK) {
-					return ret;
+					ret = knot_ctl_send(args->ctl, (ctl_type)?
+								KNOT_CTL_TYPE_DATA :
+								KNOT_CTL_TYPE_EXTRA,
+							    &data);
+					ctl_type = false;
+					if (ret != KNOT_EOK) {
+						return ret;
+					}
+					type = KNOT_CTL_TYPE_EXTRA;
 				}
-				type = KNOT_CTL_TYPE_EXTRA;
 			}
 		}
 	}
