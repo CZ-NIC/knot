@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "contrib/dynarray.h"
 #include "dnssec/kasp.h"
 #include "dnssec/keystore.h"
 #include "dnssec/sign.h"
@@ -49,6 +50,8 @@ struct zone_key {
 };
 
 typedef struct zone_key zone_key_t;
+
+dynarray_declare(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC, 1)
 
 struct zone_keyset {
 	size_t count;

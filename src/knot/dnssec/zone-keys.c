@@ -25,9 +25,8 @@
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
 #include "libknot/rrtype/dnskey.h"
-#include "contrib/dynarray.h"
 
-dynarray_define(keyptr, zone_key_t *, 1)
+dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC, 1)
 
 /*!
  * \brief Get key feature flags from key parameters.

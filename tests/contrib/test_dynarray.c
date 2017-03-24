@@ -22,7 +22,8 @@
 #define test_capacity 2
 
 #define test_type(type, prefix) \
-	dynarray_define(prefix, type, test_capacity) \
+	dynarray_declare(prefix, type, DYNARRAY_VISIBILITY_STATIC, test_capacity) \
+	dynarray_define(prefix, type, DYNARRAY_VISIBILITY_STATIC, test_capacity) \
 	static void prefix ## _test(type const first, type const second) { \
 		struct prefix ## _dynarray array = { 0 }; \
 		prefix ## _dynarray_fix(&array); \
