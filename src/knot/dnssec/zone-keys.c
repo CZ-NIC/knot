@@ -425,6 +425,7 @@ void free_zone_keys(zone_keyset_t *keyset)
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		dnssec_sign_free(keyset->keys[i].ctx);
+		dnssec_binary_free(&keyset->keys[i].precomputed_ds);
 	}
 
 	free(keyset->keys);
@@ -466,4 +467,24 @@ time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset)
 	}
 
 	return result;
+}
+
+/*!
+ * \brief Compute DS record rdata from key + cache it.
+ */
+int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree)
+{
+	assert(for_key);
+	assert(out_donotfree);
+
+	int ret = KNOT_EOK;
+
+	if (for_key->precomputed_ds.data == NULL) {
+		dnssec_key_digest_t digesttype = DNSSEC_KEY_DIGEST_SHA256; // TODO !
+		ret = dnssec_key_create_ds(for_key->key, digesttype, &for_key->precomputed_ds);
+		ret = knot_error_from_libdnssec(ret);
+	}
+
+	*out_donotfree = for_key->precomputed_ds;
+	return ret;
 }
