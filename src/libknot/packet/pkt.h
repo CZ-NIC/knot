@@ -38,9 +38,6 @@
 /* Number of packet sections (ANSWER, AUTHORITY, ADDITIONAL). */
 #define KNOT_PKT_SECTIONS 3
 
-/* Forward decls */
-struct knot_pkt;
-
 /*!
  * \brief Packet flags.
  */

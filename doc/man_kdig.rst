@@ -199,8 +199,12 @@ Options
 **+**\ [\ **no**\ ]\ **bufsize**\ =\ *B*
   Set EDNS buffer size in bytes (default is 512 bytes).
 
-**+**\ [\ **no**\ ]\ **padding**\ =\ *B*
-  Set EDNS(0) padding option data length (default is no).
+**+**\ [\ **no**\ ]\ **padding**\[\ =\ *B*\]
+  Use EDNS(0) padding option to pad queries, optionally to a specific
+  size. The default is to pad queries with a sensible amount when using
+  +tls, and not to pad at all when queries are sent without TLS.  With
+  no argument (i.e., just +padding) pad every query with a sensible
+  amount regardless of the use of TLS. With +nopadding, never pad.
 
 **+**\ [\ **no**\ ]\ **alignment**\[\ =\ *B*\]
   Align the query to B\-byte-block message using the EDNS(0) padding option
