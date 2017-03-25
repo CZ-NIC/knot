@@ -120,7 +120,7 @@ struct query {
 	knot_tsig_key_t tsig_key;
 	/*!< EDNS client subnet. */
 	knot_edns_client_subnet_t *subnet;
-	/*!< EDNS0 padding (16unsigned + -1 uninitialized). */
+	/*!< EDNS0 padding (16unsigned + -1 ~ uninitialized, -2 ~ default, -3 ~ none). */
 	int32_t		padding;
 	/*!< Query alignment with EDNS0 padding (0 ~ uninitialized). */
 	uint16_t	alignment;

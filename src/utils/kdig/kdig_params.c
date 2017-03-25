@@ -728,22 +728,26 @@ static int opt_padding(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	uint16_t num = 0;
-	if (str_to_u16(arg, &num) != KNOT_EOK) {
-		ERR("invalid +padding=%s\n", arg);
-		return KNOT_EINVAL;
+	if (arg == NULL) {
+		q->padding = -2;
+		return KNOT_EOK;
+	} else {
+		uint16_t num = 0;
+		if (str_to_u16(arg, &num) != KNOT_EOK) {
+			ERR("invalid +padding=%s\n", arg);
+			return KNOT_EINVAL;
+		}
+
+		q->padding = num;
+		return KNOT_EOK;
 	}
-
-	q->padding = num;
-
-	return KNOT_EOK;
 }
 
 static int opt_nopadding(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	q->padding = -1;
+	q->padding = -3;
 
 	return KNOT_EOK;
 }
@@ -1036,7 +1040,7 @@ static const param_t kdig_opts2[] = {
 	{ "bufsize",        ARG_REQUIRED, opt_bufsize },
 	{ "nobufsize",      ARG_NONE,     opt_nobufsize },
 
-	{ "padding",        ARG_REQUIRED, opt_padding },
+	{ "padding",        ARG_OPTIONAL, opt_padding },
 	{ "nopadding",      ARG_NONE,     opt_nopadding },
 
 	{ "alignment",      ARG_OPTIONAL, opt_alignment },
@@ -1636,8 +1640,8 @@ static void print_help(void)
 	       "       +[no]tls-hostname=STR Use TLS with remote server hostname.\n"
 	       "       +[no]nsid             Request NSID.\n"
 	       "       +[no]bufsize=B        Set EDNS buffer size.\n"
-	       "       +[no]padding=N        Padding block size EDNS(0) padding.\n"
-	       "       +[no]alignment[=N]    Set packet alignment with EDNS(0) padding.\n"
+	       "       +[no]padding[=N]      Pad with EDNS(0) (default or specify size).\n"
+	       "       +[no]alignment[=N]    Pad with EDNS(0) to blocksize (%u or specify size).\n"
 	       "       +[no]subnet=SUBN      Set EDNS(0) client subnet addr/prefix.\n"
 	       "       +[no]edns[=N]         Use EDNS(=version).\n"
 	       "       +[no]time=T           Set wait for reply interval in seconds.\n"
@@ -1646,7 +1650,7 @@ static void print_help(void)
 	       "\n"
 	       "       -h, --help            Print the program help.\n"
 	       "       -V, --version         Print the program version.\n",
-	       PROGRAM_NAME);
+	       PROGRAM_NAME, DEFAULT_ALIGNMENT_SIZE);
 }
 
 static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,

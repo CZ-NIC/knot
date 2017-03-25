@@ -29,6 +29,9 @@
 #include "libknot/consts.h"
 #include "libknot/rrset.h"
 
+/* Forward decls */
+typedef struct knot_pkt knot_pkt_t;
+
 /*! \brief Constants related to EDNS. */
 enum knot_edns_const {
 	/*! \brief Supported EDNS version. */
@@ -353,6 +356,17 @@ bool knot_edns_has_nsid(const knot_rrset_t *opt_rr);
  * \return true if passed, false if failed
  */
 bool knot_edns_check_record(knot_rrset_t *opt_rr);
+
+/*!
+ * \brief Computes a reasonable Padding data length for a given packet and opt RR.
+ *
+ * \param pkt     DNS Packet prepared and otherwise ready to go, no OPT yet added.
+ * \param opt_rr  OPT RR, not yet including padding.
+ *
+ * \return Required padding length or -1 if padding not required.
+ */
+int knot_edns_default_padding_size(const knot_pkt_t *pkt,
+                                   const knot_rrset_t *opt_rr);
 
 /*!
  * \brief Computes additional Padding data length for required packet alignment.

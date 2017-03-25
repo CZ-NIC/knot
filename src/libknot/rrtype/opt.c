@@ -25,6 +25,7 @@
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/opt.h"
+#include "libknot/packet/pkt.h"
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
@@ -46,6 +47,9 @@ enum knot_edns_private_consts {
 	EDNS_OFFSET_CLIENT_SUBNET_DST_MASK = 3,
 	/*! \brief Byte offset of the address field in option data. */
 	EDNS_OFFSET_CLIENT_SUBNET_ADDR     = 4,
+
+	EDNS_DEFAULT_QUERY_ALIGNMENT_SIZE    = 128,
+	EDNS_DEFAULT_RESPONSE_ALIGNMENT_SIZE = 468,
 };
 
 _public_
@@ -505,6 +509,19 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 	}
 
 	return wire.error == KNOT_EOK;
+}
+
+_public_
+int knot_edns_default_padding_size(const knot_pkt_t *pkt,
+                                   const knot_rrset_t *opt_rr)
+{
+	if (knot_wire_get_qr(pkt->wire)) {
+		return knot_edns_alignment_size(pkt->size, knot_rrset_size(opt_rr),
+		                                EDNS_DEFAULT_RESPONSE_ALIGNMENT_SIZE);
+	} else {
+		return knot_edns_alignment_size(pkt->size, knot_rrset_size(opt_rr),
+		                                EDNS_DEFAULT_QUERY_ALIGNMENT_SIZE);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
