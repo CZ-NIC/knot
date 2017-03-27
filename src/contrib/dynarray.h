@@ -36,7 +36,7 @@
 
 #define DYNARRAY_VISIBILITY_STATIC static
 #define DYNARRAY_VISIBILITY_PUBLIC
-#define DYNARRAY_VISIBILITY_LIBRARAY __public__
+#define DYNARRAY_VISIBILITY_LIBRARY __public__
 
 #define dynarray_declare(prefix, ntype, visibility, initial_capacity) \
 	typedef struct prefix ## _dynarray { \
@@ -48,7 +48,7 @@
 	\
 	visibility void prefix ## _dynarray_fix(prefix ## _dynarray_t *dynarray); \
 	visibility void prefix ## _dynarray_add(prefix ## _dynarray_t *dynarray, \
-						    ntype const *to_add); \
+	                                        ntype const *to_add); \
 	visibility void prefix ## _dynarray_free(prefix ## _dynarray_t *dynarray);
 
 #define dynarray_foreach(prefix, ntype, ptr, array) \
@@ -76,7 +76,7 @@
 	\
 	__attribute__((unused)) \
 	visibility void prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
-	                                    ntype const *to_add) \
+	                                        ntype const *to_add) \
 	{ \
 		prefix ## _dynarray_fix(dynarray); \
 		if (dynarray->size >= dynarray->capacity) { \
