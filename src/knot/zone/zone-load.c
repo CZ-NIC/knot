@@ -238,7 +238,12 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 		bool ignore1 = false; time_t ignore2 = 0;
 		(void)knot_dnssec_nsec3resalt(&kctx, &ignore1, &ignore2);
 		ignore1 = false; ignore2 = 0;
-		ret = knot_dnssec_key_rollover(&kctx, &ignore1, &ignore2);
+		ret = knot_dnssec_key_rollover(&kctx, zone, &ignore1, &ignore2);
+
+		if (zone_has_key_submittion(&kctx)) {
+			zone_events_schedule_now(zone, ZONE_EVENT_PARENT_DS_Q);
+		}
+
 		kdnssec_ctx_deinit(&kctx);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&change);

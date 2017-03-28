@@ -44,6 +44,7 @@ class ZoneDnssec(object):
         self.ksk_size = None
         self.zsk_size = None
         self.dnskey_ttl = None
+        self.ksk_lifetime = None
         self.zsk_lifetime = None
         self.propagation_delay = None
         self.rrsig_lifetime = None
@@ -52,6 +53,8 @@ class ZoneDnssec(object):
         self.nsec3_iters = None
         self.nsec3_salt_lifetime = None
         self.nsec3_salt_len = None
+        self.ksk_submittion_check = []
+        self.ksk_submittion_check_interval = None
 
 class Zone(object):
     '''DNS zone description'''
@@ -1012,6 +1015,15 @@ class Knot(Server):
                     if slave.tsig:
                         s.item_str("key", slave.tsig.name)
                     servers.add(slave.name)
+            for parent in z.dnssec.ksk_submittion_check:
+                if parent.name not in servers:
+                    if not have_remote:
+                        s.begin("remote")
+                        have_remote = True
+                    s.id_item("id", parent.name)
+                    s.item_str("address", "%s@%s" % (parent.addr, parent.port))
+                    servers.add(parent.name)
+                    
         if have_remote:
             s.end()
 
@@ -1075,6 +1087,7 @@ class Knot(Server):
             self._str(s, "ksk_size", z.dnssec.ksk_size)
             self._str(s, "zsk_size", z.dnssec.zsk_size)
             self._str(s, "dnskey-ttl", z.dnssec.dnskey_ttl)
+            self._str(s, "ksk-lifetime", z.dnssec.ksk_lifetime)
             self._str(s, "zsk-lifetime", z.dnssec.zsk_lifetime)
             self._str(s, "propagation-delay", z.dnssec.propagation_delay)
             self._str(s, "rrsig-lifetime", z.dnssec.rrsig_lifetime)
@@ -1083,6 +1096,14 @@ class Knot(Server):
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
             self._str(s, "nsec3-salt-lifetime", z.dnssec.nsec3_salt_lifetime)
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
+            if len(z.dnssec.ksk_submittion_check) > 0:
+                parents = ""
+                for parent in z.dnssec.ksk_submittion_check:
+                    if parents:
+                        parents += ", "
+                    parents += parent.name
+                s.item("ksk-submittion-check", "[%s]" % parents)
+            self._str(s, "ksk-submittion-check-interval", z.dnssec.ksk_submittion_check_interval)
         if have_policy:
             s.end()
 
