@@ -646,6 +646,15 @@ static bool cds_rdata_match(zone_key_t *key,
         return (ret == KNOT_EOK && res == 0);
 }
 
+bool knot_match_key_ds(zone_key_t *key, const knot_rdata_t *rdata)
+{
+        dnssec_binary_t rdata_bin = {
+                .data = knot_rdata_data(rdata),
+		.size = knot_rdata_rdlen(rdata)
+	};
+        return cds_rdata_match(key, &rdata_bin);
+}
+
 /*!
  * \brief Check if DNSKEY/DS is present in public zone key set.
  */

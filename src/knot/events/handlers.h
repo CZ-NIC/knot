@@ -41,3 +41,5 @@ int event_uthaw(conf_t *conf, zone_t *zone);
 int event_nsec3resalt(conf_t *conf, zone_t *zone);
 /*! \brief ZSK rollover related actions (key creation, publishing, deleting...). */
 int event_key_rollover(conf_t *conf, zone_t *zone);
+/*! \brief When CDS/CDNSKEY published, look for matching DS */
+int event_parent_ds_q(conf_t *conf, zone_t *zone);

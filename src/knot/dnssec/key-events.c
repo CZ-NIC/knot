@@ -179,7 +179,7 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				restype = SUBMIT;
 				break;
 			case DNSSEC_KEY_STATE_READY:
-				break; // TODO !!!
+				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
 				if (!is_ksk_published) {
 					keytime = ksk_publish_time(key->timing.active, ctx);
@@ -279,7 +279,7 @@ static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	return kdnssec_delete_key(ctx, key);
 }
 
-int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *next_rollover)
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_changed, time_t *next_rollover)
 {
 	if (ctx->policy->manual) {
 		return KNOT_EOK;
@@ -312,6 +312,11 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *nex
 			break;
 		case SUBMIT:
 			ret = submit_key(ctx, next.key);
+			if (zone == NULL) {
+				return KNOT_EINVAL;
+			}
+			zone_events_schedule_now(zone, ZONE_EVENT_PARENT_DS_Q);
+			// "now" it won't probably succeed, but it replans itself for proper interval
 			break;
 		case REPLACE:
 			ret = exec_new_signatures(ctx, next.key);
@@ -353,4 +358,18 @@ int knot_dnssec_ksk_submittion_confirm(kdnssec_ctx_t *ctx, uint16_t for_key)
 		}
 	}
 	return KNOT_ENOENT;
+}
+
+bool zone_has_key_submittion(const kdnssec_ctx_t *ctx)
+{
+	assert(ctx->zone);
+
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
+		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
+			return true;
+		}
+	}
+	return false;
 }

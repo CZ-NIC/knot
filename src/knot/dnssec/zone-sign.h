@@ -125,4 +125,6 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
                                         const knot_rrset_t *rrset);
 
+bool knot_match_key_ds(zone_key_t *key, const knot_rdata_t *rdata);
+
 /*! @} */

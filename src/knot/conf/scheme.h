@@ -60,7 +60,10 @@
 #define C_KASP_DB_MAPSIZE       "\x0F""kasp-db-mapsize"
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
+#define C_KSK_LIFETIME		"\x0C""ksk-lifetime"
 #define C_KSK_SIZE		"\x08""ksk-size"
+#define C_KSK_SUBMITTION_CHECK  "\x14""ksk-submittion-check"
+#define C_KSK_SUBMITTION_CHECK_INTERVAL "\x1D""ksk-submittion-check-interval"
 #define C_LISTEN		"\x06""listen"
 #define C_LOG			"\x03""log"
 #define C_MANUAL		"\x06""manual"
@@ -117,7 +120,6 @@
 #define C_ZONE			"\x04""zone"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
-#define C_KSK_LIFETIME		"\x0C""ksk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
 
 enum {

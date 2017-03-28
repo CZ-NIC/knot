@@ -19,6 +19,7 @@
 #include <time.h>
 
 #include "knot/dnssec/context.h"
+#include "knot/zone/zone.h"
 
 /*!
  * \brief Perform correct ZSK and KSK rollover action and plan next one.
@@ -37,6 +38,8 @@
  *
  * \return KNOT_E*
  */
-int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *next_rollover);
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_changed, time_t *next_rollover);
 
 int knot_dnssec_ksk_submittion_confirm(kdnssec_ctx_t *ctx, uint16_t for_key);
+
+bool zone_has_key_submittion(const kdnssec_ctx_t *ctx);

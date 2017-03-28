@@ -203,6 +203,8 @@ static const yp_item_t desc_policy[] = {
 	{ C_NSEC3_SALT_LEN,      YP_TINT,  YP_VINT = { 0, UINT8_MAX, 8 }, CONF_IO_FRLD_ZONES },
 	{ C_NSEC3_SALT_LIFETIME, YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(30), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
+	{ C_KSK_SUBMITTION_CHECK,YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES, { check_ref } },
+	{ C_KSK_SUBMITTION_CHECK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME }, CONF_IO_FRLD_ZONES },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
@@ -292,10 +294,10 @@ const yp_item_t conf_scheme[] = {
 	{ C_LOG,      YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI | CONF_IO_FRLD_LOG },
 	{ C_STATS,    YP_TGRP, YP_VGRP = { desc_stats }, CONF_IO_FRLD_SRV },
 	{ C_KEYSTORE, YP_TGRP, YP_VGRP = { desc_keystore }, YP_FMULTI, { check_keystore } },
-	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
 	{ C_KEY,      YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_RMT,      YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
+	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
 	{ C_TPL,      YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE,     YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI | CONF_IO_FZONE, { check_zone } },
 	{ C_INCL,     YP_TSTR, YP_VNONE, CONF_IO_FDIFF_ZONES | CONF_IO_FRLD_ALL, { include_file } },
