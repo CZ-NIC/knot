@@ -261,6 +261,9 @@ Options
   Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
   on libidn availability during project building!
 
+**+**\ [\ **no**\ ]\ **keepopen**
+  Keep TCP connections open for other queries with TCP and keepopen.
+
 Notes
 -----
 
