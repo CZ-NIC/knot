@@ -116,6 +116,8 @@ struct query {
 	bool		idn;
 	/*!< Query for NSID. */
 	bool		nsid;
+	/*!< Keepopen */
+	bool		keepopen;
 	/*!< EDNS version (8unsigned + -1 uninitialized). */
 	int16_t		edns;
 	/*!< Transaction signature. */

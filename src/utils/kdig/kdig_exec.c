@@ -29,6 +29,8 @@
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 
+list_t connections = { 0 };
+
 #if USE_DNSTAP
 # include "contrib/dnstap/convert.h"
 # include "contrib/dnstap/message.h"
@@ -222,6 +224,72 @@ static void process_dnstap(const query_t *query)
 	}
 }
 #endif // USE_DNSTAP
+
+static bool servers_match(const srv_info_t *server, const srv_info_t *cserver)
+{
+	if (strcmp(server->name, cserver->name) != 0) {
+		return false;
+	}
+
+	if (strcmp(server->service, cserver->service) != 0) {
+		return false;
+	}
+
+	return true;
+}
+
+static int get_connection(const srv_info_t *remote, const int iptype,
+			  const int socktype, const int wait,
+			  const tls_params_t *tls_params, net_t **net_ptr)
+{
+	int ret;
+	net_t *net;
+	WALK_LIST(net, connections) {
+		if (net->iptype != iptype) {
+			continue;
+		}
+		if (net->socktype != socktype) {
+			continue;
+		}
+		if (!servers_match(net->remote, remote)) {
+			continue;
+		}
+
+		// If closed - try reopen
+		if (net->sockfd == -1) {
+			ret = net_connect(net);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+
+		net->wait = wait;
+
+		// Check if tls required
+		if (tls_params != NULL && tls_params->enable) {
+			// Check if tls is present
+			if (net->tls.session == NULL) {
+				ret = tls_ctx_init(&net->tls, tls_params, wait);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
+				// Connect new tls
+				ret = tls_ctx_connect(&net->tls, net->sockfd,
+						      net->remote->name);
+				if (ret != KNOT_EOK) {
+					close(net->sockfd);
+					return ret;
+				}
+			}
+
+		}
+		*net_ptr = net;
+		return KNOT_EOK;
+
+	}
+	// not found
+	return KNOT_ENOENT;
+}
 
 static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max_size)
 {
@@ -549,16 +617,9 @@ static int process_query_packet(const knot_pkt_t      *query,
 	// Get start query time.
 	t_start = time_now();
 
-	// Connect to the server.
-	ret = net_connect(net);
-	if (ret != KNOT_EOK) {
-		return -1;
-	}
-
 	// Send query packet.
 	ret = net_send(net, query->wire, query->size);
 	if (ret != KNOT_EOK) {
-		net_close(net);
 		return -1;
 	}
 
@@ -596,7 +657,6 @@ static int process_query_packet(const knot_pkt_t      *query,
 		// Receive a reply message.
 		in_len = net_receive(net, in, sizeof(in));
 		if (in_len <= 0) {
-			net_close(net);
 			return -1;
 		}
 
@@ -613,7 +673,6 @@ static int process_query_packet(const knot_pkt_t      *query,
 		reply = knot_pkt_new(in, in_len, NULL);
 		if (reply == NULL) {
 			ERR("internal error (%s)\n", knot_strerror(KNOT_ENOMEM));
-			net_close(net);
 			return 0;
 		}
 
@@ -621,7 +680,6 @@ static int process_query_packet(const knot_pkt_t      *query,
 		if (knot_pkt_parse(reply, KNOT_PF_NOCANON) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
-			net_close(net);
 			return 0;
 		}
 
@@ -631,7 +689,6 @@ static int process_query_packet(const knot_pkt_t      *query,
 		// Check for timeout.
 		} else if (time_diff_ms(&t_query, &t_end) > 1000 * net->wait) {
 			knot_pkt_free(&reply);
-			net_close(net);
 			return -1;
 		}
 
@@ -647,6 +704,11 @@ static int process_query_packet(const knot_pkt_t      *query,
 		net_close(net);
 
 		net->socktype = SOCK_STREAM;
+
+		ret = net_connect(net);
+		if (ret != KNOT_EOK) {
+			return -1;
+		}
 
 		return process_query_packet(query, net, query_ctx, true,
 		                            sign_ctx, style);
@@ -672,110 +734,8 @@ static int process_query_packet(const knot_pkt_t      *query,
 	}
 
 	knot_pkt_free(&reply);
-	net_close(net);
 
 	return 0;
-}
-
-static void process_query(const query_t *query)
-{
-	node_t     *server = NULL;
-	knot_pkt_t *out_packet;
-	net_t      net;
-	int        ret;
-
-	if (query == NULL) {
-		DBG_NULL;
-		return;
-	}
-
-	// Create query packet.
-	out_packet = create_query_packet(query);
-	if (out_packet == NULL) {
-		ERR("can't create query packet\n");
-		return;
-	}
-
-	// Sign the query.
-	sign_context_t sign_ctx = { 0 };
-	ret = sign_query(out_packet, query, &sign_ctx);
-	if (ret != KNOT_EOK) {
-		ERR("can't sign the packet (%s)\n", knot_strerror(ret));
-		return;
-	}
-
-	// Get connection parameters.
-	int iptype = get_iptype(query->ip);
-	int socktype = get_socktype(query->protocol, query->type_num);
-	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
-
-	// Loop over server list to process query.
-	WALK_LIST(server, query->servers) {
-		srv_info_t *remote = (srv_info_t *)server;
-
-		DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
-		    "port(%s), protocol(%s)\n", query->owner, query->class_num,
-		    query->type_num, remote->name, remote->service,
-		    get_sockname(socktype));
-
-		// Loop over the number of retries.
-		for (size_t i = 0; i <= query->retries; i++) {
-			// Initialize network structure for current server.
-			ret = net_init(query->local, remote, iptype, socktype,
-				       query->wait, flags, &query->tls, &net);
-			if (ret != KNOT_EOK) {
-				continue;
-			}
-
-			// Loop over all resolved addresses for remote.
-			while (net.srv != NULL) {
-				ret = process_query_packet(out_packet, &net,
-				                           query,
-				                           query->ignore_tc,
-				                           &sign_ctx,
-				                           &query->style);
-				// If error try next resolved address.
-				if (ret != 0) {
-					net.srv = (net.srv)->ai_next;
-					if (net.srv != NULL) {
-						printf("\n");
-					}
-
-					continue;
-				}
-
-				break;
-			}
-
-			// Success.
-			if (ret == 0) {
-				net_clean(&net);
-				sign_context_deinit(&sign_ctx);
-				knot_pkt_free(&out_packet);
-				return;
-			}
-
-			if (i < query->retries) {
-				printf("\n");
-				DBG("retrying server %s@%s(%s)\n",
-				    remote->name, remote->service,
-				    get_sockname(socktype));
-			}
-
-			net_clean(&net);
-		}
-
-		WARN("failed to query server %s@%s(%s)\n",
-		     remote->name, remote->service, get_sockname(socktype));
-
-		// If not last server, print separation.
-		if (server->next->next) {
-			printf("\n");
-		}
-	}
-
-	sign_context_deinit(&sign_ctx);
-	knot_pkt_free(&out_packet);
 }
 
 static int process_xfr_packet(const knot_pkt_t      *query,
@@ -797,16 +757,9 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	// Get start query time.
 	t_start = time_now();
 
-	// Connect to the server.
-	ret = net_connect(net);
-	if (ret != KNOT_EOK) {
-		return -1;
-	}
-
 	// Send query packet.
 	ret = net_send(net, query->wire, query->size);
 	if (ret != KNOT_EOK) {
-		net_close(net);
 		return -1;
 	}
 
@@ -844,7 +797,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		// Receive a reply message.
 		in_len = net_receive(net, in, sizeof(in));
 		if (in_len <= 0) {
-			net_close(net);
 			return -1;
 		}
 
@@ -861,7 +813,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		reply = knot_pkt_new(in, in_len, NULL);
 		if (reply == NULL) {
 			ERR("internal error (%s)\n", knot_strerror(KNOT_ENOMEM));
-			net_close(net);
 			return 0;
 		}
 
@@ -869,7 +820,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		if (knot_pkt_parse(reply, 0) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
-			net_close(net);
 			return 0;
 		}
 
@@ -877,7 +827,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		if (check_reply_id(reply, query) == false) {
 			ERR("reply ID mismatch from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
-			net_close(net);
 			return 0;
 		}
 
@@ -891,7 +840,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			ERR("server replied with error '%s'\n",
 			    knot_pkt_ext_rcode_name(reply));
 			knot_pkt_free(&reply);
-			net_close(net);
 			return 0;
 		}
 
@@ -911,7 +859,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 					ERR("reply verification for %s (%s)\n",
 					    net->remote_str, knot_strerror(ret));
 					knot_pkt_free(&reply);
-					net_close(net);
 					return 0;
 				}
 			}
@@ -923,7 +870,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 				ERR("first answer record from %s isn't SOA\n",
 				    net->remote_str);
 				knot_pkt_free(&reply);
-				net_close(net);
 				return 0;
 			}
 
@@ -955,15 +901,151 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 	// Print trailing transfer information.
 	print_footer_xfr(total_len, msg_count, rr_count, net,
-	                 time_diff_ms(&t_query, &t_end), 0, style);
-
-	net_close(net);
+			 time_diff_ms(&t_query, &t_end), 0, style);
 
 	return 0;
 }
 
-static void process_xfr(const query_t *query)
+static int query_connect(const query_t *query, srv_info_t *remote, net_t *net,
+			 int socktype, knot_pkt_t *out_packet, sign_context_t *sign_ctx)
 {
+	int ret;
+
+	for (size_t i = 0; i <= query->retries; i++) {
+		if (query->operation == OPERATION_QUERY) {
+			ret = process_query_packet(out_packet, net, query,
+						   query->ignore_tc, sign_ctx,
+						   &query->style);
+		} else {
+			ret = process_xfr_packet(out_packet, net, query,
+						 sign_ctx, &query->style);
+		}
+
+		// Success.
+		if (ret == 0) {
+			return KNOT_EOK;
+		}
+
+		// Close if not keepopen
+		if ((!query->keepopen || query->protocol == PROTO_UDP) && ret != -1) {
+			net_close(net);
+		}
+
+		if (i < query->retries) {
+			// Try to reconnect (keepopen only if disconnected)
+			if ((!query->keepopen || query->protocol == PROTO_UDP)
+				|| ret == -1) {
+				while (net->srv != NULL) {
+					net->srv = (net->srv)->ai_next;
+					if (net->srv != NULL) {
+						ret = net_connect(net);
+						if (ret == KNOT_EOK) {
+							break;
+						}
+					}
+				}
+				// reset to first server
+				if (net->srv == NULL) {
+					net->srv = net->remote_info;
+				}
+			}
+
+			DBG("retrying server %s@%s(%s)\n",
+			    remote->name, remote->service,
+			    get_sockname(socktype));
+		}
+	}
+
+	return KNOT_EDENIED;
+}
+
+static void process_keepopen(const query_t *query, int iptype, int socktype,
+			     knot_pkt_t *out_packet, sign_context_t *sign_ctx)
+{
+	node_t     *server = NULL;
+	net_t      *net_ptr;
+	net_t	   *new_net;
+	int ret;
+
+	for (int exist = 1; exist >= 0; exist--) {
+		WALK_LIST(server, query->servers) {
+			srv_info_t *remote = (srv_info_t *)server;
+
+			ret = get_connection(remote, iptype, socktype,
+					     query->wait, &query->tls, &net_ptr);
+			// If fails to reopen or add tls skip
+			if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+				continue;
+			}
+			if (exist) { // Check existing
+				if (ret != KNOT_EOK) {
+					continue;
+				}
+
+				DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
+				    "port(%s), protocol(%s)\n", query->owner, query->class_num,
+				    query->type_num, remote->name, remote->service,
+				    get_sockname(socktype));
+
+			} else if (!exist) { // Try first new
+				if (ret != KNOT_ENOENT) {
+					continue;
+				}
+
+				DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
+				    "port(%s), protocol(%s)\n", query->owner, query->class_num,
+				    query->type_num, remote->name, remote->service,
+				    get_sockname(socktype));
+
+				new_net = malloc(sizeof(*new_net));
+				ret = net_init(query->local, remote, iptype, socktype,
+						query->wait, &query->tls, new_net);
+				if (ret != KNOT_EOK) {
+					free(new_net);
+					goto failed_keepopen;
+				}
+
+				while (new_net->srv != NULL) {
+					ret = net_connect(new_net);
+					if (ret == KNOT_EOK) {
+						break;
+					}
+					new_net->srv = new_net->srv->ai_next;
+				}
+
+				if (new_net->srv == NULL) {
+					net_clean(new_net);
+					free(new_net);
+					goto failed_keepopen;
+				}
+				add_tail(&connections, (node_t *) new_net);
+				net_ptr = new_net;
+			}
+
+			ret = query_connect(query, remote, net_ptr, socktype,
+					    out_packet, sign_ctx);
+			if (ret == KNOT_EOK) {
+				return;
+			}
+failed_keepopen:
+			WARN("failed to query server %s@%s(%s)\n",
+			     remote->name, remote->service, get_sockname(socktype));
+
+			if (query->operation == OPERATION_XFR) {
+				return;
+			}
+
+			// If not last server, print separation.
+			if (server->next->next) {
+				printf("\n");
+			}
+		}
+	}
+}
+
+static void process_operation(const query_t *query)
+{
+	node_t     *server = NULL;
 	knot_pkt_t *out_packet;
 	net_t      net;
 	int        ret;
@@ -993,44 +1075,50 @@ static void process_xfr(const query_t *query)
 	int socktype = get_socktype(query->protocol, query->type_num);
 	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
 
-	// Use the first nameserver from the list.
-	srv_info_t *remote = HEAD(query->servers);
+	if (query->keepopen && query->protocol == PROTO_TCP) {
+		process_keepopen(query, iptype, socktype, out_packet, &sign_ctx);
+	} else {
+		// Loop over server list to process query.
+		WALK_LIST(server, query->servers) {
+			srv_info_t *remote = (srv_info_t *)server;
 
-	DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
-	    "port(%s), protocol(%s)\n", query->owner, query->class_num,
-	    query->type_num, remote->name, remote->service,
-	    get_sockname(socktype));
+			DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
+			    "port(%s), protocol(%s)\n", query->owner, query->class_num,
+			    query->type_num, remote->name, remote->service,
+			    get_sockname(socktype));
 
-	// Initialize network structure.
-	ret = net_init(query->local, remote, iptype, socktype, query->wait,
-	               flags, &query->tls, &net);
-	if (ret != KNOT_EOK) {
-		sign_context_deinit(&sign_ctx);
-		knot_pkt_free(&out_packet);
-		return;
-	}
+			ret = net_init(query->local, remote, iptype, socktype,
+					       query->wait, &query->tls, &net);
+			if (ret != KNOT_EOK) {
+				goto failed;
+			}
 
-	// Loop over all resolved addresses for remote.
-	while (net.srv != NULL) {
-		ret = process_xfr_packet(out_packet, &net,
-		                         query,
-		                         &sign_ctx,
-		                         &query->style);
-		// If error try next resolved address.
-		if (ret != 0) {
-			net.srv = (net.srv)->ai_next;
-			continue;
+			ret = net_connect(&net);
+			if (ret != KNOT_EOK) {
+				net_clean(&net);
+				goto failed;
+			}
+
+			ret = query_connect(query, remote, &net, socktype,
+					    out_packet, &sign_ctx);
+			net_clean(&net);
+			if (ret == KNOT_EOK) {
+				break;
+			}
+failed:
+			WARN("failed to query server %s@%s(%s)\n",
+			     remote->name, remote->service, get_sockname(socktype));
+
+			if (query->operation == OPERATION_XFR) {
+				break;
+			}
+			// If not last server, print separation.
+			if (server->next->next) {
+				printf("\n");
+			}
 		}
-
-		break;
 	}
 
-	if (ret != 0) {
-		ERR("failed to query server %s@%s(%s)\n",
-		    remote->name, remote->service, get_sockname(socktype));
-	}
-
-	net_clean(&net);
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(&out_packet);
 }
@@ -1044,16 +1132,16 @@ int kdig_exec(const kdig_params_t *params)
 		return KNOT_EINVAL;
 	}
 
+	init_list(&connections);
+
 	// Loop over query list.
 	WALK_LIST(n, params->queries) {
 		query_t *query = (query_t *)n;
 
 		switch (query->operation) {
 		case OPERATION_QUERY:
-			process_query(query);
-			break;
 		case OPERATION_XFR:
-			process_xfr(query);
+			process_operation(query);
 			break;
 #if USE_DNSTAP
 		case OPERATION_LIST_DNSTAP:
@@ -1071,6 +1159,15 @@ int kdig_exec(const kdig_params_t *params)
 		if (n->next->next && params->config->style.format == FORMAT_FULL) {
 			printf("\n");
 		}
+	}
+
+	net_t *net, *next;
+	WALK_LIST_DELSAFE(net, next, connections) {
+		if (net->sockfd > 0) {
+			net_close(net);
+		}
+		net_clean(net);
+		free(net);
 	}
 
 	return KNOT_EOK;

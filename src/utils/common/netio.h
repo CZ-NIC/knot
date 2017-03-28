@@ -47,6 +47,7 @@ typedef enum {
 } net_flags_t;
 
 typedef struct {
+	node_t n;
 	/*! Socket descriptor. */
 	int sockfd;
 
