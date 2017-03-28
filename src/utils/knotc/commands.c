@@ -46,6 +46,7 @@
 #define CMD_ZONE_RETRANSFER	"zone-retransfer"
 #define CMD_ZONE_FLUSH		"zone-flush"
 #define CMD_ZONE_SIGN		"zone-sign"
+#define CMD_ZONE_SUBMITTION_CONFIRM		"zone-submittion-confirm"
 #define CMD_ZONE_FREEZE		"zone-freeze"
 #define CMD_ZONE_THAW		"zone-thaw"
 
@@ -229,6 +230,7 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_ZONE_RETRANSFER:
 	case CTL_ZONE_FLUSH:
 	case CTL_ZONE_SIGN:
+	case CTL_ZONE_SUBMITTION_CONFIRM:
 	case CTL_ZONE_BEGIN:
 	case CTL_ZONE_COMMIT:
 	case CTL_ZONE_ABORT:
@@ -348,6 +350,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_RETRANSFER:
 	case CTL_ZONE_FLUSH:
 	case CTL_ZONE_SIGN:
+	case CTL_ZONE_SUBMITTION_CONFIRM:
 	case CTL_ZONE_FREEZE:
 	case CTL_ZONE_THAW:
 	case CTL_ZONE_BEGIN:
@@ -722,6 +725,7 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 	switch (args->desc->cmd) {
 	case CTL_ZONE_READ:
 	case CTL_ZONE_GET:   min_args = 1; max_args =  3; break;
+	case CTL_ZONE_SUBMITTION_CONFIRM:	min_args = 2; max_args =  2; break;
 	case CTL_ZONE_DIFF:  min_args = 1; max_args =  1; break;
 	case CTL_ZONE_SET:   min_args = 3; max_args = -1; break;
 	case CTL_ZONE_UNSET: min_args = 2; max_args = -1; break;
@@ -984,6 +988,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,      CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
 	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,      CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,      CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
+	{ CMD_ZONE_SUBMITTION_CONFIRM,       cmd_zone_node_ctl,      CTL_ZONE_SUBMITTION_CONFIRM,       CMD_FREQ_ZONE },
 	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,      CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_THAW,       cmd_zone_ctl,      CTL_ZONE_THAW,       CMD_FOPT_ZONE },
 

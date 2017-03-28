@@ -65,6 +65,7 @@ typedef struct {
 	uint16_t zsk_size;
 	uint32_t dnskey_ttl;
 	uint32_t zsk_lifetime;
+	uint32_t ksk_lifetime;
 	bool singe_type_signing;
 	// RRSIG
 	uint32_t rrsig_lifetime;
