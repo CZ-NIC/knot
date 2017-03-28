@@ -190,6 +190,8 @@ static const yp_item_t desc_policy[] = {
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_ZSK_LIFETIME,        YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(30), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
+	{ C_KSK_LIFETIME,        YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(3650), YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
 	{ C_PROPAG_DELAY,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, HOURS(1), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_RRSIG_LIFETIME,      YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(14), YP_STIME },

@@ -22,6 +22,7 @@
 #include "knot/common/stats.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
+#include "knot/dnssec/key-events.h"
 #include "knot/events/handlers.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
@@ -341,6 +342,33 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
 
 	return KNOT_EOK;
+}
+
+static int zone_ksk_submittion_confirm(zone_t *zone, ctl_args_t *args)
+{
+	const char *data = args->data[KNOT_CTL_IDX_OWNER];
+	uint16_t keytag;
+	if (data == NULL || sscanf(data, "%hu", &keytag) != 1) {
+		return KNOT_EINVAL;
+	}
+
+	conf_val_t policy = conf_zone_get(conf(), C_DNSSEC_POLICY, zone->name);
+
+	kdnssec_ctx_t ctx = { 0 };
+
+	int ret = kdnssec_ctx_init(&ctx, zone->name, &policy);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = knot_dnssec_ksk_submittion_confirm(&ctx, keytag);
+
+	kdnssec_ctx_deinit(&ctx);
+
+	zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+	// NOT zone_events_schedule_user(), intentionally
+
+	return ret;
 }
 
 static int zone_freeze(zone_t *zone, ctl_args_t *args)
@@ -1157,6 +1185,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
+	case CTL_ZONE_SUBMITTION_CONFIRM:
+		return zones_apply(args, zone_ksk_submittion_confirm);
 	case CTL_ZONE_FREEZE:
 		return zones_apply(args, zone_freeze);
 	case CTL_ZONE_THAW:
@@ -1585,6 +1615,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer", ctl_zone },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",      ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",       ctl_zone },
+	[CTL_ZONE_SUBMITTION_CONFIRM]       = { "zone-submittion-confirm",       ctl_zone },
 	[CTL_ZONE_FREEZE]     = { "zone-freeze",     ctl_zone },
 	[CTL_ZONE_THAW]       = { "zone-thaw",       ctl_zone },
 

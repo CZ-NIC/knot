@@ -652,6 +652,7 @@ static bool cds_rdata_match(zone_key_t *key,
 static bool is_from_keyset(zone_keyset_t *keyset,
                            const knot_rdata_t *record,
                            bool is_ds, // otherwise, it's DNSKEY
+                           bool is_cds_cdnskey, // in this case we match only ready keys
                            zone_key_t **matching_key) // out, optional
 {
 	assert(keyset);
@@ -678,7 +679,8 @@ static bool is_from_keyset(zone_keyset_t *keyset,
 	keyptr_dynarray_fix(&keys);
 
 	for (size_t i = 0; i < keys.size; i++) {
-		if (keys.arr[i]->is_public && match_fce(keys.arr[i], &rdata)) {
+		bool usekey = (is_cds_cdnskey ? (keys.arr[i]->is_ready && !keys.arr[i]->is_active) : keys.arr[i]->is_public);
+		if (usekey && match_fce(keys.arr[i], &rdata)) {
 			found = true;
 			if (matching_key != NULL) {
 				*matching_key = keys.arr[i];
@@ -791,13 +793,17 @@ static int remove_invalid_records(const knot_rrset_t *soa,
 	assert(changeset);
 
 	bool is_ds = false;
+	bool is_c = false;
 
 	switch (records->type) {
 	case KNOT_RRTYPE_DNSKEY:
+		break;
 	case KNOT_RRTYPE_CDNSKEY:
+		is_c = true;
 		break;
 	case KNOT_RRTYPE_CDS:
 		is_ds = true;
+		is_c = true;
 		break;
 	default:
 		return KNOT_EINVAL;
@@ -813,7 +819,7 @@ static int remove_invalid_records(const knot_rrset_t *soa,
 	for (uint16_t i = 0; i < records->rrs.rr_count; i++) {
 		const knot_rdata_t *r = knot_rdataset_at(&records->rrs, i);
 		uint32_t r_ttl = knot_rdata_ttl(r);
-		if (r_ttl == soa_ttl && is_from_keyset(keyset, r, is_ds, NULL)) {
+		if (r_ttl == soa_ttl && is_from_keyset(keyset, r, is_ds, is_c, NULL)) {
 			continue;
 		}
 
