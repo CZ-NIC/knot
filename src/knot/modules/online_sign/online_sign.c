@@ -444,7 +444,7 @@ static int get_online_key(dnssec_key_t **key_ptr, struct query_module *module)
 	(void)knot_dnssec_nsec3resalt(&kctx, &ignore1, &ignore2);
 
 	ignore1 = false; ignore2 = 0;
-	r = knot_dnssec_zsk_rollover(&kctx, &ignore1, &ignore2);
+	r = knot_dnssec_key_rollover(&kctx, &ignore1, &ignore2);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}

@@ -21,13 +21,13 @@
 #include "knot/dnssec/context.h"
 
 /*!
- * \brief Perform correct ZSK rollover action and plan next one.
+ * \brief Perform correct ZSK and KSK rollover action and plan next one.
  *
  * For given zone, check keys in KASP db and decide what shall be done
  * according to their timers. Perform the action if they shall be done now,
  * and tell the user the next time it shall be called.
  *
- * This function is optimized to be called from ZSK_ROLLOVER_EVENT,
+ * This function is optimized to be called from KEY_ROLLOVER_EVENT,
  * but also during zone load so that the zone gets loaded already with
  * proper DNSSEC chain.
  *
@@ -37,6 +37,6 @@
  *
  * \return KNOT_E*
  */
-int knot_dnssec_zsk_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *next_rollover);
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *next_rollover);
 
 int knot_dnssec_ksk_submittion_confirm(kdnssec_ctx_t *ctx, uint16_t for_key);

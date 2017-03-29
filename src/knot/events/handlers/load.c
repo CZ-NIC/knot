@@ -112,7 +112,7 @@ load_post:
 
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
-		zone_events_schedule_now(zone, ZONE_EVENT_ZSK_ROLLOVER);
+		zone_events_schedule_now(zone, ZONE_EVENT_KEY_ROLLOVER);
 		zone_events_schedule_now(zone, ZONE_EVENT_NSEC3RESALT);
 		// if nothing to be done NOW for any of those, they will replan themselves for later
 
