@@ -279,7 +279,7 @@ static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	return kdnssec_delete_key(ctx, key);
 }
 
-int knot_dnssec_zsk_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *next_rollover)
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *next_rollover)
 {
 	if (ctx->policy->manual) {
 		return KNOT_EOK;

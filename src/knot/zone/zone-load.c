@@ -244,7 +244,7 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 		}
 
 		ignore1 = false; ignore2 = 0;
-		ret = knot_dnssec_zsk_rollover(&kctx, &ignore1, &ignore2);
+		ret = knot_dnssec_key_rollover(&kctx, &ignore1, &ignore2);
 		kdnssec_ctx_deinit(&kctx);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&change);

@@ -453,7 +453,7 @@ static int get_online_key(dnssec_key_t **key_ptr, knotd_mod_t *mod)
 
 	bool ignore1 = false;
 	time_t ignore2 = 0;
-	r = knot_dnssec_zsk_rollover(&kctx, &ignore1, &ignore2);
+	r = knot_dnssec_key_rollover(&kctx, &ignore1, &ignore2);
 	if (r != DNSSEC_EOK) {
 		goto fail;
 	}

@@ -17,7 +17,7 @@
 #include "knot/dnssec/key-events.h"
 #include "knot/zone/zone.h"
 
-int event_zsk_rollover(conf_t *conf, zone_t *zone)
+int event_key_rollover(conf_t *conf, zone_t *zone)
 {
 	bool keys_updated = false;
 	time_t next_rollover = 0;
@@ -29,11 +29,11 @@ int event_zsk_rollover(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	ret = knot_dnssec_zsk_rollover(&kctx, &keys_updated, &next_rollover);
+	ret = knot_dnssec_key_rollover(&kctx, &keys_updated, &next_rollover);
 	kdnssec_ctx_deinit(&kctx);
 
 	if (next_rollover) {
-		zone_events_schedule_at(zone, ZONE_EVENT_ZSK_ROLLOVER, next_rollover);
+		zone_events_schedule_at(zone, ZONE_EVENT_KEY_ROLLOVER, next_rollover);
 	}
 
 	if (ret != KNOT_EOK) {
