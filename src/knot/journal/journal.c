@@ -126,8 +126,10 @@ typedef struct {
 	metadata_t shadow_md;
 } txn_t;
 
-static void md_get(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint32_t *res);
-static void md_set(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint32_t val);
+static void md_get(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint64_t *res);
+static void md_get32(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint32_t *res);
+static void md_set(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint64_t val);
+static void md_set32(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint32_t val);
 
 static void txn_init(txn_t *txn, knot_db_txn_t *db_txn, journal_t *j)
 {
@@ -222,21 +224,29 @@ static int txn_cmpkey(txn_t *txn, knot_db_val_t *key2)
 	return memcmp(txn->key.data, key2->data, key2->len);
 }
 
-static void txn_val_u32(txn_t *txn, uint32_t *res)
+static void txn_val_u64(txn_t *txn, uint64_t *res)
 {
 	if (txn->ret != KNOT_EOK) {
 		return;
 	}
-	if (txn->val.len != sizeof(uint32_t)) {
+	uint32_t beval32;
+	uint64_t beval;
+	switch (txn->val.len) {
+	case sizeof(uint32_t):
+		memcpy(&beval32, (uint32_t *)txn->val.data, sizeof(beval32));
+		*res = (uint64_t)be32toh(beval32);
+		break;
+	case sizeof(uint64_t):
+		memcpy(&beval, (uint64_t *)txn->val.data, sizeof(beval));
+		*res = be64toh(beval);
+		break;
+	default:
 		txn->ret = KNOT_EMALF;
 	}
-	uint32_t beval;
-	memcpy(&beval, (uint32_t *)txn->val.data, sizeof(beval));
-	*res = be32toh(beval);
 }
 
-#define txn_begin_md(md) md_get(txn, txn->j->zone, #md, &txn->shadow_md.md)
-#define txn_commit_md(md) md_set(txn, txn->j->zone, #md, txn->shadow_md.md)
+#define txn_begin_md(md) md_get32(txn, txn->j->zone, #md, &txn->shadow_md.md)
+#define txn_commit_md(md) md_set32(txn, txn->j->zone, #md, txn->shadow_md.md)
 
 #define txn_check(txn) if ((txn)->ret != KNOT_EOK) return
 #define txn_check_ret(txn) if ((txn)->ret != KNOT_EOK) return ((txn)->ret)
@@ -425,15 +435,26 @@ static void txn_unreuse(txn_t **txn, txn_t *reused)
  * ********************************************************************
  */
 
-static void md_get(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint32_t *res)
+static void md_get(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint64_t *res)
 {
 	txn_check(txn);
 	txn_key_str(txn, zone, mdkey);
-	uint32_t res1 = 0;
+	uint64_t res1 = 0;
 	if (txn_find(txn)) {
-		txn_val_u32(txn, &res1);
+		txn_val_u64(txn, &res1);
 	}
 	*res = res1;
+}
+
+static void md_get32(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint32_t *res)
+{
+	uint64_t res1 = 0;
+	md_get(txn, zone, mdkey, &res1);
+	if (res1 > UINT32_MAX) {
+		txn->ret = KNOT_EMALF;
+	} else {
+		*res = (uint32_t)res1;
+	}
 }
 
 // allocates res
@@ -461,12 +482,21 @@ static int md_set_common_last_inserter_zone(txn_t *txn, knot_dname_t *zone)
 
 static void md_get_common_last_occupied(txn_t *txn, size_t *res)
 {
-	uint32_t sres = 0;
+	uint64_t sres = 0;
 	md_get(txn, NULL, MDKEY_GLOBAL_LAST_TOTAL_OCCUPIED, &sres);
 	*res = (size_t) sres;
 }
 
-static void md_set(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint32_t val)
+static void md_set(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint64_t val)
+{
+	txn_key_str(txn, zone, mdkey);
+	uint64_t val1 = htobe64(val);
+	txn->val.len = sizeof(uint64_t);
+	txn->val.data = &val1;
+	txn_insert(txn);
+}
+
+static void md_set32(txn_t *txn, const knot_dname_t *zone, const char *mdkey, uint32_t val)
 {
 	txn_key_str(txn, zone, mdkey);
 	uint32_t val1 = htobe32(val);
@@ -538,7 +568,7 @@ static int first_digit(char * of)
 
 static void md_update_journal_count(txn_t * txn, int change_amount)
 {
-	uint32_t jcnt = 0;
+	uint64_t jcnt = 0;
 	md_get(txn, NULL, MDKEY_GLOBAL_JOURNAL_COUNT, &jcnt);
 	md_set(txn, NULL, MDKEY_GLOBAL_JOURNAL_COUNT, jcnt + change_amount);
 }
@@ -1199,7 +1229,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	md_set(txn, NULL, MDKEY_GLOBAL_LAST_TOTAL_OCCUPIED, occupied_now);
 	if (occupied_now != occupied_last) {
 		knot_dname_t *last_zone = NULL;
-		uint32_t lz_occupied;
+		uint64_t lz_occupied;
 		md_get_common_last_inserter_zone(txn, &last_zone);
 		md_get(txn, last_zone, MDKEY_PERZONE_OCCUPIED, &lz_occupied);
 		lz_occupied += occupied_now - occupied_last;
@@ -1209,7 +1239,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	md_set_common_last_inserter_zone(txn, j->zone);
 
 	// PART 3 : check if we exceeded designed occupation and delete some
-	uint32_t occupied = 0, occupied_max;
+	uint64_t occupied = 0, occupied_max;
 	md_get(txn, j->zone, MDKEY_PERZONE_OCCUPIED, &occupied);
 	occupied_max = journal_max_usage(j);
 	occupied += serialized_size_total;
@@ -1700,7 +1730,7 @@ void journal_metadata_info(journal_t *j, bool *is_empty, uint32_t *serial_from, 
 
 int journal_db_list_zones(journal_db_t **db, list_t *zones)
 {
-	uint32_t expected_count;
+	uint64_t expected_count;
 
 	if (list_size(zones) > 0) {
 		return KNOT_EINVAL;
