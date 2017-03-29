@@ -57,10 +57,10 @@ ZSK1 = "712d0d0d57fa0aa006b5e20cd84e23941e5f3ab2"
 ZSK2 = "301d3fc5392e83ea02312dc5bdc1a9f0b7937ddf"
 ZSK3 = "6abddc73bcb46c4e6078cf764290ac315fff03f0"
 
-knot.key_set(ZONE, KSK, publish="t-2y", active="t-1y", retire="t+1y", remove="t+2y")
-knot.key_set(ZONE, ZSK1, publish="t-20", active="t-10", retire="t+15", remove="t+20")
-knot.key_set(ZONE, ZSK2, publish="t+8", active="t+14", retire="t+31", remove="t+36")
-knot.key_set(ZONE, ZSK3, publish="t+24", active="t+30", retire="t+1y", remove="t+2y")
+knot.key_set(ZONE, KSK, publish="t-2y", ready="t-1y", active="t-1y", retire="t+1y", remove="t+2y")
+knot.key_set(ZONE, ZSK1, publish="t-20", ready="t-10", active="t-10", retire="t+15", remove="t+20")
+knot.key_set(ZONE, ZSK2, publish="t+8", ready="t+14", active="t+14", retire="t+31", remove="t+36")
+knot.key_set(ZONE, ZSK3, publish="t+24", ready="t+30", active="t+30", retire="t+1y", remove="t+2y")
 
 t.start()
 t.sleep(4)
