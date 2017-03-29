@@ -129,7 +129,7 @@ static bool use_key(const zone_key_t *key, const knot_rrset_t *covered)
 	assert(key);
 	assert(covered);
 
-	if (!key->is_active) {
+	if (!key->is_active && !key->is_ready) {
 		return false;
 	}
 
@@ -840,7 +840,7 @@ static int remove_invalid_records(const knot_rrset_t *soa,
 
 static bool publish_cds(const zone_key_t *key)
 {
-        return (key->is_ready && !key->is_active); // TODO uncomment
+        return (key->is_ready && !key->is_active);
 }
 
 /*!

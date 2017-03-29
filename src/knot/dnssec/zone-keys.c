@@ -293,7 +293,7 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 		}
 
 		if (key->is_public) { u->is_public = true; }
-		if (key->is_active) {
+		if (key->is_active) { // TODO consider READY state (not for STSS for now)
 			if (key->is_ksk) { u->is_ksk_active = true; }
 			if (key->is_zsk) { u->is_zsk_active = true; }
 		}
@@ -329,7 +329,7 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 	assert(keyset);
 
 	for (size_t i = 0; i < keyset->count; i++) {
-		if (!keyset->keys[i].is_active) {
+		if (!keyset->keys[i].is_active && !keyset->keys[i].is_ready) {
 			continue;
 		}
 
