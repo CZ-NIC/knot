@@ -352,12 +352,13 @@ static void log_key_info(const zone_key_t *key, const knot_dname_t *zone_name)
 	assert(zone_name);
 
 	log_zone_info(zone_name, "DNSSEC, loaded key, tag %5d, "
-			  "algorithm %d, KSK %s, ZSK %s, public %s, active %s",
+			  "algorithm %d, KSK %s, ZSK %s, public %s, ready %s, active %s",
 			  dnssec_key_get_keytag(key->key),
 			  dnssec_key_get_algorithm(key->key),
 			  key->is_ksk ? "yes" : "no",
 			  key->is_zsk ? "yes" : "no",
 			  key->is_public ? "yes" : "no",
+			  key->is_ready ? "yes" : "no",
 			  key->is_active ? "yes" : "no");
 }
 
