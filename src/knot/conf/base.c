@@ -542,77 +542,55 @@ static void log_prev_err(
 	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
 }
 
-static int parser_calls(
+static int finalize_previous_section(
 	conf_t *conf,
 	knot_db_txn_t *txn,
 	yp_parser_t *parser,
 	yp_check_ctx_t *ctx)
 {
-	static const yp_item_t *prev_item = NULL;
-	static size_t prev_id_len = 0;
-	static uint8_t prev_id[YP_MAX_ID_LEN] = { 0 };
-	static const char *prev_file_name = NULL;
-	static size_t prev_line = 0;
+	yp_node_t *node = &ctx->nodes[0];
 
-	// Zero ctx means the final previous processing.
-	yp_node_t *node = (ctx != NULL) ? &ctx->nodes[ctx->current] : NULL;
-	bool is_id = false;
-
-	// Preprocess key0 item.
-	if (node == NULL || node->parent == NULL) {
-		// Execute previous block callbacks.
-		if (prev_item != NULL) {
-			conf_check_t args = {
-				.conf = conf,
-				.txn = txn,
-				.item = prev_item,
-				.id = prev_id,
-				.id_len = prev_id_len,
-				.file_name = prev_file_name,
-				.line = prev_line
-			};
-
-			int ret = conf_exec_callbacks(&args);
-			if (ret != KNOT_EOK) {
-				log_prev_err(&args, ret);
-				return ret;
-			}
-
-			prev_item = NULL;
-		}
-
-		// Stop if final processing.
-		if (node == NULL) {
-			return KNOT_EOK;
-		}
-
-		// Store block context.
-		if (node->item->type == YP_TGRP) {
-			// Ignore alone group without identifier.
-			if ((node->item->flags & YP_FMULTI) != 0 &&
-			    node->id_len == 0) {
-				return KNOT_EOK;
-			}
-
-			prev_item = node->item;
-			memcpy(prev_id, node->id, node->id_len);
-			prev_id_len = node->id_len;
-			prev_file_name = parser->file.name;
-			prev_line = parser->line_count;
-
-			// Defer group callbacks to the beginning of the next block.
-			if ((node->item->flags & YP_FMULTI) == 0) {
-				return KNOT_EOK;
-			}
-
-			is_id = true;
-		}
+	// Return if no previous section or empty multi-section.
+	if (node->item == NULL ||
+	    (node->id_len == 0 && (node->item->flags & YP_FMULTI) != 0)) {
+		return KNOT_EOK;
 	}
 
 	conf_check_t args = {
 		.conf = conf,
 		.txn = txn,
-		.item = is_id ? node->item->var.g.id : node->item,
+		.item = node->item,
+		.id = node->id,
+		.id_len = node->id_len,
+		.file_name = parser->file.name,
+		.line = parser->line_count
+	};
+
+	int ret = conf_exec_callbacks(&args);
+	if (ret != KNOT_EOK) {
+		log_prev_err(&args, ret);
+	}
+
+	return ret;
+}
+
+static int finalize_item(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	yp_parser_t *parser,
+	yp_check_ctx_t *ctx)
+{
+	yp_node_t *node = &ctx->nodes[ctx->current];
+
+	// Section callbacks are executed before another section.
+	if (node->item->type == YP_TGRP && node->id_len == 0) {
+		return KNOT_EOK;
+	}
+
+	conf_check_t args = {
+		.conf = conf,
+		.txn = txn,
+		.item = (parser->event == YP_EID) ? node->item->var.g.id : node->item,
 		.id = node->id,
 		.id_len = node->id_len,
 		.data = node->data,
@@ -670,6 +648,13 @@ int conf_parse(
 
 	// Parse the configuration.
 	while ((ret = yp_parse(parser)) == KNOT_EOK) {
+		if (parser->event == YP_EKEY0 || parser->event == YP_EID) {
+			check_ret = finalize_previous_section(conf, txn, parser, ctx);
+			if (check_ret != KNOT_EOK) {
+				break;
+			}
+		}
+
 		check_ret = yp_scheme_check_parser(ctx, parser);
 		if (check_ret != KNOT_EOK) {
 			log_parser_err(parser, check_ret);
@@ -694,15 +679,14 @@ int conf_parse(
 			break;
 		}
 
-		check_ret = parser_calls(conf, txn, parser, ctx);
+		check_ret = finalize_item(conf, txn, parser, ctx);
 		if (check_ret != KNOT_EOK) {
 			break;
 		}
 	}
 
 	if (ret == KNOT_EOF) {
-		// Call the last block callbacks.
-		ret = parser_calls(conf, txn, NULL, NULL);
+		ret = finalize_previous_section(conf, txn, parser, ctx);
 	} else if (ret != KNOT_EOK) {
 		log_parser_err(parser, ret);
 	} else {
