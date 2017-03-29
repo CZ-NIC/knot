@@ -482,6 +482,17 @@ static int md_set_common_last_inserter_zone(txn_t *txn, knot_dname_t *zone)
 	return txn->ret;
 }
 
+static void md_del_last_inserter_zone(txn_t *txn, knot_dname_t *if_equals)
+{
+	txn_check(txn);
+	txn_key_str(txn, NULL, MDKEY_GLOBAL_LAST_INSERTER_ZONE);
+	if (txn_find(txn)) {
+		if (if_equals == NULL || knot_dname_is_equal(txn->val.data, if_equals)) {
+			txn_del(txn);
+		}
+	}
+}
+
 static void md_get_common_last_occupied(txn_t *txn, size_t *res)
 {
 	uint64_t sres = 0;
@@ -990,6 +1001,8 @@ static int drop_journal(journal_t *j, txn_t *_txn)
 	if (md_flag(txn, SERIAL_TO_VALID) && !md_flag(txn, FIRST_SERIAL_INVALID)) {
 		delete_upto(j, txn, txn->shadow_md.first_serial, txn->shadow_md.last_serial);
 	}
+	md_del_last_inserter_zone(txn, j->zone);
+	md_set(txn, j->zone, MDKEY_PERZONE_OCCUPIED, 0);
 	unreuse_txn(txn, _txn);
 	txn_ret(txn);
 }
@@ -1233,10 +1246,12 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		knot_dname_t *last_zone = NULL;
 		uint64_t lz_occupied;
 		md_get_common_last_inserter_zone(txn, &last_zone);
-		md_get(txn, last_zone, MDKEY_PERZONE_OCCUPIED, &lz_occupied);
-		lz_occupied += occupied_now - occupied_last;
-		md_set(txn, last_zone, MDKEY_PERZONE_OCCUPIED, lz_occupied);
-		free(last_zone);
+		if (last_zone != NULL) {
+			md_get(txn, last_zone, MDKEY_PERZONE_OCCUPIED, &lz_occupied);
+			lz_occupied += occupied_now - occupied_last;
+			md_set(txn, last_zone, MDKEY_PERZONE_OCCUPIED, lz_occupied);
+			free(last_zone);
+		}
 	}
 	md_set_common_last_inserter_zone(txn, j->zone);
 
@@ -1694,6 +1709,9 @@ int scrape_journal(journal_t *j)
 			txn->ret = j->db->db_api->del(txn->txn, (knot_db_val_t *)del_one->d);
 		}
 		md_update_journal_count(txn, -1);
+
+		md_del_last_inserter_zone(txn, j->zone);
+
 		txn->ret = j->db->db_api->txn_commit(txn->txn);
 	}
 scrape_end:
