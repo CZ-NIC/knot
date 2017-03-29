@@ -256,8 +256,10 @@ static void txn_val_u64(txn_t *txn, uint64_t *res)
 
 static void txn_begin(txn_t *txn, bool write_allowed)
 {
-	if (txn->ret != KNOT_ESEMCHECK) {
+	if (txn->ret == KNOT_EOK) {
 		txn->ret = KNOT_EINVAL;
+	}
+	if (txn->ret != KNOT_ESEMCHECK) {
 		return;
 	}
 
