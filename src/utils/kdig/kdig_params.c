@@ -791,7 +791,7 @@ static int opt_subnet(const char *arg, void *query)
 	}
 
 	// Separate address and network mask.
-	if ((sep = index(arg, '/')) != NULL) {
+	if ((sep = strchr(arg, '/')) != NULL) {
 		addr_len = sep - arg;
 	} else {
 		addr_len = arg_len;
