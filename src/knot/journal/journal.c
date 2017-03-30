@@ -1159,7 +1159,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		md_get_common_last_inserter_zone(txn, &last_zone);
 		if (last_zone != NULL) {
 			md_get(txn, last_zone, MDKEY_PERZONE_OCCUPIED, &lz_occupied);
-			lz_occupied += occupied_now - occupied_last;
+			lz_occupied = (lz_occupied + occupied_now > occupied_last ?
+			               lz_occupied + occupied_now - occupied_last : 0);
 			md_set(txn, last_zone, MDKEY_PERZONE_OCCUPIED, lz_occupied);
 			free(last_zone);
 		}
