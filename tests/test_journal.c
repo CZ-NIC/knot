@@ -276,7 +276,7 @@ static void test_store_load(void)
 	j = journal_new();
 	ok(j != NULL, "journal: new");
 
-	ret = journal_db_init(&db, test_dir_name, 1024 * 1024, JOURNAL_MODE_ASYNC);
+	ret = journal_db_init(&db, test_dir_name, (512 + 1024) * 1024, JOURNAL_MODE_ASYNC);
 	if (ret == KNOT_EOK) ret2 = journal_open(j, &db, apex);
 	is_int(KNOT_EOK, ret, "journal: open (%d, %d)", ret, ret2);
 
@@ -696,7 +696,7 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 static void test_stress(journal_t *j)
 {
 	diag("stress test: small data");
-	test_stress_base(j, 40, 1024 * 1024 / 2);
+	test_stress_base(j, 40, (1024 + 512) * 1024);
 
 	diag("stress test: medium data");
 	test_stress_base(j, 400, 3 * 1024 * 1024);
