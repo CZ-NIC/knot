@@ -15,6 +15,7 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 
 #include "utils/common/resolv.h"
@@ -43,7 +44,7 @@ srv_info_t* parse_nameserver(const char *str, const char *def_port)
 	// [address]:port notation.
 	if (*str == '[') {
 		addr = str + 1;
-		const char *addr_end = index(addr, ']');
+		const char *addr_end = strchr(addr, ']');
 		// Missing closing bracket -> stop processing.
 		if (addr_end == NULL) {
 			return NULL;
@@ -51,22 +52,22 @@ srv_info_t* parse_nameserver(const char *str, const char *def_port)
 		addr_len = addr_end - addr;
 		str += 1 + addr_len + 1;
 	// Address@port notation.
-	} else if ((sep = index(str, '@')) != NULL) {
+	} else if ((sep = strchr(str, '@')) != NULL) {
 		addr = str;
 		addr_len = sep - addr;
 		str += addr_len;
 		separator = '@';
 	// Address#port notation.
-	} else if ((sep = index(str, '#')) != NULL) {
+	} else if ((sep = strchr(str, '#')) != NULL) {
 		addr = str;
 		addr_len = sep - addr;
 		str += addr_len;
 		separator = '#';
 	// IPv4:port notation.
-	} else if ((sep = index(str, ':')) != NULL) {
+	} else if ((sep = strchr(str, ':')) != NULL) {
 		addr = str;
 		// Not IPv4 address -> no port.
-		if (index(sep + 1, ':') != NULL) {
+		if (strchr(sep + 1, ':') != NULL) {
 			addr_len = str_len;
 			str = str_end;
 		} else {
