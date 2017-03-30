@@ -32,6 +32,13 @@ struct {
 	server_t *server;
 } stats = { 0 };
 
+typedef struct {
+	FILE *fd;
+	const list_t *query_modules;
+	const knot_dname_t *zone;
+	bool zone_emitted;
+} dump_ctx_t;
+
 #define DUMP_STR(fd, level, name, ...) do { \
 	fprintf(fd, "%-.*s"name": %s\n", level, "    ", ##__VA_ARGS__); \
 	} while (0)
@@ -69,36 +76,36 @@ static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr)
 	}
 }
 
-static void dump_modules(FILE *fd, list_t *query_modules, const knot_dname_t *zone)
+static void dump_modules(dump_ctx_t *ctx)
 {
-	static int level = 0;
+	int level = 0;
 	struct query_module *mod = NULL;
-	WALK_LIST(mod, *query_modules) {
+	WALK_LIST(mod, *ctx->query_modules) {
 		// Skip modules without statistics.
 		if (mod->stats_count == 0) {
 			continue;
 		}
 
 		// Dump zone name.
-		if (zone != NULL) {
+		if (ctx->zone != NULL) {
 			// Prevent from zone section override.
-			if (level == 0) {
-				DUMP_STR(fd, level++, "zone", "");
-			} else {
-				level = 1;
+			if (!ctx->zone_emitted) {
+				DUMP_STR(ctx->fd, 0, "zone", "");
+				ctx->zone_emitted = true;
 			}
+			level = 1;
 
 			char name[KNOT_DNAME_TXT_MAXLEN + 1];
-			if (knot_dname_to_str(name, zone, sizeof(name)) == NULL) {
+			if (knot_dname_to_str(name, ctx->zone, sizeof(name)) == NULL) {
 				return;
 			}
-			DUMP_STR(fd, level++, "\"%s\"", name, "");
+			DUMP_STR(ctx->fd, level++, "\"%s\"", name, "");
 		} else {
 			level = 0;
 		}
 
 		// Dump module counters.
-		DUMP_STR(fd, level, "%s", mod->id->name + 1, "");
+		DUMP_STR(ctx->fd, level, "%s", mod->id->name + 1, "");
 		for (int i = 0; i < mod->stats_count; i++) {
 			mod_ctr_t *ctr = mod->stats + i;
 			if (ctr->name == NULL) {
@@ -107,23 +114,26 @@ static void dump_modules(FILE *fd, list_t *query_modules, const knot_dname_t *zo
 			}
 			if (ctr->count == 1) {
 				// Simple counter.
-				DUMP_CTR(fd, level + 1, "%s", ctr->name, ctr->counter);
+				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name, ctr->counter);
 			} else {
 				// Array of counters.
-				DUMP_STR(fd, level + 1, "%s", ctr->name, "");
-				dump_counters(fd, level + 2, ctr);
+				DUMP_STR(ctx->fd, level + 1, "%s", ctr->name, "");
+				dump_counters(ctx->fd, level + 2, ctr);
 			}
 		}
 	}
 }
 
-static void zone_stats_dump(zone_t *zone, FILE *fd)
+static void zone_stats_dump(zone_t *zone, dump_ctx_t *ctx)
 {
 	if (EMPTY_LIST(zone->query_modules)) {
 		return;
 	}
 
-	dump_modules(fd, &zone->query_modules, zone->name);
+	ctx->query_modules = &zone->query_modules;
+	ctx->zone = zone->name;
+
+	dump_modules(ctx);
 }
 
 static void dump_to_file(FILE *fd, server_t *server)
@@ -156,11 +166,16 @@ static void dump_to_file(FILE *fd, server_t *server)
 		DUMP_CTR(fd, 1, "%s", item->name, item->val(server));
 	}
 
+	dump_ctx_t ctx = {
+		.fd = fd,
+		.query_modules = &conf()->query_modules,
+	};
+
 	// Dump global statistics.
-	dump_modules(fd, &conf()->query_modules, NULL);
+	dump_modules(&ctx);
 
 	// Dump zone statistics.
-	knot_zonedb_foreach(server->zone_db, zone_stats_dump, fd);
+	knot_zonedb_foreach(server->zone_db, zone_stats_dump, &ctx);
 }
 
 static void dump_stats(server_t *server)
