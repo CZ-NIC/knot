@@ -67,7 +67,12 @@ static void close_journal(zone_t *zone)
 	journal_close(zone->journal);
 }
 
-static int flush_journal(conf_t *conf, zone_t *zone)
+/*!
+ * \param allow_empty_zone useful when ned to flush journal but zone is not yet loaded
+ * ...in this case we actually don't have to do anything because the zonefile is curent,
+ * but we must mark the journal as flushed
+ */
+static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 {
 	/*! @note Function expects nobody will change zone contents meanwile. */
 
@@ -77,6 +82,9 @@ static int flush_journal(conf_t *conf, zone_t *zone)
 	zone->flags &= ~ZONE_FORCE_FLUSH;
 
 	if (zone_contents_is_empty(zone->contents)) {
+		if (allow_empty_zone && zone->journal && journal_exists(zone->journal_db, zone->name)) {
+			return journal_flush(zone->journal);
+		}
 		return KNOT_EINVAL;
 	}
 
@@ -256,7 +264,7 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
 			log_zone_notice(zone->name, "journal is full, flushing");
 
 			/* Transaction rolled back, journal released, we may flush. */
-			ret = flush_journal(conf, zone);
+			ret = flush_journal(conf, zone, true);
 			if (ret == KNOT_EOK) {
 				ret = journal_store_changeset(zone->journal, change);
 			}
@@ -282,7 +290,7 @@ int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs)
 		if (ret == KNOT_EBUSY) {
 			log_zone_notice(zone->name, "journal is full, flushing");
 			/* Transaction rolled back, journal released, we may flush. */
-			ret = flush_journal(conf, zone);
+			ret = flush_journal(conf, zone, true);
 			if (ret == KNOT_EOK) {
 				ret = journal_store_changesets(zone->journal, chgs);
 			}
@@ -323,7 +331,7 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 
 	// NO open_journal() here.
 
-	int ret = flush_journal(conf, zone);
+	int ret = flush_journal(conf, zone, false);
 
 	JOURNAL_UNLOCK_RW
 
