@@ -372,6 +372,16 @@ static void test_conf_io_set(void)
 	ok(conf_io_set("include", NULL, NULL, "invalid") ==
 	   KNOT_EFILE, "set invalid callback value");
 
+	// Single group, no item, no value.
+	ok(conf_io_set("server", NULL, NULL, NULL) ==
+	   KNOT_ENOTSUP, "set group no value");
+	// Single group, no item, value.
+	ok(conf_io_set("server", NULL, NULL, "text") ==
+	   KNOT_YP_ENOTSUP_DATA, "set group value");
+	// Single group, item, no value.
+	ok(conf_io_set("server", "version", NULL, NULL) ==
+	   KNOT_YP_ENODATA, "set group item no value");
+
 	// Single group, single value.
 	ok(conf_io_set("server", "version", NULL, "text") ==
 	   KNOT_EOK, "set single value");
@@ -395,6 +405,10 @@ static void test_conf_io_set(void)
 	ok(zone2 != NULL, "create dname "ZONE2);
 	knot_dname_t *zone3 = knot_dname_from_str_alloc(ZONE3);
 	ok(zone3 != NULL, "create dname "ZONE3);
+
+	// Multi group no id.
+	ok(conf_io_set("zone", "domain", NULL, NULL) ==
+	   KNOT_YP_ENOID, "set zone empty domain");
 
 	// Multi group ids.
 	ok(conf_io_set("zone", "domain", NULL, ZONE1) ==
