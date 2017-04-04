@@ -361,7 +361,9 @@ static int diff_iter_section(
 	case KNOT_EOK:
 		break;
 	case KNOT_ENOENT:
-		return KNOT_EOK;
+		// Continue to the second step.
+		ret = KNOT_EOF;
+		break;
 	default:
 		return ret;
 	}
