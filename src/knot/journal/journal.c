@@ -1184,7 +1184,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			delete_tofree(j, txn, tofree, &freed);
 			if (freed < free_min) {
 				txn->ret = KNOT_ESPACE;
-				log_zone_warning(j->zone, "journal: unable to make free space for insert");
+				log_zone_warning(j->zone, "journal, unable to make free space for insert");
 				goto store_changeset_cleanup;
 			}
 		}
@@ -1192,7 +1192,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 	// PART 3.5 : check if we exceeded history depth
 	long over_limit = (long)txn->shadow_md.changeset_count - journal_max_changesets(j) +
-			  list_size(changesets) - (inserting_merged ? 1 : 0);
+	                  list_size(changesets) - (inserting_merged ? 1 : 0);
 	if (over_limit > 0) {
 		size_t deled;
 		delete_count(j, txn, over_limit, &deled);
@@ -1208,7 +1208,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	changeset_t * chs_head = (HEAD(*changesets));
 	uint32_t serial = knot_soa_serial(&chs_head->soa_from->rrs);
 	if (md_flag(txn, SERIAL_TO_VALID) && serial_compare(txn->shadow_md.last_serial_to, serial) != 0) {
-		log_zone_warning(j->zone, "discontinuity in chages history (%u -> %u), dropping older changesets",
+		log_zone_warning(j->zone, "journal, discontinuity in changes history (%u -> %u), dropping older changesets",
 		                 txn->shadow_md.last_serial_to, serial);
 		try_flush
 		drop_journal(j, txn);
@@ -1221,7 +1221,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		}
 		txn_key_2u32(txn, j->zone, serial_to, 0);
 		if (txn_find(txn)) {
-			log_zone_warning(j->zone, "duplicite changeset serial (%u), dropping older changesets",
+			log_zone_warning(j->zone, "journal, duplicate changeset serial (%u), dropping older changesets",
 			                 serial_to);
 			try_flush
 			delete_upto(j, txn, txn->shadow_md.first_serial, serial_to);
@@ -1348,7 +1348,7 @@ int journal_store_changeset(journal_t *journal, changeset_t *ch)
 	if (ch_shallowcopy == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memcpy(ch_shallowcopy, ch, sizeof(changeset_t)); // we need to copy the changeset_t sructure not to break ch->n
+	memcpy(ch_shallowcopy, ch, sizeof(changeset_t)); // we need to copy the changeset_t structure not to break ch->n
 
 	list_t list;
 	init_list(&list);
