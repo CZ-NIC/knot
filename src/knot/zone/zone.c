@@ -68,8 +68,8 @@ static void close_journal(zone_t *zone)
 }
 
 /*!
- * \param allow_empty_zone useful when ned to flush journal but zone is not yet loaded
- * ...in this case we actually don't have to do anything because the zonefile is curent,
+ * \param allow_empty_zone useful when need to flush journal but zone is not yet loaded
+ * ...in this case we actually don't have to do anything because the zonefile is current,
  * but we must mark the journal as flushed
  */
 static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
