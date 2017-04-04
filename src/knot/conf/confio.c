@@ -930,25 +930,34 @@ int conf_io_set(
 
 	// Key1 is not a group identifier.
 	if (parent != NULL) {
+		if (node->data_len == 0) {
+			ret = KNOT_YP_ENODATA;
+			goto set_error;
+		}
 		upd_type = CONF_IO_TCHANGE;
 		upd_flags |= parent->item->flags;
 		io_reset_bin(&io, parent->item, node->item, parent->id,
 		             parent->id_len, node->data, node->data_len);
-	// No key1 but a group identifier.
-	} else if (node->id_len != 0) {
-		assert(node->item->type == YP_TGRP &&
-		       (node->item->flags & YP_FMULTI) != 0);
-		assert(node->data_len == 0);
-
+	// A group identifier or whole group.
+	} else if (node->item->type == YP_TGRP) {
 		upd_type = CONF_IO_TSET;
-		upd_flags |= node->item->var.g.id->flags;
-		io_reset_bin(&io, node->item, node->item->var.g.id, node->id,
-		             node->id_len, NULL, 0);
-	// Ensure some data for non-group items (include).
-	} else if (node->item->type == YP_TGRP || node->data_len != 0) {
+		if ((node->item->flags & YP_FMULTI) != 0) {
+			if (node->id_len == 0) {
+				ret = KNOT_YP_ENOID;
+				goto set_error;
+			}
+			upd_flags |= node->item->var.g.id->flags;
+		} else {
+			ret = KNOT_ENOTSUP;
+			goto set_error;
+		}
+		assert(node->data_len == 0);
 		io_reset_bin(&io, node->item, NULL, node->id, node->id_len,
-		             node->data, node->data_len);
-	// Non-group without data.
+		             NULL, 0);
+	// A non-group item with data (include).
+	} else if (node->data_len > 0) {
+		io_reset_bin(&io, node->item, NULL, NULL, 0, node->data,
+		             node->data_len);
 	} else {
 		ret = KNOT_YP_ENODATA;
 		goto set_error;
@@ -1132,21 +1141,18 @@ int conf_io_unset(
 		upd_flags |= parent->item->flags;
 		io_reset_bin(&io, parent->item, node->item, parent->id,
 		             parent->id_len, node->data, node->data_len);
-	// No key1 but a group identifier or whole group.
-	} else {
+	// A group identifier or whole group.
+	} else if (node->item->type == YP_TGRP) {
+		upd_type = CONF_IO_TUNSET;
 		if (node->id_len != 0) {
-			assert(node->item->type == YP_TGRP &&
-			       (node->item->flags & YP_FMULTI) != 0);
-
-			upd_type = CONF_IO_TUNSET;
+			assert((node->item->flags & YP_FMULTI) != 0);
 			upd_flags |= node->item->var.g.id->flags;
 		}
+		assert(node->data_len == 0);
 		io_reset_bin(&io, node->item, NULL, node->id, node->id_len,
-		             node->data, node->data_len);
-	}
-
-	// Check for a non-group item.
-	if (io.key0->type != YP_TGRP) {
+		             NULL, 0);
+	// A non-group item (include).
+	} else {
 		ret = KNOT_ENOTSUP;
 		goto unset_error;
 	}
