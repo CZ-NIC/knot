@@ -635,7 +635,12 @@ static void get_iter_next(txn_t *txn, uint32_t expect_serial, int expect_chunk)
 	txn_key_2u32(txn, txn->j->zone, expect_serial, (uint32_t)expect_chunk);
 	if (txn->ret == KNOT_ENOENT ||
 	    (txn->ret == KNOT_EOK && txn_cmpkey(txn, &other_key) != 0)) {
-			txn_iter_seek(txn);
+		txn->ret = KNOT_EOK;
+		if (txn->iter != NULL) {
+			txn_iter_finish(txn);
+		}
+		txn_iter_begin(txn);
+		txn_iter_seek(txn);
 	}
 }
 
