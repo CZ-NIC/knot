@@ -659,6 +659,11 @@ static void get_iter_next(iteration_ctx_t *ctx, iteration_cb_t key_cb)
 	key_cb(ctx);
 	if (ctx->txn->ret == KNOT_ENOENT ||
 	    (ctx->txn->ret == KNOT_EOK && txn_cmpkey(ctx->txn, &other_key) != 0)) {
+		ctx->txn->ret = KNOT_EOK;
+		if (ctx->txn->iter != NULL) {
+			txn_iter_finish(ctx->txn);
+		}
+		txn_iter_begin(ctx->txn);
 		txn_iter_seek(ctx->txn);
 	}
 }
