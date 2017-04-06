@@ -143,8 +143,7 @@ static const yp_item_t desc_server[] = {
 	{ C_RATE_LIMIT,           YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
 	{ C_RATE_LIMIT_SLIP,      YP_TINT,  YP_VINT = { 0, 100, 1 } },
 	{ C_RATE_LIMIT_TBL_SIZE,  YP_TINT,  YP_VINT = { 1, INT32_MAX, 393241 } },
-	{ C_RATE_LIMIT_WHITELIST, YP_TDATA, YP_VDATA = { 0, NULL, addr_range_to_bin,
-	                                                 addr_range_to_txt }, YP_FMULTI },
+	{ C_RATE_LIMIT_WHITELIST, YP_TNET,  YP_VNONE, YP_FMULTI },
 	{ NULL }
 };
 
@@ -223,8 +222,7 @@ static const yp_item_t desc_key[] = {
 
 static const yp_item_t desc_acl[] = {
 	{ C_ID,      YP_TSTR,  YP_VNONE, CONF_IO_FREF },
-	{ C_ADDR,    YP_TDATA, YP_VDATA = { 0, NULL, addr_range_to_bin,
-	                                    addr_range_to_txt }, YP_FMULTI },
+	{ C_ADDR,    YP_TNET,  YP_VNONE, YP_FMULTI },
 	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
 	{ C_ACTION,  YP_TOPT,  YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
 	{ C_DENY,    YP_TBOOL, YP_VNONE },

@@ -55,8 +55,7 @@ const yp_item_t scheme_mod_synth_record[] = {
 	{ MOD_PREFIX, YP_TSTR,   YP_VSTR = { "" }, YP_FNONE, { check_prefix } },
 	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
-	{ MOD_NET,    YP_TDATA,  YP_VDATA = { 0, NULL, addr_range_to_bin,
-	                                      addr_range_to_txt }, YP_FMULTI },
+	{ MOD_NET,    YP_TNET,   YP_VNONE, YP_FMULTI },
 	{ C_COMMENT,  YP_TSTR,   YP_VNONE },
 	{ NULL }
 };

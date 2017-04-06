@@ -55,6 +55,7 @@ struct knot_lookup;
 #define YP_VOPT		.var.o
 #define YP_VSTR		.var.s
 #define YP_VADDR	.var.a
+#define YP_VNET		.var.d
 #define YP_VDNAME	.var.d
 #define YP_VHEX		.var.d
 #define YP_VB64		.var.d
@@ -74,6 +75,7 @@ typedef enum {
 	YP_TSTR,      /*!< String. */
 	YP_THEX,      /*!< String or hexadecimal string if "0x" prefix. */
 	YP_TADDR,     /*!< Address (address[@port] or UNIX socket path). */
+	YP_TNET,      /*!< Network address range (address[/mask] or address-address). */
 	YP_TDNAME,    /*!< Domain name. */
 	YP_TB64,      /*!< Base64 encoded string. */
 	YP_TDATA,     /*!< Customized data. */

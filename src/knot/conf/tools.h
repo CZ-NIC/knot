@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,14 +61,6 @@ int edns_opt_to_bin(
 );
 
 int edns_opt_to_txt(
-	YP_BIN_TXT_PARAMS
-);
-
-int addr_range_to_bin(
-	YP_TXT_BIN_PARAMS
-);
-
-int addr_range_to_txt(
 	YP_BIN_TXT_PARAMS
 );
 

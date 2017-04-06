@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -99,41 +99,6 @@ static void edns_opt_bad_test(const char *txt, int code)
 	ok(ret == code, "invalid txt to bin");
 }
 
-static void addr_range_test(const char *txt)
-{
-	int ret;
-	uint8_t b[64];
-	size_t b_len = sizeof(b);
-	char t[64];
-	size_t t_len = sizeof(t);
-	yp_item_t i = { NULL, YP_TDATA, YP_VDATA = { 0, NULL,
-	                                             addr_range_to_bin,
-	                                             addr_range_to_txt } };
-
-	diag("address range \"%s\":", txt);
-	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	is_int(KNOT_EOK, ret, "txt to bin");
-	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	is_int(KNOT_EOK, ret, "bin to txt");
-	ok(strlen(t) == t_len, "txt ret length");
-	ok(strlen(txt) == t_len, "txt length");
-	ok(memcmp(txt, t, t_len) == 0, "compare");
-}
-
-static void addr_range_bad_test(const char *txt, int code)
-{
-	int ret;
-	uint8_t b[64];
-	size_t b_len = sizeof(b);
-	yp_item_t i = { NULL, YP_TDATA, YP_VDATA = { 0, NULL,
-	                                             addr_range_to_bin,
-	                                             addr_range_to_txt } };
-
-	diag("address range \"%s\":", txt);
-	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == code, "invalid txt to bin");
-}
-
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -154,22 +119,6 @@ int main(int argc, char *argv[])
 	edns_opt_bad_test("-1:a", KNOT_ERANGE);
 	edns_opt_bad_test("65536:a", KNOT_ERANGE);
 	edns_opt_bad_test("0:0xa", KNOT_EINVAL);
-
-	/* Address range tests. */
-	addr_range_test("1.1.1.1");
-	addr_range_test("1.1.1.1/0");
-	addr_range_test("1.1.1.1/32");
-	addr_range_test("1.1.1.1-1.2.3.4");
-	addr_range_test("::1");
-	addr_range_test("::1/0");
-	addr_range_test("::1/32");
-	addr_range_test("1::-5::");
-	addr_range_bad_test("unix", KNOT_EINVAL);
-	addr_range_bad_test("1.1.1", KNOT_EINVAL);
-	addr_range_bad_test("1.1.1.1/", KNOT_EINVAL);
-	addr_range_bad_test("1.1.1.1/33", KNOT_ERANGE);
-	addr_range_bad_test("1.1.1.1-", KNOT_EINVAL);
-	addr_range_bad_test("1.1.1.1-::1", KNOT_EINVAL);
 
 	return 0;
 }

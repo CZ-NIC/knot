@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -502,6 +502,122 @@ int yp_addr_to_txt(
 	YP_CHECK_RET;
 }
 
+int yp_addr_range_to_bin(
+	YP_TXT_BIN_PARAMS)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	// Format: 0 - single address, 1 - address prefix, 2 - address range.
+	uint8_t format = 0;
+
+	// Check for the "addr/mask" format.
+	const uint8_t *pos = (uint8_t *)strchr((char *)in->position, '/');
+	if (pos >= stop) {
+		pos = NULL;
+	}
+
+	if (pos != NULL) {
+		format = 1;
+	} else {
+		// Check for the "addr1-addr2" format.
+		pos = (uint8_t *)strchr((char *)in->position, '-');
+		if (pos >= stop) {
+			pos = NULL;
+		}
+		if (pos != NULL) {
+			format = 2;
+		}
+	}
+
+	// Store address1 type position.
+	uint8_t *type1 = out->position;
+
+	// Write the first address.
+	int ret = yp_addr_noport_to_bin(in, out, pos, false);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	wire_ctx_write_u8(out, format);
+
+	switch (format) {
+	case 1:
+		// Skip the separator.
+		wire_ctx_skip(in, sizeof(uint8_t));
+
+		// Write the prefix length.
+		ret = yp_int_to_bin(in, out, stop, 0, (*type1 == 4) ? 32 : 128,
+		                    YP_SNONE);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		break;
+	case 2:
+		// Skip the separator.
+		wire_ctx_skip(in, sizeof(uint8_t));
+
+		// Store address2 type position.
+		uint8_t *type2 = out->position;
+
+		// Write the second address.
+		ret = yp_addr_noport_to_bin(in, out, stop, false);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		// Check for address mismatch.
+		if (*type1 != *type2) {
+			return KNOT_EINVAL;
+		}
+		break;
+	default:
+		break;
+	}
+
+	YP_CHECK_RET;
+}
+
+int yp_addr_range_to_txt(
+	YP_BIN_TXT_PARAMS)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	// Write the first address.
+	int ret = yp_addr_noport_to_txt(in, out);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	uint8_t format = wire_ctx_read_u8(in);
+
+	switch (format) {
+	case 1:
+		// Write the separator.
+		wire_ctx_write_u8(out, '/');
+
+		// Write the prefix length.
+		ret = yp_int_to_txt(in, out, YP_SNONE);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		break;
+	case 2:
+		// Write the separator.
+		wire_ctx_write_u8(out, '-');
+
+		// Write the second address.
+		ret = yp_addr_noport_to_txt(in, out);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		break;
+	default:
+		break;
+	}
+
+	YP_CHECK_RET;
+}
+
 int yp_option_to_bin(
 	YP_TXT_BIN_PARAMS,
 	const knot_lookup_t *opts)
@@ -766,6 +882,9 @@ int yp_item_to_bin(
 	case YP_TADDR:
 		ret = yp_addr_to_bin(&in, &out, NULL);
 		break;
+	case YP_TNET:
+		ret = yp_addr_range_to_bin(&in, &out, NULL);
+		break;
 	case YP_TDNAME:
 		ret = yp_dname_to_bin(&in, &out, NULL);
 		break;
@@ -840,6 +959,9 @@ int yp_item_to_txt(
 		break;
 	case YP_TADDR:
 		ret = yp_addr_to_txt(&in, &out);
+		break;
+	case YP_TNET:
+		ret = yp_addr_range_to_txt(&in, &out);
 		break;
 	case YP_TDNAME:
 		ret = yp_dname_to_txt(&in, &out);

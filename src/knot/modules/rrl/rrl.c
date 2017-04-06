@@ -30,8 +30,7 @@ const yp_item_t scheme_mod_rrl[] = {
 	{ MOD_RATE_LIMIT, YP_TINT,  YP_VINT = { 1, INT32_MAX } },
 	{ MOD_SLIP,       YP_TINT,  YP_VINT = { 0, RRL_SLIP_MAX, 1 } },
 	{ MOD_TBL_SIZE,	  YP_TINT,  YP_VINT = { 1, INT32_MAX, 393241 } },
-	{ MOD_WHITELIST,  YP_TDATA, YP_VDATA = { 0, NULL, addr_range_to_bin,
-	                                         addr_range_to_txt }, YP_FMULTI },
+	{ MOD_WHITELIST,  YP_TNET, YP_VNONE, YP_FMULTI },
 	{ C_COMMENT,      YP_TSTR,  YP_VNONE },
 	{ NULL }
 };

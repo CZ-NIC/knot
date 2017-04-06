@@ -640,9 +640,9 @@ struct sockaddr_storage conf_addr_range(
 {
 	assert(val != NULL && val->item != NULL && max_ss != NULL &&
 	       prefix_len != NULL);
-	assert(val->item->type == YP_TDATA ||
+	assert(val->item->type == YP_TNET ||
 	       (val->item->type == YP_TREF &&
-	        val->item->var.r.ref->var.g.id->type == YP_TDATA));
+	        val->item->var.r.ref->var.g.id->type == YP_TNET));
 
 	struct sockaddr_storage out = { AF_UNSPEC };
 
