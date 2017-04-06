@@ -317,6 +317,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_change
 			}
 			zone_events_schedule_now(zone, ZONE_EVENT_PARENT_DS_Q);
 			// "now" it won't probably succeed, but it replans itself for proper interval
+
+			log_zone_notice(zone->name, "DNSSEC, published CDS, CDNSKEY for submittion");
 			break;
 		case REPLACE:
 			ret = exec_new_signatures(ctx, next.key);
