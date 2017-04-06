@@ -1725,7 +1725,7 @@ static void _jch_print(const knot_dname_t *zname, int warn_level, const char *fo
 #define jch_print(wl, fmt_args...) if ((wl) <= warn_level) _jch_print(j->zone, wl, fmt_args)
 #define jch_info(fmt_args...) jch_print(JOURNAL_CHECK_INFO, fmt_args)
 #define jch_warn(fmt_args...) jch_print((allok = 0, JOURNAL_CHECK_WARN), fmt_args)
-#define jch_txn(comment, fatal) do { if (txn->ret != KNOT_EOK && txn->ret != KNOT_EOK) { \
+#define jch_txn(comment, fatal) do { if (txn->ret != KNOT_EOK) { \
                                      jch_warn("failed transaction: %s (%s)", (comment), knot_strerror(txn->ret)); \
                                      if (fatal) return txn->ret; } } while (0)
 
