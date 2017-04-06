@@ -1182,8 +1182,10 @@ static int merge_unflushed_changesets(journal_t *j, txn_t *_txn, changeset_t **m
 	}
 	from = knot_soa_serial(&(*mch)->soa_to->rrs);
 
-	txn->ret = iterate(j, txn, merge_itercb, JOURNAL_ITERATION_CHANGESETS,
-	                   mch, from, txn->shadow_md.last_serial, normal_iterkeycb);
+	if (serial_compare(from, txn->shadow_md.last_serial_to) != 0) {
+		txn->ret = iterate(j, txn, merge_itercb, JOURNAL_ITERATION_CHANGESETS,
+		                   mch, from, txn->shadow_md.last_serial, normal_iterkeycb);
+	}
 
 m_u_ch_end:
 	unreuse_txn(txn, _txn);
@@ -1200,6 +1202,9 @@ m_u_ch_end:
 		if (journal_merge_allowed(j)) { \
 			changeset_t *merged; \
 			merge_unflushed_changesets(j, txn, &merged); \
+			if (txn->ret != KNOT_EOK) { \
+				goto store_changeset_cleanup; \
+			} \
 			add_tail(changesets, &merged->n); \
 			nchs++; \
 			serialized_size_total += changeset_serialized_size(merged); \
