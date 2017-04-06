@@ -1172,6 +1172,7 @@ static int merge_unflushed_changesets(journal_t *j, txn_t *_txn, changeset_t **m
 	                                            txn->shadow_md.first_serial);
 	txn->ret = load_one(j, txn, from, mch);
 	if (!was_merged && was_flushed && txn->ret == KNOT_EOK) {
+		// we have to jump to ONE AFTER last_flushed
 		from = knot_soa_serial(&(*mch)->soa_to->rrs);
 		changeset_free(*mch);
 		*mch = NULL;
@@ -1305,7 +1306,10 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	    serial_compare(txn->shadow_md.last_serial_to, serial) != 0) {
 		log_zone_warning(j->zone, "journal, discontinuity in changes history (%u -> %u), dropping older changesets",
 		                 txn->shadow_md.last_serial_to, serial);
-		try_flush
+		if (!md_flushed(txn) && !journal_merge_allowed(j)) {
+			txn->ret = KNOT_EBUSY; // aka try_flush, but don't merge
+			goto store_changeset_cleanup;
+		}
 		drop_journal(j, txn);
 		txn_restart(txn);
 	}
