@@ -14,11 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
-#include <time.h>
-
-#include "knot/conf/conf.h"
-#include "knot/zone/zone.h"
 #include "knot/dnssec/key-events.h"
 
 int event_zsk_rollover(conf_t *conf, zone_t *zone)
@@ -26,11 +21,9 @@ int event_zsk_rollover(conf_t *conf, zone_t *zone)
 	bool keys_updated = false;
 	time_t next_rollover = 0;
 
-	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
-
 	kdnssec_ctx_t kctx = { 0 };
 
-	int ret = kdnssec_ctx_init(&kctx, zone->name, &policy);
+	int ret = kdnssec_ctx_init(conf, &kctx, zone->name);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -17,8 +17,6 @@
 #pragma once
 
 #include <dnssec/keystore.h>
-#include "knot/dnssec/kasp/kasp_zone.h"
-#include "libknot/dname.h"
 
-int keystore_load(const char *config, int backend,
+int keystore_load(const char *config, unsigned backend,
                   const char *kasp_base_path, dnssec_keystore_t **keystore);

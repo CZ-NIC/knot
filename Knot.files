@@ -202,7 +202,6 @@ src/knot/dnssec/kasp/keystate.c
 src/knot/dnssec/kasp/keystate.h
 src/knot/dnssec/kasp/keystore.c
 src/knot/dnssec/kasp/keystore.h
-src/knot/dnssec/kasp/policy.c
 src/knot/dnssec/kasp/policy.h
 src/knot/dnssec/key-events.c
 src/knot/dnssec/key-events.h

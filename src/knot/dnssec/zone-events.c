@@ -37,9 +37,7 @@ static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 
 	const knot_dname_t *zone_name = zone->apex->owner;
 
-	conf_val_t policy = conf_zone_get(conf(), C_DNSSEC_POLICY, zone_name);
-
-	int r = kdnssec_ctx_init(ctx, zone_name, &policy);
+	int r = kdnssec_ctx_init(conf(), ctx, zone_name);
 	if (r != KNOT_EOK) {
 		return r;
 	}

@@ -14,124 +14,126 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 
-#include <dnssec/error.h>
-#include <dnssec/keystore.h>
-
 #include "libknot/libknot.h"
-#include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/kasp/keystore.h"
-#include "contrib/files.h"
 
-static int policy_load(knot_kasp_policy_t *policy)
+static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 {
-	const uint8_t *id = (const uint8_t *)policy->name;
-	const size_t id_len = strlen(policy->name) + 1;
-
-	conf_val_t val = conf_rawid_get(conf(), C_POLICY, C_KEYSTORE, id, id_len);
-	policy->keystore = strdup(conf_str(&val));
-
-	val = conf_rawid_get(conf(), C_POLICY, C_MANUAL, id, id_len);
+	conf_val_t val = conf_id_get(conf(), C_POLICY, C_MANUAL, id);
 	policy->manual = conf_bool(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_SINGLE_TYPE_SIGNING, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_SINGLE_TYPE_SIGNING, id);
 	policy->singe_type_signing = conf_bool(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_ALG, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_ALG, id);
 	policy->algorithm = conf_opt(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_KSK_SIZE, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_KSK_SIZE, id);
 	int64_t num = conf_int(&val);
 	policy->ksk_size = (num != YP_NIL) ? num :
 	                   dnssec_algorithm_key_size_default(policy->algorithm);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_ZSK_SIZE, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_ZSK_SIZE, id);
 	num = conf_int(&val);
 	policy->zsk_size = (num != YP_NIL) ? num :
 	                   dnssec_algorithm_key_size_default(policy->algorithm);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_DNSKEY_TTL, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_DNSKEY_TTL, id);
 	policy->dnskey_ttl = conf_int(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_ZSK_LIFETIME, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_ZSK_LIFETIME, id);
 	policy->zsk_lifetime = conf_int(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_PROPAG_DELAY, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_PROPAG_DELAY, id);
 	policy->propagation_delay = conf_int(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_RRSIG_LIFETIME, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_RRSIG_LIFETIME, id);
 	policy->rrsig_lifetime = conf_int(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_RRSIG_REFRESH, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_RRSIG_REFRESH, id);
 	policy->rrsig_refresh_before = conf_int(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_NSEC3, id);
 	policy->nsec3_enabled = conf_bool(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3_ITER, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_NSEC3_ITER, id);
 	policy->nsec3_iterations = conf_int(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3_SALT_LEN, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_NSEC3_SALT_LEN, id);
 	policy->nsec3_salt_length = conf_int(&val);
 
-	val = conf_rawid_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id, id_len);
+	val = conf_id_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id);
 	policy->nsec3_salt_lifetime = conf_int(&val);
-
-	return KNOT_EOK;
 }
 
-int kdnssec_kasp_init(kdnssec_ctx_t *ctx, const char *kasp_path, size_t kasp_mapsize,
-		      const knot_dname_t *zone_name, const char *policy_name)
+int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name)
 {
-	if (ctx == NULL || kasp_path == NULL || zone_name == NULL) {
+	if (ctx == NULL || zone_name == NULL) {
 		return KNOT_EINVAL;
 	}
 
+	int ret;
+
+	memset(ctx, 0, sizeof(*ctx));
+
 	ctx->zone = calloc(1, sizeof(*ctx->zone));
 	if (ctx->zone == NULL) {
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto init_error;
 	}
 	ctx->kasp_db = kaspdb();
 
-	int r = kasp_db_open(*ctx->kasp_db);
-	if (r != KNOT_EOK) {
-		return r;
+	ret = kasp_db_open(*ctx->kasp_db);
+	if (ret != KNOT_EOK) {
+		goto init_error;
 	}
 
-	r = kasp_zone_load(ctx->zone, zone_name, *ctx->kasp_db);
-	if (r != KNOT_EOK) {
-		return r;
+	ret = kasp_zone_load(ctx->zone, zone_name, *ctx->kasp_db);
+	if (ret != KNOT_EOK) {
+		goto init_error;
 	}
 
-	ctx->kasp_zone_path = strdup(kasp_path);
+	ctx->kasp_zone_path = conf_kaspdir(conf);
+	if (ctx->kasp_zone_path == NULL) {
+		ret = KNOT_ENOMEM;
+		goto init_error;
+	}
 
-	ctx->policy = knot_kasp_policy_new(policy_name);
+	ctx->policy = calloc(1, sizeof(*ctx->policy));
 	if (ctx->policy == NULL) {
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto init_error;
 	}
 
-	r = policy_load(ctx->policy);
-	if (r != KNOT_EOK) {
-		return r;
+	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone_name);
+	conf_id_fix_default(&policy_id);
+	policy_load(ctx->policy, &policy_id);
+
+	conf_val_t keystore_id = conf_id_get(conf, C_POLICY, C_KEYSTORE, &policy_id);
+	conf_id_fix_default(&keystore_id);
+
+	conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, &keystore_id);
+	unsigned backend = conf_opt(&val);
+
+	val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, &keystore_id);
+	const char *config = conf_str(&val);
+
+	ret = keystore_load(config, backend, ctx->kasp_zone_path, &ctx->keystore);
+	if (ret != KNOT_EOK) {
+		goto init_error;
 	}
 
-	const uint8_t *id = (const uint8_t *)policy_name;
-	const size_t id_len = strlen(policy_name) + 1;
-	conf_val_t val = conf_rawid_get(conf(), C_KEYSTORE, C_BACKEND, id, id_len);
-	int backend = conf_opt(&val);
-	val = conf_rawid_get(conf(), C_KEYSTORE, C_CONFIG, id, id_len);
-
-	r = keystore_load(conf_str(&val), backend, kasp_path, &ctx->keystore);
-	if (r != KNOT_EOK) {
-		return r;
-	}
+	ctx->now = time(NULL);
 
 	return KNOT_EOK;
+init_error:
+	kdnssec_ctx_deinit(ctx);
+	return ret;
 }
 
 int kdnssec_ctx_commit(kdnssec_ctx_t *ctx)
@@ -151,35 +153,10 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		return;
 	}
 
+	free(ctx->policy);
 	dnssec_keystore_deinit(ctx->keystore);
-	knot_kasp_policy_free(ctx->policy);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);
 
 	memset(ctx, 0, sizeof(*ctx));
-}
-
-int kdnssec_ctx_init(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
-                     conf_val_t *policy)
-{
-	if (ctx == NULL || zone_name == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	kdnssec_ctx_t new_ctx = { 0 };
-
-	char *kasp_dir = conf_kaspdir(conf());
-	conf_val_t kasp_db_mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
-
-	int r = kdnssec_kasp_init(&new_ctx, kasp_dir, conf_int(&kasp_db_mapsize), zone_name, conf_str(policy));
-	free(kasp_dir);
-	if (r != KNOT_EOK) {
-		kdnssec_ctx_deinit(&new_ctx);
-		return r;
-	}
-
-	new_ctx.now = time(NULL);
-
-	*ctx = new_ctx;
-	return KNOT_EOK;
 }
