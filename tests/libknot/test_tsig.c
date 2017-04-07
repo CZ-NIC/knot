@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 	test_init("invalid HMAC", NULL, "hmac-sha11", "name", "Wg==");
 	{
 		static const knot_tsig_key_t key = {
-			.algorithm = DNSSEC_TSIG_HMAC_MD5,
+			.algorithm = DNSSEC_TSIG_HMAC_SHA256,
 			.name = (uint8_t *)"\x3""key""\x4""name",
 			.secret.size = 1,
 			.secret.data = (uint8_t *)"\x5a"
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 	test_init_str("invalid HMAC", NULL, "hmac-sha51299:key:Wg==");
 	{
 		static const knot_tsig_key_t key = {
-			.algorithm = DNSSEC_TSIG_HMAC_MD5,
+			.algorithm = DNSSEC_TSIG_HMAC_SHA256,
 			.name = (uint8_t *)"\x4""tsig""\x3""key",
 			.secret.size = 9,
 			.secret.data = (uint8_t *)"bananakey"

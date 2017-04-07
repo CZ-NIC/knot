@@ -52,7 +52,7 @@ Options
 
 **-y** [*alg*:]\ *name*:*key*
   Use the TSIG key with a name *name* to authenticate the request. The *alg*
-  part specifies the algorithm (the default is hmac-md5) and *key* specifies
+  part specifies the algorithm (the default is hmac-sha256) and *key* specifies
   the shared secret encoded in Base64.
 
 Commands

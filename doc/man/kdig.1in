@@ -112,7 +112,7 @@ and type is set automatically.
 .TP
 \fB\-y\fP [\fIalg\fP:]\fIname\fP:\fIkey\fP
 Use the TSIG key named \fIname\fP to authenticate the request. The \fIalg\fP
-part specifies the algorithm (the default is hmac\-md5) and \fIkey\fP specifies
+part specifies the algorithm (the default is hmac\-sha256) and \fIkey\fP specifies
 the shared secret encoded in Base64.
 .TP
 \fB\-E\fP \fItapfile\fP
@@ -227,10 +227,10 @@ Set EDNS buffer size in bytes (default is 512 bytes).
 .TP
 \fB+\fP[\fBno\fP]\fBpadding\fP[=\fIB\fP]
 Use EDNS(0) padding option to pad queries, optionally to a specific
-size.  The default is to pad queries with a sensible amount when using
+size. The default is to pad queries with a sensible amount when using
 +tls, and not to pad at all when queries are sent without TLS.  With
 no argument (i.e., just +padding) pad every query with a sensible
-amount regardless of the use of TLS.  With +nopadding, never pad.
+amount regardless of the use of TLS. With +nopadding, never pad.
 .TP
 \fB+\fP[\fBno\fP]\fBalignment\fP[=\fIB\fP]
 Align the query to B\-byte\-block message using the EDNS(0) padding option

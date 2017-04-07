@@ -47,7 +47,7 @@ int knot_tsig_key_init(knot_tsig_key_t *key, const char *algorithm_name,
 		return KNOT_EINVAL;
 	}
 
-	dnssec_tsig_algorithm_t algorithm = DNSSEC_TSIG_HMAC_MD5;
+	dnssec_tsig_algorithm_t algorithm = DNSSEC_TSIG_HMAC_SHA256;
 	if (algorithm_name != NULL) {
 		algorithm = dnssec_tsig_algorithm_from_name(algorithm_name);
 		if (algorithm == DNSSEC_TSIG_UNKNOWN) {
