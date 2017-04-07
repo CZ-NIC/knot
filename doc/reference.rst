@@ -573,6 +573,7 @@ DNSSEC policy configuration.
      zsk-size: SIZE
      dnskey-ttl: TIME
      zsk-lifetime: TIME
+     ksk-lifetime: TIME
      propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
@@ -580,6 +581,8 @@ DNSSEC policy configuration.
      nsec3-iterations: INT
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
+     ksk-submittion-check: remote_id ...
+     ksk-submittion-check-interval: TIME
 
 .. _policy_id:
 
@@ -672,6 +675,21 @@ A period between ZSK publication and the next rollover initiation.
 .. NOTE::
    ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
 
+.. _policy_ksk-lifetime:
+
+ksk-lifetime
+------------
+
+A period between KSK publication and the next rollover initiation.
+
+*Default:* infinity
+
+.. NOTE::
+   KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
+   and KSK submittion delay.
+
+   The default infinite value causes no KSK rollover as a result.
+
 .. _policy_propagation-delay:
 
 propagation-delay
@@ -739,6 +757,28 @@ nsec3-salt-lifetime
 A validity period of newly issued salt field.
 
 *Default:* 30 days
+
+.. _policy_ksk-submittion-check:
+
+ksk-submittion-check
+--------------------
+
+A list of :ref:`references<remote_id>` to parent's DNS servers to be checked for
+presence of corresponding DS records in case of KSK submittion. All of them must
+have corresponding DS for the rollover to continue. If none specified, the rollover
+must be pushed forward manually.
+
+*Default:* not set
+
+.. _policy_ksk-submittion-check-interval:
+
+ksk-submittion-check-interval
+-----------------------------
+
+Interval for periodic checks of DS resence on parent's DNS servers, in case of
+KSK submittion.
+
+*Default:* 1 hour
 
 .. _Remote section:
 
