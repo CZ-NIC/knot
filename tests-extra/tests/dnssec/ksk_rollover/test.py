@@ -14,6 +14,8 @@ from subprocess import check_call
 from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
+from dnstest.faketime import FakeTime
+
 
 # check zone if keys are present and used for signing
 def check_zone5(server, min_dnskeys, min_rrsigs, min_cdnskeys, msg):
@@ -43,6 +45,10 @@ def check_zone5(server, min_dnskeys, min_rrsigs, min_cdnskeys, msg):
         detail_log("!CDNSKEYs not published and activated as expected: " + msg)
 
     detail_log(SEP)
+
+FakeTime.check()
+ft = FakeTime()
+ft.__enter__()
 
 t = Test()
 
@@ -98,8 +104,14 @@ parent.update_zonefile(parent_zone, version=1)
 parent.reload()
 parent.zone_wait(parent_zone)
 
-t.sleep(21)
+t.sleep(2)
+
+ft.set_time(datetime.datetime.now() + datetime.timedelta(seconds=17))
+
+t.sleep(2)
 
 check_zone5(child, 2, 1, 0, "old KSK retired")
 
 t.end()
+
+ft.__exit__()
