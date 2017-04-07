@@ -531,6 +531,25 @@ char* conf_abs_path(
 );
 
 /*!
+ * Ensures empty 'default' identifier value.
+ *
+ * \param[in] val  Item value.
+ *
+ * \return Empty item value.
+ */
+static inline void conf_id_fix_default(conf_val_t *val)
+{
+	if (val->code != KNOT_EOK) {
+		conf_val_t empty = {
+			.item = val->item,
+			.code = KNOT_EOK
+		};
+
+		*val = empty;
+	}
+}
+
+/*!
  * Gets the module identifier value of the item.
  *
  * \param[in] val  Item value.
