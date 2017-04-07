@@ -245,6 +245,8 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		ret = knot_ctl_send(args->ctl, type, &data);
 		if (ret != KNOT_EOK) {
 			return ret;
+		} else {
+			type = KNOT_CTL_TYPE_EXTRA;
 		}
 	}
 	// frozen
@@ -266,13 +268,13 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 				data[KNOT_CTL_IDX_DATA] = "freeze queued";
 			}
 		}
-		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
+		ret = knot_ctl_send(args->ctl, type, &data);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
 	// list modules
-	bool ctl_type = (param == ZONE_STATUS_EVENT_TIMERS)? true : false;
+	bool ctl_type = true;;
 	if (param == ZONE_STATUS_EVENT_TIMERS || param == ZONE_STATUS_NONE) {
 		time_t ev_time;
 		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
