@@ -473,6 +473,7 @@ policy:
     zsk\-size: SIZE
     dnskey\-ttl: TIME
     zsk\-lifetime: TIME
+    ksk\-lifetime: TIME
     propagation\-delay: TIME
     rrsig\-lifetime: TIME
     rrsig\-refresh: TIME
@@ -480,6 +481,8 @@ policy:
     nsec3\-iterations: INT
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
+    ksk\-submittion\-check: remote_id ...
+    ksk\-submittion\-check\-interval: TIME
 .ft P
 .fi
 .UNINDENT
@@ -551,6 +554,21 @@ A period between ZSK publication and the next rollover initiation.
 ZSK key lifetime is also infuenced by propagation\-delay and dnskey\-ttl
 .UNINDENT
 .UNINDENT
+.SS ksk\-lifetime
+.sp
+A period between KSK publication and the next rollover initiation.
+.sp
+\fIDefault:\fP infinity
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+KSK key lifetime is also infuenced by propagation\-delay, dnskey\-ttl,
+and KSK submittion delay.
+.sp
+The default infinite value causes no KSK rollover as a result.
+.UNINDENT
+.UNINDENT
 .SS propagation\-delay
 .sp
 An extra delay added for each key rollover step. This value should be high
@@ -595,6 +613,20 @@ name before hashing.
 A validity period of newly issued salt field.
 .sp
 \fIDefault:\fP 30 days
+.SS ksk\-submittion\-check
+.sp
+A list of \fI\%references\fP to parent\(aqs DNS servers to be checked for
+presence of corresponding DS records in case of KSK submittion. All of them must
+have corresponding DS for the rollover to continue. If none specified, the rollover
+must be pushed forward manually.
+.sp
+\fIDefault:\fP not set
+.SS ksk\-submittion\-check\-interval
+.sp
+Interval for periodic checks of DS resence on parent\(aqs DNS servers, in case of
+KSK submittion.
+.sp
+\fIDefault:\fP 1 hour
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone
