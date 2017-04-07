@@ -431,9 +431,7 @@ static int get_online_key(dnssec_key_t **key_ptr, struct query_module *module)
 {
 	kdnssec_ctx_t kctx = { 0 };
 
-	conf_val_t policy = conf_mod_get(module->config, MOD_POLICY, module->id);
-
-	int r = kdnssec_ctx_init(&kctx, module->zone, &policy);
+	int r = kdnssec_ctx_init(module->config, &kctx, module->zone);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}

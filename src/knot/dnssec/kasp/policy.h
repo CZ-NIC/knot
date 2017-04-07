@@ -16,14 +16,15 @@
 
 #pragma once
 
-#include "dnssec/lib/dnssec/key.h"
 #include <stdbool.h>
 #include <time.h>
+
+#include "dnssec/lib/dnssec/key.h"
 
 /*!
  * KASP key timing information.
  */
-typedef struct knot_kasp_key_timing {
+typedef struct {
 	time_t created;		/*!< Time the key was generated/imported. */
 	time_t publish;		/*!< Time of DNSKEY record publication. */
 	time_t ready;		/*!< Start of RRSIG generation, waiting for parent zone. */
@@ -35,21 +36,19 @@ typedef struct knot_kasp_key_timing {
 /*!
  * Key parameters as writing in zone config file.
  */
-struct key_params {
+typedef struct {
 	char *id;
+	bool is_ksk;
 	uint16_t keytag;
 	uint8_t algorithm;
 	dnssec_binary_t public_key;
-	bool is_ksk;
-	struct knot_kasp_key_timing timing;
-};
-
-typedef struct key_params key_params_t;
+	knot_kasp_key_timing_t timing;
+} key_params_t;
 
 /*!
  * Zone key.
  */
-typedef struct knot_kasp_key {
+typedef struct {
 	char *id;			/*!< Keystore unique key ID. */
 	dnssec_key_t *key;		/*!< Instance of the key. */
 	knot_kasp_key_timing_t timing;	/*!< Key timing information. */
@@ -57,13 +56,9 @@ typedef struct knot_kasp_key {
 
 /*!
  * Key and signature policy.
- *
- * \todo Move into internal API and add getters/setters (probably).
  */
-typedef struct knot_kasp_policy {
-	char *name;
+typedef struct {
 	bool manual;
-	char *keystore;
 	// DNSKEY
 	dnssec_key_algorithm_t algorithm;
 	uint16_t ksk_size;
@@ -86,19 +81,3 @@ typedef struct knot_kasp_policy {
 	// data propagation delay
 	uint32_t propagation_delay;
 } knot_kasp_policy_t;
-
-/*!
- * Create new KASP policy.
- *
- * \param name  Name of the policy to be created.
- *
- * \return Pointer to KASP policy.
- */
-knot_kasp_policy_t *knot_kasp_policy_new(const char *name);
-
-/*!
- * Free a KASP policy.
- *
- * \param policy  Policy to be freed.
- */
-void knot_kasp_policy_free(knot_kasp_policy_t *policy);

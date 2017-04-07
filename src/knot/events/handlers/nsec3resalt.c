@@ -14,10 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
-
-#include "knot/conf/conf.h"
-#include "knot/zone/zone.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-events.h"
 
@@ -26,11 +22,9 @@ int event_nsec3resalt(conf_t *conf, zone_t *zone)
 	bool salt_changed = false;
 	time_t next_resalt = 0;
 
-	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
-
 	kdnssec_ctx_t kctx = { 0 };
 
-	int ret = kdnssec_ctx_init(&kctx, zone->name, &policy);
+	int ret = kdnssec_ctx_init(conf, &kctx, zone->name);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

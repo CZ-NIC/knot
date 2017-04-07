@@ -14,7 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "keystore.h"
+#include <assert.h>
+#include <stdio.h>
+
+#include "knot/conf/scheme.h"
+#include "knot/dnssec/kasp/keystore.h"
+#include "libknot/error.h"
 
 char *fix_path(const char *config, const char *base_path)
 {
@@ -34,7 +39,7 @@ char *fix_path(const char *config, const char *base_path)
 	return path;
 }
 
-int keystore_load(const char *config, int backend,
+int keystore_load(const char *config, unsigned backend,
                   const char *kasp_base_path, dnssec_keystore_t **keystore)
 {
 	int ret = KNOT_EINVAL;

@@ -182,13 +182,14 @@ int main(int argc, char *argv[])
 
 	kdnssec_ctx_t kctx = { 0 };
 
-	int ret = kasp_db_init(kaspdb(), kasp_path, 500*1024*1024 /* TODO */);
+	conf_val_t mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
+	int ret = kasp_db_init(kaspdb(), kasp_path, conf_int(&mapsize));
 	if (ret != KNOT_EOK) {
 		printf("Failed to initialize KASP db (%s)\n", knot_strerror(ret));
 		goto main_end;
 	}
 
-	ret = kdnssec_kasp_init(&kctx, kasp_path, 500*1024*1024 /* TODO */, zone_name, "default");
+	ret = kdnssec_ctx_init(conf(), &kctx, zone_name);
 	if (ret != KNOT_EOK) {
 		printf("Failed to initializize KASP (%s)\n", knot_strerror(ret));
 		goto main_end;
@@ -264,6 +265,7 @@ main_end:
 	kasp_db_close(kaspdb());
 	free(kasp_path);
 	free(zone_name);
+	conf_free(conf());
 
 	return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
 }
