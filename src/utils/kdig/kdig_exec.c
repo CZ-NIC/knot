@@ -450,6 +450,13 @@ static bool check_reply_id(const knot_pkt_t *reply,
 	return true;
 }
 
+static void check_reply_qr(const knot_pkt_t *reply)
+{
+	if (!knot_wire_get_qr(reply->wire)) {
+		WARN("response QR bit not set\n");
+	}
+}
+
 static void check_reply_question(const knot_pkt_t *reply,
                                  const knot_pkt_t *query)
 {
@@ -647,6 +654,9 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 	// Check for question sections equality.
 	check_reply_question(reply, query);
+
+	// Check QR bit
+	check_reply_qr(reply);
 
 	// Print reply packet.
 	print_packet(reply, net, in_len, time_diff_ms(&t_query, &t_end), 0,
@@ -883,6 +893,8 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			net_close(net);
 			return 0;
 		}
+
+		check_reply_qr(reply);
 
 		// The first message has a special treatment.
 		if (msg_count == 0) {
