@@ -138,6 +138,11 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 
 	/* Flush journal. */
 	if (zone->journal && journal_exists(zone->journal_db, zone->name)) {
+		ret = open_journal(zone);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
 		ret = journal_flush(zone->journal);
 		if (ret != KNOT_EOK) {
 			return ret;
