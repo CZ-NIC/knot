@@ -87,10 +87,22 @@ static bool init_confile(const char *confile)
 	return true;
 }
 
+static bool init_conf_blank(const char *kasp_dir)
+{
+	char confstr[200 + strlen(kasp_dir)];
+	snprintf(confstr, sizeof(confstr),
+	"template:\n  - id: default\n    storage: .\n    kasp-db: %s\n", kasp_dir);
+	int ret = conf_import(conf(), confstr, false);
+	if (ret != KNOT_EOK) {
+		printf("Failed creating fake configuration (%s)\n",
+		       knot_strerror(ret));
+		return false;
+	}
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
-	char *kasp_path = NULL;
-
 	if (argc <= 1) {
 		print_help();
 		return EXIT_SUCCESS;
@@ -126,24 +138,21 @@ int main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	case 'd':
 		check_argc_three
-		if (!init_conf(NULL)) {
+		if (!init_conf(NULL) || !init_conf_blank(argv[2])) {
 			return EXIT_FAILURE;
 		}
-		kasp_path = strdup(argv[2]);
 		break;
 	case 'c':
 		check_argc_three
 		if (!init_conf(NULL) || !init_confile(argv[2])) {
 			return EXIT_FAILURE;
 		}
-		kasp_path = conf_kaspdir(conf());
 		break;
 	case 'C':
 		check_argc_three
 		if (!init_conf(argv[2])) {
 			return EXIT_FAILURE;
 		}
-		kasp_path = conf_kaspdir(conf());
 		break;
 	case 't':
 		check_argc_three
@@ -161,21 +170,13 @@ int main(int argc, char *argv[])
 
 #undef check_argc_three
 
-	if (kasp_path == NULL) {
-		printf("Unable to gather KASP db path from %s\n", argv[2]);
-		print_help();
-		return EXIT_FAILURE;
-	}
-
 	if (argc < 5) {
 		printf("Zone name and/or command not specified.\n");
 		print_help();
-		free(kasp_path);
 		return EXIT_FAILURE;
 	}
 	knot_dname_t *zone_name = knot_dname_from_str_alloc(argv[3]);
 	if (zone_name == NULL) {
-		free(kasp_path);
 		return EXIT_FAILURE;
 	}
 	(void)knot_dname_to_lower(zone_name);
@@ -183,7 +184,7 @@ int main(int argc, char *argv[])
 	kdnssec_ctx_t kctx = { 0 };
 
 	conf_val_t mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
-	int ret = kasp_db_init(kaspdb(), kasp_path, conf_int(&mapsize));
+	int ret = kasp_db_init(kaspdb(), conf_kaspdir(conf()), conf_int(&mapsize));
 	if (ret != KNOT_EOK) {
 		printf("Failed to initialize KASP db (%s)\n", knot_strerror(ret));
 		goto main_end;
@@ -263,7 +264,6 @@ int main(int argc, char *argv[])
 main_end:
 	kdnssec_ctx_deinit(&kctx);
 	kasp_db_close(kaspdb());
-	free(kasp_path);
 	free(zone_name);
 	conf_free(conf());
 
