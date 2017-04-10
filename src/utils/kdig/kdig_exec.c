@@ -894,8 +894,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			return 0;
 		}
 
-		check_reply_qr(reply);
-
 		// The first message has a special treatment.
 		if (msg_count == 0) {
 			// Verify 1. signature if a key was specified.
@@ -930,6 +928,9 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 			// Check for question sections equality.
 			check_reply_question(reply, query);
+
+			// Check QR bit
+			check_reply_qr(reply);
 		}
 
 		msg_count++;
