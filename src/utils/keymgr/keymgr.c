@@ -936,7 +936,7 @@ static int print_ds(const uint8_t *dname, const dnssec_binary_t *rdata)
 	uint8_t digest_type = wire_read_u8(&ctx);
 	wire_available_binary(&ctx, &digest);
 
-	printf("%s DS %d %d %d ", name, keytag, algorithm, digest_type);
+	printf("%s. DS %d %d %d ", name, keytag, algorithm, digest_type);
 	for (size_t i = 0; i < digest.size; i++) {
 		printf("%02x", digest.data[i]);
 	}
