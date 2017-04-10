@@ -1,3 +1,20 @@
+Knot DNS 2.4.3 (2017-04-11)
+===========================
+
+Improvements:
+-------------
+ - New 'journal-db-mode' optimization configuration option
+ - The default TSIG algorithm for utilities input is HMAC-SHA256
+ - Implemented sensible default EDNS(0) padding policy (Thanks to D. K. Gillmor)
+ - Added some more semantic checks on the knotc configuration operations
+
+Bugfixes:
+---------
+ - Missing 'zone' keyword in the YAML output
+ - Missing trailing dot in the keymgr DS owner output
+ - Journal logs 'invalid parameter' in several cases
+ - Some minor journal-related problems
+
 Knot DNS 2.4.2 (2017-03-23)
 ===========================
 
