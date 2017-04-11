@@ -10,8 +10,9 @@ stages:
   - deploy
 
 .debian_stretch: &debian_stretch
-  image: cznic/debian:stretch-knot-v2
+  image: cznic/debian:stretch-knot-latest
   tags:
+    - knot
     - docker
     - linux
     - amd64
@@ -19,6 +20,7 @@ stages:
 .ubuntu_xenial: &ubuntu_xenial
   image: cznic/ubuntu:16.04-knot
   tags:
+    - knot
     - docker
     - linux
     - amd64
@@ -26,6 +28,7 @@ stages:
 .debian_stretch_armel: &debian_stretch_armel
   image: cznic/armel-debian-knot
   tags:
+    - knot
     - docker
     - linux
     - arm
@@ -57,7 +60,7 @@ configure:ubuntu:amd64:
   <<: *configure_job
   except:
     - tags
-    - docs-*
+    - docs-2.4
 
 build:ubuntu:amd64:
   <<: *ubuntu_xenial
@@ -66,7 +69,7 @@ build:ubuntu:amd64:
     - configure:ubuntu:amd64
   except:
     - tags
-    - docs-*
+    - docs-2.4
 
 test:ubuntu:amd64:
   <<: *ubuntu_xenial
@@ -75,7 +78,7 @@ test:ubuntu:amd64:
     - build:ubuntu:amd64
   except:
     - tags
-    - docs-*
+    - docs-2.4
 
 configure:debian:stretch:amd64:
   <<: *debian_stretch
@@ -86,12 +89,16 @@ build:debian:stretch:amd64:
   <<: *build_job
   dependencies:
     - configure:debian:stretch:amd64
+  except:
+    - docs-2.4
 
 test:debian:stretch:amd64:
   <<: *debian_stretch
   <<: *test_job
   dependencies:
     - build:debian:stretch:amd64
+  except:
+    - docs-2.4
 
 configure:debian:stretch:armel:
   <<: *debian_stretch_armel
@@ -123,7 +130,7 @@ build:documentation:
   only:
     - tags
     - triggers
-    - docs-*
+    - docs-2.4
   script:
     - make -C doc html singlehtml pdf
   artifacts:
@@ -136,13 +143,10 @@ build:documentation:
 deploy:documentation:
   <<: *debian_stretch
   stage: deploy
-  before_script:
-    - apt-get update
-    - apt-get -y install curl
   only:
     - tags
     - triggers
-    - docs-*
+    - docs-2.4
   script:
     - "curl --http1.1 --request POST --form token=$WEBSITE_TOKEN --form ref=master --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_BUILD_REF_NAME\" --form \"variables[RELEASE_CI_BUILD_ID]=$CI_BUILD_ID\" https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
   artifacts:
