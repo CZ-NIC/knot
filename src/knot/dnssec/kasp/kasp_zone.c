@@ -128,9 +128,9 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
 	dnssec_binary_t salt = { 0 };
 	time_t sc = 0;
 
-	list_t key_ids;
-	init_list(&key_ids);
-	int ret = kasp_db_list_keys(kdb, zone_name, &key_ids);
+	list_t key_params;
+	init_list(&key_params);
+	int ret = kasp_db_list_keys(kdb, zone_name, &key_params);
 	if (ret == KNOT_ENOENT) {
 		zone->keys = NULL;
 		zone->num_keys = 0;
@@ -140,28 +140,24 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
 		goto kzl_end;
 	}
 
-	num_dkeys = list_size(&key_ids);
+	num_dkeys = list_size(&key_params);
 	dkeys = calloc(num_dkeys, sizeof(*dkeys));
 	if (dkeys == NULL) {
 		goto kzl_end;
 	}
 
 	ptrnode_t *n;
-	key_params_t parm = { 0 };
-	size_t i = 0;
-	WALK_LIST(n, key_ids) {
-		ret = kasp_db_key_params(kdb, n->d, &parm);
-		if (ret == KNOT_EOK) {
-			ret = params2kaspkey(zone_name, &parm, &dkeys[i++]);
-			free(parm.id); // TODO put this into a method
-			free(parm.public_key.data);
-			memset(&parm, 0, sizeof(parm));
-		}
+	int i = 0;
+	WALK_LIST(n, key_params) {
+		key_params_t *parm = n->d;
+		ret = params2kaspkey(zone_name, parm, &dkeys[i++]);
+		free(parm->id); // TODO put this into a method
+		free(parm->public_key.data);
+		memset(parm, 0, sizeof(*parm));
 		if (ret != KNOT_EOK) {
 			goto kzl_end;
 		}
 	}
-	assert(i == num_dkeys);
 
 kzl_salt:
 	(void)kasp_db_load_nsec3salt(kdb, zone_name, &salt, &sc);
@@ -178,7 +174,7 @@ kzl_salt:
 	zone->nsec3_salt_created = sc;
 
 kzl_end:
-	ptrlist_deep_free(&key_ids);
+	ptrlist_deep_free(&key_params);
 	if (ret != KNOT_EOK) {
 		free(dkeys);
 	}
@@ -252,5 +248,12 @@ void kasp_zone_free(knot_kasp_zone_t **zone)
 		free(*zone);
 		*zone = NULL;
 	}
+}
+
+void free_key_params(key_params_t *parm)
+{
+	free(parm->id);
+	dnssec_binary_free(&parm->public_key);
+	memset(parm, 0 , sizeof(*parm));
 }
 

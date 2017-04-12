@@ -73,22 +73,11 @@ void kasp_db_close(kasp_db_t **db);
  *
  * \param db            KASP db
  * \param zone_name     name of the zone in question
- * \param dst           output if KNOT_EOK: ptrlist of strings with keys' IDs
+ * \param dst           output if KNOT_EOK: ptrlist of keys' params
  *
  * \return KNOT_E* (KNOT_ENOENT if no keys)
  */
 int kasp_db_list_keys(kasp_db_t *db, const knot_dname_t *zone_name, list_t *dst);
-
-/*!
- * \brief For given key ID, gather the info into params structure.
- *
- * \param db            KASP db
- * \param key_id        key ID
- * \param params        output if KNOT_EOK: all key parameters
- *
- * \return KNOT_E*
- */
-int kasp_db_key_params(kasp_db_t *db, const char *key_id, key_params_t *params);
 
 /*!
  * \brief Remove a key from zone. Delete the key if no zone has it anymore.
@@ -118,17 +107,11 @@ int kasp_db_delete_key(kasp_db_t *db, const knot_dname_t *zone_name, const char 
 int kasp_db_add_key(kasp_db_t *db, const knot_dname_t *zone_name, const key_params_t *params);
 
 /*!
- * \brief Link an existing key with a zone.
- *
- * The key with this ID must be already present in KASP db.
- *
- * \param db            KASP db
- * \param zone_name     zone to be linked to
- * \param key_id        key ID
+TODO
  *
  * \return KNOT_E*
  */
-int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_name, const char *key_id);
+int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from, const knot_dname_t *zone_to, const char *key_id);
 
 /*!
  * \brief Store NSEC3 salt for given zone (possibly overwrites old salt).
