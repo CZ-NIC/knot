@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 			ret = KNOT_EINVAL;
 			goto main_end;
 		}
-		ret = kasp_db_share_key(*kctx.kasp_db, zone_name, argv[5]);
+		//ret = kasp_db_share_key(*kctx.kasp_db, zone_name, argv[5]); // TODO fix
 	} else if (strcmp(argv[4], "delete") == 0) {
 		if (argc < 6) {
 			printf("Key is not specified.\n");

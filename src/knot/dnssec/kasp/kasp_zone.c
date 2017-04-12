@@ -14,10 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "kasp_zone.h"
-
-#include "dnssec/lib/dnssec/binary.h"
+#include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/zone-keys.h"
+#include "dnssec/lib/dnssec/binary.h"
 
 // FIXME DNSSEC errors versus knot errors
 
@@ -46,21 +45,21 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 	assert(params);
 	assert(key_ptr);
 
-	int result = key_params_check(params);
-	if (result != KNOT_EOK) {
-		return result;
+	int ret = key_params_check(params);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	dnssec_key_t *key = NULL;
-	result = dnssec_key_new(&key);
-	if (result != KNOT_EOK) {
-		return knot_error_from_libdnssec(result);
+	ret = dnssec_key_new(&key);
+	if (ret != KNOT_EOK) {
+		return knot_error_from_libdnssec(ret);
 	}
 
-	result = dnssec_key_set_dname(key, dname);
-	if (result != KNOT_EOK) {
+	ret = dnssec_key_set_dname(key, dname);
+	if (ret != KNOT_EOK) {
 		dnssec_key_free(key);
-		return knot_error_from_libdnssec(result);
+		return knot_error_from_libdnssec(ret);
 	}
 
 	dnssec_key_set_algorithm(key, params->algorithm);
@@ -68,10 +67,10 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 	uint16_t flags = dnskey_flags(params->is_ksk);
 	dnssec_key_set_flags(key, flags);
 
-	result = dnssec_key_set_pubkey(key, &params->public_key);
-	if (result != KNOT_EOK) {
+	ret = dnssec_key_set_pubkey(key, &params->public_key);
+	if (ret != KNOT_EOK) {
 		dnssec_key_free(key);
-		return knot_error_from_libdnssec(result);
+		return knot_error_from_libdnssec(ret);
 	}
 
 	*key_ptr = key;
@@ -82,6 +81,10 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 static int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
 			  knot_kasp_key_t *key)
 {
+	assert(dname != NULL);
+	assert(params != NULL);
+	assert(key != NULL);
+
 	int ret = params2dnskey(dname, params, &key->key);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -123,14 +126,18 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
 		   const knot_dname_t *zone_name,
 		   kasp_db_t *kdb)
 {
+	if (zone == NULL || zone_name == NULL || kdb == NULL) {
+	return KNOT_EINVAL;
+	}
+
 	knot_kasp_key_t *dkeys = NULL;
 	size_t num_dkeys = 0;
 	dnssec_binary_t salt = { 0 };
 	time_t sc = 0;
 
-	list_t key_ids;
-	init_list(&key_ids);
-	int ret = kasp_db_list_keys(kdb, zone_name, &key_ids);
+	list_t key_params;
+	init_list(&key_params);
+	int ret = kasp_db_list_keys(kdb, zone_name, &key_params);
 	if (ret == KNOT_ENOENT) {
 		zone->keys = NULL;
 		zone->num_keys = 0;
@@ -140,28 +147,24 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
 		goto kzl_end;
 	}
 
-	num_dkeys = list_size(&key_ids);
+	num_dkeys = list_size(&key_params);
 	dkeys = calloc(num_dkeys, sizeof(*dkeys));
 	if (dkeys == NULL) {
 		goto kzl_end;
 	}
 
 	ptrnode_t *n;
-	key_params_t parm = { 0 };
-	size_t i = 0;
-	WALK_LIST(n, key_ids) {
-		ret = kasp_db_key_params(kdb, n->d, &parm);
-		if (ret == KNOT_EOK) {
-			ret = params2kaspkey(zone_name, &parm, &dkeys[i++]);
-			free(parm.id); // TODO put this into a method
-			free(parm.public_key.data);
-			memset(&parm, 0, sizeof(parm));
-		}
+	int i = 0;
+	WALK_LIST(n, key_params) {
+		key_params_t *parm = n->d;
+		ret = params2kaspkey(zone_name, parm, &dkeys[i++]);
+		free(parm->id); // TODO put this into a method
+		free(parm->public_key.data);
+		memset(parm, 0, sizeof(*parm));
 		if (ret != KNOT_EOK) {
 			goto kzl_end;
 		}
 	}
-	assert(i == num_dkeys);
 
 kzl_salt:
 	(void)kasp_db_load_nsec3salt(kdb, zone_name, &salt, &sc);
@@ -178,7 +181,7 @@ kzl_salt:
 	zone->nsec3_salt_created = sc;
 
 kzl_end:
-	ptrlist_deep_free(&key_ids);
+	ptrlist_deep_free(&key_params);
 	if (ret != KNOT_EOK) {
 		free(dkeys);
 	}
@@ -187,6 +190,10 @@ kzl_end:
 
 int kasp_zone_append(knot_kasp_zone_t *zone, const knot_kasp_key_t *appkey)
 {
+	if (zone == NULL || appkey == NULL || (zone->keys == NULL && zone->num_keys > 0)) {
+		return KNOT_EINVAL;
+	}
+
 	size_t new_num_keys = zone->num_keys + 1;
 	knot_kasp_key_t *new_keys = calloc(new_num_keys, sizeof(*new_keys));
 	if (!new_keys) {
@@ -204,6 +211,10 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 		   const knot_dname_t *zone_name,
 		   kasp_db_t *kdb)
 {
+	if (zone == NULL || zone_name == NULL || kdb == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	key_params_t parm;
 	int ret;
 	for (size_t i = 0; i < zone->num_keys; i++) {
@@ -226,6 +237,9 @@ kzs_end:
 
 int kasp_zone_init(knot_kasp_zone_t **zone)
 {
+	if (zone == NULL) {
+		return KNOT_EINVAL;
+	}
 	*zone = calloc(1, sizeof(**zone));
 	return (*zone ? KNOT_EOK : KNOT_ENOMEM);
 }
@@ -254,3 +268,11 @@ void kasp_zone_free(knot_kasp_zone_t **zone)
 	}
 }
 
+void free_key_params(key_params_t *parm)
+{
+	if (parm != NULL) {
+		free(parm->id);
+		dnssec_binary_free(&parm->public_key);
+		memset(parm, 0 , sizeof(*parm));
+	}
+}

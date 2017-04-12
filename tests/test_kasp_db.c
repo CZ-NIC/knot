@@ -71,15 +71,14 @@ int main(int argc, char *argv[])
 	bool ignore = false;
 	
 	list_t l;
-	key_params_t params = { 0 };
-#define free_params free(params.id); free(params.public_key.data); params.id = NULL; params.public_key.data = NULL;
+	key_params_t *params;
+#define free_params free(params->id); free(params->public_key.data); params->id = NULL; params->public_key.data = NULL;
 
 	int ret = kasp_db_init(&db, test_dir_name, 500*1024*1024);
 	is_int(KNOT_EOK, ret, "kasp_db: init eok");
 	ret = kasp_db_open(db);
 	is_int(KNOT_EOK, ret, "kasp_db: open eok");
 	ok(db->keys_db != NULL, "kasp_db: keys db notnull");
-	ok(db->zones_db != NULL, "kasp_db: zones db notnull");
 
 	ret = kasp_db_add_key(db, zone1, &params1);
 	is_int(KNOT_EOK, ret, "kasp_db: add key 1 eok");
@@ -87,27 +86,24 @@ int main(int argc, char *argv[])
 	ret = kasp_db_list_keys(db, zone1, &l);
 	is_int(KNOT_EOK, ret, "kasp_db: list keys 1 eok");
 	is_int(1, list_size(&l), "kasp_db: list keys reports one key 1");
-	ptrlist_deep_free(&l);
-
-	ret = kasp_db_key_params(db, params1.id, &params);
-	is_int(KNOT_EOK, ret, "kasp_db: key params 1 eok");
-	ok(params_eq(&params, &params1), "kasp_db: key params equal 1");
+	params = ((ptrnode_t *)HEAD(l))->d;
+	ok(params_eq(params, &params1), "kasp_db: key params equal 1");
 	free_params
+	ptrlist_deep_free(&l);
 
 	ret = kasp_db_list_keys(db, zone2, &l);
 	is_int(KNOT_ENOENT, ret, "kasp_db: list keys 1 enoent");
 	is_int(0, list_size(&l), "kasp_db: list keys reports no keys 1");
 	ptrlist_deep_free(&l);
 
-	ret = kasp_db_key_params(db, params2.id, &params);
-	is_int(KNOT_ENOENT, ret, "kasp_db: key params 1 enoent");
-
-	ret = kasp_db_share_key(db, zone2, params1.id);
+	ret = kasp_db_share_key(db, zone1, zone2, params1.id);
 	is_int(KNOT_EOK, ret, "kasp_db: share key eok");
 
 	ret = kasp_db_list_keys(db, zone2, &l);
 	is_int(KNOT_EOK, ret, "kasp_db: list keys 3 eok");
 	is_int(1, list_size(&l), "kasp_db: list keys reports one key 2");
+	params = ((ptrnode_t *)HEAD(l))->d;
+	free_params
 	ptrlist_deep_free(&l);
 
 	ret = kasp_db_add_key(db, zone2, &params2);
@@ -116,12 +112,12 @@ int main(int argc, char *argv[])
 	ret = kasp_db_list_keys(db, zone2, &l);
 	is_int(KNOT_EOK, ret, "kasp_db: list keys 4 eok");
 	is_int(2, list_size(&l), "kasp_db: list keys reports two keys 1");
-	ptrlist_deep_free(&l);
-
-	ret = kasp_db_key_params(db, params2.id, &params);
-	is_int(KNOT_EOK, ret, "kasp_db: key_params 2 eok");
-	ok(params_eq(&params, &params2), "kasp_db: key params equal 2");
+	params = ((ptrnode_t *)TAIL(l))->d;
+	ok(params_eq(params, &params2), "kasp_db: key params equal 2");
 	free_params
+	params = ((ptrnode_t *)HEAD(l))->d;
+	free_params
+	ptrlist_deep_free(&l);
 
 	ret = kasp_db_delete_key(db, zone1, params1.id, &ignore);
 	is_int(KNOT_EOK, ret, "kasp_db: delete key 1 eok");
@@ -130,22 +126,6 @@ int main(int argc, char *argv[])
 	is_int(KNOT_ENOENT, ret, "kasp_db: list keys 2 enoent");
 	is_int(list_size(&l), 0, "kasp_db: list keys reports no keys 2");
 	ptrlist_deep_free(&l);
-
-	ret = kasp_db_key_params(db, params1.id, &params);
-	is_int(KNOT_EOK, ret, "kasp_db: key params 1 eok");
-	ok(params_eq(&params, &params1), "kasp_db: key params equal 1");
-	free_params
-
-	ret = kasp_db_delete_key(db, zone2, params1.id, &ignore);
-	is_int(KNOT_EOK, ret, "kasp_db: delete key 2 eok");
-
-	ret = kasp_db_list_keys(db, zone2, &l);
-	is_int(KNOT_EOK, ret, "kasp_db: list keys 5 eok");
-	is_int(1, list_size(&l), "kasp_db: list keys reports one key 3");
-	ptrlist_deep_free(&l);
-
-	ret = kasp_db_key_params(db, params1.id, &params);
-	is_int(KNOT_ENOENT, ret, "kasp_db: key params 2 enoent");
 
 	kasp_db_close(&db);
 

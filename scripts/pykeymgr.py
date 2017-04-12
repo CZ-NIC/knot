@@ -92,6 +92,43 @@ def timespec2unix(spec):
 
 	print "Error in time specification"	
 
+class Keykey:
+	'''Kasp DB key serialized (type, zone_name, key_id)'''
+
+	def __init__(self, raw_bytearray):
+		self.raw = bytearray(raw_bytearray)
+
+	@classmethod
+	def from_params(self, valtype, zone_name, key_id):
+		selfraw = to_bytes(valtype, 1)
+		if zone_name is not None:
+			selfraw.extend(zone_name)
+		if key_id is not None:
+			selfraw.extend(bytearray(key_id.encode("ascii")))
+			selfraw.append(0)
+		return Keykey(selfraw)
+
+	def getRaw(self):
+		return bytearray(self.raw)
+
+	def getType(self):
+		return self.raw[0]
+
+	def __getSplit(self):
+		x = self.raw.find(to_bytes(0, 1))
+		assert x > 0
+		return x + 1
+
+	def getZone(self):
+		if self.getType() == 2:
+			return None
+		return str(self.raw[1:self.__getSplit()])
+
+	def getKeyid(self):
+		if self.getType() != 1:
+			return None
+		return str(self.raw[self.__getSplit():])
+
 class Keyparams:
 	'''Serialized key parameters for kasp-db.'''
 
@@ -263,7 +300,7 @@ def arr_ind2unix(arr, ind, defaul):
 		return defaul
 
 # import single JSON zone config into open LMDB env
-def import_file(fname, env, db_keys, db_zones):
+def import_file(fname, env, db_keys):
 	with open(fname) as f:
 		keys = json.load(f)
 
@@ -274,25 +311,17 @@ def import_file(fname, env, db_keys, db_zones):
 
 		try: # store nsec3salt
 			with lmdb.Transaction(env, db_keys, write=True) as txn_keys:
-				dbk1 = bytearray(zname)
-				dbk1.extend(b"nsec3salt")
-				dbk1.append(0)
+				dbk1 = Keykey.from_params(3, zname, None).getRaw()
 				dbv1 = keys["nsec3_salt"].decode("base64")
 				txn_keys.put(dbk1, dbv1, dupdata=False, overwrite=True)
-				dbk2 = bytearray(zname)
-				dbk2.extend(b"nsec3salt_created")
-				dbk2.append(0)
+				dbk2 = Keykey.from_params(4, zname, None).getRaw()
 				dbv2 = to_bytes(arr_ind2unix(keys, "nsec3_salt_created", 0), 8)
 				txn_keys.put(dbk2, dbv2, dupdata=False, overwrite=True)
 		except (KeyError, AttributeError):
 			pass # nsec3salt not configured or set to null, no problem
 
 		for key in keys["keys"]:
-			dbk3 = bytearray(key["id"].encode("ascii"))
-			dbk3.append(0)
-
-			with lmdb.Transaction(env, db_zones, write=True) as txn_zones:
-				txn_zones.put(zname, dbk3, dupdata=True, overwrite=True)
+			dbk3 = Keykey.from_params(1, zname, key["id"]).getRaw()
 
 			infty = 0x00ffffffffffff00 # time infinity, this is year 142'715'360
 
@@ -329,10 +358,9 @@ def import_dir(dirname):
 
 	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
 	db_keys = env.open_db("keys_db")
-	db_zones = env.open_db("zones_db", dupsort=True)
 	something_imported = False
 	for json_file in glob.glob(dirname + "/*.json"):
-		something_imported = import_file(json_file, env, db_keys, db_zones) or something_imported
+		something_imported = import_file(json_file, env, db_keys) or something_imported
 
 	if not something_imported:
 		print "Warning: nothing imported in", dirname
@@ -341,12 +369,16 @@ def zone2keyids(dirname, zone_str):
 	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
 	db_zones = env.open_db("zones_db", dupsort=True)
 	ret = [ ]
-	with lmdb.Transaction(env, db_zones, write=False) as txn_zones:
-		curs = txn_zones.cursor()
-		r = curs.set_key(str2dname(zone_str))
+	zone = str2dname(zone_str)
+	with lmdb.Transaction(env, db_keys, write=False) as txn_keys:
+		curs = txn_keys.cursor()
+		r = curs.set_range(Keykey.from_params(1, zone, None).getRaw())
 		while r:
-			ret.append(curs.value().rstrip("\x00"))
-			r = curs.next_dup()
+			k = Keykey(curs.key())
+			if k.getZone() != zone:
+				break
+			ret.append(k.getKeyid())
+			r = curs.next()
 	return ret
 
 def key_matches(keyid, keyparam, key_spec, attrs):
@@ -377,6 +409,7 @@ def key_matches(keyid, keyparam, key_spec, attrs):
 			return False
 	return True
 
+# FIXME for current KASP db format !!!
 def update_param(dirname, zone_str, key_spec, param_name, new_val):
 	#zone gets actually ignored
 	if param_name in ("keytag", "algorithm") and not opt_force:
@@ -399,6 +432,7 @@ def update_param(dirname, zone_str, key_spec, param_name, new_val):
 				pass # some key-val which is not proper key param
 	print "Error updating key parameter (probably the key not found)"
 
+# FIXME for current KASP db format !!!
 def calculate_ds(dirname, zone_str, key_spec):
 	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
 	db_keys = env.open_db("keys_db")
@@ -411,6 +445,7 @@ def calculate_ds(dirname, zone_str, key_spec):
 				return
 	print "Error finding specified key"
 
+# FIXME for current KASP db format !!!
 def list_keys(dirname, keyattr):
 	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
 	db_keys = env.open_db("keys_db")
@@ -425,6 +460,7 @@ def list_keys(dirname, keyattr):
 			except AssertionError:
 				pass # some key-val which is not proper key param
 
+# FIXME for current KASP db format !!!
 def list_zones(dirname):
 	print "dirname:", dirname
 	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)

@@ -557,7 +557,7 @@ int keymgr_share_key(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key,
 		      const char *zone_name_ch)
 {
 	knot_dname_t *zone_name = knot_dname_from_str_alloc(zone_name_ch);
-	int ret = kasp_db_share_key(*ctx->kasp_db, zone_name, key->id);
+	int ret = kasp_db_share_key(*ctx->kasp_db, NULL, zone_name, key->id); // TODO fix !!
 	free(zone_name);
 	return ret;
 }

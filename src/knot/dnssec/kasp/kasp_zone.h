@@ -17,9 +17,8 @@
 #pragma once
 
 #include "knot/dnssec/kasp/kasp_db.h"
-#include "knot/zone/zone.h"
 
-typedef struct knot_kasp_zone {
+typedef struct {
 	knot_dname_t *dname;
 
 	knot_kasp_key_t *keys;
@@ -42,3 +41,5 @@ int kasp_zone_append(knot_kasp_zone_t *zone,
 
 void kasp_zone_clear(knot_kasp_zone_t *zone);
 void kasp_zone_free(knot_kasp_zone_t **zone);
+
+void free_key_params(key_params_t *parm);
