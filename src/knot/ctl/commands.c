@@ -352,11 +352,9 @@ static int zone_ksk_submittion_confirm(zone_t *zone, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	conf_val_t policy = conf_zone_get(conf(), C_DNSSEC_POLICY, zone->name);
-
 	kdnssec_ctx_t ctx = { 0 };
 
-	int ret = kdnssec_ctx_init(&ctx, zone->name, &policy);
+	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -181,11 +181,9 @@ static bool parents_have_ds(zone_t *zone, conf_t *conf, zone_key_t *key) {
 
 int event_parent_ds_q(conf_t *conf, zone_t *zone)
 {
-	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
-
 	kdnssec_ctx_t ctx = { 0 };
 
-	int ret = kdnssec_ctx_init(&ctx, zone->name, &policy);
+	int ret = kdnssec_ctx_init(conf, &ctx, zone->name);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -208,6 +206,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 		}
 	}
 
+	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
 	if (ret != KNOT_EOK) {
 		uint8_t *policy_name = (uint8_t *)conf_str(&policy);
 		size_t policy_name_len = strlen((const char *)policy_name) + 1;
