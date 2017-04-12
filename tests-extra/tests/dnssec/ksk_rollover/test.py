@@ -17,12 +17,12 @@ from dnstest.test import Test
 
 # check zone if keys are present and used for signing
 def check_zone5(server, min_dnskeys, min_rrsigs, min_cdnskeys, msg):
-    dnskeys = server.dig("example.com", "DNSKEY")
+    dnskeys = server.dig("example.com", "DNSKEY", bufsize=1024)
     found_dnskeys = dnskeys.count("DNSKEY")
 
     soa = server.dig("example.com", "DNSKEY", dnssec=True)
     found_rrsigs = soa.count("RRSIG")
-    
+
     cdnskey = server.dig("example.com", "CDNSKEY")
     found_cdnskeys = cdnskey.count("CDNSKEY")
 
@@ -41,7 +41,7 @@ def check_zone5(server, min_dnskeys, min_rrsigs, min_cdnskeys, msg):
     if found_cdnskeys != min_cdnskeys:
         set_err("BAD CDNSKEY COUNT: " + msg)
         detail_log("!CDNSKEYs not published and activated as expected: " + msg)
-        
+
     detail_log(SEP)
 
 t = Test()
@@ -53,6 +53,8 @@ t.link(parent_zone, parent)
 child = t.server("knot")
 child_zone = t.zone("example.com.")
 t.link(child_zone, child)
+
+child.zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).manual = False
@@ -67,10 +69,10 @@ shutil.copytree(os.path.join(t.data_dir, "keys"), child.keydir)
 
 # parameters
 ZONE = "example.com."
-KSK1 = "7a3500c7feac3fd99f09a208a83b97f7455fa3e0"
-KSK2 = "7e7492f7dcaf4d819a29eb30ad80c04f830d76cf"
-ZSK1 = "6abddc73bcb46c4e6078cf764290ac315fff03f0"
-ZSK2 = "301d3fc5392e83ea02312dc5bdc1a9f0b7937ddf"
+KSK1 = "38b3062a04178cde79f72fc1c77fbb3fb327ffc6"
+KSK2 = "1cc322baeb75cecf96babba98140206bbe28a682"
+ZSK1 = "a61d2dfce7bcd667cc2be53ab3d668d4a9e3c563"
+ZSK2 = "246d81610c3e3e1cf99ffa1eecd95f1deee01f0e"
 
 t.rel_sleep(0)
 
