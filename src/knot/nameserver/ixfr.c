@@ -16,16 +16,15 @@
 
 #include <urcu.h>
 
-#include "knot/nameserver/internet.h"
+#include "contrib/mempattern.h"
+#include "contrib/sockaddr.h"
 #include "knot/nameserver/axfr.h"
+#include "knot/nameserver/internet.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/log.h"
 #include "knot/nameserver/xfr.h"
 #include "knot/zone/serial.h"
-#include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
-#include "contrib/mempattern.h"
-#include "contrib/sockaddr.h"
 
 #define ZONE_NAME(qdata) knot_pkt_qname((qdata)->query)
 #define REMOTE(qdata) (struct sockaddr *)(qdata)->param->remote
@@ -36,7 +35,7 @@
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
-	ret = knot_pkt_put((pkt), 0, (rr), KNOT_PF_NOTRUNC); \
+	int ret = knot_pkt_put((pkt), 0, (rr), KNOT_PF_NOTRUNC); \
 	if (ret != KNOT_EOK) { \
 		return ret; \
 	}
@@ -53,13 +52,12 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
 		ixfr->cur_rr = changeset_iter_next(itt);
 	}
 
-	int ret = KNOT_EOK; // Declaration for IXFR_SAFE_PUT macro
 	while (!knot_rrset_empty(&ixfr->cur_rr)) {
 		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
 		ixfr->cur_rr = changeset_iter_next(itt);
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 /*! \brief Tests if iteration has started. */
@@ -136,7 +134,6 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 #undef IXFR_SAFE_PUT
 
-/*! \brief Loads IXFRs from journal. */
 static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
                             const knot_rrset_t *their_soa)
 {
@@ -159,7 +156,6 @@ static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
 	return ret;
 }
 
-/*! \brief Check IXFR query validity. */
 static int ixfr_query_check(struct query_data *qdata)
 {
 	/* Check if zone exists. */
@@ -184,7 +180,6 @@ static int ixfr_query_check(struct query_data *qdata)
 	return KNOT_STATE_DONE;
 }
 
-/*! \brief Cleans up ixfr processing context. */
 static void ixfr_answer_cleanup(struct query_data *qdata)
 {
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->ext;
@@ -199,12 +194,12 @@ static void ixfr_answer_cleanup(struct query_data *qdata)
 	rcu_read_unlock();
 }
 
-/*! \brief Inits ixfr processing context. */
 static int ixfr_answer_init(struct query_data *qdata)
 {
+	assert(qdata);
+
 	/* Check IXFR query validity. */
-	int state = ixfr_query_check(qdata);
-	if (state == KNOT_STATE_FAIL) {
+	if (ixfr_query_check(qdata) == KNOT_STATE_FAIL) {
 		if (qdata->rcode == KNOT_RCODE_FORMERR) {
 			return KNOT_EMALF;
 		} else {
@@ -255,18 +250,16 @@ static int ixfr_answer_init(struct query_data *qdata)
 	qdata->ext = xfer;
 	qdata->ext_cleanup = &ixfr_answer_cleanup;
 
-	/* No zone changes during multipacket answer (unlocked in axfr_answer_cleanup) */
+	/* No zone changes during multipacket answer (unlocked in ixfr_answer_cleanup) */
 	rcu_read_lock();
 
 	return KNOT_EOK;
 }
 
-/*! \brief Sends response to SOA query. */
 static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	if (pkt == NULL || qdata == NULL) {
-		return KNOT_STATE_FAIL;
-	}
+	assert(pkt);
+	assert(qdata);
 
 	/* Check query. */
 	int state = ixfr_query_check(qdata);
@@ -298,20 +291,18 @@ int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return KNOT_STATE_FAIL;
 	}
 
-	int ret = KNOT_EOK;
-	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->ext;
-
 	/* If IXFR is disabled, respond with SOA. */
 	if (qdata->param->proc_flags & NS_QUERY_NO_IXFR) {
 		return ixfr_answer_soa(pkt, qdata);
 	}
 
 	/* Initialize on first call. */
-	if (qdata->ext == NULL) {
-		ret = ixfr_answer_init(qdata);
+	struct ixfr_proc *ixfr = qdata->ext;
+	if (ixfr == NULL) {
+		int ret = ixfr_answer_init(qdata);
+		ixfr = qdata->ext;
 		switch (ret) {
 		case KNOT_EOK:      /* OK */
-			ixfr = (struct ixfr_proc *)qdata->ext;
 			IXFROUT_LOG(LOG_INFO, qdata, "started, serial %u -> %u",
 			            knot_soa_serial(&ixfr->soa_from->rrs),
 			            knot_soa_serial(&ixfr->soa_to->rrs));
@@ -325,7 +316,8 @@ int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
 			return axfr_process_query(pkt, qdata);
 		default:            /* Server errors. */
-			IXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)", knot_strerror(ret));
+			IXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
+			            knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		}
 	}
@@ -334,7 +326,7 @@ int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
 
 	/* Answer current packet (or continue). */
-	ret = xfr_process_list(pkt, &ixfr_process_changeset, qdata);
+	int ret = xfr_process_list(pkt, &ixfr_process_changeset, qdata);
 	switch (ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return KNOT_STATE_PRODUCE; /* Check for more. */
@@ -342,13 +334,9 @@ int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 		xfr_stats_end(&ixfr->proc.stats);
 		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_IXFR, LOG_DIRECTION_OUT,
 		                 REMOTE(qdata), &ixfr->proc.stats);
-		ret = KNOT_STATE_DONE;
-		break;
+		return KNOT_STATE_DONE;
 	default:          /* Generic error. */
 		IXFROUT_LOG(LOG_ERR, qdata, "failed (%s)", knot_strerror(ret));
-		ret = KNOT_STATE_FAIL;
-		break;
+		return KNOT_STATE_FAIL;
 	}
-
-	return ret;
 }
