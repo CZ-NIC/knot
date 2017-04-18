@@ -94,15 +94,8 @@ static int whoami_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	}
 
 	/* TTL is taken from the TTL of the SOA record. */
-	uint32_t ttl = 0;
-	const zone_node_t *apex = qdata->zone->contents->apex;
-	for (uint16_t i = 0; apex != NULL && i < apex->rrset_count; i++) {
-		const struct rr_data *rr_data = &apex->rrs[i];
-		if (rr_data->type == KNOT_RRTYPE_SOA) {
-			ttl = knot_rdataset_ttl(&rr_data->rrs);
-			break;
-		}
-	}
+	knot_rrset_t soa = node_rrset(qdata->zone->contents->apex, KNOT_RRTYPE_SOA);
+	uint32_t ttl = knot_rrset_ttl(&soa);
 
 	/* Record data is the query source address. */
 	int ret = knot_rrset_add_rdata(rrset, rdata, len_rdata, ttl, &pkt->mm);
