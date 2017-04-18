@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
 #include <urcu.h>
 
 #include "knot/conf/base.h"
@@ -196,7 +197,8 @@ int conf_new(
 
 		// Remove the database to ensure it is temporary.
 		if (!remove_path(lmdb_opts.path)) {
-			CONF_LOG(LOG_WARNING, "failed to purge temporary directory '%s'", lmdb_opts.path);
+			CONF_LOG(LOG_WARNING, "failed to purge temporary directory '%s'",
+			         lmdb_opts.path);
 		}
 	} else {
 		// Set the specified database.
@@ -768,6 +770,65 @@ static int export_group(
 	return KNOT_EOK;
 }
 
+static int export_item(
+	conf_t *conf,
+	FILE *fp,
+	const yp_item_t *item,
+	char *buff,
+	size_t buff_len,
+	yp_style_t style)
+{
+	bool exported = false;
+
+	// Skip non-group items (include).
+	if (item->type != YP_TGRP) {
+		return KNOT_EOK;
+	}
+
+	// Export simple group without identifiers.
+	if (!(item->flags & YP_FMULTI)) {
+		return export_group(conf, fp, item, NULL, 0, buff, buff_len,
+		                    style, &exported);
+	}
+
+	// Iterate over all identifiers.
+	conf_iter_t iter;
+	int ret = conf_db_iter_begin(conf, &conf->read_txn, item->name, &iter);
+	switch (ret) {
+	case KNOT_EOK:
+		break;
+	case KNOT_ENOENT:
+		return KNOT_EOK;
+	default:
+		return ret;
+	}
+
+	while (ret == KNOT_EOK) {
+		const uint8_t *id;
+		size_t id_len;
+		ret = conf_db_iter_id(conf, &iter, &id, &id_len);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf, &iter);
+			return ret;
+		}
+
+		// Export group with identifiers.
+		ret = export_group(conf, fp, item, id, id_len, buff, buff_len,
+		                   style, &exported);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf, &iter);
+			return ret;
+		}
+
+		ret = conf_db_iter_next(conf, &iter);
+	}
+	if (ret != KNOT_EOF) {
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
 int conf_export(
 	conf_t *conf,
 	const char *file_name,
@@ -792,60 +853,37 @@ int conf_export(
 
 	fprintf(fp, "# Configuration export (Knot DNS %s)\n\n", PACKAGE_VERSION);
 
+	const char *mod_prefix = KNOTD_MOD_NAME_PREFIX;
+	const size_t mod_prefix_len = strlen(mod_prefix);
+
 	int ret;
 
 	// Iterate over the scheme.
 	for (yp_item_t *item = conf->scheme; item->name != NULL; item++) {
-		bool exported = false;
-
-		// Skip non-group items (include).
-		if (item->type != YP_TGRP) {
-			continue;
-		}
-
-		// Export simple group without identifiers.
-		if ((item->flags & YP_FMULTI) == 0) {
-			ret = export_group(conf, fp, item, NULL, 0, buff,
-			                   buff_len, style, &exported);
-			if (ret != KNOT_EOK) {
-				goto export_error;
-			}
-
-			continue;
-		}
-
-		// Iterate over all identifiers.
-		conf_iter_t iter;
-		ret = conf_db_iter_begin(conf, &conf->read_txn, item->name, &iter);
-		switch (ret) {
-		case KNOT_EOK:
+		// Don't export module sections again.
+		if (strncmp(item->name + 1, mod_prefix, mod_prefix_len) == 0) {
 			break;
-		case KNOT_ENOENT:
-			continue;
-		default:
-			goto export_error;
 		}
 
-		while (ret == KNOT_EOK) {
-			const uint8_t *id;
-			size_t id_len;
-			ret = conf_db_iter_id(conf, &iter, &id, &id_len);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf, &iter);
-				goto export_error;
-			}
+		// Export module sections before the template section.
+		if (strcmp(item->name + 1, C_TPL + 1) == 0) {
+			for (yp_item_t *mod = item + 1; mod->name != NULL; mod++) {
+				// Skip non-module sections.
+				if (strncmp(mod->name + 1, mod_prefix, mod_prefix_len) != 0) {
+					continue;
+				}
 
-			// Export group with identifiers.
-			ret = export_group(conf, fp, item, id, id_len, buff,
-			                   buff_len, style, &exported);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf, &iter);
-				goto export_error;
+				// Export module section.
+				ret = export_item(conf, fp, mod, buff, buff_len, style);
+				if (ret != KNOT_EOK) {
+					goto export_error;
+				}
 			}
-
-			ret = conf_db_iter_next(conf, &iter);
 		}
-		if (ret != KNOT_EOF) {
+
+		// Export non-module section.
+		ret = export_item(conf, fp, item, buff, buff_len, style);
+		if (ret != KNOT_EOK) {
 			goto export_error;
 		}
 	}
