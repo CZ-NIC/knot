@@ -1146,8 +1146,7 @@ int conf_io_unset(
 	// A group identifier or whole group.
 	} else if (node->item->type == YP_TGRP) {
 		upd_type = CONF_IO_TUNSET;
-		if (node->id_len != 0) {
-			assert((node->item->flags & YP_FMULTI) != 0);
+		if ((node->item->flags & YP_FMULTI) != 0) {
 			upd_flags |= node->item->var.g.id->flags;
 		}
 		assert(node->data_len == 0);
