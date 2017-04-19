@@ -49,7 +49,8 @@ typedef struct {
  * \param ctx        Signing context to be initialized.
  * \param zone_name  Name of the zone.
  */
-int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name);
+int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
+                     const conf_mod_id_t *from_module);
 
 /*!
  * \brief Save the changes in ctx (in kasp zone).

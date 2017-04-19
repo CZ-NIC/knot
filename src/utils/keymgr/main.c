@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 		goto main_end;
 	}
 
-	ret = kdnssec_ctx_init(conf(), &kctx, zone_name);
+	ret = kdnssec_ctx_init(conf(), &kctx, zone_name, NULL);
 	if (ret != KNOT_EOK) {
 		printf("Failed to initializize KASP (%s)\n", knot_strerror(ret));
 		goto main_end;
