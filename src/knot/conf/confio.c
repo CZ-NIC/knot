@@ -20,7 +20,7 @@
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
 
-#define FCN(io)	(io->fcn != NULL) ? io->fcn(io) : io->error.code;
+#define FCN(io)	(io->fcn != NULL) ? io->fcn(io) : KNOT_EOK;
 
 static void io_reset_val(
 	conf_io_t *io,
@@ -1348,7 +1348,11 @@ static int check_section(
 
 check_section_error:
 	io->error.str = args.err_str;
-	return FCN(io);
+	int ret = FCN(io);
+	if (ret == KNOT_EOK) {
+		return io->error.code;
+	}
+	return ret;
 }
 
 static int check_iter_section(
