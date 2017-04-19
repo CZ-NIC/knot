@@ -329,7 +329,7 @@ static int zone_ksk_submittion_confirm(zone_t *zone, ctl_args_t *args)
 
 	kdnssec_ctx_t ctx = { 0 };
 
-	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name);
+	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
