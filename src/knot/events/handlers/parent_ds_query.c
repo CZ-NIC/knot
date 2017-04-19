@@ -183,7 +183,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 {
 	kdnssec_ctx_t ctx = { 0 };
 
-	int ret = kdnssec_ctx_init(conf, &ctx, zone->name);
+	int ret = kdnssec_ctx_init(conf, &ctx, zone->name, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
