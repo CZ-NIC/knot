@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,13 +106,14 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
                       struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	struct sockaddr_storage ss;
-	memset(&ss, 0, sizeof(struct sockaddr_storage));
-	struct process_query_param param = {0};
-	param.socket = fd;
-	param.remote = &ss;
-	param.server = tcp->server;
-	param.thread_id = tcp->thread_id;
+	struct sockaddr_storage ss = { 0 };
+	struct process_query_param param = {
+		.remote = &ss,
+		.socket = fd,
+		.server = tcp->server,
+		.thread_id = tcp->thread_id
+	};
+
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
