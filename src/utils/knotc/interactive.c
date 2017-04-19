@@ -68,6 +68,7 @@ static void local_zones_lookup(EditLine *el, const char *str, size_t str_len)
 
 		ret = lookup_insert(&lookup, name, NULL);
 		if (ret != KNOT_EOK) {
+			conf_iter_finish(conf(), &iter);
 			goto local_zones_lookup_finish;
 		}
 	}
