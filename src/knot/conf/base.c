@@ -155,19 +155,20 @@ int conf_new(
 	}
 	memset(out, 0, sizeof(conf_t));
 
+	// Initialize query modules list.
+	init_list(&out->query_modules);
+
 	// Initialize config scheme.
 	int ret = yp_scheme_copy(&out->scheme, scheme);
 	if (ret != KNOT_EOK) {
-		free(out);
-		return ret;
+		goto new_error;
 	}
 
 	// Initialize a config mempool.
 	out->mm = malloc(sizeof(knot_mm_t));
 	if (out->mm == NULL) {
-		yp_scheme_free(out->scheme);
-		free(out);
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto new_error;
 	}
 	mm_ctx_mempool(out->mm, MM_DEFAULT_BLKSIZE);
 
@@ -214,19 +215,14 @@ int conf_new(
 	// Initialize and check the database.
 	ret = init_and_check(out, flags);
 	if (ret != KNOT_EOK) {
-		out->api->deinit(out->db);
 		goto new_error;
 	}
 
 	// Open common read-only transaction.
 	ret = conf_refresh_txn(out);
 	if (ret != KNOT_EOK) {
-		out->api->deinit(out->db);
 		goto new_error;
 	}
-
-	// Initialize query modules list.
-	init_list(&out->query_modules);
 
 	// Cache the current hostname.
 	if (!(flags & CONF_FNOHOSTNAME)) {
@@ -240,10 +236,7 @@ int conf_new(
 
 	return KNOT_EOK;
 new_error:
-	mp_delete(out->mm->ctx);
-	free(out->mm);
-	yp_scheme_free(out->scheme);
-	free(out);
+	conf_free(out);
 
 	return ret;
 }
@@ -352,11 +345,13 @@ void conf_free(
 	}
 
 	yp_scheme_free(conf->scheme);
-	conf->api->txn_abort(&conf->read_txn);
 	free(conf->filename);
 	free(conf->hostname);
+	if (conf->api != NULL) {
+		conf->api->txn_abort(&conf->read_txn);
+	}
 
-	if (conf->io.txn != NULL) {
+	if (conf->io.txn != NULL && conf->api != NULL) {
 		conf->api->txn_abort(conf->io.txn_stack);
 	}
 	if (conf->io.zones != NULL) {
@@ -367,9 +362,13 @@ void conf_free(
 	conf_deactivate_modules(&conf->query_modules, &conf->query_plan);
 
 	if (!conf->is_clone) {
-		conf->api->deinit(conf->db);
-		mp_delete(conf->mm->ctx);
-		free(conf->mm);
+		if (conf->api != NULL) {
+			conf->api->deinit(conf->db);
+		}
+		if (conf->mm != NULL) {
+			mp_delete(conf->mm->ctx);
+			free(conf->mm);
+		}
 	}
 
 	free(conf);
