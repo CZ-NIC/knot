@@ -229,7 +229,7 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 	if (dnssec_enable) {
 		/* Perform NSEC3 resalt and ZSK rollover if needed. */
 		kdnssec_ctx_t kctx = { 0 };
-		ret = kdnssec_ctx_init(conf, &kctx, zone->name);
+		ret = kdnssec_ctx_init(conf, &kctx, zone->name, NULL);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&change);
 			return ret;

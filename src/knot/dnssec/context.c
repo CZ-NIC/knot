@@ -71,7 +71,8 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	policy->nsec3_salt_lifetime = conf_int(&val);
 }
 
-int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name)
+int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
+		     const conf_mod_id_t *from_module)
 {
 	if (ctx == NULL || zone_name == NULL) {
 		return KNOT_EINVAL;
@@ -110,7 +111,12 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		goto init_error;
 	}
 
-	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone_name);
+	conf_val_t policy_id;
+	if (from_module == NULL) {
+		policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone_name);
+	} else {
+		policy_id = conf_mod_get(conf, C_POLICY, from_module);
+	}
 	conf_id_fix_default(&policy_id);
 	policy_load(ctx->policy, &policy_id);
 

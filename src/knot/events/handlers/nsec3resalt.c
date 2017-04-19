@@ -24,7 +24,7 @@ int event_nsec3resalt(conf_t *conf, zone_t *zone)
 
 	kdnssec_ctx_t kctx = { 0 };
 
-	int ret = kdnssec_ctx_init(conf, &kctx, zone->name);
+	int ret = kdnssec_ctx_init(conf, &kctx, zone->name, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
