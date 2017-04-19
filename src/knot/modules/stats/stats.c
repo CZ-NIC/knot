@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,10 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "contrib/mempattern.h"
-#include "libknot/libknot.h"
-#include "knot/modules/stats/stats.h"
-#include "knot/nameserver/xfr.h"
+#include "knot/include/module.h"
+#include "knot/nameserver/xfr.h" // Dependency on qdata->extra!
 
 #define MOD_PROTOCOL	"\x10""request-protocol"
 #define MOD_OPERATION	"\x10""server-operation"
@@ -33,8 +31,7 @@
 
 #define OTHER		"other"
 
-const yp_item_t scheme_mod_stats[] = {
-	{ C_ID,           YP_TSTR,  YP_VNONE },
+const yp_item_t stats_conf[] = {
 	{ MOD_PROTOCOL,   YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_OPERATION,  YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_REQ_BYTES,  YP_TBOOL, YP_VBOOL = { true } },
@@ -46,7 +43,6 @@ const yp_item_t scheme_mod_stats[] = {
 	{ MOD_QTYPE,      YP_TBOOL, YP_VNONE },
 	{ MOD_QSIZE,      YP_TBOOL, YP_VNONE },
 	{ MOD_RSIZE,      YP_TBOOL, YP_VNONE },
-	{ C_COMMENT,      YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
@@ -65,7 +61,6 @@ enum {
 };
 
 typedef struct {
-	mod_ctr_t *counters;
 	bool protocol;
 	bool operation;
 	bool req_bytes;
@@ -83,7 +78,7 @@ typedef struct {
 	yp_name_t *conf_name;
 	size_t conf_offset;
 	uint32_t count;
-	mod_idx_to_str_f fcn;
+	knotd_mod_idx_to_str_f fcn;
 } ctr_desc_t;
 
 enum {
@@ -320,36 +315,37 @@ static const ctr_desc_t ctr_descs[] = {
 	{ NULL }
 };
 
-static int update_counters(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
+                                     knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	assert(pkt && qdata && ctx);
+	assert(pkt && qdata);
 
-	stats_t *stats = ctx;
+	stats_t *stats = knotd_mod_ctx(mod);
 
 	uint16_t operation;
 	unsigned xfr_packets = 0;
 
 	// Get the server operation.
-	switch (qdata->packet_type) {
-	case KNOT_QUERY_NORMAL:
+	switch (qdata->type) {
+	case KNOTD_QUERY_TYPE_NORMAL:
 		operation = OPERATION_QUERY;
 		break;
-	case KNOT_QUERY_UPDATE:
+	case KNOTD_QUERY_TYPE_UPDATE:
 		operation = OPERATION_UPDATE;
 		break;
-	case KNOT_QUERY_NOTIFY:
+	case KNOTD_QUERY_TYPE_NOTIFY:
 		operation = OPERATION_NOTIFY;
 		break;
-	case KNOT_QUERY_AXFR:
+	case KNOTD_QUERY_TYPE_AXFR:
 		operation = OPERATION_AXFR;
-		if (qdata->ext != NULL) {
-			xfr_packets = ((struct xfr_proc *)qdata->ext)->stats.messages;
+		if (qdata->extra->ext != NULL) {
+			xfr_packets = ((struct xfr_proc *)qdata->extra->ext)->stats.messages;
 		}
 		break;
-	case KNOT_QUERY_IXFR:
+	case KNOTD_QUERY_TYPE_IXFR:
 		operation = OPERATION_IXFR;
-		if (qdata->ext != NULL) {
-			xfr_packets = ((struct xfr_proc *)qdata->ext)->stats.messages;
+		if (qdata->extra->ext != NULL) {
+			xfr_packets = ((struct xfr_proc *)qdata->extra->ext)->stats.messages;
 		}
 		break;
 	default:
@@ -361,17 +357,17 @@ static int update_counters(int state, knot_pkt_t *pkt, struct query_data *qdata,
 	if (stats->req_bytes) {
 		switch (operation) {
 		case OPERATION_QUERY:
-			mod_ctrs_incr(stats->counters, CTR_REQ_BYTES,
-			              REQ_BYTES_QUERY, qdata->query->size);
+			knotd_mod_stats_incr(mod, CTR_REQ_BYTES, REQ_BYTES_QUERY,
+			                     qdata->query->size);
 			break;
 		case OPERATION_UPDATE:
-			mod_ctrs_incr(stats->counters, CTR_REQ_BYTES,
-			              REQ_BYTES_UPDATE, qdata->query->size);
+			knotd_mod_stats_incr(mod, CTR_REQ_BYTES, REQ_BYTES_UPDATE,
+			                     qdata->query->size);
 			break;
 		default:
 			if (xfr_packets <= 1) {
-				mod_ctrs_incr(stats->counters, CTR_REQ_BYTES,
-				              REQ_BYTES_OTHER, qdata->query->size);
+				knotd_mod_stats_incr(mod, CTR_REQ_BYTES, REQ_BYTES_OTHER,
+				                     qdata->query->size);
 			}
 			break;
 		}
@@ -381,17 +377,17 @@ static int update_counters(int state, knot_pkt_t *pkt, struct query_data *qdata,
 	if (stats->resp_bytes) {
 		switch (operation) {
 		case OPERATION_QUERY:
-			mod_ctrs_incr(stats->counters, CTR_RESP_BYTES,
-			              RESP_BYTES_REPLY, pkt->size);
+			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_REPLY,
+			                     pkt->size);
 			break;
 		case OPERATION_AXFR:
 		case OPERATION_IXFR:
-			mod_ctrs_incr(stats->counters, CTR_RESP_BYTES,
-			              RESP_BYTES_TRANSFER, pkt->size);
+			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_TRANSFER,
+			                     pkt->size);
 			break;
 		default:
-			mod_ctrs_incr(stats->counters, CTR_RESP_BYTES,
-			              RESP_BYTES_OTHER, pkt->size);
+			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_OTHER,
+			                     pkt->size);
 			break;
 		}
 	}
@@ -408,16 +404,14 @@ static int update_counters(int state, knot_pkt_t *pkt, struct query_data *qdata,
 			if (xfr_packets > 1) {
 				assert(rcode != KNOT_RCODE_NOERROR);
 				// Ignore the leading XFR message NOERROR.
-				mod_ctrs_decr(stats->counters, CTR_RCODE,
-				              KNOT_RCODE_NOERROR, 1);
+				knotd_mod_stats_decr(mod, CTR_RCODE,
+				                     KNOT_RCODE_NOERROR, 1);
 			}
 
 			if (qdata->rcode_tsig == KNOT_RCODE_BADSIG) {
-				mod_ctrs_incr(stats->counters, CTR_RCODE,
-				              RCODE_BADSIG, 1);
+				knotd_mod_stats_incr(mod, CTR_RCODE, RCODE_BADSIG, 1);
 			} else {
-				mod_ctrs_incr(stats->counters, CTR_RCODE,
-				              rcode, 1);
+				knotd_mod_stats_incr(mod, CTR_RCODE, rcode, 1);
 			}
 		}
 	}
@@ -429,26 +423,26 @@ static int update_counters(int state, knot_pkt_t *pkt, struct query_data *qdata,
 
 	// Count the server opearation.
 	if (stats->operation) {
-		mod_ctrs_incr(stats->counters, CTR_OPERATION, operation, 1);
+		knotd_mod_stats_incr(mod, CTR_OPERATION, operation, 1);
 	}
 
 	// Count the request protocol.
 	if (stats->protocol) {
-		if (qdata->param->remote->ss_family == AF_INET) {
-			if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
-				mod_ctrs_incr(stats->counters, CTR_PROTOCOL,
-				              PROTOCOL_UDP4, 1);
+		if (qdata->params->remote->ss_family == AF_INET) {
+			if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) {
+				knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+				                     PROTOCOL_UDP4, 1);
 			} else {
-				mod_ctrs_incr(stats->counters, CTR_PROTOCOL,
-				              PROTOCOL_TCP4, 1);
+				knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+				                     PROTOCOL_TCP4, 1);
 			}
 		} else {
-			if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
-				mod_ctrs_incr(stats->counters, CTR_PROTOCOL,
-				              PROTOCOL_UDP6, 1);
+			if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) {
+				knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+				                     PROTOCOL_UDP6, 1);
 			} else {
-				mod_ctrs_incr(stats->counters, CTR_PROTOCOL,
-				              PROTOCOL_TCP6, 1);
+				knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+				                     PROTOCOL_TCP6, 1);
 			}
 		}
 	}
@@ -456,20 +450,20 @@ static int update_counters(int state, knot_pkt_t *pkt, struct query_data *qdata,
 	// Count EDNS occurrences.
 	if (stats->edns) {
 		if (qdata->query->opt_rr != NULL) {
-			mod_ctrs_incr(stats->counters, CTR_EDNS, EDNS_REQ, 1);
+			knotd_mod_stats_incr(mod, CTR_EDNS, EDNS_REQ, 1);
 		}
 		if (pkt->opt_rr != NULL && pkt->size > 0) {
-			mod_ctrs_incr(stats->counters, CTR_EDNS, EDNS_RESP, 1);
+			knotd_mod_stats_incr(mod, CTR_EDNS, EDNS_RESP, 1);
 		}
 	}
 
 	// Count interesting message header flags.
 	if (stats->flag) {
 		if (pkt->size > 0 && knot_wire_get_tc(pkt->wire)) {
-			mod_ctrs_incr(stats->counters, CTR_FLAG, FLAG_TC, 1);
+			knotd_mod_stats_incr(mod, CTR_FLAG, FLAG_TC, 1);
 		}
 		if (pkt->opt_rr != NULL && knot_edns_do(pkt->opt_rr)) {
-			mod_ctrs_incr(stats->counters, CTR_FLAG, FLAG_DO, 1);
+			knotd_mod_stats_incr(mod, CTR_FLAG, FLAG_DO, 1);
 		}
 	}
 
@@ -485,13 +479,13 @@ static int update_counters(int state, knot_pkt_t *pkt, struct query_data *qdata,
 	     knot_pkt_rr(knot_pkt_section(pkt, KNOT_AUTHORITY), 0)->type == KNOT_RRTYPE_SOA)) {
 		switch (knot_pkt_qtype(qdata->query)) {
 		case KNOT_RRTYPE_A:
-			mod_ctrs_incr(stats->counters, CTR_NODATA, NODATA_A, 1);
+			knotd_mod_stats_incr(mod, CTR_NODATA, NODATA_A, 1);
 			break;
 		case KNOT_RRTYPE_AAAA:
-			mod_ctrs_incr(stats->counters, CTR_NODATA, NODATA_AAAA, 1);
+			knotd_mod_stats_incr(mod, CTR_NODATA, NODATA_AAAA, 1);
 			break;
 		default:
-			mod_ctrs_incr(stats->counters, CTR_NODATA, NODATA_OTHER, 1);
+			knotd_mod_stats_incr(mod, CTR_NODATA, NODATA_OTHER, 1);
 			break;
 		}
 	}
@@ -508,59 +502,53 @@ static int update_counters(int state, knot_pkt_t *pkt, struct query_data *qdata,
 		default:                        idx = QTYPE_OTHER; break;
 		}
 
-		mod_ctrs_incr(stats->counters, CTR_QTYPE, idx, 1);
+		knotd_mod_stats_incr(mod, CTR_QTYPE, idx, 1);
 	}
 
 	// Count the query size.
 	if (stats->qsize) {
-		mod_ctrs_incr(stats->counters, CTR_QSIZE,
-		              qdata->query->size / BUCKET_SIZE, 1);
+		knotd_mod_stats_incr(mod, CTR_QSIZE, qdata->query->size / BUCKET_SIZE, 1);
 	}
 
 	// Count the reply size.
 	if (stats->rsize && pkt->size > 0) {
-		mod_ctrs_incr(stats->counters, CTR_RSIZE,
-		              pkt->size / BUCKET_SIZE, 1);
+		knotd_mod_stats_incr(mod, CTR_RSIZE, pkt->size / BUCKET_SIZE, 1);
 	}
 
 	return state;
 }
 
-int stats_load(struct query_module *self)
+int stats_load(knotd_mod_t *mod)
 {
-	assert(self);
-
-	stats_t *stats = mm_alloc(self->mm, sizeof(*stats));
+	stats_t *stats = calloc(1, sizeof(*stats));
 	if (stats == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	for (const ctr_desc_t *desc = ctr_descs; desc->conf_name != NULL; desc++) {
-		conf_val_t val = conf_mod_get(self->config, desc->conf_name, self->id);
-		bool enabled = conf_bool(&val);
+		knotd_conf_t conf = knotd_conf_mod(mod, desc->conf_name);
+		bool enabled = conf.single.boolean;
 
 		// Initialize corresponding configuration item.
 		*(bool *)((uint8_t *)stats + desc->conf_offset) = enabled;
 
-		int ret = mod_stats_add(self, enabled ? desc->conf_name + 1 : NULL,
-		                        desc->count, desc->fcn);
+		int ret = knotd_mod_stats_add(mod, enabled ? desc->conf_name + 1 : NULL,
+		                              desc->count, desc->fcn);
 		if (ret != KNOT_EOK) {
-			mm_free(self->mm, stats);
+			free(stats);
 			return ret;
 		}
 	}
 
-	stats->counters = self->stats;
-	self->ctx = stats;
+	knotd_mod_ctx_set(mod, stats);
 
-	return query_module_step(self, QPLAN_END, update_counters);
+	return knotd_mod_hook(mod, KNOTD_STAGE_END, update_counters);
 }
 
-void stats_unload(struct query_module *self)
+void stats_unload(knotd_mod_t *mod)
 {
-	assert(self);
-
-	stats_t *stats = self->ctx;
-
-	mm_free(self->mm, stats);
+	free(knotd_mod_ctx(mod));
 }
+
+KNOTD_MOD_API(stats, KNOTD_MOD_FLAG_SCOPE_ANY | KNOTD_MOD_FLAG_OPT_CONF,
+              stats_load, stats_unload, stats_conf, NULL);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,38 +14,30 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/modules/noudp/noudp.h"
+#include "knot/include/module.h"
 
-const yp_item_t scheme_mod_noudp[] = {
-	{ C_ID, YP_TSTR, YP_VNONE },
-	{ NULL }
-};
-
-static bool is_udp(struct query_data *qdata)
+static bool is_udp(knotd_qdata_t *qdata)
 {
-	return qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE;
+	return qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE;
 }
 
-int noudp_begin(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static knotd_state_t noudp_begin(knotd_state_t state, knot_pkt_t *pkt,
+                                 knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	assert(pkt && qdata);
-
 	if (is_udp(qdata)) {
 		knot_wire_set_tc(pkt->wire);
-		return KNOT_STATE_DONE;
+		return KNOTD_STATE_DONE;
 	}
 
 	return state;
 }
 
-int noudp_load(struct query_module *self)
+int noudp_load(knotd_mod_t *mod)
 {
-	query_module_step(self, QPLAN_BEGIN, noudp_begin);
+	knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, noudp_begin);
 
 	return KNOT_EOK;
 }
 
-void noudp_unload(struct query_module *self)
-{
-	return;
-}
+KNOTD_MOD_API(noudp, KNOTD_MOD_FLAG_SCOPE_ANY | KNOTD_MOD_FLAG_OPT_CONF,
+              noudp_load, NULL, NULL, NULL);

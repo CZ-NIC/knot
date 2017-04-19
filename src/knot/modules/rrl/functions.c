@@ -17,11 +17,10 @@
 #include <assert.h>
 #include <time.h>
 
+#include "knot/modules/rrl/functions.h"
 #include "contrib/murmurhash3/murmurhash3.h"
 #include "contrib/sockaddr.h"
 #include "dnssec/random.h"
-#include "knot/modules/rrl/functions.h"
-#include "knot/common/log.h"
 
 /* Hopscotch defines. */
 #define HOP_LEN (sizeof(unsigned)*8)
@@ -34,8 +33,6 @@
 #define RRL_CAPACITY 4 /* N seconds. */
 #define RRL_SSTART 2 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
-/* Enable RRL logging. */
-#define RRL_ENABLE_LOG
 
 /* Classification */
 enum {
@@ -278,9 +275,13 @@ static inline unsigned reduce_dist(rrl_table_t *t, unsigned id, unsigned d, unsi
 	return d;
 }
 
-static void rrl_log_state(const struct sockaddr_storage *ss, uint16_t flags, uint8_t cls)
+static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
+                          uint16_t flags, uint8_t cls)
 {
-#ifdef RRL_ENABLE_LOG
+	if (mod == NULL) {
+		return;
+	}
+
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)ss);
 
@@ -289,9 +290,8 @@ static void rrl_log_state(const struct sockaddr_storage *ss, uint16_t flags, uin
 		what = "enters";
 	}
 
-	log_notice("mod-rrl, address '%s' class '%s' %s limiting",
-	           addr_str, rrl_clsstr(cls), what);
-#endif
+	knotd_mod_log(mod, LOG_NOTICE, "address '%s' class '%s' %s limiting",
+	              addr_str, rrl_clsstr(cls), what);
 }
 
 rrl_table_t *rrl_create(size_t size)
@@ -435,7 +435,7 @@ rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 }
 
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
-              const knot_dname_t *zone)
+              const knot_dname_t *zone, knotd_mod_t *mod)
 {
 	if (!rrl || !req || !a) {
 		return KNOT_EINVAL;
@@ -465,7 +465,7 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 		/* Check state change. */
 		if ((b->ntok > 0 || dt > 1) && (b->flags & RRL_BF_ELIMIT)) {
 			b->flags &= ~RRL_BF_ELIMIT;
-			rrl_log_state(a, b->flags, b->cls);
+			rrl_log_state(mod, a, b->flags, b->cls);
 		}
 
 		/* Add new tokens. */
@@ -482,7 +482,7 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 	/* Last item taken. */
 	if (b->ntok == 1 && !(b->flags & RRL_BF_ELIMIT)) {
 		b->flags |= RRL_BF_ELIMIT;
-		rrl_log_state(a, b->flags, b->cls);
+		rrl_log_state(mod, a, b->flags, b->cls);
 	}
 
 	/* Decay current bucket. */

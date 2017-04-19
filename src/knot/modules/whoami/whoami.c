@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 Fastly, Inc.
+/*  Copyright (C) 2017 Fastly, Inc.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,23 +14,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "knot/modules/whoami/whoami.h"
+#include "knot/include/module.h"
 
-const yp_item_t scheme_mod_whoami[] = {
-	{ C_ID,         YP_TSTR, YP_VNONE },
-	{ C_COMMENT,    YP_TSTR, YP_VNONE },
-	{ NULL }
-};
-
-static int whoami_query(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static knotd_in_state_t whoami_query(knotd_in_state_t state, knot_pkt_t *pkt,
+                                     knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	knot_rrset_t *rrset = NULL;
-
-	/* Sanity checks. */
 	assert(pkt && qdata);
-	if (qdata->zone == NULL || qdata->zone->contents == NULL ||
-	    qdata->zone->contents->apex == NULL) {
-		return ERROR;
+
+	const knot_dname_t *zone_name = knotd_qdata_zone_name(qdata);
+	if (zone_name == NULL) {
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	/* Retrieve the query tuple. */
@@ -44,7 +37,7 @@ static int whoami_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	}
 
 	/* Only handle queries with qname set to the zone name. */
-	if (!knot_dname_is_equal(qname, qdata->zone->name)) {
+	if (!knot_dname_is_equal(qname, zone_name)) {
 		return state;
 	}
 
@@ -54,9 +47,9 @@ static int whoami_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	}
 
 	/* Retrieve the IP address that sent the query. */
-	const struct sockaddr_storage *query_source = qdata->param->remote;
+	const struct sockaddr_storage *query_source = qdata->params->remote;
 	if (query_source == NULL) {
-		return ERROR;
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	/* If the socket address family corresponds to the query type (i.e.,
@@ -88,44 +81,40 @@ static int whoami_query(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	/* Synthesize the response RRset. */
 
 	/* Owner name, type, and class are taken from the question. */
-	rrset = knot_rrset_new(qname, qtype, qclass, &pkt->mm);
+	knot_rrset_t *rrset = knot_rrset_new(qname, qtype, qclass, &pkt->mm);
 	if (rrset == NULL) {
-		return ERROR;
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	/* TTL is taken from the TTL of the SOA record. */
-	knot_rrset_t soa = node_rrset(qdata->zone->contents->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa = knotd_qdata_zone_apex_rrset(qdata, KNOT_RRTYPE_SOA);
 	uint32_t ttl = knot_rrset_ttl(&soa);
 
 	/* Record data is the query source address. */
 	int ret = knot_rrset_add_rdata(rrset, rdata, len_rdata, ttl, &pkt->mm);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&rrset, &pkt->mm);
-		return ERROR;
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	/* Add the new RRset to the response packet. */
 	ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rrset, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&rrset, &pkt->mm);
-		return ERROR;
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	/* Success. */
-	return HIT;
+	return KNOTD_IN_STATE_HIT;
 }
 
-int whoami_load(struct query_module *self)
+int whoami_load(knotd_mod_t *mod)
 {
-	assert(self);
-
 	/* Hook to the query plan. */
-	query_module_step(self, QPLAN_ANSWER, whoami_query);
+	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, whoami_query);
 
 	return KNOT_EOK;
 }
 
-void whoami_unload(struct query_module *self)
-{
-	return;
-}
+KNOTD_MOD_API(whoami, KNOTD_MOD_FLAG_SCOPE_ZONE | KNOTD_MOD_FLAG_OPT_CONF,
+              whoami_load, NULL, NULL, NULL);

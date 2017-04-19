@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,8 +15,8 @@
  */
 
 #include "contrib/sockaddr.h"
-#include "contrib/mempattern.h"
-#include "knot/modules/rrl/rrl.h"
+#include "knot/include/module.h"
+#include "knot/nameserver/process_query.h" // Dependency on qdata->extra!
 #include "knot/modules/rrl/functions.h"
 
 /* Module configuration scheme. */
@@ -25,21 +25,18 @@
 #define MOD_TBL_SIZE		"\x0A""table-size"
 #define MOD_WHITELIST		"\x09""whitelist"
 
-const yp_item_t scheme_mod_rrl[] = {
-	{ C_ID,           YP_TSTR,  YP_VNONE },
-	{ MOD_RATE_LIMIT, YP_TINT,  YP_VINT = { 1, INT32_MAX } },
-	{ MOD_SLIP,       YP_TINT,  YP_VINT = { 0, RRL_SLIP_MAX, 1 } },
-	{ MOD_TBL_SIZE,	  YP_TINT,  YP_VINT = { 1, INT32_MAX, 393241 } },
+const yp_item_t rrl_conf[] = {
+	{ MOD_RATE_LIMIT, YP_TINT, YP_VINT = { 1, INT32_MAX } },
+	{ MOD_SLIP,       YP_TINT, YP_VINT = { 0, RRL_SLIP_MAX, 1 } },
+	{ MOD_TBL_SIZE,   YP_TINT, YP_VINT = { 1, INT32_MAX, 393241 } },
 	{ MOD_WHITELIST,  YP_TNET, YP_VNONE, YP_FMULTI },
-	{ C_COMMENT,      YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
-int check_mod_rrl(conf_check_t *args)
+int rrl_conf_check(knotd_conf_check_args_t *args)
 {
-	conf_val_t rl = conf_rawid_get_txn(args->conf, args->txn, C_MOD_RRL,
-	                                   MOD_RATE_LIMIT, args->id, args->id_len);
-	if (rl.code != KNOT_EOK) {
+	knotd_conf_t limit = knotd_conf_check_item(args, MOD_RATE_LIMIT);
+	if (limit.count == 0) {
 		args->err_str = "no rate limit specified";
 		return KNOT_EINVAL;
 	}
@@ -48,10 +45,9 @@ int check_mod_rrl(conf_check_t *args)
 }
 
 typedef struct {
-	mod_ctr_t *counters;
 	rrl_table_t *rrl;
 	int slip;
-	conf_val_t whitelist;
+	knotd_conf_t whitelist;
 } rrl_ctx_t;
 
 static const knot_dname_t *name_from_rrsig(const knot_rrset_t *rr)
@@ -80,19 +76,44 @@ static const knot_dname_t *name_from_authrr(const knot_rrset_t *rr)
 	return rr->owner;
 }
 
-static int ratelimit_apply(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static bool addr_range_match(const knotd_conf_t *range, const struct sockaddr_storage *addr)
 {
-	assert(pkt && qdata && ctx);
+	assert(range && addr);
 
-	rrl_ctx_t *context = ctx;
+	for (size_t i = 0; i < range->count; i++) {
+		knotd_conf_val_t *val = &range->multi[i];
+		if (val->addr_max.ss_family == AF_UNSPEC) {
+			if (sockaddr_net_match((struct sockaddr *)addr,
+			                       (struct sockaddr *)&val->addr,
+			                       val->addr_mask)) {
+				return true;
+			}
+		} else {
+			if (sockaddr_range_match((struct sockaddr *)addr,
+			                         (struct sockaddr *)&val->addr,
+			                         (struct sockaddr *)&val->addr_max)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
+                                     knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	assert(pkt && qdata && mod);
+
+	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
 
 	// Rate limit is not applied to TCP connections.
-	if (!(qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE)) {
+	if (!(qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE)) {
 		return state;
 	}
 
 	// Exempt clients.
-	if (conf_addr_range_match(&context->whitelist, qdata->param->remote)) {
+	if (addr_range_match(&ctx->whitelist, qdata->params->remote)) {
 		return state;
 	}
 
@@ -101,12 +122,12 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, struct query_data *qdata,
 		.query = qdata->query
 	};
 
-	if (!EMPTY_LIST(qdata->wildcards)) {
+	if (!EMPTY_LIST(qdata->extra->wildcards)) {
 		req.flags = RRL_REQ_WILDCARD;
 	}
 
 	// Take the zone name if known.
-	const knot_dname_t *zone_name = (qdata->zone != NULL) ? qdata->zone->name : NULL;
+	const knot_dname_t *zone_name = knotd_qdata_zone_name(qdata);
 
 	// Take the signer name as zone name if there is an RRSIG.
 	if (zone_name == NULL) {
@@ -130,98 +151,95 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, struct query_data *qdata,
 		}
 	}
 
-	if (rrl_query(context->rrl, qdata->param->remote, &req, zone_name) == KNOT_EOK) {
+	if (rrl_query(ctx->rrl, qdata->params->remote, &req, zone_name, mod) == KNOT_EOK) {
 		// Rate limiting not applied.
 		return state;
 	}
 
-	if (context->slip > 0 && rrl_slip_roll(context->slip)) {
+	if (ctx->slip > 0 && rrl_slip_roll(ctx->slip)) {
 		// Slip the answer.
-		mod_ctr_incr(context->counters, 0, 1);
+		knotd_mod_stats_incr(mod, 0, 0, 1);
 		qdata->err_truncated = true;
-		return KNOT_STATE_FAIL;
+		return KNOTD_STATE_FAIL;
 	} else {
 		// Drop the answer.
-		mod_ctr_incr(context->counters, 1, 1);
+		knotd_mod_stats_incr(mod, 1, 0, 1);
 		pkt->size = 0;
-		return KNOT_STATE_DONE;
+		return KNOTD_STATE_DONE;
 	}
 }
 
-static void ctx_free(knot_mm_t *mm, rrl_ctx_t *ctx)
+static void ctx_free(rrl_ctx_t *ctx)
 {
 	assert(ctx);
 
 	rrl_destroy(ctx->rrl);
-	mm_free(mm, ctx);
+	free(ctx);
 }
 
-int rrl_load(struct query_module *self)
+int rrl_load(knotd_mod_t *mod)
 {
-	assert(self);
-
 	// Create RRL context.
-	rrl_ctx_t *ctx = mm_alloc(self->mm, sizeof(rrl_ctx_t));
+	rrl_ctx_t *ctx = calloc(1, sizeof(rrl_ctx_t));
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(ctx, 0, sizeof(*ctx));
 
 	// Create table.
-	conf_val_t val = conf_mod_get(self->config, MOD_TBL_SIZE, self->id);
-	ctx->rrl = rrl_create(conf_int(&val));
+	knotd_conf_t conf = knotd_conf_mod(mod, MOD_TBL_SIZE);
+	ctx->rrl = rrl_create(conf.single.integer);
 	if (ctx->rrl == NULL) {
-		ctx_free(self->mm, ctx);
+		ctx_free(ctx);
 		return KNOT_ENOMEM;
 	}
 
 	// Set locks.
 	int ret = rrl_setlocks(ctx->rrl, RRL_LOCK_GRANULARITY);
 	if (ret != KNOT_EOK) {
-		ctx_free(self->mm, ctx);
+		ctx_free(ctx);
 		return ret;
 	}
 
 	// Set rate limit.
-	val = conf_mod_get(self->config, MOD_RATE_LIMIT, self->id);
-	ret = rrl_setrate(ctx->rrl, conf_int(&val));
+	conf = knotd_conf_mod(mod, MOD_RATE_LIMIT);
+	ret = rrl_setrate(ctx->rrl, conf.single.integer);
 	if (ret != KNOT_EOK) {
-		ctx_free(self->mm, ctx);
+		ctx_free(ctx);
 		return ret;
 	}
-
-	// Get whitelist.
-	val = conf_mod_get(self->config, MOD_WHITELIST, self->id);
-	ctx->whitelist = val;
 
 	// Get slip.
-	val = conf_mod_get(self->config, MOD_SLIP, self->id);
-	ctx->slip = conf_int(&val);
+	conf = knotd_conf_mod(mod, MOD_SLIP);
+	ctx->slip = conf.single.integer;
+
+	// Get whitelist.
+	ctx->whitelist = knotd_conf_mod(mod, MOD_WHITELIST);
 
 	// Set up statistics counters.
-	ret = mod_stats_add(self, "slipped", 1, NULL);
+	ret = knotd_mod_stats_add(mod, "slipped", 1, NULL);
 	if (ret != KNOT_EOK) {
-		ctx_free(self->mm, ctx);
+		ctx_free(ctx);
 		return ret;
 	}
 
-	ret = mod_stats_add(self, "dropped", 1, NULL);
+	ret = knotd_mod_stats_add(mod, "dropped", 1, NULL);
 	if (ret != KNOT_EOK) {
-		ctx_free(self->mm, ctx);
+		ctx_free(ctx);
 		return ret;
 	}
 
-	ctx->counters = self->stats;
-	self->ctx = ctx;
+	knotd_mod_ctx_set(mod, ctx);
 
-	return query_module_step(self, QPLAN_END, ratelimit_apply);
+	return knotd_mod_hook(mod, KNOTD_STAGE_END, ratelimit_apply);
 }
 
-void rrl_unload(struct query_module *self)
+void rrl_unload(knotd_mod_t *mod)
 {
-	assert(self);
+	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
 
-	rrl_ctx_t *ctx = self->ctx;
-
-	ctx_free(self->mm, ctx);
+	knotd_conf_free(&ctx->whitelist);
+	ctx_free(ctx);
 }
+
+KNOTD_MOD_API(rrl, KNOTD_MOD_FLAG_SCOPE_ANY,
+              rrl_load, rrl_unload, rrl_conf, rrl_conf_check);

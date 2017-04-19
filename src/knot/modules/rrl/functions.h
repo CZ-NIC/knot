@@ -20,8 +20,8 @@
 #include <pthread.h>
 #include <sys/socket.h>
 
-#include "libknot/dname.h"
-#include "libknot/packet/pkt.h"
+#include "libknot/libknot.h"
+#include "knot/include/module.h"
 
 /* Defaults */
 #define RRL_SLIP_MAX 100
@@ -133,11 +133,12 @@ rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
  * \param a Source address.
  * \param req RRL request (containing resp., flags and question).
  * \param zone Zone name related to the response (or NULL).
+ * \param mod Query module (needed for logging).
  * \retval KNOT_EOK if passed.
  * \retval KNOT_ELIMIT when the limit is reached.
  */
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
-              const knot_dname_t *zone);
+              const knot_dname_t *zone, knotd_mod_t *mod);
 
 /*!
  * \brief Roll a dice whether answer slips or not.

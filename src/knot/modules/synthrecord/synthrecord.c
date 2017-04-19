@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,10 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
-#include "knot/modules/synth_record/synth_record.h"
+#include "knot/include/module.h"
 
 /* Module configuration scheme. */
 #define MOD_NET		"\x07""network"
@@ -39,7 +38,7 @@ static const knot_lookup_t synthetic_types[] = {
 	{ 0, NULL }
 };
 
-int check_prefix(conf_check_t *args)
+int check_prefix(knotd_conf_check_args_t *args)
 {
 	if (strchr((const char *)args->data, '.') != NULL) {
 		args->err_str = "dot '.' is not allowed";
@@ -49,43 +48,38 @@ int check_prefix(conf_check_t *args)
 	return KNOT_EOK;
 }
 
-const yp_item_t scheme_mod_synth_record[] = {
-	{ C_ID,       YP_TSTR,   YP_VNONE },
+const yp_item_t synth_record_conf[] = {
 	{ MOD_TYPE,   YP_TOPT,   YP_VOPT = { synthetic_types, SYNTH_NULL } },
 	{ MOD_PREFIX, YP_TSTR,   YP_VSTR = { "" }, YP_FNONE, { check_prefix } },
 	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
-	{ MOD_NET,    YP_TNET,   YP_VNONE, YP_FMULTI },
-	{ C_COMMENT,  YP_TSTR,   YP_VNONE },
+	{ MOD_NET,    YP_TNET,   YP_VNONE },
 	{ NULL }
 };
 
-int check_mod_synth_record(conf_check_t *args)
+int synth_record_conf_check(knotd_conf_check_args_t *args)
 {
 	// Check type.
-	conf_val_t type = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                     MOD_TYPE, args->id, args->id_len);
-	if (type.code != KNOT_EOK) {
+	knotd_conf_t type = knotd_conf_check_item(args, MOD_TYPE);
+	if (type.count == 0) {
 		args->err_str = "no synthesis type specified";
 		return KNOT_EINVAL;
 	}
 
 	// Check origin.
-	conf_val_t origin = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                       MOD_ORIGIN, args->id, args->id_len);
-	if (origin.code != KNOT_EOK && conf_opt(&type) == SYNTH_REVERSE) {
+	knotd_conf_t origin = knotd_conf_check_item(args, MOD_ORIGIN);
+	if (origin.count == 0 && type.single.option == SYNTH_REVERSE) {
 		args->err_str = "no origin specified";
 		return KNOT_EINVAL;
 	}
-	if (origin.code == KNOT_EOK && conf_opt(&type) == SYNTH_FORWARD) {
+	if (origin.count != 0 && type.single.option == SYNTH_FORWARD) {
 		args->err_str = "origin not allowed with forward type";
 		return KNOT_EINVAL;
 	}
 
 	// Check network subnet.
-	conf_val_t net = conf_rawid_get_txn(args->conf, args->txn, C_MOD_SYNTH_RECORD,
-	                                    MOD_NET, args->id, args->id_len);
-	if (net.code != KNOT_EOK) {
+	knotd_conf_t net = knotd_conf_check_item(args, MOD_NET);
+	if (net.count == 0) {
 		args->err_str = "no network subnet specified";
 		return KNOT_EINVAL;
 	}
@@ -100,14 +94,13 @@ int check_mod_synth_record(conf_check_t *args)
  * \brief Synthetic response template.
  */
 typedef struct synth_template {
-	node_t node;
 	enum synth_template_type type;
 	char *prefix;
 	char *zone;
 	uint32_t ttl;
 	struct sockaddr_storage addr;
 	struct sockaddr_storage addr_max;
-	int mask;
+	int addr_mask;
 } synth_template_t;
 
 /*! \brief Substitute all occurrences of given character. */
@@ -141,7 +134,7 @@ static bool query_satisfied_by_family(uint16_t qtype, int family)
 }
 
 /*! \brief Parse address from reverse query QNAME and return address family. */
-static int reverse_addr_parse(struct query_data *qdata, synth_template_t *tpl, char *addr_str)
+static int reverse_addr_parse(knotd_qdata_t *qdata, synth_template_t *tpl, char *addr_str)
 {
 	/* QNAME required format is [address].[subnet/zone]
 	 * f.e.  [1.0...0].[h.g.f.e.0.0.0.0.d.c.b.a.ip6.arpa] represents
@@ -185,7 +178,7 @@ static int reverse_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 	return KNOT_EOK;
 }
 
-static int forward_addr_parse(struct query_data *qdata, synth_template_t *tpl, char *addr_str)
+static int forward_addr_parse(knotd_qdata_t *qdata, synth_template_t *tpl, char *addr_str)
 {
 	/* Find prefix label count (additive to prefix length). */
 	const knot_dname_t *addr_label = qdata->name;
@@ -206,10 +199,10 @@ static int forward_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 	return KNOT_EOK;
 }
 
-static int addr_parse(struct query_data *qdata, synth_template_t *tpl, char *addr_str)
+static int addr_parse(knotd_qdata_t *qdata, synth_template_t *tpl, char *addr_str)
 {
 	/* Check if we have at least 1 label below zone. */
-	int zone_labels = knot_dname_labels(qdata->zone->name, NULL);
+	int zone_labels = knot_dname_labels(knotd_qdata_zone_name(qdata), NULL);
 	int query_labels = knot_dname_labels(qdata->name, qdata->query->wire);
 	if (query_labels < zone_labels + 1) {
 		return KNOT_EINVAL;
@@ -278,13 +271,13 @@ static int forward_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, kn
 	if (tpl->addr.ss_family == AF_INET6) {
 		rr->type = KNOT_RRTYPE_AAAA;
 		const struct sockaddr_in6* ip = (const struct sockaddr_in6*)&query_addr;
-		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin6_addr, sizeof(struct in6_addr),
-		                  tpl->ttl, &pkt->mm);
+		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin6_addr,
+		                     sizeof(struct in6_addr), tpl->ttl, &pkt->mm);
 	} else if (tpl->addr.ss_family == AF_INET) {
 		rr->type = KNOT_RRTYPE_A;
 		const struct sockaddr_in* ip = (const struct sockaddr_in*)&query_addr;
-		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin_addr, sizeof(struct in_addr),
-		                  tpl->ttl, &pkt->mm);
+		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin_addr,
+		                     sizeof(struct in_addr), tpl->ttl, &pkt->mm);
 	} else {
 		return KNOT_EINVAL;
 	}
@@ -292,10 +285,10 @@ static int forward_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, kn
 	return KNOT_EOK;
 }
 
-static knot_rrset_t *synth_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, struct query_data *qdata)
+static knot_rrset_t *synth_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt,
+                              knotd_qdata_t *qdata)
 {
-	knot_rrset_t *rr = knot_rrset_new(qdata->name, 0, KNOT_CLASS_IN,
-	                                  &pkt->mm);
+	knot_rrset_t *rr = knot_rrset_new(qdata->name, 0, KNOT_CLASS_IN, &pkt->mm);
 	if (rr == NULL) {
 		return NULL;
 	}
@@ -317,7 +310,8 @@ static knot_rrset_t *synth_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t 
 }
 
 /*! \brief Check if query fits the template requirements. */
-static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, struct query_data *qdata)
+static knotd_in_state_t template_match(knotd_in_state_t state, synth_template_t *tpl,
+                                       knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	/* Parse address from query name. */
 	char addr_str[SOCKADDR_STRLEN] = { '\0' };
@@ -336,7 +330,7 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 	if (tpl->addr_max.ss_family == AF_UNSPEC) {
 		if (!sockaddr_net_match((struct sockaddr *)&query_addr,
 		                        (struct sockaddr *)&tpl->addr,
-		                        tpl->mask)) {
+		                        tpl->addr_mask)) {
 			return state; /* Out of our netblock, not applicable. */
 		}
 	} else {
@@ -353,13 +347,13 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 	case SYNTH_FORWARD:
 		if (!query_satisfied_by_family(qtype, provided_af)) {
 			qdata->rcode = KNOT_RCODE_NOERROR;
-			return NODATA;
+			return KNOTD_IN_STATE_NODATA;
 		}
 		break;
 	case SYNTH_REVERSE:
 		if (qtype != KNOT_RRTYPE_PTR && qtype != KNOT_RRTYPE_ANY) {
 			qdata->rcode = KNOT_RCODE_NOERROR;
-			return NODATA;
+			return KNOTD_IN_STATE_NODATA;
 		}
 		break;
 	default:
@@ -370,85 +364,85 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 	knot_rrset_t *rr = synth_rr(addr_str, tpl, pkt, qdata);
 	if (rr == NULL) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
-		return ERROR;
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	/* Insert synthetic response into packet. */
 	if (knot_pkt_put(pkt, 0, rr, KNOT_PF_FREE) != KNOT_EOK) {
-		return ERROR;
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	/* Authoritative response. */
 	knot_wire_set_aa(pkt->wire);
 
-	return HIT;
+	return KNOTD_IN_STATE_HIT;
 }
 
-static int solve_synth_record(int state, knot_pkt_t *pkt, struct query_data *qdata,
-                              void *ctx)
+static knotd_in_state_t solve_synth_record(knotd_in_state_t state, knot_pkt_t *pkt,
+                                           knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	assert(pkt && qdata && ctx);
+	assert(pkt && qdata && mod);
 
 	/* Applicable when search in zone fails. */
-	if (state != MISS) {
+	if (state != KNOTD_IN_STATE_MISS) {
 		return state;
 	}
 
 	/* Check if template fits. */
-	return template_match(state, (synth_template_t *)ctx, pkt, qdata);
+	return template_match(state, knotd_mod_ctx(mod), pkt, qdata);
 }
 
-int synth_record_load(struct query_module *self)
+int synth_record_load(knotd_mod_t *mod)
 {
-	assert(self);
-
 	/* Create synthesis template. */
-	struct synth_template *tpl = mm_alloc(self->mm, sizeof(struct synth_template));
+	synth_template_t *tpl = calloc(1, sizeof(*tpl));
 	if (tpl == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	conf_val_t val;
-
 	/* Set type. */
-	val = conf_mod_get(self->config, MOD_TYPE, self->id);
-	tpl->type = conf_opt(&val);
+	knotd_conf_t conf = knotd_conf_mod(mod, MOD_TYPE);
+	tpl->type = conf.single.option;
 
 	/* Set prefix. */
-	val = conf_mod_get(self->config, MOD_PREFIX, self->id);
-	tpl->prefix = strdup(conf_str(&val));
+	conf = knotd_conf_mod(mod, MOD_PREFIX);
+	tpl->prefix = strdup(conf.single.string);
 
 	/* Set origin if generating reverse record. */
 	if (tpl->type == SYNTH_REVERSE) {
-		val = conf_mod_get(self->config, MOD_ORIGIN, self->id);
-		tpl->zone = knot_dname_to_str_alloc(conf_dname(&val));
+		conf = knotd_conf_mod(mod, MOD_ORIGIN);
+		tpl->zone = knot_dname_to_str_alloc(conf.single.dname);
 		if (tpl->zone == NULL) {
 			free(tpl->prefix);
-			mm_free(self->mm, tpl);
+			free(tpl);
 			return KNOT_ENOMEM;
 		}
 	}
 
 	/* Set ttl. */
-	val = conf_mod_get(self->config, MOD_TTL, self->id);
-	tpl->ttl = conf_int(&val);
+	conf = knotd_conf_mod(mod, MOD_TTL);
+	tpl->ttl = conf.single.integer;
 
 	/* Set address. */
-	val = conf_mod_get(self->config, MOD_NET, self->id);
-	tpl->addr = conf_addr_range(&val, &tpl->addr_max, &tpl->mask);
+	conf = knotd_conf_mod(mod, MOD_NET);
+	tpl->addr = conf.single.addr;
+	tpl->addr_max = conf.single.addr_max;
+	tpl->addr_mask = conf.single.addr_mask;
 
-	self->ctx = tpl;
+	knotd_mod_ctx_set(mod, tpl);
 
-	return query_module_step(self, QPLAN_ANSWER, solve_synth_record);
+	return knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, solve_synth_record);
 }
 
-void synth_record_unload(struct query_module *self)
+void synth_record_unload(knotd_mod_t *mod)
 {
-	assert(self);
-
-	synth_template_t *tpl = self->ctx;
+	synth_template_t *tpl = knotd_mod_ctx(mod);
 
 	free(tpl->zone);
 	free(tpl->prefix);
-	mm_free(self->mm, tpl);
+	free(tpl);
 }
+
+KNOTD_MOD_API(synthrecord, KNOTD_MOD_FLAG_SCOPE_ZONE,
+              synth_record_load, synth_record_unload, synth_record_conf,
+              synth_record_conf_check);

@@ -297,24 +297,6 @@ libknotd_la_SOURCES =				\
 	knot/events/log.h			\
 	knot/events/replan.c			\
 	knot/events/replan.h			\
-	knot/modules/dnsproxy/dnsproxy.c	\
-	knot/modules/dnsproxy/dnsproxy.h	\
-	knot/modules/noudp/noudp.c		\
-	knot/modules/noudp/noudp.h		\
-	knot/modules/online_sign/online_sign.c	\
-	knot/modules/online_sign/online_sign.h	\
-	knot/modules/online_sign/nsec_next.c	\
-	knot/modules/online_sign/nsec_next.h	\
-	knot/modules/rrl/functions.c		\
-	knot/modules/rrl/functions.h		\
-	knot/modules/rrl/rrl.c			\
-	knot/modules/rrl/rrl.h			\
-	knot/modules/stats/stats.c		\
-	knot/modules/stats/stats.h		\
-	knot/modules/synth_record/synth_record.c\
-	knot/modules/synth_record/synth_record.h\
-	knot/modules/whoami/whoami.c		\
-	knot/modules/whoami/whoami.h		\
 	knot/nameserver/axfr.c			\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/chaos.c			\
@@ -467,20 +449,6 @@ keymgr_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la \
 # Optional Knot DNS Daemon modules #
 ####################################
 
-if HAVE_DNSTAP
-libknotd_la_SOURCES +=				\
-	knot/modules/dnstap/dnstap.c		\
-	knot/modules/dnstap/dnstap.h
-libknotd_la_CPPFLAGS += $(DNSTAP_CFLAGS)
-libknotd_la_LIBADD += $(DNSTAP_LIBS) contrib/dnstap/libdnstap.la
-endif # HAVE_DNSTAP
-
-if HAVE_ROSEDB
-libknotd_la_SOURCES +=				\
-	knot/modules/rosedb/rosedb.c		\
-	knot/modules/rosedb/rosedb.h
-endif # HAVE_ROSEDB
-
 # Create storage and run-time directories
 install-data-hook:
 	$(INSTALL) -d $(DESTDIR)/@config_dir@
@@ -558,12 +526,20 @@ kdig_CPPFLAGS       += $(DNSTAP_CFLAGS)
 khost_CPPFLAGS      += $(DNSTAP_CFLAGS)
 endif # HAVE_DNSTAP
 
-if HAVE_ROSEDB
-bin_PROGRAMS += rosedb_tool
-rosedb_tool_SOURCES = knot/modules/rosedb/rosedb_tool.c
-rosedb_tool_LDADD = libknotd.la libcontrib.la
-rosedb_tool_CFLAGS = $(AM_CFLAGS) $(lmdb_CFLAGS) $(DNSTAP_CFLAGS)
-rosedb_tool_LDFLAGS = $(AM_LDFLAGS) $(lmdb_LIBS)
-endif # HAVE_ROSEDB
-
 endif # HAVE_UTILS
+
+KNOTD_MOD_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
+KNOTD_MOD_LDFLAGS = $(AM_LDFLAGS) -module -shared -avoid-version
+
+pkglibdir = $(module_instdir)
+pkglib_LTLIBRARIES =
+
+include $(srcdir)/knot/modules/dnsproxy/Makefile.inc
+include $(srcdir)/knot/modules/dnstap/Makefile.inc
+include $(srcdir)/knot/modules/noudp/Makefile.inc
+include $(srcdir)/knot/modules/onlinesign/Makefile.inc
+include $(srcdir)/knot/modules/rosedb/Makefile.inc
+include $(srcdir)/knot/modules/rrl/Makefile.inc
+include $(srcdir)/knot/modules/stats/Makefile.inc
+include $(srcdir)/knot/modules/synthrecord/Makefile.inc
+include $(srcdir)/knot/modules/whoami/Makefile.inc
