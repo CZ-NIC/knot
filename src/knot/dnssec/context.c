@@ -24,6 +24,12 @@
 
 static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 {
+	if (conf_str(id) == NULL) {
+		policy->string = strdup("default");
+	} else {
+		policy->string = strdup(conf_str(id));
+	}
+
 	conf_val_t val = conf_id_get(conf(), C_POLICY, C_MANUAL, id);
 	policy->manual = conf_bool(&val);
 
@@ -32,6 +38,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 
 	val = conf_id_get(conf(), C_POLICY, C_ALG, id);
 	policy->algorithm = conf_opt(&val);
+
+	val = conf_id_get(conf(), C_POLICY, C_KSK_SHARED, id);
+	policy->ksk_shared = conf_bool(&val);
 
 	val = conf_id_get(conf(), C_POLICY, C_KSK_SIZE, id);
 	int64_t num = conf_int(&val);
@@ -162,7 +171,10 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		return;
 	}
 
-	free(ctx->policy);
+	if (ctx->policy != NULL) {
+		free(ctx->policy->string);
+		free(ctx->policy);
+	}
 	dnssec_keystore_deinit(ctx->keystore);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);

@@ -59,6 +59,7 @@ typedef struct {
  */
 typedef struct {
 	bool manual;
+	char *string;
 	// DNSKEY
 	dnssec_key_algorithm_t algorithm;
 	uint16_t ksk_size;
@@ -66,6 +67,7 @@ typedef struct {
 	uint32_t dnskey_ttl;
 	uint32_t zsk_lifetime;
 	uint32_t ksk_lifetime;
+	bool ksk_shared;
 	bool singe_type_signing;
 	// RRSIG
 	uint32_t rrsig_lifetime;

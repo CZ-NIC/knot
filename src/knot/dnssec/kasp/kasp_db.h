@@ -116,7 +116,12 @@ int kasp_db_delete_all(kasp_db_t *db, const knot_dname_t *zone_name);
 int kasp_db_add_key(kasp_db_t *db, const knot_dname_t *zone_name, const key_params_t *params);
 
 /*!
-TODO
+ * \brief Link a key from another zone.
+ *
+ * \param db            KASP db
+ * \param zone_from     name of the zone the key belongs to
+ * \param zone_to       name of the zone the key shall belong to as well
+ * \param key_id        ID of the key in question
  *
  * \return KNOT_E*
  */
@@ -147,3 +152,33 @@ int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
  */
 int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
                            dnssec_binary_t *nsec3salt, time_t *salt_created);
+
+/*!
+ * \brief For given policy name, obtain last generated key.
+ *
+ * \param db            KASP db
+ * \param policy_string a name identifying the signing policy with shared keys
+ * \param lp_zone       out: the zone owning the last generated key
+ * \param lp_keyid      out: the ID of the last generated key
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_get_policy_last(kasp_db_t *db, const char *policy_string, knot_dname_t **lp_zone,
+			    char **lp_keyid);
+
+/*!
+ * \brief For given policy name, try to reset last generated key.
+ *
+ * \param db            KASP db
+ * \param policy_string a name identifying the signing policy with shared keys
+ * \param last_lp_keyid just for check: ID of the key the caller thinks is the policy-last
+ * \param new_lp_zone   zone name of the new policy-last key
+ * \param new_lp_keyid  ID of the new policy-last key
+ *
+ * \retval KNOT_ESEMCHECK       lasp_lp_keyid does not correspond to real last key. Probably another zone
+ *                              changed policy-last key in the meantime. Re-run kasp_db_get_policy_last()
+ * \retval KNOT_EOK             policy-last key set up successfully to given zone/ID
+ * \return KNOT_E*              common error
+ */
+int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char *last_lp_keyid,
+			    const knot_dname_t *new_lp_zone, const char *new_lp_keyid);

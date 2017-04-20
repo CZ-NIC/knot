@@ -106,6 +106,31 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_kasp_key_t **key_ptr
 	return KNOT_EOK;
 }
 
+int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const char *key_id)
+{
+	knot_dname_t *to_zone = knot_dname_copy(ctx->zone->dname, NULL);
+	if (to_zone == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = kdnssec_ctx_commit(ctx);
+	if (ret != KNOT_EOK) {
+		free(to_zone);
+		return ret;
+	}
+
+	ret = kasp_db_share_key(*ctx->kasp_db, from_zone, ctx->zone->dname, key_id);
+	if (ret != KNOT_EOK) {
+		free(to_zone);
+		return ret;
+	}
+
+	kasp_zone_clear(ctx->zone);
+	ret = kasp_zone_load(ctx->zone, to_zone, *ctx->kasp_db);
+	free(to_zone);
+	return ret;
+}
+
 int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 {
 	assert(ctx);
