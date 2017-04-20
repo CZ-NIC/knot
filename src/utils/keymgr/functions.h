@@ -24,6 +24,9 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits);
 
 int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key);
 
+int keymgr_foreign_key_id(int argc, char *argv[], const char *req_action,
+			  knot_dname_t **key_zone, char **key_id);
+
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[]);
 
 int keymgr_list_keys(kdnssec_ctx_t *ctx);

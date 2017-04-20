@@ -471,6 +471,43 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 	return KNOT_EOK;
 }
 
+int keymgr_foreign_key_id(int argc, char *argv[], const char *req_action,
+			  knot_dname_t **key_zone, char **key_id)
+{
+	if (argc < 1) {
+		printf("Key to %s - zone is not specified.\n", req_action);
+		return KNOT_EINVAL;
+	}
+	if (argc < 2) {
+		printf("Key to %s is not specified.\n", req_action);
+		return KNOT_EINVAL;
+	}
+	*key_zone = knot_dname_from_str_alloc(argv[0]);
+	if (*key_zone == NULL) {
+		return KNOT_ENOMEM;
+	}
+	(void)knot_dname_to_lower(*key_zone);
+
+	kdnssec_ctx_t kctx = { 0 };
+	int ret = kdnssec_ctx_init(conf(), &kctx, *key_zone, NULL);
+	if (ret != KNOT_EOK) {
+		printf("Failed to initialize zone %s (%s)\n", argv[0], knot_strerror(ret));
+		free(*key_zone);
+		*key_zone = NULL;
+		return KNOT_ENOZONE;
+	}
+	knot_kasp_key_t *key;
+	ret = keymgr_get_key(&kctx, argv[1], &key);
+	if (ret == KNOT_EOK) {
+		*key_id = strdup(key->id);
+		if (*key_id == NULL) {
+			ret = KNOT_ENOMEM;
+		}
+	}
+	kdnssec_ctx_deinit(&kctx);
+	return ret;
+}
+
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 {
 	knot_kasp_key_timing_t temp = key->timing;
