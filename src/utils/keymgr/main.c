@@ -235,12 +235,13 @@ int main(int argc, char *argv[])
 			ret = keymgr_generate_ds(zone_name, key2ds);
 		}
 	} else if (strcmp(argv[4], "share") == 0) {
-		if (argc < 6) {
-			printf("Key ID is not specified.\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
+		knot_dname_t *other_zone = NULL;
+		char *key_to_share = NULL;
+		if (keymgr_foreign_key_id(argc - 5, argv + 5, "be shared", &other_zone, &key_to_share) == KNOT_EOK) {
+			ret = kasp_db_share_key(*kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
 		}
-		//ret = kasp_db_share_key(*kctx.kasp_db, zone_name, argv[5]); // TODO fix
+		free(other_zone);
+		free(key_to_share);
 	} else if (strcmp(argv[4], "delete") == 0) {
 		if (argc < 6) {
 			printf("Key is not specified.\n");
