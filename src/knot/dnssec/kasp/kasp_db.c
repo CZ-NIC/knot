@@ -507,3 +507,71 @@ int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
 	with_txn_end(NULL);
 	return ret;
 }
+
+int kasp_db_get_policy_last(kasp_db_t *db, const char *policy_string, knot_dname_t **lp_zone,
+			    char **lp_keyid)
+{
+	if (db == NULL || db->keys_db == NULL || policy_string == NULL ||
+	    lp_zone == NULL || lp_keyid == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	with_txn(KEYS_RO, NULL);
+	knot_db_val_t key = make_key(KASPDBKEY_POLICYLAST, NULL, policy_string), val = { 0 };
+	ret = db_api->find(txn, &key, &val, 0);
+	free_key(&key);
+	if (ret == KNOT_EOK) {
+		if (*(uint8_t *)val.data != KASPDBKEY_PARAMS) {
+			ret = KNOT_EMALF;
+		} else {
+			*lp_zone = knot_dname_copy((knot_dname_t *)(val.data + 1), NULL);
+			*lp_keyid = keyid_fromkey(&val);
+			if (*lp_zone == NULL || *lp_keyid == NULL) {
+				free(*lp_zone);
+				free(*lp_keyid);
+				ret = KNOT_ENOMEM;
+			}
+		}
+	}
+	with_txn_end(NULL);
+	return ret;
+}
+
+int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char *last_lp_keyid,
+			    const knot_dname_t *new_lp_zone, const char *new_lp_keyid)
+{
+	if (db == NULL || db->keys_db == NULL ||
+	    new_lp_zone == NULL || new_lp_keyid == NULL) {
+		return KNOT_EINVAL;
+	}
+	with_txn(KEYS_RW, NULL);
+	knot_db_val_t key = make_key(KASPDBKEY_POLICYLAST, NULL, policy_string), val = { 0 };
+	ret = db_api->find(txn, &key, &val, 0);
+	switch (ret) {
+	case KNOT_EOK:
+		if (*(uint8_t *)val.data != KASPDBKEY_PARAMS) {
+			ret = KNOT_EMALF;
+		} else {
+			char *real_last = keyid_fromkey(&val);
+			if (real_last == NULL) {
+				ret = KNOT_ENOMEM;
+			} else {
+				if (last_lp_keyid == NULL || strcmp(real_last, last_lp_keyid) != 0) {
+					ret = KNOT_ESEMCHECK;
+				}
+				free(real_last);
+			}
+		}
+		break;
+	case KNOT_ENOENT:
+		ret = KNOT_EOK;
+		break;
+	}
+	if (ret == KNOT_EOK) {
+		val = make_key(KASPDBKEY_PARAMS, new_lp_zone, new_lp_keyid);
+		ret = db_api->insert(txn, &key, &val, 0);
+	}
+	free(val.data);
+	with_txn_end(NULL);
+	return ret;
+}

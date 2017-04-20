@@ -45,7 +45,21 @@ static bool key_present(kdnssec_ctx_t *ctx, uint16_t flag)
 	return false;
 }
 
-static int generate_initial_key(kdnssec_ctx_t *ctx, bool ksk)
+static bool key_id_present(kdnssec_ctx_t *ctx, const char *keyid, uint16_t flag)
+{
+	assert(ctx);
+	assert(ctx->zone);
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (strcmp(keyid, key->id) == 0 &&
+		    dnssec_key_get_flags(key->key) == flag) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static int generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_active)
 {
 	knot_kasp_key_t *key = NULL;
 	int r = kdnssec_generate_key(ctx, ksk, &key);
@@ -53,11 +67,71 @@ static int generate_initial_key(kdnssec_ctx_t *ctx, bool ksk)
 		return r;
 	}
 
-	key->timing.active  = ctx->now;
-	key->timing.ready   = ctx->now;
+	key->timing.active  = when_active;
+	key->timing.ready   = when_active;
 	key->timing.publish = ctx->now;
 
 	return KNOT_EOK;
+}
+
+static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_active)
+{
+	knot_dname_t *borrow_zone = NULL;
+	char *borrow_key = NULL;
+
+	if (!ksk) {
+		return KNOT_EINVAL;
+	} // for now not designed for rotating shared ZSK
+
+	int ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string, &borrow_zone, &borrow_key);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		return ret;
+	}
+
+	// if we already have the policy-last key, we have to generate new one
+	if (ret == KNOT_ENOENT || key_id_present(ctx, borrow_key, ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK)) {
+		knot_kasp_key_t *key = NULL;
+		ret = kdnssec_generate_key(ctx, ksk, &key);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		key->timing.active  = when_active;
+		key->timing.ready   = when_active;
+		key->timing.publish = ctx->now;
+
+		ret = kdnssec_ctx_commit(ctx);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		ret = kasp_db_set_policy_last(*ctx->kasp_db, ctx->policy->string, borrow_key, ctx->zone->dname, key->id);
+		free(borrow_zone);
+		free(borrow_key);
+		borrow_zone = NULL;
+		borrow_key = NULL;
+		if (ret != KNOT_ESEMCHECK) {
+			// all ok, we generated new kay and updated policy-last
+			return ret;
+		} else {
+			// another zone updated policy-last key in the meantime
+			ret = kdnssec_delete_key(ctx, key);
+			if (ret == KNOT_EOK) {
+				ret = kdnssec_ctx_commit(ctx);
+			}
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+
+			ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string, &borrow_zone, &borrow_key);
+		}
+	}
+
+	if (ret == KNOT_EOK) {
+		ret = kdnssec_share_key(ctx, borrow_zone, borrow_key);
+	}
+	free(borrow_zone);
+	free(borrow_key);
+	return ret;
 }
 
 typedef enum {
@@ -226,22 +300,6 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 	return res;
 }
 
-static int exec_new_key(kdnssec_ctx_t *ctx, bool ksk)
-{
-	knot_kasp_key_t *new_key = NULL;
-	int r = kdnssec_generate_key(ctx, ksk, &new_key);
-	if (r != KNOT_EOK) {
-		return r;
-	}
-
-	//! \todo Cannot set "active" to zero, using upper bound instead.
-	new_key->timing.publish = ctx->now;
-	new_key->timing.ready = TIME_INFINITY;
-	new_key->timing.active = TIME_INFINITY;
-
-	return KNOT_EOK;
-}
-
 static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey) {
 	assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_PUBLISHED);
 	newkey->timing.ready = ctx->now;
@@ -288,10 +346,14 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_change
 
 	// generate initial keys if missing
 	if (!ctx->policy->singe_type_signing && !key_present(ctx, DNSKEY_FLAGS_KSK)) {
-		ret = generate_initial_key(ctx, true);
+		if (ctx->policy->ksk_shared) {
+			ret = share_or_generate_key(ctx, true, ctx->now);
+		} else {
+			ret = generate_key(ctx, true, ctx->now);
+		}
 	}
 	if ((ret == KNOT_EOK || ret == KNOT_ESEMCHECK) && !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
-		ret = generate_initial_key(ctx, false);
+		ret = generate_key(ctx, false, ctx->now);
 	}
 	if (ret == KNOT_EOK) {
 		*keys_changed = true;
@@ -308,7 +370,11 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_change
 	if (!ctx->policy->singe_type_signing && *next_rollover <= ctx->now) {
 		switch (next.type) {
 		case PUBLISH:
-			ret = exec_new_key(ctx, next.ksk);
+			if (next.ksk && ctx->policy->ksk_shared) {
+				ret = share_or_generate_key(ctx, next.ksk, TIME_INFINITY);
+			} else {
+				ret = generate_key(ctx, next.ksk, TIME_INFINITY);
+			}
 			break;
 		case SUBMIT:
 			ret = submit_key(ctx, next.key);

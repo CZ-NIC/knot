@@ -84,6 +84,11 @@ uint16_t dnskey_flags(bool is_ksk);
  */
 int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_kasp_key_t **key_ptr);
 
+/*
+ * TODO comment
+ */
+int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const char *key_id);
+
 /*!
  * \brief Remove key from zone.
  *

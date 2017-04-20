@@ -61,6 +61,7 @@
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
 #define C_KSK_LIFETIME		"\x0C""ksk-lifetime"
+#define C_KSK_SHARED            "\x0a""ksk-shared"
 #define C_KSK_SIZE		"\x08""ksk-size"
 #define C_KSK_SUBMITTION_CHECK  "\x14""ksk-submittion-check"
 #define C_KSK_SUBMITTION_CHECK_INTERVAL "\x1D""ksk-submittion-check-interval"

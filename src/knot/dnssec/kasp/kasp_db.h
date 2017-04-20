@@ -138,3 +138,10 @@ int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
  */
 int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
                            dnssec_binary_t *nsec3salt, time_t *salt_created);
+
+
+int kasp_db_get_policy_last(kasp_db_t *db, const char *policy_string, knot_dname_t **lp_zone,
+			    char **lp_keyid);
+
+int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char *last_lp_keyid,
+			    const knot_dname_t *new_lp_zone, const char *new_lp_keyid);
