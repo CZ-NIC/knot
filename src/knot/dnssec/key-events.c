@@ -59,6 +59,19 @@ static bool key_id_present(kdnssec_ctx_t *ctx, const char *keyid, uint16_t flag)
 	return false;
 }
 
+static knot_kasp_key_t *key_get_by_id(kdnssec_ctx_t *ctx, const char *keyid)
+{
+	assert(ctx);
+	assert(ctx->zone);
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (strcmp(keyid, key->id) == 0) {
+			return key;
+		}
+	}
+	return NULL;
+}
+
 static int generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_active)
 {
 	knot_kasp_key_t *key = NULL;
@@ -128,6 +141,13 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_activ
 
 	if (ret == KNOT_EOK) {
 		ret = kdnssec_share_key(ctx, borrow_zone, borrow_key);
+		if (ret == KNOT_EOK) {
+			knot_kasp_key_t *newkey = key_get_by_id(ctx, borrow_key);
+			assert(newkey != NULL);
+			newkey->timing.publish = ctx->now;
+			newkey->timing.ready = when_active;
+			newkey->timing.active = when_active;
+		}
 	}
 	free(borrow_zone);
 	free(borrow_key);
