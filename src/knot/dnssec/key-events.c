@@ -80,6 +80,8 @@ static int generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_active)
 		return r;
 	}
 
+	key->timing.remove = TIME_INFINITY;
+	key->timing.retire = TIME_INFINITY;
 	key->timing.active  = when_active;
 	key->timing.ready   = when_active;
 	key->timing.publish = ctx->now;
@@ -108,6 +110,8 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_activ
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+		key->timing.remove = TIME_INFINITY;
+		key->timing.retire = TIME_INFINITY;
 		key->timing.active  = when_active;
 		key->timing.ready   = when_active;
 		key->timing.publish = ctx->now;
