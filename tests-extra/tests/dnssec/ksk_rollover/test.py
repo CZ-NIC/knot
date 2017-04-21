@@ -77,12 +77,12 @@ ZSK2 = "246d81610c3e3e1cf99ffa1eecd95f1deee01f0e"
 t.rel_sleep(0)
 
 # note that some of these paraneters will be immediately or later modified by automated key management
-child.key_set(ZONE, KSK1, publish="t-2y", ready="t-1y", active="t-1y", retire="t+10y", remove="t+20y")
+child.key_set(ZONE, KSK1, created="t-2y", publish="t-2y", ready="t-1y", active="t-1y", retire="t+10y", remove="t+20y")
 # KSK1's retire and remove shall be reconfigured by Knot to soon as KSK2 takes place
-child.key_set(ZONE, KSK2, publish="t+0", ready="t+1h", active="t+10y", retire="t+11y", remove="t+12y")
-child.key_set(ZONE, ZSK1, publish="t-20", ready="t-10", active="t-10", retire="t+15y", remove="t+20y")
+child.key_set(ZONE, KSK2, created="t+0", publish="t+0", ready="t+1h", active="t+10y", retire="t+11y", remove="t+12y")
+child.key_set(ZONE, ZSK1, created="t-20", publish="t-20", ready="t-10", active="t-10", retire="t+15y", remove="t+20y")
 # ZSK1 simply valid for all the time
-child.key_set(ZONE, ZSK2, publish="t-2", ready="t+14y", active="t+14y", retire="t+31y", remove="t+36y")
+child.key_set(ZONE, ZSK2, created="t-2", publish="t-2", ready="t+14y", active="t+14y", retire="t+31y", remove="t+36y")
 # ZSK2 only reason: prevents Knot from publishing another ZSK
 
 t.start()
