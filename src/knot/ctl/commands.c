@@ -338,6 +338,7 @@ static int zone_ksk_submittion_confirm(zone_t *zone, ctl_args_t *args)
 
 	kdnssec_ctx_deinit(&ctx);
 
+	// zone_events_schedule_now(zone, ZONE_EVENT_KEY_ROLLOVER); // TODO needed ?
 	zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	// NOT zone_events_schedule_user(), intentionally
 
