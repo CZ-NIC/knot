@@ -197,12 +197,12 @@ static time_t zsk_remove_time(time_t retire_time, const kdnssec_ctx_t *ctx)
 	return retire_time + ctx->policy->propagation_delay + ctx->policy->zone_maximal_ttl;
 }
 
-static time_t ksk_publish_time(time_t active_time, const kdnssec_ctx_t *ctx)
+static time_t ksk_publish_time(time_t created_time, const kdnssec_ctx_t *ctx)
 {
-	if (active_time <= 0 || active_time >= TIME_INFINITY) {
+	if (created_time <= 0 || created_time >= TIME_INFINITY) {
 		return TIME_INFINITY;
 	}
-	return active_time + ctx->policy->ksk_lifetime; // TODO better minus something ?
+	return created_time + ctx->policy->ksk_lifetime;
 }
 
 static time_t ksk_ready_time(time_t publish_time, const kdnssec_ctx_t *ctx)
@@ -256,7 +256,7 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
 				if (!is_ksk_published) {
-					keytime = ksk_publish_time(key->timing.active, ctx);
+					keytime = ksk_publish_time(key->timing.created, ctx);
 					restype = PUBLISH;
 				}
 				break;
