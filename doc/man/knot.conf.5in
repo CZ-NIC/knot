@@ -731,7 +731,7 @@ This option is only available in the \fIdefault\fP template.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 20 GiB
+\fIDefault:\fP 20 GiB (1 GiB for 32\-bit)
 .SS global\-module
 .sp
 An ordered list of references to query modules in the form of \fImodule_name\fP or

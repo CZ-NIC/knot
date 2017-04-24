@@ -50,7 +50,7 @@
 #define GIGA(x)		(MEGA(1024) * (x))
 #define TERA(x)		(GIGA(1024) * (x))
 
-#define VIRT_MEM_TOP_32BIT	GIGA(2)
+#define VIRT_MEM_TOP_32BIT	GIGA(1)
 #define VIRT_MEM_LIMIT(x)	(((sizeof(void *) < 8) && ((x) > VIRT_MEM_TOP_32BIT)) \
 				 ? VIRT_MEM_TOP_32BIT : (x))
 

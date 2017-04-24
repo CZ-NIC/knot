@@ -850,7 +850,7 @@ large enough. This value also influences server's usage of virtual memory.
 .. NOTE::
    This option is only available in the *default* template.
 
-*Default:* 20 GiB
+*Default:* 20 GiB (1 GiB for 32-bit)
 
 .. _template_global-module:
 
