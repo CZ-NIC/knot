@@ -107,7 +107,12 @@ int kasp_db_delete_key(kasp_db_t *db, const knot_dname_t *zone_name, const char 
 int kasp_db_add_key(kasp_db_t *db, const knot_dname_t *zone_name, const key_params_t *params);
 
 /*!
-TODO
+ * \brief Link a key from another zone.
+ *
+ * \param db            KASP db
+ * \param zone_from     name of the zone the key belongs to
+ * \param zone_to       name of the zone the key shall belong to as well
+ * \param key_id        ID of the key in question
  *
  * \return KNOT_E*
  */
