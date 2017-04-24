@@ -426,6 +426,28 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	return KNOT_STATE_DONE;
 }
 
+static const knot_dname_t* ratelimit_name_from_rrsig(const knot_rrset_t* rr)
+{
+	if (!rr)
+		return NULL;
+	if (rr->type != KNOT_RRTYPE_RRSIG)
+		return NULL;
+
+	/* This is a signature. */
+	return knot_rrsig_signer_name(&rr->rrs, 0);
+}
+
+static knot_dname_t* ratelimit_name_from_authrr(const knot_rrset_t* rr)
+{
+	if (!rr)
+		return NULL;
+	if (rr->type != KNOT_RRTYPE_NS && rr->type != KNOT_RRTYPE_SOA)
+		return NULL;
+
+	/* This is a valid authority RR. */
+	return rr->owner;
+}
+
 /*!
  * \brief Apply rate limit.
  */
@@ -447,6 +469,35 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_layer_t *ctx)
 	rrl_req_t rrl_rq = {0};
 	rrl_rq.w = pkt->wire;
 	rrl_rq.query = qdata->query;
+
+	/* Take the signer name as zone name if there is an RRSIG. */
+	if (qdata->zone == NULL) {
+		knot_pktsection_t section = pkt->sections[KNOT_ANSWER];
+		for (int i = 0; i < section.count; i++) {
+			rrl_rq.name = ratelimit_name_from_rrsig(
+				knot_pkt_rr(&section, i));
+			if (rrl_rq.name != NULL) {
+				log_zone_info(rrl_rq.name,
+					"signer name for RRL classification");
+				break;
+			}
+		}
+	}
+
+	/* Take the NS or SOA owner name if there is no RRSIG. */
+	if (qdata->zone == NULL && rrl_rq.name == NULL) {
+		knot_pktsection_t section = pkt->sections[KNOT_AUTHORITY];
+		for (int i = 0; i < section.count; i++) {
+			rrl_rq.name = ratelimit_name_from_authrr(
+				knot_pkt_rr(&section, i));
+			if (rrl_rq.name != NULL) {
+				log_zone_info(rrl_rq.name,
+					"owner name for RRL classification");
+				break;
+			}
+		}
+	}
+
 	if (!EMPTY_LIST(qdata->wildcards)) {
 		rrl_rq.flags = RRL_WILDCARD;
 	}

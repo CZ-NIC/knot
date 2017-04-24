@@ -86,6 +86,7 @@ typedef struct rrl_req {
 	uint16_t len;
 	unsigned flags;
 	knot_pkt_t *query;
+	const knot_dname_t *name;
 } rrl_req_t;
 
 /*!
