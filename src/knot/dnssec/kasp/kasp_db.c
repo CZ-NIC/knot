@@ -570,8 +570,9 @@ int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char
 	if (ret == KNOT_EOK) {
 		val = make_key(KASPDBKEY_PARAMS, new_lp_zone, new_lp_keyid);
 		ret = db_api->insert(txn, &key, &val, 0);
+		free(val.data);
 	}
-	free(val.data);
+	free(key.data);
 	with_txn_end(NULL);
 	return ret;
 }

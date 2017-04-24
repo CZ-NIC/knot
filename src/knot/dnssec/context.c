@@ -171,8 +171,10 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		return;
 	}
 
-	free(ctx->policy->string);
-	free(ctx->policy);
+	if (ctx->policy != NULL) {
+		free(ctx->policy->string);
+		free(ctx->policy);
+	}
 	dnssec_keystore_deinit(ctx->keystore);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);
