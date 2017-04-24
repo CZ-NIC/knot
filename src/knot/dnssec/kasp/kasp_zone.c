@@ -151,9 +151,7 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
 	WALK_LIST(n, key_params) {
 		key_params_t *parm = n->d;
 		ret = params2kaspkey(zone_name, parm, &dkeys[i++]);
-		free(parm->id); // TODO put this into a method
-		free(parm->public_key.data);
-		memset(parm, 0, sizeof(*parm));
+		free_key_params(parm);
 		if (ret != KNOT_EOK) {
 			goto kzl_end;
 		}
