@@ -9,8 +9,7 @@ check-compile:
 lib_LTLIBRARIES =				\
 	libknot.la
 noinst_LTLIBRARIES = 				\
-	libcontrib.la				\
-	libknot-yparser.la
+	libcontrib.la
 
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h	\
@@ -99,18 +98,6 @@ endif !HAVE_LMDB
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libcontrib_la_LDFLAGS = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 
-# static: libknot-yparser sources
-libknot_yparser_la_SOURCES = 			\
-	libknot/yparser/yparser.c		\
-	libknot/yparser/yparser.h		\
-	libknot/yparser/ypbody.c		\
-	libknot/yparser/ypformat.c		\
-	libknot/yparser/ypformat.h		\
-	libknot/yparser/ypscheme.c		\
-	libknot/yparser/ypscheme.h		\
-	libknot/yparser/yptrafo.c		\
-	libknot/yparser/yptrafo.h
-
 # libknot headers
 libknot_ladir = $(includedir)
 nobase_libknot_la_HEADERS =			\
@@ -156,6 +143,10 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/txt.h			\
 	libknot/tsig-op.h			\
 	libknot/tsig.h				\
+	libknot/yparser/yparser.h		\
+	libknot/yparser/ypformat.h		\
+	libknot/yparser/ypscheme.h		\
+	libknot/yparser/yptrafo.h		\
 	libknot/version.h
 
 # dynamic: libknot sources
@@ -192,6 +183,11 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/tsig.c			\
 	libknot/tsig-op.c			\
 	libknot/tsig.c				\
+	libknot/yparser/yparser.c		\
+	libknot/yparser/ypbody.c		\
+	libknot/yparser/ypformat.c		\
+	libknot/yparser/ypscheme.c		\
+	libknot/yparser/yptrafo.c		\
 	$(nobase_libknot_la_HEADERS)
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
@@ -397,7 +393,7 @@ libknotd_la_SOURCES =				\
 
 libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(systemd_CFLAGS) $(liburcu_CFLAGS) $(lmdb_CFLAGS) -DKNOTD_MOD_STATIC
 libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS) -export-symbols-regex '^knotd_'
-libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(liburcu_LIBS)
+libknotd_la_LIBADD = libknot.la zscanner/libzscanner.la $(liburcu_LIBS)
 
 ###################
 # Knot DNS Daemon #

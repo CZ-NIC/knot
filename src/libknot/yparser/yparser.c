@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,11 +22,13 @@
 #include <unistd.h>
 
 #include "libknot/yparser/yparser.h"
+#include "libknot/attribute.h"
 #include "libknot/errcode.h"
 
 extern int _yp_start_state;
 extern int _yp_parse(yp_parser_t *parser);
 
+_public_
 void yp_init(
 	yp_parser_t *parser)
 {
@@ -41,6 +43,7 @@ void yp_init(
 	parser->line_count = 1;
 }
 
+_public_
 void yp_deinit(
 	yp_parser_t *parser)
 {
@@ -56,6 +59,7 @@ void yp_deinit(
 	}
 }
 
+_public_
 int yp_set_input_string(
 	yp_parser_t *parser,
 	const char *input,
@@ -78,6 +82,7 @@ int yp_set_input_string(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_set_input_file(
 	yp_parser_t *parser,
 	const char *file_name)
@@ -136,6 +141,7 @@ int yp_set_input_file(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_parse(
 	yp_parser_t *parser)
 {

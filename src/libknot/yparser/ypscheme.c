@@ -20,6 +20,7 @@
 
 #include "libknot/yparser/ypscheme.h"
 #include "libknot/yparser/yptrafo.h"
+#include "libknot/attribute.h"
 #include "libknot/errcode.h"
 
 static size_t scheme_count(
@@ -182,6 +183,7 @@ static int scheme_copy(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_scheme_copy(
 	yp_item_t **dst,
 	const yp_item_t *src)
@@ -207,6 +209,7 @@ int yp_scheme_copy(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_scheme_merge(
 	yp_item_t **dst,
 	const yp_item_t *src1,
@@ -242,6 +245,7 @@ int yp_scheme_merge(
 	return KNOT_EOK;
 }
 
+_public_
 void yp_scheme_purge_dynamic(
 	yp_item_t *scheme)
 {
@@ -256,6 +260,7 @@ void yp_scheme_purge_dynamic(
 	}
 }
 
+_public_
 void yp_scheme_free(
 	yp_item_t *scheme)
 {
@@ -291,6 +296,7 @@ static const yp_item_t* find_item(
 	return NULL;
 }
 
+_public_
 const yp_item_t* yp_scheme_find(
 	const yp_name_t *name,
 	const yp_name_t *parent_name,
@@ -312,6 +318,7 @@ const yp_item_t* yp_scheme_find(
 	}
 }
 
+_public_
 yp_check_ctx_t* yp_scheme_check_init(
 	yp_item_t **scheme)
 {
@@ -428,6 +435,7 @@ static int check_item(
 	}
 }
 
+_public_
 int yp_scheme_check_parser(
 	yp_check_ctx_t *ctx,
 	const yp_parser_t *parser)
@@ -480,6 +488,7 @@ int yp_scheme_check_parser(
 	return ret;
 }
 
+_public_
 int yp_scheme_check_str(
 	yp_check_ctx_t *ctx,
 	const char *key0,
@@ -555,6 +564,7 @@ int yp_scheme_check_str(
 	return KNOT_EOK;
 }
 
+_public_
 void yp_scheme_check_deinit(
 	yp_check_ctx_t* ctx)
 {
