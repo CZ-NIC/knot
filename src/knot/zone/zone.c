@@ -78,14 +78,18 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 
 	assert(zone);
 
+	int ret = KNOT_EOK;
+
 	bool force = zone->flags & ZONE_FORCE_FLUSH;
 	zone->flags &= ~ZONE_FORCE_FLUSH;
 
 	if (zone_contents_is_empty(zone->contents)) {
 		if (allow_empty_zone && zone->journal && journal_exists(zone->journal_db, zone->name)) {
-			return journal_flush(zone->journal);
+			ret = journal_flush(zone->journal);
+		} else {
+			ret = KNOT_EINVAL;
 		}
-		return KNOT_EINVAL;
+		goto flush_journal_replan;
 	}
 
 	/* Check for disabled zonefile synchronization. */
@@ -98,18 +102,19 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);
 	if (!force && zone->zonefile.exists && zone->zonefile.serial == serial_to) {
-		return KNOT_EOK; /* No differences. */
+		ret = KNOT_EOK; /* No differences. */
+		goto flush_journal_replan;
 	}
 
 	char *zonefile = conf_zonefile(conf, zone->name);
 
 	/* Synchronize journal. */
-	int ret = zonefile_write(zonefile, contents);
+	ret = zonefile_write(zonefile, contents);
 	if (ret != KNOT_EOK) {
 		log_zone_warning(zone->name, "failed to update zone file (%s)",
 		                 knot_strerror(ret));
 		free(zonefile);
-		return ret;
+		goto flush_journal_replan;
 	}
 
 	if (zone->zonefile.exists) {
@@ -126,7 +131,8 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 		log_zone_warning(zone->name, "failed to update zone file (%s)",
 		                 knot_strerror(knot_map_errno()));
 		free(zonefile);
-		return KNOT_EACCES;
+		ret = KNOT_EACCES;
+		goto flush_journal_replan;
 	}
 
 	free(zonefile);
@@ -140,18 +146,19 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	if (zone->journal && journal_exists(zone->journal_db, zone->name)) {
 		ret = open_journal(zone);
 		if (ret != KNOT_EOK) {
-			return ret;
+			goto flush_journal_replan;
 		}
 
 		ret = journal_flush(zone->journal);
 		if (ret != KNOT_EOK) {
-			return ret;
+			goto flush_journal_replan;
 		}
 	}
 
 	/* Trim extra heap. */
 	mem_trim();
 
+flush_journal_replan:
 	/* Plan next journal flush after proper period. */
 	zone->timers.last_flush = time(NULL);
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
@@ -162,7 +169,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 		                              ZONE_EVENT_FLUSH, next_flush);
 	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 zone_t* zone_new(const knot_dname_t *name)
