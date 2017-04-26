@@ -533,6 +533,7 @@ DNSSEC policy configuration.
      algorithm: dsa | rsasha1 | dsa-nsec3-sha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
      ksk-size: SIZE
      zsk-size: SIZE
+     ksk-shared: BOOL
      dnskey-ttl: TIME
      zsk-lifetime: TIME
      ksk-lifetime: TIME
@@ -613,7 +614,14 @@ A length of newly generated :abbr:`ZSK (Zone Signing Key)` keys.
 
 *Default:* see default for :ref:`ksk-size<policy_ksk-size>`
 
-.. _policy_dnskey-ttl:
+.. _policy_ksk-shared:
+
+ksk-shared
+----------
+
+If enabled, all zones with this policy assigned will share one KSK.
+
+*Default:* off
 
 dnskey-ttl
 ----------
