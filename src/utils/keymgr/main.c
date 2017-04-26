@@ -15,6 +15,7 @@
 */
 
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-keys.h"
@@ -56,6 +57,110 @@ static void print_help(void)
 	       "   set          Set existing key's timing attribute.\n"
 	       "                (syntax: set <key_spec> <attribute_name>=<value>...)\n",
 	       PROGRAM_NAME);
+}
+
+static int key_command(int argc, char *argv[])
+{
+	if (argc < 2) {
+		printf("Zone name and/or command not specified.\n");
+		print_help();
+		return KNOT_EINVAL;
+	}
+	knot_dname_t *zone_name = knot_dname_from_str_alloc(argv[0]);
+	if (zone_name == NULL) {
+		return KNOT_ENOMEM;
+	}
+	(void)knot_dname_to_lower(zone_name);
+
+	kdnssec_ctx_t kctx = { 0 };
+
+	conf_val_t mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
+	char *kasp_dir = conf_kaspdir(conf());
+	int ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&mapsize));
+	free(kasp_dir);
+	if (ret != KNOT_EOK) {
+		printf("Failed to initialize KASP db (%s)\n", knot_strerror(ret));
+		goto main_end;
+	}
+
+	ret = kdnssec_ctx_init(conf(), &kctx, zone_name, NULL);
+	if (ret != KNOT_EOK) {
+		printf("Failed to initializize KASP (%s)\n", knot_strerror(ret));
+		goto main_end;
+	}
+
+	if (strcmp(argv[1], "generate") == 0) {
+		ret = keymgr_generate_key(&kctx, argc - 2, argv + 2);
+	} else if (strcmp(argv[1], "import-bind") == 0) {
+		if (argc < 3) {
+			printf("BIND-style key to import not specified.\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		ret = keymgr_import_bind(&kctx, argv[2]);
+	} else if (strcmp(argv[1], "set") == 0) {
+		if (argc < 3) {
+			printf("Key is not specified.\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		knot_kasp_key_t *key2set;
+		ret = keymgr_get_key(&kctx, argv[2], &key2set);
+		if (ret == KNOT_EOK) {
+			ret = keymgr_set_timing(key2set, argc - 3, argv + 3);
+			if (ret == KNOT_EOK) {
+				ret = kdnssec_ctx_commit(&kctx);
+			}
+		}
+	} else if (strcmp(argv[1], "list") == 0) {
+		ret = keymgr_list_keys(&kctx);
+	} else if (strcmp(argv[1], "ds") == 0) {
+		if (argc < 3) {
+			printf("Key is not specified.\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		knot_kasp_key_t *key2ds;
+		ret = keymgr_get_key(&kctx, argv[2], &key2ds);
+		if (ret == KNOT_EOK) {
+			ret = keymgr_generate_ds(zone_name, key2ds);
+		}
+	} else if (strcmp(argv[1], "share") == 0) {
+		knot_dname_t *other_zone = NULL;
+		char *key_to_share = NULL;
+		if (keymgr_foreign_key_id(argc - 2, argv + 2, "be shared", &other_zone, &key_to_share) == KNOT_EOK) {
+			ret = kasp_db_share_key(*kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
+		}
+		free(other_zone);
+		free(key_to_share);
+	} else if (strcmp(argv[1], "delete") == 0) {
+		if (argc < 3) {
+			printf("Key is not specified.\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		knot_kasp_key_t *key2del;
+		ret = keymgr_get_key(&kctx, argv[2], &key2del);
+		if (ret == KNOT_EOK) {
+			ret = kdnssec_delete_key(&kctx, key2del);
+		}
+	} else {
+		printf("Wrong zone-key command: %s\n", argv[1]);
+		goto main_end;
+	}
+
+	if (ret == KNOT_EOK) {
+		printf("OK\n");
+	} else {
+		printf("Error (%s)\n", knot_strerror(ret));
+	}
+
+main_end:
+	kdnssec_ctx_deinit(&kctx);
+	kasp_db_close(kaspdb());
+	free(zone_name);
+
+	return ret;
 }
 
 static bool init_conf(const char *confdb)
@@ -117,11 +222,9 @@ int main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
-	if (strlen(argv[1]) != 2 || argv[1][0] != '-') {
-		printf("Bad argument: %s\n", argv[1]);
-		print_help();
-		return EXIT_FAILURE;
-	}
+	int argpos = 1;
+
+	if (strlen(argv[1]) == 2 && argv[1][0] == '-') {
 
 #define check_argc_three if (argc < 3) { \
 	printf("Option %s requires an argument.\n", argv[1]); \
@@ -129,145 +232,64 @@ int main(int argc, char *argv[])
 	return EXIT_FAILURE; \
 }
 
-	switch (argv[1][1]) {
-	case 'h':
-		print_help();
-		return EXIT_SUCCESS;
-	case 'V':
-		print_version(PROGRAM_NAME);
-		return EXIT_SUCCESS;
-	case 'd':
-		check_argc_three
-		if (!init_conf(NULL) || !init_conf_blank(argv[2])) {
+		switch (argv[1][1]) {
+		case 'h':
+			print_help();
+			return EXIT_SUCCESS;
+		case 'V':
+			print_version(PROGRAM_NAME);
+			return EXIT_SUCCESS;
+		case 'd':
+			check_argc_three
+			if (!init_conf(NULL) || !init_conf_blank(argv[2])) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'c':
+			check_argc_three
+			if (!init_conf(NULL) || !init_confile(argv[2])) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'C':
+			check_argc_three
+			if (!init_conf(argv[2])) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 't':
+			check_argc_three
+			int tret = keymgr_generate_tsig(argv[2], (argc >= 4 ? argv[3] : "hmac-sha256"),
+							(argc >= 5 ? atol(argv[4]) : 0));
+			if (tret != KNOT_EOK) {
+				printf("Failed to generate TSIG (%s)\n", knot_strerror(tret));
+			}
+			return (tret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
+		default:
+			printf("Wrong option: %s\n", argv[1]);
+			print_help();
 			return EXIT_FAILURE;
 		}
-		break;
-	case 'c':
-		check_argc_three
-		if (!init_conf(NULL) || !init_confile(argv[2])) {
-			return EXIT_FAILURE;
-		}
-		break;
-	case 'C':
-		check_argc_three
-		if (!init_conf(argv[2])) {
-			return EXIT_FAILURE;
-		}
-		break;
-	case 't':
-		check_argc_three
-		int tret = keymgr_generate_tsig(argv[2], (argc >= 4 ? argv[3] : "hmac-sha256"),
-		                                (argc >= 5 ? atol(argv[4]) : 0));
-		if (tret != KNOT_EOK) {
-			printf("Failed to generate TSIG (%s)\n", knot_strerror(tret));
-		}
-		return (tret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
-	default:
-		printf("Wrong option: %s\n", argv[1]);
-		print_help();
-		return EXIT_FAILURE;
-	}
 
 #undef check_argc_three
 
-	if (argc < 5) {
-		printf("Zone name and/or command not specified.\n");
-		print_help();
-		return EXIT_FAILURE;
-	}
-	knot_dname_t *zone_name = knot_dname_from_str_alloc(argv[3]);
-	if (zone_name == NULL) {
-		return EXIT_FAILURE;
-	}
-	(void)knot_dname_to_lower(zone_name);
-
-	kdnssec_ctx_t kctx = { 0 };
-
-	conf_val_t mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
-	char *kasp_dir = conf_kaspdir(conf());
-	int ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&mapsize));
-	free(kasp_dir);
-	if (ret != KNOT_EOK) {
-		printf("Failed to initialize KASP db (%s)\n", knot_strerror(ret));
-		goto main_end;
-	}
-
-	ret = kdnssec_ctx_init(conf(), &kctx, zone_name, NULL);
-	if (ret != KNOT_EOK) {
-		printf("Failed to initializize KASP (%s)\n", knot_strerror(ret));
-		goto main_end;
-	}
-
-	if (strcmp(argv[4], "generate") == 0) {
-		ret = keymgr_generate_key(&kctx, argc - 5, argv + 5);
-	} else if (strcmp(argv[4], "import-bind") == 0) {
-		if (argc < 6) {
-			printf("BIND-style key to import not specified.\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
-		ret = keymgr_import_bind(&kctx, argv[5]);
-	} else if (strcmp(argv[4], "set") == 0) {
-		if (argc < 6) {
-			printf("Key is not specified.\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
-		knot_kasp_key_t *key2set;
-		ret = keymgr_get_key(&kctx, argv[5], &key2set);
-		if (ret == KNOT_EOK) {
-			ret = keymgr_set_timing(key2set, argc - 6, argv + 6);
-			if (ret == KNOT_EOK) {
-				ret = kdnssec_ctx_commit(&kctx);
-			}
-		}
-	} else if (strcmp(argv[4], "list") == 0) {
-		ret = keymgr_list_keys(&kctx);
-	} else if (strcmp(argv[4], "ds") == 0) {
-		if (argc < 6) {
-			printf("Key is not specified.\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
-		knot_kasp_key_t *key2ds;
-		ret = keymgr_get_key(&kctx, argv[5], &key2ds);
-		if (ret == KNOT_EOK) {
-			ret = keymgr_generate_ds(zone_name, key2ds);
-		}
-	} else if (strcmp(argv[4], "share") == 0) {
-		knot_dname_t *other_zone = NULL;
-		char *key_to_share = NULL;
-		if (keymgr_foreign_key_id(argc - 5, argv + 5, "be shared", &other_zone, &key_to_share) == KNOT_EOK) {
-			ret = kasp_db_share_key(*kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
-		}
-		free(other_zone);
-		free(key_to_share);
-	} else if (strcmp(argv[4], "delete") == 0) {
-		if (argc < 6) {
-			printf("Key is not specified.\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
-		knot_kasp_key_t *key2del;
-		ret = keymgr_get_key(&kctx, argv[5], &key2del);
-		if (ret == KNOT_EOK) {
-			ret = kdnssec_delete_key(&kctx, key2del);
-		}
+		argpos = 3;
 	} else {
-		printf("Wrong zone-key command: %s\n", argv[4]);
-		goto main_end;
+		struct stat st;
+		if (stat(CONF_DEFAULT_DBDIR, &st) == 0 && init_conf(CONF_DEFAULT_DBDIR)) {
+			// initialized conf from default DB location
+		} else if (stat(CONF_DEFAULT_FILE, &st) == 0 &&
+			   init_conf(NULL) && init_confile(CONF_DEFAULT_FILE)) {
+			// initialized conf from default confile
+		} else {
+			printf("Couldn't initialize configuration, please provide -c -C or -d options.\n");
+			return EXIT_FAILURE;
+		}
 	}
 
-	if (ret == KNOT_EOK) {
-		printf("OK\n");
-	} else {
-		printf("Error (%s)\n", knot_strerror(ret));
-	}
+	int ret = key_command(argc - argpos, argv + argpos);
 
-main_end:
-	kdnssec_ctx_deinit(&kctx);
-	kasp_db_close(kaspdb());
-	free(zone_name);
+
 	conf_free(conf());
 
 	return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
