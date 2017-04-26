@@ -34,7 +34,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .sp
 \fBkeymgr\fP \fIbasic_option\fP [\fIparameters\fP\&...]
 .sp
-\fBkeymgr\fP \fIconfig_option\fP \fIconfig_storage\fP \fIzone_name\fP \fIaction\fP \fIparameters\fP\&...
+\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_storage\fP] \fIzone_name\fP \fIaction\fP \fIparameters\fP\&...
 .SH DESCRIPTION
 .sp
 The \fBkeymgr\fP utility serves for key management in Knot DNS server.
@@ -166,7 +166,7 @@ Import a key from BIND:
 .sp
 .nf
 .ft C
-$ keymgr \-d ${knot_data_dir}/keys example.com. import\-bind ~/bind/Kharbinge4d5.+007+63089.key
+$ keymgr example.com. import\-bind ~/bind/Kharbinge4d5.+007+63089.key
 .ft P
 .fi
 .UNINDENT
@@ -178,7 +178,7 @@ Generate new key:
 .sp
 .nf
 .ft C
-$ keymgr \-c ${knot_data_dir}/knot.conf example.com. generate algorithm=ECDSAP256SHA256 size=256 \e
+$ keymgr example.com. generate algorithm=ECDSAP256SHA256 size=256 \e
   ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
 .ft P
 .fi
