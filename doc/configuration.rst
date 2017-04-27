@@ -375,6 +375,26 @@ convenience delay the submittion is started. The server publishes CDS and CDNSKE
 and the user shall propagate them to the parent. The server periodically checks for
 DS at the master and when positive, finishes the rollover.
 
+To share KSKs among zones, set the ksk-shared policy parameter. It is strongly discouraged to
+change the policy ``id`` afterwards! The shared key's creation timestamp will be equal for all
+zones, but other timers (e.g. activate, retire) may get out of sync. ::
+
+  policy:
+    - id: sharedp
+      ksk-lifetime: 365d
+      ksk-shared: true
+      ksk-submittion-check: [cz_zone]
+
+  zone:
+    - domain: firstzone.test
+      dnssec-signing: on
+      dnssec-policy: sharedp
+
+  zone:
+    - domain: secondzone.test
+      dnssec-signing: on
+      dnssec-policy: sharedp
+
 .. _dnssec-manual-key-management:
 
 Manual key management
