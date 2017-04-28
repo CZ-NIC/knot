@@ -17,4 +17,3 @@ def run(i):
     i.check_rec("deleg", "NS", rcode="NXDOMAIN")
     i.check_rec("n.deleg", "A", rcode="NXDOMAIN")
 
-    i.test.stop()
