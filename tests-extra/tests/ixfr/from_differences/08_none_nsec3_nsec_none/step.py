@@ -13,4 +13,3 @@ def run(i):
 
     i.check(3)
 
-    i.test.stop()
