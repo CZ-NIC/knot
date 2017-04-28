@@ -33,4 +33,3 @@ def run(i):
     i.check_rec("dns2", "A", "192.0.2.2")
     i.check_rec("dns2", "AAAA", nordata="2001:db8::2")
 
-    i.test.stop()

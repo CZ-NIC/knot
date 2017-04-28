@@ -31,4 +31,3 @@ def run(i):
     i.check(4)
     i.check_rec("rem4", "TXT", "some_text2")
 
-    i.test.stop()

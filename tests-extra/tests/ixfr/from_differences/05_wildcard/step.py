@@ -32,4 +32,3 @@ def run(i):
     i.check_rec("c.wc", "A", "2.2.2.2")
     i.check_rec("*.wc", "A", "2.2.2.2")
 
-    i.test.stop()
