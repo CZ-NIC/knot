@@ -5,6 +5,7 @@
 from dnstest.utils import *
 from dnstest.test import Test
 import dns
+import shutil
 
 # Changes in NSEC allowed due to case changes (Knot lowercases all owners).
 def only_nsec_changed(server, zone, serial):
@@ -26,6 +27,7 @@ t = Test()
 # re-signed because the server controls the NSEC3PARAM life time.
 
 master = t.server("knot")
+
 nsec_zone = t.zone_rnd(1, dnssec=True, nsec3=False)
 static_zone = t.zone("example.", storage=".")
 t.link(nsec_zone, master)
@@ -34,8 +36,8 @@ t.link(static_zone, master)
 master.dnssec(nsec_zone).alg = "rsasha1"
 master.dnssec(static_zone).alg = "rsasha1"
 
-master.dnssec(nsec_zone).alg = "rsasha1"
-master.dnssec(static_zone).alg = "rsasha1"
+# install KASP db
+shutil.copytree(os.path.join(t.data_dir, "keys"), master.keydir)
 
 t.start()
 
@@ -48,8 +50,7 @@ master.dnssec(nsec_zone).enable = True
 master.dnssec(static_zone).enable = True
 master.dnssec(nsec_zone).manual = True
 master.dnssec(static_zone).manual = True
-master.use_keys(nsec_zone)
-master.use_keys(static_zone)
+master.key_import_bind(nsec_zone[0].name)
 master.gen_confile()
 master.reload()
 

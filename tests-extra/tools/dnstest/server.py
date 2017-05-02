@@ -916,7 +916,7 @@ class Knot(Server):
     def flush(self):
         self.ctl("zone-flush")
         time.sleep(Server.START_WAIT)
-        
+
     def key_gen(self, zone_name, **new_params):
         set_params = [ option + "=" + value for option, value in new_params.items() ]
         res = dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "generate", *set_params)
@@ -926,6 +926,17 @@ class Knot(Server):
     def key_set(self, zone_name, key_id, **new_values):
         set_params = [ option + "=" + value for option, value in new_values.items() ]
         dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "set", key_id, *set_params)
+
+    def key_import_bind(self, zone_name):
+        if zone_name not in self.zones:
+            assert(0)
+        bind_keydir = self.zones[zone_name].zfile.key_dir_bind
+        assert(zone_name.endswith("."))
+        for pkey_path in glob.glob("%s/K*.private" % glob.escape(bind_keydir)):
+            pkey = os.path.basename(pkey_path)
+            m = re.match(r'K(?P<name>[^+]+)\+(?P<algo>\d+)\+(?P<tag>\d+)\.private', pkey)
+            if m and m.group("name") == zone_name.lower():
+                dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "import-bind", pkey_path)
 
     def _on_str_hex(self, conf, name, value):
         if value == True:
