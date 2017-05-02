@@ -916,6 +916,12 @@ class Knot(Server):
     def flush(self):
         self.ctl("zone-flush")
         time.sleep(Server.START_WAIT)
+        
+    def key_gen(self, zone_name, **new_params):
+        set_params = [ option + "=" + value for option, value in new_params.items() ]
+        res = dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "generate", *set_params)
+        errcode, stdo, stde = res
+        return stdo.split()[-2]
 
     def key_set(self, zone_name, key_id, **new_values):
         set_params = [ option + "=" + value for option, value in new_values.items() ]

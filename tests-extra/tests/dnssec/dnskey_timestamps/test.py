@@ -43,13 +43,13 @@ t.link(zone, knot)
 knot.dnssec(zone).enable = True
 knot.dnssec(zone).manual = True
 
-# install KASP db (one always enabled, one for testing)
-shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
-
 # parameters
 ZONE = "example.com."
-KEYID = "712d0d0d57fa0aa006b5e20cd84e23941e5f3ab2"
 WAIT_SIGN = 2
+
+# generate initial keys (one always enabled, one for testing)
+knot.key_gen(ZONE, ksk="true", created="t+0", publish="t+0", ready="t+0", active="t+0", retire="t+1d", remove="t+1d")
+knot.key_gen(ZONE, ksk="false", created="t+0", publish="t+0", ready="t+0", active="t+0", retire="t+1d", remove="t+1d")
 
 #
 # Common cases
@@ -58,7 +58,7 @@ WAIT_SIGN = 2
 check_log("Common cases")
 
 # key not published, not active
-knot.key_set(ZONE, KEYID, publish="t+10y", active="t+10y", retire="t+11y", remove="t+12y")
+KEYID = knot.key_gen(ZONE, ksk="false", publish="t+10y", active="t+10y", retire="t+11y", remove="t+12y")
 t.start()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "not published, not active")
