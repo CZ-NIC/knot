@@ -464,7 +464,7 @@ knotc_LDADD     = libknotd.la libknotus.la $(libedit_LIBS)
 keymgr_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS) -I$(srcdir)/dnssec/lib/dnssec \
                   -I$(srcdir)/dnssec $(gnutls_CFLAGS)
 keymgr_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la \
-                  libknotd.la libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
+                  libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
                   zscanner/libzscanner.la $(gnutls_LIBS)
 knot1to2_LDADD  = libcontrib.la
 
