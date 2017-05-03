@@ -67,7 +67,7 @@ static bool valid_event(zone_event_type_t type)
 	return (type > ZONE_EVENT_INVALID && type < ZONE_EVENT_COUNT);
 }
 
-static bool ufreeze_applies(zone_event_type_t type)
+bool ufreeze_applies(zone_event_type_t type)
 {
 	switch (type) {
 	case ZONE_EVENT_LOAD:

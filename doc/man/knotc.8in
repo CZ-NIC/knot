@@ -84,15 +84,16 @@ transactions will be aborted!
 Show global statistics counter(s). To print also counters with value 0, use
 force option.
 .TP
+\fBzone\-status\fP \fIzone\fP [\fIfilter\fP]
+Show the zone status. (*)
+Filters are type, serial, transaction, event\-timers, and freeze with prefix \(aq+\(aq.
+.TP
 \fBzone\-check\fP [\fIzone\fP\&...]
 Test if the server can load the zone. Semantic checks are executed if enabled
 in the configuration. (*)
 .TP
 \fBzone\-memstats\fP [\fIzone\fP\&...]
 Estimate memory use for the zone. (*)
-.TP
-\fBzone\-status\fP [\fIzone\fP\&...]
-Show the zone status. (*)
 .TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
 Trigger a zone reload from a disk without checking its modification time. For

@@ -142,6 +142,13 @@ void zone_events_schedule_user(struct zone *zone, zone_event_type_t type);
 void zone_events_freeze(struct zone *zone);
 
 /*!
+ * \brief ufreeze_applies
+ * \param type Type of event to be checked
+ * \return true / false if user freeze applies
+ */
+bool ufreeze_applies(zone_event_type_t type);
+
+/*!
  * \brief Start the events processing.
  *
  * \param zone  Zone to start processing for.

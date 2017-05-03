@@ -722,6 +722,7 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 	switch (args->desc->cmd) {
 	case CTL_ZONE_READ:
 	case CTL_ZONE_GET:   min_args = 1; max_args =  3; break;
+	case CTL_ZONE_STATUS: min_args = 1; max_args = 2; break;
 	case CTL_ZONE_DIFF:  min_args = 1; max_args =  1; break;
 	case CTL_ZONE_SET:   min_args = 3; max_args = -1; break;
 	case CTL_ZONE_UNSET: min_args = 2; max_args = -1; break;
@@ -978,7 +979,6 @@ const cmd_desc_t cmd_table[] = {
 
 	{ CMD_ZONE_CHECK,      cmd_zone_check,    CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
 	{ CMD_ZONE_MEMSTATS,   cmd_zone_memstats, CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
-	{ CMD_ZONE_STATUS,     cmd_zone_ctl,      CTL_ZONE_STATUS,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,      CTL_ZONE_RELOAD,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,      CTL_ZONE_REFRESH,    CMD_FOPT_ZONE },
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,      CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
@@ -997,6 +997,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_UNSET,      cmd_zone_node_ctl, CTL_ZONE_UNSET,      CMD_FREQ_ZONE },
 	{ CMD_ZONE_PURGE,      cmd_zone_ctl,      CTL_ZONE_PURGE,      CMD_FREQ_ZONE },
 	{ CMD_ZONE_STATS,      cmd_stats_ctl,     CTL_ZONE_STATS,      CMD_FREQ_ZONE },
+	{ CMD_ZONE_STATUS,     cmd_zone_node_ctl, CTL_ZONE_STATUS,     CMD_FREQ_ZONE },
 
 	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_FWRITE },
 	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_FREAD },
@@ -1024,7 +1025,6 @@ static const cmd_help_t cmd_help_table[] = {
 	{ "",                  "",                                       "" },
 	{ CMD_ZONE_CHECK,      "[<zone>...]",                            "Check if the zone can be loaded. (*)" },
 	{ CMD_ZONE_MEMSTATS,   "[<zone>...]",                            "Estimate memory use for the zone. (*)" },
-	{ CMD_ZONE_STATUS,     "[<zone>...]",                            "Show the zone status." },
 	{ CMD_ZONE_RELOAD,     "[<zone>...]",                            "Reload a zone from a disk." },
 	{ CMD_ZONE_REFRESH,    "[<zone>...]",                            "Force slave zone refresh." },
 	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check)." },
@@ -1043,6 +1043,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_UNSET,      "<zone>  <owner> [<type> [<rdata>]]",     "Remove zone data within the transaction." },
 	{ CMD_ZONE_PURGE,      "<zone>...",                              "Purge zone data, file, journal, and timers." },
 	{ CMD_ZONE_STATS,      "<zone> [<module>[.<counter>]]",          "Show zone statistics counter(s)."},
+	{ CMD_ZONE_STATUS,     "<zone> [filter]",                        "Show the zone status." },
 	{ "",                  "",                                       "" },
 	{ CMD_CONF_INIT,       "",                                       "Initialize the confdb. (*)" },
 	{ CMD_CONF_CHECK,      "",                                       "Check the server configuration. (*)" },
