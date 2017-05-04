@@ -233,8 +233,6 @@ class ZoneFile(object):
                 params = ["-s", "-3", "y" if nsec3 else "n", "-k", self.key_dir_bind] \
                          + params
             zone_generate.main(params)
-            if dnssec:
-                self._kasp_import_keys(self.key_dir, self.key_dir_bind, self.name)
         except OSError:
             raise Exception("Can't modify zone file '%s'" % self.path)
 
