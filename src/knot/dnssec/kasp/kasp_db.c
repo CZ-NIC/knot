@@ -206,6 +206,9 @@ static int serialize_key_params(const key_params_t *params, const knot_dname_t *
 	            params->public_key.size;
 	val->data = malloc(val->len);
 	if (val->data == NULL) {
+		free(key->data);
+		key->data = NULL;
+		key->len = 0;
 		return KNOT_ENOMEM;
 	}
 	wire_ctx_t wire = wire_ctx_init(val->data, val->len);
@@ -224,7 +227,10 @@ static int serialize_key_params(const key_params_t *params, const knot_dname_t *
 	wire_ctx_write(&wire, params->public_key.data, params->public_key.size);
 
 	if (wire.error != KNOT_EOK) {
+		free(key->data);
 		free(val->data);
+		key->data = NULL;
+		key->len = 0;
 		val->data = NULL;
 		val->len = 0;
 		return KNOT_ERROR;
