@@ -253,7 +253,6 @@ static const yp_item_t desc_remote[] = {
 	{ C_MAX_ZONE_SIZE,       YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE }, FLAGS }, \
 	{ C_MAX_JOURNAL_USAGE,   YP_TINT,  YP_VINT = { KILO(40), INT64_MAX, MEGA(100), YP_SSIZE } }, \
 	{ C_MAX_JOURNAL_DEPTH,   YP_TINT,  YP_VINT = { 2, INT64_MAX, INT64_MAX } }, \
-	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" }, FLAGS }, \
 	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, FLAGS, { check_ref_dflt } }, \
 	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
@@ -276,6 +275,9 @@ static const yp_item_t desc_template[] = {
 	                                   CONF_IO_FRLD_SRV },
 	{ C_MAX_JOURNAL_DB_SIZE, YP_TINT,  YP_VINT = { JOURNAL_MIN_FSLIMIT, VIRT_MEM_LIMIT(TERA(100)),
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE },
+	                                               CONF_IO_FRLD_SRV },
+	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" }, CONF_IO_FRLD_SRV },
+	{ C_KASP_DB_MAPSIZE,     YP_TINT,  YP_VINT = { MEGA(10), GIGA(2), MEGA(500), YP_SSIZE },
 	                                               CONF_IO_FRLD_SRV },
 	{ NULL }
 };

@@ -11,9 +11,7 @@ mv ../../../../data/example.zone.signed ./example.zone
 rm -rf keys
 mkdir keys
 pushd keys
-"$KEYMGR" init
-"$KEYMGR" zone add example
 for key in "$BASEDIR"/*.private; do
-    "$KEYMGR" zone key import example "$key"
+    "$KEYMGR" -d . example. import-bind "$key"
 done
 popd

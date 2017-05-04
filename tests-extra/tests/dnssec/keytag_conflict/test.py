@@ -9,16 +9,11 @@ import os
 import shutil
 import datetime
 import subprocess
+from subprocess import check_call
 
 from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
-
-def key_set(server, zone, key_id, **new_values):
-    cmd = ["zone", "key", "set", zone, key_id]
-    for option, value in new_values.items():
-        cmd += [option, value]
-    Keymgr.run_check(server.keydir, *cmd)
 
 # check zone if keys are present and used for signing
 def check_zone4(server, min_dnskeys, min_rrsigs, msg):
@@ -52,20 +47,20 @@ knot.dnssec(zone).rrsig_lifetime = 5
 knot.dnssec(zone).rrsig_refresh = 2
 knot.zonefile_sync = "0"
 
-# install keys (one always enabled, one for testing)
+# install KASP db (one always enabled, one for testing)
 shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
 
 # parameters
-ZONE = "example.com"
+ZONE = "example.com."
 KSK = "7a3500c7feac3fd99f09a208a83b97f7455fa3e0"
 ZSK1 = "712d0d0d57fa0aa006b5e20cd84e23941e5f3ab2"
 ZSK2 = "301d3fc5392e83ea02312dc5bdc1a9f0b7937ddf"
 ZSK3 = "6abddc73bcb46c4e6078cf764290ac315fff03f0"
 
-key_set(knot, ZONE, KSK, publish="-2y", active="-1y", retire="+1y", remove="+2y")
-key_set(knot, ZONE, ZSK1, publish="-20", active="-10", retire="+15", remove="+20")
-key_set(knot, ZONE, ZSK2, publish="+8", active="+14", retire="+31", remove="+36")
-key_set(knot, ZONE, ZSK3, publish="+24", active="+30", retire="+1y", remove="+2y") 
+knot.key_set(ZONE, KSK, publish="t-2y", active="t-1y", retire="t+1y", remove="t+2y")
+knot.key_set(ZONE, ZSK1, publish="t-20", active="t-10", retire="t+15", remove="t+20")
+knot.key_set(ZONE, ZSK2, publish="t+8", active="t+14", retire="t+31", remove="t+36")
+knot.key_set(ZONE, ZSK3, publish="t+24", active="t+30", retire="t+1y", remove="t+2y")
 
 t.start()
 t.sleep(4)

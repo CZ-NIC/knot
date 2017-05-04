@@ -125,9 +125,6 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3 nettle], [
     LIBS=$save_LIBS
 ])
 
-# JSON for DNSSEC status storage
-PKG_CHECK_MODULES([jansson], [jansson >= 2.3])
-
 AC_ARG_ENABLE([recvmmsg],
    AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
    [], [enable_recvmmsg=auto])
@@ -449,23 +446,6 @@ AS_IF([test "$with_libidn" != "no"],[
 
 ]) # Knot DNS utilities dependencies
 
-# Bash completions
-AC_ARG_WITH([bash-completions],
-  AC_HELP_STRING([--with-bash-completions=[DIR]], [Bash completions directory [default=no]]),
-  [with_bash_completions="$withval"],
-  [with_bash_completions=no]
-)
-AS_CASE([$with_bash_completions],
-  [yes], [PKG_CHECK_VAR([bash_completions_dir], [bash-completion], [completionsdir], [], [AC_MSG_ERROR([bash completions not found])])],
-  [no], [bash_completions_dir=],
-  [bash_completions_dir="$with_bash_completions"]
-)
-AM_CONDITIONAL([HAVE_BASH_COMPLETIONS], [test -n "$bash_completions_dir"])
-AS_IF([test -n "$bash_completions_dir"],
-  [bash_completions_output="${bash_completions_dir}"],
-  [bash_completions_output=no]
-)
-
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([dlopen], [dl])
@@ -544,7 +524,6 @@ result_msg_base="  $PACKAGE $VERSION
     LIBS:     ${LIBS} ${LDFLAGS}
     LibURCU:  ${liburcu_LIBS} ${liburcu_CFLAGS}
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
-    Jansson:  ${jansson_LIBS} ${jansson_CFLAGS}
     Libedit:  ${libedit_LIBS} ${libedit_CFLAGS}
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
 
@@ -571,7 +550,6 @@ result_msg_base="  $PACKAGE $VERSION
     Systemd integration: ${enable_systemd}
     Dnstap support:      ${opt_dnstap}
     Code coverage:       ${enable_code_coverage}
-    Bash completions:    ${bash_completions_output}
     PKCS #11 support:    ${enable_pkcs11}"
 
 result_msg_esc=$(echo -n "$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')

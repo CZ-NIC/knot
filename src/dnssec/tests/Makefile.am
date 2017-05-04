@@ -20,12 +20,6 @@ EXTRA_DIST = sample_keys.h
 check_PROGRAMS = \
 	binary		\
 	crypto		\
-	event_keystate	\
-	event_nsec3_resalt \
-	kasp_dir_escape	\
-	kasp_dir_file	\
-	kasp_policy	\
-	kasp_store	\
 	key		\
 	key_algorithm	\
 	key_ds		\
@@ -34,7 +28,6 @@ check_PROGRAMS = \
 	keystore_pkcs8	\
 	keystore_pkcs8_dir \
 	keytag		\
-	keyusage	\
 	list		\
 	nsec_bitmap	\
 	nsec_hash	\

@@ -247,6 +247,17 @@ libknotd_la_SOURCES =				\
 	knot/ctl/process.h			\
 	knot/dnssec/context.c			\
 	knot/dnssec/context.h			\
+	knot/dnssec/kasp/kasp_db.c		\
+	knot/dnssec/kasp/kasp_db.h		\
+	knot/dnssec/kasp/kasp_zone.c		\
+	knot/dnssec/kasp/kasp_zone.h		\
+	knot/dnssec/kasp/keystate.c		\
+	knot/dnssec/kasp/keystate.h		\
+	knot/dnssec/kasp/keystore.c		\
+	knot/dnssec/kasp/keystore.h		\
+	knot/dnssec/kasp/policy.h		\
+	knot/dnssec/key-events.c		\
+	knot/dnssec/key-events.h		\
 	knot/dnssec/nsec-chain.c		\
 	knot/dnssec/nsec-chain.h		\
 	knot/dnssec/nsec3-chain.c		\
@@ -272,8 +283,10 @@ libknotd_la_SOURCES =				\
 	knot/events/handlers/freeze_thaw.c	\
 	knot/events/handlers/load.c		\
 	knot/events/handlers/notify.c		\
+	knot/events/handlers/nsec3resalt.c	\
 	knot/events/handlers/refresh.c		\
 	knot/events/handlers/update.c		\
+	knot/events/handlers/zsk_rollover.c	\
 	knot/events/log.c			\
 	knot/events/log.h			\
 	knot/events/replan.c			\
@@ -404,31 +417,13 @@ libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(lib
 
 if HAVE_DAEMON
 
-sbin_PROGRAMS = keymgr knotc knotd
+sbin_PROGRAMS = knotc knotd keymgr
 libexec_PROGRAMS = knot1to2
 noinst_LTLIBRARIES += libknotd.la libknotus.la
 
 EXTRA_DIST += 					\
 	utils/knot1to2/cf-lex.l			\
 	utils/knot1to2/cf-parse.y
-
-keymgr_SOURCES =				\
-	utils/keymgr/cmdparse/command.c		\
-	utils/keymgr/cmdparse/command.h		\
-	utils/keymgr/cmdparse/match.h		\
-	utils/keymgr/cmdparse/parameter.c	\
-	utils/keymgr/cmdparse/parameter.h	\
-	utils/keymgr/cmdparse/value.c		\
-	utils/keymgr/cmdparse/value.h		\
-	utils/keymgr/legacy/key.c		\
-	utils/keymgr/legacy/key.h		\
-	utils/keymgr/legacy/privkey.c		\
-	utils/keymgr/legacy/privkey.h		\
-	utils/keymgr/legacy/pubkey.c		\
-	utils/keymgr/legacy/pubkey.h		\
-	utils/keymgr/options.c			\
-	utils/keymgr/options.h			\
-	utils/keymgr/keymgr.c
 
 knotc_SOURCES =					\
 	utils/knotc/commands.c			\
@@ -444,6 +439,13 @@ knotc_SOURCES =					\
 knotd_SOURCES =					\
 	utils/knotd/main.c
 
+keymgr_SOURCES = 				\
+	utils/keymgr/bind_privkey.c		\
+	utils/keymgr/bind_privkey.h		\
+	utils/keymgr/functions.c		\
+	utils/keymgr/functions.h		\
+	utils/keymgr/main.c
+
 knot1to2_SOURCES =				\
 	utils/knot1to2/cf-lex.c			\
 	utils/knot1to2/cf-parse.tab.c		\
@@ -455,14 +457,16 @@ knot1to2_SOURCES =				\
 	utils/knot1to2/main.c			\
 	utils/knot1to2/scheme.h
 
-keymgr_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec $(gnutls_CFLAGS)
-keymgr_LDADD = libknotd.la libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
-               zscanner/libzscanner.la $(gnutls_LIBS)
-knotd_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
-knotd_LDADD = libknotd.la libcontrib.la $(liburcu_LIBS)
-knotc_CPPFLAGS = $(AM_CPPFLAGS) $(libedit_CFLAGS)
-knotc_LDADD = libknotd.la libknotus.la $(libedit_LIBS)
-knot1to2_LDADD = libcontrib.la
+knotd_CPPFLAGS  = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
+knotd_LDADD     = libknotd.la libcontrib.la $(liburcu_LIBS)
+knotc_CPPFLAGS  = $(AM_CPPFLAGS) $(libedit_CFLAGS)
+knotc_LDADD     = libknotd.la libknotus.la $(libedit_LIBS)
+keymgr_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS) -I$(srcdir)/dnssec/lib/dnssec \
+                  -I$(srcdir)/dnssec $(gnutls_CFLAGS)
+keymgr_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la \
+                  libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
+                  zscanner/libzscanner.la $(gnutls_LIBS)
+knot1to2_LDADD  = libcontrib.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
@@ -546,7 +550,7 @@ knsupdate_LDADD        = zscanner/libzscanner.la libknotus.la
 knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
 knsec3hash_LDADD       = dnssec/libdnssec.la dnssec/libshared.la
 kzonecheck_LDADD       = libknotd.la libcontrib.la
-kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(liburcu_CFLAGS) 
+kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(liburcu_CFLAGS)
 kjournalprint_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la
 
 #######################################

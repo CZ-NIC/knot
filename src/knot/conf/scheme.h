@@ -57,6 +57,7 @@
 #define C_JOURNAL_DB		"\x0A""journal-db"
 #define C_JOURNAL_DB_MODE	"\x0F""journal-db-mode"
 #define C_KASP_DB		"\x07""kasp-db"
+#define C_KASP_DB_MAPSIZE       "\x0F""kasp-db-mapsize"
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
 #define C_KSK_SIZE		"\x08""ksk-size"

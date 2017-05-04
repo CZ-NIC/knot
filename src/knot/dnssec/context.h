@@ -18,55 +18,45 @@
 
 #include <time.h>
 
-#include <dnssec/kasp.h>
 #include <dnssec/keystore.h>
 
 #include "knot/conf/conf.h"
-#include "libknot/dname.h"
+#include "knot/dnssec/kasp/kasp_zone.h"
+#include "knot/dnssec/kasp/policy.h"
 
 /*!
  * \brief DNSSEC signing context.
  */
-struct kdnssec_ctx {
+typedef struct {
 	time_t now;
 
-	bool legacy;
-	char *policy_name;
-
-	dnssec_kasp_t *kasp;
-	dnssec_kasp_zone_t *zone;
-	dnssec_kasp_policy_t *policy;
+	kasp_db_t **kasp_db;
+	knot_kasp_zone_t *zone;
+	knot_kasp_policy_t *policy;
 	dnssec_keystore_t *keystore;
+
+	char *kasp_zone_path;
 
 	uint32_t old_serial;
 	uint32_t new_serial;
 	bool rrsig_drop_existing;
-};
-
-typedef struct kdnssec_ctx kdnssec_ctx_t;
-
-/*!
- * \brief Initialize DNSSEC KASP context.
- */
-int kdnssec_kasp(dnssec_kasp_t **kasp, bool legacy);
-
-/*!
- * \brief Initialize DNSSEC parameters of the DNSSEC context.
- *
- * No cleanup is performed on failure.
- */
-int kdnssec_kasp_init(kdnssec_ctx_t *ctx, const char *kasp_path, const char *zone_name);
+} kdnssec_ctx_t;
 
 /*!
  * \brief Initialize DNSSEC signing context.
  *
- * \param ctx             Signing context to be initialized.
- * \param zone_name       Name of the zone.
- * \param policy          DNSSEC policy configuration reference.
- * \param disable_legacy  Disable legacy detection indication.
+ * \param conf         Configuration.
+ * \param ctx          Signing context to be initialized.
+ * \param zone_name    Name of the zone.
+ * \param from_module  Module identifier if initialized from a module.
  */
-int kdnssec_ctx_init(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
-                     conf_val_t *policy, bool disable_legacy);
+int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
+                     const conf_mod_id_t *from_module);
+
+/*!
+ * \brief Save the changes in ctx (in kasp zone).
+ */
+int kdnssec_ctx_commit(kdnssec_ctx_t *ctx);
 
 /*!
  * \brief Cleanup DNSSEC signing context.

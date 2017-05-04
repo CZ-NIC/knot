@@ -391,6 +391,17 @@ int server_init(server_t *server, int bg_workers)
 		return ret;
 	}
 
+	char *kasp_dir = conf_kaspdir(conf());
+	conf_val_t kasp_db_mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
+	ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&kasp_db_mapsize));
+	free(kasp_dir);
+	if (ret != KNOT_EOK) {
+		journal_db_close(&server->journal_db);
+		worker_pool_destroy(server->workers);
+		evsched_deinit(&server->sched);
+		return ret;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -417,6 +428,9 @@ void server_deinit(server_t *server)
 
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
+
+	/* Close kasp_db. */
+	kasp_db_close(kaspdb());
 
 	/* Close journal database if open. */
 	journal_db_close(&server->journal_db);
@@ -709,6 +723,31 @@ static int reconfigure_journal_db(conf_t *conf, server_t *server)
 	return ret;
 }
 
+static int reconfigure_kasp_db(conf_t *conf, server_t *server)
+{
+	char *kasp_dir = conf_kaspdir(conf);
+	conf_val_t kasp_db_mapsize = conf_default_get(conf, C_KASP_DB_MAPSIZE);
+	int ret = kasp_db_reconfigure(kaspdb(), kasp_dir, conf_int(&kasp_db_mapsize));
+	switch (ret) {
+	case KNOT_EBUSY:
+		log_warning("kasp_db, ignored reconfiguration of KASP DB path (already open)");
+		break;
+	case KNOT_EEXIST:
+		ret = KNOT_EBUSY;
+		log_warning("kasp_db, ignored reconfiguration of KASP DB map size (already open)");
+		break;
+	case KNOT_ENODIFF:
+	case KNOT_EOK:
+		ret = KNOT_EOK;
+		break;
+	default:
+		break;
+	}
+
+	free(kasp_dir);
+	return ret;
+}
+
 void server_reconfigure(conf_t *conf, server_t *server)
 {
 	if (conf == NULL || server == NULL) {
@@ -730,6 +769,12 @@ void server_reconfigure(conf_t *conf, server_t *server)
 	/* Reconfigure journal DB. */
 	if ((ret = reconfigure_journal_db(conf, server)) < 0) {
 		log_error("failed to reconfigure journal DB (%s)",
+		          knot_strerror(ret));
+	}
+
+	/* Reconfigure KASP DB. */
+	if ((ret = reconfigure_kasp_db(conf, server)) < 0) {
+		log_error("failed to reconfigure KASP DB (%s)",
 		          knot_strerror(ret));
 	}
 

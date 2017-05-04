@@ -531,6 +531,25 @@ char* conf_abs_path(
 );
 
 /*!
+ * Ensures empty 'default' identifier value.
+ *
+ * \param[in] val  Item value.
+ *
+ * \return Empty item value.
+ */
+static inline void conf_id_fix_default(conf_val_t *val)
+{
+	if (val->code != KNOT_EOK) {
+		conf_val_t empty = {
+			.item = val->item,
+			.code = KNOT_EOK
+		};
+
+		*val = empty;
+	}
+}
+
+/*!
  * Gets the module identifier value of the item.
  *
  * \param[in] val  Item value.
@@ -590,6 +609,15 @@ static inline char* conf_journalfile(
 	conf_t *conf)
 {
 	return conf_journalfile_txn(conf, &conf->read_txn);
+}
+
+char* conf_kaspdir_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn);
+static inline char* conf_kaspdir(
+	conf_t *conf)
+{
+	return conf_kaspdir_txn(conf, &conf->read_txn);
 }
 
 char* conf_old_journalfile(

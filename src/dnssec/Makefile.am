@@ -10,8 +10,7 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/lib \
 	-I$(srcdir)/lib/dnssec \
 	-I$(top_srcdir)/src \
-	$(gnutls_CFLAGS) \
-	$(jansson_CFLAGS)
+	$(gnutls_CFLAGS)
 
 noinst_LTLIBRARIES = libshared.la
 lib_LTLIBRARIES = libdnssec.la
@@ -47,7 +46,6 @@ libdnssec_la_CPPFLAGS = \
 
 libdnssec_la_LDFLAGS = \
 	$(gnutls_LIBS) \
-	$(jansson_LIBS) \
 	$(libdnssec_VERSION_INFO)
 
 libdnssec_la_LIBADD = \
@@ -59,13 +57,9 @@ include_dnssec_HEADERS = \
 	lib/dnssec/crypto.h \
 	lib/dnssec/dnssec.h \
 	lib/dnssec/error.h \
-	lib/dnssec/event.h \
-	lib/dnssec/kasp.h \
 	lib/dnssec/key.h \
 	lib/dnssec/keyid.h \
-	lib/dnssec/keystate.h \
 	lib/dnssec/keystore.h \
-	lib/dnssec/keyusage.h \
 	lib/dnssec/keytag.h \
 	lib/dnssec/list.h \
 	lib/dnssec/nsec.h \
@@ -78,34 +72,6 @@ libdnssec_la_SOURCES = \
 	lib/binary.c \
 	lib/crypto.c \
 	lib/error.c \
-	lib/event/action.h \
-	lib/event/action/initial_key.c \
-	lib/event/action/nsec3_resalt.c \
-	lib/event/action/zsk_rollover.c \
-	lib/event/event.c \
-	lib/event/keystate.c \
-	lib/event/utils.c \
-	lib/event/utils.h \
-	lib/kasp/dir/dir.c \
-	lib/kasp/dir/escape.c \
-	lib/kasp/dir/escape.h \
-	lib/kasp/dir/file.c \
-	lib/kasp/dir/file.h \
-	lib/kasp/dir/json.c \
-	lib/kasp/dir/json.h \
-	lib/kasp/dir/keystore.c \
-	lib/kasp/dir/keystore.h \
-	lib/kasp/dir/policy.c \
-	lib/kasp/dir/policy.h \
-	lib/kasp/dir/zone.c \
-	lib/kasp/dir/zone.h \
-	lib/kasp/internal.h \
-	lib/kasp/kasp.c \
-	lib/kasp/keystore.c \
-	lib/kasp/keystore_open.c \
-	lib/kasp/policy.c \
-	lib/kasp/zone.c \
-	lib/kasp/zone.h \
 	lib/key/algorithm.c \
 	lib/key/algorithm.h \
 	lib/key/convert.c \
@@ -125,7 +91,6 @@ libdnssec_la_SOURCES = \
 	lib/keystore/pkcs11.c \
 	lib/keystore/pkcs8.c \
 	lib/keystore/pkcs8_dir.c \
-	lib/keyusage/keyusage.c	 \
 	lib/list/list.c \
 	lib/list/ucw_clists.h \
 	lib/nsec/bitmap.c \

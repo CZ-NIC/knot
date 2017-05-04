@@ -34,7 +34,7 @@ static uint32_t zone_soa_ttl(const zone_contents_t *zone)
 	return knot_rrset_ttl(&soa);
 }
 
-void update_policy_from_zone(dnssec_kasp_policy_t *policy,
+void update_policy_from_zone(knot_kasp_policy_t *policy,
                              const zone_contents_t *zone)
 {
 	assert(policy);

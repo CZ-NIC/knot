@@ -22,6 +22,7 @@
 #include "contrib/string.h"
 #include "knot/modules/online_sign/online_sign.h"
 #include "knot/modules/online_sign/nsec_next.h"
+#include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-events.h"
@@ -251,7 +252,7 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 
 	// compatible context
 
-	dnssec_kasp_policy_t policy = {
+	knot_kasp_policy_t policy = {
 		.rrsig_lifetime = module_ctx->rrsig_lifetime
 	};
 
@@ -430,30 +431,23 @@ static int get_online_key(dnssec_key_t **key_ptr, struct query_module *module)
 {
 	kdnssec_ctx_t kctx = { 0 };
 
-	conf_val_t policy = conf_mod_get(module->config, MOD_POLICY, module->id);
-
-	int r = kdnssec_ctx_init(&kctx, module->zone, &policy, true);
+	int r = kdnssec_ctx_init(module->config, &kctx, module->zone, module->id);
 	if (r != DNSSEC_EOK) {
-		goto fail;
+		return r;
 	}
 
 	// Force Singe-Type signing scheme.
 	kctx.policy->singe_type_signing = true;
 
-	r = knot_dnssec_sign_process_events(&kctx, module->zone);
+	bool ignore1 = false;
+	time_t ignore2 = 0;
+	r = knot_dnssec_zsk_rollover(&kctx, &ignore1, &ignore2);
 	if (r != DNSSEC_EOK) {
 		goto fail;
 	}
 
-	dnssec_list_t *list = dnssec_kasp_zone_get_keys(kctx.zone);
-	assert(list);
-	dnssec_item_t *item = dnssec_list_nth(list, 0);
-	if (!item) {
-		r = DNSSEC_NOT_FOUND;
-		goto fail;
-	}
-
-	dnssec_kasp_key_t *kasp_key = dnssec_item_get(item);
+	assert(kctx.zone->num_keys > 0);
+	knot_kasp_key_t *kasp_key = &kctx.zone->keys[0];
 	assert(kasp_key);
 
 	dnssec_key_t *key = dnssec_key_dup(kasp_key->key);

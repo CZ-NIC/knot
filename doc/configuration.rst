@@ -286,8 +286,8 @@ can operate in two modes:
    parameters must be assigned by the zone operator.
 
 The DNSSEC signing process maintains some metadata which is stored in the
-:abbr:`KASP (Key And Signature Policy)` database. This database is simply
-a directory in the file-system containing files in the JSON format.
+:abbr:`KASP (Key And Signature Policy)` database. This database is backed
+by LMDB.
 
 .. WARNING::
   Make sure to set the KASP database permissions correctly. For manual key
@@ -339,7 +339,7 @@ the server logs to see whether everything went well.
 .. WARNING::
   This guide assumes that the zone *myzone.test* was not signed prior to
   enabling the automatic key management. If the zone was already signed, all
-  existing keys must be imported using ``keymgr zone key import`` command
+  existing keys must be imported using ``keymgr import-bind`` command
   before enabling the automatic signing. Also the algorithm in the policy must
   match the algorithm of all imported keys. Otherwise the zone will be resigned
   at all.
@@ -366,8 +366,8 @@ Let's use the Single-Type Signing scheme with two algorithms. Run:
 
 .. code-block:: console
 
-  $ keymgr zone key generate myzone.test algorithm RSASHA256 size 1024
-  $ keymgr zone key generate myzone.test algorithm ECDSAP256SHA256 size 256
+  $ keymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024
+  $ keymgr -d path/to/keydir myzone.test. generate algorithm=ECDSAP256SHA256 size=256
 
 And reload the server. The zone will be signed.
 
@@ -377,14 +377,14 @@ it yet:
 
 .. code-block:: console
 
-  $ keymgr zone key generate myzone.test algorithm RSASHA256 size 1024 active +1d
+  $ keymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024 active=now+1d
 
 Take the key ID (or key tag) of the old RSA key and disable it the same time
 the new key gets activated:
 
 .. code-block:: console
 
-  $ keymgr zone key set myzone.test <old_key_id> retire +1d remove +1d
+  $ keymgr -d path/to/keydir myzone.test. set <old_key_id> retire=now+1d remove=now+1d
 
 Reload the server again. The new key will be published (i.e. the DNSKEY record
 will be added into the zone). Do not forget to update the DS record in the
@@ -456,17 +456,6 @@ of the limitations will be hopefully removed in the near future.
   - Legacy key import requires a private key.
   - Legacy key export is not implemented.
   - DS record export is not implemented.
-
-.. _dnssec-keyusage:
-
-DNSSEC keys used by multiple zones 
-----------------------------------
-
-Using same key for multiple zones with automatic key management is possible. 
-However, all zones must be listed in keyusage (keys directory) or they will be deleted,
-when they retire in any zone.
-
-If keys are added manually as published, but not active (for next rollover event), they are added automatically.
 
 Performance Tuning
 ==================

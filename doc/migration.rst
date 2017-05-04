@@ -36,10 +36,10 @@ server configuration:
 3. Import all existing zone keys into the KASP database. Make sure that all
    the keys were imported correctly::
 
-   $ keymgr zone key import example.com path/to/Kexample.com.+013+11111
-   $ keymgr zone key import example.com path/to/Kexample.com.+013+22222
+   $ keymgr -d path/to/keydir example.com. import-bind path/to/Kexample.com.+013+11111
+   $ keymgr -d path/to/keydir example.com. import-bind path/to/Kexample.com.+013+22222
    $ ...
-   $ keymgr zone key list example.com
+   $ keymgr -d path/to/keydir example.com. list
 
    .. NOTE::
       The server can be run under a dedicated user account, usually ``knot``.

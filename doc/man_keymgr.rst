@@ -6,311 +6,145 @@ keymgr – Key management utility
 Synopsis
 --------
 
-:program:`keymgr` [*global-options*] [*command*...] [*arguments*...]
+:program:`keymgr` *basic_option* [*parameters*...]
 
-:program:`keymgr` [*global-options*] [*command*...] **help**
+:program:`keymgr` *config_option* *config_storage* *zone_name* *action* *parameters*...
 
 Description
 -----------
 
 The :program:`keymgr` utility serves for key management in Knot DNS server.
 
-Primarily functions for DNSSEC keys and KASP (Key And Signature Policy)
-management are provided. However the utility also provides functions for
-TSIG key generation.
+Functions for DNSSEC keys and KASP (Key And Signature Policy)
+management are provided.
 
 The DNSSEC and KASP configuration is stored in a so called KASP database.
-The database is simply a directory in the file-system containing files in the
-JSON format.
+The databse is backed by LMDB.
 
-The operations are organized into commands and subcommands. A command
-specifies the operation to be performed with the KASP database. It is usually
-followed by named arguments. The special command **help** can be used to list
-available subcommands in that area. The listing of available command arguments
-is not supported yet.
-
-Command and argument names are parsed in a smart way. Only a beginning
-of a name can be entered and it will be recognized. The specified part of
-a name must be unique amongst the other names.
-
-Global options
-..............
-
-**-c**, **--config** *file*
-  Use a textual configuration file to get the KASP database location.
-
-**-C**, **--confdb** *directory*
-  Use a binary configuration database directory to get the KASP database location.
-
-**-d**, **--dir** *path*
-  Use a specified KASP database path to work with.
+Basic options
+.............
 
 **-h**, **--help**
   Print the program help.
 
-**-l**, **--legacy**
-  Enable legacy mode. Zone, policy, and keystore configuration is stored
-  in KASP database (not in server configuration).
-
 **-V**, **--version**
   Print the program version.
 
-KASP database location
-......................
+**-t** [*tsig_algorithm*] [*tsig_bits*]
+  Generates TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
+  bit length of the key by number (default: optimal length given by algorithm).
 
-The location of the KASP database is determined as follows:
+Config options
+..............
 
-1. The path specified with **--dir**.
-2. The path read from the server configuration specified with **--confdb** or
-   **--config**.
-3. The path read from the server default configuration database.
-4. The path read from the server default configuration file.
+**-d**
+  Use KASP database directory specified by config_storage.
 
-In legacy mode, the path is determined as follows:
+**-c**
+  Determine KASP database location from Knot DNS configuration file, specified
+  by config_storage.
 
-1. The path specified with **--dir**.
-2. The path specified in the ``KEYMGR_DIR`` environment variable.
-3. The current working dir.
+**-C**
+  Determine KASP database location from Knot DNS configuration database,
+  specified by config_storage.
 
-Main commands
-.............
+Actions
+.......
 
-**tsig** ...
-  Operations with TSIG keys.
+**list**
+  Prints the list of key IDs and parameters of keys belonging to the zone.
 
-**zone** ...
-  Operations with zones in the database. A zone holds assigned signing
-  configuration and signing metadata.
+**generate** [*arguments*...]
+  Generates new DNSSEC key and stores it in KASP database. Prints the key ID.
+  This action takes some number of arguments (see below). Values for unspecified arguments are taken
+  from corresponding policy (if *-c* or *-C* options used) or from Knot policy defaults.
 
-Main commands (legacy)
-......................
+**import-bind** *BIND_key_file*
+  Imports a BIND-style key into KASP database (converting it to PEM format).
+  Takes one argument: path to BIND key file (private or public, but both MUST exist).
 
-**init**
-  Initialize new KASP database or upgrade existing one. The command is
-  idempotent and therefore it is safe to be run multiple times.
+**set** *key_spec* [*arguments*...]
+  Changes a timing argument of an existing key to new timestamp. *Key_spec* is either the
+  key tag or a prefix of key ID; *arguments* are like for **generate**, but just
+  timing-related ones.
 
-  The command creates a default policy and default key store (both named
-  *default*). In case of upgrade, existing objects are checked and any missing
-  attributes are filled in.
+**ds** *key_spec*
+  Generate DS record (all digest algorithms together) from specified key. *Key_spec*
+  is like for **set**.
 
-**policy** ...
-  Operations with KASP policies. A policy holds parameters that define the
-  way how a zone is signed.
+**delete** *key_spec*
+  Remove the specified key from zone. If the key was not shared, it is also deleted from keystore.
 
-**keystore** ...
-  Operations with key stores configured for the KASP database. A private key
-  store holds private key material for zone signing separately from the zone
-  metadata.
+**share** *key_ID*
+  Import a key (specified by full key ID) from another zone as shared. After this, the key is
+  owned by both zones equally.
 
-tsig commands
-.............
+Generate arguments
+..................
 
-**tsig** **generate** *name* [**algorithm** *id*] [**size** *bits*]
-  Generate new TSIG key and print it on the standard output. The algorithm
-  defaults to *hmac-sha256*. The default key size is determined optimally based
-  on the selected algorithm.
+Arguments are separated by space, each of them is in format 'name=value'.
 
-  The generated key is printed out in the server configuration format to allow
-  direct inclusion into the server configuration. The first line of the output
-  contains a comment with the key in the one-line key format accepted by client
-  utilities.
+**algorithm**
+  Either an algorithm number (e.g. 14), or text name without dashes (e.g. ECDSAP384SHA384).
 
-zone commands
-.............
+**size**
+  Key length in bits.
 
-**zone** **key** **list** *zone-name* [**filter** [**filter**]]
-  List key IDs and tags of zone keys. The **filter** can be a key tag, a key ID prefix, a key state (active, published, retired, removed) or ksk/zsk. Key state and ksk/zsk combination is possible.
-  Use these key state and ksk/zsk with prefix '+' ('+ksk', '+active').
+**ksk**
+  Either 'true' (KSK will be generated) or 'false' (ZSK wil be generated).
 
-**zone** **key** **show** *zone-name* *key*
-  Show zone key details. The *key* can be a key tag or a key ID prefix.
+**created**
+  Timestamp of key creation.
 
-**zone** **key** **ds** *zone-name* *filter*
-  Show DS records for a zone key. The *filter* can be a key tag, a key ID prefix or key state (limited to active and published ksk).
-  Use these key state as '+active' or '+published'.
+**publish**
+  Timestamp for key to be published.
 
-**zone** **key** **generate** *zone-name* [*key-parameter*...]
-  Generate a new key for a zone.
+**active**
+  Timestamp for key to be activated.
 
-**zone** **key** **import** *zone-name* *key-file*
-  Import an existing key in the legacy format. The *key-file* suffix
-  :file:`.private` or :file:`.key` is not required. A public key without
-  a matching private key cannot be imported.
+**retire**
+  Timestamp for key to be de-activated.
 
-**zone** **key** **set** *zone-name* *key* [*key-parameter*...]
-  Change a key parameter. Only key timing parameters can be changed.
+**remove**
+  Timestamp for key ot be deleted.
 
-Available *key-parameter*\ s:
+Timestamps
+..........
 
-  **algorithm** *id*
-    Algorithm number or IANA mnemonic.
+*UNIX_time*
+  Positive number of seconds since 1970.
 
-  **size** *bits*
-    Size of the key in bits.
+*YYYYMMDDHHMMSS*
+  Date and time in this format without any punctuation.
 
-  **ksk**
-    Set the DNSKEY SEP (Secure Entry Point) flag.
-
-  **publish** *time*
-    The time the key is published as a DNSKEY record.
-
-  **active** *time*
-    The time the key is started to be used for signing.
-
-  **retire** *time*
-   The time the key is stopped to be used for signing.
-
-  **remove** *time*
-    The time the key's DNSKEY is removed from the zone.
-
-The *time* accepts YYYYMMDDHHMMSS format, unix timestamp, or offset from the
-current time. For the offset, add **+** or **-** prefix and optionally a
-suffix **mi**, **h**, **d**, **w**, **mo**, or **y**. If no suffix is specified,
-the offset is in seconds.
-
-zone commands (legacy)
-......................
-
-**zone** **add** *zone-name* [**policy** *policy-name*]
-  Add a zone into the database. The policy defaults to 'default'.
-
-**zone** **list** [*pattern*]
-  List zones in the database matching the *pattern* as a substring.
-
-**zone** **remove** *zone-name* [**force**]
-  Remove a zone from the database. If some keys are currently active, the
-  **force** argument must be specified.
-
-**zone** **set** *zone-name* [**policy** *policy-name*]
-  Change zone configuration. At the moment, only a policy can be changed.
-
-**zone** **show** *zone-name*
-  Show zone details.
-
-policy commands (legacy)
-........................
-
-**policy** **list**
-  List policies in the database.
-
-**policy** **show** *policy-name*
-  Show policy details.
-
-**policy** **add** *policy-name* [*policy-parameter*...]
-  Add a new policy into the database.
-
-**policy** **set** *policy-name* [*policy-parameter*...]
-  Change policy configuration.
-
-**policy** **remove** *policy-name*
-  Remove a policy from the database.
-  **Note**, the utility does not check if the policy is used.
-
-Available *policy-parameter*\ s:
-
-  **algorithm** *id*
-    DNSKEY algorithm number or IANA mnemonic.
-
-  **dnskey-ttl** *seconds*
-    TTL value for DNSKEY records.
-
-  **ksk-size** *bits*
-    Size of the KSK.
-
-  **zsk-size** *bits*
-    Size of the ZSK.
-
-  **zsk-lifetime** *seconds*
-    Period between ZSK publication and the next rollover initiation.
-
-  **rrsig-lifetime** *seconds*
-    Validity period of issued signatures.
-
-  **rrsig-refresh** *seconds*
-    Period before signature expiration when the signature will be refreshed.
-
-  **nsec3** *enable*
-    Specifies if NSEC3 will be used instead of NSEC.
-
-  **nsec3-iterations** *iterations*
-    Specifies the number of additional iterations in NSEC3 computation.
-
-  **nsec3-salt-length** *bytes*
-    Specifies salt length for NSEC3 computation.
-
-  **nsec3-salt-lifetime** *seconds*
-    Period after which a new NSEC3 salt is generated.
-
-  **soa-min-ttl** *seconds*
-    SOA Minimum TTL field.
-    **Note**, Knot DNS overwrites the value with the real used value.
-
-  **zone-max-ttl** *seconds*
-    Max TTL in the zone.
-    **Note**, Knot DNS will determine the value automatically in the future.
-
-  **delay** *seconds*
-    Zone signing and data propagation delay. The value is added for safety to
-    timing of all rollover steps.
-
-  **manual** *enable*
-    Enable manual key management. If enabled, no keys will be generated or
-    rolled automatically.
-
-  **keystore** *name*
-    Name of the key store to be used for private key material.
-
-keystore commands (legacy)
-..........................
-
-**keystore** **list**
-  List names of configured key stores.
-
-**keystore** **show** *name*
-  Show configuration of a key store named *name* and list key IDs of private
-  key material present in that key store.
-
-**keystore** **add** *name* [**backend** *backend*] [**config** *config*]
-  Configure new key store. The *name* is a unique key store identifier. The
-  *backend* and backend-specific configuration string *config* determine where
-  the private key material will be physically stored.
-
-Supported key store backends:
-
-  **pkcs8** (default)
-    The backend stores private key material in unencrypted X.509 PEM files
-    in a directory specified as the backend configuration string. The path
-    can be specified relatively to the KASP database location.
-
-  **pkcs11**
-    The backend stores private key material in a cryptographic token accessible
-    via the PKCS #11 interface. The configuration string consists of a token
-    PKCS #11 URL and PKCS #11 module path separated by the space character.
-
-    The format of the PKCS #11 URL is described in :rfc:`7512`. If the token
-    is protected by a PIN, make sure to include *pin-value* or *pin-source*
-    attribute in the URL.
-
-    The PKCS #11 module path can be an absolute path or just a module name. In
-    the later case, the module is looked up in the default modules location.
+*relative_timestamp*
+  The word "now" followed by sign (+, -), a number and a shortcut for time unit
+  (y, mo, d, h, mi, (nothing = seconds)), e.g. now+1mi, now-2mo, now+10,
+  now+0, now-1y, ...
 
 Examples
 --------
 
-1. Generate two RSA-SHA-256 signing keys. The first key will be used as a KSK,
-   the second one as a ZSK::
+1. Generate TSIG key::
 
-    $ keymgr zone key generate example.com algorithm rsasha256 size 2048 ksk
-    $ keymgr zone key generate example.com algorithm rsasha256 size 1024
+    $ keymgr -t my_name hmac-sha384
 
-2. Import a key in legacy format. The used algorithm must match with the one
-   configured in the policy::
+2. Import a key from BIND::
 
-    $ keymgr zone key import example.com Kexample.com+010+12345.private
+    $ keymgr -d ${knot_data_dir}/keys example.com. import-bind ~/bind/Kharbinge4d5.+007+63089.key
 
-3. Generate a TSIG key named *operator.key*::
+3. Generate new key::
 
-    $ keymgr tsig generate operator.key algorithm hmac-sha512
+    $ keymgr -c ${knot_data_dir}/knot.conf example.com. generate algorithm=ECDSAP256SHA256 size=256 \
+      ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
+
+4. Configure key timing::
+
+    $ keymgr -d ${knot_data_dir}/keys test.test. set 4208 active=t+2mi retire=t+4mi remove=t+5mi
+
+5. Share a KSK from another zone::
+
+    $ keymgr -c ${knot_data_dir}/knot.conf test.test. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
 
 See Also
 --------
