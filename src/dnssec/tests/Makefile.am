@@ -36,7 +36,6 @@ check_PROGRAMS = \
 	sign_der	\
 	shared_bignum	\
 	shared_dname	\
-	shared_timestamp \
 	shared_wire	\
 	tsig
 

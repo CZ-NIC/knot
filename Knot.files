@@ -134,8 +134,6 @@ src/dnssec/shared/pem.c
 src/dnssec/shared/pem.h
 src/dnssec/shared/print.h
 src/dnssec/shared/shared.h
-src/dnssec/shared/timestamp.c
-src/dnssec/shared/timestamp.h
 src/dnssec/shared/wire.h
 src/dnssec/tests/binary.c
 src/dnssec/tests/crypto.c
@@ -154,7 +152,6 @@ src/dnssec/tests/random.c
 src/dnssec/tests/sample_keys.h
 src/dnssec/tests/shared_bignum.c
 src/dnssec/tests/shared_dname.c
-src/dnssec/tests/shared_timestamp.c
 src/dnssec/tests/shared_wire.c
 src/dnssec/tests/sign.c
 src/dnssec/tests/sign_der.c
