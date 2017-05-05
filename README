@@ -77,7 +77,7 @@ GCC version at least 4.1 supports legacy atomic builtins, however 4.7
 or newer is preferred. Clang supports atomics since version 2.9.
 
 Get the source code:
-$ git clone git://git.nic.cz/knot-dns.git
+$ git clone https://gitlab.labs.nic.cz/labs/knot.git
 Or extract source package to knot-dns directory
 
 Compile Knot
