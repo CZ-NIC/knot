@@ -673,14 +673,16 @@ class Server(object):
 
         self.zones[zone.name].zfile.backup()
 
-    def update_zonefile(self, zone, version=None, random=False):
+    def update_zonefile(self, zone, version=None, random=False, storage=None):
         zone = zone_arg_check(zone)
+
+        if not storage:
+            storage = self.data_dir
 
         if random:
             self.zones[zone.name].zfile.update_rnd()
         else:
-            self.zones[zone.name].zfile.upd_file(storage=self.data_dir,
-                                                 version=version)
+            self.zones[zone.name].zfile.upd_file(storage=storage, version=version)
 
     def add_module(self, zone, module):
         zone = zone_arg_check(zone)
