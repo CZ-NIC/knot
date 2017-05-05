@@ -27,10 +27,10 @@
 #include "dnssec/nsec.h"
 #include "shared/dname.h"
 #include "shared/hex.h"
-#include "shared/print.h"
 #include "libknot/error.h"
 
 #define PROGRAM_NAME "knsec3hash"
+#define error(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 
 /*!
  * \brief Print program help (and example).

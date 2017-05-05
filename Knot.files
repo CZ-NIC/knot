@@ -132,7 +132,6 @@ src/dnssec/shared/path.c
 src/dnssec/shared/path.h
 src/dnssec/shared/pem.c
 src/dnssec/shared/pem.h
-src/dnssec/shared/print.h
 src/dnssec/shared/shared.h
 src/dnssec/shared/wire.h
 src/dnssec/tests/binary.c
