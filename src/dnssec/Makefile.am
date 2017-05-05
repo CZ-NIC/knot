@@ -19,8 +19,6 @@ libshared_la_CPPFLAGS = \
 	$(AM_CPPFLAGS)
 
 libshared_la_SOURCES = \
-	shared/base32hex.c \
-	shared/base32hex.h \
 	shared/bignum.c \
 	shared/bignum.h \
 	shared/dname.c \
@@ -36,8 +34,6 @@ libshared_la_SOURCES = \
 	shared/pem.c \
 	shared/pem.h \
 	shared/shared.h \
-	shared/timestamp.c \
-	shared/timestamp.h \
 	shared/wire.h
 
 libdnssec_la_CPPFLAGS = \

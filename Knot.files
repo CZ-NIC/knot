@@ -118,8 +118,6 @@ src/dnssec/lib/sign/der.c
 src/dnssec/lib/sign/der.h
 src/dnssec/lib/sign/sign.c
 src/dnssec/lib/tsig.c
-src/dnssec/shared/base32hex.c
-src/dnssec/shared/base32hex.h
 src/dnssec/shared/bignum.c
 src/dnssec/shared/bignum.h
 src/dnssec/shared/dname.c
@@ -134,10 +132,7 @@ src/dnssec/shared/path.c
 src/dnssec/shared/path.h
 src/dnssec/shared/pem.c
 src/dnssec/shared/pem.h
-src/dnssec/shared/print.h
 src/dnssec/shared/shared.h
-src/dnssec/shared/timestamp.c
-src/dnssec/shared/timestamp.h
 src/dnssec/shared/wire.h
 src/dnssec/tests/binary.c
 src/dnssec/tests/crypto.c
@@ -154,10 +149,8 @@ src/dnssec/tests/nsec_bitmap.c
 src/dnssec/tests/nsec_hash.c
 src/dnssec/tests/random.c
 src/dnssec/tests/sample_keys.h
-src/dnssec/tests/shared_base32hex.c
 src/dnssec/tests/shared_bignum.c
 src/dnssec/tests/shared_dname.c
-src/dnssec/tests/shared_timestamp.c
 src/dnssec/tests/shared_wire.c
 src/dnssec/tests/sign.c
 src/dnssec/tests/sign_der.c

@@ -34,10 +34,8 @@ check_PROGRAMS = \
 	random		\
 	sign		\
 	sign_der	\
-	shared_base32hex \
 	shared_bignum	\
 	shared_dname	\
-	shared_timestamp \
 	shared_wire	\
 	tsig
 

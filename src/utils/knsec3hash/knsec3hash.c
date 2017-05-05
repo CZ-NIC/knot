@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,15 +21,16 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "contrib/base32hex.h"
 #include "contrib/strtonum.h"
 #include "dnssec/error.h"
 #include "dnssec/nsec.h"
-#include "shared/base32hex.h"
 #include "shared/dname.h"
 #include "shared/hex.h"
-#include "shared/print.h"
+#include "libknot/error.h"
 
 #define PROGRAM_NAME "knsec3hash"
+#define error(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 
 /*!
  * \brief Print program help (and example).
@@ -161,11 +162,12 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	r = base32hex_encode(&digest, &digest_print);
-	if (r != DNSSEC_EOK) {
-		error("Cannot encode computed hash, %s.", dnssec_strerror(r));
+	r = base32hex_encode_alloc(digest.data, digest.size, &digest_print.data);
+	if (r < 0) {
+		error("Cannot encode computed hash, %s.", knot_strerror(r));
 		goto fail;
 	}
+	digest_print.size = r;
 
 	exit_code = 0;
 
