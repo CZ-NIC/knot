@@ -84,19 +84,17 @@ static const hmac_t HMACS[] = {
 	{ 0 }
 };
 
-static void test_lookup_dname(const char *ascii_dname, int algorithm)
+static void test_lookup_dname(const uint8_t *dname, int algorithm)
 {
-	uint8_t *dname = dname_from_ascii(ascii_dname);
-
-	ok(dnssec_tsig_algorithm_from_dname(dname) == algorithm,
-	   "dnssec_tsig_algorithm_from_dname(%s)", ascii_dname);
+	dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_dname(dname);
+	const char *name = dnssec_tsig_algorithm_to_name(algorithm);
+	if (name == NULL) name = "invalid";
+	ok(alg == algorithm, "dnssec_tsig_algorithm_from_dname(%s)", name);
 
 	const uint8_t *reverse = dnssec_tsig_algorithm_to_dname(algorithm);
 	ok((algorithm == DNSSEC_TSIG_UNKNOWN && reverse == NULL) ||
 	   (algorithm != DNSSEC_TSIG_UNKNOWN && dname_equal(reverse, dname)),
 	  "dnssec_tsig_algorithm_to_dname(%d)", algorithm);
-
-	free(dname);
 }
 
 static void test_lookup_name(const char *name, int algorithm)
@@ -129,9 +127,10 @@ int main(void)
 {
 	plan_lazy();
 
-	test_lookup_dname("HMAC-MD5.SIG-ALG.REG.INT", DNSSEC_TSIG_HMAC_MD5);
-	test_lookup_dname("hmac-sha224", DNSSEC_TSIG_HMAC_SHA224);
-	test_lookup_dname("foobar", DNSSEC_TSIG_UNKNOWN);
+	test_lookup_dname((uint8_t *)"\x08""HMAC-MD5""\x07""SIG-ALG""\x03""REG""\x03""INT",
+	                  DNSSEC_TSIG_HMAC_MD5);
+	test_lookup_dname((uint8_t *)"\x0B""hmac-sha224", DNSSEC_TSIG_HMAC_SHA224);
+	test_lookup_dname((uint8_t *)"\x06""foobar", DNSSEC_TSIG_UNKNOWN);
 
 	test_lookup_name("hmac-md5", DNSSEC_TSIG_HMAC_MD5);
 	test_lookup_name("hmac-sha512", DNSSEC_TSIG_HMAC_SHA512);

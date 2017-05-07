@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,32 +48,6 @@ uint8_t *dname_copy(const uint8_t *dname);
  * Currently converts all letters to lowercase.
  */
 void dname_normalize(uint8_t *dname);
-
-/*!
- * Convert domain name to human readable ASCII representation.
- *
- * The last label is NOT terminated by dot.
- */
-char *dname_to_ascii(const uint8_t *dname);
-
-/*!
- * Convert ASCII domain name to wire format.
- */
-uint8_t *dname_from_ascii(const char *name);
-
-/*!
- * Normalize ASCII domain name.
- *
- * Convert to lower case, trim rightmost empty labels.
- */
-void dname_ascii_normalize(char *name);
-
-/*!
- * Create normalized copy of ASCII domain name.
- *
- * \see dname_ascii_normalize
- */
-char *dname_ascii_normalize_copy(const char *name);
 
 /*!
  * Check if two dnames are equal.

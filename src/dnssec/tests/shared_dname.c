@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,49 +47,6 @@ static void test_copy(void)
 	free(copy);
 }
 
-static void test_normalize(void)
-{
-	const uint8_t *norm = (uint8_t *)"\x6""random""\x6""domain""\x4""test";
-	uint8_t denorm[] = "\x6""rAnDoM""\x6""doMAIN""\x4""TesT";
-
-	dname_normalize(denorm);
-	ok(dname_binary_equal(norm, denorm), "dname_normalize()");
-
-	const char *anorm = "hello.world.domain";
-	char adenorm[] = "Hello.World.DOmaIN.";
-
-	dname_ascii_normalize(adenorm);
-	ok(strcmp(anorm, adenorm) == 0, "dname_ascii_normalize()");
-}
-
-static void test_ascii(void)
-{
-	{
-	const uint8_t *dname = (uint8_t *)"\3""try""\x5""ascii""\xa""conversion";
-	const char *expect = "try.ascii.conversion";
-	char *converted = dname_to_ascii(dname);
-	ok(strcmp(converted, expect) == 0, "dname_to_ascii()");
-	free(converted);
-	}
-
-	{
-	const char *name = "not.very.easy.domain.name.";
-	const uint8_t *expect = (uint8_t *)"\x3""not""\x4""very""\x4""easy"
-					   "\x6""domain""\x4""name";
-	uint8_t *converted = dname_from_ascii(name);
-	ok(dname_binary_equal(converted, expect), "dname_from_ascii()");
-	free(converted);
-	}
-
-	{
-	const char *name = ".";
-	const uint8_t *expect = (uint8_t *)"";
-	uint8_t *converted = dname_from_ascii(name);
-	ok(dname_binary_equal(converted, expect), "dname_from_ascii() root");
-	free(converted);
-	}
-}
-
 static void test_equal(void)
 {
 	#define eq(a, b) dname_equal((uint8_t *)a, (uint8_t *)b)
@@ -116,8 +73,6 @@ int main(void)
 
 	test_length();
 	test_copy();
-	test_normalize();
-	test_ascii();
 	test_equal();
 
 	return 0;

@@ -27,7 +27,7 @@
 #include "dnssec/nsec.h"
 #include "shared/dname.h"
 #include "shared/hex.h"
-#include "libknot/error.h"
+#include "libknot/libknot.h"
 
 #define PROGRAM_NAME "knsec3hash"
 #define error(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
@@ -147,12 +147,12 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	dname.data = dname_from_ascii(argv[4]);
-	dname.size = dname_length(dname.data);
+	dname.data = knot_dname_from_str_alloc(argv[4]);
 	if (dname.data == NULL) {
 		error("Cannot parse domain name.");
 		goto fail;
 	}
+	dname.size = dname_length(dname.data);
 
 	dname_normalize(dname.data);
 
