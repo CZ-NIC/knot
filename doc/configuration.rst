@@ -457,6 +457,40 @@ of the limitations will be hopefully removed in the near future.
   - Legacy key export is not implemented.
   - DS record export is not implemented.
 
+.. _query-modules:
+
+Query modules
+=============
+
+Knot DNS supports configurable query modules that can alter the way
+queries are processed. Each query requires a finite number of steps to
+be resolved. We call this set of steps a *query plan*, an abstraction
+that groups these steps into several stages.
+
+* Before-query processing
+* Answer, Authority, Additional records packet sections processing
+* After-query processing
+
+For example, processing an Internet-class query needs to find an
+answer. Then based on the previous state, it may also append an
+authority SOA or provide additional records. Each of these actions
+represents a 'processing step'. Now, if a query module is loaded for a
+zone, it is provided with an implicit query plan which can be extended
+by the module or even changed altogether.
+
+A module is active if its name, which includes the ``mod-`` prefix, is assigned
+to the zone/template :ref:`zone_module` option or to the *default* template
+:ref:`template_global-module` option if activating for all queries.
+If the module is configurable, a corresponding module section with
+an identifier must be created and then referenced in the form of
+``module_name/module_id``. See :ref:`Modules` for the list of available modules.
+
+.. NOTE::
+   Query modules are processed in the order they are specified in the
+   zone/template configuration. In most cases, the recommended order is::
+
+      mod-synthrecord, mod-onlinesign, mod-rrl, mod-dnstap, mod-stats
+
 Performance Tuning
 ==================
 
