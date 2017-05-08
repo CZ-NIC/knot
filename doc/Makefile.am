@@ -34,7 +34,6 @@ EXTRA_DIST = \
 	installation.rst	\
 	introduction.rst	\
 	migration.rst		\
-	reference.rst		\
 	requirements.rst	\
 	operation.rst		\
 	troubleshooting.rst	\
@@ -61,8 +60,7 @@ SPHINXBUILDDIR = $(builddir)/_build
 
 _SPHINXOPTS    = -c $(srcdir) \
 	         -a \
-	         $(SPHINX_V) \
-	         -D latex_paper_size=a4
+	         $(SPHINX_V)
 
 ALLSPHINXOPTS  = $(_SPHINXOPTS) \
 	         -D version="$(VERSION)" \
