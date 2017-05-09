@@ -31,11 +31,11 @@ the following symbols:
 - [ ] – Optional value
 - \| – Choice
 
-There are 11 main sections (``server``, ``control``, ``log``, ``statistics``,
-``keystore``, ``policy``, ``key``, ``acl``, ``remote``, ``template``, and
-``zone``) and module sections with the ``mod-`` prefix. Most of the sections
-(excluding ``server``, ``control``, and ``statistics``) are sequences of
-settings blocks. Each settings block begins with a unique identifier,
+There are 12 main sections (``module``, ``server``, ``control``, ``log``,
+``statistics``, ``keystore``, ``policy``, ``key``, ``acl``, ``remote``,
+``template``, and ``zone``) and module sections with the ``mod-`` prefix.
+Most of the sections (excluding ``server``, ``control``, and ``statistics``)
+are sequences of settings blocks. Each settings block begins with a unique identifier,
 which can be used as a reference from other sections (such identifier
 must be defined in advance).
 
@@ -75,6 +75,44 @@ Matching files are processed in sorted order.
 ::
 
  include: STR
+
+.. _Module section:
+
+Module section
+==============
+
+Dynamic modules loading configuration.
+
+.. NOTE::
+   If configured with non-empty ```--with-moduledir=path``` parameter, all
+   shared modules in this directory will be automatically loaded.
+
+::
+
+ module:
+   - id: STR
+     file: STR
+
+.. _module_id:
+
+id
+--
+
+A module identifier in the form of the ``mod-`` prefix and module name suffix.
+
+.. _module_file:
+
+file
+----
+
+A path to a shared library file with the module implementation.
+
+*Default:* ``${libdir}/knot/modules-${version}``/module_name.so
+(or ``${path}``/module_name.so if configured with ``--with-moduledir=path``)
+
+.. WARNING::
+   If the path is not absolute, the library is searched in the set of
+   system directories. See ``man dlopen`` for more details.
 
 .. _Server section:
 

@@ -66,11 +66,11 @@ the following symbols:
 | – Choice
 .UNINDENT
 .sp
-There are 11 main sections (\fBserver\fP, \fBcontrol\fP, \fBlog\fP, \fBstatistics\fP,
-\fBkeystore\fP, \fBpolicy\fP, \fBkey\fP, \fBacl\fP, \fBremote\fP, \fBtemplate\fP, and
-\fBzone\fP) and module sections with the \fBmod\-\fP prefix. Most of the sections
-(excluding \fBserver\fP, \fBcontrol\fP, and \fBstatistics\fP) are sequences of
-settings blocks. Each settings block begins with a unique identifier,
+There are 12 main sections (\fBmodule\fP, \fBserver\fP, \fBcontrol\fP, \fBlog\fP,
+\fBstatistics\fP, \fBkeystore\fP, \fBpolicy\fP, \fBkey\fP, \fBacl\fP, \fBremote\fP,
+\fBtemplate\fP, and \fBzone\fP) and module sections with the \fBmod\-\fP prefix.
+Most of the sections (excluding \fBserver\fP, \fBcontrol\fP, and \fBstatistics\fP)
+are sequences of settings blocks. Each settings block begins with a unique identifier,
 which can be used as a reference from other sections (such identifier
 must be defined in advance).
 .sp
@@ -122,6 +122,46 @@ Matching files are processed in sorted order.
 include: STR
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
+.SH MODULE SECTION
+.sp
+Dynamic modules loading configuration.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+If configured with non\-empty \fB\(ga\-\-with\-moduledir=path\(ga\fP parameter, all
+shared modules in this directory will be automatically loaded.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+module:
+  \- id: STR
+    file: STR
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A module identifier in the form of the \fBmod\-\fP prefix and module name suffix.
+.SS file
+.sp
+A path to a shared library file with the module implementation.
+.sp
+\fIDefault:\fP \fB${libdir}/knot/modules\-${version}\fP/module_name.so
+(or \fB${path}\fP/module_name.so if configured with \fB\-\-with\-moduledir=path\fP)
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+If the path is not absolute, the library is searched in the set of
+system directories. See \fBman dlopen\fP for more details.
 .UNINDENT
 .UNINDENT
 .SH SERVER SECTION
