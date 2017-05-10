@@ -46,7 +46,9 @@ static void print_help(void)
 	       "   generate     Generate new KASP key.\n"
 	       "                (syntax: generate <attribute_name>=<value>...)\n"
 	       "   import-bind  Import BIND-style key file pair (.key + .private).\n"
-	       "                (syntax: import_bind <key_file_name>)\n"
+	       "                (syntax: import-bind <key_file_name>)\n"
+	       "   import-pem   Import key in PEM format. Specify its parameters manually.\n"
+	       "                (syntax: import-pem <pem_file_path> <attribute_name>=<value>...)\n"
 	       "   ds           Generate DS record(s) for specified key.\n"
 	       "                (syntax: ds <key_spec>)\n"
 	       "   share        Make an existing key of another zone to be shared with"
@@ -98,6 +100,13 @@ static int key_command(int argc, char *argv[])
 			goto main_end;
 		}
 		ret = keymgr_import_bind(&kctx, argv[2]);
+	} else if (strcmp(argv[1], "import-pem") == 0) {
+		if (argc < 3) {
+			printf("PEM file to import not specified.\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		ret = keymgr_import_pem(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (strcmp(argv[1], "set") == 0) {
 		if (argc < 3) {
 			printf("Key is not specified.\n");

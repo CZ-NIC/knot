@@ -21,6 +21,7 @@
 #include <string.h>
 #include <strings.h>
 #include <time.h>
+#include <fcntl.h>
 
 #include "contrib/wire_ctx.h"
 #include "dnssec/lib/dnssec/error.h"
@@ -352,6 +353,108 @@ cleanup:
 	free(pubname);
 	free(privname);
 	return knot_error_from_libdnssec(ret);
+}
+
+int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, char *argv[])
+{
+	// parse params
+	time_t now = time(NULL), infty = 0x0fffffffffffff00LLU;
+	knot_kasp_key_timing_t gen_timing = { now, now, now, now, infty, infty };
+	bool isksk = false;
+	uint16_t keysize = 0;
+	if (!genkeyargs(argc, argv, false, &isksk, &ctx->policy->algorithm,
+			&keysize, &gen_timing)) {
+		return KNOT_EINVAL;
+	}
+
+	// open file
+	int fd = open(import_file, O_RDONLY, 0);
+	if (fd == -1) {
+		close(fd);
+		return -errno;
+	}
+
+	// determine size
+	off_t fsize = lseek(fd, 0, SEEK_END);
+	if (fsize == -1) {
+		close(fd);
+		return -errno;
+	}
+	if (lseek(fd, 0, SEEK_SET) == -1) {
+		close(fd);
+		return -errno;
+	}
+
+	// alloc memory
+	dnssec_binary_t read_pem = { 0 };
+	int ret = dnssec_binary_alloc(&read_pem, fsize);
+	if (ret != DNSSEC_EOK) {
+		close(fd);
+		return knot_error_from_libdnssec(ret);
+	}
+
+	// read pem
+	ssize_t read_count = read(fd, read_pem.data, read_pem.size);
+	close(fd);
+	if (read_count == -1) {
+		dnssec_binary_free(&read_pem);
+		return -errno;
+	}
+
+	// put pem to kesytore
+	char *keyid = NULL;
+	ret = dnssec_keystore_import(ctx->keystore, &read_pem, &keyid);
+	dnssec_binary_free(&read_pem);
+	if (ret != DNSSEC_EOK) {
+		return ret;
+	}
+
+	// create dnssec key
+	dnssec_key_t *dnskey = NULL;
+	ret = dnssec_key_new(&dnskey);
+	if (ret != KNOT_EOK) {
+		free(keyid);
+		return ret;
+	}
+	ret = dnssec_key_set_dname(dnskey, ctx->zone->dname);
+	if (ret != KNOT_EOK) {
+		dnssec_key_free(dnskey);
+		free(keyid);
+		return ret;
+	}
+	dnssec_key_set_flags(dnskey, dnskey_flags(isksk));
+	dnssec_key_set_algorithm(dnskey, ctx->policy->algorithm);
+
+	// fill key structure from keystore (incl. pubkey from privkey computation)
+	ret = dnssec_key_import_keystore(dnskey, ctx->keystore, keyid);
+	if (ret != KNOT_EOK) {
+		dnssec_key_free(dnskey);
+		free(keyid);
+		return ret;
+	}
+
+	// allocate kasp key
+	knot_kasp_key_t *kkey = calloc(1, sizeof(*kkey));
+	if (!kkey) {
+		dnssec_key_free(dnskey);
+		free(keyid);
+		return KNOT_ENOMEM;
+	}
+	kkey->id = keyid;
+	kkey->key = dnskey;
+	kkey->timing = gen_timing;
+
+	// append to zone
+	ret = kasp_zone_append(ctx->zone, kkey);
+	free(kkey);
+	if (ret != KNOT_EOK) {
+		dnssec_key_free(dnskey);
+		free(keyid);
+		return ret;
+	}
+	ret = kdnssec_ctx_commit(ctx);
+
+	return ret;
 }
 
 static void print_tsig(dnssec_tsig_algorithm_t mac, const char *name,

@@ -86,6 +86,10 @@ from corresponding policy (if \fI\-c\fP or \fI\-C\fP options used) or from Knot 
 Imports a BIND\-style key into KASP database (converting it to PEM format).
 Takes one argument: path to BIND key file (private or public, but both MUST exist).
 .TP
+\fBimport\-pem\fP \fIPEM_file\fP [\fIarguments\fP\&...]
+Imports a DNSSEC key form PEM file. The key parameters (same as for generate action) need to be
+specified (mostly algorithm, timers...) because they are not contained in the PEM format.
+.TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
 Changes a timing argument of an existing key to new timestamp. \fIKey_spec\fP is either the
 key tag or a prefix of key ID; \fIarguments\fP are like for \fBgenerate\fP, but just

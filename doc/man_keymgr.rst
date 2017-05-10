@@ -63,6 +63,10 @@ Actions
   Imports a BIND-style key into KASP database (converting it to PEM format).
   Takes one argument: path to BIND key file (private or public, but both MUST exist).
 
+**import-pem** *PEM_file* [*arguments*...]
+  Imports a DNSSEC key form PEM file. The key parameters (same as for generate action) need to be
+  specified (mostly algorithm, timers...) because they are not contained in the PEM format.
+
 **set** *key_spec* [*arguments*...]
   Changes a timing argument of an existing key to new timestamp. *Key_spec* is either the
   key tag or a prefix of key ID; *arguments* are like for **generate**, but just
