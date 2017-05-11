@@ -408,7 +408,14 @@ void zone_events_start(zone_t *zone)
 		return;
 	}
 
-	reschedule(&zone->events);
+	zone_events_t *events = &zone->events;
+
+	/* Unlock the events queue. */
+	pthread_mutex_lock(&events->mx);
+	events->frozen = false;
+	pthread_mutex_unlock(&events->mx);
+
+	reschedule(events);
 }
 
 time_t zone_events_get_time(const struct zone *zone, zone_event_type_t type)
