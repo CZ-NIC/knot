@@ -23,6 +23,7 @@
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
+#include "knot/common/notice.h"
 #include "knot/updates/acl.h"
 #include "libknot/rrtype/opt.h"
 #include "dnssec/lib/dnssec/tsig.h"
@@ -107,6 +108,11 @@ static const knot_lookup_t log_severities[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t notice_events[] = {
+	{ NOTICE_EVENT_UPDATE_DS, "update-ds" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t journal_modes[] = {
 	{ JOURNAL_MODE_ROBUST, "robust" },
 	{ JOURNAL_MODE_ASYNC,  "asynchronous" },
@@ -161,6 +167,12 @@ static const yp_item_t desc_log[] = {
 	{ C_ZONE,    YP_TOPT, YP_VOPT = { log_severities, 0 } },
 	{ C_ANY,     YP_TOPT, YP_VOPT = { log_severities, 0 } },
 	{ C_COMMENT, YP_TSTR, YP_VNONE },
+	{ NULL }
+};
+
+static const yp_item_t desc_notice[] = {
+	{ C_TARGET, YP_TSTR, YP_VNONE },
+	{ C_EVENT,  YP_TSTR, YP_VOPT = { notice_events }, YP_FMULTI },
 	{ NULL }
 };
 
@@ -293,6 +305,7 @@ const yp_item_t conf_scheme[] = {
 	{ C_SRV,      YP_TGRP, YP_VGRP = { desc_server }, CONF_IO_FRLD_SRV, { check_server } },
 	{ C_CTL,      YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_LOG,      YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI | CONF_IO_FRLD_LOG },
+	{ C_NOTICE,   YP_TGRP, YP_VGRP = { desc_notice }, YP_FMULTI },
 	{ C_STATS,    YP_TGRP, YP_VGRP = { desc_stats }, CONF_IO_FRLD_SRV },
 	{ C_KEYSTORE, YP_TGRP, YP_VGRP = { desc_keystore }, YP_FMULTI, { check_keystore } },
 	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },

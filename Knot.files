@@ -161,6 +161,8 @@ src/knot/common/fdset.c
 src/knot/common/fdset.h
 src/knot/common/log.c
 src/knot/common/log.h
+src/knot/common/notice.c
+src/knot/common/notice.h
 src/knot/common/process.c
 src/knot/common/process.h
 src/knot/common/ref.c

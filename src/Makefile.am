@@ -346,6 +346,8 @@ libknotd_la_SOURCES =				\
 	knot/common/fdset.h			\
 	knot/common/log.c			\
 	knot/common/log.h			\
+	knot/common/notice.c			\
+	knot/common/notice.h			\
 	knot/common/process.c			\
 	knot/common/process.h			\
 	knot/common/ref.c			\
