@@ -359,6 +359,7 @@ void zone_events_start(zone_t *zone)
 	}
 
 	pthread_mutex_lock(&zone->events.mx);
+	zone->events.frozen = false;
 	reschedule(&zone->events);
 	pthread_mutex_unlock(&zone->events.mx);
 }
