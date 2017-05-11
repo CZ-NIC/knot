@@ -207,6 +207,7 @@ static int rosedb_add(struct cache *cache, MDB_txn *txn, int argc, char *argv[])
 	}
 
 	ret = cache_insert(txn, cache->dbi, key, &entry);
+	knot_rdataset_clear(&entry.data.rrs, cache->pool);
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", mdb_strerror(ret));
 	}
