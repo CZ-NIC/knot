@@ -184,7 +184,9 @@ int main(int argc, char *argv[])
 	kdnssec_ctx_t kctx = { 0 };
 
 	conf_val_t mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
-	int ret = kasp_db_init(kaspdb(), conf_kaspdir(conf()), conf_int(&mapsize));
+	char *kasp_dir = conf_kaspdir(conf());
+	int ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&mapsize));
+	free(kasp_dir);
 	if (ret != KNOT_EOK) {
 		printf("Failed to initialize KASP db (%s)\n", knot_strerror(ret));
 		goto main_end;

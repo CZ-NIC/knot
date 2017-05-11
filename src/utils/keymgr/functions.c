@@ -315,6 +315,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file)
 	bind_privkey_free(&bpriv);
 
 	ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
+	dnssec_binary_free(&pem);
 	if (ret != DNSSEC_EOK) {
 		goto fail;
 	}
