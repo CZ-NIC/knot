@@ -627,11 +627,12 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		printf("%s ksk=%s tag=%05d created=%lld publish=%lld ready=%lld"
+		printf("%s ksk=%s tag=%05d algorithm=%d created=%lld publish=%lld ready=%lld"
 		       " active=%lld retire=%lld remove=%lld\n", key->id,
 		       ((dnssec_key_get_flags(key->key) == dnskey_flags(true)) ? "yes" : "no "),
-		       dnssec_key_get_keytag(key->key), (long long)key->timing.created,
-		       (long long)key->timing.publish, (long long)key->timing.ready, (long long)key->timing.active,
+		       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
+		       (long long)key->timing.created, (long long)key->timing.publish,
+		       (long long)key->timing.ready, (long long)key->timing.active,
 		       (long long)key->timing.retire, (long long)key->timing.remove);
 	}
 	return KNOT_EOK;
