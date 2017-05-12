@@ -313,7 +313,7 @@ conf_iter_t conf_iter_txn(
 	(void)conf_db_iter_begin(conf, txn, key0_name, &iter);
 	switch (iter.code) {
 	default:
-		CONF_LOG(LOG_ERR, "failed to iterate thgrough '%s' (%s)",
+		CONF_LOG(LOG_ERR, "failed to iterate through '%s' (%s)",
 		          key0_name + 1, knot_strerror(iter.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
