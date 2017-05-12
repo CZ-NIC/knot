@@ -1270,6 +1270,37 @@ Minimum severity level for all message types that are logged.
 
 *Default:* not set
 
+.. _Notice section:
+
+Notice section
+==============
+
+Some server events may trigger user's action (probably via a user-defined script).
+In those cases, Knot sends a notice to configured UNIX socket, which the script
+is expected to be listening to.
+
+::
+
+ notice:
+   - target: STR
+     event: update-ds ...
+
+.. _notice_target:
+
+target
+------
+
+The UNIX socket path/filename.
+
+.. _notice_event:
+
+event
+-----
+
+The list of events to be requested at this socket.
+
+*Default:* not set
+
 .. _mod-rrl:
 
 Module rrl

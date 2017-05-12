@@ -1110,6 +1110,31 @@ Minimum severity level for messages related to zones that are logged.
 Minimum severity level for all message types that are logged.
 .sp
 \fIDefault:\fP not set
+.SH NOTICE SECTION
+.sp
+Some server events may trigger user\(aqs action (probably via a user\-defined script).
+In those cases, Knot sends a notice to configured UNIX socket, which the script
+is expected to be listening to.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+notice:
+  \- target: STR
+    event: update\-ds ...
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS target
+.sp
+The UNIX socket path/filename.
+.SS event
+.sp
+The list of events to be requested at this socket.
+.sp
+\fIDefault:\fP not set
 .SH MODULE RRL
 .sp
 A response rate limiting module.
