@@ -329,7 +329,7 @@ void conf_update(
 			old_conf->io.zones = NULL;
 		}
 		if (flags & CONF_UPD_FMODULES) {
-			init_list(&old_conf->query_modules);
+			WALK_LIST_FREE(old_conf->query_modules);
 			old_conf->query_plan = NULL;
 		}
 
