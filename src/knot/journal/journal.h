@@ -156,6 +156,18 @@ int journal_store_changesets(journal_t *journal, list_t *src);
 int journal_store_changeset(journal_t *journal, changeset_t *change);
 
 /*!
+ * \brief Open the journal database.
+ *
+ * This is an "almost static" function, which is mostly called by other journal
+ * methods like journal_open() and journal_exists(). However it can be called
+ * separately just for more precise error resolution.
+ *
+ * \param db Journal to be opened.
+ * \return KNOT_E*
+ */
+int open_journal_db(journal_db_t **db);
+
+/*!
  * \brief Check if this (zone's) journal is present in shared journal DB.
  *
  * \param db         Shared journal DB
