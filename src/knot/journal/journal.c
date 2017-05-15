@@ -1533,7 +1533,7 @@ static int open_journal_db_unsafe(journal_db_t **db)
 	return KNOT_EOK;
 }
 
-static int open_journal_db(journal_db_t **db)
+int open_journal_db(journal_db_t **db)
 {
 	if (*db == NULL) return KNOT_EINVAL;
 	pthread_mutex_lock(&(*db)->db_mutex);

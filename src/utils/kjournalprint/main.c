@@ -16,12 +16,14 @@
 
 #include <stdlib.h>
 #include <getopt.h>
+#include <sys/stat.h>
 
 #include "libknot/libknot.h"
 #include "knot/journal/journal.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/exec.h"
 #include "contrib/strtonum.h"
+#include "contrib/string.h"
 
 #define PROGRAM_NAME	"kjournalprint"
 
@@ -48,25 +50,43 @@ static inline char *get_rrset(knot_rrset_t *rrset, char **buff, size_t *len)
 	return (ret > 0) ? *buff : "Corrupted or missing!\n";
 }
 
+// workaround: LMDB fails to detect proper mapsize
+static int reconfigure_mapsize(const char *journal_path, size_t *mapsize)
+{
+	char *data_mdb = sprintf_alloc("%s/data.mdb", journal_path);
+	if (data_mdb == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	struct stat st;
+	if (stat(data_mdb, &st) != 0 || st.st_size == 0) {
+		fprintf(stderr, "Journal does not exist: %s\n", journal_path);
+		return KNOT_ENOENT;
+	}
+
+	*mapsize = st.st_size + st.st_size / 8; // 112.5% to allow opening when growing
+	return KNOT_EOK;
+}
+
 int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 {
 	list_t db;
 	init_list(&db);
-
-	size_t buflen = 8192;
-	char *buff = malloc(buflen);
-	if (buff == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	journal_db_t *jdb = NULL;
-	journal_t *j = journal_new();
 	int ret;
+	journal_db_t *jdb = NULL;
 
 	ret = journal_db_init(&jdb, path, 1, JOURNAL_MODE_ROBUST);
 	if (ret != KNOT_EOK) {
-		journal_free(&j);
-		free(buff);
+		return ret;
+	}
+
+	ret = reconfigure_mapsize(jdb->path, &jdb->fslimit);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = open_journal_db(&jdb);
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
@@ -74,6 +94,13 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		fprintf(stderr, "This zone does not exist in DB %s\n", path);
 		ret = KNOT_ENOENT;
 	}
+
+	size_t buflen = 8192;
+	char *buff = malloc(buflen);
+	if (buff == NULL) {
+		return KNOT_ENOMEM;
+	}
+	journal_t *j = journal_new();
 
 	if (ret == KNOT_EOK) {
 		ret = journal_open(j, &jdb, name);
@@ -152,6 +179,16 @@ int list_zones(char *path)
 {
 	journal_db_t *jdb = NULL;
 	int ret = journal_db_init(&jdb, path, 1, JOURNAL_MODE_ROBUST);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = reconfigure_mapsize(jdb->path, &jdb->fslimit);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = open_journal_db(&jdb);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
