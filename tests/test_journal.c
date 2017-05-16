@@ -245,19 +245,19 @@ static void test_journal_db(void)
 	ret = journal_db_init(&db, test_dir_name, 2 * 1024 * 1024, JOURNAL_MODE_ASYNC);
 	is_int(KNOT_EOK, ret, "journal: init db (%d)", ret);
 
-	ret = open_journal_db(&db);
+	ret = journal_open_db(&db);
 	is_int(KNOT_EOK, ret, "journal: open db (%d)", ret);
 
 	journal_db_close(&db);
 	ok(db == NULL, "journal: close and destroy db");
 
 	ret = journal_db_init(&db, test_dir_name, 4 * 1024 * 1024, JOURNAL_MODE_ASYNC);
-	if (ret == KNOT_EOK) ret2 = open_journal_db(&db);
+	if (ret == KNOT_EOK) ret2 = journal_open_db(&db);
 	ok(ret == KNOT_EOK && ret2 == KNOT_EOK, "journal: open with bigger mapsize (%d, %d)", ret, ret2);
 	journal_db_close(&db);
 
 	ret = journal_db_init(&db, test_dir_name, 1024 * 1024, JOURNAL_MODE_ASYNC);
-	if (ret == KNOT_EOK) ret2 = open_journal_db(&db);
+	if (ret == KNOT_EOK) ret2 = journal_open_db(&db);
 	ok(ret == KNOT_EOK && ret2 == KNOT_EOK, "journal: open with smaller mapsize (%d, %d)", ret, ret2);
 	journal_db_close(&db);
 }
@@ -629,7 +629,7 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 	db = NULL;
 	ret = journal_db_init(&db, test_dir_name, file_size, JOURNAL_MODE_ASYNC);
 	assert(ret == KNOT_EOK);
-	ret = open_journal_db(&db);
+	ret = journal_open_db(&db);
 	assert(ret == KNOT_EOK);
 	ret = journal_open(j, &db, apex);
 	assert(ret == KNOT_EOK);

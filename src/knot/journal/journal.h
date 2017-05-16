@@ -165,7 +165,7 @@ int journal_store_changeset(journal_t *journal, changeset_t *change);
  * \param db Journal to be opened.
  * \return KNOT_E*
  */
-int open_journal_db(journal_db_t **db);
+int journal_open_db(journal_db_t **db);
 
 /*!
  * \brief Check if this (zone's) journal is present in shared journal DB.
@@ -193,7 +193,7 @@ int journal_flush(journal_t *journal);
  *
  * \return KNOT_E*
  */
-int scrape_journal(journal_t *j);
+int journal_scrape(journal_t *j);
 
 /*! \brief Obtain public information from journal metadata
  *

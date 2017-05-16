@@ -934,7 +934,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 
 	// Purge the zone journal.
 	if (journal_open(zone->journal, zone->journal_db, zone->name) == KNOT_EOK) {
-		(void)scrape_journal(zone->journal);
+		(void)journal_scrape(zone->journal);
 	}
 
 	return KNOT_EOK;
