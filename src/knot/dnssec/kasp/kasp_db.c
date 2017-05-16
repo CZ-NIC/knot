@@ -424,6 +424,47 @@ int kasp_db_delete_key(kasp_db_t *db, const knot_dname_t *zone_name, const char 
 	return ret;
 }
 
+int kasp_db_delete_all(kasp_db_t *db, const knot_dname_t *zone_name)
+{
+	list_t allkeys;
+	init_list(&allkeys);
+	int r = kasp_db_list_keys(db, zone_name, &allkeys);
+	if (r != KNOT_EOK) {
+		return r;
+	}
+
+	with_txn(KEYS_RW, NULL);
+
+	ptrnode_t *n;
+	WALK_LIST(n, allkeys) {
+		key_params_t *parm = n->d;
+		knot_db_val_t key = make_key(KASPDBKEY_PARAMS, zone_name, parm->id);
+		ret = db_api->del(txn, &key);
+		free_key(&key);
+		free(parm->id);
+		free(parm->public_key.data);
+		memset(parm, 0, sizeof(*parm));
+		if (ret != KNOT_EOK) {
+			break;
+		}
+	}
+	ptrlist_deep_free(&allkeys);
+
+	if (ret == KNOT_EOK) {
+		knot_db_val_t key = make_key(KASPDBKEY_NSEC3SALT, zone_name, NULL);
+		ret = db_api->del(txn, &key);
+		free_key(&key);
+		if (ret == KNOT_EOK) {
+			key = make_key(KASPDBKEY_NSEC3TIME, zone_name, NULL);
+			ret = db_api->del(txn, &key);
+			free_key(&key);
+		}
+	}
+
+	with_txn_end(NULL, NULL);
+	return ret;
+}
+
 int kasp_db_add_key(kasp_db_t *db, const knot_dname_t *zone_name, const key_params_t *params)
 {
 	if (db == NULL || db->keys_db == NULL || zone_name == NULL || params == NULL) {
