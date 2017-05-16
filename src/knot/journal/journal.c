@@ -1533,7 +1533,7 @@ static int open_journal_db_unsafe(journal_db_t **db)
 	return KNOT_EOK;
 }
 
-static int open_journal_db(journal_db_t **db)
+int journal_open_db(journal_db_t **db)
 {
 	if (*db == NULL) return KNOT_EINVAL;
 	pthread_mutex_lock(&(*db)->db_mutex);
@@ -1554,7 +1554,7 @@ int journal_open(journal_t *j, journal_db_t **db, const knot_dname_t *zone_name)
 
 	// open shared journal DB if not already
 	if ((*db)->db == NULL) {
-		ret = open_journal_db(db);
+		ret = journal_open_db(db);
 	}
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1655,7 +1655,7 @@ bool journal_exists(journal_db_t **db, knot_dname_t *zone_name)
 		if (stat((*db)->path, &st) != 0 || st.st_size == 0) {
 			return false;
 		}
-		int ret = open_journal_db(db);
+		int ret = journal_open_db(db);
 		if (ret != KNOT_EOK) {
 			return false;
 		}
@@ -1682,7 +1682,7 @@ static knot_db_val_t *dbval_copy(const knot_db_val_t *from)
 	return to;
 } // TODO think of moving this fun into different place/lib
 
-int scrape_journal(journal_t *j)
+int journal_scrape(journal_t *j)
 {
 	if (j->db == NULL) return KNOT_EINVAL;
 	local_txn_t(txn, j);
@@ -1766,7 +1766,7 @@ int journal_db_list_zones(journal_db_t **db, list_t *zones)
 	}
 
 	if ((*db)->db == NULL) {
-		int ret = open_journal_db(db);
+		int ret = journal_open_db(db);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
