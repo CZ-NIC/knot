@@ -85,7 +85,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		return ret;
 	}
 
-	ret = open_journal_db(&jdb);
+	ret = journal_open_db(&jdb);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -188,7 +188,7 @@ int list_zones(char *path)
 		return ret;
 	}
 
-	ret = open_journal_db(&jdb);
+	ret = journal_open_db(&jdb);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
