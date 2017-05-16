@@ -92,6 +92,15 @@ int kasp_db_list_keys(kasp_db_t *db, const knot_dname_t *zone_name, list_t *dst)
 int kasp_db_delete_key(kasp_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used);
 
 /*!
+ * \brief Remove all zone's keys from DB, including nsec3param
+ * \param db            KASP db
+ * \param zone_name     zoen to be removed
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_delete_all(kasp_db_t *db, const knot_dname_t *zone_name);
+
+/*!
  * \brief Add a key to the DB (possibly overwrite) and link it to a zone.
  *
  * Stores new key with given params into KASP db. If a key with the same ID had been present

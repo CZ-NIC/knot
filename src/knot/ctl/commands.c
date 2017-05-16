@@ -1017,6 +1017,11 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		(void)journal_scrape(zone->journal);
 	}
 
+	// Purge KASP DB
+	if (kasp_db_open(*kaspdb()) == KNOT_EOK) {
+		(void)kasp_db_delete_all(*kaspdb(), zone->name);
+	}
+
 	return KNOT_EOK;
 }
 
