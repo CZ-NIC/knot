@@ -776,6 +776,7 @@ int conf_db_iter_begin(
 	out.code = check_iter(conf, &out);
 	if (out.code != KNOT_EOK) {
 		out.code = KNOT_ENOENT; // Treat all errors as no entry.
+		conf_db_iter_finish(conf, &out);
 		goto iter_begin_error;
 	}
 
