@@ -31,6 +31,20 @@
 #define CTL_FLAG_ADD	"+"
 #define CTL_FLAG_REM	"-"
 
+#define CTL_FILTER_FLUSH_OUTDIR		'd'
+
+#define CTL_FILTER_STATUS_ROLE		'r'
+#define CTL_FILTER_STATUS_SERIAL	's'
+#define CTL_FILTER_STATUS_TRANSACTION	't'
+#define CTL_FILTER_STATUS_FREEZE	'f'
+#define CTL_FILTER_STATUS_EVENTS	'e'
+
+#define CTL_FILTER_PURGE_EXPIRE		'e'
+#define CTL_FILTER_PURGE_TIMERS		't'
+#define CTL_FILTER_PURGE_ZONEFILE	'f'
+#define CTL_FILTER_PURGE_JOURNAL	'j'
+#define CTL_FILTER_PURGE_KASPDB		'k'
+
 /*! Control commands. */
 typedef enum {
 	CTL_NONE,

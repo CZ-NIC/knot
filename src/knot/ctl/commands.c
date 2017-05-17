@@ -26,6 +26,7 @@
 #include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/timers.h"
+#include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
@@ -33,6 +34,9 @@
 #include "contrib/string.h"
 #include "zscanner/scanner.h"
 #include "contrib/strtonum.h"
+
+#define MATCH_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] == NULL || \
+                                  strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
 
 void ctl_log_data(knot_ctl_data_t *data)
 {
@@ -138,68 +142,23 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 	return ret;
 }
 
-typedef enum {
-	ZONE_STATUS_INVALID = -1,
-	ZONE_STATUS_NONE = 0,
-	ZONE_STATUS_TYPE = 1,
-	ZONE_STATUS_SERIAL,
-	ZONE_STATUS_TRANSACTION,
-	ZONE_STATUS_EVENT_TIMERS,
-	ZONE_STATUS_EVENT_STATUS,
-	ZONE_STATUS_FREEZE,
-} zone_status_param ;
-
-static zone_status_param zone_status_param_check(const char *param)
-{
-	if (param == NULL) {
-		return ZONE_STATUS_NONE;
-	}
-	if (strcmp(param, "+type") == 0) {
-		return ZONE_STATUS_TYPE;
-	}
-	if (strcmp(param, "+serial") == 0) {
-		return ZONE_STATUS_SERIAL;
-	}
-	if (strcmp(param, "+transaction") == 0) {
-		return ZONE_STATUS_TRANSACTION;
-	}
-	if (strcmp(param, "+event-timers") == 0) {
-		return ZONE_STATUS_EVENT_TIMERS;
-	}
-	if (strcmp(param, "+freeze") == 0) {
-		return ZONE_STATUS_FREEZE;
-	}
-	return ZONE_STATUS_INVALID;
-}
-
 static int zone_status(zone_t *zone, ctl_args_t *args)
 {
-	// Zone name.
 	char name[KNOT_DNAME_TXT_MAXLEN + 1];
 	if (knot_dname_to_str(name, zone->name, sizeof(name)) == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	knot_ctl_data_t data = {
-	    [KNOT_CTL_IDX_ZONE] = name
+		[KNOT_CTL_IDX_ZONE] = name
 	};
-
-	zone_status_param param = zone_status_param_check(args->data[KNOT_CTL_IDX_OWNER]);
-	if (param == ZONE_STATUS_INVALID) {
-		data[KNOT_CTL_IDX_ERROR] = "Invalid parameters.";
-		int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		return KNOT_EINVAL;
-	}
 
 	int ret;
 	char buff[128];
 	knot_ctl_type_t type = KNOT_CTL_TYPE_DATA;
-	// Zone type.
-	if (param == ZONE_STATUS_TYPE || param == ZONE_STATUS_NONE) {
-		data[KNOT_CTL_IDX_TYPE] = "type";
+
+	if (MATCH_FILTER(args, CTL_FILTER_STATUS_ROLE)) {
+		data[KNOT_CTL_IDX_TYPE] = "role";
 
 		if (zone_is_slave(conf(), zone)) {
 			data[KNOT_CTL_IDX_DATA] = "slave";
@@ -214,13 +173,13 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			type = KNOT_CTL_TYPE_EXTRA;
 		}
 	}
-	// Zone serial.
-	if (param == ZONE_STATUS_SERIAL || param == ZONE_STATUS_NONE) {
+
+	if (MATCH_FILTER(args, CTL_FILTER_STATUS_SERIAL)) {
 		data[KNOT_CTL_IDX_TYPE] = "serial";
 
 		if (zone->contents != NULL) {
 			knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
-							     KNOT_RRTYPE_SOA);
+			                                     KNOT_RRTYPE_SOA);
 			ret = snprintf(buff, sizeof(buff), "%u", knot_soa_serial(soa));
 		} else {
 			ret = snprintf(buff, sizeof(buff), "none");
@@ -238,8 +197,8 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			type = KNOT_CTL_TYPE_EXTRA;
 		}
 	}
-	// Zone transaction.
-	if (param == ZONE_STATUS_TRANSACTION || param == ZONE_STATUS_NONE) {
+
+	if (MATCH_FILTER(args, CTL_FILTER_STATUS_TRANSACTION)) {
 		data[KNOT_CTL_IDX_TYPE] = "transaction";
 		data[KNOT_CTL_IDX_DATA] = (zone->control_update != NULL) ? "open" : "none";
 		ret = knot_ctl_send(args->ctl, type, &data);
@@ -249,23 +208,22 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			type = KNOT_CTL_TYPE_EXTRA;
 		}
 	}
-	// frozen
+
 	bool ufrozen = zone->events.ufrozen;
-	if (param == ZONE_STATUS_FREEZE || param == ZONE_STATUS_NONE) {
-		time_t freeze = zone_events_get_time(zone, ZONE_EVENT_UFREEZE) - time(NULL);
-		time_t thaw = zone_events_get_time(zone, ZONE_EVENT_UTHAW) - time(NULL);
+	if (MATCH_FILTER(args, CTL_FILTER_STATUS_FREEZE)) {
 		data[KNOT_CTL_IDX_TYPE] = "freeze";
 		if (ufrozen) {
-			if (thaw < 0) {
+			if (zone_events_get_time(zone, ZONE_EVENT_UTHAW) < time(NULL)) {
 				data[KNOT_CTL_IDX_DATA] = "yes";
 			} else {
-				data[KNOT_CTL_IDX_DATA] = "thaw queued";
+				data[KNOT_CTL_IDX_DATA] = "thawing";
 			}
 		} else {
-			if (freeze < 0) {
+			if (zone_events_get_time(zone, ZONE_EVENT_UFREEZE) < time(NULL)) {
 				data[KNOT_CTL_IDX_DATA] = "no";
 			} else {
-				data[KNOT_CTL_IDX_DATA] = "freeze queued";
+				data[KNOT_CTL_IDX_DATA] = "freezing";
+
 			}
 		}
 		ret = knot_ctl_send(args->ctl, type, &data);
@@ -273,39 +231,40 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			return ret;
 		}
 	}
-	// list modules
-	if (param == ZONE_STATUS_EVENT_TIMERS || param == ZONE_STATUS_NONE) {
-		time_t ev_time;
-		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
-			// Events not worth showing or used elsewhere
-			if (!(i == ZONE_EVENT_LOAD || i == ZONE_EVENT_UFREEZE
-			      || i == ZONE_EVENT_UTHAW)) {
-				// Skip events affected by freeze
-				if (!ufrozen || !ufreeze_applies(i)) {
-					data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
-					ev_time = zone_events_get_time(zone, i);
-					ev_time = ev_time - time(NULL);
-					if (ev_time < 0) {
-						ret = snprintf(buff, sizeof(buff), "not scheduled");
-					} else {
-						ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
-							       (long long)(ev_time / 3600),
-							       (long long)(ev_time % 3600) / 60,
-							       (long long)(ev_time % 60));
-					}
-					if (ret < 0 || ret >= sizeof(buff)) {
-						return KNOT_ESPACE;
-					}
-					data[KNOT_CTL_IDX_DATA] = buff;
 
-					ret = knot_ctl_send(args->ctl, type,
-							    &data);
-					if (ret != KNOT_EOK) {
-						return ret;
-					}
-					type = KNOT_CTL_TYPE_EXTRA;
-				}
+	if (MATCH_FILTER(args, CTL_FILTER_STATUS_EVENTS)) {
+		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
+			// Events not worth showing or used elsewhere.
+			if (i == ZONE_EVENT_LOAD || i == ZONE_EVENT_UFREEZE ||
+			    i == ZONE_EVENT_UTHAW) {
+				continue;
 			}
+
+			// Skip events affected by freeze.
+			if (ufrozen && ufreeze_applies(i)) {
+				continue;
+			}
+
+			data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
+			time_t ev_time = zone_events_get_time(zone, i);
+			if (ev_time < time(NULL)) {
+				ret = snprintf(buff, sizeof(buff), "not scheduled");
+			} else {
+				ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
+				               (long long)(ev_time / 3600),
+				               (long long)(ev_time % 3600) / 60,
+				               (long long)(ev_time % 60));
+			}
+			if (ret < 0 || ret >= sizeof(buff)) {
+				return KNOT_ESPACE;
+			}
+			data[KNOT_CTL_IDX_DATA] = buff;
+
+			ret = knot_ctl_send(args->ctl, type, &data);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			type = KNOT_CTL_TYPE_EXTRA;
 		}
 	}
 
@@ -354,7 +313,9 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 
 static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
-	UNUSED(args);
+	if (MATCH_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
+		return zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
+	}
 
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
 		zone->flags |= ZONE_FORCE_FLUSH;
@@ -996,30 +957,40 @@ static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 
 static int zone_purge(zone_t *zone, ctl_args_t *args)
 {
-	UNUSED(args);
-
 	// Abort possible editing transaction.
-	(void)zone_txn_abort(zone, args);
-
-	// Purge the zone timers.
-	memset(&zone->timers, 0, sizeof(zone->timers));
-
-	// Expire the zone.
-	event_expire(conf(), zone);
-
-	// Purge the zone file.
-	char *zonefile = conf_zonefile(conf(), zone->name);
-	(void)unlink(zonefile);
-	free(zonefile);
-
-	// Purge the zone journal.
-	if (journal_open(zone->journal, zone->journal_db, zone->name) == KNOT_EOK) {
-		(void)journal_scrape(zone->journal);
+	if (MATCH_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
+		(void)zone_txn_abort(zone, args);
 	}
 
-	// Purge KASP DB
-	if (kasp_db_open(*kaspdb()) == KNOT_EOK) {
-		(void)kasp_db_delete_all(*kaspdb(), zone->name);
+	// Purge the zone timers.
+	if (MATCH_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
+		memset(&zone->timers, 0, sizeof(zone->timers));
+	}
+
+	// Expire the zone.
+	if (MATCH_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
+		(void)event_expire(conf(), zone);
+	}
+
+	// Purge the zone file.
+	if (MATCH_FILTER(args, CTL_FILTER_PURGE_ZONEFILE)) {
+		char *zonefile = conf_zonefile(conf(), zone->name);
+		(void)unlink(zonefile);
+		free(zonefile);
+	}
+
+	// Purge the zone journal.
+	if (MATCH_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
+		if (journal_open(zone->journal, zone->journal_db, zone->name) == KNOT_EOK) {
+			(void)journal_scrape(zone->journal);
+		}
+	}
+
+	// Purge KASP DB.
+	if (MATCH_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
+		if (kasp_db_open(*kaspdb()) == KNOT_EOK) {
+			(void)kasp_db_delete_all(*kaspdb(), zone->name);
+		}
 	}
 
 	return KNOT_EOK;

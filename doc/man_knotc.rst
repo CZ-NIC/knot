@@ -46,9 +46,9 @@ Actions
 .......
 
 **status** [*detail*]
-  Check if the server is running.
-  Moreover display either the running knotd version, numbers of worker threads,
-  or Knot DNS buid (configure) summary, if the parameter is specified.
+  Check if the server is running. Details are **version** for the running
+  server version, **workers** for the numbers of worker threads,
+  or **configure** for the configure summary.
 
 **stop**
   Stop the server if running.
@@ -62,8 +62,8 @@ Actions
   force option.
 
 **zone-status** *zone* [*filter*]
-  Show the zone status. (*)
-  Filters are type, serial, transaction, event-timers, and freeze with prefix '+'.
+  Show the zone status. Filters are **+role**, **+serial**, **+transaction**,
+  **+events**, and **+freeze**.
 
 **zone-check** [*zone*...]
   Test if the server can load the zone. Semantic checks are executed if enabled
@@ -86,8 +86,10 @@ Actions
   Trigger a zone transfer from the zone's master. The server doesn't check the
   serial of the master's zone. This command is valid for slave zones.
 
-**zone-flush** [*zone*...]
-  Trigger a zone journal flush into the zone file.
+**zone-flush** [*zone*...] [**+outdir** *directory*]
+  Trigger a zone journal flush into the zone file. If output dir is specified,
+  instead of flushing the zonefile, the zone is dumped to a file in the specified
+  directory.
 
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
@@ -118,8 +120,10 @@ Actions
 **zone-unset** *zone* *owner* [*type* [*rdata*]]
   Remove zone data within the transaction.
 
-**zone-purge** *zone*...
-  Purge zone data, file, journal, and timers.
+**zone-purge** *zone*... [*filter*...]
+  Purge zone data, file, journal, timers, and kaspdb.
+  Filters are **+expire**, **+timers**, **+zonefile**, **+journal**,
+  and **+kaspdb**.
 
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use
@@ -181,8 +185,6 @@ Empty or **--** *zone* parameter means all zones or all zones with a transaction
 Use **@** *owner* to denote the zone name.
 
 Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *name*].
-
-The *detail* option for **status** can be one of words: version, workers, configure.
 
 (*) indicates a local operation which requires a configuration.
 
