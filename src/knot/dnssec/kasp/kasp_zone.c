@@ -199,7 +199,9 @@ int kasp_zone_append(knot_kasp_zone_t *zone, const knot_kasp_key_t *appkey)
 	if (!new_keys) {
 		return KNOT_ENOMEM;
 	}
-	memcpy(new_keys, zone->keys, zone->num_keys * sizeof(*new_keys));
+	if (zone->num_keys > 0) {
+		memcpy(new_keys, zone->keys, zone->num_keys * sizeof(*new_keys));
+	}
 	memcpy(&new_keys[new_num_keys - 1], appkey, sizeof(*appkey));
 	free(zone->keys);
 	zone->keys = new_keys;
