@@ -210,7 +210,7 @@ void lookup_list(lookup_t *lookup)
 		size_t len;
 		const char *key = trie_it_key(lookup->iter.it, &len);
 
-		if (memcmp(key, lookup->iter.first_key, len) == 0) {
+		if (strncmp(key, lookup->iter.first_key, len) == 0) {
 			int ret = set_key(lookup, &lookup->found.key, key, len);
 			if (ret == KNOT_EOK) {
 				lookup->found.data = *trie_it_val(lookup->iter.it);
