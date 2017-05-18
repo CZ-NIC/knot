@@ -21,6 +21,7 @@
 
 #include "knot/conf/scheme.h"
 #include "knot/conf/confio.h"
+#include "knot/conf/migration.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
 #include "knot/journal/journal.h"
@@ -296,5 +297,8 @@ const yp_item_t conf_scheme[] = {
 	{ C_TPL,      YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE,     YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI | CONF_IO_FZONE, { check_zone } },
 	{ C_INCL,     YP_TSTR, YP_VNONE, CONF_IO_FDIFF_ZONES | CONF_IO_FRLD_ALL, { include_file } },
+	/* Renamed modules. */
+	{ C_MOD_ONLINE_SIGN,  YP_TGRP, YP_VGRP = { scheme_mod_online_sign }, YP_FMULTI, { check_mod_online_sign } },
+	{ C_MOD_SYNTH_RECORD, YP_TGRP, YP_VGRP = { scheme_mod_synth_record }, YP_FMULTI, { check_mod_synth_record } },
 	{ NULL }
 };

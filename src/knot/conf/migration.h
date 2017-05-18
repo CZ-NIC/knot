@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,3 +28,11 @@
 int conf_migrate(
 	conf_t *conf
 );
+
+#define C_MOD_ONLINE_SIGN "\x0f""mod-online-sign"
+extern const yp_item_t scheme_mod_online_sign[];
+int check_mod_online_sign(knotd_conf_check_args_t *args);
+
+#define C_MOD_SYNTH_RECORD "\x10""mod-synth-record"
+extern const yp_item_t scheme_mod_synth_record[];
+int check_mod_synth_record(knotd_conf_check_args_t *args);
