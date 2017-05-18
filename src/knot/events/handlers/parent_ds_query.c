@@ -55,8 +55,6 @@ static int ds_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_FAIL;
 	}
 
-	knot_wire_set_rd(pkt->wire);
-
 	return KNOT_STATE_CONSUME;
 }
 
