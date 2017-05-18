@@ -9,6 +9,24 @@ stages:
   - test
   - deploy
 
+.freebsd_i386: &freebsd_i386
+  tags:
+    - freebsd
+    - i386
+  only:
+    - master
+    - triggers
+    - tags
+
+.freebsd_amd64: &freebsd_amd64
+  tags:
+    - freebsd
+    - amd64
+  only:
+    - master
+    - triggers
+    - tags
+
 .debian_stretch: &debian_stretch
   image: cznic/debian:stretch-knot-latest
   tags:
@@ -119,6 +137,38 @@ test:debian:stretch:armel:
   only:
     - triggers
 
+configure:freebsd:i386:
+  <<: *freebsd_i386
+  <<: *configure_job
+
+build:freebsd:i386:
+  <<: *freebsd_i386
+  <<: *build_job
+  dependencies:
+    - configure:freebsd:i386
+
+test:freebsd:i386:
+  <<: *freebsd_i386
+  <<: *test_job
+  dependencies:
+    - build:freebsd:i386
+
+configure:freebsd:amd64:
+  <<: *freebsd_amd64
+  <<: *configure_job
+
+build:freebsd:amd64:
+  <<: *freebsd_amd64
+  <<: *build_job
+  dependencies:
+    - configure:freebsd:amd64
+
+test:freebsd:amd64:
+  <<: *freebsd_amd64
+  <<: *test_job
+  dependencies:
+    - build:freebsd:amd64
+    
 build:documentation:
   <<: *debian_stretch
   stage: build
