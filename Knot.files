@@ -459,17 +459,6 @@ src/utils/khost/khost_main.c
 src/utils/khost/khost_params.c
 src/utils/khost/khost_params.h
 src/utils/kjournalprint/main.c
-src/utils/knot1to2/cf-lex.c
-src/utils/knot1to2/cf-lex.l
-src/utils/knot1to2/cf-parse.tab.c
-src/utils/knot1to2/cf-parse.tab.h
-src/utils/knot1to2/cf-parse.y
-src/utils/knot1to2/extra.c
-src/utils/knot1to2/extra.h
-src/utils/knot1to2/includes.c
-src/utils/knot1to2/includes.h
-src/utils/knot1to2/main.c
-src/utils/knot1to2/scheme.h
 src/utils/knotc/commands.c
 src/utils/knotc/commands.h
 src/utils/knotc/estimator.c

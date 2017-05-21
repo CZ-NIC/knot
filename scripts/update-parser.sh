@@ -48,12 +48,3 @@ sed -i '/static\ const\ int\ yparser_/d' $OUT_Y
 sed -i 's/\s*$//g' $OUT_Y
 
 popd
-
-### KNOT1TO2 ###
-
-pushd ../src/utils/knot1to2/
-
-flex cf-lex.l
-bison -d -b cf-parse cf-parse.y
-
-popd

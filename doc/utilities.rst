@@ -15,7 +15,6 @@ the server. This section collects manual pages for all provided binaries:
    man_pykeymgr
    man_khost
    man_kjournalprint
-   man_knot1to2
    man_knotc
    man_knotd
    man_knsec3hash

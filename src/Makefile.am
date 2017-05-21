@@ -418,12 +418,7 @@ libknotd_la_LIBADD = libknot.la libknot-yparser.la zscanner/libzscanner.la $(lib
 if HAVE_DAEMON
 
 sbin_PROGRAMS = knotc knotd keymgr
-libexec_PROGRAMS = knot1to2
 noinst_LTLIBRARIES += libknotd.la libknotus.la
-
-EXTRA_DIST += 					\
-	utils/knot1to2/cf-lex.l			\
-	utils/knot1to2/cf-parse.y
 
 knotc_SOURCES =					\
 	utils/knotc/commands.c			\
@@ -446,17 +441,6 @@ keymgr_SOURCES = 				\
 	utils/keymgr/functions.h		\
 	utils/keymgr/main.c
 
-knot1to2_SOURCES =				\
-	utils/knot1to2/cf-lex.c			\
-	utils/knot1to2/cf-parse.tab.c		\
-	utils/knot1to2/cf-parse.tab.h		\
-	utils/knot1to2/extra.c			\
-	utils/knot1to2/extra.h			\
-	utils/knot1to2/includes.c		\
-	utils/knot1to2/includes.h		\
-	utils/knot1to2/main.c			\
-	utils/knot1to2/scheme.h
-
 knotd_CPPFLAGS  = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_LDADD     = libknotd.la libcontrib.la $(liburcu_LIBS)
 knotc_CPPFLAGS  = $(AM_CPPFLAGS) $(libedit_CFLAGS)
@@ -466,7 +450,6 @@ keymgr_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS) -I$(srcdir)/dnssec/lib/dnssec
 keymgr_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la \
                   libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
                   zscanner/libzscanner.la $(gnutls_LIBS)
-knot1to2_LDADD  = libcontrib.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
