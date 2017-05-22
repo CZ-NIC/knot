@@ -343,12 +343,15 @@ static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey) {
 static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 {
 	uint16_t kskflag = dnssec_key_get_flags(newkey->key);
+	time_t delay = (kskflag == DNSKEY_FLAGS_KSK ? ctx->policy->ksk_submittion_check_interval : 0);
+	// a delay to avoid left-behind of behind-a-loadbalancer parent NSs
+	// for now we use (incorrectly) ksk_submittion_check_interval, to avoid too many conf options
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (dnssec_key_get_flags(key->key) == kskflag &&
 		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_ACTIVE) {
-			key->timing.retire = ctx->now;
+			key->timing.retire = time_min(ctx->now + delay, key->timing.retire);
 		}
 	}
 
@@ -356,9 +359,10 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 		assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_READY);
 	} else {
 		assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_PUBLISHED);
-		newkey->timing.ready = ctx->now;
+		assert(delay == 0);
+		newkey->timing.ready = time_min(ctx->now + delay, newkey->timing.ready);
 	}
-	newkey->timing.active = ctx->now;
+	newkey->timing.active = time_min(ctx->now + delay, newkey->timing.active);
 
 	return KNOT_EOK;
 }
