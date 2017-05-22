@@ -79,4 +79,5 @@ typedef struct ptrnode {
 ptrnode_t *ptrlist_add(list_t *, void *, knot_mm_t *);
 void ptrlist_free(list_t *, knot_mm_t *);
 void ptrlist_rem(ptrnode_t *node, knot_mm_t *mm);
+void ptrlist_deep_free(list_t *, knot_mm_t *);
 

@@ -113,15 +113,6 @@ static void kaspkey2params(knot_kasp_key_t *key, key_params_t *params)
 	params->timing = key->timing;
 }
 
-static void ptrlist_deep_free(list_t *l)
-{
-	ptrnode_t *n;
-	WALK_LIST(n, *l) {
-		free(n->d);
-	}
-	ptrlist_free(l, NULL);
-}
-
 int kasp_zone_load(knot_kasp_zone_t *zone,
 		   const knot_dname_t *zone_name,
 		   kasp_db_t *kdb)
@@ -181,7 +172,7 @@ kzl_salt:
 	zone->nsec3_salt_created = sc;
 
 kzl_end:
-	ptrlist_deep_free(&key_params);
+	ptrlist_deep_free(&key_params, NULL);
 	if (ret != KNOT_EOK) {
 		free(dkeys);
 	}
