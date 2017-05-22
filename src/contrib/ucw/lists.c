@@ -218,3 +218,17 @@ void ptrlist_rem(ptrnode_t *node, knot_mm_t *mm)
 	rem_node(&node->n);
 	mm_free(mm, node);
 }
+
+/**
+ * ptrlist_deep_free - free all nodes incl referenced data
+ * @list: list nodes
+ * @mm: memory context
+ */
+void ptrlist_deep_free(list_t *l, knot_mm_t *mm)
+{
+	ptrnode_t *n;
+	WALK_LIST(n, *l) {
+		mm_free(mm, n->d);
+	}
+	ptrlist_free(l, mm);
+}
