@@ -83,4 +83,6 @@ typedef struct {
 	uint32_t zone_maximal_ttl;
 	// data propagation delay
 	uint32_t propagation_delay;
+	// various
+	uint32_t ksk_submittion_check_interval;
 } knot_kasp_policy_t;

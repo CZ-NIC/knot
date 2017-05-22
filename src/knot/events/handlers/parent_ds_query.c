@@ -206,13 +206,8 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
 	if (ret != KNOT_EOK) {
-		uint8_t *policy_name = (uint8_t *)conf_str(&policy);
-		size_t policy_name_len = strlen((const char *)policy_name) + 1;
-		conf_val_t check_interval = conf_rawid_get(conf, C_POLICY, C_KSK_SUBMITTION_CHECK_INTERVAL,
-							   policy_name, policy_name_len);
-		time_t next_check = time(NULL) + conf_int(&check_interval);
+		time_t next_check = time(NULL) + ctx.policy->ksk_submittion_check_interval;
 		zone_events_schedule_at(zone, ZONE_EVENT_PARENT_DS_Q, next_check);
 	} else {
 		zone_events_schedule_now(zone, ZONE_EVENT_KEY_ROLLOVER);

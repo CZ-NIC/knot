@@ -81,6 +81,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 
 	val = conf_id_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id);
 	policy->nsec3_salt_lifetime = conf_int(&val);
+
+	val = conf_id_get(conf(), C_POLICY, C_KSK_SUBMITTION_CHECK_INTERVAL, id);
+	policy->ksk_submittion_check_interval = conf_int(&val);
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
