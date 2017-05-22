@@ -323,16 +323,6 @@ static key_params_t *keyval2params(const knot_db_val_t *key, const knot_db_val_t
 #define KEYS_RW 0x1
 
 // TODO move elsewhere
-static void ptrlist_deep_free(list_t *l)
-{
-	ptrnode_t *n;
-	WALK_LIST(n, *l) {
-		free(n->d);
-	}
-	ptrlist_free(l, NULL);
-}
-
-// TODO move elsewhere
 static void va_free(void *p, ...)
 {
 	va_list args;
@@ -377,7 +367,7 @@ int kasp_db_list_keys(kasp_db_t *db, const knot_dname_t *zone_name, list_t *dst)
 	db_api->txn_abort(txn);
 
 	if (ret != KNOT_EOK) {
-		ptrlist_deep_free(dst);
+		ptrlist_deep_free(dst, NULL);
 		return ret;
 	}
 	return (EMPTY_LIST(*dst) ? KNOT_ENOENT : KNOT_EOK);
@@ -448,7 +438,7 @@ int kasp_db_delete_all(kasp_db_t *db, const knot_dname_t *zone_name)
 			break;
 		}
 	}
-	ptrlist_deep_free(&allkeys);
+	ptrlist_deep_free(&allkeys, NULL);
 
 	if (ret == KNOT_EOK) {
 		knot_db_val_t key = make_key(KASPDBKEY_NSEC3SALT, zone_name, NULL);

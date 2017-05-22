@@ -1717,19 +1717,16 @@ int journal_scrape(journal_t *j)
 		WALK_LIST(del_one, to_del) {
 			txn->ret = j->db->db_api->del(txn->txn, (knot_db_val_t *)del_one->d);
 		}
-		md_update_journal_count(txn, -1);
+		if (!EMPTY_LIST(to_del)) {
+			md_update_journal_count(txn, -1);
+		}
 
 		md_del_last_inserter_zone(txn, j->zone);
 
 		txn->ret = j->db->db_api->txn_commit(txn->txn);
 	}
 scrape_end:
-
-	WALK_LIST(del_one, to_del) {
-		free(del_one->d);
-	}
-
-	ptrlist_free(&to_del, NULL);
+	ptrlist_deep_free(&to_del, NULL);
 
 	return txn->ret;
 }
@@ -1805,6 +1802,8 @@ int journal_db_list_zones(journal_db_t **db, list_t *zones)
 	}
 	if (list_size(zones) != expected_count) {
 		txn->ret = KNOT_EMALF;
+		ptrlist_deep_free(zones, NULL);
+		init_list(zones);
 	}
 	return txn->ret;
 }

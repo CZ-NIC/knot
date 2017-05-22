@@ -61,10 +61,12 @@ static int reconfigure_mapsize(const char *journal_path, size_t *mapsize)
 	struct stat st;
 	if (stat(data_mdb, &st) != 0 || st.st_size == 0) {
 		fprintf(stderr, "Journal does not exist: %s\n", journal_path);
+		free(data_mdb);
 		return KNOT_ENOENT;
 	}
 
 	*mapsize = st.st_size + st.st_size / 8; // 112.5% to allow opening when growing
+	free(data_mdb);
 	return KNOT_EOK;
 }
 
@@ -82,11 +84,13 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 
 	ret = reconfigure_mapsize(jdb->path, &jdb->fslimit);
 	if (ret != KNOT_EOK) {
+		journal_db_close(&jdb);
 		return ret;
 	}
 
 	ret = journal_open_db(&jdb);
 	if (ret != KNOT_EOK) {
+		journal_db_close(&jdb);
 		return ret;
 	}
 
@@ -98,6 +102,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 	size_t buflen = 8192;
 	char *buff = malloc(buflen);
 	if (buff == NULL) {
+		journal_db_close(&jdb);
 		return KNOT_ENOMEM;
 	}
 	journal_t *j = journal_new();
@@ -185,11 +190,13 @@ int list_zones(char *path)
 
 	ret = reconfigure_mapsize(jdb->path, &jdb->fslimit);
 	if (ret != KNOT_EOK) {
+		journal_db_close(&jdb);
 		return ret;
 	}
 
 	ret = journal_open_db(&jdb);
 	if (ret != KNOT_EOK) {
+		journal_db_close(&jdb);
 		return ret;
 	}
 
