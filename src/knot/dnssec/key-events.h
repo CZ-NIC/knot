@@ -19,6 +19,7 @@
 #include <time.h>
 
 #include "knot/dnssec/context.h"
+#include "knot/dnssec/zone-events.h"
 #include "knot/zone/zone.h"
 
 /*!
@@ -38,7 +39,7 @@
  *
  * \return KNOT_E*
  */
-int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_changed, time_t *next_rollover);
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule);
 
 int knot_dnssec_ksk_submittion_confirm(kdnssec_ctx_t *ctx, uint16_t for_key);
 

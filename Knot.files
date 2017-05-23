@@ -228,7 +228,6 @@ src/knot/events/handlers/notify.c
 src/knot/events/handlers/nsec3resalt.c
 src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
-src/knot/events/handlers/key_rollover.c
 src/knot/events/handlers/parent_ds_query.c
 src/knot/events/log.c
 src/knot/events/log.h

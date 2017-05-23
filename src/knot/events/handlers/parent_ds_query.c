@@ -210,8 +210,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 		time_t next_check = time(NULL) + ctx.policy->ksk_submittion_check_interval;
 		zone_events_schedule_at(zone, ZONE_EVENT_PARENT_DS_Q, next_check);
 	} else {
-		zone_events_schedule_now(zone, ZONE_EVENT_KEY_ROLLOVER);
-		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC); // TODO needed ?
+		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	}
 
 	free_zone_keys(&keyset);

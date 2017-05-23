@@ -361,8 +361,11 @@ static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	return kdnssec_delete_key(ctx, key);
 }
 
-int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_changed, time_t *next_rollover)
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
 {
+	if (ctx == NULL || reschedule == NULL) {
+		return KNOT_EINVAL;
+	}
 	if (ctx->policy->manual) {
 		return KNOT_EOK;
 	}
@@ -380,7 +383,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_change
 		ret = generate_key(ctx, false, ctx->now);
 	}
 	if (ret == KNOT_EOK) {
-		*keys_changed = true;
+		reschedule->keys_changed = true;
 	}
 
 	if (ret != KNOT_EOK && ret != KNOT_ESEMCHECK) {
@@ -389,9 +392,9 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_change
 
 	roll_action next = next_action(ctx);
 
-	*next_rollover = next.time;
+	reschedule->next_rollover = next.time;
 
-	if (!ctx->policy->singe_type_signing && *next_rollover <= ctx->now) {
+	if (!ctx->policy->singe_type_signing && reschedule->next_rollover <= ctx->now) {
 		switch (next.type) {
 		case PUBLISH:
 			if (next.ksk && ctx->policy->ksk_shared) {
@@ -402,13 +405,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_change
 			break;
 		case SUBMIT:
 			ret = submit_key(ctx, next.key);
-			if (zone == NULL) {
-				return KNOT_EINVAL;
-			}
-			zone_events_schedule_now(zone, ZONE_EVENT_PARENT_DS_Q);
-			// "now" it won't probably succeed, but it replans itself for proper interval
-
-			log_zone_notice(zone->name, "DNSSEC, published CDS, CDNSKEY for submittion");
+			reschedule->plan_ds_query = true;
 			break;
 		case REPLACE:
 			ret = exec_new_signatures(ctx, next.key);
@@ -421,15 +418,15 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_t *zone, bool *keys_change
 		}
 
 		if (ret == KNOT_EOK) {
-			*keys_changed = true;
+			reschedule->keys_changed = true;
 			next = next_action(ctx);
-			*next_rollover = next.time;
+			reschedule->next_rollover = next.time;
 		} else {
-			*next_rollover = time(NULL) + 10; // fail => try in 10seconds #TODO better?
+			reschedule->next_rollover = time(NULL) + 10; // fail => try in 10seconds #TODO better?
 		}
 	}
 
-	if (*keys_changed) {
+	if (reschedule->keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
 	}
 	return (ret == KNOT_ESEMCHECK ? KNOT_EOK : ret);

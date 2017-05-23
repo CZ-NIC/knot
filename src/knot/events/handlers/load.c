@@ -19,6 +19,7 @@
 
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
+#include "knot/dnssec/zone-events.h"
 #include "knot/events/handlers.h"
 #include "knot/events/log.h"
 #include "knot/events/replan.h"
@@ -32,7 +33,8 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	zone_contents_t *contents = NULL;
 	bool load_from_journal = false;
-	uint32_t dnssec_refresh = time(NULL);
+	zone_sign_reschedule_t dnssec_refresh = { 0 };
+	dnssec_refresh.allow_rollover = true;
 
 	/* Take zone file mtime and load it. */
 	time_t mtime;
@@ -112,12 +114,10 @@ load_post:
 
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
-		zone_events_schedule_now(zone, ZONE_EVENT_KEY_ROLLOVER);
 		zone_events_schedule_now(zone, ZONE_EVENT_NSEC3RESALT);
 		// if nothing to be done NOW for any of those, they will replan themselves for later
 
-		log_dnssec_next(zone->name, dnssec_refresh);
-		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, dnssec_refresh);
+		event_dnssec_reschedule(conf, zone, &dnssec_refresh, false); // false since we handle NOTIFY below
 	}
 
 	// TODO: track serial across restart and avoid unnecessary notify

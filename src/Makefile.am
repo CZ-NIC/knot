@@ -288,7 +288,6 @@ libknotd_la_SOURCES =				\
 	knot/events/handlers/nsec3resalt.c	\
 	knot/events/handlers/refresh.c		\
 	knot/events/handlers/update.c		\
-	knot/events/handlers/key_rollover.c	\
 	knot/events/handlers/parent_ds_query.c	\
 	knot/events/log.c			\
 	knot/events/log.h			\

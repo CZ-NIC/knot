@@ -23,6 +23,7 @@
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/context.h"
+#include "knot/dnssec/key-events.h"
 #include "knot/dnssec/policy.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-keys.h"
@@ -30,7 +31,8 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/serial.h"
 
-static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
+static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx,
+		     zone_sign_reschedule_t *reschedule)
 {
 	assert(zone);
 	assert(ctx);
@@ -38,6 +40,15 @@ static int sign_init(const zone_contents_t *zone, int flags, kdnssec_ctx_t *ctx)
 	const knot_dname_t *zone_name = zone->apex->owner;
 
 	int r = kdnssec_ctx_init(conf(), ctx, zone_name, NULL);
+	if (r != KNOT_EOK) {
+		return r;
+	}
+
+	// perform key rollover if needed
+
+	if (reschedule->allow_rollover) {
+		r = knot_dnssec_key_rollover(ctx, reschedule);
+	}
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -146,9 +157,9 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, time_t *when
 }
 
 int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
-                          zone_sign_flags_t flags, uint32_t *refresh_at)
+			  zone_sign_flags_t flags, zone_sign_reschedule_t *reschedule)
 {
-	if (!zone || !out_ch || !refresh_at) {
+	if (!zone || !out_ch || !reschedule) {
 		return KNOT_EINVAL;
 	}
 
@@ -159,7 +170,7 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
 
 	// signing pipeline
 
-	result = sign_init(zone, flags, &ctx);
+	result = sign_init(zone, flags, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -211,7 +222,7 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
 
 done:
 	if (result == KNOT_EOK) {
-		*refresh_at = schedule_next(&ctx, &keyset, zone_expire);
+		reschedule->next_sign = schedule_next(&ctx, &keyset, zone_expire);
 	}
 
 	free_zone_keys(&keyset);
@@ -223,9 +234,9 @@ done:
 int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                const changeset_t *in_ch,
                                changeset_t *out_ch,
-                               uint32_t *refresh_at)
+                               zone_sign_reschedule_t *reschedule)
 {
-	if (zone == NULL || in_ch == NULL || out_ch == NULL || refresh_at == NULL) {
+	if (zone == NULL || in_ch == NULL || out_ch == NULL || reschedule == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -236,7 +247,7 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
 
 	// signing pipeline
 
-	result = sign_init(zone, ZONE_SIGN_KEEP_SOA_SERIAL, &ctx);
+	result = sign_init(zone, ZONE_SIGN_KEEP_SOA_SERIAL, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -284,8 +295,8 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
 
 	// schedule next resigning (only new signatures are made)
 
-	*refresh_at = ctx.now + ctx.policy->rrsig_lifetime - ctx.policy->rrsig_refresh_before;
-	assert(refresh_at > 0);
+	reschedule->next_sign = ctx.now + ctx.policy->rrsig_lifetime - ctx.policy->rrsig_refresh_before;
+	assert(reschedule->next_sign > 0);
 
 done:
 	free_zone_keys(&keyset);

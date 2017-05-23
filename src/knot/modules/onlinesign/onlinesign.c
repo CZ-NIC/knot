@@ -451,9 +451,9 @@ static int get_online_key(dnssec_key_t **key_ptr, knotd_mod_t *mod)
 	// Force Singe-Type signing scheme.
 	kctx.policy->singe_type_signing = true;
 
-	bool ignore1 = false;
-	time_t ignore2 = 0;
-	r = knot_dnssec_key_rollover(&kctx, NULL, &ignore1, &ignore2);
+	zone_sign_reschedule_t ignore_out = { 0 };
+	ignore_out.allow_rollover = true;
+	r = knot_dnssec_key_rollover(&kctx, &ignore_out);
 	if (r != DNSSEC_EOK) {
 		goto fail;
 	}
