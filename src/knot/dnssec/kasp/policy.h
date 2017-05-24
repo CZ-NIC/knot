@@ -84,5 +84,6 @@ typedef struct {
 	// data propagation delay
 	uint32_t propagation_delay;
 	// various
+	uint32_t ksk_submittion_check_max;
 	uint32_t ksk_submittion_check_interval;
 } knot_kasp_policy_t;

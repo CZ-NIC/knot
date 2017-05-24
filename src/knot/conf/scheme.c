@@ -206,6 +206,7 @@ static const yp_item_t desc_policy[] = {
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_KSK_SUBMITTION_CHECK,YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES, { check_ref } },
 	{ C_KSK_SUBMITTION_CHECK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME }, CONF_IO_FRLD_ZONES },
+	{ C_KSK_SUBMITTION_CHECK_MAX, YP_TINT, YP_VINT = { 1, UINT32_MAX, UINT32_MAX, YP_STIME }, CONF_IO_FRLD_ZONES },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };

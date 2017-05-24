@@ -237,6 +237,14 @@ static time_t ksk_ready_time(time_t publish_time, const kdnssec_ctx_t *ctx)
 	return publish_time + ctx->policy->propagation_delay + ctx->policy->dnskey_ttl;
 }
 
+static time_t ksk_submittion_max_time(time_t ready_time, const kdnssec_ctx_t *ctx)
+{
+	if (ready_time <= 0 || ready_time >= TIME_INFINITY) {
+		return TIME_INFINITY;
+	}
+	return ready_time + ctx->policy->ksk_submittion_check_max;
+}
+
 static time_t ksk_remove_time(time_t retire_time, const kdnssec_ctx_t *ctx)
 {
 	if (retire_time <= 0 || retire_time >= TIME_INFINITY) {
@@ -277,6 +285,8 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				restype = SUBMIT;
 				break;
 			case DNSSEC_KEY_STATE_READY:
+				keytime = ksk_submittion_max_time(key->timing.ready, ctx);
+				restype = REPLACE;
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
 				if (!is_ksk_published) {

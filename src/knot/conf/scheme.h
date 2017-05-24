@@ -65,6 +65,7 @@
 #define C_KSK_SIZE		"\x08""ksk-size"
 #define C_KSK_SUBMITTION_CHECK  "\x14""ksk-submittion-check"
 #define C_KSK_SUBMITTION_CHECK_INTERVAL "\x1D""ksk-submittion-check-interval"
+#define C_KSK_SUBMITTION_CHECK_MAX "\x18""ksk-submittion-check-max"
 #define C_LISTEN		"\x06""listen"
 #define C_LOG			"\x03""log"
 #define C_MANUAL		"\x06""manual"
