@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <ftw.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,69 +29,20 @@
 #include "contrib/string.h"
 #include "libknot/errcode.h"
 
-static bool special_name(const char *name)
+static int remove_file(const char *path, const struct stat *stat, int type, struct FTW *ftw)
 {
-	return strcmp(name, ".") == 0 || strcmp(name, "..") == 0;
-}
-
-static bool rm_dir_contents(int dir_fd)
-{
-	DIR *dir = fdopendir(dir_fd);
-	if (!dir) {
-		return false;
+	(void)stat;
+	(void)ftw;
+	if (type == FTW_DP) {
+		return rmdir(path);
+	} else {
+		return unlink(path);
 	}
-
-	bool success = true;
-
-	struct dirent *result = NULL;
-	while (success && (result = readdir(dir)) != NULL) {
-		if (special_name(result->d_name)) {
-			continue;
-		}
-
-		bool is_dir = result->d_type == DT_DIR;
-
-		if (is_dir) {
-			int sub = openat(dir_fd, result->d_name, O_NOFOLLOW);
-			success = rm_dir_contents(sub);
-			close(sub);
-		}
-
-		if (success) {
-			int flags = is_dir ? AT_REMOVEDIR : 0;
-			success = unlinkat(dir_fd, result->d_name, flags) == 0;
-		}
-	}
-
-	closedir(dir);
-
-	return success;
 }
 
 bool remove_path(const char *path)
 {
-	if (!path) {
-		return false;
-	}
-
-	int fd = open(path, O_NOFOLLOW);
-	if (fd < 0) {
-		return false;
-	}
-
-	struct stat st = { 0 };
-	if (fstat(fd, &st) != 0) {
-		close(fd);
-		return false;
-	}
-
-	if (S_ISDIR(st.st_mode) && !rm_dir_contents(fd)) {
-		close(fd);
-		return false;
-	}
-
-	close(fd);
-	return (remove(path) == 0);
+	return (0 == nftw(path, remove_file, 1, FTW_DEPTH | FTW_PHYS));
 }
 
 int make_dir(const char *path, mode_t mode, bool ignore_existing)
