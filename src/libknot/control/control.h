@@ -37,6 +37,7 @@ typedef enum {
 	KNOT_CTL_IDX_TTL,     /*!< Zone record TTL. */
 	KNOT_CTL_IDX_TYPE,    /*!< Zone record type name. */
 	KNOT_CTL_IDX_DATA,    /*!< Configuration item/zone record data. */
+	KNOT_CTL_IDX_FILTER,  /*!< An option or a filter for output data processing. */
 	KNOT_CTL_IDX__COUNT,  /*!< The number of data items. */
 } knot_ctl_idx_t;
 

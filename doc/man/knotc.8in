@@ -69,9 +69,9 @@ Print the program version.
 .INDENT 0.0
 .TP
 \fBstatus\fP [\fIdetail\fP]
-Check if the server is running.
-Moreover display either the running knotd version, numbers of worker threads,
-or Knot DNS buid (configure) summary, if the parameter is specified.
+Check if the server is running. Details are \fBversion\fP for the running
+server version, \fBworkers\fP for the numbers of worker threads,
+or \fBconfigure\fP for the configure summary.
 .TP
 \fBstop\fP
 Stop the server if running.
@@ -85,8 +85,8 @@ Show global statistics counter(s). To print also counters with value 0, use
 force option.
 .TP
 \fBzone\-status\fP \fIzone\fP [\fIfilter\fP]
-Show the zone status. (*)
-Filters are type, serial, transaction, event\-timers, and freeze with prefix \(aq+\(aq.
+Show the zone status. Filters are \fB+role\fP, \fB+serial\fP, \fB+transaction\fP,
+\fB+events\fP, and \fB+freeze\fP\&.
 .TP
 \fBzone\-check\fP [\fIzone\fP\&...]
 Test if the server can load the zone. Semantic checks are executed if enabled
@@ -109,8 +109,10 @@ newer zone, a transfer is scheduled. This command is valid for slave zones.
 Trigger a zone transfer from the zone\(aqs master. The server doesn\(aqt check the
 serial of the master\(aqs zone. This command is valid for slave zones.
 .TP
-\fBzone\-flush\fP [\fIzone\fP\&...]
-Trigger a zone journal flush into the zone file.
+\fBzone\-flush\fP [\fIzone\fP\&...] [\fB+outdir\fP \fIdirectory\fP]
+Trigger a zone journal flush into the zone file. If output dir is specified,
+instead of flushing the zonefile, the zone is dumped to a file in the specified
+directory.
 .TP
 \fBzone\-sign\fP [\fIzone\fP\&...]
 Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.
@@ -141,8 +143,10 @@ requires a ttl value specified.
 \fBzone\-unset\fP \fIzone\fP \fIowner\fP [\fItype\fP [\fIrdata\fP]]
 Remove zone data within the transaction.
 .TP
-\fBzone\-purge\fP \fIzone\fP\&...
-Purge zone data, file, journal, and timers.
+\fBzone\-purge\fP \fIzone\fP\&... [\fIfilter\fP\&...]
+Purge zone data, file, journal, timers, and kaspdb.
+Filters are \fB+expire\fP, \fB+timers\fP, \fB+zonefile\fP, \fB+journal\fP,
+and \fB+kaspdb\fP\&.
 .TP
 \fBzone\-stats\fP \fIzone\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
 Show zone statistics counter(s). To print also counters with value 0, use
@@ -203,8 +207,6 @@ Empty or \fB\-\-\fP \fIzone\fP parameter means all zones or all zones with a tra
 Use \fB@\fP \fIowner\fP to denote the zone name.
 .sp
 Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIname\fP].
-.sp
-The \fIdetail\fP option for \fBstatus\fP can be one of words: version, workers, configure.
 .sp
 (*) indicates a local operation which requires a configuration.
 .SS Interactive mode

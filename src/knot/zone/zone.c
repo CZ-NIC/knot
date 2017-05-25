@@ -615,3 +615,32 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates)
 
 	return update_count;
 }
+
+int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
+{
+	if (zone == NULL || dir == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	size_t dir_len = strlen(dir);
+	if (dir_len == 0) {
+		return KNOT_EINVAL;
+	}
+
+	char *zonefile = conf_zonefile(conf, zone->name);
+	char *zonefile_basename = strrchr(zonefile, '/');
+	if (zonefile_basename == NULL) {
+		zonefile_basename = zonefile;
+	}
+
+	size_t target_length = strlen(zonefile_basename) + dir_len + 2;
+	char target[target_length];
+	(void)snprintf(target, target_length, "%s/%s", dir, zonefile_basename);
+	if (strcmp(target, zonefile) == 0) {
+		free(zonefile);
+		return KNOT_EDENIED;
+	}
+	free(zonefile);
+
+	return zonefile_write(target, zone->contents);
+}
