@@ -313,7 +313,9 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 
 static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
-	if (MATCH_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
+	if (args->data[KNOT_CTL_IDX_FILTER] != NULL &&
+	    strchr(args->data[KNOT_CTL_IDX_FILTER], CTL_FILTER_FLUSH_OUTDIR) != NULL) {
+		// ^^ this is different than macro MATCH_FILTER
 		return zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
 	}
 
