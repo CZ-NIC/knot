@@ -16,28 +16,36 @@
 
 #include <assert.h>
 #include <stddef.h>
-
-#include "dnssec/error.h"
+#include <string.h>
 
 #include "contrib/string.h"
-#include "knot/modules/online_sign/online_sign.h"
-#include "knot/modules/online_sign/nsec_next.h"
+#include "dnssec/error.h"
+#include "knot/include/module.h"
+#include "knot/modules/onlinesign/nsec_next.h"
+// Next dependencies force static module!
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/nameserver/query_module.h"
+#include "knot/nameserver/process_query.h"
 
-#define MOD_POLICY	C_POLICY
+#define MOD_POLICY	"\x06""policy"
 
-const yp_item_t scheme_mod_online_sign[] = {
-	{ C_ID,       YP_TSTR, YP_VNONE },
-	{ MOD_POLICY, YP_TREF, YP_VREF = { C_POLICY }, YP_FNONE, { check_ref_dflt } },
-	{ C_COMMENT,  YP_TSTR, YP_VNONE },
+int policy_check(knotd_conf_check_args_t *args)
+{
+	int ret = knotd_conf_check_ref(args);
+	if (ret != KNOT_EOK && strcmp((const char *)args->data, "default") == 0) {
+		return KNOT_EOK;
+	}
+
+	return ret;
+}
+
+const yp_item_t online_sign_conf[] = {
+	{ MOD_POLICY, YP_TREF, YP_VREF = { C_POLICY }, YP_FNONE, { policy_check } },
 	{ NULL }
 };
-
-#define module_zone_error(zone, msg...) \
-	MODULE_ZONE_ERR(C_MOD_ONLINE_SIGN, zone, msg)
 
 #define RRSIG_LIFETIME (25*60*60)
 
@@ -81,20 +89,20 @@ typedef struct {
 	uint32_t rrsig_lifetime;
 } online_sign_ctx_t;
 
-static bool want_dnssec(struct query_data *qdata)
+static bool want_dnssec(knotd_qdata_t *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query);
 }
 
-static uint32_t dnskey_ttl(const zone_t *zone)
+static uint32_t dnskey_ttl(knotd_qdata_t *qdata)
 {
-	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa = knotd_qdata_zone_apex_rrset(qdata, KNOT_RRTYPE_SOA);
 	return knot_rrset_ttl(&soa);
 }
 
-static uint32_t nsec_ttl(const zone_t *zone)
+static uint32_t nsec_ttl(knotd_qdata_t *qdata)
 {
-	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa = knotd_qdata_zone_apex_rrset(qdata, KNOT_RRTYPE_SOA);
 	return knot_soa_minimum(&soa.rrs);
 }
 
@@ -158,7 +166,7 @@ static void bitmap_add_section(dnssec_nsec_bitmap_t *map, const knot_pktsection_
  * - For non-ANY query, the bitmap will contain types from zone and forced
  *   types which can be potentionally synthesized by other query modules.
  */
-static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const struct query_data *qdata)
+static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *qdata)
 {
 	dnssec_nsec_bitmap_t *map = dnssec_nsec_bitmap_new();
 	if (!map) {
@@ -166,9 +174,9 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const struct query_da
 	}
 
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
-	bool is_apex = qdata->zone
-	               && qdata->zone->contents
-	               && qdata->node == qdata->zone->contents->apex;
+	bool is_apex = qdata->extra->zone
+	               && qdata->extra->zone->contents
+	               && qdata->extra->node == qdata->extra->zone->contents->apex;
 
 	bitmap_add_synth(map, is_apex);
 
@@ -176,8 +184,8 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const struct query_da
 		const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 		bitmap_add_section(map, answer);
 	} else {
-		bitmap_add_zone(map, qdata->node);
-		if (!node_rrtype_exists(qdata->node, KNOT_RRTYPE_CNAME)) {
+		bitmap_add_zone(map, qdata->extra->node);
+		if (!node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
 			bitmap_add_forced(map, qtype);
 		}
 	}
@@ -185,14 +193,15 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const struct query_da
 	return map;
 }
 
-static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, struct query_data *qdata, knot_mm_t *mm)
+static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t *mm)
 {
-	knot_rrset_t *nsec = knot_rrset_new(qdata->name, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, mm);
+	knot_rrset_t *nsec = knot_rrset_new(qdata->name, KNOT_RRTYPE_NSEC,
+	                                    KNOT_CLASS_IN, mm);
 	if (!nsec) {
 		return NULL;
 	}
 
-	knot_dname_t *next = online_nsec_next(qdata->name, qdata->zone->name);
+	knot_dname_t *next = online_nsec_next(qdata->name, knotd_qdata_zone_name(qdata));
 	if (!next) {
 		knot_rrset_free(&nsec, mm);
 		return NULL;
@@ -214,7 +223,7 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, struct query_data *qdata, knot_
 	knot_dname_free(&next, NULL);
 	dnssec_nsec_bitmap_free(bitmap);
 
-	uint32_t ttl = nsec_ttl(qdata->zone);
+	uint32_t ttl = nsec_ttl(qdata);
 
 	if (knot_rrset_add_rdata(nsec, rdata, size, ttl, mm) != KNOT_EOK) {
 		knot_rrset_free(&nsec, mm);
@@ -273,9 +282,10 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 	return rrsig;
 }
 
-static int sign_section(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
+static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
+                                     knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	online_sign_ctx_t *module_ctx = _ctx;
+	online_sign_ctx_t *module_ctx = knotd_mod_ctx(mod);
 
 	if (!want_dnssec(qdata)) {
 		return state;
@@ -284,7 +294,7 @@ static int sign_section(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	dnssec_sign_ctx_t *sign_ctx = NULL;
 	int r = dnssec_sign_new(&sign_ctx, module_ctx->key);
 	if (r != DNSSEC_EOK) {
-		return ERROR;
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	const knot_pktsection_t *section = knot_pkt_section(pkt, pkt->current);
@@ -301,14 +311,14 @@ static int sign_section(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 		knot_rrset_t *rrsig = sign_rrset(owner, rr, module_ctx, sign_ctx, &pkt->mm);
 		if (!rrsig) {
-			state = ERROR;
+			state = KNOTD_IN_STATE_ERROR;
 			break;
 		}
 
 		r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, rrsig, KNOT_PF_FREE);
 		if (r != KNOT_EOK) {
 			knot_rrset_free(&rrsig, &pkt->mm);
-			state = ERROR;
+			state = KNOTD_IN_STATE_ERROR;
 			break;
 		}
 	}
@@ -318,9 +328,10 @@ static int sign_section(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	return state;
 }
 
-static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
+static knotd_in_state_t synth_authority(knotd_in_state_t state, knot_pkt_t *pkt,
+                                        knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	if (state == HIT) {
+	if (state == KNOTD_IN_STATE_HIT) {
 		return state;
 	}
 
@@ -331,26 +342,26 @@ static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, nsec, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
 			knot_rrset_free(&nsec, &pkt->mm);
-			return ERROR;
+			return KNOTD_IN_STATE_ERROR;
 		}
 	}
 
 	// promote NXDOMAIN to NODATA
 
-	if (state == MISS) {
+	if (state == KNOTD_IN_STATE_MISS) {
 		//! \todo Override RCODE set in solver_authority. Review.
 		qdata->rcode = KNOT_RCODE_NOERROR;
-		return NODATA;
+		return KNOTD_IN_STATE_NODATA;
 	}
 
 	return state;
 }
 
-static knot_rrset_t *synth_dnskey(const zone_t *zone, const dnssec_key_t *key,
+static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const dnssec_key_t *key,
                                   knot_mm_t *mm)
 {
-	knot_rrset_t *dnskey = knot_rrset_new(zone->name, KNOT_RRTYPE_DNSKEY,
-	                                      KNOT_CLASS_IN, mm);
+	knot_rrset_t *dnskey = knot_rrset_new(knotd_qdata_zone_name(qdata),
+	                                      KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN, mm);
 	if (!dnskey) {
 		return 0;
 	}
@@ -359,7 +370,7 @@ static knot_rrset_t *synth_dnskey(const zone_t *zone, const dnssec_key_t *key,
 	dnssec_key_get_rdata(key, &rdata);
 	assert(rdata.size > 0 && rdata.data);
 
-	uint32_t ttl = dnskey_ttl(zone);
+	uint32_t ttl = dnskey_ttl(qdata);
 
 	int r = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, ttl, mm);
 	if (r != KNOT_EOK) {
@@ -370,68 +381,69 @@ static knot_rrset_t *synth_dnskey(const zone_t *zone, const dnssec_key_t *key,
 	return dnskey;
 }
 
-static bool qtype_match(struct query_data *qdata, uint16_t type)
+static bool qtype_match(knotd_qdata_t *qdata, uint16_t type)
 {
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
 	return (qtype == KNOT_RRTYPE_ANY || qtype == type);
 }
 
-static bool is_apex_query(struct query_data *qdata)
+static bool is_apex_query(knotd_qdata_t *qdata)
 {
-	return knot_dname_is_equal(qdata->name, qdata->zone->name);
+	return knot_dname_is_equal(qdata->name, knotd_qdata_zone_name(qdata));
 }
 
-static int synth_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, void *_ctx)
+static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
+                                     knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	online_sign_ctx_t *ctx = _ctx;
+	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
 
 	// disallowed queries
 
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_RRSIG) {
 		qdata->rcode = KNOT_RCODE_REFUSED;
-		return ERROR;
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	// synthesized DNSSEC answers
 
 	if (qtype_match(qdata, KNOT_RRTYPE_DNSKEY) && is_apex_query(qdata)) {
-		knot_rrset_t *dnskey = synth_dnskey(qdata->zone, ctx->key, &pkt->mm);
+		knot_rrset_t *dnskey = synth_dnskey(qdata, ctx->key, &pkt->mm);
 		if (!dnskey) {
-			return ERROR;
+			return KNOTD_IN_STATE_ERROR;
 		}
 
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
 			knot_rrset_free(&dnskey, &pkt->mm);
-			return ERROR;
+			return KNOTD_IN_STATE_ERROR;
 		}
 
-		state = HIT;
+		state = KNOTD_IN_STATE_HIT;
 	}
 
 	if (qtype_match(qdata, KNOT_RRTYPE_NSEC)) {
 		knot_rrset_t *nsec = synth_nsec(pkt, qdata, &pkt->mm);
 		if (!nsec) {
-			return ERROR;
+			return KNOTD_IN_STATE_ERROR;
 		}
 
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, nsec, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
 			knot_rrset_free(&nsec, &pkt->mm);
-			return ERROR;
+			return KNOTD_IN_STATE_ERROR;
 		}
 
-		state = HIT;
+		state = KNOTD_IN_STATE_HIT;
 	}
 
 	return state;
 }
 
-static int get_online_key(dnssec_key_t **key_ptr, struct query_module *module)
+static int get_online_key(dnssec_key_t **key_ptr, knotd_mod_t *mod)
 {
 	kdnssec_ctx_t kctx = { 0 };
 
-	int r = kdnssec_ctx_init(module->config, &kctx, module->zone, module->id);
+	int r = kdnssec_ctx_init(mod->config, &kctx, mod->zone, mod->id);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
@@ -477,25 +489,25 @@ static void online_sign_ctx_free(online_sign_ctx_t *ctx)
 	free(ctx);
 }
 
-static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, struct query_module *module)
+static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 {
 	online_sign_ctx_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx) {
 		return KNOT_ENOMEM;
 	}
 
-	int r = get_online_key(&ctx->key, module);
+	int r = get_online_key(&ctx->key, mod);
 	if (r != KNOT_EOK) {
 		online_sign_ctx_free(ctx);
 		return r;
 	}
 
 	ctx->rrsig_lifetime = RRSIG_LIFETIME;
-	conf_val_t policy = conf_mod_get(module->config, MOD_POLICY, module->id);
-	if (policy.code == KNOT_EOK) {
-		conf_val_t val = conf_id_get(module->config, C_POLICY, C_RRSIG_LIFETIME, &policy);
-		if (val.code == KNOT_EOK) {
-			ctx->rrsig_lifetime = conf_int(&val);
+	knotd_conf_t policy = knotd_conf_mod(mod, MOD_POLICY);
+	if (policy.count != 0) {
+		knotd_conf_t conf = knotd_conf(mod, C_POLICY, C_RRSIG_LIFETIME, &policy);
+		if (conf.count != 0) {
+			ctx->rrsig_lifetime = conf.single.integer;
 		}
 	}
 
@@ -504,43 +516,40 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, struct query_module 
 	return KNOT_EOK;
 }
 
-int online_sign_load(struct query_module *module)
+int online_sign_load(knotd_mod_t *mod)
 {
-	assert(module);
-	assert(module->zone);
-
-	conf_val_t val = conf_zone_get(module->config, C_DNSSEC_SIGNING, module->zone);
-	if (conf_bool(&val)) {
-		module_zone_error(module->zone, "incompatible with automatic signing");
+	knotd_conf_t conf = knotd_conf_zone(mod, C_DNSSEC_SIGNING,
+	                                    knotd_mod_zone(mod));
+	if (conf.single.boolean) {
+		knotd_mod_log(mod, LOG_ERR, "incompatible with automatic signing");
 		return KNOT_ENOTSUP;
 	}
 
 	online_sign_ctx_t *ctx = NULL;
-	int r = online_sign_ctx_new(&ctx, module);
+	int r = online_sign_ctx_new(&ctx, mod);
 	if (r != KNOT_EOK) {
-		module_zone_error(module->zone, "failed to initialize signing key (%s)",
-		                  dnssec_strerror(r));
+		knotd_mod_log(mod, LOG_ERR, "failed to initialize signing key (%s)",
+		              dnssec_strerror(r));
 		return KNOT_ERROR;
 	}
 
-	module->ctx = ctx;
+	knotd_mod_ctx_set(mod, ctx);
 
-	query_module_step(module, QPLAN_ANSWER, synth_answer);
-	query_module_step(module, QPLAN_ANSWER, sign_section);
+	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, synth_answer);
+	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, sign_section);
 
-	query_module_step(module, QPLAN_AUTHORITY, synth_authority);
-	query_module_step(module, QPLAN_AUTHORITY, sign_section);
+	knotd_mod_in_hook(mod, KNOTD_STAGE_AUTHORITY, synth_authority);
+	knotd_mod_in_hook(mod, KNOTD_STAGE_AUTHORITY, sign_section);
 
-	query_module_step(module, QPLAN_ADDITIONAL, sign_section);
+	knotd_mod_in_hook(mod, KNOTD_STAGE_ADDITIONAL, sign_section);
 
 	return KNOT_EOK;
 }
 
-void online_sign_unload(struct query_module *module)
+void online_sign_unload(knotd_mod_t *mod)
 {
-	assert(module);
-
-	online_sign_ctx_t *ctx = module->ctx;
-
-	online_sign_ctx_free(ctx);
+	online_sign_ctx_free(knotd_mod_ctx(mod));
 }
+
+KNOTD_MOD_API(onlinesign, KNOTD_MOD_FLAG_SCOPE_ZONE | KNOTD_MOD_FLAG_OPT_CONF,
+              online_sign_load, online_sign_unload, online_sign_conf, NULL);

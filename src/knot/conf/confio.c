@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,8 +16,10 @@
 
 #include <assert.h>
 
+#include "knot/common/log.h"
 #include "knot/conf/confdb.h"
 #include "knot/conf/confio.h"
+#include "knot/conf/module.h"
 #include "knot/conf/tools.h"
 
 #define FCN(io)	(io->fcn != NULL) ? io->fcn(io) : KNOT_EOK;
@@ -167,7 +169,7 @@ int conf_io_list(
 		return list_section(conf()->scheme, &io->key0, io);
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -497,7 +499,7 @@ int conf_io_diff(
 		return KNOT_EOK;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -696,7 +698,7 @@ int conf_io_get(
 		return KNOT_EOK;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -878,20 +880,32 @@ static int set_item(
 	}
 
 	// Postpone group callbacks to config check.
-	if (io->key0->type == YP_TGRP) {
+	if (io->key0->type == YP_TGRP && io->id_len == 0) {
 		return KNOT_EOK;
 	}
 
-	conf_check_t args = {
+	knotd_conf_check_extra_t extra = {
 		.conf = conf(),
-		.txn = conf()->io.txn,
-		.item = (io->key1 != NULL) ? io->key1 : io->key0,
+		.txn = conf()->io.txn
+	};
+	knotd_conf_check_args_t args = {
+		.item = (io->key1 != NULL) ? io->key1 :
+		         ((io->id_len == 0) ? io->key0 : io->key0->var.g.id),
+		.id = io->id,
+		.id_len = io->id_len,
 		.data = io->data.bin,
-		.data_len = io->data.bin_len
+		.data_len = io->data.bin_len,
+		.extra = &extra
 	};
 
-	// Call the item callbacks (include).
-	return conf_exec_callbacks(&args);
+	// Call the item callbacks (include, item check, mod-id check).
+	ret = conf_exec_callbacks(&args);
+	if (ret != KNOT_EOK) {
+		CONF_LOG(LOG_DEBUG, "item '%s' (%s)", args.item->name + 1,
+		         args.err_str != NULL ? args.err_str : knot_strerror(ret));
+	}
+
+	return ret;
 }
 
 int conf_io_set(
@@ -911,7 +925,7 @@ int conf_io_set(
 		return KNOT_EINVAL;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -1118,7 +1132,7 @@ int conf_io_unset(
 		return KNOT_EOK;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf()->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -1276,11 +1290,15 @@ static int check_section(
 	size_t id_len,
 	conf_io_t *io)
 {
-	conf_check_t args = {
+	knotd_conf_check_extra_t extra = {
 		.conf = conf(),
 		.txn = conf()->io.txn,
+		.check = true
+	};
+	knotd_conf_check_args_t args = {
 		.id = id,
-		.id_len = id_len
+		.id_len = id_len,
+		.extra = &extra
 	};
 
 	bool non_empty = false;
@@ -1482,6 +1500,7 @@ int conf_io_check(
 
 	ret = KNOT_EOK;
 check_error:
+	conf_mod_load_purge(conf(), true);
 
 	return ret;
 }

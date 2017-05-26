@@ -19,11 +19,16 @@ SUFFIXES = .proto .pb-c.c .pb-c.h
 
 noinst_LTLIBRARIES = libdnstap.la
 
+libdnstap_la_CPPFLAGS =			\
+	$(AM_CPPFLAGS)			\
+	$(CFLAG_VISIBILITY)
+
 libdnstap_la_CFLAGS =			\
 	$(DNSTAP_CFLAGS)
 
 libdnstap_la_LDFLAGS =			\
-	$(DNSTAP_LIBS)
+	$(DNSTAP_LIBS)			\
+	$(LDFLAG_EXCLUDE_LIBS)
 
 libdnstap_la_SOURCES =			\
 	convert.c			\

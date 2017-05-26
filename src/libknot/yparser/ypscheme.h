@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -87,22 +87,23 @@ typedef enum {
 typedef enum {
 	YP_FNONE  = 0,       /*!< Unspecified. */
 	YP_FMULTI = 1 <<  0, /*!< Multivalued item. */
-	YP_FUSR1  = 1 <<  1, /*!< User-defined flag1. */
-	YP_FUSR2  = 1 <<  2, /*!< User-defined flag2. */
-	YP_FUSR3  = 1 <<  3, /*!< User-defined flag3. */
-	YP_FUSR4  = 1 <<  4, /*!< User-defined flag4. */
-	YP_FUSR5  = 1 <<  5, /*!< User-defined flag5. */
-	YP_FUSR6  = 1 <<  6, /*!< User-defined flag6. */
-	YP_FUSR7  = 1 <<  7, /*!< User-defined flag7. */
-	YP_FUSR8  = 1 <<  8, /*!< User-defined flag8. */
-	YP_FUSR9  = 1 <<  9, /*!< User-defined flag9. */
-	YP_FUSR10 = 1 << 10, /*!< User-defined flag10. */
-	YP_FUSR11 = 1 << 11, /*!< User-defined flag11. */
-	YP_FUSR12 = 1 << 12, /*!< User-defined flag12. */
-	YP_FUSR13 = 1 << 13, /*!< User-defined flag13. */
-	YP_FUSR14 = 1 << 14, /*!< User-defined flag14. */
-	YP_FUSR15 = 1 << 15, /*!< User-defined flag15. */
-	YP_FUSR16 = 1 << 16, /*!< User-defined flag16. */
+	YP_FALLOC = 1 <<  1, /*!< Allocated item. */
+	YP_FUSR1  = 1 <<  5, /*!< User-defined flag1. */
+	YP_FUSR2  = 1 <<  6, /*!< User-defined flag2. */
+	YP_FUSR3  = 1 <<  7, /*!< User-defined flag3. */
+	YP_FUSR4  = 1 <<  8, /*!< User-defined flag4. */
+	YP_FUSR5  = 1 <<  9, /*!< User-defined flag5. */
+	YP_FUSR6  = 1 << 10, /*!< User-defined flag6. */
+	YP_FUSR7  = 1 << 11, /*!< User-defined flag7. */
+	YP_FUSR8  = 1 << 12, /*!< User-defined flag8. */
+	YP_FUSR9  = 1 << 13, /*!< User-defined flag9. */
+	YP_FUSR10 = 1 << 14, /*!< User-defined flag10. */
+	YP_FUSR11 = 1 << 15, /*!< User-defined flag11. */
+	YP_FUSR12 = 1 << 16, /*!< User-defined flag12. */
+	YP_FUSR13 = 1 << 17, /*!< User-defined flag13. */
+	YP_FUSR14 = 1 << 18, /*!< User-defined flag14. */
+	YP_FUSR15 = 1 << 19, /*!< User-defined flag15. */
+	YP_FUSR16 = 1 << 20, /*!< User-defined flag16. */
 } yp_flag_t;
 
 /*! Scheme item style. */
@@ -217,7 +218,7 @@ struct yp_node {
 /*! Context parameters for check operations. */
 typedef struct {
 	/*! Used scheme. */
-	const yp_item_t *scheme;
+	yp_item_t **scheme;
 	/*! Index of the current node. */
 	size_t current;
 	/*! Node stack. */
@@ -228,13 +229,37 @@ typedef struct {
  * Copies the scheme and reinitializes dynamic parameters.
  *
  * \param[out] dst New copy of the scheme.
- * \param[in] srt Source scheme.
+ * \param[in] src Source scheme.
  *
  * \return Error code, KNOT_EOK if success.
  */
 int yp_scheme_copy(
 	yp_item_t **dst,
 	const yp_item_t *src
+);
+
+/*!
+ * Merges two schemes.
+ *
+ * \param[out] dst Merged scheme.
+ * \param[in] src1 Source scheme1.
+ * \param[in] src2 Source scheme2.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int yp_scheme_merge(
+	yp_item_t **dst,
+	const yp_item_t *src1,
+	const yp_item_t *src2
+);
+
+/*!
+ * Purges dynamic items from the scheme.
+ *
+ * \param[in] scheme Scheme to purge.
+ */
+void yp_scheme_purge_dynamic(
+	yp_item_t *scheme
 );
 
 /*!
@@ -269,7 +294,7 @@ const yp_item_t* yp_scheme_find(
  * \return Context, NULL if error.
  */
 yp_check_ctx_t* yp_scheme_check_init(
-	const yp_item_t *scheme
+	yp_item_t **scheme
 );
 
 /*!
@@ -318,7 +343,5 @@ int yp_scheme_check_str(
 void yp_scheme_check_deinit(
 	yp_check_ctx_t *ctx
 );
-
-// TODO: scheme add/remove item.
 
 /*! @} */

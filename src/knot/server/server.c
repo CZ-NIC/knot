@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,10 +21,12 @@
 #include <urcu.h>
 
 #include "libknot/errcode.h"
+#include "libknot/yparser/ypscheme.h"
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/conf/confio.h"
 #include "knot/conf/migration.h"
+#include "knot/conf/module.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -538,25 +540,46 @@ void server_wait(server_t *server)
 
 static int reload_conf(conf_t *new_conf)
 {
+	yp_scheme_purge_dynamic(new_conf->scheme);
+
+	/* Re-load common modules. */
+	int ret = conf_mod_load_common(new_conf);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	/* Re-import zonefile if specified. */
 	const char *filename = conf()->filename;
 	if (filename != NULL) {
 		log_info("reloading configuration file '%s'", filename);
 
 		/* Import the configuration file. */
-		int ret = conf_import(new_conf, filename, true);
+		ret = conf_import(new_conf, filename, true);
 		if (ret != KNOT_EOK) {
 			log_error("failed to load configuration file (%s)",
 			          knot_strerror(ret));
-			conf_free(new_conf);
 			return ret;
 		}
 	} else {
 		log_info("reloading configuration database");
+
+		/* Re-load extra modules. */
+		for (conf_iter_t iter = conf_iter(new_conf, C_MODULE);
+		     iter.code == KNOT_EOK; conf_iter_next(new_conf, &iter)) {
+			conf_val_t id = conf_iter_id(new_conf, &iter);
+			conf_val_t file = conf_id_get(new_conf, C_MODULE, C_FILE, &id);
+			ret = conf_mod_load_extra(new_conf, conf_str(&id), conf_str(&file), false);
+			if (ret != KNOT_EOK) {
+				conf_iter_finish(new_conf, &iter);
+				return ret;
+			}
+		}
 	}
 
+	conf_mod_load_purge(new_conf, false);
+
 	// Migrate from old schema.
-	int ret = conf_migrate(new_conf);
+	ret = conf_migrate(new_conf);
 	if (ret != KNOT_EOK) {
 		log_error("failed to migrate configuration (%s)", knot_strerror(ret));
 	}
@@ -591,27 +614,28 @@ int server_reload(server_t *server)
 	bool full = !(flags & CONF_IO_FACTIVE);
 	bool reuse_modules = !full && !(flags & CONF_IO_FRLD_MOD);
 
-	/* Reload configuration if full reload. */
-	if (full) {
+	/* Reload configuration and modules if full reload or a module change. */
+	if (full || !reuse_modules) {
 		ret = reload_conf(new_conf);
 		if (ret != KNOT_EOK) {
+			conf_free(new_conf);
 			return ret;
 		}
-	}
 
-	/* Load global modules if full reload or required. */
-	if (full || !reuse_modules) {
 		conf_activate_modules(new_conf, NULL, &new_conf->query_modules,
 		                      &new_conf->query_plan);
 	}
 
-	conf_update_flag_t upd_flags = full ? CONF_UPD_FNONE : CONF_UPD_FCONFIO;
+	conf_update_flag_t upd_flags = CONF_UPD_FNOFREE;
+	if (full) {
+		upd_flags |= CONF_UPD_FCONFIO;
+	}
 	if (reuse_modules) {
 		upd_flags |= CONF_UPD_FMODULES;
 	}
 
 	/* Update to the new config. */
-	conf_update(new_conf, upd_flags);
+	conf_t *old_conf = conf_update(new_conf, upd_flags);
 
 	/* Reload each component if full reload or a specific one if required. */
 	if (full || (flags & CONF_IO_FRLD_LOG)) {
@@ -624,6 +648,9 @@ int server_reload(server_t *server)
 	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
 		server_update_zones(conf(), server);
 	}
+
+	/* Free old config needed for module unload in zone reload. */
+	conf_free(old_conf);
 
 	if (full) {
 		log_info("configuration reloaded");

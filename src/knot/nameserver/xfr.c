@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,18 +17,17 @@
 #include "knot/nameserver/xfr.h"
 #include "contrib/mempattern.h"
 
-int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
-                     struct query_data *qdata)
+int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata)
 {
-	if (pkt == NULL || qdata == NULL || qdata->ext == NULL) {
+	if (pkt == NULL || qdata == NULL || qdata->extra->ext == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = KNOT_EOK;
 	knot_mm_t *mm = qdata->mm;
-	struct xfr_proc *xfer = qdata->ext;
+	struct xfr_proc *xfer = qdata->extra->ext;
 
-	zone_contents_t *zone = qdata->zone->contents;
+	zone_contents_t *zone = qdata->extra->zone->contents;
 	knot_rrset_t soa_rr = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 
 	/* Prepend SOA on first packet. */
@@ -42,7 +41,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 	/* Process all items in the list. */
 	while (!EMPTY_LIST(xfer->nodes)) {
 		ptrnode_t *head = HEAD(xfer->nodes);
-		ret = process_item(pkt, head->d, xfer);
+		ret = put(pkt, head->d, xfer);
 		if (ret == KNOT_EOK) { /* Finished. */
 			/* Complete change set. */
 			rem_node((node_t *)head);

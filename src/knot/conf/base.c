@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,10 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
 #include <urcu.h>
 
 #include "knot/conf/base.h"
 #include "knot/conf/confdb.h"
+#include "knot/conf/module.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
@@ -195,7 +197,8 @@ int conf_new(
 
 		// Remove the database to ensure it is temporary.
 		if (!remove_path(lmdb_opts.path)) {
-			CONF_LOG(LOG_WARNING, "failed to purge temporary directory '%s'", lmdb_opts.path);
+			CONF_LOG(LOG_WARNING, "failed to purge temporary directory '%s'",
+			         lmdb_opts.path);
 		}
 	} else {
 		// Set the specified database.
@@ -231,6 +234,27 @@ int conf_new(
 
 	// Initialize cached values.
 	init_cache(out);
+
+	// Load module schemas.
+	if (flags & (CONF_FREQMODULES | CONF_FOPTMODULES)) {
+		ret = conf_mod_load_common(out);
+		if (ret != KNOT_EOK && (flags & CONF_FREQMODULES)) {
+			goto new_error;
+		}
+
+		for (conf_iter_t iter = conf_iter(out, C_MODULE);
+		     iter.code == KNOT_EOK; conf_iter_next(out, &iter)) {
+			conf_val_t id = conf_iter_id(out, &iter);
+			conf_val_t file = conf_id_get(out, C_MODULE, C_FILE, &id);
+			ret = conf_mod_load_extra(out, conf_str(&id), conf_str(&file), false);
+			if (ret != KNOT_EOK && (flags & CONF_FREQMODULES)) {
+				conf_iter_finish(out, &iter);
+				goto new_error;
+			}
+		}
+
+		conf_mod_load_purge(out, false);
+	}
 
 	*conf = out;
 
@@ -297,7 +321,7 @@ int conf_clone(
 	return KNOT_EOK;
 }
 
-void conf_update(
+conf_t *conf_update(
 	conf_t *conf,
 	conf_update_flag_t flags)
 {
@@ -311,7 +335,7 @@ void conf_update(
 		}
 		if ((flags & CONF_UPD_FMODULES) && s_conf != NULL) {
 			list_dup(&conf->query_modules, &s_conf->query_modules,
-			         sizeof(struct query_module));
+			         sizeof(knotd_mod_t));
 			conf->query_plan = s_conf->query_plan;
 		}
 	}
@@ -332,9 +356,13 @@ void conf_update(
 			WALK_LIST_FREE(old_conf->query_modules);
 			old_conf->query_plan = NULL;
 		}
-
-		conf_free(old_conf);
+		if (!(flags & CONF_UPD_FNOFREE)) {
+			conf_free(old_conf);
+			old_conf = NULL;
+		}
 	}
+
+	return old_conf;
 }
 
 void conf_free(
@@ -359,7 +387,9 @@ void conf_free(
 		mm_free(conf->mm, conf->io.zones);
 	}
 
+	conf_mod_load_purge(conf, false);
 	conf_deactivate_modules(&conf->query_modules, &conf->query_plan);
+	conf_mod_unload_shared(conf);
 
 	if (!conf->is_clone) {
 		if (conf->api != NULL) {
@@ -372,126 +402,6 @@ void conf_free(
 	}
 
 	free(conf);
-}
-
-#define LOG_ARGS(mod_id, msg, ...) "module '%s%s%.*s', " msg, \
-	mod_id->name + 1, (mod_id->len > 0) ? "/" : "", (int)mod_id->len, \
-	mod_id->data
-
-void conf_activate_modules(
-	conf_t *conf,
-	const knot_dname_t *zone_name,
-	list_t *query_modules,
-	struct query_plan **query_plan)
-{
-	int ret = KNOT_EOK;
-
-	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
-		ret = KNOT_EINVAL;
-		goto activate_error;
-	}
-
-	conf_val_t val;
-
-	// Get list of associated modules.
-	if (zone_name != NULL) {
-		val = conf_zone_get(conf, C_MODULE, zone_name);
-	} else {
-		val = conf_default_get(conf, C_GLOBAL_MODULE);
-	}
-
-	switch (val.code) {
-	case KNOT_EOK:
-		break;
-	case KNOT_ENOENT: // Check if a module is configured at all.
-	case KNOT_YP_EINVAL_ID:
-		return;
-	default:
-		ret = val.code;
-		goto activate_error;
-	}
-
-	// Create query plan.
-	*query_plan = query_plan_create(conf->mm);
-	if (*query_plan == NULL) {
-		ret = KNOT_ENOMEM;
-		goto activate_error;
-	}
-
-	// Initialize query modules list.
-	init_list(query_modules);
-
-	// Open the modules.
-	while (val.code == KNOT_EOK) {
-		conf_mod_id_t *mod_id = conf_mod_id(&val);
-		if (mod_id == NULL) {
-			ret = KNOT_ENOMEM;
-			goto activate_error;
-		}
-
-		// Open the module.
-		struct query_module *mod = query_module_open(conf, mod_id, *query_plan,
-		                                             zone_name, conf->mm);
-		if (mod == NULL) {
-			ret = KNOT_ENOMEM;
-			goto activate_error;
-		}
-
-		// Check the module scope.
-		if ((zone_name == NULL && (mod->scope & MOD_SCOPE_GLOBAL) == 0) ||
-		    (zone_name != NULL && (mod->scope & MOD_SCOPE_ZONE) == 0)) {
-			if (zone_name != NULL) {
-				log_zone_warning(zone_name, LOG_ARGS(mod_id, "out of scope"));
-			} else {
-				log_warning(LOG_ARGS(mod_id, "out of scope"));
-			}
-			query_module_close(mod);
-			conf_val_next(&val);
-			continue;
-		}
-
-		// Load the module.
-		ret = mod->load(mod);
-		if (ret != KNOT_EOK) {
-			if (zone_name != NULL) {
-				log_zone_error(zone_name, LOG_ARGS(mod_id, "failed to load"));
-			} else {
-				log_error(LOG_ARGS(mod_id, "failed to load"));
-			}
-			query_module_close(mod);
-			conf_val_next(&val);
-			continue;
-		}
-
-		add_tail(query_modules, &mod->node);
-
-		conf_val_next(&val);
-	}
-
-	return;
-activate_error:
-	CONF_LOG(LOG_ERR, "failed to activate modules (%s)", knot_strerror(ret));
-}
-
-void conf_deactivate_modules(
-	list_t *query_modules,
-	struct query_plan **query_plan)
-{
-	if (query_modules == NULL || query_plan == NULL) {
-		return;
-	}
-
-	// Free query plan.
-	query_plan_free(*query_plan);
-	*query_plan = NULL;
-
-	// Free query modules list.
-	struct query_module *mod = NULL, *next = NULL;
-	WALK_LIST_DELSAFE(mod, next, *query_modules) {
-		mod->unload(mod);
-		query_module_close(mod);
-	}
-	init_list(query_modules);
 }
 
 #define CONF_LOG_LINE(file, line, msg, ...) do { \
@@ -513,17 +423,17 @@ static void log_parser_err(
 
 static void log_call_err(
 	yp_parser_t *parser,
-	conf_check_t *args,
+	knotd_conf_check_args_t *args,
 	int ret)
 {
-	CONF_LOG_LINE(args->file_name, args->line,
+	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
 	              "item '%s', value '%.*s' (%s)", args->item->name + 1,
 	              (int)parser->data_len, parser->data,
 	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
 }
 
 static void log_prev_err(
-	conf_check_t *args,
+	knotd_conf_check_args_t *args,
 	int ret)
 {
 	char buff[512] = { 0 };
@@ -537,88 +447,72 @@ static void log_prev_err(
 		}
 	}
 
-	CONF_LOG_LINE(args->file_name, args->line,
+	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
 	              "%s '%s' (%s)", args->item->name + 1, buff,
 	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
 }
 
-static int parser_calls(
+static int finalize_previous_section(
 	conf_t *conf,
 	knot_db_txn_t *txn,
 	yp_parser_t *parser,
 	yp_check_ctx_t *ctx)
 {
-	static const yp_item_t *prev_item = NULL;
-	static size_t prev_id_len = 0;
-	static uint8_t prev_id[YP_MAX_ID_LEN] = { 0 };
-	static const char *prev_file_name = NULL;
-	static size_t prev_line = 0;
+	yp_node_t *node = &ctx->nodes[0];
 
-	// Zero ctx means the final previous processing.
-	yp_node_t *node = (ctx != NULL) ? &ctx->nodes[ctx->current] : NULL;
-	bool is_id = false;
-
-	// Preprocess key0 item.
-	if (node == NULL || node->parent == NULL) {
-		// Execute previous block callbacks.
-		if (prev_item != NULL) {
-			conf_check_t args = {
-				.conf = conf,
-				.txn = txn,
-				.item = prev_item,
-				.id = prev_id,
-				.id_len = prev_id_len,
-				.file_name = prev_file_name,
-				.line = prev_line
-			};
-
-			int ret = conf_exec_callbacks(&args);
-			if (ret != KNOT_EOK) {
-				log_prev_err(&args, ret);
-				return ret;
-			}
-
-			prev_item = NULL;
-		}
-
-		// Stop if final processing.
-		if (node == NULL) {
-			return KNOT_EOK;
-		}
-
-		// Store block context.
-		if (node->item->type == YP_TGRP) {
-			// Ignore alone group without identifier.
-			if ((node->item->flags & YP_FMULTI) != 0 &&
-			    node->id_len == 0) {
-				return KNOT_EOK;
-			}
-
-			prev_item = node->item;
-			memcpy(prev_id, node->id, node->id_len);
-			prev_id_len = node->id_len;
-			prev_file_name = parser->file.name;
-			prev_line = parser->line_count;
-
-			// Defer group callbacks to the beginning of the next block.
-			if ((node->item->flags & YP_FMULTI) == 0) {
-				return KNOT_EOK;
-			}
-
-			is_id = true;
-		}
+	// Return if no previous section or empty multi-section.
+	if (node->item == NULL ||
+	    (node->id_len == 0 && (node->item->flags & YP_FMULTI) != 0)) {
+		return KNOT_EOK;
 	}
 
-	conf_check_t args = {
+	knotd_conf_check_extra_t extra = {
 		.conf = conf,
 		.txn = txn,
-		.item = is_id ? node->item->var.g.id : node->item,
+		.file_name = parser->file.name,
+		.line = parser->line_count
+	};
+	knotd_conf_check_args_t args = {
+		.item = node->item,
+		.id = node->id,
+		.id_len = node->id_len,
+		.extra = &extra
+	};
+
+	int ret = conf_exec_callbacks(&args);
+	if (ret != KNOT_EOK) {
+		log_prev_err(&args, ret);
+	}
+
+	return ret;
+}
+
+static int finalize_item(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	yp_parser_t *parser,
+	yp_check_ctx_t *ctx)
+{
+	yp_node_t *node = &ctx->nodes[ctx->current];
+
+	// Section callbacks are executed before another section.
+	if (node->item->type == YP_TGRP && node->id_len == 0) {
+		return KNOT_EOK;
+	}
+
+	knotd_conf_check_extra_t extra = {
+		.conf = conf,
+		.txn = txn,
+		.file_name = parser->file.name,
+		.line = parser->line_count
+	};
+	knotd_conf_check_args_t args = {
+		.item = (parser->event == YP_EID) ? node->item->var.g.id : node->item,
 		.id = node->id,
 		.id_len = node->id_len,
 		.data = node->data,
 		.data_len = node->data_len,
-		.file_name = parser->file.name,
-		.line = parser->line_count
+		.extra = &extra
 	};
 
 	int ret = conf_exec_callbacks(&args);
@@ -660,7 +554,7 @@ int conf_parse(
 	}
 
 	// Initialize parser check context.
-	yp_check_ctx_t *ctx = yp_scheme_check_init(conf->scheme);
+	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf->scheme);
 	if (ctx == NULL) {
 		ret = KNOT_ENOMEM;
 		goto parse_error;
@@ -670,6 +564,13 @@ int conf_parse(
 
 	// Parse the configuration.
 	while ((ret = yp_parse(parser)) == KNOT_EOK) {
+		if (parser->event == YP_EKEY0 || parser->event == YP_EID) {
+			check_ret = finalize_previous_section(conf, txn, parser, ctx);
+			if (check_ret != KNOT_EOK) {
+				break;
+			}
+		}
+
 		check_ret = yp_scheme_check_parser(ctx, parser);
 		if (check_ret != KNOT_EOK) {
 			log_parser_err(parser, check_ret);
@@ -694,21 +595,21 @@ int conf_parse(
 			break;
 		}
 
-		check_ret = parser_calls(conf, txn, parser, ctx);
+		check_ret = finalize_item(conf, txn, parser, ctx);
 		if (check_ret != KNOT_EOK) {
 			break;
 		}
 	}
 
 	if (ret == KNOT_EOF) {
-		// Call the last block callbacks.
-		ret = parser_calls(conf, txn, NULL, NULL);
+		ret = finalize_previous_section(conf, txn, parser, ctx);
 	} else if (ret != KNOT_EOK) {
 		log_parser_err(parser, ret);
 	} else {
 		ret = check_ret;
 	}
 
+	conf_mod_load_purge(conf, false);
 	yp_scheme_check_deinit(ctx);
 parse_error:
 	yp_deinit(parser);
@@ -869,6 +770,65 @@ static int export_group(
 	return KNOT_EOK;
 }
 
+static int export_item(
+	conf_t *conf,
+	FILE *fp,
+	const yp_item_t *item,
+	char *buff,
+	size_t buff_len,
+	yp_style_t style)
+{
+	bool exported = false;
+
+	// Skip non-group items (include).
+	if (item->type != YP_TGRP) {
+		return KNOT_EOK;
+	}
+
+	// Export simple group without identifiers.
+	if (!(item->flags & YP_FMULTI)) {
+		return export_group(conf, fp, item, NULL, 0, buff, buff_len,
+		                    style, &exported);
+	}
+
+	// Iterate over all identifiers.
+	conf_iter_t iter;
+	int ret = conf_db_iter_begin(conf, &conf->read_txn, item->name, &iter);
+	switch (ret) {
+	case KNOT_EOK:
+		break;
+	case KNOT_ENOENT:
+		return KNOT_EOK;
+	default:
+		return ret;
+	}
+
+	while (ret == KNOT_EOK) {
+		const uint8_t *id;
+		size_t id_len;
+		ret = conf_db_iter_id(conf, &iter, &id, &id_len);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf, &iter);
+			return ret;
+		}
+
+		// Export group with identifiers.
+		ret = export_group(conf, fp, item, id, id_len, buff, buff_len,
+		                   style, &exported);
+		if (ret != KNOT_EOK) {
+			conf_db_iter_finish(conf, &iter);
+			return ret;
+		}
+
+		ret = conf_db_iter_next(conf, &iter);
+	}
+	if (ret != KNOT_EOF) {
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
 int conf_export(
 	conf_t *conf,
 	const char *file_name,
@@ -893,60 +853,37 @@ int conf_export(
 
 	fprintf(fp, "# Configuration export (Knot DNS %s)\n\n", PACKAGE_VERSION);
 
+	const char *mod_prefix = KNOTD_MOD_NAME_PREFIX;
+	const size_t mod_prefix_len = strlen(mod_prefix);
+
 	int ret;
 
 	// Iterate over the scheme.
 	for (yp_item_t *item = conf->scheme; item->name != NULL; item++) {
-		bool exported = false;
-
-		// Skip non-group items (include).
-		if (item->type != YP_TGRP) {
-			continue;
-		}
-
-		// Export simple group without identifiers.
-		if ((item->flags & YP_FMULTI) == 0) {
-			ret = export_group(conf, fp, item, NULL, 0, buff,
-			                   buff_len, style, &exported);
-			if (ret != KNOT_EOK) {
-				goto export_error;
-			}
-
-			continue;
-		}
-
-		// Iterate over all identifiers.
-		conf_iter_t iter;
-		ret = conf_db_iter_begin(conf, &conf->read_txn, item->name, &iter);
-		switch (ret) {
-		case KNOT_EOK:
+		// Don't export module sections again.
+		if (strncmp(item->name + 1, mod_prefix, mod_prefix_len) == 0) {
 			break;
-		case KNOT_ENOENT:
-			continue;
-		default:
-			goto export_error;
 		}
 
-		while (ret == KNOT_EOK) {
-			const uint8_t *id;
-			size_t id_len;
-			ret = conf_db_iter_id(conf, &iter, &id, &id_len);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf, &iter);
-				goto export_error;
-			}
+		// Export module sections before the template section.
+		if (strcmp(item->name + 1, C_TPL + 1) == 0) {
+			for (yp_item_t *mod = item + 1; mod->name != NULL; mod++) {
+				// Skip non-module sections.
+				if (strncmp(mod->name + 1, mod_prefix, mod_prefix_len) != 0) {
+					continue;
+				}
 
-			// Export group with identifiers.
-			ret = export_group(conf, fp, item, id, id_len, buff,
-			                   buff_len, style, &exported);
-			if (ret != KNOT_EOK) {
-				conf_db_iter_finish(conf, &iter);
-				goto export_error;
+				// Export module section.
+				ret = export_item(conf, fp, mod, buff, buff_len, style);
+				if (ret != KNOT_EOK) {
+					goto export_error;
+				}
 			}
-
-			ret = conf_db_iter_next(conf, &iter);
 		}
-		if (ret != KNOT_EOF) {
+
+		// Export non-module section.
+		ret = export_item(conf, fp, item, buff, buff_len, style);
+		if (ret != KNOT_EOK) {
 			goto export_error;
 		}
 	}

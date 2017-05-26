@@ -14,29 +14,30 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <time.h>
 #include <lmdb.h>
 
 #include "dnssec/random.h"
+#include "libknot/libknot.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
+#include "contrib/sockaddr.h"
 #include "contrib/wire.h"
-#include "knot/modules/rosedb/rosedb.h"
+#include "knot/include/module.h"
+#include "knot/conf/scheme.h"
 
 /* Module configuration scheme. */
-#define MOD_DBDIR		"\x05""dbdir"
+#define MOD_DBDIR	"\x05""dbdir"
 
-const yp_item_t scheme_mod_rosedb[] = {
-	{ C_ID,      YP_TSTR, YP_VNONE },
-	{ MOD_DBDIR, YP_TSTR, YP_VSTR = { "" } },
-	{ C_COMMENT, YP_TSTR, YP_VNONE },
+const yp_item_t rosedb_conf[] = {
+	{ MOD_DBDIR, YP_TSTR, YP_VNONE },
 	{ NULL }
 };
 
-int check_mod_rosedb(conf_check_t *args)
+int rosedb_conf_check(knotd_conf_check_args_t *args)
 {
-	conf_val_t dir = conf_rawid_get_txn(args->conf, args->txn, C_MOD_ROSEDB,
-	                                    MOD_DBDIR, args->id, args->id_len);
-	if (conf_str(&dir)[0] == '\0') {
+	knotd_conf_t dir = knotd_conf_check_item(args, MOD_DBDIR);
+	if (dir.count == 0 || dir.single.string[0] == '\0') {
 		args->err_str = "no database directory specified";
 		return KNOT_EINVAL;
 	}
@@ -372,7 +373,7 @@ static int stream_skip(char **stream, size_t *maxlen, int nbytes)
 	}
 
 static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
-                              const char *threat_code, struct query_data *qdata)
+                              const char *threat_code, knotd_qdata_t *qdata)
 {
 	char dname_buf[KNOT_DNAME_MAXLEN] = {'\0'};
 	struct sockaddr_storage addr;
@@ -385,13 +386,13 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 	STREAM_WRITE(stream, maxlen, strftime, "%Y-%m-%d %H:%M:%S\t", &tm);
 
 	/* Field 2/3 Remote, local address. */
-	const struct sockaddr *remote = (const struct sockaddr *)qdata->param->remote;
+	const struct sockaddr *remote = (const struct sockaddr *)qdata->params->remote;
 	memcpy(&addr, remote, sockaddr_len(remote));
 	int client_port = sockaddr_port((struct sockaddr *)&addr);
 	sockaddr_port_set((struct sockaddr *)&addr, 0);
 	STREAM_WRITE(stream, maxlen, sockaddr_tostr, (struct sockaddr *)&addr);
 	STREAM_WRITE(stream, maxlen, snprintf, "\t");
-	getsockname(qdata->param->socket, (struct sockaddr *)&addr, &addr_len);
+	getsockname(qdata->params->socket, (struct sockaddr *)&addr, &addr_len);
 	int server_port = sockaddr_port((struct sockaddr *)&addr);
 	sockaddr_port_set((struct sockaddr *)&addr, 0);
 	STREAM_WRITE(stream, maxlen, sockaddr_tostr, (struct sockaddr *)&addr);
@@ -430,7 +431,7 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 
 	/* Field 17 Connection type. */
 	STREAM_WRITE(stream, maxlen, snprintf, "%s\t",
-	             net_is_stream(qdata->param->socket) ? "TCP" : "UDP");
+	             net_is_stream(qdata->params->socket) ? "TCP" : "UDP");
 
 	/* Field 18 Query type. */
 	char type_str[16] = { '\0' };
@@ -450,7 +451,8 @@ static int rosedb_log_message(char *stream, size_t *maxlen, knot_pkt_t *pkt,
 }
 
 static int rosedb_send_log(int sock, struct sockaddr_storage *dst_addr, knot_pkt_t *pkt,
-                           const char *threat_code, struct query_data *qdata)
+                           const char *threat_code, knotd_qdata_t *qdata,
+                           knotd_mod_t *mod)
 {
 	char buf[SYSLOG_BUFLEN];
 	char *stream = buf;
@@ -467,10 +469,11 @@ static int rosedb_send_log(int sock, struct sockaddr_storage *dst_addr, knot_pkt
 	STREAM_WRITE(stream, &maxlen, strftime, "%b %d %H:%M:%S ", &tm);
 
 	/* Host name / Component. */
-	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
-	const char *ident = conf_str(&val);
+	knotd_conf_t conf = knotd_conf(mod, C_SRV, C_IDENT, NULL);
+	const char *ident = conf.single.string;
 	if (ident == NULL || ident[0] == '\0') {
-		ident = conf()->hostname;
+		conf = knotd_conf_env(mod, KNOTD_CONF_ENV_HOSTNAME);
+		ident = conf.single.string;
 	}
 	STREAM_WRITE(stream, &maxlen, snprintf, "%s ", ident);
 	STREAM_WRITE(stream, &maxlen, snprintf, "%s[%lu]: ", PACKAGE_NAME, (unsigned long) getpid());
@@ -504,7 +507,7 @@ static int rosedb_synth_rr(knot_pkt_t *pkt, struct entry *entry, uint16_t qtype)
 }
 
 static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *it,
-                        struct query_data *qdata)
+                        knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
 	struct entry entry;
 	int ret = KNOT_EOK;
@@ -549,7 +552,7 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 		int sock = net_unbound_socket(SOCK_DGRAM, (struct sockaddr *)&syslog_addr);
 		if (sock > 0) {
 			rosedb_send_log(sock, &syslog_addr, pkt,
-			                entry.threat_code, qdata);
+			                entry.threat_code, qdata, mod);
 			close(sock);
 		}
 	}
@@ -557,7 +560,8 @@ static int rosedb_synth(knot_pkt_t *pkt, const knot_dname_t *key, struct iter *i
 	return ret;
 }
 
-static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct query_data *qdata)
+static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt,
+                            knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
 	struct iter it;
 	int ret = KNOT_EOK;
@@ -579,18 +583,18 @@ static int rosedb_query_txn(MDB_txn *txn, MDB_dbi dbi, knot_pkt_t *pkt, struct q
 	}
 
 	/* Synthetize record to response. */
-	ret = rosedb_synth(pkt, key, &it, qdata);
+	ret = rosedb_synth(pkt, key, &it, qdata, mod);
 
 	cache_iter_free(&it);
 	return ret;
 }
 
-static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata,
-                        void *ctx)
+static knotd_state_t rosedb_query(knotd_state_t state, knot_pkt_t *pkt,
+                                  knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	assert(pkt && qdata && ctx);
+	assert(pkt && qdata && mod);
 
-	struct cache *cache = ctx;
+	struct cache *cache = knotd_mod_ctx(mod);
 
 	MDB_txn *txn = NULL;
 	int ret = mdb_txn_begin(cache->env, NULL, MDB_RDONLY, &txn);
@@ -598,7 +602,7 @@ static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata,
 		return state;
 	}
 
-	ret = rosedb_query_txn(txn, cache->dbi, pkt, qdata);
+	ret = rosedb_query_txn(txn, cache->dbi, pkt, qdata, mod);
 	if (ret != 0) { /* Can't find matching zone, ignore. */
 		mdb_txn_abort(txn);
 		return state;
@@ -606,30 +610,27 @@ static int rosedb_query(int state, knot_pkt_t *pkt, struct query_data *qdata,
 
 	mdb_txn_abort(txn);
 
-	return KNOT_STATE_DONE;
+	return KNOTD_STATE_DONE;
 }
 
-int rosedb_load(struct query_module *self)
+int rosedb_load(knotd_mod_t *mod)
 {
-	assert(self);
-
-	conf_val_t val = conf_mod_get(self->config, MOD_DBDIR, self->id);
-	struct cache *cache = cache_open(conf_str(&val), 0, self->mm);
+	knotd_conf_t conf = knotd_conf_mod(mod, MOD_DBDIR);
+	struct cache *cache = cache_open(conf.single.string, 0, NULL);
 	if (cache == NULL) {
-		MODULE_ERR(C_MOD_ROSEDB, "failed to open db '%s'", conf_str(&val));
+		knotd_mod_log(mod, LOG_ERR, "failed to open db '%s'", conf.single.string);
 		return KNOT_ENOMEM;
 	}
 
-	self->ctx = cache;
+	knotd_mod_ctx_set(mod, cache);
 
-	return query_module_step(self, QPLAN_BEGIN, rosedb_query);
+	return knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, rosedb_query);
 }
 
-void rosedb_unload(struct query_module *self)
+void rosedb_unload(knotd_mod_t *mod)
 {
-	assert(self);
-
-	struct cache *cache = self->ctx;
-
-	cache_close(cache);
+	cache_close(knotd_mod_ctx(mod));
 }
+
+KNOTD_MOD_API(rosedb, KNOTD_MOD_FLAG_SCOPE_ANY,
+              rosedb_load, rosedb_unload, rosedb_conf, rosedb_conf_check);

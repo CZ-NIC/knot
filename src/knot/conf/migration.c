@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -130,4 +130,38 @@ int conf_migrate(
 	}
 
 	return conf_refresh_txn(conf);
+}
+
+const yp_item_t scheme_mod_online_sign[] = {
+	{ C_ID,      YP_TSTR },
+	{ C_POLICY,  YP_TSTR },
+	{ C_COMMENT, YP_TSTR },
+	{ NULL }
+};
+
+int check_mod_online_sign(
+	knotd_conf_check_args_t *args)
+{
+	CONF_LOG(LOG_WARNING, "module 'mod-online-sign' must be renamed 'mod-onlinesign'");
+
+	return KNOT_EOK;
+}
+
+const yp_item_t scheme_mod_synth_record[] = {
+	{ C_ID,            YP_TSTR },
+	{ "\x07""network", YP_TSTR },
+	{ "\x06""origin",  YP_TSTR },
+	{ "\x06""prefix",  YP_TSTR },
+	{ "\x03""ttl",     YP_TSTR },
+	{ "\x04""type",    YP_TSTR },
+	{ C_COMMENT,       YP_TSTR },
+	{ NULL }
+};
+
+int check_mod_synth_record(
+	knotd_conf_check_args_t *args)
+{
+	CONF_LOG(LOG_WARNING, "module 'mod-synth_record' must be renamed 'mod-synthrecord'");
+
+	return KNOT_EOK;
 }

@@ -28,65 +28,56 @@
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/notify.h"
+#include "knot/server/server.h"
 #include "libknot/libknot.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 
 /*! \brief Accessor to query-specific data. */
-#define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
+#define QUERY_DATA(ctx) ((knotd_qdata_t *)(ctx)->data)
 
-static uint16_t pkt_type(const knot_pkt_t *pkt)
+static knotd_query_type_t query_type(const knot_pkt_t *pkt)
 {
-	assert(pkt);
-
-	bool is_query = (knot_wire_get_qr(pkt->wire) == 0);
-	uint16_t ret = KNOT_QUERY_INVALID;
-	uint8_t opcode = knot_wire_get_opcode(pkt->wire);
-	uint16_t query_type = knot_pkt_qtype(pkt);
-
-	switch (opcode) {
+	switch (knot_wire_get_opcode(pkt->wire)) {
 	case KNOT_OPCODE_QUERY:
-		switch (query_type) {
-		case 0 /* RESERVED */: /* INVALID */ break;
-		case KNOT_RRTYPE_AXFR: ret = KNOT_QUERY_AXFR; break;
-		case KNOT_RRTYPE_IXFR: ret = KNOT_QUERY_IXFR; break;
-		default:               ret = KNOT_QUERY_NORMAL; break;
+		switch (knot_pkt_qtype(pkt)) {
+		case 0 /* RESERVED */: return KNOTD_QUERY_TYPE_INVALID;
+		case KNOT_RRTYPE_AXFR: return KNOTD_QUERY_TYPE_AXFR;
+		case KNOT_RRTYPE_IXFR: return KNOTD_QUERY_TYPE_IXFR;
+		default:               return KNOTD_QUERY_TYPE_NORMAL;
 		}
-		break;
-	case KNOT_OPCODE_NOTIFY: ret = KNOT_QUERY_NOTIFY; break;
-	case KNOT_OPCODE_UPDATE: ret = KNOT_QUERY_UPDATE; break;
-	default: break;
+	case KNOT_OPCODE_NOTIFY: return KNOTD_QUERY_TYPE_NOTIFY;
+	case KNOT_OPCODE_UPDATE: return KNOTD_QUERY_TYPE_UPDATE;
+	default:                 return KNOTD_QUERY_TYPE_INVALID;
 	}
-
-	if (!is_query) {
-		ret = ret|KNOT_RESPONSE;
-	}
-
-	return ret;
 }
 
 /*! \brief Reinitialize query data structure. */
-static void query_data_init(knot_layer_t *ctx, void *module_param)
+static void query_data_init(knot_layer_t *ctx, knotd_qdata_params_t *params,
+                            knotd_qdata_extra_t *extra)
 {
 	/* Initialize persistent data. */
-	struct query_data *data = QUERY_DATA(ctx);
-	memset(data, 0, sizeof(struct query_data));
+	knotd_qdata_t *data = QUERY_DATA(ctx);
+	memset(data, 0, sizeof(*data));
 	data->mm = ctx->mm;
-	data->param = (struct process_query_param*)module_param;
+	data->params = params;
+	data->extra = extra;
 
 	/* Initialize lists. */
-	init_list(&data->wildcards);
-	init_list(&data->rrsigs);
+	memset(extra, 0, sizeof(*extra));
+	init_list(&extra->wildcards);
+	init_list(&extra->rrsigs);
 }
 
-static int process_query_begin(knot_layer_t *ctx, void *module_param)
+static int process_query_begin(knot_layer_t *ctx, void *params)
 {
 	/* Initialize context. */
 	assert(ctx);
-	ctx->data = mm_alloc(ctx->mm, sizeof(struct query_data));
+	ctx->data = mm_alloc(ctx->mm, sizeof(knotd_qdata_t));
+	knotd_qdata_extra_t *extra = mm_alloc(ctx->mm, sizeof(*extra));
 
 	/* Initialize persistent data. */
-	query_data_init(ctx, module_param);
+	query_data_init(ctx, params, extra);
 
 	/* Await packet. */
 	return KNOT_STATE_CONSUME;
@@ -95,21 +86,22 @@ static int process_query_begin(knot_layer_t *ctx, void *module_param)
 static int process_query_reset(knot_layer_t *ctx)
 {
 	assert(ctx);
-	struct query_data *qdata = QUERY_DATA(ctx);
+	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 
 	/* Remember persistent parameters. */
-	struct process_query_param *module_param = qdata->param;
+	knotd_qdata_params_t *params = qdata->params;
+	knotd_qdata_extra_t *extra = qdata->extra;
 
 	/* Free allocated data. */
-	ptrlist_free(&qdata->wildcards, qdata->mm);
-	nsec_clear_rrsigs(qdata);
 	knot_rrset_clear(&qdata->opt_rr, qdata->mm);
-	if (qdata->ext_cleanup != NULL) {
-		qdata->ext_cleanup(qdata);
+	ptrlist_free(&extra->wildcards, qdata->mm);
+	nsec_clear_rrsigs(qdata);
+	if (extra->ext_cleanup != NULL) {
+		extra->ext_cleanup(qdata);
 	}
 
 	/* Initialize persistent data. */
-	query_data_init(ctx, module_param);
+	query_data_init(ctx, params, extra);
 
 	/* Await packet. */
 	return KNOT_STATE_CONSUME;
@@ -127,7 +119,7 @@ static int process_query_finish(knot_layer_t *ctx)
 static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(pkt && ctx);
-	struct query_data *qdata = QUERY_DATA(ctx);
+	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 
 	/* Check if at least header is parsed. */
 	if (pkt->parsed < KNOT_WIRE_HEADER_SIZE) {
@@ -141,7 +133,7 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Store for processing. */
 	qdata->query = pkt;
-	qdata->packet_type = pkt_type(pkt);
+	qdata->type = query_type(pkt);
 
 	/* Declare having response. */
 	return KNOT_STATE_PRODUCE;
@@ -152,14 +144,14 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
  */
 static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
-	struct query_data *data = QUERY_DATA(ctx);
+	knotd_qdata_t *data = QUERY_DATA(ctx);
 
-	switch(data->packet_type) {
-	case KNOT_QUERY_NORMAL: return internet_process_query(pkt, data);
-	case KNOT_QUERY_NOTIFY: return notify_process_query(pkt, data);
-	case KNOT_QUERY_AXFR:   return axfr_process_query(pkt, data);
-	case KNOT_QUERY_IXFR:   return ixfr_process_query(pkt, data);
-	case KNOT_QUERY_UPDATE: return update_process_query(pkt, data);
+	switch (data->type) {
+	case KNOTD_QUERY_TYPE_NORMAL: return internet_process_query(pkt, data);
+	case KNOTD_QUERY_TYPE_NOTIFY: return notify_process_query(pkt, data);
+	case KNOTD_QUERY_TYPE_AXFR:   return axfr_process_query(pkt, data);
+	case KNOTD_QUERY_TYPE_IXFR:   return ixfr_process_query(pkt, data);
+	case KNOTD_QUERY_TYPE_UPDATE: return update_process_query(pkt, data);
 	default:
 		/* Nothing else is supported. */
 		data->rcode = KNOT_RCODE_NOTIMPL;
@@ -172,10 +164,10 @@ static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
  */
 static int query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
-	struct query_data *data = QUERY_DATA(ctx);
+	knotd_qdata_t *data = QUERY_DATA(ctx);
 
 	/* Nothing except normal queries is supported. */
-	if (data->packet_type != KNOT_QUERY_NORMAL) {
+	if (data->type != KNOTD_QUERY_TYPE_NORMAL) {
 		data->rcode = KNOT_RCODE_NOTIMPL;
 		return KNOT_STATE_FAIL;
 	}
@@ -217,7 +209,7 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 	}
 
 	if (zone == NULL) {
-		if (pkt_type(query) == KNOT_QUERY_NORMAL) {
+		if (query_type(query) == KNOTD_QUERY_TYPE_NORMAL) {
 			zone = knot_zonedb_find_suffix(zonedb, qname);
 		} else {
 			// Direct match required.
@@ -228,7 +220,7 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 	return zone;
 }
 
-static int answer_edns_reserve(knot_pkt_t *resp, struct query_data *qdata)
+static int answer_edns_reserve(knot_pkt_t *resp, knotd_qdata_t *qdata)
 {
 	if (knot_rrset_empty(&qdata->opt_rr)) {
 		return KNOT_EOK;
@@ -239,7 +231,7 @@ static int answer_edns_reserve(knot_pkt_t *resp, struct query_data *qdata)
 }
 
 static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
-                            struct query_data *qdata)
+                            knotd_qdata_t *qdata)
 {
 	if (!knot_pkt_has_edns(query)) {
 		return KNOT_EOK;
@@ -247,7 +239,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 
 	/* Initialize OPT record. */
 	int16_t max_payload;
-	switch (qdata->param->remote->ss_family) {
+	switch (qdata->params->remote->ss_family) {
 	case AF_INET:
 		max_payload = conf()->cache.srv_max_ipv4_udp_payload;
 		break;
@@ -302,7 +294,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	return answer_edns_reserve(resp, qdata);
 }
 
-static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
+static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 {
 	if (knot_rrset_empty(&qdata->opt_rr)) {
 		return KNOT_EOK;
@@ -321,7 +313,7 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 	ret = knot_pkt_put(resp, KNOT_COMPR_HINT_NONE, &qdata->opt_rr, 0);
 	if (ret == KNOT_EOK) {
 		/* Save position of the OPT RR. */
-		qdata->opt_rr_pos = wire_end;
+		qdata->extra->opt_rr_pos = wire_end;
 	}
 
 	return ret;
@@ -330,8 +322,8 @@ static int answer_edns_put(knot_pkt_t *resp, struct query_data *qdata)
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx)
 {
-	struct query_data *qdata = QUERY_DATA(ctx);
-	server_t *server = qdata->param->server;
+	knotd_qdata_t *qdata = QUERY_DATA(ctx);
+	server_t *server = qdata->params->server;
 
 	/* Initialize response. */
 	int ret = knot_pkt_init_response(resp, query);
@@ -350,13 +342,13 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	/* Convert query QNAME to lowercase, but keep original QNAME case.
 	 * Already checked for absence of compression and length.
 	 */
-	memcpy(qdata->orig_qname, qname, query->qname_size);
+	memcpy(qdata->extra->orig_qname, qname, query->qname_size);
 	ret = process_query_qname_case_lower((knot_pkt_t *)query);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 	/* Find zone for QNAME. */
-	qdata->zone = answer_zone_find(query, server->zone_db);
+	qdata->extra->zone = answer_zone_find(query, server->zone_db);
 
 	/* Setup EDNS. */
 	ret = answer_edns_init(query, resp, qdata);
@@ -365,12 +357,12 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	}
 
 	/* Update maximal answer size. */
-	bool has_limit = qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE;
+	bool has_limit = qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE;
 	if (has_limit) {
 		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
 		if (knot_pkt_has_edns(query)) {
 			uint16_t server;
-			switch (qdata->param->remote->ss_family) {
+			switch (qdata->params->remote->ss_family) {
 			case AF_INET:
 				server = conf()->cache.srv_max_ipv4_udp_payload;
 				break;
@@ -391,18 +383,18 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	return ret;
 }
 
-static void set_rcode_to_packet(knot_pkt_t *pkt, struct query_data *qdata)
+static void set_rcode_to_packet(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	uint8_t ext_rcode = KNOT_EDNS_RCODE_HI(qdata->rcode);
 
 	if (ext_rcode != 0) {
 		/* No OPT RR and Ext RCODE results in SERVFAIL. */
-		if (qdata->opt_rr_pos == NULL) {
+		if (qdata->extra->opt_rr_pos == NULL) {
 			knot_wire_set_rcode(pkt->wire, KNOT_RCODE_SERVFAIL);
 			return;
 		}
 
-		knot_edns_set_ext_rcode_wire(qdata->opt_rr_pos, ext_rcode);
+		knot_edns_set_ext_rcode_wire(qdata->extra->opt_rr_pos, ext_rcode);
 	}
 
 	knot_wire_set_rcode(pkt->wire, KNOT_EDNS_RCODE_LO(qdata->rcode));
@@ -412,7 +404,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(ctx && pkt);
 
-	struct query_data *qdata = QUERY_DATA(ctx);
+	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 
 	/* Initialize response from query packet. */
 	knot_pkt_t *query = qdata->query;
@@ -455,7 +447,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 #define PROCESS_BEGIN(plan, step, next_state, qdata) \
 	if (plan != NULL) { \
-		WALK_LIST(step, plan->stage[QPLAN_BEGIN]) { \
+		WALK_LIST(step, plan->stage[KNOTD_STAGE_BEGIN]) { \
 			next_state = step->process(next_state, pkt, qdata, step->ctx); \
 			if (next_state == KNOT_STATE_FAIL) { \
 				goto finish; \
@@ -465,7 +457,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 #define PROCESS_END(plan, step, next_state, qdata) \
 	if (plan != NULL) { \
-		WALK_LIST(step, plan->stage[QPLAN_END]) { \
+		WALK_LIST(step, plan->stage[KNOTD_STAGE_END]) { \
 			next_state = step->process(next_state, pkt, qdata, step->ctx); \
 			if (next_state == KNOT_STATE_FAIL) { \
 				next_state = process_query_err(ctx, pkt); \
@@ -479,7 +471,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	rcu_read_lock();
 
-	struct query_data *qdata = QUERY_DATA(ctx);
+	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 	struct query_plan *plan = conf()->query_plan;
 	struct query_plan *zone_plan = NULL;
 	struct query_step *step = NULL;
@@ -500,8 +492,8 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 		goto finish;
 	}
 
-	if (qdata->zone != NULL && qdata->zone->query_plan != NULL) {
-		zone_plan = qdata->zone->query_plan;
+	if (qdata->extra->zone != NULL && qdata->extra->zone->query_plan != NULL) {
+		zone_plan = qdata->extra->zone->query_plan;
 	}
 
 	/* Before query processing code. */
@@ -567,10 +559,10 @@ finish:
 }
 
 bool process_query_acl_check(conf_t *conf, const knot_dname_t *zone_name,
-                             acl_action_t action, struct query_data *qdata)
+                             acl_action_t action, knotd_qdata_t *qdata)
 {
 	knot_pkt_t *query = qdata->query;
-	const struct sockaddr_storage *query_source = qdata->param->remote;
+	const struct sockaddr_storage *query_source = qdata->params->remote;
 	knot_tsig_key_t tsig = { 0 };
 
 	/* Skip if already checked and valid. */
@@ -613,7 +605,7 @@ bool process_query_acl_check(conf_t *conf, const knot_dname_t *zone_name,
 	return true;
 }
 
-int process_query_verify(struct query_data *qdata)
+int process_query_verify(knotd_qdata_t *qdata)
 {
 	knot_pkt_t *query = qdata->query;
 	knot_sign_context_t *ctx = &qdata->sign;
@@ -663,7 +655,7 @@ int process_query_verify(struct query_data *qdata)
 	return ret;
 }
 
-int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
+int process_query_sign_response(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	if (pkt->size == 0) {
 		// Nothing to sign.
@@ -716,13 +708,13 @@ fail:
 	return ret;
 }
 
-void process_query_qname_case_restore(knot_pkt_t *pkt, struct query_data *qdata)
+void process_query_qname_case_restore(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	/* If original QNAME is empty, Query is either unparsed or for root domain.
 	 * Either way, letter case doesn't matter. */
-	if (qdata->orig_qname[0] != '\0') {
+	if (qdata->extra->orig_qname[0] != '\0') {
 		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
-		       qdata->orig_qname, qdata->query->qname_size);
+		       qdata->extra->orig_qname, qdata->query->qname_size);
 	}
 }
 
@@ -735,7 +727,7 @@ int process_query_qname_case_lower(knot_pkt_t *pkt)
 /*! \brief Synthesize RRSIG for given parameters, store in 'qdata' for later use */
 static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
                      const knot_rrset_t *rrsigs, knot_rrinfo_t *rrinfo,
-                     struct query_data *qdata)
+                     knotd_qdata_t *qdata)
 {
 	knot_rdataset_t synth_rrs;
 	knot_rdataset_init(&synth_rrs);
@@ -767,12 +759,12 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	info->synth_rrsig.rrs = synth_rrs;
 
 	info->rrinfo = rrinfo;
-	add_tail(&qdata->rrsigs, &info->n);
+	add_tail(&qdata->extra->rrsigs, &info->n);
 
 	return KNOT_EOK;
 }
 
-int process_query_put_rr(knot_pkt_t *pkt, struct query_data *qdata,
+int process_query_put_rr(knot_pkt_t *pkt, knotd_qdata_t *qdata,
                          const knot_rrset_t *rr, const knot_rrset_t *rrsigs,
                          uint16_t compr_hint, uint32_t flags)
 {

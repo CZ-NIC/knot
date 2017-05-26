@@ -1,0 +1,9 @@
+prefix=@prefix@
+exec_prefix=@prefix@
+libdir=@libdir@
+module_instdir=@module_instdir@
+
+Name: knotd
+Description: Knot DNS daemon
+URL: https://www.knot-dns.cz
+Version: @PACKAGE_VERSION@

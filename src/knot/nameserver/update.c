@@ -33,23 +33,26 @@
 
 #define UPDATE_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_UPDATE, \
-	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->param->remote, fmt)
+	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->params->remote, fmt)
 
-static void init_qdata_from_request(struct query_data *qdata,
+static void init_qdata_from_request(knotd_qdata_t *qdata,
                                     const zone_t *zone,
                                     struct knot_request *req,
-                                    struct process_query_param *param)
+                                    knotd_qdata_params_t *params,
+                                    knotd_qdata_extra_t *extra)
 {
 	memset(qdata, 0, sizeof(*qdata));
-	qdata->param = param;
+	qdata->params = params;
 	qdata->query = req->query;
-	qdata->zone = zone;
 	qdata->sign = req->sign;
+	qdata->extra = extra;
+	memset(extra, 0, sizeof(*extra));
+	qdata->extra->zone = zone;
 }
 
 static int check_prereqs(struct knot_request *request,
                          const zone_t *zone, zone_update_t *update,
-                         struct query_data *qdata)
+                         knotd_qdata_t *qdata)
 {
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_prereqs(request->query, update, &rcode);
@@ -66,7 +69,7 @@ static int check_prereqs(struct knot_request *request,
 
 static int process_single_update(struct knot_request *request,
                                  const zone_t *zone, zone_update_t *update,
-                                 struct query_data *qdata)
+                                 knotd_qdata_t *qdata)
 {
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = ddns_process_update(zone, request->query, update, &rcode);
@@ -92,9 +95,9 @@ static void set_rcodes(list_t *requests, const uint16_t rcode)
 	}
 }
 
-static void store_original_qname(struct query_data *qdata, const knot_pkt_t *pkt)
+static void store_original_qname(knotd_qdata_t *qdata, const knot_pkt_t *pkt)
 {
-	memcpy(qdata->orig_qname, knot_pkt_qname(pkt), pkt->qname_size);
+	memcpy(qdata->extra->orig_qname, knot_pkt_qname(pkt), pkt->qname_size);
 }
 
 static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
@@ -104,11 +107,12 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 	WALK_LIST(node, *requests) {
 		struct knot_request *req = node->d;
 		// Init qdata structure for logging (unique per-request).
-		struct process_query_param param = {
+		knotd_qdata_params_t params = {
 			.remote = &req->remote
 		};
-		struct query_data qdata;
-		init_qdata_from_request(&qdata, zone, req, &param);
+		knotd_qdata_t qdata;
+		knotd_qdata_extra_t extra;
+		init_qdata_from_request(&qdata, zone, req, &params, &extra);
 
 		store_original_qname(&qdata, req->query);
 		process_query_qname_case_lower(req->query);
@@ -300,10 +304,10 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	}
 }
 
-static bool update_tsig_check(conf_t *conf, struct query_data *qdata, struct knot_request *req)
+static bool update_tsig_check(conf_t *conf, knotd_qdata_t *qdata, struct knot_request *req)
 {
 	// Check that ACL is still valid.
-	if (!process_query_acl_check(conf, qdata->zone->name, ACL_ACTION_UPDATE, qdata)) {
+	if (!process_query_acl_check(conf, qdata->extra->zone->name, ACL_ACTION_UPDATE, qdata)) {
 		UPDATE_LOG(LOG_WARNING, qdata, "ACL check failed");
 		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 		return false;
@@ -329,8 +333,9 @@ static void send_update_response(conf_t *conf, const zone_t *zone, struct knot_r
 	if (req->resp) {
 		if (!zone_is_slave(conf, zone)) {
 			// Sign the response with TSIG where applicable
-			struct query_data qdata;
-			init_qdata_from_request(&qdata, zone, req, NULL);
+			knotd_qdata_t qdata;
+			knotd_qdata_extra_t extra;
+			init_qdata_from_request(&qdata, zone, req, NULL, &extra);
 
 			(void)process_query_sign_response(req->resp, &qdata);
 		}
@@ -383,12 +388,12 @@ static int init_update_responses(conf_t *conf, const zone_t *zone, list_t *updat
 			continue;
 		}
 
-		struct process_query_param param = {
+		knotd_qdata_params_t params = {
 			.remote = &req->remote
 		};
-
-		struct query_data qdata;
-		init_qdata_from_request(&qdata, zone, req, &param);
+		knotd_qdata_t qdata;
+		knotd_qdata_extra_t extra;
+		init_qdata_from_request(&qdata, zone, req, &params, &extra);
 
 		if (!update_tsig_check(conf, &qdata, req)) {
 			// ACL/TSIG check failed, send response.
@@ -403,7 +408,7 @@ static int init_update_responses(conf_t *conf, const zone_t *zone, list_t *updat
 	return KNOT_EOK;
 }
 
-int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
+int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
@@ -412,7 +417,7 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
 	/* Need valid transaction security. */
-	zone_t *zone = (zone_t *)qdata->zone;
+	zone_t *zone = (zone_t *)qdata->extra->zone;
 	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_UPDATE);
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
@@ -422,7 +427,7 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Restore original QNAME for DDNS ACL checks. */
 	process_query_qname_case_restore(qdata->query, qdata);
 	/* Store update into DDNS queue. */
-	int ret = zone_update_enqueue(zone, qdata->query, qdata->param);
+	int ret = zone_update_enqueue(zone, qdata->query, qdata->params);
 	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}

@@ -33,6 +33,7 @@
 #endif /* HAVE_CAP_NG_H */
 
 #include "dnssec/random.h"
+#include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/fdset.h"
 #include "knot/common/log.h"
@@ -107,7 +108,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 {
 	/* Create query processing parameter. */
 	struct sockaddr_storage ss = { 0 };
-	struct process_query_param param = {
+	knotd_qdata_params_t params = {
 		.remote = &ss,
 		.socket = fd,
 		.server = tcp->server,
@@ -143,7 +144,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	}
 
 	/* Initialize processing layer. */
-	knot_layer_begin(&tcp->layer, &param);
+	knot_layer_begin(&tcp->layer, &params);
 
 	/* Create packets. */
 	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);

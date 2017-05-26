@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <stdio.h>
 
 #include "libknot/yparser/yptrafo.h"
+#include "libknot/attribute.h"
 #include "libknot/errcode.h"
 
 static int format_item(
@@ -72,6 +73,7 @@ static int format_item(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_format_key0(
 	const yp_item_t *item,
 	const uint8_t *data,
@@ -86,6 +88,7 @@ int yp_format_key0(
 	                   first_value, last_value);
 }
 
+_public_
 int yp_format_id(
 	const yp_item_t *item,
 	const uint8_t *data,
@@ -102,6 +105,7 @@ int yp_format_id(
 	                   true, true);
 }
 
+_public_
 int yp_format_key1(
 	const yp_item_t *item,
 	const uint8_t *data,

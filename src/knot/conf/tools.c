@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,9 +32,9 @@
 #include "dnssec/key.h"
 #include "knot/conf/tools.h"
 #include "knot/conf/conf.h"
+#include "knot/conf/module.h"
 #include "knot/conf/scheme.h"
 #include "knot/common/log.h"
-#include "knot/nameserver/query_module.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/wire_ctx.h"
@@ -50,14 +50,14 @@ static bool is_default_id(
 }
 
 int conf_exec_callbacks(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
 	if (args == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	for (size_t i = 0; i < YP_MAX_MISC_COUNT; i++) {
-		int (*fcn)(conf_check_t *) = args->item->misc[i];
+		int (*fcn)(knotd_conf_check_args_t *) = args->item->misc[i];
 		if (fcn == NULL) {
 			break;
 		}
@@ -186,13 +186,13 @@ int edns_opt_to_txt(
 }
 
 int check_ref(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
 	const yp_item_t *ref = args->item->var.r.ref;
 
 	// Try to find a referenced block with the id.
-	if (!conf_rawid_exists_txn(args->conf, args->txn, ref->name, args->data,
-	                           args->data_len)) {
+	if (!conf_rawid_exists_txn(args->extra->conf, args->extra->txn, ref->name,
+	                           args->data, args->data_len)) {
 		args->err_str = "invalid reference";
 		return KNOT_ENOENT;
 	}
@@ -201,7 +201,7 @@ int check_ref(
 }
 
 int check_ref_dflt(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
 	if (check_ref(args) != KNOT_EOK && !is_default_id(args->data, args->data_len)) {
 		args->err_str = "invalid reference";
@@ -212,24 +212,33 @@ int check_ref_dflt(
 }
 
 int check_modref(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
 	const yp_name_t *mod_name = (const yp_name_t *)args->data;
 	const uint8_t *id = args->data + 1 + args->data[0];
 	size_t id_len = args->data_len - 1 - args->data[0];
 
+	// Check if the module is ever available.
+	const module_t *mod = conf_mod_find(args->extra->conf, mod_name + 1,
+	                                    mod_name[0], args->extra->check);
+	if (mod == NULL) {
+		args->err_str = "unknown module";
+		return KNOT_EINVAL;
+	}
+
 	// Check if the module requires some configuration.
 	if (id_len == 0) {
-		static_module_t *mod = find_module(mod_name);
-		if (mod == NULL) {
-			return KNOT_EINVAL;
+		if (mod->api->flags & KNOTD_MOD_FLAG_OPT_CONF) {
+			return KNOT_EOK;
+		} else {
+			args->err_str = "missing module configuration";
+			return KNOT_YP_ENOID;
 		}
-
-		return mod->opt_conf ? KNOT_EOK : KNOT_YP_ENOID;
 	}
 
 	// Try to find a module with the id.
-	if (!conf_rawid_exists_txn(args->conf, args->txn, mod_name, id, id_len)) {
+	if (!conf_rawid_exists_txn(args->extra->conf, args->extra->txn, mod_name,
+	                           id, id_len)) {
 		args->err_str = "invalid module reference";
 		return KNOT_ENOENT;
 	}
@@ -237,28 +246,41 @@ int check_modref(
 	return KNOT_EOK;
 }
 
+int check_module_id(
+	knotd_conf_check_args_t *args)
+{
+	const size_t len = strlen(KNOTD_MOD_NAME_PREFIX);
+
+	if (strncmp((const char *)args->id, KNOTD_MOD_NAME_PREFIX, len) != 0) {
+		args->err_str = "required 'mod-' prefix";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 int check_server(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
 	bool present = false;
 
 	conf_val_t val;
-	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT);
+	val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV, C_RATE_LIMIT);
 	if (val.code == KNOT_EOK) {
 		present = true;
 	}
 
-	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT_SLIP);
+	val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV, C_RATE_LIMIT_SLIP);
 	if (val.code == KNOT_EOK) {
 		present = true;
 	}
 
-	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT_TBL_SIZE);
+	val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV, C_RATE_LIMIT_TBL_SIZE);
 	if (val.code == KNOT_EOK) {
 		present = true;
 	}
 
-	val = conf_get_txn(args->conf, args->txn, C_SRV, C_RATE_LIMIT_WHITELIST);
+	val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV, C_RATE_LIMIT_WHITELIST);
 	if (val.code == KNOT_EOK) {
 		present = true;
 	}
@@ -272,11 +294,11 @@ int check_server(
 }
 
 int check_keystore(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
-	conf_val_t backend = conf_rawid_get_txn(args->conf, args->txn, C_KEYSTORE,
+	conf_val_t backend = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_KEYSTORE,
 	                                        C_BACKEND, args->id, args->id_len);
-	conf_val_t config = conf_rawid_get_txn(args->conf, args->txn, C_KEYSTORE,
+	conf_val_t config = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_KEYSTORE,
 	                                       C_CONFIG, args->id, args->id_len);
 
 	if (conf_opt(&backend) == KEYSTORE_BACKEND_PKCS11 && conf_str(&config) == NULL) {
@@ -288,17 +310,17 @@ int check_keystore(
 }
 
 int check_policy(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
-	conf_val_t alg = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	conf_val_t alg = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_ALG, args->id, args->id_len);
-	conf_val_t ksk = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	conf_val_t ksk = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_KSK_SIZE, args->id, args->id_len);
-	conf_val_t zsk = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	conf_val_t zsk = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_ZSK_SIZE, args->id, args->id_len);
-	conf_val_t lifetime = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	conf_val_t lifetime = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_RRSIG_LIFETIME, args->id, args->id_len);
-	conf_val_t refresh = conf_rawid_get_txn(args->conf, args->txn, C_POLICY,
+	conf_val_t refresh = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_RRSIG_REFRESH, args->id, args->id_len);
 
 	int64_t ksk_size = conf_int(&ksk);
@@ -324,16 +346,16 @@ int check_policy(
 }
 
 int check_key(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
-	conf_val_t alg = conf_rawid_get_txn(args->conf, args->txn, C_KEY,
+	conf_val_t alg = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_KEY,
 	                                    C_ALG, args->id, args->id_len);
 	if (conf_val_count(&alg) == 0) {
 		args->err_str = "no key algorithm defined";
 		return KNOT_EINVAL;
 	}
 
-	conf_val_t secret = conf_rawid_get_txn(args->conf, args->txn, C_KEY,
+	conf_val_t secret = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_KEY,
 	                                       C_SECRET, args->id, args->id_len);
 	if (conf_val_count(&secret) == 0) {
 		args->err_str = "no key secret defined";
@@ -344,11 +366,11 @@ int check_key(
 }
 
 int check_acl(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
-	conf_val_t action = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
+	conf_val_t action = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                       C_ACTION, args->id, args->id_len);
-	conf_val_t deny = conf_rawid_get_txn(args->conf, args->txn, C_ACL,
+	conf_val_t deny = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                     C_DENY, args->id, args->id_len);
 	if (conf_val_count(&action) == 0 && conf_val_count(&deny) == 0) {
 		args->err_str = "no ACL action defined";
@@ -359,9 +381,9 @@ int check_acl(
 }
 
 int check_remote(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
-	conf_val_t addr = conf_rawid_get_txn(args->conf, args->txn, C_RMT,
+	conf_val_t addr = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
 	                                     C_ADDR, args->id, args->id_len);
 	if (conf_val_count(&addr) == 0) {
 		args->err_str = "no remote address defined";
@@ -372,7 +394,7 @@ int check_remote(
 }
 
 int check_template(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
 	// Stop if the default template.
 	if (is_default_id(args->id, args->id_len)) {
@@ -381,8 +403,8 @@ int check_template(
 
 	conf_val_t val;
 	#define CHECK_DFLT(item, name) \
-		val = conf_rawid_get_txn(args->conf, args->txn, C_TPL, item, \
-		                         args->id, args->id_len); \
+		val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_TPL, \
+		                         item, args->id, args->id_len); \
 		if (val.code == KNOT_EOK) { \
 			args->err_str = name " in non-default template"; \
 			return KNOT_EINVAL; \
@@ -400,11 +422,11 @@ int check_template(
 }
 
 int check_zone(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
-	conf_val_t master = conf_zone_get_txn(args->conf, args->txn,
+	conf_val_t master = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                      C_MASTER, args->id);
-	conf_val_t dnssec = conf_zone_get_txn(args->conf, args->txn,
+	conf_val_t dnssec = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                      C_DNSSEC_SIGNING, args->id);
 
 	// DNSSEC signing is not possible with slave zone.
@@ -413,9 +435,9 @@ int check_zone(
 		return KNOT_EINVAL;
 	}
 
-	conf_val_t signing = conf_zone_get_txn(args->conf, args->txn,
+	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_DNSSEC_SIGNING, args->id);
-	conf_val_t policy = conf_zone_get_txn(args->conf, args->txn,
+	conf_val_t policy = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_DNSSEC_POLICY, args->id);
 	if (conf_bool(&signing) && policy.code != KNOT_EOK) {
 		CONF_LOG(LOG_NOTICE, "DNSSEC policy settings in KASP database "
@@ -437,7 +459,7 @@ static int glob_error(
 }
 
 int include_file(
-	conf_check_t *args)
+	knotd_conf_check_args_t *args)
 {
 	// This function should not be called in more threads.
 	static int depth = 0;
@@ -461,8 +483,8 @@ int include_file(
 		ret = snprintf(path, PATH_MAX, "%.*s",
 		               (int)args->data_len, args->data);
 	} else {
-		const char *file_name = args->file_name != NULL ?
-		                        args->file_name : "./";
+		const char *file_name = args->extra->file_name != NULL ?
+		                        args->extra->file_name : "./";
 		char *full_current_name = realpath(file_name, NULL);
 		if (full_current_name == NULL) {
 			ret = KNOT_ENOMEM;
@@ -506,7 +528,8 @@ int include_file(
 		}
 
 		// Include regular file.
-		ret = conf_parse(args->conf, args->txn, glob_buf.gl_pathv[i], true);
+		ret = conf_parse(args->extra->conf, args->extra->txn,
+		                 glob_buf.gl_pathv[i], true);
 		if (ret != KNOT_EOK) {
 			goto include_error;
 		}
@@ -517,6 +540,33 @@ include_error:
 	globfree(&glob_buf);
 	free(path);
 	depth--;
+
+	return ret;
+}
+
+int load_module(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
+	                                    C_MODULE, C_FILE, args->id, args->id_len);
+	const char *file_name = conf_str(&val);
+
+	char *mod_name = strndup((const char *)args->id, args->id_len);
+	if (mod_name == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = conf_mod_load_extra(args->extra->conf, mod_name, file_name,
+	                              args->extra->check);
+	free(mod_name);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Update currently iterating item.
+	const yp_item_t *section = yp_scheme_find(C_MODULE, NULL, args->extra->conf->scheme);
+	assert(section);
+	args->item = section->var.g.id;
 
 	return ret;
 }

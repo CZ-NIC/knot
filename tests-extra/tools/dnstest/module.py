@@ -10,18 +10,23 @@ import dnstest.params as params
 class KnotModule(object):
     '''Query module configuration'''
 
+    MOD_CONF_PREFIX = "mod-"
+    MOD_API_PREFIX = "knotd_mod_api_"
+
     # Instance counter.
     count = 1
-    # Module callback name in the source.
-    src_name = None
-    # Module name in the configuration.
-    conf_name = None
+    # Module API name suffix.
+    mod_name = None
     # Empty configuration
     empty = False
 
     def __init__(self):
         self.conf_id = "id%s" % type(self).count
         type(self).count += 1
+
+    @property
+    def conf_name(self):
+        return self.MOD_CONF_PREFIX + self.mod_name
 
     @classmethod
     def _check_cmd(cls):
@@ -41,12 +46,12 @@ class KnotModule(object):
                          universal_newlines=True)
             (out, err) = proc.communicate()
 
-            if re.search(cls.src_name, out):
+            if re.search(cls.MOD_API_PREFIX + cls.mod_name, out):
                 return
 
             raise Skip()
         except:
-            raise Skip("Module '%s' not detected" % cls.conf_name)
+            raise Skip("Module '%s' not detected" % cls.mod_name)
 
     def get_conf_ref(self):
         if self.empty:
@@ -59,8 +64,7 @@ class KnotModule(object):
 class ModSynthRecord(KnotModule):
     '''Automatic forward/reverse records module'''
 
-    src_name = "synth_record_load"
-    conf_name = "mod-synth-record"
+    mod_name = "synthrecord"
 
     def __init__(self, mtype, prefix, ttl, network, origin=None):
         super().__init__()
@@ -91,8 +95,7 @@ class ModSynthRecord(KnotModule):
 class ModDnstap(KnotModule):
     '''Dnstap module'''
 
-    src_name = "dnstap_load"
-    conf_name = "mod-dnstap"
+    mod_name = "dnstap"
 
     def __init__(self, sink):
         super().__init__()
@@ -112,8 +115,7 @@ class ModDnstap(KnotModule):
 class ModRRL(KnotModule):
     '''RRL module'''
 
-    src_name = "rrl_load"
-    conf_name = "mod-rrl"
+    mod_name = "rrl"
 
     def __init__(self, rate_limit, slip=None, table_size=None, whitelist=None):
         super().__init__()
@@ -142,8 +144,7 @@ class ModRRL(KnotModule):
 class ModDnsproxy(KnotModule):
     '''Dnsproxy module'''
 
-    src_name = "dnsproxy_load"
-    conf_name = "mod-dnsproxy"
+    mod_name = "dnsproxy"
 
     def __init__(self, addr, port=53, nxdomain=False, fallback=True):
         super().__init__()
@@ -173,8 +174,7 @@ class ModDnsproxy(KnotModule):
 class ModWhoami(KnotModule):
     '''Whoami module'''
 
-    src_name = "whoami_load"
-    conf_name = "mod-whoami"
+    mod_name = "whoami"
     empty = True
 
     def __init__(self):
@@ -183,8 +183,7 @@ class ModWhoami(KnotModule):
 class ModOnlineSign(KnotModule):
     '''Online-sign module'''
 
-    src_name = "online_sign_load"
-    conf_name = "mod-online-sign"
+    mod_name = "onlinesign"
 
     def __init__(self, algorithm=None, key_size=None):
         super().__init__()
@@ -215,8 +214,7 @@ class ModOnlineSign(KnotModule):
 class ModRosedb(KnotModule):
     '''Rosedb module'''
 
-    src_name = "rosedb_load"
-    conf_name = "mod-rosedb"
+    mod_name = "rosedb"
 
     def __init__(self, dbdir):
         super().__init__()
@@ -248,8 +246,7 @@ class ModRosedb(KnotModule):
 class ModStats(KnotModule):
     '''Stats module'''
 
-    src_name = "stats_load"
-    conf_name = "mod-stats"
+    mod_name = "stats"
 
     def __init__(self):
         super().__init__()

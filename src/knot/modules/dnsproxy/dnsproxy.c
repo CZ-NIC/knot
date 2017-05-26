@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "contrib/mempattern.h"
 #include "contrib/net.h"
-#include "knot/modules/dnsproxy/dnsproxy.h"
-#include "knot/query/capture.h"
-#include "knot/query/requestor.h"
+#include "knot/include/module.h"
+#include "knot/conf/scheme.h"
+#include "knot/query/capture.h" // Forces static module!
+#include "knot/query/requestor.h" // Forces static module!
 
 /* Module configuration scheme. */
 #define MOD_REMOTE		"\x06""remote"
@@ -26,21 +26,19 @@
 #define MOD_FALLBACK		"\x08""fallback"
 #define MOD_CATCH_NXDOMAIN	"\x0E""catch-nxdomain"
 
-const yp_item_t scheme_mod_dnsproxy[] = {
-	{ C_ID,               YP_TSTR,  YP_VNONE },
-	{ MOD_REMOTE,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } },
+const yp_item_t dnsproxy_conf[] = {
+	{ MOD_REMOTE,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE,
+	                                { knotd_conf_check_ref } },
 	{ MOD_TIMEOUT,        YP_TINT,  YP_VINT = { 0, INT32_MAX, 500 } },
 	{ MOD_FALLBACK,       YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_CATCH_NXDOMAIN, YP_TBOOL, YP_VNONE },
-	{ C_COMMENT,          YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
-int check_mod_dnsproxy(conf_check_t *args)
+int dnsproxy_conf_check(knotd_conf_check_args_t *args)
 {
-	conf_val_t rmt = conf_rawid_get_txn(args->conf, args->txn, C_MOD_DNSPROXY,
-	                                    MOD_REMOTE, args->id, args->id_len);
-	if (rmt.code != KNOT_EOK) {
+	knotd_conf_t rmt = knotd_conf_check_item(args, MOD_REMOTE);
+	if (rmt.count == 0) {
 		args->err_str = "no remote server specified";
 		return KNOT_EINVAL;
 	}
@@ -49,17 +47,19 @@ int check_mod_dnsproxy(conf_check_t *args)
 }
 
 typedef struct {
-	conf_remote_t remote;
+	struct sockaddr_storage remote;
+	struct sockaddr_storage via;
 	bool fallback;
 	bool catch_nxdomain;
 	int timeout;
 } dnsproxy_t;
 
-static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
+                                  knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	assert(pkt && qdata && ctx);
+	assert(pkt && qdata && mod);
 
-	dnsproxy_t *proxy = ctx;
+	dnsproxy_t *proxy = knotd_mod_ctx(mod);
 
 	/* Forward only queries ending with REFUSED (no zone) or NXDOMAIN (if configured) */
 	if (proxy->fallback && !(qdata->rcode == KNOT_RCODE_REFUSED ||
@@ -86,9 +86,9 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		return state; /* Ignore, not enough memory. */
 	}
 
-	bool is_tcp = net_is_stream(qdata->param->socket);
-	const struct sockaddr *dst = (const struct sockaddr *)&proxy->remote.addr;
-	const struct sockaddr *src = (const struct sockaddr *)&proxy->remote.via;
+	bool is_tcp = net_is_stream(qdata->params->socket);
+	const struct sockaddr *dst = (const struct sockaddr *)&proxy->remote;
+	const struct sockaddr *src = (const struct sockaddr *)&proxy->via;
 	struct knot_request *req = knot_request_make(re.mm, dst, src, qdata->query, NULL,
 	                                             is_tcp ? 0 : KNOT_RQ_UDP);
 	if (req == NULL) {
@@ -105,7 +105,7 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 	/* Check result. */
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
-		return KNOT_STATE_FAIL; /* Forwarding failed, SERVFAIL. */
+		return KNOTD_STATE_FAIL; /* Forwarding failed, SERVFAIL. */
 	} else {
 		qdata->rcode = knot_pkt_ext_rcode(pkt);
 	}
@@ -115,44 +115,50 @@ static int dnsproxy_fwd(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 		knot_tsig_append(pkt->wire, &pkt->size, pkt->max_size, pkt->tsig_rr);
 	}
 
-	return KNOT_STATE_DONE;
+	return KNOTD_STATE_DONE;
 }
 
-int dnsproxy_load(struct query_module *self)
+int dnsproxy_load(knotd_mod_t *mod)
 {
-	assert(self);
-
-	dnsproxy_t *proxy = mm_alloc(self->mm, sizeof(*proxy));
+	dnsproxy_t *proxy = calloc(1, sizeof(*proxy));
 	if (proxy == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	conf_val_t val = conf_mod_get(self->config, MOD_REMOTE, self->id);
-	proxy->remote = conf_remote(self->config, &val, 0);
+	knotd_conf_t remote = knotd_conf_mod(mod, MOD_REMOTE);
+	knotd_conf_t conf = knotd_conf(mod, C_RMT, C_ADDR, &remote);
+	if (conf.count > 0) {
+		proxy->remote = conf.multi[0].addr;
+		knotd_conf_free(&conf);
+	}
+	conf = knotd_conf(mod, C_RMT, C_VIA, &remote);
+	if (conf.count > 0) {
+		proxy->via = conf.multi[0].addr;
+		knotd_conf_free(&conf);
+	}
 
-	val = conf_mod_get(self->config, MOD_TIMEOUT, self->id);
-	proxy->timeout = conf_int(&val);
+	conf = knotd_conf_mod(mod, MOD_TIMEOUT);
+	proxy->timeout = conf.single.integer;
 
-	val = conf_mod_get(self->config, MOD_FALLBACK, self->id);
-	proxy->fallback = conf_bool(&val);
+	conf = knotd_conf_mod(mod, MOD_FALLBACK);
+	proxy->fallback = conf.single.boolean;
 
-	val = conf_mod_get(self->config, MOD_CATCH_NXDOMAIN, self->id);
-	proxy->catch_nxdomain = conf_bool(&val);
+	conf = knotd_conf_mod(mod, MOD_CATCH_NXDOMAIN);
+	proxy->catch_nxdomain = conf.single.boolean;
 
-	self->ctx = proxy;
+	knotd_mod_ctx_set(mod, proxy);
 
 	if (proxy->fallback) {
-		return query_module_step(self, QPLAN_END, dnsproxy_fwd);
+		return knotd_mod_hook(mod, KNOTD_STAGE_END, dnsproxy_fwd);
 	} else {
-		return query_module_step(self, QPLAN_BEGIN, dnsproxy_fwd);
+		return knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, dnsproxy_fwd);
 	}
 }
 
-void dnsproxy_unload(struct query_module *self)
+void dnsproxy_unload(knotd_mod_t *mod)
 {
-	assert(self);
-
-	dnsproxy_t *ctx = self->ctx;
-
-	mm_free(self->mm, ctx);
+	free(knotd_mod_ctx(mod));
 }
+
+KNOTD_MOD_API(dnsproxy, KNOTD_MOD_FLAG_SCOPE_ANY,
+              dnsproxy_load, dnsproxy_unload, dnsproxy_conf, dnsproxy_conf_check);

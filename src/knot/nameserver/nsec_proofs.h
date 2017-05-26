@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,19 +20,19 @@
 #include "knot/nameserver/process_query.h"
 
 /*! \brief Prove wildcards visited during answer resolution. */
-int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata);
+int nsec_prove_wildcards(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 
 /*! \brief Prove answer leading to non-existent name. */
-int nsec_prove_nxdomain(knot_pkt_t *pkt, struct query_data *qdata);
+int nsec_prove_nxdomain(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 
 /*! \brief Prove empty answer. */
-int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata);
+int nsec_prove_nodata(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 
 /*! \brief Prove delegation point security. */
-int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata);
+int nsec_prove_dp_security(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 
 /*! \brief Append missing RRSIGs for current processing section. */
-int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional);
+int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional);
 
 /*! \brief Clear RRSIG list. */
-void nsec_clear_rrsigs(struct query_data *qdata);
+void nsec_clear_rrsigs(knotd_qdata_t *qdata);

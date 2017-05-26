@@ -18,6 +18,7 @@
 #include <urcu.h>
 
 #include "knot/common/log.h"
+#include "knot/conf/module.h"
 #include "knot/events/replan.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"

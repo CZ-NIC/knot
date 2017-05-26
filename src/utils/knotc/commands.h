@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,8 @@ typedef enum {
 	CMD_FOPT_ZONE  = 1 << 5, /*!< Optional zone name argument. */
 	CMD_FREQ_ZONE  = 1 << 6, /*!< Required zone name argument. */
 	CMD_FREQ_TXN   = 1 << 7, /*!< Required open confdb transaction. */
+	CMD_FOPT_MOD   = 1 << 8, /*!< Optional configured modules dependency. */
+	CMD_FREQ_MOD   = 1 << 9, /*!< Required configured modules dependency. */
 } cmd_flag_t;
 
 struct cmd_desc;

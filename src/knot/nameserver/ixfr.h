@@ -47,7 +47,7 @@ struct ixfr_proc {
 	const knot_rrset_t *soa_to;
 
 	/* Processing context. */
-	struct query_data *qdata;
+	knotd_qdata_t *qdata;
 	knot_mm_t *mm;
 };
 
@@ -58,4 +58,4 @@ struct ixfr_proc {
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int ixfr_process_query(knot_pkt_t *pkt, struct query_data *qdata);
+int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);

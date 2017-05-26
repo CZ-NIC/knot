@@ -31,21 +31,16 @@
 #include "knot/conf/conf.h"
 #include "libknot/yparser/ypscheme.h"
 
-typedef struct {
+typedef struct knotd_conf_check_extra {
 	conf_t *conf;
 	knot_db_txn_t *txn;
-	const yp_item_t *item;
-	const uint8_t *id;
-	size_t id_len;
-	const uint8_t *data;
-	size_t data_len;
 	const char *file_name;
 	size_t line;
-	const char *err_str;
-} conf_check_t;
+	bool check; /*!< Indication of the confio check mode. */
+} knotd_conf_check_extra_t;
 
 int conf_exec_callbacks(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int mod_id_to_bin(
@@ -65,51 +60,59 @@ int edns_opt_to_txt(
 );
 
 int check_ref(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int check_ref_dflt(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int check_modref(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
+);
+
+int check_module_id(
+	knotd_conf_check_args_t *args
 );
 
 int check_server(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int check_keystore(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int check_policy(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int check_key(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int check_acl(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int check_remote(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int check_template(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int check_zone(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
 );
 
 int include_file(
-	conf_check_t *args
+	knotd_conf_check_args_t *args
+);
+
+int load_module(
+	knotd_conf_check_args_t *args
 );
 
 /*! @} */

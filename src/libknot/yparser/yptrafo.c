@@ -21,6 +21,7 @@
 #include <stdlib.h>
 
 #include "libknot/yparser/yptrafo.h"
+#include "libknot/attribute.h"
 #include "libknot/consts.h"
 #include "libknot/dname.h"
 #include "libknot/lookup.h"
@@ -66,6 +67,7 @@ static wire_ctx_t copy_in(
 	return ctx;
 }
 
+_public_
 int yp_str_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
@@ -79,6 +81,7 @@ int yp_str_to_bin(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_str_to_txt(
 	YP_BIN_TXT_PARAMS)
 {
@@ -94,6 +97,7 @@ int yp_str_to_txt(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_bool_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
@@ -114,6 +118,7 @@ int yp_bool_to_bin(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_bool_to_txt(
 	YP_BIN_TXT_PARAMS)
 {
@@ -198,6 +203,7 @@ static int remove_unit(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_int_to_bin(
 	YP_TXT_BIN_PARAMS,
 	int64_t min,
@@ -304,6 +310,7 @@ static void add_unit(
 	}
 }
 
+_public_
 int yp_int_to_txt(
 	YP_BIN_TXT_PARAMS,
 	yp_style_t style)
@@ -349,6 +356,7 @@ static uint8_t sock_type_guess(
 	}
 }
 
+_public_
 int yp_addr_noport_to_bin(
 	YP_TXT_BIN_PARAMS,
 	bool allow_unix)
@@ -391,6 +399,7 @@ int yp_addr_noport_to_bin(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_addr_noport_to_txt(
 	YP_BIN_TXT_PARAMS)
 {
@@ -431,6 +440,7 @@ int yp_addr_noport_to_txt(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_addr_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
@@ -468,6 +478,7 @@ int yp_addr_to_bin(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_addr_to_txt(
 	YP_BIN_TXT_PARAMS)
 {
@@ -502,6 +513,7 @@ int yp_addr_to_txt(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_addr_range_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
@@ -577,6 +589,7 @@ int yp_addr_range_to_bin(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_addr_range_to_txt(
 	YP_BIN_TXT_PARAMS)
 {
@@ -618,6 +631,7 @@ int yp_addr_range_to_txt(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_option_to_bin(
 	YP_TXT_BIN_PARAMS,
 	const knot_lookup_t *opts)
@@ -636,6 +650,7 @@ int yp_option_to_bin(
 	return KNOT_EINVAL;
 }
 
+_public_
 int yp_option_to_txt(
 	YP_BIN_TXT_PARAMS,
 	const knot_lookup_t *opts)
@@ -659,6 +674,7 @@ int yp_option_to_txt(
 	return KNOT_EINVAL;
 }
 
+_public_
 int yp_dname_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
@@ -696,6 +712,7 @@ int yp_dname_to_bin(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_dname_to_txt(
 	YP_BIN_TXT_PARAMS)
 {
@@ -719,6 +736,7 @@ static int hex_to_num(char hex) {
 	return -1;
 }
 
+_public_
 int yp_hex_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
@@ -761,6 +779,7 @@ int yp_hex_to_bin(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_hex_to_txt(
 	YP_BIN_TXT_PARAMS)
 {
@@ -803,6 +822,7 @@ int yp_hex_to_txt(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_base64_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
@@ -826,6 +846,7 @@ int yp_base64_to_bin(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_base64_to_txt(
 	YP_BIN_TXT_PARAMS)
 {
@@ -848,6 +869,7 @@ int yp_base64_to_txt(
 	YP_CHECK_RET;
 }
 
+_public_
 int yp_item_to_bin(
 	const yp_item_t *item,
 	const char *txt,
@@ -921,6 +943,7 @@ int yp_item_to_bin(
 	return KNOT_EOK;
 }
 
+_public_
 int yp_item_to_txt(
 	const yp_item_t *item,
 	const uint8_t *bin,
@@ -1009,6 +1032,7 @@ int yp_item_to_txt(
 	return KNOT_EOK;
 }
 
+_public_
 struct sockaddr_storage yp_addr_noport(
 	const uint8_t *data)
 {
@@ -1036,12 +1060,14 @@ struct sockaddr_storage yp_addr_noport(
 	return ss;
 }
 
+_public_
 int64_t yp_int(
 	const uint8_t *data)
 {
 	return (int64_t)wire_read_u64(data);
 }
 
+_public_
 struct sockaddr_storage yp_addr(
 	const uint8_t *data,
 	bool *no_port)
@@ -1076,6 +1102,7 @@ struct sockaddr_storage yp_addr(
 	return ss;
 }
 
+_public_
 const size_t yp_bin_len(
 	const uint8_t *data)
 {

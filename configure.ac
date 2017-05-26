@@ -59,7 +59,8 @@ LT_INIT
 # Use pkg-config
 PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
-AC_CONFIG_FILES([src/libknot.pc
+AC_CONFIG_FILES([src/knotd.pc
+                 src/libknot.pc
                  src/dnssec/libdnssec.pc
                  src/zscanner/libzscanner.pc
                  ])
@@ -196,6 +197,14 @@ AC_ARG_WITH([configdir],
         [config_dir=$withval])
 AC_SUBST(config_dir)
 
+module_dir=
+module_instdir="${libdir}/knot/modules-${KNOT_VERSION_MAJOR}.${KNOT_VERSION_MINOR}"
+AC_ARG_WITH([moduledir],
+        AC_HELP_STRING([--with-moduledir=path], [Path to auto-loaded dynamic modules. [default not set]]),
+        [module_dir=$withval module_instdir=$module_dir])
+AC_SUBST(module_instdir)
+AC_SUBST(module_dir)
+
 #########################################
 # Dependencies needed for Knot DNS daemon
 #########################################
@@ -273,6 +282,31 @@ AS_IF([test "$with_urcu" != "no"], [
 ])
 
 AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])])
+])
+
+static_modules=""
+shared_modules=""
+AS_IF([test "$enable_daemon" = "yes"],[
+  static_modules_declars=""
+  static_modules_init=""
+  doc_modules=""
+
+  KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
+  KNOT_MODULE([dnstap],      "no")
+  KNOT_MODULE([noudp],       "yes")
+  KNOT_MODULE([onlinesign],  "yes", "non-shareable")
+  KNOT_MODULE([rosedb],      "no")
+  KNOT_MODULE([rrl],         "yes")
+  KNOT_MODULE([stats],       "yes")
+  KNOT_MODULE([synthrecord], "yes")
+  KNOT_MODULE([whoami],      "yes")
+
+  AC_SUBST([STATIC_MODULES_DECLARS], [$(printf "$static_modules_declars")])
+  AM_SUBST_NOTMAKE([STATIC_MODULES_DECLARS])
+  AC_SUBST([STATIC_MODULES_INIT], [$(printf "$static_modules_init")])
+  AM_SUBST_NOTMAKE([STATIC_MODULES_INIT])
+  AC_SUBST([DOC_MODULES], [$(printf "$doc_modules")])
+  AM_SUBST_NOTMAKE([DOC_MODULES])
 ])
 
 opt_dnstap=no
@@ -384,17 +418,6 @@ AS_CASE([$timer_mapsize],
     [*],  [AS_IF([test $timer_mapsize != $(( $timer_mapsize + 0 ))],
                  [AC_ERROR([timer_mapsize must be an integer number])])])
 AC_DEFINE_UNQUOTED([TIMER_MAPSIZE], [$timer_mapsize], [Timer DB mapsize.])
-
-AS_IF([test "$enable_daemon" = "yes"],[
-
-dnl Check for rosedb module
-AC_ARG_ENABLE([rosedb],
-    AS_HELP_STRING([--enable-rosedb], [Enable static RR query module.]),
-    [], [enable_rosedb=no])
-]) # Knot DNS daemon dependencies
-
-AS_IF([test "$enable_rosedb" = yes], [AC_DEFINE([HAVE_ROSEDB], [1], [Define to 1 to enable static RR query module.])])
-AM_CONDITIONAL([HAVE_ROSEDB], [test "$enable_rosedb" = yes])
 
 # libedit
 AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
@@ -534,6 +557,7 @@ result_msg_base="  $PACKAGE $VERSION
     Run dir:     ${run_dir}
     Storage dir: ${storage_dir}
     Config dir:  ${config_dir}
+    Module dir:  ${module_dir}
 
     Configuration DB mapsize: ${conf_mapsize} MiB
     Timers DB mapsize:        ${timer_mapsize} MiB
@@ -543,14 +567,17 @@ result_msg_base="  $PACKAGE $VERSION
     Knot DNS utils:         ${enable_utilities}
     Knot DNS documentation: ${enable_documentation}
 
-    Use recvmmsg:        ${enable_recvmmsg}
-    Use SO_REUSEPORT:    ${enable_reuseport}
-    Fast zone parser:    ${enable_fastparser}
-    Utilities with IDN:  ${with_libidn}
-    Systemd integration: ${enable_systemd}
-    Dnstap support:      ${opt_dnstap}
-    Code coverage:       ${enable_code_coverage}
-    PKCS #11 support:    ${enable_pkcs11}"
+    Static modules: ${static_modules}
+    Shared modules: ${shared_modules}
+
+    Use recvmmsg:          ${enable_recvmmsg}
+    Use SO_REUSEPORT:      ${enable_reuseport}
+    Fast zone parser:      ${enable_fastparser}
+    Utilities with IDN:    ${with_libidn}
+    Utilities with Dnstap: ${opt_dnstap}
+    Systemd integration:   ${enable_systemd}
+    Code coverage:         ${enable_code_coverage}
+    PKCS #11 support:      ${enable_pkcs11}"
 
 result_msg_esc=$(echo -n "$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
 result_msg_add="
@@ -563,6 +590,7 @@ AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY],["$result_msg_esc"],[Configure summary])
 
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
+                 doc/modules.rst
                  libtap/Makefile
                  tests/Makefile
                  tests-fuzz/Makefile
@@ -572,6 +600,7 @@ AC_CONFIG_FILES([Makefile
                  src/contrib/dnstap/Makefile
                  src/dnssec/Makefile
                  src/dnssec/tests/Makefile
+                 src/knot/modules/static_modules.h
                  src/zscanner/Makefile
                  ])
 
