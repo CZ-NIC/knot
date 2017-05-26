@@ -195,7 +195,7 @@ libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS) $(LDFLAG
 libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la
 
 # pkg-config
-pkgconfig_DATA = libknot.pc
+pkgconfig_DATA = knotd.pc libknot.pc
 
 # static: utilities shared
 libknotus_la_SOURCES =				\
