@@ -206,7 +206,7 @@ def g_fqdn(dn):
 
 def g_customrr(rt):
     bin = rnd_hex(rnd(10,50)).encode()
-    return '%s TYPE%d %s' % (rnd_dnl(), rnd(258,32767), g_rdbin(bin))
+    return '%s TYPE%d %s' % (rnd_dnl(), rnd(300,32767), g_rdbin(bin))
 
 # RR Generators
 
