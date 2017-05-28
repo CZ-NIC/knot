@@ -204,6 +204,7 @@ int yp_scheme_copy(
 	int ret = scheme_copy(*dst, src, *dst);
 	if (ret != KNOT_EOK) {
 		yp_scheme_free(*dst);
+		return ret;
 	}
 
 	return KNOT_EOK;
@@ -234,12 +235,14 @@ int yp_scheme_merge(
 	int ret = scheme_copy(*dst, src1, *dst);
 	if (ret != KNOT_EOK) {
 		yp_scheme_free(*dst);
+		return ret;
 	}
 
 	// Copy the second scheme.
 	ret = scheme_copy(*dst + count1, src2, *dst);
 	if (ret != KNOT_EOK) {
 		yp_scheme_free(*dst);
+		return ret;
 	}
 
 	return KNOT_EOK;
