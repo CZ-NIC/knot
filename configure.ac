@@ -452,21 +452,28 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
 
 dnl Check for libidn.
 AC_ARG_WITH(libidn,
-    AC_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU Libidn)]),
-    with_libidn=$withval,
-    with_libidn=yes
-    )
+  AC_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU libidn2 or libidn)]),
+  with_libidn=$withval,
+  with_libidn=yes
+)
 
-AS_IF([test "$enable_utilities" = "yes"],[
-AS_IF([test "$with_libidn" != "no"],[
-    PKG_CHECK_MODULES([libidn], [libidn >= 0.0.0], [
+AS_IF([test "$enable_utilities" = "yes"], [
+  AS_IF([test "$with_libidn" != "no"], [
+    PKG_CHECK_MODULES([libidn2], [libidn2 >= 0.0.0], [
+      with_libidn=yes
+      AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
+      AC_DEFINE([LIBIDN_HEADER], [<idn2.h>], [Define to proper libidn header])
+    ], [
+      PKG_CHECK_MODULES([libidn], [libidn >= 0.0.0], [
         with_libidn=yes
         AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
-        ],[
+        AC_DEFINE([LIBIDN_HEADER], [<idna.h>], [Define to proper libidn header])
+      ], [
         with_libidn=no
-        AC_MSG_WARN([libidn not found])
-        ])])
-
+        AC_MSG_WARN([libidn2 or libidn not found])
+      ])
+    ])
+  ])
 ]) # Knot DNS utilities dependencies
 
 AC_SEARCH_LIBS([pow], [m])
