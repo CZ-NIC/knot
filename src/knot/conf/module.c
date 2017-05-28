@@ -203,9 +203,9 @@ int conf_mod_load_extra(
 	}
 
 	void *handle = dlopen(file_name, RTLD_NOW | RTLD_LOCAL);
-	free(tmp_name);
 	if (handle == NULL) {
-		log_error("module, failed to open (%s)", dlerror());
+		log_error("module, failed to open '%s' (%s)", file_name, dlerror());
+		free(tmp_name);
 		return KNOT_ENOENT;
 	}
 	(void)dlerror();
@@ -218,8 +218,10 @@ int conf_mod_load_extra(
 		}
 		log_error("module, invalid library '%s' (%s)", file_name, err);
 		dlclose(handle);
+		free(tmp_name);
 		return KNOT_ENOENT;
 	}
+	free(tmp_name);
 
 	if (api->version != KNOTD_MOD_ABI_VERSION) {
 		log_error("module '%s', incompatible version", api->name);
