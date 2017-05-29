@@ -18,6 +18,7 @@
 #include <time.h>
 #include <stdarg.h>
 
+#include "contrib/macros.h"
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
@@ -173,30 +174,6 @@ typedef struct {
 	knot_kasp_key_t *key;
 } roll_action;
 
-__attribute__((unused))
-inline static time_t time_max(time_t a, time_t b)
-{
-	return ((a > b) ? a : b);
-}
-
-inline static time_t time_min(time_t a, time_t b)
-{
-	return ((a < b) ? a : b);
-}
-
-__attribute__((unused))
-static time_t time_min_multi(time_t first, ...)
-{
-	va_list args;
-	va_start(args, first);
-	time_t res = TIME_INFINITY;
-	for (time_t cur = first; cur != 0; cur = va_arg(args, time_t)) {
-		res = time_min(res, cur);
-	}
-	va_end(args);
-	return res;
-}
-
 static time_t zsk_publish_time(time_t active_time, const kdnssec_ctx_t *ctx)
 {
 	if (active_time <= 0 || active_time >= TIME_INFINITY) {
@@ -351,7 +328,7 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (dnssec_key_get_flags(key->key) == kskflag &&
 		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_ACTIVE) {
-			key->timing.retire = time_min(ctx->now + delay, key->timing.retire);
+			key->timing.retire = MIN(ctx->now + delay, key->timing.retire);
 		}
 	}
 
@@ -360,9 +337,9 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 	} else {
 		assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_PUBLISHED);
 		assert(delay == 0);
-		newkey->timing.ready = time_min(ctx->now + delay, newkey->timing.ready);
+		newkey->timing.ready = MIN(ctx->now + delay, newkey->timing.ready);
 	}
-	newkey->timing.active = time_min(ctx->now + delay, newkey->timing.active);
+	newkey->timing.active = MIN(ctx->now + delay, newkey->timing.active);
 
 	return KNOT_EOK;
 }
