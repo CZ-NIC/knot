@@ -16,11 +16,8 @@
 
 #pragma once
 
-#include <time.h>
-
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/zone/zone.h"
 
 /*!
  * \brief Perform correct ZSK and KSK rollover action and plan next one.

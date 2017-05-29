@@ -275,7 +275,6 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				keytime = ksk_remove_time(key->timing.retire, ctx);
 				restype = REMOVE;
 				break;
-
 			default:
 				assert(0);
 			}
