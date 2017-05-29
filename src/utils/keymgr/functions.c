@@ -371,18 +371,18 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	int fd = open(import_file, O_RDONLY, 0);
 	if (fd == -1) {
 		close(fd);
-		return -errno;
+		return knot_map_errno();
 	}
 
 	// determine size
 	off_t fsize = lseek(fd, 0, SEEK_END);
 	if (fsize == -1) {
 		close(fd);
-		return -errno;
+		return knot_map_errno();
 	}
 	if (lseek(fd, 0, SEEK_SET) == -1) {
 		close(fd);
-		return -errno;
+		return knot_map_errno();
 	}
 
 	// alloc memory
@@ -398,7 +398,7 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	close(fd);
 	if (read_count == -1) {
 		dnssec_binary_free(&read_pem);
-		return -errno;
+		return knot_map_errno();
 	}
 
 	// put pem to kesytore
