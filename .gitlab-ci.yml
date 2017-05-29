@@ -12,24 +12,18 @@ stages:
 .debian_stretch: &debian_stretch
   image: cznic/debian:stretch-knot-latest
   tags:
-    - knot
-    - docker
     - linux
     - amd64
   
 .ubuntu_xenial: &ubuntu_xenial
   image: cznic/ubuntu:16.04-knot
   tags:
-    - knot
-    - docker
     - linux
     - amd64
 
 .debian_stretch_armel: &debian_stretch_armel
   image: cznic/armel-debian-knot
   tags:
-    - knot
-    - docker
     - linux
     - arm
 
