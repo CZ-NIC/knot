@@ -64,7 +64,7 @@ static void print_help(void)
 static int key_command(int argc, char *argv[])
 {
 	if (argc < 2) {
-		printf("Zone name and/or command not specified.\n");
+		printf("Zone name and/or command not specified\n");
 		print_help();
 		return KNOT_EINVAL;
 	}
@@ -95,21 +95,21 @@ static int key_command(int argc, char *argv[])
 		ret = keymgr_generate_key(&kctx, argc - 2, argv + 2);
 	} else if (strcmp(argv[1], "import-bind") == 0) {
 		if (argc < 3) {
-			printf("BIND-style key to import not specified.\n");
+			printf("BIND-style key to import not specified\n");
 			ret = KNOT_EINVAL;
 			goto main_end;
 		}
 		ret = keymgr_import_bind(&kctx, argv[2]);
 	} else if (strcmp(argv[1], "import-pem") == 0) {
 		if (argc < 3) {
-			printf("PEM file to import not specified.\n");
+			printf("PEM file to import not specified\n");
 			ret = KNOT_EINVAL;
 			goto main_end;
 		}
 		ret = keymgr_import_pem(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (strcmp(argv[1], "set") == 0) {
 		if (argc < 3) {
-			printf("Key is not specified.\n");
+			printf("Key is not specified\n");
 			ret = KNOT_EINVAL;
 			goto main_end;
 		}
@@ -125,7 +125,7 @@ static int key_command(int argc, char *argv[])
 		ret = keymgr_list_keys(&kctx);
 	} else if (strcmp(argv[1], "ds") == 0) {
 		if (argc < 3) {
-			printf("Key is not specified.\n");
+			printf("Key is not specified\n");
 			ret = KNOT_EINVAL;
 			goto main_end;
 		}
@@ -144,7 +144,7 @@ static int key_command(int argc, char *argv[])
 		free(key_to_share);
 	} else if (strcmp(argv[1], "delete") == 0) {
 		if (argc < 3) {
-			printf("Key is not specified.\n");
+			printf("Key is not specified\n");
 			ret = KNOT_EINVAL;
 			goto main_end;
 		}
@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
 	if (strlen(argv[1]) == 2 && argv[1][0] == '-') {
 
 #define check_argc_three if (argc < 3) { \
-	printf("Option %s requires an argument.\n", argv[1]); \
+	printf("Option %s requires an argument\n", argv[1]); \
 	print_help(); \
 	return EXIT_FAILURE; \
 }
@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
 			   init_conf(NULL) && init_confile(CONF_DEFAULT_FILE)) {
 			// initialized conf from default confile
 		} else {
-			printf("Couldn't initialize configuration, please provide -c -C or -d options.\n");
+			printf("Couldn't initialize configuration, please provide -c, -C or -d option\n");
 			return EXIT_FAILURE;
 		}
 	}
