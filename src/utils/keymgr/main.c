@@ -268,12 +268,12 @@ int main(int argc, char *argv[])
 			break;
 		case 't':
 			check_argc_three
-			int tret = keymgr_generate_tsig(argv[2], (argc >= 4 ? argv[3] : "hmac-sha256"),
-							(argc >= 5 ? atol(argv[4]) : 0));
-			if (tret != KNOT_EOK) {
-				printf("Failed to generate TSIG (%s)\n", knot_strerror(tret));
+			int ret = keymgr_generate_tsig(argv[2], (argc >= 4 ? argv[3] : "hmac-sha256"),
+			                               (argc >= 5 ? atol(argv[4]) : 0));
+			if (ret != KNOT_EOK) {
+				printf("Failed to generate TSIG (%s)\n", knot_strerror(ret));
 			}
-			return (tret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
+			return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
 		default:
 			printf("Wrong option: %s\n", argv[1]);
 			print_help();
@@ -297,7 +297,6 @@ int main(int argc, char *argv[])
 	}
 
 	int ret = key_command(argc - argpos, argv + argpos);
-
 
 	conf_free(conf());
 
