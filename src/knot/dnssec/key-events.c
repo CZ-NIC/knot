@@ -214,12 +214,12 @@ static time_t ksk_ready_time(time_t publish_time, const kdnssec_ctx_t *ctx)
 	return publish_time + ctx->policy->propagation_delay + ctx->policy->dnskey_ttl;
 }
 
-static time_t ksk_submittion_max_time(time_t ready_time, const kdnssec_ctx_t *ctx)
+static time_t ksk_sbm_max_time(time_t ready_time, const kdnssec_ctx_t *ctx)
 {
 	if (ready_time <= 0 || ready_time >= TIME_INFINITY) {
 		return TIME_INFINITY;
 	}
-	return ready_time + ctx->policy->ksk_submittion_check_max;
+	return ready_time + ctx->policy->ksk_sbm_timeout;
 }
 
 static time_t ksk_remove_time(time_t retire_time, const kdnssec_ctx_t *ctx)
@@ -262,7 +262,7 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				restype = SUBMIT;
 				break;
 			case DNSSEC_KEY_STATE_READY:
-				keytime = ksk_submittion_max_time(key->timing.ready, ctx);
+				keytime = ksk_sbm_max_time(key->timing.ready, ctx);
 				restype = REPLACE;
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
@@ -319,9 +319,9 @@ static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey) {
 static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 {
 	uint16_t kskflag = dnssec_key_get_flags(newkey->key);
-	time_t delay = (kskflag == DNSKEY_FLAGS_KSK ? ctx->policy->ksk_submittion_check_interval : 0);
+	time_t delay = (kskflag == DNSKEY_FLAGS_KSK ? ctx->policy->ksk_sbm_check_interval : 0);
 	// a delay to avoid left-behind of behind-a-loadbalancer parent NSs
-	// for now we use (incorrectly) ksk_submittion_check_interval, to avoid too many conf options
+	// for now we use (incorrectly) ksk_sbm_check_interval, to avoid too many conf options
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
@@ -422,7 +422,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 	return (ret == KNOT_ESEMCHECK ? KNOT_EOK : ret);
 }
 
-int knot_dnssec_ksk_submittion_confirm(kdnssec_ctx_t *ctx, uint16_t for_key)
+int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint16_t for_key)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
@@ -439,7 +439,7 @@ int knot_dnssec_ksk_submittion_confirm(kdnssec_ctx_t *ctx, uint16_t for_key)
 	return KNOT_ENOENT;
 }
 
-bool zone_has_key_submittion(const kdnssec_ctx_t *ctx)
+bool zone_has_key_sbm(const kdnssec_ctx_t *ctx)
 {
 	assert(ctx->zone);
 

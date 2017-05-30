@@ -363,7 +363,7 @@ desired (finite) lifetime for KSK: ::
       ksk-size: 2048
       zsk-size: 1024
       ksk-lifetime: 365d
-      ksk-submittion-check: [cz_zone]
+      ksk-submission-check: [cz_zone]
 
   zone:
     - domain: myzone.test
@@ -371,7 +371,7 @@ desired (finite) lifetime for KSK: ::
       dnssec-policy: rsa
 
 After the initially-generated KSK reaches its lifetime, new KSK is published and after
-convenience delay the submittion is started. The server publishes CDS and CDNSKEY records
+convenience delay the submission is started. The server publishes CDS and CDNSKEY records
 and the user shall propagate them to the parent. The server periodically checks for
 DS at the master and when positive, finishes the rollover.
 
@@ -383,7 +383,7 @@ zones, but other timers (e.g. activate, retire) may get out of sync. ::
     - id: sharedp
       ksk-lifetime: 365d
       ksk-shared: true
-      ksk-submittion-check: [cz_zone]
+      ksk-submission-check: [cz_zone]
 
   zone:
     - domain: firstzone.test

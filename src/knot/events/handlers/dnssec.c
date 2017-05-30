@@ -41,7 +41,7 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 	log_dnssec_next(zone->name, refresh_at);
 
 	if (refresh->plan_ds_query) {
-		log_zone_notice(zone->name, "DNSSEC, published CDS, CDNSKEY for submittion");
+		log_zone_notice(zone->name, "DNSSEC, published CDS, CDNSKEY for submission");
 	}
 
 	zone_events_schedule_at(zone,

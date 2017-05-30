@@ -87,7 +87,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	}
 
 	ns_log(LOG_INFO, data->zone->name, LOG_OPERATION_PARENT,
-	       LOG_DIRECTION_OUT, data->remote, "KSK submittion attempt: %s",
+	       LOG_DIRECTION_OUT, data->remote, "KSK submission attempt: %s",
 	       (match ? "positive" : "negative"));
 
 	if (match) data->ds_ok = true;
@@ -153,7 +153,7 @@ static bool parents_have_ds(zone_t *zone, conf_t *conf, zone_key_t *key) {
 	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
 	uint8_t *policy_name = (uint8_t *)conf_str(&policy);
 	size_t policy_name_len = strlen((const char *)policy_name) + 1;
-	conf_val_t parents = conf_rawid_get(conf, C_POLICY, C_KSK_SUBMITTION_CHECK,
+	conf_val_t parents = conf_rawid_get(conf, C_POLICY, C_KSK_SBM_CHECK,
 					    policy_name, policy_name_len);
 	bool success = false;
 	while (parents.code == KNOT_EOK) {
@@ -199,7 +199,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
 		    key->is_ready && !key->is_active) {
 			if (parents_have_ds(zone, conf, key)) {
-				ret = knot_dnssec_ksk_submittion_confirm(&ctx, dnssec_key_get_keytag(key->key)); // TODO get rid of keytag
+				ret = knot_dnssec_ksk_sbm_confirm(&ctx, dnssec_key_get_keytag(key->key)); // TODO get rid of keytag
 			} else {
 				ret = KNOT_ENOENT;
 			}
@@ -207,7 +207,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 	}
 
 	if (ret != KNOT_EOK) {
-		time_t next_check = time(NULL) + ctx.policy->ksk_submittion_check_interval;
+		time_t next_check = time(NULL) + ctx.policy->ksk_sbm_check_interval;
 		zone_events_schedule_at(zone, ZONE_EVENT_PARENT_DS_Q, next_check);
 	} else {
 		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);

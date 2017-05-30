@@ -61,8 +61,8 @@ child.dnssec(child_zone).manual = False
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
 child.dnssec(child_zone).propagation_delay = 17
-child.dnssec(child_zone).ksk_submittion_check = [ parent ]
-child.dnssec(child_zone).ksk_submittion_check_interval = 2
+child.dnssec(child_zone).ksk_sbm_check = [ parent ]
+child.dnssec(child_zone).ksk_sbm_check_interval = 2
 
 # install KASP db (one always enabled, one for testing)
 shutil.copytree(os.path.join(t.data_dir, "keys"), child.keydir)

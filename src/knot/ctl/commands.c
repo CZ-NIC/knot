@@ -344,7 +344,7 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-static int zone_ksk_submittion_confirm(zone_t *zone, ctl_args_t *args)
+static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 {
 	const char *data = args->data[KNOT_CTL_IDX_OWNER];
 	uint16_t keytag;
@@ -359,7 +359,7 @@ static int zone_ksk_submittion_confirm(zone_t *zone, ctl_args_t *args)
 		return ret;
 	}
 
-	ret = knot_dnssec_ksk_submittion_confirm(&ctx, keytag);
+	ret = knot_dnssec_ksk_sbm_confirm(&ctx, keytag);
 
 	kdnssec_ctx_deinit(&ctx);
 
@@ -1184,8 +1184,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
-	case CTL_ZONE_SUBMITTION_CONFIRM:
-		return zones_apply(args, zone_ksk_submittion_confirm);
+	case CTL_ZONE_SBM_CONFIRM:
+		return zones_apply(args, zone_ksk_sbm_confirm);
 	case CTL_ZONE_FREEZE:
 		return zones_apply(args, zone_freeze);
 	case CTL_ZONE_THAW:
@@ -1614,7 +1614,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer", ctl_zone },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",      ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",       ctl_zone },
-	[CTL_ZONE_SUBMITTION_CONFIRM]       = { "zone-submittion-confirm",       ctl_zone },
+	[CTL_ZONE_SBM_CONFIRM]       = { "zone-submission-confirm",       ctl_zone },
 	[CTL_ZONE_FREEZE]     = { "zone-freeze",     ctl_zone },
 	[CTL_ZONE_THAW]       = { "zone-thaw",       ctl_zone },
 

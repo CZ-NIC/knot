@@ -53,8 +53,8 @@ class ZoneDnssec(object):
         self.nsec3_iters = None
         self.nsec3_salt_lifetime = None
         self.nsec3_salt_len = None
-        self.ksk_submittion_check = []
-        self.ksk_submittion_check_interval = None
+        self.ksk_sbm_check = []
+        self.ksk_sbm_check_interval = None
 
 class Zone(object):
     '''DNS zone description'''
@@ -1034,7 +1034,7 @@ class Knot(Server):
                     if slave.tsig:
                         s.item_str("key", slave.tsig.name)
                     servers.add(slave.name)
-            for parent in z.dnssec.ksk_submittion_check:
+            for parent in z.dnssec.ksk_sbm_check:
                 if parent.name not in servers:
                     if not have_remote:
                         s.begin("remote")
@@ -1115,14 +1115,14 @@ class Knot(Server):
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
             self._str(s, "nsec3-salt-lifetime", z.dnssec.nsec3_salt_lifetime)
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
-            if len(z.dnssec.ksk_submittion_check) > 0:
+            if len(z.dnssec.ksk_sbm_check) > 0:
                 parents = ""
-                for parent in z.dnssec.ksk_submittion_check:
+                for parent in z.dnssec.ksk_sbm_check:
                     if parents:
                         parents += ", "
                     parents += parent.name
-                s.item("ksk-submittion-check", "[%s]" % parents)
-            self._str(s, "ksk-submittion-check-interval", z.dnssec.ksk_submittion_check_interval)
+                s.item("ksk-submission-check", "[%s]" % parents)
+            self._str(s, "ksk-submission-check-interval", z.dnssec.ksk_sbm_check_interval)
         if have_policy:
             s.end()
 

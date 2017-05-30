@@ -582,8 +582,8 @@ DNSSEC policy configuration.
      nsec3-iterations: INT
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
-     ksk-submittion-check: remote_id ...
-     ksk-submittion-check-interval: TIME
+     ksk-submission-check: remote_id ...
+     ksk-submission-check-interval: TIME
 
 .. _policy_id:
 
@@ -694,7 +694,7 @@ A period between KSK publication and the next rollover initiation.
 
 .. NOTE::
    KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
-   and KSK submittion delay.
+   and KSK submission delay.
 
    The default infinite value causes no KSK rollover as a result.
 
@@ -766,34 +766,34 @@ A validity period of newly issued salt field.
 
 *Default:* 30 days
 
-.. _policy_ksk-submittion-check:
+.. _policy_ksk-submission-check:
 
-ksk-submittion-check
+ksk-submission-check
 --------------------
 
 A list of :ref:`references<remote_id>` to parent's DNS servers to be checked for
-presence of corresponding DS records in case of KSK submittion. All of them must
+presence of corresponding DS records in case of KSK submission. All of them must
 have corresponding DS for the rollover to continue. If none specified, the rollover
 must be pushed forward manually.
 
 *Default:* not set
 
-.. _policy_ksk-submittion-check-interval:
+.. _policy_ksk-submission-check-interval:
 
-ksk-submittion-check-interval
+ksk-submission-check-interval
 -----------------------------
 
 Interval for periodic checks of DS resence on parent's DNS servers, in case of
-KSK submittion.
+KSK submission.
 
 *Default:* 1 hour
 
-.. _policy_ksk-submittion-check-max:
+.. _policy_ksk-submission-timeout:
 
-ksk-submittion-check-max
+ksk-submission-timeout
 ------------------------
 
-After this period, the KSK submittion is automatically considered successful, even
+After this period, the KSK submission is automatically considered successful, even
 if all the check were negative or no parents are configured.
 
 *Default:* infinity
