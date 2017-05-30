@@ -355,7 +355,7 @@ desired (finite) lifetime for KSK: ::
 
   remote:
     - id: cz_zone
-      address: 194.0.12.1@53
+      address: 192.168.12.1@53
 
   policy:
     - id: rsa

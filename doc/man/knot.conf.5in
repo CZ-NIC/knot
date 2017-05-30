@@ -524,6 +524,7 @@ policy:
     nsec3\-salt\-lifetime: TIME
     ksk\-submission\-check: remote_id ...
     ksk\-submission\-check\-interval: TIME
+    ksk\-submission\-timeout: TIME
 .ft P
 .fi
 .UNINDENT

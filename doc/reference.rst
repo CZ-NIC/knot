@@ -584,6 +584,7 @@ DNSSEC policy configuration.
      nsec3-salt-lifetime: TIME
      ksk-submission-check: remote_id ...
      ksk-submission-check-interval: TIME
+     ksk-submission-timeout: TIME
 
 .. _policy_id:
 
@@ -791,7 +792,7 @@ KSK submission.
 .. _policy_ksk-submission-timeout:
 
 ksk-submission-timeout
-------------------------
+----------------------
 
 After this period, the KSK submission is automatically considered successful, even
 if all the check were negative or no parents are configured.
