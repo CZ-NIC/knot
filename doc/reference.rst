@@ -788,6 +788,16 @@ KSK submittion.
 
 *Default:* 1 hour
 
+.. _policy_ksk-submittion-check-max:
+
+ksk-submittion-check-max
+------------------------
+
+After this period, the KSK submittion is automatically considered successful, even
+if all the check were negative or no parents are configured.
+
+*Default:* infinity
+
 .. _Remote section:
 
 Remote section
