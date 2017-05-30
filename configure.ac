@@ -537,9 +537,7 @@ result_msg_base="  $PACKAGE $VERSION
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
     Libedit:  ${libedit_LIBS} ${libedit_CFLAGS}
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
-
-    Sanitizer: ${sanitize_CFLAGS}
-    LibFuzzer: ${libfuzzer_LIBS}
+    Config:   ${conf_mapsize} MiB mapsize
 
     Prefix:      ${prefix}
     Run dir:     ${run_dir}
@@ -547,24 +545,24 @@ result_msg_base="  $PACKAGE $VERSION
     Config dir:  ${config_dir}
     Module dir:  ${module_dir}
 
-    Configuration DB mapsize: ${conf_mapsize} MiB
-
-    Knot DNS libraries:     yes
-    Knot DNS daemon:        ${enable_daemon}
-    Knot DNS utils:         ${enable_utilities}
-    Knot DNS documentation: ${enable_documentation}
-
     Static modules: ${static_modules}
     Shared modules: ${shared_modules}
 
-    Use recvmmsg:          ${enable_recvmmsg}
-    Use SO_REUSEPORT:      ${enable_reuseport}
-    Fast zone parser:      ${enable_fastparser}
-    Utilities with IDN:    ${with_libidn}
-    Utilities with Dnstap: ${opt_dnstap}
-    Systemd integration:   ${enable_systemd}
-    Code coverage:         ${enable_code_coverage}
-    PKCS #11 support:      ${enable_pkcs11}"
+    Knot DNS libraries:     yes
+    Knot DNS daemon:        ${enable_daemon}
+    Knot DNS utilities:     ${enable_utilities}
+    Knot DNS documentation: ${enable_documentation}
+
+    Use recvmmsg:           ${enable_recvmmsg}
+    Use SO_REUSEPORT:       ${enable_reuseport}
+    Fast zone parser:       ${enable_fastparser}
+    Utilities with IDN:     ${with_libidn}
+    Utilities with Dnstap:  ${opt_dnstap}
+    Systemd integration:    ${enable_systemd}
+    PKCS #11 support:       ${enable_pkcs11}
+    Code coverage:          ${enable_code_coverage}
+    Sanitizer:              ${with_sanitize}
+    LibFuzzer:              ${libfuzzer_LIBS}"
 
 result_msg_esc=$(echo -n "$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
 result_msg_add="
