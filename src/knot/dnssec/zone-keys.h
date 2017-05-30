@@ -150,7 +150,14 @@ void free_zone_keys(zone_keyset_t *keyset);
 time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
 
 /*!
- * \todo this comment (needed?)
+ * \brief Returns DS record rdata for given key.
+ *
+ * This function caches the results, so caaling again with the same key returns immediately.
+ *
+ * \param for_key The key to compute DS for.
+ * \param out_donotfree Output: the DS record rdata. Do not call dnssec_binry_free() on this ever.
+ *
+ * \return Error code, KNOT_EOK if successful.
  */
 int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree);
 

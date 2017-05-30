@@ -179,7 +179,7 @@ static time_t zsk_publish_time(time_t active_time, const kdnssec_ctx_t *ctx)
 	if (active_time <= 0 || active_time >= TIME_INFINITY) {
 		return TIME_INFINITY;
 	}
-	return active_time + ctx->policy->zsk_lifetime; // TODO better minus something ?
+	return active_time + ctx->policy->zsk_lifetime;
 }
 
 static time_t zsk_active_time(time_t publish_time, const kdnssec_ctx_t *ctx)

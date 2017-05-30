@@ -170,10 +170,6 @@ static bool parents_have_ds(zone_t *zone, conf_t *conf, zone_key_t *key) {
 			}
 		}
 
-		if (!success) {
-			// TODO dnssec warning, or not ?
-		}
-
 		conf_val_next(&parents);
 	}
 	return success;
