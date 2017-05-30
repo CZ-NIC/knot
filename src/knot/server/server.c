@@ -728,13 +728,13 @@ static int reconfigure_journal_db(conf_t *conf, server_t *server)
 
 	if (server->journal_db->db != NULL) {
 		if (changed_path) {
-			log_warning("journal, ignored reconfiguration of journal DB path (already open)");
+			log_warning("ignored reconfiguration of journal DB path (already open)");
 		}
 		if (changed_size) {
-			log_warning("journal, ignored reconfiguration of journal DB max size (already open)");
+			log_warning("ignored reconfiguration of journal DB max size (already open)");
 		}
 		if (changed_mode) {
-			log_warning("journal, ignored reconfiguration of journal DB mode (already open)");
+			log_warning("ignored reconfiguration of journal DB mode (already open)");
 		}
 	} else if (changed_path || changed_size || changed_mode) {
 		journal_db_t *newjdb = NULL;
@@ -757,11 +757,11 @@ static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 	int ret = kasp_db_reconfigure(kaspdb(), kasp_dir, conf_int(&kasp_size));
 	switch (ret) {
 	case KNOT_EBUSY:
-		log_warning("kasp_db, ignored reconfiguration of KASP DB path (already open)");
+		log_warning("ignored reconfiguration of KASP DB path (already open)");
 		break;
 	case KNOT_EEXIST:
 		ret = KNOT_EBUSY;
-		log_warning("kasp_db, ignored reconfiguration of KASP DB map size (already open)");
+		log_warning("ignored reconfiguration of KASP DB max size (already open)");
 		break;
 	case KNOT_ENODIFF:
 	case KNOT_EOK:
@@ -827,7 +827,7 @@ static void reopen_timers_database(conf_t *conf, server_t *server)
 
 	int ret = zone_timers_open(timer_db, &server->timers_db, mapsize);
 	if (ret != KNOT_EOK) {
-		log_warning("cannot open persistent timers DB '%s' (%s)",
+		log_warning("cannot open persistent timer DB '%s' (%s)",
 		            timer_db, knot_strerror(ret));
 	}
 

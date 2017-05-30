@@ -357,7 +357,7 @@ void zonedb_reload(conf_t *conf, server_t *server)
 	if (server->timers_db != NULL) {
 		int ret = zone_timers_sweep(server->timers_db, zone_exists, db_new);
 		if (ret != KNOT_EOK) {
-			log_warning("failed to clear persistent timers DB (%s)",
+			log_warning("failed to clear persistent timer DB (%s)",
 			            knot_strerror(ret));
 		}
 	}

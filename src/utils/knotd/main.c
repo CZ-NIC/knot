@@ -390,7 +390,7 @@ static void update_timerdb(server_t *server)
 		return;
 	}
 
-	log_info("updating persistent timers DB");
+	log_info("updating persistent timer DB");
 
 	knot_db_txn_t txn;
 	int ret = zone_timers_write_begin(server->timers_db, &txn);
@@ -401,7 +401,7 @@ static void update_timerdb(server_t *server)
 		ret = zone_timers_write_end(&txn);
 	}
 	if (ret != KNOT_EOK) {
-		log_warning("failed to update persistent timers DB (%s)",
+		log_warning("failed to update persistent timer DB (%s)",
 		            knot_strerror(ret));
 	}
 }
