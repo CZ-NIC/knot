@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,7 +57,6 @@
 #define C_JOURNAL_DB		"\x0A""journal-db"
 #define C_JOURNAL_DB_MODE	"\x0F""journal-db-mode"
 #define C_KASP_DB		"\x07""kasp-db"
-#define C_KASP_DB_MAPSIZE       "\x0F""kasp-db-mapsize"
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
 #define C_KSK_SIZE		"\x08""ksk-size"
@@ -69,7 +68,9 @@
 #define C_MAX_JOURNAL_DB_SIZE	"\x13""max-journal-db-size"
 #define C_MAX_JOURNAL_USAGE	"\x11""max-journal-usage"
 #define C_MAX_JOURNAL_DEPTH	"\x11""max-journal-depth"
+#define C_MAX_KASP_DB_SIZE	"\x10""max-kasp-db-size"
 #define C_MAX_TCP_CLIENTS	"\x0F""max-tcp-clients"
+#define C_MAX_TIMER_DB_SIZE	"\x11""max-timer-db-size"
 #define C_MAX_UDP_PAYLOAD	"\x0F""max-udp-payload"
 #define C_MAX_ZONE_SIZE		"\x0D""max-zone-size"
 #define C_MAX_IPV4_UDP_PAYLOAD	"\x14""max-ipv4-udp-payload"
@@ -100,13 +101,13 @@
 #define C_SINGLE_TYPE_SIGNING	"\x13""single-type-signing"
 #define C_SRV			"\x06""server"
 #define C_STATS			"\x0A""statistics"
-#define C_TIMER			"\x05""timer"
 #define C_STORAGE		"\x07""storage"
 #define C_TARGET		"\x06""target"
 #define C_TCP_HSHAKE_TIMEOUT	"\x15""tcp-handshake-timeout"
 #define C_TCP_IDLE_TIMEOUT	"\x10""tcp-idle-timeout"
 #define C_TCP_REPLY_TIMEOUT	"\x11""tcp-reply-timeout"
 #define C_TCP_WORKERS		"\x0B""tcp-workers"
+#define C_TIMER			"\x05""timer"
 #define C_TIMEOUT		"\x07""timeout"
 #define C_TIMER_DB		"\x08""timer-db"
 #define C_TPL			"\x08""template"

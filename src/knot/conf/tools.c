@@ -410,13 +410,14 @@ int check_template(
 			return KNOT_EINVAL; \
 		}
 
-	CHECK_DFLT(C_TIMER_DB, "timer database");
 	CHECK_DFLT(C_GLOBAL_MODULE, "global module");
+	CHECK_DFLT(C_TIMER_DB, "timer database path");
+	CHECK_DFLT(C_MAX_TIMER_DB_SIZE, "timer database maximum size");
 	CHECK_DFLT(C_JOURNAL_DB, "journal database path");
 	CHECK_DFLT(C_JOURNAL_DB_MODE, "journal database mode");
 	CHECK_DFLT(C_MAX_JOURNAL_DB_SIZE, "journal database maximum size");
 	CHECK_DFLT(C_KASP_DB, "KASP database path");
-	CHECK_DFLT(C_KASP_DB_MAPSIZE, "KASP database mapsize");
+	CHECK_DFLT(C_MAX_KASP_DB_SIZE, "KASP database maximum size");
 
 	return KNOT_EOK;
 }

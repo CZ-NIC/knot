@@ -544,7 +544,7 @@ config
 ------
 
 A backend specific configuration. A directory with PEM files (the path can
-be specified as a relative path to :ref:`kasp-db<zone_kasp-db>`) or
+be specified as a relative path to :ref:`kasp-db<template_kasp-db>`) or
 a configuration string for PKCS #11 storage.
 
 .. NOTE::
@@ -552,7 +552,7 @@ a configuration string for PKCS #11 storage.
 
      "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
 
-*Default:* :ref:`kasp-db<zone_kasp-db>`/keys
+*Default:* :ref:`kasp-db<template_kasp-db>`/keys
 
 .. _Policy section:
 
@@ -811,9 +811,12 @@ if a zone doesn't have another template specified.
  template:
    - id: STR
      timer-db: STR
+     max-timer-db-size: SIZE
      journal-db: STR
      journal-db-mode: robust | asynchronous
      max-journal-db-size: SIZE
+     kasp-db: STR
+     max-kasp-db-size: SIZE
      global-module: STR/STR ...
      # All zone options (excluding 'template' item)
 
@@ -836,6 +839,18 @@ as a relative path to the *default* template :ref:`storage<zone_storage>`.
    This option is only available in the *default* template.
 
 *Default:* :ref:`storage<zone_storage>`/timers
+
+.. _template_max-timer-db-size:
+
+max-timer-db-size
+-----------------
+
+Hard limit for the timer database maximum size.
+
+.. NOTE::
+   This option is only available in the *default* template.
+
+*Default:* 100 MiB
 
 .. _template_journal-db:
 
@@ -890,6 +905,31 @@ large enough. This value also influences server's usage of virtual memory.
 
 *Default:* 20 GiB (1 GiB for 32-bit)
 
+.. _template_kasp-db:
+
+kasp-db
+-------
+
+A KASP database path. Non-absolute path is relative to
+:ref:`storage<zone_storage>`.
+
+*Default:* :ref:`storage<zone_storage>`/keys
+
+.. NOTE::
+   This option is only available in the *default* template.
+
+.. _template_max-kasp-db-size:
+
+max-kasp-db-size
+----------------
+
+Hard limit for the KASP database maximum size.
+
+.. NOTE::
+   This option is only available in the *default* template.
+
+*Default:* 500 MiB
+
 .. _template_global-module:
 
 global-module
@@ -930,7 +970,6 @@ Definition of zones served by the server.
      max-zone-size : SIZE
      dnssec-signing: BOOL
      dnssec-policy: STR
-     kasp-db: STR
      request-edns-option: INT:[HEXSTR]
      serial-policy: increment | unixtime
      module: STR/STR ...
@@ -1168,16 +1207,6 @@ A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
 value can be used for the default policy settings.
 
 *Required*
-
-.. _zone_kasp-db:
-
-kasp-db
--------
-
-A KASP database path. Non-absolute path is relative to
-:ref:`storage<zone_storage>`.
-
-*Default:* :ref:`storage<zone_storage>`/keys
 
 .. _zone_request_edns_option:
 

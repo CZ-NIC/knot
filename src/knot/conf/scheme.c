@@ -260,9 +260,11 @@ static const yp_item_t desc_remote[] = {
 static const yp_item_t desc_template[] = {
 	{ C_ID, YP_TSTR, YP_VNONE, CONF_IO_FREF },
 	ZONE_ITEMS(CONF_IO_FRLD_ZONES)
-	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" }, CONF_IO_FRLD_ZONES },
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
+	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" }, CONF_IO_FRLD_ZONES },
+	{ C_MAX_TIMER_DB_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(GIGA(100)),
+	                                               MEGA(100), YP_SSIZE }, CONF_IO_FRLD_ZONES },
 	{ C_JOURNAL_DB,          YP_TSTR,  YP_VSTR = { "journal" }, CONF_IO_FRLD_SRV },
 	{ C_JOURNAL_DB_MODE,     YP_TOPT,  YP_VOPT = { journal_modes, JOURNAL_MODE_ROBUST },
 	                                   CONF_IO_FRLD_SRV },
@@ -270,8 +272,8 @@ static const yp_item_t desc_template[] = {
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE },
 	                                               CONF_IO_FRLD_SRV },
 	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" }, CONF_IO_FRLD_SRV },
-	{ C_KASP_DB_MAPSIZE,     YP_TINT,  YP_VINT = { MEGA(10), GIGA(2), MEGA(500), YP_SSIZE },
-	                                               CONF_IO_FRLD_SRV },
+	{ C_MAX_KASP_DB_SIZE,    YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
+	                                               MEGA(500), YP_SSIZE }, CONF_IO_FRLD_SRV },
 	{ NULL }
 };
 

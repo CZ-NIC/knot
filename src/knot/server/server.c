@@ -394,8 +394,8 @@ int server_init(server_t *server, int bg_workers)
 	}
 
 	char *kasp_dir = conf_kaspdir(conf());
-	conf_val_t kasp_db_mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
-	ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&kasp_db_mapsize));
+	conf_val_t kasp_size = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
+	ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&kasp_size));
 	free(kasp_dir);
 	if (ret != KNOT_EOK) {
 		journal_db_close(&server->journal_db);
@@ -753,8 +753,8 @@ static int reconfigure_journal_db(conf_t *conf, server_t *server)
 static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 {
 	char *kasp_dir = conf_kaspdir(conf);
-	conf_val_t kasp_db_mapsize = conf_default_get(conf, C_KASP_DB_MAPSIZE);
-	int ret = kasp_db_reconfigure(kaspdb(), kasp_dir, conf_int(&kasp_db_mapsize));
+	conf_val_t kasp_size = conf_default_get(conf, C_MAX_KASP_DB_SIZE);
+	int ret = kasp_db_reconfigure(kaspdb(), kasp_dir, conf_int(&kasp_size));
 	switch (ret) {
 	case KNOT_EBUSY:
 		log_warning("kasp_db, ignored reconfiguration of KASP DB path (already open)");
@@ -770,8 +770,8 @@ static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 	default:
 		break;
 	}
-
 	free(kasp_dir);
+
 	return ret;
 }
 
@@ -822,8 +822,10 @@ static void reopen_timers_database(conf_t *conf, server_t *server)
 	val = conf_default_get(conf, C_TIMER_DB);
 	char *timer_db = conf_abs_path(&val, storage);
 	free(storage);
+	val = conf_default_get(conf, C_MAX_TIMER_DB_SIZE);
+	size_t mapsize = conf_int(&val);
 
-	int ret = zone_timers_open(timer_db, &server->timers_db);
+	int ret = zone_timers_open(timer_db, &server->timers_db, mapsize);
 	if (ret != KNOT_EOK) {
 		log_warning("cannot open persistent timers DB '%s' (%s)",
 		            timer_db, knot_strerror(ret));

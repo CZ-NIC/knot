@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 
 	// Create database
 	knot_db_t *db = NULL;
-	int ret = zone_timers_open(dbid, &db);
+	int ret = zone_timers_open(dbid, &db, 1024 * 1024);
 	ok(ret == KNOT_EOK && db != NULL, "zone_timers_open()");
 
 	// Lookup nonexistent

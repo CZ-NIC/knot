@@ -37,12 +37,13 @@ typedef struct zone_timers zone_timers_t;
 /*!
  * \brief Open zone timers database.
  *
- * \param[in]  path  Path to a directory with the database.
- * \param[out] db    Created database.
+ * \param[in]  path     Path to a directory with the database.
+ * \param[out] db       Created database.
+ * \param[in]  mapsize  LMDB mapsize.
  *
  * \return KNOT_E*
  */
-int zone_timers_open(const char *path, knot_db_t **db);
+int zone_timers_open(const char *path, knot_db_t **db, size_t mapsize);
 
 /*!
  * \brief Closes zone timers database.

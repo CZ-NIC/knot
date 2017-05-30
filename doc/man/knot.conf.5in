@@ -691,9 +691,12 @@ if a zone doesn\(aqt have another template specified.
 template:
   \- id: STR
     timer\-db: STR
+    max\-timer\-db\-size: SIZE
     journal\-db: STR
     journal\-db\-mode: robust | asynchronous
     max\-journal\-db\-size: SIZE
+    kasp\-db: STR
+    max\-kasp\-db\-size: SIZE
     global\-module: STR/STR ...
     # All zone options (excluding \(aqtemplate\(aq item)
 .ft P
@@ -716,6 +719,18 @@ This option is only available in the \fIdefault\fP template.
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%storage\fP/timers
+.SS max\-timer\-db\-size
+.sp
+Hard limit for the timer database maximum size.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP 100 MiB
 .SS journal\-db
 .sp
 Specifies a path of the persistent journal database. The path can be specified
@@ -772,6 +787,31 @@ This option is only available in the \fIdefault\fP template.
 .UNINDENT
 .sp
 \fIDefault:\fP 20 GiB (1 GiB for 32\-bit)
+.SS kasp\-db
+.sp
+A KASP database path. Non\-absolute path is relative to
+\fI\%storage\fP\&.
+.sp
+\fIDefault:\fP \fI\%storage\fP/keys
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
+.SS max\-kasp\-db\-size
+.sp
+Hard limit for the KASP database maximum size.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is only available in the \fIdefault\fP template.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP 500 MiB
 .SS global\-module
 .sp
 An ordered list of references to query modules in the form of \fImodule_name\fP or
@@ -811,7 +851,6 @@ zone:
     max\-zone\-size : SIZE
     dnssec\-signing: BOOL
     dnssec\-policy: STR
-    kasp\-db: STR
     request\-edns\-option: INT:[HEXSTR]
     serial\-policy: increment | unixtime
     module: STR/STR ...
@@ -1031,12 +1070,6 @@ A \fI\%reference\fP to DNSSEC signing policy. A special \fIdefault\fP
 value can be used for the default policy settings.
 .sp
 \fIRequired\fP
-.SS kasp\-db
-.sp
-A KASP database path. Non\-absolute path is relative to
-\fI\%storage\fP\&.
-.sp
-\fIDefault:\fP \fI\%storage\fP/keys
 .SS request\-edns\-option
 .sp
 An arbitrary EDNS0 option which is included into a server request (AXFR, IXFR,

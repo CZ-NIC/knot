@@ -407,18 +407,6 @@ AS_CASE([$conf_mapsize],
                  [AC_ERROR([conf_mapsize must be an integer number])])])
 AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
 
-timer_mapsize_default=100
-AC_ARG_WITH([timer_mapsize],
-        AC_HELP_STRING([--with-timer-mapsize=NUM], [Timer DB mapsize in MiB [default=$timer_mapsize_default]]),
-        [timer_mapsize=$withval],[timer_mapsize=$timer_mapsize_default])
-
-AS_CASE([$timer_mapsize],
-    [yes],[timer_mapsize=$timer_mapsize_default],
-    [no], [AC_MSG_ERROR([timer_mapsize must be a number])],
-    [*],  [AS_IF([test $timer_mapsize != $(( $timer_mapsize + 0 ))],
-                 [AC_ERROR([timer_mapsize must be an integer number])])])
-AC_DEFINE_UNQUOTED([TIMER_MAPSIZE], [$timer_mapsize], [Timer DB mapsize.])
-
 # libedit
 AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   PKG_CHECK_MODULES([libedit], [libedit], [with_libedit=yes], [
@@ -560,7 +548,6 @@ result_msg_base="  $PACKAGE $VERSION
     Module dir:  ${module_dir}
 
     Configuration DB mapsize: ${conf_mapsize} MiB
-    Timers DB mapsize:        ${timer_mapsize} MiB
 
     Knot DNS libraries:     yes
     Knot DNS daemon:        ${enable_daemon}

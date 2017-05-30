@@ -151,26 +151,26 @@ static int txn_read_timers(knot_db_txn_t *txn, const knot_dname_t *zone,
 	return deserialize_timers(timers, val.data, val.len);
 }
 
-int zone_timers_open(const char *path, knot_db_t **timer_db)
+int zone_timers_open(const char *path, knot_db_t **db, size_t mapsize)
 {
-	if (path == NULL || timer_db == NULL) {
+	if (path == NULL || db == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	struct knot_db_lmdb_opts opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
-	opts.mapsize = (size_t)TIMER_MAPSIZE * 1024 * 1024;
+	opts.mapsize = mapsize;
 	opts.path = path;
 
-	return knot_db_lmdb_api()->init(timer_db, NULL, &opts);
+	return knot_db_lmdb_api()->init(db, NULL, &opts);
 }
 
-void zone_timers_close(knot_db_t *timer_db)
+void zone_timers_close(knot_db_t *db)
 {
-	if (timer_db == NULL) {
+	if (db == NULL) {
 		return;
 	}
 
-	knot_db_lmdb_api()->deinit(timer_db);
+	knot_db_lmdb_api()->deinit(db);
 }
 
 int zone_timers_read(knot_db_t *db, const knot_dname_t *zone,

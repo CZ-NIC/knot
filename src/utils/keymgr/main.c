@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 
 	kdnssec_ctx_t kctx = { 0 };
 
-	conf_val_t mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
+	conf_val_t mapsize = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
 	char *kasp_dir = conf_kaspdir(conf());
 	int ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&mapsize));
 	free(kasp_dir);
