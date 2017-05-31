@@ -153,10 +153,13 @@ static int try_ds(conf_t *conf, zone_t *zone, const conf_remote_t *parent, zone_
 
 static bool parents_have_ds(zone_t *zone, conf_t *conf, zone_key_t *key) {
 	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
-	uint8_t *policy_name = (uint8_t *)conf_str(&policy);
-	size_t policy_name_len = strlen((const char *)policy_name) + 1;
-	conf_val_t parents = conf_rawid_get(conf, C_POLICY, C_KSK_SBM_CHECK,
-					    policy_name, policy_name_len);
+	conf_val_t ksk_sbm = conf_id_get(conf, C_POLICY, C_KSK_SBM, &policy);
+	assert(conf_val_count(&ksk_sbm) < 2);
+	if (conf_val_count(&ksk_sbm) < 1) {
+		return false;
+	}
+	conf_val_t parents = conf_id_get(conf, C_SBM, C_PARENT, &ksk_sbm);
+
 	bool success = false;
 	while (parents.code == KNOT_EOK) {
 		success = false;

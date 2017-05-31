@@ -554,6 +554,58 @@ a configuration string for PKCS #11 storage.
 
 *Default:* :ref:`kasp-db<zone_kasp-db>`/keys
 
+.. _Submission section:
+
+Submission section
+==================
+
+Parameters of KSK submission checks.
+
+::
+
+ submission:
+   - id: STR
+     parent: remote_id ...
+     check-interval: TIME
+     timeout: TIME
+
+.. _submission_id:
+
+id
+--
+
+A submission identifier.
+
+.. _submission_parent:
+
+parent
+------
+
+A list of :ref:`references<remote_id>` to parent's DNS servers to be checked for
+presence of corresponding DS records in case of KSK submission. All of them must
+have corresponding DS for the rollover to continue. If none specified, the rollover
+must be pushed forward manually.
+
+.. _submission_check-interval:
+
+check-interval
+--------------
+
+Interval for periodic checks of DS resence on parent's DNS servers, in case of
+KSK submission.
+
+*Default:* 1 hour
+
+.. _submission_timeout:
+
+timeout
+-------
+
+After this period, the KSK submission is automatically considered successful, even
+if all the check were negative or no parents are configured.
+
+*Default:* infinity
+
 .. _Policy section:
 
 Policy section
@@ -582,9 +634,7 @@ DNSSEC policy configuration.
      nsec3-iterations: INT
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
-     ksk-submission-check: remote_id ...
-     ksk-submission-check-interval: TIME
-     ksk-submission-timeout: TIME
+     ksk-submission: submission_id
 
 .. _policy_id:
 
@@ -769,35 +819,13 @@ A validity period of newly issued salt field.
 
 .. _policy_ksk-submission-check:
 
-ksk-submission-check
---------------------
+ksk-submission
+--------------
 
-A list of :ref:`references<remote_id>` to parent's DNS servers to be checked for
-presence of corresponding DS records in case of KSK submission. All of them must
-have corresponding DS for the rollover to continue. If none specified, the rollover
-must be pushed forward manually.
+A reference to :ref:`submission<submission_id>` section holding parameters of
+KSK submittion checks.
 
 *Default:* not set
-
-.. _policy_ksk-submission-check-interval:
-
-ksk-submission-check-interval
------------------------------
-
-Interval for periodic checks of DS resence on parent's DNS servers, in case of
-KSK submission.
-
-*Default:* 1 hour
-
-.. _policy_ksk-submission-timeout:
-
-ksk-submission-timeout
-----------------------
-
-After this period, the KSK submission is automatically considered successful, even
-if all the check were negative or no parents are configured.
-
-*Default:* infinity
 
 .. _Remote section:
 

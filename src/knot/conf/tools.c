@@ -322,6 +322,8 @@ int check_policy(
 	                                    C_RRSIG_LIFETIME, args->id, args->id_len);
 	conf_val_t refresh = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_RRSIG_REFRESH, args->id, args->id_len);
+	conf_val_t ksk_sbm = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+					    C_KSK_SBM, args->id, args->id_len);
 
 	int64_t ksk_size = conf_int(&ksk);
 	if (ksk_size != YP_NIL && !dnssec_algorithm_key_size_check(conf_opt(&alg), ksk_size)) {
@@ -339,6 +341,11 @@ int check_policy(
 	int64_t refresh_val = conf_int(&refresh);
 	if (lifetime_val <= refresh_val) {
 		args->err_str = "RRSIG lifetime is supposed to be lower than refresh";
+		return KNOT_EINVAL;
+	}
+
+	if (conf_val_count(&ksk_sbm) > 1) {
+		args->err_str = "policy can have just one KSK submittion assigned";
 		return KNOT_EINVAL;
 	}
 
@@ -387,6 +394,19 @@ int check_remote(
 	                                     C_ADDR, args->id, args->id_len);
 	if (conf_val_count(&addr) == 0) {
 		args->err_str = "no remote address defined";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_submission(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t parent = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_SBM,
+					       C_PARENT, args->id, args->id_len);
+	if (conf_val_count(&parent) < 1) {
+		args->err_str = "no parent specified";
 		return KNOT_EINVAL;
 	}
 

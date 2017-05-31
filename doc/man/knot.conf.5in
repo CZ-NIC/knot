@@ -495,6 +495,44 @@ Example configuration string for PKCS #11:
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%kasp\-db\fP/keys
+.SH SUBMISSION SECTION
+.sp
+Parameters of KSK submission checks.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+submission:
+  \- id: STR
+    parent: remote_id ...
+    check\-interval: TIME
+    timeout: TIME
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A submission identifier.
+.SS parent
+.sp
+A list of \fI\%references\fP to parent\(aqs DNS servers to be checked for
+presence of corresponding DS records in case of KSK submission. All of them must
+have corresponding DS for the rollover to continue. If none specified, the rollover
+must be pushed forward manually.
+.SS check\-interval
+.sp
+Interval for periodic checks of DS resence on parent\(aqs DNS servers, in case of
+KSK submission.
+.sp
+\fIDefault:\fP 1 hour
+.SS timeout
+.sp
+After this period, the KSK submission is automatically considered successful, even
+if all the check were negative or no parents are configured.
+.sp
+\fIDefault:\fP infinity
 .SH POLICY SECTION
 .sp
 DNSSEC policy configuration.
@@ -522,9 +560,7 @@ policy:
     nsec3\-iterations: INT
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
-    ksk\-submission\-check: remote_id ...
-    ksk\-submission\-check\-interval: TIME
-    ksk\-submission\-timeout: TIME
+    ksk\-submission: submission_id
 .ft P
 .fi
 .UNINDENT
@@ -660,26 +696,12 @@ name before hashing.
 A validity period of newly issued salt field.
 .sp
 \fIDefault:\fP 30 days
-.SS ksk\-submission\-check
+.SS ksk\-submission
 .sp
-A list of \fI\%references\fP to parent\(aqs DNS servers to be checked for
-presence of corresponding DS records in case of KSK submission. All of them must
-have corresponding DS for the rollover to continue. If none specified, the rollover
-must be pushed forward manually.
+A reference to \fI\%submission\fP section holding parameters of
+KSK submittion checks.
 .sp
 \fIDefault:\fP not set
-.SS ksk\-submission\-check\-interval
-.sp
-Interval for periodic checks of DS resence on parent\(aqs DNS servers, in case of
-KSK submission.
-.sp
-\fIDefault:\fP 1 hour
-.SS ksk\-submission\-timeout
-.sp
-After this period, the KSK submission is automatically considered successful, even
-if all the check were negative or no parents are configured.
-.sp
-\fIDefault:\fP infinity
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone

@@ -204,9 +204,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_NSEC3_SALT_LEN,      YP_TINT,  YP_VINT = { 0, UINT8_MAX, 8 }, CONF_IO_FRLD_ZONES },
 	{ C_NSEC3_SALT_LIFETIME, YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(30), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
-	{ C_KSK_SBM_CHECK,YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES, { check_ref } },
-	{ C_KSK_SBM_CHECK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME }, CONF_IO_FRLD_ZONES },
-	{ C_KSK_SBM_TIMEOUT, YP_TINT, YP_VINT = { 1, UINT32_MAX, UINT32_MAX, YP_STIME }, CONF_IO_FRLD_ZONES },
+	{ C_KSK_SBM,             YP_TREF,  YP_VREF = { C_SBM }, CONF_IO_FRLD_ZONES, { check_ref } },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
@@ -235,6 +233,14 @@ static const yp_item_t desc_remote[] = {
 	{ C_VIA,     YP_TADDR, YP_VNONE, YP_FMULTI },
 	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
 	{ C_COMMENT, YP_TSTR,  YP_VNONE },
+	{ NULL }
+};
+
+static const yp_item_t desc_submission[] = {
+	{ C_ID,           YP_TSTR, YP_VNONE, CONF_IO_FREF },
+	{ C_PARENT,       YP_TREF, YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES, { check_ref } },
+	{ C_CHK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME }, CONF_IO_FRLD_ZONES },
+	{ C_TIMEOUT,      YP_TINT, YP_VINT = { 1, UINT32_MAX, UINT32_MAX, YP_STIME }, CONF_IO_FRLD_ZONES },
 	{ NULL }
 };
 
@@ -299,6 +305,7 @@ const yp_item_t conf_scheme[] = {
 	{ C_KEY,      YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_RMT,      YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
+	{ C_SBM,      YP_TGRP, YP_VGRP = { desc_submission }, YP_FMULTI, { check_submission } },
 	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
 	{ C_TPL,      YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE,     YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI | CONF_IO_FZONE, { check_zone } },

@@ -99,6 +99,10 @@ int check_remote(
 	knotd_conf_check_args_t *args
 );
 
+int check_submission(
+	knotd_conf_check_args_t *args
+);
+
 int check_template(
 	knotd_conf_check_args_t *args
 );

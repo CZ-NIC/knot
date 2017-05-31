@@ -1091,11 +1091,33 @@ class Knot(Server):
                 for module in z.modules:
                     module.get_conf(s)
 
+        have_sbm = False
+        for zone in sorted(self.zones):
+            z = self.zones[zone]
+            if not z.dnssec.enable:
+                continue
+            if len(z.dnssec.ksk_sbm_check) < 1:
+                continue
+            if not have_sbm:
+                s.begin("submission")
+                have_sbm = True
+            s.id_item("id", z.name)
+            parents = ""
+            for parent in z.dnssec.ksk_sbm_check:
+                if parents:
+                    parents += ", "
+                parents += parent.name
+            s.item("parent", "[%s]" % parents)
+            self._str(s, "check-interval", z.dnssec.ksk_sbm_check_interval)
+        if have_sbm:
+            s.end()
+
         have_policy = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
             if not z.dnssec.enable:
                 continue
+
             if not have_policy:
                 s.begin("policy")
                 have_policy = True
@@ -1116,13 +1138,7 @@ class Knot(Server):
             self._str(s, "nsec3-salt-lifetime", z.dnssec.nsec3_salt_lifetime)
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
             if len(z.dnssec.ksk_sbm_check) > 0:
-                parents = ""
-                for parent in z.dnssec.ksk_sbm_check:
-                    if parents:
-                        parents += ", "
-                    parents += parent.name
-                s.item("ksk-submission-check", "[%s]" % parents)
-            self._str(s, "ksk-submission-check-interval", z.dnssec.ksk_sbm_check_interval)
+                s.item("ksk-submission", z.name)
         if have_policy:
             s.end()
 

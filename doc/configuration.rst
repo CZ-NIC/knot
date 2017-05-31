@@ -357,13 +357,17 @@ desired (finite) lifetime for KSK: ::
     - id: cz_zone
       address: 192.168.12.1@53
 
+  submission:
+    - id: cz_zone_sbm
+      parent: [cz_zone]
+
   policy:
     - id: rsa
       algorithm: RSASHA256
       ksk-size: 2048
       zsk-size: 1024
       ksk-lifetime: 365d
-      ksk-submission-check: [cz_zone]
+      ksk-submission: cz_zone_sbm
 
   zone:
     - domain: myzone.test
@@ -383,7 +387,7 @@ zones, but other timers (e.g. activate, retire) may get out of sync. ::
     - id: sharedp
       ksk-lifetime: 365d
       ksk-shared: true
-      ksk-submission-check: [cz_zone]
+      ksk-submission: cz_zone_sbm
 
   zone:
     - domain: firstzone.test
