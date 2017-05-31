@@ -72,19 +72,13 @@ static int key_command(int argc, char *argv[])
 	if (zone_name == NULL) {
 		return KNOT_ENOMEM;
 	}
-	int ret = knot_dname_wire_check(zone_name, zone_name + knot_dname_size(zone_name), NULL);
-	if (ret < 0) {
-		printf("Invalid dname: %s\n", argv[0]);
-		free(zone_name);
-		return ret;
-	}
 	(void)knot_dname_to_lower(zone_name);
 
 	kdnssec_ctx_t kctx = { 0 };
 
 	conf_val_t mapsize = conf_default_get(conf(), C_KASP_DB_MAPSIZE);
 	char *kasp_dir = conf_kaspdir(conf());
-	ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&mapsize));
+	int ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&mapsize));
 	free(kasp_dir);
 	if (ret != KNOT_EOK) {
 		printf("Failed to initialize KASP db (%s)\n", knot_strerror(ret));
