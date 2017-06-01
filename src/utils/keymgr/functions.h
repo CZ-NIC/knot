@@ -20,15 +20,17 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]);
 
 int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file);
 
+int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, char *argv[]);
+
 int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits);
 
 int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key);
+
+int keymgr_foreign_key_id(int argc, char *argv[], const char *req_action,
+			  knot_dname_t **key_zone, char **key_id);
 
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[]);
 
 int keymgr_list_keys(kdnssec_ctx_t *ctx);
 
 int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key);
-
-int keymgr_share_key(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key,
-		      const char *zone_name_ch);

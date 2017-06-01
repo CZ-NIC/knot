@@ -46,6 +46,16 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_kasp_key_t **key_ptr
 	dnssec_key_algorithm_t algorithm = ctx->policy->algorithm;
 	unsigned size = ksk ? ctx->policy->ksk_size : ctx->policy->zsk_size;
 
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
+		if (dnssec_key_get_flags(kasp_key->key) == dnskey_flags(ksk) &&
+		    dnssec_key_get_algorithm(kasp_key->key) != ctx->policy->algorithm) {
+			log_zone_warning(ctx->zone->dname, "DNSSEC, creating key with different"
+					 " algorithm than policy");
+			break;
+		}
+	}
+
 	// generate key in the keystore
 
 	char *id = NULL;
@@ -104,6 +114,31 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_kasp_key_t **key_ptr
 	}
 
 	return KNOT_EOK;
+}
+
+int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const char *key_id)
+{
+	knot_dname_t *to_zone = knot_dname_copy(ctx->zone->dname, NULL);
+	if (to_zone == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = kdnssec_ctx_commit(ctx);
+	if (ret != KNOT_EOK) {
+		free(to_zone);
+		return ret;
+	}
+
+	ret = kasp_db_share_key(*ctx->kasp_db, from_zone, ctx->zone->dname, key_id);
+	if (ret != KNOT_EOK) {
+		free(to_zone);
+		return ret;
+	}
+
+	kasp_zone_clear(ctx->zone);
+	ret = kasp_zone_load(ctx->zone, to_zone, *ctx->kasp_db);
+	free(to_zone);
+	return ret;
 }
 
 int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
@@ -293,7 +328,7 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 		}
 
 		if (key->is_public) { u->is_public = true; }
-		if (key->is_active) {
+		if (key->is_active) { // TODO consider READY state (not for STSS for now)
 			if (key->is_ksk) { u->is_ksk_active = true; }
 			if (key->is_zsk) { u->is_zsk_active = true; }
 		}
@@ -329,7 +364,7 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 	assert(keyset);
 
 	for (size_t i = 0; i < keyset->count; i++) {
-		if (!keyset->keys[i].is_active) {
+		if (!keyset->keys[i].is_active && !keyset->keys[i].is_ready) {
 			continue;
 		}
 
@@ -352,12 +387,13 @@ static void log_key_info(const zone_key_t *key, const knot_dname_t *zone_name)
 	assert(zone_name);
 
 	log_zone_info(zone_name, "DNSSEC, loaded key, tag %5d, "
-			  "algorithm %d, KSK %s, ZSK %s, public %s, active %s",
+			  "algorithm %d, KSK %s, ZSK %s, public %s, ready %s, active %s",
 			  dnssec_key_get_keytag(key->key),
 			  dnssec_key_get_algorithm(key->key),
 			  key->is_ksk ? "yes" : "no",
 			  key->is_zsk ? "yes" : "no",
 			  key->is_public ? "yes" : "no",
+			  key->is_ready ? "yes" : "no",
 			  key->is_active ? "yes" : "no");
 }
 
@@ -424,6 +460,7 @@ void free_zone_keys(zone_keyset_t *keyset)
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		dnssec_sign_free(keyset->keys[i].ctx);
+		dnssec_binary_free(&keyset->keys[i].precomputed_ds);
 	}
 
 	free(keyset->keys);
@@ -465,4 +502,24 @@ time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset)
 	}
 
 	return result;
+}
+
+/*!
+ * \brief Compute DS record rdata from key + cache it.
+ */
+int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree)
+{
+	assert(for_key);
+	assert(out_donotfree);
+
+	int ret = KNOT_EOK;
+
+	if (for_key->precomputed_ds.data == NULL) {
+		dnssec_key_digest_t digesttype = DNSSEC_KEY_DIGEST_SHA256; // TODO !
+		ret = dnssec_key_create_ds(for_key->key, digesttype, &for_key->precomputed_ds);
+		ret = knot_error_from_libdnssec(ret);
+	}
+
+	*out_donotfree = for_key->precomputed_ds;
+	return ret;
 }

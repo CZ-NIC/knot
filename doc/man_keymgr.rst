@@ -8,7 +8,7 @@ Synopsis
 
 :program:`keymgr` *basic_option* [*parameters*...]
 
-:program:`keymgr` *config_option* *config_storage* *zone_name* *action* *parameters*...
+:program:`keymgr` [*config_option* *config_storage*] *zone_name* *action* *parameters*...
 
 Description
 -----------
@@ -62,6 +62,10 @@ Actions
 **import-bind** *BIND_key_file*
   Imports a BIND-style key into KASP database (converting it to PEM format).
   Takes one argument: path to BIND key file (private or public, but both MUST exist).
+
+**import-pem** *PEM_file* [*arguments*...]
+  Imports a DNSSEC key from PEM file. The key parameters (same as for generate action) need to be
+  specified (mostly algorithm, timers...) because they are not contained in the PEM format.
 
 **set** *key_spec* [*arguments*...]
   Changes a timing argument of an existing key to new timestamp. *Key_spec* is either the
@@ -131,11 +135,11 @@ Examples
 
 2. Import a key from BIND::
 
-    $ keymgr -d ${knot_data_dir}/keys example.com. import-bind ~/bind/Kharbinge4d5.+007+63089.key
+    $ keymgr example.com. import-bind ~/bind/Kharbinge4d5.+007+63089.key
 
 3. Generate new key::
 
-    $ keymgr -c ${knot_data_dir}/knot.conf example.com. generate algorithm=ECDSAP256SHA256 size=256 \
+    $ keymgr example.com. generate algorithm=ECDSAP256SHA256 size=256 \
       ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
 
 4. Configure key timing::

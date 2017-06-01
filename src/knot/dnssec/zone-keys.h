@@ -44,6 +44,8 @@ struct zone_key {
 	dnssec_key_t *key;
 	dnssec_sign_ctx_t *ctx;
 
+	dnssec_binary_t precomputed_ds;
+
 	time_t next_event;
 
 	bool is_ksk;
@@ -81,6 +83,17 @@ uint16_t dnskey_flags(bool is_ksk);
  * \return KNOT_E*
  */
 int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_kasp_key_t **key_ptr);
+
+/*!
+ * \brief Take a key from another zone (copying info, sharing privkey).
+ *
+ * \param ctx           kasp context
+ * \param from_zone     name of the zone to take from
+ * \param key_id        ID of the key to take
+ *
+ * \return KNOT_E*
+ */
+int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const char *key_id);
 
 /*!
  * \brief Remove key from zone.
@@ -135,5 +148,17 @@ void free_zone_keys(zone_keyset_t *keyset);
  * \return Timestamp of next key event.
  */
 time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
+
+/*!
+ * \brief Returns DS record rdata for given key.
+ *
+ * This function caches the results, so caaling again with the same key returns immediately.
+ *
+ * \param for_key The key to compute DS for.
+ * \param out_donotfree Output: the DS record rdata. Do not call dnssec_binry_free() on this ever.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree);
 
 /*! @} */

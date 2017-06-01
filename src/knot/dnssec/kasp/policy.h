@@ -59,12 +59,15 @@ typedef struct {
  */
 typedef struct {
 	bool manual;
+	char *string;
 	// DNSKEY
 	dnssec_key_algorithm_t algorithm;
 	uint16_t ksk_size;
 	uint16_t zsk_size;
 	uint32_t dnskey_ttl;
 	uint32_t zsk_lifetime;
+	uint32_t ksk_lifetime;
+	bool ksk_shared;
 	bool singe_type_signing;
 	// RRSIG
 	uint32_t rrsig_lifetime;
@@ -80,4 +83,7 @@ typedef struct {
 	uint32_t zone_maximal_ttl;
 	// data propagation delay
 	uint32_t propagation_delay;
+	// various
+	uint32_t ksk_sbm_timeout;
+	uint32_t ksk_sbm_check_interval;
 } knot_kasp_policy_t;

@@ -400,7 +400,7 @@ static int sign_update(zone_update_t *update,
 	/* Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
 	 * If so, we have to sign the whole zone. */
 	int ret = KNOT_EOK;
-	uint32_t refresh_at = 0;
+	zone_sign_reschedule_t resch = { 0 };
 	changeset_t sec_ch;
 	ret = changeset_init(&sec_ch, update->zone->name);
 	if (ret != KNOT_EOK) {
@@ -412,11 +412,11 @@ static int sign_update(zone_update_t *update,
 	if (full_sign) {
 		ret = knot_dnssec_zone_sign(new_contents, &sec_ch,
 		                            ZONE_SIGN_KEEP_SOA_SERIAL,
-		                            &refresh_at);
+					    &resch);
 	} else {
 		/* Sign the created changeset */
 		ret = knot_dnssec_sign_changeset(new_contents, &update->change,
-		                                 &sec_ch, &refresh_at);
+						 &sec_ch, &resch);
 	}
 	if (ret != KNOT_EOK) {
 		changeset_clear(&sec_ch);
@@ -441,9 +441,8 @@ static int sign_update(zone_update_t *update,
 	}
 
 	/* Plan next zone resign. */
-	const time_t resign_time = zone_events_get_time(update->zone, ZONE_EVENT_DNSSEC);
-	if (refresh_at < resign_time) {
-		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, refresh_at);
+	if (resch.next_sign > 0) {
+		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, resch.next_sign);
 	}
 
 	/* We are not calling update_cleanup, as the rollback data are merged

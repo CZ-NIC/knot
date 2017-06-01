@@ -24,6 +24,12 @@
 
 static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 {
+	if (conf_str(id) == NULL) {
+		policy->string = strdup("default");
+	} else {
+		policy->string = strdup(conf_str(id));
+	}
+
 	conf_val_t val = conf_id_get(conf(), C_POLICY, C_MANUAL, id);
 	policy->manual = conf_bool(&val);
 
@@ -32,6 +38,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 
 	val = conf_id_get(conf(), C_POLICY, C_ALG, id);
 	policy->algorithm = conf_opt(&val);
+
+	val = conf_id_get(conf(), C_POLICY, C_KSK_SHARED, id);
+	policy->ksk_shared = conf_bool(&val);
 
 	val = conf_id_get(conf(), C_POLICY, C_KSK_SIZE, id);
 	int64_t num = conf_int(&val);
@@ -48,6 +57,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 
 	val = conf_id_get(conf(), C_POLICY, C_ZSK_LIFETIME, id);
 	policy->zsk_lifetime = conf_int(&val);
+
+	val = conf_id_get(conf(), C_POLICY, C_KSK_LIFETIME, id);
+	policy->ksk_lifetime = conf_int(&val);
 
 	val = conf_id_get(conf(), C_POLICY, C_PROPAG_DELAY, id);
 	policy->propagation_delay = conf_int(&val);
@@ -69,6 +81,18 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 
 	val = conf_id_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id);
 	policy->nsec3_salt_lifetime = conf_int(&val);
+
+	conf_val_t ksk_sbm = conf_id_get(conf(), C_POLICY, C_KSK_SBM, id);
+	if (ksk_sbm.code == KNOT_EOK) {
+		val = conf_id_get(conf(), C_SBM, C_CHK_INTERVAL, &ksk_sbm);
+		policy->ksk_sbm_check_interval = conf_int(&val);
+
+		val = conf_id_get(conf(), C_SBM, C_TIMEOUT, &ksk_sbm);
+		policy->ksk_sbm_timeout = conf_int(&val);
+	} else {
+		policy->ksk_sbm_check_interval = 0;
+		policy->ksk_sbm_timeout = 0;
+	}
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
@@ -159,7 +183,10 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		return;
 	}
 
-	free(ctx->policy);
+	if (ctx->policy != NULL) {
+		free(ctx->policy->string);
+		free(ctx->policy);
+	}
 	dnssec_keystore_deinit(ctx->keystore);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);

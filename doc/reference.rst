@@ -554,6 +554,60 @@ a configuration string for PKCS #11 storage.
 
 *Default:* :ref:`kasp-db<template_kasp-db>`/keys
 
+.. _Submission section:
+
+Submission section
+==================
+
+Parameters of KSK submission checks.
+
+::
+
+ submission:
+   - id: STR
+     parent: remote_id ...
+     check-interval: TIME
+     timeout: TIME
+
+.. _submission_id:
+
+id
+--
+
+A submission identifier.
+
+.. _submission_parent:
+
+parent
+------
+
+A list of :ref:`references<remote_id>` to parent's DNS servers to be checked for
+presence of corresponding DS records in case of KSK submission. All of them must
+have corresponding DS for the rollover to continue. If none specified, the rollover
+must be pushed forward manually.
+
+*Default:* not set
+
+.. _submission_check-interval:
+
+check-interval
+--------------
+
+Interval for periodic checks of DS resence on parent's DNS servers, in case of
+KSK submission.
+
+*Default:* 1 hour
+
+.. _submission_timeout:
+
+timeout
+-------
+
+After this period, the KSK submission is automatically considered successful, even
+if all the checks were negative or no parents are configured. Set 0 for infinity.
+
+*Default:* infinity
+
 .. _Policy section:
 
 Policy section
@@ -571,8 +625,10 @@ DNSSEC policy configuration.
      algorithm: dsa | rsasha1 | dsa-nsec3-sha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384
      ksk-size: SIZE
      zsk-size: SIZE
+     ksk-shared: BOOL
      dnskey-ttl: TIME
      zsk-lifetime: TIME
+     ksk-lifetime: TIME
      propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
@@ -580,6 +636,7 @@ DNSSEC policy configuration.
      nsec3-iterations: INT
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
+     ksk-submission: submission_id
 
 .. _policy_id:
 
@@ -648,7 +705,14 @@ A length of newly generated :abbr:`ZSK (Zone Signing Key)` keys.
 
 *Default:* see default for :ref:`ksk-size<policy_ksk-size>`
 
-.. _policy_dnskey-ttl:
+.. _policy_ksk-shared:
+
+ksk-shared
+----------
+
+If enabled, all zones with this policy assigned will share one KSK.
+
+*Default:* off
 
 dnskey-ttl
 ----------
@@ -671,6 +735,21 @@ A period between ZSK publication and the next rollover initiation.
 
 .. NOTE::
    ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
+
+.. _policy_ksk-lifetime:
+
+ksk-lifetime
+------------
+
+A period between KSK publication and the next rollover initiation.
+
+*Default:* infinity
+
+.. NOTE::
+   KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
+   and KSK submission delay.
+
+   The default infinite value causes no KSK rollover as a result.
 
 .. _policy_propagation-delay:
 
@@ -739,6 +818,16 @@ nsec3-salt-lifetime
 A validity period of newly issued salt field.
 
 *Default:* 30 days
+
+.. _policy_ksk-submission-check:
+
+ksk-submission
+--------------
+
+A reference to :ref:`submission<submission_id>` section holding parameters of
+KSK submittion checks.
+
+*Default:* not set
 
 .. _Remote section:
 

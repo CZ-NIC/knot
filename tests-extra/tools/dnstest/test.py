@@ -27,6 +27,8 @@ class Test(object):
     # Number of unsuccessful starts of servers. Recursion protection.
     start_tries = 0
 
+    rel_time = time.time()
+
     def __init__(self, address=None, tsig=None, stress=True):
         if not os.path.exists(params.out_dir):
             raise Exception("Output directory doesn't exist")
@@ -251,6 +253,18 @@ class Test(object):
 
     def sleep(self, seconds):
         time.sleep(seconds)
+
+    def rel_sleep(self, seconds):
+        timenow = time.time()
+        res = timenow - self.rel_time
+        if seconds == 0:
+            self.rel_time = timenow
+        else:
+            self.rel_time += seconds
+        to_wait = self.rel_time - timenow
+        if to_wait > 0:
+            self.sleep(to_wait)
+        return res
 
     def zone(self, name, file_name=None, storage=None, version=None, exists=True):
 

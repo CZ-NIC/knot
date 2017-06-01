@@ -18,6 +18,7 @@
 
 #include "knot/conf/conf.h"
 #include "knot/zone/zone.h"
+#include "knot/dnssec/zone-events.h" // zone_sign_reschedule_t
 
 /*! \brief Loads or reloads potentially changed zone. */
 int event_load(conf_t *conf, zone_t *zone);
@@ -31,13 +32,16 @@ int event_expire(conf_t *conf, zone_t *zone);
 int event_flush(conf_t *conf, zone_t *zone);
 /*! \brief Sends notify to slaves. */
 int event_notify(conf_t *conf, zone_t *zone);
-/*! \brief Signs the zone using its DNSSEC keys. */
+/*! \brief Signs the zone using its DNSSEC keys, perform key rollovers. */
 int event_dnssec(conf_t *conf, zone_t *zone);
+/*! \brief NOT A HANDLER, just a helper function to reschedule based on reschedule_t */
+void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
+                             const zone_sign_reschedule_t *refresh, bool zone_changed);
 /*! \brief Freeze those events causing zone contents change. */
 int event_ufreeze(conf_t *conf, zone_t *zone);
 /*! \brief Unfreeze zone updates. */
 int event_uthaw(conf_t *conf, zone_t *zone);
 /*! \brief Recreates salt for NSEC3 hashing. */
 int event_nsec3resalt(conf_t *conf, zone_t *zone);
-/*! \brief ZSK rollover related actions (key creation, publishing, deleting...). */
-int event_zsk_rollover(conf_t *conf, zone_t *zone);
+/*! \brief When CDS/CDNSKEY published, look for matching DS */
+int event_parent_ds_q(conf_t *conf, zone_t *zone);

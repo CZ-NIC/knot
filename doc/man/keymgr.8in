@@ -34,7 +34,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .sp
 \fBkeymgr\fP \fIbasic_option\fP [\fIparameters\fP\&...]
 .sp
-\fBkeymgr\fP \fIconfig_option\fP \fIconfig_storage\fP \fIzone_name\fP \fIaction\fP \fIparameters\fP\&...
+\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_storage\fP] \fIzone_name\fP \fIaction\fP \fIparameters\fP\&...
 .SH DESCRIPTION
 .sp
 The \fBkeymgr\fP utility serves for key management in Knot DNS server.
@@ -85,6 +85,10 @@ from corresponding policy (if \fI\-c\fP or \fI\-C\fP options used) or from Knot 
 \fBimport\-bind\fP \fIBIND_key_file\fP
 Imports a BIND\-style key into KASP database (converting it to PEM format).
 Takes one argument: path to BIND key file (private or public, but both MUST exist).
+.TP
+\fBimport\-pem\fP \fIPEM_file\fP [\fIarguments\fP\&...]
+Imports a DNSSEC key from PEM file. The key parameters (same as for generate action) need to be
+specified (mostly algorithm, timers...) because they are not contained in the PEM format.
 .TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
 Changes a timing argument of an existing key to new timestamp. \fIKey_spec\fP is either the
@@ -166,7 +170,7 @@ Import a key from BIND:
 .sp
 .nf
 .ft C
-$ keymgr \-d ${knot_data_dir}/keys example.com. import\-bind ~/bind/Kharbinge4d5.+007+63089.key
+$ keymgr example.com. import\-bind ~/bind/Kharbinge4d5.+007+63089.key
 .ft P
 .fi
 .UNINDENT
@@ -178,7 +182,7 @@ Generate new key:
 .sp
 .nf
 .ft C
-$ keymgr \-c ${knot_data_dir}/knot.conf example.com. generate algorithm=ECDSAP256SHA256 size=256 \e
+$ keymgr example.com. generate algorithm=ECDSAP256SHA256 size=256 \e
   ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
 .ft P
 .fi

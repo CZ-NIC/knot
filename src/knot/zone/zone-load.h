@@ -18,6 +18,7 @@
 
 #include "knot/conf/conf.h"
 #include "knot/zone/zone.h"
+#include "knot/dnssec/zone-events.h" // zone_sign_reschedule_t
 
 /*!
  * \brief Load zone contents according to the configuration.
@@ -63,7 +64,7 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone,
  * \return KNOT_EOK or an error
  */
 int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
-                   uint32_t *dnssec_refresh);
+                   zone_sign_reschedule_t *dnssec_refresh);
 
 /*!
  * \brief Check if zone can be bootstrapped.

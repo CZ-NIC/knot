@@ -15,7 +15,10 @@
  */
 
 #include <assert.h>
+#include <time.h>
+#include <stdarg.h>
 
+#include "contrib/macros.h"
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
@@ -30,27 +33,6 @@
 
 #define TIME_INFINITY ((time_t)0x00ffffffffffff00LLU)
 
-static knot_kasp_key_t *last_key(kdnssec_ctx_t *ctx, key_state_t state)
-{
-	assert(ctx);
-	assert(ctx->zone);
-
-	knot_kasp_key_t *match = NULL;
-
-	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (match == NULL || key->timing.created == 0 ||
-		    key->timing.created >= match->timing.created) {
-			if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK &&
-			    get_key_state(key, ctx->now) == state) {
-				match = key;
-			}
-		}
-	}
-	assert(match == NULL || dnssec_key_get_flags(match->key) == DNSKEY_FLAGS_ZSK);
-	return match;
-}
-
 static bool key_present(kdnssec_ctx_t *ctx, uint16_t flag)
 {
 	assert(ctx);
@@ -64,7 +46,34 @@ static bool key_present(kdnssec_ctx_t *ctx, uint16_t flag)
 	return false;
 }
 
-static int generate_initial_key(kdnssec_ctx_t *ctx, bool ksk)
+static bool key_id_present(kdnssec_ctx_t *ctx, const char *keyid, uint16_t flag)
+{
+	assert(ctx);
+	assert(ctx->zone);
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (strcmp(keyid, key->id) == 0 &&
+		    dnssec_key_get_flags(key->key) == flag) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static knot_kasp_key_t *key_get_by_id(kdnssec_ctx_t *ctx, const char *keyid)
+{
+	assert(ctx);
+	assert(ctx->zone);
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (strcmp(keyid, key->id) == 0) {
+			return key;
+		}
+	}
+	return NULL;
+}
+
+static int generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_active)
 {
 	knot_kasp_key_t *key = NULL;
 	int r = kdnssec_generate_key(ctx, ksk, &key);
@@ -72,115 +81,290 @@ static int generate_initial_key(kdnssec_ctx_t *ctx, bool ksk)
 		return r;
 	}
 
-	key->timing.active  = ctx->now;
-	key->timing.ready   = ctx->now;
+	key->timing.remove = TIME_INFINITY;
+	key->timing.retire = TIME_INFINITY;
+	key->timing.active  = when_active;
+	key->timing.ready   = when_active;
 	key->timing.publish = ctx->now;
 
 	return KNOT_EOK;
 }
 
+static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_active)
+{
+	knot_dname_t *borrow_zone = NULL;
+	char *borrow_key = NULL;
+
+	if (!ksk) {
+		return KNOT_EINVAL;
+	} // for now not designed for rotating shared ZSK
+
+	int ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string,
+	                                  &borrow_zone, &borrow_key);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		return ret;
+	}
+
+	// if we already have the policy-last key, we have to generate new one
+	if (ret == KNOT_ENOENT ||
+	    key_id_present(ctx, borrow_key, ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK)) {
+		knot_kasp_key_t *key = NULL;
+		ret = kdnssec_generate_key(ctx, ksk, &key);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		key->timing.remove = TIME_INFINITY;
+		key->timing.retire = TIME_INFINITY;
+		key->timing.active  = when_active;
+		key->timing.ready   = when_active;
+		key->timing.publish = ctx->now;
+
+		ret = kdnssec_ctx_commit(ctx);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		ret = kasp_db_set_policy_last(*ctx->kasp_db, ctx->policy->string,
+		                              borrow_key, ctx->zone->dname, key->id);
+		free(borrow_zone);
+		free(borrow_key);
+		borrow_zone = NULL;
+		borrow_key = NULL;
+		if (ret != KNOT_ESEMCHECK) {
+			// all ok, we generated new kay and updated policy-last
+			return ret;
+		} else {
+			// another zone updated policy-last key in the meantime
+			ret = kdnssec_delete_key(ctx, key);
+			if (ret == KNOT_EOK) {
+				ret = kdnssec_ctx_commit(ctx);
+			}
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+
+			ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string,
+			                              &borrow_zone, &borrow_key);
+		}
+	}
+
+	if (ret == KNOT_EOK) {
+		ret = kdnssec_share_key(ctx, borrow_zone, borrow_key);
+		if (ret == KNOT_EOK) {
+			knot_kasp_key_t *newkey = key_get_by_id(ctx, borrow_key);
+			assert(newkey != NULL);
+			newkey->timing.publish = ctx->now;
+			newkey->timing.ready = when_active;
+			newkey->timing.active = when_active;
+		}
+	}
+	free(borrow_zone);
+	free(borrow_key);
+	return ret;
+}
+
 typedef enum {
 	INVALID = 0,
 	PUBLISH = 1,
+	SUBMIT,
 	REPLACE,
 	REMOVE,
+} roll_action_type;
+
+typedef struct {
+	roll_action_type type;
+	bool ksk;
+	time_t time;
+	knot_kasp_key_t *key;
 } roll_action;
 
-inline static time_t time_max(time_t a, time_t b)
+static time_t zsk_publish_time(time_t active_time, const kdnssec_ctx_t *ctx)
 {
-	return ((a > b) ? a : b);
+	if (active_time <= 0 || active_time >= TIME_INFINITY) {
+		return TIME_INFINITY;
+	}
+	return active_time + ctx->policy->zsk_lifetime;
 }
 
-static roll_action next_action(kdnssec_ctx_t *ctx, time_t *next_action_time)
+static time_t zsk_active_time(time_t publish_time, const kdnssec_ctx_t *ctx)
 {
-	assert(next_action_time);
-	knot_kasp_key_t *kk = last_key(ctx, DNSSEC_KEY_STATE_RETIRED);
-	if (kk != NULL) {
-		if (ctx->now < kk->timing.retire) {
-			return KNOT_EINVAL;
-		}
-		*next_action_time = time_max(ctx->now, kk->timing.retire +
-					     ctx->policy->propagation_delay +
-					     ctx->policy->zone_maximal_ttl);
-		return REMOVE;
+	if (publish_time <= 0 || publish_time >= TIME_INFINITY) {
+		return TIME_INFINITY;
 	}
-
-	kk = last_key(ctx, DNSSEC_KEY_STATE_PUBLISHED);
-	if (kk != NULL) {
-		if (ctx->now < kk->timing.publish) {
-			return KNOT_EINVAL;
-		}
-		*next_action_time = time_max(ctx->now, kk->timing.publish +
-					     ctx->policy->propagation_delay +
-		                             ctx->policy->dnskey_ttl);
-		return REPLACE;
-	}
-
-	kk = last_key(ctx, DNSSEC_KEY_STATE_ACTIVE);
-	if (kk != NULL) {
-		if (ctx->now < kk->timing.active) {
-			return KNOT_EINVAL;
-		}
-		*next_action_time = time_max(ctx->now, kk->timing.active +
-					     ctx->policy->zsk_lifetime);
-		return PUBLISH;
-	}
-
-	return INVALID;
+	return publish_time + ctx->policy->propagation_delay + ctx->policy->dnskey_ttl;
 }
 
-static int exec_new_key(kdnssec_ctx_t *ctx)
+static time_t zsk_remove_time(time_t retire_time, const kdnssec_ctx_t *ctx)
 {
-	knot_kasp_key_t *new_key = NULL;
-	int r = kdnssec_generate_key(ctx, false, &new_key);
-	if (r != KNOT_EOK) {
-		return r;
+	if (retire_time <= 0 || retire_time >= TIME_INFINITY) {
+		return TIME_INFINITY;
+	}
+	return retire_time + ctx->policy->propagation_delay + ctx->policy->zone_maximal_ttl;
+}
+
+static time_t ksk_publish_time(time_t created_time, const kdnssec_ctx_t *ctx)
+{
+	if (created_time <= 0 || created_time >= TIME_INFINITY || ctx->policy->ksk_lifetime == 0) {
+		return TIME_INFINITY;
+	}
+	return created_time + ctx->policy->ksk_lifetime;
+}
+
+static time_t ksk_ready_time(time_t publish_time, const kdnssec_ctx_t *ctx)
+{
+	if (publish_time <= 0 || publish_time >= TIME_INFINITY) {
+		return TIME_INFINITY;
+	}
+	return publish_time + ctx->policy->propagation_delay + ctx->policy->dnskey_ttl;
+}
+
+static time_t ksk_sbm_max_time(time_t ready_time, const kdnssec_ctx_t *ctx)
+{
+	if (ready_time <= 0 || ready_time >= TIME_INFINITY || ctx->policy->ksk_sbm_timeout == 0) {
+		return TIME_INFINITY;
+	}
+	return ready_time + ctx->policy->ksk_sbm_timeout;
+}
+
+static time_t ksk_remove_time(time_t retire_time, const kdnssec_ctx_t *ctx)
+{
+	if (retire_time <= 0 || retire_time >= TIME_INFINITY) {
+		return TIME_INFINITY;
+	}
+	// DS TTL == DNSKEY TTL (?) TODO
+	return retire_time + ctx->policy->propagation_delay + ctx->policy->dnskey_ttl;
+}
+
+static roll_action next_action(kdnssec_ctx_t *ctx)
+{
+	roll_action res = { 0 };
+	res.time = TIME_INFINITY;
+
+	bool is_zsk_published = false;
+	bool is_ksk_published = false;
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		key_state_t keystate = get_key_state(key, ctx->now);
+		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK && (
+		    keystate == DNSSEC_KEY_STATE_PUBLISHED)) {
+			is_zsk_published = true;
+		}
+		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK && (
+		    keystate == DNSSEC_KEY_STATE_PUBLISHED || keystate == DNSSEC_KEY_STATE_READY)) {
+			is_ksk_published = true;
+		}
 	}
 
-	//! \todo Cannot set "active" to zero, using upper bound instead.
-	new_key->timing.publish = ctx->now;
-	new_key->timing.ready = TIME_INFINITY;
-	new_key->timing.active = TIME_INFINITY;
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		time_t keytime = TIME_INFINITY;
+		roll_action_type restype = INVALID;
+		bool isksk = (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK);
+		if (isksk) {
+			switch (get_key_state(key, ctx->now)) {
+			case DNSSEC_KEY_STATE_PUBLISHED:
+				keytime = ksk_ready_time(key->timing.publish, ctx);
+				restype = SUBMIT;
+				break;
+			case DNSSEC_KEY_STATE_READY:
+				keytime = ksk_sbm_max_time(key->timing.ready, ctx);
+				restype = REPLACE;
+				break;
+			case DNSSEC_KEY_STATE_ACTIVE:
+				if (!is_ksk_published) {
+					keytime = ksk_publish_time(key->timing.created, ctx);
+					restype = PUBLISH;
+				}
+				break;
+			case DNSSEC_KEY_STATE_RETIRED:
+				keytime = ksk_remove_time(key->timing.retire, ctx);
+				restype = REMOVE;
+				break;
+			default:
+				assert(0);
+			}
+		} else {
+			switch (get_key_state(key, ctx->now)) {
+			case DNSSEC_KEY_STATE_PUBLISHED:
+				keytime = zsk_active_time(key->timing.publish, ctx);
+				restype = REPLACE;
+				break;
+			case DNSSEC_KEY_STATE_ACTIVE:
+				if (!is_zsk_published) {
+					keytime = zsk_publish_time(key->timing.active, ctx);
+					restype = PUBLISH;
+				}
+				break;
+			case DNSSEC_KEY_STATE_RETIRED:
+				keytime = zsk_remove_time(key->timing.retire, ctx);
+				restype = REMOVE;
+				break;
+			case DNSSEC_KEY_STATE_READY:
+			default:
+				assert(0);
+			}
+		}
+		if (keytime < res.time) {
+			res.key = key;
+			res.ksk = isksk;
+			res.time = keytime;
+			res.type = restype;
+		}
+	}
+
+	return res;
+}
+
+static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey) {
+	assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_PUBLISHED);
+	newkey->timing.ready = ctx->now;
+	return KNOT_EOK;
+}
+
+static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
+{
+	uint16_t kskflag = dnssec_key_get_flags(newkey->key);
+
+	// A delay to avoid left-behind of behind-a-loadbalancer parent NSs
+	// for now we use (incorrectly) ksk_sbm_check_interval, to avoid too many conf options
+	time_t delay = 0;
+	if (kskflag == DNSKEY_FLAGS_KSK && ctx->policy->ksk_sbm_check_interval != 0) {
+		delay = ctx->policy->ksk_sbm_check_interval;
+	}
+
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (dnssec_key_get_flags(key->key) == kskflag &&
+		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_ACTIVE) {
+			key->timing.retire = MIN(ctx->now + delay, key->timing.retire);
+		}
+	}
+
+	if (kskflag == DNSKEY_FLAGS_KSK) {
+		assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_READY);
+	} else {
+		assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_PUBLISHED);
+		assert(delay == 0);
+		newkey->timing.ready = MIN(ctx->now + delay, newkey->timing.ready);
+	}
+	newkey->timing.active = MIN(ctx->now + delay, newkey->timing.active);
 
 	return KNOT_EOK;
 }
 
-static int exec_new_signatures(kdnssec_ctx_t *ctx)
+static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 {
-	knot_kasp_key_t *active  = last_key(ctx, DNSSEC_KEY_STATE_ACTIVE);
-	knot_kasp_key_t *rolling = last_key(ctx, DNSSEC_KEY_STATE_PUBLISHED);
-	if (!active || !rolling) {
-		return KNOT_EINVAL;
-	}
+	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_RETIRED);
+	key->timing.remove = ctx->now;
 
-	assert(dnssec_key_get_flags(active->key) == DNSKEY_FLAGS_ZSK);
-	assert(dnssec_key_get_flags(rolling->key) == DNSKEY_FLAGS_ZSK);
-
-	active->timing.retire = ctx->now;
-	rolling->timing.ready = ctx->now;
-	rolling->timing.active = ctx->now;
-
-	return KNOT_EOK;
+	return kdnssec_delete_key(ctx, key);
 }
 
-static int exec_remove_old_key(kdnssec_ctx_t *ctx)
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
 {
-	knot_kasp_key_t *retired = last_key(ctx, DNSSEC_KEY_STATE_RETIRED);
-	if (!retired) {
+	if (ctx == NULL || reschedule == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	retired->timing.remove = ctx->now;
-
-	return kdnssec_delete_key(ctx, retired);
-}
-
-// TODO refactor next event calculation to be straightforward based on the previous event,
-// and store the timing in timers-db
-// problem: we need to rollover each key independently (?) but in timers we just store event time
-
-int knot_dnssec_zsk_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *next_rollover)
-{
 	if (ctx->policy->manual) {
 		return KNOT_EOK;
 	}
@@ -188,46 +372,91 @@ int knot_dnssec_zsk_rollover(kdnssec_ctx_t *ctx, bool *keys_changed, time_t *nex
 
 	// generate initial keys if missing
 	if (!ctx->policy->singe_type_signing && !key_present(ctx, DNSKEY_FLAGS_KSK)) {
-		ret = generate_initial_key(ctx, true);
+		if (ctx->policy->ksk_shared) {
+			ret = share_or_generate_key(ctx, true, ctx->now);
+		} else {
+			ret = generate_key(ctx, true, ctx->now);
+		}
 	}
 	if ((ret == KNOT_EOK || ret == KNOT_ESEMCHECK) && !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
-		ret = generate_initial_key(ctx, false);
+		ret = generate_key(ctx, false, ctx->now);
 	}
 	if (ret == KNOT_EOK) {
-		*keys_changed = true;
+		reschedule->keys_changed = true;
 	}
 
 	if (ret != KNOT_EOK && ret != KNOT_ESEMCHECK) {
 		return ret;
 	}
 
-	roll_action next = next_action(ctx, next_rollover);
+	roll_action next = next_action(ctx);
 
-	if (!ctx->policy->singe_type_signing && *next_rollover <= ctx->now) {
-		switch (next) {
+	reschedule->next_rollover = next.time;
+
+	if (!ctx->policy->singe_type_signing && reschedule->next_rollover <= ctx->now) {
+		switch (next.type) {
 		case PUBLISH:
-			ret = exec_new_key(ctx);
+			if (next.ksk && ctx->policy->ksk_shared) {
+				ret = share_or_generate_key(ctx, next.ksk, TIME_INFINITY);
+			} else {
+				ret = generate_key(ctx, next.ksk, TIME_INFINITY);
+			}
+			break;
+		case SUBMIT:
+			ret = submit_key(ctx, next.key);
+			reschedule->plan_ds_query = true;
 			break;
 		case REPLACE:
-			ret = exec_new_signatures(ctx);
+			ret = exec_new_signatures(ctx, next.key);
 			break;
 		case REMOVE:
-			ret = exec_remove_old_key(ctx);
+			ret = exec_remove_old_key(ctx, next.key);
 			break;
 		default:
 			ret = KNOT_EINVAL;
 		}
 
 		if (ret == KNOT_EOK) {
-			*keys_changed = true;
-			(void)next_action(ctx, next_rollover);
+			reschedule->keys_changed = true;
+			next = next_action(ctx);
+			reschedule->next_rollover = next.time;
 		} else {
-			*next_rollover = time(NULL) + 10; // fail => try in 10seconds #TODO better?
+			reschedule->next_rollover = time(NULL) + 10; // fail => try in 10seconds #TODO better?
 		}
 	}
 
-	if (*keys_changed) {
+	if (reschedule->keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
 	}
 	return (ret == KNOT_ESEMCHECK ? KNOT_EOK : ret);
+}
+
+int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx)
+{
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
+		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
+			int ret = exec_new_signatures(ctx, key);
+			if (ret == KNOT_EOK) {
+				ret = kdnssec_ctx_commit(ctx);
+			}
+			return ret;
+		}
+	}
+	return KNOT_ENOENT;
+}
+
+bool zone_has_key_sbm(const kdnssec_ctx_t *ctx)
+{
+	assert(ctx->zone);
+
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
+		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
+			return true;
+		}
+	}
+	return false;
 }

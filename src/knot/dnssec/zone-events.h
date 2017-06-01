@@ -30,6 +30,14 @@ enum zone_sign_flags {
 
 typedef enum zone_sign_flags zone_sign_flags_t;
 
+typedef struct {
+        time_t next_sign;
+        time_t next_rollover;
+        bool keys_changed;
+        bool plan_ds_query;
+        bool allow_rollover; // this one is set by the caller
+} zone_sign_reschedule_t;
+
 /*!
  * \brief Generate/rollover keys in keystore as needed.
  *
@@ -53,7 +61,7 @@ int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
-                          zone_sign_flags_t flags, uint32_t *refresh_at);
+                          zone_sign_flags_t flags, zone_sign_reschedule_t *reschedule);
 
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
@@ -68,7 +76,7 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
 int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                const changeset_t *in_ch,
                                changeset_t *out_ch,
-                               uint32_t *refresh_at);
+                               zone_sign_reschedule_t *reschedule);
 
 /*!
  * \brief Create new NCES3 salt if the old one is too old, and plan next resalt.

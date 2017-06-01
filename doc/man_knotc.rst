@@ -136,6 +136,11 @@ Actions
 **zone-thaw** [*zone*...]
   Dismiss zone freeze.
 
+**zone-ksk-submitted** *zone*
+  Use when the zone's KSK rollover is in submittion phase. By calling this command
+  the user confirms manually that the parent zone contains DS record for the new
+  KSK in submission phase and the old KSK can be retired.
+
 **conf-init**
   Initialize the configuration database. (*)
 

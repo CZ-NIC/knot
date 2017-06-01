@@ -173,38 +173,6 @@ static const yp_item_t desc_keystore[] = {
 	{ NULL }
 };
 
-static const yp_item_t desc_policy[] = {
-	{ C_ID,                  YP_TSTR,  YP_VNONE, CONF_IO_FREF },
-	{ C_KEYSTORE,            YP_TREF,  YP_VREF = { C_KEYSTORE }, CONF_IO_FRLD_ZONES,
-	                                   { check_ref_dflt } },
-	{ C_MANUAL,              YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
-	{ C_SINGLE_TYPE_SIGNING, YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
-	{ C_ALG,                 YP_TOPT,  YP_VOPT = { dnssec_key_algs,
-	                                               DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 },
-	                                   CONF_IO_FRLD_ZONES },
-	{ C_KSK_SIZE,            YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE },
-	                                   CONF_IO_FRLD_ZONES },
-	{ C_ZSK_SIZE,            YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE },
-	                                   CONF_IO_FRLD_ZONES },
-	{ C_DNSKEY_TTL,          YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
-	                                   CONF_IO_FRLD_ZONES },
-	{ C_ZSK_LIFETIME,        YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(30), YP_STIME },
-	                                   CONF_IO_FRLD_ZONES },
-	{ C_PROPAG_DELAY,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, HOURS(1), YP_STIME },
-	                                   CONF_IO_FRLD_ZONES },
-	{ C_RRSIG_LIFETIME,      YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(14), YP_STIME },
-	                                   CONF_IO_FRLD_ZONES },
-	{ C_RRSIG_REFRESH,       YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(7), YP_STIME },
-	                                   CONF_IO_FRLD_ZONES },
-	{ C_NSEC3,               YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
-	{ C_NSEC3_ITER,          YP_TINT,  YP_VINT = { 0, UINT16_MAX, 10 }, CONF_IO_FRLD_ZONES },
-	{ C_NSEC3_SALT_LEN,      YP_TINT,  YP_VINT = { 0, UINT8_MAX, 8 }, CONF_IO_FRLD_ZONES },
-	{ C_NSEC3_SALT_LIFETIME, YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(30), YP_STIME },
-	                                   CONF_IO_FRLD_ZONES },
-	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
-	{ NULL }
-};
-
 static const yp_item_t desc_key[] = {
 	{ C_ID,      YP_TDNAME, YP_VNONE },
 	{ C_ALG,     YP_TOPT,   YP_VOPT = { tsig_key_algs, DNSSEC_TSIG_UNKNOWN } },
@@ -229,6 +197,54 @@ static const yp_item_t desc_remote[] = {
 	{ C_VIA,     YP_TADDR, YP_VNONE, YP_FMULTI },
 	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
 	{ C_COMMENT, YP_TSTR,  YP_VNONE },
+	{ NULL }
+};
+
+static const yp_item_t desc_submission[] = {
+	{ C_ID,           YP_TSTR, YP_VNONE },
+	{ C_PARENT,       YP_TREF, YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES,
+	                           { check_ref } },
+	{ C_CHK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME },
+	                           CONF_IO_FRLD_ZONES },
+	{ C_TIMEOUT,      YP_TINT, YP_VINT = { 1, UINT32_MAX, 0, YP_STIME },
+	                           CONF_IO_FRLD_ZONES },
+	{ NULL }
+};
+
+static const yp_item_t desc_policy[] = {
+	{ C_ID,                  YP_TSTR,  YP_VNONE, CONF_IO_FREF },
+	{ C_KEYSTORE,            YP_TREF,  YP_VREF = { C_KEYSTORE }, CONF_IO_FRLD_ZONES,
+	                                   { check_ref_dflt } },
+	{ C_MANUAL,              YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
+	{ C_KSK_SHARED,          YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
+	{ C_SINGLE_TYPE_SIGNING, YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
+	{ C_ALG,                 YP_TOPT,  YP_VOPT = { dnssec_key_algs,
+	                                               DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_KSK_SIZE,            YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_ZSK_SIZE,            YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_DNSKEY_TTL,          YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_ZSK_LIFETIME,        YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(30), YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_KSK_LIFETIME,        YP_TINT,  YP_VINT = { 1, UINT32_MAX, 0, YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_PROPAG_DELAY,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, HOURS(1), YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_RRSIG_LIFETIME,      YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(14), YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_RRSIG_REFRESH,       YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(7), YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_NSEC3,               YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
+	{ C_NSEC3_ITER,          YP_TINT,  YP_VINT = { 0, UINT16_MAX, 10 }, CONF_IO_FRLD_ZONES },
+	{ C_NSEC3_SALT_LEN,      YP_TINT,  YP_VINT = { 0, UINT8_MAX, 8 }, CONF_IO_FRLD_ZONES },
+	{ C_NSEC3_SALT_LIFETIME, YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(30), YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_KSK_SBM,             YP_TREF,  YP_VREF = { C_SBM }, CONF_IO_FRLD_ZONES,
+	                                   { check_ref } },
+	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
@@ -292,10 +308,11 @@ const yp_item_t conf_scheme[] = {
 	{ C_LOG,      YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI | CONF_IO_FRLD_LOG },
 	{ C_STATS,    YP_TGRP, YP_VGRP = { desc_stats }, CONF_IO_FRLD_SRV },
 	{ C_KEYSTORE, YP_TGRP, YP_VGRP = { desc_keystore }, YP_FMULTI, { check_keystore } },
-	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
 	{ C_KEY,      YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_RMT,      YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
+	{ C_SBM,      YP_TGRP, YP_VGRP = { desc_submission }, YP_FMULTI },
+	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
 	{ C_TPL,      YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE,     YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI | CONF_IO_FZONE, { check_zone } },
 	{ C_INCL,     YP_TSTR, YP_VNONE, CONF_IO_FDIFF_ZONES | CONF_IO_FRLD_ALL, { include_file } },

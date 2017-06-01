@@ -274,7 +274,7 @@ Automatic DNSSEC signing
 Knot DNS supports automatic DNSSEC signing for static zones. The signing
 can operate in two modes:
 
-1. :ref:`Automatic key management <dnssec-automatic-key-management>`.
+1. :ref:`Automatic key management <dnssec-automatic-zsk-management>`.
    In this mode, the server maintains signing keys. New keys are generated
    according to assigned policy and are rolled automatically in a safe manner.
    No zone operator intervention is necessary.
@@ -296,12 +296,12 @@ by LMDB.
   the database also contains private key material – don't set the permissions
   too week.
 
-.. _dnssec-automatic-key-management:
+.. _dnssec-automatic-zsk-management:
 
-Automatic key management
+Automatic ZSK management
 ------------------------
 
-For automatic key management, a signing policy has to be configured and
+For automatic ZSK management, a signing policy has to be configured and
 assigned to the zone. The policy specifies how the zone is signed (i.e. signing
 algorithm, key size, key lifetime, signature lifetime, etc.). The policy can
 be configured in the :ref:`policy section <Policy section>`, or a ``default``
@@ -343,6 +343,61 @@ the server logs to see whether everything went well.
   before enabling the automatic signing. Also the algorithm in the policy must
   match the algorithm of all imported keys. Otherwise the zone will be resigned
   at all.
+
+.. _dnssec-automatic-ksk-management:
+
+Automatic KSK management
+------------------------
+
+For automatic KSK management, first configure ZSK management like above, and use
+additional options in :ref:`policy section <Policy section>`, mostly specifying
+desired (finite) lifetime for KSK: ::
+
+  remote:
+    - id: test_zone_server
+      address: 192.168.12.1@53
+
+  submission:
+    - id: test_zone_sbm
+      parent: [test_zone_server]
+
+  policy:
+    - id: rsa
+      algorithm: RSASHA256
+      ksk-size: 2048
+      zsk-size: 1024
+      zsk-lifetime: 30d
+      ksk-lifetime: 365d
+      ksk-submission: test_zone_sbm
+
+  zone:
+    - domain: myzone.test
+      dnssec-signing: on
+      dnssec-policy: rsa
+
+After the initially-generated KSK reaches its lifetime, new KSK is published and after
+convenience delay the submission is started. The server publishes CDS and CDNSKEY records
+and the user shall propagate them to the parent. The server periodically checks for
+DS at the master and when positive, finishes the rollover.
+
+To share KSKs among zones, set the ksk-shared policy parameter. It is strongly discouraged to
+change the policy ``id`` afterwards! The shared key's creation timestamp will be equal for all
+zones, but other timers (e.g. activate, retire) may get out of sync. ::
+
+  policy:
+    - id: shared
+      ...
+      ksk-shared: true
+
+  zone:
+    - domain: firstzone.test
+      dnssec-signing: on
+      dnssec-policy: shared
+
+  zone:
+    - domain: secondzone.test
+      dnssec-signing: on
+      dnssec-policy: shared
 
 .. _dnssec-manual-key-management:
 
@@ -444,7 +499,7 @@ of the limitations will be hopefully removed in the near future.
   - Only one DNSSEC algorithm can be used per zone.
   - CSK rollover with Single-Type Signing scheme is not implemented.
   - ZSK rollover always uses key pre-publish method (actually a feature).
-  - KSK rollover is not implemented.
+  - KSK rollover always uses pre-publish double-ksk method.
 
 - Signing:
 
