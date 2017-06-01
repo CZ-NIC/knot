@@ -586,6 +586,8 @@ presence of corresponding DS records in case of KSK submission. All of them must
 have corresponding DS for the rollover to continue. If none specified, the rollover
 must be pushed forward manually.
 
+*Default:* not set
+
 .. _submission_check-interval:
 
 check-interval
@@ -602,7 +604,7 @@ timeout
 -------
 
 After this period, the KSK submission is automatically considered successful, even
-if all the check were negative or no parents are configured.
+if all the checks were negative or no parents are configured. Set 0 for infinity.
 
 *Default:* infinity
 

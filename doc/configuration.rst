@@ -354,20 +354,21 @@ additional options in :ref:`policy section <Policy section>`, mostly specifying
 desired (finite) lifetime for KSK: ::
 
   remote:
-    - id: cz_zone
+    - id: test_zone_server
       address: 192.168.12.1@53
 
   submission:
-    - id: cz_zone_sbm
-      parent: [cz_zone]
+    - id: test_zone_sbm
+      parent: [test_zone_server]
 
   policy:
     - id: rsa
       algorithm: RSASHA256
       ksk-size: 2048
       zsk-size: 1024
+      zsk-lifetime: 30d
       ksk-lifetime: 365d
-      ksk-submission: cz_zone_sbm
+      ksk-submission: test_zone_sbm
 
   zone:
     - domain: myzone.test
@@ -384,20 +385,19 @@ change the policy ``id`` afterwards! The shared key's creation timestamp will be
 zones, but other timers (e.g. activate, retire) may get out of sync. ::
 
   policy:
-    - id: sharedp
-      ksk-lifetime: 365d
+    - id: shared
+      ...
       ksk-shared: true
-      ksk-submission: cz_zone_sbm
 
   zone:
     - domain: firstzone.test
       dnssec-signing: on
-      dnssec-policy: sharedp
+      dnssec-policy: shared
 
   zone:
     - domain: secondzone.test
       dnssec-signing: on
-      dnssec-policy: sharedp
+      dnssec-policy: shared
 
 .. _dnssec-manual-key-management:
 

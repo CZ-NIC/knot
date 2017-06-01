@@ -64,7 +64,7 @@ Actions
   Takes one argument: path to BIND key file (private or public, but both MUST exist).
 
 **import-pem** *PEM_file* [*arguments*...]
-  Imports a DNSSEC key form PEM file. The key parameters (same as for generate action) need to be
+  Imports a DNSSEC key from PEM file. The key parameters (same as for generate action) need to be
   specified (mostly algorithm, timers...) because they are not contained in the PEM format.
 
 **set** *key_spec* [*arguments*...]
