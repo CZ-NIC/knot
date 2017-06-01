@@ -96,7 +96,7 @@ libcontrib_la_SOURCES +=			\
 endif !HAVE_LMDB
 
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
-libcontrib_la_LDFLAGS = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
+libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 
 # libknot headers
 libknot_ladir = $(includedir)
@@ -191,8 +191,9 @@ libknot_la_SOURCES =				\
 	$(nobase_libknot_la_HEADERS)
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
-libknot_la_LDFLAGS = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS) $(LDFLAG_EXCLUDE_LIBS)
-libknot_la_LIBADD = dnssec/libdnssec.la libcontrib.la
+libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(lmdb_LIBS) \
+                      $(LDFLAG_EXCLUDE_LIBS)
+libknot_la_LIBADD   = dnssec/libdnssec.la libcontrib.la
 
 # pkg-config
 pkgconfig_DATA = knotd.pc libknot.pc
@@ -222,9 +223,11 @@ libknotus_la_SOURCES =				\
 	utils/common/token.c			\
 	utils/common/token.h
 
-libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libidn_CFLAGS) $(libedit_CFLAGS) $(gnutls_CFLAGS)
-libknotus_la_LDFLAGS = $(AM_LDFLAGS) $(libidn_LIBS) $(LDFLAG_EXCLUDE_LIBS)
-libknotus_la_LIBADD = libcontrib.la libknot.la
+libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libidn2_LIBS) \
+                        $(libidn_CFLAGS) $(libedit_CFLAGS) $(gnutls_CFLAGS)
+libknotus_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
+libknotus_la_LIBADD   = libcontrib.la libknot.la $(libidn2_LIBS) $(libidn_LIBS) \
+                        $(libedit_LIBS) $(gnutls_LIBS)
 
 libknotd_la_SOURCES =				\
 	knot/conf/base.c			\
@@ -391,9 +394,11 @@ libknotd_la_SOURCES =				\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
-libknotd_la_CPPFLAGS  = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(systemd_CFLAGS) $(liburcu_CFLAGS) $(lmdb_CFLAGS) -DKNOTD_MOD_STATIC
-libknotd_la_LDFLAGS = $(AM_LDFLAGS) $(systemd_LIBS) $(liburcu_LIBS) -export-symbols-regex '^knotd_'
-libknotd_la_LIBADD = libknot.la zscanner/libzscanner.la $(liburcu_LIBS)
+libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(systemd_CFLAGS) \
+                       $(liburcu_CFLAGS) -DKNOTD_MOD_STATIC
+libknotd_la_LDFLAGS  = $(AM_LDFLAGS) -export-symbols-regex '^knotd_'
+libknotd_la_LIBADD   = libknot.la zscanner/libzscanner.la $(systemd_LIBS) \
+                       $(liburcu_LIBS)
 
 ###################
 # Knot DNS Daemon #
@@ -435,11 +440,10 @@ knotd_LDFLAGS   = $(AM_LDFLAGS) -rdynamic
 knotc_CPPFLAGS  = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libedit_CFLAGS)
 knotc_LDADD     = libknotd.la libcontrib.la libknotus.la $(libedit_LIBS)
 knotc_LDFLAGS   = $(AM_LDFLAGS) -rdynamic
-keymgr_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS) -I$(srcdir)/dnssec/lib/dnssec \
+keymgr_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec \
                   -I$(srcdir)/dnssec $(gnutls_CFLAGS)
-keymgr_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la \
-                  libknotus.la dnssec/libdnssec.la dnssec/libshared.la \
-                  zscanner/libzscanner.la $(gnutls_LIBS)
+keymgr_LDADD    = libknotd.la libcontrib.la libknotus.la dnssec/libdnssec.la \
+                  dnssec/libshared.la zscanner/libzscanner.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
@@ -500,16 +504,17 @@ kjournalprint_SOURCES = 			\
 
 # bin programs
 kdig_CPPFLAGS          = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-kdig_LDADD             = $(libidn_LIBS) libknotus.la
+kdig_LDADD             = libknotus.la
 khost_CPPFLAGS         = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-khost_LDADD            = $(libidn_LIBS) libknotus.la
+khost_LDADD            = libknotus.la
 knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-knsupdate_LDADD        = zscanner/libzscanner.la libknotus.la
-knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS) -I$(srcdir)/dnssec/lib/dnssec -I$(srcdir)/dnssec
+knsupdate_LDADD        = libknotus.la zscanner/libzscanner.la
+knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS) -I$(srcdir)/dnssec -I$(srcdir)/dnssec/lib/dnssec
 knsec3hash_LDADD       = libknot.la libcontrib.la dnssec/libdnssec.la dnssec/libshared.la
+kzonecheck_CPPFLAGS    = $(AM_CPPFLAGS)
 kzonecheck_LDADD       = libknotd.la libcontrib.la
-kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(liburcu_CFLAGS)
-kjournalprint_LDADD    = $(libidn_LIBS) $(liburcu_LIBS) libknotd.la libcontrib.la
+kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+kjournalprint_LDADD    = libknotd.la libcontrib.la
 
 #######################################
 # Optional Knot DNS Utilities modules #
@@ -525,7 +530,7 @@ endif # HAVE_DNSTAP
 endif # HAVE_UTILS
 
 KNOTD_MOD_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
-KNOTD_MOD_LDFLAGS = $(AM_LDFLAGS) -module -shared -avoid-version
+KNOTD_MOD_LDFLAGS  = $(AM_LDFLAGS) -module -shared -avoid-version
 
 pkglibdir = $(module_instdir)
 pkglib_LTLIBRARIES =
