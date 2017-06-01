@@ -208,8 +208,10 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 	}
 
 	if (ret != KNOT_EOK) {
-		time_t next_check = time(NULL) + ctx.policy->ksk_sbm_check_interval;
-		zone_events_schedule_at(zone, ZONE_EVENT_PARENT_DS_Q, next_check);
+		if (ctx.policy->ksk_sbm_check_interval > 0) {
+			time_t next_check = time(NULL) + ctx.policy->ksk_sbm_check_interval;
+			zone_events_schedule_at(zone, ZONE_EVENT_PARENT_DS_Q, next_check);
+		}
 	} else {
 		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	}
