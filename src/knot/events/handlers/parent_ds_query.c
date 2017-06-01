@@ -200,7 +200,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
 		    key->is_ready && !key->is_active) {
 			if (parents_have_ds(zone, conf, key)) {
-				ret = knot_dnssec_ksk_sbm_confirm(&ctx, dnssec_key_get_keytag(key->key)); // TODO get rid of keytag
+				ret = knot_dnssec_ksk_sbm_confirm(&ctx);
 			} else {
 				ret = KNOT_ENOENT;
 			}

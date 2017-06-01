@@ -1062,7 +1062,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,        CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
 	{ CMD_ZONE_FLUSH,      cmd_zone_filter_ctl, CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,        CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
-	{ CMD_ZONE_SBM_CONFIRM,       cmd_zone_node_ctl,      CTL_ZONE_SBM_CONFIRM,       CMD_FREQ_ZONE },
+	{ CMD_ZONE_SBM_CONFIRM,       cmd_zone_ctl,      CTL_ZONE_SBM_CONFIRM,       CMD_FREQ_ZONE },
 	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,        CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_THAW,       cmd_zone_ctl,        CTL_ZONE_THAW,       CMD_FOPT_ZONE },
 

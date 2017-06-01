@@ -38,6 +38,6 @@
  */
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule);
 
-int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint16_t for_key);
+int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx);
 
 bool zone_has_key_sbm(const kdnssec_ctx_t *ctx);

@@ -346,12 +346,6 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 
 static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 {
-	const char *data = args->data[KNOT_CTL_IDX_OWNER];
-	uint16_t keytag;
-	if (data == NULL || sscanf(data, "%hu", &keytag) != 1) {
-		return KNOT_EINVAL;
-	}
-
 	kdnssec_ctx_t ctx = { 0 };
 
 	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, NULL);
@@ -359,7 +353,7 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 		return ret;
 	}
 
-	ret = knot_dnssec_ksk_sbm_confirm(&ctx, keytag);
+	ret = knot_dnssec_ksk_sbm_confirm(&ctx);
 
 	kdnssec_ctx_deinit(&ctx);
 

@@ -431,12 +431,11 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 	return (ret == KNOT_ESEMCHECK ? KNOT_EOK : ret);
 }
 
-int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint16_t for_key)
+int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
-		    dnssec_key_get_keytag(key->key) == for_key &&
 		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
 			int ret = exec_new_signatures(ctx, key);
 			if (ret == KNOT_EOK) {
