@@ -1177,7 +1177,7 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
-	case CTL_ZONE_SBM_CONFIRM:
+	case CTL_ZONE_KSK_SBM:
 		return zones_apply(args, zone_ksk_sbm_confirm);
 	case CTL_ZONE_FREEZE:
 		return zones_apply(args, zone_freeze);
@@ -1607,7 +1607,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer", ctl_zone },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",      ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",       ctl_zone },
-	[CTL_ZONE_SBM_CONFIRM]       = { "zone-submission-confirm",       ctl_zone },
+	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
 	[CTL_ZONE_FREEZE]     = { "zone-freeze",     ctl_zone },
 	[CTL_ZONE_THAW]       = { "zone-thaw",       ctl_zone },
 
