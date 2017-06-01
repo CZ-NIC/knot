@@ -159,6 +159,11 @@ DNSSEC signing).
 \fBzone\-thaw\fP [\fIzone\fP\&...]
 Dismiss zone freeze.
 .TP
+\fBzone\-ksk\-submitted\fP \fIzone\fP
+Use when the zone\(aqs KSK rollover is in submittion phase. By calling this command
+the user confirms manually that the parent zone contains DS record for the new
+KSK in submission phase and the old KSK can be retired.
+.TP
 \fBconf\-init\fP
 Initialize the configuration database. (*)
 .TP
