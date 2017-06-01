@@ -99,13 +99,15 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_activ
 		return KNOT_EINVAL;
 	} // for now not designed for rotating shared ZSK
 
-	int ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string, &borrow_zone, &borrow_key);
+	int ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string,
+	                                  &borrow_zone, &borrow_key);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		return ret;
 	}
 
 	// if we already have the policy-last key, we have to generate new one
-	if (ret == KNOT_ENOENT || key_id_present(ctx, borrow_key, ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK)) {
+	if (ret == KNOT_ENOENT ||
+	    key_id_present(ctx, borrow_key, ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK)) {
 		knot_kasp_key_t *key = NULL;
 		ret = kdnssec_generate_key(ctx, ksk, &key);
 		if (ret != KNOT_EOK) {
@@ -122,7 +124,8 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_activ
 			return ret;
 		}
 
-		ret = kasp_db_set_policy_last(*ctx->kasp_db, ctx->policy->string, borrow_key, ctx->zone->dname, key->id);
+		ret = kasp_db_set_policy_last(*ctx->kasp_db, ctx->policy->string,
+		                              borrow_key, ctx->zone->dname, key->id);
 		free(borrow_zone);
 		free(borrow_key);
 		borrow_zone = NULL;
@@ -140,7 +143,8 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_activ
 				return ret;
 			}
 
-			ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string, &borrow_zone, &borrow_key);
+			ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string,
+			                              &borrow_zone, &borrow_key);
 		}
 	}
 
@@ -200,7 +204,7 @@ static time_t zsk_remove_time(time_t retire_time, const kdnssec_ctx_t *ctx)
 
 static time_t ksk_publish_time(time_t created_time, const kdnssec_ctx_t *ctx)
 {
-	if (created_time <= 0 || created_time >= TIME_INFINITY) {
+	if (created_time <= 0 || created_time >= TIME_INFINITY || ctx->policy->ksk_lifetime == 0) {
 		return TIME_INFINITY;
 	}
 	return created_time + ctx->policy->ksk_lifetime;
@@ -216,7 +220,7 @@ static time_t ksk_ready_time(time_t publish_time, const kdnssec_ctx_t *ctx)
 
 static time_t ksk_sbm_max_time(time_t ready_time, const kdnssec_ctx_t *ctx)
 {
-	if (ready_time <= 0 || ready_time >= TIME_INFINITY) {
+	if (ready_time <= 0 || ready_time >= TIME_INFINITY || ctx->policy->ksk_sbm_timeout == 0) {
 		return TIME_INFINITY;
 	}
 	return ready_time + ctx->policy->ksk_sbm_timeout;
@@ -227,7 +231,8 @@ static time_t ksk_remove_time(time_t retire_time, const kdnssec_ctx_t *ctx)
 	if (retire_time <= 0 || retire_time >= TIME_INFINITY) {
 		return TIME_INFINITY;
 	}
-	return retire_time + ctx->policy->propagation_delay + ctx->policy->dnskey_ttl; // DS TTL == DNSKEY TTL (?) TODO
+	// DS TTL == DNSKEY TTL (?) TODO
+	return retire_time + ctx->policy->propagation_delay + ctx->policy->dnskey_ttl;
 }
 
 static roll_action next_action(kdnssec_ctx_t *ctx)
@@ -319,9 +324,13 @@ static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey) {
 static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 {
 	uint16_t kskflag = dnssec_key_get_flags(newkey->key);
-	time_t delay = (kskflag == DNSKEY_FLAGS_KSK ? ctx->policy->ksk_sbm_check_interval : 0);
-	// a delay to avoid left-behind of behind-a-loadbalancer parent NSs
+
+	// A delay to avoid left-behind of behind-a-loadbalancer parent NSs
 	// for now we use (incorrectly) ksk_sbm_check_interval, to avoid too many conf options
+	time_t delay = 0;
+	if (kskflag == DNSKEY_FLAGS_KSK && ctx->policy->ksk_sbm_check_interval != 0) {
+		delay = ctx->policy->ksk_sbm_check_interval;
+	}
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];

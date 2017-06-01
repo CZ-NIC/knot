@@ -83,16 +83,15 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	policy->nsec3_salt_lifetime = conf_int(&val);
 
 	conf_val_t ksk_sbm = conf_id_get(conf(), C_POLICY, C_KSK_SBM, id);
-	assert(conf_val_count(&ksk_sbm)  < 2);
-	if (conf_val_count(&ksk_sbm) > 0) {
+	if (ksk_sbm.code == KNOT_EOK) {
 		val = conf_id_get(conf(), C_SBM, C_CHK_INTERVAL, &ksk_sbm);
 		policy->ksk_sbm_check_interval = conf_int(&val);
 
 		val = conf_id_get(conf(), C_SBM, C_TIMEOUT, &ksk_sbm);
 		policy->ksk_sbm_timeout = conf_int(&val);
 	} else {
-		policy->ksk_sbm_check_interval = 0xfffffff0;
-		policy->ksk_sbm_timeout = 0xfffffff0; // uint32 "infinity"
+		policy->ksk_sbm_check_interval = 0;
+		policy->ksk_sbm_timeout = 0;
 	}
 }
 
