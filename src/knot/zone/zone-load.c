@@ -244,10 +244,6 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 		}
 
 		kdnssec_ctx_deinit(&kctx);
-		if (ret != KNOT_EOK) {
-			changeset_clear(&change);
-			return ret;
-		}
 
 		ret = knot_dnssec_zone_sign(contents, &change, 0, dnssec_refresh);
 		if (ret != KNOT_EOK) {
