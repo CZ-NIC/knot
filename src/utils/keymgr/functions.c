@@ -370,7 +370,6 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	// open file
 	int fd = open(import_file, O_RDONLY, 0);
 	if (fd == -1) {
-		close(fd);
 		return knot_map_errno();
 	}
 
@@ -406,31 +405,31 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	ret = dnssec_keystore_import(ctx->keystore, &read_pem, &keyid);
 	dnssec_binary_free(&read_pem);
 	if (ret != DNSSEC_EOK) {
-		return ret;
+		return knot_error_from_libdnssec(ret);
 	}
 
 	// create dnssec key
 	dnssec_key_t *dnskey = NULL;
 	ret = dnssec_key_new(&dnskey);
-	if (ret != KNOT_EOK) {
+	if (ret != DNSSEC_EOK) {
 		free(keyid);
-		return ret;
+		return knot_error_from_libdnssec(ret);
 	}
 	ret = dnssec_key_set_dname(dnskey, ctx->zone->dname);
-	if (ret != KNOT_EOK) {
+	if (ret != DNSSEC_EOK) {
 		dnssec_key_free(dnskey);
 		free(keyid);
-		return ret;
+		return knot_error_from_libdnssec(ret);
 	}
 	dnssec_key_set_flags(dnskey, dnskey_flags(isksk));
 	dnssec_key_set_algorithm(dnskey, ctx->policy->algorithm);
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
 	ret = dnssec_key_import_keystore(dnskey, ctx->keystore, keyid);
-	if (ret != KNOT_EOK) {
+	if (ret != DNSSEC_EOK) {
 		dnssec_key_free(dnskey);
 		free(keyid);
-		return ret;
+		return knot_error_from_libdnssec(ret);
 	}
 
 	// allocate kasp key
