@@ -19,7 +19,6 @@
 #include "knot/nameserver/process_query.h" // Dependency on qdata->extra!
 #include "knot/modules/rrl/functions.h"
 
-/* Module configuration scheme. */
 #define MOD_RATE_LIMIT		"\x0A""rate-limit"
 #define MOD_SLIP		"\x04""slip"
 #define MOD_TBL_SIZE		"\x0A""table-size"

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -955,7 +955,7 @@ static const yp_item_t desc_zone[] = {
 	{ NULL }
 };
 
-const yp_item_t test_scheme[] = {
+const yp_item_t test_schema[] = {
 	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
 	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
@@ -969,7 +969,7 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	ok(test_conf("", test_scheme) == KNOT_EOK, "Prepare configuration");
+	ok(test_conf("", test_schema) == KNOT_EOK, "Prepare configuration");
 
 	diag("conf_io_begin");
 	test_conf_io_begin();

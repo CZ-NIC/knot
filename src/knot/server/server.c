@@ -21,7 +21,7 @@
 #include <urcu.h>
 
 #include "libknot/errcode.h"
-#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/ypschema.h"
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/conf/confio.h"
@@ -540,7 +540,7 @@ void server_wait(server_t *server)
 
 static int reload_conf(conf_t *new_conf)
 {
-	yp_scheme_purge_dynamic(new_conf->scheme);
+	yp_schema_purge_dynamic(new_conf->schema);
 
 	/* Re-load common modules. */
 	int ret = conf_mod_load_common(new_conf);

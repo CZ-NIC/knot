@@ -16,7 +16,7 @@
 /*!
  * \file
  *
- * \brief Scheme layer for Yparser.
+ * \brief Schema layer for Yparser.
  *
  * \addtogroup yparser
  * @{
@@ -63,10 +63,10 @@ struct knot_lookup;
 #define YP_VREF		.var.r
 #define YP_VGRP		.var.g
 
-/*! Scheme item name is a char string with a leading byte (string length). */
+/*! Schema item name is a char string with a leading byte (string length). */
 typedef char yp_name_t;
 
-/*! Scheme item type. */
+/*! Schema item type. */
 typedef enum {
 	YP_TNONE = 0, /*!< Unspecified. */
 	YP_TINT,      /*!< Integer. */
@@ -83,7 +83,7 @@ typedef enum {
 	YP_TGRP,      /*!< Group of sub-items. */
 } yp_type_t;
 
-/*! Scheme item flags. */
+/*! Schema item flags. */
 typedef enum {
 	YP_FNONE  = 0,       /*!< Unspecified. */
 	YP_FMULTI = 1 <<  0, /*!< Multivalued item. */
@@ -106,7 +106,7 @@ typedef enum {
 	YP_FUSR16 = 1 << 20, /*!< User-defined flag16. */
 } yp_flag_t;
 
-/*! Scheme item style. */
+/*! Schema item style. */
 typedef enum {
 	YP_SNONE    = 0,      /*!< Unspecified. */
 	YP_SSIZE    = 1 << 0, /*!< Size unit (B, K, M, G) (in, out). */
@@ -117,7 +117,7 @@ typedef enum {
 
 typedef struct yp_item yp_item_t;
 
-/*! Scheme item variables (type dependent). */
+/*! Schema item variables (type dependent). */
 typedef union {
 	/*! Integer variables. */
 	struct {
@@ -181,7 +181,7 @@ typedef union {
 	} g;
 } yp_var_t;
 
-/*! Scheme item specification. */
+/*! Schema item specification. */
 struct yp_item {
 	/*! Item name. */
 	const yp_name_t *name;
@@ -217,8 +217,8 @@ struct yp_node {
 
 /*! Context parameters for check operations. */
 typedef struct {
-	/*! Used scheme. */
-	yp_item_t **scheme;
+	/*! Used schema. */
+	yp_item_t **schema;
 	/*! Index of the current node. */
 	size_t current;
 	/*! Node stack. */
@@ -226,79 +226,79 @@ typedef struct {
 } yp_check_ctx_t;
 
 /*!
- * Copies the scheme and reinitializes dynamic parameters.
+ * Copies the schema and reinitializes dynamic parameters.
  *
- * \param[out] dst New copy of the scheme.
- * \param[in] src Source scheme.
+ * \param[out] dst New copy of the schema.
+ * \param[in] src Source schema.
  *
  * \return Error code, KNOT_EOK if success.
  */
-int yp_scheme_copy(
+int yp_schema_copy(
 	yp_item_t **dst,
 	const yp_item_t *src
 );
 
 /*!
- * Merges two schemes.
+ * Merges two schemas.
  *
- * \param[out] dst Merged scheme.
- * \param[in] src1 Source scheme1.
- * \param[in] src2 Source scheme2.
+ * \param[out] dst Merged schema.
+ * \param[in] src1 Source schema1.
+ * \param[in] src2 Source schema2.
  *
  * \return Error code, KNOT_EOK if success.
  */
-int yp_scheme_merge(
+int yp_schema_merge(
 	yp_item_t **dst,
 	const yp_item_t *src1,
 	const yp_item_t *src2
 );
 
 /*!
- * Purges dynamic items from the scheme.
+ * Purges dynamic items from the schema.
  *
- * \param[in] scheme Scheme to purge.
+ * \param[in] schema Schema to purge.
  */
-void yp_scheme_purge_dynamic(
-	yp_item_t *scheme
+void yp_schema_purge_dynamic(
+	yp_item_t *schema
 );
 
 /*!
- * Deallocates the scheme.
+ * Deallocates the schema.
  *
- * \param[in] scheme A scheme returned by #yp_scheme_copy().
+ * \param[in] schema A schema returned by #yp_schema_copy().
  */
-void yp_scheme_free(
-	yp_item_t *scheme
+void yp_schema_free(
+	yp_item_t *schema
 );
 
 /*!
- * Tries to find given parent_name/name in the scheme.
+ * Tries to find given parent_name/name in the schema.
  *
  * \param[in] name Name of the item.
  * \param[in] parent_name Name of the parent item (NULL if no parent).
- * \param[in] scheme Scheme.
+ * \param[in] schema Schema.
  *
  * \return Item, NULL if not found or error.
  */
-const yp_item_t* yp_scheme_find(
+const yp_item_t* yp_schema_find(
 	const yp_name_t *name,
 	const yp_name_t *parent_name,
-	const yp_item_t *scheme
+	const yp_item_t *schema
 );
 
 /*!
- * Prepares a context for item check against the scheme.
+ * Prepares a context for item check against the schema.
  *
- * \param[in] scheme Scheme.
+ * \param[in] schema Schema.
  *
  * \return Context, NULL if error.
  */
-yp_check_ctx_t* yp_scheme_check_init(
-	yp_item_t **scheme
+yp_check_ctx_t* yp_schema_check_init(
+	yp_item_t **schema
 );
 
 /*!
- * Checks the current parser output against the scheme.
+ * Checks the current parser output against the schema.
  *
  * If the item is correct, context also contains binary value of the item.
  *
@@ -307,13 +307,13 @@ yp_check_ctx_t* yp_scheme_check_init(
  *
  * \return Error code, KNOT_EOK if success.
  */
-int yp_scheme_check_parser(
+int yp_schema_check_parser(
 	yp_check_ctx_t *ctx,
 	const yp_parser_t *parser
 );
 
 /*!
- * Checks the string data against the scheme.
+ * Checks the string data against the schema.
  *
  * Description: key0[id].key1 data
  *
@@ -327,7 +327,7 @@ int yp_scheme_check_parser(
  *
  * \return Error code, KNOT_EOK if success.
  */
-int yp_scheme_check_str(
+int yp_schema_check_str(
 	yp_check_ctx_t *ctx,
 	const char *key0,
 	const char *key1,
@@ -340,7 +340,7 @@ int yp_scheme_check_str(
  *
  * \param[in,out] ctx Check context.
  */
-void yp_scheme_check_deinit(
+void yp_schema_check_deinit(
 	yp_check_ctx_t *ctx
 );
 

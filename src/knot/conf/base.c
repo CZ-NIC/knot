@@ -143,7 +143,7 @@ static void init_cache(
 
 int conf_new(
 	conf_t **conf,
-	const yp_item_t *scheme,
+	const yp_item_t *schema,
 	const char *db_dir,
 	conf_flag_t flags)
 {
@@ -160,8 +160,8 @@ int conf_new(
 	// Initialize query modules list.
 	init_list(&out->query_modules);
 
-	// Initialize config scheme.
-	int ret = yp_scheme_copy(&out->scheme, scheme);
+	// Initialize config schema.
+	int ret = yp_schema_copy(&out->schema, schema);
 	if (ret != KNOT_EOK) {
 		goto new_error;
 	}
@@ -278,8 +278,8 @@ int conf_clone(
 	}
 	memset(out, 0, sizeof(conf_t));
 
-	// Initialize config scheme.
-	int ret = yp_scheme_copy(&out->scheme, s_conf->scheme);
+	// Initialize config schema.
+	int ret = yp_schema_copy(&out->schema, s_conf->schema);
 	if (ret != KNOT_EOK) {
 		free(out);
 		return ret;
@@ -293,7 +293,7 @@ int conf_clone(
 	// Open common read-only transaction.
 	ret = conf_refresh_txn(out);
 	if (ret != KNOT_EOK) {
-		yp_scheme_free(out->scheme);
+		yp_schema_free(out->schema);
 		free(out);
 		return ret;
 	}
@@ -372,7 +372,7 @@ void conf_free(
 		return;
 	}
 
-	yp_scheme_free(conf->scheme);
+	yp_schema_free(conf->schema);
 	free(conf->filename);
 	free(conf->hostname);
 	if (conf->api != NULL) {
@@ -554,7 +554,7 @@ int conf_parse(
 	}
 
 	// Initialize parser check context.
-	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf->scheme);
+	yp_check_ctx_t *ctx = yp_schema_check_init(&conf->schema);
 	if (ctx == NULL) {
 		ret = KNOT_ENOMEM;
 		goto parse_error;
@@ -571,7 +571,7 @@ int conf_parse(
 			}
 		}
 
-		check_ret = yp_scheme_check_parser(ctx, parser);
+		check_ret = yp_schema_check_parser(ctx, parser);
 		if (check_ret != KNOT_EOK) {
 			log_parser_err(parser, check_ret);
 			break;
@@ -610,7 +610,7 @@ int conf_parse(
 	}
 
 	conf_mod_load_purge(conf, false);
-	yp_scheme_check_deinit(ctx);
+	yp_schema_check_deinit(ctx);
 parse_error:
 	yp_deinit(parser);
 	free(parser);
@@ -858,8 +858,8 @@ int conf_export(
 
 	int ret;
 
-	// Iterate over the scheme.
-	for (yp_item_t *item = conf->scheme; item->name != NULL; item++) {
+	// Iterate over the schema.
+	for (yp_item_t *item = conf->schema; item->name != NULL; item++) {
 		// Don't export module sections again.
 		if (strncmp(item->name + 1, mod_prefix, mod_prefix_len) == 0) {
 			break;

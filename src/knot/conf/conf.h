@@ -28,7 +28,7 @@
 #include <sys/socket.h>
 
 #include "knot/conf/base.h"
-#include "knot/conf/scheme.h"
+#include "knot/conf/schema.h"
 
 #define CONF_XFERS	10
 

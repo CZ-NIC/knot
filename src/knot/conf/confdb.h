@@ -30,7 +30,7 @@
 
 #include "knot/conf/conf.h"
 #include "libknot/libknot.h"
-#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/ypschema.h"
 
 /*! Current version of the configuration database structure. */
 #define CONF_DB_VERSION		2

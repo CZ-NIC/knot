@@ -26,7 +26,7 @@
 #pragma once
 
 #include "libknot/libknot.h"
-#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/ypschema.h"
 #include "contrib/qp-trie/trie.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/dynarray.h"
@@ -88,8 +88,8 @@ typedef struct {
 	bool is_clone;
 	/*! Currently used namedb api. */
 	const struct knot_db_api *api;
-	/*! Configuration scheme. */
-	yp_item_t *scheme;
+	/*! Configuration schema. */
+	yp_item_t *schema;
 	/*! Memory context. */
 	knot_mm_t *mm;
 	/*! Configuration database. */
@@ -188,7 +188,7 @@ void conf_refresh_hostname(
  * Creates new or opens old configuration database.
  *
  * \param[out] conf   Configuration.
- * \param[in] scheme  Configuration scheme.
+ * \param[in] schema  Configuration schema.
  * \param[in] db_dir  Database path or NULL.
  * \param[in] flags   Access flags.
  *
@@ -196,7 +196,7 @@ void conf_refresh_hostname(
  */
 int conf_new(
 	conf_t **conf,
-	const yp_item_t *scheme,
+	const yp_item_t *schema,
 	const char *db_dir,
 	conf_flag_t flags
 );

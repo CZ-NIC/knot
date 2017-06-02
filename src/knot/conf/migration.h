@@ -30,9 +30,9 @@ int conf_migrate(
 );
 
 #define C_MOD_ONLINE_SIGN "\x0f""mod-online-sign"
-extern const yp_item_t scheme_mod_online_sign[];
+extern const yp_item_t schema_mod_online_sign[];
 int check_mod_online_sign(knotd_conf_check_args_t *args);
 
 #define C_MOD_SYNTH_RECORD "\x10""mod-synth-record"
-extern const yp_item_t scheme_mod_synth_record[];
+extern const yp_item_t schema_mod_synth_record[];
 int check_mod_synth_record(knotd_conf_check_args_t *args);

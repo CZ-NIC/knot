@@ -179,8 +179,8 @@ src/knot/conf/migration.c
 src/knot/conf/migration.h
 src/knot/conf/module.c
 src/knot/conf/module.h
-src/knot/conf/scheme.c
-src/knot/conf/scheme.h
+src/knot/conf/schema.c
+src/knot/conf/schema.h
 src/knot/conf/tools.c
 src/knot/conf/tools.h
 src/knot/ctl/commands.c
@@ -226,9 +226,9 @@ src/knot/events/handlers/freeze_thaw.c
 src/knot/events/handlers/load.c
 src/knot/events/handlers/notify.c
 src/knot/events/handlers/nsec3resalt.c
+src/knot/events/handlers/parent_ds_query.c
 src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
-src/knot/events/handlers/parent_ds_query.c
 src/knot/events/log.c
 src/knot/events/log.h
 src/knot/events/replan.c
@@ -413,8 +413,8 @@ src/libknot/yparser/ypbody.c
 src/libknot/yparser/ypbody.rl
 src/libknot/yparser/ypformat.c
 src/libknot/yparser/ypformat.h
-src/libknot/yparser/ypscheme.c
-src/libknot/yparser/ypscheme.h
+src/libknot/yparser/ypschema.c
+src/libknot/yparser/ypschema.h
 src/libknot/yparser/yptrafo.c
 src/libknot/yparser/yptrafo.h
 src/utils/common/cert.c
@@ -522,7 +522,7 @@ tests/libknot/test_rrset-wire.c
 tests/libknot/test_rrset.c
 tests/libknot/test_tsig.c
 tests/libknot/test_yparser.c
-tests/libknot/test_ypscheme.c
+tests/libknot/test_ypschema.c
 tests/libknot/test_yptrafo.c
 tests/modules/test_onlinesign.c
 tests/modules/test_rrl.c

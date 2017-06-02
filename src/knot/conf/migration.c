@@ -132,7 +132,7 @@ int conf_migrate(
 	return conf_refresh_txn(conf);
 }
 
-const yp_item_t scheme_mod_online_sign[] = {
+const yp_item_t schema_mod_online_sign[] = {
 	{ C_ID,      YP_TSTR },
 	{ C_POLICY,  YP_TSTR },
 	{ C_COMMENT, YP_TSTR },
@@ -147,7 +147,7 @@ int check_mod_online_sign(
 	return KNOT_EOK;
 }
 
-const yp_item_t scheme_mod_synth_record[] = {
+const yp_item_t schema_mod_synth_record[] = {
 	{ C_ID,            YP_TSTR },
 	{ "\x07""network", YP_TSTR },
 	{ "\x06""origin",  YP_TSTR },

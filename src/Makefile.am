@@ -145,7 +145,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/tsig.h				\
 	libknot/yparser/yparser.h		\
 	libknot/yparser/ypformat.h		\
-	libknot/yparser/ypscheme.h		\
+	libknot/yparser/ypschema.h		\
 	libknot/yparser/yptrafo.h		\
 	libknot/version.h
 
@@ -186,7 +186,7 @@ libknot_la_SOURCES =				\
 	libknot/yparser/yparser.c		\
 	libknot/yparser/ypbody.c		\
 	libknot/yparser/ypformat.c		\
-	libknot/yparser/ypscheme.c		\
+	libknot/yparser/ypschema.c		\
 	libknot/yparser/yptrafo.c		\
 	$(nobase_libknot_la_HEADERS)
 
@@ -242,8 +242,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/migration.h			\
 	knot/conf/module.h			\
 	knot/conf/module.c			\
-	knot/conf/scheme.c			\
-	knot/conf/scheme.h			\
+	knot/conf/schema.c			\
+	knot/conf/schema.h			\
 	knot/conf/tools.c			\
 	knot/conf/tools.h			\
 	knot/ctl/commands.c			\

@@ -16,7 +16,7 @@
 /*!
  * \file
  *
- * Server configuration scheme.
+ * Server configuration schema.
  *
  * \addtogroup config
  *
@@ -26,7 +26,7 @@
 #pragma once
 
 #include "libknot/lookup.h"
-#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/ypschema.h"
 
 #define C_ACL			"\x03""acl"
 #define C_ACTION		"\x06""action"
@@ -138,6 +138,6 @@ enum {
 
 extern const knot_lookup_t acl_actions[];
 
-extern const yp_item_t conf_scheme[];
+extern const yp_item_t conf_schema[];
 
 /*! @} */

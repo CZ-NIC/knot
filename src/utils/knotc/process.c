@@ -91,7 +91,7 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 
 	/* Open confdb. */
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_scheme, params->confdb, conf_flags);
+	int ret = conf_new(&new_conf, conf_schema, params->confdb, conf_flags);
 	if (ret != KNOT_EOK) {
 		log_error("failed to open configuration database '%s' (%s)",
 		          (params->confdb != NULL) ? params->confdb : "",

@@ -16,11 +16,10 @@
 
 #include "contrib/net.h"
 #include "knot/include/module.h"
-#include "knot/conf/scheme.h"
+#include "knot/conf/schema.h"
 #include "knot/query/capture.h" // Forces static module!
 #include "knot/query/requestor.h" // Forces static module!
 
-/* Module configuration scheme. */
 #define MOD_REMOTE		"\x06""remote"
 #define MOD_TIMEOUT		"\x07""timeout"
 #define MOD_FALLBACK		"\x08""fallback"

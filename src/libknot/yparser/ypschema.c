@@ -18,12 +18,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/ypschema.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/attribute.h"
 #include "libknot/errcode.h"
 
-static size_t scheme_count(
+static size_t schema_count(
 	const yp_item_t *src)
 {
 	size_t count = 0;
@@ -37,15 +37,15 @@ static size_t scheme_count(
 /*! Initializes the referenced item. */
 static int set_ref_item(
 	yp_item_t *dst,
-	const yp_item_t *scheme)
+	const yp_item_t *schema)
 {
-	if (scheme == NULL) {
+	if (schema == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	// Get reference category.
 	const yp_name_t *ref_name = dst->var.r.ref_name;
-	const yp_item_t *ref = yp_scheme_find(ref_name, NULL, scheme);
+	const yp_item_t *ref = yp_schema_find(ref_name, NULL, schema);
 	if (ref == NULL) {
 		return KNOT_YP_EINVAL_ITEM;
 	}
@@ -59,10 +59,10 @@ static int set_ref_item(
 static int set_grp_item(
 	yp_item_t *dst,
 	const yp_item_t *src,
-	const yp_item_t *scheme)
+	const yp_item_t *schema)
 {
 	// Count subitems.
-	size_t count = scheme_count(src->var.g.sub_items);
+	size_t count = schema_count(src->var.g.sub_items);
 
 	// Allocate space for subitems + terminal zero item.
 	size_t memsize = (count + 1) * sizeof(yp_item_t);
@@ -86,7 +86,7 @@ static int set_grp_item(
 		int ret = KNOT_EOK;
 		switch (dst->sub_items[i].type) {
 		case YP_TREF:
-			ret = set_ref_item(dst->sub_items + i, scheme);
+			ret = set_ref_item(dst->sub_items + i, schema);
 			break;
 		case YP_TGRP: // Deeper hierarchy is not supported.
 			ret = KNOT_ENOTSUP;
@@ -121,7 +121,7 @@ static int set_grp_item(
 static int set_item(
 	yp_item_t *dst,
 	const yp_item_t *src,
-	const yp_item_t *scheme)
+	const yp_item_t *schema)
 {
 	// Check maximal item name length.
 	if ((uint8_t)src->name[0] > YP_MAX_ITEM_NAME_LEN) {
@@ -143,9 +143,9 @@ static int set_item(
 	// Item type specific preparation.
 	switch (src->type) {
 	case YP_TREF:
-		return set_ref_item(dst, scheme);
+		return set_ref_item(dst, schema);
 	case YP_TGRP:
-		return set_grp_item(dst, src, scheme);
+		return set_grp_item(dst, src, schema);
 	default:
 		return KNOT_EOK;
 	}
@@ -167,14 +167,14 @@ static void unset_item(
 	memset(item, 0, sizeof(yp_item_t));
 }
 
-static int scheme_copy(
+static int schema_copy(
 	yp_item_t *dst,
 	const yp_item_t *src,
-	const yp_item_t *scheme)
+	const yp_item_t *schema)
 {
-	// Copy the scheme.
+	// Copy the schema.
 	for (int i = 0; src[i].name != NULL; i++) {
-		int ret = set_item(dst + i, src + i, scheme);
+		int ret = set_item(dst + i, src + i, schema);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -184,7 +184,7 @@ static int scheme_copy(
 }
 
 _public_
-int yp_scheme_copy(
+int yp_schema_copy(
 	yp_item_t **dst,
 	const yp_item_t *src)
 {
@@ -192,18 +192,18 @@ int yp_scheme_copy(
 		return KNOT_EINVAL;
 	}
 
-	// Allocate space for new scheme (+ terminal NULL item).
-	size_t size = (scheme_count(src) + 1) * sizeof(yp_item_t);
+	// Allocate space for new schema (+ terminal NULL item).
+	size_t size = (schema_count(src) + 1) * sizeof(yp_item_t);
 	*dst = malloc(size);
 	if (*dst == NULL) {
 		return KNOT_ENOMEM;
 	}
 	memset(*dst, 0, size);
 
-	// Copy the scheme.
-	int ret = scheme_copy(*dst, src, *dst);
+	// Copy the schema.
+	int ret = schema_copy(*dst, src, *dst);
 	if (ret != KNOT_EOK) {
-		yp_scheme_free(*dst);
+		yp_schema_free(*dst);
 		return ret;
 	}
 
@@ -211,7 +211,7 @@ int yp_scheme_copy(
 }
 
 _public_
-int yp_scheme_merge(
+int yp_schema_merge(
 	yp_item_t **dst,
 	const yp_item_t *src1,
 	const yp_item_t *src2)
@@ -220,10 +220,10 @@ int yp_scheme_merge(
 		return KNOT_EINVAL;
 	}
 
-	size_t count1 = scheme_count(src1);
-	size_t count2 = scheme_count(src2);
+	size_t count1 = schema_count(src1);
+	size_t count2 = schema_count(src2);
 
-	// Allocate space for new scheme (+ terminal NULL item).
+	// Allocate space for new schema (+ terminal NULL item).
 	size_t size = (count1 + count2 + 1) * sizeof(yp_item_t);
 	*dst = malloc(size);
 	if (*dst == NULL) {
@@ -231,17 +231,17 @@ int yp_scheme_merge(
 	}
 	memset(*dst, 0, size);
 
-	// Copy the first scheme.
-	int ret = scheme_copy(*dst, src1, *dst);
+	// Copy the first schema.
+	int ret = schema_copy(*dst, src1, *dst);
 	if (ret != KNOT_EOK) {
-		yp_scheme_free(*dst);
+		yp_schema_free(*dst);
 		return ret;
 	}
 
-	// Copy the second scheme.
-	ret = scheme_copy(*dst + count1, src2, *dst);
+	// Copy the second schema.
+	ret = schema_copy(*dst + count1, src2, *dst);
 	if (ret != KNOT_EOK) {
-		yp_scheme_free(*dst);
+		yp_schema_free(*dst);
 		return ret;
 	}
 
@@ -249,14 +249,14 @@ int yp_scheme_merge(
 }
 
 _public_
-void yp_scheme_purge_dynamic(
-	yp_item_t *scheme)
+void yp_schema_purge_dynamic(
+	yp_item_t *schema)
 {
-	if (scheme == NULL) {
+	if (schema == NULL) {
 		return;
 	}
 
-	for (yp_item_t *item = scheme; item->name != NULL; item++) {
+	for (yp_item_t *item = schema; item->name != NULL; item++) {
 		if (item->flags & YP_FALLOC) {
 			unset_item(item);
 		}
@@ -264,30 +264,30 @@ void yp_scheme_purge_dynamic(
 }
 
 _public_
-void yp_scheme_free(
-	yp_item_t *scheme)
+void yp_schema_free(
+	yp_item_t *schema)
 {
-	if (scheme == NULL) {
+	if (schema == NULL) {
 		return;
 	}
 
-	for (yp_item_t *item = scheme; item->name != NULL; item++) {
+	for (yp_item_t *item = schema; item->name != NULL; item++) {
 		unset_item(item);
 	}
-	free(scheme);
+	free(schema);
 }
 
-/*! Search the scheme for an item with the given name. */
+/*! Search the schema for an item with the given name. */
 static const yp_item_t* find_item(
 	const char *name,
 	size_t name_len,
-	const yp_item_t *scheme)
+	const yp_item_t *schema)
 {
-	if (name == NULL || scheme == NULL) {
+	if (name == NULL || schema == NULL) {
 		return NULL;
 	}
 
-	for (const yp_item_t *item = scheme; item->name != NULL; item++) {
+	for (const yp_item_t *item = schema; item->name != NULL; item++) {
 		if (item->name[0] != name_len) {
 			continue;
 		}
@@ -300,20 +300,20 @@ static const yp_item_t* find_item(
 }
 
 _public_
-const yp_item_t* yp_scheme_find(
+const yp_item_t* yp_schema_find(
 	const yp_name_t *name,
 	const yp_name_t *parent_name,
-	const yp_item_t *scheme)
+	const yp_item_t *schema)
 {
-	if (name == NULL || scheme == NULL) {
+	if (name == NULL || schema == NULL) {
 		return NULL;
 	}
 
 	if (parent_name == NULL) {
-		return find_item(name + 1, name[0], scheme);
+		return find_item(name + 1, name[0], schema);
 	} else {
 		const yp_item_t *parent = find_item(parent_name + 1,
-		                                    parent_name[0], scheme);
+		                                    parent_name[0], schema);
 		if (parent == NULL) {
 			return NULL;
 		}
@@ -322,10 +322,10 @@ const yp_item_t* yp_scheme_find(
 }
 
 _public_
-yp_check_ctx_t* yp_scheme_check_init(
-	yp_item_t **scheme)
+yp_check_ctx_t* yp_schema_check_init(
+	yp_item_t **schema)
 {
-	if (scheme == NULL) {
+	if (schema == NULL) {
 		return NULL;
 	}
 
@@ -335,7 +335,7 @@ yp_check_ctx_t* yp_scheme_check_init(
 	}
 	memset(ctx, 0, sizeof(yp_check_ctx_t));
 
-	ctx->scheme = scheme;
+	ctx->schema = schema;
 
 	return ctx;
 }
@@ -382,7 +382,7 @@ static int check_item(
 		// Check if valid subitem.
 		node->item = find_item(key, key_len, parent->item->sub_items);
 	} else {
-		node->item = find_item(key, key_len, *ctx->scheme);
+		node->item = find_item(key, key_len, *ctx->schema);
 	}
 	if (node->item == NULL) {
 		return KNOT_YP_EINVAL_ITEM;
@@ -439,7 +439,7 @@ static int check_item(
 }
 
 _public_
-int yp_scheme_check_parser(
+int yp_schema_check_parser(
 	yp_check_ctx_t *ctx,
 	const yp_parser_t *parser)
 {
@@ -492,7 +492,7 @@ int yp_scheme_check_parser(
 }
 
 _public_
-int yp_scheme_check_str(
+int yp_schema_check_str(
 	yp_check_ctx_t *ctx,
 	const char *key0,
 	const char *key1,
@@ -568,7 +568,7 @@ int yp_scheme_check_str(
 }
 
 _public_
-void yp_scheme_check_deinit(
+void yp_schema_check_deinit(
 	yp_check_ctx_t* ctx)
 {
 	free(ctx);

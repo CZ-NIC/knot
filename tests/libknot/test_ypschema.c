@@ -19,7 +19,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/ypschema.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/libknot.h"
 
@@ -56,7 +56,7 @@ static const knot_lookup_t opts[] = {
 	{ 0, NULL }
 	};
 
-static const yp_item_t static_scheme[] = {
+static const yp_item_t static_schema[] = {
 	{ C_OPT,      YP_TOPT,   YP_VOPT = { opts } },
 	{ C_BOOL,     YP_TBOOL,  YP_VNONE },
 	{ C_DNAME,    YP_TDNAME, YP_VNONE },
@@ -67,38 +67,38 @@ static const yp_item_t static_scheme[] = {
 	{ NULL }
 };
 
-static void scheme_find_test(void)
+static void schema_find_test(void)
 {
-	yp_item_t *scheme = NULL;
+	yp_item_t *schema = NULL;
 
-	int ret = yp_scheme_copy(&scheme, static_scheme);
-	is_int(KNOT_EOK, ret, "scheme copy");
+	int ret = yp_schema_copy(&schema, static_schema);
+	is_int(KNOT_EOK, ret, "schema copy");
 
-	const yp_item_t *i = yp_scheme_find(C_OPT, NULL, scheme);
-	ok(i != NULL, "scheme find");
+	const yp_item_t *i = yp_schema_find(C_OPT, NULL, schema);
+	ok(i != NULL, "schema find");
 	if (i == NULL) {
-		goto error_scheme;
+		goto error_schema;
 	}
 	ok(strcmp(i->name + 1, C_OPT + 1) == 0, "name check");
 
-	i = yp_scheme_find(C_STR, C_GRP, scheme);
-	ok(i != NULL, "scheme find with parent");
+	i = yp_schema_find(C_STR, C_GRP, schema);
+	ok(i != NULL, "schema find with parent");
 	if (i == NULL) {
-		goto error_scheme;
+		goto error_schema;
 	}
 	ok(strcmp(i->name + 1, C_STR + 1) == 0, "name check");
 
-	i = yp_scheme_find(C_ADDR, NULL, scheme);
-	ok(i == NULL, "scheme not find");
+	i = yp_schema_find(C_ADDR, NULL, schema);
+	ok(i == NULL, "schema not find");
 
-	i = yp_scheme_find(C_ADDR, C_GRP, scheme);
-	ok(i == NULL, "scheme not find with parent");
+	i = yp_schema_find(C_ADDR, C_GRP, schema);
+	ok(i == NULL, "schema not find with parent");
 
-error_scheme:
-	yp_scheme_free(scheme);
+error_schema:
+	yp_schema_free(schema);
 }
 
-static void scheme_merge_test(void)
+static void schema_merge_test(void)
 {
 	static const yp_item_t items1[] = {
 		{ "\x01""1", YP_TSTR,  YP_VNONE },
@@ -112,24 +112,24 @@ static void scheme_merge_test(void)
 		{ NULL }
 	};
 
-	yp_item_t *scheme = NULL;
+	yp_item_t *schema = NULL;
 	yp_item_t *tmp = NULL;
 
-	int ret = yp_scheme_copy(&tmp, items1);
-	is_int(KNOT_EOK, ret, "scheme copy");
+	int ret = yp_schema_copy(&tmp, items1);
+	is_int(KNOT_EOK, ret, "schema copy");
 
-	ret = yp_scheme_merge(&scheme, items1, items2);
-	is_int(KNOT_EOK, ret, "scheme merge");
+	ret = yp_schema_merge(&schema, items1, items2);
+	is_int(KNOT_EOK, ret, "schema merge");
 
-	yp_scheme_free(tmp);
+	yp_schema_free(tmp);
 
 	for (uint8_t i = 0; i < 4; i++) {
 		yp_name_t name[3] = { '\x01', '1' + i };
-		const yp_item_t *item = yp_scheme_find(name, NULL, scheme);
-		ok(item != NULL, "scheme find");
+		const yp_item_t *item = yp_schema_find(name, NULL, schema);
+		ok(item != NULL, "schema find");
 	}
 
-	yp_scheme_free(scheme);
+	yp_schema_free(schema);
 }
 
 #define SET_INPUT_STR(str) \
@@ -139,7 +139,7 @@ static void scheme_merge_test(void)
 #define PARSER_CHECK(depth) \
 	ret = yp_parse(yp); \
 	is_int(KNOT_EOK, ret, "parse"); \
-	ret = yp_scheme_check_parser(ctx, yp); \
+	ret = yp_schema_check_parser(ctx, yp); \
 	is_int(KNOT_EOK, ret, "check parser"); \
 	node = &ctx->nodes[ctx->current]; \
 	parent = node->parent; \
@@ -148,25 +148,25 @@ static void scheme_merge_test(void)
 #define PARSER_RET_CHECK(code) \
 	ret = yp_parse(yp); \
 	is_int(KNOT_EOK, ret, "parse"); \
-	ret = yp_scheme_check_parser(ctx, yp); \
+	ret = yp_schema_check_parser(ctx, yp); \
 	ok(ret == code, "return check parser");
 
 static void parser_test(void)
 {
 	yp_parser_t yparser;
 	yp_parser_t *yp = &yparser;
-	yp_item_t *scheme = NULL;
+	yp_item_t *schema = NULL;
 	yp_check_ctx_t *ctx = NULL;
 
 	yp_init(yp);
 
-	int ret = yp_scheme_copy(&scheme, static_scheme);
-	is_int(KNOT_EOK, ret, "scheme copy");
+	int ret = yp_schema_copy(&schema, static_schema);
+	is_int(KNOT_EOK, ret, "schema copy");
 	if (ret != KNOT_EOK) {
 		goto error_parser;
 	}
 
-	ctx = yp_scheme_check_init(&scheme);
+	ctx = yp_schema_check_init(&schema);
 	ok(ctx != NULL, "create check ctx");
 	if (ctx == NULL) {
 		goto error_parser;
@@ -270,34 +270,34 @@ static void parser_test(void)
 	PARSER_RET_CHECK(KNOT_YP_ENOID);
 
 error_parser:
-	yp_scheme_check_deinit(ctx);
-	yp_scheme_free(scheme);
+	yp_schema_check_deinit(ctx);
+	yp_schema_free(schema);
 	yp_deinit(yp);
 }
 
 #define STR_CHECK(depth, key0, key1, id, data) \
-	ret = yp_scheme_check_str(ctx, key0, key1, id, data); \
+	ret = yp_schema_check_str(ctx, key0, key1, id, data); \
 	is_int(KNOT_EOK, ret, "check str"); \
 	ok(ctx->current == depth, "depth check"); \
 	node = &ctx->nodes[ctx->current]; \
 	parent = node->parent;
 
 #define STR_RET_CHECK(code, key0, key1, id, data) \
-	ret = yp_scheme_check_str(ctx, key0, key1, id, data); \
+	ret = yp_schema_check_str(ctx, key0, key1, id, data); \
 	ok(ret == code, "return check str");
 
 static void str_test(void)
 {
-	yp_item_t *scheme;
+	yp_item_t *schema;
 	yp_check_ctx_t *ctx = NULL;
 
-	int ret = yp_scheme_copy(&scheme, static_scheme);
-	is_int(KNOT_EOK, ret, "scheme copy");
+	int ret = yp_schema_copy(&schema, static_schema);
+	is_int(KNOT_EOK, ret, "schema copy");
 	if (ret != KNOT_EOK) {
 		goto error_str;
 	}
 
-	ctx = yp_scheme_check_init(&scheme);
+	ctx = yp_schema_check_init(&schema);
 	ok(ctx != NULL, "create check ctx");
 	if (ctx == NULL) {
 		goto error_str;
@@ -400,16 +400,16 @@ static void str_test(void)
 	STR_RET_CHECK(KNOT_YP_ENOTSUP_DATA, "multi-group", "id",  "idval", "data");
 
 error_str:
-	yp_scheme_check_deinit(ctx);
-	yp_scheme_free(scheme);
+	yp_schema_check_deinit(ctx);
+	yp_schema_free(schema);
 }
 
 int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	scheme_find_test();
-	scheme_merge_test();
+	schema_find_test();
+	schema_merge_test();
 	parser_test();
 	str_test();
 

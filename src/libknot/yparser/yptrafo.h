@@ -24,14 +24,14 @@
 
 #pragma once
 
-#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/ypschema.h"
 
 struct knot_lookup;
 
 /*!
  * Transforms textual item value to binary form.
  *
- * \param[in] item Scheme item to transform.
+ * \param[in] item Schema item to transform.
  * \param[in] txt Value to transform.
  * \param[in] txt_len Value length.
  * \param[out] bin Output buffer.
@@ -50,7 +50,7 @@ int yp_item_to_bin(
 /*!
  * Transforms binary item value to textual form.
  *
- * \param[in] item Scheme item to transform.
+ * \param[in] item Schema item to transform.
  * \param[in] bin Value to transform.
  * \param[in] bin_len Value length.
  * \param[out] txt Output buffer.

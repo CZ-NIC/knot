@@ -18,7 +18,6 @@
 #include "contrib/sockaddr.h"
 #include "knot/include/module.h"
 
-/* Module configuration scheme. */
 #define MOD_NET		"\x07""network"
 #define MOD_ORIGIN	"\x06""origin"
 #define MOD_PREFIX	"\x06""prefix"

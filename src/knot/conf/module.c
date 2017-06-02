@@ -80,9 +80,9 @@ static int mod_load(
 
 	int ret;
 	if (mod->api->config != NULL) {
-		ret = yp_scheme_merge(&sub_items, module_common, mod->api->config);
+		ret = yp_schema_merge(&sub_items, module_common, mod->api->config);
 	} else {
-		ret = yp_scheme_copy(&sub_items, module_common);
+		ret = yp_schema_copy(&sub_items, module_common);
 	}
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -97,21 +97,21 @@ static int mod_load(
 	name[0] = name_len;
 	memcpy(name + 1, mod->api->name, name_len + 1);
 
-	const yp_item_t scheme[] = {
+	const yp_item_t schema[] = {
 		{ name, YP_TGRP, YP_VGRP = { sub_items },
 		        YP_FALLOC | YP_FMULTI | CONF_IO_FRLD_MOD | CONF_IO_FRLD_ZONES },
 		{ NULL }
 	};
 
 	yp_item_t *merged = NULL;
-	ret = yp_scheme_merge(&merged, conf->scheme, scheme);
-	yp_scheme_free(sub_items);
+	ret = yp_schema_merge(&merged, conf->schema, schema);
+	yp_schema_free(sub_items);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	// Update configuration schema (with lazy free).
-	yp_item_t **current_schema = &conf->scheme;
+	yp_item_t **current_schema = &conf->schema;
 	yp_item_t *old_schema = rcu_xchg_pointer(current_schema, merged);
 	synchronize_rcu();
 	old_schema_dynarray_add(&conf->old_schemas, &old_schema);
@@ -288,7 +288,7 @@ void conf_mod_load_purge(
 
 	// Switch the current temporary schema with the initial one.
 	if (temporary && conf->old_schemas.size > 0) {
-		yp_item_t **current_schema = &conf->scheme;
+		yp_item_t **current_schema = &conf->schema;
 		yp_item_t **initial = &(conf->old_schemas.arr)[0];
 
 		yp_item_t *old_schema = rcu_xchg_pointer(current_schema, *initial);
@@ -297,7 +297,7 @@ void conf_mod_load_purge(
 	}
 
 	dynarray_foreach(old_schema, yp_item_t *, schema, conf->old_schemas) {
-		yp_scheme_free(*schema);
+		yp_schema_free(*schema);
 	}
 	old_schema_dynarray_free(&conf->old_schemas);
 

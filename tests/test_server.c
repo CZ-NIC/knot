@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	server_t server;
 	int ret = 0;
 
-	/* Some random configuration just to apply the default conf scheme */
+	/* Some random configuration just to apply the default conf schema */
 	ret = test_conf("", NULL);
 	assert(ret == KNOT_EOK);
 

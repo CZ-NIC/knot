@@ -33,7 +33,7 @@
 #include "knot/conf/tools.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/module.h"
-#include "knot/conf/scheme.h"
+#include "knot/conf/schema.h"
 #include "knot/common/log.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
@@ -565,7 +565,7 @@ int load_module(
 	}
 
 	// Update currently iterating item.
-	const yp_item_t *section = yp_scheme_find(C_MODULE, NULL, args->extra->conf->scheme);
+	const yp_item_t *section = yp_schema_find(C_MODULE, NULL, args->extra->conf->schema);
 	assert(section);
 	args->item = section->var.g.id;
 

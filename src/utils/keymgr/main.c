@@ -180,7 +180,7 @@ static bool init_conf(const char *confdb)
 	}
 
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_scheme, confdb, flags);
+	int ret = conf_new(&new_conf, conf_schema, confdb, flags);
 	if (ret != KNOT_EOK) {
 		printf("Failed opening configuration database %s (%s)\n",
 		       (confdb == NULL ? "" : confdb), knot_strerror(ret));

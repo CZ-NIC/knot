@@ -16,7 +16,7 @@
 /*!
  * \file
  *
- * Configuration scheme callbacks.
+ * Configuration schema callbacks.
  *
  * \addtogroup config
  *
@@ -29,7 +29,7 @@
 #include <stdint.h>
 
 #include "knot/conf/conf.h"
-#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/ypschema.h"
 
 typedef struct knotd_conf_check_extra {
 	conf_t *conf;

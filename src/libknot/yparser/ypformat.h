@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include "libknot/yparser/ypscheme.h"
+#include "libknot/yparser/ypschema.h"
 
 /*!
  * Formats key0 item.
  *
- * \param[in] item Scheme item to format.
+ * \param[in] item Schema item to format.
  * \param[in] data Data to format.
  * \param[in] data_len Data length.
  * \param[out] out Output buffer.
@@ -54,7 +54,7 @@ int yp_format_key0(
 /*!
  * Formats identifier item.
  *
- * \param[in] item Scheme item to format.
+ * \param[in] item Schema item to format.
  * \param[in] data Data to format.
  * \param[in] data_len Data length.
  * \param[out] out Output buffer.
@@ -75,7 +75,7 @@ int yp_format_id(
 /*!
  * Formats key1 item.
  *
- * \param[in] item Scheme item to format.
+ * \param[in] item Schema item to format.
  * \param[in] data Data to format.
  * \param[in] data_len Data length.
  * \param[out] out Output buffer.

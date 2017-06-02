@@ -166,16 +166,16 @@ int conf_io_list(
 	if (key0 == NULL) {
 		io_reset_val(io, NULL, NULL, NULL, 0, false, NULL);
 
-		return list_section(conf()->scheme, &io->key0, io);
+		return list_section(conf()->schema, &io->key0, io);
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
+	yp_check_ctx_t *ctx = yp_schema_check_init(&conf()->schema);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	// Check the input.
-	int ret = yp_scheme_check_str(ctx, key0, NULL, NULL, NULL);
+	int ret = yp_schema_check_str(ctx, key0, NULL, NULL, NULL);
 	if (ret != KNOT_EOK) {
 		goto list_error;
 	}
@@ -192,7 +192,7 @@ int conf_io_list(
 
 	ret = list_section(node->item->sub_items, &io->key1, io);
 list_error:
-	yp_scheme_check_deinit(ctx);
+	yp_schema_check_deinit(ctx);
 
 	return ret;
 }
@@ -480,7 +480,7 @@ int conf_io_diff(
 
 	// Compare all sections by default.
 	if (key0 == NULL) {
-		for (yp_item_t *i = conf()->scheme; i->name != NULL; i++) {
+		for (yp_item_t *i = conf()->schema; i->name != NULL; i++) {
 			// Skip non-group item.
 			if (i->type != YP_TGRP) {
 				continue;
@@ -499,13 +499,13 @@ int conf_io_diff(
 		return KNOT_EOK;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
+	yp_check_ctx_t *ctx = yp_schema_check_init(&conf()->schema);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	// Check the input.
-	int ret = yp_scheme_check_str(ctx, key0, key1, id, NULL);
+	int ret = yp_schema_check_str(ctx, key0, key1, id, NULL);
 	if (ret != KNOT_EOK) {
 		goto diff_error;
 	}
@@ -560,7 +560,7 @@ int conf_io_diff(
 	// Compare the section with a possible identifier.
 	ret = diff_section(io);
 diff_error:
-	yp_scheme_check_deinit(ctx);
+	yp_schema_check_deinit(ctx);
 
 	return ret;
 }
@@ -680,7 +680,7 @@ int conf_io_get(
 
 	// List all sections by default.
 	if (key0 == NULL) {
-		for (yp_item_t *i = conf()->scheme; i->name != NULL; i++) {
+		for (yp_item_t *i = conf()->schema; i->name != NULL; i++) {
 			// Skip non-group item.
 			if (i->type != YP_TGRP) {
 				continue;
@@ -698,13 +698,13 @@ int conf_io_get(
 		return KNOT_EOK;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
+	yp_check_ctx_t *ctx = yp_schema_check_init(&conf()->schema);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	// Check the input.
-	int ret = yp_scheme_check_str(ctx, key0, key1, id, NULL);
+	int ret = yp_schema_check_str(ctx, key0, key1, id, NULL);
 	if (ret != KNOT_EOK) {
 		goto get_error;
 	}
@@ -775,7 +775,7 @@ int conf_io_get(
 	// List the section with a possible identifier.
 	ret = get_section(txn, io);
 get_error:
-	yp_scheme_check_deinit(ctx);
+	yp_schema_check_deinit(ctx);
 
 	return ret;
 }
@@ -925,13 +925,13 @@ int conf_io_set(
 		return KNOT_EINVAL;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
+	yp_check_ctx_t *ctx = yp_schema_check_init(&conf()->schema);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	// Check the input.
-	int ret = yp_scheme_check_str(ctx, key0, key1, id, data);
+	int ret = yp_schema_check_str(ctx, key0, key1, id, data);
 	if (ret != KNOT_EOK) {
 		goto set_error;
 	}
@@ -1029,7 +1029,7 @@ int conf_io_set(
 		upd_changes(&io, upd_type, upd_flags, false);
 	}
 set_error:
-	yp_scheme_check_deinit(ctx);
+	yp_schema_check_deinit(ctx);
 
 	return ret;
 }
@@ -1113,7 +1113,7 @@ int conf_io_unset(
 
 	// Unset all sections by default.
 	if (key0 == NULL) {
-		for (yp_item_t *i = conf()->scheme; i->name != NULL; i++) {
+		for (yp_item_t *i = conf()->schema; i->name != NULL; i++) {
 			// Skip non-group item.
 			if (i->type != YP_TGRP) {
 				continue;
@@ -1132,13 +1132,13 @@ int conf_io_unset(
 		return KNOT_EOK;
 	}
 
-	yp_check_ctx_t *ctx = yp_scheme_check_init(&conf()->scheme);
+	yp_check_ctx_t *ctx = yp_schema_check_init(&conf()->schema);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	// Check the input.
-	int ret = yp_scheme_check_str(ctx, key0, key1, id, data);
+	int ret = yp_schema_check_str(ctx, key0, key1, id, data);
 	if (ret != KNOT_EOK) {
 		goto unset_error;
 	}
@@ -1279,7 +1279,7 @@ int conf_io_unset(
 		upd_changes(&io, upd_type, upd_flags, false);
 	}
 unset_error:
-	yp_scheme_check_deinit(ctx);
+	yp_schema_check_deinit(ctx);
 
 	return ret;
 }
@@ -1462,8 +1462,8 @@ int conf_io_check(
 
 	int ret;
 
-	// Iterate over the scheme.
-	for (yp_item_t *item = conf()->scheme; item->name != NULL; item++) {
+	// Iterate over the schema.
+	for (yp_item_t *item = conf()->schema; item->name != NULL; item++) {
 		// Skip non-group items (include).
 		if (item->type != YP_TGRP) {
 			continue;

@@ -24,9 +24,8 @@
 #include "contrib/sockaddr.h"
 #include "contrib/wire.h"
 #include "knot/include/module.h"
-#include "knot/conf/scheme.h"
+#include "knot/conf/schema.h"
 
-/* Module configuration scheme. */
 #define MOD_DBDIR	"\x05""dbdir"
 
 const yp_item_t rosedb_conf[] = {

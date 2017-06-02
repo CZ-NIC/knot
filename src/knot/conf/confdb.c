@@ -378,9 +378,9 @@ int conf_db_set(
 	}
 
 	// Check for valid keys.
-	const yp_item_t *item = yp_scheme_find(key1 != NULL ? key1 : key0,
+	const yp_item_t *item = yp_schema_find(key1 != NULL ? key1 : key0,
 	                                       key1 != NULL ? key0 : NULL,
-	                                       conf->scheme);
+	                                       conf->schema);
 	if (item == NULL) {
 		return KNOT_YP_EINVAL_ITEM;
 	}
@@ -546,9 +546,9 @@ int conf_db_unset(
 	}
 
 	// Check for valid keys.
-	const yp_item_t *item = yp_scheme_find(key1 != NULL ? key1 : key0,
+	const yp_item_t *item = yp_schema_find(key1 != NULL ? key1 : key0,
 	                                       key1 != NULL ? key0 : NULL,
-	                                       conf->scheme);
+	                                       conf->schema);
 	if (item == NULL) {
 		return KNOT_YP_EINVAL_ITEM;
 	}
@@ -640,9 +640,9 @@ int conf_db_get(
 	}
 
 	// Check for valid keys.
-	out.item = yp_scheme_find(key1 != NULL ? key1 : key0,
+	out.item = yp_schema_find(key1 != NULL ? key1 : key0,
 	                          key1 != NULL ? key0 : NULL,
-	                          conf->scheme);
+	                          conf->schema);
 	if (out.item == NULL) {
 		out.code = KNOT_YP_EINVAL_ITEM;
 		goto get_error;
@@ -746,8 +746,8 @@ int conf_db_iter_begin(
 		goto iter_begin_error;
 	}
 
-	// Look-up group id item in the scheme.
-	const yp_item_t *grp = yp_scheme_find(key0, NULL, conf->scheme);
+	// Look-up group id item in the schema.
+	const yp_item_t *grp = yp_schema_find(key0, NULL, conf->schema);
 	if (grp == NULL) {
 		out.code = KNOT_YP_EINVAL_ITEM;
 		goto iter_begin_error;

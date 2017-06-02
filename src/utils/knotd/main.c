@@ -343,7 +343,7 @@ static int set_config(const char *confdb, const char *config)
 
 	/* Open confdb. */
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_scheme, confdb, CONF_FREQMODULES);
+	int ret = conf_new(&new_conf, conf_schema, confdb, CONF_FREQMODULES);
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to open configuration database '%s' (%s)",
 		          (confdb != NULL) ? confdb : "", knot_strerror(ret));

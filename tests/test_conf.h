@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,15 +20,15 @@
 #include "libknot/errcode.h"
 
 /* Prepare server configuration. */
-static inline int test_conf(const char *conf_str, const yp_item_t *scheme)
+static inline int test_conf(const char *conf_str, const yp_item_t *schema)
 {
-	// Use default scheme if not specified.
-	if (scheme == NULL) {
-		scheme = conf_scheme;
+	// Use default schema if not specified.
+	if (schema == NULL) {
+		schema = conf_schema;
 	}
 
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, scheme, NULL, CONF_FNONE);
+	int ret = conf_new(&new_conf, schema, NULL, CONF_FNONE);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -46,7 +46,7 @@ check_PROGRAMS += \
 	libknot/test_rrset-wire		\
 	libknot/test_tsig		\
 	libknot/test_yparser		\
-	libknot/test_ypscheme		\
+	libknot/test_ypschema		\
 	libknot/test_yptrafo
 
 check_PROGRAMS += \

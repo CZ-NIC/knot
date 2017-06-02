@@ -22,7 +22,7 @@
 #include <sys/socket.h>
 
 #include <libknot/libknot.h>
-#include <libknot/yparser/ypscheme.h>
+#include <libknot/yparser/ypschema.h>
 
 /*** Query module API. ***/
 

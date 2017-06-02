@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "knot/conf/scheme.h"
+#include "knot/conf/schema.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "libknot/error.h"
 
