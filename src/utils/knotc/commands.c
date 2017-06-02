@@ -825,8 +825,6 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 	switch (args->desc->cmd) {
 	case CTL_ZONE_READ:
 	case CTL_ZONE_GET:   min_args = 1; max_args =  3; break;
-	case CTL_ZONE_STATUS: min_args = 1; max_args = 2; break;
-	case CTL_ZONE_KSK_SBM: min_args = 2; max_args =  2; break;
 	case CTL_ZONE_DIFF:  min_args = 1; max_args =  1; break;
 	case CTL_ZONE_SET:   min_args = 3; max_args = -1; break;
 	case CTL_ZONE_UNSET: min_args = 2; max_args = -1; break;
@@ -1108,6 +1106,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check)." },
 	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",              "Flush zone journal into the zone file." },
 	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone." },
+	{ CMD_ZONE_KSK_SBM,    "<zone>",                                 "When KSK submission, sonfirm parent's DS presence manualy." },
 	{ CMD_ZONE_FREEZE,     "[<zone>...]",                            "Temporarily postpone automatic zone-changing events." },
 	{ CMD_ZONE_THAW,       "[<zone>...]",                            "Dismiss zone freeze." },
 	{ "",                  "",                                       "" },

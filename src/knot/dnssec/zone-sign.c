@@ -306,11 +306,11 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 /*!
  * \brief Add missing RRSIGs into the changeset for adding.
  *
- * \param covered    RR set with covered records.
- * \param rrsigs     RR set with RRSIGs.
- * \param zone_keys  Zone keys.
- * \param policy     DNSSEC policy.
- * \param changeset  Changeset to be updated.
+ * \param covered     RR set with covered records.
+ * \param rrsigs      RR set with RRSIGs.
+ * \param zone_keys   Zone keys.
+ * \param dnssec_ctx  DNSSEC signing context
+ * \param changeset   Changeset to be updated.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -703,9 +703,9 @@ static bool is_from_keyset(zone_keyset_t *keyset,
 }
 
 /*!
- * \brief Check if DNSKEY/DS is present in the zone.
+ * \brief Check if DNSKEY/DS/CDNSKEY/CDS is present in the zone.
  *
- * \param dnskeys  RR set in zone apex.
+ * \param records  RR set in zone apex.
  * \param key      Key to be searched for.
  * \param ttl      Key TTL.
  *
@@ -782,7 +782,7 @@ static int rrset_add_zone_ds(knot_rrset_t *rrset,
  * Extra DNSKEY is a key, which is not present in zone public key set.
  *
  * \param soa        RR set with SOA (to get TTL value from).
- * \param dnskeys    RR set with DNSKEYs.
+ * \param records    RR set with DNSKEYs/CDNSKEYs/CDSs.
  * \param keyset     Zone keys.
  * \param changeset  Changeset to be updated.
  *
@@ -857,6 +857,8 @@ static bool publish_cds(const zone_key_t *key)
  *
  * \param soa        RR set with SOA (to get TTL value from).
  * \param dnskeys    RR set with DNSKEYs.
+ * \param cdnskeys   RR set with CDNSKEYs.
+ * \param cdss       RR set with CDSs.
  * \param keyset     Zone keys.
  * \param changeset  Changeset to be updated.
  *

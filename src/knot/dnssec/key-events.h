@@ -31,13 +31,26 @@
  * proper DNSSEC chain.
  *
  * \param ctx           zone signing context
- * \param keys_changed  output if KNOT_EOK: were any keys changed ? (if so, please re-sign)
- * \param next_rollover output if KNOT_EOK: tmestamp when next rollover action takes place
+ * \param reschedule    Out: timestamp of desired next invoke
  *
  * \return KNOT_E*
  */
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule);
 
+/*!
+ * \brief Set the submitted KSK to active state and the active one to retired
+ *
+ * \param ctx zone signing context
+ *
+ * \return KNOT_E*
+ */
 int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx);
 
+/*!
+ * \brief Is there a key in sumbmission phase?
+ *
+ * \param ctx zone signing context
+ *
+ * \return False if there is no submitted key or if error; True otherwise
+ */
 bool zone_has_key_sbm(const kdnssec_ctx_t *ctx);

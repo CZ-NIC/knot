@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Check if keytag conflict is correctly handled by Knot.
+Basic check of automatic KSK rollover scenario.
 """
 
 import collections
