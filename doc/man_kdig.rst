@@ -264,6 +264,10 @@ Options
 **+**\ [\ **no**\ ]\ **keepopen**
   Keep TCP connections open for other queries with TCP and keepopen.
 
+  Connection can be shared only by single kdig call::
+
+  $ kdig +tcp +keepopen example.com A @192.0.2.1 abc.example.com A @192.0.2.1 mail.example.com A @192.0.2.1
+
 Notes
 -----
 

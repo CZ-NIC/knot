@@ -284,6 +284,18 @@ on libidn availability during project building!
 .TP
 \fB+\fP[\fBno\fP]\fBkeepopen\fP
 Keep TCP connections open for other queries with TCP and keepopen.
+.sp
+Connection can be shared only by single kdig call:
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ kdig +tcp +keepopen example.com A @192.0.2.1 abc.example.com A @192.0.2.1 mail.example.com A @192.0.2.1
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
 .UNINDENT
 .SH NOTES
 .sp
