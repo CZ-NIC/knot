@@ -286,28 +286,26 @@ AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0),
 
 static_modules=""
 shared_modules=""
-AS_IF([test "$enable_daemon" = "yes"],[
-  static_modules_declars=""
-  static_modules_init=""
-  doc_modules=""
+static_modules_declars=""
+static_modules_init=""
+doc_modules=""
 
-  KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
-  KNOT_MODULE([dnstap],      "no")
-  KNOT_MODULE([noudp],       "yes")
-  KNOT_MODULE([onlinesign],  "yes", "non-shareable")
-  KNOT_MODULE([rosedb],      "no")
-  KNOT_MODULE([rrl],         "yes")
-  KNOT_MODULE([stats],       "yes")
-  KNOT_MODULE([synthrecord], "yes")
-  KNOT_MODULE([whoami],      "yes")
+KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
+KNOT_MODULE([dnstap],      "no")
+KNOT_MODULE([noudp],       "yes")
+KNOT_MODULE([onlinesign],  "yes", "non-shareable")
+KNOT_MODULE([rosedb],      "no")
+KNOT_MODULE([rrl],         "yes")
+KNOT_MODULE([stats],       "yes")
+KNOT_MODULE([synthrecord], "yes")
+KNOT_MODULE([whoami],      "yes")
 
-  AC_SUBST([STATIC_MODULES_DECLARS], [$(printf "$static_modules_declars")])
-  AM_SUBST_NOTMAKE([STATIC_MODULES_DECLARS])
-  AC_SUBST([STATIC_MODULES_INIT], [$(printf "$static_modules_init")])
-  AM_SUBST_NOTMAKE([STATIC_MODULES_INIT])
-  AC_SUBST([DOC_MODULES], [$(printf "$doc_modules")])
-  AM_SUBST_NOTMAKE([DOC_MODULES])
-])
+AC_SUBST([STATIC_MODULES_DECLARS], [$(printf "$static_modules_declars")])
+AM_SUBST_NOTMAKE([STATIC_MODULES_DECLARS])
+AC_SUBST([STATIC_MODULES_INIT], [$(printf "$static_modules_init")])
+AM_SUBST_NOTMAKE([STATIC_MODULES_INIT])
+AC_SUBST([DOC_MODULES], [$(printf "$doc_modules")])
+AM_SUBST_NOTMAKE([DOC_MODULES])
 
 opt_dnstap=no
 AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"],[
