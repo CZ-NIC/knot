@@ -1,3 +1,18 @@
+Knot DNS 2.4.4 (2017-06-05)
+===========================
+
+Improvements:
+-------------
+ - Improved error handling in kjournalprint
+
+Bugfixes:
+---------
+ - Zone flush not replanned upon unsuccessful flush
+ - Journal inconsistency after deleting deleted zone
+ - Zone events not rescheduled upon server reload (Thanks to Mark Warren)
+ - Unreliable LMDB mapsize detection in kjournalprint
+ - Some minor issues found by AddressSanitizer
+
 Knot DNS 2.4.3 (2017-04-11)
 ===========================
 
