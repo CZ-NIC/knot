@@ -1,5 +1,76 @@
-Knot DNS 2.5.0-dev (2017-xx-xx)
-===============================
+Knot DNS 2.5.0 (2017-06-05)
+===========================
+
+Features:
+---------
+ - KASP database switched from JSON files to LMDB database
+ - KSK rollover support using CDNSKEY and CDS in the automatic DNSSEC signing
+ - Dynamic module loading support with proper module API
+ - Journal can store full zone contents (not only differences)
+ - Zone freeze/thaw support
+ - Updated knotc zone-status output with optional column filters
+ - New '[no]crypto' option in kdig
+ - New keymgr implementation reflecting KASP database changes
+ - New pykeymgr for JSON-based KASP database migration
+ - Removed obsolete knot1to2 utility
+
+Improvements:
+-------------
+ - Added libidn2 support to kdig (with libidn fallback)
+ - Maximum timer database switched from configure to the server configuration
+
+Knot DNS 2.4.4 (2017-06-05)
+===========================
+
+Improvements:
+-------------
+ - Improved error handling in kjournalprint
+
+Bugfixes:
+---------
+ - Zone flush not replanned upon unsuccessful flush
+ - Journal inconsistency after deleting deleted zone
+ - Zone events not rescheduled upon server reload (Thanks to Mark Warren)
+ - Unreliable LMDB mapsize detection in kjournalprint
+ - Some minor issues found by AddressSanitizer
+
+Knot DNS 2.4.3 (2017-04-11)
+===========================
+
+Improvements:
+-------------
+ - New 'journal-db-mode' optimization configuration option
+ - The default TSIG algorithm for utilities input is HMAC-SHA256
+ - Implemented sensible default EDNS(0) padding policy (Thanks to D. K. Gillmor)
+ - Added some more semantic checks on the knotc configuration operations
+
+Bugfixes:
+---------
+ - Missing 'zone' keyword in the YAML output
+ - Missing trailing dot in the keymgr DS owner output
+ - Journal logs 'invalid parameter' in several cases
+ - Some minor journal-related problems
+
+Knot DNS 2.4.2 (2017-03-23)
+===========================
+
+Features:
+---------
+ - Zscanner can store record comments placed on the same line
+ - Knotc status extension with version, configure, and workers parameters
+
+Improvements:
+-------------
+ - Significant incoming XFR speed-up in the case of many zones
+
+Bugfixes:
+---------
+ - Double OPT RR insertion when a global module returns KNOT_STATE_FAIL
+ - User-driven zscanner parsing logic inconsistency
+ - Lower serial at master doesn't trigger any errors
+ - Queries with too long DNAME substitution do not return YXDOMAIN response
+ - Incorrect elapsed time in the DDNS log
+ - Failed to process forwarded DDNS request with TSIG
 
 Knot DNS 2.4.1 (2017-02-10)
 ===========================
