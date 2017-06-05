@@ -33,20 +33,13 @@ stages:
     - docker
     - linux
     - amd64
-  
+
 .ubuntu_xenial: &ubuntu_xenial
   image: cznic/ubuntu:16.04-knot
   tags:
     - docker
     - linux
     - amd64
-
-.debian_stretch_armel: &debian_stretch_armel
-  image: cznic/armel-debian-knot
-  tags:
-    - docker
-    - linux
-    - arm
 
 .configure: &configure_job
   stage: configure
@@ -70,30 +63,23 @@ stages:
   script:
     - make -k check
 
+
 configure:ubuntu:amd64:
   <<: *ubuntu_xenial
   <<: *configure_job
-  except:
-    - tags
-    - docs-2.4
 
 build:ubuntu:amd64:
   <<: *ubuntu_xenial
   <<: *build_job
   dependencies:
     - configure:ubuntu:amd64
-  except:
-    - tags
-    - docs-2.4
 
 test:ubuntu:amd64:
   <<: *ubuntu_xenial
   <<: *test_job
   dependencies:
     - build:ubuntu:amd64
-  except:
-    - tags
-    - docs-2.4
+
 
 configure:debian:stretch:amd64:
   <<: *debian_stretch
@@ -104,38 +90,13 @@ build:debian:stretch:amd64:
   <<: *build_job
   dependencies:
     - configure:debian:stretch:amd64
-  except:
-    - docs-2.4
 
 test:debian:stretch:amd64:
   <<: *debian_stretch
   <<: *test_job
   dependencies:
     - build:debian:stretch:amd64
-  except:
-    - docs-2.4
 
-configure:debian:stretch:armel:
-  <<: *debian_stretch_armel
-  <<: *configure_job
-  only:
-    - triggers
-
-build:debian:stretch:armel:
-  <<: *debian_stretch_armel
-  <<: *build_job
-  dependencies:
-    - configure:debian:stretch:armel
-  only:
-    - triggers
-
-test:debian:stretch:armel:
-  <<: *debian_stretch_armel
-  <<: *test_job
-  dependencies:
-    - build:debian:stretch:armel
-  only:
-    - triggers
 
 configure:freebsd:i386:
   <<: *freebsd_i386
@@ -153,6 +114,7 @@ test:freebsd:i386:
   dependencies:
     - build:freebsd:i386
 
+
 configure:freebsd:amd64:
   <<: *freebsd_amd64
   <<: *configure_job
@@ -168,7 +130,8 @@ test:freebsd:amd64:
   <<: *test_job
   dependencies:
     - build:freebsd:amd64
-    
+
+
 build:documentation:
   <<: *debian_stretch
   stage: build
@@ -177,7 +140,6 @@ build:documentation:
   only:
     - tags
     - triggers
-    - docs-2.4
   script:
     - make -C doc html singlehtml pdf
   artifacts:
@@ -190,14 +152,18 @@ build:documentation:
 deploy:documentation:
   <<: *debian_stretch
   stage: deploy
+  dependencies:
+    - build:documentation
   only:
     - tags
     - triggers
-    - docs-2.4
   script:
-    - "curl --http1.1 --request POST --form token=$WEBSITE_TOKEN --form ref=master --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_BUILD_REF_NAME\" --form \"variables[RELEASE_CI_BUILD_ID]=$CI_BUILD_ID\" https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
+    - "curl --http1.1 --request POST --form token=$WEBSITE_TOKEN --form ref=master
+      --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_COMMIT_REF_NAME\"
+      --form \"variables[RELEASE_CI_BUILD_ID]=$CI_JOB_ID\"
+      https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
   artifacts:
-    name: "knot-dns-$CI_BUILD_REF_NAME-doc"
+    name: "knot-dns-$CI_COMMIT_REF_NAME-doc"
     paths:
       - doc/_build/html/
       - doc/_build/singlehtml/
