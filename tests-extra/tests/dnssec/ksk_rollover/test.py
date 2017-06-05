@@ -67,8 +67,6 @@ child.dnssec(child_zone).ksk_sbm_check_interval = 2
 # parameters
 ZONE = "example.com."
 
-t.rel_sleep(0)
-
 # note that some of these paraneters will be immediately or later modified by automated key management
 KSK1 = child.key_gen(ZONE, ksk="true", created="t-2y", publish="t-2y", ready="t-1y", active="t-1y", retire="t+10y", remove="t+20y")
 # KSK1's retire and remove shall be reconfigured by Knot to soon as KSK2 takes place
@@ -83,7 +81,8 @@ child.zone_wait(child_zone)
 
 check_zone5(child, 4, 1, 0, "only first KSK")
 
-t.rel_sleep(19)
+while child.dig(ZONE, "CDS").count("CDS") < 1:
+  t.sleep(1)
 
 check_zone5(child, 4, 2, 1, "new KSK ready")
 
