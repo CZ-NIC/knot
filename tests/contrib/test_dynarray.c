@@ -19,42 +19,61 @@
 
 #include "contrib/dynarray.h"
 
-#define test_capacity 2
+#define test_capacity 5
+// minimum 3
 
-#define test_type(type, prefix) \
-	dynarray_declare(prefix, type, DYNARRAY_VISIBILITY_STATIC, test_capacity) \
-	dynarray_define(prefix, type, DYNARRAY_VISIBILITY_STATIC, test_capacity) \
-	static void prefix ## _test(type const first, type const second) { \
-		struct prefix ## _dynarray array = { 0 }; \
-		prefix ## _dynarray_fix(&array); \
-		ok(array.capacity == test_capacity && array.size == 0 && array.init == array.arr, \
-		   "%s: Fix - initial capacity set", #prefix); \
-		prefix ## _dynarray_add(&array, &first); \
-		ok(array.capacity == test_capacity && array.size == 1 && array.arr[0] == first && \
-		   array.init == array.arr, "%s: Add item", #prefix); \
-		prefix ## _dynarray_add(&array, &second); \
-		ok(array.capacity == test_capacity && array.size == 2 && array.arr[1] == second && \
-		   array.init == array.arr, "%s: Array filled (size not changed yet)", #prefix); \
-		prefix ## _dynarray_add(&array, &first); \
-		ok(array.capacity == 2 * test_capacity + 1 && array.size == 3 && array.arr[2] == first && \
-		   array.init != array.arr, "%s: Array extended", #prefix); \
-		prefix ## _dynarray_free(&array); \
-		prefix ## _dynarray_add(&array, &first); \
-		ok(array.capacity == test_capacity && array.size == 1 && array.arr[0] == first && \
-		   array.init == array.arr, "%s: Free & add first- initial capacity set", #prefix); \
+typedef struct {
+	int x;
+	int x2;
+} quadrate_t;
+
+dynarray_declare(q, quadrate_t, DYNARRAY_VISIBILITY_STATIC, test_capacity);
+dynarray_define(q, quadrate_t, DYNARRAY_VISIBILITY_STATIC, test_capacity);
+
+static q_dynarray_t q_fill(size_t howmany)
+{
+	quadrate_t q = { 0 };
+	q_dynarray_t qd = { 0 };
+
+	for (size_t i = 0; i < howmany; i++) {
+		q.x2 = q.x * q.x;
+		q_dynarray_add(&qd, &q);
+		q.x++;
 	}
+	return qd;
+}
 
-test_type(int, int)
-test_type(char *, string)
+static void check_arr(q_dynarray_t *q, size_t index, const char *msg)
+{
+	quadrate_t *arr = q->arr(q);
+	ok(arr[index].x == index && arr[index].x2 == index * index,
+	   "%s check: index %zu", msg, index);
+
+	size_t i = 0;
+	dynarray_foreach(q, quadrate_t, p, *q) {
+		ok(p->x == i && p->x2 == i * i, "%s foreach: index %zu", msg, i);
+		i++;
+	}
+}
 
 int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	int_test(4, 2);
+	// first fill
+	q_dynarray_t q = q_fill(test_capacity - 1);
+	check_arr(&q, test_capacity - 3, "initial");
+	q_dynarray_free(&q);
 
-	char a = 'a', b = 'b';
-	string_test(&a, &b);
+	// second fill
+	q = q_fill(test_capacity + 3);
+	check_arr(&q, test_capacity + 1, "second");
+	q_dynarray_free(&q);
+
+	// third fill
+	q = q_fill(test_capacity * 5);
+	check_arr(&q, test_capacity * 4, "third");
+	q_dynarray_free(&q);
 
 	return 0;
 }

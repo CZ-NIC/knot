@@ -289,7 +289,7 @@ void conf_mod_load_purge(
 	// Switch the current temporary schema with the initial one.
 	if (temporary && conf->old_schemas.size > 0) {
 		yp_item_t **current_schema = &conf->schema;
-		yp_item_t **initial = &(conf->old_schemas.arr)[0];
+		yp_item_t **initial = &(conf->old_schemas.arr(&conf->old_schemas))[0];
 
 		yp_item_t *old_schema = rcu_xchg_pointer(current_schema, *initial);
 		synchronize_rcu();

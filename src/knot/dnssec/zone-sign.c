@@ -685,14 +685,13 @@ static bool is_from_keyset(zone_keyset_t *keyset,
 	bool found = false;
 
 	struct keyptr_dynarray keys = get_zone_keys(keyset, tag);
-	keyptr_dynarray_fix(&keys);
 
 	for (size_t i = 0; i < keys.size; i++) {
-		bool usekey = (is_cds_cdnskey ? (keys.arr[i]->is_ready && !keys.arr[i]->is_active) : keys.arr[i]->is_public);
-		if (usekey && match_fce(keys.arr[i], &rdata)) {
+		bool usekey = (is_cds_cdnskey ? (keys.arr(&keys)[i]->is_ready && !keys.arr(&keys)[i]->is_active) : keys.arr(&keys)[i]->is_public);
+		if (usekey && match_fce(keys.arr(&keys)[i], &rdata)) {
 			found = true;
 			if (matching_key != NULL) {
-				*matching_key = keys.arr[i];
+				*matching_key = keys.arr(&keys)[i];
 			}
 			break;
 		}
