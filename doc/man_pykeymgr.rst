@@ -6,7 +6,7 @@ pykeymgr – Key management utility
 Synopsis
 --------
 
-:program:`pykeymgr.py` [*global-options*] [*command*...] [*arguments*...]
+:program:`pykeymgr` [*global-options*] [*command*...] [*arguments*...]
 
 Description
 -----------
@@ -18,6 +18,10 @@ management are provided.
 
 The DNSSEC and KASP configuration is stored in a so called KASP database.
 The databse is backed by LMDB.
+
+The utility requires installed python LMDB module, installed e.g. by::
+
+    $ pip install lmdb
 
 Global options
 ..............
@@ -48,7 +52,7 @@ Examples
 
 1. Import legacy JSON-based KASP db from Knot 2.4.x after upgrade::
 
-    $ pykemgr.py -i ${knot_data_dir}/keys
+    $ pykemgr -i ${knot_data_dir}/keys
 
 See Also
 --------
