@@ -493,10 +493,34 @@ def list_zones(dirname):
 	for zone in list(zonedict.keys()):
 		print(zone, zonedict[zone])
 
+class VersionAction(argparse.Action):
+
+	def __init__(self,
+		     option_strings,
+		     version=None,
+		     dest=argparse.SUPPRESS,
+                     default=argparse.SUPPRESS,
+                     help="show program's version number and exit"):
+                super(VersionAction, self).__init__(
+                        option_strings=option_strings,
+                        dest=dest,
+                        default=default,
+                        nargs=0,
+                        help=help)
+                self.version = version
+
+        def __call__(self, parser, namespace, values, option_string=None):
+                version = self.version
+                if version is None:
+                        version = parser.version
+                formatter = parser._get_formatter()
+                formatter.add_text(version)
+                sys.stdout.write(formatter.format_help())
+	        sys.exit(0)
+
 def main():
 	global opt_force
 	parser = argparse.ArgumentParser(description="Knot DNSSEC PyKeyManager",
-	                                 usage="use --help for more info.",
 	                                 formatter_class=argparse.RawTextHelpFormatter)
 	parser.add_argument("-i", "--import", action="append", nargs="?", dest="importdir",
 	                    help='''Import zone-key configuration from JSON.
@@ -515,7 +539,7 @@ Syntax: -i <key_dir>
 #	                    help='''Calculate DS record for specified key.
 #Syntax: -d <key_dir> <zone_name> <key_id|key_tag>''')
 	parser.add_argument("-f", "--force", action="store_true", dest="force", help="Do stuff even if dangerous.")
-	parser.add_argument("-V", "--version", action="version", version="pykeymgr (Knot DNS), version @VERSION@")
+	parser.add_argument("-V", "--version", action=VersionAction, version="pykeymgr (Knot DNS), version @VERSION@")
 	args = parser.parse_args()
 	opt_force = args.force
 
