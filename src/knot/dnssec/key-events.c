@@ -276,6 +276,9 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				}
 				break;
 			case DNSSEC_KEY_STATE_RETIRED:
+			case DNSSEC_KEY_STATE_REMOVED:
+				// ad REMOVED state: normally this wouldn't happen (key in removed state is instantly deleted)
+				// but if imported keys, they can be in this state
 				keytime = ksk_remove_time(key->timing.retire, ctx);
 				restype = REMOVE;
 				break;
@@ -295,6 +298,9 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				}
 				break;
 			case DNSSEC_KEY_STATE_RETIRED:
+			case DNSSEC_KEY_STATE_REMOVED:
+				// ad REMOVED state: normally this wouldn't happen (key in removed state is instantly deleted)
+				// but if imported keys, they can be in this state
 				keytime = zsk_remove_time(key->timing.retire, ctx);
 				restype = REMOVE;
 				break;
@@ -353,7 +359,8 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 
 static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 {
-	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_RETIRED);
+	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_RETIRED ||
+	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
 	key->timing.remove = ctx->now;
 
 	return kdnssec_delete_key(ctx, key);
