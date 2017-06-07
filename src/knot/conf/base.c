@@ -476,6 +476,8 @@ static int finalize_previous_section(
 		.item = node->item,
 		.id = node->id,
 		.id_len = node->id_len,
+		.data = node->data,
+		.data_len = node->data_len,
 		.extra = &extra
 	};
 
