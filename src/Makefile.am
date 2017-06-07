@@ -32,7 +32,8 @@ EXTRA_DIST =					\
 	contrib/lmdb/LICENSE			\
 	contrib/murmurhash3/LICENSE		\
 	contrib/openbsd/LICENSE			\
-	contrib/ucw/LICENSE
+	contrib/ucw/LICENSE			\
+	utils/pykeymgr/pykeymgr
 
 # static: libcontrib sources
 libcontrib_la_SOURCES = 			\
