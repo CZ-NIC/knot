@@ -594,6 +594,8 @@ AC_CONFIG_FILES([Makefile
                  src/zscanner/Makefile
                  ])
 
+AC_CONFIG_FILES([src/utils/pykeymgr/pykeymgr], [chmod +x src/utils/pykeymgr/pykeymgr])
+
 AC_OUTPUT
 
 AC_MSG_RESULT([$result_msg_add])

@@ -83,6 +83,7 @@
 /src/knsupdate
 /src/kzonecheck
 /src/rosedb_tool
+/src/utils/pykeymgr/pykeymgr
 
 # Plugin binaries
 /src/rosedb_tool

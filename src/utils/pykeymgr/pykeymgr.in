@@ -515,7 +515,7 @@ Syntax: -i <key_dir>
 #	                    help='''Calculate DS record for specified key.
 #Syntax: -d <key_dir> <zone_name> <key_id|key_tag>''')
 	parser.add_argument("-f", "--force", action="store_true", dest="force", help="Do stuff even if dangerous.")
-	parser.add_argument("-V", "--version", action="version", version="pykeymgr (Knot DNS), version 2.5.0")
+	parser.add_argument("-V", "--version", action="version", version="pykeymgr (Knot DNS), version @VERSION@")
 	args = parser.parse_args()
 	opt_force = args.force
 
