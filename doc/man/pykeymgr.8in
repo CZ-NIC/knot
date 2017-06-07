@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBpykeymgr.py\fP [\fIglobal\-options\fP] [\fIcommand\fP\&...] [\fIarguments\fP\&...]
+\fBpykeymgr\fP [\fIglobal\-options\fP] [\fIcommand\fP\&...] [\fIarguments\fP\&...]
 .SH DESCRIPTION
 .sp
 The \fBpykeymgr\fP utility serves for key management in Knot DNS server.
@@ -42,6 +42,18 @@ management are provided.
 .sp
 The DNSSEC and KASP configuration is stored in a so called KASP database.
 The databse is backed by LMDB.
+.sp
+The utility requires installed python LMDB module, installed e.g. by:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ pip install lmdb
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
 .SS Global options
 .INDENT 0.0
 .TP
@@ -75,7 +87,7 @@ Import legacy JSON\-based KASP db from Knot 2.4.x after upgrade:
 .sp
 .nf
 .ft C
-$ pykemgr.py \-i ${knot_data_dir}/keys
+$ pykemgr \-i ${knot_data_dir}/keys
 .ft P
 .fi
 .UNINDENT

@@ -407,6 +407,7 @@ libknotd_la_LIBADD   = libknot.la zscanner/libzscanner.la $(systemd_LIBS) \
 if HAVE_DAEMON
 
 sbin_PROGRAMS = knotc knotd keymgr
+sbin_SCRIPTS = utils/pykeymgr/pykeymgr
 noinst_LTLIBRARIES += libknotd.la libknotus.la
 
 knotddir = $(includedir)/knot
