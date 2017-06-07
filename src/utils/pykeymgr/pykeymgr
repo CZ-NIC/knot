@@ -196,7 +196,7 @@ class Keyparams:
 
 	def getTimers(self):
 		self._check()
-		res = [ 0, 0, 0, 0, 0 ]
+		res = [ 0, 0, 0, 0, 0, 0 ]
 		for i, x, y in self.timers_dict.values():
 			res[i] = from_bytes(self.raw[x:y])
 		return res
@@ -290,6 +290,12 @@ class Keyparams:
 			return True
 		return False
 
+	def isRemoved(self, moment):
+		tmrs = self.getTimers()
+		if tmrs[self.timers_dict["remove"][0]] <= moment:
+			return True
+		return False
+
 # static: just for use in following method
 def arr_ind2unix(arr, ind, defaul):
 	try:
@@ -301,8 +307,13 @@ def arr_ind2unix(arr, ind, defaul):
 
 # import single JSON zone config into open LMDB env
 def import_file(fname, env, db_keys):
-	with open(fname) as f:
-		keys = json.load(f)
+	try:
+		with open(fname) as f:
+			keys = json.load(f)
+
+	except ValueError:
+		print "Warning: not imported ", fname
+		return False
 
 	try:
 		zname_str = re.sub(r'^zone_', '', re.sub(r'\.json$', '', re.sub(r'.*/', '', fname)))
@@ -320,6 +331,8 @@ def import_file(fname, env, db_keys):
 		except (KeyError, AttributeError):
 			pass # nsec3salt not configured or set to null, no problem
 
+		import_now = int(time.time())
+
 		for key in keys["keys"]:
 			dbk3 = Keykey.from_params(1, zname, key["id"]).getRaw()
 
@@ -333,10 +346,13 @@ def import_file(fname, env, db_keys):
 			                               arr_ind2unix(key, "active", 0),
 			                               arr_ind2unix(key, "retire", infty),
 			                               arr_ind2unix(key, "remove", infty)
-			                             ]).getRaw()
+			                             ])
+
+			if dbv3.isRemoved(import_now):
+				continue
 
 			with lmdb.Transaction(env, db_keys, write=True) as txn_keys:
-				txn_keys.put(dbk3, dbv3, dupdata=False, overwrite=True)
+				txn_keys.put(dbk3, dbv3.getRaw(), dupdata=False, overwrite=True)
 
 	except (KeyError, KeyboardInterrupt, TypeError):
 		print "Warning: not imported ", fname
