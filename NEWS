@@ -1,3 +1,14 @@
+Knot DNS 2.5.1 (2017-06-07)
+===========================
+
+Bugfixes:
+---------
+ - pykeymgr no longer crash on empty json files in the KASP DB directory
+ - pykeymgr no longer imports keys in the "removed" state
+ - Imported keys in the "removed" state no longer makes knotd to crash
+ - Including an empty configuration directory no longer makes knotd to crash
+ - pykeymgr is distributed and installed to the distribution tarball
+
 Knot DNS 2.5.0 (2017-06-05)
 ===========================
 

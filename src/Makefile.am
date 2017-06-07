@@ -33,7 +33,7 @@ EXTRA_DIST =					\
 	contrib/murmurhash3/LICENSE		\
 	contrib/openbsd/LICENSE			\
 	contrib/ucw/LICENSE			\
-	utils/pykeymgr/pykeymgr
+	utils/pykeymgr/pykeymgr.in
 
 # static: libcontrib sources
 libcontrib_la_SOURCES = 			\
@@ -410,6 +410,7 @@ if HAVE_DAEMON
 sbin_PROGRAMS = knotc knotd keymgr
 sbin_SCRIPTS = utils/pykeymgr/pykeymgr
 noinst_LTLIBRARIES += libknotd.la libknotus.la
+CLEAN_FILES = $(sbin_SCRIPTS)
 
 knotddir = $(includedir)/knot
 knotd_HEADERS =					\
