@@ -460,8 +460,8 @@ static int finalize_previous_section(
 {
 	yp_node_t *node = &ctx->nodes[0];
 
-	// Return if no previous section or empty multi-section.
-	if (node->item == NULL ||
+	// Return if no previous section or include or empty multi-section.
+	if (node->item == NULL || node->item->type != YP_TGRP ||
 	    (node->id_len == 0 && (node->item->flags & YP_FMULTI) != 0)) {
 		return KNOT_EOK;
 	}
