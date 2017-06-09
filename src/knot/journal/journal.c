@@ -1422,6 +1422,7 @@ static int open_journal_db_unsafe(journal_db_t **db)
 	opts.maxreaders = JOURNAL_MAX_READERS;
 	opts.flags.env = ((*db)->mode == JOURNAL_MODE_ASYNC ?
 	                  KNOT_DB_LMDB_WRITEMAP | KNOT_DB_LMDB_MAPASYNC : 0);
+	opts.flags.env |= KNOT_DB_LMDB_NOTLS;
 
 	int ret = (*db)->db_api->init(&(*db)->db, NULL, &opts);
 	if (ret != KNOT_EOK) {
