@@ -1143,6 +1143,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 	int inserting_merged = false;
 
+	size_t occupied_last, occupied_now = knot_db_lmdb_get_usage(j->db->db);
+
 	WALK_LIST(ch, *changesets) {
 		nchs++;
 		serialized_size_total += changeset_serialized_size(ch);
@@ -1154,9 +1156,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	// if you're tempted to add dirty_serial deletion somewhere here, you're wrong. Don't do it.
 
 	// PART 2 : recalculating the previous insert's occupy change
-	size_t occupied_last, occupied_now;
 	md_get_common_last_occupied(txn, &occupied_last);
-	occupied_now = knot_db_lmdb_get_usage(j->db->db);
 	md_set(txn, NULL, MDKEY_GLOBAL_LAST_TOTAL_OCCUPIED, occupied_now);
 	if (occupied_now != occupied_last) {
 		knot_dname_t *last_zone = NULL;
