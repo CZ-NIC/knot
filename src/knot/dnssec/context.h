@@ -28,7 +28,7 @@
  * \brief DNSSEC signing context.
  */
 typedef struct {
-	time_t now;
+	knot_time_t now;
 
 	kasp_db_t **kasp_db;
 	knot_kasp_zone_t *zone;

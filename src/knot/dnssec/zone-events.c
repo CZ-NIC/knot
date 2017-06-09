@@ -83,15 +83,14 @@ static int sign_update_soa(const zone_contents_t *zone, changeset_t *chset,
 	return knot_zone_sign_update_soa(&soa, &rrsigs, keyset, ctx, chset);
 }
 
-static uint32_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
-                              uint32_t zone_expire)
+static knot_time_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
+				 knot_time_t zone_expire)
 {
-	uint32_t zone_refresh = zone_expire - kctx->policy->rrsig_refresh_before;
+	knot_time_t zone_refresh = knot_time_add(zone_expire, -(knot_timediff_t)kctx->policy->rrsig_refresh_before);
 	assert(zone_refresh > 0);
 
-	uint32_t dnskey_update = MIN(MAX(knot_get_next_zone_key_event(keyset), 0),
-	                             UINT32_MAX);
-	uint32_t next = MIN(zone_refresh, dnskey_update);
+	knot_time_t dnskey_update = knot_get_next_zone_key_event(keyset);
+	knot_time_t next = knot_time_min(zone_refresh, dnskey_update);
 
 	return next;
 }
@@ -122,7 +121,7 @@ static int generate_salt(dnssec_binary_t *salt, uint16_t length)
 
 // TODO preserve the resalt timeout in timers-db instead of kasp_db
 
-int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, time_t *when_resalt)
+int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, knot_time_t *when_resalt)
 {
 	int ret = KNOT_EOK;
 
@@ -136,13 +135,13 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, time_t *when
 
 	if (ctx->zone->nsec3_salt.size != ctx->policy->nsec3_salt_length) {
 		*when_resalt = ctx->now;
-	} else if (ctx->now < ctx->zone->nsec3_salt_created) {
+	} else if (knot_time_cmp(ctx->now, ctx->zone->nsec3_salt_created) < 0) {
 		return KNOT_EINVAL;
 	} else {
 		*when_resalt = ctx->zone->nsec3_salt_created + ctx->policy->nsec3_salt_lifetime;
 	}
 
-	if (*when_resalt <= ctx->now) {
+	if (knot_time_cmp(*when_resalt, ctx->now) <= 0) {
 		ret = generate_salt(&ctx->zone->nsec3_salt, ctx->policy->nsec3_salt_length);
 		if (ret == KNOT_EOK) {
 			ctx->zone->nsec3_salt_created = ctx->now;
@@ -150,7 +149,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, time_t *when
 			*salt_changed = true;
 		}
 		// continue to planning next resalt even if NOK
-		*when_resalt = ctx->now + ctx->policy->nsec3_salt_lifetime;
+		*when_resalt = knot_time_add(ctx->now, ctx->policy->nsec3_salt_lifetime);
 	}
 
 	return ret;
@@ -195,7 +194,7 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
 		goto done;
 	}
 
-	uint32_t zone_expire = 0;
+	knot_time_t zone_expire = 0;
 	result = knot_zone_sign(zone, &keyset, &ctx, out_ch, &zone_expire);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign zone content (%s)",

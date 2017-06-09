@@ -158,7 +158,7 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		goto init_error;
 	}
 
-	ctx->now = time(NULL);
+	ctx->now = knot_time();
 
 	return KNOT_EOK;
 init_error:

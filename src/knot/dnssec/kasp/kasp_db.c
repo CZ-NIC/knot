@@ -253,12 +253,12 @@ static int deserialize_key_params(key_params_t *params, const knot_db_val_t *key
 	params->keytag = wire_ctx_read_u16(&wire);
 	params->algorithm = wire_ctx_read_u8(&wire);
 	params->is_ksk = (wire_ctx_read_u8(&wire) != (uint8_t)0x00);
-	params->timing.created = (time_t)wire_ctx_read_u64(&wire);
-	params->timing.publish = (time_t)wire_ctx_read_u64(&wire);
-	params->timing.ready = (time_t)wire_ctx_read_u64(&wire);
-	params->timing.active = (time_t)wire_ctx_read_u64(&wire);
-	params->timing.retire = (time_t)wire_ctx_read_u64(&wire);
-	params->timing.remove = (time_t)wire_ctx_read_u64(&wire);
+	params->timing.created = (knot_time_t)wire_ctx_read_u64(&wire);
+	params->timing.publish = (knot_time_t)wire_ctx_read_u64(&wire);
+	params->timing.ready = (knot_time_t)wire_ctx_read_u64(&wire);
+	params->timing.active = (knot_time_t)wire_ctx_read_u64(&wire);
+	params->timing.retire = (knot_time_t)wire_ctx_read_u64(&wire);
+	params->timing.remove = (knot_time_t)wire_ctx_read_u64(&wire);
 	if (wire.error != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
@@ -494,10 +494,10 @@ int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from, const knot_d
 }
 
 int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
-			    const dnssec_binary_t *nsec3salt, time_t salt_created)
+			    const dnssec_binary_t *nsec3salt, knot_time_t salt_created)
 {
 	if (db == NULL || db->keys_db == NULL ||
-	    zone_name == NULL || nsec3salt == NULL) {
+	    zone_name == NULL || nsec3salt == NULL || salt_created <= 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -508,7 +508,7 @@ int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
 	free_key(&key);
 	txn_check(NULL);
 	key = make_key(KASPDBKEY_NSEC3TIME, zone_name, NULL);
-	uint64_t tmp = htobe64(salt_created);
+	uint64_t tmp = htobe64((uint64_t)salt_created);
 	val.len = sizeof(tmp);
 	val.data = &tmp;
 	ret = db_api->insert(txn, &key, &val, 0);
@@ -518,7 +518,7 @@ int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
 }
 
 int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
-			   dnssec_binary_t *nsec3salt, time_t *salt_created)
+			   dnssec_binary_t *nsec3salt, knot_time_t *salt_created)
 {
 	if (db == NULL || db->keys_db == NULL ||
 	    zone_name == NULL || nsec3salt == NULL || salt_created == NULL) {
@@ -531,7 +531,7 @@ int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
 	free_key(&key);
 	if (ret == KNOT_EOK) {
 		if (val.len == sizeof(uint64_t)) {
-			*salt_created = be64toh(*(uint64_t *)val.data);
+			*salt_created = (knot_time_t)be64toh(*(uint64_t *)val.data);
 		}
 		else {
 			ret = KNOT_EMALF;

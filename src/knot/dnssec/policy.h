@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "contrib/time.h"
 #include "knot/dnssec/context.h"
 #include "knot/zone/contents.h"
 

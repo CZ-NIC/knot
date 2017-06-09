@@ -124,7 +124,7 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
 	knot_kasp_key_t *dkeys = NULL;
 	size_t num_dkeys = 0;
 	dnssec_binary_t salt = { 0 };
-	time_t sc = 0;
+	knot_time_t sc = 0;
 
 	list_t key_params;
 	init_list(&key_params);
@@ -217,9 +217,11 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 		}
 	}
 
-	ret = kasp_db_store_nsec3salt(kdb, zone_name, &zone->nsec3_salt, zone->nsec3_salt_created);
-	if (ret != KNOT_EOK) {
-		goto kzs_end;
+	if (zone->nsec3_salt.size > 0) {
+		ret = kasp_db_store_nsec3salt(kdb, zone_name, &zone->nsec3_salt, zone->nsec3_salt_created);
+		if (ret != KNOT_EOK) {
+			goto kzs_end;
+		}
 	}
 
 kzs_end:

@@ -177,7 +177,7 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 /*!
  * \brief Get key feature flags from key parameters.
  */
-static int set_key(knot_kasp_key_t *kasp_key, time_t now, zone_key_t *zone_key)
+static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_key)
 {
 	assert(kasp_key);
 	assert(zone_key);
@@ -198,18 +198,18 @@ static int set_key(knot_kasp_key_t *kasp_key, time_t now, zone_key_t *zone_key)
 
 	// next event computation
 
-	time_t next = LONG_MAX;
-	time_t timestamps[5] = {
+	knot_time_t next = 0;
+	knot_time_t timestamps[5] = {
 	        timing->active,
-		timing->publish,
+	        timing->publish,
 	        timing->remove,
 	        timing->retire,
 		timing->ready,
 	};
 
 	for (int i = 0; i < 5; i++) {
-		time_t ts = timestamps[i];
-		if (ts != 0 && now < ts && ts < next) {
+		knot_time_t ts = timestamps[i];
+		if (knot_time_cmp(now, ts) < 0 && knot_time_cmp(ts, next) < 0) {
 			next = ts;
 		}
 	}
@@ -222,12 +222,12 @@ static int set_key(knot_kasp_key_t *kasp_key, time_t now, zone_key_t *zone_key)
 	zone_key->is_ksk = flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
 	zone_key->is_zsk = !zone_key->is_ksk;
 
-	zone_key->is_active = timing->active <= now &&
-	                      (timing->retire == 0 || now < timing->retire);
-	zone_key->is_public = timing->publish <= now &&
-	                      (timing->remove == 0 || now < timing->remove);
-	zone_key->is_ready = timing->ready <= now &&
-	                     (timing->retire == 0 || now < timing->retire);
+	zone_key->is_active = (knot_time_cmp(timing->active, now) <= 0 &&
+	                      knot_time_cmp(timing->retire, now) > 0);
+	zone_key->is_public = (knot_time_cmp(timing->publish, now) <= 0 &&
+	                      knot_time_cmp(timing->remove, now) > 0);
+	zone_key->is_ready = (knot_time_cmp(timing->ready, now) <= 0 &&
+	                     knot_time_cmp(timing->retire, now) > 0);
 
 	return KNOT_EOK;
 }
@@ -401,7 +401,7 @@ static void log_key_info(const zone_key_t *key, const knot_dname_t *zone_name)
  * \brief Load zone keys and init cryptographic context.
  */
 int load_zone_keys(knot_kasp_zone_t *zone, dnssec_keystore_t *store,
-                   bool nsec3_enabled, time_t now, zone_keyset_t *keyset_ptr)
+                   bool nsec3_enabled, knot_time_t now, zone_keyset_t *keyset_ptr)
 {
 	if (!zone || !store || !keyset_ptr) {
 		return KNOT_EINVAL;
@@ -488,15 +488,15 @@ struct keyptr_dynarray get_zone_keys(const zone_keyset_t *keyset, uint16_t searc
 /*!
  * \brief Get timestamp of next key event.
  */
-time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset)
+knot_time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset)
 {
 	assert(keyset);
 
-	time_t result = LONG_MAX;
+	knot_time_t result = 0;
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
-		if (key->next_event < result) {
+		if (knot_time_cmp(key->next_event, result) < 0) {
 			result = key->next_event;
 		}
 	}

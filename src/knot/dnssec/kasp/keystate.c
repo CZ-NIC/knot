@@ -21,7 +21,7 @@
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/kasp/keystate.h"
 
-key_state_t get_key_state(const knot_kasp_key_t *key, time_t moment)
+key_state_t get_key_state(const knot_kasp_key_t *key, knot_time_t moment)
 {
 	if (!key || moment <= 0)
 	{
@@ -40,12 +40,12 @@ key_state_t get_key_state(const knot_kasp_key_t *key, time_t moment)
 
 	const knot_kasp_key_timing_t *t = &key->timing;
 
-	bool removed = t->remove != 0 && t->remove <= moment;
-	bool retired = t->retire != 0 && t->retire <= moment;
+	bool removed = (knot_time_cmp(t->remove, moment) <= 0);
+	bool retired = (knot_time_cmp(t->retire, moment) <= 0);
 
-	bool published = !removed && (t->publish == 0 || t->publish <= moment);
-	bool ready = !retired && (t->ready == 0 || t->ready <= moment);
-	bool activated = !retired && (t->active  == 0 || t->active  <= moment);
+	bool published = !removed && (knot_time_cmp(t->publish, moment) <= 0);
+	bool ready = !retired && (knot_time_cmp(t->ready, moment) <= 0);
+	bool activated = !retired && (knot_time_cmp(t->active, moment) <= 0);
 
 	/*
 	 * Evaluate special transition states as invalid. E.g., when signatures

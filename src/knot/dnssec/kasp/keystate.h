@@ -18,6 +18,7 @@
 
 #include <time.h>
 
+#include "contrib/time.h"
 #include "knot/dnssec/kasp/policy.h"
 
 enum key_state {
@@ -31,4 +32,4 @@ enum key_state {
 
 typedef enum key_state key_state_t;
 
-key_state_t get_key_state(const knot_kasp_key_t *key, time_t moment);
+key_state_t get_key_state(const knot_kasp_key_t *key, knot_time_t moment);

@@ -25,7 +25,7 @@ typedef struct {
 	size_t num_keys;
 
 	dnssec_binary_t nsec3_salt;
-	time_t nsec3_salt_created;
+	knot_time_t nsec3_salt_created;
 } knot_kasp_zone_t;
 
 int kasp_zone_load(knot_kasp_zone_t *zone,
