@@ -6,7 +6,6 @@
 
 import datetime
 import time
-import lmdb
 import json
 import sys
 import re
@@ -16,8 +15,20 @@ import time
 import traceback
 import os
 import hashlib
+import importlib
 
 opt_force = False
+lmdb = None
+
+def lmdb_requirement():
+	global lmdb
+
+	try:
+		lmdb = importlib.import_module('lmdb')
+	except ImportError:
+		print("Error: unable to import module LMDB.")
+		print("Probably you need to 'pip install lmdb' or so.")
+		sys.exit(10)
 
 # workarounding that python 2 doesn't have int.to_bytes()
 def to_bytes(n, length, endianess='big'):
@@ -420,6 +431,7 @@ Syntax: -i <key_dir>
 	opt_force = args.force
 
 	if args.importdir is not None:
+		lmdb_requirement()
 		if isinstance(args.importdir, (list, tuple)):
 			importdir = args.importdir
 		else:
