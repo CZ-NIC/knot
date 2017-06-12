@@ -611,7 +611,6 @@ int conf_parse(
 		ret = check_ret;
 	}
 
-	conf_mod_load_purge(conf, false);
 	yp_schema_check_deinit(ctx);
 parse_error:
 	yp_deinit(parser);
@@ -650,6 +649,8 @@ int conf_import(
 		conf->api->txn_abort(&txn);
 		goto import_error;
 	}
+	// Load purge must be here as conf_parse may be called recursively!
+	conf_mod_load_purge(conf, false);
 
 	// Commit new configuration.
 	ret = conf->api->txn_commit(&txn);
