@@ -381,118 +381,6 @@ def import_dir(dirname):
 	if not something_imported:
 		print("Warning: nothing imported in", dirname)
 
-def zone2keyids(dirname, zone_str):
-	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
-	db_zones = env.open_db("zones_db", dupsort=True)
-	ret = [ ]
-	zone = str2dname(zone_str)
-	with lmdb.Transaction(env, db_keys, write=False) as txn_keys:
-		curs = txn_keys.cursor()
-		r = curs.set_range(Keykey.from_params(1, zone, None).getRaw())
-		while r:
-			k = Keykey(curs.key())
-			if k.getZone() != zone:
-				break
-			ret.append(k.getKeyid())
-			r = next(curs)
-	return ret
-
-def key_matches(keyid, keyparam, key_spec, attrs):
-	if key_spec is not None:
-		base_key_tag = -1 if re.match(r"^\d+$", key_spec) is None else int(key_spec)
-		if len(key_spec) < 6 or not keyid.startswith(key_spec): # key id prefix not matches
-			if keyparam.getKeytag() != base_key_tag: # keytag not matches
-				return False
-
-	now = int(time.time())
-	for attr in attrs.lower().split('&'):
-		if attr == "all" or attr == "":
-			pass
-		elif attr == "ksk" and not keyparam.isKSK():
-			return False
-		elif attr == "zsk" and keyparam.isKSK():
-			return False
-		elif attr == "published" and not keyparam.isPublished(now):
-			return False
-		elif attr == "ready" and not keyparam.isReady(now):
-			return False
-		elif attr == "active" and not keyparam.isActive(now):
-			return False
-		elif attr == "retired" and not keyparam.isRetired(now):
-			return False
-		elif attr not in ("ksk", "zsk", "published", "active", "retired"):
-			print("Warning: unknown key attribute", attr)
-			return False
-	return True
-
-# FIXME for current KASP db format !!!
-def update_param(dirname, zone_str, key_spec, param_name, new_val):
-	#zone gets actually ignored
-	if param_name in ("keytag", "algorithm") and not opt_force:
-		print("Error: modification of", param_name, "requires force option")
-		return False
-
-	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
-	db_keys = env.open_db("keys_db")
-	something_updated = False
-	with lmdb.Transaction(env, db_keys, write=True) as txn_keys:
-		for k, v in txn_keys.cursor():
-			try:
-				kp = Keyparams(v)
-				if key_matches(k, kp, key_spec, "all"):
-					kp.setByParamName(param_name, new_val)
-					txn_keys.put(k, kp.getRaw(), dupdata=False, overwrite=True)
-					something_updated = True
-					return
-			except AssertionError:
-				pass # some key-val which is not proper key param
-	print("Error updating key parameter (probably the key not found)")
-
-# FIXME for current KASP db format !!!
-def calculate_ds(dirname, zone_str, key_spec):
-	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
-	db_keys = env.open_db("keys_db")
-	with lmdb.Transaction(env, db_keys, write=True) as txn_keys:
-		for k in zone2keyids(dirname, zone_str):
-			kp = Keyparams(txn_keys.get(k + "\x00"))
-			if key_matches(k, kp, key_spec, "all"):
-				for digestalg in ("sha1", "sha256", "sha384"):
-					print(kp.computeDS(zone_str, digestalg))
-				return
-	print("Error finding specified key")
-
-# FIXME for current KASP db format !!!
-def list_keys(dirname, keyattr):
-	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
-	db_keys = env.open_db("keys_db")
-	with lmdb.Transaction(env, db_keys, write=False) as txn_keys:
-		for k, v in txn_keys.cursor():
-			try:
-				kp = Keyparams(v)
-				if key_matches(k, kp, None, keyattr):
-					print(("id=%s ksk=%s tag=%i timers:" %
-					      (k, ("yes" if kp.isKSK() else "no"),
-					      kp.getKeytag())), kp.getTimersString())
-			except AssertionError:
-				pass # some key-val which is not proper key param
-
-# FIXME for current KASP db format !!!
-def list_zones(dirname):
-	print("dirname:", dirname)
-	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
-	db_zones = env.open_db("zones_db", dupsort=True)
-	zonedict = dict()
-	with lmdb.Transaction(env, db_zones, write=False) as txn_zones:
-		for k, v in txn_zones.cursor():
-			dn = dname2str(k)
-			ki = v.rstrip("\x00")
-			try:
-				zonedict[dn].insert(0, ki)
-			except KeyError:
-				zonedict[dn] = [ ki ]
-	for zone in list(zonedict.keys()):
-		print(zone, zonedict[zone])
-
 class VersionAction(argparse.Action):
 
 	def __init__(self,
@@ -526,18 +414,6 @@ def main():
 	                    help='''Import zone-key configuration from JSON.
 Syntax: -i <key_dir>
 (You can import multiple key_dirs at once by repeating this option.)''')
-#	parser.add_argument("-s", "--set", action="append", nargs=5, dest="setparam",
-#	                    help='''Zone-key set params.
-#Syntax: -s <key_dir> <zone_name> <key_id|key_tag> <parameter> <new_value>''')
-#	parser.add_argument("-l", "--list", action="append", nargs=2, dest="listdir",
-#	                    help='''List zone-key configuration (no key-zone relation).
-#Syntax: -l <key_dir> <filter>''')
-#	parser.add_argument("-z", "--zones", action="append", nargs=1, dest="zonesdir",
-#	                    help='''List zones together with key IDs belonging to them.
-#Syntax: -z <key_dir>''')
-#	parser.add_argument("-d", "--ds", action="append", nargs=3, dest="ds",
-#	                    help='''Calculate DS record for specified key.
-#Syntax: -d <key_dir> <zone_name> <key_id|key_tag>''')
 	parser.add_argument("-f", "--force", action="store_true", dest="force", help="Do stuff even if dangerous.")
 	parser.add_argument("-V", "--version", action=VersionAction, version="pykeymgr (Knot DNS), version @VERSION@")
 	args = parser.parse_args()
@@ -551,22 +427,6 @@ Syntax: -i <key_dir>
 
 		for dirn in importdir:
 			import_dir(dirn)
-			
-#	if args.listdir is not None:
-#		for dirn, filte in args.listdir:
-#			list_keys(dirn, filte)
-
-#	if args.zonesdir is not None:
-#		for dirn in args.zonesdir:
-#			list_zones(dirn[0])
-
-#	if args.setparam is not None:
-#		for dirn, zone, key, parmn, val in args.setparam:
-#			update_param(dirn, zone, key, parmn, val)
-
-#	if args.ds is not None:
-#		for dirn, zone, key in args.ds:
-#			calculate_ds(dirn, zone, key)
 
 if __name__ == "__main__":
 	main()
