@@ -42,43 +42,57 @@
 	typedef struct prefix ## _dynarray { \
 		ssize_t capacity; \
 		ssize_t size; \
+		ntype *(*arr)(struct prefix ## _dynarray *dynarray); \
 		ntype init[initial_capacity]; \
-		ntype *arr; \
+		ntype *_arr; \
 	} prefix ## _dynarray_t; \
 	\
-	visibility void prefix ## _dynarray_fix(prefix ## _dynarray_t *dynarray); \
+	visibility ntype *prefix ## _dynarray_arr(prefix ## _dynarray_t *dynarray); \
 	visibility void prefix ## _dynarray_add(prefix ## _dynarray_t *dynarray, \
 	                                        ntype const *to_add); \
 	visibility void prefix ## _dynarray_free(prefix ## _dynarray_t *dynarray);
 
 #define dynarray_foreach(prefix, ntype, ptr, array) \
-	for (ntype *ptr = (prefix ## _dynarray_fix(&(array)), (array).arr); \
-	     ptr < (array).arr + (array).size; ptr++)
+	for (ntype *ptr = prefix ## _dynarray_arr(&(array)); \
+	     ptr < prefix ## _dynarray_arr(&(array)) + (array).size; ptr++)
 
-#define dynarray_define(prefix, ntype, visibility, initial_capacity) \
+#define dynarray_define(prefix, ntype, visibility) \
 	\
 	static void prefix ## _dynarray_free__(struct prefix ## _dynarray *dynarray) \
 	{ \
-		if (dynarray->capacity > initial_capacity) { \
-			free(dynarray->arr); \
+		if (dynarray->capacity > sizeof(dynarray->init) / sizeof(*dynarray->init)) { \
+			free(dynarray->_arr); \
 		} \
 	} \
 	\
 	__attribute__((unused)) \
-	visibility void prefix ## _dynarray_fix(struct prefix ## _dynarray *dynarray) \
+	visibility ntype *prefix ## _dynarray_arr(struct prefix ## _dynarray *dynarray) \
 	{ \
 		assert(dynarray->size <= dynarray->capacity); \
-		if (dynarray->capacity <= initial_capacity) { \
-			dynarray->capacity = initial_capacity; \
-			dynarray->arr = dynarray->init; \
-		} \
+		return (dynarray->capacity <= sizeof(dynarray->init) / sizeof(*dynarray->init) ? \
+			dynarray->init : dynarray->_arr); \
+	} \
+	\
+	static ntype *prefix ## _dynarray_arr_init__(struct prefix ## _dynarray *dynarray) \
+	{ \
+		assert(dynarray->capacity == sizeof(dynarray->init) / sizeof(*dynarray->init)); \
+		return dynarray->init; \
+	} \
+	\
+	static ntype *prefix ## _dynarray_arr_arr__(struct prefix ## _dynarray *dynarray) \
+	{ \
+		assert(dynarray->capacity > sizeof(dynarray->init) / sizeof(*dynarray->init)); \
+		return dynarray->_arr; \
 	} \
 	\
 	__attribute__((unused)) \
 	visibility void prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
 	                                        ntype const *to_add) \
 	{ \
-		prefix ## _dynarray_fix(dynarray); \
+		if (dynarray->capacity == 0) { \
+			dynarray->capacity = sizeof(dynarray->init) / sizeof(*dynarray->init); \
+			dynarray->arr = prefix ## _dynarray_arr_init__; \
+		} \
 		if (dynarray->size >= dynarray->capacity) { \
 			ssize_t new_capacity = dynarray->capacity * 2 + 1; \
 			ntype *new_arr = calloc(new_capacity, sizeof(ntype)); \
@@ -88,14 +102,15 @@
 				return; \
 			} \
 			if (dynarray->capacity > 0) { \
-				memcpy(new_arr, dynarray->arr, \
+				memcpy(new_arr, prefix ## _dynarray_arr(dynarray), \
 				       dynarray->capacity * sizeof(ntype)); \
 			} \
 			prefix ## _dynarray_free__(dynarray); \
-			dynarray->arr = new_arr; \
+			dynarray->_arr = new_arr; \
 			dynarray->capacity = new_capacity; \
+			dynarray->arr = prefix ## _dynarray_arr_arr__; \
 		} \
-		dynarray->arr[dynarray->size++] = *to_add; \
+		prefix ## _dynarray_arr(dynarray)[dynarray->size++] = *to_add; \
 	} \
 	\
 	__attribute__((unused)) \
