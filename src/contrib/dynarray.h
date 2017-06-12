@@ -56,11 +56,11 @@
 	for (ntype *ptr = prefix ## _dynarray_arr(&(array)); \
 	     ptr < prefix ## _dynarray_arr(&(array)) + (array).size; ptr++)
 
-#define dynarray_define(prefix, ntype, visibility, initial_capacity) \
+#define dynarray_define(prefix, ntype, visibility) \
 	\
 	static void prefix ## _dynarray_free__(struct prefix ## _dynarray *dynarray) \
 	{ \
-		if (dynarray->capacity > (initial_capacity)) { \
+		if (dynarray->capacity > sizeof(dynarray->init) / sizeof(*dynarray->init)) { \
 			free(dynarray->_arr); \
 		} \
 	} \
@@ -69,18 +69,19 @@
 	visibility ntype *prefix ## _dynarray_arr(struct prefix ## _dynarray *dynarray) \
 	{ \
 		assert(dynarray->size <= dynarray->capacity); \
-		return (dynarray->capacity <= (initial_capacity) ? dynarray->init : dynarray->_arr); \
+		return (dynarray->capacity <= sizeof(dynarray->init) / sizeof(*dynarray->init) ? \
+			dynarray->init : dynarray->_arr); \
 	} \
 	\
 	static ntype *prefix ## _dynarray_arr_init__(struct prefix ## _dynarray *dynarray) \
 	{ \
-		assert(dynarray->capacity == (initial_capacity)); \
+		assert(dynarray->capacity == sizeof(dynarray->init) / sizeof(*dynarray->init)); \
 		return dynarray->init; \
 	} \
 	\
 	static ntype *prefix ## _dynarray_arr_arr__(struct prefix ## _dynarray *dynarray) \
 	{ \
-		assert(dynarray->capacity > (initial_capacity)); \
+		assert(dynarray->capacity > sizeof(dynarray->init) / sizeof(*dynarray->init)); \
 		return dynarray->_arr; \
 	} \
 	\
@@ -89,7 +90,7 @@
 	                                        ntype const *to_add) \
 	{ \
 		if (dynarray->capacity == 0) { \
-			dynarray->capacity = (initial_capacity); \
+			dynarray->capacity = sizeof(dynarray->init) / sizeof(*dynarray->init); \
 			dynarray->arr = prefix ## _dynarray_arr_init__; \
 		} \
 		if (dynarray->size >= dynarray->capacity) { \

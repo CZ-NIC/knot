@@ -28,7 +28,7 @@ typedef struct {
 } quadrate_t;
 
 dynarray_declare(q, quadrate_t, DYNARRAY_VISIBILITY_STATIC, test_capacity);
-dynarray_define(q, quadrate_t, DYNARRAY_VISIBILITY_STATIC, test_capacity);
+dynarray_define(q, quadrate_t, DYNARRAY_VISIBILITY_STATIC);
 
 static q_dynarray_t q_fill(size_t howmany)
 {

@@ -26,7 +26,7 @@
 #include "libknot/libknot.h"
 #include "libknot/rrtype/dnskey.h"
 
-dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC, 1)
+dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC)
 
 const uint16_t DNSKEY_FLAGS_KSK = 257;
 const uint16_t DNSKEY_FLAGS_ZSK = 256;
