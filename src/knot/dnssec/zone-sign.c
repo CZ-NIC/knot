@@ -781,23 +781,22 @@ static int rrset_add_zone_ds(knot_rrset_t *rrset,
  *
  * Extra DNSKEY is a key, which is not present in zone public key set.
  *
- * \param soa        RR set with SOA (to get TTL value from).
- * \param records    RR set with DNSKEYs/CDNSKEYs/CDSs.
- * \param keyset     Zone keys.
- * \param changeset  Changeset to be updated.
+ * \param records     RR set with DNSKEYs/CDNSKEYs/CDSs.
+ * \param keyset      Zone keys.
+ * \param changeset   Changeset to be updated.
+ * \param dnskey_ttl  DNSKEY TTL value.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int remove_invalid_records(const knot_rrset_t *soa,
-                                  const knot_rrset_t *records,
+static int remove_invalid_records(const knot_rrset_t *records,
                                   zone_keyset_t *keyset, // not const just due to pre-computing DS
-                                  changeset_t *changeset)
+                                  changeset_t *changeset,
+                                  uint32_t dnskey_ttl)
 {
 	if (knot_rrset_empty(records)) {
 		return KNOT_EOK;
 	}
 
-	assert(soa->type == KNOT_RRTYPE_SOA);
 	assert(keyset);
 	assert(changeset);
 
@@ -821,14 +820,11 @@ static int remove_invalid_records(const knot_rrset_t *soa,
 	knot_rrset_t to_remove;
 	knot_rrset_init(&to_remove, records->owner, records->type, records->rclass);
 
-	const knot_rdata_t *soa_data = knot_rdataset_at(&soa->rrs, 0);
-	uint32_t soa_ttl = knot_rdata_ttl(soa_data);
-
 	int result = KNOT_EOK;
 	for (uint16_t i = 0; i < records->rrs.rr_count; i++) {
 		const knot_rdata_t *r = knot_rdataset_at(&records->rrs, i);
 		uint32_t r_ttl = knot_rdata_ttl(r);
-		if (r_ttl == soa_ttl && is_from_keyset(keyset, r, is_ds, is_c, NULL)) {
+		if (r_ttl == dnskey_ttl && is_from_keyset(keyset, r, is_ds, is_c, NULL)) {
 			continue;
 		}
 
@@ -855,12 +851,13 @@ static bool publish_cds(const zone_key_t *key)
 /*!
  * \brief Add missing DNSKEYs into the zone by updating the changeset.
  *
- * \param soa        RR set with SOA (to get TTL value from).
- * \param dnskeys    RR set with DNSKEYs.
- * \param cdnskeys   RR set with CDNSKEYs.
- * \param cdss       RR set with CDSs.
- * \param keyset     Zone keys.
- * \param changeset  Changeset to be updated.
+ * \param soa         RR set with SOA (to get TTL value from).
+ * \param dnskeys     RR set with DNSKEYs.
+ * \param cdnskeys    RR set with CDNSKEYs.
+ * \param cdss        RR set with CDSs.
+ * \param keyset      Zone keys.
+ * \param changeset   Changeset to be updated.
+ * \param dnskey_ttl  DNSKEY TTL value.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -869,7 +866,8 @@ static int add_missing_records(const knot_rrset_t *soa,
                                const knot_rrset_t *cdnskeys,
                                const knot_rrset_t *cdss,
                                zone_keyset_t *keyset,
-                               changeset_t *changeset)
+                               changeset_t *changeset,
+                               uint32_t dnskey_ttl)
 {
 	assert(soa && soa->type == KNOT_RRTYPE_SOA);
 	assert(knot_rrset_empty(dnskeys) || dnskeys->type == KNOT_RRTYPE_DNSKEY);
@@ -877,9 +875,6 @@ static int add_missing_records(const knot_rrset_t *soa,
 	assert(knot_rrset_empty(cdss) || cdss->type == KNOT_RRTYPE_CDS);
 	assert(keyset);
 	assert(changeset);
-
-	const knot_rdata_t *soa_rr = knot_rdataset_at(&soa->rrs, 0);
-	uint32_t soa_ttl = knot_rdata_ttl(soa_rr);
 
 	knot_rrset_t to_add_dnskey, to_add_cdnskey, to_add_cds;
 	knot_rrset_init_empty(&to_add_dnskey);
@@ -893,21 +888,21 @@ static int add_missing_records(const knot_rrset_t *soa,
 			continue;
 		}
 
-#define check_add(keys, toadd, rrtype, addfce) \
-		if (!is_in_zone((keys), key, soa_ttl)) { \
+#define check_add(keys, toadd, rrtype, addfce, ttl) \
+		if (!is_in_zone((keys), key, ttl)) { \
 			if (knot_rrset_empty(&(toadd))) { \
 				(toadd) = rrset_init_from(soa, rrtype); \
 			} \
-			result = addfce(&(toadd), key, soa_ttl); \
+			result = addfce(&(toadd), key, ttl); \
 			if (result != KNOT_EOK) { \
 				break; \
 			} \
 		}
 
-		check_add(dnskeys, to_add_dnskey, KNOT_RRTYPE_DNSKEY, rrset_add_zone_key)
+		check_add(dnskeys, to_add_dnskey, KNOT_RRTYPE_DNSKEY, rrset_add_zone_key, dnskey_ttl)
 		if (publish_cds(key)) {
-			check_add(cdnskeys, to_add_cdnskey, KNOT_RRTYPE_CDNSKEY, rrset_add_zone_key)
-			check_add(cdss, to_add_cds, KNOT_RRTYPE_CDS, rrset_add_zone_ds)
+			check_add(cdnskeys, to_add_cdnskey, KNOT_RRTYPE_CDNSKEY, rrset_add_zone_key, 0)
+			check_add(cdss, to_add_cds, KNOT_RRTYPE_CDS, rrset_add_zone_ds, 0)
 		}
 #undef check_add
 	}
@@ -1007,28 +1002,29 @@ static int update_dnskeys(const zone_contents_t *zone,
 	knot_rrset_t cdss = node_rrset(apex, KNOT_RRTYPE_CDS);
 	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
 	knot_rrset_t rrsigs = node_rrset(apex, KNOT_RRTYPE_RRSIG);
+	uint32_t dnskey_ttl = dnssec_ctx->policy->dnskey_ttl;
 	if (knot_rrset_empty(&soa)) {
 		return KNOT_EINVAL;
 	}
 
 	int result;
 
-	result = remove_invalid_records(&soa, &dnskeys, zone_keys, changeset);
+	result = remove_invalid_records(&dnskeys, zone_keys, changeset, dnskey_ttl);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	result = remove_invalid_records(&soa, &cdnskeys, zone_keys, changeset);
+	result = remove_invalid_records(&cdnskeys, zone_keys, changeset, 0);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	result = remove_invalid_records(&soa, &cdss, zone_keys, changeset);
+	result = remove_invalid_records(&cdss, zone_keys, changeset, 0);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	result = add_missing_records(&soa, &dnskeys, &cdnskeys, &cdss, zone_keys, changeset);
+	result = add_missing_records(&soa, &dnskeys, &cdnskeys, &cdss, zone_keys, changeset, dnskey_ttl);
 	if (result != KNOT_EOK) {
 		return result;
 	}
