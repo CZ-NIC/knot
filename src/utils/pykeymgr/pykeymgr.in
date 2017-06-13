@@ -18,6 +18,7 @@ import traceback
 import os
 import hashlib
 import importlib
+import codecs
 
 opt_force = False
 lmdb = None
@@ -36,25 +37,33 @@ def lmdb_requirement():
 def to_bytes(n, length, endianess='big'):
 	h = '%x' % n
 	assert len(h) <= length * 2
-	s = ('0'*(len(h) % 2) + h).zfill(length * 2).decode('hex')
-	return bytearray(s) if endianess == 'big' else bytearray(s[::-1])
+	s = ('0'*(len(h) % 2) + h).zfill(length * 2)
+	if sys.version_info >= (3,0):
+		sb = codecs.decode(s, 'hex')
+	else:
+		sb = s.decode('hex')
+	return bytearray(sb) if endianess == 'big' else bytearray(sb[::-1])
 
 def from_bytes(ba, endianess='big'):
 	x = ba if endianess == 'big' else bytearray(s[::-1])
-	return int(str(x).encode('hex'), 16)
+	if sys.version_info >= (3,0):
+		hx = codecs.encode(x, 'hex')
+	else:
+		hx = str(x).encode('hex')
+	return int(hx, 16)
 
 # aka knot_dname_from_str_alloc()
 def str2dname(s):
 	if s.endswith('.') is False:
 		s += '.'
-	res = bytearray("")
+	res = bytearray(b"")
 	nodes = s.lower().split('.')
 	if nodes[-1] != "":
 		nodes.append("")
 
 	for node in nodes:
 		res.append(len(node))
-		res.extend(bytearray(node.lower()))
+		res.extend(bytearray(node.lower(), 'ascii'))
 
 	return res
 
@@ -157,7 +166,10 @@ class Keyparams:
 	@classmethod
 	def from_params(self, pubkey, keytag, algorithm, isksk, timers):
 		assert len(timers) == 6
-		pk = pubkey.decode("base64")
+		if sys.version_info >= (3,0):
+			pk = codecs.decode(bytearray(pubkey, 'ascii'), "base64")
+		else:
+			pk = pubkey.decode("base64")
 		selfraw = to_bytes(len(pk), 8)
 		selfraw.extend(to_bytes(0, 8)) # zero length of unused-future
 		selfraw.extend(to_bytes(int(keytag), 2))
@@ -318,6 +330,25 @@ def arr_ind2unix(arr, ind, defaul):
 	except KeyError:
 		return defaul
 
+def import_nsec3salt(keys, env, db_keys, zname):
+	try:
+		with lmdb.Transaction(env, db_keys, write=True) as txn_keys:
+			dbk1 = Keykey.from_params(3, zname, None).getRaw()
+			dbv1 = keys["nsec3_salt"]
+			if dbv1 is None:
+				return
+			if sys.version_info >= (3,0):
+				dbv1d = codecs.decode(bytearray(dbv1, 'ascii'), "base64")
+			else:
+				dbv1d = dbv1.decode("base64")
+			txn_keys.put(dbk1, dbv1d, dupdata=False, overwrite=True)
+
+			dbk2 = Keykey.from_params(4, zname, None).getRaw()
+			dbv2 = to_bytes(arr_ind2unix(keys, "nsec3_salt_created", 0), 8)
+			txn_keys.put(dbk2, dbv2, dupdata=False, overwrite=True)
+	except (KeyError, AttributeError):
+		pass # nsec3salt not configured or set to null, no problem
+
 # import single JSON zone config into open LMDB env
 def import_file(fname, env, db_keys):
 	try:
@@ -332,17 +363,7 @@ def import_file(fname, env, db_keys):
 		zname_str = re.sub(r'^zone_', '', re.sub(r'\.json$', '', re.sub(r'.*/', '', fname)))
 		print("Importing zone", zname_str)
 		zname = str2dname(zname_str)
-
-		try: # store nsec3salt
-			with lmdb.Transaction(env, db_keys, write=True) as txn_keys:
-				dbk1 = Keykey.from_params(3, zname, None).getRaw()
-				dbv1 = keys["nsec3_salt"].decode("base64")
-				txn_keys.put(dbk1, dbv1, dupdata=False, overwrite=True)
-				dbk2 = Keykey.from_params(4, zname, None).getRaw()
-				dbv2 = to_bytes(arr_ind2unix(keys, "nsec3_salt_created", 0), 8)
-				txn_keys.put(dbk2, dbv2, dupdata=False, overwrite=True)
-		except (KeyError, AttributeError):
-			pass # nsec3salt not configured or set to null, no problem
+		import_nsec3salt(keys, env, db_keys, zname)
 
 		import_now = int(time.time())
 
@@ -386,7 +407,7 @@ def import_dir(dirname):
 			return False
 
 	env = lmdb.open(dirname, max_dbs=2, map_size=500*1024*1024)
-	db_keys = env.open_db("keys_db")
+	db_keys = env.open_db(b"keys_db")
 	something_imported = False
 	for json_file in glob.glob(dirname + "/*.json"):
 		something_imported = import_file(json_file, env, db_keys) or something_imported
