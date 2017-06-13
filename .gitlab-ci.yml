@@ -134,12 +134,12 @@ test:freebsd:amd64:
 build:documentation:
   <<: *debian_stretch
   stage: build
+  dependencies:
+    - configure:debian:stretch:amd64
   only:
     - tags
     - triggers
   script:
-    - autoreconf -fi
-    - ./configure --with-module-dnstap --with-module-rosedb
     - make -C doc html singlehtml pdf
   artifacts:
     paths:
