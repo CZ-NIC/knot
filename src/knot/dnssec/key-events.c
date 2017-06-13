@@ -15,21 +15,12 @@
  */
 
 #include <assert.h>
-#include <time.h>
-#include <stdarg.h>
 
 #include "contrib/macros.h"
-#include "dnssec/random.h"
-#include "libknot/libknot.h"
-#include "knot/conf/conf.h"
-#include "knot/common/log.h"
 #include "knot/dnssec/kasp/keystate.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/policy.h"
 #include "knot/dnssec/zone-keys.h"
-#include "knot/dnssec/zone-nsec.h"
-#include "knot/dnssec/zone-sign.h"
-#include "knot/zone/serial.h"
 
 #define TIME_INFINITY ((time_t)0x00ffffffffffff00LLU)
 
@@ -76,9 +67,9 @@ static knot_kasp_key_t *key_get_by_id(kdnssec_ctx_t *ctx, const char *keyid)
 static int generate_key(kdnssec_ctx_t *ctx, bool ksk, time_t when_active)
 {
 	knot_kasp_key_t *key = NULL;
-	int r = kdnssec_generate_key(ctx, ksk, &key);
-	if (r != KNOT_EOK) {
-		return r;
+	int ret = kdnssec_generate_key(ctx, ksk, &key);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	key->timing.remove = TIME_INFINITY;
@@ -230,7 +221,6 @@ static time_t ksk_remove_time(time_t retire_time, const kdnssec_ctx_t *ctx)
 	if (retire_time <= 0 || retire_time >= TIME_INFINITY) {
 		return TIME_INFINITY;
 	}
-	// DS TTL == DNSKEY TTL (?) TODO
 	return retire_time + ctx->policy->propagation_delay + ctx->policy->dnskey_ttl;
 }
 
