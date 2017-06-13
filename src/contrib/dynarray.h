@@ -89,6 +89,9 @@
 	visibility void prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
 	                                        ntype const *to_add) \
 	{ \
+		if (dynarray->capacity < 0) { \
+			return; \
+		} \
 		if (dynarray->capacity == 0) { \
 			dynarray->capacity = sizeof(dynarray->init) / sizeof(*dynarray->init); \
 			dynarray->arr = prefix ## _dynarray_arr_init__; \
