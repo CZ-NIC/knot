@@ -1232,6 +1232,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 	int inserting_merged = false;
 
+	size_t occupied_last, occupied_now = knot_db_lmdb_get_usage(j->db->db);
+
 	WALK_LIST(ch, *changesets) {
 		nchs++;
 		serialized_size_total += changeset_serialized_size(ch);
@@ -1243,23 +1245,31 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	// if you're tempted to add dirty_serial deletion somewhere here, you're wrong. Don't do it.
 
 	// PART 2 : recalculating the previous insert's occupy change
-	size_t occupied_last, occupied_now;
 	md_get_common_last_occupied(txn, &occupied_last);
-	occupied_now = knot_db_lmdb_get_usage(j->db->db);
-	md_set(txn, NULL, MDKEY_GLOBAL_LAST_TOTAL_OCCUPIED, occupied_now);
-	if (occupied_now != occupied_last) {
-		knot_dname_t *last_zone = NULL;
-		uint64_t lz_occupied;
-		md_get_common_last_inserter_zone(txn, &last_zone);
-		if (last_zone != NULL) {
-			md_get(txn, last_zone, MDKEY_PERZONE_OCCUPIED, &lz_occupied);
-			lz_occupied = (lz_occupied + occupied_now > occupied_last ?
-			               lz_occupied + occupied_now - occupied_last : 0);
-			md_set(txn, last_zone, MDKEY_PERZONE_OCCUPIED, lz_occupied);
-			free(last_zone);
+	if (occupied_now == 0) {
+		// This shall not happen. We just handle it to minimize damage in case it would. Not 100% correct.
+		uint64_t tz_occupied;
+		md_get(txn, j->zone, MDKEY_PERZONE_OCCUPIED, &tz_occupied);
+		tz_occupied += serialized_size_total;
+		occupied_last += serialized_size_total;
+		md_set(txn, NULL, MDKEY_GLOBAL_LAST_TOTAL_OCCUPIED, occupied_last);
+		md_set(txn, j->zone, MDKEY_PERZONE_OCCUPIED, tz_occupied);
+	} else {
+		md_set(txn, NULL, MDKEY_GLOBAL_LAST_TOTAL_OCCUPIED, occupied_now);
+		if (occupied_now != occupied_last) {
+			knot_dname_t *last_zone = NULL;
+			uint64_t lz_occupied;
+			md_get_common_last_inserter_zone(txn, &last_zone);
+			if (last_zone != NULL) {
+				md_get(txn, last_zone, MDKEY_PERZONE_OCCUPIED, &lz_occupied);
+				lz_occupied = (lz_occupied + occupied_now > occupied_last ?
+					       lz_occupied + occupied_now - occupied_last : 0);
+				md_set(txn, last_zone, MDKEY_PERZONE_OCCUPIED, lz_occupied);
+				free(last_zone);
+			}
 		}
+		md_set_common_last_inserter_zone(txn, j->zone);
 	}
-	md_set_common_last_inserter_zone(txn, j->zone);
 
 	// PART 3 : check if we exceeded designed occupation and delete some
 	uint64_t occupied = 0, occupied_max;
@@ -1520,6 +1530,7 @@ static int open_journal_db_unsafe(journal_db_t **db)
 	opts.maxreaders = JOURNAL_MAX_READERS;
 	opts.flags.env = ((*db)->mode == JOURNAL_MODE_ASYNC ?
 	                  KNOT_DB_LMDB_WRITEMAP | KNOT_DB_LMDB_MAPASYNC : 0);
+	opts.flags.env |= KNOT_DB_LMDB_NOTLS;
 
 	int ret = (*db)->db_api->init(&(*db)->db, NULL, &opts);
 	if (ret != KNOT_EOK) {
