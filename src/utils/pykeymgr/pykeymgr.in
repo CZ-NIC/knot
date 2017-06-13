@@ -4,6 +4,8 @@
 # Manipulate LMDB-beckended KASP database (import from obsolete JSON KASP, list, modify...).
 #
 
+from __future__ import print_function
+
 import datetime
 import time
 import json
