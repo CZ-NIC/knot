@@ -45,7 +45,7 @@ stages:
   stage: configure
   script:
     - autoreconf -fi
-    - ./configure --disable-fastparser
+    - ./configure --disable-fastparser --with-module-dnstap --with-module-rosedb
   artifacts:
     untracked: true
     expire_in: '1 hour'
