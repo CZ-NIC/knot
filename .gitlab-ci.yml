@@ -45,7 +45,7 @@ stages:
   stage: configure
   script:
     - autoreconf -fi
-    - ./configure --disable-fastparser --with-module-dnstap --with-module-rosedb
+    - ./configure --disable-fastparser
   artifacts:
     untracked: true
     expire_in: '1 hour'
@@ -131,16 +131,15 @@ test:freebsd:amd64:
   dependencies:
     - build:freebsd:amd64
 
-
 build:documentation:
   <<: *debian_stretch
   stage: build
-  dependencies:
-    - configure:debian:stretch:amd64
   only:
     - tags
     - triggers
   script:
+    - autoreconf -fi
+    - ./configure --with-module-dnstap --with-module-rosedb
     - make -C doc html singlehtml pdf
   artifacts:
     paths:
