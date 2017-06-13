@@ -43,7 +43,7 @@ static q_dynarray_t q_fill(size_t howmany)
 	return qd;
 }
 
-static void check_arr(q_dynarray_t *q, size_t index, const char *msg)
+static void check_arr(q_dynarray_t *q, size_t count, size_t index, const char *msg)
 {
 	quadrate_t *arr = q->arr(q);
 	ok(arr[index].x == index && arr[index].x2 == index * index,
@@ -54,6 +54,8 @@ static void check_arr(q_dynarray_t *q, size_t index, const char *msg)
 		ok(p->x == i && p->x2 == i * i, "%s foreach: index %zu", msg, i);
 		i++;
 	}
+
+	ok(i == count, "%s foreach: whole array", msg);
 }
 
 int main(int argc, char *argv[])
@@ -62,17 +64,17 @@ int main(int argc, char *argv[])
 
 	// first fill
 	q_dynarray_t q = q_fill(test_capacity - 1);
-	check_arr(&q, test_capacity - 3, "initial");
+	check_arr(&q, test_capacity - 1, test_capacity - 3, "initial");
 	q_dynarray_free(&q);
 
 	// second fill
 	q = q_fill(test_capacity + 3);
-	check_arr(&q, test_capacity + 1, "second");
+	check_arr(&q, test_capacity + 3, test_capacity + 1, "second");
 	q_dynarray_free(&q);
 
 	// third fill
 	q = q_fill(test_capacity * 5);
-	check_arr(&q, test_capacity * 4, "third");
+	check_arr(&q, test_capacity * 5, test_capacity * 4, "third");
 	q_dynarray_free(&q);
 
 	return 0;
