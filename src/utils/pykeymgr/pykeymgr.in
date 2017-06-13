@@ -395,29 +395,20 @@ def import_dir(dirname):
 		print("Warning: nothing imported in", dirname)
 
 class VersionAction(argparse.Action):
+	def __init__(self, option_strings, version=None, dest=argparse.SUPPRESS,
+	             default=argparse.SUPPRESS, help="show program's version number and exit"):
+		super(VersionAction, self).__init__(option_strings=option_strings, dest=dest,
+		      default=default, nargs=0, help=help)
+		self.version = version
 
-	def __init__(self,
-		     option_strings,
-		     version=None,
-		     dest=argparse.SUPPRESS,
-                     default=argparse.SUPPRESS,
-                     help="show program's version number and exit"):
-                super(VersionAction, self).__init__(
-                        option_strings=option_strings,
-                        dest=dest,
-                        default=default,
-                        nargs=0,
-                        help=help)
-                self.version = version
-
-        def __call__(self, parser, namespace, values, option_string=None):
-                version = self.version
-                if version is None:
-                        version = parser.version
-                formatter = parser._get_formatter()
-                formatter.add_text(version)
-                sys.stdout.write(formatter.format_help())
-	        sys.exit(0)
+	def __call__(self, parser, namespace, values, option_string=None):
+		version = self.version
+		if version is None:
+			version = parser.version
+		formatter = parser._get_formatter()
+		formatter.add_text(version)
+		sys.stdout.write(formatter.format_help())
+		sys.exit(0)
 
 def main():
 	global opt_force
