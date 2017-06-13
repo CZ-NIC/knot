@@ -248,9 +248,12 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 			data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
 			time_t ev_time = zone_events_get_time(zone, i);
-			if (ev_time < time(NULL)) {
+			if (ev_time <= 0) {
 				ret = snprintf(buff, sizeof(buff), "not scheduled");
+			} else if (ev_time <= time(NULL)) {
+				ret = snprintf(buff, sizeof(buff), "pending");
 			} else {
+				ev_time -= time(NULL);
 				ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
 				               (long long)(ev_time / 3600),
 				               (long long)(ev_time % 3600) / 60,
