@@ -932,8 +932,7 @@ static int add_missing_records(const knot_rrset_t *soa,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int update_dnskey_rrsigs(const knot_rrset_t *dnskeys,
-                                const knot_rrset_t *rrsigs,
+static int update_dnskey_rrsigs(const knot_rrset_t *rrsigs,
                                 const knot_rrset_t *soa,
                                 zone_keyset_t *zone_keys,
                                 const kdnssec_ctx_t *dnssec_ctx,
@@ -955,9 +954,7 @@ static int update_dnskey_rrsigs(const knot_rrset_t *dnskeys,
 			continue;
 		}
 
-		const knot_rdata_t *soa_data = knot_rdataset_at(&soa->rrs, 0);
-		result = rrset_add_zone_key(&new_dnskeys, key,
-		                            knot_rdata_ttl(soa_data));
+		result = rrset_add_zone_key(&new_dnskeys, key, dnssec_ctx->policy->dnskey_ttl);
 		if (result != KNOT_EOK) {
 			goto fail;
 		}
@@ -1028,7 +1025,7 @@ static int update_dnskeys(const zone_contents_t *zone,
 		return result;
 	}
 
-	return update_dnskey_rrsigs(&dnskeys, &rrsigs, &soa, zone_keys,
+	return update_dnskey_rrsigs(&rrsigs, &soa, zone_keys,
 	                            dnssec_ctx, changeset, expires_at);
 }
 
