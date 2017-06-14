@@ -58,6 +58,8 @@ enum knot_rr_type {
 	KNOT_RRTYPE_CNAME      =   5, /*!< The canonical name for an alias. */
 	KNOT_RRTYPE_SOA        =   6, /*!< The start of a zone of authority. */
 
+	KNOT_RRTYPE_NULL       =  10, /*!< METATYPE. Used in RFC 8145. */
+
 	KNOT_RRTYPE_PTR        =  12, /*!< A domain name pointer. */
 	KNOT_RRTYPE_HINFO      =  13, /*!< A host information. */
 	KNOT_RRTYPE_MINFO      =  14, /*!< A mailbox information. */

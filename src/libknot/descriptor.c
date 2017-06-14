@@ -45,6 +45,8 @@ static const knot_rdata_descriptor_t rdata_descriptors[] = {
 	[KNOT_RRTYPE_SOA]        = { { KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
 	                               KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
 	                               20, KNOT_RDATA_WF_END }, "SOA" },
+	[KNOT_RRTYPE_NULL]       = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "NULL" },
 	[KNOT_RRTYPE_PTR]        = { { KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
 	                               KNOT_RDATA_WF_END }, "PTR" },
 	[KNOT_RRTYPE_HINFO]      = { { KNOT_RDATA_WF_REMAINDER,
