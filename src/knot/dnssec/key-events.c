@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "contrib/macros.h"
+#include "knot/common/log.h"
 #include "knot/dnssec/kasp/keystate.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/policy.h"
@@ -396,6 +397,9 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 				ret = share_or_generate_key(ctx, next.ksk, TIME_INFINITY);
 			} else {
 				ret = generate_key(ctx, next.ksk, TIME_INFINITY);
+			}
+			if (ret == KNOT_EOK) {
+				log_zone_info(ctx->zone->dname, "DNSSEC, %cSK rollover started", (next.ksk ? 'K' : 'Z'));
 			}
 			break;
 		case SUBMIT:
