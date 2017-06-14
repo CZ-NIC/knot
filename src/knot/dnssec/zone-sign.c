@@ -921,54 +921,66 @@ static int add_missing_records(const knot_rrset_t *soa,
 }
 
 /*!
- * \brief Refresh DNSKEY RRSIGs in the zone by updating the changeset.
+ * \brief Refresh DNSKEY/CDS/CDNSKEY RRSIGs in the zone by updating the changeset.
  *
- * \param dnskeys     RR set with DNSKEYs.
+ * \param rrsigs      Current RRSIG rrset.
  * \param soa         RR set with SOA.
  * \param zone_keys   Zone keys.
- * \param policy      DNSSEC policy.
+ * \param dnssec_ctx  Zone signing context.
+ * \param rrtype      Type of the key-related zone records in question.
  * \param changeset   Changeset to be updated.
  * \param expires_at  Earliest RRSIG expiration.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int update_dnskey_rrsigs(const knot_rrset_t *rrsigs,
+static int update_record_rrsigs(const knot_rrset_t *rrsigs,
                                 const knot_rrset_t *soa,
                                 zone_keyset_t *zone_keys,
                                 const kdnssec_ctx_t *dnssec_ctx,
+                                uint16_t rrtype,
                                 changeset_t *changeset,
                                 uint32_t *expires_at)
 {
 	assert(zone_keys);
 	assert(changeset);
 
-	int result;
+	int ret = KNOT_EOK;
 
-	// We know how the DNSKEYs in zone should look like after applying
+	// We know how the DNSKEYs/CDNSKEYs/CDSs in zone should look like after applying
 	// the changeset. RRSIGs can be then built easily.
 
-	knot_rrset_t new_dnskeys = rrset_init_from(soa, KNOT_RRTYPE_DNSKEY);
+	knot_rrset_t new_records = rrset_init_from(soa, rrtype);
 	for (int i = 0; i < zone_keys->count; i++) {
 		zone_key_t *key = &zone_keys->keys[i];
 		if (!key->is_public) {
 			continue;
 		}
 
-		result = rrset_add_zone_key(&new_dnskeys, key, dnssec_ctx->policy->dnskey_ttl);
-		if (result != KNOT_EOK) {
+		if (rrtype != KNOT_RRTYPE_DNSKEY && (!key->is_ready || key->is_active)) {
+			continue;
+		}
+
+		int (*addfce)(knot_rrset_t *, zone_key_t *, uint32_t) =
+		     (rrtype == KNOT_RRTYPE_CDS ? rrset_add_zone_ds : rrset_add_zone_key);
+
+		ret = addfce(&new_records, key,
+				(rrtype == KNOT_RRTYPE_DNSKEY ? dnssec_ctx->policy->dnskey_ttl : 0));
+		if (ret != KNOT_EOK) {
 			goto fail;
 		}
 	}
 
-	if (dnssec_ctx->rrsig_drop_existing) {
-		result = force_resign_rrset(&new_dnskeys, rrsigs, zone_keys, dnssec_ctx, changeset);
-	} else {
-		result = resign_rrset(&new_dnskeys, rrsigs, zone_keys, dnssec_ctx, changeset, expires_at);
+	if (!knot_rrset_empty(&new_records)) {
+		if (dnssec_ctx->rrsig_drop_existing) {
+			ret = force_resign_rrset(&new_records, rrsigs, zone_keys, dnssec_ctx, changeset);
+		} else {
+			ret = resign_rrset(&new_records, rrsigs, zone_keys, dnssec_ctx, changeset, expires_at);
+		}
 	}
 
 fail:
-	knot_rdataset_clear(&new_dnskeys.rrs, NULL);
-	return result;
+	knot_rdataset_clear(&new_records.rrs, NULL);
+	return ret;
 }
 
 /*!
@@ -1020,13 +1032,31 @@ static int update_dnskeys(const zone_contents_t *zone,
 		return result;
 	}
 
-	result = add_missing_records(&soa, &dnskeys, &cdnskeys, &cdss, zone_keys, changeset, dnskey_ttl);
+	result = add_missing_records(&soa, &dnskeys, &cdnskeys, &cdss, zone_keys,
+	                             changeset, dnskey_ttl);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	return update_dnskey_rrsigs(&rrsigs, &soa, zone_keys,
-	                            dnssec_ctx, changeset, expires_at);
+	result = update_record_rrsigs(&rrsigs, &soa, zone_keys, dnssec_ctx,
+	                              KNOT_RRTYPE_DNSKEY, changeset, expires_at);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	result = update_record_rrsigs(&rrsigs, &soa, zone_keys, dnssec_ctx,
+	                              KNOT_RRTYPE_CDNSKEY, changeset, expires_at);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	result = update_record_rrsigs(&rrsigs, &soa, zone_keys, dnssec_ctx,
+	                              KNOT_RRTYPE_CDS, changeset, expires_at);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	return KNOT_EOK;
 }
 
 /*!
