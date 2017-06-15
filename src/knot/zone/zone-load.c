@@ -243,6 +243,10 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 			return ret;
 		}
 
+		if (zone_has_key_sbm(&kctx)) {
+			zone_events_schedule_now(zone, ZONE_EVENT_PARENT_DS_Q);
+		}
+
 		kdnssec_ctx_deinit(&kctx);
 
 		ret = knot_dnssec_zone_sign(contents, &change, 0, dnssec_refresh);

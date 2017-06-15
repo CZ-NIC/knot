@@ -35,6 +35,7 @@ struct ds_query_data {
 	zone_key_t *key;
 
 	bool ds_ok;
+	bool result_logged;
 };
 
 static int ds_query_begin(knot_layer_t *layer, void *params)
@@ -63,6 +64,7 @@ static int ds_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct ds_query_data *data = layer->data;
+	data->result_logged = true;
 
 	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
 		ns_log(LOG_WARNING, data->zone->name, LOG_OPERATION_PARENT,
@@ -117,6 +119,7 @@ static int try_ds(conf_t *conf, zone_t *zone, const conf_remote_t *parent, zone_
 		.remote = (struct sockaddr *)&parent->addr,
 		.key = key,
 		.ds_ok = false,
+		.result_logged = false,
 	};
 
 	struct knot_requestor requestor;
@@ -146,6 +149,11 @@ static int try_ds(conf_t *conf, zone_t *zone, const conf_remote_t *parent, zone_
 	// alternative: we could put answer back through ctx instead of errcode
 	if (ret == KNOT_EOK && !data.ds_ok) {
 		ret = KNOT_ENORECORD;
+	}
+
+	if (ret != KNOT_EOK && !data.result_logged) {
+		ns_log(LOG_WARNING, zone->name, LOG_OPERATION_PARENT,
+		       LOG_DIRECTION_OUT, data.remote, "failed (%s)", knot_strerror(ret));
 	}
 
 	return ret;
