@@ -1,9 +1,52 @@
 .. highlight:: none
-.. _Migration from other DNS servers:
+.. _Migration:
 
-********************************
-Migration from other DNS servers
-********************************
+*********
+Migration
+*********
+
+.. _Upgrade comments 2.4 to 2.5:
+
+Upgrade comments 2.4 to 2.5
+===========================
+
+This chapter describes some steps necessary after upgrading Knot DNS from
+version 2.4.x to 2.5.x.
+
+.. _KASP DB migration:
+
+KASP DB migration
+-----------------
+
+Knot DNS version 2.4.x and earlier uses JSON files to store DNSSEC keys metadata,
+one for each zone. 2.5.x versions store those in binary format in a LMDB, all zones
+together. The migration is possible with ``pykeymgr`` script::
+
+   $ pykeymgr -i path/to/keydir
+
+The path to KASP DB directory is configuration-dependent, usually it is the ``keys``
+subdirectory in the zone storage.
+
+In rare installations, the JSON files might be spread across more directories. In such
+case, it is necessary to put them together into one directory and migrate at once.
+
+.. _Configuration changes:
+
+Configuration changes
+---------------------
+
+It is no longer possible to configure KASP DB per zone or in a non-default
+template. Ensure just one common KASP DB configuration in the default
+template.
+
+As Knot DNS version 2.5.0 brings dynamically loaded modules, some modules
+were renamed for technical reasons. So it is necessary to rename all
+occurrences (module section names and references from zones or templates)
+of the following module names in the configuration::
+
+   mod-online-sign -> mod-onlinesign
+
+   mod-synth-record -> mod-synthrecord
 
 .. _Knot DNS for BIND users:
 
