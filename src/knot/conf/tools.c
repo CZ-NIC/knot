@@ -323,6 +323,15 @@ int check_policy(
 	conf_val_t refresh = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_RRSIG_REFRESH, args->id, args->id_len);
 
+	conf_val_t prop_del = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+						 C_PROPAG_DELAY, args->id, args->id_len);
+	conf_val_t zsk_life = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+						 C_ZSK_LIFETIME, args->id, args->id_len);
+	conf_val_t ksk_life = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+						 C_KSK_LIFETIME, args->id, args->id_len);
+	conf_val_t dnskey_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+						   C_DNSKEY_TTL, args->id, args->id_len);
+
 	int64_t ksk_size = conf_int(&ksk);
 	if (ksk_size != YP_NIL && !dnssec_algorithm_key_size_check(conf_opt(&alg), ksk_size)) {
 		args->err_str = "KSK key size not compatible with the algorithm";
@@ -339,6 +348,20 @@ int check_policy(
 	int64_t refresh_val = conf_int(&refresh);
 	if (lifetime_val <= refresh_val) {
 		args->err_str = "RRSIG lifetime is supposed to be lower than refresh";
+		return KNOT_EINVAL;
+	}
+
+	int64_t prop_del_val = conf_int(&prop_del);
+	int64_t zsk_life_val = conf_int(&zsk_life);
+	int64_t ksk_life_val = conf_int(&ksk_life);
+	int64_t dnskey_ttl_val = conf_int(&dnskey_ttl);
+
+	if (zsk_life_val < 2 * prop_del_val + dnskey_ttl_val) {
+		args->err_str = "ZSK lifetime too low according to propagation delay and DNSKEY TTL";
+		return KNOT_EINVAL;
+	}
+	if (ksk_life_val != 0 && ksk_life_val < 2 * prop_del_val + 2 * dnskey_ttl_val) {
+		args->err_str = "KSK lifetime too low according to propagation delay and DNSKEY TTL";
 		return KNOT_EINVAL;
 	}
 
