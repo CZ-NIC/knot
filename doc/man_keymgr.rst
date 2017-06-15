@@ -144,7 +144,7 @@ Examples
 
 4. Configure key timing::
 
-    $ keymgr -d ${knot_data_dir}/keys test.test. set 4208 active=t+2mi retire=t+4mi remove=t+5mi
+    $ keymgr -d ${knot_data_dir}/keys test.test. set 4208 active=now+2mi retire=now+4mi remove=now+5mi
 
 5. Share a KSK from another zone::
 
