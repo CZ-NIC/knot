@@ -415,10 +415,26 @@ static void log_parser_err(
 	int ret)
 {
 	CONF_LOG_LINE(parser->file.name, parser->line_count,
-	              "item '%.*s', value '%.*s' (%s)",
-	              (int)parser->key_len, parser->key,
-	              (int)parser->data_len, parser->data,
+	              "item '%s'%s%s%s (%s)",
+	              parser->key,
+	              (parser->data_len > 0) ? ", value '"  : "",
+	              (parser->data_len > 0) ? parser->data : "",
+	              (parser->data_len > 0) ? "'"          : "",
 	              knot_strerror(ret));
+}
+
+static void log_parser_schema_err(
+	yp_parser_t *parser,
+	int ret)
+{
+	// Emit better message for 'unknown module' error.
+	if (ret == KNOT_YP_EINVAL_ITEM && parser->event == YP_EKEY0 &&
+	    strncmp(parser->key, KNOTD_MOD_NAME_PREFIX, strlen(KNOTD_MOD_NAME_PREFIX)) == 0) {
+		CONF_LOG_LINE(parser->file.name, parser->line_count,
+		              "unknown module '%s'", parser->key);
+	} else {
+		log_parser_err(parser, ret);
+	}
 }
 
 static void log_call_err(
@@ -427,9 +443,11 @@ static void log_call_err(
 	int ret)
 {
 	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
-	              "item '%s', value '%.*s' (%s)", args->item->name + 1,
-	              (int)parser->data_len, parser->data,
-	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
+	              "item '%s'%s%s%s (%s)", args->item->name + 1,
+	              (parser->data_len > 0) ? ", value '"  : "",
+	              (parser->data_len > 0) ? parser->data : "",
+	              (parser->data_len > 0) ? "'"          : "",
+	              (args->err_str != NULL) ? args->err_str : knot_strerror(ret));
 }
 
 static void log_prev_err(
@@ -575,7 +593,7 @@ int conf_parse(
 
 		check_ret = yp_schema_check_parser(ctx, parser);
 		if (check_ret != KNOT_EOK) {
-			log_parser_err(parser, check_ret);
+			log_parser_schema_err(parser, check_ret);
 			break;
 		}
 

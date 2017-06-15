@@ -485,6 +485,10 @@ static int glob_error(
 int include_file(
 	knotd_conf_check_args_t *args)
 {
+	if (args->data_len == 0) {
+		return KNOT_YP_ENODATA;
+	}
+
 	// This function should not be called in more threads.
 	static int depth = 0;
 	glob_t glob_buf = { 0 };
