@@ -31,8 +31,8 @@ enum zone_sign_flags {
 typedef enum zone_sign_flags zone_sign_flags_t;
 
 typedef struct {
-        time_t next_sign;
-        time_t next_rollover;
+        knot_time_t next_sign;
+        knot_time_t next_rollover;
         bool keys_changed;
         bool plan_ds_query;
         bool allow_rollover; // this one is set by the caller
@@ -94,4 +94,4 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
  *
  * \return KNOT_E*
  */
-int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, time_t *when_resalt);
+int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, knot_time_t *when_resalt);

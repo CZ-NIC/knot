@@ -30,24 +30,28 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 {
 	time_t now = time(NULL);
 	time_t ignore = -1;
-	time_t refresh_at = refresh->next_sign;
+	knot_time_t refresh_at = refresh->next_sign;
 
-	if (refresh->next_rollover < refresh_at && refresh->next_rollover > 0) {
+	if (knot_time_cmp(refresh->next_rollover, refresh_at) < 0) {
 		refresh_at = refresh->next_rollover;
+	}
+
+	if (refresh_at <= 0) {
+		return;
 	}
 
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 
-	log_dnssec_next(zone->name, refresh_at);
+	log_dnssec_next(zone->name, (time_t)refresh_at);
 
 	if (refresh->plan_ds_query) {
 		log_zone_notice(zone->name, "DNSSEC, published CDS, CDNSKEY for submission");
 	}
 
 	zone_events_schedule_at(zone,
-		ZONE_EVENT_DNSSEC, refresh_at,
+		ZONE_EVENT_DNSSEC, (time_t)refresh_at,
 		ZONE_EVENT_PARENT_DS_Q, refresh->plan_ds_query ? now : ignore,
-	        ZONE_EVENT_NOTIFY, zone_changed ? now : ignore,
+		ZONE_EVENT_NOTIFY, zone_changed ? now : ignore,
 		ZONE_EVENT_FLUSH,  zone_changed && conf_int(&val) == 0 ? now : ignore
 	);
 }

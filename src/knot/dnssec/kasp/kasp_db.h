@@ -18,6 +18,7 @@
 
 #include <time.h>
 
+#include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 #include "libknot/db/db_lmdb.h"
 #include "libknot/dname.h"
@@ -138,7 +139,7 @@ int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from, const knot_d
  * \return KNOT_E*
  */
 int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
-                            const dnssec_binary_t *nsec3salt, time_t salt_created);
+                            const dnssec_binary_t *nsec3salt, knot_time_t salt_created);
 
 /*!
  * \brief Load NSEC3 salt for given zone.
@@ -151,7 +152,7 @@ int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
  * \return KNOT_E* (KNOT_ENOENT if not stored before)
  */
 int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
-                           dnssec_binary_t *nsec3salt, time_t *salt_created);
+                           dnssec_binary_t *nsec3salt, knot_time_t *salt_created);
 
 /*!
  * \brief For given policy name, obtain last generated key.

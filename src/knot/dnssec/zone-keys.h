@@ -46,7 +46,7 @@ struct zone_key {
 
 	dnssec_binary_t precomputed_ds;
 
-	time_t next_event;
+	knot_time_t next_event;
 
 	bool is_ksk;
 	bool is_zsk;
@@ -121,7 +121,7 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
  * \return Error code, KNOT_EOK if successful.
  */
 int load_zone_keys(knot_kasp_zone_t *zone, dnssec_keystore_t *store,
-                   bool nsec3_enabled, time_t now, zone_keyset_t *keyset_ptr);
+                   bool nsec3_enabled, knot_time_t now, zone_keyset_t *keyset_ptr);
 
 /*!
  * \brief Get zone keys by a keytag.
@@ -147,7 +147,7 @@ void free_zone_keys(zone_keyset_t *keyset);
  *
  * \return Timestamp of next key event.
  */
-time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
+knot_time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
 
 /*!
  * \brief Returns DS record rdata for given key.

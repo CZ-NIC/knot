@@ -202,15 +202,14 @@ static keyptr_dynarray_t get_matching_zone_keys(const knot_rrset_t *rrsigs,
  * \param expires_at  Current earliest expiration, will be updated.
  */
 static void note_earliest_expiration(const knot_rrset_t *rrsigs, size_t pos,
-                                     uint32_t *expires_at)
+                                     knot_time_t *expires_at)
 {
 	assert(rrsigs);
 	assert(expires_at);
 
-	uint32_t current = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
-	if (current < *expires_at) {
-		*expires_at = current;
-	}
+	uint32_t curr_rdata = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	knot_time_t current = knot_time_from_u32(curr_rdata);
+	*expires_at = knot_time_min(current, *expires_at);
 }
 
 /*!
@@ -230,7 +229,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
                                  const zone_keyset_t *zone_keys,
                                  const kdnssec_ctx_t *dnssec_ctx,
                                  changeset_t *changeset,
-                                 uint32_t *expires_at)
+                                 knot_time_t *expires_at)
 {
 	assert(changeset);
 
@@ -433,7 +432,7 @@ static int resign_rrset(const knot_rrset_t *covered,
                         const zone_keyset_t *zone_keys,
                         const kdnssec_ctx_t *dnssec_ctx,
                         changeset_t *changeset,
-                        uint32_t *expires_at)
+                        knot_time_t *expires_at)
 {
 	assert(!knot_rrset_empty(covered));
 
@@ -494,7 +493,7 @@ static int sign_node_rrsets(const zone_node_t *node,
                             const zone_keyset_t *zone_keys,
                             const kdnssec_ctx_t *dnssec_ctx,
                             changeset_t *changeset,
-                            uint32_t *expires_at)
+                            knot_time_t *expires_at)
 {
 	assert(node);
 	assert(dnssec_ctx);
@@ -535,7 +534,7 @@ typedef struct node_sign_args {
 	const zone_keyset_t *zone_keys;
 	const kdnssec_ctx_t *dnssec_ctx;
 	changeset_t *changeset;
-	uint32_t expires_at;
+	knot_time_t expires_at;
 } node_sign_args_t;
 
 /*!
@@ -581,7 +580,7 @@ static int zone_tree_sign(zone_tree_t *tree,
                           const zone_keyset_t *zone_keys,
                           const kdnssec_ctx_t *dnssec_ctx,
                           changeset_t *changeset,
-                          uint32_t *expires_at)
+                          knot_time_t *expires_at)
 {
 	assert(zone_keys);
 	assert(dnssec_ctx);
@@ -591,7 +590,7 @@ static int zone_tree_sign(zone_tree_t *tree,
 		.zone_keys = zone_keys,
 		.dnssec_ctx = dnssec_ctx,
 		.changeset = changeset,
-		.expires_at = dnssec_ctx->now + dnssec_ctx->policy->rrsig_lifetime
+		.expires_at = knot_time_add(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime),
 	};
 
 	int result = zone_tree_apply(tree, sign_node, &args);
@@ -939,7 +938,7 @@ static int update_record_rrsigs(const knot_rrset_t *rrsigs,
                                 const kdnssec_ctx_t *dnssec_ctx,
                                 uint16_t rrtype,
                                 changeset_t *changeset,
-                                uint32_t *expires_at)
+                                knot_time_t *expires_at)
 {
 	assert(zone_keys);
 	assert(changeset);
@@ -998,7 +997,7 @@ static int update_dnskeys(const zone_contents_t *zone,
                           zone_keyset_t *zone_keys,
                           const kdnssec_ctx_t *dnssec_ctx,
                           changeset_t *changeset,
-                          uint32_t *expires_at)
+                          knot_time_t *expires_at)
 {
 	assert(zone);
 	assert(zone->apex);
@@ -1269,7 +1268,7 @@ int knot_zone_sign(const zone_contents_t *zone,
                    zone_keyset_t *zone_keys,
                    const kdnssec_ctx_t *dnssec_ctx,
                    changeset_t *changeset,
-                   uint32_t *expire_at)
+                   knot_time_t *expire_at)
 {
 	if (!zone || !zone_keys || !dnssec_ctx || !changeset || !expire_at) {
 		return KNOT_EINVAL;
@@ -1277,28 +1276,28 @@ int knot_zone_sign(const zone_contents_t *zone,
 
 	int result;
 
-	uint32_t dnskey_expire = UINT32_MAX;
+	knot_time_t dnskey_expire = 0;
 	result = update_dnskeys(zone, zone_keys, dnssec_ctx, changeset,
 	                        &dnskey_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	uint32_t normal_expire = UINT32_MAX;
+	knot_time_t normal_expire = 0;
 	result = zone_tree_sign(zone->nodes, zone_keys, dnssec_ctx, changeset,
 	                        &normal_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	uint32_t nsec3_expire = UINT32_MAX;
+	knot_time_t nsec3_expire = 0;
 	result = zone_tree_sign(zone->nsec3_nodes, zone_keys, dnssec_ctx,
 	                        changeset, &nsec3_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	*expire_at = MIN(dnskey_expire, MIN(normal_expire, nsec3_expire));
+	*expire_at = knot_time_min(dnskey_expire, knot_time_min(normal_expire, nsec3_expire));
 
 	return KNOT_EOK;
 }

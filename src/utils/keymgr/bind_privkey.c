@@ -374,9 +374,9 @@ void bind_privkey_to_timing(bind_privkey_t *params, knot_kasp_key_timing_t *timi
 {
 	// unsupported: time_created, time_revoke
 
-	timing->publish = params->time_publish;
-	timing->ready   = params->time_activate;
-	timing->active  = params->time_activate;
-	timing->retire  = params->time_inactive;
-	timing->remove  = params->time_delete;
+	timing->publish = (knot_time_t)params->time_publish;
+	timing->ready   = (knot_time_t)params->time_activate;
+	timing->active  = (knot_time_t)params->time_activate;
+	timing->retire  = (knot_time_t)params->time_inactive;
+	timing->remove  = (knot_time_t)params->time_delete;
 }

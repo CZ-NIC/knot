@@ -141,22 +141,22 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			}
 			switch ((argv[i][0] == 'r') ? argv[i][3] : argv[i][0]) {
 			case 'c':
-				timing->created = stamp;
+				timing->created = (knot_time_t)stamp;
 				break;
 			case 'a':
-				timing->active = stamp;
+				timing->active = (knot_time_t)stamp;
 				break;
 			case 'd':
-				timing->ready = stamp;
+				timing->ready = (knot_time_t)stamp;
 				break;
 			case 'p':
-				timing->publish = stamp;
+				timing->publish = (knot_time_t)stamp;
 				break;
 			case 'i':
-				timing->retire = stamp;
+				timing->retire = (knot_time_t)stamp;
 				break;
 			case 'o':
-				timing->remove = stamp;
+				timing->remove = (knot_time_t)stamp;
 				break;
 			}
 		} else {
@@ -169,7 +169,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 
 // modifies ctx->policy options, so don't do anything afterwards !
 int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]) {
-	time_t now = time(NULL), infty = 0x0fffffffffffff00LLU;
+	knot_time_t now = knot_time(), infty = 0;
 	knot_kasp_key_timing_t gen_timing = { now, now, now, now, infty, infty };
 	bool isksk = false;
 	uint16_t keysize = 0;
@@ -358,7 +358,7 @@ cleanup:
 int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, char *argv[])
 {
 	// parse params
-	time_t now = time(NULL), infty = 0x0fffffffffffff00LLU;
+	knot_time_t now = knot_time(), infty = 0;
 	knot_kasp_key_timing_t gen_timing = { now, now, now, now, infty, infty };
 	bool isksk = false;
 	uint16_t keysize = 0;

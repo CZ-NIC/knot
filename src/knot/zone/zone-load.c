@@ -235,7 +235,7 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 			return ret;
 		}
 
-		bool ignore1 = false; time_t ignore2 = 0;
+		bool ignore1 = false; knot_time_t ignore2 = 0;
 		ret = knot_dnssec_nsec3resalt(&kctx, &ignore1, &ignore2);
 		if (ret != KNOT_EOK) {
 			kdnssec_ctx_deinit(&kctx);

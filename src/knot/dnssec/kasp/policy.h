@@ -19,18 +19,19 @@
 #include <stdbool.h>
 #include <time.h>
 
+#include "contrib/time.h"
 #include "dnssec/lib/dnssec/key.h"
 
 /*!
  * KASP key timing information.
  */
 typedef struct {
-	time_t created;		/*!< Time the key was generated/imported. */
-	time_t publish;		/*!< Time of DNSKEY record publication. */
-	time_t ready;		/*!< Start of RRSIG generation, waiting for parent zone. */
-	time_t active;		/*!< RRSIG records generating, other keys can be retired */
-	time_t retire;		/*!< End of RRSIG records generating. */
-	time_t remove;		/*!< Time of DNSKEY record removal. */
+	knot_time_t created;		/*!< Time the key was generated/imported. */
+	knot_time_t publish;		/*!< Time of DNSKEY record publication. */
+	knot_time_t ready;		/*!< Start of RRSIG generation, waiting for parent zone. */
+	knot_time_t active;		/*!< RRSIG records generating, other keys can be retired */
+	knot_time_t retire;		/*!< End of RRSIG records generating. */
+	knot_time_t remove;		/*!< Time of DNSKEY record removal. */
 } knot_kasp_key_timing_t;
 
 /*!
@@ -87,3 +88,4 @@ typedef struct {
 	uint32_t ksk_sbm_timeout;
 	uint32_t ksk_sbm_check_interval;
 } knot_kasp_policy_t;
+// TODO make the time parameters knot_timediff_t ??

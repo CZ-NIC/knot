@@ -50,7 +50,7 @@
 int knot_zone_sign(const zone_contents_t *zone,
                    zone_keyset_t *zone_keys,
                    const kdnssec_ctx_t *dnssec_ctx,
-                   changeset_t *out_ch, uint32_t *expire_at);
+                   changeset_t *out_ch, knot_time_t *expire_at);
 
 /*!
  * \brief Update and sign SOA and store performed changes in changeset.

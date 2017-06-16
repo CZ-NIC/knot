@@ -20,7 +20,7 @@
 int event_nsec3resalt(conf_t *conf, zone_t *zone)
 {
 	bool salt_changed = false;
-	time_t next_resalt = 0;
+	knot_time_t next_resalt = 0;
 
 	kdnssec_ctx_t kctx = { 0 };
 
