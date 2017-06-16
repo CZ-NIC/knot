@@ -276,13 +276,6 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
 		goto done;
 	}
 
-	result = knot_zone_sign_nsecs_in_changeset(&keyset, &ctx, out_ch);
-	if (result != KNOT_EOK) {
-		log_zone_error(zone_name, "DNSSEC, failed to sign changeset (%s)",
-		               knot_strerror(result));
-		goto done;
-	}
-
 	// update SOA
 
 	result = sign_update_soa(zone, out_ch, &ctx, &keyset);
