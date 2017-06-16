@@ -764,7 +764,7 @@ static int vals_to_changeset(knot_db_val_t *vals, int nvals,
 {
 	uint8_t *valps[nvals];
 	size_t vallens[nvals];
-	for (int i = 0; i < nvals; i++) {
+	for (size_t i = 0; i < nvals; i++) {
 		valps[i] = vals[i].data + JOURNAL_HEADER_SIZE;
 		vallens[i] = vals[i].len - JOURNAL_HEADER_SIZE;
 	}
@@ -1356,7 +1356,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			txn->ret = KNOT_ENOMEM;
 			break;
 		}
-		for (int i = 0; i < maxchunks; i++) {
+		for (size_t i = 0; i < maxchunks; i++) {
 			chunkptrs[i] = allchunks + i*CHUNK_MAX + JOURNAL_HEADER_SIZE;
 		}
 		txn->ret = changeset_serialize(ch, chunkptrs, CHUNK_MAX - JOURNAL_HEADER_SIZE,
@@ -1370,14 +1370,14 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		uint32_t serial = is_this_bootstrap ? 0 : knot_soa_serial(&ch->soa_from->rrs);
 		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
 
-		for (int i = 0; i < chunks; i++) {
+		for (size_t i = 0; i < chunks; i++) {
 			vals[i].data = allchunks + i*CHUNK_MAX;
 			vals[i].len = JOURNAL_HEADER_SIZE + chunksizes[i];
 			make_header(vals + i, serial_to, chunks);
 		}
 
 	// PART 6: inserting vals into db
-		for (int i = 0; i < chunks; i++) {
+		for (size_t i = 0; i < chunks; i++) {
 			if (txn->ret != KNOT_EOK) break;
 			if (is_this_bootstrap) {
 				txn_key_str_u32(txn, j->zone, KEY_BOOTSTRAP_CHANGESET, i);
