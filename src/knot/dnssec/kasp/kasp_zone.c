@@ -207,25 +207,25 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 	}
 
 	key_params_t parm;
-	int ret;
 	for (size_t i = 0; i < zone->num_keys; i++) {
 		kaspkey2params(&zone->keys[i], &parm);
-		ret = kasp_db_add_key(kdb, zone_name, &parm);
-		// force overwrite already existing key-val pairs
+
+		// Force overwrite already existing key-val pairs.
+		int ret = kasp_db_add_key(kdb, zone_name, &parm);
 		if (ret != KNOT_EOK) {
-			goto kzs_end;
+			return ret;
 		}
 	}
 
 	if (zone->nsec3_salt.size > 0) {
-		ret = kasp_db_store_nsec3salt(kdb, zone_name, &zone->nsec3_salt, zone->nsec3_salt_created);
+		int ret = kasp_db_store_nsec3salt(kdb, zone_name, &zone->nsec3_salt,
+		                                  zone->nsec3_salt_created);
 		if (ret != KNOT_EOK) {
-			goto kzs_end;
+			return ret;
 		}
 	}
 
-kzs_end:
-	return ret;
+	return KNOT_EOK;
 }
 
 int kasp_zone_init(knot_kasp_zone_t **zone)
