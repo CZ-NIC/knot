@@ -5,13 +5,32 @@
 Migration
 *********
 
-.. _Upgrade comments 2.4 to 2.5:
+.. _Upgrade 2.4.x to 2.5.x:
 
-Upgrade comments 2.4 to 2.5
-===========================
+Upgrade 2.4.x to 2.5.x
+======================
 
 This chapter describes some steps necessary after upgrading Knot DNS from
 version 2.4.x to 2.5.x.
+
+.. _Building changes:
+
+Building changes
+----------------
+
+The ``--enable-dnstap`` configure option now enables the dnstap support in
+kdig only! To build the dnstap query module, ``--with-module-dnstap`` have
+to be used.
+
+Since Knot DNS version 2.5.0 each query module can be configured to be:
+
+- disabled: ``--with-module-``\ MODULE_NAME\ ``=no``
+- embedded: ``--with-module-``\ MODULE_NAME\ ``=yes``
+- external: ``--with-module-``\ MODULE_NAME\ ``=shared`` (excluding
+  ``dnsproxy`` and ``onlinesign``)
+
+The ``--with-timer-mapsize`` configure option was replaced with the runtime
+:ref:`template_max-timer-db-size` configuration option.
 
 .. _KASP DB migration:
 

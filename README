@@ -1,34 +1,12 @@
-Dependencies
+Requirements
 ============
 
-Knot DNS has several dependencies:
-* libtool
-* autoconf > 2.65
-* pkg-config
-* liburcu >= 0.5.4
-* gnutls >= 3.0
-* libedit
-
-Embedded libraries:
-* lmdb               (system library is preferred)
-
-Optional packages:
-* libcap-ng >= 0.6.4 (for POSIX 1003.1e capabilities(7))
-* libidn             (for IDNA2003 support in Knot utilities)
-* libsystemd         (for systemd init system support)
-
-Dependencies for building documentation:
-* python-sphinx
+./doc/requirements.rst
 
 Installation
 ============
 
-Knot DNS may already be included in your operating system distribution and
-therefore can be installed from packages (Linux), ports (BSD) or via
-Homebrew (Mac). This is always preferred unless you want to test the latest
-features, contribute to Knot development, or you just know what you are doing.
-
-Following sections describe how to build Knot DNS from the source code.
+./doc/installation.rst
 
 1) Install prerequisites
 
@@ -72,10 +50,6 @@ with newer GnuTLS is required instead of gnutls-devel.
 
 2) Install Knot DNS
 
-Knot DNS requires compiler to support atomic intrinsics.
-GCC version at least 4.1 supports legacy atomic builtins, however 4.7
-or newer is preferred. Clang supports atomics since version 2.9.
-
 Get the source code:
 $ git clone git://git.nic.cz/knot-dns.git
 Or extract source package to knot-dns directory
@@ -90,15 +64,15 @@ Install Knot DNS into system:
 $ sudo make install
 $ sudo ldconfig
 
-NOTE: If you want to reduce zscanner compile time, use configure option --disable-fastparser.
-
 Running
 =======
+
+./doc/operation.rst
 
 1) Each server needs configuration file. Please see samples/knot.sample.conf,
 project documentation, or man 5 knot.conf for more details.
 Configuration file has to specify:
-- storage for PID files, journal files etc.
+- storage for PID files, journal and timer databases etc.
 - network interfaces
 - served zones
 
@@ -117,9 +91,3 @@ installed Knot using a binary package.
 
 Start Knot in the foreground to see if it runs:
 $ knotd -c myserver.conf
-
-For more information, refer to the user manual or:
-$ knotc -h
-$ knotd -h
-
-Join the chat at https://gitter.im/CZ-NIC/knot
