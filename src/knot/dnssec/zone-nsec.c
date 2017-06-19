@@ -22,6 +22,7 @@
 #include "libknot/rrtype/soa.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/nsec3-chain.h"
+#include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
@@ -380,13 +381,18 @@ int knot_zone_create_nsec_chain(const zone_contents_t *zone,
 		return ret;
 	}
 
+	// beware this is a hack: we need to guess correct apex type bitmap
+	// but it can change during zone signing.
+	bool apex_has_cds = zone_has_key_sbm(ctx);
+
 	if (ctx->policy->nsec3_enabled) {
-		int ret = knot_nsec3_create_chain(zone, &params, nsec_ttl, changeset);
+		int ret = knot_nsec3_create_chain(zone, &params, nsec_ttl,
+						  apex_has_cds, changeset);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	} else {
-		int ret = knot_nsec_create_chain(zone, nsec_ttl, changeset);
+		int ret = knot_nsec_create_chain(zone, nsec_ttl, apex_has_cds, changeset);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

@@ -31,11 +31,12 @@
  * \param from       Node that should contain the new RRSet.
  * \param to         Node that should be pointed to from 'from'.
  * \param ttl        Record TTL (SOA's minimum TTL).
+ * \param apex_cds   Hint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
-                             const zone_node_t *to, uint32_t ttl)
+                             const zone_node_t *to, uint32_t ttl, bool apex_cds)
 {
 	assert(from);
 	assert(to);
@@ -52,6 +53,10 @@ static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
 	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 	if (node_rrtype_exists(from, KNOT_RRTYPE_SOA)) {
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_DNSKEY);
+		if (apex_cds) {
+			dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_CDS);
+			dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_CDNSKEY);
+		}
 	}
 
 	// Create RDATA
@@ -109,7 +114,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 
 	// create new NSEC
 	knot_rrset_t new_nsec;
-	ret = create_nsec_rrset(&new_nsec, a, b, data->ttl);
+	ret = create_nsec_rrset(&new_nsec, a, b, data->ttl, data->cds_in_apex);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -280,13 +285,13 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n)
  * \brief Create new NSEC chain, add differences from current into a changeset.
  */
 int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
-                           changeset_t *changeset)
+                           bool cds_in_apex, changeset_t *changeset)
 {
 	assert(zone);
 	assert(zone->nodes);
 	assert(changeset);
 
-	nsec_chain_iterate_data_t data = { ttl, changeset, zone };
+	nsec_chain_iterate_data_t data = { ttl, cds_in_apex, changeset, zone };
 
 	return knot_nsec_chain_iterate_create(zone->nodes,
 	                                      connect_nsec_nodes, &data);

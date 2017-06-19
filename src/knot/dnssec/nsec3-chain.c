@@ -307,13 +307,15 @@ static zone_node_t *create_nsec3_node(knot_dname_t *owner,
  * \param apex       Zone apex node.
  * \param params     NSEC3 hash function parameters.
  * \param ttl        TTL of the new NSEC3 node.
+ * \param apex_cds   Hint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
                                                zone_node_t *apex,
                                                const dnssec_nsec3_params_t *params,
-                                               uint32_t ttl)
+                                               uint32_t ttl,
+                                               bool apex_cds)
 {
 	assert(node);
 	assert(apex);
@@ -337,6 +339,10 @@ static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
 	if (node == apex) {
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_DNSKEY);
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC3PARAM);
+		if (apex_cds) {
+			dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_CDS);
+			dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_CDNSKEY);
+		}
 	}
 
 	zone_node_t *nsec3_node;
@@ -410,7 +416,9 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
  * \brief Create NSEC3 node for each regular node in the zone.
  *
  * \param zone         Zone.
+ * \param params       NSEC3 params.
  * \param ttl          TTL for the created NSEC records.
+ * \param cds_in_apex  Hint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
  * \param nsec3_nodes  Tree whereto new NSEC3 nodes will be added.
  * \param chgset       Changeset used for possible NSEC removals
  *
@@ -419,6 +427,7 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 static int create_nsec3_nodes(const zone_contents_t *zone,
                               const dnssec_nsec3_params_t *params,
                               uint32_t ttl,
+                              bool cds_in_apex,
                               zone_tree_t *nsec3_nodes,
                               changeset_t *chgset)
 {
@@ -450,7 +459,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 
 		zone_node_t *nsec3_node;
 		nsec3_node = create_nsec3_node_for_node(node, zone->apex,
-		                                        params, ttl);
+							params, ttl, cds_in_apex);
 		if (!nsec3_node) {
 			result = KNOT_ENOMEM;
 			break;
@@ -550,6 +559,7 @@ static int nsec3_reset(zone_node_t **node_p, void *data)
 int knot_nsec3_create_chain(const zone_contents_t *zone,
                             const dnssec_nsec3_params_t *params,
                             uint32_t ttl,
+                            bool cds_in_apex,
                             changeset_t *changeset)
 {
 	assert(zone);
@@ -577,7 +587,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 		return result;
 	}
 
-	result = create_nsec3_nodes(zone, params, ttl, nsec3_nodes, changeset);
+	result = create_nsec3_nodes(zone, params, ttl, cds_in_apex, nsec3_nodes, changeset);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
