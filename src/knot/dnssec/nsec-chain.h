@@ -39,6 +39,7 @@
  */
 typedef struct {
 	uint32_t ttl;			// TTL for NSEC(3) records
+	bool cds_in_apex;		// Marks presence of CDS&CDNSKEY records in apex.
 	changeset_t *changeset;		// Changeset for NSEC(3) changes
 	const zone_contents_t *zone;	// Updated zone
 } nsec_chain_iterate_data_t;
@@ -125,9 +126,10 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
  *
  * \param zone       Zone.
  * \param ttl        TTL for created NSEC records.
+ * \param cds_in_apexHint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
  * \param changeset  Changeset the differences will be put into.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
+int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl, bool cds_in_apex,
                            changeset_t *changeset);

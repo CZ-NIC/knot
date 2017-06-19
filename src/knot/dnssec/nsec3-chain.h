@@ -27,6 +27,7 @@
  * \param zone       Zone to be checked.
  * \param params     NSEC3 parameters.
  * \param ttl        TTL for new records.
+ * \param cds_in_apexHint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
  * \param changeset  Changeset to store changes into.
  *
  * \return KNOT_E*
@@ -34,4 +35,5 @@
 int knot_nsec3_create_chain(const zone_contents_t *zone,
                             const dnssec_nsec3_params_t *params,
                             uint32_t ttl,
+                            bool cds_in_apex,
                             changeset_t *changeset);
