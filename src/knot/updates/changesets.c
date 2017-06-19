@@ -315,7 +315,9 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, unsigned f
 		knot_rrset_free((knot_rrset_t **)&rrset, NULL);
 	}
 
-	return ret;
+	// we don't care of TTLs at removals anyway (updates/apply.c/can_remove()/compare_ttls)
+	// in practice, this happens at merging changesets
+	return (ret == KNOT_ETTL ? KNOT_EOK : ret);
 }
 
 int changeset_remove_addition(changeset_t *ch, const knot_rrset_t *rrset)
