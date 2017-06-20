@@ -552,14 +552,8 @@ static int check_digest(const knot_rrset_t *tsig_rr,
 		return KNOT_TSIG_EBADKEY;
 	}
 
-	/* Check time signed. */
-	int ret = check_time_signed(tsig_rr, prev_time_signed);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	/* Check that libknot knows the algorithm. */
-	ret = check_algorithm(tsig_rr);
+	int ret = check_algorithm(tsig_rr);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -618,6 +612,12 @@ static int check_digest(const knot_rrset_t *tsig_rr,
 
 	if (memcmp(tsig_mac, digest_tmp, mac_length) != 0) {
 		return KNOT_TSIG_EBADSIG;
+	}
+
+	/* Check TSIG validity period, must be after the signature check! */
+	ret = check_time_signed(tsig_rr, prev_time_signed);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	return KNOT_EOK;
