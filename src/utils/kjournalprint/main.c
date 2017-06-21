@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "knot/journal/journal.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/exec.h"
+#include "contrib/dynarray.h"
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
 
@@ -40,7 +41,10 @@ static void print_help(void)
 	       " -l, --limit <num>  Read only <num> newest changes.\n"
 	       " -n, --no-color     Get output without terminal coloring.\n"
 	       " -z, --zone-list    Instead of reading jurnal, display the list\n"
-	       "                    of zones in the DB (<zone_name> not needed).\n",
+	       "                    of zones in the DB (<zone_name> not needed).\n"
+	       " -d, --debug        Debug mode output.\n"
+	       " -h, --help         Print the program help.\n"
+	       " -V, --version      Print the program version.\n",
 	       PROGRAM_NAME);
 }
 
@@ -70,7 +74,91 @@ static int reconfigure_mapsize(const char *journal_path, size_t *mapsize)
 	return KNOT_EOK;
 }
 
-int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
+static void print_changeset(const changeset_t *chs, bool color, char **buff, size_t *buflen)
+{
+	printf(color ? YLW : "");
+	if (chs->soa_from == NULL) {
+		printf(";; Zone-in-journal, serial: %u\n",
+		       knot_soa_serial(&chs->soa_to->rrs));
+
+		printf(color ? GRN : "");
+		printf("%s", get_rrset(chs->soa_to, buff, buflen));
+		zone_dump_text(chs->add, stdout, false);
+		printf(color ? RESET : "");
+	} else {
+		printf(";; Changes between zone versions: %u -> %u\n",
+		       knot_soa_serial(&chs->soa_from->rrs),
+		       knot_soa_serial(&chs->soa_to->rrs));
+
+		printf(color ? RED : "");
+		printf(";; Removed\n");
+		printf("%s", get_rrset(chs->soa_from, buff, buflen));
+		zone_dump_text(chs->remove, stdout, false);
+
+		printf(color ? GRN : "");
+		printf(";; Added\n");
+		printf("%s", get_rrset(chs->soa_to, buff, buflen));
+		zone_dump_text(chs->add, stdout, false);
+		printf(color ? RESET : "");
+	}
+}
+
+dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC, 100)
+dynarray_define(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC)
+
+typedef struct {
+	rrtype_dynarray_t *arr;
+	size_t *counter;
+} rrtypelist_ctx_t;
+
+static void rrtypelist_add(rrtype_dynarray_t *arr, uint16_t add_type)
+{
+	bool already_present = false;
+	dynarray_foreach(rrtype, uint16_t, i, *arr) {
+		if (*i == add_type) {
+			already_present = true;
+			break;
+		}
+	}
+	if (!already_present) {
+		rrtype_dynarray_add(arr, &add_type);
+	}
+}
+
+static int rrtypelist_callback(zone_node_t *node, void *data)
+{
+	rrtypelist_ctx_t *ctx = data;
+	for (int i = 0; i < node->rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
+		rrtypelist_add(ctx->arr, rrset.type);
+		*ctx->counter += rrset.rrs.rr_count;
+	}
+	return KNOT_EOK;
+}
+
+static void print_changeset_debugmode(const changeset_t *chs)
+{
+	// detect all types
+	rrtype_dynarray_t types = { 0 };
+	size_t count_minus = 1, count_plus = 1; // 1 for SOA which is always present but not iterated
+	rrtypelist_ctx_t ctx_minus = { &types, &count_minus }, ctx_plus = { &types, &count_plus };
+	(void)zone_contents_apply(chs->remove, rrtypelist_callback, &ctx_minus);
+	(void)zone_contents_nsec3_apply(chs->remove, rrtypelist_callback, &ctx_minus);
+	(void)zone_contents_apply(chs->add, rrtypelist_callback, &ctx_plus);
+	(void)zone_contents_nsec3_apply(chs->add, rrtypelist_callback, &ctx_plus);
+
+	printf("%u -> %u  ---: %zu\t  +++: %zu\t size: %zu\t", knot_soa_serial(&chs->soa_from->rrs),
+	       knot_soa_serial(&chs->soa_to->rrs), count_minus, count_plus, changeset_serialized_size(chs));
+
+	char temp[100];
+	dynarray_foreach(rrtype, uint16_t, i, types) {
+		(void)knot_rrtype_to_string(*i, temp, sizeof(temp));
+		printf(" %s", temp);
+	}
+	printf("\n");
+}
+
+int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bool debugmode)
 {
 	list_t db;
 	init_list(&db);
@@ -141,31 +229,10 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color)
 		if (--db_remains >= limit && limit > 0) {
 			continue;
 		}
-
-		printf(color ? YLW : "");
-		if (chs->soa_from == NULL) {
-			printf(";; Zone-in-journal, serial: %u\n",
-			       knot_soa_serial(&chs->soa_to->rrs));
-
-			printf(color ? GRN : "");
-			printf("%s", get_rrset(chs->soa_to, &buff, &buflen));
-			zone_dump_text(chs->add, stdout, false);
-			printf(color ? RESET : "");
+		if (debugmode) {
+			print_changeset_debugmode(chs);
 		} else {
-			printf(";; Changes between zone versions: %u -> %u\n",
-			       knot_soa_serial(&chs->soa_from->rrs),
-			       knot_soa_serial(&chs->soa_to->rrs));
-
-			printf(color ? RED : "");
-			printf(";; Removed\n");
-			printf("%s", get_rrset(chs->soa_from, &buff, &buflen));
-			zone_dump_text(chs->remove, stdout, false);
-
-			printf(color ? GRN : "");
-			printf(";; Added\n");
-			printf("%s", get_rrset(chs->soa_to, &buff, &buflen));
-			zone_dump_text(chs->add, stdout, false);
-			printf(color ? RESET : "");
+			print_changeset(chs, color, &buff, &buflen);
 		}
 	}
 
@@ -219,19 +286,20 @@ int list_zones(char *path)
 int main(int argc, char *argv[])
 {
 	uint32_t limit = 0;
-	bool color = true, justlist = false;
+	bool color = true, justlist = false, debugmode = false;
 
 	struct option opts[] = {
 		{ "limit",     required_argument, NULL, 'l' },
 		{ "no-color",  no_argument,       NULL, 'n' },
 		{ "zone-list", no_argument,       NULL, 'z' },
+		{ "debug",     no_argument,       NULL, 'd' },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "l:nzhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "l:nzdhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
 			if (str_to_u32(optarg, &limit) != KNOT_EOK) {
@@ -244,6 +312,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'z':
 			justlist = true;
+			break;
+		case 'd':
+			debugmode = true;
 			break;
 		case 'h':
 			print_help();
@@ -299,7 +370,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	int ret = print_journal(db, name, limit, color);
+	int ret = print_journal(db, name, limit, color, debugmode);
 	free(name);
 
 	switch (ret) {
