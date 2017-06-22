@@ -57,12 +57,9 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 
 /*! \brief Require authentication. */
 #define NS_NEED_AUTH(qdata, zone_name, action) \
-	if (!process_query_acl_check(conf(), (zone_name), (action), (qdata))) { \
+	if (!process_query_acl_check(conf(), (zone_name), (action), (qdata)) || \
+	    process_query_verify(qdata) != KNOT_EOK) { \
 		return KNOT_STATE_FAIL; \
-	} else { \
-		if (process_query_verify(qdata) != KNOT_EOK) { \
-			return KNOT_STATE_FAIL; \
-		} \
 	}
 
 /*! \brief Require maximum number of unsigned messages. */
