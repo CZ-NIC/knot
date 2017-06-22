@@ -387,7 +387,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 
 	reschedule->next_rollover = next.time;
 
-	if (!ctx->policy->singe_type_signing && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
+	if (knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
 		switch (next.type) {
 		case PUBLISH:
 			if (next.ksk && ctx->policy->ksk_shared) {
