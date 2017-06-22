@@ -219,7 +219,11 @@ static knot_time_t ksk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t 
 	if (retire_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(retire_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
+	knot_timediff_t use_ttl = ctx->policy->dnskey_ttl;
+	if (ctx->policy->singe_type_signing && ctx->policy->zone_maximal_ttl > use_ttl) {
+		use_ttl = ctx->policy->zone_maximal_ttl;
+	}
+	return knot_time_add(retire_time, ctx->policy->propagation_delay + use_ttl);
 }
 
 static roll_action next_action(kdnssec_ctx_t *ctx)
