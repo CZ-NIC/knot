@@ -204,7 +204,7 @@ int changeset_serialize(const changeset_t *ch, uint8_t *dst_chunks[],
 		return KNOT_EINVAL;
 	}
 
-	for (int i = 0; i < chunks_count; i++) {
+	for (size_t i = 0; i < chunks_count; i++) {
 		chunks_real_sizes[i] = 0;
 	}
 
