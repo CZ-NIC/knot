@@ -307,19 +307,10 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 static bool update_tsig_check(conf_t *conf, knotd_qdata_t *qdata, struct knot_request *req)
 {
 	// Check that ACL is still valid.
-	if (!process_query_acl_check(conf, qdata->extra->zone->name, ACL_ACTION_UPDATE, qdata)) {
-		UPDATE_LOG(LOG_WARNING, qdata, "ACL check failed");
+	if (!process_query_acl_check(conf, qdata->extra->zone->name, ACL_ACTION_UPDATE, qdata) ||
+	    process_query_verify(qdata) != KNOT_EOK) {
 		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
 		return false;
-	} else {
-		// Check TSIG validity.
-		int ret = process_query_verify(qdata);
-		if (ret != KNOT_EOK) {
-			UPDATE_LOG(LOG_WARNING, qdata, "failed (%s)",
-			           knot_strerror(ret));
-			knot_wire_set_rcode(req->resp->wire, qdata->rcode);
-			return false;
-		}
 	}
 
 	// Store signing context for response.

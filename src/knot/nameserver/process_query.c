@@ -652,6 +652,26 @@ int process_query_verify(knotd_qdata_t *qdata)
 		break;
 	}
 
+	/* Log possible error. */
+	if (qdata->rcode != KNOT_RCODE_NOERROR) {
+		const knot_lookup_t *item = NULL;
+		if (qdata->rcode_tsig != KNOT_RCODE_NOERROR) {
+			item = knot_lookup_by_id(knot_tsig_rcode_names, qdata->rcode_tsig);
+			if (item == NULL) {
+				item = knot_lookup_by_id(knot_rcode_names, qdata->rcode_tsig);
+			}
+		} else {
+			item = knot_lookup_by_id(knot_rcode_names, qdata->rcode);
+		}
+
+		char *key_name = knot_dname_to_str_alloc(ctx->tsig_key.name);
+		log_zone_debug(qdata->extra->zone->name,
+		               "TSIG, key '%s', verification failed '%s'",
+		               (key_name != NULL) ? key_name : "",
+		               (item != NULL) ? item->name : "");
+		free(key_name);
+	}
+
 	return ret;
 }
 
