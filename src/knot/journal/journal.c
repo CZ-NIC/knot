@@ -49,11 +49,10 @@
 
 // eventually move to contrib and reuse as needed
 #define local_array_max_static_size (100)
-#define local_array(type, name, size, retval) \
+#define local_array(type, name, size) \
 	type name ## _static__[local_array_max_static_size] = { 0 }; \
 	type *name ## _dynamic__ = ((size) > local_array_max_static_size ? calloc((size), sizeof(type)) : NULL); \
-	type *name = ((size) > local_array_max_static_size ? name ## _dynamic__ : name ## _static__); \
-	if ((retval) != 0 && (name) == NULL) { free(name ## _dynamic__); return (retval); }
+	type *name = ((size) > local_array_max_static_size ? name ## _dynamic__ : name ## _static__);
 #define local_array_free(name) { free(name ## _dynamic__); }
 
 enum {
@@ -771,8 +770,13 @@ static int normal_iterkeycb(iteration_ctx_t *ctx)
 static int vals_to_changeset(knot_db_val_t *vals, int nvals,
                              const knot_dname_t *zone_name, changeset_t **ch, bool is_bootstrap)
 {
-	local_array(uint8_t *, valps, nvals, KNOT_ENOMEM)
-	local_array(size_t, vallens, nvals, KNOT_ENOMEM)
+	local_array(uint8_t *, valps, nvals)
+	local_array(size_t, vallens, nvals)
+	if (valps == NULL || vallens == NULL) {
+		local_array_free(valps)
+		local_array_free(vallens)
+		return KNOT_ENOMEM;
+	}
 
 	for (int i = 0; i < nvals; i++) {
 		valps[i] = vals[i].data + JOURNAL_HEADER_SIZE;
