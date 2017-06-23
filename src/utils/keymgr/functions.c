@@ -564,17 +564,30 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 	return KNOT_EINVAL;
 }
 
-int keymgr_list_keys(kdnssec_ctx_t *ctx)
+static void print_timer(const char *name, knot_time_t t, knot_time_print_t format,
+                        char separator)
+{
+	static char buff[100];
+	if (knot_time_print(format, t, buff, sizeof(buff)) < 0) {
+		printf("%s=(error)%c", name, separator); // shall not happen
+	} else {
+		printf("%s=%s%c", name, buff, separator);
+	}
+}
+
+int keymgr_list_keys(kdnssec_ctx_t *ctx, knot_time_print_t format)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		printf("%s ksk=%s tag=%05d algorithm=%d created=%lld publish=%lld ready=%lld"
-		       " active=%lld retire=%lld remove=%lld\n", key->id,
+		printf("%s ksk=%s tag=%05d algorithm=%d ", key->id,
 		       ((dnssec_key_get_flags(key->key) == dnskey_flags(true)) ? "yes" : "no "),
-		       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
-		       (long long)key->timing.created, (long long)key->timing.publish,
-		       (long long)key->timing.ready, (long long)key->timing.active,
-		       (long long)key->timing.retire, (long long)key->timing.remove);
+		       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key));
+		print_timer("created", key->timing.created, format, ' ');
+		print_timer("publish", key->timing.publish, format, ' ');
+		print_timer("ready",   key->timing.ready,   format, ' ');
+		print_timer("active",  key->timing.active,  format, ' ');
+		print_timer("retire",  key->timing.retire,  format, ' ');
+		print_timer("remove",  key->timing.remove,  format, '\n');
 	}
 	return KNOT_EOK;
 }

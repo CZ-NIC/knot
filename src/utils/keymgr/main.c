@@ -136,9 +136,20 @@ static int key_command(int argc, char *argv[])
 			}
 		}
 	} else if (strcmp(argv[1], "list") == 0) {
-		ret = keymgr_list_keys(&kctx);
+		knot_time_print_t format = TIME_PRINT_UNIX;
+		if (argc > 2 && strcmp(argv[2], "human") == 0) {
+			format = TIME_PRINT_HUMAN_MIXED;
+		} else if (argc > 2 && strcmp(argv[2], "iso") == 0) {
+			format = TIME_PRINT_ISO8601;
+		}
+		ret = keymgr_list_keys(&kctx, format);
 		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "ds") == 0 || strcmp(argv[1], "dnskey") == 0) {
+		if (argc < 3) {
+			printf("Key is not specified\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
 		int (*generate_rr)(const knot_dname_t *, const knot_kasp_key_t *) = keymgr_generate_dnskey;
 		if (strcmp(argv[1], "ds") == 0) {
 			generate_rr = keymgr_generate_ds;
