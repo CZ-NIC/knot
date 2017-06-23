@@ -53,21 +53,22 @@ Print the program help.
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
 .TP
-\fB\-t\fP \fBtsig_name\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
-Generates TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
+\fB\-t\fP, \fB\-\-tsig\fP \fItsig_name\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
+Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
 bit length of the key by number (default: optimal length given by algorithm).
 .UNINDENT
 .SS Config options
 .INDENT 0.0
 .TP
-\fB\-c\fP
-Use specified Knot DNS configuration file path.
+\fB\-c\fP, \fB\-\-config\fP \fIfile\fP
+Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
 .TP
-\fB\-C\fP
-Use specified Knot DNS configuration database path. The default configuration
-database, if exists, has a preference to the default configuration file.
+\fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
+Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
+The default configuration database, if exists, has a preference to the default
+configuration file.
 .TP
-\fB\-d\fP
+\fB\-d\fP, \fB\-\-dir\fP \fIpath\fP
 Use specified KASP database path and default configuration.
 .UNINDENT
 .SS Commands

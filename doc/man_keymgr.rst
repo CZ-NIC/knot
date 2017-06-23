@@ -30,21 +30,22 @@ Basic options
 **-V**, **--version**
   Print the program version.
 
-**-t** **tsig_name** [*tsig_algorithm*] [*tsig_bits*]
-  Generates TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
+**-t**, **--tsig** *tsig_name* [*tsig_algorithm*] [*tsig_bits*]
+  Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
   bit length of the key by number (default: optimal length given by algorithm).
 
 Config options
 ..............
 
-**-c**
-  Use specified Knot DNS configuration file path.
+**-c**, **--config** *file*
+  Use a textual configuration file (default is :file:`@config_dir@/knot.conf`).
 
-**-C**
-  Use specified Knot DNS configuration database path. The default configuration
-  database, if exists, has a preference to the default configuration file.
+**-C**, **--confdb** *directory*
+  Use a binary configuration database directory (default is :file:`@storage_dir@/confdb`).
+  The default configuration database, if exists, has a preference to the default
+  configuration file.
 
-**-d**
+**-d**, **--dir** *path*
   Use specified KASP database path and default configuration.
 
 Commands
