@@ -1,3 +1,14 @@
+Knot DNS 2.4.5 (2017-06-23)
+===========================
+
+Security:
+---------
+ - Improper TSIG validity period check can allow TSIG forgery (Thanks to Synacktiv!)
+
+Bugfixes:
+---------
+ - Corner case journal fixes (huge changesets, OpenWRT operation)
+
 Knot DNS 2.4.4 (2017-06-05)
 ===========================
 
