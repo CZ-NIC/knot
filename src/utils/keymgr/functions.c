@@ -32,57 +32,6 @@
 #include "zscanner/scanner.h"
 #include "contrib/base64.h"
 
-static time_t arg_timestamp(const char *arg)
-{
-	if (isdigit((int)arg[0]) && strlen(arg) < 12) {
-		return atol(arg); // unixtime
-	}
-	if (isdigit((int)arg[0]) && strlen(arg) == 14) {
-		struct tm tm = { 0 };
-		char *end = strptime(arg, "%Y%m%d%H%M%S", &tm);
-		if (end == NULL || *end != '\0') {
-			return -1;
-		}
-		return mktime(&tm); // time format
-	}
-	long amount;
-	if (strncasecmp(arg, "now+", 4) == 0) {
-		amount = atol(arg + 4);
-	} else if (strncasecmp(arg, "now-", 4) == 0) {
-		amount = 0 - atol(arg + 4);
-	} else if (strncasecmp(arg, "t+", 2) == 0) {
-		amount = atol(arg + 2);
-	} else if (strncasecmp(arg, "t-", 2) == 0) {
-		amount = 0 - atol(arg + 2);
-	} else if (arg[0] == '+' || arg[0] == '-') {
-		amount = atol(arg);
-	} else {
-		return -1;
-	}
-	char *unit = strrchr(arg, '0' + (labs(amount) % 10));
-	if (unit++ == NULL) {
-		return -1;
-	}
-	time_t now = time(NULL);
-	switch ((*unit == 'm') ? 'm' + *(unit + 1) : *unit) {
-	case 'm' + 'i':
-		return now + amount * 60;
-	case 'h':
-		return now + amount * 3600;
-	case 'd':
-		return now + amount * 3600 * 24;
-	case 'w':
-		return now + amount * 3600 * 24 * 7;
-	case 'm' + 'o':
-		return now + amount * 3600 * 24 * 30; // this is lame but same as keymgr
-	case 'y':
-		return now + amount * 3600 * 24 * 365;
-	case '\0':
-		return now + amount;
-	}
-	return -1;
-}
-
 static bool genkeyargs(int argc, char *argv[], bool just_timing,
 		       bool *isksk, dnssec_key_algorithm_t *algorithm,
 		       uint16_t *keysize, knot_kasp_key_timing_t *timing)
@@ -134,29 +83,31 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			   strncasecmp(argv[i], "active=", 7) == 0 ||
 			   strncasecmp(argv[i], "retire=", 7) == 0 ||
 			   strncasecmp(argv[i], "remove=", 7) == 0) {
-			time_t stamp = arg_timestamp(strchr(argv[i], '=') + 1);
-			if (stamp < 0) {
+			knot_time_t stamp;
+			int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|#",
+			                          strchr(argv[i], '=') + 1, &stamp);
+			if (ret < 0) {
 				printf("Invalid timestamp: %s\n", argv[i]);
 				return false;
 			}
 			switch ((argv[i][0] == 'r') ? argv[i][3] : argv[i][0]) {
 			case 'c':
-				timing->created = (knot_time_t)stamp;
+				timing->created = stamp;
 				break;
 			case 'a':
-				timing->active = (knot_time_t)stamp;
+				timing->active = stamp;
 				break;
 			case 'd':
-				timing->ready = (knot_time_t)stamp;
+				timing->ready = stamp;
 				break;
 			case 'p':
-				timing->publish = (knot_time_t)stamp;
+				timing->publish = stamp;
 				break;
 			case 'i':
-				timing->retire = (knot_time_t)stamp;
+				timing->retire = stamp;
 				break;
 			case 'o':
-				timing->remove = (knot_time_t)stamp;
+				timing->remove = stamp;
 				break;
 			}
 		} else {
