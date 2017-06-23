@@ -1,3 +1,31 @@
+Knot DNS 2.5.2 (2017-06-23)
+===========================
+
+Security:
+---------
+ - Improper TSIG validity period check can allow TSIG forgery (Thanks to Synacktiv!)
+
+Improvements:
+-------------
+ - Extended debug logging for TSIG errors
+ - Better error message for unknown module section in the configuration
+ - Module documentation compilation no longer depends on module configuration
+ - Extended policy section configuration semantic checks
+ - Improved python version compatibility in pykeymgr
+ - Extended migration section in the documentation
+ - Improved DNSSEC event timing on 32-bit systems
+ - New KSK rollover start log info message
+ - NULL qtype support in kdig
+
+Bugfixes:
+---------
+ - Failed to process included configuration
+ - dnskey_ttl policy option in the configuration has no effect on DNSKEY TTL
+ - Corner case journal fixes (huge changesets, OpenWRT operation)
+ - Confusing event timestamps in knotc zone-status output
+ - NSEC/NSEC3 bitmap not updated for CDS/CDNSKEY
+ - CDS/CDNSKEY RRSIG not updated
+
 Knot DNS 2.5.1 (2017-06-07)
 ===========================
 
