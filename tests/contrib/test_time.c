@@ -16,6 +16,8 @@
 
 #include <tap/basic.h>
 
+#include <string.h>
+
 #include "contrib/time.h"
 
 static void test_now(void)
@@ -121,6 +123,67 @@ static void test_knot_time(void)
 	ok(d == KNOT_TIMEDIFF_MIN, "negative infty diff");
 }
 
+static void test_time_parse_expect(int ret, knot_time_t res,
+				   knot_time_t expected, const char *msg)
+{
+	ok(ret == 0, "time_parse %s ok", msg);
+	ok(res == expected, "time_parse %s result", msg);
+}
+
+static void test_time_parse(void)
+{
+	knot_time_t res;
+	int ret;
+
+	ret = knot_time_parse("", "", &res);
+	test_time_parse_expect(ret, res, 0, "nihilist");
+
+	ret = knot_time_parse("#", "12345", &res);
+	test_time_parse_expect(ret, res, 12345, "unix");
+
+	ret = knot_time_parse("+-#U", "-1h", &res);
+	test_time_parse_expect(ret, res, knot_time() - 3600, "hour");
+
+	ret = knot_time_parse("+-#u'nths'|+-#u'nutes'", "+1minutes", &res);
+	test_time_parse_expect(ret, res, knot_time() + 60, "minute");
+}
+
+static void test_time_print_expect(int ret, const char *res, int res_len,
+				   const char *expected, const char *msg)
+{
+	ok(ret == 0, "time_print %s ok", msg);
+	ok(strncmp(res, expected, res_len) == 0, "time_print %s result", msg);
+}
+
+static void test_time_print(void)
+{
+	char buff[100];
+	int bufl = sizeof(buff);
+	int ret;
+	knot_time_t t = 44000, t2 = knot_time_add(knot_time(), -10000);
+	knot_time_t big = knot_time_add(knot_time(), 2 * 365 * 24 * 3600 + 1);
+
+	ret = knot_time_print(TIME_PRINT_UNIX, t, buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "44000", "unix");
+
+	ret = knot_time_print(TIME_PRINT_RELSEC, t2, buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "-10000", "relsec");
+
+	ret = knot_time_print(TIME_PRINT_ISO8601, t, buff, bufl);
+	buff[11] = '0', buff[12] = '0'; // zeroing 'hours' field to avoid locality issues
+	test_time_print_expect(ret, buff, bufl, "1970-01-01T00:13:20", "iso");
+
+	ret = knot_time_print(TIME_PRINT_HUMAN_MIXED, t2, buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "-2h46m40s", "negative human mixed");
+	ret = knot_time_print(TIME_PRINT_HUMAN_MIXED, big, buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "+2Y1s", "big human mixed");
+
+	ret = knot_time_print(TIME_PRINT_HUMAN_LOWER, t2, buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "-2h46mi40s", "negative human lower");
+	ret = knot_time_print(TIME_PRINT_HUMAN_LOWER, big, buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "+2y1s", "big human lower");
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -129,6 +192,8 @@ int main(int argc, char *argv[])
 	test_diff();
 	test_diff_ms();
 	test_knot_time();
+	test_time_parse();
+	test_time_print();
 
 	return 0;
 }
