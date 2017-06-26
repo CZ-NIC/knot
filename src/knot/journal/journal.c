@@ -1175,7 +1175,7 @@ static int merge_itercb(iteration_ctx_t *ctx)
 	return ret;
 }
 
-static int merge_unflushed_changesets(journal_t *j, txn_t *_txn, changeset_t **mch)
+static int merge_unflushed_changesets(journal_t *j, txn_t *_txn, changeset_t **mch, bool *merged_bootstrap)
 {
 	reuse_txn(txn, j, _txn, false);
 	txn_check_ret(txn);
@@ -1183,18 +1183,24 @@ static int merge_unflushed_changesets(journal_t *j, txn_t *_txn, changeset_t **m
 	if (md_flushed(txn)) {
 		goto m_u_ch_end;
 	}
-	bool was_merged = md_flag(txn, MERGED_SERIAL_VALID);
-	bool was_flushed = md_flag(txn, LAST_FLUSHED_VALID);
-	uint32_t from = was_merged ? txn->shadow_md.merged_serial :
-	                             (was_flushed ? txn->shadow_md.last_flushed :
-	                                            txn->shadow_md.first_serial);
-	txn->ret = load_one(j, txn, from, mch);
-	if (!was_merged && was_flushed && txn->ret == KNOT_EOK) {
-		// we have to jump to ONE AFTER last_flushed
-		from = knot_soa_serial(&(*mch)->soa_to->rrs);
-		changeset_free(*mch);
-		*mch = NULL;
+	uint32_t from;
+	txn->ret = load_bootstrap_changeset(j, txn, mch);
+	*merged_bootstrap = (txn->ret == KNOT_EOK);
+	if (txn->ret == KNOT_ENOENT) { // no bootstrap changeset (normal operation)
+		bool was_merged = md_flag(txn, MERGED_SERIAL_VALID);
+		bool was_flushed = md_flag(txn, LAST_FLUSHED_VALID);
+		txn->ret = KNOT_EOK;
+		from = was_merged ? txn->shadow_md.merged_serial :
+				    (was_flushed ? txn->shadow_md.last_flushed :
+						   txn->shadow_md.first_serial);
 		txn->ret = load_one(j, txn, from, mch);
+		if (!was_merged && was_flushed && txn->ret == KNOT_EOK) {
+			// we have to jump to ONE AFTER last_flushed
+			from = knot_soa_serial(&(*mch)->soa_to->rrs);
+			changeset_free(*mch);
+			*mch = NULL;
+			txn->ret = load_one(j, txn, from, mch);
+		}
 	}
 	if (txn->ret != KNOT_EOK) {
 		goto m_u_ch_end;
@@ -1220,7 +1226,7 @@ m_u_ch_end:
 	if (!md_flushed(txn)) { \
 		if (journal_merge_allowed(j)) { \
 			changeset_t *merged; \
-			merge_unflushed_changesets(j, txn, &merged); \
+			merge_unflushed_changesets(j, txn, &merged, &merged_into_bootstrap); \
 			if (txn->ret != KNOT_EOK) { \
 				goto store_changeset_cleanup; \
 			} \
@@ -1248,7 +1254,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	size_t *chunksizes = NULL;
 	knot_db_val_t *vals = NULL;
 
-	int inserting_merged = false;
+	bool inserting_merged = false;
+	bool merged_into_bootstrap = false;
 
 	size_t occupied_last, occupied_now = knot_db_lmdb_get_usage(j->db->db);
 
@@ -1383,8 +1390,9 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			break;
 		}
 
-		bool is_this_bootstrap = is_bootstrap && (ch == HEAD(*changesets));
 		bool is_this_merged = (inserting_merged && ch == TAIL(*changesets));
+		bool is_this_bootstrap = (is_bootstrap && (ch == HEAD(*changesets))) ||
+					 (merged_into_bootstrap && is_this_merged);
 		uint32_t serial = is_this_bootstrap ? 0 : knot_soa_serial(&ch->soa_from->rrs);
 		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
 
@@ -1420,7 +1428,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		if (txn->ret != KNOT_EOK) {
 			break;
 		}
-		if (is_this_merged) {
+		if (is_this_merged && !merged_into_bootstrap) {
 			txn->shadow_md.flags |= MERGED_SERIAL_VALID;
 			txn->shadow_md.merged_serial = serial;
 		}

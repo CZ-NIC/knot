@@ -482,6 +482,9 @@ static void test_store_load(void)
 	init_list(&l);
 	init_list(&k);
 
+	ret = journal_scrape(j);
+	ok(ret == KNOT_EOK, "journal: scrape must be ok");
+
 	unset_conf();
 }
 
