@@ -785,6 +785,8 @@ static int vals_to_changeset(knot_db_val_t *vals, int nvals,
 
 	changeset_t *t_ch = changeset_new(zone_name);
 	if (t_ch == NULL) {
+		local_array_free(valps)
+		local_array_free(vallens)
 		return KNOT_ENOMEM;
 	}
 
