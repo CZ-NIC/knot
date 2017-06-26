@@ -1330,8 +1330,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	changeset_t * chs_head = (HEAD(*changesets));
 	bool is_bootstrap = (chs_head->soa_from == NULL);
 	uint32_t serial = is_bootstrap ? 0 : knot_soa_serial(&chs_head->soa_from->rrs);
-	if (!is_bootstrap && md_flag(txn, SERIAL_TO_VALID) &&
-	    serial_compare(txn->shadow_md.last_serial_to, serial) != 0) {
+	if (md_flag(txn, SERIAL_TO_VALID) && (is_bootstrap ||
+	    serial_compare(txn->shadow_md.last_serial_to, serial) != 0)) {
 		log_zone_warning(j->zone, "journal, discontinuity in changes history (%u -> %u), dropping older changesets",
 		                 txn->shadow_md.last_serial_to, serial);
 		if (!md_flushed(txn) && !journal_merge_allowed(j)) {
