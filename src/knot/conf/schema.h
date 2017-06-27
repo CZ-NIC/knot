@@ -124,6 +124,7 @@
 #define C_VERSION		"\x07""version"
 #define C_VIA			"\x03""via"
 #define C_ZONE			"\x04""zone"
+#define C_ZONE_IN_JOURNAL	"\x0F""zone-in-journal"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"

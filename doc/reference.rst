@@ -1059,6 +1059,7 @@ Definition of zones served by the server.
      semantic-checks: BOOL
      disable-any: BOOL
      zonefile-sync: TIME
+     zone-in-journal: BOOL
      ixfr-from-differences: BOOL
      max-journal-usage: SIZE
      max-journal-depth: INT
@@ -1231,6 +1232,24 @@ using the ``-f`` option.
    Otherwise the journal can't be applied.
 
 *Default:* 0 (immediate)
+
+.. _zone_zone-in-journal:
+
+zone-in-journal
+---------------
+
+If enabled, the server stores the zone file contents in journal. When starting server,
+the zone is loaded preferably from journal, the changes from zone file are applied
+afterwards.
+
+.. NOTE::
+   Implies :ref:`ixfr-from-differences<zone_ixfr-from-differences>`.
+
+.. WARNING::
+   If you modify the zone file, expecting the changes to be applied to the zone,
+   you shall set the SOA serial significatnly higher than current zone serial.
+
+*Default:* off
 
 .. _zone_ixfr-from-differences:
 

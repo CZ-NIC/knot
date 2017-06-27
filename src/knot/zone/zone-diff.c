@@ -352,17 +352,26 @@ int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone
 		return KNOT_EINVAL;
 	}
 
-	int ret = load_soas(zone1, zone2, changeset);
+	int ret_soa = load_soas(zone1, zone2, changeset);
+	if (ret_soa != KNOT_EOK && ret_soa != KNOT_ENODIFF) {
+		return ret_soa;
+	}
+
+	int ret = load_trees(zone1->nodes, zone2->nodes, changeset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = load_trees(zone1->nodes, zone2->nodes, changeset);
+	ret = load_trees(zone1->nsec3_nodes, zone2->nsec3_nodes, changeset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return load_trees(zone1->nsec3_nodes, zone2->nsec3_nodes, changeset);
+	if (ret_soa == KNOT_ENODIFF && !changeset_empty(changeset)) {
+		return KNOT_ESEMCHECK;
+	}
+
+	return ret_soa;
 }
 
 int zone_tree_add_diff(zone_tree_t *t1, zone_tree_t *t2, changeset_t *changeset)

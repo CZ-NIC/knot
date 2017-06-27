@@ -924,6 +924,7 @@ zone:
     semantic\-checks: BOOL
     disable\-any: BOOL
     zonefile\-sync: TIME
+    zone\-in\-journal: BOOL
     ixfr\-from\-differences: BOOL
     max\-journal\-usage: SIZE
     max\-journal\-depth: INT
@@ -1090,6 +1091,28 @@ Otherwise the journal can\(aqt be applied.
 .UNINDENT
 .sp
 \fIDefault:\fP 0 (immediate)
+.SS zone\-in\-journal
+.sp
+If enabled, the server stores the zone file contents in journal. When starting server,
+the zone is loaded preferably from journal, the changes from zone file are applied
+afterwards.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Implies \fI\%ixfr\-from\-differences\fP\&.
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+If you modify the zone file, expecting the changes to be applied to the zone,
+you shall set the SOA serial significatnly higher than current zone serial.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP off
 .SS ixfr\-from\-differences
 .sp
 If enabled, the server creates zone differences from changes you made to the
