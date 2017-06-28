@@ -40,6 +40,12 @@ static gnutls_digest_algorithm_t lookup_algorithm(dnssec_key_digest_t algorithm)
 	};
 }
 
+_public_
+bool dnssec_algorithm_digest_support(dnssec_key_digest_t algo)
+{
+	return lookup_algorithm(algo) != GNUTLS_DIG_UNKNOWN;
+}
+
 static void wire_write_digest(wire_ctx_t *wire,
 			      gnutls_hash_hd_t digest, int digest_size)
 {

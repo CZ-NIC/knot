@@ -104,6 +104,13 @@ struct dnssec_key;
 typedef struct dnssec_key dnssec_key_t;
 
 /*!
+ * Check whether a DNSKEY algorithm is supported.
+ *
+ * @note: less secure algorithms may go unsupported on purpose.
+ */
+bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algo);
+
+/*!
  * Allocate new DNSSEC key.
  *
  * The protocol field of the key is set to 3 (DNSSEC).
@@ -282,6 +289,13 @@ typedef enum dnssec_key_digest {
 	DNSSEC_KEY_DIGEST_SHA256 = 2,
 	DNSSEC_KEY_DIGEST_SHA384 = 4,
 } dnssec_key_digest_t;
+
+/*!
+ * Check whether a DS algorithm is supported.
+ *
+ * @note: less secure algorithms may go unsupported on purpose.
+ */
+bool dnssec_algorithm_digest_support(dnssec_key_digest_t algo);
 
 /*!
  * Create DS (Delgation Signer) RDATA from DNSSEC key.
