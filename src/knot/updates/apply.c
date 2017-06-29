@@ -144,7 +144,7 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 }
 
 /*! \brief Removes all RRs from changeset from zone contents. */
-static int apply_remove(apply_ctx_t *ctx, changeset_t *chset)
+static int apply_remove(apply_ctx_t *ctx, const changeset_t *chset)
 {
 	changeset_iter_t itt;
 	changeset_iter_rem(&itt, chset);
@@ -165,7 +165,7 @@ static int apply_remove(apply_ctx_t *ctx, changeset_t *chset)
 }
 
 /*! \brief Adds all RRs from changeset into zone contents. */
-static int apply_add(apply_ctx_t *ctx, changeset_t *chset)
+static int apply_add(apply_ctx_t *ctx, const changeset_t *chset)
 {
 	changeset_iter_t itt;
 	changeset_iter_add(&itt, chset);
@@ -185,7 +185,7 @@ static int apply_add(apply_ctx_t *ctx, changeset_t *chset)
 }
 
 /*! \brief Apply single change to zone contents structure. */
-static int apply_single(apply_ctx_t *ctx, changeset_t *chset)
+static int apply_single(apply_ctx_t *ctx, const changeset_t *chset)
 {
 	/*
 	 * Applies one changeset to the zone. Checks if the changeset may be
@@ -362,7 +362,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	return KNOT_EOK;
 }
 
-int apply_replace_soa(apply_ctx_t *ctx, changeset_t *chset)
+int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *chset)
 {
 	zone_contents_t *contents = ctx->contents;
 
@@ -480,7 +480,7 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets)
 	return zone_contents_adjust_full(ctx->contents);
 }
 
-int apply_changeset_directly(apply_ctx_t *ctx, changeset_t *ch)
+int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch)
 {
 	if (ctx == NULL || ctx->contents == NULL || ch == NULL) {
 		return KNOT_EINVAL;

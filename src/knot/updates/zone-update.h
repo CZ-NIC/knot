@@ -185,6 +185,26 @@ int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_
 int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner);
 
 /*!
+ * \brief Adds and removes RRsets to/from the zone according to the changeset.
+ *
+ * \param update  Zone update.
+ * \param changes Changes to be made in zone.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_apply_changeset(zone_update_t *update, const changeset_t *changes);
+
+/*!
+ * \brief Applies a changeset to zone, the changeset is modified to contain only really added/removed rdata.
+ *
+ * \param update  Zone update.
+ * \param changes In: changes to be made in zone; out: changes really made in zone.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes);
+
+/*!
  * \brief Commits all changes to the zone, signs it, saves changes to journal.
  *
  * \param conf          Configuration.

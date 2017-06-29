@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -362,6 +362,30 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 	}
 
 	return KNOT_EOK;
+}
+
+int zone_update_apply_changeset(zone_update_t *update, const changeset_t *changes)
+{
+	int ret = KNOT_EOK;
+	if (update->flags & UPDATE_INCREMENTAL) {
+		ret = changeset_merge(&update->change, changes);
+	}
+	if (ret == KNOT_EOK) {
+		ret = apply_changeset_directly(&update->a_ctx, changes);
+	}
+	return ret;
+}
+
+int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes)
+{
+	int ret = changeset_cancelout(changes);
+	if (ret == KNOT_EOK) {
+		ret = changeset_preapply_fix(update->new_cont, changes);
+	}
+        if (ret == KNOT_EOK) {
+                ret = zone_update_apply_changeset(update, changes);
+        }
+        return ret;
 }
 
 static bool apex_rr_changed(const zone_node_t *old_apex,

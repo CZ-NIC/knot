@@ -89,7 +89,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
  *
  * \return KNOT_E*
  */
-int apply_replace_soa(apply_ctx_t *ctx, changeset_t *ch);
+int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *ch);
 
 /*!
  * \brief Prepares the new zone contents for signing.
@@ -146,7 +146,7 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets);
  *
  * \return KNOT_E*
  */
-int apply_changeset_directly(apply_ctx_t *ctx, changeset_t *ch);
+int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch);
 
 /*!
  * \brief Finalizes the zone contents for publishing.
