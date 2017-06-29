@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -164,7 +164,7 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 		// Remove empty type.
 		node_remove_rdataset(node, rr->type);
 
-		if (node->rrset_count == 0) {
+		if (node->rrset_count == 0 && node != counterpart->apex) {
 			// Remove empty node.
 			zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
 								 counterpart->nsec3_nodes : counterpart->nodes;
@@ -381,6 +381,10 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 
 	// Use soa_to and serial from the second changeset
 	// soa_to from the first changeset is redundant, delete it
+	if (ch2->soa_to == NULL && ch2->soa_from == NULL) {
+		// but not if ch2 has no soa change
+		return KNOT_EOK;
+	}
 	knot_rrset_t *soa_copy = knot_rrset_copy(ch2->soa_to, NULL);
 	if (soa_copy == NULL && ch2->soa_to) {
 		return KNOT_ENOMEM;
@@ -389,6 +393,109 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 	ch1->soa_to = soa_copy;
 
 	return KNOT_EOK;
+}
+
+typedef struct {
+	const zone_contents_t *zone;
+	changeset_t *fixing;
+	knot_mm_t *mm;
+} preapply_fix_ctx;
+
+static int preapply_fix_rrset(const knot_rrset_t *apply, bool adding, void *data)
+{
+	preapply_fix_ctx *ctx  = (preapply_fix_ctx *)data;
+	const zone_node_t *znode = zone_contents_find_node(ctx->zone, apply->owner);
+	const knot_rdataset_t *zrdataset = node_rdataset(znode, apply->type);
+	if (adding && zrdataset == NULL) {
+		return KNOT_EOK;
+	}
+	knot_rrset_t *fixrrset;
+	int ret = KNOT_EOK;
+	if (adding) {
+		fixrrset = knot_rrset_new(apply->owner, apply->type, apply->rclass, ctx->mm);
+	} else {
+		fixrrset = knot_rrset_copy(apply, ctx->mm);
+	}
+	if (fixrrset == NULL) {
+		return KNOT_ENOMEM;
+	}
+	if (adding) {
+		ret = knot_rdataset_intersect(zrdataset, &apply->rrs, &fixrrset->rrs, ctx->mm);
+	} else {
+		if (zrdataset != NULL) {
+			ret = knot_rdataset_subtract(&fixrrset->rrs, zrdataset, ctx->mm);
+		}
+	}
+	if (ret == KNOT_EOK && !knot_rrset_empty(fixrrset)) {
+		if (adding) {
+			ret = changeset_add_removal(ctx->fixing, fixrrset, 0);
+		} else {
+			ret = changeset_add_addition(ctx->fixing, fixrrset, 0);
+		}
+	}
+	knot_rrset_free(&fixrrset, ctx->mm);
+	return ret;
+}
+
+static int subtract_callback(const knot_rrset_t *rrset, bool addition, void *subtractfrom)
+{
+	changeset_t *chsf = (changeset_t *)subtractfrom;
+	if (addition) {
+		return changeset_remove_removal(chsf, rrset);
+	} else {
+		return changeset_remove_addition(chsf, rrset);
+	}
+}
+
+static int subtract(changeset_t *from, const changeset_t *what)
+{
+	return changeset_walk(what, subtract_callback, (void *)from);
+}
+
+int changeset_preapply_fix(const zone_contents_t *zone, changeset_t *change)
+{
+	if (zone == NULL || change == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	changeset_t fixing;
+	int ret = changeset_init(&fixing, zone->apex->owner);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	preapply_fix_ctx ctx = { .zone = zone, .fixing = &fixing, .mm = NULL };
+	ret = changeset_walk(change, preapply_fix_rrset, (void *)&ctx);
+	if (ret == KNOT_EOK) {
+		ret = subtract(change, &fixing);
+	}
+	changeset_clear(&fixing);
+	return ret;
+}
+
+int changeset_cancelout(changeset_t *change)
+{
+	if (change == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	changeset_t fixing;
+	int ret = changeset_init(&fixing, change->add->apex->owner);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	preapply_fix_ctx ctx = { .zone = change->remove, .fixing = &fixing, .mm = NULL };
+	ret = changeset_walk(change, preapply_fix_rrset, (void *)&ctx);
+	if (ret == KNOT_EOK) {
+		assert(zone_contents_is_empty(fixing.add));
+		zone_contents_t *fixing_add_bck = fixing.add;
+		fixing.add = fixing.remove;
+		ret = subtract(change, &fixing);
+		fixing.add = fixing_add_bck;
+	}
+	changeset_clear(&fixing);
+	return ret;
 }
 
 zone_contents_t *changeset_to_contents(changeset_t *ch)
@@ -532,4 +639,42 @@ void changeset_iter_clear(changeset_iter_t *it)
 		it->node = NULL;
 		it->node_pos = 0;
 	}
+}
+
+int changeset_walk(const changeset_t *changeset, changeset_walk_callback callback, void *ctx)
+{
+	changeset_iter_t it;
+	int ret = changeset_iter_rem(&it, changeset);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_rrset_t rrset = changeset_iter_next(&it);
+	while (!knot_rrset_empty(&rrset)) {
+		ret = callback(&rrset, false, ctx);
+		if (ret != KNOT_EOK) {
+			changeset_iter_clear(&it);
+			return ret;
+		}
+		rrset = changeset_iter_next(&it);
+	}
+	changeset_iter_clear(&it);
+
+	ret = changeset_iter_add(&it, changeset);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	rrset = changeset_iter_next(&it);
+	while (!knot_rrset_empty(&rrset)) {
+		ret = callback(&rrset, true, ctx);
+		if (ret != KNOT_EOK) {
+			changeset_iter_clear(&it);
+			return ret;
+		}
+		rrset = changeset_iter_next(&it);
+	}
+	changeset_iter_clear(&it);
+
+	return KNOT_EOK;
 }
