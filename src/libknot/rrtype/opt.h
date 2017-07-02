@@ -343,9 +343,6 @@ static inline uint8_t *knot_edns_opt_get_data(uint8_t *opt)
 	return opt + KNOT_EDNS_OPTION_HDRLEN;
 }
 
-/*! \brief Return true if RRSet has NSID option. */
-bool knot_edns_has_nsid(const knot_rrset_t *opt_rr);
-
 /*!
  * \brief Checks OPT RR semantics.
  *
