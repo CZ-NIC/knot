@@ -167,6 +167,13 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	log_zone_info(zone_name, "DNSSEC, signing started");
 
+	result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx);
+	if (result != KNOT_EOK) {
+		log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
+			       knot_strerror(result));
+		goto done;
+	}
+
 	result = knot_zone_create_nsec_chain(update, &keyset, &ctx, false);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to create NSEC%s chain (%s)",

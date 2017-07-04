@@ -757,114 +757,6 @@ static int rrset_add_zone_ds(knot_rrset_t *rrset,
 }
 
 /*!
- * \brief Adds/removes DNSKEY (and CDNSKEY, CDS) records to zone according to zone keyset.
- *
- * \param update     Structure holding zone contents and to be updated with changes.
- * \param zone_keys  Keyset with private keys.
- * \param dnssec_ctx KASP context.
- *
- * \return KNOT_E*
- */
-static int sign_update_dnskeys(zone_update_t *update, zone_keyset_t *zone_keys,
-                               const kdnssec_ctx_t *dnssec_ctx)
-{
-        assert(update != NULL && zone_keys != NULL && dnssec_ctx != NULL);
-
-	const zone_node_t *apex = update->new_cont->apex;
-	knot_rrset_t dnskeys = node_rrset(apex, KNOT_RRTYPE_DNSKEY);
-	knot_rrset_t cdnskeys = node_rrset(apex, KNOT_RRTYPE_CDNSKEY);
-	knot_rrset_t cdss = node_rrset(apex, KNOT_RRTYPE_CDS);
-	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
-	knot_rrset_t *add_dnskeys = NULL;
-	knot_rrset_t *add_cdnskeys = NULL;
-	knot_rrset_t *add_cdss = NULL;
-	//knot_rrset_t rrsigs = node_rrset(apex, KNOT_RRTYPE_RRSIG);
-	uint32_t dnskey_ttl = dnssec_ctx->policy->dnskey_ttl;
-	if (knot_rrset_empty(&soa)) {
-		return KNOT_EINVAL;
-	}
-
-	changeset_t ch;
-	int ret = changeset_init(&ch, apex->owner);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// remove invalid/old DNSKEYS
-	knot_rrset_t to_remove;
-	knot_rrset_init(&to_remove, apex->owner, KNOT_RRTYPE_DNSKEY, dnskeys.rclass);
-	for (uint16_t i = 0; i < dnskeys.rrs.rr_count; i++) {
-		const knot_rdata_t *r = knot_rdataset_at(&dnskeys.rrs, i);
-		uint32_t r_ttl = knot_rdata_ttl(r);
-		if (r_ttl == dnskey_ttl && is_from_keyset(zone_keys, r, false, false, NULL)) {
-			continue;
-		}
-
-		ret = knot_rdataset_add(&to_remove.rrs, r, NULL);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-	}
-	if (!knot_rrset_empty(&to_remove) && ret == KNOT_EOK) {
-		ret = changeset_add_removal(&ch, &to_remove, 0);
-	}
-	knot_rdataset_clear(&to_remove.rrs, NULL);
-	if (ret != KNOT_EOK) {
-		goto cleanup;
-	}
-
-	// remove CDS and CDNSKEY if no submission
-	if (!zone_has_key_sbm(dnssec_ctx)) {
-		if (!knot_rrset_empty(&cdnskeys)) {
-			ret = changeset_add_removal(&ch, &cdnskeys, 0);
-		}
-		if (ret == KNOT_EOK && !knot_rrset_empty(&cdss)) {
-			ret = changeset_add_removal(&ch, &cdss, 0);
-		}
-	}
-
-	// add DNSKEYs, CDNSKEYs and CDSs
-	add_dnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_DNSKEY, soa.rclass, NULL);
-	add_cdnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDNSKEY, soa.rclass, NULL);
-	add_cdss = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDS, soa.rclass, NULL);
-	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL) {
-		ret = KNOT_ENOMEM;
-	}
-	for (int i = 0; i < zone_keys->count && ret == KNOT_EOK; i++) {
-		zone_key_t *key = &zone_keys->keys[i];
-		if (!key->is_public) {
-			continue;
-		}
-
-		ret = rrset_add_zone_key(add_dnskeys, key, dnskey_ttl);
-		if (key->is_ready && !key->is_active && ret == KNOT_EOK) {
-			ret = rrset_add_zone_key(add_cdnskeys, key, 0);
-			if (ret == KNOT_EOK) {
-				ret = rrset_add_zone_ds(add_cdss, key, 0);
-			}
-		}
-	}
-
-	knot_rrset_t *add_rrsets[3] = { add_dnskeys, add_cdnskeys, add_cdss };
-	for (int i = 0; i < 3 && ret == KNOT_EOK; i++) {
-		if (!knot_rrset_empty(add_rrsets[i])) {
-			ret = changeset_add_addition(&ch, add_rrsets[i], 0);
-		}
-	}
-
-	if (ret == KNOT_EOK) {
-		ret = zone_update_apply_changeset_fix(update, &ch);
-	}
-
-cleanup:
-	knot_rrset_free(&add_dnskeys, NULL);
-	knot_rrset_free(&add_cdnskeys, NULL);
-	knot_rrset_free(&add_cdss, NULL);
-	changeset_clear(&ch);
-	return ret;
-}
-
-/*!
  * \brief Goes through list and looks for RRSet type there.
  *
  * \return True if RR type is in the list, false otherwise.
@@ -1081,11 +973,6 @@ int knot_zone_sign(zone_update_t *update,
 
 	int result;
 
-	result = sign_update_dnskeys(update, zone_keys, dnssec_ctx);
-	if (result != KNOT_EOK) {
-		return result;
-	}
-
 	changeset_t ch;
 	result = changeset_init(&ch, update->new_cont->apex->owner);
 	if (result != KNOT_EOK) {
@@ -1113,6 +1000,107 @@ int knot_zone_sign(zone_update_t *update,
 	changeset_clear(&ch);
 
 	return KNOT_EOK;
+}
+
+int knot_zone_sign_update_dnskeys(zone_update_t *update,
+                                  zone_keyset_t *zone_keys,
+                                  const kdnssec_ctx_t *dnssec_ctx)
+{
+	if (update == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const zone_node_t *apex = update->new_cont->apex;
+	knot_rrset_t dnskeys = node_rrset(apex, KNOT_RRTYPE_DNSKEY);
+	knot_rrset_t cdnskeys = node_rrset(apex, KNOT_RRTYPE_CDNSKEY);
+	knot_rrset_t cdss = node_rrset(apex, KNOT_RRTYPE_CDS);
+	knot_rrset_t *add_dnskeys = NULL;
+	knot_rrset_t *add_cdnskeys = NULL;
+	knot_rrset_t *add_cdss = NULL;
+	uint32_t dnskey_ttl = dnssec_ctx->policy->dnskey_ttl;
+	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
+	if (knot_rrset_empty(&soa)) {
+		return KNOT_EINVAL;
+	}
+
+	changeset_t ch;
+	int ret = changeset_init(&ch, apex->owner);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// remove invalid/old DNSKEYS
+	knot_rrset_t to_remove;
+	knot_rrset_init(&to_remove, apex->owner, KNOT_RRTYPE_DNSKEY, dnskeys.rclass);
+	for (uint16_t i = 0; i < dnskeys.rrs.rr_count; i++) {
+		const knot_rdata_t *r = knot_rdataset_at(&dnskeys.rrs, i);
+		uint32_t r_ttl = knot_rdata_ttl(r);
+		if (r_ttl == dnskey_ttl && is_from_keyset(zone_keys, r, false, false, NULL)) {
+			continue;
+		}
+
+		ret = knot_rdataset_add(&to_remove.rrs, r, NULL);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+	}
+	if (!knot_rrset_empty(&to_remove) && ret == KNOT_EOK) {
+		ret = changeset_add_removal(&ch, &to_remove, 0);
+	}
+	knot_rdataset_clear(&to_remove.rrs, NULL);
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
+
+	// remove CDS and CDNSKEY if no submission
+	if (!zone_has_key_sbm(dnssec_ctx)) {
+		if (!knot_rrset_empty(&cdnskeys)) {
+			ret = changeset_add_removal(&ch, &cdnskeys, 0);
+		}
+		if (ret == KNOT_EOK && !knot_rrset_empty(&cdss)) {
+			ret = changeset_add_removal(&ch, &cdss, 0);
+		}
+	}
+
+	// add DNSKEYs, CDNSKEYs and CDSs
+	add_dnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_DNSKEY, soa.rclass, NULL);
+	add_cdnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDNSKEY, soa.rclass, NULL);
+	add_cdss = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDS, soa.rclass, NULL);
+	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL) {
+		ret = KNOT_ENOMEM;
+	}
+	for (int i = 0; i < zone_keys->count && ret == KNOT_EOK; i++) {
+		zone_key_t *key = &zone_keys->keys[i];
+		if (!key->is_public) {
+			continue;
+		}
+
+		ret = rrset_add_zone_key(add_dnskeys, key, dnskey_ttl);
+		if (key->is_ready && !key->is_active && ret == KNOT_EOK) {
+			ret = rrset_add_zone_key(add_cdnskeys, key, 0);
+			if (ret == KNOT_EOK) {
+				ret = rrset_add_zone_ds(add_cdss, key, 0);
+			}
+		}
+	}
+
+	knot_rrset_t *add_rrsets[3] = { add_dnskeys, add_cdnskeys, add_cdss };
+	for (int i = 0; i < 3 && ret == KNOT_EOK; i++) {
+		if (!knot_rrset_empty(add_rrsets[i])) {
+			ret = changeset_add_addition(&ch, add_rrsets[i], 0);
+		}
+	}
+
+	if (ret == KNOT_EOK) {
+		ret = zone_update_apply_changeset_fix(update, &ch);
+	}
+
+cleanup:
+	knot_rrset_free(&add_dnskeys, NULL);
+	knot_rrset_free(&add_cdnskeys, NULL);
+	knot_rrset_free(&add_cdss, NULL);
+	changeset_clear(&ch);
+	return ret;
 }
 
 bool knot_zone_sign_soa_expired(const zone_contents_t *zone,

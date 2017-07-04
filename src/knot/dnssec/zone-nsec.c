@@ -387,18 +387,13 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
 		goto cleanup;
 	}
 
-	// beware this is a hack: we need to guess correct apex type bitmap
-	// but it can change during zone signing.
-	bool apex_has_cds = zone_has_key_sbm(ctx);
-
 	if (ctx->policy->nsec3_enabled) {
-		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl,
-					      apex_has_cds, &ch);
+		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl, &ch);
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}
 	} else {
-		int ret = knot_nsec_create_chain(update->new_cont, nsec_ttl, apex_has_cds, &ch);
+		int ret = knot_nsec_create_chain(update->new_cont, nsec_ttl, &ch);
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}

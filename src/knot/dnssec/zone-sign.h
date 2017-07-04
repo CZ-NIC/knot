@@ -25,6 +25,19 @@
 #include "knot/dnssec/zone-keys.h"
 
 /*!
+ * \brief Adds/removes DNSKEY (and CDNSKEY, CDS) records to zone according to zone keyset.
+ *
+ * \param update     Structure holding zone contents and to be updated with changes.
+ * \param zone_keys  Keyset with private keys.
+ * \param dnssec_ctx KASP context.
+ *
+ * \return KNOT_E*
+ */
+int knot_zone_sign_update_dnskeys(zone_update_t *update,
+                                  zone_keyset_t *zone_keys,
+                                  const kdnssec_ctx_t *dnssec_ctx);
+
+/*!
  * \brief Update zone signatures and store performed changes in update.
  *
  * Updates RRSIGs, NSEC(3)s, and DNSKEYs.
