@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,14 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file
- *
- * \brief API for quering zone that is being updated.
- *
- * \addtogroup ddns
- * @{
  */
 
 #pragma once
@@ -205,6 +197,16 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes);
 
 /*!
+ * \brief Increment SOA serial (according to cofigured policy) in the update.
+ *
+ * \param update  Update to be modified.
+ * \param conf    Configuration.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_increment_soa(zone_update_t *update, conf_t *conf);
+
+/*!
  * \brief Commits all changes to the zone, signs it, saves changes to journal.
  *
  * \param conf          Configuration.
@@ -275,5 +277,3 @@ void zone_update_iter_finish(zone_update_iter_t *it);
  * \param update  Zone update.
  */
 bool zone_update_no_change(zone_update_t *up);
-
-/*! @} */

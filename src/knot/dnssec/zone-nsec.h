@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Interface for generating of NSEC/NSEC3 records in zone.
- *
- * \addtogroup dnssec
- * @{
- */
 
 #pragma once
 
@@ -29,6 +21,7 @@
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/updates/changesets.h"
+#include "knot/updates/zone-update.h"
 #include "knot/zone/contents.h"
 
 /*!
@@ -68,16 +61,14 @@ knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  *
- * \param zone       Zone for which the NSEC(3) chain will be created.
- * \param changeset  Changeset into which the changes will be added.
- * \param zone_keys  Zone keys used for NSEC(3) creation.
- * \param policy     DNSSEC signing policy.
+ * \param update          Zone Update with current zone contents and to be updated with NSEC chain.
+ * \param zone_keys       Zone keys used for NSEC(3) creation.
+ * \param policy          DNSSEC signing policy.
+ * \param sign_nsec_chain If true, the created NSEC(3) chain is signed at the end.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_create_nsec_chain(const zone_contents_t *zone,
-                                changeset_t *changeset,
+int knot_zone_create_nsec_chain(zone_update_t *update,
                                 const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *dnssec_ctx);
-
-/*! @} */
+                                const kdnssec_ctx_t *dnssec_ctx,
+                                bool sign_nsec_chain);

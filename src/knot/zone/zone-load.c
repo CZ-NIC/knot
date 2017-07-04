@@ -208,80 +208,31 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 	return ret;
 }
 
-int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
+int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t **contents,
 		   zone_sign_reschedule_t *dnssec_refresh)
 {
-	if (conf == NULL || zone == NULL || contents == NULL) {
+	if (conf == NULL || zone == NULL || contents == NULL || *contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	changeset_t change;
-	int ret = changeset_init(&change, zone->name);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	int ret = KNOT_EOK;
+	changeset_t change = { { 0 } };
+	zone_update_t up = { 0 };
 
-	/* Sign zone using DNSSEC (if configured). */
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	val = conf_zone_get(conf, C_IXFR_DIFF, zone->name);
 	bool build_diffs = conf_bool(&val);
-	if (dnssec_enable) {
-		/* Perform NSEC3 resalt and ZSK rollover if needed. */
-		kdnssec_ctx_t kctx = { 0 };
-		ret = kdnssec_ctx_init(conf, &kctx, zone->name, NULL);
-		if (ret != KNOT_EOK) {
-			changeset_clear(&change);
-			return ret;
-		}
-
-		bool ignore1 = false; knot_time_t ignore2 = 0;
-		ret = knot_dnssec_nsec3resalt(&kctx, &ignore1, &ignore2);
-		if (ret != KNOT_EOK) {
-			kdnssec_ctx_deinit(&kctx);
-			changeset_clear(&change);
-			return ret;
-		}
-
-		if (zone_has_key_sbm(&kctx)) {
-			zone_events_schedule_now(zone, ZONE_EVENT_PARENT_DS_Q);
-		}
-
-		kdnssec_ctx_deinit(&kctx);
-
-		ret = knot_dnssec_zone_sign(contents, &change, 0, dnssec_refresh);
-		if (ret != KNOT_EOK) {
-			changeset_clear(&change);
-			return ret;
-		}
-
-		/* Apply DNSSEC changes. */
-		if (!changeset_empty(&change)) {
-			apply_ctx_t a_ctx = { 0 };
-			apply_init_ctx(&a_ctx, contents, APPLY_STRICT);
-
-			ret = apply_changeset_directly(&a_ctx, &change);
-			update_cleanup(&a_ctx);
-			if (ret != KNOT_EOK) {
-				changeset_clear(&change);
-				return ret;
-			}
-		} else {
-			changeset_clear(&change);
-		}
-	}
 
 	/* Calculate IXFR from differences (if configured or auto DNSSEC). */
-	const bool contents_changed = zone->contents && (contents != zone->contents);
-	if (contents_changed && (build_diffs || dnssec_enable)) {
-		/* Replace changes from zone signing, the resulting diff will cover
-		 * those changes as well. */
-		changeset_clear(&change);
+	const bool contents_changed = zone->contents && (*contents != zone->contents);
+	if (contents_changed && build_diffs) {
+		/* The resulting diff will cover DNSSEC changes as well. */
 		ret = changeset_init(&change, zone->name);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		ret = zone_contents_diff(zone->contents, contents, &change);
+		ret = zone_contents_diff(zone->contents, *contents, &change);
 		if (ret == KNOT_ENODIFF) {
 			log_zone_warning(zone->name, "failed to create journal "
 			                 "entry, zone file changed without "
@@ -298,8 +249,6 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 			return ret;
 		}
 	}
-
-	/* Write changes (DNSSEC, diff, or both) to journal if all went well. */
 	if (!changeset_empty(&change)) {
 		ret = zone_change_store(conf, zone, &change);
 		if (ret == KNOT_ESPACE) {
@@ -309,6 +258,55 @@ int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
 			log_zone_error(zone->name, "failed to store changes into "
 			               "journal (%s)", knot_strerror(ret));
 		}
+	}
+
+	/* Sign zone using DNSSEC (if configured). */
+	if (dnssec_enable) {
+		/* Perform NSEC3 resalt and ZSK rollover if needed. */
+		kdnssec_ctx_t kctx = { 0 };
+		ret = kdnssec_ctx_init(conf, &kctx, zone->name, NULL);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		bool ignore1 = false; knot_time_t ignore2 = 0;
+		ret = knot_dnssec_nsec3resalt(&kctx, &ignore1, &ignore2);
+		if (ret != KNOT_EOK) {
+			kdnssec_ctx_deinit(&kctx);
+			return ret;
+		}
+
+		if (zone_has_key_sbm(&kctx)) {
+			zone_events_schedule_now(zone, ZONE_EVENT_PARENT_DS_Q);
+		}
+
+		kdnssec_ctx_deinit(&kctx);
+
+		// zone_update demands zone_t with nonnull contents
+		zone_t fake_zone;
+		memcpy(&fake_zone, zone, sizeof(zone_t));
+		fake_zone.contents = *contents;
+
+		ret = zone_update_init(&up, &fake_zone, UPDATE_INCREMENTAL);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		ret = knot_dnssec_zone_sign(&up, 0, dnssec_refresh);
+		if (ret != KNOT_EOK) {
+			zone_update_clear(&up);
+			return ret;
+		}
+
+		ret = zone_update_commit(conf, &up);
+		if (up.new_cont) {
+			zone_update_clear(&up);
+		}
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		*contents = fake_zone.contents;
 	}
 
 	changeset_clear(&change);

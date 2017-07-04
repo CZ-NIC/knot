@@ -63,7 +63,7 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone,
  * \param dnssec_refresh
  * \return KNOT_EOK or an error
  */
-int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t *contents,
+int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t **contents,
                    zone_sign_reschedule_t *dnssec_refresh);
 
 /*!

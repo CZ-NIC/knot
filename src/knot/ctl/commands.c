@@ -24,6 +24,7 @@
 #include "knot/ctl/commands.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/events/handlers.h"
+#include "knot/events/log.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/timers.h"
@@ -416,6 +417,22 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
+	// Sign update.
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+	bool dnssec_enable = (zone->control_update->flags & UPDATE_SIGN) && conf_bool(&val);
+	if (dnssec_enable) {
+		zone_sign_reschedule_t resch = { 0 };
+		int ret = knot_dnssec_sign_update(zone->control_update, &resch);
+		if (ret != KNOT_EOK) {
+			zone_update_clear(zone->control_update);
+			free(zone->control_update);
+			zone->control_update = NULL;
+			return ret;
+		}
+		log_dnssec_next(zone->name, (time_t)resch.next_sign);
+		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, (time_t)resch.next_sign);
+	}
+
 	int ret = zone_update_commit(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
 		/* Invalidate the transaction if aborted. */
@@ -431,7 +448,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	zone->control_update = NULL;
 
 	/* Sync zonefile immediately if configured. */
-	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
+	val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
 	if (conf_int(&val) == 0) {
 		zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
 	}
