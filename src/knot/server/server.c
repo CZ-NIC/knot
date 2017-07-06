@@ -211,7 +211,16 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	}
 
 	/* Create bound TCP socket. */
-	int sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, 0);
+	int tcp_bind_flags = 0;
+	int sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
+	if (sock == KNOT_EADDRNOTAVAIL) {
+		tcp_bind_flags |= NET_BIND_NONLOCAL;
+		sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
+		if (sock >= 0) {
+			log_warning("address '%s' bound, but required nonlocal bind", addr_str);
+		}
+	}
+
 	if (sock < 0) {
 		log_error("cannot bind address '%s' (%s)", addr_str,
 		          knot_strerror(sock));
