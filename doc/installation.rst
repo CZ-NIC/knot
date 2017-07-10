@@ -64,7 +64,7 @@ Installation from source code
 
 You can find the source code for the latest release on `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 Alternatively, you can fetch the whole project from the git repository
-`git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/labs/knot/tree/master>`_.
+`git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/knot/knot-dns/tree/master>`_.
 
 After obtaining the source code, the compilation and installation is a
 quite straightforward process using autotools.
