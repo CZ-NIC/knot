@@ -22,7 +22,7 @@ All other bugs and questions may be directed to the public Knot DNS users
 mailing list
 (`knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_) or
 may be entered into the
-`issue tracking system <https://gitlab.labs.nic.cz/labs/knot/issues>`_.
+`issue tracking system <https://gitlab.labs.nic.cz/knot/knot-dns/issues>`_.
 
 Before anything else, please try to answer the following questions:
 
