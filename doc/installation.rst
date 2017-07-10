@@ -82,7 +82,7 @@ Installation from the sources
 
 You can find the source files for the latest release on `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 Alternatively, you can fetch the sources from git repository
-`git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/labs/knot/tree/master>`_.
+`git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/knot/knot-dns/tree/master>`_.
 
 After unpacking the sources, the compilation and installation is a
 quite straightforward process using autotools.
