@@ -18,7 +18,7 @@ ENV RUNTIME_PKGS liburcu2 liblmdb0 libgnutls-deb0-28 libjansson4 libedit2 libidn
 RUN apt-get -q -y update && \
 apt-get install -q -y ${BUILD_PKGS} ${RUNTIME_PKGS} && \
 # Compile sources
-git clone -b master https://gitlab.labs.nic.cz/labs/knot.git /knot-src && \
+git clone -b master https://gitlab.labs.nic.cz/knot/knot-dns.git /knot-src && \
 cd /knot-src && \
 autoreconf -if && \
 ./configure --disable-static --enable-fastparser --disable-documentation && \
