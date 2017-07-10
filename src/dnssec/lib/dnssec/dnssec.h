@@ -36,10 +36,10 @@
  * [git://git.nic.cz/knot-dns.git](git://git.nic.cz/knot-dns.git)
  *
  * \par Git repository browser
- * https://gitlab.labs.nic.cz/labs/knot/tree/libdnssec
+ * https://gitlab.labs.nic.cz/knot/knot-dns/tree/libdnssec
  *
  * \par Issue tracker
- * https://gitlab.labs.nic.cz/labs/knot/issues
+ * https://gitlab.labs.nic.cz/knot/knot-dns/issues
  *
  * \par Mailing list
  * knot-dns-users@lists.nic.cz
