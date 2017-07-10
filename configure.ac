@@ -82,7 +82,7 @@ AC_ARG_ENABLE([fastparser],
 
 AS_IF([test "$enable_fastparser" = "yes"],[
     AS_IF([test "${CC_LLVM}" = "yes"],[
-        AC_MSG_WARN([LLVM based compiler detected; disabling fastest zone parser, see https://gitlab.labs.nic.cz/labs/knot/issues/351])
+        AC_MSG_WARN([LLVM based compiler detected; disabling fastest zone parser, see https://gitlab.labs.nic.cz/knot/knot-dns/issues/351])
         enable_fastparser=no
         ])
     ])

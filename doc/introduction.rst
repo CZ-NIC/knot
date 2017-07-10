@@ -45,9 +45,9 @@ Server features:
 
 For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 
-Git repository: `git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/labs/knot/tree/master>`_
+Git repository: `git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/knot/knot-dns/tree/master>`_
 
-Knot DNS issue tracker: `gitlab.labs.nic.cz/labs/knot/issues <https://gitlab.labs.nic.cz/labs/knot/issues>`_
+Knot DNS issue tracker: `gitlab.labs.nic.cz/knot/knot-dns/issues <https://gitlab.labs.nic.cz/knot/knot-dns/issues>`_
 
 Knot DNS users mailing list: `knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_
 
