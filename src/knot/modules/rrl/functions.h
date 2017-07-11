@@ -26,6 +26,7 @@
 /* Defaults */
 #define RRL_SLIP_MAX 100
 #define RRL_LOCK_GRANULARITY 32 /* Last digit granularity */
+#define RRL_CAPACITY 4 /* Window size in seconds */
 
 /*!
  * \brief RRL hash bucket.
