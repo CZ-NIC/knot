@@ -34,10 +34,10 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .sp
 \fBkeymgr\fP \fIbasic_option\fP [\fIparameters\fP\&...]
 .sp
-\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_storage\fP] \fIzone_name\fP \fIaction\fP \fIparameters\fP\&...
+\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_storage\fP] \fIzone\fP \fIcommand\fP \fIargument\fP\&...
 .SH DESCRIPTION
 .sp
-The \fBkeymgr\fP utility serves for key management in Knot DNS server.
+The \fBkeymgr\fP utility serves for manual key management in Knot DNS server.
 .sp
 Functions for DNSSEC keys and KASP (Key And Signature Policy)
 management are provided.
@@ -53,25 +53,24 @@ Print the program help.
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
 .TP
-\fB\-t\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
+\fB\-t\fP \fBtsig_name\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
 Generates TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
 bit length of the key by number (default: optimal length given by algorithm).
 .UNINDENT
 .SS Config options
 .INDENT 0.0
 .TP
-\fB\-d\fP
-Use KASP database directory specified by config_storage.
-.TP
 \fB\-c\fP
-Determine KASP database location from Knot DNS configuration file, specified
-by config_storage.
+Use specified Knot DNS configuration file path.
 .TP
 \fB\-C\fP
-Determine KASP database location from Knot DNS configuration database,
-specified by config_storage.
+Use specified Knot DNS configuration database path. The default configuration
+database, if exists, has a preference to the default configuration file.
+.TP
+\fB\-d\fP
+Use specified KASP database path and default configuration.
 .UNINDENT
-.SS Actions
+.SS Commands
 .INDENT 0.0
 .TP
 \fBlist\fP
