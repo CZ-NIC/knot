@@ -271,7 +271,7 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				restype = REMOVE;
 				break;
 			default:
-				assert(0);
+				continue;
 			}
 		} else {
 			switch (get_key_state(key, ctx->now)) {
@@ -294,7 +294,7 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				break;
 			case DNSSEC_KEY_STATE_READY:
 			default:
-				assert(0);
+				continue;
 			}
 		}
 		if (knot_time_cmp(keytime, res.time) < 0) {
