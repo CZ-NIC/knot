@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
 	sockaddr_set(&addr6, AF_INET6, "1122:3344:5566:7788::aabb", 0);
 	ret = 0;
-	for (unsigned i = 0; i < rate; ++i) {
+	for (unsigned i = 0; i < rate * RRL_CAPACITY; ++i) {
 		if (rrl_query(rrl, &addr, &rq, zone, NULL) != KNOT_EOK ||
 		    rrl_query(rrl, &addr6, &rq, zone, NULL) != KNOT_EOK) {
 			ret = KNOT_ELIMIT;
