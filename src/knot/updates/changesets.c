@@ -254,7 +254,7 @@ size_t changeset_size(const changeset_t *ch)
 	return size;
 }
 
-int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags)
+int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset_flag_t flags)
 {
 	if (!ch || !rrset) {
 		return KNOT_EINVAL;
@@ -286,7 +286,7 @@ int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, unsigned 
 	return ret;
 }
 
-int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags)
+int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_flag_t flags)
 {
 	if (!ch || !rrset) {
 		return KNOT_EINVAL;

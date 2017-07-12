@@ -21,10 +21,10 @@
 #include "contrib/ucw/lists.h"
 
 /*! \brief Changeset addition/removal flags */
-enum {
+typedef enum {
 	CHANGESET_NONE = 0,
 	CHANGESET_CHECK = 1 << 0, /*! Perform redundancy check on additions/removals */
-};
+} changeset_flag_t;
 
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct {
@@ -85,24 +85,24 @@ size_t changeset_size(const changeset_t *ch);
 /*!
  * \brief Add RRSet to 'add' part of changeset.
  *
- * \param ch                Changeset to add RRSet into.
- * \param rrset             RRSet to be added.
- * \param check_redundancy  Check the added RR for redundancy already in the changeset.
+ * \param ch     Changeset to add RRSet into.
+ * \param rrset  RRSet to be added.
+ * \param flags  Changeset flags.
  *
  * \return KNOT_E*
  */
-int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags);
+int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset_flag_t flags);
 
 /*!
  * \brief Add RRSet to 'remove' part of changeset.
  *
- * \param ch                Changeset to add RRSet into.
- * \param rrset             RRSet to be added.
- * \param check_redundancy  Check the added RR for redundancy already in the changeset.
+ * \param ch     Changeset to add RRSet into.
+ * \param rrset  RRSet to be added.
+ * \param flags  Changeset flags.
  *
  * \return KNOT_E*
  */
-int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags);
+int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_flag_t flags);
 
 
 /*!
