@@ -331,7 +331,8 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 		if (key->is_ksk && (key->is_ready || key->is_active)) {
 			u->is_ksk_active = true;
 		}
-		if (key->is_zsk && key->is_active) {
+		if (key->is_zsk && (key->is_active ||
+				    (key->is_ksk && key->is_ready))) {
 			u->is_zsk_active = true;
 		}
 	}

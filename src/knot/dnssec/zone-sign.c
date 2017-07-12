@@ -258,7 +258,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		int endloop = 0; // 1 - continue; 2 - break
 
 		dynarray_foreach(keyptr, zone_key_t *, key, keys) {
-			if (!(*key)->is_active) {
+			if (!(*key)->is_active && !(*key)->is_ready) {
 				continue;
 			}
 			result = knot_check_signature(covered, &synth_rrsig, i,
