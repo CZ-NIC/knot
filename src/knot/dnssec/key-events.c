@@ -219,7 +219,11 @@ static knot_time_t ksk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t 
 	if (retire_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(retire_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
+	knot_timediff_t use_ttl = ctx->policy->dnskey_ttl;
+	if (ctx->policy->singe_type_signing && ctx->policy->zone_maximal_ttl > use_ttl) {
+		use_ttl = ctx->policy->zone_maximal_ttl;
+	}
+	return knot_time_add(retire_time, ctx->policy->propagation_delay + use_ttl);
 }
 
 static roll_action next_action(kdnssec_ctx_t *ctx)
@@ -362,10 +366,9 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 	if (ctx->policy->manual) {
 		return KNOT_EOK;
 	}
-	int ret = KNOT_ESEMCHECK; // just an independent rcode not appearing normally
-
+	int ret = KNOT_EOK;
 	// generate initial keys if missing
-	if (!ctx->policy->singe_type_signing && !key_present(ctx, DNSKEY_FLAGS_KSK)) {
+	if (!key_present(ctx, DNSKEY_FLAGS_KSK)) {
 		if (ctx->policy->ksk_shared) {
 			ret = share_or_generate_key(ctx, true, ctx->now);
 		} else {
@@ -373,14 +376,14 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		}
 		reschedule->plan_ds_query = true;
 	}
-	if ((ret == KNOT_EOK || ret == KNOT_ESEMCHECK) && !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
+	if (!ctx->policy->singe_type_signing && ret == KNOT_EOK && !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
 		ret = generate_key(ctx, false, ctx->now);
 	}
 	if (ret == KNOT_EOK) {
 		reschedule->keys_changed = true;
 	}
 
-	if (ret != KNOT_EOK && ret != KNOT_ESEMCHECK) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
@@ -388,7 +391,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 
 	reschedule->next_rollover = next.time;
 
-	if (!ctx->policy->singe_type_signing && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
+	if (knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
 		switch (next.type) {
 		case PUBLISH:
 			if (next.ksk && ctx->policy->ksk_shared) {
@@ -426,7 +429,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 	if (reschedule->keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
 	}
-	return (ret == KNOT_ESEMCHECK ? KNOT_EOK : ret);
+	return ret;
 }
 
 int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx)
