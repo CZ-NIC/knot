@@ -95,9 +95,9 @@ Changes a timing argument of an existing key to new timestamp. \fIKey_spec\fP is
 key tag or a prefix of key ID; \fIarguments\fP are like for \fBgenerate\fP, but just
 timing\-related ones.
 .TP
-\fBds\fP \fIkey_spec\fP
+\fBds\fP [\fIkey_spec\fP]
 Generate DS record (all digest algorithms together) from specified key. \fIKey_spec\fP
-is like for \fBset\fP\&.
+is like for \fBset\fP, if unspecified, all KSKs are used.
 .TP
 \fBdelete\fP \fIkey_spec\fP
 Remove the specified key from zone. If the key was not shared, it is also deleted from keystore.
