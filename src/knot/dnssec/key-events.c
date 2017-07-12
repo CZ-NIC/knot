@@ -72,7 +72,7 @@ static int generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_time_t when_active)
 
 	key->timing.remove = 0;
 	key->timing.retire = 0;
-	key->timing.active  = when_active;
+	key->timing.active  = (ksk ? 0 : when_active);
 	key->timing.ready   = when_active;
 	key->timing.publish = ctx->now;
 
@@ -103,7 +103,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_time_t when_
 		}
 		key->timing.remove = 0;
 		key->timing.retire = 0;
-		key->timing.active  = when_active;
+		key->timing.active  = (ksk ? 0 : when_active);
 		key->timing.ready   = when_active;
 		key->timing.publish = ctx->now;
 
@@ -143,7 +143,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_time_t when_
 			assert(newkey != NULL);
 			newkey->timing.publish = ctx->now;
 			newkey->timing.ready = when_active;
-			newkey->timing.active = when_active;
+			newkey->timing.active = (ksk ? 0 : when_active);
 		}
 	}
 	free(borrow_zone);
@@ -371,6 +371,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		} else {
 			ret = generate_key(ctx, true, ctx->now);
 		}
+		reschedule->plan_ds_query = true;
 	}
 	if ((ret == KNOT_EOK || ret == KNOT_ESEMCHECK) && !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
 		ret = generate_key(ctx, false, ctx->now);
