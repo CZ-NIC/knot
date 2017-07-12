@@ -497,7 +497,6 @@ of the limitations will be hopefully removed in the near future.
 - Automatic key management:
 
   - Only one DNSSEC algorithm can be used per zone.
-  - CSK rollover with Single-Type Signing scheme is not implemented.
   - ZSK rollover always uses key pre-publish method (actually a feature).
   - KSK rollover always uses pre-publish double-ksk method.
 
