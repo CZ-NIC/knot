@@ -328,9 +328,11 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 		}
 
 		if (key->is_public) { u->is_public = true; }
-		if (key->is_active) { // TODO consider READY state (not for STSS for now)
-			if (key->is_ksk) { u->is_ksk_active = true; }
-			if (key->is_zsk) { u->is_zsk_active = true; }
+		if (key->is_ksk && (key->is_ready || key->is_active)) {
+			u->is_ksk_active = true;
+		}
+		if (key->is_zsk && key->is_active) {
+			u->is_zsk_active = true;
 		}
 	}
 
