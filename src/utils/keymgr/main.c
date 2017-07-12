@@ -125,14 +125,17 @@ static int key_command(int argc, char *argv[])
 		ret = keymgr_list_keys(&kctx);
 	} else if (strcmp(argv[1], "ds") == 0) {
 		if (argc < 3) {
-			printf("Key is not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
-		knot_kasp_key_t *key2ds;
-		ret = keymgr_get_key(&kctx, argv[2], &key2ds);
-		if (ret == KNOT_EOK) {
-			ret = keymgr_generate_ds(zone_name, key2ds);
+			for (int i = 0; i < kctx.zone->num_keys && ret == KNOT_EOK; i++) {
+				if (dnssec_key_get_flags(kctx.zone->keys[i].key) == DNSKEY_FLAGS_KSK) {
+					ret = keymgr_generate_ds(zone_name, &kctx.zone->keys[i]);
+				}
+			}
+		} else {
+			knot_kasp_key_t *key2ds;
+			ret = keymgr_get_key(&kctx, argv[2], &key2ds);
+			if (ret == KNOT_EOK) {
+				ret = keymgr_generate_ds(zone_name, key2ds);
+			}
 		}
 	} else if (strcmp(argv[1], "share") == 0) {
 		knot_dname_t *other_zone = NULL;

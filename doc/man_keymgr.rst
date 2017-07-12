@@ -72,9 +72,9 @@ Actions
   key tag or a prefix of key ID; *arguments* are like for **generate**, but just
   timing-related ones.
 
-**ds** *key_spec*
+**ds** [*key_spec*]
   Generate DS record (all digest algorithms together) from specified key. *Key_spec*
-  is like for **set**.
+  is like for **set**, if unspecified, all KSKs are used.
 
 **delete** *key_spec*
   Remove the specified key from zone. If the key was not shared, it is also deleted from keystore.
