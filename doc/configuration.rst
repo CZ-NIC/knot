@@ -294,7 +294,7 @@ by LMDB.
   management, the database must be *readable* by the server process. For
   automatic key management, it must be *writeable*. If no HSM is used,
   the database also contains private key material – don't set the permissions
-  too week.
+  too weak.
 
 .. _dnssec-automatic-zsk-management:
 
@@ -421,8 +421,8 @@ Let's use the Single-Type Signing scheme with two algorithms. Run:
 
 .. code-block:: console
 
-  $ keymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024
-  $ keymgr -d path/to/keydir myzone.test. generate algorithm=ECDSAP256SHA256 size=256
+  $ keymgr myzone.test. generate algorithm=RSASHA256 size=1024
+  $ keymgr myzone.test. generate algorithm=ECDSAP256SHA256 size=256
 
 And reload the server. The zone will be signed.
 
@@ -432,14 +432,14 @@ it yet:
 
 .. code-block:: console
 
-  $ keymgr -d path/to/keydir myzone.test. generate algorithm=RSASHA256 size=1024 active=now+1d
+  $ keymgr myzone.test. generate algorithm=RSASHA256 size=1024 active=now+1d
 
 Take the key ID (or key tag) of the old RSA key and disable it the same time
 the new key gets activated:
 
 .. code-block:: console
 
-  $ keymgr -d path/to/keydir myzone.test. set <old_key_id> retire=now+1d remove=now+1d
+  $ keymgr myzone.test. set <old_key_id> retire=now+1d remove=now+1d
 
 Reload the server again. The new key will be published (i.e. the DNSKEY record
 will be added into the zone). Do not forget to update the DS record in the
@@ -461,11 +461,11 @@ Zone signing
 The signing process consists of the following steps:
 
 #. Processing KASP database events. (e.g. performing a step of a rollover).
-#. Fixing the NSEC or NSEC3 chain.
 #. Updating the DNSKEY records. The whole DNSKEY set in zone apex is replaced
    by the keys from the KASP database. Note that keys added into the zone file
    manually will be removed. To add an extra DNSKEY record into the set, the
    key must be imported into the KASP database (possibly deactivated).
+#. Fixing the NSEC or NSEC3 chain.
 #. Removing expired signatures, invalid signatures, signatures expiring
    in a short time, and signatures issued by an unknown key.
 #. Creating missing signatures. Unless the Single-Type Signing Scheme
@@ -478,6 +478,7 @@ The signing is initiated on the following occasions:
 - Start of the server
 - Zone reload
 - Reaching the signature refresh period
+- Key set changed due to rollover event
 - Received DDNS update
 - Forced zone resign via server control interface
 
@@ -509,7 +510,6 @@ of the limitations will be hopefully removed in the near future.
 
   - Legacy key import requires a private key.
   - Legacy key export is not implemented.
-  - DS record export is not implemented.
 
 .. _query-modules:
 

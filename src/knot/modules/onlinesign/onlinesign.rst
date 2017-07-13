@@ -97,7 +97,7 @@ Example
   :ref:`Manual key management<dnssec-manual-key-management>`.
 
   .. NOTE::
-     Only id, manual, keystore, algorithm, zsk-size, and rrsig-lifetime policy items are
+     Only id, manual, keystore, algorithm, ksk-size, and rrsig-lifetime policy items are
      relevant to this module. If no rrsig-lifetime is configured, the
      default value is 25 hours.
 
