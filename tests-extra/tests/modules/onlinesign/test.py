@@ -66,8 +66,8 @@ def check_zone(zone, dnskey_rdata_start):
 t.start()
 knot.zones_wait(zones)
 
-check_zone(zones[0], "256 3 13")
-check_zone(zones[1], "256 3 8")
+check_zone(zones[0], "257 3 13")
+check_zone(zones[1], "257 3 8")
 
 t.end()
 
