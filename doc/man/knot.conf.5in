@@ -602,7 +602,8 @@ An algorithm of signing keys and issued signatures.
 \fIDefault:\fP ecdsap256sha256
 .SS ksk\-size
 .sp
-A length of newly generated KSK keys.
+A length of newly generated KSK or
+CSK keys.
 .sp
 \fIDefault:\fP 1024 (dsa*), 2048 (rsa*), 256 (ecdsap256*), 384 (ecdsap384*)
 .SS zsk\-size
@@ -652,6 +653,8 @@ KSK key lifetime is also infuenced by propagation\-delay, dnskey\-ttl,
 and KSK submission delay.
 .sp
 The default infinite value causes no KSK rollover as a result.
+.sp
+This applies for CSK lifetime if single\-type\-signing is enabled.
 .UNINDENT
 .UNINDENT
 .SS propagation\-delay

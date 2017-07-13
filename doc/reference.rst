@@ -692,7 +692,8 @@ An algorithm of signing keys and issued signatures.
 ksk-size
 --------
 
-A length of newly generated :abbr:`KSK (Key Signing Key)` keys.
+A length of newly generated :abbr:`KSK (Key Signing Key)` or 
+:abbr:`CSK (Combined Signing Key)` keys.
 
 *Default:* 1024 (dsa*), 2048 (rsa*), 256 (ecdsap256*), 384 (ecdsap384*)
 
@@ -750,6 +751,8 @@ A period between KSK publication and the next rollover initiation.
    and KSK submission delay.
 
    The default infinite value causes no KSK rollover as a result.
+
+   This applies for CSK lifetime if single-type-signing is enabled.
 
 .. _policy_propagation-delay:
 
