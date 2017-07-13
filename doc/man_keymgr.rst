@@ -8,12 +8,12 @@ Synopsis
 
 :program:`keymgr` *basic_option* [*parameters*...]
 
-:program:`keymgr` [*config_option* *config_storage*] *zone_name* *action* *parameters*...
+:program:`keymgr` [*config_option* *config_storage*] *zone* *command* *argument*...
 
 Description
 -----------
 
-The :program:`keymgr` utility serves for key management in Knot DNS server.
+The :program:`keymgr` utility serves for manual key management in Knot DNS server.
 
 Functions for DNSSEC keys and KASP (Key And Signature Policy)
 management are provided.
@@ -30,26 +30,25 @@ Basic options
 **-V**, **--version**
   Print the program version.
 
-**-t** [*tsig_algorithm*] [*tsig_bits*]
+**-t** **tsig_name** [*tsig_algorithm*] [*tsig_bits*]
   Generates TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
   bit length of the key by number (default: optimal length given by algorithm).
 
 Config options
 ..............
 
-**-d**
-  Use KASP database directory specified by config_storage.
-
 **-c**
-  Determine KASP database location from Knot DNS configuration file, specified
-  by config_storage.
+  Use specified Knot DNS configuration file path.
 
 **-C**
-  Determine KASP database location from Knot DNS configuration database,
-  specified by config_storage.
+  Use specified Knot DNS configuration database path. The default configuration
+  database, if exists, has a preference to the default configuration file.
 
-Actions
-.......
+**-d**
+  Use specified KASP database path and default configuration.
+
+Commands
+........
 
 **list**
   Prints the list of key IDs and parameters of keys belonging to the zone.
