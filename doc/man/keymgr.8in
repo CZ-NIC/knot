@@ -152,7 +152,7 @@ now+0, now\-1y, ...
 .SH EXAMPLES
 .INDENT 0.0
 .IP 1. 3
-Generate TSIG key:
+Generate new TSIG key:
 .INDENT 3.0
 .INDENT 3.5
 .sp
@@ -164,19 +164,7 @@ $ keymgr \-t my_name hmac\-sha384
 .UNINDENT
 .UNINDENT
 .IP 2. 3
-Import a key from BIND:
-.INDENT 3.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-$ keymgr example.com. import\-bind ~/bind/Kharbinge4d5.+007+63089.key
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.IP 3. 3
-Generate new key:
+Generate new DNSSEC key:
 .INDENT 3.0
 .INDENT 3.5
 .sp
@@ -188,6 +176,18 @@ $ keymgr example.com. generate algorithm=ECDSAP256SHA256 size=256 \e
 .fi
 .UNINDENT
 .UNINDENT
+.IP 3. 3
+Import a DNSSEC key from BIND:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ keymgr example.com. import\-bind ~/bind/Kharbinge4d5.+007+63089.key
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
 .IP 4. 3
 Configure key timing:
 .INDENT 3.0
@@ -195,7 +195,7 @@ Configure key timing:
 .sp
 .nf
 .ft C
-$ keymgr \-d ${knot_data_dir}/keys test.test. set 4208 active=now+2mi retire=now+4mi remove=now+5mi
+$ keymgr example.com. set 4208 active=now+2mi retire=now+4mi remove=now+5mi
 .ft P
 .fi
 .UNINDENT
@@ -207,7 +207,7 @@ Share a KSK from another zone:
 .sp
 .nf
 .ft C
-$ keymgr \-c ${knot_data_dir}/knot.conf test.test. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
+$ keymgr example.com. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
 .ft P
 .fi
 .UNINDENT

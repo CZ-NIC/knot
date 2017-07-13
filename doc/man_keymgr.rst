@@ -129,26 +129,26 @@ Timestamps
 Examples
 --------
 
-1. Generate TSIG key::
+1. Generate new TSIG key::
 
     $ keymgr -t my_name hmac-sha384
 
-2. Import a key from BIND::
-
-    $ keymgr example.com. import-bind ~/bind/Kharbinge4d5.+007+63089.key
-
-3. Generate new key::
+2. Generate new DNSSEC key::
 
     $ keymgr example.com. generate algorithm=ECDSAP256SHA256 size=256 \
       ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
 
+3. Import a DNSSEC key from BIND::
+
+    $ keymgr example.com. import-bind ~/bind/Kharbinge4d5.+007+63089.key
+
 4. Configure key timing::
 
-    $ keymgr -d ${knot_data_dir}/keys test.test. set 4208 active=now+2mi retire=now+4mi remove=now+5mi
+    $ keymgr example.com. set 4208 active=now+2mi retire=now+4mi remove=now+5mi
 
 5. Share a KSK from another zone::
 
-    $ keymgr -c ${knot_data_dir}/knot.conf test.test. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
+    $ keymgr example.com. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
 
 See Also
 --------
