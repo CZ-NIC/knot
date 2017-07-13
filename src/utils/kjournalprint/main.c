@@ -147,8 +147,13 @@ static void print_changeset_debugmode(const changeset_t *chs)
 	(void)zone_contents_apply(chs->add, rrtypelist_callback, &ctx_plus);
 	(void)zone_contents_nsec3_apply(chs->add, rrtypelist_callback, &ctx_plus);
 
-	printf("%u -> %u  ---: %zu\t  +++: %zu\t size: %zu\t", knot_soa_serial(&chs->soa_from->rrs),
-	       knot_soa_serial(&chs->soa_to->rrs), count_minus, count_plus, changeset_serialized_size(chs));
+	if (chs->soa_from == NULL) {
+		printf("Zone-in-journal %u  +++: %zu\t size: %zu\t", knot_soa_serial(&chs->soa_to->rrs),
+		       count_plus, changeset_serialized_size(chs));
+	} else {
+		printf("%u -> %u  ---: %zu\t  +++: %zu\t size: %zu\t", knot_soa_serial(&chs->soa_from->rrs),
+		       knot_soa_serial(&chs->soa_to->rrs), count_minus, count_plus, changeset_serialized_size(chs));
+	}
 
 	char temp[100];
 	dynarray_foreach(rrtype, uint16_t, i, types) {
