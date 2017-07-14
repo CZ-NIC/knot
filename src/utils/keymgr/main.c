@@ -66,7 +66,7 @@ static void print_help(void)
 	       "             number.\n"
 	       "  size       The key size in bits.\n"
 	       "  ksk        Wheather the generated/imported key shall be Key Signing Key.\n"
-	       "  created/published/ready/active/retired/removed  The timestamp of the key\n"
+	       "  created/publish/ready/active/retire/remove  The timestamp of the key\n"
 	       "             lifetime event (e.g. published=now+1d active=1499770874)\n",
 	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME);
 }
