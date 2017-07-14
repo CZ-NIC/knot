@@ -125,6 +125,9 @@ Timestamp of key creation.
 \fBpublish\fP
 Timestamp for key to be published.
 .TP
+\fBready\fP
+Timestamp for key to be pre\-activated and submitted (in case of KSK).
+.TP
 \fBactive\fP
 Timestamp for key to be activated.
 .TP
@@ -136,6 +139,9 @@ Timestamp for key ot be deleted.
 .UNINDENT
 .SS Timestamps
 .INDENT 0.0
+.TP
+0
+Zero timestamp means infinite future.
 .TP
 \fIUNIX_time\fP
 Positive number of seconds since 1970.
@@ -215,6 +221,7 @@ $ keymgr example.com. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
 .SH SEE ALSO
 .sp
 \fI\%RFC 6781\fP \- DNSSEC Operational Practices.
+\fI\%RFC 7583\fP \- DNSSEC Key Rollover Timing Considerations.
 .sp
 \fBknot.conf(5)\fP,
 \fBknotc(8)\fP,
