@@ -20,6 +20,9 @@ Options
 **-l**, **--limit** *limit*
   Limits the number of displayed changes.
 
+**-d**, **--debug**
+  Debug mode brief output.
+
 **-n**, **--no-color**
   Removes changes coloring.
 
