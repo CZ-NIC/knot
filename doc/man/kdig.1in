@@ -47,7 +47,7 @@ which must precede \fIquery\fP specification.
 \fIname\fP | \fB\-q\fP \fIname\fP | \fB\-x\fP \fIaddress\fP | \fB\-G\fP \fItapfile\fP
 .TP
 \fIcommon\-settings\fP, \fIsettings\fP
-[\fIclass\fP] [\fItype\fP] [\fB@\fP\fIserver\fP]... [\fIoptions\fP]
+[\fIquery_class\fP] [\fIquery_type\fP] [\fB@\fP\fIserver\fP]... [\fIoptions\fP]
 .TP
 \fIname\fP
 Is a domain name that is to be looked up.
@@ -61,6 +61,35 @@ specified, the servers from \fB/etc/resolv.conf\fP are used.
 .sp
 If no arguments are provided, \fBkdig\fP sends NS query for the root
 zone.
+.SS Query classes
+.sp
+A \fIquery_class\fP can be either a DNS class name (IN, CH) or generic class
+specification \fBCLASS\fP\fIXXXXX\fP where \fIXXXXX\fP is a corresponding decimal
+class number. The default query class is IN.
+.SS Query types
+.sp
+A \fIquery_type\fP can be either a DNS resource record type
+(A, AAAA, NS, SOA, DNSKEY, ANY, etc.) or one of the following:
+.INDENT 0.0
+.TP
+\fBTYPE\fP\fIXXXXX\fP
+Generic query type specification where \fIXXXXX\fP is a corresponding decimal
+type number.
+.TP
+\fBAXFR\fP
+Full zone transfer request.
+.TP
+\fBIXFR=\fP\fIserial\fP
+Incremental zone transfer request for specified starting SOA serial number.
+.TP
+\fBNOTIFY=\fP\fIserial\fP
+Notify message with a SOA serial hint specified.
+.TP
+\fBNOTIFY\fP
+Notify message with a SOA serial hint unspecified.
+.UNINDENT
+.sp
+The default query type is A.
 .SS Options
 .INDENT 0.0
 .TP
@@ -76,8 +105,7 @@ valid address for local interface or :: or 0.0.0.0. An optional port
 can be specified in the same format as the \fIserver\fP value.
 .TP
 \fB\-c\fP \fIclass\fP
-Set the query class (e.g. CH, CLASS4). An explicit variant of \fIclass\fP
-specification. The default class is IN.
+An explicit \fIquery_class\fP specification. See possible values above.
 .TP
 \fB\-d\fP
 Enable debug messages.
@@ -98,10 +126,7 @@ port is 53.
 Set the query name. An explicit variant of \fIname\fP specification.
 .TP
 \fB\-t\fP \fItype\fP
-Set the query type (e.g. NS, IXFR=12345, TYPE65535, NOTIFY). An explicit
-variant of \fItype\fP specification. The default type is A. IXFR type requires
-SOA serial parameter. NOTIFY type without SOA serial parameter causes pure
-NOTIFY message without any SOA hint.
+An explicit \fIquery_type\fP specification. See possible values above.
 .TP
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
