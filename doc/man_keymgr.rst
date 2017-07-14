@@ -102,6 +102,9 @@ Arguments are separated by space, each of them is in format 'name=value'.
 **publish**
   Timestamp for key to be published.
 
+**ready**
+  Timestamp for key to be pre-activated and submitted (in case of KSK).
+
 **active**
   Timestamp for key to be activated.
 
@@ -113,6 +116,9 @@ Arguments are separated by space, each of them is in format 'name=value'.
 
 Timestamps
 ..........
+
+0
+  Zero timestamp means infinite future.
 
 *UNIX_time*
   Positive number of seconds since 1970.
@@ -153,6 +159,7 @@ See Also
 --------
 
 :rfc:`6781` - DNSSEC Operational Practices.
+:rfc:`7583` - DNSSEC Key Rollover Timing Considerations.
 
 :manpage:`knot.conf(5)`,
 :manpage:`knotc(8)`,

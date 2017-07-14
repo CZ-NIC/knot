@@ -293,13 +293,13 @@ KSK and ZSK present. (The CSK case should work analogously, not mentioned furthe
 It is recommended to disable automatic key management during the rollover. Note
 that from the view of common key rollovers, here we must put the keys into a weird
 state: active, but not published. This is done by hard-setting their timers so that
-created <= active < publish < retire.
+active < publish < retire (whereas standard rollovers have publish < active < retire).
 
 First we need to generate new keys. They must be first used for signing, and
 after some period (propagation delay let's say 1h + zone records' TTL let's say
 1h) published. We have to preprate the timestamps carefully, using the notation
 'now+2h' can be creepy with "now" changing between the Keymgr invokes. We then
-resign the zone just to force knotd to reload zone keys::
+re-sign the zone just to force knotd to reload zone keys::
 
   $ NOW=$(date +%s)
   $ NOW2H=$((NOW + 7200))
@@ -322,7 +322,7 @@ also confirm the new KSK submission (which reloads KASP DB as a side-effect)::
 
 Finally, after one more propagation period, we remove old ZSK::
 
-  $ keymgr example.com. set $OLD_ZSK_ID retire=now+0 remove=now+1
+  $ keymgr example.com. set $OLD_ZSK_ID retire=now+0 remove=now+0
   $ knotc zone-sign example.com.
 
 .. _Controlling running daemon:
