@@ -4,9 +4,9 @@ variables:
   GIT_STRATEGY: fetch
 
 stages:
-  - configure
   - build
   - test
+  - documentation
   - deploy
 
 .freebsd_i386: &freebsd_i386
@@ -27,86 +27,68 @@ stages:
     - triggers
     - tags
 
-.debian_stretch: &debian_stretch
-  image: cznic/debian:stretch-knot-latest
+.build_depends: &build_depends
+  before_script:
+    - apt-get -qqy update
+    - apt-get -qqy dist-upgrade
+    - apt-get -qqy install build-essential
+    - apt-get -qqy install ghostscript python-sphinx texinfo texlive texlive-font-utils texlive-generic-extra texlive-latex-extra
+    - apt-get -qqy install autoconf automake libtool autotools-dev bash-completion bison flex libedit-dev libfstrm-dev libgnutls28-dev libidn2-0-dev liblmdb-dev libprotobuf-c-dev libsystemd-dev libsystemd-dev liburcu-dev pkg-config protobuf-c-compiler
+    
+.debian_stable: &debian_stable
+  <<: *build_depends
+  image: debian:stable-slim
   tags:
     - docker
     - linux
     - amd64
 
-.ubuntu_xenial: &ubuntu_xenial
-  image: cznic/ubuntu:16.04-knot
+.ubuntu_latest: &ubuntu_latest
+  <<: *build_depends
+  image: ubuntu:latest
   tags:
     - docker
     - linux
     - amd64
-
-.configure: &configure_job
-  stage: configure
-  script:
-    - autoreconf -fi
-    - ./configure --disable-fastparser
-  artifacts:
-    untracked: true
-    expire_in: '1 hour'
 
 .build: &build_job
   stage: build
   script:
+    - autoreconf -fi
+    - ./configure --disable-fastparser
     - make -k all
   artifacts:
     untracked: true
     expire_in: '1 hour'
-
+    
 .test: &test_job
   stage: test
   script:
     - make -k check
 
-
-configure:ubuntu:amd64:
-  <<: *ubuntu_xenial
-  <<: *configure_job
-
 build:ubuntu:amd64:
-  <<: *ubuntu_xenial
+  <<: *ubuntu_latest
   <<: *build_job
-  dependencies:
-    - configure:ubuntu:amd64
 
 test:ubuntu:amd64:
-  <<: *ubuntu_xenial
+  <<: *ubuntu_latest
   <<: *test_job
   dependencies:
     - build:ubuntu:amd64
 
-
-configure:debian:stretch:amd64:
-  <<: *debian_stretch
-  <<: *configure_job
-
-build:debian:stretch:amd64:
-  <<: *debian_stretch
+build:debian:amd64:
+  <<: *debian_stable
   <<: *build_job
-  dependencies:
-    - configure:debian:stretch:amd64
 
-test:debian:stretch:amd64:
-  <<: *debian_stretch
+test:debian:amd64:
+  <<: *debian_stable
   <<: *test_job
   dependencies:
-    - build:debian:stretch:amd64
-
-
-configure:freebsd:i386:
-  <<: *freebsd_i386
-  <<: *configure_job
+    - build:debian:amd64
 
 build:freebsd:i386:
   <<: *freebsd_i386
   <<: *build_job
-  dependencies:
-    - configure:freebsd:i386
 
 test:freebsd:i386:
   <<: *freebsd_i386
@@ -114,16 +96,9 @@ test:freebsd:i386:
   dependencies:
     - build:freebsd:i386
 
-
-configure:freebsd:amd64:
-  <<: *freebsd_amd64
-  <<: *configure_job
-
 build:freebsd:amd64:
   <<: *freebsd_amd64
   <<: *build_job
-  dependencies:
-    - configure:freebsd:amd64
 
 test:freebsd:amd64:
   <<: *freebsd_amd64
@@ -131,14 +106,30 @@ test:freebsd:amd64:
   dependencies:
     - build:freebsd:amd64
 
-build:documentation:
-  <<: *debian_stretch
+build:archive:
+  <<: *debian_stable
   stage: build
-  dependencies:
-    - configure:debian:stretch:amd64
+  script:
+    - autoreconf -fi
+    - mkdir _build
+    - cd _build
+    - ../configure
+    - make distcheck
   only:
     - tags
     - triggers
+  artifacts:
+    paths:
+      - _build/*.tar.xz
+
+build:documentation:
+  <<: *debian_stable
+  stage: documentation
+  only:
+    - tags
+    - triggers
+  dependencies:
+    - build:debian:amd64
   script:
     - make -C doc html singlehtml pdf
   artifacts:
@@ -149,7 +140,7 @@ build:documentation:
     expire_in: '1 hour'
 
 deploy:documentation:
-  <<: *debian_stretch
+  <<: *debian_stable
   stage: deploy
   dependencies:
     - build:documentation
