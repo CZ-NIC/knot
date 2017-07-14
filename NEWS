@@ -1,9 +1,30 @@
+Knot DNS 2.5.3 (2017-07-14)
+===========================
+
+Features:
+---------
+ - CSK rollover support for Single-Type Signing Scheme
+
+Improvements:
+-------------
+ - Allowed binding to non-local adresses for TCP (Thanks to Julian Brost!)
+ - New documentation section for manual DNSSEC key algorithm rollover
+ - Initial KSK also generated in the submission state
+ - The 'ds' keymgr command with no parameter uses all KSK keys
+ - New debug mode in kjournalprint
+ - Updated keymgr documentation
+
+Bugfixes:
+---------
+ - Sometimes missing RRSIG by KSK in submission state.
+ - Minor DNSSEC-related issues
+
 Knot DNS 2.5.2 (2017-06-23)
 ===========================
 
 Security:
 ---------
- - Improper TSIG validity period check can allow TSIG forgery (Thanks to Synacktiv!)
+ - CVE-2017-11104: Improper TSIG validity period check can allow TSIG forgery (Thanks to Synacktiv!)
 
 Improvements:
 -------------
