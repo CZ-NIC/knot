@@ -316,8 +316,11 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 			qdata->type = KNOTD_QUERY_TYPE_AXFR; /* Solve as AXFR. */
 			return axfr_process_query(pkt, qdata);
 		default:            /* Server errors. */
-			IXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
-			            knot_strerror(ret));
+			if (qdata->rcode != KNOT_RCODE_FORMERR &&
+			    qdata->rcode != KNOT_RCODE_NOTAUTH) {
+				IXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
+					    knot_strerror(ret));
+			}
 			return KNOT_STATE_FAIL;
 		}
 	}

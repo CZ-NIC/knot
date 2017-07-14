@@ -53,8 +53,6 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	if (state == KNOT_STATE_FAIL) {
 		switch (qdata->rcode) {
 		case KNOT_RCODE_NOTAUTH: /* Not authoritative or ACL check failed. */
-			NOTIFY_IN_LOG(LOG_NOTICE, qdata, "unauthorized request");
-			break;
 		case KNOT_RCODE_FORMERR: /* Silently ignore bad queries. */
 		default:
 			break;

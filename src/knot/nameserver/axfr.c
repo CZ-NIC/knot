@@ -175,8 +175,11 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		int ret = axfr_query_init(qdata);
 		axfr = qdata->extra->ext;
 		if (ret != KNOT_EOK) {
-			AXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
-			            knot_strerror(ret));
+			if (qdata->rcode != KNOT_RCODE_FORMERR &&
+			    qdata->rcode != KNOT_RCODE_NOTAUTH) {
+				AXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
+					    knot_strerror(ret));
+			}
 			return KNOT_STATE_FAIL;
 		} else {
 			AXFROUT_LOG(LOG_INFO, qdata, "started, serial %u",
