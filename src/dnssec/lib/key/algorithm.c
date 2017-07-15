@@ -118,8 +118,9 @@ gnutls_pk_algorithm_t algorithm_to_gnutls(dnssec_key_algorithm_t dnssec)
 		return GNUTLS_PK_RSA;
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
-		return GNUTLS_PK_EC;
+		return GNUTLS_PK_ECDSA;
 	case DNSSEC_KEY_ALGORITHM_ED25519:
+		return GNUTLS_PK_EDDSA_ED25519;
 	case DNSSEC_KEY_ALGORITHM_ED448:
 	default:
 		return GNUTLS_PK_UNKNOWN;

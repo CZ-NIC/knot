@@ -160,6 +160,7 @@ static size_t ecdsa_curve_point_size(gnutls_ecc_curve_t curve)
 }
 
 static size_t eddsa_curve_point_size(gnutls_ecc_curve_t curve)
+{
 	switch (curve) {
 #ifdef HAVE_ED25519
 	case GNUTLS_ECC_CURVE_ED25519: return 32;
@@ -222,7 +223,7 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	size_t point_size = ecdsa_curve_point_size(curve);
+	size_t point_size = eddsa_curve_point_size(curve);
 	if (point_size == 0) {
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
@@ -383,7 +384,9 @@ static gnutls_ecc_curve_t eddsa_curve_from_rdata_size(size_t rdata_size)
 #ifdef HAVE_ED448
 	case 57: return GNUTLS_ECC_CURVE_ED448;
 #endif
-	default:
+	default: return GNUTLS_ECC_CURVE_INVALID;
+	}
+}
 
 /*!
  * Convert ECDSA key in DNSSEC format to crypto key.
