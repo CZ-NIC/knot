@@ -159,6 +159,7 @@ static size_t ecdsa_curve_point_size(gnutls_ecc_curve_t curve)
 	}
 }
 
+#if defined(HAVE_ED25519) || defined(HAVE_ED448)
 static size_t eddsa_curve_point_size(gnutls_ecc_curve_t curve)
 {
 	switch (curve) {
@@ -171,6 +172,7 @@ static size_t eddsa_curve_point_size(gnutls_ecc_curve_t curve)
 	default: return 0;
 	}
 }
+#endif
 
 /*!
  * Convert ECDSA public key to DNSSEC format.
@@ -210,6 +212,7 @@ static int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 /*!
  * Convert EDDSA public key to DNSSEC format.
  */
+#if defined(HAVE_ED25519) || defined(HAVE_ED448)
 static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 {
 	assert(key);
@@ -239,6 +242,7 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	return DNSSEC_EOK;
 }	
+#endif
 
 /* -- crypto to DNSSEC ------------------------------------------------------*/
 
@@ -375,6 +379,7 @@ static gnutls_ecc_curve_t ecdsa_curve_from_rdata_size(size_t rdata_size)
 /**
  * Get EDDSA curve based on DNSKEY RDATA size.
  */
+#if defined(HAVE_ED25519) || defined(HAVE_ED448)
 static gnutls_ecc_curve_t eddsa_curve_from_rdata_size(size_t rdata_size)
 {
 	switch (rdata_size) {
@@ -387,6 +392,7 @@ static gnutls_ecc_curve_t eddsa_curve_from_rdata_size(size_t rdata_size)
 	default: return GNUTLS_ECC_CURVE_INVALID;
 	}
 }
+#endif
 
 /*!
  * Convert ECDSA key in DNSSEC format to crypto key.
@@ -421,6 +427,7 @@ static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 /*!
  * Convert EDDSA key in DNSSEC format to crypto key.
  */
+#if defined(HAVE_ED25519) || defined(HAVE_ED448)
 static int eddsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
 	assert(rdata);
@@ -444,6 +451,7 @@ static int eddsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 
 	return DNSSEC_EOK;
 }
+#endif
 
 /* -- internal API --------------------------------------------------------- */
 
