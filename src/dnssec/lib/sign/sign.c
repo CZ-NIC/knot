@@ -28,6 +28,7 @@
 #include "sign.h"
 #include "sign/der.h"
 #include "wire.h"
+#include "contrib/macros.h"
 
 /*!
  * Signature format conversion callback.
@@ -52,12 +53,12 @@ typedef struct algorithm_functions {
 	signature_convert_cb dnssec_to_x509;
 } algorithm_functions_t;
 
-typedef struct gnutls_buffer_st {
-	uint8_t *allocd;	/* pointer to allocated data */
-	uint8_t *data;		/* API: pointer to data to copy from */
+typedef struct dnssec_buffer {
+	uint8_t *allocd;	//!< Pointer to allocated data.
+	uint8_t *data;		//!< API: pointer to data to copy from.
 	size_t max_length;
-	size_t length;		/* API: current length */
-} gnutls_buffer_st;
+	size_t length;		//!< API: current length.
+} dnssec_buffer_t;
 
 /*!
  * DNSSEC signing context.
@@ -67,8 +68,59 @@ struct dnssec_sign_ctx {
 	const algorithm_functions_t *functions;	  //!< Implementation specific.
 
 	gnutls_digest_algorithm_t hash_algorithm; //!< Used algorithm.
-	gnutls_buffer_t buffer;                   //!< Buffer for the signed data.
+	dnssec_buffer_t buffer;                   //!< Buffer for the signed data.
 };
+
+static void align_allocd_with_data(dnssec_buffer_t *dest)
+{
+	assert(dest->allocd != NULL);
+	if (dest->length > 0) {
+		memmove(dest->allocd, dest->data, dest->length);
+	}
+	dest->data = dest->allocd;
+}
+
+#define MIN_CHUNK 1024
+
+static int dnssec_buffer_append_data(dnssec_buffer_t *dest, const void *data,
+				     size_t data_size)
+{
+	size_t const tot_len = data_size + dest->length;
+	size_t const unused = (ssize_t)((ptrdiff_t)dest->data - (ptrdiff_t)dest->allocd);
+
+	if (data_size == 0) {
+		return 0;
+	}
+
+	if (dest->max_length >= tot_len) {
+		if (dest->max_length - unused <= tot_len) {
+			align_allocd_with_data(dest);
+		}
+	} else {
+		if (MAX(data_size, MIN_CHUNK) > INT_MAX - MAX(dest->max_length, MIN_CHUNK)) {
+			return  DNSSEC_ENOMEM;
+		}
+
+		size_t const new_len = MAX(data_size, MIN_CHUNK) +
+				       MAX(dest->max_length, MIN_CHUNK);
+
+		uint8_t *reallocd = realloc(dest->allocd, new_len);
+		if (reallocd == NULL) {
+			free(dest->allocd);
+			return DNSSEC_ENOMEM;
+		}
+		dest->allocd = reallocd;
+		dest->max_length = new_len;
+		dest->data = dest->allocd + unused;
+
+		align_allocd_with_data(dest);
+	}
+
+	memcpy(&dest->data[dest->length], data, data_size);
+	dest->length = tot_len;
+
+	return 0;
+}
 
 /* -- signature format conversions ----------------------------------------- */
 
@@ -364,11 +416,11 @@ void dnssec_sign_free(dnssec_sign_ctx_t *ctx)
 		return;
 	}
 
-	if (ctx->buffer->allocd) {
-		gnutls_free(ctx->buffer->allocd);
-		ctx->buffer->data = ctx->buffer->allocd = NULL;
-		ctx->buffer->max_length = 0;
-		ctx->buffer->length = 0;
+	if (ctx->buffer.allocd) {
+		gnutls_free(ctx->buffer.allocd);
+		ctx->buffer.data = ctx->buffer.allocd = NULL;
+		ctx->buffer.max_length = 0;
+		ctx->buffer.length = 0;
 	}
 
 	free(ctx);
@@ -381,9 +433,7 @@ int dnssec_sign_init(dnssec_sign_ctx_t *ctx)
 		return DNSSEC_EINVAL;
 	}
 
-	if (ctx->buffer) {
-		ctx->buffer->length = 0;
-	}
+	ctx->buffer.length = 0;
 
 	return DNSSEC_EOK;
 }
@@ -395,7 +445,7 @@ int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data)
 		return DNSSEC_EINVAL;
 	}
 
-	int result = gnutls_buffer_append_data(ctx->buffer, data->data, data->size);
+	int result = dnssec_buffer_append_data(&ctx->buffer, data->data, data->size);
 	if (result != 0) {
 		return DNSSEC_SIGN_ERROR;
 	}
@@ -414,9 +464,10 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 		return DNSSEC_NO_PRIVATE_KEY;
 	}
 
-	_cleanup_datum_ gnutls_datum_t data = { 0 };
-	data.data = ctx->buffer->data;
-	data.size = ctx->buffer->length;
+	gnutls_datum_t data = {
+		.data = ctx->buffer.data,
+		.size = ctx->buffer.length
+	};
 
 	assert(ctx->key->private_key);
 	_cleanup_datum_ gnutls_datum_t raw = { 0 };
@@ -443,9 +494,10 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 		return DNSSEC_NO_PUBLIC_KEY;
 	}
 
-	_cleanup_datum_ gnutls_datum_t data = { 0 };
-	data.data = ctx->buffer->data;
-	data.size = ctx->buffer->length;
+	gnutls_datum_t data = {
+		.data = ctx->buffer.data,
+		.size = ctx->buffer.length
+	};
 
 	_cleanup_binary_ dnssec_binary_t bin_raw = { 0 };
 	int result = ctx->functions->dnssec_to_x509(ctx, signature, &bin_raw);
