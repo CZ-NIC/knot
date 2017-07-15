@@ -276,7 +276,7 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 	assert(zone_name);
 	assert(keyset);
 
-	const size_t max_algorithms = KNOT_DNSSEC_ALG_ECDSAP384SHA384 + 1;
+	const size_t max_algorithms = KNOT_DNSSEC_ALG_ED25519 + 1;
 	algorithm_usage_t usage[max_algorithms];
 	memset(usage, 0, max_algorithms * sizeof(algorithm_usage_t));
 
