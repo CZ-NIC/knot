@@ -123,6 +123,10 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3 nettle], [
     AS_IF([test "$enable_pkcs11" = yes],
         [AC_DEFINE([ENABLE_PKCS11], [1], [PKCS #11 support available])])
 
+    AC_CHECK_DEFINE([$gnutls_CFLAGS], [GNUTLS_PK_EDDSA_ED25519], [enable_ed25519=yes], [enable_ed25519=no])
+    AS_IF([test "$enable_ed25519" = yes],
+        [AC_DEFINE([HAVE_ED25519], [1], [GnuTLS ED25519 support available])])
+
     LIBS=$save_LIBS
 ])
 
