@@ -159,6 +159,18 @@ static size_t ecdsa_curve_point_size(gnutls_ecc_curve_t curve)
 	}
 }
 
+static size_t eddsa_curve_point_size(gnutls_ecc_curve_t curve)
+	switch (curve) {
+#ifdef HAVE_ED25519
+	case GNUTLS_ECC_CURVE_ED25519: return 32;
+#endif
+#ifdef HAVE_ED448
+	case GNUTLS_ECC_CURVE_ED448: return 57;
+#endif
+	default: return 0;
+	}
+}
+
 /*!
  * Convert ECDSA public key to DNSSEC format.
  */
@@ -193,6 +205,39 @@ static int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	return DNSSEC_EOK;
 }
+
+/*!
+ * Convert EDDSA public key to DNSSEC format.
+ */
+static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
+{
+	assert(key);
+	assert(rdata);
+
+	_cleanup_datum_ gnutls_datum_t point_x = { 0 };
+	gnutls_ecc_curve_t curve = { 0 };
+
+	int result = gnutls_pubkey_get_pk_ecc_raw(key, &curve, &point_x, NULL);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_EXPORT_ERROR;
+	}
+
+	size_t point_size = ecdsa_curve_point_size(curve);
+	if (point_size == 0) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
+
+	result = dnssec_binary_alloc(rdata, point_size);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_write_bignum_datum(&wire, point_size, &point_x);
+	assert(wire_tell(&wire) == rdata->size);
+
+	return DNSSEC_EOK;
+}	
 
 /* -- crypto to DNSSEC ------------------------------------------------------*/
 
@@ -326,6 +371,20 @@ static gnutls_ecc_curve_t ecdsa_curve_from_rdata_size(size_t rdata_size)
 	}
 }
 
+/**
+ * Get EDDSA curve based on DNSKEY RDATA size.
+ */
+static gnutls_ecc_curve_t eddsa_curve_from_rdata_size(size_t rdata_size)
+{
+	switch (rdata_size) {
+#ifdef HAVE_ED25519		
+	case 32: return GNUTLS_ECC_CURVE_ED25519;
+#endif
+#ifdef HAVE_ED448
+	case 57: return GNUTLS_ECC_CURVE_ED448;
+#endif
+	default:
+
 /*!
  * Convert ECDSA key in DNSSEC format to crypto key.
  */
@@ -356,6 +415,33 @@ static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Convert EDDSA key in DNSSEC format to crypto key.
+ */
+static int eddsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
+{
+	assert(rdata);
+	assert(key);
+
+	gnutls_ecc_curve_t curve = eddsa_curve_from_rdata_size(rdata->size);
+	if (curve == GNUTLS_ECC_CURVE_INVALID) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
+
+	wire_ctx_t ctx = wire_init_binary(rdata);
+
+	size_t point_size = wire_available(&ctx);
+	gnutls_datum_t point_x = wire_take_datum(&ctx, point_size);
+	assert(wire_tell(&ctx) == rdata->size);
+
+	int result = gnutls_pubkey_import_ecc_raw(key, curve, &point_x, NULL);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	return DNSSEC_EOK;
+}
+
 /* -- internal API --------------------------------------------------------- */
 
 /*!
@@ -374,9 +460,14 @@ int convert_pubkey_to_dnskey(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	switch ((gnutls_pk_algorithm_t)algorithm) {
 	case GNUTLS_PK_RSA: return rsa_pubkey_to_rdata(key, rdata);
 	case GNUTLS_PK_DSA: return dsa_pubkey_to_rdata(key, rdata);
-	case GNUTLS_PK_EC:  return ecdsa_pubkey_to_rdata(key, rdata);
-	default:
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+	case GNUTLS_PK_ECDSA:  return ecdsa_pubkey_to_rdata(key, rdata);
+#ifdef HAVE_ED25519
+	case GNUTLS_PK_EDDSA_ED25519: return eddsa_pubkey_to_rdata(key, rdata);
+#endif
+#ifdef HAVE_ED448
+	case GNUTLS_PK_EDDSA_ED448: return eddsa_pubkey_to_rdata(key, rdata);
+#endif
+	default: return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 }
 
@@ -394,8 +485,13 @@ int convert_dnskey_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
 	switch(gnutls_alg) {
 	case GNUTLS_PK_RSA: return rsa_rdata_to_pubkey(rdata, key);
 	case GNUTLS_PK_DSA: return dsa_rdata_to_pubkey(rdata, key);
-	case GNUTLS_PK_EC:  return ecdsa_rdata_to_pubkey(rdata, key);
-	default:
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+	case GNUTLS_PK_ECDSA:  return ecdsa_rdata_to_pubkey(rdata, key);
+#ifdef HAVE_ED25519
+	case GNUTLS_PK_EDDSA_ED25519: return eddsa_rdata_to_pubkey(rdata, key);
+#endif
+#ifdef HAVE_ED448
+	case GNUTLS_PK_EDDSA_ED448: return eddsa_rdata_to_pubkey(rdata, key);
+#endif
+	default: return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 }
