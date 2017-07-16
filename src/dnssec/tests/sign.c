@@ -59,6 +59,17 @@ static const dnssec_binary_t signed_ecdsa = { .size = 64, .data = (uint8_t []) {
 	0xad, 0x2f,
 }};
 
+static const dnssec_binary_t signed_ed25519 = { .size = 64, .data = (uint8_t []) {
+		0x0a, 0x9e, 0x51, 0x5f, 0x16, 0x89, 0x49, 0x27,
+		0x0e, 0x98, 0x34, 0xd3, 0x48, 0xef, 0x5a, 0x6e,
+		0x85, 0x2f, 0x7c, 0xd6, 0xd7, 0xc8, 0xd0, 0xf4,
+		0x2c, 0x68, 0x8c, 0x1f, 0xf7, 0xdf, 0xeb, 0x7c,
+		0x25, 0xd6, 0x1a, 0x76, 0x3e, 0xaf, 0x28, 0x1f,
+		0x1d, 0x08, 0x10, 0x20, 0x1c, 0x01, 0x77, 0x1b,
+		0x5a, 0x48, 0xd6, 0xe5, 0x1c, 0xf9, 0xe3, 0xe0,
+		0x70, 0x34, 0x5e, 0x02, 0x49, 0xfb, 0x9e, 0x05,
+	}};
+
 static dnssec_binary_t binary_set_string(char *str)
 {
 	dnssec_binary_t result = { .data = (uint8_t *)str, .size = strlen(str) };
@@ -104,6 +115,7 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 		ok(dnssec_binary_cmp(signature, &new_signature) == 0,
 		   "signature exact match");
 		dnssec_binary_free(&new_signature);
+		ok(DNSSEC_EOK == dnssec_sign_verify(ctx, &new_signature), "reverify the new signature");
 	}
 
 	// context reinitialization
@@ -162,6 +174,8 @@ int main(void)
 	check_key(&SAMPLE_DSA_KEY, &input_data, &signed_dsa, false);
 	diag("ECDSA signing");
 	check_key(&SAMPLE_ECDSA_KEY, &input_data, &signed_ecdsa, false);
+	diag("ED25519 signing");
+	check_key(&SAMPLE_ED25519_KEY, &input_data, &signed_ed25519, true);
 
 	dnssec_crypto_cleanup();
 

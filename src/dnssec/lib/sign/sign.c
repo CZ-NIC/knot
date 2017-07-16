@@ -491,7 +491,7 @@ static unsigned int get_flags(const dnssec_key_t *key)
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
 		return GNUTLS_VERIFY_ALLOW_BROKEN;
-	default :return 0;
+	default: return 0;
 	}
 }
 
