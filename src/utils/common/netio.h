@@ -41,16 +41,23 @@ typedef struct {
 	char	*service;
 } srv_info_t;
 
+typedef enum {
+	NET_FLAGS_NONE = 0,
+	NET_FLAGS_FASTOPEN = 1 << 0,
+} net_flags_t;
+
 typedef struct {
 	/*! Socket descriptor. */
-	int	sockfd;
+	int sockfd;
 
 	/*! IP protocol type. */
-	int	iptype;
+	int iptype;
 	/*! Socket type. */
-	int	socktype;
+	int socktype;
 	/*! Timeout for all network operations. */
-	int	wait;
+	int wait;
+	/*! Connection flags. */
+	net_flags_t flags;
 
 	/*! Local interface parameters. */
 	const srv_info_t *local;
@@ -145,6 +152,7 @@ void get_addr_str(const struct sockaddr_storage *ss,
  * \param socktype	Socket type.
  * \param wait		Network timeout interval.
  * \param tls_params	TLS parameters.
+ * \param flags		Connection flags.
  * \param net		Network structure to initialize.
  *
  * \retval KNOT_EOK	if success.
@@ -155,6 +163,7 @@ int net_init(const srv_info_t    *local,
              const int           iptype,
              const int           socktype,
              const int           wait,
+             const net_flags_t   flags,
              const tls_params_t  *tls_params,
              net_t               *net);
 
