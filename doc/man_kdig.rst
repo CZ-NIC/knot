@@ -24,7 +24,7 @@ Parameters
   *name* | **-q** *name* | **-x** *address* | **-G** *tapfile*
 
 *common-settings*, *settings*
-  [*class*] [*type*] [**@**\ *server*]... [*options*]
+  [*query_class*] [*query_type*] [**@**\ *server*]... [*options*]
 
 *name*
   Is a domain name that is to be looked up.
@@ -37,6 +37,37 @@ Parameters
 
 If no arguments are provided, :program:`kdig` sends NS query for the root
 zone.
+
+Query classes
+.............
+
+A *query_class* can be either a DNS class name (IN, CH) or generic class
+specification **CLASS**\ *XXXXX* where *XXXXX* is a corresponding decimal
+class number. The default query class is IN.
+
+Query types
+...........
+
+A *query_type* can be either a DNS resource record type
+(A, AAAA, NS, SOA, DNSKEY, ANY, etc.) or one of the following:
+
+**TYPE**\ *XXXXX*
+  Generic query type specification where *XXXXX* is a corresponding decimal
+  type number.
+
+**AXFR**
+  Full zone transfer request.
+
+**IXFR=**\ *serial*
+  Incremental zone transfer request for specified starting SOA serial number.
+
+**NOTIFY=**\ *serial*
+  Notify message with a SOA serial hint specified.
+
+**NOTIFY**
+  Notify message with a SOA serial hint unspecified.
+
+The default query type is A.
 
 Options
 .......
@@ -53,8 +84,7 @@ Options
   can be specified in the same format as the *server* value.
 
 **-c** *class*
-  Set the query class (e.g. CH, CLASS4). An explicit variant of *class*
-  specification. The default class is IN.
+  An explicit *query_class* specification. See possible values above.
 
 **-d**
   Enable debug messages.
@@ -75,10 +105,7 @@ Options
   Set the query name. An explicit variant of *name* specification.
 
 **-t** *type*
-  Set the query type (e.g. NS, IXFR=12345, TYPE65535, NOTIFY). An explicit
-  variant of *type* specification. The default type is A. IXFR type requires
-  SOA serial parameter. NOTIFY type without SOA serial parameter causes pure
-  NOTIFY message without any SOA hint.
+  An explicit *query_type* specification. See possible values above.
 
 **-V**, **--version**
   Print the program version.
