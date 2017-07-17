@@ -158,11 +158,10 @@ static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
 
 static int ixfr_query_check(knotd_qdata_t *qdata)
 {
-	/* Check if zone exists. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_TRANSFER);
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
-	/* Need IXFR query type. */
-	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_IXFR, KNOT_RCODE_FORMERR);
 	/* Need SOA authority record. */
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
 	const knot_rrset_t *their_soa = knot_pkt_rr(authority, 0);
@@ -172,10 +171,6 @@ static int ixfr_query_check(knotd_qdata_t *qdata)
 	}
 	/* SOA needs to match QNAME. */
 	NS_NEED_QNAME(qdata, their_soa->owner, KNOT_RCODE_FORMERR);
-
-	/* Check transcation security and zone contents. */
-	NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_TRANSFER);
-	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 	return KNOT_STATE_DONE;
 }
@@ -302,7 +297,7 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		int ret = ixfr_answer_init(qdata);
 		ixfr = qdata->extra->ext;
 		switch (ret) {
-		case KNOT_EOK:      /* OK */
+		case KNOT_EOK:       /* OK */
 			IXFROUT_LOG(LOG_INFO, qdata, "started, serial %u -> %u",
 			            knot_soa_serial(&ixfr->soa_from->rrs),
 			            knot_soa_serial(&ixfr->soa_to->rrs));
@@ -310,17 +305,19 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
 			IXFROUT_LOG(LOG_INFO, qdata, "zone is up-to-date");
 			return ixfr_answer_soa(pkt, qdata);
-		case KNOT_ERANGE:   /* No history -> AXFR. */
+		case KNOT_ERANGE:    /* No history -> AXFR. */
 		case KNOT_ENOENT:
 			IXFROUT_LOG(LOG_INFO, qdata, "incomplete history, fallback to AXFR");
 			qdata->type = KNOTD_QUERY_TYPE_AXFR; /* Solve as AXFR. */
 			return axfr_process_query(pkt, qdata);
-		default:            /* Server errors. */
-			if (qdata->rcode != KNOT_RCODE_FORMERR &&
-			    qdata->rcode != KNOT_RCODE_NOTAUTH) {
-				IXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
-					    knot_strerror(ret));
-			}
+		case KNOT_EDENIED:  /* Not authorized, already logged. */
+			return KNOT_STATE_FAIL;
+		case KNOT_EMALF:    /* Malformed query. */
+			IXFROUT_LOG(LOG_DEBUG, qdata, "malformed query");
+			return KNOT_STATE_FAIL;
+		default:             /* Server errors. */
+			IXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
+			            knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		}
 	}

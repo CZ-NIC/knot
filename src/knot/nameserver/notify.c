@@ -25,19 +25,16 @@
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
 
-#define NOTIFY_IN_LOG(priority, qdata, fmt...) \
+#define NOTIFY_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_NOTIFY, \
 	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->params->remote, fmt)
 
 static int notify_check_query(knotd_qdata_t *qdata)
 {
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_NOTIFY);
 	/* RFC1996 requires SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
-
-	/* Check valid zone, transaction security. */
-	zone_t *zone = (zone_t *)qdata->extra->zone;
-	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_NOTIFY);
 
 	return KNOT_STATE_DONE;
 }
@@ -52,9 +49,10 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	int state = notify_check_query(qdata);
 	if (state == KNOT_STATE_FAIL) {
 		switch (qdata->rcode) {
-		case KNOT_RCODE_NOTAUTH: /* Not authoritative or ACL check failed. */
-		case KNOT_RCODE_FORMERR: /* Silently ignore bad queries. */
-		default:
+		case KNOT_RCODE_NOTAUTH: /* Not authorized, already logged. */
+			break;
+		default:                 /* Other errors. */
+			NOTIFY_LOG(LOG_DEBUG, qdata, "invalid query");
 			break;
 		}
 		return state;
@@ -71,16 +69,16 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		if (soa->type == KNOT_RRTYPE_SOA) {
 			uint32_t serial = knot_soa_serial(&soa->rrs);
 			uint32_t zone_serial = zone_contents_serial(zone->contents);
-			NOTIFY_IN_LOG(LOG_INFO, qdata, "received, serial %u", serial);
+			NOTIFY_LOG(LOG_INFO, qdata, "received, serial %u", serial);
 			if (serial_compare(serial, zone_serial) == 0) {
 				// NOTIFY serial == zone serial => ignore, keep timers
 				return KNOT_STATE_DONE;
 			}
 		} else { /* Complain, but accept N/A record. */
-			NOTIFY_IN_LOG(LOG_NOTICE, qdata, "received, bad record in answer section");
+			NOTIFY_LOG(LOG_NOTICE, qdata, "received, bad record in answer section");
 		}
 	} else {
-		NOTIFY_IN_LOG(LOG_INFO, qdata, "received, serial none");
+		NOTIFY_LOG(LOG_INFO, qdata, "received, serial none");
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */

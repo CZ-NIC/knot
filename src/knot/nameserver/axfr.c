@@ -107,10 +107,8 @@ static void axfr_query_cleanup(knotd_qdata_t *qdata)
 
 static int axfr_query_check(knotd_qdata_t *qdata)
 {
-	/* Check valid zone, transaction security and contents. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_TRANSFER);
-	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
 	return KNOT_STATE_DONE;
@@ -174,16 +172,20 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	if (axfr == NULL) {
 		int ret = axfr_query_init(qdata);
 		axfr = qdata->extra->ext;
-		if (ret != KNOT_EOK) {
-			if (qdata->rcode != KNOT_RCODE_FORMERR &&
-			    qdata->rcode != KNOT_RCODE_NOTAUTH) {
-				AXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
-					    knot_strerror(ret));
-			}
-			return KNOT_STATE_FAIL;
-		} else {
+		switch (ret) {
+		case KNOT_EOK:      /* OK */
 			AXFROUT_LOG(LOG_INFO, qdata, "started, serial %u",
-			           zone_contents_serial(qdata->extra->zone->contents));
+			            zone_contents_serial(qdata->extra->zone->contents));
+			break;
+		case KNOT_EDENIED:  /* Not authorized, already logged. */
+			return KNOT_STATE_FAIL;
+		case KNOT_EMALF:    /* Malformed query. */
+			AXFROUT_LOG(LOG_DEBUG, qdata, "malformed query");
+			return KNOT_STATE_FAIL;
+		default:
+			AXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
+			            knot_strerror(ret));
+			return KNOT_STATE_FAIL;
 		}
 	}
 
