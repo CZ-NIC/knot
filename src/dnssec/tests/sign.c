@@ -114,8 +114,9 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 		ok(r == DNSSEC_EOK, "write the signature");
 		ok(dnssec_binary_cmp(signature, &new_signature) == 0,
 		   "signature exact match");
+		r = dnssec_sign_verify(ctx, &new_signature);
+		ok(r == DNSSEC_EOK, "reverify the new signature");
 		dnssec_binary_free(&new_signature);
-		ok(DNSSEC_EOK == dnssec_sign_verify(ctx, &new_signature), "reverify the new signature");
 	}
 
 	// context reinitialization
@@ -174,8 +175,10 @@ int main(void)
 	check_key(&SAMPLE_DSA_KEY, &input_data, &signed_dsa, false);
 	diag("ECDSA signing");
 	check_key(&SAMPLE_ECDSA_KEY, &input_data, &signed_ecdsa, false);
+#ifdef HAVE_ED25519
 	diag("ED25519 signing");
 	check_key(&SAMPLE_ED25519_KEY, &input_data, &signed_ed25519, true);
+#endif
 
 	dnssec_crypto_cleanup();
 
