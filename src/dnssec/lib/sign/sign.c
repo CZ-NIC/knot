@@ -488,6 +488,8 @@ static unsigned int get_flags(const dnssec_key_t *key)
 	uint8_t algorithm = dnssec_key_get_algorithm(key);
 
 	switch ((dnssec_key_algorithm_t)algorithm) {
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
 		return GNUTLS_VERIFY_ALLOW_BROKEN;
