@@ -78,7 +78,7 @@ static void exec_query(knot_layer_t *query_ctx, const char *name,
 
 int main(int argc, char *argv[])
 {
-	plan(8*6 + 4); /* exec_query = 6 TAP tests */
+	plan_lazy();
 
 	knot_mm_t mm;
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
@@ -142,12 +142,6 @@ int main(int argc, char *argv[])
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_AXFR);
 	exec_query(&proc, "IN/axfr", query, KNOT_RCODE_NOTAUTH);
-
-	/* Forge IXFR query (badly formed, no SOA in AUTHORITY section). */
-	knot_layer_reset(&proc);
-	knot_pkt_clear(query);
-	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_IXFR);
-	exec_query(&proc, "IN/ixfr-formerr", query, KNOT_RCODE_FORMERR);
 
 	/* Forge IXFR query (well formed). */
 	knot_layer_reset(&proc);
