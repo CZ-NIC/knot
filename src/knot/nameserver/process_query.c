@@ -653,7 +653,10 @@ int process_query_verify(knotd_qdata_t *qdata)
 	}
 
 	/* Log possible error. */
-	if (qdata->rcode != KNOT_RCODE_NOERROR) {
+	if (qdata->rcode == KNOT_RCODE_SERVFAIL) {
+		log_zone_error(qdata->extra->zone->name,
+		               "TSIG, verification failed (%s)", knot_strerror(ret));
+	} else if (qdata->rcode != KNOT_RCODE_NOERROR) {
 		const knot_lookup_t *item = NULL;
 		if (qdata->rcode_tsig != KNOT_RCODE_NOERROR) {
 			item = knot_lookup_by_id(knot_tsig_rcode_names, qdata->rcode_tsig);
