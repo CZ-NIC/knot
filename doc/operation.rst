@@ -366,3 +366,12 @@ Per zone statistics can be shown by::
     $ knotc zone-stats example.com mod-stats
 
 To show all supported counters even with 0 value use the force option.
+
+A simple periodic statistic dumping to a YAML file can also be enabled. See
+:ref:`statistics_section` for the configuration details.
+
+As the statistics data can be accessed over the server control socket,
+it is possible to create an arbitrary script (Python is supported at the moment)
+which could, for example, publish the data in the JSON format via HTTP(S)
+or upload the data to a more efficient time series database. Take a look into
+the python folder of the project for these scripts.
