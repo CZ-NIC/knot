@@ -995,7 +995,7 @@ int knot_zone_sign(zone_update_t *update,
 	result = zone_update_apply_changeset(update, &ch); // _fix not needed
 	changeset_clear(&ch);
 
-	return KNOT_EOK;
+	return result;
 }
 
 int knot_zone_sign_update_dnskeys(zone_update_t *update,
