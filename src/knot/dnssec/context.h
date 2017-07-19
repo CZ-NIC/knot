@@ -37,8 +37,6 @@ typedef struct {
 
 	char *kasp_zone_path;
 
-	uint32_t old_serial;
-	uint32_t new_serial;
 	bool rrsig_drop_existing;
 } kdnssec_ctx_t;
 

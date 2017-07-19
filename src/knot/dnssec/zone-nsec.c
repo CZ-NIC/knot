@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -359,16 +359,16 @@ static dnssec_nsec3_params_t nsec3param_init(const knot_kasp_policy_t *policy,
 	return params;
 }
 
-int knot_zone_create_nsec_chain(const zone_contents_t *zone,
-                                changeset_t *changeset,
+int knot_zone_create_nsec_chain(zone_update_t *update,
                                 const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *ctx)
+                                const kdnssec_ctx_t *ctx,
+                                bool sign_nsec_chain)
 {
-	if (zone == NULL || changeset == NULL || ctx == NULL) {
+	if (update == NULL || ctx == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	const knot_rdataset_t *soa = node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
 	if (soa == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -376,39 +376,49 @@ int knot_zone_create_nsec_chain(const zone_contents_t *zone,
 	uint32_t nsec_ttl = knot_soa_minimum(soa);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
-	int ret = update_nsec3param(zone, changeset, &params);
+	changeset_t ch;
+	int ret = changeset_init(&ch, update->new_cont->apex->owner);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	// beware this is a hack: we need to guess correct apex type bitmap
-	// but it can change during zone signing.
-	bool apex_has_cds = zone_has_key_sbm(ctx);
+	ret = update_nsec3param(update->new_cont, &ch, &params);
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
 
 	if (ctx->policy->nsec3_enabled) {
-		int ret = knot_nsec3_create_chain(zone, &params, nsec_ttl,
-						  apex_has_cds, changeset);
+		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl, &ch);
 		if (ret != KNOT_EOK) {
-			return ret;
+			goto cleanup;
 		}
 	} else {
-		int ret = knot_nsec_create_chain(zone, nsec_ttl, apex_has_cds, changeset);
+		int ret = knot_nsec_create_chain(update->new_cont, nsec_ttl, &ch);
 		if (ret != KNOT_EOK) {
-			return ret;
+			goto cleanup;
 		}
 
-		ret = delete_nsec3_chain(zone, changeset);
+		ret = delete_nsec3_chain(update->new_cont, &ch);
 		if (ret != KNOT_EOK) {
-			return ret;
+			goto cleanup;
 		}
 
 		// Mark removed NSEC3 nodes, so that they are not signed later.
-		ret = mark_removed_nsec3(zone, changeset);
+		ret = mark_removed_nsec3(update->new_cont, &ch);
 		if (ret != KNOT_EOK) {
-			return ret;
+			goto cleanup;
 		}
 	}
 
-	// Sign newly created records right away.
-	return knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, changeset);
+	if (sign_nsec_chain) {
+		ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, &ch);
+	}
+
+	if (ret == KNOT_EOK) {
+		ret = zone_update_apply_changeset(update, &ch);
+	}
+
+cleanup:
+	changeset_clear(&ch);
+	return ret;
 }

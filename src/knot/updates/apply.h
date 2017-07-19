@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,14 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file
- *
- * \brief Changesets application and update helpers.
- *
- * \addtogroup ddns
- * @{
  */
 
 #pragma once
@@ -89,7 +81,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
  *
  * \return KNOT_E*
  */
-int apply_replace_soa(apply_ctx_t *ctx, changeset_t *ch);
+int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *ch);
 
 /*!
  * \brief Prepares the new zone contents for signing.
@@ -146,7 +138,7 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets);
  *
  * \return KNOT_E*
  */
-int apply_changeset_directly(apply_ctx_t *ctx, changeset_t *ch);
+int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch);
 
 /*!
  * \brief Finalizes the zone contents for publishing.
@@ -180,5 +172,3 @@ void update_rollback(apply_ctx_t *ctx);
  * \param contents  Contents to free.
  */
 void update_free_zone(zone_contents_t **contents);
-
-/*! @} */

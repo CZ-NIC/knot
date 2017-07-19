@@ -78,7 +78,7 @@ int event_load(conf_t *conf, zone_t *zone)
 load_post:
 	/* Post load actions - calculate delta, sign with DNSSEC... */
 	/*! \todo issue #242 dnssec signing should occur in the special event */
-	ret = zone_load_post(conf, zone, contents, &dnssec_refresh);
+	ret = zone_load_post(conf, zone, &contents, &dnssec_refresh);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}

@@ -20,12 +20,12 @@
 
 #include "knot/zone/zone.h"
 #include "knot/updates/changesets.h"
+#include "knot/updates/zone-update.h"
 #include "knot/dnssec/context.h"
 
 enum zone_sign_flags {
 	ZONE_SIGN_NONE = 0,
 	ZONE_SIGN_DROP_SIGNATURES = (1 << 0),
-	ZONE_SIGN_KEEP_SOA_SERIAL = (1 << 1),
 };
 
 typedef enum zone_sign_flags zone_sign_flags_t;
@@ -53,30 +53,25 @@ int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
  * \brief DNSSEC resign zone, store new records into changeset. Valid signatures
  *        and NSEC(3) records will not be changed.
  *
- * \param zone         Zone contents to be signed.
- * \param out_ch       New records will be added to this changeset.
+ * \param update       Zone Update structure with current zone contents to be updated by signing.
  * \param flags        Zone signing flags.
- * \param refresh_at   Signature refresh time of the oldest signature in zone.
+ * \param reschedule   Signature refresh time of the oldest signature in zone.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_zone_sign(zone_contents_t *zone, changeset_t *out_ch,
-                          zone_sign_flags_t flags, zone_sign_reschedule_t *reschedule);
+int knot_dnssec_zone_sign(zone_update_t *update,
+                          zone_sign_flags_t flags,
+                          zone_sign_reschedule_t *reschedule);
 
 /*!
- * \brief Sign changeset created by DDNS or zone-diff.
+ * \brief Sign changeset (inside incremental Zone Update) created by DDNS or so...
  *
- * \param zone            Zone contents to be signed.
- * \param in_ch           Changeset created bvy DDNS or zone-diff
- * \param out_ch          New records will be added to this changeset.
- * \param refresh_at      Signature refresh time of the new signatures.
+ * \param update      Zone Update structure with current zone contents, changes to be signed and to be updated with signatures.
+ * \param reschedule  Signature refresh time of the new signatures.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_sign_changeset(const zone_contents_t *zone,
-                               const changeset_t *in_ch,
-                               changeset_t *out_ch,
-                               zone_sign_reschedule_t *reschedule);
+int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *reschedule);
 
 /*!
  * \brief Create new NCES3 salt if the old one is too old, and plan next resalt.
@@ -90,7 +85,7 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
  *
  * \param ctx           zone signing context
  * \param salt_changed  output if KNOT_EOK: was the salt changed ? (if so, please re-sign)
- * \param next_resalt   output: tmestamp when next resalt takes place
+ * \param when_resalt   output: tmestamp when next resalt takes place
  *
  * \return KNOT_E*
  */

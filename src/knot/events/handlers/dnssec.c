@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,12 +60,6 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
-	changeset_t ch;
-	int ret = changeset_init(&ch, zone->name);
-	if (ret != KNOT_EOK) {
-		goto done;
-	}
-
 	zone_sign_reschedule_t resch = { 0 };
 	resch.allow_rollover = true;
 	int sign_flags = 0;
@@ -80,47 +74,29 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		sign_flags = 0;
 	}
 
-	ret = knot_dnssec_zone_sign(zone->contents, &ch, sign_flags, &resch);
+	zone_update_t up;
+	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = knot_dnssec_zone_sign(&up, sign_flags, &resch);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
-	bool zone_changed = !changeset_empty(&ch);
+	bool zone_changed = !zone_update_no_change(&up);
 	if (zone_changed) {
-		/* Apply change. */
-		apply_ctx_t a_ctx = { 0 };
-		apply_init_ctx(&a_ctx, NULL, APPLY_STRICT);
-
-		zone_contents_t *new_contents = NULL;
-		int ret = apply_changeset(&a_ctx, zone->contents, &ch, &new_contents);
+		ret = zone_update_commit(conf, &up);
 		if (ret != KNOT_EOK) {
-			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
-			               knot_strerror(ret));
 			goto done;
 		}
-
-		/* Write change to journal. */
-		ret = zone_change_store(conf, zone, &ch);
-		if (ret != KNOT_EOK) {
-			log_zone_error(zone->name, "DNSSEC, failed to sign zone (%s)",
-			               knot_strerror(ret));
-			update_rollback(&a_ctx);
-			update_free_zone(&new_contents);
-			goto done;
-		}
-
-		/* Switch zone contents. */
-		zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
-		synchronize_rcu();
-		update_free_zone(&old_contents);
-
-		update_cleanup(&a_ctx);
 	}
 
 	// Schedule dependent events
 	event_dnssec_reschedule(conf, zone, &resch, zone_changed);
 
 done:
-	changeset_clear(&ch);
+	zone_update_clear(&up);
 	return ret;
 }

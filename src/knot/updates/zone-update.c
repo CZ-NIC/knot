@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 
 	/* Copy base SOA RR. */
 	update->change.soa_from =
-		node_create_rrset(update->zone->contents->apex, KNOT_RRTYPE_SOA);
+		node_create_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	if (update->change.soa_from == NULL) {
 		zone_contents_free(&update->new_cont);
 		changeset_clear(&update->change);
@@ -364,92 +364,28 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 	return KNOT_EOK;
 }
 
-static bool apex_rr_changed(const zone_node_t *old_apex,
-                            const zone_node_t *new_apex,
-                            uint16_t type)
+int zone_update_apply_changeset(zone_update_t *update, const changeset_t *changes)
 {
-	assert(old_apex);
-	assert(new_apex);
-	knot_rrset_t old_rr = node_rrset(old_apex, type);
-	knot_rrset_t new_rr = node_rrset(new_apex, type);
-
-	return !knot_rrset_equal(&old_rr, &new_rr, KNOT_RRSET_COMPARE_WHOLE);
-}
-
-static bool apex_dnssec_changed(zone_update_t *update)
-{
-	const zone_node_t *new_apex = zone_update_get_apex(update);
-	if (update->zone->contents != NULL) {
-		const zone_node_t *old_apex = update->zone->contents->apex;
-		return !changeset_empty(&update->change) &&
-		       (apex_rr_changed(new_apex, old_apex, KNOT_RRTYPE_DNSKEY) ||
-		        apex_rr_changed(new_apex, old_apex, KNOT_RRTYPE_NSEC3PARAM));
-	} else if (new_apex != NULL) {
-		return true;
-	}
-
-	return false;
-}
-
-static int sign_update(zone_update_t *update,
-                       zone_contents_t *new_contents)
-{
-	assert(update);
-	assert(new_contents);
-
-	/* Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
-	 * If so, we have to sign the whole zone. */
 	int ret = KNOT_EOK;
-	zone_sign_reschedule_t resch = { 0 };
-	changeset_t sec_ch;
-	ret = changeset_init(&sec_ch, update->zone->name);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (update->flags & UPDATE_INCREMENTAL) {
+		ret = changeset_merge(&update->change, changes);
 	}
-
-	const bool full_sign = changeset_empty(&update->change) ||
-	                       apex_dnssec_changed(update);
-	if (full_sign) {
-		ret = knot_dnssec_zone_sign(new_contents, &sec_ch,
-		                            ZONE_SIGN_KEEP_SOA_SERIAL,
-					    &resch);
-	} else {
-		/* Sign the created changeset */
-		ret = knot_dnssec_sign_changeset(new_contents, &update->change,
-						 &sec_ch, &resch);
+	if (ret == KNOT_EOK) {
+		ret = apply_changeset_directly(&update->a_ctx, changes);
 	}
-	if (ret != KNOT_EOK) {
-		changeset_clear(&sec_ch);
-		return ret;
+	return ret;
+}
+
+int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes)
+{
+	int ret = changeset_cancelout(changes);
+	if (ret == KNOT_EOK) {
+		ret = changeset_preapply_fix(update->new_cont, changes);
 	}
-
-	/* Apply DNSSEC changeset */
-	ret = apply_changeset_directly(&update->a_ctx, &sec_ch);
-	if (ret != KNOT_EOK) {
-		changeset_clear(&sec_ch);
-		return ret;
+	if (ret == KNOT_EOK) {
+		ret = zone_update_apply_changeset(update, changes);
 	}
-
-	if (!full_sign) {
-		/* Merge changesets */
-		ret = changeset_merge(&update->change, &sec_ch);
-		if (ret != KNOT_EOK) {
-			update_rollback(&update->a_ctx);
-			changeset_clear(&sec_ch);
-			return ret;
-		}
-	}
-
-	/* Plan next zone resign. */
-	if (resch.next_sign > 0) {
-		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, resch.next_sign);
-	}
-
-	/* We are not calling update_cleanup, as the rollback data are merged
-	 * into the main changeset and will get cleaned up with that. */
-	changeset_clear(&sec_ch);
-
-	return KNOT_EOK;
+	return ret;
 }
 
 static int set_new_soa(zone_update_t *update, unsigned serial_policy)
@@ -462,18 +398,35 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 		return KNOT_ENOMEM;
 	}
 
+	int ret = zone_update_remove(update, soa_cpy);
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(&soa_cpy, NULL);
+	}
+
 	uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
 	uint32_t new_serial = serial_next(old_serial, serial_policy);
 	if (serial_compare(old_serial, new_serial) >= 0) {
 		log_zone_warning(update->zone->name, "updated serial is lower "
 		                 "than current, serial %u -> %u",
-		                  old_serial, new_serial);
+		                 old_serial, new_serial);
 	}
 
 	knot_soa_serial_set(&soa_cpy->rrs, new_serial);
-	update->change.soa_to = soa_cpy;
 
-	return KNOT_EOK;
+	ret = zone_update_add(update, soa_cpy);
+	knot_rrset_free(&soa_cpy, NULL);
+
+	return ret;
+}
+
+int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
+{
+	if (update == NULL || conf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, update->zone->name);
+	return set_new_soa(update, conf_opt(&val));
 }
 
 static int commit_incremental(conf_t *conf, zone_update_t *update,
@@ -491,49 +444,26 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 	int ret = KNOT_EOK;
 	if (zone_update_to(update) == NULL) {
 		/* No SOA in the update, create one according to the current policy */
-		conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, update->zone->name);
-		ret = set_new_soa(update, conf_opt(&val));
-		if (ret != KNOT_EOK) {
-			zone_update_clear(update);
-			return ret;
-		}
-
-		ret = apply_replace_soa(&update->a_ctx, &update->change);
+		ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(update);
 			return ret;
 		}
 	}
 
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
-	bool dnssec_enable = (update->flags & UPDATE_SIGN) && conf_bool(&val);
-
-	/* Sign the update. */
-	if (dnssec_enable) {
-		ret = apply_prepare_to_sign(&update->a_ctx);
-		if (ret != KNOT_EOK) {
-			zone_update_clear(update);
-			return ret;
-		}
-
-		ret = sign_update(update, new_contents);
-		if (ret != KNOT_EOK) {
-			zone_update_clear(update);
-			return ret;
-		}
-	} else {
-		ret = apply_finalize(&update->a_ctx);
-		if (ret != KNOT_EOK) {
-			zone_update_clear(update);
-			return ret;
-		}
-	}
-
-	/* Write changes to journal if all went well. (DNSSEC merged) */
-	ret = zone_change_store(conf, update->zone, &update->change);
+	ret = apply_finalize(&update->a_ctx);
 	if (ret != KNOT_EOK) {
-		/* Recoverable error. */
+		zone_update_clear(update);
 		return ret;
+	}
+
+	/* Write changes to journal if all went well. */
+	if (update->zone->journal_db != NULL) { // TODO this should be better
+		ret = zone_change_store(conf, update->zone, &update->change);
+		if (ret != KNOT_EOK) {
+			/* Recoverable error. */
+			return ret;
+		}
 	}
 
 	*contents_out = new_contents;
@@ -559,22 +489,12 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 		return ret;
 	}
 
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
-	bool dnssec_enable = (update->flags & UPDATE_SIGN) && conf_bool(&val);
-
-	/* Sign the update. */
-	if (dnssec_enable) {
-		int ret = sign_update(update, update->new_cont);
-		if (ret != KNOT_EOK) {
-			zone_update_clear(update);
+	/* Store new zone contents in journal. */
+	if (update->zone->journal_db != NULL) { // TODO this should be better
+		ret = zone_in_journal_store(conf, update->zone, update->new_cont);
+		if (ret != KNOT_EOK && ret != KNOT_EEXIST && ret != KNOT_ENOTSUP) {
 			return ret;
 		}
-	}
-
-	/* Store new zone contents in journal. */
-	ret = zone_in_journal_store(conf, update->zone, update->new_cont);
-	if (ret != KNOT_EOK && ret != KNOT_EEXIST && ret != KNOT_ENOTSUP) {
-		return ret;
 	}
 
 	*contents_out = update->new_cont;
@@ -614,8 +534,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	/* Switch zone contents. */
-	zone_contents_t *old_contents = zone_switch_contents(update->zone,
-	                                                     new_contents);
+	zone_contents_t *old_contents;
+	old_contents = zone_switch_contents(update->zone, new_contents);
 
 	/* Sync RCU. */
 	synchronize_rcu();

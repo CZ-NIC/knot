@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Structure for representing zone change and its API.
- *
- * \addtogroup ddns
- * @{
- */
 
 #pragma once
 
@@ -29,10 +21,10 @@
 #include "contrib/ucw/lists.h"
 
 /*! \brief Changeset addition/removal flags */
-enum {
+typedef enum {
 	CHANGESET_NONE = 0,
 	CHANGESET_CHECK = 1 << 0, /*! Perform redundancy check on additions/removals */
-};
+} changeset_flag_t;
 
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct {
@@ -93,24 +85,24 @@ size_t changeset_size(const changeset_t *ch);
 /*!
  * \brief Add RRSet to 'add' part of changeset.
  *
- * \param ch                Changeset to add RRSet into.
- * \param rrset             RRSet to be added.
- * \param check_redundancy  Check the added RR for redundancy already in the changeset.
+ * \param ch     Changeset to add RRSet into.
+ * \param rrset  RRSet to be added.
+ * \param flags  Changeset flags.
  *
  * \return KNOT_E*
  */
-int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags);
+int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset_flag_t flags);
 
 /*!
  * \brief Add RRSet to 'remove' part of changeset.
  *
- * \param ch                Changeset to add RRSet into.
- * \param rrset             RRSet to be added.
- * \param check_redundancy  Check the added RR for redundancy already in the changeset.
+ * \param ch     Changeset to add RRSet into.
+ * \param rrset  RRSet to be added.
+ * \param flags  Changeset flags.
  *
  * \return KNOT_E*
  */
-int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, unsigned flags);
+int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_flag_t flags);
 
 
 /*!
@@ -142,6 +134,25 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
  * \return KNOT_E*
  */
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2);
+
+/*!
+ * \brief Remove from changeset those rdata which won't be added/removed from zone.
+ *
+ * \param zone    The zone the changeset is going to be applied on.
+ * \param change  The cheangeset to be fixed.
+ *
+ * \return KNOT_E*
+ */
+int changeset_preapply_fix(const zone_contents_t *zone, changeset_t *change);
+
+/*!
+ * \brief Remove from changeset records which are removed and added the same.
+ *
+ * \param change  Changeset to be fixed.
+ *
+ * \return KNOT_E*
+ */
+int changeset_cancelout(changeset_t *change);
 
 /*!
  * \brief Loads zone contents from botstrap changeset.
@@ -242,4 +253,25 @@ knot_rrset_t changeset_iter_next(changeset_iter_t *it);
  */
 void changeset_iter_clear(changeset_iter_t *it);
 
-/*! @} */
+/*!
+ * \brief A pointer type for callback for changeset_walk() function.
+ *
+ * \param rrset    An actual removal/addition inside the changeset.
+ * \param addition Indicates addition against removal.
+ * \param ctx      A context passed to the changeset_walk() function.
+ *
+ * \retval KNOT_EOK if all ok, iteration will continue
+ * \return KNOT_E*  if error, iteration will stop immediately and changeset_walk() returns this error.
+ */
+typedef int (*changeset_walk_callback)(const knot_rrset_t *rrset, bool addition, void *ctx);
+
+/*!
+ * \brief Calls a callback for each removal/addition in the changeset.
+ *
+ * \param changeset Changeset.
+ * \param callback  Callback.
+ * \param ctx       Arbitrary context passed to the callback.
+ *
+ * \return KNOT_E*
+ */
+int changeset_walk(const changeset_t *changeset, changeset_walk_callback callback, void *ctx);
