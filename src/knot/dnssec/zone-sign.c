@@ -87,17 +87,13 @@ static bool apex_rr_changed(const zone_node_t *old_apex,
 
 static bool apex_dnssec_changed(zone_update_t *update)
 {
-	const zone_node_t *new_apex = zone_update_get_apex(update);
-	if (update->zone->contents != NULL) {
-		const zone_node_t *old_apex = update->zone->contents->apex;
-		return !changeset_empty(&update->change) &&
-		       (apex_rr_changed(new_apex, old_apex, KNOT_RRTYPE_DNSKEY) ||
-			apex_rr_changed(new_apex, old_apex, KNOT_RRTYPE_NSEC3PARAM));
-	} else if (new_apex != NULL) {
-		return true;
+	if (update->zone->contents == NULL || update->new_cont == NULL) {
+		return false;
 	}
-
-	return false;
+	return apex_rr_changed(update->zone->contents->apex,
+			       update->new_cont->apex, KNOT_RRTYPE_DNSKEY) ||
+	       apex_rr_changed(update->zone->contents->apex,
+			       update->new_cont->apex, KNOT_RRTYPE_NSEC3PARAM);
 }
 
 /*- private API - signing of in-zone nodes -----------------------------------*/
