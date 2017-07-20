@@ -785,31 +785,34 @@ int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 	if (dst == NULL || src == NULL)
 		return KNOT_EINVAL;
 
-	uint8_t *len = dst++;
-	*len = '\0';
-	*dst = '\0';
+	uint8_t lf[KNOT_DNAME_MAXLEN]; /* Holder for the name in lookup format */
+	uint8_t lf_idx = KNOT_DNAME_MAXLEN - 1; /* Starting writing from the end */
+
+	lf[lf_idx] = '\0';
+	uint8_t len = 0; /* Length of the dname in lookup format */
+
 	const uint8_t *l = src;
-	const uint8_t* lstack[KNOT_DNAME_MAXLABELS];
-	const uint8_t **sp = lstack;
-	while (*l != 0) { /* build label stack */
-		*sp++ = l;
+	while (*l != 0) { /* Iterate through labels */
+
+		lf_idx -= *l + 1;
+		lf[lf_idx] = '\0';
+
+		for (int i = 1; i <= *l; i++) {
+			lf[lf_idx + i] = knot_tolower(l[i]);
+		}
+
+		len += *l + 1;
+
 		l = knot_wire_next_label(l, pkt);
 	}
-	while (sp != lstack) { /* consume stack */
-		l = *--sp; /* fetch rightmost label */
-		uint8_t label_len = *l++;
-		for (int i = 0; i < label_len; ++i) {
-			dst[i] = knot_tolower(l[i]); /* write label in lowercase */
-		}
-		dst += label_len;
-		*dst++ = '\0'; /* label separator */
-		*len += label_len + 1;
+	/* Root label special case */
+	if (len == 0) {
+		--lf_idx;
+		len = 1;
 	}
-
-	/* root label special case */
-	if (*len == 0) {
-		*len = 1; /* \x00 */
-	}
+	/* First byte is the length of the name in lf */
+	lf[lf_idx] = len;
+	memcpy(dst, lf + lf_idx, len + 1);
 
 	return KNOT_EOK;
 }
