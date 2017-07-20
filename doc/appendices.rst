@@ -27,6 +27,7 @@ support.
    * -
      - Key generate
      - Key import
+     - ED25519 256-bit
      - ECDSA 256-bit
      - ECDSA 384-bit
      - RSA 1024-bit
@@ -36,6 +37,7 @@ support.
      - DSA 1024-bit
    * - `Feitian ePass 2003 <http://www.ftsafe.com/product/epass/epass2003>`_
      - |yes|
+     - |no|
      - |no|
      - |no|
      - |no|
@@ -49,6 +51,7 @@ support.
      - |no|
      - |no|
      - |no|
+     - |no|
      - |yes|
      - |yes|
      - |yes|
@@ -57,6 +60,7 @@ support.
    * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_
      - |yes|
      - |yes|
+     - |no|
      - |yes|
      - |yes|
      - |yes|
@@ -67,6 +71,7 @@ support.
    * - `Trustway Proteccio NetHSM <http://www.bull.com/fr/cybers%C3%A9curit%C3%A9-trustway-proteccio-nethsm>`_
      - |yes|
      - ECDSA only
+     - |no|
      - |yes|
      - |yes|
      - |yes|
@@ -77,6 +82,7 @@ support.
 
 .. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
+     - |no|
      - |no|
      - |no|
      - |yes|
@@ -98,6 +104,9 @@ however the supported operations may be limited (e.g. private key import).
    * -
      - `Numbers <https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml#dns-sec-alg-numbers-1>`_
      - GnuTLS version
+   * - ED25519
+     - 15
+     - 3.6.0 or newer
    * - ECDSA
      - 13, 14
      - 3.4.8 or newer
