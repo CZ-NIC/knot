@@ -198,14 +198,16 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	result = zone_update_increment_soa(update, conf());
-	if (result == KNOT_EOK) {
-		result = knot_zone_sign_soa(update, &keyset, &ctx);
-	}
-	if (result != KNOT_EOK) {
-		log_zone_error(zone_name, "DNSSEC, failed to update SOA record (%s)",
-		               knot_strerror(result));
-		goto done;
+	if (!(flags & ZONE_SIGN_KEEP_SERIAL)) {
+		result = zone_update_increment_soa(update, conf());
+		if (result == KNOT_EOK) {
+			result = knot_zone_sign_soa(update, &keyset, &ctx);
+		}
+		if (result != KNOT_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to update SOA record (%s)",
+				       knot_strerror(result));
+			goto done;
+		}
 	}
 
 	log_zone_info(zone_name, "DNSSEC, successfully signed");

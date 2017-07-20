@@ -26,6 +26,7 @@
 enum zone_sign_flags {
 	ZONE_SIGN_NONE = 0,
 	ZONE_SIGN_DROP_SIGNATURES = (1 << 0),
+	ZONE_SIGN_KEEP_SERIAL = (1 << 1),
 };
 
 typedef enum zone_sign_flags zone_sign_flags_t;
