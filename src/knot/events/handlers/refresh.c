@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,12 +23,15 @@
 #include "dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
+#include "knot/dnssec/zone-events.h"
+#include "knot/events/handlers.h"
+#include "knot/events/log.h"
 #include "knot/events/replan.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/query/layer.h"
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
-#include "knot/updates/apply.h"
+#include "knot/updates/changesets.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -247,20 +250,34 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
-	conf_val_t val = conf_zone_get(data->conf, C_ZONE_IN_JOURNAL, data->zone->name);
-	if (conf_bool(&val)) {
-		ret = zone_in_journal_store(data->conf, data->zone, new_zone);
-		if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
-			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			           "failed to write zone contents to journal (%s)",
-			           knot_strerror(ret));
-		}
+	zone_update_t up = { 0 };
+	ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	zone_contents_t *old_zone = zone_switch_contents(data->zone, new_zone);
-	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	bool dnssec_enable = conf_bool(&val);
+	if (dnssec_enable) {
+		zone_sign_reschedule_t resch = { .allow_rollover = true };
+		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, &resch);
+		if (ret != KNOT_EOK) {
+			zone_update_clear(&up);
+			return ret;
+		}
+		// no dnssec replanning, next dnssec action applies on next refresh
+		zone_events_schedule_at(data->zone, ZONE_EVENT_PARENT_DS_Q,
+					resch.plan_ds_query ? time(NULL) : -1);
+	}
+
+	ret = zone_update_commit(data->conf, &up);
+	zone_update_clear(&up);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	xfr_log_publish(data->zone->name, data->remote, data->zone->contents, new_zone);
 	data->axfr.zone = NULL; // seized
-	callrcu_wrapper(old_zone, (void (*)(void **))zone_contents_deep_free);
 
 	return KNOT_EOK;
 }
@@ -396,62 +413,57 @@ static void ixfr_cleanup(struct refresh_data *data)
 	changesets_free(&data->ixfr.changesets);
 }
 
-static void ixfr_finalize_cleanup(void **ptr)
-{
-	apply_ctx_t *ctx = *ptr;
-	update_free_zone(&ctx->contents);
-	update_cleanup(ctx);
-	free(ctx);
-}
-
 static int ixfr_finalize(struct refresh_data *data)
 {
-	zone_contents_t *new_zone = NULL;
-	apply_ctx_t *ctx = calloc(1, sizeof(apply_ctx_t));
-	if (ctx == NULL) {
-		return KNOT_ENOMEM;
+	zone_update_t up = { 0 };
+	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	apply_init_ctx(ctx, NULL, APPLY_STRICT);
-	int ret = apply_changesets(ctx, data->zone->contents,
-	                           &data->ixfr.changesets, &new_zone);
+	changeset_t *set = NULL;
+	WALK_LIST(set, data->ixfr.changesets) {
+		ret = zone_update_apply_changeset(&up, set);
+		if (ret != KNOT_EOK) {
+			zone_update_clear(&up);
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			           "failed to apply changes to zone (%s)",
+			           knot_strerror(ret));
+			return ret;
+		}
+	}
+
+	ret = xfr_validate(up.new_cont, data);
 	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
+		return ret;
+	}
+
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	bool dnssec_enable = conf_bool(&val);
+	if (dnssec_enable) {
+		zone_sign_reschedule_t resch = { .allow_rollover = true };
+		ret = knot_dnssec_sign_update(&up, &resch);
+		if (ret != KNOT_EOK) {
+			zone_update_clear(&up);
+			return ret;
+		}
+		// no dnssec replanning, next dnssec action applies on next refresh
+		zone_events_schedule_at(data->zone, ZONE_EVENT_PARENT_DS_Q,
+					resch.plan_ds_query ? time(NULL) : -1);
+	}
+
+	ret = zone_update_commit(data->conf, &up);
+
+	if (ret == KNOT_EOK) {
+		xfr_log_publish(data->zone->name, data->remote, up.zone->contents, up.new_cont);
+	} else {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-		           "failed to apply changes to zone (%s)",
-		           knot_strerror(ret));
-		free(ctx);
-		return ret;
+		           "failed to sign changes (%s)", knot_strerror(ret));
 	}
 
-	assert(new_zone != NULL);
-
-	ret = xfr_validate(new_zone, data);
-	if (ret != KNOT_EOK) {
-		update_rollback(ctx);
-		update_free_zone(&new_zone);
-		free(ctx);
-		return ret;
-	}
-
-	// TODO: Refactor zone_changes_store() not to take monster object with config.
-	ret = zone_changes_store(data->conf, data->zone, &data->ixfr.changesets);
-	if (ret != KNOT_EOK) {
-		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-		           "failed to write changes to journal (%s)",
-		           knot_strerror(ret));
-		update_rollback(ctx);
-		update_free_zone(&new_zone);
-		free(ctx);
-		return ret;
-	}
-
-	zone_contents_t *old_zone = zone_switch_contents(data->zone, new_zone);
-	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
-
-	ctx->contents = old_zone;
-	callrcu_wrapper(ctx, ixfr_finalize_cleanup);
-
-	return KNOT_EOK;
+	zone_update_clear(&up);
+	return ret;
 }
 
 /*! \brief Stores starting SOA into changesets structure. */

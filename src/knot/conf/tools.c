@@ -451,17 +451,6 @@ int check_template(
 int check_zone(
 	knotd_conf_check_args_t *args)
 {
-	conf_val_t master = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                      C_MASTER, args->id);
-	conf_val_t dnssec = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                      C_DNSSEC_SIGNING, args->id);
-
-	// DNSSEC signing is not possible with slave zone.
-	if (conf_val_count(&master) > 0 && conf_bool(&dnssec)) {
-		args->err_str = "slave zone with DNSSEC signing";
-		return KNOT_EINVAL;
-	}
-
 	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_DNSSEC_SIGNING, args->id);
 	conf_val_t policy = conf_zone_get_txn(args->extra->conf, args->extra->txn,

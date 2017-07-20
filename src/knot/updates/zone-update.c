@@ -571,10 +571,10 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 		return ret;
 	}
 
-	/* Store new zone contents in journal. */
-	if (update->zone->journal_db != NULL) { // TODO this should be better
+	conf_val_t val = conf_zone_get(conf, C_ZONE_IN_JOURNAL, update->zone->name);
+	if (conf_bool(&val)) {
 		ret = zone_in_journal_store(conf, update->zone, update->new_cont);
-		if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
+		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
