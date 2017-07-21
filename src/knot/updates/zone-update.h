@@ -27,6 +27,7 @@
 typedef struct zone_update {
 	zone_t *zone;                /*!< Zone being updated. */
 	zone_contents_t *new_cont;   /*!< New zone contents for full updates. */
+	bool new_cont_deep_copy;     /*!< On update_clear, perform deep free instead of shallow. */
 	changeset_t change;          /*!< Changes we want to apply. */
 	apply_ctx_t a_ctx;           /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
@@ -58,6 +59,36 @@ typedef enum {
  * \return KNOT_E*
  */
 int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t flags);
+
+/*!
+ * \brief Inits update structure, the update is built like IXFR from differences.
+ *
+ * The existing zone with its own contents is taken as a base,
+ * the new candidate zone contents are taken as new contents,
+ * the diff is calculated, so that this update is INCREMENTAL.
+ *
+ * \param update   Zone update structure to init.
+ * \param zone     Init with this zone.
+ * \param new_cont New zone contents. Will be taken over (and later freed) by zone update.
+ * \param flags    Flags for update. Must be UPDATE_INCREMENTAL.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_from_differences(zone_update_t *update, zone_t *zone,
+                                 zone_contents_t *new_cont, zone_update_flags_t flags);
+
+/*!
+ * \brief Inits a zone update based on new zone contents.
+ *
+ * \param update                 Zone update structure to init.
+ * \param zone_without_contents  Init with this zone. Its contents may be NULL.
+ * \param new_cont               New zone contents. Will be taken over (and later freed) by zone update.
+ * \param flags                  Flags for update.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_contents,
+                              zone_contents_t *new_cont, zone_update_flags_t flags);
 
 /*!
  * \brief Returns node that would be in the zone after updating it.

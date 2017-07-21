@@ -55,18 +55,6 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone,
                            zone_contents_t **contents);
 
 /*!
- * \brief Zone loading post-actions (zone resign, calculation of delta)
- *
- * \param conf
- * \param zone
- * \param contents
- * \param dnssec_refresh
- * \return KNOT_EOK or an error
- */
-int zone_load_post(conf_t *conf, zone_t *zone, zone_contents_t **contents,
-                   zone_sign_reschedule_t *dnssec_refresh);
-
-/*!
  * \brief Check if zone can be bootstrapped.
  *
  * \param conf
