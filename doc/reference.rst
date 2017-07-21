@@ -1064,6 +1064,8 @@ Definition of zones served by the server.
      dnssec-policy: STR
      request-edns-option: INT:[HEXSTR]
      serial-policy: increment | unixtime
+     min-refresh-interval: TIME
+     max-refresh-interval: TIME
      module: STR/STR ...
 
 .. _zone_domain:
@@ -1331,6 +1333,24 @@ Possible values:
    done by hand (see RFC 1982).
 
 *Default:* increment
+
+.. _zone_min-refresh-interval:
+
+min-refresh-interval
+--------------------
+
+Forced minimum zone refresh interval to avoid flooding master.
+
+*Default:* 2
+
+.. _zone_max-refresh-interval:
+
+max-refresh-interval
+--------------------
+
+Forced maximum zone refresh interval.
+
+*Default:* not set
 
 .. _zone_module:
 

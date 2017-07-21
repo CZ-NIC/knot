@@ -925,6 +925,8 @@ zone:
     dnssec\-policy: STR
     request\-edns\-option: INT:[HEXSTR]
     serial\-policy: increment | unixtime
+    min\-refresh\-interval: TIME
+    max\-refresh\-interval: TIME
     module: STR/STR ...
 .ft P
 .fi
@@ -1173,6 +1175,16 @@ done by hand (see RFC 1982).
 .UNINDENT
 .sp
 \fIDefault:\fP increment
+.SS min\-refresh\-interval
+.sp
+Forced minimum zone refresh interval to avoid flooding master.
+.sp
+\fIDefault:\fP 2
+.SS max\-refresh\-interval
+.sp
+Forced maximum zone refresh interval.
+.sp
+\fIDefault:\fP not set
 .SS module
 .sp
 An ordered list of references to query modules in the form of \fImodule_name\fP or

@@ -78,7 +78,6 @@
 
 #define BOOTSTRAP_MAXTIME (24*60*60)
 #define BOOTSTRAP_JITTER (30)
-#define NEXT_REFRESH_MIN (2)
 
 enum state {
 	REFRESH_STATE_INVALID = 0,
@@ -1021,6 +1020,18 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	return ret;
 }
 
+static int64_t min_refresh_interval(conf_t *conf, const knot_dname_t *zone)
+{
+	conf_val_t val = conf_zone_get(conf, C_MIN_REFRESH_INTERVAL, zone);
+	return conf_int(&val);
+}
+
+static int64_t max_refresh_interval(conf_t *conf, const knot_dname_t *zone)
+{
+	conf_val_t val = conf_zone_get(conf, C_MAX_REFRESH_INTERVAL, zone);
+	return conf_int(&val);
+}
+
 int event_refresh(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
@@ -1054,9 +1065,14 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone->timers.next_refresh = now + next;
 	}
 
-	/* Security: avoid flooding master. */
-	if (zone->timers.next_refresh < now + NEXT_REFRESH_MIN) {
-		zone->timers.next_refresh = now + NEXT_REFRESH_MIN;
+	/* Check for allowed refresh interval limits. */
+	int64_t min_refresh = min_refresh_interval(conf, zone->name);
+	if(zone->timers.next_refresh < now + min_refresh) {
+		zone->timers.next_refresh = now + min_refresh;
+	}
+	int64_t max_refresh = max_refresh_interval(conf, zone->name);
+	if(zone->timers.next_refresh > now + max_refresh) {
+		zone->timers.next_refresh = now + max_refresh;
 	}
 
 	/* Rechedule events. */
