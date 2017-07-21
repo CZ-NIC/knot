@@ -221,3 +221,15 @@ int kasp_db_get_policy_last(kasp_db_t *db, const char *policy_string, knot_dname
  */
 int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char *last_lp_keyid,
 			    const knot_dname_t *new_lp_zone, const char *new_lp_keyid);
+
+/*!
+ * \brief List all zones that have anything stored in KASP db.
+ *
+ * It's quite slow, but we expect KASP db not to be so large.
+ *
+ * \param db   KASP db
+ * \param dst  List of zone names
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_list_zones(kasp_db_t *db, list_t *dst);

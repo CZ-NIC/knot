@@ -698,3 +698,44 @@ int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char
 	with_txn_end(NULL);
 	return ret;
 }
+
+int kasp_db_list_zones(kasp_db_t *db, list_t *dst)
+{
+	if (db == NULL || db->keys_db == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	with_txn(KEYS_RO, NULL);
+	knot_db_iter_t *iter = db_api->iter_begin(txn, KNOT_DB_FIRST);
+	while (iter != NULL) {
+		knot_db_val_t key;
+		if (db_api->iter_key(iter, &key) == KNOT_EOK && key.len > 1 &&
+		    *(uint8_t *)key.data != KASPDBKEY_POLICYLAST) {
+			// obtain a domain name of a record in KASP db
+			knot_dname_t *key_dn = (knot_dname_t *)(key.data + 1);
+			// check if not already in dst
+			ptrnode_t *n;
+			WALK_LIST(n, *dst) {
+				knot_dname_t *exist_dn = (knot_dname_t *)n->d;
+				if (knot_dname_cmp(key_dn, exist_dn) == 0) {
+					key_dn = NULL;
+					break;
+				}
+			}
+			// copy it from txn and add to dst
+			if (key_dn != NULL) {
+				knot_dname_t *add_dn = knot_dname_copy(key_dn, NULL);
+				ptrlist_add(dst, add_dn, NULL);
+			}
+		}
+		iter = db_api->iter_next(iter);
+	}
+	db_api->iter_finish(iter);
+	db_api->txn_abort(txn);
+
+	if (ret != KNOT_EOK) {
+		ptrlist_deep_free(dst, NULL);
+		return ret;
+	}
+	return (EMPTY_LIST(*dst) ? KNOT_ENOENT : KNOT_EOK);
+}
