@@ -103,6 +103,40 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
 	free(s2);
 }
 
+static void test_dname_lf(void)
+{
+	uint8_t out[KNOT_DNAME_MAXLEN] = { 0 };
+
+	/* Maximal DNAME length */
+	const knot_dname_t *in = (uint8_t *)
+		"\x3f""IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+		"\x3f""HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH"
+		"\x3f""GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+		"\x1f""FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+		"\x0f""EEEEEEEEEEEEEEE"
+		"\x07""DDDDDDD"
+		"\x03""CCC"
+		"\x01""B"
+		"\x00";
+	const uint8_t *ref = (uint8_t *)
+		"\xFE"
+		"b""\x00"
+		"ccc""\00"
+		"ddddddd""\x00"
+		"eeeeeeeeeeeeeee""\x00"
+		"fffffffffffffffffffffffffffffff""\x00"
+		"ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg""\x00"
+		"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh""\x00"
+		"iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii""\x00";
+	ok(knot_dname_lf(out, in, NULL) == 0, "knot_dname_lf: max-length DNAME success on return");
+	ok(memcmp(ref, out, KNOT_DNAME_MAXLEN) == 0, "knot_dname_lf: max-length DNAME converted");
+
+	/* Zero label DNAME*/
+	in = (uint8_t *) "\x00";
+	ok(knot_dname_lf(out, in, NULL) == 0, "knot_dname_lf: zero-label DNAME success on return");
+	ok(out[0] == '\x01' && out[1] == '\x00', "knot_dname_lf: zero-label DNAME converted");
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -542,6 +576,10 @@ int main(int argc, char *argv[])
 	knot_dname_free(&d2, NULL);
 
 	knot_dname_free(&d, NULL);
+
+	/* DNAME CONVERSION TO LOOK-UP FORMAT CHECK */
+
+	test_dname_lf();
 
 	return 0;
 }
