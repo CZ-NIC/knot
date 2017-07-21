@@ -41,9 +41,15 @@ static void check_key_tag(dnssec_key_t *key, const key_parameters_t *params)
 
 static void check_key_size(dnssec_key_t *key, const key_parameters_t *params)
 {
-	if (params->algorithm == 13 && !dnssec_key_can_sign(key)) {
-		skip("key size without private key known to be broken");
-		return;
+	switch (params->algorithm) {
+	case 13:
+	case 14:
+	case 15:
+	case 16:
+		if (!dnssec_key_can_sign(key)) {
+			skip("key size without private key known to be broken");
+			return;
+		}
 	}
 
 	ok(dnssec_key_get_size(key) == params->bit_size,
@@ -195,9 +201,12 @@ int main(void)
 	dnssec_crypto_init();
 
 	static const keyinfo_t keys[] = {
-		{ "RSA", &SAMPLE_RSA_KEY },
-		{ "DSA", &SAMPLE_DSA_KEY },
-		{ "ECDSA", &SAMPLE_ECDSA_KEY },
+		{ "RSA",     &SAMPLE_RSA_KEY },
+		{ "DSA",     &SAMPLE_DSA_KEY },
+		{ "ECDSA",   &SAMPLE_ECDSA_KEY },
+#ifdef HAVE_ED25519
+		{ "ED25519", &SAMPLE_ED25519_KEY },
+#endif
 		{ NULL }
 	};
 
