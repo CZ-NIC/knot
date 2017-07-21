@@ -483,20 +483,6 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 	return ctx->functions->x509_to_dnssec(ctx, &bin_raw, signature);
 }
 
-static unsigned int get_flags(const dnssec_key_t *key)
-{
-	uint8_t algorithm = dnssec_key_get_algorithm(key);
-
-	switch ((dnssec_key_algorithm_t)algorithm) {
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		return GNUTLS_VERIFY_ALLOW_BROKEN;
-	default: return 0;
-	}
-}
-
 _public_
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 {
@@ -521,11 +507,10 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 
 	gnutls_datum_t raw = binary_to_datum(&bin_raw);
 	gnutls_sign_algorithm_t algorithm = get_sign_algorithm(ctx);
-	unsigned int flags = get_flags(ctx->key);
 	
 	assert(ctx->key->public_key);
 	result = gnutls_pubkey_verify_data2(ctx->key->public_key, algorithm,
-					    flags, &data, &raw);
+					    0, &data, &raw);
 	if (result == GNUTLS_E_PK_SIG_VERIFY_FAILED) {
 		return DNSSEC_INVALID_SIGNATURE;
 	} else if (result < 0) {
