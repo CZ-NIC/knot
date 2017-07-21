@@ -26,7 +26,7 @@
  * In fact, this is a very tiny subset of ASN.1 encoding format implementation,
  * which is necessary for the purpose of DNSSEC.
  *
- * References: RFC 3279 (X.509 PKI), X.690, RFC 2536 (DSA), RFC 6605 (ECDSA)
+ * References: RFC 3279 (X.509 PKI), X.690, RFC 2536 (DSA), RFC 6605 (ECDSA), RFC8080 (EDDSA)
  *
  * Dss-Sig-Value ::= SEQUENCE { r INTEGER, s INTEGER }
  */
