@@ -37,8 +37,11 @@
 #include "zscanner/scanner.h"
 #include "contrib/strtonum.h"
 
-#define MATCH_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] == NULL || \
-                                  strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
+#define MATCH_OR_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] == NULL || \
+                                     strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
+
+#define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] != NULL && \
+                                      strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
 
 void ctl_log_data(knot_ctl_data_t *data)
 {
@@ -159,7 +162,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	char buff[128];
 	knot_ctl_type_t type = KNOT_CTL_TYPE_DATA;
 
-	if (MATCH_FILTER(args, CTL_FILTER_STATUS_ROLE)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_ROLE)) {
 		data[KNOT_CTL_IDX_TYPE] = "role";
 
 		if (zone_is_slave(conf(), zone)) {
@@ -176,7 +179,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		}
 	}
 
-	if (MATCH_FILTER(args, CTL_FILTER_STATUS_SERIAL)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_SERIAL)) {
 		data[KNOT_CTL_IDX_TYPE] = "serial";
 
 		if (zone->contents != NULL) {
@@ -200,7 +203,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		}
 	}
 
-	if (MATCH_FILTER(args, CTL_FILTER_STATUS_TRANSACTION)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_TRANSACTION)) {
 		data[KNOT_CTL_IDX_TYPE] = "transaction";
 		data[KNOT_CTL_IDX_DATA] = (zone->control_update != NULL) ? "open" : "none";
 		ret = knot_ctl_send(args->ctl, type, &data);
@@ -212,7 +215,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	}
 
 	bool ufrozen = zone->events.ufrozen;
-	if (MATCH_FILTER(args, CTL_FILTER_STATUS_FREEZE)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_FREEZE)) {
 		data[KNOT_CTL_IDX_TYPE] = "freeze";
 		if (ufrozen) {
 			if (zone_events_get_time(zone, ZONE_EVENT_UTHAW) < time(NULL)) {
@@ -234,7 +237,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		}
 	}
 
-	if (MATCH_FILTER(args, CTL_FILTER_STATUS_EVENTS)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_EVENTS)) {
 		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
 			// Events not worth showing or used elsewhere.
 			if (i == ZONE_EVENT_LOAD || i == ZONE_EVENT_UFREEZE ||
@@ -315,9 +318,7 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 
 static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
-	if (args->data[KNOT_CTL_IDX_FILTER] != NULL &&
-	    strchr(args->data[KNOT_CTL_IDX_FILTER], CTL_FILTER_FLUSH_OUTDIR) != NULL) {
-		// ^^ this is different than macro MATCH_FILTER
+	if (MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
 		return zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
 	}
 
@@ -993,36 +994,36 @@ static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 static int zone_purge(zone_t *zone, ctl_args_t *args)
 {
 	// Abort possible editing transaction.
-	if (MATCH_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
 		(void)zone_txn_abort(zone, args);
 	}
 
 	// Purge the zone timers.
-	if (MATCH_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
 		memset(&zone->timers, 0, sizeof(zone->timers));
 	}
 
 	// Expire the zone.
-	if (MATCH_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
 		(void)event_expire(conf(), zone);
 	}
 
 	// Purge the zone file.
-	if (MATCH_FILTER(args, CTL_FILTER_PURGE_ZONEFILE)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_ZONEFILE)) {
 		char *zonefile = conf_zonefile(conf(), zone->name);
 		(void)unlink(zonefile);
 		free(zonefile);
 	}
 
 	// Purge the zone journal.
-	if (MATCH_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
 		if (journal_open(zone->journal, zone->journal_db, zone->name) == KNOT_EOK) {
 			(void)journal_scrape(zone->journal);
 		}
 	}
 
 	// Purge KASP DB.
-	if (MATCH_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
+	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
 		if (kasp_db_open(*kaspdb()) == KNOT_EOK) {
 			(void)kasp_db_delete_all(*kaspdb(), zone->name);
 		}
