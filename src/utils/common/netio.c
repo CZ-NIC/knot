@@ -163,6 +163,7 @@ int net_init(const srv_info_t    *local,
              const int           iptype,
              const int           socktype,
              const int           wait,
+             const net_flags_t   flags,
              const tls_params_t  *tls_params,
              net_t               *net)
 {
@@ -195,6 +196,7 @@ int net_init(const srv_info_t    *local,
 	net->wait = wait;
 	net->local = local;
 	net->remote = remote;
+	net->flags = flags;
 
 	// Prepare for TLS.
 	if (tls_params != NULL && tls_params->enable) {
@@ -205,6 +207,57 @@ int net_init(const srv_info_t    *local,
 	}
 
 	return KNOT_EOK;
+}
+
+/**
+ * Connect with TCP Fast Open.
+ */
+static int fastopen_connect(int sockfd, const struct addrinfo *srv)
+{
+#if __APPLE__
+	// connection is performed lazily when first data are sent
+	struct sa_endpoints ep = {0};
+	ep.sae_dstaddr = srv->ai_addr;
+	ep.sae_dstaddrlen = srv->ai_addrlen;
+	int flags =  CONNECT_DATA_IDEMPOTENT|CONNECT_RESUME_ON_READ_WRITE;
+
+	return connectx(sockfd, &ep, SAE_ASSOCID_ANY, flags, NULL, 0, NULL, NULL);
+#elif defined(MSG_FASTOPEN) // Linux with RFC 7413
+	// connect() will be called implicitly with sendto(), sendmsg()
+	return 0;
+#else
+	errno = ENOTSUP;
+	return -1;
+#endif
+}
+
+/**
+ * Sends data with TCP Fast Open.
+ */
+static int fastopen_send(int sockfd, const struct msghdr *msg, int timeout)
+{
+#if __APPLE__
+	return sendmsg(sockfd, msg, 0);
+#elif defined(MSG_FASTOPEN)
+	int ret = sendmsg(sockfd, msg, MSG_FASTOPEN);
+	if (ret == -1 && EINPROGRESS) {
+		struct pollfd pfd = {
+			.fd = sockfd,
+			.events = POLLOUT,
+			.revents = 0,
+		};
+		if (poll(&pfd, 1, 1000 * timeout) != 1) {
+			errno = ETIMEDOUT;
+			return -1;
+		}
+		ret = sendmsg(sockfd, msg, 0);
+	}
+	return ret;
+
+#else
+	errno = ENOTSUP;
+	return -1;
+#endif
 }
 
 int net_connect(net_t *net)
@@ -248,19 +301,24 @@ int net_connect(net_t *net)
 	}
 
 	if (net->socktype == SOCK_STREAM) {
-		int       cs, err = 0;
+		int  cs, err, ret = 0;
 		socklen_t err_len = sizeof(err);
+		bool     fastopen = net->flags & NET_FLAGS_FASTOPEN;
 
 		// Connect using socket.
-		if (connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen)
-		    == -1 && errno != EINPROGRESS) {
+		if (fastopen) {
+			ret = fastopen_connect(sockfd, net->srv);
+		} else {
+			ret = connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen);
+		}
+		if (ret != 0 && errno != EINPROGRESS) {
 			WARN("can't connect to %s\n", net->remote_str);
 			close(sockfd);
 			return KNOT_NET_ECONNECT;
 		}
 
 		// Check for connection timeout.
-		if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+		if (!fastopen && poll(&pfd, 1, 1000 * net->wait) != 1) {
 			WARN("connection timeout for %s\n", net->remote_str);
 			close(sockfd);
 			return KNOT_NET_ECONNECT;
@@ -347,11 +405,12 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		}
 	// Send data over TCP.
 	} else {
-		struct iovec iov[2];
+		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
 
 		// Leading packet length bytes.
 		uint16_t pktsize = htons(buf_len);
 
+		struct iovec iov[2];
 		iov[0].iov_base = &pktsize;
 		iov[0].iov_len = sizeof(pktsize);
 		iov[1].iov_base = (uint8_t *)buf;
@@ -360,8 +419,19 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		// Compute packet total length.
 		ssize_t total = iov[0].iov_len + iov[1].iov_len;
 
-		// Send data.
-		if (writev(net->sockfd, iov, 2) != total) {
+		struct msghdr msg = {0};
+		msg.msg_iov = iov;
+		msg.msg_iovlen = sizeof(iov) / sizeof(*iov);
+		msg.msg_name = net->srv->ai_addr;
+		msg.msg_namelen = net->srv->ai_addrlen;
+
+		int ret = 0;
+		if (fastopen) {
+			ret = fastopen_send(net->sockfd, &msg, net->wait);
+		} else {
+			ret = sendmsg(net->sockfd, &msg, 0);
+		}
+		if (ret != total) {
 			WARN("can't send query to %s\n", net->remote_str);
 			return KNOT_NET_ESEND;
 		}

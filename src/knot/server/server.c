@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <urcu.h>
+#include <netinet/tcp.h>
 
 #include "libknot/errcode.h"
 #include "libknot/yparser/ypschema.h"
@@ -133,6 +134,24 @@ static bool enable_pktinfo(int sock, int family)
 	return setsockopt(sock, level, option, &on, sizeof(on)) == 0;
 }
 
+/**
+ * \brief Enable TCP Fast Open.
+ */
+static int enable_fastopen(int sock, int backlog)
+{
+#if __APPLE__
+	if (backlog > 0) {
+		backlog = 1; // just on-off switch on macOS
+	}
+#endif
+
+	if (setsockopt(sock, IPPROTO_TCP, TCP_FASTOPEN, &backlog, sizeof(backlog)) != 0) {
+		return knot_map_errno();
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Initialize new interface from config value.
  *
@@ -240,6 +259,13 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 		log_error("failed to listen on TCP interface '%s'", addr_str);
 		server_deinit_iface(new_if);
 		return KNOT_ERROR;
+	}
+
+	/* TCP Fast Open. */
+	ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
+	if (ret < 0) {
+		log_warning("failed to enable TCP Fast Open on '%s' (%s)",
+		            addr_str, knot_strerror(ret));
 	}
 
 	return KNOT_EOK;

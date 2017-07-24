@@ -205,6 +205,9 @@ Options
 **+**\ [\ **no**\ ]\ **tcp**
   Use the TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
 
+**+**\ [\ **no**\ ]\ **fastopen**
+  Use TCP Fast Open (default with TCP).
+
 **+**\ [\ **no**\ ]\ **ignore**
   Don't use TCP automatically if a truncated reply is received.
 

@@ -707,6 +707,7 @@ static void process_query(const query_t *query)
 	// Get connection parameters.
 	int iptype = get_iptype(query->ip);
 	int socktype = get_socktype(query->protocol, query->type_num);
+	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
 
 	// Loop over server list to process query.
 	WALK_LIST(server, query->servers) {
@@ -721,7 +722,7 @@ static void process_query(const query_t *query)
 		for (size_t i = 0; i <= query->retries; i++) {
 			// Initialize network structure for current server.
 			ret = net_init(query->local, remote, iptype, socktype,
-				       query->wait, &query->tls, &net);
+				       query->wait, flags, &query->tls, &net);
 			if (ret != KNOT_EOK) {
 				continue;
 			}
@@ -990,6 +991,7 @@ static void process_xfr(const query_t *query)
 	// Get connection parameters.
 	int iptype = get_iptype(query->ip);
 	int socktype = get_socktype(query->protocol, query->type_num);
+	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
 
 	// Use the first nameserver from the list.
 	srv_info_t *remote = HEAD(query->servers);
@@ -1001,7 +1003,7 @@ static void process_xfr(const query_t *query)
 
 	// Initialize network structure.
 	ret = net_init(query->local, remote, iptype, socktype, query->wait,
-	               &query->tls, &net);
+	               flags, &query->tls, &net);
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(&out_packet);

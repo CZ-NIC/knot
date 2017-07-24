@@ -88,6 +88,8 @@ struct query {
 	ip_t		ip;
 	/*!< Protocol type (TCP, UDP) to use. */
 	protocol_t	protocol;
+	/*!< Use TCP Fast Open. */
+	bool            fastopen;
 	/*!< Port/service to connect to. */
 	char		*port;
 	/*!< UDP buffer size (16unsigned + -1 uninitialized). */

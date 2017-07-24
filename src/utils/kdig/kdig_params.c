@@ -565,6 +565,24 @@ static int opt_notcp(const char *arg, void *query)
 	return opt_ignore(arg, query);
 }
 
+static int opt_fastopen(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->fastopen = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nofastopen(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->fastopen = false;
+
+	return opt_ignore(arg, query);
+}
+
 static int opt_tls(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1019,6 +1037,9 @@ static const param_t kdig_opts2[] = {
 	{ "tcp",            ARG_NONE,     opt_tcp },
 	{ "notcp",          ARG_NONE,     opt_notcp },
 
+	{ "fastopen",       ARG_NONE,     opt_fastopen },
+	{ "nofastopen",     ARG_NONE,     opt_nofastopen },
+
 	{ "ignore",         ARG_NONE,     opt_ignore },
 	{ "noignore",       ARG_NONE,     opt_noignore },
 
@@ -1096,6 +1117,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->operation = OPERATION_QUERY;
 		query->ip = IP_ALL;
 		query->protocol = PROTO_ALL;
+		query->fastopen = true;
 		query->port = strdup("");
 		query->udp_size = -1;
 		query->retries = DEFAULT_RETRIES_DIG;
@@ -1134,6 +1156,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->operation = conf->operation;
 		query->ip = conf->ip;
 		query->protocol = conf->protocol;
+		query->fastopen = conf->fastopen;
 		query->port = strdup(conf->port);
 		query->udp_size = conf->udp_size;
 		query->retries = conf->retries;
@@ -1633,6 +1656,7 @@ static void print_help(void)
 	       "       +[no]ttl              Show TTL value.\n"
 	       "       +[no]crypto           Show binary parts of RRSIGs and DNSKEYs.\n"
 	       "       +[no]tcp              Use TCP protocol.\n"
+	       "       +[no]fastopen         Use TCP Fast Open.\n"
 	       "       +[no]ignore           Don't use TCP automatically if truncated.\n"
 	       "       +[no]tls              Use TLS with Opportunistic privacy profile.\n"
 	       "       +[no]tls-ca[=FILE]    Use TLS with Out-Of-Band privacy profile.\n"
