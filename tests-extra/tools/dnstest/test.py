@@ -402,13 +402,17 @@ class Test(object):
                 detail_log("!Number of remove records:")
                 detail_log("  (%i) != (%i)" %
                            (len(self.removed), len(other.removed)))
-
-            for rem1, rem2 in zip(self.removed, other.removed):
-                if rem1 != rem2:
-                    set_err("IXFR CHANGE DIFF")
-                    detail_log("!Different remove records:")
-                    detail_log("  %s" % rem1)
-                    detail_log("  %s" % rem2)
+            rec1 = ""
+            rec2 = ""
+            for rem1 in self.removed:
+                if rem1 not in other.removed:
+                    rec1 += '\n\t' + rem1
+            for rem2 in other.removed:
+                if rem2 not in self.removed:
+                    rec2 += '\n\t' + rem2
+            if rec1 != "" or rec2 != "":
+                detail_log("!Extra remove records self:%s" % rec1)
+                detail_log("!Extra remove records other:%s" % rec2)
 
             if self.soa_new != other.soa_new:
                 set_err("IXFR CHANGE DIFF")
@@ -422,12 +426,17 @@ class Test(object):
                 detail_log("  (%i) != (%i)" %
                            (len(self.added), len(other.added)))
 
-            for add1, add2 in zip(self.added, other.added):
-                if add1 != add2:
-                    set_err("IXFR CHANGE DIFF")
-                    detail_log("!Different add records:")
-                    detail_log("  %s" % add1)
-                    detail_log("  %s" % add2)
+            rec1 = ""
+            rec2 = ""
+            for add1 in self.added:
+                if add1 not in other.added:
+                    rec1 += '\n\t' + add1
+            for add2 in other.added:
+                if add2 not in self.added:
+                    rec2 += '\n\t' + add2
+            if rec1 != "" or rec2 != "":
+                detail_log("!Extra add records self:%s" % rec1)
+                detail_log("!Extra add records other:%s" % rec2)
 
     def _ixfr_changes(self, server, zone, serial, udp):
         soa = None
