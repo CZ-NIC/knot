@@ -27,6 +27,7 @@ Example:
 
 from ctypes import cdll, c_void_p, c_int, c_char_p, c_uint, byref
 from enum import IntEnum
+from sys import platform
 
 CTL_ALLOC = None
 CTL_FREE = None
@@ -38,9 +39,11 @@ CTL_RECEIVE = None
 CTL_ERROR = None
 
 
-def load_lib(path="libknot.so"):
+def load_lib(path=None):
     """Loads the libknot library."""
 
+    if path is None:
+        path = "libknot.dylib" if sys.platform == "darwin" else "libknot.so"
     LIB = cdll.LoadLibrary(path)
 
     global CTL_ALLOC
