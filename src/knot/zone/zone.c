@@ -97,6 +97,8 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	/* Check for disabled zonefile synchronization. */
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	if (conf_int(&val) < 0 && !force) {
+		log_zone_warning(zone->name, "zonefile synchronization disabled, "
+		                             "use force command to override it");
 		return KNOT_EOK;
 	}
 

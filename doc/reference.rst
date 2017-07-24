@@ -1214,8 +1214,9 @@ on the disk (see :ref:`file<zone_file>`). The server will serve the latest
 zone even after a restart using zone journal, but the zone file on the disk will
 only be synced after ``zonefile-sync`` time has expired (or after manual zone
 flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
-DNSSEC signing. In order to disable automatic zonefile synchronization, -1 value
-can be used (manual zone flush is still possible).
+DNSSEC signing. In order to completely disable automatic zonefile synchronization,
+set the value to -1. In that case, it is still possible to force a manual zone flush
+using the ``-f`` option.
 
 .. NOTE::
    If you are serving large zones with frequent updates where
