@@ -471,9 +471,16 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 
 	assert(ctx->key->private_key);
 	_cleanup_datum_ gnutls_datum_t raw = { 0 };
+#ifdef HAVE_SIGN_DATA2
+	gnutls_sign_algorithm_t algorithm = get_sign_algorithm(ctx);
+	int result = gnutls_privkey_sign_data2(ctx->key->private_key,
+					       algorithm,
+					       0, &data, &raw);
+#else
 	int result = gnutls_privkey_sign_data(ctx->key->private_key,
-					      ctx->hash_algorithm,
-					      0, &data, &raw);
+					       ctx->hash_algorithm,
+					       0, &data, &raw);
+#endif
 	if (result < 0) {
 		return DNSSEC_SIGN_ERROR;
 	}

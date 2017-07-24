@@ -122,9 +122,14 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3 nettle], [
     AS_IF([test "$enable_pkcs11" = yes],
         [AC_DEFINE([ENABLE_PKCS11], [1], [PKCS #11 support available])])
 
-    AC_CHECK_DECL([GNUTLS_PK_EDDSA_ED25519], [enable_ed25519=yes], [enable_ed25519=no], [#include <gnutls/gnutls.h>])
-    AS_IF([test "$enable_ed25519" = yes],
-        [AC_DEFINE([HAVE_ED25519], [1], [GnuTLS ED25519 support available])])
+    AC_CHECK_DECL([GNUTLS_PK_EDDSA_ED25519],
+        [AC_DEFINE([HAVE_ED25519], [1], [GnuTLS ED25519 support available])
+	 enable_ed25519=yes],
+        [enable_ed25519=no],
+	[#include <gnutls/gnutls.h>])
+
+    AC_CHECK_FUNC([gnutls_privkey_sign_data2],
+        [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
 
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
