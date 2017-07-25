@@ -240,7 +240,7 @@ static int fastopen_send(int sockfd, const struct msghdr *msg, int timeout)
 	return sendmsg(sockfd, msg, 0);
 #elif defined(MSG_FASTOPEN)
 	int ret = sendmsg(sockfd, msg, MSG_FASTOPEN);
-	if (ret == -1 && EINPROGRESS) {
+	if (ret == -1 && errno == EINPROGRESS) {
 		struct pollfd pfd = {
 			.fd = sockfd,
 			.events = POLLOUT,
@@ -253,7 +253,6 @@ static int fastopen_send(int sockfd, const struct msghdr *msg, int timeout)
 		ret = sendmsg(sockfd, msg, 0);
 	}
 	return ret;
-
 #else
 	errno = ENOTSUP;
 	return -1;
