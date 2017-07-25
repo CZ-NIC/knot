@@ -39,7 +39,7 @@ typedef struct {
 	const uint8_t *data;   /*!< Current item data. */
 	size_t data_len;       /*!< Current item data length. */
 	const char *err_str;   /*!< Output error message. */
-	struct knotd_conf_check_extra *extra; /*!< Private items. */
+	struct knotd_conf_check_extra *extra; /*!< Private items (conf/tools.h). */
 } knotd_conf_check_args_t;
 
 /*! Module context. */
@@ -384,7 +384,7 @@ typedef struct {
 	knot_mm_t *mm;                /*!< Memory context. */
 	knotd_qdata_params_t *params; /*!< Low-level processing parameters. */
 
-	struct knotd_qdata_extra *extra; /*!< Private items. */
+	struct knotd_qdata_extra *extra; /*!< Private items (process_query.h). */
 } knotd_qdata_t;
 
 /*!
