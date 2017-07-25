@@ -139,16 +139,16 @@ static bool enable_pktinfo(int sock, int family)
  */
 static int enable_fastopen(int sock, int backlog)
 {
+#if defined(TCP_FASTOPEN)
 #if __APPLE__
 	if (backlog > 0) {
 		backlog = 1; // just on-off switch on macOS
 	}
 #endif
-
 	if (setsockopt(sock, IPPROTO_TCP, TCP_FASTOPEN, &backlog, sizeof(backlog)) != 0) {
 		return knot_map_errno();
 	}
-
+#endif
 	return KNOT_EOK;
 }
 
