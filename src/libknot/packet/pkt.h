@@ -94,6 +94,8 @@ struct knot_pkt {
 	knot_rrset_t *rr;
 
 	knot_mm_t mm; /*!< Memory allocation context. */
+
+	knot_compr_t compr; /*!< Compression context. */
 };
 
 /*!

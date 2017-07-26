@@ -281,7 +281,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 void knot_dname_free(knot_dname_t **name, knot_mm_t *mm);
 
 /*!
- * \brief Compares two domain names by labels (case sensitive).
+ * \brief Compares two domain names by labels (case insensitive).
  *
  * \warning Since it would be hard to catch errors, because negative value
  *          is also a good result, there are assertions that expect neither
@@ -300,6 +300,8 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2);
 /*!
  * \brief Compares two domain names (case sensitive).
  *
+ * \warning d1 and d2 must not be NULL.
+ *
  * \param d1 First domain name.
  * \param d2 Second domain name.
  *
@@ -308,6 +310,20 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2);
  */
 _pure_
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2);
+
+/*!
+ * \brief Compares two domain name labels (case insensitive).
+ *
+ * \warning label1 and label2 must not be NULL.
+ *
+ * \param label1  First label.
+ * \param label2  Second label.
+ *
+ * \retval true if the labels are identical
+ * \retval false if the labels are NOT identical
+ */
+_pure_
+bool knot_dname_label_is_equal(const uint8_t *label1, const uint8_t *label2);
 
 /*!
  * \brief Concatenates two domain names.

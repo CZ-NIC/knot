@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -171,6 +171,19 @@ static int pkt_rr_array_alloc(knot_pkt_t *pkt, uint16_t count)
 	return KNOT_EOK;
 }
 
+static void compr_clear(knot_compr_t *compr)
+{
+	compr->rrinfo = NULL;
+	compr->suffix.pos = 0;
+	compr->suffix.labels = 0;
+}
+
+static void compr_init(knot_compr_t *compr, uint8_t *wire)
+{
+	compr_clear(compr);
+	compr->wire = wire;
+}
+
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
 static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 {
@@ -188,6 +201,9 @@ static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 	} else {
 		pkt_wire_set(pkt, wire, len);
 	}
+
+	/* Initialize compression context. */
+	compr_init(&pkt->compr, pkt->wire);
 
 	return ret;
 }
@@ -355,6 +371,9 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 	/* Reset to header size. */
 	pkt->size = KNOT_WIRE_HEADER_SIZE;
 	memset(pkt->wire, 0, pkt->size);
+
+	/* Clear compression context. */
+	compr_clear(&pkt->compr);
 }
 
 _public_
@@ -539,16 +558,16 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	uint8_t *pos = pkt->wire + pkt->size;
 	size_t maxlen = pkt_remaining(pkt);
 
-	/* Create compression context. */
-	knot_compr_t compr;
-	compr.wire = pkt->wire;
-	compr.rrinfo = rrinfo;
-	compr.suffix.pos = KNOT_WIRE_HEADER_SIZE;
-	compr.suffix.labels = knot_dname_labels(compr.wire + compr.suffix.pos,
-	                                        compr.wire);
+	/* Initialize compression context if it did not happen yet. */
+	pkt->compr.rrinfo = rrinfo;
+	if (pkt->compr.suffix.pos == 0) {
+		pkt->compr.suffix.pos = KNOT_WIRE_HEADER_SIZE;
+		pkt->compr.suffix.labels = knot_dname_labels(pkt->compr.wire + pkt->compr.suffix.pos,
+		                                             pkt->compr.wire);
+	}
 
 	/* Write RRSet to wireformat. */
-	ret = knot_rrset_to_wire(rr, pos, maxlen, &compr);
+	ret = knot_rrset_to_wire(rr, pos, maxlen, &pkt->compr);
 	if (ret < 0) {
 		/* Truncate packet if required. */
 		if (ret == KNOT_ESPACE && !(flags & KNOT_PF_NOTRUNC)) {
