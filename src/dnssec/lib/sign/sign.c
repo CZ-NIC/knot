@@ -67,7 +67,7 @@ struct dnssec_sign_ctx {
 	const dnssec_key_t *key;		  //!< Signing key.
 	const algorithm_functions_t *functions;	  //!< Implementation specific.
 
-	gnutls_digest_algorithm_t hash_algorithm; //!< Used algorithm.
+	gnutls_sign_algorithm_t sign_algorithm;   //!< Used algorithm for signing.
 	dnssec_buffer_t buffer;                   //!< Buffer for the signed data.
 };
 
@@ -233,9 +233,9 @@ static size_t ecdsa_sign_integer_size(dnssec_sign_ctx_t *ctx)
 {
 	assert(ctx);
 
-	switch (ctx->hash_algorithm) {
-	case GNUTLS_DIG_SHA256: return 32;
-	case GNUTLS_DIG_SHA384: return 48;
+	switch (ctx->sign_algorithm) {
+	case GNUTLS_SIGN_ECDSA_SHA256: return 32;
+	case GNUTLS_SIGN_ECDSA_SHA384: return 48;
 	default: return 0;
 	};
 }
@@ -339,6 +339,7 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 	}
 }
 
+#ifndef HAVE_SIGN_DATA2
 /**
  * Get digest algorithm used with a given key.
  */
@@ -366,16 +367,38 @@ static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 		return GNUTLS_DIG_UNKNOWN;
 	}
 }
+#endif
 
-static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_sign_ctx_t *ctx)
+static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_key_t *key)
 {
-	assert(ctx);
-	assert(ctx->key && ctx->key->public_key);
+	uint8_t algorithm = dnssec_key_get_algorithm(key);
 
-	gnutls_pk_algorithm_t pubkey_algorithm =
-		gnutls_pubkey_get_pk_algorithm(ctx->key->public_key, NULL);
-
-	return gnutls_pk_to_sign(pubkey_algorithm, ctx->hash_algorithm);
+	switch ((dnssec_key_algorithm_t)algorithm) {
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
+		return GNUTLS_SIGN_DSA_SHA1;
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
+		return GNUTLS_SIGN_RSA_SHA1;
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
+		return GNUTLS_SIGN_RSA_SHA256;
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
+		return GNUTLS_SIGN_ECDSA_SHA256;
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
+		return GNUTLS_SIGN_RSA_SHA512;
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+		return GNUTLS_SIGN_ECDSA_SHA384;
+	case DNSSEC_KEY_ALGORITHM_ED25519:
+#ifdef HAVE_ED25519
+		return GNUTLS_SIGN_EDDSA_ED25519;
+#endif
+	case DNSSEC_KEY_ALGORITHM_ED448:
+#ifdef HAVE_ED448
+		return GNUTLS_SIGN_EDDSA_ED448;
+#endif
+	default:
+		return GNUTLS_SIGN_UNKNOWN;
+	}
 }
 
 /* -- public API ---------------------------------------------------------- */
@@ -397,7 +420,7 @@ int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 
-	ctx->hash_algorithm = get_digest_algorithm(key);
+	ctx->sign_algorithm = get_sign_algorithm(key);
 	int result = dnssec_sign_init(ctx);
 	if (result != DNSSEC_EOK) {
 		free(ctx);
@@ -472,14 +495,14 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 	assert(ctx->key->private_key);
 	_cleanup_datum_ gnutls_datum_t raw = { 0 };
 #ifdef HAVE_SIGN_DATA2
-	gnutls_sign_algorithm_t algorithm = get_sign_algorithm(ctx);
 	int result = gnutls_privkey_sign_data2(ctx->key->private_key,
-					       algorithm,
+					       ctx->sign_algorithm,
 					       0, &data, &raw);
 #else
+	gnutls_digest_algorithm_t digest_algorithm = get_digest_algorithm(ctx->key);
 	int result = gnutls_privkey_sign_data(ctx->key->private_key,
-					       ctx->hash_algorithm,
-					       0, &data, &raw);
+					      digest_algorithm,
+					      0, &data, &raw);
 #endif
 	if (result < 0) {
 		return DNSSEC_SIGN_ERROR;
@@ -513,10 +536,10 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 	}
 
 	gnutls_datum_t raw = binary_to_datum(&bin_raw);
-	gnutls_sign_algorithm_t algorithm = get_sign_algorithm(ctx);
 	
 	assert(ctx->key->public_key);
-	result = gnutls_pubkey_verify_data2(ctx->key->public_key, algorithm,
+	result = gnutls_pubkey_verify_data2(ctx->key->public_key,
+					    ctx->sign_algorithm,
 					    0, &data, &raw);
 	if (result == GNUTLS_E_PK_SIG_VERIFY_FAILED) {
 		return DNSSEC_INVALID_SIGNATURE;
