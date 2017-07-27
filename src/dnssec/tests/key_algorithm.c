@@ -57,9 +57,12 @@ static void check_borders(void)
 
 static void check_defaults(void)
 {
-	is_int(1024, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3), "dsa default");
-	is_int(2048, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3), "rsa default");
+	is_int(1024, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3),   "dsa default");
+	is_int(2048, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3),   "rsa default");
 	is_int(256, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256), "ecc default");
+#ifdef HAVE_ED25519
+	is_int(256, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ED25519),           "ed25519 default");
+#endif
 }
 
 int main(void)
@@ -71,6 +74,9 @@ int main(void)
 	ok_range(DNSSEC_KEY_ALGORITHM_RSA_SHA256, 512, 4096, "RSA/SHA256");
 	ok_range(DNSSEC_KEY_ALGORITHM_RSA_SHA512, 1024, 4096, "RSA/SHA512");
 	ok_range(DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, 384, 384, "ECDSA/SHA384");
+#ifdef HAVE_ED25519
+	ok_range(DNSSEC_KEY_ALGORITHM_ED25519, 256, 256, "ED25519");
+#endif
 	null_range();
 
 	// special restrictions

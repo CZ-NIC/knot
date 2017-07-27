@@ -421,8 +421,8 @@ Let's use the Single-Type Signing scheme with two algorithms. Run:
 
 .. code-block:: console
 
-  $ keymgr myzone.test. generate algorithm=RSASHA256 size=1024
-  $ keymgr myzone.test. generate algorithm=ECDSAP256SHA256 size=256
+  $ keymgr myzone.test. generate algorithm=ECDSAP256SHA256
+  $ keymgr myzone.test. generate algorithm=ED25519
 
 And reload the server. The zone will be signed.
 

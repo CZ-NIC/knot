@@ -113,16 +113,25 @@ AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 # GnuTLS crypto backend
 PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3 nettle], [
     save_CFLAGS=$CFLAGS
-    CFLAGS="$CFLAGS $gnutls_CFLAGS"
-    AC_CHECK_HEADERS([nettle/version.h])
-    CFLAGS=$save_CFLAGS
-
     save_LIBS=$LIBS
+    CFLAGS="$CFLAGS $gnutls_CFLAGS"
     LIBS="$LIBS $gnutls_LIBS"
+    AC_CHECK_HEADERS([nettle/version.h])
+
     AC_CHECK_FUNC([gnutls_pkcs11_copy_pubkey], [enable_pkcs11=yes], [enable_pkcs11=no])
     AS_IF([test "$enable_pkcs11" = yes],
         [AC_DEFINE([ENABLE_PKCS11], [1], [PKCS #11 support available])])
 
+    AC_CHECK_DECL([GNUTLS_PK_EDDSA_ED25519],
+        [AC_DEFINE([HAVE_ED25519], [1], [GnuTLS ED25519 support available])
+	 enable_ed25519=yes],
+        [enable_ed25519=no],
+	[#include <gnutls/gnutls.h>])
+
+    AC_CHECK_FUNC([gnutls_privkey_sign_data2],
+        [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
+
+    CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
 ])
 
@@ -565,6 +574,7 @@ result_msg_base="  $PACKAGE $VERSION
     Utilities with Dnstap:  ${opt_dnstap}
     Systemd integration:    ${enable_systemd}
     PKCS #11 support:       ${enable_pkcs11}
+    ED25519 support:        ${enable_ed25519}
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitize}
     LibFuzzer:              ${libfuzzer_LIBS}"
