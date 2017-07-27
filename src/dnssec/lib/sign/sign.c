@@ -29,6 +29,7 @@
 #include "sign/der.h"
 #include "wire.h"
 #include "contrib/macros.h"
+#include "contrib/vpool.h"
 
 /*!
  * Signature format conversion callback.
@@ -68,59 +69,8 @@ struct dnssec_sign_ctx {
 	const algorithm_functions_t *functions;	  //!< Implementation specific.
 
 	gnutls_sign_algorithm_t sign_algorithm;   //!< Used algorithm for signing.
-	dnssec_buffer_t buffer;                   //!< Buffer for the signed data.
+	struct vpool buffer;                      //!< Buffer for the data to be signed.
 };
-
-static void align_allocd_with_data(dnssec_buffer_t *dest)
-{
-	assert(dest->allocd != NULL);
-	if (dest->length > 0) {
-		memmove(dest->allocd, dest->data, dest->length);
-	}
-	dest->data = dest->allocd;
-}
-
-#define MIN_CHUNK 1024
-
-static int dnssec_buffer_append_data(dnssec_buffer_t *dest, const void *data,
-				     size_t data_size)
-{
-	size_t const tot_len = data_size + dest->length;
-	size_t const unused = (ssize_t)((ptrdiff_t)dest->data - (ptrdiff_t)dest->allocd);
-
-	if (data_size == 0) {
-		return 0;
-	}
-
-	if (dest->max_length >= tot_len) {
-		if (dest->max_length - unused <= tot_len) {
-			align_allocd_with_data(dest);
-		}
-	} else {
-		if (MAX(data_size, MIN_CHUNK) > INT_MAX - MAX(dest->max_length, MIN_CHUNK)) {
-			return  DNSSEC_ENOMEM;
-		}
-
-		size_t const new_len = MAX(data_size, MIN_CHUNK) +
-				       MAX(dest->max_length, MIN_CHUNK);
-
-		uint8_t *reallocd = realloc(dest->allocd, new_len);
-		if (reallocd == NULL) {
-			free(dest->allocd);
-			return DNSSEC_ENOMEM;
-		}
-		dest->allocd = reallocd;
-		dest->max_length = new_len;
-		dest->data = dest->allocd + unused;
-
-		align_allocd_with_data(dest);
-	}
-
-	memcpy(&dest->data[dest->length], data, data_size);
-	dest->length = tot_len;
-
-	return 0;
-}
 
 /* -- signature format conversions ----------------------------------------- */
 
@@ -439,12 +389,7 @@ void dnssec_sign_free(dnssec_sign_ctx_t *ctx)
 		return;
 	}
 
-	if (ctx->buffer.allocd) {
-		gnutls_free(ctx->buffer.allocd);
-		ctx->buffer.data = ctx->buffer.allocd = NULL;
-		ctx->buffer.max_length = 0;
-		ctx->buffer.length = 0;
-	}
+	vpool_reset(&ctx->buffer);
 
 	free(ctx);
 }
@@ -456,7 +401,11 @@ int dnssec_sign_init(dnssec_sign_ctx_t *ctx)
 		return DNSSEC_EINVAL;
 	}
 
-	ctx->buffer.length = 0;
+	if (vpool_get_buf(&ctx->buffer) != NULL) {
+		vpool_wipe(&ctx->buffer);
+	} else {
+		vpool_init(&ctx->buffer, 1024, 0);
+	}
 
 	return DNSSEC_EOK;
 }
@@ -468,8 +417,8 @@ int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data)
 		return DNSSEC_EINVAL;
 	}
 
-	int result = dnssec_buffer_append_data(&ctx->buffer, data->data, data->size);
-	if (result != 0) {
+	void *result = vpool_insert(&ctx->buffer, vpool_get_length(&ctx->buffer), data->data, data->size);
+	if (result == NULL) {
 		return DNSSEC_SIGN_ERROR;
 	}
 
@@ -488,8 +437,8 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 	}
 
 	gnutls_datum_t data = {
-		.data = ctx->buffer.data,
-		.size = ctx->buffer.length
+		.data = vpool_get_buf(&ctx->buffer),
+		.size = vpool_get_length(&ctx->buffer)
 	};
 
 	assert(ctx->key->private_key);
@@ -525,8 +474,8 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 	}
 
 	gnutls_datum_t data = {
-		.data = ctx->buffer.data,
-		.size = ctx->buffer.length
+		.data = vpool_get_buf(&ctx->buffer),
+		.size = vpool_get_length(&ctx->buffer)
 	};
 
 	_cleanup_binary_ dnssec_binary_t bin_raw = { 0 };
