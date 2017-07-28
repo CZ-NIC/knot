@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * In fact, this is a very tiny subset of ASN.1 encoding format implementation,
  * which is necessary for the purpose of DNSSEC.
  *
- * References: RFC 3279 (X.509 PKI), X.690, RFC 2536 (DSA), RFC 6605 (ECDSA), RFC8080 (EDDSA)
+ * References: RFC 3279 (X.509 PKI), X.690, RFC 6605 (ECDSA), RFC8080 (EDDSA)
  *
  * Dss-Sig-Value ::= SEQUENCE { r INTEGER, s INTEGER }
  */
@@ -131,7 +131,7 @@ static void asn1_write_integer(wire_ctx_t *wire, size_t integer_size,
 }
 
 /*!
- * Decode signature parameters from X.509 (EC)DSA signature.
+ * Decode signature parameters from X.509 ECDSA signature.
  */
 int dss_sig_value_decode(const dnssec_binary_t *der,
 			 dnssec_binary_t *r, dnssec_binary_t *s)
@@ -185,7 +185,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 }
 
 /*!
- * Encode signature parameters from X.509 (EC)DSA signature.
+ * Encode signature parameters from X.509 ECDSA signature.
  */
 int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 			 dnssec_binary_t *_der)

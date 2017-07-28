@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -84,9 +84,7 @@
  */
 typedef enum dnssec_key_algorithm {
 	DNSSEC_KEY_ALGORITHM_INVALID = 0,
-	DNSSEC_KEY_ALGORITHM_DSA_SHA1 = 3,
 	DNSSEC_KEY_ALGORITHM_RSA_SHA1 = 5,
-	DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3 = 6,
 	DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3 = 7,
 	DNSSEC_KEY_ALGORITHM_RSA_SHA256 = 8,
 	DNSSEC_KEY_ALGORITHM_RSA_SHA512 = 10,
