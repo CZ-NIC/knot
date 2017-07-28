@@ -332,14 +332,20 @@ int check_policy(
 	conf_val_t dnskey_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 						   C_DNSKEY_TTL, args->id, args->id_len);
 
+	unsigned algorithm = conf_opt(&alg);
+	if (algorithm == 3 || algorithm == 6) {
+		args->err_str = "DSA algorithm no longer supported";
+		return KNOT_EINVAL;
+	}
+
 	int64_t ksk_size = conf_int(&ksk);
-	if (ksk_size != YP_NIL && !dnssec_algorithm_key_size_check(conf_opt(&alg), ksk_size)) {
+	if (ksk_size != YP_NIL && !dnssec_algorithm_key_size_check(algorithm, ksk_size)) {
 		args->err_str = "KSK key size not compatible with the algorithm";
 		return KNOT_EINVAL;
 	}
 
 	int64_t zsk_size = conf_int(&zsk);
-	if (zsk_size != YP_NIL && !dnssec_algorithm_key_size_check(conf_opt(&alg), zsk_size)) {
+	if (zsk_size != YP_NIL && !dnssec_algorithm_key_size_check(algorithm, zsk_size)) {
 		args->err_str = "ZSK key size not compatible with the algorithm";
 		return KNOT_EINVAL;
 	}

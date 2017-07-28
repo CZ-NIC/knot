@@ -239,7 +239,6 @@ static bool is_nsec3_allowed(uint8_t algorithm)
 {
 	switch (algorithm) {
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
 		return false;
 	default:
 		return true;
