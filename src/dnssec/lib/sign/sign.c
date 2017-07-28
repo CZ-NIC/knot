@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -93,90 +93,6 @@ static int rsa_copy_signature(dnssec_sign_ctx_t *ctx,
 static const algorithm_functions_t rsa_functions = {
 	.x509_to_dnssec = rsa_copy_signature,
 	.dnssec_to_x509 = rsa_copy_signature,
-};
-
-/*!
- * Get T value from DSA key public key.
- */
-static uint8_t dsa_dnskey_get_t_value(const dnssec_key_t *key)
-{
-	assert(key);
-
-	if (key->rdata.size <= 4) {
-		return 0;
-	}
-
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
-	wire_seek(&wire, 4);
-
-	return wire_read_u8(&wire);
-}
-
-/*!
- * Convert DSA signature to DNSSEC format.
- *
- * \note Described in RFC 2536.
- */
-static int dsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
-			      const dnssec_binary_t *x509,
-			      dnssec_binary_t *dnssec)
-{
-	assert(ctx);
-	assert(x509);
-	assert(dnssec);
-
-	dnssec_binary_t value_r = { 0 };
-	dnssec_binary_t value_s = { 0 };
-
-	int result = dss_sig_value_decode(x509, &value_r, &value_s);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	size_t r_size = bignum_size_u(&value_r);
-	size_t s_size = bignum_size_u(&value_s);
-
-	if (r_size > 20 || s_size > 20) {
-		return DNSSEC_MALFORMED_DATA;
-	}
-
-	uint8_t value_t = dsa_dnskey_get_t_value(ctx->key);
-
-	result = dnssec_binary_alloc(dnssec, 41);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	wire_ctx_t wire = wire_init_binary(dnssec);
-	wire_write_u8(&wire, value_t);
-	wire_write_bignum(&wire, 20, &value_r);
-	wire_write_bignum(&wire, 20, &value_s);
-	assert(wire_tell(&wire) == dnssec->size);
-
-	return DNSSEC_EOK;
-}
-
-static int dsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
-			      const dnssec_binary_t *dnssec,
-			      dnssec_binary_t *x509)
-{
-	assert(ctx);
-	assert(dnssec);
-	assert(x509);
-
-	if (dnssec->size != 41) {
-		return DNSSEC_INVALID_SIGNATURE;
-	}
-
-	const dnssec_binary_t value_r = { .size = 20, .data = dnssec->data + 1 };
-	const dnssec_binary_t value_s = { .size = 20, .data = dnssec->data + 21 };
-
-	return dss_sig_value_encode(&value_r, &value_s, x509);
-}
-
-static const algorithm_functions_t dsa_functions = {
-	.x509_to_dnssec = dsa_x509_to_dnssec,
-	.dnssec_to_x509 = dsa_dnssec_to_x509,
 };
 
 static size_t ecdsa_sign_integer_size(dnssec_sign_ctx_t *ctx)
@@ -275,9 +191,6 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
 		return &rsa_functions;
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		return &dsa_functions;
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return &ecdsa_functions;
@@ -298,9 +211,7 @@ static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 	uint8_t algorithm = dnssec_key_get_algorithm(key);
 
 	switch ((dnssec_key_algorithm_t)algorithm) {
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
 		return GNUTLS_DIG_SHA1;
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
@@ -324,9 +235,6 @@ static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_key_t *key)
 	uint8_t algorithm = dnssec_key_get_algorithm(key);
 
 	switch ((dnssec_key_algorithm_t)algorithm) {
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		return GNUTLS_SIGN_DSA_SHA1;
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
 		return GNUTLS_SIGN_RSA_SHA1;
@@ -485,7 +393,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 	}
 
 	gnutls_datum_t raw = binary_to_datum(&bin_raw);
-	
+
 	assert(ctx->key->public_key);
 	result = gnutls_pubkey_verify_data2(ctx->key->public_key,
 					    ctx->sign_algorithm,

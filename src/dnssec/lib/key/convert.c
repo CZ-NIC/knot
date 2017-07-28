@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,61 +88,6 @@ static int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	wire_write_bignum_datum(&wire, exponent_size, &exponent);
 	wire_write_bignum_datum(&wire, modulus_size, &modulus);
 	assert(wire_tell(&wire) == rdata->size);
-
-	return DNSSEC_EOK;
-}
-
-/*!
- * Convert DSA public key to DNSSEC format.
- */
-static int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
-{
-	assert(key);
-	assert(rdata);
-
-	_cleanup_datum_ gnutls_datum_t p = { 0 };
-	_cleanup_datum_ gnutls_datum_t q = { 0 };
-	_cleanup_datum_ gnutls_datum_t g = { 0 };
-	_cleanup_datum_ gnutls_datum_t y = { 0 };
-
-	int result = gnutls_pubkey_get_pk_dsa_raw(key, &p, &q, &g, &y);
-	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_EXPORT_ERROR;
-	}
-
-	size_t p_size = bignum_size_u_datum(&p);
-	size_t q_size = bignum_size_u_datum(&q);
-	size_t g_size = bignum_size_u_datum(&g);
-	size_t y_size = bignum_size_u_datum(&y);
-
-	if (q_size != 20) {
-		// only certain key size range can be exported in DNSKEY
-		return DNSSEC_INVALID_KEY_SIZE;
-	}
-
-	if (p_size != g_size || g_size != y_size) {
-		return DNSSEC_INVALID_KEY_SIZE;
-	}
-
-	if (p_size < 64 || (p_size - 64) % 8 != 0) {
-		return DNSSEC_INVALID_KEY_SIZE;
-	}
-
-	uint8_t t = (p_size - 64) / 8;
-
-	size_t size = 1 + q_size + p_size + g_size + y_size;
-	result = dnssec_binary_alloc(rdata, size);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	wire_ctx_t ctx = wire_init_binary(rdata);
-	wire_write_u8(&ctx, t);
-	wire_write_bignum_datum(&ctx, q_size, &q);
-	wire_write_bignum_datum(&ctx, p_size, &p);
-	wire_write_bignum_datum(&ctx, g_size, &g);
-	wire_write_bignum_datum(&ctx, y_size, &y);
-	assert(wire_tell(&ctx) == rdata->size);
 
 	return DNSSEC_EOK;
 }
@@ -241,7 +186,7 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	assert(wire_tell(&wire) == rdata->size);
 
 	return DNSSEC_EOK;
-}	
+}
 #endif
 
 /* -- crypto to DNSSEC ------------------------------------------------------*/
@@ -288,82 +233,6 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 	return DNSSEC_EOK;
 }
 
-/*!
- * Check if the size of DSA public key in DNSSEC format is correct.
- */
-static bool valid_dsa_rdata_size(size_t size)
-{
-	// minimal key size
-	if (size < 1 + 20 + 3 * 64) {
-		return false;
-	}
-
-	// p, g, and y size equals
-	size_t pgy_size = size - 20 - 1;
-	if (pgy_size % 3 != 0) {
-		return false;
-	}
-
-	// p size constraints
-	size_t p_size = pgy_size / 3;
-	if (p_size % 8 != 0) {
-		return false;
-	}
-
-	return true;
-}
-
-/*!
- * Compute the DSA t value from RDATA public key size.
- */
-static uint8_t expected_t_size(size_t size)
-{
-	size_t p_size = (size - 1 - 20) / 3;
-	return (p_size - 64) / 8;
-}
-
-/*!
- * Convert DSA key in DNSSEC format to crypto key.
- */
-static int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
-{
-	assert(rdata);
-	assert(key);
-
-	if (!valid_dsa_rdata_size(rdata->size)) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
-	}
-
-	wire_ctx_t ctx = wire_init_binary(rdata);
-
-	// read t
-
-	uint8_t t = wire_read_u8(&ctx);
-	if (t != expected_t_size(rdata->size)) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
-	}
-
-	// parse q
-
-	gnutls_datum_t q = wire_take_datum(&ctx, 20);
-
-	// parse p, g, and y
-
-	size_t param_size = wire_available(&ctx) / 3;
-	gnutls_datum_t p = wire_take_datum(&ctx, param_size);
-	gnutls_datum_t g = wire_take_datum(&ctx, param_size);
-	gnutls_datum_t y = wire_take_datum(&ctx, param_size);
-
-	assert(wire_tell(&ctx) == rdata->size);
-
-	int result = gnutls_pubkey_import_dsa_raw(key, &p, &q, &g, &y);
-	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_IMPORT_ERROR;
-	}
-
-	return DNSSEC_EOK;
-}
-
 /**
  * Get ECDSA curve based on DNSKEY RDATA size.
  */
@@ -383,7 +252,7 @@ static gnutls_ecc_curve_t ecdsa_curve_from_rdata_size(size_t rdata_size)
 static gnutls_ecc_curve_t eddsa_curve_from_rdata_size(size_t rdata_size)
 {
 	switch (rdata_size) {
-#ifdef HAVE_ED25519		
+#ifdef HAVE_ED25519
 	case 32: return GNUTLS_ECC_CURVE_ED25519;
 #endif
 #ifdef HAVE_ED448
@@ -470,7 +339,6 @@ int convert_pubkey_to_dnskey(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	switch ((gnutls_pk_algorithm_t)algorithm) {
 	case GNUTLS_PK_RSA: return rsa_pubkey_to_rdata(key, rdata);
-	case GNUTLS_PK_DSA: return dsa_pubkey_to_rdata(key, rdata);
 	case GNUTLS_PK_EC:  return ecdsa_pubkey_to_rdata(key, rdata);
 #ifdef HAVE_ED25519
 	case GNUTLS_PK_EDDSA_ED25519: return eddsa_pubkey_to_rdata(key, rdata);
@@ -495,7 +363,6 @@ int convert_dnskey_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
 
 	switch(gnutls_alg) {
 	case GNUTLS_PK_RSA: return rsa_rdata_to_pubkey(rdata, key);
-	case GNUTLS_PK_DSA: return dsa_rdata_to_pubkey(rdata, key);
 	case GNUTLS_PK_EC:  return ecdsa_rdata_to_pubkey(rdata, key);
 #ifdef HAVE_ED25519
 	case GNUTLS_PK_EDDSA_ED25519: return eddsa_rdata_to_pubkey(rdata, key);

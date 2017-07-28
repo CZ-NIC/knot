@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #include "binary.h"
 
 /*
- * The (EC)DSA signatures in DNSSEC are encoded differently than in X.509
+ * The ECDSA signatures in DNSSEC are encoded differently than in X.509
  * (PKCS #1). The cryptographic libraries usually produce the signatures in
  * X.509 format, which uses Dss-Sig-Value to encapsulate 'r' and 's' values
  * of the signature.
@@ -32,7 +32,7 @@
  */
 
 /*!
- * Decode signature parameters from X.509 (EC)DSA signature.
+ * Decode signature parameters from X.509 ECDSA signature.
  *
  * \param[in]  der  X.509 encoded signature.
  * \param[out] s    Value 's' of the signature, will point to the data in DER.
@@ -44,7 +44,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 			 dnssec_binary_t *r, dnssec_binary_t *s);
 
 /*!
- * Encode signature parameters from X.509 (EC)DSA signature.
+ * Encode signature parameters from X.509 ECDSA signature.
  *
  * \param[in]  s    Value 's' of the signature.
  * \param[in]  r    Value 'r' of the signature.

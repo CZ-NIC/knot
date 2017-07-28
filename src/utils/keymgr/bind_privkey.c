@@ -60,11 +60,6 @@ const param_t PRIVKEY_CONVERSION_TABLE[] = {
 	{ "Exponent1",       o(exponent_one),     parse_binary,    binary_free },
 	{ "Exponent2",       o(exponent_two),     parse_binary,    binary_free },
 	{ "Coefficient",     o(coefficient),      parse_binary,    binary_free },
-	{ "Prime(p)",        o(prime),            parse_binary,    binary_free },
-	{ "Subprime(q)",     o(subprime),         parse_binary,    binary_free },
-	{ "Base(g)",         o(base),             parse_binary,    binary_free },
-	{ "Private_value(x)",o(private_value),    parse_binary,    binary_free },
-	{ "Public_value(y)", o(public_value),     parse_binary,    binary_free },
 	{ "PrivateKey",      o(private_key),      parse_binary,    binary_free },
 	{ "Created",         o(time_created),     parse_time,      NULL },
 	{ "Publish",         o(time_publish),     parse_time,      NULL },
@@ -275,28 +270,6 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 	return pem_from_x509(key, pem);
 }
 
-static int dsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
-{
-	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
-	int result = gnutls_x509_privkey_init(&key);
-	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
-	}
-
-	gnutls_datum_t p = binary_to_datum(&params->prime);
-	gnutls_datum_t q = binary_to_datum(&params->subprime);
-	gnutls_datum_t g = binary_to_datum(&params->base);
-	gnutls_datum_t x = binary_to_datum(&params->private_value);
-	gnutls_datum_t y = binary_to_datum(&params->public_value);
-
-	result = gnutls_x509_privkey_import_dsa_raw(key, &p, &q, &g, &y, &x);
-	if (result != DNSSEC_EOK) {
-		return DNSSEC_KEY_IMPORT_ERROR;
-	}
-
-	return pem_from_x509(key, pem);
-}
-
 /*!
  * \see lib/key/convert.h
  */
@@ -354,9 +327,6 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 {
 	dnssec_key_algorithm_t algorithm = dnssec_key_get_algorithm(key);
 	switch (algorithm) {
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		return dsa_params_to_pem(params, pem);
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:

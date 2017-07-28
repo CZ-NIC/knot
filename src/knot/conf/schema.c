@@ -59,15 +59,16 @@ static const knot_lookup_t tsig_key_algs[] = {
 };
 
 static const knot_lookup_t dnssec_key_algs[] = {
-	{ DNSSEC_KEY_ALGORITHM_DSA_SHA1,          "dsa" },
 	{ DNSSEC_KEY_ALGORITHM_RSA_SHA1,          "rsasha1" },
-	{ DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3,    "dsa-nsec3-sha1" },
 	{ DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3,    "rsasha1-nsec3-sha1" },
 	{ DNSSEC_KEY_ALGORITHM_RSA_SHA256,        "rsasha256" },
 	{ DNSSEC_KEY_ALGORITHM_RSA_SHA512,        "rsasha512" },
 	{ DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256, "ecdsap256sha256" },
 	{ DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, "ecdsap384sha384" },
 	{ DNSSEC_KEY_ALGORITHM_ED25519,           "ed25519" },
+	/* Obsolete items. */
+	{ 3, "dsa" },
+	{ 6, "dsa-nsec3-sha1" },
 	{ 0, NULL }
 };
 

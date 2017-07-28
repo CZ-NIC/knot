@@ -622,7 +622,7 @@ DNSSEC policy configuration.
      keystore: STR
      manual: BOOL
      single-type-signing: BOOL
-     algorithm: dsa | rsasha1 | dsa-nsec3-sha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519
+     algorithm: rsasha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519
      ksk-size: SIZE
      zsk-size: SIZE
      ksk-shared: BOOL
@@ -698,7 +698,7 @@ ksk-size
 A length of newly generated :abbr:`KSK (Key Signing Key)` or 
 :abbr:`CSK (Combined Signing Key)` keys.
 
-*Default:* 1024 (dsa*), 2048 (rsa*), 256 (ecdsap256), 384 (ecdsap384), 256 (ed25519)
+*Default:* 2048 (rsa*), 256 (ecdsap256), 384 (ecdsap384), 256 (ed25519)
 
 .. _policy_zsk-size:
 

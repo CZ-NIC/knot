@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,20 +30,8 @@ struct limits {
 	bool (*validate)(unsigned bits);
 };
 
-static bool dsa_validate(unsigned bits)
-{
-	return (bits % 64 == 0);
-}
-
 static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 {
-	static const struct limits DSA = {
-		.min = 512,
-		.max = 1024,
-		.def = 1024,
-		.validate = dsa_validate,
-	};
-
 	static const struct limits RSA = {
 		.min = 512,
 		.max = 4096,
@@ -81,9 +69,6 @@ static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 	};
 
 	switch (algorithm) {
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		return &DSA;
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
@@ -108,9 +93,6 @@ static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 gnutls_pk_algorithm_t algorithm_to_gnutls(dnssec_key_algorithm_t dnssec)
 {
 	switch (dnssec) {
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		return GNUTLS_PK_DSA;
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
