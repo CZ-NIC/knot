@@ -39,13 +39,6 @@ typedef struct {
 	dnssec_binary_t exponent_two;
 	dnssec_binary_t coefficient;
 
-	// DSA
-	dnssec_binary_t prime;
-	dnssec_binary_t subprime;
-	dnssec_binary_t base;
-	dnssec_binary_t private_value;
-	dnssec_binary_t public_value;
-
 	// ECDSA
 	dnssec_binary_t private_key;
 
