@@ -65,6 +65,8 @@ include_dnssec_HEADERS = \
 	lib/dnssec/version.h
 
 libdnssec_la_SOURCES = \
+	contrib/vpool.c \
+	contrib/vpool.h \
 	lib/binary.c \
 	lib/crypto.c \
 	lib/error.c \
