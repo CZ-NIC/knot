@@ -548,7 +548,7 @@ policy:
     keystore: STR
     manual: BOOL
     single\-type\-signing: BOOL
-    algorithm: dsa | rsasha1 | dsa\-nsec3\-sha1 | rsasha1\-nsec3\-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519
+    algorithm: rsasha1 | rsasha1\-nsec3\-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519
     ksk\-size: SIZE
     zsk\-size: SIZE
     ksk\-shared: BOOL
@@ -612,7 +612,7 @@ Ed25519 algorithm is only available when compiled with GnuTLS 3.6.0+.
 A length of newly generated KSK or
 CSK keys.
 .sp
-\fIDefault:\fP 1024 (dsa*), 2048 (rsa*), 256 (ecdsap256), 384 (ecdsap384), 256 (ed25519)
+\fIDefault:\fP 2048 (rsa*), 256 (ecdsap256), 384 (ecdsap384), 256 (ed25519)
 .SS zsk\-size
 .sp
 A length of newly generated ZSK keys.

@@ -33,8 +33,6 @@ support.
      - RSA 1024-bit
      - RSA 2048-bit
      - RSA 4096-bit
-     - DSA 512-bit
-     - DSA 1024-bit
    * - `Feitian ePass 2003 <http://www.ftsafe.com/product/epass/epass2003>`_
      - |yes|
      - |no|
@@ -43,8 +41,6 @@ support.
      - |no|
      - |yes|
      - |yes|
-     - |no|
-     - |no|
      - |no|
    * - `SafeNet Network HSM (Luna SA 4) <http://www.safenet-inc.com/data-encryption/hardware-security-modules-hsms/luna-hsms-key-management/luna-sa-network-hsm/>`_
      - |yes|
@@ -55,14 +51,10 @@ support.
      - |yes|
      - |yes|
      - |yes|
-     - |no|
-     - |no|
    * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_
      - |yes|
      - |yes|
      - |no|
-     - |yes|
-     - |yes|
      - |yes|
      - |yes|
      - |yes|
@@ -77,8 +69,6 @@ support.
      - |yes|
      - |yes|
      - |yes|
-     - |no|
-     - |no|
 
 .. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
@@ -89,8 +79,6 @@ support.
      - |no|
      - |yes|
      - |yes|
-     - |no|
-     - |no|
      - |no|
 
 The following table summarizes supported DNSSEC algorithm numbers and minimal
@@ -113,6 +101,3 @@ however the supported operations may be limited (e.g. private key import).
    * - RSA
      - 5, 7, 8, 10
      - 3.4.6 or newer
-   * - DSA
-     - 3, 6
-     - 3.4.10 or newer
