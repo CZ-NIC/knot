@@ -924,17 +924,17 @@ static int query_connect(const query_t *query, srv_info_t *remote, net_t *net,
 		// Success.
 		if (ret == 0) {
 			return KNOT_EOK;
+		} else if (query->protocol != PROTO_UDP) {
+			return KNOT_EDENIED;
 		}
 
 		// Close if not keepopen
-		if ((!query->keepopen || query->protocol == PROTO_UDP) && ret != -1) {
+		if (ret != -1) {
 			net_close(net);
 		}
 
 		if (i < query->retries) {
-			// Try to reconnect (keepopen only if disconnected)
-			if ((!query->keepopen || query->protocol == PROTO_UDP)
-				|| ret == -1) {
+			if (ret == -1) {
 				while (net->srv != NULL) {
 					net->srv = (net->srv)->ai_next;
 					if (net->srv != NULL) {
@@ -960,7 +960,8 @@ static int query_connect(const query_t *query, srv_info_t *remote, net_t *net,
 }
 
 static void process_keepopen(const query_t *query, int iptype, int socktype,
-			     knot_pkt_t *out_packet, sign_context_t *sign_ctx)
+			     int flags, knot_pkt_t *out_packet,
+			     sign_context_t *sign_ctx)
 {
 	node_t     *server = NULL;
 	net_t      *net_ptr;
@@ -999,7 +1000,7 @@ static void process_keepopen(const query_t *query, int iptype, int socktype,
 
 				new_net = malloc(sizeof(*new_net));
 				ret = net_init(query->local, remote, iptype, socktype,
-						query->wait, &query->tls, new_net);
+						query->wait, flags, &query->tls, new_net);
 				if (ret != KNOT_EOK) {
 					free(new_net);
 					goto failed_keepopen;
@@ -1074,9 +1075,10 @@ static void process_operation(const query_t *query)
 	int iptype = get_iptype(query->ip);
 	int socktype = get_socktype(query->protocol, query->type_num);
 	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
+	flags |= query->fastopen ? NET_FLAGS_KEEPOPEN : NET_FLAGS_NONE;
 
 	if (query->keepopen && query->protocol == PROTO_TCP) {
-		process_keepopen(query, iptype, socktype, out_packet, &sign_ctx);
+		process_keepopen(query, iptype, socktype, flags, out_packet, &sign_ctx);
 	} else {
 		// Loop over server list to process query.
 		WALK_LIST(server, query->servers) {
@@ -1088,7 +1090,7 @@ static void process_operation(const query_t *query)
 			    get_sockname(socktype));
 
 			ret = net_init(query->local, remote, iptype, socktype,
-					       query->wait, &query->tls, &net);
+					       query->wait, flags, &query->tls, &net);
 			if (ret != KNOT_EOK) {
 				goto failed;
 			}

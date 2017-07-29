@@ -44,6 +44,7 @@ typedef struct {
 typedef enum {
 	NET_FLAGS_NONE = 0,
 	NET_FLAGS_FASTOPEN = 1 << 0,
+	NET_FLAGS_KEEPOPEN = 1 << 1,
 } net_flags_t;
 
 typedef struct {

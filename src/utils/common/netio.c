@@ -300,9 +300,20 @@ int net_connect(net_t *net)
 	}
 
 	if (net->socktype == SOCK_STREAM) {
-		int  cs, err, ret = 0;
+		int  cs, err, optval = 1, ret = 0;
 		socklen_t err_len = sizeof(err);
+		socklen_t optlen = sizeof(optval);
 		bool     fastopen = net->flags & NET_FLAGS_FASTOPEN;
+		bool     keepopen = net->flags & NET_FLAGS_KEEPOPEN;
+
+		/* Set the option active */
+		if (keepopen) {
+			if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+				WARN("can't establish keepalive for %s\n", net->remote_str)
+				close(sockfd);
+				return KNOT_NET_ECONNECT;
+			}
+		}
 
 		// Connect using socket.
 		if (fastopen) {
