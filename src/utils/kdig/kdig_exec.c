@@ -920,11 +920,11 @@ static int query_connect(const query_t *query, srv_info_t *remote, net_t *net,
 			ret = process_xfr_packet(out_packet, net, query,
 						 sign_ctx, &query->style);
 		}
-
 		// Success.
 		if (ret == 0) {
 			return KNOT_EOK;
-		} else if (query->protocol != PROTO_UDP) {
+		} else if (query->protocol != PROTO_UDP &&
+			   !(query->keepopen && query->protocol == PROTO_TCP)) {
 			return KNOT_EDENIED;
 		}
 
@@ -933,7 +933,7 @@ static int query_connect(const query_t *query, srv_info_t *remote, net_t *net,
 			net_close(net);
 		}
 
-		if (i < query->retries) {
+		while (i <= query->retries) {
 			if (ret == -1) {
 				while (net->srv != NULL) {
 					net->srv = (net->srv)->ai_next;
@@ -947,7 +947,10 @@ static int query_connect(const query_t *query, srv_info_t *remote, net_t *net,
 				// reset to first server
 				if (net->srv == NULL) {
 					net->srv = net->remote_info;
+					ret = net_connect(net);
+
 				}
+				i++;
 			}
 
 			DBG("retrying server %s@%s(%s)\n",
