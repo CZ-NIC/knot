@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <contrib/string.c>
 
 #include "binary.h"
 #include "error.h"
@@ -44,16 +45,7 @@ typedef struct pkcs8_dir_handle {
 /*!
  * Get path to a private key in PKCS #8 PEM format.
  */
-static char *key_path(const char *dir, const char *id)
-{
-	char buffer[PATH_MAX] = { 0 };
-	int wrote = snprintf(buffer, PATH_MAX, "%s/%s.pem", dir, id);
-	if (wrote < 0 || wrote >= PATH_MAX) {
-		return NULL;
-	}
-
-	return strdup(buffer);
-}
+#define key_path(dir, id) sprintf_alloc("%s/%s.pem", dir, id)
 
 /*!
  * Get size of the file and reset the position to the beginning of the file.
