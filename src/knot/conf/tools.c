@@ -24,10 +24,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <limits.h>
-#ifndef PATH_MAX
-  #define PATH_MAX 4096
-#endif
 
 #include "dnssec/key.h"
 #include "knot/conf/tools.h"
@@ -37,6 +33,7 @@
 #include "knot/common/log.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/string.h"
 #include "contrib/wire_ctx.h"
 
 #define MAX_INCLUDE_DEPTH	5
@@ -492,12 +489,8 @@ int include_file(
 	// This function should not be called in more threads.
 	static int depth = 0;
 	glob_t glob_buf = { 0 };
+	char *path = NULL;
 	int ret;
-
-	char *path = malloc(PATH_MAX);
-	if (path == NULL) {
-		return KNOT_ENOMEM;
-	}
 
 	// Check for include loop.
 	if (depth++ > MAX_INCLUDE_DEPTH) {
@@ -508,8 +501,7 @@ int include_file(
 
 	// Prepare absolute include path.
 	if (args->data[0] == '/') {
-		ret = snprintf(path, PATH_MAX, "%.*s",
-		               (int)args->data_len, args->data);
+		path = sprintf_alloc("%.*s", (int)args->data_len, args->data);
 	} else {
 		const char *file_name = args->extra->file_name != NULL ?
 		                        args->extra->file_name : "./";
@@ -519,12 +511,11 @@ int include_file(
 			goto include_error;
 		}
 
-		ret = snprintf(path, PATH_MAX, "%s/%.*s",
-		               dirname(full_current_name),
-		               (int)args->data_len, args->data);
+		path = sprintf_alloc("%s/%.*s", dirname(full_current_name),
+		                     (int)args->data_len, args->data);
 		free(full_current_name);
 	}
-	if (ret <= 0 || ret >= PATH_MAX) {
+	if (path == NULL) {
 		ret = KNOT_ESPACE;
 		goto include_error;
 	}
