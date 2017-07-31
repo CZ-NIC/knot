@@ -64,7 +64,7 @@ typedef struct {
 /*!
  * \brief Structure representing a DNS packet.
  */
-typedef struct knot_pkt {
+struct knot_pkt {
 
 	uint8_t *wire;         /*!< Wire format of the packet. */
 	size_t size;           /*!< Current wire size of the packet. */
@@ -94,7 +94,7 @@ typedef struct knot_pkt {
 	knot_rrset_t *rr;
 
 	knot_mm_t mm; /*!< Memory allocation context. */
-} knot_pkt_t;
+};
 
 /*!
  * \brief Create new packet over existing memory, or allocate new from memory context.
