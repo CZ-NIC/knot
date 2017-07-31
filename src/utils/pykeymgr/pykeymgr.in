@@ -397,7 +397,7 @@ def import_file(fname, env, db_keys):
 def import_dir(dirname):
 	print("Importing json key config in", dirname)
 	if os.path.isfile(dirname + "/data.mdb"):
-		print("Warning: LMDB key configuratin in", dirname, "already exists.")
+		print("Warning: LMDB key configuration in", dirname, "already exists.")
 		if opt_force:
 			print("...deleting it.")
 			os.remove(dirname + "/data.mdb")
