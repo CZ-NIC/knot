@@ -44,7 +44,8 @@ typedef struct {
 typedef enum {
 	NET_FLAGS_NONE = 0,
 	NET_FLAGS_FASTOPEN = 1 << 0,
-	NET_FLAGS_KEEPOPEN = 1 << 1,
+	NET_FLAGS_FASTOPEN_CONNECTED = 1 << 1,
+	NET_FLAGS_KEEPOPEN = 1 << 2,
 } net_flags_t;
 
 typedef struct {
@@ -200,7 +201,7 @@ int net_set_local_info(net_t *net);
  * \retval KNOT_EOK	if success.
  * \retval errcode	if error.
  */
-int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len);
+int net_send(net_t *net, const uint8_t *buf, const size_t buf_len);
 
 /*!
  * \brief Receives data from connected remote server.

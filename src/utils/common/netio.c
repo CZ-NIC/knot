@@ -304,6 +304,7 @@ int net_connect(net_t *net)
 		socklen_t err_len = sizeof(err);
 		socklen_t optlen = sizeof(optval);
 		bool     fastopen = net->flags & NET_FLAGS_FASTOPEN;
+		bool	 fastopen_connected = net->flags & NET_FLAGS_FASTOPEN_CONNECTED;
 		bool     keepopen = net->flags & NET_FLAGS_KEEPOPEN;
 
 		/* Set the option active */
@@ -316,7 +317,7 @@ int net_connect(net_t *net)
 		}
 
 		// Connect using socket.
-		if (fastopen) {
+		if (fastopen && !fastopen_connected) {
 			ret = fastopen_connect(sockfd, net->srv);
 		} else {
 			ret = connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen);
@@ -392,7 +393,7 @@ int net_set_local_info(net_t *net)
 	return KNOT_EOK;
 }
 
-int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
+int net_send(net_t *net, const uint8_t *buf, const size_t buf_len)
 {
 	if (net == NULL || buf == NULL) {
 		DBG_NULL;
@@ -416,7 +417,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	// Send data over TCP.
 	} else {
 		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
-
+		bool fastopen_connected = net->flags & NET_FLAGS_FASTOPEN_CONNECTED;
 		// Leading packet length bytes.
 		uint16_t pktsize = htons(buf_len);
 
@@ -436,8 +437,9 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		msg.msg_namelen = net->srv->ai_addrlen;
 
 		int ret = 0;
-		if (fastopen) {
+		if (fastopen && !fastopen_connected) {
 			ret = fastopen_send(net->sockfd, &msg, net->wait);
+			net->flags |= NET_FLAGS_FASTOPEN_CONNECTED;
 		} else {
 			ret = sendmsg(net->sockfd, &msg, 0);
 		}

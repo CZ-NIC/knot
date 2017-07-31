@@ -1075,7 +1075,9 @@ static void process_operation(const query_t *query)
 	int iptype = get_iptype(query->ip);
 	int socktype = get_socktype(query->protocol, query->type_num);
 	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
-	flags |= query->fastopen ? NET_FLAGS_KEEPOPEN : NET_FLAGS_NONE;
+	if (query->keepopen) {
+		flags |= NET_FLAGS_KEEPOPEN;
+	}
 
 	if (query->keepopen && query->protocol == PROTO_TCP) {
 		process_keepopen(query, iptype, socktype, flags, out_packet, &sign_ctx);
