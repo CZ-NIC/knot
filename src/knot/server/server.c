@@ -184,7 +184,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 			udp_bind_flags |= NET_BIND_NONLOCAL;
 			sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, udp_bind_flags);
 			if (sock >= 0 && !warn_bind) {
-				log_warning("address '%s' bound, but required nonlocal bind", addr_str);
+				log_warning("address '%s UDP' bound, but required nonlocal bind", addr_str);
 				warn_bind = true;
 			}
 		}
@@ -217,7 +217,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 		tcp_bind_flags |= NET_BIND_NONLOCAL;
 		sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
 		if (sock >= 0) {
-			log_warning("address '%s' bound, but required nonlocal bind", addr_str);
+			log_warning("address '%s TCP' bound, but required nonlocal bind", addr_str);
 		}
 	}
 
