@@ -72,8 +72,12 @@ Commands
   timing-related ones.
 
 **ds** [*key_spec*]
-  Generate DS record (all digest algorithms together) from specified key. *Key_spec*
+  Generate DS record (all digest algorithms together) for specified key. *Key_spec*
   is like for **set**, if unspecified, all KSKs are used.
+
+**dnskey** [*key_spec*]
+  Generate DNSKEY record for specified key. *Key_spec*
+  is like for **ds**, if unspecified, all KSKs are used.
 
 **delete** *key_spec*
   Remove the specified key from zone. If the key was not shared, it is also deleted from keystore.

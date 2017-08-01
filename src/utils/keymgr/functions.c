@@ -30,6 +30,7 @@
 #include "knot/dnssec/zone-keys.h"
 #include "utils/keymgr/bind_privkey.h"
 #include "zscanner/scanner.h"
+#include "contrib/base64.h"
 
 static time_t arg_timestamp(const char *arg)
 {
@@ -691,4 +692,35 @@ int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key)
 	}
 
 	return ret;
+}
+
+int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key)
+{
+	const dnssec_key_t *dnskey = key->key;
+
+	char *name = knot_dname_to_str_alloc(dname);
+	if (!name) {
+		return KNOT_ENOMEM;
+	}
+
+	uint16_t flags = dnssec_key_get_flags(dnskey);
+	uint8_t algorithm = dnssec_key_get_algorithm(dnskey);
+
+	dnssec_binary_t pubkey = { 0 };
+	int ret = dnssec_key_get_pubkey(dnskey, &pubkey);
+	if (ret != DNSSEC_EOK) {
+		return knot_error_from_libdnssec(ret);
+	}
+
+	uint8_t *base64_output = NULL;
+	int len = base64_encode_alloc(pubkey.data, pubkey.size, &base64_output);
+	if (len < 0) {
+		return len;
+	}
+
+	printf("%s DNSKEY %u 3 %u %.*s\n", name, flags, algorithm, len, base64_output);
+
+	free(base64_output);
+	free(name);
+	return KNOT_EOK;
 }
