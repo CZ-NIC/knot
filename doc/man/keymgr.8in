@@ -95,8 +95,12 @@ key tag or a prefix of key ID; \fIarguments\fP are like for \fBgenerate\fP, but 
 timing\-related ones.
 .TP
 \fBds\fP [\fIkey_spec\fP]
-Generate DS record (all digest algorithms together) from specified key. \fIKey_spec\fP
+Generate DS record (all digest algorithms together) for specified key. \fIKey_spec\fP
 is like for \fBset\fP, if unspecified, all KSKs are used.
+.TP
+\fBdnskey\fP [\fIkey_spec\fP]
+Generate DNSKEY record for specified key. \fIKey_spec\fP
+is like for \fBds\fP, if unspecified, all KSKs are used.
 .TP
 \fBdelete\fP \fIkey_spec\fP
 Remove the specified key from zone. If the key was not shared, it is also deleted from keystore.
