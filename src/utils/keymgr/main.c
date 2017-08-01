@@ -135,32 +135,22 @@ static int key_command(int argc, char *argv[])
 		}
 	} else if (strcmp(argv[1], "list") == 0) {
 		ret = keymgr_list_keys(&kctx);
-	} else if (strcmp(argv[1], "ds") == 0) {
-		if (argc < 3) {
-			for (int i = 0; i < kctx.zone->num_keys && ret == KNOT_EOK; i++) {
-				if (dnssec_key_get_flags(kctx.zone->keys[i].key) == DNSKEY_FLAGS_KSK) {
-					ret = keymgr_generate_ds(zone_name, &kctx.zone->keys[i]);
-				}
-			}
-		} else {
-			knot_kasp_key_t *key2ds;
-			ret = keymgr_get_key(&kctx, argv[2], &key2ds);
-			if (ret == KNOT_EOK) {
-				ret = keymgr_generate_ds(zone_name, key2ds);
-			}
+	} else if (strcmp(argv[1], "ds") == 0 || strcmp(argv[1], "dnskey") == 0) {
+		int (*generate_rr)(const knot_dname_t *, const knot_kasp_key_t *) = keymgr_generate_dnskey;
+		if (strcmp(argv[1], "ds") == 0) {
+			generate_rr = keymgr_generate_ds;
 		}
-	} else if (strcmp(argv[1], "dnskey") == 0) {
 		if (argc < 3) {
 			for (int i = 0; i < kctx.zone->num_keys && ret == KNOT_EOK; i++) {
 				if (dnssec_key_get_flags(kctx.zone->keys[i].key) == DNSKEY_FLAGS_KSK) {
-					ret = keymgr_generate_dnskey(zone_name, &kctx.zone->keys[i]);
+					ret = generate_rr(zone_name, &kctx.zone->keys[i]);
 				}
 			}
 		} else {
-			knot_kasp_key_t *key2ds;
-			ret = keymgr_get_key(&kctx, argv[2], &key2ds);
+			knot_kasp_key_t *key2rr;
+			ret = keymgr_get_key(&kctx, argv[2], &key2rr);
 			if (ret == KNOT_EOK) {
-				ret = keymgr_generate_dnskey(zone_name, key2ds);
+				ret = generate_rr(zone_name, key2rr);
 			}
 		}
 	} else if (strcmp(argv[1], "share") == 0) {
