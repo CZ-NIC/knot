@@ -20,7 +20,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <contrib/string.c>
 
 #include "binary.h"
 #include "error.h"
@@ -45,7 +44,16 @@ typedef struct pkcs8_dir_handle {
 /*!
  * Get path to a private key in PKCS #8 PEM format.
  */
-#define key_path(dir, id) sprintf_alloc("%s/%s.pem", dir, id)
+static char *key_path(const char *dir, const char *id)
+{
+	char *strp = NULL;
+
+	int ret = asprintf(&strp, "%s/%s.pem", dir, id);
+	if (ret < 0) {
+		return NULL;
+	}
+	return strp;
+}
 
 /*!
  * Get size of the file and reset the position to the beginning of the file.
