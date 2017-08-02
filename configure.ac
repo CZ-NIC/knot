@@ -490,8 +490,16 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 AC_COMPILE_IFELSE(
   [AC_LANG_PROGRAM([[#include <stdint.h>]],
                    [[uint64_t val = 0; __atomic_add_fetch(&val, 1, __ATOMIC_RELAXED);]])],
-  [AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])]
+  [AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])
+    AC_LINK_IFELSE(
+     [AC_LANG_PROGRAM([[#include <stdint.h>]],
+                      [[uint64_t val = 0; __atomic_add_fetch(&val, 1, __ATOMIC_RELAXED);]])],
+     [atomic_LIBS=""],
+     [atomic_LIBS="-latomic"]
+  )],
+  [atomic_LIBS=""]
 )
+AC_SUBST([atomic_LIBS])
 
 # Prepare CFLAG_VISIBILITY to be used where needed
 gl_VISIBILITY()
