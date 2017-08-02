@@ -52,8 +52,7 @@ static void print_help(void)
 	       "                (syntax: ds <key_spec>)\n"
 	       "  dnskey       Generate DNSKEY record for specified key.\n"
 	       "                (syntax: dnskey <key_spec>)\n"
-	       "  share        Make an existing key of another zone to be shared with\n"
-	       "               the specified zone.\n"
+	       "  share        Share an existing key of another zone with the specified zone.\n"
 	       "                (syntax: share <full_key_ID>\n"
 	       "  delete       Remove the specified key from zone.\n"
 	       "                (syntax: delete <key_spec>)\n"
@@ -67,7 +66,7 @@ static void print_help(void)
 	       "  algorithm  The key cryptographic algorithm: either name (e.g. RSASHA256) or\n"
 	       "             number.\n"
 	       "  size       The key size in bits.\n"
-	       "  ksk        Wheather the generated/imported key shall be Key Signing Key.\n"
+	       "  ksk        Whether the generated/imported key shall be Key Signing Key.\n"
 	       "  created/publish/ready/active/retire/remove  The timestamp of the key\n"
 	       "             lifetime event (e.g. published=now+1d active=1499770874)\n",
 	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME);
@@ -99,7 +98,7 @@ static int key_command(int argc, char *argv[])
 
 	ret = kdnssec_ctx_init(conf(), &kctx, zone_name, NULL);
 	if (ret != KNOT_EOK) {
-		printf("Failed to initializize KASP (%s)\n", knot_strerror(ret));
+		printf("Failed to initialize KASP (%s)\n", knot_strerror(ret));
 		goto main_end;
 	}
 
