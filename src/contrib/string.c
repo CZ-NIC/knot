@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,40 +34,17 @@ uint8_t *memdup(const uint8_t *data, size_t data_size)
 
 char *sprintf_alloc(const char *fmt, ...)
 {
-	int size = 100;
-	char *p = NULL, *np = NULL;
+	char *strp = NULL;
 	va_list ap;
 
-	if ((p = malloc(size)) == NULL)
+	va_start(ap, fmt);
+	int ret = vasprintf(&strp, fmt, ap);
+	va_end(ap);
+
+	if (ret < 0) {
 		return NULL;
-
-	while (1) {
-
-		/* Try to print in the allocated space. */
-		va_start(ap, fmt);
-		int n = vsnprintf(p, size, fmt, ap);
-		va_end(ap);
-
-		/* If that worked, return the string. */
-		if (n > -1 && n < size)
-			return p;
-
-		/* Else try again with more space. */
-		if (n > -1) {       /* glibc 2.1 */
-			size = n+1; /* precisely what is needed */
-		} else {            /* glibc 2.0 */
-			size *= 2;  /* twice the old size */
-		}
-		if ((np = realloc (p, size)) == NULL) {
-			free(p);
-			return NULL;
-		} else {
-			p = np;
-		}
 	}
-
-	/* Should never get here. */
-	return p;
+	return strp;
 }
 
 char *strcdup(const char *s1, const char *s2)
