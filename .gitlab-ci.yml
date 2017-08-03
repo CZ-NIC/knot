@@ -64,11 +64,11 @@ stages:
 .deb_build_depends: &deb_build_depends
   before_script:
     - sed -i 's/deb\.debian\.org/ftp.cz.debian.org/g;s/archive\.ubuntu\.com/cz.archive.ubuntu.com/g' /etc/apt/sources.list
-    - apt-get -qqy update
-    - apt-get -qqy dist-upgrade
-    - apt-get -qqy install build-essential
-    - apt-get -qqy install ghostscript python-sphinx texinfo texlive texlive-font-utils texlive-generic-extra texlive-latex-extra
-    - apt-get -qqy install autoconf automake libtool autotools-dev bash-completion bison flex libedit-dev libfstrm-dev libgnutls28-dev libidn2-0-dev liblmdb-dev libprotobuf-c-dev libsystemd-dev libsystemd-dev liburcu-dev pkg-config protobuf-c-compiler
+    - apt-get -y update
+    - apt-get -y dist-upgrade
+    - apt-get -y install build-essential
+    - apt-get -y install ghostscript python-sphinx texinfo texlive texlive-font-utils texlive-generic-extra texlive-latex-extra
+    - apt-get -y install autoconf automake libtool autotools-dev bash-completion bison flex libedit-dev libfstrm-dev libgnutls28-dev libidn2-0-dev liblmdb-dev libprotobuf-c-dev libsystemd-dev libsystemd-dev liburcu-dev pkg-config protobuf-c-compiler
     
 .debian_stable: &debian_stable
   <<: *deb_build_depends
