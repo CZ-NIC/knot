@@ -4,11 +4,38 @@ variables:
   GIT_STRATEGY: fetch
 
 stages:
+  - docker
   - build
   - test
   - documentation
   - deploy
 
+docker:knot-dns:debian:
+  stage: docker
+  before_script:
+    - docker info
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - docker build -t "knot-dns/debian:latest" "scripts/docker/debian:latest"
+    - docker tag "knot-dns/debian:latest" "registry.labs.nic.cz/knot/knot-dns/debian:latest"
+    - docker push "registry.labs.nic.cz/knot/knot-dns/debian:latest"
+  tags:
+    - shell
+    - linux
+
+docker:knot-dns:ubuntu:
+  stage: docker
+  before_script:
+    - docker info
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - docker build -t "knot-dns/ubuntu:latest" "scripts/docker/ubuntu:latest"
+    - docker tag "knot-dns/ubuntu:latest" "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
+    - docker push "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
+  tags:
+    - shell
+    - linux
+  
 .freebsd_i386: &freebsd_i386
   tags:
     - freebsd
@@ -47,7 +74,7 @@ stages:
 
 .fedora_latest: &fedora_latest
   <<: *dnf_build_depends
-  image: fedora:latest
+  image: "fedora:latest"
   tags:
     - docker
     - linux
@@ -61,26 +88,15 @@ stages:
     - linux
     - amd64
     
-.deb_build_depends: &deb_build_depends
-  before_script:
-    - sed -i 's/deb\.debian\.org/ftp.cz.debian.org/g' /etc/apt/sources.list
-    - apt-get -y update
-    - apt-get -y dist-upgrade
-    - apt-get -y install build-essential
-    - apt-get -y install ghostscript python-sphinx texinfo texlive texlive-font-utils texlive-generic-extra texlive-latex-extra
-    - apt-get -y install autoconf automake libtool autotools-dev bash-completion bison flex libedit-dev libfstrm-dev libgnutls28-dev libidn2-0-dev liblmdb-dev libprotobuf-c-dev libsystemd-dev libsystemd-dev liburcu-dev pkg-config protobuf-c-compiler
-    
 .debian_stable: &debian_stable
-  <<: *deb_build_depends
-  image: debian:stable-slim
+  image: "registry.labs.nic.cz/knot/knot-dns/debian:stable"
   tags:
     - docker
     - linux
     - amd64
 
 .ubuntu_latest: &ubuntu_latest
-  <<: *deb_build_depends
-  image: ubuntu:latest
+  image: "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
   tags:
     - docker
     - linux
