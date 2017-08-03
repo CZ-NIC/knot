@@ -35,7 +35,33 @@ docker:knot-dns:ubuntu:
   tags:
     - shell
     - linux
-  
+
+docker:knot-dns:centos:
+  stage: docker
+  before_script:
+    - docker info
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - docker build -t "knot-dns/centos:latest" "scripts/docker/centos:latest"
+    - docker tag "knot-dns/centos:latest" "registry.labs.nic.cz/knot/knot-dns/centos:latest"
+    - docker push "registry.labs.nic.cz/knot/knot-dns/centos:latest"
+  tags:
+    - shell
+    - linux
+
+docker:knot-dns:fedora:
+  stage: docker
+  before_script:
+    - docker info
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - docker build -t "knot-dns/fedora:latest" "scripts/docker/fedora:latest"
+    - docker tag "knot-dns/fedora:latest" "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
+    - docker push "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
+  tags:
+    - shell
+    - linux
+
 .freebsd_i386: &freebsd_i386
   tags:
     - freebsd
@@ -54,42 +80,22 @@ docker:knot-dns:ubuntu:
     - triggers
     - tags
 
-.dnf_build_depends: &dnf_build_depends
-  before_script:
-    - dnf -y upgrade
-    - dnf -y install 'dnf-command(builddep)' -y
-    - dnf -y install curl
-    - curl -L http://pkgs.fedoraproject.org/cgit/rpms/knot.git/plain/knot.spec -o knot.spec
-    - dnf -y builddep knot.spec
-    - dnf -y install autoconf automake libtool pkgconfig
-
-.yum_build_depends: &yum_build_depends
-  before_script:
-    - yum -y upgrade
-    - yum -y install epel-release
-    - yum -y install curl
-    - curl -L http://pkgs.fedoraproject.org/cgit/rpms/knot.git/plain/knot.spec -o knot.spec
-    - yum-builddep knot.spec -y
-    - yum -y install autoconf automake libtool pkgconfig
-
 .fedora_latest: &fedora_latest
-  <<: *dnf_build_depends
-  image: "fedora:latest"
+  image: "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
   tags:
     - docker
     - linux
     - amd64
 
 .centos_latest: &centos_latest
-  <<: *yum_build_depends
-  image: centos:latest
+  image: "registry.labs.nic.cz/knot/knot-dns/centos:latest"
   tags:
     - docker
     - linux
     - amd64
     
 .debian_stable: &debian_stable
-  image: "registry.labs.nic.cz/knot/knot-dns/debian:stable"
+  image: "registry.labs.nic.cz/knot/knot-dns/debian:latest"
   tags:
     - docker
     - linux
