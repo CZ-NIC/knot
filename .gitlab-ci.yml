@@ -29,6 +29,7 @@ stages:
 
 .build_depends: &build_depends
   before_script:
+    - sed -i 's/deb\.debian\.org/ftp.cz.debian.org/g;s/archive\.ubuntu\.com/cz.archive.ubuntu.com/g' /etc/apt/sources.list
     - apt-get -qqy update
     - apt-get -qqy dist-upgrade
     - apt-get -qqy install build-essential
