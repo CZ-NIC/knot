@@ -148,9 +148,11 @@ static int key_command(int argc, char *argv[])
 			}
 		}
 	} else if (strcmp(argv[1], "share") == 0) {
+		CHECK_MISSING_ARG("Key to be shared is not specified");
 		knot_dname_t *other_zone = NULL;
 		char *key_to_share = NULL;
-		if (keymgr_foreign_key_id(argc - 2, argv + 2, "be shared", &other_zone, &key_to_share) == KNOT_EOK) {
+		ret = keymgr_foreign_key_id(argv, &other_zone, &key_to_share);
+		if (ret == KNOT_EOK) {
 			ret = kasp_db_share_key(*kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
 		}
 		free(other_zone);

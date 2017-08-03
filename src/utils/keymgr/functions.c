@@ -575,17 +575,8 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 	return KNOT_EOK;
 }
 
-int keymgr_foreign_key_id(int argc, char *argv[], const char *req_action,
-			  knot_dname_t **key_zone, char **key_id)
+int keymgr_foreign_key_id(char *argv[], knot_dname_t **key_zone, char **key_id)
 {
-	if (argc < 1) {
-		printf("Key to %s - zone is not specified.\n", req_action);
-		return KNOT_EINVAL;
-	}
-	if (argc < 2) {
-		printf("Key to %s is not specified.\n", req_action);
-		return KNOT_EINVAL;
-	}
 	*key_zone = knot_dname_from_str_alloc(argv[0]);
 	if (*key_zone == NULL) {
 		return KNOT_ENOMEM;
@@ -601,7 +592,7 @@ int keymgr_foreign_key_id(int argc, char *argv[], const char *req_action,
 		return KNOT_ENOZONE;
 	}
 	knot_kasp_key_t *key;
-	ret = keymgr_get_key(&kctx, argv[1], &key);
+	ret = keymgr_get_key(&kctx, argv[2], &key);
 	if (ret == KNOT_EOK) {
 		*key_id = strdup(key->id);
 		if (*key_id == NULL) {
