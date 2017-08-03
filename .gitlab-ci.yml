@@ -12,6 +12,7 @@ stages:
 
 docker:knot-dns:debian:
   stage: docker
+  allow_failure: true
   before_script:
     - docker info
   script:
@@ -25,6 +26,7 @@ docker:knot-dns:debian:
 
 docker:knot-dns:ubuntu:
   stage: docker
+  allow_failure: true
   before_script:
     - docker info
   script:
@@ -38,6 +40,7 @@ docker:knot-dns:ubuntu:
 
 docker:knot-dns:centos:
   stage: docker
+  allow_failure: true
   before_script:
     - docker info
   script:
@@ -51,6 +54,7 @@ docker:knot-dns:centos:
 
 docker:knot-dns:fedora:
   stage: docker
+  allow_failure: true
   before_script:
     - docker info
   script:
