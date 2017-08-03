@@ -109,8 +109,10 @@ static int key_command(int argc, char *argv[])
 		goto main_end; \
 	}
 
+	bool print_ok_on_succes = true;
 	if (strcmp(argv[1], "generate") == 0) {
 		ret = keymgr_generate_key(&kctx, argc - 2, argv + 2);
+		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "import-bind") == 0) {
 		CHECK_MISSING_ARG("BIND-style key to import not specified");
 		ret = keymgr_import_bind(&kctx, argv[2]);
@@ -129,6 +131,7 @@ static int key_command(int argc, char *argv[])
 		}
 	} else if (strcmp(argv[1], "list") == 0) {
 		ret = keymgr_list_keys(&kctx);
+		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "ds") == 0 || strcmp(argv[1], "dnskey") == 0) {
 		int (*generate_rr)(const knot_dname_t *, const knot_kasp_key_t *) = keymgr_generate_dnskey;
 		if (strcmp(argv[1], "ds") == 0) {
@@ -147,6 +150,7 @@ static int key_command(int argc, char *argv[])
 				ret = generate_rr(zone_name, key2rr);
 			}
 		}
+		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "share") == 0) {
 		CHECK_MISSING_ARG("Key to be shared is not specified");
 		knot_dname_t *other_zone = NULL;
@@ -172,7 +176,7 @@ static int key_command(int argc, char *argv[])
 #undef CHECK_MISSING_ARG
 
 	if (ret == KNOT_EOK) {
-		printf("OK\n");
+		printf("%s", print_ok_on_succes ? "OK\n" : "");
 	} else {
 		printf("Error (%s)\n", knot_strerror(ret));
 	}
