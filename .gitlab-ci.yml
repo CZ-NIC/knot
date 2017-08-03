@@ -4,14 +4,14 @@ variables:
   GIT_STRATEGY: fetch
 
 stages:
-  - docker
+  - image
   - build
   - test
   - documentation
   - deploy
 
 docker:knot-dns:debian:
-  stage: docker
+  stage: image
   allow_failure: true
   before_script:
     - docker info
@@ -25,7 +25,7 @@ docker:knot-dns:debian:
     - linux
 
 docker:knot-dns:ubuntu:
-  stage: docker
+  stage: image
   allow_failure: true
   before_script:
     - docker info
@@ -39,7 +39,7 @@ docker:knot-dns:ubuntu:
     - linux
 
 docker:knot-dns:centos:
-  stage: docker
+  stage: image
   allow_failure: true
   before_script:
     - docker info
@@ -53,7 +53,7 @@ docker:knot-dns:centos:
     - linux
 
 docker:knot-dns:fedora:
-  stage: docker
+  stage: image
   allow_failure: true
   before_script:
     - docker info
