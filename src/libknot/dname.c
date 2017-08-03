@@ -533,7 +533,7 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 	int common = knot_dname_align(&sub, sub_l, &domain, domain_l, NULL);
 
 	/* Compare common suffix. */
-	while(common > 0) {
+	while (common > 0) {
 		/* Compare label. */
 		if (!label_is_equal(sub, domain))
 			return false;
@@ -689,11 +689,36 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 _public_
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	while(*d1 != '\0' || *d2 != '\0') {
+	assert(d1);
+	assert(d2);
+
+	while (*d1 != '\0' || *d2 != '\0') {
 		if (label_is_equal(d1, d2)) {
 			d1 = knot_wire_next_label(d1, NULL);
 			d2 = knot_wire_next_label(d2, NULL);
 		} else {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/*----------------------------------------------------------------------------*/
+_public_
+bool knot_dname_label_is_equal(const uint8_t *label1, const uint8_t *label2)
+{
+	assert(label1);
+	assert(label2);
+
+	/* Check that they have the same length */
+	if (*label1 != *label2) {
+		return false;
+	}
+
+	uint8_t len = *label1;
+	for (uint8_t i = 1; i <= len; i++) {
+		if (knot_tolower(label1[i]) != knot_tolower(label2[i])) {
 			return false;
 		}
 	}

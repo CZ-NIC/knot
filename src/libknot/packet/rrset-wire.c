@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,6 +42,29 @@
 static uint16_t dname_max(size_t wire_avail)
 {
 	return MIN(wire_avail, KNOT_DNAME_MAXLEN);
+}
+
+/*!
+ * Case insensitive comparison of two dnames in wire format.
+ * The second name may be compressed in a supplied wire.
+ */
+static bool dname_equal_wire(const knot_dname_t *d1, const knot_dname_t *d2,
+                             const uint8_t *wire)
+{
+	assert(d1);
+	assert(d2);
+
+	d2 = knot_wire_seek_label(d2, wire);
+
+	while (*d1 != '\0' || *d2 != '\0') {
+		if (!knot_dname_label_is_equal(d1, d2)) {
+			return false;
+		}
+		d1 = knot_wire_next_label(d1, NULL);
+		d2 = knot_wire_next_label(d2, wire);
+	}
+
+	return true;
 }
 
 /*!
@@ -312,14 +335,32 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 	if (owner_pointer > 0) {
 		knot_wire_put_pointer(*dst, owner_pointer);
 	} else {
-		int written = knot_compr_put_dname(rrset->owner, *dst,
-		                                   dname_max(*dst_avail), compr);
-		if (written < 0) {
-			return written;
-		}
+		/* Check for coincidence with previous RR set */
+		if (compr != NULL &&
+		    compr->suffix.pos != 0 &&
+		    dname_equal_wire(rrset->owner,
+		                     compr->wire + compr->suffix.pos, compr->wire)) {
 
-		compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER, *dst, written);
-		owner_size = written;
+			knot_wire_put_pointer(*dst, compr->suffix.pos);
+			compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER,
+			              compr->wire + compr->suffix.pos, owner_size);
+			owner_size = sizeof(uint16_t);
+		} else {
+			if (compr != NULL) {
+				compr->suffix.pos = KNOT_WIRE_HEADER_SIZE;
+				compr->suffix.labels = knot_dname_labels(compr->wire + compr->suffix.pos,
+				                                         compr->wire);
+
+			}
+			int written = knot_compr_put_dname(rrset->owner, *dst,
+			                                   dname_max(*dst_avail), compr);
+			if (written < 0) {
+				return written;
+			}
+
+			compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER, *dst, written);
+			owner_size = written;
+		}
 	}
 
 	/* Update buffer */

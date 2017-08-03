@@ -22,26 +22,6 @@
 #include "libknot/packet/pkt.h"
 #include "contrib/tolower.h"
 
-/*! \brief Case insensitive label compare for compression. */
-static bool compr_label_match(const uint8_t *n, const uint8_t *p)
-{
-	assert(n);
-	assert(p);
-
-	if (*n != *p) {
-		return false;
-	}
-
-	uint8_t len = *n;
-	for (uint8_t i = 1; i <= len; ++i) {
-		if (knot_tolower(n[i]) != knot_tolower(p[i])) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
 /*! \brief Helper for \fn knot_compr_put_dname, writes label(s) with size checks. */
 #define WRITE_LABEL(dst, written, label, max, len) \
 	if ((written) + (len) > (max)) { \
@@ -96,7 +76,7 @@ int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
 		const knot_dname_t *next_suffix = knot_wire_next_label(suffix, compr->wire);
 
 		/* Two labels match, extend suffix length. */
-		if (!compr_label_match(dname, suffix)) {
+		if (!knot_dname_label_is_equal(dname, suffix)) {
 			/* If they don't match, write unmatched labels. */
 			uint16_t mismatch_len = (dname - match_begin) + (*dname + 1);
 			WRITE_LABEL(dst, written, match_begin, max, mismatch_len);
