@@ -543,20 +543,17 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 		return ret;
 	}
 
+	/* Check for double insertion. */
+	if ((flags & KNOT_PF_CHECKDUP) && pkt_contains(pkt, rr)) {
+		return KNOT_EOK; /*! \todo return rather a number of added RRs */
+	}
+
 	knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count];
 	memset(rrinfo, 0, sizeof(knot_rrinfo_t));
 	rrinfo->pos = pkt->size;
 	rrinfo->flags = flags;
 	rrinfo->compress_ptr[0] = compr_hint;
 	memcpy(pkt->rr + pkt->rrset_count, rr, sizeof(knot_rrset_t));
-
-	/* Check for double insertion. */
-	if ((flags & KNOT_PF_CHECKDUP) && pkt_contains(pkt, rr)) {
-		return KNOT_EOK; /*! \todo return rather a number of added RRs */
-	}
-
-	uint8_t *pos = pkt->wire + pkt->size;
-	size_t maxlen = pkt_remaining(pkt);
 
 	/* Initialize compression context if it did not happen yet. */
 	pkt->compr.rrinfo = rrinfo;
@@ -565,6 +562,9 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 		pkt->compr.suffix.labels = knot_dname_labels(pkt->compr.wire + pkt->compr.suffix.pos,
 		                                             pkt->compr.wire);
 	}
+
+	uint8_t *pos = pkt->wire + pkt->size;
+	size_t maxlen = pkt_remaining(pkt);
 
 	/* Write RRSet to wireformat. */
 	ret = knot_rrset_to_wire(rr, pos, maxlen, &pkt->compr);
