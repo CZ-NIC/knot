@@ -102,28 +102,23 @@ static int key_command(int argc, char *argv[])
 		goto main_end;
 	}
 
+#define CHECK_MISSING_ARG(msg) \
+	if (argc < 3) { \
+		printf("%s\n", (msg)); \
+		ret = KNOT_EINVAL; \
+		goto main_end; \
+	}
+
 	if (strcmp(argv[1], "generate") == 0) {
 		ret = keymgr_generate_key(&kctx, argc - 2, argv + 2);
 	} else if (strcmp(argv[1], "import-bind") == 0) {
-		if (argc < 3) {
-			printf("BIND-style key to import not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
+		CHECK_MISSING_ARG("BIND-style key to import not specified");
 		ret = keymgr_import_bind(&kctx, argv[2]);
 	} else if (strcmp(argv[1], "import-pem") == 0) {
-		if (argc < 3) {
-			printf("PEM file to import not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
+		CHECK_MISSING_ARG("PEM file to import not specified");
 		ret = keymgr_import_pem(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (strcmp(argv[1], "set") == 0) {
-		if (argc < 3) {
-			printf("Key is not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
+		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2set;
 		ret = keymgr_get_key(&kctx, argv[2], &key2set);
 		if (ret == KNOT_EOK) {
@@ -161,11 +156,7 @@ static int key_command(int argc, char *argv[])
 		free(other_zone);
 		free(key_to_share);
 	} else if (strcmp(argv[1], "delete") == 0) {
-		if (argc < 3) {
-			printf("Key is not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
+		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2del;
 		ret = keymgr_get_key(&kctx, argv[2], &key2del);
 		if (ret == KNOT_EOK) {
@@ -175,6 +166,8 @@ static int key_command(int argc, char *argv[])
 		printf("Wrong zone-key command: %s\n", argv[1]);
 		goto main_end;
 	}
+
+#undef CHECK_MISSING_ARG
 
 	if (ret == KNOT_EOK) {
 		printf("OK\n");
@@ -253,11 +246,12 @@ int main(int argc, char *argv[])
 
 	if (strlen(argv[1]) == 2 && argv[1][0] == '-') {
 
-#define check_argc_three if (argc < 3) { \
-	printf("Option %s requires an argument\n", argv[1]); \
-	print_help(); \
-	return EXIT_FAILURE; \
-}
+#define CHECK_ARGC_THREE \
+	if (argc < 3) { \
+		printf("Option %s requires an argument\n", argv[1]); \
+		print_help(); \
+		return EXIT_FAILURE; \
+	}
 
 		switch (argv[1][1]) {
 		case 'h':
@@ -267,25 +261,25 @@ int main(int argc, char *argv[])
 			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
 		case 'd':
-			check_argc_three
+			CHECK_ARGC_THREE
 			if (!init_conf(NULL) || !init_conf_blank(argv[2])) {
 				return EXIT_FAILURE;
 			}
 			break;
 		case 'c':
-			check_argc_three
+			CHECK_ARGC_THREE
 			if (!init_conf(NULL) || !init_confile(argv[2])) {
 				return EXIT_FAILURE;
 			}
 			break;
 		case 'C':
-			check_argc_three
+			CHECK_ARGC_THREE
 			if (!init_conf(argv[2])) {
 				return EXIT_FAILURE;
 			}
 			break;
 		case 't':
-			check_argc_three
+			CHECK_ARGC_THREE
 			int ret = keymgr_generate_tsig(argv[2], (argc >= 4 ? argv[3] : "hmac-sha256"),
 			                               (argc >= 5 ? atol(argv[4]) : 0));
 			if (ret != KNOT_EOK) {
@@ -298,7 +292,7 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-#undef check_argc_three
+#undef CHECK_ARGC_THREE
 
 		argpos = 3;
 	} else {
