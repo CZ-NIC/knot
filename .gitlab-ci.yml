@@ -27,7 +27,41 @@ stages:
     - triggers
     - tags
 
-.build_depends: &build_depends
+.dnf_build_depends: &dnf_build_depends
+  before_script:
+    - dnf -y upgrade
+    - dnf -y install 'dnf-command(builddep)' -y
+    - dnf -y install curl
+    - curl -L http://pkgs.fedoraproject.org/cgit/rpms/knot.git/plain/knot.spec -o knot.spec
+    - dnf -y builddep knot.spec
+    - dnf -y install autoconf automake libtool pkgconfig
+
+.yum_build_depends: &yum_build_depends
+  before_script:
+    - yum -y upgrade
+    - yum -y install epel-release
+    - yum -y install curl
+    - curl -L http://pkgs.fedoraproject.org/cgit/rpms/knot.git/plain/knot.spec -o knot.spec
+    - yum-builddep knot.spec -y
+    - yum -y install autoconf automake libtool pkgconfig
+
+.fedora_latest: &fedora_latest
+  <<: *dnf_build_depends
+  image: fedora:latest
+  tags:
+    - docker
+    - linux
+    - amd64
+
+.centos_latest: &centos_latest
+  <<: *yum_build_depends
+  image: centos:latest
+  tags:
+    - docker
+    - linux
+    - amd64
+    
+.deb_build_depends: &deb_build_depends
   before_script:
     - sed -i 's/deb\.debian\.org/ftp.cz.debian.org/g;s/archive\.ubuntu\.com/cz.archive.ubuntu.com/g' /etc/apt/sources.list
     - apt-get -qqy update
@@ -37,7 +71,7 @@ stages:
     - apt-get -qqy install autoconf automake libtool autotools-dev bash-completion bison flex libedit-dev libfstrm-dev libgnutls28-dev libidn2-0-dev liblmdb-dev libprotobuf-c-dev libsystemd-dev libsystemd-dev liburcu-dev pkg-config protobuf-c-compiler
     
 .debian_stable: &debian_stable
-  <<: *build_depends
+  <<: *deb_build_depends
   image: debian:stable-slim
   tags:
     - docker
@@ -45,7 +79,7 @@ stages:
     - amd64
 
 .ubuntu_latest: &ubuntu_latest
-  <<: *build_depends
+  <<: *deb_build_depends
   image: ubuntu:latest
   tags:
     - docker
@@ -67,6 +101,26 @@ stages:
   script:
     - make -k check
 
+build:fedora:amd64:
+  <<: *fedora_latest
+  <<: *build_job
+
+test:fedora:amd64:
+  <<: *fedora_latest
+  <<: *test_job
+  dependencies:
+    - build:fedora:amd64
+
+build:centos:amd64:
+  <<: *centos_latest
+  <<: *build_job
+
+test:centos:amd64:
+  <<: *centos_latest
+  <<: *test_job
+  dependencies:
+    - build:centos:amd64
+    
 build:ubuntu:amd64:
   <<: *ubuntu_latest
   <<: *build_job
