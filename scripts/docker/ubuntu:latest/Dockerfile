@@ -1,7 +1,6 @@
 FROM ubuntu:latest
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 ENV DEBIAN_FRONTEND noninteractive
-ENV LC_ALL=en_DK.UTF-8
 RUN apt-get -y update
 RUN apt-get -y dist-upgrade
 RUN apt-get -y install	\

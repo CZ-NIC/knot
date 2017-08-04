@@ -1,7 +1,6 @@
 FROM fedora:latest
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 ENV DEBIAN_FRONTEND noninteractive
-ENV LC_ALL=C.UTF-8
 RUN dnf -y upgrade
 RUN dnf -y install \
 	'autoconf' \
