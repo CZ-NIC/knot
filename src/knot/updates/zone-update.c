@@ -18,6 +18,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/serial.h"
+#include "knot/zone/zone-diff.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/ucw/mempool.h"
@@ -34,6 +35,8 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+
+	update->new_cont_deep_copy = false;
 
 	ret = apply_prepare_zone_copy(zone->contents, &update->new_cont);
 	if (ret != KNOT_EOK) {
@@ -62,6 +65,8 @@ static int init_full(zone_update_t *update, zone_t *zone)
 	if (update->new_cont == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	update->new_cont_deep_copy = true;
 
 	apply_init_ctx(&update->a_ctx, update->new_cont, 0);
 
@@ -106,6 +111,75 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 	} else {
 		return KNOT_EINVAL;
 	}
+}
+
+int zone_update_from_differences(zone_update_t *update, zone_t *zone,
+                                 zone_contents_t *new_cont, zone_update_flags_t flags)
+{
+	if (update == NULL || zone == NULL || new_cont == NULL ||
+	    !(flags & UPDATE_INCREMENTAL) || (flags & UPDATE_FULL)) {
+		return KNOT_EINVAL;
+	}
+
+	memset(update, 0, sizeof(*update));
+	update->zone = zone;
+
+	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
+	update->flags = flags;
+
+	update->new_cont = new_cont;
+	update->new_cont_deep_copy = true;
+
+	int ret = changeset_init(&update->change, zone->name);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = zone_contents_diff(zone->contents, new_cont, &update->change);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&update->change);
+		return ret;
+	}
+
+	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
+	apply_init_ctx(&update->a_ctx, update->new_cont, apply_flags);
+
+	return KNOT_EOK;
+}
+
+int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_contents,
+                              zone_contents_t *new_cont, zone_update_flags_t flags)
+{
+	if (update == NULL || zone_without_contents == NULL || new_cont == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	memset(update, 0, sizeof(*update));
+	update->zone = zone_without_contents;
+
+	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
+	update->flags = flags;
+
+	update->new_cont = new_cont;
+	update->new_cont_deep_copy = true;
+
+	if (flags & UPDATE_INCREMENTAL) {
+		int ret = changeset_init(&update->change, zone_without_contents->name);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		update->change.soa_from = node_create_rrset(new_cont->apex, KNOT_RRTYPE_SOA);
+		if (update->change.soa_from == NULL) {
+			changeset_clear(&update->change);
+			return KNOT_ENOMEM;
+		}
+	}
+
+	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
+	apply_init_ctx(&update->a_ctx, update->new_cont, apply_flags);
+
+	return KNOT_EOK;
 }
 
 const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_t *dname)
@@ -178,9 +252,14 @@ void zone_update_clear(zone_update_t *update)
 	if (update->flags & UPDATE_INCREMENTAL) {
 		/* Revert any changes on error, do nothing on success. */
 		update_rollback(&update->a_ctx);
-		update_free_zone(&update->new_cont);
+		if (update->new_cont_deep_copy) {
+			zone_contents_deep_free(&update->new_cont);
+		} else {
+			update_free_zone(&update->new_cont);
+		}
 		changeset_clear(&update->change);
 	} else if (update->flags & UPDATE_FULL) {
+		assert(update->new_cont_deep_copy);
 		zone_contents_deep_free(&update->new_cont);
 	}
 	mp_delete(update->mm.ctx);
@@ -437,6 +516,9 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 
 	if (changeset_empty(&update->change)) {
 		changeset_clear(&update->change);
+		if (update->zone->contents == NULL) {
+			*contents_out = update->new_cont;
+		}
 		return KNOT_EOK;
 	}
 
@@ -540,9 +622,14 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	/* Sync RCU. */
 	synchronize_rcu();
 	if (update->flags & UPDATE_FULL) {
+		assert(update->new_cont_deep_copy);
 		zone_contents_deep_free(&old_contents);
 	} else if (update->flags & UPDATE_INCREMENTAL) {
-		update_free_zone(&old_contents);
+		if (update->new_cont_deep_copy) {
+			zone_contents_deep_free(&old_contents);
+		} else {
+			update_free_zone(&old_contents);
+		}
 		changeset_clear(&update->change);
 	}
 	update_cleanup(&update->a_ctx);

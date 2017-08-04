@@ -15,10 +15,10 @@
  */
 
 #include <assert.h>
-#include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
+#include "knot/dnssec/key-events.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/events/handlers.h"
 #include "knot/events/log.h"
@@ -27,12 +27,37 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 
+static int post_load_dnssec_actions(conf_t *conf, zone_t *zone)
+{
+	kdnssec_ctx_t kctx = { 0 };
+	int ret = kdnssec_ctx_init(conf, &kctx, zone->name, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	bool ignore1 = false; knot_time_t ignore2 = 0;
+	ret = knot_dnssec_nsec3resalt(&kctx, &ignore1, &ignore2);
+	if (ret != KNOT_EOK) {
+		kdnssec_ctx_deinit(&kctx);
+		return ret;
+	}
+
+	if (zone_has_key_sbm(&kctx)) {
+		zone_events_schedule_now(zone, ZONE_EVENT_PARENT_DS_Q);
+	}
+
+	kdnssec_ctx_deinit(&kctx);
+	return KNOT_EOK;
+}
+
 int event_load(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
+	conf_val_t val;
 	zone_contents_t *contents = NULL;
 	bool load_from_journal = false;
+	bool contents_in_update = true;
 	zone_sign_reschedule_t dnssec_refresh = { 0 };
 	dnssec_refresh.allow_rollover = true;
 
@@ -76,21 +101,56 @@ int event_load(conf_t *conf, zone_t *zone)
 	zone->zonefile.mtime = mtime;
 
 load_post:
-	/* Post load actions - calculate delta, sign with DNSSEC... */
-	/*! \todo issue #242 dnssec signing should occur in the special event */
-	ret = zone_load_post(conf, zone, &contents, &dnssec_refresh);
+	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	bool dnssec_enable = conf_bool(&val);
+	val = conf_zone_get(conf, C_IXFR_DIFF, zone->name);
+	bool build_diffs = conf_bool(&val);
+
+	bool old_contents = (zone->contents != NULL);
+	const bool contents_changed = old_contents && (contents != zone->contents);
+
+	/* Build the post-load update structure */
+	zone_update_t post_load = { 0 };
+	if (old_contents) {
+		if (build_diffs && contents_changed) {
+			ret = zone_update_from_differences(&post_load, zone, contents, UPDATE_INCREMENTAL);
+			if (ret == KNOT_ERANGE || ret == KNOT_ENODIFF) {
+				log_zone_warning(zone->name, (ret == KNOT_ENODIFF ?
+					"failed to create journal entry, zone file changed without "
+					"SOA serial update" : "IXFR history will be lost, "
+					"zone file changed, but SOA serial decreased"));
+				ret = zone_update_from_contents(&post_load, zone, contents, UPDATE_FULL);
+			}
+		} else {
+			ret = zone_update_from_contents(&post_load, zone, contents, UPDATE_FULL);
+		}
+	} else {
+		ret = zone_update_from_contents(&post_load, zone, contents, UPDATE_INCREMENTAL);
+	}
 	if (ret != KNOT_EOK) {
+		contents_in_update = false;
 		goto fail;
+	}
+
+	/* Sign zone using DNSSEC (if configured). */
+	if (dnssec_enable) {
+		ret = post_load_dnssec_actions(conf, zone);
+		if (ret == KNOT_EOK) {
+			ret = knot_dnssec_zone_sign(&post_load, 0, &dnssec_refresh);
+		}
+		if (ret != KNOT_EOK) {
+			zone_update_clear(&post_load);
+			goto fail;
+		}
 	}
 
 	/* Everything went alright, switch the contents. */
 	zone->zonefile.exists = !load_from_journal;
-	zone_contents_t *old = zone_switch_contents(zone, contents);
-	bool old_contents = (old != NULL);
-	uint32_t old_serial = zone_contents_serial(old);
-	if (old != NULL) {
-		synchronize_rcu();
-		zone_contents_deep_free(&old);
+	uint32_t old_serial = zone_contents_serial(zone->contents);
+	ret = zone_update_commit(conf, &post_load);
+	zone_update_clear(&post_load);
+	if (ret != KNOT_EOK) {
+		goto fail;
 	}
 
 	uint32_t current_serial = zone_contents_serial(zone->contents);
@@ -112,8 +172,7 @@ load_post:
 	zone->timers.soa_expire = knot_soa_expire(soa);
 	replan_from_timers(conf, zone);
 
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
+	if (dnssec_enable) {
 		zone_events_schedule_now(zone, ZONE_EVENT_NSEC3RESALT);
 		// if nothing to be done NOW for any of those, they will replan themselves for later
 
@@ -129,7 +188,9 @@ load_post:
 
 fail:
 	zone->zonefile.exists = false;
-	zone_contents_deep_free(&contents);
+	if (!contents_in_update) {
+		zone_contents_deep_free(&contents);
+	}
 
 	/* Try to bootstrap the zone if local error. */
 	replan_from_timers(conf, zone);
