@@ -86,12 +86,12 @@ Imports a BIND\-style key into KASP database (converting it to PEM format).
 Takes one argument: path to BIND key file (private or public, but both MUST exist).
 .TP
 \fBimport\-pem\fP \fIPEM_file\fP [\fIarguments\fP\&...]
-Imports a DNSSEC key from PEM file. The key parameters (same as for generate action) need to be
-specified (mostly algorithm, timers...) because they are not contained in the PEM format.
+Imports a DNSSEC key from PEM file. The key parameters (same as for the generate action) need to be
+specified (mainly algorithm, timers...) because they are not contained in the PEM format.
 .TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
-Changes a timing argument of an existing key to new timestamp. \fIKey_spec\fP is either the
-key tag or a prefix of key ID; \fIarguments\fP are like for \fBgenerate\fP, but just
+Changes a timing argument of an existing key to a new timestamp. \fIKey_spec\fP is either the
+key tag or a prefix of the key ID; \fIarguments\fP are like for \fBgenerate\fP, but just the
 timing\-related ones.
 .TP
 \fBds\fP [\fIkey_spec\fP]
@@ -121,7 +121,7 @@ Either an algorithm number (e.g. 14), or text name without dashes (e.g. ECDSAP38
 Key length in bits.
 .TP
 \fBksk\fP
-Either \(aqtrue\(aq (KSK will be generated) or \(aqfalse\(aq (ZSK wil be generated).
+Either \(aqtrue\(aq (KSK will be generated) or \(aqfalse\(aq (ZSK will be generated).
 .TP
 \fBcreated\fP
 Timestamp of key creation.

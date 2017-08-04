@@ -52,8 +52,7 @@ static void print_help(void)
 	       "                (syntax: ds <key_spec>)\n"
 	       "  dnskey       Generate DNSKEY record for specified key.\n"
 	       "                (syntax: dnskey <key_spec>)\n"
-	       "  share        Make an existing key of another zone to be shared with\n"
-	       "               the specified zone.\n"
+	       "  share        Share an existing key of another zone with the specified zone.\n"
 	       "                (syntax: share <full_key_ID>\n"
 	       "  delete       Remove the specified key from zone.\n"
 	       "                (syntax: delete <key_spec>)\n"
@@ -67,7 +66,7 @@ static void print_help(void)
 	       "  algorithm  The key cryptographic algorithm: either name (e.g. RSASHA256) or\n"
 	       "             number.\n"
 	       "  size       The key size in bits.\n"
-	       "  ksk        Wheather the generated/imported key shall be Key Signing Key.\n"
+	       "  ksk        Whether the generated/imported key shall be Key Signing Key.\n"
 	       "  created/publish/ready/active/retire/remove  The timestamp of the key\n"
 	       "             lifetime event (e.g. published=now+1d active=1499770874)\n",
 	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME);
@@ -99,32 +98,29 @@ static int key_command(int argc, char *argv[])
 
 	ret = kdnssec_ctx_init(conf(), &kctx, zone_name, NULL);
 	if (ret != KNOT_EOK) {
-		printf("Failed to initializize KASP (%s)\n", knot_strerror(ret));
+		printf("Failed to initialize KASP (%s)\n", knot_strerror(ret));
 		goto main_end;
 	}
 
+#define CHECK_MISSING_ARG(msg) \
+	if (argc < 3) { \
+		printf("%s\n", (msg)); \
+		ret = KNOT_EINVAL; \
+		goto main_end; \
+	}
+
+	bool print_ok_on_succes = true;
 	if (strcmp(argv[1], "generate") == 0) {
 		ret = keymgr_generate_key(&kctx, argc - 2, argv + 2);
+		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "import-bind") == 0) {
-		if (argc < 3) {
-			printf("BIND-style key to import not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
+		CHECK_MISSING_ARG("BIND-style key to import not specified");
 		ret = keymgr_import_bind(&kctx, argv[2]);
 	} else if (strcmp(argv[1], "import-pem") == 0) {
-		if (argc < 3) {
-			printf("PEM file to import not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
+		CHECK_MISSING_ARG("PEM file to import not specified");
 		ret = keymgr_import_pem(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (strcmp(argv[1], "set") == 0) {
-		if (argc < 3) {
-			printf("Key is not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
+		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2set;
 		ret = keymgr_get_key(&kctx, argv[2], &key2set);
 		if (ret == KNOT_EOK) {
@@ -135,6 +131,7 @@ static int key_command(int argc, char *argv[])
 		}
 	} else if (strcmp(argv[1], "list") == 0) {
 		ret = keymgr_list_keys(&kctx);
+		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "ds") == 0 || strcmp(argv[1], "dnskey") == 0) {
 		int (*generate_rr)(const knot_dname_t *, const knot_kasp_key_t *) = keymgr_generate_dnskey;
 		if (strcmp(argv[1], "ds") == 0) {
@@ -153,20 +150,19 @@ static int key_command(int argc, char *argv[])
 				ret = generate_rr(zone_name, key2rr);
 			}
 		}
+		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "share") == 0) {
+		CHECK_MISSING_ARG("Key to be shared is not specified");
 		knot_dname_t *other_zone = NULL;
 		char *key_to_share = NULL;
-		if (keymgr_foreign_key_id(argc - 2, argv + 2, "be shared", &other_zone, &key_to_share) == KNOT_EOK) {
+		ret = keymgr_foreign_key_id(argv, &other_zone, &key_to_share);
+		if (ret == KNOT_EOK) {
 			ret = kasp_db_share_key(*kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
 		}
 		free(other_zone);
 		free(key_to_share);
 	} else if (strcmp(argv[1], "delete") == 0) {
-		if (argc < 3) {
-			printf("Key is not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
+		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2del;
 		ret = keymgr_get_key(&kctx, argv[2], &key2del);
 		if (ret == KNOT_EOK) {
@@ -177,8 +173,10 @@ static int key_command(int argc, char *argv[])
 		goto main_end;
 	}
 
+#undef CHECK_MISSING_ARG
+
 	if (ret == KNOT_EOK) {
-		printf("OK\n");
+		printf("%s", print_ok_on_succes ? "OK\n" : "");
 	} else {
 		printf("Error (%s)\n", knot_strerror(ret));
 	}
@@ -254,11 +252,12 @@ int main(int argc, char *argv[])
 
 	if (strlen(argv[1]) == 2 && argv[1][0] == '-') {
 
-#define check_argc_three if (argc < 3) { \
-	printf("Option %s requires an argument\n", argv[1]); \
-	print_help(); \
-	return EXIT_FAILURE; \
-}
+#define CHECK_ARGC_THREE \
+	if (argc < 3) { \
+		printf("Option %s requires an argument\n", argv[1]); \
+		print_help(); \
+		return EXIT_FAILURE; \
+	}
 
 		switch (argv[1][1]) {
 		case 'h':
@@ -268,25 +267,25 @@ int main(int argc, char *argv[])
 			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
 		case 'd':
-			check_argc_three
+			CHECK_ARGC_THREE
 			if (!init_conf(NULL) || !init_conf_blank(argv[2])) {
 				return EXIT_FAILURE;
 			}
 			break;
 		case 'c':
-			check_argc_three
+			CHECK_ARGC_THREE
 			if (!init_conf(NULL) || !init_confile(argv[2])) {
 				return EXIT_FAILURE;
 			}
 			break;
 		case 'C':
-			check_argc_three
+			CHECK_ARGC_THREE
 			if (!init_conf(argv[2])) {
 				return EXIT_FAILURE;
 			}
 			break;
 		case 't':
-			check_argc_three
+			CHECK_ARGC_THREE
 			int ret = keymgr_generate_tsig(argv[2], (argc >= 4 ? argv[3] : "hmac-sha256"),
 			                               (argc >= 5 ? atol(argv[4]) : 0));
 			if (ret != KNOT_EOK) {
@@ -299,7 +298,7 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-#undef check_argc_three
+#undef CHECK_ARGC_THREE
 
 		argpos = 3;
 	} else {

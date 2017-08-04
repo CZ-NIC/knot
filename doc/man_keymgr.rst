@@ -63,12 +63,12 @@ Commands
   Takes one argument: path to BIND key file (private or public, but both MUST exist).
 
 **import-pem** *PEM_file* [*arguments*...]
-  Imports a DNSSEC key from PEM file. The key parameters (same as for generate action) need to be
-  specified (mostly algorithm, timers...) because they are not contained in the PEM format.
+  Imports a DNSSEC key from PEM file. The key parameters (same as for the generate action) need to be
+  specified (mainly algorithm, timers...) because they are not contained in the PEM format.
 
 **set** *key_spec* [*arguments*...]
-  Changes a timing argument of an existing key to new timestamp. *Key_spec* is either the
-  key tag or a prefix of key ID; *arguments* are like for **generate**, but just
+  Changes a timing argument of an existing key to a new timestamp. *Key_spec* is either the
+  key tag or a prefix of the key ID; *arguments* are like for **generate**, but just the
   timing-related ones.
 
 **ds** [*key_spec*]
@@ -98,7 +98,7 @@ Arguments are separated by space, each of them is in format 'name=value'.
   Key length in bits.
 
 **ksk**
-  Either 'true' (KSK will be generated) or 'false' (ZSK wil be generated).
+  Either 'true' (KSK will be generated) or 'false' (ZSK will be generated).
 
 **created**
   Timestamp of key creation.
