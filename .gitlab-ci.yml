@@ -1,6 +1,6 @@
 variables:
   DEBIAN_FRONTEND: noninteractive
-  LC_ALL: en_DK.UTF-8
+  LC_ALL: C
   GIT_STRATEGY: fetch
 
 stages:

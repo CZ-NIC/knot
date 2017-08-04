@@ -1,7 +1,6 @@
 FROM centos:latest
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 ENV DEBIAN_FRONTEND noninteractive
-ENV LC_ALL=C.UTF-8
 RUN yum -y upgrade
 RUN yum -y install epel-release
 RUN yum -y install \

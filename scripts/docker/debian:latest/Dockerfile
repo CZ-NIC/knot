@@ -1,7 +1,6 @@
 FROM debian:stable-slim
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 ENV DEBIAN_FRONTEND noninteractive
-ENV LC_ALL=C.UTF-8
 RUN sed -i 's/deb.debian.org/ftp.cz.debian.org/' /etc/apt/sources.list
 RUN apt-get -y update
 RUN apt-get -y dist-upgrade
