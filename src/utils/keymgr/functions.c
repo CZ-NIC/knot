@@ -701,12 +701,14 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 	dnssec_binary_t pubkey = { 0 };
 	int ret = dnssec_key_get_pubkey(dnskey, &pubkey);
 	if (ret != DNSSEC_EOK) {
+		free(name);
 		return knot_error_from_libdnssec(ret);
 	}
 
 	uint8_t *base64_output = NULL;
 	int len = base64_encode_alloc(pubkey.data, pubkey.size, &base64_output);
 	if (len < 0) {
+		free(name);
 		return len;
 	}
 
