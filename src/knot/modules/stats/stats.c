@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "contrib/macros.h"
 #include "knot/include/module.h"
 #include "knot/nameserver/xfr.h" // Dependency on qdata->extra!
 
@@ -270,6 +271,8 @@ static char *qtype_to_str(uint32_t idx, uint32_t count)
 }
 
 #define BUCKET_SIZE	16
+#define QSIZE_MAX_IDX	(288 / BUCKET_SIZE)
+#define RSIZE_MAX_IDX	(4096 / BUCKET_SIZE)
 
 static char *size_to_str(uint32_t idx, uint32_t count)
 {
@@ -310,8 +313,8 @@ static const ctr_desc_t ctr_descs[] = {
 	item(RCODE,      rcode,      RCODE_OTHER + 1),
 	item(NODATA,     nodata,     NODATA__COUNT),
 	item(QTYPE,      qtype,      QTYPE__COUNT),
-	item(QSIZE,      qsize,      288 / BUCKET_SIZE + 1),
-	item(RSIZE,      rsize,      4096 / BUCKET_SIZE + 1),
+	item(QSIZE,      qsize,      QSIZE_MAX_IDX + 1),
+	item(RSIZE,      rsize,      RSIZE_MAX_IDX + 1),
 	{ NULL }
 };
 
@@ -411,7 +414,8 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 			if (qdata->rcode_tsig == KNOT_RCODE_BADSIG) {
 				knotd_mod_stats_incr(mod, CTR_RCODE, RCODE_BADSIG, 1);
 			} else {
-				knotd_mod_stats_incr(mod, CTR_RCODE, rcode, 1);
+				knotd_mod_stats_incr(mod, CTR_RCODE,
+				                     MIN(rcode, RCODE_OTHER), 1);
 			}
 		}
 	}
@@ -507,12 +511,14 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 
 	// Count the query size.
 	if (stats->qsize) {
-		knotd_mod_stats_incr(mod, CTR_QSIZE, qdata->query->size / BUCKET_SIZE, 1);
+		uint64_t idx = qdata->query->size / BUCKET_SIZE;
+		knotd_mod_stats_incr(mod, CTR_QSIZE, MIN(idx, QSIZE_MAX_IDX), 1);
 	}
 
 	// Count the reply size.
 	if (stats->rsize && pkt->size > 0) {
-		knotd_mod_stats_incr(mod, CTR_RSIZE, pkt->size / BUCKET_SIZE, 1);
+		uint64_t idx = pkt->size / BUCKET_SIZE;
+		knotd_mod_stats_incr(mod, CTR_RSIZE, MIN(idx, RSIZE_MAX_IDX), 1);
 	}
 
 	return state;
