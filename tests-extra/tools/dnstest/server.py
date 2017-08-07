@@ -928,7 +928,7 @@ class Knot(Server):
         set_params = [ option + "=" + value for option, value in new_params.items() ]
         res = dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "generate", *set_params)
         errcode, stdo, stde = res
-        return stdo.split()[-2]
+        return stdo.split()[-1]
 
     def key_set(self, zone_name, key_id, **new_values):
         set_params = [ option + "=" + value for option, value in new_values.items() ]
