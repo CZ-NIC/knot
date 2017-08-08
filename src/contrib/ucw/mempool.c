@@ -209,7 +209,6 @@ mp_flush(struct mempool *pool)
 	}
 	pool->state.last[1] = NULL;
 	pool->state.free[1] = 0;
-	pool->state.next = NULL;
 	pool->last_big = &pool->last_big;
 }
 

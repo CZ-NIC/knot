@@ -29,7 +29,6 @@
 struct mempool_state {
 	unsigned free[2];
 	void *last[2];
-	struct mempool_state *next;
 };
 
 /**
