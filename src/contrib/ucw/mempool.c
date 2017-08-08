@@ -143,6 +143,7 @@ mp_new(unsigned chunk_size)
 	ASAN_UNPOISON_MEMORY_REGION(pool, sizeof(*pool));
 	DBG("Creating mempool %p with %u bytes long chunks", pool, chunk_size);
 	chunk->next = NULL;
+	ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 	*pool = (struct mempool) {
 		.state = { .free = { chunk_size - sizeof(*pool) }, .last = { chunk } },
 		.chunk_size = chunk_size,
@@ -156,6 +157,7 @@ static void
 mp_free_chain(struct mempool_chunk *chunk)
 {
 	while (chunk) {
+		ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		struct mempool_chunk *next = chunk->next;
 		mp_free_chunk(chunk);
 		chunk = next;
@@ -166,6 +168,7 @@ static void
 mp_free_big_chain(struct mempool_chunk *chunk)
 {
 	while (chunk) {
+		ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		struct mempool_chunk *next = chunk->next;
 		mp_free_big_chunk(chunk);
 		chunk = next;
@@ -185,14 +188,25 @@ void
 mp_flush(struct mempool *pool)
 {
 	mp_free_big_chain(pool->state.last[1]);
-	struct mempool_chunk *chunk, *next;
-	for (chunk = pool->state.last[0]; chunk && (void *)chunk - chunk->size != pool; chunk = next) {
+	struct mempool_chunk *chunk = pool->state.last[0], *next;
+	while (chunk) {
+		ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
+		if ((void *)chunk - chunk->size == pool) {
+			break;
+		}
 		next = chunk->next;
 		chunk->next = pool->unused;
+		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		pool->unused = chunk;
+		chunk = next;
 	}
 	pool->state.last[0] = chunk;
-	pool->state.free[0] = chunk ? chunk->size - sizeof(*pool) : 0;
+	if (chunk) {
+		pool->state.free[0] = chunk->size - sizeof(*pool);
+		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
+	} else {
+		pool->state.free[0] = 0;
+	}
 	pool->state.last[1] = NULL;
 	pool->state.free[1] = 0;
 	pool->state.next = NULL;
@@ -202,10 +216,14 @@ mp_flush(struct mempool *pool)
 static void
 mp_stats_chain(struct mempool_chunk *chunk, struct mempool_stats *stats, unsigned idx)
 {
+	struct mempool_chunk *next;
 	while (chunk) {
+		ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		stats->chain_size[idx] += chunk->size + sizeof(*chunk);
 		stats->chain_count[idx]++;
-		chunk = chunk->next;
+		next = chunk->next;
+		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
+		chunk = next;
 	}
 	stats->total_size += stats->chain_size[idx];
 }
@@ -235,11 +253,13 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
 		pool->idx = 0;
 		if (pool->unused) {
 			chunk = pool->unused;
+			ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 			pool->unused = chunk->next;
 		} else {
 			chunk = mp_new_chunk(pool->chunk_size);
 		}
 		chunk->next = pool->state.last[0];
+		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		pool->state.last[0] = chunk;
 		pool->state.free[0] = pool->chunk_size - size;
 		return (void *)chunk - pool->chunk_size;
@@ -251,6 +271,7 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
 			return NULL;
 		}
 		chunk->next = pool->state.last[1];
+		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		pool->state.last[1] = chunk;
 		pool->state.free[1] = aligned - size;
 		return pool->last_big = (void *)chunk - aligned;
