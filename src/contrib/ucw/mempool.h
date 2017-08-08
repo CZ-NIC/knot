@@ -3,6 +3,7 @@
  *
  *	(c) 1997--2005 Martin Mares <mj@ucw.cz>
  *	(c) 2007 Pavel Charvat <pchar@ucw.cz>
+ *	(c) 2015, 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
  *	This software may be freely distributed and used according to the terms
  *	of the GNU Lesser General Public License.
@@ -26,9 +27,8 @@
  * You should use this one as an opaque handle only, the insides are internal.
  **/
 struct mempool_state {
-  unsigned free[2];
-  void *last[2];
-  struct mempool_state *next;
+	unsigned free[2];
+	void *last[2];
 };
 
 /**
@@ -36,15 +36,15 @@ struct mempool_state {
  * You should use this one as an opaque handle only, the insides are internal.
  **/
 struct mempool {
-  struct mempool_state state;
-  void *unused, *last_big;
-  unsigned chunk_size, threshold, idx;
+	struct mempool_state state;
+	void *unused, *last_big;
+	unsigned chunk_size, threshold, idx;
 };
 
 struct mempool_stats {			/** Mempool statistics. See @mp_stats(). **/
-  uint64_t total_size;			/* Real allocated size in bytes */
-  unsigned chain_count[3];			/* Number of allocated chunks in small/big/unused chains */
-  unsigned chain_size[3];			/* Size of allocated chunks in small/big/unused chains */
+	uint64_t total_size;		/** Real allocated size in bytes. */
+	unsigned chain_count[3];	/** Number of allocated chunks in small/big/unused chains. */
+	unsigned chain_size[3];		/** Size of allocated chunks in small/big/unused chains. */
 };
 
 /***
