@@ -498,19 +498,23 @@ int changeset_cancelout(changeset_t *change)
 	return ret;
 }
 
-zone_contents_t *changeset_to_contents(changeset_t *ch)
+int changeset_to_contents(changeset_t *ch, zone_contents_t **out)
 {
 	assert(ch->soa_from == NULL);
 	assert(zone_contents_is_empty(ch->remove));
+	assert(out != NULL);
 
-	zone_contents_t *res = ch->add;
-	add_rr_to_contents(res, ch->soa_to);
+	*out = ch->add;
+	int ret = add_rr_to_contents(*out, ch->soa_to);
 	knot_rrset_free(&ch->soa_to, NULL);
+	if (ret != KNOT_EOK) {
+		zone_contents_deep_free(out);
+	}
 
 	zone_contents_deep_free(&ch->remove);
 	free(ch->data);
 	free(ch);
-	return res;
+	return ret;
 }
 
 changeset_t *changeset_from_contents(const zone_contents_t *contents)
