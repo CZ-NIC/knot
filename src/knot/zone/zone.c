@@ -362,14 +362,6 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 		return KNOT_EINVAL;
 	}
 
-	/* Check for disabled zonefile synchronization. */
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	if (conf_int(&val) >= 0) {
-		// for now we better flush the zonefile instead of zone-in-journal
-		// when the priority over zonefile and journal changes, replace this check
-		return KNOT_ENOTSUP;
-	}
-
 	changeset_t *co_ch = changeset_from_contents(new_contents);
 	int ret = co_ch ? zone_change_store(conf, zone, co_ch) : KNOT_ENOMEM;
 	changeset_from_contents_free(co_ch);
