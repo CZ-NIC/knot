@@ -248,7 +248,7 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	ret = zone_in_journal_store(data->conf, data->zone, new_zone);
-	if (ret != KNOT_EOK && ret != KNOT_EEXIST && ret != KNOT_ENOTSUP) {
+	if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to write zone contents to journal (%s)",
 		           knot_strerror(ret));

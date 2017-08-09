@@ -260,6 +260,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_SEM_CHECKS,          YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DISABLE_ANY,         YP_TBOOL, YP_VNONE }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
+	{ C_ZONE_IN_JOURNAL,     YP_TBOOL, YP_VNONE }, \
 	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
 	{ C_MAX_ZONE_SIZE,       YP_TINT,  YP_VINT = { 0, INT64_MAX, INT64_MAX, YP_SSIZE }, FLAGS }, \
 	{ C_MAX_JOURNAL_USAGE,   YP_TINT,  YP_VINT = { KILO(40), INT64_MAX, MEGA(100), YP_SSIZE } }, \
