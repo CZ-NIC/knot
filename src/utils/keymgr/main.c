@@ -16,6 +16,8 @@
 
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-keys.h"
@@ -232,6 +234,22 @@ static bool init_conf_blank(const char *kasp_dir)
 	return true;
 }
 
+static void update_privileges(void)
+{
+	int uid, gid;
+	if (conf_user(conf(), &uid, &gid) != KNOT_EOK) {
+		return;
+	}
+
+	// Just try to alter process privileges if different from configured.
+	if ((gid_t)gid != getgid()) {
+		(void)setregid(gid, gid);
+	}
+	if ((uid_t)uid != getuid()) {
+		(void)setreuid(uid, uid);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc <= 1) {
@@ -313,6 +331,8 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 	}
+
+	update_privileges();
 
 	int ret = key_command(argc - argpos, argv + argpos);
 
