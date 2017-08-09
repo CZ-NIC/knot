@@ -190,7 +190,11 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 
 	changeset_t *boo_ch = (changeset_t *)HEAD(chgs);
 	rem_node(&boo_ch->n);
-	*contents = changeset_to_contents(boo_ch);
+	ret = changeset_to_contents(boo_ch, contents);
+	if (ret != KNOT_EOK) {
+		changesets_free(&chgs);
+		return ret;
+	}
 
 	apply_ctx_t a_ctx = { 0 };
 	apply_init_ctx(&a_ctx, *contents, 0);

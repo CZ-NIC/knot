@@ -158,10 +158,11 @@ int changeset_cancelout(changeset_t *change);
  * \brief Loads zone contents from botstrap changeset.
  *
  * \param ch  Changeset to load from, will be freed!
+ * \param out Zone contents.
  *
- * \return Zone contents.
+ * \return KNOT_E*
  */
-zone_contents_t *changeset_to_contents(changeset_t *ch);
+int changeset_to_contents(changeset_t *ch, zone_contents_t **out);
 
 /*!
  * \brief Creates a bootstrap changeset from zone.
