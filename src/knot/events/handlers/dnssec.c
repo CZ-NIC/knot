@@ -64,12 +64,6 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	resch.allow_rollover = true;
 	int sign_flags = 0;
 
-	if (zone_is_slave(conf, zone)) {
-		log_zone_notice(zone->name, "DNSSEC, skipped re-signing on slave zone, "
-				"will be resigned on next incoming transfer");
-		return KNOT_EOK;
-	}
-
 	if (zone->flags & ZONE_FORCE_RESIGN) {
 		log_zone_info(zone->name, "DNSSEC, dropping previous "
 		              "signatures, resigning zone");

@@ -208,34 +208,6 @@ static void axfr_cleanup(struct refresh_data *data)
 	zone_contents_deep_free(&data->axfr.zone);
 }
 
-/*! \brief Routine for calling call_rcu() easier way.
- *
- * TODO: move elsewhere, as it has no direct relation to AXFR
- */
-typedef struct {
-	struct rcu_head rcuhead;
-	void (*ptr_free_fun)(void **);
-	void *ptr;
-} callrcu_wrapper_t;
-
-static void callrcu_wrapper_cb(struct rcu_head *param)
-{
-	callrcu_wrapper_t *wrap = (callrcu_wrapper_t *)param;
-	wrap->ptr_free_fun(&wrap->ptr);
-	free(wrap);
-}
-
-/* note: does nothing if not-enough-memory */
-static void callrcu_wrapper(void *ptr, void (*ptr_free_fun)(void **))
-{
-	callrcu_wrapper_t *wrap = calloc(1, sizeof(callrcu_wrapper_t));
-	if (wrap != NULL) {
-		wrap->ptr = ptr;
-		wrap->ptr_free_fun = ptr_free_fun;
-		call_rcu((struct rcu_head *)wrap, callrcu_wrapper_cb);
-	}
-}
-
 static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
@@ -250,6 +222,15 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
+	uint32_t master_serial = zone_contents_serial(new_zone);
+	uint32_t local_serial = zone_contents_serial(data->zone->contents);
+	bool bootstrap = zone_contents_is_empty(data->zone->contents);
+	if (!bootstrap && serial_compare(master_serial, local_serial) <= 0) {
+		conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
+		local_serial = serial_next(local_serial, conf_opt(&val));
+		zone_contents_set_soa_serial(new_zone, local_serial);
+	}
+
 	zone_update_t up = { 0 };
 	ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
 	if (ret != KNOT_EOK) {
@@ -259,22 +240,26 @@ static int axfr_finalize(struct refresh_data *data)
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
-		bool bootstrap = zone_contents_is_empty(data->zone->contents);
 		zone_sign_reschedule_t resch = { .allow_rollover = true };
 		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, &resch);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			return ret;
 		}
-		// no dnssec replanning, next dnssec action applies on next refresh
-		zone_events_schedule_at(data->zone, ZONE_EVENT_PARENT_DS_Q,
-					resch.plan_ds_query ? time(NULL) : -1);
+		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
 	}
 
 	ret = zone_update_commit(data->conf, &up);
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
 		return ret;
+	}
+
+	if (dnssec_enable) {
+		ret = zone_set_master_serial(data->zone, master_serial);
+		if (ret != KNOT_EOK) {
+			log_zone_warning(data->zone->name, "unable to save master serial, future transfers might be broken");
+		}
 	}
 
 	xfr_log_publish(data->zone->name, data->remote, data->zone->contents, new_zone);
@@ -416,6 +401,21 @@ static void ixfr_cleanup(struct refresh_data *data)
 
 static int ixfr_finalize(struct refresh_data *data)
 {
+	uint32_t master_serial;
+	uint32_t local_serial = zone_contents_serial(data->zone->contents);
+	changeset_t *chs = NULL;
+	WALK_LIST(chs, data->ixfr.changesets) {
+		master_serial = knot_soa_serial(&chs->soa_to->rrs);
+		knot_soa_serial_set(&chs->soa_from->rrs, local_serial);
+		if (serial_compare(master_serial, local_serial) <= 0) {
+			conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
+			local_serial = serial_next(local_serial, conf_opt(&val));
+			knot_soa_serial_set(&chs->soa_to->rrs, local_serial);
+		} else {
+			local_serial = master_serial;
+		}
+	}
+
 	zone_update_t up = { 0 };
 	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
 	if (ret != KNOT_EOK) {
@@ -449,14 +449,19 @@ static int ixfr_finalize(struct refresh_data *data)
 			zone_update_clear(&up);
 			return ret;
 		}
-		// no dnssec replanning, next dnssec action applies on next refresh
-		zone_events_schedule_at(data->zone, ZONE_EVENT_PARENT_DS_Q,
-					resch.plan_ds_query ? time(NULL) : -1);
+		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
 	}
 
 	ret = zone_update_commit(data->conf, &up);
 
 	if (ret == KNOT_EOK) {
+		if (dnssec_enable && !EMPTY_LIST(data->ixfr.changesets)) {
+			ret = zone_set_master_serial(data->zone, master_serial);
+			if (ret != KNOT_EOK) {
+				log_zone_warning(data->zone->name,
+				"unable to save master serial, future transfers might be broken");
+			}
+		}
 		xfr_log_publish(data->zone->name, data->remote, up.zone->contents, up.new_cont);
 	} else {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
@@ -704,7 +709,9 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	if (data->ixfr.proc == NULL) {
 		const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
-		data->xfr_type = determine_xfr_type(answer, knot_soa_serial(&data->soa->rrs),
+		uint32_t master_serial = knot_soa_serial(&data->soa->rrs);
+		(void)zone_get_master_serial(data->zone, &master_serial);
+		data->xfr_type = determine_xfr_type(answer, master_serial,
 		                                    data->initial_soa_copy);
 		switch (data->xfr_type) {
 		case XFR_TYPE_ERROR:
@@ -810,6 +817,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	}
 
 	uint32_t local_serial = knot_soa_serial(&data->soa->rrs);
+	(void)zone_get_master_serial(data->zone, &local_serial);
 	uint32_t remote_serial = knot_soa_serial(&rr->rrs);
 	bool current = serial_is_current(local_serial, remote_serial);
 	bool master_uptodate = serial_is_current(remote_serial, local_serial);
@@ -839,8 +847,16 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	if (ixfr) {
 		assert(data->soa);
+		knot_rrset_t *sending_soa = knot_rrset_copy(data->soa, data->mm);
+		uint32_t master_serial;
+		int ret = zone_get_master_serial(data->zone, &master_serial);
+		if (sending_soa == NULL || ret != KNOT_EOK) {
+			return KNOT_STATE_FAIL;
+		}
+		knot_soa_serial_set(&sending_soa->rrs, master_serial);
 		knot_pkt_begin(pkt, KNOT_AUTHORITY);
-		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, data->soa, 0);
+		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, sending_soa, 0);
+		knot_rrset_free(&sending_soa, data->mm);
 	}
 
 	query_put_edns(pkt, &data->edns);
