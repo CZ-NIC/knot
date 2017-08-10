@@ -42,7 +42,7 @@ knot_zonedb_t *knot_zonedb_new(uint32_t size)
 	/* Create memory pool context. */
 	knot_mm_t mm = {0};
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
-	knot_zonedb_t *db = mm.alloc(mm.ctx, sizeof(knot_zonedb_t));
+	knot_zonedb_t *db = mm_alloc(&mm, sizeof(knot_zonedb_t));
 	if (db == NULL) {
 		return NULL;
 	}
@@ -50,7 +50,7 @@ knot_zonedb_t *knot_zonedb_new(uint32_t size)
 	db->maxlabels = 0;
 	db->hash = hhash_create_mm((size + 1) * 2, &mm);
 	if (db->hash == NULL) {
-		mm.free(db);
+		mm_free(&mm, db);
 		return NULL;
 	}
 

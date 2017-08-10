@@ -83,7 +83,7 @@ static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 	assert(pkt);
 	assert(len >= KNOT_WIRE_HEADER_SIZE);
 
-	pkt->wire = pkt->mm.alloc(pkt->mm.ctx, len);
+	pkt->wire = mm_alloc(&pkt->mm, len);
 	if (pkt->wire == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -392,10 +392,10 @@ void knot_pkt_free(knot_pkt_t **pkt)
 
 	// free the space for wireformat
 	if ((*pkt)->flags & KNOT_PF_FREE) {
-		(*pkt)->mm.free((*pkt)->wire);
+		mm_free(&(*pkt)->mm, (*pkt)->wire);
 	}
 
-	(*pkt)->mm.free(*pkt);
+	mm_free(&(*pkt)->mm, *pkt);
 	*pkt = NULL;
 }
 
