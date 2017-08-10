@@ -247,18 +247,20 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
-	ret = zone_in_journal_store(data->conf, data->zone, new_zone);
-	if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
-		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-		           "failed to write zone contents to journal (%s)",
-		           knot_strerror(ret));
+	conf_val_t val = conf_zone_get(data->conf, C_ZONE_IN_JOURNAL, data->zone->name);
+	if (conf_bool(&val)) {
+		ret = zone_in_journal_store(data->conf, data->zone, new_zone);
+		if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			           "failed to write zone contents to journal (%s)",
+			           knot_strerror(ret));
+		}
 	}
 
 	zone_contents_t *old_zone = zone_switch_contents(data->zone, new_zone);
 	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
 	data->axfr.zone = NULL; // seized
 	callrcu_wrapper(old_zone, (void (*)(void **))zone_contents_deep_free);
-
 
 	return KNOT_EOK;
 }
