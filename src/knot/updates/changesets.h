@@ -276,3 +276,13 @@ typedef int (*changeset_walk_callback)(const knot_rrset_t *rrset, bool addition,
  * \return KNOT_E*
  */
 int changeset_walk(const changeset_t *changeset, changeset_walk_callback callback, void *ctx);
+
+/*!
+ *
+ * \brief Dumps the changeset into text file.
+ *
+ * \param changeset Changeset.
+ * \param outfile   File to write into.
+ * \param color     Use unix tty color metacharacters.
+ */
+void changeset_print(const changeset_t *changeset, FILE *outfile, bool color);

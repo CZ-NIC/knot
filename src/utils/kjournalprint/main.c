@@ -74,33 +74,18 @@ static int reconfigure_mapsize(const char *journal_path, size_t *mapsize)
 	return KNOT_EOK;
 }
 
-static void print_changeset(const changeset_t *chs, bool color, char **buff, size_t *buflen)
+static void print_changeset(const changeset_t *chs, bool color)
 {
 	printf(color ? YLW : "");
 	if (chs->soa_from == NULL) {
 		printf(";; Zone-in-journal, serial: %u\n",
 		       knot_soa_serial(&chs->soa_to->rrs));
-
-		printf(color ? GRN : "");
-		printf("%s", get_rrset(chs->soa_to, buff, buflen));
-		zone_dump_text(chs->add, stdout, false);
-		printf(color ? RESET : "");
 	} else {
 		printf(";; Changes between zone versions: %u -> %u\n",
 		       knot_soa_serial(&chs->soa_from->rrs),
 		       knot_soa_serial(&chs->soa_to->rrs));
-
-		printf(color ? RED : "");
-		printf(";; Removed\n");
-		printf("%s", get_rrset(chs->soa_from, buff, buflen));
-		zone_dump_text(chs->remove, stdout, false);
-
-		printf(color ? GRN : "");
-		printf(";; Added\n");
-		printf("%s", get_rrset(chs->soa_to, buff, buflen));
-		zone_dump_text(chs->add, stdout, false);
-		printf(color ? RESET : "");
 	}
+	changeset_print(chs, stdout, color);
 }
 
 dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC, 100)
@@ -192,12 +177,6 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 		ret = KNOT_ENOENT;
 	}
 
-	size_t buflen = 8192;
-	char *buff = malloc(buflen);
-	if (buff == NULL) {
-		journal_db_close(&jdb);
-		return KNOT_ENOMEM;
-	}
 	journal_t *j = journal_new();
 
 	if (ret == KNOT_EOK) {
@@ -206,7 +185,6 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 	if (ret != KNOT_EOK) {
 		journal_free(&j);
 		journal_db_close(&jdb);
-		free(buff);
 		return ret;
 	}
 
@@ -237,14 +215,13 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 		if (debugmode) {
 			print_changeset_debugmode(chs);
 		} else {
-			print_changeset(chs, color, &buff, &buflen);
+			print_changeset(chs, color);
 		}
 	}
 
 	changesets_free(&db);
 
 pj_finally:
-	free(buff);
 	journal_close(j);
 	journal_free(&j);
 	journal_db_close(&jdb);
