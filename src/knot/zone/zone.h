@@ -183,4 +183,8 @@ size_t zone_update_dequeue(zone_t *zone, list_t *updates);
 /*! \brief Write zone contents to zonefile, but into different directory. */
 int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir);
 
+int zone_set_master_serial(zone_t *zone, uint32_t serial);
+
+int zone_get_master_serial(zone_t *zone, uint32_t *serial);
+
 /*! @} */

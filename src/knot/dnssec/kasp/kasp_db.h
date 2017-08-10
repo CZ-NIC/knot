@@ -60,6 +60,13 @@ int kasp_db_init(kasp_db_t **db, const char *path, size_t mapsize);
 int kasp_db_reconfigure(kasp_db_t **db, const char *new_path, size_t new_mapsize);
 
 /*!
+ * \brief Determine if kasp_db possibly exists at all.
+ *
+ * This is useful to avoid creating kasp_db by opening it just to check if anything is there.
+ */
+bool kasp_db_exists(kasp_db_t *db);
+
+/*!
  * \brief Perform real ctreate/open of KASP db.
  */
 int kasp_db_open(kasp_db_t *db);
@@ -153,6 +160,30 @@ int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
  */
 int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
                            dnssec_binary_t *nsec3salt, knot_time_t *salt_created);
+
+/*!
+ * \brief Store SOA serial number of master.
+ *
+ * \param db             KASP db
+ * \param zone_name      zone name
+ * \param master_serial  new master's serial
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_store_master_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+                                uint32_t master_serial);
+
+/*!
+ * \brief Load saved SOA serial number of master.
+ *
+ * \param db             KASP db
+ * \param zone_name      zone name
+ * \param master_serial  output if KNOT_EOK: master's serial
+ *
+ * \return KNOT_E* (KNOT_ENOENT if not stored before)
+ */
+int kasp_db_load_master_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+                               uint32_t *master_serial);
 
 /*!
  * \brief For given policy name, obtain last generated key.
