@@ -260,14 +260,15 @@ static int axfr_finalize(struct refresh_data *data)
 	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
 		bool bootstrap = zone_contents_is_empty(data->zone->contents);
-		zone_sign_reschedule_t resch = { .allow_rollover = bootstrap };
+		zone_sign_reschedule_t resch = { .allow_rollover = true };
 		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, &resch);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			return ret;
 		}
-		log_dnssec_next(data->zone->name, (time_t)resch.next_sign);
-		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
+		// no dnssec replanning, next dnssec action applies on next refresh
+		zone_events_schedule_at(data->zone, ZONE_EVENT_PARENT_DS_Q,
+					resch.plan_ds_query ? time(NULL) : -1);
 	}
 
 	ret = zone_update_commit(data->conf, &up);
@@ -442,14 +443,15 @@ static int ixfr_finalize(struct refresh_data *data)
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
-		zone_sign_reschedule_t resch = { 0 };
+		zone_sign_reschedule_t resch = { .allow_rollover = true };
 		ret = knot_dnssec_sign_update(&up, &resch);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			return ret;
 		}
-		log_dnssec_next(data->zone->name, (time_t)resch.next_sign);
-		zone_events_schedule_at(data->zone, ZONE_EVENT_DNSSEC, (time_t)resch.next_sign);
+		// no dnssec replanning, next dnssec action applies on next refresh
+		zone_events_schedule_at(data->zone, ZONE_EVENT_PARENT_DS_Q,
+					resch.plan_ds_query ? time(NULL) : -1);
 	}
 
 	ret = zone_update_commit(data->conf, &up);
