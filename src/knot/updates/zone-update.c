@@ -606,7 +606,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	/* Check the zone size. */
 	conf_val_t val = conf_zone_get(conf, C_MAX_ZONE_SIZE, update->zone->name);
-	int64_t size_limit = conf_int(&val);
+	size_t size_limit = conf_int(&val);
 
 	if (new_contents->size > size_limit) {
 		/* Recoverable error. */
