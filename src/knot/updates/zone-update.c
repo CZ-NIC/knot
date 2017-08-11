@@ -584,6 +584,34 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 	return KNOT_EOK;
 }
 
+/*! \brief Routine for calling call_rcu() easier way.
+ *
+ * TODO: move elsewhere, as it has no direct relation to zone-update
+ */
+typedef struct {
+	struct rcu_head rcuhead;
+	void (*ptr_free_fun)(void **);
+	void *ptr;
+} callrcu_wrapper_t;
+
+static void callrcu_wrapper_cb(struct rcu_head *param)
+{
+	callrcu_wrapper_t * wrap = (callrcu_wrapper_t *)param;
+	wrap->ptr_free_fun(&wrap->ptr);
+	free(wrap);
+}
+
+/* note: does nothing if not-enough-memory */
+static void callrcu_wrapper(void *ptr, void (*ptr_free_fun)(void **))
+{
+	callrcu_wrapper_t * wrap = malloc(sizeof(callrcu_wrapper_t));
+	if (wrap != NULL) {
+		wrap->ptr = ptr;
+		wrap->ptr_free_fun = ptr_free_fun;
+		call_rcu((struct rcu_head *)wrap, callrcu_wrapper_cb);
+	}
+}
+
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (conf == NULL || update == NULL) {
@@ -620,15 +648,14 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	old_contents = zone_switch_contents(update->zone, new_contents);
 
 	/* Sync RCU. */
-	synchronize_rcu();
 	if (update->flags & UPDATE_FULL) {
 		assert(update->new_cont_deep_copy);
-		zone_contents_deep_free(&old_contents);
+		callrcu_wrapper(old_contents, (void (*)(void **))zone_contents_deep_free);
 	} else if (update->flags & UPDATE_INCREMENTAL) {
 		if (update->new_cont_deep_copy) {
-			zone_contents_deep_free(&old_contents);
+			callrcu_wrapper(old_contents, (void (*)(void **))zone_contents_deep_free);
 		} else {
-			update_free_zone(&old_contents);
+			callrcu_wrapper(old_contents, (void (*)(void **))update_free_zone);
 		}
 		changeset_clear(&update->change);
 	}
