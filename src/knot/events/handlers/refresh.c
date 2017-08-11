@@ -224,7 +224,7 @@ static int axfr_finalize(struct refresh_data *data)
 
 	uint32_t master_serial = zone_contents_serial(new_zone);
 	uint32_t local_serial = zone_contents_serial(data->zone->contents);
-	bool bootstrap = zone_contents_is_empty(data->zone->contents);
+	bool bootstrap = (data->soa == NULL);
 	if (!bootstrap && serial_compare(master_serial, local_serial) <= 0) {
 		conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
 		local_serial = serial_next(local_serial, conf_opt(&val));
