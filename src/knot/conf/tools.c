@@ -344,7 +344,7 @@ int check_policy(
 	int64_t lifetime_val = conf_int(&lifetime);
 	int64_t refresh_val = conf_int(&refresh);
 	if (lifetime_val <= refresh_val) {
-		args->err_str = "RRSIG lifetime is supposed to be lower than refresh";
+		args->err_str = "RRSIG refresh has to be lower than RRSIG lifetime";
 		return KNOT_EINVAL;
 	}
 
