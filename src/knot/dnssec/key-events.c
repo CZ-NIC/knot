@@ -375,14 +375,16 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 			ret = generate_key(ctx, true, ctx->now);
 		}
 		reschedule->plan_ds_query = true;
+		if (ret == KNOT_EOK) {
+			reschedule->keys_changed = true;
+		}
 	}
 	if (!ctx->policy->singe_type_signing && ret == KNOT_EOK && !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
 		ret = generate_key(ctx, false, ctx->now);
+		if (ret == KNOT_EOK) {
+			reschedule->keys_changed = true;
+		}
 	}
-	if (ret == KNOT_EOK) {
-		reschedule->keys_changed = true;
-	}
-
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -422,6 +424,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 			next = next_action(ctx);
 			reschedule->next_rollover = next.time;
 		} else {
+			log_zone_warning(ctx->zone->dname, "DNSSEC, key rollover [%d] failed (%s)", (int)next.type, knot_strerror(ret));
 			reschedule->next_rollover = knot_time_add(knot_time(), 10); // fail => try in 10seconds #TODO better?
 		}
 	}
