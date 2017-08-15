@@ -176,18 +176,18 @@ static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 
 static void xfr_log_publish(const knot_dname_t *zone_name,
                             const struct sockaddr *remote,
-                            const zone_contents_t *old_zone,
-                            const zone_contents_t *new_zone)
+                            const uint32_t old_serial,
+                            const uint32_t new_serial,
+                            bool axfr_bootstrap)
 {
-	if (old_zone) {
+	if (!axfr_bootstrap) {
 		REFRESH_LOG(LOG_INFO, zone_name, remote,
 		            "zone updated, serial %u -> %u",
-		            zone_contents_serial(old_zone),
-		            zone_contents_serial(new_zone));
+		            old_serial, new_serial);
 	} else {
 		REFRESH_LOG(LOG_INFO, zone_name, remote,
 		            "zone updated, serial none -> %u",
-		            zone_contents_serial(new_zone));
+		            new_serial);
 	}
 }
 
@@ -223,6 +223,7 @@ static int axfr_finalize(struct refresh_data *data)
 
 	uint32_t master_serial = zone_contents_serial(new_zone);
 	uint32_t local_serial = zone_contents_serial(data->zone->contents);
+	uint32_t old_serial = local_serial;
 	bool bootstrap = (data->soa == NULL);
 	if (!bootstrap && serial_compare(master_serial, local_serial) <= 0) {
 		conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
@@ -262,7 +263,8 @@ static int axfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	xfr_log_publish(data->zone->name, data->remote, data->zone->contents, new_zone);
+	xfr_log_publish(data->zone->name, data->remote, old_serial,
+	                zone_contents_serial(new_zone), bootstrap);
 	data->axfr.zone = NULL; // seized
 
 	return KNOT_EOK;
@@ -404,6 +406,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	uint32_t master_serial;
 	(void)zone_get_master_serial(data->zone, &master_serial);
 	uint32_t local_serial = zone_contents_serial(data->zone->contents);
+	uint32_t old_serial = local_serial;
 	changeset_t *chs = NULL;
 	WALK_LIST(chs, data->ixfr.changesets) {
 		master_serial = knot_soa_serial(&chs->soa_to->rrs);
@@ -463,7 +466,8 @@ static int ixfr_finalize(struct refresh_data *data)
 				"unable to save master serial, future transfers might be broken");
 			}
 		}
-		xfr_log_publish(data->zone->name, data->remote, up.zone->contents, up.new_cont);
+		xfr_log_publish(data->zone->name, data->remote, old_serial,
+		                zone_contents_serial(up.zone->contents), false);
 	} else {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to sign changes (%s)", knot_strerror(ret));
