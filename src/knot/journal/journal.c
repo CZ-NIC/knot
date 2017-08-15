@@ -999,6 +999,8 @@ static int delete_merged_changeset(journal_t *j, txn_t *t)
 	return txn->ret;
 }
 
+static int delete_bootstrap_changeset(journal_t *j, txn_t *_txn);
+
 static int drop_journal(journal_t *j, txn_t *_txn)
 {
 	reuse_txn(txn, j, _txn, true);
@@ -1009,6 +1011,7 @@ static int drop_journal(journal_t *j, txn_t *_txn)
 	if (md_flag(txn, SERIAL_TO_VALID) && !md_flag(txn, FIRST_SERIAL_INVALID)) {
 		delete_upto(j, txn, txn->shadow_md.first_serial, txn->shadow_md.last_serial);
 	}
+	delete_bootstrap_changeset(j, txn);
 	md_del_last_inserter_zone(txn, j->zone);
 	md_set(txn, j->zone, MDKEY_PERZONE_OCCUPIED, 0);
 	unreuse_txn(txn, _txn);
@@ -1147,6 +1150,19 @@ static int delete_dirty_serial(journal_t *j, txn_t *_txn)
 	if (txn->ret == KNOT_EOK) {
 		txn->shadow_md.flags &= ~DIRTY_SERIAL_VALID;
 	}
+	return txn->ret;
+}
+
+static int delete_bootstrap_changeset(journal_t *j, txn_t *_txn)
+{
+	reuse_txn(txn, j, _txn, false);
+	uint32_t chunk = 0;
+	txn_key_str_u32(txn, j->zone, KEY_BOOTSTRAP_CHANGESET, chunk);
+	while (txn_find(txn)) {
+		txn_del(txn);
+		txn_key_str_u32(txn, j->zone, KEY_BOOTSTRAP_CHANGESET, ++chunk);
+	}
+	unreuse_txn(txn, _txn);
 	return txn->ret;
 }
 

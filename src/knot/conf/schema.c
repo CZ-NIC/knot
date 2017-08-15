@@ -85,6 +85,13 @@ static const knot_lookup_t serial_policies[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t journal_content[] = {
+	{ JOURNAL_CONTENT_NONE,    "none" },
+	{ JOURNAL_CONTENT_CHANGES, "changes" },
+	{ JOURNAL_CONTENT_ALL,     "all" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t log_severities[] = {
 	{ LOG_UPTO(LOG_CRIT),    "critical" },
 	{ LOG_UPTO(LOG_ERR),     "error" },
@@ -260,7 +267,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_SEM_CHECKS,          YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DISABLE_ANY,         YP_TBOOL, YP_VNONE }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
-	{ C_ZONE_IN_JOURNAL,     YP_TBOOL, YP_VNONE }, \
+	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES } }, \
 	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
 	{ C_MAX_ZONE_SIZE,       YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \
 	{ C_MAX_JOURNAL_USAGE,   YP_TINT,  YP_VINT = { KILO(40), SSIZE_MAX, MEGA(100), YP_SSIZE } }, \
