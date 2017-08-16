@@ -153,7 +153,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_time_t when_
 
 typedef enum {
 	INVALID = 0,
-	PUBLISH = 1,
+	GENERATE = 1,
 	SUBMIT,
 	REPLACE,
 	REMOVE,
@@ -166,7 +166,7 @@ typedef struct {
 	knot_kasp_key_t *key;
 } roll_action;
 
-static knot_time_t zsk_publish_time(knot_time_t active_time, const kdnssec_ctx_t *ctx)
+static knot_time_t zsk_rollover_time(knot_time_t active_time, const kdnssec_ctx_t *ctx)
 {
 	if (active_time <= 0) {
 		return 0;
@@ -190,7 +190,7 @@ static knot_time_t zsk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t 
 	return knot_time_add(retire_time, ctx->policy->propagation_delay + ctx->policy->zone_maximal_ttl);
 }
 
-static knot_time_t ksk_publish_time(knot_time_t created_time, const kdnssec_ctx_t *ctx)
+static knot_time_t ksk_rollover_time(knot_time_t created_time, const kdnssec_ctx_t *ctx)
 {
 	if (created_time <= 0 || ctx->policy->ksk_lifetime == 0) {
 		return 0;
@@ -263,8 +263,8 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
 				if (!is_ksk_published) {
-					keytime = ksk_publish_time(key->timing.created, ctx);
-					restype = PUBLISH;
+					keytime = ksk_rollover_time(key->timing.created, ctx);
+					restype = GENERATE;
 				}
 				break;
 			case DNSSEC_KEY_STATE_RETIRED:
@@ -285,8 +285,8 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
 				if (!is_zsk_published) {
-					keytime = zsk_publish_time(key->timing.active, ctx);
-					restype = PUBLISH;
+					keytime = zsk_rollover_time(key->timing.active, ctx);
+					restype = GENERATE;
 				}
 				break;
 			case DNSSEC_KEY_STATE_RETIRED:
@@ -395,7 +395,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 
 	if (knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
 		switch (next.type) {
-		case PUBLISH:
+		case GENERATE:
 			if (next.ksk && ctx->policy->ksk_shared) {
 				ret = share_or_generate_key(ctx, next.ksk, 0);
 			} else {
