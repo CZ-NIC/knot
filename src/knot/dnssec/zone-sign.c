@@ -153,7 +153,7 @@ static bool use_key(const zone_key_t *key, const knot_rrset_t *covered)
 	assert(key);
 	assert(covered);
 
-	if (!key->is_active && !key->is_ready) {
+	if (!key->is_active) {
 		return false;
 	}
 
@@ -282,7 +282,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		int endloop = 0; // 1 - continue; 2 - break
 
 		dynarray_foreach(keyptr, zone_key_t *, key, keys) {
-			if (!(*key)->is_active && !(*key)->is_ready) {
+			if (!(*key)->is_active) {
 				continue;
 			}
 			result = knot_check_signature(covered, &synth_rrsig, i,
@@ -710,7 +710,7 @@ static bool is_from_keyset(zone_keyset_t *keyset,
 	struct keyptr_dynarray keys = get_zone_keys(keyset, tag);
 
 	for (size_t i = 0; i < keys.size; i++) {
-		bool usekey = (is_cds_cdnskey ? (keys.arr(&keys)[i]->is_ready && !keys.arr(&keys)[i]->is_active) : keys.arr(&keys)[i]->is_public);
+		bool usekey = (is_cds_cdnskey ? (keys.arr(&keys)[i]->cds_priority > 1) : keys.arr(&keys)[i]->is_public);
 		if (usekey && match_fce(keys.arr(&keys)[i], &rdata)) {
 			found = true;
 			if (matching_key != NULL) {
@@ -1065,6 +1065,8 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL) {
 		ret = KNOT_ENOMEM;
 	}
+	zone_key_t *ksk_for_cds = NULL;
+	int kfc_prio = 0;
 	for (int i = 0; i < zone_keys->count && ret == KNOT_EOK; i++) {
 		zone_key_t *key = &zone_keys->keys[i];
 		if (!key->is_public) {
@@ -1072,19 +1074,48 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		}
 
 		ret = rrset_add_zone_key(add_dnskeys, key, dnskey_ttl);
-		if (key->is_ready && !key->is_active && ret == KNOT_EOK) {
-			ret = rrset_add_zone_key(add_cdnskeys, key, 0);
-			if (ret == KNOT_EOK) {
-				ret = rrset_add_zone_ds(add_cdss, key, 0);
-			}
+		if (key->is_ksk && ret == KNOT_EOK && key->cds_priority > kfc_prio) {
+			ksk_for_cds = key;
+			kfc_prio = key->cds_priority;
 		}
 	}
 
-	knot_rrset_t *add_rrsets[3] = { add_dnskeys, add_cdnskeys, add_cdss };
-	for (int i = 0; i < 3 && ret == KNOT_EOK; i++) {
-		if (!knot_rrset_empty(add_rrsets[i])) {
-			ret = changeset_add_addition(&ch, add_rrsets[i], 0);
+	if (ksk_for_cds != NULL) {
+		ret = rrset_add_zone_key(add_cdnskeys, ksk_for_cds, 0);
+		if (ret == KNOT_EOK) {
+			ret = rrset_add_zone_ds(add_cdss, ksk_for_cds, 0);
 		}
+	}
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
+
+	if (!knot_rrset_equal(&cdnskeys, add_cdnskeys, KNOT_RRSET_COMPARE_WHOLE)) {
+		if (!knot_rrset_empty(&cdnskeys)) {
+			ret = changeset_add_removal(&ch, &cdnskeys, 0);
+		}
+		if (ret == KNOT_EOK && !knot_rrset_empty(add_cdnskeys)) {
+			ret = changeset_add_addition(&ch, add_cdnskeys, 0);
+		}
+	}
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
+
+	if (!knot_rrset_equal(&cdss, add_cdss, KNOT_RRSET_COMPARE_WHOLE)) {
+		if (!knot_rrset_empty(&cdss)) {
+			ret = changeset_add_removal(&ch, &cdss, 0);
+		}
+		if (ret == KNOT_EOK && !knot_rrset_empty(add_cdss)) {
+			ret = changeset_add_addition(&ch, add_cdss, 0);
+		}
+	}
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
+
+	if (!knot_rrset_empty(add_dnskeys)) {
+		ret = changeset_add_addition(&ch, add_dnskeys, 0);
 	}
 
 	if (ret == KNOT_EOK) {

@@ -215,7 +215,7 @@ static int serialize_key_params(const key_params_t *params, const knot_dname_t *
 	assert(val != NULL);
 
 	*key = make_key(KASPDBKEY_PARAMS, dname, params->id);
-	val->len = sizeof(uint16_t) + 2 * sizeof(uint8_t) + 8 * sizeof(uint64_t) +
+	val->len = sizeof(uint16_t) + 2 * sizeof(uint8_t) + 11 * sizeof(uint64_t) +
 	            params->public_key.size;
 	val->data = malloc(val->len);
 	if (val->data == NULL) {
@@ -230,12 +230,15 @@ static int serialize_key_params(const key_params_t *params, const knot_dname_t *
 	wire_ctx_write_u64(&wire, 0); // length of Unused-future block at the end
 	wire_ctx_write_u16(&wire, params->keytag);
 	wire_ctx_write_u8(&wire, params->algorithm);
-	wire_ctx_write_u8(&wire, (uint8_t)(params->is_ksk ? 0x01 : 0x00));
+	wire_ctx_write_u8(&wire, (uint8_t)(params->is_ksk ? 0x03 : 0x02));
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.created);
+	wire_ctx_write_u64(&wire, (uint64_t)params->timing.pre_active);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.publish);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.ready);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.active);
+	wire_ctx_write_u64(&wire, (uint64_t)params->timing.retire_active);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.retire);
+	wire_ctx_write_u64(&wire, (uint64_t)params->timing.post_active);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.remove);
 	wire_ctx_write(&wire, params->public_key.data, params->public_key.size);
 
@@ -265,13 +268,30 @@ static int deserialize_key_params(key_params_t *params, const knot_db_val_t *key
 	uint64_t unused_future_length = wire_ctx_read_u64(&wire);
 	params->keytag = wire_ctx_read_u16(&wire);
 	params->algorithm = wire_ctx_read_u8(&wire);
-	params->is_ksk = (wire_ctx_read_u8(&wire) != (uint8_t)0x00);
-	params->timing.created = (knot_time_t)wire_ctx_read_u64(&wire);
-	params->timing.publish = (knot_time_t)wire_ctx_read_u64(&wire);
-	params->timing.ready = (knot_time_t)wire_ctx_read_u64(&wire);
-	params->timing.active = (knot_time_t)wire_ctx_read_u64(&wire);
-	params->timing.retire = (knot_time_t)wire_ctx_read_u64(&wire);
-	params->timing.remove = (knot_time_t)wire_ctx_read_u64(&wire);
+	uint8_t isksk_plus_flags = wire_ctx_read_u8(&wire);
+	params->is_ksk = ((isksk_plus_flags & (uint8_t)0x01) != (uint8_t)0x00);
+	if ((isksk_plus_flags & (uint8_t)0x02) != (uint8_t)0x00) {
+		params->timing.created = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.pre_active = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.publish = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.ready = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.active = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.retire_active = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.retire = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.post_active = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.remove = (knot_time_t)wire_ctx_read_u64(&wire);
+	} else {
+		// import of old kasp db format missing some timers
+		params->timing.created = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.pre_active = 0;
+		params->timing.publish = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.ready = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.active = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.retire_active = 0;
+		params->timing.retire = (knot_time_t)wire_ctx_read_u64(&wire);
+		params->timing.post_active = 0;
+		params->timing.remove = (knot_time_t)wire_ctx_read_u64(&wire);
+	}
 	if (wire.error != KNOT_EOK) {
 		return KNOT_ERROR;
 	}

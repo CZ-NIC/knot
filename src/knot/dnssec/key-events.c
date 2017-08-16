@@ -73,7 +73,7 @@ static int generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_time_t when_active)
 	key->timing.remove = 0;
 	key->timing.retire = 0;
 	key->timing.active  = (ksk ? 0 : when_active);
-	key->timing.ready   = when_active;
+	key->timing.ready   = (ksk ? when_active : 0);
 	key->timing.publish = ctx->now;
 
 	return KNOT_EOK;
@@ -104,7 +104,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_time_t when_
 		key->timing.remove = 0;
 		key->timing.retire = 0;
 		key->timing.active  = (ksk ? 0 : when_active);
-		key->timing.ready   = when_active;
+		key->timing.ready   = (ksk ? when_active : 0);
 		key->timing.publish = ctx->now;
 
 		ret = kdnssec_ctx_commit(ctx);
@@ -156,6 +156,7 @@ typedef enum {
 	GENERATE = 1,
 	SUBMIT,
 	REPLACE,
+	RETIRE,
 	REMOVE,
 } roll_action_type;
 
@@ -214,6 +215,14 @@ static knot_time_t ksk_sbm_max_time(knot_time_t ready_time, const kdnssec_ctx_t 
 	return knot_time_add(ready_time, ctx->policy->ksk_sbm_timeout);
 }
 
+static knot_time_t ksk_retire_time(knot_time_t retire_active_time, const kdnssec_ctx_t *ctx)
+{
+	if (retire_active_time <= 0) {
+		return 0;
+	}
+	return knot_time_add(retire_active_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
+}
+
 static knot_time_t ksk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t *ctx)
 {
 	if (retire_time <= 0) {
@@ -266,6 +275,10 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 					keytime = ksk_rollover_time(key->timing.created, ctx);
 					restype = GENERATE;
 				}
+				break;
+			case DNSSEC_KEY_STATE_RETIRE_ACTIVE:
+				keytime = ksk_retire_time(key->timing.retire_active, ctx);
+				restype = RETIRE;
 				break;
 			case DNSSEC_KEY_STATE_RETIRED:
 			case DNSSEC_KEY_STATE_REMOVED:
@@ -322,18 +335,16 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 {
 	uint16_t kskflag = dnssec_key_get_flags(newkey->key);
 
-	// A delay to avoid left-behind of behind-a-loadbalancer parent NSs
-	// for now we use (incorrectly) ksk_sbm_check_interval, to avoid too many conf options
-	knot_timediff_t delay = 0;
-	if (kskflag == DNSKEY_FLAGS_KSK && ctx->policy->ksk_sbm_check_interval != 0) {
-		delay = ctx->policy->ksk_sbm_check_interval;
-	}
-
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (dnssec_key_get_flags(key->key) == kskflag &&
+		uint16_t keyflags = dnssec_key_get_flags(key->key);
+		if (keyflags == kskflag &&
 		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_ACTIVE) {
-			key->timing.retire = knot_time_min(knot_time_add(ctx->now, delay), key->timing.retire);
+			if (keyflags == DNSKEY_FLAGS_KSK) {
+				key->timing.retire_active = knot_time_min(ctx->now, key->timing.retire_active);
+			} else {
+				key->timing.retire = knot_time_min(ctx->now, key->timing.retire);
+			}
 		}
 	}
 
@@ -341,10 +352,16 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 		assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_READY);
 	} else {
 		assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_PUBLISHED);
-		assert(delay == 0);
-		newkey->timing.ready = knot_time_min(knot_time_add(ctx->now, delay), newkey->timing.ready);
 	}
-	newkey->timing.active = knot_time_min(knot_time_add(ctx->now, delay), newkey->timing.active);
+	newkey->timing.active = knot_time_min(ctx->now, newkey->timing.active);
+
+	return KNOT_EOK;
+}
+
+static int exec_ksk_retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
+{
+	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_RETIRE_ACTIVE);
+	key->timing.retire = ctx->now;
 
 	return KNOT_EOK;
 }
@@ -412,6 +429,9 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		case REPLACE:
 			ret = exec_new_signatures(ctx, next.key);
 			break;
+		case RETIRE:
+			ret = exec_ksk_retire(ctx, next.key);
+			break;
 		case REMOVE:
 			ret = exec_remove_old_key(ctx, next.key);
 			break;
@@ -458,7 +478,8 @@ bool zone_has_key_sbm(const kdnssec_ctx_t *ctx)
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
-		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
+		    (get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY ||
+		     get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_ACTIVE)) {
 			return true;
 		}
 	}

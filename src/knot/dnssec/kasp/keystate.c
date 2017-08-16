@@ -28,48 +28,50 @@ key_state_t get_key_state(const knot_kasp_key_t *key, knot_time_t moment)
 		return DNSSEC_KEY_STATE_INVALID;
 	}
 
-	/*
-	 * The meaning of unset timing parameter is different for key
-	 * introduction and withdrawal. This is expected by the server.
-	 * The keys can be used without timing metadata.
-	 *
-	 * However, it creates a lot of complications. It would be easier
-	 * to find a different approach (persistent key states, different
-	 * meaning of unset parameter when policy is used, etc.).
-	 */
+
 
 	const knot_kasp_key_timing_t *t = &key->timing;
 
 	bool removed = (knot_time_cmp(t->remove, moment) <= 0);
+	bool post_active = (knot_time_cmp(t->post_active, moment) <= 0);
 	bool retired = (knot_time_cmp(t->retire, moment) <= 0);
+	bool retire_active = (knot_time_cmp(t->retire_active, moment) <= 0);
+	bool active = (knot_time_cmp(t->active, moment) <= 0);
+	bool ready = (knot_time_cmp(t->ready, moment) <= 0);
+	bool published = (knot_time_cmp(t->publish, moment) <= 0);
+	bool pre_active = (knot_time_cmp(t->pre_active, moment) <= 0);
+	bool created = (knot_time_cmp(t->created, moment) <= 0);
 
-	bool published = !removed && (knot_time_cmp(t->publish, moment) <= 0);
-	bool ready = !retired && (knot_time_cmp(t->ready, moment) <= 0);
-	bool activated = !retired && (knot_time_cmp(t->active, moment) <= 0);
-
-	/*
-	 * Evaluate special transition states as invalid. E.g., when signatures
-	 * are pre-published during algorithm rotation.
-	 */
-
-	if (retired && removed) {
+	if (removed) {
 		return DNSSEC_KEY_STATE_REMOVED;
 	}
-
-	if (retired && !removed) {
+	if (post_active) {
+		if (retired) {
+			return DNSSEC_KEY_STATE_INVALID;
+		} else {
+			return DNSSEC_KEY_STATE_POST_ACTIVE;
+		}
+	}
+	if (retired) {
 		return DNSSEC_KEY_STATE_RETIRED;
 	}
-
-	if (published && activated) {
+	if (retire_active) {
+		return DNSSEC_KEY_STATE_RETIRE_ACTIVE;
+	}
+	if (active) {
 		return DNSSEC_KEY_STATE_ACTIVE;
 	}
-
-	if (published && !ready) {
+	if (ready) {
+		return DNSSEC_KEY_STATE_READY;
+	}
+	if (published) {
 		return DNSSEC_KEY_STATE_PUBLISHED;
 	}
-
-	if (ready && !activated) {
-		return DNSSEC_KEY_STATE_READY;
+	if (pre_active) {
+		return DNSSEC_KEY_STATE_PRE_ACTIVE;
+	}
+	if (created) {
+		// don't care
 	}
 
 	return DNSSEC_KEY_STATE_INVALID;

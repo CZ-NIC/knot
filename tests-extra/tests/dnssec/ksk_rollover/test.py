@@ -79,9 +79,11 @@ ZSK2 = child.key_gen(ZONE, ksk="false", created="-2", publish="-2", ready="+14y"
 t.start()
 child.zone_wait(child_zone)
 
-check_zone5(child, 4, 1, 0, "only first KSK")
+check_zone5(child, 4, 1, 1, "only first KSK")
 
-while child.dig(ZONE, "CDS").count("CDS") < 1:
+CDS1 = str(child.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
+t.sleep(3)
+while CDS1 == str(child.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
   t.sleep(1)
 
 check_zone5(child, 4, 2, 1, "new KSK ready")
@@ -92,8 +94,8 @@ up = parent.update(parent_zone)
 up.add(ZONE, 3600, "DS", cds_rdata)
 up.send("NOERROR")
 
-t.sleep(23)
+t.sleep(40)
 
-check_zone5(child, 2, 1, 0, "old KSK retired")
+check_zone5(child, 2, 1, 1, "old KSK retired")
 
 t.end()

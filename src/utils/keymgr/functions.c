@@ -110,6 +110,27 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				timing->remove = stamp;
 				break;
 			}
+		} else if (strncasecmp(argv[i], "pre_active=", 11) == 0 ||
+			   strncasecmp(argv[i], "retire_active=", 14) == 0 ||
+			   strncasecmp(argv[i], "post_active=", 12) == 0) {
+			knot_time_t stamp;
+			int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
+			                          strchr(argv[i], '=') + 1, &stamp);
+			if (ret < 0) {
+				printf("Invalid timestamp: %s\n", argv[i]);
+				return false;
+			}
+			switch (argv[i][1]) {
+			case 'r':
+				timing->pre_active = stamp;
+				break;
+			case 'e':
+				timing->retire_active = stamp;
+				break;
+			case 'o':
+				timing->post_active = stamp;
+				break;
+			}
 		} else {
 			printf("Invalid parameter: %s\n", argv[i]);
 			return false;
@@ -121,7 +142,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 // modifies ctx->policy options, so don't do anything afterwards !
 int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]) {
 	knot_time_t now = knot_time(), infty = 0;
-	knot_kasp_key_timing_t gen_timing = { now, now, now, now, infty, infty };
+	knot_kasp_key_timing_t gen_timing = { now, infty, now, infty, now, infty, infty, infty, infty };
 	bool isksk = false;
 	uint16_t keysize = 0;
 	if (!genkeyargs(argc, argv, false, &isksk, &ctx->policy->algorithm,
@@ -582,12 +603,15 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, knot_time_print_t format)
 		printf("%s ksk=%s tag=%05d algorithm=%d ", key->id,
 		       ((dnssec_key_get_flags(key->key) == dnskey_flags(true)) ? "yes" : "no "),
 		       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key));
-		print_timer("created", key->timing.created, format, ' ');
-		print_timer("publish", key->timing.publish, format, ' ');
-		print_timer("ready",   key->timing.ready,   format, ' ');
-		print_timer("active",  key->timing.active,  format, ' ');
-		print_timer("retire",  key->timing.retire,  format, ' ');
-		print_timer("remove",  key->timing.remove,  format, '\n');
+		print_timer("created",       key->timing.created,        format, ' ');
+		print_timer("pre-active",    key->timing.pre_active,     format, ' ');
+		print_timer("publish",       key->timing.publish,        format, ' ');
+		print_timer("ready",         key->timing.ready,          format, ' ');
+		print_timer("active",        key->timing.active,         format, ' ');
+		print_timer("retire-active", key->timing.retire_active,  format, ' ');
+		print_timer("retire",        key->timing.retire,         format, ' ');
+		print_timer("post-active",   key->timing.post_active,    format, ' ');
+		print_timer("remove",        key->timing.remove,         format, '\n');
 	}
 	return KNOT_EOK;
 }
