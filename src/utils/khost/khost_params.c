@@ -98,7 +98,7 @@ void khost_clean(kdig_params_t *params)
 static int parse_server(const char *value, list_t *servers, const char *def_port)
 {
 	if (params_parse_server(value, servers, def_port) != KNOT_EOK) {
-		ERR("invalid server '%s'\n", value);
+		ERR("invalid server %s\n", value);
 		return KNOT_EINVAL;
 	}
 
@@ -133,7 +133,7 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 
 			// Check for correct address.
 			if (reverse == NULL) {
-				ERR("invalid IPv4/IPv6 address '%s'\n", value);
+				ERR("invalid IPv4/IPv6 address %s\n", value);
 				return KNOT_EINVAL;
 			}
 
