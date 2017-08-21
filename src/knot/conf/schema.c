@@ -92,6 +92,13 @@ static const knot_lookup_t journal_content[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t zonefile_load[] = {
+	{ ZONEFILE_LOAD_NONE,  "none" },
+	{ ZONEFILE_LOAD_DIFF,  "difference" },
+	{ ZONEFILE_LOAD_WHOLE, "whole" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t log_severities[] = {
 	{ LOG_UPTO(LOG_CRIT),    "critical" },
 	{ LOG_UPTO(LOG_ERR),     "error" },
@@ -268,7 +275,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_DISABLE_ANY,         YP_TBOOL, YP_VNONE }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES } }, \
-	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
+	{ C_ZONEFILE_LOAD,       YP_TOPT,  YP_VOPT = { zonefile_load, ZONEFILE_LOAD_WHOLE } }, \
 	{ C_MAX_ZONE_SIZE,       YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \
 	{ C_MAX_JOURNAL_USAGE,   YP_TINT,  YP_VINT = { KILO(40), SSIZE_MAX, MEGA(100), YP_SSIZE } }, \
 	{ C_MAX_JOURNAL_DEPTH,   YP_TINT,  YP_VINT = { 2, SSIZE_MAX, SSIZE_MAX } }, \
@@ -284,6 +291,7 @@ static const yp_item_t desc_policy[] = {
 	/* Obsolete, old journal items. */ \
 	{ C_JOURNAL,             YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_MAX_JOURNAL_SIZE,    YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \
+	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
 
 static const yp_item_t desc_template[] = {
 	{ C_ID, YP_TSTR, YP_VNONE, CONF_IO_FREF },

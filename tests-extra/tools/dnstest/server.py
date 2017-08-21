@@ -1202,6 +1202,11 @@ class Knot(Server):
 
             s.item_str("journal-content", z.journal_content)
 
+            if z.journal_content == "all" and z.masters:
+                s.item_str("zonefile-load", "none")
+            elif z.ixfr:
+                s.item_str("zonefile-load", "difference")
+
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "on")
                 s.item_str("dnssec-policy", z.name)

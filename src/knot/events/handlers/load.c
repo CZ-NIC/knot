@@ -60,31 +60,36 @@ int event_load(conf_t *conf, zone_t *zone)
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, zone->name);
 	unsigned load_from = conf_opt(&val);
 
-	// if configured, load journal contents
-	if (load_from == JOURNAL_CONTENT_ALL && !old_contents_exist) {
-		int ret = zone_load_from_journal(conf, zone, &journal_conts);
+	unsigned zf_from = conf_zonefile_load(conf, zone->name);
+
+	int ret = KNOT_EOK;
+
+	// If configured, load journal contents.
+	if (load_from == JOURNAL_CONTENT_ALL && !old_contents_exist && zf_from != ZONEFILE_LOAD_WHOLE) {
+		ret = zone_load_from_journal(conf, zone, &journal_conts);
 		if (ret != KNOT_EOK) {
 			journal_conts = NULL;
 		}
 		old_serial = zone_contents_serial(journal_conts);
 	}
 
-	// always attempt to load zonefile
-	time_t mtime;
-	char *filename = conf_zonefile(conf, zone->name);
-	int ret = zonefile_exists(filename, &mtime);
-	bool zonefile_unchanged = (zone->zonefile.exists && zone->zonefile.mtime == mtime);
-	free(filename);
-	if (ret == KNOT_EOK) {
-		ret = zone_load_contents(conf, zone->name, &zf_conts);
+	// If configured, attempt to load zonefile.
+	if (zf_from != ZONEFILE_LOAD_NONE) {
+		time_t mtime;
+		char *filename = conf_zonefile(conf, zone->name);
+		ret = zonefile_exists(filename, &mtime);
+		bool zonefile_unchanged = (zone->zonefile.exists && zone->zonefile.mtime == mtime);
+		free(filename);
+		if (ret == KNOT_EOK) {
+			ret = zone_load_contents(conf, zone->name, &zf_conts);
+		}
 		if (ret != KNOT_EOK) {
 			zf_conts = NULL;
-			log_zone_warning(zone->name, "failed to parse zonefile (%s)",
-					 knot_strerror(ret));
+			log_zone_error(zone->name, "failed to parse zonefile (%s)",
+			               knot_strerror(ret));
+			goto cleanup;
 		}
-	}
-	// if configured and appliable to zonefile, load journal changes
-	if (ret == KNOT_EOK) {
+		// If configured and appliable to zonefile, load journal changes.
 		zone->zonefile.serial = zone_contents_serial(zf_conts);
 		zone->zonefile.exists = (zf_conts != NULL);
 		zone->zonefile.mtime = mtime;
@@ -98,18 +103,18 @@ int event_load(conf_t *conf, zone_t *zone)
 			if (ret != KNOT_EOK) {
 				zone_contents_deep_free(&zf_conts);
 				log_zone_warning(zone->name, "failed to load journal (%s)",
-						 knot_strerror(ret));
+				                 knot_strerror(ret));
 			}
 		}
 	}
 
-	// if configured contents=all, but not present, store zonefile
+	// If configured contents=all, but not present, store zonefile.
 	if (load_from == JOURNAL_CONTENT_ALL &&
 	    journal_conts == NULL && zf_conts != NULL) {
 		ret = zone_in_journal_store(conf, zone, zf_conts);
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to write zone-in-journal (%s)",
-					 knot_strerror(ret));
+			                 knot_strerror(ret));
 		}
 	}
 
@@ -117,60 +122,67 @@ int event_load(conf_t *conf, zone_t *zone)
 	bool dnssec_enable = conf_bool(&val);
 	zone_update_t up = { 0 };
 
-	// create zone_update structure according to current state
+	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
 		if (zf_conts == NULL) {
-			if (load_from == JOURNAL_CONTENT_ALL) {
-				// reload does nothing if we use purely journal
-				ret = KNOT_EOK;
-				goto cleanup;
-			} else {
-				ret = KNOT_ENOENT;
-			}
-		} else if (load_from == JOURNAL_CONTENT_NONE) {
+			ret = KNOT_EOK;
+			goto cleanup;
+		} else if (zf_from == ZONEFILE_LOAD_WHOLE) {
 			ret = zone_update_from_contents(&up, zone, zf_conts, UPDATE_FULL);
 		} else {
 			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL);
-			if (ret == KNOT_ERANGE || ret == KNOT_ESEMCHECK) {
-				// when reload invoked, we force new zonefile if IXFR from diff fails
-				if (load_from != JOURNAL_CONTENT_ALL) {
-					log_zone_warning(zone->name, (ret == KNOT_ESEMCHECK ?
-						"failed to create journal entry, zone file changed without "
-						"SOA serial update" : "IXFR history will be lost, "
-						"zone file changed, but SOA serial decreased"));
-					ret = zone_update_from_contents(&up, zone, zf_conts, UPDATE_FULL);
-				}
-			}
 		}
 	} else {
-		if (journal_conts != NULL) {
+		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
 			if (zf_conts == NULL) {
 				ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
 			} else {
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts, UPDATE_INCREMENTAL);
-				zone_contents_deep_free(&journal_conts);
+				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
+					log_zone_warning(zone->name, "zonefile changed with SOA serial %s, "
+					                 "ignoring zonefile and loading from journal",
+					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
+					zone_contents_deep_free(&zf_conts);
+					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
+				} else {
+					zone_contents_deep_free(&journal_conts);
+				}
 			}
 		} else {
 			if (zf_conts == NULL) {
 				ret = KNOT_ENOENT;
 			} else {
-				ret = zone_update_from_contents(&up, zone, zf_conts, (load_from == JOURNAL_CONTENT_NONE ?
-								 UPDATE_FULL : UPDATE_INCREMENTAL));
+				ret = zone_update_from_contents(&up, zone, zf_conts,
+				                                (load_from == JOURNAL_CONTENT_NONE ?
+				                                 UPDATE_FULL : UPDATE_INCREMENTAL));
 			}
 		}
 	}
 	if (ret != KNOT_EOK) {
-		// TODO do we need some logging ?
+		switch (ret) {
+		case KNOT_ENOENT:
+			if (zone_load_can_bootstrap(conf, zone->name)) {
+				log_zone_info(zone->name, "zone will be bootstrapped");
+			} else {
+				log_zone_info(zone->name, "zone not found");
+			}
+			break;
+		case KNOT_ESEMCHECK:
+			log_zone_warning(zone->name, "zone file changed without SOA serial update");
+			break;
+		case KNOT_ERANGE:
+			log_zone_warning(zone->name, "zone file changed, but SOA serial decreased");
+			break;
+		}
 		goto cleanup;
 	}
 
-	// the contents are already part of zone_update
+	// The contents are already part of zone_update.
 	zf_conts = NULL;
 	journal_conts = NULL;
 
-	// Sign zone using DNSSEC (if configured).
-	zone_sign_reschedule_t dnssec_refresh = { 0 };
-	dnssec_refresh.allow_rollover = true;
+	// Sign zone using DNSSEC if configured.
+	zone_sign_reschedule_t dnssec_refresh = { .allow_rollover = true };
 	if (dnssec_enable) {
 		ret = post_load_dnssec_actions(conf, zone);
 		if (ret == KNOT_EOK) {
@@ -182,7 +194,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	// commit zone_update back to zone. This includes updating journal, rcu, ...
+	// Commit zone_update back to zone (including journal update, rcu,...).
 	ret = zone_update_commit(conf, &up);
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
@@ -190,17 +202,17 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 	uint32_t new_serial = zone_contents_serial(zone->contents);
 
-        if (old_contents_exist) {
-                log_zone_info(zone->name, "loaded, serial %u -> %u",
-                              old_serial, new_serial);
-        } else {
-                log_zone_info(zone->name, "loaded, serial %u", new_serial);
-        }
+	if (old_contents_exist) {
+		log_zone_info(zone->name, "loaded, serial %u -> %u",
+		              old_serial, new_serial);
+	} else {
+		log_zone_info(zone->name, "loaded, serial %u", new_serial);
+	}
 
-        if (zone->control_update != NULL) {
-                log_zone_warning(zone->name, "control transaction aborted");
-                zone_control_clear(zone);
-        }
+	if (zone->control_update != NULL) {
+		log_zone_warning(zone->name, "control transaction aborted");
+		zone_control_clear(zone);
+	}
 
 	// Schedule depedent events.
 	const knot_rdataset_t *soa = zone_soa(zone);

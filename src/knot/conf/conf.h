@@ -593,6 +593,28 @@ static inline char* conf_zonefile(
 }
 
 /*!
+ * Gets the way zonefile is loaded.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ * \param[in] zone  Zone name.
+ *
+ * \return ZONEFILE_LOAD_*
+ */
+unsigned conf_zonefile_load_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const knot_dname_t *zone
+);
+
+static inline unsigned conf_zonefile_load(
+	conf_t *conf,
+	const knot_dname_t *zone)
+{
+	return conf_zonefile_load_txn(conf, &conf->read_txn, zone);
+}
+
+/*!
  * Gets the absolute journal file path.
  *
  * \note The result must be explicitly deallocated.

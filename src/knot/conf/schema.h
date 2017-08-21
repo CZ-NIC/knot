@@ -125,6 +125,7 @@
 #define C_VERSION		"\x07""version"
 #define C_VIA			"\x03""via"
 #define C_ZONE			"\x04""zone"
+#define C_ZONEFILE_LOAD		"\x0D""zonefile-load"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
@@ -143,6 +144,12 @@ enum {
 	JOURNAL_CONTENT_NONE    = 0,
 	JOURNAL_CONTENT_CHANGES = 1,
 	JOURNAL_CONTENT_ALL     = 2,
+};
+
+enum {
+	ZONEFILE_LOAD_NONE  = 0,
+	ZONEFILE_LOAD_DIFF  = 1,
+	ZONEFILE_LOAD_WHOLE = 2,
 };
 
 extern const knot_lookup_t acl_actions[];

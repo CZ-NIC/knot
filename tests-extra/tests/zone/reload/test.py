@@ -19,30 +19,29 @@ t.start()
 # Load zones
 serial = master.zone_wait(zone)
 
-def reload_zone(serial, version):
+def reload_zone(serial, version, exp_serial, exp_version):
     master.update_zonefile(zone, version)
     master.reload()
     new_serial = master.zone_wait(zone)
-    if new_serial != serial:
+    if new_serial != exp_serial:
         set_err("SOA MISMATCH")
-        detail_log("!Zone '%s' SOA serial %s != %s" % (zone[0].name, new_serial, serial))
+        detail_log("!Zone '%s' SOA serial %s != %s" % (zone[0].name, new_serial, exp_serial))
         return
-    resp = master.dig("new-record%d.%s" % (version, zone[0].name), "A")
+    resp = master.dig("new-record%d.%s" % (exp_version, zone[0].name), "A")
     resp.check(rcode="NOERROR")
 
 # Zone changes, serial increases (create changeset)
 version = 1
 serial = serial + 1
-reload_zone(serial, version)
+reload_zone(serial, version, serial, version)
 
 # Zone changes, serial doesn't change (no new changeset)
 version += 1
-reload_zone(serial, version)
+reload_zone(serial, version, serial, version - 1)
 
 # Zone changes, serial jumps out-of-range (journal is not applicable)
 version += 1
-serial = serial - 2
-reload_zone(serial, version)
+reload_zone(serial - 2, version, serial, version - 2)
 
 # Stop master.
 master.stop()
