@@ -586,7 +586,7 @@ bool process_query_acl_check(conf_t *conf, const knot_dname_t *zone_name,
 		char *key_name = knot_dname_to_str_alloc(tsig.name);
 
 		log_zone_debug(zone_name,
-		               "ACL, denied, action '%s', remote '%s', key %s%s%s",
+		               "ACL, denied, action %s, remote %s, key %s%s%s",
 		               (act != NULL) ? act->name : "query",
 		               addr_str,
 		               (key_name != NULL) ? "'" : "",

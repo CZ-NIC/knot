@@ -289,7 +289,7 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 		algorithm_usage_t *u = &usage[algorithm];
 
 		if (nsec3_enabled && !is_nsec3_allowed(algorithm)) {
-			log_zone_warning(zone_name, "DNSSEC, key '%d' "
+			log_zone_warning(zone_name, "DNSSEC, key %d "
 			                     "cannot be used with NSEC3",
 			                     dnssec_key_get_keytag(key->key));
 			key->is_public = false;
@@ -311,7 +311,7 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 		if ((u->ksk_count == 0) != (u->zsk_count == 0)) {
 			u->is_stss = true;
 			log_zone_info(zone_name, "DNSSEC, Single-Type Signing "
-			                  "scheme enabled, algorithm '%d'", i);
+			                         "scheme enabled, algorithm %d", i);
 		}
 	}
 

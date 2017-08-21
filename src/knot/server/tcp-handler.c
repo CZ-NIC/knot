@@ -82,7 +82,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	if (getpeername(fd, (struct sockaddr*)&ss, &len) == 0) {
 		char addr_str[SOCKADDR_STRLEN] = {0};
 		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
-		log_notice("TCP, terminated inactive client, address '%s'", addr_str);
+		log_notice("TCP, terminated inactive client, address %s", addr_str);
 	}
 
 	close(fd);
@@ -135,7 +135,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		if (ret == KNOT_EAGAIN) {
 			char addr_str[SOCKADDR_STRLEN] = {0};
 			sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
-			log_warning("TCP, connection timed out, address '%s'",
+			log_warning("TCP, connection timed out, address %s",
 			            addr_str);
 		}
 		return KNOT_ECONNREFUSED;

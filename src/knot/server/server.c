@@ -203,13 +203,13 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 			udp_bind_flags |= NET_BIND_NONLOCAL;
 			sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, udp_bind_flags);
 			if (sock >= 0 && !warn_bind) {
-				log_warning("address '%s UDP' bound, but required nonlocal bind", addr_str);
+				log_warning("address %s UDP bound, but required nonlocal bind", addr_str);
 				warn_bind = true;
 			}
 		}
 
 		if (sock < 0) {
-			log_error("cannot bind address '%s' (%s)", addr_str,
+			log_error("cannot bind address %s (%s)", addr_str,
 			          knot_strerror(sock));
 			server_deinit_iface(new_if);
 			return sock;
@@ -236,12 +236,12 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 		tcp_bind_flags |= NET_BIND_NONLOCAL;
 		sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
 		if (sock >= 0) {
-			log_warning("address '%s TCP' bound, but required nonlocal bind", addr_str);
+			log_warning("address %s TCP bound, but required nonlocal bind", addr_str);
 		}
 	}
 
 	if (sock < 0) {
-		log_error("cannot bind address '%s' (%s)", addr_str,
+		log_error("cannot bind address %s (%s)", addr_str,
 		          knot_strerror(sock));
 		server_deinit_iface(new_if);
 		return sock;
@@ -256,7 +256,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	/* Listen for incoming connections. */
 	ret = listen(sock, TCP_BACKLOG_SIZE);
 	if (ret < 0) {
-		log_error("failed to listen on TCP interface '%s'", addr_str);
+		log_error("failed to listen on TCP interface %s", addr_str);
 		server_deinit_iface(new_if);
 		return KNOT_ERROR;
 	}
@@ -264,7 +264,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	/* TCP Fast Open. */
 	ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
 	if (ret < 0) {
-		log_warning("failed to enable TCP Fast Open on '%s' (%s)",
+		log_warning("failed to enable TCP Fast Open on %s (%s)",
 		            addr_str, knot_strerror(ret));
 	}
 
@@ -280,7 +280,7 @@ static void remove_ifacelist(struct ref *p)
 	iface_t *n = NULL, *m = NULL;
 	WALK_LIST_DELSAFE(n, m, ifaces->u) {
 		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&n->addr);
-		log_info("removing interface '%s'", addr_str);
+		log_info("removing interface %s", addr_str);
 		server_remove_iface(n);
 	}
 	WALK_LIST_DELSAFE(n, m, ifaces->l) {
@@ -340,7 +340,7 @@ static int reconfigure_sockets(conf_t *conf, server_t *s)
 		} else {
 			char addr_str[SOCKADDR_STRLEN] = { 0 };
 			sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
-			log_info("binding to interface '%s'", addr_str);
+			log_info("binding to interface %s", addr_str);
 
 			/* Create new interface. */
 			m = malloc(sizeof(iface_t));

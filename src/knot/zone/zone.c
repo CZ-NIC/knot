@@ -534,7 +534,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		}
 
 		if (!success) {
-			log_zone_warning(zone->name, "%s, remote '%s' not usable",
+			log_zone_warning(zone->name, "%s, remote %s not usable",
 			                 err_str, conf_str(&masters));
 		}
 

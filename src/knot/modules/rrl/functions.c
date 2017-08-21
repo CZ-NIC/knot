@@ -289,7 +289,7 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 		what = "enters";
 	}
 
-	knotd_mod_log(mod, LOG_NOTICE, "address '%s' class '%s' %s limiting",
+	knotd_mod_log(mod, LOG_NOTICE, "address %s, class %s, %s limiting",
 	              addr_str, rrl_clsstr(cls), what);
 }
 

@@ -152,17 +152,17 @@ int proc_update_privileges(int uid, int gid)
 	if ((uid_t)uid != getuid() || (gid_t)gid != getgid()) {
 		if (setgroups(0, NULL) < 0) {
 			log_warning("failed to drop supplementary groups for "
-			            "UID '%d' (%s)", getuid(), strerror(errno));
+				    "UID %d (%s)", getuid(), strerror(errno));
 		}
 # ifdef HAVE_INITGROUPS
 		struct passwd *pw;
 		if ((pw = getpwuid(uid)) == NULL) {
-			log_warning("failed to get passwd entry for UID '%d' (%s)",
+			log_warning("failed to get passwd entry for UID %d (%s)",
 			            uid, strerror(errno));
 		} else {
 			if (initgroups(pw->pw_name, gid) < 0) {
 				log_warning("failed to set supplementary groups "
-				            "for UID '%d' (%s)", uid, strerror(errno));
+					    "for UID %d (%s)", uid, strerror(errno));
 			}
 		}
 # endif /* HAVE_INITGROUPS */
@@ -171,16 +171,16 @@ int proc_update_privileges(int uid, int gid)
 
 	/* Watch uid/gid. */
 	if ((gid_t)gid != getgid()) {
-		log_info("changing GID to '%d'", gid);
+		log_info("changing GID to %d", gid);
 		if (setregid(gid, gid) < 0) {
-			log_error("failed to change GID to '%d'", gid);
+			log_error("failed to change GID to %d", gid);
 			return KNOT_ERROR;
 		}
 	}
 	if ((uid_t)uid != getuid()) {
-		log_info("changing UID to '%d'", uid);
+		log_info("changing UID to %d", uid);
 		if (setreuid(uid, uid) < 0) {
-			log_error("failed to change UID to '%d'", uid);
+			log_error("failed to change UID to %d", uid);
 			return KNOT_ERROR;
 		}
 	}
