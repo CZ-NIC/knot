@@ -336,50 +336,13 @@ int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],
 		}
 	}
 
-	return wire.error;
-}
-
-int changeset_deserialize_bootstrap(changeset_t *ch, uint8_t *src_chunks[],
-                                    const size_t *chunks_sizes, size_t chunks_count)
-{
-	if (ch == NULL || src_chunks == NULL || chunks_sizes == NULL ||
-	    chunks_count == 0) {
-		return KNOT_EINVAL;
-	}
-
-	size_t cur_chunk = 0;
-	wire_ctx_t wire = wire_ctx_init_const(src_chunks[0], chunks_sizes[0]);
-
-	// Deserialize SOA 'to'.
-	knot_rrset_t rrset;
-	int ret = deserialize_rrset_chunks(&wire, &rrset, src_chunks, chunks_sizes,
-	                                   chunks_count, &cur_chunk);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	assert(rrset.type == KNOT_RRTYPE_SOA);
-
-	ch->soa_from = NULL;
-	ch->soa_to = knot_rrset_copy(&rrset, NULL);
-	knot_rrset_clear(&rrset, NULL);
-	if (ch->soa_to == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	// Read remaining RRSets.
-	while (cur_chunk < chunks_count - 1 || wire_ctx_available(&wire) > 0) {
-		// Parse next RRSet.
-		ret = deserialize_rrset_chunks(&wire, &rrset, src_chunks, chunks_sizes,
-		                               chunks_count, &cur_chunk);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-		assert(rrset.type != KNOT_RRTYPE_SOA);
-		ret = changeset_add_addition(ch, &rrset, 0);
-		knot_rrset_clear(&rrset, NULL);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+	// If there was only one SOA record, we are in the bootstrap changeset.
+	if (in_remove_section) {
+		ch->soa_to = ch->soa_from;
+		ch->soa_from = NULL;
+		zone_contents_t *tmp = ch->add;
+		ch->add = ch->remove;
+		ch->remove = tmp;
 	}
 
 	return wire.error;

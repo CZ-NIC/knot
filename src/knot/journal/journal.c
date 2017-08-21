@@ -768,7 +768,7 @@ static int normal_iterkeycb(iteration_ctx_t *ctx)
 
 /*! \brief Deserialize changeset from chunks (in vals) */
 static int vals_to_changeset(knot_db_val_t *vals, int nvals,
-                             const knot_dname_t *zone_name, changeset_t **ch, bool is_bootstrap)
+                             const knot_dname_t *zone_name, changeset_t **ch)
 {
 	local_array(uint8_t *, valps, nvals)
 	local_array(size_t, vallens, nvals)
@@ -790,8 +790,7 @@ static int vals_to_changeset(knot_db_val_t *vals, int nvals,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = is_bootstrap ? changeset_deserialize_bootstrap(t_ch, valps, vallens, nvals)
-	                       : changeset_deserialize(t_ch, valps, vallens, nvals);
+	int ret = changeset_deserialize(t_ch, valps, vallens, nvals);
 
 	local_array_free(valps)
 	local_array_free(vallens)
@@ -810,7 +809,7 @@ static int load_one_itercb(iteration_ctx_t *ctx)
 		return KNOT_EINVAL;
 	}
 
-	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch, false);
+	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch);
 	if (ret == KNOT_EOK) *targ = ch;
 	return ret;
 }
@@ -820,7 +819,7 @@ static int load_list_itercb(iteration_ctx_t *ctx)
 	changeset_t *ch = NULL;
 	list_t *chlist = *(list_t **) ctx->iter_context;
 
-	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch, false);
+	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch);
 
 	if (ret == KNOT_EOK) {
 		add_tail(chlist, &ch->n);
@@ -888,23 +887,11 @@ int load_bootstrap_iterkeycb(iteration_ctx_t *ctx)
 	return KNOT_EOK;
 }
 
-static int load_bootstrap_itercb(iteration_ctx_t *ctx)
-{
-	changeset_t *ch = NULL, **targ = ctx->iter_context;
-	if (*targ != NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch, true);
-	if (ret == KNOT_EOK) *targ = ch;
-	return ret;
-}
-
 static int load_bootstrap_changeset(journal_t *j, txn_t *_txn, changeset_t **ch)
 {
 	reuse_txn(txn, j, _txn, false);
 	changeset_t *rch = NULL;
-	iterate(j, txn, load_bootstrap_itercb, JOURNAL_ITERATION_CHANGESETS, &rch,
+	iterate(j, txn, load_one_itercb, JOURNAL_ITERATION_CHANGESETS, &rch,
 	        0, 0, load_bootstrap_iterkeycb);
 	unreuse_txn(txn, _txn);
 	if (txn->ret == KNOT_EOK) {
@@ -1176,7 +1163,7 @@ static int merge_itercb(iteration_ctx_t *ctx)
 {
 	changeset_t *ch = NULL, *mch = *(changeset_t **)ctx->iter_context;
 
-	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch, false);
+	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch);
 	if (ret == KNOT_EOK) {
 		ret = changeset_merge(mch, ch);
 		changeset_free(ch);
