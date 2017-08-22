@@ -404,6 +404,7 @@ static void ixfr_cleanup(struct refresh_data *data)
 static int ixfr_finalize(struct refresh_data *data)
 {
 	uint32_t master_serial;
+	(void)zone_get_master_serial(data->zone, &master_serial);
 	uint32_t local_serial = zone_contents_serial(data->zone->contents);
 	uint32_t old_serial = local_serial;
 	changeset_t *chs = NULL;
