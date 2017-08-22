@@ -11,9 +11,6 @@ t = Test()
 master = t.server("knot")
 slave = t.server("knot")
 
-# this zone has refresh = 7s, retry = 7s and expire = 16s
-EXPIRE_SLEEP = 16
-RESYNC_SLEEP = 7
 zone = t.zone("example.", storage=".")
 t.link(zone, master, slave)
 
@@ -35,7 +32,9 @@ resp.check(rcode="NOERROR", rdata="1.2.3.4")
 master.update_zonefile(zone, version=1)
 master.stop()
 master.start()
-t.sleep(RESYNC_SLEEP - TEST_START_EXPECTED)
+t.sleep(2)
+slave.ctl("zone-refresh")
+t.sleep(3)
 
 resp = master.dig("added.example.", "A")
 resp.check(rcode="NXDOMAIN")
@@ -45,7 +44,9 @@ resp.check(rcode="NOERROR", rdata="1.2.3.4")
 
 # check that slave bootstrapped older zone
 
-t.sleep(EXPIRE_SLEEP - RESYNC_SLEEP)
+while not slave.log_search("zone expired"):
+  t.sleep(2)
+t.sleep(3)
 
 resp = slave.dig("added.example.", "A")
 resp.check(rcode="NXDOMAIN")
