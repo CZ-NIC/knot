@@ -36,6 +36,7 @@ typedef enum {
 	KASPDBKEY_NSEC3SALT = 0x3,
 	KASPDBKEY_NSEC3TIME = 0x4,
 	KASPDBKEY_MASTERSERIAL = 0x5,
+	KASPDBKEY_LASTSIGNEDSERIAL = 0x6,
 } keyclass_t;
 
 static const knot_db_api_t *db_api = NULL;
@@ -566,15 +567,15 @@ int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
 	return ret;
 }
 
-int kasp_db_store_master_serial(kasp_db_t *db, const knot_dname_t *zone_name,
-				uint32_t master_serial)
+int kasp_db_store_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+			 kaspdb_serial_t serial_type, uint32_t serial)
 {
 	if (db == NULL || db->keys_db == NULL || zone_name == NULL) {
 		return KNOT_EINVAL;
 	}
-	uint32_t ms_be = htobe32(master_serial);
+	uint32_t ms_be = htobe32(serial);
 	with_txn(KEYS_RW, NULL);
-	knot_db_val_t key = make_key(KASPDBKEY_MASTERSERIAL, zone_name, NULL);
+	knot_db_val_t key = make_key((keyclass_t)(int)serial_type, zone_name, NULL);
 	knot_db_val_t val = { .len = sizeof(uint32_t), .data = &ms_be };
 	ret = db_api->insert(txn, &key, &val, 0);
 	free_key(&key);
@@ -582,21 +583,21 @@ int kasp_db_store_master_serial(kasp_db_t *db, const knot_dname_t *zone_name,
 	return ret;
 }
 
-int kasp_db_load_master_serial(kasp_db_t *db, const knot_dname_t *zone_name,
-			       uint32_t *master_serial)
+int kasp_db_load_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+			kaspdb_serial_t serial_type, uint32_t *serial)
 {
 	if (db == NULL || db->keys_db == NULL ||
-	    zone_name == NULL || master_serial == NULL) {
+	    zone_name == NULL || serial == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	with_txn(KEYS_RO, NULL);
-	knot_db_val_t key = make_key(KASPDBKEY_MASTERSERIAL, zone_name, NULL), val = { 0 };
+	knot_db_val_t key = make_key((keyclass_t)(int)serial_type, zone_name, NULL), val = { 0 };
 	ret = db_api->find(txn, &key, &val, 0);
 	free_key(&key);
 	if (ret == KNOT_EOK) {
 		if (val.len == sizeof(uint32_t)) {
-			*master_serial = be32toh(*(uint32_t *)val.data);
+			*serial = be32toh(*(uint32_t *)val.data);
 		}
 		else {
 			ret = KNOT_EMALF;
