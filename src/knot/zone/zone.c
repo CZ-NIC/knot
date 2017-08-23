@@ -640,7 +640,7 @@ int zone_set_master_serial(zone_t *zone, uint32_t serial)
 {
 	int ret = kasp_db_open(*kaspdb());
 	if (ret == KNOT_EOK) {
-		ret = kasp_db_store_master_serial(*kaspdb(), zone->name, serial);
+		ret = kasp_db_store_serial(*kaspdb(), zone->name, KASPDB_SERIAL_MASTER, serial);
 	}
 	return ret;
 }
@@ -655,10 +655,31 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	ret = kasp_db_load_master_serial(*kaspdb(), zone->name, serial);
+	ret = kasp_db_load_serial(*kaspdb(), zone->name, KASPDB_SERIAL_MASTER, serial);
 	if (ret == KNOT_ENOENT) {
 		*serial = zone_contents_serial(zone->contents);
 		return KNOT_EOK;
 	}
 	return ret;
+}
+
+int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
+{
+	int ret = kasp_db_open(*kaspdb());
+	if (ret == KNOT_EOK) {
+		ret = kasp_db_store_serial(*kaspdb(), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	}
+	return ret;
+}
+
+bool zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
+{
+	if (!kasp_db_exists(*kaspdb())) {
+		return false;
+	}
+	int ret = kasp_db_open(*kaspdb());
+	if (ret == KNOT_EOK) {
+		ret = kasp_db_load_serial(*kaspdb(), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	}
+	return (ret == KNOT_EOK);
 }

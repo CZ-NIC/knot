@@ -26,6 +26,11 @@
 
 typedef struct kasp_db kasp_db_t;
 
+typedef enum { // the enum values MUST match those from keyclass_t !!
+        KASPDB_SERIAL_MASTER = 0x5,
+        KASPDB_SERIAL_LASTSIGNED = 0x6,
+} kaspdb_serial_t;
+
 /*!
  * \brief Returns kasp_db_t singleton, to be used for signing all zones.
  *
@@ -162,28 +167,30 @@ int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
                            dnssec_binary_t *nsec3salt, knot_time_t *salt_created);
 
 /*!
- * \brief Store SOA serial number of master.
+ * \brief Store SOA serial number of master or last signed serial.
  *
  * \param db             KASP db
  * \param zone_name      zone name
- * \param master_serial  new master's serial
+ * \param serial_type    kind of serial to be stored
+ * \param serial         new serial to be stored
  *
  * \return KNOT_E*
  */
-int kasp_db_store_master_serial(kasp_db_t *db, const knot_dname_t *zone_name,
-                                uint32_t master_serial);
+int kasp_db_store_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+                         kaspdb_serial_t serial_type, uint32_t serial);
 
 /*!
- * \brief Load saved SOA serial number of master.
+ * \brief Load saved SOA serial number of master or last signed serial.
  *
  * \param db             KASP db
  * \param zone_name      zone name
- * \param master_serial  output if KNOT_EOK: master's serial
+ * \param serial_type    kind of serial to be loaded
+ * \param master_serial  output if KNOT_EOK: desired serial number
  *
  * \return KNOT_E* (KNOT_ENOENT if not stored before)
  */
-int kasp_db_load_master_serial(kasp_db_t *db, const knot_dname_t *zone_name,
-                               uint32_t *master_serial);
+int kasp_db_load_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+                        kaspdb_serial_t serial_type, uint32_t *serial);
 
 /*!
  * \brief For given policy name, obtain last generated key.
