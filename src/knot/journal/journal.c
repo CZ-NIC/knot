@@ -1476,7 +1476,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			txn->shadow_md.merged_serial = serial;
 		}
 		else if (is_this_bootstrap) {
-			if (!md_flag(txn, SERIAL_TO_VALID)) {
+			if (!md_flag(txn, SERIAL_TO_VALID) || !is_this_merged) {
 				txn->shadow_md.flags |= FIRST_SERIAL_INVALID;
 				txn->shadow_md.last_serial_to = serial_to;
 			}
