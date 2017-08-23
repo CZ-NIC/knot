@@ -1274,30 +1274,20 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 	// PART 2 : recalculating the previous insert's occupy change
 	md_get_common_last_occupied(txn, &occupied_last);
-	if (occupied_now == 0) {
-		// This shall not happen. We just handle it to minimize damage in case it would. Not 100% correct.
-		uint64_t tz_occupied;
-		md_get(txn, j->zone, MDKEY_PERZONE_OCCUPIED, &tz_occupied);
-		tz_occupied += serialized_size_total;
-		occupied_last += serialized_size_total;
-		md_set(txn, NULL, MDKEY_GLOBAL_LAST_TOTAL_OCCUPIED, occupied_last);
-		md_set(txn, j->zone, MDKEY_PERZONE_OCCUPIED, tz_occupied);
-	} else {
-		md_set(txn, NULL, MDKEY_GLOBAL_LAST_TOTAL_OCCUPIED, occupied_now);
-		if (occupied_now != occupied_last) {
-			knot_dname_t *last_zone = NULL;
-			uint64_t lz_occupied;
-			md_get_common_last_inserter_zone(txn, &last_zone);
-			if (last_zone != NULL) {
-				md_get(txn, last_zone, MDKEY_PERZONE_OCCUPIED, &lz_occupied);
-				lz_occupied = (lz_occupied + occupied_now > occupied_last ?
-					       lz_occupied + occupied_now - occupied_last : 0);
-				md_set(txn, last_zone, MDKEY_PERZONE_OCCUPIED, lz_occupied);
-				free(last_zone);
-			}
+	md_set(txn, NULL, MDKEY_GLOBAL_LAST_TOTAL_OCCUPIED, occupied_now);
+	if (occupied_now != occupied_last) {
+		knot_dname_t *last_zone = NULL;
+		uint64_t lz_occupied;
+		md_get_common_last_inserter_zone(txn, &last_zone);
+		if (last_zone != NULL) {
+			md_get(txn, last_zone, MDKEY_PERZONE_OCCUPIED, &lz_occupied);
+			lz_occupied = (lz_occupied + occupied_now > occupied_last ?
+			               lz_occupied + occupied_now - occupied_last : 0);
+			md_set(txn, last_zone, MDKEY_PERZONE_OCCUPIED, lz_occupied);
+			free(last_zone);
 		}
-		md_set_common_last_inserter_zone(txn, j->zone);
 	}
+	md_set_common_last_inserter_zone(txn, j->zone);
 
 	// PART 3a : delete all if inserting bootstrap changeset
 	if (inserting_bootstrap) {
