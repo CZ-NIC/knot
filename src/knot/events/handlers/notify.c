@@ -109,7 +109,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	if (ret == KNOT_EOK) {
 		NOTIFY_LOG(LOG_INFO, zone->name, dst,
-		           "serial %d", knot_soa_serial(&soa->rrs));
+			   "serial %u", knot_soa_serial(&soa->rrs));
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_LOG(LOG_WARNING, zone->name, dst,
 		           "failed (%s)", knot_strerror(ret));
