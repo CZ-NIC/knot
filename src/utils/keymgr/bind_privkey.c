@@ -126,6 +126,10 @@ static int parse_time(char *string, void *_time)
 {
 	struct tm tm = { 0 };
 
+	// Set the timezone to UTC for strptime.
+	putenv("TZ=UTC");
+	tzset();
+
 	char *end = strptime(string, LEGACY_DATE_FORMAT, &tm);
 	if (end == NULL || *end != '\0') {
 		return DNSSEC_MALFORMED_DATA;

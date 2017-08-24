@@ -39,6 +39,11 @@ static time_t arg_timestamp(const char *arg)
 	}
 	if (isdigit((int)arg[0]) && strlen(arg) == 14) {
 		struct tm tm = { 0 };
+
+		// Set the timezone to UTC for strptime.
+		putenv("TZ=UTC");
+		tzset();
+
 		char *end = strptime(arg, "%Y%m%d%H%M%S", &tm);
 		if (end == NULL || *end != '\0') {
 			return -1;
