@@ -415,6 +415,8 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 			knot_pkt_free(&packet);
 			return NULL;
 		}
+
+		free(soa);
 	} else {
 		knot_dname_free(&qname, NULL);
 	}
