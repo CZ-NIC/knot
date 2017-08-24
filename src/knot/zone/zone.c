@@ -370,12 +370,6 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 		return KNOT_ENOTSUP;
 	}
 
-	if (journal_exists(zone->journal_db, zone->name)) {
-		// for now we refuse storing zone-in-journal into existing journal
-		// TODO maybe store the diff in such case as a normal changeset ?
-		return KNOT_EEXIST;
-	}
-
 	changeset_t *co_ch = changeset_from_contents(new_contents);
 	int ret = co_ch ? zone_change_store(conf, zone, co_ch) : KNOT_ENOMEM;
 	changeset_from_contents_free(co_ch);
