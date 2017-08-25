@@ -849,7 +849,9 @@ DB file size.
 .sp
 It is recommended to limit \fI\%max\-journal\-usage\fP
 per\-zone instead of max\-journal\-size in most cases. Please keep this value
-large enough. This value also influences server\(aqs usage of virtual memory.
+larger than the sum of all zones\(aq journal usage limits.
+.sp
+This value also influences server\(aqs usage of virtual memory.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -1114,6 +1116,8 @@ all zones, because of DB free space fragmentation.
 .SS max\-journal\-depth
 .sp
 Maximum history length of journal.
+.sp
+\fIMinimum:\fP 2
 .sp
 \fIDefault:\fP 2^64
 .SS max\-zone\-size

@@ -990,7 +990,9 @@ DB file size.
 
 It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
 per-zone instead of max-journal-size in most cases. Please keep this value
-large enough. This value also influences server's usage of virtual memory.
+larger than the sum of all zones' journal usage limits.
+
+This value also influences server's usage of virtual memory.
 
 .. NOTE::
    This option is only available in the *default* template.
@@ -1263,6 +1265,8 @@ max-journal-depth
 -----------------
 
 Maximum history length of journal.
+
+*Minimum:* 2
 
 *Default:* 2^64
 
