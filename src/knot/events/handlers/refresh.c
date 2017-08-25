@@ -127,7 +127,7 @@ struct refresh_data {
 
 static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 {
-	return serial_compare(local_serial, remote_serial) >= 0;
+	return (serial_compare(local_serial, remote_serial) & SERIAL_MASK_GEQ);
 }
 
 static time_t bootstrap_next(const zone_timers_t *timers)

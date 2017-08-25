@@ -70,7 +70,7 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 			uint32_t serial = knot_soa_serial(&soa->rrs);
 			uint32_t zone_serial = zone_contents_serial(zone->contents);
 			NOTIFY_LOG(LOG_INFO, qdata, "received, serial %u", serial);
-			if (serial_compare(serial, zone_serial) == 0) {
+			if (serial_equal(serial, zone_serial)) {
 				// NOTIFY serial == zone serial => ignore, keep timers
 				return KNOT_STATE_DONE;
 			}

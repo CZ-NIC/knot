@@ -19,7 +19,6 @@
 #include <stdarg.h>
 
 #include "knot/journal/journal.h"
-#include "knot/zone/serial.h"
 #include "knot/common/log.h"
 #include "contrib/files.h"
 #include "contrib/endian.h"
@@ -534,7 +533,7 @@ static int md_flushed(txn_t *txn)
 {
 	return (!md_flag(txn, SERIAL_TO_VALID) ||
 		(md_flag(txn, LAST_FLUSHED_VALID) &&
-		 serial_compare(txn->shadow_md.last_flushed, txn->shadow_md.last_serial) == 0));
+		 serial_equal(txn->shadow_md.last_flushed, txn->shadow_md.last_serial)));
 }
 
 static void make_header(knot_db_val_t *to, uint32_t serial_to, int chunk_count)
@@ -851,7 +850,7 @@ static int load_merged_changeset(journal_t *j, txn_t *_txn, changeset_t **mch,
 	uint32_t ms = txn->shadow_md.merged_serial, fl = txn->shadow_md.flags;
 
 	if ((fl & MERGED_SERIAL_VALID) &&
-	    (only_if_serial == NULL || serial_compare(ms, *only_if_serial) == 0)) {
+	    (only_if_serial == NULL || serial_equal(ms, *only_if_serial))) {
 		load_one(j, txn, ms, mch);
 	}
 	unreuse_txn(txn, _txn);
@@ -961,17 +960,17 @@ static int del_upto_itercb(iteration_ctx_t *ctx)
 	// If it's not merged changeset, point first_serial to next one
 	if (ctx->chunk_index == ctx->chunk_count - 1) {
 		if (!md_flag(ctx->txn, MERGED_SERIAL_VALID) ||
-		    serial_compare(ctx->txn->shadow_md.merged_serial,ctx->serial) != 0) {
+		    !serial_equal(ctx->txn->shadow_md.merged_serial,ctx->serial)) {
 			ctx->txn->shadow_md.first_serial = ctx->serial_to;
 			ctx->txn->shadow_md.changeset_count--;
 		}
-		if (serial_compare(ctx->txn->shadow_md.last_flushed, ctx->serial) == 0) {
+		if (serial_equal(ctx->txn->shadow_md.last_flushed, ctx->serial)) {
 			ctx->txn->shadow_md.flags &= ~LAST_FLUSHED_VALID;
 		}
-		if (serial_compare(ctx->txn->shadow_md.last_serial,  ctx->serial) == 0) {
+		if (serial_equal(ctx->txn->shadow_md.last_serial,  ctx->serial)) {
 			ctx->txn->shadow_md.flags &= ~SERIAL_TO_VALID;
 		}
-		if (serial_compare(ctx->txn->shadow_md.merged_serial,ctx->serial) == 0) {
+		if (serial_equal(ctx->txn->shadow_md.merged_serial,ctx->serial)) {
 			ctx->txn->shadow_md.flags &= ~MERGED_SERIAL_VALID;
 		}
 	}
@@ -1034,11 +1033,11 @@ static int del_tofree_itercb(iteration_ctx_t *ctx)
 	if (ctx->chunk_index == ctx->chunk_count - 1) {
 		ctx->txn->shadow_md.first_serial = ctx->serial_to;
 		ctx->txn->shadow_md.changeset_count--;
-		if (serial_compare(ctx->txn->shadow_md.last_flushed, ctx->serial) == 0) {
+		if (serial_equal(ctx->txn->shadow_md.last_flushed, ctx->serial)) {
 			ctx->txn->shadow_md.flags &= ~LAST_FLUSHED_VALID;
 			ds->to_be_freed = 0; // prevents deleting unflushed changesets
 		}
-		if (serial_compare(ctx->txn->shadow_md.last_serial, ctx->serial) == 0) {
+		if (serial_equal(ctx->txn->shadow_md.last_serial, ctx->serial)) {
 			ctx->txn->shadow_md.flags &= ~SERIAL_TO_VALID;
 		}
 		if (ds->freed_approx >= ds->to_be_freed) {
@@ -1090,11 +1089,11 @@ static int del_count_itercb(iteration_ctx_t *ctx)
 	if (ctx->chunk_index == ctx->chunk_count - 1) {
 		ctx->txn->shadow_md.first_serial = ctx->serial_to;
 		ctx->txn->shadow_md.changeset_count--;
-		if (serial_compare(ctx->txn->shadow_md.last_flushed, ctx->serial) == 0) {
+		if (serial_equal(ctx->txn->shadow_md.last_flushed, ctx->serial)) {
 			ctx->txn->shadow_md.flags &= ~LAST_FLUSHED_VALID;
 			ds->to_be_freed = ds->freed_approx; // prevents deleting unflushed changesets
 		}
-		if (serial_compare(ctx->txn->shadow_md.last_serial, ctx->serial) == 0) {
+		if (serial_equal(ctx->txn->shadow_md.last_serial, ctx->serial)) {
 			ctx->txn->shadow_md.flags &= ~SERIAL_TO_VALID;
 		}
 		ds->freed_approx++;
@@ -1203,7 +1202,7 @@ static int merge_unflushed_changesets(journal_t *j, txn_t *_txn, changeset_t **m
 	}
 	from = knot_soa_serial(&(*mch)->soa_to->rrs);
 
-	if (serial_compare(from, txn->shadow_md.last_serial_to) != 0) {
+	if (!serial_equal(from, txn->shadow_md.last_serial_to)) {
 		txn->ret = iterate(j, txn, merge_itercb, JOURNAL_ITERATION_CHANGESETS,
 		                   mch, from, txn->shadow_md.last_serial, normal_iterkeycb);
 	}
@@ -1353,7 +1352,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	bool is_first_bootstrap = (chs_head->soa_from == NULL);
 	uint32_t serial = is_first_bootstrap ? 0 : knot_soa_serial(&chs_head->soa_from->rrs);
 	if (md_flag(txn, SERIAL_TO_VALID) && (is_first_bootstrap ||
-	    serial_compare(txn->shadow_md.last_serial_to, serial) != 0) &&
+	    !serial_equal(txn->shadow_md.last_serial_to, serial)) &&
 	    !inserting_bootstrap /* if inserting bootstrap, drop_journal() was called, so no discontinuity */) {
 		log_zone_warning(j->zone, "journal, discontinuity in changes history (%u -> %u), dropping older changesets",
 		                 txn->shadow_md.last_serial_to, serial);
@@ -1388,9 +1387,9 @@ static int store_changesets(journal_t *j, list_t *changesets)
 				}
 			} else {
 				try_flush
-				delete_upto(j, txn, txn->shadow_md.first_serial, serial_to);
-				txn_restart(txn);
 			}
+			delete_upto(j, txn, txn->shadow_md.first_serial, serial_to);
+			txn_restart(txn);
 		}
 	}
 
@@ -1796,12 +1795,31 @@ scrape_end:
 	return txn->ret;
 }
 
-void journal_metadata_info(journal_t *j, bool *is_empty, uint32_t *serial_from, uint32_t *serial_to)
+void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_serial,
+			   kserial_t *first_serial, kserial_t *last_flushed, kserial_t *serial_to,
+			   uint64_t *occupied)
 {
 	// NOTE: there is NEVER the situation that only merged changeset would be present and no common changeset in db.
 
 	if (j == NULL || j->db == NULL) {
-		*is_empty = true;
+		if (has_bootstrap != NULL) {
+			*has_bootstrap = false;
+		}
+		if (merged_serial != NULL) {
+			merged_serial->valid = false;
+		}
+		if (first_serial != NULL) {
+			first_serial->valid = false;
+		}
+		if (last_flushed != NULL) {
+			last_flushed->valid = false;
+		}
+		if (serial_to != NULL) {
+			serial_to->valid = false;
+		}
+		if (occupied != NULL) {
+			*occupied = 0;
+		}
 		return;
 	}
 
@@ -1809,13 +1827,37 @@ void journal_metadata_info(journal_t *j, bool *is_empty, uint32_t *serial_from, 
 	txn_begin(txn, false);
 	txn_check_open(txn);
 
-	*is_empty = !md_flag(txn, SERIAL_TO_VALID);
-	*serial_from = txn->shadow_md.first_serial;
-	*serial_to = txn->shadow_md.last_serial_to;
-
-	if (md_flag(txn, MERGED_SERIAL_VALID)) {
-		*serial_from = txn->shadow_md.merged_serial;
+	if (has_bootstrap != NULL) {
+		*has_bootstrap = has_bootstrap_changeset(j, txn);
 	}
+	if (merged_serial != NULL) {
+		merged_serial->valid = md_flag(txn, MERGED_SERIAL_VALID);
+		merged_serial->serial = txn->shadow_md.merged_serial;
+	}
+	if (first_serial != NULL) {
+		first_serial->valid = !md_flag(txn, FIRST_SERIAL_INVALID);
+		first_serial->serial = txn->shadow_md.first_serial;
+	}
+	if (last_flushed != NULL) {
+		last_flushed->valid = md_flag(txn, LAST_FLUSHED_VALID);
+		last_flushed->serial = txn->shadow_md.last_flushed;
+	}
+	if (serial_to != NULL) {
+		serial_to->valid = md_flag(txn, SERIAL_TO_VALID);
+		serial_to->serial = txn->shadow_md.last_serial_to;
+	}
+	if (occupied != NULL) {
+		md_get(txn, j->zone, MDKEY_PERZONE_OCCUPIED, occupied);
+		knot_dname_t *last_inserter = NULL;
+		md_get_common_last_inserter_zone(txn, &last_inserter);
+		if (last_inserter != NULL && knot_dname_is_equal(last_inserter, j->zone)) {
+			size_t lz_occupied;
+			md_get_common_last_occupied(txn, &lz_occupied);
+			*occupied += lz_occupied;
+		}
+		free(last_inserter);
+	}
+
 	txn_abort(txn);
 }
 
@@ -1993,7 +2035,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 	}
 
 	sfrom = knot_soa_serial(&ch->soa_from->rrs), sto = knot_soa_serial(&ch->soa_to->rrs);
-	if (serial_compare(txn->shadow_md.first_serial, sfrom) != 0) {
+	if (!serial_equal(txn->shadow_md.first_serial, sfrom)) {
 		jch_warn("first changeset's serial 'from' %u is not ok", sfrom);
 	}
 
@@ -2012,7 +2054,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 		changeset_free(ch);
 	}
 
-	if (serial_compare(txn->shadow_md.last_serial_to, sto) == 0) {
+	if (serial_equal(txn->shadow_md.last_serial_to, sto)) {
 		jch_info("there is just one changeset in the journal");
 		goto check_merged;
 	}
@@ -2022,7 +2064,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 	}
 	else {
 		sfrom = knot_soa_serial(&ch->soa_from->rrs);
-		if (serial_compare(sfrom, sto) != 0) {
+		if (!serial_equal(sfrom, sto)) {
 			jch_warn("second changeset's serial 'from' %u is not ok", sfrom);
 		}
 		changeset_free(ch);
@@ -2046,12 +2088,12 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 	}
 
 	ch = HEAD(l);
-	if (serial_compare(sfrom, knot_soa_serial(&ch->soa_from->rrs)) != 0) {
+	if (!serial_equal(sfrom, knot_soa_serial(&ch->soa_from->rrs))) {
 		jch_warn("first listed changeset's serial 'from' %u is not ok",
 		         knot_soa_serial(&ch->soa_from->rrs));
 	}
 	ch = TAIL(l);
-	if (serial_compare(sto, knot_soa_serial(&ch->soa_to->rrs)) != 0) {
+	if (!serial_equal(sto, knot_soa_serial(&ch->soa_to->rrs))) {
 		jch_warn("last listed changeset's serial 'to' %u is not ok",
 		         knot_soa_serial(&ch->soa_to->rrs));
 	}
@@ -2072,10 +2114,10 @@ check_merged:
 			sto = knot_soa_serial(&ch->soa_to->rrs);
 			jch_info("merged changeset %u -> %u (size %zu)", sfrom, sto,
 			         changeset_serialized_size(ch));
-			if (serial_compare(sfrom, txn->shadow_md.merged_serial) != 0) {
+			if (!serial_equal(sfrom, txn->shadow_md.merged_serial)) {
 				jch_warn("merged changeset's serial 'from' is not ok");
 			}
-			if (serial_compare(sto, first_unflushed) != 0) {
+			if (!serial_equal(sto, first_unflushed)) {
 				jch_warn("merged changeset's serial 'to' is not ok");
 			}
 			changeset_free(ch);

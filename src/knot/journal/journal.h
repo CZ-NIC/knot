@@ -22,6 +22,7 @@
 #include "contrib/ucw/lists.h"
 #include "knot/updates/changesets.h"
 #include "knot/journal/serialization.h"
+#include "knot/zone/serial.h"
 
 /*! \brief Minimum journal size. */
 #define JOURNAL_MIN_FSLIMIT	(1 * 1024 * 1024)
@@ -209,13 +210,10 @@ int journal_flush(journal_t *journal);
 int journal_scrape(journal_t *j);
 
 /*! \brief Obtain public information from journal metadata
- *
- * \param[in]  j            Journal
- * \param[out] is_empty     True if j contains no changesets
- * \param[out] serial_from  [if !is_empty] starting serial of changesets history
- * \param[out] serial_to    [if !is_empty] ending serial of changesets history
  */
-void journal_metadata_info(journal_t *j, bool *is_empty, uint32_t *serial_from, uint32_t *serial_to);
+void journal_metadata_info(journal_t *j, bool *is_empty, kserial_t *merged_serial,
+                           kserial_t *first_serial, kserial_t *last_flushed, kserial_t *serial_to,
+                           uint64_t *occupied);
 
 /*! \brief Check the journal consistency, errors to stderr.
  *

@@ -484,7 +484,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 
 	uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
 	uint32_t new_serial = serial_next(old_serial, serial_policy);
-	if (serial_compare(old_serial, new_serial) >= 0) {
+	if (serial_compare(old_serial, new_serial) != SERIAL_LOWER) {
 		log_zone_warning(update->zone->name, "updated serial is lower "
 		                 "than current, serial %u -> %u",
 		                 old_serial, new_serial);

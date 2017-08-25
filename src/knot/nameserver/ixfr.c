@@ -143,12 +143,11 @@ static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
 	/* Compare serials. */
 	uint32_t serial_to = zone_contents_serial(zone->contents);
 	uint32_t serial_from = knot_soa_serial(&their_soa->rrs);
-	int ret = serial_compare(serial_to, serial_from);
-	if (ret <= 0) { /* We have older/same age zone. */
+	if (serial_compare(serial_to, serial_from) & SERIAL_MASK_LEQ) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
 	}
 
-	ret = zone_changes_load(conf(), zone, chgsets, serial_from);
+	int ret = zone_changes_load(conf(), zone, chgsets, serial_from);
 	if (ret != KNOT_EOK) {
 		changesets_free(chgsets);
 	}

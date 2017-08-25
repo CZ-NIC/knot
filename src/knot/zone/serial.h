@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,16 +16,32 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /*!
- * \brief Compares two zone serials.
+ * \brief result of serial comparison. LOWER means that the first serial is lower that the second.
  *
- * \retval < 0 if s1 is less than s2.
- * \retval > 0 if s1 is larger than s2.
- * \retval == 0 if s1 is equal to s2.
+ * Example: (serial_compare(a, b) & SERIAL_MASK_LEQ) means "a <= b".
  */
-int serial_compare(uint32_t s1, uint32_t s2);
+typedef enum {
+	SERIAL_INCOMPARABLE = 0x0,
+	SERIAL_LOWER = 0x1,
+	SERIAL_GREATER = 0x2,
+	SERIAL_EQUAL = 0x3,
+	SERIAL_MASK_LEQ = SERIAL_LOWER,
+	SERIAL_MASK_GEQ = SERIAL_GREATER,
+} serial_cmp_result_t;
+
+/*!
+ * \brief Compares two zone serials.
+ */
+serial_cmp_result_t serial_compare(uint32_t s1, uint32_t s2);
+
+inline static bool serial_equal(uint32_t a, uint32_t b)
+{
+	return serial_compare(a, b) == SERIAL_EQUAL;
+}
 
 /*!
  * \brief Get next serial for given serial update policy.
@@ -35,4 +51,21 @@ int serial_compare(uint32_t s1, uint32_t s2);
  *
  * \return New serial.
  */
-int serial_next(uint32_t current, int policy);
+uint32_t serial_next(uint32_t current, int policy);
+
+typedef struct {
+	uint32_t serial;
+	bool valid;
+} kserial_t;
+
+/*!
+ * \brief Compares two kserials.
+ *
+ * If any of them is invalid, they are INCOMPARABLE.
+ */
+serial_cmp_result_t kserial_cmp(kserial_t a, kserial_t b);
+
+inline static bool kserial_equal(kserial_t a, kserial_t b)
+{
+	return kserial_cmp(a, b) == SERIAL_EQUAL;
+}

@@ -54,11 +54,11 @@ static int load_soas(const zone_contents_t *zone1, const zone_contents_t *zone2,
 	uint32_t soa_serial1 = knot_soa_serial(&soa_rrset1.rrs);
 	uint32_t soa_serial2 = knot_soa_serial(&soa_rrset2.rrs);
 
-	if (serial_compare(soa_serial1, soa_serial2) == 0) {
+	if (serial_compare(soa_serial1, soa_serial2) == SERIAL_EQUAL) {
 		return KNOT_ENODIFF;
 	}
 
-	if (serial_compare(soa_serial1, soa_serial2) > 0) {
+	if (serial_compare(soa_serial1, soa_serial2) != SERIAL_LOWER) {
 		return KNOT_ERANGE;
 	}
 

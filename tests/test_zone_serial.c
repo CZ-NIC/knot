@@ -43,59 +43,59 @@ int main(int argc, char *argv[])
 	plan(20);
 
 	/* Serial compare test. */
-	ok(serial_compare(S_LOWEST, S_BELOW_MIDDLE) < 0,
+	ok(serial_compare(S_LOWEST, S_BELOW_MIDDLE) == SERIAL_LOWER,
 	   "serial compare: lowest < below middle");
-	ok(serial_compare(S_BELOW_MIDDLE, S_LOWEST) > 0,
+	ok(serial_compare(S_BELOW_MIDDLE, S_LOWEST) == SERIAL_GREATER,
 	   "serial compare: below middle > lowest");
 
 	/* Corner-case: these serials' distance is exactly 2^31. */
-	ok(serial_compare(S_LOWEST, S_ABOVE_MIDDLE) < 0,
+	ok(serial_compare(S_LOWEST, S_ABOVE_MIDDLE) == SERIAL_INCOMPARABLE,
 	   "serial compare: lowest < above_middle");
-	ok(serial_compare(S_ABOVE_MIDDLE, S_LOWEST) < 0,
+	ok(serial_compare(S_ABOVE_MIDDLE, S_LOWEST) == SERIAL_INCOMPARABLE,
 	   "serial compare: above_middle < lowest");
 
-	ok(serial_compare(S_LOWEST, S_HIGHEST) > 0,
+	ok(serial_compare(S_LOWEST, S_HIGHEST) == SERIAL_GREATER,
 	   "serial compare: lowest > highest");
-	ok(serial_compare(S_HIGHEST, S_LOWEST) < 0,
+	ok(serial_compare(S_HIGHEST, S_LOWEST) == SERIAL_LOWER,
 	   "serial compare: highest < lowest");
 
-	ok(serial_compare(S_2LOWEST, S_ABOVE_MIDDLE) < 0,
+	ok(serial_compare(S_2LOWEST, S_ABOVE_MIDDLE) == SERIAL_LOWER,
 	   "serial compare: 2nd lowest < above middle");
-	ok(serial_compare(S_ABOVE_MIDDLE, S_2LOWEST) > 0,
+	ok(serial_compare(S_ABOVE_MIDDLE, S_2LOWEST) == SERIAL_GREATER,
 	   "serial compare: above middle > 2nd lowest");
 
 	/* Corner-case: these serials' distance is exactly 2^31. */
-	ok(serial_compare(S_BELOW_MIDDLE, S_HIGHEST) < 0,
+	ok(serial_compare(S_BELOW_MIDDLE, S_HIGHEST) == SERIAL_INCOMPARABLE,
 	   "serial compare: below middle < highest");
-	ok(serial_compare(S_HIGHEST, S_BELOW_MIDDLE) < 0,
+	ok(serial_compare(S_HIGHEST, S_BELOW_MIDDLE) == SERIAL_INCOMPARABLE,
 	   "serial compare: highest < below middle");
 
-	ok(serial_compare(S_BELOW_MIDDLE, S_2HIGHEST) < 0,
+	ok(serial_compare(S_BELOW_MIDDLE, S_2HIGHEST) == SERIAL_LOWER,
 	   "serial compare: below middle < 2nd highest");
-	ok(serial_compare(S_2HIGHEST, S_BELOW_MIDDLE) > 0,
+	ok(serial_compare(S_2HIGHEST, S_BELOW_MIDDLE) == SERIAL_GREATER,
 	   "serial compare: 2nd highest > below middle");
 
-	ok(serial_compare(S_ABOVE_MIDDLE, S_HIGHEST) < 0,
+	ok(serial_compare(S_ABOVE_MIDDLE, S_HIGHEST) == SERIAL_LOWER,
 	   "serial compare: above middle < highest");
-	ok(serial_compare(S_HIGHEST, S_ABOVE_MIDDLE) > 0,
+	ok(serial_compare(S_HIGHEST, S_ABOVE_MIDDLE) == SERIAL_GREATER,
 	   "serial compare: highest > above middle");
 
-	ok(serial_compare(S_LOWEST, S_LOWEST) == 0,
+	ok(serial_compare(S_LOWEST, S_LOWEST) == SERIAL_EQUAL,
 	   "serial compare: lowest == lowest");
-	ok(serial_compare(S_HIGHEST, S_HIGHEST) == 0,
+	ok(serial_compare(S_HIGHEST, S_HIGHEST) == SERIAL_EQUAL,
 	   "serial compare: highest == highest");
 
-	ok(serial_compare(S_LOWEST - 1, S_HIGHEST) == 0,
+	ok(serial_compare(S_LOWEST - 1, S_HIGHEST) == SERIAL_EQUAL,
 	   "serial compare: lowest - 1 == highest");
-	ok(serial_compare(S_LOWEST, S_HIGHEST + 1) == 0,
+	ok(serial_compare(S_LOWEST, S_HIGHEST + 1) == SERIAL_EQUAL,
 	   "serial compare: lowest== highest + 1");
 
 	/* Corner-case: these serials' distance is exactly 2^31. */
 	uint32_t s1 = random_serial();
 	uint32_t s2 = s1 + S_ABOVE_MIDDLE;  // exactly the 'opposite' number
-	ok(serial_compare(s1, s2) < 0,
+	ok(serial_compare(s1, s2) == SERIAL_INCOMPARABLE,
 	   "serial compare: random opposites (s1 < s2)");
-	ok(serial_compare(s2, s1) < 0,
+	ok(serial_compare(s2, s1) == SERIAL_INCOMPARABLE,
 	   "serial compare: random opposites (s2 < s1)");
 
 	return 0;
