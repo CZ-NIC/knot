@@ -632,7 +632,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 	knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
 	// Subtract changeset RRS from node RRS.
-	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, NULL);
+	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, false, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -339,7 +339,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 
 	knot_rdataset_t *changed_rrs = node_rdataset(node, rr->type);
 	// Subtract changeset RRS from node RRS.
-	ret = knot_rdataset_subtract(changed_rrs, &rr->rrs, NULL);
+	ret = knot_rdataset_subtract(changed_rrs, &rr->rrs, false, NULL);
 	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, rr->type);
 		return ret;
