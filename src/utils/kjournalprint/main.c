@@ -190,7 +190,8 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 
 	bool has_bootstrap;
 	kserial_t merged_serial, serial_from, last_flushed, serial_to;
-	journal_metadata_info(j, &has_bootstrap, &merged_serial, &serial_from, &last_flushed, &serial_to);
+	uint64_t occupied;
+	journal_metadata_info(j, &has_bootstrap, &merged_serial, &serial_from, &last_flushed, &serial_to, &occupied);
 
 	bool alternative_from = (has_bootstrap || merged_serial.valid);
 	bool is_empty = (!alternative_from && !serial_from.valid);
@@ -227,22 +228,30 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 
 	changesets_free(&db);
 
-	if ((debugmode && alternative_from && serial_from.valid) ||
-	    kserial_equal(serial_from, last_flushed)) {
-		printf("---------------------------------------------------------------------------------------\n");
-		init_list(&db);
+	if (debugmode) {
+		if ((alternative_from && serial_from.valid) ||
+		    kserial_equal(serial_from, last_flushed)) {
+			printf("---- Additional history ----\n");
+			init_list(&db);
 
-		ret = journal_load_changesets(j, &db, serial_from.serial);
-		if (ret != KNOT_EOK) {
-			goto pj_finally;
-		}
-		WALK_LIST(chs, db) {
-			print_changeset_debugmode(chs);
-			if (last_flushed.valid && serial_equal(knot_soa_serial(&chs->soa_from->rrs), last_flushed.serial)) {
-				break;
+			ret = journal_load_changesets(j, &db, serial_from.serial);
+			if (ret != KNOT_EOK) {
+				goto pj_finally;
 			}
+			WALK_LIST(chs, db) {
+				print_changeset_debugmode(chs);
+				if (last_flushed.valid && serial_equal(knot_soa_serial(&chs->soa_from->rrs), last_flushed.serial)) {
+					break;
+				}
+			}
+			changesets_free(&db);
+		} else {
+			printf("---- No additional history ----\n");
 		}
-		changesets_free(&db);
+	}
+
+	if (debugmode) {
+		printf("Occupied: %lu KiB\n", occupied / 1024);
 	}
 
 pj_finally:

@@ -1796,7 +1796,8 @@ scrape_end:
 }
 
 void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_serial,
-			   kserial_t *first_serial, kserial_t *last_flushed, kserial_t *serial_to)
+			   kserial_t *first_serial, kserial_t *last_flushed, kserial_t *serial_to,
+			   uint64_t *occupied)
 {
 	// NOTE: there is NEVER the situation that only merged changeset would be present and no common changeset in db.
 
@@ -1815,6 +1816,9 @@ void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_
 		}
 		if (serial_to != NULL) {
 			serial_to->valid = false;
+		}
+		if (occupied != NULL) {
+			*occupied = 0;
 		}
 		return;
 	}
@@ -1841,6 +1845,17 @@ void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_
 	if (serial_to != NULL) {
 		serial_to->valid = md_flag(txn, SERIAL_TO_VALID);
 		serial_to->serial = txn->shadow_md.last_serial_to;
+	}
+	if (occupied != NULL) {
+		md_get(txn, j->zone, MDKEY_PERZONE_OCCUPIED, occupied);
+		knot_dname_t *last_inserter = NULL;
+		md_get_common_last_inserter_zone(txn, &last_inserter);
+		if (last_inserter != NULL && knot_dname_is_equal(last_inserter, j->zone)) {
+			size_t lz_occupied;
+			md_get_common_last_occupied(txn, &lz_occupied);
+			*occupied += lz_occupied;
+		}
+		free(last_inserter);
 	}
 
 	txn_abort(txn);

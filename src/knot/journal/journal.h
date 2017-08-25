@@ -210,14 +210,10 @@ int journal_flush(journal_t *journal);
 int journal_scrape(journal_t *j);
 
 /*! \brief Obtain public information from journal metadata
- *
- * \param[in]  j            Journal
- * \param[out] is_empty     True if j contains no changesets
- * \param[out] serial_from  [if !is_empty] starting serial of changesets history
- * \param[out] serial_to    [if !is_empty] ending serial of changesets history
  */
 void journal_metadata_info(journal_t *j, bool *is_empty, kserial_t *merged_serial,
-                           kserial_t *first_serial, kserial_t *last_flushed, kserial_t *serial_to);
+                           kserial_t *first_serial, kserial_t *last_flushed, kserial_t *serial_to,
+                           uint64_t *occupied);
 
 /*! \brief Check the journal consistency, errors to stderr.
  *
