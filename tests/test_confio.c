@@ -167,6 +167,7 @@ static int format_item(conf_io_t *io)
 
 	// Append the item.
 	if (strlcat(out, item, OUT_LEN) >= OUT_LEN) {
+		free(item);
 		return KNOT_ESPACE;
 	}
 
