@@ -19,7 +19,6 @@
 #include <stdarg.h>
 
 #include "knot/journal/journal.h"
-#include "knot/zone/serial.h"
 #include "knot/common/log.h"
 #include "contrib/files.h"
 #include "contrib/endian.h"
@@ -1796,12 +1795,27 @@ scrape_end:
 	return txn->ret;
 }
 
-void journal_metadata_info(journal_t *j, bool *is_empty, uint32_t *serial_from, uint32_t *serial_to)
+void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_serial,
+			   kserial_t *first_serial, kserial_t *last_flushed, kserial_t *serial_to)
 {
 	// NOTE: there is NEVER the situation that only merged changeset would be present and no common changeset in db.
 
 	if (j == NULL || j->db == NULL) {
-		*is_empty = true;
+		if (has_bootstrap != NULL) {
+			*has_bootstrap = false;
+		}
+		if (merged_serial != NULL) {
+			merged_serial->valid = false;
+		}
+		if (first_serial != NULL) {
+			first_serial->valid = false;
+		}
+		if (last_flushed != NULL) {
+			last_flushed->valid = false;
+		}
+		if (serial_to != NULL) {
+			serial_to->valid = false;
+		}
 		return;
 	}
 
@@ -1809,13 +1823,26 @@ void journal_metadata_info(journal_t *j, bool *is_empty, uint32_t *serial_from, 
 	txn_begin(txn, false);
 	txn_check_open(txn);
 
-	*is_empty = !md_flag(txn, SERIAL_TO_VALID);
-	*serial_from = txn->shadow_md.first_serial;
-	*serial_to = txn->shadow_md.last_serial_to;
-
-	if (md_flag(txn, MERGED_SERIAL_VALID)) {
-		*serial_from = txn->shadow_md.merged_serial;
+	if (has_bootstrap != NULL) {
+		*has_bootstrap = has_bootstrap_changeset(j, txn);
 	}
+	if (merged_serial != NULL) {
+		merged_serial->valid = md_flag(txn, MERGED_SERIAL_VALID);
+		merged_serial->serial = txn->shadow_md.merged_serial;
+	}
+	if (first_serial != NULL) {
+		first_serial->valid = !md_flag(txn, FIRST_SERIAL_INVALID);
+		first_serial->serial = txn->shadow_md.first_serial;
+	}
+	if (last_flushed != NULL) {
+		last_flushed->valid = md_flag(txn, LAST_FLUSHED_VALID);
+		last_flushed->serial = txn->shadow_md.last_flushed;
+	}
+	if (serial_to != NULL) {
+		serial_to->valid = md_flag(txn, SERIAL_TO_VALID);
+		serial_to->serial = txn->shadow_md.last_serial_to;
+	}
+
 	txn_abort(txn);
 }
 

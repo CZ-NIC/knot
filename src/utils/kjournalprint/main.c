@@ -188,17 +188,23 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 		return ret;
 	}
 
-	bool is_empty;
-	uint32_t serial_from, serial_to;
-	journal_metadata_info(j, &is_empty, &serial_from, &serial_to);
+	bool has_bootstrap;
+	kserial_t merged_serial, serial_from, last_flushed, serial_to;
+	journal_metadata_info(j, &has_bootstrap, &merged_serial, &serial_from, &last_flushed, &serial_to);
+
+	bool alternative_from = (has_bootstrap || merged_serial.valid);
+	bool is_empty = (!alternative_from && !serial_from.valid);
 	if (is_empty) {
 		ret = KNOT_ENOENT;
 		goto pj_finally;
 	}
 
-	ret = journal_load_bootstrap(j, &db);
-	if (ret == KNOT_ENOENT) {
-		ret = journal_load_changesets(j, &db, serial_from);
+	if (has_bootstrap) {
+		ret = journal_load_bootstrap(j, &db);
+	} else if (merged_serial.valid) {
+		ret = journal_load_changesets(j, &db, merged_serial.serial);
+	} else {
+		ret = journal_load_changesets(j, &db, serial_from.serial);
 	}
 	if (ret != KNOT_EOK) {
 		goto pj_finally;
@@ -220,6 +226,24 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 	}
 
 	changesets_free(&db);
+
+	if ((debugmode && alternative_from && serial_from.valid) ||
+	    kserial_equal(serial_from, last_flushed)) {
+		printf("---------------------------------------------------------------------------------------\n");
+		init_list(&db);
+
+		ret = journal_load_changesets(j, &db, serial_from.serial);
+		if (ret != KNOT_EOK) {
+			goto pj_finally;
+		}
+		WALK_LIST(chs, db) {
+			print_changeset_debugmode(chs);
+			if (last_flushed.valid && serial_equal(knot_soa_serial(&chs->soa_from->rrs), last_flushed.serial)) {
+				break;
+			}
+		}
+		changesets_free(&db);
+	}
 
 pj_finally:
 	journal_close(j);
