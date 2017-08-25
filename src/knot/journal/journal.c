@@ -1387,9 +1387,9 @@ static int store_changesets(journal_t *j, list_t *changesets)
 				}
 			} else {
 				try_flush
-				delete_upto(j, txn, txn->shadow_md.first_serial, serial_to);
-				txn_restart(txn);
 			}
+			delete_upto(j, txn, txn->shadow_md.first_serial, serial_to);
+			txn_restart(txn);
 		}
 	}
 
