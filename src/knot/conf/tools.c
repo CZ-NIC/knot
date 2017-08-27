@@ -329,6 +329,9 @@ int check_policy(
 	conf_val_t dnskey_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 						   C_DNSKEY_TTL, args->id, args->id_len);
 
+	conf_val_t granularity = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+						    C_SIGNING_GRANULARITY, args->id, args->id_len);
+
 	unsigned algorithm = conf_opt(&alg);
 	if (algorithm == 3 || algorithm == 6) {
 		args->err_str = "DSA algorithm no longer supported";
@@ -365,6 +368,16 @@ int check_policy(
 	}
 	if (ksk_life_val != 0 && ksk_life_val < 2 * prop_del_val + 2 * dnskey_ttl_val) {
 		args->err_str = "KSK lifetime too low according to propagation delay and DNSKEY TTL";
+		return KNOT_EINVAL;
+	}
+
+	int64_t granul_val = conf_int(&granularity);
+	if (granul_val > zsk_life_val || granul_val > ksk_life_val) {
+		args->err_str = "signing granularity too coarse for DNSSEC key lifetime";
+		return KNOT_EINVAL;
+	}
+	if (granul_val > (lifetime_val - refresh_val) / 2) {
+		args->err_str = "signing granularity too coarse for RRSIG lifetime";
 		return KNOT_EINVAL;
 	}
 

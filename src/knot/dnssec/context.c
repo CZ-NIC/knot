@@ -158,7 +158,10 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		goto init_error;
 	}
 
+	val = conf_id_get(conf, C_POLICY, C_SIGNING_GRANULARITY, &policy_id);
+	unsigned granularity = conf_int(&val);
 	ctx->now = knot_time();
+	ctx->now = ctx->now - (ctx->now % granularity);
 
 	return KNOT_EOK;
 init_error:
