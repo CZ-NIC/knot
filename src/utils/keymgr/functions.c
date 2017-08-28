@@ -84,7 +84,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			   strncasecmp(argv[i], "retire=", 7) == 0 ||
 			   strncasecmp(argv[i], "remove=", 7) == 0) {
 			knot_time_t stamp;
-			int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|#",
+			int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
 			                          strchr(argv[i], '=') + 1, &stamp);
 			if (ret < 0) {
 				printf("Invalid timestamp: %s\n", argv[i]);

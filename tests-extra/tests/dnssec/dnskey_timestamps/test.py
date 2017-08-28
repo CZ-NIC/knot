@@ -48,8 +48,8 @@ ZONE = "example.com."
 WAIT_SIGN = 2
 
 # generate initial keys (one always enabled, one for testing)
-knot.key_gen(ZONE, ksk="true", created="t+0", publish="t+0", ready="t+0", active="t+0", retire="t+1d", remove="t+1d")
-knot.key_gen(ZONE, ksk="false", created="t+0", publish="t+0", ready="t+0", active="t+0", retire="t+1d", remove="t+1d")
+knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0", retire="+1d", remove="+1d")
+knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", ready="+0", active="+0", retire="+1d", remove="+1d")
 
 #
 # Common cases
@@ -58,37 +58,37 @@ knot.key_gen(ZONE, ksk="false", created="t+0", publish="t+0", ready="t+0", activ
 check_log("Common cases")
 
 # key not published, not active
-KEYID = knot.key_gen(ZONE, ksk="false", publish="t+10y", ready="t+10y", active="t+10y", retire="t+11y", remove="t+12y")
+KEYID = knot.key_gen(ZONE, ksk="false", publish="+10y", ready="+10y", active="+10y", retire="+11y", remove="+12y")
 t.start()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "not published, not active")
 
 # key published, not active
-knot.key_set(ZONE, KEYID, publish="t-10y")
+knot.key_set(ZONE, KEYID, publish="-10y")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, False, "published, not active")
 
 # key published, active
-knot.key_set(ZONE, KEYID, active="t-10y")
+knot.key_set(ZONE, KEYID, active="-10y")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, True, "published, active")
 
 # key published, inactive
-knot.key_set(ZONE, KEYID, retire="t-10y")
+knot.key_set(ZONE, KEYID, retire="-10y")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, False, "published, inactive")
 
 # key deleted, inactive
-knot.key_set(ZONE, KEYID, remove="t-10y")
+knot.key_set(ZONE, KEYID, remove="-10y")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "deleted, inactive")
 
 # key not published, active (algorithm rotation)
-knot.key_set(ZONE, KEYID, publish="t+10y", ready="t-10y", active="t-10y", retire="0", remove="0")
+knot.key_set(ZONE, KEYID, publish="+10y", ready="-10y", active="-10y", retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, True, "not published, active")
@@ -101,7 +101,7 @@ check_log("Planned events")
 
 # key about to be published
 event_in = 7
-knot.key_set(ZONE, KEYID, publish=("t+%d" % event_in), ready="t+10y", active="t+10y", retire="0", remove="0")
+knot.key_set(ZONE, KEYID, publish=("+%d" % event_in), ready="+10y", active="+10y", retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "to be published - pre")
@@ -109,7 +109,7 @@ t.sleep(event_in)
 check_zone(knot, True, False, "to be published - post")
 
 # key about to be activated
-knot.key_set(ZONE, KEYID, publish="t-10y", ready=("t+%d" % event_in), active=("t+%d" % event_in), retire="0", remove="0")
+knot.key_set(ZONE, KEYID, publish="-10y", ready=("+%d" % event_in), active=("+%d" % event_in), retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, False, "to be activated - pre")
@@ -117,7 +117,7 @@ t.sleep(event_in)
 check_zone(knot, True, True, "to be activated - post")
 
 #key about to be inactivated
-knot.key_set(ZONE, KEYID, publish="t-10y", ready="t-10y", active="t-10y", retire=("t+%d" % event_in), remove="0")
+knot.key_set(ZONE, KEYID, publish="-10y", ready="-10y", active="-10y", retire=("+%d" % event_in), remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, True, "to be inactivated - pre")
@@ -125,7 +125,7 @@ t.sleep(event_in)
 check_zone(knot, True, False, "to be inactivated - post")
 
 #key about to be deleted
-knot.key_set(ZONE, KEYID, publish="t-10y", ready="t-10y", active="t-10y", retire="t-10y", remove=("t+%d" % event_in))
+knot.key_set(ZONE, KEYID, publish="-10y", ready="-10y", active="-10y", retire="-10y", remove=("+%d" % event_in))
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, True, False, "to be deleted - pre")

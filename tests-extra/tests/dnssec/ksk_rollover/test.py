@@ -68,12 +68,12 @@ child.dnssec(child_zone).ksk_sbm_check_interval = 2
 ZONE = "example.com."
 
 # note that some of these paraneters will be immediately or later modified by automated key management
-KSK1 = child.key_gen(ZONE, ksk="true", created="t-2y", publish="t-2y", ready="t-1y", active="t-1y", retire="t+10y", remove="t+20y")
+KSK1 = child.key_gen(ZONE, ksk="true", created="-2y", publish="-2y", ready="-1y", active="-1y", retire="+10y", remove="+20y")
 # KSK1's retire and remove shall be reconfigured by Knot to soon as KSK2 takes place
-KSK2 = child.key_gen(ZONE, ksk="true", created="t+0", publish="t+0", ready="t+1h", active="t+10y", retire="t+11y", remove="t+12y")
-ZSK1 = child.key_gen(ZONE, ksk="false", created="t-20", publish="t-20", ready="t-10", active="t-10", retire="t+15y", remove="t+20y")
+KSK2 = child.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+1h", active="+10y", retire="+11y", remove="+12y")
+ZSK1 = child.key_gen(ZONE, ksk="false", created="-20", publish="-20", ready="-10", active="-10", retire="+15y", remove="+20y")
 # ZSK1 simply valid for all the time
-ZSK2 = child.key_gen(ZONE, ksk="false", created="t-2", publish="t-2", ready="t+14y", active="t+14y", retire="t+31y", remove="t+36y")
+ZSK2 = child.key_gen(ZONE, ksk="false", created="-2", publish="-2", ready="+14y", active="+14y", retire="+31y", remove="+36y")
 # ZSK2 only reason: prevents Knot from publishing another ZSK
 
 t.start()
