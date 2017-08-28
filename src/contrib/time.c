@@ -19,6 +19,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "contrib/time.h"
@@ -125,6 +126,9 @@ static knot_time_t time_ctx_finalize(time_ctx_t *ctx)
 		ctx->calendar.tm_isdst = -1;
 		ctx->calendar.tm_year -= 1900;
 		ctx->calendar.tm_mon -= 1;
+		// Set UTC timezone before using mktime
+		putenv("TZ=UTC");
+		tzset();
 		return (knot_time_t)mktime(&ctx->calendar);
 	} else {
 		return (knot_time_t)0;
