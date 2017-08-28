@@ -14,7 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <getopt.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -35,12 +37,14 @@ static void print_help(void)
 	       "  %s [-c | -C | -d <path>] <zone> <command> [<argument>...]\n"
 	       "\n"
 	       "Parameters:\n"
-	       "  -h  Display this help.\n"
-	       "  -V  Print program version.\n"
-	       "  -t  Generate TSIG key.\n"
-	       "  -c  Use specified Knot DNS configuration file path.\n"
-	       "  -C  Use specified Knot DNS configuration database path.\n"
-	       "  -d  Use specified KASP database path and default configuration.\n"
+	       "  -c, --config <file>      Use a textual configuration file.\n"
+	       "                            (default %s)\n"
+	       "  -C, --confdb <dir>       Use a binary configuration database directory.\n"
+	       "                            (default %s)\n"
+	       "  -d, --dir <path>         Use specified KASP database path and default configuration.\n"
+	       "  -t, --tsig <name> [alg]  Generate a TSIG key.\n"
+	       "  -h, --help               Print the program help.\n"
+	       "  -V, --version            Print the program version.\n"
 	       "\n"
 	       "Commands:\n"
 	       "  list         List all zone's DNSSEC keys.\n"
@@ -71,7 +75,7 @@ static void print_help(void)
 	       "  ksk        Whether the generated/imported key shall be Key Signing Key.\n"
 	       "  created/publish/ready/active/retire/remove  The timestamp of the key\n"
 	       "             lifetime event (e.g. published=now+1d active=1499770874)\n",
-	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME);
+	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
 static int key_command(int argc, char *argv[])
@@ -132,9 +136,20 @@ static int key_command(int argc, char *argv[])
 			}
 		}
 	} else if (strcmp(argv[1], "list") == 0) {
-		ret = keymgr_list_keys(&kctx);
+		knot_time_print_t format = TIME_PRINT_UNIX;
+		if (argc > 2 && strcmp(argv[2], "human") == 0) {
+			format = TIME_PRINT_HUMAN_MIXED;
+		} else if (argc > 2 && strcmp(argv[2], "iso") == 0) {
+			format = TIME_PRINT_ISO8601;
+		}
+		ret = keymgr_list_keys(&kctx, format);
 		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "ds") == 0 || strcmp(argv[1], "dnskey") == 0) {
+		if (argc < 3) {
+			printf("Key is not specified\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
 		int (*generate_rr)(const knot_dname_t *, const knot_kasp_key_t *) = keymgr_generate_dnskey;
 		if (strcmp(argv[1], "ds") == 0) {
 			generate_rr = keymgr_generate_ds;
@@ -250,34 +265,31 @@ static void update_privileges(void)
 	}
 }
 
-int main(int argc, char *argv[])
-{
-	if (argc <= 1) {
-		print_help();
-		return EXIT_SUCCESS;
-	}
+static bool conf_initialized = false; // This is a singleton as well as conf() is.
 
-	if (strcmp(argv[1], "--help") == 0) {
-		print_help();
-		return EXIT_SUCCESS;
-	}
-	if (strcmp(argv[1], "--version") == 0) {
-		print_version(PROGRAM_NAME);
-		return EXIT_SUCCESS;
-	}
-
-	int argpos = 1;
-
-	if (strlen(argv[1]) == 2 && argv[1][0] == '-') {
-
-#define CHECK_ARGC_THREE \
-	if (argc < 3) { \
-		printf("Option %s requires an argument\n", argv[1]); \
-		print_help(); \
+#define CHECK_CONF_UNINIT \
+	if ((conf_initialized = !conf_initialized) == false) { \
+		printf("Error: multiple arguments attempting configuration initializatioin.\n"); \
 		return EXIT_FAILURE; \
 	}
 
-		switch (argv[1][1]) {
+int main(int argc, char *argv[])
+{
+	int ret;
+
+	struct option opts[] = {
+		{ "config",  required_argument, NULL, 'c' },
+		{ "confdb",  required_argument, NULL, 'C' },
+		{ "dir",     required_argument, NULL, 'd' },
+		{ "tsig",    required_argument, NULL, 't' },
+		{ "help",    no_argument,       NULL, 'h' },
+		{ "version", no_argument,       NULL, 'V' },
+		{ NULL }
+	};
+
+	int opt = 0, li = 0;
+	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:", opts, &li)) != -1) {
+		switch (opt) {
 		case 'h':
 			print_help();
 			return EXIT_SUCCESS;
@@ -285,41 +297,37 @@ int main(int argc, char *argv[])
 			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
 		case 'd':
-			CHECK_ARGC_THREE
-			if (!init_conf(NULL) || !init_conf_blank(argv[2])) {
+			CHECK_CONF_UNINIT
+			if (!init_conf(NULL) || !init_conf_blank(optarg)) {
 				return EXIT_FAILURE;
 			}
 			break;
 		case 'c':
-			CHECK_ARGC_THREE
-			if (!init_conf(NULL) || !init_confile(argv[2])) {
+			CHECK_CONF_UNINIT
+			if (!init_conf(NULL) || !init_confile(optarg)) {
 				return EXIT_FAILURE;
 			}
 			break;
 		case 'C':
-			CHECK_ARGC_THREE
+			CHECK_CONF_UNINIT
 			if (!init_conf(argv[2])) {
 				return EXIT_FAILURE;
 			}
 			break;
 		case 't':
-			CHECK_ARGC_THREE
-			int ret = keymgr_generate_tsig(argv[2], (argc >= 4 ? argv[3] : "hmac-sha256"),
-			                               (argc >= 5 ? atol(argv[4]) : 0));
+			ret = keymgr_generate_tsig(optarg, (argc > optind ? argv[optind] : "hmac-sha256"),
+			                           (argc > optind + 1 ? atol(argv[optind + 1]) : 0));
 			if (ret != KNOT_EOK) {
 				printf("Failed to generate TSIG (%s)\n", knot_strerror(ret));
 			}
 			return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
 		default:
-			printf("Wrong option: %s\n", argv[1]);
 			print_help();
 			return EXIT_FAILURE;
 		}
+	}
 
-#undef CHECK_ARGC_THREE
-
-		argpos = 3;
-	} else {
+	if (!conf_initialized) {
 		struct stat st;
 		if (stat(CONF_DEFAULT_DBDIR, &st) == 0 && init_conf(CONF_DEFAULT_DBDIR)) {
 			// initialized conf from default DB location
@@ -327,14 +335,14 @@ int main(int argc, char *argv[])
 			   init_conf(NULL) && init_confile(CONF_DEFAULT_FILE)) {
 			// initialized conf from default confile
 		} else {
-			printf("Couldn't initialize configuration, please provide -c, -C or -d option\n");
+			printf("Couldn't initialize configuration, please provide -c, -C, or -d option\n");
 			return EXIT_FAILURE;
 		}
 	}
 
 	update_privileges();
 
-	int ret = key_command(argc - argpos, argv + argpos);
+	ret = key_command(argc - optind, argv + optind);
 
 	conf_free(conf());
 

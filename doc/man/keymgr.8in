@@ -53,27 +53,28 @@ Print the program help.
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
 .TP
-\fB\-t\fP \fBtsig_name\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
-Generates TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
+\fB\-t\fP, \fB\-\-tsig\fP \fItsig_name\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
+Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
 bit length of the key by number (default: optimal length given by algorithm).
 .UNINDENT
 .SS Config options
 .INDENT 0.0
 .TP
-\fB\-c\fP
-Use specified Knot DNS configuration file path.
+\fB\-c\fP, \fB\-\-config\fP \fIfile\fP
+Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
 .TP
-\fB\-C\fP
-Use specified Knot DNS configuration database path. The default configuration
-database, if exists, has a preference to the default configuration file.
+\fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
+Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
+The default configuration database, if exists, has a preference to the default
+configuration file.
 .TP
-\fB\-d\fP
+\fB\-d\fP, \fB\-\-dir\fP \fIpath\fP
 Use specified KASP database path and default configuration.
 .UNINDENT
 .SS Commands
 .INDENT 0.0
 .TP
-\fBlist\fP
+\fBlist\fP [\fItimestamp_format\fP]
 Prints the list of key IDs and parameters of keys belonging to the zone.
 .TP
 \fBgenerate\fP [\fIarguments\fP\&...]
@@ -148,15 +149,27 @@ Timestamp for key ot be deleted.
 Zero timestamp means infinite future.
 .TP
 \fIUNIX_time\fP
-Positive number of seconds since 1970.
+Positive number of seconds since 1970 UTC.
 .TP
 \fIYYYYMMDDHHMMSS\fP
 Date and time in this format without any punctuation.
 .TP
 \fIrelative_timestamp\fP
-The word "now" followed by sign (+, \-), a number and a shortcut for time unit
-(y, mo, d, h, mi, (nothing = seconds)), e.g. now+1mi, now\-2mo, now+10,
-now+0, now\-1y, ...
+A sign character (\fB+\fP, \fB\-\fP), a number, and an optional time unit
+(\fBy\fP, \fBmo\fP, \fBd\fP, \fBh\fP, \fBmi\fP, \fBs\fP). The default unit is one second.
+E.g. +1mi, \-2mo.
+.UNINDENT
+.SS Output timestamp formats
+.INDENT 0.0
+.TP
+(none)
+The timestamps are printed as UNIX timestamp.
+.TP
+\fBhuman\fP
+The timestamps are printed relatively to now using time units (e.g. \-2y5mo, +1h13s).
+.TP
+\fBiso\fP
+The timestamps are printed in the ISO8601 format (e.g. 2016\-12\-31T23:59:00).
 .UNINDENT
 .SH EXAMPLES
 .INDENT 0.0
@@ -180,7 +193,7 @@ Generate new DNSSEC key:
 .nf
 .ft C
 $ keymgr example.com. generate algorithm=ECDSAP256SHA256 size=256 \e
-  ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
+  ksk=true created=1488034625 publish=20170223205611 retire=+10mo remove=+1y
 .ft P
 .fi
 .UNINDENT
@@ -204,7 +217,7 @@ Configure key timing:
 .sp
 .nf
 .ft C
-$ keymgr example.com. set 4208 active=now+2mi retire=now+4mi remove=now+5mi
+$ keymgr example.com. set 4208 active=+2mi retire=+4mi remove=+5mi
 .ft P
 .fi
 .UNINDENT

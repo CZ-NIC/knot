@@ -254,11 +254,8 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			} else if (ev_time <= time(NULL)) {
 				ret = snprintf(buff, sizeof(buff), "pending");
 			} else {
-				ev_time -= time(NULL);
-				ret = snprintf(buff, sizeof(buff), "in %lldh%lldm%llds",
-				               (long long)(ev_time / 3600),
-				               (long long)(ev_time % 3600) / 60,
-				               (long long)(ev_time % 60));
+				ret = knot_time_print(TIME_PRINT_HUMAN_MIXED,
+				                      ev_time, buff, sizeof(buff));
 			}
 			if (ret < 0 || ret >= sizeof(buff)) {
 				return KNOT_ESPACE;

@@ -30,27 +30,28 @@ Basic options
 **-V**, **--version**
   Print the program version.
 
-**-t** **tsig_name** [*tsig_algorithm*] [*tsig_bits*]
-  Generates TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
+**-t**, **--tsig** *tsig_name* [*tsig_algorithm*] [*tsig_bits*]
+  Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
   bit length of the key by number (default: optimal length given by algorithm).
 
 Config options
 ..............
 
-**-c**
-  Use specified Knot DNS configuration file path.
+**-c**, **--config** *file*
+  Use a textual configuration file (default is :file:`@config_dir@/knot.conf`).
 
-**-C**
-  Use specified Knot DNS configuration database path. The default configuration
-  database, if exists, has a preference to the default configuration file.
+**-C**, **--confdb** *directory*
+  Use a binary configuration database directory (default is :file:`@storage_dir@/confdb`).
+  The default configuration database, if exists, has a preference to the default
+  configuration file.
 
-**-d**
+**-d**, **--dir** *path*
   Use specified KASP database path and default configuration.
 
 Commands
 ........
 
-**list**
+**list** [*timestamp_format*]
   Prints the list of key IDs and parameters of keys belonging to the zone.
 
 **generate** [*arguments*...]
@@ -125,15 +126,27 @@ Timestamps
   Zero timestamp means infinite future.
 
 *UNIX_time*
-  Positive number of seconds since 1970.
+  Positive number of seconds since 1970 UTC.
 
 *YYYYMMDDHHMMSS*
   Date and time in this format without any punctuation.
 
 *relative_timestamp*
-  The word "now" followed by sign (+, -), a number and a shortcut for time unit
-  (y, mo, d, h, mi, (nothing = seconds)), e.g. now+1mi, now-2mo, now+10,
-  now+0, now-1y, ...
+  A sign character (**+**, **-**), a number, and an optional time unit
+  (**y**, **mo**, **d**, **h**, **mi**, **s**). The default unit is one second.
+  E.g. +1mi, -2mo.
+
+Output timestamp formats
+........................
+
+(none)
+  The timestamps are printed as UNIX timestamp.
+
+**human**
+  The timestamps are printed relatively to now using time units (e.g. -2y5mo, +1h13s).
+
+**iso**
+  The timestamps are printed in the ISO8601 format (e.g. 2016-12-31T23:59:00).
 
 Examples
 --------
@@ -145,7 +158,7 @@ Examples
 2. Generate new DNSSEC key::
 
     $ keymgr example.com. generate algorithm=ECDSAP256SHA256 size=256 \
-      ksk=true created=1488034625 publish=20170223205611 retire=now+10mo remove=now+1y
+      ksk=true created=1488034625 publish=20170223205611 retire=+10mo remove=+1y
 
 3. Import a DNSSEC key from BIND::
 
@@ -153,7 +166,7 @@ Examples
 
 4. Configure key timing::
 
-    $ keymgr example.com. set 4208 active=now+2mi retire=now+4mi remove=now+5mi
+    $ keymgr example.com. set 4208 active=+2mi retire=+4mi remove=+5mi
 
 5. Share a KSK from another zone::
 
