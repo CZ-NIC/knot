@@ -103,12 +103,16 @@ static size_t unit_value(char unit)
 		return 3600 * 24 * 30;
 	case 'Y':
 		val *= 365;
+		// FALLTHROUGH
 	case 'D':
 		val *= 24;
+		// FALLTHROUGH
 	case 'h':
 		val *= 60;
+		// FALLTHROUGH
 	case 'm':
 		val *= 60;
+		// FALLTHROUGH
 	case 's':
 	default:
 		return val;
