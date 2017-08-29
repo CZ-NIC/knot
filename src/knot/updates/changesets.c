@@ -156,7 +156,7 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 
 	// Subtract the data from node's RRSet.
 	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
-	int ret = knot_rdataset_subtract(rrs, &rr->rrs, NULL);
+	int ret = knot_rdataset_subtract(rrs, &rr->rrs, true, NULL);
 	if (ret != KNOT_EOK) {
 		return;
 	}
@@ -424,7 +424,7 @@ static int preapply_fix_rrset(const knot_rrset_t *apply, bool adding, void *data
 		ret = knot_rdataset_intersect(zrdataset, &apply->rrs, &fixrrset->rrs, ctx->mm);
 	} else {
 		if (zrdataset != NULL) {
-			ret = knot_rdataset_subtract(&fixrrset->rrs, zrdataset, ctx->mm);
+			ret = knot_rdataset_subtract(&fixrrset->rrs, zrdataset, true, ctx->mm);
 		}
 	}
 	if (ret == KNOT_EOK && !knot_rrset_empty(fixrrset)) {

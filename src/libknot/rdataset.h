@@ -177,13 +177,14 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
 
 /*!
  * \brief Does set-like RRS subtraction. \a from RRS is changed.
- * \param from  RRS to subtract from.
- * \param what  RRS to subtract.
- * \param mm    Memory context use to reallocated \a from data.
+ * \param from     RRS to subtract from.
+ * \param what     RRS to subtract.
+ * \param cmp_ttl  Compare TTL indicator.
+ * \param mm       Memory context use to reallocated \a from data.
  * \return KNOT_E*
  */
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
-                           knot_mm_t *mm);
+                           bool cmp_ttl, knot_mm_t *mm);
 
 /*!
  * \brief Sorts the dataset. Removes the element if found to be duplicate.

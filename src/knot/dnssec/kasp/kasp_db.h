@@ -26,6 +26,11 @@
 
 typedef struct kasp_db kasp_db_t;
 
+typedef enum { // the enum values MUST match those from keyclass_t !!
+        KASPDB_SERIAL_MASTER = 0x5,
+        KASPDB_SERIAL_LASTSIGNED = 0x6,
+} kaspdb_serial_t;
+
 /*!
  * \brief Returns kasp_db_t singleton, to be used for signing all zones.
  *
@@ -58,6 +63,13 @@ int kasp_db_init(kasp_db_t **db, const char *path, size_t mapsize);
  * \return KNOT_EOK     reconfigured successfully
  */
 int kasp_db_reconfigure(kasp_db_t **db, const char *new_path, size_t new_mapsize);
+
+/*!
+ * \brief Determine if kasp_db possibly exists at all.
+ *
+ * This is useful to avoid creating kasp_db by opening it just to check if anything is there.
+ */
+bool kasp_db_exists(kasp_db_t *db);
 
 /*!
  * \brief Perform real ctreate/open of KASP db.
@@ -153,6 +165,32 @@ int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
  */
 int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
                            dnssec_binary_t *nsec3salt, knot_time_t *salt_created);
+
+/*!
+ * \brief Store SOA serial number of master or last signed serial.
+ *
+ * \param db             KASP db
+ * \param zone_name      zone name
+ * \param serial_type    kind of serial to be stored
+ * \param serial         new serial to be stored
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_store_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+                         kaspdb_serial_t serial_type, uint32_t serial);
+
+/*!
+ * \brief Load saved SOA serial number of master or last signed serial.
+ *
+ * \param db             KASP db
+ * \param zone_name      zone name
+ * \param serial_type    kind of serial to be loaded
+ * \param master_serial  output if KNOT_EOK: desired serial number
+ *
+ * \return KNOT_E* (KNOT_ENOENT if not stored before)
+ */
+int kasp_db_load_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+                        kaspdb_serial_t serial_type, uint32_t *serial);
 
 /*!
  * \brief For given policy name, obtain last generated key.

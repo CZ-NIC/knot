@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,19 +16,21 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <urcu.h>
 
 #include "contrib/mempattern.h"
 #include "contrib/trim.h"
 #include "dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
+#include "knot/dnssec/zone-events.h"
+#include "knot/events/handlers.h"
+#include "knot/events/log.h"
 #include "knot/events/replan.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/query/layer.h"
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
-#include "knot/updates/apply.h"
+#include "knot/updates/changesets.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -174,18 +176,18 @@ static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 
 static void xfr_log_publish(const knot_dname_t *zone_name,
                             const struct sockaddr *remote,
-                            const zone_contents_t *old_zone,
-                            const zone_contents_t *new_zone)
+                            const uint32_t old_serial,
+                            const uint32_t new_serial,
+                            bool axfr_bootstrap)
 {
-	if (old_zone) {
+	if (!axfr_bootstrap) {
 		REFRESH_LOG(LOG_INFO, zone_name, remote,
 		            "zone updated, serial %u -> %u",
-		            zone_contents_serial(old_zone),
-		            zone_contents_serial(new_zone));
+		            old_serial, new_serial);
 	} else {
 		REFRESH_LOG(LOG_INFO, zone_name, remote,
 		            "zone updated, serial none -> %u",
-		            zone_contents_serial(new_zone));
+		            new_serial);
 	}
 }
 
@@ -205,34 +207,6 @@ static void axfr_cleanup(struct refresh_data *data)
 	zone_contents_deep_free(&data->axfr.zone);
 }
 
-/*! \brief Routine for calling call_rcu() easier way.
- *
- * TODO: move elsewhere, as it has no direct relation to AXFR
- */
-typedef struct {
-	struct rcu_head rcuhead;
-	void (*ptr_free_fun)(void **);
-	void *ptr;
-} callrcu_wrapper_t;
-
-static void callrcu_wrapper_cb(struct rcu_head *param)
-{
-	callrcu_wrapper_t *wrap = (callrcu_wrapper_t *)param;
-	wrap->ptr_free_fun(&wrap->ptr);
-	free(wrap);
-}
-
-/* note: does nothing if not-enough-memory */
-static void callrcu_wrapper(void *ptr, void (*ptr_free_fun)(void **))
-{
-	callrcu_wrapper_t *wrap = calloc(1, sizeof(callrcu_wrapper_t));
-	if (wrap != NULL) {
-		wrap->ptr = ptr;
-		wrap->ptr_free_fun = ptr_free_fun;
-		call_rcu((struct rcu_head *)wrap, callrcu_wrapper_cb);
-	}
-}
-
 static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
@@ -247,20 +221,56 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
-	conf_val_t val = conf_zone_get(data->conf, C_ZONE_IN_JOURNAL, data->zone->name);
-	if (conf_bool(&val)) {
-		ret = zone_in_journal_store(data->conf, data->zone, new_zone);
-		if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
-			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			           "failed to write zone contents to journal (%s)",
-			           knot_strerror(ret));
+	uint32_t master_serial = zone_contents_serial(new_zone);
+	uint32_t local_serial = zone_contents_serial(data->zone->contents);
+	bool have_lastsigned = zone_get_lastsigned_serial(data->zone, &local_serial);
+	uint32_t old_serial = local_serial;
+	bool bootstrap = (data->soa == NULL);
+	if ((!bootstrap || have_lastsigned) &&
+	    (serial_compare(master_serial, local_serial) != SERIAL_GREATER)) {
+		conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
+		local_serial = serial_next(local_serial, conf_opt(&val));
+		zone_contents_set_soa_serial(new_zone, local_serial);
+	}
+
+	zone_update_t up = { 0 };
+	ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	bool dnssec_enable = conf_bool(&val);
+	if (dnssec_enable) {
+		zone_sign_reschedule_t resch = { .allow_rollover = true };
+		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, &resch);
+		if (ret != KNOT_EOK) {
+			zone_update_clear(&up);
+			return ret;
+		}
+		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
+	}
+
+	ret = zone_update_commit(data->conf, &up);
+	zone_update_clear(&up);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (dnssec_enable) {
+		ret = zone_set_master_serial(data->zone, master_serial);
+		if (ret == KNOT_EOK) {
+			ret = zone_set_lastsigned_serial(data->zone, zone_contents_serial(new_zone));
+		}
+		if (ret != KNOT_EOK) {
+			log_zone_warning(data->zone->name,
+			"unable to save master serial, future transfers might be broken");
 		}
 	}
 
-	zone_contents_t *old_zone = zone_switch_contents(data->zone, new_zone);
-	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
+	xfr_log_publish(data->zone->name, data->remote, old_serial,
+	                zone_contents_serial(new_zone), bootstrap);
 	data->axfr.zone = NULL; // seized
-	callrcu_wrapper(old_zone, (void (*)(void **))zone_contents_deep_free);
 
 	return KNOT_EOK;
 }
@@ -396,62 +406,89 @@ static void ixfr_cleanup(struct refresh_data *data)
 	changesets_free(&data->ixfr.changesets);
 }
 
-static void ixfr_finalize_cleanup(void **ptr)
-{
-	apply_ctx_t *ctx = *ptr;
-	update_free_zone(&ctx->contents);
-	update_cleanup(ctx);
-	free(ctx);
-}
-
 static int ixfr_finalize(struct refresh_data *data)
 {
-	zone_contents_t *new_zone = NULL;
-	apply_ctx_t *ctx = calloc(1, sizeof(apply_ctx_t));
-	if (ctx == NULL) {
-		return KNOT_ENOMEM;
+	uint32_t master_serial;
+	(void)zone_get_master_serial(data->zone, &master_serial);
+	uint32_t local_serial = zone_contents_serial(data->zone->contents);
+	uint32_t lastsigned_serial = local_serial;
+	bool have_lastsigned = zone_get_lastsigned_serial(data->zone, &lastsigned_serial);
+	uint32_t old_serial = local_serial;
+	changeset_t *chs = NULL;
+	WALK_LIST(chs, data->ixfr.changesets) {
+		master_serial = knot_soa_serial(&chs->soa_to->rrs);
+		knot_soa_serial_set(&chs->soa_from->rrs, local_serial);
+		if (have_lastsigned && (serial_compare(lastsigned_serial, local_serial) & SERIAL_MASK_GEQ)) {
+			local_serial = lastsigned_serial;
+		}
+		if (serial_compare(master_serial, local_serial) != SERIAL_GREATER) {
+			conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
+			local_serial = serial_next(local_serial, conf_opt(&val));
+			knot_soa_serial_set(&chs->soa_to->rrs, local_serial);
+		} else {
+			local_serial = master_serial;
+		}
 	}
 
-	apply_init_ctx(ctx, NULL, APPLY_STRICT);
-	int ret = apply_changesets(ctx, data->zone->contents,
-	                           &data->ixfr.changesets, &new_zone);
+	zone_update_t up = { 0 };
+	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
 	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	changeset_t *set = NULL;
+	WALK_LIST(set, data->ixfr.changesets) {
+		ret = zone_update_apply_changeset(&up, set);
+		if (ret != KNOT_EOK) {
+			zone_update_clear(&up);
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			           "failed to apply changes to zone (%s)",
+			           knot_strerror(ret));
+			return ret;
+		}
+	}
+
+	ret = xfr_validate(up.new_cont, data);
+	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
+		return ret;
+	}
+
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	bool dnssec_enable = conf_bool(&val);
+	if (dnssec_enable) {
+		zone_sign_reschedule_t resch = { .allow_rollover = true };
+		ret = knot_dnssec_sign_update(&up, &resch);
+		if (ret != KNOT_EOK) {
+			zone_update_clear(&up);
+			return ret;
+		}
+		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
+	}
+
+	ret = zone_update_commit(data->conf, &up);
+
+	if (ret == KNOT_EOK) {
+		if (dnssec_enable && !EMPTY_LIST(data->ixfr.changesets)) {
+			ret = zone_set_master_serial(data->zone, master_serial);
+			if (ret == KNOT_EOK) {
+				ret = zone_set_lastsigned_serial(data->zone,
+				                                 zone_contents_serial(up.zone->contents));
+			}
+			if (ret != KNOT_EOK) {
+				log_zone_warning(data->zone->name,
+				"unable to save master serial, future transfers might be broken");
+			}
+		}
+		xfr_log_publish(data->zone->name, data->remote, old_serial,
+		                zone_contents_serial(up.zone->contents), false);
+	} else {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-		           "failed to apply changes to zone (%s)",
-		           knot_strerror(ret));
-		free(ctx);
-		return ret;
+		           "failed to sign changes (%s)", knot_strerror(ret));
 	}
 
-	assert(new_zone != NULL);
-
-	ret = xfr_validate(new_zone, data);
-	if (ret != KNOT_EOK) {
-		update_rollback(ctx);
-		update_free_zone(&new_zone);
-		free(ctx);
-		return ret;
-	}
-
-	// TODO: Refactor zone_changes_store() not to take monster object with config.
-	ret = zone_changes_store(data->conf, data->zone, &data->ixfr.changesets);
-	if (ret != KNOT_EOK) {
-		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-		           "failed to write changes to journal (%s)",
-		           knot_strerror(ret));
-		update_rollback(ctx);
-		update_free_zone(&new_zone);
-		free(ctx);
-		return ret;
-	}
-
-	zone_contents_t *old_zone = zone_switch_contents(data->zone, new_zone);
-	xfr_log_publish(data->zone->name, data->remote, old_zone, new_zone);
-
-	ctx->contents = old_zone;
-	callrcu_wrapper(ctx, ixfr_finalize_cleanup);
-
-	return KNOT_EOK;
+	zone_update_clear(&up);
+	return ret;
 }
 
 /*! \brief Stores starting SOA into changesets structure. */
@@ -690,7 +727,9 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	if (data->ixfr.proc == NULL) {
 		const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
-		data->xfr_type = determine_xfr_type(answer, knot_soa_serial(&data->soa->rrs),
+		uint32_t master_serial = knot_soa_serial(&data->soa->rrs);
+		(void)zone_get_master_serial(data->zone, &master_serial);
+		data->xfr_type = determine_xfr_type(answer, master_serial,
 		                                    data->initial_soa_copy);
 		switch (data->xfr_type) {
 		case XFR_TYPE_ERROR:
@@ -796,6 +835,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	}
 
 	uint32_t local_serial = knot_soa_serial(&data->soa->rrs);
+	(void)zone_get_master_serial(data->zone, &local_serial);
 	uint32_t remote_serial = knot_soa_serial(&rr->rrs);
 	bool current = serial_is_current(local_serial, remote_serial);
 	bool master_uptodate = serial_is_current(remote_serial, local_serial);
@@ -825,8 +865,17 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	if (ixfr) {
 		assert(data->soa);
+		knot_rrset_t *sending_soa = knot_rrset_copy(data->soa, data->mm);
+		uint32_t master_serial;
+		int ret = zone_get_master_serial(data->zone, &master_serial);
+		if (sending_soa == NULL || ret != KNOT_EOK) {
+			knot_rrset_free(&sending_soa, data->mm);
+			return KNOT_STATE_FAIL;
+		}
+		knot_soa_serial_set(&sending_soa->rrs, master_serial);
 		knot_pkt_begin(pkt, KNOT_AUTHORITY);
-		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, data->soa, 0);
+		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, sending_soa, 0);
+		knot_rrset_free(&sending_soa, data->mm);
 	}
 
 	query_put_edns(pkt, &data->edns);

@@ -571,10 +571,10 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 		return ret;
 	}
 
-	/* Store new zone contents in journal. */
-	if (update->zone->journal_db != NULL) { // TODO this should be better
+	conf_val_t val = conf_zone_get(conf, C_ZONE_IN_JOURNAL, update->zone->name);
+	if (conf_bool(&val)) {
 		ret = zone_in_journal_store(conf, update->zone, update->new_cont);
-		if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
+		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
@@ -582,6 +582,34 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 	*contents_out = update->new_cont;
 
 	return KNOT_EOK;
+}
+
+/*! \brief Routine for calling call_rcu() easier way.
+ *
+ * TODO: move elsewhere, as it has no direct relation to zone-update
+ */
+typedef struct {
+	struct rcu_head rcuhead;
+	void (*ptr_free_fun)(void **);
+	void *ptr;
+} callrcu_wrapper_t;
+
+static void callrcu_wrapper_cb(struct rcu_head *param)
+{
+	callrcu_wrapper_t * wrap = (callrcu_wrapper_t *)param;
+	wrap->ptr_free_fun(&wrap->ptr);
+	free(wrap);
+}
+
+/* note: does nothing if not-enough-memory */
+static void callrcu_wrapper(void *ptr, void (*ptr_free_fun)(void **))
+{
+	callrcu_wrapper_t * wrap = malloc(sizeof(callrcu_wrapper_t));
+	if (wrap != NULL) {
+		wrap->ptr = ptr;
+		wrap->ptr_free_fun = ptr_free_fun;
+		call_rcu((struct rcu_head *)wrap, callrcu_wrapper_cb);
+	}
 }
 
 int zone_update_commit(conf_t *conf, zone_update_t *update)
@@ -620,15 +648,14 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	old_contents = zone_switch_contents(update->zone, new_contents);
 
 	/* Sync RCU. */
-	synchronize_rcu();
 	if (update->flags & UPDATE_FULL) {
 		assert(update->new_cont_deep_copy);
-		zone_contents_deep_free(&old_contents);
+		callrcu_wrapper(old_contents, (void (*)(void **))zone_contents_deep_free);
 	} else if (update->flags & UPDATE_INCREMENTAL) {
 		if (update->new_cont_deep_copy) {
-			zone_contents_deep_free(&old_contents);
+			callrcu_wrapper(old_contents, (void (*)(void **))zone_contents_deep_free);
 		} else {
-			update_free_zone(&old_contents);
+			callrcu_wrapper(old_contents, (void (*)(void **))update_free_zone);
 		}
 		changeset_clear(&update->change);
 	}

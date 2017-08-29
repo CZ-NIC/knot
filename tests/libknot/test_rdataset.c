@@ -29,7 +29,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(34);
+	plan(35);
 
 	// Test init
 	knot_rdataset_t rdataset;
@@ -153,32 +153,36 @@ int main(int argc, char *argv[])
 	knot_rdataset_clear(&intersection, NULL);
 
 	// Test subtract
-	ok(knot_rdataset_subtract(NULL, NULL, NULL) == KNOT_EINVAL,
+	ok(knot_rdataset_subtract(NULL, NULL, false, NULL) == KNOT_EINVAL,
 	   "rdataset: subtract NULL.");
 	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
 	assert(ret == KNOT_EOK);
-	ok(knot_rdataset_subtract(&copy, &copy, NULL) == KNOT_EOK &&
+	ok(knot_rdataset_subtract(&copy, &copy, true, NULL) == KNOT_EOK &&
 	   copy.rr_count == 0, "rdataset: subtract self.");
 
 	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
 	assert(ret == KNOT_EOK);
-	ret = knot_rdataset_subtract(&copy, &rdataset, NULL);
+	ret = knot_rdataset_subtract(&copy, &rdataset, true, NULL);
 	bool subtract_ok = ret == KNOT_EOK && copy.rr_count == 0;
 	ok(subtract_ok, "rdataset: subtract identical.");
 
 	RDATASET_INIT_WITH(rdataset_lo, rdata_lo);
 	RDATASET_INIT_WITH(rdataset_gt, rdata_gt);
 	data_before = rdataset_lo.data;
-	ret = knot_rdataset_subtract(&rdataset_lo, &rdataset_gt, NULL);
+	ret = knot_rdataset_subtract(&rdataset_lo, &rdataset_gt, true, NULL);
 	subtract_ok = ret == KNOT_EOK && rdataset_lo.rr_count == 1 &&
 	              rdataset_lo.data == data_before;
 	ok(subtract_ok, "rdataset: subtract no common.");
 
-	ret = knot_rdataset_subtract(&rdataset, &rdataset_gt, NULL);
-	subtract_ok = ret == KNOT_EOK && knot_rdataset_eq(&rdataset, &rdataset_lo);
-	ok(subtract_ok, "rdataset: subtract normal.");
+	ret = knot_rdataset_subtract(&rdataset, &rdataset_gt, true, NULL);
+	subtract_ok = ret == KNOT_EOK && rdataset.rr_count == 2;
+	ok(subtract_ok, "rdataset: subtract different TTL disabled.");
 
-	ret = knot_rdataset_subtract(&rdataset, &rdataset_lo, NULL);
+	ret = knot_rdataset_subtract(&rdataset, &rdataset_gt, false, NULL);
+	subtract_ok = ret == KNOT_EOK && knot_rdataset_eq(&rdataset, &rdataset_lo);
+	ok(subtract_ok, "rdataset: subtract different TTL enabled.");
+
+	ret = knot_rdataset_subtract(&rdataset, &rdataset_lo, true, NULL);
 	subtract_ok = ret == KNOT_EOK && rdataset.rr_count == 0 &&
 	              rdataset.data == NULL;
 	ok(subtract_ok, "rdataset: subtract last.");

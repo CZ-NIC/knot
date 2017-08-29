@@ -21,6 +21,7 @@
 
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
+#include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/requestor.h"
 #include "knot/updates/zone-update.h"
@@ -633,4 +634,52 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
 	free(zonefile);
 
 	return zonefile_write(target, zone->contents);
+}
+
+int zone_set_master_serial(zone_t *zone, uint32_t serial)
+{
+	int ret = kasp_db_open(*kaspdb());
+	if (ret == KNOT_EOK) {
+		ret = kasp_db_store_serial(*kaspdb(), zone->name, KASPDB_SERIAL_MASTER, serial);
+	}
+	return ret;
+}
+
+int zone_get_master_serial(zone_t *zone, uint32_t *serial)
+{
+	if (!kasp_db_exists(*kaspdb())) {
+		*serial = zone_contents_serial(zone->contents);
+		return KNOT_EOK;
+	}
+	int ret = kasp_db_open(*kaspdb());
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	ret = kasp_db_load_serial(*kaspdb(), zone->name, KASPDB_SERIAL_MASTER, serial);
+	if (ret == KNOT_ENOENT) {
+		*serial = zone_contents_serial(zone->contents);
+		return KNOT_EOK;
+	}
+	return ret;
+}
+
+int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
+{
+	int ret = kasp_db_open(*kaspdb());
+	if (ret == KNOT_EOK) {
+		ret = kasp_db_store_serial(*kaspdb(), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	}
+	return ret;
+}
+
+bool zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
+{
+	if (!kasp_db_exists(*kaspdb())) {
+		return false;
+	}
+	int ret = kasp_db_open(*kaspdb());
+	if (ret == KNOT_EOK) {
+		ret = kasp_db_load_serial(*kaspdb(), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	}
+	return (ret == KNOT_EOK);
 }

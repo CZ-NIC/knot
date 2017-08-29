@@ -487,6 +487,30 @@ On a forced zone resign, all signatures in the zone are dropped and recreated.
 The ``knotc zone-status`` command can be used to see when the next scheduled
 DNSSEC resign will happen.
 
+.. _dnssec-on-slave-signing:
+
+On-slave signing
+----------------
+
+It is possible to enable automatic DNSSEC zone signing even on a slave
+server. If enabled, the zone is signed after every AXFR/IXFR transfer
+from master, so that the slave always serves a signed up-to-date version
+of the zone.
+
+It is strongly recommended to block any outside access to the master
+server, so that only the slave's signed version of the zone is served.
+
+Enabled on-slave signing introduces events when the slave zone changes
+while the master zone remains unchanged, such as a key rollover or
+refreshing of RRSIG records, which cause inequality of zone SOA serial
+between master and slave. The slave server handles this by saving the
+master's SOA serial in a special variable inside KASP DB and appropriately
+modifiying AXFR/IXFR queries/answers to keep the communication with
+master consistent while applying the changes with a different serial.
+
+It is recommended to use UNIX time serial policy on master and incremental
+serial policy on slave so that their SOA serials are equal most of the time.
+
 .. _dnssec-limitations:
 
 Limitations
