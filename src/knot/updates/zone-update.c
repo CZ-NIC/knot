@@ -251,10 +251,11 @@ void zone_update_clear(zone_update_t *update)
 
 	if (update->flags & UPDATE_INCREMENTAL) {
 		/* Revert any changes on error, do nothing on success. */
-		update_rollback(&update->a_ctx);
 		if (update->new_cont_deep_copy) {
+			update_cleanup(&update->a_ctx);
 			zone_contents_deep_free(&update->new_cont);
 		} else {
+			update_rollback(&update->a_ctx);
 			update_free_zone(&update->new_cont);
 		}
 		changeset_clear(&update->change);
