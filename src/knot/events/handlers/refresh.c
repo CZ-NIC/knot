@@ -226,7 +226,8 @@ static int axfr_finalize(struct refresh_data *data)
 	bool have_lastsigned = zone_get_lastsigned_serial(data->zone, &local_serial);
 	uint32_t old_serial = local_serial;
 	bool bootstrap = (data->soa == NULL);
-	if ((!bootstrap || have_lastsigned) && serial_compare(master_serial, local_serial) <= 0) {
+	if ((!bootstrap || have_lastsigned) &&
+	    (serial_compare(master_serial, local_serial) != SERIAL_GREATER)) {
 		conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
 		local_serial = serial_next(local_serial, conf_opt(&val));
 		zone_contents_set_soa_serial(new_zone, local_serial);
@@ -417,10 +418,10 @@ static int ixfr_finalize(struct refresh_data *data)
 	WALK_LIST(chs, data->ixfr.changesets) {
 		master_serial = knot_soa_serial(&chs->soa_to->rrs);
 		knot_soa_serial_set(&chs->soa_from->rrs, local_serial);
-		if (have_lastsigned && serial_compare(lastsigned_serial, local_serial) >= 0) {
+		if (have_lastsigned && (serial_compare(lastsigned_serial, local_serial) & SERIAL_MASK_GEQ)) {
 			local_serial = lastsigned_serial;
 		}
-		if (serial_compare(master_serial, local_serial) <= 0) {
+		if (serial_compare(master_serial, local_serial) != SERIAL_GREATER) {
 			conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
 			local_serial = serial_next(local_serial, conf_opt(&val));
 			knot_soa_serial_set(&chs->soa_to->rrs, local_serial);
