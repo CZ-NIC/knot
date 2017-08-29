@@ -145,11 +145,6 @@ static int key_command(int argc, char *argv[])
 		ret = keymgr_list_keys(&kctx, format);
 		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "ds") == 0 || strcmp(argv[1], "dnskey") == 0) {
-		if (argc < 3) {
-			printf("Key is not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
 		int (*generate_rr)(const knot_dname_t *, const knot_kasp_key_t *) = keymgr_generate_dnskey;
 		if (strcmp(argv[1], "ds") == 0) {
 			generate_rr = keymgr_generate_ds;
