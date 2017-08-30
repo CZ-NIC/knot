@@ -263,8 +263,8 @@ Journal does each operation in one transaction to keep consistency of the DB and
 The exception is when store transaction exceeds 5% of the whole DB mapsize, it is split into multiple ones
 and some dirty-chunks-management involves.
 
-Each zone journal has own
-usage limit on how much DB space it may occupy. Before hitting the limit,
+Each zone journal has own :ref:`usage limit <zone_max-journal-usage>`
+on how much DB space it may occupy. Before hitting the limit,
 changesets are stored one-by-one and whole history is linear. While hitting the limit,
 the zone is flushed into zone file, and oldest changesets are deleted as needed to free
 some space. Actually, twice (again, hardcoded constant) the needed amount is deleted to
@@ -276,6 +276,12 @@ save space by merging older changesets into one. It works well if the changes re
 each other, e.g. periodically changing few zone records, re-signing whole zone...
 The diff between zone file and zone is thus preserved, even if journal deletes some
 older changesets.
+
+There is also a :ref:`safety hard limit <template_max-journal-db-size>` for overall
+journal database size, but it's strongly recommended to set the per-zone limits in
+a way to prevent hitting this one. For LMDB, it's hard to recover from the
+database-full state. For wiping one zone's journal, see *knotc zone-purge +journal*
+command.
 
 .. _Algorithm rollover:
 
