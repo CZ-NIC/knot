@@ -856,7 +856,8 @@ DB file size.
 .sp
 It is recommended to limit \fI\%max\-journal\-usage\fP
 per\-zone instead of max\-journal\-size in most cases. Please keep this value
-larger than the sum of all zones\(aq journal usage limits.
+larger than the sum of all zones\(aq journal usage limits. See more details
+regarding journal behaviour\&.
 .sp
 This value also influences server\(aqs usage of virtual memory.
 .sp
