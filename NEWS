@@ -1,3 +1,24 @@
+Knot DNS 2.5.4 (2017-08-31)
+===========================
+
+Improvements:
+-------------
+ - New minimum and maximum refresh interval config options (Thanks to Manabu Sonoda)
+ - New warning when unforced flush with disabled zone file synchronization
+ - New 'dnskey' keymgr command
+ - Linking with libatomic on architectures that require it (Thanks to Pierre-Olivier Mercier)
+ - Removed 'OK' from listing keymgr command outputs
+ - Extended journal and keymgr documentation and logging
+
+Bugfixes:
+---------
+ - Incorrect handling of specific corner-cases with zone-in-journal
+ - The 'share' keymgr command doesn't work
+ - Server crashes if configured with query-size and reply-size statistics options
+ - Malformed big integer configuration values on some 32-bit platforms
+ - Keymgr uses local time when parsing date inputs
+ - Memory leak in kdig upon IXFR query
+
 Knot DNS 2.5.3 (2017-07-14)
 ===========================
 
