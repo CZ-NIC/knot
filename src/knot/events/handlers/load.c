@@ -28,29 +28,6 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 
-static int post_load_dnssec_actions(conf_t *conf, zone_t *zone)
-{
-	kdnssec_ctx_t kctx = { 0 };
-	int ret = kdnssec_ctx_init(conf, &kctx, zone->name, NULL);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	bool ignore1 = false; knot_time_t ignore2 = 0;
-	ret = knot_dnssec_nsec3resalt(&kctx, &ignore1, &ignore2);
-	if (ret != KNOT_EOK) {
-		kdnssec_ctx_deinit(&kctx);
-		return ret;
-	}
-
-	if (zone_has_key_sbm(&kctx)) {
-		zone_events_schedule_now(zone, ZONE_EVENT_PARENT_DS_Q);
-	}
-
-	kdnssec_ctx_deinit(&kctx);
-	return KNOT_EOK;
-}
-
 int event_load(conf_t *conf, zone_t *zone)
 {
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
@@ -184,10 +161,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { .allow_rollover = true };
 	if (dnssec_enable) {
-		ret = post_load_dnssec_actions(conf, zone);
-		if (ret == KNOT_EOK) {
-			ret = knot_dnssec_zone_sign(&up, 0, &dnssec_refresh);
-		}
+		ret = knot_dnssec_zone_sign(&up, 0, &dnssec_refresh);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			goto cleanup;
@@ -220,9 +194,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	replan_from_timers(conf, zone);
 
 	if (dnssec_enable) {
-		zone_events_schedule_now(zone, ZONE_EVENT_NSEC3RESALT);
-		// if nothing to be done NOW for any of those, they will replan themselves for later
-
 		event_dnssec_reschedule(conf, zone, &dnssec_refresh, false); // false since we handle NOTIFY below
 	}
 

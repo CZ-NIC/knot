@@ -26,10 +26,12 @@
  * \brief Persistent zone timers.
  */
 struct zone_timers {
-	uint32_t soa_expire;    //!< SOA expire value.
-	time_t last_flush;      //!< Last zone file synchronization.
-	time_t last_refresh;    //!< Last successful zone refresh attempt.
-	time_t next_refresh;    //!< Next zone refresh attempt.
+	uint32_t soa_expire;     //!< SOA expire value.
+	time_t last_flush;       //!< Last zone file synchronization.
+	time_t last_refresh;     //!< Last successful zone refresh attempt.
+	time_t next_refresh;     //!< Next zone refresh attempt.
+	time_t last_resalt;      //!< Last NSEC3 resalt
+	time_t next_parent_ds_q; //!< Next parent ds query
 };
 
 typedef struct zone_timers zone_timers_t;
