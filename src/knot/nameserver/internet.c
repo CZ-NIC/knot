@@ -469,10 +469,6 @@ static int solve_answer(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *
 
 static int solve_answer_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
 {
-	if (!have_dnssec(qdata)) {
-		return state; /* DNSSEC not supported. */
-	}
-
 	/* RFC4035, section 3.1 RRSIGs for RRs in ANSWER are mandatory. */
 	int ret = nsec_append_rrsigs(pkt, qdata, false);
 	switch (ret) {
@@ -521,10 +517,6 @@ static int solve_authority(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, voi
 
 static int solve_authority_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
 {
-	if (!have_dnssec(qdata)) {
-		return state; /* DNSSEC not supported. */
-	}
-
 	int ret = KNOT_ERROR;
 
 	/* Authenticated denial of existence. */
@@ -593,13 +585,9 @@ static int solve_additional(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
 
 static int solve_additional_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
 {
-	if (!have_dnssec(qdata)) {
-		return state; /* DNSSEC not supported. */
-	}
-
 	/* RFC4035, section 3.1 RRSIGs for RRs in ADDITIONAL are optional. */
 	int ret = nsec_append_rrsigs(pkt, qdata, true);
-	switch(ret) {
+	switch (ret) {
 	case KNOT_ESPACE: return KNOTD_IN_STATE_TRUNC;
 	case KNOT_EOK:    return state;
 	default:          return KNOTD_IN_STATE_ERROR;
@@ -621,10 +609,14 @@ static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	struct query_plan *plan = qdata->extra->zone->query_plan;
 	struct query_step *step = NULL;
 
+	bool with_dnssec = have_dnssec(qdata);
+
 	/* Resolve ANSWER. */
 	knot_pkt_begin(pkt, KNOT_ANSWER);
 	SOLVE_STEP(solve_answer, state, NULL);
-	SOLVE_STEP(solve_answer_dnssec, state, NULL);
+	if (with_dnssec) {
+		SOLVE_STEP(solve_answer_dnssec, state, NULL);
+	}
 	if (plan != NULL) {
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_ANSWER]) {
 			SOLVE_STEP(step->process, state, step->ctx);
@@ -634,7 +626,9 @@ static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Resolve AUTHORITY. */
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
 	SOLVE_STEP(solve_authority, state, NULL);
-	SOLVE_STEP(solve_authority_dnssec, state, NULL);
+	if (with_dnssec) {
+		SOLVE_STEP(solve_authority_dnssec, state, NULL);
+	}
 	if (plan != NULL) {
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_AUTHORITY]) {
 			SOLVE_STEP(step->process, state, step->ctx);
@@ -644,7 +638,9 @@ static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Resolve ADDITIONAL. */
 	knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 	SOLVE_STEP(solve_additional, state, NULL);
-	SOLVE_STEP(solve_additional_dnssec, state, NULL);
+	if (with_dnssec) {
+		SOLVE_STEP(solve_additional_dnssec, state, NULL);
+	}
 	if (plan != NULL) {
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_ADDITIONAL]) {
 			SOLVE_STEP(step->process, state, step->ctx);
