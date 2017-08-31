@@ -1,13 +1,71 @@
 variables:
   DEBIAN_FRONTEND: noninteractive
-  LC_ALL: C.UTF-8
+  LC_ALL: C
   GIT_STRATEGY: fetch
+  DOCKER_CMD: docker --config="$HOME/.docker/$CI_JOB_ID/"
 
 stages:
+  - image
   - build
   - test
   - documentation
   - deploy
+
+docker:knot-dns:debian:
+  stage: image
+  allow_failure: true
+  script:
+    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - $DOCKER_CMD build -t "knot-dns/debian:latest" "scripts/docker/debian:latest"
+    - $DOCKER_CMD tag "knot-dns/debian:latest" "registry.labs.nic.cz/knot/knot-dns/debian:latest"
+    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/debian:latest"
+  after_script:
+    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
+  tags:
+    - shell
+    - linux
+
+docker:knot-dns:ubuntu:
+  stage: image
+  allow_failure: true
+  script:
+    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - $DOCKER_CMD build -t "knot-dns/ubuntu:latest" "scripts/docker/ubuntu:latest"
+    - $DOCKER_CMD tag "knot-dns/ubuntu:latest" "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
+    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
+  after_script:
+    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
+  tags:
+    - shell
+    - linux
+
+docker:knot-dns:centos:
+  stage: image
+  allow_failure: true
+  script:
+    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - $DOCKER_CMD build -t "knot-dns/centos:latest" "scripts/docker/centos:latest"
+    - $DOCKER_CMD tag "knot-dns/centos:latest" "registry.labs.nic.cz/knot/knot-dns/centos:latest"
+    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/centos:latest"
+  after_script:
+    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
+  tags:
+    - shell
+    - linux
+
+docker:knot-dns:fedora:
+  stage: image
+  allow_failure: true
+  script:
+    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - $DOCKER_CMD build -t "knot-dns/fedora:latest" "scripts/docker/fedora:latest"
+    - $DOCKER_CMD tag "knot-dns/fedora:latest" "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
+    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
+  after_script:
+    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
+  tags:
+    - shell
+    - linux
 
 .freebsd_i386: &freebsd_i386
   tags:
@@ -27,25 +85,29 @@ stages:
     - triggers
     - tags
 
-.build_depends: &build_depends
-  before_script:
-    - apt-get -qqy update
-    - apt-get -qqy dist-upgrade
-    - apt-get -qqy install build-essential
-    - apt-get -qqy install ghostscript python-sphinx texinfo texlive texlive-font-utils texlive-generic-extra texlive-latex-extra
-    - apt-get -qqy install autoconf automake libtool autotools-dev bash-completion bison flex libedit-dev libfstrm-dev libgnutls28-dev libidn2-0-dev liblmdb-dev libprotobuf-c-dev libsystemd-dev libsystemd-dev liburcu-dev pkg-config protobuf-c-compiler
+.fedora_latest: &fedora_latest
+  image: "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
+  tags:
+    - docker
+    - linux
+    - amd64
+
+.centos_latest: &centos_latest
+  image: "registry.labs.nic.cz/knot/knot-dns/centos:latest"
+  tags:
+    - docker
+    - linux
+    - amd64
     
 .debian_stable: &debian_stable
-  <<: *build_depends
-  image: debian:stable-slim
+  image: "registry.labs.nic.cz/knot/knot-dns/debian:latest"
   tags:
     - docker
     - linux
     - amd64
 
 .ubuntu_latest: &ubuntu_latest
-  <<: *build_depends
-  image: ubuntu:latest
+  image: "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
   tags:
     - docker
     - linux
@@ -65,6 +127,26 @@ stages:
   stage: test
   script:
     - make -k check
+
+build:fedora:amd64:
+  <<: *fedora_latest
+  <<: *build_job
+
+test:fedora:amd64:
+  <<: *fedora_latest
+  <<: *test_job
+  dependencies:
+    - build:fedora:amd64
+
+build:centos:amd64:
+  <<: *centos_latest
+  <<: *build_job
+
+test:centos:amd64:
+  <<: *centos_latest
+  <<: *test_job
+  dependencies:
+    - build:centos:amd64
 
 build:ubuntu:amd64:
   <<: *ubuntu_latest
