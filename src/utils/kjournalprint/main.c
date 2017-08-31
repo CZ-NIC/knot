@@ -48,12 +48,6 @@ static void print_help(void)
 	       PROGRAM_NAME);
 }
 
-static inline char *get_rrset(knot_rrset_t *rrset, char **buff, size_t *len)
-{
-	int ret = knot_rrset_txt_dump(rrset, buff, len, &KNOT_DUMP_STYLE_DEFAULT);
-	return (ret > 0) ? *buff : "Corrupted or missing!\n";
-}
-
 // workaround: LMDB fails to detect proper mapsize
 static int reconfigure_mapsize(const char *journal_path, size_t *mapsize)
 {
@@ -251,7 +245,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 	}
 
 	if (debugmode) {
-		printf("Occupied: %lu KiB\n", occupied / 1024);
+		printf("Occupied: %"PRIu64" KiB\n", occupied / 1024);
 	}
 
 pj_finally:
