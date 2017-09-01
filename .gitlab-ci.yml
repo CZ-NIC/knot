@@ -196,7 +196,7 @@ test:debian:unstable:amd64:asan:
 build:debian:unstable:amd64:ubsan:
   variables:
     CC: clang-6.0
-    CFLAGS: "-fsanitize=undefined -g -O2"
+    CFLAGS: "-fsanitize=undefined -fno-sanitize=nonnull-attribute -g -O2"
     LDFLAGS: "-fsanitize=undefined"
     UBSAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
     UBSAN_OPTIONS: print_stacktrace=1
@@ -206,7 +206,7 @@ build:debian:unstable:amd64:ubsan:
 test:debian:unstable:amd64:ubsan:
   variables:
     CC: clang-6.0
-    CFLAGS: "-fsanitize=undefined -g -O2"
+    CFLAGS: "-fsanitize=undefined -fno-sanitize=nonnull-attribute -g -O2"
     LDFLAGS: "-fsanitize=undefined"
     UBSAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
     UBSAN_OPTIONS: print_stacktrace=1
