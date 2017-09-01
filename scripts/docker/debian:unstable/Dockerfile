@@ -11,7 +11,7 @@ RUN apt-get -y install \
 	autotools-dev \
 	bash-completion \
 	build-essential \
-	clang \
+	clang-6.0 \
 	curl \
 	ghostscript \
 	git \
