@@ -178,6 +178,7 @@ build:debian:unstable:amd64:asan:
     CFLAGS: "-fsanitize=address -g -O2 -fno-omit-frame-pointer"
     LDFLAGS: "-static-libasan"
     ASAN_SYMBOLIZER_PATH: $(readlink -f $(dirname $(which clang))/$(dirname $(readlink $(which clang)))/llvm-symbolizer)
+    LSAN_OPTIONS: verbosity=1:log_threads=1
   <<: *debian_unstable
   <<: *build_job
 
@@ -186,6 +187,7 @@ test:debian:unstable:amd64:asan:
     CFLAGS: "-fsanitize=address -g -O2"
     LDFLAGS: "-static-libasan"
     ASAN_SYMBOLIZER_PATH: $(readlink -f $(dirname $(which clang))/$(dirname $(readlink $(which clang)))/llvm-symbolizer)
+    LSAN_OPTIONS: verbosity=1:log_threads=1
   <<: *debian_unstable
   <<: *test_job
   dependencies:
@@ -193,8 +195,8 @@ test:debian:unstable:amd64:asan:
 
 build:debian:unstable:amd64:ubsan:
   variables:
-    CFLAGS: "-fsanitize=address -g -O2"
-    LDFLAGS: "-fsanitize=address"
+    CFLAGS: "-fsanitize=undefined -g -O2"
+    LDFLAGS: "-fsanitize=undefined"
     UBSAN_SYMBOLIZER_PATH: $(readlink -f $(dirname $(which clang))/$(dirname $(readlink $(which clang)))/llvm-symbolizer)
     UBSAN_OPTIONS: print_stacktrace=1
   <<: *debian_unstable
