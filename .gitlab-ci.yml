@@ -178,6 +178,7 @@ build:debian:unstable:amd64:asan:
     LDFLAGS: "-fsanitize=address"
     ASAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
     LSAN_OPTIONS: verbosity=1:log_threads=1
+  allow_failure: true
   <<: *debian_unstable
   <<: *build_job
 
@@ -185,9 +186,10 @@ test:debian:unstable:amd64:asan:
   variables:
     CC: clang-6.0
     CFLAGS: "-fsanitize=address -g -O2"
-    LDFLAGS: "-static-libasan"
+    LDFLAGS: "-fsanitize=address"
     ASAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
     LSAN_OPTIONS: verbosity=1:log_threads=1
+  allow_failure: true
   <<: *debian_unstable
   <<: *test_job
   dependencies:
@@ -200,6 +202,7 @@ build:debian:unstable:amd64:ubsan:
     LDFLAGS: "-fsanitize=undefined"
     UBSAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
     UBSAN_OPTIONS: print_stacktrace=1
+  allow_failure: true
   <<: *debian_unstable
   <<: *build_job
 
@@ -210,6 +213,7 @@ test:debian:unstable:amd64:ubsan:
     LDFLAGS: "-fsanitize=undefined"
     UBSAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
     UBSAN_OPTIONS: print_stacktrace=1
+  allow_failure: true
   <<: *debian_unstable
   <<: *test_job
   dependencies:
