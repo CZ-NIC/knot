@@ -176,7 +176,7 @@ test:debian:unstable:amd64:
 build:debian:unstable:amd64:asan:
   variables:
     CFLAGS: "-fsanitize=address -g -O2 -fno-omit-frame-pointer"
-    LDFLAGS: "-static-libasan"
+    LDFLAGS: "-fsanitize=address"
     ASAN_SYMBOLIZER_PATH: $(readlink -f $(dirname $(which clang))/$(dirname $(readlink $(which clang)))/llvm-symbolizer)
     LSAN_OPTIONS: verbosity=1:log_threads=1
   <<: *debian_unstable
