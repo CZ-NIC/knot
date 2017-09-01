@@ -13,8 +13,6 @@ stages:
 
 .image: &image
   stage: image
-  services:
-    - docker:dind
   before_script:
     - docker info
   script:
@@ -182,6 +180,10 @@ build:debian:unstable:amd64:asan:
     LSAN_OPTIONS: verbosity=1:log_threads=1
   <<: *debian_unstable
   <<: *build_job
+  only:
+    - master
+    - triggers
+    - tags
 
 test:debian:unstable:amd64:asan:
   variables:
@@ -194,6 +196,10 @@ test:debian:unstable:amd64:asan:
   <<: *test_job
   dependencies:
     - build:debian:unstable:amd64:asan
+  only:
+    - master
+    - triggers
+    - tags
 
 build:debian:unstable:amd64:ubsan:
   variables:
