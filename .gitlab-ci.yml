@@ -112,7 +112,7 @@ docker:knot-dns:fedora:
   stage: build
   script:
     - autoreconf -fi
-    - ./configure --disable-fastparser
+    - ./configure --disable-fastparser || ( cat config.log && exit 1 )
     - make -k all
   artifacts:
     untracked: true
