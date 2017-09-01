@@ -2,7 +2,7 @@ variables:
   DEBIAN_FRONTEND: noninteractive
   LC_ALL: C
   GIT_STRATEGY: fetch
-  DOCKER_CMD: docker --config="$HOME/.docker/$CI_JOB_ID/"
+  DOCKER_DRIVER: overlay2
 
 stages:
   - image
@@ -11,61 +11,43 @@ stages:
   - documentation
   - deploy
 
-docker:knot-dns:debian:
+.image: &image
   stage: image
-  allow_failure: true
+  services:
+    - docker:dind
+  before_script:
+    - docker info
   script:
-    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
-    - $DOCKER_CMD build -t "knot-dns/debian:latest" "scripts/docker/debian:latest"
-    - $DOCKER_CMD tag "knot-dns/debian:latest" "registry.labs.nic.cz/knot/knot-dns/debian:latest"
-    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/debian:latest"
-  after_script:
-    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker build -t "$IMAGE_TAG" "scripts/docker/$IMAGE_NAME"
+    - docker push "$IMAGE_TAG"
   tags:
-    - shell
-    - linux
+    - dind
+    - docker
+    
+docker:knot-dns:debian:
+  <<: *image
+  variables:
+    IMAGE_NAME: debian:latest
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
 docker:knot-dns:ubuntu:
-  stage: image
-  allow_failure: true
-  script:
-    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
-    - $DOCKER_CMD build -t "knot-dns/ubuntu:latest" "scripts/docker/ubuntu:latest"
-    - $DOCKER_CMD tag "knot-dns/ubuntu:latest" "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
-    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
-  after_script:
-    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
-  tags:
-    - shell
-    - linux
+  <<: *image
+  variables:
+    IMAGE_NAME: ubuntu:latest
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
 docker:knot-dns:centos:
-  stage: image
-  allow_failure: true
-  script:
-    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
-    - $DOCKER_CMD build -t "knot-dns/centos:latest" "scripts/docker/centos:latest"
-    - $DOCKER_CMD tag "knot-dns/centos:latest" "registry.labs.nic.cz/knot/knot-dns/centos:latest"
-    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/centos:latest"
-  after_script:
-    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
-  tags:
-    - shell
-    - linux
+  <<: *image
+  variables:
+    IMAGE_NAME: centos:latest
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
 docker:knot-dns:fedora:
-  stage: image
-  allow_failure: true
-  script:
-    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
-    - $DOCKER_CMD build -t "knot-dns/fedora:latest" "scripts/docker/fedora:latest"
-    - $DOCKER_CMD tag "knot-dns/fedora:latest" "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
-    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
-  after_script:
-    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
-  tags:
-    - shell
-    - linux
+  <<: *image
+  variables:
+    IMAGE_NAME: fedora:latest
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
 .freebsd_i386: &freebsd_i386
   tags:
@@ -86,28 +68,28 @@ docker:knot-dns:fedora:
     - tags
 
 .fedora_latest: &fedora_latest
-  image: "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
+  image: "$CI_REGISTRY/knot/knot-dns/fedora:latest"
   tags:
     - docker
     - linux
     - amd64
 
 .centos_latest: &centos_latest
-  image: "registry.labs.nic.cz/knot/knot-dns/centos:latest"
+  image: "$CI_REGISTRY/knot/knot-dns/centos:latest"
   tags:
     - docker
     - linux
     - amd64
     
 .debian_stable: &debian_stable
-  image: "registry.labs.nic.cz/knot/knot-dns/debian:latest"
+  image: "$CI_REGISTRY/knot/knot-dns/debian:latest"
   tags:
     - docker
     - linux
     - amd64
 
 .ubuntu_latest: &ubuntu_latest
-  image: "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
+  image: "$CI_REGISTRY/knot/knot-dns/ubuntu:latest"
   tags:
     - docker
     - linux
