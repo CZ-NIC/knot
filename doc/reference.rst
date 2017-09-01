@@ -1062,8 +1062,8 @@ Definition of zones served by the server.
      semantic-checks: BOOL
      disable-any: BOOL
      zonefile-sync: TIME
-     zone-in-journal: BOOL
-     ixfr-from-differences: BOOL
+     zonefile-load: none | difference | whole
+     journal-content: none | changes | all
      max-journal-usage: SIZE
      max-journal-depth: INT
      max-zone-size : SIZE
@@ -1236,38 +1236,39 @@ using the ``-f`` option.
 
 *Default:* 0 (immediate)
 
-.. _zone_zone-in-journal:
+.. _zone_zonefile-load:
 
-zone-in-journal
+zonefile-load
+-------------
+
+Selects how the zonefile contents are applied during zone load.
+
+Possible values:
+
+- ``none`` – The zonefile is not used at all.
+- ``difference`` – If the zone contents are available during server start or reload,
+  the difference is computed between them and the zonefile, checked and applied afterwards.
+- ``whole`` – Zone contents are loaded from zonefile.
+
+When ``difference`` is configured and there are no zone contents yet (cold start of Knot
+and no zone contents in journal), it behaves the same way like ``whole``.
+
+*Default:* whole
+
+.. _zone_journal-content:
+
+journal-content
 ---------------
 
-If enabled, the server stores the zone file contents in journal. When starting server,
-the zone is loaded preferably from journal, the changes from zone file are applied
-afterwards.
+Selects how the journal shall be used to store zone and its changes.
 
-.. NOTE::
-   Implies :ref:`ixfr-from-differences<zone_ixfr-from-differences>`.
+Possible values:
 
-.. WARNING::
-   If you modify the zone file, expecting the changes to be applied to the zone,
-   you shall set the SOA serial significatnly higher than current zone serial.
+- ``none`` – The journal is not used at all.
+- ``changes`` – Zone changes history is stored in journal.
+- ``all`` – Zone contents and history is stored in journal.
 
-*Default:* off
-
-.. _zone_ixfr-from-differences:
-
-ixfr-from-differences
----------------------
-
-If enabled, the server creates zone differences from changes you made to the
-zone file upon server reload. This option is relevant only if the server
-is a master server for the zone.
-
-.. NOTE::
-   This option has no effect with enabled
-   :ref:`dnssec-signing<zone_dnssec-signing>`.
-
-*Default:* off
+*Default:* changes
 
 .. _zone_max-journal-usage:
 

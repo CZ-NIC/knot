@@ -11,7 +11,7 @@ slave = t.server("knot")
 
 zone = t.zone("example.com.")
 
-t.link(zone, master, slave)
+t.link(zone, master, slave, journal_content="all")
 slave.zonefile_sync = "-1"
 
 t.start()

@@ -113,7 +113,7 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 	}
 }
 
-int zone_update_from_differences(zone_update_t *update, zone_t *zone,
+int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_contents_t *old_cont,
                                  zone_contents_t *new_cont, zone_update_flags_t flags)
 {
 	if (update == NULL || zone == NULL || new_cont == NULL ||
@@ -135,8 +135,8 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone,
 		return ret;
 	}
 
-	ret = zone_contents_diff(zone->contents, new_cont, &update->change);
-	if (ret != KNOT_EOK) {
+	ret = zone_contents_diff(old_cont, new_cont, &update->change);
+	if (ret != KNOT_EOK && ret != KNOT_ENODIFF) {
 		changeset_clear(&update->change);
 		return ret;
 	}
@@ -251,10 +251,11 @@ void zone_update_clear(zone_update_t *update)
 
 	if (update->flags & UPDATE_INCREMENTAL) {
 		/* Revert any changes on error, do nothing on success. */
-		update_rollback(&update->a_ctx);
 		if (update->new_cont_deep_copy) {
+			update_cleanup(&update->a_ctx);
 			zone_contents_deep_free(&update->new_cont);
 		} else {
+			update_rollback(&update->a_ctx);
 			update_free_zone(&update->new_cont);
 		}
 		changeset_clear(&update->change);
@@ -540,10 +541,10 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 	}
 
 	/* Write changes to journal if all went well. */
-	if (update->zone->journal_db != NULL) { // TODO this should be better
+	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
+	if (conf_opt(&val) != JOURNAL_CONTENT_NONE) {
 		ret = zone_change_store(conf, update->zone, &update->change);
 		if (ret != KNOT_EOK) {
-			/* Recoverable error. */
 			return ret;
 		}
 	}
@@ -571,8 +572,9 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 		return ret;
 	}
 
-	conf_val_t val = conf_zone_get(conf, C_ZONE_IN_JOURNAL, update->zone->name);
-	if (conf_bool(&val)) {
+	/* Store new zone contents in journal. */
+	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
+	if (conf_opt(&val) == JOURNAL_CONTENT_ALL) {
 		ret = zone_in_journal_store(conf, update->zone, update->new_cont);
 		if (ret != KNOT_EOK) {
 			return ret;

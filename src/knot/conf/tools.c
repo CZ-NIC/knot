@@ -422,6 +422,14 @@ int check_remote(
 int check_template(
 	knotd_conf_check_args_t *args)
 {
+	conf_val_t ixfr_diff = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
+	                                          C_TPL, C_IXFR_DIFF, args->id, args->id_len);
+	if (ixfr_diff.code == KNOT_EOK) {
+		CONF_LOG(LOG_NOTICE, "IXFR from differences setting is obsolete "
+		         "and will be removed in the next major release, use "
+		         "template.zonefile-load instead");
+	}
+
 	// Stop if the default template.
 	if (is_default_id(args->id, args->id_len)) {
 		return KNOT_EOK;
@@ -459,6 +467,14 @@ int check_zone(
 		CONF_LOG(LOG_NOTICE, "DNSSEC policy settings in KASP database "
 		         "is obsolete and will be removed in the next major release, "
 		         "use zone.dnssec-policy in server configuration instead");
+	}
+
+	conf_val_t ixfr_diff = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
+	                                          C_ZONE, C_IXFR_DIFF, args->id, args->id_len);
+	if (ixfr_diff.code == KNOT_EOK) {
+		CONF_LOG(LOG_NOTICE, "IXFR from differences setting is obsolete "
+		         "and will be removed in the next major release, use "
+		         "zone.zonefile-load instead");
 	}
 
 	return KNOT_EOK;

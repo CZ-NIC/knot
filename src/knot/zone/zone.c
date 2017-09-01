@@ -387,6 +387,25 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 	return ret;
 }
 
+int zone_journal_serial(conf_t *conf, zone_t *zone, bool *is_empty, uint32_t *serial_to)
+{
+	if (conf == NULL || zone == NULL || is_empty == NULL || serial_to == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = open_journal(zone);
+
+	kserial_t ks;
+
+	if (ret == KNOT_EOK) {
+		journal_metadata_info(zone->journal, is_empty, NULL, NULL, NULL, &ks, NULL);
+	}
+
+	*serial_to = (ks.valid ? ks.serial : 0);
+
+	return ret;
+}
+
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)
 {
 	if (zone == NULL) {

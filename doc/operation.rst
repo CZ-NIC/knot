@@ -277,6 +277,10 @@ each other, e.g. periodically changing few zone records, re-signing whole zone..
 The diff between zone file and zone is thus preserved, even if journal deletes some
 older changesets.
 
+If the journal is used to store both zone history and contents, a special changeset
+is present with zone contents. When journal gets full, the changes are merged into this
+special changeset.
+
 There is also a :ref:`safety hard limit <template_max-journal-db-size>` for overall
 journal database size, but it's strongly recommended to set the per-zone limits in
 a way to prevent hitting this one. For LMDB, it's hard to recover from the
@@ -342,11 +346,6 @@ both configuration and zone files and also add or remove zones without
 restarting the server. This can be done with::
 
     $ knotc reload
-
-If you want to enable ixfr differences creation from changes you make to a
-zone file, enable :ref:`zone_ixfr-from-differences` in the zone configuration
-and reload your server as seen above. If *SOA*'s *serial* is not changed,
-no differences will be created.
 
 If you want to refresh the slave zones, you can do this with::
 

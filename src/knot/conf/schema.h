@@ -53,8 +53,9 @@
 #define C_ID			"\x02""id"
 #define C_IDENT			"\x08""identity"
 #define C_INCL			"\x07""include"
-#define C_IXFR_DIFF		"\x15""ixfr-from-differences"
+#define C_IXFR_DIFF		"\x15""ixfr-from-differences" /* obsolete */
 #define C_JOURNAL		"\x07""journal" /* obsolete, old journal compat */
+#define C_JOURNAL_CONTENT	"\x0F""journal-content"
 #define C_JOURNAL_DB		"\x0A""journal-db"
 #define C_JOURNAL_DB_MODE	"\x0F""journal-db-mode"
 #define C_KASP_DB		"\x07""kasp-db"
@@ -124,7 +125,7 @@
 #define C_VERSION		"\x07""version"
 #define C_VIA			"\x03""via"
 #define C_ZONE			"\x04""zone"
-#define C_ZONE_IN_JOURNAL	"\x0F""zone-in-journal"
+#define C_ZONEFILE_LOAD		"\x0D""zonefile-load"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
@@ -137,6 +138,18 @@ enum {
 enum {
 	SERIAL_POLICY_INCREMENT = 1,
 	SERIAL_POLICY_UNIXTIME  = 2
+};
+
+enum {
+	JOURNAL_CONTENT_NONE    = 0,
+	JOURNAL_CONTENT_CHANGES = 1,
+	JOURNAL_CONTENT_ALL     = 2,
+};
+
+enum {
+	ZONEFILE_LOAD_NONE  = 0,
+	ZONEFILE_LOAD_DIFF  = 1,
+	ZONEFILE_LOAD_WHOLE = 2,
 };
 
 extern const knot_lookup_t acl_actions[];

@@ -11,7 +11,7 @@ master = t.server("knot")
 slave = t.server("knot")
 zone = t.zone("xfr", storage=".")
 
-t.link(zone, master, slave)
+t.link(zone, master, slave, journal_content="none")
 
 t.start()
 

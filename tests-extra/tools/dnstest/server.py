@@ -59,12 +59,13 @@ class ZoneDnssec(object):
 class Zone(object):
     '''DNS zone description'''
 
-    def __init__(self, zone_file, ddns=False, ixfr=False):
+    def __init__(self, zone_file, ddns=False, ixfr=False, journal_content="changes"):
         self.zfile = zone_file
         self.masters = set()
         self.slaves = set()
         self.ddns = ddns
-        self.ixfr = ixfr # ixfr from differences
+        self.ixfr = ixfr
+        self.journal_content = journal_content # journal contents
         self.modules = []
         self.dnssec = ZoneDnssec()
 
@@ -170,12 +171,12 @@ class Server(object):
 
         return False
 
-    def set_master(self, zone, slave=None, ddns=False, ixfr=False):
+    def set_master(self, zone, slave=None, ddns=False, ixfr=False, journal_content="changes"):
         '''Set the server as a master for the zone'''
 
         if zone.name not in self.zones:
             master_file = zone.clone(self.dir + "/master")
-            z = Zone(master_file, ddns, ixfr)
+            z = Zone(master_file, ddns, ixfr, journal_content)
             self.zones[zone.name] = z
         else:
             z = self.zones[zone.name]
@@ -183,13 +184,13 @@ class Server(object):
         if slave:
             z.slaves.add(slave)
 
-    def set_slave(self, zone, master, ddns=False, ixfr=False):
+    def set_slave(self, zone, master, ddns=False, ixfr=False, journal_content="changes"):
         '''Set the server as a slave for the zone'''
 
         slave_file = zone.clone(self.dir + "/slave", exists=False)
 
         if zone.name not in self.zones:
-            z = Zone(slave_file, ddns, ixfr)
+            z = Zone(slave_file, ddns, ixfr, journal_content)
             self.zones[zone.name] = z
         else:
             z = self.zones[zone.name]
@@ -1199,8 +1200,12 @@ class Knot(Server):
             acl += "acl_local, acl_test"
             s.item("acl", "[%s]" % acl)
 
-            if z.ixfr and not z.masters:
-                s.item_str("ixfr-from-differences", "on")
+            s.item_str("journal-content", z.journal_content)
+
+            if z.journal_content == "all" and z.masters:
+                s.item_str("zonefile-load", "none")
+            elif z.ixfr:
+                s.item_str("zonefile-load", "difference")
 
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "on")

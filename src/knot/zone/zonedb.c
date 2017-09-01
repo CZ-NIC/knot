@@ -31,6 +31,13 @@ static void discard_zone(zone_t *zone)
 		// Flush if bootstrapped or if the journal doesn't exist.
 		if (!zone->zonefile.exists || !journal_exists(zone->journal_db, zone->name)) {
 			zone_flush_journal(conf(), zone);
+		} else {
+			bool empty;
+			uint32_t journal_serial, zone_serial = zone_contents_serial(zone->contents);
+			int ret = zone_journal_serial(conf(), zone, &empty, &journal_serial);
+			if (ret != KNOT_EOK || empty || journal_serial != zone_serial) {
+				zone_flush_journal(conf(), zone);
+			}
 		}
 	}
 
