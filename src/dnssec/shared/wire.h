@@ -87,7 +87,8 @@ static inline uint16_t wire_read_u16(wire_ctx_t *ctx)
 {
 	assert(ctx);
 
-	uint16_t result = *((uint16_t *)ctx->position);
+	uint16_t result;
+	memcpy(&result, ctx->position, sizeof(uint16_t));
 	ctx->position += sizeof(uint16_t);
 
 	return ntohs(result);
@@ -130,7 +131,8 @@ static inline void wire_write_u16(wire_ctx_t *ctx, uint16_t value)
 {
 	assert(ctx);
 
-	*((uint16_t *)ctx->position) = htons(value);
+	uint16_t result = htons(value);
+	memcpy(ctx->position, &result, sizeof(uint16_t));
 	ctx->position += sizeof(uint16_t);
 }
 
