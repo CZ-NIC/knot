@@ -45,7 +45,7 @@ docker:knot-dns:ubuntu:
 docker:knot-dns:centos:
   <<: *image
   variables:
-    IMAGE_NAME: centos:latest
+    IMAGE_NAME: centos:latestf
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
 docker:knot-dns:fedora:
@@ -171,6 +171,44 @@ test:debian:unstable:amd64:
   <<: *test_job
   dependencies:
     - build:debian:unstable:amd64
+
+build:debian:unstable:amd64:asan:
+  variables:
+    CFLAGS: "-fsanitize=address -g -O2 -fno-omit-frame-pointer"
+    LDFLAGS: "-static-libasan"
+    ASAN_SYMBOLIZER_PATH: $(readlink -f $(dirname $(which clang))/$(dirname $(readlink $(which clang)))/llvm-symbolizer)
+  <<: *debian_unstable
+  <<: *build_job
+
+test:debian:unstable:amd64:asan:
+  variables:
+    CFLAGS: "-fsanitize=address -g -O2"
+    LDFLAGS: "-static-libasan"
+    ASAN_SYMBOLIZER_PATH: $(readlink -f $(dirname $(which clang))/$(dirname $(readlink $(which clang)))/llvm-symbolizer)
+  <<: *debian_unstable
+  <<: *test_job
+  dependencies:
+    - build:debian:unstable:amd64:asan
+
+build:debian:unstable:amd64:ubsan:
+  variables:
+    CFLAGS: "-fsanitize=address -g -O2"
+    LDFLAGS: "-fsanitize=address"
+    UBSAN_SYMBOLIZER_PATH: $(readlink -f $(dirname $(which clang))/$(dirname $(readlink $(which clang)))/llvm-symbolizer)
+    UBSAN_OPTIONS: print_stacktrace=1
+  <<: *debian_unstable
+  <<: *build_job
+
+test:debian:unstable:amd64:ubsan:
+  variables:
+    CFLAGS: "-fsanitize=undefined -g -O2"
+    LDFLAGS: "-fsanitize=undefined"
+    UBSAN_SYMBOLIZER_PATH: $(readlink -f $(dirname $(which clang))/$(dirname $(readlink $(which clang)))/llvm-symbolizer)
+    UBSAN_OPTIONS: print_stacktrace=1
+  <<: *debian_unstable
+  <<: *test_job
+  dependencies:
+    - build:debian:unstable:amd64:ubsan
 
 build:freebsd:i386:
   <<: *freebsd_i386
