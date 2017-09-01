@@ -121,6 +121,7 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 
 	/* Drop possible previous additional nodes. */
 	additional_clear(rr_data->additional);
+	rr_data->additional = NULL;
 
 	const knot_rdataset_t *rrs = &rr_data->rrs;
 	uint16_t rdcount = rrs->rr_count;
