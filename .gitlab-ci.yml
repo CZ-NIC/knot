@@ -30,6 +30,12 @@ docker:knot-dns:debian:
     IMAGE_NAME: debian:latest
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
+docker:knot-dns:debian:unstable:
+  <<: *image
+  variables:
+    IMAGE_NAME: debian:unstable
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
+
 docker:knot-dns:ubuntu:
   <<: *image
   variables:
@@ -82,6 +88,13 @@ docker:knot-dns:fedora:
     
 .debian_stable: &debian_stable
   image: "$CI_REGISTRY/knot/knot-dns/debian:latest"
+  tags:
+    - docker
+    - linux
+    - amd64
+
+.debian_unstable: &debian_unstable
+  image: "registry.labs.nic.cz/knot/knot-dns/debian:unstable"
   tags:
     - docker
     - linux
@@ -148,6 +161,16 @@ test:debian:amd64:
   <<: *test_job
   dependencies:
     - build:debian:amd64
+
+build:debian:unstable:amd64:
+  <<: *debian_unstable
+  <<: *build_job
+
+test:debian:unstable:amd64:
+  <<: *debian_unstable
+  <<: *test_job
+  dependencies:
+    - build:debian:unstable:amd64
 
 build:freebsd:i386:
   <<: *freebsd_i386
