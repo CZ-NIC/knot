@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,16 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file nsec-chain.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz> (chain creation)
- *
- * \brief NSEC chain fix and creation.
- *
- * \addtogroup dnssec
- * @{
  */
 
 #pragma once
@@ -99,6 +89,21 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
                                    nsec_chain_iterate_data_t *data);
 
 /*!
+ * \brief Call the chain-connecting function for modified records and their neighbours.
+ *
+ * \param old_nodes  Old state of zone nodes.
+ * \param new_nodes  New state of zone nodes.
+ * \param callback   Callback function.
+ * \param data       Custom data supplied, incl. changeset to be updated.
+ *
+ * \retval KNOT_ENORECORD if the chain must be recreated from scratch.
+ * \return KNOT_E*
+ */
+int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
+                                chain_iterate_create_cb callback,
+                                nsec_chain_iterate_data_t *data);
+
+/*!
  * \brief Add entry for removed NSEC(3) and its RRSIG to the changeset.
  *
  * \param n          Node to extract NSEC(3) from.
@@ -125,10 +130,23 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
  *
  * \param zone       Zone.
  * \param ttl        TTL for created NSEC records.
- * \param cds_in_apexHint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
  * \param changeset  Changeset the differences will be put into.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
                            changeset_t *changeset);
+
+/*!
+ * \brief Fix existing NSEC chain to cover the changes in zone contents.
+ *
+ * \param old_zone  Old zone contents.
+ * \param new_zone  New zone contents.
+ * \param ttl       TTL for created NSEC records.
+ * \param changeset Changeset the differences will be put into.
+ *
+ * \retval KNOT_ENORECORD if the chain must be recreated from scratch.
+ * \return KNOT_E*
+ */
+int knot_nsec_fix_chain(const zone_contents_t *old_zone, const zone_contents_t *new_zone,
+                        uint32_t ttl, changeset_t *changeset);

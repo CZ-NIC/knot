@@ -17,10 +17,9 @@
 #pragma once
 
 #include <stdbool.h>
-#include "dnssec/nsec.h"
+
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-keys.h"
-#include "knot/updates/changesets.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/contents.h"
 
@@ -63,12 +62,27 @@ knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
  *
  * \param update          Zone Update with current zone contents and to be updated with NSEC chain.
  * \param zone_keys       Zone keys used for NSEC(3) creation.
- * \param policy          DNSSEC signing policy.
+ * \param ctx             Signing context.
  * \param sign_nsec_chain If true, the created NSEC(3) chain is signed at the end.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_create_nsec_chain(zone_update_t *update,
                                 const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *dnssec_ctx,
+                                const kdnssec_ctx_t *ctx,
                                 bool sign_nsec_chain);
+
+/*!
+ * \brief Fix NSEC or NSEC3 chain after zone was updated.
+ *
+ * \param update           Zone Update with the update and to be update with NSEC chain.
+ * \param zone_keys        Zone keys used for NSEC(3) creation.
+ * \param ctx              Signing context.
+ * \param sign_nsec_chain  If true, the created NSEC(3) chain is signed at the end.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_zone_fix_nsec_chain(zone_update_t *update,
+                             const zone_keyset_t *zone_keys,
+                             const kdnssec_ctx_t *ctx,
+                             bool sign_nsec_chain);

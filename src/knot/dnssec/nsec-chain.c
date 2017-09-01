@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,6 @@
  */
 
 #include <assert.h>
-#include <stdint.h>
 
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/rrset-sign.h"
@@ -198,6 +197,148 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 	                 callback(current, first, data);
 }
 
+inline static zone_node_t *it_val(trie_it_t *it)
+{
+	return (zone_node_t *)*trie_it_val(it);
+}
+
+inline static zone_node_t *it_next0(trie_it_t *it, zone_node_t *first)
+{
+	trie_it_next(it);
+	return (trie_it_finished(it) ? first : it_val(it));
+}
+
+static zone_node_t *it_next1(trie_it_t *it, zone_node_t *first)
+{
+	zone_node_t *res;
+	do {
+		res = it_next0(it, first);
+	} while (knot_nsec_empty_nsec_and_rrsigs_in_node(res) || (res->flags & NODE_FLAGS_NONAUTH));
+	return res;
+}
+
+static zone_node_t *it_next2(trie_it_t *it, zone_node_t *first, changeset_t *ch)
+{
+	zone_node_t *res = it_next0(it, first);
+	while (knot_nsec_empty_nsec_and_rrsigs_in_node(res) || (res->flags & NODE_FLAGS_NONAUTH)) {
+		(void)knot_nsec_changeset_remove(res, ch);
+		res = it_next0(it, first);
+	}
+	return res;
+}
+
+static int node_cmp(zone_node_t *a, zone_node_t *b, zone_node_t *first_a, zone_node_t *first_b)
+{
+	assert(knot_dname_is_equal(first_a->owner, first_b->owner));
+	assert(knot_dname_cmp(first_a->owner, a->owner) <= 0);
+	assert(knot_dname_cmp(first_b->owner, b->owner) <= 0);
+	int rev = (a == first_a || b == first_b ? -1 : 1);
+	return rev * knot_dname_cmp(a->owner, b->owner);
+}
+
+#define CHECK_RET if (ret != KNOT_EOK) goto cleanup
+
+int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
+                                chain_iterate_create_cb callback,
+                                nsec_chain_iterate_data_t *data)
+{
+	assert(old_nodes);
+	assert(new_nodes);
+	assert(callback);
+
+	int ret = KNOT_EOK;
+
+	trie_it_t *old_it = trie_it_begin(old_nodes), *new_it = trie_it_begin(new_nodes);
+	if (old_it == NULL || new_it == NULL) {
+		ret = KNOT_ENOMEM;
+		goto cleanup;
+	}
+
+	if (trie_it_finished(new_it)) {
+		ret = KNOT_ENORECORD;
+		goto cleanup;
+	}
+	if (trie_it_finished(old_it)) {
+		ret = KNOT_ENORECORD;
+		goto cleanup;
+	}
+
+	zone_node_t *old_first = it_val(old_it), *new_first = it_val(new_it);
+
+	if (!knot_dname_is_equal(old_first->owner, new_first->owner)) {
+		// this may happen with NSEC3 (on NSEC, it will be apex)
+		// it can be solved, but it would complicate the code
+		// 1. find a common node in both trees (ENORECORD if none)
+		// 2. start from there and cycle around trie_it_finished() until hit first again
+		// 3. modify the dname comparison operator !
+		ret = KNOT_ENORECORD;
+		goto cleanup;
+	}
+
+	if (knot_nsec_empty_nsec_and_rrsigs_in_node(new_first)) {
+		ret = KNOT_EINVAL;
+		goto cleanup;
+	}
+
+	zone_node_t *old_prev = old_first, *new_prev = new_first;
+	zone_node_t *old_curr = it_next1(old_it, old_first);
+	zone_node_t *new_curr = it_next2(new_it, new_first, data->changeset);
+
+	while (1) {
+		bool bitmap_change = !node_bitmap_equal(old_prev, new_prev);
+
+		int cmp = node_cmp(old_curr, new_curr, old_first, new_first);
+		if (bitmap_change && cmp == 0) {
+			// if cmp != 0, the nsec chain will be locally rebuilt anyway,
+			// so no need to update bitmap in such case
+			// overall, we now have dnames: old_prev == new_prev && old_curr == new_curr
+			ret = knot_nsec_changeset_remove(old_prev, data->changeset);
+			CHECK_RET;
+			ret = callback(new_prev, new_curr, data);
+			CHECK_RET;
+		}
+
+		while (cmp != 0) {
+			if (cmp < 0) {
+				// a node was removed
+				ret = knot_nsec_changeset_remove(old_prev, data->changeset);
+				CHECK_RET;
+				ret = knot_nsec_changeset_remove(old_curr, data->changeset);
+				CHECK_RET;
+				old_prev = old_curr;
+				old_curr = it_next1(old_it, old_first);
+				ret = callback(new_prev, new_curr, data);
+				CHECK_RET;
+			} else {
+				// a node was added
+				ret = knot_nsec_changeset_remove(old_prev, data->changeset);
+				CHECK_RET;
+				ret = callback(new_prev, new_curr, data);
+				CHECK_RET;
+				new_prev = new_curr;
+				new_curr = it_next2(new_it, new_first, data->changeset);
+				ret = callback(new_prev, new_curr, data);
+				CHECK_RET;
+			}
+			cmp = node_cmp(old_curr, new_curr, old_first, new_first);
+		}
+
+		if (old_curr == old_first && new_curr == new_first) {
+			break;
+		}
+
+		old_prev = old_curr;
+		new_prev = new_curr;
+		old_curr = it_next1(old_it, old_first);
+		new_curr = it_next2(new_it, new_first, data->changeset);
+	}
+
+cleanup:
+	trie_it_free(old_it);
+	trie_it_free(new_it);
+	return ret;
+}
+
 /* - API - utility functions ------------------------------------------------ */
 
 /*!
@@ -287,4 +428,19 @@ int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
 
 	return knot_nsec_chain_iterate_create(zone->nodes,
 	                                      connect_nsec_nodes, &data);
+}
+
+int knot_nsec_fix_chain(const zone_contents_t *old_zone, const zone_contents_t *new_zone,
+			uint32_t ttl, changeset_t *changeset)
+{
+	assert(old_zone);
+	assert(new_zone);
+	assert(old_zone->nodes);
+	assert(new_zone->nodes);
+	assert(changeset);
+
+	nsec_chain_iterate_data_t data = { ttl, changeset, new_zone };
+
+	return knot_nsec_chain_iterate_fix(old_zone->nodes, new_zone->nodes,
+					   connect_nsec_nodes, &data);
 }

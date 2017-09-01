@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,15 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file
- *
- * \brief Structure representing one node in domain name tree and API for
- *        manipulating it.
- *
- * \addtogroup zone
- * @{
  */
 
 #pragma once
@@ -216,6 +207,16 @@ bool node_rrtype_exists(const zone_node_t *node, uint16_t type);
 bool node_empty(const zone_node_t *node);
 
 /*!
+ * \brief Check whether two nodes have equal set of rrtypes.
+ *
+ * \param a  A node.
+ * \param b  Another node.
+ *
+ * \return True/False.
+ */
+bool node_bitmap_equal(const zone_node_t *a, const zone_node_t *b);
+
+/*!
  * \brief Returns RRSet structure initialized with data from node.
  *
  * \param node   Node containing RRSet.
@@ -262,5 +263,3 @@ static inline knot_rrset_t node_rrset_at(const zone_node_t *node, size_t pos)
 	rrset.additional = rr_data->additional;
 	return rrset;
 }
-
-/*! @} */

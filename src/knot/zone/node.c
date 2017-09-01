@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 #include "knot/zone/node.h"
 #include "libknot/libknot.h"
-#include "libknot/rrtype/rrsig.h"
 #include "contrib/mempattern.h"
 
 void additional_clear(additional_t *additional)
@@ -297,4 +296,29 @@ bool node_rrtype_exists(const zone_node_t *node, uint16_t type)
 bool node_empty(const zone_node_t *node)
 {
 	return node == NULL || node->rrset_count == 0;
+}
+
+bool node_bitmap_equal(const zone_node_t *a, const zone_node_t *b)
+{
+	if (a == NULL || b == NULL || a->rrset_count != b->rrset_count) {
+		return false;
+	}
+
+	uint16_t i;
+	// heuristics: try if they are equal including order
+	for (i = 0; i < a->rrset_count; i++) {
+		if (a->rrs[i].type != b->rrs[i].type) {
+			break;
+		}
+	}
+	if (i == a->rrset_count) {
+		return true;
+	}
+
+	for (i = 0; i < a->rrset_count; i++) {
+		if (node_rdataset(b, a->rrs[i].type) == NULL) {
+			return false;
+		}
+	}
+	return true;
 }

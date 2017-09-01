@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 #include <assert.h>
 
-#include "dnssec/nsec.h"
 #include "libknot/dname.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/nsec3-chain.h"
@@ -252,6 +251,7 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
 	uint8_t rdata[rdata_size];
+	memset(rdata, 0, rdata_size);
 	int ret = nsec3_fill_rdata(rdata, rdata_size, params, rr_types,
 	                           next_hashed);
 	if (ret != KNOT_EOK) {
@@ -311,7 +311,7 @@ static zone_node_t *create_nsec3_node(knot_dname_t *owner,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
+static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
                                                zone_node_t *apex,
                                                const dnssec_nsec3_params_t *params,
                                                uint32_t ttl)
@@ -348,25 +348,9 @@ static zone_node_t *create_nsec3_node_for_node(zone_node_t *node,
 
 /* - NSEC3 chain creation --------------------------------------------------- */
 
-/*!
- * \brief Connect two nodes by filling 'hash' field of NSEC3 RDATA of the node.
- *
- * \param a     First node.
- * \param b     Second node (immediate follower of a).
- * \param data  Unused parameter.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
-                               nsec_chain_iterate_data_t *data)
+// see connect_nsec3_nodes() for what this function does
+static int connect_nsec3_base(knot_rdataset_t *a_rrs, const knot_dname_t *b_name)
 {
-	assert(a);
-	assert(b);
-	UNUSED(data);
-
-	assert(a->rrset_count == 1);
-
-	knot_rdataset_t *a_rrs = node_rdataset(a, KNOT_RRTYPE_NSEC3);
 	assert(a_rrs);
 	uint8_t algorithm = knot_nsec3_algorithm(a_rrs, 0);
 	if (algorithm == 0) {
@@ -382,7 +366,7 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 
 	assert(raw_length == dnssec_nsec3_hash_length(algorithm));
 
-	char *b32_hash = knot_dname_to_str_alloc(b->owner);
+	char *b32_hash = knot_dname_to_str_alloc(b_name);
 	if (!b32_hash) {
 		return KNOT_ENOMEM;
 	}
@@ -395,7 +379,7 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 
 	size_t b32_length = b32_end - b32_hash;
 	int32_t written = base32hex_decode((uint8_t *)b32_hash, b32_length,
-	                                   raw_hash, raw_length);
+					   raw_hash, raw_length);
 
 	free(b32_hash);
 
@@ -404,6 +388,74 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
 	}
 
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Connect two nodes by filling 'hash' field of NSEC3 RDATA of the first node.
+ *
+ * \param a     First node. Gets modified in-place!
+ * \param b     Second node (immediate follower of a).
+ * \param data  Unused parameter.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
+                               nsec_chain_iterate_data_t *data)
+{
+	assert(a);
+	assert(b);
+	UNUSED(data);
+
+	assert(a->rrset_count == 1);
+
+	return connect_nsec3_base(node_rdataset(a, KNOT_RRTYPE_NSEC3), b->owner);
+}
+
+/*!
+ * \brief Connect two nodes by updating the changeset.
+ *
+ * \param a     First node.
+ * \param b     Second node.
+ * \param data  Contains the changeset to be updated.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int connect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
+                                nsec_chain_iterate_data_t *data)
+{
+	assert(data);
+
+	// check if the NSEC3 rrset has not been updated in changeset
+	knot_rrset_t aorig = node_rrset(a, KNOT_RRTYPE_NSEC3);
+	const zone_node_t *ch_a = zone_contents_find_nsec3_node(data->changeset->add, a->owner);
+	if (node_rrtype_exists(ch_a, KNOT_RRTYPE_NSEC3)) {
+		aorig = node_rrset(ch_a, KNOT_RRTYPE_NSEC3);
+	}
+
+	// prepare a copy of NSEC3 rrsets in question
+	knot_rrset_t *acopy = knot_rrset_copy(&aorig, NULL);
+	if (acopy == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// connect the copied rrset
+	int ret = connect_nsec3_base(&acopy->rrs, b->owner);
+	if (ret != KNOT_EOK || knot_rrset_equal(&aorig, acopy, KNOT_RRSET_COMPARE_WHOLE)) {
+		knot_rrset_free(&acopy, NULL);
+		return ret;
+	}
+
+	// add the removed original and the updated copy to changeset
+	if (node_rrtype_exists(ch_a, KNOT_RRTYPE_NSEC3)) {
+		ret = changeset_remove_addition(data->changeset, &aorig);
+	} else {
+		ret = changeset_add_removal(data->changeset, &aorig, 0);
+	}
+	if (ret == KNOT_EOK) {
+		ret = changeset_add_addition(data->changeset, acopy, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+	}
+	knot_rrset_free(&acopy, NULL);
+	return ret;
 }
 
 /*!
@@ -469,6 +521,132 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 	trie_it_free(it);
 
 	return result;
+}
+
+/*!
+ * \brief For given dname, check if anything changed in zone_update, and recreate (possibly unconnected) NSEC3 nodes appropriately.
+ *
+ * The removed/added/modified NSEC3 records are stored in two ways depending of their nature:
+ *  a) Those NSEC3 records pre-created with (probably) empty "next dname", waiting to be connected with 2nd round, are put directly into the zone_update_t structure.
+ *  b) Those with just recreated bitmap are just added into the changeset. We must note them in the changeset anyway when reconnecting!
+ * The reason is, that the (a) type of records are not going to be signed, but they are needed for proper connecting the NSEC3 chain.
+ * On the other hand, the (b) type of records need to be signed and they have no influence on the chain structure.
+ *
+ * \param update    Zone update structure holding zone contents changes.
+ * \param params    NSEC3 params.
+ * \param ttl       TTL for newly created NSEC3 records.
+ * \param chgset    Changeset to hold the changes.
+ * \param for_node  Domain name of the node in question.
+ *
+ * \retval KNOT_ENORECORD if the NSEC3 chain shall be rather recreated completely.
+ * \return KNOT_EOK, KNOT_E* if any error.
+ */
+static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t *params,
+                              uint32_t ttl, changeset_t *chgset, const knot_dname_t *for_node)
+{
+	// check if we need to do something
+	const zone_node_t *old_n = zone_contents_find_node(update->zone->contents, for_node);
+	const zone_node_t *new_n = zone_contents_find_node(update->new_cont, for_node);
+	if (node_bitmap_equal(old_n, new_n)) {
+		return KNOT_EOK;
+	}
+
+	if ((new_n != NULL && knot_nsec_empty_nsec_and_rrsigs_in_node(new_n) && new_n->children > 0) ||
+	    (old_n != NULL && knot_nsec_empty_nsec_and_rrsigs_in_node(old_n) && old_n->children > 0)) {
+		// handling empty non-terminal creation and downfall is too difficult, recreate NSEC3 from scratch
+		return KNOT_ENORECORD;
+	}
+
+	int ret = KNOT_EOK;
+	knot_dname_t *for_node_hashed = knot_create_nsec3_owner(for_node, update->new_cont->apex->owner, params);
+
+	// saved hash of next node
+	uint8_t *next_hash = NULL;
+	uint8_t next_length = 0;
+
+	bool add_nsec3 = (new_n != NULL && !node_empty(new_n) && !(new_n->flags & NODE_FLAGS_NONAUTH));
+
+	// remove (all) existing NSEC3
+	const zone_node_t *old_nsec3_n = zone_contents_find_nsec3_node(update->zone->contents, for_node_hashed);
+	if (old_nsec3_n != NULL) {
+		knot_rrset_t rem_nsec3 = node_rrset(old_nsec3_n, KNOT_RRTYPE_NSEC3);
+		if (!knot_rrset_empty(&rem_nsec3)) {
+			knot_rrset_t rem_rrsig = node_rrset(old_nsec3_n, KNOT_RRTYPE_RRSIG);
+			if (!add_nsec3) {
+				ret = zone_update_remove(update, &rem_nsec3);
+				if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
+					ret = zone_update_remove(update, &rem_rrsig);
+				}
+			} else {
+				ret = changeset_add_removal(chgset, &rem_nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+				if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
+					ret = changeset_add_removal(chgset, &rem_rrsig, 0);
+				}
+			}
+			knot_nsec3_next_hashed(&rem_nsec3.rrs, 0, &next_hash, &next_length);
+		}
+	}
+	free(for_node_hashed);
+
+	// add NSEC3 with correct bitmap
+	if (add_nsec3 && ret == KNOT_EOK) {
+		zone_node_t *new_nsec3_n = create_nsec3_node_for_node(new_n, update->new_cont->apex, params, ttl);
+		if (new_nsec3_n == NULL) {
+			return KNOT_ENOMEM;
+		}
+		knot_rrset_t add_nsec3 = node_rrset(new_nsec3_n, KNOT_RRTYPE_NSEC3);
+		assert(!knot_rrset_empty(&add_nsec3));
+
+		// copy hash of next element from removed record
+		if (next_hash != NULL) {
+			uint8_t *raw_hash = NULL;
+			uint8_t raw_length = 0;
+			knot_nsec3_next_hashed(&add_nsec3.rrs, 0, &raw_hash, &raw_length);
+			assert(raw_hash != NULL);
+			if (raw_length != next_length) {
+				ret = KNOT_EMALF;
+			} else {
+				memcpy(raw_hash, next_hash, raw_length);
+			}
+		}
+		if (ret == KNOT_EOK) {
+			if (next_hash == NULL) {
+				ret = zone_update_add(update, &add_nsec3);
+			} else {
+				ret = changeset_add_addition(chgset, &add_nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+			}
+		}
+		node_free_rrsets(new_nsec3_n, NULL);
+		node_free(&new_nsec3_n, NULL);
+	}
+
+	return ret;
+}
+
+static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *params,
+                           uint32_t ttl, changeset_t *chgset)
+{
+	assert(update);
+
+	int ret = KNOT_EOK;
+
+	trie_it_t *rem_it = trie_it_begin(update->change.remove->nodes);
+	while (!trie_it_finished(rem_it) && ret == KNOT_EOK) {
+		zone_node_t *n = (zone_node_t *)*trie_it_val(rem_it);
+		ret = fix_nsec3_for_node(update, params, ttl, chgset, n->owner);
+		trie_it_next(rem_it);
+	}
+	trie_it_free(rem_it);
+
+	trie_it_t *add_it = trie_it_begin(update->change.add->nodes);
+	while (!trie_it_finished(add_it) && ret == KNOT_EOK) {
+		zone_node_t *n = (zone_node_t *)*trie_it_val(add_it);
+		ret = fix_nsec3_for_node(update, params, ttl, chgset, n->owner);
+		trie_it_next(add_it);
+	}
+	trie_it_free(add_it);
+
+	return ret;
 }
 
 /*!
@@ -610,4 +788,24 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	free_nsec3_tree(nsec3_nodes);
 
 	return result;
+}
+
+int knot_nsec3_fix_chain(zone_update_t *update,
+                         const dnssec_nsec3_params_t *params,
+                         uint32_t ttl,
+                         changeset_t *changeset)
+{
+
+	int ret = fix_nsec3_nodes(update, params, ttl, changeset);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	nsec_chain_iterate_data_t data = { ttl, changeset, update->new_cont };
+
+	ret = knot_nsec_chain_iterate_fix(update->zone->contents->nsec3_nodes,
+	                                  update->new_cont->nsec3_nodes,
+	                                  connect_nsec3_nodes2, &data);
+
+	return ret;
 }
