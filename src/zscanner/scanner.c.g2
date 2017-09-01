@@ -49037,7 +49037,8 @@ case 592:
 tr1813:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -50052,7 +50053,8 @@ tr2014:
 tr1888:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50063,7 +50065,8 @@ tr1888:
 tr1889:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50081,7 +50084,8 @@ tr1889:
 tr1890:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50099,7 +50103,8 @@ tr1890:
 tr1892:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50243,7 +50248,8 @@ tr1999:
 tr1901:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50254,7 +50260,8 @@ tr1901:
 tr1902:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50272,7 +50279,8 @@ tr1902:
 tr1903:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50290,7 +50298,8 @@ tr1903:
 tr1910:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50312,7 +50321,8 @@ tr2007:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50331,7 +50341,8 @@ tr2008:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50357,7 +50368,8 @@ tr2009:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50383,7 +50395,8 @@ tr2011:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50527,7 +50540,8 @@ tr1984:
 tr1918:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50538,7 +50552,8 @@ tr1918:
 tr1919:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50556,7 +50571,8 @@ tr1919:
 tr1920:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50574,7 +50590,8 @@ tr1920:
 tr1927:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50596,7 +50613,8 @@ tr1992:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50615,7 +50633,8 @@ tr1993:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50641,7 +50660,8 @@ tr1994:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50667,7 +50687,8 @@ tr1996:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50811,7 +50832,8 @@ tr1969:
 tr1935:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50822,7 +50844,8 @@ tr1935:
 tr1936:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50840,7 +50863,8 @@ tr1936:
 tr1937:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50858,7 +50882,8 @@ tr1937:
 tr1944:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50880,7 +50905,8 @@ tr1977:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50899,7 +50925,8 @@ tr1978:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50925,7 +50952,8 @@ tr1979:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -50951,7 +50979,8 @@ tr1981:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -51054,7 +51083,8 @@ case 649:
 tr1952:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -51076,7 +51106,8 @@ tr1966:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -51295,7 +51326,8 @@ tr1968:
 tr1945:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -51314,7 +51346,8 @@ tr1982:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -51572,7 +51605,8 @@ tr1983:
 tr1928:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -51591,7 +51625,8 @@ tr1997:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -51849,7 +51884,8 @@ tr1998:
 tr1911:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -51868,7 +51904,8 @@ tr2012:
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -52126,7 +52163,8 @@ tr2013:
 tr1893:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -52837,7 +52875,8 @@ tr2064:
 tr2050:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -52848,7 +52887,8 @@ tr2050:
 tr2051:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -52866,7 +52906,8 @@ tr2051:
 tr2052:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -52884,7 +52925,8 @@ tr2052:
 tr2054:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -52974,7 +53016,8 @@ tr2063:
 tr2055:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60331,7 +60374,8 @@ tr2390:
 tr2348:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60342,7 +60386,8 @@ tr2348:
 tr2349:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60360,7 +60405,8 @@ tr2349:
 tr2350:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60378,7 +60424,8 @@ tr2350:
 tr2352:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60512,7 +60559,8 @@ tr2388:
 tr2360:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60523,7 +60571,8 @@ tr2360:
 tr2361:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60541,7 +60590,8 @@ tr2361:
 tr2362:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60559,7 +60609,8 @@ tr2362:
 tr2364:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60693,7 +60744,8 @@ tr2386:
 tr2372:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60704,7 +60756,8 @@ tr2372:
 tr2373:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60722,7 +60775,8 @@ tr2373:
 tr2374:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60740,7 +60794,8 @@ tr2374:
 tr2376:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60830,7 +60885,8 @@ tr2385:
 tr2377:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60875,7 +60931,8 @@ tr2387:
 tr2365:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -60920,7 +60977,8 @@ tr2389:
 tr2353:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -61058,7 +61116,8 @@ tr2459:
 tr2392:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -61069,7 +61128,8 @@ tr2392:
 tr2393:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -61087,7 +61147,8 @@ tr2393:
 tr2394:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -61105,7 +61166,8 @@ tr2394:
 tr2396:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -61239,7 +61301,8 @@ tr2457:
 tr2404:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -61250,7 +61313,8 @@ tr2404:
 tr2405:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -61268,7 +61332,8 @@ tr2405:
 tr2406:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -61286,7 +61351,8 @@ tr2406:
 tr2408:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -62009,7 +62075,8 @@ tr2456:
 tr2409:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -62054,7 +62121,8 @@ tr2458:
 tr2397:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -62284,7 +62352,8 @@ tr2489:
 tr2467:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -62295,7 +62364,8 @@ tr2467:
 tr2468:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -62313,7 +62383,8 @@ tr2468:
 tr2469:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -62331,7 +62402,8 @@ tr2469:
 tr2471:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -62546,7 +62618,8 @@ tr2488:
 tr2472:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -63562,7 +63635,8 @@ tr2575:
 tr2528:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -63573,7 +63647,8 @@ tr2528:
 tr2529:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -63591,7 +63666,8 @@ tr2529:
 tr2530:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -63609,7 +63685,8 @@ tr2530:
 tr2532:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -64241,7 +64318,8 @@ tr2574:
 tr2533:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -69138,7 +69216,8 @@ tr2949:
 tr3260:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -69149,7 +69228,8 @@ tr3260:
 tr3261:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -69167,7 +69247,8 @@ tr3261:
 tr3262:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -69185,7 +69266,8 @@ tr3262:
 tr3264:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -70810,7 +70892,8 @@ tr2943:
 tr2873:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -70821,7 +70904,8 @@ tr2873:
 tr2874:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -70839,7 +70923,8 @@ tr2874:
 tr2875:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -70857,7 +70942,8 @@ tr2875:
 tr2877:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -71537,7 +71623,8 @@ tr2937:
 tr2910:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -71548,7 +71635,8 @@ tr2910:
 tr2911:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -71566,7 +71654,8 @@ tr2911:
 tr2912:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -71584,7 +71673,8 @@ tr2912:
 tr2914:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -71847,7 +71937,8 @@ tr2936:
 tr2915:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -72034,7 +72125,8 @@ tr2942:
 tr2878:
 	{
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
@@ -72158,7 +72250,8 @@ tr2948:
 tr3265:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -74386,7 +74479,8 @@ tr3313:
 tr3277:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -74397,7 +74491,8 @@ tr3277:
 tr3278:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -74415,7 +74510,8 @@ tr3278:
 tr3279:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -74433,7 +74529,8 @@ tr3279:
 tr3281:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -74874,7 +74971,8 @@ tr3312:
 tr3282:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -75423,7 +75521,8 @@ tr3387:
 tr3341:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -75434,7 +75533,8 @@ tr3341:
 tr3342:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -75452,7 +75552,8 @@ tr3342:
 tr3343:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -75470,7 +75571,8 @@ tr3343:
 tr3345:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -76100,7 +76202,8 @@ tr3386:
 tr3346:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -76690,7 +76793,8 @@ tr3434:
 tr3417:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -76701,7 +76805,8 @@ tr3417:
 tr3418:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -76719,7 +76824,8 @@ tr3418:
 tr3419:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -76737,7 +76843,8 @@ tr3419:
 tr3421:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -76906,7 +77013,8 @@ tr3433:
 tr3422:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78051,7 +78159,8 @@ tr3509:
 tr3494:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78062,7 +78171,8 @@ tr3494:
 tr3495:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78080,7 +78190,8 @@ tr3495:
 tr3496:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78098,7 +78209,8 @@ tr3496:
 tr3498:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78212,7 +78324,8 @@ tr3508:
 tr3499:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78350,7 +78463,8 @@ tr3535:
 tr3511:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78361,7 +78475,8 @@ tr3511:
 tr3512:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78379,7 +78494,8 @@ tr3512:
 tr3513:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78397,7 +78513,8 @@ tr3513:
 tr3515:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -78655,7 +78772,8 @@ tr3534:
 tr3516:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79059,7 +79177,8 @@ tr3578:
 tr3550:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79070,7 +79189,8 @@ tr3550:
 tr3551:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79088,7 +79208,8 @@ tr3551:
 tr3552:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79106,7 +79227,8 @@ tr3552:
 tr3554:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79240,7 +79362,8 @@ tr3576:
 tr3562:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79251,7 +79374,8 @@ tr3562:
 tr3563:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79269,7 +79393,8 @@ tr3563:
 tr3564:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79287,7 +79412,8 @@ tr3564:
 tr3566:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79368,7 +79494,8 @@ tr3575:
 tr3567:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -79413,7 +79540,8 @@ tr3577:
 tr3555:
 	{
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);

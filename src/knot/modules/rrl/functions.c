@@ -180,13 +180,14 @@ static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage 
 	blklen += sizeof(nb);
 
 	/* Name */
-	uint16_t *nlen = (uint16_t *)(dst + blklen);
+	uint16_t *len_pos = (uint16_t *)(dst + blklen);
 	blklen += sizeof(uint16_t);
-	int len = rrl_clsname(dst + blklen, maxlen - blklen, cls, p, z);
-	if (len < 0) {
-		return len;
+	int ret = rrl_clsname(dst + blklen, maxlen - blklen, cls, p, z);
+	if (ret < 0) {
+		return ret;
 	}
-	*nlen = len;
+	uint16_t len = ret;
+	memcpy(len_pos, &len, sizeof(len));
 	blklen += len;
 
 	/* Seed. */
@@ -253,17 +254,19 @@ static inline unsigned reduce_dist(rrl_table_t *t, unsigned id, unsigned d, unsi
 	unsigned rd = HOP_LEN - 1;
 	while (rd > 0) {
 		unsigned s = (t->size + *f - rd) % t->size; /* bucket to be vacated */
-		unsigned o = __builtin_ctz(t->arr[s].hop); /* offset of first valid bucket */
-		if (t->arr[s].hop != 0 && o < rd) {        /* only offsets in <s, f> are interesting */
-			unsigned e = (s + o) % t->size;    /* this item will be displaced to [f] */
-			unsigned keep_hop = t->arr[*f].hop; /* unpredictable padding */
-			memcpy(t->arr + *f, t->arr + e, sizeof(rrl_item_t));
-			t->arr[*f].hop = keep_hop;
-			t->arr[e].cls = CLS_NULL;
-			t->arr[s].hop &= ~(1<<o);
-			t->arr[s].hop |= 1<<rd;
-			*f = e;
-			return d - (rd - o);
+		if (t->arr[s].hop != 0) {
+			unsigned o = __builtin_ctz(t->arr[s].hop);  /* offset of first valid bucket */
+			if (o < rd) {                               /* only offsets in <s, f> are interesting */
+				unsigned e = (s + o) % t->size;     /* this item will be displaced to [f] */
+				unsigned keep_hop = t->arr[*f].hop; /* unpredictable padding */
+				memcpy(t->arr + *f, t->arr + e, sizeof(rrl_item_t));
+				t->arr[*f].hop = keep_hop;
+				t->arr[e].cls = CLS_NULL;
+				t->arr[s].hop &= ~(1<<o);
+				t->arr[s].hop |= 1<<rd;
+				*f = e;
+				return d - (rd - o);
+			}
 		}
 		--rd;
 	}
@@ -382,14 +385,16 @@ rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 	pthread_mutex_lock(&t->ll);
 
 	/* Find an exact match in <id, id + HOP_LEN). */
-	uint16_t *qname = (uint16_t *)(buf + sizeof(uint8_t) + sizeof(uint64_t));
+	char *qname = buf + sizeof(uint8_t) + sizeof(uint64_t);
+	uint64_t netblk;
+	memcpy(&netblk, buf + sizeof(uint8_t), sizeof(netblk));
 	rrl_item_t match = {
 		.hop = 0,
-		.netblk = *((uint64_t *)(buf + 1)),
+		.netblk = netblk,
 		.ntok = t->rate * RRL_CAPACITY,
 		.cls = buf[0],
 		.flags = RRL_BF_NULL,
-		.qname = hash((char *)(qname + 1), *qname),
+		.qname = hash(qname + 1, *qname),
 		.time = stamp
 	};
 
