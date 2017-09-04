@@ -338,6 +338,7 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 		/* Check for coincidence with previous RR set */
 		if (compr != NULL &&
 		    compr->suffix.pos != 0 &&
+		    *rrset->owner != '\0' &&
 		    dname_equal_wire(rrset->owner,
 		                     compr->wire + compr->suffix.pos, compr->wire)) {
 
@@ -350,7 +351,6 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 				compr->suffix.pos = KNOT_WIRE_HEADER_SIZE;
 				compr->suffix.labels = knot_dname_labels(compr->wire + compr->suffix.pos,
 				                                         compr->wire);
-
 			}
 			int written = knot_compr_put_dname(rrset->owner, *dst,
 			                                   dname_max(*dst_avail), compr);
