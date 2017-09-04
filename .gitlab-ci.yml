@@ -13,13 +13,12 @@ stages:
 
 .image: &image
   stage: image
-  services:
-    - docker:dind
   before_script:
     - docker info
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
-    - docker build -t "$IMAGE_TAG" "scripts/docker/$IMAGE_NAME"
+    - docker pull "$IMAGE_TAG" || true
+    - docker build --cache-from "$IMAGE_TAG" -t "$IMAGE_TAG" "scripts/docker/$IMAGE_NAME"
     - docker push "$IMAGE_TAG"
   tags:
     - dind
@@ -28,6 +27,12 @@ docker:knot-dns:debian:
   <<: *image
   variables:
     IMAGE_NAME: debian:latest
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
+
+docker:knot-dns:debian:unstable:
+  <<: *image
+  variables:
+    IMAGE_NAME: debian:unstable
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
 docker:knot-dns:ubuntu:
@@ -87,6 +92,13 @@ docker:knot-dns:fedora:
     - linux
     - amd64
 
+.debian_unstable: &debian_unstable
+  image: "registry.labs.nic.cz/knot/knot-dns/debian:unstable"
+  tags:
+    - docker
+    - linux
+    - amd64
+
 .ubuntu_latest: &ubuntu_latest
   image: "$CI_REGISTRY/knot/knot-dns/ubuntu:latest"
   tags:
@@ -98,7 +110,7 @@ docker:knot-dns:fedora:
   stage: build
   script:
     - autoreconf -fi
-    - ./configure --disable-fastparser
+    - ./configure --disable-fastparser || ( cat config.log && exit 1 )
     - make -k all
   artifacts:
     untracked: true
@@ -148,6 +160,64 @@ test:debian:amd64:
   <<: *test_job
   dependencies:
     - build:debian:amd64
+
+build:debian:unstable:amd64:
+  <<: *debian_unstable
+  <<: *build_job
+
+test:debian:unstable:amd64:
+  <<: *debian_unstable
+  <<: *test_job
+  dependencies:
+    - build:debian:unstable:amd64
+
+build:debian:unstable:amd64:asan:
+  variables:
+    CC: clang-6.0
+    CFLAGS: "-fsanitize=address -g -O2 -fno-omit-frame-pointer"
+    LDFLAGS: "-fsanitize=address"
+    ASAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
+    LSAN_OPTIONS: verbosity=1:log_threads=1
+  allow_failure: true
+  <<: *debian_unstable
+  <<: *build_job
+
+test:debian:unstable:amd64:asan:
+  variables:
+    CC: clang-6.0
+    CFLAGS: "-fsanitize=address -g -O2"
+    LDFLAGS: "-fsanitize=address"
+    ASAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
+    LSAN_OPTIONS: verbosity=1:log_threads=1
+  allow_failure: true
+  <<: *debian_unstable
+  <<: *test_job
+  dependencies:
+    - build:debian:unstable:amd64:asan
+
+build:debian:unstable:amd64:ubsan:
+  variables:
+    CC: clang-6.0
+    CFLAGS: "-fsanitize=undefined -fno-sanitize=nonnull-attribute -g -O2"
+    LDFLAGS: "-fsanitize=undefined"
+    UBSAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
+    UBSAN_OPTIONS: print_stacktrace=1
+  allow_failure: true
+  <<: *debian_unstable
+  <<: *build_job
+
+test:debian:unstable:amd64:ubsan:
+  variables:
+    CC: clang-6.0
+    CFLAGS: "-fsanitize=undefined -fno-sanitize=nonnull-attribute -g -O2"
+    LDFLAGS: "-fsanitize=undefined"
+    UBSAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-6.0
+    UBSAN_OPTIONS: print_stacktrace=1
+  allow_failure: true
+  <<: *debian_unstable
+  <<: *test_job
+  dependencies:
+    - build:debian:unstable:amd64:ubsan
 
 build:freebsd:i386:
   <<: *freebsd_i386
