@@ -23,7 +23,6 @@ stages:
     - docker push "$IMAGE_TAG"
   tags:
     - dind
-    - docker
     
 docker:knot-dns:debian:
   <<: *image
