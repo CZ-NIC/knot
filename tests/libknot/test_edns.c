@@ -123,7 +123,7 @@ static void check_option(knot_rdata_t *rdata, uint16_t opt_code,
 	ok(check, "%s: OPTION data size", msg);
 
 	/* Check the actual NSID data. */
-	check = (memcmp(data + pos + OFFSET_OPT_DATA, opt_data, opt_len)) == 0;
+	check = (opt_data == 0 || memcmp(data + pos + OFFSET_OPT_DATA, opt_data, opt_len) == 0);
 	ok(check, "%s: OPTION data", msg);
 }
 

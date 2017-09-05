@@ -67,16 +67,18 @@ static int reduce_dist(hhash_t *t, int idx, int *empty)
 		 * The function should be repeated until we move the free bucket
 		 * in the vicinity of the target index.
 		 */
-		unsigned cur = (t->size + *empty - dist) % t->size; /* bucket to be vacated */
-		unsigned off = HOP_NEXT(t->item[cur].hop);     /* offset of first valid bucket */
-		if (t->item[cur].hop != 0 && off < dist) {     /* only offsets in <s, f> are interesting */
-			unsigned hit = (cur + off) % t->size;  /* this item will be displaced to [f] */
-			t->item[*empty].d = t->item[hit].d;    /* displace data */
-			t->item[hit].d = NULL;
-			t->item[cur].hop &= ~HOP_BIT(off); /* displace bitvector index */
-			t->item[cur].hop |=  HOP_BIT(dist);
-			*empty = hit;
-			return idx - (dist - off);               /* new distance */
+		unsigned cur = (t->size + *empty - dist) % t->size;   /* bucket to be vacated */
+		if (t->item[cur].hop != 0) {                          /* only offsets in <s, f> are interesting */
+			unsigned off = HOP_NEXT(t->item[cur].hop);    /* offset of first valid bucket */
+			if (off < dist) {
+				unsigned hit = (cur + off) % t->size; /* this item will be displaced to [f] */
+				t->item[*empty].d = t->item[hit].d;   /* displace data */
+				t->item[hit].d = NULL;
+				t->item[cur].hop &= ~HOP_BIT(off);    /* displace bitvector index */
+				t->item[cur].hop |=  HOP_BIT(dist);
+				*empty = hit;
+				return idx - (dist - off);            /* new distance */
+			}
 		}
 		--dist;
 	}

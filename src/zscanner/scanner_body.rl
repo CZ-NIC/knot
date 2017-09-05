@@ -374,7 +374,8 @@
 	}
 	action _num16_write {
 		if (s->number64 <= UINT16_MAX) {
-			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+			uint16_t num16 = htons((uint16_t)s->number64);
+			memcpy(rdata_tail, &num16, 2);
 			rdata_tail += 2;
 		} else {
 			WARN(ZS_NUMBER16_OVERFLOW);
@@ -383,7 +384,8 @@
 	}
 	action _num32_write {
 		if (s->number64 <= UINT32_MAX) {
-			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+			uint32_t num32 = htonl((uint32_t)s->number64);
+			memcpy(rdata_tail, &num32, 4);
 			rdata_tail += 4;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);

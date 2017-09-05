@@ -54,7 +54,7 @@ static void test_base64(void)
 		int r = dnssec_binary_from_base64(&base64, &binary);
 		ok(r == DNSSEC_EOK &&
 		   binary.size == ts->decoded_size &&
-		   memcmp(binary.data, ts->decoded, binary.size) == 0,
+		   (binary.size == 0 || memcmp(binary.data, ts->decoded, binary.size) == 0),
 		   "dnssec_binary_from_base64() for '%s'", ts->encoded);
 
 		dnssec_binary_t encoded = { 0 };
