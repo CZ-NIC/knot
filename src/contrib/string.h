@@ -61,4 +61,16 @@ char *strcdup(const char *s1, const char *s2);
  */
 char *strstrip(const char *str);
 
+/*!
+ * \brief Compare data in time based on string length.
+ *        This function just checks for (in)equality not for relation
+ *
+ * \param s1 The first address to compare.
+ * \param s2 The second address to compare.
+ * \param n The size of memory to compare.
+ *
+ * \return Non zero on difference and zero if the buffers are identical.
+ */
+int const_time_memcmp(const void *s1, const void *s2, size_t n);
+
 /*! @} */

@@ -114,3 +114,14 @@ char *strstrip(const char *str)
 
 	return trimmed;
 }
+
+int const_time_memcmp(const void *s1, const void *s2, size_t n)
+{
+	volatile uint8_t equal = 0;
+
+	for (size_t i = 0; i < n; i++) {
+		equal |= ((uint8_t *)s1)[i] ^ ((uint8_t *)s2)[i];
+	}
+
+	return equal;
+}

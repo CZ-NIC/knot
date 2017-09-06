@@ -48,6 +48,7 @@ typedef struct pkcs8_dir_handle {
 #define strcdup strcdup2
 #define strstrip strstrip2
 #define sprintf_alloc sprintf_alloc2
+#define const_time_memcmp const_time_memcmp2
 #include <contrib/string.c>
 #define key_path(dir, id) sprintf_alloc2("%s/%s.pem", dir, id)
 
