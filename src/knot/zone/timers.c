@@ -53,10 +53,12 @@ enum timer_id {
 	TIMER_SOA_EXPIRE = 0x80,
 	TIMER_LAST_FLUSH,
 	TIMER_LAST_REFRESH,
-	TIMER_NEXT_REFRESH
+	TIMER_NEXT_REFRESH,
+	TIMER_LAST_RESALT,
+	TIMER_NEXT_PARENT_DS_Q
 };
 
-#define TIMER_COUNT 4
+#define TIMER_COUNT 6
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
 #define SERIALIZED_SIZE (TIMER_COUNT * TIMER_SIZE)
 
@@ -79,6 +81,10 @@ static int serialize_timers(const zone_timers_t *timers, uint8_t *data, size_t s
 	wire_ctx_write_u64(&wire, timers->last_refresh);
 	wire_ctx_write_u8(&wire, TIMER_NEXT_REFRESH);
 	wire_ctx_write_u64(&wire, timers->next_refresh);
+	wire_ctx_write_u8(&wire, TIMER_LAST_RESALT);
+	wire_ctx_write_u64(&wire, timers->last_resalt);
+	wire_ctx_write_u8(&wire, TIMER_NEXT_PARENT_DS_Q);
+	wire_ctx_write_u64(&wire, timers->next_parent_ds_q);
 
 	assert(wire.error == KNOT_EOK);
 	assert(wire_ctx_available(&wire) == 0);
@@ -105,10 +111,12 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		uint8_t id = wire_ctx_read_u8(&wire);
 		uint64_t value = wire_ctx_read_u64(&wire);
 		switch (id) {
-		case TIMER_SOA_EXPIRE:   timers.soa_expire = value; break;
-		case TIMER_LAST_FLUSH:   timers.last_flush = value; break;
-		case TIMER_LAST_REFRESH: timers.last_refresh = value; break;
-		case TIMER_NEXT_REFRESH: timers.next_refresh = value; break;
+		case TIMER_SOA_EXPIRE:       timers.soa_expire = value; break;
+		case TIMER_LAST_FLUSH:       timers.last_flush = value; break;
+		case TIMER_LAST_REFRESH:     timers.last_refresh = value; break;
+		case TIMER_NEXT_REFRESH:     timers.next_refresh = value; break;
+		case TIMER_LAST_RESALT:      timers.last_resalt = value; break;
+		case TIMER_NEXT_PARENT_DS_Q: timers.next_parent_ds_q = value; break;
 		default:                 break; // ignore
 		}
 	}

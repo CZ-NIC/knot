@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,7 +73,6 @@ static void replan_dnssec(conf_t *conf, zone_t *zone)
 
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
-		zone_events_schedule_now(zone, ZONE_EVENT_NSEC3RESALT);
 		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	}
 }
@@ -84,12 +83,14 @@ static bool can_expire(const zone_t *zone)
 }
 
 /*!
- * \brief Replan events that depend on zone timers (REFRESH, EXPIRE, FLUSH).
+ * \brief Replan events that depend on zone timers (REFRESH, EXPIRE, FLUSH, RESALT, PARENT DS QUERY).
  */
 void replan_from_timers(conf_t *conf, zone_t *zone)
 {
 	assert(conf);
 	assert(zone);
+
+	time_t now = time(NULL);
 
 	time_t refresh = TIME_CANCEL;
 	if (zone_is_slave(conf, zone)) {
@@ -113,11 +114,34 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		}
 	}
 
+	time_t resalt = TIME_CANCEL;
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	if (conf_bool(&val)) {
+		conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
+		conf_id_fix_default(&policy);
+		val = conf_id_get(conf, C_POLICY, C_NSEC3, &policy);
+		if (conf_bool(&val)) {
+			if (zone->timers.last_resalt == 0) {
+				resalt = now;
+			} else {
+				val = conf_id_get(conf, C_POLICY, C_NSEC3_SALT_LIFETIME, &policy);
+				resalt = zone->timers.last_resalt + conf_int(&val);
+			}
+		}
+	}
+
+	time_t ds = zone->timers.next_parent_ds_q;
+	if (ds == 0) {
+		ds = TIME_IGNORE;
+	}
+
 	zone_events_schedule_at(zone,
 	                        ZONE_EVENT_REFRESH, refresh,
 	                        ZONE_EVENT_EXPIRE, expire_pre,
 	                        ZONE_EVENT_EXPIRE, expire,
-	                        ZONE_EVENT_FLUSH, flush);
+	                        ZONE_EVENT_FLUSH, flush,
+	                        ZONE_EVENT_NSEC3RESALT, resalt,
+	                        ZONE_EVENT_PARENT_DS_Q, ds);
 }
 
 void replan_load_new(zone_t *zone)

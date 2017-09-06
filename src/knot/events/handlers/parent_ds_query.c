@@ -159,8 +159,10 @@ static int try_ds(conf_t *conf, zone_t *zone, const conf_remote_t *parent, zone_
 	return ret;
 }
 
-static bool parents_have_ds(zone_t *zone, conf_t *conf, zone_key_t *key) {
+static bool parents_have_ds(zone_t *zone, conf_t *conf, zone_key_t *key)
+{
 	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
+	conf_id_fix_default(&policy);
 	conf_val_t ksk_sbm = conf_id_get(conf, C_POLICY, C_KSK_SBM, &policy);
 	assert(conf_val_count(&ksk_sbm) < 2);
 	if (conf_val_count(&ksk_sbm) < 1) {
@@ -215,9 +217,11 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 		}
 	}
 
+	zone->timers.next_parent_ds_q = 0;
 	if (ret != KNOT_EOK) {
 		if (ctx.policy->ksk_sbm_check_interval > 0) {
 			time_t next_check = time(NULL) + ctx.policy->ksk_sbm_check_interval;
+			zone->timers.next_parent_ds_q = next_check;
 			zone_events_schedule_at(zone, ZONE_EVENT_PARENT_DS_Q, next_check);
 		}
 	} else {
