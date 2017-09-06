@@ -24,6 +24,7 @@
 typedef enum {
 	CHANGESET_NONE = 0,
 	CHANGESET_CHECK = 1 << 0, /*! Perform redundancy check on additions/removals */
+	CHANGESET_CHECK_CANCELOUT = 1 << 1, /*! Do the complete cancelout on addition/removal/merge (depends on CHANGESET_CHECK */
 } changeset_flag_t;
 
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */
@@ -130,10 +131,11 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
  *
  * \param ch1  Merge into this changeset.
  * \param ch2  Merge this changeset.
+ * \param flags  Flags how to handle rendundancies.
  *
  * \return KNOT_E*
  */
-int changeset_merge(changeset_t *ch1, const changeset_t *ch2);
+int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags);
 
 /*!
  * \brief Remove from changeset those rdata which won't be added/removed from zone.

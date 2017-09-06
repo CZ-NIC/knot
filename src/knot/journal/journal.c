@@ -1180,7 +1180,7 @@ static int merge_itercb(iteration_ctx_t *ctx)
 
 	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch);
 	if (ret == KNOT_EOK) {
-		ret = changeset_merge(mch, ch);
+		ret = changeset_merge(mch, ch, 0);
 		changeset_free(ch);
 	}
 	return ret;

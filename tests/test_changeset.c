@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 	assert(ret == KNOT_EOK);
 
 	// Test merge.
-	ret = changeset_merge(ch, ch2);
+	ret = changeset_merge(ch, ch2, 0);
 	ok(ret == KNOT_EOK && changeset_size(ch) == 5, "changeset: merge");
 
 	// Test preapply fix.
