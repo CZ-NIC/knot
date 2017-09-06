@@ -569,6 +569,10 @@ class Server(object):
             for line in log:
                 if pattern in line:
                     return True
+        with open(self.ferr) as log:
+            for line in log:
+                if pattern in line:
+                    return True
         return False
 
     def zone_wait(self, zone, serial=None, equal=False, greater=True):
