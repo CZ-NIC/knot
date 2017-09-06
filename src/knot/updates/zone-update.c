@@ -448,7 +448,7 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 {
 	int ret = KNOT_EOK;
 	if (update->flags & UPDATE_INCREMENTAL) {
-		ret = changeset_merge(&update->change, changes);
+		ret = changeset_merge(&update->change, changes, CHANGESET_CHECK_CANCELOUT);
 	}
 	if (ret == KNOT_EOK) {
 		ret = apply_changeset_directly(&update->a_ctx, changes);

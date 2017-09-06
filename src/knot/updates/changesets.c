@@ -143,8 +143,14 @@ static knot_rrset_t get_next_rr(changeset_iter_t *ch_it, trie_it_t *t_it)
 	return node_rrset_at(ch_it->node, ch_it->node_pos++);
 }
 
-static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *rr)
+// removes from counterpart what is in rr.
+// fixed_rr is an output parameter, holding a copy of rr without what has been removed from counterpart
+static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *rr, knot_rrset_t **fixed_rr)
 {
+	if (fixed_rr != NULL) {
+		*fixed_rr = knot_rrset_copy(rr, NULL);
+	}
+
 	zone_node_t *node = zone_contents_find_node_for_rr(counterpart, rr);
 	if (node == NULL) {
 		return;
@@ -156,6 +162,14 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 
 	// Subtract the data from node's RRSet.
 	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
+
+	if (fixed_rr != NULL && *fixed_rr != NULL) {
+		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, rrs, true, NULL);
+		if (ret != KNOT_EOK) {
+			return;
+		}
+	}
+
 	int ret = knot_rdataset_subtract(rrs, &rr->rrs, true, NULL);
 	if (ret != KNOT_EOK) {
 		return;
@@ -266,6 +280,8 @@ int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset
 		return handle_soa(&ch->soa_to, rrset);
 	}
 
+	knot_rrset_t *rrset_cancelout = NULL;
+
 	/* Check if there's any removal and remove that, then add this
 	 * addition anyway. Required to change TTLs. */
 	if (flags & CHANGESET_CHECK) {
@@ -275,14 +291,17 @@ int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset
 			return KNOT_ENOMEM;
 		}
 
-		check_redundancy(ch->remove, rrset);
+		check_redundancy(ch->remove, rrset,
+				 ((flags & CHANGESET_CHECK_CANCELOUT) ? &rrset_cancelout : NULL));
 	}
 
-	int ret = add_rr_to_contents(ch->add, rrset);
+	const knot_rrset_t *to_add = (rrset_cancelout == NULL ? rrset : rrset_cancelout);
+	int ret = knot_rrset_empty(to_add) ? KNOT_EOK : add_rr_to_contents(ch->add, to_add);
 
 	if (flags & CHANGESET_CHECK) {
 		knot_rrset_free((knot_rrset_t **)&rrset, NULL);
 	}
+	knot_rrset_free(&rrset_cancelout, NULL);
 
 	return ret;
 }
@@ -298,6 +317,8 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 		return handle_soa(&ch->soa_from, rrset);
 	}
 
+	knot_rrset_t *rrset_cancelout = NULL;
+
 	/* Check if there's any addition and remove that, then add this
 	 * removal anyway. */
 	if (flags & CHANGESET_CHECK) {
@@ -307,14 +328,18 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 			return KNOT_ENOMEM;
 		}
 
-		check_redundancy(ch->add, rrset);
+		check_redundancy(ch->add, rrset,
+				 ((flags & CHANGESET_CHECK_CANCELOUT) ? &rrset_cancelout : NULL));
 	}
 
-	int ret = add_rr_to_contents(ch->remove, rrset);
+	const knot_rrset_t *to_remove = (rrset_cancelout == NULL ? rrset : rrset_cancelout);
+	int ret = knot_rrset_empty(to_remove) ? KNOT_EOK : add_rr_to_contents(ch->remove, to_remove);
 
 	if (flags & CHANGESET_CHECK) {
 		knot_rrset_free((knot_rrset_t **)&rrset, NULL);
 	}
+
+	knot_rrset_free(&rrset_cancelout, NULL);
 
 	// we don't care of TTLs at removals anyway (updates/apply.c/can_remove()/compare_ttls)
 	// in practice, this happens at merging changesets
@@ -351,14 +376,14 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset)
 	return zone_contents_remove_rr(ch->remove, rrset, &n);
 }
 
-int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
+int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags)
 {
 	changeset_iter_t itt;
 	changeset_iter_rem(&itt, ch2);
 
 	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
-		int ret = changeset_add_removal(ch1, &rrset, CHANGESET_CHECK);
+		int ret = changeset_add_removal(ch1, &rrset, CHANGESET_CHECK | flags);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -371,7 +396,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2)
 
 	rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset)) {
-		int ret = changeset_add_addition(ch1, &rrset, CHANGESET_CHECK);
+		int ret = changeset_add_addition(ch1, &rrset, CHANGESET_CHECK | flags);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
