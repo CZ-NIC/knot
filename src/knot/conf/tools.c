@@ -459,16 +459,6 @@ int check_template(
 int check_zone(
 	knotd_conf_check_args_t *args)
 {
-	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_DNSSEC_SIGNING, args->id);
-	conf_val_t policy = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_DNSSEC_POLICY, args->id);
-	if (conf_bool(&signing) && policy.code != KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "DNSSEC policy settings in KASP database "
-		         "is obsolete and will be removed in the next major release, "
-		         "use zone.dnssec-policy in server configuration instead");
-	}
-
 	conf_val_t ixfr_diff = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
 	                                          C_ZONE, C_IXFR_DIFF, args->id, args->id_len);
 	if (ixfr_diff.code == KNOT_EOK) {
