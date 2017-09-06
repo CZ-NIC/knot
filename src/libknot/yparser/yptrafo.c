@@ -343,7 +343,7 @@ static uint8_t sock_type_guess(
 	for (size_t i = 0; i < len; i++) {
 		if (str[i] == '.') dots++;
 		else if (str[i] == ':') semicolons++;
-		else if (isdigit((int)str[i]) != 0) digits++;
+		else if (isdigit(str[i]) != 0) digits++;
 	}
 
 	// Guess socket type.
@@ -759,8 +759,8 @@ int yp_hex_to_bin(
 			uint8_t buf[2] = { 0 };
 			wire_ctx_read(in, buf, sizeof(buf));
 
-			if (isxdigit((int)buf[0]) == 0 ||
-			    isxdigit((int)buf[1]) == 0) {
+			if (isxdigit(buf[0]) == 0 ||
+			    isxdigit(buf[1]) == 0) {
 				return KNOT_EINVAL;
 			}
 

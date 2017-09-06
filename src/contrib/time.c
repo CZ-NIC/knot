@@ -168,7 +168,7 @@ static void parse_offset(time_ctx_t *ctx)
 {
 	ctx->offset = 0;
 	ctx->error = -1;
-	while (isdigit((int)*ctx->parsed)) {
+	while (isdigit((unsigned char)*ctx->parsed)) {
 		ctx->offset *= 10;
 		ctx->offset += *ctx->parsed++ - '0';
 		ctx->error = 0;
@@ -180,7 +180,7 @@ static void parse_calendar(time_ctx_t *ctx, int index)
 	int *cal_arr = (int *)&ctx->calendar;
 	cal_arr[index] = 0;
 	for (size_t i = 0; i < calendar_digits(index); i++) {
-		if (!isdigit((int)*ctx->parsed)) {
+		if (!isdigit((unsigned char)*ctx->parsed)) {
 			ctx->error = -1;
 			return;
 		}
@@ -230,7 +230,7 @@ static void parse_unit2(time_ctx_t *ctx)
 	switch (u) {
 	case 'y':
 	case 'd':
-		ctx->offset_unit = toupper((int)u);
+		ctx->offset_unit = toupper((unsigned char)u);
 		break;
 	case 'h':
 	case 's':

@@ -36,7 +36,7 @@ bool dnssec_keyid_is_valid(const char *id)
 	}
 
 	for (int i = 0; i < DNSSEC_KEYID_SIZE; i++) {
-		if (!isxdigit((int)id[i])) {
+		if (!isxdigit((unsigned char)id[i])) {
 			return false;
 		}
 	}
@@ -52,8 +52,8 @@ void dnssec_keyid_normalize(char *id)
 	}
 
 	for (size_t i = 0; i < DNSSEC_KEYID_SIZE; i++) {
-		assert(id[i] != '\0' && isxdigit((int)id[i]));
-		id[i] = tolower((int)id[i]);
+		assert(id[i] != '\0' && isxdigit((unsigned char)id[i]));
+		id[i] = tolower((unsigned char)id[i]);
 	}
 }
 

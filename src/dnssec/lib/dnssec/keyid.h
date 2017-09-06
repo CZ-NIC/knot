@@ -34,7 +34,7 @@
  * char copy[DNSSEC_KEY_ID_SIZE + 1] = { 0 };
  * memcpy(copy, key_id, sizeof(copy));
  * for (int i = 0; i < DNSSEC_KEY_ID_SIZE; i++) {
- *     copy[i] = toupper(copy[i]);
+ *     copy[i] = toupper((unsigned char)copy[i]);
  * }
  *
  * assert(dnssec_keyid_equal(key_id, copy));
