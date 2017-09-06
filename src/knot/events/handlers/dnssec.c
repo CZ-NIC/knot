@@ -49,9 +49,14 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 		zone->timers.next_parent_ds_q = now;
 	}
 
+	if (refresh->allow_nsec3resalt) {
+		zone->timers.last_resalt = time(NULL);
+	}
+
 	zone_events_schedule_at(zone,
 		ZONE_EVENT_DNSSEC, (time_t)refresh_at,
 		ZONE_EVENT_PARENT_DS_Q, refresh->plan_ds_query ? now : ignore,
+		ZONE_EVENT_NSEC3RESALT, refresh->next_nsec3resalt ? refresh->next_nsec3resalt : ignore,
 		ZONE_EVENT_NOTIFY, zone_changed ? now : ignore,
 		ZONE_EVENT_FLUSH,  zone_changed && conf_int(&val) == 0 ? now : ignore
 	);
@@ -73,6 +78,10 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	} else {
 		log_zone_info(zone->name, "DNSSEC, signing zone");
 		sign_flags = 0;
+	}
+
+	if (zone_events_get_time(zone, ZONE_EVENT_NSEC3RESALT) <= time(NULL)) {
+		resch.allow_nsec3resalt = true;
 	}
 
 	zone_update_t up;

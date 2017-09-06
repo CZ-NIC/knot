@@ -34,9 +34,11 @@ typedef enum zone_sign_flags zone_sign_flags_t;
 typedef struct {
         knot_time_t next_sign;
         knot_time_t next_rollover;
+        knot_time_t next_nsec3resalt;
         bool keys_changed;
         bool plan_ds_query;
         bool allow_rollover; // this one is set by the caller
+        bool allow_nsec3resalt; // this one is set by the caller and modified by the salter
 } zone_sign_reschedule_t;
 
 /*!

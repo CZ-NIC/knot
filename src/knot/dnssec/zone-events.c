@@ -43,6 +43,12 @@ static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags,
 		return r;
 	}
 
+	// perform nsec3resalt if pending
+
+	if (reschedule->allow_nsec3resalt) {
+		r = knot_dnssec_nsec3resalt(ctx, &reschedule->allow_nsec3resalt, &reschedule->next_nsec3resalt);
+	}
+
 	// perform key rollover if needed
 
 	if (reschedule->allow_rollover) {
