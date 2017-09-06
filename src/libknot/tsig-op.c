@@ -29,6 +29,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/consts.h"
 #include "libknot/packet/rrset-wire.h"
+#include "contrib/string.h"
 #include "contrib/wire.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
@@ -581,7 +582,7 @@ static int check_digest(const knot_rrset_t *tsig_rr,
 		return KNOT_TSIG_EBADSIG;
 	}
 
-	if (memcmp(tsig_mac, digest_tmp, mac_length) != 0) {
+	if (const_time_memcmp(tsig_mac, digest_tmp, mac_length) != 0) {
 		return KNOT_TSIG_EBADSIG;
 	}
 
