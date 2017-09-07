@@ -34,10 +34,10 @@
 
 static time_t arg_timestamp(const char *arg)
 {
-	if (isdigit((int)arg[0]) && strlen(arg) < 12) {
+	if (isdigit((unsigned char)arg[0]) && strlen(arg) < 12) {
 		return atol(arg); // unixtime
 	}
-	if (isdigit((int)arg[0]) && strlen(arg) == 14) {
+	if (isdigit((unsigned char)arg[0]) && strlen(arg) == 14) {
 		struct tm tm = { 0 };
 
 		// Set the timezone to UTC for strptime.
@@ -106,7 +106,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 	// parse args
 	for (int i = 0; i < argc; i++) {
 		if (!just_timing && strncasecmp(argv[i], "algorithm=", 10) == 0) {
-			if (isdigit((int)argv[i][10]) && atol(argv[i] + 10) < 256) {
+			if (isdigit((unsigned char)argv[i][10]) && atol(argv[i] + 10) < 256) {
 				*algorithm = atol(argv[i] + 10);
 				continue;
 			}
@@ -123,7 +123,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				return false;
 			}
 		} else if (!just_timing && strncasecmp(argv[i], "ksk=", 4) == 0) {
-			switch (tolower((int)argv[i][4])) {
+			switch (tolower((unsigned char)argv[i][4])) {
 			case '1':
 			case 'y':
 			case 't':
@@ -533,7 +533,7 @@ static long is_uint32(const char *string)
 		return -1;
 	}
 	for (const char *p = string; *p != '\0'; p++) {
-		if (!isdigit((int)*p)) {
+		if (!isdigit((unsigned char)*p)) {
 			return -1;
 		}
 	}
@@ -544,7 +544,7 @@ static long is_uint32(const char *string)
 static bool is_hex(const char *string)
 {
 	for (const char *p = string; *p != '\0'; p++) {
-		if (!isxdigit((int)*p)) {
+		if (!isxdigit((unsigned char)*p)) {
 			return false;
 		}
 	}

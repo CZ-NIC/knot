@@ -26,7 +26,7 @@
 
 inline static int intmax_from_str(const char *src, intmax_t *dest)
 {
-	if (!isdigit((int)*src) && *src != '-' && *src != '+') {
+	if (!isdigit((unsigned char)*src) && *src != '-' && *src != '+') {
 		return KNOT_EINVAL;
 	}
 
@@ -48,7 +48,7 @@ inline static int intmax_from_str(const char *src, intmax_t *dest)
 
 inline static int uintmax_from_str(const char *src, uintmax_t *dest)
 {
-	if (!isdigit((int)*src) && *src != '+') {
+	if (!isdigit((unsigned char)*src) && *src != '+') {
 		return KNOT_EINVAL;
 	}
 

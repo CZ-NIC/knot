@@ -94,13 +94,13 @@ char *strstrip(const char *str)
 {
 	// leading white-spaces
 	const char *scan = str;
-	while (isspace((int)scan[0])) {
+	while (isspace((unsigned char)scan[0])) {
 		scan += 1;
 	}
 
 	// trailing white-spaces
 	size_t len = strlen(scan);
-	while (len > 0 && isspace((int)scan[len - 1])) {
+	while (len > 0 && isspace((unsigned char)scan[len - 1])) {
 		len -= 1;
 	}
 
