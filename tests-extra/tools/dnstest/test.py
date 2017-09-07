@@ -330,7 +330,7 @@ class Test(object):
 
         return item_owner_split[0].lower() + " " + item_data
 
-    def _axfr_records(self, resp, zone):
+    def _axfr_records(self, resp, zone, no_rrsig_rdata):
         unique = set()
         records = list()
 
@@ -342,7 +342,18 @@ class Test(object):
                 for rr in rrs:
                     item_lower = self._canonize_record(rrset.rdtype, rr.strip())
 
-                    if item_lower in unique and rrset.rdtype != dns.rdatatype.SOA:
+                    if no_rrsig_rdata and rrset.rdtype == dns.rdatatype.SOA:
+                        # Reset SOA serial.
+                        soa_split = item_lower.split()
+                        soa_split[6] = "0"
+                        item_lower = " ".join(soa_split)
+
+                    if no_rrsig_rdata and rrset.rdtype == dns.rdatatype.RRSIG:
+                        # Trim RRSIG signature part.
+                        rrsig_split = item_lower.split(None, 5)
+                        item_lower = " ".join(rrsig_split[:5])
+
+                    elif item_lower in unique and rrset.rdtype != dns.rdatatype.SOA:
                         detail_log("!Duplicate record server='%s':" % server.name)
                         detail_log("  %s" % item_lower)
                         continue
@@ -367,9 +378,9 @@ class Test(object):
             for record in diff2:
                 detail_log("  %s" % record)
 
-    def _axfr_diff(self, server1, server2, zone):
-        unique1, rrsets1 = self._axfr_records(server1.dig(zone.name, "AXFR", log_no_sep=True), zone)
-        unique2, rrsets2 = self._axfr_records(server2.dig(zone.name, "AXFR", log_no_sep=True), zone)
+    def _axfr_diff(self, server1, server2, zone, no_rrsig_rdata):
+        unique1, rrsets1 = self._axfr_records(server1.dig(zone.name, "AXFR", log_no_sep=True), zone, no_rrsig_rdata)
+        unique2, rrsets2 = self._axfr_records(server2.dig(zone.name, "AXFR", log_no_sep=True), zone, no_rrsig_rdata)
 
         self._axfr_diff_resp(unique1, rrsets1, unique2, rrsets2, server1, server2)
 
@@ -527,20 +538,22 @@ class Test(object):
         for change1, change2 in zip(changes1, changes2):
             change1.cmp(change2)
 
-    def xfr_diff(self, server1, server2, zones, serials=None, udp=False):
+    def xfr_diff(self, server1, server2, zones, serials=None, udp=False, no_rrsig_rdata=False):
         for zone in zones:
             check_log("CHECK %sXFR DIFF %s %s<->%s" % ("I" if serials else "A",
                       zone.name, server1.name, server2.name))
             if serials:
+                if no_rrsig_rdata:
+                    set_err("RRSIG rdata and SOA serial skipping not implemented for IXFR diff")
                 self._ixfr_diff(server1, server2, zone, serials[zone.name], udp)
             else:
-                self._axfr_diff(server1, server2, zone)
+                self._axfr_diff(server1, server2, zone, no_rrsig_rdata)
 
         detail_log(SEP)
 
-    def axfr_diff_resp(self, resp1, resp2, server1, server2, zone):
-        unique1, rrsets1 = self._axfr_records(resp1, zone)
-        unique2, rrsets2 = self._axfr_records(resp2, zone)
+    def axfr_diff_resp(self, resp1, resp2, server1, server2, zone, no_rrsig_rdata=False):
+        unique1, rrsets1 = self._axfr_records(resp1, zone, no_rrsig_rdata)
+        unique2, rrsets2 = self._axfr_records(resp2, zone, no_rrsig_rdata)
 
         self._axfr_diff_resp(unique1, rrsets1, unique2, rrsets2, server1, server2)
 

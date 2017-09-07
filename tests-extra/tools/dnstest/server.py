@@ -694,6 +694,13 @@ class Server(object):
         else:
             self.zones[zone.name].zfile.upd_file(storage=storage, version=version)
 
+    def random_ddns(self, zone):
+        zone = zone_arg_check(zone)
+
+        up = self.update(zone)
+        self.zones[zone.name].zfile.gen_rnd_ddns(up)
+        up.send("NOERROR")
+
     def add_module(self, zone, module):
         zone = zone_arg_check(zone)
 
