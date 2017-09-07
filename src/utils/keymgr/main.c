@@ -252,11 +252,12 @@ static void update_privileges(void)
 	}
 
 	// Just try to alter process privileges if different from configured.
+	int unused __attribute__((unused));
 	if ((gid_t)gid != getgid()) {
-		(void)setregid(gid, gid);
+		unused = setregid(gid, gid);
 	}
 	if ((uid_t)uid != getuid()) {
-		(void)setreuid(uid, uid);
+		unused = setreuid(uid, uid);
 	}
 }
 
