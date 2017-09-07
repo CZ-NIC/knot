@@ -38,7 +38,7 @@ PROJECT_NAME           = Knot
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER         = 2.3.0
+PROJECT_NUMBER         = 2.6.0
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer a
 # quick idea about the purpose of the project. Keep the description short.
@@ -752,13 +752,13 @@ WARN_LOGFILE           =
 # spaces.
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = src/dnstap \
+INPUT                  = Doxy.page.h \
+                         src/contrib \
+                         src/dnssec \
                          src/knot \
                          src/libknot \
                          src/utils \
-                         src/zscanner \
-			 src/dnssec \
-                         Doxy.page.h
+                         src/zscanner
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
