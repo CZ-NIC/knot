@@ -327,7 +327,7 @@ static int synth_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 
 	if (want_dnssec(qdata)) {
 		knot_rrset_t *nsec = synth_nsec(pkt, qdata, &pkt->mm);
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, nsec, KNOT_PF_FREE);
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, nsec, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
 			knot_rrset_free(&nsec, &pkt->mm);
 			return ERROR;
