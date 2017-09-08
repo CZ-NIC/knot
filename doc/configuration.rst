@@ -432,14 +432,14 @@ it yet:
 
 .. code-block:: console
 
-  $ keymgr myzone.test. generate algorithm=RSASHA256 size=1024 active=now+1d
+  $ keymgr myzone.test. generate algorithm=RSASHA256 size=1024 active=+1d
 
 Take the key ID (or key tag) of the old RSA key and disable it the same time
 the new key gets activated:
 
 .. code-block:: console
 
-  $ keymgr myzone.test. set <old_key_id> retire=now+1d remove=now+1d
+  $ keymgr myzone.test. set <old_key_id> retire=+1d remove=+1d
 
 Reload the server again. The new key will be published (i.e. the DNSKEY record
 will be added into the zone). Do not forget to update the DS record in the

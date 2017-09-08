@@ -308,7 +308,7 @@ active < publish < retire (whereas standard rollovers have publish < active < re
 First we need to generate new keys. They must be first used for signing, and
 after some period (propagation delay let's say 1h + zone records' TTL let's say
 1h) published. We have to preprate the timestamps carefully, using the notation
-'now+2h' can be creepy with "now" changing between the Keymgr invokes. We then
+'+2h' can be creepy with the current time changing between the Keymgr invokes. We then
 re-sign the zone just to force knotd to reload zone keys::
 
   $ NOW=$(date +%s)
@@ -326,13 +326,13 @@ we continue with removing old KSK and putting old ZSK into active-not-published
 state (we must first obtain the keys' IDs with 'keymgr example.com. list'). We may
 also confirm the new KSK submission (which reloads KASP DB as a side-effect)::
 
-  $ keymgr example.com. set $OLD_KSK_ID retire=now+0 remove=now+0
+  $ keymgr example.com. set $OLD_KSK_ID retire=+0 remove=+0
   $ keymgr example.com. set $OLD_ZSK_ID publish=0
   $ knotc zone-ksk-submitted example.com.
 
 Finally, after one more propagation period, we remove old ZSK::
 
-  $ keymgr example.com. set $OLD_ZSK_ID retire=now+0 remove=now+0
+  $ keymgr example.com. set $OLD_ZSK_ID retire=+0 remove=+0
   $ knotc zone-sign example.com.
 
 .. _Controlling running daemon:
