@@ -339,7 +339,7 @@ static knotd_in_state_t synth_authority(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	if (want_dnssec(qdata)) {
 		knot_rrset_t *nsec = synth_nsec(pkt, qdata, &pkt->mm);
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, nsec, KNOT_PF_FREE);
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, nsec, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
 			knot_rrset_free(&nsec, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
