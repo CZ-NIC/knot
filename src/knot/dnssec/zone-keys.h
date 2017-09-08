@@ -52,7 +52,7 @@ struct zone_key {
 	bool is_zsk;
 	bool is_active;
 	bool is_public;
-	bool is_ready;
+	int cds_priority;
 };
 
 typedef struct zone_key zone_key_t;

@@ -202,13 +202,14 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 	zone_keyset_t keyset = { 0 };
 	ret = load_zone_keys(ctx.zone, ctx.keystore, false, ctx.now, &keyset);
 	if (ret != KNOT_EOK) {
+		kdnssec_ctx_deinit(&ctx);
 		return ret;
 	}
 
 	for (size_t i = 0; i < keyset.count; i++) {
 		zone_key_t *key = &keyset.keys[i];
 		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
-		    key->is_ready && !key->is_active) {
+		    key->cds_priority > 1) {
 			if (parents_have_ds(zone, conf, key)) {
 				ret = knot_dnssec_ksk_sbm_confirm(&ctx);
 			} else {

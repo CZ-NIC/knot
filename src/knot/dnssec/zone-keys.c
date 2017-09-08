@@ -199,15 +199,18 @@ static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_
 	// next event computation
 
 	knot_time_t next = 0;
-	knot_time_t timestamps[5] = {
-	        timing->active,
-	        timing->publish,
-	        timing->remove,
-	        timing->retire,
+	knot_time_t timestamps[] = {
+		timing->pre_active,
+		timing->publish,
 		timing->ready,
+		timing->active,
+		timing->retire_active,
+		timing->retire,
+		timing->post_active,
+		timing->remove,
 	};
 
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < sizeof(timestamps) / sizeof(knot_time_t); i++) {
 		knot_time_t ts = timestamps[i];
 		if (knot_time_cmp(now, ts) < 0 && knot_time_cmp(ts, next) < 0) {
 			next = ts;
@@ -222,12 +225,22 @@ static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_
 	zone_key->is_ksk = flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
 	zone_key->is_zsk = !zone_key->is_ksk;
 
-	zone_key->is_active = (knot_time_cmp(timing->active, now) <= 0 &&
-	                      knot_time_cmp(timing->retire, now) > 0);
 	zone_key->is_public = (knot_time_cmp(timing->publish, now) <= 0 &&
-	                      knot_time_cmp(timing->remove, now) > 0);
-	zone_key->is_ready = (knot_time_cmp(timing->ready, now) <= 0 &&
-	                     knot_time_cmp(timing->retire, now) > 0);
+	                       knot_time_cmp(timing->post_active, now) > 0 &&
+	                       knot_time_cmp(timing->remove, now) > 0);
+
+	zone_key->is_active = (((zone_key->is_zsk && knot_time_cmp(timing->pre_active, now) <= 0) ||
+	                        (knot_time_cmp(timing->pre_active, now) <= 0 && knot_time_cmp(timing->publish, now) <= 0) ||
+	                        knot_time_cmp(timing->ready, now) <= 0 ||
+	                        knot_time_cmp(timing->active, now) <= 0) &&
+	                       knot_time_cmp(timing->retire, now) > 0 &&
+	                       (zone_key->is_zsk || knot_time_cmp(timing->post_active, now) > 0) &&
+	                       knot_time_cmp(timing->remove, now) > 0);
+
+	zone_key->cds_priority = (knot_time_cmp(timing->ready, now) <= 0 ? (
+	                          (knot_time_cmp(timing->active, now) <= 0) ? (
+	                           (knot_time_cmp(timing->retire_active, now) <= 0 ||
+	                            knot_time_cmp(timing->retire, now) <= 0) ? 0 : 1) : 2) : 0);
 
 	return KNOT_EOK;
 }
@@ -294,7 +307,7 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 			                     dnssec_key_get_keytag(key->key));
 			key->is_public = false;
 			key->is_active = false;
-			key->is_ready = false;
+			key->cds_priority = 0;
 			continue;
 		}
 
@@ -327,11 +340,10 @@ static int prepare_and_check_keys(const knot_dname_t *zone_name, bool nsec3_enab
 		}
 
 		if (key->is_public) { u->is_public = true; }
-		if (key->is_ksk && (key->is_ready || key->is_active)) {
+		if (key->is_ksk && key->is_active) {
 			u->is_ksk_active = true;
 		}
-		if (key->is_zsk && (key->is_active ||
-				    (key->is_ksk && key->is_ready))) {
+		if (key->is_zsk && key->is_active) {
 			u->is_zsk_active = true;
 		}
 	}
@@ -366,7 +378,7 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 	assert(keyset);
 
 	for (size_t i = 0; i < keyset->count; i++) {
-		if (!keyset->keys[i].is_active && !keyset->keys[i].is_ready) {
+		if (!keyset->keys[i].is_active) {
 			continue;
 		}
 
@@ -388,15 +400,15 @@ static void log_key_info(const zone_key_t *key, const knot_dname_t *zone_name)
 	assert(key);
 	assert(zone_name);
 
-	log_zone_info(zone_name, "DNSSEC, loaded key, tag %5d, "
-			  "algorithm %d, KSK %s, ZSK %s, public %s, ready %s, active %s",
-			  dnssec_key_get_keytag(key->key),
-			  dnssec_key_get_algorithm(key->key),
-			  key->is_ksk ? "yes" : "no",
-			  key->is_zsk ? "yes" : "no",
-			  key->is_public ? "yes" : "no",
-			  key->is_ready ? "yes" : "no",
-			  key->is_active ? "yes" : "no");
+	log_zone_info(zone_name, "DNSSEC, loaded key, tag %5d, algorithm %d, "
+	                         "KSK %s, ZSK %s, public %s, ready %s, active %s",
+	              dnssec_key_get_keytag(key->key),
+	              dnssec_key_get_algorithm(key->key),
+	              key->is_ksk           ? "yes" : "no",
+	              key->is_zsk           ? "yes" : "no",
+	              key->is_public        ? "yes" : "no",
+	              key->cds_priority > 1 ? "yes" : "no",
+	              key->is_active        ? "yes" : "no");
 }
 
 /*!

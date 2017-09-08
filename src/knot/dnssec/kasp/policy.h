@@ -27,10 +27,13 @@
  */
 typedef struct {
 	knot_time_t created;		/*!< Time the key was generated/imported. */
+	knot_time_t pre_active;		/*!< Signing start with new algorithm. */
 	knot_time_t publish;		/*!< Time of DNSKEY record publication. */
 	knot_time_t ready;		/*!< Start of RRSIG generation, waiting for parent zone. */
 	knot_time_t active;		/*!< RRSIG records generating, other keys can be retired */
+	knot_time_t retire_active;	/*!< Still active, but obsoleted. */
 	knot_time_t retire;		/*!< End of RRSIG records generating. */
+	knot_time_t post_active;	/*!< Still signing with old algorithm, not published. */
 	knot_time_t remove;		/*!< Time of DNSKEY record removal. */
 } knot_kasp_key_timing_t;
 
