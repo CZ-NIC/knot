@@ -246,6 +246,31 @@ A full example of setting up a completely new zone from scratch::
     $ knotc zone-set example.com www 3600 A 192.168.0.100
     $ knotc zone-commit example.com
 
+.. _Editing zonefile:
+
+Safe reading and editing zone file
+==================================
+
+It's always possible to read and edit the zone contents via zone file manipulation.
+However, it may lead to confusion if zone contents are continuously changing or
+in case of operator's mistake. This paragraph describes a safe way to modify zone
+by editing zone file, taking advantage of zone freeze/thaw feature.::
+
+    $ knotc zone-freeze example.com.
+    $ while ! knotc zone-status example.com. +freeze | grep -q 'freeze: yes'; do sleep 1; done
+    $ knotc zone-flush example.com.
+
+After calling freeze to the zone, there still may be running zone operations (e.g. signing),
+causing freeze pending. So we watch the zone status until frozen. Then we can flush the
+frozen zone contents.
+
+Now we open a text editor and perform desired changes to the zone file. It's necessary
+to increase SOA serial in this step to keep consistency. Finaly, we can load the
+modified zone file and if successful, thaw the zone.::
+
+    $ knotc zone-reload example.com.
+    $ knotc zone-thaw example.com.
+
 .. _Journal behaviour:
 
 Journal behaviour
