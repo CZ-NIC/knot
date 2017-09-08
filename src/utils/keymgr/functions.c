@@ -32,9 +32,48 @@
 #include "zscanner/scanner.h"
 #include "contrib/base64.h"
 
+static bool is_timestamp(char *arg, knot_kasp_key_timing_t *timing)
+{
+	knot_time_t *dst = NULL;
+
+	if (strncasecmp(arg, "created=", 8) == 0) {
+		dst = &timing->created;
+	} else if (strncasecmp(arg, "publish=", 8) == 0) {
+		dst = &timing->publish;
+	} else if (strncasecmp(arg, "ready=", 6) == 0) {
+		dst = &timing->ready;
+	} else if (strncasecmp(arg, "active=", 7) == 0) {
+		dst = &timing->active;
+	} else if (strncasecmp(arg, "retire=", 7) == 0) {
+		dst = &timing->retire;
+	} else if (strncasecmp(arg, "remove=", 7) == 0) {
+		dst = &timing->remove;
+	} else if (strncasecmp(arg, "pre_active=", 11) == 0) {
+		dst = &timing->pre_active;
+	} else if (strncasecmp(arg, "post_active=", 12) == 0) {
+		dst = &timing->post_active;
+	} else if (strncasecmp(arg, "retire_active=", 14) == 0) {
+		dst = &timing->retire_active;
+	} else {
+		return false;
+	}
+
+	knot_time_t stamp;
+	int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
+	                          strchr(arg, '=') + 1, &stamp);
+	if (ret < 0) {
+		printf("Invalid timestamp: %s\n", arg);
+		return true;
+	}
+
+	*dst = stamp;
+
+	return true;
+}
+
 static bool genkeyargs(int argc, char *argv[], bool just_timing,
-		       bool *isksk, dnssec_key_algorithm_t *algorithm,
-		       uint16_t *keysize, knot_kasp_key_timing_t *timing)
+                       bool *isksk, dnssec_key_algorithm_t *algorithm,
+                       uint16_t *keysize, knot_kasp_key_timing_t *timing)
 {
 	// generate algorithms field
 	char *algnames[256] = { 0 };
@@ -77,61 +116,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			}
 		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
 			*keysize = atol(argv[i] + 5);
-		} else if (strncasecmp(argv[i], "created=", 8) == 0 ||
-			   strncasecmp(argv[i], "publish=", 8) == 0 ||
-			   strncasecmp(argv[i], "ready=", 6) == 0 ||
-			   strncasecmp(argv[i], "active=", 7) == 0 ||
-			   strncasecmp(argv[i], "retire=", 7) == 0 ||
-			   strncasecmp(argv[i], "remove=", 7) == 0) {
-			knot_time_t stamp;
-			int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
-			                          strchr(argv[i], '=') + 1, &stamp);
-			if (ret < 0) {
-				printf("Invalid timestamp: %s\n", argv[i]);
-				return false;
-			}
-			switch ((argv[i][0] == 'r') ? argv[i][3] : argv[i][0]) {
-			case 'c':
-				timing->created = stamp;
-				break;
-			case 'a':
-				timing->active = stamp;
-				break;
-			case 'd':
-				timing->ready = stamp;
-				break;
-			case 'p':
-				timing->publish = stamp;
-				break;
-			case 'i':
-				timing->retire = stamp;
-				break;
-			case 'o':
-				timing->remove = stamp;
-				break;
-			}
-		} else if (strncasecmp(argv[i], "pre_active=", 11) == 0 ||
-			   strncasecmp(argv[i], "retire_active=", 14) == 0 ||
-			   strncasecmp(argv[i], "post_active=", 12) == 0) {
-			knot_time_t stamp;
-			int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
-			                          strchr(argv[i], '=') + 1, &stamp);
-			if (ret < 0) {
-				printf("Invalid timestamp: %s\n", argv[i]);
-				return false;
-			}
-			switch (argv[i][1]) {
-			case 'r':
-				timing->pre_active = stamp;
-				break;
-			case 'e':
-				timing->retire_active = stamp;
-				break;
-			case 'o':
-				timing->post_active = stamp;
-				break;
-			}
-		} else {
+		} else if (!is_timestamp(argv[i], timing)) {
 			printf("Invalid parameter: %s\n", argv[i]);
 			return false;
 		}
