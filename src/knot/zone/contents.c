@@ -1167,7 +1167,15 @@ bool zone_contents_is_signed(const zone_contents_t *zone)
 
 bool zone_contents_is_empty(const zone_contents_t *zone)
 {
-	return !zone || !node_rrtype_exists(zone->apex, KNOT_RRTYPE_SOA);
+	if (zone == NULL) {
+		return true;
+	}
+
+	bool apex_empty = (zone->apex == NULL || zone->apex->rrset_count == 0);
+	bool no_non_apex = (zone_tree_count(zone->nodes) <= (zone->apex != NULL ? 1 : 0));
+	bool no_nsec3 = zone_tree_is_empty(zone->nsec3_nodes);
+
+	return (apex_empty && no_non_apex && no_nsec3);
 }
 
 size_t zone_contents_measure_size(zone_contents_t *zone)
