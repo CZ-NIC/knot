@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -284,12 +284,16 @@ int32_t base32hex_decode(const uint8_t  *in,
 		switch (pad_len) {
 		case 0:
 			bin[4] = (c7 << 5) + c8;
+			// FALLTHROUGH
 		case 1:
 			bin[3] = (c5 << 7) + (c6 << 2) + (c7 >> 3);
+			// FALLTHROUGH
 		case 3:
 			bin[2] = (c4 << 4) + (c5 >> 1);
+			// FALLTHROUGH
 		case 4:
 			bin[1] = (c2 << 6) + (c3 << 1) + (c4 >> 4);
+			// FALLTHROUGH
 		case 6:
 			bin[0] = (c1 << 3) + (c2 >> 2);
 		}
