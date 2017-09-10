@@ -63,7 +63,7 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	assert(pkt && qdata && mod);
 
 	/* Skip empty packet. */
-	if (pkt->size == 0) {
+	if (state == KNOTD_STATE_NOOP) {
 		return state;
 	}
 

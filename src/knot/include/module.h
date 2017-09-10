@@ -408,6 +408,7 @@ knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type);
 
 /*! General query processing states. */
 typedef enum {
+	KNOTD_STATE_NOOP = 0, /*!< No response. */
 	KNOTD_STATE_DONE = 4, /*!< Finished. */
 	KNOTD_STATE_FAIL = 5, /*!< Error. */
 } knotd_state_t;

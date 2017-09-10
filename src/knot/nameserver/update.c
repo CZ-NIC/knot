@@ -441,8 +441,7 @@ int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* No immediate response. */
-	pkt->size = 0;
-	return KNOT_STATE_DONE;
+	return KNOT_STATE_NOOP;
 }
 
 void updates_execute(conf_t *conf, zone_t *zone)

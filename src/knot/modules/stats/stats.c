@@ -377,7 +377,7 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Count response bytes.
-	if (stats->resp_bytes) {
+	if (stats->resp_bytes && state != KNOTD_STATE_NOOP) {
 		switch (operation) {
 		case OPERATION_QUERY:
 			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_REPLY,
@@ -402,7 +402,7 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Count the response code.
-	if (stats->rcode && pkt->size > 0) {
+	if (stats->rcode && state != KNOTD_STATE_NOOP) {
 		if (xfr_packets <= 1 || rcode != KNOT_RCODE_NOERROR) {
 			if (xfr_packets > 1) {
 				assert(rcode != KNOT_RCODE_NOERROR);
@@ -456,14 +456,14 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 		if (qdata->query->opt_rr != NULL) {
 			knotd_mod_stats_incr(mod, CTR_EDNS, EDNS_REQ, 1);
 		}
-		if (pkt->opt_rr != NULL && pkt->size > 0) {
+		if (pkt->opt_rr != NULL && state != KNOTD_STATE_NOOP) {
 			knotd_mod_stats_incr(mod, CTR_EDNS, EDNS_RESP, 1);
 		}
 	}
 
 	// Count interesting message header flags.
 	if (stats->flag) {
-		if (pkt->size > 0 && knot_wire_get_tc(pkt->wire)) {
+		if (state != KNOTD_STATE_NOOP && knot_wire_get_tc(pkt->wire)) {
 			knotd_mod_stats_incr(mod, CTR_FLAG, FLAG_TC, 1);
 		}
 		if (pkt->opt_rr != NULL && knot_edns_do(pkt->opt_rr)) {
@@ -477,7 +477,7 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Count NODATA reply (RFC 2308, Section 2.2).
-	if (stats->nodata && rcode == KNOT_RCODE_NOERROR && pkt->size > 0 &&
+	if (stats->nodata && rcode == KNOT_RCODE_NOERROR && state != KNOTD_STATE_NOOP &&
 	    knot_wire_get_ancount(pkt->wire) == 0 && !knot_wire_get_tc(pkt->wire) &&
 	    (knot_wire_get_nscount(pkt->wire) == 0 ||
 	     knot_pkt_rr(knot_pkt_section(pkt, KNOT_AUTHORITY), 0)->type == KNOT_RRTYPE_SOA)) {
@@ -516,7 +516,7 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Count the reply size.
-	if (stats->rsize && pkt->size > 0) {
+	if (stats->rsize && state != KNOTD_STATE_NOOP) {
 		uint64_t idx = pkt->size / BUCKET_SIZE;
 		knotd_mod_stats_incr(mod, CTR_RSIZE, MIN(idx, RSIZE_MAX_IDX), 1);
 	}

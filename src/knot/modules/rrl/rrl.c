@@ -163,8 +163,7 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 	} else {
 		// Drop the answer.
 		knotd_mod_stats_incr(mod, 1, 0, 1);
-		pkt->size = 0;
-		return KNOTD_STATE_DONE;
+		return KNOTD_STATE_NOOP;
 	}
 }
 

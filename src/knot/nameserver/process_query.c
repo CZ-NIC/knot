@@ -542,11 +542,15 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 finish:
-	if (next_state != KNOT_STATE_FAIL) {
-		set_rcode_to_packet(pkt, qdata);
-	} else {
+	switch (next_state) {
+	case KNOT_STATE_NOOP:
+		break;
+	case KNOT_STATE_FAIL:
 		/* Error processing. */
 		next_state = process_query_err(ctx, pkt);
+		break;
+	default:
+		set_rcode_to_packet(pkt, qdata);
 	}
 
 	/* After query processing code. */
