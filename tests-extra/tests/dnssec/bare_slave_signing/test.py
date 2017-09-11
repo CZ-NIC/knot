@@ -17,7 +17,7 @@ slave.dnssec(zone).enable = True
 
 t.start()
 
-t.sleep(5)
+slave.zone_wait(zone)
 soa1 = slave.dig(zone[0].name, "SOA", dnssec=True, bufsize=4096)
 soa1serial = str(soa1.resp.answer[0].to_rdataset()).split()[5]
 detail_log("soa1serial "+soa1serial)
@@ -32,7 +32,7 @@ except:
     pass
 slave.start()
 
-t.sleep(5)
+slave.zone_wait(zone)
 soa2 = slave.dig(zone[0].name, "SOA", dnssec=True, bufsize=4096)
 soa2serial = str(soa2.resp.answer[0].to_rdataset()).split()[5]
 detail_log("soa2serial "+soa2serial)
@@ -48,7 +48,7 @@ if soa2serial == soa1serial:
 up = master.update(zone)
 up.add("hahahahahah", 3600, "A", "1.2.3.4")
 up.send()
-t.sleep(5)
+t.sleep(9)
 
 msoa3 = master.dig(zone[0].name, "SOA", dnssec=False)
 msoa3serial = str(msoa3.resp.answer[0].to_rdataset()).split()[5]
