@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,8 +39,7 @@ static int write_dnstap(dt_writer_t           *writer,
                         const uint8_t         *wire,
                         const size_t          wire_len,
                         net_t                 *net,
-                        const struct timespec *qtime,
-                        const struct timespec *rtime)
+                        const struct timespec *mtime)
 {
 	Dnstap__Message       msg;
 	Dnstap__Message__Type msg_type;
@@ -64,7 +63,7 @@ static int write_dnstap(dt_writer_t           *writer,
 
 	ret = dt_message_fill(&msg, msg_type, net->local_info->ai_addr,
 	                      net->srv->ai_addr, protocol,
-	                      wire, wire_len, qtime, rtime);
+	                      wire, wire_len, mtime);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -74,6 +73,13 @@ static int write_dnstap(dt_writer_t           *writer,
 
 static float get_query_time(const Dnstap__Dnstap *frame)
 {
+	if (!frame->message->has_query_time_sec ||
+	    !frame->message->has_query_time_nsec ||
+	    !frame->message->has_response_time_sec ||
+	    !frame->message->has_response_time_sec) {
+		return 0;
+	}
+
 	struct timespec from = {
 		.tv_sec = frame->message->query_time_sec,
 		.tv_nsec = frame->message->query_time_nsec
@@ -138,6 +144,8 @@ static void process_dnstap(const query_t *query)
 		return;
 	}
 
+	bool first_message = true;
+
 	for (;;) {
 		Dnstap__Dnstap      *frame = NULL;
 		Dnstap__Message     *message = NULL;
@@ -200,14 +208,24 @@ static void process_dnstap(const query_t *query)
 			net_t  net_ctx = { 0 };
 
 			if (is_query) {
-				timestamp = message->query_time_sec;
+				if (message->has_query_time_sec) {
+					timestamp = message->query_time_sec;
+				}
 			} else {
-				timestamp = message->response_time_sec;
+				if (message->has_response_time_sec) {
+					timestamp = message->response_time_sec;
+				}
 				query_time = get_query_time(frame);
 			}
 
 			// Prepare connection information string.
 			fill_remote_addr(&net_ctx, message, is_initiator);
+
+			if (first_message) {
+				first_message = false;
+			} else {
+				printf("\n");
+			}
 
 			print_packet(pkt, &net_ctx, pkt->size, query_time, timestamp,
 			             is_query ^ is_initiator, &query->style);
@@ -542,13 +560,15 @@ static int process_query_packet(const knot_pkt_t      *query,
                                 const sign_context_t  *sign_ctx,
                                 const style_t         *style)
 {
-	struct timespec	t_start, t_query, t_end;
+	struct timespec	t_start, t_query, t_query_full, t_end, t_end_full;
+	time_t		timestamp;
 	knot_pkt_t	*reply;
 	uint8_t		in[MAX_PACKET_SIZE];
 	int		in_len;
 	int		ret;
 
 	// Get start query time.
+	timestamp = time(NULL);
 	t_start = time_now();
 
 	// Connect to the server.
@@ -566,11 +586,13 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 	// Get stop query time and start reply time.
 	t_query = time_now();
+	t_query_full = time_diff(&t_start, &t_query);
+	t_query_full.tv_sec += timestamp;
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
 	write_dnstap(query_ctx->dt_writer, true, query->wire, query->size,
-	             net, &t_query, NULL);
+	             net, &t_query_full);
 #endif // USE_DNSTAP
 
 	// Print query packet if required.
@@ -580,8 +602,8 @@ static int process_query_packet(const knot_pkt_t      *query,
 		if (q != NULL) {
 			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
 				print_packet(q, net, query->size,
-				             time_diff_ms(&t_start, &t_query), 0,
-				             false, style);
+				             time_diff_ms(&t_start, &t_query),
+				             timestamp, false, style);
 			} else {
 				ERR("can't print query packet\n");
 			}
@@ -604,11 +626,13 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 		// Get stop reply time.
 		t_end = time_now();
+		t_end_full = time_diff(&t_start, &t_end);
+		t_end_full.tv_sec += timestamp;
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
 		write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
-		             &t_query, &t_end);
+		             &t_end_full);
 #endif // USE_DNSTAP
 
 		// Create reply packet structure to fill up.
@@ -661,7 +685,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 	check_reply_qr(reply);
 
 	// Print reply packet.
-	print_packet(reply, net, in_len, time_diff_ms(&t_query, &t_end), 0,
+	print_packet(reply, net, in_len, time_diff_ms(&t_query, &t_end), timestamp,
 	             true, style);
 
 	// Verify signature if a key was specified.
@@ -786,7 +810,8 @@ static int process_xfr_packet(const knot_pkt_t      *query,
                               const sign_context_t  *sign_ctx,
                               const style_t         *style)
 {
-	struct timespec t_start, t_query, t_end;
+	struct timespec t_start, t_query, t_query_full, t_end, t_end_full;
+	time_t		timestamp;
 	knot_pkt_t      *reply;
 	uint8_t         in[MAX_PACKET_SIZE];
 	int             in_len;
@@ -797,6 +822,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	size_t          rr_count = 0;
 
 	// Get start query time.
+	timestamp = time(NULL);
 	t_start = time_now();
 
 	// Connect to the server.
@@ -814,11 +840,13 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 	// Get stop query time and start reply time.
 	t_query = time_now();
+	t_query_full = time_diff(&t_start, &t_query);
+	t_query_full.tv_sec += timestamp;
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
 	write_dnstap(query_ctx->dt_writer, true, query->wire, query->size,
-	             net, &t_query, NULL);
+	             net, &t_query_full);
 #endif // USE_DNSTAP
 
 	// Print query packet if required.
@@ -828,8 +856,8 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		if (q != NULL) {
 			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
 				print_packet(q, net, query->size,
-				             time_diff_ms(&t_start, &t_query), 0,
-				             false, style);
+				             time_diff_ms(&t_start, &t_query),
+					     timestamp, false, style);
 			} else {
 				ERR("can't print query packet\n");
 			}
@@ -852,11 +880,13 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 		// Get stop message time.
 		t_end = time_now();
+		t_end_full = time_diff(&t_start, &t_end);
+		t_end_full.tv_sec += timestamp;
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
 		write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
-		             &t_query, &t_end);
+		             &t_end_full);
 #endif // USE_DNSTAP
 
 		// Create reply packet structure to fill up.
@@ -957,7 +987,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 	// Print trailing transfer information.
 	print_footer_xfr(total_len, msg_count, rr_count, net,
-	                 time_diff_ms(&t_query, &t_end), 0, style);
+	                 time_diff_ms(&t_query, &t_end), timestamp, style);
 
 	net_close(net);
 

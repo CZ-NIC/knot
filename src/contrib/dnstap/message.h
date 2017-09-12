@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 Farsight Security, Inc. <software@farsightsecurity.com>
+/*  Copyright (C) 2017 Farsight Security, Inc. <software@farsightsecurity.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,10 +51,8 @@
  *	Wire-format query message or response message (depending on 'type').
  * \param len_wire
  *	Length in bytes of 'wire'.
- * \param qtime
- *	Query time. May be NULL.
- * \param rtime
- *	Response time. May be NULL.
+ * \param mtime
+ *	Message time. May be NULL.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
@@ -66,7 +64,6 @@ int dt_message_fill(Dnstap__Message             *m,
                     const int                   protocol,
                     const void                  *wire,
                     const size_t                len_wire,
-                    const struct timespec       *qtime,
-                    const struct timespec       *rtime);
+                    const struct timespec       *mtime);
 
 /*! @} */
