@@ -297,6 +297,9 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		knot_time_t keytime = 0;
 		roll_action_type restype = INVALID;
+		if (key->is_pub_only) {
+			continue;
+		}
 		bool isksk = (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK);
 		if (isksk) {
 			switch (get_key_state(key, ctx->now)) {

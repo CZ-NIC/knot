@@ -97,6 +97,7 @@ static int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
 	}
 
 	key->timing = params->timing;
+	key->is_pub_only = params->is_pub_only;
 	return KNOT_EOK;
 }
 
@@ -111,6 +112,7 @@ static void kaspkey2params(knot_kasp_key_t *key, key_params_t *params)
 	params->algorithm = dnssec_key_get_algorithm(key->key);
 	params->is_ksk = dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK;
 	params->timing = key->timing;
+	params->is_pub_only = key->is_pub_only;
 }
 
 int kasp_zone_load(knot_kasp_zone_t *zone,
