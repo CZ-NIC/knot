@@ -283,11 +283,13 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		key_state_t keystate = get_key_state(key, ctx->now);
-		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK && (
+		if (!key->is_pub_only &&
+		    dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK && (
 		    keystate == DNSSEC_KEY_STATE_PUBLISHED)) {
 			is_zsk_published = true;
 		}
-		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK && (
+		if (!key->is_pub_only &&
+		    dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK && (
 		    keystate == DNSSEC_KEY_STATE_PUBLISHED || keystate == DNSSEC_KEY_STATE_READY)) {
 			is_ksk_published = true;
 		}

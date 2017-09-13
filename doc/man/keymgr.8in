@@ -86,6 +86,10 @@ from corresponding policy (if \fI\-c\fP or \fI\-C\fP options used) or from Knot 
 Imports a BIND\-style key into KASP database (converting it to PEM format).
 Takes one argument: path to BIND key file (private or public, but both MUST exist).
 .TP
+\fBimport\-pub\fP \fIBIND_pubkey_file\fP
+Imports a public key into KASP database. This key won\(aqt be rollovered nor used for signing.
+Takes one argument: path to BIND public key file.
+.TP
 \fBimport\-pem\fP \fIPEM_file\fP [\fIarguments\fP\&...]
 Imports a DNSSEC key from PEM file. The key parameters (same as for the generate action) need to be
 specified (mainly algorithm, timers...) because they are not contained in the PEM format.

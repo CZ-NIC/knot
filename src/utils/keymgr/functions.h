@@ -18,7 +18,7 @@
 
 int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]);
 
-int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file);
+int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_only);
 
 int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, char *argv[]);
 

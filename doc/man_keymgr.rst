@@ -63,6 +63,10 @@ Commands
   Imports a BIND-style key into KASP database (converting it to PEM format).
   Takes one argument: path to BIND key file (private or public, but both MUST exist).
 
+**import-pub** *BIND_pubkey_file*
+  Imports a public key into KASP database. This key won't be rollovered nor used for signing.
+  Takes one argument: path to BIND public key file.
+
 **import-pem** *PEM_file* [*arguments*...]
   Imports a DNSSEC key from PEM file. The key parameters (same as for the generate action) need to be
   specified (mainly algorithm, timers...) because they are not contained in the PEM format.

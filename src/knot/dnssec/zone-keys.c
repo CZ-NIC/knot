@@ -160,7 +160,7 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 		return ret;
 	}
 
-	if (!key_still_used_in_keystore) {
+	if (!key_still_used_in_keystore && !key_ptr->is_pub_only) {
 		ret = dnssec_keystore_remove_key(ctx->keystore, key_ptr->id);
 		if (ret != KNOT_EOK) {
 			return ret;
