@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 Farsight Security, Inc. <software@farsightsecurity.com>
+/*  Copyright (C) 2017 Farsight Security, Inc. <software@farsightsecurity.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,8 +73,7 @@ int dt_message_fill(Dnstap__Message             *m,
                     const int                   protocol,
                     const void                  *wire,
                     const size_t                len_wire,
-                    const struct timespec       *qtime,
-                    const struct timespec       *rtime)
+                    const struct timespec       *mtime)
 {
 	if (m == NULL) {
 		return KNOT_EINVAL;
@@ -106,27 +105,25 @@ int dt_message_fill(Dnstap__Message             *m,
 		m->query_message.len = len_wire;
 		m->query_message.data = (uint8_t *)wire;
 		m->has_query_message = 1;
+		// Message.query_time_sec, Message.query_time_nsec
+		if (mtime != NULL) {
+			m->query_time_sec = mtime->tv_sec;
+			m->query_time_nsec = mtime->tv_nsec;
+			m->has_query_time_sec = 1;
+			m->has_query_time_nsec = 1;
+		}
 	} else if (dt_message_type_is_response(type)) {
 		// Message.response_message
 		m->response_message.len = len_wire;
 		m->response_message.data = (uint8_t *)wire;
 		m->has_response_message = 1;
-	}
-
-	// Message.query_time_sec, Message.query_time_nsec
-	if (qtime != NULL) {
-		m->query_time_sec = qtime->tv_sec;
-		m->query_time_nsec = qtime->tv_nsec;
-		m->has_query_time_sec = 1;
-		m->has_query_time_nsec = 1;
-	}
-
-	// Message.response_time_sec, Message.response_time_nsec
-	if (rtime != NULL) {
-		m->response_time_sec = rtime->tv_sec;
-		m->response_time_nsec = rtime->tv_nsec;
-		m->has_response_time_sec = 1;
-		m->has_response_time_nsec = 1;
+		// Message.response_time_sec, Message.response_time_nsec
+		if (mtime != NULL) {
+			m->response_time_sec = mtime->tv_sec;
+			m->response_time_nsec = mtime->tv_nsec;
+			m->has_response_time_sec = 1;
+			m->has_response_time_nsec = 1;
+		}
 	}
 
 	return KNOT_EOK;

@@ -1865,6 +1865,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 
 		if (parse_dnstap_input(val, query) != KNOT_EOK) {
 			ERR("unable to open dnstap input file %s\n", val);
+			query_free(query);
 			return KNOT_EINVAL;
 		}
 

@@ -355,6 +355,7 @@ int net_set_local_info(net_t *net)
 	}
 
 	if (net->local_info != NULL) {
+		free(net->local_info->ai_addr);
 		freeaddrinfo(net->local_info);
 	}
 
@@ -578,6 +579,7 @@ void net_clean(net_t *net)
 	free(net->remote_str);
 
 	if (net->local_info != NULL) {
+		free(net->local_info->ai_addr);
 		freeaddrinfo(net->local_info);
 	}
 

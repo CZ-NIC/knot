@@ -66,6 +66,9 @@ A sink path, which can be either a file or a UNIX socket when prefixed with
 
 *Required*
 
+.. WARNING::
+   File is overwritten on server startup or reload.
+
 .. _mod-dnstap_identity:
 
 identity
