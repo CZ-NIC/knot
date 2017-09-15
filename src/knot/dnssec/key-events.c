@@ -173,6 +173,43 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_time_t when_
 	return ret;
 }
 
+static bool running_rollover(const kdnssec_ctx_t *ctx)
+{
+	bool res = false;
+	bool ready_ksk = false, active_ksk = false;
+
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		bool isksk = (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK);
+		switch (get_key_state(key, ctx->now)) {
+		case DNSSEC_KEY_STATE_PRE_ACTIVE:
+			res = true;
+			break;
+		case DNSSEC_KEY_STATE_PUBLISHED:
+			res = (res || !key->is_pub_only);
+			break;
+		case DNSSEC_KEY_STATE_READY:
+			ready_ksk = (ready_ksk || isksk);
+			break;
+		case DNSSEC_KEY_STATE_ACTIVE:
+			active_ksk = (active_ksk || isksk);
+			break;
+		case DNSSEC_KEY_STATE_RETIRE_ACTIVE:
+		case DNSSEC_KEY_STATE_POST_ACTIVE:
+			res = true;
+			break;
+		case DNSSEC_KEY_STATE_RETIRED:
+		case DNSSEC_KEY_STATE_REMOVED:
+		default:
+			break;
+		}
+	}
+	if (ready_ksk && active_ksk) {
+		res = true;
+	}
+	return res;
+}
+
 typedef enum {
 	INVALID = 0,
 	GENERATE = 1,
@@ -278,23 +315,6 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 	roll_action res = { 0 };
 	res.time = 0;
 
-	bool is_zsk_published = false;
-	bool is_ksk_published = false;
-	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		key_state_t keystate = get_key_state(key, ctx->now);
-		if (!key->is_pub_only &&
-		    dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_ZSK && (
-		    keystate == DNSSEC_KEY_STATE_PUBLISHED)) {
-			is_zsk_published = true;
-		}
-		if (!key->is_pub_only &&
-		    dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK && (
-		    keystate == DNSSEC_KEY_STATE_PUBLISHED || keystate == DNSSEC_KEY_STATE_READY)) {
-			is_ksk_published = true;
-		}
-	}
-
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		knot_time_t keytime = 0;
@@ -318,7 +338,7 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				restype = REPLACE;
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
-				if (!is_ksk_published && dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm) {
+				if (!running_rollover(ctx) && dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm) {
 					keytime = ksk_rollover_time(key->timing.created, ctx);
 					restype = GENERATE;
 				}
@@ -353,7 +373,7 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				restype = REPLACE;
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
-				if (!is_zsk_published && dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm) {
+				if (!running_rollover(ctx) && dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm) {
 					keytime = zsk_rollover_time(key->timing.active, ctx);
 					restype = GENERATE;
 				}
@@ -508,7 +528,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		}
 	}
 	// algorithm rollover
-	if (!algorithm_present(ctx,ctx->policy->algorithm) && ret == KNOT_EOK) {
+	if (!algorithm_present(ctx,ctx->policy->algorithm) &&
+	    !running_rollover(ctx) && ret == KNOT_EOK) {
 		if (ctx->policy->ksk_shared) {
 			ret = share_or_generate_key(ctx, true, 0, true);
 		} else {
