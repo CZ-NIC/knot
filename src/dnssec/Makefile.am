@@ -29,8 +29,6 @@ libshared_la_SOURCES = \
 	shared/hex.h \
 	shared/keyid_gnutls.c \
 	shared/keyid_gnutls.h \
-	shared/path.c \
-	shared/path.h \
 	shared/pem.c \
 	shared/pem.h \
 	shared/shared.h \

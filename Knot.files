@@ -71,6 +71,8 @@ src/contrib/ucw/mempool.h
 src/contrib/wire.h
 src/contrib/wire_ctx.h
 src/dnssec/contrib/gnutls_error.c
+src/dnssec/contrib/vpool.c
+src/dnssec/contrib/vpool.h
 src/dnssec/lib/binary.c
 src/dnssec/lib/crypto.c
 src/dnssec/lib/dnssec/binary.h
@@ -128,8 +130,6 @@ src/dnssec/shared/hex.c
 src/dnssec/shared/hex.h
 src/dnssec/shared/keyid_gnutls.c
 src/dnssec/shared/keyid_gnutls.h
-src/dnssec/shared/path.c
-src/dnssec/shared/path.h
 src/dnssec/shared/pem.c
 src/dnssec/shared/pem.h
 src/dnssec/shared/shared.h

@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -27,7 +28,6 @@
 #include "key.h"
 #include "keystore.h"
 #include "keystore/internal.h"
-#include "path.h"
 #include "shared.h"
 
 #define DIR_INIT_MODE 0750
@@ -172,7 +172,7 @@ static int pkcs8_dir_open(void *_handle, const char *config)
 
 	pkcs8_dir_handle_t *handle = _handle;
 
-	char *path = path_normalize(config);
+	char *path = realpath(config, NULL);
 	if (!path) {
 		return DNSSEC_NOT_FOUND;
 	}
