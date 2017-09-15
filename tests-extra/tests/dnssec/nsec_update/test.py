@@ -36,7 +36,7 @@ master.flush()
 t.sleep(2)
 for zone in zones:
     master.random_ddns(zone)
-t.sleep(4)
+t.sleep(4) # zones_wait fails if an empty update is generated
 
 # sync slave with current master's state
 slave.ctl("zone-refresh")
