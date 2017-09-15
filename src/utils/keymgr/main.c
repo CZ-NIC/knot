@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "contrib/string.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
@@ -232,10 +233,12 @@ static bool init_confile(const char *confile)
 
 static bool init_conf_blank(const char *kasp_dir)
 {
-	char confstr[200 + strlen(kasp_dir)];
-	snprintf(confstr, sizeof(confstr),
-	"template:\n  - id: default\n    storage: .\n    kasp-db: %s\n", kasp_dir);
+	char *confstr = sprintf_alloc("template:\n"""
+	                              "  - id: default\n"
+	                              "    storage: .\n"
+	                              "    kasp-db: %s\n", kasp_dir);
 	int ret = conf_import(conf(), confstr, false);
+	free(confstr);
 	if (ret != KNOT_EOK) {
 		printf("Failed creating fake configuration (%s)\n",
 		       knot_strerror(ret));
