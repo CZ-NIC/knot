@@ -159,7 +159,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	journal_conts = NULL;
 
 	// Sign zone using DNSSEC if configured.
-	zone_sign_reschedule_t dnssec_refresh = { .allow_rollover = true };
+	zone_sign_reschedule_t dnssec_refresh = { .allow_rollover = true, .allow_nsec3resalt = true, };
 	if (dnssec_enable) {
 		ret = knot_dnssec_zone_sign(&up, 0, &dnssec_refresh);
 		if (ret != KNOT_EOK) {
@@ -191,11 +191,12 @@ int event_load(conf_t *conf, zone_t *zone)
 	// Schedule depedent events.
 	const knot_rdataset_t *soa = zone_soa(zone);
 	zone->timers.soa_expire = knot_soa_expire(soa);
-	replan_from_timers(conf, zone);
 
 	if (dnssec_enable) {
 		event_dnssec_reschedule(conf, zone, &dnssec_refresh, false); // false since we handle NOTIFY below
 	}
+
+	replan_from_timers(conf, zone);
 
 	if (old_serial != new_serial) {
 		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);

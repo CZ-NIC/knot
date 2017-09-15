@@ -7,6 +7,7 @@ import shutil
 import zone_generate
 import glob
 import distutils.dir_util
+import dns.name
 
 from subprocess import DEVNULL, PIPE, Popen
 from dnstest.utils import *
@@ -244,6 +245,22 @@ class ZoneFile(object):
         with open(self.path, "a") as file:
             file.write("%s IN AAAA dead:beef:dead:beef:dead:beef:%04x:%04x\n" %
                        (owner, rnd1, rnd2))
+
+    def gen_rnd_ddns(self, ddns):
+        '''Walk zonefile, randomly mark some records to be removed by ddns and some added'''
+
+        with open(self.path, 'r') as file:
+            for fline in file:
+                line = fline.split(None, 3)
+                if line[0] not in [";;"] and line[2] not in ["SOA", "RRSIG", "DNSKEY", "DS", "CDS", "CDNSKEY", "NSEC", "NSEC3", "NSEC3PARAM"]:
+                    try:
+                        if random.randint(1, 20) in [4, 5]:
+                            ddns.delete(line[0], line[2])
+                        if random.randint(1, 20) in [2, 3] and line[2] not in ["DNAME"]:
+                            ddns.add("xyz."+line[0], line[1], line[2], line[3])
+                    except (dns.rdatatype.UnknownRdatatype, dns.name.LabelTooLong, dns.name.NameTooLong):
+                        # problems - simply skip. This is completely stochastic anyway.
+                        pass
 
     def remove(self):
         '''Remove zone file.'''

@@ -20,6 +20,7 @@
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/nsec3.h"
 #include "libknot/rrtype/soa.h"
+#include "knot/common/log.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "knot/dnssec/key-events.h"
@@ -408,6 +409,66 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}
+	}
+
+	if (sign_nsec_chain) {
+		ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, &ch);
+	}
+
+	if (ret == KNOT_EOK) {
+		ret = zone_update_apply_changeset(update, &ch);
+	}
+
+cleanup:
+	changeset_clear(&ch);
+	return ret;
+}
+
+
+int knot_zone_fix_nsec_chain(zone_update_t *update,
+                             const zone_keyset_t *zone_keys,
+                             const kdnssec_ctx_t *ctx,
+                             bool sign_nsec_chain)
+{
+	if (update == NULL || ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const knot_rdataset_t *soa = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+	if (soa == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	uint32_t nsec_ttl = knot_soa_minimum(soa);
+	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
+
+	changeset_t ch;
+	int ret = changeset_init(&ch, update->new_cont->apex->owner);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (ctx->policy->nsec3_enabled) {
+		ret = knot_nsec3_fix_chain(update, &params, nsec_ttl, &ch);
+	} else {
+		ret = knot_nsec_fix_chain(update->zone->contents, update->new_cont, nsec_ttl, &ch);
+	}
+	if (ret == KNOT_ENORECORD) {
+		log_zone_info(update->zone->name, "DNSSEC, re-creating whole NSEC%s chain",
+		              (ctx->policy->nsec3_enabled ? "3" : ""));
+		changeset_clear(&ch);
+		ret = changeset_init(&ch, update->new_cont->apex->owner);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		if (ctx->policy->nsec3_enabled) {
+			ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl, &ch);
+		} else {
+			ret = knot_nsec_create_chain(update->new_cont, nsec_ttl, &ch);
+		}
+	}
+	if (ret != KNOT_EOK) {
+		goto cleanup;
 	}
 
 	if (sign_nsec_chain) {

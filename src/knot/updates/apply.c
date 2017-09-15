@@ -44,10 +44,6 @@ static void rrs_list_clear(list_t *l, knot_mm_t *mm)
 static int free_additional(zone_node_t **node, void *data)
 {
 	UNUSED(data);
-	if ((*node)->flags & NODE_FLAGS_NONAUTH) {
-		// non-auth nodes have no additionals.
-		return KNOT_EOK;
-	}
 
 	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
 		struct rr_data *data = &(*node)->rrs[i];

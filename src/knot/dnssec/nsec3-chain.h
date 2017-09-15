@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include "dnssec/nsec.h"
 #include "knot/updates/changesets.h"
+#include "knot/updates/zone-update.h"
 #include "knot/zone/contents.h"
 
 /*!
@@ -27,7 +28,6 @@
  * \param zone       Zone to be checked.
  * \param params     NSEC3 parameters.
  * \param ttl        TTL for new records.
- * \param cds_in_apexHint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
  * \param changeset  Changeset to store changes into.
  *
  * \return KNOT_E*
@@ -36,3 +36,19 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
                             const dnssec_nsec3_params_t *params,
                             uint32_t ttl,
                             changeset_t *changeset);
+
+/*!
+ * \brief Updates zone's NSEC3 chain to follow the differences in zone update.
+ *
+ * \param update     Zone Update structure holding the zone and its update. Also modified!
+ * \param params     NSEC3 parameters.
+ * \param ttl        TTL for new records.
+ * \param changeset  Changeset to store changes into. Some changes are pushed directly to update.
+ *
+ * \retval KNOT_ENORECORD if the chain must be recreated from scratch.
+ * \return KNOT_E*
+ */
+int knot_nsec3_fix_chain(zone_update_t *update,
+                         const dnssec_nsec3_params_t *params,
+                         uint32_t ttl,
+                         changeset_t *changeset);
