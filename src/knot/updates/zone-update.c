@@ -45,7 +45,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 	}
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
-	apply_init_ctx(&update->a_ctx, update->new_cont, apply_flags);
+	apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
 
 	/* Copy base SOA RR. */
 	update->change.soa_from =
@@ -68,7 +68,7 @@ static int init_full(zone_update_t *update, zone_t *zone)
 
 	update->new_cont_deep_copy = true;
 
-	apply_init_ctx(&update->a_ctx, update->new_cont, 0);
+	apply_init_ctx(update->a_ctx, update->new_cont, 0);
 
 	return KNOT_EOK;
 }
@@ -104,13 +104,22 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
 	update->flags = flags;
 
-	if (flags & UPDATE_INCREMENTAL) {
-		return init_incremental(update, zone);
-	} else if (flags & UPDATE_FULL) {
-		return init_full(update, zone);
-	} else {
-		return KNOT_EINVAL;
+	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
+	if (update->a_ctx == NULL) {
+		return KNOT_ENOMEM;
 	}
+
+	int ret = KNOT_EINVAL;
+	if (flags & UPDATE_INCREMENTAL) {
+		ret = init_incremental(update, zone);
+	} else if (flags & UPDATE_FULL) {
+		ret = init_full(update, zone);
+	}
+	if (ret != KNOT_EOK) {
+		free(update->a_ctx);
+	}
+
+	return ret;
 }
 
 int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_contents_t *old_cont,
@@ -130,19 +139,26 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 	update->new_cont = new_cont;
 	update->new_cont_deep_copy = true;
 
+	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
+	if (update->a_ctx == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	int ret = changeset_init(&update->change, zone->name);
 	if (ret != KNOT_EOK) {
+		free(update->a_ctx);
 		return ret;
 	}
 
 	ret = zone_contents_diff(old_cont, new_cont, &update->change);
 	if (ret != KNOT_EOK && ret != KNOT_ENODIFF) {
+		free(update->a_ctx);
 		changeset_clear(&update->change);
 		return ret;
 	}
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
-	apply_init_ctx(&update->a_ctx, update->new_cont, apply_flags);
+	apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
 
 	return KNOT_EOK;
 }
@@ -163,21 +179,28 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	update->new_cont = new_cont;
 	update->new_cont_deep_copy = true;
 
+	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
+	if (update->a_ctx == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	if (flags & UPDATE_INCREMENTAL) {
 		int ret = changeset_init(&update->change, zone_without_contents->name);
 		if (ret != KNOT_EOK) {
+			free(update->a_ctx);
 			return ret;
 		}
 
 		update->change.soa_from = node_create_rrset(new_cont->apex, KNOT_RRTYPE_SOA);
 		if (update->change.soa_from == NULL) {
 			changeset_clear(&update->change);
+			free(update->a_ctx);
 			return KNOT_ENOMEM;
 		}
 	}
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
-	apply_init_ctx(&update->a_ctx, update->new_cont, apply_flags);
+	apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
 
 	return KNOT_EOK;
 }
@@ -252,10 +275,10 @@ void zone_update_clear(zone_update_t *update)
 	if (update->flags & UPDATE_INCREMENTAL) {
 		/* Revert any changes on error, do nothing on success. */
 		if (update->new_cont_deep_copy) {
-			update_cleanup(&update->a_ctx);
+			update_cleanup(update->a_ctx);
 			zone_contents_deep_free(&update->new_cont);
 		} else {
-			update_rollback(&update->a_ctx);
+			update_rollback(update->a_ctx);
 			update_free_zone(&update->new_cont);
 		}
 		changeset_clear(&update->change);
@@ -263,6 +286,7 @@ void zone_update_clear(zone_update_t *update)
 		assert(update->new_cont_deep_copy);
 		zone_contents_deep_free(&update->new_cont);
 	}
+	free(update->a_ctx);
 	mp_delete(update->mm.ctx);
 	memset(update, 0, sizeof(*update));
 }
@@ -281,14 +305,14 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* replace previous SOA */
-			ret = apply_replace_soa(&update->a_ctx, &update->change);
+			ret = apply_replace_soa(update->a_ctx, &update->change);
 			if (ret != KNOT_EOK) {
 				changeset_remove_addition(&update->change, rrset);
 			}
 			return ret;
 		}
 
-		ret = apply_add_rr(&update->a_ctx, rrset);
+		ret = apply_add_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
 			changeset_remove_addition(&update->change, rrset);
 			return ret;
@@ -325,7 +349,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 			return KNOT_EOK;
 		}
 
-		ret = apply_remove_rr(&update->a_ctx, rrset);
+		ret = apply_remove_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
 			changeset_remove_removal(&update->change, rrset);
 			return ret;
@@ -368,7 +392,7 @@ int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_
 				return KNOT_EOK;
 			}
 
-			ret = apply_remove_rr(&update->a_ctx, &rrset);
+			ret = apply_remove_rr(update->a_ctx, &rrset);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -416,7 +440,7 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 					continue;
 				}
 
-				ret = apply_remove_rr(&update->a_ctx, &rrset);
+				ret = apply_remove_rr(update->a_ctx, &rrset);
 				if (ret != KNOT_EOK) {
 					return ret;
 				}
@@ -451,7 +475,7 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 		ret = changeset_merge(&update->change, changes, CHANGESET_CHECK_CANCELOUT);
 	}
 	if (ret == KNOT_EOK) {
-		ret = apply_changeset_directly(&update->a_ctx, changes);
+		ret = apply_changeset_directly(update->a_ctx, changes);
 	}
 	return ret;
 }
@@ -534,7 +558,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 		}
 	}
 
-	ret = apply_finalize(&update->a_ctx);
+	ret = apply_finalize(update->a_ctx);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
 		return ret;
@@ -670,7 +694,9 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		}
 		changeset_clear(&update->change);
 	}
-	update_cleanup(&update->a_ctx);
+	update_cleanup(update->a_ctx);
+	free(update->a_ctx);
+	update->a_ctx = NULL;
 	update->new_cont = NULL;
 
 	return KNOT_EOK;

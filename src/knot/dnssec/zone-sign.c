@@ -1271,7 +1271,7 @@ int knot_zone_sign_update(zone_update_t *update,
 	int ret = KNOT_EOK;
 
 
-	ret = apply_prepare_to_sign(&update->a_ctx);
+	ret = apply_prepare_to_sign(update->a_ctx);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
