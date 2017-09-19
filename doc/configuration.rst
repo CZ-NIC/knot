@@ -117,7 +117,7 @@ See following examples and :ref:`ACL section`.::
 ::
 
     key:
-      - id: key1
+      - id: key1                  # The real TSIG key name
         algorithm: hmac-md5
         secret: Wg==
 
