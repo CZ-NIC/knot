@@ -694,8 +694,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		}
 		changeset_clear(&update->change);
 	}
-	update_cleanup(update->a_ctx);
-	free(update->a_ctx);
+	callrcu_wrapper(update->a_ctx, (void (*)(void *))update_cleanup, false);
 	update->a_ctx = NULL;
 	update->new_cont = NULL;
 
