@@ -1,4 +1,5 @@
 knot_modules_rosedb_la_SOURCES = knot/modules/rosedb/rosedb.c
+EXTRA_DIST +=                    knot/modules/rosedb/rosedb.rst
 
 rosedb_tool_SOURCES = knot/modules/rosedb/rosedb_tool.c
 rosedb_tool_LDADD = libknotd.la libcontrib.la

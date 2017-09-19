@@ -1,4 +1,5 @@
 knot_modules_stats_la_SOURCES = knot/modules/stats/stats.c
+EXTRA_DIST +=                   knot/modules/stats/stats.rst
 
 if STATIC_MODULE_stats
 libknotd_la_SOURCES += $(knot_modules_stats_la_SOURCES)

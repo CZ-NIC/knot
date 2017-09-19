@@ -1,4 +1,5 @@
 knot_modules_dnsproxy_la_SOURCES = knot/modules/dnsproxy/dnsproxy.c
+EXTRA_DIST +=                      knot/modules/dnsproxy/dnsproxy.rst
 
 if STATIC_MODULE_dnsproxy
 libknotd_la_SOURCES += $(knot_modules_dnsproxy_la_SOURCES)

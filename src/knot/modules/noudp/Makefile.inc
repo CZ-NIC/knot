@@ -1,4 +1,5 @@
 knot_modules_noudp_la_SOURCES = knot/modules/noudp/noudp.c
+EXTRA_DIST +=                   knot/modules/noudp/noudp.rst
 
 if STATIC_MODULE_noudp
 libknotd_la_SOURCES += $(knot_modules_noudp_la_SOURCES)
