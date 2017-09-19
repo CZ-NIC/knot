@@ -322,6 +322,14 @@ key:
 .SS id
 .sp
 A key name identifier.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This value MUST be exactly the same as the name of the TSIG key on the
+opposite master/slave server(s).
+.UNINDENT
+.UNINDENT
 .SS algorithm
 .sp
 A key algorithm.

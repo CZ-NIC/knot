@@ -344,6 +344,10 @@ id
 
 A key name identifier.
 
+.. NOTE::
+   This value MUST be exactly the same as the name of the TSIG key on the
+   opposite master/slave server(s).
+
 .. _key_algorithm:
 
 algorithm
