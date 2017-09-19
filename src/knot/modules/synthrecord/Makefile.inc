@@ -1,4 +1,5 @@
 knot_modules_synthrecord_la_SOURCES = knot/modules/synthrecord/synthrecord.c
+EXTRA_DIST +=                         knot/modules/synthrecord/synthrecord.rst
 
 if STATIC_MODULE_synthrecord
 libknotd_la_SOURCES += $(knot_modules_synthrecord_la_SOURCES)

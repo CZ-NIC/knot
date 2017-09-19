@@ -1,4 +1,5 @@
 knot_modules_whoami_la_SOURCES = knot/modules/whoami/whoami.c
+EXTRA_DIST +=                    knot/modules/whoami/whoami.rst
 
 if STATIC_MODULE_whoami
 libknotd_la_SOURCES += $(knot_modules_whoami_la_SOURCES)

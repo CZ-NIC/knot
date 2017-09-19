@@ -12,7 +12,6 @@ MANPAGES_IN = \
 	man/kzonecheck.1in
 
 MANPAGES_RST = \
-	reference.rst		\
 	man_knotc.rst		\
 	man_knotd.rst		\
 	man_keymgr.rst		\
@@ -27,13 +26,16 @@ MANPAGES_RST = \
 EXTRA_DIST = \
 	conf.py			\
 	\
+	appendices.rst		\
 	configuration.rst	\
 	index.rst		\
 	installation.rst	\
 	introduction.rst	\
 	migration.rst		\
-	requirements.rst	\
+	modules.rst.in		\
 	operation.rst		\
+	reference.rst		\
+	requirements.rst	\
 	troubleshooting.rst	\
 	utilities.rst		\
 	\

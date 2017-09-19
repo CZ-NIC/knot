@@ -1,4 +1,5 @@
 knot_modules_dnstap_la_SOURCES = knot/modules/dnstap/dnstap.c
+EXTRA_DIST +=                    knot/modules/dnstap/dnstap.rst
 
 if STATIC_MODULE_dnstap
 libknotd_la_SOURCES += $(knot_modules_dnstap_la_SOURCES)
