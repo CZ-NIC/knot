@@ -548,7 +548,7 @@ size_t knot_db_lmdb_get_usage(knot_db_t *db)
 	}
 	txn_abort(&txn);
 
-	size_t pgs_used = st.ms_branch_pages + st.ms_leaf_pages + st.ms_overflow_pages + st.ms_entries;
+	size_t pgs_used = st.ms_branch_pages + st.ms_leaf_pages + st.ms_overflow_pages;
 
 	return (pgs_used * st.ms_psize);
 }

@@ -1243,7 +1243,7 @@ m_u_ch_end:
 			} \
 			add_tail(changesets, &merged->n); \
 			nchs++; \
-			serialized_size_total += changeset_serialized_size(merged); \
+			serialized_size_merged += changeset_serialized_size(merged); \
 			md_flush(txn); \
 			inserting_merged = true; \
 		} \
@@ -1258,7 +1258,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	// PART 1 : initializers, compute serialized_sizes, transaction start
 	changeset_t *ch;
 
-	size_t nchs = 0, serialized_size_total = 0, inserted_size = 0, insert_txn_count = 1;
+	size_t nchs = 0, inserted_size = 0, insert_txn_count = 1;
+	size_t serialized_size_changes = 0, serialized_size_merged = 0;
 
 	uint8_t *allchunks = NULL;
 	uint8_t **chunkptrs = NULL;
@@ -1273,7 +1274,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 	WALK_LIST(ch, *changesets) {
 		nchs++;
-		serialized_size_total += changeset_serialized_size(ch);
+		serialized_size_changes += changeset_serialized_size(ch);
 		if (ch->soa_from == NULL) {
 			inserting_bootstrap = true;
 		}
@@ -1314,16 +1315,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	uint64_t occupied = 0, occupied_max;
 	md_get(txn, j->zone, MDKEY_PERZONE_OCCUPIED, &occupied);
 	occupied_max = journal_max_usage(j);
-	occupied += serialized_size_total;
-	if (zone_in_journal && occupied > occupied_max) {
-		if (merge_allowed) {
-			try_flush // decrease journal occupation by merging all into bootstrap changeset
-		} else {
-			txn->ret = KNOT_ESPACE;
-			log_zone_warning(j->zone, "journal, unable to make free space for insert");
-			goto store_changeset_cleanup;
-		}
-	} else if (occupied > occupied_max) {
+	occupied += serialized_size_changes;
+	if (occupied > occupied_max) {
 		size_t freed;
 		size_t tofree = (occupied - occupied_max) * journal_tofree_factor(j);
 		size_t free_min = tofree * journal_minfree_factor(j);
@@ -1332,6 +1325,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			tofree -= freed;
 			free_min -= freed;
 			try_flush
+			tofree += serialized_size_merged;
 			delete_tofree(j, txn, tofree, &freed);
 			if (freed < free_min) {
 				txn->ret = KNOT_ESPACE;
@@ -1344,14 +1338,10 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	// PART 3c : check if we exceeded history depth
 	long over_limit = (long)txn->shadow_md.changeset_count - journal_max_changesets(j) +
 	                  list_size(changesets) - (inserting_merged ? 1 : 0);
-	if (zone_in_journal && over_limit > 0) {
-		if (merge_allowed) {
-			try_flush // decrease journal occupation by merging all into bootstrap changeset
-		} else {
-			txn->ret = KNOT_ESPACE;
-			log_zone_warning(j->zone, "journal, unable to make free slot for insert");
-			goto store_changeset_cleanup;
-		}
+	if (zone_in_journal && over_limit > 0 && !merge_allowed) {
+		txn->ret = KNOT_ESPACE;
+		log_zone_warning(j->zone, "journal, unable to make free slot for insert");
+		goto store_changeset_cleanup;
 	} else if (over_limit > 0) {
 		size_t deled;
 		delete_count(j, txn, over_limit, &deled);
@@ -1869,7 +1859,7 @@ void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_
 		if (last_inserter != NULL && knot_dname_is_equal(last_inserter, j->zone)) {
 			size_t lz_occupied;
 			md_get_common_last_occupied(txn, &lz_occupied);
-			*occupied += lz_occupied;
+			*occupied += knot_db_lmdb_get_usage(j->db->db) - lz_occupied;
 		}
 		free(last_inserter);
 	}
