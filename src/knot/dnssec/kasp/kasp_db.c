@@ -230,7 +230,10 @@ static int serialize_key_params(const key_params_t *params, const knot_dname_t *
 	wire_ctx_write_u64(&wire, 0); // length of Unused-future block at the end
 	wire_ctx_write_u16(&wire, params->keytag);
 	wire_ctx_write_u8(&wire, params->algorithm);
-	wire_ctx_write_u8(&wire, (uint8_t)(params->is_ksk ? 0x03 : 0x02));
+	uint8_t flags = 0x02;
+	flags |= (params->is_ksk ? 0x01 : 0);
+	flags |= (params->is_pub_only ? 0x04 : 0);
+	wire_ctx_write_u8(&wire, flags);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.created);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.pre_active);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.publish);
@@ -270,6 +273,7 @@ static int deserialize_key_params(key_params_t *params, const knot_db_val_t *key
 	params->algorithm = wire_ctx_read_u8(&wire);
 	uint8_t isksk_plus_flags = wire_ctx_read_u8(&wire);
 	params->is_ksk = ((isksk_plus_flags & (uint8_t)0x01) != (uint8_t)0x00);
+	params->is_pub_only = ((isksk_plus_flags & (uint8_t)0x04) != (uint8_t)0x00);
 	if ((isksk_plus_flags & (uint8_t)0x02) != (uint8_t)0x00) {
 		params->timing.created = (knot_time_t)wire_ctx_read_u64(&wire);
 		params->timing.pre_active = (knot_time_t)wire_ctx_read_u64(&wire);

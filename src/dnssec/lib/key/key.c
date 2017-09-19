@@ -27,6 +27,7 @@
 #include "key/convert.h"
 #include "key/dnskey.h"
 #include "key/internal.h"
+#include "keyid_gnutls.h"
 #include "keystore.h"
 #include "keytag.h"
 #include "pem.h"
@@ -349,6 +350,16 @@ unsigned dnssec_key_get_size(const dnssec_key_t *key)
 	gnutls_pubkey_get_pk_algorithm(key->public_key, &bits);
 
 	return bits;
+}
+
+_public_
+int dnssec_key_get_keyid(const dnssec_key_t *key, char **id)
+{
+	if (!key || !id) {
+		return DNSSEC_EINVAL;
+	}
+
+	return keyid_pubkey_hex(key->public_key, id);
 }
 
 _public_

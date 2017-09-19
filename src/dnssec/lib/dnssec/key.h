@@ -209,6 +209,16 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey);
 unsigned dnssec_key_get_size(const dnssec_key_t *key);
 
 /*!
+ * \brief Compute key ID from public key.
+ *
+ * \param key  Key structure holding the public key.
+ * \param id   Output: key ID in hex.
+ *
+ * \return DNSSEC_E*
+ */
+int dnssec_key_get_keyid(const dnssec_key_t *key, char **id);
+
+/*!
  * Get the RDATA of the DNSSEC key.
  *
  * The returned content must not be modified by the caller. A reference

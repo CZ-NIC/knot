@@ -53,6 +53,8 @@ static void print_help(void)
 	       "                (syntax: generate <attribute_name>=<value>...)\n"
 	       "  import-bind  Import BIND-style key file pair (.key + .private).\n"
 	       "                (syntax: import-bind <key_file_name>)\n"
+	       "  import-pub   Import public-only key to be published in the zone (in BIND .key format).\n"
+	       "                (syntax: import-pub <key_file_name>)\n"
 	       "  import-pem   Import key in PEM format. Specify its parameters manually.\n"
 	       "                (syntax: import-pem <pem_file_path> <attribute_name>=<value>...)\n"
 	       "  ds           Generate DS record(s) for specified key.\n"
@@ -122,7 +124,10 @@ static int key_command(int argc, char *argv[])
 		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "import-bind") == 0) {
 		CHECK_MISSING_ARG("BIND-style key to import not specified");
-		ret = keymgr_import_bind(&kctx, argv[2]);
+		ret = keymgr_import_bind(&kctx, argv[2], false);
+	} else if (strcmp(argv[1], "import-pub") == 0) {
+		CHECK_MISSING_ARG("BIND-style key to import not specified");
+		ret = keymgr_import_bind(&kctx, argv[2], true);
 	} else if (strcmp(argv[1], "import-pem") == 0) {
 		CHECK_MISSING_ARG("PEM file to import not specified");
 		ret = keymgr_import_pem(&kctx, argv[2], argc - 3, argv + 3);

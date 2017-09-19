@@ -125,7 +125,8 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 }
 
 // modifies ctx->policy options, so don't do anything afterwards !
-int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]) {
+int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
+{
 	knot_time_t now = knot_time(), infty = 0;
 	knot_kasp_key_timing_t gen_timing = { now, infty, now, infty, now, infty, infty, infty, infty };
 	bool isksk = false;
@@ -234,50 +235,67 @@ static char *genname(const char *orig, const char *wantsuff, const char *altsuff
 	return res;
 }
 
-int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file)
+int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_only)
 {
-	char *pubname = genname(import_file, ".key", ".private");
-	char *privname = genname(import_file, ".private", ".key");
-	if (ctx == NULL || import_file == NULL || pubname == NULL || privname == NULL) {
-		free(pubname);
-		free(privname);
+	if (ctx == NULL || import_file == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	char *keyid = NULL;
+	knot_kasp_key_timing_t timing = { 0 };
 	dnssec_key_t *key = NULL;
-	int ret = KNOT_EOK;
-	printf("kkib %s %s\n", pubname, privname);
+	char *keyid = NULL;
 
-	ret = bind_pubkey_parse(pubname, &key);
+	char *pubname = genname(import_file, ".key", ".private");
+	if (pubname == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = bind_pubkey_parse(pubname, &key);
+	free(pubname);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
-	bind_privkey_t bpriv = { 0 };
-	ret = bind_privkey_parse(privname, &bpriv);
-	if (ret != DNSSEC_EOK) {
-		goto fail;
-	}
+	if (!pub_only) {
+		bind_privkey_t bpriv = { 0 };
 
-	dnssec_binary_t pem = { 0 };
-	ret = bind_privkey_to_pem(key, &bpriv, &pem);
-	if (ret != DNSSEC_EOK) {
+		char *privname = genname(import_file, ".private", ".key");
+		if (ret != KNOT_EOK) {
+			goto fail;
+		}
+
+		ret = bind_privkey_parse(privname, &bpriv);
+		free(privname);
+		if (ret != DNSSEC_EOK) {
+			goto fail;
+		}
+
+		dnssec_binary_t pem = { 0 };
+		ret = bind_privkey_to_pem(key, &bpriv, &pem);
+		if (ret != DNSSEC_EOK) {
+			bind_privkey_free(&bpriv);
+			goto fail;
+		}
+
+		bind_privkey_to_timing(&bpriv, &timing); // time created remains always zero
+
 		bind_privkey_free(&bpriv);
-		goto fail;
+
+		ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
+		dnssec_binary_free(&pem);
+		if (ret != DNSSEC_EOK) {
+			goto fail;
+		}
+	} else {
+		timing.publish = ctx->now;
+
+		ret = dnssec_key_get_keyid(key, &keyid);
+		if (ret != DNSSEC_EOK) {
+			goto fail;
+		}
 	}
 
-	knot_kasp_key_timing_t timing = { 0 };
-	bind_privkey_to_timing(&bpriv, &timing); // time created remains always zero
-
-	bind_privkey_free(&bpriv);
-
-	ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
-	dnssec_binary_free(&pem);
-	if (ret != DNSSEC_EOK) {
-		goto fail;
-	}
-
+	// allocate kasp key
 	knot_kasp_key_t *kkey = calloc(1, sizeof(*kkey));
 	if (!kkey) {
 		ret = KNOT_ENOMEM;
@@ -287,40 +305,38 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file)
 	kkey->id = keyid;
 	kkey->key = key;
 	kkey->timing = timing;
+	kkey->is_pub_only = pub_only;
 
+	// append to zone
 	ret = kasp_zone_append(ctx->zone, kkey);
 	free(kkey);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
-
 	ret = kdnssec_ctx_commit(ctx);
-	// ret fallthrough
-
 	if (ret == KNOT_EOK) {
 		printf("%s\n", keyid);
+		return KNOT_EOK;
 	}
-
-	goto cleanup;
-
 fail:
 	dnssec_key_free(key);
 	free(keyid);
-cleanup:
-	free(pubname);
-	free(privname);
 	return knot_error_from_libdnssec(ret);
 }
 
 int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, char *argv[])
 {
+	if (ctx == NULL || import_file == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	// parse params
-	knot_time_t now = knot_time(), infty = 0;
-	knot_kasp_key_timing_t gen_timing = { now, now, now, now, infty, infty };
+	knot_time_t now = knot_time();
+	knot_kasp_key_timing_t timing = { .publish = now, .active = now };
 	bool isksk = false;
 	uint16_t keysize = 0;
 	if (!genkeyargs(argc, argv, false, &isksk, &ctx->policy->algorithm,
-			&keysize, &gen_timing)) {
+	                &keysize, &timing)) {
 		return KNOT_EINVAL;
 	}
 
@@ -341,76 +357,76 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 		return knot_map_errno();
 	}
 
+	dnssec_key_t *key = NULL;
+	char *keyid = NULL;
+
 	// alloc memory
-	dnssec_binary_t read_pem = { 0 };
-	int ret = dnssec_binary_alloc(&read_pem, fsize);
+	dnssec_binary_t pem = { 0 };
+	int ret = dnssec_binary_alloc(&pem, fsize);
 	if (ret != DNSSEC_EOK) {
 		close(fd);
-		return knot_error_from_libdnssec(ret);
+		goto fail;
 	}
 
 	// read pem
-	ssize_t read_count = read(fd, read_pem.data, read_pem.size);
+	ssize_t read_count = read(fd, pem.data, pem.size);
 	close(fd);
 	if (read_count == -1) {
-		dnssec_binary_free(&read_pem);
-		return knot_map_errno();
+		dnssec_binary_free(&pem);
+		ret = knot_map_errno();
+		goto fail;
 	}
 
 	// put pem to kesytore
-	char *keyid = NULL;
-	ret = dnssec_keystore_import(ctx->keystore, &read_pem, &keyid);
-	dnssec_binary_free(&read_pem);
+	ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
+	dnssec_binary_free(&pem);
 	if (ret != DNSSEC_EOK) {
-		return knot_error_from_libdnssec(ret);
+		goto fail;
 	}
 
 	// create dnssec key
-	dnssec_key_t *dnskey = NULL;
-	ret = dnssec_key_new(&dnskey);
+	ret = dnssec_key_new(&key);
 	if (ret != DNSSEC_EOK) {
-		free(keyid);
-		return knot_error_from_libdnssec(ret);
+		goto fail;
 	}
-	ret = dnssec_key_set_dname(dnskey, ctx->zone->dname);
+	ret = dnssec_key_set_dname(key, ctx->zone->dname);
 	if (ret != DNSSEC_EOK) {
-		dnssec_key_free(dnskey);
-		free(keyid);
-		return knot_error_from_libdnssec(ret);
+		goto fail;
 	}
-	dnssec_key_set_flags(dnskey, dnskey_flags(isksk));
-	dnssec_key_set_algorithm(dnskey, ctx->policy->algorithm);
+	dnssec_key_set_flags(key, dnskey_flags(isksk));
+	dnssec_key_set_algorithm(key, ctx->policy->algorithm);
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
-	ret = dnssec_key_import_keystore(dnskey, ctx->keystore, keyid);
+	ret = dnssec_key_import_keystore(key, ctx->keystore, keyid);
 	if (ret != DNSSEC_EOK) {
-		dnssec_key_free(dnskey);
-		free(keyid);
-		return knot_error_from_libdnssec(ret);
+		goto fail;
 	}
 
 	// allocate kasp key
 	knot_kasp_key_t *kkey = calloc(1, sizeof(*kkey));
-	if (!kkey) {
-		dnssec_key_free(dnskey);
-		free(keyid);
-		return KNOT_ENOMEM;
+	if (kkey == NULL) {
+		ret = KNOT_ENOMEM;
+		goto fail;
 	}
 	kkey->id = keyid;
-	kkey->key = dnskey;
-	kkey->timing = gen_timing;
+	kkey->key = key;
+	kkey->timing = timing;
 
 	// append to zone
 	ret = kasp_zone_append(ctx->zone, kkey);
 	free(kkey);
 	if (ret != KNOT_EOK) {
-		dnssec_key_free(dnskey);
-		free(keyid);
-		return ret;
+		goto fail;
 	}
 	ret = kdnssec_ctx_commit(ctx);
-
-	return ret;
+	if (ret == KNOT_EOK) {
+		printf("%s\n", keyid);
+		return KNOT_EOK;
+	}
+fail:
+	dnssec_key_free(key);
+	free(keyid);
+	return knot_error_from_libdnssec(ret);
 }
 
 static void print_tsig(dnssec_tsig_algorithm_t mac, const char *name,
@@ -585,9 +601,10 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, knot_time_print_t format)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		printf("%s ksk=%s tag=%05d algorithm=%d ", key->id,
+		printf("%s ksk=%s tag=%05d algorithm=%d public-only=%s ", key->id,
 		       ((dnssec_key_get_flags(key->key) == dnskey_flags(true)) ? "yes" : "no "),
-		       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key));
+		       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
+		       (key->is_pub_only ? "yes" : "no "));
 		print_timer("created",       key->timing.created,        format, ' ');
 		print_timer("pre-active",    key->timing.pre_active,     format, ' ');
 		print_timer("publish",       key->timing.publish,        format, ' ');

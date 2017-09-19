@@ -43,6 +43,7 @@ typedef struct {
 typedef struct {
 	char *id;
 	bool is_ksk;
+	bool is_pub_only;
 	uint16_t keytag;
 	uint8_t algorithm;
 	dnssec_binary_t public_key;
@@ -56,6 +57,7 @@ typedef struct {
 	char *id;			/*!< Keystore unique key ID. */
 	dnssec_key_t *key;		/*!< Instance of the key. */
 	knot_kasp_key_timing_t timing;	/*!< Key timing information. */
+	bool is_pub_only;
 } knot_kasp_key_t;
 
 /*!
