@@ -603,7 +603,6 @@ AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY],["$result_msg_esc"],[Configure summary])
 
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
-                 doc/modules.rst
                  libtap/Makefile
                  tests/Makefile
                  tests-fuzz/Makefile
@@ -618,6 +617,9 @@ AC_CONFIG_FILES([Makefile
                  ])
 
 AC_CONFIG_FILES([src/utils/pykeymgr/pykeymgr], [chmod +x src/utils/pykeymgr/pykeymgr])
+AC_CONFIG_FILES([doc/modules.rst],
+                [cp doc/modules.rst ${srcdir}/doc/modules.rst 2>/dev/null;
+                 ln -s $(realpath ${srcdir})/src/knot/modules/ ${srcdir}/doc/modules 2>/dev/null])
 
 AC_OUTPUT
 
