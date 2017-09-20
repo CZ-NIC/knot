@@ -301,20 +301,19 @@ by LMDB.
 Automatic ZSK management
 ------------------------
 
-For automatic ZSK management, a signing policy has to be configured and
-assigned to the zone. The policy specifies how the zone is signed (i.e. signing
-algorithm, key size, key lifetime, signature lifetime, etc.). The policy can
-be configured in the :ref:`policy section <Policy section>`, or a ``default``
-policy with the default parameters can be used.
+For automatic ZSK management a signing :ref:`policy<Policy section>` has to
+be configured and assigned to the zone. The policy specifies how the zone
+is signed (i.e. signing algorithm, key size, key lifetime, signature lifetime,
+etc.). If no policy is specified or the ``default`` one is assigned, the
+default signing parameters are used.
 
 A minimal zone configuration may look as follows::
 
   zone:
     - domain: myzone.test
       dnssec-signing: on
-      dnssec-policy: default
 
-With custom signing policy, the policy section will be added::
+With a custom signing policy, the policy section will be added::
 
   policy:
     - id: rsa
@@ -557,7 +556,7 @@ zone, it is provided with an implicit query plan which can be extended
 by the module or even changed altogether.
 
 A module is active if its name, which includes the ``mod-`` prefix, is assigned
-to the zone/template :ref:`zone_module` option or to the *default* template
+to the zone/template :ref:`zone_module` option or to the ``default`` template
 :ref:`template_global-module` option if activating for all queries.
 If the module is configurable, a corresponding module section with
 an identifier must be created and then referenced in the form of

@@ -55,7 +55,9 @@ Print the program version.
 .TP
 \fB\-t\fP, \fB\-\-tsig\fP \fItsig_name\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
 Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
-bit length of the key by number (default: optimal length given by algorithm).
+bit length of the key by number (default: optimal length given by algorithm). The generated
+TSIG key is only displayed on \fIstdout\fP: the command does not create a file, nor include the
+key in a keystore.
 .UNINDENT
 .SS Config options
 .INDENT 0.0
