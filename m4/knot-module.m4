@@ -10,7 +10,7 @@ AC_DEFUN([KNOT_MODULE],
     [module=$2]
   )
 
-  doc_modules="${doc_modules}.. include:: ../src/knot/modules/$1/$1.rst\n"
+  doc_modules="${doc_modules}.. include:: modules/$1/$1.rst\n"
 
   STATIC_MODULE_$1=no
   SHARED_MODULE_$1=no
