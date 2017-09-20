@@ -56,9 +56,9 @@ static void test_size(void)
 		{ "IPv4, source = max", 8, { 1, 32 } },
 		{ "IPv4, source > max", 0, { 1, 33 } },
 		// scopes
-		{ "IPv6, scope < source", 12, { 2, 64, 48 } },
-		{ "IPv6, scope = source", 12, { 2, 64, 64 } },
-		{ "IPv6, scope > source", 0,  { 2, 64, 65 } },
+		{ "IPv6, scope < source", 12, { 2, 64,   48 } },
+		{ "IPv6, scope = source", 20, { 2, 128, 128 } },
+		{ "IPv6, scope > max",    0,  { 2, 128, 129 } },
 		{ NULL }
 	};
 
@@ -91,11 +91,11 @@ static void test_write(void)
 		{ "IPv4, 8 bits in LSB", KNOT_EOK,    6, "\x00\x01\x10\x00\xff\xff",         { 1, 16,  0, "\xff\xff\xff\xff" } },
 		{ "IPv4, 1 bit in LSB",  KNOT_EOK,    7, "\x00\x01\x11\x00\xff\xff\x80",     { 1, 17,  0, "\xff\xff\xff\xff" } },
 		{ "IPv4, source = max",  KNOT_EOK,    8, "\x00\x01\x20\x00\xaa\xbb\xcc\xdd", { 1, 32,  0, "\xaa\xbb\xcc\xdd" } },
-		{ "IPv4, source > max",  KNOT_EINVAL, 0, NULL,                               { 2, 129 } },
+		{ "IPv6, source > max",  KNOT_EINVAL, 0, NULL,                               { 2, 129 } },
 		// IPv6 scope
-		{ "IPv6, scope < source", KNOT_EOK,    6, "\x00\x02\x10\x0e\xff\xff", { 2, 16, 14, "\xff\xff\xff\xff" } },
-		{ "IPv6, scope = source", KNOT_EOK,    6, "\x00\x02\x08\x08\xff",     { 2, 8,  8,  "\xff\xff\xff\xff" } },
-		{ "IPv6, scope > source", KNOT_EINVAL, 0, NULL,                       { 1, 8,  9 } },
+		{ "IPv6, scope < source", KNOT_EOK,    6, "\x00\x02\x10\x0e\xff\xff", { 2, 16,  14, "\xff\xff\xff\xff" } },
+		{ "IPv6, scope = source", KNOT_EOK,    6, "\x00\x02\x08\x08\xff",     { 2, 8,   8,  "\xff\xff\xff\xff" } },
+		{ "IPv6, scope > max",    KNOT_EINVAL, 0, NULL,                       { 2, 128, 129 } },
 		// other
 		{ "larger buffer", KNOT_EOK, 7, "\x00\x01\x10\x0e\xff\xff\x00", { 1, 16, 14, "\xff\xff\xff\xff" } },
 		{ NULL }
@@ -134,7 +134,7 @@ static void test_parse(void)
 		// IPv6 scope
 		{ "IPv6 scope < source", KNOT_EOK,   5, "\x00\x02\x07\x05\xff", { 2, 7, 5, "\xfe" } },
 		{ "IPv6 scope = source", KNOT_EOK,   5, "\x00\x02\x06\x06\xff", { 2, 6, 6, "\xfc" } },
-		{ "IPv6 scope > source", KNOT_EMALF, 5, "\x00\x02\x06\x07\xff" },
+		{ "IPv6 scope > max",    KNOT_EMALF, 5, "\x00\x02\x06\x81\xff" },
 		// extra buffer size
 		{ "extra space", KNOT_EOK, 6, "\x00\x01\x00\x00\xff\x00", { 1 } },
 		{ "extra space", KNOT_EOK, 6, "\x00\x01\x01\x00\xff\x00", { 1, 1, 0, "\x80" } },
