@@ -52,11 +52,14 @@ def parse_args(cmd_args):
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", dest="debug", action="store_true", \
                         help="enable exception traceback on stdout")
+    parser.add_argument("-n", dest="repeat", action="store", \
+                        help="repeat the test n times")
     parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                         help="([exclude] | run) specific (test set | [test case])")
     args = parser.parse_args(cmd_args)
 
     params.debug = True if args.debug else False
+    params.repeat = int(args.repeat) if args.repeat else 1
     params.common_data_dir = os.path.join(current_dir, "data")
 
     # Process tests/cases arguments.
@@ -157,9 +160,13 @@ def main(args):
             cases = included[test]
 
         for case in cases:
+          loaded_module = None
+          for repeat in range(params.repeat):
             # Skip excluded cases.
             if test in excluded and case in excluded[test]:
                 continue
+
+            case_n = case if params.repeat == 1 else case + str(repeat)
 
             case_str_err = (" * case \'%s\':" % case).ljust(31)
             case_str_fail = ("%s/%s" % (test, case)).ljust(28)
@@ -173,7 +180,7 @@ def main(args):
                 continue
 
             try:
-                out_dir = os.path.join(outs_dir, test, case)
+                out_dir = os.path.join(outs_dir, test, case_n)
                 log_file = os.path.join(out_dir, "case.log")
 
                 os.makedirs(out_dir, exist_ok=True)
@@ -192,7 +199,10 @@ def main(args):
                 continue
 
             try:
-                importlib.import_module("%s.%s.%s.test" % (TESTS_DIR, test, case))
+                if loaded_module:
+                    importlib.reload(loaded_module)
+                else:
+                    loaded_module = importlib.import_module("%s.%s.%s.test" % (TESTS_DIR, test, case))
             except dnstest.utils.Skip as exc:
                 log.error(case_str_err + "SKIPPED (%s)" % format(exc))
                 skip_cnt += 1
