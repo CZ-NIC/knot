@@ -57,6 +57,7 @@
 /src/libknot.pc
 /src/libknot/version.h
 /src/knot/modules/static_modules.h
+/test-driver
 
 # dnstap
 /src/contrib/dnstap/Makefile

@@ -2,6 +2,8 @@
 /Makefile
 
 /knotd_stdio
-/packet
-/packet_libfuzzer
 /wrap/main.c
+
+/*.trs
+/*.log
+/packet_libfuzzer

@@ -523,17 +523,7 @@ AX_CODE_COVERAGE
 
 AX_SANITIZER
 AS_IF([test -n "$sanitize_CFLAGS"], [CFLAGS="$CFLAGS $sanitize_CFLAGS"])
-
-# LibFuzzer
-AC_ARG_WITH([libfuzzer],
-  AC_HELP_STRING([--with-libfuzzer=path], [Path to LibFuzzer static library]),
-  [libfuzzer_LIBS="$withval"], [libfuzzer_LIBS=no]
-)
-AS_IF([test "$libfuzzer_LIBS" != no -a "$sanitize_coverage_enabled" != yes], [
-  AC_MSG_ERROR([Sanitizer coverage required for LibFuzzer.])
-])
-AM_CONDITIONAL([HAVE_LIBFUZZER], [test "$libfuzzer_LIBS" != "no"])
-AC_SUBST([libfuzzer_LIBS])
+AM_CONDITIONAL([SANITIZE_FUZZER], [test "$with_sanitize_fuzzer" != "no"])
 
 AS_IF([test "$enable_documentation" = "yes"],[
 
@@ -587,10 +577,12 @@ result_msg_base="  $PACKAGE $VERSION
     Utilities with Dnstap:  ${opt_dnstap}
     Systemd integration:    ${enable_systemd}
     PKCS #11 support:       ${enable_pkcs11}
-    ED25519 support:        ${enable_ed25519}
+    Ed25519 support:        ${enable_ed25519}
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitize}
-    LibFuzzer:              ${libfuzzer_LIBS}"
+    Sanitizer coverage:     ${with_sanitize_coverage}
+    LibFuzzer:              ${with_sanitize_fuzzer}
+"
 
 result_msg_esc=$(echo -n "$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
 result_msg_add="

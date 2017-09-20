@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,22 +16,18 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <signal.h>
 
 #include "libknot/libknot.h"
 
-int LLVMFuzzerTestOneInput(const unsigned char *data, size_t size)
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-	uint8_t *copy = malloc(size);
-	assert(copy);
+	uint8_t copy[size];
 	memcpy(copy, data, size);
 
 	knot_pkt_t *pkt = knot_pkt_new(copy, size, NULL);
+	assert(pkt);
 	knot_pkt_parse(pkt, 0);
 	knot_pkt_free(&pkt);
-
-	free(copy);
 
 	return 0;
 }
