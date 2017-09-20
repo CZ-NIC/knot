@@ -245,6 +245,35 @@ Optionally, a TSIG key can be specified::
         address: 192.168.3.0/24
         action: transfer
 
+Note that a slave zone may serve as a master zone at the same time::
+
+    remote:
+      - id: master
+        address: 192.168.1.1@53
+      - id: slave1
+        address: 192.168.2.1@53
+
+    acl:
+      - id: notify_from_master
+        address: 192.168.1.1
+        action: notify
+
+      - id: slave1_acl
+        address: 192.168.2.1
+        action: transfer
+
+      - id: others_acl
+        address: 192.168.3.0/24
+        action: transfer
+
+    zone:
+      - domain: example.com
+        storage: /var/lib/knot/zones/
+        file: example.com.zone
+        master: master
+        notify: slave1
+        acl: [notify_from_master, slave1_acl, others_acl]
+
 Dynamic updates
 ===============
 
