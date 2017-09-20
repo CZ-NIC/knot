@@ -111,7 +111,7 @@ docker:knot-dns:fedora:
   script:
     - autoreconf -fi
     - ./configure --disable-fastparser || ( cat config.log && exit 1 )
-    - make -k all
+    - make -k all V=1
   artifacts:
     untracked: true
     expire_in: '1 hour'
@@ -119,7 +119,7 @@ docker:knot-dns:fedora:
 .test: &test_job
   stage: test
   script:
-    - make -k check
+    - make -k check V=1
 
 build:fedora:amd64:
   <<: *fedora_latest
@@ -247,7 +247,7 @@ build:archive:
     - mkdir _build
     - cd _build
     - ../configure
-    - make distcheck
+    - make distcheck V=1
   only:
     - tags
     - triggers
@@ -264,7 +264,7 @@ build:documentation:
   dependencies:
     - build:debian:amd64
   script:
-    - make -C doc html singlehtml pdf
+    - make -C doc html singlehtml pdf V=1
   artifacts:
     paths:
       - doc/_build/html/
