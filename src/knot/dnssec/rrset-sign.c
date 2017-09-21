@@ -34,6 +34,8 @@
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
+#define RRSIG_INCEPT_IN_PAST (90 * 60)
+
 /*- Creating of RRSIGs -------------------------------------------------------*/
 
 /*!
@@ -291,8 +293,8 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t sig_incept = dnssec_ctx->now;
-	uint32_t sig_expire = sig_incept + dnssec_ctx->policy->rrsig_lifetime;
+	uint32_t sig_incept = dnssec_ctx->now - RRSIG_INCEPT_IN_PAST;
+	uint32_t sig_expire = dnssec_ctx->now + dnssec_ctx->policy->rrsig_lifetime;
 
 	return rrsigs_create_rdata(rrsigs, sign_ctx, covered, key, sig_incept,
 	                           sig_expire, mm);
