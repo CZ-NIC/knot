@@ -7,7 +7,7 @@ from dnstest.test import Test
 from dnstest.utils import *
 from dnstest.module import ModOnlineSign
 
-t = Test()
+t = Test(stress=False)
 
 ModOnlineSign.check()
 
