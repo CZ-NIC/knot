@@ -411,7 +411,7 @@ typedef struct knot_edns_client_subnet knot_edns_client_subnet_t;
 struct sockaddr_storage;
 
 /*!
- * \brief Get size of the EDNS Client Subnet option wire size.
+ * \brief Get the wire size of the EDNS Client Subnet option.
  *
  * \param ecs  EDNS Client Subnet data.
  *
@@ -445,6 +445,8 @@ int knot_edns_client_subnet_parse(knot_edns_client_subnet_t *ecs,
 
 /*!
  * \brief Set address to the ECS structure.
+ *
+ * \note It also resets the lengths.
  *
  * \param ecs   ECS structure to set address into.
  * \param addr  Address to be set.
