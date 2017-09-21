@@ -629,9 +629,9 @@ static bool ecs_is_valid(const knot_edns_client_subnet_t *ecs)
 
 	const ecs_family_t *f = ecs_family_by_iana(ecs->family);
 
-	return f != NULL &&                          // known family
-	       (ecs->source_len <= f->size * 8) &&   // valid source length
-	       (ecs->scope_len <= ecs->source_len);  // valid scope length
+	return f != NULL &&                        // known family check
+	       (ecs->source_len <= f->size * 8) && // family address maximum check
+	       (ecs->scope_len  <= f->size * 8);   // family address maximum check
 }
 
 _public_
