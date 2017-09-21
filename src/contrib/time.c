@@ -381,6 +381,11 @@ int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_
 		if (time > LONG_MAX) {
 			return -1;
 		}
+
+		// Set timezone to UTC before using timezone dependent functions
+		putenv("TZ=UTC");
+		tzset();
+
 		struct tm lt;
 		time_t tt = (time_t)time;
 		ret = (localtime_r(&tt, &lt) == NULL ? -1 :
