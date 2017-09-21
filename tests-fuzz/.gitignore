@@ -7,3 +7,4 @@
 /*.trs
 /*.log
 /packet_libfuzzer
+/zscanner_libfuzzer
