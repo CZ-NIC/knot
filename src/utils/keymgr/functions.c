@@ -260,7 +260,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 		bind_privkey_t bpriv = { 0 };
 
 		char *privname = genname(import_file, ".private", ".key");
-		if (ret != KNOT_EOK) {
+		if (privname == NULL) {
 			goto fail;
 		}
 
