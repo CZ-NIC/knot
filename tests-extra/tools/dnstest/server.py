@@ -922,6 +922,7 @@ class Knot(Server):
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
         self.inquirer = dnstest.inquirer.Inquirer()
+        self.includes = set()
 
     @property
     def keydir(self):
@@ -979,8 +980,30 @@ class Knot(Server):
         if value != None:
             conf.item_str(name, value)
 
+    def data_add(self, file_name, storage=None):
+        if storage is ".":
+            src_dir = self.data_dir
+        elif storage:
+            src_dir = storage
+        else:
+            src_dir = params.common_data_dir
+
+        src_file = src_dir + file_name
+        dst_file = self.dir + '/' + file_name
+        shutil.copyfile(src_file, dst_file)
+
+        return dst_file
+
+    def include(self, file_name, storage=None):
+        dst_file = self.data_add(file_name, storage)
+        self.includes.add(dst_file)
+
     def get_config(self):
         s = dnstest.config.KnotConf()
+
+        for file in self.includes:
+            s.include(file)
+
         s.begin("server")
         self._on_str_hex(s, "identity", self.ident)
         self._on_str_hex(s, "version", self.version)
