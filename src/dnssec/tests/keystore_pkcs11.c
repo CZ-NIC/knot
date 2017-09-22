@@ -460,11 +460,10 @@ int main(int argc, char *argv[])
 
 	// key manipulation
 
-	static const int KEYS_COUNT = 3;
+	static const int KEYS_COUNT = 2;
 	static const key_parameters_t *KEYS[] = {
 		&SAMPLE_RSA_KEY,
 		&SAMPLE_ECDSA_KEY,
-		&SAMPLE_DSA_KEY,
 	};
 	assert(KEYS_COUNT == sizeof(KEYS) / sizeof(*KEYS));
 
