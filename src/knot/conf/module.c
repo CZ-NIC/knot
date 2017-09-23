@@ -99,7 +99,8 @@ static int mod_load(
 
 	const yp_item_t schema[] = {
 		{ name, YP_TGRP, YP_VGRP = { sub_items },
-		        YP_FALLOC | YP_FMULTI | CONF_IO_FRLD_MOD | CONF_IO_FRLD_ZONES },
+		        YP_FALLOC | YP_FMULTI | CONF_IO_FRLD_MOD | CONF_IO_FRLD_ZONES,
+		        { mod->api->config_check } },
 		{ NULL }
 	};
 

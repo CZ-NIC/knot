@@ -487,8 +487,8 @@ knotd_conf_t knotd_conf_check_item(knotd_conf_check_args_t *args,
 	knotd_conf_t out = { { 0 } };
 
 	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
-	                                    args->item->parent->name,
-	                                    item_name, args->id, args->id_len);
+	                                    args->item->name, item_name,
+	                                    args->id, args->id_len);
 
 	set_conf_out(&out, &val);
 
