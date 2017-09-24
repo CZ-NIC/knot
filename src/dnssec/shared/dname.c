@@ -15,13 +15,13 @@
 */
 
 #include <assert.h>
-#include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include "dname.h"
 #include "shared.h"
+#include "../contrib/tolower.h"
 
 /*!
  * Get length of a domain name in wire format.
@@ -86,7 +86,7 @@ static uint8_t normalize_label(uint8_t *label)
 	}
 
 	for (uint8_t *scan = label + 1, *end = scan + len; scan < end; scan++) {
-		*scan = tolower(*scan);
+		*scan = knot_tolower(*scan);
 	}
 
 	return len + 1;
@@ -117,7 +117,7 @@ static int label_casecmp(const uint8_t *a, const uint8_t *b, uint8_t len)
 	assert(b);
 
 	for (const uint8_t *a_end = a + len; a < a_end; a++, b++) {
-		if (tolower(*a) != tolower(*b)) {
+		if (knot_tolower(*a) != knot_tolower(*b)) {
 			return false;
 		}
 	}

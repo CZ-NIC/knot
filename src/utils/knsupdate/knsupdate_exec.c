@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,14 +15,12 @@
 */
 
 #include <assert.h>
-#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "contrib/getline.h"
 #include "dnssec/random.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/common/exec.h"
@@ -32,6 +30,8 @@
 #include "utils/common/sign.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
+#include "contrib/ctype.h"
+#include "contrib/getline.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
@@ -230,7 +230,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 	/* Now there could be [ttl] [class] [type [data...]]. */
 	char *np = NULL;
 	long ttl = strtol(lp, &np, 10);
-	if (ttl >= 0 && np && (*np == '\0' || isspace((unsigned char)(*np)))) {
+	if (ttl >= 0 && np && (*np == '\0' || is_space(*np))) {
 		DBG("%s: parsed ttl=%lu\n", __func__, ttl);
 		if (flags & PARSE_NOTTL) {
 			WARN("ignoring TTL value '%ld'\n", ttl);

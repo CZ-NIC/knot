@@ -14,23 +14,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "utils/keymgr/functions.h"
-
-#include <ctype.h>
 #include <limits.h>
 #include <string.h>
 #include <strings.h>
 #include <time.h>
 #include <fcntl.h>
 
+#include "utils/keymgr/functions.h"
+#include "utils/keymgr/bind_privkey.h"
+#include "contrib/base64.h"
+#include "contrib/ctype.h"
+#include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
 #include "dnssec/lib/dnssec/error.h"
 #include "dnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/zone-keys.h"
-#include "utils/keymgr/bind_privkey.h"
 #include "zscanner/scanner.h"
-#include "contrib/base64.h"
 
 static time_t arg_timestamp(const char *arg)
 {
@@ -106,7 +106,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 	// parse args
 	for (int i = 0; i < argc; i++) {
 		if (!just_timing && strncasecmp(argv[i], "algorithm=", 10) == 0) {
-			if (isdigit((unsigned char)argv[i][10]) && atol(argv[i] + 10) < 256) {
+			if (is_digit(argv[i][10]) && atol(argv[i] + 10) < 256) {
 				*algorithm = atol(argv[i] + 10);
 				continue;
 			}
@@ -123,7 +123,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				return false;
 			}
 		} else if (!just_timing && strncasecmp(argv[i], "ksk=", 4) == 0) {
-			switch (tolower((unsigned char)argv[i][4])) {
+			switch (knot_tolower(argv[i][4])) {
 			case '1':
 			case 'y':
 			case 't':
@@ -533,7 +533,7 @@ static long is_uint32(const char *string)
 		return -1;
 	}
 	for (const char *p = string; *p != '\0'; p++) {
-		if (!isdigit((unsigned char)*p)) {
+		if (!is_digit(*p)) {
 			return -1;
 		}
 	}
@@ -544,7 +544,7 @@ static long is_uint32(const char *string)
 static bool is_hex(const char *string)
 {
 	for (const char *p = string; *p != '\0'; p++) {
-		if (!isxdigit((unsigned char)*p)) {
+		if (!is_xdigit(*p)) {
 			return false;
 		}
 	}

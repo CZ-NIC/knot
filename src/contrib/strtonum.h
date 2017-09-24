@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,13 +20,13 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <stdint.h>
-#include <ctype.h>
 
 #include "libknot/errcode.h"
+#include "contrib/ctype.h"
 
 inline static int intmax_from_str(const char *src, intmax_t *dest)
 {
-	if (!isdigit((unsigned char)*src) && *src != '-' && *src != '+') {
+	if (!is_digit(*src) && *src != '-' && *src != '+') {
 		return KNOT_EINVAL;
 	}
 
@@ -48,7 +48,7 @@ inline static int intmax_from_str(const char *src, intmax_t *dest)
 
 inline static int uintmax_from_str(const char *src, uintmax_t *dest)
 {
-	if (!isdigit((unsigned char)*src) && *src != '+') {
+	if (!is_digit(*src) && *src != '+') {
 		return KNOT_EINVAL;
 	}
 

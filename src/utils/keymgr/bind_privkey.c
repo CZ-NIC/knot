@@ -14,9 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ctype.h>
 #include <string.h>
 
+#include "contrib/ctype.h"
 #include "contrib/strtonum.h"
 #include "dnssec/binary.h"
 #include "dnssec/error.h"
@@ -88,7 +88,7 @@ const param_t PRIVKEY_CONVERSION_TABLE[] = {
 static int parse_algorithm(char *string, void *_algorithm)
 {
 	char *end = string;
-	while (*end != '\0' && !isspace((unsigned char)*end)) {
+	while (*end != '\0' && !is_space(*end)) {
 		end += 1;
 	}
 	*end = '\0';
@@ -153,12 +153,12 @@ static int parse_time(char *string, void *_time)
 static void strip(char **value, size_t *length)
 {
 	// strip from left
-	while (*length > 0 && isspace((unsigned char)**value)) {
+	while (*length > 0 && is_space(**value)) {
 		*value += 1;
 		*length -= 1;
 	}
 	// strip from right
-	while (*length > 0 && isspace((unsigned char)(*value)[*length - 1])) {
+	while (*length > 0 && is_space((*value)[*length - 1])) {
 		*length -= 1;
 	}
 }

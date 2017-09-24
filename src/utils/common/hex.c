@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,11 +15,12 @@
 */
 
 #include <assert.h>
-#include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "libknot/libknot.h"
+#include "contrib/ctype.h"
+#include "contrib/tolower.h"
 
 /*!
  * \brief Convert HEX char to byte.
@@ -51,7 +52,7 @@ int hex_decode(const char *input, uint8_t **output, size_t *output_size)
 	}
 
 	for (size_t i = 0; i < input_size; i++) {
-		if (!isxdigit((unsigned char)input[i])) {
+		if (!is_xdigit(input[i])) {
 			return KNOT_EMALF;
 		}
 	}
@@ -68,8 +69,8 @@ int hex_decode(const char *input, uint8_t **output, size_t *output_size)
 	// conversion
 
 	for (size_t i = 0; i < result_size; i++) {
-		int high_nib = tolower((unsigned char)input[2 * i]);
-		int low_nib  = tolower((unsigned char)input[2 * i + 1]);
+		int high_nib = knot_tolower(input[2 * i]);
+		int low_nib  = knot_tolower(input[2 * i + 1]);
 
 		result[i] = hex_to_num(high_nib) << 4 | hex_to_num(low_nib);
 	}
