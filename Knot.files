@@ -11,6 +11,7 @@ src/contrib/base32hex.c
 src/contrib/base32hex.h
 src/contrib/base64.c
 src/contrib/base64.h
+src/contrib/ctype.h
 src/contrib/dnstap/convert.c
 src/contrib/dnstap/convert.h
 src/contrib/dnstap/dnstap.c
