@@ -42,6 +42,7 @@ libcontrib_la_SOURCES = 			\
 	contrib/base32hex.h			\
 	contrib/base64.c			\
 	contrib/base64.h			\
+	contrib/ctype.h				\
 	contrib/dynarray.h			\
 	contrib/endian.h			\
 	contrib/files.c				\
