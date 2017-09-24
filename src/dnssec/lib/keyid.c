@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,12 +15,14 @@
 */
 
 #include <assert.h>
-#include <ctype.h>
 #include <string.h>
 
 #include "error.h"
 #include "keyid.h"
 #include "shared.h"
+
+#include "../contrib/ctype.h"
+#include "../contrib/tolower.h"
 
 /* -- public API ----------------------------------------------------------- */
 
@@ -36,7 +38,7 @@ bool dnssec_keyid_is_valid(const char *id)
 	}
 
 	for (int i = 0; i < DNSSEC_KEYID_SIZE; i++) {
-		if (!isxdigit((unsigned char)id[i])) {
+		if (!is_xdigit(id[i])) {
 			return false;
 		}
 	}
@@ -52,8 +54,8 @@ void dnssec_keyid_normalize(char *id)
 	}
 
 	for (size_t i = 0; i < DNSSEC_KEYID_SIZE; i++) {
-		assert(id[i] != '\0' && isxdigit((unsigned char)id[i]));
-		id[i] = tolower((unsigned char)id[i]);
+		assert(id[i] != '\0' && is_xdigit(id[i]));
+		id[i] = knot_tolower(id[i]);
 	}
 }
 

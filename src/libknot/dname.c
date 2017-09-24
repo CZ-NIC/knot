@@ -15,7 +15,6 @@
  */
 
 #include <assert.h>
-#include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +25,7 @@
 #include "libknot/dname.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/wire.h"
+#include "contrib/ctype.h"
 #include "contrib/mempattern.h"
 #include "contrib/tolower.h"
 
@@ -250,10 +250,10 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 			continue;
 		}
 
-		if (isalnum(c) != 0 || c == '-' || c == '_' || c == '*' ||
+		if (is_alnum(c) || c == '-' || c == '_' || c == '*' ||
 		    c == '/') {
 			res[str_len++] = c;
-		} else if (ispunct(c) != 0 && c != '#') {
+		} else if (is_punct(c) && c != '#') {
 			/* Exclusion of '#' character is to avoid possible
 			 * collision with rdata hex notation '\#'. So it is
 			 * encoded in \ddd notation.
@@ -398,11 +398,11 @@ knot_dname_t *knot_dname_from_str(uint8_t *dst, const char *name, size_t maxlen)
 			}
 
 			/* Check for \DDD notation. */
-			if (isdigit(*ch) != 0) {
+			if (is_digit(*ch)) {
 				/* Check for next two digits. */
 				if (ch + 2 >= end ||
-				    isdigit(*(ch + 1)) == 0 ||
-				    isdigit(*(ch + 2)) == 0) {
+				    !is_digit(*(ch + 1)) ||
+				    !is_digit(*(ch + 2))) {
 					goto dname_from_str_failed;
 				}
 

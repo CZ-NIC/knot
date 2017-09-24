@@ -15,7 +15,6 @@
  */
 
 #include <assert.h>
-#include <ctype.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -23,6 +22,7 @@
 #include <string.h>
 
 #include "contrib/time.h"
+#include "contrib/ctype.h"
 #ifndef HAVE_CLOCK_GETTIME
 	#include <sys/time.h>
 #endif
@@ -168,7 +168,7 @@ static void parse_offset(time_ctx_t *ctx)
 {
 	ctx->offset = 0;
 	ctx->error = -1;
-	while (isdigit((unsigned char)*ctx->parsed)) {
+	while (is_digit(*ctx->parsed)) {
 		ctx->offset *= 10;
 		ctx->offset += *ctx->parsed++ - '0';
 		ctx->error = 0;
@@ -180,7 +180,7 @@ static void parse_calendar(time_ctx_t *ctx, int index)
 	int *cal_arr = (int *)&ctx->calendar;
 	cal_arr[index] = 0;
 	for (size_t i = 0; i < calendar_digits(index); i++) {
-		if (!isdigit((unsigned char)*ctx->parsed)) {
+		if (!is_digit(*ctx->parsed)) {
 			ctx->error = -1;
 			return;
 		}

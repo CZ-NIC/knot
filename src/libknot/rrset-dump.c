@@ -15,7 +15,6 @@
  */
 
 #include <arpa/inet.h>
-#include <ctype.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdbool.h>
@@ -36,6 +35,7 @@
 #include "libknot/lookup.h"
 #include "contrib/base32hex.h"
 #include "contrib/base64.h"
+#include "contrib/ctype.h"
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
@@ -609,7 +609,7 @@ static void wire_text_to_str(rrset_dump_params_t *p, bool quote, bool with_heade
 	for (size_t i = 0; i < in_len; i++) {
 		uint8_t ch = p->in[i];
 
-		if (isprint(ch) != 0) {
+		if (is_print(ch)) {
 			// For special character print leading slash.
 			if (ch == '\\' || ch == '"') {
 				dump_string(p, "\\");

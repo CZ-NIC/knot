@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +21,7 @@
 #include "utils/common/token.h"
 #include "utils/common/msg.h"
 #include "libknot/libknot.h"
+#include "contrib/ctype.h"
 
 int tok_scan(const char* lp, const char **tbl, int *lpm)
 {
@@ -35,7 +35,7 @@ int tok_scan(const char* lp, const char **tbl, int *lpm)
 	unsigned char len = 0;   /* Read length. */
 	for(;;) {
 		const char *tok = tbl[i];
-		if (*lp == '\0' || isspace((unsigned char)(*lp))) {
+		if (*lp == '\0' || is_space(*lp)) {
 			if (tok && TOK_L(tok) == len) { /* Consumed whole w? */
 				return i; /* Identifier */
 			} else { /* Word is shorter than cmd? */
@@ -107,7 +107,7 @@ const char *tok_skipspace(const char *lp)
 		return NULL;
 	}
 
-	while (isspace((unsigned char)(*lp))) {
+	while (is_space(*lp)) {
 		lp += 1;
 	}
 
