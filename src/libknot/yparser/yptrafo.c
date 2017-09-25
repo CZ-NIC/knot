@@ -15,7 +15,6 @@
 */
 
 #include <arpa/inet.h>
-#include <ctype.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -26,6 +25,7 @@
 #include "libknot/dname.h"
 #include "libknot/lookup.h"
 #include "contrib/base64.h"
+#include "contrib/ctype.h"
 #include "contrib/sockaddr.h"
 #include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
@@ -343,7 +343,7 @@ static uint8_t sock_type_guess(
 	for (size_t i = 0; i < len; i++) {
 		if (str[i] == '.') dots++;
 		else if (str[i] == ':') semicolons++;
-		else if (isdigit(str[i]) != 0) digits++;
+		else if (is_digit(str[i])) digits++;
 	}
 
 	// Guess socket type.
@@ -759,8 +759,8 @@ int yp_hex_to_bin(
 			uint8_t buf[2] = { 0 };
 			wire_ctx_read(in, buf, sizeof(buf));
 
-			if (isxdigit(buf[0]) == 0 ||
-			    isxdigit(buf[1]) == 0) {
+			if (!is_xdigit(buf[0]) ||
+			    !is_xdigit(buf[1])) {
 				return KNOT_EINVAL;
 			}
 
@@ -791,7 +791,7 @@ int yp_hex_to_txt(
 
 	// Check for printable string.
 	for (size_t i = 0; i < len; i++) {
-		if (isprint(in->position[i]) == 0) {
+		if (!is_print(in->position[i])) {
 			printable = false;
 			break;
 		}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,9 +15,9 @@
  */
 
 #include <stdio.h>
-#include <ctype.h>
 
 #include "contrib/print.h"
+#include "contrib/ctype.h"
 
 typedef int (*printf_t)(const char *fmt, ...);
 
@@ -29,7 +29,7 @@ static void array_printf(const uint8_t *data, const unsigned length,
 
 		switch (type) {
 		case 't':
-			if (isprint(ch) != 0) {
+			if (is_print(ch)) {
 				print_handler("%c  ", ch);
 			} else {
 				print_handler("   ");

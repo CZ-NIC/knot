@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,12 +15,13 @@
 */
 
 #include <assert.h>
-#include <ctype.h>
 #include <string.h>
 #include <stdbool.h>
 
 #include "binary.h"
 #include "error.h"
+
+#include "../contrib/ctype.h"
 
 /* -- binary to hex -------------------------------------------------------- */
 
@@ -95,7 +96,7 @@ static bool hex_valid_input(const dnssec_binary_t *hex)
 	}
 
 	for (int i = 0; i < hex->size; i++) {
-		if (!isxdigit(hex->data[i])) {
+		if (!is_xdigit(hex->data[i])) {
 			return false;
 		}
 	}
