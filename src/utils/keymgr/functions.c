@@ -34,10 +34,10 @@
 
 static time_t arg_timestamp(const char *arg)
 {
-	if (isdigit((unsigned char)arg[0]) && strlen(arg) < 12) {
+	if (is_digit(arg[0]) && strlen(arg) < 12) {
 		return atol(arg); // unixtime
 	}
-	if (isdigit((unsigned char)arg[0]) && strlen(arg) == 14) {
+	if (is_digit(arg[0]) && strlen(arg) == 14) {
 		struct tm tm = { 0 };
 
 		// Set the timezone to UTC for strptime.
