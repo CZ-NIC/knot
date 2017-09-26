@@ -1131,6 +1131,7 @@ static void check_dnskey(zone_contents_t *zone, err_handler_t *handler)
 	if (dnskeys == NULL) {
 		handler->cb(handler, zone, zone->apex, ZC_ERR_INVALID_KEY,
 		            "(no key found)");
+		return;
 	}
 
 	for (int i = 0; i < dnskeys->rr_count; i++) {
