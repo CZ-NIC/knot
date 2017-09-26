@@ -1,70 +1,98 @@
 ; Zone without any semantic error
+example.com.        	3600		SOA	dns1.example.com. hostmaster.example.com. 2010111221 21600 3600 604800 86400
+		       	3600		NS	dns1.example.com.
+			432000000	DNSKEY	256 3 7 (
+						AwEAAdwI5CT9W2+RYXwUeD9m4LT1dLInHKLynsjrIzNTgbLmr5bqC/eWE8c0OsZpZmUbY0u04CzO
+						2SXnk7zsDzH8GvcUfJHFnC+ZGuK45DChwv+k6kUmwm5nJUVD2qye3mucPvHX1Ss2NOrd+xqKu/t2
+						fVAOWKAh+r4XNN5eKg5rmkl38/A90JtiLg6Imp/O83ZG//ZUykFal0sujTbVP8MaLTMsXwHE46xf
+						i1tZDqObyY8TQTf0CtDm7d3LJvlDT1IST5NRU32fOtRUqdnTiMLbQQufwe1cCreZ+P4ej8DeI4gv
+						N/8lRCSnBBOnmwIPq4bjEdxnK9WRKmfLIpoK+fdO3dk= )
+			432000000	DNSKEY	257 3 7 (
+						AwEAAbWZLegQDKxDkaW1NvVwZ/nn0qsLEPW3nO+sJpExg52NvM5eugR02H0mwrULG5jAAHaAZ5C9
+						eXE3i3asxiyUIygx+/8n2VQIVml/iKfRgqoS6tEAZzL11DL0q/dWf8dF5A6yJQWqifGBXGRms3AU
+						Ec7pri7LfX3CBSqieiuHBAkqJVrJm6I73kduk4/tUEVEzJEmoNEHDDAAhpHhDo6g6ytzmdfTTNyz
+						VSWyAzn65+Eg2F3MaQOptoPsrIUdAud0UPCk49tdLUgaCAT0Kd1NICD9ANd+ba1mWmsWXkudAPsw
+						4WNLFZQUxlEsVPg4IsxZyrl3cyGDeLnXLLg0lWTGgJE= )
+			0		CDNSKEY	257 3 7 (
+						AwEAAbWZLegQDKxDkaW1NvVwZ/nn0qsLEPW3nO+sJpExg52NvM5eugR02H0mwrULG5jAAHaAZ5C9
+						eXE3i3asxiyUIygx+/8n2VQIVml/iKfRgqoS6tEAZzL11DL0q/dWf8dF5A6yJQWqifGBXGRms3AU
+						Ec7pri7LfX3CBSqieiuHBAkqJVrJm6I73kduk4/tUEVEzJEmoNEHDDAAhpHhDo6g6ytzmdfTTNyz
+						VSWyAzn65+Eg2F3MaQOptoPsrIUdAud0UPCk49tdLUgaCAT0Kd1NICD9ANd+ba1mWmsWXkudAPsw
+						4WNLFZQUxlEsVPg4IsxZyrl3cyGDeLnXLLg0lWTGgJE= )
+	        	0		CDS	53991 7 2 E97D72CCA0AC77B5515FF2DBE9A662B55E2647A47497A1166696BF94A9E02DE6
+	        	0		NSEC3PARAM	1 0 10 7A148F1404032E16
+deleg.example.com.  	3600		NS	deleg.example.com.
+		  	3600		A	192.0.2.1
+dns1.example.com.   	3600		A	192.0.2.1
+;; DNSSEC signatures
+example.com.        	3600		RRSIG	NS 7 2 3600 (
+						20670913080225 20170912080225 13839 example.com. VxLYvx9K8iCokjVJRDJbj8dyc6kinzf6
+						/iM/kjDSKQoSBlCRR3+pczeq9NE/qUWQkLzqGd8sTfaatXD8/8UW1L9v5wToxoBPnhfO92V1ExTCq1uH
+						cUeuAs5FEPRzHZDXyHD2P5/lOzVI3YjTaH5Ub9uIvpELNGpA3P+AWfyr2agglRAAcf8eFbjzUd6U1kjX
+						L7SuLz/XChsWlAvwPNj932nyZrqlce1m0AOVFkF/YriZ/uGrRnSioAXOEW7HaV9KNmCqx4qks1qfSjEH
+						B/AwIsrk+ZWfVsR/0EaAWnXcjd/RWe+4jN9aKWX9tomSC6G7TL71fiKwPZ4C0/mkwp1LaA== )
+	        	3600		RRSIG	SOA 7 2 3600 (
+						20670913080225 20170912080225 13839 example.com. IcI4kyxzAAKDj9skK4/OcTdyOfxS
+						+O3Y+kSuPOQnO1fFcJV0ZWOxGc2ElO4ecKyiYdwlEU0WRuSy5JEnfEqzFGjdUmmhmI95w61KdbGk
+						VCsSyGV0AsSSVNrIo0KNXAhfcoWkULXk0CsRc/5Fglt7bzaArdd5nyeNLHP26zcFdGhZAZDOS13o
+						7g/mHrV2dqQZl1VTxvURoW20uAmVX48koPEeOz70Yh+YKG0z1209YhN4ASB57l26bxjdzS1FIaul
+						Wu+OZr7JmfDuQMkVdWJG31jmXeLDiEUhFFD6Po2cijr1xvvxE6cmedjabCTCT0+U5mnHVAlxGhdw
+						0jBF3ec5ZQ== )
+        		432000000	RRSIG	DNSKEY 7 2 432000000 (
+						20670913080225 20170912080225 53991 example.com. DCBKQjY99s29NtqD3/+zoMpL5vh2
+						mvgufudFWkBl2tmiH90SPe7BTUaMCu+kwiOSJh3U6ToywvKG7i8Tn820BleAC78c8TDtSxrJdzTlxhOm
+						o29dUObmvwKzMBsyAaj/2mQfY9GZNYxem7OyaZjbdrV4Rb4ghyy7Rttg+xle6tVH76+/MCcsdBur1NrR
+						r8HXtV8Sd+h0GCYeQvhMi5btIJK0OAHStTyU5iCmLIh28rxxHfmU5aRFkzanT83Xj7VdoF3fmjIE9Uww
+						fWX6PUzIoxEfm5a+v0EGbzqGOEgCnQ7cJo3DQkx0ouZT1bWTJQ2Hv9i323aAB/boGLR7b2wHrg== )
+	        	0		RRSIG	NSEC3PARAM 7 2 0 (
+						20670913080225 20170912080225 13839 example.com. bOrMfjlEwZhfbcGmy4XYve/qZ8BV
+						n0t7JIBlKP/t9oFeukvxSHZnj3iT3sXq94Ck2DTDhRSw98rKG5V0tlAR/XGOz9Mx/nrY/NW5zX+1
+						zty1+6naf09QQsWUwseuUPu5uz1aEB6sIGj2V9bQWuHZdkIQkiVzN9SgD3olKmjOLsJxRS/ycJ59
+						I5so/g4wfC/jD7+NE8clkLJ5ME226brQOv/3xEFJC/IGR92uSvkzN1r7F0UZEozgu1UGykj16HU7
+						x/8YqT57xWiTcuZoSP1KoU494nO47dDhvO0pdMnIvozFnSI3heEJSVcZFxtePJ5gIUEp+wxGrayb
+						N0dQmCmrzg== )
+	        	0		RRSIG	CDS 7 2 0 (
+						20670913080225 20170912080225 13839 example.com. jckEGuG5vvRBpT0GIj/XXctC
+						TfcWnGRZv2Lj4kwZk14yKqrfFSB9G8glilIDdWeM0AvBYPFuEMTj34+HJxPbnTxaYYiX4wBpJfKB
+						mNbcVsJZeK5DtnuvOvCrTwdiEFqR+tG04uTVAh9TEBHude3zatgbbzYzFMP/N+XlERw7qm2im9iB
+						Jq++HjD+etKI7qYlJmcFzLvVNPR/sIHdDvl9tbwrjNpv/s2Df/KO1lrtMERiZMXHLWV70CstuDGj
+						fIM/dAV06MShs38qwaCC/CeLtKkj6pvOJqIJciRnc+7Ln86iSdSDyczD+Yp6aTsRpoIUgswU7FkS
+						pSKmkZdhW6+jmQ== )
+	        	0		RRSIG	CDNSKEY 7 2 0 (
+						20670913080225 20170912080225 13839 example.com. ALnyl9KnQ/zTbq/OSzJ5k7I2JqjD
+						JGbxu7Kuzbh2fAG7RHnN7INvaK+YhZX7w9sUHQSIj62u37wr5HS+1zgAfSKTd5k/OQC6y2FB4c2A
+						D4MCb5FaE0zJ1KmjFc3uZnEKfTl8b30A0dunRLgVHZHSmd4R/nJ3yAvm2+LumW0htP5lhcc7Xoi8
+						FJQ6KYg/ske0GCsMm5Ye+xO7m2QPbkgyOgq901rTBRMLbodbRXb8ZAFJGtl/iYmKG6pqxzQadeFQ
+						PxsL1bsdTvYsxIicQ6CpIOmvx/hl2aDi2f+vvfA4dHd2W2EDB4mMvRK09HadmBXimEkVJ+Tl++rg
+						WpiekXzI1g== )
+dns1.example.com.   	3600		RRSIG	A 7 3 3600 (
+						20670913080225 20170912080225 13839 example.com. tBFbAbT4K6Uv9LlTfGb+2jkg3vJm
+						D+PAqNW5PGhP26b+AMxOaVKPEVLD9oLhyrJv0Pt2IN/VVIvQ04fdqPwvS+z4XqZ4R5X5jb+vh5WY
+						1UsprBwkx5gViGlv9tcjB1ryg+U5A6e7VYccYMSVc0qB8trbk+z9TBbFFs5cXNUDLrCLQQm2TVTq
+						zKvxASK6/DdI+ZQd9RHDCd7im4pVYBA+R/QgQzzNhyhzqXoKzy3AFvxPWw6MX+ugX9Ea5HAF4uUx
+						xQmXEKmPMQey95WKk9ruqLRuaxGlDUWSq355ppGVppiN2oa53w00oUfacwo9MNIgiDi9Av5EG5EC
+						gbvq8Ze8jw== )
+;; DNSSEC NSEC3 chain
+036n766anb525cqa642tmm3r4occikb7.example.com. 86400	NSEC3	1 0 10 7A148F1404032E16 BGV0LKAMJSOEC22ARUGDNLTTCB70AF7U A RRSIG
+bgv0lkamjsoec22arugdnlttcb70af7u.example.com. 86400	NSEC3	1 0 10 7A148F1404032E16 S57MPBJ9OEOU9OH6HSV2ANMCV8BHLRMR NS SOA RRSIG DNSKEY NSEC3PARAM CDS CDNSKEY
+s57mpbj9oeou9oh6hsv2anmcv8bhlrmr.example.com. 86400	NSEC3	1 0 10 7A148F1404032E16 036N766ANB525CQA642TMM3R4OCCIKB7 NS
+;; DNSSEC NSEC3 signatures
+036n766anb525cqa642tmm3r4occikb7.example.com. 86400	RRSIG	NSEC3 7 3 86400 (
+						20670913080225 20170912080225 13839 example.com. Ej5/ql3a/6yjyk2PZfX9MhlnzclyrCnj
+						DpCF9dg2pqf/G4Z3rKef/PNbUPYgvvS/tmwyP+qb10BYvpH1Lp2bxSGrdPAfs5ge5KyCxa6rmwwP0eEc
+						C2AviCdbtJceB4fmxTvCt+2pgTCrWTnoWsaJYHlj5BRjaFXbqkCi954rIAy/YJoU9vqjysCZbfARastK
+						yt9rpeDePnKLsZRDP2ENi45m5dHLQQ6t3j45MCZXLi2Qp6Kh1FCkU6mYQNRhGpi2bi3dUCJYLp3CpchG
+						kQxFV3Jik0g0vMcpEW31rzx7WgWMpjAbW5DahIDd9f2Do/OmyjAjYZYFBPJtz2QV1PBNeg== )
+bgv0lkamjsoec22arugdnlttcb70af7u.example.com. 86400	RRSIG	NSEC3 7 3 86400 (
+						20670913080225 20170912080225 13839 example.com. huMYkoTMTSZdLdr06vWbvGaSih5L+pxc
+						fSMlmfww1NCJtJwm4WAyzegR2VAaGpok1gDxfhyPEpdO0WHZe2UbRpVMq/xuOWXCBXrHPzg9825687su
+						q4T+WY2nenwxi5bLs8S/v+w3VjOh6NlldNg9gg9xsmhcOghoBS2xpS9Mmj23y8U/J19uuTrQL4gb/Olz
+						gfGQ9JeLGArJfr7Sj+KcpLLqGolja0xdeWClCoDtcgZ3DilxpKuPkbQ/Dr1ejWOPXJIFaBaOV58CdpEK
+						omvQ5VMmdWaKZx+Uku/JELkeSiSJVxaC69JKAjDddbNUKHUnktJBFKHpsbRPAO1zHbxF8A== )
+s57mpbj9oeou9oh6hsv2anmcv8bhlrmr.example.com. 86400	RRSIG	NSEC3 7 3 86400 (
+						20670913080225 20170912080225 13839 example.com. NOIPazxgOpFTiExjI/CArS9iu1C0ZnXg
+						M9vEt1n/OX5g0HT0YLrvifSqLw/MN8W4t4xrSM+n/cGLUFcwP9+Zk3NeLrz9gCBmrneYZn+DCV3LF+lU
+						nKNc2lu9khFAHLwZCR+Wtj3bUpQREywqT7mmthlYGlN0wLfSTMSRc4HXlEzELx00tENA4kJy8HnPOdJU
+						rDjJPMa4mSxDBbgoGRkd6EhWtaUep1kQOR3sKqLYOBq8U1yARkGQuuLI/xcItjqRnVw5KYoUzyPtKoVg
+						1RyCcQxd9wZp06joiMKKQhQCo2/S2Ez1pkBhc7GNxJ7wT1rLQbl2yf7Lupf2YFpfQkWzBQ== )
 
-example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
-					2010111220 ; serial
-					21600      ; refresh (6 hours)
-					3600       ; retry (1 hour)
-					604800     ; expire (1 week)
-					86400      ; minimum (1 day)
-					)
-			3600	RRSIG	SOA 7 2 3600 (
-					20840201000000 20160229083110 29600 example.com.
-					W9EprjaR4loSnNW96h4rLsquPDw3LHYvD05k
-					djkQofHSkMNZAJ7Q+eA3Fs2ik5fnJFM7wi5C
-					MtFsV2TfqMJFmg== )
-			3600	NS	dns1.example.com.
-			3600	RRSIG	NS 7 2 3600 (
-					20840201000000 20160229083110 29600 example.com.
-					I9Je1S7XhZIW9C0fWE8NwFLC2rhHklddNYBO
-					dxVKL/lxENU4jPPBwZBGrcYn2WVHgkIzjG0n
-					EOHONAgRFPi3Xw== )
-			3600	DNSKEY	256 3 7 (
-					AwEAAcvvW/oJAjcRdntRC8J52baXoNFVWOFz
-					oVFe3Vgl8aBBiGh3gnbuNt7xKmy9z2qc2/35
-					MFwieWYfDdgUnPxyKMM=
-					) ; ZSK; alg = NSEC3RSASHA1; key id = 29600
-			3600	DNSKEY	257 3 7 (
-					AwEAAeXCF7sHLcFiaCwCFH4xh2CJcCp55i04
-					exG41EtzILS2waabEM5byhRkoylbv91q6HY+
-					JH9YXitS21LMD0Hqp1s=
-					) ; KSK; alg = NSEC3RSASHA1; key id = 31323
-			3600	RRSIG	DNSKEY 7 2 3600 (
-					20840201000000 20160229083110 29600 example.com.
-					vO2UQiTN/CNUZOmSEg8kJlR/UqiAZHc4qMwj
-					9u31sbPmOMuni+ZGuVCFFoEMtZerIkkQowkB
-					sXJFkvCP5oF2rA== )
-			3600	RRSIG	DNSKEY 7 2 3600 (
-					20840201000000 20160229083110 31323 example.com.
-					Z+aaLu4rmzekfhlj6A0ClREloRi8MloRHf/3
-					Dlw/RYY1hrOCfcZKEY6AXeVdUwESEsSkSOco
-					CbhyGHH10dKAAg== )
-			0	NSEC3PARAM 1 0 10 -
-			0	RRSIG	NSEC3PARAM 7 2 0 (
-					20840201000000 20160229083110 29600 example.com.
-					d69kc52VdALI8fbdbflsVsltc1m7bI6QsJ5U
-					IDE9fy5VqcufZecZMKuozPDuF2vBA8ADFIRU
-					OfYgKs6YNIOLWg== )
-deleg.example.com.	3600	IN NS	deleg.example.com.
-			3600	A	192.0.2.1
-20G1GOL477RO51RK9A9NFD54TFQAL7IQ.example.com. 86400 IN NSEC3 1 1 10 - (
-					UTQVUHU2BLK3DHMRR5T1HD9VTEOHQT0A
-					A RRSIG )
-			86400	RRSIG	NSEC3 7 3 86400 (
-					20840201000000 20160229083110 29600 example.com.
-					D24JCtCcNzwsY1FXVliAjxMm+x95N2eUTXn0
-					M8NK5glSk1yLtnAUKzHxpRExAJLGUiaG4yPu
-					2yGZuqwNvJztzw== )
-UTQVUHU2BLK3DHMRR5T1HD9VTEOHQT0A.example.com. 86400 IN NSEC3 1 0 10 - (
-					20G1GOL477RO51RK9A9NFD54TFQAL7IQ
-					NS SOA RRSIG DNSKEY NSEC3PARAM )
-			86400	RRSIG	NSEC3 7 3 86400 (
-					20840201000000 20160229083110 29600 example.com.
-					F7y+xW/C7iICgmZeYrF4e7Yx4kWZAZPAMzlu
-					PtWVuf37ySg1VfEWcQcDP04vF2rXVUqSMEcj
-					bqUVN5W8Hoazxw== )
-dns1.example.com.	3600	IN A	192.0.2.1
-			3600	RRSIG	A 7 3 3600 (
-					20840201000000 20160229083110 29600 example.com.
-					MoYrL/lToC4AHo6KCZRiBRmCMWHUAx2Xt32A
-					P4lDpwA+wiBWkCZSfVTh60AosS/BIGtBb2BK
-					mszMx8CLBvkjRg== )

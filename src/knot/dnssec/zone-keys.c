@@ -16,15 +16,11 @@
 
 #include <assert.h>
 #include <limits.h>
-#include <stdbool.h>
-#include <time.h>
 
 #include "dnssec/error.h"
-#include "dnssec/keystore.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
-#include "libknot/rrtype/dnskey.h"
 
 dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC)
 

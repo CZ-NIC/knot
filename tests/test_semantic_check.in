@@ -7,27 +7,23 @@ DATA="@top_srcdir@/tests/semantic_check_data"
 
 TMPDIR=$(test_tmpdir)
 LOG="$TMPDIR/log"
-#param zonefile fatal_error expected_erros_count semcheck_err_msg
+
+# Params: zonefile fatal_error expected_erros_count semcheck_err_msg
 expect_error()
 {
 	if [ ! -r "$DATA/$1" ]; then
 		skip_block 4 "missing zone file for test"
 		return
 	fi
+
 	"$KZONECHECK" -o example.com "$DATA/$1" > "$LOG"
-	ret=$?
-	
-	ok "$1 - program return code" test $ret -eq 1
+	ok "$1 - check program return" test $? -eq 1
 
+	fatal=$(grep -E "^Serious semantic error detected" $LOG | wc -l)
+	ok "$1 - check fatal" test $fatal -eq $2
 
-	grep "error.*(semantic check)" $LOG > /dev/null
-	ok "$1 - check fatal" test $? -ne $2
-
-	grep -E "^record '[^']+': ${4}$" $LOG > /dev/null
-	ok "$1 - check message" test $? -eq 0
-
-	errors=$(grep "^record " $LOG | wc -l)
-	ok "$1 - number of found errors" test $errors -eq $3
+	errors=$(grep -E "^\[.+\] $4" $LOG | wc -l)
+	ok "$1 - check errors" test $errors -eq $3
 	if [ $errors != $3 ]; then
 		diag "expected errors $3 but found $errors"
 	fi
@@ -49,67 +45,90 @@ fi
 UNKNOWN="unknown error"
 MISSING_SOA="missing SOA in zone apex"
 MISSING_NS_DEL_POINT="missing NS in zone apex"
-RRSIG_RDATA_TYPE_COVERED="wrong Type Covered in RRSIG"
-RRSIG_RDATA_TTL="wrong Original TTL in RRSIG"
+RRSIG_RDATA_TYPE_COVERED="wrong type covered in RRSIG"
+RRSIG_RDATA_TTL="wrong original TTL in RRSIG"
 RRSIG_RDATA_EXPIRATION="expired RRSIG"
-RRSIG_RDATA_LABELS="wrong Labels in RRSIG"
-RRSIG_RDATA_DNSKEY_OWNER="wrong Signer's Name in RRSIG"
+RRSIG_RDATA_LABELS="wrong labels in RRSIG"
+RRSIG_RDATA_DNSKEY_OWNER="wrong signer's name in RRSIG"
 RRSIG_NO_RRSIG="missing RRSIG"
 RRSIG_SIGNED="signed RRSIG"
 RRSIG_TTL="wrong RRSIG TTL"
-NO_NSEC="missing NSEC"
+NSEC_NONE="missing NSEC"
 NSEC_RDATA_BITMAP="incorrect type bitmap in NSEC"
 NSEC_RDATA_MULTIPLE="multiple NSEC records"
 NSEC_RDATA_CHAIN="incoherent NSEC chain"
-NSEC3_NOT_FOUND="missing NSEC3"
+NSEC3_NONE="missing NSEC3"
+NSEC3_RDATA_BITMAP="incorrect type bitmap in NSEC3"
 NSEC3_INSECURE_DELEGATION_OPT="insecure delegation outside NSEC3 opt-out"
 NSEC3_TTL="wrong NSEC3 TLL"
 NSEC3_RDATA_CHAIN="incoherent NSEC3 chain"
 NSEC3_EXTRA_RECORD="invalid record type in NSEC3 chain"
-CNAME_EXTRA_RECORDS="other records exist at CNAME"
-DNAME_CHILDREN="child records exist under DNAME"
+CNAME_EXTRA_RECORDS="more records exist at CNAME"
+DNAME_CHILDREN="child record exists under DNAME"
 CNAME_MULTIPLE="multiple CNAME records"
-DNAME_MULTIPLE="multiple DNAME records"
-CNAME_WILDCARD_SELF="loop in CNAME processing"
-DNAME_WILDCARD_SELF="loop in DNAME processing"
 GLUE_RECORD="missing glue record"
+UNVERIFIABLE="unverifiable signature"
+EXPIRED="expired RRSIG"
+NSEC3_ALG="incorrect algorithm in NSEC3"
+NSEC3_ITERS="incorrect number of iterations in NSEC3"
+NSEC3PARAM_FLAGS="invalid flags in NSEC3PARAM"
+INVALIDKEY="invalid DNSKEY"
+DS_ALG="invalid algorithm in DS"
+CDS="incorrect CDS and CDNSKEY pair"
 
 plan_lazy
 
 expect_error "cname_extra_01.zone"   1 1 "$CNAME_EXTRA_RECORDS"
 expect_error "cname_extra_02.signed" 1 1 "$CNAME_EXTRA_RECORDS"
 expect_error "cname_multiple.zone"   1 1 "$CNAME_MULTIPLE"
-expect_error "dname_children.zone"   1 2 "$DNAME_CHILDREN \\(record is occluded by a parent DNAME\\)"
-expect_error "dname_children.zone"   1 2 "$DNAME_CHILDREN \\(records exist below the DNAME\\)"
+expect_error "dname_children.zone"   1 1 "$DNAME_CHILDREN \(occluded by a parent DNAME\)"
+expect_error "dname_children.zone"   1 2 "$DNAME_CHILDREN"
 
 expect_error "missing_ns.zone" 0 1 "$MISSING_NS_DEL_POINT"
 expect_error "missing_glue_01.zone" 0 2 "$GLUE_RECORD"
 expect_error "missing_glue_02.zone" 0 1 "$GLUE_RECORD"
 expect_error "missing_glue_03.zone" 0 1 "$GLUE_RECORD"
-expect_error "different_signer_name.signed" 0 1 "$RRSIG_RDATA_DNSKEY_OWNER \\(record type 'NSEC'\\)"
-expect_error "no_rrsig.signed" 0 2 "$RRSIG_NO_RRSIG \\(record type 'A'\\)"
-expect_error "no_rrsig_with_delegation.signed" 0 1 "$RRSIG_NO_RRSIG \\(record type 'NSEC'\\)"
+expect_error "different_signer_name.signed" 0 1 "$RRSIG_RDATA_DNSKEY_OWNER \(record type NSEC\)"
+expect_error "different_signer_name.signed" 0 1 "$UNVERIFIABLE \(record type NSEC\)"
+expect_error "no_rrsig.signed" 0 1 "$RRSIG_NO_RRSIG \(record type A\)"
+expect_error "no_rrsig.signed" 0 1 "$RRSIG_NO_RRSIG \(record type NSEC\)"
+expect_error "no_rrsig_with_delegation.signed" 0 1 "$RRSIG_NO_RRSIG \(record type NSEC\)"
 expect_error "nsec_broken_chain_01.signed" 0 1 "$NSEC_RDATA_CHAIN"
 expect_error "nsec_broken_chain_02.signed" 0 1 "$NSEC_RDATA_CHAIN"
-expect_error "nsec_missing.signed" 0 1 "$NO_NSEC"
-expect_error "nsec_multiple.signed" 0 2 "$NSEC_RDATA_MULTIPLE"
+expect_error "nsec_missing.signed" 0 1 "$NSEC_NONE"
+expect_error "nsec_multiple.signed" 0 1 "$NSEC_RDATA_MULTIPLE"
 expect_error "nsec_wrong_bitmap_01.signed" 0 1 "$NSEC_RDATA_BITMAP"
 expect_error "nsec_wrong_bitmap_02.signed" 0 1 "$NSEC_RDATA_BITMAP"
-expect_error "nsec3_missing.signed" 0 1 "$NSEC3_NOT_FOUND"
-expect_error "nsec3_wrong_bitmap_01.signed" 0 1 "$NSEC_RDATA_BITMAP"
-expect_error "nsec3_wrong_bitmap_02.signed" 0 1 "$NSEC_RDATA_BITMAP"
-expect_error "nsec3_ds.signed" 0 1 "$NSEC3_NOT_FOUND"
+expect_error "nsec3_missing.signed" 0 1 "$NSEC3_NONE"
+expect_error "nsec3_wrong_bitmap_01.signed" 0 1 "$NSEC3_RDATA_BITMAP"
+expect_error "nsec3_wrong_bitmap_02.signed" 0 1 "$NSEC3_RDATA_BITMAP"
+expect_error "nsec3_ds.signed" 0 1 "$NSEC3_NONE"
 expect_error "nsec3_optout.signed" 0 1 "$NSEC3_INSECURE_DELEGATION_OPT"
 expect_error "nsec3_chain_01.signed" 0 1 "$NSEC3_RDATA_CHAIN"
 expect_error "nsec3_chain_02.signed" 0 2 "$NSEC3_RDATA_CHAIN"
 expect_error "nsec3_chain_03.signed" 0 2 "$NSEC3_RDATA_CHAIN"
+expect_error "nsec3_param_invalid.signed" 0 1 "$NSEC3_ALG"
+expect_error "nsec3_param_invalid.signed" 0 1 "$NSEC3_ITERS"
+expect_error "nsec3_param_invalid.signed" 0 1 "$NSEC3PARAM_FLAGS"
 expect_error "rrsig_signed.signed" 0 1 "$RRSIG_SIGNED"
-expect_error "rrsig_ttl.signed" 0 1 "$RRSIG_TTL \\(record type 'A'\\)"
-expect_error "rrsig_rdata_ttl.signed" 0 1 "$RRSIG_RDATA_TTL \\(record type 'A'\\)"
+expect_error "rrsig_ttl.signed" 0 1 "$RRSIG_TTL \(record type A\)"
+expect_error "rrsig_rdata_ttl.signed" 0 1 "$RRSIG_RDATA_TTL \(record type A\)"
+expect_error "duplicate.signature" 0 7 "$EXPIRED"
+expect_error "missing.signed" 0 1 "$NSEC_NONE"
+expect_error "dnskey_param_error.signed" 0 1 "$INVALIDKEY \(invalid protocol\)"
+expect_error "invalid_ds.signed" 0 2 "$DS_ALG \(keytag 60485\)"
+expect_error "cdnskey.invalid" 0 1 "$CDS \(not match\)"
+expect_error "cdnskey.invalid.param" 0 1 "$CDS \(not match\)"
+expect_error "cdnskey.nocds" 0 1 "$CDS \(no CDS\)"
+expect_error "cdnskey.nocdnskey" 0 1 "$CDS \(no CDNSKEY\)"
+expect_error "cdnskey.nodnskey" 0 1 "$CDS \(no corresponding DNSKEY\)"
+expect_error "cdnskey.two" 0 1 "$CDS \(ambiguous CDS record\)"
+expect_error "cdnskey.two" 0 1 "$CDS \(ambiguous CDNSKEY record\)"
 
 test_correct "no_error_delegaton_bitmap.signed"
 test_correct "no_error_nsec3_delegation.signed"
 test_correct "no_error_nsec3_optout.signed"
 test_correct "no_error_wildcard_glue.zone"
+test_correct "cdnskey.cds"
 
 rm $LOG

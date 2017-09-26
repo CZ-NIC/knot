@@ -32,28 +32,24 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		return KNOT_EINVAL;
 	}
 
-	zloader_t zl;
 	char *zonefile = conf_zonefile(conf, zone_name);
 	conf_val_t val = conf_zone_get(conf, C_SEM_CHECKS, zone_name);
-	int ret = zonefile_open(&zl, zonefile, zone_name, conf_bool(&val));
 
-	err_handler_logger_t handler;
-	memset(&handler, 0, sizeof(handler));
-	handler._cb.cb = err_handler_logger;
-
-	zl.err_handler = (err_handler_t *) &handler;
+	zloader_t zl;
+	int ret = zonefile_open(&zl, zonefile, zone_name, conf_bool(&val), time(NULL));
 	free(zonefile);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	/* Set the zone type (master/slave). If zone has no master set, we
-	 * are the primary master for this zone (i.e. zone type = master).
-	 */
+	err_handler_t handler = {
+		.cb = err_handler_logger
+	};
+
+	zl.err_handler = &handler;
 	zl.creator->master = !zone_load_can_bootstrap(conf, zone_name);
 
 	*contents = zonefile_load(&zl);
-
 	zonefile_close(&zl);
 	if (*contents == NULL) {
 		return KNOT_ERROR;

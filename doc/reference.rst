@@ -1184,6 +1184,7 @@ logged only.
 Mandatory checks:
 
 - An extra record together with CNAME record (except for RRSIG and DS)
+- Multiple CNAME records with the same owner
 - SOA record missing in the zone (RFC 1034)
 - DNAME records having records under it (DNAME children) (RFC 2672)
 
@@ -1201,6 +1202,9 @@ Extra checks:
 - Signer name in RRSIG RR not the same as in DNSKEY
 - Signed RRSIG
 - Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
+- Invalid NSEC3PARAM flags or digest algorithm
+- Invalid DS algorithm or digest length
+- Not corresponding CDS and CDNSKEY records
 
 *Default:* off
 

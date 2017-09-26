@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,4 +19,4 @@
 #include "libknot/libknot.h"
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name,
-               FILE *outfile);
+               FILE *outfile, time_t time);

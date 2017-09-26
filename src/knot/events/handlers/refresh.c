@@ -156,9 +156,11 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 
 static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 {
-	err_handler_logger_t handler;
-	handler._cb.cb = err_handler_logger;
-	int ret = zone_do_sem_checks(zone, false, &handler._cb);
+	err_handler_t handler = {
+		.cb = err_handler_logger
+	};
+
+	int ret = zone_do_sem_checks(zone, false, &handler, time(NULL));
 	if (ret != KNOT_EOK) {
 		// error is logged by the error handler
 		return ret;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,22 +13,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file rrset-sign.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
- *
- * \brief Interface for DNSSEC signing of RR sets.
- *
- * \addtogroup dnssec
- * @{
- */
 
 #pragma once
-
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
 
 #include "dnssec/key.h"
 #include "dnssec/sign.h"
@@ -53,6 +39,24 @@ int knot_sign_rrset(knot_rrset_t *rrsigs,
                     dnssec_sign_ctx_t *sign_ctx,
                     const kdnssec_ctx_t *dnssec_ctx,
                     knot_mm_t *mm);
+
+/*!
+ * \brief Add all data covered by signature into signing context.
+ *
+ * RFC 4034: The signature covers RRSIG RDATA field (excluding the signature)
+ * and all matching RR records, which are ordered canonically.
+ *
+ * Requires all DNAMEs in canonical form and all RRs ordered canonically.
+ *
+ * \param ctx          Signing context.
+ * \param rrsig_rdata  RRSIG RDATA with populated fields except signature.
+ * \param covered      Covered RRs.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
+                           const uint8_t *rrsig_rdata,
+                           const knot_rrset_t *covered);
 
 /*!
  * \brief Creates new RRS using \a rrsig_rrs as a source. Only those RRs that
@@ -88,5 +92,3 @@ int knot_check_signature(const knot_rrset_t *covered,
                          const dnssec_key_t *key,
                          dnssec_sign_ctx_t *sign_ctx,
                          const kdnssec_ctx_t *dnssec_ctx);
-
-/*! @} */
