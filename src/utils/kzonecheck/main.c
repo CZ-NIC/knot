@@ -15,6 +15,7 @@
 */
 
 #include <getopt.h>
+#include <libgen.h>
 #include <stdio.h>
 
 #include "contrib/time.h"
