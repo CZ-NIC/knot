@@ -28,6 +28,11 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 
+static bool dontcare_load_error(conf_t *conf, const zone_t *zone)
+{
+	return (zone->contents == NULL && zone_load_can_bootstrap(conf, zone->name));
+}
+
 int event_load(conf_t *conf, zone_t *zone)
 {
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
@@ -62,8 +67,13 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 		if (ret != KNOT_EOK) {
 			zf_conts = NULL;
-			log_zone_error(zone->name, "failed to parse zonefile (%s)",
-			               knot_strerror(ret));
+			if (dontcare_load_error(conf, zone)) {
+				log_zone_info(zone->name, "failed to parse zonefile (%s)",
+					      knot_strerror(ret));
+			} else {
+				log_zone_error(zone->name, "failed to parse zonefile (%s)",
+					       knot_strerror(ret));
+			}
 			goto cleanup;
 		}
 		// If configured and appliable to zonefile, load journal changes.
@@ -211,5 +221,5 @@ cleanup:
 	zone_contents_deep_free(&zf_conts);
 	zone_contents_deep_free(&journal_conts);
 
-	return ret;
+	return (dontcare_load_error(conf, zone) ? KNOT_EOK : ret);
 }
