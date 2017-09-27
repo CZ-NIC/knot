@@ -128,18 +128,22 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 		tx->msg_control = NULL;
 	}
 
-	#if defined(__APPLE__)
-	/*
-	 * Workaround for OS X: If ipi_ifindex is non-zero, the source address
-	 * will be ignored. We need to use correct one.
-	 */
+#if defined(__linux__) || defined(__APPLE__)
 	struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx);
-	if (cmsg != NULL && cmsg->cmsg_type == IP_PKTINFO) {
+	if (cmsg == NULL) {
+		return;
+	}
+
+	/* Unset the ifindex to not bypass the routing tables. */
+	if (cmsg->cmsg_type == IP_PKTINFO) {
 		struct in_pktinfo *info = (struct in_pktinfo *)CMSG_DATA(cmsg);
 		info->ipi_spec_dst = info->ipi_addr;
 		info->ipi_ifindex = 0;
+	} else if (cmsg->cmsg_type == IPV6_PKTINFO) {
+		struct in6_pktinfo *info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
+		info->ipi6_ifindex = 0;
 	}
-	#endif
+#endif
 }
 
 /* UDP recvfrom() request struct. */
