@@ -312,53 +312,24 @@ a way to prevent hitting this one. For LMDB, it's hard to recover from the
 database-full state. For wiping one zone's journal, see *knotc zone-purge +journal*
 command.
 
-.. _Algorithm rollover:
+.. _DNSSEC Delete algorithm:
 
-DNSSEC keys algorithm rollover
-==============================
+DNSSEC delete algorithm
+=======================
 
-Algorithm rollover is a process of changing DNSSEC signing keys, where the
-new keys are of different algorithm. The zone signatures must never go Bogus
-during the process, even considering records cached in resolvers. The process
-is generally described in RFC 6781. Following are some hints how to implement
-algorithm rollover when using Knot DNS.
+This is a way how to "disconnect" a signed zone from DNSSEC-aware parent zone.
+More precisely, we tell the parent zone to remove our zone's DS record by
+publishing a special formatted CDNSKEY and CDS record. This is mostly useful
+if we want to turn off DNSSEC on our zone so it becomes insecure, but not bogus.
 
-The prerequisite is having a zone with automatic DNSSEC signing enabled, active
-KSK and ZSK present. (The CSK case should work analogously, not mentioned further.)
-It is recommended to disable automatic key management during the rollover. Note
-that from the view of common key rollovers, here we must put the keys into a weird
-state: active, but not published. This is done by hard-setting their timers so that
-active < publish < retire (whereas standard rollovers have publish < active < retire).
+First we have to turn off automatic DNSSEC siging and key management. See
+:ref:`configuration reference<zone_dnssec-signing>` for details. After that,
+we add special CDNSKEY and CDS records with the rdata "0 3 0 AA==" and "0 0 0 00",
+respectively, by editing zone file or DDNS.
 
-First we need to generate new keys. They must be first used for signing, and
-after some period (propagation delay let's say 1h + zone records' TTL let's say
-1h) published. We have to preprate the timestamps carefully, using the notation
-'+2h' can be creepy with the current time changing between the Keymgr invokes. We then
-re-sign the zone just to force knotd to reload zone keys::
-
-  $ NOW=$(date +%s)
-  $ NOW2H=$((NOW + 7200))
-  $ keymgr example.com. generate algorithm=14 size=384 ksk=yes \
-                                 ready=$NOW2H active=0 publish=$NOW2H
-  $ keymgr example.com. generate algorithm=14 size=384 ksk=no \
-                                 ready=$NOW active=$NOW publish=$NOW2H
-  $ knotc zone-sign example.com.
-
-After waiting for the keys to get published as scheduled, we may tell the parent
-zone operator to renew our DS record. As the KSK is in ready state, we have the
-CDS/CDNSKEY records in our zone. After waiting again for some propagation period,
-we continue with removing old KSK and putting old ZSK into active-not-published
-state (we must first obtain the keys' IDs with 'keymgr example.com. list'). We may
-also confirm the new KSK submission (which reloads KASP DB as a side-effect)::
-
-  $ keymgr example.com. set $OLD_KSK_ID retire=+0 remove=+0
-  $ keymgr example.com. set $OLD_ZSK_ID publish=0
-  $ knotc zone-ksk-submitted example.com.
-
-Finally, after one more propagation period, we remove old ZSK::
-
-  $ keymgr example.com. set $OLD_ZSK_ID retire=+0 remove=+0
-  $ knotc zone-sign example.com.
+After the parent zone notices and reflects the change, we wait for TTL expire
+(so all resolvers' caches get updated), and finally we may do anything with the
+zone, e.g. removing all the keys and signatures as desired.
 
 .. _Controlling running daemon:
 
