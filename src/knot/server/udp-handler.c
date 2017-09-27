@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define __APPLE_USE_RFC_3542
+
 #include <dlfcn.h>
 #include <unistd.h>
 #include <errno.h>
@@ -135,11 +137,11 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 	}
 
 	/* Unset the ifindex to not bypass the routing tables. */
-	if (cmsg->cmsg_type == IP_PKTINFO) {
+	if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
 		struct in_pktinfo *info = (struct in_pktinfo *)CMSG_DATA(cmsg);
 		info->ipi_spec_dst = info->ipi_addr;
 		info->ipi_ifindex = 0;
-	} else if (cmsg->cmsg_type == IPV6_PKTINFO) {
+	} else if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
 		struct in6_pktinfo *info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
 		info->ipi6_ifindex = 0;
 	}
