@@ -919,6 +919,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	                          .data = knot_rdata_data(rrd)};
 	ret = dnssec_nsec3_params_from_rdata(&params_apex, &rdata);
 	if (ret != DNSSEC_EOK) {
+		ret = knot_error_from_libdnssec(ret);
 		goto nsec3_cleanup;
 	}
 
@@ -964,12 +965,12 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	                                                              next_dname);
 	knot_dname_free(&next_dname, NULL);
 	if (next_nsec3 == NULL || next_nsec3->prev != node->nsec3_node) {
-		uint8_t *next;
+		uint8_t *next = NULL;
 		int32_t next_len = base32hex_encode_alloc(next_dname_str,
 		                                          next_dname_str_size,
 		                                          &next);
 		char *hash_info = NULL;
-		if (next_len > 0) {
+		if (next != NULL) {
 			hash_info = sprintf_alloc("(next hash %.*s)", next_len, next);
 			free(next);
 		}

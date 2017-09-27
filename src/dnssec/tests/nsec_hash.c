@@ -89,7 +89,8 @@ static void test_clear(void)
 	const dnssec_nsec3_params_t empty = { 0 };
 	dnssec_nsec3_params_t params = { 0 };
 
-	dnssec_nsec3_params_from_rdata(&params, &RDATA);
+	int result = dnssec_nsec3_params_from_rdata(&params, &RDATA);
+	ok(result == DNSSEC_EOK, "dnssec_nsec3_params_from_rdata()");
 
 	ok(memcmp(&params, &empty, sizeof(dnssec_nsec3_params_t)) != 0,
 	   "non-empty after dnssec_nsec3_params_from_rdata()");

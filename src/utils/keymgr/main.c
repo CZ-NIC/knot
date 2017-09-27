@@ -81,13 +81,16 @@ static void print_help(void)
 	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
-static int key_command(int argc, char *argv[])
+static int key_command(int argc, char *argv[], int optind)
 {
-	if (argc < 2) {
+	if (argc < optind + 2) {
 		printf("Zone name and/or command not specified\n");
 		print_help();
 		return KNOT_EINVAL;
 	}
+	argc -= optind;
+	argv += optind;
+
 	knot_dname_t *zone_name = knot_dname_from_str_alloc(argv[0]);
 	if (zone_name == NULL) {
 		return KNOT_ENOMEM;
@@ -346,7 +349,7 @@ int main(int argc, char *argv[])
 
 	update_privileges();
 
-	ret = key_command(argc - optind, argv + optind);
+	ret = key_command(argc, argv, optind);
 
 	conf_free(conf());
 

@@ -154,6 +154,7 @@ int32_t base64_encode_alloc(const uint8_t  *in,
 	int32_t ret = base64_encode(in, in_len, *out, out_len);
 	if (ret < 0) {
 		free(*out);
+		*out = NULL;
 	}
 
 	return ret;
@@ -264,6 +265,7 @@ int32_t base64_decode_alloc(const uint8_t  *in,
 	int32_t ret = base64_decode(in, in_len, *out, out_len);
 	if (ret < 0) {
 		free(*out);
+		*out = NULL;
 	}
 
 	return ret;
