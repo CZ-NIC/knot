@@ -3,6 +3,7 @@ variables:
   LC_ALL: C
   GIT_STRATEGY: fetch
   DOCKER_DRIVER: overlay2
+  GIT_SUBMODULE_STRATEGY: recursive
 
 stages:
   - image
