@@ -5,7 +5,7 @@ AC_PREREQ([2.60])
 m4_define([knot_VERSION_MAJOR],2)dnl
 m4_define([knot_VERSION_MINOR],6)dnl
 m4_define([knot_VERSION_PATCH],0)dnl
-m4_define([knot_VERSION_EXTRA],-dev)dnl
+m4_define([knot_VERSION_EXTRA],)dnl
 m4_define([knot_PKG_VERSION],[knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_VERSION_PATCH]knot_VERSION_EXTRA)dnl
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
@@ -33,8 +33,8 @@ AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environmen
 
 # Updating version info
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST([libknot_VERSION_INFO],["-version-info 6:0:0"])
-AC_SUBST([libdnssec_VERSION_INFO],["-version-info 4:0:0"])
+AC_SUBST([libknot_VERSION_INFO],["-version-info 7:0:0"])
+AC_SUBST([libdnssec_VERSION_INFO],["-version-info 5:0:0"])
 AC_SUBST([libzscanner_VERSION_INFO],["-version-info 1:0:0"])
 
 # Automatically update release date based on configure.ac date

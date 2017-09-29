@@ -1,12 +1,98 @@
-Knot DNS 2.6.0-dev (2017-xx-xx)
-===============================
+Knot DNS 2.6.0 (2017-09-29)
+===========================
+
+Features:
+---------
+ - On-slave (inline) signing support
+ - Automatic DNSSEC key algorithm rollover
+ - Ed25519 algorithm support in DNSSEC (requires GnuTLS 3.6.0)
+ - New 'journal-content' and 'zonefile-load' configuration options
+ - keymgr tries to run as user/group set in the configuration
+ - Public-only DNSSEC key import into KASP DB via keymgr
+ - NSEC3 resalt and parent DS query events are persistent in timer DB
+ - New processing state for a response suppression within a query module
+ - Enabled server side TCP Fast Open if supported
+ - TCP Fast Open support in kdig
+
+Improvements:
+-------------
+ - Better record owner compression if related to the previous rdata dname
+ - NSEC(3) chain is no longer recomputed whole on every update
+ - Remove inconsistent and unnecessary quoting in log files
+ - Avoiding of overlapping key rollovers at a time
+ - More DNSSSEC-related semantic checks
+ - Extended timestamp format in keymgr
+
+Bugfixes:
+---------
+ - Incorrect journal free space computation causing inefficient space handling
+ - Interface-automatic broken on Linux in the presence of asymmetric routing
+
+Knot DNS 2.5.5 (2017-09-29)
+===========================
+
+Improvements:
+-------------
+ - Constant time memory comparison in the TSIG processing
+ - Proper use of the ctype functions
+ - Generated RRSIG records have inception time 90 minutes in the past
+
+Bugfixes:
+---------
+ - Incorrect online signature for NSEC in the case of a CNAME record
+ - Incorrect timestamps in dnstap records
+ - EDNS Subnet Client validation rejects valid payloads
+ - Module configuration semantic checks are not executed
+ - Kzonecheck segfaults with unusual inputs
+
+Knot DNS 2.5.4 (2017-08-31)
+===========================
+
+Improvements:
+-------------
+ - New minimum and maximum refresh interval config options (Thanks to Manabu Sonoda)
+ - New warning when unforced flush with disabled zone file synchronization
+ - New 'dnskey' keymgr command
+ - Linking with libatomic on architectures that require it (Thanks to Pierre-Olivier Mercier)
+ - Removed 'OK' from listing keymgr command outputs
+ - Extended journal and keymgr documentation and logging
+
+Bugfixes:
+---------
+ - Incorrect handling of specific corner-cases with zone-in-journal
+ - The 'share' keymgr command doesn't work
+ - Server crashes if configured with query-size and reply-size statistics options
+ - Malformed big integer configuration values on some 32-bit platforms
+ - Keymgr uses local time when parsing date inputs
+ - Memory leak in kdig upon IXFR query
+
+Knot DNS 2.5.3 (2017-07-14)
+===========================
+
+Features:
+---------
+ - CSK rollover support for Single-Type Signing Scheme
+
+Improvements:
+-------------
+ - Allowed binding to non-local adresses for TCP (Thanks to Julian Brost!)
+ - New documentation section for manual DNSSEC key algorithm rollover
+ - Initial KSK also generated in the submission state
+ - The 'ds' keymgr command with no parameter uses all KSK keys
+ - New debug mode in kjournalprint
+ - Updated keymgr documentation
+
+Bugfixes:
+---------
+ - Sometimes missing RRSIG by KSK in submission state.
+ - Minor DNSSEC-related issues
 
 Knot DNS 2.5.2 (2017-06-23)
 ===========================
 
 Security:
 ---------
- - Improper TSIG validity period check can allow TSIG forgery (Thanks to Synacktiv!)
+ - CVE-2017-11104: Improper TSIG validity period check can allow TSIG forgery (Thanks to Synacktiv!)
 
 Improvements:
 -------------
