@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ typedef struct {
 /*!
  * Prepares a proper configuration according to the specified command.
  *
+ * \param[in] desc    Utility command descriptor.
  * \param[in] params  Utility parameters.
  *
  * \return Error code, KNOT_EOK if successful.

@@ -188,9 +188,9 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
  * Encode signature parameters from X.509 ECDSA signature.
  */
 int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
-			 dnssec_binary_t *_der)
+			 dnssec_binary_t *der)
 {
-	if (!r || !r->data || !s || !s->data || !_der) {
+	if (!r || !r->data || !s || !s->data || !der) {
 		return DNSSEC_EINVAL;
 	}
 
@@ -212,18 +212,18 @@ int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 
 	size_t total_size = 2 + seq_size;
 
-	dnssec_binary_t der = { 0 };
-	if (dnssec_binary_alloc(&der, total_size)) {
+	dnssec_binary_t _der = { 0 };
+	if (dnssec_binary_alloc(&_der, total_size)) {
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&der);
+	wire_ctx_t wire = wire_init_binary(&_der);
 	asn1_write_header(&wire, ASN1_TYPE_SEQUENCE, seq_size);
 	asn1_write_integer(&wire, r_size, r);
 	asn1_write_integer(&wire, s_size, s);
 	assert(wire_available(&wire) == 0);
 
-	*_der = der;
+	*der = _der;
 
 	return DNSSEC_EOK;
 }

@@ -84,3 +84,5 @@ inline static const knot_lookup_t *knot_lookup_by_id(const knot_lookup_t *table,
 
 	return NULL;
 }
+
+/*! @} */

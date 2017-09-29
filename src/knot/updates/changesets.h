@@ -67,7 +67,7 @@ changeset_t *changeset_new(const knot_dname_t *apex);
 /*!
  * \brief Checks whether changeset is empty, i.e. no change will happen after its application.
  *
- * \param changeset  Changeset to be checked.
+ * \param ch  Changeset to be checked.
  *
  * \retval true if changeset is empty.
  * \retval false if changeset is not empty.
@@ -77,7 +77,7 @@ bool changeset_empty(const changeset_t *ch);
 /*!
  * \brief Get number of changes (additions and removals) in the changeset.
  *
- * \param changeset  Changeset to be checked.
+ * \param ch  Changeset to be checked.
  *
  * \return Number of changes in the changeset.
  */
@@ -140,21 +140,21 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags);
 /*!
  * \brief Remove from changeset those rdata which won't be added/removed from zone.
  *
- * \param zone    The zone the changeset is going to be applied on.
- * \param change  The cheangeset to be fixed.
+ * \param zone  The zone the changeset is going to be applied on.
+ * \param ch    The cheangeset to be fixed.
  *
  * \return KNOT_E*
  */
-int changeset_preapply_fix(const zone_contents_t *zone, changeset_t *change);
+int changeset_preapply_fix(const zone_contents_t *zone, changeset_t *ch);
 
 /*!
  * \brief Remove from changeset records which are removed and added the same.
  *
- * \param change  Changeset to be fixed.
+ * \param ch  Changeset to be fixed.
  *
  * \return KNOT_E*
  */
-int changeset_cancelout(changeset_t *change);
+int changeset_cancelout(changeset_t *ch);
 
 /*!
  * \brief Loads zone contents from botstrap changeset.

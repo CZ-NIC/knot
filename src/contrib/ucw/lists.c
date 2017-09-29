@@ -2,6 +2,7 @@
  *	BIRD Library -- Linked Lists
  *
  *	(c) 1998 Martin Mares <mj@ucw.cz>
+ *	(c) 2015, 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
  *	Can be freely distributed and used under the terms of the GNU GPL.
  */
@@ -31,10 +32,10 @@
 
 /**
  * add_tail - append a node to a list
- * @l: linked list
- * @n: list node
+ * \p l: linked list
+ * \p n: list node
  *
- * add_tail() takes a node @n and appends it at the end of the list @l.
+ * add_tail() takes a node \p n and appends it at the end of the list \p l.
  */
 void
 add_tail(list_t *l, node_t *n)
@@ -49,10 +50,10 @@ add_tail(list_t *l, node_t *n)
 
 /**
  * add_head - prepend a node to a list
- * @l: linked list
- * @n: list node
+ * \p l: linked list
+ * \p n: list node
  *
- * add_head() takes a node @n and prepends it at the start of the list @l.
+ * add_head() takes a node \p n and prepends it at the start of the list \p l.
  */
 void
 add_head(list_t *l, node_t *n)
@@ -67,11 +68,11 @@ add_head(list_t *l, node_t *n)
 
 /**
  * insert_node - insert a node to a list
- * @n: a new list node
- * @after: a node of a list
+ * \p n: a new list node
+ * \p after: a node of a list
  *
- * Inserts a node @n to a linked list after an already inserted
- * node @after.
+ * Inserts a node \p n to a linked list after an already inserted
+ * node \p after.
  */
 void
 insert_node(node_t *n, node_t *after)
@@ -86,9 +87,9 @@ insert_node(node_t *n, node_t *after)
 
 /**
  * rem_node - remove a node from a list
- * @n: node to be removed
+ * \p n: node to be removed
  *
- * Removes a node @n from the list it's linked in.
+ * Removes a node \p n from the list it's linked in.
  */
 void
 rem_node(node_t *n)
@@ -104,7 +105,7 @@ rem_node(node_t *n)
 
 /**
  * init_list - create an empty list
- * @l: list
+ * \p l: list
  *
  * init_list() takes a &list structure and initializes its
  * fields, so that it represents an empty list.
@@ -119,11 +120,11 @@ init_list(list_t *l)
 
 /**
  * add_tail_list - concatenate two lists
- * @to: destination list
- * @l: source list
+ * \p to: destination list
+ * \p l: source list
  *
- * This function appends all elements of the list @l to
- * the list @to in constant time.
+ * This function appends all elements of the list \p l to
+ * the list \p to in constant time.
  */
 void
 add_tail_list(list_t *to, list_t *l)
@@ -140,11 +141,11 @@ add_tail_list(list_t *to, list_t *l)
 
 /**
  * list_dup - duplicate list
- * @to: destination list
- * @l: source list
+ * \p to: destination list
+ * \p l: source list
  *
- * This function duplicates all elements of the list @l to
- * the list @to in linear time.
+ * This function duplicates all elements of the list \p l to
+ * the list \p to in linear time.
  *
  * This function only works with a homogenous item size.
  */
@@ -160,9 +161,9 @@ void list_dup(list_t *dst, list_t *src, size_t itemsz)
 
 /**
  * list_size - gets number of nodes
- * @l: list
+ * \p l: list
  *
- * This function counts nodes in list @l and returns this number.
+ * This function counts nodes in list \p l and returns this number.
  */
 size_t list_size(const list_t *l)
 {
@@ -178,9 +179,9 @@ size_t list_size(const list_t *l)
 
 /**
  * ptrlist_add - add pointer to pointer list
- * @to: destination list
- * @val: added pointer
- * @mm: memory context
+ * \p to: destination list
+ * \p val: added pointer
+ * \p mm: memory context
  */
 ptrnode_t *ptrlist_add(list_t *to, void *val, knot_mm_t *mm)
 {
@@ -196,8 +197,8 @@ ptrnode_t *ptrlist_add(list_t *to, void *val, knot_mm_t *mm)
 
 /**
  * ptrlist_free - free all nodes in pointer list
- * @list: list nodes
- * @mm: memory context
+ * \p list: list nodes
+ * \p mm: memory context
  */
 void ptrlist_free(list_t *list, knot_mm_t *mm)
 {
@@ -210,8 +211,8 @@ void ptrlist_free(list_t *list, knot_mm_t *mm)
 
 /**
  * ptrlist_rem - remove pointer node
- * @val: pointer to remove
- * @mm: memory context
+ * \p val: pointer to remove
+ * \p mm: memory context
  */
 void ptrlist_rem(ptrnode_t *node, knot_mm_t *mm)
 {
@@ -221,8 +222,8 @@ void ptrlist_rem(ptrnode_t *node, knot_mm_t *mm)
 
 /**
  * ptrlist_deep_free - free all nodes incl referenced data
- * @list: list nodes
- * @mm: memory context
+ * \p list: list nodes
+ * \p mm: memory context
  */
 void ptrlist_deep_free(list_t *l, knot_mm_t *mm)
 {

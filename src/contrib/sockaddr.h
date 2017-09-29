@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,7 +92,7 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
 /*!
  * \brief Return string representation of socket address.
  *
- * \note String format: <address>[@<port>], f.e. '127.0.0.1@53'
+ * \note String format: \<address>[@<port>], f.e. '127.0.0.1@53'
  *
  * \param buf     Destination for string representation.
  * \param maxlen  Maximum number of written bytes.

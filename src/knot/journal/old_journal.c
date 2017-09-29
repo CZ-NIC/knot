@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -142,7 +142,7 @@ typedef struct {
 /*! \brief Previous node. */
 #define jnode_prev(j, i) (((i) == 0) ? (j)->max_nodes - 1 : (i) - 1)
 
-/*! \bref Starting node data position. */
+/*! \brief Starting node data position. */
 #define jnode_base_pos(max_nodes) (JOURNAL_HSIZE + (max_nodes + 1) * sizeof(journal_node_t))
 
 static inline int sfread(void *dst, size_t len, int fd)

@@ -14,9 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file scanner.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
+ * \file
  *
  * \brief Zone scanner core interface.
  *
@@ -337,7 +335,7 @@ int zs_set_input_file(
  * \retval -1  if error.
  */
 int zs_set_processing(
-	zs_scanner_t *s,
+	zs_scanner_t *scanner,
 	void (*process_record)(zs_scanner_t *),
 	void (*process_error)(zs_scanner_t *),
 	void *data

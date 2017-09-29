@@ -185,7 +185,7 @@ int kasp_db_store_serial(kasp_db_t *db, const knot_dname_t *zone_name,
  * \param db             KASP db
  * \param zone_name      zone name
  * \param serial_type    kind of serial to be loaded
- * \param master_serial  output if KNOT_EOK: desired serial number
+ * \param serial         output if KNOT_EOK: desired serial number
  *
  * \return KNOT_E* (KNOT_ENOENT if not stored before)
  */

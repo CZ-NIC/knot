@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -137,7 +137,7 @@ const char *get_sockname(const int socktype);
  *
  * \param ss		Socket address storage.
  * \param socktype	Socket type (SOCK_STREAM or SOCK_DGRAM).
- * \param dst[out]	Output string.
+ * \param dst		Output string.
  */
 void get_addr_str(const struct sockaddr_storage *ss,
                   const int                     socktype,

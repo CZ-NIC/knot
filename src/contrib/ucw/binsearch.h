@@ -16,8 +16,8 @@
  ***/
 
 /**
- * Find the first element not lower than @x in the sorted array @ary of @N elements (non-decreasing order).
- * Returns the index of the found element or @N if no exists. Uses `ary_lt_x(ary,i,x)` to compare the @i'th element with @x.
+ * Find the first element not lower than \p x in the sorted array \p ary of \p N elements (non-decreasing order).
+ * Returns the index of the found element or \p N if no exists. Uses `ary_lt_x(ary,i,x)` to compare the i'th element with \p x.
  * The time complexity is `O(log(N))`.
  **/
 #define BIN_SEARCH_FIRST_GE_CMP(ary, N, ary_lt_x, x, ...)  ({	\
@@ -34,17 +34,17 @@
 })
 
 /**
- * The default comparison macro for @BIN_SEARCH_FIRST_GE_CMP().
+ * The default comparison macro for \ref BIN_SEARCH_FIRST_GE_CMP().
  **/
 #define ARY_LT_NUM(ary,i,x) (ary)[i] < (x)
 
 /**
- * Same as @BIN_SEARCH_FIRST_GE_CMP(), but uses the default `<` operator for comparisons.
+ * Same as \ref BIN_SEARCH_FIRST_GE_CMP(), but uses the default `<` operator for comparisons.
  **/
 #define BIN_SEARCH_FIRST_GE(ary,N,x) BIN_SEARCH_FIRST_GE_CMP(ary,N,ARY_LT_NUM,x)
 
 /**
- * Search the sorted array @ary of @N elements (non-decreasing) for the first occurrence of @x.
+ * Search the sorted array \p ary of \p N elements (non-decreasing) for the first occurrence of \p x.
  * Returns the index or -1 if no such element exists. Uses the `<` operator for comparisons.
  **/
 #define BIN_SEARCH_EQ(ary,N,x) ({ int i = BIN_SEARCH_FIRST_GE(ary,N,x); if (i >= (N) || (ary)[i] != (x)) i=-1; i; })

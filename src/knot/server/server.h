@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -183,9 +183,10 @@ void server_update_zones(conf_t *conf, server_t *server);
 /*!
  * \brief Update fdsets from current interfaces list.
  *
- * \param server  Server.
- * \param fds     File descriptor set.
- * \param index   I/O index (UDP/TCP).
+ * \param server    Server.
+ * \param fds       File descriptor set.
+ * \param index     I/O index (UDP/TCP).
+ * \param thread_id Thread ID used for geting UDP ID.
  *
  * \return new interface list
  */

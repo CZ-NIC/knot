@@ -70,6 +70,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
  * \brief Duplicates the given domain name.
  *
  * \param name Domain name to be copied.
+ * \param mm Memory context.
  *
  * \return New domain name which is an exact copy of \a dname.
  */
@@ -81,6 +82,7 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name, knot_mm_t *mm);
  *
  * \param name Domain name to be copied.
  * \param len Part length.
+ * \param mm Memory context.
  *
  * \return New domain name which is an partial copy of \a dname.
  */
@@ -277,6 +279,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
  * Sets the given pointer to NULL.
  *
  * \param name Domain name to be destroyed.
+ * \param mm Memory context.
  */
 void knot_dname_free(knot_dname_t **name, knot_mm_t *mm);
 
@@ -375,12 +378,12 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
  * \brief Convert domain name from wire to lookup format.
  *
  * Formats names from rightmost label to the leftmost, separated by the lowest
- * possible character (\x00). Sorting such formatted names also gives
+ * possible character (\\x00). Sorting such formatted names also gives
  * correct canonical order (for NSEC/NSEC3).
  *
  * Example:
- * Name: lake.example.com. Wire: \x04lake\x07example\x03com\x00
- * Lookup format \x11com\x00example\x00lake\x00
+ * Name: lake.example.com. Wire: \\x04lake\\x07example\\x03com\\x00
+ * Lookup format \\x11com\\x00example\\x00lake\\x00
  *
  * Maximum length of such a domain name is KNOT_DNAME_MAXLEN characters.
  *

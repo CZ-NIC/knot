@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,14 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file fdset.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
  * \brief I/O multiplexing with context and timeouts for each fd.
- *
- * \addtogroup common_lib
- * @{
  */
 
 #pragma once
@@ -109,7 +102,7 @@ int fdset_set_watchdog(fdset_t* set, int i, int interval);
 /*!
  * \brief Sweep file descriptors with exceeding inactivity period.
  *
- * \param fdset Target set.
+ * \param set Target set.
  * \param cb Callback for sweeped descriptors.
  * \param data Pointer to extra data.
  *
@@ -117,5 +110,3 @@ int fdset_set_watchdog(fdset_t* set, int i, int interval);
  * \retval -1 on errors.
  */
 int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data);
-
-/*! @} */

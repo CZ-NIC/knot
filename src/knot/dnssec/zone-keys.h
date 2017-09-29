@@ -100,10 +100,10 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
  * \brief Load zone keys and init cryptographic context.
  *
  * \param zone           KASP zone.
- * \param keystore       KASP key store.
+ * \param store          KASP key store.
  * \param nsec3_enabled  Zone uses NSEC3 for authenticated denial.
  * \param now            Current time.
- * \param keyset         Resulting zone keyset.
+ * \param keyset_ptr     Resulting zone keyset.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -123,14 +123,14 @@ struct keyptr_dynarray get_zone_keys(const zone_keyset_t *keyset, uint16_t searc
 /*!
  * \brief Free structure with zone keys and associated DNSSEC contexts.
  *
- * \param keys    Zone keys.
+ * \param keyset  Zone keys.
  */
 void free_zone_keys(zone_keyset_t *keyset);
 
 /*!
  * \brief Get timestamp of next key event.
  *
- * \param keys  Zone keys.
+ * \param keyset  Zone keys.
  *
  * \return Timestamp of next key event.
  */

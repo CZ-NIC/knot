@@ -134,6 +134,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm);
  *
  * \param node     Node to add the RRSet to.
  * \param rrset    RRSet to add.
+ * \param mm       Memory context to use.
  *
  * \return KNOT_E*
  */
@@ -180,7 +181,7 @@ void node_set_parent(zone_node_t *node, zone_node_t *parent);
  * \brief Checks whether node contains any RRSIG for given type.
  *
  * \param node  Node to check in.
- * \param node  Type to check for.
+ * \param type  Type to check for.
  *
  * \return True/False.
  */
@@ -190,7 +191,7 @@ bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type);
  * \brief Checks whether node contains RRSet for given type.
  *
  * \param node  Node to check in.
- * \param node  Type to check for.
+ * \param type  Type to check for.
  *
  * \return True/False.
  */

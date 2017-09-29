@@ -97,6 +97,7 @@ int apply_prepare_to_sign(apply_ctx_t *ctx);
 /*!
  * \brief Applies changesets to a shallow zone-copy.
  *
+ * \param ctx           Apply context.
  * \param old_contents  Zone to be updated.
  * \param chsets        List of changesets to be applied.
  * \param new_contents  Storage for the new zone contents pointer.
@@ -109,6 +110,7 @@ int apply_changesets(apply_ctx_t *ctx, zone_contents_t *old_contents,
 /*!
  * \brief Applies changeset to a shallow zone-copy.
  *
+ * \param ctx           Apply context.
  * \param old_contents  Zone to be updated.
  * \param ch            Changeset to be applied.
  * \param new_contents  Storage for the new zone contents pointer.
@@ -154,14 +156,14 @@ int apply_finalize(apply_ctx_t *ctx);
 /*!
  * \brief Cleanups successful zone update.
  *
- * \param chgs  Changeset used to create the update.
+ * \param ctx  Context used to create the update.
  */
 void update_cleanup(apply_ctx_t *ctx);
 
 /*!
  * \brief Rollbacks failed zone update.
  *
- * \param chgs   Changeset. used to create the update.
+ * \param ctx  Context used to create the update.
  */
 void update_rollback(apply_ctx_t *ctx);
 

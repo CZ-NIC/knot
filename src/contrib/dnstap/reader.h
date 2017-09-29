@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 Farsight Security, Inc. <software@farsightsecurity.com>
+/*  Copyright (C) 2017 Farsight Security, Inc. <software@farsightsecurity.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -58,8 +58,8 @@ void dt_reader_free(dt_reader_t *reader);
  * Caller must deallocate the returned protobuf with the
  * dnstap__dnstap__free_unpacked() function.
  *
- * \param reader		dnstap file reader structure.
- * \param d[out]		Unpacked dnstap protobuf.
+ * \param[in]  reader		dnstap file reader structure.
+ * \param[out] d     		Unpacked dnstap protobuf.
  *
  * \retval KNOT_EOK
  * \retval KNOT_ERROR

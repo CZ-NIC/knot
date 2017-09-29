@@ -273,9 +273,9 @@ int conf_import(
 /*!
  * Exports configuration to textual file.
  *
- * \param[in] conf   Configuration.
- * \param[in] input  Output filename.
- * \param[in] style  Formatting style.
+ * \param[in] conf       Configuration.
+ * \param[in] file_name  Output filename.
+ * \param[in] style      Formatting style.
  *
  * \return Error code, KNOT_EOK if success.
  */

@@ -308,4 +308,4 @@ void zone_update_iter_finish(zone_update_iter_t *it);
  *
  * \param update  Zone update.
  */
-bool zone_update_no_change(zone_update_t *up);
+bool zone_update_no_change(zone_update_t *update);

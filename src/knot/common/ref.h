@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,17 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file ref.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
  * \brief Atomic reference counting structures.
  *
  * Reference counting allows implicit sharing of objects
  * between threads with custom destructor functions.
- *
- * \addtogroup common_lib
- * @{
  */
 
 #pragma once
@@ -83,5 +76,3 @@ void ref_retain(ref_t *p);
  * \param p Reference-counted object.
  */
 void ref_release(ref_t *p);
-
-/*! @} */

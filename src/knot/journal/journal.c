@@ -1560,22 +1560,18 @@ int journal_store_changesets(journal_t *journal, list_t *src)
 
 journal_t *journal_new()
 {
-	journal_t *j = malloc(sizeof(*j));
-	if (j != NULL) {
-		memset(j, 0, sizeof(*j));
-	}
-	return j;
+	return calloc(1, sizeof(journal_t));
 }
 
-void journal_free(journal_t **j)
+void journal_free(journal_t **journal)
 {
-	if (j == NULL || *j == NULL) return;
+	if (journal == NULL || *journal == NULL) return;
 
-	if ((*j)->zone != NULL) {
-		free((knot_dname_t *)(*j)->zone);
+	if ((*journal)->zone != NULL) {
+		free((knot_dname_t *)(*journal)->zone);
 	}
-	free(*j);
-	*j = NULL;
+	free(*journal);
+	*journal = NULL;
 }
 
 static int open_journal_db_unsafe(journal_db_t **db)
@@ -1612,13 +1608,12 @@ int journal_open_db(journal_db_t **db)
 	return ret;
 }
 
-/*! \brief Open/create the journal based on the filesystem path to LMDB directory */
-int journal_open(journal_t *j, journal_db_t **db, const knot_dname_t *zone_name)
+int journal_open(journal_t *journal, journal_db_t **db, const knot_dname_t *zone_name)
 {
 	int ret = KNOT_EOK;
 
-	if (j == NULL || (*db) == NULL) return KNOT_EINVAL;
-	if (j->db != NULL) {
+	if (journal == NULL || (*db) == NULL) return KNOT_EINVAL;
+	if (journal->db != NULL) {
 		return KNOT_EOK;
 	}
 
@@ -1629,28 +1624,28 @@ int journal_open(journal_t *j, journal_db_t **db, const knot_dname_t *zone_name)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	j->db = *db;
+	journal->db = *db;
 
-	j->zone = knot_dname_copy(zone_name, NULL);
-	if (j->zone == NULL) {
+	journal->zone = knot_dname_copy(zone_name, NULL);
+	if (journal->zone == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	bool dirty_serial_valid;
-	ret = initial_md_check(j, &dirty_serial_valid);
+	ret = initial_md_check(journal, &dirty_serial_valid);
 
 	if (ret == KNOT_EOK && dirty_serial_valid) {
-		delete_dirty_serial(j, NULL);
+		delete_dirty_serial(journal, NULL);
 	}
 
 	return ret;
 }
 
-void journal_close(journal_t *j)
+void journal_close(journal_t *journal)
 {
-	j->db = NULL;
-	free(j->zone);
-	j->zone = NULL;
+	journal->db = NULL;
+	free(journal->zone);
+	journal->zone = NULL;
 }
 
 int journal_db_init(journal_db_t **db, const char *lmdb_dir_path, size_t lmdb_fslimit,

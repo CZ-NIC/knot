@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,7 +59,8 @@ int knot_tsig_key_init(knot_tsig_key_t *key, const char *algorithm,
 /*!
  * \brief Create a new TSIG key from a string encoding all parameters.
  *
- * \param params  Parameters in a form \a [algorithm:]name:base64_secret
+ * \param[out] key     Key to be initialized.
+ * \param[in]  params  Parameters in a form \a [algorithm:]name:base64_secret
  */
 int knot_tsig_key_init_str(knot_tsig_key_t *key, const char *params);
 

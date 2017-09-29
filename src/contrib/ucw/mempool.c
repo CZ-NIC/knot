@@ -22,7 +22,7 @@
 /** \todo This shouldn't be precalculated, but computed on load. */
 #define CPU_PAGE_SIZE 4096
 
-/** Align an integer @s to the nearest higher multiple of @a (which should be a power of two) **/
+/** Align an integer \p s to the nearest higher multiple of \p a (which should be a power of two) **/
 #define ALIGN_TO(s, a) (((s)+a-1)&~(a-1))
 #define MP_CHUNK_TAIL ALIGN_TO(sizeof(struct mempool_chunk), CPU_STRUCT_ALIGN)
 #define MP_SIZE_MAX (~0U - MP_CHUNK_TAIL - CPU_PAGE_SIZE)

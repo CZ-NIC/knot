@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
  * \brief The longest textual dname representation.
  *
  * 3 x maximum_label + 1 x rest_label + 1 x zero_label
- * Each dname label byte takes 4 characters (\DDD).
+ * Each dname label byte takes 4 characters (\\DDD).
  * Each label takes 1 more byte for '.' character.
  *
  * KNOT_DNAME_TXT_MAXLEN = 3x(1 + 63x4) + 1x(1 + 61x4) + 1x(1 + 0)

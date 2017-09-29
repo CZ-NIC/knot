@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,12 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file
- *
  * \brief Functions for POSIX process handling.
- *
- * \addtogroup knot
- * @{
  */
 
 #pragma once
@@ -62,5 +57,3 @@ bool pid_running(pid_t pid);
  * \retval KNOT_EACCESS if storage is not writeable.
  */
 int proc_update_privileges(int uid, int gid);
-
-/*! @} */

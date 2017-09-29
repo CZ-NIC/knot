@@ -331,7 +331,7 @@ knotd_conf_t knotd_conf_check_item(knotd_conf_check_args_t *args,
 /*!
  * Deallocates multi-valued configuration values.
  *
- * \param[in] mod  Module context.
+ * \param[in] conf  Configuration value.
  */
 void knotd_conf_free(knotd_conf_t *conf);
 

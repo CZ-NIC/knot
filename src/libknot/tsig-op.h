@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,8 +48,9 @@
  * \param request_mac_len Size of the request MAC in bytes.
  * \param digest Buffer to save the digest in.
  * \param digest_len In: size of the buffer. Out: real size of the digest saved.
- * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are
- *                appended to the signed message.
+ * \param key TSIG used for signing.
+ * \param tsig_rcode RCODE of the TSIG.
+ * \param request_time_signed Clients time signed.
  *
  * \retval KNOT_EOK if everything went OK.
  * \retval TODO
@@ -82,8 +83,9 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  * \param prev_digest_len Size of the previous digest in bytes.
  * \param digest Buffer to save the digest in.
  * \param digest_len In: size of the buffer. Out: real size of the digest saved.
- * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are
- *                appended to the signed message.
+ * \param key TSIG key for signing.
+ * \param to_sign Data being signed.
+ * \param to_sign_len Size of the data being signed.
  *
  * \retval KNOT_EOK if successful.
  * \retval TODO
@@ -103,6 +105,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  * \param tsig_rr TSIG extracted from the packet.
  * \param wire Wire format of the packet (including the TSIG RR).
  * \param size Size of the wire format of packet in bytes.
+ * \param tsig_key TSIG key.
  *
  * \retval KNOT_EOK If the signature is valid.
  * \retval TODO
@@ -122,6 +125,8 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
  * \param size Size of the wire format of packet in bytes.
  * \param request_mac Request MAC. (may be NULL).
  * \param request_mac_len Size of the request MAC in bytes.
+ * \param key TSIG key.
+ * \param prev_time_signed Time for TSIG period validity.
  *
  * \retval KNOT_EOK If the signature is valid.
  * \retval TODO
@@ -143,6 +148,8 @@ int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
  * \param size Size of the wire format of packet in bytes.
  * \param prev_digest Previous digest sent by the server in the session.
  * \param prev_digest_len Size of the previous digest in bytes.
+ * \param key TSIG key.
+ * \param prev_time_signed Time for TSIG period validity.
  *
  * \retval KNOT_EOK If the signature is valid.
  * \retval TODO

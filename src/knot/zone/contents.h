@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,7 +96,7 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
  * \note This function is identical to zone_contents_get_node(), only it returns
  *       constant reference.
  *
- * \param zone Zone where the name should be searched for.
+ * \param contents Zone where the name should be searched for.
  * \param name Name to find.
  *
  * \return Corresponding node if found, NULL otherwise.
@@ -137,7 +137,7 @@ int zone_contents_find_dname(const zone_contents_t *contents,
  * \note This function is identical to zone_contents_get_nsec3_node(), only it
  *       returns constant reference.
  *
- * \param zone Zone where the name should be searched for.
+ * \param contents Zone where the name should be searched for.
  * \param name Name to find.
  *
  * \return Corresponding node if found, NULL otherwise.
@@ -152,7 +152,7 @@ const zone_node_t *zone_contents_find_nsec3_node(const zone_contents_t *contents
  * This functions creates a NSEC3 hash of \a name and tries to find NSEC3 node
  * with the hashed domain name as owner.
  *
- * \param[in] zone Zone to search in.
+ * \param[in] contents Zone to search in.
  * \param[in] name Domain name to get the corresponding NSEC3 nodes for.
  * \param[out] nsec3_node NSEC3 node corresponding to \a name (if found,
  *                        otherwise this may be an arbitrary NSEC3 node).

@@ -478,9 +478,9 @@ static int subtract(changeset_t *from, const changeset_t *what)
 	return changeset_walk(what, subtract_callback, (void *)from);
 }
 
-int changeset_preapply_fix(const zone_contents_t *zone, changeset_t *change)
+int changeset_preapply_fix(const zone_contents_t *zone, changeset_t *ch)
 {
-	if (zone == NULL || change == NULL) {
+	if (zone == NULL || ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -491,33 +491,33 @@ int changeset_preapply_fix(const zone_contents_t *zone, changeset_t *change)
 	}
 
 	preapply_fix_ctx ctx = { .zone = zone, .fixing = &fixing, .mm = NULL };
-	ret = changeset_walk(change, preapply_fix_rrset, (void *)&ctx);
+	ret = changeset_walk(ch, preapply_fix_rrset, (void *)&ctx);
 	if (ret == KNOT_EOK) {
-		ret = subtract(change, &fixing);
+		ret = subtract(ch, &fixing);
 	}
 	changeset_clear(&fixing);
 	return ret;
 }
 
-int changeset_cancelout(changeset_t *change)
+int changeset_cancelout(changeset_t *ch)
 {
-	if (change == NULL) {
+	if (ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	changeset_t fixing;
-	int ret = changeset_init(&fixing, change->add->apex->owner);
+	int ret = changeset_init(&fixing, ch->add->apex->owner);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	preapply_fix_ctx ctx = { .zone = change->remove, .fixing = &fixing, .mm = NULL };
-	ret = changeset_walk(change, preapply_fix_rrset, (void *)&ctx);
+	preapply_fix_ctx ctx = { .zone = ch->remove, .fixing = &fixing, .mm = NULL };
+	ret = changeset_walk(ch, preapply_fix_rrset, (void *)&ctx);
 	if (ret == KNOT_EOK) {
 		assert(zone_contents_is_empty(fixing.add));
 		zone_contents_t *fixing_add_bck = fixing.add;
 		fixing.add = fixing.remove;
-		ret = subtract(change, &fixing);
+		ret = subtract(ch, &fixing);
 		fixing.add = fixing_add_bck;
 	}
 	changeset_clear(&fixing);

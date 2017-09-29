@@ -76,8 +76,8 @@ void journal_db_close(journal_db_t **db);
 /*!
  * \brief List the zones contained in journal DB.
  *
- * \param db[in]      Shared journal DB
- * \param zones[out]  List of strings (char *) of zone names
+ * \param[in] db      Shared journal DB
+ * \param[out] zones  List of strings (char *) of zone names
  *
  * \return KNOT_EOK    ok
  * \retval KNOT_ENOMEM no zones found
@@ -102,16 +102,17 @@ journal_t *journal_new(void);
 void journal_free(journal_t **journal);
 
 /*!
- * \brief Open journal.
+ * \brief Open/create the journal based on the filesystem path to LMDB directory
  *
- * \param j          Journal struct to use.
- * \param db         Shared journal database
+ * \param journal    Journal struct to use.
+ * \param db         Shared journal database.
  * \param zone_name  Name of the zone this journal belongs to.
  *
  * \retval KNOT_EOK on success.
  * \return < KNOT_EOK on other errors.
  */
-int journal_open(journal_t *j, journal_db_t **db, const knot_dname_t *zone_name);
+int journal_open(journal_t *journal, journal_db_t **db,
+                 const knot_dname_t *zone_name);
 
 /*!
  * \brief Close journal.
@@ -143,7 +144,7 @@ int journal_load_changesets(journal_t *journal, list_t *dst, uint32_t from);
  * \retval KNOT_ENOENT when there is no bootstrap changeset.
  * \return < KNOT_EOK on other error.
  */
-int journal_load_bootstrap(journal_t *j, list_t *dst);
+int journal_load_bootstrap(journal_t *journal, list_t *dst);
 
 /*!
  * \brief Store changesets in journal.
@@ -203,17 +204,17 @@ int journal_flush(journal_t *journal);
  *
  * This must be called with opened journal.
  *
- * \param j Journal to be deleted
+ * \param journal Journal to be deleted
  *
  * \return KNOT_E*
  */
-int journal_scrape(journal_t *j);
+int journal_scrape(journal_t *journal);
 
 /*! \brief Obtain public information from journal metadata
  */
-void journal_metadata_info(journal_t *j, bool *is_empty, kserial_t *merged_serial,
-                           kserial_t *first_serial, kserial_t *last_flushed, kserial_t *serial_to,
-                           uint64_t *occupied);
+void journal_metadata_info(journal_t *journal, bool *is_empty, kserial_t *merged_serial,
+                           kserial_t *first_serial, kserial_t *last_flushed,
+                           kserial_t *serial_to, uint64_t *occupied);
 
 /*! \brief Check the journal consistency, errors to stderr.
  *
@@ -222,6 +223,6 @@ void journal_metadata_info(journal_t *j, bool *is_empty, kserial_t *merged_seria
  *
  * \return KNOT_E*
  */
-int journal_check(journal_t *j, journal_check_level_t warn_level);
+int journal_check(journal_t *journal, journal_check_level_t warn_level);
 
 /*! @} */

@@ -74,7 +74,7 @@ typedef enum {
 	YP_TOPT,      /*!< Option from the list. */
 	YP_TSTR,      /*!< String. */
 	YP_THEX,      /*!< String or hexadecimal string if "0x" prefix. */
-	YP_TADDR,     /*!< Address (address[@port] or UNIX socket path). */
+	YP_TADDR,     /*!< Address (address[\@port] or UNIX socket path). */
 	YP_TNET,      /*!< Network address range (address[/mask] or address-address). */
 	YP_TDNAME,    /*!< Domain name. */
 	YP_TB64,      /*!< Base64 encoded string. */

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,6 +74,7 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
  *
  * \param tree Zone tree to search in.
  * \param owner Owner of the node to find.
+ * \param found Found node or NULL
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
@@ -86,7 +87,7 @@ int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
  * \brief Tries to find the given domain name in the zone tree and returns the
  *        associated node and previous node in canonical order.
  *
- * \param zone Zone to search in.
+ * \param tree Zone to search in.
  * \param owner Owner of the node to find.
  * \param found Found node.
  * \param previous Previous node in canonical order (i.e. the one directly
@@ -152,8 +153,6 @@ void zone_tree_free(zone_tree_t **tree);
  * \brief Destroys the zone tree, together with the saved data.
  *
  * \param tree Zone tree to be destroyed.
- * \param free_owners Set to <> 0 if owners of the nodes should be destroyed
- *                    as well. Set to 0 otherwise.
  */
 void zone_tree_deep_free(zone_tree_t **tree);
 

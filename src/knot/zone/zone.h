@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,7 +113,7 @@ zone_t* zone_new(const knot_dname_t *name);
  *
  * \note The function also deallocates all bound structures (contents, etc.).
  *
- * \param zone Zone to be freed.
+ * \param zone_ptr Zone to be freed.
  */
 void zone_free(zone_t **zone_ptr);
 
@@ -124,11 +124,6 @@ void zone_free(zone_t **zone_ptr);
  */
 void zone_control_clear(zone_t *zone);
 
-/*!
- * \note Zone change API below, subject to change.
- * \ref #223 New zone API
- * \todo get rid of this
- */
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
 int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs);
 int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from);

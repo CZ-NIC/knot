@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -188,7 +188,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 
 /*!
  * \brief Sorts the dataset. Removes the element if found to be duplicate.
- * \param rss   RRS to sort.
+ * \param rrs   RRS to sort.
  * \param pos   Position of the element to sort.
  * \param mm    Memory context used to remove the element if duplicate.
  * \return KNOT_E*

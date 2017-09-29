@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,7 +88,7 @@ static int create_env_dir(const char *path)
 }
 
 /*! \brief Set the environment map size.
- * \note This also sets the maximum database size, see \fn mdb_env_set_mapsize
+ * \note This also sets the maximum database size, see mdb_env_set_mapsize
  */
 static int set_mapsize(MDB_env *env, size_t map_size)
 {

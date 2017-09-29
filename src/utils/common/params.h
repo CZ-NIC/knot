@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -135,7 +135,7 @@ char *name_from_idn(const char *idn_name);
  *
  * If an error occurs or IDN support is missing, this function does nothing.
  *
- * \param idn_name	ASCII name to transform and replace with IDN name.
+ * \param name	ASCII name to transform and replace with IDN name.
  */
 void name_to_idn(char **name);
 

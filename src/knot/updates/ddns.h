@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,9 +31,9 @@
 /*!
  * \brief Checks update prerequisite section.
  *
- * \param query  DNS message containing the update.
- * \param zone   Zone to be checked.
- * \param rcode  Returned DNS RCODE.
+ * \param query   DNS message containing the update.
+ * \param update  Zone to be checked.
+ * \param rcode   Returned DNS RCODE.
  *
  * \return KNOT_E*
  */
@@ -46,7 +46,7 @@ int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
  *
  * \param zone        Zone to be updated.
  * \param query       DNS message containing the update.
- * \param changeset   Output changeset.
+ * \param update      Output changeset.
  * \param rcode       Output DNS RCODE.
  *
  * \return KNOT_E*

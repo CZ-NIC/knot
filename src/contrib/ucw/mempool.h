@@ -23,7 +23,7 @@
  ***/
 
 /**
- * Memory pool state (see @mp_push(), ...).
+ * Memory pool state (see mp_push(), ...).
  * You should use this one as an opaque handle only, the insides are internal.
  **/
 struct mempool_state {
@@ -41,7 +41,7 @@ struct mempool {
 	unsigned chunk_size, threshold, idx;
 };
 
-struct mempool_stats {			/** Mempool statistics. See @mp_stats(). **/
+struct mempool_stats {			/** Mempool statistics. See mp_stats(). **/
 	uint64_t total_size;		/** Real allocated size in bytes. */
 	unsigned chain_count[3];	/** Number of allocated chunks in small/big/unused chains. */
 	unsigned chain_size[3];		/** Size of allocated chunks in small/big/unused chains. */
@@ -55,7 +55,7 @@ struct mempool_stats {			/** Mempool statistics. See @mp_stats(). **/
 
 /**
  * Initialize a given mempool structure.
- * @chunk_size must be in the interval `[1, UINT_MAX / 2]`.
+ * \p chunk_size must be in the interval `[1, UINT_MAX / 2]`.
  * It will allocate memory by this large chunks and take
  * memory to satisfy requests from them.
  *
@@ -65,7 +65,7 @@ void mp_init(struct mempool *pool, unsigned chunk_size);
 
 /**
  * Allocate and initialize a new memory pool.
- * See @mp_init() for @chunk_size limitations.
+ * See \ref mp_init() for \p chunk_size limitations.
  *
  * The new mempool structure is allocated on the new mempool.
  *
@@ -76,15 +76,15 @@ struct mempool *mp_new(unsigned chunk_size);
 /**
  * Cleanup mempool initialized by mp_init or mp_new.
  * Frees all the memory allocated by this mempool and,
- * if created by @mp_new(), the @pool itself.
+ * if created by \ref mp_new(), the \p pool itself.
  **/
 void mp_delete(struct mempool *pool);
 
 /**
  * Frees all data on a memory pool, but leaves it working.
  * It can keep some of the chunks allocated to serve
- * further allocation requests. Leaves the @pool alive,
- * even if it was created with @mp_new().
+ * further allocation requests. Leaves the \p pool alive,
+ * even if it was created with \ref mp_new().
  **/
 void mp_flush(struct mempool *pool);
 
@@ -102,8 +102,8 @@ uint64_t mp_total_size(struct mempool *pool);	/** How many bytes were allocated 
  ***/
 
 /**
- * The function allocates new @size bytes on a given memory pool.
- * If the @size is zero, the resulting pointer is undefined,
+ * The function allocates new \p size bytes on a given memory pool.
+ * If the \p size is zero, the resulting pointer is undefined,
  * but it may be safely reallocated or used as the parameter
  * to other functions below.
  *
@@ -114,11 +114,11 @@ uint64_t mp_total_size(struct mempool *pool);	/** How many bytes were allocated 
 void *mp_alloc(struct mempool *pool, unsigned size);
 
 /**
- * The same as @mp_alloc(), but the result may be unaligned.
+ * The same as \ref mp_alloc(), but the result may be unaligned.
  **/
 void *mp_alloc_noalign(struct mempool *pool, unsigned size);
 
 /**
- * The same as @mp_alloc(), but fills the newly allocated memory with zeroes.
+ * The same as \ref mp_alloc(), but fills the newly allocated memory with zeroes.
  **/
 void *mp_alloc_zero(struct mempool *pool, unsigned size);

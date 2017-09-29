@@ -139,18 +139,18 @@ inline static knot_time_t knot_time_from_u32(uint32_t u32time)
  * \param time      The parsed timestamp.
  *
  * The format specification basics:
- * <format 1>|<format2> - The pipe sign separates two time format specifications. Leftmost
- *                        specification matching the timespec is used.
- * '<a string>'         - Matches exactly <a string> (not containing apostrophes) in timespec.
- * #                    - Hashtag matches for a number in timespec, stands for either a UNIX timestamp,
- *                        or, within a context of an unit, as a number of such units.
- * Y, M, D, h, m, s     - Matches a number, stands for a number of years, months, days, hours,
- *                        minutes and seconds, respectively.
- * +, -                 - The + and - signs declaring that following timespec is relative to "now".
- *                        A single sign can be used to limit the timestamp being in future or in past,
- *                        or both +- allow the timestamp to select any (just one) of them.
- * U                    - Matches one of Y, M, D, h, m, s in the timespec standing for a time unit.
- * u                    - Like U, but the unit in the timestamp is from: y, mo, d, h, mi, s.
+ * <format 1>|<format 2> - The pipe sign separates two time format specifications. Leftmost
+ *                         specification matching the timespec is used.
+ * '<a string>'          - Matches exactly <a string> (not containing apostrophes) in timespec.
+ * #                     - Hashtag matches for a number in timespec, stands for either a UNIX timestamp,
+ *                         or, within a context of an unit, as a number of such units.
+ * Y, M, D, h, m, s      - Matches a number, stands for a number of years, months, days, hours,
+ *                         minutes and seconds, respectively.
+ * +, -                  - The + and - signs declaring that following timespec is relative to "now".
+ *                         A single sign can be used to limit the timestamp being in future or in past,
+ *                         or both +- allow the timestamp to select any (just one) of them.
+ * U                     - Matches one of Y, M, D, h, m, s in the timespec standing for a time unit.
+ * u                     - Like U, but the unit in the timestamp is from: y, mo, d, h, mi, s.
  *
  * \retval -1  An error occured, out_time has no sense.
  * \return  0  OK, timestamp parsed successfully.

@@ -22,7 +22,7 @@
  *
  * DNSSEC public and private key manipulation.
  *
- * The \ref dnssec_key_t is an abstraction for a DNSSEC key pair. If the key
+ * The dnssec_key_t is an abstraction for a DNSSEC key pair. If the key
  * key is initialized with a public key data only, it can be used only for
  * signature verification. In order to use the key for signing, private key
  * has to be loaded. If only a private key is loaded into the structure,

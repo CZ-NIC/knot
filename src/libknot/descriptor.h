@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -170,7 +170,7 @@ typedef struct {
 /*!
  * \brief Gets rdata descriptor for given RR name.
  *
- * \param name Mnemonic of RR type whose descriptor should be returned.
+ * \param type Mnemonic of RR type whose descriptor should be returned.
  *
  * \retval RR descriptor for given name, NULL descriptor if
  *         unknown type.
@@ -180,7 +180,7 @@ const knot_rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type);
 /*!
  * \brief Gets rdata descriptor for given RR name (obsolete version).
  *
- * \param name Mnemonic of RR type whose descriptor should be returned.
+ * \param type Mnemonic of RR type whose descriptor should be returned.
  *
  * \retval RR descriptor for given name, NULL descriptor if
  *         unknown type.
@@ -240,7 +240,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num);
 /*!
  * \brief Checks if given item is one of metatypes or qtypes.
  *
- * \param item Item value.
+ * \param type Item value.
  *
  * \retval > 0 if YES.
  * \retval 0 if NO.
@@ -250,7 +250,7 @@ int knot_rrtype_is_metatype(const uint16_t type);
 /*!
  * \brief Checks if given item is one of the DNSSEC types.
  *
- * \param item Item value.
+ * \param type Item value.
  *
  * \retval > 0 if YES.
  * \retval 0 if NO.

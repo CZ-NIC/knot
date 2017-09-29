@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,14 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file evsched.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
  * \brief Event scheduler.
- *
- * \addtogroup common_lib
- * @{
  */
 
 #pragma once
@@ -109,7 +102,6 @@ event_t *evsched_event_create(evsched_t *sched, event_cb_t cb, void *data);
 /*!
  * \brief Dispose event instance.
  *
- * \param s Pointer to event scheduler instance.
  * \param ev Event instance.
  */
 void evsched_event_free(event_t *ev);
@@ -138,7 +130,6 @@ int evsched_schedule(event_t *ev, uint32_t dt);
  * \warning Never cancel event in it's callback. As it never finishes,
  *          it deadlocks.
  *
- * \param s Event scheduler.
  * \param ev Scheduled event.
  *
  * \retval KNOT_EOK
@@ -149,5 +140,3 @@ int evsched_cancel(event_t *ev);
 void evsched_start(evsched_t *sched);
 void evsched_stop(evsched_t *sched);
 void evsched_join(evsched_t *sched);
-
-/*! @} */

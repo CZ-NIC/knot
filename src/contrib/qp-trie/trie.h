@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "libknot/mm_ctx.h"
 
 /*!
- * \file \brief Native API of QP-tries:
+ * \brief Native API of QP-tries:
  *
  * - keys are char strings, not necessarily zero-terminated,
  *   the structure copies the contents of the passed keys
@@ -60,7 +60,10 @@ trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len);
 /*!
  * \brief Search for less-or-equal element.
  *
- * \param val must be valid; it will be set to NULL if not found or errored.
+ * \param tbl  Trie.
+ * \param key  Searched key.
+ * \param len  Key length.
+ * \param val  Must be valid; it will be set to NULL if not found or errored.
  * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
  *         or KNOT_E*.
  */

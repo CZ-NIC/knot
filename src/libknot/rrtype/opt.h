@@ -76,6 +76,7 @@ enum knot_edns_const {
 /*!
  * \brief Initialize OPT RR.
  *
+ * \param opt_rr     OPT RR to initialize.
  * \param max_pld    Max UDP payload.
  * \param ext_rcode  Extended RCODE.
  * \param ver        Version.

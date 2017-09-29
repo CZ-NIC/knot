@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -66,7 +66,8 @@ void estimator_rrset_memsize_wrap(zs_scanner_t *scanner);
 /*!
  * \brief Cleanup function for use with trie.
  *
- * \param p Data to free.
+ * \param val Data to free.
+ * \param data Unused variable.
  */
 int estimator_free_trie_node(trie_val_t *val, void *data);
 

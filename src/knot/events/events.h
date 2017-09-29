@@ -64,7 +64,7 @@ typedef struct zone_events {
 /*!
  * \brief Initialize zone events.
  *
- * The function will not set up the scheduling, use \ref zone_events_enable
+ * The function will not set up the scheduling, use \ref zone_events_setup
  * to do that.
  *
  * \param zone  Pointer to zone (context of execution).

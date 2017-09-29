@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@ typedef enum {
  * \param owner   OWNER of the RRSet.
  * \param type    TYPE of the RRSet.
  * \param rclass  CLASS of the RRSet.
+ * \param mm      Memory context.
  *
  * \return New RRSet structure or NULL if an error occurred.
  */

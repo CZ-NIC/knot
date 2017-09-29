@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,13 +15,11 @@
 */
 
 /*!
- * \file hex.h
+ * \file
  *
  * \brief Coversion between HEX strings and bytes.
  *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
- *
- * \addtogroup common_lib
+ * \addtogroup knot_utils
  * @{
  */
 

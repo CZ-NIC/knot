@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -115,9 +115,9 @@ int dnssec_nsec3_hash(const dnssec_binary_t *data,
  * Get length of raw NSEC3 hash for a given algorithm.
  */
 _public_
-size_t dnssec_nsec3_hash_length(dnssec_nsec3_algorithm_t dnssec)
+size_t dnssec_nsec3_hash_length(dnssec_nsec3_algorithm_t algorithm)
 {
-	gnutls_digest_algorithm_t gnutls = algorithm_d2g(dnssec);
+	gnutls_digest_algorithm_t gnutls = algorithm_d2g(algorithm);
 	if (gnutls == GNUTLS_DIG_UNKNOWN) {
 		return 0;
 	}

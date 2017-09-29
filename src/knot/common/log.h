@@ -14,17 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file
- *
  * \brief Logging facility.
  *
  * Supported log levels/priorities:
  * LOG_CRIT, LOG_ERR, LOG_WARNING, LOG_NOTICE, LOG_INFO, and LOG_DEBUG.
  *
  * \see syslog.h
- *
- * \addtogroup logging
- * @{
  */
 
 #pragma once
@@ -118,6 +113,9 @@ __attribute__((format(printf, 3, 4)));
  * \see log_fmt
  *
  * \param zone  Zone name in wire format.
+ * \param priority  Message priority.
+ * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
+ * \param fmt       Content of the logged message.
  */
 void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone, const char *fmt, ...)
 __attribute__((format(printf, 4, 5)));
@@ -128,6 +126,9 @@ __attribute__((format(printf, 4, 5)));
  * \see log_fmt
  *
  * \param zone  Zone name as an ASCII string.
+ * \param priority  Message priority.
+ * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
+ * \param fmt       Content of the logged message.
  */
 void log_fmt_zone_str(int priority, log_source_t src, const char *zone, const char *fmt, ...)
 __attribute__((format(printf, 4, 5)));
@@ -181,5 +182,3 @@ int log_update_privileges(int uid, int gid);
  * \brief Setup logging facilities from config.
  */
 void log_reconfigure(conf_t *conf);
-
-/*! @} */

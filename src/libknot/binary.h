@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,9 +15,7 @@
  */
 
 /*!
- * \file includes.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
+ * \file
  *
  * \brief Structures for binary data handling.
  *

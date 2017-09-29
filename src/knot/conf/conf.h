@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -520,8 +520,8 @@ bool conf_addr_range_match(
  *
  * \note The result must be explicitly deallocated.
  *
- * \param[in] val            Item value.
- * \param[in] sock_base_dir  Path prefix for a relative string.
+ * \param[in] val       Item value.
+ * \param[in] base_dir  Path prefix for a relative string.
  *
  * \return Absolute path string pointer.
  */

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -75,8 +75,8 @@ void knot_ctl_free(knot_ctl_t *ctx);
  *
  * Default value is 5 seconds.
  *
- * \param[in] ctx      Control context.
- * \param[in] timeout  Timeout in milliseconds (0 for infinity).
+ * \param[in] ctx         Control context.
+ * \param[in] timeout_ms  Timeout in milliseconds (0 for infinity).
  */
 void knot_ctl_set_timeout(knot_ctl_t *ctx, int timeout_ms);
 
