@@ -1,3 +1,20 @@
+Knot DNS 2.5.5 (2017-09-29)
+===========================
+
+Improvements:
+-------------
+ - Constant time memory comparison in the TSIG processing
+ - Proper use of the ctype functions
+ - Generated RRSIG records have inception time 90 minutes in the past
+
+Bugfixes:
+---------
+ - Incorrect online signature for NSEC in the case of a CNAME record
+ - Incorrect timestamps in dnstap records
+ - EDNS Subnet Client validation rejects valid payloads
+ - Module configuration semantic checks are not executed
+ - Kzonecheck segfaults with unusual inputs
+
 Knot DNS 2.5.4 (2017-08-31)
 ===========================
 
