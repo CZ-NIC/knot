@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,23 +16,18 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <signal.h>
 
-#include "libknot/libknot.h"
-#include "afl-loop.h"
+#include "zscanner/scanner.h"
 
-int main(void)
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-	while (__AFL_LOOP(1000)) {
-		uint8_t buffer[UINT16_MAX + 1] = { 0 };
-		size_t len = fread(buffer, 1, sizeof(buffer), stdin);
+	zs_scanner_t s = { 0 };
+	assert(zs_init(&s, ".", 1, 0) == 0);
+	assert(zs_set_input_string(&s, (const char *)data, size) == 0);
 
-		knot_pkt_t *pkt = knot_pkt_new(buffer, len, NULL);
-		assert(pkt);
-		int r = knot_pkt_parse(pkt, 0);
-		knot_pkt_free(&pkt);
+	zs_parse_all(&s);
 
-		return (r == KNOT_EOK ? 0 : 1);
-	}
+	zs_deinit(&s);
+	
+	return 0;
 }

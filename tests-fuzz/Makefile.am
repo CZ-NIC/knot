@@ -2,33 +2,29 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h	\
 	-I$(top_srcdir)/src			\
 	-I$(top_srcdir)/src/dnssec/lib		\
-        -DCONFIG_DIR='"${config_dir}"'          \
-        -DSTORAGE_DIR='"${storage_dir}"'        \
-        -DRUN_DIR='"${run_dir}"'
+	-DCONFIG_DIR='"${config_dir}"'          \
+	-DSTORAGE_DIR='"${storage_dir}"'        \
+	-DRUN_DIR='"${run_dir}"'		\
+	-DSRCDIR=\"$(abs_srcdir)\"
 
-LDADD = \
-	$(top_builddir)/src/libknot.la
+FUZZERS = \
+	packet_libfuzzer	\
+	zscanner_libfuzzer
 
-check_PROGRAMS = \
-	knotd_stdio \
-	packet
+check_PROGRAMS = $(FUZZERS)
 
-if HAVE_LIBFUZZER
-check_PROGRAMS += packet_libfuzzer
-packet_libfuzzer_LDADD = $(LDADD) $(libfuzzer_LIBS) -lstdc++
+packet_libfuzzer_SOURCES = packet_libfuzzer.c
+packet_libfuzzer_LDADD = $(top_builddir)/src/libknot.la
+
+zscanner_libfuzzer_SOURCES = zscanner_libfuzzer.c
+zscanner_libfuzzer_LDADD = $(top_builddir)/src/zscanner/libzscanner.la
+
+if SANITIZE_FUZZER
+packet_libfuzzer_LDFLAGS = -fsanitize=fuzzer
+zscanner_libfuzzer_LDFLAGS = -fsanitize=fuzzer
+else
+packet_libfuzzer_SOURCES += main.c
+zscanner_libfuzzer_SOURCES += main.c
+AM_CPPFLAGS += -DTEST_RUN
+TESTS = $(FUZZERS)
 endif
-
-packet_SOURCES = packet.c afl-loop.h
-knotd_stdio_SOURCES = wrap/server.c wrap/tcp-handler.c wrap/udp-handler.c afl-loop.h
-nodist_knotd_stdio_SOURCES = wrap/main.c
-knotd_stdio_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
-knotd_stdio_LDADD = \
-	$(top_builddir)/src/libknotd.la $(top_builddir)/src/libcontrib.la \
-	$(liburcu_LIBS)
-BUILT_SOURCES = wrap/main.c
-CLEANFILES = wrap/main.c
-wrap/main.c: Makefile $(top_builddir)/src/utils/knotd/main.c
-	echo '#include "afl-loop.h"' > $@
-	$(SED) -e 's/for (;;)/while (__AFL_LOOP(1000))/' $(top_srcdir)/src/utils/knotd/main.c >>$@
-
-check-compile: $(check_PROGRAMS)

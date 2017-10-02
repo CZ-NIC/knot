@@ -1,0 +1,6 @@
+[submodule "tests-fuzz/packet_libfuzzer.in"]
+	path = tests-fuzz/packet_libfuzzer.in
+	url = ../fuzzing/packet_libfuzzer.in.git
+[submodule "tests-fuzz/zscanner_libfuzzer.in"]
+	path = tests-fuzz/zscanner_libfuzzer.in
+	url = ../fuzzing/zscanner_libfuzzer.in.git
