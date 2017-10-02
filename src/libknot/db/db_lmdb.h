@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,6 +13,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file
+ *
+ * \addtogroup db
+ * @{
+ */
 
 #pragma once
 
@@ -61,3 +67,5 @@ int knot_db_lmdb_txn_begin(knot_db_t *db, knot_db_txn_t *txn, knot_db_txn_t *par
 int knot_db_lmdb_iter_del(knot_db_iter_t *iter);
 size_t knot_db_lmdb_get_mapsize(knot_db_t *db);
 size_t knot_db_lmdb_get_usage(knot_db_t *db);
+
+/*! @} */

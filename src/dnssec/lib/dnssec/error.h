@@ -16,11 +16,9 @@
 /*!
  * \file
  *
- * Error codes and error reporting.
+ * \addtogroup error
  *
- * \defgroup error Error
- *
- * Error codes and error reporting.
+ * \brief Error codes and error reporting.
  *
  * The module defines all error codes used in the library, and functions
  * to convert the error codes to sensible error strings.

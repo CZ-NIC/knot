@@ -18,7 +18,7 @@
  *
  * \brief RRSet structure and API for manipulating it.
  *
- * \addtogroup libknot
+ * \addtogroup rr
  * @{
  */
 

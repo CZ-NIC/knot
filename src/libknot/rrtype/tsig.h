@@ -18,7 +18,7 @@
  *
  * \brief TSIG manipulation.
  *
- * \addtogroup libknot
+ * \addtogroup rrtype
  * @{
  */
 

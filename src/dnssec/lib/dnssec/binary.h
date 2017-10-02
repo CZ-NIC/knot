@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,9 @@
 /*!
  * \file
  *
- * Universal binary data container.
+ * \addtogroup binary
  *
- * \defgroup binary Binary
- *
- * Universal binary data container.
+ * \brief Universal binary data container.
  *
  * The module provides universal binary data container extensively used by
  * a lot of functions provided by the library.

@@ -18,7 +18,7 @@
  *
  * \brief Functions for manipulating the EDNS OPT pseudo-RR.
  *
- * \addtogroup libknot
+ * \addtogroup rrtype
  * @{
  */
 

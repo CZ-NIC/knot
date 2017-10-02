@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,6 +12,12 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file
+ *
+ * \addtogroup rrtype
+ * @{
  */
 
 #pragma once
@@ -30,3 +36,5 @@ uint8_t knot_ds_digest_type(const knot_rdataset_t *rrs, size_t pos);
 
 void knot_ds_digest(const knot_rdataset_t *rrs, size_t pos,
                     uint8_t **digest, uint16_t *digest_size);
+
+/*! @} */

@@ -12,6 +12,7 @@
 .dirstamp
 /tmp
 /Knot.creator.user*
+/Doxyfile
 /Makefile
 /Makefile.in
 /src/Makefile

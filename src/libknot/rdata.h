@@ -18,7 +18,7 @@
  *
  * \brief API for manipulating rdata.
  *
- * \addtogroup libknot
+ * \addtogroup rr
  * @{
  */
 
@@ -43,10 +43,10 @@ typedef struct {
 /*!
  * \brief Inits rdata structure.
  *
- * \param buf   Rdata structure to be initialized. At least knot_rdata_size bytes
- *              must fit into it!
- * \param len   Rdata length.
- * \param data  Rdata itself.
+ * \param rdata  Rdata structure to be initialized. At least knot_rdata_size bytes
+ *               must fit into it!
+ * \param len    Rdata length.
+ * \param data   Rdata itself.
  */
 inline static void knot_rdata_init(knot_rdata_t *rdata, uint16_t len, const uint8_t *data)
 {

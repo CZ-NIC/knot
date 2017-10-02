@@ -18,7 +18,7 @@
  *
  * \brief A server control interface.
  *
- * \addtogroup libknot
+ * \addtogroup ctl
  * @{
  */
 

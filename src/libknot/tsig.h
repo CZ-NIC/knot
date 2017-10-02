@@ -13,6 +13,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file
+ *
+ * \brief TSIG operations
+ *
+ * \addtogroup knot-tsig
+ * @{
+ */
 
 #pragma once
 
@@ -80,3 +88,5 @@ void knot_tsig_key_deinit(knot_tsig_key_t *key);
  * \brief Duplicate a TSIG key.
  */
 int knot_tsig_key_copy(knot_tsig_key_t *dst, const knot_tsig_key_t *src);
+
+/*! @} */

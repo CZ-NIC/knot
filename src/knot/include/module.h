@@ -13,6 +13,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \brief Knot DNS module interface.
+ *
+ * \addtogroup module
+ * @{
+ */
 
 #pragma once
 
@@ -482,3 +490,5 @@ int knotd_mod_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_hook_f hook)
  * \return Error code, KNOT_EOK if success.
  */
 int knotd_mod_in_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_in_hook_f hook);
+
+/*! @} */

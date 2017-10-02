@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,6 +13,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file
+ *
+ * \brief Structures for binary data handling.
+ *
+ * \addtogroup db
+ * @{
+ */
 
 #pragma once
 
@@ -79,3 +87,5 @@ typedef struct knot_db_api {
 	int (*iter_val)(knot_db_iter_t *iter, knot_db_val_t *val);
 	void (*iter_finish)(knot_db_iter_t *iter);
 } knot_db_api_t;
+
+/*! @} */

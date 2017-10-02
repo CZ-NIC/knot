@@ -18,7 +18,7 @@
  *
  * \brief TSIG signing and validating.
  *
- * \addtogroup libknot
+ * \addtogroup knot-tsig
  * @{
  */
 

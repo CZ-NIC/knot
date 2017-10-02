@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,6 +13,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \addtogroup rrtype
+ * @{
+ */
 
 #pragma once
 
@@ -23,3 +29,5 @@
 int knot_a_addr(const knot_rdataset_t *rrs, size_t pos, struct sockaddr_in *dst);
 
 int knot_aaaa_addr(const knot_rdataset_t *rrs, size_t pos, struct sockaddr_in6 *dst);
+
+/*! @} */
