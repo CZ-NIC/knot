@@ -297,7 +297,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 
 	log_zone_info(zone_name, "DNSSEC, successfully signed");
 
-	// schedule next resigning (only new signatures are made)
+	// schedule next re-signing (only new signatures are made)
 	reschedule->next_sign = ctx.now + ctx.policy->rrsig_lifetime - ctx.policy->rrsig_refresh_before;
 	assert(reschedule->next_sign > 0);
 	(void)expire_at; // the result of expire_at is actually unused because we computed next_sign easily

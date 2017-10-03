@@ -210,7 +210,7 @@ class ZoneFile(object):
         os.remove(old_name)
 
     def update_rnd(self):
-        '''Add random records or resign zone.'''
+        '''Add random records or re-sign zone.'''
 
         dnssec = False
         nsec3 = False

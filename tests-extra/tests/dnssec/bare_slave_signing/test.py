@@ -40,7 +40,7 @@ soa2rrsig_expire = str(soa2.resp.answer[1].to_rdataset()).split()[7]
 detail_log("soa2rrsig_exp "+soa2rrsig_expire)
 
 if soa2rrsig_expire == soa1rrsig_expire:
-    set_err("Zone not resigned, test error")
+    set_err("Zone not re-signed, test error")
 
 if soa2serial == soa1serial:
     set_err("Serial not incremented on AXFR")

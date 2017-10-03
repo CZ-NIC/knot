@@ -42,7 +42,7 @@ t.sleep(4) # zones_wait fails if an empty update is generated
 slave.ctl("zone-refresh")
 t.sleep(5)
 
-# resign master and check that the resign made nothing
+# re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
 master.zones_wait(zones)
 

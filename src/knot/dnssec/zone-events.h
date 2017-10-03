@@ -53,7 +53,7 @@ int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
                                     const knot_dname_t *zone_name);
 
 /*!
- * \brief DNSSEC resign zone, store new records into changeset. Valid signatures
+ * \brief DNSSEC re-sign zone, store new records into changeset. Valid signatures
  *        and NSEC(3) records will not be changed.
  *
  * \param update       Zone Update structure with current zone contents to be updated by signing.

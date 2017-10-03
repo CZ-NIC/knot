@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for no resigning if the zone is properly signed.'''
+'''Test for no re-signing if the zone is properly signed.'''
 
 from dnstest.utils import *
 from dnstest.test import Test
@@ -59,11 +59,11 @@ t.sleep(10)
 new_nsec_serial = master.zone_wait(nsec_zone)
 new_static_serial = master.zone_wait(static_zone)
 
-# Check if the zones are resigned.
+# Check if the zones are re-signed.
 if old_nsec_serial != new_nsec_serial:
     if not only_nsec_changed(master, nsec_zone, old_nsec_serial):
-        set_err("NSEC zone got resigned")
+        set_err("NSEC zone got re-signed")
 
-compare(old_static_serial, new_static_serial, "static zone got resigned")
+compare(old_static_serial, new_static_serial, "static zone got re-signed")
 
 t.stop()

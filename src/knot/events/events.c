@@ -37,17 +37,17 @@ typedef struct event_info {
 } event_info_t;
 
 static const event_info_t EVENT_INFO[] = {
-	{ ZONE_EVENT_LOAD,         event_load,    "load" },
-	{ ZONE_EVENT_REFRESH,      event_refresh, "refresh" },
-	{ ZONE_EVENT_UPDATE,       event_update,  "update" },
-	{ ZONE_EVENT_EXPIRE,       event_expire,  "expiration" },
-	{ ZONE_EVENT_FLUSH,        event_flush,   "journal flush" },
-	{ ZONE_EVENT_NOTIFY,       event_notify,  "notify" },
-	{ ZONE_EVENT_DNSSEC,       event_dnssec,  "DNSSEC resign" },
-	{ ZONE_EVENT_UFREEZE,      event_ufreeze, "update freeze" },
-	{ ZONE_EVENT_UTHAW,        event_uthaw,   "update thaw" },
-	{ ZONE_EVENT_NSEC3RESALT,  event_nsec3resalt,  "NSEC3 resalt" },
-	{ ZONE_EVENT_PARENT_DS_Q,  event_parent_ds_q,  "parent DS query" },
+	{ ZONE_EVENT_LOAD,         event_load,        "load" },
+	{ ZONE_EVENT_REFRESH,      event_refresh,     "refresh" },
+	{ ZONE_EVENT_UPDATE,       event_update,      "update" },
+	{ ZONE_EVENT_EXPIRE,       event_expire,      "expiration" },
+	{ ZONE_EVENT_FLUSH,        event_flush,       "journal flush" },
+	{ ZONE_EVENT_NOTIFY,       event_notify,      "notify" },
+	{ ZONE_EVENT_DNSSEC,       event_dnssec,      "DNSSEC re-sign" },
+	{ ZONE_EVENT_UFREEZE,      event_ufreeze,     "update freeze" },
+	{ ZONE_EVENT_UTHAW,        event_uthaw,       "update thaw" },
+	{ ZONE_EVENT_NSEC3RESALT,  event_nsec3resalt, "NSEC3 resalt" },
+	{ ZONE_EVENT_PARENT_DS_Q,  event_parent_ds_q, "parent DS query" },
 	{ 0 }
 };
 

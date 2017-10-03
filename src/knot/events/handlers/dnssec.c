@@ -72,7 +72,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 
 	if (zone->flags & ZONE_FORCE_RESIGN) {
 		log_zone_info(zone->name, "DNSSEC, dropping previous "
-		              "signatures, resigning zone");
+		              "signatures, re-signing zone");
 		zone->flags &= ~ZONE_FORCE_RESIGN;
 		sign_flags = ZONE_SIGN_DROP_SIGNATURES;
 	} else {

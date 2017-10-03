@@ -369,7 +369,7 @@ the server logs to see whether everything went well.
   enabling the automatic key management. If the zone was already signed, all
   existing keys must be imported using ``keymgr import-bind`` command
   before enabling the automatic signing. Also the algorithm in the policy must
-  match the algorithm of all imported keys. Otherwise the zone will be resigned
+  match the algorithm of all imported keys. Otherwise the zone will be re-signed
   at all.
 
 .. _dnssec-automatic-ksk-management:
@@ -499,7 +499,7 @@ The signing process consists of the following steps:
 #. Creating missing signatures. Unless the Single-Type Signing Scheme
    is used, DNSKEY records in a zone apex are signed by KSK keys and
    all other records are signed by ZSK keys.
-#. Updating and resigning SOA record.
+#. Updating and re-signing SOA record.
 
 The signing is initiated on the following occasions:
 
@@ -508,12 +508,12 @@ The signing is initiated on the following occasions:
 - Reaching the signature refresh period
 - Key set changed due to rollover event
 - Received DDNS update
-- Forced zone resign via server control interface
+- Forced zone re-sign via server control interface
 
-On a forced zone resign, all signatures in the zone are dropped and recreated.
+On a forced zone re-sign, all signatures in the zone are dropped and recreated.
 
 The ``knotc zone-status`` command can be used to see when the next scheduled
-DNSSEC resign will happen.
+DNSSEC re-sign will happen.
 
 .. _dnssec-on-slave-signing:
 

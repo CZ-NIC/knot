@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for no resigning if the zone is properly signed.'''
+'''Test for no re-signing if the zone is properly signed.'''
 
 from dnstest.utils import set_err
 from dnstest.test import Test
