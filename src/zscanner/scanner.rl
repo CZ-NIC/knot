@@ -183,11 +183,11 @@ void zs_deinit(
 	free(s->path);
 }
 
-__attribute__((visibility("default")))
-int zs_set_input_string(
+static int set_input_string(
 	zs_scanner_t *s,
 	const char *input,
-	size_t size)
+	size_t size,
+	bool final_block)
 {
 	if (s == NULL) {
 		return -1;
@@ -198,15 +198,31 @@ int zs_set_input_string(
 		return -1;
 	}
 
-	// Deinit possibly opened file.
-	input_deinit(s);
+	// Keep previous input file context if final block parsing.
+	if (!final_block) {
+		// Deinit possibly opened file.
+		input_deinit(s);
+	}
 
 	// Set the scanner input limits.
 	s->input.start   = input;
 	s->input.current = input;
 	s->input.end     = input + size;
 
+	if (final_block) {
+		s->input.eof = true;
+	}
+
 	return 0;
+}
+
+__attribute__((visibility("default")))
+int zs_set_input_string(
+	zs_scanner_t *s,
+	const char *input,
+	size_t size)
+{
+	return set_input_string(s, input, size, false);
 }
 
 __attribute__((visibility("default")))
@@ -413,10 +429,9 @@ int zs_parse_record(
 		// Finish if nothing was parsed.
 		if (s->state == ZS_STATE_NONE) {
 			// Parse the final block.
-			if (zs_set_input_string(s, "\n", 1) != 0) {
+			if (set_input_string(s, "\n", 1, true) != 0) {
 				return -1;
 			}
-			s->input.eof = true;
 			parse(s);
 			if (s->state == ZS_STATE_NONE) {
 				s->state = ZS_STATE_EOF;
@@ -444,10 +459,9 @@ int zs_parse_all(
 
 	// Parse trailing newline-char block if it makes sense.
 	if (s->state != ZS_STATE_STOP && !s->error.fatal) {
-		if (zs_set_input_string(s, "\n", 1) != 0) {
+		if (set_input_string(s, "\n", 1, true) != 0) {
 			return -1;
 		}
-		s->input.eof = true;
 		parse(s);
 	}
 
