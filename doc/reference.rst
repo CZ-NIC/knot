@@ -1237,11 +1237,6 @@ using the ``-f`` option.
    If you are serving large zones with frequent updates where
    the immediate sync with a zone file is not desirable, increase the value.
 
-.. WARNING::
-   If the zone file is not up-to-date, the zone should be flushed before its
-   zone file editation or the SOA record must be untouched after editation.
-   Otherwise the journal can't be applied.
-
 *Default:* 0 (immediate)
 
 .. _zone_zonefile-load:

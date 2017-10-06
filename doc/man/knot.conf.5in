@@ -1100,15 +1100,6 @@ the immediate sync with a zone file is not desirable, increase the value.
 .UNINDENT
 .UNINDENT
 .sp
-\fBWARNING:\fP
-.INDENT 0.0
-.INDENT 3.5
-If the zone file is not up\-to\-date, the zone should be flushed before its
-zone file editation or the SOA record must be untouched after editation.
-Otherwise the journal can\(aqt be applied.
-.UNINDENT
-.UNINDENT
-.sp
 \fIDefault:\fP 0 (immediate)
 .SS zonefile\-load
 .sp
