@@ -51,6 +51,7 @@ class ZoneDnssec(object):
         self.rrsig_refresh = None
         self.nsec3 = None
         self.nsec3_iters = None
+        self.nsec3_opt_out = None
         self.nsec3_salt_lifetime = None
         self.nsec3_salt_len = None
         self.ksk_sbm_check = []
@@ -1183,6 +1184,7 @@ class Knot(Server):
             self._str(s, "rrsig-refresh", z.dnssec.rrsig_refresh)
             self._bool(s, "nsec3", z.dnssec.nsec3)
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
+            self._bool(s, "nsec3-opt-out", z.dnssec.nsec3_opt_out)
             self._str(s, "nsec3-salt-lifetime", z.dnssec.nsec3_salt_lifetime)
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
             if len(z.dnssec.ksk_sbm_check) > 0:
