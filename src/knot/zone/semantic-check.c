@@ -1044,18 +1044,9 @@ static int check_cname_multiple(const zone_node_t *node, semchecks_data_t *data)
  */
 static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 {
-	const knot_rdataset_t *dname_rrs = node_rdataset(node, KNOT_RRTYPE_DNAME);
-
-	if (dname_rrs != NULL && node->children != 0) {
-		data->handler->fatal_error = true;
-		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_DNAME_CHILDREN, NULL);
-	}
-
 	if (node->parent != NULL && node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
 		data->handler->fatal_error = true;
-		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_DNAME_CHILDREN, "(occluded by a parent DNAME)");
+		data->handler->cb(data->handler, data->zone, node, ZC_ERR_DNAME_CHILDREN, NULL);
 	}
 
 	return KNOT_EOK;
