@@ -164,6 +164,8 @@ int event_load(conf_t *conf, zone_t *zone)
 		goto cleanup;
 	}
 
+	int zf_serial = (zf_conts == NULL ? -1 : (int)zone_contents_serial(zf_conts));
+
 	// The contents are already part of zone_update.
 	zf_conts = NULL;
 	journal_conts = NULL;
@@ -210,6 +212,13 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	if (old_serial != new_serial) {
 		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
+	}
+
+	if (zf_serial > -1 && (uint32_t)zf_serial != new_serial) {
+		val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+		if (conf_int(&val) == 0) {
+			zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
+		}
 	}
 
 	return KNOT_EOK;
