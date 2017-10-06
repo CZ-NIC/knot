@@ -144,6 +144,16 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 	}
 	printf("alg %d\n", (int)ctx->policy->algorithm);
 
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
+		if (dnssec_key_get_flags(kasp_key->key) == dnskey_flags(isksk) &&
+		    dnssec_key_get_algorithm(kasp_key->key) != ctx->policy->algorithm) {
+			printf("warning: creating key with different algorithm than "
+			       "configured in the policy\n");
+			break;
+		}
+	}
+
 	knot_kasp_key_t *key = NULL;
 	int ret = kdnssec_generate_key(ctx, isksk, &key);
 	if (ret != KNOT_EOK) {
