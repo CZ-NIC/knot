@@ -42,16 +42,6 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_kasp_key_t **key_ptr
 	dnssec_key_algorithm_t algorithm = ctx->policy->algorithm;
 	unsigned size = ksk ? ctx->policy->ksk_size : ctx->policy->zsk_size;
 
-	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
-		if (dnssec_key_get_flags(kasp_key->key) == dnskey_flags(ksk) &&
-		    dnssec_key_get_algorithm(kasp_key->key) != ctx->policy->algorithm) {
-			log_zone_warning(ctx->zone->dname, "DNSSEC, creating key with different"
-					 " algorithm than policy");
-			break;
-		}
-	}
-
 	// generate key in the keystore
 
 	char *id = NULL;
