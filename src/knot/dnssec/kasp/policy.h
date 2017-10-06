@@ -80,6 +80,7 @@ typedef struct {
 	uint32_t rrsig_refresh_before;
 	// NSEC3
 	bool nsec3_enabled;
+	bool nsec3_opt_out;
 	uint32_t nsec3_salt_lifetime;
 	uint16_t nsec3_iterations;
 	uint8_t nsec3_salt_length;

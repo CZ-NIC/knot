@@ -86,6 +86,7 @@
 #define C_NOTIFY		"\x06""notify"
 #define C_NSEC3			"\x05""nsec3"
 #define C_NSEC3_ITER		"\x10""nsec3-iterations"
+#define C_NSEC3_OPT_OUT		"\x0D""nsec3-opt-out"
 #define C_NSEC3_SALT_LEN	"\x11""nsec3-salt-length"
 #define C_NSEC3_SALT_LIFETIME	"\x13""nsec3-salt-lifetime"
 #define C_NSID			"\x04""nsid"
