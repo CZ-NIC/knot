@@ -742,24 +742,11 @@ static int check_cname_multiple(const zone_node_t *node, semchecks_data_t *data)
  */
 static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 {
-	const knot_rdataset_t *dname_rrs = node_rdataset(node, KNOT_RRTYPE_DNAME);
 	int ret = KNOT_EOK;
-
-	if (dname_rrs != NULL && node->children != 0) {
-		data->fatal_error = true;
-		ret = data->handler->cb(data->handler, data->zone, node,
-		                        ZC_ERR_DNAME_CHILDREN,
-		                        "records exist below the DNAME");
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
 	if (node->parent != NULL && node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
 		data->fatal_error = true;
 		ret = data->handler->cb(data->handler, data->zone, node,
-		                        ZC_ERR_DNAME_CHILDREN,
-		                        "record is occluded by a parent DNAME");
+		                        ZC_ERR_DNAME_CHILDREN, NULL);
 	}
 	return ret;
 }

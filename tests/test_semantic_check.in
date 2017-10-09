@@ -79,8 +79,7 @@ plan_lazy
 expect_error "cname_extra_01.zone"   1 1 "$CNAME_EXTRA_RECORDS"
 expect_error "cname_extra_02.signed" 1 1 "$CNAME_EXTRA_RECORDS"
 expect_error "cname_multiple.zone"   1 1 "$CNAME_MULTIPLE"
-expect_error "dname_children.zone"   1 2 "$DNAME_CHILDREN \\(record is occluded by a parent DNAME\\)"
-expect_error "dname_children.zone"   1 2 "$DNAME_CHILDREN \\(records exist below the DNAME\\)"
+expect_error "dname_children.zone"   1 1 "$DNAME_CHILDREN"
 
 expect_error "missing_ns.zone" 0 1 "$MISSING_NS_DEL_POINT"
 expect_error "missing_glue_01.zone" 0 2 "$GLUE_RECORD"
@@ -111,5 +110,6 @@ test_correct "no_error_delegaton_bitmap.signed"
 test_correct "no_error_nsec3_delegation.signed"
 test_correct "no_error_nsec3_optout.signed"
 test_correct "no_error_wildcard_glue.zone"
+test_correct "dname_apex_nsec3.signed"
 
 rm $LOG
