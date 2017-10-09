@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  * Copyright(c) 2017 Tim Ruehsen
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -20,6 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -37,46 +39,52 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
 
 static void test_all_from(const char *dirname)
 {
-	DIR *dirp;
-	struct dirent *dp;
-
-	if ((dirp = opendir(dirname))) {
-		while ((dp = readdir(dirp))) {
-			if (*dp->d_name == '.') continue;
-
-			char fname[strlen(dirname) + strlen(dp->d_name) + 2];
-			snprintf(fname, sizeof(fname), "%s/%s", dirname, dp->d_name);
-
-			int fd;
-			if ((fd = open(fname, O_RDONLY)) == -1) {
-				fprintf(stderr, "Failed to open %s (%d)\n", fname, errno);
-				continue;
-			}
-
-			struct stat st;
-			if (fstat(fd, &st) != 0) {
-				fprintf(stderr, "Failed to stat %d (%d)\n", fd, errno);
-				close(fd);
-				continue;
-			}
-
-			uint8_t *data = malloc(st.st_size);
-			ssize_t n;
-			if ((n = read(fd, data, st.st_size)) == st.st_size) {
-				printf("testing %llu bytes from '%s'\n", (unsigned long long) st.st_size, fname);
-				fflush(stdout);
-				LLVMFuzzerTestOneInput(data, st.st_size);
-				fflush(stderr);
-			} else {
-				fprintf(stderr, "Failed to read %llu bytes from %s (%d), got %zd\n",
-				        (unsigned long long) st.st_size, fname, errno, n);
-			}
-
-			free(data);
-			close(fd);
-		}
-		closedir(dirp);
+	DIR *dirp = opendir(dirname);
+	if (dirp == NULL) {
+		return;
 	}
+
+	struct dirent *dp;
+	while ((dp = readdir(dirp))) {
+		if (*dp->d_name == '.') {
+			continue;
+		}
+
+		char fname[strlen(dirname) + strlen(dp->d_name) + 2];
+		int ret = snprintf(fname, sizeof(fname), "%s/%s", dirname, dp->d_name);
+		assert(ret > 0 && ret < sizeof(fname));
+
+		int fd;
+		if ((fd = open(fname, O_RDONLY)) == -1) {
+			fprintf(stderr, "Failed to open %s (%d)\n", fname, errno);
+			continue;
+		}
+
+		struct stat st;
+		if (fstat(fd, &st) != 0) {
+			fprintf(stderr, "Failed to stat %d (%d)\n", fd, errno);
+			close(fd);
+			continue;
+		}
+
+		uint8_t *data = malloc(st.st_size);
+		assert(data);
+
+		ssize_t n;
+		if ((n = read(fd, data, st.st_size)) == st.st_size) {
+			printf("testing %llu bytes from '%s'\n", (unsigned long long) st.st_size, fname);
+			fflush(stdout);
+			LLVMFuzzerTestOneInput(data, st.st_size);
+			fflush(stderr);
+		} else {
+			fprintf(stderr, "Failed to read %llu bytes from %s (%d), got %zd\n",
+			        (unsigned long long) st.st_size, fname, errno, n);
+		}
+
+		free(data);
+		close(fd);
+	}
+	closedir(dirp);
 }
 
 int main(int argc, char **argv)
@@ -90,11 +98,13 @@ int main(int argc, char **argv)
 		target += 3;
 	}
 
-	snprintf(corporadir, sizeof(corporadir), SRCDIR "/%s.in", target);
+	int ret = snprintf(corporadir, sizeof(corporadir), SRCDIR "/%s.in", target);
+	assert(ret > 0 && ret < sizeof(corporadir));
 
 	test_all_from(corporadir);
 
-	snprintf(corporadir, sizeof(corporadir), SRCDIR "/%s.repro", target);
+	ret = snprintf(corporadir, sizeof(corporadir), SRCDIR "/%s.repro", target);
+	assert(ret > 0 && ret < sizeof(corporadir));
 
 	test_all_from(corporadir);
 
