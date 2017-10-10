@@ -544,24 +544,11 @@ serial policy on slave so that their SOA serials are equal most of the time.
 Limitations
 -----------
 
-The current DNSSEC implementation in Knot DNS has some limitations. Most
-of the limitations will be hopefully removed in the near future.
+The current DNSSEC automatic key management in Knot DNS has some limitations:
 
-- Automatic key management:
-
-  - Only one DNSSEC algorithm can be used per zone.
-  - ZSK rollover always uses key pre-publish method (actually a feature).
-  - KSK rollover always uses pre-publish double-ksk method.
-
-- Signing:
-
-  - Signature expiration jitter is not implemented.
-  - Signature expiration skew is not implemented.
-
-- Utilities:
-
-  - Legacy key import requires a private key.
-  - Legacy key export is not implemented.
+- Only one DNSSEC algorithm can be used per zone.
+- ZSK rollover always uses key pre-publish method.
+- KSK rollover always uses pre-publish double-ksk method.
 
 .. _query-modules:
 
