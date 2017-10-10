@@ -631,6 +631,14 @@ class Server(object):
 
         return new_serials
 
+    def zone_backup(self, zone, flush=False):
+        zone = zone_arg_check(zone)
+
+        if flush:
+            self.flush(zone=zone)
+
+        self.zones[zone.name].zfile.backup()
+
     def zone_verify(self, zone):
         zone = zone_arg_check(zone)
 
@@ -933,8 +941,11 @@ class Knot(Server):
         udp = super()._check_socket("udp", self.port)
         return (tcp and udp)
 
-    def flush(self):
-        self.ctl("zone-flush")
+    def flush(self, zone=None):
+        if zone:
+            self.ctl("zone-flush %s" % zone.name)
+        else:
+            self.ctl("zone-flush")
         time.sleep(Server.START_WAIT)
 
     def key_gen(self, zone_name, **new_params):
