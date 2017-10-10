@@ -51,13 +51,20 @@ static knot_lookup_t rtypes[] = {
 static void print_header(const knot_pkt_t *packet, const style_t *style)
 {
 	char flags[64] = "";
-	const char *rcode_str = "Unknown";
-	const char *opcode_str = "Unknown";
+	char unknown_rcode[64] = "";
+	char unknown_opcode[64] = "";
+
+	const char *rcode_str = NULL;
+	const char *opcode_str = NULL;
 
 	// Get extended RCODE.
 	const char *code_name = knot_pkt_ext_rcode_name(packet);
 	if (code_name[0] != '\0') {
 		rcode_str = code_name;
+	} else {
+		uint16_t code = knot_pkt_ext_rcode(packet);
+		(void)snprintf(unknown_rcode, sizeof(unknown_rcode), "RCODE %d", code);
+		rcode_str = unknown_rcode;
 	}
 
 	// Get OPCODE.
@@ -65,6 +72,9 @@ static void print_header(const knot_pkt_t *packet, const style_t *style)
 	const knot_lookup_t *opcode = knot_lookup_by_id(knot_opcode_names, code);
 	if (opcode != NULL) {
 		opcode_str = opcode->name;
+	} else {
+		(void)snprintf(unknown_opcode, sizeof(unknown_opcode), "OPCODE %d", code);
+		opcode_str = unknown_opcode;
 	}
 
 	// Get flags.
@@ -197,7 +207,8 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 
 static void print_section_opt(const knot_pkt_t *packet)
 {
-	const char *ercode_str = "Unknown";
+	char unknown_ercode[64] = "";
+	const char *ercode_str = NULL;
 
 	uint16_t ercode = knot_edns_get_ext_rcode(packet->opt_rr);
 	if (ercode > 0) {
@@ -208,6 +219,9 @@ static void print_section_opt(const knot_pkt_t *packet)
 	const knot_lookup_t *item = knot_lookup_by_id(knot_rcode_names, ercode);
 	if (item != NULL) {
 		ercode_str = item->name;
+	} else {
+		(void)snprintf(unknown_ercode, sizeof(unknown_ercode), "RCODE %d", ercode);
+		ercode_str = unknown_ercode;
 	}
 
 	printf("Version: %u; flags: %s; UDP size: %u B; ext-rcode: %s\n",
