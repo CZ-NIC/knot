@@ -16,7 +16,7 @@ from dnstest.keys import Keymgr
 from dnstest.test import Test
 
 # check zone if keys are present and used for signing
-def check_zone5(server, min_dnskeys, min_rrsigs, min_cdnskeys, msg):
+def check_zone(server, zone, min_dnskeys, min_rrsigs, min_cdnskeys, msg):
     dnskeys = server.dig("example.com", "DNSKEY", bufsize=1024)
     found_dnskeys = dnskeys.count("DNSKEY")
 
@@ -43,6 +43,11 @@ def check_zone5(server, min_dnskeys, min_rrsigs, min_cdnskeys, msg):
         detail_log("!CDNSKEYs not published and activated as expected: " + msg)
 
     detail_log(SEP)
+
+    # Valgrind delay breaks the timing!
+    if not server.valgrind:
+        server.zone_backup(zone, flush=True)
+        server.zone_verify(zone)
 
 t = Test()
 
@@ -79,14 +84,14 @@ ZSK2 = child.key_gen(ZONE, ksk="false", created="-2", publish="-2", ready="+14y"
 t.start()
 child.zone_wait(child_zone)
 
-check_zone5(child, 4, 1, 1, "only first KSK")
+check_zone(child, child_zone, 4, 1, 1, "only first KSK")
 
 CDS1 = str(child.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
 t.sleep(3)
 while CDS1 == str(child.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
   t.sleep(1)
 
-check_zone5(child, 4, 2, 1, "new KSK ready")
+check_zone(child, child_zone, 4, 2, 1, "new KSK ready")
 
 cds = child.dig(ZONE, "CDS")
 cds_rdata = cds.resp.answer[0].to_rdataset()[0].to_text()
@@ -96,6 +101,6 @@ up.send("NOERROR")
 
 t.sleep(40)
 
-check_zone5(child, 2, 1, 1, "old KSK retired")
+check_zone(child, child_zone, 2, 1, 1, "old KSK retired")
 
 t.end()

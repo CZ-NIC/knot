@@ -16,7 +16,7 @@ from dnstest.keys import Keymgr
 from dnstest.test import Test
 
 # check zone if keys are present and used for signing
-def check_zone(server, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
+def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
     qdnskeys = server.dig("example.com", "DNSKEY", bufsize=4096)
     found_dnskeys = qdnskeys.count("DNSKEY")
 
@@ -51,6 +51,11 @@ def check_zone(server, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
         detail_log("!CDNSKEYs not published and activated as expected: " + msg)
 
     detail_log(SEP)
+
+    # Valgrind delay breaks the timing!
+    if not server.valgrind:
+        server.zone_backup(zone, flush=True)
+        server.zone_verify(zone)
 
 def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
     rtime = 0
@@ -92,7 +97,7 @@ ZONE = "example.com."
 t.start()
 child.zone_wait(child_zone)
 
-check_zone(child, 2, 1, 1, 1, "initial keys")
+check_zone(child, child_zone, 2, 1, 1, 1, "initial keys")
 
 child.dnssec(child_zone).alg = "RSASHA256"
 child.gen_confile()
@@ -101,18 +106,18 @@ child.reload()
 child.zone_wait(child_zone)
 wait_for_rrsig_count(t, child, "SOA", 2, 20)
 
-check_zone(child, 2, 1, 1, 2, "pre active")
+check_zone(child, child_zone, 2, 1, 1, 2, "pre active")
 
 wait_for_rrsig_count(t, child, "DNSKEY", 2, 20)
 
-check_zone(child, 4, 2, 1, 2, "both algorithms active")
+check_zone(child, child_zone, 4, 2, 1, 2, "both algorithms active")
 
 CDS1 = str(child.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
 t.sleep(3)
 while CDS1 == str(child.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
   t.sleep(1)
 
-check_zone(child, 4, 2, 1, 2, "new KSK ready")
+check_zone(child, child_zone, 4, 2, 1, 2, "new KSK ready")
 
 cds = child.dig(ZONE, "CDS")
 cds_rdata = cds.resp.answer[0].to_rdataset()[0].to_text()
@@ -122,14 +127,14 @@ up.send("NOERROR")
 
 t.sleep(4)
 
-check_zone(child, 4, 2, 1, 2, "both still active")
+check_zone(child, child_zone, 4, 2, 1, 2, "both still active")
 
 wait_for_rrsig_count(t, child, "DNSKEY", 1, 20)
 
-check_zone(child, 2, 1, 1, 2, "post active")
+check_zone(child, child_zone, 2, 1, 1, 2, "post active")
 
 wait_for_rrsig_count(t, child, "SOA", 1, 20)
 
-check_zone(child, 2, 1, 1, 1, "old alg removed")
+check_zone(child, child_zone, 2, 1, 1, 1, "old alg removed")
 
 t.end()

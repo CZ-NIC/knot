@@ -17,16 +17,19 @@ def test_update(master, slave, zone):
     update = master.update(zone)
     update.add("new.example.com.", 3600, "A", addr)
     update.send("NOERROR")
- 
+
     #Wait until slave receives update and sets correct SOA
     slave.zone_wait(zone, serial+3, equal=True)
-    
+
     #Check that slave was updated and the new entry is signed
     response = slave.dig("new.example.com.", "A");
     response.check(rcode="NOERROR", rdata=addr);
     response = slave.dig("new.example.com.", "RRSIG");
     #Should get a RRSIG for the new A record and the new NSEC record
     response.check_count(2)
+
+    slave.zone_backup(zone, flush=True)
+    slave.zone_verify(zone)
 
 t = Test()
 
