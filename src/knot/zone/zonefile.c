@@ -195,6 +195,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 	/* Prepare textual owner for zone scanner. */
 	char *origin_str = knot_dname_to_str_alloc(origin);
 	if (origin_str == NULL) {
+		zone_contents_deep_free(&zc->z);
 		free(zc);
 		return KNOT_ENOMEM;
 	}
@@ -204,6 +205,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 	    zs_set_processing(&loader->scanner, process_data, process_error, zc) != 0) {
 		zs_deinit(&loader->scanner);
 		free(origin_str);
+		zone_contents_deep_free(&zc->z);
 		free(zc);
 		return KNOT_EFILE;
 	}
