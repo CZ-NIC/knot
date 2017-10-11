@@ -49,7 +49,7 @@ subdirectory in the zone storage.
 In rare installations, the JSON files might be spread across more directories. In such
 case, it is necessary to put them together into one directory and migrate at once.
 
-.. _Configuration changes:
+.. _Configuration changes 2.5:
 
 Configuration changes
 ---------------------
@@ -66,6 +66,24 @@ of the following module names in the configuration::
    mod-online-sign -> mod-onlinesign
 
    mod-synth-record -> mod-synthrecord
+
+.. _Upgrade 2.5.x to 2.6.x:
+
+Upgrade 2.5.x to 2.6.x
+======================
+
+Upgrading from Knot DNS version 2.5.x to 2.6.x is almost seamless.
+
+.. _Configuration changes 2.6:
+
+Configuration changes
+---------------------
+
+The ``dsa`` and ``dsa-nsec3-sha1`` algorithm values are no longer supported
+by the :ref:`policy_algorithm` option.
+
+The ``ixfr-from-differences`` zone/template option was deprecated in favor of
+the :ref:`zone_zonefile-load` option.
 
 .. _Knot DNS for BIND users:
 
