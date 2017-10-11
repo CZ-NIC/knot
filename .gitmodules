@@ -1,6 +1,6 @@
 [submodule "tests-fuzz/packet_libfuzzer.in"]
 	path = tests-fuzz/packet_libfuzzer.in
-	url = ../fuzzing/packet_libfuzzer.in.git
+	url = https://gitlab.labs.nic.cz/knot/fuzzing/packet_libfuzzer.in.git
 [submodule "tests-fuzz/zscanner_libfuzzer.in"]
 	path = tests-fuzz/zscanner_libfuzzer.in
-	url = ../fuzzing/zscanner_libfuzzer.in.git
+	url = https://gitlab.labs.nic.cz/knot/fuzzing/zscanner_libfuzzer.in.git
