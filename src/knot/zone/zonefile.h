@@ -37,14 +37,14 @@ typedef struct zcreator {
 typedef struct {
 	char *source;                /*!< Zone source file. */
 	bool semantic_checks;        /*!< Do semantic checks. */
-	err_handler_t *err_handler;  /*!< Semantic checks error handler. */
+	sem_handler_t *err_handler;  /*!< Semantic checks error handler. */
 	zcreator_t *creator;         /*!< Loader context. */
 	zs_scanner_t scanner;        /*!< Zone scanner. */
 	time_t time;                 /*!< time for zone check. */
 } zloader_t;
 
-void err_handler_logger(err_handler_t *handler, const zone_contents_t *zone,
-                        const zone_node_t *node, zc_error_t error, const char *data);
+void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
+                        const zone_node_t *node, sem_error_t error, const char *data);
 
 /*!
  * \brief Open zone file for loading.

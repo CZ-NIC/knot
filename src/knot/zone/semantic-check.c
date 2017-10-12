@@ -28,103 +28,117 @@
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 
-static const char *zonechecks_error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
-	[-ZC_ERR_UNKNOWN] =
-	"unknown error",
+static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
+	[SEM_ERR_SOA_NONE] =
+	"missing SOA at the zone apex",
 
-	[-ZC_ERR_MISSING_SOA] =
-	"missing SOA in zone apex",
-	[-ZC_ERR_MISSING_NS_DEL_POINT] =
-	"missing NS in zone apex",
-
-	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
-	"wrong type covered in RRSIG",
-	[-ZC_ERR_RRSIG_RDATA_TTL] =
-	"wrong original TTL in RRSIG",
-	[-ZC_ERR_RRSIG_RDATA_EXPIRATION] =
-	"expired RRSIG",
-	[-ZC_ERR_RRSIG_RDATA_INCEPTION] =
-	"RRSIG inception in the future",
-	[-ZC_ERR_RRSIG_RDATA_LABELS] =
-	"wrong labels in RRSIG",
-	[-ZC_ERR_RRSIG_RDATA_OWNER] =
-	"wrong signer's name in RRSIG",
-	[-ZC_ERR_RRSIG_NO_RRSIG] =
-	"missing RRSIG",
-	[-ZC_ERR_RRSIG_SIGNED] =
-	"signed RRSIG",
-	[-ZC_ERR_RRSIG_TTL] =
-	"wrong RRSIG TTL",
-	[-ZC_ERR_RRSIG_UNVERIFIABLE] =
-	"unverifiable signature",
-
-	[-ZC_ERR_NSEC_NONE] =
-	"missing NSEC",
-	[-ZC_ERR_NSEC_RDATA_BITMAP] =
-	"incorrect type bitmap in NSEC",
-	[-ZC_ERR_NSEC_RDATA_MULTIPLE] =
-	"multiple NSEC records",
-	[-ZC_ERR_NSEC_RDATA_CHAIN] =
-	"incoherent NSEC chain",
-
-	[-ZC_ERR_NSEC3_NONE] =
-	"missing NSEC3",
-	[-ZC_ERR_NSEC3_INSECURE_DELEGATION_OPT] =
-	"insecure delegation outside NSEC3 opt-out",
-	[-ZC_ERR_NSEC3_EXTRA_RECORD] =
-	"invalid record type in NSEC3 chain",
-	[-ZC_ERR_NSEC3_RDATA_TTL] =
-	"wrong original TTL in NSEC3",
-	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
-	"incoherent NSEC3 chain",
-	[-ZC_ERR_NSEC3_RDATA_BITMAP] =
-	"incorrect type bitmap in NSEC3",
-	[-ZC_ERR_NSEC3_RDATA_FLAGS] =
-	"incorrect flags in NSEC3",
-	[-ZC_ERR_NSEC3_RDATA_SALT] =
-	"incorrect salt in NSEC3",
-	[-ZC_ERR_NSEC3_RDATA_ALG] =
-	"incorrect algorithm in NSEC3",
-	[-ZC_ERR_NSEC3_RDATA_ITERS] =
-	"incorrect number of iterations in NSEC3",
-
-	[-ZC_ERR_NSEC3_PARAM_RDATA_FLAGS] =
-	"invalid flags in NSEC3PARAM",
-	[-ZC_ERR_NSEC3_PARAM_RDATA_ALG] =
-	"invalid algorithm in NSEC3PARAM",
-
-	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
+	[SEM_ERR_CNAME_EXTRA_RECORDS] =
 	"more records exist at CNAME",
-	[-ZC_ERR_CNAME_MULTIPLE] =
+	[SEM_ERR_CNAME_MULTIPLE] =
 	"multiple CNAME records",
-	[-ZC_ERR_DNAME_CHILDREN] =
+
+	[SEM_ERR_DNAME_CHILDREN] =
 	"child record exists under DNAME",
 
-	[-ZC_ERR_GLUE_RECORD] =
+	[SEM_ERR_NS_APEX] =
+	"missing NS at the zone apex",
+	[SEM_ERR_NS_GLUE] =
 	"missing glue record",
 
-	[-ZC_ERR_DS_RDATA_ALG] =
+	[SEM_ERR_RRSIG_RDATA_TYPE_COVERED] =
+	"wrong type covered in RRSIG",
+	[SEM_ERR_RRSIG_RDATA_TTL] =
+	"wrong original TTL in RRSIG",
+	[SEM_ERR_RRSIG_RDATA_EXPIRATION] =
+	"expired RRSIG",
+	[SEM_ERR_RRSIG_RDATA_INCEPTION] =
+	"RRSIG inception in the future",
+	[SEM_ERR_RRSIG_RDATA_LABELS] =
+	"wrong labels in RRSIG",
+	[SEM_ERR_RRSIG_RDATA_OWNER] =
+	"wrong signer's name in RRSIG",
+	[SEM_ERR_RRSIG_NO_RRSIG] =
+	"missing RRSIG",
+	[SEM_ERR_RRSIG_SIGNED] =
+	"signed RRSIG",
+	[SEM_ERR_RRSIG_TTL] =
+	"wrong RRSIG TTL",
+	[SEM_ERR_RRSIG_UNVERIFIABLE] =
+	"unverifiable signature",
+
+	[SEM_ERR_NSEC_NONE] =
+	"missing NSEC",
+	[SEM_ERR_NSEC_RDATA_BITMAP] =
+	"incorrect type bitmap in NSEC",
+	[SEM_ERR_NSEC_RDATA_MULTIPLE] =
+	"multiple NSEC records",
+	[SEM_ERR_NSEC_RDATA_CHAIN] =
+	"incoherent NSEC chain",
+
+	[SEM_ERR_NSEC3_NONE] =
+	"missing NSEC3",
+	[SEM_ERR_NSEC3_INSECURE_DELEGATION_OPT] =
+	"insecure delegation outside NSEC3 opt-out",
+	[SEM_ERR_NSEC3_EXTRA_RECORD] =
+	"invalid record type in NSEC3 chain",
+	[SEM_ERR_NSEC3_RDATA_TTL] =
+	"wrong original TTL in NSEC3",
+	[SEM_ERR_NSEC3_RDATA_CHAIN] =
+	"incoherent NSEC3 chain",
+	[SEM_ERR_NSEC3_RDATA_BITMAP] =
+	"incorrect type bitmap in NSEC3",
+	[SEM_ERR_NSEC3_RDATA_FLAGS] =
+	"incorrect flags in NSEC3",
+	[SEM_ERR_NSEC3_RDATA_SALT] =
+	"incorrect salt in NSEC3",
+	[SEM_ERR_NSEC3_RDATA_ALG] =
+	"incorrect algorithm in NSEC3",
+	[SEM_ERR_NSEC3_RDATA_ITERS] =
+	"incorrect number of iterations in NSEC3",
+
+	[SEM_ERR_NSEC3PARAM_RDATA_FLAGS] =
+	"invalid flags in NSEC3PARAM",
+	[SEM_ERR_NSEC3PARAM_RDATA_ALG] =
+	"invalid algorithm in NSEC3PARAM",
+
+	[SEM_ERR_DS_RDATA_ALG] =
 	"invalid algorithm in DS",
-	[-ZC_ERR_DS_RDATA_DIGLEN] =
+	[SEM_ERR_DS_RDATA_DIGLEN] =
 	"invalid digest length in DS",
 
-	[-ZC_ERR_CDS_CDNSKEY] =
-	"incorrect CDS and CDNSKEY pair",
-
-	[-ZC_ERR_INVALID_KEY] =
+	[SEM_ERR_DNSKEY_NONE] =
+	"missing DNSKEY",
+	[SEM_ERR_DNSKEY_INVALID] =
 	"invalid DNSKEY",
+	[SEM_ERR_DNSKEY_RDATA_PROTOCOL] =
+	"invalid protocol in DNSKEY",
+
+	[SEM_ERR_CDS_NONE] =
+	"missing CDS",
+	[SEM_ERR_CDS_MULTIPLE] =
+	"multiple CDS records",
+	[SEM_ERR_CDS_NOT_MATCH] =
+	"CDS not match CDNSKEY",
+
+	[SEM_ERR_CDNSKEY_NONE] =
+	"missing CDNSKEY",
+	[SEM_ERR_CDNSKEY_MULTIPLE] =
+	"multiple CDNSKEY records",
+	[SEM_ERR_CDNSKEY_NOT_KSK] =
+	"CDNSKEY not match KSK DNSKEY",
+	[SEM_ERR_CDNSKEY_NO_DNSKEY] =
+	"CDNSKEY not match DNSKEY",
+
+	[SEM_ERR_UNKNOWN] =
+	"unknown error"
 };
 
-
-const char* semantic_check_error_msg(int ecode)
+const char *sem_error_msg(sem_error_t code)
 {
-	if (ecode < ZC_ERR_UNKNOWN || ecode > ZC_ERR_LAST) {
-		ecode = ZC_ERR_UNKNOWN;
+	if (code > SEM_ERR_UNKNOWN) {
+		code = SEM_ERR_UNKNOWN;
 	}
-	if (zonechecks_error_messages[-ecode] == NULL) {
-		ecode = ZC_ERR_UNKNOWN;
-	}
-	return zonechecks_error_messages[-ecode];
+	return error_messages[code];
 }
 
 typedef enum {
@@ -136,24 +150,24 @@ typedef enum {
 
 typedef struct {
 	zone_contents_t *zone;
-	err_handler_t *handler;
+	sem_handler_t *handler;
 	const zone_node_t *next_nsec;
 	check_level_t level;
 	time_t time;
 } semchecks_data_t;
 
-static int check_cname_multiple(const zone_node_t *node, semchecks_data_t *data);
+static int check_cname(const zone_node_t *node, semchecks_data_t *data);
 static int check_dname(const zone_node_t *node, semchecks_data_t *data);
 static int check_delegation(const zone_node_t *node, semchecks_data_t *data);
+static int check_submission(const zone_node_t *node, semchecks_data_t *data);
+static int check_ds(const zone_node_t *node, semchecks_data_t *data);
 static int check_nsec(const zone_node_t *node, semchecks_data_t *data);
 static int check_nsec3(const zone_node_t *node, semchecks_data_t *data);
 static int check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data);
 static int check_rrsig(const zone_node_t *node, semchecks_data_t *data);
-static int check_signed_rrsig(const zone_node_t *node, semchecks_data_t *data);
+static int check_rrsig_signed(const zone_node_t *node, semchecks_data_t *data);
 static int check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data);
 static int check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data);
-static int check_ds(const zone_node_t *node, semchecks_data_t *data);
-static int check_submission(const zone_node_t *node, semchecks_data_t *data);
 
 struct check_function {
 	int (*function)(const zone_node_t *, semchecks_data_t *);
@@ -162,18 +176,18 @@ struct check_function {
 
 /* List of function callbacks for defined check_level */
 static const struct check_function CHECK_FUNCTIONS[] = {
-	{ check_cname_multiple, MANDATORY },
+	{ check_cname,          MANDATORY },
 	{ check_dname,          MANDATORY },
-	{ check_ds,             OPTIONAL },
 	{ check_delegation,     OPTIONAL },
 	{ check_submission,     OPTIONAL },
+	{ check_ds,             OPTIONAL },
 	{ check_rrsig,          NSEC | NSEC3 },
-	{ check_signed_rrsig,   NSEC | NSEC3 },
+	{ check_rrsig_signed,   NSEC | NSEC3 },
+	{ check_nsec_bitmap,    NSEC | NSEC3 },
 	{ check_nsec,           NSEC },
 	{ check_nsec3,          NSEC3 },
 	{ check_nsec3_presence, NSEC3 },
 	{ check_nsec3_opt_out,  NSEC3 },
-	{ check_nsec_bitmap,    NSEC | NSEC3 },
 };
 
 static const int CHECK_FUNCTIONS_LEN = sizeof(CHECK_FUNCTIONS)
@@ -269,7 +283,7 @@ fail:
  * \retval KNOT_EOK on success.
  * \return Appropriate error code if error was found.
  */
-static int check_rrsig_rdata(err_handler_t *handler,
+static int check_rrsig_rdata(sem_handler_t *handler,
                              const zone_contents_t *zone,
                              const zone_node_t *node,
                              const knot_rdataset_t *rrsig,
@@ -289,7 +303,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	if (knot_rrsig_type_covered(rrsig, 0) != rrset->type) {
-		handler->cb(handler, zone, node, ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
+		handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_TYPE_COVERED,
 		            info_str);
 	}
 
@@ -300,10 +314,10 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	if (tmp != 0) {
 		/* if name has wildcard, label must not be included */
 		if (!knot_dname_is_wildcard(rrset->owner)) {
-			handler->cb(handler, zone, node, ZC_ERR_RRSIG_RDATA_LABELS,
+			handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_LABELS,
 			            info_str);
 		} else if (abs(tmp) != 1) {
-			handler->cb(handler, zone, node, ZC_ERR_RRSIG_RDATA_LABELS,
+			handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_LABELS,
 			            info_str);
 		}
 	}
@@ -314,27 +328,27 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; ++i) {
 		if (original_ttl != knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, i))) {
-			handler->cb(handler, zone, node, ZC_ERR_RRSIG_RDATA_TTL,
+			handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_TTL,
 			            info_str);
 		}
 	}
 
 	/* Check for expired signature. */
 	if (knot_rrsig_sig_expiration(rrsig, rr_pos) < context) {
-		handler->cb(handler, zone, node, ZC_ERR_RRSIG_RDATA_EXPIRATION,
+		handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_EXPIRATION,
 		            info_str);
 	}
 
 	/* Check inception */
 	if (knot_rrsig_sig_inception(rrsig, rr_pos) > context) {
-		handler->cb(handler, zone, node, ZC_ERR_RRSIG_RDATA_INCEPTION,
+		handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_INCEPTION,
 		            info_str);
 	}
 
 	/* Check signer name. */
 	const knot_dname_t *signer = knot_rrsig_signer_name(rrsig, rr_pos);
 	if (!knot_dname_is_equal(signer, zone->apex->owner)) {
-		handler->cb(handler, zone, node, ZC_ERR_RRSIG_RDATA_OWNER,
+		handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_OWNER,
 		            info_str);
 	}
 
@@ -373,12 +387,12 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	return KNOT_EOK;
 }
 
-static int check_signed_rrsig(const zone_node_t *node, semchecks_data_t *data)
+static int check_rrsig_signed(const zone_node_t *node, semchecks_data_t *data)
 {
 	/* signed rrsig - nonsense */
 	if (node_rrtype_is_signed(node, KNOT_RRTYPE_RRSIG)) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_RRSIG_SIGNED, NULL);
+		                  SEM_ERR_RRSIG_SIGNED, NULL);
 	}
 
 	return KNOT_EOK;
@@ -396,7 +410,7 @@ static int check_signed_rrsig(const zone_node_t *node, semchecks_data_t *data)
  * \retval KNOT_EOK on success.
  * \return Appropriate error code if error was found.
  */
-static int check_rrsig_in_rrset(err_handler_t *handler,
+static int check_rrsig_in_rrset(sem_handler_t *handler,
                                 const zone_contents_t *zone,
                                 const zone_node_t *node,
                                 const knot_rrset_t *rrset,
@@ -422,13 +436,13 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		return ret;
 	}
 	if (ret == KNOT_ENOENT) {
-		handler->cb(handler, zone, node, ZC_ERR_RRSIG_NO_RRSIG, info_str);
+		handler->cb(handler, zone, node, SEM_ERR_RRSIG_NO_RRSIG, info_str);
 		return KNOT_EOK;
 	}
 
 	const knot_rdata_t *sig_rr = knot_rdataset_at(&rrsigs, 0);
 	if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != knot_rdata_ttl(sig_rr)) {
-		handler->cb(handler, zone, node, ZC_ERR_RRSIG_TTL, info_str);
+		handler->cb(handler, zone, node, SEM_ERR_RRSIG_TTL, info_str);
 	}
 
 	bool verified = false;
@@ -438,7 +452,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	}
 	/* Only one rrsig of covered record needs to be verified by DNSKEY. */
 	if (!verified) {
-		handler->cb(handler, zone, node, ZC_ERR_RRSIG_UNVERIFIABLE,
+		handler->cb(handler, zone, node, SEM_ERR_RRSIG_UNVERIFIABLE,
 		            info_str);
 	}
 
@@ -461,8 +475,9 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 
 	const knot_rdataset_t *ns_rrs = node_rdataset(node, KNOT_RRTYPE_NS);
 	if (ns_rrs == NULL) {
+		assert(data->zone->apex == node);
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_MISSING_NS_DEL_POINT, NULL);
+		                  SEM_ERR_NS_APEX, NULL);
 		return KNOT_EOK;
 	}
 
@@ -488,7 +503,7 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 		if (!node_rrtype_exists(glue_node, KNOT_RRTYPE_A) &&
 		    !node_rrtype_exists(glue_node, KNOT_RRTYPE_AAAA)) {
 			data->handler->cb(data->handler, data->zone, node,
-			                  ZC_ERR_GLUE_RECORD, NULL);
+			                  SEM_ERR_NS_GLUE, NULL);
 		}
 	}
 
@@ -506,21 +521,21 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 		return KNOT_EOK;
 	} else if (cdss == NULL) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_CDS_CDNSKEY, "(no CDS)");
+		                  SEM_ERR_CDS_NONE, NULL);
 		return KNOT_EOK;
 	} else if (cdnskeys == NULL) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_CDS_CDNSKEY, "(no CDNSKEY)");
+		                  SEM_ERR_CDNSKEY_NONE, NULL);
 		return KNOT_EOK;
 	}
 
 	if (cdss->rr_count != 1) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_CDS_CDNSKEY, "(ambiguous CDS record)");
+		                  SEM_ERR_CDS_MULTIPLE, NULL);
 	}
 	if (cdnskeys->rr_count != 1) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_CDS_CDNSKEY, "(ambiguous CDNSKEY record)");
+		                  SEM_ERR_CDNSKEY_MULTIPLE, NULL);
 	}
 
 	knot_rdata_t *cdnskey = knot_rdataset_at(cdnskeys, 0);
@@ -559,20 +574,20 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 		if (ret == 0) {
 			if (!(flags & DNSKEY_FLAGS_KSK)) {
 				data->handler->cb(data->handler, data->zone,
-				                  node, ZC_ERR_CDS_CDNSKEY,
-				                  "(not KSK)");
+				                  node, SEM_ERR_CDNSKEY_NOT_KSK,
+				                  NULL);
 			} else {
 				return KNOT_EOK;
 			}
 		} else {
 			data->handler->cb(data->handler, data->zone, node,
-			                  ZC_ERR_CDS_CDNSKEY, "(not match)");
+			                  SEM_ERR_CDS_NOT_MATCH, NULL);
 		}
 	}
 
 	if (dnskeys != NULL) {
-		data->handler->cb(data->handler, data->zone, node, ZC_ERR_CDS_CDNSKEY,
-		                  "(no corresponding DNSKEY)");
+		data->handler->cb(data->handler, data->zone, node,
+		                  SEM_ERR_CDNSKEY_NO_DNSKEY, NULL);
 	}
 	return KNOT_EOK;
 }
@@ -602,7 +617,7 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 
 		if (!dnssec_algorithm_digest_support(digest_type)) {
 			data->handler->cb(data->handler, data->zone, node,
-			                  ZC_ERR_DS_RDATA_ALG, info);
+			                  SEM_ERR_DS_RDATA_ALG, info);
 		} else {
 			// Sizes for different digest algorithms.
 			const uint16_t digest_sizes [] = { 0, 20, 32, 32, 48};
@@ -613,7 +628,7 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 
 			if (digest_sizes[digest_type] != digest_size) {
 				data->handler->cb(data->handler, data->zone, node,
-				                  ZC_ERR_DS_RDATA_DIGLEN, info);
+				                  SEM_ERR_DS_RDATA_DIGLEN, info);
 			}
 		}
 	}
@@ -746,7 +761,7 @@ static int check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
 		char *info = nsec ? NULL : nsec3_info(node->nsec3_node->owner,
 		                                      buff, sizeof(buff));
 		data->handler->cb(data->handler, data->zone, node,
-		                  (nsec ? ZC_ERR_NSEC_RDATA_BITMAP : ZC_ERR_NSEC3_RDATA_BITMAP),
+		                  (nsec ? SEM_ERR_NSEC_RDATA_BITMAP : SEM_ERR_NSEC3_RDATA_BITMAP),
 		                  info);
 	}
 
@@ -775,19 +790,19 @@ static int check_nsec(const zone_node_t *node, semchecks_data_t *data)
 	const knot_rdataset_t *nsec_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC);
 	if (nsec_rrs == NULL) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC_NONE, NULL);
+		                  SEM_ERR_NSEC_NONE, NULL);
 		return KNOT_EOK;
 	}
 
 	/* Test that only one record is in the NSEC RRSet */
 	if (nsec_rrs->rr_count != 1) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC_RDATA_MULTIPLE, NULL);
+		                  SEM_ERR_NSEC_RDATA_MULTIPLE, NULL);
 	}
 
 	if (data->next_nsec != node) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC_RDATA_CHAIN, NULL);
+		                  SEM_ERR_NSEC_RDATA_CHAIN, NULL);
 	}
 
 	/*
@@ -802,7 +817,7 @@ static int check_nsec(const zone_node_t *node, semchecks_data_t *data)
 	data->next_nsec = zone_contents_find_node(data->zone, next_domain);
 	if (data->next_nsec == NULL) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC_RDATA_CHAIN, NULL);
+		                  SEM_ERR_NSEC_RDATA_CHAIN, NULL);
 	}
 
 	return KNOT_EOK;
@@ -822,7 +837,7 @@ static int check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data)
 	if ((deleg && node_rrtype_exists(node, KNOT_RRTYPE_DS)) || (auth && !deleg)) {
 		if (node->nsec3_node == NULL) {
 			data->handler->cb(data->handler, data->zone, node,
-			                  ZC_ERR_NSEC3_NONE, NULL);
+			                  SEM_ERR_NSEC3_NONE, NULL);
 		}
 	}
 
@@ -849,7 +864,7 @@ static int check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 
 	if (nsec3_previous == NULL) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC3_NONE, NULL);
+		                  SEM_ERR_NSEC3_NONE, NULL);
 		return KNOT_EOK;
 	}
 
@@ -861,7 +876,7 @@ static int check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 	uint8_t flags = knot_nsec3_flags(previous_rrs, 0);
 	if (!(flags & 1)) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC3_INSECURE_DELEGATION_OPT, NULL);
+		                  SEM_ERR_NSEC3_INSECURE_DELEGATION_OPT, NULL);
 	}
 
 	return KNOT_EOK;
@@ -898,7 +913,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	                                                 KNOT_RRTYPE_NSEC3);
 	if (nsec3_rrs == NULL) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC3_NONE, info);
+		                  SEM_ERR_NSEC3_NONE, info);
 		goto nsec3_cleanup;
 	}
 
@@ -908,7 +923,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	uint32_t minimum_ttl = knot_soa_minimum(soa_rrs);
 	if (knot_rdata_ttl(nsec3_rr) != minimum_ttl) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC3_RDATA_TTL, info);
+		                  SEM_ERR_NSEC3_RDATA_TTL, info);
 	}
 
 	// Check parameters.
@@ -925,7 +940,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 
 	if (knot_nsec3_flags(nsec3_rrs, 0) > 1) {
 		data->handler->cb(data->handler, data->zone, node,
-		                        ZC_ERR_NSEC3_RDATA_FLAGS, info);
+		                  SEM_ERR_NSEC3_RDATA_FLAGS, info);
 	}
 
 	dnssec_binary_t salt = {
@@ -935,17 +950,17 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 
 	if (dnssec_binary_cmp(&salt, &params_apex.salt)) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC3_RDATA_SALT, info);
+		                  SEM_ERR_NSEC3_RDATA_SALT, info);
 	}
 
 	if (knot_nsec3_algorithm(nsec3_rrs, 0) != params_apex.algorithm) {
 		data->handler->cb(data->handler, data->zone, node,
-		                        ZC_ERR_NSEC3_RDATA_ALG, info);
+		                  SEM_ERR_NSEC3_RDATA_ALG, info);
 	}
 
 	if (knot_nsec3_iterations(nsec3_rrs, 0) != params_apex.iterations) {
 		data->handler->cb(data->handler, data->zone, node,
-		                        ZC_ERR_NSEC3_RDATA_ITERS, info);
+		                  SEM_ERR_NSEC3_RDATA_ITERS, info);
 	}
 
 	// Get next nsec3 node.
@@ -975,7 +990,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 			free(next);
 		}
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_NSEC3_RDATA_CHAIN, hash_info);
+		                  SEM_ERR_NSEC3_RDATA_CHAIN, hash_info);
 		free(hash_info);
 	}
 
@@ -990,7 +1005,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 		uint16_t type = rrset.type;
 		if (type != KNOT_RRTYPE_NSEC3 && type != KNOT_RRTYPE_RRSIG) {
 			data->handler->cb(data->handler, data->zone, node->nsec3_node,
-			                  ZC_ERR_NSEC3_EXTRA_RECORD, NULL);
+			                  SEM_ERR_NSEC3_EXTRA_RECORD, NULL);
 		}
 	}
 
@@ -1006,7 +1021,7 @@ nsec3_cleanup:
  * \param node Node to check
  * \param data Semantic checks context data
  */
-static int check_cname_multiple(const zone_node_t *node, semchecks_data_t *data)
+static int check_cname(const zone_node_t *node, semchecks_data_t *data)
 {
 	const  knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrs == NULL) {
@@ -1025,12 +1040,12 @@ static int check_cname_multiple(const zone_node_t *node, semchecks_data_t *data)
 	if (node->rrset_count > rrset_limit) {
 		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_CNAME_EXTRA_RECORDS, NULL);
+		                  SEM_ERR_CNAME_EXTRA_RECORDS, NULL);
 	}
 	if (cname_rrs->rr_count != 1) {
 		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,
-		                  ZC_ERR_CNAME_MULTIPLE, NULL);
+		                  SEM_ERR_CNAME_MULTIPLE, NULL);
 	}
 
 	return KNOT_EOK;
@@ -1046,7 +1061,8 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 {
 	if (node->parent != NULL && node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
 		data->handler->fatal_error = true;
-		data->handler->cb(data->handler, data->zone, node, ZC_ERR_DNAME_CHILDREN, NULL);
+		data->handler->cb(data->handler, data->zone, node,
+		                  SEM_ERR_DNAME_CHILDREN, NULL);
 	}
 
 	return KNOT_EOK;
@@ -1062,12 +1078,12 @@ static int check_nsec_cyclic(semchecks_data_t *data)
 {
 	if (data->next_nsec == NULL) {
 		data->handler->cb(data->handler, data->zone, data->zone->apex,
-		                  ZC_ERR_NSEC_RDATA_CHAIN, NULL);
+		                  SEM_ERR_NSEC_RDATA_CHAIN, NULL);
 		return KNOT_EOK;
 	}
 	if (!knot_dname_is_equal(data->next_nsec->owner, data->zone->apex->owner)) {
 		data->handler->cb(data->handler, data->zone, data->next_nsec,
-		                  ZC_ERR_NSEC_RDATA_CHAIN, NULL);
+		                  SEM_ERR_NSEC_RDATA_CHAIN, NULL);
 	}
 
 	return KNOT_EOK;
@@ -1099,30 +1115,29 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 }
 
 static void check_nsec3param(knot_rdataset_t *nsec3param, zone_contents_t *zone,
-                             err_handler_t *handler, semchecks_data_t *data)
+                             sem_handler_t *handler, semchecks_data_t *data)
 {
 	assert(nsec3param);
 
 	data->level |= NSEC3;
 	uint8_t param = knot_nsec3param_flags(nsec3param, 0);
 	if ((param & ~1) != 0) {
-		handler->cb(handler, zone, zone->apex, ZC_ERR_NSEC3_PARAM_RDATA_FLAGS,
+		handler->cb(handler, zone, zone->apex, SEM_ERR_NSEC3PARAM_RDATA_FLAGS,
 		            NULL);
 	}
 
 	param = knot_nsec3param_algorithm(nsec3param, 0);
 	if (param != DNSSEC_NSEC3_ALGORITHM_SHA1) {
-		handler->cb(handler, zone, zone->apex, ZC_ERR_NSEC3_PARAM_RDATA_ALG,
+		handler->cb(handler, zone, zone->apex, SEM_ERR_NSEC3PARAM_RDATA_ALG,
 		            NULL);
 	}
 }
 
-static void check_dnskey(zone_contents_t *zone, err_handler_t *handler)
+static void check_dnskey(zone_contents_t *zone, sem_handler_t *handler)
 {
 	const knot_rdataset_t *dnskeys = node_rdataset(zone->apex, KNOT_RRTYPE_DNSKEY);
 	if (dnskeys == NULL) {
-		handler->cb(handler, zone, zone->apex, ZC_ERR_INVALID_KEY,
-		            "(no key found)");
+		handler->cb(handler, zone, zone->apex, SEM_ERR_DNSKEY_NONE, NULL);
 		return;
 	}
 
@@ -1135,25 +1150,25 @@ static void check_dnskey(zone_contents_t *zone, err_handler_t *handler)
 		if (ret == KNOT_EOK) {
 			dnssec_key_free(key);
 		} else {
-			handler->cb(handler, zone, zone->apex, ZC_ERR_INVALID_KEY, NULL);
+			handler->cb(handler, zone, zone->apex, SEM_ERR_DNSKEY_INVALID, NULL);
 		}
 
 		if (knot_dnskey_proto(dnskeys, i) != 3) {
-			handler->cb(handler, zone, zone->apex, ZC_ERR_INVALID_KEY,
-			            "(invalid protocol)");
+			handler->cb(handler, zone, zone->apex, SEM_ERR_DNSKEY_RDATA_PROTOCOL,
+			            NULL);
 		}
 
 		dnssec_key_algorithm_t alg = knot_dnskey_alg(dnskeys, i);
 		if (!dnssec_algorithm_key_support(alg)) {
 			char *info = sprintf_alloc("(unsupported algorithm %d)", alg);
-			handler->cb(handler, zone, zone->apex, ZC_ERR_INVALID_KEY, info);
+			handler->cb(handler, zone, zone->apex, SEM_ERR_DNSKEY_INVALID, info);
 			free(info);
 		}
 	}
 }
 
-int zone_do_sem_checks(zone_contents_t *zone, bool optional,
-                       err_handler_t *handler, time_t time)
+int sem_checks_process(zone_contents_t *zone, bool optional, sem_handler_t *handler,
+                       time_t time)
 {
 	if (zone == NULL || handler == NULL) {
 		return KNOT_EINVAL;

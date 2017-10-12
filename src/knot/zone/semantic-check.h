@@ -20,77 +20,77 @@
 #include "knot/zone/contents.h"
 
 /*!
- *\brief Internal error constants. General errors are added for convenience,
- *       so that code does not have to change if new errors are added.
+ *\brief Internal error constants.
  */
 typedef enum {
-	ZC_ERR_UNKNOWN = -50,
+	// Mandatory checks.
+	SEM_ERR_SOA_NONE,
 
-	ZC_ERR_MISSING_SOA,
-	ZC_ERR_MISSING_NS_DEL_POINT,
+	SEM_ERR_CNAME_EXTRA_RECORDS,
+	SEM_ERR_CNAME_MULTIPLE,
 
-	ZC_ERR_GENERIC_GENERAL_ERROR, /* Generic error delimiter. */
+	SEM_ERR_DNAME_CHILDREN,
 
-	ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
-	ZC_ERR_RRSIG_RDATA_TTL,
-	ZC_ERR_RRSIG_RDATA_EXPIRATION,
-	ZC_ERR_RRSIG_RDATA_INCEPTION,
-	ZC_ERR_RRSIG_RDATA_LABELS,
-	ZC_ERR_RRSIG_RDATA_OWNER,
-	ZC_ERR_RRSIG_NO_RRSIG,
-	ZC_ERR_RRSIG_SIGNED,
-	ZC_ERR_RRSIG_TTL,
-	ZC_ERR_RRSIG_UNVERIFIABLE,
+	// Optional checks.
+	SEM_ERR_NS_APEX,
+	SEM_ERR_NS_GLUE,
 
-	ZC_ERR_RRSIG_GENERAL_ERROR, /* RRSIG error delimiter. */
+	SEM_ERR_RRSIG_RDATA_TYPE_COVERED,
+	SEM_ERR_RRSIG_RDATA_TTL,
+	SEM_ERR_RRSIG_RDATA_EXPIRATION,
+	SEM_ERR_RRSIG_RDATA_INCEPTION,
+	SEM_ERR_RRSIG_RDATA_LABELS,
+	SEM_ERR_RRSIG_RDATA_OWNER,
+	SEM_ERR_RRSIG_NO_RRSIG,
+	SEM_ERR_RRSIG_SIGNED,
+	SEM_ERR_RRSIG_TTL,
+	SEM_ERR_RRSIG_UNVERIFIABLE,
 
-	ZC_ERR_NSEC_NONE,
-	ZC_ERR_NSEC_RDATA_BITMAP,
-	ZC_ERR_NSEC_RDATA_MULTIPLE,
-	ZC_ERR_NSEC_RDATA_CHAIN,
+	SEM_ERR_NSEC_NONE,
+	SEM_ERR_NSEC_RDATA_BITMAP,
+	SEM_ERR_NSEC_RDATA_MULTIPLE,
+	SEM_ERR_NSEC_RDATA_CHAIN,
 
-	ZC_ERR_NSEC_GENERAL_ERROR, /* NSEC error delimiter. */
+	SEM_ERR_NSEC3_NONE,
+	SEM_ERR_NSEC3_INSECURE_DELEGATION_OPT,
+	SEM_ERR_NSEC3_EXTRA_RECORD,
+	SEM_ERR_NSEC3_RDATA_TTL,
+	SEM_ERR_NSEC3_RDATA_CHAIN,
+	SEM_ERR_NSEC3_RDATA_BITMAP,
+	SEM_ERR_NSEC3_RDATA_FLAGS,
+	SEM_ERR_NSEC3_RDATA_SALT,
+	SEM_ERR_NSEC3_RDATA_ALG,
+	SEM_ERR_NSEC3_RDATA_ITERS,
 
-	ZC_ERR_NSEC3_NONE,
-	ZC_ERR_NSEC3_INSECURE_DELEGATION_OPT,
-	ZC_ERR_NSEC3_EXTRA_RECORD,
-	ZC_ERR_NSEC3_RDATA_TTL,
-	ZC_ERR_NSEC3_RDATA_CHAIN,
-	ZC_ERR_NSEC3_RDATA_BITMAP,
-	ZC_ERR_NSEC3_RDATA_FLAGS,
-	ZC_ERR_NSEC3_RDATA_SALT,
-	ZC_ERR_NSEC3_RDATA_ALG,
-	ZC_ERR_NSEC3_RDATA_ITERS,
+	SEM_ERR_NSEC3PARAM_RDATA_FLAGS,
+	SEM_ERR_NSEC3PARAM_RDATA_ALG,
 
-	ZC_ERR_NSEC3_PARAM_RDATA_FLAGS,
-	ZC_ERR_NSEC3_PARAM_RDATA_ALG,
+	SEM_ERR_DS_RDATA_ALG,
+	SEM_ERR_DS_RDATA_DIGLEN,
 
-	ZC_ERR_NSEC3_GENERAL_ERROR, /* NSEC3 error delimiter. */
+	SEM_ERR_DNSKEY_NONE,
+	SEM_ERR_DNSKEY_INVALID,
+	SEM_ERR_DNSKEY_RDATA_PROTOCOL,
 
-	ZC_ERR_CNAME_EXTRA_RECORDS,
-	ZC_ERR_CNAME_MULTIPLE,
-	ZC_ERR_DNAME_CHILDREN,
+	SEM_ERR_CDS_NONE,
+	SEM_ERR_CDS_MULTIPLE,
+	SEM_ERR_CDS_NOT_MATCH,
 
-	ZC_ERR_CNAME_GENERAL_ERROR, /* CNAME/DNAME error delimiter. */
+	SEM_ERR_CDNSKEY_NONE,
+	SEM_ERR_CDNSKEY_MULTIPLE,
+	SEM_ERR_CDNSKEY_NOT_KSK,
+	SEM_ERR_CDNSKEY_NO_DNSKEY,
 
-	ZC_ERR_GLUE_RECORD,
+	// General error!
+	SEM_ERR_UNKNOWN
+} sem_error_t;
 
-	ZC_ERR_DS_RDATA_ALG,
-	ZC_ERR_DS_RDATA_DIGLEN,
-
-	ZC_ERR_INVALID_KEY,
-
-	ZC_ERR_CDS_CDNSKEY,
-
-	ZC_ERR_LAST,
-} zc_error_t;
-
-const char *semantic_check_error_msg(int ecode);
+const char *sem_error_msg(sem_error_t code);
 
 /*!
  * \brief Structure for handling semantic errors.
  */
-typedef struct err_handler err_handler_t;
+typedef struct sem_handler sem_handler_t;
 
 /*!
  * \brief Callback for handle error.
@@ -98,11 +98,11 @@ typedef struct err_handler err_handler_t;
  * Return KNOT_EOK to continue in semantic checks.
  * Return other KNOT_E* to stop semantic check with error.
  */
-typedef void (*error_cb) (err_handler_t *ctx, const zone_contents_t *zone,
-                          const zone_node_t *node, zc_error_t error, const char *data);
+typedef void (*sem_callback) (sem_handler_t *ctx, const zone_contents_t *zone,
+                              const zone_node_t *node, sem_error_t error, const char *data);
 
-struct err_handler {
-	error_cb cb;
+struct sem_handler {
+	sem_callback cb;
 	bool fatal_error;
 };
 
@@ -120,5 +120,5 @@ struct err_handler {
  * \retval KNOT_ESEMCHECK found semantic error
  * \retval KNOT_EINVAL or other error
  */
-int zone_do_sem_checks(zone_contents_t *zone, bool optional,
-                       err_handler_t *handler, time_t time);
+int sem_checks_process(zone_contents_t *zone, bool optional, sem_handler_t *handler,
+                       time_t time);

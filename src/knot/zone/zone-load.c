@@ -42,7 +42,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		return ret;
 	}
 
-	err_handler_t handler = {
+	sem_handler_t handler = {
 		.cb = err_handler_logger
 	};
 

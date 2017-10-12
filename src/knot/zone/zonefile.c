@@ -251,7 +251,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	if (!node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
 		loader->err_handler->fatal_error = true;
 		loader->err_handler->cb(loader->err_handler, zc->z, NULL,
-		                        ZC_ERR_MISSING_SOA, NULL);
+		                        SEM_ERR_SOA_NONE, NULL);
 		goto fail;
 	}
 
@@ -262,7 +262,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	ret = zone_do_sem_checks(zc->z, loader->semantic_checks,
+	ret = sem_checks_process(zc->z, loader->semantic_checks,
 	                         loader->err_handler, loader->time);
 
 	if (ret != KNOT_EOK) {
@@ -347,8 +347,8 @@ void zonefile_close(zloader_t *loader)
 	free(loader->creator);
 }
 
-void err_handler_logger(err_handler_t *handler, const zone_contents_t *zone,
-                        const zone_node_t *node, zc_error_t error, const char *data)
+void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
+                        const zone_node_t *node, sem_error_t error, const char *data)
 {
 	assert(handler != NULL);
 	assert(zone != NULL);
@@ -363,7 +363,7 @@ void err_handler_logger(err_handler_t *handler, const zone_contents_t *zone,
 	             "check%s%s, %s%s%s",
 	             (node != NULL ? ", node " : ""),
 	             (node != NULL ? buff      : ""),
-	             semantic_check_error_msg(error),
+	             sem_error_msg(error),
 	             (data != NULL ? " "  : ""),
 	             (data != NULL ? data : ""));
 }

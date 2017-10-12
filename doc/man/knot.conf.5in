@@ -1030,13 +1030,13 @@ logged only.
 Mandatory checks:
 .INDENT 0.0
 .IP \(bu 2
-An extra record together with CNAME record (except for RRSIG and DS)
-.IP \(bu 2
-Multiple CNAME records with the same owner
-.IP \(bu 2
 SOA record missing in the zone (RFC 1034)
 .IP \(bu 2
-DNAME records having records under it (DNAME children) (RFC 2672)
+An extra record together with CNAME record except for RRSIG and DS (RFC 1034)
+.IP \(bu 2
+Multiple CNAME record with the same owner
+.IP \(bu 2
+DNAME record having a record under it (RFC 2672)
 .UNINDENT
 .sp
 Extra checks:
@@ -1044,33 +1044,17 @@ Extra checks:
 .IP \(bu 2
 Missing NS record at the zone apex
 .IP \(bu 2
-Missing glue A or AAAA records
+Missing glue A or AAAA record
+.IP \(bu 2
+Invalid DNSKEY, DS, or NSEC3PARAM record
+.IP \(bu 2
+CDS or CDNSKEY inconsistency
+.IP \(bu 2
+Missing, invalid, or unverifiable RRSIG record
+.IP \(bu 2
+Invalid NSEC(3) record
 .IP \(bu 2
 Broken or non\-cyclic NSEC(3) chain
-.IP \(bu 2
-Wrong NSEC(3) type bitmap
-.IP \(bu 2
-Multiple NSEC records at the same node
-.IP \(bu 2
-Missing NSEC records at authoritative nodes
-.IP \(bu 2
-NSEC3 insecure delegation that is not part of Opt\-out span
-.IP \(bu 2
-Wrong original TTL value in NSEC3 records
-.IP \(bu 2
-Wrong RDATA TTL value in RRSIG record
-.IP \(bu 2
-Signer name in RRSIG RR not the same as in DNSKEY
-.IP \(bu 2
-Signed RRSIG
-.IP \(bu 2
-Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
-.IP \(bu 2
-Invalid NSEC3PARAM flags or digest algorithm
-.IP \(bu 2
-Invalid DS algorithm or digest length
-.IP \(bu 2
-Not corresponding CDS and CDNSKEY records
 .UNINDENT
 .sp
 \fIDefault:\fP off

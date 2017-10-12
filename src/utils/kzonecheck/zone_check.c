@@ -22,14 +22,14 @@
 #include "utils/kzonecheck/zone_check.h"
 
 typedef struct {
-	err_handler_t handler;
+	sem_handler_t handler;
 	FILE *outfile;
-	unsigned errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Counting errors by type */
-	unsigned error_count; /*!< Total error count */
+	unsigned errors[SEM_ERR_UNKNOWN + 1]; /*!< Counting errors by type. */
+	unsigned error_count;                 /*!< Total error count. */
 } err_handler_stats_t;
 
-static void err_callback(err_handler_t *handler, const zone_contents_t *zone,
-                         const zone_node_t *node, zc_error_t error, const char *data)
+static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
+                         const zone_node_t *node, sem_error_t error, const char *data)
 {
 	assert(handler != NULL);
 	assert(zone != NULL);
@@ -40,21 +40,21 @@ static void err_callback(err_handler_t *handler, const zone_contents_t *zone,
 	                        sizeof(buff));
 
 	fprintf(stats->outfile, "[%s] %s%s%s\n",
-	        buff, semantic_check_error_msg(error),
+	        buff, sem_error_msg(error),
 	        (data != NULL ? " "  : ""),
 	        (data != NULL ? data : ""));
 
-	stats->errors[-error]++;
+	stats->errors[error]++;
 	stats->error_count++;
 }
 
 static void print_statistics(err_handler_stats_t *stats)
 {
 	fprintf(stats->outfile, "\nError summary:\n");
-	for(int i = ZC_ERR_UNKNOWN; i < ZC_ERR_LAST; ++i) {
-		if (stats->errors[-i] > 0) {
-			fprintf(stats->outfile, "%4u\t%s\n", stats->errors[-i],
-			        semantic_check_error_msg(i));
+	for (sem_error_t i = 0; i <= SEM_ERR_UNKNOWN; ++i) {
+		if (stats->errors[i] > 0) {
+			fprintf(stats->outfile, "%4u\t%s\n", stats->errors[i],
+			        sem_error_msg(i));
 		}
 	}
 }
@@ -72,7 +72,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	zl.err_handler = (err_handler_t *)&stats;
+	zl.err_handler = (sem_handler_t *)&stats;
 	zl.creator->master = true;
 
 	zone_contents_t *contents = zonefile_load(&zl);

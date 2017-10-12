@@ -1183,28 +1183,20 @@ logged only.
 
 Mandatory checks:
 
-- An extra record together with CNAME record (except for RRSIG and DS)
-- Multiple CNAME records with the same owner
 - SOA record missing in the zone (RFC 1034)
-- DNAME records having records under it (DNAME children) (RFC 2672)
+- An extra record together with CNAME record except for RRSIG and DS (RFC 1034)
+- Multiple CNAME record with the same owner
+- DNAME record having a record under it (RFC 2672)
 
 Extra checks:
 
 - Missing NS record at the zone apex
-- Missing glue A or AAAA records
+- Missing glue A or AAAA record
+- Invalid DNSKEY, DS, or NSEC3PARAM record
+- CDS or CDNSKEY inconsistency
+- Missing, invalid, or unverifiable RRSIG record
+- Invalid NSEC(3) record
 - Broken or non-cyclic NSEC(3) chain
-- Wrong NSEC(3) type bitmap
-- Multiple NSEC records at the same node
-- Missing NSEC records at authoritative nodes
-- NSEC3 insecure delegation that is not part of Opt-out span
-- Wrong original TTL value in NSEC3 records
-- Wrong RDATA TTL value in RRSIG record
-- Signer name in RRSIG RR not the same as in DNSKEY
-- Signed RRSIG
-- Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
-- Invalid NSEC3PARAM flags or digest algorithm
-- Invalid DS algorithm or digest length
-- Not corresponding CDS and CDNSKEY records
 
 *Default:* off
 
