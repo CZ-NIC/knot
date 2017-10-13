@@ -444,12 +444,6 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	free(zone->control_update);
 	zone->control_update = NULL;
 
-	/* Sync zonefile immediately if configured. */
-	val = conf_zone_get(conf(), C_ZONEFILE_SYNC, zone->name);
-	if (conf_int(&val) == 0) {
-		zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
-	}
-
 	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 
 	return KNOT_EOK;
