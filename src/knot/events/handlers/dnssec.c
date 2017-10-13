@@ -40,8 +40,6 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 		return;
 	}
 
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-
 	log_dnssec_next(zone->name, (time_t)refresh_at);
 
 	if (refresh->plan_ds_query) {
@@ -57,8 +55,7 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 		ZONE_EVENT_DNSSEC, (time_t)refresh_at,
 		ZONE_EVENT_PARENT_DS_Q, refresh->plan_ds_query ? now : ignore,
 		ZONE_EVENT_NSEC3RESALT, refresh->next_nsec3resalt ? refresh->next_nsec3resalt : ignore,
-		ZONE_EVENT_NOTIFY, zone_changed ? now : ignore,
-		ZONE_EVENT_FLUSH,  zone_changed && conf_int(&val) == 0 ? now : ignore
+		ZONE_EVENT_NOTIFY, zone_changed ? now : ignore
 	);
 }
 

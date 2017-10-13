@@ -183,12 +183,6 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 		return ret;
 	}
 
-	/* Sync zonefile immediately if configured. */
-	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	if (conf_int(&val) == 0) {
-		zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
-	}
-
 	return KNOT_EOK;
 }
 

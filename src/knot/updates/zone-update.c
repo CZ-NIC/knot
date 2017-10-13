@@ -698,6 +698,12 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	update->a_ctx = NULL;
 	update->new_cont = NULL;
 
+	/* Sync zonefile immediately if configured. */
+	val = conf_zone_get(conf, C_ZONEFILE_SYNC, update->zone->name);
+	if (conf_int(&val) == 0) {
+		zone_events_schedule_now(update->zone, ZONE_EVENT_FLUSH);
+	}
+
 	return KNOT_EOK;
 }
 

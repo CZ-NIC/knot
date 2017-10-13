@@ -1132,12 +1132,6 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	replan_from_timers(conf, zone);
 	if (updated) {
 		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
-
-		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-		int64_t sync_timeout = conf_int(&val);
-		if (sync_timeout == 0) {
-			zone_events_schedule_now(zone, ZONE_EVENT_FLUSH);
-		}
 	}
 
 	if (!bootstrap) {
