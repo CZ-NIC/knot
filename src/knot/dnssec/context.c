@@ -73,6 +73,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	val = conf_id_get(conf(), C_POLICY, C_NSEC3, id);
 	policy->nsec3_enabled = conf_bool(&val);
 
+	val = conf_id_get(conf(), C_POLICY, C_NSEC3_OPT_OUT, id);
+	policy->nsec3_opt_out = conf_bool(&val);
+
 	val = conf_id_get(conf(), C_POLICY, C_NSEC3_ITER, id);
 	policy->nsec3_iterations = conf_int(&val);
 

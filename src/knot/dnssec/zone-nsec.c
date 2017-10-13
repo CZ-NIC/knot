@@ -276,7 +276,7 @@ static int set_nsec3param(knot_rrset_t *rrset, const dnssec_nsec3_params_t *para
 	wire_ctx_t wire = wire_ctx_init(rdata, rdata_len);
 
 	wire_ctx_write_u8(&wire, params->algorithm);
-	wire_ctx_write_u8(&wire, params->flags);
+	wire_ctx_write_u8(&wire, 0); // (RFC 5155 Section 4.1.2)
 	wire_ctx_write_u16(&wire, params->iterations);
 	wire_ctx_write_u8(&wire, params->salt.size);
 	wire_ctx_write(&wire, params->salt.data, params->salt.size);
@@ -355,6 +355,7 @@ static dnssec_nsec3_params_t nsec3param_init(const knot_kasp_policy_t *policy,
 		params.algorithm = DNSSEC_NSEC3_ALGORITHM_SHA1;
 		params.iterations = policy->nsec3_iterations;
 		params.salt = zone->nsec3_salt;
+		params.flags = (policy->nsec3_opt_out ? KNOT_NSEC3_FLAG_OPT_OUT : 0);
 	}
 
 	return params;
@@ -389,7 +390,8 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
 	}
 
 	if (ctx->policy->nsec3_enabled) {
-		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl, &ch);
+		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl,
+					      ctx->policy->nsec3_opt_out, &ch);
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}
@@ -449,7 +451,7 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 	}
 
 	if (ctx->policy->nsec3_enabled) {
-		ret = knot_nsec3_fix_chain(update, &params, nsec_ttl, &ch);
+		ret = knot_nsec3_fix_chain(update, &params, nsec_ttl, ctx->policy->nsec3_opt_out, &ch);
 	} else {
 		ret = knot_nsec_fix_chain(update->zone->contents, update->new_cont, nsec_ttl, &ch);
 	}
@@ -462,7 +464,8 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 			return ret;
 		}
 		if (ctx->policy->nsec3_enabled) {
-			ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl, &ch);
+			ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl,
+						      ctx->policy->nsec3_opt_out, &ch);
 		} else {
 			ret = knot_nsec_create_chain(update->new_cont, nsec_ttl, &ch);
 		}

@@ -568,6 +568,7 @@ policy:
     rrsig\-refresh: TIME
     nsec3: BOOL
     nsec3\-iterations: INT
+    nsec3\-opt\-out: BOOL
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
     ksk\-submission: submission_id
@@ -705,6 +706,20 @@ Specifies if NSEC3 will be used instead of NSEC.
 A number of additional times the hashing is performed.
 .sp
 \fIDefault:\fP 5
+.SS nsec3\-opt\-out
+.sp
+If set, NSEC3 records won\(aqt be created for insecure delegations.
+This speeds up the zone signing and reduces overall zone size.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+NSEC3 with the Opt\-Out bit set no longer works as a proof of non\-existence
+in this zone.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP off
 .SS nsec3\-salt\-length
 .sp
 A length of a salt field in octets, which is appended to the original owner

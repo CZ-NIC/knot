@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,12 @@
 #include "libknot/codes.h"
 #include "libknot/rdataset.h"
 #include "libknot/rrtype/nsec3param.h"
+
+/*!
+ * \brief NSEC3 rdata constants.
+ */
+#define KNOT_NSEC3_ALGORITHM_SHA1	1
+#define KNOT_NSEC3_FLAG_OPT_OUT		1
 
 static inline
 uint8_t knot_nsec3_algorithm(const knot_rdataset_t *rrs, size_t pos)

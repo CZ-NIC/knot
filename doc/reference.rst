@@ -638,6 +638,7 @@ DNSSEC policy configuration.
      rrsig-refresh: TIME
      nsec3: BOOL
      nsec3-iterations: INT
+     nsec3-opt-out: BOOL
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
      ksk-submission: submission_id
@@ -809,6 +810,20 @@ nsec3-iterations
 A number of additional times the hashing is performed.
 
 *Default:* 5
+
+.. _policy_nsec3-opt-out:
+
+nsec3-opt-out
+-------------
+
+If set, NSEC3 records won't be created for insecure delegations.
+This speeds up the zone signing and reduces overall zone size.
+
+.. WARNING::
+  NSEC3 with the Opt-Out bit set no longer works as a proof of non-existence
+  in this zone.
+
+*Default:* off
 
 .. _policy_nsec3-salt-length:
 
