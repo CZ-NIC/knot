@@ -154,11 +154,4 @@ typedef enum {
 	KNOT_DNSSEC_ALG_PRIVATEOID         = 254
 } knot_dnssec_algorithm_t;
 
-/*!
- * \brief NSEC3 hash algorithm numbers.
- */
-typedef enum {
-	KNOT_NSEC3_ALGORITHM_SHA1 = 1
-} knot_nsec3_hash_algorithm_t;
-
 /*! @} */
