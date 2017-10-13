@@ -182,11 +182,11 @@ void zs_deinit(
 	free(s->path);
 }
 
-__attribute__((visibility("default")))
-int zs_set_input_string(
+static int set_input_string(
 	zs_scanner_t *s,
 	const char *input,
-	size_t size)
+	size_t size,
+	bool final_block)
 {
 	if (s == NULL) {
 		return -1;
@@ -197,15 +197,31 @@ int zs_set_input_string(
 		return -1;
 	}
 
-	// Deinit possibly opened file.
-	input_deinit(s);
+	// Keep previous input file context if final block parsing.
+	if (!final_block) {
+		// Deinit possibly opened file.
+		input_deinit(s);
+	}
 
 	// Set the scanner input limits.
 	s->input.start   = input;
 	s->input.current = input;
 	s->input.end     = input + size;
 
+	if (final_block) {
+		s->input.eof = true;
+	}
+
 	return 0;
+}
+
+__attribute__((visibility("default")))
+int zs_set_input_string(
+	zs_scanner_t *s,
+	const char *input,
+	size_t size)
+{
+	return set_input_string(s, input, size, false);
 }
 
 __attribute__((visibility("default")))
@@ -306,8 +322,15 @@ int zs_set_processing(
 	return 0;
 }
 
+typedef enum {
+	WRAP_NONE,     // Initial state.
+	WRAP_DETECTED, // Input block end is a first '\' in rdata.
+	WRAP_PROCESS   // Parsing of auxiliary block = "\".
+} wrap_t;
+
 static void parse(
-	zs_scanner_t *s)
+	zs_scanner_t *s,
+	wrap_t *wrap)
 {
 	// Restore scanner input limits (Ragel internals).
 	const char *p = s->input.current;
@@ -5131,7 +5154,7 @@ case 5:
 		case 32: goto st5;
 		case 40: goto tr72;
 		case 41: goto tr73;
-		case 92: goto st9;
+		case 92: goto tr74;
 		case 2058: goto tr75;
 		case 2107: goto st10;
 		case 2314: goto tr69;
@@ -5315,7 +5338,11 @@ tr69:
 	}
 	goto st6;
 tr93:
-	{ p--; }
+	{
+		if (*wrap == WRAP_NONE) {
+			p--;
+		}
+	}
 	{
 		p--;
 		switch (s->r_type) {
@@ -9161,6 +9188,13 @@ case 8:
 	if ( (*p) == 10 )
 		goto tr92;
 	goto tr91;
+tr74:
+	{
+		if (pe - p == 1) {
+			*wrap = WRAP_DETECTED;
+		}
+	}
+	goto st9;
 st9:
 	if ( ++p == pe )
 		goto _test_eof9;
@@ -13367,7 +13401,7 @@ case 11:
 		case 32: goto tr97;
 		case 40: goto tr98;
 		case 41: goto tr99;
-		case 92: goto st9;
+		case 92: goto tr74;
 		case 1802: goto tr83;
 		case 1851: goto tr84;
 		case 2058: goto tr83;
@@ -13461,7 +13495,7 @@ case 12:
 		case 32: goto st12;
 		case 40: goto tr105;
 		case 41: goto tr106;
-		case 92: goto st9;
+		case 92: goto tr74;
 		case 1802: goto tr89;
 		case 1851: goto st8;
 		case 2058: goto tr89;
@@ -13816,7 +13850,7 @@ case 14:
 		case 83: goto tr130;
 		case 84: goto tr131;
 		case 85: goto tr132;
-		case 92: goto st9;
+		case 92: goto tr74;
 		case 97: goto tr118;
 		case 99: goto tr119;
 		case 100: goto tr120;
@@ -23217,7 +23251,7 @@ case 171:
 		case 83: goto tr130;
 		case 84: goto tr131;
 		case 85: goto tr132;
-		case 92: goto st9;
+		case 92: goto tr74;
 		case 97: goto tr118;
 		case 99: goto tr119;
 		case 100: goto tr120;
@@ -23467,7 +23501,7 @@ case 173:
 		case 32: goto st173;
 		case 40: goto tr745;
 		case 41: goto tr746;
-		case 92: goto st9;
+		case 92: goto tr74;
 		case 1802: goto tr89;
 		case 1851: goto st8;
 		case 2058: goto tr747;
@@ -25145,7 +25179,7 @@ case 178:
 		case 83: goto tr130;
 		case 84: goto tr131;
 		case 85: goto tr132;
-		case 92: goto st9;
+		case 92: goto tr74;
 		case 97: goto tr118;
 		case 99: goto tr119;
 		case 100: goto tr120;
@@ -28063,7 +28097,7 @@ case 209:
 		case 83: goto tr130;
 		case 84: goto tr131;
 		case 85: goto tr132;
-		case 92: goto st9;
+		case 92: goto tr74;
 		case 97: goto tr118;
 		case 99: goto tr119;
 		case 100: goto tr120;
@@ -30335,6 +30369,11 @@ case 223:
 	goto tr800;
 tr3623:
 	{
+		if (pe - p == 1) {
+			*wrap = WRAP_DETECTED;
+		}
+	}
+	{
 		s->dname = s->r_owner;
 		s->r_owner_length = 0;
 	}
@@ -30380,7 +30419,11 @@ tr813:
 	{
 		s->r_owner_length = s->dname_tmp_length;
 	}
-	{ p--; }
+	{
+		if (*wrap == WRAP_NONE) {
+			p--;
+		}
+	}
 	{
 		p--;
 		switch (s->r_type) {
@@ -30472,7 +30515,11 @@ tr815:
 		}
 		s->multiline = true;
 	}
-	{ p--; }
+	{
+		if (*wrap == WRAP_NONE) {
+			p--;
+		}
+	}
 	{
 		p--;
 		switch (s->r_type) {
@@ -30564,7 +30611,11 @@ tr816:
 		}
 		s->multiline = false;
 	}
-	{ p--; }
+	{
+		if (*wrap == WRAP_NONE) {
+			p--;
+		}
+	}
 	{
 		p--;
 		switch (s->r_type) {
@@ -30652,7 +30703,11 @@ tr817:
 	{
 		s->line_counter++;
 	}
-	{ p--; }
+	{
+		if (*wrap == WRAP_NONE) {
+			p--;
+		}
+	}
 	{
 		p--;
 		switch (s->r_type) {
@@ -30796,7 +30851,11 @@ tr818:
 	{
 		s->r_owner_length = s->dname_tmp_length;
 	}
-	{ p--; }
+	{
+		if (*wrap == WRAP_NONE) {
+			p--;
+		}
+	}
 	{
 		p--;
 		switch (s->r_type) {
@@ -33184,7 +33243,7 @@ case 247:
 		case 83: goto tr130;
 		case 84: goto tr131;
 		case 85: goto tr132;
-		case 92: goto st9;
+		case 92: goto tr74;
 		case 97: goto tr118;
 		case 99: goto tr119;
 		case 100: goto tr120;
@@ -83467,6 +83526,17 @@ goto st268;}
 
 	// Storing r_data pointer.
 	s->r_data_tail = rdata_tail - s->r_data;
+
+	if (*wrap == WRAP_DETECTED) {
+		if (set_input_string(s, "\\", 1, true) != 0) {
+			return;
+		}
+
+		*wrap = WRAP_PROCESS;
+		parse(s, wrap);
+	} else {
+		*wrap = WRAP_NONE;
+	}
 }
 
 __attribute__((visibility("default")))
@@ -83497,16 +83567,16 @@ int zs_parse_record(
 	if (s->input.current != s->input.end) {
 		// Try to parse another item.
 		s->state = ZS_STATE_NONE;
-		parse(s);
+		wrap_t wrap = WRAP_NONE;
+		parse(s, &wrap);
 
 		// Finish if nothing was parsed.
 		if (s->state == ZS_STATE_NONE) {
 			// Parse the final block.
-			if (zs_set_input_string(s, "\n", 1) != 0) {
+			if (set_input_string(s, "\n", 1, true) != 0) {
 				return -1;
 			}
-			s->input.eof = true;
-			parse(s);
+			parse(s, &wrap);
 			if (s->state == ZS_STATE_NONE) {
 				s->state = ZS_STATE_EOF;
 			}
@@ -83529,15 +83599,15 @@ int zs_parse_all(
 	s->process.automatic = true;
 
 	// Parse input block.
-	parse(s);
+	wrap_t wrap = WRAP_NONE;
+	parse(s, &wrap);
 
 	// Parse trailing newline-char block if it makes sense.
 	if (s->state != ZS_STATE_STOP && !s->error.fatal) {
-		if (zs_set_input_string(s, "\n", 1) != 0) {
+		if (set_input_string(s, "\n", 1, true) != 0) {
 			return -1;
 		}
-		s->input.eof = true;
-		parse(s);
+		parse(s, &wrap);
 	}
 
 	// Check if any errors have occurred.

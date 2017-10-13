@@ -323,8 +323,15 @@ int zs_set_processing(
 	return 0;
 }
 
+typedef enum {
+	WRAP_NONE,     // Initial state.
+	WRAP_DETECTED, // Input block end is a first '\' in rdata.
+	WRAP_PROCESS   // Parsing of auxiliary block = "\".
+} wrap_t;
+
 static void parse(
-	zs_scanner_t *s)
+	zs_scanner_t *s,
+	wrap_t *wrap)
 {
 	// Restore scanner input limits (Ragel internals).
 	const char *p = s->input.current;
@@ -394,6 +401,17 @@ static void parse(
 
 	// Storing r_data pointer.
 	s->r_data_tail = rdata_tail - s->r_data;
+
+	if (*wrap == WRAP_DETECTED) {
+		if (set_input_string(s, "\\", 1, true) != 0) {
+			return;
+		}
+
+		*wrap = WRAP_PROCESS;
+		parse(s, wrap);
+	} else {
+		*wrap = WRAP_NONE;
+	}
 }
 
 __attribute__((visibility("default")))
@@ -424,7 +442,8 @@ int zs_parse_record(
 	if (s->input.current != s->input.end) {
 		// Try to parse another item.
 		s->state = ZS_STATE_NONE;
-		parse(s);
+		wrap_t wrap = WRAP_NONE;
+		parse(s, &wrap);
 
 		// Finish if nothing was parsed.
 		if (s->state == ZS_STATE_NONE) {
@@ -432,7 +451,7 @@ int zs_parse_record(
 			if (set_input_string(s, "\n", 1, true) != 0) {
 				return -1;
 			}
-			parse(s);
+			parse(s, &wrap);
 			if (s->state == ZS_STATE_NONE) {
 				s->state = ZS_STATE_EOF;
 			}
@@ -455,14 +474,15 @@ int zs_parse_all(
 	s->process.automatic = true;
 
 	// Parse input block.
-	parse(s);
+	wrap_t wrap = WRAP_NONE;
+	parse(s, &wrap);
 
 	// Parse trailing newline-char block if it makes sense.
 	if (s->state != ZS_STATE_STOP && !s->error.fatal) {
 		if (set_input_string(s, "\n", 1, true) != 0) {
 			return -1;
 		}
-		parse(s);
+		parse(s, &wrap);
 	}
 
 	// Check if any errors have occurred.
