@@ -104,7 +104,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		expire = zone->timers.last_refresh + zone->timers.soa_expire;
 	}
 
-	time_t flush = TIME_CANCEL;
+	time_t flush = TIME_IGNORE;
 	if (!zone_is_slave(conf, zone) || can_expire(zone)) {
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		int64_t sync_timeout = conf_int(&val);
