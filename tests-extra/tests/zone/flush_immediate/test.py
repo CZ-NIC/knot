@@ -39,7 +39,7 @@ up = master.update(zone)
 up.add("djojdw", 3600, "TXT", "this wont sure be there yet")
 up.send("NOERROR")
 
-t.sleep(2)
+t.sleep(4)
 
 m_mtime2 = os.stat(m_zfpath).st_mtime
 s_mtime2 = os.stat(s_zfpath).st_mtime
