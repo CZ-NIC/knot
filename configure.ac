@@ -604,7 +604,7 @@ AC_CONFIG_FILES([Makefile
 AC_CONFIG_FILES([src/utils/pykeymgr/pykeymgr], [chmod +x src/utils/pykeymgr/pykeymgr])
 AC_CONFIG_FILES([doc/modules.rst],
                 [cp doc/modules.rst ${srcdir}/doc/modules.rst 2>/dev/null;
-                 ln -s -f -t ${srcdir}/doc/ $(realpath ${srcdir})/src/knot/modules 2>/dev/null])
+                 ln -s -f -t ${srcdir}/doc/ $(readlink -f ${srcdir})/src/knot/modules 2>/dev/null])
 
 AC_OUTPUT
 
