@@ -1106,7 +1106,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check)." },
 	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",              "Flush zone journal into the zone file." },
 	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone." },
-	{ CMD_ZONE_KSK_SBM,    "<zone>",                                 "When KSK submission, confirm parent's DS presence manually." },
+	{ CMD_ZONE_KSK_SBM,    "<zone>",                                 "\b\b\bWhen KSK submission, confirm parent's DS presence manually." },
 	{ CMD_ZONE_FREEZE,     "[<zone>...]",                            "Temporarily postpone automatic zone-changing events." },
 	{ CMD_ZONE_THAW,       "[<zone>...]",                            "Dismiss zone freeze." },
 	{ "",                  "",                                       "" },

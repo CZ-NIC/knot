@@ -347,6 +347,8 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 
 static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 {
+	UNUSED(args);
+
 	kdnssec_ctx_t ctx = { 0 };
 
 	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, NULL);
@@ -355,11 +357,11 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 	}
 
 	ret = knot_dnssec_ksk_sbm_confirm(&ctx);
-
 	kdnssec_ctx_deinit(&ctx);
-
-	zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
-	// NOT zone_events_schedule_user(), intentionally
+	if (ret == KNOT_EOK) {
+		// NOT zone_events_schedule_user(), intentionally!
+		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+	}
 
 	return ret;
 }
