@@ -368,7 +368,7 @@ static int set_config(const char *confdb, const char *config)
 	}
 
 	/* Activate global query modules. */
-	conf_activate_modules(new_conf, NULL, &new_conf->query_modules,
+	conf_activate_modules(new_conf, NULL, new_conf->query_modules,
 	                      &new_conf->query_plan);
 
 	/* Update to the new config. */

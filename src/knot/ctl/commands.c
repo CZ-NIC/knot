@@ -1318,7 +1318,7 @@ static int ctl_stats(ctl_args_t *args, ctl_cmd_t cmd)
 
 	// Process modules metrics.
 	if (section == NULL || strncasecmp(section, "mod-", strlen("mod-")) == 0) {
-		int ret = modules_stats(&conf()->query_modules, args, NULL);
+		int ret = modules_stats(conf()->query_modules, args, NULL);
 		if (ret != KNOT_EOK) {
 			send_error(args, knot_strerror(ret));
 			return ret;

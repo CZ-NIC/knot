@@ -157,9 +157,6 @@ int conf_new(
 	}
 	memset(out, 0, sizeof(conf_t));
 
-	// Initialize query modules list.
-	init_list(&out->query_modules);
-
 	// Initialize config schema.
 	int ret = yp_schema_copy(&out->schema, schema);
 	if (ret != KNOT_EOK) {
@@ -173,6 +170,14 @@ int conf_new(
 		goto new_error;
 	}
 	mm_ctx_mempool(out->mm, MM_DEFAULT_BLKSIZE);
+
+	// Initialize query modules list.
+	out->query_modules = mm_alloc(out->mm, sizeof(list_t));
+	if (out->query_modules == NULL) {
+		ret = KNOT_ENOMEM;
+		goto new_error;
+	}
+	init_list(out->query_modules);
 
 	// Set the DB api.
 	out->api = knot_db_lmdb_api();
@@ -290,9 +295,19 @@ int conf_clone(
 	out->mm = s_conf->mm;
 	out->db = s_conf->db;
 
+	// Initialize query modules list.
+	out->query_modules = mm_alloc(out->mm, sizeof(list_t));
+	if (out->query_modules == NULL) {
+		yp_schema_free(out->schema);
+		free(out);
+		return KNOT_ENOMEM;
+	}
+	init_list(out->query_modules);
+
 	// Open common read-only transaction.
 	ret = conf_refresh_txn(out);
 	if (ret != KNOT_EOK) {
+		mm_free(out->mm, out->query_modules);
 		yp_schema_free(out->schema);
 		free(out);
 		return ret;
@@ -307,9 +322,6 @@ int conf_clone(
 	if (s_conf->hostname != NULL) {
 		out->hostname = strdup(s_conf->hostname);
 	}
-
-	// Initialize query modules list.
-	init_list(&out->query_modules);
 
 	// Initialize cached values.
 	init_cache(out);
@@ -334,8 +346,7 @@ conf_t *conf_update(
 			conf->io.zones = s_conf->io.zones;
 		}
 		if ((flags & CONF_UPD_FMODULES) && s_conf != NULL) {
-			list_dup(&conf->query_modules, &s_conf->query_modules,
-			         sizeof(knotd_mod_t));
+			conf->query_modules = s_conf->query_modules;
 			conf->query_plan = s_conf->query_plan;
 		}
 	}
@@ -353,7 +364,7 @@ conf_t *conf_update(
 			old_conf->io.zones = NULL;
 		}
 		if (flags & CONF_UPD_FMODULES) {
-			WALK_LIST_FREE(old_conf->query_modules);
+			old_conf->query_modules = NULL;
 			old_conf->query_plan = NULL;
 		}
 		if (!(flags & CONF_UPD_FNOFREE)) {
@@ -388,7 +399,8 @@ void conf_free(
 	}
 
 	conf_mod_load_purge(conf, false);
-	conf_deactivate_modules(&conf->query_modules, &conf->query_plan);
+	conf_deactivate_modules(conf->query_modules, &conf->query_plan);
+	mm_free(conf->mm, conf->query_modules);
 	conf_mod_unload_shared(conf);
 
 	if (!conf->is_clone) {

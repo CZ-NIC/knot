@@ -631,7 +631,7 @@ int server_reload(server_t *server)
 			return ret;
 		}
 
-		conf_activate_modules(new_conf, NULL, &new_conf->query_modules,
+		conf_activate_modules(new_conf, NULL, new_conf->query_modules,
 		                      &new_conf->query_plan);
 	}
 
