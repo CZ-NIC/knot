@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,40 +35,33 @@ void knot_layer_init(knot_layer_t *ctx, knot_mm_t *mm, const knot_layer_api_t *a
 	ctx->state = KNOT_STATE_NOOP;
 }
 
-int knot_layer_begin(knot_layer_t *ctx, void *param)
+void knot_layer_begin(knot_layer_t *ctx, void *param)
 {
 	LAYER_CALL(ctx, begin, param);
-
-	return ctx->state;
 }
 
-int knot_layer_reset(knot_layer_t *ctx)
+void knot_layer_reset(knot_layer_t *ctx)
 {
 	LAYER_CALL(ctx, reset);
-	return ctx->state;
 }
 
-int knot_layer_finish(knot_layer_t *ctx)
+void knot_layer_finish(knot_layer_t *ctx)
 {
 	LAYER_CALL(ctx, finish);
-	return ctx->state;
 }
 
-int knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt)
+void knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	LAYER_CALL(ctx, consume, pkt);
-	return ctx->state;
 }
 
-int knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt)
+void knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	switch (ctx->state) {
 	case KNOT_STATE_FAIL: LAYER_CALL(ctx, fail, pkt); break;
 	case KNOT_STATE_PRODUCE:
 	default: LAYER_CALL(ctx, produce, pkt); break;
 	}
-
-	return ctx->state;
 }
 
 #undef LAYER_STATE_STR

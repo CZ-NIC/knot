@@ -39,11 +39,10 @@ static void answer_sanity_check(const uint8_t *query,
 	} else {
 		skip_block(3, "ns: can't check DNS header");
 	}
-
 }
 
 /* Resolve query and check answer for sanity (2 TAP tests). */
-static void exec_query(knot_layer_t *query_ctx, const char *name,
+static void exec_query(knot_layer_t *layer, const char *name,
                        knot_pkt_t *query,
                        uint8_t expected_rcode)
 {
@@ -52,18 +51,19 @@ static void exec_query(knot_layer_t *query_ctx, const char *name,
 
 	/* Input packet. */
 	knot_pkt_parse(query, 0);
-	int state = knot_layer_consume(query_ctx, query);
+	knot_layer_consume(layer, query);
 
-	ok(state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL, "ns: process %s query", name);
+	ok(layer->state == KNOT_STATE_PRODUCE ||
+	   layer->state == KNOT_STATE_FAIL, "ns: process %s query", name);
 
 	/* Create answer. */
-	state = knot_layer_produce(query_ctx, answer);
-	if (state == KNOT_STATE_FAIL) {
+	knot_layer_produce(layer, answer);
+	if (layer->state == KNOT_STATE_FAIL) {
 		/* Allow 1 generic error response. */
-		state = knot_layer_produce(query_ctx, answer);
+		knot_layer_produce(layer, answer);
 	}
 
-	ok(state == KNOT_STATE_DONE, "ns: answer %s query", name);
+	ok(layer->state == KNOT_STATE_DONE, "ns: answer %s query", name);
 
 	/* Check answer. */
 	answer_sanity_check(query->wire, answer->wire, answer->size, expected_rcode, name);
@@ -164,19 +164,19 @@ int main(int argc, char *argv[])
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	size_t orig_query_size = query->size;
 	query->size = KNOT_WIRE_HEADER_SIZE - 1;
-	int state = knot_layer_consume(&proc, query);
-	ok(state == KNOT_STATE_NOOP, "ns: IN/less-than-header query ignored");
+	knot_layer_consume(&proc, query);
+	ok(proc.state == KNOT_STATE_NOOP, "ns: IN/less-than-header query ignored");
 	query->size = orig_query_size;
 
 	/* Query processor (response, ignore). */
 	knot_layer_reset(&proc);
 	knot_wire_set_qr(query->wire);
-	state = knot_layer_consume(&proc, query);
-	ok(state == KNOT_STATE_NOOP, "ns: IN/less-than-header query ignored");
+	knot_layer_consume(&proc, query);
+	ok(proc.state == KNOT_STATE_NOOP, "ns: IN/less-than-header query ignored");
 
 	/* Finish. */
-	state = knot_layer_finish(&proc);
-	ok(state == KNOT_STATE_NOOP, "ns: processing end" );
+	knot_layer_finish(&proc);
+	ok(proc.state == KNOT_STATE_NOOP, "ns: processing end" );
 
 	/* Cleanup. */
 	mp_delete((struct mempool *)mm.ctx);

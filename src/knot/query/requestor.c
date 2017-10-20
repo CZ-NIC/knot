@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -263,7 +263,7 @@ static int request_consume(struct knot_requestor *req,
 	return KNOT_EOK;
 }
 
-static bool layer_active(enum knot_layer_state state)
+static bool layer_active(knot_layer_state_t state)
 {
 	switch (state) {
 	case KNOT_STATE_CONSUME:

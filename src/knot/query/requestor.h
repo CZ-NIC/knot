@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,8 +40,8 @@ enum {
  *  Requestor holds a FIFO of pending queries.
  */
 struct knot_requestor {
-	knot_mm_t *mm;                /*!< Memory context. */
-	struct knot_layer layer;      /*!< Response processing layer. */
+	knot_mm_t *mm;       /*!< Memory context. */
+	knot_layer_t layer;  /*!< Response processing layer. */
 };
 
 /*! \brief Request data (socket, payload, response, TSIG and endpoints). */
