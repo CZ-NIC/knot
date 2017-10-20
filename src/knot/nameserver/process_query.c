@@ -856,7 +856,6 @@ const knot_layer_api_t *process_query_layer(void)
 		.finish  = &process_query_finish,
 		.consume = &process_query_in,
 		.produce = &process_query_out,
-		.fail    = &process_query_err
 	};
 	return &api;
 }

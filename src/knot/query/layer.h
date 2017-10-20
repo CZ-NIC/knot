@@ -54,8 +54,14 @@ struct knot_layer_api {
 	int (*finish)(knot_layer_t *ctx);
 	int (*consume)(knot_layer_t *ctx, knot_pkt_t *pkt);
 	int (*produce)(knot_layer_t *ctx, knot_pkt_t *pkt);
-	int (*fail)(knot_layer_t *ctx, knot_pkt_t *pkt);
 };
+
+/*! \brief Helper for conditional layer call. */
+#define LAYER_CALL(layer, func, ...) \
+	assert(layer->api); \
+	if (layer->api->func) { \
+		layer->state = layer->api->func(layer, ##__VA_ARGS__); \
+	}
 
 /*!
  * \brief Initialize packet processing context.
@@ -64,29 +70,46 @@ struct knot_layer_api {
  * \param mm  Memory context.
  * \param api Layer API.
  */
-void knot_layer_init(knot_layer_t *ctx, knot_mm_t *mm, const knot_layer_api_t *api);
+inline static void knot_layer_init(knot_layer_t *ctx, knot_mm_t *mm,
+                                   const knot_layer_api_t *api)
+{
+	memset(ctx, 0, sizeof(*ctx));
+
+	ctx->mm = mm;
+	ctx->api = api;
+	ctx->state = KNOT_STATE_NOOP;
+}
 
 /*!
  * \brief Prepare packet processing.
  *
  * \param ctx Layer context.
- * \param param Initialization params.
+ * \param params Initialization params.
  */
-void knot_layer_begin(knot_layer_t *ctx, void *param);
+inline static void knot_layer_begin(knot_layer_t *ctx, void *params)
+{
+	LAYER_CALL(ctx, begin, params);
+}
 
 /*!
  * \brief Reset current packet processing context.
  *
  * \param ctx Layer context.
  */
-void knot_layer_reset(knot_layer_t *ctx);
+inline static void knot_layer_reset(knot_layer_t *ctx)
+{
+	LAYER_CALL(ctx, reset);
+}
 
 /*!
  * \brief Finish and close packet processing context.
  *
  * \param ctx Layer context.
  */
-void knot_layer_finish(knot_layer_t *ctx);
+inline static void knot_layer_finish(knot_layer_t *ctx)
+{
+	LAYER_CALL(ctx, finish);
+}
 
 /*!
  * \brief Add more data to layer processing.
@@ -94,7 +117,10 @@ void knot_layer_finish(knot_layer_t *ctx);
  * \param ctx Layer context.
  * \param pkt Data packet.
  */
-void knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt);
+inline static void knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt)
+{
+	LAYER_CALL(ctx, consume, pkt);
+}
 
 /*!
  * \brief Generate output from layer.
@@ -102,4 +128,7 @@ void knot_layer_consume(knot_layer_t *ctx, knot_pkt_t *pkt);
  * \param ctx Layer context.
  * \param pkt Data packet.
  */
-void knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt);
+inline static void knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt)
+{
+	LAYER_CALL(ctx, produce, pkt);
+}

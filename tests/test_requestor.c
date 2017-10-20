@@ -42,7 +42,7 @@ static const int TIMEOUT = 2000;
 
 /*! \brief Dummy answer processing module. */
 const knot_layer_api_t dummy_module = {
-        &begin, &reset, &finish, &in, &out, NULL
+        &begin, &reset, &finish, &in, &out
 };
 
 static void set_blocking_mode(int sock)

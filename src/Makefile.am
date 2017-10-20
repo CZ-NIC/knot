@@ -323,7 +323,6 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/xfr.h			\
 	knot/query/capture.c			\
 	knot/query/capture.h			\
-	knot/query/layer.c			\
 	knot/query/layer.h			\
 	knot/query/query.c			\
 	knot/query/query.h			\

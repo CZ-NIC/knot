@@ -280,7 +280,6 @@ src/knot/nameserver/xfr.c
 src/knot/nameserver/xfr.h
 src/knot/query/capture.c
 src/knot/query/capture.h
-src/knot/query/layer.c
 src/knot/query/layer.h
 src/knot/query/query.c
 src/knot/query/query.h
