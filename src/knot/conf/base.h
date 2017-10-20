@@ -132,7 +132,7 @@ typedef struct {
 	/*! List of old schemas (lazy freed). */
 	old_schema_dynarray_t old_schemas;
 	/*! List of active query modules. */
-	list_t query_modules;
+	list_t *query_modules;
 	/*! Default query modules plan. */
 	struct query_plan *query_plan;
 } conf_t;

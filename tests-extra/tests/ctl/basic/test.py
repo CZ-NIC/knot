@@ -5,12 +5,16 @@
 import os
 
 from dnstest.libknot import libknot
+from dnstest.module import ModStats
 from dnstest.test import Test
 from dnstest.utils import *
 
 t = Test()
 
 knot = t.server("knot")
+
+# Enable a global module to check the modules reuse doesn't crash the server.
+knot.add_module(None, ModStats())
 
 ctl = libknot.control.KnotCtl()
 

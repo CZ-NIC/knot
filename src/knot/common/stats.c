@@ -168,7 +168,7 @@ static void dump_to_file(FILE *fd, server_t *server)
 
 	dump_ctx_t ctx = {
 		.fd = fd,
-		.query_modules = &conf()->query_modules,
+		.query_modules = conf()->query_modules,
 	};
 
 	// Dump global statistics.
