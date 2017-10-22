@@ -18,10 +18,8 @@
 
 #include "knot/updates/changesets.h"
 #include "knot/updates/zone-update.h"
-#include "knot/zone/zone.h"
 #include "knot/zone/contents.h"
 #include "knot/dnssec/context.h"
-#include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-keys.h"
 
 /*!

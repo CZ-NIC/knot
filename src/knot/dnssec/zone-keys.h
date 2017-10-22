@@ -26,7 +26,7 @@
 /*!
  * \brief Zone key context used during signing.
  */
-struct zone_key {
+typedef struct {
 	const char *id;
 	dnssec_key_t *key;
 	dnssec_sign_ctx_t *ctx;
@@ -40,18 +40,14 @@ struct zone_key {
 	bool is_active;
 	bool is_public;
 	int cds_priority;
-};
-
-typedef struct zone_key zone_key_t;
+} zone_key_t;
 
 dynarray_declare(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC, 1)
 
-struct zone_keyset {
+typedef struct {
 	size_t count;
 	zone_key_t *keys;
-};
-
-typedef struct zone_keyset zone_keyset_t;
+} zone_keyset_t;
 
 /*!
  * \brief Flags determining key type

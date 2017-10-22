@@ -15,37 +15,26 @@
  */
 
 #include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <sys/types.h>
-#include <time.h>
 
 #include "dnssec/error.h"
 #include "dnssec/key.h"
 #include "dnssec/keytag.h"
 #include "dnssec/sign.h"
-#include "knot/dnssec/context.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
-#include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-sign.h"
-#include "knot/updates/changesets.h"
-#include "libknot/descriptor.h"
-#include "libknot/dname.h"
 #include "libknot/libknot.h"
-#include "libknot/rrset.h"
-#include "libknot/rrtype/rrsig.h"
-#include "libknot/rrtype/soa.h"
 #include "contrib/dynarray.h"
 #include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
 
-typedef struct type_node {
+typedef struct {
 	node_t n;
 	uint16_t type;
 } type_node_t;
 
-typedef struct signed_info {
+typedef struct {
 	knot_dname_t *dname;
 	knot_dname_t *hashed_dname;
 	list_t *type_list;

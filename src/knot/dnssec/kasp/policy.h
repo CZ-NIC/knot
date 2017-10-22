@@ -17,7 +17,6 @@
 #pragma once
 
 #include <stdbool.h>
-#include <time.h>
 
 #include "contrib/time.h"
 #include "dnssec/lib/dnssec/key.h"

@@ -18,11 +18,9 @@
 
 #include "dnssec/error.h"
 #include "dnssec/random.h"
-#include "contrib/macros.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
-#include "knot/dnssec/context.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/policy.h"
 #include "knot/dnssec/zone-events.h"

@@ -14,21 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <time.h>
-#include <string.h>
-
-#include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/kasp/keystate.h"
 
 key_state_t get_key_state(const knot_kasp_key_t *key, knot_time_t moment)
 {
-	if (!key || moment <= 0)
-	{
+	if (!key || moment <= 0) {
 		return DNSSEC_KEY_STATE_INVALID;
 	}
-
-
 
 	const knot_kasp_key_timing_t *t = &key->timing;
 

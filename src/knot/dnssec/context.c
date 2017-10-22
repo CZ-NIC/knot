@@ -16,8 +16,8 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 
+#include "contrib/time.h"
 #include "libknot/libknot.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/kasp/keystore.h"
