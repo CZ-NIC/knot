@@ -1926,9 +1926,8 @@ int journal_db_list_zones(journal_db_t **db, list_t *zones)
 
 static void _jch_print(const knot_dname_t *zname, int warn_level, const char *format, ...)
 {
-	static char buf[512];
-	strcpy(buf, "journal check: ");
-	char *zname_ch;
+	char buf[512] = "journal check: ";
+	char *zname_ch = NULL;
 
 	va_list args;
 	va_start(args, format);
