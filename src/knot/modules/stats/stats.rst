@@ -174,7 +174,7 @@ If enabled, outgoing response code is counted:
 reply-nodata
 ............
 
-If enabled, NODATA pseudo RCODE (see RFC 2308, Section 2.2) is counted by the
+If enabled, NODATA pseudo RCODE (:rfc:`2308#section-2.2`) is counted by the
 query type:
 
 * A

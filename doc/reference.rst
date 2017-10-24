@@ -149,7 +149,7 @@ identity
 --------
 
 An identity of the server returned in the response to the query for TXT
-record ``id.server.`` or ``hostname.bind.`` in the CHAOS class (see RFC 4892).
+record ``id.server.`` or ``hostname.bind.`` in the CHAOS class (:rfc:`4892`).
 Set empty value to disable.
 
 *Default:* FQDN hostname
@@ -161,7 +161,7 @@ version
 
 A version of the server software returned in the response to the query
 for TXT record ``version.server.`` or ``version.bind.`` in the CHAOS
-class (see RFC 4892). Set empty value to disable.
+class (:rfc:`4892`). Set empty value to disable.
 
 *Default:* server version
 
@@ -170,7 +170,7 @@ class (see RFC 4892). Set empty value to disable.
 nsid
 ----
 
-A DNS name server identifier (see RFC 5001). Set empty value to disable.
+A DNS name server identifier (:rfc:`5001`). Set empty value to disable.
 
 *Default:* FQDN hostname
 
@@ -1198,10 +1198,10 @@ logged only.
 
 Mandatory checks:
 
-- SOA record missing in the zone (RFC 1034)
-- An extra record together with CNAME record except for RRSIG and DS (RFC 1034)
+- SOA record missing in the zone (:rfc:`1034`)
+- An extra record together with CNAME record except for RRSIG and DS (:rfc:`1034`)
 - Multiple CNAME record with the same owner
-- DNAME record having a record under it (RFC 2672)
+- DNAME record having a record under it (:rfc:`2672`)
 
 Extra checks:
 
@@ -1369,7 +1369,7 @@ Possible values:
    If your serial was in other than unix time format, be careful
    with the transition to unix time.  It may happen that the new serial will
    be \'lower\' than the old one. If this is the case, the transition should be
-   done by hand (see RFC 1982).
+   done by hand (:rfc:`1982`).
 
 *Default:* increment
 

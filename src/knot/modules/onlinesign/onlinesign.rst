@@ -22,7 +22,7 @@ a DNSSEC validating resolver.
 Differences from statically signed zones:
 
 * The NSEC records are constructed as Minimally Covering NSEC Records
-  (see Appendix A in :rfc:`7129`). Therefore the generated domain names cover
+  (:rfc:`7129#appendix-A`). Therefore the generated domain names cover
   the complete domain name space in the zone's authority.
 
 * NXDOMAIN responses are promoted to NODATA responses. The module proves

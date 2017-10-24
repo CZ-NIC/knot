@@ -198,7 +198,7 @@ server:
 .SS identity
 .sp
 An identity of the server returned in the response to the query for TXT
-record \fBid.server.\fP or \fBhostname.bind.\fP in the CHAOS class (see RFC 4892).
+record \fBid.server.\fP or \fBhostname.bind.\fP in the CHAOS class (\fI\%RFC 4892\fP).
 Set empty value to disable.
 .sp
 \fIDefault:\fP FQDN hostname
@@ -206,12 +206,12 @@ Set empty value to disable.
 .sp
 A version of the server software returned in the response to the query
 for TXT record \fBversion.server.\fP or \fBversion.bind.\fP in the CHAOS
-class (see RFC 4892). Set empty value to disable.
+class (\fI\%RFC 4892\fP). Set empty value to disable.
 .sp
 \fIDefault:\fP server version
 .SS nsid
 .sp
-A DNS name server identifier (see RFC 5001). Set empty value to disable.
+A DNS name server identifier (\fI\%RFC 5001\fP). Set empty value to disable.
 .sp
 \fIDefault:\fP FQDN hostname
 .SS rundir
@@ -1045,13 +1045,13 @@ logged only.
 Mandatory checks:
 .INDENT 0.0
 .IP \(bu 2
-SOA record missing in the zone (RFC 1034)
+SOA record missing in the zone (\fI\%RFC 1034\fP)
 .IP \(bu 2
-An extra record together with CNAME record except for RRSIG and DS (RFC 1034)
+An extra record together with CNAME record except for RRSIG and DS (\fI\%RFC 1034\fP)
 .IP \(bu 2
 Multiple CNAME record with the same owner
 .IP \(bu 2
-DNAME record having a record under it (RFC 2672)
+DNAME record having a record under it (\fI\%RFC 2672\fP)
 .UNINDENT
 .sp
 Extra checks:
@@ -1209,7 +1209,7 @@ Possible values:
 If your serial was in other than unix time format, be careful
 with the transition to unix time.  It may happen that the new serial will
 be \(aqlower\(aq than the old one. If this is the case, the transition should be
-done by hand (see RFC 1982).
+done by hand (\fI\%RFC 1982\fP).
 .UNINDENT
 .UNINDENT
 .sp
