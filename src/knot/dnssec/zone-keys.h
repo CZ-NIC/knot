@@ -104,7 +104,8 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
  * \return Error code, KNOT_EOK if successful.
  */
 int load_zone_keys(knot_kasp_zone_t *zone, dnssec_keystore_t *store,
-                   bool nsec3_enabled, knot_time_t now, zone_keyset_t *keyset_ptr);
+                   bool nsec3_enabled, knot_time_t now, zone_keyset_t *keyset_ptr,
+                   bool verbose);
 
 /*!
  * \brief Get zone keys by a keytag.

@@ -22,6 +22,8 @@
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
 
+#define MAX_KEY_INFO 128
+
 dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC)
 
 const uint16_t DNSKEY_FLAGS_KSK = 257;
@@ -381,27 +383,43 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 /*!
  * \brief Log information about zone keys.
  */
-static void log_key_info(const zone_key_t *key, const knot_dname_t *zone_name)
+static void log_key_info(const zone_key_t *key, char *out, size_t out_len)
 {
 	assert(key);
-	assert(zone_name);
+	assert(out);
 
-	log_zone_info(zone_name, "DNSSEC, loaded key, tag %5d, algorithm %d, "
-	                         "KSK %s, ZSK %s, public %s, ready %s, active %s",
-	              dnssec_key_get_keytag(key->key),
-	              dnssec_key_get_algorithm(key->key),
-	              key->is_ksk           ? "yes" : "no",
-	              key->is_zsk           ? "yes" : "no",
-	              key->is_public        ? "yes" : "no",
-	              key->cds_priority > 1 ? "yes" : "no",
-	              key->is_active        ? "yes" : "no");
+	uint8_t alg_code = dnssec_key_get_algorithm(key->key);
+	const knot_lookup_t *alg = knot_lookup_by_id(knot_dnssec_alg_names, alg_code);
+
+	char alg_code_str[8] = "";
+	if (alg == NULL) {
+		(void)snprintf(alg_code_str, sizeof(alg_code_str), "%d", alg_code);
+	}
+
+	(void)snprintf(out, out_len, "DNSSEC, key, tag %5d, algorithm %s%s%s%s%s",
+	               dnssec_key_get_keytag(key->key),
+	               (alg != NULL           ? alg->name  : alg_code_str),
+	               (key->is_ksk           ? ", KSK"    : ""),
+	               (key->is_public        ? ", public" : ""),
+	               (key->cds_priority > 1 ? ", ready"  : ""),
+	               (key->is_active        ? ", active" : ""));
+}
+
+int log_key_sort(const void *a, const void *b)
+{
+	const char *alg_a = strstr(a, "alg");
+	const char *alg_b = strstr(b, "alg");
+	assert(alg_a != NULL && alg_b != NULL);
+
+	return strcmp(alg_a, alg_b);
 }
 
 /*!
  * \brief Load zone keys and init cryptographic context.
  */
 int load_zone_keys(knot_kasp_zone_t *zone, dnssec_keystore_t *store,
-                   bool nsec3_enabled, knot_time_t now, zone_keyset_t *keyset_ptr)
+                   bool nsec3_enabled, knot_time_t now, zone_keyset_t *keyset_ptr,
+                   bool verbose)
 {
 	if (!zone || !store || !keyset_ptr) {
 		return KNOT_EINVAL;
@@ -421,10 +439,21 @@ int load_zone_keys(knot_kasp_zone_t *zone, dnssec_keystore_t *store,
 		return KNOT_ENOMEM;
 	}
 
+	char key_info[zone->num_keys][MAX_KEY_INFO];
 	for (size_t i = 0; i < zone->num_keys; i++) {
 		knot_kasp_key_t *kasp_key = &zone->keys[i];
 		set_key(kasp_key, now, &keyset.keys[i]);
-		log_key_info(&keyset.keys[i], zone->dname);
+		if (verbose) {
+			log_key_info(&keyset.keys[i], key_info[i], MAX_KEY_INFO);
+		}
+	}
+
+	// Sort the keys by algorithm name.
+	if (verbose) {
+		qsort(key_info, zone->num_keys, MAX_KEY_INFO, log_key_sort);
+		for (size_t i = 0; i < zone->num_keys; i++) {
+			log_zone_info(zone->dname, "%s", key_info[i]);
+		}
 	}
 
 	int r = prepare_and_check_keys(zone->dname, nsec3_enabled, &keyset);
