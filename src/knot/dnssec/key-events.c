@@ -218,14 +218,29 @@ typedef enum {
 	REPLACE,
 	RETIRE,
 	REMOVE,
-} roll_action_type;
+} roll_action_type_t;
 
 typedef struct {
-	roll_action_type type;
+	roll_action_type_t type;
 	bool ksk;
 	knot_time_t time;
 	knot_kasp_key_t *key;
-} roll_action;
+} roll_action_t;
+
+static const char *roll_action_name(roll_action_type_t type)
+{
+	switch (type) {
+	case GENERATE: return "generate";
+	case PUBLISH:  return "publish";
+	case SUBMIT:   return "submit";
+	case REPLACE:  return "replace";
+	case RETIRE:   return "retire";
+	case REMOVE:   return "remove";
+	case INVALID:
+		// FALLTHROUGH
+	default:       return "invalid";
+	}
+}
 
 static knot_time_t zsk_rollover_time(knot_time_t active_time, const kdnssec_ctx_t *ctx)
 {
@@ -310,15 +325,15 @@ static knot_time_t alg_remove_time(knot_time_t post_active_time, const kdnssec_c
 	return MAX(ksk_remove_time(post_active_time, ctx), zsk_remove_time(post_active_time, ctx));
 }
 
-static roll_action next_action(kdnssec_ctx_t *ctx)
+static roll_action_t next_action(kdnssec_ctx_t *ctx)
 {
-	roll_action res = { 0 };
+	roll_action_t res = { 0 };
 	res.time = 0;
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		knot_time_t keytime = 0;
-		roll_action_type restype = INVALID;
+		roll_action_type_t restype = INVALID;
 		if (key->is_pub_only) {
 			continue;
 		}
@@ -338,7 +353,8 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				restype = REPLACE;
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
-				if (!running_rollover(ctx) && dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm) {
+				if (!running_rollover(ctx) &&
+				    dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm) {
 					keytime = ksk_rollover_time(key->timing.created, ctx);
 					restype = GENERATE;
 				}
@@ -353,7 +369,8 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				break;
 			case DNSSEC_KEY_STATE_RETIRED:
 			case DNSSEC_KEY_STATE_REMOVED:
-				// ad REMOVED state: normally this wouldn't happen (key in removed state is instantly deleted)
+				// ad REMOVED state: normally this wouldn't happen
+				// (key in removed state is instantly deleted)
 				// but if imported keys, they can be in this state
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
 				keytime = ksk_remove_time(keytime, ctx);
@@ -373,7 +390,8 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				restype = REPLACE;
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
-				if (!running_rollover(ctx) && dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm) {
+				if (!running_rollover(ctx) &&
+				    dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm) {
 					keytime = zsk_rollover_time(key->timing.active, ctx);
 					restype = GENERATE;
 				}
@@ -387,7 +405,8 @@ static roll_action next_action(kdnssec_ctx_t *ctx)
 				break;
 			case DNSSEC_KEY_STATE_RETIRED:
 			case DNSSEC_KEY_STATE_REMOVED:
-				// ad REMOVED state: normally this wouldn't happen (key in removed state is instantly deleted)
+				// ad REMOVED state: normally this wouldn't happen
+				// (key in removed state is instantly deleted)
 				// but if imported keys, they can be in this state
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
 				keytime = ksk_remove_time(keytime, ctx);;
@@ -521,7 +540,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 			reschedule->keys_changed = true;
 		}
 	}
-	if (!ctx->policy->singe_type_signing && ret == KNOT_EOK && !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
+	if (!ctx->policy->singe_type_signing && ret == KNOT_EOK &&
+	    !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
 		ret = generate_key(ctx, false, ctx->now, false);
 		if (ret == KNOT_EOK) {
 			reschedule->keys_changed = true;
@@ -547,7 +567,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		return ret;
 	}
 
-	roll_action next = next_action(ctx);
+	roll_action_t next = next_action(ctx);
 
 	reschedule->next_rollover = next.time;
 
@@ -560,7 +580,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 				ret = generate_key(ctx, next.ksk, 0, false);
 			}
 			if (ret == KNOT_EOK) {
-				log_zone_info(ctx->zone->dname, "DNSSEC, %cSK rollover started", (next.ksk ? 'K' : 'Z'));
+				log_zone_info(ctx->zone->dname, "DNSSEC, %cSK rollover started",
+				              (next.ksk ? 'K' : 'Z'));
 			}
 			break;
 		case PUBLISH:
@@ -588,8 +609,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 			next = next_action(ctx);
 			reschedule->next_rollover = next.time;
 		} else {
-			log_zone_warning(ctx->zone->dname, "DNSSEC, key rollover [%d] failed (%s)", (int)next.type, knot_strerror(ret));
-			reschedule->next_rollover = knot_time_add(knot_time(), 10); // fail => try in 10seconds #TODO better?
+			log_zone_warning(ctx->zone->dname, "DNSSEC, key rollover, action %s (%s)",
+			                 roll_action_name(next.type), knot_strerror(ret));
+			// fail => try in 10 seconds #TODO better?
+			reschedule->next_rollover = knot_time_add(knot_time(), 10);
 		}
 	}
 
