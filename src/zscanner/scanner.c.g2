@@ -2182,7 +2182,7 @@ tr936:
 		p--; {goto st268;}
 	}
 	goto st0;
-tr943:
+tr942:
 	{
 		WARN(ZS_BAD_NUMBER);
 		p--; {goto st268;}
@@ -35277,10 +35277,16 @@ st281:
 	if ( ++p == pe )
 		goto _test_eof281;
 case 281:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr942;
-	goto tr937;
-tr942:
+	if ( (*p) < 48 ) {
+		if ( 32 <= (*p) && (*p) <= 47 )
+			goto tr937;
+	} else if ( (*p) > 57 ) {
+		if ( 58 <= (*p) && (*p) <= 126 )
+			goto tr937;
+	} else
+		goto tr943;
+	goto tr942;
+tr943:
 	{
 		if (rdata_tail <= rdata_stop) {
 			// Split long string.
@@ -35324,7 +35330,7 @@ st282:
 case 282:
 	if ( 48 <= (*p) && (*p) <= 57 )
 		goto tr944;
-	goto tr943;
+	goto tr942;
 tr944:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
@@ -35346,7 +35352,7 @@ st283:
 case 283:
 	if ( 48 <= (*p) && (*p) <= 57 )
 		goto tr945;
-	goto tr943;
+	goto tr942;
 tr945:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
@@ -35383,7 +35389,7 @@ case 284:
 			goto tr948;
 	} else
 		goto tr947;
-	goto tr943;
+	goto tr942;
 tr950:
 	{
 		if (rdata_tail <= rdata_stop) {
@@ -35482,9 +35488,15 @@ st287:
 	if ( ++p == pe )
 		goto _test_eof287;
 case 287:
-	if ( 48 <= (*p) && (*p) <= 57 )
+	if ( (*p) < 48 ) {
+		if ( 32 <= (*p) && (*p) <= 47 )
+			goto tr950;
+	} else if ( (*p) > 57 ) {
+		if ( 58 <= (*p) && (*p) <= 126 )
+			goto tr950;
+	} else
 		goto tr954;
-	goto tr950;
+	goto tr942;
 tr954:
 	{
 		if (rdata_tail <= rdata_stop) {
@@ -35529,7 +35541,7 @@ st288:
 case 288:
 	if ( 48 <= (*p) && (*p) <= 57 )
 		goto tr955;
-	goto tr943;
+	goto tr942;
 tr955:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
@@ -35551,7 +35563,7 @@ st289:
 case 289:
 	if ( 48 <= (*p) && (*p) <= 57 )
 		goto tr956;
-	goto tr943;
+	goto tr942;
 tr956:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
@@ -35585,7 +35597,7 @@ case 290:
 	}
 	if ( 32 <= _widec && _widec <= 126 )
 		goto tr957;
-	goto tr943;
+	goto tr942;
 st291:
 	if ( ++p == pe )
 		goto _test_eof291;

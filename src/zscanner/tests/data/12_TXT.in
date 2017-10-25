@@ -11,7 +11,7 @@ $TTL	1
 @	TXT	"" "test1" "\255" test2		; Array of text strings
 @	TXT	"" "" ""			; Array of blank strings
 @	TXT	first \# "\#"			; Array with special string
-@	TXT	\0320\ \\\"\.\@\*.tld.		; Special domain as a string
+@	TXT	\0320\ \\\"\;\.\@\*.tld.		; Special domain as a string
 @	TXT	" !\"#$%&'()*+,-./0123456789:;<=>?@"	; First part of all printables
 @	TXT	"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"	; Second part of all printables
 @	TXT	"abcdefghijklmnopqrstuvwxyz{|}~"	; Third part of all printables

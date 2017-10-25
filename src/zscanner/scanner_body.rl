@@ -610,11 +610,11 @@
 	}
 
 	text_char =
-		( (33..126 - [\\;\"]) $_text_char          # One printable char.
-		| ('\\' . ^digit)     @_text_char          # One "\x" char.
-		| ('\\'               %_text_dec_init      # Initial "\" char.
-		   . digit {3}        $_text_dec %_text_dec_exit # "DDD" rest.
-		                      $!_text_dec_error
+		( (33..126 - [\\;\"])        $_text_char       # One printable char.
+		| ('\\' . (32..126 - digit)) @_text_char       # One "\x" char.
+		| ('\\'                      %_text_dec_init   # Initial "\" char.
+		   . digit {3}               $_text_dec %_text_dec_exit # "DDD" rest.
+		                             $!_text_dec_error
 		  )
 		) $!_text_char_error;
 
