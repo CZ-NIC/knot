@@ -147,7 +147,8 @@ int zs_init(
 }
 
 static void input_deinit(
-	zs_scanner_t *s)
+	zs_scanner_t *s,
+	bool keep_filename)
 {
 	// Deinit the file input.
 	if (s->file.descriptor != -1) {
@@ -160,6 +161,10 @@ static void input_deinit(
 		// Close the opened file.
 		close(s->file.descriptor);
 		s->file.descriptor = -1;
+	}
+
+	// Keep file name for possible trailing error report.
+	if (!keep_filename) {
 		free(s->file.name);
 		s->file.name = NULL;
 	}
@@ -179,7 +184,7 @@ void zs_deinit(
 		return;
 	}
 
-	input_deinit(s);
+	input_deinit(s, false);
 	free(s->path);
 }
 
@@ -198,20 +203,14 @@ static int set_input_string(
 		return -1;
 	}
 
-	// Keep previous input file context if final block parsing.
-	if (!final_block) {
-		// Deinit possibly opened file.
-		input_deinit(s);
-	}
+	// Deinit possibly opened file.
+	input_deinit(s, final_block);
 
 	// Set the scanner input limits.
 	s->input.start   = input;
 	s->input.current = input;
 	s->input.end     = input + size;
-
-	if (final_block) {
-		s->input.eof = true;
-	}
+	s->input.eof     = final_block;
 
 	return 0;
 }
@@ -240,7 +239,7 @@ int zs_set_input_file(
 	}
 
 	// Deinit possibly opened file.
-	input_deinit(s);
+	input_deinit(s, false);
 
 	// Try to open the file.
 	s->file.descriptor = open(file_name, O_RDONLY);
@@ -254,7 +253,7 @@ int zs_set_input_file(
 	if (fstat(s->file.descriptor, &file_stat) == -1 ||
 	    !S_ISREG(file_stat.st_mode)) {
 		ERR(ZS_FILE_INVALID);
-		input_deinit(s);
+		input_deinit(s, false);
 		return -1;
 	}
 
@@ -265,7 +264,7 @@ int zs_set_input_file(
 		                   s->file.descriptor, 0);
 		if (start == MAP_FAILED) {
 			ERR(ZS_FILE_MMAP);
-			input_deinit(s);
+			input_deinit(s, false);
 			return -1;
 		}
 
@@ -286,19 +285,19 @@ int zs_set_input_file(
 		free(full_name);
 		if (s->path == NULL) {
 			ERR(ZS_ENOMEM);
-			input_deinit(s);
+			input_deinit(s, false);
 			return -1;
 		}
 	} else {
 		ERR(ZS_FILE_PATH);
-		input_deinit(s);
+		input_deinit(s, false);
 		return -1;
 	}
 
 	s->file.name = strdup(file_name);
 	if (s->file.name == NULL) {
 		ERR(ZS_ENOMEM);
-		input_deinit(s);
+		input_deinit(s, false);
 		return -1;
 	}
 
