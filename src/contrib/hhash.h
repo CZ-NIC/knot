@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,9 +17,6 @@
  * \file
  *
  * \brief Hopscotch hashing scheme based hash table.
- *
- * \addtogroup contrib
- * @{
  */
 
 #pragma once
@@ -77,7 +74,7 @@ typedef struct hhash {
 hhash_t *hhash_create(uint32_t size);
 
 /*! \brief Create hopscotch hash table (custom memory manager). */
-hhash_t *hhash_create_mm(uint32_t size, const struct knot_mm *mm);
+hhash_t *hhash_create_mm(uint32_t size, struct knot_mm *mm);
 
 /*!
  * \brief Clear hash table.
@@ -201,5 +198,3 @@ const char *hhash_iter_key (hhash_iter_t*, uint16_t* len);
 
 /*! \brief Return current value. */
 value_t *hhash_iter_val(hhash_iter_t*);
-
-/*! @} */

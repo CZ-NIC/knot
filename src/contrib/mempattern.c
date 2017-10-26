@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,12 @@
 
 #include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
+
+/*
+ * Inspired by OPENSSL_cleanse. Such a memset shouldn't be optimized out.
+ */
+typedef void *(*memset_t)(void *, int, size_t);
+static volatile memset_t volatile_memset = memset;
 
 static void mm_nofree(void *p)
 {
@@ -39,6 +45,26 @@ void *mm_alloc(knot_mm_t *mm, size_t size)
 	}
 }
 
+void *mm_calloc(knot_mm_t *mm, size_t nmemb, size_t size)
+{
+	if (nmemb == 0 || size == 0) {
+		return NULL;
+	}
+	if (mm) {
+		size_t total_size = nmemb * size;
+		if (total_size / nmemb != size) { // Overflow check
+			return NULL;
+		}
+		void *mem = mm_alloc(mm, total_size);
+		if (mem == NULL) {
+			return NULL;
+		}
+		return volatile_memset(mem, 0, total_size);
+	} else {
+		return calloc(nmemb, size);
+	}
+}
+
 void *mm_realloc(knot_mm_t *mm, void *what, size_t size, size_t prev_size)
 {
 	if (mm) {
@@ -55,6 +81,23 @@ void *mm_realloc(knot_mm_t *mm, void *what, size_t size, size_t prev_size)
 		}
 	} else {
 		return realloc(what, size);
+	}
+}
+
+char *mm_strdup(knot_mm_t *mm, const char *s)
+{
+	if (s == NULL) {
+		return NULL;
+	}
+	if (mm) {
+		size_t len = strlen(s) + 1;
+		void *mem = mm_alloc(mm, len);
+		if (mem == NULL) {
+			return NULL;
+		}
+		return memcpy(mem, s, len);
+	} else {
+		return strdup(s);
 	}
 }
 

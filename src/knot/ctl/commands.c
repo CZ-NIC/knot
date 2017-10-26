@@ -480,11 +480,10 @@ typedef struct {
 
 static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *args)
 {
-	send_ctx_t *ctx = mm_alloc(&args->mm, sizeof(*ctx));
+	send_ctx_t *ctx = mm_calloc(&args->mm, 1, sizeof(*ctx));
 	if (ctx == NULL) {
 		return NULL;
 	}
-	memset(ctx, 0, sizeof(*ctx));
 
 	ctx->args = args;
 
