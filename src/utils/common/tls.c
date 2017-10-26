@@ -291,7 +291,7 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 
 int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 {
-	if (ctx == NULL || remote == NULL) {
+	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -311,10 +311,12 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 		return KNOT_NET_ECONNECT;
 	}
 
-	ret = gnutls_server_name_set(ctx->session, GNUTLS_NAME_DNS, remote,
-	                             strlen(remote));
-	if (ret != GNUTLS_E_SUCCESS) {
-		return KNOT_NET_ECONNECT;
+	if (remote != NULL) {
+		ret = gnutls_server_name_set(ctx->session, GNUTLS_NAME_DNS, remote,
+		                             strlen(remote));
+		if (ret != GNUTLS_E_SUCCESS) {
+			return KNOT_NET_ECONNECT;
+		}
 	}
 
 	gnutls_session_set_ptr(ctx->session, ctx);
