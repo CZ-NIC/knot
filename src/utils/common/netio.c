@@ -333,7 +333,7 @@ int net_connect(net_t *net)
 
 		// Establish TLS connection.
 		if (net->tls.params != NULL) {
-			int ret = tls_ctx_connect(&net->tls, sockfd, net->remote->name);
+			int ret = tls_ctx_connect(&net->tls, sockfd, NULL);
 			if (ret != KNOT_EOK) {
 				close(sockfd);
 				return ret;
