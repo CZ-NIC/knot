@@ -969,6 +969,17 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		CHECK_RET;
 	}
 
+	if (crp == CHILD_RECORDS_EMPTY) {
+		const uint8_t cdnskey_empty[5] = { 0, 0, 3, 0, 0 };
+		const uint8_t cds_empty[5] = { 0, 0, 0, 0, 0 };
+		ret = knot_rrset_add_rdata(add_cdnskeys, cdnskey_empty,
+		                           sizeof(cdnskey_empty), 0, NULL);
+		CHECK_RET;
+		ret = knot_rrset_add_rdata(add_cdss, cds_empty,
+		                           sizeof(cds_empty), 0, NULL);
+		CHECK_RET;
+	}
+
 	if (!knot_rrset_empty(add_cdnskeys)) {
 		ret = changeset_add_addition(&ch, add_cdnskeys, CHANGESET_CHECK |
 		                                                CHANGESET_CHECK_CANCELOUT);
