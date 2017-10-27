@@ -92,17 +92,6 @@ bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
                                         const knot_rrset_t *rrset);
 
 /*!
- * \brief Checks whether a DS record corresponds to a key.
- *
- * \param key   A DNSSEC key in zone.
- * \param rdata The DS record rdata.
- *
- * \return true if corresponds.
- */
-bool knot_match_key_ds(zone_key_t *key,
-                       const knot_rdata_t *rdata);
-
-/*!
  * \brief Sign updates of the zone, storing new RRSIGs in this update again.
  *
  * \param update     Zone Update structure.

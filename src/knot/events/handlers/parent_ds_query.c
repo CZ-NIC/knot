@@ -16,16 +16,35 @@
 
 #include <assert.h>
 
-#include "knot/zone/zone.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/zone-keys.h"
-#include "knot/dnssec/zone-sign.h" // match key and DS rdata
 #include "knot/query/layer.h"
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
+#include "knot/zone/zone.h"
+
+static bool match_key_ds(zone_key_t *key, const knot_rdata_t *ds)
+{
+	assert(key);
+	assert(ds);
+
+	dnssec_binary_t ds_rdata = {
+		.data = knot_rdata_data(ds),
+		.size = knot_rdata_rdlen(ds)
+	};
+
+	dnssec_binary_t cds_rdata = { 0 };
+
+	int ret = zone_key_calculate_ds(key, &cds_rdata);
+	if (ret != KNOT_EOK) {
+		return false;
+	}
+
+	return (dnssec_binary_cmp(&cds_rdata, &ds_rdata) == 0);
+}
 
 struct ds_query_data {
 	zone_t *zone;
@@ -84,7 +103,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 			return KNOT_STATE_FAIL;
 		}
 
-		if (knot_match_key_ds(data->key, knot_rdataset_at(&rr->rrs, 0))) {
+		if (match_key_ds(data->key, knot_rdataset_at(&rr->rrs, 0))) {
 			match = true;
 			break;
 		}
@@ -234,4 +253,3 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 
 	return KNOT_EOK; // allways ok, if failure it has been rescheduled
 }
-
