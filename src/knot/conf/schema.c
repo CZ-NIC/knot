@@ -72,6 +72,14 @@ static const knot_lookup_t dnssec_key_algs[] = {
 	{ 0, NULL }
 };
 
+const knot_lookup_t child_record[] = {
+	{ CHILD_RECORDS_NONE,     "none"     },
+	{ CHILD_RECORDS_EMPTY,    "empty"    },
+	{ CHILD_RECORDS_ROLLOVER, "rollover" },
+	{ CHILD_RECORDS_ALWAYS,   "always"   },
+	{ 0, NULL }
+};
+
 const knot_lookup_t acl_actions[] = {
 	{ ACL_ACTION_NOTIFY,   "notify" },
 	{ ACL_ACTION_TRANSFER, "transfer" },
@@ -261,6 +269,7 @@ static const yp_item_t desc_policy[] = {
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_KSK_SBM,             YP_TREF,  YP_VREF = { C_SBM }, CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
+	{ C_CHILD_RECORDS,       YP_TOPT,  YP_VOPT = { child_record, CHILD_RECORDS_ALWAYS } },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };

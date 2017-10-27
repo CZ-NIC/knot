@@ -946,7 +946,8 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		ret = KNOT_ENOMEM;
 	}
 	zone_key_t *ksk_for_cds = NULL;
-	int kfc_prio = 0;
+	unsigned crp = dnssec_ctx->policy->child_records_publish;
+	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ? 0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
 	for (int i = 0; i < zone_keys->count; i++) {
 		zone_key_t *key = &zone_keys->keys[i];
 		if (key->is_public) {

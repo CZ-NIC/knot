@@ -92,5 +92,6 @@ typedef struct {
 	// various
 	uint32_t ksk_sbm_timeout;
 	uint32_t ksk_sbm_check_interval;
+	unsigned child_records_publish;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??
