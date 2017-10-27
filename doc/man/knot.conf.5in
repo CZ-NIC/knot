@@ -572,6 +572,7 @@ policy:
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
     ksk\-submission: submission_id
+    child\-records\-publish: none | empty | rollover | always
 .ft P
 .fi
 .UNINDENT
@@ -737,6 +738,31 @@ A reference to \fI\%submission\fP section holding parameters of
 KSK submittion checks.
 .sp
 \fIDefault:\fP not set
+.SS child\-records\-publish
+.sp
+Controls if and how shall the CDS and CDNSKEY be published in the zone.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This only applies if the zone keys are automatically managed by the server.
+.UNINDENT
+.UNINDENT
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBnone\fP \- never publish any CDS or CDNSKEY records in the zone
+.IP \(bu 2
+\fBempty\fP \- publish special CDS and CDNSKEY records indicating turning off DNSSEC
+.IP \(bu 2
+\fBrollover\fP \- publish CDS and CDNSKEY records only for the period of KSK submission
+(newly generated KSK either initial or during rollover)
+.IP \(bu 2
+\fBalways\fP \- always publish CDS and CDNSKEY records for the current KSK
+.UNINDENT
+.sp
+\fIDefault:\fP always
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone

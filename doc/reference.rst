@@ -642,6 +642,7 @@ DNSSEC policy configuration.
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
      ksk-submission: submission_id
+     child-records-publish: none | empty | rollover | always
 
 .. _policy_id:
 
@@ -853,6 +854,26 @@ A reference to :ref:`submission<submission_id>` section holding parameters of
 KSK submittion checks.
 
 *Default:* not set
+
+.. _policy_child-records-publish:
+
+child-records-publish
+---------------------
+
+Controls if and how shall the CDS and CDNSKEY be published in the zone.
+
+.. NOTE::
+   This only applies if the zone keys are automatically managed by the server.
+
+Possible values:
+
+- ``none`` - never publish any CDS or CDNSKEY records in the zone
+- ``empty`` - publish special CDS and CDNSKEY records indicating turning off DNSSEC
+- ``rollover`` - publish CDS and CDNSKEY records only for the period of KSK submission
+  (newly generated KSK either initial or during rollover)
+- ``always`` - always publish CDS and CDNSKEY records for the current KSK
+
+*Default:* always
 
 .. _Remote section:
 

@@ -322,14 +322,14 @@ More precisely, we tell the parent zone to remove our zone's DS record by
 publishing a special formatted CDNSKEY and CDS record. This is mostly useful
 if we want to turn off DNSSEC on our zone so it becomes insecure, but not bogus.
 
-First we have to turn off automatic DNSSEC siging and key management. See
-:ref:`configuration reference<zone_dnssec-signing>` for details. After that,
-we add special CDNSKEY and CDS records with the rdata "0 3 0 AA==" and "0 0 0 00",
-respectively, by editing zone file or DDNS.
+With automatic DNSSEC signing and key management by Knot, this is as easy as
+configuring :ref:`policy_child-records-publish` option and reloading the configuration.
+We check if the special CDNSKEY and CDS records with the rdata "0 3 0 AA==" and "0 0 0 00",
+respectively, appeared in the zone.
 
 After the parent zone notices and reflects the change, we wait for TTL expire
 (so all resolvers' caches get updated), and finally we may do anything with the
-zone, e.g. removing all the keys and signatures as desired.
+zone, e.g. turning off DNSSEC, removing all the keys and signatures as desired.
 
 .. _Controlling running daemon:
 
