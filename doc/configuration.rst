@@ -539,17 +539,6 @@ master consistent while applying the changes with a different serial.
 It is recommended to use UNIX time serial policy on master and incremental
 serial policy on slave so that their SOA serials are equal most of the time.
 
-.. _dnssec-limitations:
-
-Limitations
------------
-
-The current DNSSEC automatic key management in Knot DNS has some limitations:
-
-- Only one DNSSEC algorithm can be used per zone.
-- ZSK rollover always uses key pre-publish method.
-- KSK rollover always uses pre-publish double-ksk method.
-
 .. _query-modules:
 
 Query modules
