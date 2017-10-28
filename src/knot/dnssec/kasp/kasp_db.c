@@ -725,6 +725,10 @@ int kasp_db_list_zones(kasp_db_t *db, list_t *dst)
 			// copy it from txn and add to dst
 			if (key_dn != NULL) {
 				knot_dname_t *add_dn = knot_dname_copy(key_dn, NULL);
+				if (add_dn == NULL) {
+					ret = KNOT_ENOMEM;
+					break;
+				}
 				ptrlist_add(dst, add_dn, NULL);
 			}
 		}
