@@ -369,7 +369,7 @@ lines of :rfc:`6781#section-4.1.2`::
   2017-10-24T15:41:22 info: [example.com.] DNSSEC, signing started
   2017-10-24T15:41:22 info: [example.com.] DNSSEC, successfully signed
   2017-10-24T15:41:22 info: [example.com.] DNSSEC, next signing at 2017-10-24T15:41:23
-  2017-10-24T15:41:22 notice: [example.com.] DNSSEC, published CDS, CDNSKEY for submission
+  2017-10-24T15:41:22 notice: [example.com.] DNSSEC, KSK submission, waiting for confirmation
 
 At this point new KSK has to be submitted to the parent zone. Knot detects the updated parent's DS
 record automatically if :ref:`parent DS check<Submission section>` is configured, otherwise the
@@ -435,7 +435,7 @@ server is reloaded, the rollover continues along the lines of :rfc:`6781#section
   2017-10-24T14:53:44 info: [example.com.] DNSSEC, signing started
   2017-10-24T14:53:44 info: [example.com.] DNSSEC, successfully signed
   2017-10-24T14:53:44 info: [example.com.] DNSSEC, next signing at 2017-10-31T13:52:37
-  2017-10-24T14:53:44 notice: [example.com.] DNSSEC, published CDS, CDNSKEY for submission
+  2017-10-24T14:53:44 notice: [example.com.] DNSSEC, KSK submission, waiting for confirmation
 
 Again, KSK submission follows as in :ref:`KSK rollover example<DNSSEC ksk rollover example>`.::
 
