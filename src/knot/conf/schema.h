@@ -37,6 +37,7 @@
 #define C_ASYNC_START		"\x0B""async-start"
 #define C_BACKEND		"\x07""backend"
 #define C_BG_WORKERS		"\x12""background-workers"
+#define C_CHILD_RECORDS		"\x15""child-records-publish"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
 #define C_COMMENT		"\x07""comment"
 #define C_CONFIG		"\x06""config"
@@ -134,6 +135,13 @@
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,
 	KEYSTORE_BACKEND_PKCS11 = 2
+};
+
+enum {
+	CHILD_RECORDS_NONE     = 0,
+	CHILD_RECORDS_EMPTY    = 1,
+	CHILD_RECORDS_ROLLOVER = 2,
+	CHILD_RECORDS_ALWAYS   = 3,
 };
 
 enum {

@@ -627,92 +627,6 @@ typedef struct {
 
 /*- private API - DNSKEY handling --------------------------------------------*/
 
-/*!
- * \brief Check if DNSKEY RDATA match with DNSSEC key.
- *
- * \param zone_key    Zone key.
- * \param rdata       DNSKEY RDATA.
- *
- * \return DNSKEY RDATA match with DNSSEC key.
- */
-static bool dnskey_rdata_match(zone_key_t *key,
-                               const dnssec_binary_t *rdata)
-{
-	assert(key);
-	assert(rdata);
-
-	dnssec_binary_t dnskey_rdata = { 0 };
-	dnssec_key_get_rdata(key->key, &dnskey_rdata);
-
-	return dnssec_binary_cmp(&dnskey_rdata, rdata) == 0;
-}
-
-static bool cds_rdata_match(zone_key_t *key,
-                            const dnssec_binary_t *rdata)
-{
-        assert(key);
-        assert(rdata);
-        dnssec_binary_t cds_rdata = { 0 };
-        int ret = zone_key_calculate_ds(key, &cds_rdata);
-        int res = dnssec_binary_cmp(&cds_rdata, rdata);
-        return (ret == KNOT_EOK && res == 0);
-}
-
-bool knot_match_key_ds(zone_key_t *key, const knot_rdata_t *rdata)
-{
-        dnssec_binary_t rdata_bin = {
-                .data = knot_rdata_data(rdata),
-		.size = knot_rdata_rdlen(rdata)
-	};
-        return cds_rdata_match(key, &rdata_bin);
-}
-
-/*!
- * \brief Check if DNSKEY/DS is present in public zone key set.
- */
-static bool is_from_keyset(zone_keyset_t *keyset,
-                           const knot_rdata_t *record,
-                           bool is_ds, // otherwise, it's DNSKEY
-                           bool is_cds_cdnskey, // in this case we match only ready keys
-                           zone_key_t **matching_key) // out, optional
-{
-	assert(keyset);
-	assert(record);
-
-	dnssec_binary_t rdata = {
-		.data = knot_rdata_data(record),
-		.size = knot_rdata_rdlen(record)
-	};
-
-	uint16_t tag = 0;
-	bool (*match_fce)(zone_key_t *, const dnssec_binary_t *);
-	if (is_ds) {
-		wire_ctx_t wrdata = wire_ctx_init(rdata.data, rdata.size);
-		tag = wire_ctx_read_u16(&wrdata); // key tag in DS is just at beginning of wire
-		match_fce = cds_rdata_match;
-	} else {
-		dnssec_keytag(&rdata, &tag);
-		match_fce = dnskey_rdata_match;
-	}
-	bool found = false;
-
-	struct keyptr_dynarray keys = get_zone_keys(keyset, tag);
-
-	for (size_t i = 0; i < keys.size; i++) {
-		bool usekey = (is_cds_cdnskey ? (keys.arr(&keys)[i]->cds_priority > 1) : keys.arr(&keys)[i]->is_public);
-		if (usekey && match_fce(keys.arr(&keys)[i], &rdata)) {
-			found = true;
-			if (matching_key != NULL) {
-				*matching_key = keys.arr(&keys)[i];
-			}
-			break;
-		}
-	}
-	keyptr_dynarray_free(&keys);
-
-	return found;
-}
-
 static int rrset_add_zone_key(knot_rrset_t *rrset,
                               zone_key_t *zone_key,
                               uint32_t ttl)
@@ -1014,38 +928,15 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		return ret;
 	}
 
-	// remove invalid/old DNSKEYS
-	knot_rrset_t to_remove;
-	knot_rrset_init(&to_remove, apex->owner, KNOT_RRTYPE_DNSKEY, dnskeys.rclass);
-	for (uint16_t i = 0; i < dnskeys.rrs.rr_count; i++) {
-		const knot_rdata_t *r = knot_rdataset_at(&dnskeys.rrs, i);
-		uint32_t r_ttl = knot_rdata_ttl(r);
-		if (r_ttl == dnskey_ttl && is_from_keyset(zone_keys, r, false, false, NULL)) {
-			continue;
-		}
+#define CHECK_RET if (ret != KNOT_EOK) goto cleanup
 
-		ret = knot_rdataset_add(&to_remove.rrs, r, NULL);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-	}
-	if (!knot_rrset_empty(&to_remove) && ret == KNOT_EOK) {
-		ret = changeset_add_removal(&ch, &to_remove, 0);
-	}
-	knot_rdataset_clear(&to_remove.rrs, NULL);
-	if (ret != KNOT_EOK) {
-		goto cleanup;
-	}
-
-	// remove CDS and CDNSKEY if no submission
-	if (!zone_has_key_sbm(dnssec_ctx)) {
-		if (!knot_rrset_empty(&cdnskeys)) {
-			ret = changeset_add_removal(&ch, &cdnskeys, 0);
-		}
-		if (ret == KNOT_EOK && !knot_rrset_empty(&cdss)) {
-			ret = changeset_add_removal(&ch, &cdss, 0);
-		}
-	}
+	// remove all. This will cancel out with additions later
+	ret = changeset_add_removal(&ch, &dnskeys, 0);
+	CHECK_RET;
+	ret = changeset_add_removal(&ch, &cdnskeys, 0);
+	CHECK_RET;
+	ret = changeset_add_removal(&ch, &cdss, 0);
+	CHECK_RET;
 
 	// add DNSKEYs, CDNSKEYs and CDSs
 	add_dnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_DNSKEY, soa.rclass, NULL);
@@ -1055,15 +946,17 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		ret = KNOT_ENOMEM;
 	}
 	zone_key_t *ksk_for_cds = NULL;
-	int kfc_prio = 0;
-	for (int i = 0; i < zone_keys->count && ret == KNOT_EOK; i++) {
+	unsigned crp = dnssec_ctx->policy->child_records_publish;
+	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ? 0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
+	for (int i = 0; i < zone_keys->count; i++) {
 		zone_key_t *key = &zone_keys->keys[i];
-		if (!key->is_public) {
-			continue;
+		if (key->is_public) {
+			ret = rrset_add_zone_key(add_dnskeys, key, dnskey_ttl);
+			CHECK_RET;
 		}
 
-		ret = rrset_add_zone_key(add_dnskeys, key, dnskey_ttl);
-		if (key->is_ksk && ret == KNOT_EOK && key->cds_priority > kfc_prio) {
+		// determine which key (if any) will be the one for CDS/CDNSKEY
+		if (key->is_ksk && key->cds_priority > kfc_prio) {
 			ksk_for_cds = key;
 			kfc_prio = key->cds_priority;
 		}
@@ -1071,45 +964,43 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 
 	if (ksk_for_cds != NULL) {
 		ret = rrset_add_zone_key(add_cdnskeys, ksk_for_cds, 0);
-		if (ret == KNOT_EOK) {
-			ret = rrset_add_zone_ds(add_cdss, ksk_for_cds, 0);
-		}
-	}
-	if (ret != KNOT_EOK) {
-		goto cleanup;
+		CHECK_RET;
+		ret = rrset_add_zone_ds(add_cdss, ksk_for_cds, 0);
+		CHECK_RET;
 	}
 
-	if (!knot_rrset_equal(&cdnskeys, add_cdnskeys, KNOT_RRSET_COMPARE_WHOLE)) {
-		if (!knot_rrset_empty(&cdnskeys)) {
-			ret = changeset_add_removal(&ch, &cdnskeys, 0);
-		}
-		if (ret == KNOT_EOK && !knot_rrset_empty(add_cdnskeys)) {
-			ret = changeset_add_addition(&ch, add_cdnskeys, 0);
-		}
-	}
-	if (ret != KNOT_EOK) {
-		goto cleanup;
+	if (crp == CHILD_RECORDS_EMPTY) {
+		const uint8_t cdnskey_empty[5] = { 0, 0, 3, 0, 0 };
+		const uint8_t cds_empty[5] = { 0, 0, 0, 0, 0 };
+		ret = knot_rrset_add_rdata(add_cdnskeys, cdnskey_empty,
+		                           sizeof(cdnskey_empty), 0, NULL);
+		CHECK_RET;
+		ret = knot_rrset_add_rdata(add_cdss, cds_empty,
+		                           sizeof(cds_empty), 0, NULL);
+		CHECK_RET;
 	}
 
-	if (!knot_rrset_equal(&cdss, add_cdss, KNOT_RRSET_COMPARE_WHOLE)) {
-		if (!knot_rrset_empty(&cdss)) {
-			ret = changeset_add_removal(&ch, &cdss, 0);
-		}
-		if (ret == KNOT_EOK && !knot_rrset_empty(add_cdss)) {
-			ret = changeset_add_addition(&ch, add_cdss, 0);
-		}
+	if (!knot_rrset_empty(add_cdnskeys)) {
+		ret = changeset_add_addition(&ch, add_cdnskeys, CHANGESET_CHECK |
+		                                                CHANGESET_CHECK_CANCELOUT);
+		CHECK_RET;
 	}
-	if (ret != KNOT_EOK) {
-		goto cleanup;
+
+	if (!knot_rrset_empty(add_cdss)) {
+		ret = changeset_add_addition(&ch, add_cdss, CHANGESET_CHECK |
+		                                            CHANGESET_CHECK_CANCELOUT);
+		CHECK_RET;
 	}
 
 	if (!knot_rrset_empty(add_dnskeys)) {
-		ret = changeset_add_addition(&ch, add_dnskeys, 0);
+		ret = changeset_add_addition(&ch, add_dnskeys, CHANGESET_CHECK |
+		                                               CHANGESET_CHECK_CANCELOUT);
+		CHECK_RET;
 	}
 
-	if (ret == KNOT_EOK) {
-		ret = zone_update_apply_changeset_fix(update, &ch);
-	}
+	ret = zone_update_apply_changeset(update, &ch);
+
+#undef CHECK_RET
 
 cleanup:
 	knot_rrset_free(&add_dnskeys, NULL);
