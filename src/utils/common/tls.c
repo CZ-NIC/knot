@@ -258,7 +258,8 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 	}
 
 	// Import system certificates.
-	if (ctx->params->system_ca) {
+	if (ctx->params->system_ca ||
+	    (ctx->params->hostname != NULL && EMPTY_LIST(ctx->params->ca_files))) {
 		ret = gnutls_certificate_set_x509_system_trust(ctx->credentials);
 		if (ret < 0) {
 			WARN("TLS, failed to import system certificates (%s)\n",
