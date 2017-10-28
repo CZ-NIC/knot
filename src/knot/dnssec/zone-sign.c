@@ -944,6 +944,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	add_cdss = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDS, soa.rclass, NULL);
 	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL) {
 		ret = KNOT_ENOMEM;
+		CHECK_RET;
 	}
 	zone_key_t *ksk_for_cds = NULL;
 	unsigned crp = dnssec_ctx->policy->child_records_publish;
