@@ -43,7 +43,12 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 	log_dnssec_next(zone->name, (time_t)refresh_at);
 
 	if (refresh->plan_ds_query) {
-		log_zone_notice(zone->name, "DNSSEC, published CDS, CDNSKEY for submission");
+		conf_val_t id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
+		conf_val_t val = conf_id_get(conf, C_POLICY, C_CHILD_RECORDS, &id);
+		if (conf_opt(&val) != CHILD_RECORDS_NONE) {
+			log_zone_notice(zone->name, "DNSSEC, published CDS, CDNSKEY "
+			                            "for submission");
+		}
 		zone->timers.next_parent_ds_q = now;
 	}
 
