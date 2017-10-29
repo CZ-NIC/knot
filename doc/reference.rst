@@ -586,9 +586,9 @@ parent
 ------
 
 A list of :ref:`references<remote_id>` to parent's DNS servers to be checked for
-presence of corresponding DS records in case of KSK submission. All of them must
-have corresponding DS for the rollover to continue. If none specified, the rollover
-must be pushed forward manually.
+presence of corresponding DS records in the case of KSK submission. All of them must
+have a corresponding DS for the rollover to continue. If none is specified, the
+rollover must be pushed forward manually.
 
 *Default:* not set
 
@@ -597,8 +597,8 @@ must be pushed forward manually.
 check-interval
 --------------
 
-Interval for periodic checks of DS resence on parent's DNS servers, in case of
-KSK submission.
+Interval for periodic checks of DS presence on parent's DNS servers, in the
+case of the KSK submission.
 
 *Default:* 1 hour
 
@@ -610,7 +610,7 @@ timeout
 After this period, the KSK submission is automatically considered successful, even
 if all the checks were negative or no parents are configured. Set 0 for infinity.
 
-*Default:* infinity
+*Default:* 0
 
 .. _Policy section:
 

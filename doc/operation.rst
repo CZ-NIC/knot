@@ -375,6 +375,7 @@ At this point new KSK has to be submitted to the parent zone. Knot detects the u
 record automatically if :ref:`parent DS check<Submission section>` is configured, otherwise the
 operator must confirm it manually with ``knotc zone-ksk-submitted``::
 
+  2017-10-24T15:41:23 notice: [example.com.] DNSSEC, KSK submission, confirmed
   2017-10-24T15:41:23 info: [example.com.] DNSSEC, signing zone
   2017-10-24T15:41:23 info: [example.com.] DNSSEC, key, tag  6674, algorithm RSASHA256, KSK, public, active
   2017-10-24T15:41:23 info: [example.com.] DNSSEC, key, tag  4700, algorithm RSASHA256, KSK, public, active
@@ -439,7 +440,7 @@ server is reloaded, the rollover continues along the lines of :rfc:`6781#section
 
 Again, KSK submission follows as in :ref:`KSK rollover example<DNSSEC ksk rollover example>`.::
 
-  2017-10-24T14:54:20 info: [example.com.] control, received command 'zone-ksk-submitted'
+  2017-10-24T14:54:20 notice: [example.com.] DNSSEC, KSK submission, confirmed
   2017-10-24T14:54:20 info: [example.com.] DNSSEC, signing zone
   2017-10-24T14:54:20 info: [example.com.] DNSSEC, key, tag 34608, algorithm ECDSAP256SHA256, KSK, public, active
   2017-10-24T14:54:20 info: [example.com.] DNSSEC, key, tag 13674, algorithm ECDSAP256SHA256, public, active

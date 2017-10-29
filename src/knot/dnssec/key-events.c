@@ -450,6 +450,10 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 {
 	uint16_t kskflag = dnssec_key_get_flags(newkey->key);
 
+	if (kskflag == DNSKEY_FLAGS_KSK) {
+		log_zone_notice(ctx->zone->dname, "DNSSEC, KSK submission, confirmed");
+	}
+
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		uint16_t keyflags = dnssec_key_get_flags(key->key);

@@ -526,15 +526,15 @@ A submission identifier.
 .SS parent
 .sp
 A list of \fI\%references\fP to parent\(aqs DNS servers to be checked for
-presence of corresponding DS records in case of KSK submission. All of them must
-have corresponding DS for the rollover to continue. If none specified, the rollover
-must be pushed forward manually.
+presence of corresponding DS records in the case of KSK submission. All of them must
+have a corresponding DS for the rollover to continue. If none is specified, the
+rollover must be pushed forward manually.
 .sp
 \fIDefault:\fP not set
 .SS check\-interval
 .sp
-Interval for periodic checks of DS resence on parent\(aqs DNS servers, in case of
-KSK submission.
+Interval for periodic checks of DS presence on parent\(aqs DNS servers, in the
+case of the KSK submission.
 .sp
 \fIDefault:\fP 1 hour
 .SS timeout
@@ -542,7 +542,7 @@ KSK submission.
 After this period, the KSK submission is automatically considered successful, even
 if all the checks were negative or no parents are configured. Set 0 for infinity.
 .sp
-\fIDefault:\fP infinity
+\fIDefault:\fP 0
 .SH POLICY SECTION
 .sp
 DNSSEC policy configuration.
