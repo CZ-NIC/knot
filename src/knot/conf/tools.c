@@ -259,34 +259,6 @@ int check_module_id(
 int check_server(
 	knotd_conf_check_args_t *args)
 {
-	bool present = false;
-
-	conf_val_t val;
-	val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV, C_RATE_LIMIT);
-	if (val.code == KNOT_EOK) {
-		present = true;
-	}
-
-	val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV, C_RATE_LIMIT_SLIP);
-	if (val.code == KNOT_EOK) {
-		present = true;
-	}
-
-	val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV, C_RATE_LIMIT_TBL_SIZE);
-	if (val.code == KNOT_EOK) {
-		present = true;
-	}
-
-	val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV, C_RATE_LIMIT_WHITELIST);
-	if (val.code == KNOT_EOK) {
-		present = true;
-	}
-
-	if (present) {
-		CONF_LOG(LOG_NOTICE, "obsolete RRL configuration in the server, "
-		                     "use module mod-rrl instead");
-	}
-
 	return KNOT_EOK;
 }
 
