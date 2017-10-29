@@ -642,11 +642,6 @@ static inline char* conf_kaspdir(
 	return conf_kaspdir_txn(conf, &conf->read_txn);
 }
 
-char* conf_old_journalfile(
-	conf_t *conf,
-	const knot_dname_t *zone
-);
-
 /*!
  * Gets the configured number of UDP threads.
  *

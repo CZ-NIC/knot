@@ -13,20 +13,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Zone structure and API for manipulating it.
- *
- * \addtogroup zone
- * @{
- */
 
 #pragma once
-
-#include <time.h>
-#include <stdbool.h>
-#include <stdint.h>
 
 #include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
@@ -37,7 +25,6 @@
 #include "libknot/dname.h"
 #include "libknot/packet/pkt.h"
 
-struct process_query_param;
 struct zone_update;
 
 /*!
@@ -125,7 +112,6 @@ void zone_free(zone_t **zone_ptr);
 void zone_control_clear(zone_t *zone);
 
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
-int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs);
 int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from);
 int zone_in_journal_load(conf_t *conf, zone_t *zone, list_t *dst);
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents);
@@ -186,5 +172,3 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial);
 int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial);
 
 bool zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial);
-
-/*! @} */

@@ -1053,34 +1053,6 @@ unsigned conf_zonefile_load_txn(
         return conf_opt(&val);
 }
 
-char* conf_old_journalfile(
-	conf_t *conf,
-	const knot_dname_t *zone)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	conf_val_t val = conf_zone_get(conf, C_JOURNAL, zone);
-	const char *journal = conf_str(&val);
-
-	// Use default journalfile name pattern if not specified.
-	if (journal == NULL) {
-		journal = "%s.db";
-	} else {
-		CONF_LOG_ZONE(LOG_NOTICE, zone, "obsolete configuration 'journal', "
-		              "use 'template.journal-db'' instead");
-	}
-
-	val = conf_zone_get(conf, C_MAX_JOURNAL_SIZE, zone);
-	if (val.code == KNOT_EOK) {
-		CONF_LOG_ZONE(LOG_NOTICE, zone, "obsolete configuration 'max-journal-size', "
-		              "use 'max-journal-usage' and 'template.journal-db' instead");
-	}
-
-	return get_filename(conf, &conf->read_txn, zone, journal);
-}
-
 char* conf_journalfile_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)

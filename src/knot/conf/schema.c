@@ -292,9 +292,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI | FLAGS, { check_modref } }, \
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE }, \
-	/* Obsolete, old journal items. */ \
-	{ C_JOURNAL,             YP_TSTR,  YP_VNONE, FLAGS }, \
-	{ C_MAX_JOURNAL_SIZE,    YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \
+	/* Obsolete items. */ \
 	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
 
 static const yp_item_t desc_template[] = {

@@ -16,7 +16,6 @@
 
 #include "knot/common/log.h"
 #include "knot/journal/journal.h"
-#include "knot/journal/old_journal.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
@@ -58,68 +57,6 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief If old journal exists, warn the user and append the changes to chgs
- *
- * \todo Remove in the future together with journal/old_journal.[ch] and conf_old_journalfile()
- */
-static void try_old_journal(conf_t *conf, zone_t *zone, uint32_t zone_c_serial, list_t *chgs)
-{
-	list_t old_chgs;
-	init_list(&old_chgs);
-
-	// fetch old journal name
-	char *jfile = conf_old_journalfile(conf, zone->name);
-	if (jfile == NULL) {
-		return;
-	}
-
-	if (!old_journal_exists(jfile)) {
-		goto toj_end;
-	}
-	log_zone_notice(zone->name, "journal, obsolete exists, file '%s'", jfile);
-
-	// determine serial to load from
-	if (!EMPTY_LIST(*chgs)) {
-		changeset_t *lastch = TAIL(*chgs);
-		zone_c_serial = knot_soa_serial(&lastch->soa_to->rrs);
-	}
-
-	// load changesets from old journal
-	int ret = old_journal_load_changesets(jfile, zone->name, &old_chgs,
-	                                      zone_c_serial, zone_c_serial - 1);
-	if (ret != KNOT_ERANGE && ret != KNOT_ENOENT && ret != KNOT_EOK) {
-		log_zone_warning(zone->name, "journal, failed to load obsolete history (%s)",
-		                 knot_strerror(ret));
-		goto toj_end;
-	}
-
-	if (EMPTY_LIST(old_chgs)) {
-		goto toj_end;
-	}
-	log_zone_notice(zone->name, "journal, loaded obsolete history since serial '%u'",
-	                zone_c_serial);
-
-	// store them to new journal
-	ret = zone_changes_store(conf, zone, &old_chgs);
-	if (ret != KNOT_EOK) {
-		log_zone_warning(zone->name, "journal, failed to store obsolete history (%s)",
-		                 knot_strerror(ret));
-		goto toj_end;
-	}
-
-	// append them to chgs
-	changeset_t *ch, *nxt;
-	WALK_LIST_DELSAFE(ch, nxt, old_chgs) {
-		rem_node(&ch->n);
-		add_tail(chgs, &ch->n);
-	}
-
-toj_end:
-	changesets_free(&old_chgs);
-	free(jfile);
-}
-
 int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 {
 	if (conf == NULL || zone == NULL || contents == NULL) {
@@ -142,10 +79,6 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 		changesets_free(&chgs);
 		return ret;
 	}
-
-	/* Load old journal (to be obsoleted) */
-	try_old_journal(conf, zone, serial, &chgs);
-
 	if (EMPTY_LIST(chgs)) {
 		return KNOT_EOK;
 	}

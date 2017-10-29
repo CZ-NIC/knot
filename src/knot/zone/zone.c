@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -284,32 +284,6 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
 			ret = flush_journal(conf, zone, true);
 			if (ret == KNOT_EOK) {
 				ret = journal_store_changeset(zone->journal, change);
-			}
-		}
-	}
-
-	JOURNAL_UNLOCK_RW
-
-	return ret;
-}
-
-int zone_changes_store(conf_t *conf, zone_t *zone, list_t *chgs)
-{
-	if (conf == NULL || zone == NULL || chgs == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	JOURNAL_LOCK_RW
-
-	int ret = open_journal(zone);
-	if (ret == KNOT_EOK) {
-		ret = journal_store_changesets(zone->journal, chgs);
-		if (ret == KNOT_EBUSY) {
-			log_zone_notice(zone->name, "journal is full, flushing");
-			/* Transaction rolled back, journal released, we may flush. */
-			ret = flush_journal(conf, zone, true);
-			if (ret == KNOT_EOK) {
-				ret = journal_store_changesets(zone->journal, chgs);
 			}
 		}
 	}

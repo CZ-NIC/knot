@@ -237,8 +237,6 @@ src/knot/events/replan.h
 src/knot/include/module.h
 src/knot/journal/journal.c
 src/knot/journal/journal.h
-src/knot/journal/old_journal.c
-src/knot/journal/old_journal.h
 src/knot/journal/serialization.c
 src/knot/journal/serialization.h
 src/knot/modules/dnsproxy/dnsproxy.c

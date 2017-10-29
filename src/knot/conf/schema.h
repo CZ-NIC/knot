@@ -55,7 +55,6 @@
 #define C_IDENT			"\x08""identity"
 #define C_INCL			"\x07""include"
 #define C_IXFR_DIFF		"\x15""ixfr-from-differences" /* obsolete */
-#define C_JOURNAL		"\x07""journal" /* obsolete, old journal compat */
 #define C_JOURNAL_CONTENT	"\x0F""journal-content"
 #define C_JOURNAL_DB		"\x0A""journal-db"
 #define C_JOURNAL_DB_MODE	"\x0F""journal-db-mode"
@@ -74,7 +73,6 @@
 #define C_MAX_IPV6_UDP_PAYLOAD	"\x14""max-ipv6-udp-payload"
 #define C_MAX_JOURNAL_DB_SIZE	"\x13""max-journal-db-size"
 #define C_MAX_JOURNAL_DEPTH	"\x11""max-journal-depth"
-#define C_MAX_JOURNAL_SIZE	"\x10""max-journal-size" /* obsolete, old journal compat */
 #define C_MAX_JOURNAL_USAGE	"\x11""max-journal-usage"
 #define C_MAX_KASP_DB_SIZE	"\x10""max-kasp-db-size"
 #define C_MAX_REFRESH_INTERVAL	"\x14""max-refresh-interval"
