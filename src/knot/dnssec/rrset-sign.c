@@ -226,11 +226,9 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	}
 
 	uint8_t header[header_size];
-	const knot_rdata_t *covered_data = knot_rdataset_at(&covered->rrs, 0);
 	int res = rrsig_write_rdata(header, header_size,
 	                            key, covered->type, owner_labels,
-	                            knot_rdata_ttl(covered_data),
-	                            sig_incepted, sig_expires);
+	                            covered->ttl, sig_incepted, sig_expires);
 	assert(res == KNOT_EOK);
 
 	res = dnssec_sign_init(ctx);
@@ -257,8 +255,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 
 	dnssec_binary_free(&signature);
 
-	return knot_rrset_add_rdata(rrsigs, rrsig, rrsig_size,
-	                            knot_rdata_ttl(covered_data), mm);
+	return knot_rrset_add_rdata(rrsigs, rrsig, rrsig_size, mm);
 }
 
 int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
@@ -280,7 +277,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 }
 
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
-                knot_rdataset_t *out_sig, knot_mm_t *mm)
+                     knot_rdataset_t *out_sig, knot_mm_t *mm)
 {
 	if (rrsig_rrs == NULL) {
 		return KNOT_ENOENT;

@@ -107,8 +107,7 @@ static bool rr_exists(const knot_rrset_t *in, const knot_rrset_t *ref,
                       size_t ref_pos)
 {
 	knot_rdata_t *to_check = knot_rdataset_at(&ref->rrs, ref_pos);
-	const bool compare_ttls = true;
-	return knot_rdataset_member(&in->rrs, to_check, compare_ttls);
+	return knot_rdataset_member(&in->rrs, to_check);
 }
 
 static int rdata_return_changes(const knot_rrset_t *rrset1,
@@ -119,6 +118,9 @@ static int rdata_return_changes(const knot_rrset_t *rrset1,
 		return KNOT_EINVAL;
 	}
 
+	/* Create fake RRSet, it will be easier to handle. */
+	knot_rrset_init(changes, rrset1->owner, rrset1->type, rrset1->rclass, rrset1->ttl);
+
 	/*
 	* Take one rdata from first list and search through the second list
 	* looking for an exact match. If no match occurs, it means that this
@@ -126,13 +128,10 @@ static int rdata_return_changes(const knot_rrset_t *rrset1,
 	* After the list has been traversed, we have a list of
 	* changed/removed rdatas. This has awful computation time.
 	*/
-
-	/* Create fake RRSet, it will be easier to handle. */
-	knot_rrset_init(changes, rrset1->owner, rrset1->type, rrset1->rclass);
-
+	bool ttl_differ = rrset1->ttl != rrset2->ttl;
 	uint16_t rr1_count = rrset1->rrs.rr_count;
 	for (uint16_t i = 0; i < rr1_count; ++i) {
-		if (!rr_exists(rrset2, rrset1, i)) {
+		if (ttl_differ || !rr_exists(rrset2, rrset1, i)) {
 			/*
 			 * No such RR is present in 'rrset2'. We'll copy
 			 * index 'i' into 'changes' RRSet.

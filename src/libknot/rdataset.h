@@ -88,21 +88,6 @@ int knot_rdataset_gather(knot_rdataset_t *dst, knot_rdata_t **src, uint16_t coun
  */
 size_t knot_rdataset_size(const knot_rdataset_t *rrs);
 
-/*!
- * \brief Returns the common TTL of the RR set.
- * \note Actually returns the TTL of the first RR.
- * \param rrs  RR array.
- * \return TTL.
- */
-uint32_t knot_rdataset_ttl(const knot_rdataset_t *rrs);
-
-/*!
- * \brief Sets TTL of all the RRs in the RR set.
- * \param rrs  RR array.
- * \param ttl  TTL to set.
- */
-void knot_rdataset_set_ttl(knot_rdataset_t *rrs, uint32_t ttl);
-
 /* ----------------------- RRs RR manipulation ------------------------------ */
 
 /*!
@@ -146,12 +131,10 @@ bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2);
  * \brief Returns true if \a rr is present in \a rrs, false otherwise.
  * \param rrs      RRS to search in.
  * \param rr       RR to compare with.
- * \param cmp_ttl  If set to true, TTLs will be compared as well.
  * \retval true if \a rr is present in \a rrs.
  * \retval false if \a rr is not present in \a rrs.
  */
-bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr,
-			  bool cmp_ttl);
+bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr);
 
 /*!
  * \brief Merges two RRS into the first one. Second RRS is left intact.
@@ -177,14 +160,13 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
 
 /*!
  * \brief Does set-like RRS subtraction. \a from RRS is changed.
- * \param from     RRS to subtract from.
- * \param what     RRS to subtract.
- * \param cmp_ttl  Compare TTL indicator.
- * \param mm       Memory context use to reallocated \a from data.
+ * \param from  RRS to subtract from.
+ * \param what  RRS to subtract.
+ * \param mm    Memory context use to reallocated \a from data.
  * \return KNOT_E*
  */
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
-                           bool cmp_ttl, knot_mm_t *mm);
+                           knot_mm_t *mm);
 
 /*!
  * \brief Sorts the dataset. Removes the element if found to be duplicate.

@@ -42,6 +42,7 @@ static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, knot_mm
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	data->ttl = rrset->ttl;
 	data->type = rrset->type;
 	data->additional = NULL;
 
@@ -79,10 +80,8 @@ static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
 		return false;
 	}
 
-	const uint32_t inserted_ttl = knot_rdataset_ttl(&rrset->rrs);
-	const uint32_t node_ttl = knot_rdataset_ttl(&node_data->rrs);
 	// Return error if TTLs don't match.
-	return inserted_ttl != node_ttl;
+	return rrset->ttl != node_data->ttl;
 }
 
 zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm)
@@ -181,8 +180,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 			struct rr_data *node_data = &node->rrs[i];
 			const bool ttl_err = ttl_error(node_data, rrset);
 			if (ttl_err) {
-				knot_rdataset_set_ttl(&node_data->rrs,
-				                      knot_rdataset_ttl(&rrset->rrs));
+				node_data->ttl = rrset->ttl;
 			}
 
 			int ret = knot_rdataset_merge(&node_data->rrs,

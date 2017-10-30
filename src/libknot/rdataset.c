@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,7 +60,6 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 		return KNOT_EINVAL;
 	}
 	const uint16_t size = knot_rdata_rdlen(rr);
-	const uint32_t ttl = knot_rdata_ttl(rr);
 	const uint8_t *rdata = knot_rdata_data(rr);
 
 	size_t total_size = knot_rdataset_size(rrs);
@@ -79,7 +78,7 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 		// No need to rearange RDATA
 		rrs->rr_count++;
 		knot_rdata_t *new_rr = knot_rdataset_at(rrs, pos);
-		knot_rdata_init(new_rr, size, rdata, ttl);
+		knot_rdata_init(new_rr, size, rdata);
 		return KNOT_EOK;
 	}
 
@@ -94,7 +93,7 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 	        (last_rr + knot_rdata_array_size(knot_rdata_rdlen(last_rr))) - old_rr);
 
 	// Set new RR
-	knot_rdata_init(old_rr, size, rdata, ttl);
+	knot_rdata_init(old_rr, size, rdata);
 
 	rrs->rr_count++;
 	return KNOT_EOK;
@@ -195,21 +194,6 @@ size_t knot_rdataset_size(const knot_rdataset_t *rrs)
 
 	const knot_rdata_t *rr_end = rr_seek(rrs->data, rrs->rr_count);
 	return rr_end - rrs->data;
-}
-
-_public_
-uint32_t knot_rdataset_ttl(const knot_rdataset_t *rrs)
-{
-	return knot_rdata_ttl(knot_rdataset_at(rrs, 0));
-}
-
-_public_
-void knot_rdataset_set_ttl(knot_rdataset_t *rrs, uint32_t ttl)
-{
-	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
-		knot_rdata_t *rrset_rr = knot_rdataset_at(rrs, i);
-		knot_rdata_set_ttl(rrset_rr, ttl);
-	}
 }
 
 _public_
@@ -317,16 +301,10 @@ bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2)
 }
 
 _public_
-bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr,
-                          bool cmp_ttl)
+bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr)
 {
 	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
 		const knot_rdata_t *cmp_rr = knot_rdataset_at(rrs, i);
-		if (cmp_ttl) {
-			if (knot_rdata_ttl(rr) != knot_rdata_ttl(cmp_rr)) {
-				continue;
-			}
-		}
 		int cmp = knot_rdata_cmp(cmp_rr, rr);
 		if (cmp == 0) {
 			// Match.
@@ -367,10 +345,9 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
 	}
 
 	knot_rdataset_init(out);
-	const bool compare_ttls = false;
 	for (uint16_t i = 0; i < a->rr_count; ++i) {
 		const knot_rdata_t *rr = knot_rdataset_at(a, i);
-		if (knot_rdataset_member(b, rr, compare_ttls)) {
+		if (knot_rdataset_member(b, rr)) {
 			// Add RR into output intersection RRSet.
 			int ret = knot_rdataset_add(out, rr, mm);
 			if (ret != KNOT_EOK) {
@@ -385,7 +362,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
 
 _public_
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
-			   bool cmp_ttl, knot_mm_t *mm)
+                           knot_mm_t *mm)
 {
 	if (from == NULL || what == NULL) {
 		return KNOT_EINVAL;
@@ -401,12 +378,6 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 		const knot_rdata_t *to_remove = knot_rdataset_at(what, i);
 		int pos_to_remove = find_rr_pos(from, to_remove);
 		if (pos_to_remove >= 0) {
-			if (cmp_ttl) {
-				const knot_rdata_t *from_remove = knot_rdataset_at(from, pos_to_remove);
-				if (knot_rdata_ttl(from_remove) != knot_rdata_ttl(to_remove)) {
-					continue;
-				}
-			}
 			int ret = remove_rr_at(from, pos_to_remove, mm);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -451,11 +422,10 @@ int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, knot_mm_t *mm)
 
 	// Save the RR to be moved
 	const uint16_t size = knot_rdata_rdlen(rr);
-	const uint32_t ttl = knot_rdata_ttl(rr);
 	const uint8_t *rdata = knot_rdata_data(rr);
 
 	knot_rdata_t tmp_rr[knot_rdata_array_size(size)];
-	knot_rdata_init(tmp_rr, size, rdata, ttl);
+	knot_rdata_init(tmp_rr, size, rdata);
 
 	// Move the array or just part of it
 	knot_rdata_t *earlier_rr_moved = earlier_rr + knot_rdata_array_size(size);
@@ -463,7 +433,7 @@ int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, knot_mm_t *mm)
 	memmove(earlier_rr_moved, earlier_rr, (last_rr + last_rr_size) - earlier_rr);
 
 	// Set new RR
-	knot_rdata_init(earlier_rr, size, knot_rdata_data(tmp_rr), ttl);
+	knot_rdata_init(earlier_rr, size, knot_rdata_data(tmp_rr));
 
 	return KNOT_EOK;
 }

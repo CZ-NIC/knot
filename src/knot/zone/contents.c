@@ -567,7 +567,6 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		return KNOT_EOUTOFZONE;
 	}
 
-	int ret = KNOT_EOK;
 	if (*n == NULL) {
 		*n = nsec3 ? get_nsec3_node(z, rr->owner) : get_node(z, rr->owner);
 		if (*n == NULL) {
@@ -576,7 +575,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
-			ret = nsec3 ? add_nsec3_node(z, *n) : add_node(z, *n, true);
+			int ret = nsec3 ? add_nsec3_node(z, *n) : add_node(z, *n, true);
 			if (ret != KNOT_EOK) {
 				node_free(n, NULL);
 			}
@@ -611,7 +610,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 	knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
 	// Subtract changeset RRS from node RRS.
-	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, false, NULL);
+	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

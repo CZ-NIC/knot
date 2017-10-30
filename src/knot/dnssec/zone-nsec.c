@@ -228,7 +228,8 @@ static int remove_nsec3param(const zone_contents_t *zone, changeset_t *changeset
 	rrset = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 	if (!knot_rrset_empty(&rrset)) {
 		knot_rrset_t rrsig;
-		knot_rrset_init(&rrsig, zone->apex->owner, KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN);
+		knot_rrset_init(&rrsig, zone->apex->owner, KNOT_RRTYPE_RRSIG,
+		                KNOT_CLASS_IN, 0);
 		ret = knot_synth_rrsig(KNOT_RRTYPE_NSEC3PARAM, &rrset.rrs, &rrsig.rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -266,7 +267,7 @@ static int set_nsec3param(knot_rrset_t *rrset, const dnssec_nsec3_params_t *para
 
 	assert(wire_ctx_available(&wire) == 0);
 
-	return knot_rrset_add_rdata(rrset, rdata, rdata_len, 0, NULL);
+	return knot_rrset_add_rdata(rrset, rdata, rdata_len, NULL);
 }
 
 static int add_nsec3param(const zone_contents_t *zone, changeset_t *changeset,
@@ -277,7 +278,8 @@ static int add_nsec3param(const zone_contents_t *zone, changeset_t *changeset,
 	assert(params);
 
 	knot_rrset_t *rrset = NULL;
-	rrset = knot_rrset_new(zone->apex->owner, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
+	rrset = knot_rrset_new(zone->apex->owner, KNOT_RRTYPE_NSEC3PARAM,
+	                       KNOT_CLASS_IN, 0, NULL);
 	if (!rrset) {
 		return KNOT_ENOMEM;
 	}

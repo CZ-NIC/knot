@@ -28,7 +28,7 @@ static uint32_t zone_soa_min_ttl(const zone_contents_t *zone)
 static uint32_t zone_soa_ttl(const zone_contents_t *zone)
 {
 	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	return knot_rrset_ttl(&soa);
+	return soa.ttl;
 }
 
 void update_policy_from_zone(knot_kasp_policy_t *policy,

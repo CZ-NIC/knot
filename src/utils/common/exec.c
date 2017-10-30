@@ -285,7 +285,7 @@ static void print_section_question(const knot_dname_t *owner,
 	knot_dump_style_t qstyle = style->style;
 	qstyle.empty_ttl = true;
 
-	knot_rrset_t *question = knot_rrset_new(owner, qtype, qclass, NULL);
+	knot_rrset_t *question = knot_rrset_new(owner, qtype, qclass, 0, NULL);
 
 	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &qstyle) < 0) {
 		WARN("can't print whole question section\n");

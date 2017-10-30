@@ -255,7 +255,7 @@ static int reverse_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, kn
 	}
 
 	rr->type = KNOT_RRTYPE_PTR;
-	knot_rrset_add_rdata(rr, ptrname, knot_dname_size(ptrname), tpl->ttl, &pkt->mm);
+	knot_rrset_add_rdata(rr, ptrname, knot_dname_size(ptrname), &pkt->mm);
 	knot_dname_free(&ptrname, NULL);
 
 	return KNOT_EOK;
@@ -271,12 +271,12 @@ static int forward_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, kn
 		rr->type = KNOT_RRTYPE_AAAA;
 		const struct sockaddr_in6* ip = (const struct sockaddr_in6*)&query_addr;
 		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin6_addr,
-		                     sizeof(struct in6_addr), tpl->ttl, &pkt->mm);
+		                     sizeof(struct in6_addr), &pkt->mm);
 	} else if (tpl->addr.ss_family == AF_INET) {
 		rr->type = KNOT_RRTYPE_A;
 		const struct sockaddr_in* ip = (const struct sockaddr_in*)&query_addr;
 		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin_addr,
-		                     sizeof(struct in_addr), tpl->ttl, &pkt->mm);
+		                     sizeof(struct in_addr), &pkt->mm);
 	} else {
 		return KNOT_EINVAL;
 	}
@@ -287,7 +287,8 @@ static int forward_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, kn
 static knot_rrset_t *synth_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt,
                               knotd_qdata_t *qdata)
 {
-	knot_rrset_t *rr = knot_rrset_new(qdata->name, 0, KNOT_CLASS_IN, &pkt->mm);
+	knot_rrset_t *rr = knot_rrset_new(qdata->name, 0, KNOT_CLASS_IN, tpl->ttl,
+	                                  &pkt->mm);
 	if (rr == NULL) {
 		return NULL;
 	}

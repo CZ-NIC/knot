@@ -156,7 +156,7 @@ int knot_tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg,
 	size_t offset = alg_len + TSIG_OFF_MACLEN;
 	wire_write_u16(rd + offset, maclen);
 
-	int ret = knot_rrset_add_rdata(rr, rd, rdlen, 0, NULL);
+	int ret = knot_rrset_add_rdata(rr, rd, rdlen, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

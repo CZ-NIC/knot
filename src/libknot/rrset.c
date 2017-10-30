@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 
 _public_
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
-                             uint16_t rclass, knot_mm_t *mm)
+                             uint16_t rclass, uint32_t ttl, knot_mm_t *mm)
 {
 	knot_dname_t *owner_cpy = knot_dname_copy(owner, mm);
 	if (owner_cpy == NULL) {
@@ -43,18 +43,19 @@ knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
 		return NULL;
 	}
 
-	knot_rrset_init(ret, owner_cpy, type, rclass);
+	knot_rrset_init(ret, owner_cpy, type, rclass, ttl);
 
 	return ret;
 }
 
 _public_
 void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
-                     uint16_t rclass)
+                     uint16_t rclass, uint32_t ttl)
 {
 	rrset->owner = owner;
 	rrset->type = type;
 	rrset->rclass = rclass;
+	rrset->ttl = ttl;
 	knot_rdataset_init(&rrset->rrs);
 	rrset->additional = NULL;
 }
@@ -62,7 +63,7 @@ void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
 _public_
 void knot_rrset_init_empty(knot_rrset_t *rrset)
 {
-	knot_rrset_init(rrset, NULL, 0, KNOT_CLASS_IN);
+	knot_rrset_init(rrset, NULL, 0, KNOT_CLASS_IN, 0);
 }
 
 _public_
@@ -73,7 +74,7 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_t *mm)
 	}
 
 	knot_rrset_t *rrset = knot_rrset_new(src->owner, src->type,
-	                                     src->rclass, mm);
+	                                     src->rclass, src->ttl, mm);
 	if (rrset == NULL) {
 		return NULL;
 	}
@@ -110,16 +111,15 @@ void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_t *mm)
 }
 
 _public_
-int knot_rrset_add_rdata(knot_rrset_t *rrset,
-                         const uint8_t *rdata, const uint16_t size,
-                         const uint32_t ttl, knot_mm_t *mm)
+int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
+                         const uint16_t size, knot_mm_t *mm)
 {
 	if (rrset == NULL || (rdata == NULL && size > 0)) {
 		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t rr[knot_rdata_array_size(size)];
-	knot_rdata_init(rr, size, rdata, ttl);
+	knot_rdata_init(rr, size, rdata);
 
 	return knot_rdataset_add(&rrset->rrs, rr, mm);
 }
@@ -161,12 +161,6 @@ bool knot_rrset_empty(const knot_rrset_t *rrset)
 	} else {
 		return true;
 	}
-}
-
-_public_
-uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
-{
-	return knot_rdata_ttl(knot_rdataset_at(&(rrset->rrs), 0));
 }
 
 _public_

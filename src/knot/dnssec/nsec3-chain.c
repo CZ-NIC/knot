@@ -256,7 +256,7 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 	if (owner_copy == NULL) {
 		return KNOT_ENOMEM;
 	}
-	knot_rrset_init(rrset, owner_copy, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN);
+	knot_rrset_init(rrset, owner_copy, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl);
 
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
 	uint8_t rdata[rdata_size];
@@ -268,7 +268,7 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 		return ret;
 	}
 
-	ret = knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL);
+	ret = knot_rrset_add_rdata(rrset, rdata, rdata_size, NULL);
 	if (ret != KNOT_EOK) {
 		knot_dname_free(&owner_copy, NULL);
 		return ret;

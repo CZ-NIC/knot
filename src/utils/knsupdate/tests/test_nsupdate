@@ -18,6 +18,7 @@ prereq yxrrset yxrrset_test3.example.com. A 1.2.3.4
 yxrrset yxrrset_test4.example.com. IN A 1.2.3.4
 ;
 update add add_test1.example.com. 120 TXT "test"
+update add add_test1.example.com. 1300 TXT "test"
 add add_test2.example.com. TXT "test"
 add add_test3.example.com. IN TXT "test"
 ;

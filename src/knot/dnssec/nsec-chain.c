@@ -38,7 +38,7 @@ static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
 {
 	assert(from);
 	assert(to);
-	knot_rrset_init(rrset, from->owner, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN);
+	knot_rrset_init(rrset, from->owner, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, ttl);
 
 	// Create bitmap
 	dnssec_nsec_bitmap_t *rr_types = dnssec_nsec_bitmap_new();
@@ -61,7 +61,7 @@ static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
 	dnssec_nsec_bitmap_write(rr_types, rdata + next_owner_size);
 	dnssec_nsec_bitmap_free(rr_types);
 
-	return knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL);
+	return knot_rrset_add_rdata(rrset, rdata, rdata_size, NULL);
 }
 
 /*!
@@ -344,8 +344,7 @@ cleanup:
 /*!
  * \brief Add entry for removed NSEC to the changeset.
  */
-int knot_nsec_changeset_remove(const zone_node_t *n,
-                               changeset_t *changeset)
+int knot_nsec_changeset_remove(const zone_node_t *n, changeset_t *changeset)
 {
 	if (changeset == NULL) {
 		return KNOT_EINVAL;
@@ -369,7 +368,7 @@ int knot_nsec_changeset_remove(const zone_node_t *n,
 	if (!knot_rrset_empty(&rrsigs)) {
 		knot_rrset_t synth_rrsigs;
 		knot_rrset_init(&synth_rrsigs, n->owner, KNOT_RRTYPE_RRSIG,
-		                KNOT_CLASS_IN);
+		                KNOT_CLASS_IN, rrsigs.ttl);
 		result = knot_synth_rrsig(KNOT_RRTYPE_NSEC, &rrsigs.rrs,
 		                          &synth_rrsigs.rrs, NULL);
 		if (result == KNOT_ENOENT) {

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ static const style_t DEFAULT_STYLE_HOST = {
 		.show_class = true,
 		.show_ttl = true,
 		.verbose = false,
+		.original_ttl = false,
 		.empty_ttl = false,
 		.human_ttl = false,
 		.human_tmstamp = true,

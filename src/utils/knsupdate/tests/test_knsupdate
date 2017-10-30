@@ -19,6 +19,7 @@ prereq yxrrset yxrrset_test3 A 1.2.3.4
 yxrrset yxrrset_test4 IN A 1.2.3.4
 ;
 update add add_test1 120 TXT "test"
+update add add_test1 1300 TXT "test"
 add add_test2 TXT "test"
 add add_test3 IN TXT "test"
 ;

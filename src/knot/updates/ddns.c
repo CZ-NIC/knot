@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -197,7 +197,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
                           zone_update_t *update, uint16_t *rcode,
                           list_t *rrset_list)
 {
-	if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0) {
+	if (rrset->ttl != 0) {
 		*rcode = KNOT_RCODE_FORMERR;
 		return KNOT_EMALF;
 	}
@@ -283,10 +283,7 @@ static bool node_contains_rr(const zone_node_t *node,
 	const knot_rdataset_t *zone_rrs = node_rdataset(node, rr->type);
 	if (zone_rrs) {
 		assert(rr->rrs.rr_count == 1);
-		const bool compare_ttls = false;
-		return knot_rdataset_member(zone_rrs,
-		                            knot_rdataset_at(&rr->rrs, 0),
-		                            compare_ttls);
+		return knot_rdataset_member(zone_rrs, knot_rdataset_at(&rr->rrs, 0));
 	} else {
 		return false;
 	}
@@ -510,7 +507,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	}
 
 	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
-	if (!knot_rdataset_member(rrs, rr->rrs.data, false)) {
+	if (!knot_rdataset_member(rrs, rr->rrs.data)) {
 		// Node does not contain this RR
 		return KNOT_EOK;
 	}
@@ -658,8 +655,7 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 			return KNOT_EMALF;
 		}
 	} else if (rrset->rclass == KNOT_CLASS_NONE) {
-		if ((knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0) ||
-		    knot_rrtype_is_metatype(rrset->type)) {
+		if (rrset->ttl != 0 || knot_rrtype_is_metatype(rrset->type)) {
 			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
 		}

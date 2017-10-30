@@ -490,6 +490,7 @@ static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *ar
 
 	// Set the dump style.
 	ctx->style.show_ttl = true;
+	ctx->style.original_ttl = true;
 	ctx->style.human_tmstamp = true;
 
 	// Set the output data buffers.
@@ -522,7 +523,7 @@ static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *ar
 
 static int send_rrset(knot_rrset_t *rrset, send_ctx_t *ctx)
 {
-	int ret = snprintf(ctx->ttl, sizeof(ctx->ttl), "%u", knot_rrset_ttl(rrset));
+	int ret = snprintf(ctx->ttl, sizeof(ctx->ttl), "%u", rrset->ttl);
 	if (ret <= 0 || ret >= sizeof(ctx->ttl)) {
 		return KNOT_ESPACE;
 	}
@@ -823,12 +824,7 @@ static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 		return KNOT_EINVAL;
 	}
 
-	knot_rdataset_t *rdataset = node_rdataset(node, type);
-	if (rdataset == NULL) {
-		return KNOT_ETTL;
-	}
-
-	*ttl = knot_rdataset_ttl(rdataset);
+	*ttl = node_rrset(node, type).ttl;
 
 	return KNOT_EOK;
 }
@@ -896,14 +892,14 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 
 	// Create output rrset.
 	*rrset = knot_rrset_new(scanner->r_owner, scanner->r_type,
-	                        scanner->r_class, NULL);
+	                        scanner->r_class, scanner->r_ttl, NULL);
 	if (*rrset == NULL) {
 		ret = KNOT_ENOMEM;
 		goto parser_failed;
 	}
 
 	ret = knot_rrset_add_rdata(*rrset, scanner->r_data, scanner->r_data_length,
-	                           scanner->r_ttl, NULL);
+	                           NULL);
 parser_failed:
 	zs_deinit(scanner);
 	mm_free(&args->mm, scanner);

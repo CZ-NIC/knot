@@ -60,6 +60,7 @@ typedef struct {
 
 /*!< \brief Structure storing RR data. */
 struct rr_data {
+	uint32_t ttl; /*!< RRSet TTL. */
 	uint16_t type; /*!< RR type of data. */
 	knot_rdataset_t rrs; /*!< Data of given type. */
 	additional_t *additional; /*!< Additional nodes with glues. */
@@ -231,7 +232,8 @@ static inline knot_rrset_t node_rrset(const zone_node_t *node, uint16_t type)
 	for (uint16_t i = 0; node && i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
 			struct rr_data *rr_data = &node->rrs[i];
-			knot_rrset_init(&rrset, node->owner, type, KNOT_CLASS_IN);
+			knot_rrset_init(&rrset, node->owner, type, KNOT_CLASS_IN,
+			                rr_data->ttl);
 			rrset.rrs = rr_data->rrs;
 			rrset.additional = rr_data->additional;
 			return rrset;
@@ -259,7 +261,8 @@ static inline knot_rrset_t node_rrset_at(const zone_node_t *node, size_t pos)
 	}
 
 	struct rr_data *rr_data = &node->rrs[pos];
-	knot_rrset_init(&rrset, node->owner, rr_data->type, KNOT_CLASS_IN);
+	knot_rrset_init(&rrset, node->owner, rr_data->type, KNOT_CLASS_IN,
+	                rr_data->ttl);
 	rrset.rrs = rr_data->rrs;
 	rrset.additional = rr_data->additional;
 	return rrset;

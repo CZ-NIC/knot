@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 
 #include "libknot/attribute.h"
 #include "libknot/rdata.h"
-#include "libknot/errcode.h"
 #include "contrib/macros.h"
 
 #ifndef STRICT_ALIGNMENT
@@ -30,7 +29,6 @@
 
 /*!< \brief Helper structure - offsets in RR array. */
 struct rr_offsets {
-	uint32_t ttl;
 	uint16_t size;
 	uint8_t rdata[];
 };
@@ -40,10 +38,8 @@ struct rr_offsets {
 #endif
 
 _public_
-void knot_rdata_init(knot_rdata_t *rdata,
-                     uint16_t rdlen, const uint8_t *data, uint32_t ttl)
+void knot_rdata_init(knot_rdata_t *rdata, uint16_t rdlen, const uint8_t *data)
 {
-	knot_rdata_set_ttl(rdata, ttl);
 	knot_rdata_set_rdlen(rdata, rdlen);
 	memcpy(knot_rdata_data(rdata), data, rdlen);
 }
@@ -58,18 +54,6 @@ _public_
 void knot_rdata_set_rdlen(knot_rdata_t *rr, uint16_t size)
 {
 	((struct rr_offsets *)rr)->size = size;
-}
-
-_public_
-uint32_t knot_rdata_ttl(const knot_rdata_t *rr)
-{
-	return ((struct rr_offsets *)rr)->ttl;
-}
-
-_public_
-void knot_rdata_set_ttl(knot_rdata_t *rr, uint32_t ttl)
-{
-	((struct rr_offsets *)rr)->ttl = ttl;
 }
 
 _public_

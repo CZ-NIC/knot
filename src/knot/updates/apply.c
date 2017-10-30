@@ -126,10 +126,9 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 		return false;
 	}
 
-	const bool compare_ttls = false;
 	for (uint16_t i = 0; i < rr->rrs.rr_count; ++i) {
 		knot_rdata_t *rr_cmp = knot_rdataset_at(&rr->rrs, i);
-		if (knot_rdataset_member(node_rrs, rr_cmp, compare_ttls)) {
+		if (knot_rdataset_member(node_rrs, rr_cmp)) {
 			// At least one RR matches.
 			return true;
 		}
@@ -291,9 +290,16 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		}
 
 		if (ret == KNOT_ETTL) {
+			char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+			char *owner = knot_dname_to_str(buff, rr->owner, sizeof(buff));
+			if (owner == NULL) {
+				owner = "";
+			}
+			char type[16] = { '\0' };
+			knot_rrtype_to_string(rr->type, type, sizeof(type));
 			log_zone_notice(contents->apex->owner,
-			                "rrset (type %u) TTL mismatch, updated to %u",
-			                rr->type, knot_rrset_ttl(rr));
+			                "TTL mismatch, owner %s, type %s, "
+			                "TTL updated to %u", owner, type, rr->ttl);
 			return KNOT_EOK;
 		}
 	}
@@ -335,7 +341,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 
 	knot_rdataset_t *changed_rrs = node_rdataset(node, rr->type);
 	// Subtract changeset RRS from node RRS.
-	ret = knot_rdataset_subtract(changed_rrs, &rr->rrs, false, NULL);
+	ret = knot_rdataset_subtract(changed_rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, rr->type);
 		return ret;

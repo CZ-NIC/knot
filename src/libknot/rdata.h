@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,8 +44,7 @@ typedef uint8_t knot_rdata_t;
  * \brief Inits knot_rdata_t structure - the structure has to be created using
  *        knot_rdata_array_size.
  */
-void knot_rdata_init(knot_rdata_t *rdata,
-                     uint16_t rdlen, const uint8_t *data, uint32_t ttl);
+void knot_rdata_init(knot_rdata_t *rdata, uint16_t rdlen, const uint8_t *data);
 
 /* ------------------------- RR getters/setters ----------------------------- */
 
@@ -62,20 +61,6 @@ uint16_t knot_rdata_rdlen(const knot_rdata_t *rr);
  * \param size  Size to be set.
  */
 void knot_rdata_set_rdlen(knot_rdata_t *rr, uint16_t size);
-
-/*!
- * \brief Returns TTL of single RR.
- * \param rr  RR whose TTL we want.
- * \return  RR TTL.
- */
-uint32_t knot_rdata_ttl(const knot_rdata_t *rr);
-
-/*!
- * \brief Sets TTL for given RR.
- * \param rr   RR whose TTL we want to set.
- * \param ttl  TTL to be set.
- */
-void knot_rdata_set_ttl(knot_rdata_t *rr, uint32_t ttl);
 
 /*!
  * \brief Returns pointer to RR data.

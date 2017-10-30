@@ -162,17 +162,20 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 
 	// Subtract the data from node's RRSet.
 	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
+	uint32_t rrs_ttl = node_rrset(node, rr->type).ttl;
 
-	if (fixed_rr != NULL && *fixed_rr != NULL) {
-		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, rrs, true, NULL);
+	if (fixed_rr != NULL && *fixed_rr != NULL && (*fixed_rr)->ttl == rrs_ttl) {
+		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return;
 		}
 	}
 
-	int ret = knot_rdataset_subtract(rrs, &rr->rrs, true, NULL);
-	if (ret != KNOT_EOK) {
-		return;
+	if (rr->ttl == rrs_ttl) {
+		int ret = knot_rdataset_subtract(rrs, &rr->rrs, NULL);
+		if (ret != KNOT_EOK) {
+			return;
+		}
 	}
 
 	if (knot_rdataset_size(rrs) == 0) {
@@ -435,21 +438,25 @@ static int preapply_fix_rrset(const knot_rrset_t *apply, bool adding, void *data
 	if (adding && zrdataset == NULL) {
 		return KNOT_EOK;
 	}
+
 	knot_rrset_t *fixrrset;
-	int ret = KNOT_EOK;
 	if (adding) {
-		fixrrset = knot_rrset_new(apply->owner, apply->type, apply->rclass, ctx->mm);
+		fixrrset = knot_rrset_new(apply->owner, apply->type, apply->rclass,
+		                          apply->ttl, ctx->mm);
 	} else {
 		fixrrset = knot_rrset_copy(apply, ctx->mm);
 	}
 	if (fixrrset == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	int ret = KNOT_EOK;
 	if (adding) {
 		ret = knot_rdataset_intersect(zrdataset, &apply->rrs, &fixrrset->rrs, ctx->mm);
 	} else {
-		if (zrdataset != NULL) {
-			ret = knot_rdataset_subtract(&fixrrset->rrs, zrdataset, true, ctx->mm);
+		uint32_t zrrset_ttl = node_rrset(znode, apply->type).ttl;
+		if (zrdataset != NULL && fixrrset->ttl == zrrset_ttl) {
+			ret = knot_rdataset_subtract(&fixrrset->rrs, zrdataset, ctx->mm);
 		}
 	}
 	if (ret == KNOT_EOK && !knot_rrset_empty(fixrrset)) {
@@ -459,6 +466,7 @@ static int preapply_fix_rrset(const knot_rrset_t *apply, bool adding, void *data
 			ret = changeset_add_addition(ctx->fixing, fixrrset, 0);
 		}
 	}
+
 	knot_rrset_free(&fixrrset, ctx->mm);
 	return ret;
 }

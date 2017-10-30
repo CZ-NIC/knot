@@ -38,6 +38,7 @@
  */
 struct knot_rrset {
 	knot_dname_t *owner;  /*!< Domain name being the owner of the RRSet. */
+	uint32_t ttl;         /*!< TTL of the RRset. */
 	uint16_t type;        /*!< TYPE of the RRset. */
 	uint16_t rclass;      /*!< CLASS of the RRSet. */
 	knot_rdataset_t rrs;  /*!< RRSet's RRs */
@@ -64,12 +65,13 @@ typedef enum {
  * \param owner   OWNER of the RRSet.
  * \param type    TYPE of the RRSet.
  * \param rclass  CLASS of the RRSet.
+ * \param ttl     TTL of the RRSet.
  * \param mm      Memory context.
  *
  * \return New RRSet structure or NULL if an error occurred.
  */
 knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
-                             uint16_t rclass, knot_mm_t *mm);
+                             uint16_t rclass, uint32_t ttl, knot_mm_t *mm);
 
 /*!
  * \brief Initializes RRSet structure with given data.
@@ -78,9 +80,10 @@ knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
  * \param owner   RRSet owner to use.
  * \param type    RR type to use.
  * \param rclass  Class to use.
+ * \param ttl     TTL to use.
  */
 void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
-                     uint16_t rclass);
+                     uint16_t rclass, uint32_t ttl);
 
 /*!
  * \brief Initializes given RRSet structure.
@@ -128,14 +131,12 @@ void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_t *mm);
  * \param rrset  RRSet to add the RDATA to.
  * \param rdata  RDATA to add to the RRSet.
  * \param size   Size of RDATA.
- * \param ttl    TTL for RR.
  * \param mm     Memory context.
  *
  * \return KNOT_E*
  */
 int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
-                         const uint16_t size, const uint32_t ttl,
-                         knot_mm_t *mm);
+                         const uint16_t size, knot_mm_t *mm);
 
 /* ------------------ Equality / emptines bool checks ----------------------- */
 
@@ -163,15 +164,6 @@ bool knot_rrset_equal(const knot_rrset_t *r1, const knot_rrset_t *r2,
 bool knot_rrset_empty(const knot_rrset_t *rrset);
 
 /* --------------------------- Miscellaneous --------------------------------- */
-
-/*!
- * \brief Returns the TTL of the RRSet (of its first RR).
- *
- * \param rrset RRSet to get the TTL of.
- *
- * \retval TTL of the RRSet (precisely of its first RR).
- */
-uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 
 /*!
  * \brief Return whether the RR type is NSEC3 related (NSEC3 or RRSIG).

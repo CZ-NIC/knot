@@ -49,7 +49,8 @@ static int serialize_rrset(wire_ctx_t *wire, const knot_rrset_t *rrset, long *ph
 		if (wire_ctx_available(wire) < sizeof(uint32_t) + sizeof(uint16_t) + rdlen) {
 			return KNOT_EOK;
 		}
-		wire_ctx_write_u32(wire, knot_rdata_ttl(rr));
+		// Compatibility, but one TTL per rrset would be enough.
+		wire_ctx_write_u32(wire, rrset->ttl);
 		wire_ctx_write_u16(wire, rdlen);
 		wire_ctx_write(wire, knot_rdata_data(rr), rdlen);
 	}
@@ -81,16 +82,21 @@ static int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset, long *phase)
 		if (wire->error != KNOT_EOK) {
 			return wire->error;
 		}
-		knot_rrset_init(rrset, owner, type, rclass);
+		knot_rrset_init(rrset, owner, type, rclass, 0);
 	}
 
+	bool first = true;
 	for ( ; *phase > 0 && wire_ctx_available(wire) > 0; (*phase)--) {
 		uint32_t ttl = wire_ctx_read_u32(wire);
+		if (first) {
+			rrset->ttl = ttl;
+			first = false;
+		}
 		uint32_t rdata_size = wire_ctx_read_u16(wire);
 		if (wire->error != KNOT_EOK ||
 		    wire_ctx_available(wire) < rdata_size ||
 		    knot_rrset_add_rdata(rrset, wire->position, rdata_size,
-		                         ttl, NULL) != KNOT_EOK) {
+		                         NULL) != KNOT_EOK) {
 			knot_rrset_clear(rrset, NULL);
 			return KNOT_EMALF;
 		}
