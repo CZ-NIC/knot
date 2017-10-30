@@ -122,9 +122,6 @@ class Server(object):
 
         self.zones = dict()
 
-        self.ratelimit = None
-        self.ratelimit_slip = None
-        self.ratelimit_whitelist = None
         self.tcp_reply_timeout = None
         self.max_udp_payload = None
         self.max_udp4_payload = None
@@ -1026,12 +1023,6 @@ class Knot(Server):
         self._str(s, "max-udp-payload", self.max_udp_payload)
         self._str(s, "max-ipv4-udp-payload", self.max_udp4_payload)
         self._str(s, "max-ipv6-udp-payload", self.max_udp6_payload)
-        if self.ratelimit is not None:
-            s.item_str("rate-limit", self.ratelimit)
-            if self.ratelimit_slip is not None:
-                s.item_str("rate-limit-slip", self.ratelimit_slip)
-            if self.ratelimit_whitelist is not None:
-                s.item_str("rate-limit-whitelist", self.ratelimit_whitelist)
         s.end()
 
         s.begin("control")

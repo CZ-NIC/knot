@@ -10,9 +10,6 @@ knot = t.server("knot")
 zone = t.zone("example.com.")
 t.link(zone, knot)
 
-# Update configuration
-knot.ratelimit = 5 # Check for crashes also in rate-limit code
-
 t.start()
 knot.zone_wait(zone)
 
