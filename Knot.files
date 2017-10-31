@@ -245,8 +245,6 @@ src/knot/modules/noudp/noudp.c
 src/knot/modules/onlinesign/nsec_next.c
 src/knot/modules/onlinesign/nsec_next.h
 src/knot/modules/onlinesign/onlinesign.c
-src/knot/modules/rosedb/rosedb.c
-src/knot/modules/rosedb/rosedb_tool.c
 src/knot/modules/rrl/functions.c
 src/knot/modules/rrl/functions.h
 src/knot/modules/rrl/rrl.c

@@ -540,7 +540,6 @@ include $(srcdir)/knot/modules/dnsproxy/Makefile.inc
 include $(srcdir)/knot/modules/dnstap/Makefile.inc
 include $(srcdir)/knot/modules/noudp/Makefile.inc
 include $(srcdir)/knot/modules/onlinesign/Makefile.inc
-include $(srcdir)/knot/modules/rosedb/Makefile.inc
 include $(srcdir)/knot/modules/rrl/Makefile.inc
 include $(srcdir)/knot/modules/stats/Makefile.inc
 include $(srcdir)/knot/modules/synthrecord/Makefile.inc
