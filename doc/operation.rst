@@ -502,7 +502,7 @@ publishing a special formatted CDNSKEY and CDS record. This is mostly useful
 if we want to turn off DNSSEC on our zone so it becomes insecure, but not bogus.
 
 With automatic DNSSEC signing and key management by Knot, this is as easy as
-configuring :ref:`policy_child-records-publish` option and reloading the configuration.
+configuring :ref:`policy_cds-cdnskey-publish` option and reloading the configuration.
 We check if the special CDNSKEY and CDS records with the rdata "0 3 0 AA==" and "0 0 0 00",
 respectively, appeared in the zone.
 

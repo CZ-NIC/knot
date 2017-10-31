@@ -855,10 +855,10 @@ KSK submittion checks.
 
 *Default:* not set
 
-.. _policy_child-records-publish:
+.. _policy_cds-cdnskey-publish:
 
-child-records-publish
----------------------
+cds-cdnskey-publish
+-------------------
 
 Controls if and how shall the CDS and CDNSKEY be published in the zone.
 
@@ -868,9 +868,7 @@ Controls if and how shall the CDS and CDNSKEY be published in the zone.
 Possible values:
 
 - ``none`` - never publish any CDS or CDNSKEY records in the zone
-- ``empty`` - publish special CDS and CDNSKEY records indicating turning off DNSSEC
-- ``rollover`` - publish CDS and CDNSKEY records only for the period of KSK submission
-  (newly generated KSK either initial or during rollover)
+- ``delete-dnssec`` - publish special CDS and CDNSKEY records indicating turning off DNSSEC
 - ``always`` - always publish CDS and CDNSKEY records for the current KSK
 
 *Default:* always

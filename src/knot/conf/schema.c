@@ -73,7 +73,7 @@ static const knot_lookup_t dnssec_key_algs[] = {
 
 const knot_lookup_t child_record[] = {
 	{ CHILD_RECORDS_NONE,     "none"     },
-	{ CHILD_RECORDS_EMPTY,    "empty"    },
+	{ CHILD_RECORDS_EMPTY,    "delete-dnssec"    },
 	{ CHILD_RECORDS_ROLLOVER, "rollover" },
 	{ CHILD_RECORDS_ALWAYS,   "always"   },
 	{ 0, NULL }
