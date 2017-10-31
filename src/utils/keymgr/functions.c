@@ -190,7 +190,6 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]) {
 			ctx->policy->zsk_size = keysize;
 		}
 	}
-	printf("alg %d\n", (int)ctx->policy->algorithm);
 
 	knot_kasp_key_t *key = NULL;
 	int ret = kdnssec_generate_key(ctx, isksk, &key);
