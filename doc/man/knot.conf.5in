@@ -738,7 +738,7 @@ A reference to \fI\%submission\fP section holding parameters of
 KSK submittion checks.
 .sp
 \fIDefault:\fP not set
-.SS child\-records\-publish
+.SS cds\-cdnskey\-publish
 .sp
 Controls if and how shall the CDS and CDNSKEY be published in the zone.
 .sp
@@ -754,10 +754,7 @@ Possible values:
 .IP \(bu 2
 \fBnone\fP \- never publish any CDS or CDNSKEY records in the zone
 .IP \(bu 2
-\fBempty\fP \- publish special CDS and CDNSKEY records indicating turning off DNSSEC
-.IP \(bu 2
-\fBrollover\fP \- publish CDS and CDNSKEY records only for the period of KSK submission
-(newly generated KSK either initial or during rollover)
+\fBdelete\-dnssec\fP \- publish special CDS and CDNSKEY records indicating turning off DNSSEC
 .IP \(bu 2
 \fBalways\fP \- always publish CDS and CDNSKEY records for the current KSK
 .UNINDENT

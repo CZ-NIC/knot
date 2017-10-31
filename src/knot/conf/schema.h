@@ -37,7 +37,7 @@
 #define C_ASYNC_START		"\x0B""async-start"
 #define C_BACKEND		"\x07""backend"
 #define C_BG_WORKERS		"\x12""background-workers"
-#define C_CHILD_RECORDS		"\x15""child-records-publish"
+#define C_CHILD_RECORDS		"\x13""cds-cdnskey-publish"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
 #define C_COMMENT		"\x07""comment"
 #define C_CONFIG		"\x06""config"
