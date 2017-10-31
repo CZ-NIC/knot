@@ -142,7 +142,6 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 			ctx->policy->zsk_size = keysize;
 		}
 	}
-	printf("alg %d\n", (int)ctx->policy->algorithm);
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
