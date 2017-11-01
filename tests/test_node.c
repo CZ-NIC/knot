@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,29 +21,26 @@
 #include "libknot/libknot.h"
 #include "contrib/wire.h"
 
-static knot_rrset_t *create_dummy_rrset(const knot_dname_t *owner,
-                                        uint16_t type)
+static knot_rrset_t *create_dummy_rrset(const knot_dname_t *owner, uint16_t type)
 {
-	knot_rrset_t *r = knot_rrset_new(owner, type,
-	                                 KNOT_CLASS_IN, NULL);
+	knot_rrset_t *r = knot_rrset_new(owner, type, KNOT_CLASS_IN, 3600, NULL);
 	assert(r);
 	uint8_t wire[16] = { 0 };
 	memcpy(wire, "testtest", strlen("testtest"));
-	int ret = knot_rrset_add_rdata(r, wire, strlen("testtest"), 3600, NULL);
+	int ret = knot_rrset_add_rdata(r, wire, strlen("testtest"), NULL);
 	assert(ret == KNOT_EOK);
 	(void)ret;
 	return r;
 }
 
-static knot_rrset_t *create_dummy_rrsig(const knot_dname_t *owner,
-                                        uint16_t type)
+static knot_rrset_t *create_dummy_rrsig(const knot_dname_t *owner, uint16_t type)
 {
-	knot_rrset_t *r = knot_rrset_new(owner, KNOT_RRTYPE_RRSIG,
-	                                 KNOT_CLASS_IN, NULL);
+	knot_rrset_t *r = knot_rrset_new(owner, KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN,
+	                                 3600, NULL);
 	assert(r);
 	uint8_t wire[sizeof(uint16_t)];
 	wire_write_u16(wire, type);
-	int ret = knot_rrset_add_rdata(r, wire, sizeof(uint16_t), 3600, NULL);
+	int ret = knot_rrset_add_rdata(r, wire, sizeof(uint16_t), NULL);
 	assert(ret == KNOT_EOK);
 	(void)ret;
 	return r;
@@ -51,7 +48,7 @@ static knot_rrset_t *create_dummy_rrsig(const knot_dname_t *owner,
 
 int main(int argc, char *argv[])
 {
-	plan(23);
+	plan_lazy();
 
 	knot_dname_t *dummy_owner = knot_dname_from_str_alloc("test.");
 	// Test new
@@ -117,8 +114,7 @@ int main(int argc, char *argv[])
 	ok(knot_rrset_empty(&stack_rrset), "Node: get non-existent position.");
 
 	// Test TTL mismatch
-	knot_rdata_t *data = knot_rdataset_at(&dummy_rrset->rrs, 0);
-	knot_rdata_set_ttl(data, 1800);
+	dummy_rrset->ttl = 1800;
 	ret = node_add_rrset(node, dummy_rrset, NULL);
 	ok(ret == KNOT_ETTL && node->rrset_count == 1,
 	   "Node: add RRSet, TTL mismatch.");

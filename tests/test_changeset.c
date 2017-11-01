@@ -48,10 +48,10 @@ int main(int argc, char *argv[])
 	// Test additions.
 	d = knot_dname_from_str_alloc("non.terminals.test.");
 	assert(d);
-	knot_rrset_t *apex_txt_rr = knot_rrset_new(d, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, NULL);
+	knot_rrset_t *apex_txt_rr = knot_rrset_new(d, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 3600, NULL);
 	assert(apex_txt_rr);
 	uint8_t data[8] = "\7teststr";
-	knot_rrset_add_rdata(apex_txt_rr, data, sizeof(data), 3600, NULL);
+	knot_rrset_add_rdata(apex_txt_rr, data, sizeof(data), NULL);
 
 	int ret = changeset_add_addition(ch, apex_txt_rr, CHANGESET_CHECK);
 	is_int(KNOT_EOK, ret, "changeset: add RRSet");
@@ -63,9 +63,9 @@ int main(int argc, char *argv[])
 	changeset_add_addition(ch, apex_txt_rr, CHANGESET_CHECK);
 
 	// Add another RR to node.
-	knot_rrset_t *apex_spf_rr = knot_rrset_new(d, KNOT_RRTYPE_SPF, KNOT_CLASS_IN, NULL);
+	knot_rrset_t *apex_spf_rr = knot_rrset_new(d, KNOT_RRTYPE_SPF, KNOT_CLASS_IN, 3600, NULL);
 	assert(apex_spf_rr);
-	knot_rrset_add_rdata(apex_spf_rr, data, sizeof(data), 3600, NULL);
+	knot_rrset_add_rdata(apex_spf_rr, data, sizeof(data), NULL);
 	ret = changeset_add_addition(ch, apex_spf_rr, CHANGESET_CHECK);
 	is_int(KNOT_EOK, ret, "changeset: add multiple");
 
@@ -73,9 +73,9 @@ int main(int argc, char *argv[])
 	knot_dname_free(&d, NULL);
 	d = knot_dname_from_str_alloc("here.come.more.non.terminals.test");
 	assert(d);
-	knot_rrset_t *other_rr = knot_rrset_new(d, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, NULL);
+	knot_rrset_t *other_rr = knot_rrset_new(d, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 3600, NULL);
 	assert(other_rr);
-	knot_rrset_add_rdata(other_rr, data, sizeof(data), 3600, NULL);
+	knot_rrset_add_rdata(other_rr, data, sizeof(data), NULL);
 	ret = changeset_add_addition(ch, other_rr, CHANGESET_CHECK);
 	is_int(KNOT_EOK, ret, "changeset: remove multiple");
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -66,17 +66,17 @@ enum offsets {
 
 static const uint16_t DO_FLAG = (uint16_t)1 << 15;
 
-static void check_ttl(knot_rdata_t *rdata, uint8_t ext_rcode, uint8_t ver,
+static void check_ttl(knot_rrset_t *rrset, uint8_t ext_rcode, uint8_t ver,
                       uint16_t flags, char *msg)
 {
-	if (rdata == NULL) {
+	if (rrset == NULL) {
 		return;
 	}
 
 	/* TTL should be stored in machine byte order.
 	   We need network byte order to compare its parts. */
 	uint8_t ttl_wire[4] = { 0, 0, 0, 0 };
-	wire_write_u32(ttl_wire, knot_rdata_ttl(rdata));
+	wire_write_u32(ttl_wire, rrset->ttl);
 
 	/* Convert Flags from EDNS parameters to wire format for comparison. */
 	uint8_t flags_wire[2] = { 0, 0 };
@@ -150,7 +150,7 @@ static void check_header(knot_rrset_t *opt_rr, uint16_t payload, uint8_t ver,
 	check = (rdata != NULL);
 	ok(check, "%s: RDATA exists", msg);
 
-	check_ttl(rdata, ext_rcode, ver, flags, msg);
+	check_ttl(opt_rr, ext_rcode, ver, flags, msg);
 }
 
 static void test_getters(knot_rrset_t *opt_rr)

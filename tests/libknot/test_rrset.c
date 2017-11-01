@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,6 +13,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <assert.h>
 #include <inttypes.h>
 #include <tap/basic.h>
@@ -20,22 +21,17 @@
 #include "libknot/rrset.h"
 #include "libknot/descriptor.h"
 
-/*
- *  Unit implementation.
- */
-
-static bool check_rrset(const knot_rrset_t *rrset,
-                        const knot_dname_t *owner,
-                        uint16_t type, uint16_t rclass)
+static bool check_rrset(const knot_rrset_t *rrset, const knot_dname_t *owner,
+                        uint16_t type, uint16_t rclass, uint32_t ttl)
 {
 	if (!rrset) {
 		return false;
 	}
 
-	const bool dname_cmp = owner == NULL ? rrset->owner == NULL:
+	const bool dname_cmp = owner == NULL ? rrset->owner == NULL :
 	                                       knot_dname_is_equal(rrset->owner, owner);
-	return rrset->type == type && rrset->rclass == rclass && dname_cmp
-	       && rrset->rrs.rr_count == 0; // We do not test rdataset here
+	return rrset->type == type && rrset->rclass == rclass && dname_cmp &&
+	       rrset->ttl == ttl && rrset->rrs.rr_count == 0; // We do not test rdataset here
 }
 
 int main(int argc, char *argv[])
@@ -47,11 +43,11 @@ int main(int argc, char *argv[])
 	assert(dummy_owner);
 
 	knot_rrset_t *rrset = knot_rrset_new(dummy_owner, KNOT_RRTYPE_TXT,
-	                                     KNOT_CLASS_IN, NULL);
+	                                     KNOT_CLASS_IN, 3600, NULL);
 	ok(rrset != NULL, "rrset: create.");
 	assert(rrset);
 
-	ok(check_rrset(rrset, dummy_owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN),
+	ok(check_rrset(rrset, dummy_owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 3600),
 	   "rrset: set fields during create.");
 
 	// Test init
@@ -60,14 +56,14 @@ int main(int argc, char *argv[])
 	assert(dummy_owner);
 
 	knot_dname_free(&rrset->owner, NULL);
-	knot_rrset_init(rrset, dummy_owner, KNOT_RRTYPE_A, KNOT_CLASS_CH);
-	ok(check_rrset(rrset, dummy_owner, KNOT_RRTYPE_A, KNOT_CLASS_CH),
+	knot_rrset_init(rrset, dummy_owner, KNOT_RRTYPE_A, KNOT_CLASS_CH, 7200);
+	ok(check_rrset(rrset, dummy_owner, KNOT_RRTYPE_A, KNOT_CLASS_CH, 7200),
 	   "rrset: init.");
 
 	// Test copy
 	knot_rrset_t *copy = knot_rrset_copy(rrset, NULL);
 	ok(copy != NULL, "rrset: copy.");
-	ok(check_rrset(copy, rrset->owner, rrset->type, rrset->rclass),
+	ok(check_rrset(copy, rrset->owner, rrset->type, rrset->rclass, 7200),
 	   "rrset: set fields during copy.");
 	ok(knot_rrset_copy(NULL, NULL) == NULL, "rrset: copy NULL.");
 	assert(copy);
@@ -110,7 +106,7 @@ int main(int argc, char *argv[])
 
 	// Test init empty
 	knot_rrset_init_empty(rrset);
-	ok(check_rrset(rrset, NULL, 0, KNOT_CLASS_IN), "rrset: init empty.");
+	ok(check_rrset(rrset, NULL, 0, KNOT_CLASS_IN, 0), "rrset: init empty.");
 
 	// "Test" freeing
 	knot_rrset_free(&rrset, NULL);

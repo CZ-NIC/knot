@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(9);
+	plan_lazy();
 
 	// Test array size
 	size_t array_size = knot_rdata_array_size(16);
@@ -31,15 +31,12 @@ int main(int argc, char *argv[])
 	// Test init
 	knot_rdata_t rdata[array_size];
 	uint8_t payload[16] = "abcdefghijklmnop";
-	knot_rdata_init(rdata, 16, payload, 3600);
+	knot_rdata_init(rdata, 16, payload);
 	const bool set_ok = knot_rdata_rdlen(rdata) == 16 &&
-	                    knot_rdata_ttl(rdata) == 3600 &&
 	                    memcmp(knot_rdata_data(rdata), payload, 16) == 0;
 	ok(set_ok, "rdata: init.");
 
 	// Test setters
-	knot_rdata_set_ttl(rdata, 1234);
-	ok(knot_rdata_ttl(rdata) == 1234, "rdata: set TTL.");
 	knot_rdata_set_rdlen(rdata, 1);
 	ok(knot_rdata_rdlen(rdata) == 1, "rdata: set RDLEN.");
 
@@ -49,7 +46,7 @@ int main(int argc, char *argv[])
 
 	knot_rdata_t *lower = rdata;
 	knot_rdata_t greater[knot_rdata_array_size(16)];
-	knot_rdata_init(greater, 16, (uint8_t *)"qrstuvwxyz123456", 1234);
+	knot_rdata_init(greater, 16, (uint8_t *)"qrstuvwxyz123456");
 	ok(knot_rdata_cmp(lower, greater) < 0, "rdata: cmp lower.");
 	ok(knot_rdata_cmp(greater, lower) > 0, "rdata: cmp greater.");
 
