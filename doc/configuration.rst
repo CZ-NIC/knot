@@ -86,19 +86,18 @@ The ``default`` template identifier is reserved for the default template::
 Access control list (ACL)
 =========================
 
-An ACL list specifies which remotes are allowed to send the server a specific
-request. A remote can be a single IP address or a network subnet. Also a TSIG
-key can be assigned (see :doc:`keymgr <man_keymgr>` how to generate a TSIG key).
+The Access control list is a list of rules specifying remotes which are allowed to send certain types of requests to the server.
+Remotes can be specified by a single IP address or a network subnet. A TSIG
+key can also be assigned (see :doc:`keymgr <man_keymgr>` on how to generate a TSIG key).
 
-With no ACL rule, all the actions are denied for the zone. Each ACL rule
-can allow one or more actions for given address/subnet/TSIG, or deny them.
+Without any ACL rules, all the actions are denied for the zone. Each ACL rule
+can allow one or more actions for a given address/subnet/TSIG, or deny them.
 
-The rule precendence, if multiple rules match (e.g. overlapping address ranges),
-is not for stricter or more specific rules. In any case, just the first -- in the
-order of rules in zone or template acl configuration item, not in the order of
-declarations in acl section -- matching rule applies and the rest is ignored.
+If there are multiple ACL rules for a single zone, they are applied in the order
+of appearance in the :ref:`zone_acl` configuration item of a zone or a template.
+The first one to match the given remote is applied, the rest is ignored.
 
-See following examples and :ref:`ACL section`.::
+See the following examples and :ref:`ACL section`.::
 
     acl:
       - id: address_rule
@@ -133,6 +132,10 @@ See following examples and :ref:`ACL section`.::
     zone:
       - domain: acl2.example.com
         acl: [deny_all, key_rule]
+
+.. NOTE::
+   If more conditions (address ranges and/or a key)
+   are given in a single ACL rule, all of them have to be satisfied for the rule to match.
 
 Slave zone
 ==========
