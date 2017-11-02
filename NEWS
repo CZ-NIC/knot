@@ -1,3 +1,17 @@
+Knot DNS 2.5.6 (2017-11-02)
+===========================
+
+Improvements:
+-------------
+ - Keymgr no longer prints useless algorithm number for generated key
+
+Bugfixes:
+---------
+ - Faulty DNAME semantic check if present in the zone apex and NSEC3 is used
+ - Immediate zone flush not scheduled during the zone load event
+ - Server crashes upon dynamic zone addition if a query module is loaded
+ - Kdig fails to connect over TLS due to SNI is set to server IP address
+
 Knot DNS 2.5.5 (2017-09-29)
 ===========================
 
