@@ -1,3 +1,29 @@
+Knot DNS 2.6.1 (2017-11-02)
+===========================
+
+Features:
+---------
+ - NSEC3 Opt-Out support in the DNSSEC signing
+ - New CDS/CDNSKEY publish configuration option
+
+Improvements:
+-------------
+ - Simplified DNSSEC log message with DNSKEY details
+ - +tls-hostname in kdig implies +tls-ca if neither +tls-ca nor +tls-pin is given
+ - New documentation sections for DNSSEC key rollovers and shared keys
+ - Keymgr no longer prints useless algorithm number for generated key
+ - Kdig prints unknown RCODE in a numeric format
+ - Better support for LLVM libFuzzer
+
+Bugfixes:
+---------
+ - Faulty DNAME semantic check if present in the zone apex and NSEC3 is used
+ - Immediate zone flush not scheduled during the zone load event
+ - Server crashes upon dynamic zone addition if a query module is loaded
+ - Kdig fails to connect over TLS due to SNI is set to server IP address
+ - Possible out-of-bounds memory access at the end of the input
+ - TCP Fast Open enabled by default in kdig breaks TLS connection
+
 Knot DNS 2.6.0 (2017-09-29)
 ===========================
 
@@ -27,6 +53,20 @@ Bugfixes:
 ---------
  - Incorrect journal free space computation causing inefficient space handling
  - Interface-automatic broken on Linux in the presence of asymmetric routing
+
+Knot DNS 2.5.6 (2017-11-02)
+===========================
+
+Improvements:
+-------------
+ - Keymgr no longer prints useless algorithm number for generated key
+
+Bugfixes:
+---------
+ - Faulty DNAME semantic check if present in the zone apex and NSEC3 is used
+ - Immediate zone flush not scheduled during the zone load event
+ - Server crashes upon dynamic zone addition if a query module is loaded
+ - Kdig fails to connect over TLS due to SNI is set to server IP address
 
 Knot DNS 2.5.5 (2017-09-29)
 ===========================
