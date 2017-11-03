@@ -535,13 +535,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		reschedule->plan_ds_query = true;
 		if (ret == KNOT_EOK) {
 			reschedule->keys_changed = true;
-		}
-	}
-	if (!ctx->policy->singe_type_signing && ret == KNOT_EOK &&
-	    !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
-		ret = generate_key(ctx, false, true, ctx->now, false);
-		if (ret == KNOT_EOK) {
-			reschedule->keys_changed = true;
+			if (!ctx->policy->singe_type_signing &&
+			    !key_present(ctx, DNSKEY_FLAGS_ZSK)) {
+				ret = generate_key(ctx, false, true, ctx->now, false);
+			}
 		}
 	}
 	// algorithm rollover
