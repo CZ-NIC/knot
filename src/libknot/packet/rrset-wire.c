@@ -689,7 +689,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		return buffer_size;
 	}
 
-	if (buffer_size > MAX_RDLENGTH) {
+	if (buffer_size > KNOT_RDATA_MAXLEN) {
 		/* DNAME compression caused RDATA overflow. */
 		return KNOT_EMALF;
 	}

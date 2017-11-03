@@ -129,14 +129,14 @@ void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_t *mm);
  * \brief Adds the given RDATA to the RRSet.
  *
  * \param rrset  RRSet to add the RDATA to.
- * \param rdata  RDATA to add to the RRSet.
- * \param size   Size of RDATA.
+ * \param data   RDATA to add to the RRSet.
+ * \param len    Length of RDATA.
  * \param mm     Memory context.
  *
  * \return KNOT_E*
  */
-int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
-                         const uint16_t size, knot_mm_t *mm);
+int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *data, uint16_t len,
+                         knot_mm_t *mm);
 
 /* ------------------ Equality / emptines bool checks ----------------------- */
 

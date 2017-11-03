@@ -16,7 +16,7 @@
 /*!
  * \file
  *
- * \brief API for manipulating RRs.
+ * \brief API for manipulating rdata.
  *
  * \addtogroup libknot
  * @{
@@ -24,69 +24,107 @@
 
 #pragma once
 
-#include <stdlib.h>
+#include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
+#include <string.h>
 
-/* ---------------------------- Single RR ----------------------------------- */
-
-/*!< \brief Maximum rdata data size. */
-#define MAX_RDLENGTH 65535
+/*!< \brief Maximum rdata length. */
+#define KNOT_RDATA_MAXLEN 65535
 
 /*!
- * \brief knot_rdata_t Array holding single RR payload, i.e. TTL, RDLENGTH and RDATA.
+ * \brief Structure holding single rdata payload.
  */
-typedef uint8_t knot_rdata_t;
-
-/* ------------------------------- Init ------------------------------------- */
+typedef struct {
+	uint16_t len;
+	uint8_t data[];
+} knot_rdata_t;
 
 /*!
- * \brief Inits knot_rdata_t structure - the structure has to be created using
- *        knot_rdata_array_size.
+ * \brief Inits rdata structure.
+ *
+ * \param buf   Rdata structure to be initialized. At least knot_rdata_size bytes
+ *              must fit into it!
+ * \param len   Rdata length.
+ * \param data  Rdata itself.
  */
-void knot_rdata_init(knot_rdata_t *rdata, uint16_t rdlen, const uint8_t *data);
-
-/* ------------------------- RR getters/setters ----------------------------- */
+inline static void knot_rdata_init(knot_rdata_t *rdata, uint16_t len, const uint8_t *data)
+{
+	assert(rdata);
+	rdata->len = len;
+	memcpy(rdata->data, data, len);
+}
 
 /*!
  * \brief Returns RDATA size of single RR.
+ *
  * \param rr  RR whose size we want.
- * \return  RR size.
+ * \return RR size.
  */
-uint16_t knot_rdata_rdlen(const knot_rdata_t *rr);
+inline static uint16_t knot_rdata_rdlen(const knot_rdata_t *rr)
+{
+	assert(rr);
+	return rr->len;
+}
 
 /*!
  * \brief Sets size for given RR.
- * \param rr    RR whose size we want to set.
- * \param size  Size to be set.
+ *
+ * \param rr   RR whose size we want to set.
+ * \param len  Size to be set.
  */
-void knot_rdata_set_rdlen(knot_rdata_t *rr, uint16_t size);
+inline static void knot_rdata_set_rdlen(knot_rdata_t *rr, uint16_t len)
+{
+	assert(rr);
+	rr->len = len;
+}
 
 /*!
  * \brief Returns pointer to RR data.
+ *
  * \param rr  RR whose data we want.
  * \return RR data pointer.
  */
-uint8_t *knot_rdata_data(const knot_rdata_t *rr);
-
-/* ----------------------------- RR misc ------------------------------------ */
+inline static uint8_t *knot_rdata_data(const knot_rdata_t *rr)
+{
+	assert(rr);
+	return (uint8_t *)rr->data;
+}
 
 /*!
- * \brief Returns actual size of RR structure for given RDATA size.
- * \param size  RDATA size.
+ * \brief Returns actual size of the rdata structure for given rdata length.
+ *
+ * \param len  Rdata length.
+ *
  * \return Actual structure size.
  */
-size_t knot_rdata_array_size(uint16_t size);
+inline static size_t knot_rdata_size(uint16_t len)
+{
+	return sizeof(uint16_t) + len + (len & 1);
+}
 
 /*!
- * \brief Canonical comparison of two RRs. Both RRs *must* exist.
- *        TTLs are *not* compared.
- * \param rr1  First RR to compare.
- * \param rr2  Second RR to compare.
- * \retval 0 if rr1 == rr2.
- * \retval < 0 if rr1 < rr2.
- * \retval > 0 if rr1 > rr2.
+ * \brief Canonical comparison of two rdata structures.
+ *
+ * \param rdata1  First rdata to compare.
+ * \param rdata2  Second rdata to compare.
+ *
+ * \retval = 0 if rdata1 == rdata2.
+ * \retval < 0 if rdata1 <  rdata2.
+ * \retval > 0 if rdata1 >  rdata2.
  */
-int knot_rdata_cmp(const knot_rdata_t *rr1, const knot_rdata_t *rr2);
+inline static int knot_rdata_cmp(const knot_rdata_t *rdata1, const knot_rdata_t *rdata2)
+{
+	assert(rdata1);
+	assert(rdata2);
+
+	size_t common_len = (rdata1->len <= rdata2->len) ? rdata1->len : rdata2->len;
+
+	int cmp = memcmp(rdata1->data, rdata2->data, common_len);
+	if (cmp == 0 && rdata1->len != rdata2->len) {
+		cmp = rdata1->len < rdata2->len ? -1 : 1;
+	}
+	return cmp;
+}
 
 /*! @} */

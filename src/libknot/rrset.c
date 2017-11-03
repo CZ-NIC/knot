@@ -111,17 +111,18 @@ void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_t *mm)
 }
 
 _public_
-int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
-                         const uint16_t size, knot_mm_t *mm)
+int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *data, uint16_t len,
+                         knot_mm_t *mm)
 {
-	if (rrset == NULL || (rdata == NULL && size > 0)) {
+	if (rrset == NULL || (data == NULL && len > 0)) {
 		return KNOT_EINVAL;
 	}
 
-	knot_rdata_t rr[knot_rdata_array_size(size)];
-	knot_rdata_init(rr, size, rdata);
+	uint8_t buf[knot_rdata_size(len)];
+	knot_rdata_t *rdata = (knot_rdata_t *)buf;
+	knot_rdata_init(rdata, len, data);
 
-	return knot_rdataset_add(&rrset->rrs, rr, mm);
+	return knot_rdataset_add(&rrset->rrs, rdata, mm);
 }
 
 _public_

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -102,8 +102,8 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 	}
 	assert(dummy_node);
 
-	// Add RDATA + size + TTL
-	size_t rdlen = knot_rdata_array_size(scanner->r_data_length);
+	// Add RDATA + size
+	size_t rdlen = knot_rdata_size(scanner->r_data_length);
 	est->rdata_size += add_overhead(rdlen);
 	est->record_count++;
 

@@ -37,7 +37,8 @@ int main(int argc, char *argv[])
 	ok(rdataset.data == NULL && rdataset.rr_count == 0, "rdataset: init.");
 
 	// Test rdata addition
-	knot_rdata_t rdata_gt[knot_rdata_array_size(4)];
+	uint8_t buf_gt[knot_rdata_size(4)];
+	knot_rdata_t *rdata_gt = (knot_rdata_t *)buf_gt;
 	knot_rdata_init(rdata_gt, 4, (uint8_t *)"wxyz");
 
 	int ret = knot_rdataset_add(NULL, NULL, NULL);
@@ -47,7 +48,8 @@ int main(int argc, char *argv[])
 	              knot_rdata_cmp(rdata_gt, rdataset.data) == 0;
 	ok(add_ok, "rdataset: add.");
 
-	knot_rdata_t rdata_lo[knot_rdata_array_size(4)];
+	uint8_t buf_lo[knot_rdata_size(4)];
+	knot_rdata_t *rdata_lo = (knot_rdata_t *)buf_lo;
 	knot_rdata_init(rdata_lo, 4, (uint8_t *)"abcd");
 	ret = knot_rdataset_add(&rdataset, rdata_lo, NULL);
 	add_ok = ret == KNOT_EOK && rdataset.rr_count == 2 &&
@@ -59,7 +61,7 @@ int main(int argc, char *argv[])
 	   knot_rdata_cmp(knot_rdataset_at(&rdataset, 1), rdata_gt) == 0,
 	   "rdataset: at.");
 
-	ok(knot_rdataset_size(&rdataset) == knot_rdata_array_size(4) * 2,
+	ok(knot_rdataset_size(&rdataset) == knot_rdata_size(4) * 2,
 	   "rdataset: size.");
 
 	// Test copy
@@ -84,7 +86,8 @@ int main(int argc, char *argv[])
 	ok(!knot_rdataset_eq(&rdataset, &copy), "rdataset: not equal - count");
 
 	// Test member
-	knot_rdata_t not_a_member[knot_rdata_array_size(1)];
+	uint8_t buf_not[knot_rdata_size(1)];
+	knot_rdata_t *not_a_member = (knot_rdata_t *)buf_not;
 	knot_rdata_init(not_a_member, 1, (uint8_t *)"?");
 	ok(knot_rdataset_member(&rdataset, rdata_gt), "rdataset: is member.");
 	ok(!knot_rdataset_member(&rdataset, not_a_member), "rdataset: is not member.");
@@ -188,7 +191,7 @@ int main(int argc, char *argv[])
 	size_t rr_size = knot_rdata_rdlen(rdata_lo);
 	ret = knot_rdataset_reserve(&rdataset, rr_size, NULL);
 	size_t new_rrs_size = knot_rdataset_size(&rdataset);
-	bool reserve_ok = ret == KNOT_EOK && new_rrs_size == (old_rrs_size + knot_rdata_array_size(rr_size));
+	bool reserve_ok = ret == KNOT_EOK && new_rrs_size == (old_rrs_size + knot_rdata_size(rr_size));
 	ok(reserve_ok, "rdataset: reserve normal");
 
 	RDATASET_INIT_WITH(copy, rdata_lo);
