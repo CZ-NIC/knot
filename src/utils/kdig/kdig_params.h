@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -118,16 +118,22 @@ struct query {
 	bool		nsid;
 	/*!< EDNS version (8unsigned + -1 uninitialized). */
 	int16_t		edns;
-	/*!< Transaction signature. */
-	knot_tsig_key_t tsig_key;
-	/*!< EDNS client subnet. */
-	knot_edns_client_subnet_t *subnet;
+	/*!< EDNS client cookie. */
+	knot_edns_cookie_t cc;
+	/*!< ENDS server cookie. */
+	knot_edns_cookie_t sc;
+	/*!< Repeat query after BADCOOKIE. */
+	bool badcookie;
 	/*!< EDNS0 padding (16unsigned + -1 ~ uninitialized, -2 ~ default, -3 ~ none). */
 	int32_t		padding;
 	/*!< Query alignment with EDNS0 padding (0 ~ uninitialized). */
 	uint16_t	alignment;
 	/*!< TLS parameters. */
 	tls_params_t	tls;
+	/*!< Transaction signature. */
+	knot_tsig_key_t tsig_key;
+	/*!< EDNS client subnet. */
+	knot_edns_client_subnet_t *subnet;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;

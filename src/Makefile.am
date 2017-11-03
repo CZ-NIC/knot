@@ -53,8 +53,6 @@ libcontrib_la_SOURCES = 			\
 	contrib/mempattern.h			\
 	contrib/net.c				\
 	contrib/net.h				\
-	contrib/print.c				\
-	contrib/print.h				\
 	contrib/qp-trie/trie.c			\
 	contrib/qp-trie/trie.h			\
 	contrib/sockaddr.c			\

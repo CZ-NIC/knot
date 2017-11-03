@@ -24,7 +24,7 @@
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
-#include "contrib/print.h"
+#include "contrib/ctype.h"
 #include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/ucw/lists.h"
@@ -186,12 +186,35 @@ static void print_footer(const size_t total_len,
 	}
 }
 
-static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
+static void print_hex(const uint8_t *data, uint16_t len)
+{
+	for (int i = 0; i < len; i++) {
+		printf("%02X", data[i]);
+	}
+}
+
+static void print_nsid(const uint8_t *data, uint16_t len)
+{
+	if (len == 0) {
+		return;
+	}
+
+	print_hex(data, len);
+
+	// Check if printable string.
+	for (int i = 0; i < len; i++) {
+		if (!is_print(data[i])) {
+			return;
+		}
+	}
+	printf(" \"%.*s\"", len, data);
+}
+
+static void print_edns_client_subnet(const uint8_t *data, uint16_t len)
 {
 	knot_edns_client_subnet_t ecs = { 0 };
 	int ret = knot_edns_client_subnet_parse(&ecs, data, len);
 	if (ret != KNOT_EOK) {
-		printf("\n");
 		return;
 	}
 
@@ -202,7 +225,7 @@ static void print_edns_client_subnet(const uint8_t *data, const uint16_t len)
 	char addr_str[SOCKADDR_STRLEN] = { 0 };
 	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
 
-	printf("%s/%u/%u\n", addr_str, ecs.source_len, ecs.scope_len);
+	printf("%s/%u/%u", addr_str, ecs.source_len, ecs.scope_len);
 }
 
 static void print_section_opt(const knot_pkt_t *packet)
@@ -246,23 +269,24 @@ static void print_section_opt(const knot_pkt_t *packet)
 		switch (opt_code) {
 		case KNOT_EDNS_OPTION_NSID:
 			printf(";; NSID: ");
-			short_hex_print(opt_data, opt_len);
-			if (opt_len > 0) {
-				printf(";;     :  ");
-				txt_print(opt_data, opt_len);
-			}
+			print_nsid(opt_data, opt_len);
 			break;
 		case KNOT_EDNS_OPTION_CLIENT_SUBNET:
 			printf(";; CLIENT-SUBNET: ");
 			print_edns_client_subnet(opt_data, opt_len);
 			break;
 		case KNOT_EDNS_OPTION_PADDING:
-			printf(";; PADDING: %u B\n", opt_len);
+			printf(";; PADDING: %u B", opt_len);
+			break;
+		case KNOT_EDNS_OPTION_COOKIE:
+			printf(";; COOKIE: ");
+			print_hex(opt_data, opt_len);
 			break;
 		default:
 			printf(";; Option (%u): ", opt_code);
-			short_hex_print(opt_data, opt_len);
+			print_hex(opt_data, opt_len);
 		}
+		printf("\n");
 
 		wire_ctx_skip(&wire, opt_len);
 	}

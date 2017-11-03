@@ -257,6 +257,12 @@ Options
   Set the number (>=0) of UDP retries (default is 2). This doesn't apply to
   AXFR/IXFR.
 
+**+**\ [\ **no**\ ]\ **cookie**\ =\ *HEX*
+   Attach EDNS(0) cookie to the query.
+
+**+**\ [\ **no**\ ]\ **badcookie**
+  Repeat a query with the correct cookie.
+
 **+noidn**
   Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
   on libidn availability during project building!
