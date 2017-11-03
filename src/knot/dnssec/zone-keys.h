@@ -60,12 +60,13 @@ uint16_t dnskey_flags(bool is_ksk);
  * \brief Generate new key, store all details in new kasp key structure.
  *
  * \param ctx           kasp context
- * \param ksk           true = generate KSK, false = generate ZSK
+ * \param ksk           true = generate KSK or CSK, false = generate ZSK
+ * \param zsk           true = generate ZSK or CSK, false = generate KSK
  * \param key_ptr       output if KNOT_EOK: new pointer to generated key
  *
  * \return KNOT_E*
  */
-int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, knot_kasp_key_t **key_ptr);
+int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_kasp_key_t **key_ptr);
 
 /*!
  * \brief Take a key from another zone (copying info, sharing privkey).
@@ -95,17 +96,13 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
 /*!
  * \brief Load zone keys and init cryptographic context.
  *
- * \param zone           KASP zone.
- * \param store          KASP key store.
- * \param nsec3_enabled  Zone uses NSEC3 for authenticated denial.
- * \param now            Current time.
+ * \param ctx            Zone signing context.
  * \param keyset_ptr     Resulting zone keyset.
+ * \param verbose        Print key summary into log.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int load_zone_keys(knot_kasp_zone_t *zone, dnssec_keystore_t *store,
-                   bool nsec3_enabled, knot_time_t now, zone_keyset_t *keyset_ptr,
-                   bool verbose);
+int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose);
 
 /*!
  * \brief Get zone keys by a keytag.

@@ -233,6 +233,7 @@ static int serialize_key_params(const key_params_t *params, const knot_dname_t *
 	uint8_t flags = 0x02;
 	flags |= (params->is_ksk ? 0x01 : 0);
 	flags |= (params->is_pub_only ? 0x04 : 0);
+	flags |= (params->is_csk ? 0x08 : 0);
 	wire_ctx_write_u8(&wire, flags);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.created);
 	wire_ctx_write_u64(&wire, (uint64_t)params->timing.pre_active);
@@ -274,6 +275,10 @@ static int deserialize_key_params(key_params_t *params, const knot_db_val_t *key
 	uint8_t isksk_plus_flags = wire_ctx_read_u8(&wire);
 	params->is_ksk = ((isksk_plus_flags & (uint8_t)0x01) != (uint8_t)0x00);
 	params->is_pub_only = ((isksk_plus_flags & (uint8_t)0x04) != (uint8_t)0x00);
+	params->is_csk = ((isksk_plus_flags & (uint8_t)0x08) != (uint8_t)0x00);
+	if (params->is_csk && !params->is_ksk) {
+		return KNOT_EMALF;
+	}
 	if ((isksk_plus_flags & (uint8_t)0x02) != (uint8_t)0x00) {
 		params->timing.created = (knot_time_t)wire_ctx_read_u64(&wire);
 		params->timing.pre_active = (knot_time_t)wire_ctx_read_u64(&wire);
