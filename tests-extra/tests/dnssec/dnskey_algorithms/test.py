@@ -16,7 +16,7 @@ TEST_CASES = {
     "rsa_now_ecdsa_future": True,
     "rsa_ecdsa_roll":       True,
     "stss_ksk":             True,
-    "stss_zsk":             True,
+#   "stss_zsk":             True, # No longer supported.
     "stss_two_ksk":         True,
     "stss_rsa256_rsa512":   True,
     "rsa_split_ecdsa_stss": True,
@@ -73,8 +73,6 @@ knot.key_gen("rsa_ecdsa_roll",       ksk="true",  created=GEN, publish=PAST, rea
 knot.key_gen("rsa_ecdsa_roll",       ksk="false", created=GEN, publish=FUTU, ready=PAST, active=PAST, retire=INF, remove=INF)
 # STSS: KSK only
 knot.key_gen("stss_ksk",             ksk="true",  created=GEN, publish=PAST, ready=PAST, active=PAST, retire=INF, remove=INF)
-# STSS: ZSK only
-knot.key_gen("stss_zsk",             ksk="false", created=GEN, publish=PAST, ready=PAST, active=PAST, retire=INF, remove=INF)
 # STSS: two KSKs
 knot.key_gen("stss_two_ksk",         ksk="true",  created=GEN, publish=PAST, ready=PAST, active=PAST, retire=INF, remove=INF)
 knot.key_gen("stss_two_ksk",         ksk="true",  created=GEN, publish=PAST, ready=PAST, active=PAST, retire=INF, remove=INF)

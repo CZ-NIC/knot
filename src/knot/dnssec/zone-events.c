@@ -161,8 +161,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	result = load_zone_keys(ctx.zone, ctx.keystore,
-				ctx.policy->nsec3_enabled, ctx.now, &keyset, true);
+	result = load_zone_keys(&ctx, &keyset, true);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to load keys (%s)",
 		               knot_strerror(result));
@@ -247,8 +246,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
-	result = load_zone_keys(ctx.zone, ctx.keystore,
-				ctx.policy->nsec3_enabled, ctx.now, &keyset, false);
+	result = load_zone_keys(&ctx, &keyset, false);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to load keys (%s)",
 		               knot_strerror(result));
