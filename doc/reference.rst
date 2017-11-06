@@ -642,7 +642,7 @@ DNSSEC policy configuration.
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
      ksk-submission: submission_id
-     child-records-publish: none | empty | rollover | always
+     cds-cdnskey-publish: none | delete-dnssec | always
 
 .. _policy_id:
 
