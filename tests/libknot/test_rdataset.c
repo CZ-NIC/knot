@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 	RDATASET_INIT_WITH(rdataset, rdata_gt);
 
 	size_t old_rrs_size = knot_rdataset_size(&rdataset);
-	size_t rr_size = knot_rdata_rdlen(rdata_lo);
+	size_t rr_size = rdata_lo->len;
 	ret = knot_rdataset_reserve(&rdataset, rr_size, NULL);
 	size_t new_rrs_size = knot_rdataset_size(&rdataset);
 	bool reserve_ok = ret == KNOT_EOK && new_rrs_size == (old_rrs_size + knot_rdata_size(rr_size));

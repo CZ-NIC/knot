@@ -67,8 +67,7 @@ void knot_rrsig_signature(const knot_rdataset_t *rrs, size_t pos,
 
 	uint8_t *rdata = knot_rdata_offset(rrs, pos, 0);
 	uint8_t *signer = rdata + 18;
-	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
-	size_t total_size = knot_rdata_rdlen(rr);
+	size_t total_size = knot_rdataset_at(rrs, pos)->len;
 	size_t header_size = 18 + knot_dname_size(signer);
 
 	*signature = rdata + header_size;

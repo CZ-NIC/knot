@@ -202,8 +202,8 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 
 	knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, 0);
 	assert(rdata);
-	uint16_t rdlen = knot_rdata_rdlen(rdata);
-	uint8_t *pos = knot_rdata_data(rdata);
+	uint16_t rdlen = rdata->len;
+	uint8_t *pos = rdata->data;
 	uint8_t *endpos = pos + rdlen;
 
 	/* No RDATA */
@@ -266,7 +266,7 @@ size_t knot_rrset_size(const knot_rrset_t *rrset)
 		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, i);
 		assert(rr);
 		/* 10B = TYPE + CLASS + TTL + RDLENGTH */
-		total_size += knot_rdata_rdlen(rr) + 10;
+		total_size += rr->len + 10;
 	}
 
 	return total_size;

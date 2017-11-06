@@ -489,8 +489,8 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 		.hint = KNOT_COMPR_HINT_RDATA + rrset_index
 	};
 
-	const uint8_t *src = knot_rdata_data(rdata);
-	size_t src_avail = knot_rdata_rdlen(rdata);
+	const uint8_t *src = rdata->data;
+	size_t src_avail = rdata->len;
 	if (src_avail > 0) {
 		/* Only write non-empty data. */
 		const knot_rdata_descriptor_t *desc =
@@ -702,7 +702,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 
 	knot_rdata_t *rr = knot_rdataset_at(rrs, rrs->rr_count - 1);
 	assert(rr);
-	uint8_t *dst = knot_rdata_data(rr);
+	uint8_t *dst = rr->data;
 	size_t dst_avail = buffer_size;
 
 	/* Parse RDATA */

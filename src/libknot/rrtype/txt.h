@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,8 +24,8 @@ size_t knot_txt_count(const knot_rdataset_t *rrs, size_t pos)
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
 
 	const knot_rdata_t *rdata = knot_rdataset_at(rrs, pos);
-	const uint8_t *start = knot_rdata_data(rdata);
-	const uint8_t *end = start + knot_rdata_rdlen(rdata);
+	const uint8_t *start = rdata->data;
+	const uint8_t *end = start + rdata->len;
 
 	size_t count = 0;
 
@@ -42,8 +42,8 @@ const uint8_t *knot_txt_data(const knot_rdataset_t *rrs, size_t pos, size_t inde
 	KNOT_RDATASET_CHECK(rrs, pos, return NULL);
 
 	const knot_rdata_t *rdata = knot_rdataset_at(rrs, pos);
-	const uint8_t *start = knot_rdata_data(rdata);
-	const uint8_t *end = start + knot_rdata_rdlen(rdata);
+	const uint8_t *start = rdata->data;
+	const uint8_t *end = start + rdata->len;
 
 	const uint8_t *data = start;
 

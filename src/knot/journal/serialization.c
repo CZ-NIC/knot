@@ -45,14 +45,14 @@ static int serialize_rrset(wire_ctx_t *wire, const knot_rrset_t *rrset, long *ph
 	for ( ; *phase < rrset->rrs.rr_count; (*phase)++) {
 		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, *phase);
 		assert(rr);
-		uint16_t rdlen = knot_rdata_rdlen(rr);
+		uint16_t rdlen = rr->len;
 		if (wire_ctx_available(wire) < sizeof(uint32_t) + sizeof(uint16_t) + rdlen) {
 			return KNOT_EOK;
 		}
 		// Compatibility, but one TTL per rrset would be enough.
 		wire_ctx_write_u32(wire, rrset->ttl);
 		wire_ctx_write_u16(wire, rdlen);
-		wire_ctx_write(wire, knot_rdata_data(rr), rdlen);
+		wire_ctx_write(wire, rr->data, rdlen);
 	}
 
 	*phase = SERIALIZE_RRSET_DONE;
@@ -171,7 +171,7 @@ static uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 		assert(rr);
 
 		// TTL + RR size + RR.
-		size += sizeof(uint32_t) + sizeof(uint16_t) + knot_rdata_rdlen(rr);
+		size += sizeof(uint32_t) + sizeof(uint16_t) + rr->len;
 	}
 
 	return size;

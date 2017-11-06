@@ -98,8 +98,8 @@ static void check_option(knot_rdata_t *rdata, uint16_t opt_code,
 {
 	assert(rdata != NULL);
 
-	uint8_t *data = knot_rdata_data(rdata);
-	uint16_t data_len = knot_rdata_rdlen(rdata);
+	uint8_t *data = rdata->data;
+	uint16_t data_len = rdata->len;
 
 	/* Check RDLENGTH according to given data length. */
 	bool check = (data_len >= 4 + opt_len);
@@ -320,8 +320,8 @@ static bool check_rdata(const knot_rrset_t *opt_rr, uint16_t len, const uint8_t 
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
 	assert(rdata != NULL);
 
-	const uint8_t *data_ptr = knot_rdata_data(rdata);
-	uint16_t data_len = knot_rdata_rdlen(rdata);
+	const uint8_t *data_ptr = rdata->data;
+	uint16_t data_len = rdata->len;
 
 	if (data_len != len) {
 		return false;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -959,10 +959,10 @@ static int load_nsec3param(zone_contents_t *contents)
 		return KNOT_EINVAL;
 	}
 
-	const knot_rdata_t *rr = knot_rdataset_at(rrs, 0);
+	knot_rdata_t *rr = knot_rdataset_at(rrs, 0);
 	dnssec_binary_t rdata = {
-		.size = knot_rdata_rdlen(rr),
-		.data = knot_rdata_data(rr)
+		.size = rr->len,
+		.data = rr->data,
 	};
 
 	dnssec_nsec3_params_t new_params = { 0 };

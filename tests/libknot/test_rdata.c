@@ -33,16 +33,12 @@ int main(int argc, char *argv[])
 	knot_rdata_t *rdata = (knot_rdata_t *)buf1;
 	uint8_t payload[] = "abcdefghijklmnop";
 	knot_rdata_init(rdata, data_size, payload);
-	const bool set_ok = knot_rdata_rdlen(rdata) == data_size &&
-	                    memcmp(knot_rdata_data(rdata), payload, data_size) == 0;
+	const bool set_ok = rdata->len == data_size &&
+	                    memcmp(rdata->data, payload, data_size) == 0;
 	ok(set_ok, "rdata: init.");
 
-	// Test setters
-	knot_rdata_set_rdlen(rdata, 1);
-	ok(knot_rdata_rdlen(rdata) == 1, "rdata: set RDLEN.");
-
 	// Test compare
-	knot_rdata_set_rdlen(rdata, data_size);
+	rdata->len = data_size;
 	ok(knot_rdata_cmp(rdata, rdata) == 0, "rdata: cmp eq.");
 
 	knot_rdata_t *lower = rdata;
@@ -53,10 +49,10 @@ int main(int argc, char *argv[])
 	ok(knot_rdata_cmp(greater, lower) > 0, "rdata: cmp greater.");
 
 	// Payloads will be the same.
-	memcpy(knot_rdata_data(greater), knot_rdata_data(lower), data_size);
+	memcpy(greater->data, lower->data, data_size);
 	assert(knot_rdata_cmp(lower, greater) == 0);
 
-	knot_rdata_set_rdlen(lower, data_size - 1);
+	lower->len = data_size - 1;
 	ok(knot_rdata_cmp(lower, greater) < 0, "rdata: cmp lower size.");
 	ok(knot_rdata_cmp(greater, lower) > 0, "rdata: cmp greater size.");
 

@@ -248,9 +248,7 @@ static int check_signature(const knot_rdataset_t *rrsigs, size_t pos,
 	}
 
 	const knot_rdata_t *rr_data = knot_rdataset_at(rrsigs, pos);
-	uint8_t *rdata = knot_rdata_data(rr_data);
-
-	if (knot_sign_ctx_add_data(sign_ctx, rdata, covered) != KNOT_EOK) {
+	if (knot_sign_ctx_add_data(sign_ctx, rr_data->data, covered) != KNOT_EOK) {
 		ret = KNOT_ENOMEM;
 		goto fail;
 	}
@@ -362,8 +360,7 @@ static int check_rrsig_rdata(sem_handler_t *handler,
 				dnssec_key_t *key;
 
 				ret = dnssec_key_from_rdata(&key, zone->apex->owner,
-				                            knot_rdata_data(dnskey),
-				                            knot_rdata_rdlen(dnskey));
+				                            dnskey->data, dnskey->len);
 				if (ret != KNOT_EOK) {
 					continue;
 				}
@@ -543,16 +540,14 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 
 		dnssec_key_t *key;
 		int ret = dnssec_key_from_rdata(&key, data->zone->apex->owner,
-		                                knot_rdata_data(dnskey),
-		                                knot_rdata_rdlen(dnskey));
+		                                dnskey->data, dnskey->len);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
 		uint16_t flags = dnssec_key_get_flags(key);
 		dnssec_binary_t cds_calc = { 0 };
-		dnssec_binary_t cds_orig = { .size = knot_rdata_rdlen(cds),
-		                             .data = knot_rdata_data(cds) };
+		dnssec_binary_t cds_orig = { .size = cds->len, .data = cds->data };
 		ret = dnssec_key_create_ds(key, digest_type, &cds_calc);
 		if (ret != KNOT_EOK) {
 			dnssec_key_free(key);
@@ -919,8 +914,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	const knot_rdataset_t *nsec3param = node_rdataset(data->zone->apex,
 	                                                  KNOT_RRTYPE_NSEC3PARAM);
 	knot_rdata_t *rrd = knot_rdataset_at(nsec3param, 0);
-	dnssec_binary_t rdata = { .size = knot_rdata_rdlen(rrd),
-	                          .data = knot_rdata_data(rrd)};
+	dnssec_binary_t rdata = { .size = rrd->len, .data = rrd->data };
 	ret = dnssec_nsec3_params_from_rdata(&params_apex, &rdata);
 	if (ret != DNSSEC_EOK) {
 		ret = knot_error_from_libdnssec(ret);
@@ -1133,8 +1127,7 @@ static void check_dnskey(zone_contents_t *zone, sem_handler_t *handler)
 		knot_rdata_t *dnskey = knot_rdataset_at(dnskeys, i);
 		dnssec_key_t *key;
 		int ret = dnssec_key_from_rdata(&key, zone->apex->owner,
-		                                knot_rdata_data(dnskey),
-		                                knot_rdata_rdlen(dnskey));
+		                                dnskey->data, dnskey->len);
 		if (ret == KNOT_EOK) {
 			dnssec_key_free(key);
 		} else {

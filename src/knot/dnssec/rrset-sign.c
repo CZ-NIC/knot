@@ -342,8 +342,7 @@ int knot_check_signature(const knot_rrset_t *covered,
 
 	// identify fields in the signature being validated
 
-	const knot_rdata_t *rr_data = knot_rdataset_at(&rrsigs->rrs, pos);
-	uint8_t *rdata = knot_rdata_data(rr_data);
+	uint8_t *rdata = knot_rdataset_at(&rrsigs->rrs, pos)->data;
 	if (!rdata) {
 		return KNOT_EINVAL;
 	}

@@ -194,8 +194,8 @@ static bool nsec3param_valid(const knot_rdataset_t *rrs,
 
 	knot_rdata_t *rrd = knot_rdataset_at(rrs, 0);
 	dnssec_binary_t rdata = {
-		.size = knot_rdata_rdlen(rrd),
-		.data = knot_rdata_data(rrd),
+		.size = rrd->len,
+		.data = rrd->data,
 	};
 
 	dnssec_nsec3_params_t parsed = { 0 };

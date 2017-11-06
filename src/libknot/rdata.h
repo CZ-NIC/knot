@@ -56,42 +56,6 @@ inline static void knot_rdata_init(knot_rdata_t *rdata, uint16_t len, const uint
 }
 
 /*!
- * \brief Returns RDATA size of single RR.
- *
- * \param rr  RR whose size we want.
- * \return RR size.
- */
-inline static uint16_t knot_rdata_rdlen(const knot_rdata_t *rr)
-{
-	assert(rr);
-	return rr->len;
-}
-
-/*!
- * \brief Sets size for given RR.
- *
- * \param rr   RR whose size we want to set.
- * \param len  Size to be set.
- */
-inline static void knot_rdata_set_rdlen(knot_rdata_t *rr, uint16_t len)
-{
-	assert(rr);
-	rr->len = len;
-}
-
-/*!
- * \brief Returns pointer to RR data.
- *
- * \param rr  RR whose data we want.
- * \return RR data pointer.
- */
-inline static uint8_t *knot_rdata_data(const knot_rdata_t *rr)
-{
-	assert(rr);
-	return (uint8_t *)rr->data;
-}
-
-/*!
  * \brief Returns actual size of the rdata structure for given rdata length.
  *
  * \param len  Rdata length.

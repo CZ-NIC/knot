@@ -60,12 +60,11 @@ typedef enum tsig_off_t {
 static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 {
 	const knot_rdata_t *rr_data = knot_rdataset_at(&rr->rrs, 0);
-	if (!rr_data || knot_rdata_rdlen(rr_data) == 0) {
+	if (!rr_data || rr_data->len == 0) {
 		return NULL;
 	}
 
-	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rr_data),
-	                                      knot_rdata_rdlen(rr_data));
+	wire_ctx_t wire = wire_ctx_init_const(rr_data->data, rr_data->len);
 
 	/* TSIG RR names should be already sanitized on parse. */
 	int alg_len = knot_dname_size(wire.wire);
@@ -243,8 +242,7 @@ int knot_tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
 _public_
 const knot_dname_t *knot_tsig_rdata_alg_name(const knot_rrset_t *tsig)
 {
-	const knot_rdata_t *rr_data = knot_rdataset_at(&tsig->rrs, 0);
-	return knot_rdata_data(rr_data);
+	return knot_rdataset_at(&tsig->rrs, 0)->data;
 }
 
 _public_
@@ -412,9 +410,8 @@ _public_
 int knot_tsig_rdata_is_ok(const knot_rrset_t *tsig)
 {
 	/*! \todo Check size, needs to check variable-length fields. */
-	const knot_rdata_t *rr_data = knot_rdataset_at(&tsig->rrs, 0);
-	return (tsig
-	        && knot_rdata_data(rr_data) != NULL
+	return (tsig != NULL
+	        && knot_rdataset_at(&tsig->rrs, 0) != NULL
 	        && rdata_seek(tsig, TSIG_OTHER_O, 0) != NULL
 	        && knot_tsig_rdata_alg_name(tsig) != NULL
 	        && knot_tsig_rdata_time_signed(tsig) != 0);

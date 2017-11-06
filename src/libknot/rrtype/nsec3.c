@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,5 +44,5 @@ void knot_nsec3_bitmap(const knot_rdataset_t *rrs, size_t pos,
 
 	*bitmap = knot_rdata_offset(rrs, pos, offset);
 	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
-	*size = knot_rdata_rdlen(rr) - offset;
+	*size = rr->len - offset;
 }

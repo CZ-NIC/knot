@@ -88,7 +88,7 @@ size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
 	assert(rdata != NULL);
 
-	return KNOT_EDNS_MIN_SIZE + knot_rdata_rdlen(rdata);
+	return KNOT_EDNS_MIN_SIZE + rdata->len;
 }
 
 _public_
@@ -226,8 +226,7 @@ static uint8_t *skip_option(wire_ctx_t *wire, uint16_t *code, uint16_t *full_len
  */
 static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 {
-	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
-	                                      knot_rdata_rdlen(rdata));
+	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
 	uint8_t *position = NULL;
 	uint16_t code, full_len;
 
@@ -265,10 +264,8 @@ static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
 	assert(rdata != NULL);
-	wire_ctx_t rd_wire = wire_ctx_init_const(knot_rdata_data(rdata),
-	                                         knot_rdata_rdlen(rdata));
-	wire_ctx_t wr_wire = wire_ctx_init(knot_rdata_data(rdata),
-	                                   knot_rdata_rdlen(rdata));
+	wire_ctx_t rd_wire = wire_ctx_init_const(rdata->data, rdata->len);
+	wire_ctx_t wr_wire = wire_ctx_init(rdata->data, rdata->len);
 
 	uint16_t deleted_len = 0; // Total area length acquired by deleting.
 
@@ -289,7 +286,7 @@ static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 				assert(wr_wire.error == KNOT_EOK);
 			} else {
 				// There isn't enough space for a copy.
-				memmove(knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire),
+				memmove(rdata->data + wire_ctx_offset(&wr_wire),
 				        rd_pos, full_len);
 				wire_ctx_skip(&wr_wire, full_len);
 				assert(wr_wire.error == KNOT_EOK);
@@ -299,7 +296,7 @@ static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 			if (reserve && !wr_pos &&
 			    deleted_len >= (KNOT_EDNS_OPTION_HDRLEN + size)) {
 				// Reserve this freed space.
-				wr_pos = knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire);
+				wr_pos = rdata->data + wire_ctx_offset(&wr_wire);
 				deleted_len -= KNOT_EDNS_OPTION_HDRLEN + size;
 				wire_ctx_skip(&wr_wire, KNOT_EDNS_OPTION_HDRLEN + size);
 			}
@@ -308,8 +305,8 @@ static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	if (deleted_len > 0) {
 		// Adjust data length.
-		assert(knot_rdata_rdlen(rdata) >= deleted_len);
-		knot_rdata_set_rdlen(rdata, knot_rdata_rdlen(rdata) - deleted_len);
+		assert(rdata->len >= deleted_len);
+		rdata->len -= deleted_len;
 	}
 
 	if (reserve && wr_pos) {
@@ -347,8 +344,8 @@ static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
 	// extract old RDATA
 
 	knot_rdata_t *old_rdata = knot_rdataset_at(&opt->rrs, 0);
-	uint8_t *old_data = knot_rdata_data(old_rdata);
-	uint16_t old_data_len = knot_rdata_rdlen(old_rdata);
+	uint8_t *old_data = old_rdata->data;
+	uint16_t old_data_len = old_rdata->len;
 
 	// construct new RDATA
 
@@ -375,7 +372,7 @@ static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
 		return NULL;
 	}
 
-	return knot_rdata_data(knot_rdataset_at(&opt->rrs, 0)) + offset;
+	return knot_rdataset_at(&opt->rrs, 0)->data + offset;
 }
 
 _public_
@@ -490,8 +487,7 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 		return false;
 	}
 
-	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
-	                                      knot_rdata_rdlen(rdata));
+	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
 
 	/* RFC2671 4.4: {uint16_t code, uint16_t len, data} */
 	// read data to the end or error

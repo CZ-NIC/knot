@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,5 +45,5 @@ void knot_ds_digest(const knot_rdataset_t *rrs, size_t pos,
 	KNOT_RDATASET_CHECK(rrs, pos, return);
 	*digest = knot_rdata_offset(rrs, pos, 4);
 	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
-	*digest_size = knot_rdata_rdlen(rr) - 4;
+	*digest_size = rr->len - 4;
 }

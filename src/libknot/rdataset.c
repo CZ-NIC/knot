@@ -33,7 +33,7 @@ static knot_rdata_t *rr_seek(knot_rdata_t *rr, size_t pos)
 
 	uint8_t *raw = (uint8_t *)rr;
 	for (size_t i = 0; i < pos; i++) {
-		raw += knot_rdata_size(knot_rdata_rdlen((knot_rdata_t *)raw));
+		raw += knot_rdata_size(((knot_rdata_t *)raw)->len);
 	}
 
 	return (knot_rdata_t *)raw;
@@ -58,8 +58,9 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 	if (rrs == NULL || pos > rrs->rr_count || rrs->rr_count == UINT16_MAX) {
 		return KNOT_EINVAL;
 	}
-	const uint16_t size = knot_rdata_rdlen(rr);
-	const uint8_t *rdata = knot_rdata_data(rr);
+
+	const uint16_t size = rr->len;
+	const uint8_t *rdata = rr->data;
 
 	size_t total_size = knot_rdataset_size(rrs);
 
@@ -89,7 +90,7 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 
 	// Make space for new data by moving the array
 	uint8_t *dst = (uint8_t *)old_rr + knot_rdata_size(size);
-	size_t len = ((uint8_t *)last_rr + knot_rdata_size(knot_rdata_rdlen(last_rr))) - (uint8_t *)old_rr;
+	size_t len = ((uint8_t *)last_rr + knot_rdata_size(last_rr->len)) - (uint8_t *)old_rr;
 	memmove(dst, old_rr, len);
 
 
@@ -112,11 +113,11 @@ static int remove_rr_at(knot_rdataset_t *rrs, size_t pos, knot_mm_t *mm)
 	assert(last_rr);
 
 	size_t total_size = knot_rdataset_size(rrs);
-	uint16_t old_size = knot_rdata_rdlen(old_rr);
+	uint16_t old_size = old_rr->len;
 
 	// Move RDATA
 	uint8_t *old_threshold = (uint8_t *)old_rr + knot_rdata_size(old_size);
-	uint8_t *last_threshold = (uint8_t *)last_rr + knot_rdata_size(knot_rdata_rdlen(last_rr));
+	uint8_t *last_threshold = (uint8_t *)last_rr + knot_rdata_size(last_rr->len);
 	memmove(old_rr, old_threshold, last_threshold - old_threshold);
 
 	if (rrs->rr_count > 1) {
@@ -229,7 +230,7 @@ int knot_rdataset_gather(knot_rdataset_t *dst, knot_rdata_t **src, uint16_t coun
 
 	size_t size = 0;
 	for (int i = 0; i < count; ++i) {
-		size += knot_rdata_size(knot_rdata_rdlen(src[i]));
+		size += knot_rdata_size(src[i]->len);
 	}
 
 	knot_rdata_t *data = mm_alloc(mm, size);
@@ -242,7 +243,7 @@ int knot_rdataset_gather(knot_rdataset_t *dst, knot_rdata_t **src, uint16_t coun
 	dst->data = data;
 
 	for (int i = 0; i < count; ++i) {
-		size_t len = knot_rdata_size(knot_rdata_rdlen(src[i]));
+		size_t len = knot_rdata_size(src[i]->len);
 		memcpy(data, src[i], len);
 		data += len;
 	}
@@ -271,7 +272,7 @@ int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, knot_mm_t *mm)
 	// We have to initialise the 'size' field in the reserved space.
 	knot_rdata_t *rr = knot_rdataset_at(rrs, rrs->rr_count - 1);
 	assert(rr);
-	knot_rdata_set_rdlen(rr, size);
+	rr->len = size;
 
 	return KNOT_EOK;
 }
@@ -421,8 +422,8 @@ int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, knot_mm_t *mm)
 	assert(earlier_rr);
 
 	// Save the RR to be moved
-	const uint16_t size = knot_rdata_rdlen(rr);
-	const uint8_t *rdata = knot_rdata_data(rr);
+	const uint16_t size = rr->len;
+	const uint8_t *rdata = rr->data;
 
 	uint8_t buf[knot_rdata_size(size)];
 	knot_rdata_t *tmp_rr = (knot_rdata_t *)buf;
@@ -430,11 +431,11 @@ int knot_rdataset_sort_at(knot_rdataset_t *rrs, size_t pos, knot_mm_t *mm)
 
 	// Move the array or just part of it
 	uint8_t *earlier_rr_moved = (uint8_t *)earlier_rr + knot_rdata_size(size);
-	size_t last_rr_size = knot_rdata_size(knot_rdata_rdlen(last_rr));
+	size_t last_rr_size = knot_rdata_size(last_rr->len);
 	memmove(earlier_rr_moved, earlier_rr, (last_rr + last_rr_size) - earlier_rr);
 
 	// Set new RR
-	knot_rdata_init(earlier_rr, size, knot_rdata_data(tmp_rr));
+	knot_rdata_init(earlier_rr, size, tmp_rr->data);
 
 	return KNOT_EOK;
 }
