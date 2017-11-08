@@ -95,32 +95,6 @@ int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *ch);
 int apply_prepare_to_sign(apply_ctx_t *ctx);
 
 /*!
- * \brief Applies changesets to a shallow zone-copy.
- *
- * \param ctx           Apply context.
- * \param old_contents  Zone to be updated.
- * \param chsets        List of changesets to be applied.
- * \param new_contents  Storage for the new zone contents pointer.
- *
- * \return KNOT_E*
- */
-int apply_changesets(apply_ctx_t *ctx, zone_contents_t *old_contents,
-                     list_t *chsets, zone_contents_t **new_contents);
-
-/*!
- * \brief Applies changeset to a shallow zone-copy.
- *
- * \param ctx           Apply context.
- * \param old_contents  Zone to be updated.
- * \param ch            Changeset to be applied.
- * \param new_contents  Storage for the new zone contents pointer.
- *
- * \return KNOT_E*
- */
-int apply_changeset(apply_ctx_t *ctx, zone_contents_t *old_contents,
-                    changeset_t *ch, zone_contents_t **new_contents);
-
-/*!
  * \brief Applies changesets directly to the zone, without copying it.
  *
  * \warning Modified zone is in inconsitent state after error and should be freed.
