@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Zone trie structure and API for manipulating it.
- *
- * \addtogroup zone
- * @{
- */
 
 #pragma once
 
@@ -39,11 +31,13 @@ typedef int (*zone_tree_apply_cb_t)(zone_node_t **node, void *data);
  *
  * \return created zone tree structure.
  */
-zone_tree_t* zone_tree_create(void);
+zone_tree_t *zone_tree_create(void);
 
 /*!
  * \brief Return number of nodes in the zone tree.
+ *
  * \param tree Zone tree.
+ *
  * \return number of nodes in tree.
  */
 size_t zone_tree_count(const zone_tree_t *tree);
@@ -55,7 +49,7 @@ size_t zone_tree_count(const zone_tree_t *tree);
  *
  * \return Nonzero if the zone tree is empty.
  */
-int zone_tree_is_empty(const zone_tree_t *tree);
+bool zone_tree_is_empty(const zone_tree_t *tree);
 
 /*!
  * \brief Inserts the given node into the zone tree.
@@ -74,14 +68,10 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
  *
  * \param tree Zone tree to search in.
  * \param owner Owner of the node to find.
- * \param found Found node or NULL
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ENOMEM
+ * \retval Found node or NULL.
  */
-int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
-                  zone_node_t **found);
+zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner);
 
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
@@ -108,27 +98,12 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
                                 zone_node_t **previous);
 
 /*!
- * \brief Removes node with the given owner from the zone tree and returns it.
- *
- * \param tree Zone tree to remove the node from.
- * \param owner Owner of the node to find.
- * \param removed The removed node.
- *
- * \retval The removed node.
- */
-int zone_tree_remove(zone_tree_t *tree,
-                     const knot_dname_t *owner,
-                     zone_node_t **removed);
-
-/*!
  * \brief Delete a node that has no RRSets and no children.
  *
- * \param tree      The tree to remove from.
- * \param node      The node to remove.
- *
- * \return KNOT_E*.
+ * \param tree  The tree to remove from.
+ * \param node  The node to remove.
  */
-int zone_tree_delete_empty_node(zone_tree_t *tree, zone_node_t *node);
+void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.
@@ -155,5 +130,3 @@ void zone_tree_free(zone_tree_t **tree);
  * \param tree Zone tree to be destroyed.
  */
 void zone_tree_deep_free(zone_tree_t **tree);
-
-/*! @} */

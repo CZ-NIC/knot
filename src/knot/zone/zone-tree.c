@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "libknot/errcode.h"
 #include "contrib/macros.h"
 
-zone_tree_t* zone_tree_create()
+zone_tree_t *zone_tree_create(void)
 {
 	return trie_create(NULL);
 }
@@ -36,47 +36,45 @@ size_t zone_tree_count(const zone_tree_t *tree)
 	return trie_weight(tree);
 }
 
-int zone_tree_is_empty(const zone_tree_t *tree)
+bool zone_tree_is_empty(const zone_tree_t *tree)
 {
 	return zone_tree_count(tree) == 0;
 }
 
 int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 {
-	if (tree == NULL) {
+	if (tree == NULL || node == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	assert(tree && node && node->owner);
+	assert(node->owner);
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, node->owner, NULL);
 
-	*trie_get_ins(tree, (char*)lf+1, *lf) = node;
+	*trie_get_ins(tree, (char *)lf + 1, *lf) = node;
+
 	return KNOT_EOK;
 }
 
-int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
-                  zone_node_t **found)
+zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
 {
 	if (owner == NULL) {
-		return KNOT_EINVAL;
+		return NULL;
 	}
 
 	if (zone_tree_is_empty(tree)) {
-		return KNOT_ENONODE;
+		return NULL;
 	}
 
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, owner, NULL);
 
-	trie_val_t *val = trie_get_try(tree, (char*)lf+1, *lf);
+	trie_val_t *val = trie_get_try(tree, (char *)lf + 1, *lf);
 	if (val == NULL) {
-		*found = NULL;
-	} else {
-		*found = (zone_node_t*)(*val);
+		return NULL;
 	}
 
-	return KNOT_EOK;
+	return *val;
 }
 
 int zone_tree_get_less_or_equal(zone_tree_t *tree,
@@ -96,14 +94,14 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	knot_dname_lf(lf, owner, NULL);
 
 	trie_val_t *fval = NULL;
-	int ret = trie_get_leq(tree, (char*)lf+1, *lf, &fval);
-	if (fval) {
+	int ret = trie_get_leq(tree, (char *)lf + 1, *lf, &fval);
+	if (fval != NULL) {
 		*found = (zone_node_t *)(*fval);
 	}
 
 	int exact_match = 0;
 	if (ret == KNOT_EOK) {
-		if (fval) {
+		if (fval != NULL) {
 			*previous = (*found)->prev;
 		}
 		exact_match = 1;
@@ -126,30 +124,22 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	return exact_match;
 }
 
-int zone_tree_remove(zone_tree_t *tree,
-                     const knot_dname_t *owner,
-                     zone_node_t **removed)
+/*! \brief Removes node with the given owner from the zone tree. */
+static void remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 {
-	if (owner == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(owner);
 
 	if (zone_tree_is_empty(tree)) {
-		return KNOT_ENONODE;
+		return;
 	}
 
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, owner, NULL);
 
-	trie_val_t *rval = trie_get_try(tree, (char*)lf+1, *lf);
-	if (rval == NULL) {
-		return KNOT_ENOENT;
-	} else {
-		*removed = (zone_node_t *)(*rval);
+	trie_val_t *rval = trie_get_try(tree, (char *)lf + 1, *lf);
+	if (rval != NULL) {
+		trie_del(tree, (char *)lf + 1, *lf, NULL);
 	}
-
-	trie_del(tree, (char*)lf+1, *lf, NULL);
-	return KNOT_EOK;
 }
 
 /*! \brief Clears wildcard child if set in parent node. */
@@ -161,34 +151,27 @@ static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
 	}
 }
 
-int zone_tree_delete_empty_node(zone_tree_t *tree, zone_node_t *node)
+void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 {
-	if (!tree || !node) {
-		return KNOT_EINVAL;
+	if (tree == NULL || node == NULL) {
+		return;
 	}
 
 	if (node->rrset_count == 0 && node->children == 0) {
 		zone_node_t *parent_node = node->parent;
-		if (parent_node) {
+		if (parent_node != NULL) {
 			parent_node->children--;
 			fix_wildcard_child(parent_node, node->owner);
 			if (parent_node->parent != NULL) { /* Is not apex */
 				// Recurse using the parent node, do not delete possibly empty parent.
-				int ret = zone_tree_delete_empty_node(tree, parent_node);
-				if (ret != KNOT_EOK) {
-					return ret;
-				}
+				zone_tree_delete_empty(tree, parent_node);
 			}
 		}
 
 		// Delete node
-		zone_node_t *removed_node = NULL;
-		zone_tree_remove(tree, node->owner, &removed_node);
-		UNUSED(removed_node);
+		remove_node(tree, node->owner);
 		node_free(&node, NULL);
 	}
-
-	return KNOT_EOK;
 }
 
 int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data)
@@ -209,6 +192,7 @@ void zone_tree_free(zone_tree_t **tree)
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
+
 	trie_free(*tree);
 	*tree = NULL;
 }
@@ -216,9 +200,11 @@ void zone_tree_free(zone_tree_t **tree)
 static int zone_tree_free_node(zone_node_t **node, void *data)
 {
 	UNUSED(data);
+
 	if (node) {
 		node_free(node, NULL);
 	}
+
 	return KNOT_EOK;
 }
 
@@ -228,6 +214,6 @@ void zone_tree_deep_free(zone_tree_t **tree)
 		return;
 	}
 
-	zone_tree_apply(*tree, zone_tree_free_node, NULL);
+	(void)zone_tree_apply(*tree, zone_tree_free_node, NULL);
 	zone_tree_free(tree);
 }

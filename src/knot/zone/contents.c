@@ -242,13 +242,11 @@ static int adjust_nsec3_pointers(zone_node_t **tnode, void *data)
 	zone_node_t *node = *tnode;
 
 	// Connect to NSEC3 node (only if NSEC3 tree is not empty)
-	zone_node_t *nsec3 = NULL;
 	knot_dname_t *nsec3_name = NULL;
 	int ret = create_nsec3_name(args->zone, node->owner, &nsec3_name);
 	if (ret == KNOT_EOK) {
 		assert(nsec3_name);
-		zone_tree_get(args->zone->nsec3_nodes, nsec3_name, &nsec3);
-		node->nsec3_node = nsec3;
+		node->nsec3_node = zone_tree_get(args->zone->nsec3_nodes, nsec3_name);
 	} else if (ret == KNOT_ENSEC3PAR) {
 		node->nsec3_node = NULL;
 		ret = KNOT_EOK;
@@ -443,17 +441,10 @@ cleanup:
 
 static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *name)
 {
-	if (zone == NULL || name == NULL) {
-		return NULL;
-	}
+	assert(zone);
+	assert(name);
 
-	zone_node_t *n;
-	int ret = zone_tree_get(zone->nodes, name, &n);
-	if (ret != KNOT_EOK) {
-		return NULL;
-	}
-
-	return n;
+	return zone_tree_get(zone->nodes, name);
 }
 
 static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parents)
@@ -563,17 +554,10 @@ static int add_nsec3_node(zone_contents_t *zone, zone_node_t *node)
 static zone_node_t *get_nsec3_node(const zone_contents_t *zone,
                                    const knot_dname_t *name)
 {
-	if (zone == NULL || name == NULL) {
-		return NULL;
-	}
+	assert(zone);
+	assert(name);
 
-	zone_node_t *n;
-	int ret = zone_tree_get(zone->nsec3_nodes, name, &n);
-	if (ret != KNOT_EOK) {
-		return NULL;
-	}
-
-	return n;
+	return zone_tree_get(zone->nsec3_nodes, name);
 }
 
 static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
@@ -643,7 +627,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != z->apex) {
-			zone_tree_delete_empty_node(nsec3 ? z->nsec3_nodes : z->nodes, node);
+			zone_tree_delete_empty(nsec3 ? z->nsec3_nodes : z->nodes, node);
 		}
 	}
 
@@ -786,6 +770,10 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 
 const zone_node_t *zone_contents_find_node(const zone_contents_t *zone, const knot_dname_t *name)
 {
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
 	return get_node(zone, name);
 }
 
@@ -854,6 +842,10 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 const zone_node_t *zone_contents_find_nsec3_node(const zone_contents_t *zone,
                                                  const knot_dname_t *name)
 {
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
 	return get_nsec3_node(zone, name);
 }
 
@@ -1130,10 +1122,12 @@ void zone_contents_deep_free(zone_contents_t **contents)
 
 	if (*contents != NULL) {
 		// Delete NSEC3 tree
-		zone_tree_apply((*contents)->nsec3_nodes, destroy_node_rrsets_from_tree, NULL);
+		(void)zone_tree_apply((*contents)->nsec3_nodes,
+		                      destroy_node_rrsets_from_tree, NULL);
 
 		// Delete normal tree
-		zone_tree_apply((*contents)->nodes, destroy_node_rrsets_from_tree, NULL);
+		(void)zone_tree_apply((*contents)->nodes,
+		                      destroy_node_rrsets_from_tree, NULL);
 	}
 
 	zone_contents_free(contents);

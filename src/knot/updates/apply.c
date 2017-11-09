@@ -353,7 +353,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != contents->apex) {
-			zone_tree_delete_empty_node(tree, node);
+			zone_tree_delete_empty(tree, node);
 		}
 	}
 
@@ -464,7 +464,7 @@ void update_free_zone(zone_contents_t **contents)
 		return;
 	}
 
-	zone_tree_apply((*contents)->nodes, free_additional, NULL);
+	(void)zone_tree_apply((*contents)->nodes, free_additional, NULL);
 	zone_tree_deep_free(&(*contents)->nodes);
 	zone_tree_deep_free(&(*contents)->nsec3_nodes);
 

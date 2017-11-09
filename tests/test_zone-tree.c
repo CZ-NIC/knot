@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,10 +88,9 @@ int main(int argc, char *argv[])
 
 	/* 3. check data test */
 	passed = 1;
-	zone_node_t *node = NULL;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		int r = zone_tree_get(t, NAME[i], &node);
-		if (r != KNOT_EOK || node != NODE + i) {
+		zone_node_t *node = zone_tree_get(t, NAME[i]);
+		if (node == NULL || node != NODE + i) {
 			passed = 0;
 			break;
 		}
@@ -99,7 +98,7 @@ int main(int argc, char *argv[])
 	ok(passed, "ztree: lookup");
 
 	/* 4. ordered lookup */
-	node = NULL;
+	zone_node_t *node = NULL;
 	zone_node_t *prev = NULL;
 	knot_dname_t *tmp_dn = knot_dname_from_str_alloc("z.ac.");
 	zone_tree_get_less_or_equal(t, tmp_dn, &node, &prev);

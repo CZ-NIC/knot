@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -210,12 +210,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 	 * First, we have to search the second tree to see if there's according
 	 * node, if not, the whole node has been removed.
 	 */
-	zone_node_t *node_in_second_tree = NULL;
-	const knot_dname_t *node_owner = node->owner;
-	assert(node_owner);
-
-	zone_tree_get(param->nodes, node_owner, &node_in_second_tree);
-
+	zone_node_t *node_in_second_tree = zone_tree_get(param->nodes, node->owner);
 	if (node_in_second_tree == NULL) {
 		return remove_node(node, param->changeset);
 	}
@@ -301,25 +296,13 @@ static int add_new_nodes(zone_node_t **node_ptr, void *data)
 	* and has to be added to changeset. Differencies on the RRSet level are
 	* already handled.
 	*/
-
-	const knot_dname_t *node_owner = node->owner;
-	/*
-	 * Node should definitely have an owner, otherwise it would not be in
-	 * the tree.
-	 */
-	assert(node_owner);
-
-	zone_node_t *new_node = NULL;
-	zone_tree_get(param->nodes, node_owner, &new_node);
-
-	int ret = KNOT_EOK;
-
-	if (!new_node) {
+	zone_node_t *new_node = zone_tree_get(param->nodes, node->owner);
+	if (new_node == NULL) {
 		assert(node);
-		ret = add_node(node, param->changeset);
+		return add_node(node, param->changeset);
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 static int load_trees(zone_tree_t *nodes1, zone_tree_t *nodes2,
@@ -340,9 +323,7 @@ static int load_trees(zone_tree_t *nodes1, zone_tree_t *nodes2,
 
 	// Some nodes may have been added. Add missing nodes to changeset.
 	param.nodes = nodes1;
-	ret = zone_tree_apply(nodes2, add_new_nodes, &param);
-
-	return ret;
+	return zone_tree_apply(nodes2, add_new_nodes, &param);
 }
 
 int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone2,

@@ -72,12 +72,7 @@ static int mark_nsec3(knot_rrset_t *rrset, zone_tree_t *nsec3_tree)
 	assert(nsec3_tree);
 
 	if (rrset->type == KNOT_RRTYPE_NSEC3) {
-		zone_node_t *node = NULL;
-		int ret = zone_tree_get(nsec3_tree, rrset->owner, &node);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
+		zone_node_t *node = zone_tree_get(nsec3_tree, rrset->owner);
 		if (node != NULL) {
 			node->flags |= NODE_FLAGS_REMOVED_NSEC;
 		}

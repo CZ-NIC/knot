@@ -129,9 +129,8 @@ static int copy_signatures(zone_tree_t *from, zone_tree_t *to)
 
 	for (/* NOP */; !trie_it_finished(it); trie_it_next(it)) {
 		zone_node_t *node_from = (zone_node_t *)*trie_it_val(it);
-		zone_node_t *node_to = NULL;
 
-		zone_tree_get(to, node_from->owner, &node_to);
+		zone_node_t *node_to = zone_tree_get(to, node_from->owner);
 		if (node_to == NULL) {
 			continue;
 		}
