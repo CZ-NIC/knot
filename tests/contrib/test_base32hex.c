@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 	// 2. test vector -> ENC -> DEC
 	strlcpy((char *)in, "f", BUF_LEN);
 	in_len = strlen((char *)in);
-	strlcpy((char *)ref, "CO======", BUF_LEN);
+	strlcpy((char *)ref, "co======", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base32hex_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "2. test vector - ENC output length");
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 	// 3. test vector -> ENC -> DEC
 	strlcpy((char *)in, "fo", BUF_LEN);
 	in_len = strlen((char *)in);
-	strlcpy((char *)ref, "CPNG====", BUF_LEN);
+	strlcpy((char *)ref, "cpng====", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base32hex_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "3. test vector - ENC output length");
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 	// 4. test vector -> ENC -> DEC
 	strlcpy((char *)in, "foo", BUF_LEN);
 	in_len = strlen((char *)in);
-	strlcpy((char *)ref, "CPNMU===", BUF_LEN);
+	strlcpy((char *)ref, "cpnmu===", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base32hex_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "4. test vector - ENC output length");
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 	// 5. test vector -> ENC -> DEC
 	strlcpy((char *)in, "foob", BUF_LEN);
 	in_len = strlen((char *)in);
-	strlcpy((char *)ref, "CPNMUOG=", BUF_LEN);
+	strlcpy((char *)ref, "cpnmuog=", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base32hex_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "5. test vector - ENC output length");
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 	// 6. test vector -> ENC -> DEC
 	strlcpy((char *)in, "fooba", BUF_LEN);
 	in_len = strlen((char *)in);
-	strlcpy((char *)ref, "CPNMUOJ1", BUF_LEN);
+	strlcpy((char *)ref, "cpnmuoj1", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base32hex_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "6. test vector - ENC output length");
@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 	// 7. test vector -> ENC -> DEC
 	strlcpy((char *)in, "foobar", BUF_LEN);
 	in_len = strlen((char *)in);
-	strlcpy((char *)ref, "CPNMUOJ1E8======", BUF_LEN);
+	strlcpy((char *)ref, "cpnmuoj1e8======", BUF_LEN);
 	ref_len = strlen((char *)ref);
 	ret = base32hex_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "7. test vector - ENC output length");

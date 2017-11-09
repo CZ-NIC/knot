@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,9 +19,7 @@
  * \brief Base32hex implementation (RFC 4648).
  *
  * \note Input Base32hex string can contain a-v characters. These characters
- *       are considered as A-V equivalent.
- *
- * \addtogroup contrib
+ *       are considered as A-V equivalent. Lower-case variant is used for encoding!
  * @{
  */
 
@@ -106,5 +104,3 @@ int32_t base32hex_decode(const uint8_t  *in,
 int32_t base32hex_decode_alloc(const uint8_t  *in,
                                const uint32_t in_len,
                                uint8_t        **out);
-
-/*! @} */

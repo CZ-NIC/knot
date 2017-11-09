@@ -26,7 +26,7 @@
 /*! \brief Base32hex padding character. */
 static const uint8_t base32hex_pad = '=';
 /*! \brief Base32hex alphabet. */
-static const uint8_t base32hex_enc[] = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
+static const uint8_t base32hex_enc[] = "0123456789abcdefghijklmnopqrstuv";
 
 /*! \brief Indicates bad Base32hex character. */
 #define KO	255
