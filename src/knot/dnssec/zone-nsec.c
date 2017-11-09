@@ -155,7 +155,7 @@ knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 	write += zone_apex_size;
 	assert(write == result + result_size);
 
-	knot_dname_to_lower(result);
+	// base32hex-label + apex already is in lower-case.
 
 	return result;
 }
