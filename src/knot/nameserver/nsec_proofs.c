@@ -114,8 +114,8 @@ static const zone_node_t *nsec3_encloser(const zone_node_t *closest)
  *
  * \return Next closer name, NULL on error.
  */
-static knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
-                                     const knot_dname_t *name)
+static const knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
+                                           const knot_dname_t *name)
 {
 	int ce_labels = knot_dname_labels(closest_encloser, NULL);
 	int qname_labels = knot_dname_labels(name, NULL);
@@ -128,7 +128,7 @@ static knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
 		name = knot_wire_next_label(name, NULL);
 	}
 
-	return knot_dname_copy(name, NULL);
+	return name;
 }
 
 /*!
@@ -244,16 +244,9 @@ static int put_nsec3_next_closer(const zone_node_t *cpe,
                                  knotd_qdata_t *qdata,
                                  knot_pkt_t *resp)
 {
-	knot_dname_t *next_closer = get_next_closer(cpe->owner, qname);
-	if (!next_closer) {
-		return KNOT_ENOMEM;
-	}
+	const knot_dname_t *next_closer = get_next_closer(cpe->owner, qname);
 
-	int ret = put_covering_nsec3(zone, next_closer, qdata, resp);
-
-	knot_dname_free(&next_closer, NULL);
-
-	return ret;
+	return put_covering_nsec3(zone, next_closer, qdata, resp);
 }
 
 /*!
