@@ -93,24 +93,20 @@ static int destroy_node_rrsets_from_tree(zone_node_t **node, void *data)
 	return KNOT_EOK;
 }
 
-static int create_nsec3_name(const zone_contents_t *zone,
-                             const knot_dname_t *name,
-                             knot_dname_t **nsec3_name)
+static int create_nsec3_name(uint8_t *out, size_t out_size,
+                             const zone_contents_t *zone,
+                             const knot_dname_t *name)
 {
+	assert(out);
 	assert(zone);
-	assert(nsec3_name);
+	assert(name);
 
 	if (!knot_is_nsec3_enabled(zone)) {
 		return KNOT_ENSEC3PAR;
 	}
 
-	*nsec3_name = knot_create_nsec3_owner(name, zone->apex->owner,
-	                                      &zone->nsec3_params);
-	if (*nsec3_name == NULL) {
-		return KNOT_ERROR;
-	}
-
-	return KNOT_EOK;
+	return knot_create_nsec3_owner(out, out_size, name, zone->apex->owner,
+	                               &zone->nsec3_params);
 }
 
 /*! \brief Link pointers to additional nodes for this RRSet. */
@@ -242,17 +238,15 @@ static int adjust_nsec3_pointers(zone_node_t **tnode, void *data)
 	zone_node_t *node = *tnode;
 
 	// Connect to NSEC3 node (only if NSEC3 tree is not empty)
-	knot_dname_t *nsec3_name = NULL;
-	int ret = create_nsec3_name(args->zone, node->owner, &nsec3_name);
+	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
+	int ret = create_nsec3_name(nsec3_name, sizeof(nsec3_name), args->zone,
+	                            node->owner);
 	if (ret == KNOT_EOK) {
-		assert(nsec3_name);
 		node->nsec3_node = zone_tree_get(args->zone->nsec3_nodes, nsec3_name);
 	} else if (ret == KNOT_ENSEC3PAR) {
 		node->nsec3_node = NULL;
 		ret = KNOT_EOK;
 	}
-
-	knot_dname_free(&nsec3_name, NULL);
 
 	return ret;
 }
@@ -864,16 +858,14 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 		return KNOT_ENSEC3CHAIN;
 	}
 
-	knot_dname_t *nsec3_name = NULL;
-	int ret = create_nsec3_name(zone, name, &nsec3_name);
+	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
+	int ret = create_nsec3_name(nsec3_name, sizeof(nsec3_name), zone, name);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	zone_node_t *found = NULL, *prev = NULL;
 	bool match = find_in_tree(zone->nsec3_nodes, nsec3_name, &found, &prev);
-
-	knot_dname_free(&nsec3_name, NULL);
 
 	*nsec3_node = found;
 

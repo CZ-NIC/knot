@@ -35,27 +35,31 @@ bool knot_is_nsec3_enabled(const zone_contents_t *zone);
 /*!
  * \brief Create NSEC3 owner name from hash and zone apex.
  *
+ * \param out        Output buffer.
+ * \param out_size   Size of the output buffer.
  * \param hash       Raw hash.
  * \param hash_size  Size of the hash.
  * \param zone_apex  Zone apex.
  *
- * \return NSEC3 owner name, NULL in case of error.
+ * \return Error code, KNOT_EOK if successful.
  */
-knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
-                                       const knot_dname_t *zone_apex);
+int knot_nsec3_hash_to_dname(uint8_t *out, size_t out_size, const uint8_t *hash,
+                             size_t hash_size, const knot_dname_t *zone_apex);
 
 /*!
  * \brief Create NSEC3 owner name from regular owner name.
  *
+ * \param out        Output buffer.
+ * \param out_size   Size of the output buffer.
  * \param owner      Node owner name.
  * \param zone_apex  Zone apex name.
  * \param params     Params for NSEC3 hashing function.
  *
- * \return NSEC3 owner name, NULL in case of error.
+ * \return Error code, KNOT_EOK if successful.
  */
-knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
-                                      const knot_dname_t *zone_apex,
-                                      const dnssec_nsec3_params_t *params);
+int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
+                            const knot_dname_t *owner, const knot_dname_t *zone_apex,
+                            const dnssec_nsec3_params_t *params);
 
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.

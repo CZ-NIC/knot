@@ -241,7 +241,7 @@ static int nsec3_fill_rdata(uint8_t *rdata, size_t rdata_len,
  * \return Pointer to created RRSet on success, NULL on errors.
  */
 static int create_nsec3_rrset(knot_rrset_t *rrset,
-                              knot_dname_t *owner,
+                              const knot_dname_t *owner,
                               const dnssec_nsec3_params_t *params,
                               const dnssec_nsec_bitmap_t *rr_types,
                               const uint8_t *next_hashed,
@@ -252,7 +252,11 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 	assert(params);
 	assert(rr_types);
 
-	knot_rrset_init(rrset, owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN);
+	knot_dname_t *owner_copy = knot_dname_copy(owner, NULL);
+	if (owner_copy == NULL) {
+		return KNOT_ENOMEM;
+	}
+	knot_rrset_init(rrset, owner_copy, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN);
 
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
 	uint8_t rdata[rdata_size];
@@ -260,16 +264,23 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 	int ret = nsec3_fill_rdata(rdata, rdata_size, params, rr_types,
 	                           next_hashed);
 	if (ret != KNOT_EOK) {
+		knot_dname_free(&owner_copy, NULL);
 		return ret;
 	}
 
-	return knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL);
+	ret = knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL);
+	if (ret != KNOT_EOK) {
+		knot_dname_free(&owner_copy, NULL);
+		return ret;
+	}
+
+	return KNOT_EOK;
 }
 
 /*!
  * \brief Create NSEC3 node.
  */
-static zone_node_t *create_nsec3_node(knot_dname_t *owner,
+static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
                                       const dnssec_nsec3_params_t *nsec3_params,
                                       zone_node_t *apex_node,
                                       const dnssec_nsec_bitmap_t *rr_types,
@@ -325,9 +336,10 @@ static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
 	assert(apex);
 	assert(params);
 
-	knot_dname_t *nsec3_owner;
-	nsec3_owner = knot_create_nsec3_owner(node->owner, apex->owner, params);
-	if (!nsec3_owner) {
+	uint8_t nsec3_owner[KNOT_DNAME_MAXLEN];
+	int ret = knot_create_nsec3_owner(nsec3_owner, sizeof(nsec3_owner),
+	                                  node->owner, apex->owner, params);
+	if (ret != KNOT_EOK) {
 		return NULL;
 	}
 
@@ -344,8 +356,8 @@ static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC3PARAM);
 	}
 
-	zone_node_t *nsec3_node;
-	nsec3_node = create_nsec3_node(nsec3_owner, params, apex, rr_types, ttl);
+	zone_node_t *nsec3_node = create_nsec3_node(nsec3_owner, params, apex,
+	                                            rr_types, ttl);
 	dnssec_nsec_bitmap_free(rr_types);
 
 	return nsec3_node;
@@ -562,8 +574,12 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		return KNOT_ENORECORD;
 	}
 
-	int ret = KNOT_EOK;
-	knot_dname_t *for_node_hashed = knot_create_nsec3_owner(for_node, update->new_cont->apex->owner, params);
+	uint8_t for_node_hashed[KNOT_DNAME_MAXLEN];
+	int ret = knot_create_nsec3_owner(for_node_hashed, sizeof(for_node_hashed),
+	                                  for_node, update->new_cont->apex->owner, params);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	// saved hash of next node
 	uint8_t *next_hash = NULL;
@@ -592,7 +608,6 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 			knot_nsec3_next_hashed(&rem_nsec3.rrs, 0, &next_hash, &next_length);
 		}
 	}
-	free(for_node_hashed);
 
 	// add NSEC3 with correct bitmap
 	if (add_nsec3 && ret == KNOT_EOK) {

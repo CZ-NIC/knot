@@ -968,17 +968,16 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	uint8_t *next_dname_str = NULL;
 	uint8_t next_dname_str_size = 0;
 	knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str, &next_dname_str_size);
-	knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
-	                                                    next_dname_str_size,
-	                                                    apex->owner);
-	if (next_dname == NULL) {
-		ret = KNOT_ENOMEM;
+	uint8_t next_dname[KNOT_DNAME_MAXLEN];
+	ret = knot_nsec3_hash_to_dname(next_dname, sizeof(next_dname),
+	                               next_dname_str, next_dname_str_size,
+	                               apex->owner);
+	if (ret != KNOT_EOK) {
 		goto nsec3_cleanup;
 	}
 
 	const zone_node_t *next_nsec3 = zone_contents_find_nsec3_node(data->zone,
 	                                                              next_dname);
-	knot_dname_free(&next_dname, NULL);
 	if (next_nsec3 == NULL || next_nsec3->prev != node->nsec3_node) {
 		uint8_t *next = NULL;
 		int32_t next_len = base32hex_encode_alloc(next_dname_str,

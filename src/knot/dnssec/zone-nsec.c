@@ -119,58 +119,42 @@ bool knot_is_nsec3_enabled(const zone_contents_t *zone)
 	return zone->nsec3_params.algorithm != 0;
 }
 
-knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
-                                       const knot_dname_t *zone_apex)
+int knot_nsec3_hash_to_dname(uint8_t *out, size_t out_size, const uint8_t *hash,
+                             size_t hash_size, const knot_dname_t *zone_apex)
+
 {
-	if (hash == NULL || zone_apex == NULL) {
-		return NULL;
+	if (out == NULL || hash == NULL || zone_apex == NULL) {
+		return KNOT_EINVAL;
 	}
 
-	// encode raw hash to first label
-
+	// Encode raw hash to the first label.
 	uint8_t label[KNOT_DNAME_MAXLEN];
-	int32_t label_size;
-	label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
+	int32_t label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
 	if (label_size <= 0) {
-		return NULL;
+		return label_size;
 	}
 
-	// allocate result
+	// Write the result, which already is in lower-case.
+	wire_ctx_t wire = wire_ctx_init(out, out_size);
 
-	size_t zone_apex_size = knot_dname_size(zone_apex);
-	size_t result_size = 1 + label_size + zone_apex_size;
-	knot_dname_t *result = malloc(result_size);
-	if (result == NULL) {
-		return NULL;
-	}
+	wire_ctx_write_u8(&wire, label_size);
+	wire_ctx_write(&wire, label, label_size);
+	wire_ctx_write(&wire, zone_apex, knot_dname_size(zone_apex));
 
-	// build the result
-
-	uint8_t *write = result;
-	*write = (uint8_t)label_size;
-	write += 1;
-	memcpy(write, label, label_size);
-	write += label_size;
-	memcpy(write, zone_apex, zone_apex_size);
-	write += zone_apex_size;
-	assert(write == result + result_size);
-
-	// base32hex-label + apex already is in lower-case.
-
-	return result;
+	return wire.error;
 }
 
-knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
-                                      const knot_dname_t *zone_apex,
-                                      const dnssec_nsec3_params_t *params)
+int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
+                            const knot_dname_t *owner, const knot_dname_t *zone_apex,
+                            const dnssec_nsec3_params_t *params)
 {
-	if (owner == NULL || zone_apex == NULL || params == NULL) {
-		return NULL;
+	if (out == NULL || owner == NULL || zone_apex == NULL || params == NULL) {
+		return KNOT_EINVAL;
 	}
 
 	int owner_size = knot_dname_size(owner);
 	if (owner_size < 0) {
-		return NULL;
+		return KNOT_EINVAL;
 	}
 
 	dnssec_binary_t data = {
@@ -182,14 +166,14 @@ knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
 
 	int ret = dnssec_nsec3_hash(&data, params, &hash);
 	if (ret != DNSSEC_EOK) {
-		return NULL;
+		return knot_error_from_libdnssec(ret);
 	}
 
-	knot_dname_t *result = knot_nsec3_hash_to_dname(hash.data, hash.size, zone_apex);
+	ret = knot_nsec3_hash_to_dname(out, out_size, hash.data, hash.size, zone_apex);
 
 	dnssec_binary_free(&hash);
 
-	return result;
+	return ret;
 }
 
 static bool nsec3param_valid(const knot_rdataset_t *rrs,
