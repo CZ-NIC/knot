@@ -661,7 +661,7 @@ ZSK key lifetime is also infuenced by propagation\-delay and dnskey\-ttl
 .sp
 A period between KSK publication and the next rollover initiation.
 .sp
-\fIDefault:\fP infinity
+\fIDefault:\fP 0
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -669,7 +669,7 @@ A period between KSK publication and the next rollover initiation.
 KSK key lifetime is also infuenced by propagation\-delay, dnskey\-ttl,
 and KSK submission delay.
 .sp
-The default infinite value causes no KSK rollover as a result.
+Zero (aka infinity) value causes no KSK rollover as a result.
 .sp
 This applies for CSK lifetime if single\-type\-signing is enabled.
 .UNINDENT
