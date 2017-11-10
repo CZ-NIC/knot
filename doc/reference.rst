@@ -753,13 +753,13 @@ ksk-lifetime
 
 A period between KSK publication and the next rollover initiation.
 
-*Default:* infinity
+*Default:* 0
 
 .. NOTE::
    KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
    and KSK submission delay.
 
-   The default infinite value causes no KSK rollover as a result.
+   Zero (aka infinity) value causes no KSK rollover as a result.
 
    This applies for CSK lifetime if single-type-signing is enabled.
 
