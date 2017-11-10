@@ -498,8 +498,9 @@ static int exec_ksk_retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *k = &ctx->zone->keys[i];
+		int magic = (k->is_ksk && k->is_zsk ? 2 : 3); // :(
 		if (k->is_zsk && get_key_state(k, ctx->now) == DNSSEC_KEY_STATE_RETIRE_ACTIVE &&
-		    algorithm_present(ctx, dnssec_key_get_algorithm(k->key)) < 3) {
+		    algorithm_present(ctx, dnssec_key_get_algorithm(k->key)) < magic) {
 			alg_rollover = true;
 			alg_rollover_friend = k;
 		}
