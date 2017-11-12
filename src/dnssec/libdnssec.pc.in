@@ -7,6 +7,6 @@ Name: libdnssec
 Description: Knot DNS DNSSEC library
 URL: https://www.knot-dns.cz
 Version: @PACKAGE_VERSION@
-Requires.private: gnutls >= 3.0, jansson
+Requires.private: gnutls >= 3.3
 Libs: -L${libdir} -ldnssec
 Cflags: -I${includedir}
