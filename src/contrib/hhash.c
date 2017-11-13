@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -218,37 +218,35 @@ static void hhash_free_buckets(hhash_t *tbl)
 	for (unsigned i = 0; i < tbl->size; ++i) {
 		mm_free(tbl->mm, tbl->item[i].d);
 	}
-	
+
 	hhash_invalidate_index(tbl);
 }
 
 hhash_t *hhash_create(uint32_t size)
 {
-
 	knot_mm_t mm;
 	mm_ctx_init(&mm);
 	return hhash_create_mm(size, &mm);
 }
 
-hhash_t *hhash_create_mm(uint32_t size, const knot_mm_t *mm)
+hhash_t *hhash_create_mm(uint32_t size, knot_mm_t *mm)
 {
 	if (size == 0) {
 		return NULL;
 	}
 
 	const size_t total_len = sizeof(hhash_t) + size * sizeof(hhelem_t);
-	hhash_t *tbl = mm_alloc((knot_mm_t *)mm, total_len);
+	hhash_t *tbl = mm_calloc(mm, total_len, sizeof(uint8_t));
 	if (tbl == NULL) {
 		return NULL;
 	}
-	memset(tbl, 0, total_len);
 
-	knot_mm_t *mm_copy = mm_alloc((knot_mm_t *)mm, sizeof(knot_mm_t));
+	knot_mm_t *mm_copy = mm_alloc(mm, sizeof(*mm_copy));
 	if (mm_copy == NULL) {
-		mm_free((knot_mm_t *)mm, tbl);
+		mm_free(mm, tbl);
 		return NULL;
 	}
-	memcpy(mm_copy, mm, sizeof(knot_mm_t));
+	memcpy(mm_copy, mm, sizeof(*mm_copy));
 
 	tbl->size = size;
 	tbl->mm = mm_copy;
