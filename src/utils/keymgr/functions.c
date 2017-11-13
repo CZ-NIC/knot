@@ -154,7 +154,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 	}
 
 	knot_kasp_key_t *key = NULL;
-	int ret = kdnssec_generate_key(ctx, isksk, &key);
+	int ret = kdnssec_generate_key(ctx, isksk, !isksk, &key);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -315,6 +315,8 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 	kkey->key = key;
 	kkey->timing = timing;
 	kkey->is_pub_only = pub_only;
+	kkey->is_ksk = (dnssec_key_get_flags(kkey->key) == DNSKEY_FLAGS_KSK);
+	kkey->is_zsk = !kkey->is_ksk;
 
 	// append to zone
 	ret = kasp_zone_append(ctx->zone, kkey);

@@ -219,7 +219,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 	}
 
 	zone_keyset_t keyset = { 0 };
-	ret = load_zone_keys(ctx.zone, ctx.keystore, false, ctx.now, &keyset, false);
+	ret = load_zone_keys(&ctx, &keyset, false);
 	if (ret != KNOT_EOK) {
 		kdnssec_ctx_deinit(&ctx);
 		return ret;
