@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,9 +15,9 @@
 */
 
 #include <stdio.h>
-#if HAVE_LMDB
+#include <stdlib.h>
+#include <string.h>
 #include <lmdb.h>
-#endif
 
 #include "dnssec/lib/dnssec/error.h"
 #include "libknot/attribute.h"
@@ -173,18 +173,6 @@ static const char *lookup_message(int code)
 	return NULL;
 }
 
-/*!
- * \brief Get a fallback error message for unknown error code.
- */
-static const char *fallback_message(int code)
-{
-	static __thread char buffer[128];
-	if (snprintf(buffer, sizeof(buffer), "unknown error %d", code) < 0) {
-		buffer[0] = '\0';
-	}
-	return buffer;
-}
-
 _public_
 int knot_error_from_libdnssec(int libdnssec_errcode)
 {
@@ -214,7 +202,7 @@ const char *knot_strerror(int code)
 {
 	if (KNOT_ERROR_MIN <= code && code <= 0) {
 		const char *msg = lookup_message(code);
-		if (msg) {
+		if (msg != NULL) {
 			return msg;
 		}
 	}
@@ -223,11 +211,9 @@ const char *knot_strerror(int code)
 		return dnssec_strerror(code);
 	}
 
-#if HAVE_LMDB
 	if (MDB_KEYEXIST <= code && code <= MDB_LAST_ERRCODE) {
 		return mdb_strerror(code);
 	}
-#endif
 
-	return fallback_message(code);
+	return strerror(abs(code));
 }
