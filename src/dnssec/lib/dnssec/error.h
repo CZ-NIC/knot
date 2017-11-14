@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -104,7 +104,7 @@ enum dnssec_error {
  *
  * \param error  Error code.
  *
- * \return Statically allocated error message string.
+ * \return Statically allocated error message string or NULL if unknown.
  */
 const char *dnssec_strerror(int error);
 

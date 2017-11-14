@@ -529,7 +529,7 @@ int online_sign_load(knotd_mod_t *mod)
 	int r = online_sign_ctx_new(&ctx, mod);
 	if (r != KNOT_EOK) {
 		knotd_mod_log(mod, LOG_ERR, "failed to initialize signing key (%s)",
-		              dnssec_strerror(r));
+		              knot_strerror(r));
 		return KNOT_ERROR;
 	}
 

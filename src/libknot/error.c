@@ -200,20 +200,22 @@ int knot_error_from_libdnssec(int libdnssec_errcode)
 _public_
 const char *knot_strerror(int code)
 {
-	if (KNOT_ERROR_MIN <= code && code <= 0) {
-		const char *msg = lookup_message(code);
-		if (msg != NULL) {
-			return msg;
-		}
+	const char *msg;
+
+	switch (code) {
+	case KNOT_ERROR_MIN ... KNOT_EOK:
+		msg = lookup_message(code); break;
+	case DNSSEC_ERROR_MIN ... DNSSEC_ERROR_MAX:
+		msg = dnssec_strerror(code); break;
+	case MDB_KEYEXIST ... MDB_LAST_ERRCODE:
+		msg = mdb_strerror(code); break;
+	default:
+		msg = NULL;
 	}
 
-	if (DNSSEC_ERROR_MIN <= code && code <= DNSSEC_ERROR_MAX) {
-		return dnssec_strerror(code);
+	if (msg != NULL) {
+		return msg;
+	} else {
+		return strerror(abs(code));
 	}
-
-	if (MDB_KEYEXIST <= code && code <= MDB_LAST_ERRCODE) {
-		return mdb_strerror(code);
-	}
-
-	return strerror(abs(code));
 }
