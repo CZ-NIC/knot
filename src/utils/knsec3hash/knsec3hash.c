@@ -85,7 +85,7 @@ static bool parse_nsec3_params(dnssec_nsec3_params_t *params, const char *salt_s
 	dnssec_binary_t salt = { 0 };
 	r = str_to_salt(salt_str, &salt);
 	if (r != DNSSEC_EOK) {
-		error("Invalid salt, %s.", dnssec_strerror(r));
+		error("Invalid salt, %s.", knot_strerror(r));
 		return false;
 	}
 
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 
 	int r = dnssec_nsec3_hash(&dname, &nsec3_params, &digest);
 	if (r != DNSSEC_EOK) {
-		error("Cannot compute NSEC3 hash, %s.", dnssec_strerror(r));
+		error("Cannot compute NSEC3 hash, %s.", knot_strerror(r));
 		goto fail;
 	}
 
