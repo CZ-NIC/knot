@@ -29,13 +29,14 @@
 #include "contrib/mempattern.h"
 
 #ifdef HAVE_ATOMIC
- #define ATOMIC_ADD(dst, val) __atomic_add_fetch(dst, val, __ATOMIC_RELAXED);
- #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(dst, val, __ATOMIC_RELAXED);
- #define ATOMIC_SET(dst, val) __atomic_store_n(dst, val, __ATOMIC_RELAXED);
+ #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
 #else
- #define ATOMIC_ADD(dst, val) __sync_fetch_and_add(dst, val);
- #define ATOMIC_SUB(dst, val) __sync_fetch_and_sub(dst, val);
- #define ATOMIC_SET(dst, val) // TODO: No __sync_* variant.
+ #warning "Statistics data can be inaccurate if configured with multiple udp/tcp workers"
+ #define ATOMIC_ADD(dst, val) ((dst) += (val))
+ #define ATOMIC_SUB(dst, val) ((dst) -= (val))
+ #define ATOMIC_SET(dst, val) ((dst) = (val))
 #endif
 
 _public_
@@ -289,10 +290,10 @@ void knotd_mod_stats_free(knotd_mod_t *mod)
 	mod_ctr_t *ctr = mod->stats + ctr_id; \
 	if (ctr->count == 1) { \
 		assert(idx == 0); \
-		OPERATION(&ctr->counter, val); \
+		OPERATION(ctr->counter, val); \
 	} else { \
 		assert(idx < ctr->count); \
-		OPERATION(&ctr->counters[idx], val); \
+		OPERATION(ctr->counters[idx], val); \
 	} \
 }
 

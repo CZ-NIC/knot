@@ -1037,7 +1037,8 @@ static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *dat
 	char value[32];
 
 	if (ctr->count == 1) {
-		int ret = snprintf(value, sizeof(value), "%"PRIu64, ctr->counter);
+		int ret = snprintf(value, sizeof(value), "%"PRIu64,
+		                   ATOMIC_GET(ctr->counter));
 		if (ret <= 0 || ret >= sizeof(value)) {
 			return KNOT_ESPACE;
 		}
@@ -1054,8 +1055,10 @@ static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *dat
 		                          CTL_FLAG_FORCE);
 
 		for (uint32_t i = 0; i < ctr->count; i++) {
+			uint64_t counter = ATOMIC_GET(ctr->counters[i]);
+
 			// Skip empty counters.
-			if (ctr->counters[i] == 0 && !force) {
+			if (counter == 0 && !force) {
 				continue;
 			}
 
@@ -1074,8 +1077,7 @@ static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *dat
 				return KNOT_ESPACE;
 			}
 
-			ret = snprintf(value, sizeof(value), "%"PRIu64,
-			               ctr->counters[i]);
+			ret = snprintf(value, sizeof(value), "%"PRIu64, counter);
 			if (ret <= 0 || ret >= sizeof(value)) {
 				return KNOT_ESPACE;
 			}
