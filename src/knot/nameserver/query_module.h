@@ -21,6 +21,12 @@
 #include "knot/include/module.h"
 #include "contrib/ucw/lists.h"
 
+#ifdef HAVE_ATOMIC
+ #define ATOMIC_GET(src) __atomic_load_n(&(src), __ATOMIC_RELAXED)
+#else
+ #define ATOMIC_GET(src) (src)
+#endif
+
 #define KNOTD_STAGES (KNOTD_STAGE_END + 1)
 
 typedef unsigned (*query_step_process_f)

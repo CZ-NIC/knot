@@ -59,19 +59,21 @@ const stats_item_t server_stats[] = {
 static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr)
 {
 	for (uint32_t j = 0; j < ctr->count; j++) {
+		uint64_t counter = ATOMIC_GET(ctr->counters[j]);
+
 		// Skip empty counters.
-		if (ctr->counters[j] == 0) {
+		if (counter == 0) {
 			continue;
 		}
 
 		if (ctr->idx_to_str != NULL) {
 			char *str = ctr->idx_to_str(j, ctr->count);
 			if (str != NULL) {
-				DUMP_CTR(fd, level, "%s", str, ctr->counters[j]);
+				DUMP_CTR(fd, level, "%s", str, counter);
 				free(str);
 			}
 		} else {
-			DUMP_CTR(fd, level, "%u", j, ctr->counters[j]);
+			DUMP_CTR(fd, level, "%u", j, counter);
 		}
 	}
 }
@@ -114,7 +116,8 @@ static void dump_modules(dump_ctx_t *ctx)
 			}
 			if (ctr->count == 1) {
 				// Simple counter.
-				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name, ctr->counter);
+				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name,
+				         ATOMIC_GET(ctr->counter));
 			} else {
 				// Array of counters.
 				DUMP_STR(ctx->fd, level + 1, "%s", ctr->name, "");
