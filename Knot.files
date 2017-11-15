@@ -44,6 +44,8 @@ src/contrib/murmurhash3/murmurhash3.c
 src/contrib/murmurhash3/murmurhash3.h
 src/contrib/net.c
 src/contrib/net.h
+src/contrib/openbsd/siphash.c
+src/contrib/openbsd/siphash.h
 src/contrib/openbsd/strlcat.c
 src/contrib/openbsd/strlcat.h
 src/contrib/openbsd/strlcpy.c

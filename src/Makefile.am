@@ -26,6 +26,7 @@ AM_CPPFLAGS = \
 
 EXTRA_DIST =					\
 	contrib/licenses/0BSD			\
+	contrib/licenses/BSD-3-Clause		\
 	contrib/licenses/LGPL-2.0		\
 	contrib/licenses/MIT			\
 	contrib/licenses/OLDAP-2.8		\
@@ -76,6 +77,8 @@ libcontrib_la_SOURCES = 			\
 	contrib/wire_ctx.h			\
 	contrib/murmurhash3/murmurhash3.c	\
 	contrib/murmurhash3/murmurhash3.h	\
+	contrib/openbsd/siphash.c		\
+	contrib/openbsd/siphash.h		\
 	contrib/openbsd/strlcat.c		\
 	contrib/openbsd/strlcat.h		\
 	contrib/openbsd/strlcpy.c		\
