@@ -13,18 +13,18 @@ t.link(zones, knot)
 t.start()
 
 # one KSK
-knot.gen_key(zones[0], ksk=True, alg="RSASHA256", key_len="512")
+knot.gen_key(zones[0], ksk=True, alg="ECDSAP256SHA256", key_len="256")
 
 # one ZSK no longer supported
 
 # multiple KSKs
-knot.gen_key(zones[1], ksk=True, alg="RSASHA512", key_len="1024")
-knot.gen_key(zones[1], ksk=True, alg="RSASHA256", key_len="512")
+knot.gen_key(zones[1], ksk=True, alg="ECDSAP384SHA384", key_len="384")
+knot.gen_key(zones[1], ksk=True, alg="ECDSAP256SHA256", key_len="256")
 
 # different algorithms: KSK+ZSK pair, one KSK
-knot.gen_key(zones[2], ksk=True, alg="RSASHA256", key_len="1024")
-knot.gen_key(zones[2], ksk=False, alg="RSASHA256", key_len="1024")
-knot.gen_key(zones[2], ksk=True, alg="RSASHA512", key_len="1024")
+knot.gen_key(zones[2], ksk=True, alg="ECDSAP256SHA256", key_len="256")
+knot.gen_key(zones[2], ksk=False, alg="ECDSAP256SHA256", key_len="256")
+knot.gen_key(zones[2], ksk=True, alg="ECDSAP384SHA384", key_len="384")
 
 for zone in zones[:-1]:
     knot.dnssec(zone).enable = True

@@ -33,12 +33,6 @@ struct limits {
 static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 {
 	static const struct limits RSA = {
-		.min = 512,
-		.max = 4096,
-		.def = 2048,
-	};
-
-	static const struct limits RSA_SHA512 = {
 		.min = 1024,
 		.max = 4096,
 		.def = 2048,
@@ -72,9 +66,8 @@ static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
-		return &RSA;
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
-		return &RSA_SHA512;
+		return &RSA;
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 		return &EC256;
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:

@@ -38,7 +38,7 @@ static void null_range(void)
 	r = dnssec_algorithm_key_size_range(algo, NULL, NULL);
 	ok(r == DNSSEC_EINVAL, "dnssec_algorithm_key_size_range() all null");
 	r = dnssec_algorithm_key_size_range(algo, &val, NULL);
-	ok(r == DNSSEC_EOK && val == 512, "dnssec_algorithm_key_size_range() min only");
+	ok(r == DNSSEC_EOK && val == 1024, "dnssec_algorithm_key_size_range() min only");
 	r = dnssec_algorithm_key_size_range(algo, NULL, &val);
 	ok(r == DNSSEC_EOK && val == 4096, "dnssec_algorithm_key_size_range() max only");
 }
@@ -47,9 +47,9 @@ static void check_borders(void)
 {
 	dnssec_key_algorithm_t rsa = DNSSEC_KEY_ALGORITHM_RSA_SHA1;
 
-	ok(dnssec_algorithm_key_size_check(rsa, 511)  == false, "rsa 511");
-	ok(dnssec_algorithm_key_size_check(rsa, 512)  == true,  "rsa 512");
-	ok(dnssec_algorithm_key_size_check(rsa, 513)  == true,  "rsa 513");
+	ok(dnssec_algorithm_key_size_check(rsa, 1023) == false, "rsa 1023");
+	ok(dnssec_algorithm_key_size_check(rsa, 1024) == true,  "rsa 1024");
+	ok(dnssec_algorithm_key_size_check(rsa, 1025) == true,  "rsa 1025");
 	ok(dnssec_algorithm_key_size_check(rsa, 4095) == true,  "rsa 4095");
 	ok(dnssec_algorithm_key_size_check(rsa, 4096) == true,  "rsa 4096");
 	ok(dnssec_algorithm_key_size_check(rsa, 4097) == false, "rsa 4097");
@@ -69,8 +69,7 @@ int main(void)
 	plan_lazy();
 
 	// ranges
-	ok_range(DNSSEC_KEY_ALGORITHM_RSA_SHA256, 512, 4096, "RSA/SHA256");
-	ok_range(DNSSEC_KEY_ALGORITHM_RSA_SHA512, 1024, 4096, "RSA/SHA512");
+	ok_range(DNSSEC_KEY_ALGORITHM_RSA_SHA512, 1024, 4096, "RSA/SHA256");
 	ok_range(DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, 384, 384, "ECDSA/SHA384");
 #ifdef HAVE_ED25519
 	ok_range(DNSSEC_KEY_ALGORITHM_ED25519, 256, 256, "ED25519");

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -163,7 +163,8 @@ int main(void)
 	// write
 
 	char *gen_id = NULL;
-	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256, 512, &gen_id);
+	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256,
+	                                 1024, &gen_id);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_generate_key()");
 	ok(test_write_ok, "test_write() called");
 	is_string(gen_id, test_write_id, "test_write() correct key ID");
