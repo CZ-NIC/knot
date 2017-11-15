@@ -102,3 +102,11 @@ int const_time_memcmp(const void *s1, const void *s2, size_t n)
 
 	return equal;
 }
+
+typedef void *(*memset_t)(void *, int, size_t);
+static volatile memset_t volatile_memset = memset;
+
+void *memzero(void *s, size_t n)
+{
+	return volatile_memset(s, 0, n);
+}

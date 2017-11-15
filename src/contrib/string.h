@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,13 +17,11 @@
  * \file
  *
  * \brief String manipulations.
- *
- * \addtogroup contrib
- * @{
  */
 
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 /*!
@@ -73,4 +71,14 @@ char *strstrip(const char *str);
  */
 int const_time_memcmp(const void *s1, const void *s2, size_t n);
 
-/*! @} */
+/*!
+ * \brief Fill memory with zeroes.
+ *
+ * Inspired by OPENSSL_cleanse. Such a memset shouldn't be optimized out.
+ *
+ * \param s The address to fill.
+ * \param n The size of memory to fill.
+ *
+ * \return Pointer to the memory.
+ */
+void *memzero(void *s, size_t n);

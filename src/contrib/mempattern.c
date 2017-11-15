@@ -17,13 +17,8 @@
 #include <stdlib.h>
 
 #include "contrib/mempattern.h"
+#include "contrib/string.h"
 #include "contrib/ucw/mempool.h"
-
-/*
- * Inspired by OPENSSL_cleanse. Such a memset shouldn't be optimized out.
- */
-typedef void *(*memset_t)(void *, int, size_t);
-static volatile memset_t volatile_memset = memset;
 
 static void mm_nofree(void *p)
 {
@@ -59,7 +54,7 @@ void *mm_calloc(knot_mm_t *mm, size_t nmemb, size_t size)
 		if (mem == NULL) {
 			return NULL;
 		}
-		return volatile_memset(mem, 0, total_size);
+		return memzero(mem, total_size);
 	} else {
 		return calloc(nmemb, size);
 	}
