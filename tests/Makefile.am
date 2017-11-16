@@ -21,6 +21,7 @@ check_PROGRAMS = \
 	contrib/test_net		\
 	contrib/test_net_shortwrite	\
 	contrib/test_qp-trie		\
+	contrib/test_siphash		\
 	contrib/test_sockaddr		\
 	contrib/test_string		\
 	contrib/test_strtonum		\
