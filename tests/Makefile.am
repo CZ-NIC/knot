@@ -17,7 +17,6 @@ check_PROGRAMS = \
 	contrib/test_dynarray		\
 	contrib/test_endian		\
 	contrib/test_heap		\
-	contrib/test_hhash		\
 	contrib/test_net		\
 	contrib/test_net_shortwrite	\
 	contrib/test_qp-trie		\

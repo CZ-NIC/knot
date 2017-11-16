@@ -31,8 +31,6 @@ src/contrib/fnv/hash_64a.c
 src/contrib/fnv/longlong.h
 src/contrib/getline.c
 src/contrib/getline.h
-src/contrib/hhash.c
-src/contrib/hhash.h
 src/contrib/lmdb/lmdb.h
 src/contrib/lmdb/mdb.c
 src/contrib/lmdb/midl.c
@@ -492,7 +490,6 @@ tests/contrib/test_base64.c
 tests/contrib/test_dynarray.c
 tests/contrib/test_endian.c
 tests/contrib/test_heap.c
-tests/contrib/test_hhash.c
 tests/contrib/test_net.c
 tests/contrib/test_net_shortwrite.c
 tests/contrib/test_qp-trie.c

@@ -51,8 +51,6 @@ libcontrib_la_SOURCES = 			\
 	contrib/fnv/longlong.h			\
 	contrib/getline.c			\
 	contrib/getline.h			\
-	contrib/hhash.c				\
-	contrib/hhash.h				\
 	contrib/macros.h			\
 	contrib/mempattern.c			\
 	contrib/mempattern.h			\
