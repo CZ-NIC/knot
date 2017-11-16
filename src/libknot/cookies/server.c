@@ -20,6 +20,7 @@
 #include "libknot/cookies/server.h"
 #include "libknot/errcode.h"
 #include "libknot/rrtype/opt-cookie.h"
+#include "contrib/string.h"
 
 _public_
 bool knot_sc_input_is_valid(const struct knot_sc_input *input)
@@ -110,7 +111,7 @@ int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
 	}
 
 	/* Compare hashes. */
-	ret = memcmp(content.hash, generated_hash, generated_hash_len);
+	ret = const_time_memcmp(content.hash, generated_hash, generated_hash_len);
 	if (ret != 0) {
 		return KNOT_EINVAL;
 	}
