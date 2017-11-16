@@ -28,10 +28,8 @@ EXTRA_DIST =					\
 	contrib/licenses/0BSD			\
 	contrib/licenses/BSD-3-Clause		\
 	contrib/licenses/LGPL-2.0		\
-	contrib/licenses/MIT			\
 	contrib/licenses/OLDAP-2.8		\
 	contrib/lmdb/LICENSE			\
-	contrib/murmurhash3/LICENSE		\
 	contrib/openbsd/LICENSE			\
 	contrib/ucw/LICENSE			\
 	utils/pykeymgr/pykeymgr.in
@@ -75,8 +73,6 @@ libcontrib_la_SOURCES = 			\
 	contrib/trim.h				\
 	contrib/wire.h				\
 	contrib/wire_ctx.h			\
-	contrib/murmurhash3/murmurhash3.c	\
-	contrib/murmurhash3/murmurhash3.h	\
 	contrib/openbsd/siphash.c		\
 	contrib/openbsd/siphash.h		\
 	contrib/openbsd/strlcat.c		\

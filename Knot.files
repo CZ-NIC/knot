@@ -40,8 +40,6 @@ src/contrib/lmdb/midl.h
 src/contrib/macros.h
 src/contrib/mempattern.c
 src/contrib/mempattern.h
-src/contrib/murmurhash3/murmurhash3.c
-src/contrib/murmurhash3/murmurhash3.h
 src/contrib/net.c
 src/contrib/net.h
 src/contrib/openbsd/siphash.c
