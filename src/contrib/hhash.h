@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "contrib/openbsd/siphash.h"
+
 struct knot_mm;
 
 /*! \brief Bitvector type. */
@@ -49,6 +51,9 @@ typedef struct hhelem {
 } hhelem_t;
 
 typedef struct hhash {
+	/* Siphash key. */
+	SIPHASH_KEY key;
+
 	/* Compatibility with HAT-trie nodes. */
 	uint8_t flag;
 	uint8_t c0;

@@ -21,7 +21,7 @@
 #include "contrib/hhash.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
-#include "contrib/murmurhash3/murmurhash3.h"
+#include "dnssec/random.h"
 #include "libknot/errcode.h"
 
 /* UCW array sorting defines. */
@@ -248,6 +248,7 @@ hhash_t *hhash_create_mm(uint32_t size, knot_mm_t *mm)
 	}
 	memcpy(mm_copy, mm, sizeof(*mm_copy));
 
+	(void)dnssec_random_buffer((uint8_t *)&tbl->key, sizeof(tbl->key));
 	tbl->size = size;
 	tbl->mm = mm_copy;
 
@@ -310,7 +311,7 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 	}
 
 	/* Find an exact match in <id, id + HOP_LEN). */
-	uint32_t id = hash(key, len) % tbl->size;
+	uint32_t id = SipHash24(&tbl->key, key, len) % tbl->size;
 	int dist = find_match(tbl, id, key, len);
 	if (dist <= HOP_LEN) {
 		/* Found exact match, return value. */
@@ -377,7 +378,7 @@ int hhash_del(hhash_t* tbl, const char* key, uint16_t len)
 		return KNOT_EINVAL;
 	}
 
-	uint32_t idx = hash(key, len) % tbl->size;
+	uint32_t idx = SipHash24(&tbl->key, key, len) % tbl->size;
 	unsigned dist = find_match(tbl, idx, key, len);
 	if (dist > HOP_LEN) {
 		return KNOT_ENOENT;
