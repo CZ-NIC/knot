@@ -56,7 +56,7 @@ static int find_rr_pos(const knot_rdataset_t *search_in,
 static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
                      knot_mm_t *mm)
 {
-	if (rrs == NULL || pos > rrs->rr_count) {
+	if (rrs == NULL || pos > rrs->rr_count || rrs->rr_count == UINT16_MAX) {
 		return KNOT_EINVAL;
 	}
 	const uint16_t size = knot_rdata_rdlen(rr);
@@ -269,7 +269,7 @@ int knot_rdataset_gather(knot_rdataset_t *dst, knot_rdata_t **src, uint16_t coun
 _public_
 int knot_rdataset_reserve(knot_rdataset_t *rrs, size_t size, knot_mm_t *mm)
 {
-	if (rrs == NULL || size > MAX_RDLENGTH) {
+	if (rrs == NULL || size > MAX_RDLENGTH || rrs->rr_count == UINT16_MAX) {
 		return KNOT_EINVAL;
 	}
 
