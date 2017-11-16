@@ -538,7 +538,6 @@ static int check_digest(const knot_rrset_t *tsig_rr,
 		return KNOT_ENOMEM;
 	}
 
-	memset(wire_to_sign, 0, size);
 	memcpy(wire_to_sign, wire, size);
 
 	// restore message ID to which the signature had been created with
