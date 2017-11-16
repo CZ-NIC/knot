@@ -18,7 +18,6 @@
 #include <time.h>
 
 #include "knot/modules/rrl/functions.h"
-#include "contrib/murmurhash3/murmurhash3.h"
 #include "contrib/sockaddr.h"
 #include "dnssec/random.h"
 
@@ -303,11 +302,12 @@ rrl_table_t *rrl_create(size_t size)
 	}
 
 	const size_t tbl_len = sizeof(rrl_table_t) + size * sizeof(rrl_item_t);
-	rrl_table_t *t = malloc(tbl_len);
+	rrl_table_t *t = calloc(1, tbl_len);
 	if (!t) {
 		return NULL;
 	}
-	memset(t, 0, sizeof(rrl_table_t));
+
+	(void)dnssec_random_buffer((uint8_t *)&t->key, sizeof(t->key));
 	t->size = size;
 	rrl_reseed(t);
 
@@ -379,7 +379,7 @@ rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 		return NULL;
 	}
 
-	uint32_t id = hash(buf, len) % t->size;
+	uint32_t id = SipHash24(&t->key, buf, len) % t->size;
 
 	/* Lock for lookup. */
 	pthread_mutex_lock(&t->ll);
@@ -394,7 +394,7 @@ rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t
 		.ntok = t->rate * RRL_CAPACITY,
 		.cls = buf[0],
 		.flags = RRL_BF_NULL,
-		.qname = hash(qname + 1, *qname),
+		.qname = SipHash24(&t->key, qname + 1, *qname),
 		.time = stamp
 	};
 

@@ -22,6 +22,7 @@
 
 #include "libknot/libknot.h"
 #include "knot/include/module.h"
+#include "contrib/openbsd/siphash.h"
 
 /* Defaults */
 #define RRL_SLIP_MAX 100
@@ -54,6 +55,7 @@ typedef struct {
  */
 
 typedef struct {
+	SIPHASH_KEY key;     /* Siphash key. */
 	uint32_t rate;       /* Configured RRL limit. */
 	uint32_t seed;       /* Pseudorandom seed for hashing. */
 	pthread_mutex_t ll;
