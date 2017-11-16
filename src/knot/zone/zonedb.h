@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,56 +16,41 @@
 /*!
  * \file
  *
- * \brief Zone database structure and API for manipulating it.
- *
- * Zone database groups several zones and provides functions for finding
- * suitable zone for a domain name, for searching in a particular zone, etc.
- *
- * \addtogroup zone
- * @{
+ * \brief Zone database represents a list of managed zones.
  */
 
 #pragma once
 
 #include "knot/zone/zone.h"
 #include "libknot/dname.h"
-#include "contrib/hhash.h"
+#include "contrib/qp-trie/trie.h"
 
-/*
- * Zone DB represents a list of managed zones.
- * Hashing should be avoided as it is expensive when only a small number of
- * zones is present (TLD case). Fortunately hhash is able to do linear scan if
- * it has only a handful of names present. Furthermore, we track the name with
- * the most labels in the database. So if we have for example a 'a.b.' in the
- * database and search for 'c.d.a.b.' we can trim the 'c.d.' and search for
- * the suffix as we now there can't be a closer match.
- */
 typedef struct {
-	uint16_t maxlabels;
-	hhash_t *hash;
+	trie_t *trie;
 	knot_mm_t mm;
 } knot_zonedb_t;
 
 /*
  * Mapping of iterators to internal data structure.
  */
-typedef hhash_iter_t knot_zonedb_iter_t;
-#define knot_zonedb_iter_begin(db, it) hhash_iter_begin((db)->hash, it, true)
-#define knot_zonedb_iter_finished(it) hhash_iter_finished(it)
-#define knot_zonedb_iter_next(it) hhash_iter_next(it)
-#define knot_zonedb_iter_val(it) *hhash_iter_val(it)
+typedef trie_it_t knot_zonedb_iter_t;
+#define knot_zonedb_iter_begin(db) trie_it_begin((db)->trie)
+#define knot_zonedb_iter_finished(it) trie_it_finished(it)
+#define knot_zonedb_iter_next(it) trie_it_next(it)
+#define knot_zonedb_iter_free(it) trie_it_free(it)
+#define knot_zonedb_iter_val(it) *trie_it_val(it)
 
 /*
  * Simple foreach() access with callback and variable number of callback params.
  */
 #define knot_zonedb_foreach(db, callback, ...) \
 { \
-	knot_zonedb_iter_t it; \
-	knot_zonedb_iter_begin((db), &it); \
-	while(!knot_zonedb_iter_finished(&it)) { \
-		callback((zone_t *)knot_zonedb_iter_val(&it), ##__VA_ARGS__); \
-		knot_zonedb_iter_next(&it); \
+	knot_zonedb_iter_t *it = knot_zonedb_iter_begin((db)); \
+	while(!knot_zonedb_iter_finished(it)) { \
+		callback((zone_t *)knot_zonedb_iter_val(it), ##__VA_ARGS__); \
+		knot_zonedb_iter_next(it); \
 	} \
+	knot_zonedb_iter_free(it); \
 }
 
 /*!
@@ -74,7 +59,7 @@ typedef hhash_iter_t knot_zonedb_iter_t;
  * \return Pointer to the created zone database structure or NULL if an error
  *         occurred.
  */
-knot_zonedb_t *knot_zonedb_new(uint32_t size);
+knot_zonedb_t *knot_zonedb_new(void);
 
 /*!
  * \brief Adds new zone to the database.
@@ -99,11 +84,6 @@ int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone);
 int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name);
 
 /*!
- * \brief Build zone stack for faster lookup.
- */
-int knot_zonedb_build_index(knot_zonedb_t *db);
-
-/*!
  * \brief Finds zone exactly matching the given zone name.
  *
  * \param db Zone database to search in.
@@ -123,7 +103,7 @@ zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name);
  * \retval Zone in which the domain name should be present or NULL if no such
  *         zone is found.
  */
-zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname);
+zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *zone_name);
 
 size_t knot_zonedb_size(const knot_zonedb_t *db);
 
@@ -141,5 +121,3 @@ void knot_zonedb_free(knot_zonedb_t **db);
  * \param db Zone database to be destroyed.
  */
 void knot_zonedb_deep_free(knot_zonedb_t **db);
-
-/*! @} */

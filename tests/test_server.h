@@ -55,9 +55,8 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 
 	/* Switch zone db. */
 	knot_zonedb_free(&server->zone_db);
-	server->zone_db = knot_zonedb_new(1);
+	server->zone_db = knot_zonedb_new();
 	knot_zonedb_insert(server->zone_db, root);
-	knot_zonedb_build_index(server->zone_db);
 }
 
 /* Create fake server. */

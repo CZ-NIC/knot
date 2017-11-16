@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,12 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include "knot/zone/zonedb.h"
 #include "libknot/packet/wire.h"
-#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/mempool.h"
 
@@ -44,24 +43,22 @@ static void discard_zone(zone_t *zone)
 	zone_free(&zone);
 }
 
-knot_zonedb_t *knot_zonedb_new(uint32_t size)
+knot_zonedb_t *knot_zonedb_new(void)
 {
-	/* Create memory pool context. */
-	knot_mm_t mm = {0};
-	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
-	knot_zonedb_t *db = mm_alloc(&mm, sizeof(knot_zonedb_t));
+	knot_zonedb_t *db = calloc(1, sizeof(knot_zonedb_t));
 	if (db == NULL) {
 		return NULL;
 	}
 
-	db->maxlabels = 0;
-	db->hash = hhash_create_mm((size + 1) * 2, &mm);
-	if (db->hash == NULL) {
-		mm_free(&mm, db);
+	mm_ctx_mempool(&db->mm, MM_DEFAULT_BLKSIZE);
+
+	db->trie = trie_create(&db->mm);
+	if (db->trie == NULL) {
+		mp_delete(db->mm.ctx);
+		free(db);
 		return NULL;
 	}
 
-	memcpy(&db->mm, &mm, sizeof(knot_mm_t));
 	return db;
 }
 
@@ -71,12 +68,13 @@ int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	int name_size = knot_dname_size(zone->name);
-	if (name_size < 0) {
-		return KNOT_EINVAL;
-	}
+	assert(zone->name);
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, zone->name, NULL);
 
-	return hhash_insert(db->hash, (const char*)zone->name, name_size, zone);
+	*trie_get_ins(db->trie, (char *)lf + 1, *lf) = zone;
+
+	return KNOT_EOK;
 }
 
 int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
@@ -85,87 +83,54 @@ int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
 		return KNOT_EINVAL;
 	}
 
-	/* Can't guess maximum label count now. */
-	db->maxlabels = KNOT_DNAME_MAXLABELS;
-	/* Attempt to remove zone. */
-	int name_size = knot_dname_size(zone_name);
-	return hhash_del(db->hash, (const char*)zone_name, name_size);
-}
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, zone_name, NULL);
 
-int knot_zonedb_build_index(knot_zonedb_t *db)
-{
-	if (db == NULL) {
-		return KNOT_EINVAL;
+	trie_val_t *rval = trie_get_try(db->trie, (char *)lf + 1, *lf);
+	if (rval == NULL) {
+		return KNOT_ENOENT;
 	}
 
-	/* Rebuild order index. */
-	hhash_build_index(db->hash);
-
-	/* Calculate maxlabels. */
-	db->maxlabels = 0;
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(db, &it);
-	while (!knot_zonedb_iter_finished(&it)) {
-		zone_t *zone = knot_zonedb_iter_val(&it);
-		db->maxlabels = MAX(db->maxlabels, knot_dname_labels(zone->name, NULL));
-		knot_zonedb_iter_next(&it);
-	}
-
-	return KNOT_EOK;
-}
-
-static value_t *find_name(knot_zonedb_t *db, const knot_dname_t *dname, uint16_t size)
-{
-	assert(db);
-	assert(dname);
-
-	return hhash_find(db->hash, (const char*)dname, size);
+	return trie_del(db->trie, (char *)lf + 1, *lf, NULL);
 }
 
 zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 {
-	int name_size = knot_dname_size(zone_name);
-	if (!db || name_size < 1) {
+	if (db == NULL) {
 		return NULL;
 	}
 
-	value_t *ret = find_name(db, zone_name, name_size);
-	if (ret == NULL) {
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, zone_name, NULL);
+
+	trie_val_t *val = trie_get_try(db->trie, (char *)lf + 1, *lf);
+	if (val == NULL) {
 		return NULL;
 	}
 
-	return *ret;
+	return *val;
 }
 
-zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname)
+zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *zone_name)
 {
-	if (db == NULL || dname == NULL) {
+	if (db == NULL || zone_name == NULL) {
 		return NULL;
 	}
 
-	/* We know we have at most N label zones, so let's compare only those
-	 * N last labels. */
-	int zone_labels = knot_dname_labels(dname, NULL);
-	while (zone_labels > db->maxlabels) {
-		dname = knot_wire_next_label(dname, NULL);
-		--zone_labels;
-	}
+	uint8_t lf[KNOT_DNAME_MAXLEN];
 
-	/* Compare possible suffixes. */
-	value_t *val = NULL;
-	int name_size = knot_dname_size(dname);
-	while (name_size > 0) { /* Include root label. */
-		val = find_name(db, dname, name_size);
+	while (true) {
+		knot_dname_lf(lf, zone_name, NULL);
+
+		trie_val_t *val = trie_get_try(db->trie, (char *)lf + 1, *lf);
 		if (val != NULL) {
 			return *val;
+		} else if (zone_name[0] == 0) {
+			return NULL;
 		}
 
-		/* Next label */
-		name_size -= (dname[0] + 1);
-		dname = knot_wire_next_label(dname, NULL);
+		zone_name = knot_wire_next_label(zone_name, NULL);
 	}
-
-	return NULL;
 }
 
 size_t knot_zonedb_size(const knot_zonedb_t *db)
@@ -174,7 +139,7 @@ size_t knot_zonedb_size(const knot_zonedb_t *db)
 		return 0;
 	}
 
-	return db->hash->weight;
+	return trie_weight(db->trie);
 }
 
 void knot_zonedb_free(knot_zonedb_t **db)
@@ -184,6 +149,7 @@ void knot_zonedb_free(knot_zonedb_t **db)
 	}
 
 	mp_delete((*db)->mm.ctx);
+	free(*db);
 	*db = NULL;
 }
 
@@ -193,10 +159,6 @@ void knot_zonedb_deep_free(knot_zonedb_t **db)
 		return;
 	}
 
-	/* Reindex for iteration. */
-	knot_zonedb_build_index(*db);
-
-	/* Free zones and database. */
 	knot_zonedb_foreach(*db, discard_zone);
 	knot_zonedb_free(db);
 }

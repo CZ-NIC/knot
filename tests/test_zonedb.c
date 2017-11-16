@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ static const char *zone_list[ZONE_COUNT] = {
 
 int main(int argc, char *argv[])
 {
-	plan(6);
+	plan_lazy();
 
 	/* Create database. */
 	char buf[KNOT_DNAME_MAXLEN];
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	size_t nr_passed = 0;
 	knot_dname_t *dname = NULL;
 	zone_t *zones[ZONE_COUNT] = {0};
-	knot_zonedb_t *db = knot_zonedb_new(ZONE_COUNT);
+	knot_zonedb_t *db = knot_zonedb_new();
 	ok(db != NULL, "zonedb: new");
 
 	/* Populate. */
@@ -64,9 +64,6 @@ int main(int argc, char *argv[])
 		}
 	}
 	ok(nr_passed == ZONE_COUNT, "zonedb: add zones");
-
-	/* Build search index. */
-	ok(knot_zonedb_build_index(db) == KNOT_EOK, "zonedb: build search index");
 
 	/* Lookup of exact names. */
 	nr_passed = 0;

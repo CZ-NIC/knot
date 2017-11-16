@@ -224,7 +224,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 	assert(server);
 
 	knot_zonedb_t *db_old = server->zone_db;
-	knot_zonedb_t *db_new = knot_zonedb_new(conf_id_count(conf, C_ZONE));
+	knot_zonedb_t *db_new = knot_zonedb_new();
 	if (!db_new) {
 		return NULL;
 	}
@@ -286,11 +286,10 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 	bool full = !(conf->io.flags & CONF_IO_FACTIVE) ||
 	            (conf->io.flags & CONF_IO_FRLD_ZONES);
 
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(db_old, &it);
+	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
 
-	while (!knot_zonedb_iter_finished(&it)) {
-		zone_t *zone = knot_zonedb_iter_val(&it);
+	while (!knot_zonedb_iter_finished(it)) {
+		zone_t *zone = knot_zonedb_iter_val(it);
 
 		if (full) {
 			/* Check if reloaded (reused contents). */
@@ -310,8 +309,10 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 			/* Completely reused zone. */
 		}
 
-		knot_zonedb_iter_next(&it);
+		knot_zonedb_iter_next(it);
 	}
+
+	knot_zonedb_iter_free(it);
 
 	if (full) {
 		knot_zonedb_deep_free(&db_old);
@@ -342,9 +343,6 @@ void zonedb_reload(conf_t *conf, server_t *server)
 		log_error("failed to create new zone database");
 		return;
 	}
-
-	/* Rebuild zone database search stack. */
-	knot_zonedb_build_index(db_new);
 
 	/* Switch the databases. */
 	knot_zonedb_t **db_current = &server->zone_db;
