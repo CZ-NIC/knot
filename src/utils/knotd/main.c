@@ -367,10 +367,6 @@ static int set_config(const char *confdb, const char *config)
 		log_error("failed to migrate configuration (%s)", knot_strerror(ret));
 	}
 
-	/* Activate global query modules. */
-	conf_activate_modules(new_conf, NULL, new_conf->query_modules,
-	                      &new_conf->query_plan);
-
 	/* Update to the new config. */
 	conf_update(new_conf, CONF_UPD_FNONE);
 
@@ -533,6 +529,10 @@ int main(int argc, char **argv)
 		log_close();
 		return EXIT_FAILURE;
 	}
+
+	/* Activate global query modules. */
+	conf_activate_modules(conf(), NULL, conf()->query_modules,
+	                      &conf()->query_plan);
 
 	/* Check and create PID file. */
 	long pid = (long)getpid();
