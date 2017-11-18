@@ -65,6 +65,10 @@ f.dname-tree	DNAME	dname-tree
 
 dname-out	DNAME	outside.zone.
 
+; DS tests
+ds-sub		NS	dns.net.ds-sub
+dns.net.ds-sub	A	1.1.1.1
+
 ; Fourth level domain with A record
 fourth.third.second A	1.1.1.1
 

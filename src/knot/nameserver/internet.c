@@ -439,10 +439,10 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 		return follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);
 	}
 
-	/* DS query is answered normally, but everything else at/below DP
+	/* DS query at DP is answered normally, but everything else at/below DP
 	 * triggers referral response. */
-	if (qtype != KNOT_RRTYPE_DS &&
-	    ((qdata->node->flags & NODE_FLAGS_DELEG) || qdata->node->flags & NODE_FLAGS_NONAUTH)) {
+	if (((qdata->node->flags & NODE_FLAGS_DELEG) && qtype != KNOT_RRTYPE_DS) ||
+	    (qdata->node->flags & NODE_FLAGS_NONAUTH)) {
 		dbg_ns("%s: solving REFERRAL\n", __func__);
 		return DELEG;
 	}
