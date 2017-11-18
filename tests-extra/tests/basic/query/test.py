@@ -61,6 +61,16 @@ resp = knot.dig("bellow.ns.sub.flags", "A", udp=True)
 resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
 resp.cmp(bind, additional=True)
 
+# Positive (NODATA, at delegation, DS type)
+resp = knot.dig("ds-sub.flags", "DS", udp=True)
+resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
+resp.cmp(bind, additional=True)
+
+# Positive (REFERRAL, below delegation, DS type)
+resp = knot.dig("net.ds-sub.flags", "DS", udp=True)
+resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
+resp.cmp(bind, additional=True)
+
 ''' ANY query type. '''
 
 # ANY to SOA record
