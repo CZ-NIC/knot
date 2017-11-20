@@ -1,96 +1,217 @@
 variables:
   DEBIAN_FRONTEND: noninteractive
-  LC_ALL: C.UTF-8
+  LC_ALL: C
   GIT_STRATEGY: fetch
+  DOCKER_CMD: docker --config="$HOME/.docker/$CI_JOB_ID/"
 
 stages:
-  - configure
+  - image
   - build
   - test
+  - documentation
   - deploy
 
-.debian_stretch: &debian_stretch
-  image: cznic/debian:stretch-knot-v2
+docker:knot-dns:debian:
+  stage: image
+  allow_failure: true
+  script:
+    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - $DOCKER_CMD build -t "knot-dns/debian:latest" "scripts/docker/debian:latest"
+    - $DOCKER_CMD tag "knot-dns/debian:latest" "registry.labs.nic.cz/knot/knot-dns/debian:latest"
+    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/debian:latest"
+  after_script:
+    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
   tags:
-    - docker
+    - shell
     - linux
+
+docker:knot-dns:ubuntu:
+  stage: image
+  allow_failure: true
+  script:
+    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - $DOCKER_CMD build -t "knot-dns/ubuntu:latest" "scripts/docker/ubuntu:latest"
+    - $DOCKER_CMD tag "knot-dns/ubuntu:latest" "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
+    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
+  after_script:
+    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
+  tags:
+    - shell
+    - linux
+
+docker:knot-dns:centos:
+  stage: image
+  allow_failure: true
+  script:
+    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - $DOCKER_CMD build -t "knot-dns/centos:latest" "scripts/docker/centos:latest"
+    - $DOCKER_CMD tag "knot-dns/centos:latest" "registry.labs.nic.cz/knot/knot-dns/centos:latest"
+    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/centos:latest"
+  after_script:
+    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
+  tags:
+    - shell
+    - linux
+
+docker:knot-dns:fedora:
+  stage: image
+  allow_failure: true
+  script:
+    - $DOCKER_CMD login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.labs.nic.cz
+    - $DOCKER_CMD build -t "knot-dns/fedora:latest" "scripts/docker/fedora:latest"
+    - $DOCKER_CMD tag "knot-dns/fedora:latest" "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
+    - $DOCKER_CMD push "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
+  after_script:
+    - rm -f "$HOME/.docker/$CI_JOB_ID/" # cleanup the credentials
+  tags:
+    - shell
+    - linux
+
+.freebsd_i386: &freebsd_i386
+  tags:
+    - freebsd
+    - i386
+  only:
+    - master
+    - triggers
+    - tags
+
+.freebsd_amd64: &freebsd_amd64
+  tags:
+    - freebsd
     - amd64
-  
-.ubuntu_xenial: &ubuntu_xenial
-  image: cznic/ubuntu:16.04-knot
+  only:
+    - master
+    - triggers
+    - tags
+
+.fedora_latest: &fedora_latest
+  image: "registry.labs.nic.cz/knot/knot-dns/fedora:latest"
   tags:
     - docker
     - linux
     - amd64
 
-.configure: &configure_job
-  stage: configure
-  script:
-    - autoreconf -fi
-    - ./configure --disable-fastparser
-  artifacts:
-    untracked: true
-    expire_in: '1 hour'
+.centos_latest: &centos_latest
+  image: "registry.labs.nic.cz/knot/knot-dns/centos:latest"
+  tags:
+    - docker
+    - linux
+    - amd64
+    
+.debian_stable: &debian_stable
+  image: "registry.labs.nic.cz/knot/knot-dns/debian:latest"
+  tags:
+    - docker
+    - linux
+    - amd64
+
+.ubuntu_latest: &ubuntu_latest
+  image: "registry.labs.nic.cz/knot/knot-dns/ubuntu:latest"
+  tags:
+    - docker
+    - linux
+    - amd64
 
 .build: &build_job
   stage: build
   script:
+    - autoreconf -fi
+    - ./configure --disable-fastparser
     - make -k all
   artifacts:
     untracked: true
     expire_in: '1 hour'
-
+    
 .test: &test_job
   stage: test
   script:
     - make -k check
 
-configure:ubuntu:amd64:
-  <<: *ubuntu_xenial
-  <<: *configure_job
-  except:
-    - tags
+build:fedora:amd64:
+  <<: *fedora_latest
+  <<: *build_job
+
+test:fedora:amd64:
+  <<: *fedora_latest
+  <<: *test_job
+  dependencies:
+    - build:fedora:amd64
+
+build:centos:amd64:
+  <<: *centos_latest
+  <<: *build_job
+
+test:centos:amd64:
+  <<: *centos_latest
+  <<: *test_job
+  dependencies:
+    - build:centos:amd64
 
 build:ubuntu:amd64:
-  <<: *ubuntu_xenial
+  <<: *ubuntu_latest
   <<: *build_job
-  dependencies:
-    - configure:ubuntu:amd64
-  except:
-    - tags
 
 test:ubuntu:amd64:
-  <<: *ubuntu_xenial
+  <<: *ubuntu_latest
   <<: *test_job
   dependencies:
     - build:ubuntu:amd64
-  except:
-    - tags
 
-configure:debian:stretch:amd64:
-  <<: *debian_stretch
-  <<: *configure_job
-
-build:debian:stretch:amd64:
-  <<: *debian_stretch
+build:debian:amd64:
+  <<: *debian_stable
   <<: *build_job
-  dependencies:
-    - configure:debian:stretch:amd64
 
-test:debian:stretch:amd64:
-  <<: *debian_stretch
+test:debian:amd64:
+  <<: *debian_stable
   <<: *test_job
   dependencies:
-    - build:debian:stretch:amd64
+    - build:debian:amd64
 
-build:documentation:
-  <<: *debian_stretch
-  stage: build
+build:freebsd:i386:
+  <<: *freebsd_i386
+  <<: *build_job
+
+test:freebsd:i386:
+  <<: *freebsd_i386
+  <<: *test_job
   dependencies:
-    - configure:debian:stretch:amd64
+    - build:freebsd:i386
+
+build:freebsd:amd64:
+  <<: *freebsd_amd64
+  <<: *build_job
+
+test:freebsd:amd64:
+  <<: *freebsd_amd64
+  <<: *test_job
+  dependencies:
+    - build:freebsd:amd64
+
+build:archive:
+  <<: *debian_stable
+  stage: build
+  script:
+    - autoreconf -fi
+    - mkdir _build
+    - cd _build
+    - ../configure
+    - make distcheck
   only:
     - tags
     - triggers
+  artifacts:
+    paths:
+      - _build/*.tar.xz
+
+build:documentation:
+  <<: *debian_stable
+  stage: documentation
+  only:
+    - tags
+    - triggers
+  dependencies:
+    - build:debian:amd64
   script:
     - make -C doc html singlehtml pdf
   artifacts:
@@ -101,17 +222,20 @@ build:documentation:
     expire_in: '1 hour'
 
 deploy:documentation:
-  <<: *debian_stretch
+  <<: *debian_stable
   stage: deploy
-  before_script:
-    - apt-get -y install curl
+  dependencies:
+    - build:documentation
   only:
     - tags
     - triggers
   script:
-    - "curl --http1.1 --request POST --form token=$WEBSITE_TOKEN --form ref=master --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_BUILD_REF_NAME\" --form \"variables[RELEASE_CI_BUILD_ID]=$CI_BUILD_ID\" https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
+    - "curl --http1.1 --request POST --form token=$WEBSITE_TOKEN --form ref=master
+      --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_COMMIT_REF_NAME\"
+      --form \"variables[RELEASE_CI_BUILD_ID]=$CI_JOB_ID\"
+      https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
   artifacts:
-    name: "knot-dns-$CI_BUILD_REF_NAME-doc"
+    name: "knot-dns-$CI_COMMIT_REF_NAME-doc"
     paths:
       - doc/_build/html/
       - doc/_build/singlehtml/
