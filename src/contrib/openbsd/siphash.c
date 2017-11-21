@@ -43,7 +43,6 @@
  * https://131002.net/siphash/
  */
 
-
 #include <string.h>
 
 #include "contrib/endian.h"
@@ -105,15 +104,6 @@ SipHash_Update(SIPHASH_CTX *ctx, int rc, int rf, const void *src, size_t len)
 
 	if (len > 0)
 		memcpy(&ctx->buf[used], ptr, len);
-}
-
-void
-SipHash_Final(void *dst, SIPHASH_CTX *ctx, int rc, int rf)
-{
-	uint64_t r;
-
-	r = htole64(SipHash_End(ctx, rc, rf));
-	memcpy(dst, &r, sizeof(r));
 }
 
 uint64_t

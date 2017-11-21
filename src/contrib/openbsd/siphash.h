@@ -41,7 +41,7 @@
  * SipHash24_Init(&ctx);
  * SipHash_SetKey(&ctx, "16bytes long key");
  * SipHash_Update(&ctx, pointer_to_string, length_of_string);
- * SipHash_Final(output, &ctx);
+ * SipHash_End(&ctx);
  */
 
 #ifndef _SIPHASH_H_
@@ -68,19 +68,16 @@ typedef struct {
 void		SipHash_Init(SIPHASH_CTX *, const SIPHASH_KEY *);
 void		SipHash_Update(SIPHASH_CTX *, int, int, const void *, size_t);
 uint64_t	SipHash_End(SIPHASH_CTX *, int, int);
-void		SipHash_Final(void *, SIPHASH_CTX *, int, int);
 uint64_t	SipHash(const SIPHASH_KEY *, int, int, const void *, size_t);
 
 #define SipHash24_Init(_c, _k)		SipHash_Init((_c), (_k))
 #define SipHash24_Update(_c, _p, _l)	SipHash_Update((_c), 2, 4, (_p), (_l))
 #define SipHash24_End(_d)		SipHash_End((_d), 2, 4)
-#define SipHash24_Final(_d, _c)		SipHash_Final((_d), (_c), 2, 4)
 #define SipHash24(_k, _p, _l)		SipHash((_k), 2, 4, (_p), (_l))
 
 #define SipHash48_Init(_c, _k)		SipHash_Init((_c), (_k))
 #define SipHash48_Update(_c, _p, _l)	SipHash_Update((_c), 4, 8, (_p), (_l))
 #define SipHash48_End(_d)		SipHash_End((_d), 4, 8)
-#define SipHash48_Final(_d, _c)		SipHash_Final((_d), (_c), 4, 8)
 #define SipHash48(_k, _p, _l)		SipHash((_k), 4, 8, (_p), (_l))
 
 #endif /* _SIPHASH_H_ */
