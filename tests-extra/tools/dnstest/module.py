@@ -242,3 +242,27 @@ class ModStats(KnotModule):
         conf.end()
 
         return conf
+
+class ModCookies(KnotModule):
+    '''Cookies module'''
+
+    mod_name = "cookies"
+
+    def __init__(self, secret_lifetime=None, badcookie_slip=None):
+        super().__init__()
+        self.secret_lifetime = secret_lifetime
+        self.badcookie_slip = badcookie_slip
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        if self.badcookie_slip:
+            conf.item_str("badcookie-slip", self.badcookie_slip)
+        if self.secret_lifetime:
+            conf.item_str("secret-lifetime", self.secret_lifetime)
+        conf.end()
+
+        return conf
