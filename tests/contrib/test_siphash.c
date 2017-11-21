@@ -16,14 +16,15 @@
 
 #include <tap/basic.h>
 #include "contrib/openbsd/siphash.h"
+#include "contrib/endian.h"
 
 int main(void)
 {
 	plan_lazy();
 
 	SIPHASH_KEY key = {
-		0x0706050403020100,
-		0x0f0e0d0c0b0a0908
+		.k0 = htole64(0x0706050403020100),
+		.k1 = htole64(0x0f0e0d0c0b0a0908)
 	};
 
 	const char *data = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e";
