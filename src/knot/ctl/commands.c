@@ -1038,8 +1038,8 @@ static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *dat
 	char value[32];
 
 	if (ctr->count == 1) {
-		int ret = snprintf(value, sizeof(value), "%"PRIu64,
-		                   ATOMIC_GET(ctr->counter));
+		uint64_t counter = ATOMIC_GET(ctr->counter);
+		int ret = snprintf(value, sizeof(value), "%"PRIu64, counter);
 		if (ret <= 0 || ret >= sizeof(value)) {
 			return KNOT_ESPACE;
 		}

@@ -116,8 +116,8 @@ static void dump_modules(dump_ctx_t *ctx)
 			}
 			if (ctr->count == 1) {
 				// Simple counter.
-				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name,
-				         ATOMIC_GET(ctr->counter));
+				uint64_t counter = ATOMIC_GET(ctr->counter);
+				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name, counter);
 			} else {
 				// Array of counters.
 				DUMP_STR(ctx->fd, level + 1, "%s", ctr->name, "");
