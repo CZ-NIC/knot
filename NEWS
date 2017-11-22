@@ -1,3 +1,21 @@
+Knot DNS 2.6.2 (2017-11-23)
+===========================
+
+Features:
+---------
+ - CSK algorithm rollover and (KSK, ZSK) <-> CSK rollover support
+
+Improvements:
+-------------
+ - Allowed explicit configuration for infinite ksk lifetime
+ - Proper error messages instead of unclear error codes in server log
+ - Better support for old compilers
+
+Bugfixes:
+---------
+ - Unexpected reply for DS query with an owner below a delegation point
+ - Old dependencies in the pkg-config file
+
 Knot DNS 2.6.1 (2017-11-02)
 ===========================
 
