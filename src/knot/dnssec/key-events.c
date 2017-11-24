@@ -69,7 +69,7 @@ static unsigned algorithm_present(const kdnssec_ctx_t *ctx, uint8_t alg)
 static bool signing_scheme_present(const kdnssec_ctx_t *ctx)
 {
 	if (ctx->policy->singe_type_signing) {
-		return (!key_present(ctx, true, false) || !key_present(ctx, false, true));
+		return (!key_present(ctx, true, false) || !key_present(ctx, false, true) || key_present(ctx, true, true));
 	} else {
 		return (key_present(ctx, true, false) && key_present(ctx, false, true));
 	}
