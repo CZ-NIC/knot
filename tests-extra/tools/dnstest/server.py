@@ -56,6 +56,7 @@ class ZoneDnssec(object):
         self.nsec3_salt_len = None
         self.ksk_sbm_check = []
         self.ksk_sbm_check_interval = None
+        self.ksk_shared = None
 
 class Zone(object):
     '''DNS zone description'''
@@ -1180,6 +1181,7 @@ class Knot(Server):
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
             if len(z.dnssec.ksk_sbm_check) > 0:
                 s.item("ksk-submission", z.name)
+            self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
         if have_policy:
             s.end()
 

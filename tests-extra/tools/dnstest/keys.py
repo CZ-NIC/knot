@@ -108,12 +108,22 @@ class Keymgr(object):
 class Key(object):
     '''DNSSEC key generator'''
 
-    def __init__(self, key_dir, zone_name, ksk=False, alg="rsasha256", key_len=512):
+    def __init__(self, key_dir, zone_name, ksk=False, alg="ECDSAP256SHA256",
+                 key_len=-1, addtopolicy=None):
         self.dir = key_dir
         self.zone_name = zone_name
         self.alg = alg
-        self.len = key_len
-        self.ksk = ksk
+        self.len = int(key_len)
+        self.ksk = bool(ksk)
+        self.addtopolicy = addtopolicy
+
+        if self.len < 0:
+            try:
+                self.len = int(alg[-3:])
+            except ValueError:
+                pass
+            if self.len < 100 or self.len % 128 != 0:
+                self.len = 256
 
     def _keymgr(self, *args):
         return Keymgr.run(self.dir, *args)
@@ -126,10 +136,14 @@ class Key(object):
             "size=" + str(self.len)
         ]
 
+        if self.addtopolicy is not None:
+            cmd.append("addtopolicy=" + str(self.addtopolicy))
+
         return cmd
 
     def generate(self):
         command = self._gen_command()
-        (exit_code, _, _) = self._keymgr(*command)
+        (exit_code, stdout, stderr) = self._keymgr(*command)
         if exit_code != 0:
-            raise Failed("Can't generate key for zone '%s'." % self.zone_name)
+            raise Failed("Can't generate key for zone '%s'. Stderr: %s" % (self.zone_name, stderr))
+
