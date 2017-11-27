@@ -73,7 +73,8 @@ static bool is_timestamp(char *arg, knot_kasp_key_timing_t *timing)
 
 static bool genkeyargs(int argc, char *argv[], bool just_timing,
                        bool *isksk, dnssec_key_algorithm_t *algorithm,
-                       uint16_t *keysize, knot_kasp_key_timing_t *timing)
+                       uint16_t *keysize, knot_kasp_key_timing_t *timing,
+                       const char **addtopolicy)
 {
 	// generate algorithms field
 	char *algnames[256] = { 0 };
@@ -116,6 +117,8 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			}
 		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
 			*keysize = atol(argv[i] + 5);
+		} else if (!just_timing && strncasecmp(argv[i], "addtopolicy=", 12) == 0) {
+			*addtopolicy = argv[i] + 12;
 		} else if (!is_timestamp(argv[i], timing)) {
 			printf("Invalid parameter: %s\n", argv[i]);
 			return false;
@@ -131,8 +134,9 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 	knot_kasp_key_timing_t gen_timing = { now, infty, now, infty, now, infty, infty, infty, infty };
 	bool isksk = false;
 	uint16_t keysize = 0;
+	const char *addtopolicy = NULL;
 	if (!genkeyargs(argc, argv, false, &isksk, &ctx->policy->algorithm,
-			&keysize, &gen_timing)) {
+			&keysize, &gen_timing, &addtopolicy)) {
 		return KNOT_EINVAL;
 	}
 	if (keysize > 0) {
@@ -160,6 +164,23 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 	}
 
 	key->timing = gen_timing;
+
+	if (addtopolicy != NULL) {
+		char *last_policy_last = NULL;
+		knot_dname_t *unused;
+
+		ret = kasp_db_get_policy_last(*ctx->kasp_db, addtopolicy, &unused,
+		                              &last_policy_last);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			return ret;
+		}
+
+		ret = kasp_db_set_policy_last(*ctx->kasp_db, addtopolicy, last_policy_last,
+		                              ctx->zone->dname, key->id);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
 
 	ret = kdnssec_ctx_commit(ctx);
 
@@ -347,7 +368,7 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	bool isksk = false;
 	uint16_t keysize = 0;
 	if (!genkeyargs(argc, argv, false, &isksk, &ctx->policy->algorithm,
-	                &keysize, &timing)) {
+			&keysize, &timing, NULL)) {
 		return KNOT_EINVAL;
 	}
 
@@ -590,7 +611,7 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 {
 	knot_kasp_key_timing_t temp = key->timing;
 
-	if (genkeyargs(argc, argv, true, NULL, NULL, NULL, &temp)) {
+	if (genkeyargs(argc, argv, true, NULL, NULL, NULL, &temp, NULL)) {
 		key->timing = temp;
 		return KNOT_EOK;
 	}

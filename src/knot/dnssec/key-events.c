@@ -69,7 +69,7 @@ static unsigned algorithm_present(const kdnssec_ctx_t *ctx, uint8_t alg)
 static bool signing_scheme_present(const kdnssec_ctx_t *ctx)
 {
 	if (ctx->policy->singe_type_signing) {
-		return (!key_present(ctx, true, false) || !key_present(ctx, false, true));
+		return (!key_present(ctx, true, false) || !key_present(ctx, false, true) || key_present(ctx, true, true));
 	} else {
 		return (key_present(ctx, true, false) && key_present(ctx, false, true));
 	}
@@ -173,9 +173,14 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_ti
 		if (ret == KNOT_EOK) {
 			knot_kasp_key_t *newkey = key_get_by_id(ctx, borrow_key);
 			assert(newkey != NULL);
-			newkey->timing.publish = ctx->now;
-			newkey->timing.ready = when_active;
+			newkey->timing.remove = 0;
+			newkey->timing.retire = 0;
 			newkey->timing.active = (ksk ? 0 : when_active);
+			newkey->timing.ready  = (ksk ? when_active : 0);
+			newkey->timing.publish    = (pre_active ? 0 : ctx->now);
+			newkey->timing.pre_active = (pre_active ? ctx->now : 0);
+			newkey->is_ksk = ksk;
+			newkey->is_zsk = zsk;
 		}
 	}
 	free(borrow_zone);

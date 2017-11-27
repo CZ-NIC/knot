@@ -15,6 +15,14 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
+def pregenerate_key(server, zone, alg):
+    class a_class_with_name:
+        def __init__(self, name):
+            self.name = name
+
+    server.gen_key(a_class_with_name("notexisting.zone."), ksk=True, alg=alg,
+                   addtopolicy=zone[0].name)
+
 # check zone if keys are present and used for signing
 def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
     qdnskeys = server.dig("example.com", "DNSKEY", bufsize=4096)
@@ -167,13 +175,14 @@ child.zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).manual = False
-child.dnssec(child_zone).alg = "RSASHA512"
+child.dnssec(child_zone).alg = "ECDSAP384SHA384"
 child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
 child.dnssec(child_zone).propagation_delay = 11
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 2
+child.dnssec(child_zone).ksk_shared = True
 
 # parameters
 ZONE = "example.com."
@@ -181,18 +190,25 @@ ZONE = "example.com."
 t.start()
 child.zone_wait(child_zone)
 
-watch_alg_rollover(t, child, child_zone, 2, 1, "KZSK to CSK alg", "RSASHA256", True, cds_submission)
+pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+watch_alg_rollover(t, child, child_zone, 2, 1, "KZSK to CSK alg", "ECDSAP256SHA256", True, cds_submission)
 
+pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone, 1, 1, 2, "CSK rollover", True, 27, cds_submission)
 
+pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone, 1, 2, 3, "CSK to KZSK", False, 0, cds_submission)
 
+pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover", False, 27, cds_submission)
 
+pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone, 2, 1, 3, "KZSK to CSK", True, 0, cds_submission)
 
-watch_alg_rollover(t, child, child_zone, 1, 1, "CSK to CSK alg", "RSASHA512", True, cds_submission)
+pregenerate_key(child, child_zone, "ECDSAP384SHA384")
+watch_alg_rollover(t, child, child_zone, 1, 1, "CSK to CSK alg", "ECDSAP384SHA384", True, cds_submission)
 
-watch_alg_rollover(t, child, child_zone, 1, 2, "CSK to KZSK alg", "RSASHA256", False, cds_submission)
+pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+watch_alg_rollover(t, child, child_zone, 1, 2, "CSK to KZSK alg", "ECDSAP256SHA256", False, cds_submission)
 
 t.end()
