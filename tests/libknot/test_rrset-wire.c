@@ -260,5 +260,5 @@ int main(int argc, char *argv[])
 	diag("Test canonization");
 	test_canonization();
 
-	return EXIT_SUCCESS;
+	return 0;
 }

@@ -182,9 +182,6 @@ int main(int argc, char *argv[])
 	              rdataset.data == NULL;
 	ok(subtract_ok, "rdataset: subtract last.");
 
-	ret = knot_rdataset_reserve(&rdataset, 65536, NULL);
-	is_int(KNOT_EINVAL, ret, "rdataset: reserve too much");
-
 	RDATASET_INIT_WITH(rdataset, rdata_gt);
 
 	size_t old_rrs_size = knot_rdataset_size(&rdataset);
