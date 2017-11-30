@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <string.h>
 
 #include "libknot/attribute.h"
@@ -21,6 +22,9 @@
 #include "libknot/errcode.h"
 #include "libknot/rrtype/opt-cookie.h"
 #include "contrib/string.h"
+#include "contrib/sockaddr.h"
+
+#define SERVER_HASH_LEN 8
 
 _public_
 bool knot_sc_input_is_valid(const struct knot_sc_input *input)
@@ -30,8 +34,7 @@ bool knot_sc_input_is_valid(const struct knot_sc_input *input)
 	 * source IP address, a secret quantity and request client cookie.
 	 */
 
-	return input && input->cc && input->cc_len > 0 && input->srvr_data &&
-	       input->srvr_data->secret_data && input->srvr_data->secret_len > 0;
+	return input && input->cc && input->cc_len > 0 && input->srvr_data;
 }
 
 _public_
@@ -55,12 +58,35 @@ int knot_sc_parse(uint16_t nonce_len, const uint8_t *sc, uint16_t sc_len,
 	return KNOT_EOK;
 }
 
+static uint64_t generate_server_cookie(const struct knot_sc_input *input)
+{
+	SIPHASH_CTX ctx;
+	SipHash24_Init(&ctx, &input->srvr_data->secret);
+
+	if (input->srvr_data->clnt_sockaddr) {
+		size_t addr_len = 0;
+		void *addr = sockaddr_raw(input->srvr_data->clnt_sockaddr, &addr_len);
+		if (addr) {
+			SipHash24_Update(&ctx, addr, addr_len);
+		}
+	}
+
+	if (input->nonce && input->nonce_len > 0) {
+		SipHash24_Update(&ctx, input->nonce, input->nonce_len);
+	}
+
+	if (input->cc && input->cc_len == KNOT_OPT_COOKIE_CLNT) {
+		SipHash24_Update(&ctx, input->cc, input->cc_len);
+	}
+
+	return SipHash24_End(&ctx);
+}
+
 _public_
 int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
-                  const struct knot_sc_private *srvr_data,
-                  const struct knot_sc_alg *sc_alg)
+                  const struct knot_sc_private *srvr_data)
 {
-	if (!cookies || !srvr_data || !sc_alg) {
+	if (!cookies || !srvr_data) {
 		return KNOT_EINVAL;
 	}
 
@@ -69,20 +95,15 @@ int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
 		return KNOT_EINVAL;
 	}
 
-	if (!srvr_data->clnt_sockaddr ||
-	    !srvr_data->secret_data || !srvr_data->secret_len) {
+	if (!srvr_data->clnt_sockaddr) {
 		return KNOT_EINVAL;
 	}
 
-	if (!sc_alg->hash_size || !sc_alg->hash_func) {
+	if ((nonce_len + SERVER_HASH_LEN) > KNOT_OPT_COOKIE_SRVR_MAX) {
 		return KNOT_EINVAL;
 	}
 
-	if ((nonce_len + sc_alg->hash_size) > KNOT_OPT_COOKIE_SRVR_MAX) {
-		return KNOT_EINVAL;
-	}
-
-	if (cookies->sc_len != (nonce_len + sc_alg->hash_size)) {
+	if (cookies->sc_len != (nonce_len + SERVER_HASH_LEN)) {
 		return KNOT_EINVAL;
 	}
 
@@ -94,8 +115,10 @@ int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
 		return ret;
 	}
 
-	uint8_t generated_hash[KNOT_OPT_COOKIE_SRVR_MAX] = { 0 };
-	uint16_t generated_hash_len = KNOT_OPT_COOKIE_SRVR_MAX;
+	if (content.hash_len != SERVER_HASH_LEN) {
+		return KNOT_EINVAL;
+	}
+
 	struct knot_sc_input sc_input = {
 		.cc = cookies->cc,
 		.cc_len = cookies->cc_len,
@@ -104,14 +127,16 @@ int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
 		.srvr_data = srvr_data
 	};
 
-	/* Generate a new hash. */
-	generated_hash_len = sc_alg->hash_func(&sc_input, generated_hash, generated_hash_len);
-	if (generated_hash_len == 0) {
+	if (!knot_sc_input_is_valid(&sc_input)) {
 		return KNOT_EINVAL;
 	}
 
+	/* Generate a new hash. */
+	uint64_t generated_hash = generate_server_cookie(&sc_input);
+	assert(sizeof(generated_hash) == SERVER_HASH_LEN);
+
 	/* Compare hashes. */
-	ret = const_time_memcmp(content.hash, generated_hash, generated_hash_len);
+	ret = const_time_memcmp(content.hash, &generated_hash, SERVER_HASH_LEN);
 	if (ret != 0) {
 		return KNOT_EINVAL;
 	}

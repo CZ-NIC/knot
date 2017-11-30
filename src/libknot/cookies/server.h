@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "contrib/openbsd/siphash.h"
+
 /*!
  * \brief Convenience structure holding both, server and client, cookies.
  */
@@ -38,8 +40,7 @@ struct knot_dns_cookies {
  */
 struct knot_sc_private {
 	const struct sockaddr *clnt_sockaddr; /*!< Client (remote) socket address. */
-	const uint8_t *secret_data; /*!< Server secret data. */
-	size_t secret_len;          /*!< Secret data length. */
+	SIPHASH_KEY secret; /*!< Server secret data. */
 };
 
 /*!
@@ -125,11 +126,9 @@ struct knot_sc_alg {
  * \param nonce_len  Expected nonce data size.
  * \param cookies    Cookie data.
  * \param srvr_data  Data known to the server needed for cookie validation.
- * \param sc_alg     Server cookie algorithm.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
 int knot_sc_check(uint16_t nonce_len, const struct knot_dns_cookies *cookies,
-                  const struct knot_sc_private *srvr_data,
-                  const struct knot_sc_alg *sc_alg);
+                  const struct knot_sc_private *srvr_data);

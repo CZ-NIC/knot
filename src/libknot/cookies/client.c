@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <string.h>
 
 #include "libknot/attribute.h"
@@ -21,6 +22,7 @@
 #include "libknot/errcode.h"
 #include "libknot/rrtype/opt-cookie.h"
 #include "contrib/string.h"
+#include "contrib/sockaddr.h"
 
 _public_
 bool knot_cc_input_is_valid(const struct knot_cc_input *input)
@@ -30,33 +32,41 @@ bool knot_cc_input_is_valid(const struct knot_cc_input *input)
 	 * client IP address, server IP address and a secret quantity.
 	 */
 
-	return input && (input->clnt_sockaddr || input->srvr_sockaddr) &&
-	       input->secret_data && input->secret_len > 0;
+	return input && (input->clnt_sockaddr || input->srvr_sockaddr);
+}
+
+static uint64_t generate_client_cookie(const struct knot_cc_input *input)
+{
+	SIPHASH_CTX ctx;
+	SipHash24_Init(&ctx, &input->secret);
+
+	if (input->clnt_sockaddr) {
+		size_t addr_len = 0;
+		void *addr = sockaddr_raw(input->clnt_sockaddr, &addr_len);
+		SipHash24_Update(&ctx, addr, addr_len);
+	}
+
+	if (input->srvr_sockaddr) {
+		size_t addr_len = 0;
+		void *addr = sockaddr_raw(input->srvr_sockaddr, &addr_len);
+		SipHash24_Update(&ctx, addr, addr_len);
+	}
+
+	return SipHash24_End(&ctx);
 }
 
 _public_
 int knot_cc_check(const uint8_t *cc, uint16_t cc_len,
-                  const struct knot_cc_input *input,
-                  const struct knot_cc_alg *cc_alg)
+                  const struct knot_cc_input *input)
 {
-	if (!cc || cc_len == 0 || !input ||
-	    !cc_alg || !cc_alg->cc_size || !cc_alg->gen_func) {
+	if (!cc || cc_len != KNOT_OPT_COOKIE_CLNT || !knot_cc_input_is_valid(input)) {
 		return KNOT_EINVAL;
 	}
 
-	if (cc_alg->cc_size > KNOT_OPT_COOKIE_CLNT) {
-		return KNOT_EINVAL;
-	}
+	uint64_t generated_cc = generate_client_cookie(input);
+	assert(sizeof(generated_cc) == KNOT_OPT_COOKIE_CLNT);
 
-	uint8_t generated_cc[KNOT_OPT_COOKIE_CLNT] = { 0 };
-	uint16_t generated_cc_len = KNOT_OPT_COOKIE_CLNT;
-
-	generated_cc_len = cc_alg->gen_func(input, generated_cc, generated_cc_len);
-	if (generated_cc_len != cc_len) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = const_time_memcmp(cc, generated_cc, generated_cc_len);
+	int ret = const_time_memcmp(cc, &generated_cc, KNOT_OPT_COOKIE_CLNT);
 	if (ret != 0) {
 		return KNOT_EINVAL;
 	}

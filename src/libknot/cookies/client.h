@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,14 +20,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "contrib/openbsd/siphash.h"
+
 /*!
  * \brief Input data needed to compute the client cookie value.
  */
 struct knot_cc_input {
 	const struct sockaddr *clnt_sockaddr; /*!< Client (local) socket address. */
 	const struct sockaddr *srvr_sockaddr; /*!< Server (remote) socket address. */
-	const uint8_t *secret_data; /*!< Client secret data. */
-	size_t secret_len;          /*!< Secret data length. */
+	SIPHASH_KEY secret; /*!< Client secret data. */
 };
 
 /*!
@@ -67,11 +68,9 @@ struct knot_cc_alg {
  * \param cc      Client cookie that should be checked.
  * \param cc_len  Client cookie size.
  * \param input   Client cookie input algorithm parameters.
- * \param cc_alg  Client cookie algorithm.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
 int knot_cc_check(const uint8_t *cc, uint16_t cc_len,
-                  const struct knot_cc_input *input,
-                  const struct knot_cc_alg *cc_alg);
+                  const struct knot_cc_input *input);

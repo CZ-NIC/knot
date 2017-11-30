@@ -105,7 +105,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/codes.h				\
 	libknot/consts.h			\
 	libknot/control/control.h		\
-	libknot/cookies/alg-fnv64.h		\
 	libknot/cookies/client.h		\
 	libknot/cookies/server.h		\
 	libknot/descriptor.h			\
@@ -153,7 +152,6 @@ libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/codes.c				\
 	libknot/control/control.c		\
-	libknot/cookies/alg-fnv64.c		\
 	libknot/cookies/client.c		\
 	libknot/cookies/server.c		\
 	libknot/descriptor.c			\
