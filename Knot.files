@@ -26,9 +26,6 @@ src/contrib/dynarray.h
 src/contrib/endian.h
 src/contrib/files.c
 src/contrib/files.h
-src/contrib/fnv/fnv.h
-src/contrib/fnv/hash_64a.c
-src/contrib/fnv/longlong.h
 src/contrib/getline.c
 src/contrib/getline.h
 src/contrib/lmdb/lmdb.h
@@ -335,8 +332,6 @@ src/libknot/codes.h
 src/libknot/consts.h
 src/libknot/control/control.c
 src/libknot/control/control.h
-src/libknot/cookies/alg-fnv64.c
-src/libknot/cookies/alg-fnv64.h
 src/libknot/cookies/client.c
 src/libknot/cookies/client.h
 src/libknot/cookies/server.c
