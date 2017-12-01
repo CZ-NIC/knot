@@ -144,7 +144,9 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
 
     submission_cb()
     t.sleep(4)
-    check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both still active")
+    if before_keys < 2 or after_keys > 1:
+        check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both still active")
+    # else skip the test as we have no control on KSK and ZSK retiring asynchronously
 
     wait_for_rrsig_count(t, server, "DNSKEY", 1, 20)
     if before_keys < 2 or after_keys > 1:
