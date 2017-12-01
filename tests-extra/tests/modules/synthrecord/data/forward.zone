@@ -18,5 +18,5 @@ static6-a	IN	AAAA 2620:0:b61::42
 static6-b	IN	AAAA 2620:0:b61::43
 
 ; Two aliases
-cname4		IN	CNAME	dynamic4-192-168-1-1
-cname6		IN	CNAME	dynamic6-2620-0000-0b61-0000-0000-0000-0000-0001		
+cname4		IN	CNAME	dynamic-192-168-1-1
+cname6		IN	CNAME	dynamic-2620-0000-0b61-0000-0000-0000-0000-0001
