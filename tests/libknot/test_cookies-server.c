@@ -19,6 +19,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
+#include "contrib/endian.h"
 #include "contrib/openbsd/siphash.h"
 #include "contrib/sockaddr.h"
 #include "libknot/consts.h"
