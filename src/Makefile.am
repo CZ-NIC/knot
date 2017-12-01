@@ -46,9 +46,6 @@ libcontrib_la_SOURCES = 			\
 	contrib/endian.h			\
 	contrib/files.c				\
 	contrib/files.h				\
-	contrib/fnv/fnv.h			\
-	contrib/fnv/hash_64a.c			\
-	contrib/fnv/longlong.h			\
 	contrib/getline.c			\
 	contrib/getline.h			\
 	contrib/macros.h			\
