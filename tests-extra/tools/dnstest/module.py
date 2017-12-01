@@ -85,7 +85,7 @@ class ModSynthRecord(KnotModule):
             conf.item_str("prefix", self.prefix)
         if (self.ttl):
             conf.item_str("ttl", self.ttl)
-        conf.item_str("network", self.network)
+        conf.item("network", self.network)
         if (self.origin):
             conf.item_str("origin", self.origin)
         conf.end()
