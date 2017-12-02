@@ -190,10 +190,13 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+	int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	/* Answer current packet (or continue). */
-	int ret = xfr_process_list(pkt, &axfr_process_node_tree, qdata);
+	ret = xfr_process_list(pkt, &axfr_process_node_tree, qdata);
 	switch (ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return KNOT_STATE_PRODUCE; /* Check for more. */
