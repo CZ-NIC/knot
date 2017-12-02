@@ -226,6 +226,7 @@ void knot_pkt_clear_payload(knot_pkt_t *pkt)
 
 	/* Keep question. */
 	pkt->parsed = 0;
+	pkt->reserved = 0;
 	pkt->size = KNOT_WIRE_HEADER_SIZE + knot_pkt_question_size(pkt);
 	knot_wire_set_ancount(pkt->wire, 0);
 	knot_wire_set_nscount(pkt->wire, 0);
