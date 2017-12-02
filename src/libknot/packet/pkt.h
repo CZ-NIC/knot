@@ -134,9 +134,6 @@ int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src);
  */
 int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query);
 
-/*! \brief Clear packet payload and free allocated data. */
-void knot_pkt_clear_payload(knot_pkt_t *pkt);
-
 /*! \brief Reinitialize packet for another use. */
 void knot_pkt_clear(knot_pkt_t *pkt);
 

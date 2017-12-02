@@ -36,8 +36,7 @@
 #define NEXT_RR_COUNT(count) (((count) / NEXT_RR_ALIGN + 1) * NEXT_RR_ALIGN)
 
 /*! \brief Scan packet for RRSet existence. */
-static bool pkt_contains(const knot_pkt_t *packet,
-			 const knot_rrset_t *rrset)
+static bool pkt_contains(const knot_pkt_t *packet, const knot_rrset_t *rrset)
 {
 	assert(packet);
 	assert(rrset);
@@ -81,7 +80,10 @@ static void pkt_free_data(knot_pkt_t *pkt)
 static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 {
 	assert(pkt);
-	assert(len >= KNOT_WIRE_HEADER_SIZE);
+
+	if (len < KNOT_WIRE_HEADER_SIZE) {
+		return KNOT_ERANGE;
+	}
 
 	pkt->wire = mm_alloc(&pkt->mm, len);
 	if (pkt->wire == NULL) {
@@ -90,7 +92,9 @@ static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 
 	pkt->flags |= KNOT_PF_FREE;
 	pkt->max_size = len;
+
 	knot_pkt_clear(pkt);
+
 	return KNOT_EOK;
 }
 
@@ -209,34 +213,11 @@ static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 }
 
 /*! \brief Reset packet parse state. */
-static int pkt_reset_sections(knot_pkt_t *pkt)
+static void sections_reset(knot_pkt_t *pkt)
 {
-	pkt->parsed  = 0;
 	pkt->current = KNOT_ANSWER;
 	memset(pkt->sections, 0, sizeof(pkt->sections));
-	return knot_pkt_begin(pkt, KNOT_ANSWER);
-}
-
-_public_
-void knot_pkt_clear_payload(knot_pkt_t *pkt)
-{
-	if (!pkt) {
-		return;
-	}
-
-	/* Keep question. */
-	pkt->parsed = 0;
-	pkt->reserved = 0;
-	pkt->size = KNOT_WIRE_HEADER_SIZE + knot_pkt_question_size(pkt);
-	knot_wire_set_ancount(pkt->wire, 0);
-	knot_wire_set_nscount(pkt->wire, 0);
-	knot_wire_set_arcount(pkt->wire, 0);
-
-	/* Free RRSets if applicable. */
-	pkt_free_data(pkt);
-
-	/* Reset sections. */
-	pkt_reset_sections(pkt);
+	(void)knot_pkt_begin(pkt, KNOT_ANSWER);
 }
 
 /*! \brief Allocate new packet using memory context. */
@@ -323,6 +304,21 @@ int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src)
 	return knot_pkt_parse(dst, 0);
 }
 
+static void payload_clear(knot_pkt_t *pkt)
+{
+	assert(pkt);
+
+	/* Keep question. */
+	pkt->parsed = 0;
+	pkt->reserved = 0;
+
+	/* Free RRSets if applicable. */
+	pkt_free_data(pkt);
+
+	/* Reset sections. */
+	sections_reset(pkt);
+}
+
 _public_
 int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 {
@@ -345,7 +341,11 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 		knot_wire_set_qdcount(pkt->wire, 0);
 	}
 
-	/* Update size and flags. */
+	/* Update flags and section counters. */
+	knot_wire_set_ancount(pkt->wire, 0);
+	knot_wire_set_nscount(pkt->wire, 0);
+	knot_wire_set_arcount(pkt->wire, 0);
+
 	knot_wire_set_qr(pkt->wire);
 	knot_wire_clear_tc(pkt->wire);
 	knot_wire_clear_ad(pkt->wire);
@@ -354,7 +354,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	knot_wire_clear_z(pkt->wire);
 
 	/* Clear payload. */
-	knot_pkt_clear_payload(pkt);
+	payload_clear(pkt);
 
 	return KNOT_EOK;
 }
@@ -366,12 +366,12 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 		return;
 	}
 
-	/* Clear payload. */
-	knot_pkt_clear_payload(pkt);
-
 	/* Reset to header size. */
 	pkt->size = KNOT_WIRE_HEADER_SIZE;
 	memset(pkt->wire, 0, pkt->size);
+
+	/* Clear payload. */
+	payload_clear(pkt);
 
 	/* Clear compression context. */
 	compr_clear(&pkt->compr);
@@ -634,7 +634,7 @@ int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 	}
 
 	/* Reset parse state. */
-	pkt_reset_sections(pkt);
+	sections_reset(pkt);
 
 	int ret = knot_pkt_parse_question(pkt);
 	if (ret == KNOT_EOK) {
