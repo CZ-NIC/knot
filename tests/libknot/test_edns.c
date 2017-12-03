@@ -69,6 +69,10 @@ static const uint16_t DO_FLAG = (uint16_t)1 << 15;
 static void check_ttl(knot_rdata_t *rdata, uint8_t ext_rcode, uint8_t ver,
                       uint16_t flags, char *msg)
 {
+	if (rdata == NULL) {
+		return;
+	}
+
 	/* TTL should be stored in machine byte order.
 	   We need network byte order to compare its parts. */
 	uint8_t ttl_wire[4] = { 0, 0, 0, 0 };
