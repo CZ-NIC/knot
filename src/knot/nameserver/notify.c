@@ -59,7 +59,10 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+	int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+	if (ret != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
 
 	/* SOA RR in answer may be included, recover serial. */
 	zone_t *zone = (zone_t *)qdata->extra->zone;

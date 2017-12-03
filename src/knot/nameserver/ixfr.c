@@ -262,7 +262,10 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+	int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+	if (ret != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
 
 	/* Guaranteed to have zone contents. */
 	const zone_node_t *apex = qdata->extra->zone->contents->apex;
@@ -270,7 +273,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	if (knot_rrset_empty(&soa_rr)) {
 		return KNOT_STATE_FAIL;
 	}
-	int ret = knot_pkt_put(pkt, 0, &soa_rr, 0);
+	ret = knot_pkt_put(pkt, 0, &soa_rr, 0);
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return KNOT_STATE_FAIL;
@@ -322,10 +325,13 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+	int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+	if (ret != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
 
 	/* Answer current packet (or continue). */
-	int ret = xfr_process_list(pkt, &ixfr_process_changeset, qdata);
+	ret = xfr_process_list(pkt, &ixfr_process_changeset, qdata);
 	switch (ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return KNOT_STATE_PRODUCE; /* Check for more. */

@@ -192,7 +192,7 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Reserve space for TSIG. */
 	int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
 	if (ret != KNOT_EOK) {
-		return ret;
+		return KNOT_STATE_FAIL;
 	}
 
 	/* Answer current packet (or continue). */

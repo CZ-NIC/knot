@@ -64,7 +64,10 @@ int sign_packet(knot_pkt_t *pkt, sign_context_t *sign_ctx)
 	size_t  *wire_size = &pkt->size;
 	size_t  max_size = pkt->max_size;
 
-	knot_pkt_reserve(pkt, knot_tsig_wire_size(sign_ctx->tsig_key));
+	int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(sign_ctx->tsig_key));
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	return knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
 	                      sign_ctx->digest, &sign_ctx->digest_size,
