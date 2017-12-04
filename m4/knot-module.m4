@@ -22,7 +22,9 @@ AC_DEFUN([KNOT_MODULE],
    [shared], [SHARED_MODULE_$1=yes
               shared_modules="${shared_modules}$1 "
               AS_IF([test "$3" = "non-shareable"],
-                    [AC_MSG_ERROR([Module $1 cannot be shared])])],
+                    [AC_MSG_ERROR([Module $1 cannot be shared])])
+              AS_IF([test "$enable_shared" != "yes"],
+                    [AC_MSG_ERROR([Shared module $1 requires shared libraries])])],
    [no],     [],
    [*],      [AC_MSG_ERROR([Invalid value '$module' for --with-module-$1])]
   )
