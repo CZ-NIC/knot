@@ -692,7 +692,7 @@ static uint16_t ret_to_rcode(int ret)
 {
 	if (ret == KNOT_EMALF) {
 		return KNOT_RCODE_FORMERR;
-	} else if (ret == KNOT_EDENIED || ret == KNOT_ETTL) {
+	} else if (ret == KNOT_EDENIED) {
 		return KNOT_RCODE_REFUSED;
 	} else {
 		return KNOT_RCODE_SERVFAIL;

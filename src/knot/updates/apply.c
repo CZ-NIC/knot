@@ -299,7 +299,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 			knot_rrtype_to_string(rr->type, type, sizeof(type));
 			log_zone_notice(contents->apex->owner,
 			                "TTL mismatch, owner %s, type %s, "
-			                "TTL updated to %u", owner, type, rr->ttl);
+			                "TTL set to %u", owner, type, rr->ttl);
 			return KNOT_EOK;
 		}
 	}

@@ -138,6 +138,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm);
  * \param mm       Memory context to use.
  *
  * \return KNOT_E*
+ * \retval KNOT_ETTL  RRSet TTL was updated.
  */
 int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm);
 

@@ -74,13 +74,12 @@ static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset,
 }
 
 /*! \brief Checks if the added RR has the same TTL as the first RR in the node. */
-static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
+static bool ttl_changed(struct rr_data *node_data, const knot_rrset_t *rrset)
 {
 	if (rrset->type == KNOT_RRTYPE_RRSIG || node_data->rrs.rr_count == 0) {
 		return false;
 	}
 
-	// Return error if TTLs don't match.
 	return rrset->ttl != node_data->ttl;
 }
 
@@ -178,8 +177,8 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
-			const bool ttl_err = ttl_error(node_data, rrset);
-			if (ttl_err) {
+			const bool ttl_change = ttl_changed(node_data, rrset);
+			if (ttl_change) {
 				node_data->ttl = rrset->ttl;
 			}
 
@@ -188,7 +187,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else {
-				return ttl_err ? KNOT_ETTL : KNOT_EOK;
+				return ttl_change ? KNOT_ETTL : KNOT_EOK;
 			}
 		}
 	}

@@ -27,16 +27,17 @@ resp.check_record(section="answer", rtype="A", ttl="1000", rdata="192.0.2.3")
 resp.check_record(section="answer", rtype="A", ttl="1000", rdata="1.2.3.4")
 
 # Try to add two RRs belonging to one RRSet, but with different TTLs
-# The UPDATE should be REFUSED
-# This also tests rollback in case of addition
+# The UPDATE should be accepted and all TTLs should change to be the same value
 
 check_log("Add RRSet with incoherent TTLs")
 up = master.update(zone)
 up.add("test.example.com.", 1000, "A", "1.2.3.4")
 up.add("test.example.com.", 2000, "A", "2.3.4.5")
-up.send("REFUSED")
+up.send("NOERROR")
 resp = master.dig("test.example.com.", "A")
-resp.check(rcode="NXDOMAIN")
+resp.check(rcode="NOERROR")
+resp.check_record(section="answer", rtype="A", ttl="2000", rdata="1.2.3.4")
+resp.check_record(section="answer", rtype="A", ttl="2000", rdata="2.3.4.5")
 
 # First, delete RRSet already in zone, then add new RR with different TTL
 # The UPDATE should be accepted and the new RR should be present in the zone

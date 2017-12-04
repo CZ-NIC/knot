@@ -816,7 +816,7 @@ static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 
 	const zone_node_t *node = zone_update_get_node(zone->control_update, owner);
 	if (node == NULL) {
-		return KNOT_ETTL;
+		return KNOT_EINVAL;
 	}
 
 	uint16_t type;
@@ -927,11 +927,6 @@ static int zone_txn_set(zone_t *zone, ctl_args_t *args)
 
 	ret = zone_update_add(zone->control_update, rrset);
 	knot_rrset_free(&rrset, NULL);
-
-	// Silently update TTL.
-	if (ret == KNOT_ETTL) {
-		ret = KNOT_EOK;
-	}
 
 	return ret;
 }

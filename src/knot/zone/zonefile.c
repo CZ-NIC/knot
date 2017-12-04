@@ -36,7 +36,7 @@
 
 #define ERROR(zone, fmt, ...) log_zone_error(zone, "zone loader, " fmt, ##__VA_ARGS__)
 #define WARNING(zone, fmt, ...) log_zone_warning(zone, "zone loader, " fmt, ##__VA_ARGS__)
-#define INFO(zone, fmt, ...) log_zone_info(zone, "zone loader, " fmt, ##__VA_ARGS__)
+#define NOTICE(zone, fmt, ...) log_zone_notice(zone, "zone loader, " fmt, ##__VA_ARGS__)
 
 static void process_error(zs_scanner_t *s)
 {
@@ -65,15 +65,9 @@ static bool handle_err(zcreator_t *zc, const knot_rrset_t *rr, int ret, bool mas
 	} else if (ret == KNOT_ETTL) {
 		char type[16] = { '\0' };
 		knot_rrtype_to_string(rr->type, type, sizeof(type));
-		if (master) {
-			WARNING(zname, "TTL mismatch, owner %s, type %s",
-			        owner, type);
-		} else {
-			WARNING(zname, "TTL mismatch, owner %s, type %s, "
-			        "TTL set to %u", owner, type, rr->ttl);
-		}
-		// Fail if we're the master for this zone.
-		return !master;
+		NOTICE(zname, "TTL mismatch, owner %s, type %s, TTL set to %u",
+		       owner, type, rr->ttl);
+		return true;
 	} else {
 		ERROR(zname, "failed to process record, owner %s", owner);
 		return false;
@@ -98,10 +92,6 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 		if (!handle_err(zc, rr, ret, zc->master)) {
 			// Fatal error
 			return ret;
-		}
-		if (ret == KNOT_EOUTOFZONE) {
-			// Skip out-of-zone record
-			return KNOT_EOK;
 		}
 	}
 
@@ -350,4 +340,4 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 
 #undef ERROR
 #undef WARNING
-#undef INFO
+#undef NOTICE
