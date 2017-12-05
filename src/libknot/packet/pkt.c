@@ -43,7 +43,7 @@ static bool pkt_contains(const knot_pkt_t *packet, const knot_rrset_t *rrset)
 
 	for (int i = 0; i < packet->rrset_count; ++i) {
 		const uint16_t type = packet->rr[i].type;
-		const uint8_t *data = packet->rr[i].rrs.data;
+		const knot_rdata_t *data = packet->rr[i].rrs.data;
 		if (type == rrset->type && data == rrset->rrs.data) {
 			return true;
 		}

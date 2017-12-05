@@ -26,14 +26,14 @@
 #include "knot/query/requestor.h"
 #include "knot/zone/zone.h"
 
-static bool match_key_ds(zone_key_t *key, const knot_rdata_t *ds)
+static bool match_key_ds(zone_key_t *key, knot_rdata_t *ds)
 {
 	assert(key);
 	assert(ds);
 
 	dnssec_binary_t ds_rdata = {
-		.data = knot_rdata_data(ds),
-		.size = knot_rdata_rdlen(ds)
+		.size = ds->len,
+		.data = ds->data,
 	};
 
 	dnssec_binary_t cds_rdata = { 0 };

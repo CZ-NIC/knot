@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -231,8 +231,7 @@ static void print_section_opt(const knot_pkt_t *packet)
 	       ercode_str);
 
 	knot_rdata_t *rdata = knot_rdataset_at(&packet->opt_rr->rrs, 0);
-	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
-	                                      knot_rdata_rdlen(rdata));
+	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
 
 	while (wire_ctx_available(&wire) >= KNOT_EDNS_OPTION_HDRLEN) {
 		uint16_t opt_code = wire_ctx_read_u16(&wire);
@@ -285,7 +284,7 @@ static void print_section_question(const knot_dname_t *owner,
 	knot_dump_style_t qstyle = style->style;
 	qstyle.empty_ttl = true;
 
-	knot_rrset_t *question = knot_rrset_new(owner, qtype, qclass, NULL);
+	knot_rrset_t *question = knot_rrset_new(owner, qtype, qclass, 0, NULL);
 
 	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &qstyle) < 0) {
 		WARN("can't print whole question section\n");

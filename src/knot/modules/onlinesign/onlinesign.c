@@ -97,7 +97,7 @@ static bool want_dnssec(knotd_qdata_t *qdata)
 static uint32_t dnskey_ttl(knotd_qdata_t *qdata)
 {
 	knot_rrset_t soa = knotd_qdata_zone_apex_rrset(qdata, KNOT_RRTYPE_SOA);
-	return knot_rrset_ttl(&soa);
+	return soa.ttl;
 }
 
 static uint32_t nsec_ttl(knotd_qdata_t *qdata)
@@ -196,7 +196,7 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *
 static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t *mm)
 {
 	knot_rrset_t *nsec = knot_rrset_new(qdata->name, KNOT_RRTYPE_NSEC,
-	                                    KNOT_CLASS_IN, mm);
+	                                    KNOT_CLASS_IN, nsec_ttl(qdata), mm);
 	if (!nsec) {
 		return NULL;
 	}
@@ -223,9 +223,7 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t
 	knot_dname_free(&next, NULL);
 	dnssec_nsec_bitmap_free(bitmap);
 
-	uint32_t ttl = nsec_ttl(qdata);
-
-	if (knot_rrset_add_rdata(nsec, rdata, size, ttl, mm) != KNOT_EOK) {
+	if (knot_rrset_add_rdata(nsec, rdata, size, mm) != KNOT_EOK) {
 		knot_rrset_free(&nsec, mm);
 		return NULL;
 	}
@@ -241,7 +239,8 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 {
 	// copy of RR set with replaced owner name
 
-	knot_rrset_t *copy = knot_rrset_new(owner, cover->type, cover->rclass, NULL);
+	knot_rrset_t *copy = knot_rrset_new(owner, cover->type, cover->rclass,
+	                                    cover->ttl, NULL);
 	if (!copy) {
 		return NULL;
 	}
@@ -253,7 +252,8 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 
 	// resulting RRSIG
 
-	knot_rrset_t *rrsig = knot_rrset_new(owner, KNOT_RRTYPE_RRSIG, copy->rclass, mm);
+	knot_rrset_t *rrsig = knot_rrset_new(owner, KNOT_RRTYPE_RRSIG, copy->rclass,
+	                                     copy->ttl, mm);
 	if (!rrsig) {
 		knot_rrset_free(&copy, NULL);
 		return NULL;
@@ -361,7 +361,8 @@ static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const dnssec_key_t *key,
                                   knot_mm_t *mm)
 {
 	knot_rrset_t *dnskey = knot_rrset_new(knotd_qdata_zone_name(qdata),
-	                                      KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN, mm);
+	                                      KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN,
+	                                      dnskey_ttl(qdata), mm);
 	if (!dnskey) {
 		return 0;
 	}
@@ -370,9 +371,7 @@ static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const dnssec_key_t *key,
 	dnssec_key_get_rdata(key, &rdata);
 	assert(rdata.size > 0 && rdata.data);
 
-	uint32_t ttl = dnskey_ttl(qdata);
-
-	int r = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, ttl, mm);
+	int r = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
 	if (r != KNOT_EOK) {
 		knot_rrset_free(&dnskey, mm);
 		return NULL;

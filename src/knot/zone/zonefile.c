@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 
 #include "libknot/libknot.h"
 #include "contrib/files.h"
-#include "contrib/macros.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
@@ -37,7 +36,7 @@
 
 #define ERROR(zone, fmt, ...) log_zone_error(zone, "zone loader, " fmt, ##__VA_ARGS__)
 #define WARNING(zone, fmt, ...) log_zone_warning(zone, "zone loader, " fmt, ##__VA_ARGS__)
-#define INFO(zone, fmt, ...) log_zone_info(zone, "zone loader, " fmt, ##__VA_ARGS__)
+#define NOTICE(zone, fmt, ...) log_zone_notice(zone, "zone loader, " fmt, ##__VA_ARGS__)
 
 static void process_error(zs_scanner_t *s)
 {
@@ -50,48 +49,27 @@ static void process_error(zs_scanner_t *s)
 	      zs_strerror(s->error.code));
 }
 
-static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
-{
-	return knot_rrset_add_rdata(rrset, scanner->r_data, scanner->r_data_length,
-	                            scanner->r_ttl, NULL);
-}
-
-static void log_ttl_error(const zcreator_t *zc, const zone_node_t *node,
-                          const knot_rrset_t *rr, const knot_dname_t *zone_name)
-{
-	// Prepare additional type string.
-	char type_str[16] = { '\0' };
-	knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-
-	char *node_name = knot_dname_to_str_alloc(node->owner);
-
-	WARNING(zone_name, "RRSet TTLs mismatched, node '%s' (record type %s)",
-	        node_name == NULL ? "?" : node_name,
-	        type_str);
-
-	free(node_name);
-}
-
-static bool handle_err(zcreator_t *zc, const zone_node_t *node,
-                       const knot_rrset_t *rr, int ret, bool master)
+static bool handle_err(zcreator_t *zc, const knot_rrset_t *rr, int ret, bool master)
 {
 	const knot_dname_t *zname = zc->z->apex->owner;
-	char *rrname = rr ? knot_dname_to_str_alloc(rr->owner) : NULL;
+
+	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	char *owner = knot_dname_to_str(buff, rr->owner, sizeof(buff));
+	if (owner == NULL) {
+		owner = "";
+	}
+
 	if (ret == KNOT_EOUTOFZONE) {
-		WARNING(zname, "ignoring out-of-zone data, owner '%s'",
-		        rrname ? rrname : "unknown");
-		free(rrname);
+		WARNING(zname, "ignoring out-of-zone data, owner %s", owner);
 		return true;
 	} else if (ret == KNOT_ETTL) {
-		free(rrname);
-		assert(node);
-		log_ttl_error(zc, node, rr, zname);
-		// Fail if we're the master for this zone.
-		return !master;
+		char type[16] = { '\0' };
+		knot_rrtype_to_string(rr->type, type, sizeof(type));
+		NOTICE(zname, "TTL mismatch, owner %s, type %s, TTL set to %u",
+		       owner, type, rr->ttl);
+		return true;
 	} else {
-		ERROR(zname, "failed to process record, owner '%s'",
-		      rrname ? rrname : "unknown");
-		free(rrname);
+		ERROR(zname, "failed to process record, owner %s", owner);
 		return false;
 	}
 }
@@ -111,15 +89,12 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	zone_node_t *node = NULL;
 	int ret = zone_contents_add_rr(zc->z, rr, &node);
 	if (ret != KNOT_EOK) {
-		if (!handle_err(zc, node, rr, ret, zc->master)) {
+		if (!handle_err(zc, rr, ret, zc->master)) {
 			// Fatal error
 			return ret;
 		}
-		if (ret == KNOT_EOUTOFZONE) {
-			// Skip out-of-zone record
-			return KNOT_EOK;
-		}
 	}
+
 	return KNOT_EOK;
 }
 
@@ -139,15 +114,11 @@ static void process_data(zs_scanner_t *scanner)
 	}
 
 	knot_rrset_t rr;
-	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class);
-	int ret = add_rdata_to_rr(&rr, scanner);
+	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class, scanner->r_ttl);
+
+	int ret = knot_rrset_add_rdata(&rr, scanner->r_data, scanner->r_data_length, NULL);
 	if (ret != KNOT_EOK) {
-		char *rr_name = knot_dname_to_str_alloc(rr.owner);
-		const knot_dname_t *zname = zc->z->apex->owner;
-		ERROR(zname, "failed to add RDATA, file '%s', line %"PRIu64", owner '%s'",
-		      scanner->file.name, scanner->line_counter, rr_name);
-		free(rr_name);
-		knot_dname_free(&owner, NULL);
+		knot_rrset_clear(&rr, NULL);
 		zc->ret = ret;
 		return;
 	}
@@ -155,14 +126,13 @@ static void process_data(zs_scanner_t *scanner)
 	/* Convert RDATA dnames to lowercase before adding to zone. */
 	ret = knot_rrset_rr_to_canonical(&rr);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&owner, NULL);
+		knot_rrset_clear(&rr, NULL);
 		zc->ret = ret;
 		return;
 	}
 
 	zc->ret = zcreator_step(zc, &rr);
-	knot_dname_free(&owner, NULL);
-	knot_rdataset_clear(&rr.rrs, NULL);
+	knot_rrset_clear(&rr, NULL);
 }
 
 int zonefile_open(zloader_t *loader, const char *source,
@@ -370,4 +340,4 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 
 #undef ERROR
 #undef WARNING
-#undef INFO
+#undef NOTICE

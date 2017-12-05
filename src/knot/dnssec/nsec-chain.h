@@ -111,8 +111,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_changeset_remove(const zone_node_t *n,
-                               changeset_t *changeset);
+int knot_nsec_changeset_remove(const zone_node_t *n, changeset_t *changeset);
 
 /*!
  * \brief Checks whether the node is empty or eventually contains only NSEC and

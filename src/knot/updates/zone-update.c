@@ -87,7 +87,12 @@ static int replace_soa(zone_contents_t *contents, const knot_rrset_t *rr)
 		return ret;
 	}
 
-	return zone_contents_add_rr(contents, rr, &n);
+	ret = zone_contents_add_rr(contents, rr, &n);
+	if (ret == KNOT_ETTL) {
+		return KNOT_EOK;
+	}
+
+	return ret;
 }
 
 /* ------------------------------- API -------------------------------------- */
@@ -326,7 +331,22 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 		}
 
 		zone_node_t *n = NULL;
-		return zone_contents_add_rr(update->new_cont, rrset, &n);
+		int ret = zone_contents_add_rr(update->new_cont, rrset, &n);
+		if (ret == KNOT_ETTL) {
+			char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+			char *owner = knot_dname_to_str(buff, rrset->owner, sizeof(buff));
+			if (owner == NULL) {
+				owner = "";
+			}
+			char type[16] = { '\0' };
+			knot_rrtype_to_string(rrset->type, type, sizeof(type));
+			log_zone_notice(update->new_cont->apex->owner,
+			                "TTL mismatch, owner %s, type %s, "
+			                "TTL set to %u", owner, type, rrset->ttl);
+			return KNOT_EOK;
+		}
+
+		return ret;
 	} else {
 		return KNOT_EINVAL;
 	}

@@ -66,10 +66,10 @@ int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
 		return KNOT_ENOMEM;
 	}
 
-	knot_rrset_init(opt_rr, owner, KNOT_RRTYPE_OPT, max_pld);
+	knot_rrset_init(opt_rr, owner, KNOT_RRTYPE_OPT, max_pld, 0);
 
 	/* Create empty RDATA */
-	int ret = knot_rrset_add_rdata(opt_rr, NULL, 0, 0, mm);
+	int ret = knot_rrset_add_rdata(opt_rr, NULL, 0, mm);
 	if (ret == KNOT_EOK) {
 		knot_edns_set_ext_rcode(opt_rr, ext_rcode);
 		knot_edns_set_version(opt_rr, ver);
@@ -88,7 +88,7 @@ size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
 	assert(rdata != NULL);
 
-	return KNOT_EDNS_MIN_SIZE + knot_rdata_rdlen(rdata);
+	return KNOT_EDNS_MIN_SIZE + rdata->len;
 }
 
 _public_
@@ -112,7 +112,7 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 	uint32_t ttl = 0;
 	wire_ctx_t w = wire_ctx_init((uint8_t *)&ttl, sizeof(ttl));
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	wire_ctx_write_u32(&w, knot_rrset_ttl(opt_rr));
+	wire_ctx_write_u32(&w, opt_rr->ttl);
 	wire_ctx_set_offset(&w, EDNS_OFFSET_RCODE);
 	return wire_ctx_read_u8(&w);
 }
@@ -122,7 +122,7 @@ static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 	uint32_t ttl = 0;
 	wire_ctx_t w = wire_ctx_init((uint8_t *)&ttl, sizeof(ttl));
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	wire_ctx_write_u32(&w, knot_rrset_ttl(opt_rr));
+	wire_ctx_write_u32(&w, opt_rr->ttl);
 	// Set the Extended RCODE in the converted TTL
 	wire_ctx_set_offset(&w, offset);
 	wire_ctx_write_u8(&w, value);
@@ -130,7 +130,7 @@ static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
 	wire_ctx_set_offset(&w, 0);
 	uint32_t ttl_local = wire_ctx_read_u32(&w);
 	// Store the TTL to the RDATA
-	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
+	opt_rr->ttl = ttl_local;
 }
 
 _public_
@@ -147,7 +147,7 @@ uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 	uint32_t ttl = 0;
 	wire_ctx_t w = wire_ctx_init((uint8_t *)&ttl, sizeof(ttl));
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	wire_ctx_write_u32(&w, knot_rrset_ttl(opt_rr));
+	wire_ctx_write_u32(&w, opt_rr->ttl);
 	wire_ctx_set_offset(&w, EDNS_OFFSET_VERSION);
 	return wire_ctx_read_u8(&w);
 }
@@ -163,20 +163,14 @@ _public_
 bool knot_edns_do(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
-	return knot_rrset_ttl(opt_rr) & EDNS_DO_MASK;
+	return opt_rr->ttl & EDNS_DO_MASK;
 }
 
 _public_
 void knot_edns_set_do(knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
-
-	// Read the TTL
-	uint32_t ttl = knot_rrset_ttl(opt_rr);
-	// Set the DO bit
-	ttl |= EDNS_DO_MASK;
-	// Store the TTL to the RDATA
-	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
+	opt_rr->ttl |= EDNS_DO_MASK;
 }
 
 /*!
@@ -232,8 +226,7 @@ static uint8_t *skip_option(wire_ctx_t *wire, uint16_t *code, uint16_t *full_len
  */
 static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 {
-	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
-	                                      knot_rdata_rdlen(rdata));
+	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
 	uint8_t *position = NULL;
 	uint16_t code, full_len;
 
@@ -271,10 +264,8 @@ static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
 	assert(rdata != NULL);
-	wire_ctx_t rd_wire = wire_ctx_init_const(knot_rdata_data(rdata),
-	                                         knot_rdata_rdlen(rdata));
-	wire_ctx_t wr_wire = wire_ctx_init(knot_rdata_data(rdata),
-	                                   knot_rdata_rdlen(rdata));
+	wire_ctx_t rd_wire = wire_ctx_init_const(rdata->data, rdata->len);
+	wire_ctx_t wr_wire = wire_ctx_init(rdata->data, rdata->len);
 
 	uint16_t deleted_len = 0; // Total area length acquired by deleting.
 
@@ -295,7 +286,7 @@ static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 				assert(wr_wire.error == KNOT_EOK);
 			} else {
 				// There isn't enough space for a copy.
-				memmove(knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire),
+				memmove(rdata->data + wire_ctx_offset(&wr_wire),
 				        rd_pos, full_len);
 				wire_ctx_skip(&wr_wire, full_len);
 				assert(wr_wire.error == KNOT_EOK);
@@ -305,7 +296,7 @@ static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 			if (reserve && !wr_pos &&
 			    deleted_len >= (KNOT_EDNS_OPTION_HDRLEN + size)) {
 				// Reserve this freed space.
-				wr_pos = knot_rdata_data(rdata) + wire_ctx_offset(&wr_wire);
+				wr_pos = rdata->data + wire_ctx_offset(&wr_wire);
 				deleted_len -= KNOT_EDNS_OPTION_HDRLEN + size;
 				wire_ctx_skip(&wr_wire, KNOT_EDNS_OPTION_HDRLEN + size);
 			}
@@ -314,8 +305,8 @@ static int delete_and_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	if (deleted_len > 0) {
 		// Adjust data length.
-		assert(knot_rdata_rdlen(rdata) >= deleted_len);
-		knot_rdata_set_rdlen(rdata, knot_rdata_rdlen(rdata) - deleted_len);
+		assert(rdata->len >= deleted_len);
+		rdata->len -= deleted_len;
 	}
 
 	if (reserve && wr_pos) {
@@ -353,8 +344,8 @@ static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
 	// extract old RDATA
 
 	knot_rdata_t *old_rdata = knot_rdataset_at(&opt->rrs, 0);
-	uint8_t *old_data = knot_rdata_data(old_rdata);
-	uint16_t old_data_len = knot_rdata_rdlen(old_rdata);
+	uint8_t *old_data = old_rdata->data;
+	uint16_t old_data_len = old_rdata->len;
 
 	// construct new RDATA
 
@@ -376,13 +367,12 @@ static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
 
 	// replace RDATA
 
-	uint32_t ttl = knot_rdata_ttl(old_rdata);
 	knot_rdataset_clear(&opt->rrs, mm);
-	if (knot_rrset_add_rdata(opt, new_data, new_data_len, ttl, mm) != KNOT_EOK) {
+	if (knot_rrset_add_rdata(opt, new_data, new_data_len, mm) != KNOT_EOK) {
 		return NULL;
 	}
 
-	return knot_rdata_data(knot_rdataset_at(&opt->rrs, 0)) + offset;
+	return knot_rdataset_at(&opt->rrs, 0)->data + offset;
 }
 
 _public_
@@ -497,8 +487,7 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 		return false;
 	}
 
-	wire_ctx_t wire = wire_ctx_init_const(knot_rdata_data(rdata),
-	                                      knot_rdata_rdlen(rdata));
+	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
 
 	/* RFC2671 4.4: {uint16_t code, uint16_t len, data} */
 	// read data to the end or error

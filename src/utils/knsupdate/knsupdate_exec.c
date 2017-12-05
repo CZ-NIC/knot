@@ -342,15 +342,14 @@ static srv_info_t *parse_host(const char *lp, const char* default_port)
 static int rr_list_append(zs_scanner_t *s, list_t *target_list, knot_mm_t *mm)
 {
 	knot_rrset_t *rr = knot_rrset_new(s->r_owner, s->r_type, s->r_class,
-	                                  NULL);
+	                                  s->r_ttl, NULL);
 	if (!rr) {
 		DBG("%s: failed to create rrset\n", __func__);
 		return KNOT_ENOMEM;
 	}
 
 	/* Create RDATA. */
-	int ret = knot_rrset_add_rdata(rr, s->r_data, s->r_data_length,
-	                               s->r_ttl, NULL);
+	int ret = knot_rrset_add_rdata(rr, s->r_data, s->r_data_length, NULL);
 	if (ret != KNOT_EOK) {
 		DBG("%s: failed to set rrset from wire (%s)\n",
 		    __func__, knot_strerror(ret));

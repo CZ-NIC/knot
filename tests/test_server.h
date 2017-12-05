@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,8 +45,9 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 	root->journal_db = &server->journal_db;
 	root->contents = zone_contents_new(root->name);
 
-	knot_rrset_t *soa = knot_rrset_new(root->name, KNOT_RRTYPE_SOA, KNOT_CLASS_IN, mm);
-	knot_rrset_add_rdata(soa, SOA_RDATA, SOA_RDLEN, 7200, mm);
+	knot_rrset_t *soa = knot_rrset_new(root->name, KNOT_RRTYPE_SOA, KNOT_CLASS_IN,
+	                                   7200, mm);
+	knot_rrset_add_rdata(soa, SOA_RDATA, SOA_RDLEN, mm);
 	node_add_rrset(root->contents->apex, soa, NULL);
 	knot_rrset_free(&soa, mm);
 

@@ -74,10 +74,10 @@ static int randstr(char* dst, size_t len)
 /*! \brief Init RRSet with type SOA and given serial. */
 static void init_soa(knot_rrset_t *rr, const uint32_t serial, const knot_dname_t *apex)
 {
-	knot_rrset_init(rr, knot_dname_copy(apex, NULL), KNOT_RRTYPE_SOA, KNOT_CLASS_IN);
+	knot_rrset_init(rr, knot_dname_copy(apex, NULL), KNOT_RRTYPE_SOA, KNOT_CLASS_IN, 3600);
 
 	uint8_t soa_data[MIN_SOA_SIZE] = { 0 };
-	int ret = knot_rrset_add_rdata(rr, soa_data, sizeof(soa_data), 3600, NULL);
+	int ret = knot_rrset_add_rdata(rr, soa_data, sizeof(soa_data), NULL);
 	knot_soa_serial_set(&rr->rrs, serial);
 	(void)ret;
 	assert(ret == KNOT_EOK);
@@ -94,14 +94,14 @@ static void init_random_rr(knot_rrset_t *rr , const knot_dname_t *apex)
 	/* Append zone apex. */
 	memcpy(owner + RAND_RR_LABEL, apex, knot_dname_size(apex));
 	knot_rrset_init(rr, knot_dname_copy((knot_dname_t *)owner, NULL),
-			KNOT_RRTYPE_TXT, KNOT_CLASS_IN);
+			KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 3600);
 
 	/* Create random RDATA. */
 	uint8_t txt[RAND_RR_PAYLOAD + 1];
 	txt[0] = RAND_RR_PAYLOAD - 1;
 	randstr((char *)(txt + 1), RAND_RR_PAYLOAD);
 
-	int ret = knot_rrset_add_rdata(rr, txt, RAND_RR_PAYLOAD, 3600, NULL);
+	int ret = knot_rrset_add_rdata(rr, txt, RAND_RR_PAYLOAD, NULL);
 	(void)ret;
 	assert(ret == KNOT_EOK);
 }
@@ -495,8 +495,8 @@ const uint8_t *rdC = (const uint8_t *) "\x01\x02\x03\x06";
 // frees owner
 static knot_rrset_t * tm_rrset(knot_dname_t * owner, const uint8_t * rdata)
 {
-	knot_rrset_t * rrs = knot_rrset_new(owner, KNOT_RRTYPE_A, KNOT_CLASS_IN, NULL);
-	knot_rrset_add_rdata(rrs, rdata, 4, 3600, NULL);
+	knot_rrset_t * rrs = knot_rrset_new(owner, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600, NULL);
+	knot_rrset_add_rdata(rrs, rdata, 4, NULL);
 	free(owner);
 	return rrs;
 }

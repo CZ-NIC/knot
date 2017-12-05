@@ -781,7 +781,8 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
-	knot_rrset_init(&info->synth_rrsig, owner_copy, rrsigs->type, rrsigs->rclass);
+	knot_rrset_init(&info->synth_rrsig, owner_copy, rrsigs->type,
+	                rrsigs->rclass, rrsigs->ttl);
 	/* Store filtered signature. */
 	info->synth_rrsig.rrs = synth_rrs;
 
@@ -817,7 +818,7 @@ int process_query_put_rr(knot_pkt_t *pkt, knotd_qdata_t *qdata,
 		if (qname_cpy == NULL) {
 			return KNOT_ENOMEM;
 		}
-		knot_rrset_init(&to_add, qname_cpy, rr->type, rr->rclass);
+		knot_rrset_init(&to_add, qname_cpy, rr->type, rr->rclass, rr->ttl);
 		ret = knot_rdataset_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			knot_dname_free(&qname_cpy, &pkt->mm);

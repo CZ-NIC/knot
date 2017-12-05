@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -567,7 +567,6 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		return KNOT_EOUTOFZONE;
 	}
 
-	int ret = KNOT_EOK;
 	if (*n == NULL) {
 		*n = nsec3 ? get_nsec3_node(z, rr->owner) : get_node(z, rr->owner);
 		if (*n == NULL) {
@@ -576,7 +575,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
-			ret = nsec3 ? add_nsec3_node(z, *n) : add_node(z, *n, true);
+			int ret = nsec3 ? add_nsec3_node(z, *n) : add_node(z, *n, true);
 			if (ret != KNOT_EOK) {
 				node_free(n, NULL);
 			}
@@ -611,7 +610,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 	knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
 	// Subtract changeset RRS from node RRS.
-	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, false, NULL);
+	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -960,10 +959,10 @@ static int load_nsec3param(zone_contents_t *contents)
 		return KNOT_EINVAL;
 	}
 
-	const knot_rdata_t *rr = knot_rdataset_at(rrs, 0);
+	knot_rdata_t *rr = knot_rdataset_at(rrs, 0);
 	dnssec_binary_t rdata = {
-		.size = knot_rdata_rdlen(rr),
-		.data = knot_rdata_data(rr)
+		.size = rr->len,
+		.data = rr->data,
 	};
 
 	dnssec_nsec3_params_t new_params = { 0 };

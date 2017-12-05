@@ -67,7 +67,8 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	if (owner_copy == NULL) {
 		return KNOT_ENOMEM;
 	}
-	knot_rrset_init(cname_rrset, owner_copy, KNOT_RRTYPE_CNAME, dname_rr->rclass);
+	knot_rrset_init(cname_rrset, owner_copy, KNOT_RRTYPE_CNAME, dname_rr->rclass,
+	                dname_rr->ttl);
 
 	/* Replace last labels of qname with DNAME. */
 	const knot_dname_t *dname_wire = dname_rr->owner;
@@ -85,9 +86,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	memcpy(cname_rdata, cname, cname_size);
 	knot_dname_free(&cname, NULL);
 
-	const knot_rdata_t *dname_data = knot_rdataset_at(&dname_rr->rrs, 0);
-	int ret = knot_rrset_add_rdata(cname_rrset, cname_rdata, cname_size,
-	                               knot_rdata_ttl(dname_data), mm);
+	int ret = knot_rrset_add_rdata(cname_rrset, cname_rdata, cname_size, mm);
 	if (ret != KNOT_EOK) {
 		knot_dname_free(&owner_copy, mm);
 		return ret;
@@ -179,41 +178,10 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, knotd_qdata_t *qdata)
 static int put_authority_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata,
                              const zone_contents_t *zone)
 {
-	knot_rrset_t soa_rrset = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
-
-	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
-	// MINIMUM as TTL
-	int ret = KNOT_EOK;
-	uint32_t flags = KNOT_PF_NOTRUNC;
-	uint32_t min = knot_soa_minimum(&soa_rrset.rrs);
-	const knot_rdata_t *soa_data = knot_rdataset_at(&soa_rrset.rrs, 0);
-	if (min < knot_rdata_ttl(soa_data)) {
-		knot_rrset_t copy;
-		knot_dname_t *dname_cpy = knot_dname_copy(soa_rrset.owner, &pkt->mm);
-		if (dname_cpy == NULL) {
-			return KNOT_ENOMEM;
-		}
-		knot_rrset_init(&copy, dname_cpy, soa_rrset.type, soa_rrset.rclass);
-		int ret = knot_rdataset_copy(&copy.rrs, &soa_rrset.rrs, &pkt->mm);
-		if (ret != KNOT_EOK) {
-			knot_dname_free(&dname_cpy, &pkt->mm);
-			return ret;
-		}
-		knot_rdata_t *copy_data = knot_rdataset_at(&copy.rrs, 0);
-		knot_rdata_set_ttl(copy_data, min);
-
-		flags |= KNOT_PF_FREE;
-		soa_rrset = copy;
-	}
-
-	ret = process_query_put_rr(pkt, qdata, &soa_rrset, &rrsigs,
-	                           KNOT_COMPR_HINT_NONE, flags);
-	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
-		knot_rrset_clear(&soa_rrset, &pkt->mm);
-	}
-
-	return ret;
+	return process_query_put_rr(pkt, qdata, &soa, &rrsigs,
+	                            KNOT_COMPR_HINT_NONE, KNOT_PF_NOTRUNC);
 }
 
 /*! \brief Put the delegation NS RRSet to the Authority section. */

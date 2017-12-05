@@ -68,10 +68,10 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (ret != KNOT_EOK) {
 			zf_conts = NULL;
 			if (dontcare_load_error(conf, zone)) {
-				log_zone_info(zone->name, "failed to parse zonefile (%s)",
+				log_zone_info(zone->name, "failed to parse zone file (%s)",
 					      knot_strerror(ret));
 			} else {
-				log_zone_error(zone->name, "failed to parse zonefile (%s)",
+				log_zone_error(zone->name, "failed to parse zone file (%s)",
 					       knot_strerror(ret));
 			}
 			goto cleanup;
@@ -126,8 +126,8 @@ int event_load(conf_t *conf, zone_t *zone)
 			} else {
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts, UPDATE_INCREMENTAL);
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
-					log_zone_warning(zone->name, "zonefile changed with SOA serial %s, "
-					                 "ignoring zonefile and loading from journal",
+					log_zone_warning(zone->name, "zone file changed with SOA serial %s, "
+					                 "ignoring zone file and loading from journal",
 					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
 					zone_contents_deep_free(&zf_conts);
 					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);

@@ -359,7 +359,6 @@ src/libknot/packet/rrset-wire.c
 src/libknot/packet/rrset-wire.h
 src/libknot/packet/wire.c
 src/libknot/packet/wire.h
-src/libknot/rdata.c
 src/libknot/rdata.h
 src/libknot/rdataset.c
 src/libknot/rdataset.h

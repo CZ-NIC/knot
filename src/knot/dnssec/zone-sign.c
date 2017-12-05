@@ -49,7 +49,7 @@ static knot_rrset_t rrset_init_from(const knot_rrset_t *src, uint16_t type)
 {
 	assert(src);
 	knot_rrset_t rrset;
-	knot_rrset_init(&rrset, src->owner, type, src->rclass);
+	knot_rrset_init(&rrset, src->owner, type, src->rclass, src->ttl);
 	return rrset;
 }
 
@@ -385,7 +385,7 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
 	assert(changeset);
 	knot_rrset_t synth_rrsig;
 	knot_rrset_init(&synth_rrsig, (knot_dname_t *)owner,
-	                KNOT_RRTYPE_RRSIG, rrsigs->rclass);
+	                KNOT_RRTYPE_RRSIG, rrsigs->rclass, rrsigs->ttl);
 	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_rrsig.rrs, NULL);
 	if (ret != KNOT_EOK) {
 		if (ret != KNOT_ENOENT) {
@@ -474,7 +474,7 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
 		if (!node_rrtype_exists(node, type_covered)) {
 			knot_rrset_t to_remove;
 			knot_rrset_init(&to_remove, rrsigs->owner, rrsigs->type,
-			                rrsigs->rclass);
+			                rrsigs->rclass, rrsigs->ttl);
 			knot_rdata_t *rr_rem = knot_rdataset_at(&rrsigs->rrs, i);
 			int ret = knot_rdataset_add(&to_remove.rrs, rr_rem, NULL);
 			if (ret != KNOT_EOK) {
@@ -627,9 +627,7 @@ typedef struct {
 
 /*- private API - DNSKEY handling --------------------------------------------*/
 
-static int rrset_add_zone_key(knot_rrset_t *rrset,
-                              zone_key_t *zone_key,
-                              uint32_t ttl)
+static int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
 	assert(rrset);
 	assert(zone_key);
@@ -637,13 +635,10 @@ static int rrset_add_zone_key(knot_rrset_t *rrset,
 	dnssec_binary_t dnskey_rdata = { 0 };
 	dnssec_key_get_rdata(zone_key->key, &dnskey_rdata);
 
-	return knot_rrset_add_rdata(rrset, dnskey_rdata.data,
-	                            dnskey_rdata.size, ttl, NULL);
+	return knot_rrset_add_rdata(rrset, dnskey_rdata.data, dnskey_rdata.size, NULL);
 }
 
-static int rrset_add_zone_ds(knot_rrset_t *rrset,
-                             zone_key_t *zone_key,
-                             uint32_t ttl)
+static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
 	assert(rrset);
 	assert(zone_key);
@@ -651,8 +646,7 @@ static int rrset_add_zone_ds(knot_rrset_t *rrset,
 	dnssec_binary_t cds_rdata = { 0 };
 	zone_key_calculate_ds(zone_key, &cds_rdata);
 
-	return knot_rrset_add_rdata(rrset, cds_rdata.data,
-	                            cds_rdata.size, ttl, NULL);
+	return knot_rrset_add_rdata(rrset, cds_rdata.data, cds_rdata.size, NULL);
 }
 
 /*!
@@ -939,9 +933,12 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	CHECK_RET;
 
 	// add DNSKEYs, CDNSKEYs and CDSs
-	add_dnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_DNSKEY, soa.rclass, NULL);
-	add_cdnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDNSKEY, soa.rclass, NULL);
-	add_cdss = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDS, soa.rclass, NULL);
+	add_dnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_DNSKEY, soa.rclass,
+	                             dnskey_ttl, NULL);
+	add_cdnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDNSKEY, soa.rclass,
+	                              0, NULL);
+	add_cdss = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDS, soa.rclass,
+	                          0, NULL);
 	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL) {
 		ret = KNOT_ENOMEM;
 		CHECK_RET;
@@ -952,7 +949,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	for (int i = 0; i < zone_keys->count; i++) {
 		zone_key_t *key = &zone_keys->keys[i];
 		if (key->is_public) {
-			ret = rrset_add_zone_key(add_dnskeys, key, dnskey_ttl);
+			ret = rrset_add_zone_key(add_dnskeys, key);
 			CHECK_RET;
 		}
 
@@ -964,9 +961,9 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	}
 
 	if (ksk_for_cds != NULL) {
-		ret = rrset_add_zone_key(add_cdnskeys, ksk_for_cds, 0);
+		ret = rrset_add_zone_key(add_cdnskeys, ksk_for_cds);
 		CHECK_RET;
-		ret = rrset_add_zone_ds(add_cdss, ksk_for_cds, 0);
+		ret = rrset_add_zone_ds(add_cdss, ksk_for_cds);
 		CHECK_RET;
 	}
 
@@ -974,10 +971,10 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		const uint8_t cdnskey_empty[5] = { 0, 0, 3, 0, 0 };
 		const uint8_t cds_empty[5] = { 0, 0, 0, 0, 0 };
 		ret = knot_rrset_add_rdata(add_cdnskeys, cdnskey_empty,
-		                           sizeof(cdnskey_empty), 0, NULL);
+		                           sizeof(cdnskey_empty), NULL);
 		CHECK_RET;
 		ret = knot_rrset_add_rdata(add_cdss, cds_empty,
-		                           sizeof(cds_empty), 0, NULL);
+		                           sizeof(cds_empty), NULL);
 		CHECK_RET;
 	}
 

@@ -80,18 +80,17 @@ static knotd_in_state_t whoami_query(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	/* Synthesize the response RRset. */
 
+	/* TTL is taken from the TTL of the SOA record. */
+	knot_rrset_t soa = knotd_qdata_zone_apex_rrset(qdata, KNOT_RRTYPE_SOA);
+
 	/* Owner name, type, and class are taken from the question. */
-	knot_rrset_t *rrset = knot_rrset_new(qname, qtype, qclass, &pkt->mm);
+	knot_rrset_t *rrset = knot_rrset_new(qname, qtype, qclass, soa.ttl, &pkt->mm);
 	if (rrset == NULL) {
 		return KNOTD_IN_STATE_ERROR;
 	}
 
-	/* TTL is taken from the TTL of the SOA record. */
-	knot_rrset_t soa = knotd_qdata_zone_apex_rrset(qdata, KNOT_RRTYPE_SOA);
-	uint32_t ttl = knot_rrset_ttl(&soa);
-
 	/* Record data is the query source address. */
-	int ret = knot_rrset_add_rdata(rrset, rdata, len_rdata, ttl, &pkt->mm);
+	int ret = knot_rrset_add_rdata(rrset, rdata, len_rdata, &pkt->mm);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&rrset, &pkt->mm);
 		return KNOTD_IN_STATE_ERROR;

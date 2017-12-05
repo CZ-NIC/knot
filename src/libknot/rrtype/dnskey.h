@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,5 +44,5 @@ void knot_dnskey_key(const knot_rdataset_t *rrs, size_t pos, uint8_t **key,
 	KNOT_RDATASET_CHECK(rrs, pos, return);
 	*key = knot_rdata_offset(rrs, pos, 4);
 	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
-	*key_size = knot_rdata_rdlen(rr) - 4;
+	*key_size = rr->len - 4;
 }

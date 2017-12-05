@@ -38,6 +38,8 @@ typedef struct {
 	bool	show_ttl;
 	/*!< Print extra information. */
 	bool	verbose;
+	/*!< Print RRSIG original TTL instead of rrset TTL. */
+	bool	original_ttl;
 	/*!< Show empty TTL value (keep indentation). */
 	bool	empty_ttl;
 	/*!< Format TTL as DHMS. */

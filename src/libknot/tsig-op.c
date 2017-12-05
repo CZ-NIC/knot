@@ -158,7 +158,7 @@ static int write_tsig_variables(uint8_t *wire, const knot_rrset_t *tsig_rr)
 	offset += sizeof(uint16_t);
 
 	/* Copy TTL - always 0. */
-	wire_write_u32(wire + offset, knot_rdata_ttl(knot_rdataset_at(&tsig_rr->rrs, 0)));
+	wire_write_u32(wire + offset, tsig_rr->ttl);
 	offset += sizeof(uint32_t);
 
 	/* Copy alg name. */
@@ -340,7 +340,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 
 	knot_rrset_t *tmp_tsig = knot_rrset_new(key->name, KNOT_RRTYPE_TSIG,
-	                                        KNOT_CLASS_ANY, NULL);
+	                                        KNOT_CLASS_ANY, 0, NULL);
 	if (!tmp_tsig) {
 		return KNOT_ENOMEM;
 	}
@@ -431,7 +431,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
 	knot_rrset_t *tmp_tsig = knot_rrset_new(key->name, KNOT_RRTYPE_TSIG,
-	                                        KNOT_CLASS_ANY, NULL);
+	                                        KNOT_CLASS_ANY, 0, NULL);
 	if (!tmp_tsig) {
 		return KNOT_ENOMEM;
 	}
@@ -637,7 +637,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	/*! \todo What key to use, when we do not sign? Does this even work? */
 	knot_rrset_t *tmp_tsig = knot_rrset_new(tsig_rr->owner, KNOT_RRTYPE_TSIG,
-		                                KNOT_CLASS_ANY, NULL);
+		                                KNOT_CLASS_ANY, 0, NULL);
 	if (!tmp_tsig) {
 		return KNOT_ENOMEM;
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ static bool node_contains_rr(const zone_node_t *node,
 	const knot_rdataset_t *zone_rrs = node_rdataset(node, rr->type);
 	if (zone_rrs) {
 		for (size_t i = 0; i < rr->rrs.rr_count; ++i) {
-			if (!knot_rdataset_member(zone_rrs, knot_rdataset_at(&rr->rrs, i), false)) {
+			if (!knot_rdataset_member(zone_rrs, knot_rdataset_at(&rr->rrs, i))) {
 				return false;
 			}
 		}
@@ -55,11 +55,11 @@ static bool node_contains_rr(const zone_node_t *node,
 
 static void process_rr(zs_scanner_t *scanner)
 {
-	knot_rrset_init(&rrset, scanner->r_owner, scanner->r_type, scanner->r_class);
+	knot_rrset_init(&rrset, scanner->r_owner, scanner->r_type, scanner->r_class,
+	                scanner->r_ttl);
 
 	int ret = knot_rrset_add_rdata(&rrset, scanner->r_data,
-	                               scanner->r_data_length,
-	                               scanner->r_ttl, NULL);
+	                               scanner->r_data_length, NULL);
 	(void)ret;
 	assert(ret == KNOT_EOK);
 }

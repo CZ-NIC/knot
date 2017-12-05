@@ -61,8 +61,6 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"missing RRSIG",
 	[SEM_ERR_RRSIG_SIGNED] =
 	"signed RRSIG",
-	[SEM_ERR_RRSIG_TTL] =
-	"wrong RRSIG TTL",
 	[SEM_ERR_RRSIG_UNVERIFIABLE] =
 	"unverifiable signature",
 
@@ -82,7 +80,7 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	[SEM_ERR_NSEC3_EXTRA_RECORD] =
 	"invalid record type in NSEC3 chain",
 	[SEM_ERR_NSEC3_RDATA_TTL] =
-	"wrong original TTL in NSEC3",
+	"inconsistent TTL for NSEC3 and minimum TTL in SOA",
 	[SEM_ERR_NSEC3_RDATA_CHAIN] =
 	"incoherent NSEC3 chain",
 	[SEM_ERR_NSEC3_RDATA_BITMAP] =
@@ -250,9 +248,7 @@ static int check_signature(const knot_rdataset_t *rrsigs, size_t pos,
 	}
 
 	const knot_rdata_t *rr_data = knot_rdataset_at(rrsigs, pos);
-	uint8_t *rdata = knot_rdata_data(rr_data);
-
-	if (knot_sign_ctx_add_data(sign_ctx, rdata, covered) != KNOT_EOK) {
+	if (knot_sign_ctx_add_data(sign_ctx, rr_data->data, covered) != KNOT_EOK) {
 		ret = KNOT_ENOMEM;
 		goto fail;
 	}
@@ -322,15 +318,11 @@ static int check_rrsig_rdata(sem_handler_t *handler,
 		}
 	}
 
-	/* check original TTL */
+	/* Check original TTL. */
 	uint32_t original_ttl = knot_rrsig_original_ttl(rrsig, rr_pos);
-
-	uint16_t rr_count = rrset->rrs.rr_count;
-	for (uint16_t i = 0; i < rr_count; ++i) {
-		if (original_ttl != knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, i))) {
-			handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_TTL,
-			            info_str);
-		}
+	if (original_ttl != rrset->ttl) {
+		handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_TTL,
+		            info_str);
 	}
 
 	/* Check for expired signature. */
@@ -368,8 +360,7 @@ static int check_rrsig_rdata(sem_handler_t *handler,
 				dnssec_key_t *key;
 
 				ret = dnssec_key_from_rdata(&key, zone->apex->owner,
-				                            knot_rdata_data(dnskey),
-				                            knot_rdata_rdlen(dnskey));
+				                            dnskey->data, dnskey->len);
 				if (ret != KNOT_EOK) {
 					continue;
 				}
@@ -428,21 +419,18 @@ static int check_rrsig_in_rrset(sem_handler_t *handler,
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
+
+	knot_rrset_t node_rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
+
 	knot_rdataset_t rrsigs;
 	knot_rdataset_init(&rrsigs);
-	ret = knot_synth_rrsig(rrset->type, node_rdataset(node, KNOT_RRTYPE_RRSIG),
-	                       &rrsigs, NULL);
+	ret = knot_synth_rrsig(rrset->type, &node_rrsigs.rrs, &rrsigs, NULL);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		return ret;
 	}
 	if (ret == KNOT_ENOENT) {
 		handler->cb(handler, zone, node, SEM_ERR_RRSIG_NO_RRSIG, info_str);
 		return KNOT_EOK;
-	}
-
-	const knot_rdata_t *sig_rr = knot_rdataset_at(&rrsigs, 0);
-	if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != knot_rdata_ttl(sig_rr)) {
-		handler->cb(handler, zone, node, SEM_ERR_RRSIG_TTL, info_str);
 	}
 
 	bool verified = false;
@@ -552,16 +540,14 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 
 		dnssec_key_t *key;
 		int ret = dnssec_key_from_rdata(&key, data->zone->apex->owner,
-		                                knot_rdata_data(dnskey),
-		                                knot_rdata_rdlen(dnskey));
+		                                dnskey->data, dnskey->len);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
 		uint16_t flags = dnssec_key_get_flags(key);
 		dnssec_binary_t cds_calc = { 0 };
-		dnssec_binary_t cds_orig = { .size = knot_rdata_rdlen(cds),
-		                             .data = knot_rdata_data(cds) };
+		dnssec_binary_t cds_orig = { .size = cds->len, .data = cds->data };
 		ret = dnssec_key_create_ds(key, digest_type, &cds_calc);
 		if (ret != KNOT_EOK) {
 			dnssec_key_free(key);
@@ -909,19 +895,17 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	char buff[50 + KNOT_DNAME_TXT_MAXLEN];
 	char *info = nsec3_info(node->nsec3_node->owner, buff, sizeof(buff));
 
-	const knot_rdataset_t *nsec3_rrs = node_rdataset(node->nsec3_node,
-	                                                 KNOT_RRTYPE_NSEC3);
-	if (nsec3_rrs == NULL) {
+	knot_rrset_t nsec3_rrs = node_rrset(node->nsec3_node, KNOT_RRTYPE_NSEC3);
+	if (knot_rrset_empty(&nsec3_rrs)) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_NSEC3_NONE, info);
 		goto nsec3_cleanup;
 	}
 
-	const knot_rdata_t *nsec3_rr = knot_rdataset_at(nsec3_rrs, 0);
 	const knot_rdataset_t *soa_rrs = node_rdataset(data->zone->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs);
 	uint32_t minimum_ttl = knot_soa_minimum(soa_rrs);
-	if (knot_rdata_ttl(nsec3_rr) != minimum_ttl) {
+	if (nsec3_rrs.ttl != minimum_ttl) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_NSEC3_RDATA_TTL, info);
 	}
@@ -930,22 +914,21 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	const knot_rdataset_t *nsec3param = node_rdataset(data->zone->apex,
 	                                                  KNOT_RRTYPE_NSEC3PARAM);
 	knot_rdata_t *rrd = knot_rdataset_at(nsec3param, 0);
-	dnssec_binary_t rdata = { .size = knot_rdata_rdlen(rrd),
-	                          .data = knot_rdata_data(rrd)};
+	dnssec_binary_t rdata = { .size = rrd->len, .data = rrd->data };
 	ret = dnssec_nsec3_params_from_rdata(&params_apex, &rdata);
 	if (ret != DNSSEC_EOK) {
 		ret = knot_error_from_libdnssec(ret);
 		goto nsec3_cleanup;
 	}
 
-	if (knot_nsec3_flags(nsec3_rrs, 0) > 1) {
+	if (knot_nsec3_flags(&nsec3_rrs.rrs, 0) > 1) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_NSEC3_RDATA_FLAGS, info);
 	}
 
 	dnssec_binary_t salt = {
-		.size = knot_nsec3_salt_length(nsec3_rrs, 0),
-		.data = (uint8_t *)knot_nsec3_salt(nsec3_rrs, 0),
+		.size = knot_nsec3_salt_length(&nsec3_rrs.rrs, 0),
+		.data = (uint8_t *)knot_nsec3_salt(&nsec3_rrs.rrs, 0),
 	};
 
 	if (dnssec_binary_cmp(&salt, &params_apex.salt)) {
@@ -953,12 +936,12 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 		                  SEM_ERR_NSEC3_RDATA_SALT, info);
 	}
 
-	if (knot_nsec3_algorithm(nsec3_rrs, 0) != params_apex.algorithm) {
+	if (knot_nsec3_algorithm(&nsec3_rrs.rrs, 0) != params_apex.algorithm) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_NSEC3_RDATA_ALG, info);
 	}
 
-	if (knot_nsec3_iterations(nsec3_rrs, 0) != params_apex.iterations) {
+	if (knot_nsec3_iterations(&nsec3_rrs.rrs, 0) != params_apex.iterations) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_NSEC3_RDATA_ITERS, info);
 	}
@@ -967,7 +950,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	const zone_node_t *apex = data->zone->apex;
 	uint8_t *next_dname_str = NULL;
 	uint8_t next_dname_str_size = 0;
-	knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str, &next_dname_str_size);
+	knot_nsec3_next_hashed(&nsec3_rrs.rrs, 0, &next_dname_str, &next_dname_str_size);
 	uint8_t next_dname[KNOT_DNAME_MAXLEN];
 	ret = knot_nsec3_hash_to_dname(next_dname, sizeof(next_dname),
 	                               next_dname_str, next_dname_str_size,
@@ -1144,8 +1127,7 @@ static void check_dnskey(zone_contents_t *zone, sem_handler_t *handler)
 		knot_rdata_t *dnskey = knot_rdataset_at(dnskeys, i);
 		dnssec_key_t *key;
 		int ret = dnssec_key_from_rdata(&key, zone->apex->owner,
-		                                knot_rdata_data(dnskey),
-		                                knot_rdata_rdlen(dnskey));
+		                                dnskey->data, dnskey->len);
 		if (ret == KNOT_EOK) {
 			dnssec_key_free(key);
 		} else {
