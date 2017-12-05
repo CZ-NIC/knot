@@ -98,7 +98,7 @@ zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name);
  * \brief Finds zone the given domain name should belong to.
  *
  * \param db Zone database to search in.
- * \param dname Domain name to find zone for.
+ * \param zone_name Domain name to find zone for.
  *
  * \retval Zone in which the domain name should be present or NULL if no such
  *         zone is found.
