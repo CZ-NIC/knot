@@ -179,31 +179,13 @@ static void enable_signals(void)
 	pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 }
 
-/*! \brief POSIX 1003.1e capabilities. */
-static void setup_capabilities(void)
+/*! \brief Drop POSIX 1003.1e capabilities. */
+static void drop_capabilities(void)
 {
 #ifdef HAVE_CAP_NG_H
 	/* Drop all capabilities. */
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
 		capng_clear(CAPNG_SELECT_BOTH);
-
-		/* Retain ability to set capabilities and FS access. */
-		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
-		capng_update(CAPNG_ADD, tp, CAP_SETPCAP);
-		capng_update(CAPNG_ADD, tp, CAP_DAC_OVERRIDE);
-		capng_update(CAPNG_ADD, tp, CAP_CHOWN); /* Storage ownership. */
-
-		/* Allow binding to privileged ports.
-		 * (Not inheritable)
-		 */
-		capng_update(CAPNG_ADD, tp, CAP_NET_BIND_SERVICE);
-
-		/* Allow setuid/setgid. */
-		capng_update(CAPNG_ADD, tp, CAP_SETUID);
-		capng_update(CAPNG_ADD, tp, CAP_SETGID);
-
-		/* Allow priorities changing. */
-		capng_update(CAPNG_ADD, tp, CAP_SYS_NICE);
 
 		/* Apply. */
 		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
@@ -211,8 +193,7 @@ static void setup_capabilities(void)
 			          strerror(errno));
 		}
 	} else {
-		log_info("user UID %d is not allowed to set capabilities, "
-		         "skipping", getuid());
+		log_info("process not allowed to set capabilities, skipping");
 	}
 #endif /* HAVE_CAP_NG_H */
 }
@@ -484,9 +465,6 @@ int main(int argc, char **argv)
 	/* Initialize pseudorandom number generator. */
 	srand(time(NULL));
 
-	/* POSIX 1003.1e capabilities. */
-	setup_capabilities();
-
 	/* Initialize logging subsystem. */
 	log_init();
 	if (verbose) {
@@ -529,6 +507,9 @@ int main(int argc, char **argv)
 		log_close();
 		return EXIT_FAILURE;
 	}
+
+	/* Drop POSIX capabilities. */
+	drop_capabilities();
 
 	/* Activate global query modules. */
 	conf_activate_modules(conf(), NULL, conf()->query_modules,
