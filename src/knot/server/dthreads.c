@@ -22,9 +22,6 @@
 #include <errno.h>
 #include <urcu.h>
 
-#ifdef HAVE_CAP_NG_H
-#include <cap-ng.h>
-#endif /* HAVE_CAP_NG_H */
 #ifdef HAVE_PTHREAD_NP_H
 #include <pthread_np.h>
 #endif /* HAVE_PTHREAD_NP_H */
@@ -130,16 +127,6 @@ static void *thread_ep(void *data)
 	pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 
 	rcu_register_thread();
-
-	/* Drop capabilities except FS access. */
-#ifdef HAVE_CAP_NG_H
-	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
-		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
-		capng_clear(CAPNG_SELECT_BOTH);
-		capng_update(CAPNG_ADD, tp, CAP_DAC_OVERRIDE);
-		capng_apply(CAPNG_SELECT_BOTH);
-	}
-#endif /* HAVE_CAP_NG_H */
 
 	// Run loop
 	for (;;) {
