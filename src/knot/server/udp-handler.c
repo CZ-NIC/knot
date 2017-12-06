@@ -30,9 +30,6 @@
 #ifdef HAVE_SYS_UIO_H /* 'struct iovec' for OpenBSD */
 #include <sys/uio.h>
 #endif /* HAVE_SYS_UIO_H */
-#ifdef HAVE_CAP_NG_H
-#include <cap-ng.h>
-#endif /* HAVE_CAP_NG_H */
 
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
@@ -425,14 +422,6 @@ int udp_master(dthread_t *thread)
 		unsigned cpu_mask = (dt_get_id(thread) % cpu);
 		dt_setaffinity(thread, &cpu_mask, 1);
 	}
-
-	/* Drop all capabilities on all workers. */
-#ifdef HAVE_CAP_NG_H
-        if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
-                capng_clear(CAPNG_SELECT_BOTH);
-                capng_apply(CAPNG_SELECT_BOTH);
-        }
-#endif /* HAVE_CAP_NG_H */
 
 	/* Prepare structures for bound sockets. */
 	unsigned thr_id = dt_get_id(thread);
