@@ -835,3 +835,71 @@ int knot_edns_chain_parse(knot_dname_t **point, const uint8_t *option,
 
 	return KNOT_EOK;
 }
+
+_public_
+uint16_t knot_edns_cookie_size(const knot_edns_cookie_t *cc,
+                               const knot_edns_cookie_t *sc)
+{
+	if (cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_SIZE) {
+		return 0;
+	} else if (sc == NULL || sc->len == 0) {
+		return KNOT_EDNS_COOKIE_CLNT_SIZE;
+	} else if (sc->len < KNOT_EDNS_COOKIE_SRVR_MIN_SIZE ||
+	           sc->len > KNOT_EDNS_COOKIE_SRVR_MAX_SIZE) {
+		return 0;
+	} else {
+		return cc->len + sc->len;
+	}
+}
+
+_public_
+int knot_edns_cookie_write(uint8_t *option, size_t option_len,
+                           const knot_edns_cookie_t *cc,
+                           const knot_edns_cookie_t *sc)
+{
+	if (option == NULL || cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_SIZE) {
+		return KNOT_EINVAL;
+	}
+
+	wire_ctx_t wire = wire_ctx_init(option, option_len);
+	wire_ctx_write(&wire, cc->data, cc->len);
+
+	if (sc != NULL && sc->len > 0) {
+		if (sc->len < KNOT_EDNS_COOKIE_SRVR_MIN_SIZE ||
+		    sc->len > KNOT_EDNS_COOKIE_SRVR_MAX_SIZE) {
+			return KNOT_EINVAL;
+		}
+		wire_ctx_write(&wire, sc->data, sc->len);
+	}
+
+	return wire.error;
+}
+
+_public_
+int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
+                           const uint8_t *option, uint16_t option_len)
+{
+	if (cc == NULL || sc == NULL || option == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (option_len != KNOT_EDNS_COOKIE_CLNT_SIZE &&
+	    (option_len < KNOT_EDNS_COOKIE_CLNT_SIZE + KNOT_EDNS_COOKIE_SRVR_MIN_SIZE ||
+	     option_len > KNOT_EDNS_COOKIE_CLNT_SIZE + KNOT_EDNS_COOKIE_SRVR_MAX_SIZE)) {
+		return KNOT_EMALF;
+	}
+	assert(option_len >= KNOT_EDNS_COOKIE_CLNT_SIZE);
+
+	memcpy(cc->data, option, KNOT_EDNS_COOKIE_CLNT_SIZE);
+	cc->len = KNOT_EDNS_COOKIE_CLNT_SIZE;
+
+	size_t sc_len = option_len - KNOT_EDNS_COOKIE_CLNT_SIZE;
+	if (sc_len == 0) {
+		sc->len = 0;
+	} else {
+		memcpy(sc->data, option + KNOT_EDNS_COOKIE_CLNT_SIZE, sc_len);
+		sc->len = sc_len;
+	}
+
+	return KNOT_EOK;
+}

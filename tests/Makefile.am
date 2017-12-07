@@ -30,9 +30,7 @@ check_PROGRAMS = \
 
 check_PROGRAMS += \
 	libknot/test_control		\
-	libknot/test_cookies-client	\
-	libknot/test_cookies-opt   	\
-	libknot/test_cookies-server	\
+	libknot/test_cookies		\
 	libknot/test_db			\
 	libknot/test_descriptor		\
 	libknot/test_dname		\

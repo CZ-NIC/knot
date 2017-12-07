@@ -330,10 +330,8 @@ src/libknot/codes.h
 src/libknot/consts.h
 src/libknot/control/control.c
 src/libknot/control/control.h
-src/libknot/cookies/client.c
-src/libknot/cookies/client.h
-src/libknot/cookies/server.c
-src/libknot/cookies/server.h
+src/libknot/cookies.c
+src/libknot/cookies.h
 src/libknot/db/db.h
 src/libknot/db/db_lmdb.c
 src/libknot/db/db_lmdb.h
@@ -377,8 +375,6 @@ src/libknot/rrtype/nsec3.c
 src/libknot/rrtype/nsec3.h
 src/libknot/rrtype/nsec3param.c
 src/libknot/rrtype/nsec3param.h
-src/libknot/rrtype/opt-cookie.c
-src/libknot/rrtype/opt-cookie.h
 src/libknot/rrtype/opt.c
 src/libknot/rrtype/opt.h
 src/libknot/rrtype/rdname.h
@@ -493,9 +489,7 @@ tests/contrib/test_time.c
 tests/contrib/test_wire.c
 tests/contrib/test_wire_ctx.c
 tests/libknot/test_control.c
-tests/libknot/test_cookies-client.c
-tests/libknot/test_cookies-opt.c
-tests/libknot/test_cookies-server.c
+tests/libknot/test_cookies.c
 tests/libknot/test_db.c
 tests/libknot/test_descriptor.c
 tests/libknot/test_dname.c

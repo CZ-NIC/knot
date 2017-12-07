@@ -101,8 +101,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/codes.h				\
 	libknot/consts.h			\
 	libknot/control/control.h		\
-	libknot/cookies/client.h		\
-	libknot/cookies/server.h		\
+	libknot/cookies.h			\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
 	libknot/errcode.h			\
@@ -129,7 +128,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/nsec3.h			\
 	libknot/rrtype/nsec3param.h		\
 	libknot/rrtype/opt.h			\
-	libknot/rrtype/opt-cookie.h		\
 	libknot/rrtype/rdname.h			\
 	libknot/rrtype/rrsig.h			\
 	libknot/rrtype/soa.h			\
@@ -147,8 +145,7 @@ nobase_libknot_la_HEADERS =			\
 libknot_la_SOURCES =				\
 	libknot/codes.c				\
 	libknot/control/control.c		\
-	libknot/cookies/client.c		\
-	libknot/cookies/server.c		\
+	libknot/cookies.c			\
 	libknot/descriptor.c			\
 	libknot/dname.c				\
 	libknot/error.c				\
@@ -168,7 +165,6 @@ libknot_la_SOURCES =				\
 	libknot/rrtype/nsec3.c			\
 	libknot/rrtype/nsec3param.c		\
 	libknot/rrtype/opt.c			\
-	libknot/rrtype/opt-cookie.c		\
 	libknot/rrtype/rrsig.c			\
 	libknot/rrtype/soa.c			\
 	libknot/rrtype/tsig.c			\

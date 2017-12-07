@@ -201,6 +201,9 @@ static void test_getters(knot_rrset_t *opt_rr)
 
 	check = knot_edns_has_option(opt_rr, E_OPT4_CODE);
 	ok(check, "OPT RR getters: empty option 2");
+
+	uint16_t code = knot_edns_opt_get_code((const uint8_t *)"\x00\x0a" "\x00\x00");
+	ok(code == KNOT_EDNS_OPTION_COOKIE, "OPT RR getters: EDNS OPT code");
 }
 
 static void test_setters(knot_rrset_t *opt_rr)
@@ -845,6 +848,72 @@ static void test_chain(void)
 	   "%s: parse, malformed", __func__);
 }
 
+static void check_cookie_parse(const char *opt, knot_edns_cookie_t *cc,
+                               knot_edns_cookie_t *sc, int code, const char *msg)
+{
+	const uint8_t *data = NULL;
+	uint16_t data_len = 0;
+	if (opt != NULL) {
+		data = knot_edns_opt_get_data((uint8_t *)opt);
+		data_len = knot_edns_opt_get_length((uint8_t *)opt);
+	}
+
+	int ret = knot_edns_cookie_parse(cc, sc, data, data_len);
+	is_int(code, ret, "cookie parse ret: %s", msg);
+}
+
+static void ok_cookie_check(const char *opt, knot_edns_cookie_t *cc,
+                            knot_edns_cookie_t *sc, uint16_t cc_len, uint16_t sc_len,
+                            const char *msg)
+{
+	check_cookie_parse(opt, cc, sc, KNOT_EOK, msg);
+
+	is_int(cc->len, cc_len, "cookie parse cc len: %s", msg);
+	is_int(sc->len, sc_len, "cookie parse cc len: %s", msg);
+
+	uint16_t size = knot_edns_cookie_size(cc, sc);
+	is_int(size, cc_len + sc_len, "cookie len: %s", msg);
+
+	uint8_t buf[64];
+	int ret = knot_edns_cookie_write(buf, sizeof(buf), cc, sc);
+	is_int(KNOT_EOK, ret, "cookie write ret: %s", msg);
+}
+
+static void test_cookie(void)
+{
+	const char *good[] = {
+		"\x00\x0a" "\x00\x08" "\x00\x01\x02\x03\x04\x05\x06\x07", /* Only client cookie. */
+		"\x00\x0a" "\x00\x10" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f", /* 8 octets long server cookie. */
+		"\x00\x0a" "\x00\x28" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25\x26\x27" /* 32 octets long server cookie. */
+	};
+
+	const char *bad[] = {
+		"\x00\x0a" "\x00\x00", /* Zero length cookie. */
+		"\x00\x0a" "\x00\x01" "\x00", /* Short client cookie. */
+		"\x00\x0a" "\x00\x07" "\x00\x01\x02\x03\x04\x05\x06", /* Short client cookie. */
+		"\x00\x0a" "\x00\x09" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x08", /* Short server cookie. */
+		"\x00\x0a" "\x00\x0f" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x08\x09\x0a\x0b\x0c\x0d\x0e", /* Short server cookie. */
+		"\x00\x0a" "\x00\x29" "\x00\x01\x02\x03\x04\x05\x06\x07" "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25\x26\x27\x28", /* Long server cookie. */
+	};
+
+	knot_edns_cookie_t cc, sc;
+
+	ok_cookie_check(good[0], &cc,  &sc, 8, 0,  "good cookie 0");
+	ok_cookie_check(good[1], &cc,  &sc, 8, 8,  "good cookie 1");
+	ok_cookie_check(good[2], &cc,  &sc, 8, 32, "good cookie 2");
+
+	check_cookie_parse(NULL,    &cc,  &sc,  KNOT_EINVAL, "no data");
+	check_cookie_parse(good[0], NULL, &sc,  KNOT_EINVAL, "no client cookie");
+	check_cookie_parse(good[1], &cc,  NULL, KNOT_EINVAL, "no server cookie");
+
+	check_cookie_parse(bad[0],  &cc,  &sc,  KNOT_EMALF,  "bad cookie 0");
+	check_cookie_parse(bad[1],  &cc,  &sc,  KNOT_EMALF,  "bad cookie 1");
+	check_cookie_parse(bad[2],  &cc,  &sc,  KNOT_EMALF,  "bad cookie 2");
+	check_cookie_parse(bad[3],  &cc,  &sc,  KNOT_EMALF,  "bad cookie 3");
+	check_cookie_parse(bad[4],  &cc,  &sc,  KNOT_EMALF,  "bad cookie 4");
+	check_cookie_parse(bad[5],  &cc,  &sc,  KNOT_EMALF,  "bad cookie 5");
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -863,6 +932,7 @@ int main(int argc, char *argv[])
 	test_alignment();
 	test_keepalive();
 	test_chain();
+	test_cookie();
 
 	knot_rrset_clear(&opt_rr, NULL);
 

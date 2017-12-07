@@ -55,9 +55,16 @@ enum knot_edns_const {
 	/*! \brief Maximal size of EDNS client subnet address in bytes (IPv6). */
 	KNOT_EDNS_CLIENT_SUBNET_ADDRESS_MAXLEN = 16,
 
+	/*! \brief EDNS client cookie size. */
+	KNOT_EDNS_COOKIE_CLNT_SIZE     = 8,
+	/*! \brief EDNS minimum server cookie size. */
+	KNOT_EDNS_COOKIE_SRVR_MIN_SIZE = 8,
+	/*! \brief EDNS maximum server cookie size. */
+	KNOT_EDNS_COOKIE_SRVR_MAX_SIZE = 32,
+
 	/*! \brief NSID option code. */
 	KNOT_EDNS_OPTION_NSID          = 3,
-	/*! \brief EDNS client subnet option code. */
+	/*! \brief EDNS Client subnet option code. */
 	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8,
 	/*! \brief EDNS DNS Cookie option code. */
 	KNOT_EDNS_OPTION_COOKIE        = 10,
@@ -533,5 +540,51 @@ int knot_edns_chain_write(uint8_t *option, size_t option_len,
  */
 int knot_edns_chain_parse(knot_dname_t **point, const uint8_t *option,
                           uint16_t option_len);
+
+/*!
+ * \brief DNS Cookie content.
+ */
+typedef struct {
+	uint8_t data[KNOT_EDNS_COOKIE_SRVR_MAX_SIZE]; /*!< Cookie data. */
+	uint16_t len; /*!< Cookie length. */
+} knot_edns_cookie_t;
+
+/*!
+ * \brief Get size of the EDNS Cookie option wire size.
+ *
+ * \param[in] cc  Client cookie.
+ * \param[in] sc  Server cookie (can be NULL).
+ *
+ * \return Size of the EDNS option data or 0 if invalid input.
+ */
+uint16_t knot_edns_cookie_size(const knot_edns_cookie_t *cc,
+                               const knot_edns_cookie_t *sc);
+
+/*!
+ * \brief Writes EDNS cookie wire data.
+ *
+ * \param[out] option      EDNS option data buffer.
+ * \param[in]  option_len  EDNS option data buffer size.
+ * \param[in]  cc          EDNS client cookie.
+ * \param[in]  sc          EDNS server cookie (can be NULL).
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_edns_cookie_write(uint8_t *option, size_t option_len,
+                           const knot_edns_cookie_t *cc,
+                           const knot_edns_cookie_t *sc);
+
+/*!
+ * \brief Parses EDNS Cookie wire data.
+ *
+ * \param[out] cc          EDNS client cookie.
+ * \param[out] sc          EDNS server cookie.
+ * \param[in]  option      EDNS option data.
+ * \param[in]  option_len  EDNS option size.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
+                           const uint8_t *option, uint16_t option_len);
 
 /*! @} */
