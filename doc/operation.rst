@@ -341,6 +341,9 @@ either in the log or via ``knotc zone-status``. There is no special log for fini
    a rollover is triggered while another is in progress, it waits until the
    first one is finished.
 
+The ZSK rollover is performed with Pre-publish method, KSK rollvoer uses Double-Signature scheme,
+as described in :rfc:`6781`.
+
 .. _DNSSEC KSK rollover example:
 
 KSK rollover example
