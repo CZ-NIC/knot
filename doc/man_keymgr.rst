@@ -35,7 +35,6 @@ Basic options
   bit length of the key by number (default: optimal length given by algorithm). The generated 
   TSIG key is only displayed on `stdout`: the command does not create a file, nor include the
   key in a keystore.
-  
 
 Config options
 ..............
@@ -106,7 +105,11 @@ Arguments are separated by space, each of them is in format 'name=value'.
   Key length in bits.
 
 **ksk**
-  Either 'true' (KSK will be generated) or 'false' (ZSK will be generated).
+  If set to **yes**, the key will be used as Secure Entry Point.
+
+**zsk**
+  If set to **yes**, the key will be used for zone signing. This flag can
+  be set concurrently with the **ksk** flag.
 
 **created**
   Timestamp of key creation.
