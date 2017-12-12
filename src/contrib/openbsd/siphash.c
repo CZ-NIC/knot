@@ -123,7 +123,7 @@ SipHash_End(SIPHASH_CTX *ctx, int rc, int rf)
 
 	r = (ctx->v[0] ^ ctx->v[1]) ^ (ctx->v[2] ^ ctx->v[3]);
 	memzero(ctx, sizeof(*ctx));
-	return (r);
+	return htole64(r);
 }
 
 uint64_t
