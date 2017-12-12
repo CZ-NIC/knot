@@ -103,7 +103,7 @@ SipHash_Update(SIPHASH_CTX *ctx, int rc, int rf, const void *src, size_t len)
 	}
 
 	if (len > 0)
-		memcpy(&ctx->buf[used], ptr, len);
+		memcpy(&ctx->buf, ptr, len);
 }
 
 uint64_t
