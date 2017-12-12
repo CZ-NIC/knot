@@ -28,7 +28,6 @@
 
 #include "dnssec/binary.h"
 #include "dnssec/tsig.h"
-#include "libknot/binary.h"
 #include "libknot/consts.h"
 #include "libknot/rrset.h"
 #include "libknot/tsig.h"

@@ -325,8 +325,6 @@ src/knot/zone/zonedb.h
 src/knot/zone/zonefile.c
 src/knot/zone/zonefile.h
 src/libknot/attribute.h
-src/libknot/binary.c
-src/libknot/binary.h
 src/libknot/codes.c
 src/libknot/codes.h
 src/libknot/consts.h

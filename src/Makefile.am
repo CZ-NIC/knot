@@ -98,7 +98,6 @@ libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libknot_ladir = $(includedir)
 nobase_libknot_la_HEADERS =			\
 	libknot/attribute.h			\
-	libknot/binary.h			\
 	libknot/codes.h				\
 	libknot/consts.h			\
 	libknot/control/control.h		\
@@ -146,7 +145,6 @@ nobase_libknot_la_HEADERS =			\
 
 # dynamic: libknot sources
 libknot_la_SOURCES =				\
-	libknot/binary.c			\
 	libknot/codes.c				\
 	libknot/control/control.c		\
 	libknot/cookies/client.c		\
