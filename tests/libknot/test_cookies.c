@@ -21,6 +21,7 @@
 #include "libknot/cookies.h"
 #include "libknot/errcode.h"
 #include "contrib/sockaddr.h"
+#include "contrib/endian.h"
 
 static void client_generate(struct sockaddr_storage *c_addr, struct sockaddr_storage *s_addr,
                             const uint8_t *secret, const char *msg, int code, uint64_t le_cc)
