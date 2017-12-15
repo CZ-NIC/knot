@@ -25,6 +25,7 @@
 #pragma once
 
 #include "libknot/version.h"
+#include "libknot/cookies.h"
 #include "libknot/codes.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
