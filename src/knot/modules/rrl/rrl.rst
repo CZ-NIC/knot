@@ -16,6 +16,10 @@ the responses as truncated or by dropping them altogether.
    The module introduces two statistics counters. The number of slipped and
    dropped responses.
 
+.. NOTE::
+   If the :ref:`Cookies<mod-cookies>` module is active, RRL is not applied
+   for responses with a valid DNS cookie.
+
 Example
 -------
 

@@ -358,6 +358,7 @@ typedef enum {
 	KNOTD_QUERY_FLAG_NO_IXFR    = 1 << 1, /*!< Don't process IXFR. */
 	KNOTD_QUERY_FLAG_LIMIT_ANY  = 1 << 2, /*!< Limit ANY QTYPE (respond with TC=1). */
 	KNOTD_QUERY_FLAG_LIMIT_SIZE = 1 << 3, /*!< Apply UDP size limit. */
+	KNOTD_QUERY_FLAG_COOKIE     = 1 << 4, /*!< Valid DNS Cookie indication. */
 } knotd_query_flag_t;
 
 /*! Query processing data context parameters. */

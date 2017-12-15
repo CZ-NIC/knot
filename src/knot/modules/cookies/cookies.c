@@ -208,6 +208,9 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 		return KNOTD_STATE_FAIL;
 	}
 
+	// Set the valid cookie flag.
+	qdata->params->flags |= KNOTD_QUERY_FLAG_COOKIE;
+
 	return state;
 }
 
