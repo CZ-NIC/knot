@@ -26,8 +26,6 @@
 
 /* Defaults */
 #define RRL_SLIP_MAX 100
-#define RRL_LOCK_GRANULARITY 32 /* Last digit granularity */
-#define RRL_CAPACITY 4 /* Window size in seconds */
 
 /*!
  * \brief RRL hash bucket.
@@ -57,7 +55,6 @@ typedef struct {
 typedef struct {
 	SIPHASH_KEY key;     /* Siphash key. */
 	uint32_t rate;       /* Configured RRL limit. */
-	uint32_t seed;       /* Pseudorandom seed for hashing. */
 	pthread_mutex_t ll;
 	pthread_mutex_t *lk; /* Table locks. */
 	unsigned lk_count;   /* Table lock count (granularity). */
@@ -84,50 +81,10 @@ typedef struct {
 /*!
  * \brief Create a RRL table.
  * \param size Fixed hashtable size (reasonable large prime is recommended).
+ * \param rate Rate (in pkts/sec).
  * \return created table or NULL.
  */
-rrl_table_t *rrl_create(size_t size);
-
-/*!
- * \brief Get RRL table default rate.
- * \param rrl RRL table.
- * \return rate
- */
-uint32_t rrl_rate(rrl_table_t *rrl);
-
-/*!
- * \brief Set RRL table default rate.
- *
- * \note When changing the rate, it is NOT applied to all buckets immediately.
- *
- * \param rrl RRL table.
- * \param rate New rate (in pkts/sec).
- * \return old rate
- */
-uint32_t rrl_setrate(rrl_table_t *rrl, uint32_t rate);
-
-/*!
- * \brief Set N distributed locks for the RRL table.
- *
- * \param rrl RRL table.
- * \param granularity Number of created locks.
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- */
-int rrl_setlocks(rrl_table_t *rrl, unsigned granularity);
-
-/*!
- * \brief Get bucket for current combination of parameters.
- * \param t RRL table.
- * \param a Source address.
- * \param p RRL request.
- * \param zone Relate zone name.
- * \param stamp Timestamp (current time).
- * \param lock Held lock.
- * \return assigned bucket
- */
-rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
-                     const knot_dname_t *zone, uint32_t stamp, int *lock);
+rrl_table_t *rrl_create(size_t size, uint32_t rate);
 
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
@@ -153,31 +110,5 @@ bool rrl_slip_roll(int n_slip);
 /*!
  * \brief Destroy RRL table.
  * \param rrl RRL table.
- * \return KNOT_EOK
  */
-int rrl_destroy(rrl_table_t *rrl);
-
-/*!
- * \brief Reseed RRL table secret.
- * \param rrl RRL table.
- * \return KNOT_EOK
- */
-int rrl_reseed(rrl_table_t *rrl);
-
-/*!
- * \brief Lock specified element lock.
- * \param rrl RRL table.
- * \param lk_id Specified lock.
- * \retval KNOT_EOK
- * \retval KNOT_ERROR
- */
-int rrl_lock(rrl_table_t *rrl, int lk_id);
-
-/*!
- * \brief Unlock specified element lock.
- * \param rrl RRL table.
- * \param lk_id Specified lock.
- * \retval KNOT_EOK
- * \retval KNOT_ERROR
- */
-int rrl_unlock(rrl_table_t *rrl, int lk_id);
+void rrl_destroy(rrl_table_t *rrl);

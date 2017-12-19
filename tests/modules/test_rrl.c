@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,14 +20,13 @@
 #include "dnssec/random.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
-#include "knot/modules/rrl/functions.h"
+#include "knot/modules/rrl/functions.c"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
 #define RRL_SIZE 196613
 #define RRL_THREADS 8
 #define RRL_INSERTS (RRL_SIZE/(5*RRL_THREADS)) /* lf = 1/5 */
-#define RRL_LOCKS 64
 
 /* Disabled as default as it depends on random input.
  * Table may be consistent even if some collision occur (and they may occur).
@@ -91,11 +90,7 @@ static void rrl_hopscotch(struct runnable_data* rd)
 
 int main(int argc, char *argv[])
 {
-#ifdef ENABLE_TIMED_TESTS
-	plan(10);
-#else
-	plan(5);
-#endif
+	plan_lazy();
 
 	dnssec_crypto_init();
 
@@ -126,17 +121,9 @@ int main(int argc, char *argv[])
 	rq.flags = 0;
 
 	/* 1. create rrl table */
-	rrl_table_t *rrl = rrl_create(RRL_SIZE);
+	const uint32_t rate = 10;
+	rrl_table_t *rrl = rrl_create(RRL_SIZE, rate);
 	ok(rrl != NULL, "rrl: create");
-
-	/* 2. set rate limit */
-	uint32_t rate = 10;
-	rrl_setrate(rrl, rate);
-	is_int(rate, rrl_rate(rrl), "rrl: setrate");
-
-	/* 3. setlocks */
-	ret = rrl_setlocks(rrl, RRL_LOCKS);
-	is_int(KNOT_EOK, ret, "rrl: setlocks");
 
 	/* 4. N unlimited requests. */
 	knot_dname_t *zone = knot_dname_from_str_alloc("rrl.");
@@ -163,32 +150,11 @@ int main(int argc, char *argv[])
 	/* 6. limited IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone, NULL);
 	is_int(KNOT_ELIMIT, ret, "rrl: throttled IPv6 request");
-#endif
 
-	/* 7. invalid values. */
-	ret = 0;
-	rrl_create(0);            // NULL
-	ret += rrl_setrate(0, 0); // 0
-	ret += rrl_rate(0);       // 0
-	ret += rrl_setlocks(0,0); // -1
-	ret += rrl_query(0, 0, 0, 0, NULL); // -1
-	ret += rrl_query(rrl, 0, 0, 0, NULL); // -1
-	ret += rrl_query(rrl, (void*)0x1, 0, 0, NULL); // -1
-	ret += rrl_destroy(0); // -1
-	is_int(-88, ret, "rrl: not crashed while executing functions on NULL context");
-
-#ifdef ENABLE_TIMED_TESTS
 	/* 8. hopscotch test */
 	struct runnable_data rd = {
 		1, rrl, &addr, &rq, zone
 	};
-	rrl_hopscotch(&rd);
-	ok(rd.passed, "rrl: hashtable is ~ consistent");
-
-	/* 9. reseed */
-	is_int(0, rrl_reseed(rrl), "rrl: reseed");
-
-	/* 10. hopscotch after reseed. */
 	rrl_hopscotch(&rd);
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
 #endif

@@ -189,37 +189,23 @@ int rrl_load(knotd_mod_t *mod)
 	}
 
 	// Create table.
-	knotd_conf_t conf = knotd_conf_mod(mod, MOD_TBL_SIZE);
-	ctx->rrl = rrl_create(conf.single.integer);
+	knotd_conf_t rate = knotd_conf_mod(mod, MOD_RATE_LIMIT);
+	knotd_conf_t size = knotd_conf_mod(mod, MOD_TBL_SIZE);
+	ctx->rrl = rrl_create(size.single.integer, rate.single.integer);
 	if (ctx->rrl == NULL) {
 		ctx_free(ctx);
 		return KNOT_ENOMEM;
 	}
 
-	// Set locks.
-	int ret = rrl_setlocks(ctx->rrl, RRL_LOCK_GRANULARITY);
-	if (ret != KNOT_EOK) {
-		ctx_free(ctx);
-		return ret;
-	}
-
-	// Set rate limit.
-	conf = knotd_conf_mod(mod, MOD_RATE_LIMIT);
-	ret = rrl_setrate(ctx->rrl, conf.single.integer);
-	if (ret != KNOT_EOK) {
-		ctx_free(ctx);
-		return ret;
-	}
-
 	// Get slip.
-	conf = knotd_conf_mod(mod, MOD_SLIP);
+	knotd_conf_t conf = knotd_conf_mod(mod, MOD_SLIP);
 	ctx->slip = conf.single.integer;
 
 	// Get whitelist.
 	ctx->whitelist = knotd_conf_mod(mod, MOD_WHITELIST);
 
 	// Set up statistics counters.
-	ret = knotd_mod_stats_add(mod, "slipped", 1, NULL);
+	int ret = knotd_mod_stats_add(mod, "slipped", 1, NULL);
 	if (ret != KNOT_EOK) {
 		ctx_free(ctx);
 		return ret;

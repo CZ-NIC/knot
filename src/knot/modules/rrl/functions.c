@@ -19,6 +19,7 @@
 
 #include "knot/modules/rrl/functions.h"
 #include "contrib/sockaddr.h"
+#include "dnssec/error.h"
 #include "dnssec/random.h"
 
 /* Hopscotch defines. */
@@ -31,6 +32,8 @@
 /* Defaults */
 #define RRL_SSTART 2 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
+#define RRL_CAPACITY 4 /* Window size in seconds */
+#define RRL_LOCK_GRANULARITY 32 /* Last digit granularity */
 
 /* Classification */
 enum {
@@ -152,14 +155,10 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls, rrl_req_t *req,
 }
 
 static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage *a,
-                        rrl_req_t *p, const knot_dname_t *z, uint32_t seed)
+                        rrl_req_t *req, const knot_dname_t *name)
 {
-	if (!dst || !p || !a || maxlen == 0) {
-		return KNOT_EINVAL;
-	}
-
 	/* Class */
-	uint8_t cls = rrl_clsid(p);
+	uint8_t cls = rrl_clsid(req);
 	*dst = cls;
 	int blklen = sizeof(cls);
 
@@ -181,7 +180,7 @@ static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage 
 	/* Name */
 	uint16_t *len_pos = (uint16_t *)(dst + blklen);
 	blklen += sizeof(uint16_t);
-	int ret = rrl_clsname(dst + blklen, maxlen - blklen, cls, p, z);
+	int ret = rrl_clsname(dst + blklen, maxlen - blklen, cls, req, name);
 	if (ret < 0) {
 		return ret;
 	}
@@ -189,17 +188,11 @@ static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage 
 	memcpy(len_pos, &len, sizeof(len));
 	blklen += len;
 
-	/* Seed. */
-	if (blklen + sizeof(seed) > maxlen) {
-		return KNOT_ESPACE;
-	}
-	memcpy(dst + blklen, (void *)&seed, sizeof(seed));
-	blklen += sizeof(seed);
-
 	return blklen;
 }
 
-static int bucket_free(rrl_item_t *b, uint32_t now) {
+static int bucket_free(rrl_item_t *b, uint32_t now)
+{
 	return b->cls == CLS_NULL || (b->time + 1 < now);
 }
 
@@ -295,46 +288,20 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 	              addr_str, rrl_clsstr(cls), what);
 }
 
-rrl_table_t *rrl_create(size_t size)
+static void rrl_lock(rrl_table_t *t, int lk_id)
 {
-	if (size == 0) {
-		return NULL;
-	}
-
-	const size_t tbl_len = sizeof(rrl_table_t) + size * sizeof(rrl_item_t);
-	rrl_table_t *t = calloc(1, tbl_len);
-	if (!t) {
-		return NULL;
-	}
-
-	(void)dnssec_random_buffer((uint8_t *)&t->key, sizeof(t->key));
-	t->size = size;
-	rrl_reseed(t);
-
-	return t;
+	assert(lk_id > -1);
+	pthread_mutex_lock(t->lk + lk_id);
 }
 
-uint32_t rrl_setrate(rrl_table_t *rrl, uint32_t rate)
+static void rrl_unlock(rrl_table_t *t, int lk_id)
 {
-	if (!rrl) {
-		return 0;
-	}
-	uint32_t old = rrl->rate;
-	rrl->rate = rate;
-	return old;
+	assert(lk_id > -1);
+	pthread_mutex_unlock(t->lk + lk_id);
 }
 
-uint32_t rrl_rate(rrl_table_t *rrl)
+static int rrl_setlocks(rrl_table_t *rrl, uint32_t granularity)
 {
-	return rrl ? rrl->rate : 0;
-}
-
-int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
-{
-	if (!rrl) {
-		return KNOT_EINVAL;
-	}
-
 	assert(!rrl->lk); /* Cannot change while locks are used. */
 	assert(granularity <= rrl->size / 10); /* Due to int. division err. */
 
@@ -370,11 +337,40 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
 	return KNOT_EOK;
 }
 
-rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
-                     const knot_dname_t *zone, uint32_t stamp, int *lock)
+rrl_table_t *rrl_create(size_t size, uint32_t rate)
+{
+	if (size == 0) {
+		return NULL;
+	}
+
+	const size_t tbl_len = sizeof(rrl_table_t) + size * sizeof(rrl_item_t);
+	rrl_table_t *t = calloc(1, tbl_len);
+	if (!t) {
+		return NULL;
+	}
+	t->size = size;
+	t->rate = rate;
+
+	if (dnssec_random_buffer((uint8_t *)&t->key, sizeof(t->key)) != DNSSEC_EOK) {
+		free(t);
+		return NULL;
+	}
+
+	if (rrl_setlocks(t, RRL_LOCK_GRANULARITY) != KNOT_EOK) {
+		free(t);
+		return NULL;
+	}
+
+	return t;
+}
+
+/*! \brief Get bucket for current combination of parameters. */
+static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
+                            rrl_req_t *req, const knot_dname_t *zone, uint32_t stamp,
+                            int *lock)
 {
 	char buf[RRL_CLSBLK_MAXLEN];
-	int len = rrl_classify(buf, sizeof(buf), a, p, zone, t->seed);
+	int len = rrl_classify(buf, sizeof(buf), a, req, zone);
 	if (len < 0) {
 		return NULL;
 	}
@@ -512,7 +508,7 @@ bool rrl_slip_roll(int n_slip)
 	return (roll < threshold);
 }
 
-int rrl_destroy(rrl_table_t *rrl)
+void rrl_destroy(rrl_table_t *rrl)
 {
 	if (rrl) {
 		if (rrl->lk_count > 0) {
@@ -525,46 +521,4 @@ int rrl_destroy(rrl_table_t *rrl)
 	}
 
 	free(rrl);
-	return KNOT_EOK;
-}
-
-int rrl_reseed(rrl_table_t *rrl)
-{
-	/* Lock entire table. */
-	if (rrl->lk_count > 0) {
-		pthread_mutex_lock(&rrl->ll);
-		for (unsigned i = 0; i < rrl->lk_count; ++i) {
-			rrl_lock(rrl, i);
-		}
-	}
-
-	memset(rrl->arr, 0, rrl->size * sizeof(rrl_item_t));
-	rrl->seed = dnssec_random_uint32_t();
-
-	if (rrl->lk_count > 0) {
-		for (unsigned i = 0; i < rrl->lk_count; ++i) {
-			rrl_unlock(rrl, i);
-		}
-		pthread_mutex_unlock(&rrl->ll);
-	}
-
-	return KNOT_EOK;
-}
-
-int rrl_lock(rrl_table_t *t, int lk_id)
-{
-	assert(lk_id > -1);
-	if (pthread_mutex_lock(t->lk + lk_id) != 0) {
-		return KNOT_ERROR;
-	}
-	return KNOT_EOK;
-}
-
-int rrl_unlock(rrl_table_t *t, int lk_id)
-{
-	assert(lk_id > -1);
-	if (pthread_mutex_unlock(t->lk + lk_id)!= 0) {
-		return KNOT_ERROR;
-	}
-	return KNOT_EOK;
 }
