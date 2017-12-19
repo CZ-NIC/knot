@@ -43,8 +43,6 @@ src/contrib/openbsd/strlcat.c
 src/contrib/openbsd/strlcat.h
 src/contrib/openbsd/strlcpy.c
 src/contrib/openbsd/strlcpy.h
-src/contrib/print.c
-src/contrib/print.h
 src/contrib/qp-trie/trie.c
 src/contrib/qp-trie/trie.h
 src/contrib/sockaddr.c
@@ -234,6 +232,7 @@ src/knot/journal/journal.c
 src/knot/journal/journal.h
 src/knot/journal/serialization.c
 src/knot/journal/serialization.h
+src/knot/modules/cookies/cookies.c
 src/knot/modules/dnsproxy/dnsproxy.c
 src/knot/modules/dnstap/dnstap.c
 src/knot/modules/noudp/noudp.c

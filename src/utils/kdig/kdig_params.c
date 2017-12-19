@@ -22,6 +22,7 @@
 
 #include "utils/kdig/kdig_params.h"
 #include "utils/common/cert.h"
+#include "utils/common/hex.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
@@ -31,6 +32,8 @@
 #include "contrib/sockaddr.h"
 #include "contrib/strtonum.h"
 #include "contrib/ucw/lists.h"
+#include "dnssec/lib/dnssec/error.h"
+#include "dnssec/lib/dnssec/random.h"
 
 #define PROGRAM_NAME "kdig"
 
@@ -743,6 +746,79 @@ static int opt_nobufsize(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_cookie(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	if (arg != NULL) {
+		uint8_t *input = NULL;
+		size_t input_len;
+
+		int ret = hex_decode(arg, &input, &input_len);
+		if (ret != KNOT_EOK) {
+			ERR("invalid +cookie=%s\n", arg);
+			return KNOT_EINVAL;
+		}
+
+		if (input_len < KNOT_EDNS_COOKIE_CLNT_SIZE) {
+			ERR("too short client +cookie=%s\n", arg);
+			free(input);
+			return KNOT_EINVAL;
+		}
+		q->cc.len = KNOT_EDNS_COOKIE_CLNT_SIZE;
+		memcpy(q->cc.data, input, q->cc.len);
+
+		input_len -= q->cc.len;
+		if (input_len > 0) {
+			if (input_len < KNOT_EDNS_COOKIE_SRVR_MIN_SIZE) {
+				ERR("too short server +cookie=%s\n", arg);
+				free(input);
+				return KNOT_EINVAL;
+			}
+			if (input_len > KNOT_EDNS_COOKIE_SRVR_MAX_SIZE) {
+				ERR("too long server +cookie=%s\n", arg);
+				free(input);
+				return KNOT_EINVAL;
+			}
+			q->sc.len = input_len;
+			memcpy(q->sc.data, input + q->cc.len, q->sc.len);
+		}
+
+		free(input);
+	} else {
+		q->cc.len = KNOT_EDNS_COOKIE_CLNT_SIZE;
+
+		int ret = dnssec_random_buffer(q->cc.data, q->cc.len);
+		if (ret != DNSSEC_EOK) {
+			return knot_error_from_libdnssec(ret);
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static int opt_nocookie(const char *arg, void *query)
+{
+	query_t *q = query;
+	q->cc.len = 0;
+	q->sc.len = 0;
+	return KNOT_EOK;
+}
+
+static int opt_badcookie(const char *arg, void *query)
+{
+	query_t *q = query;
+	q->badcookie = true;
+	return KNOT_EOK;
+}
+
+static int opt_nobadcookie(const char *arg, void *query)
+{
+	query_t *q = query;
+	q->badcookie = false;
+	return KNOT_EOK;
+}
+
 static int opt_padding(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -900,6 +976,7 @@ static int opt_noedns(const char *arg, void *query)
 	opt_nodoflag(arg, query);
 	opt_nonsid(arg, query);
 	opt_nobufsize(arg, query);
+	opt_nocookie(arg, query);
 	opt_nopadding(arg, query);
 	opt_noalignment(arg, query);
 	opt_nosubnet(arg, query);
@@ -1084,6 +1161,12 @@ static const param_t kdig_opts2[] = {
 	{ "retry",          ARG_REQUIRED, opt_retry },
 	{ "noretry",        ARG_NONE,     opt_noretry },
 
+	{ "cookie",         ARG_OPTIONAL, opt_cookie },
+	{ "nocookie",       ARG_NONE,     opt_nocookie },
+
+	{ "badcookie",      ARG_NONE,     opt_badcookie },
+	{ "nobadcookie",    ARG_NONE,     opt_nobadcookie },
+
 	/* "idn" doesn't work since it must be called before query creation. */
 	{ "noidn",          ARG_NONE,     opt_noidn },
 
@@ -1133,6 +1216,9 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->idn = true;
 		query->nsid = false;
 		query->edns = -1;
+		query->cc.len = 0;
+		query->sc.len = 0;
+		query->badcookie = true;
 		query->padding = -1;
 		query->alignment = 0;
 		tls_params_init(&query->tls);
@@ -1172,6 +1258,9 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->idn = conf->idn;
 		query->nsid = conf->nsid;
 		query->edns = conf->edns;
+		query->cc = conf->cc;
+		query->sc = conf->sc;
+		query->badcookie = conf->badcookie;
 		query->padding = conf->padding;
 		query->alignment = conf->alignment;
 		tls_params_copy(&query->tls, &conf->tls);
@@ -1671,6 +1760,8 @@ static void print_help(void)
 	       "       +[no]edns[=N]         Use EDNS(=version).\n"
 	       "       +[no]time=T           Set wait for reply interval in seconds.\n"
 	       "       +[no]retry=N          Set number of retries.\n"
+	       "       +[no]cookie=HEX       Attach EDNS(0) cookie to the query.\n"
+	       "       +[no]badcookie        Repeat a query with the correct cookie.\n"
 	       "       +noidn                Disable IDN transformation.\n"
 	       "\n"
 	       "       -h, --help            Print the program help.\n"

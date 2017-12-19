@@ -278,6 +278,12 @@ applies to each query attempt.
 Set the number (>=0) of UDP retries (default is 2). This doesn\(aqt apply to
 AXFR/IXFR.
 .TP
+\fB+\fP[\fBno\fP]\fBcookie\fP=\fIHEX\fP
+Attach EDNS(0) cookie to the query.
+.TP
+\fB+\fP[\fBno\fP]\fBbadcookie\fP
+Repeat a query with the correct cookie.
+.TP
 \fB+noidn\fP
 Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
 on libidn availability during project building!

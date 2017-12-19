@@ -111,6 +111,11 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
+	// Rate limit is not applied to responses with a valid cookie.
+	if (qdata->params->flags & KNOTD_QUERY_FLAG_COOKIE) {
+		return state;
+	}
+
 	// Exempt clients.
 	if (addr_range_match(&ctx->whitelist, qdata->params->remote)) {
 		return state;
