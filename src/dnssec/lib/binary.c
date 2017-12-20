@@ -125,8 +125,8 @@ int dnssec_binary_cmp(const dnssec_binary_t *one, const dnssec_binary_t *two)
 		return 0;
 	}
 
-	uint8_t *data_one = one ? one->data : NULL;
-	uint8_t *data_two = two ? two->data : NULL;
+	uint8_t *data_one = one && one->size > 0 ? one->data : NULL;
+	uint8_t *data_two = two && two->size > 0 ? two->data : NULL;
 
 	if (data_one == data_two) {
 		return 0;
