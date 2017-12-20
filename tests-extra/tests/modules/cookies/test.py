@@ -19,7 +19,7 @@ cookieOpcode = 10
 rcodeNoerror = 0
 rcodeBadcookie = 23
 
-def reconfigure(server, secret_lifetime, badcookie_slip):
+def reconfigure(server, zone, secret_lifetime, badcookie_slip):
     """
     Reconfigure server module.
     """
@@ -28,6 +28,7 @@ def reconfigure(server, secret_lifetime, badcookie_slip):
                       badcookie_slip=badcookie_slip))
     server.gen_confile()
     server.reload()
+    server.zone_wait(zone)
 
 def check_rcode(server, query, rcode, msg):
     try:
@@ -46,12 +47,11 @@ ModCookies.check()
 knot = t.server("knot")
 zone = t.zone("example.com")
 
-
 t.link(zone, knot)
 
 t.start()
 
-reconfigure(knot, 5, 1)
+reconfigure(knot, zone, 5, 1)
 
 # Try a query without EDNS
 query = dns.message.make_query("dns1.example.com", "A", use_edns=False)
@@ -80,7 +80,7 @@ cookieOpt = response.options[0]
 query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
 response = check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE 2")
 
-reconfigure(knot, 1000000, 4)
+reconfigure(knot, zone, 1000000, 4)
 
 cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
 query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt]);
