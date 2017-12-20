@@ -23,17 +23,17 @@ def only_nsec_changed(server, zone, serial):
 
 t = Test()
 
-# Check only static zone and NSEC zone. NSEC3 zone would be immediately
-# re-signed because the server controls the NSEC3PARAM life time.
-
 master = t.server("knot")
 
 nsec_zone = t.zone_rnd(1, dnssec=True, nsec3=False)
+nsec3_zone = t.zone_rnd(1, dnssec=True, nsec3=True)
 static_zone = t.zone("example.", storage=".")
 t.link(nsec_zone, master)
+t.link(nsec3_zone, master)
 t.link(static_zone, master)
 
 master.dnssec(nsec_zone).alg = "rsasha1"
+master.dnssec(nsec3_zone).alg = "rsasha1"
 master.dnssec(static_zone).alg = "rsasha1"
 
 # install KASP db
@@ -43,20 +43,25 @@ t.start()
 
 # Get zone serial.
 old_nsec_serial = master.zone_wait(nsec_zone)
+old_nsec3_serial = master.zone_wait(nsec3_zone)
 old_static_serial = master.zone_wait(static_zone)
 
 # Enable autosigning.
 master.dnssec(nsec_zone).enable = True
+master.dnssec(nsec3_zone).enable = True
 master.dnssec(static_zone).enable = True
 master.dnssec(nsec_zone).manual = True
+master.dnssec(nsec3_zone).manual = True
 master.dnssec(static_zone).manual = True
 master.key_import_bind(nsec_zone[0].name)
+master.key_import_bind(nsec3_zone[0].name)
 master.gen_confile()
 master.reload()
 
 t.sleep(10)
 
 new_nsec_serial = master.zone_wait(nsec_zone)
+new_nsec3_serial = master.zone_wait(nsec3_zone)
 new_static_serial = master.zone_wait(static_zone)
 
 # Check if the zones are re-signed.
@@ -64,6 +69,7 @@ if old_nsec_serial != new_nsec_serial:
     if not only_nsec_changed(master, nsec_zone, old_nsec_serial):
         set_err("NSEC zone got re-signed")
 
+compare(old_nsec3_serial, new_nsec3_serial, "NSEC3 zone got re-signed")
 compare(old_static_serial, new_static_serial, "static zone got re-signed")
 
 t.stop()
