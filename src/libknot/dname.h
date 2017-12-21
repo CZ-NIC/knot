@@ -18,7 +18,7 @@
  *
  * \brief Domain name structure and API for manipulating it.
  *
- * \addtogroup libknot
+ * \addtogroup dname
  * @{
  */
 

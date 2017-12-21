@@ -16,11 +16,9 @@
 /*!
  * \file
  *
- * DNSSEC public and private key manipulation.
+ * \addtogroup key
  *
- * \defgroup key Key
- *
- * DNSSEC public and private key manipulation.
+ * \brief DNSSEC public and private key manipulation.
  *
  * The dnssec_key_t is an abstraction for a DNSSEC key pair. If the key
  * key is initialized with a public key data only, it can be used only for

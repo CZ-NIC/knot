@@ -18,7 +18,7 @@
  *
  * \brief API for manipulating RR arrays.
  *
- * \addtogroup libknot
+ * \addtogroup rr
  * @{
  */
 

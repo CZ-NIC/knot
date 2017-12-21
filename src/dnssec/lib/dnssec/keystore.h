@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,9 @@
 /*!
  * \file
  *
- * Private key store access.
+ * \addtogroup keystore
  *
- * \defgroup keystore Key store
- *
- * Private key store access.
+ * \brief Private key store access.
  *
  * The module provides abstraction for private key store. Basically, PKCS #8
  * and PKCS #11 interfaces are supported.

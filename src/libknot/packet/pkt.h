@@ -18,7 +18,7 @@
  *
  * \brief Structure for holding DNS packet data and metadata.
  *
- * \addtogroup libknot
+ * \addtogroup pkt
  * @{
  */
 

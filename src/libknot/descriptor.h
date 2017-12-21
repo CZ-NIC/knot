@@ -16,7 +16,7 @@
 /*!
  * \file
  *
- * \addtogroup libknot
+ * \addtogroup rr
  * @{
  */
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,9 @@
 /*!
  * \file
  *
- * Cryptographic backend initialization.
+ * \addtogroup crypto
  *
- * \defgroup crypto Crypto
- *
- * Cryptographic backend initialization.
+ * \brief Cryptographic backend initialization.
  *
  * For most cryptographic operations, the library requires global
  * initialization. Also, if the application creates a subprocess, the

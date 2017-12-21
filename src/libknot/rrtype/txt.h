@@ -13,6 +13,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \addtogroup rrtype
+ * @{
+ */
 
 #pragma once
 
@@ -56,3 +62,5 @@ const uint8_t *knot_txt_data(const knot_rdataset_t *rrs, size_t pos, size_t inde
 
 	return data;
 }
+
+/*! @} */

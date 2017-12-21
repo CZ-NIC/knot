@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,9 @@
 /*!
  * \file
  *
- * NSEC bitmap and NSEC3 hash computation API.
+ * \addtogroup nsec
  *
- * \defgroup nsec NSEC
- *
- * NSEC bitmap and NSEC3 hash computation API.
+ * \brief NSEC bitmap and NSEC3 hash computation API.
  *
  * The module provides interface for computation of NSEC3 hashes and for
  * construction of bit maps used in NSEC and NSEC3 records.

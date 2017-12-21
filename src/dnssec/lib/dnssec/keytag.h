@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,9 @@
 /*!
  * \file
  *
- * Low-level key tag computation API.
+ * \addtogroup keytag
  *
- * \defgroup keytag Key tag
- *
- * Low-level key tag computation API.
+ * \brief Low-level key tag computation API.
  *
  * The module provides simple interface for DNSKEY key id computation.
  *

@@ -594,6 +594,7 @@ $result_msg_base
 AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY],["$result_msg_esc"],[Configure summary])
 
 AC_CONFIG_FILES([Makefile
+                 Doxyfile
                  doc/Makefile
                  libtap/Makefile
                  tests/Makefile

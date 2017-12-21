@@ -13,6 +13,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file
+ *
+ * \addtogroup rrtype
+ * @{
+ */
 
 #pragma once
 
@@ -46,3 +52,5 @@ void knot_dnskey_key(const knot_rdataset_t *rrs, size_t pos, uint8_t **key,
 	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
 	*key_size = rr->len - 4;
 }
+
+/*! @} */

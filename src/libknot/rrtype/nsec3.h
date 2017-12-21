@@ -18,7 +18,7 @@
  *
  * \brief Functions for computation of NSEC3 hashes.
  *
- * \addtogroup libknot
+ * \addtogroup rrtype
  * @{
  */
 

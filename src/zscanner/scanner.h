@@ -18,7 +18,7 @@
  *
  * \brief Zone scanner core interface.
  *
- * \addtogroup zone_scanner
+ * \addtogroup zscanner
  * @{
  */
 

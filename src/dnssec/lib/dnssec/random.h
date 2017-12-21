@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,9 @@
 /*!
  * \file
  *
- * Pseudo-random number generating API.
+ * \addtogroup random
  *
- * \defgroup random Random
- *
- * Pseudo-random number generating API.
+ * \brief Pseudo-random number generating API.
  *
  * The module provides generating of pseudo-random numbers and buffers.
  *
