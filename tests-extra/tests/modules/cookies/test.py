@@ -32,7 +32,7 @@ def reconfigure(server, zone, secret_lifetime, badcookie_slip):
 
 def check_rcode(server, query, rcode, msg):
     try:
-        response = dns.query.udp(query, server.addr, port=server.port, timeout=0.05)
+        response = dns.query.udp(query, server.addr, port=server.port, timeout=1)
     except dns.exception.Timeout:
         response = None
     if response is None:
@@ -40,7 +40,7 @@ def check_rcode(server, query, rcode, msg):
     compare(response.rcode(), rcode, msg)
     return response
 
-t = Test()
+t = Test(stress=False)
 
 ModCookies.check()
 
