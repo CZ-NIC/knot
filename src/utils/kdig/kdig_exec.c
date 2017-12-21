@@ -266,11 +266,11 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 	}
 
 	/* Append EDNS-client-subnet. */
-	if (query->subnet != NULL) {
-		size_t size = knot_edns_client_subnet_size(query->subnet);
+	if (query->subnet.family != AF_UNSPEC) {
+		size_t size = knot_edns_client_subnet_size(&query->subnet);
 		uint8_t data[size];
 
-		ret = knot_edns_client_subnet_write(data, size, query->subnet);
+		ret = knot_edns_client_subnet_write(data, size, &query->subnet);
 		if (ret != KNOT_EOK) {
 			knot_rrset_clear(&opt_rr, &packet->mm);
 			return ret;
@@ -344,8 +344,8 @@ static bool do_padding(const query_t *query)
 static bool use_edns(const query_t *query)
 {
 	return query->edns > -1 || query->udp_size > -1 || query->nsid ||
-	       query->flags.do_flag || query->subnet != NULL || query->cc.len > 0 ||
-	       do_padding(query);
+	       query->flags.do_flag || query->subnet.family != AF_UNSPEC ||
+	       query->cc.len > 0 || do_padding(query);
 }
 
 static knot_pkt_t *create_query_packet(const query_t *query)

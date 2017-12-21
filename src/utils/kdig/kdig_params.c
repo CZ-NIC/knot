@@ -884,11 +884,6 @@ static int opt_subnet(const char *arg, void *query)
 	const char   *arg_end = arg + arg_len;
 	size_t       addr_len = 0;
 
-	knot_edns_client_subnet_t *subnet = calloc(1, sizeof(*subnet));
-	if (subnet == NULL) {
-		return KNOT_ENOMEM;
-	}
-
 	// Separate address and network mask.
 	if ((sep = strchr(arg, '/')) != NULL) {
 		addr_len = sep - arg;
@@ -905,7 +900,6 @@ static int opt_subnet(const char *arg, void *query)
 	char *addr_str = strndup(arg, addr_len);
 	if (getaddrinfo(addr_str, NULL, &hints, &ai) != 0) {
 		free(addr_str);
-		free(subnet);
 		ERR("invalid address +subnet=%s\n", arg);
 		return KNOT_EINVAL;
 	}
@@ -914,8 +908,7 @@ static int opt_subnet(const char *arg, void *query)
 	freeaddrinfo(ai);
 	free(addr_str);
 
-	if (knot_edns_client_subnet_set_addr(subnet, &ss) != KNOT_EOK) {
-		free(subnet);
+	if (knot_edns_client_subnet_set_addr(&q->subnet, &ss) != KNOT_EOK) {
 		ERR("invalid address +subnet=%s\n", arg);
 		return KNOT_EINVAL;
 	}
@@ -925,16 +918,12 @@ static int opt_subnet(const char *arg, void *query)
 	if (mask + addr_len < arg_end) {
 		mask += addr_len + 1;
 		uint8_t num = 0;
-		if (str_to_u8(mask, &num) != KNOT_EOK || num > subnet->source_len) {
-			free(subnet);
+		if (str_to_u8(mask, &num) != KNOT_EOK || num > q->subnet.source_len) {
 			ERR("invalid network mask +subnet=%s\n", arg);
 			return KNOT_EINVAL;
 		}
-		subnet->source_len = num;
+		q->subnet.source_len = num;
 	}
-
-	free(q->subnet);
-	q->subnet = subnet;
 
 	return KNOT_EOK;
 }
@@ -943,8 +932,7 @@ static int opt_nosubnet(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	free(q->subnet);
-	q->subnet = NULL;
+	q->subnet.family = AF_UNSPEC;
 
 	return KNOT_EOK;
 }
@@ -1183,17 +1171,6 @@ query_t *query_create(const char *owner, const query_t *conf)
 		return NULL;
 	}
 
-	// Set the query owner if any.
-	if (owner != NULL) {
-		if ((query->owner = strdup(owner)) == NULL) {
-			query_free(query);
-			return NULL;
-		}
-	}
-
-	// Initialize list of servers.
-	init_list(&query->servers);
-
 	// Initialization with defaults or with reference query.
 	if (conf == NULL) {
 		query->conf = NULL;
@@ -1223,12 +1200,13 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->alignment = 0;
 		tls_params_init(&query->tls);
 		//query->tsig_key
-		query->subnet = NULL;
+		query->subnet.family = AF_UNSPEC;
 #if USE_DNSTAP
 		query->dt_reader = NULL;
 		query->dt_writer = NULL;
 #endif // USE_DNSTAP
 	} else {
+		*query = *conf;
 		query->conf = conf;
 		if (conf->local != NULL) {
 			query->local = srv_info_create(conf->local->name,
@@ -1240,29 +1218,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		} else {
 			query->local = NULL;
 		}
-		query->operation = conf->operation;
-		query->ip = conf->ip;
-		query->protocol = conf->protocol;
-		query->fastopen = conf->fastopen;
 		query->port = strdup(conf->port);
-		query->udp_size = conf->udp_size;
-		query->retries = conf->retries;
-		query->wait = conf->wait;
-		query->ignore_tc = conf->ignore_tc;
-		query->class_num = conf->class_num;
-		query->type_num = conf->type_num;
-		query->serial = conf->serial;
-		query->notify = conf->notify;
-		query->flags = conf->flags;
-		query->style = conf->style;
-		query->idn = conf->idn;
-		query->nsid = conf->nsid;
-		query->edns = conf->edns;
-		query->cc = conf->cc;
-		query->sc = conf->sc;
-		query->badcookie = conf->badcookie;
-		query->padding = conf->padding;
-		query->alignment = conf->alignment;
 		tls_params_copy(&query->tls, &conf->tls);
 		if (conf->tsig_key.name != NULL) {
 			int ret = knot_tsig_key_copy(&query->tsig_key,
@@ -1272,20 +1228,21 @@ query_t *query_create(const char *owner, const query_t *conf)
 				return NULL;
 			}
 		}
-		if (conf->subnet != NULL) {
-			query->subnet = malloc(sizeof(*query->subnet));
-			if (query->subnet == NULL) {
-				query_free(query);
-				return NULL;
-			}
-			*(query->subnet) = *(conf->subnet);
-		} else {
-			query->subnet = NULL;
-		}
 #if USE_DNSTAP
 		query->dt_reader = conf->dt_reader;
 		query->dt_writer = conf->dt_writer;
 #endif // USE_DNSTAP
+	}
+
+	// Initialize list of servers.
+	init_list(&query->servers);
+
+	// Set the query owner if any.
+	if (owner != NULL) {
+		if ((query->owner = strdup(owner)) == NULL) {
+			query_free(query);
+			return NULL;
+		}
 	}
 
 	// Check dynamic allocation.
@@ -1336,7 +1293,6 @@ void query_free(query_t *query)
 
 	free(query->owner);
 	free(query->port);
-	free(query->subnet);
 	free(query);
 }
 

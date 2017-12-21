@@ -89,7 +89,7 @@ struct query {
 	/*!< Protocol type (TCP, UDP) to use. */
 	protocol_t	protocol;
 	/*!< Use TCP Fast Open. */
-	bool            fastopen;
+	bool		fastopen;
 	/*!< Port/service to connect to. */
 	char		*port;
 	/*!< UDP buffer size (16unsigned + -1 uninitialized). */
@@ -123,7 +123,7 @@ struct query {
 	/*!< ENDS server cookie. */
 	knot_edns_cookie_t sc;
 	/*!< Repeat query after BADCOOKIE. */
-	bool badcookie;
+	bool		badcookie;
 	/*!< EDNS0 padding (16unsigned + -1 ~ uninitialized, -2 ~ default, -3 ~ none). */
 	int32_t		padding;
 	/*!< Query alignment with EDNS0 padding (0 ~ uninitialized). */
@@ -133,7 +133,7 @@ struct query {
 	/*!< Transaction signature. */
 	knot_tsig_key_t tsig_key;
 	/*!< EDNS client subnet. */
-	knot_edns_client_subnet_t *subnet;
+	knot_edns_client_subnet_t subnet;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;
