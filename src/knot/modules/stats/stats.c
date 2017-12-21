@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
  */
 
 #include "contrib/macros.h"
+#include "contrib/wire_ctx.h"
 #include "knot/include/module.h"
 #include "knot/nameserver/xfr.h" // Dependency on qdata->extra!
 
@@ -25,6 +26,8 @@
 #define MOD_EDNS	"\x0D""edns-presence"
 #define MOD_FLAG	"\x0D""flag-presence"
 #define MOD_RCODE	"\x0D""response-code"
+#define MOD_REQ_EOPT	"\x13""request-edns-option"
+#define MOD_RESP_EOPT	"\x14""response-edns-option"
 #define MOD_NODATA	"\x0C""reply-nodata"
 #define MOD_QTYPE	"\x0A""query-type"
 #define MOD_QSIZE	"\x0A""query-size"
@@ -40,6 +43,8 @@ const yp_item_t stats_conf[] = {
 	{ MOD_EDNS,       YP_TBOOL, YP_VNONE },
 	{ MOD_FLAG,       YP_TBOOL, YP_VNONE },
 	{ MOD_RCODE,      YP_TBOOL, YP_VBOOL = { true } },
+	{ MOD_REQ_EOPT,   YP_TBOOL, YP_VNONE },
+	{ MOD_RESP_EOPT,  YP_TBOOL, YP_VNONE },
 	{ MOD_NODATA,     YP_TBOOL, YP_VNONE },
 	{ MOD_QTYPE,      YP_TBOOL, YP_VNONE },
 	{ MOD_QSIZE,      YP_TBOOL, YP_VNONE },
@@ -55,6 +60,8 @@ enum {
 	CTR_EDNS,
 	CTR_FLAG,
 	CTR_RCODE,
+	CTR_REQ_EOPT,
+	CTR_RESP_EOPT,
 	CTR_NODATA,
 	CTR_QTYPE,
 	CTR_QSIZE,
@@ -69,6 +76,8 @@ typedef struct {
 	bool edns;
 	bool flag;
 	bool rcode;
+	bool req_eopt;
+	bool resp_eopt;
 	bool nodata;
 	bool qtype;
 	bool qsize;
@@ -230,6 +239,24 @@ static char *rcode_to_str(uint32_t idx, uint32_t count)
 	}
 }
 
+#define EOPT_OTHER		(KNOT_EDNS_MAX_OPTION_CODE + 1)
+#define req_eopt_to_str		eopt_to_str
+#define resp_eopt_to_str	eopt_to_str
+
+static char *eopt_to_str(uint32_t idx, uint32_t count)
+{
+	if (idx >= EOPT_OTHER) {
+		return strdup(OTHER);
+	}
+
+	char str[32];
+	if (knot_opt_code_to_string(idx, str, sizeof(str)) < 0) {
+		return NULL;
+	} else {
+		return strdup(str);
+	}
+}
+
 enum {
 	QTYPE_OTHER  =   0,
 	QTYPE_MIN1   =   1,
@@ -293,11 +320,13 @@ static char *size_to_str(uint32_t idx, uint32_t count)
 	}
 }
 
-static char *qsize_to_str(uint32_t idx, uint32_t count) {
+static char *qsize_to_str(uint32_t idx, uint32_t count)
+{
 	return size_to_str(idx, count);
 }
 
-static char *rsize_to_str(uint32_t idx, uint32_t count) {
+static char *rsize_to_str(uint32_t idx, uint32_t count)
+{
 	return size_to_str(idx, count);
 }
 
@@ -311,12 +340,29 @@ static const ctr_desc_t ctr_descs[] = {
 	item(EDNS,       edns,       EDNS__COUNT),
 	item(FLAG,       flag,       FLAG__COUNT),
 	item(RCODE,      rcode,      RCODE_OTHER + 1),
+	item(REQ_EOPT,   req_eopt,   EOPT_OTHER + 1),
+	item(RESP_EOPT,  resp_eopt,  EOPT_OTHER + 1),
 	item(NODATA,     nodata,     NODATA__COUNT),
 	item(QTYPE,      qtype,      QTYPE__COUNT),
 	item(QSIZE,      qsize,      QSIZE_MAX_IDX + 1),
 	item(RSIZE,      rsize,      RSIZE_MAX_IDX + 1),
 	{ NULL }
 };
+
+static void incr_edns_option(knotd_mod_t *mod, const knot_pkt_t *pkt, unsigned ctr_name)
+{
+	knot_rdata_t *rdata = knot_rdataset_at(&pkt->opt_rr->rrs, 0);
+	wire_ctx_t wire = wire_ctx_init(knot_rdata_data(rdata), knot_rdata_rdlen(rdata));
+	while (wire_ctx_available(&wire) > 0) {
+		uint16_t opt_code = wire_ctx_read_u16(&wire);
+		uint16_t opt_len = wire_ctx_read_u16(&wire);
+		wire_ctx_skip(&wire, opt_len);
+		if (wire.error != KNOT_EOK) {
+			break;
+		}
+		knotd_mod_stats_incr(mod, ctr_name, MIN(opt_code, EOPT_OTHER), 1);
+	}
+}
 
 static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
@@ -469,6 +515,14 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 		if (pkt->opt_rr != NULL && knot_edns_do(pkt->opt_rr)) {
 			knotd_mod_stats_incr(mod, CTR_FLAG, FLAG_DO, 1);
 		}
+	}
+
+	// Count EDNS options.
+	if (stats->req_eopt && !knot_rrset_empty(qdata->query->opt_rr)) {
+		incr_edns_option(mod, qdata->query, CTR_REQ_EOPT);
+	}
+	if (stats->resp_eopt && !knot_rrset_empty(pkt->opt_rr)) {
+		incr_edns_option(mod, pkt, CTR_RESP_EOPT);
 	}
 
 	// Return if not query operation.

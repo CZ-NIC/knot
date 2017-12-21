@@ -267,6 +267,8 @@ class ModStats(KnotModule):
         self._bool(conf, "edns-presence", True)
         self._bool(conf, "flag-presence", True)
         self._bool(conf, "response-code", True)
+        self._bool(conf, "request-edns-option", True)
+        self._bool(conf, "response-edns-option", True)
         self._bool(conf, "reply-nodata", True)
         self._bool(conf, "query-type", True)
         self._bool(conf, "query-size", True)
