@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -282,5 +282,17 @@ int knot_rrtype_additional_needed(const uint16_t type);
  * \retval false Otherwise.
  */
 bool knot_rrtype_should_be_lowercased(const uint16_t type);
+
+/*!
+ * \brief Translates option code to string.
+ *
+ * \param code     Code of the option to translate.
+ * \param out      Buffer for the output string.
+ * \param out_len  The available size of the buffer.
+ *
+ * \retval Length of output string.
+ * \retval -1 if error.
+ */
+int knot_opt_code_to_string(const uint16_t code, char *out, const size_t out_len);
 
 /*! @} */

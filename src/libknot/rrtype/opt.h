@@ -79,6 +79,9 @@ enum knot_edns_const {
 	KNOT_EDNS_OPTION_PADDING       = 12,
 	/*! \brief EDNS Chain query option code. */
 	KNOT_EDNS_OPTION_CHAIN         = 13,
+
+	/*! \brief Maximal currently relevant option code. */
+	KNOT_EDNS_MAX_OPTION_CODE      = 14,
 };
 
 /* Helpers for splitting extended RCODE. */

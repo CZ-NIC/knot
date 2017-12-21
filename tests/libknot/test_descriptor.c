@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(125);
+	plan_lazy();
 
 	const    knot_rdata_descriptor_t *descr;
 	char     name[BUF_LEN] = { 0 };
@@ -349,6 +349,13 @@ int main(int argc, char *argv[])
 	   "rrtype is DNAME");
 	ok(knot_rrtype_should_be_lowercased(KNOT_RRTYPE_RRSIG) != 0,
 	   "rrtype is RRSIG");
+
+	ret = knot_opt_code_to_string(0, name, BUF_LEN);
+	ok(ret != -1 && strcmp(name, "CODE0") == 0, "opt to str, code 0");
+	ret = knot_opt_code_to_string(10, name, BUF_LEN);
+	ok(ret != -1 && strcmp(name, "COOKIE") == 0, "opt to str, code 10");
+	ret = knot_opt_code_to_string(65535, name, BUF_LEN);
+	ok(ret != -1 && strcmp(name, "CODE65535") == 0, "opt to str, code 65535");
 
 	return 0;
 }

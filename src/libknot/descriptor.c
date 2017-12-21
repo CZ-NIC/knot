@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -368,4 +368,44 @@ bool knot_rrtype_should_be_lowercased(const uint16_t type)
 	       type == KNOT_RRTYPE_SRV   ||
 	       type == KNOT_RRTYPE_DNAME ||
 	       type == KNOT_RRTYPE_RRSIG;
+}
+
+_public_
+int knot_opt_code_to_string(const uint16_t code, char *out, const size_t out_len)
+{
+	if (out == NULL) {
+		return -1;
+	}
+
+	const char *name = NULL;
+
+	switch (code) {
+	case 1:  name = "LLQ"; break;
+	case 2:  name = "UL"; break;
+	case 3:  name = "NSID"; break;
+	case 5:  name = "DAU"; break;
+	case 6:  name = "DHU"; break;
+	case 7:  name = "N3U"; break;
+	case 8:  name = "EDNS-CLIENT-SUBNET"; break;
+	case 9:  name = "EDNS-EXPIRE"; break;
+	case 10: name = "COOKIE"; break;
+	case 11: name = "EDNS-TCP-KEEPALIVE"; break;
+	case 12: name = "PADDING"; break;
+	case 13: name = "CHAIN"; break;
+	case 14: name = "EDNS-KEY-TAG"; break;
+	}
+
+	int ret;
+
+	if (name != NULL) {
+		ret = snprintf(out, out_len, "%s", name);
+	} else {
+		ret = snprintf(out, out_len, "CODE%u", code);
+	}
+
+	if (ret <= 0 || (size_t)ret >= out_len) {
+		return -1;
+	} else {
+		return ret;
+	}
 }

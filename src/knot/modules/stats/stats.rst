@@ -49,6 +49,8 @@ Module reference
      edns-presence: BOOL
      flag-presence: BOOL
      response-code: BOOL
+     request-edns-option: BOOL
+     response-edns-option: BOOL
      reply-nodata: BOOL
      query-type: BOOL
      query-size: BOOL
@@ -168,6 +170,30 @@ If enabled, outgoing response code is counted:
    Dynamic update response code is not counted by this module.
 
 *Default:* on
+
+.. _mod-stats_request-edns-option:
+
+request-edns-option
+...................
+
+If enabled, EDNS options in requests are counted by their code:
+
+* CODE0
+* ...
+* EDNS-KEY-TAG (CODE14)
+* other - All other codes
+
+*Default:* off
+
+.. _mod-stats_response-edns-option:
+
+response-edns-option
+....................
+
+If enabled, EDNS options in responses are counted by their code. See
+:ref:`mod-stats_request-edns-option`.
+
+*Default:* off
 
 .. _mod-stats_reply-nodata:
 
