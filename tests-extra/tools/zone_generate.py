@@ -437,7 +437,7 @@ def main(args):
     global RPREFIX
     UPDATE = None
     sign = 0
-    nsec3 = random.choice([0, 1])
+    nsec3 = random.choice([True, 0, False])
     count = 0
     out_fname = None
     key_dir = None
@@ -460,9 +460,11 @@ def main(args):
             sign = 1
         if o in ('-3', '--nsec3'):
             if a is 'y':
-                nsec3 = 1
-            else:
+                nsec3 = True
+            elif a is 0:
                 nsec3 = 0
+            else:
+                nsec3 = False
         if o in ('-i', '--serial') and a != None:
             SERIAL = a
         if o in ('-u', '--update') and a != None:
@@ -569,7 +571,7 @@ def main(args):
     try:
         # Generate keys
         ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', key_dir ]
-        if nsec3:
+        if nsec3 is not False:
             ps += ['-3']
         k1 = subprocess.check_output(ps + [ORIGIN], stderr=subprocess.DEVNULL)
         k2 = subprocess.check_output(ps + ["-f", "KSK"] + [ORIGIN], stderr=subprocess.DEVNULL)
@@ -586,7 +588,9 @@ def main(args):
 
         outf.close()
 
-        if nsec3:
+        if nsec3 is 0:
+            nsec3_params = ['-3', '-']
+        elif nsec3:
             nsec3_params = ['-3', binascii.hexlify(os.urandom(random.randint(1, 30))).decode('ascii')]
         else:
             nsec3_params = []

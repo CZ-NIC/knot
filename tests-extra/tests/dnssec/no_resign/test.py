@@ -26,7 +26,7 @@ t = Test()
 master = t.server("knot")
 
 nsec_zone = t.zone_rnd(1, dnssec=True, nsec3=False)
-nsec3_zone = t.zone_rnd(1, dnssec=True, nsec3=True)
+nsec3_zone = t.zone_rnd(1, dnssec=True, nsec3=0)
 static_zone = t.zone("example.", storage=".")
 t.link(nsec_zone, master)
 t.link(nsec3_zone, master)
@@ -34,6 +34,7 @@ t.link(static_zone, master)
 
 master.dnssec(nsec_zone).alg = "rsasha1"
 master.dnssec(nsec3_zone).alg = "rsasha1"
+master.dnssec(nsec3_zone).nsec3 = True
 master.dnssec(static_zone).alg = "rsasha1"
 
 # install KASP db
