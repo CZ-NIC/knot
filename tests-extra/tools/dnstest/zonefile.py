@@ -95,7 +95,7 @@ class ZoneFile(object):
         if dnssec == None:
             dnssec = random.choice([True, False])
         if nsec3 == None:
-            nsec3 = random.choice([True, False])
+            nsec3 = random.choice([True, 0, False])
         if not records:
             records = random.randint(1, 200)
         if not serial:
@@ -107,7 +107,7 @@ class ZoneFile(object):
             params = ["-i", serial, "-o", self.path, self.name, records]
             if dnssec:
                 prepare_dir(self.key_dir_bind)
-                params = ["-s", "-3", "y" if nsec3 else "n",
+                params = ["-s", "-3", 0 if nsec3 is 0 else "y" if nsec3 else "n",
                           "-k", self.key_dir_bind] + params
             if zone_generate.main(params) != 0:
                 raise OSError
