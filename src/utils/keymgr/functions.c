@@ -71,8 +71,20 @@ static bool is_timestamp(char *arg, knot_kasp_key_timing_t *timing)
 	return true;
 }
 
+static bool str2bool(const char *s)
+{
+	switch (knot_tolower(s[0])) {
+	case '1':
+	case 'y':
+	case 't':
+		return true;
+	default:
+		return false;
+	}
+}
+
 static bool genkeyargs(int argc, char *argv[], bool just_timing,
-                       bool *isksk, dnssec_key_algorithm_t *algorithm,
+                       bool *isksk, bool *iszsk, dnssec_key_algorithm_t *algorithm,
                        uint16_t *keysize, knot_kasp_key_timing_t *timing,
                        const char **addtopolicy)
 {
@@ -106,15 +118,9 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				return false;
 			}
 		} else if (!just_timing && strncasecmp(argv[i], "ksk=", 4) == 0) {
-			switch (knot_tolower(argv[i][4])) {
-			case '1':
-			case 'y':
-			case 't':
-				*isksk = true;
-				break;
-			default:
-				*isksk = false;
-			}
+			*isksk = str2bool(argv[i] + 4);
+		} else if (!just_timing && strncasecmp(argv[i], "zsk=", 4) == 0) {
+			*iszsk = str2bool(argv[i] + 4);
 		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
 			*keysize = atol(argv[i] + 5);
 		} else if (!just_timing && strncasecmp(argv[i], "addtopolicy=", 12) == 0) {
@@ -124,6 +130,12 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			return false;
 		}
 	}
+
+	// set ZSK if none was specified
+	if (isksk && iszsk && !*isksk) {
+		*iszsk = true;
+	}
+
 	return true;
 }
 
@@ -132,10 +144,10 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 {
 	knot_time_t now = knot_time(), infty = 0;
 	knot_kasp_key_timing_t gen_timing = { now, infty, now, infty, now, infty, infty, infty, infty };
-	bool isksk = false;
+	bool isksk = false, iszsk = false;
 	uint16_t keysize = 0;
 	const char *addtopolicy = NULL;
-	if (!genkeyargs(argc, argv, false, &isksk, &ctx->policy->algorithm,
+	if (!genkeyargs(argc, argv, false, &isksk, &iszsk, &ctx->policy->algorithm,
 			&keysize, &gen_timing, &addtopolicy)) {
 		return KNOT_EINVAL;
 	}
@@ -158,7 +170,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 	}
 
 	knot_kasp_key_t *key = NULL;
-	int ret = kdnssec_generate_key(ctx, isksk, !isksk, &key);
+	int ret = kdnssec_generate_key(ctx, isksk, iszsk, &key);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -367,9 +379,9 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	// parse params
 	knot_time_t now = knot_time();
 	knot_kasp_key_timing_t timing = { .publish = now, .active = now };
-	bool isksk = false;
+	bool isksk = false, iszsk = false;
 	uint16_t keysize = 0;
-	if (!genkeyargs(argc, argv, false, &isksk, &ctx->policy->algorithm,
+	if (!genkeyargs(argc, argv, false, &isksk, &iszsk, &ctx->policy->algorithm,
 			&keysize, &timing, NULL)) {
 		return KNOT_EINVAL;
 	}
@@ -445,6 +457,8 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	kkey->id = keyid;
 	kkey->key = key;
 	kkey->timing = timing;
+	kkey->is_ksk = isksk;
+	kkey->is_zsk = iszsk;
 
 	// append to zone
 	ret = kasp_zone_append(ctx->zone, kkey);
@@ -613,7 +627,7 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 {
 	knot_kasp_key_timing_t temp = key->timing;
 
-	if (genkeyargs(argc, argv, true, NULL, NULL, NULL, &temp, NULL)) {
+	if (genkeyargs(argc, argv, true, NULL, NULL, NULL, NULL, &temp, NULL)) {
 		key->timing = temp;
 		return KNOT_EOK;
 	}
@@ -635,8 +649,8 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, knot_time_print_t format)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		printf("%s ksk=%s tag=%05d algorithm=%d public-only=%s ", key->id,
-		       ((dnssec_key_get_flags(key->key) == dnskey_flags(true)) ? "yes" : "no "),
+		printf("%s ksk=%s zsk=%s tag=%05d algorithm=%d public-only=%s ", key->id,
+		       (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no"),
 		       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
 		       (key->is_pub_only ? "yes" : "no "));
 		print_timer("created",       key->timing.created,        format, ' ');

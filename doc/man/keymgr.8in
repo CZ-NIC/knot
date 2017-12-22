@@ -128,7 +128,11 @@ Either an algorithm number (e.g. 14), or text name without dashes (e.g. ECDSAP38
 Key length in bits.
 .TP
 \fBksk\fP
-Either \(aqtrue\(aq (KSK will be generated) or \(aqfalse\(aq (ZSK will be generated).
+If set to \fByes\fP, the key will be used as Secure Entry Point.
+.TP
+\fBzsk\fP
+If set to \fByes\fP, the key will be used for zone signing. This flag can
+be set concurrently with the \fBksk\fP flag.
 .TP
 \fBcreated\fP
 Timestamp of key creation.
