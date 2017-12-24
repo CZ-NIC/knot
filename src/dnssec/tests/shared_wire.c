@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "binary.h"
 #include "wire.h"
+#include "bignum.h"
 
 int main(void)
 {
@@ -79,7 +80,7 @@ int main(void)
 	dnssec_binary_t bignum = { .data = (uint8_t *)out, .size = 4 };
 	const uint8_t expect[8] = { 0x00, 0x00, 0x00, 0x00, 0xc0, 0x1d, 0xca, 0xfe };
 	wire_seek(&wire, 2);
-	wire_write_bignum(&wire, 8, &bignum);
+	bignum_write(&wire, 8, &bignum);
 	ok(memcmp(buffer.data + 2, expect, 8) == 0 && wire_tell(&wire) == 10,
 	   "wire_write_ralign()");
 

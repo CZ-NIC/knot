@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -141,8 +141,8 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 	}
 
 	wire_ctx_t wire = wire_init_binary(dnssec);
-	wire_write_bignum(&wire, int_size, &value_r);
-	wire_write_bignum(&wire, int_size, &value_s);
+	bignum_write(&wire, int_size, &value_r);
+	bignum_write(&wire, int_size, &value_s);
 	assert(wire_tell(&wire) == dnssec->size);
 
 	return DNSSEC_EOK;

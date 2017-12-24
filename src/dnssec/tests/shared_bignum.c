@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <tap/basic.h>
 #include <string.h>
 
+#include "wire.h"
 #include "bignum.h"
 #include "binary.h"
 
@@ -30,10 +31,11 @@
 #define test_write(num, expect, msg) \
 	uint8_t __buffer[sizeof(expect)]; \
 	memset(__buffer, 0xaa, sizeof(__buffer)); \
-	dnssec_binary_t __dst = bin_init(__buffer); \
+	wire_ctx_t __ctx = wire_init(__buffer, sizeof(expect)); \
 	dnssec_binary_t __num = bin_init(num); \
 	dnssec_binary_t __exp = bin_init(expect); \
-	bignum_write(&__dst, &__num); \
+	bignum_write(&__ctx, sizeof(expect), &__num); \
+	dnssec_binary_t __dst = bin_init(__buffer); \
 	ok(dnssec_binary_cmp(&__dst, &__exp) == 0, "bignum_write, " msg)
 
 int main(int argc, char *argv[])

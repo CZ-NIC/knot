@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -127,7 +127,7 @@ static void asn1_write_integer(wire_ctx_t *wire, size_t integer_size,
 	assert(integer->data);
 
 	asn1_write_header(wire, ASN1_TYPE_INTEGER, integer_size);
-	wire_write_bignum(wire, integer_size, integer);
+	bignum_write(wire, integer_size, integer);
 }
 
 /*!

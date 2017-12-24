@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include "binary.h"
+#include "wire.h"
 
 /*!
  * Size needed to write unsigned number in unsigned encoding.
@@ -37,4 +38,4 @@ size_t bignum_size_s(const dnssec_binary_t *value);
  *
  * The destination size has to be set properly to accommodate used encoding.
  */
-void bignum_write(dnssec_binary_t *dest, const dnssec_binary_t *value);
+void bignum_write(wire_ctx_t *ctx, size_t width, const dnssec_binary_t *value);

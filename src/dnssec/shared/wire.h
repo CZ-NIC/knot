@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,9 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "bignum.h"
 #include "binary.h"
-#include "shared.h"
 
 typedef struct wire_ctx {
 	uint8_t *wire;
@@ -151,15 +149,4 @@ static inline void wire_write_binary(wire_ctx_t *ctx, const dnssec_binary_t *dat
 	assert(data);
 
 	wire_write(ctx, data->data, data->size);
-}
-
-static inline void wire_write_bignum(wire_ctx_t *ctx, size_t width,
-				     const dnssec_binary_t *bignum)
-{
-	assert(ctx);
-	assert(bignum);
-
-	dnssec_binary_t dest = { .data = ctx->position, .size = width };
-	bignum_write(&dest, bignum);
-	ctx->position += width;
 }
