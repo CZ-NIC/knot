@@ -13,14 +13,13 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #
-# Processes --with-sanitize= and --with-sanitize-coverage= flags, checks
+# Processes --with-sanitize and --with-oss-fuzz flags, checks
 # if the options are supported by the compiler, and sets the following
 # variables accordingly:
 #
 # - sanitize_enabled          yes|no
-# - sanitize_coverage_enabled yes|no
 # - sanitize_fuzzer_enabled   yes|no
-# - sanitize_CFLAGS           -fsanitize=... -fsanitize-coverage=...
+# - sanitize_CFLAGS           -fsanitize=...
 #
 AC_DEFUN([AX_SANITIZER], [
 
@@ -30,19 +29,15 @@ AC_DEFUN([AX_SANITIZER], [
     [],
     [with_sanitize=no]
   )
-  AC_ARG_WITH([sanitize-coverage],
-    [AS_HELP_STRING([--with-sanitize-coverage], [Compile with sanitizer coverage [default=no]])],
-    [],
-    [with_sanitize_coverage=no]
-  )
   AC_ARG_WITH([sanitize-fuzzer],
-    [AS_HELP_STRING([--with-sanitize-fuzzer], [Compile with sanitizer fuzzer (require clang >= 6.0) [default=no]])], [ 
-      # Enable SanitizerCoverage if needed by libFuzzer
-      AS_IF([test "$with_sanitize_coverage" = "no"],[
-        AC_MSG_NOTICE([Enabling sanitizer coverage because it's required for sanitizer fuzzer])
-        with_sanitize_coverage=yes
-      ])],
+    [AS_HELP_STRING([--with-sanitize-fuzzer], [Compile with sanitizer fuzzer (require clang >= 6.0) [default=no]])],
+    [],
     [with_sanitize_fuzzer=no]
+  )
+  AC_ARG_WITH([oss-fuzz],
+    [AS_HELP_STRING([--with-oss-fuzz], [Link for oss-fuzz environment [default=no]])],
+    [],
+    [with_oss_fuzz=no]
   )
 
   # Using -fsanitize=fuzzer requires clang >= 6.0
@@ -55,15 +50,9 @@ AC_DEFUN([AX_SANITIZER], [
   # Default values
   AS_IF([test "$with_sanitize" = "yes"], [ with_sanitize=address ])
   AS_IF([test "$with_sanitize_fuzzer" = "yes"], [ with_sanitize_fuzzer=fuzzer-no-link ])
-  AS_IF([test "$with_sanitize_coverage" = "yes"], [ with_sanitize_coverage=edge,indirect-calls,trace-pc-guard ])
-
-  # Either --with-sanitize or --with-sanitize-fuzzer is needed for --with-sanitize-coverage
-  AS_IF([test "$with_sanitize" = "no" -a "$with_sanitize_fuzzer" = "no" -a "$with_sanitize_coverage" != "no"],[
-    AC_MSG_ERROR([--with-sanitize-coverage cannot be used without --with-sanitize or --with-sanitize-fuzzer])])
 
   # Construct output variables
   sanitize_enabled=no
-  sanitize_coverage_enabled=no
   sanitize_fuzzer_enable=no
   sanitize_CFLAGS=
   AS_IF([test "$with_sanitize" != "no" -o "$with_sanitize_fuzzer" != "no"], [
@@ -80,10 +69,6 @@ AC_DEFUN([AX_SANITIZER], [
         sanitize_CFLAGS="-fsanitize=${with_sanitize_fuzzer}"
         sanitize_fuzzer_enabled=yes
         ])])
-    AS_IF([test "$with_sanitize_coverage" != "no"], [
-      sanitize_CFLAGS="$sanitize_CFLAGS -fsanitize-coverage=${with_sanitize_coverage}"
-      sanitize_coverage_enabled=yes
-    ])
 
     # Test compiler support
     save_CFLAGS="$CFLAGS"
