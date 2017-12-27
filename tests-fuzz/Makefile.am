@@ -22,6 +22,17 @@ zscanner_libfuzzer_LDADD = $(top_builddir)/src/zscanner/libzscanner.la
 if SANITIZE_FUZZER
 packet_libfuzzer_LDFLAGS = -fsanitize=fuzzer
 zscanner_libfuzzer_LDFLAGS = -fsanitize=fuzzer
+
+# Ensure that fuzzers execute successfully with a benign input
+
+TESTS = check/check_fuzzers.test
+EXTRA_DIST = check/check_fuzzers.test
+
+if OSS_FUZZ
+packet_libfuzzer_LDADD += -lFuzzingEngine
+zscanner_libfuzzer_LDADD += -lFuzzingEngine
+endif
+
 else
 packet_libfuzzer_SOURCES += main.c
 zscanner_libfuzzer_SOURCES += main.c

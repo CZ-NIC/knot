@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Ensures that fuzzers execute successfully with benign input
+# Designed to run from tests-fuzz directory
+
+set -e
+
+./packet_libfuzzer check/sample-seed.pkt
+./zscanner_libfuzzer check/sample-seed.pkt
