@@ -582,15 +582,9 @@ result_msg_base="  $PACKAGE $VERSION
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitize}
     LibFuzzer:              ${with_sanitize_fuzzer}
-    oss-fuzz:               ${with_oss_fuzz}
-"
+    OSS-Fuzz:               ${with_oss_fuzz}"
 
 result_msg_esc=$(echo -n "$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
-result_msg_add="
-$result_msg_base
-
-  Continue with 'make' command
-"
 
 AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY],["$result_msg_esc"],[Configure summary])
 
@@ -616,5 +610,6 @@ AC_CONFIG_FILES([doc/modules.rst],
                  ln -s -f -t ${srcdir}/doc/ $(readlink -f ${srcdir})/src/knot/modules 2>/dev/null])
 
 AC_OUTPUT
-
-AC_MSG_RESULT([$result_msg_add])
+AC_MSG_RESULT([
+$result_msg_base
+])
