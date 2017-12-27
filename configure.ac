@@ -581,8 +581,7 @@ result_msg_base="  $PACKAGE $VERSION
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitize}
     Sanitizer coverage:     ${with_sanitize_coverage}
-    LibFuzzer:              ${with_sanitize_fuzzer}
-"
+    LibFuzzer:              ${with_sanitize_fuzzer}"
 
 result_msg_esc=$(echo -n "$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
 result_msg_add="
