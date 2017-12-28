@@ -655,6 +655,8 @@ A period between ZSK publication and the next rollover initiation.
 .INDENT 0.0
 .INDENT 3.5
 ZSK key lifetime is also infuenced by propagation\-delay and dnskey\-ttl
+.sp
+Zero (aka infinity) value causes no ZSK rollover as a result.
 .UNINDENT
 .UNINDENT
 .SS ksk\-lifetime

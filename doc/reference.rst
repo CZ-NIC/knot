@@ -746,6 +746,8 @@ A period between ZSK publication and the next rollover initiation.
 .. NOTE::
    ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
 
+   Zero (aka infinity) value causes no ZSK rollover as a result.
+
 .. _policy_ksk-lifetime:
 
 ksk-lifetime

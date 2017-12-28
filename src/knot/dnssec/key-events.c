@@ -258,7 +258,7 @@ static const char *roll_action_name(roll_action_type_t type)
 
 static knot_time_t zsk_rollover_time(knot_time_t active_time, const kdnssec_ctx_t *ctx)
 {
-	if (active_time <= 0) {
+	if (active_time <= 0 || ctx->policy->zsk_lifetime == 0) {
 		return 0;
 	}
 	return knot_time_add(active_time, ctx->policy->zsk_lifetime);
