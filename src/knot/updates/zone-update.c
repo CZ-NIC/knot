@@ -541,7 +541,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 
 	if (changeset_empty(&update->change)) {
 		changeset_clear(&update->change);
-		if (update->zone->contents == NULL) {
+		if (update->zone->contents == NULL || update->new_cont_deep_copy) {
 			*contents_out = update->new_cont;
 		}
 		return KNOT_EOK;
