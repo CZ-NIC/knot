@@ -331,7 +331,7 @@ int check_policy(
 	int64_t ksk_life_val = conf_int(&ksk_life);
 	int64_t dnskey_ttl_val = conf_int(&dnskey_ttl);
 
-	if (zsk_life_val < 2 * prop_del_val + dnskey_ttl_val) {
+	if (zsk_life_val != 0 && zsk_life_val < 2 * prop_del_val + dnskey_ttl_val) {
 		args->err_str = "ZSK lifetime too low according to propagation delay and DNSKEY TTL";
 		return KNOT_EINVAL;
 	}
