@@ -115,7 +115,8 @@ int event_load(conf_t *conf, zone_t *zone)
 			ret = KNOT_EOK;
 			goto cleanup;
 		} else if (zf_from == ZONEFILE_LOAD_WHOLE) {
-			ret = zone_update_from_contents(&up, zone, zf_conts, UPDATE_FULL);
+			ret = zone_update_from_contents(&up, zone, zf_conts,
+							(load_from == JOURNAL_CONTENT_NONE ? UPDATE_FULL : UPDATE_INCREMENTAL));
 		} else {
 			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL);
 		}
