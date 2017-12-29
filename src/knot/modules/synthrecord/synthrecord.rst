@@ -97,7 +97,7 @@ Module reference
      prefix: STR
      origin: DNAME
      ttl: INT
-     network: ADDR[/INT] | ADDR-ADDR
+     network: ADDR[/INT] | ADDR-ADDR ...
 
 .. _mod-synthrecord_id:
 

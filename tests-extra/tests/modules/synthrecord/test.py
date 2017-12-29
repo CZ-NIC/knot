@@ -26,11 +26,10 @@ for z in zone:
     knot.dnssec(z).enable = True
 
 # Configure 'synth_record' modules for auto forward/reverse zones
-knot.add_module(zone[FWD],  ModSynthRecord("forward", None,        None,  "192.168.0.1"))
-knot.add_module(zone[FWD],  ModSynthRecord("forward", "dynamic4-", "900", "192.168.1.0-192.168.1.127"))
-knot.add_module(zone[FWD],  ModSynthRecord("forward", "dynamic6-", "900", "2620:0:b61::/52"))
-knot.add_module(zone[REV4], ModSynthRecord("reverse", "dynamic4-", "900", "192.168.1.0/25", "forward."))
-knot.add_module(zone[REV6], ModSynthRecord("reverse", "dynamic6-", "900", "2620:0000:0b61::-2620:0000:0b61:0fff:ffff:ffff:ffff:ffff", "forward."))
+knot.add_module(zone[FWD],  ModSynthRecord("forward", None,        None, "192.168.0.1"))
+knot.add_module(zone[FWD],  ModSynthRecord("forward", "dynamic-", "900", "[ 192.168.1.0-192.168.1.127, 2620:0:b61::/52 ]"))
+knot.add_module(zone[REV4], ModSynthRecord("reverse", "dynamic-", "900", "[ 192.168.3.0/25, 192.168.1.0/25, 192.168.2.0/25 ]", "forward."))
+knot.add_module(zone[REV6], ModSynthRecord("reverse", "dynamic-", "900", "2620:0000:0b61::-2620:0000:0b61:0fff:ffff:ffff:ffff:ffff", "forward."))
 
 t.start()
 
@@ -50,8 +49,9 @@ for (addr, reverse, forward) in static_map:
     resp.check(addr, rcode="NOERROR", flags="QR AA", ttl=7200)
 
 # Check positive dynamic reverse records
-dynamic_map = [ ("192.168.1.1", "1." + zone[REV4].name, "dynamic4-192-168-1-1." + zone[FWD].name),
-                ("2620:0:b61::1", "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV6].name, "dynamic6-2620-0000-0b61-0000-0000-0000-0000-0001." + zone[FWD].name) ]
+dynamic_map = [ ("192.168.1.1", "1." + zone[REV4].name, "dynamic-192-168-1-1." + zone[FWD].name),
+                ("2620:0:b61::1", "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV6].name,
+                 "dynamic-2620-0000-0b61-0000-0000-0000-0000-0001." + zone[FWD].name) ]
 for (_, reverse, forward) in dynamic_map:
     resp = knot.dig(reverse, "PTR", dnssec=True)
     resp.check(forward, rcode="NOERROR", flags="QR AA", ttl=900)
@@ -80,8 +80,9 @@ for (addr, reverse, forward) in dynamic_map:
     resp.check(nordata=addr, rcode="SERVFAIL")
 
 # Check "out of subnet range" query response
-nxdomain_map = [ ("192.168.1.128", "128." + zone[REV4].name, "dynamic4-192-168-1-128." + zone[FWD].name),
-                 ("2620:0:b61:1000::", "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1." + zone[REV6].name, "dynamic6-2620-0000-0b61-1000-0000-0000-0000-0000." + zone[FWD].name) ]
+nxdomain_map = [ ("192.168.1.128", "128." + zone[REV4].name, "dynamic-192-168-1-128." + zone[FWD].name),
+                 ("2620:0:b61:1000::", "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1." + zone[REV6].name,
+                  "dynamic-2620-0000-0b61-1000-0000-0000-0000-0000." + zone[FWD].name) ]
 for (addr, reverse, forward) in nxdomain_map:
     rrtype = "AAAA" if ":" in addr else "A"
     resp = knot.dig(reverse, "PTR", dnssec=True)
