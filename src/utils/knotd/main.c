@@ -100,12 +100,15 @@ static int make_daemon(int nochdir, int noclose)
 		}
 
 		if (dup2(fd, STDIN_FILENO) < 0) {
+			close(fd);
 			return errno;
 		}
 		if (dup2(fd, STDOUT_FILENO) < 0) {
+			close(fd);
 			return errno;
 		}
 		if (dup2(fd, STDERR_FILENO) < 0) {
+			close(fd);
 			return errno;
 		}
 	}
@@ -223,6 +226,7 @@ static void event_loop(server_t *server, const char *socket)
 		listen = strdup(socket);
 	}
 	if (listen == NULL) {
+		knot_ctl_free(ctl);
 		log_fatal("control, empty socket path");
 		return;
 	}
