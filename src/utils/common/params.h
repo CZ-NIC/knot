@@ -27,6 +27,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "libknot/libknot.h"
 #include "contrib/ucw/lists.h"

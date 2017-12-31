@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <stdio.h>
 
 #include "dnssec/error.h"
 #include "knot/common/log.h"

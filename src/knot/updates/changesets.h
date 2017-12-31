@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <stdio.h>
+
 #include "libknot/rrset.h"
 #include "knot/zone/contents.h"
 #include "contrib/ucw/lists.h"

@@ -25,8 +25,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdbool.h>
 
 #include "libknot/attribute.h"
@@ -339,7 +337,7 @@ bool knot_dname_label_is_equal(const uint8_t *label1, const uint8_t *label2);
 knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
- * \brief Cound length of the N first labels.
+ * \brief Count length of the N first labels.
  *
  * \param name Domain name.
  * \param nlabels N first labels.
