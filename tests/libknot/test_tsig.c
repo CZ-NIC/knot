@@ -17,6 +17,7 @@
 #include <tap/basic.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "libknot/errcode.h"

@@ -15,6 +15,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <tap/basic.h>
 
 #include "libknot/consts.h"
