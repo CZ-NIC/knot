@@ -1,3 +1,24 @@
+Knot DNS 2.6.4 (2018-01-02)
+===========================
+
+Features:
+---------
+ - Module synthrecord allows multiple 'network' specification
+ - New CSK handling support in keymgr
+
+Improvements:
+-------------
+ - Allowed configuration for infinite zsk lifetime
+ - Increased performance and security of the module synthrecord
+ - Signing changeset is stored into journal even if 'zonefile-load' is whole
+
+Bugfixes:
+---------
+ - Unintentional zone re-sign during reload if empty NSEC3 salt
+ - Inconsistent zone names in journald structured logs
+ - Malformed outgoing transfer for big zone with TSIG
+ - Some minor DNSSEC-related issues
+
 Knot DNS 2.6.3 (2017-11-24)
 ===========================
 
@@ -78,6 +99,17 @@ Bugfixes:
 ---------
  - Incorrect journal free space computation causing inefficient space handling
  - Interface-automatic broken on Linux in the presence of asymmetric routing
+
+Knot DNS 2.5.7 (2018-01-02)
+===========================
+
+Bugfixes:
+---------
+ - Unintentional zone re-sign during reload if empty NSEC3 salt
+ - Inconsistent zone names in journald structured logs
+ - Malformed outgoing transfer for big zone with TSIG
+ - Unexpected reply for DS query with an owner below a delegation point
+ - Old dependencies in the pkg-config file
 
 Knot DNS 2.5.6 (2017-11-02)
 ===========================
@@ -321,6 +353,21 @@ Features:
  - New statistics module for traffic measuring
  - Automatic deletion of retired DNSSEC keys
  - New control logging category
+
+Knot DNS 2.3.4 (2017-11-20)
+===========================
+
+Security:
+---------
+ - CVE-2017-11104: Improper TSIG validity period check can allow TSIG forgery (Thanks to Synacktiv!)
+
+Bugfixes:
+---------
+ - Unexpected response for DS query below delegation poing
+ - Zone events not rescheduled upon server reload (Thanks to Mark Warren)
+ - Missing trailing dot in the keymgr DS owner output
+ - Malformed output from kjournalprint
+ - Redundant SO_REUSEPORT activation on the TCP socket
 
 Knot DNS 2.3.3 (2016-12-08)
 ===========================
