@@ -343,7 +343,7 @@ static knot_rrset_t *synth_rr(char *addr_str, const synth_template_t *tpl, knot_
 static knotd_in_state_t template_match(knotd_in_state_t state, const synth_template_t *tpl,
                                        knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	int provided_af;
+	int provided_af = AF_UNSPEC;
 	struct sockaddr_storage query_addr;
 	char addr_str[SOCKADDR_STRLEN];
 	assert(SOCKADDR_STRLEN > KNOT_DNAME_MAXLABELLEN);
