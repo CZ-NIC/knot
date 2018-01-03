@@ -6,5 +6,5 @@
 
 /*.trs
 /*.log
-/packet_libfuzzer
-/zscanner_libfuzzer
+/fuzz_packet
+/fuzz_zscanner

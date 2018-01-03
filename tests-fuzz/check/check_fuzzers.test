@@ -5,5 +5,5 @@
 
 set -e
 
-./packet_libfuzzer check/sample-seed.pkt
-./zscanner_libfuzzer check/sample-seed.pkt
+./fuzz_packet check/sample-seed.pkt
+./fuzz_zscanner check/sample-seed.pkt
