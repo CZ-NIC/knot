@@ -6,6 +6,7 @@ $TTL	1
 @	APL	1:0.0.0.0/0		; Minimal ipv4 prefix length
 @	APL	1:255.255.255.255/32	; Maximal ipv4 prefix length
 @	APL	1:255.255.255.255/30	; Prefix length isn't multiple of 8
+@	APL	2:::/0			; Minimal ipv6 address
 @	APL	2:0::0/0		; Minimal ipv6 prefix length
 @	APL	2:0::0/128		; Maximal ipv6 prefix length
 @	APL	2:FFFF:FFFF:FFFF::/2	; Trailing zeroes test
@@ -20,6 +21,8 @@ $TTL	1
 @	APL	0:0.0.0.0/32		; Bad address family
 @	APL	x:0.0.0.0/32		; Bad address family
 @	APL	!x:0.0.0.0/32		; Bad address family
+@	APL	2:0.0.0.0/32		; Address family mismatch
+@	APL	1:0::0/32		; Address family mismatch
 @	APL	1:0.0.0.0/33		; Prefix length is too long
 @	APL	2:0::0/129		; Prefix length is too long
 @	APL	2::/0			; Bad ipv6 address

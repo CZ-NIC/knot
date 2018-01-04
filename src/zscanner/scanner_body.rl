@@ -852,26 +852,26 @@
 	action _ipv4_addr_exit {
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			fhold; fgoto err_line;
 		}
 	}
 	action _ipv4_addr_write {
-		memcpy(rdata_tail, &(addr4.s_addr), INET4_ADDR_LENGTH);
+		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
 		rdata_tail += INET4_ADDR_LENGTH;
 	}
 
 	action _ipv6_addr_exit {
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			fhold; fgoto err_line;
 		}
 	}
 	action _ipv6_addr_write {
-		memcpy(rdata_tail, &(addr6.s6_addr), INET6_ADDR_LENGTH);
+		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
 		rdata_tail += INET6_ADDR_LENGTH;
 	}
 
@@ -912,7 +912,7 @@
 		// Write address family.
 		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
 		rdata_tail += 2;
-		// Write prefix length in bites.
+		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;
 		rdata_tail += 1;
 		// Copy address to buffer.
