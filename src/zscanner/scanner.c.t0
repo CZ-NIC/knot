@@ -1,5 +1,5 @@
 
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,21 @@
 #include "zscanner/scanner.h"
 #include "zscanner/functions.h"
 #include "libknot/descriptor.h"
+
+/*! \brief Maximal length of rdata item. */
+#define MAX_ITEM_LENGTH		255
+
+/*! \brief Length of ipv4 address in wire format. */
+#define INET4_ADDR_LENGTH	4
+/*! \brief Length of ipv6 address in wire format. */
+#define INET6_ADDR_LENGTH	16
+
+/*! \brief Latitude value for equator (2^31). */
+#define LOC_LAT_ZERO	(uint32_t)2147483648
+/*! \brief Longitude value for meridian (2^31). */
+#define LOC_LONG_ZERO	(uint32_t)2147483648
+/*! \brief Zero level altitude value. */
+#define LOC_ALT_ZERO	(uint32_t)10000000
 
 /*! \brief Shorthand for setting warning data. */
 #define WARN(err_code) { s->error.code = err_code; }
@@ -5549,7 +5564,7 @@ static void parse(
 	// Restore state variables (Ragel internals).
 	int cs  = s->cs;
 	int top = s->top;
-	int stack[RAGEL_STACK_SIZE];
+	int stack[ZS_RAGEL_STACK_SIZE];
 	memcpy(stack, s->stack, sizeof(stack));
 
 	// Auxiliary variables which are used in scanner body.
@@ -5563,7 +5578,7 @@ static void parse(
 	// Restoring r_data pointer to next free space.
 	uint8_t *rdata_tail = s->r_data + s->r_data_tail;
 	// Initialization of the last r_data byte.
-	uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
+	uint8_t *rdata_stop = s->r_data + ZS_MAX_RDATA_LENGTH - 1;
 
 	// Write scanner body (in C).
 
@@ -5874,7 +5889,7 @@ _match:
 	case 12:
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -5887,7 +5902,7 @@ _match:
 	{
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -5898,7 +5913,7 @@ _match:
 	break;
 	case 14:
 	{
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length] = 0;
 			s->item_length++;
 		} else {
@@ -5933,7 +5948,7 @@ _match:
 	case 19:
 	{
 		// Check for (relative + origin) dname length overflow.
-		if (s->dname_tmp_length + s->zone_origin_length <= MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length + s->zone_origin_length <= ZS_MAX_DNAME_LENGTH) {
 			memcpy(s->dname + s->dname_tmp_length,
 			       s->zone_origin,
 			       s->zone_origin_length);
@@ -6213,7 +6228,7 @@ _match:
 	break;
 	case 54:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -6556,7 +6571,7 @@ _match:
 	break;
 	case 90:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {

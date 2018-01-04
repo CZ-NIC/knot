@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,46 +31,30 @@
 #include "zscanner/error.h"
 
 /*! \brief Maximal length of rdata. */
-#define MAX_RDATA_LENGTH		65535
-/*! \brief Maximal length of rdata item. */
-#define MAX_ITEM_LENGTH			255
+#define ZS_MAX_RDATA_LENGTH		65535
 /*! \brief Maximal length of domain name. */
-#define MAX_DNAME_LENGTH		255
+#define ZS_MAX_DNAME_LENGTH		255
 /*! \brief Maximal length of domain name label. */
-#define MAX_LABEL_LENGTH		63
-/*! \brief Maximal number or rdata items. */
-#define MAX_RDATA_ITEMS			64
+#define ZS_MAX_LABEL_LENGTH		63
 
 /*! \brief Number of bitmap windows. */
-#define BITMAP_WINDOWS			256
-
-/*! \brief Length of ipv4 address in wire format. */
-#define INET4_ADDR_LENGTH		4
-/*! \brief Length of ipv6 address in wire format. */
-#define INET6_ADDR_LENGTH		16
+#define ZS_BITMAP_WINDOWS		256
 
 /*! \brief Ragel call stack size (see Ragel internals). */
-#define RAGEL_STACK_SIZE		16
-
-/*! \brief Latitude value for equator (2^31). */
-#define LOC_LAT_ZERO	(uint32_t)2147483648
-/*! \brief Longitude value for meridian (2^31). */
-#define LOC_LONG_ZERO	(uint32_t)2147483648
-/*! \brief Zero level altitude value. */
-#define LOC_ALT_ZERO	(uint32_t)10000000
+#define ZS_RAGEL_STACK_SIZE		16
 
 /*! \brief Auxiliary structure for storing bitmap window items (see RFC4034). */
 typedef struct {
 	uint8_t bitmap[32];
 	uint8_t length;
-} window_t;
+} zs_win_t;
 
 /*! \brief Auxiliary structure for storing one APL record (see RFC3123). */
 typedef struct {
 	uint8_t  excl_flag;
 	uint16_t addr_family;
 	uint8_t  prefix_length;
-} apl_t;
+} zs_apl_t;
 
 /*! \brief Auxiliary structure for storing LOC information (see RFC1876). */
 typedef struct {
@@ -80,7 +64,7 @@ typedef struct {
 	uint32_t alt;
 	uint64_t siz, hp, vp;
 	int8_t   lat_sign, long_sign, alt_sign;
-} loc_t;
+} zs_loc_t;
 
 /*! \brief Scanner states describing the result. */
 typedef enum {
@@ -113,7 +97,7 @@ struct scanner {
 	/*! Stack top (Ragel internals). */
 	int      top;
 	/*! Call stack (Ragel internals). */
-	int      stack[RAGEL_STACK_SIZE];
+	int      stack[ZS_RAGEL_STACK_SIZE];
 
 	/*! Indicates whether current record is multiline. */
 	bool     multiline;
@@ -135,20 +119,20 @@ struct scanner {
 	/*! Auxiliary buffer length. Is zero if no comment after a valid record. */
 	uint32_t buffer_length;
 	/*! Auxiliary buffer. Contains a comment after a valid record. */
-	uint8_t  buffer[MAX_RDATA_LENGTH];
+	uint8_t  buffer[ZS_MAX_RDATA_LENGTH];
 	/*! Auxiliary buffer for current included file name. */
-	char     include_filename[MAX_RDATA_LENGTH];
+	char     include_filename[ZS_MAX_RDATA_LENGTH];
 	/*! Absolute path for relative includes. */
 	char     *path;
 
 	/*! Auxiliary array of bitmap window blocks. */
-	window_t windows[BITMAP_WINDOWS];
+	zs_win_t windows[ZS_BITMAP_WINDOWS];
 	/*! Last window block which is used (-1 means no window). */
 	int16_t  last_window;
 	/*! Auxiliary apl structure. */
-	apl_t    apl;
+	zs_apl_t apl;
 	/*! Auxiliary loc structure. */
-	loc_t    loc;
+	zs_loc_t loc;
 	/*! Allow text strings longer than 255 characters. */
 	bool     long_string;
 
@@ -171,7 +155,7 @@ struct scanner {
 	 *
 	 * \note Maximal dname length check is after each valid label.
 	 */
-	uint8_t  zone_origin[MAX_DNAME_LENGTH + MAX_LABEL_LENGTH];
+	uint8_t  zone_origin[ZS_MAX_DNAME_LENGTH + ZS_MAX_LABEL_LENGTH];
 	/*! Value of the default class. */
 	uint16_t default_class;
 	/*! Value of the current default ttl (TTL directive sets this). */
@@ -231,7 +215,7 @@ struct scanner {
 	 *
 	 * \note Maximal dname length check is after each valid label.
 	 */
-	uint8_t  r_owner[MAX_DNAME_LENGTH + MAX_LABEL_LENGTH];
+	uint8_t  r_owner[ZS_MAX_DNAME_LENGTH + ZS_MAX_LABEL_LENGTH];
 	/*! Class of the current record. */
 	uint16_t r_class;
 	/*! TTL of the current record. */
@@ -241,7 +225,7 @@ struct scanner {
 	/*! Length of the current rdata. */
 	uint32_t r_data_length;
 	/*! Current rdata. */
-	uint8_t  r_data[MAX_RDATA_LENGTH];
+	uint8_t  r_data[ZS_MAX_RDATA_LENGTH];
 
 	/*
 	 * Example: a. IN 60 MX 1 b. ; A comment

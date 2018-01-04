@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,21 @@
 #include "zscanner/scanner.h"
 #include "zscanner/functions.h"
 #include "libknot/descriptor.h"
+
+/*! \brief Maximal length of rdata item. */
+#define MAX_ITEM_LENGTH		255
+
+/*! \brief Length of ipv4 address in wire format. */
+#define INET4_ADDR_LENGTH	4
+/*! \brief Length of ipv6 address in wire format. */
+#define INET6_ADDR_LENGTH	16
+
+/*! \brief Latitude value for equator (2^31). */
+#define LOC_LAT_ZERO	(uint32_t)2147483648
+/*! \brief Longitude value for meridian (2^31). */
+#define LOC_LONG_ZERO	(uint32_t)2147483648
+/*! \brief Zero level altitude value. */
+#define LOC_ALT_ZERO	(uint32_t)10000000
 
 /*! \brief Shorthand for setting warning data. */
 #define WARN(err_code) { s->error.code = err_code; }
@@ -340,7 +355,7 @@ static void parse(
 	// Restore state variables (Ragel internals).
 	int cs  = s->cs;
 	int top = s->top;
-	int stack[RAGEL_STACK_SIZE];
+	int stack[ZS_RAGEL_STACK_SIZE];
 	memcpy(stack, s->stack, sizeof(stack));
 
 	// Auxiliary variables which are used in scanner body.
@@ -354,7 +369,7 @@ static void parse(
 	// Restoring r_data pointer to next free space.
 	uint8_t *rdata_tail = s->r_data + s->r_data_tail;
 	// Initialization of the last r_data byte.
-	uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
+	uint8_t *rdata_stop = s->r_data + ZS_MAX_RDATA_LENGTH - 1;
 
 	// Write scanner body (in C).
 	%% write exec;

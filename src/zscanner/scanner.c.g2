@@ -1,5 +1,5 @@
 
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,21 @@
 #include "zscanner/scanner.h"
 #include "zscanner/functions.h"
 #include "libknot/descriptor.h"
+
+/*! \brief Maximal length of rdata item. */
+#define MAX_ITEM_LENGTH		255
+
+/*! \brief Length of ipv4 address in wire format. */
+#define INET4_ADDR_LENGTH	4
+/*! \brief Length of ipv6 address in wire format. */
+#define INET6_ADDR_LENGTH	16
+
+/*! \brief Latitude value for equator (2^31). */
+#define LOC_LAT_ZERO	(uint32_t)2147483648
+/*! \brief Longitude value for meridian (2^31). */
+#define LOC_LONG_ZERO	(uint32_t)2147483648
+/*! \brief Zero level altitude value. */
+#define LOC_ALT_ZERO	(uint32_t)10000000
 
 /*! \brief Shorthand for setting warning data. */
 #define WARN(err_code) { s->error.code = err_code; }
@@ -339,7 +354,7 @@ static void parse(
 	// Restore state variables (Ragel internals).
 	int cs  = s->cs;
 	int top = s->top;
-	int stack[RAGEL_STACK_SIZE];
+	int stack[ZS_RAGEL_STACK_SIZE];
 	memcpy(stack, s->stack, sizeof(stack));
 
 	// Auxiliary variables which are used in scanner body.
@@ -353,7 +368,7 @@ static void parse(
 	// Restoring r_data pointer to next free space.
 	uint8_t *rdata_tail = s->r_data + s->r_data_tail;
 	// Initialization of the last r_data byte.
-	uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
+	uint8_t *rdata_stop = s->r_data + ZS_MAX_RDATA_LENGTH - 1;
 
 	// Write scanner body (in C).
 
@@ -34731,7 +34746,7 @@ tr916:
 	}
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -34743,7 +34758,7 @@ tr916:
 tr921:
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -34759,7 +34774,7 @@ tr925:
 	}
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -34774,7 +34789,7 @@ tr932:
 	}
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -34814,7 +34829,7 @@ tr920:
 	{
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -34824,7 +34839,7 @@ tr920:
 	}
 	{
 		// Check for (relative + origin) dname length overflow.
-		if (s->dname_tmp_length + s->zone_origin_length <= MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length + s->zone_origin_length <= ZS_MAX_DNAME_LENGTH) {
 			memcpy(s->dname + s->dname_tmp_length,
 			       s->zone_origin,
 			       s->zone_origin_length);
@@ -34855,7 +34870,7 @@ tr931:
 	{
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -34865,7 +34880,7 @@ tr931:
 	}
 	{
 		// Check for (relative + origin) dname length overflow.
-		if (s->dname_tmp_length + s->zone_origin_length <= MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length + s->zone_origin_length <= ZS_MAX_DNAME_LENGTH) {
 			memcpy(s->dname + s->dname_tmp_length,
 			       s->zone_origin,
 			       s->zone_origin_length);
@@ -34902,7 +34917,7 @@ tr922:
 	{
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -34918,7 +34933,7 @@ tr933:
 	{
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -34984,7 +34999,7 @@ case 273:
 	goto tr921;
 tr927:
 	{
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length] = 0;
 			s->item_length++;
 		} else {
@@ -36357,7 +36372,7 @@ case 301:
 tr1013:
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -36373,7 +36388,7 @@ tr1020:
 	}
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -36388,7 +36403,7 @@ tr1035:
 	}
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -36411,7 +36426,7 @@ tr1010:
 	}
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -36443,7 +36458,7 @@ tr1014:
 	{
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -36459,7 +36474,7 @@ tr1036:
 	{
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -36702,7 +36717,7 @@ case 306:
 	goto tr1013;
 tr1031:
 	{
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length] = 0;
 			s->item_length++;
 		} else {
@@ -37086,7 +37101,7 @@ case 315:
 tr1065:
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -37102,7 +37117,7 @@ tr1071:
 	}
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -37117,7 +37132,7 @@ tr1084:
 	}
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -37140,7 +37155,7 @@ tr1058:
 	}
 	{
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = (*p);
 			s->item_length++;
 		} else {
@@ -37172,7 +37187,7 @@ tr1066:
 	{
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -37188,7 +37203,7 @@ tr1085:
 	{
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -37719,7 +37734,7 @@ case 320:
 	goto tr1065;
 tr1080:
 	{
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length] = 0;
 			s->item_length++;
 		} else {
@@ -49637,7 +49652,7 @@ tr1859:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -49648,7 +49663,7 @@ tr1859:
 	goto st633;
 tr1861:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -53554,7 +53569,7 @@ tr2086:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -53565,7 +53580,7 @@ tr2086:
 	goto st688;
 tr2088:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -63081,7 +63096,7 @@ tr2508:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -63092,7 +63107,7 @@ tr2508:
 	goto st787;
 tr2509:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -63485,7 +63500,7 @@ tr2524:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -63496,7 +63511,7 @@ tr2524:
 	goto st793;
 tr2525:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -67994,7 +68009,7 @@ tr2703:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -68005,7 +68020,7 @@ tr2703:
 	goto st838;
 tr2707:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -68474,7 +68489,7 @@ tr2749:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -68485,7 +68500,7 @@ tr2749:
 	goto st845;
 tr2752:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -71056,7 +71071,7 @@ tr2883:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -71066,7 +71081,7 @@ tr2883:
 	goto st865;
 tr2889:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -71329,7 +71344,7 @@ tr2895:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -71339,7 +71354,7 @@ tr2895:
 	goto st867;
 tr2901:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -78324,7 +78339,7 @@ tr3503:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -78335,7 +78350,7 @@ tr3503:
 	goto st1084;
 tr3507:
 	{
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -138,7 +138,7 @@
 	}
 	action _label_char {
 		// Check for maximum dname label length.
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length++] = fc;
 			s->item_length++;
 		} else {
@@ -149,7 +149,7 @@
 	action _label_exit {
 		// Check for maximum dname length overflow after each label.
 		// (at least the next label length must follow).
-		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length < ZS_MAX_DNAME_LENGTH) {
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
@@ -159,7 +159,7 @@
 	}
 
 	action _label_dec_init {
-		if (s->item_length < MAX_LABEL_LENGTH) {
+		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
 			(s->dname)[s->dname_tmp_length] = 0;
 			s->item_length++;
 		} else {
@@ -199,7 +199,7 @@
 	}
 	action _relative_dname_exit {
 		// Check for (relative + origin) dname length overflow.
-		if (s->dname_tmp_length + s->zone_origin_length <= MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length + s->zone_origin_length <= ZS_MAX_DNAME_LENGTH) {
 			memcpy(s->dname + s->dname_tmp_length,
 			       s->zone_origin,
 			       s->zone_origin_length);
@@ -482,7 +482,7 @@
 		s->buffer_length = 0;
 	}
 	action _timestamp {
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = fc;
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -836,7 +836,7 @@
 		s->buffer_length = 0;
 	}
 	action _addr {
-		if (s->buffer_length < MAX_RDATA_LENGTH) {
+		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = fc;
 		}
 		else {
