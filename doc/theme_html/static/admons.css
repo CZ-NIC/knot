@@ -1,0 +1,69 @@
+/* === Style for admonitions === */
+
+/* Settings from 'basic' theme (modified only) */
+
+div.admonition {
+   margin-top: 10px;
+   margin-bottom: 10px;
+   padding: 7px;
+   padding-left: 54px;/* based on icon size */
+   padding-right: 24px;/* based on icon size */
+}
+
+/* Settings from 'classic' theme (modified only) */
+
+div.admonition p {
+   display: block;
+}
+
+p.admonition-title {
+   padding-bottom: 11px;/* based on icon size */
+   padding-top: 11px;/* based on icon size */
+}
+
+p.admonition-title:after {
+   content: none; /* do not add colon */
+}
+
+/* Icon settings for all admonitions */
+div.admonition {
+   /* background-image: url('abstract_admon_48.png'); */
+   background-repeat: no-repeat;
+   background-position: 2px 2px;
+}
+
+/* Specific admonitions */
+div.admonition-todo {
+   background-color: #CAE2B6;
+   border: solid 1px #439427;
+}
+
+div.warning {
+   background-image: url('icons/admon_warning_48.png');
+   background-color: #FFE4E4;
+   border: solid 3px #990D1C;
+}
+
+div.caution {
+   background-image: url('icons/admon_caution_48.png');
+   background-color: #FFE4E4;
+   border: solid 1px #990D1C;
+}
+
+div.important {
+   background-image: url('icons/admon_important_48.png');
+   background-color: #FBECC8;
+   border: solid 1px #D68612;
+}
+
+div.note {
+   background-image: url('icons/admon_note_48.png');
+   background-color: white;
+   border: solid 1px #D1D3D4;
+}
+
+div.tip {
+   background-image: url('icons/admon_tip_48.png');
+   background-color: #F2E4FD;
+   border: solid 1px #D1C2E6;
+}
