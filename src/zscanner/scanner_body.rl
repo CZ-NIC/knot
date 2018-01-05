@@ -41,6 +41,9 @@
 		s->multiline = false;
 	}
 
+	action _comment_init {
+		s->buffer_length = 0;
+	}
 	action _comment {
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = fc;
@@ -60,7 +63,7 @@
 	}
 
 	newline = '\n' $_newline;
-	comment = (';' . (^newline)* $_comment) %_comment_exit;
+	comment = (';' . (^newline)* $_comment) >_comment_init %_comment_exit;
 
 	# White space separation. With respect to parentheses and included comments.
 	sep = ( [ \t]                                       # Blank characters.
