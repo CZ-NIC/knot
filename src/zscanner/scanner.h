@@ -37,6 +37,11 @@
 /*! \brief Maximal length of domain name label. */
 #define ZS_MAX_LABEL_LENGTH		63
 
+/*! \brief Length of ipv4 address in the wire format. */
+#define ZS_INET4_ADDR_LENGTH		4
+/*! \brief Length of ipv6 address in the wire format. */
+#define ZS_INET6_ADDR_LENGTH		16
+
 /*! \brief Number of bitmap windows. */
 #define ZS_BITMAP_WINDOWS		256
 
@@ -133,6 +138,8 @@ struct scanner {
 	zs_apl_t apl;
 	/*! Auxiliary loc structure. */
 	zs_loc_t loc;
+	/*! Auxiliary IP address storage. */
+	uint8_t  addr[ZS_INET6_ADDR_LENGTH];
 	/*! Allow text strings longer than 255 characters. */
 	bool     long_string;
 

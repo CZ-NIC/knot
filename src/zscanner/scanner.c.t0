@@ -38,11 +38,6 @@
 /*! \brief Maximal length of rdata item. */
 #define MAX_ITEM_LENGTH		255
 
-/*! \brief Length of ipv4 address in wire format. */
-#define INET4_ADDR_LENGTH	4
-/*! \brief Length of ipv6 address in wire format. */
-#define INET6_ADDR_LENGTH	16
-
 /*! \brief Latitude value for equator (2^31). */
 #define LOC_LAT_ZERO	(uint32_t)2147483648
 /*! \brief Longitude value for meridian (2^31). */
@@ -5568,8 +5563,6 @@ static void parse(
 	memcpy(stack, s->stack, sizeof(stack));
 
 	// Auxiliary variables which are used in scanner body.
-	struct in_addr  addr4;
-	struct in6_addr addr6;
 	uint32_t timestamp;
 	int16_t  window;
 	int      ret;
@@ -6590,7 +6583,7 @@ _match:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {cs = 268;goto _again;}
 		}
@@ -6598,15 +6591,15 @@ _match:
 	break;
 	case 93:
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	break;
 	case 94:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {cs = 268;goto _again;}
 		}
@@ -6614,8 +6607,8 @@ _match:
 	break;
 	case 95:
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	break;
 	case 96:
@@ -6661,12 +6654,12 @@ _match:
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);

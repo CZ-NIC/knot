@@ -38,11 +38,6 @@
 /*! \brief Maximal length of rdata item. */
 #define MAX_ITEM_LENGTH		255
 
-/*! \brief Length of ipv4 address in wire format. */
-#define INET4_ADDR_LENGTH	4
-/*! \brief Length of ipv6 address in wire format. */
-#define INET6_ADDR_LENGTH	16
-
 /*! \brief Latitude value for equator (2^31). */
 #define LOC_LAT_ZERO	(uint32_t)2147483648
 /*! \brief Longitude value for meridian (2^31). */
@@ -358,8 +353,6 @@ static void parse(
 	memcpy(stack, s->stack, sizeof(stack));
 
 	// Auxiliary variables which are used in scanner body.
-	struct in_addr  addr4;
-	struct in6_addr addr6;
 	uint32_t timestamp;
 	int16_t  window;
 	int      ret;
@@ -49694,14 +49687,14 @@ tr1860:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -53617,14 +53610,14 @@ tr2087:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -62825,12 +62818,12 @@ tr2512:
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);
@@ -62872,12 +62865,12 @@ tr2513:
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);
@@ -62926,12 +62919,12 @@ tr2514:
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);
@@ -62980,12 +62973,12 @@ tr2516:
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);
@@ -63129,7 +63122,7 @@ tr2510:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
@@ -63139,7 +63132,7 @@ tr2526:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
@@ -63250,12 +63243,12 @@ tr2517:
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);
@@ -63329,12 +63322,12 @@ tr2518:
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);
@@ -63392,12 +63385,12 @@ tr2519:
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);
@@ -63561,12 +63554,12 @@ tr2520:
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);
@@ -65757,28 +65750,28 @@ tr2708:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	goto st825;
 tr2709:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == true) {
@@ -65792,14 +65785,14 @@ tr2710:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == false) {
@@ -65813,14 +65806,14 @@ tr2718:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -65830,28 +65823,28 @@ tr2753:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	goto st825;
 tr2754:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == true) {
@@ -65865,14 +65858,14 @@ tr2755:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == false) {
@@ -65886,14 +65879,14 @@ tr2763:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -66024,14 +66017,14 @@ tr2717:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -66049,14 +66042,14 @@ tr2762:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -66083,28 +66076,28 @@ tr2719:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	goto st827;
 tr2764:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	goto st827;
 st827:
@@ -66212,28 +66205,28 @@ tr2711:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	goto st828;
 tr2712:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == true) {
@@ -66247,14 +66240,14 @@ tr2713:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == false) {
@@ -66268,14 +66261,14 @@ tr2722:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -66285,28 +66278,28 @@ tr2756:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	goto st828;
 tr2757:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == true) {
@@ -66320,14 +66313,14 @@ tr2758:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == false) {
@@ -66341,14 +66334,14 @@ tr2767:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -66435,28 +66428,28 @@ tr2723:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	goto st829;
 tr2768:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	goto st829;
 st829:
@@ -66504,14 +66497,14 @@ tr2724:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -66524,14 +66517,14 @@ tr2769:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -66625,14 +66618,14 @@ tr2725:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -66650,14 +66643,14 @@ tr2770:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -66768,28 +66761,28 @@ tr2714:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	goto st830;
 tr2715:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == true) {
@@ -66803,14 +66796,14 @@ tr2716:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == false) {
@@ -66824,14 +66817,14 @@ tr2726:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -66841,28 +66834,28 @@ tr2759:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	goto st830;
 tr2760:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == true) {
@@ -66876,14 +66869,14 @@ tr2761:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		if (s->multiline == false) {
@@ -66897,14 +66890,14 @@ tr2771:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -67058,14 +67051,14 @@ tr2720:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -67078,14 +67071,14 @@ tr2765:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -67206,14 +67199,14 @@ tr2721:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -67231,14 +67224,14 @@ tr2766:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -67293,28 +67286,28 @@ tr2727:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	goto st831;
 tr2772:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	goto st831;
 st831:
@@ -67377,14 +67370,14 @@ tr2728:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -67397,14 +67390,14 @@ tr2773:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		s->line_counter++;
@@ -67569,14 +67562,14 @@ tr2729:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -67594,14 +67587,14 @@ tr2774:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}
@@ -78381,14 +78374,14 @@ tr3506:
 	{
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			p--; {goto st268;}
 		}
 	}
 	{
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 	{
 		p--; {cs = stack[--top];goto _again;}

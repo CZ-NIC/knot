@@ -852,27 +852,27 @@
 	action _ipv4_addr_exit {
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET, (char *)s->buffer, &addr4.s_addr) <= 0) {
+		if (inet_pton(AF_INET, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV4);
 			fhold; fgoto err_line;
 		}
 	}
 	action _ipv4_addr_write {
-		memcpy(rdata_tail, &addr4.s_addr, INET4_ADDR_LENGTH);
-		rdata_tail += INET4_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
+		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
 
 	action _ipv6_addr_exit {
 		s->buffer[s->buffer_length] = 0;
 
-		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, (char *)s->buffer, s->addr) <= 0) {
 			WARN(ZS_BAD_IPV6);
 			fhold; fgoto err_line;
 		}
 	}
 	action _ipv6_addr_write {
-		memcpy(rdata_tail, &addr6.s6_addr, INET6_ADDR_LENGTH);
-		rdata_tail += INET6_ADDR_LENGTH;
+		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
+		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 
 	# Address parsers only.
@@ -919,12 +919,12 @@
 		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			len = INET4_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr4.s_addr), len);
+			len = ZS_INET4_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		case 2:
-			len = INET6_ADDR_LENGTH;
-			memcpy(s->buffer, &(addr6.s6_addr), len);
+			len = ZS_INET6_ADDR_LENGTH;
+			memcpy(s->buffer, s->addr, len);
 			break;
 		default:
 			WARN(ZS_BAD_APL);

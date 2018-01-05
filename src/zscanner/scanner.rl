@@ -37,11 +37,6 @@
 /*! \brief Maximal length of rdata item. */
 #define MAX_ITEM_LENGTH		255
 
-/*! \brief Length of ipv4 address in wire format. */
-#define INET4_ADDR_LENGTH	4
-/*! \brief Length of ipv6 address in wire format. */
-#define INET6_ADDR_LENGTH	16
-
 /*! \brief Latitude value for equator (2^31). */
 #define LOC_LAT_ZERO	(uint32_t)2147483648
 /*! \brief Longitude value for meridian (2^31). */
@@ -359,8 +354,6 @@ static void parse(
 	memcpy(stack, s->stack, sizeof(stack));
 
 	// Auxiliary variables which are used in scanner body.
-	struct in_addr  addr4;
-	struct in6_addr addr6;
 	uint32_t timestamp;
 	int16_t  window;
 	int      ret;
