@@ -294,6 +294,35 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 	return rrsig;
 }
 
+static glue_t *find_glue_for(const knot_rrset_t *rr, const knot_pkt_t *pkt)
+{
+	for (int i = KNOT_ANSWER; i <= KNOT_AUTHORITY; i++) {
+		const knot_pktsection_t *section = knot_pkt_section(pkt, i);
+		for (int j = 0; j < section->count; j++) {
+			const knot_rrset_t *attempt = knot_pkt_rr(section, j);
+			const additional_t *a = attempt->additional;
+			for (int k = 0; a != NULL && k < a->count; k++) {
+				// no need for knot_dname_cmp because the pointers are assigned
+				if (a->glues[k].node->owner == rr->owner) {
+					return &a->glues[k];
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
+static bool shall_sign_rr(const knot_rrset_t *rr, const knot_pkt_t *pkt)
+{
+	if (pkt->current == KNOT_ADDITIONAL) {
+		glue_t *g = find_glue_for(rr, pkt);
+		assert(g); // finds actually the node which is rr in
+		return !(g->node->flags & NODE_FLAGS_NONAUTH);
+	} else {
+		return knot_wire_get_aa(pkt->wire) || rr->type == KNOT_RRTYPE_NSEC;
+	}
+}
+
 static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
@@ -311,6 +340,10 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 	uint16_t count_unsigned = section->count;
 	for (int i = 0; i < count_unsigned; i++) {
 		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		if (!shall_sign_rr(rr, pkt)) {
+			continue;
+		}
+
 		uint16_t rr_pos = knot_pkt_rr_offset(section, i);
 
 		uint8_t owner[KNOT_DNAME_MAXLEN] = { 0 };
