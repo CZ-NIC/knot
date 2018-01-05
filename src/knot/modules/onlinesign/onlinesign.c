@@ -164,7 +164,7 @@ static void bitmap_add_section(dnssec_nsec_bitmap_t *map, const knot_pktsection_
  * - For non-ANY query, the bitmap will contain types from zone and forced
  *   types which can be potentionally synthesized by other query modules.
  */
-static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *qdata)
+static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *qdata, bool add_forced)
 {
 	dnssec_nsec_bitmap_t *map = dnssec_nsec_bitmap_new();
 	if (!map) {
@@ -183,7 +183,7 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *
 		bitmap_add_section(map, answer);
 	} else {
 		bitmap_add_zone(map, qdata->extra->node);
-		if (!node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
+		if (add_forced && !node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
 			bitmap_add_forced(map, qtype);
 		}
 	}
@@ -191,21 +191,27 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *
 	return map;
 }
 
+static bool is_deleg(const knot_pkt_t *pkt)
+{
+	return !knot_wire_get_aa(pkt->wire);
+}
+
 static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t *mm)
 {
-	knot_rrset_t *nsec = knot_rrset_new(qdata->name, KNOT_RRTYPE_NSEC,
+	const knot_dname_t *nsec_owner = is_deleg(pkt) ? qdata->extra->encloser->owner : qdata->name;
+	knot_rrset_t *nsec = knot_rrset_new(nsec_owner, KNOT_RRTYPE_NSEC,
 	                                    KNOT_CLASS_IN, nsec_ttl(qdata), mm);
 	if (!nsec) {
 		return NULL;
 	}
 
-	knot_dname_t *next = online_nsec_next(qdata->name, knotd_qdata_zone_name(qdata));
+	knot_dname_t *next = online_nsec_next(nsec_owner, knotd_qdata_zone_name(qdata));
 	if (!next) {
 		knot_rrset_free(&nsec, mm);
 		return NULL;
 	}
 
-	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata);
+	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata, !is_deleg(pkt));
 	if (!bitmap) {
 		free(next);
 		knot_rrset_free(&nsec, mm);
@@ -319,7 +325,7 @@ static bool shall_sign_rr(const knot_rrset_t *rr, const knot_pkt_t *pkt)
 		assert(g); // finds actually the node which is rr in
 		return !(g->node->flags & NODE_FLAGS_NONAUTH);
 	} else {
-		return knot_wire_get_aa(pkt->wire) || rr->type == KNOT_RRTYPE_NSEC;
+		return !is_deleg(pkt) || rr->type == KNOT_RRTYPE_NSEC;
 	}
 }
 
