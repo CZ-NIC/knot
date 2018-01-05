@@ -97,7 +97,9 @@ If there are multiple ACL rules for a single zone, they are applied in the order
 of appearance in the :ref:`zone_acl` configuration item of a zone or a template.
 The first one to match the given remote is applied, the rest is ignored.
 
-See the following examples and :ref:`ACL section`.::
+See the following examples and :ref:`ACL section`.
+
+::
 
     acl:
       - id: address_rule
@@ -644,4 +646,3 @@ On FreeBSD you can just: ::
     ifconfig ${dev} -rxcsum -txcsum -lro -tso
 
 Knot developers are open to hear about users' further suggestions about network devices tuning/optimization.
-

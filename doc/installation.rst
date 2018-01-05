@@ -18,10 +18,10 @@ features, contribute to Knot development, or you just know what you are doing.
 See the project `download <https://www.knot-dns.cz/download>`_ page for
 the latest information.
 
-.. _Installation from the source code:
+.. _Installation from source code:
 
-Installation from the source code
-=================================
+Installation from source code
+=============================
 
 Required build environment
 --------------------------
@@ -46,8 +46,8 @@ You can find the source code for the latest release on `www.knot-dns.cz <https:/
 Alternatively, you can fetch the whole project from the git repository
 `git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/knot/knot-dns/tree/master>`_.
 
-After obtaining the source code, the compilation and installation is a
-quite straightforward process using autotools.
+After obtaining the source code, compilation and installation is a quite
+straightforward process using autotools.
 
 .. _Configuring and generating Makefiles:
 
