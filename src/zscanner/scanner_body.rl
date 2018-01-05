@@ -482,7 +482,7 @@
 		s->buffer_length = 0;
 	}
 	action _timestamp {
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = fc;
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -837,7 +837,7 @@
 		s->buffer_length = 0;
 	}
 	action _addr {
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = fc;
 		}
 		else {

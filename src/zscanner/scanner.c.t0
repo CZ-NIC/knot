@@ -6216,7 +6216,7 @@ _match:
 	break;
 	case 54:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -6560,7 +6560,7 @@ _match:
 	break;
 	case 90:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {

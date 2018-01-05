@@ -49640,7 +49640,7 @@ tr1859:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -49651,7 +49651,7 @@ tr1859:
 	goto st633;
 tr1861:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -53557,7 +53557,7 @@ tr2086:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -53568,7 +53568,7 @@ tr2086:
 	goto st688;
 tr2088:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -63084,7 +63084,7 @@ tr2508:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -63095,7 +63095,7 @@ tr2508:
 	goto st787;
 tr2509:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -63488,7 +63488,7 @@ tr2524:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -63499,7 +63499,7 @@ tr2524:
 	goto st793;
 tr2525:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -67997,7 +67997,7 @@ tr2703:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -68008,7 +68008,7 @@ tr2703:
 	goto st838;
 tr2707:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -68477,7 +68477,7 @@ tr2749:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -68488,7 +68488,7 @@ tr2749:
 	goto st845;
 tr2752:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -71059,7 +71059,7 @@ tr2883:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -71069,7 +71069,7 @@ tr2883:
 	goto st865;
 tr2889:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -71336,7 +71336,7 @@ tr2895:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -71346,7 +71346,7 @@ tr2895:
 	goto st867;
 tr2901:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
@@ -78337,7 +78337,7 @@ tr3503:
 		s->buffer_length = 0;
 	}
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
@@ -78348,7 +78348,7 @@ tr3503:
 	goto st1084;
 tr3507:
 	{
-		if (s->buffer_length < ZS_MAX_RDATA_LENGTH) {
+		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
 		else {
