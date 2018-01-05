@@ -58,9 +58,7 @@ void bignum_write(wire_ctx_t *ctx, size_t width, const dnssec_binary_t *_value)
 
 	size_t padding_len = width - value.size;
 	if (padding_len > 0) {
-		uint8_t padding[padding_len];
-		memset(padding, 0, padding_len);
-		wire_write(ctx, padding, padding_len);
+		wire_ctx_clear(ctx, padding_len);
 	}
-	wire_write(ctx, value.data, value.size);
+	wire_ctx_write(ctx, value.data, value.size);
 }

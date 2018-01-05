@@ -128,7 +128,6 @@ src/dnssec/shared/keyid_gnutls.h
 src/dnssec/shared/pem.c
 src/dnssec/shared/pem.h
 src/dnssec/shared/shared.h
-src/dnssec/shared/wire.h
 src/dnssec/tests/binary.c
 src/dnssec/tests/crypto.c
 src/dnssec/tests/key.c
@@ -146,7 +145,6 @@ src/dnssec/tests/random.c
 src/dnssec/tests/sample_keys.h
 src/dnssec/tests/shared_bignum.c
 src/dnssec/tests/shared_dname.c
-src/dnssec/tests/shared_wire.c
 src/dnssec/tests/sign.c
 src/dnssec/tests/sign_der.c
 src/dnssec/tests/tsig.c
@@ -466,13 +464,13 @@ src/zscanner/tests/processing.h
 src/zscanner/tests/tests.c
 src/zscanner/tests/tests.h
 src/zscanner/tests/zscanner-tool.c
+tests-fuzz/fuzz_packet.c
+tests-fuzz/fuzz_zscanner.c
 tests-fuzz/main.c
-tests-fuzz/packet_libfuzzer.c
 tests-fuzz/wrap/afl-loop.h
 tests-fuzz/wrap/server.c
 tests-fuzz/wrap/tcp-handler.c
 tests-fuzz/wrap/udp-handler.c
-tests-fuzz/zscanner_libfuzzer.c
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
 tests/contrib/test_dynarray.c

@@ -32,8 +32,8 @@
 #include "keytag.h"
 #include "pem.h"
 #include "shared.h"
-#include "wire.h"
 #include "binary_wire.h"
+#include "contrib/wire_ctx.h"
 
 /*!
  * Minimal size of DNSKEY RDATA.
@@ -188,8 +188,8 @@ uint16_t dnssec_key_get_flags(const dnssec_key_t *key)
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_FLAGS);
-	return wire_read_u16(&wire);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_FLAGS);
+	return wire_ctx_read_u16(&wire);
 }
 
 _public_
@@ -200,8 +200,8 @@ int dnssec_key_set_flags(dnssec_key_t *key, uint16_t flags)
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_FLAGS);
-	wire_write_u16(&wire, flags);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_FLAGS);
+	wire_ctx_write_u16(&wire, flags);
 
 	return DNSSEC_EOK;
 }
@@ -214,8 +214,8 @@ uint8_t dnssec_key_get_protocol(const dnssec_key_t *key)
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
-	return wire_read_u8(&wire);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
+	return wire_ctx_read_u8(&wire);
 }
 
 _public_
@@ -226,8 +226,8 @@ int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol)
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
-	wire_write_u8(&wire, protocol);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
+	wire_ctx_write_u8(&wire, protocol);
 
 	return DNSSEC_EOK;
 }
@@ -275,8 +275,8 @@ uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key)
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
-	return wire_read_u8(&wire);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
+	return wire_ctx_read_u8(&wire);
 }
 
 _public_
@@ -291,8 +291,8 @@ int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm)
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
-	wire_write_u8(&wire, algorithm);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
+	wire_ctx_write_u8(&wire, algorithm);
 
 	return DNSSEC_EOK;
 }
@@ -305,7 +305,7 @@ int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey)
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
 	binary_available(&wire, pubkey);
 
 	return DNSSEC_EOK;

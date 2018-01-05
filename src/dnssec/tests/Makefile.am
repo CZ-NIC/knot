@@ -4,6 +4,7 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/../shared \
 	-I$(srcdir)/../lib \
 	-I$(srcdir)/../lib/dnssec \
+	-I$(top_srcdir)/src \
 	$(gnutls_CFLAGS)
 
 AM_LDFLAGS = \
@@ -36,7 +37,6 @@ check_PROGRAMS = \
 	sign_der	\
 	shared_bignum	\
 	shared_dname	\
-	shared_wire	\
 	tsig
 
 keystore_pkcs11_CPPFLAGS = $(AM_CPPFLAGS) -DLIBDIR='"$(libdir)"'

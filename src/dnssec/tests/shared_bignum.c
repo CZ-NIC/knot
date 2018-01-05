@@ -17,7 +17,6 @@
 #include <tap/basic.h>
 #include <string.h>
 
-#include "wire.h"
 #include "bignum.h"
 #include "binary.h"
 
@@ -31,7 +30,7 @@
 #define test_write(num, expect, msg) \
 	uint8_t __buffer[sizeof(expect)]; \
 	memset(__buffer, 0xaa, sizeof(__buffer)); \
-	wire_ctx_t __ctx = wire_init(__buffer, sizeof(expect)); \
+	wire_ctx_t __ctx = wire_ctx_init(__buffer, sizeof(expect)); \
 	dnssec_binary_t __num = bin_init(num); \
 	dnssec_binary_t __exp = bin_init(expect); \
 	bignum_write(&__ctx, sizeof(expect), &__num); \

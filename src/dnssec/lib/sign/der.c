@@ -42,7 +42,7 @@
 static bool asn1_expect_type(wire_ctx_t *wire, uint8_t type)
 {
 	assert(wire);
-	return (wire_available(wire) >= 1 && wire_read_u8(wire) == type);
+	return (wire_ctx_available(wire) >= 1 && wire_ctx_read_u8(wire) == type);
 }
 
 /*!
@@ -53,11 +53,11 @@ static int asn1_decode_size(wire_ctx_t *wire, size_t *size)
 	assert(wire);
 	assert(size);
 
-	if (wire_available(wire) < 1) {
+	if (wire_ctx_available(wire) < 1) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	uint8_t byte = wire_read_u8(wire);
+	uint8_t byte = wire_ctx_read_u8(wire);
 	if (byte & 0x80) {
 		// long form, we do not need it for DNSSEC
 		return DNSSEC_NOT_IMPLEMENTED_ERROR;
@@ -86,7 +86,7 @@ static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *_value)
 		return result;
 	}
 
-	if (size == 0 || size > wire_available(wire)) {
+	if (size == 0 || size > wire_ctx_available(wire)) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
@@ -112,8 +112,8 @@ static void asn1_write_header(wire_ctx_t *wire, uint8_t type, size_t length)
 	assert(wire);
 	assert(length < ASN1_MAX_SIZE);
 
-	wire_write_u8(wire, type);
-	wire_write_u8(wire, length);
+	wire_ctx_write_u8(wire, type);
+	wire_ctx_write_u8(wire, length);
 }
 
 /*!
@@ -156,7 +156,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 		return result;
 	}
 
-	if (size != wire_available(&wire)) {
+	if (size != wire_ctx_available(&wire)) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
@@ -174,7 +174,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 		return result;
 	}
 
-	if (wire_available(&wire) != 0) {
+	if (wire_ctx_available(&wire) != 0) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
@@ -221,7 +221,7 @@ int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 	asn1_write_header(&wire, ASN1_TYPE_SEQUENCE, seq_size);
 	asn1_write_integer(&wire, r_size, r);
 	asn1_write_integer(&wire, s_size, s);
-	assert(wire_available(&wire) == 0);
+	assert(wire_ctx_available(&wire) == 0);
 
 	*der = _der;
 

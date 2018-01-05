@@ -25,14 +25,14 @@ static inline wire_ctx_t binary_init(const dnssec_binary_t *binary)
 {
 	assert(binary);
 
-	return wire_init(binary->data, binary->size);
+	return wire_ctx_init(binary->data, binary->size);
 }
 
 static inline void binary_read(wire_ctx_t *ctx, dnssec_binary_t *data)
 {
 	assert(data);
 
-	wire_read(ctx, data->data, data->size);
+	wire_ctx_read(ctx, data->data, data->size);
 }
 
 static inline void binary_available(wire_ctx_t *ctx, dnssec_binary_t *data)
@@ -41,7 +41,7 @@ static inline void binary_available(wire_ctx_t *ctx, dnssec_binary_t *data)
 	assert(data);
 
 	data->data = ctx->position;
-	data->size = wire_available(ctx);
+	data->size = wire_ctx_available(ctx);
 }
 
 static inline void binary_write(wire_ctx_t *ctx, const dnssec_binary_t *data)
@@ -49,5 +49,5 @@ static inline void binary_write(wire_ctx_t *ctx, const dnssec_binary_t *data)
 	assert(ctx);
 	assert(data);
 
-	wire_write(ctx, data->data, data->size);
+	wire_ctx_write(ctx, data->data, data->size);
 }

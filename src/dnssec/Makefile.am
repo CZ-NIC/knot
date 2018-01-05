@@ -32,8 +32,7 @@ libshared_la_SOURCES = \
 	shared/keyid_gnutls.h \
 	shared/pem.c \
 	shared/pem.h \
-	shared/shared.h \
-	shared/wire.h
+	shared/shared.h
 
 libdnssec_la_CPPFLAGS = \
 	$(AM_CPPFLAGS) \

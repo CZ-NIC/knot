@@ -52,16 +52,16 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 
 	wire_ctx_t wire = binary_init(rdata);
 
-	if (wire_available(&wire) < 5) {
+	if (wire_ctx_available(&wire) < 5) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	new_params.algorithm  = wire_read_u8(&wire);
-	new_params.flags      = wire_read_u8(&wire);
-	new_params.iterations = wire_read_u16(&wire);
-	new_params.salt.size  = wire_read_u8(&wire);
+	new_params.algorithm  = wire_ctx_read_u8(&wire);
+	new_params.flags      = wire_ctx_read_u8(&wire);
+	new_params.iterations = wire_ctx_read_u16(&wire);
+	new_params.salt.size  = wire_ctx_read_u8(&wire);
 
-	if (wire_available(&wire) != new_params.salt.size) {
+	if (wire_ctx_available(&wire) != new_params.salt.size) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
@@ -71,7 +71,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 	}
 
 	binary_read(&wire, &new_params.salt);
-	assert(wire_tell(&wire) == rdata->size);
+	assert(wire_ctx_offset(&wire) == rdata->size);
 
 	*params = new_params;
 

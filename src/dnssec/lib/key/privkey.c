@@ -103,9 +103,9 @@ static int create_public_key(gnutls_privkey_t privkey,
 	// updated RDATA
 
 	wire_ctx_t wire = binary_init(rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
 	binary_write(&wire, &rdata_pubkey);
-	assert(wire_tell(&wire) == rdata->size);
+	assert(wire_ctx_offset(&wire) == rdata->size);
 
 	*pubkey_ptr = pubkey;
 

@@ -19,7 +19,7 @@
 #include <stdlib.h>
 
 #include "binary.h"
-#include "wire.h"
+#include "contrib/wire_ctx.h"
 
 /*!
  * Size needed to write unsigned number in unsigned encoding.

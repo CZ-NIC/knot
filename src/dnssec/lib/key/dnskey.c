@@ -18,7 +18,6 @@
 #include "error.h"
 #include "key/dnskey.h"
 #include "key/convert.h"
-#include "wire.h"
 #include "binary_wire.h"
 
 /* -- internal API --------------------------------------------------------- */
@@ -38,9 +37,9 @@ int dnskey_rdata_set_pubkey(dnssec_binary_t *rdata, const dnssec_binary_t *pubke
 	}
 
 	wire_ctx_t wire = binary_init(rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
 	binary_write(&wire, pubkey);
-	assert(wire_tell(&wire) == rdata->size);
+	assert(wire_ctx_offset(&wire) == rdata->size);
 
 	return DNSSEC_EOK;
 }
@@ -60,9 +59,9 @@ int dnskey_rdata_to_crypto_key(const dnssec_binary_t *rdata, gnutls_pubkey_t *ke
 	dnssec_binary_t rdata_pubkey = { 0 };
 
 	wire_ctx_t wire = binary_init(rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
-	algorithm = wire_read_u8(&wire);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
+	algorithm = wire_ctx_read_u8(&wire);
+	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
 	binary_available(&wire, &rdata_pubkey);
 
 	gnutls_pubkey_t key = NULL;

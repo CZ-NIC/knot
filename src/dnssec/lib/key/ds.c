@@ -21,7 +21,6 @@
 
 #include "key/internal.h"
 #include "dname.h"
-#include "wire.h"
 #include "binary_wire.h"
 
 #include <gnutls/gnutls.h>
@@ -50,7 +49,7 @@ bool dnssec_algorithm_digest_support(dnssec_key_digest_t algo)
 static void wire_write_digest(wire_ctx_t *wire,
 			      gnutls_hash_hd_t digest, int digest_size)
 {
-	assert(wire_available(wire) >= digest_size);
+	assert(wire_ctx_available(wire) >= digest_size);
 	gnutls_hash_output(digest, wire->position);
 	wire->position += digest_size;
 }
@@ -105,11 +104,11 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 	}
 
 	wire_ctx_t wire = binary_init(&rdata);
-	wire_write_u16(&wire, dnssec_key_get_keytag(key));
-	wire_write_u8(&wire, dnssec_key_get_algorithm(key));
-	wire_write_u8(&wire, ds_algorithm);
+	wire_ctx_write_u16(&wire, dnssec_key_get_keytag(key));
+	wire_ctx_write_u8(&wire, dnssec_key_get_algorithm(key));
+	wire_ctx_write_u8(&wire, ds_algorithm);
 	wire_write_digest(&wire, digest, digest_size);
-	assert(wire_tell(&wire) == wire.size);
+	assert(wire_ctx_offset(&wire) == wire.size);
 
 	*rdata_ptr = rdata;
 
