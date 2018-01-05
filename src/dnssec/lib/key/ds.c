@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "key/internal.h"
 #include "dname.h"
 #include "wire.h"
+#include "binary_wire.h"
 
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
@@ -103,7 +104,7 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 		return r;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&rdata);
+	wire_ctx_t wire = binary_init(&rdata);
 	wire_write_u16(&wire, dnssec_key_get_keytag(key));
 	wire_write_u8(&wire, dnssec_key_get_algorithm(key));
 	wire_write_u8(&wire, ds_algorithm);

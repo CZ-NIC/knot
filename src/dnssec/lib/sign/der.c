@@ -20,7 +20,7 @@
 #include "binary.h"
 #include "error.h"
 #include "sign/der.h"
-#include "wire.h"
+#include "binary_wire.h"
 
 /*
  * In fact, this is a very tiny subset of ASN.1 encoding format implementation,
@@ -140,7 +140,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 		return DNSSEC_EINVAL;
 	}
 
-	wire_ctx_t wire = wire_init_binary(der);
+	wire_ctx_t wire = binary_init(der);
 
 	size_t size;
 	int result;
@@ -217,7 +217,7 @@ int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&_der);
+	wire_ctx_t wire = binary_init(&_der);
 	asn1_write_header(&wire, ASN1_TYPE_SEQUENCE, seq_size);
 	asn1_write_integer(&wire, r_size, r);
 	asn1_write_integer(&wire, s_size, s);

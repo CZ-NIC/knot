@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include "pem.h"
 #include "shared.h"
 #include "wire.h"
+#include "binary_wire.h"
 
 /*!
  * Minimal size of DNSKEY RDATA.
@@ -186,7 +187,7 @@ uint16_t dnssec_key_get_flags(const dnssec_key_t *key)
 		return 0;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_ctx_t wire = binary_init(&key->rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_FLAGS);
 	return wire_read_u16(&wire);
 }
@@ -198,7 +199,7 @@ int dnssec_key_set_flags(dnssec_key_t *key, uint16_t flags)
 		return DNSSEC_EINVAL;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_ctx_t wire = binary_init(&key->rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_FLAGS);
 	wire_write_u16(&wire, flags);
 
@@ -212,7 +213,7 @@ uint8_t dnssec_key_get_protocol(const dnssec_key_t *key)
 		return 0;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_ctx_t wire = binary_init(&key->rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
 	return wire_read_u8(&wire);
 }
@@ -224,7 +225,7 @@ int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol)
 		return DNSSEC_EINVAL;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_ctx_t wire = binary_init(&key->rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
 	wire_write_u8(&wire, protocol);
 
@@ -273,7 +274,7 @@ uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key)
 		return 0;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_ctx_t wire = binary_init(&key->rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
 	return wire_read_u8(&wire);
 }
@@ -289,7 +290,7 @@ int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm)
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_ctx_t wire = binary_init(&key->rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
 	wire_write_u8(&wire, algorithm);
 
@@ -303,9 +304,9 @@ int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey)
 		return DNSSEC_EINVAL;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_ctx_t wire = binary_init(&key->rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
-	wire_available_binary(&wire, pubkey);
+	binary_available(&wire, pubkey);
 
 	return DNSSEC_EOK;
 }

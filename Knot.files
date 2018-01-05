@@ -116,6 +116,7 @@ src/dnssec/lib/sign/sign.c
 src/dnssec/lib/tsig.c
 src/dnssec/shared/bignum.c
 src/dnssec/shared/bignum.h
+src/dnssec/shared/binary_wire.h
 src/dnssec/shared/dname.c
 src/dnssec/shared/dname.h
 src/dnssec/shared/fs.c

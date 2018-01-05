@@ -21,8 +21,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "binary.h"
-
 typedef struct wire_ctx {
 	uint8_t *wire;
 	size_t size;
@@ -39,13 +37,6 @@ static inline wire_ctx_t wire_init(uint8_t *data, size_t size)
 		.position = data
 	};
 	return result;
-}
-
-static inline wire_ctx_t wire_init_binary(const dnssec_binary_t *binary)
-{
-	assert(binary);
-
-	return wire_init(binary->data, binary->size);
 }
 
 static inline void wire_seek(wire_ctx_t *ctx, size_t offset)
@@ -101,22 +92,6 @@ static inline void wire_read(wire_ctx_t *ctx, uint8_t *data, size_t size)
 	ctx->position += size;
 }
 
-static inline void wire_read_binary(wire_ctx_t *ctx, dnssec_binary_t *data)
-{
-	assert(data);
-
-	wire_read(ctx, data->data, data->size);
-}
-
-static inline void wire_available_binary(wire_ctx_t *ctx, dnssec_binary_t *data)
-{
-	assert(ctx);
-	assert(data);
-
-	data->data = ctx->position;
-	data->size = wire_available(ctx);
-}
-
 static inline void wire_write_u8(wire_ctx_t *ctx, uint8_t value)
 {
 	assert(ctx);
@@ -141,12 +116,4 @@ static inline void wire_write(wire_ctx_t *ctx, const uint8_t *data, size_t size)
 
 	memmove(ctx->position, data, size);
 	ctx->position += size;
-}
-
-static inline void wire_write_binary(wire_ctx_t *ctx, const dnssec_binary_t *data)
-{
-	assert(ctx);
-	assert(data);
-
-	wire_write(ctx, data->data, data->size);
 }

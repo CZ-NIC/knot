@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include "key/dnskey.h"
 #include "key/convert.h"
 #include "wire.h"
+#include "binary_wire.h"
 
 /* -- internal API --------------------------------------------------------- */
 
@@ -36,9 +37,9 @@ int dnskey_rdata_set_pubkey(dnssec_binary_t *rdata, const dnssec_binary_t *pubke
 		return result;
 	}
 
-	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_ctx_t wire = binary_init(rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
-	wire_write_binary(&wire, pubkey);
+	binary_write(&wire, pubkey);
 	assert(wire_tell(&wire) == rdata->size);
 
 	return DNSSEC_EOK;
@@ -58,11 +59,11 @@ int dnskey_rdata_to_crypto_key(const dnssec_binary_t *rdata, gnutls_pubkey_t *ke
 	uint8_t algorithm = 0;
 	dnssec_binary_t rdata_pubkey = { 0 };
 
-	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_ctx_t wire = binary_init(rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
 	algorithm = wire_read_u8(&wire);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
-	wire_available_binary(&wire, &rdata_pubkey);
+	binary_available(&wire, &rdata_pubkey);
 
 	gnutls_pubkey_t key = NULL;
 	int result = gnutls_pubkey_init(&key);

@@ -17,7 +17,7 @@
 #include <tap/basic.h>
 
 #include "binary.h"
-#include "wire.h"
+#include "binary_wire.h"
 #include "bignum.h"
 
 int main(void)
@@ -34,8 +34,8 @@ int main(void)
 	wire = wire_init(buffer.data + 10, 10);
 	ok(wire_read_u8(&wire) == 0x83, "wire_init()");
 
-	wire = wire_init_binary(&buffer);
-	ok(wire_read_u8(&wire) == 0xc8, "wire_init_binary()");
+	wire = binary_init(&buffer);
+	ok(wire_read_u8(&wire) == 0xc8, "binary_init()");
 
 	// read operations
 
@@ -51,8 +51,8 @@ int main(void)
 	ok(wire_available(&wire) == 7, "wire_available()");
 
 	dnssec_binary_t ref = { 0 };
-	wire_available_binary(&wire, &ref);
-	ok(ref.data == buffer.data + 13 && ref.size == 7, "wire_available_binary()");
+	binary_available(&wire, &ref);
+	ok(ref.data == buffer.data + 13 && ref.size == 7, "binary_available()");
 
 	uint8_t in[6] = { 0 };
 	wire_seek(&wire, 4);

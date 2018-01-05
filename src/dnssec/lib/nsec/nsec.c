@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 #include "dnssec/nsec.h"
 #include "shared.h"
-#include "wire.h"
+#include "binary_wire.h"
 
 #include "dnssec/binary.h"
 #include "dnssec/error.h"
@@ -50,7 +50,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 
 	dnssec_nsec3_params_t new_params = { 0 };
 
-	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_ctx_t wire = binary_init(rdata);
 
 	if (wire_available(&wire) < 5) {
 		return DNSSEC_MALFORMED_DATA;
@@ -70,7 +70,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_read_binary(&wire, &new_params.salt);
+	binary_read(&wire, &new_params.salt);
 	assert(wire_tell(&wire) == rdata->size);
 
 	*params = new_params;

@@ -28,7 +28,7 @@
 #include "key/algorithm.h"
 #include "key/dnskey.h"
 #include "shared.h"
-#include "wire.h"
+#include "binary_wire.h"
 
 /* -- wrappers for GnuTLS types -------------------------------------------- */
 
@@ -83,7 +83,7 @@ static int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return result;
 	}
 
-	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_ctx_t wire = binary_init(rdata);
 	wire_write_u8(&wire, exponent_size);
 	wire_write_bignum_datum(&wire, exponent_size, &exponent);
 	wire_write_bignum_datum(&wire, modulus_size, &modulus);
@@ -146,7 +146,7 @@ static int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return result;
 	}
 
-	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_ctx_t wire = binary_init(rdata);
 	wire_write_bignum_datum(&wire, point_size, &point_x);
 	wire_write_bignum_datum(&wire, point_size, &point_y);
 	assert(wire_tell(&wire) == rdata->size);
@@ -181,7 +181,7 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return result;
 	}
 
-	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_ctx_t wire = binary_init(rdata);
 	wire_write_bignum_datum(&wire, point_size, &point_x);
 	assert(wire_tell(&wire) == rdata->size);
 
@@ -203,7 +203,7 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
 
-	wire_ctx_t ctx = wire_init_binary(rdata);
+	wire_ctx_t ctx = binary_init(rdata);
 
 	// parse public exponent
 
@@ -278,7 +278,7 @@ static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 
 	// parse points
 
-	wire_ctx_t ctx = wire_init_binary(rdata);
+	wire_ctx_t ctx = binary_init(rdata);
 
 	size_t point_size = wire_available(&ctx) / 2;
 	gnutls_datum_t point_x = wire_take_datum(&ctx, point_size);
@@ -307,7 +307,7 @@ static int eddsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
 
-	wire_ctx_t ctx = wire_init_binary(rdata);
+	wire_ctx_t ctx = binary_init(rdata);
 
 	size_t point_size = wire_available(&ctx);
 	gnutls_datum_t point_x = wire_take_datum(&ctx, point_size);

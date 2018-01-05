@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include "key/internal.h"
 #include "key/privkey.h"
 #include "shared.h"
-#include "wire.h"
+#include "binary_wire.h"
 
 /* -- internal functions --------------------------------------------------- */
 
@@ -102,9 +102,9 @@ static int create_public_key(gnutls_privkey_t privkey,
 
 	// updated RDATA
 
-	wire_ctx_t wire = wire_init_binary(rdata);
+	wire_ctx_t wire = binary_init(rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
-	wire_write_binary(&wire, &rdata_pubkey);
+	binary_write(&wire, &rdata_pubkey);
 	assert(wire_tell(&wire) == rdata->size);
 
 	*pubkey_ptr = pubkey;

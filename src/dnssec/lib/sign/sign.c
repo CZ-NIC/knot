@@ -27,7 +27,7 @@
 #include "shared.h"
 #include "sign.h"
 #include "sign/der.h"
-#include "wire.h"
+#include "binary_wire.h"
 #include "contrib/macros.h"
 #include "contrib/vpool.h"
 
@@ -140,7 +140,7 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 		return result;
 	}
 
-	wire_ctx_t wire = wire_init_binary(dnssec);
+	wire_ctx_t wire = binary_init(dnssec);
 	bignum_write(&wire, int_size, &value_r);
 	bignum_write(&wire, int_size, &value_s);
 	assert(wire_tell(&wire) == dnssec->size);

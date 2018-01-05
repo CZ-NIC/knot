@@ -21,6 +21,7 @@ libshared_la_CPPFLAGS = \
 libshared_la_SOURCES = \
 	shared/bignum.c \
 	shared/bignum.h \
+	shared/binary_wire.h \
 	shared/dname.c \
 	shared/dname.h \
 	shared/fs.c \
