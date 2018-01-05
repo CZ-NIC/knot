@@ -493,7 +493,8 @@
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -717,8 +718,8 @@
 	action _include_exit {
 		// Extend relative file path.
 		if (s->include_filename[0] != '/') {
-			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
-			               "%s/%s", s->path, s->include_filename);
+			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			                   "%s/%s", s->path, s->include_filename);
 			if (ret <= 0 || ret > sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				fhold; fgoto err_line;
@@ -1389,7 +1390,7 @@
 		s->last_window = -1;
 	}
 	action _bitmap_exit {
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{

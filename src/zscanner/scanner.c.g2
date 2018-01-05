@@ -352,11 +352,6 @@ static void parse(
 	int stack[ZS_RAGEL_STACK_SIZE];
 	memcpy(stack, s->stack, sizeof(stack));
 
-	// Auxiliary variables which are used in scanner body.
-	uint32_t timestamp;
-	int16_t  window;
-	int      ret;
-
 	// Next 2 variables are for better performance.
 	// Restoring r_data pointer to next free space.
 	uint8_t *rdata_tail = s->r_data + s->r_data_tail;
@@ -37365,8 +37360,8 @@ tr1051:
 	{
 		// Extend relative file path.
 		if (s->include_filename[0] != '/') {
-			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
-			               "%s/%s", s->path, s->include_filename);
+			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			                   "%s/%s", s->path, s->include_filename);
 			if (ret <= 0 || ret > sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st268;}
@@ -37432,8 +37427,8 @@ tr1061:
 	{
 		// Extend relative file path.
 		if (s->include_filename[0] != '/') {
-			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
-			               "%s/%s", s->path, s->include_filename);
+			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			                   "%s/%s", s->path, s->include_filename);
 			if (ret <= 0 || ret > sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st268;}
@@ -37510,8 +37505,8 @@ tr1073:
 	{
 		// Extend relative file path.
 		if (s->include_filename[0] != '/') {
-			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
-			               "%s/%s", s->path, s->include_filename);
+			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			                   "%s/%s", s->path, s->include_filename);
 			if (ret <= 0 || ret > sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st268;}
@@ -37580,8 +37575,8 @@ tr1079:
 	{
 		// Extend relative file path.
 		if (s->include_filename[0] != '/') {
-			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
-			               "%s/%s", s->path, s->include_filename);
+			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			                   "%s/%s", s->path, s->include_filename);
 			if (ret <= 0 || ret > sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st268;}
@@ -37891,8 +37886,8 @@ tr1088:
 	{
 		// Extend relative file path.
 		if (s->include_filename[0] != '/') {
-			ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
-			               "%s/%s", s->path, s->include_filename);
+			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
+			                   "%s/%s", s->path, s->include_filename);
 			if (ret <= 0 || ret > sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st268;}
@@ -40147,7 +40142,7 @@ tr1120:
 		s->last_window = -1;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40175,7 +40170,7 @@ tr1120:
 	goto st1148;
 tr1143:
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40204,7 +40199,7 @@ tr1143:
 tr1154:
 	{ window_add_bit(KNOT_RRTYPE_A, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40233,7 +40228,7 @@ tr1154:
 tr1164:
 	{ window_add_bit(KNOT_RRTYPE_AAAA, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40262,7 +40257,7 @@ tr1164:
 tr1179:
 	{ window_add_bit(KNOT_RRTYPE_CAA, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40291,7 +40286,7 @@ tr1179:
 tr1193:
 	{ window_add_bit(KNOT_RRTYPE_CDNSKEY, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40320,7 +40315,7 @@ tr1193:
 tr1201:
 	{ window_add_bit(KNOT_RRTYPE_CDS, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40349,7 +40344,7 @@ tr1201:
 tr1211:
 	{ window_add_bit(KNOT_RRTYPE_CERT, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40378,7 +40373,7 @@ tr1211:
 tr1222:
 	{ window_add_bit(KNOT_RRTYPE_CNAME, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40407,7 +40402,7 @@ tr1222:
 tr1236:
 	{ window_add_bit(KNOT_RRTYPE_DHCID, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40436,7 +40431,7 @@ tr1236:
 tr1248:
 	{ window_add_bit(KNOT_RRTYPE_DNAME, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40465,7 +40460,7 @@ tr1248:
 tr1259:
 	{ window_add_bit(KNOT_RRTYPE_DNSKEY, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40494,7 +40489,7 @@ tr1259:
 tr1267:
 	{ window_add_bit(KNOT_RRTYPE_DS, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40523,7 +40518,7 @@ tr1267:
 tr1280:
 	{ window_add_bit(KNOT_RRTYPE_EUI48, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40552,7 +40547,7 @@ tr1280:
 tr1289:
 	{ window_add_bit(KNOT_RRTYPE_EUI64, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40581,7 +40576,7 @@ tr1289:
 tr1301:
 	{ window_add_bit(KNOT_RRTYPE_HINFO, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40610,7 +40605,7 @@ tr1301:
 tr1316:
 	{ window_add_bit(KNOT_RRTYPE_IPSECKEY, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40639,7 +40634,7 @@ tr1316:
 tr1327:
 	{ window_add_bit(KNOT_RRTYPE_KEY, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40668,7 +40663,7 @@ tr1327:
 tr1335:
 	{ window_add_bit(KNOT_RRTYPE_KX, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40697,7 +40692,7 @@ tr1335:
 tr1348:
 	{ window_add_bit(KNOT_RRTYPE_L32, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40726,7 +40721,7 @@ tr1348:
 tr1357:
 	{ window_add_bit(KNOT_RRTYPE_L64, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40755,7 +40750,7 @@ tr1357:
 tr1366:
 	{ window_add_bit(KNOT_RRTYPE_LOC, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40784,7 +40779,7 @@ tr1366:
 tr1374:
 	{ window_add_bit(KNOT_RRTYPE_LP, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40813,7 +40808,7 @@ tr1374:
 tr1387:
 	{ window_add_bit(KNOT_RRTYPE_MINFO, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40842,7 +40837,7 @@ tr1387:
 tr1395:
 	{ window_add_bit(KNOT_RRTYPE_MX, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40871,7 +40866,7 @@ tr1395:
 tr1409:
 	{ window_add_bit(KNOT_RRTYPE_NAPTR, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40900,7 +40895,7 @@ tr1409:
 tr1418:
 	{ window_add_bit(KNOT_RRTYPE_NID, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40929,7 +40924,7 @@ tr1418:
 tr1427:
 	{ window_add_bit(KNOT_RRTYPE_NS, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40958,7 +40953,7 @@ tr1427:
 tr1437:
 	{ window_add_bit(KNOT_RRTYPE_NSEC, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -40987,7 +40982,7 @@ tr1437:
 tr1446:
 	{ window_add_bit(KNOT_RRTYPE_NSEC3, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41016,7 +41011,7 @@ tr1446:
 tr1458:
 	{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41045,7 +41040,7 @@ tr1458:
 tr1468:
 	{ window_add_bit(KNOT_RRTYPE_PTR, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41074,7 +41069,7 @@ tr1468:
 tr1479:
 	{ window_add_bit(KNOT_RRTYPE_RP, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41103,7 +41098,7 @@ tr1479:
 tr1490:
 	{ window_add_bit(KNOT_RRTYPE_RRSIG, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41132,7 +41127,7 @@ tr1490:
 tr1498:
 	{ window_add_bit(KNOT_RRTYPE_RT, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41161,7 +41156,7 @@ tr1498:
 tr1511:
 	{ window_add_bit(KNOT_RRTYPE_SOA, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41190,7 +41185,7 @@ tr1511:
 tr1520:
 	{ window_add_bit(KNOT_RRTYPE_SPF, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41219,7 +41214,7 @@ tr1520:
 tr1529:
 	{ window_add_bit(KNOT_RRTYPE_SRV, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41248,7 +41243,7 @@ tr1529:
 tr1540:
 	{ window_add_bit(KNOT_RRTYPE_SSHFP, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41277,7 +41272,7 @@ tr1540:
 tr1553:
 	{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41306,7 +41301,7 @@ tr1553:
 tr1562:
 	{ window_add_bit(KNOT_RRTYPE_TXT, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41342,7 +41337,7 @@ tr1574:
 		}
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41371,7 +41366,7 @@ tr1574:
 tr1584:
 	{ window_add_bit(KNOT_RRTYPE_URI, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41400,7 +41395,7 @@ tr1584:
 tr1595:
 	{ window_add_bit(KNOT_RRTYPE_AFSDB, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41429,7 +41424,7 @@ tr1595:
 tr1604:
 	{ window_add_bit(KNOT_RRTYPE_APL, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41469,7 +41464,7 @@ tr1121:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41500,7 +41495,7 @@ tr1144:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41532,7 +41527,7 @@ tr1155:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41564,7 +41559,7 @@ tr1165:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41596,7 +41591,7 @@ tr1180:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41628,7 +41623,7 @@ tr1194:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41660,7 +41655,7 @@ tr1202:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41692,7 +41687,7 @@ tr1212:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41724,7 +41719,7 @@ tr1223:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41756,7 +41751,7 @@ tr1237:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41788,7 +41783,7 @@ tr1249:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41820,7 +41815,7 @@ tr1260:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41852,7 +41847,7 @@ tr1268:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41884,7 +41879,7 @@ tr1281:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41916,7 +41911,7 @@ tr1290:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41948,7 +41943,7 @@ tr1302:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -41980,7 +41975,7 @@ tr1317:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42012,7 +42007,7 @@ tr1328:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42044,7 +42039,7 @@ tr1336:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42076,7 +42071,7 @@ tr1349:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42108,7 +42103,7 @@ tr1358:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42140,7 +42135,7 @@ tr1367:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42172,7 +42167,7 @@ tr1375:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42204,7 +42199,7 @@ tr1388:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42236,7 +42231,7 @@ tr1396:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42268,7 +42263,7 @@ tr1410:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42300,7 +42295,7 @@ tr1419:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42332,7 +42327,7 @@ tr1428:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42364,7 +42359,7 @@ tr1438:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42396,7 +42391,7 @@ tr1447:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42428,7 +42423,7 @@ tr1459:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42460,7 +42455,7 @@ tr1469:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42492,7 +42487,7 @@ tr1480:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42524,7 +42519,7 @@ tr1491:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42556,7 +42551,7 @@ tr1499:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42588,7 +42583,7 @@ tr1512:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42620,7 +42615,7 @@ tr1521:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42652,7 +42647,7 @@ tr1530:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42684,7 +42679,7 @@ tr1541:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42716,7 +42711,7 @@ tr1554:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42748,7 +42743,7 @@ tr1563:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42787,7 +42782,7 @@ tr1575:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42819,7 +42814,7 @@ tr1585:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42851,7 +42846,7 @@ tr1596:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -42883,7 +42878,7 @@ tr1605:
 		s->line_counter++;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43035,7 +43030,7 @@ tr1122:
 		s->last_window = -1;
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43063,7 +43058,7 @@ tr1122:
 	goto st1150;
 tr1145:
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43092,7 +43087,7 @@ tr1145:
 tr1156:
 	{ window_add_bit(KNOT_RRTYPE_A, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43121,7 +43116,7 @@ tr1156:
 tr1166:
 	{ window_add_bit(KNOT_RRTYPE_AAAA, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43150,7 +43145,7 @@ tr1166:
 tr1181:
 	{ window_add_bit(KNOT_RRTYPE_CAA, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43179,7 +43174,7 @@ tr1181:
 tr1195:
 	{ window_add_bit(KNOT_RRTYPE_CDNSKEY, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43208,7 +43203,7 @@ tr1195:
 tr1203:
 	{ window_add_bit(KNOT_RRTYPE_CDS, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43237,7 +43232,7 @@ tr1203:
 tr1213:
 	{ window_add_bit(KNOT_RRTYPE_CERT, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43266,7 +43261,7 @@ tr1213:
 tr1224:
 	{ window_add_bit(KNOT_RRTYPE_CNAME, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43295,7 +43290,7 @@ tr1224:
 tr1238:
 	{ window_add_bit(KNOT_RRTYPE_DHCID, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43324,7 +43319,7 @@ tr1238:
 tr1250:
 	{ window_add_bit(KNOT_RRTYPE_DNAME, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43353,7 +43348,7 @@ tr1250:
 tr1261:
 	{ window_add_bit(KNOT_RRTYPE_DNSKEY, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43382,7 +43377,7 @@ tr1261:
 tr1269:
 	{ window_add_bit(KNOT_RRTYPE_DS, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43411,7 +43406,7 @@ tr1269:
 tr1282:
 	{ window_add_bit(KNOT_RRTYPE_EUI48, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43440,7 +43435,7 @@ tr1282:
 tr1291:
 	{ window_add_bit(KNOT_RRTYPE_EUI64, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43469,7 +43464,7 @@ tr1291:
 tr1303:
 	{ window_add_bit(KNOT_RRTYPE_HINFO, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43498,7 +43493,7 @@ tr1303:
 tr1318:
 	{ window_add_bit(KNOT_RRTYPE_IPSECKEY, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43527,7 +43522,7 @@ tr1318:
 tr1329:
 	{ window_add_bit(KNOT_RRTYPE_KEY, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43556,7 +43551,7 @@ tr1329:
 tr1337:
 	{ window_add_bit(KNOT_RRTYPE_KX, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43585,7 +43580,7 @@ tr1337:
 tr1350:
 	{ window_add_bit(KNOT_RRTYPE_L32, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43614,7 +43609,7 @@ tr1350:
 tr1359:
 	{ window_add_bit(KNOT_RRTYPE_L64, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43643,7 +43638,7 @@ tr1359:
 tr1368:
 	{ window_add_bit(KNOT_RRTYPE_LOC, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43672,7 +43667,7 @@ tr1368:
 tr1376:
 	{ window_add_bit(KNOT_RRTYPE_LP, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43701,7 +43696,7 @@ tr1376:
 tr1389:
 	{ window_add_bit(KNOT_RRTYPE_MINFO, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43730,7 +43725,7 @@ tr1389:
 tr1397:
 	{ window_add_bit(KNOT_RRTYPE_MX, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43759,7 +43754,7 @@ tr1397:
 tr1411:
 	{ window_add_bit(KNOT_RRTYPE_NAPTR, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43788,7 +43783,7 @@ tr1411:
 tr1420:
 	{ window_add_bit(KNOT_RRTYPE_NID, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43817,7 +43812,7 @@ tr1420:
 tr1429:
 	{ window_add_bit(KNOT_RRTYPE_NS, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43846,7 +43841,7 @@ tr1429:
 tr1439:
 	{ window_add_bit(KNOT_RRTYPE_NSEC, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43875,7 +43870,7 @@ tr1439:
 tr1448:
 	{ window_add_bit(KNOT_RRTYPE_NSEC3, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43904,7 +43899,7 @@ tr1448:
 tr1460:
 	{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43933,7 +43928,7 @@ tr1460:
 tr1470:
 	{ window_add_bit(KNOT_RRTYPE_PTR, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43962,7 +43957,7 @@ tr1470:
 tr1481:
 	{ window_add_bit(KNOT_RRTYPE_RP, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -43991,7 +43986,7 @@ tr1481:
 tr1492:
 	{ window_add_bit(KNOT_RRTYPE_RRSIG, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44020,7 +44015,7 @@ tr1492:
 tr1500:
 	{ window_add_bit(KNOT_RRTYPE_RT, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44049,7 +44044,7 @@ tr1500:
 tr1513:
 	{ window_add_bit(KNOT_RRTYPE_SOA, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44078,7 +44073,7 @@ tr1513:
 tr1522:
 	{ window_add_bit(KNOT_RRTYPE_SPF, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44107,7 +44102,7 @@ tr1522:
 tr1531:
 	{ window_add_bit(KNOT_RRTYPE_SRV, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44136,7 +44131,7 @@ tr1531:
 tr1542:
 	{ window_add_bit(KNOT_RRTYPE_SSHFP, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44165,7 +44160,7 @@ tr1542:
 tr1555:
 	{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44194,7 +44189,7 @@ tr1555:
 tr1564:
 	{ window_add_bit(KNOT_RRTYPE_TXT, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44230,7 +44225,7 @@ tr1576:
 		}
 	}
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44259,7 +44254,7 @@ tr1576:
 tr1586:
 	{ window_add_bit(KNOT_RRTYPE_URI, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44288,7 +44283,7 @@ tr1586:
 tr1597:
 	{ window_add_bit(KNOT_RRTYPE_AFSDB, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -44317,7 +44312,7 @@ tr1597:
 tr1606:
 	{ window_add_bit(KNOT_RRTYPE_APL, s); }
 	{
-		for (window = 0; window <= s->last_window; window++) {
+		for (uint16_t window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
 				if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
 				{
@@ -71145,7 +71140,8 @@ tr2886:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -71182,7 +71178,8 @@ tr2887:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -71226,7 +71223,8 @@ tr2888:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -71270,7 +71268,8 @@ tr2890:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -71418,7 +71417,8 @@ tr2898:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -71455,7 +71455,8 @@ tr2899:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -71499,7 +71500,8 @@ tr2900:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -71543,7 +71545,8 @@ tr2902:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -72063,7 +72066,8 @@ tr2903:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
@@ -72134,7 +72138,8 @@ tr2891:
 		s->buffer[s->buffer_length] = 0;
 
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
-			ret = date_to_timestamp(s->buffer, &timestamp);
+			uint32_t timestamp;
+			int ret = date_to_timestamp(s->buffer, &timestamp);
 
 			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);

@@ -353,11 +353,6 @@ static void parse(
 	int stack[ZS_RAGEL_STACK_SIZE];
 	memcpy(stack, s->stack, sizeof(stack));
 
-	// Auxiliary variables which are used in scanner body.
-	uint32_t timestamp;
-	int16_t  window;
-	int      ret;
-
 	// Next 2 variables are for better performance.
 	// Restoring r_data pointer to next free space.
 	uint8_t *rdata_tail = s->r_data + s->r_data_tail;
