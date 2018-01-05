@@ -192,14 +192,14 @@ static void test_getters(knot_rrset_t *opt_rr)
 	   total_size, actual_size);
 
 	/* NSID */
-	check = knot_edns_has_option(opt_rr, KNOT_EDNS_OPTION_NSID);
+	check = knot_edns_get_option(opt_rr, KNOT_EDNS_OPTION_NSID) != NULL;
 	ok(check, "OPT RR getters: NSID check");
 
 	/* Other OPTIONs */
-	check = knot_edns_has_option(opt_rr, E_OPT3_CODE);
+	check = knot_edns_get_option(opt_rr, E_OPT3_CODE) != NULL;
 	ok(check, "OPT RR getters: empty option 1");
 
-	check = knot_edns_has_option(opt_rr, E_OPT4_CODE);
+	check = knot_edns_get_option(opt_rr, E_OPT4_CODE) != NULL;
 	ok(check, "OPT RR getters: empty option 2");
 
 	uint16_t code = knot_edns_opt_get_code((const uint8_t *)"\x00\x0a" "\x00\x00");

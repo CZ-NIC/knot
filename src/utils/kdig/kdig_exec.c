@@ -737,7 +737,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		// Prepare new query context.
 		query_t new_ctx = *query_ctx;
 
-		uint8_t *opt = knot_edns_get_option(reply->opt_rr, KNOT_EDNS_OPTION_COOKIE);
+		uint8_t *opt = knot_pkt_edns_option(reply, KNOT_EDNS_OPTION_COOKIE);
 		if (opt == NULL) {
 			ERR("bad cookie, missing EDNS section\n");
 			knot_pkt_free(reply);

@@ -266,7 +266,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	}
 
 	/* Append NSID if requested and available. */
-	if (knot_edns_has_option(query->opt_rr, KNOT_EDNS_OPTION_NSID)) {
+	if (knot_pkt_edns_option(query, KNOT_EDNS_OPTION_NSID) != NULL) {
 		conf_val_t *nsid = &conf()->cache.srv_nsid;
 		size_t nsid_len;
 		const uint8_t *nsid_data = conf_bin(nsid, &nsid_len);

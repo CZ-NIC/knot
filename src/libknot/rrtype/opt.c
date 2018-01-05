@@ -26,7 +26,7 @@
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/wire.h"
+#include "contrib/mempattern.h"
 #include "contrib/wire_ctx.h"
 
 /*! \brief Some implementation-related constants. */
@@ -130,72 +130,6 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 }
 
 /*!
- * \brief Skips an option from the supplied \a wire data.
- *
- * \param      wire      Wire data containing sequence of OPT RDATA.
- * \param[out] code      Code of the option that is at hand.
- * \param[out] full_len  Length of the entire skipped option with its header.
- *
- * \return Pointer to the first byte of the entire skipped option,
- *         NULL when none or incomplete option data left.
- */
-static uint8_t *skip_option(wire_ctx_t *wire, uint16_t *code, uint16_t *full_len)
-{
-	assert(wire && code && full_len);
-
-	uint8_t *position = NULL;
-
-	if (wire_ctx_available(wire) > 0) {
-		position = wire->position;
-		uint16_t opt_code = wire_ctx_read_u16(wire);
-		if (wire->error != KNOT_EOK) {
-			return NULL;
-		}
-
-		uint16_t opt_len = wire_ctx_read_u16(wire);
-		wire_ctx_skip(wire, opt_len);
-		/*
-		 * Return position only when the entire option fits
-		 * in the RDATA.
-		 */
-		if (wire->error == KNOT_EOK) {
-			*code = opt_code;
-			*full_len = KNOT_EDNS_OPTION_HDRLEN + opt_len;
-			return position;
-		}
-	}
-
-	return NULL;
-}
-
-/*!
- * \brief Find OPTION with the given code in the OPT RDATA.
- *
- * \note It is ensured that the full option, as declared in option length,
- *       is encompassed in the RDATA when found.
- *
- * \param rdata     RDATA to search in.
- * \param opt_code  Code of the OPTION to find.
- *
- * \return Pointer to the first byte of the first option that matches
- *         \a opt_code, NULL if no option found or error occurred.
- */
-static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
-{
-	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
-	uint8_t *position = NULL;
-	uint16_t code, full_len;
-
-	while ((position = skip_option(&wire, &code, &full_len)) != NULL) {
-		if (code == opt_code) {
-			return position;
-		}
-	}
-
-	return NULL;
-}
-
-/*!
  * \brief Add new EDNS option by replacing RDATA of OPT RR.
  *
  * \param opt   OPT RR structure to add the Option to.
@@ -283,68 +217,66 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 }
 
 _public_
-bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
-{
-	assert(opt_rr != NULL);
-
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	assert(rdata != NULL);
-
-	uint8_t *pos = find_option(rdata, code);
-
-	return pos != NULL;
-}
-
-_public_
 uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code)
 {
-	assert(opt_rr != NULL);
-
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	assert(rdata != NULL);
-
-	return find_option(rdata, code);
-}
-
-_public_
-uint16_t knot_edns_opt_get_code(const uint8_t *opt)
-{
-	assert(opt != NULL);
-
-	return knot_wire_read_u16(opt);
-}
-
-_public_
-uint16_t knot_edns_opt_get_length(const uint8_t *opt)
-{
-	assert(opt != NULL);
-
-	return knot_wire_read_u16(opt + sizeof(uint16_t));
-}
-
-_public_
-bool knot_edns_check_record(knot_rrset_t *opt_rr)
-{
-	if (opt_rr->rrs.rr_count != 1) {
-		return false;
+	if (opt_rr == NULL) {
+		return NULL;
 	}
 
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	if (rdata == NULL) {
-		return false;
+	if (rdata == NULL || rdata->len == 0) {
+		return NULL;
 	}
 
 	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
 
-	/* RFC2671 4.4: {uint16_t code, uint16_t len, data} */
-	// read data to the end or error
 	while (wire_ctx_available(&wire) > 0 && wire.error == KNOT_EOK) {
-		wire_ctx_read_u16(&wire); 			// code
-		uint16_t opt_len = wire_ctx_read_u16(&wire);	// length
-		wire_ctx_skip(&wire, opt_len);			// data
+		uint8_t *pos = wire.position;
+		uint16_t opt_code = wire_ctx_read_u16(&wire);
+		uint16_t opt_len = wire_ctx_read_u16(&wire);
+		wire_ctx_skip(&wire, opt_len);
+		if (wire.error == KNOT_EOK && opt_code == code) {
+			return pos;
+		}
 	}
 
-	return wire.error == KNOT_EOK;
+	return NULL;
+}
+
+_public_
+int knot_edns_get_options(knot_rrset_t *opt_rr, knot_edns_options_t **out,
+                          knot_mm_t *mm)
+{
+	if (opt_rr == NULL || opt_rr->rrs.rr_count > 1 || out == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	if (rdata == NULL || rdata->len == 0) {
+		return KNOT_EOK;
+	}
+
+	knot_edns_options_t *options = mm_calloc(mm, 1, sizeof(*options));
+
+	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
+
+	while (wire_ctx_available(&wire) > 0 && wire.error == KNOT_EOK) {
+		uint8_t *pos = wire.position;
+		uint16_t opt_code = wire_ctx_read_u16(&wire);
+		uint16_t opt_len = wire_ctx_read_u16(&wire);
+		wire_ctx_skip(&wire, opt_len);
+		if (wire.error == KNOT_EOK && opt_code <= KNOT_EDNS_MAX_OPTION_CODE) {
+			options->ptr[opt_code] = pos;
+		}
+	}
+
+	if (wire.error != KNOT_EOK) {
+		mm_free(mm, options);
+		return wire.error;
+	}
+
+	*out = options;
+	return KNOT_EOK;
 }
 
 _public_

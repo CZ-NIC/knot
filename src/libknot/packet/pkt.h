@@ -66,7 +66,6 @@ typedef struct {
  * \brief Structure representing a DNS packet.
  */
 struct knot_pkt {
-
 	uint8_t *wire;         /*!< Wire format of the packet. */
 	size_t size;           /*!< Current wire size of the packet. */
 	size_t max_size;       /*!< Maximum allowed size of the packet. */
@@ -79,7 +78,10 @@ struct knot_pkt {
 	knot_rrset_t *opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 
-	/* TSIG RR position in the wire (if parsed from wire). */
+	/*! EDNS option positions in the wire (if parsed from wire). */
+	knot_edns_options_t *edns_opts;
+
+	/*! TSIG RR position in the wire (if parsed from wire). */
 	struct {
 		uint8_t *pos;
 		size_t len;
@@ -305,17 +307,6 @@ int knot_pkt_parse_question(knot_pkt_t *pkt);
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags);
 
 /*!
- * \brief Parse current packet section.
- *
- * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
- *
- * \param pkt
- * \param flags
- * \return KNOT_EOK, KNOT_EFEWDATA if not enough data or various errors
- */
-int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags);
-
-/*!
  * \brief Parse whole packet payload.
  *
  * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
@@ -354,7 +345,8 @@ const char *knot_pkt_ext_rcode_name(const knot_pkt_t *pkt);
  */
 static inline bool knot_pkt_has_edns(const knot_pkt_t *pkt)
 {
-	return pkt != NULL && pkt->opt_rr != NULL;
+	assert(pkt);
+	return pkt->opt_rr != NULL;
 }
 
 /*!
@@ -362,7 +354,8 @@ static inline bool knot_pkt_has_edns(const knot_pkt_t *pkt)
  */
 static inline bool knot_pkt_has_tsig(const knot_pkt_t *pkt)
 {
-	return pkt && pkt->tsig_rr;
+	assert(pkt);
+	return pkt->tsig_rr != NULL;
 }
 
 /*!
@@ -370,16 +363,21 @@ static inline bool knot_pkt_has_tsig(const knot_pkt_t *pkt)
  */
 static inline bool knot_pkt_has_dnssec(const knot_pkt_t *pkt)
 {
+	assert(pkt);
 	return knot_pkt_has_edns(pkt) && knot_edns_do(pkt->opt_rr);
 }
 
 /*!
- * \brief Checks if there is an NSID OPTION in the packet's OPT RR.
+ * \brief Get specific EDNS option from a parsed packet.
  */
-static inline bool knot_pkt_has_nsid(const knot_pkt_t *pkt)
+static inline uint8_t *knot_pkt_edns_option(const knot_pkt_t *pkt, uint16_t code)
 {
-	return knot_pkt_has_edns(pkt)
-	       && knot_edns_has_option(pkt->opt_rr, KNOT_EDNS_OPTION_NSID);
+	assert(pkt);
+	if (pkt->edns_opts != NULL && code <= KNOT_EDNS_MAX_OPTION_CODE) {
+		return pkt->edns_opts->ptr[code];
+	} else {
+		return NULL;
+	}
 }
 
 /*! @} */

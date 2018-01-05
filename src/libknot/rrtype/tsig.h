@@ -116,6 +116,6 @@ size_t knot_tsig_wire_size(const knot_tsig_key_t *key);
 size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key);
 
 /*! \todo Documentation. */
-int knot_tsig_rdata_is_ok(const knot_rrset_t *tsig);
+bool knot_tsig_rdata_is_ok(const knot_rrset_t *tsig);
 
 /*! @} */
