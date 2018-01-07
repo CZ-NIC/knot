@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,8 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "contrib/openbsd/siphash.h"
+// Prevent possible linking with a system SiphHash (OpenBSD).
+#include "contrib/openbsd/siphash.c"
 
 // https://github.com/veorq/SipHash
 const uint8_t vectors24[64][8] = {
