@@ -10,7 +10,6 @@ RUN yum -y install \
 	'lmdb-devel' \
 	'pkgconfig' \
 	'pkgconfig(gnutls)' \
-	'pkgconfig(jansson)' \
 	'pkgconfig(libcap-ng)' \
 	'pkgconfig(libedit)' \
 	'pkgconfig(libfstrm)' \
@@ -18,6 +17,5 @@ RUN yum -y install \
 	'pkgconfig(libprotobuf-c)' \
 	'pkgconfig(libsystemd)' \
 	'pkgconfig(liburcu)' \
-	'pkgconfig(nettle)' \
 	'python-sphinx' \
 	'systemd'
