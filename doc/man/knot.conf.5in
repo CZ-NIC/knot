@@ -372,7 +372,7 @@ must match one of them. Empty value means that address match is not required.
 .SS key
 .sp
 An ordered list of \fI\%reference\fPs to TSIG keys. The query must
-match one of them. Empty value means that TSIG key is not required.
+match one of them. Empty value means that transaction authentication is not used.
 .sp
 \fIDefault:\fP not set
 .SS action
