@@ -407,7 +407,7 @@ key
 ---
 
 An ordered list of :ref:`reference<key_id>`\ s to TSIG keys. The query must
-match one of them. Empty value means that TSIG key is not required.
+match one of them. Empty value means that transaction authentication is not used.
 
 *Default:* not set
 
