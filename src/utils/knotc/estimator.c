@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -69,10 +69,7 @@ static int dummy_node_add_type(list_t *l, uint16_t t)
 static int insert_dname_into_table(trie_t *table, const knot_dname_t *d,
                                    list_t **dummy_node)
 {
-	int d_size = knot_dname_size(d);
-	if (d_size < 0) {
-		return KNOT_EINVAL;
-	}
+	size_t d_size = knot_dname_size(d);
 
 	trie_val_t *val = trie_get_try(table, (char *)d, d_size);
 	if (val == NULL) {

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -817,12 +817,7 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 {
 	CHECK_PRET
 
-	int in_len = knot_dname_size(p->in);
-	if (in_len < 0) {
-		p->ret = -1;
-		return;
-	}
-
+	size_t in_len = knot_dname_size(p->in);
 	size_t out_len = 0;
 
 	CHECK_INMAX(in_len)

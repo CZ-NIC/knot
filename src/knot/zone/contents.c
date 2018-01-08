@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -818,7 +818,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		assert(!node && prev);
 
 		node = prev;
-		int matched_labels = knot_dname_matched_labels(node->owner, name);
+		size_t matched_labels = knot_dname_matched_labels(node->owner, name);
 		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
 			node = node->parent;
 			assert(node);

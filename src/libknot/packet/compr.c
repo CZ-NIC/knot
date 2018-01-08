@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
 	}
 
 	/* Get number of labels (should not be a zero label dname). */
-	int name_labels = knot_dname_labels(dname, NULL);
+	size_t name_labels = knot_dname_labels(dname, NULL);
 	assert(name_labels > 0);
 
 	/* Suffix must not be longer than whole name. */

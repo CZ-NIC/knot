@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -159,7 +159,7 @@ conf_val_t conf_zone_get_txn(
 		return val;
 	}
 
-	int dname_size = knot_dname_size(dname);
+	size_t dname_size = knot_dname_size(dname);
 
 	// Try to get explicit value.
 	conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
@@ -888,9 +888,9 @@ static int str_label(
 	const knot_dname_t *zone,
 	char *buff,
 	size_t buff_len,
-	unsigned right_index)
+	size_t right_index)
 {
-	int labels = knot_dname_labels(zone, NULL);
+	size_t labels = knot_dname_labels(zone, NULL);
 
 	// Check for root label of the root zone.
 	if (labels == 0 && right_index == 0) {
@@ -906,12 +906,12 @@ static int str_label(
 
 	// Compute the index from the left.
 	assert(labels > right_index);
-	unsigned index = labels - right_index - 1;
+	size_t index = labels - right_index - 1;
 
 	// Create a dname from the single label.
-	int prefix = (index > 0) ? knot_dname_prefixlen(zone, index, NULL) : 0;
-	unsigned label_len = *(zone + prefix);
-	memcpy(label, zone + prefix, 1 + label_len);
+	size_t prefix_len = knot_dname_prefixlen(zone, index, NULL);
+	size_t label_len = *(zone + prefix_len);
+	memcpy(label, zone + prefix_len, 1 + label_len);
 	label[1 + label_len] = '\0';
 
 	return str_zone(label, buff, buff_len);

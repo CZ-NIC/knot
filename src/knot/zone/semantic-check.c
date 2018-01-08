@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -306,13 +306,13 @@ static int check_rrsig_rdata(sem_handler_t *handler,
 	/* label number at the 2nd index should be same as owner's */
 	uint8_t labels_rdata = knot_rrsig_labels(rrsig, rr_pos);
 
-	int tmp = knot_dname_labels(rrset->owner, NULL) - labels_rdata;
+	size_t tmp = knot_dname_labels(rrset->owner, NULL) - labels_rdata;
 	if (tmp != 0) {
 		/* if name has wildcard, label must not be included */
 		if (!knot_dname_is_wildcard(rrset->owner)) {
 			handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_LABELS,
 			            info_str);
-		} else if (abs(tmp) != 1) {
+		} else if (tmp != 1) {
 			handler->cb(handler, zone, node, SEM_ERR_RRSIG_RDATA_LABELS,
 			            info_str);
 		}

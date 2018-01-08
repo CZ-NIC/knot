@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -226,18 +226,11 @@ static int rdata_len_block(const uint8_t **src, size_t *src_avail,
 	case KNOT_RDATA_WF_FIXED_DNAME:
 		compr_size = knot_dname_wire_check(*src, *src + *src_avail,
 		                                   pkt_wire);
-		if (compr_size < 0) {
-			return compr_size;
-		}
-		if (compr_size == 0) {
+		if (compr_size <= 0) {
 			return KNOT_EMALF;
 		}
 
 		ret = knot_dname_realsize(*src, pkt_wire);
-		if (ret < 0) {
-			return ret;
-		}
-
 		*src += compr_size;
 		*src_avail -= compr_size;
 		break;

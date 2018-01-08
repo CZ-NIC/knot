@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -188,22 +188,22 @@ int knot_dname_to_lower(knot_dname_t *name);
  * \param name Domain name to get the size of.
  *
  * \retval size of the domain name.
- * \retval KNOT_EINVAL
+ * \retval 0 if invalid argument.
  */
 _pure_
-int knot_dname_size(const knot_dname_t *name);
+size_t knot_dname_size(const knot_dname_t *name);
 
 /*!
- * \brief Returns wire size of the given domain name (expanded compression ptrs).
+ * \brief Returns full size of the given domain name (expanded compression ptrs).
  *
  * \param name Domain name to get the size of.
  * \param pkt Related packet (or NULL if unpacked)
  *
  * \retval size of the domain name.
- * \retval KNOT_EINVAL
+ * \retval 0 if invalid argument.
  */
 _pure_
-int knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt);
+size_t knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt);
 
 /*!
  * \brief Checks if one domain name is a subdomain of other.
@@ -250,7 +250,7 @@ bool knot_dname_is_wildcard(const knot_dname_t *name);
  * \return Number of labels common for the two domain names.
  */
 _pure_
-int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2);
+size_t knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
  * \brief Replaces the suffix of given size in one domain name with other domain
@@ -343,10 +343,10 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2);
  * \param nlabels N first labels.
  * \param pkt Related packet (or NULL if not compressed).
  *
- * \retval length of the prefix
+ * \return Length of the prefix.
  */
 _pure_
-int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt);
+size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt);
 
 /*!
  * \brief Return number of labels in the domain name.
@@ -355,9 +355,11 @@ int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *p
  *
  * \param name Domain name.
  * \param pkt Related packet (or NULL if not compressed).
+ *
+ * \return Number of labels.
  */
 _pure_
-int knot_dname_labels(const uint8_t *name, const uint8_t *pkt);
+size_t knot_dname_labels(const uint8_t *name, const uint8_t *pkt);
 
 /*!
  * \brief Align name end-to-end and return number of common suffix labels.
@@ -385,7 +387,7 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
  *
  * Maximum length of such a domain name is KNOT_DNAME_MAXLEN characters.
  *
- * \param dst Memory to store converted name into.  dst[0] will contain the length.
+ * \param dst Memory to store converted name into. dst[0] will contain the length.
  * \param src Source domain name.
  * \param pkt Source name packet (NULL if not any).
  *

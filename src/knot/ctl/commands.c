@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -579,7 +579,7 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 	assert(owner != NULL);
 
 	bool fqdn = false;
-	int prefix_len = 0;
+	size_t prefix_len = 0;
 
 	size_t owner_len = strlen(owner);
 	if (owner_len > 0 && (owner_len != 1 || owner[0] != '@')) {
@@ -599,7 +599,7 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 		}
 
 		prefix_len = knot_dname_size(out);
-		if (prefix_len <= 0) {
+		if (prefix_len == 0) {
 			return KNOT_EINVAL;
 		}
 
@@ -609,8 +609,8 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 
 	// Append the origin.
 	if (!fqdn) {
-		int origin_len = knot_dname_size(origin);
-		if (origin_len <= 0 || origin_len > out_len - prefix_len) {
+		size_t origin_len = knot_dname_size(origin);
+		if (origin_len == 0 || origin_len > out_len - prefix_len) {
 			return KNOT_EINVAL;
 		}
 		memcpy(out + prefix_len, origin, origin_len);

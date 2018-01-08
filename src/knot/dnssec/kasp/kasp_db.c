@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -170,7 +170,7 @@ void kasp_db_close(kasp_db_t **db)
 
 static knot_db_val_t make_key(keyclass_t kclass, const knot_dname_t *dname, const char *str)
 {
-	size_t dnlen = (dname == NULL ? 0 : knot_dname_size((const knot_dname_t *)dname));
+	size_t dnlen = knot_dname_size(dname);
 	size_t slen = (str == NULL ? 0 : strlen(str) + 1);
 	knot_db_val_t res = { .len = 1 + dnlen + slen, .data = malloc(1 + dnlen + slen) };
 	if (res.data != NULL) {
@@ -195,7 +195,7 @@ static char *keyid_fromkey(const knot_db_val_t *key)
 	if (key->len < 2 || *(uint8_t *)key->data != KASPDBKEY_PARAMS) {
 		return NULL;
 	}
-	size_t skip = knot_dname_size((const knot_dname_t *)key->data + 1);
+	size_t skip = knot_dname_size((const uint8_t *)key->data + 1);
 	return (key->len < skip + 2 ? NULL : strdup(key->data + skip + 1));
 }
 

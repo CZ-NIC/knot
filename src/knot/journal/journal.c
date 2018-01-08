@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -170,8 +170,7 @@ static void txn_init(txn_t *txn, knot_db_txn_t *db_txn, journal_t *j)
 
 static void txn_key_str(txn_t *txn, const knot_dname_t *zone, const char *key)
 {
-	size_t zone_size = 0;
-	if (zone != NULL) zone_size = knot_dname_size(zone);
+	size_t zone_size = knot_dname_size(zone);
 	txn->key.len = zone_size + DB_KEY_UNUSED_ZERO + strlen(key) + 1;
 	if (txn->key.len > 512) {
 		txn->ret = KNOT_ERROR;
@@ -184,8 +183,7 @@ static void txn_key_str(txn_t *txn, const knot_dname_t *zone, const char *key)
 
 static void txn_key_2u32(txn_t *txn, const knot_dname_t *zone, uint32_t key1, uint32_t key2)
 {
-	size_t zone_size = 0;
-	if (zone != NULL) zone_size = knot_dname_size(zone);
+	size_t zone_size = knot_dname_size(zone);
 	txn->key.len = zone_size + DB_KEY_UNUSED_ZERO + 2*sizeof(uint32_t);
 	if (txn->key.len > 512) {
 		txn->ret = KNOT_ERROR;
@@ -202,8 +200,7 @@ static void txn_key_2u32(txn_t *txn, const knot_dname_t *zone, uint32_t key1, ui
 
 static void txn_key_str_u32(txn_t *txn, const knot_dname_t *zone, const char *key1, uint32_t key2)
 {
-	size_t zone_size = 0;
-	if (zone != NULL) zone_size = knot_dname_size(zone);
+	size_t zone_size = knot_dname_size(zone);
 	txn->key.len = zone_size + DB_KEY_UNUSED_ZERO + strlen(key1) + 1 + sizeof(uint32_t);
 	if (txn->key.len > 512) {
 		txn->ret = KNOT_ERROR;

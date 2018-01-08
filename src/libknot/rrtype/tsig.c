@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 	wire_ctx_t wire = wire_ctx_init_const(rr_data->data, rr_data->len);
 
 	/* TSIG RR names should be already sanitized on parse. */
-	int alg_len = knot_dname_size(wire.wire);
+	size_t alg_len = knot_dname_size(wire.wire);
 
 	/* Not pretty, but fast. */
 	switch (id) {
@@ -136,11 +136,7 @@ int knot_tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg,
 		return KNOT_EINVAL;
 	}
 
-	int alg_len = knot_dname_size(alg);
-	if (alg_len < 0) {
-		return alg_len;
-	}
-
+	size_t alg_len = knot_dname_size(alg);
 	size_t rdlen = alg_len + TSIG_FIXED_RDLEN + maclen;
 	if (tsig_err == KNOT_RCODE_BADTIME) {
 		rdlen += TSIG_OTHER_MAXLEN;
@@ -375,29 +371,19 @@ size_t knot_tsig_wire_size(const knot_tsig_key_t *key)
 		return 0;
 	}
 
-	int key_len = knot_dname_size(key->name);
-	if (key_len < 0) {
-		return 0;
-	}
-
-	int alg_len = knot_dname_size(dnssec_tsig_algorithm_to_dname(key->algorithm));
-	if (alg_len < 0) {
-		return 0;
-	}
-
-	return key_len + TSIG_FIXED_RDLEN +
+	return knot_dname_size(key->name) + TSIG_FIXED_RDLEN +
 	       sizeof(uint16_t) + /* TYPE */
 	       sizeof(uint16_t) + /* CLASS */
 	       sizeof(uint32_t) + /* TTL */
 	       sizeof(uint16_t) + /* RDATA length. */
-	       alg_len + /* Alg. name length. */
+	       knot_dname_size(dnssec_tsig_algorithm_to_dname(key->algorithm)) +
 	       dnssec_tsig_algorithm_size(key->algorithm); /* MAC length. */
 }
 
 _public_
 size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key)
 {
-	int size = knot_tsig_wire_size(key);
+	size_t size = knot_tsig_wire_size(key);
 	if (size == 0) {
 		return 0;
 	}

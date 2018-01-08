@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -791,9 +791,7 @@ int knot_edns_keepalive_parse(uint16_t *timeout, const uint8_t *option,
 _public_
 size_t knot_edns_chain_size(const knot_dname_t *point)
 {
-	int size = knot_dname_size(point);
-
-	return (size > 0) ? size : 0;
+	return knot_dname_size(point);
 }
 
 _public_
@@ -804,13 +802,8 @@ int knot_edns_chain_write(uint8_t *option, size_t option_len,
 		return KNOT_EINVAL;
 	}
 
-	int size = knot_dname_size(point);
-	if (size <= 0) {
-		return KNOT_EINVAL;
-	}
-
 	wire_ctx_t wire = wire_ctx_init(option, option_len);
-	wire_ctx_write(&wire, point, size);
+	wire_ctx_write(&wire, point, knot_dname_size(point));
 
 	return wire.error;
 }

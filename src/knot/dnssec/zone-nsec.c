@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -152,14 +152,9 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
 		return KNOT_EINVAL;
 	}
 
-	int owner_size = knot_dname_size(owner);
-	if (owner_size < 0) {
-		return KNOT_EINVAL;
-	}
-
 	dnssec_binary_t data = {
 		.data = (uint8_t *)owner,
-		.size = owner_size
+		.size = knot_dname_size(owner)
 	};
 
 	dnssec_binary_t hash = { 0 };

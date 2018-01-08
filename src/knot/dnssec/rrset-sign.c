@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,9 +52,7 @@ static size_t rrsig_rdata_header_size(const dnssec_key_t *key)
 
 	// variable part
 
-	const uint8_t *signer = dnssec_key_get_dname(key);
-	assert(signer);
-	size += knot_dname_size(signer);
+	size += knot_dname_size(dnssec_key_get_dname(key));
 
 	return size;
 }

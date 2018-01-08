@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	/* Replace last labels of qname with DNAME. */
 	const knot_dname_t *dname_wire = dname_rr->owner;
 	const knot_dname_t *dname_tgt = knot_dname_target(&dname_rr->rrs);
-	int labels = knot_dname_labels(dname_wire, NULL);
+	size_t labels = knot_dname_labels(dname_wire, NULL);
 	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt);
 	if (cname == NULL) {
 		knot_dname_free(&owner_copy, mm);
@@ -81,7 +81,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	}
 
 	/* Store DNAME into RDATA. */
-	int cname_size = knot_dname_size(cname);
+	size_t cname_size = knot_dname_size(cname);
 	uint8_t cname_rdata[cname_size];
 	memcpy(cname_rdata, cname, cname_size);
 	knot_dname_free(&cname, NULL);
