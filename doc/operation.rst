@@ -63,10 +63,10 @@ Dynamic configuration
 =====================
 
 The configuration database can be accessed using the server control interface
-during the running server. To get the full power of the dynamic configuration,
+while the server is running. To get the full power of the dynamic configuration,
 the server must be started with a specified configuration database location
 or with the default database initialized. Otherwise all the changes to the
-configuration will be temporary (until the server stop).
+configuration will be temporary (until the server is stopped).
 
 .. NOTE::
    The database can be :ref:`imported<Configuration database>` in advance.
@@ -113,7 +113,9 @@ section identifier or to add a value to all identified sections::
 .. NOTE::
    Also the include operation can be performed. A non-absolute file
    location is relative to the server binary path, not to the control binary
-   path!::
+   path!
+
+   ::
 
       $ knotc conf-set 'include' '/tmp/new_zones.conf'
 
@@ -248,8 +250,8 @@ A full example of setting up a completely new zone from scratch::
 
 .. _Editing zonefile:
 
-Safe reading and editing zone file
-==================================
+Reading and editing zone file safely
+====================================
 
 It's always possible to read and edit the zone contents via zone file manipulation.
 However, it may lead to confusion if zone contents are continuously changing or
@@ -265,7 +267,7 @@ causing freeze pending. So we watch the zone status until frozen. Then we can fl
 frozen zone contents.
 
 Now we open a text editor and perform desired changes to the zone file. It's necessary
-to increase SOA serial in this step to keep consistency. Finaly, we can load the
+to **increase SOA serial** in this step to keep consistency. Finaly, we can load the
 modified zone file and if successful, thaw the zone.::
 
     $ knotc zone-reload example.com.
@@ -277,33 +279,33 @@ Journal behaviour
 =================
 
 Zone journal keeps some history of changes of the zone. It is useful for
-responding IXFR queries. Also if zone file flush is disabled,
+responding to IXFR queries. Also if zone file flush is disabled,
 journal keeps diff between zonefile and zone for the case of server shutdown.
-The history is stored by changesets - diffs of zone contents between two
+The history is stored in changesets – diffs of zone contents between two
 (usually subsequent) zone serials.
 
-Journals for all zones are stored in common LMDB database. Huge changesets are
-split into 70 KiB (this constant is hardcoded) blocks to prevent fragmentation of the DB.
+Journals of all zones are stored in a common LMDB database. Huge changesets are
+split into 70 KiB [#fn-hc]_ blocks to prevent fragmentation of the DB.
 Journal does each operation in one transaction to keep consistency of the DB and performance.
-The exception is when store transaction exceeds 5% of the whole DB mapsize, it is split into multiple ones
+The exception is when store transaction exceeds 5 % of the whole DB mapsize, it is split into multiple ones
 and some dirty-chunks-management involves.
 
 Each zone journal has own :ref:`usage limit <zone_max-journal-usage>`
 on how much DB space it may occupy. Before hitting the limit,
 changesets are stored one-by-one and whole history is linear. While hitting the limit,
 the zone is flushed into zone file, and oldest changesets are deleted as needed to free
-some space. Actually, twice (again, hardcoded constant) the needed amount is deleted to
+some space. Actually, twice [#fn-hc]_ the needed amount is deleted to
 prevent too frequent deletes. Further zone file flush is invoked after the journal runs out of deletable
 "flushed changesets".
 
 If zone file flush is disabled, instead of flushing the zone, the journal tries to
 save space by merging older changesets into one. It works well if the changes rewrite
 each other, e.g. periodically changing few zone records, re-signing whole zone...
-The diff between zone file and zone is thus preserved, even if journal deletes some
+The diff between the zone file and the zone is thus preserved, even if journal deletes some
 older changesets.
 
 If the journal is used to store both zone history and contents, a special changeset
-is present with zone contents. When journal gets full, the changes are merged into this
+is present with zone contents. When the journal gets full, the changes are merged into this
 special changeset.
 
 There is also a :ref:`safety hard limit <template_max-journal-db-size>` for overall
@@ -311,6 +313,8 @@ journal database size, but it's strongly recommended to set the per-zone limits 
 a way to prevent hitting this one. For LMDB, it's hard to recover from the
 database-full state. For wiping one zone's journal, see *knotc zone-purge +journal*
 command.
+
+.. [#fn-hc] This constant is hardcoded.
 
 .. _DNSSEC Key rollovers:
 
@@ -446,7 +450,7 @@ server is reloaded, the rollover continues along the lines of :rfc:`6781#section
   2017-10-24T14:53:44 info: [example.com.] DNSSEC, next signing at 2017-10-31T13:52:37
   2017-10-24T14:53:44 notice: [example.com.] DNSSEC, KSK submission, waiting for confirmation
 
-Again, KSK submission follows as in :ref:`KSK rollover example<DNSSEC ksk rollover example>`.::
+Again, KSK submission follows as in :ref:`KSK rollover example<DNSSEC ksk rollover example>`::
 
   2017-10-24T14:54:20 notice: [example.com.] DNSSEC, KSK submission, confirmed
   2017-10-24T14:54:20 info: [example.com.] DNSSEC, signing zone
@@ -489,7 +493,7 @@ that is the last generated KSK in any of the zones with the same policy assigned
 Anyway, only the cryptographic material is shared, the key may have different timers
 in each zone.
 
-Consequences:
+.. rubric:: Consequences:
 
 If we have an initial setting with brand new zones without any DNSSEC keys,
 the initial keys for all zones are generated. With shared KSK, they will all have the same KSK,

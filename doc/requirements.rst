@@ -39,7 +39,7 @@ Memory requirements
 
 The server implementation focuses on performance and thus can be quite
 memory demanding. The rough estimate for memory requirements is
-3 times the size of the zone in the text format. Again this is only
+3 times the size of the zone in the plain-text format. Again this is only
 an estimate and you are advised to do your own measurements before
 deploying Knot DNS to production.
 
@@ -66,25 +66,25 @@ Knot DNS requires a few libraries to be available:
 * lmdb >= 0.9.15
 
 .. NOTE::
-   The LMDB library is included with the Knot DNS source code, however linking
+   The LMDB library is included with Knot DNS source code. However, linking
    with the system library is preferred.
 
 Optional libraries
 ==================
 
-International Domain Names support (IDNA2003 or IDNA2008) in kdig:
+International Domain Names support (IDNA2003 or IDNA2008) in kdig needs:
 
 * libidn or libidn2
 
-Systemd's startup notifications mechanism and journald logging:
+Systemd's startup notifications mechanism and journald logging need:
 
 * libsystemd
 
-Dnstap support in kdig and module dnstap:
+Dnstap support in kdig and module dnstap need:
 
-* fstrm (and protobuf-c if building from the source code)
+* fstrm (and protobuf-c if building from source code)
 
-POSIX 1003.1e :manpage:`capabilites(7)` by sandboxing the exposed threads.
+POSIX 1003.1e :manpage:`capabilites(7)` by sandboxing exposed threads.
 Most rights are stripped from the exposed threads for security reasons.
 
 * libcap-ng >= 0.6.4
