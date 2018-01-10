@@ -49,3 +49,5 @@ TESTS = $(FUZZERS)
 endif # if SANITIZE_FUZZER
 
 endif # if OSS_FUZZ
+
+check-compile: $(check_PROGRAMS)
