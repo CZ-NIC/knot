@@ -212,16 +212,19 @@ Options
   Don't use TCP automatically if a truncated reply is received.
 
 **+**\ [\ **no**\ ]\ **tls**
-  Use TLS with the Opportunistic privacy profile.
+  Use TLS with the Opportunistic privacy profile (:rfc:`7858#section-4.1`).
 
 **+**\ [\ **no**\ ]\ **tls-ca**\[\ =\ *FILE*\]
-  Use TLS with the Out-Of-Band privacy profile, use a specified PEM file
-  (default is system certificate storage if no argument is provided).
-  Can be specified multiple times.
+  Use TLS with a certificate validation. Certification authority certificates
+  are loaded from the specified PEM file (default is system certificate storage
+  if no argument is provided).
+  Can be specified multiple times. Provide the +tls-hostname option to activate
+  strict authentication.
 
 **+**\ [\ **no**\ ]\ **tls-pin**\ =\ *BASE64*
-  Use TLS with a pinned certificate check. The PIN must be a Base64 encoded
-  SHA-256 hash of the X.509 SubjectPublicKeyInfo. Can be specified multiple times.
+  Use TLS with the Out-of-Band key-pinned privacy profile (:rfc:`7858#section-4.2`).
+  The PIN must be a Base64 encoded SHA-256 hash of the X.509 SubjectPublicKeyInfo.
+  Can be specified multiple times.
 
 **+**\ [\ **no**\ ]\ **tls-hostname**\ =\ *STR*
   Use TLS with a remote server hostname check.
