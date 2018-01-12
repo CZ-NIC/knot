@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,8 +47,6 @@ const yp_item_t online_sign_conf[] = {
 	{ NULL }
 };
 
-#define RRSIG_LIFETIME (25*60*60)
-
 /*
  * TODO:
  *
@@ -85,8 +83,8 @@ static const uint16_t NSEC_FORCE_TYPES[] = {
 };
 
 typedef struct {
-	dnssec_key_t *key;
-	uint32_t rrsig_lifetime;
+	kdnssec_ctx_t kctx;
+	zone_keyset_t keyset;
 } online_sign_ctx_t;
 
 static bool want_dnssec(knotd_qdata_t *qdata)
@@ -231,10 +229,27 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t
 	return nsec;
 }
 
+// this is copied from zone-sign.c
+static bool use_key(const zone_key_t *key, const knot_rrset_t *covered)
+{
+	assert(key);
+	assert(covered);
+
+	if (!key->is_active) {
+		return false;
+	}
+
+	bool is_apex = knot_dname_is_equal(covered->owner,
+	                                   dnssec_key_get_dname(key->key));
+
+	bool is_zone_key = is_apex && covered->type == KNOT_RRTYPE_DNSKEY;
+
+	return (key->is_ksk && is_zone_key) || (key->is_zsk && !is_zone_key);
+}
+
 static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
                                 const knot_rrset_t *cover,
                                 online_sign_ctx_t *module_ctx,
-                                dnssec_sign_ctx_t *sign_ctx,
                                 knot_mm_t *mm)
 {
 	// copy of RR set with replaced owner name
@@ -259,25 +274,22 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 		return NULL;
 	}
 
-	// compatible context
+	for (size_t i = 0; i < module_ctx->keyset.count; i++) {
+		zone_key_t *kkey = &module_ctx->keyset.keys[i];
 
-	knot_kasp_policy_t policy = {
-		.rrsig_lifetime = module_ctx->rrsig_lifetime
-	};
+		if (!use_key(kkey, copy)) {
+			continue;
+		}
 
-	kdnssec_ctx_t ksign_ctx = {
-		.now = time(NULL),
-		.policy = &policy
-	};
-
-	int r = knot_sign_rrset(rrsig, copy, module_ctx->key, sign_ctx, &ksign_ctx, mm);
+		int ret = knot_sign_rrset(rrsig, copy, kkey->key, kkey->ctx, &module_ctx->kctx, mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_free(&copy, NULL);
+			knot_rrset_free(&rrsig, mm);
+			return NULL;
+		}
+	}
 
 	knot_rrset_free(&copy, NULL);
-
-	if (r != KNOT_EOK) {
-		knot_rrset_free(&rrsig, mm);
-		return NULL;
-	}
 
 	return rrsig;
 }
@@ -291,11 +303,7 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
-	dnssec_sign_ctx_t *sign_ctx = NULL;
-	int r = dnssec_sign_new(&sign_ctx, module_ctx->key);
-	if (r != DNSSEC_EOK) {
-		return KNOTD_IN_STATE_ERROR;
-	}
+	module_ctx->kctx.now = time(NULL);
 
 	const knot_pktsection_t *section = knot_pkt_section(pkt, pkt->current);
 	assert(section);
@@ -309,21 +317,19 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 		knot_dname_unpack(owner, pkt->wire + rr_pos, sizeof(owner), pkt->wire);
 		knot_dname_to_lower(owner);
 
-		knot_rrset_t *rrsig = sign_rrset(owner, rr, module_ctx, sign_ctx, &pkt->mm);
+		knot_rrset_t *rrsig = sign_rrset(owner, rr, module_ctx, &pkt->mm);
 		if (!rrsig) {
 			state = KNOTD_IN_STATE_ERROR;
 			break;
 		}
 
-		r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, rrsig, KNOT_PF_FREE);
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, rrsig, KNOT_PF_FREE);
 		if (r != KNOT_EOK) {
 			knot_rrset_free(&rrsig, &pkt->mm);
 			state = KNOTD_IN_STATE_ERROR;
 			break;
 		}
 	}
-
-	dnssec_sign_free(sign_ctx);
 
 	return state;
 }
@@ -357,7 +363,7 @@ static knotd_in_state_t synth_authority(knotd_in_state_t state, knot_pkt_t *pkt,
 	return state;
 }
 
-static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const dnssec_key_t *key,
+static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const zone_keyset_t *keyset,
                                   knot_mm_t *mm)
 {
 	knot_rrset_t *dnskey = knot_rrset_new(knotd_qdata_zone_name(qdata),
@@ -368,13 +374,15 @@ static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const dnssec_key_t *key,
 	}
 
 	dnssec_binary_t rdata = { 0 };
-	dnssec_key_get_rdata(key, &rdata);
-	assert(rdata.size > 0 && rdata.data);
+	for (size_t i = 0; i < keyset->count; i++) {
+		dnssec_key_get_rdata(keyset->keys[i].key, &rdata);
+		assert(rdata.size > 0 && rdata.data);
 
-	int r = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
-	if (r != KNOT_EOK) {
-		knot_rrset_free(&dnskey, mm);
-		return NULL;
+		int r = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
+		if (r != KNOT_EOK) {
+			knot_rrset_free(&dnskey, mm);
+			return NULL;
+		}
 	}
 
 	return dnskey;
@@ -406,7 +414,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 	// synthesized DNSSEC answers
 
 	if (qtype_match(qdata, KNOT_RRTYPE_DNSKEY) && is_apex_query(qdata)) {
-		knot_rrset_t *dnskey = synth_dnskey(qdata, ctx->key, &pkt->mm);
+		knot_rrset_t *dnskey = synth_dnskey(qdata, &ctx->keyset, &pkt->mm);
 		if (!dnskey) {
 			return KNOTD_IN_STATE_ERROR;
 		}
@@ -416,7 +424,6 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 			knot_rrset_free(&dnskey, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
-
 		state = KNOTD_IN_STATE_HIT;
 	}
 
@@ -438,52 +445,10 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 	return state;
 }
 
-static int get_online_key(dnssec_key_t **key_ptr, knotd_mod_t *mod)
-{
-	kdnssec_ctx_t kctx = { 0 };
-
-	int r = kdnssec_ctx_init(mod->config, &kctx, mod->zone, mod->id);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
-	// Force Singe-Type signing scheme.
-	kctx.policy->singe_type_signing = true;
-
-	zone_sign_reschedule_t ignore_out = { 0 };
-	ignore_out.allow_rollover = true;
-	r = knot_dnssec_key_rollover(&kctx, &ignore_out);
-	if (r != DNSSEC_EOK) {
-		goto fail;
-	}
-
-	assert(kctx.zone->num_keys > 0);
-	knot_kasp_key_t *kasp_key = &kctx.zone->keys[0];
-	assert(kasp_key);
-
-	dnssec_key_t *key = dnssec_key_dup(kasp_key->key);
-	if (!key) {
-		r = KNOT_ENOMEM;
-		goto fail;
-	}
-
-	r = dnssec_key_import_keystore(key, kctx.keystore, kasp_key->id);
-	if (r != DNSSEC_EOK) {
-		dnssec_key_free(key);
-		goto fail;
-	}
-
-	*key_ptr = key;
-
-fail:
-	kdnssec_ctx_deinit(&kctx);
-
-	return r;
-}
-
 static void online_sign_ctx_free(online_sign_ctx_t *ctx)
 {
-	dnssec_key_free(ctx->key);
+	free_zone_keys(&ctx->keyset);
+	kdnssec_ctx_deinit(&ctx->kctx);
 
 	free(ctx);
 }
@@ -495,19 +460,27 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 		return KNOT_ENOMEM;
 	}
 
-	int r = get_online_key(&ctx->key, mod);
-	if (r != KNOT_EOK) {
-		online_sign_ctx_free(ctx);
-		return r;
+	int ret = kdnssec_ctx_init(mod->config, &ctx->kctx, mod->zone, mod->id);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	ctx->rrsig_lifetime = RRSIG_LIFETIME;
-	knotd_conf_t policy = knotd_conf_mod(mod, MOD_POLICY);
-	if (policy.count != 0) {
-		knotd_conf_t conf = knotd_conf(mod, C_POLICY, C_RRSIG_LIFETIME, &policy);
-		if (conf.count != 0) {
-			ctx->rrsig_lifetime = conf.single.integer;
-		}
+	// Force Singe-Type signing scheme. This is only important for compatibility with older versions.
+	ctx->kctx.policy->singe_type_signing = true;
+
+	zone_sign_reschedule_t ignore_out = {
+		.allow_rollover = true
+	};
+	ret = knot_dnssec_key_rollover(&ctx->kctx, &ignore_out);
+	if (ret != KNOT_EOK) {
+		kdnssec_ctx_deinit(&ctx->kctx);
+		return ret;
+	}
+
+	ret = load_zone_keys(&ctx->kctx, &ctx->keyset, true);
+	if (ret != KNOT_EOK) {
+		kdnssec_ctx_deinit(&ctx->kctx);
+		return ret;
 	}
 
 	*ctx_ptr = ctx;
