@@ -47,21 +47,6 @@ const yp_item_t online_sign_conf[] = {
 	{ NULL }
 };
 
-/*
- * TODO:
- *
- * - Fix delegation signing:
- *   + The NSEC proof can decsend into the child zone.
- *   + Out-of-zone glue records can be signed.
- *
- * - Fix CNAME handling:
- *   + Owner name of synthesized records can be incorrect.
- *   + Combination with wildcards results in invalid signatures.
- *
- * - Add support for CDS/CDSKEY synthesis.
- *
- */
-
 /*!
  * \brief RR types to force in synthesised NSEC maps.
  *
@@ -427,6 +412,79 @@ static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const zone_keyset_t *key
 	return dnskey;
 }
 
+/* copied from the middle of zone-sign.c */
+static zone_key_t *ksk_for_cds(online_sign_ctx_t *ctx)
+{
+	zone_key_t *res = NULL;
+	unsigned crp = ctx->kctx.policy->child_records_publish;
+	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ?
+	                0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
+	for (int i = 0; i < ctx->keyset.count; i++) {
+		zone_key_t *key = &ctx->keyset.keys[i];
+		if (key->is_ksk && key->cds_priority > kfc_prio) {
+			res = key;
+			kfc_prio = key->cds_priority;
+		}
+	}
+	return res;
+}
+
+static knot_rrset_t *synth_cdnskey(knotd_qdata_t *qdata, online_sign_ctx_t *ctx,
+                                   knot_mm_t *mm)
+{
+	knot_rrset_t *dnskey = knot_rrset_new(knotd_qdata_zone_name(qdata),
+	                                      KNOT_RRTYPE_CDNSKEY, KNOT_CLASS_IN,
+	                                      0, mm);
+	if (dnskey == NULL) {
+		return 0;
+	}
+
+	dnssec_binary_t rdata = { 0 };
+	zone_key_t *key = ksk_for_cds(ctx);
+	if (key == NULL) {
+		knot_rrset_free(&dnskey, mm);
+		return NULL;
+	}
+	dnssec_key_get_rdata(key->key, &rdata);
+	assert(rdata.size > 0 && rdata.data);
+
+	int ret = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(&dnskey, mm);
+		return NULL;
+	}
+
+	return dnskey;
+}
+
+static knot_rrset_t *synth_cds(knotd_qdata_t *qdata, online_sign_ctx_t *ctx,
+                               knot_mm_t *mm)
+{
+	knot_rrset_t *ds = knot_rrset_new(knotd_qdata_zone_name(qdata),
+	                                  KNOT_RRTYPE_CDS, KNOT_CLASS_IN,
+	                                  0, mm);
+	if (ds == NULL) {
+		return 0;
+	}
+
+	dnssec_binary_t rdata = { 0 };
+	zone_key_t *key = ksk_for_cds(ctx);
+	if (key == NULL) {
+		knot_rrset_free(&ds, mm);
+		return NULL;
+	}
+	zone_key_calculate_ds(key, &rdata);
+	assert(rdata.size > 0 && rdata.data);
+
+	int ret = knot_rrset_add_rdata(ds, rdata.data, rdata.size, mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(&ds, mm);
+		return NULL;
+	}
+
+	return ds;
+}
+
 static bool qtype_match(knotd_qdata_t *qdata, uint16_t type)
 {
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
@@ -461,6 +519,34 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
 			knot_rrset_free(&dnskey, &pkt->mm);
+			return KNOTD_IN_STATE_ERROR;
+		}
+		state = KNOTD_IN_STATE_HIT;
+	}
+
+	if (qtype_match(qdata, KNOT_RRTYPE_CDNSKEY) && is_apex_query(qdata)) {
+		knot_rrset_t *dnskey = synth_cdnskey(qdata, ctx, &pkt->mm);
+		if (!dnskey) {
+			return KNOTD_IN_STATE_ERROR;
+		}
+
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
+		if (r != DNSSEC_EOK) {
+			knot_rrset_free(&dnskey, &pkt->mm);
+			return KNOTD_IN_STATE_ERROR;
+		}
+		state = KNOTD_IN_STATE_HIT;
+	}
+
+	if (qtype_match(qdata, KNOT_RRTYPE_CDS) && is_apex_query(qdata)) {
+		knot_rrset_t *ds = synth_cds(qdata, ctx, &pkt->mm);
+		if (!ds) {
+			return KNOTD_IN_STATE_ERROR;
+		}
+
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, ds, KNOT_PF_FREE);
+		if (r != DNSSEC_EOK) {
+			knot_rrset_free(&ds, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
 		state = KNOTD_IN_STATE_HIT;
