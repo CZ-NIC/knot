@@ -355,7 +355,9 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 
 	ret = knot_dnssec_ksk_sbm_confirm(&ctx);
 	kdnssec_ctx_deinit(&ctx);
-	if (ret == KNOT_EOK) {
+
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+	if (ret == KNOT_EOK && conf_bool(&val)) {
 		// NOT zone_events_schedule_user(), intentionally!
 		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	}

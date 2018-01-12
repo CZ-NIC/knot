@@ -23,6 +23,7 @@
 #include "knot/include/module.h"
 #include "knot/modules/onlinesign/nsec_next.h"
 // Next dependencies force static module!
+#include "knot/dnssec/ds_query.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-keys.h"
@@ -70,6 +71,12 @@ static const uint16_t NSEC_FORCE_TYPES[] = {
 typedef struct {
 	kdnssec_ctx_t kctx;
 	zone_keyset_t keyset;
+
+	knot_time_t event_rollover;
+	knot_time_t event_parent_ds_q;
+	pthread_mutex_t event_mutex;
+
+	bool zone_doomed;
 } online_sign_ctx_t;
 
 static bool want_dnssec(knotd_qdata_t *qdata)
@@ -323,8 +330,6 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
-	module_ctx->kctx.now = time(NULL);
-
 	const knot_pktsection_t *section = knot_pkt_section(pkt, pkt->current);
 	assert(section);
 
@@ -496,6 +501,52 @@ static bool is_apex_query(knotd_qdata_t *qdata)
 	return knot_dname_is_equal(qdata->name, knotd_qdata_zone_name(qdata));
 }
 
+static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
+                                    knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
+	zone_sign_reschedule_t resch = { .allow_rollover = true };
+
+	(void)pkt, (void)qdata;
+
+	pthread_mutex_lock(&ctx->event_mutex);
+	if (ctx->zone_doomed) {
+		pthread_mutex_unlock(&ctx->event_mutex);
+		return KNOTD_IN_STATE_ERROR;
+	}
+	ctx->kctx.now = time(NULL);
+	int ret = KNOT_ESEMCHECK;
+	if (knot_time_cmp(ctx->event_parent_ds_q, ctx->kctx.now) <= 0) {
+		ret = knot_parent_ds_query(&ctx->kctx, &ctx->keyset, 1000);
+		if (ret != KNOT_EOK && ctx->kctx.policy->ksk_sbm_check_interval > 0) {
+			ctx->event_parent_ds_q = ctx->kctx.now + ctx->kctx.policy->ksk_sbm_check_interval;
+		} else {
+			ctx->event_parent_ds_q = 0;
+		}
+	}
+	if (ret == KNOT_EOK || knot_time_cmp(ctx->event_rollover, ctx->kctx.now) <= 0) {
+		ret = knot_dnssec_key_rollover(&ctx->kctx, &resch);
+	}
+	if (ret == KNOT_EOK) {
+		if (resch.plan_ds_query && ctx->kctx.policy->ksk_sbm_check_interval > 0) {
+			ctx->event_parent_ds_q = ctx->kctx.now + ctx->kctx.policy->ksk_sbm_check_interval;
+		} else {
+			ctx->event_parent_ds_q = 0;
+		}
+		ctx->event_rollover = resch.next_rollover;
+
+		free_zone_keys(&ctx->keyset);
+		ret = load_zone_keys(&ctx->kctx, &ctx->keyset, true);
+		if (ret != KNOT_EOK) {
+			ctx->zone_doomed = true;
+			state = KNOTD_IN_STATE_ERROR;
+		}
+	}
+	pthread_mutex_unlock(&ctx->event_mutex);
+
+	return state;
+}
+
 static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
@@ -575,6 +626,8 @@ static void online_sign_ctx_free(online_sign_ctx_t *ctx)
 	free_zone_keys(&ctx->keyset);
 	kdnssec_ctx_deinit(&ctx->kctx);
 
+	pthread_mutex_destroy(&ctx->event_mutex);
+
 	free(ctx);
 }
 
@@ -593,20 +646,27 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 	// Force Singe-Type signing scheme. This is only important for compatibility with older versions.
 	ctx->kctx.policy->singe_type_signing = true;
 
-	zone_sign_reschedule_t ignore_out = {
+	zone_sign_reschedule_t resch = {
 		.allow_rollover = true
 	};
-	ret = knot_dnssec_key_rollover(&ctx->kctx, &ignore_out);
+	ret = knot_dnssec_key_rollover(&ctx->kctx, &resch);
 	if (ret != KNOT_EOK) {
 		kdnssec_ctx_deinit(&ctx->kctx);
 		return ret;
 	}
+
+	if (resch.plan_ds_query) {
+		ctx->event_parent_ds_q = time(NULL);
+	}
+	ctx->event_rollover = resch.next_rollover;
 
 	ret = load_zone_keys(&ctx->kctx, &ctx->keyset, true);
 	if (ret != KNOT_EOK) {
 		kdnssec_ctx_deinit(&ctx->kctx);
 		return ret;
 	}
+
+	pthread_mutex_init(&ctx->event_mutex, NULL);
 
 	*ctx_ptr = ctx;
 
@@ -631,6 +691,8 @@ int online_sign_load(knotd_mod_t *mod)
 	}
 
 	knotd_mod_ctx_set(mod, ctx);
+
+	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, pre_routine);
 
 	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, synth_answer);
 	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, sign_section);
