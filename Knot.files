@@ -180,6 +180,8 @@ src/knot/ctl/process.c
 src/knot/ctl/process.h
 src/knot/dnssec/context.c
 src/knot/dnssec/context.h
+src/knot/dnssec/ds_query.c
+src/knot/dnssec/ds_query.h
 src/knot/dnssec/kasp/kasp_db.c
 src/knot/dnssec/kasp/kasp_db.h
 src/knot/dnssec/kasp/kasp_zone.c
