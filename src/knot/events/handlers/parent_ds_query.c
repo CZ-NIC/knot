@@ -47,8 +47,7 @@ static bool match_key_ds(zone_key_t *key, knot_rdata_t *ds)
 }
 
 struct ds_query_data {
-	zone_t *zone;
-	conf_t *conf;
+	const knot_dname_t *zone_name;
 	const struct sockaddr *remote;
 
 	zone_key_t *key;
@@ -70,7 +69,7 @@ static int ds_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	query_init_pkt(pkt);
 
-	int r = knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_DS);
+	int r = knot_pkt_put_question(pkt, data->zone_name, KNOT_CLASS_IN, KNOT_RRTYPE_DS);
 	if (r != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
@@ -86,7 +85,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	data->result_logged = true;
 
 	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
-		ns_log(LOG_WARNING, data->zone->name, LOG_OPERATION_PARENT,
+		ns_log(LOG_WARNING, data->zone_name, LOG_OPERATION_PARENT,
 		       LOG_DIRECTION_OUT, data->remote, "failed (%s)", knot_pkt_ext_rcode_name(pkt));
 		return KNOT_STATE_FAIL;
 	}
@@ -98,7 +97,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	for (size_t j = 0; j < answer->count; j++) {
 		const knot_rrset_t *rr = knot_pkt_rr(answer, j);
 		if (!rr || rr->type != KNOT_RRTYPE_DS || rr->rrs.rr_count != 1) {
-			ns_log(LOG_WARNING, data->zone->name, LOG_OPERATION_PARENT,
+			ns_log(LOG_WARNING, data->zone_name, LOG_OPERATION_PARENT,
 			       LOG_DIRECTION_OUT, data->remote, "malformed message");
 			return KNOT_STATE_FAIL;
 		}
@@ -109,7 +108,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		}
 	}
 
-	ns_log(LOG_INFO, data->zone->name, LOG_OPERATION_PARENT,
+	ns_log(LOG_INFO, data->zone_name, LOG_OPERATION_PARENT,
 	       LOG_DIRECTION_OUT, data->remote, "KSK submission attempt: %s",
 	       (match ? "positive" : "negative"));
 
@@ -125,16 +124,15 @@ static const knot_layer_api_t ds_query_api = {
 	.finish = NULL,
 };
 
-static int try_ds(conf_t *conf, zone_t *zone, const conf_remote_t *parent, zone_key_t *key)
+static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zone_key_t *key, size_t timeout)
 {
 	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
 
-	assert(zone);
+	assert(zone_name);
 	assert(parent);
 
 	struct ds_query_data data = {
-		.zone = zone,
-		.conf = conf,
+		.zone_name = zone_name,
 		.remote = (struct sockaddr *)&parent->addr,
 		.key = key,
 		.ds_ok = false,
@@ -159,8 +157,6 @@ static int try_ds(conf_t *conf, zone_t *zone, const conf_remote_t *parent, zone_
 		return KNOT_ENOMEM;
 	}
 
-	int timeout = conf->cache.srv_tcp_reply_timeout * 1000;
-
 	int ret = knot_requestor_exec(&requestor, req, timeout);
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
@@ -171,16 +167,16 @@ static int try_ds(conf_t *conf, zone_t *zone, const conf_remote_t *parent, zone_
 	}
 
 	if (ret != KNOT_EOK && !data.result_logged) {
-		ns_log(LOG_WARNING, zone->name, LOG_OPERATION_PARENT,
+		ns_log(LOG_WARNING, zone_name, LOG_OPERATION_PARENT,
 		       LOG_DIRECTION_OUT, data.remote, "failed (%s)", knot_strerror(ret));
 	}
 
 	return ret;
 }
 
-static bool parents_have_ds(zone_t *zone, conf_t *conf, zone_key_t *key)
+static bool parents_have_ds(const knot_dname_t *zone_name, conf_t *conf, zone_key_t *key, size_t timeout)
 {
-	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
+	conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone_name);
 	conf_id_fix_default(&policy);
 	conf_val_t ksk_sbm = conf_id_get(conf, C_POLICY, C_KSK_SBM, &policy);
 	assert(conf_val_count(&ksk_sbm) < 2);
@@ -197,7 +193,7 @@ static bool parents_have_ds(zone_t *zone, conf_t *conf, zone_key_t *key)
 
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t parent = conf_remote(conf, &parents, i);
-			int ret = try_ds(conf, zone, &parent, key);
+			int ret = try_ds(zone_name, &parent, key, timeout);
 			if (ret == KNOT_EOK) {
 				success = true;
 				break;
@@ -229,7 +225,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 		zone_key_t *key = &keyset.keys[i];
 		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
 		    key->cds_priority > 1) {
-			if (parents_have_ds(zone, conf, key)) {
+			if (parents_have_ds(zone->name, conf, key, conf->cache.srv_tcp_reply_timeout * 1000)) {
 				ret = knot_dnssec_ksk_sbm_confirm(&ctx);
 			} else {
 				ret = KNOT_ENOENT;
