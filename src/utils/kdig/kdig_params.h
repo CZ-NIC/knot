@@ -120,7 +120,7 @@ struct query {
 	int16_t		edns;
 	/*!< EDNS client cookie. */
 	knot_edns_cookie_t cc;
-	/*!< ENDS server cookie. */
+	/*!< EDNS server cookie. */
 	knot_edns_cookie_t sc;
 	/*!< Repeat query after BADCOOKIE. */
 	bool		badcookie;
