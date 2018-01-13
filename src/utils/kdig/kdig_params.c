@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 #include "libknot/libknot.h"
 #include "contrib/base64.h"
 #include "contrib/sockaddr.h"
+#include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "contrib/ucw/lists.h"
 #include "dnssec/lib/dnssec/error.h"
@@ -1014,6 +1015,67 @@ static int opt_noretry(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int parse_ednsopt(const char *arg, ednsopt_t **opt_ptr)
+{
+	errno = 0;
+	char *end = NULL;
+	unsigned long code = strtoul(arg, &end, 10);
+	if (errno != 0 || arg == end || code > UINT16_MAX) {
+		return KNOT_EINVAL;
+	}
+
+	size_t length = 0;
+	uint8_t *data = NULL;
+	if (end[0] == ':') {
+		if (end[1] != '\0') {
+			int ret = hex_decode(end + 1, &data, &length);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			if (length > UINT16_MAX) {
+				free(data);
+				return KNOT_ERANGE;
+			}
+		}
+	} else if (end[0] != '\0') {
+		return KNOT_EINVAL;
+	}
+
+	ednsopt_t *opt = ednsopt_create(code, length, data);
+	if (opt == NULL) {
+		free(data);
+		return KNOT_ENOMEM;
+	}
+
+	*opt_ptr = opt;
+	return KNOT_EOK;
+}
+
+static int opt_ednsopt(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	ednsopt_t *opt = NULL;
+	int ret = parse_ednsopt(arg, &opt);
+	if (ret != KNOT_EOK) {
+		ERR("invalid +ednsopt=%s\n", arg);
+		return KNOT_EINVAL;
+	}
+
+	add_tail(&q->edns_opts, &opt->n);
+
+	return KNOT_EOK;
+}
+
+static int opt_noednsopt(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	ednsopt_list_deinit(&q->edns_opts);
+
+	return KNOT_EOK;
+}
+
 static int opt_noidn(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1155,6 +1217,9 @@ static const param_t kdig_opts2[] = {
 	{ "badcookie",      ARG_NONE,     opt_badcookie },
 	{ "nobadcookie",    ARG_NONE,     opt_nobadcookie },
 
+	{ "ednsopt",        ARG_REQUIRED, opt_ednsopt },
+	{ "noednsopt",      ARG_NONE,     opt_noednsopt },
+
 	/* "idn" doesn't work since it must be called before query creation. */
 	{ "noidn",          ARG_NONE,     opt_noidn },
 
@@ -1201,6 +1266,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		tls_params_init(&query->tls);
 		//query->tsig_key
 		query->subnet.family = AF_UNSPEC;
+		ednsopt_list_init(&query->edns_opts);
 #if USE_DNSTAP
 		query->dt_reader = NULL;
 		query->dt_writer = NULL;
@@ -1228,6 +1294,13 @@ query_t *query_create(const char *owner, const query_t *conf)
 				return NULL;
 			}
 		}
+
+		int ret = ednsopt_list_dup(&query->edns_opts, &conf->edns_opts);
+		if (ret != KNOT_EOK) {
+			query_free(query);
+			return NULL;
+		}
+
 #if USE_DNSTAP
 		query->dt_reader = conf->dt_reader;
 		query->dt_writer = conf->dt_writer;
@@ -1278,6 +1351,9 @@ void query_free(query_t *query)
 	// Cleanup signing key.
 	knot_tsig_key_deinit(&query->tsig_key);
 
+	// Cleanup EDNS options.
+	ednsopt_list_deinit(&query->edns_opts);
+
 #if USE_DNSTAP
 	if (query->dt_reader != NULL) {
 		dt_reader_free(query->dt_reader);
@@ -1294,6 +1370,90 @@ void query_free(query_t *query)
 	free(query->owner);
 	free(query->port);
 	free(query);
+}
+
+ednsopt_t *ednsopt_create(uint16_t code, uint16_t length, uint8_t *data)
+{
+	ednsopt_t *opt = calloc(1, sizeof(*opt));
+	if (opt == NULL) {
+		return NULL;
+	}
+
+	opt->code = code;
+	opt->length = length;
+	opt->data = data;
+
+	return opt;
+}
+
+ednsopt_t *ednsopt_dup(const ednsopt_t *opt)
+{
+	ednsopt_t *dup = calloc(1, sizeof(*opt));
+	if (dup == NULL) {
+		return NULL;
+	}
+
+	dup->code = opt->code;
+	dup->length = opt->length;
+	dup->data = memdup(opt->data, opt->length);
+	if (dup->data == NULL) {
+		free(dup);
+		return NULL;
+	}
+
+	return dup;
+}
+
+void ednsopt_free(ednsopt_t *opt)
+{
+	if (opt == NULL) {
+		return;
+	}
+
+	free(opt->data);
+	free(opt);
+}
+
+void ednsopt_list_init(list_t *list)
+{
+	init_list(list);
+}
+
+void ednsopt_list_deinit(list_t *list)
+{
+	node_t *n, *next;
+	WALK_LIST_DELSAFE(n, next, *list) {
+		ednsopt_t *opt = (ednsopt_t *)n;
+		ednsopt_free(opt);
+	}
+
+	init_list(list);
+}
+
+int ednsopt_list_dup(list_t *dest, const list_t *src)
+{
+	list_t backup = *dest;
+	init_list(dest);
+
+	node_t *n = NULL;
+	WALK_LIST(n, *src) {
+		ednsopt_t *opt = (ednsopt_t *)n;
+		ednsopt_t *dup = ednsopt_dup(opt);
+		if (dup == NULL) {
+			ednsopt_list_deinit(dest);
+			*dest = backup;
+			return KNOT_ENOMEM;
+		}
+
+		add_tail(dest, &dup->n);
+	}
+
+	return KNOT_EOK;
+}
+
+bool ednsopt_list_empty(const list_t *list)
+{
+	return EMPTY_LIST(*list);
 }
 
 int kdig_init(kdig_params_t *params)
@@ -1718,6 +1878,7 @@ static void print_help(void)
 	       "       +[no]retry=N          Set number of retries.\n"
 	       "       +[no]cookie=HEX       Attach EDNS(0) cookie to the query.\n"
 	       "       +[no]badcookie        Repeat a query with the correct cookie.\n"
+	       "       +[no]ednsopt=CODE[:HEX] Set custom EDNS option.\n"
 	       "       +noidn                Disable IDN transformation.\n"
 	       "\n"
 	       "       -h, --help            Print the program help.\n"

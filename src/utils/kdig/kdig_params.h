@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -134,6 +134,8 @@ struct query {
 	knot_tsig_key_t tsig_key;
 	/*!< EDNS client subnet. */
 	knot_edns_client_subnet_t subnet;
+	/*!< Lits of custom EDNS options. */
+	list_t		edns_opts;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;
@@ -141,6 +143,18 @@ struct query {
 	dt_writer_t	*dt_writer;
 #endif // USE_DNSTAP
 };
+
+/*! \brief EDNS option data. */
+typedef struct {
+	/*! List node (for list container). */
+	node_t	n;
+	/*!< OPTION-CODE field. */
+	uint16_t code;
+	/*!< OPTION-LENGTH field. */
+	uint16_t length;
+	/*!< OPTION-DATA field. */
+	uint8_t *data;
+} ednsopt_t;
 
 /*! \brief Settings for kdig. */
 typedef struct {
@@ -155,6 +169,15 @@ typedef struct {
 query_t *query_create(const char *owner, const query_t *config);
 void query_free(query_t *query);
 void complete_queries(list_t *queries, const query_t *conf);
+
+ednsopt_t *ednsopt_create(uint16_t code, uint16_t length, uint8_t *data);
+ednsopt_t *ednsopt_dup(const ednsopt_t *opt);
+void ednsopt_free(ednsopt_t *opt);
+
+void ednsopt_list_init(list_t *list);
+void ednsopt_list_deinit(list_t *list);
+int ednsopt_list_dup(list_t *dst, const list_t *src);
+bool ednsopt_list_empty(const list_t *list);
 
 int kdig_init(kdig_params_t *params);
 int kdig_parse(kdig_params_t *params, int argc, char *argv[]);
