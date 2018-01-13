@@ -266,6 +266,12 @@ Options
 **+**\ [\ **no**\ ]\ **badcookie**
   Repeat a query with the correct cookie.
 
+**+**\ [\ **no**\ ]\ **ednsopt**\[\ =\ *CODE*\[:*HEX*\]\]
+  Send custom EDNS option. The *CODE* is EDNS option code in decimal, *HEX*
+  is an optional hex encoded string to use as EDNS option value. This argument
+  can be used multiple times. +nodnsopt clears all EDNS options specified by
+  +ednsopt.
+
 **+noidn**
   Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
   on libidn availability during project building!
