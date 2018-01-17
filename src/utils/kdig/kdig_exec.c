@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -324,6 +324,18 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 		}
 	}
 
+	/* Append custom EDNS options. */
+	node_t *node = NULL;
+	WALK_LIST(node, query->edns_opts) {
+		ednsopt_t *opt = (ednsopt_t *)node;
+		ret = knot_edns_add_option(&opt_rr, opt->code, opt->length,
+		                           opt->data, &packet->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &packet->mm);
+			return ret;
+		}
+	}
+
 	/* Add prepared OPT to packet. */
 	ret = knot_pkt_put(packet, KNOT_COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
@@ -345,7 +357,8 @@ static bool use_edns(const query_t *query)
 {
 	return query->edns > -1 || query->udp_size > -1 || query->nsid ||
 	       query->flags.do_flag || query->subnet.family != AF_UNSPEC ||
-	       query->cc.len > 0 || do_padding(query);
+	       query->cc.len > 0 || do_padding(query) ||
+	       !ednsopt_list_empty(&query->edns_opts);
 }
 
 static knot_pkt_t *create_query_packet(const query_t *query)
