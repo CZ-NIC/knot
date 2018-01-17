@@ -404,6 +404,10 @@ static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const zone_keyset_t *key
 
 	dnssec_binary_t rdata = { 0 };
 	for (size_t i = 0; i < keyset->count; i++) {
+		if (!keyset->keys[i].is_public) {
+			continue;
+		}
+
 		dnssec_key_get_rdata(keyset->keys[i].key, &rdata);
 		assert(rdata.size > 0 && rdata.data);
 
