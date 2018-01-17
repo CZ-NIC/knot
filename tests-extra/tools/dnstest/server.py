@@ -78,6 +78,11 @@ class Zone(object):
     def add_module(self, module):
         self.modules.append(module)
 
+    def get_module(self, mod_name):
+        for m in self.modules:
+            if m.mod_name == mod_name:
+               return m;
+
     def clear_modules(self):
         self.modules.clear()
 
