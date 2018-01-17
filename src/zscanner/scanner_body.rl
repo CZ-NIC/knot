@@ -842,8 +842,7 @@
 	action _addr {
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = fc;
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
@@ -913,12 +912,6 @@
 		}
 	}
 	action _apl_exit {
-		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
 		// Copy address to buffer.
 		uint8_t len;
 		switch (s->apl.addr_family) {
@@ -941,6 +934,17 @@
 			}
 			len--;
 		}
+		// Check for rdata overflow.
+		if (rdata_tail + 4 + len > rdata_stop) {
+			WARN(ZS_RDATA_OVERFLOW);
+			fhold; fgoto err_line;
+		}
+		// Write address family.
+		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		rdata_tail += 2;
+		// Write prefix length in bits.
+		*(rdata_tail) = s->apl.prefix_length;
+		rdata_tail += 1;
 		// Write negation flag + prefix length in bytes.
 		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;

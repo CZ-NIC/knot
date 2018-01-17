@@ -50571,8 +50571,7 @@ tr1863:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -50582,8 +50581,7 @@ tr1865:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -54583,8 +54581,7 @@ tr2090:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -54594,8 +54591,7 @@ tr2092:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -64059,12 +64055,6 @@ tr2516:
 		}
 	}
 	{
-		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
 		// Copy address to buffer.
 		uint8_t len;
 		switch (s->apl.addr_family) {
@@ -64087,6 +64077,17 @@ tr2516:
 			}
 			len--;
 		}
+		// Check for rdata overflow.
+		if (rdata_tail + 4 + len > rdata_stop) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st268;}
+		}
+		// Write address family.
+		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		rdata_tail += 2;
+		// Write prefix length in bits.
+		*(rdata_tail) = s->apl.prefix_length;
+		rdata_tail += 1;
 		// Write negation flag + prefix length in bytes.
 		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;
@@ -64106,12 +64107,6 @@ tr2517:
 		}
 	}
 	{
-		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
 		// Copy address to buffer.
 		uint8_t len;
 		switch (s->apl.addr_family) {
@@ -64134,6 +64129,17 @@ tr2517:
 			}
 			len--;
 		}
+		// Check for rdata overflow.
+		if (rdata_tail + 4 + len > rdata_stop) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st268;}
+		}
+		// Write address family.
+		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		rdata_tail += 2;
+		// Write prefix length in bits.
+		*(rdata_tail) = s->apl.prefix_length;
+		rdata_tail += 1;
 		// Write negation flag + prefix length in bytes.
 		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;
@@ -64160,12 +64166,6 @@ tr2518:
 		}
 	}
 	{
-		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
 		// Copy address to buffer.
 		uint8_t len;
 		switch (s->apl.addr_family) {
@@ -64188,6 +64188,17 @@ tr2518:
 			}
 			len--;
 		}
+		// Check for rdata overflow.
+		if (rdata_tail + 4 + len > rdata_stop) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st268;}
+		}
+		// Write address family.
+		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		rdata_tail += 2;
+		// Write prefix length in bits.
+		*(rdata_tail) = s->apl.prefix_length;
+		rdata_tail += 1;
 		// Write negation flag + prefix length in bytes.
 		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;
@@ -64214,12 +64225,6 @@ tr2520:
 		}
 	}
 	{
-		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
 		// Copy address to buffer.
 		uint8_t len;
 		switch (s->apl.addr_family) {
@@ -64242,6 +64247,17 @@ tr2520:
 			}
 			len--;
 		}
+		// Check for rdata overflow.
+		if (rdata_tail + 4 + len > rdata_stop) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st268;}
+		}
+		// Write address family.
+		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		rdata_tail += 2;
+		// Write prefix length in bits.
+		*(rdata_tail) = s->apl.prefix_length;
+		rdata_tail += 1;
 		// Write negation flag + prefix length in bytes.
 		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;
@@ -64342,8 +64358,7 @@ tr2512:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -64353,8 +64368,7 @@ tr2513:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -64489,12 +64503,6 @@ tr2521:
 		}
 	}
 	{
-		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
 		// Copy address to buffer.
 		uint8_t len;
 		switch (s->apl.addr_family) {
@@ -64517,6 +64525,17 @@ tr2521:
 			}
 			len--;
 		}
+		// Check for rdata overflow.
+		if (rdata_tail + 4 + len > rdata_stop) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st268;}
+		}
+		// Write address family.
+		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		rdata_tail += 2;
+		// Write prefix length in bits.
+		*(rdata_tail) = s->apl.prefix_length;
+		rdata_tail += 1;
 		// Write negation flag + prefix length in bytes.
 		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;
@@ -64571,12 +64590,6 @@ tr2522:
 		}
 	}
 	{
-		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
 		// Copy address to buffer.
 		uint8_t len;
 		switch (s->apl.addr_family) {
@@ -64599,6 +64612,17 @@ tr2522:
 			}
 			len--;
 		}
+		// Check for rdata overflow.
+		if (rdata_tail + 4 + len > rdata_stop) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st268;}
+		}
+		// Write address family.
+		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		rdata_tail += 2;
+		// Write prefix length in bits.
+		*(rdata_tail) = s->apl.prefix_length;
+		rdata_tail += 1;
 		// Write negation flag + prefix length in bytes.
 		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;
@@ -64634,12 +64658,6 @@ tr2523:
 		}
 	}
 	{
-		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
 		// Copy address to buffer.
 		uint8_t len;
 		switch (s->apl.addr_family) {
@@ -64662,6 +64680,17 @@ tr2523:
 			}
 			len--;
 		}
+		// Check for rdata overflow.
+		if (rdata_tail + 4 + len > rdata_stop) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st268;}
+		}
+		// Write address family.
+		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		rdata_tail += 2;
+		// Write prefix length in bits.
+		*(rdata_tail) = s->apl.prefix_length;
+		rdata_tail += 1;
 		// Write negation flag + prefix length in bytes.
 		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;
@@ -64754,8 +64783,7 @@ tr2528:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -64765,8 +64793,7 @@ tr2529:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -64806,12 +64833,6 @@ tr2524:
 		}
 	}
 	{
-		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
 		// Copy address to buffer.
 		uint8_t len;
 		switch (s->apl.addr_family) {
@@ -64834,6 +64855,17 @@ tr2524:
 			}
 			len--;
 		}
+		// Check for rdata overflow.
+		if (rdata_tail + 4 + len > rdata_stop) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st268;}
+		}
+		// Write address family.
+		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		rdata_tail += 2;
+		// Write prefix length in bits.
+		*(rdata_tail) = s->apl.prefix_length;
+		rdata_tail += 1;
 		// Write negation flag + prefix length in bytes.
 		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;
@@ -69413,8 +69445,7 @@ tr2707:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -69424,8 +69455,7 @@ tr2711:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -69906,8 +69936,7 @@ tr2753:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -69917,8 +69946,7 @@ tr2756:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -80096,8 +80124,7 @@ tr3507:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
@@ -80107,8 +80134,7 @@ tr3511:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
-		}
-		else {
+		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st268;}
 		}
