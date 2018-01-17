@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <string.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
+#include <poll.h>
 
 #include "utils/common/tls.h"
 #include "utils/common/cert.h"
@@ -251,6 +252,7 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->params = params;
 	ctx->wait = wait;
+	ctx->sockfd = -1;
 
 	int ret = gnutls_certificate_allocate_credentials(&ctx->credentials);
 	if (ret != GNUTLS_E_SUCCESS) {
@@ -324,15 +326,31 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 	gnutls_transport_set_int(ctx->session, sockfd);
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
 
+	// Initialize poll descriptor structure.
+	struct pollfd pfd = {
+		.fd = sockfd,
+		.events = POLLIN,
+		.revents = 0,
+	};
+
 	// Perform the TLS handshake
 	do {
 		ret = gnutls_handshake(ctx->session);
+		if (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0) {
+			if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
+				WARN("TLS, peer took too long to respond\n");
+				return KNOT_NET_ETIMEOUT;
+			}
+		}
 	} while (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0);
 	if (ret != GNUTLS_E_SUCCESS) {
 		WARN("TLS, handshake failed (%s)\n", gnutls_strerror(ret));
 		tls_ctx_close(ctx);
 		return KNOT_NET_ESOCKET;
 	}
+
+	// Save the socket descriptor.
+	ctx->sockfd = sockfd;
 
 	return KNOT_EOK;
 }
@@ -373,9 +391,16 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
-	uint32_t total = 0;
+	// Initialize poll descriptor structure.
+	struct pollfd pfd = {
+		.fd = ctx->sockfd,
+		.events = POLLIN,
+		.revents = 0,
+	};
 
+	uint32_t total = 0;
 	uint16_t msg_len = 0;
+
 	// Receive message header.
 	while (total < sizeof(msg_len)) {
 		ssize_t ret = gnutls_record_recv(ctx->session, &msg_len + total,
@@ -389,6 +414,9 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 			WARN("TLS, failed to receive reply (%s)\n",
 			     gnutls_strerror(ret));
 			return KNOT_NET_ERECV;
+		} else if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
+			WARN("TLS, peer took too long to respond\n");
+			return KNOT_NET_ETIMEOUT;
 		}
 	}
 
@@ -413,6 +441,9 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 			WARN("TLS, failed to receive reply (%s)\n",
 			     gnutls_strerror(ret));
 			return KNOT_NET_ERECV;
+		} else if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
+			WARN("TLS, peer took too long to respond\n");
+			return KNOT_NET_ETIMEOUT;
 		}
 	}
 
