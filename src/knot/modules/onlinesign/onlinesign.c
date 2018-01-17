@@ -640,6 +640,7 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 
 	int ret = kdnssec_ctx_init(mod->config, &ctx->kctx, mod->zone, mod->id);
 	if (ret != KNOT_EOK) {
+		free(ctx);
 		return ret;
 	}
 
@@ -652,6 +653,7 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 	ret = knot_dnssec_key_rollover(&ctx->kctx, &resch);
 	if (ret != KNOT_EOK) {
 		kdnssec_ctx_deinit(&ctx->kctx);
+		free(ctx);
 		return ret;
 	}
 
@@ -663,6 +665,7 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 	ret = load_zone_keys(&ctx->kctx, &ctx->keyset, true);
 	if (ret != KNOT_EOK) {
 		kdnssec_ctx_deinit(&ctx->kctx);
+		free(ctx);
 		return ret;
 	}
 
