@@ -269,7 +269,7 @@ Options
 **+**\ [\ **no**\ ]\ **ednsopt**\[\ =\ *CODE*\[:*HEX*\]\]
   Send custom EDNS option. The *CODE* is EDNS option code in decimal, *HEX*
   is an optional hex encoded string to use as EDNS option value. This argument
-  can be used multiple times. +nodnsopt clears all EDNS options specified by
+  can be used multiple times. +noednsopt clears all EDNS options specified by
   +ednsopt.
 
 **+noidn**
