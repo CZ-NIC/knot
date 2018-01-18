@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -177,6 +177,7 @@ int net_init(const srv_info_t    *local,
 
 	// Get remote address list.
 	if (get_addr(remote, iptype, socktype, &net->remote_info) != 0) {
+		net_clean(net);
 		return KNOT_NET_EADDR;
 	}
 
@@ -186,6 +187,7 @@ int net_init(const srv_info_t    *local,
 	// Get local address if specified.
 	if (local != NULL) {
 		if (get_addr(local, iptype, socktype, &net->local_info) != 0) {
+			net_clean(net);
 			return KNOT_NET_EADDR;
 		}
 	}
@@ -202,6 +204,7 @@ int net_init(const srv_info_t    *local,
 	if (tls_params != NULL && tls_params->enable) {
 		int ret = tls_ctx_init(&net->tls, tls_params, net->wait);
 		if (ret != KNOT_EOK) {
+			net_clean(net);
 			return ret;
 		}
 	}
