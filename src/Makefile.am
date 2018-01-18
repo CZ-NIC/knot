@@ -380,7 +380,7 @@ libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(systemd_CFLAGS) \
                        $(liburcu_CFLAGS) -DKNOTD_MOD_STATIC
 libknotd_la_LDFLAGS  = $(AM_LDFLAGS) -export-symbols-regex '^knotd_'
 libknotd_la_LIBADD   = libknot.la zscanner/libzscanner.la $(systemd_LIBS) \
-                       $(liburcu_LIBS) $(atomic_LIBS)
+                       $(liburcu_LIBS)
 
 ###################
 # Knot DNS Daemon #
