@@ -123,9 +123,9 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
 
     AC_CHECK_DECL([GNUTLS_PK_EDDSA_ED25519],
         [AC_DEFINE([HAVE_ED25519], [1], [GnuTLS ED25519 support available])
-	 enable_ed25519=yes],
+         enable_ed25519=yes],
         [enable_ed25519=no],
-	[#include <gnutls/gnutls.h>])
+        [#include <gnutls/gnutls.h>])
 
     AC_CHECK_FUNC([gnutls_privkey_sign_data2],
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
@@ -482,7 +482,7 @@ AC_CHECK_HEADERS_ONCE([cap-ng.h netinet/in_systm.h pthread_np.h signal.h sys/tim
 
 # Checks for library functions.
 AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim poll \
-                posix_memalign pthread_setaffinity_np regcomp setgroups strlcat strlcpy \
+                posix_memalign pthread_setaffinity_np setgroups strlcat strlcpy \
                 initgroups accept4])
 
 AC_CHECK_FUNC([vasprintf], [], [
