@@ -486,7 +486,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		                zone_contents_serial(up.zone->contents), false);
 	} else {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-		           "failed to sign changes (%s)", knot_strerror(ret));
+		           "failed to store changes (%s)", knot_strerror(ret));
 	}
 
 	zone_update_clear(&up);
