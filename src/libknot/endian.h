@@ -27,25 +27,6 @@
 #if defined(__linux__) || defined(__gnu_hurd__) || \
     (defined(__FreeBSD_kernel__) && defined(__GLIBC__))
 #       include <endian.h>
-#  ifndef be64toh
-#       include <arpa/inet.h>
-#       include <byteswap.h>
-#    if BYTE_ORDER == LITTLE_ENDIAN
-#       define be16toh(x) ntohs(x)
-#       define be32toh(x) ntohl(x)
-#       define be64toh(x) bswap_64 (x)
-#       define le16toh(x) (x)
-#       define le32toh(x) (x)
-#       define le64toh(x) (x)
-#    else
-#       define be16toh(x) (x)
-#       define be32toh(x) (x)
-#       define be64toh(x) (x)
-#       define le16toh(x) ntohs(x)
-#       define le32toh(x) ntohl(x)
-#       define le64toh(x) bswap_64 (x)
-#    endif
-#  endif
 #elif defined(__FreeBSD__) || defined(__NetBSD__)
 #       include <sys/endian.h>
 #elif defined(__OpenBSD__)
