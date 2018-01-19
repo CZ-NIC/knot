@@ -43,7 +43,6 @@ libcontrib_la_SOURCES = 			\
 	contrib/base64.h			\
 	contrib/ctype.h				\
 	contrib/dynarray.h			\
-	contrib/endian.h			\
 	contrib/files.c				\
 	contrib/files.h				\
 	contrib/getline.c			\
@@ -102,6 +101,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/cookies.h			\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
+	libknot/endian.h			\
 	libknot/errcode.h			\
 	libknot/error.h				\
 	libknot/libknot.h			\

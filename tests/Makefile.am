@@ -15,7 +15,6 @@ check_PROGRAMS = \
 	contrib/test_base32hex		\
 	contrib/test_base64		\
 	contrib/test_dynarray		\
-	contrib/test_endian		\
 	contrib/test_heap		\
 	contrib/test_net		\
 	contrib/test_net_shortwrite	\
@@ -36,6 +35,7 @@ check_PROGRAMS += \
 	libknot/test_dname		\
 	libknot/test_edns		\
 	libknot/test_edns_ecs		\
+	libknot/test_endian		\
 	libknot/test_lookup		\
 	libknot/test_pkt		\
 	libknot/test_rdata		\

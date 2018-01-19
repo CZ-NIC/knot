@@ -45,7 +45,7 @@
 
 #include <string.h>
 
-#include "contrib/endian.h"
+#include "libknot/endian.h"
 #include "contrib/string.h"
 #include "contrib/openbsd/siphash.h"
 

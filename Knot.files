@@ -23,7 +23,6 @@ src/contrib/dnstap/reader.h
 src/contrib/dnstap/writer.c
 src/contrib/dnstap/writer.h
 src/contrib/dynarray.h
-src/contrib/endian.h
 src/contrib/files.c
 src/contrib/files.h
 src/contrib/getline.c
@@ -339,6 +338,7 @@ src/libknot/descriptor.c
 src/libknot/descriptor.h
 src/libknot/dname.c
 src/libknot/dname.h
+src/libknot/endian.h
 src/libknot/errcode.h
 src/libknot/error.c
 src/libknot/error.h
@@ -474,7 +474,6 @@ tests-fuzz/wrap/udp-handler.c
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
 tests/contrib/test_dynarray.c
-tests/contrib/test_endian.c
 tests/contrib/test_heap.c
 tests/contrib/test_net.c
 tests/contrib/test_net_shortwrite.c
@@ -493,6 +492,7 @@ tests/libknot/test_descriptor.c
 tests/libknot/test_dname.c
 tests/libknot/test_edns.c
 tests/libknot/test_edns_ecs.c
+tests/libknot/test_endian.c
 tests/libknot/test_lookup.c
 tests/libknot/test_pkt.c
 tests/libknot/test_rdata.c

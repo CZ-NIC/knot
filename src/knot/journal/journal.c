@@ -21,7 +21,7 @@
 #include "knot/journal/journal.h"
 #include "knot/common/log.h"
 #include "contrib/files.h"
-#include "contrib/endian.h"
+#include "libknot/endian.h"
 
 /*! \brief Journal version. */
 #define JOURNAL_VERSION	"1.0"

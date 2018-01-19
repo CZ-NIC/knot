@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,9 +19,9 @@
 #include <tap/basic.h>
 
 #include "libknot/cookies.h"
+#include "libknot/endian.h"
 #include "libknot/errcode.h"
 #include "contrib/sockaddr.h"
-#include "contrib/endian.h"
 
 static void client_generate(struct sockaddr_storage *c_addr, struct sockaddr_storage *s_addr,
                             const uint8_t *secret, const char *msg, int code, uint64_t le_cc)
