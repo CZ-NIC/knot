@@ -63,7 +63,6 @@ libcontrib_la_SOURCES = 			\
 	contrib/time.h				\
 	contrib/tolower.h			\
 	contrib/trim.h				\
-	contrib/wire.h				\
 	contrib/wire_ctx.h			\
 	contrib/openbsd/siphash.c		\
 	contrib/openbsd/siphash.h		\
@@ -133,6 +132,7 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/txt.h			\
 	libknot/tsig-op.h			\
 	libknot/tsig.h				\
+	libknot/wire.h				\
 	libknot/yparser/yparser.h		\
 	libknot/yparser/ypformat.h		\
 	libknot/yparser/ypschema.h		\

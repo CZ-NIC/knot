@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@
 #include "libknot/tsig-op.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/rrset-wire.h"
+#include "libknot/wire.h"
 #include "contrib/mempattern.h"
-#include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
 /*! \brief Packet RR array growth step. */
@@ -459,7 +459,7 @@ uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 	}
 
 	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size;
-	return wire_read_u16(pkt->wire + off);
+	return knot_wire_read_u16(pkt->wire + off);
 }
 
 _public_
@@ -470,7 +470,7 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 	}
 
 	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size + sizeof(uint16_t);
-	return wire_read_u16(pkt->wire + off);
+	return knot_wire_read_u16(pkt->wire + off);
 }
 
 _public_

@@ -26,7 +26,7 @@
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/packet/pkt.h"
-#include "contrib/wire.h"
+#include "libknot/wire.h"
 #include "contrib/wire_ctx.h"
 
 /*! \brief Some implementation-related constants. */
@@ -464,7 +464,7 @@ uint16_t knot_edns_opt_get_code(const uint8_t *opt)
 {
 	assert(opt != NULL);
 
-	return wire_read_u16(opt);
+	return knot_wire_read_u16(opt);
 }
 
 _public_
@@ -472,7 +472,7 @@ uint16_t knot_edns_opt_get_length(const uint8_t *opt)
 {
 	assert(opt != NULL);
 
-	return wire_read_u16(opt + sizeof(uint16_t));
+	return knot_wire_read_u16(opt + sizeof(uint16_t));
 }
 
 _public_

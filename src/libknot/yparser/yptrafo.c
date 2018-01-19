@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,10 +25,10 @@
 #include "libknot/consts.h"
 #include "libknot/dname.h"
 #include "libknot/lookup.h"
+#include "libknot/wire.h"
 #include "contrib/base64.h"
 #include "contrib/ctype.h"
 #include "contrib/sockaddr.h"
-#include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
 enum {
@@ -1065,7 +1065,7 @@ _public_
 int64_t yp_int(
 	const uint8_t *data)
 {
-	return (int64_t)wire_read_u64(data);
+	return (int64_t)knot_wire_read_u64(data);
 }
 
 _public_
@@ -1091,7 +1091,7 @@ struct sockaddr_storage yp_addr(
 	}
 
 	if (addr_len > 0) {
-		int64_t port = wire_read_u64(data + sizeof(uint8_t) + addr_len);
+		int64_t port = knot_wire_read_u64(data + sizeof(uint8_t) + addr_len);
 		if (port >= 0) {
 			sockaddr_port_set((struct sockaddr *)&ss, port);
 			*no_port = false;
@@ -1107,5 +1107,5 @@ _public_
 const size_t yp_bin_len(
 	const uint8_t *data)
 {
-	return wire_read_u16(data);
+	return knot_wire_read_u16(data);
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,12 +16,12 @@
 
 #include <tap/basic.h>
 
-#include "contrib/wire.h"
+#include "libknot/wire.h"
 
 #define write_test(size, value, ...) { \
 	const uint8_t expect[] = { __VA_ARGS__ }; \
 	uint8_t wdata[sizeof(expect)] = { 0x00 }; \
-	wire_write_u ## size(wdata, value); \
+	knot_wire_write_u ## size(wdata, value); \
 	ok(memcmp(wdata, expect, sizeof(expect)) == 0, "%d-bit write", size); \
 }
 
@@ -31,10 +31,10 @@ int main(int argc, char *argv[])
 
 	const uint8_t rdata[] = { 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
 
-	is_hex(            0x8899, wire_read_u16(rdata), "16-bit read");
-	is_hex(        0x8899aabb, wire_read_u32(rdata), "32-bit read");
-	is_hex(    0x8899aabbccdd, wire_read_u48(rdata), "48-bit read");
-	is_hex(0x8899aabbccddeeff, wire_read_u64(rdata), "64-bit read");
+	is_hex(            0x8899, knot_wire_read_u16(rdata), "16-bit read");
+	is_hex(        0x8899aabb, knot_wire_read_u32(rdata), "32-bit read");
+	is_hex(    0x8899aabbccdd, knot_wire_read_u48(rdata), "48-bit read");
+	is_hex(0x8899aabbccddeeff, knot_wire_read_u64(rdata), "64-bit read");
 
 	write_test(16, 0x1122,             0x11, 0x22);
 	write_test(32, 0x66778899,         0x66, 0x77, 0x88, 0x99);

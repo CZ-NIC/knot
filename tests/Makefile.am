@@ -24,7 +24,6 @@ check_PROGRAMS = \
 	contrib/test_string		\
 	contrib/test_strtonum		\
 	contrib/test_time		\
-	contrib/test_wire		\
 	contrib/test_wire_ctx
 
 check_PROGRAMS += \
@@ -45,7 +44,8 @@ check_PROGRAMS += \
 	libknot/test_tsig		\
 	libknot/test_yparser		\
 	libknot/test_ypschema		\
-	libknot/test_yptrafo
+	libknot/test_yptrafo		\
+	libknot/test_wire		
 
 check_PROGRAMS += \
 	utils/test_cert			\

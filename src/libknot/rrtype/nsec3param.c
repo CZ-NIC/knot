@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
 #include "libknot/attribute.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "libknot/errcode.h"
+#include "libknot/wire.h"
 #include "contrib/string.h"
-#include "contrib/wire.h"
 
 _public_
 uint8_t knot_nsec3param_algorithm(const knot_rdataset_t *rrs, size_t pos)
@@ -38,7 +38,7 @@ _public_
 uint16_t knot_nsec3param_iterations(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u16(knot_rdata_offset(rrs, pos, 2));
+	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 2));
 }
 
 

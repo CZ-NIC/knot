@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,13 +15,13 @@
  */
 
 #include "libknot/rrtype/ds.h"
-#include "contrib/wire.h"
+#include "libknot/wire.h"
 
 _public_
 uint16_t knot_ds_key_tag(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u16(knot_rdata_offset(rrs, pos, 0));
+	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 0));
 }
 
 _public_

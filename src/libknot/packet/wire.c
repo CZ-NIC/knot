@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,100 +18,100 @@
 
 #include "libknot/attribute.h"
 #include "libknot/packet/wire.h"
-#include "contrib/wire.h"
+#include "libknot/wire.h"
 
 _public_
 uint16_t knot_wire_get_id(const uint8_t *packet)
 {
-	return wire_read_u16(packet + KNOT_WIRE_OFFSET_ID);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ID);
 }
 
 _public_
 void knot_wire_set_id(uint8_t *packet, uint16_t id)
 {
-	wire_write_u16(packet + KNOT_WIRE_OFFSET_ID, id);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ID, id);
 }
 
 _public_
 uint16_t knot_wire_get_qdcount(const uint8_t *packet)
 {
-	return wire_read_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT);
 }
 
 _public_
 void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
 {
-	wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT, qdcount);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT, qdcount);
 }
 
 _public_
 void knot_wire_add_qdcount(uint8_t *packet, int16_t n)
 {
-	wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT,
-	               knot_wire_get_qdcount(packet) + n);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT,
+	                    knot_wire_get_qdcount(packet) + n);
 }
 
 _public_
 uint16_t knot_wire_get_ancount(const uint8_t *packet)
 {
-	return wire_read_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT);
 }
 
 _public_
 void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
 {
-	wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT, ancount);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT, ancount);
 }
 
 _public_
 void knot_wire_add_ancount(uint8_t *packet, int16_t n)
 {
-	wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT,
-	               knot_wire_get_ancount(packet) + n);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT,
+	                    knot_wire_get_ancount(packet) + n);
 }
 
 _public_
 uint16_t knot_wire_get_nscount(const uint8_t *packet)
 {
-	return wire_read_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT);
 }
 
 _public_
 void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
 {
-	wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT, nscount);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT, nscount);
 }
 
 _public_
 void knot_wire_add_nscount(uint8_t *packet, int16_t n)
 {
-	wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT,
-	               knot_wire_get_nscount(packet) + n);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT,
+	                    knot_wire_get_nscount(packet) + n);
 }
 
 _public_
 uint16_t knot_wire_get_arcount(const uint8_t *packet)
 {
-	return wire_read_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT);
 }
 
 _public_
 void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
 {
-	wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT, arcount);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT, arcount);
 }
 
 _public_
 void knot_wire_add_arcount(uint8_t *packet, int16_t n)
 {
-	wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT,
-	               knot_wire_get_arcount(packet) + n);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT,
+	                    knot_wire_get_arcount(packet) + n);
 }
 
 _public_
 void knot_wire_put_pointer(uint8_t *pos, uint16_t ptr)
 {
-	wire_write_u16(pos, ptr);		// Write pointer offset.
+	knot_wire_write_u16(pos, ptr);		// Write pointer offset.
 	assert((pos[0] & KNOT_WIRE_PTR) == 0);	// Check for maximal offset.
 	pos[0] |= KNOT_WIRE_PTR;		// Add pointer mark.
 }
@@ -120,7 +120,7 @@ _public_
 uint16_t knot_wire_get_pointer(const uint8_t *pos)
 {
 	assert(knot_wire_is_pointer(pos));			// Check pointer.
-	return (wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
+	return (knot_wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
 }
 
 /*! @} */

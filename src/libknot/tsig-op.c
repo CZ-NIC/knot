@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,8 +29,8 @@
 #include "libknot/packet/wire.h"
 #include "libknot/consts.h"
 #include "libknot/packet/rrset-wire.h"
+#include "libknot/wire.h"
 #include "contrib/string.h"
-#include "contrib/wire.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value
@@ -154,11 +154,11 @@ static int write_tsig_variables(uint8_t *wire, const knot_rrset_t *tsig_rr)
 	/*!< \todo which order? */
 
 	/* Copy class. */
-	wire_write_u16(wire + offset, tsig_rr->rclass);
+	knot_wire_write_u16(wire + offset, tsig_rr->rclass);
 	offset += sizeof(uint16_t);
 
 	/* Copy TTL - always 0. */
-	wire_write_u32(wire + offset, tsig_rr->ttl);
+	knot_wire_write_u32(wire + offset, tsig_rr->ttl);
 	offset += sizeof(uint32_t);
 
 	/* Copy alg name. */
@@ -176,13 +176,13 @@ static int write_tsig_variables(uint8_t *wire, const knot_rrset_t *tsig_rr)
 
 	/* Following data are written in network order. */
 	/* Time signed. */
-	wire_write_u48(wire + offset, knot_tsig_rdata_time_signed(tsig_rr));
+	knot_wire_write_u48(wire + offset, knot_tsig_rdata_time_signed(tsig_rr));
 	offset += 6;
 	/* Fudge. */
-	wire_write_u16(wire + offset, knot_tsig_rdata_fudge(tsig_rr));
+	knot_wire_write_u16(wire + offset, knot_tsig_rdata_fudge(tsig_rr));
 	offset += sizeof(uint16_t);
 	/* TSIG error. */
-	wire_write_u16(wire + offset, knot_tsig_rdata_error(tsig_rr));
+	knot_wire_write_u16(wire + offset, knot_tsig_rdata_error(tsig_rr));
 	offset += sizeof(uint16_t);
 	/* Get other data length. */
 	uint16_t other_data_length = knot_tsig_rdata_other_data_length(tsig_rr);
@@ -196,7 +196,7 @@ static int write_tsig_variables(uint8_t *wire, const knot_rrset_t *tsig_rr)
 	 * We cannot write the whole other_data, as it contains its length in
 	 * machine order.
 	 */
-	wire_write_u16(wire + offset, other_data_length);
+	knot_wire_write_u16(wire + offset, other_data_length);
 	offset += sizeof(uint16_t);
 
 	/* Skip the length. */
@@ -212,9 +212,9 @@ static int wire_write_timers(uint8_t *wire, const knot_rrset_t *tsig_rr)
 	}
 
 	//write time signed
-	wire_write_u48(wire, knot_tsig_rdata_time_signed(tsig_rr));
+	knot_wire_write_u48(wire, knot_tsig_rdata_time_signed(tsig_rr));
 	//write fudge
-	wire_write_u16(wire + 6, knot_tsig_rdata_fudge(tsig_rr));
+	knot_wire_write_u16(wire + 6, knot_tsig_rdata_fudge(tsig_rr));
 
 	return KNOT_EOK;
 }
@@ -249,7 +249,7 @@ static int create_sign_wire(const uint8_t *msg, size_t msg_len,
 
 	/* Copy the request MAC - should work even if NULL. */
 	if (request_mac_len > 0) {
-		wire_write_u16(pos, request_mac_len);
+		knot_wire_write_u16(pos, request_mac_len);
 		pos += 2;
 		memcpy(pos, request_mac, request_mac_len);
 	}
@@ -303,7 +303,7 @@ static int create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	memset(wire, 0, wire_len);
 
 	/* Copy the request MAC - should work even if NULL. */
-	wire_write_u16(wire, prev_mac_len);
+	knot_wire_write_u16(wire, prev_mac_len);
 	memcpy(wire + 2, prev_mac, prev_mac_len);
 	/* Copy the original message. */
 	memcpy(wire + prev_mac_len + 2, msg, msg_len);
@@ -363,7 +363,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		/* Store current time into Other data. */
 		uint8_t time_signed[6];
 		time_t now = time(NULL);
-		wire_write_u48(time_signed, now);
+		knot_wire_write_u48(time_signed, now);
 
 		knot_tsig_rdata_set_other_data(tmp_tsig, 6, time_signed);
 	} else {
@@ -453,7 +453,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	memset(wire, 0, wire_len);
 
 	/* Write previous digest length. */
-	wire_write_u16(wire, prev_digest_len);
+	knot_wire_write_u16(wire, prev_digest_len);
 	/* Write previous digest. */
 	memcpy(wire + 2, prev_digest, prev_digest_len);
 	/* Write original message. */

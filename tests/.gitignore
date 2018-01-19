@@ -14,7 +14,6 @@
 /contrib/test_string
 /contrib/test_strtonum
 /contrib/test_time
-/contrib/test_wire
 /contrib/test_wire_ctx
 
 /libknot/test_control
@@ -35,6 +34,7 @@
 /libknot/test_yparser
 /libknot/test_ypschema
 /libknot/test_yptrafo
+/libknot/test_wire
 
 /modules/test_onlinesign
 /modules/test_rrl

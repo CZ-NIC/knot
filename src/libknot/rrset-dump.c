@@ -35,10 +35,10 @@
 #include "libknot/errcode.h"
 #include "libknot/lookup.h"
 #include "libknot/rrtype/rrsig.h"
+#include "libknot/wire.h"
 #include "contrib/base32hex.h"
 #include "contrib/base64.h"
 #include "contrib/ctype.h"
-#include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
 #define RRSET_DUMP_LIMIT (2 * 1024 * 1024)
@@ -139,7 +139,7 @@ static void wire_num16_to_str(rrset_dump_params_t *p)
 	CHECK_INMAX(in_len)
 
 	// Fill in input data.
-	data = wire_read_u16(p->in);
+	data = knot_wire_read_u16(p->in);
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%u", data);
@@ -165,7 +165,7 @@ static void wire_num32_to_str(rrset_dump_params_t *p)
 	CHECK_INMAX(in_len)
 
 	// Fill in input data.
-	data = wire_read_u32(p->in);
+	data = knot_wire_read_u32(p->in);
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%u", data);
@@ -191,7 +191,7 @@ static void wire_num48_to_str(rrset_dump_params_t *p)
 	CHECK_INMAX(in_len)
 
 	// Fill in input data.
-	data = wire_read_u48(p->in);
+	data = knot_wire_read_u48(p->in);
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%"PRIu64"", data);
@@ -335,7 +335,7 @@ static int num48_encode(const uint8_t  *in,
 		return -1;
 	}
 
-	uint64_t data = wire_read_u48(in);
+	uint64_t data = knot_wire_read_u48(in);
 
 	int ret = snprintf((char *)out, out_len, "%"PRIu64"", data);
 	if (ret <= 0 || (size_t)ret >= out_len) {
@@ -436,10 +436,10 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 		in_len = *(p->in);
 		break;
 	case 2:
-		in_len = wire_read_u16(p->in);
+		in_len = knot_wire_read_u16(p->in);
 		break;
 	case 4:
-		in_len = wire_read_u32(p->in);
+		in_len = knot_wire_read_u32(p->in);
 		break;
 	default:
 		p->ret = -1;
@@ -861,7 +861,7 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 	CHECK_INMAX(4)
 
 	// Read fixed size values.
-	uint16_t family   = wire_read_u16(p->in);
+	uint16_t family   = knot_wire_read_u16(p->in);
 	uint8_t  prefix   = *(p->in + 2);
 	uint8_t  negation = *(p->in + 3) >> 7;
 	uint8_t  afdlen   = *(p->in + 3) & 0x7F;
@@ -1172,7 +1172,7 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 	CHECK_INMAX(in_len)
 
 	// Fill in input data.
-	data = wire_read_u16(p->in);
+	data = knot_wire_read_u16(p->in);
 
 	// Find RCODE name.
 	const knot_lookup_t *rcode = NULL;

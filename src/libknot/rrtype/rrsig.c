@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,39 +16,39 @@
 
 #include "libknot/attribute.h"
 #include "libknot/rrtype/rrsig.h"
-#include "contrib/wire.h"
+#include "libknot/wire.h"
 
 _public_
 uint16_t knot_rrsig_type_covered(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u16(knot_rdata_offset(rrs, pos, 0));
+	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 0));
 }
 
 _public_
 uint32_t knot_rrsig_original_ttl(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, pos, 4));
+	return knot_wire_read_u32(knot_rdata_offset(rrs, pos, 4));
 }
 
 _public_
 uint32_t knot_rrsig_sig_expiration(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, pos, 8));
+	return knot_wire_read_u32(knot_rdata_offset(rrs, pos, 8));
 }
 
 _public_
 uint32_t knot_rrsig_sig_inception(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u32(knot_rdata_offset(rrs, pos, 12));
+	return knot_wire_read_u32(knot_rdata_offset(rrs, pos, 12));
 }
 
 _public_
 uint16_t knot_rrsig_key_tag(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u16(knot_rdata_offset(rrs, pos, 16));
+	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 16));
 }

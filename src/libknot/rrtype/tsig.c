@@ -28,7 +28,7 @@
 #include "libknot/dname.h"
 #include "libknot/errcode.h"
 #include "libknot/rrset.h"
-#include "contrib/wire.h"
+#include "libknot/wire.h"
 #include "contrib/wire_ctx.h"
 
 /*! \brief TSIG field offsets. */
@@ -124,7 +124,7 @@ static int rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)
 		return KNOT_ERROR;
 	}
 
-	wire_write_u16(rd, tsig_error);
+	knot_wire_write_u16(rd, tsig_error);
 	return KNOT_EOK;
 }
 
@@ -149,7 +149,7 @@ int knot_tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg,
 
 	/* Set MAC variable length in advance. */
 	size_t offset = alg_len + TSIG_OFF_MACLEN;
-	wire_write_u16(rd + offset, maclen);
+	knot_wire_write_u16(rd + offset, maclen);
 
 	int ret = knot_rrset_add_rdata(rr, rd, rdlen, NULL);
 	if (ret != KNOT_EOK) {
@@ -170,7 +170,7 @@ int knot_tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time)
 		return KNOT_ERROR;
 	}
 
-	wire_write_u48(rd, time);
+	knot_wire_write_u48(rd, time);
 	return KNOT_EOK;
 }
 
@@ -182,7 +182,7 @@ int knot_tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge)
 		return KNOT_ERROR;
 	}
 
-	wire_write_u16(rd, fudge);
+	knot_wire_write_u16(rd, fudge);
 	return KNOT_EOK;
 }
 
@@ -210,7 +210,7 @@ int knot_tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id)
 	}
 
 	/* Write the length - 2. */
-	wire_write_u16(rd, id);
+	knot_wire_write_u16(rd, id);
 	return KNOT_EOK;
 }
 
@@ -228,7 +228,7 @@ int knot_tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
 	}
 
 	/* Write the length. */
-	wire_write_u16(rd, len);
+	knot_wire_write_u16(rd, len);
 
 	/* Copy the actual data. */
 	memcpy(rd + sizeof(uint16_t), other_data, len);
@@ -261,7 +261,7 @@ uint64_t knot_tsig_rdata_time_signed(const knot_rrset_t *tsig)
 	if (!rd) {
 		return 0;
 	}
-	return wire_read_u48(rd);
+	return knot_wire_read_u48(rd);
 }
 
 _public_
@@ -271,7 +271,7 @@ uint16_t knot_tsig_rdata_fudge(const knot_rrset_t *tsig)
 	if (!rd) {
 		return 0;
 	}
-	return wire_read_u16(rd);
+	return knot_wire_read_u16(rd);
 }
 
 _public_
@@ -291,7 +291,7 @@ size_t knot_tsig_rdata_mac_length(const knot_rrset_t *tsig)
 	if (!rd) {
 		return 0;
 	}
-	return wire_read_u16(rd);
+	return knot_wire_read_u16(rd);
 }
 
 _public_
@@ -301,7 +301,7 @@ uint16_t knot_tsig_rdata_orig_id(const knot_rrset_t *tsig)
 	if (!rd) {
 		return 0;
 	}
-	return wire_read_u16(rd);
+	return knot_wire_read_u16(rd);
 }
 
 _public_
@@ -311,7 +311,7 @@ uint16_t knot_tsig_rdata_error(const knot_rrset_t *tsig)
 	if (!rd) {
 		return 0;
 	}
-	return wire_read_u16(rd);
+	return knot_wire_read_u16(rd);
 }
 
 _public_
@@ -331,7 +331,7 @@ uint16_t knot_tsig_rdata_other_data_length(const knot_rrset_t *tsig)
 	if (!rd) {
 		return 0;
 	}
-	return wire_read_u16(rd);
+	return knot_wire_read_u16(rd);
 }
 
 _public_

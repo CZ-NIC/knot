@@ -61,7 +61,6 @@ src/contrib/ucw/lists.c
 src/contrib/ucw/lists.h
 src/contrib/ucw/mempool.c
 src/contrib/ucw/mempool.h
-src/contrib/wire.h
 src/contrib/wire_ctx.h
 src/dnssec/contrib/gnutls_error.c
 src/dnssec/contrib/vpool.c
@@ -387,6 +386,7 @@ src/libknot/tsig-op.c
 src/libknot/tsig-op.h
 src/libknot/tsig.c
 src/libknot/tsig.h
+src/libknot/wire.h
 src/libknot/yparser/yparser.c
 src/libknot/yparser/yparser.h
 src/libknot/yparser/ypbody.c
@@ -483,7 +483,6 @@ tests/contrib/test_sockaddr.c
 tests/contrib/test_string.c
 tests/contrib/test_strtonum.c
 tests/contrib/test_time.c
-tests/contrib/test_wire.c
 tests/contrib/test_wire_ctx.c
 tests/libknot/test_control.c
 tests/libknot/test_cookies.c
@@ -500,6 +499,7 @@ tests/libknot/test_rdataset.c
 tests/libknot/test_rrset-wire.c
 tests/libknot/test_rrset.c
 tests/libknot/test_tsig.c
+tests/libknot/test_wire.c
 tests/libknot/test_yparser.c
 tests/libknot/test_ypschema.c
 tests/libknot/test_yptrafo.c

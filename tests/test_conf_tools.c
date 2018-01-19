@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 #include "libknot/yparser/yptrafo.h"
 #include "knot/conf/tools.h"
 #include "libknot/libknot.h"
-#include "contrib/wire.h"
 
 static void mod_id_test(const char *txt, const char *val)
 {
@@ -74,7 +73,7 @@ static void edns_opt_test(const char *txt, uint16_t code, const char *val)
 	diag("edns option \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	is_int(KNOT_EOK, ret, "txt to bin");
-	uint64_t c = wire_read_u64(b);
+	uint64_t c = knot_wire_read_u64(b);
 	ok(c == code, "compare code");
 	ok(memcmp(yp_bin(b + sizeof(uint64_t)), val,
 	          yp_bin_len(b + sizeof(uint64_t))) == 0, "compare");

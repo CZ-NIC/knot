@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 #include "libknot/libknot.h"
 #include "libknot/rrtype/opt.h"
 #include "libknot/descriptor.h"
+#include "libknot/wire.h"
 #include "contrib/sockaddr.h"
-#include "contrib/wire.h"
 
 static const uint16_t E_MAX_PLD = 10000;
 static const uint16_t E_MAX_PLD2 = 20000;
@@ -76,11 +76,11 @@ static void check_ttl(knot_rrset_t *rrset, uint8_t ext_rcode, uint8_t ver,
 	/* TTL should be stored in machine byte order.
 	   We need network byte order to compare its parts. */
 	uint8_t ttl_wire[4] = { 0, 0, 0, 0 };
-	wire_write_u32(ttl_wire, rrset->ttl);
+	knot_wire_write_u32(ttl_wire, rrset->ttl);
 
 	/* Convert Flags from EDNS parameters to wire format for comparison. */
 	uint8_t flags_wire[2] = { 0, 0 };
-	wire_write_u16(flags_wire, flags);
+	knot_wire_write_u16(flags_wire, flags);
 
 	/* TTL = Ext RCODE + Version + Flags */
 	bool check = (ttl_wire[OFFSET_ERCODE] == ext_rcode);
@@ -109,12 +109,12 @@ static void check_option(knot_rdata_t *rdata, uint16_t opt_code,
 	bool found = false;
 	int pos = 0;
 	while (pos <= data_len - 4) {
-		uint16_t code = wire_read_u16(data + pos + OFFSET_OPT_CODE);
+		uint16_t code = knot_wire_read_u16(data + pos + OFFSET_OPT_CODE);
 		if (code == opt_code) {
 			found = true;
 			break;
 		}
-		uint16_t len = wire_read_u16(data + pos + OFFSET_OPT_SIZE);
+		uint16_t len = knot_wire_read_u16(data + pos + OFFSET_OPT_SIZE);
 		pos += 4 + len;
 	}
 
@@ -122,7 +122,7 @@ static void check_option(knot_rdata_t *rdata, uint16_t opt_code,
 	ok(found, "%s: find OPTION %u in OPT RR", msg, opt_code);
 
 	/* Check that the first OPTION's size si the size of the option data. */
-	uint16_t opt_size = wire_read_u16(data + pos + OFFSET_OPT_SIZE);
+	uint16_t opt_size = knot_wire_read_u16(data + pos + OFFSET_OPT_SIZE);
 	check = (opt_size == opt_len);
 	ok(check, "%s: OPTION data size", msg);
 

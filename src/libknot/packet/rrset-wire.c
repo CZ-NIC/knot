@@ -31,8 +31,8 @@
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
 #include "libknot/rrtype/rrsig.h"
+#include "libknot/wire.h"
 #include "contrib/macros.h"
-#include "contrib/wire.h"
 #include "contrib/wire_ctx.h"
 
 #define RR_HEADER_SIZE 10
@@ -503,7 +503,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 	/* Write final RDLENGTH */
 
 	size_t rdlength = *dst - wire_rdata_begin;
-	wire_write_u16(wire_rdlength, rdlength);
+	knot_wire_write_u16(wire_rdlength, rdlength);
 
 	return KNOT_EOK;
 }

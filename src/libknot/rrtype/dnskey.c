@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,11 @@
 
 #include "libknot/attribute.h"
 #include "libknot/rrtype/dnskey.h"
-#include "contrib/wire.h"
+#include "libknot/wire.h"
 
 _public_
 uint16_t knot_dnskey_flags(const knot_rdataset_t *rrs, size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-	return wire_read_u16(knot_rdata_offset(rrs, pos, 0));
+	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 0));
 }
