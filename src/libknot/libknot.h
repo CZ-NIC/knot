@@ -49,7 +49,6 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
-#include "libknot/rrtype/aaaa.h"
 #include "libknot/rrtype/dnskey.h"
 #include "libknot/rrtype/ds.h"
 #include "libknot/rrtype/naptr.h"
@@ -61,7 +60,6 @@
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/tsig.h"
-#include "libknot/rrtype/txt.h"
 #include "libknot/wire.h"
 
 /*! @} */

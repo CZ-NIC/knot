@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "libknot/dname.h"
 #include "libknot/rdataset.h"
 
 static inline
@@ -33,7 +34,7 @@ const knot_dname_t *knot_nsec_next(const knot_rdataset_t *rrs)
 
 static inline
 void knot_nsec_bitmap(const knot_rdataset_t *rrs,
-                            uint8_t **bitmap, uint16_t *size)
+                      uint8_t **bitmap, uint16_t *size)
 {
 	KNOT_RDATASET_CHECK(rrs, 0, return);
 	knot_rdata_t *rr = knot_rdataset_at(rrs, 0);

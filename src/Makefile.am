@@ -117,7 +117,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rdataset.h			\
 	libknot/rrset-dump.h			\
 	libknot/rrset.h				\
-	libknot/rrtype/aaaa.h			\
 	libknot/rrtype/dnskey.h			\
 	libknot/rrtype/ds.h			\
 	libknot/rrtype/naptr.h			\
@@ -129,7 +128,6 @@ nobase_libknot_la_HEADERS =			\
 	libknot/rrtype/rrsig.h			\
 	libknot/rrtype/soa.h			\
 	libknot/rrtype/tsig.h			\
-	libknot/rrtype/txt.h			\
 	libknot/tsig-op.h			\
 	libknot/tsig.h				\
 	libknot/wire.h				\
@@ -156,15 +154,8 @@ libknot_la_SOURCES =				\
 	libknot/rdataset.c			\
 	libknot/rrset-dump.c			\
 	libknot/rrset.c				\
-	libknot/rrtype/aaaa.c			\
-	libknot/rrtype/dnskey.c			\
-	libknot/rrtype/ds.c			\
 	libknot/rrtype/naptr.c			\
-	libknot/rrtype/nsec3.c			\
-	libknot/rrtype/nsec3param.c		\
 	libknot/rrtype/opt.c			\
-	libknot/rrtype/rrsig.c			\
-	libknot/rrtype/soa.c			\
 	libknot/rrtype/tsig.c			\
 	libknot/tsig-op.c			\
 	libknot/tsig.c				\

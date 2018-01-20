@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,8 +24,14 @@
 
 #include "libknot/dname.h"
 #include "libknot/rdataset.h"
+#include "libknot/wire.h"
 
-uint16_t knot_rrsig_type_covered(const knot_rdataset_t *rrs, size_t pos);
+static inline
+uint16_t knot_rrsig_type_covered(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 0));
+}
 
 static inline
 uint8_t knot_rrsig_algorithm(const knot_rdataset_t *rrs, size_t pos)
@@ -41,17 +47,37 @@ uint8_t knot_rrsig_labels(const knot_rdataset_t *rrs, size_t pos)
 	return *knot_rdata_offset(rrs, pos, 3);
 }
 
-uint32_t knot_rrsig_original_ttl(const knot_rdataset_t *rrs, size_t pos);
+static inline
+uint32_t knot_rrsig_original_ttl(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_wire_read_u32(knot_rdata_offset(rrs, pos, 4));
+}
 
-uint32_t knot_rrsig_sig_expiration(const knot_rdataset_t *rrs, size_t pos);
+static inline
+uint32_t knot_rrsig_sig_expiration(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_wire_read_u32(knot_rdata_offset(rrs, pos, 8));
+}
 
-uint32_t knot_rrsig_sig_inception(const knot_rdataset_t *rrs, size_t pos);
+static inline
+uint32_t knot_rrsig_sig_inception(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_wire_read_u32(knot_rdata_offset(rrs, pos, 12));
+}
 
-uint16_t knot_rrsig_key_tag(const knot_rdataset_t *rrs, size_t pos);
+static inline
+uint16_t knot_rrsig_key_tag(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 16));
+}
 
 static inline
 const knot_dname_t *knot_rrsig_signer_name(const knot_rdataset_t *rrs,
-                                                 size_t pos)
+                                           size_t pos)
 {
 	KNOT_RDATASET_CHECK(rrs, pos, return 0);
 	return knot_rdata_offset(rrs, pos, 18);
@@ -59,7 +85,7 @@ const knot_dname_t *knot_rrsig_signer_name(const knot_rdataset_t *rrs,
 
 static inline
 void knot_rrsig_signature(const knot_rdataset_t *rrs, size_t pos,
-                                uint8_t **signature, size_t *signature_size)
+                          uint8_t **signature, size_t *signature_size)
 {
 	if (!signature || !signature_size) {
 		return;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,19 +22,38 @@
 
 #pragma once
 
-#include "libknot/attribute.h"
 #include "libknot/rdataset.h"
+#include "libknot/wire.h"
 
-_pure_
-uint16_t knot_ds_key_tag(const knot_rdataset_t *rrs, size_t pos);
+static inline
+uint16_t knot_ds_key_tag(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 0));
+}
 
-_pure_
-uint8_t knot_ds_alg(const knot_rdataset_t *rrs, size_t pos);
+static inline
+uint8_t knot_ds_alg(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return *knot_rdata_offset(rrs, pos, 2);
+}
 
-_pure_
-uint8_t knot_ds_digest_type(const knot_rdataset_t *rrs, size_t pos);
+static inline
+uint8_t knot_ds_digest_type(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return *knot_rdata_offset(rrs, pos, 3);
+}
 
+static inline
 void knot_ds_digest(const knot_rdataset_t *rrs, size_t pos,
-                    uint8_t **digest, uint16_t *digest_size);
+                    uint8_t **digest, uint16_t *digest_size)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return);
+	*digest = knot_rdata_offset(rrs, pos, 4);
+	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
+	*digest_size = rr->len - 4;
+}
 
 /*! @} */

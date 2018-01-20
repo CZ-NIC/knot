@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <netinet/in.h>
+
 #include "knot/include/module.h"
 
 static knotd_in_state_t whoami_query(knotd_in_state_t state, knot_pkt_t *pkt,
