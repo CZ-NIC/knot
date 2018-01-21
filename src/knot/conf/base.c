@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -867,7 +867,7 @@ int conf_export(
 	const char *file_name,
 	yp_style_t style)
 {
-	if (conf == NULL || file_name == NULL) {
+	if (conf == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -878,7 +878,7 @@ int conf_export(
 		return KNOT_ENOMEM;
 	}
 
-	FILE *fp = fopen(file_name, "w");
+	FILE *fp = (file_name != NULL) ? fopen(file_name, "w") : stdout;
 	if (fp == NULL) {
 		free(buff);
 		return knot_map_errno();
@@ -923,7 +923,9 @@ int conf_export(
 
 	ret = KNOT_EOK;
 export_error:
-	fclose(fp);
+	if (file_name != NULL) {
+		fclose(fp);
+	}
 	free(buff);
 
 	return ret;

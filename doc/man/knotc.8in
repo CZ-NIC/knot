@@ -174,8 +174,8 @@ Check the server configuration. (*)
 Import a configuration file into the configuration database. Ensure the
 server is not using the configuration database! (*)
 .TP
-\fBconf\-export\fP \fIfilename\fP
-Export the configuration database into a config file. (*)
+\fBconf\-export\fP [\fIfilename\fP]
+Export the configuration database into a config file or stdout. (*)
 .TP
 \fBconf\-list\fP [\fIitem\fP]
 List the configuration database sections or section items.
