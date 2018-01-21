@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -186,16 +187,15 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 int knot_rdataset_sort_at(knot_rdataset_t *rrs, uint16_t pos, knot_mm_t *mm);
 
 /*! \brief Check helper. */
-#define KNOT_RDATASET_CHECK(rrs, pos, code) \
-	if (rrs == NULL || rrs->data == NULL || rrs->rr_count == 0 || \
-	    pos >= rrs->rr_count) { \
-		code; \
-	}
+#define KNOT_RDATASET_CHECK(rrs, pos) \
+	assert(rrs && rrs->data && rrs->rr_count > 0 && pos < rrs->rr_count);
 
 /*! \brief Access helper. */
 static inline
-uint8_t *knot_rdata_offset(const knot_rdataset_t *rrs, uint16_t pos, uint16_t offset) {
+uint8_t *knot_rdata_offset(const knot_rdataset_t *rrs, uint16_t pos, uint16_t offset)
+{
 	knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
+	assert(rr);
 	return rr->data + offset;
 }
 

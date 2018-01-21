@@ -28,7 +28,7 @@
 static inline
 const knot_dname_t *knot_nsec_next(const knot_rdataset_t *rrs)
 {
-	KNOT_RDATASET_CHECK(rrs, 0, return NULL);
+	KNOT_RDATASET_CHECK(rrs, 0);
 	return knot_rdata_offset(rrs, 0, 0);
 }
 
@@ -36,7 +36,7 @@ static inline
 void knot_nsec_bitmap(const knot_rdataset_t *rrs,
                       uint8_t **bitmap, uint16_t *size)
 {
-	KNOT_RDATASET_CHECK(rrs, 0, return);
+	KNOT_RDATASET_CHECK(rrs, 0);
 	knot_rdata_t *rr = knot_rdataset_at(rrs, 0);
 	int next_size = knot_dname_size(knot_nsec_next(rrs));
 

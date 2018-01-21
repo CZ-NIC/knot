@@ -28,21 +28,21 @@
 static inline
 uint16_t knot_ds_key_tag(const knot_rdataset_t *rrs, size_t pos)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 0));
 }
 
 static inline
 uint8_t knot_ds_alg(const knot_rdataset_t *rrs, size_t pos)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	return *knot_rdata_offset(rrs, pos, 2);
 }
 
 static inline
 uint8_t knot_ds_digest_type(const knot_rdataset_t *rrs, size_t pos)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	return *knot_rdata_offset(rrs, pos, 3);
 }
 
@@ -50,7 +50,7 @@ static inline
 void knot_ds_digest(const knot_rdataset_t *rrs, size_t pos,
                     uint8_t **digest, uint16_t *digest_size)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	*digest = knot_rdata_offset(rrs, pos, 4);
 	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
 	*digest_size = rr->len - 4;

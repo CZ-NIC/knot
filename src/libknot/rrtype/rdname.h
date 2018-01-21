@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,35 +29,35 @@
 static inline
 const knot_dname_t *knot_cname_name(const knot_rdataset_t *rrs)
 {
-	KNOT_RDATASET_CHECK(rrs, 0, return NULL);
+	KNOT_RDATASET_CHECK(rrs, 0);
 	return knot_rdata_offset(rrs, 0, 0);
 }
 
 static inline
 const knot_dname_t *knot_dname_target(const knot_rdataset_t *rrs)
 {
-	KNOT_RDATASET_CHECK(rrs, 0, return NULL);
+	KNOT_RDATASET_CHECK(rrs, 0);
 	return knot_rdata_offset(rrs, 0, 0);
 }
 
 static inline
 const knot_dname_t *knot_ns_name(const knot_rdataset_t *rrs, size_t pos)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	return knot_rdata_offset(rrs, pos, 0);
 }
 
 static inline
 const knot_dname_t *knot_mx_name(const knot_rdataset_t *rrs, size_t pos)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	return knot_rdata_offset(rrs, pos, 2);
 }
 
 static inline
 const knot_dname_t *knot_srv_name(const knot_rdataset_t *rrs, size_t pos)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	return knot_rdata_offset(rrs, pos, 6);
 }
 

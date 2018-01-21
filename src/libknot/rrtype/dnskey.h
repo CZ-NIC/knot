@@ -30,22 +30,21 @@
 static inline
 uint16_t knot_dnskey_flags(const knot_rdataset_t *rrs, size_t pos)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 0));
 }
 
 static inline
 uint8_t knot_dnskey_proto(const knot_rdataset_t *rrs, size_t pos)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
-
+	KNOT_RDATASET_CHECK(rrs, pos);
 	return *knot_rdata_offset(rrs, pos, 2);
 }
 
 static inline
 uint8_t knot_dnskey_alg(const knot_rdataset_t *rrs, size_t pos)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	return *knot_rdata_offset(rrs, pos, 3);
 }
 
@@ -53,7 +52,7 @@ static inline
 void knot_dnskey_key(const knot_rdataset_t *rrs, size_t pos, uint8_t **key,
                      uint16_t *key_size)
 {
-	KNOT_RDATASET_CHECK(rrs, pos, return);
+	KNOT_RDATASET_CHECK(rrs, pos);
 	*key = knot_rdata_offset(rrs, pos, 4);
 	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
 	*key_size = rr->len - 4;
