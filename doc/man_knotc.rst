@@ -151,8 +151,8 @@ Actions
   Import a configuration file into the configuration database. Ensure the
   server is not using the configuration database! (*)
 
-**conf-export** *filename*
-  Export the configuration database into a config file. (*)
+**conf-export** [*filename*]
+  Export the configuration database into a config file or stdout. (*)
 
 **conf-list** [*item*]
   List the configuration database sections or section items.

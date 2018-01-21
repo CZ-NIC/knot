@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -978,17 +978,24 @@ static int cmd_conf_import(cmd_args_t *args)
 
 static int cmd_conf_export(cmd_args_t *args)
 {
-	int ret = check_args(args, 1, 1);
+	int ret = check_args(args, 0, 1);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	log_debug("exporting confdb into file '%s'", args->argv[0]);
+	// Stdout is the default output file.
+	const char *file_name = NULL;
+	if (args->argc > 0) {
+		file_name = args->argv[0];
+		log_debug("exporting confdb into file '%s'", file_name);
+	}
 
-	ret = conf_export(conf(), args->argv[0], YP_SNONE);
+	ret = conf_export(conf(), file_name, YP_SNONE);
 
 	if (ret == KNOT_EOK) {
-		log_info("OK");
+		if (args->argc > 0) {
+			log_info("OK");
+		}
 	} else {
 		log_error("export (%s)", knot_strerror(ret));
 	}
@@ -1125,7 +1132,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_CONF_INIT,       "",                                       "Initialize the confdb. (*)" },
 	{ CMD_CONF_CHECK,      "",                                       "Check the server configuration. (*)" },
 	{ CMD_CONF_IMPORT,     "<filename>",                             "Import a config file into the confdb. (*)" },
-	{ CMD_CONF_EXPORT,     "<filename>",                             "Export the confdb into a config file. (*)" },
+	{ CMD_CONF_EXPORT,     "[<filename>]",                           "Export the confdb into a config file or stdout. (*)" },
 	{ CMD_CONF_LIST,       "[<item>...]",                            "List the confdb sections or section items." },
 	{ CMD_CONF_READ,       "[<item>...]",                            "Get the item from the active confdb." },
 	{ CMD_CONF_BEGIN,      "",                                       "Begin a writing confdb transaction." },

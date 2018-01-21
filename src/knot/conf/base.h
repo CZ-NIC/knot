@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -274,7 +274,7 @@ int conf_import(
  * Exports configuration to textual file.
  *
  * \param[in] conf       Configuration.
- * \param[in] file_name  Output filename.
+ * \param[in] file_name  Output filename (stdout is used if NULL).
  * \param[in] style      Formatting style.
  *
  * \return Error code, KNOT_EOK if success.
