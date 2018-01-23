@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #pragma once
 
 #include <assert.h>
+#include <sys/socket.h>
 
 #include "libknot/consts.h"
 #include "libknot/rrset.h"
@@ -36,6 +37,9 @@ typedef struct knot_pkt knot_pkt_t;
 enum knot_edns_const {
 	/*! \brief Supported EDNS version. */
 	KNOT_EDNS_VERSION = 0,
+
+	/*! \brief Bit mask for DO bit. */
+	KNOT_EDNS_DO_MASK = (uint32_t)(1 << 15),
 
 	/*! \brief Minimal UDP payload with EDNS enabled. */
 	KNOT_EDNS_MIN_UDP_PAYLOAD    = 512,
@@ -50,6 +54,7 @@ enum knot_edns_const {
 	KNOT_EDNS_EXT_RCODE_POS            = 5,
 	/*! \brief EDNS OPTION header size. */
 	KNOT_EDNS_OPTION_HDRLEN            = 4,
+
 	/*! \brief Maximal edns client subnet data size (IPv6). */
 	KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET = 20,
 	/*! \brief Maximal size of EDNS client subnet address in bytes (IPv6). */
@@ -97,36 +102,53 @@ int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
 /*!
  * \brief Returns size of the OPT RR in wire format.
  *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ *
  * \param opt_rr  OPT RR to count the wire size of.
  *
  * \return Size of the OPT RR in bytes.
  */
-size_t knot_edns_wire_size(knot_rrset_t *opt_rr);
+static inline
+size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
+{
+	assert(opt_rr != NULL);
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	return KNOT_EDNS_MIN_SIZE + rdata->len;
+}
 
 /*!
  * \brief Returns the Max UDP payload value stored in the OPT RR.
  *
  * \warning This function does not check the parameter, so ensure to check it
  *          before calling the function. It must not be NULL.
- * \note There is an assert() for debug checking of the parameter.
  *
  * \param opt_rr  OPT RR to get the value from.
  *
  * \return Max UDP payload in bytes.
  */
-uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr);
+static inline
+uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr)
+{
+	assert(opt_rr != NULL);
+	return opt_rr->rclass;
+}
 
 /*!
  * \brief Sets the Max UDP payload field in the OPT RR.
  *
  * \warning This function does not check the parameter, so ensure to check it
  *          before calling the function. It must not be NULL.
- * \note There is an assert() for debug checking of the parameter.
  *
  * \param opt_rr   OPT RR to set the value to.
  * \param payload  UDP payload in bytes.
  */
-void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload);
+static inline
+void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload)
+{
+	assert(opt_rr != NULL);
+	opt_rr->rclass = payload;
+}
 
 /*!
  * \brief Returns the Extended RCODE stored in the OPT RR.
@@ -154,7 +176,8 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr);
  *
  * \return 12-bit Extended RCODE.
  */
-static inline uint16_t knot_edns_whole_rcode(uint8_t ext_rcode, uint8_t rcode)
+static inline
+uint16_t knot_edns_whole_rcode(uint8_t ext_rcode, uint8_t rcode)
 {
 	uint16_t high = ext_rcode;
 	return (high << 4) | rcode;
@@ -178,9 +201,10 @@ void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode);
  * \param opt_rr     Position of the OPT RR in packet.
  * \param ext_rcode  Higher 8 bits of Extended RCODE.
  */
-static inline void knot_edns_set_ext_rcode_wire(uint8_t *opt_rr,
-                                                uint8_t ext_rcode)
+static inline
+void knot_edns_set_ext_rcode_wire(uint8_t *opt_rr, uint8_t ext_rcode)
 {
+	assert(opt_rr != NULL);
 	*(opt_rr + KNOT_EDNS_EXT_RCODE_POS) = ext_rcode;
 }
 
@@ -214,25 +238,33 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version);
  *
  * \warning This function does not check the parameter, so ensure to check it
  *          before calling the function. It must not be NULL.
- * \note There is an assert() for debug checking of the parameter.
  *
  * \param opt_rr  OPT RR to get the DO bit from.
  *
  * \return true if the DO bit is set.
  * \return false if the DO bit is not set.
  */
-bool knot_edns_do(const knot_rrset_t *opt_rr);
+static inline
+bool knot_edns_do(const knot_rrset_t *opt_rr)
+{
+	assert(opt_rr != NULL);
+	return opt_rr->ttl & KNOT_EDNS_DO_MASK;
+}
 
 /*!
  * \brief Sets the DO bit in the OPT RR.
  *
  * \warning This function does not check the parameter, so ensure to check it
  *          before calling the function. It must not be NULL.
- * \note There is an assert() for debug checking of the parameter.
  *
  * \param opt_rr  OPT RR to set the DO bit in.
  */
-void knot_edns_set_do(knot_rrset_t *opt_rr);
+static inline
+void knot_edns_set_do(knot_rrset_t *opt_rr)
+{
+	assert(opt_rr != NULL);
+	opt_rr->ttl |= KNOT_EDNS_DO_MASK;
+}
 
 /*!
  * \brief Removes all EDNS options with given \a code.
@@ -404,7 +436,7 @@ static inline int knot_edns_alignment_size(size_t current_pkt_size,
  *
  * \see draft-ietf-dnsop-edns-client-subnet
  */
-struct knot_edns_client_subnet {
+typedef struct {
 	/*! \brief FAMILY */
 	uint16_t family;
 	/*! \brief SOURCE PREFIX-LENGTH */
@@ -413,10 +445,7 @@ struct knot_edns_client_subnet {
 	uint8_t scope_len;
 	/*! \brief ADDRESS */
 	uint8_t address[KNOT_EDNS_CLIENT_SUBNET_ADDRESS_MAXLEN];
-};
-
-typedef struct knot_edns_client_subnet knot_edns_client_subnet_t;
-struct sockaddr_storage;
+} knot_edns_client_subnet_t;
 
 /*!
  * \brief Get the wire size of the EDNS Client Subnet option.

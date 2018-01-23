@@ -31,9 +31,6 @@
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {
-	/*! \brief Bit mask for DO bit. */
-	EDNS_DO_MASK = (uint32_t)(1 << 15),
-
 	/*! \brief Byte offset of the extended RCODE field in TTL. */
 	EDNS_OFFSET_RCODE   = 0,
 	/*! \brief Byte offset of the version field in TTL. */
@@ -76,33 +73,6 @@ int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
 	}
 
 	return ret;
-}
-
-_public_
-size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
-{
-	if (opt_rr == NULL) {
-		return 0;
-	}
-
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	assert(rdata != NULL);
-
-	return KNOT_EDNS_MIN_SIZE + rdata->len;
-}
-
-_public_
-uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr)
-{
-	assert(opt_rr != NULL);
-	return opt_rr->rclass;
-}
-
-_public_
-void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload)
-{
-	assert(opt_rr != NULL);
-	opt_rr->rclass = payload;
 }
 
 _public_
@@ -157,20 +127,6 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 {
 	assert(opt_rr != NULL);
 	set_value_to_ttl(opt_rr, EDNS_OFFSET_VERSION, version);
-}
-
-_public_
-bool knot_edns_do(const knot_rrset_t *opt_rr)
-{
-	assert(opt_rr != NULL);
-	return opt_rr->ttl & EDNS_DO_MASK;
-}
-
-_public_
-void knot_edns_set_do(knot_rrset_t *opt_rr)
-{
-	assert(opt_rr != NULL);
-	opt_rr->ttl |= EDNS_DO_MASK;
 }
 
 /*!
