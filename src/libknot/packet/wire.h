@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,9 +24,11 @@
 
 #pragma once
 
+#include <assert.h>
 #include <stdint.h>
-#include <stdlib.h>
+
 #include "libknot/attribute.h"
+#include "libknot/wire.h"
 
 /*! \brief Offset of DNS header fields in wireformat. */
 enum knot_wire_offsets {
@@ -62,7 +64,10 @@ enum knot_wire_sizes {
  *
  * \return DNS packet ID.
  */
-uint16_t knot_wire_get_id(const uint8_t *packet);
+static inline uint16_t knot_wire_get_id(const uint8_t *packet)
+{
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ID);
+}
 
 /*!
  * \brief Sets the ID to the wire format of the packet.
@@ -70,7 +75,10 @@ uint16_t knot_wire_get_id(const uint8_t *packet);
  * \param packet Wire format of the packet.
  * \param id DNS packet ID.
  */
-void knot_wire_set_id(uint8_t *packet, uint16_t id);
+static inline void knot_wire_set_id(uint8_t *packet, uint16_t id)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ID, id);
+}
 
 /*!
  * \brief Returns the first byte of flags from wire format of the packet.
@@ -126,7 +134,10 @@ static inline uint8_t knot_wire_set_flags2(uint8_t *packet, uint8_t flags2)
  *
  * \return QDCOUNT (count of Question entries in the packet).
  */
-uint16_t knot_wire_get_qdcount(const uint8_t *packet);
+static inline uint16_t knot_wire_get_qdcount(const uint8_t *packet)
+{
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT);
+}
 
 /*!
  * \brief Sets the QDCOUNT (count of Question entries) to wire format of the
@@ -135,12 +146,19 @@ uint16_t knot_wire_get_qdcount(const uint8_t *packet);
  * \param packet Wire format of the packet.
  * \param qdcount QDCOUNT (count of Question entries in the packet).
  */
-void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount);
+static inline void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT, qdcount);
+}
 
 /*!
  * \brief Adds to QDCOUNT.
  */
-void knot_wire_add_qdcount(uint8_t *packet, int16_t n);
+static inline void knot_wire_add_qdcount(uint8_t *packet, int16_t n)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT,
+	                    knot_wire_get_qdcount(packet) + n);
+}
 
 /*!
  * \brief Returns the ANCOUNT (count of Answer entries) from wire format of
@@ -150,7 +168,10 @@ void knot_wire_add_qdcount(uint8_t *packet, int16_t n);
  *
  * \return ANCOUNT (count of Answer entries in the packet).
  */
-uint16_t knot_wire_get_ancount(const uint8_t *packet);
+static inline uint16_t knot_wire_get_ancount(const uint8_t *packet)
+{
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT);
+}
 
 /*!
  * \brief Sets the ANCOUNT (count of Answer entries) to wire format of the
@@ -159,12 +180,19 @@ uint16_t knot_wire_get_ancount(const uint8_t *packet);
  * \param packet Wire format of the packet.
  * \param ancount ANCOUNT (count of Answer entries in the packet).
  */
-void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount);
+static inline void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT, ancount);
+}
 
 /*!
  * \brief Adds to ANCOUNT.
  */
-void knot_wire_add_ancount(uint8_t *packet, int16_t n);
+static inline void knot_wire_add_ancount(uint8_t *packet, int16_t n)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT,
+	                    knot_wire_get_ancount(packet) + n);
+}
 
 /*!
  * \brief Returns the NSCOUNT (count of Authority entries) from wire format of
@@ -174,7 +202,10 @@ void knot_wire_add_ancount(uint8_t *packet, int16_t n);
  *
  * \return NSCOUNT (count of Authority entries in the packet).
  */
-uint16_t knot_wire_get_nscount(const uint8_t *packet);
+static inline uint16_t knot_wire_get_nscount(const uint8_t *packet)
+{
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT);
+}
 
 /*!
  * \brief Sets the NSCOUNT (count of Authority entries) to wire format of the
@@ -183,12 +214,19 @@ uint16_t knot_wire_get_nscount(const uint8_t *packet);
  * \param packet Wire format of the packet.
  * \param nscount NSCOUNT (count of Authority entries in the packet).
  */
-void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount);
+static inline void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT, nscount);
+}
 
 /*!
  * \brief Adds to NSCOUNT.
  */
-void knot_wire_add_nscount(uint8_t *packet, int16_t n);
+static inline void knot_wire_add_nscount(uint8_t *packet, int16_t n)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT,
+	                    knot_wire_get_nscount(packet) + n);
+}
 
 /*!
  * \brief Returns the ARCOUNT (count of Additional entries) from wire format of
@@ -198,7 +236,10 @@ void knot_wire_add_nscount(uint8_t *packet, int16_t n);
  *
  * \return ARCOUNT (count of Additional entries in the packet).
  */
-uint16_t knot_wire_get_arcount(const uint8_t *packet);
+static inline uint16_t knot_wire_get_arcount(const uint8_t *packet)
+{
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT);
+}
 
 /*!
  * \brief Sets the ARCOUNT (count of Additional entries) to wire format of the
@@ -207,12 +248,19 @@ uint16_t knot_wire_get_arcount(const uint8_t *packet);
  * \param packet Wire format of the packet.
  * \param arcount ARCOUNT (count of Additional entries in the packet).
  */
-void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount);
+static inline void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT, arcount);
+}
 
 /*!
  * \brief Adds to ARCOUNT.
  */
-void knot_wire_add_arcount(uint8_t *packet, int16_t n);
+static inline void knot_wire_add_arcount(uint8_t *packet, int16_t n)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT,
+	                    knot_wire_get_arcount(packet) + n);
+}
 
 /*
  * Packet header flags manipulation functions.
@@ -885,6 +933,11 @@ enum knot_wire_pointer_consts {
 	KNOT_WIRE_PTR_MAX = (uint16_t)0x3FFF
 };
 
+static inline int knot_wire_is_pointer(const uint8_t *pos)
+{
+	return pos && ((pos[0] & KNOT_WIRE_PTR) == KNOT_WIRE_PTR);
+}
+
 /*!
  * \brief Creates a DNS packet pointer and stores it in wire format.
  *
@@ -892,13 +945,17 @@ enum knot_wire_pointer_consts {
  * \param ptr Relative position of the item to which the pointer should point in
  *            the wire format of the packet.
  */
-void knot_wire_put_pointer(uint8_t *pos, uint16_t ptr);
-
-uint16_t knot_wire_get_pointer(const uint8_t *pos);
-
-static inline int knot_wire_is_pointer(const uint8_t *pos)
+static inline void knot_wire_put_pointer(uint8_t *pos, uint16_t ptr)
 {
-	return pos && ((pos[0] & KNOT_WIRE_PTR) == KNOT_WIRE_PTR);
+	knot_wire_write_u16(pos, ptr);		// Write pointer offset.
+	assert((pos[0] & KNOT_WIRE_PTR) == 0);	// Check for maximal offset.
+	pos[0] |= KNOT_WIRE_PTR;		// Add pointer mark.
+}
+
+static inline uint16_t knot_wire_get_pointer(const uint8_t *pos)
+{
+	assert(knot_wire_is_pointer(pos));			// Check pointer.
+	return (knot_wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
 }
 
 _pure_ _mustcheck_

@@ -150,7 +150,6 @@ libknot_la_SOURCES =				\
 	libknot/packet/compr.c			\
 	libknot/packet/pkt.c			\
 	libknot/packet/rrset-wire.c		\
-	libknot/packet/wire.c			\
 	libknot/rdataset.c			\
 	libknot/rrset-dump.c			\
 	libknot/rrset.c				\
