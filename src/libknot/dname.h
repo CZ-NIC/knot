@@ -28,10 +28,17 @@
 #include <stdbool.h>
 
 #include "libknot/attribute.h"
+#include "libknot/consts.h"
 #include "libknot/mm_ctx.h"
 
 /*! \brief Type representing a domain name in wire format. */
 typedef uint8_t knot_dname_t;
+
+/*! \brief Local domain name storage. */
+typedef union {
+	knot_dname_t *dname;
+	uint8_t data[KNOT_DNAME_MAXLEN];
+} knot_dname_storage_t;
 
 /*!
  * \brief Check dname on the wire for constraints.
@@ -375,25 +382,28 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
                      uint8_t *wire);
 
 /*!
- * \brief Convert domain name from wire to lookup format.
+ * \brief Convert domain name from wire to the lookup format.
  *
  * Formats names from rightmost label to the leftmost, separated by the lowest
  * possible character (\\x00). Sorting such formatted names also gives
- * correct canonical order (for NSEC/NSEC3).
+ * correct canonical order (for NSEC/NSEC3). The first byte of the output
+ * contains length of the output.
  *
- * Example:
- * Name: lake.example.com. Wire: \\x04lake\\x07example\\x03com\\x00
- * Lookup format \\x11com\\x00example\\x00lake\\x00
+ * Examples:
+ * Name:   lake.example.com.
+ * Wire:   \\x04lake\\x07example\\x03com\\x00
+ * Lookup: \\x11com\\x00example\\x00lake\\x00
  *
- * Maximum length of such a domain name is KNOT_DNAME_MAXLEN characters.
+ * Name:   .
+ * Wire:   \\x00
+ * Lookup: \\x00
  *
- * \param dst Memory to store converted name into. dst[0] will contain the length.
- * \param src Source domain name.
- * \param pkt Source name packet (NULL if not any).
+ * \param src      Source domain name.
+ * \param storage  Memory to store converted name into.
  *
- * \retval KNOT_EOK if successful
- * \retval KNOT_EINVAL on invalid parameters
+ * \retval Lookup format if successful.
+ * \retval NULL on invalid parameters.
  */
-int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt);
+uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t *storage);
 
 /*! @} */

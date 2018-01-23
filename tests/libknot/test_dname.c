@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,18 +106,18 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
 
 static void test_dname_lf(void)
 {
-	uint8_t out[KNOT_DNAME_MAXLEN] = { 0 };
+	knot_dname_storage_t storage;
 
 	/* Maximal DNAME length */
 	const knot_dname_t *in = (uint8_t *)
-		"\x3f""IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
-		"\x3f""HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH"
-		"\x3f""GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
-		"\x1f""FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
-		"\x0f""EEEEEEEEEEEEEEE"
-		"\x07""DDDDDDD"
-		"\x03""CCC"
-		"\x01""B"
+		"\x3f""iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
+		"\x3f""hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
+		"\x3f""ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg"
+		"\x1f""fffffffffffffffffffffffffffffff"
+		"\x0f""eeeeeeeeeeeeeee"
+		"\x07""ddddddd"
+		"\x03""ccc"
+		"\x01""b"
 		"\x00";
 	const uint8_t *ref = (uint8_t *)
 		"\xFE"
@@ -129,13 +129,15 @@ static void test_dname_lf(void)
 		"ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg""\x00"
 		"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh""\x00"
 		"iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii""\x00";
-	ok(knot_dname_lf(out, in, NULL) == 0, "knot_dname_lf: max-length DNAME success on return");
+	uint8_t *out = knot_dname_lf(in, &storage);
+	ok(out != NULL, "knot_dname_lf: max-length DNAME success on return");
 	ok(memcmp(ref, out, KNOT_DNAME_MAXLEN) == 0, "knot_dname_lf: max-length DNAME converted");
 
 	/* Zero label DNAME*/
 	in = (uint8_t *) "\x00";
-	ok(knot_dname_lf(out, in, NULL) == 0, "knot_dname_lf: zero-label DNAME success on return");
-	ok(out[0] == '\x01' && out[1] == '\x00', "knot_dname_lf: zero-label DNAME converted");
+	out = knot_dname_lf(in, &storage);
+	ok(out != NULL, "knot_dname_lf: zero-label DNAME success on return");
+	ok(out[0] == '\x00', "knot_dname_lf: zero-label DNAME converted");
 }
 
 int main(int argc, char *argv[])

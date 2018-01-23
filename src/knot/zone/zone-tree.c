@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,8 +48,9 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 	}
 
 	assert(node->owner);
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, node->owner, NULL);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(node->owner, &lf_storage);
+	assert(lf);
 
 	*trie_get_ins(tree, (char *)lf + 1, *lf) = node;
 
@@ -66,8 +67,9 @@ zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
 		return NULL;
 	}
 
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, owner, NULL);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(owner, &lf_storage);
+	assert(lf);
 
 	trie_val_t *val = trie_get_try(tree, (char *)lf + 1, *lf);
 	if (val == NULL) {
@@ -90,8 +92,9 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 		return KNOT_ENONODE;
 	}
 
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, owner, NULL);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(owner, &lf_storage);
+	assert(lf);
 
 	trie_val_t *fval = NULL;
 	int ret = trie_get_leq(tree, (char *)lf + 1, *lf, &fval);
@@ -133,8 +136,9 @@ static void remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 		return;
 	}
 
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, owner, NULL);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(owner, &lf_storage);
+	assert(lf);
 
 	trie_val_t *rval = trie_get_try(tree, (char *)lf + 1, *lf);
 	if (rval != NULL) {

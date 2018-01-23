@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -705,8 +705,9 @@ static int rr_already_signed(const knot_rrset_t *rrset, trie_t *t,
 	assert(t);
 	*rr_signed = false;
 	// Create a key = RRSet owner converted to sortable format
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, rrset->owner, NULL);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(rrset->owner, &lf_storage);
+	assert(lf);
 	trie_val_t stored_info = (signed_info_t *)trie_get_try(t, (char *)lf+1,
 	                                                      *lf);
 	if (stored_info == NULL) {

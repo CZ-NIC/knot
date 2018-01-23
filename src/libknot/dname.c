@@ -646,26 +646,27 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 	assert(d1 != NULL || d2 != NULL);
 
 	/* Convert to lookup format. */
-	uint8_t d1_lf[KNOT_DNAME_MAXLEN], d2_lf[KNOT_DNAME_MAXLEN];
-	if (knot_dname_lf(d1_lf, d1, NULL) < 0 || knot_dname_lf(d2_lf, d2, NULL) < 0) {
-		assert(0); /* This must not happened as the d1, d2 are checked. */
-		return KNOT_EINVAL;
-	}
+	knot_dname_storage_t lf1_storage;
+	knot_dname_storage_t lf2_storage;
 
+	uint8_t *lf1 = knot_dname_lf(d1, &lf1_storage);
+	uint8_t *lf2 = knot_dname_lf(d2, &lf2_storage);
+	assert(lf1 && lf2);
+// TODO: lowercase?
 	/* Compare common part. */
-	uint8_t common = d1_lf[0];
-	if (common > d2_lf[0]) {
-		common = d2_lf[0];
+	uint8_t common = lf1[0];
+	if (common > lf2[0]) {
+		common = lf2[0];
 	}
-	int ret = memcmp(d1_lf + 1, d2_lf + 1, common);
+	int ret = memcmp(lf1 + 1, lf2 + 1, common);
 	if (ret != 0) {
 		return ret;
 	}
 
 	/* If they match, compare lengths. */
-	if (d1_lf[0] < d2_lf[0]) {
+	if (lf1[0] < lf2[0]) {
 		return -1;
-	} else if (d1_lf[0] > d2_lf[0]) {
+	} else if (lf1[0] > lf2[0]) {
 		return 1;
 	} else {
 		return 0;
@@ -790,39 +791,29 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
 }
 
 _public_
-int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
+uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t *storage)
 {
-	if (dst == NULL || src == NULL)
-		return KNOT_EINVAL;
-
-	uint8_t lf[KNOT_DNAME_MAXLEN]; /* Holder for the name in lookup format */
-	uint8_t lf_idx = KNOT_DNAME_MAXLEN - 1; /* Starting writing from the end */
-
-	lf[lf_idx] = '\0';
-	uint8_t len = 0; /* Length of the dname in lookup format */
-
-	const uint8_t *l = src;
-	while (*l != 0) { /* Iterate through labels */
-
-		lf_idx -= *l + 1;
-		lf[lf_idx] = '\0';
-
-		for (int i = 1; i <= *l; i++) {
-			lf[lf_idx + i] = knot_tolower(l[i]);
-		}
-
-		len += *l + 1;
-
-		l = knot_wire_next_label(l, pkt);
+	if (src == NULL || storage == NULL) {
+		return NULL;
 	}
-	/* Root label special case */
-	if (len == 0) {
-		--lf_idx;
-		len = 1;
-	}
-	/* First byte is the length of the name in lf */
-	lf[lf_idx] = len;
-	memcpy(dst, lf + lf_idx, len + 1);
 
-	return KNOT_EOK;
+	/* Writing from the end. */
+	storage->data[KNOT_DNAME_MAXLEN - 1] = '\0';
+	size_t idx = KNOT_DNAME_MAXLEN - 1;
+
+	while (*src != 0) {
+		size_t len = *src + 1;
+
+		assert(idx >= len);
+		idx -= len;
+		memcpy(&storage->data[idx], src, len);
+		storage->data[idx] = '\0';
+
+		src += len;
+	}
+
+	assert(KNOT_DNAME_MAXLEN >= 1 + idx);
+	storage->data[idx] = KNOT_DNAME_MAXLEN - 1 - idx;
+
+	return &storage->data[idx];
 }

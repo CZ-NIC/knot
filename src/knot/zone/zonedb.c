@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -69,8 +69,9 @@ int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 	}
 
 	assert(zone->name);
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, zone->name, NULL);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(zone->name, &lf_storage);
+	assert(lf);
 
 	*trie_get_ins(db->trie, (char *)lf + 1, *lf) = zone;
 
@@ -83,8 +84,9 @@ int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
 		return KNOT_EINVAL;
 	}
 
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, zone_name, NULL);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(zone_name, &lf_storage);
+	assert(lf);
 
 	trie_val_t *rval = trie_get_try(db->trie, (char *)lf + 1, *lf);
 	if (rval == NULL) {
@@ -100,8 +102,9 @@ zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 		return NULL;
 	}
 
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, zone_name, NULL);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(zone_name, &lf_storage);
+	assert(lf);
 
 	trie_val_t *val = trie_get_try(db->trie, (char *)lf + 1, *lf);
 	if (val == NULL) {
@@ -117,10 +120,10 @@ zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *zone_name
 		return NULL;
 	}
 
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-
 	while (true) {
-		knot_dname_lf(lf, zone_name, NULL);
+		knot_dname_storage_t lf_storage;
+		uint8_t *lf = knot_dname_lf(zone_name, &lf_storage);
+		assert(lf);
 
 		trie_val_t *val = trie_get_try(db->trie, (char *)lf + 1, *lf);
 		if (val != NULL) {
