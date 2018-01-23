@@ -432,48 +432,6 @@ int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size)
 }
 
 _public_
-uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
-{
-	if (pkt == NULL || pkt->qname_size == 0) {
-		return 0;
-	}
-
-	return pkt->qname_size + 2 * sizeof(uint16_t);
-}
-
-_public_
-const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
-{
-	if (pkt == NULL || pkt->qname_size == 0) {
-		return NULL;
-	}
-
-	return pkt->wire + KNOT_WIRE_HEADER_SIZE;
-}
-
-_public_
-uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
-{
-	if (pkt == NULL || pkt->qname_size == 0) {
-		return 0;
-	}
-
-	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size;
-	return knot_wire_read_u16(pkt->wire + off);
-}
-
-_public_
-uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
-{
-	if (pkt == NULL || pkt->qname_size == 0) {
-		return 0;
-	}
-
-	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size + sizeof(uint16_t);
-	return knot_wire_read_u16(pkt->wire + off);
-}
-
-_public_
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 {
 	if (pkt == NULL || section_id < pkt->current) {
@@ -593,37 +551,6 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	}
 
 	return KNOT_EOK;
-}
-
-_public_
-const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
-                                          knot_section_t section_id)
-{
-	if (pkt == NULL) {
-		return NULL;
-	}
-
-	return &pkt->sections[section_id];
-}
-
-_public_
-const knot_rrset_t *knot_pkt_rr(const knot_pktsection_t *section, uint16_t i)
-{
-	if (section == NULL) {
-		return NULL;
-	}
-
-	return section->pkt->rr + section->pos + i;
-}
-
-_public_
-uint16_t knot_pkt_rr_offset(const knot_pktsection_t *section, uint16_t i)
-{
-	if (section == NULL || section->pkt == NULL) {
-		return -1;
-	}
-
-	return section->pkt->rr_info[section->pos + i].pos;
 }
 
 _public_

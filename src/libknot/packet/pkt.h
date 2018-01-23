@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,8 +24,8 @@
 
 #pragma once
 
+#include <assert.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "libknot/consts.h"
 #include "libknot/dname.h"
@@ -34,6 +34,7 @@
 #include "libknot/rrtype/opt.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"
+#include "libknot/wire.h"
 
 /* Number of packet sections (ANSWER, AUTHORITY, ADDITIONAL). */
 #define KNOT_PKT_SECTIONS 3
@@ -159,17 +160,43 @@ int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size);
 /*
  * Packet QUESTION accessors.
  */
-/*! \todo Documentation */
-uint16_t knot_pkt_question_size(const knot_pkt_t *pkt);
+static inline uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
+{
+	if (pkt == NULL || pkt->qname_size == 0) {
+		return 0;
+	}
 
-/*! \todo Documentation */
-const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt);
+	return pkt->qname_size + 2 * sizeof(uint16_t);
+}
 
-/*! \todo Documentation */
-uint16_t knot_pkt_qtype(const knot_pkt_t *pkt);
+static inline const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
+{
+	if (pkt == NULL || pkt->qname_size == 0) {
+		return NULL;
+	}
 
-/*! \todo Documentation */
-uint16_t knot_pkt_qclass(const knot_pkt_t *pkt);
+	return pkt->wire + KNOT_WIRE_HEADER_SIZE;
+}
+
+static inline uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
+{
+	if (pkt == NULL || pkt->qname_size == 0) {
+		return 0;
+	}
+
+	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size;
+	return knot_wire_read_u16(pkt->wire + off);
+}
+
+static inline uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
+{
+	if (pkt == NULL || pkt->qname_size == 0) {
+		return 0;
+	}
+
+	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size + sizeof(uint16_t);
+	return knot_wire_read_u16(pkt->wire + off);
+}
 
 /*
  * Packet writing API.
@@ -219,14 +246,28 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
                  uint16_t flags);
 
 /*! \brief Get description of the given packet section. */
-const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
-                                          knot_section_t section_id);
+static inline const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
+                                                        knot_section_t section_id)
+{
+	assert(pkt);
+	return &pkt->sections[section_id];
+}
 
 /*! \brief Get RRSet from the packet section. */
-const knot_rrset_t *knot_pkt_rr(const knot_pktsection_t *section, uint16_t i);
+static inline const knot_rrset_t *knot_pkt_rr(const knot_pktsection_t *section,
+                                              uint16_t i)
+{
+	assert(section);
+	return section->pkt->rr + section->pos + i;
+}
 
 /*! \brief Get RRSet offset in the packet wire. */
-uint16_t knot_pkt_rr_offset(const knot_pktsection_t *section, uint16_t i);
+static inline uint16_t knot_pkt_rr_offset(const knot_pktsection_t *section,
+                                          uint16_t i)
+{
+	assert(section);
+	return section->pkt->rr_info[section->pos + i].pos;
+}
 
 /*
  * Packet parsing API.
