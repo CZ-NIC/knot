@@ -517,12 +517,9 @@ static void check_reply_question(const knot_pkt_t *reply,
 		return;
 	}
 
-	int name_diff = knot_dname_cmp(knot_pkt_qname(reply),
-	                               knot_pkt_qname(query));
-
-	if (knot_pkt_qclass(reply) != knot_pkt_qclass(query) ||
-	    knot_pkt_qtype(reply)  != knot_pkt_qtype(query) ||
-	    name_diff != 0) {
+	if (!knot_dname_is_equal(knot_pkt_qname(reply), knot_pkt_qname(query)) ||
+	    knot_pkt_qclass(reply) != knot_pkt_qclass(query) ||
+	    knot_pkt_qtype(reply)  != knot_pkt_qtype(query)) {
 		WARN("query/response question sections are different\n");
 		return;
 	}

@@ -822,7 +822,7 @@ static void test_chain(void)
 		knot_dname_t *dname = NULL;
 		ret = knot_edns_chain_parse(&dname, (uint8_t *)t->dname, t->opt_len);
 		is_int(KNOT_EOK, ret, "%s: dname %s, parse, return", __func__, t->msg);
-		ok(knot_dname_cmp(dname, t->dname) == 0, "%s: dname %s, parse, value",
+		ok(knot_dname_is_equal(dname, t->dname), "%s: dname %s, parse, value",
 		                                         __func__, t->msg);
 		knot_dname_free(&dname, NULL);
 	}

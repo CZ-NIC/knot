@@ -469,7 +469,7 @@ static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parent
 	zone_node_t *next_node = NULL;
 	const uint8_t *parent = knot_wire_next_label(node->owner, NULL);
 
-	if (knot_dname_cmp(zone->apex->owner, parent) == 0) {
+	if (knot_dname_is_equal(zone->apex->owner, parent)) {
 		node_set_parent(node, zone->apex);
 
 		// check if the node is not wildcard child of the parent

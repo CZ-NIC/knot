@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,8 @@ static void _test_nsec_next(const char *msg,
                             const knot_dname_t *expected)
 {
 	knot_dname_t *next = online_nsec_next(input, apex);
-	ok(next != NULL && knot_dname_cmp(next, expected) == 0, "nsec_next, %s", msg);
+	ok(next != NULL && knot_dname_is_equal(next, expected),
+	   "nsec_next, %s", msg);
 	knot_dname_free(&next, NULL);
 }
 

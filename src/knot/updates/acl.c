@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,9 +39,9 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 				continue;
 			}
 
-			/* Compare key names. */
+			/* Compare key names (both in lower-case). */
 			const knot_dname_t *key_name = conf_dname(&key_val);
-			if (knot_dname_cmp(key_name, tsig->name) != 0) {
+			if (!knot_dname_is_equal(key_name, tsig->name)) {
 				conf_val_next(&key_val);
 				continue;
 			}

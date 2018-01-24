@@ -642,8 +642,11 @@ void knot_dname_free(knot_dname_t **name, knot_mm_t *mm)
 _public_
 int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	/* This would be hard to catch since -1 is a good result, assert instead. */
-	assert(d1 != NULL || d2 != NULL);
+	if (d1 == NULL) {
+		return -1;
+	} else if (d2 == NULL) {
+		return 1;
+	}
 
 	/* Convert to lookup format. */
 	knot_dname_storage_t lf1_storage;
@@ -652,7 +655,7 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 	uint8_t *lf1 = knot_dname_lf(d1, &lf1_storage);
 	uint8_t *lf2 = knot_dname_lf(d2, &lf2_storage);
 	assert(lf1 && lf2);
-// TODO: lowercase?
+
 	/* Compare common part. */
 	uint8_t common = lf1[0];
 	if (common > lf2[0]) {
@@ -676,8 +679,9 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 _public_
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	assert(d1);
-	assert(d2);
+	if (d1 == NULL || d2 == NULL) {
+		return false;
+	}
 
 	while (*d1 != '\0' || *d2 != '\0') {
 		if (label_is_equal(d1, d2)) {
@@ -694,8 +698,9 @@ bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 _public_
 bool knot_dname_label_is_equal(const uint8_t *label1, const uint8_t *label2)
 {
-	assert(label1);
-	assert(label2);
+	if (label1 == NULL || label2 == NULL) {
+		return false;
+	}
 
 	/* Check that they have the same length */
 	if (*label1 != *label2) {

@@ -204,7 +204,7 @@ static bool check_key_zone(const knot_db_val_t *key, const knot_dname_t *zone_na
 	if (key->len < 2 || *(uint8_t *)key->data == KASPDBKEY_POLICYLAST) {
 		return false;
 	}
-	return (knot_dname_cmp(key->data + 1, zone_name) == 0);
+	return knot_dname_is_equal(key->data + 1, zone_name);
 }
 
 static int serialize_key_params(const key_params_t *params, const knot_dname_t *dname, knot_db_val_t *key, knot_db_val_t *val)
@@ -722,7 +722,7 @@ int kasp_db_list_zones(kasp_db_t *db, list_t *dst)
 			ptrnode_t *n;
 			WALK_LIST(n, *dst) {
 				knot_dname_t *exist_dn = (knot_dname_t *)n->d;
-				if (knot_dname_cmp(key_dn, exist_dn) == 0) {
+				if (knot_dname_is_equal(key_dn, exist_dn)) {
 					key_dn = NULL;
 					break;
 				}

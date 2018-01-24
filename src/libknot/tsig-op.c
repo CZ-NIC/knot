@@ -65,7 +65,7 @@ static int check_key(const knot_rrset_t *tsig_rr, const knot_tsig_key_t *tsig_ke
 		return KNOT_EMALF;
 	}
 
-	if (knot_dname_cmp(tsig_name, tsig_key->name) != 0) {
+	if (!knot_dname_is_equal(tsig_name, tsig_key->name)) {
 		return KNOT_TSIG_EBADKEY;
 	}
 

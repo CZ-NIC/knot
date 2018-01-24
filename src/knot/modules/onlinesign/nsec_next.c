@@ -98,7 +98,7 @@ knot_dname_t *online_nsec_next(const knot_dname_t *dname, const knot_dname_t *ap
 	// find apex position in the buffer
 	size_t apex_len = knot_dname_size(apex);
 	const uint8_t *apex_pos = copy + sizeof(copy) - apex_len;
-	assert(knot_dname_cmp(apex, apex_pos) == 0);
+	assert(knot_dname_is_equal(apex, apex_pos));
 
 	// find first label which can be incremented
 	while (pos != apex_pos) {
