@@ -42,7 +42,11 @@ static bool inc_label(const uint8_t *buffer, uint8_t **label_ptr)
 
 	// increase in place
 	if (scan >= first) {
-		*scan += 1;
+		if (*scan == 'A' - 1) {
+			*scan = 'Z' + 1;
+		} else {
+			*scan += 1;
+		}
 		memset(scan + 1, 0x00, last - scan);
 		return true;
 	}
