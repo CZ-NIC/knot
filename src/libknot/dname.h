@@ -312,18 +312,6 @@ _pure_
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
- * \brief Compares two domain name labels (case insensitive).
- *
- * \param label1  First label.
- * \param label2  Second label.
- *
- * \retval true if the labels are identical
- * \retval false if the labels are NOT identical
- */
-_pure_
-bool knot_dname_label_is_equal(const uint8_t *label1, const uint8_t *label2);
-
-/*!
  * \brief Count length of the N first labels.
  *
  * \param name     Domain name.

@@ -727,28 +727,6 @@ bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 }
 
 _public_
-bool knot_dname_label_is_equal(const uint8_t *label1, const uint8_t *label2)
-{
-	if (label1 == NULL || label2 == NULL) {
-		return false;
-	}
-
-	/* Check that they have the same length */
-	if (*label1 != *label2) {
-		return false;
-	}
-
-	uint8_t len = *label1;
-	for (uint8_t i = 1; i <= len; i++) {
-		if (knot_tolower(label1[i]) != knot_tolower(label2[i])) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-_public_
 size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt)
 {
 	if (name == NULL) {

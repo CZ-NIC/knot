@@ -226,8 +226,8 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			flags |= KNOT_PF_NOTRUNC;
 		}
 
-		uint16_t hint = knot_pkt_compr_hint(info, KNOT_COMPR_HINT_RDATA +
-		                                    glue->ns_pos);
+		uint16_t hint = knot_compr_hint(info, KNOT_COMPR_HINT_RDATA +
+		                                glue->ns_pos);
 		knot_rrset_t rrsigs = node_rrset(glue->node, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
 			knot_rrset_t rrset = node_rrset(glue->node, ar_type_list[k]);

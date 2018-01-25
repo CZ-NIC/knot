@@ -147,7 +147,6 @@ libknot_la_SOURCES =				\
 	libknot/error.c				\
 	libknot/db/db_lmdb.c			\
 	libknot/db/db_trie.c			\
-	libknot/packet/compr.c			\
 	libknot/packet/pkt.c			\
 	libknot/packet/rrset-wire.c		\
 	libknot/rdataset.c			\

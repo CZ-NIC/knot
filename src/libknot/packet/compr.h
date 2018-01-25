@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include "libknot/dname.h"
-#include "libknot/rrset.h"
+#include <stdint.h>
+
 #include "libknot/packet/wire.h"
 
 /*! \brief Compression hint type. */
@@ -75,21 +75,9 @@ typedef struct knot_compr {
 } knot_compr_t;
 
 /*!
- * \brief Write compressed domain name to the destination wire.
- *
- * \param dname Name to be written.
- * \param dst Destination wire.
- * \param max Maximum number of bytes available.
- * \param compr Compression context (NULL for no compression)
- * \return Number of written bytes or an error.
+ * \brief Retrieve compression hint from given offset.
  */
-int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
-                         knot_compr_t *compr);
-
-/*! \brief Retrieve compression hint from given offset.
- *  \todo More detailed documentation.
- */
-static inline uint16_t knot_pkt_compr_hint(const knot_rrinfo_t *info, uint16_t hint_id)
+static inline uint16_t knot_compr_hint(const knot_rrinfo_t *info, uint16_t hint_id)
 {
 	if (hint_id < KNOT_COMPR_HINT_COUNT) {
 		return info->compress_ptr[hint_id];
@@ -98,14 +86,15 @@ static inline uint16_t knot_pkt_compr_hint(const knot_rrinfo_t *info, uint16_t h
 	}
 }
 
-/*! \brief Store compression hint for given offset.
- *  \todo More detailed documentation.
+/*!
+ * \brief Store compression hint for given offset.
  */
-static inline void knot_pkt_compr_hint_set(knot_rrinfo_t *info, uint16_t hint_id,
-                                           uint16_t val, uint16_t len)
+static inline void knot_compr_hint_set(knot_rrinfo_t *info, uint16_t hint_id,
+                                       uint16_t val, uint16_t len)
 {
 	if ((hint_id < KNOT_COMPR_HINT_COUNT) && (val + len < KNOT_WIRE_PTR_MAX)) {
 		info->compress_ptr[hint_id] = val;
 	}
 }
+
 /*! @} */

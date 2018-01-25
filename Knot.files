@@ -344,7 +344,6 @@ src/libknot/error.h
 src/libknot/libknot.h
 src/libknot/lookup.h
 src/libknot/mm_ctx.h
-src/libknot/packet/compr.c
 src/libknot/packet/compr.h
 src/libknot/packet/pkt.c
 src/libknot/packet/pkt.h
