@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -320,7 +320,7 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
-static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx)
+static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx)
 {
 	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 	server_t *server = qdata->params->server;
@@ -343,10 +343,8 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_layer_
 	 * Already checked for absence of compression and length.
 	 */
 	memcpy(qdata->extra->orig_qname, qname, query->qname_size);
-	ret = process_query_qname_case_lower((knot_pkt_t *)query);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	process_query_qname_case_lower(query);
+
 	/* Find zone for QNAME. */
 	qdata->extra->zone = answer_zone_find(query, server->zone_db);
 
@@ -733,22 +731,6 @@ fail:
 	qdata->rcode = KNOT_RCODE_SERVFAIL;
 	qdata->rcode_tsig = KNOT_RCODE_NOERROR; /* Don't sign again. */
 	return ret;
-}
-
-void process_query_qname_case_restore(knot_pkt_t *pkt, knotd_qdata_t *qdata)
-{
-	/* If original QNAME is empty, Query is either unparsed or for root domain.
-	 * Either way, letter case doesn't matter. */
-	if (qdata->extra->orig_qname[0] != '\0') {
-		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
-		       qdata->extra->orig_qname, qdata->query->qname_size);
-	}
-}
-
-int process_query_qname_case_lower(knot_pkt_t *pkt)
-{
-	knot_dname_t *qname = (knot_dname_t *)knot_pkt_qname(pkt);
-	return knot_dname_to_lower(qname);
 }
 
 /*! \brief Synthesize RRSIG for given parameters, store in 'qdata' for later use */

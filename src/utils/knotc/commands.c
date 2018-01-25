@@ -515,12 +515,12 @@ static int zone_exec(cmd_args_t *args, int (*fcn)(const knot_dname_t *, void *),
 		uint8_t id[KNOT_DNAME_MAXLEN];
 
 		for (int i = 0; i < args->argc; i++) {
-			if (knot_dname_from_str(id, args->argv[i], sizeof(id)) == NULL ||
-			    knot_dname_to_lower(id) != KNOT_EOK) {
+			if (knot_dname_from_str(id, args->argv[i], sizeof(id)) == NULL) {
 				log_zone_str_error(args->argv[i], "invalid name");
 				failed = true;
 				continue;
 			}
+			knot_dname_to_lower(id);
 
 			if (!conf_rawid_exists(conf(), C_ZONE, id, knot_dname_size(id))) {
 				log_zone_error(id, "%s", knot_strerror(KNOT_ENOZONE));

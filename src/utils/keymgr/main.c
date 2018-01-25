@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -95,7 +95,7 @@ static int key_command(int argc, char *argv[], int optind)
 	if (zone_name == NULL) {
 		return KNOT_ENOMEM;
 	}
-	(void)knot_dname_to_lower(zone_name);
+	knot_dname_to_lower(zone_name);
 
 	kdnssec_ctx_t kctx = { 0 };
 

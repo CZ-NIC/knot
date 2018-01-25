@@ -626,8 +626,6 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 		return KNOT_EMALF; \
 	} else if (!check_func(rr)) { \
 		return KNOT_EMALF; \
-	} else { \
-		(pkt)->var = rr; \
 	}
 
 /*! \brief Check constraints (position, uniqueness, validity) for special types
@@ -640,6 +638,7 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 	switch (rr->type) {
 	case KNOT_RRTYPE_TSIG:
 		CHECK_AR_CONSTRAINTS(pkt, rr, tsig_rr, knot_tsig_rdata_is_ok);
+		pkt->tsig_rr = rr;
 
 		/* Strip TSIG RR from wireformat and decrease ARCOUNT. */
 		if (!(flags & KNOT_PF_KEEPWIRE)) {
@@ -652,6 +651,7 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 		break;
 	case KNOT_RRTYPE_OPT:
 		CHECK_AR_CONSTRAINTS(pkt, rr, opt_rr, knot_edns_check_record);
+		pkt->opt_rr = rr;
 		break;
 	default:
 		break;

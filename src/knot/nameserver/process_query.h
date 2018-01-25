@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,14 +97,24 @@ int process_query_sign_response(knot_pkt_t *pkt, knotd_qdata_t *qdata);
  * \param pkt    Incoming message.
  * \param qdata  Query data.
  */
-void process_query_qname_case_restore(knot_pkt_t *pkt, knotd_qdata_t *qdata);
+static inline void process_query_qname_case_restore(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+{
+	// If original QNAME is empty, query is either unparsed or for root domain.
+	if (qdata->extra->orig_qname[0] != '\0') {
+		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
+		       qdata->extra->orig_qname, qdata->query->qname_size);
+	}
+}
 
 /*!
  * \brief Convert QNAME to lowercase format for processing.
  *
  * \param pkt    Incoming message.
  */
-int process_query_qname_case_lower(knot_pkt_t *pkt);
+static inline void process_query_qname_case_lower(knot_pkt_t *pkt)
+{
+	knot_dname_to_lower(knot_pkt_qname(pkt));
+}
 
 /*!
  * \brief Puts RRSet to packet, will store its RRSIG for later use.

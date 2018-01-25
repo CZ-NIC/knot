@@ -67,7 +67,7 @@ static int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset, long *phase)
 	if (*phase == SERIALIZE_RRSET_INIT && wire_ctx_available(wire) > 0) {
 		// Read owner, rtype, rclass and RR count.
 		size_t size = knot_dname_size(wire->position);
-		knot_dname_t *owner = knot_dname_copy_part(wire->position, size, NULL);
+		knot_dname_t *owner = knot_dname_copy(wire->position, NULL);
 		if (owner == NULL || wire_ctx_available(wire) < size + 3 * sizeof(uint16_t)) {
 			return KNOT_EMALF;
 		}

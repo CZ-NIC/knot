@@ -18,7 +18,6 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "libknot/consts.h"
 #include "libknot/dname.h"
 
 /* Test dname_parse_from_wire */
@@ -510,21 +509,6 @@ int main(int argc, char *argv[])
 	t = ".";
 	d = knot_dname_from_str_alloc(t);
 	ok(knot_dname_is_sub(d2, d), "dname_subdomain: root subdomain");
-	knot_dname_free(&d, NULL);
-	knot_dname_free(&d2, NULL);
-
-	/* DNAME CAT CHECKS */
-
-	/* dname cat (valid) */
-	w = "\x03""cat";
-	d = knot_dname_copy((const uint8_t *)w, NULL);
-	t = "*";
-	d2 = knot_dname_from_str_alloc(t);
-	d2 = knot_dname_cat(d2, d);
-	t = "\x01""*""\x03""cat";
-	len = 2 + 4 + 1;
-	ok(d2 && len == knot_dname_size(d2), "dname_cat: valid concatenation size");
-	ok(d2 && memcmp(d2, t, len) == 0, "dname_cat: valid concatenation");
 	knot_dname_free(&d, NULL);
 	knot_dname_free(&d2, NULL);
 

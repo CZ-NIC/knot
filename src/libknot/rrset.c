@@ -185,10 +185,7 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 	}
 
 	/* Convert owner for all RRSets. */
-	int ret = knot_dname_to_lower(rrset->owner);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	knot_dname_to_lower(rrset->owner);
 
 	/* Convert DNAMEs in RDATA only for RFC4034 types. */
 	if (!knot_rrtype_should_be_lowercased(rrset->type)) {
@@ -218,16 +215,11 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 		case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
 		case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
 		case KNOT_RDATA_WF_FIXED_DNAME:
-			ret = knot_dname_to_lower(pos);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-			ret = knot_dname_size(pos);
-
-			pos += ret;
+			knot_dname_to_lower(pos);
+			pos += knot_dname_size(pos);
 			break;
 		case KNOT_RDATA_WF_NAPTR_HEADER:
-			ret = knot_naptr_header_size(pos, endpos);
+			; int ret = knot_naptr_header_size(pos, endpos);
 			if (ret < 0) {
 				return ret;
 			}

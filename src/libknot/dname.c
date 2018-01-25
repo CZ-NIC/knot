@@ -33,32 +33,59 @@ static int label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
 	return (*lb1 == *lb2) && memcmp(lb1 + 1, lb2 + 1, *lb1) == 0;
 }
 
+/*!
+ * \brief Align name end-to-end and return number of common suffix labels.
+ *
+ * \param d1         Domain name1.
+ * \param d1_labels  Number of labels in d1.
+ * \param d2         Domain name2.
+ * \param d2_labels  Number of labels in d2.
+ */
+static int dname_align(const uint8_t **d1, uint8_t d1_labels,
+                       const uint8_t **d2, uint8_t d2_labels)
+{
+	assert(d1 && d2);
+
+	for (unsigned j = d1_labels; j < d2_labels; ++j) {
+		*d2 = knot_wire_next_label(*d2, NULL);
+	}
+
+	for (unsigned j = d2_labels; j < d1_labels; ++j) {
+		*d1 = knot_wire_next_label(*d1, NULL);
+	}
+
+	return (d1_labels < d2_labels) ? d1_labels : d2_labels;
+}
+
 _public_
 int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
                           const uint8_t *pkt)
 {
-	if (name == NULL || name == endp)
-		return KNOT_EMALF;
+	if (name == NULL || name == endp) {
+		return KNOT_EINVAL;
+	}
 
 	int wire_len = 0;
 	int name_len = 1; /* Keep \x00 terminal label in advance. */
 	bool is_compressed = false;
 
 	while (*name != '\0') {
-
 		/* Check bounds (must have at least 2 octets remaining). */
-		if (name + 2 > endp)
-			return KNOT_ESPACE;
+		if (name + 2 > endp) {
+			return KNOT_EMALF;
+		}
 
 		if (knot_wire_is_pointer(name)) {
 			/* Check that the pointer points backwards
 			 * otherwise it could result in infinite loop
 			 */
-			if (pkt == NULL)
+			if (pkt == NULL) {
 				return KNOT_EINVAL;
+			}
 			uint16_t ptr = knot_wire_get_pointer(name);
-			if (ptr >= (name - pkt))
+			if (ptr >= (name - pkt)) {
 				return KNOT_EMALF;
+			}
 
 			name = pkt + ptr; /* Hop to compressed label */
 			if (!is_compressed) { /* Measure compressed size only */
@@ -67,27 +94,32 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 			}
 		} else {
 			/* Check label length. */
-			if (*name > KNOT_DNAME_MAXLABELLEN)
+			if (*name > KNOT_DNAME_MAXLABELLEN) {
 				return KNOT_EMALF;
+			}
 			/* Check if there's enough space. */
 			int lblen = *name + 1;
-			if (name_len + lblen > KNOT_DNAME_MAXLEN)
+			if (name_len + lblen > KNOT_DNAME_MAXLEN) {
 				return KNOT_EMALF;
+			}
 			/* Update wire size only for noncompressed part. */
 			name_len += lblen;
-			if (!is_compressed)
+			if (!is_compressed) {
 				wire_len += lblen;
+			}
 			/* Hop to next label. */
 			name += lblen;
 		}
 
 		/* Check bounds (must have at least 1 octet). */
-		if (name + 1 > endp)
-			return KNOT_ESPACE;
+		if (name + 1 > endp) {
+			return KNOT_EMALF;
+		}
 	}
 
-	if (!is_compressed) /* Terminal label. */
+	if (!is_compressed) { /* Terminal label. */
 		wire_len += 1;
+	}
 
 	return wire_len;
 }
@@ -96,8 +128,9 @@ _public_
 knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
                                knot_mm_t *mm)
 {
-	if (pkt == NULL || pos == NULL)
+	if (pkt == NULL || pos == NULL) {
 		return NULL;
+	}
 
 	const uint8_t *name = pkt + *pos;
 	const uint8_t *endp = pkt + maxpos;
@@ -114,7 +147,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
 
 	/* Allocate space for the name. */
 	knot_dname_t *res = mm_alloc(mm, decompressed_len);
-	if (res) {
+	if (res != NULL) {
 		/* Unpack name (expand compression pointers). */
 		if (knot_dname_unpack(res, name, decompressed_len, pkt) > 0) {
 			*pos += parsed;
@@ -128,26 +161,32 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
 }
 
 _public_
-knot_dname_t *knot_dname_copy(const knot_dname_t *name, knot_mm_t *mm)
+size_t knot_dname_store(knot_dname_storage_t *dst, const knot_dname_t *name)
 {
-	if (name == NULL)
-		return NULL;
+	if (dst == NULL || name == NULL) {
+		return 0;
+	}
 
-	return knot_dname_copy_part(name, knot_dname_size(name), mm);
+	size_t len = knot_dname_size(name);
+	assert(len <= KNOT_DNAME_MAXLEN);
+	memcpy(dst->data, name, len);
+
+	return len;
 }
 
 _public_
-knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
-                                   knot_mm_t *mm)
+knot_dname_t *knot_dname_copy(const knot_dname_t *name, knot_mm_t *mm)
 {
-	if (name == NULL || len == 0)
-		return NULL;
-
-	knot_dname_t *dst = mm_alloc(mm, len);
-	if (knot_dname_to_wire(dst, name, len) < 1) {
-		mm_free(mm, dst);
+	if (name == NULL) {
 		return NULL;
 	}
+
+	size_t len = knot_dname_size(name);
+	knot_dname_t *dst = mm_alloc(mm, len);
+	if (dst == NULL) {
+		return NULL;
+	}
+	memcpy(dst, name, len);
 
 	return dst;
 }
@@ -163,8 +202,8 @@ int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen)
 	if (len > maxlen) {
 		return KNOT_ESPACE;
 	}
-
 	memcpy(dst, src, len);
+
 	return len;
 }
 
@@ -172,8 +211,9 @@ _public_
 int knot_dname_unpack(uint8_t *dst, const knot_dname_t *src,
                       size_t maxlen, const uint8_t *pkt)
 {
-	if (dst == NULL || src == NULL)
+	if (dst == NULL || src == NULL) {
 		return KNOT_EINVAL;
+	}
 
 	/* Seek first real label occurrence. */
 	src = knot_wire_seek_label(src, pkt);
@@ -182,16 +222,18 @@ int knot_dname_unpack(uint8_t *dst, const knot_dname_t *src,
 	int len = 0;
 	while (*src != '\0') {
 		uint8_t lblen = *src + 1;
-		if (len + lblen > maxlen)
+		if (len + lblen > maxlen) {
 			return KNOT_ESPACE;
+		}
 		memcpy(dst + len, src, lblen);
 		len += lblen;
 		src = knot_wire_next_label(src, pkt);
 	}
 
 	/* Terminal label */
-	if (len + 1 > maxlen)
+	if (len + 1 > maxlen) {
 		return KNOT_EINVAL;
+	}
 
 	*(dst + len) = '\0';
 	return len + 1;
@@ -441,23 +483,19 @@ dname_from_str_failed:
 }
 
 _public_
-int knot_dname_to_lower(knot_dname_t *name)
+void knot_dname_to_lower(knot_dname_t *name)
 {
-	if (name == NULL)
-		return KNOT_EINVAL;
+	if (name == NULL) {
+		return;
+	}
 
 	while (*name != '\0') {
 		uint8_t len = *name;
 		for (uint8_t i = 1; i <= len; ++i) {
 			name[i] = knot_tolower(name[i]);
 		}
-		name = (uint8_t *)knot_wire_next_label(name, NULL);
-		if (name == NULL) { /* Must not be used on compressed names. */
-			return KNOT_EMALF;
-		}
+		name += 1 + len;
 	}
-
-	return KNOT_EOK;
 }
 
 _public_
@@ -519,7 +557,7 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 	}
 
 	/* Align end-to-end to common suffix. */
-	int common = knot_dname_align(&sub, sub_l, &domain, domain_l, NULL);
+	int common = dname_align(&sub, sub_l, &domain, domain_l);
 
 	/* Compare common suffix. */
 	while (common > 0) {
@@ -532,6 +570,7 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 		domain = knot_wire_next_label(domain, NULL);
 		--common;
 	}
+
 	return true;
 }
 
@@ -539,16 +578,6 @@ _public_
 bool knot_dname_in(const knot_dname_t *domain, const knot_dname_t *sub)
 {
 	return knot_dname_is_equal(domain, sub) || knot_dname_is_sub(sub, domain);
-}
-
-_public_
-bool knot_dname_is_wildcard(const knot_dname_t *name)
-{
-	if (name == NULL) {
-		return false;
-	}
-
-	return name[0] == 1 && name[1] == '*';
 }
 
 _public_
@@ -562,7 +591,7 @@ size_t knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 	}
 
 	/* Align end-to-end to common suffix. */
-	int common = knot_dname_align(&d1, l1, &d2, l2, NULL);
+	int common = dname_align(&d1, l1, &d2, l2);
 
 	/* Count longest chain leading to root label. */
 	size_t matched = 0;
@@ -584,7 +613,7 @@ size_t knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 
 _public_
 knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned labels,
-                                        const knot_dname_t *suffix)
+                                        const knot_dname_t *suffix, knot_mm_t *mm)
 {
 	if (name == NULL) {
 		return NULL;
@@ -605,7 +634,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 
 	/* Create target name. */
 	size_t new_len = prefix_len + suffix_len;
-	knot_dname_t *out = malloc(new_len);
+	knot_dname_t *out = mm_alloc(mm, new_len);
 	if (out == NULL) {
 		return NULL;
 	}
@@ -625,6 +654,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 		dst += *suffix + 1;
 		suffix = knot_wire_next_label(suffix, NULL);
 	}
+
 	*dst = '\0';
 	return out;
 }
@@ -632,8 +662,9 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 _public_
 void knot_dname_free(knot_dname_t **name, knot_mm_t *mm)
 {
-	if (name == NULL || *name == NULL)
+	if (name == NULL || *name == NULL) {
 		return;
+	}
 
 	mm_free(mm, *name);
 	*name = NULL;
@@ -718,22 +749,6 @@ bool knot_dname_label_is_equal(const uint8_t *label1, const uint8_t *label2)
 }
 
 _public_
-knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
-{
-	if (d1 == NULL || d2 == NULL)
-		return NULL;
-
-	/* This is problem equal to replacing last \x00 from d1 with d2. */
-	knot_dname_t *ret = knot_dname_replace_suffix(d1, 0, d2);
-
-	/* Like if we are reallocating d1. */
-	if (ret != NULL)
-		knot_dname_free(&d1, NULL);
-
-	return ret;
-}
-
-_public_
 size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt)
 {
 	if (name == NULL) {
@@ -775,24 +790,8 @@ size_t knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 			return 0;
 		}
 	}
+
 	return count;
-}
-
-_public_
-int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
-                     const uint8_t **d2, uint8_t d2_labels,
-                     uint8_t *wire)
-{
-	if (d1 == NULL || d2 == NULL)
-		return KNOT_EINVAL;
-
-	for (unsigned j = d1_labels; j < d2_labels; ++j)
-		*d2 = knot_wire_next_label(*d2, wire);
-
-	for (unsigned j = d2_labels; j < d1_labels; ++j)
-		*d1 = knot_wire_next_label(*d1, wire);
-
-	return (d1_labels < d2_labels) ? d1_labels : d2_labels;
 }
 
 _public_

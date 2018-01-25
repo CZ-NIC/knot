@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -601,7 +601,7 @@ int keymgr_foreign_key_id(char *argv[], knot_dname_t **key_zone, char **key_id)
 	if (*key_zone == NULL) {
 		return KNOT_ENOMEM;
 	}
-	(void)knot_dname_to_lower(*key_zone);
+	knot_dname_to_lower(*key_zone);
 
 	kdnssec_ctx_t kctx = { 0 };
 	int ret = kdnssec_ctx_init(conf(), &kctx, *key_zone, NULL);

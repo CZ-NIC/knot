@@ -170,9 +170,7 @@ static int write_tsig_variables(uint8_t *wire, const knot_rrset_t *tsig_rr)
 	/* Te algorithm name must be in canonical form, i.e. in lowercase. */
 	uint8_t *alg_name_wire = wire + offset;
 	offset += knot_dname_to_wire(alg_name_wire, alg_name, KNOT_DNAME_MAXLEN);
-	if (knot_dname_to_lower(alg_name_wire) != KNOT_EOK) {
-		return KNOT_EINVAL;
-	}
+	knot_dname_to_lower(alg_name_wire);
 
 	/* Following data are written in network order. */
 	/* Time signed. */

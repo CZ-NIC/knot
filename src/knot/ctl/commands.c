@@ -100,11 +100,7 @@ static int get_zone(ctl_args_t *args, zone_t **zone)
 	if (dname == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	int ret = knot_dname_to_lower(dname);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	knot_dname_to_lower(dname);
 
 	*zone = knot_zonedb_find(args->server->zone_db, dname);
 	if (*zone == NULL) {
@@ -592,11 +588,7 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 		if (dname == NULL) {
 			return KNOT_EINVAL;
 		}
-
-		int ret = knot_dname_to_lower(dname);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+		knot_dname_to_lower(dname);
 
 		prefix_len = knot_dname_size(out);
 		if (prefix_len == 0) {

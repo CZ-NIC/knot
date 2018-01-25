@@ -704,9 +704,7 @@ int yp_dname_to_bin(
 	}
 
 	// Convert the result to lower case.
-	if (knot_dname_to_lower(out->position) != KNOT_EOK) {
-		return KNOT_EINVAL;
-	}
+	knot_dname_to_lower(out->position);
 
 	wire_ctx_skip(out, ret);
 
