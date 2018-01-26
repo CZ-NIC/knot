@@ -129,14 +129,13 @@ static void test_dname_lf(void)
 		"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh""\x00"
 		"iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii""\x00";
 	uint8_t *out = knot_dname_lf(in, &storage);
-	ok(out != NULL, "knot_dname_lf: max-length DNAME success on return");
-	ok(memcmp(ref, out, KNOT_DNAME_MAXLEN) == 0, "knot_dname_lf: max-length DNAME converted");
+	ok(out != NULL && memcmp(ref, out, KNOT_DNAME_MAXLEN) == 0,
+	   "knot_dname_lf: max-length DNAME converted");
 
 	/* Zero label DNAME*/
 	in = (uint8_t *) "\x00";
 	out = knot_dname_lf(in, &storage);
-	ok(out != NULL, "knot_dname_lf: zero-label DNAME success on return");
-	ok(out[0] == '\x00', "knot_dname_lf: zero-label DNAME converted");
+	ok(out != NULL && out[0] == '\x00', "knot_dname_lf: zero-label DNAME converted");
 }
 
 int main(int argc, char *argv[])
