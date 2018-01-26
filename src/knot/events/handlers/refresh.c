@@ -529,7 +529,7 @@ static int ixfr_solve_soa_del(const knot_rrset_t *rr, struct refresh_data *data)
 	// Store SOA into changeset.
 	change->soa_from = knot_rrset_copy(rr, NULL);
 	if (change->soa_from == NULL) {
-		changeset_clear(change);
+		changeset_free(change);
 		return KNOT_ENOMEM;
 	}
 
