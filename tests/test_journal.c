@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -354,7 +354,8 @@ static void test_store_load(void)
 
 	/* Store next changeset. */
 	changeset_t ch;
-	changeset_init(&ch, apex);
+	ret = changeset_init(&ch, apex);
+	ok(ret == KNOT_EOK, "journal: changeset init (%d)", ret);
 	init_random_changeset(&ch, serial, serial + 1, 128, apex, false);
 	ret = journal_store_changeset(j, &ch);
 	changeset_clear(&ch);
@@ -671,7 +672,8 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 	set_conf(1000, file_size / 2);
 
 	changeset_t ch;
-	changeset_init(&ch, apex);
+	ret = changeset_init(&ch, apex);
+	ok(ret == KNOT_EOK, "journal: changeset init (%d)", ret);
 	init_random_changeset(&ch, serial, serial + 1, update_size, apex, false);
 
 	for (int i = 1; i <= 6; ++i) {

@@ -840,12 +840,12 @@ static void test_chain(void)
 	   "%s: write, no room", __func__);
 
 	knot_dname_t *dname = NULL;
-	ok(knot_edns_chain_parse(NULL, wire, 0) == KNOT_EINVAL,
+	ok(knot_edns_chain_parse(NULL, wire, 0) == KNOT_EINVAL && dname == NULL,
 	   "%s: parse, NULL", __func__);
-	ok(knot_edns_chain_parse(&dname, NULL, 0) == KNOT_EINVAL,
+	ok(knot_edns_chain_parse(&dname, NULL, 0) == KNOT_EINVAL && dname == NULL,
 	   "%s: parse, NULL", __func__);
-	ok(knot_edns_chain_parse(&dname, (const uint8_t *)"\x01", 1) == KNOT_EMALF,
-	   "%s: parse, malformed", __func__);
+	ok(knot_edns_chain_parse(&dname, (const uint8_t *)"\x01", 1) == KNOT_EMALF &&
+	   dname == NULL, "%s: parse, malformed", __func__);
 }
 
 static void check_cookie_parse(const char *opt, knot_edns_cookie_t *cc,
