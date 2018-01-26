@@ -110,15 +110,6 @@ static int mark_removed_nsec3(const zone_contents_t *zone, changeset_t *ch)
 	return KNOT_EOK;
 }
 
-bool knot_is_nsec3_enabled(const zone_contents_t *zone)
-{
-	if (zone == NULL) {
-		return false;
-	}
-
-	return zone->nsec3_params.algorithm != 0;
-}
-
 int knot_nsec3_hash_to_dname(uint8_t *out, size_t out_size, const uint8_t *hash,
                              size_t hash_size, const knot_dname_t *zone_apex)
 

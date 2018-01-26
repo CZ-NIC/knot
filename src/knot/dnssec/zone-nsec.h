@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,7 +30,10 @@
  *
  * \return NSEC3 is enabled.
  */
-bool knot_is_nsec3_enabled(const zone_contents_t *zone);
+inline static bool knot_is_nsec3_enabled(const zone_contents_t *zone)
+{
+	return zone != NULL && zone->nsec3_params.algorithm != 0;
+}
 
 /*!
  * \brief Create NSEC3 owner name from hash and zone apex.

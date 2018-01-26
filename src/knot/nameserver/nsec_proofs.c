@@ -470,15 +470,11 @@ static int put_nxdomain(const zone_contents_t *zone,
                         knotd_qdata_t *qdata,
                         knot_pkt_t *resp)
 {
-	int ret = 0;
-
 	if (knot_is_nsec3_enabled(zone)) {
-		ret = put_nsec3_nxdomain(qname, zone, closest, qdata, resp);
+		return put_nsec3_nxdomain(qname, zone, closest, qdata, resp);
 	} else {
-		ret = put_nsec_nxdomain(zone, previous, closest, qdata, resp);
+		return put_nsec_nxdomain(zone, previous, closest, qdata, resp);
 	}
-
-	return ret;
 }
 
 /*!
@@ -509,9 +505,9 @@ static int put_nsec_nodata(const zone_contents_t *zone,
 {
 	if (empty_nonterminal(match)) {
 		return put_nsec_nxdomain(zone, previous, closest, qdata, resp);
+	} else {
+		return put_nsec_from_node(match, qdata, resp);
 	}
-
-	return put_nsec_from_node(match, qdata, resp);
 }
 
 /*!
@@ -569,15 +565,11 @@ static int put_nodata(const zone_node_t *node,
                       knotd_qdata_t *qdata,
                       knot_pkt_t *resp)
 {
-	int ret = 0;
-
 	if (knot_is_nsec3_enabled(zone)) {
-		ret = put_nsec3_nodata(qname, zone, node, closest, qdata, resp);
+		return put_nsec3_nodata(qname, zone, node, closest, qdata, resp);
 	} else {
-		ret = put_nsec_nodata(zone, node, closest, previous, qdata, resp);
+		return put_nsec_nodata(zone, node, closest, previous, qdata, resp);
 	}
-
-	return ret;
 }
 
 int nsec_prove_wildcards(knot_pkt_t *pkt, knotd_qdata_t *qdata)
