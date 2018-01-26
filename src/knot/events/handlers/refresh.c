@@ -1014,12 +1014,20 @@ static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 	return conf_int(&val);
 }
 
+typedef struct {
+	bool force_axfr;
+	bool send_notify;
+} try_refresh_ctx_t;
+
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx)
 {
 	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
 
 	assert(zone);
 	assert(master);
+	assert(ctx);
+
+	try_refresh_ctx_t *trctx = ctx;
 
 	knot_rrset_t soa = { 0 };
 	if (zone->contents) {
@@ -1030,17 +1038,11 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		.zone = zone,
 		.conf = conf,
 		.remote = (struct sockaddr *)&master->addr,
-		.soa = zone->contents ? &soa : NULL,
+		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 	};
 
 	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
-
-	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
-	if (zone->flags & ZONE_FORCE_AXFR) {
-		zone->flags &= ~ZONE_FORCE_AXFR;
-		data.soa = NULL;
-	}
 
 	struct knot_requestor requestor;
 	knot_requestor_init(&requestor, &REFRESH_API, &data, NULL);
@@ -1066,8 +1068,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
 
-	if (ret == KNOT_EOK && ctx) {
-		*(bool *)ctx = data.updated;
+	if (ret == KNOT_EOK) {
+		trctx->send_notify = data.updated;
 	}
 
 	return ret;
@@ -1094,9 +1096,15 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	}
 
 	bool bootstrap = zone_contents_is_empty(zone->contents);
-	bool updated = false;
+	try_refresh_ctx_t trctx = { 0 };
 
-	int ret = zone_master_try(conf, zone, try_refresh, &updated, "refresh");
+	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
+	if (zone->flags & ZONE_FORCE_AXFR) {
+		zone->flags &= ~ZONE_FORCE_AXFR;
+		trctx.force_axfr = true;
+	}
+
+	int ret = zone_master_try(conf, zone, try_refresh, &trctx, "refresh");
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "refresh, failed (%s)", knot_strerror(ret));
 	}
@@ -1130,7 +1138,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 	/* Rechedule events. */
 	replan_from_timers(conf, zone);
-	if (updated) {
+	if (trctx.send_notify) {
 		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
 	}
 
