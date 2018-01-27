@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -188,10 +188,9 @@ int main(int argc, char *argv[])
 	packet_match(in, copy);
 
 	/* Free packets. */
-	knot_pkt_free(&copy);
-	knot_pkt_free(&out);
-	knot_pkt_free(&in);
-	ok(in == NULL && out == NULL && copy == NULL, "pkt: free");
+	knot_pkt_free(copy);
+	knot_pkt_free(out);
+	knot_pkt_free(in);
 
 	/* Free extra data. */
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {

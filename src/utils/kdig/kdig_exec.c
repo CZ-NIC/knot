@@ -235,7 +235,7 @@ static void process_dnstap(const query_t *query)
 			ERR("can't print dnstap message\n");
 		}
 
-		knot_pkt_free(&pkt);
+		knot_pkt_free(pkt);
 		dt_reader_free_frame(reader, &frame);
 	}
 }
@@ -412,7 +412,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 	// Create QNAME from string.
 	knot_dname_t *qname = knot_dname_from_str_alloc(query->owner);
 	if (qname == NULL) {
-		knot_pkt_free(&packet);
+		knot_pkt_free(packet);
 		return NULL;
 	}
 
@@ -421,7 +421,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 	                                query->type_num);
 	if (ret != KNOT_EOK) {
 		knot_dname_free(&qname, NULL);
-		knot_pkt_free(&packet);
+		knot_pkt_free(packet);
 		return NULL;
 	}
 
@@ -444,7 +444,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 		                                   &packet->mm);
 		knot_dname_free(&qname, NULL);
 		if (soa == NULL) {
-			knot_pkt_free(&packet);
+			knot_pkt_free(packet);
 			return NULL;
 		}
 
@@ -452,7 +452,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 		ret = knot_rrset_add_rdata(soa, wire, sizeof(wire), &packet->mm);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&soa, &packet->mm);
-			knot_pkt_free(&packet);
+			knot_pkt_free(packet);
 			return NULL;
 		}
 
@@ -462,7 +462,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 		ret = knot_pkt_put(packet, KNOT_COMPR_HINT_NONE, soa, KNOT_PF_FREE);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&soa, &packet->mm);
-			knot_pkt_free(&packet);
+			knot_pkt_free(packet);
 			return NULL;
 		}
 
@@ -479,7 +479,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 		int ret = add_query_edns(packet, query, max_size);
 		if (ret != KNOT_EOK) {
 			ERR("can't set up EDNS section\n");
-			knot_pkt_free(&packet);
+			knot_pkt_free(packet);
 			return NULL;
 		}
 	}
@@ -636,7 +636,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 			} else {
 				ERR("can't print query packet\n");
 			}
-			knot_pkt_free(&q);
+			knot_pkt_free(q);
 		} else {
 			ERR("can't print query packet\n");
 		}
@@ -675,7 +675,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		// Parse reply to the packet structure.
 		if (knot_pkt_parse(reply, KNOT_PF_NOCANON) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
-			knot_pkt_free(&reply);
+			knot_pkt_free(reply);
 			net_close(net);
 			return 0;
 		}
@@ -685,12 +685,12 @@ static int process_query_packet(const knot_pkt_t      *query,
 			break;
 		// Check for timeout.
 		} else if (time_diff_ms(&t_query, &t_end) > 1000 * net->wait) {
-			knot_pkt_free(&reply);
+			knot_pkt_free(reply);
 			net_close(net);
 			return -1;
 		}
 
-		knot_pkt_free(&reply);
+		knot_pkt_free(reply);
 	}
 
 	// Check for TC bit and repeat query with TCP if required.
@@ -699,7 +699,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		printf("\n");
 		WARN("truncated reply from %s, retrying over TCP\n\n",
 		     net->remote_str);
-		knot_pkt_free(&reply);
+		knot_pkt_free(reply);
 		net_close(net);
 
 		net->socktype = SOCK_STREAM;
@@ -740,7 +740,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		uint8_t *opt = knot_edns_get_option(reply->opt_rr, KNOT_EDNS_OPTION_COOKIE);
 		if (opt == NULL) {
 			ERR("bad cookie, missing EDNS section\n");
-			knot_pkt_free(&reply);
+			knot_pkt_free(reply);
 			return -1;
 		}
 
@@ -749,11 +749,11 @@ static int process_query_packet(const knot_pkt_t      *query,
 		int ret = knot_edns_cookie_parse(&new_ctx.cc, &new_ctx.sc,
 		                                 data, data_len);
 		if (ret != KNOT_EOK) {
-			knot_pkt_free(&reply);
+			knot_pkt_free(reply);
 			ERR("bad cookie, missing EDNS cookie option\n");
 			return -1;
 		}
-		knot_pkt_free(&reply);
+		knot_pkt_free(reply);
 
 		// Restore the original client cookie.
 		new_ctx.cc = query_ctx->cc;
@@ -761,12 +761,12 @@ static int process_query_packet(const knot_pkt_t      *query,
 		knot_pkt_t *new_query = create_query_packet(&new_ctx);
 		ret = process_query_packet(new_query, net, &new_ctx, ignore_tc,
 		                           sign_ctx, style);
-		knot_pkt_free(&new_query);
+		knot_pkt_free(new_query);
 
 		return ret;
 	}
 
-	knot_pkt_free(&reply);
+	knot_pkt_free(reply);
 	net_close(net);
 
 	return 0;
@@ -846,7 +846,7 @@ static void process_query(const query_t *query)
 			if (ret == 0) {
 				net_clean(&net);
 				sign_context_deinit(&sign_ctx);
-				knot_pkt_free(&out_packet);
+				knot_pkt_free(out_packet);
 				return;
 			}
 
@@ -870,7 +870,7 @@ static void process_query(const query_t *query)
 	}
 
 	sign_context_deinit(&sign_ctx);
-	knot_pkt_free(&out_packet);
+	knot_pkt_free(out_packet);
 }
 
 static int process_xfr_packet(const knot_pkt_t      *query,
@@ -930,7 +930,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			} else {
 				ERR("can't print query packet\n");
 			}
-			knot_pkt_free(&q);
+			knot_pkt_free(q);
 		} else {
 			ERR("can't print query packet\n");
 		}
@@ -969,7 +969,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		// Parse reply to the packet structure.
 		if (knot_pkt_parse(reply, 0) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
-			knot_pkt_free(&reply);
+			knot_pkt_free(reply);
 			net_close(net);
 			return 0;
 		}
@@ -977,7 +977,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		// Compare reply header id.
 		if (check_reply_id(reply, query) == false) {
 			ERR("reply ID mismatch from %s\n", net->remote_str);
-			knot_pkt_free(&reply);
+			knot_pkt_free(reply);
 			net_close(net);
 			return 0;
 		}
@@ -991,7 +991,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		if (knot_pkt_ext_rcode(reply) != KNOT_RCODE_NOERROR) {
 			ERR("server replied with error '%s'\n",
 			    knot_pkt_ext_rcode_name(reply));
-			knot_pkt_free(&reply);
+			knot_pkt_free(reply);
 			net_close(net);
 			return 0;
 		}
@@ -1011,7 +1011,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 					ERR("reply verification for %s (%s)\n",
 					    net->remote_str, knot_strerror(ret));
-					knot_pkt_free(&reply);
+					knot_pkt_free(reply);
 					net_close(net);
 					return 0;
 				}
@@ -1023,7 +1023,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			if (serial < 0) {
 				ERR("first answer record from %s isn't SOA\n",
 				    net->remote_str);
-				knot_pkt_free(&reply);
+				knot_pkt_free(reply);
 				net_close(net);
 				return 0;
 			}
@@ -1044,11 +1044,11 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 		// Check for finished transfer.
 		if (finished_xfr(serial, reply, msg_count, query_ctx->serial != -1)) {
-			knot_pkt_free(&reply);
+			knot_pkt_free(reply);
 			break;
 		}
 
-		knot_pkt_free(&reply);
+		knot_pkt_free(reply);
 	}
 
 	// Get stop reply time.
@@ -1107,7 +1107,7 @@ static void process_xfr(const query_t *query)
 	               flags, &query->tls, &net);
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
-		knot_pkt_free(&out_packet);
+		knot_pkt_free(out_packet);
 		return;
 	}
 
@@ -1133,7 +1133,7 @@ static void process_xfr(const query_t *query)
 
 	net_clean(&net);
 	sign_context_deinit(&sign_ctx);
-	knot_pkt_free(&out_packet);
+	knot_pkt_free(out_packet);
 }
 
 int kdig_exec(const kdig_params_t *params)

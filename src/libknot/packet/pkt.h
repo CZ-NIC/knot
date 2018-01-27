@@ -139,7 +139,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query);
 void knot_pkt_clear(knot_pkt_t *pkt);
 
 /*! \brief Begone you foul creature of the underworld. */
-void knot_pkt_free(knot_pkt_t **pkt);
+void knot_pkt_free(knot_pkt_t *pkt);
 
 /*!
  * \brief Reserve an arbitrary amount of space in the packet.

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -146,8 +146,8 @@ void knsupdate_clean(knsupdate_params_t *params)
 	srv_info_free(params->srcif);
 	free(params->zone);
 	zs_deinit(&params->parser);
-	knot_pkt_free(&params->query);
-	knot_pkt_free(&params->answer);
+	knot_pkt_free(params->query);
+	knot_pkt_free(params->answer);
 	knot_tsig_key_deinit(&params->tsig_key);
 
 	/* Clean up the structure. */

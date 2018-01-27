@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	knot_pkt_t *pkt = knot_pkt_new(copy, size, NULL);
 	assert(pkt);
 	knot_pkt_parse(pkt, 0);
-	knot_pkt_free(&pkt);
+	knot_pkt_free(pkt);
 
 	return 0;
 }

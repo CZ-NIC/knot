@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ static void exec_query(knot_layer_t *layer, const char *name,
 	/* Check answer. */
 	answer_sanity_check(query->wire, answer->wire, answer->size, expected_rcode, name);
 
-	knot_pkt_free(&answer);
+	knot_pkt_free(answer);
 }
 
 /* \internal Helpers */

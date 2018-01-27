@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -555,7 +555,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *par
 	req->query = knot_pkt_new(NULL, pkt->max_size, NULL);
 	int ret = knot_pkt_copy(req->query, pkt);
 	if (ret != KNOT_EOK) {
-		knot_pkt_free(&req->query);
+		knot_pkt_free(req->query);
 		free(req);
 		return ret;
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -224,7 +224,7 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 	knot_pkt_t *query = knot_pkt_new(NULL, request->query->max_size, NULL);
 	int ret = knot_pkt_copy(query, request->query);
 	if (ret != KNOT_EOK) {
-		knot_pkt_free(&query);
+		knot_pkt_free(query);
 		return ret;
 	}
 	knot_wire_set_id(query->wire, dnssec_random_uint16_t());
@@ -240,7 +240,7 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 	struct knot_requestor re;
 	ret = knot_requestor_init(&re, capture, &capture_param, NULL);
 	if (ret != KNOT_EOK) {
-		knot_pkt_free(&query);
+		knot_pkt_free(query);
 		return ret;
 	}
 
@@ -250,7 +250,7 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 	struct knot_request *req = knot_request_make(re.mm, dst, src, query, NULL, 0);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
-		knot_pkt_free(&query);
+		knot_pkt_free(query);
 		return KNOT_ENOMEM;
 	}
 
@@ -356,8 +356,8 @@ static void send_update_response(conf_t *conf, const zone_t *zone, struct knot_r
 static void free_request(struct knot_request *req)
 {
 	close(req->fd);
-	knot_pkt_free(&req->query);
-	knot_pkt_free(&req->resp);
+	knot_pkt_free(req->query);
+	knot_pkt_free(req->resp);
 	free(req);
 }
 

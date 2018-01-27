@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -100,8 +100,8 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	knot_layer_finish(&udp->layer);
 
 	/* Cleanup. */
-	knot_pkt_free(&query);
-	knot_pkt_free(&ans);
+	knot_pkt_free(query);
+	knot_pkt_free(ans);
 }
 
 /*! \brief Pointer to selected UDP master implementation. */

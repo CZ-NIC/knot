@@ -378,26 +378,25 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 }
 
 _public_
-void knot_pkt_free(knot_pkt_t **pkt)
+void knot_pkt_free(knot_pkt_t *pkt)
 {
-	if (pkt == NULL || *pkt == NULL) {
+	if (pkt == NULL) {
 		return;
 	}
 
 	/* Free temporary RRSets. */
-	pkt_free_data(*pkt);
+	pkt_free_data(pkt);
 
 	/* Free RR/RR info arrays. */
-	mm_free(&(*pkt)->mm, (*pkt)->rr);
-	mm_free(&(*pkt)->mm, (*pkt)->rr_info);
+	mm_free(&pkt->mm, pkt->rr);
+	mm_free(&pkt->mm, pkt->rr_info);
 
 	// free the space for wireformat
-	if ((*pkt)->flags & KNOT_PF_FREE) {
-		mm_free(&(*pkt)->mm, (*pkt)->wire);
+	if (pkt->flags & KNOT_PF_FREE) {
+		mm_free(&pkt->mm, pkt->wire);
 	}
 
-	mm_free(&(*pkt)->mm, *pkt);
-	*pkt = NULL;
+	mm_free(&pkt->mm, pkt);
 }
 
 _public_

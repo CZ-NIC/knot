@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 	int ret = knot_pkt_put_question(query, qname, KNOT_CLASS_IN, KNOT_RRTYPE_A);
 	knot_dname_free(&qname, NULL);
 	if (ret != KNOT_EOK) {
-		knot_pkt_free(&query);
+		knot_pkt_free(query);
 		return KNOT_ERROR; /* Fatal */
 	}
 
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 #endif
 
 	knot_dname_free(&zone, NULL);
-	knot_pkt_free(&query);
+	knot_pkt_free(query);
 	rrl_destroy(rrl);
 	dnssec_crypto_cleanup();
 	return 0;

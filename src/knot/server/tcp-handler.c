@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -168,8 +168,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	knot_layer_finish(&tcp->layer);
 
 	/* Cleanup. */
-	knot_pkt_free(&query);
-	knot_pkt_free(&ans);
+	knot_pkt_free(query);
+	knot_pkt_free(ans);
 
 	return ret;
 }

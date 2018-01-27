@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -156,8 +156,8 @@ void knot_request_free(struct knot_request *request, knot_mm_t *mm)
 	if (request->fd >= 0) {
 		close(request->fd);
 	}
-	knot_pkt_free(&request->query);
-	knot_pkt_free(&request->resp);
+	knot_pkt_free(request->query);
+	knot_pkt_free(request->resp);
 	tsig_cleanup(&request->tsig);
 
 	mm_free(mm, request);
