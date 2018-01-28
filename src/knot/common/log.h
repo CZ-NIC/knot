@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,6 +57,13 @@ typedef enum {
 	LOG_FLAG_NOINFO      = 1 << 1  /*!< Don't print info level prefix. */
 } log_flag_t;
 
+/*! \brief Events to be logged structuredly into systemd. */
+typedef enum {
+	LOG_EVENT_DNSSEC_PUBLISH = 0,
+	LOG_EVENT_DNSSEC_REMOVE  = 1,
+	LOG_EVENT_DNSSEC_SUBMIT  = 2,
+} log_structured_event_t;
+
 /*!
  * \brief Setup logging subsystem.
  */
@@ -112,9 +119,9 @@ __attribute__((format(printf, 3, 4)));
  *
  * \see log_fmt
  *
- * \param zone  Zone name in wire format.
  * \param priority  Message priority.
  * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
+ * \param zone      Zone name in wire format.
  * \param fmt       Content of the logged message.
  */
 void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone, const char *fmt, ...)
@@ -125,9 +132,9 @@ __attribute__((format(printf, 4, 5)));
  *
  * \see log_fmt
  *
- * \param zone  Zone name as an ASCII string.
  * \param priority  Message priority.
  * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
+ * \param zone      Zone name as an ASCII string.
  * \param fmt       Content of the logged message.
  */
 void log_fmt_zone_str(int priority, log_source_t src, const char *zone, const char *fmt, ...)
@@ -167,6 +174,17 @@ __attribute__((format(printf, 4, 5)));
 #define log_zone_str_notice(zone, msg, ...)  log_fmt_zone_str(LOG_NOTICE,  LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
 #define log_zone_str_info(zone, msg, ...)    log_fmt_zone_str(LOG_INFO,    LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
 #define log_zone_str_debug(zone, msg, ...)   log_fmt_zone_str(LOG_DEBUG,   LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+
+/*!
+ * \brief Special structured logging into systemd for specific actions.
+ *
+ * \param zone   Zone name.
+ * \param event  Type of the event to be logged.
+ * \param param  Additional information in the format "<NAME>=%s", or NULL.
+ * \param value  Value for the parameter.
+ */
+void log_structured(const knot_dname_t *zone, log_structured_event_t event,
+                    const char *param, const char *value);
 
 /*!
  * \brief Update open files ownership.

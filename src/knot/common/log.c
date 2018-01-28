@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,12 @@
 
 #ifdef ENABLE_SYSTEMD
 int use_journal = 0;
+
+static const char *events_table[] = {
+	[LOG_EVENT_DNSSEC_PUBLISH] = "DNSSEC,publish",
+	[LOG_EVENT_DNSSEC_REMOVE]  = "DNSSEC,remove",
+	[LOG_EVENT_DNSSEC_SUBMIT]  = "DNSSEC,submit",
+};
 #endif
 
 /*! Log context. */
@@ -372,6 +378,29 @@ void log_fmt_zone_str(int priority, log_source_t src, const char *zone,
 	va_start(args, fmt);
 	log_msg_text(priority, src, zone, fmt, args);
 	va_end(args);
+}
+
+void log_structured(const knot_dname_t *zone, log_structured_event_t event,
+                    const char *param, const char *value)
+{
+#ifdef ENABLE_SYSTEMD
+	if (!use_journal) {
+		return;
+	}
+
+	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	char *zone_str = knot_dname_to_str(buff, zone, sizeof(buff));
+	if (zone_str == NULL) {
+		zone_str = NULL_ZONE_STR;
+	}
+
+	sd_journal_send("PRIORITY=%d", LOG_INFO,
+	                "MESSAGE=%s", events_table[event],
+	                "STRUCTURED=%u", 1,
+	                "ZONE=%s", zone_str,
+	                "EVENT=%s", events_table[event],
+	                param, value, NULL);
+#endif
 }
 
 int log_update_privileges(int uid, int gid)

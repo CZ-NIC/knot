@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,6 +88,30 @@ static knot_kasp_key_t *key_get_by_id(kdnssec_ctx_t *ctx, const char *keyid)
 	return NULL;
 }
 
+static void log_key_structured(const kdnssec_ctx_t *ctx, const knot_kasp_key_t *key)
+{
+	log_structured_event_t event;
+
+	switch (get_key_state(key, ctx->now)) {
+	case DNSSEC_KEY_STATE_PUBLISHED:
+		event = LOG_EVENT_DNSSEC_PUBLISH;
+		break;
+	case DNSSEC_KEY_STATE_READY:
+		event = LOG_EVENT_DNSSEC_SUBMIT;
+		break;
+	case DNSSEC_KEY_STATE_REMOVED:
+		event = LOG_EVENT_DNSSEC_REMOVE;
+		break;
+	default:
+		return;
+	}
+
+	char keytag[8];
+	(void)snprintf(keytag, sizeof(keytag), "%hu", dnssec_key_get_keytag(key->key));
+
+	log_structured(ctx->zone->dname, event, "KEYTAG=%s", keytag);
+}
+
 static int generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_time_t when_active, bool pre_active)
 {
 	assert(!pre_active || when_active == 0);
@@ -104,6 +128,8 @@ static int generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_time_t when
 	key->timing.ready  = (ksk ? when_active : 0);
 	key->timing.publish    = (pre_active ? 0 : ctx->now);
 	key->timing.pre_active = (pre_active ? ctx->now : 0);
+
+	log_key_structured(ctx, key);
 
 	return KNOT_EOK;
 }
@@ -152,6 +178,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_ti
 		borrow_key = NULL;
 		if (ret != KNOT_ESEMCHECK) {
 			// all ok, we generated new kay and updated policy-last
+			log_key_structured(ctx, key);
 			return ret;
 		} else {
 			// another zone updated policy-last key in the meantime
@@ -455,6 +482,7 @@ static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 	}
 
 	newkey->timing.ready = ctx->now;
+	log_key_structured(ctx, newkey);
 	return KNOT_EOK;
 }
 
@@ -492,6 +520,7 @@ static int exec_publish(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 {
 	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_PRE_ACTIVE);
 	key->timing.publish = ctx->now;
+	log_key_structured(ctx, key);
 
 	return KNOT_EOK;
 }
@@ -529,6 +558,7 @@ static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_POST_ACTIVE ||
 	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
 	key->timing.remove = ctx->now;
+	log_key_structured(ctx, key);
 
 	return kdnssec_delete_key(ctx, key);
 }
