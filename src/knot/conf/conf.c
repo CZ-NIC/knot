@@ -187,6 +187,7 @@ conf_val_t conf_zone_get_txn(
 		              C_ZONE + 1, C_TPL + 1, knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
+	case KNOT_YP_EINVAL_ID:
 		// Use the default template.
 		conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
 		            CONF_DEFAULT_ID[0], &val);
