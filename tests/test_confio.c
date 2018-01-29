@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -547,7 +547,7 @@ static void test_conf_io_unset(void)
 	ok(conf_io_unset("zone", "file", ZONE1, "name") ==
 	   KNOT_EOK, "unset zone file");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_FILE, zone1);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 
 	// Multi group, single bad value, all ids.
 	ok(conf_io_unset("zone", "comment", NULL, "other") ==
@@ -567,9 +567,9 @@ static void test_conf_io_unset(void)
 	ok(conf_io_unset("zone", "comment", NULL, "abc") ==
 	   KNOT_EOK, "unset some zones comment");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone1);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone2);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone3);
 	ok(val.code == KNOT_EOK, "check entry");
 
@@ -581,11 +581,11 @@ static void test_conf_io_unset(void)
 	ok(conf_io_unset("zone", "comment", NULL, NULL) ==
 	   KNOT_EOK, "unset all zones comment");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone1);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone2);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone3);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 
 	// Restart transaction.
 	conf_io_abort(false);
@@ -595,9 +595,9 @@ static void test_conf_io_unset(void)
 	ok(conf_io_unset("zone", NULL, ZONE1, NULL) ==
 	   KNOT_EOK, "unset zone items");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_FILE, zone1);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone1);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone2);
 	ok(val.code == KNOT_EOK, "check entry");
 
@@ -609,11 +609,11 @@ static void test_conf_io_unset(void)
 	ok(conf_io_unset("zone", NULL, NULL, NULL) ==
 	   KNOT_EOK, "unset zone items");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_FILE, zone1);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone1);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone2);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 
 	// Restart transaction.
 	conf_io_abort(false);
@@ -627,11 +627,11 @@ static void test_conf_io_unset(void)
 	val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_LISTEN);
 	ok(val.code == KNOT_ENOENT, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_FILE, zone1);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone1);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone2);
-	ok(val.code == KNOT_ENOENT, "check entry");
+	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 
 	knot_dname_free(&zone1, NULL);
 	knot_dname_free(&zone2, NULL);

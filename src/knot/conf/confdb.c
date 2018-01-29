@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -667,6 +667,9 @@ int conf_db_get(
 	// Set the key0 code.
 	out.code = db_code(conf, txn, KEY0_ROOT, key0, DB_GET, &k[KEY0_POS]);
 	if (out.code != KNOT_EOK) {
+		if (id_len > 0) {
+			out.code = KNOT_YP_EINVAL_ID;
+		}
 		goto get_error;
 	}
 
