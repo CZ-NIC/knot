@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -197,7 +197,10 @@ bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type);
  *
  * \return True/False.
  */
-bool node_rrtype_exists(const zone_node_t *node, uint16_t type);
+inline static bool node_rrtype_exists(const zone_node_t *node, uint16_t type)
+{
+	return node_rdataset(node, type) != NULL;
+}
 
 /*!
  * \brief Checks whether node is empty. Node is empty when NULL or when no
@@ -207,7 +210,10 @@ bool node_rrtype_exists(const zone_node_t *node, uint16_t type);
  *
  * \return True/False.
  */
-bool node_empty(const zone_node_t *node);
+inline static bool node_empty(const zone_node_t *node)
+{
+	return node == NULL || node->rrset_count == 0;
+}
 
 /*!
  * \brief Check whether two nodes have equal set of rrtypes.

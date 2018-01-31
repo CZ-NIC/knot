@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include <stdbool.h>
 
 #include "libknot/dname.h"
+#include "libknot/descriptor.h"
 #include "libknot/mm_ctx.h"
 #include "libknot/rdataset.h"
 
@@ -36,7 +37,7 @@
  *
  * For RRSet definition see RFC2181, Section 5.
  */
-struct knot_rrset {
+typedef struct {
 	knot_dname_t *owner;  /*!< Domain name being the owner of the RRSet. */
 	uint32_t ttl;         /*!< TTL of the RRset. */
 	uint16_t type;        /*!< TYPE of the RRset. */
@@ -44,9 +45,7 @@ struct knot_rrset {
 	knot_rdataset_t rrs;  /*!< RRSet's RRs */
 	/* Optional fields. */
 	void *additional;     /*!< Additional records. */
-};
-
-typedef struct knot_rrset knot_rrset_t;
+} knot_rrset_t;
 
 /*! \todo Documentation */
 typedef enum {
@@ -54,8 +53,6 @@ typedef enum {
 	KNOT_RRSET_COMPARE_HEADER,
 	KNOT_RRSET_COMPARE_WHOLE
 } knot_rrset_compare_type_t;
-
-/* -------------------- Creation / initialization --------------------------- */
 
 /*!
  * \brief Creates a new RRSet with the given properties.
@@ -82,15 +79,28 @@ knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
  * \param rclass  Class to use.
  * \param ttl     TTL to use.
  */
-void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
-                     uint16_t rclass, uint32_t ttl);
+inline static void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner,
+                                   uint16_t type, uint16_t rclass, uint32_t ttl)
+{
+	if (rrset != NULL) {
+		rrset->owner = owner;
+		rrset->type = type;
+		rrset->rclass = rclass;
+		rrset->ttl = ttl;
+		knot_rdataset_init(&rrset->rrs);
+		rrset->additional = NULL;
+	}
+}
 
 /*!
  * \brief Initializes given RRSet structure.
  *
  * \param rrset  RRSet to init.
  */
-void knot_rrset_init_empty(knot_rrset_t *rrset);
+inline static void knot_rrset_init_empty(knot_rrset_t *rrset)
+{
+	knot_rrset_init(rrset, NULL, 0, KNOT_CLASS_IN, 0);
+}
 
 /*!
  * \brief Creates new RRSet from \a src RRSet.
@@ -102,8 +112,6 @@ void knot_rrset_init_empty(knot_rrset_t *rrset);
  * \retval NULL on error.
  */
 knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_t *mm);
-
-/* ---------------------------- Cleanup ------------------------------------- */
 
 /*!
  * \brief Destroys the RRSet structure and all its substructures.
@@ -123,8 +131,6 @@ void knot_rrset_free(knot_rrset_t **rrset, knot_mm_t *mm);
  */
 void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_t *mm);
 
-/* ---------- RR addition. (legacy, functionality in knot_rdataset_t) ------- */
-
 /*!
  * \brief Adds the given RDATA to the RRSet.
  *
@@ -137,8 +143,6 @@ void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_t *mm);
  */
 int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *data, uint16_t len,
                          knot_mm_t *mm);
-
-/* ------------------ Equality / emptines bool checks ----------------------- */
 
 /*!
  * \brief Compares two RRSets for equality.
@@ -161,9 +165,10 @@ bool knot_rrset_equal(const knot_rrset_t *r1, const knot_rrset_t *r2,
  * \retval True if RRSet is empty.
  * \retval False if RRSet is not empty.
  */
-bool knot_rrset_empty(const knot_rrset_t *rrset);
-
-/* --------------------------- Miscellaneous --------------------------------- */
+inline static bool knot_rrset_empty(const knot_rrset_t *rrset)
+{
+	return rrset == NULL || rrset->rrs.rr_count == 0;
+}
 
 /*!
  * \brief Return whether the RR type is NSEC3 related (NSEC3 or RRSIG).

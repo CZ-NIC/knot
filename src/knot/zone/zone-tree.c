@@ -27,20 +27,6 @@ zone_tree_t *zone_tree_create(void)
 	return trie_create(NULL);
 }
 
-size_t zone_tree_count(const zone_tree_t *tree)
-{
-	if (tree == NULL) {
-		return 0;
-	}
-
-	return trie_weight(tree);
-}
-
-bool zone_tree_is_empty(const zone_tree_t *tree)
-{
-	return zone_tree_count(tree) == 0;
-}
-
 int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 {
 	if (tree == NULL || node == NULL) {

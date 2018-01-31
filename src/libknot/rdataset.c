@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -133,17 +133,6 @@ static int remove_rr_at(knot_rdataset_t *rrs, uint16_t pos, knot_mm_t *mm)
 	rrs->rr_count--;
 
 	return KNOT_EOK;
-}
-
-_public_
-void knot_rdataset_init(knot_rdataset_t *rrs)
-{
-	if (rrs == NULL) {
-		return;
-	}
-
-	rrs->rr_count = 0;
-	rrs->data = NULL;
 }
 
 _public_

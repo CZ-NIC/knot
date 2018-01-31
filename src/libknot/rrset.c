@@ -19,9 +19,6 @@
 #include <stdint.h>
 
 #include "libknot/attribute.h"
-#include "libknot/consts.h"
-#include "libknot/descriptor.h"
-#include "libknot/dname.h"
 #include "libknot/errcode.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
@@ -46,24 +43,6 @@ knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
 	knot_rrset_init(ret, owner_cpy, type, rclass, ttl);
 
 	return ret;
-}
-
-_public_
-void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
-                     uint16_t rclass, uint32_t ttl)
-{
-	rrset->owner = owner;
-	rrset->type = type;
-	rrset->rclass = rclass;
-	rrset->ttl = ttl;
-	knot_rdataset_init(&rrset->rrs);
-	rrset->additional = NULL;
-}
-
-_public_
-void knot_rrset_init_empty(knot_rrset_t *rrset)
-{
-	knot_rrset_init(rrset, NULL, 0, KNOT_CLASS_IN, 0);
 }
 
 _public_
@@ -104,10 +83,12 @@ void knot_rrset_free(knot_rrset_t **rrset, knot_mm_t *mm)
 _public_
 void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_t *mm)
 {
-	if (rrset) {
-		knot_rdataset_clear(&rrset->rrs, mm);
-		knot_dname_free(&rrset->owner, mm);
+	if (rrset == NULL) {
+		return;
 	}
+
+	knot_rdataset_clear(&rrset->rrs, mm);
+	knot_dname_free(&rrset->owner, mm);
 }
 
 _public_
@@ -151,17 +132,6 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 	}
 
 	return true;
-}
-
-_public_
-bool knot_rrset_empty(const knot_rrset_t *rrset)
-{
-	if (rrset) {
-		uint16_t rr_count = rrset->rrs.rr_count;
-		return rr_count == 0;
-	} else {
-		return true;
-	}
 }
 
 _public_

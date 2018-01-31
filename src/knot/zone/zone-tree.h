@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,7 +40,14 @@ zone_tree_t *zone_tree_create(void);
  *
  * \return number of nodes in tree.
  */
-size_t zone_tree_count(const zone_tree_t *tree);
+inline static size_t zone_tree_count(const zone_tree_t *tree)
+{
+	if (tree == NULL) {
+		return 0;
+	}
+
+	return trie_weight(tree);
+}
 
 /*!
  * \brief Checks if the zone tree is empty.
@@ -49,7 +56,10 @@ size_t zone_tree_count(const zone_tree_t *tree);
  *
  * \return Nonzero if the zone tree is empty.
  */
-bool zone_tree_is_empty(const zone_tree_t *tree);
+inline static bool zone_tree_is_empty(const zone_tree_t *tree)
+{
+	return zone_tree_count(tree) == 0;
+}
 
 /*!
  * \brief Inserts the given node into the zone tree.

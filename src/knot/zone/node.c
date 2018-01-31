@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -283,16 +283,6 @@ bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type)
 	}
 
 	return false;
-}
-
-bool node_rrtype_exists(const zone_node_t *node, uint16_t type)
-{
-	return node_rdataset(node, type) != NULL;
-}
-
-bool node_empty(const zone_node_t *node)
-{
-	return node == NULL || node->rrset_count == 0;
 }
 
 bool node_bitmap_equal(const zone_node_t *a, const zone_node_t *b)

@@ -43,7 +43,13 @@ typedef struct {
  *
  * \param rrs  Structure to be initialized.
  */
-void knot_rdataset_init(knot_rdataset_t *rrs);
+inline static void knot_rdataset_init(knot_rdataset_t *rrs)
+{
+	if (rrs != NULL) {
+		rrs->rr_count = 0;
+		rrs->data = NULL;
+	}
+}
 
 /*!
  * \brief Frees data initialized by RRS structure, but not the structure itself.
