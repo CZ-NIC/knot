@@ -995,6 +995,7 @@ static int contents_adjust(zone_contents_t *contents, bool normal)
 	};
 
 	contents->size = 0;
+	contents->dnssec = node_rrtype_is_signed(contents->apex, KNOT_RRTYPE_SOA);
 
 	ret = adjust_nodes(contents->nodes, &arg,
 	                   normal ? adjust_normal_node : adjust_pointers);
@@ -1144,11 +1145,6 @@ void zone_contents_set_soa_serial(zone_contents_t *zone, uint32_t new_serial)
 	if (zone != NULL && (soa = node_rdataset(zone->apex, KNOT_RRTYPE_SOA)) != NULL) {
 		knot_soa_serial_set(soa, new_serial);
 	}
-}
-
-bool zone_contents_is_signed(const zone_contents_t *zone)
-{
-	return node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
 }
 
 bool zone_contents_is_empty(const zone_contents_t *zone)

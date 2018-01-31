@@ -1165,7 +1165,7 @@ int sem_checks_process(zone_contents_t *zone, bool optional, sem_handler_t *hand
 
 	if (optional) {
 		data.level |= OPTIONAL;
-		if (zone_contents_is_signed(zone)) {
+		if (zone->dnssec) {
 			knot_rdataset_t *nsec3param = node_rdataset(zone->apex,
 			                                            KNOT_RRTYPE_NSEC3PARAM);
 			if (nsec3param != NULL) {

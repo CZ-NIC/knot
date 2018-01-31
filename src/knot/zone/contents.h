@@ -42,6 +42,7 @@ typedef struct zone_contents {
 
 	dnssec_nsec3_params_t nsec3_params;
 	size_t size;
+	bool dnssec;
 } zone_contents_t;
 
 /*!
@@ -92,9 +93,6 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
- *
- * \note This function is identical to zone_contents_get_node(), only it returns
- *       constant reference.
  *
  * \param contents Zone where the name should be searched for.
  * \param name Name to find.
@@ -261,11 +259,6 @@ uint32_t zone_contents_serial(const zone_contents_t *zone);
  * \param new_serial  New serial to be set.
  */
 void zone_contents_set_soa_serial(zone_contents_t *zone, uint32_t new_serial);
-
-/*!
- * \brief Return true if zone is signed.
- */
-bool zone_contents_is_signed(const zone_contents_t *zone);
 
 /*!
  * \brief Return true if zone is empty.

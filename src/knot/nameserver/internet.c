@@ -116,7 +116,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 static bool have_dnssec(knotd_qdata_t *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query) &&
-	       zone_contents_is_signed(qdata->extra->zone->contents);
+	       qdata->extra->zone->contents->dnssec;
 }
 
 /*! \brief This is a wildcard-covered or any other terminal node for QNAME.
