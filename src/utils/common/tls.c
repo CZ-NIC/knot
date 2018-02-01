@@ -457,16 +457,13 @@ void tls_ctx_close(tls_ctx_t *ctx)
 	}
 
 	gnutls_bye(ctx->session, GNUTLS_SHUT_RDWR);
+	gnutls_deinit(ctx->session);
 }
 
 void tls_ctx_deinit(tls_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		return;
-	}
-
-	if (ctx->session != NULL) {
-		gnutls_deinit(ctx->session);
 	}
 
 	if (ctx->credentials != NULL) {
