@@ -218,8 +218,8 @@ Options
   Use TLS with a certificate validation. Certification authority certificates
   are loaded from the specified PEM file (default is system certificate storage
   if no argument is provided).
-  Can be specified multiple times. Provide the +tls-hostname option to activate
-  strict authentication.
+  Can be specified multiple times. If the +tls-hostname option is not provided,
+  the name of the target server (if specified) is used for strict authentication.
 
 **+**\ [\ **no**\ ]\ **tls-pin**\ =\ *BASE64*
   Use TLS with the Out-of-Band key-pinned privacy profile (:rfc:`7858#section-4.2`).
