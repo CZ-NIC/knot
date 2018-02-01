@@ -239,15 +239,24 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname,
  * \note Available flags: PF_FREE, KNOT_PF_CHECKDUP, KNOT_PF_NOTRUNC
  *
  * \param pkt
- * \param compr_hint Compression hint, see enum knot_compr_hint or absolute
- *                   position.
- * \param rr Given RRSet.
- * \param flags RRSet flags (set PF_FREE if you want RRSet to be freed with the
- *              packet).
+ * \param compr_hint  Compression hint, see enum knot_compr_hint or absolute
+ *                    position.
+ * \param rr          Given RRSet.
+ * \param rotate      Rotate the RRSet order by this count.
+ * \param flags       RRSet flags (set PF_FREE if you want RRSet to be freed
+ *                    with the packet).
+ *
  * \return KNOT_EOK, KNOT_ESPACE, various errors
  */
-int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
-                 uint16_t flags);
+int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
+                        uint16_t rotate, uint16_t flags);
+
+/*! \brief Same as knot_pkt_put_rotate but without rrset rotation. */
+static inline int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint,
+                               const knot_rrset_t *rr, uint16_t flags)
+{
+	return knot_pkt_put_rotate(pkt, compr_hint, rr, 0, flags);
+}
 
 /*! \brief Get description of the given packet section. */
 static inline const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
