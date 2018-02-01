@@ -101,7 +101,7 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name, knot_mm_t *mm);
  * \param src     Source name.
  * \param maxlen  Maximum wire length.
  *
- * \return number of bytes written
+ * \return the number of bytes written or negative error code
  */
 int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen);
 
