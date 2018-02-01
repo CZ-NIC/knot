@@ -1538,6 +1538,12 @@ static void complete_servers(query_t *query, const query_t *conf)
 					return;
 				}
 			}
+
+			// Use server name as hostname for TLS if necessary.
+			if (query->tls.enable && query->tls.hostname == NULL &&
+			    (query->tls.system_ca || !EMPTY_LIST(query->tls.ca_files))) {
+				query->tls.hostname = strdup(s->name);
+			}
 		}
 	// Use servers from config if any.
 	} else if (list_size(&conf->servers) > 0) {
@@ -1557,6 +1563,12 @@ static void complete_servers(query_t *query, const query_t *conf)
 				return;
 			}
 			add_tail(&query->servers, (node_t *)server);
+
+			// Use server name as hostname for TLS if necessary.
+			if (query->tls.enable && query->tls.hostname == NULL &&
+			    (query->tls.system_ca || !EMPTY_LIST(query->tls.ca_files))) {
+				query->tls.hostname = strdup(s->name);
+			}
 		}
 	// Use system specific.
 	} else {

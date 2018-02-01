@@ -239,8 +239,8 @@ Use TLS with the Opportunistic privacy profile (\fI\%RFC 7858#section\-4.1\fP).
 Use TLS with a certificate validation. Certification authority certificates
 are loaded from the specified PEM file (default is system certificate storage
 if no argument is provided).
-Can be specified multiple times. Provide the +tls\-hostname option to activate
-strict authentication.
+Can be specified multiple times. If the +tls\-hostname option is not provided,
+the name of the target server (if specified) is used for strict authentication.
 .TP
 \fB+\fP[\fBno\fP]\fBtls\-pin\fP=\fIBASE64\fP
 Use TLS with the Out\-of\-Band key\-pinned privacy profile (\fI\%RFC 7858#section\-4.2\fP).
