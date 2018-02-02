@@ -316,6 +316,15 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
+static int zone_notify(zone_t *zone, ctl_args_t *args)
+{
+	UNUSED(args);
+
+	zone_events_schedule_user(zone, ZONE_EVENT_NOTIFY);
+
+	return KNOT_EOK;
+}
+
 static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
 	if (MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
@@ -1189,6 +1198,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_refresh);
 	case CTL_ZONE_RETRANSFER:
 		return zones_apply(args, zone_retransfer);
+	case CTL_ZONE_NOTIFY:
+		return zones_apply(args, zone_notify);
 	case CTL_ZONE_FLUSH:
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_SIGN:
@@ -1621,6 +1632,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_RELOAD]     = { "zone-reload",     ctl_zone },
 	[CTL_ZONE_REFRESH]    = { "zone-refresh",    ctl_zone },
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer", ctl_zone },
+	[CTL_ZONE_NOTIFY]     = { "zone-notify",     ctl_zone },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",      ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",       ctl_zone },
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
