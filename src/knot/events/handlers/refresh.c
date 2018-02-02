@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 #include <stdint.h>
 
 #include "contrib/mempattern.h"
-#include "contrib/trim.h"
 #include "dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
@@ -1095,7 +1094,6 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	bool bootstrap = zone_contents_is_empty(zone->contents);
 	try_refresh_ctx_t trctx = { 0 };
 
 	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
@@ -1140,10 +1138,6 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	replan_from_timers(conf, zone);
 	if (trctx.send_notify) {
 		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
-	}
-
-	if (!bootstrap) {
-		mem_trim();
 	}
 
 	return KNOT_EOK;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "contrib/mempattern.h"
+#include "contrib/trim.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/ucw/mempool.h"
 
@@ -633,6 +634,9 @@ static void callrcu_wrapper_cb(struct rcu_head *param)
 		free(wrap->ctx);
 	}
 	free(wrap);
+
+	// Trim extra heap.
+	mem_trim();
 }
 
 /* NOTE: Does nothing if not enough memory. */
