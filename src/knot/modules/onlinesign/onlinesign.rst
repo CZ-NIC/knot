@@ -41,14 +41,12 @@ a DNSSEC validating resolver.
 
 * RRSIG records are synthesized for authoritative content of the zone.
 
+* CDNSKEY and CDS records are generated as usual to publish valid Secure Entry Point.
+
 .. rubric:: Known issues:
 
-* The delegations are not signed correctly.
-
-* Some CNAME records are not signed correctly.
-
-* The automatic policy-based key rotation does not work well, as the rotation
-  events are invoked just at server (re)load.
+* The `knotc zone-ksk-submitted` command does not work well and is discouraged.
+  The module must be reloaded afterwards.
 
 .. rubric:: Limitations:
 

@@ -226,6 +226,8 @@ libknotd_la_SOURCES =				\
 	knot/ctl/process.h			\
 	knot/dnssec/context.c			\
 	knot/dnssec/context.h			\
+	knot/dnssec/ds_query.c			\
+	knot/dnssec/ds_query.h			\
 	knot/dnssec/kasp/kasp_db.c		\
 	knot/dnssec/kasp/kasp_db.h		\
 	knot/dnssec/kasp/kasp_zone.c		\

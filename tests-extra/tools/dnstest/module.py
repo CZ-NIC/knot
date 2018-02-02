@@ -185,16 +185,32 @@ class ModOnlineSign(KnotModule):
 
     mod_name = "onlinesign"
 
-    def __init__(self, algorithm=None, key_size=None):
+    def __init__(self, algorithm=None, key_size=None, prop_delay=3600, ksc=[ ], ksci=999, ksk_life=9999, ksk_shared=False):
         super().__init__()
         self.algorithm = algorithm
         self.key_size = key_size
         if not algorithm:
             self.empty = True
+        self.prop_delay = prop_delay
+        self.ksc = ksc
+        self.ksci = ksci
+        self.ksk_life = ksk_life
+        self.ksk_shared = ksk_shared
 
     def get_conf(self, conf=None):
         if not conf:
             conf = dnstest.config.KnotConf()
+
+        if self.algorithm and len(self.ksc) > 0:
+            conf.begin("submission")
+            conf.id_item("id", "blahblah")
+            parents = ""
+            for parent in self.ksc:
+                if parents:
+                    parents += ", "
+                parents += parent.name
+            conf.item("parent", "[%s]" % parents)
+            conf.item_str("check-interval", self.ksci)
 
         if self.algorithm:
             conf.begin("policy")
@@ -202,6 +218,11 @@ class ModOnlineSign(KnotModule):
             conf.item_str("algorithm", self.algorithm)
             if self.key_size:
                 conf.item_str("zsk-size", self.key_size)
+            conf.item_str("propagation-delay", self.prop_delay)
+            if len(self.ksc) > 0:
+                conf.item("ksk-submission", "blahblah")
+            conf.item("ksk-lifetime", self.ksk_life)
+            conf.item("ksk-shared", self.ksk_shared)
             conf.end()
 
             conf.begin(self.conf_name)

@@ -23,6 +23,7 @@
 #include "knot/include/module.h"
 #include "knot/modules/onlinesign/nsec_next.h"
 // Next dependencies force static module!
+#include "knot/dnssec/ds_query.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-keys.h"
@@ -47,21 +48,6 @@ const yp_item_t online_sign_conf[] = {
 	{ NULL }
 };
 
-/*
- * TODO:
- *
- * - Fix delegation signing:
- *   + The NSEC proof can decsend into the child zone.
- *   + Out-of-zone glue records can be signed.
- *
- * - Fix CNAME handling:
- *   + Owner name of synthesized records can be incorrect.
- *   + Combination with wildcards results in invalid signatures.
- *
- * - Add support for CDS/CDSKEY synthesis.
- *
- */
-
 /*!
  * \brief RR types to force in synthesised NSEC maps.
  *
@@ -85,6 +71,12 @@ static const uint16_t NSEC_FORCE_TYPES[] = {
 typedef struct {
 	kdnssec_ctx_t kctx;
 	zone_keyset_t keyset;
+
+	knot_time_t event_rollover;
+	knot_time_t event_parent_ds_q;
+	pthread_mutex_t event_mutex;
+
+	bool zone_doomed;
 } online_sign_ctx_t;
 
 static bool want_dnssec(knotd_qdata_t *qdata)
@@ -164,7 +156,7 @@ static void bitmap_add_section(dnssec_nsec_bitmap_t *map, const knot_pktsection_
  * - For non-ANY query, the bitmap will contain types from zone and forced
  *   types which can be potentionally synthesized by other query modules.
  */
-static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *qdata)
+static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *qdata, bool add_forced)
 {
 	dnssec_nsec_bitmap_t *map = dnssec_nsec_bitmap_new();
 	if (!map) {
@@ -183,7 +175,7 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *
 		bitmap_add_section(map, answer);
 	} else {
 		bitmap_add_zone(map, qdata->extra->node);
-		if (!node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
+		if (add_forced && !node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
 			bitmap_add_forced(map, qtype);
 		}
 	}
@@ -191,21 +183,27 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *
 	return map;
 }
 
+static bool is_deleg(const knot_pkt_t *pkt)
+{
+	return !knot_wire_get_aa(pkt->wire);
+}
+
 static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t *mm)
 {
-	knot_rrset_t *nsec = knot_rrset_new(qdata->name, KNOT_RRTYPE_NSEC,
+	const knot_dname_t *nsec_owner = is_deleg(pkt) ? qdata->extra->encloser->owner : qdata->name;
+	knot_rrset_t *nsec = knot_rrset_new(nsec_owner, KNOT_RRTYPE_NSEC,
 	                                    KNOT_CLASS_IN, nsec_ttl(qdata), mm);
 	if (!nsec) {
 		return NULL;
 	}
 
-	knot_dname_t *next = online_nsec_next(qdata->name, knotd_qdata_zone_name(qdata));
+	knot_dname_t *next = online_nsec_next(nsec_owner, knotd_qdata_zone_name(qdata));
 	if (!next) {
 		knot_rrset_free(&nsec, mm);
 		return NULL;
 	}
 
-	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata);
+	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata, !is_deleg(pkt));
 	if (!bitmap) {
 		free(next);
 		knot_rrset_free(&nsec, mm);
@@ -294,6 +292,35 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 	return rrsig;
 }
 
+static glue_t *find_glue_for(const knot_rrset_t *rr, const knot_pkt_t *pkt)
+{
+	for (int i = KNOT_ANSWER; i <= KNOT_AUTHORITY; i++) {
+		const knot_pktsection_t *section = knot_pkt_section(pkt, i);
+		for (int j = 0; j < section->count; j++) {
+			const knot_rrset_t *attempt = knot_pkt_rr(section, j);
+			const additional_t *a = attempt->additional;
+			for (int k = 0; a != NULL && k < a->count; k++) {
+				// no need for knot_dname_cmp because the pointers are assigned
+				if (a->glues[k].node->owner == rr->owner) {
+					return &a->glues[k];
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
+static bool shall_sign_rr(const knot_rrset_t *rr, const knot_pkt_t *pkt)
+{
+	if (pkt->current == KNOT_ADDITIONAL) {
+		glue_t *g = find_glue_for(rr, pkt);
+		assert(g); // finds actually the node which is rr in
+		return !(g->node->flags & NODE_FLAGS_NONAUTH);
+	} else {
+		return !is_deleg(pkt) || rr->type == KNOT_RRTYPE_NSEC;
+	}
+}
+
 static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
@@ -303,14 +330,16 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
-	module_ctx->kctx.now = time(NULL);
-
 	const knot_pktsection_t *section = knot_pkt_section(pkt, pkt->current);
 	assert(section);
 
 	uint16_t count_unsigned = section->count;
 	for (int i = 0; i < count_unsigned; i++) {
 		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		if (!shall_sign_rr(rr, pkt)) {
+			continue;
+		}
+
 		uint16_t rr_pos = knot_pkt_rr_offset(section, i);
 
 		uint8_t owner[KNOT_DNAME_MAXLEN] = { 0 };
@@ -375,6 +404,10 @@ static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const zone_keyset_t *key
 
 	dnssec_binary_t rdata = { 0 };
 	for (size_t i = 0; i < keyset->count; i++) {
+		if (!keyset->keys[i].is_public) {
+			continue;
+		}
+
 		dnssec_key_get_rdata(keyset->keys[i].key, &rdata);
 		assert(rdata.size > 0 && rdata.data);
 
@@ -388,6 +421,79 @@ static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const zone_keyset_t *key
 	return dnskey;
 }
 
+/* copied from the middle of zone-sign.c */
+static zone_key_t *ksk_for_cds(online_sign_ctx_t *ctx)
+{
+	zone_key_t *res = NULL;
+	unsigned crp = ctx->kctx.policy->child_records_publish;
+	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ?
+	                0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
+	for (int i = 0; i < ctx->keyset.count; i++) {
+		zone_key_t *key = &ctx->keyset.keys[i];
+		if (key->is_ksk && key->cds_priority > kfc_prio) {
+			res = key;
+			kfc_prio = key->cds_priority;
+		}
+	}
+	return res;
+}
+
+static knot_rrset_t *synth_cdnskey(knotd_qdata_t *qdata, online_sign_ctx_t *ctx,
+                                   knot_mm_t *mm)
+{
+	knot_rrset_t *dnskey = knot_rrset_new(knotd_qdata_zone_name(qdata),
+	                                      KNOT_RRTYPE_CDNSKEY, KNOT_CLASS_IN,
+	                                      0, mm);
+	if (dnskey == NULL) {
+		return 0;
+	}
+
+	dnssec_binary_t rdata = { 0 };
+	zone_key_t *key = ksk_for_cds(ctx);
+	if (key == NULL) {
+		knot_rrset_free(&dnskey, mm);
+		return NULL;
+	}
+	dnssec_key_get_rdata(key->key, &rdata);
+	assert(rdata.size > 0 && rdata.data);
+
+	int ret = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(&dnskey, mm);
+		return NULL;
+	}
+
+	return dnskey;
+}
+
+static knot_rrset_t *synth_cds(knotd_qdata_t *qdata, online_sign_ctx_t *ctx,
+                               knot_mm_t *mm)
+{
+	knot_rrset_t *ds = knot_rrset_new(knotd_qdata_zone_name(qdata),
+	                                  KNOT_RRTYPE_CDS, KNOT_CLASS_IN,
+	                                  0, mm);
+	if (ds == NULL) {
+		return 0;
+	}
+
+	dnssec_binary_t rdata = { 0 };
+	zone_key_t *key = ksk_for_cds(ctx);
+	if (key == NULL) {
+		knot_rrset_free(&ds, mm);
+		return NULL;
+	}
+	zone_key_calculate_ds(key, &rdata);
+	assert(rdata.size > 0 && rdata.data);
+
+	int ret = knot_rrset_add_rdata(ds, rdata.data, rdata.size, mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(&ds, mm);
+		return NULL;
+	}
+
+	return ds;
+}
+
 static bool qtype_match(knotd_qdata_t *qdata, uint16_t type)
 {
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
@@ -397,6 +503,52 @@ static bool qtype_match(knotd_qdata_t *qdata, uint16_t type)
 static bool is_apex_query(knotd_qdata_t *qdata)
 {
 	return knot_dname_is_equal(qdata->name, knotd_qdata_zone_name(qdata));
+}
+
+static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
+                                    knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
+	zone_sign_reschedule_t resch = { .allow_rollover = true };
+
+	(void)pkt, (void)qdata;
+
+	pthread_mutex_lock(&ctx->event_mutex);
+	if (ctx->zone_doomed) {
+		pthread_mutex_unlock(&ctx->event_mutex);
+		return KNOTD_IN_STATE_ERROR;
+	}
+	ctx->kctx.now = time(NULL);
+	int ret = KNOT_ESEMCHECK;
+	if (knot_time_cmp(ctx->event_parent_ds_q, ctx->kctx.now) <= 0) {
+		ret = knot_parent_ds_query(&ctx->kctx, &ctx->keyset, 1000);
+		if (ret != KNOT_EOK && ctx->kctx.policy->ksk_sbm_check_interval > 0) {
+			ctx->event_parent_ds_q = ctx->kctx.now + ctx->kctx.policy->ksk_sbm_check_interval;
+		} else {
+			ctx->event_parent_ds_q = 0;
+		}
+	}
+	if (ret == KNOT_EOK || knot_time_cmp(ctx->event_rollover, ctx->kctx.now) <= 0) {
+		ret = knot_dnssec_key_rollover(&ctx->kctx, &resch);
+	}
+	if (ret == KNOT_EOK) {
+		if (resch.plan_ds_query && ctx->kctx.policy->ksk_sbm_check_interval > 0) {
+			ctx->event_parent_ds_q = ctx->kctx.now + ctx->kctx.policy->ksk_sbm_check_interval;
+		} else {
+			ctx->event_parent_ds_q = 0;
+		}
+		ctx->event_rollover = resch.next_rollover;
+
+		free_zone_keys(&ctx->keyset);
+		ret = load_zone_keys(&ctx->kctx, &ctx->keyset, true);
+		if (ret != KNOT_EOK) {
+			ctx->zone_doomed = true;
+			state = KNOTD_IN_STATE_ERROR;
+		}
+	}
+	pthread_mutex_unlock(&ctx->event_mutex);
+
+	return state;
 }
 
 static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
@@ -427,6 +579,34 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 		state = KNOTD_IN_STATE_HIT;
 	}
 
+	if (qtype_match(qdata, KNOT_RRTYPE_CDNSKEY) && is_apex_query(qdata)) {
+		knot_rrset_t *dnskey = synth_cdnskey(qdata, ctx, &pkt->mm);
+		if (!dnskey) {
+			return KNOTD_IN_STATE_ERROR;
+		}
+
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
+		if (r != DNSSEC_EOK) {
+			knot_rrset_free(&dnskey, &pkt->mm);
+			return KNOTD_IN_STATE_ERROR;
+		}
+		state = KNOTD_IN_STATE_HIT;
+	}
+
+	if (qtype_match(qdata, KNOT_RRTYPE_CDS) && is_apex_query(qdata)) {
+		knot_rrset_t *ds = synth_cds(qdata, ctx, &pkt->mm);
+		if (!ds) {
+			return KNOTD_IN_STATE_ERROR;
+		}
+
+		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, ds, KNOT_PF_FREE);
+		if (r != DNSSEC_EOK) {
+			knot_rrset_free(&ds, &pkt->mm);
+			return KNOTD_IN_STATE_ERROR;
+		}
+		state = KNOTD_IN_STATE_HIT;
+	}
+
 	if (qtype_match(qdata, KNOT_RRTYPE_NSEC)) {
 		knot_rrset_t *nsec = synth_nsec(pkt, qdata, &pkt->mm);
 		if (!nsec) {
@@ -450,6 +630,8 @@ static void online_sign_ctx_free(online_sign_ctx_t *ctx)
 	free_zone_keys(&ctx->keyset);
 	kdnssec_ctx_deinit(&ctx->kctx);
 
+	pthread_mutex_destroy(&ctx->event_mutex);
+
 	free(ctx);
 }
 
@@ -462,26 +644,36 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 
 	int ret = kdnssec_ctx_init(mod->config, &ctx->kctx, mod->zone, mod->id);
 	if (ret != KNOT_EOK) {
+		free(ctx);
 		return ret;
 	}
 
 	// Force Singe-Type signing scheme. This is only important for compatibility with older versions.
 	ctx->kctx.policy->singe_type_signing = true;
 
-	zone_sign_reschedule_t ignore_out = {
+	zone_sign_reschedule_t resch = {
 		.allow_rollover = true
 	};
-	ret = knot_dnssec_key_rollover(&ctx->kctx, &ignore_out);
+	ret = knot_dnssec_key_rollover(&ctx->kctx, &resch);
 	if (ret != KNOT_EOK) {
 		kdnssec_ctx_deinit(&ctx->kctx);
+		free(ctx);
 		return ret;
 	}
+
+	if (resch.plan_ds_query) {
+		ctx->event_parent_ds_q = time(NULL);
+	}
+	ctx->event_rollover = resch.next_rollover;
 
 	ret = load_zone_keys(&ctx->kctx, &ctx->keyset, true);
 	if (ret != KNOT_EOK) {
 		kdnssec_ctx_deinit(&ctx->kctx);
+		free(ctx);
 		return ret;
 	}
+
+	pthread_mutex_init(&ctx->event_mutex, NULL);
 
 	*ctx_ptr = ctx;
 
@@ -506,6 +698,8 @@ int online_sign_load(knotd_mod_t *mod)
 	}
 
 	knotd_mod_ctx_set(mod, ctx);
+
+	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, pre_routine);
 
 	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, synth_answer);
 	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, sign_section);

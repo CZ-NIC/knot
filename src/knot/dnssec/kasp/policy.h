@@ -20,6 +20,7 @@
 
 #include "contrib/time.h"
 #include "dnssec/lib/dnssec/key.h"
+#include "knot/conf/conf.h"
 
 /*!
  * KASP key timing information.
@@ -63,6 +64,16 @@ typedef struct {
 } knot_kasp_key_t;
 
 /*!
+ * Parent for DS checks.
+ */
+typedef struct {
+        conf_remote_t *addr;
+        size_t addrs;
+} knot_kasp_parent_t;
+
+dynarray_declare(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_PUBLIC, 3)
+
+/*!
  * Key and signature policy.
  */
 typedef struct {
@@ -96,5 +107,6 @@ typedef struct {
 	uint32_t ksk_sbm_timeout;
 	uint32_t ksk_sbm_check_interval;
 	unsigned child_records_publish;
+	parent_dynarray_t parents;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??

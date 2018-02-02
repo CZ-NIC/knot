@@ -22,6 +22,8 @@
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/kasp/keystore.h"
 
+dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_PUBLIC)
+
 static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 {
 	if (conf_str(id) == NULL) {
@@ -95,9 +97,20 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 
 		val = conf_id_get(conf(), C_SBM, C_TIMEOUT, &ksk_sbm);
 		policy->ksk_sbm_timeout = conf_int(&val);
-	} else {
-		policy->ksk_sbm_check_interval = 0;
-		policy->ksk_sbm_timeout = 0;
+
+		val = conf_id_get(conf(), C_SBM, C_PARENT, &ksk_sbm);
+		while (val.code == KNOT_EOK) {
+			conf_val_t addr = conf_id_get(conf(), C_RMT, C_ADDR, &val);
+			knot_kasp_parent_t p = { .addrs = conf_val_count(&addr) };
+			p.addr = p.addrs ? malloc(p.addrs * sizeof(*p.addr)) : NULL;
+			if (p.addr != NULL) {
+				for (size_t i = 0; i < p.addrs; i++) {
+					p.addr[i] = conf_remote(conf(), &val, i);
+				}
+				parent_dynarray_add(&policy->parents, &p);
+			}
+			conf_val_next(&val);
+		}
 	}
 }
 
@@ -191,6 +204,9 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 
 	if (ctx->policy != NULL) {
 		free(ctx->policy->string);
+		dynarray_foreach(parent, knot_kasp_parent_t, i, ctx->policy->parents) {
+			free(i->addr);
+		}
 		free(ctx->policy);
 	}
 	dnssec_keystore_deinit(ctx->keystore);
