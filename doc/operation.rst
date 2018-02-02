@@ -538,6 +538,34 @@ If you want to refresh the slave zones, you can do this with::
 
     $ knotc zone-refresh
 
+.. _Structured logging:
+
+Structured logging
+==================
+
+On systems with Systemd, structured logging of some events into journald is available.
+The intended usecase is to enable hooks for user-created scripts, that can perform
+some action when an event in Knot happens.
+
+The log priority is always INFO, the log message is always "structured", the log parameter
+ZONE is always set to zone affected by the event.
+
+Follows the list of logged events and their parameters::
+
+   EVENT="DNSSEC,publish" KEYTAG=<newly created key tag>
+   EVENT="DNSSEC,remove"  KEYTAG=<removed key tag>
+   EVENT="DNSSEC,submit"  KEYTAG=<submitted key tag>
+
+An example of a script able to perform an action when a key is submitted::
+
+   journalctl -f -t knotd -o json | python3 -c '
+   import json, sys;
+   for line in sys.stdin:
+     k = json.loads(line);
+     if k["MESSAGE"] == "structured" and k["EVENT"] == "DNSSEC,submit":
+       print(k["__REALTIME_TIMESTAMP"], k["ZONE"], k["KEYTAG"]);
+   '
+
 .. _Statistics:
 
 Statistics
