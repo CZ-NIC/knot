@@ -224,6 +224,9 @@ static int verify_certificate(gnutls_session_t session)
 		  .data = (void *)ctx->params->hostname }
 	};
 	size_t data_count = (ctx->params->hostname != NULL) ? 2 : 1;
+	if (data_count == 1) {
+		WARN("TLS, no hostname provided, will not verify certificate owner\n")
+	}
 
 	unsigned int status;
 	ret = gnutls_certificate_verify_peers(session, data, data_count, &status);
