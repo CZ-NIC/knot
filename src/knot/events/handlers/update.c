@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include "contrib/trim.h"
 #include "knot/conf/conf.h"
 #include "knot/nameserver/update.h"
 #include "knot/zone/zone.h"
@@ -29,9 +28,6 @@ int event_update(conf_t *conf, zone_t *zone)
 
 	/* Process update list - forward if zone has master, or execute. */
 	updates_execute(conf, zone);
-
-	/* Trim extra heap. */
-	mem_trim();
 
 	return KNOT_EOK;
 }
