@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <lmdb.h>
 
 #include "dnssec/lib/dnssec/error.h"
@@ -203,6 +204,9 @@ const char *knot_strerror(int code)
 	const char *msg;
 
 	switch (code) {
+	case INT_MIN: // Cannot convert to a positive value.
+		code = KNOT_ERROR;
+		// FALLTHROUGH
 	case KNOT_ERROR_MIN ... KNOT_EOK:
 		msg = lookup_message(code); break;
 	case DNSSEC_ERROR_MIN ... DNSSEC_ERROR_MAX:
@@ -216,6 +220,7 @@ const char *knot_strerror(int code)
 	if (msg != NULL) {
 		return msg;
 	} else {
+		// strerror_r would be better but it requires thread local storage.
 		return strerror(abs(code));
 	}
 }
