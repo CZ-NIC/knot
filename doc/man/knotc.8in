@@ -109,6 +109,10 @@ newer zone, a transfer is scheduled. This command is valid for slave zones.
 Trigger a zone transfer from the zone\(aqs master. The server doesn\(aqt check the
 serial of the master\(aqs zone. This command is valid for slave zones.
 .TP
+\fBzone\-notify\fP [\fIzone\fP\&...]
+Trigger a NOTIFY message to all configured remotes. This can help in cases
+when previous NOTIFY had been lost or the slaves offline.
+.TP
 \fBzone\-flush\fP [\fIzone\fP\&...] [\fB+outdir\fP \fIdirectory\fP]
 Trigger a zone journal flush into the zone file. If output dir is specified,
 instead of flushing the zonefile, the zone is dumped to a file in the specified

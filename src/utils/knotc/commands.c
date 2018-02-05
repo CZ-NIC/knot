@@ -44,6 +44,7 @@
 #define CMD_ZONE_RELOAD		"zone-reload"
 #define CMD_ZONE_REFRESH	"zone-refresh"
 #define CMD_ZONE_RETRANSFER	"zone-retransfer"
+#define CMD_ZONE_NOTIFY         "zone-notify"
 #define CMD_ZONE_FLUSH		"zone-flush"
 #define CMD_ZONE_SIGN		"zone-sign"
 #define CMD_ZONE_KSK_SBM	"zone-ksk-submitted"
@@ -238,6 +239,7 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_ZONE_RELOAD:
 	case CTL_ZONE_REFRESH:
 	case CTL_ZONE_RETRANSFER:
+	case CTL_ZONE_NOTIFY:
 	case CTL_ZONE_FLUSH:
 	case CTL_ZONE_SIGN:
 	case CTL_ZONE_KSK_SBM:
@@ -358,6 +360,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_RELOAD:
 	case CTL_ZONE_REFRESH:
 	case CTL_ZONE_RETRANSFER:
+	case CTL_ZONE_NOTIFY:
 	case CTL_ZONE_FLUSH:
 	case CTL_ZONE_SIGN:
 	case CTL_ZONE_KSK_SBM:
@@ -1065,6 +1068,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,        CTL_ZONE_RELOAD,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,        CTL_ZONE_REFRESH,    CMD_FOPT_ZONE },
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,        CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
+	{ CMD_ZONE_NOTIFY,     cmd_zone_ctl,        CTL_ZONE_NOTIFY,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_FLUSH,      cmd_zone_filter_ctl, CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,        CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,        CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE },
@@ -1110,6 +1114,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_MEMSTATS,   "[<zone>...]",                            "Estimate memory use for the zone. (*)" },
 	{ CMD_ZONE_RELOAD,     "[<zone>...]",                            "Reload a zone from a disk." },
 	{ CMD_ZONE_REFRESH,    "[<zone>...]",                            "Force slave zone refresh." },
+	{ CMD_ZONE_NOTIFY,     "[<zone>...]",                            "Send a NOTIFY message to all configured remotes." },
 	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check)." },
 	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",              "Flush zone journal into the zone file." },
 	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone." },

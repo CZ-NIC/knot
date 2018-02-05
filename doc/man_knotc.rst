@@ -86,6 +86,10 @@ Actions
   Trigger a zone transfer from the zone's master. The server doesn't check the
   serial of the master's zone. This command is valid for slave zones.
 
+**zone-notify** [*zone*...]
+  Trigger a NOTIFY message to all configured remotes. This can help in cases
+  when previous NOTIFY had been lost or the slaves offline.
+
 **zone-flush** [*zone*...] [**+outdir** *directory*]
   Trigger a zone journal flush into the zone file. If output dir is specified,
   instead of flushing the zonefile, the zone is dumped to a file in the specified
