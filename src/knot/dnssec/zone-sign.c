@@ -1002,9 +1002,9 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 #undef CHECK_RET
 
 cleanup:
-	knot_rrset_free(&add_dnskeys, NULL);
-	knot_rrset_free(&add_cdnskeys, NULL);
-	knot_rrset_free(&add_cdss, NULL);
+	knot_rrset_free(add_dnskeys, NULL);
+	knot_rrset_free(add_cdnskeys, NULL);
+	knot_rrset_free(add_cdss, NULL);
 	changeset_clear(&ch);
 	return ret;
 }

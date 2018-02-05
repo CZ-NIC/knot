@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ static void rrset_list_clear(list_t *l)
 	WALK_LIST_DELSAFE(n, nxt, *l) {
 		ptrnode_t *ptr_n = (ptrnode_t *)n;
 		knot_rrset_t *rrset = (knot_rrset_t *)ptr_n->d;
-		knot_rrset_free(&rrset, NULL);
+		knot_rrset_free(rrset, NULL);
 		free(n);
 	};
 }

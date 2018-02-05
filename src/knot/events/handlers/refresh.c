@@ -355,7 +355,7 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	// Process saved SOA if fallback from IXFR
 	if (data->initial_soa_copy != NULL) {
 		next = axfr_consume_rr(data->initial_soa_copy, data);
-		knot_rrset_free(&data->initial_soa_copy, data->mm);
+		knot_rrset_free(data->initial_soa_copy, data->mm);
 		if (next != KNOT_STATE_CONSUME) {
 			return next;
 		}
@@ -400,7 +400,7 @@ static void ixfr_cleanup(struct refresh_data *data)
 		return;
 	}
 
-	knot_rrset_free(&data->ixfr.final_soa, data->mm);
+	knot_rrset_free(data->ixfr.final_soa, data->mm);
 	mm_free(data->mm, data->ixfr.proc);
 	data->ixfr.proc = NULL;
 
@@ -779,7 +779,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	// Process saved SOA if existing
 	if (data->initial_soa_copy != NULL) {
 		next = ixfr_consume_rr(data->initial_soa_copy, data);
-		knot_rrset_free(&data->initial_soa_copy, data->mm);
+		knot_rrset_free(data->initial_soa_copy, data->mm);
 		if (next != KNOT_STATE_CONSUME) {
 			return next;
 		}
@@ -870,13 +870,13 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		uint32_t master_serial;
 		int ret = zone_get_master_serial(data->zone, &master_serial);
 		if (sending_soa == NULL || ret != KNOT_EOK) {
-			knot_rrset_free(&sending_soa, data->mm);
+			knot_rrset_free(sending_soa, data->mm);
 			return KNOT_STATE_FAIL;
 		}
 		knot_soa_serial_set(&sending_soa->rrs, master_serial);
 		knot_pkt_begin(pkt, KNOT_AUTHORITY);
 		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, sending_soa, 0);
-		knot_rrset_free(&sending_soa, data->mm);
+		knot_rrset_free(sending_soa, data->mm);
 	}
 
 	query_put_edns(pkt, &data->edns);

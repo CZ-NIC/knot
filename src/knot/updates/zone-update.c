@@ -381,7 +381,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		zone_node_t *n = NULL;
 		knot_rrset_t *rrs_copy = knot_rrset_copy(rrset, &update->mm);
 		int ret = zone_contents_remove_rr(update->new_cont, rrs_copy, &n);
-		knot_rrset_free(&rrs_copy, &update->mm);
+		knot_rrset_free(rrs_copy, &update->mm);
 		return ret;
 	} else {
 		return KNOT_EINVAL;
@@ -525,7 +525,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 
 	int ret = zone_update_remove(update, soa_cpy);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&soa_cpy, NULL);
+		knot_rrset_free(soa_cpy, NULL);
 	}
 
 	uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
@@ -539,7 +539,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 	knot_soa_serial_set(&soa_cpy->rrs, new_serial);
 
 	ret = zone_update_add(update, soa_cpy);
-	knot_rrset_free(&soa_cpy, NULL);
+	knot_rrset_free(soa_cpy, NULL);
 
 	return ret;
 }

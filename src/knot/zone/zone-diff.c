@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ static int load_soas(const zone_contents_t *zone1, const zone_contents_t *zone2,
 	}
 	changeset->soa_to = knot_rrset_copy(&soa_rrset2, NULL);
 	if (changeset->soa_to == NULL) {
-		knot_rrset_free(&changeset->soa_from, NULL);
+		knot_rrset_free(changeset->soa_from, NULL);
 		return KNOT_ENOMEM;
 	}
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -316,7 +316,7 @@ static void print_section_question(const knot_dname_t *owner,
 
 	printf("%s\n", buf);
 
-	knot_rrset_free(&question, NULL);
+	knot_rrset_free(question, NULL);
 	free(buf);
 }
 

@@ -180,9 +180,9 @@ int main(int argc, char *argv[])
 	ok(changeset_empty(ch2), "changeset: clear list");
 	free(ch2);
 
-	knot_rrset_free(&apex_txt_rr, NULL);
-	knot_rrset_free(&apex_spf_rr, NULL);
-	knot_rrset_free(&other_rr, NULL);
+	knot_rrset_free(apex_txt_rr, NULL);
+	knot_rrset_free(apex_spf_rr, NULL);
+	knot_rrset_free(other_rr, NULL);
 
 	return 0;
 }

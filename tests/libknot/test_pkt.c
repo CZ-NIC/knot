@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
 
 	/* Free extra data. */
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {
-		knot_rrset_free(&rrsets[i], NULL);
+		knot_rrset_free(rrsets[i], NULL);
 	}
 	free(tsig_key.secret.data);
 	mp_delete((struct mempool *)mm.ctx);

@@ -929,7 +929,7 @@ static int zone_txn_set(zone_t *zone, ctl_args_t *args)
 	}
 
 	ret = zone_update_add(zone->control_update, rrset);
-	knot_rrset_free(&rrset, NULL);
+	knot_rrset_free(rrset, NULL);
 
 	return ret;
 }
@@ -957,7 +957,7 @@ static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 		}
 
 		ret = zone_update_remove(zone->control_update, rrset);
-		knot_rrset_free(&rrset, NULL);
+		knot_rrset_free(rrset, NULL);
 		return ret;
 	} else {
 		uint8_t owner[KNOT_DNAME_MAXLEN];

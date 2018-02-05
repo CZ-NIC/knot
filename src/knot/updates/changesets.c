@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset)
 	assert(rrset);
 
 	if (*soa != NULL) {
-		knot_rrset_free(soa, NULL);
+		knot_rrset_free(*soa, NULL);
 	}
 
 	*soa = knot_rrset_copy(rrset, NULL);
@@ -304,9 +304,9 @@ int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset
 	int ret = knot_rrset_empty(to_add) ? KNOT_EOK : add_rr_to_contents(ch->add, to_add);
 
 	if (flags & CHANGESET_CHECK) {
-		knot_rrset_free((knot_rrset_t **)&rrset, NULL);
+		knot_rrset_free((knot_rrset_t *)rrset, NULL);
 	}
-	knot_rrset_free(&rrset_cancelout, NULL);
+	knot_rrset_free(rrset_cancelout, NULL);
 
 	return ret;
 }
@@ -341,9 +341,9 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 	int ret = knot_rrset_empty(to_remove) ? KNOT_EOK : add_rr_to_contents(ch->remove, to_remove);
 
 	if (flags & CHANGESET_CHECK) {
-		knot_rrset_free((knot_rrset_t **)&rrset, NULL);
+		knot_rrset_free((knot_rrset_t *)rrset, NULL);
 	}
-	knot_rrset_free(&rrset_cancelout, NULL);
+	knot_rrset_free(rrset_cancelout, NULL);
 
 	return ret;
 }
@@ -353,7 +353,7 @@ int changeset_remove_addition(changeset_t *ch, const knot_rrset_t *rrset)
 	if (rrset->type == KNOT_RRTYPE_SOA) {
 		/* Do not add SOAs into actual contents. */
 		if (ch->soa_to != NULL) {
-			knot_rrset_free(&ch->soa_to, NULL);
+			knot_rrset_free(ch->soa_to, NULL);
 			ch->soa_to = NULL;
 		}
 		return KNOT_EOK;
@@ -368,7 +368,7 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset)
 	if (rrset->type == KNOT_RRTYPE_SOA) {
 		/* Do not add SOAs into actual contents. */
 		if (ch->soa_from != NULL) {
-			knot_rrset_free(&ch->soa_from, NULL);
+			knot_rrset_free(ch->soa_from, NULL);
 			ch->soa_from = NULL;
 		}
 		return KNOT_EOK;
@@ -417,7 +417,7 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags)
 	if (soa_copy == NULL && ch2->soa_to) {
 		return KNOT_ENOMEM;
 	}
-	knot_rrset_free(&ch1->soa_to, NULL);
+	knot_rrset_free(ch1->soa_to, NULL);
 	ch1->soa_to = soa_copy;
 
 	return KNOT_EOK;
@@ -466,7 +466,7 @@ static int preapply_fix_rrset(const knot_rrset_t *apply, bool adding, void *data
 		}
 	}
 
-	knot_rrset_free(&fixrrset, ctx->mm);
+	knot_rrset_free(fixrrset, ctx->mm);
 	return ret;
 }
 
@@ -539,7 +539,7 @@ int changeset_to_contents(changeset_t *ch, zone_contents_t **out)
 
 	*out = ch->add;
 	int ret = add_rr_to_contents(*out, ch->soa_to);
-	knot_rrset_free(&ch->soa_to, NULL);
+	knot_rrset_free(ch->soa_to, NULL);
 	if (ret != KNOT_EOK) {
 		zone_contents_deep_free(out);
 	}
@@ -578,8 +578,8 @@ void changeset_from_contents_free(changeset_t *ch)
 	update_free_zone(&ch->add);
 
 	zone_contents_deep_free(&ch->remove);
-	knot_rrset_free(&ch->soa_from, NULL);
-	knot_rrset_free(&ch->soa_to, NULL);
+	knot_rrset_free(ch->soa_from, NULL);
+	knot_rrset_free(ch->soa_to, NULL);
 	free(ch->data);
 	free(ch);
 }
@@ -618,8 +618,10 @@ void changeset_clear(changeset_t *ch)
 	zone_contents_deep_free(&ch->add);
 	zone_contents_deep_free(&ch->remove);
 
-	knot_rrset_free(&ch->soa_from, NULL);
-	knot_rrset_free(&ch->soa_to, NULL);
+	knot_rrset_free(ch->soa_from, NULL);
+	knot_rrset_free(ch->soa_to, NULL);
+	ch->soa_from = NULL;
+	ch->soa_to = NULL;
 
 	// Delete binary data
 	free(ch->data);

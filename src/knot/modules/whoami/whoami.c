@@ -94,14 +94,14 @@ static knotd_in_state_t whoami_query(knotd_in_state_t state, knot_pkt_t *pkt,
 	/* Record data is the query source address. */
 	int ret = knot_rrset_add_rdata(rrset, rdata, len_rdata, &pkt->mm);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rrset, &pkt->mm);
+		knot_rrset_free(rrset, &pkt->mm);
 		return KNOTD_IN_STATE_ERROR;
 	}
 
 	/* Add the new RRset to the response packet. */
 	ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rrset, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rrset, &pkt->mm);
+		knot_rrset_free(rrset, &pkt->mm);
 		return KNOTD_IN_STATE_ERROR;
 	}
 

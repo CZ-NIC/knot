@@ -154,13 +154,13 @@ static void changeset_set_soa_serials(changeset_t *ch, uint32_t from, uint32_t t
 	knot_rrset_t soa;
 
 	init_soa(&soa, from, apex);
-	knot_rrset_free(&ch->soa_from, NULL);
+	knot_rrset_free(ch->soa_from, NULL);
 	ch->soa_from = knot_rrset_copy(&soa, NULL);
 	assert(ch->soa_from);
 	knot_rrset_clear(&soa, NULL);
 
 	init_soa(&soa, to, apex);
-	knot_rrset_free(&ch->soa_to, NULL);
+	knot_rrset_free(ch->soa_to, NULL);
 	ch->soa_to = knot_rrset_copy(&soa, NULL);
 	assert(ch->soa_to);
 	knot_rrset_clear(&soa, NULL);
@@ -518,9 +518,9 @@ static knot_rrset_t * tm_rrs(const knot_dname_t * apex, int x)
 	static knot_rrset_t * rrsC = NULL;
 
 	if (apex == NULL) {
-		knot_rrset_free(&rrsA, NULL);
-		knot_rrset_free(&rrsB, NULL);
-		knot_rrset_free(&rrsC, NULL);
+		knot_rrset_free(rrsA, NULL);
+		knot_rrset_free(rrsB, NULL);
+		knot_rrset_free(rrsC, NULL);
 		rrsA = rrsB = rrsC = NULL;
 		return NULL;
 	}

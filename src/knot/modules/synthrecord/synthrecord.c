@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -333,7 +333,7 @@ static knot_rrset_t *synth_rr(char *addr_str, const synth_template_t *tpl, knot_
 	}
 
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rr, &pkt->mm);
+		knot_rrset_free(rr, &pkt->mm);
 		return NULL;
 	}
 

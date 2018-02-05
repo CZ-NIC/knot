@@ -272,12 +272,12 @@ static int add_nsec3param(const zone_contents_t *zone, changeset_t *changeset,
 
 	int r = set_nsec3param(rrset, params);
 	if (r != KNOT_EOK) {
-		knot_rrset_free(&rrset, NULL);
+		knot_rrset_free(rrset, NULL);
 		return r;
 	}
 
 	r = changeset_add_addition(changeset, rrset, 0);
-	knot_rrset_free(&rrset, NULL);
+	knot_rrset_free(rrset, NULL);
 	return r;
 }
 

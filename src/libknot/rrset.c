@@ -60,7 +60,7 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_t *mm)
 
 	int ret = knot_rdataset_copy(&rrset->rrs, &src->rrs, mm);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rrset, mm);
+		knot_rrset_free(rrset, mm);
 		return NULL;
 	}
 
@@ -68,16 +68,14 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_t *mm)
 }
 
 _public_
-void knot_rrset_free(knot_rrset_t **rrset, knot_mm_t *mm)
+void knot_rrset_free(knot_rrset_t *rrset, knot_mm_t *mm)
 {
-	if (rrset == NULL || *rrset == NULL) {
+	if (rrset == NULL) {
 		return;
 	}
 
-	knot_rrset_clear(*rrset, mm);
-
-	mm_free(mm, *rrset);
-	*rrset = NULL;
+	knot_rrset_clear(rrset, mm);
+	mm_free(mm, rrset);
 }
 
 _public_

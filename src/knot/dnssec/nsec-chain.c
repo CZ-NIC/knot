@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -117,13 +117,13 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 		knot_rrset_t *old_nsec_lc = knot_rrset_copy(&old_nsec, NULL);
 		ret = knot_rrset_rr_to_canonical(old_nsec_lc);
 		if (ret != KNOT_EOK) {
-			knot_rrset_free(&old_nsec_lc, NULL);
+			knot_rrset_free(old_nsec_lc, NULL);
 			return ret;
 		}
 
 		bool equal = knot_rrset_equal(&new_nsec, old_nsec_lc,
 		                              KNOT_RRSET_COMPARE_WHOLE);
-		knot_rrset_free(&old_nsec_lc, NULL);
+		knot_rrset_free(old_nsec_lc, NULL);
 
 		if (equal) {
 			// current NSEC is valid, do nothing

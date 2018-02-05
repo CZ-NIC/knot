@@ -353,12 +353,12 @@ static int rr_list_append(zs_scanner_t *s, list_t *target_list, knot_mm_t *mm)
 	if (ret != KNOT_EOK) {
 		DBG("%s: failed to set rrset from wire (%s)\n",
 		    __func__, knot_strerror(ret));
-		knot_rrset_free(&rr, NULL);
+		knot_rrset_free(rr, NULL);
 		return ret;
 	}
 
 	if (ptrlist_add(target_list, rr, mm) == NULL) {
-		knot_rrset_free(&rr, NULL);
+		knot_rrset_free(rr, NULL);
 		return KNOT_ENOMEM;
 	}
 

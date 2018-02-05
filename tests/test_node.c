@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 	ok(n_rrset && knot_rrset_equal(n_rrset, dummy_rrset, KNOT_RRSET_COMPARE_WHOLE),
 	   "Node: create existing RRSet.");
 
-	knot_rrset_free(&n_rrset, NULL);
+	knot_rrset_free(n_rrset, NULL);
 
 	n_rrset = node_create_rrset(node, KNOT_RRTYPE_SOA);
 	ok(n_rrset == NULL, "Node: create non-existing RRSet.");
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_ETTL && node->rrset_count == 1,
 	   "Node: add RRSet, TTL mismatch.");
 
-	knot_rrset_free(&dummy_rrset, NULL);
+	knot_rrset_free(dummy_rrset, NULL);
 
 	// Test bool functions
 	ok(node_rrtype_exists(node, KNOT_RRTYPE_TXT), "Node: type exists.");
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 
 	ok(node_rrtype_is_signed(node, KNOT_RRTYPE_TXT), "Node: type is signed.");
 
-	knot_rrset_free(&dummy_rrset, NULL);
+	knot_rrset_free(dummy_rrset, NULL);
 
 	// Test remove RRset
 	node_remove_rdataset(node, KNOT_RRTYPE_AAAA);

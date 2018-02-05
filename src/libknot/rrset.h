@@ -115,13 +115,11 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, knot_mm_t *mm);
 
 /*!
  * \brief Destroys the RRSet structure and all its substructures.
- )
- * Also sets the given pointer to NULL.
  *
  * \param rrset  RRset to be destroyed.
  * \param mm     Memory context.
  */
-void knot_rrset_free(knot_rrset_t **rrset, knot_mm_t *mm);
+void knot_rrset_free(knot_rrset_t *rrset, knot_mm_t *mm);
 
 /*!
  * \brief Frees structures inside RRSet, but not the RRSet itself.

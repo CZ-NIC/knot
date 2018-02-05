@@ -36,7 +36,7 @@ static bool check_rrset(const knot_rrset_t *rrset, const knot_dname_t *owner,
 
 int main(int argc, char *argv[])
 {
-	plan(19);
+	plan_lazy();
 
 	// Test new
 	knot_dname_t *dummy_owner = knot_dname_from_str_alloc("test.");
@@ -110,9 +110,8 @@ int main(int argc, char *argv[])
 	ok(check_rrset(rrset, NULL, 0, KNOT_CLASS_IN, 0), "rrset: init empty.");
 
 	// "Test" freeing
-	knot_rrset_free(&rrset, NULL);
-	knot_rrset_free(&copy, NULL);
-	ok(rrset == NULL && copy == NULL, "rrset: free.");
+	knot_rrset_free(rrset, NULL);
+	knot_rrset_free(copy, NULL);
 
 	return 0;
 }

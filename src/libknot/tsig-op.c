@@ -383,7 +383,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	                           request_mac, request_mac_len,
 	                           digest_tmp, &digest_tmp_len, tmp_tsig, key);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&tmp_tsig, NULL);
+		knot_rrset_free(tmp_tsig, NULL);
 		return ret;
 	}
 
@@ -395,13 +395,13 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	                         msg_max_len - *msg_len, NULL);
 	if (ret < 0) {
 		*digest_len = 0;
-		knot_rrset_free(&tmp_tsig, NULL);
+		knot_rrset_free(tmp_tsig, NULL);
 		return ret;
 	}
 
 	size_t tsig_wire_len = ret;
 
-	knot_rrset_free(&tmp_tsig, NULL);
+	knot_rrset_free(tmp_tsig, NULL);
 
 	*msg_len += tsig_wire_len;
 
@@ -445,7 +445,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	size_t wire_len = prev_digest_len + to_sign_len + KNOT_TSIG_TIMERS_LENGTH + 2;
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
-		knot_rrset_free(&tmp_tsig, NULL);
+		knot_rrset_free(tmp_tsig, NULL);
 		return KNOT_ENOMEM;
 	}
 	memset(wire, 0, wire_len);
@@ -462,13 +462,13 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	int ret = compute_digest(wire, wire_len, digest_tmp, &digest_tmp_len, key);
 	free(wire);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&tmp_tsig, NULL);
+		knot_rrset_free(tmp_tsig, NULL);
 		*digest_len = 0;
 		return ret;
 	}
 
 	if (digest_tmp_len > *digest_len) {
-		knot_rrset_free(&tmp_tsig, NULL);
+		knot_rrset_free(tmp_tsig, NULL);
 		*digest_len = 0;
 		return KNOT_ESPACE;
 	}
@@ -485,14 +485,14 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
 	                         msg_max_len - *msg_len, NULL);
 	if (ret < 0) {
-		knot_rrset_free(&tmp_tsig, NULL);
+		knot_rrset_free(tmp_tsig, NULL);
 		*digest_len = 0;
 		return ret;
 	}
 
 	size_t tsig_wire_size = ret;
 
-	knot_rrset_free(&tmp_tsig, NULL);
+	knot_rrset_free(tmp_tsig, NULL);
 
 	*msg_len += tsig_wire_size;
 	uint16_t arcount = knot_wire_get_arcount(msg);
@@ -659,7 +659,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	int ret = knot_tsig_append(msg, msg_len, msg_max_len, tmp_tsig);
 
 	/* key_name already referenced in RRSet, no need to free separately. */
-	knot_rrset_free(&tmp_tsig, NULL);
+	knot_rrset_free(tmp_tsig, NULL);
 
 	return ret;
 }

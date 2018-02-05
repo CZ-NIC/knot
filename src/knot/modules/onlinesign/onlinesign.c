@@ -199,14 +199,14 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t
 
 	knot_dname_t *next = online_nsec_next(nsec_owner, knotd_qdata_zone_name(qdata));
 	if (!next) {
-		knot_rrset_free(&nsec, mm);
+		knot_rrset_free(nsec, mm);
 		return NULL;
 	}
 
 	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata, !is_deleg(pkt));
 	if (!bitmap) {
 		free(next);
-		knot_rrset_free(&nsec, mm);
+		knot_rrset_free(nsec, mm);
 		return NULL;
 	}
 
@@ -220,7 +220,7 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t
 	dnssec_nsec_bitmap_free(bitmap);
 
 	if (knot_rrset_add_rdata(nsec, rdata, size, mm) != KNOT_EOK) {
-		knot_rrset_free(&nsec, mm);
+		knot_rrset_free(nsec, mm);
 		return NULL;
 	}
 
@@ -259,7 +259,7 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 	}
 
 	if (knot_rdataset_copy(&copy->rrs, &cover->rrs, NULL) != KNOT_EOK) {
-		knot_rrset_free(&copy, NULL);
+		knot_rrset_free(copy, NULL);
 		return NULL;
 	}
 
@@ -268,7 +268,7 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 	knot_rrset_t *rrsig = knot_rrset_new(owner, KNOT_RRTYPE_RRSIG, copy->rclass,
 	                                     copy->ttl, mm);
 	if (!rrsig) {
-		knot_rrset_free(&copy, NULL);
+		knot_rrset_free(copy, NULL);
 		return NULL;
 	}
 
@@ -281,13 +281,13 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 
 		int ret = knot_sign_rrset(rrsig, copy, kkey->key, kkey->ctx, &module_ctx->kctx, mm);
 		if (ret != KNOT_EOK) {
-			knot_rrset_free(&copy, NULL);
-			knot_rrset_free(&rrsig, mm);
+			knot_rrset_free(copy, NULL);
+			knot_rrset_free(rrsig, mm);
 			return NULL;
 		}
 	}
 
-	knot_rrset_free(&copy, NULL);
+	knot_rrset_free(copy, NULL);
 
 	return rrsig;
 }
@@ -354,7 +354,7 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, rrsig, KNOT_PF_FREE);
 		if (r != KNOT_EOK) {
-			knot_rrset_free(&rrsig, &pkt->mm);
+			knot_rrset_free(rrsig, &pkt->mm);
 			state = KNOTD_IN_STATE_ERROR;
 			break;
 		}
@@ -376,7 +376,7 @@ static knotd_in_state_t synth_authority(knotd_in_state_t state, knot_pkt_t *pkt,
 		knot_rrset_t *nsec = synth_nsec(pkt, qdata, &pkt->mm);
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, nsec, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
-			knot_rrset_free(&nsec, &pkt->mm);
+			knot_rrset_free(nsec, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
 	}
@@ -413,7 +413,7 @@ static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, const zone_keyset_t *key
 
 		int r = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
 		if (r != KNOT_EOK) {
-			knot_rrset_free(&dnskey, mm);
+			knot_rrset_free(dnskey, mm);
 			return NULL;
 		}
 	}
@@ -451,7 +451,7 @@ static knot_rrset_t *synth_cdnskey(knotd_qdata_t *qdata, online_sign_ctx_t *ctx,
 	dnssec_binary_t rdata = { 0 };
 	zone_key_t *key = ksk_for_cds(ctx);
 	if (key == NULL) {
-		knot_rrset_free(&dnskey, mm);
+		knot_rrset_free(dnskey, mm);
 		return NULL;
 	}
 	dnssec_key_get_rdata(key->key, &rdata);
@@ -459,7 +459,7 @@ static knot_rrset_t *synth_cdnskey(knotd_qdata_t *qdata, online_sign_ctx_t *ctx,
 
 	int ret = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&dnskey, mm);
+		knot_rrset_free(dnskey, mm);
 		return NULL;
 	}
 
@@ -479,7 +479,7 @@ static knot_rrset_t *synth_cds(knotd_qdata_t *qdata, online_sign_ctx_t *ctx,
 	dnssec_binary_t rdata = { 0 };
 	zone_key_t *key = ksk_for_cds(ctx);
 	if (key == NULL) {
-		knot_rrset_free(&ds, mm);
+		knot_rrset_free(ds, mm);
 		return NULL;
 	}
 	zone_key_calculate_ds(key, &rdata);
@@ -487,7 +487,7 @@ static knot_rrset_t *synth_cds(knotd_qdata_t *qdata, online_sign_ctx_t *ctx,
 
 	int ret = knot_rrset_add_rdata(ds, rdata.data, rdata.size, mm);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&ds, mm);
+		knot_rrset_free(ds, mm);
 		return NULL;
 	}
 
@@ -573,7 +573,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
-			knot_rrset_free(&dnskey, &pkt->mm);
+			knot_rrset_free(dnskey, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
 		state = KNOTD_IN_STATE_HIT;
@@ -587,7 +587,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
-			knot_rrset_free(&dnskey, &pkt->mm);
+			knot_rrset_free(dnskey, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
 		state = KNOTD_IN_STATE_HIT;
@@ -601,7 +601,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, ds, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
-			knot_rrset_free(&ds, &pkt->mm);
+			knot_rrset_free(ds, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
 		state = KNOTD_IN_STATE_HIT;
@@ -615,7 +615,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, nsec, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
-			knot_rrset_free(&nsec, &pkt->mm);
+			knot_rrset_free(nsec, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
 
