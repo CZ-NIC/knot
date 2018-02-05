@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -165,7 +165,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 	/* Prepare textual owner for zone scanner. */
 	char *origin_str = knot_dname_to_str_alloc(origin);
 	if (origin_str == NULL) {
-		zone_contents_deep_free(&zc->z);
+		zone_contents_deep_free(zc->z);
 		free(zc);
 		return KNOT_ENOMEM;
 	}
@@ -175,7 +175,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 	    zs_set_processing(&loader->scanner, process_data, process_error, zc) != 0) {
 		zs_deinit(&loader->scanner);
 		free(origin_str);
-		zone_contents_deep_free(&zc->z);
+		zone_contents_deep_free(zc->z);
 		free(zc);
 		return KNOT_EFILE;
 	}
@@ -244,7 +244,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	return zc->z;
 
 fail:
-	zone_contents_deep_free(&zc->z);
+	zone_contents_deep_free(zc->z);
 	return NULL;
 }
 

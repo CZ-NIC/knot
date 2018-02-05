@@ -1105,24 +1105,23 @@ void zone_contents_free(zone_contents_t *contents)
 	free(contents);
 }
 
-void zone_contents_deep_free(zone_contents_t **contents)
+void zone_contents_deep_free(zone_contents_t *contents)
 {
-	if (contents == NULL || *contents == NULL) {
+	if (contents == NULL) {
 		return;
 	}
 
-	if (*contents != NULL) {
+	if (contents != NULL) {
 		// Delete NSEC3 tree
-		(void)zone_tree_apply((*contents)->nsec3_nodes,
+		(void)zone_tree_apply(contents->nsec3_nodes,
 		                      destroy_node_rrsets_from_tree, NULL);
 
 		// Delete normal tree
-		(void)zone_tree_apply((*contents)->nodes,
+		(void)zone_tree_apply(contents->nodes,
 		                      destroy_node_rrsets_from_tree, NULL);
 	}
 
-	zone_contents_free(*contents);
-	*contents = NULL;
+	zone_contents_free(contents);
 }
 
 uint32_t zone_contents_serial(const zone_contents_t *zone)

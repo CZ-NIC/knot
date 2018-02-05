@@ -558,7 +558,7 @@ static int zone_check(const knot_dname_t *dname, void *data)
 	zone_contents_t *contents;
 	int ret = zone_load_contents(conf(), dname, &contents);
 	if (ret == KNOT_EOK) {
-		zone_contents_deep_free(&contents);
+		zone_contents_deep_free(contents);
 	}
 	return ret;
 }

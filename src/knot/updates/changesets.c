@@ -541,10 +541,10 @@ int changeset_to_contents(changeset_t *ch, zone_contents_t **out)
 	int ret = add_rr_to_contents(*out, ch->soa_to);
 	knot_rrset_free(ch->soa_to, NULL);
 	if (ret != KNOT_EOK) {
-		zone_contents_deep_free(out);
+		zone_contents_deep_free(*out);
 	}
 
-	zone_contents_deep_free(&ch->remove);
+	zone_contents_deep_free(ch->remove);
 	free(ch->data);
 	free(ch);
 	return ret;
@@ -564,7 +564,7 @@ changeset_t *changeset_from_contents(const zone_contents_t *contents)
 
 	node_remove_rdataset(copy->apex, KNOT_RRTYPE_SOA);
 
-	zone_contents_deep_free(&res->add);
+	zone_contents_deep_free(res->add);
 	res->add = copy;
 	return res;
 }
@@ -577,7 +577,7 @@ void changeset_from_contents_free(changeset_t *ch)
 
 	update_free_zone(&ch->add);
 
-	zone_contents_deep_free(&ch->remove);
+	zone_contents_deep_free(ch->remove);
 	knot_rrset_free(ch->soa_from, NULL);
 	knot_rrset_free(ch->soa_to, NULL);
 	free(ch->data);
@@ -615,8 +615,10 @@ void changeset_clear(changeset_t *ch)
 	}
 
 	// Delete RRSets in lists, in case there are any left
-	zone_contents_deep_free(&ch->add);
-	zone_contents_deep_free(&ch->remove);
+	zone_contents_deep_free(ch->add);
+	zone_contents_deep_free(ch->remove);
+	ch->add = NULL;
+	ch->remove = NULL;
 
 	knot_rrset_free(ch->soa_from, NULL);
 	knot_rrset_free(ch->soa_to, NULL);

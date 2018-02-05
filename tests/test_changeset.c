@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 	ret = changeset_preapply_fix(z, ch2);
 	ok(ret == KNOT_EOK, "changeset: preapply fix ok (%s)", knot_strerror(ret));
 	ok(changeset_empty(ch2), "changeset: preapply fix works");
-	zone_contents_deep_free(&z);
+	zone_contents_deep_free(z);
 
 	// Test cancelout.
 	ret = changeset_add_removal(ch2, apex_txt_rr, 0);

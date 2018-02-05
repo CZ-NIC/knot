@@ -258,7 +258,7 @@ void zone_free(zone_t **zone_ptr)
 	free(zone->preferred_master);
 
 	/* Free zone contents. */
-	zone_contents_deep_free(&zone->contents);
+	zone_contents_deep_free(zone->contents);
 
 	conf_deactivate_modules(&zone->query_modules, &zone->query_plan);
 

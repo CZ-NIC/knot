@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,7 +88,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		    (!old_contents_exist || zonefile_unchanged)) {
 			ret = zone_load_journal(conf, zone, zf_conts);
 			if (ret != KNOT_EOK) {
-				zone_contents_deep_free(&zf_conts);
+				zone_contents_deep_free(zf_conts);
 				log_zone_warning(zone->name, "failed to load journal (%s)",
 				                 knot_strerror(ret));
 			}
@@ -130,10 +130,10 @@ int event_load(conf_t *conf, zone_t *zone)
 					log_zone_warning(zone->name, "zone file changed with SOA serial %s, "
 					                 "ignoring zone file and loading from journal",
 					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
-					zone_contents_deep_free(&zf_conts);
+					zone_contents_deep_free(zf_conts);
 					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
 				} else {
-					zone_contents_deep_free(&journal_conts);
+					zone_contents_deep_free(journal_conts);
 				}
 			}
 		} else {
@@ -219,8 +219,8 @@ cleanup:
 	// Try to bootstrap the zone if local error.
 	replan_from_timers(conf, zone);
 
-	zone_contents_deep_free(&zf_conts);
-	zone_contents_deep_free(&journal_conts);
+	zone_contents_deep_free(zf_conts);
+	zone_contents_deep_free(journal_conts);
 
 	return (dontcare_load_error(conf, zone) ? KNOT_EOK : ret);
 }

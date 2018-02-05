@@ -282,7 +282,7 @@ void zone_update_clear(zone_update_t *update)
 		/* Revert any changes on error, do nothing on success. */
 		if (update->new_cont_deep_copy) {
 			update_cleanup(update->a_ctx);
-			zone_contents_deep_free(&update->new_cont);
+			zone_contents_deep_free(update->new_cont);
 		} else {
 			update_rollback(update->a_ctx);
 			update_free_zone(&update->new_cont);
@@ -290,7 +290,7 @@ void zone_update_clear(zone_update_t *update)
 		changeset_clear(&update->change);
 	} else if (update->flags & UPDATE_FULL) {
 		assert(update->new_cont_deep_copy);
-		zone_contents_deep_free(&update->new_cont);
+		zone_contents_deep_free(update->new_cont);
 	}
 	free(update->a_ctx);
 	mp_delete(update->mm.ctx);

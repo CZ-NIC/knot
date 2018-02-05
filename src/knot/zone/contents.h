@@ -239,7 +239,7 @@ void zone_contents_free(zone_contents_t *contents);
  *
  * \param contents  Zone contents to free.
  */
-void zone_contents_deep_free(zone_contents_t **contents);
+void zone_contents_deep_free(zone_contents_t *contents);
 
 /*!
  * \brief Fetch zone serial.
