@@ -52,7 +52,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 	update->change.soa_from =
 		node_create_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	if (update->change.soa_from == NULL) {
-		zone_contents_free(&update->new_cont);
+		zone_contents_free(update->new_cont);
 		changeset_clear(&update->change);
 		return KNOT_ENOMEM;
 	}

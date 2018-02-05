@@ -1090,20 +1090,19 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 	return KNOT_EOK;
 }
 
-void zone_contents_free(zone_contents_t **contents)
+void zone_contents_free(zone_contents_t *contents)
 {
-	if (contents == NULL || *contents == NULL) {
+	if (contents == NULL) {
 		return;
 	}
 
 	// free the zone tree, but only the structure
-	zone_tree_free(&(*contents)->nodes);
-	zone_tree_free(&(*contents)->nsec3_nodes);
+	zone_tree_free(&contents->nodes);
+	zone_tree_free(&contents->nsec3_nodes);
 
-	dnssec_nsec3_params_free(&(*contents)->nsec3_params);
+	dnssec_nsec3_params_free(&contents->nsec3_params);
 
-	free(*contents);
-	*contents = NULL;
+	free(contents);
 }
 
 void zone_contents_deep_free(zone_contents_t **contents)
@@ -1122,7 +1121,8 @@ void zone_contents_deep_free(zone_contents_t **contents)
 		                      destroy_node_rrsets_from_tree, NULL);
 	}
 
-	zone_contents_free(contents);
+	zone_contents_free(*contents);
+	*contents = NULL;
 }
 
 uint32_t zone_contents_serial(const zone_contents_t *zone)

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -232,7 +232,7 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
  *
  * \param contents  Zone contents to free.
  */
-void zone_contents_free(zone_contents_t **contents);
+void zone_contents_free(zone_contents_t *contents);
 
 /*!
  * \brief Deallocate node RRSets inside the trees, then call zone_contents_free.

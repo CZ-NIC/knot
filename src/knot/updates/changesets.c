@@ -206,7 +206,7 @@ int changeset_init(changeset_t *ch, const knot_dname_t *apex)
 	}
 	ch->remove = zone_contents_new(apex);
 	if (ch->remove == NULL) {
-		zone_contents_free(&ch->add);
+		zone_contents_free(ch->add);
 		return KNOT_ENOMEM;
 	}
 
