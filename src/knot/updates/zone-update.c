@@ -526,6 +526,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 	int ret = zone_update_remove(update, soa_cpy);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(soa_cpy, NULL);
+		return ret;
 	}
 
 	uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);

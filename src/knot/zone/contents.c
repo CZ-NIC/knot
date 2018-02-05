@@ -578,6 +578,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 			int ret = nsec3 ? add_nsec3_node(z, *n) : add_node(z, *n, true);
 			if (ret != KNOT_EOK) {
 				node_free(*n, NULL);
+				*n = NULL;
 			}
 		}
 	}
