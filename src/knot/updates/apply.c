@@ -464,18 +464,17 @@ void update_rollback(apply_ctx_t *ctx)
 	init_list(&ctx->old_data);
 }
 
-void update_free_zone(zone_contents_t **contents)
+void update_free_zone(zone_contents_t *contents)
 {
-	if (contents == NULL || *contents == NULL) {
+	if (contents == NULL) {
 		return;
 	}
 
-	(void)zone_tree_apply((*contents)->nodes, free_additional, NULL);
-	zone_tree_deep_free(&(*contents)->nodes);
-	zone_tree_deep_free(&(*contents)->nsec3_nodes);
+	(void)zone_tree_apply(contents->nodes, free_additional, NULL);
+	zone_tree_deep_free(&contents->nodes);
+	zone_tree_deep_free(&contents->nsec3_nodes);
 
-	dnssec_nsec3_params_free(&(*contents)->nsec3_params);
+	dnssec_nsec3_params_free(&contents->nsec3_params);
 
-	free(*contents);
-	*contents = NULL;
+	free(contents);
 }

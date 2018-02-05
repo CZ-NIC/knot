@@ -575,7 +575,7 @@ void changeset_from_contents_free(changeset_t *ch)
 	assert(ch->soa_from == NULL);
 	assert(zone_contents_is_empty(ch->remove));
 
-	update_free_zone(&ch->add);
+	update_free_zone(ch->add);
 
 	zone_contents_deep_free(ch->remove);
 	knot_rrset_free(ch->soa_from, NULL);

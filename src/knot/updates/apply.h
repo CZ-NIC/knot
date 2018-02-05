@@ -147,4 +147,4 @@ void update_rollback(apply_ctx_t *ctx);
  *
  * \param contents  Contents to free.
  */
-void update_free_zone(zone_contents_t **contents);
+void update_free_zone(zone_contents_t *contents);

@@ -285,7 +285,7 @@ void zone_update_clear(zone_update_t *update)
 			zone_contents_deep_free(update->new_cont);
 		} else {
 			update_rollback(update->a_ctx);
-			update_free_zone(&update->new_cont);
+			update_free_zone(update->new_cont);
 		}
 		changeset_clear(&update->change);
 	} else if (update->flags & UPDATE_FULL) {
@@ -639,18 +639,14 @@ typedef struct {
 	struct rcu_head rcuhead;
 	void (*callback)(void *);
 	void *ctx;
-	bool call_ctx_addr;
+	bool free_ctx;
 } callrcu_wrapper_t;
 
 static void callrcu_wrapper_cb(struct rcu_head *param)
 {
 	callrcu_wrapper_t *wrap = (callrcu_wrapper_t *)param;
-	if (wrap->call_ctx_addr) {
-		// Paradigm free_fun(type_t **t) freeing the pointer completely.
-		wrap->callback(&wrap->ctx);
-	} else {
-		// Paradigm clear_fun(type_t *t) just clearing the contents of type_t.
-		wrap->callback(wrap->ctx);
+	wrap->callback(wrap->ctx);
+	if (wrap->free_ctx) {
 		free(wrap->ctx);
 	}
 	free(wrap);
@@ -660,13 +656,13 @@ static void callrcu_wrapper_cb(struct rcu_head *param)
 }
 
 /* NOTE: Does nothing if not enough memory. */
-static void callrcu_wrapper(void *ctx, void (*callback)(void *), bool call_ctx_addr)
+static void callrcu_wrapper(void *ctx, void *callback, bool free_ctx)
 {
 	callrcu_wrapper_t *wrap = calloc(1, sizeof(callrcu_wrapper_t));
 	if (wrap != NULL) {
 		wrap->callback = callback;
 		wrap->ctx = ctx;
-		wrap->call_ctx_addr = call_ctx_addr;
+		wrap->free_ctx = free_ctx;
 		call_rcu((struct rcu_head *)wrap, callrcu_wrapper_cb);
 	}
 }
@@ -709,16 +705,16 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	/* Sync RCU. */
 	if (update->flags & UPDATE_FULL) {
 		assert(update->new_cont_deep_copy);
-		callrcu_wrapper(old_contents, (void (*)(void *))zone_contents_deep_free, true);
+		callrcu_wrapper(old_contents, zone_contents_deep_free, false);
 	} else if (update->flags & UPDATE_INCREMENTAL) {
 		if (update->new_cont_deep_copy) {
-			callrcu_wrapper(old_contents, (void (*)(void *))zone_contents_deep_free, true);
+			callrcu_wrapper(old_contents, zone_contents_deep_free, false);
 		} else {
-			callrcu_wrapper(old_contents, (void (*)(void *))update_free_zone, true);
+			callrcu_wrapper(old_contents, update_free_zone, false);
 		}
 		changeset_clear(&update->change);
 	}
-	callrcu_wrapper(update->a_ctx, (void (*)(void *))update_cleanup, false);
+	callrcu_wrapper(update->a_ctx, update_cleanup, true);
 	update->a_ctx = NULL;
 	update->new_cont = NULL;
 

@@ -206,6 +206,7 @@ static int axfr_init(struct refresh_data *data)
 static void axfr_cleanup(struct refresh_data *data)
 {
 	zone_contents_deep_free(data->axfr.zone);
+	data->axfr.zone = NULL;
 }
 
 static int axfr_finalize(struct refresh_data *data)
