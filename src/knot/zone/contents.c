@@ -87,7 +87,7 @@ static int destroy_node_rrsets_from_tree(zone_node_t **node, void *data)
 
 	if (*node != NULL) {
 		node_free_rrsets(*node, NULL);
-		node_free(node, NULL);
+		node_free(*node, NULL);
 	}
 
 	return KNOT_EOK;
@@ -488,7 +488,7 @@ static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parent
 			/* Insert node to a tree. */
 			ret = zone_tree_insert(zone->nodes, next_node);
 			if (ret != KNOT_EOK) {
-				node_free(&next_node, NULL);
+				node_free(next_node, NULL);
 				return ret;
 			}
 
@@ -577,7 +577,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 			}
 			int ret = nsec3 ? add_nsec3_node(z, *n) : add_node(z, *n, true);
 			if (ret != KNOT_EOK) {
-				node_free(n, NULL);
+				node_free(*n, NULL);
 			}
 		}
 	}
@@ -644,7 +644,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	// Normal additions need apex ... so we need to insert directly.
 	int ret = zone_tree_insert(out->nodes, apex_cpy);
 	if (ret != KNOT_EOK) {
-		node_free(&apex_cpy, NULL);
+		node_free(apex_cpy, NULL);
 		return ret;
 	}
 
@@ -670,7 +670,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 		int ret = add_node(out, to_add, true);
 		if (ret != KNOT_EOK) {
-			node_free(&to_add, NULL);
+			node_free(to_add, NULL);
 			trie_it_free(itt);
 			return ret;
 		}
@@ -704,7 +704,7 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 		int ret = add_nsec3_node(out, to_add);
 		if (ret != KNOT_EOK) {
 			trie_it_free(itt);
-			node_free(&to_add, NULL);
+			node_free(to_add, NULL);
 			return ret;
 		}
 
@@ -751,7 +751,7 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 		node = node_new(rrset->owner, NULL);
 		int ret = nsec3 ? add_nsec3_node(zone, node) : add_node(zone, node, true);
 		if (ret != KNOT_EOK) {
-			node_free(&node, NULL);
+			node_free(node, NULL);
 			return NULL;
 		}
 

@@ -166,7 +166,7 @@ static void free_nsec3_tree(zone_tree_t *nodes)
 		knot_rdataset_t *rrsig = node_rdataset(node, KNOT_RRTYPE_RRSIG);
 		knot_rdataset_clear(nsec3, NULL);
 		knot_rdataset_clear(rrsig, NULL);
-		node_free(&node, NULL);
+		node_free(node, NULL);
 	}
 
 	trie_it_free(it);
@@ -302,14 +302,14 @@ static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
 	int ret = create_nsec3_rrset(&nsec3_rrset, owner, nsec3_params,
 	                             rr_types, NULL, ttl);
 	if (ret != KNOT_EOK) {
-		node_free(&new_node, NULL);
+		node_free(new_node, NULL);
 		return NULL;
 	}
 
 	ret = node_add_rrset(new_node, &nsec3_rrset, NULL);
 	knot_rrset_clear(&nsec3_rrset, NULL);
 	if (ret != KNOT_EOK) {
-		node_free(&new_node, NULL);
+		node_free(new_node, NULL);
 		return NULL;
 	}
 
@@ -638,7 +638,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 			}
 		}
 		node_free_rrsets(new_nsec3_n, NULL);
-		node_free(&new_nsec3_n, NULL);
+		node_free(new_nsec3_n, NULL);
 	}
 
 	return ret;

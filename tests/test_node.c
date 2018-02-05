@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	node_set_parent(node, parent);
 	ok(node->parent == parent && parent->children == 1, "Node: set parent.");
 
-	node_free(&parent, NULL);
+	node_free(parent, NULL);
 
 	// Test RRSet addition
 	knot_rrset_t *dummy_rrset = create_dummy_rrset(dummy_owner, KNOT_RRTYPE_TXT);
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	                     copy->flags == node->flags;
 	ok(copy_ok, "Node: shallow copy - set fields.");
 
-	node_free(&copy, NULL);
+	node_free(copy, NULL);
 
 	// Test RRSet getters
 	knot_rrset_t *n_rrset = node_create_rrset(node, KNOT_RRTYPE_TXT);
@@ -146,8 +146,7 @@ int main(int argc, char *argv[])
 	node_free_rrsets(node, NULL);
 	ok(node->rrset_count == 0, "Node: free RRSets.");
 
-	node_free(&node, NULL);
-	ok(node == NULL, "Node: free.");
+	node_free(node, NULL);
 
 	knot_dname_free(dummy_owner, NULL);
 

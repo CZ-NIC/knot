@@ -112,12 +112,11 @@ void node_free_rrsets(zone_node_t *node, knot_mm_t *mm);
  * \brief Destroys the node structure.
  *
  * Does not destroy the data within the node.
- * Also sets the given pointer to NULL.
  *
  * \param node  Node to be destroyed.
  * \param mm    Memory context to use.
  */
-void node_free(zone_node_t **node, knot_mm_t *mm);
+void node_free(zone_node_t *node, knot_mm_t *mm);
 
 /*!
  * \brief Creates a shallow copy of node structure, RR data are shared.

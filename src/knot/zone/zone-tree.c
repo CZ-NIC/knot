@@ -160,7 +160,7 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 
 		// Delete node
 		remove_node(tree, node->owner);
-		node_free(&node, NULL);
+		node_free(node, NULL);
 	}
 }
 
@@ -192,7 +192,7 @@ static int zone_tree_free_node(zone_node_t **node, void *data)
 	UNUSED(data);
 
 	if (node) {
-		node_free(node, NULL);
+		node_free(*node, NULL);
 	}
 
 	return KNOT_EOK;

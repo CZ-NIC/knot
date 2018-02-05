@@ -120,20 +120,19 @@ void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
 	node->rrset_count = 0;
 }
 
-void node_free(zone_node_t **node, knot_mm_t *mm)
+void node_free(zone_node_t *node, knot_mm_t *mm)
 {
-	if (node == NULL || *node == NULL) {
+	if (node == NULL) {
 		return;
 	}
 
-	if ((*node)->rrs != NULL) {
-		mm_free(mm, (*node)->rrs);
+	knot_dname_free(node->owner, mm);
+
+	if (node->rrs != NULL) {
+		mm_free(mm, node->rrs);
 	}
 
-	knot_dname_free((*node)->owner, mm);
-
-	mm_free(mm, *node);
-	*node = NULL;
+	mm_free(mm, node);
 }
 
 zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
@@ -155,7 +154,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
 	dst->rrs = mm_alloc(mm, rrlen);
 	if (dst->rrs == NULL) {
-		node_free(&dst, mm);
+		node_free(dst, mm);
 		return NULL;
 	}
 	memcpy(dst->rrs, src->rrs, rrlen);
