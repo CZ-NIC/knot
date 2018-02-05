@@ -803,7 +803,7 @@ int process_query_put_rr(knot_pkt_t *pkt, knotd_qdata_t *qdata,
 		knot_rrset_init(&to_add, qname_cpy, rr->type, rr->rclass, rr->ttl);
 		ret = knot_rdataset_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
 		if (ret != KNOT_EOK) {
-			knot_dname_free(&qname_cpy, &pkt->mm);
+			knot_dname_free(qname_cpy, &pkt->mm);
 			return ret;
 		}
 		to_add.additional = rr->additional;

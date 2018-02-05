@@ -420,7 +420,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 	int ret = knot_pkt_put_question(packet, qname, query->class_num,
 	                                query->type_num);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&qname, NULL);
+		knot_dname_free(qname, NULL);
 		knot_pkt_free(packet);
 		return NULL;
 	}
@@ -442,7 +442,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 		                                   query->class_num,
 		                                   0,
 		                                   &packet->mm);
-		knot_dname_free(&qname, NULL);
+		knot_dname_free(qname, NULL);
 		if (soa == NULL) {
 			knot_pkt_free(packet);
 			return NULL;
@@ -468,7 +468,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 
 		free(soa);
 	} else {
-		knot_dname_free(&qname, NULL);
+		knot_dname_free(qname, NULL);
 	}
 
 	// Begin additional section

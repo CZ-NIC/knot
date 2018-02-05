@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -264,13 +264,13 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 	int ret = nsec3_fill_rdata(rdata, rdata_size, params, rr_types,
 	                           next_hashed);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&owner_copy, NULL);
+		knot_dname_free(owner_copy, NULL);
 		return ret;
 	}
 
 	ret = knot_rrset_add_rdata(rrset, rdata, rdata_size, NULL);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&owner_copy, NULL);
+		knot_dname_free(owner_copy, NULL);
 		return ret;
 	}
 

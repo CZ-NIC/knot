@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,11 +51,11 @@ int main(int argc, char *argv[])
 	   "rrset: set fields during create.");
 
 	// Test init
-	knot_dname_free(&dummy_owner, NULL);
+	knot_dname_free(dummy_owner, NULL);
 	dummy_owner = knot_dname_from_str_alloc("test2.");
 	assert(dummy_owner);
 
-	knot_dname_free(&rrset->owner, NULL);
+	knot_dname_free(rrset->owner, NULL);
 	knot_rrset_init(rrset, dummy_owner, KNOT_RRTYPE_A, KNOT_CLASS_CH, 7200);
 	ok(check_rrset(rrset, dummy_owner, KNOT_RRTYPE_A, KNOT_CLASS_CH, 7200),
 	   "rrset: init.");
@@ -87,7 +87,8 @@ int main(int argc, char *argv[])
 	ok(knot_rrset_equal(rrset, copy, KNOT_RRSET_COMPARE_WHOLE),
 	   "rrset: cmp headers - rdata");
 
-	knot_dname_free(&rrset->owner, NULL);
+	knot_dname_free(rrset->owner, NULL);
+	rrset->owner = NULL;
 	ok(!knot_rrset_equal(rrset, copy, KNOT_RRSET_COMPARE_HEADER),
 	   "rrset: cmp NULL owner");
 

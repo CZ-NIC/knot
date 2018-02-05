@@ -183,7 +183,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 		knot_dname_t *unused = NULL;
 		ret = kasp_db_get_policy_last(*ctx->kasp_db, addtopolicy, &unused,
 		                              &last_policy_last);
-		knot_dname_free(&unused, NULL);
+		knot_dname_free(unused, NULL);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			return ret;
 		}

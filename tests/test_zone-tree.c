@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,8 +46,9 @@ static void ztree_init_data(void)
 
 static void ztree_free_data(void)
 {
-	for (unsigned i = 0; i < NCOUNT; ++i)
-		knot_dname_free(NAME + i, NULL);
+	for (unsigned i = 0; i < NCOUNT; ++i) {
+		knot_dname_free(NAME[i], NULL);
+	}
 }
 
 static int ztree_iter_data(zone_node_t **node, void *data)
@@ -103,7 +104,7 @@ int main(int argc, char *argv[])
 	zone_node_t *prev = NULL;
 	knot_dname_t *tmp_dn = knot_dname_from_str_alloc("z.ac.");
 	zone_tree_get_less_or_equal(t, tmp_dn, &node, &prev);
-	knot_dname_free(&tmp_dn, NULL);
+	knot_dname_free(tmp_dn, NULL);
 	ok(prev == NODE + 1, "ztree: ordered lookup");
 
 	/* 5. ordered traversal */

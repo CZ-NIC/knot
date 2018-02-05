@@ -194,7 +194,7 @@ zone_t* zone_new(const knot_dname_t *name)
 	// Journal
 	zone->journal = journal_new();
 	if (zone->journal == NULL) {
-		knot_dname_free(&zone->name, NULL);
+		knot_dname_free(zone->name, NULL);
 		free(zone);
 		return NULL;
 	}
@@ -242,7 +242,7 @@ void zone_free(zone_t **zone_ptr)
 
 	zone_events_deinit(zone);
 
-	knot_dname_free(&zone->name, NULL);
+	knot_dname_free(zone->name, NULL);
 
 	journal_free(&zone->journal);
 

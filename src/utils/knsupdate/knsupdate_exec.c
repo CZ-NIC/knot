@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -151,7 +151,7 @@ static bool dname_isvalid(const char *lp)
 	if (dn == NULL) {
 		return false;
 	}
-	knot_dname_free(&dn, NULL);
+	knot_dname_free(dn, NULL);
 	return true;
 }
 
@@ -197,7 +197,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 
 	s->r_owner_length = knot_dname_size(owner);
 	memcpy(s->r_owner, owner, s->r_owner_length);
-	knot_dname_free(&owner, NULL);
+	knot_dname_free(owner, NULL);
 
 	/* Append origin if not FQDN. */
 	if (!fqdn) {
@@ -396,7 +396,7 @@ static int build_query(knsupdate_params_t *params)
 	knot_dname_t *qname = knot_dname_from_str_alloc(params->zone);
 	int ret = knot_pkt_put_question(query, qname, params->class_num,
 	                                params->type_num);
-	knot_dname_free(&qname, NULL);
+	knot_dname_free(qname, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

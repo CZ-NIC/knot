@@ -76,7 +76,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	size_t labels = knot_dname_labels(dname_wire, NULL);
 	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt, mm);
 	if (cname == NULL) {
-		knot_dname_free(&owner_copy, mm);
+		knot_dname_free(owner_copy, mm);
 		return KNOT_ENOMEM;
 	}
 
@@ -84,11 +84,11 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	size_t cname_size = knot_dname_size(cname);
 	uint8_t cname_rdata[cname_size];
 	memcpy(cname_rdata, cname, cname_size);
-	knot_dname_free(&cname, mm);
+	knot_dname_free(cname, mm);
 
 	int ret = knot_rrset_add_rdata(cname_rrset, cname_rdata, cname_size, mm);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&owner_copy, mm);
+		knot_dname_free(owner_copy, mm);
 		return ret;
 	}
 

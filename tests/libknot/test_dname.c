@@ -74,7 +74,7 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
 
 	/* dname_to_str_alloc */
 	s2 = knot_dname_to_str_alloc(d2);
-	knot_dname_free(&d2, NULL);
+	knot_dname_free(d2, NULL);
 	ok(s2 != NULL, "dname_to_str_alloc: %s", s1);
 	if (s2 == NULL) {
 		skip_block(3, "dname_to_str_alloc: %s", s1);
@@ -99,7 +99,7 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
 	/* dname compare */
 	ok(d2 && memcmp(d2, in_bin, bin_len) == 0, "dname compare: %s", s2);
 
-	knot_dname_free(&d2, NULL);
+	knot_dname_free(d2, NULL);
 	free(s2);
 }
 
@@ -490,26 +490,26 @@ int main(int argc, char *argv[])
 	t = "ab.cd.ef";
 	d = knot_dname_from_str_alloc(t);
 	ok(!knot_dname_is_sub(d, d2), "dname_subdomain: equal name");
-	knot_dname_free(&d, NULL);
+	knot_dname_free(d, NULL);
 
 	/* true subdomain */
 	t = "0.ab.cd.ef";
 	d = knot_dname_from_str_alloc(t);
 	ok(knot_dname_is_sub(d, d2), "dname_subdomain: true subdomain");
-	knot_dname_free(&d, NULL);
+	knot_dname_free(d, NULL);
 
 	/* not subdomain */
 	t = "cd.ef";
 	d = knot_dname_from_str_alloc(t);
 	ok(!knot_dname_is_sub(d, d2), "dname_subdomain: not subdomain");
-	knot_dname_free(&d, NULL);
+	knot_dname_free(d, NULL);
 
 	/* root subdomain */
 	t = ".";
 	d = knot_dname_from_str_alloc(t);
 	ok(knot_dname_is_sub(d2, d), "dname_subdomain: root subdomain");
-	knot_dname_free(&d, NULL);
-	knot_dname_free(&d2, NULL);
+	knot_dname_free(d, NULL);
+	knot_dname_free(d2, NULL);
 
 	/* DNAME PARSE CHECKS */
 
@@ -520,7 +520,7 @@ int main(int argc, char *argv[])
 	d = knot_dname_parse((const uint8_t *)t, &pos, len, NULL);
 	ok(d != NULL, "dname_parse: valid name");
 	ok(pos == len, "dname_parse: valid name (parsed length)");
-	knot_dname_free(&d, NULL);
+	knot_dname_free(d, NULL);
 
 	/* parse from wire (invalid) */
 	t = "\x08""dddd";
@@ -539,29 +539,29 @@ int main(int argc, char *argv[])
 	t = "ab.cd.fe";
 	d2 = knot_dname_from_str_alloc(t);
 	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: same label count");
-	knot_dname_free(&d2, NULL);
+	knot_dname_free(d2, NULL);
 
 	t = "ab.cd";
 	d2 = knot_dname_from_str_alloc(t);
 	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: len(d1) < len(d2)");
-	knot_dname_free(&d2, NULL);
+	knot_dname_free(d2, NULL);
 
 	t = "ab.cd.ef.gh";
 	d2 = knot_dname_from_str_alloc(t);
 	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: len(d1) > len(d2)");
-	knot_dname_free(&d2, NULL);
+	knot_dname_free(d2, NULL);
 
 	t = "ab.cd.efe";
 	d2 = knot_dname_from_str_alloc(t);
 	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: last label longer");
-	knot_dname_free(&d2, NULL);
+	knot_dname_free(d2, NULL);
 
 	t = "ab.cd.e";
 	d2 = knot_dname_from_str_alloc(t);
 	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: last label shorter");
-	knot_dname_free(&d2, NULL);
+	knot_dname_free(d2, NULL);
 
-	knot_dname_free(&d, NULL);
+	knot_dname_free(d, NULL);
 
 	/* DNAME CONVERSION TO LOOK-UP FORMAT CHECK */
 

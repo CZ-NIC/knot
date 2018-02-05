@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ void knot_tsig_key_deinit(knot_tsig_key_t *key)
 		return;
 	}
 
-	knot_dname_free(&key->name, NULL);
+	knot_dname_free(key->name, NULL);
 
 	memset(key->secret.data, 0, key->secret.size);
 	dnssec_binary_free(&key->secret);
@@ -68,7 +68,7 @@ int knot_tsig_key_init(knot_tsig_key_t *key, const char *algorithm_name,
 	dnssec_binary_t secret = { 0 };
 	int result = dnssec_binary_from_base64(&b64secret, &secret);
 	if (result != KNOT_EOK) {
-		knot_dname_free(&dname, NULL);
+		knot_dname_free(dname, NULL);
 		return result;
 	}
 

@@ -36,7 +36,7 @@ knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
 
 	knot_rrset_t *ret = mm_alloc(mm, sizeof(knot_rrset_t));
 	if (ret == NULL) {
-		knot_dname_free(&owner_cpy, mm);
+		knot_dname_free(owner_cpy, mm);
 		return NULL;
 	}
 
@@ -88,7 +88,8 @@ void knot_rrset_clear(knot_rrset_t *rrset, knot_mm_t *mm)
 	}
 
 	knot_rdataset_clear(&rrset->rrs, mm);
-	knot_dname_free(&rrset->owner, mm);
+	knot_dname_free(rrset->owner, mm);
+	rrset->owner = NULL;
 }
 
 _public_

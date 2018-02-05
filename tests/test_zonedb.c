@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	for (unsigned i = 0; i < ZONE_COUNT; ++i) {
 		knot_dname_t *zone_name = knot_dname_from_str_alloc(zone_list[i]);
 		zones[i] = zone_new(zone_name);
-		knot_dname_free(&zone_name, NULL);
+		knot_dname_free(zone_name, NULL);
 
 		if (zones[i] == NULL) {
 			goto cleanup;
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 		} else {
 			diag("knot_zonedb_find(%s) failed", zone_list[i]);
 		}
-		knot_dname_free(&dname, NULL);
+		knot_dname_free(dname, NULL);
 	}
 	ok(nr_passed == ZONE_COUNT, "zonedb: find exact zones");
 
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 		} else {
 			diag("knot_zonedb_find_suffix(%s) failed", buf);
 		}
-		knot_dname_free(&dname, NULL);
+		knot_dname_free(dname, NULL);
 	}
 	ok(nr_passed == ZONE_COUNT, "zonedb: find zones for subnames");
 
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 		} else {
 			diag("knot_zonedb_remove_zone(%s) failed", zone_list[i]);
 		}
-		knot_dname_free(&dname, NULL);
+		knot_dname_free(dname, NULL);
 	}
 	ok(nr_passed == ZONE_COUNT, "zonedb: removed all zones");
 

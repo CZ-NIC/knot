@@ -824,7 +824,7 @@ static void test_chain(void)
 		is_int(KNOT_EOK, ret, "%s: dname %s, parse, return", __func__, t->msg);
 		ok(knot_dname_is_equal(dname, t->dname), "%s: dname %s, parse, value",
 		                                         __func__, t->msg);
-		knot_dname_free(&dname, NULL);
+		knot_dname_free(dname, NULL);
 	}
 
 	// Error tests.

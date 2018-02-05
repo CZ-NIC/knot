@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -249,7 +249,7 @@ void kasp_zone_clear(knot_kasp_zone_t *zone)
 	if (zone == NULL) {
 		return;
 	}
-	knot_dname_free(&zone->dname, NULL);
+	knot_dname_free(zone->dname, NULL);
 	for (size_t i = 0; i < zone->num_keys; i++) {
 		dnssec_key_free(zone->keys[i].key);
 		free(zone->keys[i].id);

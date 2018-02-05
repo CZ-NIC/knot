@@ -836,8 +836,8 @@ static int free_helper_trie_node(trie_val_t *val, void *d)
 		WALK_LIST_FREE(*(info->type_list));
 	}
 	free(info->type_list);
-	knot_dname_free(&info->dname, NULL);
-	knot_dname_free(&info->hashed_dname, NULL);
+	knot_dname_free(info->dname, NULL);
+	knot_dname_free(info->hashed_dname, NULL);
 	free(info);
 	return KNOT_EOK;
 }

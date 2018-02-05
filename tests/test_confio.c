@@ -447,9 +447,9 @@ static void test_conf_io_set(void)
 	ok(val.code == KNOT_EOK, "check entry");
 	ok(strcmp(conf_str(&val), "xyz") == 0, "check entry value");
 
-	knot_dname_free(&zone1, NULL);
-	knot_dname_free(&zone2, NULL);
-	knot_dname_free(&zone3, NULL);
+	knot_dname_free(zone1, NULL);
+	knot_dname_free(zone2, NULL);
+	knot_dname_free(zone3, NULL);
 
 	ok(conf_io_commit(false) == KNOT_EOK, "commit txn");
 
@@ -633,9 +633,9 @@ static void test_conf_io_unset(void)
 	val = conf_zone_get_txn(conf(), conf()->io.txn, C_COMMENT, zone2);
 	ok(val.code == KNOT_YP_EINVAL_ID, "check entry");
 
-	knot_dname_free(&zone1, NULL);
-	knot_dname_free(&zone2, NULL);
-	knot_dname_free(&zone3, NULL);
+	knot_dname_free(zone1, NULL);
+	knot_dname_free(zone2, NULL);
+	knot_dname_free(zone3, NULL);
 
 	conf_io_abort(false);
 }
@@ -763,7 +763,7 @@ static void test_conf_io_get(void)
 	      "zone[zone3.].comment = \"xyz\"";
 	ok(strcmp(ref, out) == 0, "compare result");
 
-	knot_dname_free(&zone1, NULL);
+	knot_dname_free(zone1, NULL);
 
 	conf_io_abort(false);
 }

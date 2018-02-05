@@ -689,7 +689,7 @@ static int parse_header(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	}
 
 	if (pkt_size - *pos < RR_HEADER_SIZE) {
-		knot_dname_free(&owner, mm);
+		knot_dname_free(owner, mm);
 		return KNOT_EMALF;
 	}
 
@@ -704,12 +704,12 @@ static int parse_header(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	*pos = wire_ctx_offset(&wire);
 
 	if (wire.error != KNOT_EOK) {
-		knot_dname_free(&owner, mm);
+		knot_dname_free(owner, mm);
 		return wire.error;
 	}
 
 	if (wire_ctx_available(&wire) < *rdlen) {
-		knot_dname_free(&owner, mm);
+		knot_dname_free(owner, mm);
 		return KNOT_EMALF;
 	}
 

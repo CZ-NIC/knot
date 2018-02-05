@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 
 	/* Write ANSWER section. */
 	rrsets[0] = knot_rrset_new(dnames[0], KNOT_RRTYPE_A, KNOT_CLASS_IN, TTL, NULL);
-	knot_dname_free(&dnames[0], NULL);
+	knot_dname_free(dnames[0], NULL);
 	knot_rrset_add_rdata(rrsets[0], RDVAL(0), RDLEN(0), NULL);
 	ret = knot_pkt_put(out, KNOT_COMPR_HINT_QNAME, rrsets[0], 0);
 	is_int(KNOT_EOK, ret, "pkt: write ANSWER");
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 	ret = KNOT_EOK;
 	for (unsigned i = 1; i < NAMECOUNT; ++i) {
 		rrsets[i] = knot_rrset_new(dnames[i], KNOT_RRTYPE_NS, KNOT_CLASS_IN, TTL, NULL);
-		knot_dname_free(&dnames[i], NULL);
+		knot_dname_free(dnames[i], NULL);
 		knot_rrset_add_rdata(rrsets[i], RDVAL(i), RDLEN(i), NULL);
 		ret |= knot_pkt_put(out, KNOT_COMPR_HINT_NONE, rrsets[i], 0);
 	}

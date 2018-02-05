@@ -660,14 +660,13 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 }
 
 _public_
-void knot_dname_free(knot_dname_t **name, knot_mm_t *mm)
+void knot_dname_free(knot_dname_t *name, knot_mm_t *mm)
 {
-	if (name == NULL || *name == NULL) {
+	if (name == NULL) {
 		return;
 	}
 
-	mm_free(mm, *name);
-	*name = NULL;
+	mm_free(mm, name);
 }
 
 _public_

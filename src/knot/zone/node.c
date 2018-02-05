@@ -130,7 +130,7 @@ void node_free(zone_node_t **node, knot_mm_t *mm)
 		mm_free(mm, (*node)->rrs);
 	}
 
-	knot_dname_free(&(*node)->owner, mm);
+	knot_dname_free((*node)->owner, mm);
 
 	mm_free(mm, *node);
 	*node = NULL;

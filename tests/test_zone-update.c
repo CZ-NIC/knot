@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -129,7 +129,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	ret = zone_update_remove_node(&update, rem_node_name);
 	node = (zone_node_t *) zone_update_get_node(&update, rem_node_name);
 	ok(ret == KNOT_EOK && !node, "full zone update: node removal");
-	knot_dname_free(&rem_node_name, NULL);
+	knot_dname_free(rem_node_name, NULL);
 
 	/* Test iteration */
 	zone_update_iter_t it;
@@ -234,7 +234,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	synth_node = zone_update_get_node(&update, rem_node_name);
 	ok(ret == KNOT_EOK && !synth_node,
 	   "incremental zone update: node removal");
-	knot_dname_free(&rem_node_name, NULL);
+	knot_dname_free(rem_node_name, NULL);
 
 	/* Test iteration */
 	zone_update_iter_t it;
@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
 	zs_deinit(&sc);
 	zone_free(&zone);
 	server_deinit(&server);
-	knot_dname_free(&apex, NULL);
+	knot_dname_free(apex, NULL);
 	conf_free(conf());
 	test_rm_rf(temp_dir);
 	free(temp_dir);

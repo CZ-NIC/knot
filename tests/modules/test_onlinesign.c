@@ -36,7 +36,7 @@ static void _test_nsec_next(const char *msg,
 	knot_dname_t *next = online_nsec_next(input, apex);
 	ok(next != NULL && knot_dname_is_equal(next, expected),
 	   "nsec_next, %s", msg);
-	knot_dname_free(&next, NULL);
+	knot_dname_free(next, NULL);
 }
 
 /*!

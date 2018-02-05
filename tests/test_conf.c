@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ static void check_name(const char *zone, const char *name, const char *ref)
 		free(file);
 	}
 
-	knot_dname_free(&z, NULL);
+	knot_dname_free(z, NULL);
 }
 
 static void check_name_err(const char *zone, const char *name)
@@ -45,7 +45,7 @@ static void check_name_err(const char *zone, const char *name)
 
 	ok(get_filename(NULL, NULL, z, name) == NULL, "Invalid name %s", name);
 
-	knot_dname_free(&z, NULL);
+	knot_dname_free(z, NULL);
 }
 
 static void test_get_filename(void)
@@ -189,11 +189,11 @@ static void test_conf_zonefile(void)
 	}
 
 	conf_free(conf());
-	knot_dname_free(&zone_arpa, NULL);
-	knot_dname_free(&zone_root, NULL);
-	knot_dname_free(&zone_1label, NULL);
-	knot_dname_free(&zone_3label, NULL);
-	knot_dname_free(&zone_unknown, NULL);
+	knot_dname_free(zone_arpa, NULL);
+	knot_dname_free(zone_root, NULL);
+	knot_dname_free(zone_1label, NULL);
+	knot_dname_free(zone_3label, NULL);
+	knot_dname_free(zone_unknown, NULL);
 }
 
 int main(int argc, char *argv[])

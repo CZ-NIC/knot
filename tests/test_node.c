@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 	node_free(&node, NULL);
 	ok(node == NULL, "Node: free.");
 
-	knot_dname_free(&dummy_owner, NULL);
+	knot_dname_free(dummy_owner, NULL);
 
 	return 0;
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -105,7 +105,7 @@ static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
 
 	int ret = knot_rrset_add_rdata(rrset, rdata, response_len + 1, mm);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&rrset->owner, mm);
+		knot_dname_free(rrset->owner, mm);
 		return ret;
 	}
 

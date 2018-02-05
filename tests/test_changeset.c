@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 	knot_dname_t *d = knot_dname_from_str_alloc("test.");
 	assert(d);
 	changeset_t *ch = changeset_new(d);
-	knot_dname_free(&d, NULL);
+	knot_dname_free(d, NULL);
 	ok(ch != NULL, "changeset: new");
 	if (!ch) {
 		return 1;
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "changeset: add multiple");
 
 	// Add another node.
-	knot_dname_free(&d, NULL);
+	knot_dname_free(d, NULL);
 	d = knot_dname_from_str_alloc("here.come.more.non.terminals.test");
 	assert(d);
 	knot_rrset_t *other_rr = knot_rrset_new(d, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 3600, NULL);
@@ -121,21 +121,21 @@ int main(int argc, char *argv[])
 	ok(size == 3, "changeset: iter all");
 
 	// Create new changeset.
-	knot_dname_free(&d, NULL);
+	knot_dname_free(d, NULL);
 	d = knot_dname_from_str_alloc("test.");
 	assert(d);
 	changeset_t *ch2 = changeset_new(d);
-	knot_dname_free(&d, NULL);
+	knot_dname_free(d, NULL);
 	assert(ch2);
 	// Add something to add section.
-	knot_dname_free(&apex_txt_rr->owner, NULL);
+	knot_dname_free(apex_txt_rr->owner, NULL);
 	apex_txt_rr->owner = knot_dname_from_str_alloc("something.test.");
 	assert(apex_txt_rr->owner);
 	ret = changeset_add_addition(ch2, apex_txt_rr, CHANGESET_CHECK);
 	assert(ret == KNOT_EOK);
 
 	// Add something to remove section.
-	knot_dname_free(&apex_txt_rr->owner, NULL);
+	knot_dname_free(apex_txt_rr->owner, NULL);
 	apex_txt_rr->owner =
 		knot_dname_from_str_alloc("and.now.for.something.completely.different.test.");
 	assert(apex_txt_rr->owner);
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 
 	// Test preapply fix.
 	zone_contents_t *z = zone_contents_new((const knot_dname_t *)"\x04""test");
-	knot_dname_free(&apex_txt_rr->owner, NULL);
+	knot_dname_free(apex_txt_rr->owner, NULL);
 	apex_txt_rr->owner = knot_dname_from_str_alloc("something.test.");
 	assert(apex_txt_rr->owner);
 	zone_node_t *znode = NULL;

@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *qname = knot_dname_from_str_alloc("beef.");
 	int ret = knot_pkt_put_question(query, qname, KNOT_CLASS_IN, KNOT_RRTYPE_A);
-	knot_dname_free(&qname, NULL);
+	knot_dname_free(qname, NULL);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(query);
 		return KNOT_ERROR; /* Fatal */
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
 #endif
 
-	knot_dname_free(&zone, NULL);
+	knot_dname_free(zone, NULL);
 	knot_pkt_free(query);
 	rrl_destroy(rrl);
 	dnssec_crypto_cleanup();

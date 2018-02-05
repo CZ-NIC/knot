@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
 	free(zonename);
 	int ret = zone_check(filename, dname, stdout, (time_t)check_time);
-	knot_dname_free(&dname, NULL);
+	knot_dname_free(dname, NULL);
 
 	log_close();
 

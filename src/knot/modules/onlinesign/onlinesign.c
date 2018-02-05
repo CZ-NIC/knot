@@ -216,7 +216,7 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t
 	int written = knot_dname_to_wire(rdata, next, size);
 	dnssec_nsec_bitmap_write(bitmap, rdata + written);
 
-	knot_dname_free(&next, NULL);
+	knot_dname_free(next, NULL);
 	dnssec_nsec_bitmap_free(bitmap);
 
 	if (knot_rrset_add_rdata(nsec, rdata, size, mm) != KNOT_EOK) {

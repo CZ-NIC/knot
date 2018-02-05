@@ -275,16 +275,10 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 /*!
  * \brief Destroys the given domain name.
  *
- * Frees also the data within the struct. This is somewhat different behaviour
- * than that of RDATA and RRSet structures which do not deallocate their
- * contents.
- *
- * Sets the given pointer to NULL.
- *
  * \param name  Domain name to be destroyed.
  * \param mm    Memory context.
  */
-void knot_dname_free(knot_dname_t **name, knot_mm_t *mm);
+void knot_dname_free(knot_dname_t *name, knot_mm_t *mm);
 
 /*!
  * \brief Compares two domain names by labels (case sensitive).

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -183,10 +183,10 @@ static void test_acl_allowed(void)
 	ok(ret == true, "IPv6 address from range, no key, action match");
 
 	conf_free(conf());
-	knot_dname_free(&zone_name, NULL);
-	knot_dname_free(&key1_name, NULL);
-	knot_dname_free(&key2_name, NULL);
-	knot_dname_free(&key3_name, NULL);
+	knot_dname_free(zone_name, NULL);
+	knot_dname_free(key1_name, NULL);
+	knot_dname_free(key2_name, NULL);
+	knot_dname_free(key3_name, NULL);
 }
 
 int main(int argc, char *argv[])
