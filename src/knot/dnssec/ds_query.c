@@ -172,17 +172,21 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 	return ret;
 }
 
-static bool parents_have_ds(kdnssec_ctx_t *kctx, const knot_dname_t *zone_name, zone_key_t *key, size_t timeout)
+static bool parents_have_ds(kdnssec_ctx_t *kctx, zone_key_t *key, size_t timeout)
 {
-	bool success = true;
+	bool success = false;
 	dynarray_foreach(parent, knot_kasp_parent_t, i, kctx->policy->parents) {
-		if ((success = !success)) return false;
+		success = false;
 		for (size_t j = 0; j < i->addrs; j++) {
-			int ret = try_ds(zone_name, &i->addr[j], key, timeout);
+			int ret = try_ds(kctx->zone->dname, &i->addr[j], key, timeout);
 			if (ret == KNOT_EOK) {
 				success = true;
 				break;
 			}
+		}
+		// Each parent must succeed.
+		if (!success) {
+			return false;
 		}
 	}
 	return success;
@@ -194,7 +198,7 @@ int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t time
 		zone_key_t *key = &keyset->keys[i];
 		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
 		    key->cds_priority > 1) {
-			if (parents_have_ds(kctx, kctx->zone->dname, key, timeout)) {
+			if (parents_have_ds(kctx, key, timeout)) {
 				return knot_dnssec_ksk_sbm_confirm(kctx);
 			} else {
 				return KNOT_ENOENT;
@@ -203,4 +207,3 @@ int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t time
 	}
 	return KNOT_ENOENT;
 }
-

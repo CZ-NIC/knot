@@ -67,8 +67,8 @@ typedef struct {
  * Parent for DS checks.
  */
 typedef struct {
-        conf_remote_t *addr;
-        size_t addrs;
+	conf_remote_t *addr;
+	size_t addrs;
 } knot_kasp_parent_t;
 
 dynarray_declare(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_PUBLIC, 3)
