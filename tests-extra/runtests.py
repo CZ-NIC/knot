@@ -168,8 +168,8 @@ def main(args):
 
             case_n = case if params.repeat == 1 else case + str(repeat)
 
-            case_str_err = (" * case \'%s\':" % case).ljust(31)
-            case_str_fail = ("%s/%s" % (test, case)).ljust(28)
+            case_str_err = (" * case \'%s\':" % case).ljust(33)
+            case_str_fail = ("%s/%s" % (test, case)).ljust(30)
             case_cnt += 1
 
             case_dir = os.path.join(test_dir, case)
