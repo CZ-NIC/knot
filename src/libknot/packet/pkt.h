@@ -51,15 +51,17 @@ enum {
 	KNOT_PF_NOCANON   = 1 << 5, /*!< Don't canonicalize rrsets during parsing. */
 };
 
+typedef struct knot_pkt knot_pkt_t;
+
 /*!
  * \brief Packet section.
  * Points to RRSet and RRSet info arrays in the packet.
  * This structure is required for random access to packet sections.
  */
 typedef struct {
-	struct knot_pkt *pkt; /*!< Owner. */
-	uint16_t pos;         /*!< Position in the rr/rrinfo fields in packet. */
-	uint16_t count;       /*!< Number of RRSets in this section. */
+	knot_pkt_t *pkt; /*!< Owner. */
+	uint16_t pos;    /*!< Position in the rr/rrinfo fields in packet. */
+	uint16_t count;  /*!< Number of RRSets in this section. */
 } knot_pktsection_t;
 
 /*!
@@ -377,6 +379,26 @@ static inline uint8_t *knot_pkt_edns_option(const knot_pkt_t *pkt, uint16_t code
 		return pkt->edns_opts->ptr[code];
 	} else {
 		return NULL;
+	}
+}
+
+/*!
+ * \brief Computes a reasonable Padding data length for a given packet and opt RR.
+ *
+ * \param pkt     DNS Packet prepared and otherwise ready to go, no OPT yet added.
+ * \param opt_rr  OPT RR, not yet including padding.
+ *
+ * \return Required padding length or -1 if padding not required.
+ */
+static inline int knot_pkt_default_padding_size(const knot_pkt_t *pkt,
+                                                const knot_rrset_t *opt_rr)
+{
+	if (knot_wire_get_qr(pkt->wire)) {
+		return knot_edns_alignment_size(pkt->size, knot_rrset_size(opt_rr),
+		                                KNOT_EDNS_ALIGNMENT_RESPONSE_DEFAULT);
+	} else {
+		return knot_edns_alignment_size(pkt->size, knot_rrset_size(opt_rr),
+		                                KNOT_EDNS_ALIGNMENT_QUERY_DEFALT);
 	}
 }
 

@@ -310,7 +310,7 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 		                                   knot_rrset_size(&opt_rr),
 		                                   query->alignment);
 	} else if (query->padding == -2 || (query->padding == -1 && query->tls.enable)) {
-		padding = knot_edns_default_padding_size(packet, &opt_rr);
+		padding = knot_pkt_default_padding_size(packet, &opt_rr);
 	}
 	if (padding > -1) {
 		uint8_t zeros[padding];

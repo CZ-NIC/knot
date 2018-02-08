@@ -31,11 +31,8 @@
 #include "libknot/rrset.h"
 #include "libknot/wire.h"
 
-/* Forward decls */
-typedef struct knot_pkt knot_pkt_t;
-
 /*! \brief Constants related to EDNS. */
-enum knot_edns_const {
+enum {
 	/*! \brief Supported EDNS version. */
 	KNOT_EDNS_VERSION = 0,
 
@@ -56,10 +53,13 @@ enum knot_edns_const {
 	/*! \brief EDNS OPTION header size. */
 	KNOT_EDNS_OPTION_HDRLEN            = 4,
 
-	/*! \brief Maximal edns client subnet data size (IPv6). */
-	KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET = 20,
 	/*! \brief Maximal size of EDNS client subnet address in bytes (IPv6). */
 	KNOT_EDNS_CLIENT_SUBNET_ADDRESS_MAXLEN = 16,
+
+	/*! \brief Default EDNS alignment size for a query. */
+	KNOT_EDNS_ALIGNMENT_QUERY_DEFALT     = 128,
+	/*! \brief Default EDNS alignment size for a response. */
+	KNOT_EDNS_ALIGNMENT_RESPONSE_DEFAULT = 468,
 
 	/*! \brief EDNS client cookie size. */
 	KNOT_EDNS_COOKIE_CLNT_SIZE     = 8,
@@ -374,17 +374,6 @@ static inline uint8_t *knot_edns_opt_get_data(uint8_t *opt)
 }
 
 /*!
- * \brief Computes a reasonable Padding data length for a given packet and opt RR.
- *
- * \param pkt     DNS Packet prepared and otherwise ready to go, no OPT yet added.
- * \param opt_rr  OPT RR, not yet including padding.
- *
- * \return Required padding length or -1 if padding not required.
- */
-int knot_edns_default_padding_size(const knot_pkt_t *pkt,
-                                   const knot_rrset_t *opt_rr);
-
-/*!
  * \brief Computes additional Padding data length for required packet alignment.
  *
  * \param current_pkt_size  Current packet size.
@@ -393,22 +382,9 @@ int knot_edns_default_padding_size(const knot_pkt_t *pkt,
  *
  * \return Required padding length or -1 if padding not required.
  */
-static inline int knot_edns_alignment_size(size_t current_pkt_size,
-                                           size_t current_opt_size,
-                                           size_t block_size)
-{
-	assert(current_opt_size > 0);
-	assert(block_size > 0);
-
-	size_t current_size = current_pkt_size + current_opt_size;
-	if (current_size % block_size == 0) {
-		return -1;
-	}
-
-	size_t modulo = (current_size + KNOT_EDNS_OPTION_HDRLEN) % block_size;
-
-	return (modulo == 0) ? 0 : block_size - modulo;
-}
+int knot_edns_alignment_size(size_t current_pkt_size,
+                             size_t current_opt_size,
+                             size_t block_size);
 
 /*!
  * \brief EDNS Client Subnet content.

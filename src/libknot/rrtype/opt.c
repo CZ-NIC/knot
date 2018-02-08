@@ -30,7 +30,7 @@
 #include "contrib/wire_ctx.h"
 
 /*! \brief Some implementation-related constants. */
-enum knot_edns_private_consts {
+enum {
 	/*! \brief Byte offset of the extended RCODE field in TTL. */
 	EDNS_OFFSET_RCODE   = 0,
 	/*! \brief Byte offset of the version field in TTL. */
@@ -44,9 +44,6 @@ enum knot_edns_private_consts {
 	EDNS_OFFSET_CLIENT_SUBNET_DST_MASK = 3,
 	/*! \brief Byte offset of the address field in option data. */
 	EDNS_OFFSET_CLIENT_SUBNET_ADDR     = 4,
-
-	EDNS_DEFAULT_QUERY_ALIGNMENT_SIZE    = 128,
-	EDNS_DEFAULT_RESPONSE_ALIGNMENT_SIZE = 468,
 };
 
 _public_
@@ -280,29 +277,33 @@ int knot_edns_get_options(knot_rrset_t *opt_rr, knot_edns_options_t **out,
 }
 
 _public_
-int knot_edns_default_padding_size(const knot_pkt_t *pkt,
-                                   const knot_rrset_t *opt_rr)
+int knot_edns_alignment_size(size_t current_pkt_size,
+                             size_t current_opt_size,
+                             size_t block_size)
 {
-	if (knot_wire_get_qr(pkt->wire)) {
-		return knot_edns_alignment_size(pkt->size, knot_rrset_size(opt_rr),
-		                                EDNS_DEFAULT_RESPONSE_ALIGNMENT_SIZE);
-	} else {
-		return knot_edns_alignment_size(pkt->size, knot_rrset_size(opt_rr),
-		                                EDNS_DEFAULT_QUERY_ALIGNMENT_SIZE);
+	if (current_opt_size == 0 || block_size == 0) {
+		return -1;
 	}
+
+	size_t current_size = current_pkt_size + current_opt_size;
+	if (current_size % block_size == 0) {
+		return -1;
+	}
+
+	size_t modulo = (current_size + KNOT_EDNS_OPTION_HDRLEN) % block_size;
+
+	return (modulo == 0) ? 0 : block_size - modulo;
 }
 
 /*!
  * \brief EDNS Client Subnet family data.
  */
-struct ecs_family {
+typedef struct {
 	int platform;   //!< Platform family identifier.
 	uint16_t iana;  //!< IANA family identifier.
 	size_t offset;  //!< Socket address offset.
 	size_t size;    //!< Socket address size.
-};
-
-typedef struct ecs_family ecs_family_t;
+} ecs_family_t;
 
 #define ECS_INIT(platform, iana, type, member) \
 	{ platform, iana, offsetof(type, member), sizeof(((type *)0)->member) }
