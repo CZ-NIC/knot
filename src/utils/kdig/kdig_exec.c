@@ -267,7 +267,7 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 
 	/* Append EDNS-client-subnet. */
 	if (query->subnet.family != AF_UNSPEC) {
-		size_t size = knot_edns_client_subnet_size(&query->subnet);
+		uint16_t size = knot_edns_client_subnet_size(&query->subnet);
 		uint8_t data[size];
 
 		ret = knot_edns_client_subnet_write(data, size, &query->subnet);
@@ -286,7 +286,7 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 
 	/* Append a cookie option if present. */
 	if (query->cc.len > 0) {
-		size_t size = knot_edns_cookie_size(&query->cc, &query->sc);
+		uint16_t size = knot_edns_cookie_size(&query->cc, &query->sc);
 		uint8_t data[size];
 
 		ret = knot_edns_cookie_write(data, size, &query->cc, &query->sc);
@@ -310,7 +310,7 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 		                                   knot_rrset_size(&opt_rr),
 		                                   query->alignment);
 	} else if (query->padding == -2 || (query->padding == -1 && query->tls.enable)) {
-		padding = knot_edns_default_padding_size(packet, &opt_rr);
+		padding = knot_pkt_default_padding_size(packet, &opt_rr);
 	}
 	if (padding > -1) {
 		uint8_t zeros[padding];
@@ -737,7 +737,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		// Prepare new query context.
 		query_t new_ctx = *query_ctx;
 
-		uint8_t *opt = knot_edns_get_option(reply->opt_rr, KNOT_EDNS_OPTION_COOKIE);
+		uint8_t *opt = knot_pkt_edns_option(reply, KNOT_EDNS_OPTION_COOKIE);
 		if (opt == NULL) {
 			ERR("bad cookie, missing EDNS section\n");
 			knot_pkt_free(reply);

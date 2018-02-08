@@ -351,8 +351,16 @@ static const ctr_desc_t ctr_descs[] = {
 
 static void incr_edns_option(knotd_mod_t *mod, const knot_pkt_t *pkt, unsigned ctr_name)
 {
+	if (!knot_pkt_has_edns(pkt)) {
+		return;
+	}
+
 	knot_rdata_t *rdata = knot_rdataset_at(&pkt->opt_rr->rrs, 0);
-	wire_ctx_t wire = wire_ctx_init(rdata->data, rdata->len);
+	if (rdata == NULL || rdata->len == 0) {
+		return;
+	}
+
+	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
 	while (wire_ctx_available(&wire) > 0) {
 		uint16_t opt_code = wire_ctx_read_u16(&wire);
 		uint16_t opt_len = wire_ctx_read_u16(&wire);
@@ -499,10 +507,10 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 
 	// Count EDNS occurrences.
 	if (stats->edns) {
-		if (qdata->query->opt_rr != NULL) {
+		if (knot_pkt_has_edns(qdata->query)) {
 			knotd_mod_stats_incr(mod, CTR_EDNS, EDNS_REQ, 1);
 		}
-		if (pkt->opt_rr != NULL && state != KNOTD_STATE_NOOP) {
+		if (knot_pkt_has_edns(pkt) && state != KNOTD_STATE_NOOP) {
 			knotd_mod_stats_incr(mod, CTR_EDNS, EDNS_RESP, 1);
 		}
 	}
@@ -512,16 +520,16 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 		if (state != KNOTD_STATE_NOOP && knot_wire_get_tc(pkt->wire)) {
 			knotd_mod_stats_incr(mod, CTR_FLAG, FLAG_TC, 1);
 		}
-		if (pkt->opt_rr != NULL && knot_edns_do(pkt->opt_rr)) {
+		if (knot_pkt_has_dnssec(pkt)) {
 			knotd_mod_stats_incr(mod, CTR_FLAG, FLAG_DO, 1);
 		}
 	}
 
 	// Count EDNS options.
-	if (stats->req_eopt && !knot_rrset_empty(qdata->query->opt_rr)) {
+	if (stats->req_eopt) {
 		incr_edns_option(mod, qdata->query, CTR_REQ_EOPT);
 	}
-	if (stats->resp_eopt && !knot_rrset_empty(pkt->opt_rr)) {
+	if (stats->resp_eopt) {
 		incr_edns_option(mod, pkt, CTR_RESP_EOPT);
 	}
 

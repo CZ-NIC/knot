@@ -192,14 +192,14 @@ static void test_getters(knot_rrset_t *opt_rr)
 	   total_size, actual_size);
 
 	/* NSID */
-	check = knot_edns_has_option(opt_rr, KNOT_EDNS_OPTION_NSID);
+	check = knot_edns_get_option(opt_rr, KNOT_EDNS_OPTION_NSID) != NULL;
 	ok(check, "OPT RR getters: NSID check");
 
 	/* Other OPTIONs */
-	check = knot_edns_has_option(opt_rr, E_OPT3_CODE);
+	check = knot_edns_get_option(opt_rr, E_OPT3_CODE) != NULL;
 	ok(check, "OPT RR getters: empty option 1");
 
-	check = knot_edns_has_option(opt_rr, E_OPT4_CODE);
+	check = knot_edns_get_option(opt_rr, E_OPT4_CODE) != NULL;
 	ok(check, "OPT RR getters: empty option 2");
 
 	uint16_t code = knot_edns_opt_get_code((const uint8_t *)"\x00\x0a" "\x00\x00");
@@ -267,460 +267,6 @@ static void test_setters(knot_rrset_t *opt_rr)
 	             (uint8_t *)E_OPT4_DATA, "OPT RR setters (empty option 2)");
 }
 
-#define OPT_ID_0 0xaaa0
-#define OPT_ID_1 0xaaa1
-#define OPT_ID_2 0xaaa2
-#define OPT_ID_3 0xaaa3
-
-static bool prepare_edns_data(knot_rrset_t *opt_rr, bool fill)
-{
-	knot_rrset_clear(opt_rr, NULL);
-	int ret = knot_edns_init(opt_rr, E_MAX_PLD, E_RCODE, E_VERSION, NULL);
-	if (ret != KNOT_EOK) {
-		return false;
-	}
-
-	/* Header-related setters. */
-	knot_edns_set_payload(opt_rr, E_MAX_PLD2);
-	knot_edns_set_ext_rcode(opt_rr, E_RCODE2);
-	knot_edns_set_version(opt_rr, E_VERSION2);
-	knot_edns_set_do(opt_rr);
-
-	static const uint8_t OPT_DATA[] = {
-		0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
-		0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
-	};
-
-	if (!fill) {
-		return true;
-	}
-
-	ret = knot_edns_add_option(opt_rr, OPT_ID_1, 3, OPT_DATA, NULL);
-	if (ret != KNOT_EOK) {
-		return false;
-	}
-
-	ret = knot_edns_add_option(opt_rr, OPT_ID_0, 4, OPT_DATA, NULL);
-	if (ret != KNOT_EOK) {
-		return false;
-	}
-
-	ret = knot_edns_add_option(opt_rr, OPT_ID_1, 3, OPT_DATA, NULL);
-	if (ret != KNOT_EOK) {
-		return false;
-	}
-
-	ret = knot_edns_add_option(opt_rr, OPT_ID_2, 8, OPT_DATA, NULL);
-	if (ret != KNOT_EOK) {
-		return false;
-	}
-
-	return true;
-}
-
-static bool check_rdata(const knot_rrset_t *opt_rr, uint16_t len, const uint8_t *data)
-{
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	assert(rdata != NULL);
-
-	const uint8_t *data_ptr = rdata->data;
-	uint16_t data_len = rdata->len;
-
-	if (data_len != len) {
-		return false;
-	}
-
-	return memcmp(data_ptr, data, data_len) == 0;
-}
-
-static void test_remove(void)
-{
-	int iret;
-	bool bret;
-	knot_rrset_t opt_rr;
-	uint16_t new_expected_len;
-
-	iret = knot_edns_init(&opt_rr, E_MAX_PLD, E_RCODE, E_VERSION, NULL);
-	ok(iret == KNOT_EOK, "OPT RR remove: init");
-
-	/* Test helper function for data preparation. */
-	new_expected_len = 0;
-	bret = prepare_edns_data(&opt_rr, false);
-	ok(bret, "OPT RR remove: internal data preparation");
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"");
-	ok(bret, "OPT RR remove: data preparation");
-
-	new_expected_len = 34;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(bret, "OPT RR remove: data preparation");
-
-	/* Invalid parameter. */
-	iret = knot_edns_remove_options(NULL, OPT_ID_0);
-	ok(iret == KNOT_EINVAL, "OPT RR remove: invalid parameter (ret = %s)",
-	   knot_strerror(iret));
-
-	/* Removing from empty OPT RR. */
-	new_expected_len = 0;
-	bret = prepare_edns_data(&opt_rr, false);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_remove_options(&opt_rr, OPT_ID_3);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"");
-	ok(iret == KNOT_EOK && bret,
-	   "OPT RR remove: removing from empty OPT RR (ret = %s)",
-	   knot_strerror(iret));
-
-	/* Removing non-existent option. */
-	new_expected_len = 34;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_remove_options(&opt_rr, OPT_ID_3);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(iret == KNOT_EOK && bret,
-	   "OPT RR remove: removing non-existent option (ret = %s)",
-	   knot_strerror(iret));
-
-	/* Removing existent option. */
-	new_expected_len = 26;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_remove_options(&opt_rr, OPT_ID_0);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(iret == KNOT_EOK && bret,
-	   "OPT RR remove: removing existent option (ret = %s)",
-	   knot_strerror(iret));
-
-	/* Removing existent options. */
-	new_expected_len = 20;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_remove_options(&opt_rr, OPT_ID_1);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(iret == KNOT_EOK && bret,
-	   "OPT RR remove: removing existent options (ret = %s)",
-	   knot_strerror(iret));
-
-	/* Removing existent option. */
-	new_expected_len = 22;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_remove_options(&opt_rr, OPT_ID_2);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2");
-	ok(iret == KNOT_EOK && bret,
-	   "OPT RR remove: removing existent option (ret = %s)",
-	   knot_strerror(iret));
-
-	knot_rrset_clear(&opt_rr, NULL);
-}
-
-static void test_unique(void)
-{
-	int iret;
-	bool bret;
-	knot_rrset_t opt_rr;
-	uint16_t new_opt_size, new_expected_len;
-	uint8_t *reserved_data;
-
-	static const uint8_t OPT_DATA[] = {
-		0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
-		0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
-	};
-
-	iret = knot_edns_init(&opt_rr, E_MAX_PLD, E_RCODE, E_VERSION, NULL);
-	ok(iret == KNOT_EOK, "OPT RR unique: init");
-
-	new_opt_size = 4;
-	iret = knot_edns_reserve_unique_option(NULL, OPT_ID_3, new_opt_size,
-	                                       &reserved_data, NULL);
-	ok(iret == KNOT_EINVAL, "OPT RR unique: invalid parameter (ret = %s)",
-	   knot_strerror(iret));
-
-	/* Add non-existent into empty OPT RR. */
-	new_opt_size = 4;
-	new_expected_len = 8;
-	bret = prepare_edns_data(&opt_rr, false);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_3, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa3\x00\x04\x00\x00\x00\x00");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique non-existent option into empty OPT RR (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa3\x00\x04\xe0\xe1\xe2\xe3");
-	ok(bret, "OPT RR unique: check written option");
-
-	/* Add non-existent option. */
-	new_opt_size = 4;
-	new_expected_len = 42;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_3, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7"
-	                                    "\xaa\xa3\x00\x04\x00\x00\x00\x00");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique non-existent option (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7"
-	                                    "\xaa\xa3\x00\x04\xe0\xe1\xe2\xe3");
-	ok(bret, "OPT RR unique: check written option");
-
-	/* Firs should be cleared, remaining with same id removed. */
-	new_opt_size = 3;
-	new_expected_len = 27;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_1, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\x00\x00\x00"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique existent option (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xe0\xe1\xe2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(bret, "OPT RR unique: check written option");
-
-	/* First should be shortened, remaining with same id removed. */
-	new_opt_size = 2;
-	new_expected_len = 26;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_1, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x02\x00\x00"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique existent option (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x02\xe0\xe1"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(bret, "OPT RR unique: check written option");
-
-	/* First removed, placed into second place, last shoved. */
-	new_opt_size = 6;
-	new_expected_len = 30;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_1, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x06\x00\x00\x00\x00\x00\x00"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique existent option (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x06\xe0\xe1\xe2\xe3\xe4\xe5"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(bret, "OPT RR unique: check written option");
-
-	/* First removed, placed into second place, last left untouched. */
-	new_opt_size = 10;
-	new_expected_len = 34;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_1, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique existent option (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x0a\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(bret, "OPT RR unique: check written option");
-
-	/* Second cleared. */
-	new_opt_size = 4;
-	new_expected_len = 34;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_0, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\x00\x00\x00\x00"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique existent option (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xe0\xe1\xe2\xe3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(bret, "OPT RR unique: check written option");
-
-	/* Second shortened to zero, remaining shoved. */
-	new_opt_size = 0;
-	new_expected_len = 30;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_0, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x00"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique existent option (ret = %s)",
-	   knot_strerror(iret));
-
-	/* Second deleted, remaining shoved, new put last. */
-	new_opt_size = 6;
-	new_expected_len = 36;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_0, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7"
-	                                    "\xaa\xa0\x00\x06\x00\x00\x00\x00\x00\x00");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique existent option (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x08\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7"
-	                                    "\xaa\xa0\x00\x06\xe0\xe1\xe2\xe3\xe4\xe5");
-	ok(bret, "OPT RR unique: check written option");
-
-	/* Last shortened. */
-	new_opt_size = 4;
-	new_expected_len = 30;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_2, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x04\x00\x00\x00\x00");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique existent option (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x04\xe0\xe1\xe2\xe3");
-	ok(bret, "OPT RR unique: check written option");
-
-	/* Last enlarged. */
-	new_opt_size = 10;
-	new_expected_len = 36;
-	bret = prepare_edns_data(&opt_rr, true);
-	ok(bret, "OPT RR remove: internal data preparation");
-	iret = knot_edns_reserve_unique_option(&opt_rr, OPT_ID_2, new_opt_size,
-	                                       &reserved_data, NULL);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
-	ok(iret == KNOT_EOK && reserved_data != NULL && bret,
-	   "OPT RR unique: reserve unique existent option (ret = %s)",
-	   knot_strerror(iret));
-	if (reserved_data == NULL) {
-		return;
-	}
-	memcpy(reserved_data, OPT_DATA, new_opt_size);
-	bret = check_rdata(&opt_rr, new_expected_len,
-	                   (const uint8_t *)"\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa0\x00\x04\xf0\xf1\xf2\xf3"
-	                                    "\xaa\xa1\x00\x03\xf0\xf1\xf2"
-	                                    "\xaa\xa2\x00\x0a\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9");
-	ok(bret, "OPT RR unique: check written option");
-
-	knot_rrset_clear(&opt_rr, NULL);
-}
-
 static void test_alignment(void)
 {
 	int ret;
@@ -761,7 +307,7 @@ static void test_keepalive(void)
 	};
 
 	for (const test_t *t = TESTS; t->msg != NULL; t++) {
-		size_t len = knot_edns_keepalive_size(t->val);
+		uint16_t len = knot_edns_keepalive_size(t->val);
 		ok(len == t->opt_len, "%s: %s, size", __func__, t->msg);
 
 		uint8_t wire[8] = { 0 };
@@ -810,7 +356,7 @@ static void test_chain(void)
 	};
 
 	for (const test_t *t = TESTS; t->msg != NULL; t++) {
-		size_t len = knot_edns_chain_size(t->dname);
+		uint16_t len = knot_edns_chain_size(t->dname);
 		ok(len == t->opt_len, "%s: dname %s, size", __func__, t->msg);
 
 		uint8_t wire[8] = { 0 };
@@ -820,7 +366,7 @@ static void test_chain(void)
 		                                            __func__, t->msg);
 
 		knot_dname_t *dname = NULL;
-		ret = knot_edns_chain_parse(&dname, (uint8_t *)t->dname, t->opt_len);
+		ret = knot_edns_chain_parse(&dname, (uint8_t *)t->dname, t->opt_len, NULL);
 		is_int(KNOT_EOK, ret, "%s: dname %s, parse, return", __func__, t->msg);
 		ok(knot_dname_is_equal(dname, t->dname), "%s: dname %s, parse, value",
 		                                         __func__, t->msg);
@@ -840,11 +386,11 @@ static void test_chain(void)
 	   "%s: write, no room", __func__);
 
 	knot_dname_t *dname = NULL;
-	ok(knot_edns_chain_parse(NULL, wire, 0) == KNOT_EINVAL && dname == NULL,
+	ok(knot_edns_chain_parse(NULL, wire, 0, NULL) == KNOT_EINVAL && dname == NULL,
 	   "%s: parse, NULL", __func__);
-	ok(knot_edns_chain_parse(&dname, NULL, 0) == KNOT_EINVAL && dname == NULL,
+	ok(knot_edns_chain_parse(&dname, NULL, 0, NULL) == KNOT_EINVAL && dname == NULL,
 	   "%s: parse, NULL", __func__);
-	ok(knot_edns_chain_parse(&dname, (const uint8_t *)"\x01", 1) == KNOT_EMALF &&
+	ok(knot_edns_chain_parse(&dname, (const uint8_t *)"\x01", 1, NULL) == KNOT_EMALF &&
 	   dname == NULL, "%s: parse, malformed", __func__);
 }
 
@@ -927,8 +473,6 @@ int main(int argc, char *argv[])
 
 	test_setters(&opt_rr);
 	test_getters(&opt_rr);
-	test_remove();
-	test_unique();
 	test_alignment();
 	test_keepalive();
 	test_chain();

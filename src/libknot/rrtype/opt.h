@@ -29,12 +29,10 @@
 
 #include "libknot/consts.h"
 #include "libknot/rrset.h"
-
-/* Forward decls */
-typedef struct knot_pkt knot_pkt_t;
+#include "libknot/wire.h"
 
 /*! \brief Constants related to EDNS. */
-enum knot_edns_const {
+enum {
 	/*! \brief Supported EDNS version. */
 	KNOT_EDNS_VERSION = 0,
 
@@ -55,10 +53,13 @@ enum knot_edns_const {
 	/*! \brief EDNS OPTION header size. */
 	KNOT_EDNS_OPTION_HDRLEN            = 4,
 
-	/*! \brief Maximal edns client subnet data size (IPv6). */
-	KNOT_EDNS_MAX_OPTION_CLIENT_SUBNET = 20,
 	/*! \brief Maximal size of EDNS client subnet address in bytes (IPv6). */
 	KNOT_EDNS_CLIENT_SUBNET_ADDRESS_MAXLEN = 16,
+
+	/*! \brief Default EDNS alignment size for a query. */
+	KNOT_EDNS_ALIGNMENT_QUERY_DEFALT     = 128,
+	/*! \brief Default EDNS alignment size for a response. */
+	KNOT_EDNS_ALIGNMENT_RESPONSE_DEFAULT = 468,
 
 	/*! \brief EDNS client cookie size. */
 	KNOT_EDNS_COOKIE_CLNT_SIZE     = 8,
@@ -270,33 +271,6 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 }
 
 /*!
- * \brief Removes all EDNS options with given \a code.
- *
- * \param[in] opt_rr  OPT RR structure to remove the options from.
- * \param[in] code    Option code.
- *
- * \return Error code, KNOT_EOK if successful (even if nothing removed).
- */
-int knot_edns_remove_options(knot_rrset_t *opt_rr, uint16_t code);
-
-/*!
- * \brief Adds EDNS option into the package with empty (zeroed) content.
- *
- * \note All other occurrences of the option type will be removed.
- *
- * \param[in]  opt_rr    OPT RR structure to reserve the option in.
- * \param[in]  code      Option code.
- * \param[in]  size      Desired option size.
- * \param[out] wire_ptr  Pointer to reserved option data (can be NULL).
- * \param[in]  mm        Memory context.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-int knot_edns_reserve_unique_option(knot_rrset_t *opt_rr, uint16_t code,
-                                    uint16_t size, uint8_t **wire_ptr,
-                                    knot_mm_t *mm);
-
-/*!
  * \brief Add EDNS option into the package with empty (zeroed) content.
  *
  * \param[in]  opt_rr    OPT RR structure to reserve the option in.
@@ -314,7 +288,6 @@ int knot_edns_reserve_option(knot_rrset_t *opt_rr, uint16_t code,
  * \brief Adds EDNS Option to the OPT RR.
  *
  * \note The function now supports adding empty OPTION (just having its code).
- *       This does not make much sense now with NSID, but may be ok use later.
  *
  * \param opt_rr  OPT RR structure to add the Option to.
  * \param code    Option code.
@@ -329,20 +302,9 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
                          uint16_t size, const uint8_t *data, knot_mm_t *mm);
 
 /*!
- * \brief Checks if the OPT RR contains Option with the specified code.
- *
- * \param opt_rr OPT RR structure to check for the Option in.
- * \param code Option code to check for.
- *
- * \retval true if the OPT RR contains Option with Option code \a code.
- * \retval false otherwise.
- */
-bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
-
-/*!
  * \brief Searches the OPT RR for option with the specified code.
  *
- * \param opt_rr  OPT RR structure to search for the Option in.
+ * \param opt_rr  OPT RR structure to search in.
  * \param code    Option code to search for.
  *
  * \retval pointer to option if found
@@ -351,26 +313,51 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
 uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code);
 
 /*!
- * \brief Returns the option code.
+ * \brief Pointers to every option in the OPT RR wire.
+ */
+typedef struct {
+	uint8_t *ptr[KNOT_EDNS_MAX_OPTION_CODE + 1];
+} knot_edns_options_t;
+
+/*!
+ * \brief Initializes pointers to options in a given OPT RR.
  *
- * \warning No safety checks are performed on the supplied data.
+ * \note If the OPT RR has no options, the output is NULL.
+ *
+ * \param opt_rr  OPT RR structure to be used.
+ * \param out     Structure to be initialized.
+ * \param mm      Memory context.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_edns_get_options(knot_rrset_t *opt_rr, knot_edns_options_t **out,
+                          knot_mm_t *mm);
+
+/*!
+ * \brief Returns the option code.
  *
  * \param opt  EDNS option (including code, length and data portion).
  *
- * \retval EDNS option code
+ * \return EDNS option code
  */
-uint16_t knot_edns_opt_get_code(const uint8_t *opt);
+static inline uint16_t knot_edns_opt_get_code(const uint8_t *opt)
+{
+	assert(opt != NULL);
+	return knot_wire_read_u16(opt);
+}
 
 /*!
  * \brief Returns the option data length.
  *
- * \warning No safety checks are performed on the supplied data.
- *
  * \param opt  EDNS option (including code, length and data portion).
  *
- * \retval EDNS option length
+ * \return EDNS option length
  */
-uint16_t knot_edns_opt_get_length(const uint8_t *opt);
+static inline uint16_t knot_edns_opt_get_length(const uint8_t *opt)
+{
+	assert(opt != NULL);
+	return knot_wire_read_u16(opt + sizeof(uint16_t));
+}
 
 /*!
  * \brief Returns pointer to option data.
@@ -387,28 +374,6 @@ static inline uint8_t *knot_edns_opt_get_data(uint8_t *opt)
 }
 
 /*!
- * \brief Checks OPT RR semantics.
- *
- * Checks whether RDATA are OK, i.e. that all OPTIONs have proper lengths.
- *
- * \param opt_rr  OPT RR to check.
- *
- * \return true if passed, false if failed
- */
-bool knot_edns_check_record(knot_rrset_t *opt_rr);
-
-/*!
- * \brief Computes a reasonable Padding data length for a given packet and opt RR.
- *
- * \param pkt     DNS Packet prepared and otherwise ready to go, no OPT yet added.
- * \param opt_rr  OPT RR, not yet including padding.
- *
- * \return Required padding length or -1 if padding not required.
- */
-int knot_edns_default_padding_size(const knot_pkt_t *pkt,
-                                   const knot_rrset_t *opt_rr);
-
-/*!
  * \brief Computes additional Padding data length for required packet alignment.
  *
  * \param current_pkt_size  Current packet size.
@@ -417,22 +382,9 @@ int knot_edns_default_padding_size(const knot_pkt_t *pkt,
  *
  * \return Required padding length or -1 if padding not required.
  */
-static inline int knot_edns_alignment_size(size_t current_pkt_size,
-                                           size_t current_opt_size,
-                                           size_t block_size)
-{
-	assert(current_opt_size > 0);
-	assert(block_size > 0);
-
-	size_t current_size = current_pkt_size + current_opt_size;
-	if (current_size % block_size == 0) {
-		return -1;
-	}
-
-	size_t modulo = (current_size + KNOT_EDNS_OPTION_HDRLEN) % block_size;
-
-	return (modulo == 0) ? 0 : block_size - modulo;
-}
+int knot_edns_alignment_size(size_t current_pkt_size,
+                             size_t current_opt_size,
+                             size_t block_size);
 
 /*!
  * \brief EDNS Client Subnet content.
@@ -457,7 +409,7 @@ typedef struct {
  *
  * \return Size of the EDNS option data.
  */
-size_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs);
+uint16_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs);
 
 /*!
  * \brief Write EDNS Client Subnet data from the ECS structure to wire.
@@ -468,7 +420,7 @@ size_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_client_subnet_write(uint8_t *option, size_t option_len,
+int knot_edns_client_subnet_write(uint8_t *option, uint16_t option_len,
                                   const knot_edns_client_subnet_t *ecs);
 
 /*!
@@ -515,7 +467,7 @@ int knot_edns_client_subnet_get_addr(struct sockaddr_storage *addr,
  *
  * \return Size of the EDNS option data.
  */
-size_t knot_edns_keepalive_size(uint16_t timeout);
+uint16_t knot_edns_keepalive_size(uint16_t timeout);
 
 /*!
  * \brief Writes EDNS TCP Keepalive wire data.
@@ -526,7 +478,7 @@ size_t knot_edns_keepalive_size(uint16_t timeout);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_keepalive_write(uint8_t *option, size_t option_len, uint16_t timeout);
+int knot_edns_keepalive_write(uint8_t *option, uint16_t uint16_len, uint16_t timeout);
 
 /*!
  * \brief Parses EDNS TCP Keepalive wire data.
@@ -547,7 +499,7 @@ int knot_edns_keepalive_parse(uint16_t *timeout, const uint8_t *option,
  *
  * \return Size of the EDNS option data or 0 if invalid input.
  */
-size_t knot_edns_chain_size(const knot_dname_t *point);
+uint16_t knot_edns_chain_size(const knot_dname_t *point);
 
 /*!
  * \brief Writes EDNS Chain wire data.
@@ -558,7 +510,7 @@ size_t knot_edns_chain_size(const knot_dname_t *point);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_chain_write(uint8_t *option, size_t option_len,
+int knot_edns_chain_write(uint8_t *option, uint16_t option_len,
                           const knot_dname_t *point);
 
 /*!
@@ -567,11 +519,12 @@ int knot_edns_chain_write(uint8_t *option, size_t option_len,
  * \param[out] point       EDNS Chain closest trusted point.
  * \param[in]  option      EDNS option data.
  * \param[in]  option_len  EDNS option size.
+ * \param[in]  mm          Memory context.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_edns_chain_parse(knot_dname_t **point, const uint8_t *option,
-                          uint16_t option_len);
+                          uint16_t option_len, knot_mm_t *mm);
 
 /*!
  * \brief DNS Cookie content.
@@ -602,7 +555,7 @@ uint16_t knot_edns_cookie_size(const knot_edns_cookie_t *cc,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_cookie_write(uint8_t *option, size_t option_len,
+int knot_edns_cookie_write(uint8_t *option, uint16_t option_len,
                            const knot_edns_cookie_t *cc,
                            const knot_edns_cookie_t *sc);
 

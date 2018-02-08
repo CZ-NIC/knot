@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -140,13 +140,8 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
-	// Check if OPT RR is present.
-	if (qdata->query->opt_rr == NULL) {
-		return state;
-	}
-
 	// Check if the cookie option is present.
-	uint8_t *cookie_opt = knot_edns_get_option(qdata->query->opt_rr,
+	uint8_t *cookie_opt = knot_pkt_edns_option(qdata->query,
 	                                           KNOT_EDNS_OPTION_COOKIE);
 	if (cookie_opt == NULL) {
 		return state;

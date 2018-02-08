@@ -63,17 +63,11 @@ static void pkt_free_data(knot_pkt_t *pkt)
 			knot_rrset_clear(&pkt->rr[i], &pkt->mm);
 		}
 	}
-
-	/* Reset RR count. */
 	pkt->rrset_count = 0;
 
-	/* Reset special types. */
-	pkt->opt_rr = NULL;
-	pkt->tsig_rr = NULL;
-
-	/* Reset TSIG wire reference. */
-	pkt->tsig_wire.pos = NULL;
-	pkt->tsig_wire.len = 0;
+	/* Free EDNS option positions. */
+	mm_free(&pkt->mm, pkt->edns_opts);
+	pkt->edns_opts = 0;
 }
 
 /*! \brief Allocate new wireformat of given length. */
@@ -317,6 +311,14 @@ static void payload_clear(knot_pkt_t *pkt)
 
 	/* Reset sections. */
 	sections_reset(pkt);
+
+	/* Reset special types. */
+	pkt->opt_rr = NULL;
+	pkt->tsig_rr = NULL;
+
+	/* Reset TSIG wire reference. */
+	pkt->tsig_wire.pos = NULL;
+	pkt->tsig_wire.len = 0;
 }
 
 _public_
@@ -391,7 +393,7 @@ void knot_pkt_free(knot_pkt_t *pkt)
 	mm_free(&pkt->mm, pkt->rr);
 	mm_free(&pkt->mm, pkt->rr_info);
 
-	// free the space for wireformat
+	/* Free the space for wireformat. */
 	if (pkt->flags & KNOT_PF_FREE) {
 		mm_free(&pkt->mm, pkt->wire);
 	}
@@ -503,7 +505,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 
 	/* Check for double insertion. */
 	if ((flags & KNOT_PF_CHECKDUP) && pkt_contains(pkt, rr)) {
-		return KNOT_EOK; /*! \todo return rather a number of added RRs */
+		return KNOT_EOK;
 	}
 
 	knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count];
@@ -617,27 +619,18 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	return KNOT_EOK;
 }
 
-/* \note Private for check_rr_constraints(). */
-#define CHECK_AR_CONSTRAINTS(pkt, rr, var, check_func) \
-	if ((pkt)->current != KNOT_ADDITIONAL) { \
-		return KNOT_EMALF; \
-	} else if ((pkt)->var != NULL) { \
-		return KNOT_EMALF; \
-	} else if (!check_func(rr)) { \
-		return KNOT_EMALF; \
-	}
-
 /*! \brief Check constraints (position, uniqueness, validity) for special types
  *         (TSIG, OPT).
  */
 static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_size,
                                 unsigned flags)
 {
-	/* Check RR constraints. */
 	switch (rr->type) {
 	case KNOT_RRTYPE_TSIG:
-		CHECK_AR_CONSTRAINTS(pkt, rr, tsig_rr, knot_tsig_rdata_is_ok);
-		pkt->tsig_rr = rr;
+		if (pkt->current != KNOT_ADDITIONAL || pkt->tsig_rr != NULL ||
+		    !knot_tsig_rdata_is_ok(rr)) {
+			return KNOT_EMALF;
+		}
 
 		/* Strip TSIG RR from wireformat and decrease ARCOUNT. */
 		if (!(flags & KNOT_PF_KEEPWIRE)) {
@@ -647,9 +640,15 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 			pkt->tsig_wire.len = rr_size;
 			knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
 		}
+
+		pkt->tsig_rr = rr;
 		break;
 	case KNOT_RRTYPE_OPT:
-		CHECK_AR_CONSTRAINTS(pkt, rr, opt_rr, knot_edns_check_record);
+		if (pkt->current != KNOT_ADDITIONAL || pkt->opt_rr != NULL ||
+		    knot_edns_get_options(rr, &pkt->edns_opts, &pkt->mm) != KNOT_EOK) {
+			return KNOT_EMALF;
+		}
+
 		pkt->opt_rr = rr;
 		break;
 	default:
@@ -658,8 +657,6 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 
 	return KNOT_EOK;
 }
-
-#undef CHECK_AR_CONSTRAINTS
 
 _public_
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
@@ -703,20 +700,16 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	return check_rr_constraints(pkt, rr, rr_size, flags);
 }
 
-_public_
-int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags)
+static int parse_section(knot_pkt_t *pkt, unsigned flags)
 {
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(pkt);
 
-	int ret = KNOT_EOK;
 	uint16_t rr_parsed = 0;
 	uint16_t rr_count = pkt_rr_wirecount(pkt, pkt->current);
 
 	/* Parse all RRs belonging to the section. */
 	for (rr_parsed = 0; rr_parsed < rr_count; ++rr_parsed) {
-		ret = knot_pkt_parse_rr(pkt, flags);
+		int ret = knot_pkt_parse_rr(pkt, flags);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -754,7 +747,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		ret = knot_pkt_parse_section(pkt, flags);
+		ret = parse_section(pkt, flags);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

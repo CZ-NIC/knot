@@ -393,7 +393,7 @@ size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key)
 }
 
 _public_
-int knot_tsig_rdata_is_ok(const knot_rrset_t *tsig)
+bool knot_tsig_rdata_is_ok(const knot_rrset_t *tsig)
 {
 	/*! \todo Check size, needs to check variable-length fields. */
 	return (tsig != NULL
