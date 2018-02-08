@@ -267,7 +267,7 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 
 	/* Append EDNS-client-subnet. */
 	if (query->subnet.family != AF_UNSPEC) {
-		size_t size = knot_edns_client_subnet_size(&query->subnet);
+		uint16_t size = knot_edns_client_subnet_size(&query->subnet);
 		uint8_t data[size];
 
 		ret = knot_edns_client_subnet_write(data, size, &query->subnet);
@@ -286,7 +286,7 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 
 	/* Append a cookie option if present. */
 	if (query->cc.len > 0) {
-		size_t size = knot_edns_cookie_size(&query->cc, &query->sc);
+		uint16_t size = knot_edns_cookie_size(&query->cc, &query->sc);
 		uint8_t data[size];
 
 		ret = knot_edns_cookie_write(data, size, &query->cc, &query->sc);

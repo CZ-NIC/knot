@@ -307,7 +307,7 @@ static void test_keepalive(void)
 	};
 
 	for (const test_t *t = TESTS; t->msg != NULL; t++) {
-		size_t len = knot_edns_keepalive_size(t->val);
+		uint16_t len = knot_edns_keepalive_size(t->val);
 		ok(len == t->opt_len, "%s: %s, size", __func__, t->msg);
 
 		uint8_t wire[8] = { 0 };
@@ -356,7 +356,7 @@ static void test_chain(void)
 	};
 
 	for (const test_t *t = TESTS; t->msg != NULL; t++) {
-		size_t len = knot_edns_chain_size(t->dname);
+		uint16_t len = knot_edns_chain_size(t->dname);
 		ok(len == t->opt_len, "%s: dname %s, size", __func__, t->msg);
 
 		uint8_t wire[8] = { 0 };
@@ -366,7 +366,7 @@ static void test_chain(void)
 		                                            __func__, t->msg);
 
 		knot_dname_t *dname = NULL;
-		ret = knot_edns_chain_parse(&dname, (uint8_t *)t->dname, t->opt_len);
+		ret = knot_edns_chain_parse(&dname, (uint8_t *)t->dname, t->opt_len, NULL);
 		is_int(KNOT_EOK, ret, "%s: dname %s, parse, return", __func__, t->msg);
 		ok(knot_dname_is_equal(dname, t->dname), "%s: dname %s, parse, value",
 		                                         __func__, t->msg);
@@ -386,11 +386,11 @@ static void test_chain(void)
 	   "%s: write, no room", __func__);
 
 	knot_dname_t *dname = NULL;
-	ok(knot_edns_chain_parse(NULL, wire, 0) == KNOT_EINVAL && dname == NULL,
+	ok(knot_edns_chain_parse(NULL, wire, 0, NULL) == KNOT_EINVAL && dname == NULL,
 	   "%s: parse, NULL", __func__);
-	ok(knot_edns_chain_parse(&dname, NULL, 0) == KNOT_EINVAL && dname == NULL,
+	ok(knot_edns_chain_parse(&dname, NULL, 0, NULL) == KNOT_EINVAL && dname == NULL,
 	   "%s: parse, NULL", __func__);
-	ok(knot_edns_chain_parse(&dname, (const uint8_t *)"\x01", 1) == KNOT_EMALF &&
+	ok(knot_edns_chain_parse(&dname, (const uint8_t *)"\x01", 1, NULL) == KNOT_EMALF &&
 	   dname == NULL, "%s: parse, malformed", __func__);
 }
 

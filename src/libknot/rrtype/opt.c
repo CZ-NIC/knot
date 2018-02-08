@@ -292,8 +292,6 @@ int knot_edns_default_padding_size(const knot_pkt_t *pkt,
 	}
 }
 
-/*----------------------------------------------------------------------------*/
-
 /*!
  * \brief EDNS Client Subnet family data.
  */
@@ -351,7 +349,7 @@ static const ecs_family_t *ecs_family_by_iana(uint16_t family)
 /*!
  * \brief Get ECS address prefix size in bytes.
  */
-static size_t ecs_prefix_size(uint8_t prefix)
+static uint16_t ecs_prefix_size(uint8_t prefix)
 {
 	return (prefix + 7) / 8;
 }
@@ -403,7 +401,7 @@ static bool ecs_is_valid(const knot_edns_client_subnet_t *ecs)
 }
 
 _public_
-size_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs)
+uint16_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs)
 {
 	if (!ecs_is_valid(ecs)) {
 		return 0;
@@ -416,7 +414,7 @@ size_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs)
 }
 
 _public_
-int knot_edns_client_subnet_write(uint8_t *option, size_t option_len,
+int knot_edns_client_subnet_write(uint8_t *option, uint16_t option_len,
                                   const knot_edns_client_subnet_t *ecs)
 {
 	if (option == NULL || ecs == NULL) {
@@ -523,13 +521,13 @@ int knot_edns_client_subnet_get_addr(struct sockaddr_storage *addr,
 }
 
 _public_
-size_t knot_edns_keepalive_size(uint16_t timeout)
+uint16_t knot_edns_keepalive_size(uint16_t timeout)
 {
 	return (timeout > 0) ? sizeof(uint16_t) : 0;
 }
 
 _public_
-int knot_edns_keepalive_write(uint8_t *option, size_t option_len, uint16_t timeout)
+int knot_edns_keepalive_write(uint8_t *option, uint16_t option_len, uint16_t timeout)
 {
 	if (option == NULL) {
 		return KNOT_EINVAL;
@@ -568,13 +566,13 @@ int knot_edns_keepalive_parse(uint16_t *timeout, const uint8_t *option,
 }
 
 _public_
-size_t knot_edns_chain_size(const knot_dname_t *point)
+uint16_t knot_edns_chain_size(const knot_dname_t *point)
 {
 	return knot_dname_size(point);
 }
 
 _public_
-int knot_edns_chain_write(uint8_t *option, size_t option_len,
+int knot_edns_chain_write(uint8_t *option, uint16_t option_len,
                           const knot_dname_t *point)
 {
 	if (option == NULL || point == NULL) {
@@ -589,7 +587,7 @@ int knot_edns_chain_write(uint8_t *option, size_t option_len,
 
 _public_
 int knot_edns_chain_parse(knot_dname_t **point, const uint8_t *option,
-                          uint16_t option_len)
+                          uint16_t option_len, knot_mm_t *mm)
 {
 	if (point == NULL || option == NULL) {
 		return KNOT_EINVAL;
@@ -600,7 +598,7 @@ int knot_edns_chain_parse(knot_dname_t **point, const uint8_t *option,
 		return KNOT_EMALF;
 	}
 
-	*point = knot_dname_copy(option, NULL);
+	*point = knot_dname_copy(option, mm);
 	if (*point == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -625,7 +623,7 @@ uint16_t knot_edns_cookie_size(const knot_edns_cookie_t *cc,
 }
 
 _public_
-int knot_edns_cookie_write(uint8_t *option, size_t option_len,
+int knot_edns_cookie_write(uint8_t *option, uint16_t option_len,
                            const knot_edns_cookie_t *cc,
                            const knot_edns_cookie_t *sc)
 {

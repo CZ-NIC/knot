@@ -433,7 +433,7 @@ typedef struct {
  *
  * \return Size of the EDNS option data.
  */
-size_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs);
+uint16_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs);
 
 /*!
  * \brief Write EDNS Client Subnet data from the ECS structure to wire.
@@ -444,7 +444,7 @@ size_t knot_edns_client_subnet_size(const knot_edns_client_subnet_t *ecs);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_client_subnet_write(uint8_t *option, size_t option_len,
+int knot_edns_client_subnet_write(uint8_t *option, uint16_t option_len,
                                   const knot_edns_client_subnet_t *ecs);
 
 /*!
@@ -491,7 +491,7 @@ int knot_edns_client_subnet_get_addr(struct sockaddr_storage *addr,
  *
  * \return Size of the EDNS option data.
  */
-size_t knot_edns_keepalive_size(uint16_t timeout);
+uint16_t knot_edns_keepalive_size(uint16_t timeout);
 
 /*!
  * \brief Writes EDNS TCP Keepalive wire data.
@@ -502,7 +502,7 @@ size_t knot_edns_keepalive_size(uint16_t timeout);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_keepalive_write(uint8_t *option, size_t option_len, uint16_t timeout);
+int knot_edns_keepalive_write(uint8_t *option, uint16_t uint16_len, uint16_t timeout);
 
 /*!
  * \brief Parses EDNS TCP Keepalive wire data.
@@ -523,7 +523,7 @@ int knot_edns_keepalive_parse(uint16_t *timeout, const uint8_t *option,
  *
  * \return Size of the EDNS option data or 0 if invalid input.
  */
-size_t knot_edns_chain_size(const knot_dname_t *point);
+uint16_t knot_edns_chain_size(const knot_dname_t *point);
 
 /*!
  * \brief Writes EDNS Chain wire data.
@@ -534,7 +534,7 @@ size_t knot_edns_chain_size(const knot_dname_t *point);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_chain_write(uint8_t *option, size_t option_len,
+int knot_edns_chain_write(uint8_t *option, uint16_t option_len,
                           const knot_dname_t *point);
 
 /*!
@@ -543,11 +543,12 @@ int knot_edns_chain_write(uint8_t *option, size_t option_len,
  * \param[out] point       EDNS Chain closest trusted point.
  * \param[in]  option      EDNS option data.
  * \param[in]  option_len  EDNS option size.
+ * \param[in]  mm          Memory context.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_edns_chain_parse(knot_dname_t **point, const uint8_t *option,
-                          uint16_t option_len);
+                          uint16_t option_len, knot_mm_t *mm);
 
 /*!
  * \brief DNS Cookie content.
@@ -578,7 +579,7 @@ uint16_t knot_edns_cookie_size(const knot_edns_cookie_t *cc,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_cookie_write(uint8_t *option, size_t option_len,
+int knot_edns_cookie_write(uint8_t *option, uint16_t option_len,
                            const knot_edns_cookie_t *cc,
                            const knot_edns_cookie_t *sc);
 
