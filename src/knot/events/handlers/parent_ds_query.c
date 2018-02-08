@@ -204,6 +204,11 @@ static bool parents_have_ds(zone_t *zone, conf_t *conf, zone_key_t *key)
 			}
 		}
 
+		// Each parent must succeed.
+		if (!success) {
+			return false;
+		}
+
 		conf_val_next(&parents);
 	}
 	return success;
