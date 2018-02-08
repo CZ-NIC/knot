@@ -160,12 +160,12 @@ static void test_time_print(void)
 	char buff[100];
 	int bufl = sizeof(buff);
 	int ret;
-	knot_time_t t = 44000, t2 = knot_time_add(knot_time(), -10000);
-	knot_time_t big = knot_time_add(knot_time(), 2 * 365 * 24 * 3600 + 1);
+	knot_time_t t = 44000, t2, big;
 
 	ret = knot_time_print(TIME_PRINT_UNIX, t, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "44000", "unix");
 
+	t2 = knot_time_add(knot_time(), -10000);
 	ret = knot_time_print(TIME_PRINT_RELSEC, t2, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "-10000", "relsec");
 
@@ -173,13 +173,17 @@ static void test_time_print(void)
 	buff[11] = '0', buff[12] = '0'; // zeroing 'hours' field to avoid locality issues
 	test_time_print_expect(ret, buff, bufl, "1970-01-01T00:13:20", "iso");
 
+	t2 = knot_time_add(knot_time(), -10000);
 	ret = knot_time_print(TIME_PRINT_HUMAN_MIXED, t2, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "-2h46m40s", "negative human mixed");
+	big = knot_time_add(knot_time(), 2 * 365 * 24 * 3600 + 1);
 	ret = knot_time_print(TIME_PRINT_HUMAN_MIXED, big, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "+2Y1s", "big human mixed");
 
+	t2 = knot_time_add(knot_time(), -10000);
 	ret = knot_time_print(TIME_PRINT_HUMAN_LOWER, t2, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "-2h46mi40s", "negative human lower");
+	big = knot_time_add(knot_time(), 2 * 365 * 24 * 3600 + 1);
 	ret = knot_time_print(TIME_PRINT_HUMAN_LOWER, big, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "+2y1s", "big human lower");
 }
