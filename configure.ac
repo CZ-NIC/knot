@@ -70,6 +70,10 @@ AC_ARG_ENABLE([daemon],
     AS_HELP_STRING([--disable-daemon], [Don't build Knot DNS main daemon]), [], [enable_daemon=yes])
 AM_CONDITIONAL([HAVE_DAEMON], [test "$enable_daemon" = "yes"])
 
+# Build Knot DNS modules
+AC_ARG_ENABLE([modules],
+    AS_HELP_STRING([--disable-modules], [Don't build Knot DNS modules]), [], [enable_modules=yes])
+
 # Build Knot DNS utilities
 AC_ARG_ENABLE([utilities],
     AS_HELP_STRING([--disable-utilities], [Don't build Knot DNS utilities]), [], [enable_utilities=yes])

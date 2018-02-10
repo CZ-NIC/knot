@@ -7,7 +7,10 @@ AC_DEFUN([KNOT_MODULE],
   AC_ARG_WITH([module-$1],
     AS_HELP_STRING([--with-module-$1=yes|shared|no], [Build '$1' module [default=$2]]),
     [module=$withval],
-    [module=$2]
+    AS_IF([test "$enable_modules" = "no"],
+      [module=no],
+      [module=$2]
+    )
   )
 
   doc_modules="${doc_modules}.. include:: modules/$1/$1.rst\n"
