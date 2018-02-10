@@ -293,7 +293,6 @@ AS_IF([test "$with_urcu" != "no"], [
   ])
 ])
 
-AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])])
 ])
 
 static_modules=""
@@ -482,7 +481,7 @@ AC_SEARCH_LIBS([capng_apply], [cap-ng])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS_ONCE([cap-ng.h netinet/in_systm.h pthread_np.h signal.h sys/time.h sys/wait.h sys/uio.h])
+AC_CHECK_HEADERS_ONCE([cap-ng.h pthread_np.h signal.h sys/time.h sys/wait.h sys/uio.h])
 
 # Checks for library functions.
 AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim poll \
