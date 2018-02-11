@@ -188,8 +188,8 @@ endif
 man: $(man_MANS)
 $(MANPAGES_IN): $(MANPAGES_RST)
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
-	mkdir -p $(srcdir)/man
-	for f in $(SPHINXBUILDDIR)/man/*; do \
+	@mkdir -p $(srcdir)/man
+	@for f in $(SPHINXBUILDDIR)/man/*; do \
 	  sed -e '/^\.TP$$/ {' -e 'n' -e 's/^\.B //' -e '}' "$$f" > "$(srcdir)/man/$$(basename $$f)in"; \
 	done
 	$(AM_V_ECHO)
