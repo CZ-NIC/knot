@@ -1,3 +1,27 @@
+Knot DNS 2.6.5 (2018-02-12)
+===========================
+
+Features:
+---------
+ - New 'zone-notify' command in knotc
+ - Kdig uses '@server' as a hostname for TLS authenticaion if '+tls-ca' is set
+
+Improvements:
+-------------
+ - Better heap memory trimming for zone operations
+ - Added proper polling for TLS operations in kdig
+ - Configuration export uses stdout as a default output
+ - Simplified detection of atomic operations
+ - Added '--disable-modules' configure option
+ - Small documentation updates
+
+Bugfixes:
+---------
+ - Zone retransfer doesn't work well if more masters configured
+ - Kdig can leak or double free memory in corner cases
+ - Inconsistent error outputs from dynamic configuration operations
+ - Failed to generate documentation on OpenBSD
+
 Knot DNS 2.6.4 (2018-01-02)
 ===========================
 
