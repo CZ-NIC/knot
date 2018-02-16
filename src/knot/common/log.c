@@ -44,6 +44,7 @@ static const char *events_table[] = {
 	[LOG_EVENT_DNSSEC_PUBLISH] = "DNSSEC,publish",
 	[LOG_EVENT_DNSSEC_REMOVE]  = "DNSSEC,remove",
 	[LOG_EVENT_DNSSEC_SUBMIT]  = "DNSSEC,submit",
+	[LOG_EVENT_DNSSEC_ACTIVE]  = "DNSSEC,active",
 };
 #endif
 

@@ -62,6 +62,7 @@ typedef enum {
 	LOG_EVENT_DNSSEC_PUBLISH = 0,
 	LOG_EVENT_DNSSEC_REMOVE  = 1,
 	LOG_EVENT_DNSSEC_SUBMIT  = 2,
+	LOG_EVENT_DNSSEC_ACTIVE  = 3,
 } log_structured_event_t;
 
 /*!

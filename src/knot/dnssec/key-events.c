@@ -99,6 +99,9 @@ static void log_key_structured(const kdnssec_ctx_t *ctx, const knot_kasp_key_t *
 	case DNSSEC_KEY_STATE_READY:
 		event = LOG_EVENT_DNSSEC_SUBMIT;
 		break;
+	case DNSSEC_KEY_STATE_ACTIVE:
+		event = LOG_EVENT_DNSSEC_ACTIVE;
+		break;
 	case DNSSEC_KEY_STATE_REMOVED:
 		event = LOG_EVENT_DNSSEC_REMOVE;
 		break;
@@ -177,7 +180,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_ti
 		borrow_zone = NULL;
 		borrow_key = NULL;
 		if (ret != KNOT_ESEMCHECK) {
-			// all ok, we generated new kay and updated policy-last
+			// all ok, we generated new key and updated policy-last
 			log_key_structured(ctx, key);
 			return ret;
 		} else {
@@ -482,16 +485,11 @@ static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 	}
 
 	newkey->timing.ready = ctx->now;
-	log_key_structured(ctx, newkey);
 	return KNOT_EOK;
 }
 
 static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 {
-	if (newkey->is_ksk) {
-		log_zone_notice(ctx->zone->dname, "DNSSEC, KSK submission, confirmed");
-	}
-
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		key_state_t keystate = get_key_state(key, ctx->now);
@@ -512,6 +510,11 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 		assert(get_key_state(newkey, ctx->now) == DNSSEC_KEY_STATE_PUBLISHED);
 	}
 	newkey->timing.active = knot_time_min(ctx->now, newkey->timing.active);
+
+	if (newkey->is_ksk) {
+		log_zone_notice(ctx->zone->dname, "DNSSEC, KSK submission, confirmed");
+		log_key_structured(ctx, newkey);
+	}
 
 	return KNOT_EOK;
 }
@@ -580,6 +583,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 			ret = generate_key(ctx, true, ctx->policy->singe_type_signing, ctx->now, false);
 		}
 		reschedule->plan_ds_query = true;
+		log_zone_notice(ctx->zone->dname, "DNSSEC, KSK submission, waiting for confirmation");
 		if (ret == KNOT_EOK) {
 			reschedule->keys_changed = true;
 			if (!ctx->policy->singe_type_signing &&
@@ -647,6 +651,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		case SUBMIT:
 			ret = submit_key(ctx, next.key);
 			reschedule->plan_ds_query = true;
+			log_zone_notice(ctx->zone->dname, "DNSSEC, KSK submission, waiting for confirmation");
+			log_key_structured(ctx, next.key);
 			break;
 		case REPLACE:
 			ret = exec_new_signatures(ctx, next.key);
