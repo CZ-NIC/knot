@@ -268,11 +268,25 @@ build:archive:
     - ../configure
     - make distcheck V=1
   only:
+    - master
     - tags
     - triggers
   artifacts:
     paths:
       - _build/*.tar.xz
+
+obs:devel:
+  <<: *debian_stable
+  stage: deploy
+  only:
+    - schedules
+  dependencies:
+    - build:archive
+  script:
+    - mv _build/*.tar.xz ./
+    - scripts/make-distrofiles.sh
+    - echo -e "[general]\napiurl = https://api.opensuse.org\n\n[https://api.opensuse.org]\nuser = CZ-NIC-automation\npass = $OBS_PASSWORD" > /root/.oscrc
+    - scripts/build-in-obs.sh knot-dns-devel
 
 build:documentation:
   <<: *debian_stable
