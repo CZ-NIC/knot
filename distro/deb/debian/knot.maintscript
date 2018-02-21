@@ -1,0 +1,1 @@
+rm_conffile /etc/init/knot.conf 2.0.0-1~

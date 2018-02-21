@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+if test "$1" = "purge"; then
+    spool=/var/lib/knot
+    rm -rf $spool/timers $spool/keys $spool/journal
+    rmdir $spool 2>/dev/null || true
+
+    dpkg-statoverride --remove /var/lib/knot >/dev/null 2>/dev/null || true
+    dpkg-statoverride --remove /etc/knot/knot.conf >/dev/null 2>/dev/null || true
+    dpkg-statoverride --remove /etc/knot >/dev/null 2>/dev/null || true
+
+    deluser --quiet knot > /dev/null || true
+fi
+
+#DEBHELPER#
+
+exit 0

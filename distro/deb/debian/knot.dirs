@@ -1,0 +1,6 @@
+etc/knot
+etc/ufw/applications.d
+usr/lib/knot
+usr/sbin
+usr/share/man/man8
+var/lib/knot

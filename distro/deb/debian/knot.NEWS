@@ -1,0 +1,12 @@
+knot (2.0.0-1) unstable; urgency=medium
+
+  The configuration file format has changed with Knot DNS 2.0 release.
+  The knot1to2 conversion tools has been provided for your convenience
+  and the package will automatically save the existing configuration
+  file to /var/backups/knot/<TIMESTAMP> directory and convert the
+  configuration file into the new format.  The Knot DNS team worked
+  hard to make this transition as smooth as possilbe, but you are
+  strongly advised to check the results if everything went as
+  expected.
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 29 Jun 2015 10:36:08 +0200

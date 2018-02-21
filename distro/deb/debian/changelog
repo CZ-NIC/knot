@@ -1,0 +1,6 @@
+knot (__VERSION__-1) unstable; urgency=medium
+
+  * move changelog to OBS
+  * see NEWS or https://knot-dns.cz
+
+ -- Tomas Krizek <tomas.krizek@nic.cz>  Tue, 21 Feb 2018 17:36:45 +0100

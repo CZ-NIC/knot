@@ -1,0 +1,58 @@
+#!/usr/bin/python
+
+import yaml, os.path, sys
+
+conf_file = '/etc/knot/knot.conf'
+ip_fields = ['listen', 'address', 'via', 'whitelist', 'network']
+
+try:
+    conf = yaml.load(open(conf_file, 'r'))
+except yaml.scanner.ScannerError:
+    conf = False
+
+if not conf:
+    import io
+    conf_io = io.BytesIO()
+    with open(conf_file) as f:
+        for line in f:
+            if line.split(':')[0].strip() not in ip_fields:
+                conf_io.write(line)
+    conf_io.seek(0)
+    try:
+        conf = yaml.load(conf_io)
+    except yaml.scanner.ScannerError:
+        sys.exit(1)
+
+dirs = set()
+# if we have valid yaml use it
+if conf.has_key("template"):
+
+    for template in conf["template"]:
+        if template.has_key("kasp-db"):
+            kasp_db = template["kasp-db"]
+        else:
+            continue
+
+        if not os.path.isabs(kasp_db):
+            if template.has_key("storage"):
+                kasp_db = os.path.join(template["storage"], kasp_db)
+            else:
+                continue
+        dirs.add(kasp_db)
+
+if conf.has_key("zone"):
+    for domain in conf["zone"]:
+        if domain.has_key("kasp-db"):
+            kasp_db = domain["kasp-db"]
+        else:
+            continue
+
+        if not os.path.isabs(kasp_db):
+            if domain.has_key("storage"):
+                kasp_db = os.path.join(domain["storage"], kasp_db)
+            else:
+                continue
+        dirs.add(kasp_db)
+    
+for dir in dirs:
+    print dir

@@ -1,0 +1,38 @@
+#!/bin/sh
+
+set -eu
+
+CONFFILE=${1:-/etc/knot/knot.conf}
+
+if [ ! -r $CONFFILE ]; then
+   echo "$CONFFILE doesn't exist or has wrong permissions."
+   exit 1;
+fi
+
+KNOT_RUNDIR=$(sed -ne "s/#.*$//;s/.*rundir: \"*\([^\";]*\\).*/\\1/p;" $CONFFILE)
+[ -z "$KNOT_RUNDIR" ] && KNOT_RUNDIR=/run/knot
+
+mkdir --parents "$KNOT_RUNDIR";
+
+KNOT_USER=$(sed -ne "s/#.*$//;s/.*user:[ \"]*\\([^\\:\"]*\\)[ \"]*/\\1/p;" $CONFFILE)
+
+if [ -n "$KNOT_USER" ]; then
+    if ! getent passwd $KNOT_USER >/dev/null; then
+	echo "Configured user '$KNOT_USER' doesn't exist."
+	exit 1
+    fi
+
+    KNOT_GROUP=$(sed -ne "s/#.*$//;s/.*user:[ \"]*[^\\:\"]*\\:\\([^\"]*\\)[ \"]*/\\1/p;" $CONFFILE)
+    if [ -z "$KNOT_GROUP" ]; then
+	KNOT_GROUP=$(getent group $(getent passwd "$KNOT_USER" | cut -f 4 -d :) | cut -f 1 -d :)
+    fi
+
+    if ! getent group $KNOT_GROUP >/dev/null; then
+	echo "Configured group '$KNOT_GROUP' doesn't exist."
+	exit 1
+    fi
+    chown --silent "$KNOT_USER:$KNOT_GROUP" "$KNOT_RUNDIR"
+    chmod 775 "$KNOT_RUNDIR"
+fi
+
+:

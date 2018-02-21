@@ -1,0 +1,28 @@
+#!/usr/bin/python
+
+import yaml, sys
+
+conf_file = '/etc/knot/knot.conf'
+ip_fields = ['listen', 'address', 'via', 'whitelist', 'network']
+
+try:
+    conf = yaml.load(open(conf_file, 'r'))
+except yaml.scanner.ScannerError:
+    conf = False
+
+if not conf:
+    import io
+    conf_io = io.BytesIO()
+    with open(conf_file) as f:
+        for line in f:
+            if line.split(':')[0].strip() not in ip_fields:
+                conf_io.write(line)
+    conf_io.seek(0)
+    try:
+        conf = yaml.load(conf_io)
+    except yaml.scanner.ScannerError:
+        sys.exit(1)
+
+if conf.has_key("server"):
+    if conf["server"].has_key("user"):
+        print conf["server"]["user"].split(":")[0].split(".")[0]
