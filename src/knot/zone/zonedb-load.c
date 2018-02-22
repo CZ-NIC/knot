@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -320,16 +320,6 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 	}
 }
 
-static bool zone_exists(const knot_dname_t *zone, void *data)
-{
-	assert(zone);
-	assert(data);
-
-	knot_zonedb_t *db = data;
-
-	return knot_zonedb_find(db, zone) != NULL;
-}
-
 void zonedb_reload(conf_t *conf, server_t *server)
 {
 	if (conf == NULL || server == NULL) {
@@ -352,15 +342,6 @@ void zonedb_reload(conf_t *conf, server_t *server)
 
 	/* Wait for readers to finish reading old zone database. */
 	synchronize_rcu();
-
-	/* Sweep the timer database. */
-	if (server->timers_db != NULL) {
-		int ret = zone_timers_sweep(server->timers_db, zone_exists, db_new);
-		if (ret != KNOT_EOK) {
-			log_warning("failed to clear persistent timer DB (%s)",
-			            knot_strerror(ret));
-		}
-	}
 
 	/* Remove old zone DB. */
 	remove_old_zonedb(conf, db_old, db_new);
