@@ -24,6 +24,7 @@ RUN apt-get -y install \
 	libtool \
 	liburcu-dev \
 	locales-all \
+	osc \
 	pkg-config \
 	protobuf-c-compiler	\
 	python-sphinx \
