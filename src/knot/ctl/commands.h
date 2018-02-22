@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@
 #define CTL_FILTER_PURGE_ZONEFILE	'f'
 #define CTL_FILTER_PURGE_JOURNAL	'j'
 #define CTL_FILTER_PURGE_KASPDB		'k'
+#define CTL_FILTER_PURGE_ORPHAN		'o'
 
 /*! Control commands. */
 typedef enum {

@@ -1912,7 +1912,11 @@ int journal_db_list_zones(journal_db_t **db, list_t *zones)
 		if (txn->ret == KNOT_EOK && *compare_metaflag == '\0') {
 			compare_metaflag -= metaflag_len;
 			if (strcmp(compare_metaflag, MDKEY_PERZONE_FLAGS) == 0) {
-				char *found_zone = knot_dname_to_str_alloc((const knot_dname_t *)key.data);
+				knot_dname_t *found_zone = knot_dname_copy((const knot_dname_t *)key.data, NULL);
+				if (found_zone == NULL) {
+					txn->ret = KNOT_ENOMEM;
+					break;
+				}
 				ptrlist_add(zones, found_zone, NULL);
 			}
 		}
