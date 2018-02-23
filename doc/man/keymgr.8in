@@ -150,7 +150,7 @@ Timestamp for key to be activated.
 Timestamp for key to be de\-activated.
 .TP
 \fBremove\fP
-Timestamp for key ot be deleted.
+Timestamp for key to be deleted.
 .UNINDENT
 .SS Timestamps
 .INDENT 0.0

@@ -883,7 +883,7 @@ Possible values:
 generally slower
 .IP \(bu 2
 \fBasynchronous\fP – The journal DB disk synchronization is optimized for
-better perfomance at the expense of lower DB durability; this mode is
+better performance at the expense of lower DB durability; this mode is
 recommended only on slave nodes with many zones
 .UNINDENT
 .sp
