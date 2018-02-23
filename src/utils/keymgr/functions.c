@@ -117,9 +117,9 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				printf("Unknown algorithm: %s\n", argv[i] + 10);
 				return false;
 			}
-		} else if (!just_timing && strncasecmp(argv[i], "ksk=", 4) == 0) {
+		} else if (strncasecmp(argv[i], "ksk=", 4) == 0) {
 			*isksk = str2bool(argv[i] + 4);
-		} else if (!just_timing && strncasecmp(argv[i], "zsk=", 4) == 0) {
+		} else if (strncasecmp(argv[i], "zsk=", 4) == 0) {
 			*iszsk = str2bool(argv[i] + 4);
 		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
 			*keysize = atol(argv[i] + 5);
@@ -626,9 +626,12 @@ int keymgr_foreign_key_id(char *argv[], knot_dname_t **key_zone, char **key_id)
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 {
 	knot_kasp_key_timing_t temp = key->timing;
+	bool isksk = key->is_ksk, iszsk = key->is_zsk;
 
-	if (genkeyargs(argc, argv, true, NULL, NULL, NULL, NULL, &temp, NULL)) {
+	if (genkeyargs(argc, argv, true, &isksk, &iszsk, NULL, NULL, &temp, NULL)) {
 		key->timing = temp;
+		key->is_ksk = isksk;
+		key->is_zsk = iszsk;
 		return KNOT_EOK;
 	}
 	return KNOT_EINVAL;
