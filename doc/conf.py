@@ -240,7 +240,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'knot', 'Knot DNS Documentation', author)
+  ('index', 'knot', 'Knot DNS Documentation', author,
+   'KnotDNS', 'Knot Authoritative DNS Server', 'Miscellaneous')
 ]
 
 # Documents to append as an appendix to all manuals.
