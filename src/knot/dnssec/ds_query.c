@@ -196,7 +196,7 @@ int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t time
 {
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
-		if (dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK &&
+		if (key->is_ksk &&
 		    key->cds_priority > 1) {
 			if (parents_have_ds(kctx, key, timeout)) {
 				return knot_dnssec_ksk_sbm_confirm(kctx);

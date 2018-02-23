@@ -36,14 +36,14 @@ static bool key_present(const kdnssec_ctx_t *ctx, bool ksk, bool zsk)
 	return false;
 }
 
-static bool key_id_present(const kdnssec_ctx_t *ctx, const char *keyid, uint16_t flag)
+static bool key_id_present(const kdnssec_ctx_t *ctx, const char *keyid, bool want_ksk)
 {
 	assert(ctx);
 	assert(ctx->zone);
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		const knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (strcmp(keyid, key->id) == 0 &&
-		    dnssec_key_get_flags(key->key) == flag) {
+		    key->is_ksk == want_ksk) {
 			return true;
 		}
 	}
@@ -126,7 +126,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_ti
 	}
 
 	// if we already have the policy-last key, we have to generate new one
-	if (ret == KNOT_ENOENT || key_id_present(ctx, borrow_key, DNSKEY_FLAGS_KSK)) {
+	if (ret == KNOT_ENOENT || key_id_present(ctx, borrow_key, true)) {
 		knot_kasp_key_t *key = NULL;
 		ret = kdnssec_generate_key(ctx, ksk, zsk, &key);
 		if (ret != KNOT_EOK) {
