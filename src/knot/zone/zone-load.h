@@ -34,7 +34,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 /*!
  * \brief Update zone contents from the journal.
  *
- * \warning If error, the zone is in inconsitent state and should be freed.
+ * \warning If error, the zone is in inconsistent state and should be freed.
  *
  * \param conf
  * \param zone

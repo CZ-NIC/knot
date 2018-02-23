@@ -267,7 +267,7 @@ causing freeze pending. So we watch the zone status until frozen. Then we can fl
 frozen zone contents.
 
 Now we open a text editor and perform desired changes to the zone file. It's necessary
-to **increase SOA serial** in this step to keep consistency. Finaly, we can load the
+to **increase SOA serial** in this step to keep consistency. Finally, we can load the
 modified zone file and if successful, thaw the zone.::
 
     $ knotc zone-reload example.com.
