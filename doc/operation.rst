@@ -265,7 +265,7 @@ causing freeze pending. So we watch the zone status until frozen. Then we can fl
 frozen zone contents.
 
 Now we open a text editor and perform desired changes to the zone file. It's necessary
-to increase SOA serial in this step to keep consistency. Finaly, we can load the
+to increase SOA serial in this step to keep consistency. Finally, we can load the
 modified zone file and if successful, thaw the zone.::
 
     $ knotc zone-reload example.com.
@@ -340,6 +340,9 @@ either in the log or via ``knotc zone-status``. There is no special log for fini
    There are never two key rollovers running in parallel for one zone. If
    a rollover is triggered while another is in progress, it waits until the
    first one is finished.
+
+The ZSK rollover is performed with Pre-publish method, KSK rollover uses Double-Signature scheme,
+as described in :rfc:`6781`.
 
 .. _DNSSEC KSK rollover example:
 

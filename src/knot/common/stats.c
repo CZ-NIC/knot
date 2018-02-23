@@ -143,7 +143,7 @@ static void dump_to_file(FILE *fd, server_t *server)
 {
 	char date[64] = "";
 
-	// Get formated current time string.
+	// Get formatted current time string.
 	struct tm tm;
 	time_t now = time(NULL);
 	localtime_r(&now, &tm);

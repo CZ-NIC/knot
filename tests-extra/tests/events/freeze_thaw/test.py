@@ -30,7 +30,7 @@ resp.check(rcode="NXDOMAIN", nordata="1.2.3.4")
 
 slave.ctl("zone-refresh")
 
-# check that slave transfered when invoked from ctl
+# check that slave transferred when invoked from ctl
 slave.zone_wait(zone, serial=2, equal=True)
 resp = slave.dig("added.example.", "A")
 resp.check(rcode="NOERROR", rdata="1.2.3.4")

@@ -74,13 +74,13 @@ resp = knot.dig(zones[1].name, "TYPE11", tries=1, udp=True)
 query_size3 = resp.query_size()
 reply_size3 = resp.response_size()
 
-# Sucessfull transfer.
+# Successful transfer.
 resp = knot.dig(zones[0].name, "AXFR", tries=1)
 resp.check_xfr(rcode="NOERROR")
 xfr_query_size = resp.query_size()
 # Cannot get xfr_reply_size :-/
 
-# Successfull update.
+# Successful update.
 up = knot.update(zones[1])
 up.add(zones[1].name, "3600", "AAAA", "::1")
 up.send("NOERROR")

@@ -327,7 +327,7 @@ Knot DNS 2.4.1 (2017-02-10)
 Improvements:
 -------------
  - Speed-up of rdata addition into a huge rrset
- - Introduce check of minumum timeout for next refresh
+ - Introduce check of minimum timeout for next refresh
  - Dnsproxy module can forward all queries without local resolving
 
 Bugfixes:

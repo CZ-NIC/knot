@@ -152,7 +152,7 @@ inline static knot_time_t knot_time_from_u32(uint32_t u32time)
  * U                     - Matches one of Y, M, D, h, m, s in the timespec standing for a time unit.
  * u                     - Like U, but the unit in the timestamp is from: y, mo, d, h, mi, s.
  *
- * \retval -1  An error occured, out_time has no sense.
+ * \retval -1  An error occurred, out_time has no sense.
  * \return  0  OK, timestamp parsed successfully.
  */
 int knot_time_parse(const char *format, const char *timespec, knot_time_t *time);
@@ -165,7 +165,7 @@ int knot_time_parse(const char *format, const char *timespec, knot_time_t *time)
  * \param dst      The destination buffer pointer with text-formatted timestamp.
  * \param dst_len  The destination buffer length.
  *
- * \retval -1 An error occured, the buffer may be filled with nonsense.
+ * \retval -1 An error occurred, the buffer may be filled with nonsense.
  * \return  0 OK, timestamp printed successfully.
  */
 int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_t dst_len);

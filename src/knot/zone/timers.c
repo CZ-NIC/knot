@@ -24,7 +24,7 @@
  * # Timer database
  *
  * Timer database stores timestaps of events which need to be retained
- * accross server restarts. The key in the database is the zone name in
+ * across server restarts. The key in the database is the zone name in
  * wire format. The value contains serialized timers.
  *
  * # Serialization format
@@ -95,7 +95,7 @@ static int serialize_timers(const zone_timers_t *timers, uint8_t *data, size_t s
 /*!
  * \brief Deserialize timers from a binary buffer.
  *
- * \note Unkown timers are ignored.
+ * \note Unknown timers are ignored.
  */
 static int deserialize_timers(zone_timers_t *timers_ptr,
                               const uint8_t *data, size_t size)

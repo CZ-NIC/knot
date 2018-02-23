@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 	ok(valid, "heap_insert");
 	ok(!EMPTY_HEAP(&heap), "heap is non-empty");
 
-	// excercise heap_insert
+	// exercise heap_insert
 
 	valid = true;
 	for (int i = 0; i < VALUE_COUNT; i++) {
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 	}
 	ok(valid, "heap_find");
 
-	// excercise heap_replace
+	// exercise heap_replace
 
 	assert(VALUE_REPLACE <= VALUE_COUNT);
 	struct value *replaced = calloc(VALUE_REPLACE, sizeof(struct value));
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 	}
 	ok(valid, "heap_replace");
 
-	// excercise heap_delete
+	// exercise heap_delete
 
 	assert(VALUE_REPLACE + VALUE_DELETE < VALUE_COUNT);
 
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 	}
 	ok(valid, "heap_delete");
 
-	// excercise item retrieval
+	// exercise item retrieval
 
 	assert(VALUE_COUNT > VALUE_DELETE);
 
