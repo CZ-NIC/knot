@@ -97,9 +97,8 @@ Imports a DNSSEC key from PEM file. The key parameters (same as for the generate
 specified (mainly algorithm, timers...) because they are not contained in the PEM format.
 .TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
-Changes a timing argument of an existing key to a new timestamp. \fIKey_spec\fP is either the
-key tag or a prefix of the key ID; \fIarguments\fP are like for \fBgenerate\fP, but just the
-timing\-related ones.
+Changes a timing argument (or ksk/zsk) of an existing key to a new value. \fIKey_spec\fP is either the
+key tag or a prefix of the key ID; \fIarguments\fP are like for \fBgenerate\fP, but just the related ones.
 .TP
 \fBds\fP [\fIkey_spec\fP]
 Generate DS record (all digest algorithms together) for specified key. \fIKey_spec\fP

@@ -74,9 +74,8 @@ Commands
   specified (mainly algorithm, timers...) because they are not contained in the PEM format.
 
 **set** *key_spec* [*arguments*...]
-  Changes a timing argument of an existing key to a new timestamp. *Key_spec* is either the
-  key tag or a prefix of the key ID; *arguments* are like for **generate**, but just the
-  timing-related ones.
+  Changes a timing argument (or ksk/zsk) of an existing key to a new value. *Key_spec* is either the
+  key tag or a prefix of the key ID; *arguments* are like for **generate**, but just the related ones.
 
 **ds** [*key_spec*]
   Generate DS record (all digest algorithms together) for specified key. *Key_spec*
