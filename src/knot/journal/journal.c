@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "knot/journal/journal.h"
 #include "knot/common/log.h"
 #include "contrib/files.h"
+#include "contrib/ctype.h"
 #include "contrib/endian.h"
 
 /*! \brief Journal version. */
@@ -168,6 +169,23 @@ static void txn_init(txn_t *txn, knot_db_txn_t *db_txn, journal_t *j)
  *
  */
 
+static bool key_is_ok(const knot_db_val_t *key, bool zone_related)
+{
+	const uint8_t *it = key->data;
+	ssize_t it_len = key->len;
+	if (zone_related) {
+		int dname_len = knot_dname_size(it);
+		assert(dname_len > 0);
+		it += dname_len;
+		it_len -= dname_len;
+	}
+	it += 4;
+	it_len -= 4;
+
+	return ((zone_related && it_len == 8) || // normal changeset
+	       (is_lower(*it) && !is_lower(*(it-1)))); // metadata
+}
+
 static void txn_key_str(txn_t *txn, const knot_dname_t *zone, const char *key)
 {
 	size_t zone_size = 0;
@@ -180,6 +198,7 @@ static void txn_key_str(txn_t *txn, const knot_dname_t *zone, const char *key)
 	if (zone != NULL) memcpy(txn->key.data, zone, zone_size);
 	memset(txn->key.data + zone_size, 0, DB_KEY_UNUSED_ZERO);
 	strcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO, key);
+	assert(key_is_ok(&txn->key, zone != NULL));
 }
 
 static void txn_key_2u32(txn_t *txn, const knot_dname_t *zone, uint32_t key1, uint32_t key2)
@@ -198,6 +217,7 @@ static void txn_key_2u32(txn_t *txn, const knot_dname_t *zone, uint32_t key1, ui
 	memcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO, &key_be1, sizeof(uint32_t));
 	memcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO + sizeof(uint32_t),
 	       &key_be2, sizeof(uint32_t));
+	assert(key_is_ok(&txn->key, zone != NULL));
 }
 
 static void txn_key_str_u32(txn_t *txn, const knot_dname_t *zone, const char *key1, uint32_t key2)
@@ -215,6 +235,7 @@ static void txn_key_str_u32(txn_t *txn, const knot_dname_t *zone, const char *ke
 	uint32_t key_be2 = htobe32(key2);
 	memcpy(txn->key.data + zone_size + DB_KEY_UNUSED_ZERO + strlen(key1) + 1,
 	       &key_be2, sizeof(uint32_t));
+	assert(key_is_ok(&txn->key, zone != NULL));
 }
 
 static int txn_cmpkey(txn_t *txn, knot_db_val_t *key2)
@@ -1762,7 +1783,8 @@ int journal_scrape(journal_t *j)
 	txn_iter_begin(txn);
 	while (txn->ret == KNOT_EOK && txn->iter != NULL) {
 		txn_iter_key(txn, &key);
-		if (knot_dname_is_equal((const knot_dname_t *) key.data, j->zone)) {
+		if (knot_dname_is_equal((const knot_dname_t *) key.data, j->zone)
+		    && key_is_ok(&key, true)) {
 			knot_db_val_t * inskey = dbval_copy(&key);
 			if (inskey == NULL) {
 				txn->ret = KNOT_ENOMEM;
