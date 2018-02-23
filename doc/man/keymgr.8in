@@ -127,10 +127,11 @@ Either an algorithm number (e.g. 14), or text name without dashes (e.g. ECDSAP38
 Key length in bits.
 .TP
 \fBksk\fP
-If set to \fByes\fP, the key will be used as Secure Entry Point.
+If set to \fByes\fP, the key will be used for signing DNSKEY rrset. The generated key will also
+have the Secure Entry Point flag set to 1.
 .TP
 \fBzsk\fP
-If set to \fByes\fP, the key will be used for zone signing. This flag can
+If set to \fByes\fP, the key will be used for signing zone (except DNSKEY rrset). This flag can
 be set concurrently with the \fBksk\fP flag.
 .TP
 \fBcreated\fP

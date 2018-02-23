@@ -104,10 +104,11 @@ Arguments are separated by space, each of them is in format 'name=value'.
   Key length in bits.
 
 **ksk**
-  If set to **yes**, the key will be used as Secure Entry Point.
+  If set to **yes**, the key will be used for signing DNSKEY rrset. The generated key will also
+  have the Secure Entry Point flag set to 1.
 
 **zsk**
-  If set to **yes**, the key will be used for zone signing. This flag can
+  If set to **yes**, the key will be used for signing zone (except DNSKEY rrset). This flag can
   be set concurrently with the **ksk** flag.
 
 **created**
