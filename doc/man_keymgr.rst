@@ -127,7 +127,7 @@ Arguments are separated by space, each of them is in format 'name=value'.
   Timestamp for key to be de-activated.
 
 **remove**
-  Timestamp for key ot be deleted.
+  Timestamp for key to be deleted.
 
 Timestamps
 ..........
