@@ -43,7 +43,9 @@ EXTRA_DIST = \
 	$(MANPAGES_RST)		\
 	\
 	logo.eps		\
-	logo.png
+	logo.png		\
+	\
+	theme_html
 
 SPHINX_V = $(SPHINX_V_@AM_V@)
 SPHINX_V_ = $(SPHINX_V_@AM_DEFAULT_V@)
