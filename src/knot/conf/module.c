@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,8 +15,10 @@
 */
 
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <glob.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <urcu.h>
 
 #include "knot/conf/conf.h"
@@ -149,9 +151,18 @@ int conf_mod_load_common(
 			ret = KNOT_ENOMEM;
 		} else if (stat(MODULE_DIR, &path_stat) != 0 ||
 		           !S_ISDIR(path_stat.st_mode)) {
+			if (errno == ENOENT) {
+				// Module directory doesn't exist.
+				ret = KNOT_EOK;
+			} else {
 				log_error("module, invalid directory '%s'",
 				          MODULE_DIR);
-			ret = KNOT_EINVAL;
+				ret = KNOT_EINVAL;
+			}
+		} else if (access(MODULE_DIR, F_OK | R_OK) != 0) {
+			log_error("module, failed to access directory '%s'",
+			          MODULE_DIR);
+			ret = KNOT_EACCES;
 		} else {
 			ret = glob(path, 0, NULL, &glob_buf);
 			if (ret != 0 && ret != GLOB_NOMATCH) {
