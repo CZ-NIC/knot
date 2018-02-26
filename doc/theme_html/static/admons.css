@@ -39,31 +39,31 @@ div.admonition-todo {
 }
 
 div.warning {
-   background-image: url('icons/admon_warning_48.png');
+   background-image: url('admon_warning_48.png');
    background-color: #FFE4E4;
    border: solid 3px #990D1C;
 }
 
 div.caution {
-   background-image: url('icons/admon_caution_48.png');
+   background-image: url('admon_caution_48.png');
    background-color: #FFE4E4;
    border: solid 1px #990D1C;
 }
 
 div.important {
-   background-image: url('icons/admon_important_48.png');
+   background-image: url('admon_important_48.png');
    background-color: #FBECC8;
    border: solid 1px #D68612;
 }
 
 div.note {
-   background-image: url('icons/admon_note_48.png');
+   background-image: url('admon_note_48.png');
    background-color: white;
    border: solid 1px #D1D3D4;
 }
 
 div.tip {
-   background-image: url('icons/admon_tip_48.png');
+   background-image: url('admon_tip_48.png');
    background-color: #F2E4FD;
    border: solid 1px #D1C2E6;
 }
