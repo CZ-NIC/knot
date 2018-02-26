@@ -1013,7 +1013,7 @@ Possible values:
 - ``robust`` – The journal DB disk sychronization ensures DB durability but is
   generally slower
 - ``asynchronous`` – The journal DB disk synchronization is optimized for
-  better perfomance at the expense of lower DB durability; this mode is
+  better performance at the expense of lower DB durability; this mode is
   recommended only on slave nodes with many zones
 
 .. NOTE::

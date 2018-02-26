@@ -97,7 +97,7 @@ int apply_prepare_to_sign(apply_ctx_t *ctx);
 /*!
  * \brief Applies changesets directly to the zone, without copying it.
  *
- * \warning Modified zone is in inconsitent state after error and should be freed.
+ * \warning Modified zone is in inconsistent state after error and should be freed.
  *
  * \param ctx     Apply context.
  * \param chsets  List of changesets to be applied to the zone.

@@ -34,7 +34,7 @@ def lmdb_requirement():
 		sys.exit(10)
 
 # workarounding that python 2 doesn't have int.to_bytes()
-def to_bytes(n, length, endianess='big'):
+def to_bytes(n, length, endianness='big'):
 	h = '%x' % n
 	assert len(h) <= length * 2
 	s = ('0'*(len(h) % 2) + h).zfill(length * 2)
@@ -42,10 +42,10 @@ def to_bytes(n, length, endianess='big'):
 		sb = codecs.decode(s, 'hex')
 	else:
 		sb = s.decode('hex')
-	return bytearray(sb) if endianess == 'big' else bytearray(sb[::-1])
+	return bytearray(sb) if endianness == 'big' else bytearray(sb[::-1])
 
-def from_bytes(ba, endianess='big'):
-	x = ba if endianess == 'big' else bytearray(s[::-1])
+def from_bytes(ba, endianness='big'):
+	x = ba if endianness == 'big' else bytearray(s[::-1])
 	if sys.version_info >= (3,0):
 		hx = codecs.encode(x, 'hex')
 	else:

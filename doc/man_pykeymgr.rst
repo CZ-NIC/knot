@@ -17,7 +17,7 @@ Functions for DNSSEC keys and KASP (Key And Signature Policy)
 management are provided.
 
 The DNSSEC and KASP configuration is stored in a so called KASP database.
-The databse is backed by LMDB.
+The database is backed by LMDB.
 
 The utility requires installed python LMDB module, installed e.g. by::
 
