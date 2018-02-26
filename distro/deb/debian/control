@@ -4,44 +4,46 @@ Priority: optional
 Maintainer: Knot DNS <knot-dns@labs.nic.cz>
 Uploaders:
  Tomas Krizek <tomas.krizek@nic.cz>
-Build-Depends-Indep: ghostscript,
-                     python-sphinx,
-                     texinfo,
-                     texlive,
-                     texlive-font-utils,
-                     texlive-generic-extra,
-                     texlive-latex-extra
-Build-Depends: autotools-dev,
-               debhelper (>= 9),
-               dh-autoreconf,
-               dh-systemd,
-               latexmk,
-               libedit-dev,
-               libfstrm-dev,
-               libgnutls28-dev,
-               libidn11-dev,
-               liblmdb-dev,
-               libprotobuf-c-dev,
-               libsystemd-dev [linux-any] | libsystemd-daemon-dev [linux-any],
-               libsystemd-dev [linux-any] | libsystemd-journal-dev [linux-any],
-               liburcu-dev (>= 0.4),
-               pkg-config,
-               protobuf-c-compiler
+Build-Depends-Indep:
+ ghostscript,
+ python3-sphinx,
+ texinfo,
+ texlive,
+ texlive-font-utils,
+ texlive-generic-extra,
+ texlive-latex-extra,
+Build-Depends:
+ debhelper (>= 9),
+ latexmk,
+ libedit-dev,
+ libfstrm-dev,
+ libgnutls28-dev,
+ libidn11-dev,
+ liblmdb-dev,
+ libprotobuf-c-dev,
+ libsystemd-dev [linux-any] | libsystemd-daemon-dev [linux-any],
+ libsystemd-dev [linux-any] | libsystemd-journal-dev [linux-any],
+ liburcu-dev (>= 0.4),
+ pkg-config,
+ protobuf-c-compiler,
 Homepage: https://www.knot-dns.cz/
 
 Package: knot
 Architecture: any
-Depends: adduser,
-         libdnssec5 (= ${binary:Version}),
-         libknot7 (= ${binary:Version}),
-         libzscanner1 (= ${binary:Version}),
-         lsb-base (>= 3.0-6),
-         python,
-         python-lmdb,
-         python-yaml,
-         ${misc:Depends},
-         ${shlibs:Depends}
-Suggests: systemd
+Depends:
+ adduser,
+ libdnssec5 (= ${binary:Version}),
+ libknot7 (= ${binary:Version}),
+ libzscanner1 (= ${binary:Version}),
+ lsb-base (>= 3.0-6),
+ python3,
+ python3-yaml,
+ ${misc:Depends},
+ ${shlibs:Depends},
+Recommends:
+ python3-lmdb,
+Suggests:
+ systemd,
 Description: Authoritative domain name server
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -52,13 +54,17 @@ Description: Authoritative domain name server
 
 Package: libknot7
 Architecture: any
-Depends: ${misc:Depends},
-         ${shlibs:Depends}
+Multi-Arch: same
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
 Section: libs
-Replaces: knot-libs (<< 2.0.1-4),
-          libknot6 (<< 2.6.1-1~)
-Breaks: knot-libs (<< 2.0.1-4),
-        libknot6 (<< 2.6.1-1~)
+Replaces:
+ knot-libs (<< 2.0.1-4),
+ libknot6 (<< 2.6.1-1~)
+Breaks:
+ knot-libs (<< 2.0.1-4),
+ libknot6 (<< 2.6.1-1~)
 Description: Authoritative domain name server (shared library)
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -72,13 +78,17 @@ Description: Authoritative domain name server (shared library)
 
 Package: libzscanner1
 Architecture: any
-Depends: ${misc:Depends},
-         ${shlibs:Depends}
+Multi-Arch: same
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
 Section: libs
-Replaces: knot-libs (<< 2.0.1-4),
-          libzscanner0 (<< 2.3.0~)
-Breaks: knot-libs (<< 2.0.1-4),
-        libzscanner0 (<< 2.3.0~)
+Replaces:
+ knot-libs (<< 2.0.1-4),
+ libzscanner0 (<< 2.3.0~),
+Breaks:
+ knot-libs (<< 2.0.1-4),
+ libzscanner0 (<< 2.3.0~),
 Description: DNS zone-parsing library from Knot
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -92,13 +102,17 @@ Description: DNS zone-parsing library from Knot
 
 Package: libdnssec5
 Architecture: any
-Depends: ${misc:Depends},
-         ${shlibs:Depends}
+Multi-Arch: same
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
 Section: libs
-Replaces: knot-libs (<< 2.0.1-4),
-          libdnssec4 (<< 2.6.1-1~)
-Breaks: knot-libs (<< 2.0.1-4),
-        libdnssec4 (<< 2.6.1-1~)
+Replaces:
+ knot-libs (<< 2.0.1-4),
+ libdnssec4 (<< 2.6.1-1~),
+Breaks:
+ knot-libs (<< 2.0.1-4),
+ libdnssec4 (<< 2.6.1-1~),
 Description: DNSSEC shared library from Knot
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -112,16 +126,20 @@ Description: DNSSEC shared library from Knot
 
 Package: libknot-dev
 Architecture: any
-Depends: libdnssec5 (= ${binary:Version}),
-         libgnutls28-dev,
-         libjansson-dev,
-         libknot7 (= ${binary:Version}),
-         libzscanner1 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
+Multi-Arch: same
+Depends:
+ libdnssec5 (= ${binary:Version}),
+ libgnutls28-dev,
+ libjansson-dev,
+ libknot7 (= ${binary:Version}),
+ libzscanner1 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
 Section: libdevel
-Replaces: knot-libs (<< 2.0.1-4)
-Breaks: knot-libs (<< 2.0.1-4)
+Replaces:
+ knot-libs (<< 2.0.1-4),
+Breaks:
+ knot-libs (<< 2.0.1-4),
 Description: Knot DNS shared library development files
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -135,11 +153,12 @@ Description: Knot DNS shared library development files
 
 Package: knot-dnsutils
 Architecture: any
-Depends: libdnssec5 (= ${binary:Version}),
-         libknot7 (= ${binary:Version}),
-         libzscanner1 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
+Depends:
+ libdnssec5 (= ${binary:Version}),
+ libknot7 (= ${binary:Version}),
+ libzscanner1 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
 Description: Clients provided with Knot DNS (kdig, knslookup, knsupdate)
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -162,11 +181,12 @@ Description: Clients provided with Knot DNS (kdig, knslookup, knsupdate)
 
 Package: knot-host
 Architecture: any
-Depends: libdnssec5 (= ${binary:Version}),
-         libknot7 (= ${binary:Version}),
-         libzscanner1 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
+Depends:
+ libdnssec5 (= ${binary:Version}),
+ libknot7 (= ${binary:Version}),
+ libzscanner1 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
 Description: Version of 'host' bundled with Knot DNS
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -181,7 +201,11 @@ Description: Version of 'host' bundled with Knot DNS
 
 Package: knot-doc
 Architecture: all
-Depends: ${misc:Depends}
+Multi-Arch: foreign
+Depends:
+ libjs-jquery,
+ libjs-underscore,
+ ${misc:Depends},
 Section: doc
 Description: Documentation for Knot DNS
  Knot DNS is a fast, authoritative only, high performance, feature

@@ -1,0 +1,44 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Tue, 20 Feb 2018 11:08:30 -0800
+Subject: use python3 in pykeymgr
+
+Debian currently explicitly uses the name "python3" to refer to python
+3, so adjust the shebang line to match.
+
+While we're at it, encourage the user to install packages via apt,
+instead of pip.
+
+Also, note that py3 uses / for "normal" division, but // is integer
+division on both py2 and py3.
+---
+ src/utils/pykeymgr/pykeymgr.in | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+Index: knot-dns/src/utils/pykeymgr/pykeymgr.in
+===================================================================
+--- knot-dns.orig/src/utils/pykeymgr/pykeymgr.in
++++ knot-dns/src/utils/pykeymgr/pykeymgr.in
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # vim: et ts=4 sw=4 sts=4
+ #
+ # Manipulate LMDB-beckended KASP database (import from obsolete JSON KASP, list, modify...).
+@@ -30,7 +30,7 @@ def lmdb_requirement():
+ 		lmdb = importlib.import_module('lmdb')
+ 	except ImportError:
+ 		print("Error: unable to import module LMDB.")
+-		print("Probably you need to 'pip install lmdb' or so.")
++		print("Probably you need to 'apt install python3-lmdb'.")
+ 		sys.exit(10)
+ 
+ # workarounding that python 2 doesn't have int.to_bytes()
+@@ -84,7 +84,7 @@ def shuffle_unixtime(base_time, shuffle_
+ 	dt = datetime.datetime.fromtimestamp(base_time)
+ 	newmonth = (dt.month - 1 + rsm) % 12 + 1 # in python, % always returns [0, 11]
+ 	sameyear = dt.month + rsm % 12
+-	newyear = dt.year + rsm / 12 + (0 if sameyear in range(1, 13) else 1) # in python, (-1)/12 = -1
++	newyear = dt.year + rsm // 12 + (0 if sameyear in range(1, 13) else 1) # in python, (-1)//12 = -1
+ 	dt2 = dt.replace(month=newmonth, year=newyear)
+ 	print(dt2.month, "/", dt2.year)
+ 	ttuple = dt2.timetuple()

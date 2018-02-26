@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import yaml, os.path, sys
 
@@ -53,6 +53,6 @@ if conf.has_key("zone"):
             else:
                 continue
         dirs.add(kasp_db)
-    
+
 for dir in dirs:
-    print dir
+    print(dir)

@@ -32,7 +32,7 @@ else
 endif
 
 %:
-	dh $@ --with autotools-dev,systemd,autoreconf --parallel --dbgsym-migration='knot-dbg (<< 2.2.0-2~)' --exclude=.la --exclude=example.com.zone --fail-missing
+	dh $@ --dbgsym-migration='knot-dbg (<< 2.2.0-2~)' --exclude=.la --exclude=example.com.zone
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
@@ -70,3 +70,9 @@ override_dh_auto_test-arch:
 override_dh_installdirs-arch:
 	dh_installdirs --arch --package=knot /usr/lib/$(DEB_HOST_MULTIARCH)/knot
 	dh_installdirs --arch --remaining-packages
+
+override_dh_missing:
+	dh_missing --fail-missing
+
+override_dh_installchangelogs:
+	dh_installchangelogs NEWS

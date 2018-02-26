@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import yaml, sys
 
@@ -25,4 +25,4 @@ if not conf:
 
 if conf.has_key("server"):
     if conf["server"].has_key("user"):
-        print conf["server"]["user"].split(":")[0].split(".")[0]
+        print(conf["server"]["user"].split(":")[0].split(".")[0])

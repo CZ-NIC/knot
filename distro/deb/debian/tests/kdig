@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+expected=93.184.216.34
+answer=$(kdig +short +tls-ca +tls-hostname=dns.cmrg.net @dns.cmrg.net example.org)
+
+if [ "$answer" != "$expected" ]; then
+    printf "expected: %s\ngot: %s\n" "$expected" "$answer" >&2
+    kdig +tls-ca +tls-hostname=dns.cmrg.net @dns.cmrg.net example.org
+fi
