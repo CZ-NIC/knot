@@ -292,7 +292,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 
 int tcp_master(dthread_t *thread)
 {
-	if (!thread || !thread->data) {
+	if (thread == NULL || thread->data == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -301,16 +301,16 @@ int tcp_master(dthread_t *thread)
 
 	int ret = KNOT_EOK;
 	ref_t *ref = NULL;
-	tcp_context_t tcp;
-	memset(&tcp, 0, sizeof(tcp_context_t));
 
 	/* Create big enough memory cushion. */
-	knot_mm_t mm = { 0 };
+	knot_mm_t mm;
 	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 
 	/* Create TCP answering context. */
-	tcp.server = handler->server;
-	tcp.thread_id = handler->thread_id[dt_get_id(thread)];
+	tcp_context_t tcp = {
+		.server = handler->server,
+		.thread_id = handler->thread_id[dt_get_id(thread)]
+	};
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());
 
 	/* Prepare structures for bound sockets. */

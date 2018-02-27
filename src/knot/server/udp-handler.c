@@ -417,6 +417,10 @@ static nfds_t track_ifaces(const ifacelist_t *ifaces, int thrid,
 
 int udp_master(dthread_t *thread)
 {
+	if (thread == NULL || thread->data == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	unsigned cpu = dt_online_cpus();
 	if (cpu > 1) {
 		unsigned cpu_mask = (dt_get_id(thread) % cpu);
@@ -435,10 +439,10 @@ int udp_master(dthread_t *thread)
 	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 
 	/* Create UDP answering context. */
-	udp_context_t udp;
-	memset(&udp, 0, sizeof(udp_context_t));
-	udp.server = handler->server;
-	udp.thread_id = handler->thread_id[thr_id];
+	udp_context_t udp = {
+		.server = handler->server,
+		.thread_id = handler->thread_id[thr_id]
+	};
 	knot_layer_init(&udp.layer, &mm, process_query_layer());
 
 	/* Event source. */
@@ -481,8 +485,7 @@ int udp_master(dthread_t *thread)
 				continue;
 			}
 			events -= 1;
-			int rcvd = 0;
-			if ((rcvd = _udp_recv(fds[i].fd, rq)) > 0) {
+			if (_udp_recv(fds[i].fd, rq) > 0) {
 				_udp_handle(&udp, rq);
 				/* Flush allocated memory. */
 				mp_flush(mm.ctx);
