@@ -156,6 +156,8 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
 
 t = Test()
 
+ModOnlineSign.check()
+
 parent = t.server("knot")
 parent_zone = t.zone("com.", storage=".")
 t.link(parent_zone, parent)
