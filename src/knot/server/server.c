@@ -28,6 +28,7 @@
 #include "knot/conf/confio.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/module.h"
+#include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"

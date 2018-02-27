@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,10 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file dthreads.h
- *
- * \author Marek Vavrusa <marek.vavusa@nic.cz>
- *
  * \brief Threading API.
  *
  * Dynamic threads provide:
@@ -31,9 +27,6 @@
  *
  * Incoherent function is when at least one thread executes
  * a different runnable than the others.
- *
- * \addtogroup threading
- * @{
  */
 
 #pragma once
@@ -299,5 +292,3 @@ int dt_unit_lock(dt_unit_t *unit);
  * \retval KNOT_ERROR unspecified error.
  */
 int dt_unit_unlock(dt_unit_t *unit);
-
-/*! @} */

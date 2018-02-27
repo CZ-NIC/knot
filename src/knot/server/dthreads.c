@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,7 +62,6 @@ static inline void unit_signalize_change(dt_unit_t *unit)
  */
 static inline int dt_update_thread(dthread_t *thread, int state)
 {
-	// Check
 	if (thread == 0) {
 		return KNOT_EINVAL;
 	}
@@ -108,7 +107,6 @@ static inline int dt_update_thread(dthread_t *thread, int state)
  */
 static void *thread_ep(void *data)
 {
-	// Check data
 	dthread_t *thread = (dthread_t *)data;
 	if (thread == 0) {
 		return 0;
@@ -233,7 +231,6 @@ static dthread_t *dt_create_thread(dt_unit_t *unit)
 /*! \brief Delete single thread. */
 static void dt_delete_thread(dthread_t **thread)
 {
-	// Check
 	if (!thread || !*thread) {
 		return;
 	}
@@ -252,13 +249,8 @@ static void dt_delete_thread(dthread_t **thread)
 	free(thr);
 }
 
-/*
- * Public APIs.
- */
-
 static dt_unit_t *dt_create_unit(int count)
 {
-	// Check count
 	if (count <= 0) {
 		return 0;
 	}
@@ -351,7 +343,6 @@ static dt_unit_t *dt_create_unit(int count)
 
 dt_unit_t *dt_create(int count, runnable_t runnable, runnable_t destructor, void *data)
 {
-	// Check count
 	if (count <= 0) {
 		return 0;
 	}
@@ -389,7 +380,6 @@ void dt_delete(dt_unit_t **unit)
 	 *  Sorry.
 	 */
 
-	// Check
 	if (unit == 0) {
 		return;
 	}
@@ -423,7 +413,6 @@ void dt_delete(dt_unit_t **unit)
 
 static int dt_start_id(dthread_t *thread)
 {
-	// Check input
 	if (thread == 0) {
 		return KNOT_EINVAL;
 	}
@@ -462,7 +451,6 @@ static int dt_start_id(dthread_t *thread)
 
 int dt_start(dt_unit_t *unit)
 {
-	// Check input
 	if (unit == 0) {
 		return KNOT_EINVAL;
 	}
@@ -490,7 +478,6 @@ int dt_start(dt_unit_t *unit)
 
 int dt_signalize(dthread_t *thread, int signum)
 {
-	// Check input
 	if (thread == 0) {
 		return KNOT_EINVAL;
 	}
@@ -512,7 +499,6 @@ int dt_signalize(dthread_t *thread, int signum)
 
 int dt_join(dt_unit_t *unit)
 {
-	// Check input
 	if (unit == 0) {
 		return KNOT_EINVAL;
 	}
@@ -565,7 +551,6 @@ int dt_join(dt_unit_t *unit)
 
 int dt_stop(dt_unit_t *unit)
 {
-	// Check unit
 	if (unit == 0) {
 		return KNOT_EINVAL;
 	}
@@ -651,7 +636,6 @@ int dt_cancel(dthread_t *thread)
 
 int dt_compact(dt_unit_t *unit)
 {
-	// Check input
 	if (unit == 0) {
 		return KNOT_EINVAL;
 	}
@@ -730,7 +714,6 @@ int dt_optimal_size(void)
 
 int dt_is_cancelled(dthread_t *thread)
 {
-	// Check input
 	if (thread == 0) {
 		return 0;
 	}
@@ -756,14 +739,11 @@ unsigned dt_get_id(dthread_t *thread)
 
 int dt_unit_lock(dt_unit_t *unit)
 {
-	// Check input
 	if (unit == 0) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = pthread_mutex_lock(&unit->_mx);
-
-	/* Map errors. */
 	if (ret < 0) {
 		return knot_map_errno();
 	}
@@ -773,14 +753,11 @@ int dt_unit_lock(dt_unit_t *unit)
 
 int dt_unit_unlock(dt_unit_t *unit)
 {
-	// Check input
 	if (unit == 0) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = pthread_mutex_unlock(&unit->_mx);
-
-	/* Map errors. */
 	if (ret < 0) {
 		return knot_map_errno();
 	}

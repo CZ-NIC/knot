@@ -25,14 +25,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <urcu.h>
-#ifdef HAVE_SYS_UIO_H			// struct iovec (OpenBSD)
+#ifdef HAVE_SYS_UIO_H	// struct iovec (OpenBSD)
 #include <sys/uio.h>
 #endif // HAVE_SYS_UIO_H
 
 #include "dnssec/random.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/common/fdset.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
@@ -55,11 +54,9 @@ typedef struct tcp_context {
 	unsigned thread_id;              /*!< Thread identifier. */
 } tcp_context_t;
 
-/*
- * Forward decls.
- */
-#define TCP_THROTTLE_LO 0 /*!< Minimum recovery time on errors. */
-#define TCP_THROTTLE_HI 2 /*!< Maximum recovery time on errors. */
+#define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
+#define TCP_THROTTLE_LO    0 /*!< Minimum recovery time on errors. */
+#define TCP_THROTTLE_HI    2 /*!< Maximum recovery time on errors. */
 
 /*! \brief Calculate TCP throttle time (random). */
 static inline int tcp_throttle(void) {
@@ -97,9 +94,6 @@ static bool tcp_send_state(int state)
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
 }
 
-/*!
- * \brief TCP event handler function.
- */
 static int tcp_handle(tcp_context_t *tcp, int fd,
                       struct iovec *rx, struct iovec *tx)
 {
@@ -174,7 +168,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	return ret;
 }
 
-int tcp_accept(int fd)
+static int tcp_accept(int fd)
 {
 	/* Accept incoming connection. */
 	int incoming = net_accept(fd, NULL);

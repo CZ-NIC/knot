@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,17 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Core server functions.
- *
- * Contains the main high-level server structure (server_t) and interface
- * to functions taking care of initialization of the server and clean-up.
- *
- * \addtogroup server
- * @{
- */
 
 #pragma once
 
@@ -32,7 +21,6 @@
 #include "knot/conf/conf.h"
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
-#include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/server/dthreads.h"
 #include "knot/common/ref.h"
 #include "knot/worker/pool.h"
@@ -191,5 +179,3 @@ void server_update_zones(conf_t *conf, server_t *server);
  * \return new interface list
  */
 ref_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id);
-
-/*! @} */

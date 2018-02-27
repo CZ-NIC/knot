@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,18 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file udp-handler.h
- *
- * \author Marek Vavrusa <marek.vavusa@nic.cz>
- *
  * \brief UDP sockets threading model.
  *
  * The master socket locks one worker thread at a time
  * and saves events in it's own backing store for asynchronous processing.
  * The worker threads work asynchronously in thread pool.
- *
- * \addtogroup server
- * @{
  */
 
 #pragma once
@@ -47,5 +40,3 @@
  * \retval KNOT_EINVAL invalid parameters.
  */
 int udp_master(dthread_t *thread);
-
-/*! @} */

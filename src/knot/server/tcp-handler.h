@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,35 +14,18 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file tcp-handler.h
- *
- * \author Marek Vavrusa <marek.vavusa@nic.cz>
- *
  * \brief TCP sockets threading model.
  *
  * The master socket distributes incoming connections among
  * the worker threads ("buckets"). Each threads processes it's own
  * set of sockets, and eliminates mutual exclusion problem by doing so.
- *
- * \addtogroup server
- * @{
  */
 
 #pragma once
 
 #include "knot/server/dthreads.h"
 
-#define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
 #define TCP_BACKLOG_SIZE  10 /*!< TCP listen backlog size. */
-
-/*!
- * \brief Accept a TCP connection.
- * \param fd Associated socket.
- *
- * \retval Created connection fd if success.
- * \retval <0 on error.
- */
-int tcp_accept(int fd);
 
 /*!
  * \brief TCP handler thread runnable.
@@ -57,5 +40,3 @@ int tcp_accept(int fd);
  * \retval KNOT_EINVAL invalid parameters.
  */
 int tcp_master(dthread_t *thread);
-
-/*! @} */
