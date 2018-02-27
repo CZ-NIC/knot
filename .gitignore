@@ -76,3 +76,6 @@ version.h
 *.gcno
 /coverage.info
 /coverage.html
+
+# Vagrant
+.vagrant
