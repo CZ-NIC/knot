@@ -97,8 +97,14 @@ static bool tcp_send_state(int state)
 static int tcp_handle(tcp_context_t *tcp, int fd,
                       struct iovec *rx, struct iovec *tx)
 {
+	/* Get peer name. */
+	struct sockaddr_storage ss;
+	socklen_t addrlen = sizeof(struct sockaddr_storage);
+	if (getpeername(fd, (struct sockaddr *)&ss, &addrlen) != 0) {
+		return KNOT_EINVAL;
+	}
+
 	/* Create query processing parameter. */
-	struct sockaddr_storage ss = { 0 };
 	knotd_qdata_params_t params = {
 		.remote = &ss,
 		.socket = fd,
@@ -108,12 +114,6 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
-
-	/* Receive peer name. */
-	socklen_t addrlen = sizeof(struct sockaddr_storage);
-	if (getpeername(fd, (struct sockaddr *)&ss, &addrlen) < 0) {
-		;
-	}
 
 	/* Timeout. */
 	rcu_read_lock();
