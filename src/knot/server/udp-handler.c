@@ -99,9 +99,8 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	/* Reset after processing. */
 	knot_layer_finish(&udp->layer);
 
-	/* Cleanup. */
-	knot_pkt_free(query);
-	knot_pkt_free(ans);
+	/* Flush per-query memory (including query and answer packets). */
+	mp_flush(udp->layer.mm->ctx);
 }
 
 /*! \brief Pointer to selected UDP master implementation. */
@@ -487,8 +486,6 @@ int udp_master(dthread_t *thread)
 			events -= 1;
 			if (_udp_recv(fds[i].fd, rq) > 0) {
 				_udp_handle(&udp, rq);
-				/* Flush allocated memory. */
-				mp_flush(mm.ctx);
 				_udp_send(rq);
 			}
 		}

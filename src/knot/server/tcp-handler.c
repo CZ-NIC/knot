@@ -161,9 +161,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	/* Reset after processing. */
 	knot_layer_finish(&tcp->layer);
 
-	/* Cleanup. */
-	knot_pkt_free(query);
-	knot_pkt_free(ans);
+	/* Flush per-query memory (including query and answer packets). */
+	mp_flush(tcp->layer.mm->ctx);
 
 	return ret;
 }
@@ -220,10 +219,6 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 {
 	int fd = tcp->set.pfd[i].fd;
 	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
-
-	/* Flush per-query memory. */
-	mp_flush(tcp->layer.mm->ctx);
-
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		rcu_read_lock();
