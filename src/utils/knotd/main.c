@@ -138,7 +138,7 @@ static void handle_signal(int signum)
 	case SIGINT:
 	case SIGTERM:
 		if (sig_req_stop) {
-			abort();
+			exit(EXIT_FAILURE);
 		}
 		sig_req_stop = true;
 		break;
