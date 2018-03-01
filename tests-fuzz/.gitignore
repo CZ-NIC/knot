@@ -4,7 +4,7 @@
 /knotd_stdio
 /wrap/main.c
 
-/*.trs
-/*.log
+*.trs
+*.log
 /fuzz_packet
 /fuzz_zscanner

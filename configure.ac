@@ -512,8 +512,8 @@ gl_VISIBILITY()
 AX_CODE_COVERAGE
 
 AX_SANITIZER
-AS_IF([test -n "$sanitize_CFLAGS"], [CFLAGS="$CFLAGS $sanitize_CFLAGS"])
-AM_CONDITIONAL([SANITIZE_FUZZER], [test "$with_sanitize_fuzzer" != "no"])
+AS_IF([test -n "$sanitizer_CFLAGS"], [CFLAGS="$CFLAGS $sanitizer_CFLAGS"])
+AM_CONDITIONAL([FUZZER], [test "$with_fuzzer" != "no"])
 AM_CONDITIONAL([OSS_FUZZ], [test "$with_oss_fuzz" != "no"])
 
 AS_IF([test "$enable_documentation" = "yes"],[
@@ -570,8 +570,8 @@ result_msg_base="  $PACKAGE $VERSION
     PKCS #11 support:       ${enable_pkcs11}
     Ed25519 support:        ${enable_ed25519}
     Code coverage:          ${enable_code_coverage}
-    Sanitizer:              ${with_sanitize}
-    LibFuzzer:              ${with_sanitize_fuzzer}
+    Sanitizer:              ${with_sanitizer}
+    LibFuzzer:              ${with_fuzzer}
     OSS-Fuzz:               ${with_oss_fuzz}"
 
 result_msg_esc=$(echo -n "$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')

@@ -1,4 +1,4 @@
-# Copyright 2015-2017 CZ.NIC, z.s.p.o.
+# Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 3, as published
@@ -13,26 +13,27 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #
-# Processes --with-sanitize and --with-oss-fuzz flags, checks
+# Processes --with-sanitizer, --with-fuzzer, and --with-oss-fuzz flags, checks
 # if the options are supported by the compiler, and sets the following
 # variables accordingly:
 #
-# - sanitize_enabled          yes|no
-# - sanitize_fuzzer_enabled   yes|no
-# - sanitize_CFLAGS           -fsanitize=...
+# - sanitizer_CFLAGS  -fsanitize=...
+# - fuzzer_CLAGS      -fsanitize=...
+# - fuzzer_LDLAGS     -fsanitize=...
 #
+
 AC_DEFUN([AX_SANITIZER], [
 
   # Configure options
-  AC_ARG_WITH([sanitize],
-    [AS_HELP_STRING([--with-sanitize], [Compile with sanitizer [default=no]])],
+  AC_ARG_WITH([sanitizer],
+    [AS_HELP_STRING([--with-sanitizer], [Compile with sanitizer [default=no]])],
     [],
-    [with_sanitize=no]
+    [with_sanitizer=no]
   )
-  AC_ARG_WITH([sanitize-fuzzer],
-    [AS_HELP_STRING([--with-sanitize-fuzzer], [Compile with sanitizer fuzzer (require clang >= 6.0) [default=no]])],
+  AC_ARG_WITH([fuzzer],
+    [AS_HELP_STRING([--with-fuzzer], [Compile with libfuzzer [default=no]])],
     [],
-    [with_sanitize_fuzzer=no]
+    [with_fuzzer=no]
   )
   AC_ARG_WITH([oss-fuzz],
     [AS_HELP_STRING([--with-oss-fuzz], [Link for oss-fuzz environment [default=no]])],
@@ -41,44 +42,40 @@ AC_DEFUN([AX_SANITIZER], [
   )
 
   # Using -fsanitize=fuzzer requires clang >= 6.0
-  AS_IF([test "$with_sanitize_fuzzer" != "no"],[
+  AS_IF([test "$with_fuzzer" != "no"],[
     # Get clang version if empty
     AS_IF([test -z "$CC_CLANG_VERSION"],[AX_CC_CLANG])
     AX_COMPARE_VERSION([$CC_CLANG_VERSION],ge,[6.0],[],[
-      AC_MSG_ERROR([clang >= 6.0 required for sanitize fuzzer])])])
+      AC_MSG_ERROR([clang >= 6.0 required for fuzzer])])])
 
   # Default values
-  AS_IF([test "$with_sanitize" = "yes"], [ with_sanitize=address ])
-  AS_IF([test "$with_sanitize_fuzzer" = "yes"], [ with_sanitize_fuzzer=fuzzer-no-link ])
+  AS_IF([test "$with_sanitizer" = "yes"], [ with_sanitizer=address ])
+  AS_IF([test "$with_fuzzer" = "yes"], [ with_fuzzer=fuzzer ])
 
   # Construct output variables
-  sanitize_enabled=no
-  sanitize_fuzzer_enable=no
-  sanitize_CFLAGS=
-  AS_IF([test "$with_sanitize" != "no" -o "$with_sanitize_fuzzer" != "no"], [
-    AS_IF([test "$with_sanitize" != "no"], [
-      sanitize_enabled=yes
-      AS_IF([test "$with_sanitize_fuzzer" != "no"], [ # --with-sanitize and --with-sanitize-fuzzer
-        sanitize_CFLAGS="-fsanitize=${with_sanitize},${with_sanitize_fuzzer}"
-        sanitize_fuzzer_enabled=yes
-        ],[ # only --with-sanitize
-        sanitize_CFLAGS="-fsanitize=${with_sanitize}"
-        ])
-      ],[ # only --with-sanitize-fuzzer
-      AS_IF([test "$with_sanitize_fuzzer" != "no"], [
-        sanitize_CFLAGS="-fsanitize=${with_sanitize_fuzzer}"
-        sanitize_fuzzer_enabled=yes
-        ])])
+  sanitizer_CFLAGS=
+  fuzzer_CFLAGS=
+  fuzzer_LDFLAGS=
+  AS_IF([test "$with_sanitizer" != "no"], [
+      sanitizer_CFLAGS="-fsanitize=${with_sanitizer}"
+  ])
+  AS_IF([test "$with_fuzzer" != "no"], [
+      fuzzer_CFLAGS="-fsanitize=${with_fuzzer}"
+      fuzzer_LDFLAGS="-fsanitize=${with_fuzzer}"
+  ])
+  AC_SUBST(fuzzer_CFLAGS)
+  AC_SUBST(fuzzer_LDFLAGS)
 
-    # Test compiler support
+  # Test compiler support
+  AS_IF([test -n "$sanitizer_CFLAGS" -o -n "$fuzzer_CFLAGS"], [
     save_CFLAGS="$CFLAGS"
-    CFLAGS="$CFLAGS $sanitize_CFLAGS"
-    AC_MSG_CHECKING([whether compiler accepts '${sanitize_CFLAGS}' options])
+    CFLAGS="$CFLAGS $sanitizer_CFLAGS $fuzzer_CFLAGS"
+    AC_MSG_CHECKING([whether compiler accepts '${sanitizer_CFLAGS} ${fuzzer_CFLAGS}'])
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM()], [
       AC_MSG_RESULT([yes])
     ], [
       AC_MSG_RESULT([no])
-      AC_MSG_ERROR([Sanitizer options are not supported.])
+      AC_MSG_ERROR([Options are not supported.])
     ])
     CFLAGS="$save_CFLAGS"
   ])
