@@ -111,6 +111,9 @@ Arguments are separated by space, each of them is in format 'name=value'.
   If set to **yes**, the key will be used for signing zone (except DNSKEY rrset). This flag can
   be set concurrently with the **ksk** flag.
 
+**sep**
+  Overrides the standard setting of the Secure Entry Point flag for the generated key.
+
 The following arguments are timestamps of key lifetime:
 
 **created**

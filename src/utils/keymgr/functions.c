@@ -83,8 +83,17 @@ static bool str2bool(const char *s)
 	}
 }
 
+static void bitmap_set(kdnssec_generate_flags_t *bitmap, int flag, bool onoff)
+{
+        if (onoff) {
+                *bitmap |= flag;
+        } else {
+                *bitmap &= ~flag;
+        }
+}
+
 static bool genkeyargs(int argc, char *argv[], bool just_timing,
-                       bool *isksk, bool *iszsk, dnssec_key_algorithm_t *algorithm,
+                       kdnssec_generate_flags_t *flags, dnssec_key_algorithm_t *algorithm,
                        uint16_t *keysize, knot_kasp_key_timing_t *timing,
                        const char **addtopolicy)
 {
@@ -118,9 +127,12 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				return false;
 			}
 		} else if (strncasecmp(argv[i], "ksk=", 4) == 0) {
-			*isksk = str2bool(argv[i] + 4);
+			bitmap_set(flags, DNSKEY_GENERATE_KSK, str2bool(argv[i] + 4));
 		} else if (strncasecmp(argv[i], "zsk=", 4) == 0) {
-			*iszsk = str2bool(argv[i] + 4);
+			bitmap_set(flags, DNSKEY_GENERATE_ZSK, str2bool(argv[i] + 4));
+		} else if (!just_timing && strncasecmp(argv[i], "sep=", 4) == 0) {
+			bitmap_set(flags, DNSKEY_GENERATE_SEP_SPEC, true);
+			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, str2bool(argv[i] + 4));
 		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
 			*keysize = atol(argv[i] + 5);
 		} else if (!just_timing && strncasecmp(argv[i], "addtopolicy=", 12) == 0) {
@@ -131,11 +143,6 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 		}
 	}
 
-	// set ZSK if none was specified
-	if (isksk && iszsk && !*isksk) {
-		*iszsk = true;
-	}
-
 	return true;
 }
 
@@ -144,15 +151,15 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 {
 	knot_time_t now = knot_time(), infty = 0;
 	knot_kasp_key_timing_t gen_timing = { now, infty, now, infty, now, infty, infty, infty, infty };
-	bool isksk = false, iszsk = false;
+	kdnssec_generate_flags_t flags = 0;
 	uint16_t keysize = 0;
 	const char *addtopolicy = NULL;
-	if (!genkeyargs(argc, argv, false, &isksk, &iszsk, &ctx->policy->algorithm,
+	if (!genkeyargs(argc, argv, false, &flags, &ctx->policy->algorithm,
 			&keysize, &gen_timing, &addtopolicy)) {
 		return KNOT_EINVAL;
 	}
 	if (keysize > 0) {
-		if (isksk) {
+		if ((flags & DNSKEY_GENERATE_KSK)) {
 			ctx->policy->ksk_size = keysize;
 		} else {
 			ctx->policy->zsk_size = keysize;
@@ -161,7 +168,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
-		if (dnssec_key_get_flags(kasp_key->key) == dnskey_flags(isksk) &&
+		if ((kasp_key->is_ksk && (flags & DNSKEY_GENERATE_KSK)) &&
 		    dnssec_key_get_algorithm(kasp_key->key) != ctx->policy->algorithm) {
 			printf("warning: creating key with different algorithm than "
 			       "configured in the policy\n");
@@ -170,7 +177,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 	}
 
 	knot_kasp_key_t *key = NULL;
-	int ret = kdnssec_generate_key(ctx, isksk, iszsk, &key);
+	int ret = kdnssec_generate_key(ctx, flags, &key);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -379,12 +386,14 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	// parse params
 	knot_time_t now = knot_time();
 	knot_kasp_key_timing_t timing = { .publish = now, .active = now };
-	bool isksk = false, iszsk = false;
+	kdnssec_generate_flags_t flags = 0;
 	uint16_t keysize = 0;
-	if (!genkeyargs(argc, argv, false, &isksk, &iszsk, &ctx->policy->algorithm,
+	if (!genkeyargs(argc, argv, false, &flags, &ctx->policy->algorithm,
 			&keysize, &timing, NULL)) {
 		return KNOT_EINVAL;
 	}
+
+	normalize_generate_flags(&flags);
 
 	// open file
 	int fd = open(import_file, O_RDONLY, 0);
@@ -439,7 +448,7 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	if (ret != DNSSEC_EOK) {
 		goto fail;
 	}
-	dnssec_key_set_flags(key, dnskey_flags(isksk));
+	dnssec_key_set_flags(key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
 	dnssec_key_set_algorithm(key, ctx->policy->algorithm);
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
@@ -457,8 +466,8 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	kkey->id = keyid;
 	kkey->key = key;
 	kkey->timing = timing;
-	kkey->is_ksk = isksk;
-	kkey->is_zsk = iszsk;
+	kkey->is_ksk = (flags & DNSKEY_GENERATE_KSK);
+	kkey->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
 
 	// append to zone
 	ret = kasp_zone_append(ctx->zone, kkey);
@@ -626,12 +635,12 @@ int keymgr_foreign_key_id(char *argv[], knot_dname_t **key_zone, char **key_id)
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 {
 	knot_kasp_key_timing_t temp = key->timing;
-	bool isksk = key->is_ksk, iszsk = key->is_zsk;
+	kdnssec_generate_flags_t flags = ((key->is_ksk ? DNSKEY_GENERATE_KSK : 0) | (key->is_zsk ? DNSKEY_GENERATE_ZSK : 0));
 
-	if (genkeyargs(argc, argv, true, &isksk, &iszsk, NULL, NULL, &temp, NULL)) {
+	if (genkeyargs(argc, argv, true, &flags, NULL, NULL, &temp, NULL)) {
 		key->timing = temp;
-		key->is_ksk = isksk;
-		key->is_zsk = iszsk;
+		key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
+		key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
 		return KNOT_EOK;
 	}
 	return KNOT_EINVAL;

@@ -133,6 +133,9 @@ have the Secure Entry Point flag set to 1.
 \fBzsk\fP
 If set to \fByes\fP, the key will be used for signing zone (except DNSKEY rrset). This flag can
 be set concurrently with the \fBksk\fP flag.
+.TP
+\fBsep\fP
+Overrides the standard setting of the Secure Entry Point flag for the generated key.
 .UNINDENT
 .sp
 The following arguments are timestamps of key lifetime:

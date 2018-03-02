@@ -56,17 +56,26 @@ extern const uint16_t DNSKEY_FLAGS_KSK;
 extern const uint16_t DNSKEY_FLAGS_ZSK;
 uint16_t dnskey_flags(bool is_ksk);
 
+typedef enum {
+        DNSKEY_GENERATE_KSK      = (1 << 0), // KSK flag in metadata
+        DNSKEY_GENERATE_ZSK      = (1 << 1), // ZSK flag in metadata
+        DNSKEY_GENERATE_SEP_SPEC = (1 << 2), // not (SEP bit set iff KSK)
+        DNSKEY_GENERATE_SEP_ON   = (1 << 3), // SEP bit set on
+} kdnssec_generate_flags_t;
+
+void normalize_generate_flags(kdnssec_generate_flags_t *flags);
+
 /*!
  * \brief Generate new key, store all details in new kasp key structure.
  *
  * \param ctx           kasp context
- * \param ksk           true = generate KSK or CSK, false = generate ZSK
- * \param zsk           true = generate ZSK or CSK, false = generate KSK
+ * \param flags         determine if to use the key as KSK and/or ZSK and SEP flag
  * \param key_ptr       output if KNOT_EOK: new pointer to generated key
  *
  * \return KNOT_E*
  */
-int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_kasp_key_t **key_ptr);
+int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
+                         knot_kasp_key_t **key_ptr);
 
 /*!
  * \brief Take a key from another zone (copying info, sharing privkey).
