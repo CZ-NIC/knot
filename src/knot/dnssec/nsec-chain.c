@@ -123,6 +123,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 
 		bool equal = knot_rrset_equal(&new_nsec, old_nsec_lc,
 		                              KNOT_RRSET_COMPARE_WHOLE);
+		equal = (equal && (old_nsec_lc->ttl == new_nsec.ttl));
 		knot_rrset_free(old_nsec_lc, NULL);
 
 		if (equal) {
