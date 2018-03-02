@@ -20,7 +20,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -51,7 +50,9 @@ static void test_all_from(const char *dirname)
 
 		char fname[strlen(dirname) + strlen(dp->d_name) + 2];
 		int ret = snprintf(fname, sizeof(fname), "%s/%s", dirname, dp->d_name);
-		assert(ret > 0 && ret < sizeof(fname));
+		if (ret < 0 || ret >= sizeof(fname)) {
+			fprintf(stderr, "Invalid path %s/%s\n", dirname, dp->d_name);
+		}
 
 		int fd;
 		if ((fd = open(fname, O_RDONLY)) == -1) {
@@ -67,7 +68,11 @@ static void test_all_from(const char *dirname)
 		}
 
 		uint8_t *data = malloc(st.st_size);
-		assert(data);
+		if (data == NULL) {
+			fprintf(stderr, "Failed to stat %d (%d)\n", fd, ENOMEM);
+			close(fd);
+			continue;
+		}
 
 		ssize_t n;
 		if ((n = read(fd, data, st.st_size)) == st.st_size) {
@@ -98,12 +103,16 @@ int main(int argc, char **argv)
 	}
 
 	int ret = snprintf(corporadir, sizeof(corporadir), SRCDIR "/%s.in", target);
-	assert(ret > 0 && ret < sizeof(corporadir));
+	if (ret < 0 || ret >= sizeof(corporadir)) {
+		fprintf(stderr, "Invalid path %s/%s\n", SRCDIR "/%s.in", target);
+	}
 
 	test_all_from(corporadir);
 
 	ret = snprintf(corporadir, sizeof(corporadir), SRCDIR "/%s.repro", target);
-	assert(ret > 0 && ret < sizeof(corporadir));
+	if (ret < 0 || ret >= sizeof(corporadir)) {
+		fprintf(stderr, "Invalid path %s/%s\n", SRCDIR "/%s.repro", target);
+	}
 
 	test_all_from(corporadir);
 

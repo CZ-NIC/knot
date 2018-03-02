@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
 #include <stdint.h>
 
 #include "libknot/libknot.h"
@@ -25,9 +24,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	memcpy(copy, data, size);
 
 	knot_pkt_t *pkt = knot_pkt_new(copy, size, NULL);
-	assert(pkt);
-	knot_pkt_parse(pkt, 0);
-	knot_pkt_free(pkt);
+	if (pkt != NULL) {
+		knot_pkt_parse(pkt, 0);
+		knot_pkt_free(pkt);
+	}
 
 	return 0;
 }

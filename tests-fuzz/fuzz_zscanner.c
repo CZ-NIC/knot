@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,19 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
 #include <stdint.h>
 
 #include "zscanner/scanner.h"
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-	zs_scanner_t s = { 0 };
-	assert(zs_init(&s, ".", 1, 0) == 0);
-	assert(zs_set_input_string(&s, (const char *)data, size) == 0);
-
-	zs_parse_all(&s);
-
+	zs_scanner_t s;
+	if (zs_init(&s, ".", 1, 0) == 0 &&
+	    zs_set_input_string(&s, (const char *)data, size) == 0) {
+		zs_parse_all(&s);
+	}
 	zs_deinit(&s);
 	
 	return 0;
