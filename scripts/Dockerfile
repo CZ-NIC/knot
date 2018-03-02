@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:stable-slim
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 
 # Select entrypoint
@@ -6,13 +6,13 @@ WORKDIR /root
 CMD ["/usr/local/sbin/knotd"]
 
 # Expose port
-EXPOSE 53
+EXPOSE 53/UDP 53/TCP
 
 # Environment
 ENV THREADS 4
-ENV BUILD_PKGS git-core make gcc libtool autoconf pkg-config \
-               liburcu-dev liblmdb-dev libgnutls28-dev libjansson-dev libedit-dev libidn11-dev
-ENV RUNTIME_PKGS liburcu2 liblmdb0 libgnutls-deb0-28 libjansson4 libedit2 libidn11
+ENV BUILD_PKGS git-core make gcc libtool autoconf pkg-config liburcu-dev \
+               liblmdb-dev libgnutls28-dev libedit-dev libidn11-dev
+ENV RUNTIME_PKGS liburcu4 liblmdb0 libgnutls30 libedit2 libidn11
 
 # Install dependencies and sources
 RUN apt-get -q -y update && \
