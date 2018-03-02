@@ -122,8 +122,6 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"missing CDNSKEY",
 	[SEM_ERR_CDNSKEY_MULTIPLE] =
 	"multiple CDNSKEY records",
-	[SEM_ERR_CDNSKEY_NOT_KSK] =
-	"CDNSKEY not match KSK DNSKEY",
 	[SEM_ERR_CDNSKEY_NO_DNSKEY] =
 	"CDNSKEY not match DNSKEY",
 
@@ -545,7 +543,6 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 			return ret;
 		}
 
-		uint16_t flags = dnssec_key_get_flags(key);
 		dnssec_binary_t cds_calc = { 0 };
 		dnssec_binary_t cds_orig = { .size = cds->len, .data = cds->data };
 		ret = dnssec_key_create_ds(key, digest_type, &cds_calc);
@@ -558,13 +555,7 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 		dnssec_binary_free(&cds_calc);
 		dnssec_key_free(key);
 		if (ret == 0) {
-			if (!(flags & DNSKEY_FLAGS_KSK)) {
-				data->handler->cb(data->handler, data->zone,
-				                  node, SEM_ERR_CDNSKEY_NOT_KSK,
-				                  NULL);
-			} else {
-				return KNOT_EOK;
-			}
+			return KNOT_EOK;
 		} else {
 			data->handler->cb(data->handler, data->zone, node,
 			                  SEM_ERR_CDS_NOT_MATCH, NULL);
