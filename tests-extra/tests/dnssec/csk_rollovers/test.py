@@ -213,4 +213,7 @@ watch_alg_rollover(t, child, child_zone, 1, 1, "CSK to CSK alg", "ECDSAP384SHA38
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_alg_rollover(t, child, child_zone, 1, 2, "CSK to KZSK alg", "ECDSAP256SHA256", False, cds_submission)
 
+pregenerate_key(child, child_zone, "ECDSAP384SHA384")
+watch_alg_rollover(t, child, child_zone, 2, 2, "KZSK alg", "ECDSAP384SHA384", False, cds_submission)
+
 t.end()
