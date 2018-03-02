@@ -46,11 +46,8 @@ EXTRA_DIST = check/check_fuzzers.test
 
 else
 
-fuzz_packet_SOURCES    += main.c
-fuzz_packet_CPPFLAGS   += -DTEST_RUN
-
-fuzz_zscanner_SOURCES  += main.c
-fuzz_zscanner_CPPFLAGS += -DTEST_RUN
+fuzz_packet_SOURCES   += main.c
+fuzz_zscanner_SOURCES += main.c
 
 TESTS = $(FUZZERS)
 

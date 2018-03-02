@@ -1,6 +1,5 @@
-/*
- * Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
- * Copyright(c) 2017 Tim Ruehsen
+/* Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+ * Copyright (C) 2017 Tim Ruehsen
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -33,7 +32,7 @@
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
 
-#ifdef TEST_RUN
+#ifndef __AFL_LOOP
 
 #include <dirent.h>
 
@@ -113,25 +112,11 @@ int main(int argc, char **argv)
 
 #else
 
-#ifndef __AFL_LOOP
-static int __AFL_LOOP(int n)
-{
-	static int first = 1;
-
-	if (first) {
-		first = 0;
-		return 1;
-	}
-
-	return 0;
-}
-#endif
-
 int main(int argc, char **argv)
 {
 	unsigned char buf[64 * 1024];
 
-	while (__AFL_LOOP(10000)) { // only works with afl-clang-fast
+	while (__AFL_LOOP(10000)) {
 		int ret = fread(buf, 1, sizeof(buf), stdin);
 		if (ret < 0) {
 			return 0;
@@ -143,4 +128,4 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-#endif /* TEST_RUN */
+#endif /* __AFL_LOOP */
