@@ -62,7 +62,8 @@ static bool are_nsec3_nodes_equal(const zone_node_t *a, const zone_node_t *b)
 
 	knot_rrset_t a_rrset = node_rrset(a, KNOT_RRTYPE_NSEC3);
 	knot_rrset_t b_rrset = node_rrset(b, KNOT_RRTYPE_NSEC3);
-	return knot_rrset_equal(&a_rrset, &b_rrset, KNOT_RRSET_COMPARE_WHOLE);
+	return knot_rrset_equal(&a_rrset, &b_rrset, KNOT_RRSET_COMPARE_WHOLE) &&
+	       (a_rrset.ttl == b_rrset.ttl);
 }
 
 static bool nsec3_opt_out(const zone_node_t *node, bool opt_out_enabled)

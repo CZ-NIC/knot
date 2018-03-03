@@ -403,12 +403,14 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 		return KNOT_EINVAL;
 	}
 
-	const knot_rdataset_t *soa = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL) {
+	const knot_rdataset_t *soa_old = node_rdataset(update->zone->contents->apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa_new = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+	if (soa_old == NULL || soa_new == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	uint32_t nsec_ttl = knot_soa_minimum(soa);
+	uint32_t nsec_ttl_old = knot_soa_minimum(soa_old);
+	uint32_t nsec_ttl_new = knot_soa_minimum(soa_new);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
 	changeset_t ch;
@@ -417,10 +419,14 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 		return ret;
 	}
 
-	if (ctx->policy->nsec3_enabled) {
-		ret = knot_nsec3_fix_chain(update, &params, nsec_ttl, ctx->policy->nsec3_opt_out, &ch);
+	if (nsec_ttl_old != nsec_ttl_new) {
+		ret = KNOT_ENORECORD;
+	} else if (ctx->policy->nsec3_enabled) {
+		ret = knot_nsec3_fix_chain(update, &params, nsec_ttl_new,
+		                           ctx->policy->nsec3_opt_out, &ch);
 	} else {
-		ret = knot_nsec_fix_chain(update->zone->contents, update->new_cont, nsec_ttl, &ch);
+		ret = knot_nsec_fix_chain(update->zone->contents, update->new_cont,
+		                          nsec_ttl_new, &ch);
 	}
 	if (ret == KNOT_ENORECORD) {
 		log_zone_info(update->zone->name, "DNSSEC, re-creating whole NSEC%s chain",
@@ -431,10 +437,10 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 			return ret;
 		}
 		if (ctx->policy->nsec3_enabled) {
-			ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl,
-						      ctx->policy->nsec3_opt_out, &ch);
+			ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl_new,
+			                              ctx->policy->nsec3_opt_out, &ch);
 		} else {
-			ret = knot_nsec_create_chain(update->new_cont, nsec_ttl, &ch);
+			ret = knot_nsec_create_chain(update->new_cont, nsec_ttl_new, &ch);
 		}
 	}
 	if (ret != KNOT_EOK) {
