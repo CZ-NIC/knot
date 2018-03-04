@@ -1282,9 +1282,6 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	size_t nchs = 0, inserted_size = 0, insert_txn_count = 1;
 	size_t serialized_size_changes = 0, serialized_size_merged = 0;
 
-	uint8_t **chunkptrs = NULL;
-	size_t *chunksizes = NULL;
-	knot_db_val_t *vals = NULL;
 	size_t chunks = 0;
 
 	bool inserting_merged = false;
@@ -1426,17 +1423,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			break;
 		}
 
-		// Twice chsize seems like enough room to store all chunks together.
-		size_t maxchunks = changeset_serialized_size(ch) * 8 / CHUNK_MAX + 1024; // TODO dynarray ?
 		chunk_dynarray_t dchunks = { 0 };
 		chunks = 0;
-		chunkptrs = calloc(sizeof(uint8_t *), maxchunks);
-		chunksizes = calloc(sizeof(size_t), maxchunks);
-		vals = calloc(sizeof(knot_db_val_t), maxchunks);
-		if (chunkptrs == NULL || chunksizes == NULL || vals == NULL) {
-			txn->ret = KNOT_ENOMEM;
-			break;
-		}
 		serialize_ctx_t *sctx;
 		serialize_init(&sctx, ch);
 
@@ -1512,16 +1500,6 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			txn->shadow_md.last_serial_to = serial_to;
 			txn->shadow_md.changeset_count++;
 		}
-
-		for (size_t i = 0; i < chunks; i++) {
-			free(chunkptrs[i]);
-		}
-		free(chunkptrs);
-		free(chunksizes);
-		free(vals);
-		chunkptrs = NULL;
-		chunksizes = NULL;
-		vals = NULL;
 	}
 
 	// PART X : finalization and cleanup
@@ -1538,15 +1516,6 @@ store_changeset_cleanup:
 		}
 		txn_commit(ddtxn);
 	}
-
-	if (chunkptrs != NULL) {
-		for (size_t i = 0; i < chunks; i++) {
-			free(chunkptrs[i]);
-		}
-		free(chunkptrs);
-	}
-	if (chunksizes != NULL) free(chunksizes);
-	if (vals != NULL) free(vals);
 
 	changeset_t *dbgchst = TAIL(*changesets);
 
