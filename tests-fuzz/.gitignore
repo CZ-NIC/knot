@@ -2,7 +2,7 @@
 /Makefile
 
 /knotd_stdio
-/wrap/main.c
+/knotd_wrap/main.c
 
 *.trs
 *.log

@@ -457,11 +457,11 @@ src/zscanner/tests/tests.h
 src/zscanner/tests/zscanner-tool.c
 tests-fuzz/fuzz_packet.c
 tests-fuzz/fuzz_zscanner.c
+tests-fuzz/knotd_wrap/afl-loop.h
+tests-fuzz/knotd_wrap/server.c
+tests-fuzz/knotd_wrap/tcp-handler.c
+tests-fuzz/knotd_wrap/udp-handler.c
 tests-fuzz/main.c
-tests-fuzz/wrap/afl-loop.h
-tests-fuzz/wrap/server.c
-tests-fuzz/wrap/tcp-handler.c
-tests-fuzz/wrap/udp-handler.c
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
 tests/contrib/test_dynarray.c

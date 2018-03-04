@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,12 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define tcp_master _orig_tcp_master
-#include "knot/server/tcp-handler.c"
-#undef tcp_master
+#pragma once
 
-int tcp_master(dthread_t *thread)
-{
-	log_info("AFL, tcp_master out of order");
-	return 0;
-}
+#ifndef __AFL_LOOP
+#define __AFL_LOOP(x) (0)
+#endif

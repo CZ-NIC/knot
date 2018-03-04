@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,12 +12,9 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-/*
- * Wrap function server_reconfigure to initialize udp_master to stdin
  */
-#define server_reconfigure _orig_server_reconfigure
+
+#define server_reconfigure orig_server_reconfigure
 #include "knot/server/server.c"
 #undef server_reconfigure
 
@@ -25,7 +22,6 @@ extern void udp_master_init_stdio(server_t *server);
 
 void server_reconfigure(conf_t *conf, server_t *server)
 {
-	log_info("AFL, Wrap server_reconfigure()");
-	_orig_server_reconfigure(conf, server);
+	orig_server_reconfigure(conf, server);
 	udp_master_init_stdio(server);
 }
