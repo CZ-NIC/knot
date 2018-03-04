@@ -1437,6 +1437,9 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 		while (serialize_unfinished(sctx)) {
 			serialize_prepare(sctx, CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk_size);
+			if (chunk_size == 0) {
+				break;
+			}
 
 			inserted_size += chunk_size;
 			if ((float)inserted_size > journal_max_txn(j) * (float)j->db->fslimit) { // insert txn too large
