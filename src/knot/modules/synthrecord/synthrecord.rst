@@ -9,6 +9,8 @@ a given prefix and subnet.
 Records are synthesized only if the query can't be satisfied from the zone.
 Both IPv4 and IPv6 are supported.
 
+.. _mod-synthrecord_example:
+
 Example
 -------
 
@@ -85,6 +87,8 @@ Result:
    ;; ANSWER SECTION:
    1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 400 IN PTR
                                   dynamic-2620-0000-0b61-0000-0000-0000-0000-0001.test.
+
+.. _mod-synthrecord_reference:
 
 Module reference
 ----------------

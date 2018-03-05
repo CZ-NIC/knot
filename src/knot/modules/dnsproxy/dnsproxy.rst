@@ -16,6 +16,8 @@ There are several uses of this feature:
    The module does not alter the query/response as the resolver would,
    and the original transport protocol is kept as well.
 
+.. _mod-dnsproxy_example:
+
 Example
 -------
 
@@ -41,6 +43,8 @@ required::
 When clients query for anything in the ``local.zone``, they will be
 responded to locally. The rest of the requests will be forwarded to the
 specified server (``10.0.1.1`` in this case).
+
+.. _mod-dnsproxy_reference:
 
 Module reference
 ----------------

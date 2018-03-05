@@ -1,7 +1,11 @@
 .. highlight:: console
 
+.. _kdig:
+
 kdig – Advanced DNS lookup utility
 ==================================
+
+.. _kdig_synopsis:
 
 Synopsis
 --------
@@ -10,12 +14,16 @@ Synopsis
 
 :program:`kdig` **-h**
 
+.. _kdig_description:
+
 Description
 -----------
 
 This utility sends one or more DNS queries to a nameserver. Each query can have
 individual *settings*, or it can be specified globally via *common-settings*,
 which must precede *query* specification.
+
+.. _kdig_parameters:
 
 Parameters
 ..........
@@ -68,6 +76,8 @@ A *query_type* can be either a DNS resource record type
   Notify message with a SOA serial hint unspecified.
 
 The default query type is A.
+
+.. _kdig_options:
 
 Options
 .......
@@ -276,12 +286,16 @@ Options
   Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
   on libidn availability during project building!
 
+.. _kdig_notes:
+
 Notes
 -----
 
 Options **-k** and **-y** can not be used simultaneously.
 
 Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
+
+.. _kdig_examples:
 
 Examples
 --------
@@ -306,10 +320,14 @@ Examples
      $ kdig -d @185.49.141.38 +tls-ca +tls-host=getdnsapi.net \
        +tls-pin=foxZRnIh9gZpWnl+zEiKa0EJ2rdCGroMWm02gaxSc9S= soa example.com
 
+.. _kdig_files:
+
 Files
 -----
 
 :file:`/etc/resolv.conf`
+
+.. _kdig_see_also:
 
 See Also
 --------

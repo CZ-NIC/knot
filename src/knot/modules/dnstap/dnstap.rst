@@ -7,6 +7,8 @@ A module for query and response logging based on the dnstap_ library.
 You can capture either all or zone-specific queries and responses; usually
 you want to do the former.
 
+.. _mod-dnstap-example:
+
 Example
 -------
 
@@ -32,6 +34,8 @@ which can be either a file or a UNIX socket::
    Dnstap log files can also be created or read using ``kdig``.
 
 .. _dnstap: http://dnstap.info/
+
+.. _mod-dnstap-reference:
 
 Module reference
 ----------------

@@ -15,6 +15,8 @@ This module should be configured as the last module.
 .. NOTE::
    Leading 16-bit message size over TCP is not considered.
 
+.. _mod-stats_example:
+
 Example
 -------
 
@@ -34,6 +36,8 @@ Per zone statistics with explicit module configuration::
     template:
       - id: default
         module: mod-stats/custom
+
+.. _mod-stats_reference:
 
 Module reference
 ----------------

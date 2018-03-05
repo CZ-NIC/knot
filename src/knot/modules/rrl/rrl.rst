@@ -20,6 +20,8 @@ the responses as truncated or by dropping them altogether.
    If the :ref:`Cookies<mod-cookies>` module is active, RRL is not applied
    for responses with a valid DNS cookie.
 
+.. _mod-rrl_example:
+
 Example
 -------
 
@@ -35,6 +37,8 @@ You can enable RRL by setting the module globally or per zone.
     template:
       - id: default
         global-module: mod-rrl/default   # Enable RRL globally
+
+.. _mod-rrl_reference:
 
 Module reference
 ----------------

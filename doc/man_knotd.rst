@@ -3,13 +3,19 @@
 knotd – Knot DNS server daemon
 ==============================
 
+.. _knotd_synopsis:
+
 Synopsis
 --------
 
 :program:`knotd` [*parameters*]
 
+.. _knotd_description:
+
 Description
 -----------
+
+.. _knotd_parameters:
 
 Parameters
 ..........
@@ -37,6 +43,8 @@ Parameters
 
 **-V**, **--version**
   Print the program version.
+
+.. _knotd_see_also:
 
 See Also
 --------

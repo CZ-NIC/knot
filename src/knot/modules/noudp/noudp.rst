@@ -6,6 +6,8 @@
 The module sends empty truncated response to any UDP query. TCP queries are
 not affected.
 
+.. _mod-noudp_example:
+
 Example
 -------
 

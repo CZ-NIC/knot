@@ -3,10 +3,14 @@
 kzonecheck – Knot DNS zone file checking tool
 =============================================
 
+.. _kzonecheck_synopsis:
+
 Synopsis
 --------
 
 :program:`kzonecheck` [*options*] *filename*
+
+.. _kzonecheck_description:
 
 Description
 -----------
@@ -17,6 +21,8 @@ DNS server.
 
 Please, refer to the ``semantic-checks`` configuration option in
 :manpage:`knot.conf(5)` for the full list of available semantic checks.
+
+.. _kzonecheck_options:
 
 Options
 .......
@@ -38,6 +44,8 @@ Options
 
 **-V**, **--version**
   Print the program version.
+
+.. _kzonecheck_see_also:
 
 See Also
 --------

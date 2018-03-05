@@ -18,6 +18,8 @@ support DNS Cookies, otherwise they are not used.
    For effective module operation the :ref:`RRL<mod-rrl>` module must also
    be enabled.
 
+.. _mod-cookies_example:
+
 Example
 -------
 
@@ -33,6 +35,8 @@ It is recommended to enable DNS Cookies globally, not per zone.
     template:
       - id: default
         global-module: mod-cookies/default # Enable DNS Cookies globally
+
+.. _mod-cookies_reference:
 
 Module reference
 ----------------

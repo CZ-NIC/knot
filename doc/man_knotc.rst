@@ -3,15 +3,21 @@
 knotc – Knot DNS control utility
 ================================
 
+.. _knotc_synopsis:
+
 Synopsis
 --------
 
 :program:`knotc` [*parameters*] *action* [*action_args*]
 
+.. _knotc_description:
+
 Description
 -----------
 
 If no *action* is specified, the program is executed in interactive mode.
+
+.. _knotc_parameters:
 
 Parameters
 ..........
@@ -188,6 +194,8 @@ Actions
 **conf-unset** [*item*] [*data*...]
   Unset the item data in the transaction.
 
+.. _knotc_note:
+
 Note
 ....
 
@@ -209,6 +217,8 @@ Interactive mode behavior can be customized in `~/.editrc`. Refer to
 :manpage:`editrc(5)` for details.
 
 Command history is saved in `~/.knotc_history`.
+
+.. _knotc_examples:
 
 Examples
 --------
@@ -264,6 +274,8 @@ Get the SOA record for each configured zone
 ::
 
   $ knotc zone-read -- @ SOA
+
+.. _knotc_see_also:
 
 See Also
 --------

@@ -3,15 +3,21 @@
 knsec3hash – NSEC hash computation utility
 ==========================================
 
+.. _knsec3hash_synopsis:
+
 Synopsis
 --------
 
 :program:`knsec3hash` *salt* *algorithm* *iterations* *name*
 
+.. _knsec3hash_description:
+
 Description
 -----------
 
 This utility generates a NSEC3 hash for a given domain name and parameters of NSEC3 hash.
+
+.. _knsec3hash_parameters:
 
 Parameters
 ..........
@@ -28,6 +34,8 @@ Parameters
 *name*
   Specifies the domain name to be hashed.
 
+.. _knsec3hash_examples:
+
 Examples
 --------
 
@@ -40,6 +48,8 @@ Examples
 
   $ knsec3hash - 1 0 net
   A1RT98BS5QGC9NFI51S9HCI47ULJG6JH (salt=-, hash=1, iterations=0)
+
+.. _knsec3hash_see_also:
 
 See Also
 --------

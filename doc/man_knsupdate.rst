@@ -3,10 +3,14 @@
 knsupdate – Dynamic DNS update utility
 ======================================
 
+.. _knsupdate_synopsis:
+
 Synopsis
 --------
 
 :program:`knsupdate` [*options*] [*filename*]
+
+.. _knsupdate_description:
 
 Description
 -----------
@@ -18,6 +22,8 @@ input.
 The format of updates is textual and is made up of commands. Every command is
 placed on the separate line of the input. Lines starting with a semicolon are
 comments and are not processed.
+
+.. _knsupdate_options:
 
 Options
 .......
@@ -54,6 +60,8 @@ Options
   Use the TSIG key with a name *name* to authenticate the request. The *alg*
   part specifies the algorithm (the default is hmac-sha256) and *key* specifies
   the shared secret encoded in Base64.
+
+.. _knsupdate_commands:
 
 Commands
 ........
@@ -129,6 +137,8 @@ Commands
 **quit**
   Quit the program.
 
+.. _knsupdate_notes:
+
 Notes
 -----
 
@@ -139,6 +149,8 @@ Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
 Zone name/server guessing is not supported if the zone name/server is not specified.
 
 Empty line doesn't send the update.
+
+.. _knsupdate_examples:
 
 Examples
 --------
@@ -157,6 +169,8 @@ Examples
      > send
      > answer
      > quit
+
+.. _knsupdate_see_also:
 
 See Also
 --------

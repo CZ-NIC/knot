@@ -3,10 +3,14 @@
 pykeymgr – Key management utility
 =================================
 
+.. _pykeymgr_synopsis:
+
 Synopsis
 --------
 
 :program:`pykeymgr` [*global-options*] [*command*...] [*arguments*...]
+
+.. _pykeymgr_description:
 
 Description
 -----------
@@ -39,6 +43,8 @@ Main commands
   Import the legacy JSON-format KASP database into the current LMDB-backed one.
   (You can import multiple databases at once by repeating this option.)
 
+.. _pykeymgr_parameters:
+
 Parameters
 ..........
 
@@ -47,12 +53,16 @@ Parameters
   files are usually stored as well as legacy JSON configuration and `keys`
   subdirectory containing PEM files.
 
+.. _pykeymgr_examples:
+
 Examples
 --------
 
 1. Import legacy JSON-based KASP db from Knot 2.4.x after upgrade::
 
     $ pykemgr -i ${knot_data_dir}/keys
+
+.. _pykeymgr_see_also:
 
 See Also
 --------

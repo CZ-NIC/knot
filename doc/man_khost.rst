@@ -3,10 +3,14 @@
 khost – Simple DNS lookup utility
 =================================
 
+.. _khost_synopsis:
+
 Synopsis
 --------
 
 :program:`khost` [*options*] *name* [*server*]
+
+.. _khost_description:
 
 Description
 -----------
@@ -14,6 +18,8 @@ Description
 This utility sends a DNS query for the *name* to the *server* and prints a reply
 in more user-readable form. For more advanced DNS queries use :program:`kdig`
 instead.
+
+.. _khost_parameters:
 
 Parameters
 ..........
@@ -28,6 +34,8 @@ Parameters
   the servers from :file:`/etc/resolv.conf` are used.
 
 If no arguments are provided, :program:`khost` prints a short help.
+
+.. _khost_options:
 
 Options
 .......
@@ -76,6 +84,8 @@ Options
   The time to wait for a reply in seconds. This timeout applies to each query
   try. The default is 2 seconds.
 
+.. _khost_examples:
+
 Examples
 --------
 
@@ -91,10 +101,14 @@ Examples
 
      $ khost -t AXFR -v example.com
 
+.. _khost_files:
+
 Files
 -----
 
 :file:`/etc/resolv.conf`
+
+.. _khost_see_also:
 
 See Also
 --------

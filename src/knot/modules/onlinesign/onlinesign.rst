@@ -70,6 +70,8 @@ a DNSSEC validating resolver.
 * Configure the module with an explicit signing policy which has the
   :ref:`policy_rrsig-lifetime` value in the order of hours.
 
+.. _mod-onlinesign_example:
+
 Example
 -------
 
@@ -118,6 +120,8 @@ module::
  zone:
    - domain: corp.example.net
      module: [mod-synthrecord/lan-forward, mod-onlinesign]
+
+.. _mod-onlinesign_reference:
 
 Module reference
 ----------------

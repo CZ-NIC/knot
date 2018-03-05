@@ -16,6 +16,8 @@ underlying zone must have a set of nameservers that only have IPv4
 addresses, and for AAAA queries, the underlying zone must have a set of
 nameservers that only have IPv6 addresses.
 
+.. _mod-whoami_example:
+
 Example
 -------
 

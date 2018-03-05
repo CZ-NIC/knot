@@ -3,12 +3,16 @@
 keymgr – Key management utility
 ===============================
 
+.. _keymgr_synopsis:
+
 Synopsis
 --------
 
 :program:`keymgr` *basic_option* [*parameters*...]
 
 :program:`keymgr` [*config_option* *config_storage*] *zone* *command* *argument*...
+
+.. _keymgr_description:
 
 Description
 -----------
@@ -49,6 +53,8 @@ Config options
 
 **-d**, **--dir** *path*
   Use specified KASP database path and default configuration.
+
+.. _keymgr_commands:
 
 Commands
 ........
@@ -158,6 +164,8 @@ Output timestamp formats
 **iso**
   The timestamps are printed in the ISO8601 format (e.g. 2016-12-31T23:59:00).
 
+.. _keymgr_examples:
+
 Examples
 --------
 
@@ -181,6 +189,8 @@ Examples
 5. Share a KSK from another zone::
 
     $ keymgr example.com. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
+
+.. _keymgr_see_also:
 
 See Also
 --------
