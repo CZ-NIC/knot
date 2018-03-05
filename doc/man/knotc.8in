@@ -148,9 +148,11 @@ requires a ttl value specified.
 Remove zone data within the transaction.
 .TP
 \fBzone\-purge\fP \fIzone\fP\&... [\fIfilter\fP\&...]
-Purge zone data, file, journal, timers, and kaspdb.
-Filters are \fB+expire\fP, \fB+timers\fP, \fB+zonefile\fP, \fB+journal\fP,
-and \fB+kaspdb\fP\&.
+Purge zone data, zone file, journal, timers, and/or KASP data of specified zones.
+Available filters are \fB+expire\fP, \fB+zonefile\fP, \fB+journal\fP, \fB+timers\fP,
+and \fB+kaspdb\fP\&. If no filter is specified, all filters are enabled.
+It the zone is no longer configured, add \fB+orphan\fP filter (zone file cannot
+be purged in this case).
 .TP
 \fBzone\-stats\fP \fIzone\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
 Show zone statistics counter(s). To print also counters with value 0, use

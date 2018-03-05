@@ -125,9 +125,11 @@ Actions
   Remove zone data within the transaction.
 
 **zone-purge** *zone*... [*filter*...]
-  Purge zone data, file, journal, timers, and kaspdb.
-  Filters are **+expire**, **+timers**, **+zonefile**, **+journal**,
-  and **+kaspdb**.
+  Purge zone data, zone file, journal, timers, and/or KASP data of specified zones.
+  Available filters are **+expire**, **+zonefile**, **+journal**, **+timers**,
+  and **+kaspdb**. If no filter is specified, all filters are enabled.
+  It the zone is no longer configured, add **+orphan** filter (zone file cannot
+  be purged in this case).
 
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use

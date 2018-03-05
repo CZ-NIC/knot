@@ -707,6 +707,7 @@ const filter_desc_t zone_purge_filters[MAX_FILTERS] = {
 	{ "+zonefile", CTL_FILTER_PURGE_ZONEFILE },
 	{ "+journal",  CTL_FILTER_PURGE_JOURNAL },
 	{ "+kaspdb",   CTL_FILTER_PURGE_KASPDB },
+	{ "+orphan",   CTL_FILTER_PURGE_ORPHAN },
 };
 
 const filter_desc_t null_filter = { 0 };
@@ -1130,7 +1131,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_GET,        "<zone> [<owner> [<type>]]",              "Get zone data within the transaction." },
 	{ CMD_ZONE_SET,        "<zone>  <owner> [<ttl>] <type> <rdata>", "Add zone record within the transaction." },
 	{ CMD_ZONE_UNSET,      "<zone>  <owner> [<type> [<rdata>]]",     "Remove zone data within the transaction." },
-	{ CMD_ZONE_PURGE,      "<zone>... [<filter>...]",                "Purge zone data, file, journal, and timers." },
+	{ CMD_ZONE_PURGE,      "<zone>... [<filter>...]",                "Purge zone data, zone file, journal, timers, and KASP data." },
 	{ CMD_ZONE_STATS,      "<zone> [<module>[.<counter>]]",          "Show zone statistics counter(s)."},
 	{ CMD_ZONE_STATUS,     "<zone> [<filter>...]",                   "Show the zone status." },
 	{ "",                  "",                                       "" },

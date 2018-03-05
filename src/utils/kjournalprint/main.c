@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -281,8 +281,9 @@ int list_zones(char *path)
 	ret = journal_db_list_zones(&jdb, &zones);
 	if (ret == KNOT_EOK) {
 		ptrnode_t *zn;
+		char buff[KNOT_DNAME_TXT_MAXLEN + 1];
 		WALK_LIST(zn, zones) {
-			printf("%s\n", (char *)zn->d);
+			printf("%s\n", knot_dname_to_str(buff, (knot_dname_t *)zn->d, sizeof(buff)));
 			free(zn->d);
 		}
 		ptrlist_free(&zones, NULL);

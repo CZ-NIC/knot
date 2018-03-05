@@ -34,6 +34,7 @@
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/string.h"
+#include "contrib/ucw/lists.h"
 #include "zscanner/scanner.h"
 #include "contrib/strtonum.h"
 
@@ -981,7 +982,128 @@ static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 			return zone_update_remove_node(zone->control_update, owner);
 		}
 	}
+}
 
+static bool zone_exists(const knot_dname_t *zone, void *data)
+{
+	assert(zone);
+	assert(data);
+
+	knot_zonedb_t *db = data;
+
+	return knot_zonedb_find(db, zone) != NULL;
+}
+
+static bool zone_names_distinct(const knot_dname_t *zone, void *data)
+{
+	assert(zone);
+	assert(data);
+
+	knot_dname_t *zone_to_purge = data;
+
+	return !knot_dname_is_equal(zone, zone_to_purge);
+}
+
+static int orphans_purge(ctl_args_t *args)
+{
+	assert(args->data[KNOT_CTL_IDX_FILTER] != NULL);
+	bool only_orphan = (strlen(args->data[KNOT_CTL_IDX_FILTER]) == 1);
+
+	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		// Purge KASP DB.
+		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
+			list_t zones;
+			init_list(&zones);
+			if (kasp_db_open(*kaspdb()) == KNOT_EOK &&
+			    kasp_db_list_zones(*kaspdb(), &zones) == KNOT_EOK) {
+				ptrnode_t *zn;
+				WALK_LIST(zn, zones) {
+					knot_dname_t *zone_name = (knot_dname_t *)zn->d;
+					if (!zone_exists(zone_name, args->server->zone_db)) {
+						(void)kasp_db_delete_all(*kaspdb(), zone_name);
+					}
+					knot_dname_free(zone_name, NULL);
+				}
+				ptrlist_free(&zones, NULL);
+			}
+		}
+
+		// Purge zone journals of unconfigured zones.
+		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
+			list_t zones;
+			init_list(&zones);
+			if (journal_db_list_zones(&args->server->journal_db, &zones) == KNOT_EOK) {
+				ptrnode_t *zn;
+				WALK_LIST(zn, zones) {
+					journal_t journal = { 0 };
+					knot_dname_t *zone_name = (knot_dname_t *)zn->d;
+					if (!zone_exists(zone_name, args->server->zone_db) &&
+					    journal_open(&journal, &args->server->journal_db,
+					                 zone_name) == KNOT_EOK) {
+						journal_scrape(&journal);
+						journal_close(&journal);
+					}
+					knot_dname_free(zone_name, NULL);
+				}
+				ptrlist_free(&zones, NULL);
+			}
+		}
+
+		// Purge timers of unconfigured zones.
+		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
+			(void)zone_timers_sweep(args->server->timers_db,
+			                        zone_exists, args->server->zone_db);
+		}
+	} else {
+		uint8_t buff[KNOT_DNAME_MAXLEN];
+		while (true) {
+			knot_dname_t *zone_name =
+				knot_dname_from_str(buff, args->data[KNOT_CTL_IDX_ZONE],
+				                    sizeof(buff));
+			if (zone_name == NULL) {
+				log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
+				                       "control, error (%s)",
+				                       knot_strerror(KNOT_EINVAL));
+				send_error(args, knot_strerror(KNOT_EINVAL));
+				return KNOT_EINVAL;
+			}
+			knot_dname_to_lower(zone_name);
+
+			if (!zone_exists(zone_name, args->server->zone_db)) {
+				// Purge KASP DB.
+				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
+					if (kasp_db_open(*kaspdb()) == KNOT_EOK) {
+						(void) kasp_db_delete_all(*kaspdb(), zone_name);
+					}
+				}
+
+				// Purge zone journal.
+				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
+					journal_t journal = { 0 };
+					if (journal_open(&journal, &args->server->journal_db,
+					                 zone_name) == KNOT_EOK) {
+						(void)journal_scrape(&journal);
+						journal_close(&journal);
+					}
+				}
+
+				// Purge zone timers.
+				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
+					(void)zone_timers_sweep(args->server->timers_db,
+					                        zone_names_distinct, zone_name);
+				}
+			}
+
+			// Get next zone name.
+			int ret = knot_ctl_receive(args->ctl, &args->type, &args->data);
+			if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
+				break;
+			}
+			ctl_log_data(&args->data);
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 static int zone_purge(zone_t *zone, ctl_args_t *args)
@@ -1211,7 +1333,11 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 	case CTL_ZONE_UNSET:
 		return zones_apply(args, zone_txn_unset);
 	case CTL_ZONE_PURGE:
-		return zones_apply(args, zone_purge);
+		if (MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ORPHAN)) {
+			return orphans_purge(args);
+		} else {
+			return zones_apply(args, zone_purge);
+		}
 	case CTL_ZONE_STATS:
 		return zones_apply(args, zone_stats);
 	default:
