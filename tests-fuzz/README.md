@@ -10,6 +10,7 @@
  2. `sudo make install`
 1. Compile Knot DNS with `afl-clang` compiler
  2. `CC=afl-clang-fast ./configure --disable-shared --disable-utilities --disable-documentation`
+ 2. (Add `--with-sanitizer=address` for [ASAN](http://clang.llvm.org/docs/AddressSanitizer.html))
  2. `make`
 1. Try running `knotd_stdio`
  2. `cd tests-fuzz`
@@ -20,13 +21,14 @@
 1. Prepare an initial corpus
  2. Checkout the dns-fuzzing repository `git clone https://github.com/CZ-NIC/dns-fuzzing in`
  2. (Add more custom test cases to `in/packet/`)
-1. Minimize the tested corpus with `afl-cmin` and simple packet parser
+1. Minimize the tested corpus with `afl-cmin` and simple packet parser (doesn't work with ASAN!)
   2. `afl-cmin -i in/packet/ -o min -- ./fuzz_packet`
 1. Run the fuzzer
   2. `AFL_PERSISTENT=1 afl-fuzz -m 1000M -i min -o out -- ./knotd_stdio -c knotd_wrap/knot_stdio.conf`
+  2. (Add `AFL_USE_ASAN=1` and use `-m none` if compiled with ASAN)
   2. (Consider parallel fuzzing, see `afl-fuzz -h`)
 
-NOTE: Sanitizer utilization is a bit problematical with AFL, see [notes_for_asan.txt]
+**NOTE:** Sanitizer utilization is a bit problematical with AFL, see [notes_for_asan.txt]
 (https://github.com/mirrorer/afl/blob/master/docs/notes_for_asan.txt).
 
 # Fuzzing with [libFuzzer](https://llvm.org/docs/LibFuzzer.html) (requires Clang 6.0+)
