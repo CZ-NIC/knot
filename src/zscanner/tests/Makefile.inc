@@ -21,8 +21,8 @@ edit = sed \
 	-e 's|@top_builddir[@]|$(abs_top_builddir)|g'
 
 tests/unittests:
-	$(edit) < $(top_srcdir)/src/zscanner/$@.in > $(top_builddir)/src/zscanner/$@
-	chmod +x $(top_builddir)/src/zscanner/$@
+	@$(edit) < $(top_srcdir)/src/zscanner/$@.in > $(top_builddir)/src/zscanner/$@
+	@chmod +x $(top_builddir)/src/zscanner/$@
 
 check-compile: $(check_SCRIPTS) $(check_PROGRAMS)
 
@@ -32,7 +32,7 @@ am__v_RUNTESTS_ = $(am__v_RUNTESTS_@AM_DEFAULT_V@)
 am__v_RUNTESTS_0 =
 am__v_RUNTESTS_1 = RET=$$?; if [ "$$RET" != "0" ]; then cat "$(top_builddir)/src/zscanner/tests/runtests.log"; exit $$RET; fi
 check-local: $(check_PROGRAMS)
-	$(top_builddir)/libtap/runtests \
+	@$(top_builddir)/libtap/runtests \
 	-s $(top_srcdir)/src/zscanner/tests \
 	-b $(top_builddir)/src/zscanner/tests \
 	-L $(top_builddir)/src/zscanner/tests/runtests.log \
