@@ -160,7 +160,7 @@ static int key_command(int argc, char *argv[], int optind)
 		}
 		if (argc < 3) {
 			for (int i = 0; i < kctx.zone->num_keys && ret == KNOT_EOK; i++) {
-				if (dnssec_key_get_flags(kctx.zone->keys[i].key) == DNSKEY_FLAGS_KSK) {
+				if (kctx.zone->keys[i].is_ksk) {
 					ret = generate_rr(zone_name, &kctx.zone->keys[i]);
 				}
 			}

@@ -116,6 +116,7 @@ class Key(object):
         self.len = int(key_len)
         self.ksk = bool(ksk)
         self.addtopolicy = addtopolicy
+        self.keyid = None
 
         if self.len < 0:
             try:
@@ -146,4 +147,15 @@ class Key(object):
         (exit_code, stdout, stderr) = self._keymgr(*command)
         if exit_code != 0:
             raise Failed("Can't generate key for zone '%s'. Stderr: %s" % (self.zone_name, stderr))
+        self.keyid = stdout.strip()
+
+    def change_role(self, ksk, zsk):
+        self.ksk = bool(ksk)
+        self.zsk = bool(zsk)
+        command = [
+            self.zone_name, "set", self.keyid, "ksk="+str(self.ksk), "zsk="+str(self.zsk)
+        ]
+        (exit_code, stdout, stderr) = self._keymgr(*command)
+        if exit_code != 0:
+            raise Failed("Can't change role of key for zone '%s'. Stderr: %s" % (self.zone_name, stderr))
 

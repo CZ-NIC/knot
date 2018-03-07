@@ -97,9 +97,8 @@ Imports a DNSSEC key from PEM file. The key parameters (same as for the generate
 specified (mainly algorithm, timers...) because they are not contained in the PEM format.
 .TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
-Changes a timing argument of an existing key to a new timestamp. \fIKey_spec\fP is either the
-key tag or a prefix of the key ID; \fIarguments\fP are like for \fBgenerate\fP, but just the
-timing\-related ones.
+Changes a timing argument (or ksk/zsk) of an existing key to a new value. \fIKey_spec\fP is either the
+key tag or a prefix of the key ID; \fIarguments\fP are like for \fBgenerate\fP, but just the related ones.
 .TP
 \fBds\fP [\fIkey_spec\fP]
 Generate DS record (all digest algorithms together) for specified key. \fIKey_spec\fP
@@ -128,29 +127,46 @@ Either an algorithm number (e.g. 14), or text name without dashes (e.g. ECDSAP38
 Key length in bits.
 .TP
 \fBksk\fP
-If set to \fByes\fP, the key will be used as Secure Entry Point.
+If set to \fByes\fP, the key will be used for signing DNSKEY rrset. The generated key will also
+have the Secure Entry Point flag set to 1.
 .TP
 \fBzsk\fP
-If set to \fByes\fP, the key will be used for zone signing. This flag can
+If set to \fByes\fP, the key will be used for signing zone (except DNSKEY rrset). This flag can
 be set concurrently with the \fBksk\fP flag.
 .TP
+\fBsep\fP
+Overrides the standard setting of the Secure Entry Point flag for the generated key.
+.UNINDENT
+.sp
+The following arguments are timestamps of key lifetime:
+.INDENT 0.0
+.TP
 \fBcreated\fP
-Timestamp of key creation.
+Key created.
+.TP
+\fBpre_active\fP
+Key started to be used for signing, not published (only for algorithm rollover).
 .TP
 \fBpublish\fP
-Timestamp for key to be published.
+Key published.
 .TP
 \fBready\fP
-Timestamp for key to be pre\-activated and submitted (in case of KSK).
+Key used for signing and submitted to the parent zone (only for KSK).
 .TP
 \fBactive\fP
-Timestamp for key to be activated.
+Key used for signing.
+.TP
+\fBpost_active\fP
+Key still used for singing, but another key is active (only for KSK).
+.TP
+\fBretire_active\fP
+Key no longer published, but still used for signing (only for algorithm rollover).
 .TP
 \fBretire\fP
-Timestamp for key to be de\-activated.
+Key still published, but no longer used for signing.
 .TP
 \fBremove\fP
-Timestamp for key to be deleted.
+Key deleted.
 .UNINDENT
 .SS Timestamps
 .INDENT 0.0

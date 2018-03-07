@@ -35,16 +35,32 @@ uint16_t dnskey_flags(bool is_ksk)
 	return is_ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK;
 }
 
-int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_kasp_key_t **key_ptr)
+void normalize_generate_flags(kdnssec_generate_flags_t *flags)
+{
+	if (!(*flags & DNSKEY_GENERATE_KSK) && !(*flags & DNSKEY_GENERATE_ZSK)) {
+		*flags |= DNSKEY_GENERATE_ZSK;
+	}
+	if (!(*flags & DNSKEY_GENERATE_SEP_SPEC)) {
+		if ((*flags & DNSKEY_GENERATE_KSK)) {
+			*flags |= DNSKEY_GENERATE_SEP_ON;
+		} else {
+			*flags &= ~DNSKEY_GENERATE_SEP_ON;
+		}
+	}
+}
+
+int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
+			 knot_kasp_key_t **key_ptr)
 {
 	assert(ctx);
 	assert(ctx->zone);
 	assert(ctx->keystore);
 	assert(ctx->policy);
-	assert(ksk || zsk);
+
+	normalize_generate_flags(&flags);
 
 	dnssec_key_algorithm_t algorithm = ctx->policy->algorithm;
-	unsigned size = ksk ? ctx->policy->ksk_size : ctx->policy->zsk_size;
+	unsigned size = (flags & DNSKEY_GENERATE_KSK) ? ctx->policy->ksk_size : ctx->policy->zsk_size;
 
 	// generate key in the keystore
 
@@ -70,7 +86,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_kasp_key_t
 		return r;
 	}
 
-	dnssec_key_set_flags(dnskey, dnskey_flags(ksk));
+	dnssec_key_set_flags(dnskey, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
 	dnssec_key_set_algorithm(dnskey, algorithm);
 
 	r = dnssec_key_import_keystore(dnskey, ctx->keystore, id);
@@ -89,8 +105,8 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, bool ksk, bool zsk, knot_kasp_key_t
 
 	key->id = id;
 	key->key = dnskey;
-	key->is_ksk = ksk;
-	key->is_zsk = zsk;
+	key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
+	key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
 	key->timing.created = ctx->now;
 
 	r = kasp_zone_append(ctx->zone, key);

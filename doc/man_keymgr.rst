@@ -74,9 +74,8 @@ Commands
   specified (mainly algorithm, timers...) because they are not contained in the PEM format.
 
 **set** *key_spec* [*arguments*...]
-  Changes a timing argument of an existing key to a new timestamp. *Key_spec* is either the
-  key tag or a prefix of the key ID; *arguments* are like for **generate**, but just the
-  timing-related ones.
+  Changes a timing argument (or ksk/zsk) of an existing key to a new value. *Key_spec* is either the
+  key tag or a prefix of the key ID; *arguments* are like for **generate**, but just the related ones.
 
 **ds** [*key_spec*]
   Generate DS record (all digest algorithms together) for specified key. *Key_spec*
@@ -105,29 +104,44 @@ Arguments are separated by space, each of them is in format 'name=value'.
   Key length in bits.
 
 **ksk**
-  If set to **yes**, the key will be used as Secure Entry Point.
+  If set to **yes**, the key will be used for signing DNSKEY rrset. The generated key will also
+  have the Secure Entry Point flag set to 1.
 
 **zsk**
-  If set to **yes**, the key will be used for zone signing. This flag can
+  If set to **yes**, the key will be used for signing zone (except DNSKEY rrset). This flag can
   be set concurrently with the **ksk** flag.
 
+**sep**
+  Overrides the standard setting of the Secure Entry Point flag for the generated key.
+
+The following arguments are timestamps of key lifetime:
+
 **created**
-  Timestamp of key creation.
+  Key created.
+
+**pre_active**
+  Key started to be used for signing, not published (only for algorithm rollover).
 
 **publish**
-  Timestamp for key to be published.
+  Key published.
 
 **ready**
-  Timestamp for key to be pre-activated and submitted (in case of KSK).
+  Key used for signing and submitted to the parent zone (only for KSK).
 
 **active**
-  Timestamp for key to be activated.
+  Key used for signing.
+
+**post_active**
+  Key still used for singing, but another key is active (only for KSK).
+
+**retire_active**
+  Key no longer published, but still used for signing (only for algorithm rollover).
 
 **retire**
-  Timestamp for key to be de-activated.
+  Key still published, but no longer used for signing.
 
 **remove**
-  Timestamp for key to be deleted.
+  Key deleted.
 
 Timestamps
 ..........

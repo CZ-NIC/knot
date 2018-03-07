@@ -38,6 +38,22 @@ static int key_params_check(key_params_t *params)
 	return KNOT_EOK;
 }
 
+/*! \brief Determine presence of SEP bit by trial-end-error using known keytag. */
+static int dnskey_guess_flags(dnssec_key_t *key, uint16_t keytag)
+{
+	dnssec_key_set_flags(key, DNSKEY_FLAGS_KSK);
+	if (dnssec_key_get_keytag(key) == keytag) {
+		return KNOT_EOK;
+	}
+
+	dnssec_key_set_flags(key, DNSKEY_FLAGS_ZSK);
+	if (dnssec_key_get_keytag(key) == keytag) {
+		return KNOT_EOK;
+	}
+
+	return KNOT_EMALF;
+}
+
 static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 			 dnssec_key_t **key_ptr)
 {
@@ -64,13 +80,16 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 
 	dnssec_key_set_algorithm(key, params->algorithm);
 
-	uint16_t flags = dnskey_flags(params->is_ksk);
-	dnssec_key_set_flags(key, flags);
-
 	ret = dnssec_key_set_pubkey(key, &params->public_key);
 	if (ret != KNOT_EOK) {
 		dnssec_key_free(key);
 		return knot_error_from_libdnssec(ret);
+	}
+
+	ret = dnskey_guess_flags(key, params->keytag);
+	if (ret != KNOT_EOK) {
+		dnssec_key_free(key);
+		return ret;
 	}
 
 	*key_ptr = key;
@@ -113,8 +132,7 @@ static void kaspkey2params(knot_kasp_key_t *key, key_params_t *params)
 	params->keytag = dnssec_key_get_keytag(key->key);
 	dnssec_key_get_pubkey(key->key, &params->public_key);
 	params->algorithm = dnssec_key_get_algorithm(key->key);
-	params->is_ksk = dnssec_key_get_flags(key->key) == DNSKEY_FLAGS_KSK;
-	assert(params->is_ksk == key->is_ksk);
+	params->is_ksk = key->is_ksk;
 	params->is_csk = (key->is_ksk && key->is_zsk);
 	params->timing = key->timing;
 	params->is_pub_only = key->is_pub_only;
