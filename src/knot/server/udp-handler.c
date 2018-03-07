@@ -105,7 +105,7 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 
 /*! \brief Pointer to selected UDP master implementation. */
 static void* (*_udp_init)(void) = 0;
-static int (*_udp_deinit)(void *) = 0;
+static void (*_udp_deinit)(void *) = 0;
 static int (*_udp_recv)(int, void *) = 0;
 static int (*_udp_handle)(udp_context_t *, void *) = 0;
 static int (*_udp_send)(void *) = 0;
@@ -175,11 +175,10 @@ static void *udp_recvfrom_init(void)
 	return rq;
 }
 
-static int udp_recvfrom_deinit(void *d)
+static void udp_recvfrom_deinit(void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 	free(rq);
-	return 0;
 }
 
 static int udp_recvfrom_recv(int fd, void *d)
@@ -276,14 +275,12 @@ static void *udp_recvmmsg_init(void)
 	return rq;
 }
 
-static int udp_recvmmsg_deinit(void *d)
+static void udp_recvmmsg_deinit(void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
-	if (rq) {
+	if (rq != NULL) {
 		mp_delete(rq->mm.ctx);
 	}
-
-	return 0;
 }
 
 static int udp_recvmmsg_recv(int fd, void *d)
