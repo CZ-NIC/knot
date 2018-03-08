@@ -27,6 +27,31 @@ check_PROGRAMS = \
 	contrib/test_wire_ctx
 
 check_PROGRAMS += \
+	knot/test_acl			\
+	knot/test_changeset		\
+	knot/test_conf			\
+	knot/test_conf_tools		\
+	knot/test_confdb		\
+	knot/test_confio		\
+	knot/test_dthreads		\
+	knot/test_fdset			\
+	knot/test_journal		\
+	knot/test_kasp_db		\
+	knot/test_node			\
+	knot/test_process_query		\
+	knot/test_query_module		\
+	knot/test_requestor		\
+	knot/test_server		\
+	knot/test_worker_pool		\
+	knot/test_worker_queue		\
+	knot/test_zone-tree		\
+	knot/test_zone-update		\
+	knot/test_zone_events		\
+	knot/test_zone_serial		\
+	knot/test_zone_timers		\
+	knot/test_zonedb
+
+check_PROGRAMS += \
 	libknot/test_control		\
 	libknot/test_cookies		\
 	libknot/test_db			\
@@ -50,31 +75,6 @@ check_PROGRAMS += \
 check_PROGRAMS += \
 	utils/test_cert			\
 	utils/test_lookup
-
-check_PROGRAMS += \
-	test_acl			\
-	test_changeset			\
-	test_conf			\
-	test_conf_tools			\
-	test_confdb			\
-	test_confio			\
-	test_dthreads			\
-	test_fdset			\
-	test_journal			\
-	test_kasp_db			\
-	test_node			\
-	test_process_query		\
-	test_query_module		\
-	test_requestor			\
-	test_server			\
-	test_worker_pool		\
-	test_worker_queue		\
-	test_zone-tree			\
-	test_zone-update		\
-	test_zone_events		\
-	test_zone_serial		\
-	test_zone_timers		\
-	test_zonedb
 
 if STATIC_MODULE_onlinesign
 check_PROGRAMS += \
@@ -117,7 +117,7 @@ utils_test_cert_LDADD = \
 
 CLEANFILES = runtests.log
 
-include $(srcdir)/semantic_check_data/Makefile.inc
+include $(srcdir)/knot/semantic_check_data/Makefile.inc
 
 check-compile: $(check_PROGRAMS) $(check_SCRIPTS)
 
@@ -132,8 +132,8 @@ check-local: $(check_PROGRAMS) $(check_SCRIPTS)
 					$(check_PROGRAMS) $(check_SCRIPTS); \
 	$(AM_V_RUNTESTS)
 
-test_acl_SOURCES = test_acl.c test_conf.h
-test_conf_SOURCES = test_conf.c test_conf.h
-test_confdb_SOURCES = test_confdb.c test_conf.h
-test_confio_SOURCES = test_confio.c test_conf.h
-test_process_query_SOURCES = test_process_query.c test_server.h test_conf.h
+knot_test_acl_SOURCES = knot/test_acl.c knot/test_conf.h
+knot_test_conf_SOURCES = knot/test_conf.c knot/test_conf.h
+knot_test_confdb_SOURCES = knot/test_confdb.c knot/test_conf.h
+knot_test_confio_SOURCES = knot/test_confio.c knot/test_conf.h
+knot_test_process_query_SOURCES = knot/test_process_query.c knot/test_server.h knot/test_conf.h
