@@ -589,7 +589,6 @@ AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/contrib/dnstap/Makefile
                  src/dnssec/Makefile
-                 src/dnssec/tests/Makefile
                  src/knot/modules/static_modules.h
                  src/zscanner/Makefile
                  ])

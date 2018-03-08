@@ -11,6 +11,6 @@ knot/test_semantic_check: $(top_srcdir)/tests/knot/test_semantic_check.in
 	@$(edit) < $(top_srcdir)/tests/knot/test_semantic_check.in > $(top_builddir)/tests/knot/test_semantic_check
 	@chmod +x $(top_builddir)/tests/knot/test_semantic_check
 
-EXTRA_DIST = \
+EXTRA_DIST += \
 	knot/test_semantic_check.in \
 	knot/semantic_check_data

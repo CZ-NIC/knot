@@ -2,14 +2,19 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-I$(top_srcdir)/libtap \
 	-I$(top_srcdir)/src \
-	-I$(top_srcdir)/src/dnssec/lib
+	-I$(top_srcdir)/src/dnssec/lib \
+	-I$(top_srcdir)/src/dnssec/shared \
+	-I$(top_srcdir)/src/dnssec/lib/dnssec \
+	$(gnutls_CFLAGS)
 
 LDADD = \
 	$(top_builddir)/libtap/libtap.la \
+	$(top_builddir)/src/dnssec/libdnssec.la \
 	$(top_builddir)/src/libknot.la \
 	$(top_builddir)/src/libknotd.la \
-	$(top_builddir)/src/libcontrib.la \
-	$(libcrypto_LIBS)
+	$(top_builddir)/src/libcontrib.la
+
+EXTRA_DIST = dnssec/sample_keys.h
 
 check_PROGRAMS = \
 	contrib/test_base32hex		\
@@ -25,6 +30,27 @@ check_PROGRAMS = \
 	contrib/test_strtonum		\
 	contrib/test_time		\
 	contrib/test_wire_ctx
+
+check_PROGRAMS += \
+	dnssec/test_binary		\
+	dnssec/test_crypto		\
+	dnssec/test_key			\
+	dnssec/test_key_algorithm	\
+	dnssec/test_key_ds		\
+	dnssec/test_keyid		\
+	dnssec/test_keystore_pkcs11	\
+	dnssec/test_keystore_pkcs8	\
+	dnssec/test_keystore_pkcs8_dir	\
+	dnssec/test_keytag		\
+	dnssec/test_list		\
+	dnssec/test_nsec_bitmap		\
+	dnssec/test_nsec_hash		\
+	dnssec/test_random		\
+	dnssec/test_sign		\
+	dnssec/test_sign_der		\
+	dnssec/test_shared_bignum	\
+	dnssec/test_shared_dname	\
+	dnssec/test_tsig
 
 check_PROGRAMS += \
 	knot/test_acl			\
@@ -96,6 +122,10 @@ check_PROGRAMS += \
 endif
 endif
 
+dnssec_keystore_pkcs11_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-DLIBDIR='"$(libdir)"'
+
 utils_test_lookup_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
 	$(libedit_CFLAGS)
@@ -107,8 +137,7 @@ utils_test_lookup_LDADD = \
 
 utils_test_cert_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
-	$(libedit_CFLAGS) \
-	$(gnutls_CFLAGS)
+	$(libedit_CFLAGS)
 
 utils_test_cert_LDADD = \
 	$(top_builddir)/libtap/libtap.la \

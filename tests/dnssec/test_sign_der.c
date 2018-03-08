@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 #include "binary.h"
 #include "error.h"
-#include "sign/der.h"
+#include "sign/der.c"
 
 static int binary_eq(const dnssec_binary_t *a, const dnssec_binary_t *b)
 {
