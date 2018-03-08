@@ -20,6 +20,7 @@ check_PROGRAMS = \
 nodist_knotd_stdio_SOURCES = knotd_wrap/main.c
 
 knotd_stdio_SOURCES = \
+	knotd_wrap/afl-loop.h		\
 	knotd_wrap/server.c		\
 	knotd_wrap/tcp-handler.c	\
 	knotd_wrap/udp-handler.c
@@ -31,7 +32,7 @@ knotd_stdio_LDADD = $(top_builddir)/src/libknotd.la $(top_builddir)/src/libcontr
 BUILT_SOURCES = knotd_wrap/main.c
 CLEANFILES = knotd_wrap/main.c
 knotd_wrap/main.c: $(top_builddir)/src/utils/knotd/main.c
-	@echo '#include "afl-loop.h"' > $@
+	@echo '#include "knotd_wrap/afl-loop.h"' > $@
 	@$(SED) -e 's/for (;;)/while (__AFL_LOOP(10000))/' $(top_srcdir)/src/utils/knotd/main.c >> $@
 
 # Simple function wrappers (AFL, libFuzzer, tests)
