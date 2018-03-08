@@ -1116,6 +1116,8 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	// Purge the zone timers.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
 		memset(&zone->timers, 0, sizeof(zone->timers));
+		(void)zone_timers_sweep(args->server->timers_db,
+		                        zone_names_distinct, zone->name);
 	}
 
 	// Expire the zone.
