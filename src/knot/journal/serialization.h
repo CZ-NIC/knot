@@ -20,6 +20,43 @@
 #include "libknot/rrset.h"
 #include "knot/updates/changesets.h"
 
+typedef struct serialize_ctx serialize_ctx_t;
+
+/*!
+ * \brief Init serialization context.
+ *
+ * \param ctx Context.
+ * \param ch  Changeset to be serialized.
+ */
+void serialize_init(serialize_ctx_t **ctx, const changeset_t *ch);
+
+/*!
+ * \brief Pre-check and space computation before serializing a chunk.
+ *
+ * \note This MUST be called before each serialize_chunk() !
+ *
+ * \param ctx      Serializing context.
+ * \param max_size Maximum size of next chunk.
+ * \param realsize Output: real exact size of next chunk.
+ */
+void serialize_prepare(serialize_ctx_t *ctx, size_t max_size, size_t *realsize);
+
+/*!
+ * \brief Perform one step of serializiation: fill one chunk.
+ *
+ * \param ctx        Serializing context.
+ * \param chunk      Pointer on allocated memory to be serialized into.
+ * \param chunk_size Its size. It MUST be the same as returned from serialize_prepare().
+ */
+void serialize_chunk(serialize_ctx_t *ctx, uint8_t *chunk, size_t chunk_size);
+
+/*! \brief Tells if there remains something of the changeset
+ *         to be serialized into next chunk(s) yet. */
+bool serialize_unfinished(serialize_ctx_t *ctx);
+
+/*! \brief Free serialization context. */
+void serialize_deinit(serialize_ctx_t **ctx);
+
 /*!
  * \brief Returns size of changeset in serialized form.
  *
@@ -28,22 +65,6 @@
  * \return Size of the changeset.
  */
 size_t changeset_serialized_size(const changeset_t *ch);
-
-/*!
- * \brief Serializes given changeset into chunked area.
- *
- * \param[in]  ch                 The changeset.
- * \param[in]  dst_chunks         The chunks to serialize into.
- * \param[in]  chunk_size         Maximum size of each chunk.
- * \param[in]  chunks_count       Maximum number of used chunks.
- * \param[out] chunks_real_sizes  Real size of each chunk after serialization, or zeros for unused chunks.
- * \param[out] chunks_real_count  Real # of chunks after serialization. Can be wrong if error returned!
- *
- * \retval KNOT_E*
- */
-int changeset_serialize(const changeset_t *ch, uint8_t *dst_chunks[],
-                        size_t chunk_size, size_t chunks_count, size_t *chunks_real_sizes,
-                        size_t *chunks_real_count);
 
 /*!
  * \brief Deserializes chunked area into ch
