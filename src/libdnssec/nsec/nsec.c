@@ -42,7 +42,7 @@ void dnssec_nsec3_params_free(dnssec_nsec3_params_t *params)
  */
 _public_
 int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
-				   const dnssec_binary_t *rdata)
+                                   const dnssec_binary_t *rdata)
 {
 	if (!params || !rdata || !rdata->data) {
 		return DNSSEC_EINVAL;
@@ -76,4 +76,40 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 	*params = new_params;
 
 	return DNSSEC_EOK;
+}
+
+_public_
+bool dnssec_nsec_bitmap_contains(const uint8_t *bitmap, uint16_t size, uint16_t type)
+{
+	if (!bitmap || size == 0) {
+		return false;
+	}
+
+	const uint8_t type_hi = (type >> 8); // Which window block contains type.
+	const uint8_t type_lo = (type & 0xff);
+	const uint8_t bitmap_idx = (type_lo >> 3); // Which byte in the window block contains type.
+	const uint8_t bit_mask = 1 << (7 - (type_lo & 0x07)); // Which bit in the byte represents type.
+
+	size_t bitmap_pos = 0;
+	while (bitmap_pos + 3 <= size) {
+		uint8_t block_idx = bitmap[bitmap_pos++]; // Skip window block No.
+		uint8_t block_size = bitmap[bitmap_pos++]; // Skip window block size.
+
+		// Size checks.
+		if (block_size == 0 || bitmap_pos + block_size < size) {
+			return false;
+		}
+
+		// Check whether we found the correct window block.
+		if (block_idx == type_hi) {
+			if (bitmap_idx < block_size) {
+				// Check if the bit for type is set.
+				return bitmap[bitmap_pos + bitmap_idx] & bit_mask;
+			}
+		} else {
+			bitmap_pos += block_size;
+		}
+	}
+
+	return false;
 }

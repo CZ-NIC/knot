@@ -101,6 +101,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <libdnssec/binary.h>
 
@@ -137,6 +138,17 @@ void dnssec_nsec3_params_free(dnssec_nsec3_params_t *params);
  */
 int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 				   const dnssec_binary_t *rdata);
+
+/*!
+ * Check whether a given NSEC bitmap contains a given RR type.
+ *
+ * \param bitmap  Bitmap of an NSEC record.
+ * \param size    Size of the bitmap.
+ * \param type    RR type to check for.
+ *
+ * \return true if bitmap contains type, false otherwise.
+ */
+bool dnssec_nsec_bitmap_contains(const uint8_t *bitmap, uint16_t size, uint16_t type);
 
 /*!
  * Compute NSEC3 hash for given data.
