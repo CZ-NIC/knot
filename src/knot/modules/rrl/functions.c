@@ -19,6 +19,7 @@
 
 #include "knot/modules/rrl/functions.h"
 #include "contrib/sockaddr.h"
+#include "contrib/time.h"
 #include "dnssec/error.h"
 #include "dnssec/random.h"
 
@@ -444,7 +445,7 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 	/* Calculate hash and fetch */
 	int ret = KNOT_EOK;
 	int lock = -1;
-	uint32_t now = time(NULL);
+	uint32_t now = time_now().tv_sec;
 	rrl_item_t *b = rrl_hash(rrl, a, req, zone, now, &lock);
 	if (!b) {
 		if (lock > -1) {
