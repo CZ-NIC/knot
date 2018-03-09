@@ -35,8 +35,7 @@
 
 1. Ensure [Clang](https://clang.llvm.org) with `-fsanitize=fuzzer` support (e.g. [LLVM](https://apt.llvm.org))
 1. Configure with
- 2. `./configure --with-fuzzer --disable-shared --disable-daemon --disable-utilities
-    --disable-documentation --disable-modules`
+ 2. `./configure --with-fuzzer --disable-shared --disable-documentation`
  2. (You should also add `--with-sanitizer=`
     `address` for [ASAN](http://clang.llvm.org/docs/AddressSanitizer.html) or
     `undefined` for [UBSAN](http://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html))
@@ -54,7 +53,7 @@
  2. `./fuzz_zscanner -merge=1 fuzz_zscanner.in <DIR_WITH_NEW_ZSCANNER_TEST_CASES>`
 1. Run the fuzzer
  2. (Set proper symbolizer if necessary
-    `export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer-6.0` for ASAN or
-    `export UBSAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer-6.0` for UBSAN)
+    ``export ASAN_SYMBOLIZER_PATH=$(readlink -f `which llvm-symbolizer-6.0`)`` for ASAN or
+    ``export UBSAN_SYMBOLIZER_PATH=$(readlink -f `which llvm-symbolizer-6.0`)`` for UBSAN)
  2. `./fuzz_packet fuzz_packet.in` or `./fuzz_zscanner fuzz_zscanner.in`
  2. (Add parallel fuzzing `-jobs=<CPUS>`
