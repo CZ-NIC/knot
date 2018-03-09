@@ -23,7 +23,10 @@ stages:
     - docker push "$IMAGE_TAG"
   tags:
     - dind
-    
+  only:
+    - triggers
+    - schedules
+
 docker:knot-dns:debian:
   <<: *image
   variables:
@@ -78,6 +81,9 @@ docker:knot-dns:fedora:
     - docker
     - linux
     - amd64
+  except:
+    - schedules
+
 
 .centos_latest: &centos_latest
   image: "$CI_REGISTRY/knot/knot-dns/centos:latest"
@@ -85,13 +91,17 @@ docker:knot-dns:fedora:
     - docker
     - linux
     - amd64
-    
+  except:
+    - schedules
+
 .debian_stable: &debian_stable
   image: "$CI_REGISTRY/knot/knot-dns/debian:latest"
   tags:
     - docker
     - linux
     - amd64
+  except:
+    - schedules
 
 .debian_unstable: &debian_unstable
   image: "registry.labs.nic.cz/knot/knot-dns/debian:unstable"
@@ -99,6 +109,8 @@ docker:knot-dns:fedora:
     - docker
     - linux
     - amd64
+  except:
+    - schedules
 
 .ubuntu_latest: &ubuntu_latest
   image: "$CI_REGISTRY/knot/knot-dns/ubuntu:latest"
@@ -106,6 +118,8 @@ docker:knot-dns:fedora:
     - docker
     - linux
     - amd64
+  except:
+    - schedules
 
 .build: &build_job
   stage: build
@@ -116,11 +130,15 @@ docker:knot-dns:fedora:
   artifacts:
     untracked: true
     expire_in: '1 hour'
-    
+  except:
+    - schedules
+
 .test: &test_job
   stage: test
   script:
     - make -k check V=1
+  except:
+    - schedules
 
 build:fedora:amd64:
   <<: *fedora_latest
@@ -141,7 +159,7 @@ test:centos:amd64:
   <<: *test_job
   dependencies:
     - build:centos:amd64
-    
+
 build:ubuntu:amd64:
   <<: *ubuntu_latest
   <<: *build_job
