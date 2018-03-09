@@ -428,8 +428,7 @@ static void txn_reuse(txn_t **txn, txn_t *to_reuse, bool write_allowed)
 {
 	if (to_reuse == NULL) {
 		txn_begin(*txn, write_allowed);
-	}
-	else {
+	} else {
 		*txn = to_reuse;
 	}
 }
@@ -481,8 +480,7 @@ static void md_get_common_last_inserter_zone(txn_t *txn, knot_dname_t **res)
 	txn_key_str(txn, NULL, MDKEY_GLOBAL_LAST_INSERTER_ZONE);
 	if (txn_find(txn)) {
 		*res = knot_dname_copy(txn->val.data, NULL);
-	}
-	else {
+	} else {
 		*res = NULL;
 	}
 }
@@ -615,8 +613,7 @@ static int initial_md_check(journal_t *j, bool *dirty_present)
 		txn->val.data = JOURNAL_VERSION;
 		txn_insert(txn);
 		something_updated = true;
-	}
-	else {
+	} else {
 		char * jver = txn->val.data;
 		if (first_digit(jver) != first_digit(JOURNAL_VERSION)) {
 			txn_abort(txn);
@@ -632,8 +629,7 @@ static int initial_md_check(journal_t *j, bool *dirty_present)
 
 	if (something_updated) {
 		txn_commit(txn);
-	}
-	else { // abort to gain up speed when opening a lot of zones
+	} else { // abort to gain up speed when opening a lot of zones
 		txn_abort(txn);
 	}
 
@@ -751,8 +747,7 @@ static int iterate(journal_t *j, txn_t *_txn, iteration_cb_t cb, int method,
 
 			ctx.serial = ctx.serial_to;
 			ctx.chunk_index = 0;
-		}
-		else {
+		} else {
 			ctx.chunk_index++;
 		}
 
@@ -1009,8 +1004,7 @@ static int delete_merged_changeset(journal_t *j, txn_t *t)
 	txn_check_ret(txn);
 	if (!md_flag(txn, MERGED_SERIAL_VALID)) {
 		txn->ret = KNOT_ENOENT;
-	}
-	else {
+	} else {
 		delete_upto(j, txn, txn->shadow_md.merged_serial, txn->shadow_md.merged_serial);
 	}
 	unreuse_txn(txn, t);
@@ -1454,8 +1448,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 			if (is_this_bootstrap) {
 				txn_key_str_u32(txn, j->zone, KEY_BOOTSTRAP_CHANGESET, chunks);
-			}
-			else {
+			} else {
 				txn_key_2u32(txn, j->zone, serial, chunks);
 			}
 
@@ -1493,8 +1486,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 				txn->shadow_md.last_serial_to = serial_to;
 			}
 			txn->shadow_md.flags |= SERIAL_TO_VALID;
-		}
-		else {
+		} else {
 			if (!md_flag(txn, SERIAL_TO_VALID) || md_flag(txn, FIRST_SERIAL_INVALID)) {
 				txn->shadow_md.first_serial = serial;
 			}
@@ -2017,13 +2009,11 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 		ret = load_bootstrap_changeset(j, txn, &ch);
 		if (ret != KNOT_EOK) {
 			jch_warn("can't read bootstrap changeset (%s)", knot_strerror(ret));
-		}
-		else {
+		} else {
 			changeset_free(ch);
 		}
 		goto check_merged;
-	}
-	else {
+	} else {
 		ret = load_bootstrap_changeset(j, txn, &ch);
 		switch (ret) {
 		case KNOT_EOK:
@@ -2058,8 +2048,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 		if (ret != KNOT_EOK) {
 			jch_warn("can't read last flushed changeset %u (%s)",
 			         txn->shadow_md.last_flushed, knot_strerror(ret));
-		}
-		else {
+		} else {
 			first_unflushed = knot_soa_serial(&ch->soa_to->rrs);
 		}
 	}
@@ -2074,8 +2063,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 	ret = load_one(j, txn, sto, &ch);
 	if (ret != KNOT_EOK) {
 		jch_warn("can't read second changeset %u (%s)", sto, knot_strerror(ret));
-	}
-	else {
+	} else {
 		sfrom = knot_soa_serial(&ch->soa_from->rrs);
 		if (!serial_equal(sfrom, sto)) {
 			jch_warn("second changeset's serial 'from' %u is not ok", sfrom);
@@ -2121,8 +2109,7 @@ check_merged:
 		ret = load_merged_changeset(j, txn, &ch, NULL);
 		if (ret != KNOT_EOK) {
 			jch_warn("can't read merged changeset (%s)", knot_strerror(ret));
-		}
-		else {
+		} else {
 			sfrom = knot_soa_serial(&ch->soa_from->rrs);
 			sto = knot_soa_serial(&ch->soa_to->rrs);
 			jch_info("merged changeset %u -> %u (size %zu)", sfrom, sto,
