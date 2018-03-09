@@ -225,11 +225,18 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 	if (debugmode) {
 		if ((alternative_from && serial_from.valid) ||
 		    kserial_equal(serial_from, last_flushed)) {
-			printf("---- Additional history ----\n");
 			init_list(&db);
 
 			ret = journal_load_changesets(j, &db, serial_from.serial);
-			if (ret != KNOT_EOK) {
+			switch (ret) {
+			case KNOT_EOK:
+				printf("---- Additional history ----\n");
+				break;
+			case KNOT_ENOENT:
+				printf("---- No additional history ----\n");
+				ret = KNOT_EOK;
+				break;
+			default:
 				goto pj_finally;
 			}
 			WALK_LIST(chs, db) {
