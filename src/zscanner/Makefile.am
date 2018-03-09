@@ -44,5 +44,3 @@ nodist_libzscanner_la_SOURCES =		\
 libzscanner_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libzscanner_la_LDFLAGS =		\
 	$(libzscanner_VERSION_INFO)
-
-include $(srcdir)/tests/Makefile.inc

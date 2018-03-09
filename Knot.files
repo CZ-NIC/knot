@@ -1,11 +1,3 @@
-libtap/runtests.c
-libtap/tap/basic.c
-libtap/tap/basic.h
-libtap/tap/files.c
-libtap/tap/files.h
-libtap/tap/float.c
-libtap/tap/float.h
-libtap/tap/macros.h
 src/contrib/asan.h
 src/contrib/base32hex.c
 src/contrib/base32hex.h
@@ -430,11 +422,6 @@ src/zscanner/functions.h
 src/zscanner/scanner.h
 src/zscanner/scanner.rl
 src/zscanner/scanner_body.rl
-src/zscanner/tests/processing.c
-src/zscanner/tests/processing.h
-src/zscanner/tests/tests.c
-src/zscanner/tests/tests.h
-src/zscanner/tests/zscanner-tool.c
 tests-fuzz/fuzz_packet.c
 tests-fuzz/fuzz_zscanner.c
 tests-fuzz/knotd_wrap/afl-loop.h
@@ -442,6 +429,14 @@ tests-fuzz/knotd_wrap/server.c
 tests-fuzz/knotd_wrap/tcp-handler.c
 tests-fuzz/knotd_wrap/udp-handler.c
 tests-fuzz/main.c
+tests/_libtap/runtests.c
+tests/_libtap/tap/basic.c
+tests/_libtap/tap/basic.h
+tests/_libtap/tap/files.c
+tests/_libtap/tap/files.h
+tests/_libtap/tap/float.c
+tests/_libtap/tap/float.h
+tests/_libtap/tap/macros.h
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
 tests/contrib/test_dynarray.c
@@ -523,3 +518,6 @@ tests/modules/test_onlinesign.c
 tests/modules/test_rrl.c
 tests/utils/test_cert.c
 tests/utils/test_lookup.c
+tests/zscanner/processing.c
+tests/zscanner/processing.h
+tests/zscanner/zscanner-tool.c

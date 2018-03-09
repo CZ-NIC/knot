@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = libtap src tests tests-fuzz python samples doc
+SUBDIRS = src tests tests-fuzz python samples doc
 
 .PHONY: singlehtml install-singlehtml
 singlehtml install-singlehtml:
@@ -7,8 +7,7 @@ singlehtml install-singlehtml:
 
 .PHONY: check-compile
 check-compile:
-	$(MAKE) $(AM_MAKEFLAGS) -C libtap $@
-	$(MAKE) $(AM_MAKEFLAGS) -C src $@
+	$(MAKE) $(AM_MAKEFLAGS) -C tests/_libtap $@
 	$(MAKE) $(AM_MAKEFLAGS) -C tests $@
 	$(MAKE) $(AM_MAKEFLAGS) -C tests-fuzz $@
 

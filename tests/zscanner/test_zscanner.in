@@ -1,9 +1,9 @@
 #!/bin/sh
 
-SOURCE=@top_srcdir@/src/zscanner/tests
-BUILD=@top_builddir@/src/zscanner/tests
+SOURCE=@top_srcdir@/tests/zscanner
+BUILD=@top_builddir@/tests/zscanner
 
-. @top_srcdir@/libtap/tap/libtap.sh
+. @top_srcdir@/tests/_libtap/tap/libtap.sh
 
 cd "$BUILD"
 
@@ -25,7 +25,6 @@ for case in $(cat "$SOURCE"/TESTS); do
     fileout="$TMPDIR"/"$case".out
 
     sed -e "s|@TMPDIR@|$TMPDIR|;" < "$casein" > "$filein"
-    diag $(ls "$filein")
 
     "$ZSCANNER_TOOL" -m 2 . "$filein" > "$fileout"
 

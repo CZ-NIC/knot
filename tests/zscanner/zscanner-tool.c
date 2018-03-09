@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,9 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "tests/processing.h"
-#include "tests/tests.h"
-#include "scanner.h"
+#include "zscanner/processing.h"
+#include "zscanner/scanner.h"
 
 #define DEFAULT_MODE	1
 #define DEFAULT_CLASS	1
@@ -31,7 +30,7 @@
 static void *timestamp_worker(void *data)
 {
 	int *ret = (int *)data;
-	*ret = test__date_to_timestamp();
+	*ret = test_date_to_timestamp();
 	return NULL;
 }
 

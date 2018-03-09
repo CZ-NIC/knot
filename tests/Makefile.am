@@ -1,6 +1,9 @@
+ACLOCAL_AMFLAGS = -I m4
+SUBDIRS = _libtap .
+
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
-	-I$(top_srcdir)/libtap \
+	-I$(top_srcdir)/tests/_libtap \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/dnssec/lib \
 	-I$(top_srcdir)/src/dnssec/shared \
@@ -8,13 +11,20 @@ AM_CPPFLAGS = \
 	$(gnutls_CFLAGS)
 
 LDADD = \
-	$(top_builddir)/libtap/libtap.la \
+	$(top_builddir)/tests/_libtap/libtap.la \
 	$(top_builddir)/src/dnssec/libdnssec.la \
 	$(top_builddir)/src/libknot.la \
 	$(top_builddir)/src/libknotd.la \
-	$(top_builddir)/src/libcontrib.la
+	$(top_builddir)/src/libcontrib.la \
+	$(top_builddir)/src/zscanner/libzscanner.la
 
-EXTRA_DIST = dnssec/sample_keys.h
+EXTRA_DIST = \
+	dnssec/sample_keys.h		\
+	knot/semantic_check_data	\
+	knot/test_semantic_check.in	\
+	zscanner/data			\
+	zscanner/test_zscanner.in	\
+	zscanner/TESTS
 
 check_PROGRAMS = \
 	contrib/test_base32hex		\
@@ -122,7 +132,7 @@ check_PROGRAMS += \
 endif
 endif
 
-dnssec_keystore_pkcs11_CPPFLAGS = \
+dnssec_test_keystore_pkcs11_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
 	-DLIBDIR='"$(libdir)"'
 
@@ -131,7 +141,7 @@ utils_test_lookup_CPPFLAGS = \
 	$(libedit_CFLAGS)
 
 utils_test_lookup_LDADD = \
-	$(top_builddir)/libtap/libtap.la \
+	$(top_builddir)/tests/_libtap/libtap.la \
 	$(top_builddir)/src/libknotus.la \
 	$(libedit_LIBS)
 
@@ -140,13 +150,35 @@ utils_test_cert_CPPFLAGS = \
 	$(libedit_CFLAGS)
 
 utils_test_cert_LDADD = \
-	$(top_builddir)/libtap/libtap.la \
+	$(top_builddir)/tests/_libtap/libtap.la \
 	$(top_builddir)/src/libknotus.la \
 	$(libedit_LIBS)
 
-CLEANFILES = runtests.log
+EXTRA_PROGRAMS = \
+	zscanner/zscanner-tool
 
-include $(srcdir)/knot/semantic_check_data/Makefile.inc
+zscanner_zscanner_tool_SOURCES =	\
+	zscanner/zscanner-tool.c	\
+	zscanner/processing.h		\
+	zscanner/processing.c
+
+check_SCRIPTS = \
+	knot/test_semantic_check	\
+	zscanner/test_zscanner
+
+edit = $(SED) \
+	-e 's|@top_srcdir[@]|$(abs_top_srcdir)|g' \
+	-e 's|@top_builddir[@]|$(abs_top_builddir)|g'
+
+knot/test_semantic_check:
+	@$(edit) < $(top_srcdir)/tests/$@.in > $(top_builddir)/tests/$@
+	@chmod +x $(top_builddir)/tests/$@
+
+zscanner/test_zscanner: zscanner/zscanner-tool
+	@$(edit) < $(top_srcdir)/tests/$@.in > $(top_builddir)/tests/$@
+	@chmod +x $(top_builddir)/tests/$@
+
+CLEANFILES = $(check_SCRIPTS) $(EXTRA_PROGRAMS) runtests.log
 
 check-compile: $(check_PROGRAMS) $(check_SCRIPTS)
 
@@ -155,10 +187,8 @@ am__v_RUNTESTS_ = $(am__v_RUNTESTS_@AM_DEFAULT_V@)
 am__v_RUNTESTS_0 =
 am__v_RUNTESTS_1 = RET=$$?; if [ "$$RET" != "0" ]; then cat "$(builddir)/runtests.log"; exit $$RET; fi
 check-local: $(check_PROGRAMS) $(check_SCRIPTS)
-	@$(top_builddir)/libtap/runtests -s $(srcdir) \
-					-b $(builddir) \
-					-L $(builddir)/runtests.log \
-					$(check_PROGRAMS) $(check_SCRIPTS); \
+	@$(top_builddir)/tests/_libtap/runtests -s $(srcdir) -b $(builddir) \
+	 -L $(builddir)/runtests.log $(check_PROGRAMS) $(check_SCRIPTS); \
 	$(AM_V_RUNTESTS)
 
 knot_test_acl_SOURCES = knot/test_acl.c knot/test_conf.h

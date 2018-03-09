@@ -87,3 +87,7 @@
 
 /utils/test_cert
 /utils/test_lookup
+
+/zscanner/tmp
+/zscanner/test_zscanner
+/zscanner/zscanner-tool

@@ -3,7 +3,7 @@
 KZONECHECK="@top_builddir@/src/kzonecheck"
 DATA="@top_srcdir@/tests/knot/semantic_check_data"
 
-. "@top_srcdir@/libtap/tap/libtap.sh"
+. "@top_srcdir@/tests/_libtap/tap/libtap.sh"
 
 TMPDIR=$(test_tmpdir)
 LOG="$TMPDIR/log"

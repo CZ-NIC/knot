@@ -5,10 +5,9 @@
 #
 
 SOURCES = [
-    "src/*.c", "src/*.h", "src/*.rl", "src/*.l",
-    "src/*.y", "tests/*.c", "tests/*.h",
+    "src/*.c", "src/*.h", "src/*.rl",
+    "tests/*.c", "tests/*.h",
     "tests-fuzz/*.c", "tests-fuzz/*.h",
-    "libtap/*.c", "libtap/*.h",
 ]
 
 OUTPUT_FILE = "Knot.files"

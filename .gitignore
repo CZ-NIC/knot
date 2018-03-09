@@ -69,9 +69,6 @@
 # zscanner
 /src/zscanner/libzscanner.pc
 /src/zscanner/scanner.c
-/src/zscanner/tests/tmp/
-/src/zscanner/tests/unittests
-/src/zscanner/tests/zscanner-tool
 /src/zscanner/version.h
 
 # Binaries
@@ -84,14 +81,9 @@
 /src/knsec3hash
 /src/knsupdate
 /src/kzonecheck
-/src/rosedb_tool
 /src/utils/pykeymgr/pykeymgr
 
-# Plugin binaries
-/src/rosedb_tool
-
 # Generated tarballs
-/knot-*.tar.gz
 /knot-*.tar.xz
 
 # Code coverage
