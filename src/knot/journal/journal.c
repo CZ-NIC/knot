@@ -1347,7 +1347,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			delete_tofree(j, txn, tofree, &freed);
 			if (freed < free_min) {
 				txn->ret = KNOT_ESPACE;
-				log_zone_warning(j->zone, "journal, unable to make free space for insert");
+				log_zone_warning(j->zone, "journal, unable to make free space for insert, "
+				                 "required: %zu, max: %zu", occupied, occupied_max);
 				goto store_changeset_cleanup;
 			}
 		}
