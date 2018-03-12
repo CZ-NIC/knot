@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 #include "contrib/mempattern.h"
-#include "dnssec/random.h"
+#include "libdnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-events.h"

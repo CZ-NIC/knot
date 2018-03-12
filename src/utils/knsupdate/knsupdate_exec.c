@@ -21,7 +21,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "dnssec/random.h"
+#include "libdnssec/random.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"

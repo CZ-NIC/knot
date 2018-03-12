@@ -16,7 +16,7 @@
 
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/zone-keys.h"
-#include "dnssec/lib/dnssec/binary.h"
+#include "libdnssec/binary.h"
 
 // FIXME DNSSEC errors versus knot errors
 

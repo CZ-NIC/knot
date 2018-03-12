@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-#include "dnssec/error.h"
+#include "libdnssec/error.h"
 #include "knot/zone/contents.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"

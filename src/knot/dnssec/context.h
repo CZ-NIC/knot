@@ -18,7 +18,7 @@
 
 #include <time.h>
 
-#include <dnssec/keystore.h>
+#include "libdnssec/keystore.h"
 
 #include "knot/conf/conf.h"
 #include "knot/dnssec/kasp/kasp_zone.h"

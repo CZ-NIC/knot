@@ -23,10 +23,10 @@
 
 #include "contrib/base32hex.h"
 #include "contrib/strtonum.h"
-#include "dnssec/error.h"
-#include "dnssec/nsec.h"
-#include "shared/dname.h"
-#include "shared/hex.h"
+#include "libdnssec/error.h"
+#include "libdnssec/nsec.h"
+#include "libdnssec/shared/dname.h"
+#include "libdnssec/shared/hex.h"
 #include "libknot/libknot.h"
 
 #define PROGRAM_NAME "knsec3hash"

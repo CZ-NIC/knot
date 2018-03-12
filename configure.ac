@@ -25,7 +25,7 @@ AC_SUBST([KNOT_VERSION_EXTRA], knot_VERSION_EXTRA)
 
 AC_CONFIG_FILES([src/libknot/version.h
                  src/zscanner/version.h
-                 src/dnssec/lib/dnssec/version.h])
+                 src/libdnssec/version.h])
 
 # Store ./configure parameters into macro
 AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$configure_params"],[Params passed to configure])
@@ -61,7 +61,7 @@ PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/knotd.pc
                  src/libknot.pc
-                 src/dnssec/libdnssec.pc
+                 src/libdnssec/libdnssec.pc
                  src/zscanner/libzscanner.pc
                  ])
 
@@ -588,7 +588,7 @@ AC_CONFIG_FILES([Makefile
                  python/Makefile
                  src/Makefile
                  src/contrib/dnstap/Makefile
-                 src/dnssec/Makefile
+                 src/libdnssec/Makefile
                  src/knot/modules/static_modules.h
                  src/zscanner/Makefile
                  ])

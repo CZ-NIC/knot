@@ -16,8 +16,8 @@
 
 #include <assert.h>
 
-#include "dnssec/error.h"
-#include "dnssec/random.h"
+#include "libdnssec/error.h"
+#include "libdnssec/random.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"

@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "dnssec/lib/dnssec/keystore.h"
+#include "libdnssec/keystore.h"
 
 int keystore_load(const char *config, unsigned backend,
                   const char *kasp_base_path, dnssec_keystore_t **keystore);

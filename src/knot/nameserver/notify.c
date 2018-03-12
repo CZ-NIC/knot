@@ -22,7 +22,7 @@
 #include "knot/nameserver/log.h"
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/zone/serial.h"
-#include "dnssec/random.h"
+#include "libdnssec/random.h"
 #include "libknot/libknot.h"
 
 #define NOTIFY_LOG(priority, qdata, fmt...) \

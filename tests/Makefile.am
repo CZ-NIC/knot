@@ -5,21 +5,20 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
 	-I$(top_srcdir)/tests/_libtap \
 	-I$(top_srcdir)/src \
-	-I$(top_srcdir)/src/dnssec/lib \
-	-I$(top_srcdir)/src/dnssec/shared \
-	-I$(top_srcdir)/src/dnssec/lib/dnssec \
+	-I$(top_srcdir)/src/libdnssec \
+	-I$(top_srcdir)/src/libdnssec/shared \
 	$(gnutls_CFLAGS)
 
 LDADD = \
 	$(top_builddir)/tests/_libtap/libtap.la \
-	$(top_builddir)/src/dnssec/libdnssec.la \
+	$(top_builddir)/src/libdnssec/libdnssec.la \
 	$(top_builddir)/src/libknot.la \
 	$(top_builddir)/src/libknotd.la \
 	$(top_builddir)/src/libcontrib.la \
 	$(top_builddir)/src/zscanner/libzscanner.la
 
 EXTRA_DIST = \
-	dnssec/sample_keys.h		\
+	libdnssec/sample_keys.h		\
 	knot/semantic_check_data	\
 	knot/test_semantic_check.in	\
 	zscanner/data			\
@@ -42,25 +41,25 @@ check_PROGRAMS = \
 	contrib/test_wire_ctx
 
 check_PROGRAMS += \
-	dnssec/test_binary		\
-	dnssec/test_crypto		\
-	dnssec/test_key			\
-	dnssec/test_key_algorithm	\
-	dnssec/test_key_ds		\
-	dnssec/test_keyid		\
-	dnssec/test_keystore_pkcs11	\
-	dnssec/test_keystore_pkcs8	\
-	dnssec/test_keystore_pkcs8_dir	\
-	dnssec/test_keytag		\
-	dnssec/test_list		\
-	dnssec/test_nsec_bitmap		\
-	dnssec/test_nsec_hash		\
-	dnssec/test_random		\
-	dnssec/test_sign		\
-	dnssec/test_sign_der		\
-	dnssec/test_shared_bignum	\
-	dnssec/test_shared_dname	\
-	dnssec/test_tsig
+	libdnssec/test_binary		\
+	libdnssec/test_crypto		\
+	libdnssec/test_key		\
+	libdnssec/test_key_algorithm	\
+	libdnssec/test_key_ds		\
+	libdnssec/test_keyid		\
+	libdnssec/test_keystore_pkcs11	\
+	libdnssec/test_keystore_pkcs8	\
+	libdnssec/test_keystore_pkcs8_dir \
+	libdnssec/test_keytag		\
+	libdnssec/test_list		\
+	libdnssec/test_nsec_bitmap	\
+	libdnssec/test_nsec_hash	\
+	libdnssec/test_random		\
+	libdnssec/test_sign		\
+	libdnssec/test_sign_der		\
+	libdnssec/test_shared_bignum	\
+	libdnssec/test_shared_dname	\
+	libdnssec/test_tsig
 
 check_PROGRAMS += \
 	knot/test_acl			\
@@ -132,7 +131,7 @@ check_PROGRAMS += \
 endif
 endif
 
-dnssec_test_keystore_pkcs11_CPPFLAGS = \
+libdnssec_test_keystore_pkcs11_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
 	-DLIBDIR='"$(libdir)"'
 

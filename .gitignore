@@ -53,7 +53,6 @@
 /m4/ltsugar.m4
 /m4/ltversion.m4
 /m4/lt~obsolete.m4
-/src/dnssec/libdnssec.pc
 /src/knotd.pc
 /src/libknot.pc
 /src/libknot/version.h

@@ -16,8 +16,8 @@
 
 #include <tap/basic.h>
 
-#include "dnssec/crypto.h"
-#include "dnssec/random.h"
+#include "libdnssec/crypto.h"
+#include "libdnssec/random.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
 #include "knot/modules/rrl/functions.c"

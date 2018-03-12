@@ -16,7 +16,7 @@
 
 #include <stdlib.h>
 
-#include "dnssec/crypto.h"
+#include "libdnssec/crypto.h"
 #include "utils/kdig/kdig_params.h"
 #include "utils/kdig/kdig_exec.h"
 #include "libknot/libknot.h"

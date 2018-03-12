@@ -16,7 +16,7 @@
 
 #include <sys/socket.h>
 
-#include "dnssec/random.h"
+#include "libdnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/events/log.h"

@@ -20,7 +20,7 @@
 #include "knot/include/module.h"
 #include "libknot/libknot.h"
 #include "contrib/string.h"
-#include "dnssec/lib/dnssec/random.h"
+#include "libdnssec/random.h"
 
 #ifdef HAVE_ATOMIC
 #define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)

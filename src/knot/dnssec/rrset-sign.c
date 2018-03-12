@@ -17,7 +17,7 @@
 #include <assert.h>
 
 #include "contrib/wire_ctx.h"
-#include "dnssec/error.h"
+#include "libdnssec/error.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "libknot/libknot.h"
 

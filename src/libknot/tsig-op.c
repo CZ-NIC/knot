@@ -19,8 +19,8 @@
 #include <time.h>
 #include <stdint.h>
 
-#include "dnssec/error.h"
-#include "dnssec/tsig.h"
+#include "libdnssec/error.h"
+#include "libdnssec/tsig.h"
 #include "libknot/attribute.h"
 #include "libknot/tsig-op.h"
 #include "libknot/errcode.h"

@@ -19,7 +19,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "dnssec/binary.h"
+#include "libdnssec/binary.h"
 #include "knot/dnssec/kasp/policy.h"
 
 /*!

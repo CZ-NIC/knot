@@ -19,7 +19,7 @@
 
 #include "contrib/getline.h"
 #include "contrib/string.h"
-#include "dnssec/error.h"
+#include "libdnssec/error.h"
 #include "libknot/attribute.h"
 #include "libknot/errcode.h"
 #include "libknot/tsig.h"

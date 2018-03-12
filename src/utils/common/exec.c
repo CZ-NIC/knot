@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "dnssec/random.h"
+#include "libdnssec/random.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"

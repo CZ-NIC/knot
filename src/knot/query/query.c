@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #include "contrib/wire_ctx.h"
-#include "dnssec/random.h"
+#include "libdnssec/random.h"
 #include "knot/conf/conf.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/rrset.h"

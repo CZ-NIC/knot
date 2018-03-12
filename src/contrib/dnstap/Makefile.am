@@ -1,8 +1,7 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
-	-I$(top_srcdir)/src \
-	-I$(top_srcdir)/src/dnssec/lib
+	-I$(top_srcdir)/src
 
 EXTRA_DIST =                            \
 	dnstap.proto

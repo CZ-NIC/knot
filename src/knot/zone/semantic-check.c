@@ -20,7 +20,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "dnssec/error.h"
+#include "libdnssec/error.h"
 #include "contrib/base32hex.h"
 #include "contrib/string.h"
 #include "libknot/libknot.h"

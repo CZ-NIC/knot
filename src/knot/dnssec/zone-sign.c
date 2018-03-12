@@ -17,10 +17,10 @@
 #include <assert.h>
 #include <sys/types.h>
 
-#include "dnssec/error.h"
-#include "dnssec/key.h"
-#include "dnssec/keytag.h"
-#include "dnssec/sign.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key.h"
+#include "libdnssec/keytag.h"
+#include "libdnssec/sign.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"

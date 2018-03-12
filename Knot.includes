@@ -1,9 +1,7 @@
 src
 src/contrib
-src/dnssec
-src/dnssec/lib
-src/dnssec/lib/dnssec
-src/dnssec/shared
+src/libdnssec
+src/libdnssec/shared
 src/zscanner
 tests
 tests-fuzz

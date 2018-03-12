@@ -17,8 +17,8 @@
 #pragma once
 
 #include "contrib/dynarray.h"
-#include "dnssec/keystore.h"
-#include "dnssec/sign.h"
+#include "libdnssec/keystore.h"
+#include "libdnssec/sign.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/context.h"

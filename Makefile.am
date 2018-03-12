@@ -17,8 +17,7 @@ CODE_COVERAGE_INFO = coverage.info
 CODE_COVERAGE_HTML = coverage.html
 CODE_COVERAGE_DIRS =		\
 	src/contrib		\
-	src/dnssec/lib		\
-	src/dnssec/shared	\
+	src/libdnssec		\
 	src/knot		\
 	src/libknot		\
 	src/zscanner

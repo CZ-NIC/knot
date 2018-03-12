@@ -20,13 +20,7 @@ FLAGS = [
 CONFIG_H = 'src/config.h'
 
 INCLUDES = [
-    ('src/dnssec/shared', ['src/dnssec/lib', 'src/dnssec/lib/dnssec']),
-    ('src/dnssec/lib', ['src/dnssec/shared', 'src/dnssec/lib/dnssec']),
-    ('src/dnssec/tests', ['src/dnssec/shared', 'src/dnssec/lib', 'src/dnssec/lib/dnssec', 'libtap']),
-    ('src/utils/keymgr', ['src/dnssec', 'src/dnssec/lib', 'src']),
-    ('src/utils/knsec3hash', ['src/dnssec', 'src/dnssec/lib', 'src']),
-    ('src', ['src/dnssec/lib']),
-    ('tests', ['src', 'src/dnssec/lib', 'libtap']),
+    ('tests', ['src', 'tests/_libtap']),
 ]
 
 def relative_path(filename):

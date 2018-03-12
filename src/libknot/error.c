@@ -20,10 +20,9 @@
 #include <limits.h>
 #include <lmdb.h>
 
-#include "dnssec/lib/dnssec/error.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
-#include "dnssec/error.h"
+#include "libdnssec/error.h"
 
 struct error {
 	int code;

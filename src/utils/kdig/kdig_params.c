@@ -33,8 +33,8 @@
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "contrib/ucw/lists.h"
-#include "dnssec/lib/dnssec/error.h"
-#include "dnssec/lib/dnssec/random.h"
+#include "libdnssec/error.h"
+#include "libdnssec/random.h"
 
 #define PROGRAM_NAME "kdig"
 

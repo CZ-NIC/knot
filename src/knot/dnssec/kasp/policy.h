@@ -19,7 +19,7 @@
 #include <stdbool.h>
 
 #include "contrib/time.h"
-#include "dnssec/lib/dnssec/key.h"
+#include "libdnssec/key.h"
 #include "knot/conf/conf.h"
 
 /*!

@@ -22,7 +22,7 @@
 
 #include "knot/zone/contents.h"
 #include "knot/updates/changesets.h"
-#include "dnssec/nsec.h"
+#include "libdnssec/nsec.h"
 
 /*!
  * \brief Parameters to be used in connect_nsec_nodes callback.

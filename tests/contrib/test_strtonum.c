@@ -20,7 +20,7 @@
 #include <tap/basic.h>
 
 #include "contrib/strtonum.h"
-#include "dnssec/error.h"
+#include "libdnssec/error.h"
 
 static void test_u8(const char *in, uint8_t expected, int errcode)
 {

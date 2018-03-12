@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-#include "dnssec/error.h"
+#include "libdnssec/error.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/nsec3.h"
 #include "libknot/rrtype/soa.h"

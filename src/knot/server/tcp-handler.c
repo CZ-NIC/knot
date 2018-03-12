@@ -29,7 +29,7 @@
 #include <sys/uio.h>
 #endif // HAVE_SYS_UIO_H
 
-#include "dnssec/random.h"
+#include "libdnssec/random.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"

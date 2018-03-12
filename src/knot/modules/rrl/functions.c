@@ -20,8 +20,8 @@
 #include "knot/modules/rrl/functions.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
-#include "dnssec/error.h"
-#include "dnssec/random.h"
+#include "libdnssec/error.h"
+#include "libdnssec/random.h"
 
 /* Hopscotch defines. */
 #define HOP_LEN (sizeof(unsigned)*8)

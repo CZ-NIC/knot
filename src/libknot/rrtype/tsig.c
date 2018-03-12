@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "dnssec/tsig.h"
+#include "libdnssec/tsig.h"
 #include "libknot/attribute.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/consts.h"

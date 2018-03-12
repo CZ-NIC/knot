@@ -25,7 +25,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "dnssec/key.h"
+#include "libdnssec/key.h"
 #include "knot/conf/tools.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/module.h"

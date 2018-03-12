@@ -19,7 +19,7 @@
 #include <string.h>
 
 #include "contrib/string.h"
-#include "dnssec/error.h"
+#include "libdnssec/error.h"
 #include "knot/include/module.h"
 #include "knot/modules/onlinesign/nsec_next.h"
 // Next dependencies force static module!

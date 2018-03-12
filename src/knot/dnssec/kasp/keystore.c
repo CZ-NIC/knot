@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "dnssec/error.h"
+#include "libdnssec/error.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/conf/schema.h"
 #include "libknot/error.h"

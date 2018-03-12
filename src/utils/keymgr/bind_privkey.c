@@ -18,8 +18,8 @@
 
 #include "contrib/ctype.h"
 #include "contrib/strtonum.h"
-#include "dnssec/binary.h"
-#include "dnssec/error.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
 #include "shared/pem.h"
 #include "shared/shared.h"
 #include "utils/keymgr/bind_privkey.h"

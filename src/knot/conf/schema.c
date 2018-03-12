@@ -26,8 +26,8 @@
 #include "knot/journal/journal.h"
 #include "knot/updates/acl.h"
 #include "libknot/rrtype/opt.h"
-#include "dnssec/lib/dnssec/tsig.h"
-#include "dnssec/lib/dnssec/key.h"
+#include "libdnssec/tsig.h"
+#include "libdnssec/key.h"
 
 #define HOURS(x)	((x) * 3600)
 #define DAYS(x)		((x) * HOURS(24))
