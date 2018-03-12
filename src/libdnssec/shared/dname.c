@@ -19,9 +19,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include "shared/dname.h"
-#include "shared/shared.h"
-#include "../contrib/tolower.h"
+
+#include "libdnssec/shared/dname.h"
+#include "libdnssec/shared/shared.h"
+#include "contrib/tolower.h"
 
 /*!
  * Get length of a domain name in wire format.

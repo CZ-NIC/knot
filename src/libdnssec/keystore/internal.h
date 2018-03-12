@@ -19,10 +19,10 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/abstract.h>
 
-#include "binary.h"
-#include "key.h"
-#include "keystore.h"
-#include "list.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/key.h"
+#include "libdnssec/keystore.h"
+#include "libdnssec/list.h"
 
 typedef struct keystore_functions {
 	// construction of internal context

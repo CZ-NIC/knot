@@ -20,8 +20,8 @@
 #include "contrib/strtonum.h"
 #include "libdnssec/binary.h"
 #include "libdnssec/error.h"
-#include "shared/pem.h"
-#include "shared/shared.h"
+#include "libdnssec/shared/pem.h"
+#include "libdnssec/shared/shared.h"
 #include "utils/keymgr/bind_privkey.h"
 
 /* -- private key params conversion ---------------------------------------- */

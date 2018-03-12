@@ -16,10 +16,10 @@
 
 #include <gnutls/gnutls.h>
 
-#include "error.h"
-#include "key.h"
-#include "key/algorithm.h"
-#include "shared/shared.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key.h"
+#include "libdnssec/key/algorithm.h"
+#include "libdnssec/shared/shared.h"
 
 /* -- internal ------------------------------------------------------------- */
 

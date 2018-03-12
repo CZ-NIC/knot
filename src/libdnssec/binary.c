@@ -17,16 +17,16 @@
 #include <assert.h>
 #include <string.h>
 
-#include "binary.h"
-#include "error.h"
-#include "shared/shared.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/shared/shared.h"
 
 // Workaround for symbol redefinition if linked statically.
 #define base64_encode base64encode
 #define base64_decode base64decode
 #define base64_encode_alloc base64encodealloc
 #define base64_decode_alloc base64decodealloc
-#include "../contrib/base64.c"
+#include "contrib/base64.c"
 
 /* -- public API ----------------------------------------------------------- */
 

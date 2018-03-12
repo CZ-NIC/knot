@@ -20,12 +20,12 @@
 #include <gnutls/x509.h>
 #include <string.h>
 
-#include "binary.h"
-#include "error.h"
-#include "keyid.h"
-#include "shared/keyid_gnutls.h"
-#include "shared/shared.h"
-#include "shared/hex.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/keyid.h"
+#include "libdnssec/shared/keyid_gnutls.h"
+#include "libdnssec/shared/shared.h"
+#include "libdnssec/shared/hex.h"
 
 /*!
  * Get binary key ID from a key (public or private).

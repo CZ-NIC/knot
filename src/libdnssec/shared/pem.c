@@ -19,13 +19,13 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
-#include "binary.h"
-#include "error.h"
-#include "key.h"
-#include "keyid.h"
-#include "shared/keyid_gnutls.h"
-#include "shared/pem.h"
-#include "shared/shared.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key.h"
+#include "libdnssec/keyid.h"
+#include "libdnssec/shared/keyid_gnutls.h"
+#include "libdnssec/shared/pem.h"
+#include "libdnssec/shared/shared.h"
 
 /* -- internal API --------------------------------------------------------- */
 

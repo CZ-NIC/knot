@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "binary.h"
+#include "libdnssec/binary.h"
 
 /*
  * The ECDSA signatures in DNSSEC are encoded differently than in X.509

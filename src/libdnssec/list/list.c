@@ -17,9 +17,9 @@
 #include <stdlib.h>
 
 #include "libdnssec/list.h"
-#include "error.h"
-#include "list/ucw_clists.h"
-#include "shared/shared.h"
+#include "libdnssec/list/ucw_clists.h"
+#include "libdnssec/error.h"
+#include "libdnssec/shared/shared.h"
 
 struct dnssec_list {
 	clist list;

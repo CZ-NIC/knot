@@ -7,25 +7,13 @@
 *.lo
 *.rej
 *.pyc
+*.pc
 .libs/
 .deps/
 .dirstamp
 /tmp
 /Knot.creator.user*
 /Doxyfile
-/Makefile
-/Makefile.in
-/src/Makefile
-/src/Makefile.in
-/src/libzscanner/Makefile
-/src/libzscanner/Makefile.in
-/python/Makefile
-/python/Makefile.in
-/samples/Makefile
-/samples/Makefile.in
-/samples/knot.sample.conf
-/doc/Makefile
-/doc/Makefile.in
 /aclocal.m4
 /ar-lib
 /autoscan.log
@@ -46,18 +34,19 @@
 /src/config.h
 /src/config.h.in
 /src/stamp-*
-/doc/html/
 /INSTALL
 /m4/libtool.m4
 /m4/ltoptions.m4
 /m4/ltsugar.m4
 /m4/ltversion.m4
 /m4/lt~obsolete.m4
-/src/knotd.pc
-/src/libknot/libknot.pc
-/src/libknot/version.h
-/src/knot/modules/static_modules.h
 /test-driver
+Makefile
+Makefile.in
+version.h
+
+/samples/knot.sample.conf
+/src/knot/modules/static_modules.h
 
 # dnstap
 /src/contrib/dnstap/Makefile
@@ -66,9 +55,7 @@
 /src/contrib/dnstap/dnstap.pb-c.h
 
 # zscanner
-/src/libzscanner/libzscanner.pc
 /src/libzscanner/scanner.c
-/src/libzscanner/version.h
 
 # Binaries
 /src/kdig
@@ -80,7 +67,6 @@
 /src/knsec3hash
 /src/knsupdate
 /src/kzonecheck
-/src/utils/pykeymgr/pykeymgr
 
 # Generated tarballs
 /knot-*.tar.xz

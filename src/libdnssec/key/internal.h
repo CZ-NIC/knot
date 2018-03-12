@@ -19,8 +19,8 @@
 #include <gnutls/abstract.h>
 #include <stdint.h>
 
-#include "key.h"
-#include "shared/dname.h"
+#include "libdnssec/key.h"
+#include "libdnssec/shared/dname.h"
 
 /*!
  * DNSSEC key.

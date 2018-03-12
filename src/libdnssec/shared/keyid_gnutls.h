@@ -18,7 +18,8 @@
 
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
-#include "binary.h"
+
+#include "libdnssec/binary.h"
 
 int keyid_x509(gnutls_x509_privkey_t key, dnssec_binary_t *id);
 

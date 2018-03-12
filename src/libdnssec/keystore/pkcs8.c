@@ -16,13 +16,13 @@
 
 #include <assert.h>
 
-#include "error.h"
-#include "key/algorithm.h"
-#include "keyid.h"
-#include "keystore.h"
-#include "keystore/internal.h"
-#include "shared/pem.h"
-#include "shared/shared.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key/algorithm.h"
+#include "libdnssec/keyid.h"
+#include "libdnssec/keystore.h"
+#include "libdnssec/keystore/internal.h"
+#include "libdnssec/shared/pem.h"
+#include "libdnssec/shared/shared.h"
 
 /*!
  * PKCS #8 key store context.

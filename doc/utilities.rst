@@ -12,7 +12,6 @@ the server. This section collects manual pages for all provided binaries:
 
    man_kdig
    man_keymgr
-   man_pykeymgr
    man_khost
    man_kjournalprint
    man_knotc

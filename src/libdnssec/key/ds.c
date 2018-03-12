@@ -14,14 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "binary.h"
-#include "error.h"
-#include "key.h"
-#include "shared/shared.h"
-
-#include "key/internal.h"
-#include "shared/dname.h"
-#include "shared/binary_wire.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key.h"
+#include "libdnssec/key/internal.h"
+#include "libdnssec/shared/dname.h"
+#include "libdnssec/shared/shared.h"
+#include "libdnssec/shared/binary_wire.h"
 
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>

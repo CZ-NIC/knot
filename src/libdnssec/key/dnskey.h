@@ -18,8 +18,8 @@
 
 #include <gnutls/abstract.h>
 
-#include "binary.h"
-#include "error.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
 
 /*!
  * DNSKEY RDATA fields offsets.

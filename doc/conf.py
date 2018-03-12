@@ -222,7 +222,6 @@ man_pages = [
     ('man_knotc',         'knotc',         'Knot DNS control utility',                  author, 8),
     ('man_knotd',         'knotd',         'Knot DNS server daemon',                    author, 8),
     ('man_keymgr',        'keymgr',        'Knot DNS key management utility',           author, 8),
-    ('man_pykeymgr',      'pykeymgr',      'Knot DNS key management utility',           author, 8),
     ('man_kdig',          'kdig',          'Advanced DNS lookup utility',               author, 1),
     ('man_khost',         'khost',         'Simple DNS lookup utility',                 author, 1),
     ('man_kjournalprint', 'kjournalprint', 'Knot DNS journal print utility',            author, 1),

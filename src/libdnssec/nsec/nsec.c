@@ -15,8 +15,8 @@
  */
 
 #include "libdnssec/nsec.h"
-#include "shared/shared.h"
-#include "shared/binary_wire.h"
+#include "libdnssec/shared/shared.h"
+#include "libdnssec/shared/binary_wire.h"
 
 #include "libdnssec/binary.h"
 #include "libdnssec/error.h"

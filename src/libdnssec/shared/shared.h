@@ -28,7 +28,7 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
-#include "binary.h"
+#include "libdnssec/binary.h"
 
 #define _public_ __attribute__((visibility("default")))
 #define _hidden_ __attribute__((visibility("hidden")))

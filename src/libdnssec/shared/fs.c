@@ -14,13 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "error.h"
-
 #include <assert.h>
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include "libdnssec/error.h"
 
 int fs_mkdir(const char *path, mode_t mode, bool ignore_existing)
 {

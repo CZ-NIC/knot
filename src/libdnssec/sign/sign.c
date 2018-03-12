@@ -20,16 +20,16 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 
-#include "shared/bignum.h"
-#include "error.h"
-#include "key.h"
-#include "key/internal.h"
-#include "shared/shared.h"
-#include "sign.h"
-#include "sign/der.h"
-#include "shared/binary_wire.h"
 #include "contrib/macros.h"
-#include "contrib/vpool.h"
+#include "libdnssec/shared/bignum.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key.h"
+#include "libdnssec/key/internal.h"
+#include "libdnssec/shared/shared.h"
+#include "libdnssec/sign.h"
+#include "libdnssec/sign/der.h"
+#include "libdnssec/shared/binary_wire.h"
+#include "libdnssec/contrib/vpool.h"
 
 /*!
  * Signature format conversion callback.

@@ -16,11 +16,11 @@
 
 #include <stdbool.h>
 
-#include "shared/bignum.h"
-#include "binary.h"
-#include "error.h"
-#include "sign/der.h"
-#include "shared/binary_wire.h"
+#include "libdnssec/shared/bignum.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/sign/der.h"
+#include "libdnssec/shared/binary_wire.h"
 
 /*
  * In fact, this is a very tiny subset of ASN.1 encoding format implementation,

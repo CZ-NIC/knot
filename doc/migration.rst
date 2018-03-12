@@ -39,7 +39,9 @@ KASP DB migration
 
 Knot DNS version 2.4.x and earlier uses JSON files to store DNSSEC keys metadata,
 one for each zone. 2.5.x versions store those in binary format in a LMDB, all zones
-together. The migration is possible with ``pykeymgr`` script::
+together. The migration is possible with the
+`pykeymgr <https://gitlab.labs.nic.cz/knot/knot-dns/blob/2.6/src/utils/pykeymgr/pykeymgr.in>`_
+script::
 
    $ pykeymgr -i path/to/keydir
 

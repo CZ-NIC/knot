@@ -20,9 +20,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "error.h"
-#include "random.h"
-#include "shared/shared.h"
+#include "libdnssec/error.h"
+#include "libdnssec/random.h"
+#include "libdnssec/shared/shared.h"
 
 /* -- public API ----------------------------------------------------------- */
 

@@ -18,10 +18,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "binary.h"
-#include "error.h"
-#include "key/dnskey.h"
-#include "shared/shared.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key/dnskey.h"
+#include "libdnssec/shared/shared.h"
 
 /*!
  * Compute keytag for RSA/MD5 key.

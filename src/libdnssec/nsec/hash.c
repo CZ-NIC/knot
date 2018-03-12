@@ -19,9 +19,9 @@
 #include <gnutls/crypto.h>
 #include <string.h>
 
-#include "error.h"
-#include "nsec.h"
-#include "shared/shared.h"
+#include "libdnssec/error.h"
+#include "libdnssec/nsec.h"
+#include "libdnssec/shared/shared.h"
 
 /*!
  * Compute NSEC3 hash for given data and algorithm.

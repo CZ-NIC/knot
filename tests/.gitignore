@@ -1,5 +1,3 @@
-/Makefile
-/Makefile.in
 /runtests.log
 
 /contrib/test_base32hex

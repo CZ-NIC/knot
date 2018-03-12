@@ -20,19 +20,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "binary.h"
-#include "error.h"
-#include "key.h"
-#include "key/algorithm.h"
-#include "key/convert.h"
-#include "key/dnskey.h"
-#include "key/internal.h"
-#include "shared/keyid_gnutls.h"
-#include "keystore.h"
-#include "keytag.h"
-#include "shared/pem.h"
-#include "shared/shared.h"
-#include "shared/binary_wire.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key.h"
+#include "libdnssec/key/algorithm.h"
+#include "libdnssec/key/convert.h"
+#include "libdnssec/key/dnskey.h"
+#include "libdnssec/key/internal.h"
+#include "libdnssec/shared/keyid_gnutls.h"
+#include "libdnssec/keystore.h"
+#include "libdnssec/keytag.h"
+#include "libdnssec/shared/pem.h"
+#include "libdnssec/shared/shared.h"
+#include "libdnssec/shared/binary_wire.h"
 #include "contrib/wire_ctx.h"
 
 /*!

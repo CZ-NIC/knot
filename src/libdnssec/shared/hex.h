@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "binary.h"
+#include "libdnssec/binary.h"
 
 /*!
  * Convert binary data to preallocated hexadecimal string.

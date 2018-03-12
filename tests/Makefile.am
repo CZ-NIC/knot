@@ -1,4 +1,3 @@
-ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = _libtap .
 
 AM_CPPFLAGS = \
@@ -11,11 +10,11 @@ AM_CPPFLAGS = \
 
 LDADD = \
 	$(top_builddir)/tests/_libtap/libtap.la \
-	$(top_builddir)/src/libdnssec/libdnssec.la \
 	$(top_builddir)/src/libknot.la \
 	$(top_builddir)/src/libknotd.la \
+	$(top_builddir)/src/libdnssec.la \
 	$(top_builddir)/src/libcontrib.la \
-	$(top_builddir)/src/libzscanner/libzscanner.la
+	$(top_builddir)/src/libzscanner.la
 
 EXTRA_DIST = \
 	libdnssec/sample_keys.h		\

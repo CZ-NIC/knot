@@ -22,10 +22,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "shared/dname.h"
-#include "error.h"
-#include "shared/shared.h"
-#include "tsig.h"
+#include "libdnssec/shared/dname.h"
+#include "libdnssec/error.h"
+#include "libdnssec/shared/shared.h"
+#include "libdnssec/tsig.h"
 
 struct dnssec_tsig_ctx {
 	gnutls_mac_algorithm_t algorithm;

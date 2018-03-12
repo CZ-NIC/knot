@@ -18,7 +18,7 @@
 
 #include <gnutls/gnutls.h>
 
-#include "key.h"
+#include "libdnssec/key.h"
 
 /*!
  * Convert DNSKEY algorithm identifier to GnuTLS identifier.

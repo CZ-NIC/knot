@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "binary.h"
-#include "error.h"
-#include "key/dnskey.h"
-#include "key/convert.h"
-#include "shared/binary_wire.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key/dnskey.h"
+#include "libdnssec/key/convert.h"
+#include "libdnssec/shared/binary_wire.h"
 
 /* -- internal API --------------------------------------------------------- */
 

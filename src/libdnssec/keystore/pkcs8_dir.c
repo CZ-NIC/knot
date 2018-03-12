@@ -22,13 +22,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "binary.h"
-#include "error.h"
-#include "shared/fs.h"
-#include "key.h"
-#include "keystore.h"
-#include "keystore/internal.h"
-#include "shared/shared.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/shared/fs.h"
+#include "libdnssec/key.h"
+#include "libdnssec/keystore.h"
+#include "libdnssec/keystore/internal.h"
+#include "libdnssec/shared/shared.h"
 
 #define DIR_INIT_MODE 0750
 

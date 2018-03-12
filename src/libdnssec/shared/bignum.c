@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "shared/bignum.h"
+#include "libdnssec/shared/bignum.h"
 
 static void skip_leading_zeroes(dnssec_binary_t *value)
 {

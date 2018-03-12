@@ -17,15 +17,15 @@
 #include <gnutls/gnutls.h>
 #include <pthread.h>
 
-#include "error.h"
-#include "shared/hex.h"
-#include "keyid.h"
-#include "shared/keyid_gnutls.h"
-#include "keystore.h"
-#include "keystore/internal.h"
-#include "p11/p11.h"
-#include "shared/pem.h"
-#include "shared/shared.h"
+#include "libdnssec/error.h"
+#include "libdnssec/shared/hex.h"
+#include "libdnssec/keyid.h"
+#include "libdnssec/shared/keyid_gnutls.h"
+#include "libdnssec/keystore.h"
+#include "libdnssec/keystore/internal.h"
+#include "libdnssec/p11/p11.h"
+#include "libdnssec/shared/pem.h"
+#include "libdnssec/shared/shared.h"
 
 #ifdef ENABLE_PKCS11
 

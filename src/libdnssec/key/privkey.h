@@ -18,7 +18,7 @@
 
 #include <gnutls/abstract.h>
 
-#include "key.h"
+#include "libdnssec/key.h"
 
 /*!
  * Load a private key into a DNSSEC key, create a public part if necessary.

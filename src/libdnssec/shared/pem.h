@@ -18,7 +18,7 @@
 
 #include <gnutls/gnutls.h>
 
-#include "binary.h"
+#include "libdnssec/binary.h"
 
 /*!
  * Create GnuTLS X.509 private key from unencrypted PEM data.

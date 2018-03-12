@@ -18,10 +18,10 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "binary.h"
-#include "error.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
 
-#include "../contrib/ctype.h"
+#include "contrib/ctype.h"
 
 /* -- binary to hex -------------------------------------------------------- */
 

@@ -60,9 +60,9 @@ LT_INIT
 PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/knotd.pc
-                 src/libknot/libknot.pc
-                 src/libdnssec/libdnssec.pc
-                 src/libzscanner/libzscanner.pc
+                 src/libknot.pc
+                 src/libdnssec.pc
+                 src/libzscanner.pc
                  ])
 
 # Build Knot DNS daemon
@@ -587,13 +587,9 @@ AC_CONFIG_FILES([Makefile
                  samples/Makefile
                  python/Makefile
                  src/Makefile
-                 src/contrib/dnstap/Makefile
                  src/knot/modules/static_modules.h
-                 src/libdnssec/Makefile
-                 src/libzscanner/Makefile
                  ])
 
-AC_CONFIG_FILES([src/utils/pykeymgr/pykeymgr], [chmod +x src/utils/pykeymgr/pykeymgr])
 AC_CONFIG_FILES([doc/modules.rst],
                 [cp doc/modules.rst ${srcdir}/doc/modules.rst 2>/dev/null;
                  ln -s -f $(readlink -f ${srcdir})/src/knot/modules ${srcdir}/doc 2>/dev/null])

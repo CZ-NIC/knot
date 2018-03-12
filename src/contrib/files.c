@@ -14,18 +14,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "files.h"
-
 #include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <ftw.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include "contrib/files.h"
 #include "contrib/string.h"
 #include "libknot/errcode.h"
 

@@ -17,15 +17,15 @@
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
 
-#include "binary.h"
-#include "error.h"
-#include "key/algorithm.h"
-#include "key/convert.h"
-#include "key/dnskey.h"
-#include "key/internal.h"
-#include "key/privkey.h"
-#include "shared/shared.h"
-#include "shared/binary_wire.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/error.h"
+#include "libdnssec/key/algorithm.h"
+#include "libdnssec/key/convert.h"
+#include "libdnssec/key/dnskey.h"
+#include "libdnssec/key/internal.h"
+#include "libdnssec/key/privkey.h"
+#include "libdnssec/shared/shared.h"
+#include "libdnssec/shared/binary_wire.h"
 
 /* -- internal functions --------------------------------------------------- */
 

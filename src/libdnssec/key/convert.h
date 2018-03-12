@@ -18,8 +18,8 @@
 
 #include <gnutls/abstract.h>
 
-#include "binary.h"
-#include "key.h"
+#include "libdnssec/binary.h"
+#include "libdnssec/key.h"
 
 /*!
  * Encode public key into the format used in DNSKEY RDATA.

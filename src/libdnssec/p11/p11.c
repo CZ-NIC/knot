@@ -14,13 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "p11/p11.h"
-#include "error.h"
-
 #include <assert.h>
 #include <gnutls/pkcs11.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "libdnssec/p11/p11.h"
+#include "libdnssec/error.h"
 
 #ifdef ENABLE_PKCS11
 

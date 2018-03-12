@@ -18,8 +18,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "nsec.h"
-#include "shared/shared.h"
+#include "libdnssec/nsec.h"
+#include "libdnssec/shared/shared.h"
 
 #define BITMAP_WINDOW_SIZE 256
 #define BITMAP_WINDOW_BYTES (BITMAP_WINDOW_SIZE/CHAR_BIT)

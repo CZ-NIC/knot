@@ -18,7 +18,7 @@
 
 #include <stdlib.h>
 
-#include "binary.h"
+#include "libdnssec/binary.h"
 #include "contrib/wire_ctx.h"
 
 /*!
