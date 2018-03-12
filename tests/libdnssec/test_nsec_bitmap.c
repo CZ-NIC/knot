@@ -21,6 +21,7 @@
 #include <tap/basic.h>
 
 #include "nsec.h"
+#include "libknot/descriptor.h"
 
 int main(void)
 {
@@ -57,6 +58,11 @@ int main(void)
 	dnssec_nsec_bitmap_write(bitmap, encoded);
 
 	ok(memcmp(encoded, expected, 9) == 0, "valid bitmap");
+
+	bool contains = dnssec_nsec_bitmap_contains(expected, 9, KNOT_RRTYPE_AAAA);
+	ok(contains, "bitmap contains AAAA");
+	contains = dnssec_nsec_bitmap_contains(expected, 9, KNOT_RRTYPE_CNAME);
+	ok(!contains, "bitmap does not contain CNAME");
 
 	dnssec_nsec_bitmap_clear(bitmap);
 	ok(dnssec_nsec_bitmap_size(bitmap) == 0, "bitmap clear");
