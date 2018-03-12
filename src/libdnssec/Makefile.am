@@ -1,6 +1,6 @@
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h \
-	-I$(top_srcdir)/src
+	-I$(top_srcdir)/src \
 	$(gnutls_CFLAGS)
 
 noinst_LTLIBRARIES = libshared.la
@@ -36,8 +36,8 @@ libdnssec_la_LDFLAGS = \
 libdnssec_la_LIBADD = \
 	libshared.la
 
-include_dnssecdir=$(includedir)/dnssec
-include_dnssec_HEADERS = \
+include_libdnssecdir=$(includedir)/libdnssec
+include_libdnssec_HEADERS = \
 	binary.h \
 	crypto.h \
 	dnssec.h \

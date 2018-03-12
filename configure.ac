@@ -60,7 +60,7 @@ LT_INIT
 PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/knotd.pc
-                 src/libknot.pc
+                 src/libknot/libknot.pc
                  src/libdnssec/libdnssec.pc
                  src/libzscanner/libzscanner.pc
                  ])

@@ -5,8 +5,8 @@ AM_CPPFLAGS = \
 
 lib_LTLIBRARIES = libzscanner.la
 
-zscanner_ladir = $(includedir)/zscanner
-nobase_zscanner_la_HEADERS =		\
+libzscanner_ladir = $(includedir)/libzscanner
+nobase_libzscanner_la_HEADERS =		\
 	error.h				\
 	scanner.h			\
 	version.h
@@ -36,7 +36,7 @@ libzscanner_la_SOURCES =		\
 	error.c				\
 	functions.h			\
 	functions.c			\
-	$(nobase_zscanner_la_HEADERS)
+	$(nobase_libzscanner_la_HEADERS)
 
 nodist_libzscanner_la_SOURCES =		\
 	scanner.c
