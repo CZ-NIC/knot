@@ -30,8 +30,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "zscanner/scanner.h"
-#include "zscanner/functions.h"
+#include "libzscanner/scanner.h"
+#include "libzscanner/functions.h"
 #include "libknot/descriptor.h"
 
 /*! \brief Maximal length of rdata item. */

@@ -6,7 +6,7 @@ IN="./scanner.rl"
 OUT_T0="./scanner.c.t0"
 OUT_G2="./scanner.c.g2"
 
-pushd ../src/zscanner/
+pushd ../src/libzscanner/
 
 # Generate slower/small zone parser.
 ragel -T0 -s -o $OUT_T0 $IN

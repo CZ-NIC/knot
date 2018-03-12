@@ -17,8 +17,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "zscanner/error.h"
-#include "zscanner/functions.h"
+#include "libzscanner/error.h"
+#include "libzscanner/functions.h"
 
 const uint8_t digit_to_num[] = {
     ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,

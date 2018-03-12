@@ -19,9 +19,9 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "zscanner/scanner.h"
-#include "zscanner/functions.c"
-#include "zscanner/processing.h"
+#include "libzscanner/scanner.h"
+#include "libzscanner/functions.c"
+#include "libzscanner/processing.h"
 #include "libknot/descriptor.c"
 
 const char *separator = "------\n";

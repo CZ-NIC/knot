@@ -16,7 +16,7 @@
 
 #include <stdlib.h>
 
-#include "zscanner/error.h"
+#include "libzscanner/error.h"
 
 typedef struct {
 	int        code;

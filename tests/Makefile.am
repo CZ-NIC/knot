@@ -15,15 +15,15 @@ LDADD = \
 	$(top_builddir)/src/libknot.la \
 	$(top_builddir)/src/libknotd.la \
 	$(top_builddir)/src/libcontrib.la \
-	$(top_builddir)/src/zscanner/libzscanner.la
+	$(top_builddir)/src/libzscanner/libzscanner.la
 
 EXTRA_DIST = \
 	libdnssec/sample_keys.h		\
 	knot/semantic_check_data	\
 	knot/test_semantic_check.in	\
-	zscanner/data			\
-	zscanner/test_zscanner.in	\
-	zscanner/TESTS
+	libzscanner/data		\
+	libzscanner/test_zscanner.in	\
+	libzscanner/TESTS
 
 check_PROGRAMS = \
 	contrib/test_base32hex		\
@@ -154,16 +154,16 @@ utils_test_cert_LDADD = \
 	$(libedit_LIBS)
 
 EXTRA_PROGRAMS = \
-	zscanner/zscanner-tool
+	libzscanner/zscanner-tool
 
-zscanner_zscanner_tool_SOURCES =	\
-	zscanner/zscanner-tool.c	\
-	zscanner/processing.h		\
-	zscanner/processing.c
+libzscanner_zscanner_tool_SOURCES =	\
+	libzscanner/zscanner-tool.c	\
+	libzscanner/processing.h	\
+	libzscanner/processing.c
 
 check_SCRIPTS = \
 	knot/test_semantic_check	\
-	zscanner/test_zscanner
+	libzscanner/test_zscanner
 
 edit = $(SED) \
 	-e 's|@top_srcdir[@]|$(abs_top_srcdir)|g' \
@@ -173,7 +173,7 @@ knot/test_semantic_check:
 	@$(edit) < $(top_srcdir)/tests/$@.in > $(top_builddir)/tests/$@
 	@chmod +x $(top_builddir)/tests/$@
 
-zscanner/test_zscanner: zscanner/zscanner-tool
+libzscanner/test_zscanner: libzscanner/zscanner-tool
 	@$(edit) < $(top_srcdir)/tests/$@.in > $(top_builddir)/tests/$@
 	@chmod +x $(top_builddir)/tests/$@
 

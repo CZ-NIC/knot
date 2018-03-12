@@ -784,7 +784,7 @@ WARN_LOGFILE           = doc/html/doxygen.warn
 INPUT                  = Doxy.page.h \
                          src/libdnssec \
                          src/libknot \
-                         src/zscanner \
+                         src/libzscanner \
                          src/knot/include
 
 # This tag can be used to specify the character encoding of the source files

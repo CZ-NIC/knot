@@ -24,8 +24,8 @@ AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
 AC_SUBST([KNOT_VERSION_EXTRA], knot_VERSION_EXTRA)
 
 AC_CONFIG_FILES([src/libknot/version.h
-                 src/zscanner/version.h
-                 src/libdnssec/version.h])
+                 src/libdnssec/version.h
+                 src/libzscanner/version.h])
 
 # Store ./configure parameters into macro
 AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$configure_params"],[Params passed to configure])
@@ -62,7 +62,7 @@ m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdi
 AC_CONFIG_FILES([src/knotd.pc
                  src/libknot.pc
                  src/libdnssec/libdnssec.pc
-                 src/zscanner/libzscanner.pc
+                 src/libzscanner/libzscanner.pc
                  ])
 
 # Build Knot DNS daemon
@@ -588,9 +588,9 @@ AC_CONFIG_FILES([Makefile
                  python/Makefile
                  src/Makefile
                  src/contrib/dnstap/Makefile
-                 src/libdnssec/Makefile
                  src/knot/modules/static_modules.h
-                 src/zscanner/Makefile
+                 src/libdnssec/Makefile
+                 src/libzscanner/Makefile
                  ])
 
 AC_CONFIG_FILES([src/utils/pykeymgr/pykeymgr], [chmod +x src/utils/pykeymgr/pykeymgr])

@@ -20,8 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "zscanner/processing.h"
-#include "zscanner/scanner.h"
+#include "libzscanner/processing.h"
+#include "libzscanner/scanner.h"
 
 #define DEFAULT_MODE	1
 #define DEFAULT_CLASS	1

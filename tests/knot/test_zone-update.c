@@ -23,7 +23,7 @@
 #include "contrib/getline.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/node.h"
-#include "zscanner/scanner.h"
+#include "libzscanner/scanner.h"
 #include "knot/server/server.h"
 
 static const char *zone_str1 = "test. 600 IN SOA ns.test. m.test. 1 900 300 4800 900 \n";

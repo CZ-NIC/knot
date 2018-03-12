@@ -25,7 +25,7 @@
 #pragma once
 
 #include "contrib/qp-trie/trie.h"
-#include "zscanner/scanner.h"
+#include "libzscanner/scanner.h"
 
 /*!
  * \brief Memory estimation context.

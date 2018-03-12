@@ -17,10 +17,10 @@ CODE_COVERAGE_INFO = coverage.info
 CODE_COVERAGE_HTML = coverage.html
 CODE_COVERAGE_DIRS =		\
 	src/contrib		\
-	src/libdnssec		\
 	src/knot		\
+	src/libdnssec		\
 	src/libknot		\
-	src/zscanner
+	src/libzscanner
 
 code_coverage_quiet = --quiet
 

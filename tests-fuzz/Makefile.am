@@ -42,7 +42,7 @@ fuzz_packet_LDADD      = $(top_builddir)/src/libknot.la
 
 fuzz_zscanner_SOURCES  = fuzz_zscanner.c
 fuzz_zscanner_CPPFLAGS = $(AM_CPPFLAGS)
-fuzz_zscanner_LDADD    = $(top_builddir)/src/zscanner/libzscanner.la
+fuzz_zscanner_LDADD    = $(top_builddir)/src/libzscanner/libzscanner.la
 
 if OSS_FUZZ
 

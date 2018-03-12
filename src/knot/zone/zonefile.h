@@ -21,7 +21,7 @@
 
 #include "knot/zone/zone.h"
 #include "knot/zone/semantic-check.h"
-#include "zscanner/scanner.h"
+#include "libzscanner/scanner.h"
 /*!
  * \brief Zone creator structure.
  */

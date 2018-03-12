@@ -2,7 +2,7 @@ src
 src/contrib
 src/libdnssec
 src/libdnssec/shared
-src/zscanner
+src/libzscanner
 tests
 tests-fuzz
 tests-fuzz/knotd_wrap

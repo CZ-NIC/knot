@@ -16,7 +16,7 @@
 
 #include <stdint.h>
 
-#include "zscanner/scanner.h"
+#include "libzscanner/scanner.h"
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {

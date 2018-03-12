@@ -1,7 +1,7 @@
 #!/bin/sh
 
-SOURCE=@top_srcdir@/tests/zscanner
-BUILD=@top_builddir@/tests/zscanner
+SOURCE=@top_srcdir@/tests/libzscanner
+BUILD=@top_builddir@/tests/libzscanner
 
 . @top_srcdir@/tests/_libtap/tap/libtap.sh
 

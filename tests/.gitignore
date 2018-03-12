@@ -16,26 +16,6 @@
 /contrib/test_time
 /contrib/test_wire_ctx
 
-/libdnssec/test_binary
-/libdnssec/test_crypto
-/libdnssec/test_key
-/libdnssec/test_key_algorithm
-/libdnssec/test_key_ds
-/libdnssec/test_keyid
-/libdnssec/test_keystore_pkcs11
-/libdnssec/test_keystore_pkcs8
-/libdnssec/test_keystore_pkcs8_dir
-/libdnssec/test_keytag
-/libdnssec/test_list
-/libdnssec/test_nsec_bitmap
-/libdnssec/test_nsec_hash
-/libdnssec/test_random
-/libdnssec/test_sign
-/libdnssec/test_sign_der
-/libdnssec/test_shared_bignum
-/libdnssec/test_shared_dname
-/libdnssec/test_tsig
-
 /knot/test_acl
 /knot/test_changeset
 /knot/test_conf
@@ -62,6 +42,26 @@
 /knot/test_zone_timers
 /knot/test_zonedb
 
+/libdnssec/test_binary
+/libdnssec/test_crypto
+/libdnssec/test_key
+/libdnssec/test_key_algorithm
+/libdnssec/test_key_ds
+/libdnssec/test_keyid
+/libdnssec/test_keystore_pkcs11
+/libdnssec/test_keystore_pkcs8
+/libdnssec/test_keystore_pkcs8_dir
+/libdnssec/test_keytag
+/libdnssec/test_list
+/libdnssec/test_nsec_bitmap
+/libdnssec/test_nsec_hash
+/libdnssec/test_random
+/libdnssec/test_sign
+/libdnssec/test_sign_der
+/libdnssec/test_shared_bignum
+/libdnssec/test_shared_dname
+/libdnssec/test_tsig
+
 /libknot/test_control
 /libknot/test_cookies
 /libknot/test_db
@@ -82,12 +82,12 @@
 /libknot/test_yptrafo
 /libknot/test_wire
 
+/libzscanner/tmp
+/libzscanner/test_zscanner
+/libzscanner/zscanner-tool
+
 /modules/test_onlinesign
 /modules/test_rrl
 
 /utils/test_cert
 /utils/test_lookup
-
-/zscanner/tmp
-/zscanner/test_zscanner
-/zscanner/zscanner-tool

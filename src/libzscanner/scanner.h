@@ -28,7 +28,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "zscanner/error.h"
+#include "libzscanner/error.h"
 
 /*! \brief Maximal length of rdata. */
 #define ZS_MAX_RDATA_LENGTH		65535
@@ -95,8 +95,8 @@ typedef enum {
  *  - Output variables (r_ prefix) containing all parts of zone record. These
  *    data are useful during processing via callback function.
  */
-typedef struct scanner zs_scanner_t; // Forward declaration due to arguments.
-struct scanner {
+typedef struct zs_scanner zs_scanner_t; // Forward declaration due to arguments.
+struct zs_scanner {
 	/*! Current state (Ragel internals). */
 	int      cs;
 	/*! Stack top (Ragel internals). */

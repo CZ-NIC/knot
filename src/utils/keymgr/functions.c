@@ -30,7 +30,7 @@
 #include "libdnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/zone-keys.h"
-#include "zscanner/scanner.h"
+#include "libzscanner/scanner.h"
 
 static bool is_timestamp(char *arg, knot_kasp_key_timing_t *timing)
 {

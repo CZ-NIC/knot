@@ -17,8 +17,8 @@
 /Makefile.in
 /src/Makefile
 /src/Makefile.in
-/src/zscanner/Makefile
-/src/zscanner/Makefile.in
+/src/libzscanner/Makefile
+/src/libzscanner/Makefile.in
 /python/Makefile
 /python/Makefile.in
 /samples/Makefile
@@ -66,9 +66,9 @@
 /src/contrib/dnstap/dnstap.pb-c.h
 
 # zscanner
-/src/zscanner/libzscanner.pc
-/src/zscanner/scanner.c
-/src/zscanner/version.h
+/src/libzscanner/libzscanner.pc
+/src/libzscanner/scanner.c
+/src/libzscanner/version.h
 
 # Binaries
 /src/kdig

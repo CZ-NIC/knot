@@ -35,7 +35,7 @@
 #include "contrib/mempattern.h"
 #include "contrib/string.h"
 #include "contrib/ucw/lists.h"
-#include "zscanner/scanner.h"
+#include "libzscanner/scanner.h"
 #include "contrib/strtonum.h"
 
 #define MATCH_OR_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] == NULL || \

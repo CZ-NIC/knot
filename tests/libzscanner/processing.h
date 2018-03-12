@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "zscanner/scanner.h"
+#include "libzscanner/scanner.h"
 
 void debug_process_error(zs_scanner_t *scanner);
 

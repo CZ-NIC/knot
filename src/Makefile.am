@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-SUBDIRS = zscanner libdnssec contrib/dnstap .
+SUBDIRS = libzscanner libdnssec contrib/dnstap .
 
 lib_LTLIBRARIES =				\
 	libknot.la
@@ -364,7 +364,7 @@ libknotd_la_SOURCES =				\
 libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(systemd_CFLAGS) \
                        $(liburcu_CFLAGS) -DKNOTD_MOD_STATIC
 libknotd_la_LDFLAGS  = $(AM_LDFLAGS) -export-symbols-regex '^knotd_'
-libknotd_la_LIBADD   = libknot.la zscanner/libzscanner.la $(systemd_LIBS) \
+libknotd_la_LIBADD   = libknot.la libzscanner/libzscanner.la $(systemd_LIBS) \
                        $(liburcu_LIBS)
 
 ###################
@@ -411,7 +411,7 @@ knotc_LDADD     = libknotd.la libcontrib.la libknotus.la $(libedit_LIBS)
 knotc_LDFLAGS   = $(AM_LDFLAGS) -rdynamic
 keymgr_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/libdnssec $(gnutls_CFLAGS)
 keymgr_LDADD    = libknotd.la libcontrib.la libknotus.la libdnssec/libdnssec.la \
-                  libdnssec/libshared.la zscanner/libzscanner.la
+                  libdnssec/libshared.la libzscanner/libzscanner.la
 
 ####################################
 # Optional Knot DNS Daemon modules #
@@ -476,7 +476,7 @@ kdig_LDADD             = libknotus.la
 khost_CPPFLAGS         = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 khost_LDADD            = libknotus.la
 knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-knsupdate_LDADD        = libknotus.la zscanner/libzscanner.la
+knsupdate_LDADD        = libknotus.la libzscanner/libzscanner.la
 knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS) -I$(srcdir)/libdnssec
 knsec3hash_LDADD       = libknot.la libcontrib.la libdnssec/libdnssec.la libdnssec/libshared.la
 kzonecheck_CPPFLAGS    = $(AM_CPPFLAGS)

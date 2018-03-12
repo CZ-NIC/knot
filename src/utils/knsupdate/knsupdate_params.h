@@ -32,7 +32,7 @@
 #include "utils/common/params.h"
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
-#include "zscanner/scanner.h"
+#include "libzscanner/scanner.h"
 #include "contrib/ucw/lists.h"
 
 /*! \brief knsupdate-specific params data. */
