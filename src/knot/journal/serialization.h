@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -78,21 +78,3 @@ size_t changeset_serialized_size(const changeset_t *ch);
  */
 int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],
                           const size_t *chunks_sizes, size_t chunks_count);
-
-/*!
- * \brief Deserializes bootstrap changeset
- *
- * This is like changeset_deserialize(), but expects a bootstrap changeset (no soa_from and no
- * 'rem' section) in src_chunks.
- *
- * There is no changeset_serialize_botstrap: simply run changeset_serialize() with ch->soa_from = NULL.
- *
- * \param[out] ch            The changeset.
- * \param[in]  src_chunks    The chunks to deserialize.
- * \param[in]  chunks_sizes  The size of each chunk.
- * \param[in]  chunks_count  The number of chunks.
- *
- * \retval KNOT_E*
- */
-int changeset_deserialize_bootstrap(changeset_t *ch, uint8_t *src_chunks[],
-                                    const size_t *chunks_sizes, size_t chunks_count);
