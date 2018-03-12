@@ -478,7 +478,7 @@ uint16_t knot_edns_keepalive_size(uint16_t timeout);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_edns_keepalive_write(uint8_t *option, uint16_t uint16_len, uint16_t timeout);
+int knot_edns_keepalive_write(uint8_t *option, uint16_t option_len, uint16_t timeout);
 
 /*!
  * \brief Parses EDNS TCP Keepalive wire data.
