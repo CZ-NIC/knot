@@ -3,7 +3,7 @@
 SOURCE=@top_srcdir@/tests/libzscanner
 BUILD=@top_builddir@/tests/libzscanner
 
-. @top_srcdir@/tests/_libtap/tap/libtap.sh
+. @top_srcdir@/tests/tap/libtap.sh
 
 cd "$BUILD"
 

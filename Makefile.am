@@ -7,7 +7,6 @@ singlehtml install-singlehtml:
 
 .PHONY: check-compile
 check-compile:
-	$(MAKE) $(AM_MAKEFLAGS) -C tests/_libtap $@
 	$(MAKE) $(AM_MAKEFLAGS) -C tests $@
 	$(MAKE) $(AM_MAKEFLAGS) -C tests-fuzz $@
 

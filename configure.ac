@@ -582,7 +582,6 @@ AC_CONFIG_FILES([Makefile
                  Doxyfile
                  doc/Makefile
                  tests/Makefile
-                 tests/_libtap/Makefile
                  tests-fuzz/Makefile
                  samples/Makefile
                  python/Makefile

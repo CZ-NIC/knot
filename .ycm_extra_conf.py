@@ -20,7 +20,6 @@ FLAGS = [
 CONFIG_H = 'src/config.h'
 
 INCLUDES = [
-    ('tests', ['src', 'tests/_libtap']),
 ]
 
 def relative_path(filename):
