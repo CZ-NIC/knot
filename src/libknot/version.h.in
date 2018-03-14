@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 #define KNOT_VERSION_MAJOR @KNOT_VERSION_MAJOR@
 #define KNOT_VERSION_MINOR @KNOT_VERSION_MINOR@
 #define KNOT_VERSION_PATCH @KNOT_VERSION_PATCH@
-#define KNOT_VERSION_EXTRA "@KNOT_VERSION_EXTRA@"
 
 #define KNOT_VERSION_HEX ((KNOT_VERSION_MAJOR << 16) | \
                           (KNOT_VERSION_MINOR <<  8) | \

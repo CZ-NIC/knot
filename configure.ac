@@ -1,16 +1,13 @@
-#                                               -*- Autoconf -*-
-
 AC_PREREQ([2.60])
 
-m4_define([knot_VERSION_MAJOR],2)dnl
-m4_define([knot_VERSION_MINOR],7)dnl
-m4_define([knot_VERSION_PATCH],0)dnl
-m4_define([knot_VERSION_EXTRA],-dev)dnl
-m4_define([knot_PKG_VERSION],[knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_VERSION_PATCH]knot_VERSION_EXTRA)dnl
+m4_define([knot_VERSION_MAJOR], 2)dnl
+m4_define([knot_VERSION_MINOR], 7)dnl
+m4_define([knot_VERSION_PATCH], )dnl Leave empty if the master branch!
+m4_include([m4/knot-version.m4])
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
 configure_params="$*"
-AM_INIT_AUTOMAKE([gnits subdir-objects no-dist-gzip dist-xz -Wall -Werror])
+AM_INIT_AUTOMAKE([foreign std-options subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot])
 AC_CONFIG_HEADERS([src/config.h])
@@ -21,7 +18,6 @@ AC_CANONICAL_HOST
 AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)
 AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
 AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
-AC_SUBST([KNOT_VERSION_EXTRA], knot_VERSION_EXTRA)
 
 AC_CONFIG_FILES([src/libknot/version.h
                  src/libdnssec/version.h
@@ -535,7 +531,7 @@ AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 
-result_msg_base="  $PACKAGE $VERSION
+result_msg_base="  Knot DNS $VERSION
 
     Target:   $host_os $host_cpu
     Compiler: ${CC}
