@@ -10,14 +10,10 @@
 # Example: 2.7.dev.1521027664.5e69ccc
 ################################################################################
 
-#m4_define([knot_VERSION_MAJOR], 2)dnl
-#m4_define([knot_VERSION_MINOR], 7)dnl
-#m4_define([knot_VERSION_PATCH], )dnl
+m4_define([knot_PATCH],     m4_ifblank(knot_VERSION_PATCH, [dev], knot_VERSION_PATCH))dnl
+m4_define([knot_GIT_HASH],  m4_esyscmd_s(git rev-parse --short HEAD 2>/dev/null))dnl
+m4_define([knot_GIT_TAG],   m4_esyscmd_s(git describe --exact-match 2>/dev/null))dnl
+m4_define([knot_TIMESTAMP], m4_esyscmd_s(date -u +'%s' 2>/dev/null))dnl
+m4_define([knot_GIT_INFO],  m4_ifblank(knot_GIT_TAG, m4_ifnblank(knot_GIT_HASH, .knot_TIMESTAMP.knot_GIT_HASH, []), []))dnl
 
-m4_define([PATCH],     m4_ifblank(knot_VERSION_PATCH, [dev], knot_VERSION_PATCH))dnl
-m4_define([GIT_HASH],  m4_esyscmd_s(git rev-parse --short HEAD 2>/dev/null))dnl
-m4_define([GIT_TAG],   m4_esyscmd_s(git describe --exact-match 2>/dev/null))dnl
-m4_define([TIMESTAMP], m4_esyscmd_s(date -u +'%s' 2>/dev/null))dnl
-m4_define([GIT_INFO],  m4_ifblank(GIT_TAG, m4_ifnblank(GIT_HASH, .TIMESTAMP.GIT_HASH, []), []))dnl
-
-m4_define([knot_PKG_VERSION], [knot_VERSION_MAJOR.knot_VERSION_MINOR.PATCH]GIT_INFO)dnl
+m4_define([knot_PKG_VERSION], [knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_PATCH]knot_GIT_INFO)dnl
