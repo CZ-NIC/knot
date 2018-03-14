@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ static void check_code(
 	int ret,
 	uint8_t ref_code)
 {
-	uint8_t code;
+	uint8_t code = 0;
 	ok(db_code(conf, txn, section_code, name, action, &code) == ret,
 	   "Compare DB code return");
 
@@ -224,7 +224,8 @@ static void check_get(
 	}
 
 	ok(val.blob_len == exp_data_len, "Compare data length");
-	ok(memcmp(val.blob, exp_data, exp_data_len) == 0, "Compare data");
+	ok(val.blob != NULL && memcmp(val.blob, exp_data, exp_data_len) == 0,
+	   "Compare data");
 
 	check_db_content(conf, txn, -1);
 }
