@@ -1,4 +1,3 @@
-if HAVE_UTILS
 noinst_LTLIBRARIES += libknotus.la
 
 libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libidn2_LIBS) \
@@ -31,6 +30,7 @@ libknotus_la_SOURCES = \
 	utils/common/token.c			\
 	utils/common/token.h
 
+if HAVE_UTILS
 bin_PROGRAMS = kdig khost knsec3hash knsupdate
 
 kdig_SOURCES = \
@@ -67,6 +67,7 @@ knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS)
 knsec3hash_LDADD       = libcontrib.la libdnssec.la libknot.la libshared.la
 knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 knsupdate_LDADD        = libknotus.la libzscanner.la
+endif HAVE_UTILS
 
 if HAVE_DAEMON
 # Create storage and run-time directories
@@ -75,13 +76,7 @@ install-data-hook:
 	$(INSTALL) -d $(DESTDIR)/@run_dir@
 	$(INSTALL) -d $(DESTDIR)/@storage_dir@
 
-bin_PROGRAMS += kzonecheck
-sbin_PROGRAMS = knotc knotd keymgr kjournalprint
-
-kzonecheck_SOURCES = \
-	utils/kzonecheck/main.c			\
-	utils/kzonecheck/zone_check.c		\
-	utils/kzonecheck/zone_check.h
+sbin_PROGRAMS = knotc knotd
 
 knotc_SOURCES = \
 	utils/knotc/commands.c			\
@@ -97,6 +92,22 @@ knotc_SOURCES = \
 knotd_SOURCES = \
 	utils/knotd/main.c
 
+knotc_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libedit_CFLAGS)
+knotc_LDADD            = libcontrib.la libknotd.la libknotus.la $(libedit_LIBS)
+knotc_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
+knotd_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(liburcu_CFLAGS)
+knotd_LDADD            = libcontrib.la libknotd.la $(liburcu_LIBS)
+knotd_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
+
+if HAVE_UTILS
+bin_PROGRAMS += kzonecheck
+sbin_PROGRAMS += keymgr kjournalprint
+
+kzonecheck_SOURCES = \
+	utils/kzonecheck/main.c			\
+	utils/kzonecheck/zone_check.c		\
+	utils/kzonecheck/zone_check.h
+
 keymgr_SOURCES = \
 	utils/keymgr/bind_privkey.c		\
 	utils/keymgr/bind_privkey.h		\
@@ -109,16 +120,10 @@ kjournalprint_SOURCES = \
 
 kzonecheck_CPPFLAGS    = $(AM_CPPFLAGS)
 kzonecheck_LDADD       = libcontrib.la libknotd.la
-knotc_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libedit_CFLAGS)
-knotc_LDADD            = libcontrib.la libknotd.la libknotus.la $(libedit_LIBS)
-knotc_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
-knotd_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(liburcu_CFLAGS)
-knotd_LDADD            = libcontrib.la libknotd.la $(liburcu_LIBS)
-knotd_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
 keymgr_CPPFLAGS        = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 keymgr_LDADD           = libcontrib.la libknotd.la libknotus.la libdnssec.la \
                          libshared.la libzscanner.la
 kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 kjournalprint_LDADD    = libcontrib.la libknotd.la
-endif HAVE_DAEMON
 endif HAVE_UTILS
+endif HAVE_DAEMON
