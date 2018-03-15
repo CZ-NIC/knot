@@ -1420,10 +1420,12 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 		chunk_dynarray_t dchunks = { 0 };
 		chunks = 0;
-		serialize_ctx_t *sctx;
-		serialize_init(&sctx, ch);
 
-		size_t chunk_size;
+		serialize_ctx_t *sctx = serialize_init(ch);
+		if (sctx == NULL) {
+			txn->ret = KNOT_ENOMEM;
+			break;
+		}
 
 		bool is_this_merged = (inserting_merged && ch == TAIL(*changesets));
 		bool is_this_bootstrap = (ch->soa_from == NULL);
@@ -1431,6 +1433,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
 
 		while (serialize_unfinished(sctx)) {
+			size_t chunk_size;
 			serialize_prepare(sctx, CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk_size);
 			if (chunk_size == 0) {
 				break;
@@ -1465,7 +1468,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			serialize_chunk(sctx, txn->val.data + JOURNAL_HEADER_SIZE, chunk_size);
 		}
 
-		serialize_deinit(&sctx);
+		serialize_deinit(sctx);
 
 		dynarray_foreach(chunk, knot_db_val_t, val, dchunks) {
 			make_header(val, serial_to, chunks);

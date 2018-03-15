@@ -25,10 +25,11 @@ typedef struct serialize_ctx serialize_ctx_t;
 /*!
  * \brief Init serialization context.
  *
- * \param ctx Context.
  * \param ch  Changeset to be serialized.
+ *
+ * \return Context.
  */
-void serialize_init(serialize_ctx_t **ctx, const changeset_t *ch);
+serialize_ctx_t *serialize_init(const changeset_t *ch);
 
 /*!
  * \brief Pre-check and space computation before serializing a chunk.
@@ -55,7 +56,7 @@ void serialize_chunk(serialize_ctx_t *ctx, uint8_t *chunk, size_t chunk_size);
 bool serialize_unfinished(serialize_ctx_t *ctx);
 
 /*! \brief Free serialization context. */
-void serialize_deinit(serialize_ctx_t **ctx);
+void serialize_deinit(serialize_ctx_t *ctx);
 
 /*!
  * \brief Returns size of changeset in serialized form.
