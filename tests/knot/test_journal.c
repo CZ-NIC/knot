@@ -310,7 +310,7 @@ static void test_store_load(void)
 	/* Fill the journal. */
 	ret = KNOT_EOK;
 	uint32_t serial = 1;
-	for (; ret == KNOT_EOK; ++serial) {
+	for (; ret == KNOT_EOK && serial < 40000; ++serial) {
 		changeset_t *m_ch2 = changeset_new(apex);
 		init_random_changeset(m_ch2, serial, serial + 1, 128, apex, false);
 		ret = journal_store_changeset(j, m_ch2);
@@ -615,7 +615,7 @@ static void test_merge(void)
 	is_int(KNOT_EOK, ret, "journal: drop_journal must be ok");
 
 	// insert stuff and check the merge
-	for (i = 0; !merged_present(); i++) {
+	for (i = 0; !merged_present() && i < 40000; i++) {
 		ret = journal_store_changeset(j, tm_chs(apex, i));
 		is_int(KNOT_EOK, ret, "journal: journal_store_changeset must be ok");
 	}

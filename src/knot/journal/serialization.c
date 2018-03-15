@@ -23,40 +23,173 @@
 #define SERIALIZE_RRSET_INIT (-1)
 #define SERIALIZE_RRSET_DONE ((1L<<16)+1)
 
-static int serialize_rrset(wire_ctx_t *wire, const knot_rrset_t *rrset, long *phase)
+typedef enum {
+	PHASE_SOA_1,
+	PHASE_REM,
+	PHASE_SOA_2,
+	PHASE_ADD,
+	PHASE_END,
+} serialize_phase_t;
+
+#define RRSET_BUF_MAXSIZE 256
+
+struct serialize_ctx {
+	const changeset_t *ch;
+	changeset_iter_t it;
+	serialize_phase_t changeset_phase;
+	long rrset_phase;
+	knot_rrset_t rrset_buf[RRSET_BUF_MAXSIZE];
+	size_t rrset_buf_size;
+};
+
+serialize_ctx_t *serialize_init(const changeset_t *ch)
 {
-	assert(wire != NULL && rrset != NULL && phase != NULL);
-	assert(*phase >= SERIALIZE_RRSET_INIT && *phase < SERIALIZE_RRSET_DONE);
-
-	if (*phase == SERIALIZE_RRSET_INIT) {
-		// write owner, type, class, rrcnt
-		int size = knot_dname_to_wire(wire->position, rrset->owner,
-		                              wire_ctx_available(wire));
-		if (size < 0 || wire_ctx_available(wire) < size + 3 * sizeof(uint16_t)) {
-			return KNOT_EOK;
-		}
-		wire_ctx_skip(wire, size);
-		wire_ctx_write_u16(wire, rrset->type);
-		wire_ctx_write_u16(wire, rrset->rclass);
-		wire_ctx_write_u16(wire, rrset->rrs.rr_count);
-		(*phase)++;
+	serialize_ctx_t *ctx = calloc(1, sizeof(*ctx));
+	if (ctx == NULL) {
+		return NULL;
 	}
 
-	for ( ; *phase < rrset->rrs.rr_count; (*phase)++) {
-		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, *phase);
-		assert(rr);
-		uint16_t rdlen = rr->len;
-		if (wire_ctx_available(wire) < sizeof(uint32_t) + sizeof(uint16_t) + rdlen) {
-			return KNOT_EOK;
+	ctx->ch = ch;
+	ctx->changeset_phase = ch->soa_from != NULL ? PHASE_SOA_1 : PHASE_SOA_2;
+	ctx->rrset_phase = SERIALIZE_RRSET_INIT;
+	ctx->rrset_buf_size = 0;
+
+	return ctx;
+}
+
+static const knot_rrset_t get_next_rrset(serialize_ctx_t *ctx)
+{
+	knot_rrset_t res;
+	knot_rrset_init_empty(&res);
+	switch (ctx->changeset_phase) {
+	case PHASE_SOA_1:
+		changeset_iter_rem(&ctx->it, ctx->ch);
+		ctx->changeset_phase = PHASE_REM;
+		return *ctx->ch->soa_from;
+	case PHASE_REM:
+		res = changeset_iter_next(&ctx->it);
+		if (knot_rrset_empty(&res)) {
+			changeset_iter_clear(&ctx->it);
+			changeset_iter_add(&ctx->it, ctx->ch);
+			ctx->changeset_phase = PHASE_ADD;
+			return *ctx->ch->soa_to;
 		}
-		// Compatibility, but one TTL per rrset would be enough.
-		wire_ctx_write_u32(wire, rrset->ttl);
-		wire_ctx_write_u16(wire, rdlen);
-		wire_ctx_write(wire, rr->data, rdlen);
+		return res;
+	case PHASE_SOA_2:
+		if (ctx->it.node != NULL) {
+			changeset_iter_clear(&ctx->it);
+		}
+		changeset_iter_add(&ctx->it, ctx->ch);
+		ctx->changeset_phase = PHASE_ADD;
+		return *ctx->ch->soa_to;
+	case PHASE_ADD:
+		res = changeset_iter_next(&ctx->it);
+		if (knot_rrset_empty(&res)) {
+			changeset_iter_clear(&ctx->it);
+			ctx->changeset_phase = PHASE_END;
+		}
+		return res;
+	default:
+		return res;
+	}
+}
+
+void serialize_prepare(serialize_ctx_t *ctx, size_t max_size, size_t *realsize)
+{
+	*realsize = 0;
+
+	// check if we are in middle of a rrset
+	if (ctx->rrset_phase != SERIALIZE_RRSET_INIT) {
+		assert(ctx->rrset_buf_size > 0);
+		ctx->rrset_buf[0] = ctx->rrset_buf[ctx->rrset_buf_size - 1];
+		ctx->rrset_buf_size = 1;
+	} else {
+		ctx->rrset_buf[0] = get_next_rrset(ctx);
+		if (ctx->changeset_phase == PHASE_END) {
+			ctx->rrset_buf_size = 0;
+			return;
+		}
+		ctx->rrset_buf_size = 1;
 	}
 
-	*phase = SERIALIZE_RRSET_DONE;
-	return KNOT_EOK;
+	size_t candidate = 0;
+	long tmp_phase = ctx->rrset_phase;
+	while (1) {
+		if (tmp_phase >= ctx->rrset_buf[ctx->rrset_buf_size - 1].rrs.rr_count) {
+			if (ctx->rrset_buf_size >= RRSET_BUF_MAXSIZE) {
+				return;
+			}
+			ctx->rrset_buf[ctx->rrset_buf_size++] = get_next_rrset(ctx);
+			if (ctx->changeset_phase == PHASE_END) {
+				ctx->rrset_buf_size--;
+				return;
+			}
+			tmp_phase = SERIALIZE_RRSET_INIT;
+		}
+		if (tmp_phase == SERIALIZE_RRSET_INIT) {
+			candidate += 3 * sizeof(uint16_t) +
+			             knot_dname_size(ctx->rrset_buf[ctx->rrset_buf_size - 1].owner);
+		} else {
+			candidate += sizeof(uint32_t) + sizeof(uint16_t) +
+			             knot_rdataset_at(&ctx->rrset_buf[ctx->rrset_buf_size - 1].rrs, tmp_phase)->len;
+		}
+		if (candidate > max_size) {
+			return;
+		}
+		*realsize = candidate;
+		tmp_phase++;
+	}
+}
+
+void serialize_chunk(serialize_ctx_t *ctx, uint8_t *dst_chunk, size_t chunk_size)
+{
+	wire_ctx_t wire = wire_ctx_init(dst_chunk, chunk_size);
+
+	for (size_t i = 0; ; ) {
+		if (ctx->rrset_phase >= ctx->rrset_buf[i].rrs.rr_count) {
+			if (++i >= ctx->rrset_buf_size) {
+				break;
+			}
+			ctx->rrset_phase = SERIALIZE_RRSET_INIT;
+		}
+		if (ctx->rrset_phase == SERIALIZE_RRSET_INIT) {
+			int size = knot_dname_to_wire(wire.position, ctx->rrset_buf[i].owner,
+			                              wire_ctx_available(&wire));
+			if (size < 0 || wire_ctx_available(&wire) < size + 3 * sizeof(uint16_t)) {
+				break;
+			}
+			wire_ctx_skip(&wire, size);
+			wire_ctx_write_u16(&wire, ctx->rrset_buf[i].type);
+			wire_ctx_write_u16(&wire, ctx->rrset_buf[i].rclass);
+			wire_ctx_write_u16(&wire, ctx->rrset_buf[i].rrs.rr_count);
+		} else {
+			const knot_rdata_t *rr = knot_rdataset_at(&ctx->rrset_buf[i].rrs,
+			                                          ctx->rrset_phase);
+			assert(rr);
+			uint16_t rdlen = rr->len;
+			if (wire_ctx_available(&wire) < sizeof(uint32_t) + sizeof(uint16_t) + rdlen) {
+				break;
+			}
+			// Compatibility, but one TTL per rrset would be enough.
+			wire_ctx_write_u32(&wire, ctx->rrset_buf[i].ttl);
+			wire_ctx_write_u16(&wire, rdlen);
+			wire_ctx_write(&wire, rr->data, rdlen);
+		}
+		ctx->rrset_phase++;
+	}
+}
+
+bool serialize_unfinished(serialize_ctx_t *ctx)
+{
+	return ctx->changeset_phase < PHASE_END;
+}
+
+void serialize_deinit(serialize_ctx_t *ctx)
+{
+	if (ctx->it.node != NULL) {
+		changeset_iter_clear(&ctx->it);
+	}
+	free(ctx);
 }
 
 static int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset, long *phase)
@@ -95,7 +228,7 @@ static int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset, long *phase)
 		if (wire->error != KNOT_EOK ||
 		    wire_ctx_available(wire) < rdata_size ||
 		    knot_rrset_add_rdata(rrset, wire->position, rdata_size,
-		                         NULL) != KNOT_EOK) {
+					 NULL) != KNOT_EOK) {
 			knot_rrset_clear(rrset, NULL);
 			return KNOT_EMALF;
 		}
@@ -106,30 +239,6 @@ static int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset, long *phase)
 		*phase = SERIALIZE_RRSET_DONE;
 	}
 	return KNOT_EOK;
-}
-
-static int serialize_rrset_chunks(wire_ctx_t *wire, const knot_rrset_t *rrset,
-                                  uint8_t *dst_chunks[], size_t chunk_size,
-                                  size_t chunks_count, size_t *chunks_real_sizes,
-                                  size_t *cur_chunk)
-{
-	long phase = SERIALIZE_RRSET_INIT;
-	while (1) {
-		int ret = serialize_rrset(wire, rrset, &phase);
-		if (ret != KNOT_EOK || phase == SERIALIZE_RRSET_DONE) {
-			return ret;
-		}
-		// now the rrset didn't fit whole to this chunk
-		if (*cur_chunk >= chunks_count - 1) {
-			return KNOT_ESPACE;
-		}
-		if (wire->error != KNOT_EOK) {
-			return wire->error;
-		}
-		chunks_real_sizes[*cur_chunk] = wire_ctx_offset(wire);
-		(*cur_chunk)++;
-		*wire = wire_ctx_init(dst_chunks[*cur_chunk], chunk_size);
-	}
 }
 
 static int deserialize_rrset_chunks(wire_ctx_t *wire, knot_rrset_t *rrset,
@@ -198,86 +307,6 @@ size_t changeset_serialized_size(const changeset_t *ch)
 	changeset_iter_clear(&it);
 
 	return soa_from_size + soa_to_size + change_size;
-}
-
-int changeset_serialize(const changeset_t *ch, uint8_t *dst_chunks[],
-                        size_t chunk_size, size_t chunks_count, size_t *chunks_real_sizes,
-                        size_t *chunks_real_count)
-{
-	if (ch == NULL || dst_chunks == NULL || chunk_size == 0 || chunks_count == 0 ||
-	    chunks_real_sizes == NULL || chunks_real_count == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	for (size_t i = 0; i < chunks_count; i++) {
-		chunks_real_sizes[i] = 0;
-	}
-
-	wire_ctx_t wire = wire_ctx_init(dst_chunks[0], chunk_size);
-	size_t cur_chunk = 0;
-
-	if (ch->soa_from == NULL) {
-		// serializing bootstrap changeset
-		goto serialize_to; // note: it & ret & rrset are uninitialized here, we don't care
-	}
-
-	// Serialize SOA 'from'.
-	int ret = serialize_rrset_chunks(&wire, ch->soa_from, dst_chunks, chunk_size,
-	                                 chunks_count, chunks_real_sizes, &cur_chunk);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Serialize RRSets from the 'rem' section.
-	changeset_iter_t it;
-	ret = changeset_iter_rem(&it, ch);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	knot_rrset_t rrset = changeset_iter_next(&it);
-	while (!knot_rrset_empty(&rrset)) {
-		ret = serialize_rrset_chunks(&wire, &rrset, dst_chunks, chunk_size,
-		                             chunks_count, chunks_real_sizes, &cur_chunk);
-		if (ret != KNOT_EOK) {
-			changeset_iter_clear(&it);
-			return ret;
-		}
-		rrset = changeset_iter_next(&it);
-	}
-	changeset_iter_clear(&it);
-
-serialize_to:
-	// Serialize SOA 'to'.
-	ret = serialize_rrset_chunks(&wire, ch->soa_to, dst_chunks, chunk_size,
-	                             chunks_count, chunks_real_sizes, &cur_chunk);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Serialize RRSets from the 'add' section.
-	ret = changeset_iter_add(&it, ch);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	rrset = changeset_iter_next(&it);
-	while (!knot_rrset_empty(&rrset)) {
-		ret = serialize_rrset_chunks(&wire, &rrset, dst_chunks, chunk_size,
-		                             chunks_count, chunks_real_sizes, &cur_chunk);
-		if (ret != KNOT_EOK) {
-			changeset_iter_clear(&it);
-
-			return ret;
-		}
-		rrset = changeset_iter_next(&it);
-	}
-	changeset_iter_clear(&it);
-
-	chunks_real_sizes[cur_chunk] = wire_ctx_offset(&wire);
-	*chunks_real_count = cur_chunk + 1;
-
-	return wire.error;
 }
 
 int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],

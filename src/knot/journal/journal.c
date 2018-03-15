@@ -23,6 +23,7 @@
 #include "contrib/files.h"
 #include "contrib/ctype.h"
 #include "libknot/endian.h"
+#include "contrib/dynarray.h"
 
 /*! \brief Journal version. */
 #define JOURNAL_VERSION	"1.0"
@@ -427,8 +428,7 @@ static void txn_reuse(txn_t **txn, txn_t *to_reuse, bool write_allowed)
 {
 	if (to_reuse == NULL) {
 		txn_begin(*txn, write_allowed);
-	}
-	else {
+	} else {
 		*txn = to_reuse;
 	}
 }
@@ -480,8 +480,7 @@ static void md_get_common_last_inserter_zone(txn_t *txn, knot_dname_t **res)
 	txn_key_str(txn, NULL, MDKEY_GLOBAL_LAST_INSERTER_ZONE);
 	if (txn_find(txn)) {
 		*res = knot_dname_copy(txn->val.data, NULL);
-	}
-	else {
+	} else {
 		*res = NULL;
 	}
 }
@@ -614,8 +613,7 @@ static int initial_md_check(journal_t *j, bool *dirty_present)
 		txn->val.data = JOURNAL_VERSION;
 		txn_insert(txn);
 		something_updated = true;
-	}
-	else {
+	} else {
 		char * jver = txn->val.data;
 		if (first_digit(jver) != first_digit(JOURNAL_VERSION)) {
 			txn_abort(txn);
@@ -631,8 +629,7 @@ static int initial_md_check(journal_t *j, bool *dirty_present)
 
 	if (something_updated) {
 		txn_commit(txn);
-	}
-	else { // abort to gain up speed when opening a lot of zones
+	} else { // abort to gain up speed when opening a lot of zones
 		txn_abort(txn);
 	}
 
@@ -750,8 +747,7 @@ static int iterate(journal_t *j, txn_t *_txn, iteration_cb_t cb, int method,
 
 			ctx.serial = ctx.serial_to;
 			ctx.chunk_index = 0;
-		}
-		else {
+		} else {
 			ctx.chunk_index++;
 		}
 
@@ -1008,8 +1004,7 @@ static int delete_merged_changeset(journal_t *j, txn_t *t)
 	txn_check_ret(txn);
 	if (!md_flag(txn, MERGED_SERIAL_VALID)) {
 		txn->ret = KNOT_ENOENT;
-	}
-	else {
+	} else {
 		delete_upto(j, txn, txn->shadow_md.merged_serial, txn->shadow_md.merged_serial);
 	}
 	unreuse_txn(txn, t);
@@ -1249,6 +1244,9 @@ m_u_ch_end:
 	return txn->ret;
 }
 
+dynarray_declare(chunk, knot_db_val_t, DYNARRAY_VISIBILITY_STATIC, 32)
+dynarray_define(chunk, knot_db_val_t, DYNARRAY_VISIBILITY_STATIC)
+
 // uses local context, e.g.: j, txn, changesets, nchs, serialized_size_total, store_changeset_cleanup, inserting_merged
 #define try_flush \
 	if (!md_flushed(txn)) { \
@@ -1278,10 +1276,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	size_t nchs = 0, inserted_size = 0, insert_txn_count = 1;
 	size_t serialized_size_changes = 0, serialized_size_merged = 0;
 
-	uint8_t *allchunks = NULL;
-	uint8_t **chunkptrs = NULL;
-	size_t *chunksizes = NULL;
-	knot_db_val_t *vals = NULL;
+	size_t chunks = 0;
 
 	bool inserting_merged = false;
 	bool merged_into_bootstrap = false;
@@ -1346,7 +1341,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			delete_tofree(j, txn, tofree, &freed);
 			if (freed < free_min) {
 				txn->ret = KNOT_ESPACE;
-				log_zone_warning(j->zone, "journal, unable to make free space for insert");
+				log_zone_warning(j->zone, "journal, unable to make free space for insert, "
+				                 "required: %zu, max: %zu", occupied, occupied_max);
 				goto store_changeset_cleanup;
 			}
 		}
@@ -1416,28 +1412,18 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		}
 	}
 
-	// PART 5: serializing into chunks
+	// PART 5: serializing into lmdb
 	WALK_LIST(ch, *changesets) {
 		if (txn->ret != KNOT_EOK) {
 			break;
 		}
 
-		// Twice chsize seems like enough room to store all chunks together.
-		size_t maxchunks = changeset_serialized_size(ch) * 2 / CHUNK_MAX + 1, chunks;
-		allchunks = malloc(maxchunks * CHUNK_MAX);
-		chunkptrs = malloc(maxchunks * sizeof(uint8_t *));
-		chunksizes = malloc(maxchunks * sizeof(size_t));
-		vals = malloc(maxchunks * sizeof(knot_db_val_t));
-		if (allchunks == NULL || chunkptrs == NULL || chunksizes == NULL || vals == NULL) {
+		chunk_dynarray_t dchunks = { 0 };
+		chunks = 0;
+
+		serialize_ctx_t *sctx = serialize_init(ch);
+		if (sctx == NULL) {
 			txn->ret = KNOT_ENOMEM;
-			break;
-		}
-		for (size_t i = 0; i < maxchunks; i++) {
-			chunkptrs[i] = allchunks + i*CHUNK_MAX + JOURNAL_HEADER_SIZE;
-		}
-		txn->ret = changeset_serialize(ch, chunkptrs, CHUNK_MAX - JOURNAL_HEADER_SIZE,
-		                               maxchunks, chunksizes, &chunks);
-		if (txn->ret != KNOT_EOK) {
 			break;
 		}
 
@@ -1446,24 +1432,14 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		uint32_t serial = is_this_bootstrap ? 0 : knot_soa_serial(&ch->soa_from->rrs);
 		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
 
-		for (size_t i = 0; i < chunks; i++) {
-			vals[i].data = allchunks + i*CHUNK_MAX;
-			vals[i].len = JOURNAL_HEADER_SIZE + chunksizes[i];
-			make_header(vals + i, serial_to, chunks);
-		}
+		while (serialize_unfinished(sctx)) {
+			size_t chunk_size;
+			serialize_prepare(sctx, CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk_size);
+			if (chunk_size == 0) {
+				break;
+			}
 
-	// PART 6: inserting vals into db
-		for (size_t i = 0; i < chunks; i++) {
-			if (txn->ret != KNOT_EOK) break;
-			if (is_this_bootstrap) {
-				txn_key_str_u32(txn, j->zone, KEY_BOOTSTRAP_CHANGESET, i);
-			}
-			else {
-				txn_key_2u32(txn, j->zone, serial, i);
-			}
-			txn->val = vals[i];
-			txn_insert(txn);
-			inserted_size += (vals+i)->len;
+			inserted_size += chunk_size;
 			if ((float)inserted_size > journal_max_txn(j) * (float)j->db->fslimit) { // insert txn too large
 				inserted_size = 0;
 				txn->shadow_md.dirty_serial = serial;
@@ -1472,7 +1448,32 @@ static int store_changesets(journal_t *j, list_t *changesets)
 				insert_txn_count++;
 				txn->shadow_md.flags &= ~DIRTY_SERIAL_VALID;
 			}
+
+			if (is_this_bootstrap) {
+				txn_key_str_u32(txn, j->zone, KEY_BOOTSTRAP_CHANGESET, chunks);
+			} else {
+				txn_key_2u32(txn, j->zone, serial, chunks);
+			}
+
+			txn->val.data = NULL;
+			txn->val.len = chunk_size + JOURNAL_HEADER_SIZE;
+
+			txn_insert(txn);
+			if (txn->ret != KNOT_EOK) break;
+
+			chunk_dynarray_add(&dchunks, &txn->val);
+
+			chunks++;
+
+			serialize_chunk(sctx, txn->val.data + JOURNAL_HEADER_SIZE, chunk_size);
 		}
+
+		serialize_deinit(sctx);
+
+		dynarray_foreach(chunk, knot_db_val_t, val, dchunks) {
+			make_header(val, serial_to, chunks);
+		}
+		chunk_dynarray_free(&dchunks);
 
 	// PART 7: metadata update
 		if (txn->ret != KNOT_EOK) {
@@ -1488,8 +1489,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 				txn->shadow_md.last_serial_to = serial_to;
 			}
 			txn->shadow_md.flags |= SERIAL_TO_VALID;
-		}
-		else {
+		} else {
 			if (!md_flag(txn, SERIAL_TO_VALID) || md_flag(txn, FIRST_SERIAL_INVALID)) {
 				txn->shadow_md.first_serial = serial;
 			}
@@ -1499,15 +1499,6 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			txn->shadow_md.last_serial_to = serial_to;
 			txn->shadow_md.changeset_count++;
 		}
-
-		free(allchunks);
-		free(chunkptrs);
-		free(chunksizes);
-		free(vals);
-		allchunks = NULL;
-		chunkptrs = NULL;
-		chunksizes = NULL;
-		vals = NULL;
 	}
 
 	// PART X : finalization and cleanup
@@ -1524,11 +1515,6 @@ store_changeset_cleanup:
 		}
 		txn_commit(ddtxn);
 	}
-
-	if (allchunks != NULL) free(allchunks);
-	if (chunkptrs != NULL) free(chunkptrs);
-	if (chunksizes != NULL) free(chunksizes);
-	if (vals != NULL) free(vals);
 
 	changeset_t *dbgchst = TAIL(*changesets);
 
@@ -2026,13 +2012,11 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 		ret = load_bootstrap_changeset(j, txn, &ch);
 		if (ret != KNOT_EOK) {
 			jch_warn("can't read bootstrap changeset (%s)", knot_strerror(ret));
-		}
-		else {
+		} else {
 			changeset_free(ch);
 		}
 		goto check_merged;
-	}
-	else {
+	} else {
 		ret = load_bootstrap_changeset(j, txn, &ch);
 		switch (ret) {
 		case KNOT_EOK:
@@ -2067,8 +2051,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 		if (ret != KNOT_EOK) {
 			jch_warn("can't read last flushed changeset %u (%s)",
 			         txn->shadow_md.last_flushed, knot_strerror(ret));
-		}
-		else {
+		} else {
 			first_unflushed = knot_soa_serial(&ch->soa_to->rrs);
 		}
 	}
@@ -2083,8 +2066,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 	ret = load_one(j, txn, sto, &ch);
 	if (ret != KNOT_EOK) {
 		jch_warn("can't read second changeset %u (%s)", sto, knot_strerror(ret));
-	}
-	else {
+	} else {
 		sfrom = knot_soa_serial(&ch->soa_from->rrs);
 		if (!serial_equal(sfrom, sto)) {
 			jch_warn("second changeset's serial 'from' %u is not ok", sfrom);
@@ -2130,8 +2112,7 @@ check_merged:
 		ret = load_merged_changeset(j, txn, &ch, NULL);
 		if (ret != KNOT_EOK) {
 			jch_warn("can't read merged changeset (%s)", knot_strerror(ret));
-		}
-		else {
+		} else {
 			sfrom = knot_soa_serial(&ch->soa_from->rrs);
 			sto = knot_soa_serial(&ch->soa_to->rrs);
 			jch_info("merged changeset %u -> %u (size %zu)", sfrom, sto,
