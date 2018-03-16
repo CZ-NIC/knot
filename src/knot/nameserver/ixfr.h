@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,13 +38,12 @@ struct ixfr_proc {
 	enum ixfr_state state;
 
 	/* Changes to be sent. */
-	list_t changesets;
+	chgset_ctx_list_t changesets;
 
 	/* Currenty processed changeset. */
 	knot_rrset_t cur_rr;
-	changeset_iter_t cur;
-	const knot_rrset_t *soa_from;
-	const knot_rrset_t *soa_to;
+	uint32_t soa_from;
+	uint32_t soa_to;
 
 	/* Processing context. */
 	knotd_qdata_t *qdata;
