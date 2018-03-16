@@ -135,6 +135,8 @@ src/knot/events/log.h
 src/knot/events/replan.c
 src/knot/events/replan.h
 src/knot/include/module.h
+src/knot/journal/chgset_ctx.c
+src/knot/journal/chgset_ctx.h
 src/knot/journal/journal.c
 src/knot/journal/journal.h
 src/knot/journal/serialization.c

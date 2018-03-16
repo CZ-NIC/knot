@@ -22,6 +22,7 @@
 #include "contrib/ucw/lists.h"
 #include "knot/updates/changesets.h"
 #include "knot/journal/serialization.h"
+#include "knot/journal/chgset_ctx.h"
 #include "knot/zone/serial.h"
 
 /*! \brief Minimum journal size. */
@@ -52,6 +53,8 @@ typedef enum {
 	JOURNAL_CHECK_INFO   = 2, // Log journal state.
 	JOURNAL_CHECK_STDERR = 3, // Log everything and redirect to stderr.
 } journal_check_level_t;
+
+struct journal_txn;
 
 /*!
  * \brief Initialize shared journal DB file. The DB will be open on first use.
@@ -133,6 +136,8 @@ void journal_close(journal_t *journal);
  * \return < KNOT_EOK on other error.
  */
 int journal_load_changesets(journal_t *journal, list_t *dst, uint32_t from);
+
+int journal_load_chgset_ctx(journal_t *j, chgset_ctx_list_t *dst, uint32_t from);
 
 /*!
  * \brief Load changesets from journal, starting with bootstrap changeset.
@@ -224,5 +229,7 @@ void journal_metadata_info(journal_t *journal, bool *is_empty, kserial_t *merged
  * \return KNOT_E*
  */
 int journal_check(journal_t *journal, journal_check_level_t warn_level);
+
+void journal_txn_commit(struct journal_txn *txn);
 
 /*! @} */

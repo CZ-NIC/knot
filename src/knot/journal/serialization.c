@@ -18,7 +18,6 @@
 
 #include "knot/journal/serialization.h"
 #include "libknot/libknot.h"
-#include "contrib/wire_ctx.h"
 
 #define SERIALIZE_RRSET_INIT (-1)
 #define SERIALIZE_RRSET_DONE ((1L<<16)+1)
@@ -241,9 +240,9 @@ static int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset, long *phase)
 	return KNOT_EOK;
 }
 
-static int deserialize_rrset_chunks(wire_ctx_t *wire, knot_rrset_t *rrset,
-                                    uint8_t *src_chunks[], const size_t *chunk_sizes,
-                                    size_t chunks_count, size_t *cur_chunk)
+int deserialize_rrset_chunks(wire_ctx_t *wire, knot_rrset_t *rrset,
+                             uint8_t *src_chunks[], const size_t *chunk_sizes,
+                             size_t chunks_count, size_t *cur_chunk)
 {
 	long phase = SERIALIZE_RRSET_INIT;
 	while (1) {

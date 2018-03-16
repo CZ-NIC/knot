@@ -296,6 +296,12 @@ static void test_store_load(void)
 	ret = journal_check(j, JOURNAL_CHECK_STDERR);
 	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 
+	/* Load ctx's. */
+	chgset_ctx_list_t cl = { { 0 }, 0 };
+	ret = journal_load_chgset_ctx(j, &cl, 0);
+	ok(ret == KNOT_EOK, "journal: chgset_ctx: load (%s)", knot_strerror(ret));
+	chgset_ctx_list_close(&cl);
+
 	changesets_free(&l);
 	changesets_free(&k);
 
@@ -333,6 +339,11 @@ static void test_store_load(void)
 	init_list(&l);
 	ret = journal_load_changesets(j, &l, 1);
 	ok(ret == KNOT_EOK && changesets_list_eq(&l, &k), "journal: re-load changesets (%d)", ret);
+
+	ret = journal_load_chgset_ctx(j, &cl, 1);
+	ok(ret == KNOT_EOK, "journal: chgset_ctx: load 2 (%s)", knot_strerror(ret));
+	ok(list_size(&cl.l) == list_size(&l), "journal: chgset_ctx: load size %zu ?== %zu", list_size(&cl.l), list_size(&l));
+	chgset_ctx_list_close(&cl);
 
 	changesets_free(&l);
 	init_list(&l);
