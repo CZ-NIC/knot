@@ -201,7 +201,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	if (!(flags & ZONE_SIGN_KEEP_SERIAL)) {
+	if (!(flags & ZONE_SIGN_KEEP_SERIAL) && zone_update_to(update) == NULL) {
 		result = zone_update_increment_soa(update, conf());
 		if (result == KNOT_EOK) {
 			result = knot_zone_sign_soa(update, &keyset, &ctx);
