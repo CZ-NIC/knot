@@ -6,7 +6,11 @@ m4_define([knot_VERSION_PATCH], )dnl Leave empty if the master branch!
 m4_include([m4/knot-version.m4])
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
-configure_params="$*"
+
+# Store ./configure parameters and CFLAGS
+AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$*"],[Params passed to configure])
+AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environment])
+
 AM_INIT_AUTOMAKE([foreign std-options subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot])
@@ -14,6 +18,12 @@ AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS
 AC_CANONICAL_HOST
+
+# Update library versions
+# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+AC_SUBST([libknot_VERSION_INFO],["-version-info 7:0:0"])
+AC_SUBST([libdnssec_VERSION_INFO],["-version-info 5:0:0"])
+AC_SUBST([libzscanner_VERSION_INFO],["-version-info 1:0:0"])
 
 AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)
 AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
@@ -23,17 +33,7 @@ AC_CONFIG_FILES([src/libknot/version.h
                  src/libdnssec/version.h
                  src/libzscanner/version.h])
 
-# Store ./configure parameters into macro
-AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$configure_params"],[Params passed to configure])
-AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environment])
-
-# Updating version info
-# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST([libknot_VERSION_INFO],["-version-info 7:0:0"])
-AC_SUBST([libdnssec_VERSION_INFO],["-version-info 5:0:0"])
-AC_SUBST([libzscanner_VERSION_INFO],["-version-info 1:0:0"])
-
-# Automatically update release date based on configure.ac date
+# Automatically update release date based on NEWS
 AC_PROG_SED
 release_date=$($SED -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
 AC_SUBST([RELEASE_DATE], $release_date)
@@ -43,11 +43,17 @@ AC_PROG_CC_C99
 AM_PROG_CC_C_O
 AC_PROG_CPP_WERROR
 
-# Default compiler flags
+# Set default CFLAGS
 CFLAGS="$CFLAGS -Wall -Werror=format-security -Werror=implicit -Wstrict-prototypes"
 
-# Checks for programs.
-m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available
+AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
+AX_CHECK_LINK_FLAG(["-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs="-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs=""], "")
+AC_SUBST([LDFLAG_EXCLUDE_LIBS], $ldflag_exclude_libs)
+
+# Check if an archiver is available
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+
+AC_PROG_INSTALL
 
 # Initialize libtool
 LT_INIT
@@ -83,8 +89,6 @@ AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" = "yes"])
 ######################
 # Generic dependencies
 ######################
-
-AC_PROG_INSTALL
 
 AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--disable-fastparser], [Disable use of fastest zone parser]),[],[
@@ -181,10 +185,6 @@ AS_IF([test "$enable_reuseport" != no], [
 
 AS_IF([test "$enable_reuseport" = yes],[
    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])])
-
-AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
-AX_CHECK_LINK_FLAG(["-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs="-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs=""], "")
-AC_SUBST([LDFLAG_EXCLUDE_LIBS], $ldflag_exclude_libs)
 
 # Default directories
 run_dir="${localstatedir}/run/knot"
