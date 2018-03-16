@@ -57,7 +57,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata)
 	}
 
 	/* Update counters. */
-	xfr_stats_add(&xfer->stats, pkt->size);
+	xfr_stats_add(&xfer->stats, pkt->size + knot_rrset_size(&qdata->opt_rr));
 
 	/* If a rrset is larger than the message,
 	 * fail to avoid infinite loop of empty messages */
