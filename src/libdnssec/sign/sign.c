@@ -21,6 +21,7 @@
 #include <gnutls/crypto.h>
 
 #include "contrib/macros.h"
+#include "contrib/vpool/vpool.h"
 #include "libdnssec/shared/bignum.h"
 #include "libdnssec/error.h"
 #include "libdnssec/key.h"
@@ -29,7 +30,6 @@
 #include "libdnssec/sign.h"
 #include "libdnssec/sign/der.h"
 #include "libdnssec/shared/binary_wire.h"
-#include "libdnssec/contrib/vpool.h"
 
 /*!
  * Signature format conversion callback.

@@ -58,7 +58,9 @@ libcontrib_la_SOURCES = \
 	contrib/ucw/lists.c			\
 	contrib/ucw/lists.h			\
 	contrib/ucw/mempool.c			\
-	contrib/ucw/mempool.h
+	contrib/ucw/mempool.h			\
+	contrib/vpool/vpool.c			\
+	contrib/vpool/vpool.h
 
 if !HAVE_LMDB
 libcontrib_la_SOURCES += \

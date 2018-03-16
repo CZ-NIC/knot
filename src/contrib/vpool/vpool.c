@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libdnssec/contrib/vpool.h"
+#include "contrib/vpool/vpool.h"
 
 static void	vpool_shift(struct vpool *pool);
 static int	vpool_new_size(struct vpool *pool, size_t datsize,

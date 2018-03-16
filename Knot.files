@@ -53,6 +53,8 @@ src/contrib/ucw/lists.c
 src/contrib/ucw/lists.h
 src/contrib/ucw/mempool.c
 src/contrib/ucw/mempool.h
+src/contrib/vpool/vpool.c
+src/contrib/vpool/vpool.h
 src/contrib/wire_ctx.h
 src/knot/common/evsched.c
 src/knot/common/evsched.h
@@ -237,8 +239,6 @@ src/knot/zone/zonefile.c
 src/knot/zone/zonefile.h
 src/libdnssec/binary.c
 src/libdnssec/binary.h
-src/libdnssec/contrib/vpool.c
-src/libdnssec/contrib/vpool.h
 src/libdnssec/crypto.c
 src/libdnssec/crypto.h
 src/libdnssec/dnssec.h
