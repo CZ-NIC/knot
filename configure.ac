@@ -318,17 +318,30 @@ AM_SUBST_NOTMAKE([STATIC_MODULES_INIT])
 AC_SUBST([DOC_MODULES], [$(printf "$doc_modules")])
 AM_SUBST_NOTMAKE([DOC_MODULES])
 
-opt_dnstap=no
-AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"],[
-dnl Check for dnstap.
-dt_DNSTAP([
-    AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support for kdig])
-    AC_SUBST(DNSTAP_CFLAGS)
-    AC_SUBST(DNSTAP_LIBS)
-    ])
+# Check for Dnstap
+AC_ARG_ENABLE([dnstap],
+  AS_HELP_STRING([--enable-dnstap], [Enable dnstap support for kdig (requires fstrm, protobuf-c)]),
+  [], [enable_dnstap=no])
+
+AS_IF([test "$enable_dnstap" != "no" -o "$STATIC_MODULE_dnstap" != "no" -o "$SHARED_MODULE_dnstap" != "no"],[
+  AC_PATH_PROG([PROTOC_C], [protoc-c])
+  AS_IF([test -z "$PROTOC_C"],[
+    AC_MSG_ERROR([The protoc-c program was not found. Please install protobuf-c!])
+  ])
+  PKG_CHECK_MODULES([libfstrm], [libfstrm])
+  PKG_CHECK_MODULES([libprotobuf_c], [libprotobuf-c >= 1.0.0])
+  AC_SUBST([DNSTAP_CFLAGS], ["$libfstrm_CFLAGS $libprotobuf_c_CFLAGS"])
+  AC_SUBST([DNSTAP_LIBS], ["$libfstrm_LIBS $libprotobuf_c_LIBS"])
 ])
 
-AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
+AS_IF([test "$enable_dnstap" != "no"],[
+  AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support for kdig])
+])
+AM_CONDITIONAL([HAVE_DNSTAP], test "$enable_dnstap" != "no")
+
+AM_CONDITIONAL([HAVE_LIBDNSTAP], test "$enable_dnstap" != "no" -o \
+                                      "$STATIC_MODULE_dnstap" != "no" -o \
+                                      "$SHARED_MODULE_dnstap" != "no")
 
 dnl Check for LMDB
 lmdb_MIN_VERSION_MAJOR=0
@@ -565,7 +578,7 @@ result_msg_base="  Knot DNS $VERSION
     Use SO_REUSEPORT:       ${enable_reuseport}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
-    Utilities with Dnstap:  ${opt_dnstap}
+    Utilities with Dnstap:  ${enable_dnstap}
     Systemd integration:    ${enable_systemd}
     PKCS #11 support:       ${enable_pkcs11}
     Ed25519 support:        ${enable_ed25519}

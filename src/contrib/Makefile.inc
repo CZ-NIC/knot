@@ -65,7 +65,12 @@ libcontrib_la_SOURCES += \
 	contrib/lmdb/midl.h
 endif !HAVE_LMDB
 
-if HAVE_DNSTAP
+if HAVE_LIBDNSTAP
+noinst_LTLIBRARIES += libdnstap.la
+
+libdnstap_la_CPPFLAGS = $(AM_CPPFLAGS) $(DNSTAP_CFLAGS)
+libdnstap_la_LDFLAGS  = $(AM_LDFLAGS) $(DNSTAP_LIBS)
+
 SUFFIXES = .proto .pb-c.c .pb-c.h
 
 .proto.pb-c.c:
@@ -74,7 +79,7 @@ SUFFIXES = .proto .pb-c.c .pb-c.h
 .proto.pb-c.h:
 	$(AM_V_GEN)@PROTOC_C@ --c_out=. -I$(srcdir) $<
 
-libcontrib_la_SOURCES += \
+libdnstap_la_SOURCES = \
 	contrib/dnstap/convert.c	\
 	contrib/dnstap/convert.h	\
 	contrib/dnstap/dnstap.c		\
@@ -86,13 +91,10 @@ libcontrib_la_SOURCES += \
 	contrib/dnstap/writer.c		\
 	contrib/dnstap/writer.h
 
-nodist_libcontrib_la_SOURCES = \
+nodist_libdnstap_la_SOURCES = \
 	contrib/dnstap/dnstap.pb-c.c	\
 	contrib/dnstap/dnstap.pb-c.h
 
-libcontrib_la_CPPFLAGS += $(DNSTAP_CFLAGS)
-libcontrib_la_LDFLAGS  += $(DNSTAP_LIBS)
-
-BUILT_SOURCES += $(nodist_libcontrib_la_SOURCES)
-CLEANFILES    += $(nodist_libcontrib_la_SOURCES)
-endif HAVE_DNSTAP
+BUILT_SOURCES += $(nodist_libdnstap_la_SOURCES)
+CLEANFILES    += $(nodist_libdnstap_la_SOURCES)
+endif HAVE_LIBDNSTAP
