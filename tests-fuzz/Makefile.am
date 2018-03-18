@@ -10,11 +10,11 @@ FUZZERS = \
 	fuzz_packet	\
 	fuzz_zscanner
 
-check_PROGRAMS = \
-	$(FUZZERS)	\
-	knotd_stdio
+check_PROGRAMS = $(FUZZERS)
 
+if HAVE_DAEMON
 # knotd_stdio (AFL)
+check_PROGRAMS += knotd_stdio
 
 nodist_knotd_stdio_SOURCES = knotd_wrap/main.c
 
@@ -33,6 +33,7 @@ CLEANFILES = knotd_wrap/main.c
 knotd_wrap/main.c: $(top_builddir)/src/utils/knotd/main.c
 	@echo '#include "knotd_wrap/afl-loop.h"' > $@
 	@$(SED) -e 's/for (;;)/while (__AFL_LOOP(10000))/' $(top_srcdir)/src/utils/knotd/main.c >> $@
+endif HAVE_DAEMON
 
 # Simple function wrappers (AFL, libFuzzer, tests)
 
