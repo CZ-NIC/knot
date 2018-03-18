@@ -67,6 +67,37 @@ AC_CONFIG_FILES([src/knotd.pc
                  src/libzscanner.pc
                  ])
 
+# Default directories
+knot_prefix="/usr/local"
+AC_PREFIX_DEFAULT([$knot_prefix])
+AS_IF([test "$prefix" != NONE], [knot_prefix=$prefix])
+
+run_dir="${localstatedir}/run/knot"
+AC_ARG_WITH([rundir],
+        AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=LOCALSTATEDIR/run/knot]]),
+        [run_dir=$withval])
+AC_SUBST(run_dir)
+
+storage_dir="${localstatedir}/lib/knot"
+AC_ARG_WITH([storage],
+        AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=LOCALSTATEDIR/lib/knot]]),
+        [storage_dir=$withval])
+AC_SUBST(storage_dir)
+
+config_dir="${sysconfdir}/knot"
+AC_ARG_WITH([configdir],
+        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=SYSCONFDIR/knot]]),
+        [config_dir=$withval])
+AC_SUBST(config_dir)
+
+module_dir=
+module_instdir="${libdir}/knot/modules-${KNOT_VERSION_MAJOR}.${KNOT_VERSION_MINOR}"
+AC_ARG_WITH([moduledir],
+        AC_HELP_STRING([--with-moduledir=path], [Path to auto-loaded dynamic modules. [default not set]]),
+        [module_dir=$withval module_instdir=$module_dir])
+AC_SUBST(module_instdir)
+AC_SUBST(module_dir)
+
 # Build Knot DNS daemon
 AC_ARG_ENABLE([daemon],
     AS_HELP_STRING([--disable-daemon], [Don't build Knot DNS main daemon]), [], [enable_daemon=yes])
@@ -185,37 +216,6 @@ AS_IF([test "$enable_reuseport" != no], [
 
 AS_IF([test "$enable_reuseport" = yes],[
    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])])
-
-# Default directories
-knot_prefix="/usr/local"
-AC_PREFIX_DEFAULT([$knot_prefix])
-AS_IF([test "$prefix" != NONE], [knot_prefix=$prefix])
-
-run_dir="${localstatedir}/run/knot"
-AC_ARG_WITH([rundir],
-        AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=LOCALSTATEDIR/run/knot]]),
-        [run_dir=$withval])
-AC_SUBST(run_dir)
-
-storage_dir="${localstatedir}/lib/knot"
-AC_ARG_WITH([storage],
-        AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=LOCALSTATEDIR/lib/knot]]),
-        [storage_dir=$withval])
-AC_SUBST(storage_dir)
-
-config_dir="${sysconfdir}/knot"
-AC_ARG_WITH([configdir],
-        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=SYSCONFDIR/knot]]),
-        [config_dir=$withval])
-AC_SUBST(config_dir)
-
-module_dir=
-module_instdir="${libdir}/knot/modules-${KNOT_VERSION_MAJOR}.${KNOT_VERSION_MINOR}"
-AC_ARG_WITH([moduledir],
-        AC_HELP_STRING([--with-moduledir=path], [Path to auto-loaded dynamic modules. [default not set]]),
-        [module_dir=$withval module_instdir=$module_dir])
-AC_SUBST(module_instdir)
-AC_SUBST(module_dir)
 
 #########################################
 # Dependencies needed for Knot DNS daemon
