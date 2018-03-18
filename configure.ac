@@ -187,6 +187,10 @@ AS_IF([test "$enable_reuseport" = yes],[
    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])])
 
 # Default directories
+knot_prefix="/usr/local"
+AC_PREFIX_DEFAULT([$knot_prefix])
+AS_IF([test "$prefix" != NONE], [knot_prefix=$prefix])
+
 run_dir="${localstatedir}/run/knot"
 AC_ARG_WITH([rundir],
         AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=LOCALSTATEDIR/run/knot]]),
@@ -543,7 +547,7 @@ result_msg_base="  Knot DNS $VERSION
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
     Config:   ${conf_mapsize} MiB mapsize
 
-    Prefix:      ${prefix}
+    Prefix:      ${knot_prefix}
     Run dir:     ${run_dir}
     Storage dir: ${storage_dir}
     Config dir:  ${config_dir}
