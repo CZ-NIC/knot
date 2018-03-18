@@ -20,9 +20,7 @@
 #ifndef _VPOOL_H_
 #define _VPOOL_H_
 
-#include <sys/types.h>
-#include <sys/cdefs.h>
-
+#include <stddef.h>
 #include <limits.h>
 
 struct vpool {
@@ -38,8 +36,6 @@ struct vpool {
 
 enum vpool_trunc {VPOOL_EXCLUDE, VPOOL_INCLUDE};
 #define VPOOL_TAIL	UINT_MAX
-
-__BEGIN_DECLS
 
 void	vpool_init(struct vpool *pool, size_t blksize, size_t limit);
 void	vpool_final(struct vpool *pool);
@@ -60,7 +56,5 @@ int	vpool_truncate(struct vpool *pool,
 #define vpool_get_error(pool)		((pool)->v_lasterr)
 
 void	vpool_export(struct vpool *pool, void **buf, size_t *size);
-
-__END_DECLS
 
 #endif /* !_VPOOL_H_ */
