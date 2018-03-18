@@ -1,3 +1,4 @@
+if HAVE_LIBUTILS
 noinst_LTLIBRARIES += libknotus.la
 
 libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libidn2_LIBS) \
@@ -29,6 +30,7 @@ libknotus_la_SOURCES = \
 	utils/common/tls.h			\
 	utils/common/token.c			\
 	utils/common/token.h
+endif HAVE_LIBUTILS
 
 if HAVE_UTILS
 bin_PROGRAMS = kdig khost knsec3hash knsupdate

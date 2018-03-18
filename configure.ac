@@ -117,6 +117,8 @@ AC_ARG_ENABLE([documentation],
     AS_HELP_STRING([--disable-documentation], [Don't build Knot DNS documentation]), [], [enable_documentation=yes])
 AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" = "yes"])
 
+AM_CONDITIONAL([HAVE_LIBUTILS], test "$enable_utilities" != "no" -o \
+                                     "$enable_daemon" != "no")
 ######################
 # Generic dependencies
 ######################
