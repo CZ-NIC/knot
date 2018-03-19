@@ -8,11 +8,15 @@ AM_CPPFLAGS = \
 LDADD = \
 	libtap.la				\
 	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libknotd.la		\
 	$(top_builddir)/src/libshared.la	\
 	$(top_builddir)/src/libdnssec.la	\
 	$(top_builddir)/src/libcontrib.la	\
 	$(top_builddir)/src/libzscanner.la
+
+if HAVE_DAEMON
+LDADD += \
+	$(top_builddir)/src/libknotd.la
+endif HAVE_DAEMON
 
 EXTRA_DIST = \
 	tap/libtap.sh				\
@@ -74,6 +78,7 @@ check_PROGRAMS += \
 	libdnssec/test_shared_dname		\
 	libdnssec/test_tsig
 
+if HAVE_DAEMON
 check_PROGRAMS += \
 	knot/test_acl				\
 	knot/test_changeset			\
@@ -119,6 +124,7 @@ knot_test_process_query_SOURCES = \
 	knot/test_process_query.c		\
 	knot/test_server.h			\
 	knot/test_conf.h
+endif HAVE_DAEMON
 
 check_PROGRAMS += \
 	libknot/test_control			\
@@ -141,10 +147,13 @@ check_PROGRAMS += \
 	libknot/test_yptrafo			\
 	libknot/test_wire
 
+if HAVE_LIBUTILS
 check_PROGRAMS += \
 	utils/test_cert				\
 	utils/test_lookup
+endif HAVE_LIBUTILS
 
+if HAVE_DAEMON
 if STATIC_MODULE_onlinesign
 check_PROGRAMS += \
 	modules/test_onlinesign
@@ -164,11 +173,13 @@ check_PROGRAMS += \
 	modules/test_rrl
 endif
 endif
+endif HAVE_DAEMON
 
 libdnssec_test_keystore_pkcs11_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
 	-DLIBDIR='"$(libdir)"'
 
+if HAVE_LIBUTILS
 utils_test_lookup_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
 	$(libedit_CFLAGS)
@@ -186,6 +197,7 @@ utils_test_cert_LDADD = \
 	libtap.la \
 	$(top_builddir)/src/libknotus.la \
 	$(libedit_LIBS)
+endif HAVE_LIBUTILS
 
 EXTRA_PROGRAMS += libzscanner/zscanner-tool
 
@@ -195,16 +207,20 @@ libzscanner_zscanner_tool_SOURCES = \
 	libzscanner/processing.c
 
 check_SCRIPTS = \
-	knot/test_semantic_check	\
 	libzscanner/test_zscanner
 
 edit = $(SED) \
 	-e 's|@top_srcdir[@]|$(abs_top_srcdir)|g' \
 	-e 's|@top_builddir[@]|$(abs_top_builddir)|g'
 
+if HAVE_LIBUTILS
+check_SCRIPTS += \
+	knot/test_semantic_check
+
 knot/test_semantic_check:
 	@$(edit) < $(top_srcdir)/tests/$@.in > $(top_builddir)/tests/$@
 	@chmod +x $(top_builddir)/tests/$@
+endif HAVE_LIBUTILS
 
 libzscanner/test_zscanner: libzscanner/zscanner-tool
 	@$(edit) < $(top_srcdir)/tests/$@.in > $(top_builddir)/tests/$@
