@@ -213,16 +213,16 @@ fi
 %{_mandir}/man1/knsupdate.*
 
 %files libs
-%doc COPYING AUTHORS NEWS THANKS
+%doc COPYING NEWS
 %{_libdir}/libdnssec.so.*
 %{_libdir}/libknot.so.*
 %{_libdir}/libzscanner.so.*
 
 %files devel
-%{_includedir}/dnssec
+%{_includedir}/libdnssec
 %{_includedir}/knot
 %{_includedir}/libknot
-%{_includedir}/zscanner
+%{_includedir}/libzscanner
 %{_libdir}/libdnssec.so
 %{_libdir}/libknot.so
 %{_libdir}/libzscanner.so
