@@ -593,7 +593,7 @@ int stats_load(knotd_mod_t *mod)
 		*(bool *)((uint8_t *)stats + desc->conf_offset) = enabled;
 
 		int ret = knotd_mod_stats_add(mod, enabled ? desc->conf_name + 1 : NULL,
-		                              desc->count, desc->fcn);
+		                              enabled ? desc->count : 1, desc->fcn);
 		if (ret != KNOT_EOK) {
 			free(stats);
 			return ret;
