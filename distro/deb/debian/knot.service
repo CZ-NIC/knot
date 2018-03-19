@@ -1,14 +1,1 @@
-[Unit]
-Description=Knot DNS server
-Wants=network-online.target
-After=network-online.target
-Documentation=man:knotd(8) man:knot.conf(5) man:knotc(8)
-
-[Service]
-EnvironmentFile=/etc/default/knot
-ExecReload=/usr/sbin/knotc reload
-ExecStart=/usr/sbin/knotd $KNOTD_ARGS
-Restart=on-abort
-
-[Install]
-WantedBy=multi-user.target
+../../common/knot.service

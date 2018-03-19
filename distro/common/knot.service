@@ -1,6 +1,8 @@
 [Unit]
 Description=Knot DNS server
-After=syslog.target network.target
+Wants=network-online.target
+After=syslog.target network-online.target
+Documentation=man:knotd(8) man:knot.conf(5) man:knotc(8)
 
 [Service]
 Type=notify

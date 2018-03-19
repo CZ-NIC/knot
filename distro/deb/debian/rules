@@ -7,7 +7,7 @@
 # To enable all, uncomment following line
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_CFLAGS_MAINT_APPEND  = -Wall -DNDEBUG
-export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed -latomic
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
 export DPKG_GENSYMBOLS_CHECK_LEVEL := 4
 
@@ -45,7 +45,6 @@ override_dh_auto_configure:
 	  --enable-systemd=auto \
 	  --enable-dnstap \
 	  --with-module-dnstap=yes \
-	  --with-bash-completions \
 	  $(RECVMMSG) \
 	  $(FASTPARSER) \
 	  --disable-silent-rules

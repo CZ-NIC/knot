@@ -36,12 +36,8 @@ Depends:
  libknot7 (= ${binary:Version}),
  libzscanner1 (= ${binary:Version}),
  lsb-base (>= 3.0-6),
- python3,
- python3-yaml,
  ${misc:Depends},
  ${shlibs:Depends},
-Recommends:
- python3-lmdb,
 Suggests:
  systemd,
 Description: Authoritative domain name server

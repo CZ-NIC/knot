@@ -32,11 +32,11 @@ License: GPL-3+ with OpenSSL exception
  On Debian systems, the full text of the GNU General Public License
  version 3 can be found in the file `/usr/share/common-licenses/GPL-3'.
 
-Files: libtap/*
+Files: tests/tap/*
 Copyright: 2000-2001, 2004, 2006-2011 Russ Allbery <rra@stanford.edu>
 License: Expat
 
-Files: src/contrib/ucw/lists.c
+Files: src/contrib/ucw/*
 Copyright: 1998 Martin Mares <mj@ucw.cz>
 License: GPL-3+
 

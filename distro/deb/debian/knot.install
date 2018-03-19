@@ -1,14 +1,11 @@
-debian/get_kaspdb usr/lib/knot/
-debian/get_user usr/lib/knot/
 debian/ufw/knot etc/ufw/applications.d/
 etc/knot/knot.conf
-usr/bin/kjournalprint
+usr/sbin/kjournalprint
 usr/bin/knsec3hash
 usr/bin/kzonecheck
 usr/sbin/keymgr
 usr/sbin/knotc
 usr/sbin/knotd
-usr/sbin/pykeymgr
 usr/share/man/man1/kjournalprint.1
 usr/share/man/man1/knsec3hash.1
 usr/share/man/man1/kzonecheck.1
@@ -16,4 +13,3 @@ usr/share/man/man5/knot.conf.5
 usr/share/man/man8/keymgr.8
 usr/share/man/man8/knotc.8
 usr/share/man/man8/knotd.8
-usr/share/man/man8/pykeymgr.8
