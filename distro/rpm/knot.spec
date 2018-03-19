@@ -103,7 +103,7 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
 %define configure_db_sizes --with-conf-mapsize=64 --with-timer-mapsize=16
 %endif
 
-%configure %{configure_db_sizes} --disable-fastparser  # FIXME
+%configure %{configure_db_sizes}
 make %{?_smp_mflags}
 make html
 
@@ -150,24 +150,6 @@ exit 0
 
 %post
 %systemd_post knot.service
-if [ $1 -gt 1 ] ; then  # upgrade
-    if rpm -q --qf=%%{version} knot | grep -q "^1\." ; then  # detect versions 1.y.z
-        echo 'Automatic upgrade from Knot DNS versions 1.y.z is not supported anymore'
-        echo 'Contact https://www.knot-dns.cz/support/'
-        exit 1
-    fi
-
-    # 2.[0-4].z -> 2.5+.z migration
-    if rpm -q --qf=%%{version} knot | grep -q '^2.[0-4]\.' ; then
-        # rename modules
-        echo 'Migrating module names in configuration file /etc/knot/knot.conf'
-        sed -i.rpmsave -e 's/\bmod-online-sign\b/mod-onlinesign/' -e 's/\bmod-synth-record\b/mod-synthrecord/' /etc/knot/knot.conf
-        echo 'Migrating KASP database %{_sharedstatedir}/%{name}/keys from JSON files to LMDB database'
-        # migrate keys into LMDB
-        %{_sbindir}/runuser -u knot -- %{_sbindir}/pykeymgr -i %{_sharedstatedir}/%{name}/keys
-    fi
-fi
-
 
 %preun
 %systemd_preun knot.service
@@ -188,19 +170,17 @@ fi
 %dir %attr(-,knot,knot) %{_localstatedir}/run/%{name}
 %{_unitdir}/%{name}.service
 %{_tmpfilesdir}/%{name}.conf
-%{_bindir}/kjournalprint
 %{_bindir}/kzonecheck
+%{_sbindir}/kjournalprint
 %{_sbindir}/keymgr
 %{_sbindir}/knotc
 %{_sbindir}/knotd
-%{_sbindir}/pykeymgr
 %{_mandir}/man1/kjournalprint.*
 %{_mandir}/man1/kzonecheck.*
 %{_mandir}/man5/knot.conf.*
 %{_mandir}/man8/keymgr.*
 %{_mandir}/man8/knotc.*
 %{_mandir}/man8/knotd.*
-%{_mandir}/man8/pykeymgr.*
 
 %files utils
 %{_bindir}/kdig
