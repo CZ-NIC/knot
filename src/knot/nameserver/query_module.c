@@ -252,7 +252,9 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 
 	mod->stats_count++;
 
-	if (idx_count > 1) {
+	if (idx_count == 1) {
+		stats->counter = 0;
+	} else {
 		size_t size = idx_count * sizeof(((mod_ctr_t *)0)->counter);
 		stats->counters = mm_alloc(mod->mm, size);
 		if (stats->counters == NULL) {
