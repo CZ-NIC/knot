@@ -5,10 +5,6 @@
   become: true
 
   vars:
-    repos:
-      - knot-dns-latest
-      # - knot-dns-devel  # enable to test development builds
-    selinux_on: true
     ansible_python_interpreter: /usr/bin/python2
     dig_package:
       Debian: dnsutils
@@ -32,6 +28,19 @@
         wget -nv https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/xUbuntu_16.04/Release.key -O Release.key &&
         apt-key add - < Release.key &&
         apt-get update
+    show_package_version:
+      Archlinux:
+        pacman -Qi knot | grep '^Version'
+      Fedora: |
+        rpm -qi knot | grep '^Version'
+      CentOS: |
+        rpm -qi knot | grep '^Version'
+      Debian:
+        dpkg -s knot | grep '^Version'
+      Ubuntu: |
+        dpkg -s knot | grep '^Version'
+  vars_files:
+    - repos.yaml
 
   # HACK: Ansible requires Python 2, but it's not installed by default in all distros
   gather_facts: false
@@ -78,47 +87,52 @@
         name: knot
         state: latest
 
+    - name: get installed package version
+      shell: "{{ show_package_version[ansible_distribution] }}"
+      register: package_version
+
     - name: install dig
       package:
         name: "{{ dig_package[ansible_distribution] }}"
         state: present
 
-    - name: turn off SELinux
-      selinux:
-        policy: targeted
-        state: permissive
-      when: not selinux_on and ansible_distribution in ['RedHat', 'Fedora']
 
-    - name: create example.com zone
-      copy:
-        dest: /etc/knot/example.com.zone
-        content: |
-          $ORIGIN example.com.
-          $TTL 3600
-          @	SOA	dns1.example.com. hostmaster.example.com. (
-              2010111213	; serial
-              6h		; refresh
-              1h		; retry
-              1w		; expire
-              1d )		; minimum
-            NS	dns1
-          dns1	A	192.0.2.1
+    - name: testing block
+      block:
+        - name: create example.com zone
+          copy:
+            dest: /etc/knot/example.com.zone
+            content: |
+              $ORIGIN example.com.
+              $TTL 3600
+              @	SOA	dns1.example.com. hostmaster.example.com. (
+                  2010111213	; serial
+                  6h		; refresh
+                  1h		; retry
+                  1w		; expire
+                  1d )		; minimum
+                NS	dns1
+              dns1	A	192.0.2.1
 
-    - name: create config
-      blockinfile:
-        dest: /etc/knot/knot.conf
-        block: |
-          zone:
-            - domain: example.com
-              file: "/etc/knot/example.com.zone"
+        - name: create config
+          blockinfile:
+            dest: /etc/knot/knot.conf
+            block: |
+              zone:
+                - domain: example.com
+                  file: "/etc/knot/example.com.zone"
 
-    - name: start knot.service
-      service:
-        name: knot.service
-        state: restarted
+        - name: start knot.service
+          service:
+            name: knot.service
+            state: restarted
 
-    - name: resolve dns1.example.com
-      shell: dig @127.0.0.1 dns1.example.com A
-      register: res
-      failed_when: '"192.0.2.1" not in res.stdout'
+        - name: resolve dns1.example.com
+          shell: dig @127.0.0.1 dns1.example.com A
+          register: res
+          failed_when: '"192.0.2.1" not in res.stdout'
 
+      always:
+        - name: show installed version
+          debug:
+            var: package_version.stdout

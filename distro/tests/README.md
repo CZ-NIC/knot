@@ -13,18 +13,23 @@ which configures OBS repository, installs the knot package, creates
 a zone and config file, starts the knot.service and attempts to
 resolve the entry from created zone file.
 
-By default, the *knot-dns-latest* repo is used. To test the
-*knot-dns-devel* repo, enable in it `knot-dns-test.yaml`.
+By default, the *knot-dns-devel* repo is used. To test the
+*knot-dns-latest* repo, set it in `repos.yaml` (or use the
+test-distro.sh script which overwrites this file). If you're running
+tests in parallel, they all HAVE TO use the same repo.
 
 Run the following command for every distro (aka directory with
 Vagrantfile):
 
-./test-distro.sh debian9
+```
+./test-distro.sh devel debian9
+```
 
-Caveats
--------
+or
 
-This tests the latest `knot` package that is available. In certain cases, this
-may result in unexpected behaviour, because it might be testing a different
-package than expected.
+```
+./test-distro.sh latest debian9
+```
 
+At the end of the test, the package version that was tested is
+printed out. Make sure you're testing what you intended to.
