@@ -385,6 +385,28 @@ int net_set_local_info(net_t *net)
 	return KNOT_EOK;
 }
 
+static int slow_send(const net_t *net, const uint8_t *buf, const size_t buf_len,
+                     int wait)
+{
+	for (size_t i = 0; i < buf_len; i++) {
+		struct iovec iov = {
+			.iov_base = (void *)(buf + i),
+			.iov_len = 1
+		};
+
+		if (writev(net->sockfd, &iov, 1) != 1) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return -1;
+		}
+		INFO("sent %zu/%zu\n", i, buf_len);
+		sleep(wait);
+	}
+
+	return 0;
+}
+
+const int WAIT = 5;
+
 int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 {
 	if (net == NULL || buf == NULL) {
@@ -392,50 +414,12 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
-	// Send data over UDP.
-	if (net->socktype == SOCK_DGRAM) {
-		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
-		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
-			WARN("can't send query to %s\n", net->remote_str);
-			return KNOT_NET_ESEND;
-		}
-	// Send data over TLS.
-	} else if (net->tls.params != NULL) {
-		int ret = tls_ctx_send((tls_ctx_t *)&net->tls, buf, buf_len);
-		if (ret != KNOT_EOK) {
-			WARN("can't send query to %s\n", net->remote_str);
-			return KNOT_NET_ESEND;
-		}
-	// Send data over TCP.
-	} else {
-		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
-
-		// Leading packet length bytes.
+	if (net->socktype == SOCK_STREAM) {
 		uint16_t pktsize = htons(buf_len);
-
-		struct iovec iov[2];
-		iov[0].iov_base = &pktsize;
-		iov[0].iov_len = sizeof(pktsize);
-		iov[1].iov_base = (uint8_t *)buf;
-		iov[1].iov_len = buf_len;
-
-		// Compute packet total length.
-		ssize_t total = iov[0].iov_len + iov[1].iov_len;
-
-		struct msghdr msg = {0};
-		msg.msg_iov = iov;
-		msg.msg_iovlen = sizeof(iov) / sizeof(*iov);
-		msg.msg_name = net->srv->ai_addr;
-		msg.msg_namelen = net->srv->ai_addrlen;
-
-		int ret = 0;
-		if (fastopen) {
-			ret = fastopen_send(net->sockfd, &msg, net->wait);
-		} else {
-			ret = sendmsg(net->sockfd, &msg, 0);
+		if (slow_send(net, (uint8_t *)&pktsize, sizeof(pktsize), WAIT) != 0) {
+			return KNOT_NET_ESEND;
 		}
-		if (ret != total) {
-			WARN("can't send query to %s\n", net->remote_str);
+		if (slow_send(net, buf, buf_len, WAIT) != 0) {
 			return KNOT_NET_ESEND;
 		}
 	}
