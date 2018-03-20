@@ -489,7 +489,7 @@ int knot_edns_client_subnet_set_addr(knot_edns_client_subnet_t *ecs,
 	ecs->scope_len = 0;
 
 	wire_ctx_t dst = wire_ctx_init(ecs->address, sizeof(ecs->address));
-	wire_ctx_t src = wire_ctx_init_const((void *)addr + f->offset, f->size);
+	wire_ctx_t src = wire_ctx_init_const((uint8_t *)addr + f->offset, f->size);
 	ecs_write_address(&dst, &src, ecs->source_len);
 
 	assert(dst.error == KNOT_EOK);
@@ -512,7 +512,7 @@ int knot_edns_client_subnet_get_addr(struct sockaddr_storage *addr,
 
 	addr->ss_family = f->platform;
 
-	wire_ctx_t dst = wire_ctx_init((void *)addr + f->offset, f->size);
+	wire_ctx_t dst = wire_ctx_init((uint8_t *)addr + f->offset, f->size);
 	wire_ctx_t src = wire_ctx_init_const(ecs->address, sizeof(ecs->address));
 	ecs_write_address(&dst, &src, ecs->source_len);
 
