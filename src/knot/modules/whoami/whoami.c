@@ -59,7 +59,7 @@ static knotd_in_state_t whoami_query(knotd_in_state_t state, knot_pkt_t *pkt,
 	 * length into 'rdata' and 'len_rdata'.
 	 */
 	const void *rdata = NULL;
-	size_t len_rdata = 0;
+	uint16_t len_rdata = 0;
 	if (query_source->ss_family == AF_INET && qtype == KNOT_RRTYPE_A) {
 		const struct sockaddr_in *sai = (struct sockaddr_in *)query_source;
 		rdata = &sai->sin_addr.s_addr;
@@ -70,13 +70,6 @@ static knotd_in_state_t whoami_query(knotd_in_state_t state, knot_pkt_t *pkt,
 		len_rdata = sizeof(sai6->sin6_addr);
 	} else {
 		/* Query type didn't match address family. */
-		return state;
-	}
-
-	/* Sanity check, since knot_rrset_add_rdata() takes a uint16_t length
-	 * parameter.
-	 */
-	if (len_rdata > UINT16_MAX) {
 		return state;
 	}
 
