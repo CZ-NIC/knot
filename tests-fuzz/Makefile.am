@@ -28,3 +28,5 @@ zscanner_libfuzzer_SOURCES += main.c
 AM_CPPFLAGS += -DTEST_RUN
 TESTS = $(FUZZERS)
 endif
+
+check-compile: $(check_PROGRAMS)
