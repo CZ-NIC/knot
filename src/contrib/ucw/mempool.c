@@ -100,7 +100,7 @@ mp_new_big_chunk(unsigned size)
 static void
 mp_free_big_chunk(struct mempool_chunk *chunk)
 {
-	void *ptr = (void*)chunk - chunk->size;
+	void *ptr = (uint8_t *)chunk - chunk->size;
 	ASAN_UNPOISON_MEMORY_REGION(ptr, chunk->size);
 	free(ptr);
 }
@@ -126,7 +126,7 @@ static void
 mp_free_chunk(struct mempool_chunk *chunk)
 {
 #ifdef CONFIG_UCW_POOL_IS_MMAP
-	uint8_t *data = (void *)chunk - chunk->size;
+	uint8_t *data = (uint8_t *)chunk - chunk->size;
 	ASAN_UNPOISON_MEMORY_REGION(data, chunk->size);
 	page_free(data, chunk->size + MP_CHUNK_TAIL);
 #else
@@ -191,7 +191,7 @@ mp_flush(struct mempool *pool)
 	struct mempool_chunk *chunk = pool->state.last[0], *next;
 	while (chunk) {
 		ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
-		if ((void *)chunk - chunk->size == pool) {
+		if ((uint8_t *)chunk - chunk->size == (uint8_t *)pool) {
 			break;
 		}
 		next = chunk->next;
@@ -261,7 +261,7 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
 		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		pool->state.last[0] = chunk;
 		pool->state.free[0] = pool->chunk_size - size;
-		return (void *)chunk - pool->chunk_size;
+		return (uint8_t *)chunk - pool->chunk_size;
 	} else if (size <= MP_SIZE_MAX) {
 		pool->idx = 1;
 		unsigned aligned = ALIGN_TO(size, CPU_STRUCT_ALIGN);
@@ -273,7 +273,7 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
 		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		pool->state.last[1] = chunk;
 		pool->state.free[1] = aligned - size;
-		return pool->last_big = (void *)chunk - aligned;
+		return pool->last_big = (uint8_t *)chunk - aligned;
 	} else {
 		fprintf(stderr, "Cannot allocate %u bytes from a mempool", size);
 		assert(0);
