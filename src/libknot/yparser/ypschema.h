@@ -28,9 +28,9 @@
 #include <stddef.h>
 
 #include "libknot/yparser/yparser.h"
+#include "libknot/lookup.h"
 
 struct wire_ctx;
-struct knot_lookup;
 
 /*! Maximal length of item name. */
 #define YP_MAX_ITEM_NAME_LEN	64

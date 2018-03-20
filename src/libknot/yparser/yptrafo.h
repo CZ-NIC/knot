@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,8 +25,8 @@
 #pragma once
 
 #include "libknot/yparser/ypschema.h"
-
-struct knot_lookup;
+#include "libknot/lookup.h"
+#include "libknot/wire.h"
 
 /*!
  * Transforms textual item value to binary form.
@@ -101,9 +101,11 @@ inline static bool yp_bool(
  *
  * \return Integer value.
  */
-int64_t yp_int(
-	const uint8_t *data
-);
+inline static int64_t yp_int(
+	const uint8_t *data)
+{
+	return (int64_t)knot_wire_read_u64(data);
+}
 
 /*!
  * Converts binary value to address value.
@@ -179,9 +181,11 @@ inline static const uint8_t* yp_bin(
  *
  * \return Data length.
  */
-const size_t yp_bin_len(
-	const uint8_t *data
-);
+inline static size_t yp_bin_len(
+	const uint8_t *data)
+{
+	return knot_wire_read_u16(data);
+}
 
 /*!
  * \brief Helper macros for conversion functions.

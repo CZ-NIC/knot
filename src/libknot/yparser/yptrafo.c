@@ -24,8 +24,6 @@
 #include "libknot/attribute.h"
 #include "libknot/consts.h"
 #include "libknot/dname.h"
-#include "libknot/lookup.h"
-#include "libknot/wire.h"
 #include "contrib/base64.h"
 #include "contrib/ctype.h"
 #include "contrib/sockaddr.h"
@@ -1060,13 +1058,6 @@ struct sockaddr_storage yp_addr_noport(
 }
 
 _public_
-int64_t yp_int(
-	const uint8_t *data)
-{
-	return (int64_t)knot_wire_read_u64(data);
-}
-
-_public_
 struct sockaddr_storage yp_addr(
 	const uint8_t *data,
 	bool *no_port)
@@ -1099,11 +1090,4 @@ struct sockaddr_storage yp_addr(
 	}
 
 	return ss;
-}
-
-_public_
-const size_t yp_bin_len(
-	const uint8_t *data)
-{
-	return knot_wire_read_u16(data);
 }
