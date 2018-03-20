@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <inttypes.h>
 #include <limits.h>
 #include <sys/stat.h>
 #include <stdarg.h>
@@ -1342,7 +1343,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			if (freed < free_min) {
 				txn->ret = KNOT_ESPACE;
 				log_zone_warning(j->zone, "journal, unable to make free space for insert, "
-				                 "required: %zu, max: %zu", occupied, occupied_max);
+				                 "required: %"PRIu64", max: %"PRIu64,
+				                 occupied, occupied_max);
 				goto store_changeset_cleanup;
 			}
 		}
