@@ -79,12 +79,11 @@ void query_plan_free(struct query_plan *plan)
 static struct query_step *make_step(knot_mm_t *mm, query_step_process_f process,
                                     void *ctx)
 {
-	struct query_step *step = mm_alloc(mm, sizeof(struct query_step));
+	struct query_step *step = mm_calloc(mm, 1, sizeof(struct query_step));
 	if (step == NULL) {
 		return NULL;
 	}
 
-	memset(step, 0, sizeof(struct query_step));
 	step->process = process;
 	step->ctx = ctx;
 
@@ -140,11 +139,10 @@ knotd_mod_t *query_module_open(conf_t *conf, conf_mod_id_t *mod_id,
 	}
 
 	/* Create query module. */
-	knotd_mod_t *module = mm_alloc(mm, sizeof(knotd_mod_t));
+	knotd_mod_t *module = mm_calloc(mm, 1, sizeof(knotd_mod_t));
 	if (module == NULL) {
 		return NULL;
 	}
-	memset(module, 0, sizeof(knotd_mod_t));
 
 	module->plan = plan;
 	module->mm = mm;
@@ -252,14 +250,15 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 
 	mod->stats_count++;
 
-	if (idx_count > 1) {
+	if (idx_count == 1) {
+		stats->counter = 0;
+	} else {
 		size_t size = idx_count * sizeof(((mod_ctr_t *)0)->counter);
-		stats->counters = mm_alloc(mod->mm, size);
+		stats->counters = mm_calloc(mod->mm, 1, size);
 		if (stats->counters == NULL) {
 			knotd_mod_stats_free(mod);
 			return KNOT_ENOMEM;
 		}
-		memset(stats->counters, 0, size);
 		stats->idx_to_str = idx_to_str;
 	}
 	stats->name = ctr_name;
