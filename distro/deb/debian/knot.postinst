@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    if ! getent passwd knot > /dev/null; then
+        adduser --quiet --system --group --no-create-home --home /var/lib/knot knot
+    fi
+
+    dpkg-statoverride --list /var/lib/knot > /dev/null || dpkg-statoverride --update --add knot knot 0755 /var/lib/knot
+    dpkg-statoverride --list /etc/knot/knot.conf > /dev/null || dpkg-statoverride --update --add knot knot 0640 /etc/knot/knot.conf
+    dpkg-statoverride --list /etc/knot > /dev/null || dpkg-statoverride --update --add knot knot 0750 /etc/knot
+fi
+
+#DEBHELPER#
+
+exit 0

@@ -1,0 +1,77 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+# export DH_VERBOSE=1
+
+# To enable all, uncomment following line
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CFLAGS_MAINT_APPEND  = -Wall -DNDEBUG
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+
+export DPKG_GENSYMBOLS_CHECK_LEVEL := 4
+
+include /usr/share/dpkg/default.mk
+
+ifeq (maint,$(filter $(DEB_BUILD_OPTIONS),maint))
+  FASTPARSER := --disable-fastparser
+else
+  FASTPARSER := --enable-fastparser
+endif
+
+ifeq ($(DEB_HOST_ARCH),$(filter $(DEB_HOST_ARCH),hurd-i386))
+  RECVMMSG:=--enable-recvmmsg=no
+else
+  RECVMMSG:=--enable-recvmmsg=yes
+endif
+
+ifeq ($(DEB_HOST_ARCH),$(filter $(DEB_HOST_ARCH),amd64 i386))
+  RUN_TEST :=
+else
+  RUN_TEST := -timeout --kill-after=5s 5m
+endif
+
+%:
+	dh $@ --dbgsym-migration='knot-dbg (<< 2.2.0-2~)' --exclude=.la --exclude=example.com.zone
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+	  --sysconfdir=/etc \
+	  --localstatedir=/var/lib \
+	  --libexecdir=/usr/lib/knot \
+	  --with-rundir=/run/knot \
+	  --with-moduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/knot \
+	  --with-storage=/var/lib/knot \
+	  --enable-systemd=auto \
+	  --enable-dnstap \
+	  --with-module-dnstap=yes \
+	  $(RECVMMSG) \
+	  $(FASTPARSER) \
+	  --disable-silent-rules
+
+override_dh_auto_build-indep:
+	dh_auto_build -- info pdf html
+
+override_dh_auto_install-arch:
+	dh_auto_install -- install
+	# rename knot.sample.conf to knot.conf
+	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
+
+override_dh_auto_install-indep:
+	dh_auto_install -- install-info install-pdf install-html
+	# rename knot.sample.conf to knot.conf
+	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
+
+override_dh_auto_test-indep:
+override_dh_auto_test-arch:
+	$(RUN_TEST) dh_auto_test
+
+override_dh_installdirs-arch:
+	dh_installdirs --arch --package=knot /usr/lib/$(DEB_HOST_MULTIARCH)/knot
+	dh_installdirs --arch --remaining-packages
+
+override_dh_missing:
+	dh_missing --fail-missing
+
+override_dh_installchangelogs:
+	dh_installchangelogs NEWS

@@ -1,0 +1,2 @@
+Tests: kdig
+Depends: knot-dnsutils, ca-certificates

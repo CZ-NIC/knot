@@ -1,0 +1,4 @@
+[Knot]
+title=Internet Domain Name Server
+description=The Knot DNS implements an Internet domain name server.
+ports=53

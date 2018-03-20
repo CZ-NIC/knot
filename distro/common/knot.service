@@ -1,0 +1,18 @@
+[Unit]
+Description=Knot DNS server
+Wants=network-online.target
+After=syslog.target network-online.target
+Documentation=man:knotd(8) man:knot.conf(5) man:knotc(8)
+
+[Service]
+Type=notify
+ExecStart=/usr/sbin/knotd
+ExecReload=/usr/sbin/knotc reload
+Restart=on-abort
+ExecStartPre=/usr/sbin/knotc conf-check
+
+# Breaks daemon reload
+#CapabilityBoundingSet=cap_net_bind_service cap_setuid cap_setgid
+
+[Install]
+WantedBy=multi-user.target

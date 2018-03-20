@@ -1,0 +1,4 @@
+version=3
+opts=uversionmangle=s/-((alpha|beta|rc)\d*)$/~$1/,pgpsigurlmangle=s/$/.asc/,dversionmangle=s/\+hotfix// \
+https://secure.nic.cz/files/knot-dns/ \
+(?:|.*/)knot(?:[_\-]v?|)(\d\S*)\.(?:tar\.xz|txz|tar\.bz2|tbz2|tar\.gz|tgz)
