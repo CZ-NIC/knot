@@ -57,7 +57,7 @@ serialize_ctx_t *serialize_init(const changeset_t *ch)
 	return ctx;
 }
 
-static const knot_rrset_t get_next_rrset(serialize_ctx_t *ctx)
+static knot_rrset_t get_next_rrset(serialize_ctx_t *ctx)
 {
 	knot_rrset_t res;
 	knot_rrset_init_empty(&res);
