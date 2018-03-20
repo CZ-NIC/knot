@@ -321,7 +321,7 @@ static void log_msg_text(int level, log_source_t src, const char *zone,
 			zone_len--;
 		}
 
-		int ret = log_msg_add(&write, &capacity, "[%.*s.] ", zone_len, zone);
+		int ret = log_msg_add(&write, &capacity, "[%.*s.] ", (int)zone_len, zone);
 		if (ret != KNOT_EOK) {
 			rcu_read_unlock();
 			return;
