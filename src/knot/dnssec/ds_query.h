@@ -14,8 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/context.h"
 
 int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t timeout);
-
