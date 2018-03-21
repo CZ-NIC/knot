@@ -175,9 +175,9 @@ exit 0
 %{_sbindir}/keymgr
 %{_sbindir}/knotc
 %{_sbindir}/knotd
-%{_mandir}/man1/kjournalprint.*
 %{_mandir}/man1/kzonecheck.*
 %{_mandir}/man5/knot.conf.*
+%{_mandir}/man8/kjournalprint.*
 %{_mandir}/man8/keymgr.*
 %{_mandir}/man8/knotc.*
 %{_mandir}/man8/knotd.*
