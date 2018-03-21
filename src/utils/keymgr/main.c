@@ -296,8 +296,8 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
-	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:", opts, &li)) != -1) {
+	int opt = 0;
+	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();

@@ -115,8 +115,7 @@ int main(int argc, char *argv[])
 	};
 
 	int opt = 0;
-	int li = 0;
-	while ((opt = getopt_long(argc, argv, "hV", options, &li)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV", options, NULL)) != -1) {
 		switch(opt) {
 		case 'h':
 			print_help();
