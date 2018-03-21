@@ -60,7 +60,19 @@ static void test_int(const char *in, int expected, int errcode)
 	int out = 12345;
 	assert(expected != out);
 
-	ok(str_to_int(in, &out) == errcode &&
+	ok(str_to_int(in, &out, INT_MIN, INT_MAX) == errcode &&
+	   (errcode != KNOT_EOK || out == expected),
+	   "str_to_int %s on \"%s\"",
+	   (errcode == KNOT_EOK ? "succeeds" : "fails"), in);
+}
+
+static void test_size(const char *in, size_t expected, size_t min, size_t max,
+                      int errcode)
+{
+	size_t out = 12345;
+	assert(expected != out);
+
+	ok(str_to_size(in, &out, min, max) == errcode &&
 	   (errcode != KNOT_EOK || out == expected),
 	   "str_to_int %s on \"%s\"",
 	   (errcode == KNOT_EOK ? "succeeds" : "fails"), in);
@@ -104,6 +116,16 @@ int main(int argc, char *argv[])
 	test_u32("65280",      65280,      KNOT_EOK);
 	test_u32("+256",       256,        KNOT_EOK);
 	test_u32("4294967295", UINT32_MAX, KNOT_EOK);
+
+	test_size("-1",         0,          0, 1, KNOT_EINVAL);
+	test_size("4294967296", 0,          0, 1, KNOT_ERANGE);
+	test_size("0",          0,          1, 2, KNOT_ERANGE);
+	test_size("0x1",        0,          0, 1, KNOT_EINVAL);
+	test_size(" 1",         0,          0, 1, KNOT_EINVAL);
+	test_size("1 ",         0,          0, 1, KNOT_EINVAL);
+	test_size("0",          0,          0, 1, KNOT_EOK);
+	test_size("65280",      65280,      0, 65280, KNOT_EOK);
+	test_size("+256",       256,        0, 65280, KNOT_EOK);
 
 	char *int_under = NULL;
 	asprintf(&int_under, "%lld", (long long)INT_MIN - 1);
