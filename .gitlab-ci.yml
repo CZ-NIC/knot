@@ -271,6 +271,8 @@ build:archive:
     - master
     - tags
     - triggers
+    - schedules
+  except: []
   artifacts:
     paths:
       - _build/*.tar.xz
@@ -280,6 +282,7 @@ obs:devel:
   stage: deploy
   only:
     - schedules
+  except: []
   dependencies:
     - build:archive
   script:
