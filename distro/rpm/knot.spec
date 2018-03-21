@@ -4,78 +4,86 @@
 %define GPG_CHECK 0
 %define VERSION __VERSION__
 
-Summary: High-performance authoritative DNS server
-Name: knot
-Version: %{VERSION}
-Release: 1%{?dist}
-License: GPLv3
-Group: System Environment/Daemons
-URL: http://www.knot-dns.cz
-Source0: %{name}_%{version}.orig.tar.xz
+Summary:	High-performance authoritative DNS server
+Name:		knot
+Version:	%{VERSION}
+Release:	1%{?dist}
+License:	GPLv3
+Group:		System Environment/Daemons
+URL:		http://www.knot-dns.cz
+Source0:	%{name}_%{version}.orig.tar.xz
 
-Source2: %{name}.service
-Source3: %{name}.conf
-Source4: %{name}.tmpfiles
+Source2:	%{name}.service
+Source3:	%{name}.conf
+Source4:	%{name}.tmpfiles
 
 %if 0%{GPG_CHECK}
-Source1: http://public.nic.cz/files/knot-dns/%{name}-%{version}.tar.xz.asc
+Source1:	http://public.nic.cz/files/knot-dns/%{name}-%{version}.tar.xz.asc
 # PGP keys used to sign upstream releases
 # Export with --armor using command from https://fedoraproject.org/wiki/PackagingDrafts:GPGSignatures
 # Don't forget to update %%prep section when adding/removing keys
-Source100: gpgkey-742FA4E95829B6C5EAC6B85710BB7AF6FEBBD6AB.gpg.asc
-BuildRequires:  gnupg2
+Source100:	gpgkey-742FA4E95829B6C5EAC6B85710BB7AF6FEBBD6AB.gpg.asc
+BuildRequires:	gnupg2
 %endif
 
 # Required dependencies
-BuildRequires: pkgconfig(liburcu) pkgconfig(gnutls) >= 3.3 pkgconfig(nettle) lmdb-devel pkgconfig(libedit)
+BuildRequires:	pkgconfig(liburcu)
+BuildRequires:	pkgconfig(gnutls) >= 3.3
+BuildRequires:	pkgconfig(nettle)
+BuildRequires:	lmdb-devel
+BuildRequires:	pkgconfig(libedit)
 # Optional dependencies
-BuildRequires: pkgconfig(libcap-ng) pkgconfig(libidn2) pkgconfig(libsystemd) pkgconfig(libfstrm) pkgconfig(libprotobuf-c)
-BuildRequires: systemd
+BuildRequires:	pkgconfig(libcap-ng)
+BuildRequires:	pkgconfig(libidn2)
+BuildRequires:	pkgconfig(libsystemd)
+BuildRequires:	pkgconfig(libfstrm)
+BuildRequires:	pkgconfig(libprotobuf-c)
+BuildRequires:	systemd
 
-Requires: python-lmdb
+Requires:	python-lmdb
 
-Requires(post): python-lmdb
-Requires(post): systemd %{_sbindir}/runuser
-Requires(preun): systemd
-Requires(postun): systemd
+Requires(post):	python-lmdb
+Requires(post):	systemd %{_sbindir}/runuser
+Requires(preun):	systemd
+Requires(postun):	systemd
 
-Requires: %{name}-libs%{?_isa} = %{version}-%{release}
+Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 
 %description
 Knot DNS is a high-performance authoritative DNS server implementation.
 
 %package libs
-Summary: Libraries used by the Knot DNS server and client applications
+Summary:	Libraries used by the Knot DNS server and client applications
 
 %description libs
 The package contains shared libraries used by the Knot DNS server and
 utilities.
 
 %package devel
-Summary: Development header files for the Knot DNS libraries
-Requires: %{name}-libs%{?_isa} = %{version}-%{release}
+Summary:	Development header files for the Knot DNS libraries
+Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 
 %description devel
 The package contains development header files for the Knot DNS libraries
 included in knot-libs package.
 
 %package utils
-Summary: DNS client utilities shipped with the Knot DNS server
-Requires: %{name}-libs%{?_isa} = %{version}-%{release}
+Summary:	DNS client utilities shipped with the Knot DNS server
+Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 
 %description utils
 The package contains DNS client utilities shipped with the Knot DNS server.
 
 %package doc
-Summary: Documentation for the Knot DNS server
-License: GPLv3 and BSD and MIT
-BuildArch: noarch
+Summary:	Documentation for the Knot DNS server
+License:	GPLv3 and BSD and MIT
+BuildArch:	noarch
 %if 0%{?rhel}
-BuildRequires: python-sphinx
+BuildRequires:	python-sphinx
 %else
-BuildRequires: python3-sphinx
+BuildRequires:	python3-sphinx
 %endif
-Provides: bundled(jquery) = 3.1.0
+Provides:	bundled(jquery) = 3.1.0
 
 %description doc
 The package contains documentation for the Knot DNS server.
