@@ -1,5 +1,5 @@
 %global _hardened_build 1
-%{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
+%{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}}
 
 %define GPG_CHECK 0
 %define VERSION __VERSION__
@@ -9,7 +9,6 @@ Name:		knot
 Version:	%{VERSION}
 Release:	1%{?dist}
 License:	GPLv3
-Group:		System Environment/Daemons
 URL:		http://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
 
@@ -29,21 +28,33 @@ BuildRequires:	gnupg2
 # Required dependencies
 BuildRequires:	pkgconfig(liburcu)
 BuildRequires:	pkgconfig(gnutls) >= 3.3
-BuildRequires:	pkgconfig(nettle)
-BuildRequires:	lmdb-devel
 BuildRequires:	pkgconfig(libedit)
+
 # Optional dependencies
 BuildRequires:	pkgconfig(libcap-ng)
 BuildRequires:	pkgconfig(libidn2)
 BuildRequires:	pkgconfig(libsystemd)
 BuildRequires:	pkgconfig(libfstrm)
 BuildRequires:	pkgconfig(libprotobuf-c)
-BuildRequires:	systemd
+BuildRequires:	pkgconfig(systemd)
 
-Requires:	python-lmdb
+# Distro-dependent dependencies
+%if 0%{?suse_version}
+BuildRequires:	python3-Sphinx
+BuildRequires:	lmdb-devel
+BuildRequires:	protobuf-c
+Requires(pre):  pwdutils
+%endif
+%if 0%{?rhel}
+BuildRequires:	python-sphinx
+BuildRequires:	lmdb-devel
+%endif
+%if 0%{?fedora}
+BuildRequires:	python3-sphinx
+BuildRequires:	pkgconfig(lmdb)
+%endif
 
-Requires(post):	python-lmdb
-Requires(post):	systemd %{_sbindir}/runuser
+Requires(post):		systemd %{_sbindir}/runuser
 Requires(preun):	systemd
 Requires(postun):	systemd
 
@@ -78,11 +89,6 @@ The package contains DNS client utilities shipped with the Knot DNS server.
 Summary:	Documentation for the Knot DNS server
 License:	GPLv3 and BSD and MIT
 BuildArch:	noarch
-%if 0%{?rhel}
-BuildRequires:	python-sphinx
-%else
-BuildRequires:	python3-sphinx
-%endif
 Provides:	bundled(jquery) = 3.1.0
 
 %description doc
@@ -98,9 +104,6 @@ gpg2 --verify %{SOURCE1} %{SOURCE0}
 %endif
 %setup -q
 
-# make sure embedded LMDB library is not used
-rm -vr src/contrib/lmdb
-
 %build
 # disable debug code (causes unused warnings)
 CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
@@ -111,7 +114,16 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
 %define configure_db_sizes --with-conf-mapsize=64
 %endif
 
-%configure %{configure_db_sizes}
+%configure \
+  --sysconfdir=/etc \
+  --localstatedir=/var/lib \
+  --libexecdir=/usr/lib/knot \
+  --with-rundir=/run/knot \
+  --with-storage=/var/lib/knot \
+  %{?configure_db_sizes} \
+  --disable-static \
+  --enable-dnstap=yes \
+  --with-module-dnstap=yes
 make %{?_smp_mflags}
 make html
 
@@ -119,7 +131,9 @@ make html
 make install DESTDIR=%{buildroot}
 
 # install documentation
-mkdir -p %{buildroot}%{_pkgdocdir}
+install -d -m 0755 %{buildroot}%{_pkgdocdir}/samples
+install -p -m 0644 -t %{buildroot}%{_pkgdocdir}/samples samples/*.conf samples/*.zone*
+install -p -m 0644 NEWS README %{buildroot}%{_pkgdocdir}
 cp -av doc/_build/html %{buildroot}%{_pkgdocdir}
 [ -r %{buildroot}%{_pkgdocdir}/html/index.html ] || exit 1
 rm -f %{buildroot}%{_pkgdocdir}/html/.buildinfo
@@ -128,55 +142,66 @@ rm -f %{buildroot}%{_pkgdocdir}/html/.buildinfo
 rm %{buildroot}%{_sysconfdir}/%{name}/*
 install -p -m 0644 -D %{SOURCE3} %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
 
-# install service file and create rundir
+# install systemd files
 install -p -m 0644 -D %{SOURCE2} %{buildroot}%{_unitdir}/%{name}.service
 install -p -m 0644 -D %{SOURCE4} %{buildroot}%{_tmpfilesdir}/%{name}.conf
-install -d -m 0755 %{buildroot}%{_localstatedir}/run/%{name}
 
 # create storage dir and key dir
-mkdir -p %{buildroot}%{_sharedstatedir}
-install -d -m 0775 %{buildroot}%{_sharedstatedir}/%{name}
-install -d -m 0770 %{buildroot}%{_sharedstatedir}/%{name}/keys
+install -d %{buildroot}%{_sharedstatedir}
+install -d -m 0775 -D %{buildroot}%{_sharedstatedir}/%{name}
+install -d -m 0770 -D %{buildroot}%{_sharedstatedir}/%{name}/keys
 
-# install config samples into docdir
-install -d -m 0755 %{buildroot}%{_pkgdocdir}/samples
-for sample_file in knot.sample.conf example.com.zone; do
-    install -p -m 0644 samples/${sample_file} %{buildroot}%{_pkgdocdir}/samples
-done
-
-# remove static libraries and libarchive files
-rm %{buildroot}%{_libdir}/*.a
-rm %{buildroot}%{_libdir}/*.la
+# remove libarchive files
+find %{buildroot} -type f -name "*.la" -delete -print
 
 %check
 make check
 
 %pre
 getent group knot >/dev/null || groupadd -r knot
-getent passwd knot >/dev/null || useradd -r -g knot -d %{_sysconfdir}/knot -s /sbin/nologin -c "Knot DNS server" knot
-exit 0
+getent passwd knot >/dev/null || \
+  useradd -r -g knot -d %{_sysconfdir}/knot -s /sbin/nologin \
+  -c "Knot DNS server" knot
+%if 0%{?suse_version}
+%service_add_pre knot.service
+%endif
 
 %post
+systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
+%if 0%{?suse_version}
+%service_add_post knot.service
+%else
 %systemd_post knot.service
+%endif
 
 %preun
+%if 0%{?suse_version}
+%service_del_preun knot.service
+%else
 %systemd_preun knot.service
+%endif
 
 %postun
+%if 0%{?suse_version}
+%service_del_postun knot.service
+%else
 %systemd_postun_with_restart knot.service
+%endif
 
 %post libs -p /sbin/ldconfig
 
 %postun libs -p /sbin/ldconfig
 
 %files
+%license COPYING
+%{_pkgdocdir}/NEWS
+%{_pkgdocdir}/README
 %{_pkgdocdir}/samples
 %dir %attr(750,root,knot) %{_sysconfdir}/%{name}
 %config(noreplace) %attr(640,root,knot) %{_sysconfdir}/%{name}/%{name}.conf
 %dir %attr(775,root,knot) %{_sharedstatedir}/%{name}
 %dir %attr(770,root,knot) %{_sharedstatedir}/%{name}/keys
-%dir %attr(-,knot,knot) %{_localstatedir}/run/%{name}
-%{_unitdir}/%{name}.service
+%{_unitdir}/knot.service
 %{_tmpfilesdir}/%{name}.conf
 %{_bindir}/kzonecheck
 %{_sbindir}/kjournalprint
@@ -201,7 +226,9 @@ exit 0
 %{_mandir}/man1/knsupdate.*
 
 %files libs
-%doc COPYING NEWS
+%license COPYING
+%doc NEWS
+%doc README
 %{_libdir}/libdnssec.so.*
 %{_libdir}/libknot.so.*
 %{_libdir}/libzscanner.so.*

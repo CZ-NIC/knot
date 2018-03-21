@@ -1,2 +1,2 @@
 # Knot DNS runtime directory
-d /var/run/knot 0755 knot knot -
+d /run/knot 0755 knot knot -
