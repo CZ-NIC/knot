@@ -124,6 +124,10 @@ server configuration:
    $ keymgr example.com. list
 
    .. NOTE::
+      If the server configuration file or database is not at the default location,
+      add a configuration parameter (-c or -C).
+
+   .. NOTE::
       The server can be run under a dedicated user account, usually ``knot``.
       As the server requires read-write access to the KASP database, the
       permissions must be set correctly. This can be achieved for instance by
