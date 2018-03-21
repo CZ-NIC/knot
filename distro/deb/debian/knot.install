@@ -9,7 +9,7 @@ usr/sbin/knotd
 usr/share/man/man1/knsec3hash.1
 usr/share/man/man1/kzonecheck.1
 usr/share/man/man5/knot.conf.5
-usr/share/man/man8/kjournalprint.1
+usr/share/man/man8/kjournalprint.8
 usr/share/man/man8/keymgr.8
 usr/share/man/man8/knotc.8
 usr/share/man/man8/knotd.8
