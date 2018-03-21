@@ -100,7 +100,7 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
 %ifarch armv7hl i686
 # 32-bit architectures sometimes do not have sufficient amount of
 # contiguous address space to handle default values
-%define configure_db_sizes --with-conf-mapsize=64 --with-timer-mapsize=16
+%define configure_db_sizes --with-conf-mapsize=64
 %endif
 
 %configure %{configure_db_sizes}
