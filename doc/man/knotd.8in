@@ -45,6 +45,9 @@ Use a binary configuration database directory (default is \fB@storage_dir@/confd
 The default configuration database, if exists, has a preference to the default
 configuration file.
 .TP
+\fB\-m\fP, \fB\-\-max\-conf\-size\fP \fIMiB\fP
+Set maximum configuration size (default is @conf_mapsize@ MiB, maximum 10000 MiB).
+.TP
 \fB\-s\fP, \fB\-\-socket\fP \fIpath\fP
 Use a remote control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 .TP
@@ -64,7 +67,7 @@ Print the program version.
 .SH SEE ALSO
 .sp
 \fBknot.conf(5)\fP, \fBknotc(8)\fP, \fBkeymgr(8)\fP,
-\fBkjournalprint(1)\fP\&.
+\fBkjournalprint(8)\fP\&.
 .SH AUTHOR
 CZ.NIC Labs <http://www.knot-dns.cz>
 .SH COPYRIGHT

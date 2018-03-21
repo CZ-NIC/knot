@@ -430,6 +430,7 @@ AS_CASE([$conf_mapsize],
     [*],  [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
                  [AC_ERROR([conf_mapsize must be an integer number])])])
 AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
+AC_SUBST(conf_mapsize)
 
 # libedit
 AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
@@ -560,7 +561,7 @@ result_msg_base="  Knot DNS $VERSION
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
     Libedit:  ${libedit_LIBS} ${libedit_CFLAGS}
     LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
-    Config:   ${conf_mapsize} MiB mapsize
+    Config:   ${conf_mapsize} MiB default mapsize
 
     Prefix:      ${knot_prefix}
     Run dir:     ${run_dir}

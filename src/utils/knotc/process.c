@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,7 +91,8 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 
 	/* Open confdb. */
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_schema, params->confdb, conf_flags);
+	int ret = conf_new(&new_conf, conf_schema, params->confdb,
+	                   params->max_conf_size, conf_flags);
 	if (ret != KNOT_EOK) {
 		log_error("failed to open configuration database '%s' (%s)",
 		          (params->confdb != NULL) ? params->confdb : "",

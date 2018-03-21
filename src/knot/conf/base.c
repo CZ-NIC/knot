@@ -145,6 +145,7 @@ int conf_new(
 	conf_t **conf,
 	const yp_item_t *schema,
 	const char *db_dir,
+	size_t max_conf_size,
 	conf_flag_t flags)
 {
 	if (conf == NULL) {
@@ -182,7 +183,7 @@ int conf_new(
 	// Set the DB api.
 	out->api = knot_db_lmdb_api();
 	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
-	lmdb_opts.mapsize = (size_t)CONF_MAPSIZE * 1024 * 1024;
+	lmdb_opts.mapsize = max_conf_size;
 	lmdb_opts.maxreaders = CONF_MAX_DB_READERS;
 	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
 

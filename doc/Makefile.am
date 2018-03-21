@@ -113,7 +113,14 @@ man/knsupdate.1:	man/knsupdate.1in
 man/knsec3hash.1:	man/knsec3hash.1in
 man/kzonecheck.1:	man/kzonecheck.1in
 
-man_SUBST = $(AM_V_GEN)mkdir -p man; sed -e 's,[@]VERSION@,$(VERSION),' -e 's,[@]RELEASE_DATE@,$(RELEASE_DATE),' $< > $@
+man_SUBST = $(AM_V_GEN)mkdir -p man; \
+            sed -e 's,[@]VERSION@,$(VERSION),' \
+                -e 's,[@]RELEASE_DATE@,$(RELEASE_DATE),' \
+                -e 's,[@]config_dir@,$(config_dir),' \
+                -e 's,[@]storage_dir@,$(storage_dir),' \
+                -e 's,[@]run_dir@,$(run_dir),' \
+                -e 's,[@]conf_mapsize@,$(conf_mapsize),' \
+            $< > $@
 
 .1in.1:
 	$(man_SUBST)

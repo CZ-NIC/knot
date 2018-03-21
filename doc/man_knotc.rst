@@ -24,6 +24,9 @@ Parameters
   The default configuration database, if exists, has a preference to the default
   configuration file.
 
+**-m**, **--max-conf-size** *MiB*
+  Set maximum configuration size (default is @conf_mapsize@ MiB, maximum 10000 MiB).
+
 **-s**, **--socket** *path*
   Use a control UNIX socket path (default is :file:`@run_dir@/knot.sock`).
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include "utils/knotc/process.h"
 
 #define PROGRAM_NAME		"knotc"
-#define SPACE			"                  "
+#define SPACE			"  "
 #define DEFAULT_CTL_TIMEOUT	5
 
 static void print_help(void)
@@ -33,25 +33,28 @@ static void print_help(void)
 	printf("Usage: %s [parameters] <action> [action_args]\n"
 	       "\n"
 	       "Parameters:\n"
-	       " -c, --config <file>"SPACE"Use a textual configuration file.\n"
-	       "                    "SPACE" (default %s)\n"
-	       " -C, --confdb <dir> "SPACE"Use a binary configuration database directory.\n"
-	       "                    "SPACE" (default %s)\n"
-	       " -s, --socket <path>"SPACE"Use a control UNIX socket path.\n"
-	       "                    "SPACE" (default %s)\n"
-	       " -t, --timeout <sec>"SPACE"Use a control socket timeout in seconds.\n"
-	       "                    "SPACE" (default %u seconds)\n"
-	       " -f, --force        "SPACE"Forced operation. Overrides some checks.\n"
-	       " -v, --verbose      "SPACE"Enable debug output.\n"
-	       " -h, --help         "SPACE"Print the program help.\n"
-	       " -V, --version      "SPACE"Print the program version.\n",
+	       " -c, --config <file>      "SPACE"Use a textual configuration file.\n"
+	       "                          "SPACE" (default %s)\n"
+	       " -C, --confdb <dir>       "SPACE"Use a binary configuration database directory.\n"
+	       "                          "SPACE" (default %s)\n"
+	       " -m, --max-conf-size <MiB>"SPACE"Set maximum configuration size (max 10000 MiB).\n"
+	       "                          "SPACE" (default %d MiB)\n"
+	       " -s, --socket <path>      "SPACE"Use a control UNIX socket path.\n"
+	       "                          "SPACE" (default %s)\n"
+	       " -t, --timeout <sec>      "SPACE"Use a control socket timeout (max 7200 seconds).\n"
+	       "                          "SPACE" (default %u seconds)\n"
+	       " -f, --force              "SPACE"Forced operation. Overrides some checks.\n"
+	       " -v, --verbose            "SPACE"Enable debug output.\n"
+	       " -h, --help               "SPACE"Print the program help.\n"
+	       " -V, --version            "SPACE"Print the program version.\n",
 	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR,
-	       RUN_DIR "/knot.sock", DEFAULT_CTL_TIMEOUT);
+	       CONF_MAPSIZE, RUN_DIR "/knot.sock", DEFAULT_CTL_TIMEOUT);
 
 	print_commands();
 }
 
 params_t params = {
+	.max_conf_size = (size_t)CONF_MAPSIZE * 1024 * 1024,
 	.timeout = DEFAULT_CTL_TIMEOUT * 1000
 };
 
@@ -59,20 +62,21 @@ int main(int argc, char **argv)
 {
 	/* Long options. */
 	struct option opts[] = {
-		{ "config",  required_argument, NULL, 'c' },
-		{ "confdb",  required_argument, NULL, 'C' },
-		{ "socket",  required_argument, NULL, 's' },
-		{ "timeout", required_argument, NULL, 't' },
-		{ "force",   no_argument,       NULL, 'f' },
-		{ "verbose", no_argument,       NULL, 'v' },
-		{ "help",    no_argument,       NULL, 'h' },
-		{ "version", no_argument,       NULL, 'V' },
+		{ "config",        required_argument, NULL, 'c' },
+		{ "confdb",        required_argument, NULL, 'C' },
+		{ "max-conf-size", required_argument, NULL, 'm' },
+		{ "socket",        required_argument, NULL, 's' },
+		{ "timeout",       required_argument, NULL, 't' },
+		{ "force",         no_argument,       NULL, 'f' },
+		{ "verbose",       no_argument,       NULL, 'v' },
+		{ "help",          no_argument,       NULL, 'h' },
+		{ "version",       no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "+c:C:s:t:fvhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:fvhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			params.config = optarg;
@@ -80,11 +84,19 @@ int main(int argc, char **argv)
 		case 'C':
 			params.confdb = optarg;
 			break;
+		case 'm':
+			if (str_to_size(optarg, &params.max_conf_size, 1, 10000) != KNOT_EOK) {
+				print_help();
+				return EXIT_FAILURE;
+			}
+			/* Convert to bytes. */
+			params.max_conf_size *= 1024 * 1024;
+			break;
 		case 's':
 			params.socket = optarg;
 			break;
 		case 't':
-			if (str_to_int(optarg, &params.timeout) != KNOT_EOK) {
+			if (str_to_int(optarg, &params.timeout, 0, 7200) != KNOT_EOK) {
 				print_help();
 				return EXIT_FAILURE;
 			}

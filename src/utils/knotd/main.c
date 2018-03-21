@@ -35,6 +35,7 @@
 
 #include "libdnssec/crypto.h"
 #include "libknot/libknot.h"
+#include "contrib/strtonum.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/migration.h"
@@ -282,17 +283,20 @@ static void print_help(void)
 	printf("Usage: %s [parameters]\n"
 	       "\n"
 	       "Parameters:\n"
-	       " -c, --config <file>     Use a textual configuration file.\n"
-	       "                           (default %s)\n"
-	       " -C, --confdb <dir>      Use a binary configuration database directory.\n"
-	       "                           (default %s)\n"
-	       " -s, --socket <path>     Use a remote control UNIX socket path.\n"
-	       "                           (default %s)\n"
-	       " -d, --daemonize=[dir]   Run the server as a daemon (with new root directory).\n"
-	       " -v, --verbose           Enable debug output.\n"
-	       " -h, --help              Print the program help.\n"
-	       " -V, --version           Print the program version.\n",
-	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR, RUN_DIR "/knot.sock");
+	       " -c, --config <file>        Use a textual configuration file.\n"
+	       "                             (default %s)\n"
+	       " -C, --confdb <dir>         Use a binary configuration database directory.\n"
+	       "                             (default %s)\n"
+	       " -m, --max-conf-size <MiB>  Set maximum configuration size (max 10000 MiB).\n"
+	       "                             (default %d MiB)\n"
+	       " -s, --socket <path>        Use a remote control UNIX socket path.\n"
+	       "                             (default %s)\n"
+	       " -d, --daemonize=[dir]      Run the server as a daemon (with new root directory).\n"
+	       " -v, --verbose              Enable debug output.\n"
+	       " -h, --help                 Print the program help.\n"
+	       " -V, --version              Print the program version.\n",
+	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR,
+	       CONF_MAPSIZE, RUN_DIR "/knot.sock");
 }
 
 static void print_version(void)
@@ -300,7 +304,7 @@ static void print_version(void)
 	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
 }
 
-static int set_config(const char *confdb, const char *config)
+static int set_config(const char *confdb, const char *config, size_t max_conf_size)
 {
 	if (config != NULL && confdb != NULL) {
 		log_fatal("ambiguous configuration source");
@@ -328,7 +332,7 @@ static int set_config(const char *confdb, const char *config)
 
 	/* Open confdb. */
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_schema, confdb, CONF_FREQMODULES);
+	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, CONF_FREQMODULES);
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to open configuration database '%s' (%s)",
 		          (confdb != NULL) ? confdb : "", knot_strerror(ret));
@@ -392,31 +396,41 @@ int main(int argc, char **argv)
 	bool daemonize = false;
 	const char *config = NULL;
 	const char *confdb = NULL;
+	size_t max_conf_size = (size_t)CONF_MAPSIZE * 1024 * 1024;
 	const char *daemon_root = "/";
 	char *socket = NULL;
 	bool verbose = false;
 
 	/* Long options. */
 	struct option opts[] = {
-		{ "config",    required_argument, NULL, 'c' },
-		{ "confdb",    required_argument, NULL, 'C' },
-		{ "socket",    required_argument, NULL, 's' },
-		{ "daemonize", optional_argument, NULL, 'd' },
-		{ "verbose",   no_argument,       NULL, 'v' },
-		{ "help",      no_argument,       NULL, 'h' },
-		{ "version",   no_argument,       NULL, 'V' },
+		{ "config",        required_argument, NULL, 'c' },
+		{ "confdb",        required_argument, NULL, 'C' },
+		{ "max-conf-size", required_argument, NULL, 'm' },
+		{ "socket",        required_argument, NULL, 's' },
+		{ "daemonize",     optional_argument, NULL, 'd' },
+		{ "verbose",       no_argument,       NULL, 'v' },
+		{ "help",          no_argument,       NULL, 'h' },
+		{ "version",       no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
 	/* Parse command line arguments. */
-	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:s:dvhV", opts, &li)) != -1) {
+	int opt = 0;
+	while ((opt = getopt_long(argc, argv, "c:C:m:s:dvhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			config = optarg;
 			break;
 		case 'C':
 			confdb = optarg;
+			break;
+		case 'm':
+			if (str_to_size(optarg, &max_conf_size, 1, 10000) != KNOT_EOK) {
+				print_help();
+				return EXIT_FAILURE;
+			}
+			/* Convert to bytes. */
+			max_conf_size *= 1024 * 1024;
 			break;
 		case 's':
 			socket = optarg;
@@ -476,7 +490,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Set up the configuration */
-	int ret = set_config(confdb, config);
+	int ret = set_config(confdb, config, max_conf_size);
 	if (ret != KNOT_EOK) {
 		log_close();
 		return EXIT_FAILURE;

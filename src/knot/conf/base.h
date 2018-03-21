@@ -187,10 +187,11 @@ void conf_refresh_hostname(
 /*!
  * Creates new or opens old configuration database.
  *
- * \param[out] conf   Configuration.
- * \param[in] schema  Configuration schema.
- * \param[in] db_dir  Database path or NULL.
- * \param[in] flags   Access flags.
+ * \param[out] conf          Configuration.
+ * \param[in] schema         Configuration schema.
+ * \param[in] db_dir         Database path or NULL.
+ * \param[in] max_conf_size  Maximum configuration DB size in bytes (LMDB mapsize).
+ * \param[in] flags          Access flags.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -198,6 +199,7 @@ int conf_new(
 	conf_t **conf,
 	const yp_item_t *schema,
 	const char *db_dir,
+	size_t max_conf_size,
 	conf_flag_t flags
 );
 

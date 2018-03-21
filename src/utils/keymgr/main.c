@@ -212,13 +212,15 @@ main_end:
 
 static bool init_conf(const char *confdb)
 {
+	size_t max_conf_size = (size_t)CONF_MAPSIZE * 1024 * 1024;
+
 	conf_flag_t flags = CONF_FNOHOSTNAME | CONF_FOPTMODULES;
 	if (confdb != NULL) {
 		flags |= CONF_FREADONLY;
 	}
 
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_schema, confdb, flags);
+	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, flags);
 	if (ret != KNOT_EOK) {
 		printf("Failed opening configuration database %s (%s)\n",
 		       (confdb == NULL ? "" : confdb), knot_strerror(ret));
