@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "KJOURNALPRINT" "1" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
+.TH "KJOURNALPRINT" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
 kjournalprint \- Knot DNS journal print utility
 .

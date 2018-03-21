@@ -3,9 +3,9 @@ MANPAGES_IN = \
 	man/knotc.8in		\
 	man/knotd.8in		\
 	man/keymgr.8in		\
+	man/kjournalprint.8in	\
 	man/kdig.1in		\
 	man/khost.1in		\
-	man/kjournalprint.1in	\
 	man/knsupdate.1in	\
 	man/knsec3hash.1in	\
 	man/kzonecheck.1in
@@ -14,9 +14,9 @@ MANPAGES_RST = \
 	man_knotc.rst		\
 	man_knotd.rst		\
 	man_keymgr.rst		\
+	man_kjournalprint.rst	\
 	man_kdig.rst		\
 	man_khost.rst		\
-	man_kjournalprint.rst	\
 	man_knsupdate.rst	\
 	man_knsec3hash.rst	\
 	man_kzonecheck.rst
@@ -91,7 +91,7 @@ if HAVE_UTILS
 if HAVE_DAEMON
 man_MANS += \
 	man/keymgr.8		\
-	man/kjournalprint.1	\
+	man/kjournalprint.8	\
 	man/kzonecheck.1
 endif # HAVE_DAEMON
 
@@ -106,9 +106,9 @@ man/knot.conf.5:	man/knot.conf.5in
 man/knotc.8:		man/knotc.8in
 man/knotd.8:		man/knotd.8in
 man/keymgr.8:		man/keymgr.8in
+man/kjournalprint.8:	man/kjournalprint.8in
 man/kdig.1:		man/kdig.1in
 man/khost.1:		man/khost.1in
-man/kjournalprint.1:	man/kjournalprint.1in
 man/knsupdate.1:	man/knsupdate.1in
 man/knsec3hash.1:	man/knsec3hash.1in
 man/kzonecheck.1:	man/kzonecheck.1in
