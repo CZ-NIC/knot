@@ -923,15 +923,6 @@ int journal_load_changesets(journal_t *j, list_t *dst, uint32_t from)
 	local_txn_t(txn, j);
 	txn_begin(txn, false);
 
-	// TODO this should not be necessary:
-	// the merged changeset can be normally loaded with standard iteration
-	changeset_t *mch = NULL;
-	load_merged_changeset(j, txn, &mch, &from);
-	if (mch != NULL) {
-		add_tail(dst, &mch->n);
-		from = knot_soa_serial(&mch->soa_to->rrs);
-	}
-
 	uint32_t ls = txn->shadow_md.last_serial;
 	iterate(j, txn, load_list_itercb, JOURNAL_ITERATION_CHANGESETS, &dst, from,
 	        ls, normal_iterkeycb);
