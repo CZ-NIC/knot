@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,6 +113,7 @@ void zone_control_clear(zone_t *zone);
 
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
 int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from);
+int zone_chgset_ctx_load(conf_t *conf, zone_t *zone, chgset_ctx_list_t *dst, uint32_t from);
 int zone_in_journal_load(conf_t *conf, zone_t *zone, list_t *dst);
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents);
 int zone_journal_serial(conf_t *conf, zone_t *zone, bool *is_empty, uint32_t *serial_to);

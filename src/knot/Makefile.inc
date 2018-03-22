@@ -121,6 +121,8 @@ libknotd_la_SOURCES = \
 	knot/common/stats.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
+	knot/journal/chgset_ctx.c		\
+	knot/journal/chgset_ctx.h		\
 	knot/journal/journal.c			\
 	knot/journal/journal.h			\
 	knot/journal/serialization.c		\

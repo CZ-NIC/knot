@@ -312,6 +312,25 @@ int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from)
 	return ret;
 }
 
+int zone_chgset_ctx_load(conf_t *conf, zone_t *zone, chgset_ctx_list_t *dst, uint32_t from)
+{
+	if (conf == NULL || zone == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = KNOT_ENOENT;
+
+	if (journal_exists(zone->journal_db, zone->name)) {
+		ret = open_journal(zone);
+	}
+
+	if (ret == KNOT_EOK) {
+		ret = journal_load_chgset_ctx(zone->journal, dst, from);
+	}
+
+	return ret;
+}
+
 int zone_in_journal_load(conf_t *conf, zone_t *zone, list_t *dst)
 {
 	if (conf == NULL || zone == NULL || dst == NULL) {

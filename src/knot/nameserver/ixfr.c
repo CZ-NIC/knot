@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
+#include "knot/journal/chgset_ctx.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/ixfr.h"
@@ -42,28 +43,28 @@
 
 /*! \brief Puts current RR into packet, stores state for retries. */
 static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
-                             changeset_iter_t *itt)
+                             chgset_ctx_t *itt)
 {
 	assert(pkt);
 	assert(ixfr);
 	assert(itt);
 
-	if (knot_rrset_empty(&ixfr->cur_rr)) {
-		ixfr->cur_rr = changeset_iter_next(itt);
+	if (!knot_rrset_empty(&ixfr->cur_rr)) {
+		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
+		knot_rrset_clear(&ixfr->cur_rr, NULL);
 	}
 
-	while (!knot_rrset_empty(&ixfr->cur_rr)) {
+	while (itt->phase != CHGSET_CTX_DONE) {
+		int r = chgset_ctx_next(itt, &ixfr->cur_rr);
+		if (r != KNOT_EOK) {
+			knot_rrset_clear(&ixfr->cur_rr, NULL);
+			return r;
+		}
 		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
-		ixfr->cur_rr = changeset_iter_next(itt);
+		knot_rrset_clear(&ixfr->cur_rr, NULL);
 	}
 
 	return KNOT_EOK;
-}
-
-/*! \brief Tests if iteration has started. */
-static bool iter_empty(struct ixfr_proc *ixfr)
-{
-	return EMPTY_LIST(ixfr->cur.iters) && knot_rrset_empty(&ixfr->cur_rr);
 }
 
 /*!
@@ -78,63 +79,22 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 {
 	int ret = KNOT_EOK;
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)xfer;
-	changeset_t *chgset = (changeset_t *)item;
+	chgset_ctx_t *chgset = (chgset_ctx_t *)item;
 
-	/* Put former SOA. */
-	if (ixfr->state == IXFR_SOA_DEL) {
-		IXFR_SAFE_PUT(pkt, chgset->soa_from);
-		ixfr->state = IXFR_DEL;
-	}
-
-	/* Put REMOVE RRSets. */
-	if (ixfr->state == IXFR_DEL) {
-		if (iter_empty(ixfr)) {
-			ret = changeset_iter_rem(&ixfr->cur, chgset);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		changeset_iter_clear(&ixfr->cur);
-		ixfr->state = IXFR_SOA_ADD;
-	}
-
-	/* Put next SOA. */
-	if (ixfr->state == IXFR_SOA_ADD) {
-		IXFR_SAFE_PUT(pkt, chgset->soa_to);
-		ixfr->state = IXFR_ADD;
-	}
-
-	/* Put Add RRSets. */
-	if (ixfr->state == IXFR_ADD) {
-		if (iter_empty(ixfr)) {
-			ret = changeset_iter_add(&ixfr->cur, chgset);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-		ret = ixfr_put_chg_part(pkt, ixfr, &ixfr->cur);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		changeset_iter_clear(&ixfr->cur);
-		ixfr->state = IXFR_SOA_DEL;
+	ret = ixfr_put_chg_part(pkt, ixfr, chgset);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	/* Finished change set. */
-	const uint32_t serial_from = knot_soa_serial(&chgset->soa_from->rrs);
-	const uint32_t serial_to = knot_soa_serial(&chgset->soa_to->rrs);
-	IXFROUT_LOG(LOG_DEBUG, ixfr->qdata, "serial %u -> %u", serial_from, serial_to);
+	IXFROUT_LOG(LOG_DEBUG, ixfr->qdata, "serial %u -> %u", chgset->serial_from, chgset->serial_to);
 
 	return ret;
 }
 
 #undef IXFR_SAFE_PUT
 
-static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
+static int ixfr_load_chsets(chgset_ctx_list_t *chgsets, zone_t *zone,
                             const knot_rrset_t *their_soa)
 {
 	assert(chgsets);
@@ -147,12 +107,7 @@ static int ixfr_load_chsets(list_t *chgsets, zone_t *zone,
 		return KNOT_EUPTODATE;
 	}
 
-	int ret = zone_changes_load(conf(), zone, chgsets, serial_from);
-	if (ret != KNOT_EOK) {
-		changesets_free(chgsets);
-	}
-
-	return ret;
+	return zone_chgset_ctx_load(conf(), zone, chgsets, serial_from);
 }
 
 static int ixfr_query_check(knotd_qdata_t *qdata)
@@ -180,8 +135,7 @@ static void ixfr_answer_cleanup(knotd_qdata_t *qdata)
 	knot_mm_t *mm = qdata->mm;
 
 	ptrlist_free(&ixfr->proc.nodes, mm);
-	changeset_iter_clear(&ixfr->cur);
-	changesets_free(&ixfr->changesets);
+	chgset_ctx_list_close(&ixfr->changesets);
 	mm_free(mm, qdata->extra->ext);
 
 	/* Allow zone changes (finished). */
@@ -204,41 +158,39 @@ static int ixfr_answer_init(knotd_qdata_t *qdata)
 	/* Compare serials. */
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
 	const knot_rrset_t *their_soa = knot_pkt_rr(authority, 0);
-	list_t chgsets;
-	init_list(&chgsets);
-	int ret = ixfr_load_chsets(&chgsets, (zone_t *)qdata->extra->zone, their_soa);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
 
 	/* Initialize transfer processing. */
 	knot_mm_t *mm = qdata->mm;
 	struct ixfr_proc *xfer = mm_alloc(mm, sizeof(struct ixfr_proc));
 	if (xfer == NULL) {
-		changesets_free(&chgsets);
 		return KNOT_ENOMEM;
 	}
 	memset(xfer, 0, sizeof(struct ixfr_proc));
+
+	int ret = ixfr_load_chsets(&xfer->changesets, (zone_t *)qdata->extra->zone, their_soa);
+	if (ret != KNOT_EOK) {
+		mm_free(mm, xfer);
+		return ret;
+	}
+
 	xfr_stats_begin(&xfer->proc.stats);
 	xfer->state = IXFR_SOA_DEL;
 	init_list(&xfer->proc.nodes);
-	init_list(&xfer->changesets);
-	init_list(&xfer->cur.iters);
 	knot_rrset_init_empty(&xfer->cur_rr);
-	add_tail_list(&xfer->changesets, &chgsets);
 	xfer->qdata = qdata;
 
 	/* Put all changesets to processing queue. */
-	changeset_t *chs = NULL;
-	WALK_LIST(chs, xfer->changesets) {
+	chgset_ctx_t *chs = NULL;
+	WALK_LIST(chs, xfer->changesets.l) {
 		ptrlist_add(&xfer->proc.nodes, chs, mm);
+		chgset_ctx_iterate(chs); // init already, so we don't have to decide later, no harm
 	}
 
 	/* Keep first and last serial. */
-	chs = HEAD(xfer->changesets);
-	xfer->soa_from = chs->soa_from;
-	chs = TAIL(xfer->changesets);
-	xfer->soa_to = chs->soa_to;
+	chs = HEAD(xfer->changesets.l);
+	xfer->soa_from = chs->serial_from;
+	chs = TAIL(xfer->changesets.l);
+	xfer->soa_to = chs->serial_to;
 
 	/* Set up cleanup callback. */
 	qdata->extra->ext = xfer;
@@ -301,8 +253,7 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		switch (ret) {
 		case KNOT_EOK:       /* OK */
 			IXFROUT_LOG(LOG_INFO, qdata, "started, serial %u -> %u",
-			            knot_soa_serial(&ixfr->soa_from->rrs),
-			            knot_soa_serial(&ixfr->soa_to->rrs));
+				    ixfr->soa_from, ixfr->soa_to);
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
 			IXFROUT_LOG(LOG_INFO, qdata, "zone is up-to-date");

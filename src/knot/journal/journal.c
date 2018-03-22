@@ -120,7 +120,7 @@ typedef struct {
 	uint32_t flags;           // LAST_FLUSHED_VALID, SERIAL_TO_VALID, MERGED_SERIAL_VALID.
 } metadata_t;
 
-typedef struct {
+typedef struct journal_txn {
 	journal_t *j;
 	knot_db_txn_t *txn;
 	int ret;
@@ -414,6 +414,13 @@ static void txn_commit(txn_t *txn)
 		txn->opened = false;
 	}
 	txn_abort(txn); // no effect if all ok
+}
+
+void journal_txn_commit(struct journal_txn *txn)
+{
+	if (txn != NULL) {
+		txn_commit(txn);
+	}
 }
 
 static void txn_restart(txn_t *txn)
@@ -815,6 +822,30 @@ static int vals_to_changeset(knot_db_val_t *vals, int nvals,
 	return KNOT_EOK;
 }
 
+static int vals_to_chgset_ctx(knot_db_val_t *vals, int nvals, uint32_t serial_from,
+                              uint32_t serial_to, chgset_ctx_t **ch)
+{
+	if (nvals < 1) {
+		return KNOT_EINVAL;
+	}
+
+	chgset_ctx_t *t_ch = chgset_ctx_create(nvals);
+	if (t_ch == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	for (size_t i = 0; i < nvals; i++) {
+		t_ch->src_chunks[i] = vals[i].data + JOURNAL_HEADER_SIZE;
+		t_ch->chunk_sizes[i] = vals[i].len - JOURNAL_HEADER_SIZE;
+	}
+
+	t_ch->serial_from = serial_from;
+	t_ch->serial_to = serial_to;
+
+	*ch = t_ch;
+	return KNOT_EOK;
+}
+
 static int load_one_itercb(iteration_ctx_t *ctx)
 {
 	changeset_t *ch = NULL, **targ = ctx->iter_context;
@@ -833,6 +864,19 @@ static int load_list_itercb(iteration_ctx_t *ctx)
 	list_t *chlist = *(list_t **) ctx->iter_context;
 
 	int ret = vals_to_changeset(ctx->val, ctx->chunk_count, ctx->txn->j->zone, &ch);
+
+	if (ret == KNOT_EOK) {
+		add_tail(chlist, &ch->n);
+	}
+	return ret;
+}
+
+static int load_list_ctx_itercb(iteration_ctx_t *ctx)
+{
+	chgset_ctx_t *ch = NULL;
+	list_t *chlist = *(list_t **) ctx->iter_context;
+
+	int ret = vals_to_chgset_ctx(ctx->val, ctx->chunk_count, ctx->serial, ctx->serial_to, &ch);
 
 	if (ret == KNOT_EOK) {
 		add_tail(chlist, &ch->n);
@@ -879,6 +923,8 @@ int journal_load_changesets(journal_t *j, list_t *dst, uint32_t from)
 	local_txn_t(txn, j);
 	txn_begin(txn, false);
 
+	// TODO this should not be necessary:
+	// the merged changeset can be normally loaded with standard iteration
 	changeset_t *mch = NULL;
 	load_merged_changeset(j, txn, &mch, &from);
 	if (mch != NULL) {
@@ -890,6 +936,32 @@ int journal_load_changesets(journal_t *j, list_t *dst, uint32_t from)
 	iterate(j, txn, load_list_itercb, JOURNAL_ITERATION_CHANGESETS, &dst, from,
 	        ls, normal_iterkeycb);
 	txn_commit(txn);
+
+	return txn->ret;
+}
+
+int journal_load_chgset_ctx(journal_t *j, chgset_ctx_list_t *dst, uint32_t from)
+{
+	if (j == NULL || j->db == NULL || dst == NULL) return KNOT_EINVAL;
+
+	txn_t *txn = calloc(1, sizeof(*txn) + sizeof(*txn->txn));
+	if (txn == NULL) {
+		return KNOT_ENOMEM;
+	}
+	txn_init(txn, ((void *)txn) + sizeof(*txn), j);
+	txn_begin(txn, false);
+
+	init_list(&dst->l);
+	dst->txn = txn;
+	list_t *dstl = &dst->l;
+
+	uint32_t ls = txn->shadow_md.last_serial;
+	iterate(j, txn, load_list_ctx_itercb, JOURNAL_ITERATION_CHANGESETS, &dstl, from,
+		ls, normal_iterkeycb);
+
+	if (txn->ret != KNOT_EOK) {
+		txn_commit(txn);
+	}
 
 	return txn->ret;
 }
