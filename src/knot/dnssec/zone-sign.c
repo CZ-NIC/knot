@@ -146,12 +146,25 @@ static bool use_key(const zone_key_t *key, const knot_rrset_t *covered)
 		return false;
 	}
 
+	// this may be a problem with offline KSK
+	bool cds_sign_by_ksk = true;
+
+	assert(key->is_zsk || key->is_ksk);
 	bool is_apex = knot_dname_is_equal(covered->owner,
 	                                   dnssec_key_get_dname(key->key));
+	if (!is_apex) {
+		return key->is_zsk;
+	}
 
-	bool is_zone_key = is_apex && covered->type == KNOT_RRTYPE_DNSKEY;
-
-	return (key->is_ksk && is_zone_key) || (key->is_zsk && !is_zone_key);
+	switch (covered->type) {
+	case KNOT_RRTYPE_DNSKEY:
+		return key->is_ksk;
+	case KNOT_RRTYPE_CDS:
+	case KNOT_RRTYPE_CDNSKEY:
+		return (cds_sign_by_ksk ? key->is_ksk : key->is_zsk);
+	default:
+		return key->is_zsk;
+	}
 }
 
 /*!
