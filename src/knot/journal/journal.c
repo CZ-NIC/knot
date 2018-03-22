@@ -960,7 +960,10 @@ int journal_load_chgset_ctx(journal_t *j, chgset_ctx_list_t *dst, uint32_t from)
 		ls, normal_iterkeycb);
 
 	if (txn->ret != KNOT_EOK) {
+		int ret = txn->ret;
 		txn_commit(txn);
+		free(txn);
+		return ret;
 	}
 
 	return txn->ret;
