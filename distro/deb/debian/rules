@@ -47,7 +47,8 @@ override_dh_auto_configure:
 	  --with-module-dnstap=yes \
 	  $(RECVMMSG) \
 	  $(FASTPARSER) \
-	  --disable-silent-rules
+	  --disable-silent-rules \
+	  --disable-static
 
 override_dh_auto_build-indep:
 	dh_auto_build -- info pdf html

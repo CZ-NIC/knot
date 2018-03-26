@@ -41,7 +41,8 @@ build() {
         --enable-dnstap \
         --enable-systemd \
         --enable-reuseport \
-        --disable-silent-rules
+        --disable-silent-rules \
+        --disable-static
 
     make
 }
