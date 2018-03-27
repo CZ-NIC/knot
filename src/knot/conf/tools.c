@@ -493,12 +493,9 @@ int include_file(
 		goto include_error;
 	}
 
-	// Evaluate include pattern.
-	switch (glob(path, 0, glob_error, &glob_buf)) {
-	case 0:
-	case GLOB_NOMATCH:
-		break;
-	default:
+	// Evaluate include pattern (empty wildcard match is also valid).
+	ret = glob(path, 0, glob_error, &glob_buf);
+	if (ret != 0 && (ret != GLOB_NOMATCH || strchr(path, '*') == NULL)) {
 		ret = KNOT_EFILE;
 		goto include_error;
 	}
