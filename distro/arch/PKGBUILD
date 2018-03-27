@@ -13,7 +13,6 @@ arch=('x86_64')
 url="https://www.knot-dns.cz/"
 license=('GPL3')
 depends=('lmdb' 'liburcu' 'protobuf-c' 'fstrm' 'libedit' 'systemd' 'libcap-ng' 'gnutls' 'libidn2')
-optdepends=('python: for pykeymgr')
 backup=('etc/knot/knot.conf')
 
 source=("${pkgname}_${pkgver}.orig.tar.xz"
