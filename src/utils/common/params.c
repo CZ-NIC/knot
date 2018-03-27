@@ -254,7 +254,7 @@ int params_parse_type(const char *value, uint16_t *rtype, int64_t *serial,
 	char *type_char = strndup(value, param_pos);
 
 	if (knot_rrtype_from_string(type_char, rtype) != 0) {
-		if (strncasecmp(type_char, "NOTIFY", param_pos) == 0) {
+		if (strncasecmp(type_char, "NOTIFY", strlen("NOTIFY")) == 0) {
 			*rtype = KNOT_RRTYPE_SOA;
 			*notify = true;
 		} else {
