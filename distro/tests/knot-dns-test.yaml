@@ -132,6 +132,16 @@
           register: res
           failed_when: '"192.0.2.1" not in res.stdout'
 
+        - name: reload knot.service
+          service:
+            name: knot.service
+            state: reloaded
+
+        - name: resolve dns1.example.com
+          shell: dig @127.0.0.1 dns1.example.com A
+          register: res
+          failed_when: '"192.0.2.1" not in res.stdout'
+
       always:
         - name: show installed version
           debug:
