@@ -1,2 +1,1 @@
-# Knot DNS runtime directory
-d /run/knot 0755 knot knot -
+../common/knot.tmpfiles

@@ -1,0 +1,3 @@
+# tmpfiles.d(5) runtime directory for knot
+#Type Path        Mode UID      GID      Age Argument
+    d /run/knot   0755 knot     knot     -   -
