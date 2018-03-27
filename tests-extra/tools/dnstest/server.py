@@ -1009,9 +1009,12 @@ class Knot(Server):
 
         return dst_file
 
-    def include(self, file_name, storage=None):
-        dst_file = self.data_add(file_name, storage)
-        self.includes.add(dst_file)
+    def include(self, file_name, storage=None, empty=False):
+        if empty:
+            self.includes.add(file_name)
+        else:
+            dst_file = self.data_add(file_name, storage)
+            self.includes.add(dst_file)
 
     def get_config(self):
         s = dnstest.config.KnotConf()

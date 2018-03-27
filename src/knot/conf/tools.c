@@ -494,8 +494,11 @@ int include_file(
 	}
 
 	// Evaluate include pattern.
-	ret = glob(path, 0, glob_error, &glob_buf);
-	if (ret != 0) {
+	switch (glob(path, 0, glob_error, &glob_buf)) {
+	case 0:
+	case GLOB_NOMATCH:
+		break;
+	default:
 		ret = KNOT_EFILE;
 		goto include_error;
 	}

@@ -16,6 +16,7 @@ ZONE3 = 'example.com.'
 ZONE4 = 'zone4.'
 
 knot = t.server("knot")
+knot.include("/tmp/*.empty_include_match", None, empty=True)
 knot.include(ZONE1 + "conf", ".")
 knot.include("server.conf", ".")
 knot.include("empty.conf", ".")
