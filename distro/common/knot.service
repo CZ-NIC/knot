@@ -6,13 +6,14 @@ Documentation=man:knotd(8) man:knot.conf(5) man:knotc(8)
 
 [Service]
 Type=notify
+User=knot
+Group=knot
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_SETPCAP
+AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_SETPCAP
 ExecStart=/usr/sbin/knotd
 ExecReload=/usr/sbin/knotc reload
 Restart=on-abort
 ExecStartPre=/usr/sbin/knotc conf-check
-
-# Breaks daemon reload
-#CapabilityBoundingSet=cap_net_bind_service cap_setuid cap_setgid
 
 [Install]
 WantedBy=multi-user.target

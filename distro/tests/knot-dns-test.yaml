@@ -11,6 +11,8 @@
       Ubuntu: dnsutils
       Fedora: bind-utils
       CentOS: bind-utils
+      openSUSE Leap: bind-utils
+      openSUSE Tumbleweed: bind-utils
       Archlinux: bind-tools
     configure_obs_repo:
       Fedora: |
@@ -28,17 +30,23 @@
         wget -nv https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/xUbuntu_16.04/Release.key -O Release.key &&
         apt-key add - < Release.key &&
         apt-get update
+      openSUSE Tumbleweed: |
+        zypper addrepo --no-gpgcheck https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/openSUSE_Tumbleweed/home:CZ-NIC:{{ item }}.repo &&
+        zypper refresh
+      openSUSE Leap: |
+        zypper addrepo --no-gpgcheck https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/openSUSE_Leap_42.3/home:CZ-NIC:{{ item }}.repo &&
+        zypper refresh
     show_package_version:
       Archlinux:
         pacman -Qi knot | grep '^Version'
-      Fedora: |
+      Fedora: &pkg_version_rpm |
         rpm -qi knot | grep '^Version'
-      CentOS: |
-        rpm -qi knot | grep '^Version'
-      Debian:
+      CentOS: *pkg_version_rpm
+      openSUSE Leap: *pkg_version_rpm
+      openSUSE Tumbleweed: *pkg_version_rpm
+      Debian: &pkg_version_dpkg |
         dpkg -s knot | grep '^Version'
-      Ubuntu: |
-        dpkg -s knot | grep '^Version'
+      Ubuntu: *pkg_version_dpkg
   vars_files:
     - repos.yaml
 
@@ -126,6 +134,16 @@
           service:
             name: knot.service
             state: restarted
+
+        - name: resolve dns1.example.com
+          shell: dig @127.0.0.1 dns1.example.com A
+          register: res
+          failed_when: '"192.0.2.1" not in res.stdout'
+
+        - name: reload knot.service
+          service:
+            name: knot.service
+            state: reloaded
 
         - name: resolve dns1.example.com
           shell: dig @127.0.0.1 dns1.example.com A
