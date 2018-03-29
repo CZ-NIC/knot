@@ -439,6 +439,7 @@ typedef enum {
 /*! Query module processing stages. */
 typedef enum {
 	KNOTD_STAGE_BEGIN = 0,  /*!< Before query processing. */
+	KNOTD_STAGE_PREANSWER,  /*!< Before section processing. */
 	KNOTD_STAGE_ANSWER,     /*!< Answer section processing. */
 	KNOTD_STAGE_AUTHORITY,  /*!< Authority section processing. */
 	KNOTD_STAGE_ADDITIONAL, /*!< Additional section processing. */
