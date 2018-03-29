@@ -584,6 +584,13 @@ static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 	bool with_dnssec = have_dnssec(qdata);
 
+	/* Resolve PREANSWER. */
+	if (plan != NULL) {
+		WALK_LIST(step, plan->stage[KNOTD_STAGE_PREANSWER]) {
+			SOLVE_STEP(step->process, state, step->ctx);
+		}
+	}
+
 	/* Resolve ANSWER. */
 	knot_pkt_begin(pkt, KNOT_ANSWER);
 	SOLVE_STEP(solve_answer, state, NULL);
