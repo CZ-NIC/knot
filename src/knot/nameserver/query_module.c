@@ -212,7 +212,7 @@ void knotd_mod_vlog(knotd_mod_t *mod, int priority, const char *fmt, va_list arg
 	if (mod->zone == NULL) {
 		log_fmt(priority, LOG_SOURCE_SERVER, LOG_ARGS(mod->id, msg));
 	} else {
-		log_fmt_zone(priority, LOG_SOURCE_ZONE, mod->zone,
+		log_fmt_zone(priority, LOG_SOURCE_ZONE, mod->zone, NULL,
 		             LOG_ARGS(mod->id, msg));
 	}
 

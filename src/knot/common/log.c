@@ -208,7 +208,7 @@ void log_levels_add(log_target_t target, log_source_t src, int levels)
 }
 
 static void emit_log_msg(int level, log_source_t src, const char *zone,
-                         size_t zone_len, const char *msg)
+                         size_t zone_len, const char *msg, const char *param)
 {
 	log_t *log = s_log;
 
@@ -220,7 +220,7 @@ static void emit_log_msg(int level, log_source_t src, const char *zone,
 			sd_journal_send("PRIORITY=%d", level,
 			                "MESSAGE=%s", msg,
 			                zone_fmt, zone_len, zone,
-			                NULL);
+			                param, NULL);
 		} else
 #endif
 		{
@@ -290,7 +290,7 @@ static int log_msg_add(char **write, size_t *capacity, const char *fmt, ...)
 }
 
 static void log_msg_text(int level, log_source_t src, const char *zone,
-                         const char *fmt, va_list args)
+                         const char *fmt, va_list args, const char *param)
 {
 	if (!log_isopen() || src == LOG_SOURCE_ANY) {
 		return;
@@ -332,7 +332,7 @@ static void log_msg_text(int level, log_source_t src, const char *zone,
 	int ret = vsnprintf(write, capacity, fmt, args);
 	if (ret >= 0) {
 		// Send to logging targets.
-		emit_log_msg(level, src, zone, zone_len, buff);
+		emit_log_msg(level, src, zone, zone_len, buff, param);
 	}
 
 	rcu_read_unlock();
@@ -342,12 +342,12 @@ void log_fmt(int priority, log_source_t src, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	log_msg_text(priority, src, NULL, fmt, args);
+	log_msg_text(priority, src, NULL, fmt, args, NULL);
 	va_end(args);
 }
 
 void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone,
-                  const char *fmt, ...)
+                  const char *param, const char *fmt, ...)
 {
 	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
 	char *zone_str = knot_dname_to_str(buff, zone, sizeof(buff));
@@ -357,7 +357,7 @@ void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone,
 
 	va_list args;
 	va_start(args, fmt);
-	log_msg_text(priority, src, zone_str, fmt, args);
+	log_msg_text(priority, src, zone_str, fmt, args, param);
 	va_end(args);
 }
 
@@ -370,7 +370,7 @@ void log_fmt_zone_str(int priority, log_source_t src, const char *zone,
 
 	va_list args;
 	va_start(args, fmt);
-	log_msg_text(priority, src, zone, fmt, args);
+	log_msg_text(priority, src, zone, fmt, args, NULL);
 	va_end(args);
 }
 
