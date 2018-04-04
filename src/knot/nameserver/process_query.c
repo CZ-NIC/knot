@@ -332,22 +332,6 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 	}
 	knot_wire_clear_cd(resp->wire);
 
-	/* Query MUST carry a question. */
-	const knot_dname_t *qname = knot_pkt_qname(query);
-	if (qname == NULL) {
-		qdata->rcode = KNOT_RCODE_FORMERR;
-		return KNOT_EMALF;
-	}
-
-	/* Convert query QNAME to lowercase, but keep original QNAME case.
-	 * Already checked for absence of compression and length.
-	 */
-	memcpy(qdata->extra->orig_qname, qname, query->qname_size);
-	process_query_qname_case_lower(query);
-
-	/* Find zone for QNAME. */
-	qdata->extra->zone = answer_zone_find(query, server->zone_db);
-
 	/* Setup EDNS. */
 	ret = answer_edns_init(query, resp, qdata);
 	if (ret != KNOT_EOK || qdata->rcode != 0) {
@@ -378,7 +362,23 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 		resp->max_size = KNOT_WIRE_MAX_PKTSIZE;
 	}
 
-	return ret;
+	/* Query MUST carry a question. */
+	const knot_dname_t *qname = knot_pkt_qname(query);
+	if (qname == NULL) {
+		qdata->rcode = KNOT_RCODE_FORMERR;
+		return KNOT_EMALF;
+	}
+
+	/* Convert query QNAME to lowercase, but keep original QNAME case.
+	 * Already checked for absence of compression and length.
+	 */
+	memcpy(qdata->extra->orig_qname, qname, query->qname_size);
+	process_query_qname_case_lower(query);
+
+	/* Find zone for QNAME. */
+	qdata->extra->zone = answer_zone_find(query, server->zone_db);
+
+	return KNOT_EOK;
 }
 
 static void set_rcode_to_packet(knot_pkt_t *pkt, knotd_qdata_t *qdata)
