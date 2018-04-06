@@ -290,13 +290,15 @@ int zs_set_input_file(
 	char *start = NULL;
 	size_t size = 0;
 
-	// Check for regular file input.
+	// Check the input.
 	struct stat file_stat;
-	if (fstat(s->file.descriptor, &file_stat) == -1 ||
-	    !S_ISREG(file_stat.st_mode) ||
-	    (start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
-	                  s->file.descriptor, 0)) == MAP_FAILED) {
-
+	if (fstat(s->file.descriptor, &file_stat) == -1) {
+		ERR(ZS_FILE_INVALID);
+		input_deinit(s, false);
+		return -1;
+	} else if (S_ISCHR(file_stat.st_mode) ||
+	           S_ISBLK(file_stat.st_mode) ||
+	           S_ISFIFO(file_stat.st_mode)) {
 		// Workaround if cannot mmap, read to memory.
 		start = read_file_to_buf(s->file.descriptor, &size);
 		if (start == NULL) {
@@ -304,7 +306,19 @@ int zs_set_input_file(
 			input_deinit(s, false);
 			return -1;
 		}
-	} else if (file_stat.st_size > 0) { // Skip an empty file.
+	} else if (!S_ISREG(file_stat.st_mode)) { // Require regular file.
+		ERR(ZS_FILE_INVALID);
+		input_deinit(s, false);
+		return -1;
+	} else if (file_stat.st_size > 0) { // Mmap non-emtpy file.
+		start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
+		             s->file.descriptor, 0);
+		if (start == MAP_FAILED) {
+			ERR(ZS_FILE_INVALID);
+			input_deinit(s, false);
+			return -1;
+		}
+
 		size = file_stat.st_size;
 		s->input.mmaped = true;
 
