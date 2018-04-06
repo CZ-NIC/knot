@@ -54,7 +54,6 @@
 #define C_ID			"\x02""id"
 #define C_IDENT			"\x08""identity"
 #define C_INCL			"\x07""include"
-#define C_IXFR_DIFF		"\x15""ixfr-from-differences" /* obsolete */
 #define C_JOURNAL_CONTENT	"\x0F""journal-content"
 #define C_JOURNAL_DB		"\x0A""journal-db"
 #define C_JOURNAL_DB_MODE	"\x0F""journal-db-mode"

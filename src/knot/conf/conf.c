@@ -1038,22 +1038,6 @@ char* conf_zonefile_txn(
 	return get_filename(conf, txn, zone, file);
 }
 
-unsigned conf_zonefile_load_txn(
-       conf_t *conf,
-       knot_db_txn_t *txn,
-       const knot_dname_t *zone)
-{
-        conf_val_t val = conf_zone_get_txn(conf, txn, C_ZONEFILE_LOAD, zone);
-
-        // obsolete, to be removed
-        if (val.code == KNOT_ENOENT) {
-                val = conf_zone_get_txn(conf, txn, C_IXFR_DIFF, zone);
-                return (conf_bool(&val) ? ZONEFILE_LOAD_DIFF : ZONEFILE_LOAD_WHOLE);
-        }
-
-        return conf_opt(&val);
-}
-
 char* conf_journalfile_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)

@@ -42,7 +42,8 @@ int event_load(conf_t *conf, zone_t *zone)
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, zone->name);
 	unsigned load_from = conf_opt(&val);
 
-	unsigned zf_from = conf_zonefile_load(conf, zone->name);
+	val = conf_zone_get(conf, C_ZONEFILE_LOAD, zone->name);
+	unsigned zf_from = conf_opt(&val);
 
 	int ret = KNOT_EOK;
 

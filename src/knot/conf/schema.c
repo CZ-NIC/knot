@@ -292,8 +292,6 @@ static const yp_item_t desc_policy[] = {
 	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI | FLAGS, { check_modref } }, \
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE }, \
-	/* Obsolete items. */ \
-	{ C_IXFR_DIFF,           YP_TBOOL, YP_VNONE }, \
 
 static const yp_item_t desc_template[] = {
 	{ C_ID, YP_TSTR, YP_VNONE, CONF_IO_FREF },
