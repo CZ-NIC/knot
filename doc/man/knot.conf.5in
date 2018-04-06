@@ -1194,13 +1194,6 @@ size of the zone must satisfy the configured value.
 .sp
 If enabled, automatic DNSSEC signing for the zone is turned on.
 .sp
-\fBNOTE:\fP
-.INDENT 0.0
-.INDENT 3.5
-Cannot be enabled on a slave zone.
-.UNINDENT
-.UNINDENT
-.sp
 \fIDefault:\fP off
 .SS dnssec\-policy
 .sp
