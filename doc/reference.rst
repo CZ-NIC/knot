@@ -1347,9 +1347,6 @@ dnssec-signing
 
 If enabled, automatic DNSSEC signing for the zone is turned on.
 
-.. NOTE::
-   Cannot be enabled on a slave zone.
-
 *Default:* off
 
 .. _zone_dnssec-policy:
