@@ -193,6 +193,8 @@ struct zs_scanner {
 		const char *end;
 		/*! Indication for the final block parsing. */
 		bool eof;
+		/*! Indication of being mmap()-ed (malloc()-ed otherwise). */
+		bool mmaped;
 	} input;
 
 	/*! File input parameters. */

@@ -5526,8 +5526,12 @@ static void input_deinit(
 	if (s->file.descriptor != -1) {
 		// Unmap the file content.
 		if (s->input.start != NULL) {
-			munmap((void *)s->input.start,
-			       s->input.end - s->input.start);
+			if (s->input.mmaped) {
+				munmap((void *)s->input.start,
+				       s->input.end - s->input.start);
+			} else {
+				free((void *)s->input.start);
+			}
 		}
 
 		// Close the opened file.
@@ -5587,6 +5591,32 @@ static int set_input_string(
 	return 0;
 }
 
+static char *read_file_to_buf(
+	int fd,
+	size_t *bufsize)
+{
+	size_t bufs = 0, newbufs = 8192;
+	char *buf = malloc(bufs + newbufs);
+	int ret = 0;
+
+	while (buf != NULL && (ret = read(fd, buf + bufs, newbufs)) == newbufs) {
+		bufs += newbufs;
+		newbufs = bufs;
+		char *newbuf = realloc(buf, bufs + newbufs);
+		if (newbuf == NULL) {
+			free(buf);
+		}
+		buf = newbuf;
+	}
+	if (ret < 0) {
+		free(buf);
+		return NULL;
+	}
+
+	*bufsize = bufs + ret;
+	return buf;
+}
+
 __attribute__((visibility("default")))
 int zs_set_input_string(
 	zs_scanner_t *s,
@@ -5620,36 +5650,37 @@ int zs_set_input_file(
 		return -1;
 	}
 
+	char *start = NULL;
+	size_t size = 0;
+
 	// Check for regular file input.
 	struct stat file_stat;
 	if (fstat(s->file.descriptor, &file_stat) == -1 ||
-	    !S_ISREG(file_stat.st_mode)) {
-		ERR(ZS_FILE_INVALID);
-		input_deinit(s, false);
-		return -1;
-	}
+	    !S_ISREG(file_stat.st_mode) ||
+	    (start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
+	                  s->file.descriptor, 0)) == MAP_FAILED) {
 
-	// Check for empty file (cannot mmap).
-	if (file_stat.st_size > 0) {
-		// Map the file to the memory.
-		char *start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
-		                   s->file.descriptor, 0);
-		if (start == MAP_FAILED) {
-			ERR(ZS_FILE_MMAP);
+		// Workaround if cannot mmap, read to memory.
+		start = read_file_to_buf(s->file.descriptor, &size);
+		if (start == NULL) {
+			ERR(ZS_FILE_INVALID);
 			input_deinit(s, false);
 			return -1;
 		}
+	} else if (file_stat.st_size > 0) { // Skip an empty file.
+		size = file_stat.st_size;
+		s->input.mmaped = true;
 
 		// Try to set the mapped memory advise to sequential.
-		(void)madvise(start, file_stat.st_size, MADV_SEQUENTIAL);
-
-		// Set the scanner input limits.
-		s->input.start   = start;
-		s->input.current = start;
-		s->input.end     = start + file_stat.st_size;
+		(void)madvise(start, size, MADV_SEQUENTIAL);
 	}
 
-	// Get absolute path of the zone file.
+	// Set the scanner input limits.
+	s->input.start   = start;
+	s->input.current = start;
+	s->input.end     = start + size;
+
+	// Get absolute path of the zone file if possible.
 	char *full_name = realpath(file_name, NULL);
 	if (full_name != NULL) {
 		free(s->path);
@@ -5660,10 +5691,6 @@ int zs_set_input_file(
 			input_deinit(s, false);
 			return -1;
 		}
-	} else {
-		ERR(ZS_FILE_PATH);
-		input_deinit(s, false);
-		return -1;
 	}
 
 	s->file.name = strdup(file_name);
