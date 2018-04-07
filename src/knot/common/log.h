@@ -117,8 +117,9 @@ __attribute__((format(printf, 3, 4)));
  * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
  * \param fmt       Content of the logged message.
  */
-void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone, const char *fmt, ...)
-__attribute__((format(printf, 4, 5)));
+void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone,
+                  const char *param, const char *fmt, ...)
+__attribute__((format(printf, 5, 6)));
 
 /*!
  * \brief Log message into zone category.
@@ -154,12 +155,12 @@ __attribute__((format(printf, 4, 5)));
 #define log_ctl_zone_str_info(zone, msg, ...)  log_fmt_zone_str(LOG_INFO,  LOG_SOURCE_CONTROL, zone, msg, ##__VA_ARGS__)
 #define log_ctl_zone_str_debug(zone, msg, ...) log_fmt_zone_str(LOG_DEBUG, LOG_SOURCE_CONTROL, zone, msg, ##__VA_ARGS__)
 
-#define log_zone_fatal(zone, msg, ...)   log_fmt_zone(LOG_CRIT,    LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
-#define log_zone_error(zone, msg, ...)   log_fmt_zone(LOG_ERR,     LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
-#define log_zone_warning(zone, msg, ...) log_fmt_zone(LOG_WARNING, LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
-#define log_zone_notice(zone, msg, ...)  log_fmt_zone(LOG_NOTICE,  LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
-#define log_zone_info(zone, msg, ...)    log_fmt_zone(LOG_INFO,    LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
-#define log_zone_debug(zone, msg, ...)   log_fmt_zone(LOG_DEBUG,   LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
+#define log_zone_fatal(zone, msg, ...)   log_fmt_zone(LOG_CRIT,    LOG_SOURCE_ZONE, zone, NULL, msg, ##__VA_ARGS__)
+#define log_zone_error(zone, msg, ...)   log_fmt_zone(LOG_ERR,     LOG_SOURCE_ZONE, zone, NULL, msg, ##__VA_ARGS__)
+#define log_zone_warning(zone, msg, ...) log_fmt_zone(LOG_WARNING, LOG_SOURCE_ZONE, zone, NULL, msg, ##__VA_ARGS__)
+#define log_zone_notice(zone, msg, ...)  log_fmt_zone(LOG_NOTICE,  LOG_SOURCE_ZONE, zone, NULL, msg, ##__VA_ARGS__)
+#define log_zone_info(zone, msg, ...)    log_fmt_zone(LOG_INFO,    LOG_SOURCE_ZONE, zone, NULL, msg, ##__VA_ARGS__)
+#define log_zone_debug(zone, msg, ...)   log_fmt_zone(LOG_DEBUG,   LOG_SOURCE_ZONE, zone, NULL, msg, ##__VA_ARGS__)
 
 #define log_zone_str_fatal(zone, msg, ...)   log_fmt_zone_str(LOG_CRIT,    LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)
 #define log_zone_str_error(zone, msg, ...)   log_fmt_zone_str(LOG_ERR,     LOG_SOURCE_ZONE, zone, msg, ##__VA_ARGS__)

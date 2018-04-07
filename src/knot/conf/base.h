@@ -49,7 +49,7 @@
 	} while (0)
 
 #define CONF_LOG_ZONE(severity, zone, msg, ...) do { \
-	log_fmt_zone(severity, LOG_SOURCE_ZONE, zone, "config, " msg, ##__VA_ARGS__); \
+	log_fmt_zone(severity, LOG_SOURCE_ZONE, zone, NULL, "config, " msg, ##__VA_ARGS__); \
 	} while (0)
 
 /*! Configuration getter output. */

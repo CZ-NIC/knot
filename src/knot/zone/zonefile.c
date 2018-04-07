@@ -329,7 +329,7 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 	}
 
 	log_fmt_zone(handler->fatal_error ? LOG_ERR : LOG_WARNING,
-	             LOG_SOURCE_ZONE, zone->apex->owner,
+	             LOG_SOURCE_ZONE, zone->apex->owner, NULL,
 	             "check%s%s, %s%s%s",
 	             (node != NULL ? ", node " : ""),
 	             (node != NULL ? buff      : ""),

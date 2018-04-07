@@ -84,7 +84,7 @@ static inline const char *log_direction_name(enum log_direction direction)
 	do { \
 		char address[SOCKADDR_STRLEN] = ""; \
 		sockaddr_tostr(address, sizeof(address), remote); \
-		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, "%s, %s, %s: " fmt, \
+		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, NULL, "%s, %s, %s: " fmt, \
 		             log_operation_name(op), log_direction_name(dir), address, \
 		             ## __VA_ARGS__); \
 	} while (0)

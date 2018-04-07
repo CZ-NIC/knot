@@ -411,6 +411,19 @@ operator must confirm it manually with ``knotc zone-ksk-submitted``::
   2017-10-24T15:41:33 info: [example.com.] DNSSEC, successfully signed
   2017-10-24T15:41:33 info: [example.com.] DNSSEC, next signing at 2017-10-24T15:41:47
 
+.. TIP::
+   If systemd is available, the KSK submission event is logged into journald
+   in a structured way. The intended use case is to trigger a user-created script.
+   Example::
+
+     journalctl -f -t knotd -o json | python3 -c '
+     import json, sys
+     for line in sys.stdin:
+       k = json.loads(line);
+       if "KEY_SUBMISSION" in k:
+         print("%s, zone=%s, keytag=%s" % (k["__REALTIME_TIMESTAMP"], k["ZONE"], k["KEY_SUBMISSION"]))
+     '
+
 Algorithm rollover example
 --------------------------
 
