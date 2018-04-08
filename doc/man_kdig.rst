@@ -102,7 +102,8 @@ Options
   port is 53.
 
 **-q** *name*
-  Set the query name. An explicit variant of *name* specification.
+  Set the query name. An explicit variant of *name* specification. If no *name*
+  is provided, empty question section is set.
 
 **-t** *type*
   An explicit *query_type* specification. See possible values above.

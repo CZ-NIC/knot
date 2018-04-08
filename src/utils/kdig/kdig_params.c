@@ -1543,19 +1543,22 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 {
 	query_t	*query = NULL;
 	char	*ascii_name = (char *)value;
+	char	*fqd_name = NULL;
 
-	if (conf->idn) {
-		ascii_name = name_from_idn(value);
-		if (ascii_name == NULL) {
-			return KNOT_EINVAL;
+	if (value != NULL) {
+		if (conf->idn) {
+			ascii_name = name_from_idn(value);
+			if (ascii_name == NULL) {
+				return KNOT_EINVAL;
+			}
 		}
-	}
 
-	// If name is not FQDN, append trailing dot.
-	char *fqd_name = get_fqd_name(ascii_name);
+		// If name is not FQDN, append trailing dot.
+		fqd_name = get_fqd_name(ascii_name);
 
-	if (conf->idn) {
-		free(ascii_name);
+		if (conf->idn) {
+			free(ascii_name);
+		}
 	}
 
 	// Create new query.
@@ -1997,11 +2000,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		*index += add;
 		break;
 	case 'q':
-		if (val == NULL) {
-			ERR("missing name\n");
-			return KNOT_EINVAL;
-		}
-
+		// Allow empty QNAME.
 		if (parse_name(val, &params->queries, params->config)
 		    != KNOT_EOK) {
 			ERR("bad query name %s\n", val);

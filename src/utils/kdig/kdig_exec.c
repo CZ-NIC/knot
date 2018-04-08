@@ -409,20 +409,16 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 		knot_wire_set_opcode(packet->wire, KNOT_OPCODE_NOTIFY);
 	}
 
-	// Create QNAME from string.
+	// Set packet question if available.
 	knot_dname_t *qname = knot_dname_from_str_alloc(query->owner);
-	if (qname == NULL) {
-		knot_pkt_free(packet);
-		return NULL;
-	}
-
-	// Set packet question.
-	int ret = knot_pkt_put_question(packet, qname, query->class_num,
-	                                query->type_num);
-	if (ret != KNOT_EOK) {
-		knot_dname_free(qname, NULL);
-		knot_pkt_free(packet);
-		return NULL;
+	if (qname != NULL) {
+		int ret = knot_pkt_put_question(packet, qname, query->class_num,
+		                                query->type_num);
+		if (ret != KNOT_EOK) {
+			knot_dname_free(qname, NULL);
+			knot_pkt_free(packet);
+			return NULL;
+		}
 	}
 
 	// For IXFR query or NOTIFY query with SOA serial, add a proper section.
@@ -449,7 +445,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 		}
 
 		// Fill in blank SOA rdata to rrset.
-		ret = knot_rrset_add_rdata(soa, wire, sizeof(wire), &packet->mm);
+		int ret = knot_rrset_add_rdata(soa, wire, sizeof(wire), &packet->mm);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(soa, &packet->mm);
 			knot_pkt_free(packet);
