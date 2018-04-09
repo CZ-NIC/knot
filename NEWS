@@ -1,3 +1,28 @@
+Knot DNS 2.6.6 (2018-04-11)
+===========================
+
+Features:
+---------
+ - New EDNS option counters in the statistics module
+ - New '+orphan' filter for the 'zone-purge' operation
+
+Improvements:
+-------------
+ - Reduced memory consuption of disabled statistics metrics
+ - Some spelling fixes (Thanks to Daniel Kahn Gillmor)
+ - Server no longer fails to start if MODULE_DIR doesn't exist
+ - Configuration include doesn't fail if empty wildcard match
+ - Added a configuration check for a problematical option combination
+
+Bugfixes:
+---------
+ - NSEC3 chain not re-created when SOA minimum TTL changed
+ - Failed to start server if no template is configured
+ - Possibly incorrect SOA serial upon changed zone reload with DNSSEC signing
+ - Inaccurate outgoing zone transfer size in the log message
+ - Invalid dname compression if empty question section
+ - Missing EDNS in EMALF responses
+
 Knot DNS 2.6.5 (2018-02-12)
 ===========================
 
