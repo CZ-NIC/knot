@@ -556,19 +556,26 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 	rrinfo->compress_ptr[0] = compr_hint;
 	memcpy(pkt->rr + pkt->rrset_count, rr, sizeof(knot_rrset_t));
 
-	/* Initialize compression context if it did not happen yet. */
-	pkt->compr.rrinfo = rrinfo;
-	if (pkt->compr.suffix.pos == 0) {
-		pkt->compr.suffix.pos = KNOT_WIRE_HEADER_SIZE;
-		pkt->compr.suffix.labels = knot_dname_labels(pkt->compr.wire + pkt->compr.suffix.pos,
-		                                             pkt->compr.wire);
+	/* Disable compression if no QNAME is available. */
+	knot_compr_t *compr = NULL;
+	if (knot_pkt_qname(pkt) != NULL) {
+		/* Initialize compression context if it did not happen yet. */
+		pkt->compr.rrinfo = rrinfo;
+		if (pkt->compr.suffix.pos == 0) {
+			pkt->compr.suffix.pos = KNOT_WIRE_HEADER_SIZE;
+			pkt->compr.suffix.labels =
+				knot_dname_labels(pkt->compr.wire + pkt->compr.suffix.pos,
+				                  pkt->compr.wire);
+		}
+
+		compr = &pkt->compr;
 	}
 
 	uint8_t *pos = pkt->wire + pkt->size;
 	size_t maxlen = pkt_remaining(pkt);
 
 	/* Write RRSet to wireformat. */
-	ret = knot_rrset_to_wire(rr, pos, maxlen, &pkt->compr);
+	ret = knot_rrset_to_wire(rr, pos, maxlen, compr);
 	if (ret < 0) {
 		/* Truncate packet if required. */
 		if (ret == KNOT_ESPACE && !(flags & KNOT_PF_NOTRUNC)) {
