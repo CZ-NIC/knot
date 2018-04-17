@@ -36,7 +36,7 @@ typedef uint8_t knot_dname_t;
 
 /*! \brief Local domain name storage. */
 typedef union {
-	knot_dname_t *dname;
+	knot_dname_t dname;
 	uint8_t data[KNOT_DNAME_MAXLEN];
 } knot_dname_storage_t;
 
@@ -348,9 +348,9 @@ size_t knot_dname_labels(const uint8_t *name, const uint8_t *pkt);
  * Lookup: \\x00
  *
  * \param src      Source domain name.
- * \param storage  Memory to store converted name into.
+ * \param storage  Memory to store converted name into. Don't use directly!
  *
- * \retval Lookup format if successful.
+ * \retval Lookup format if successful (pointer into the storage).
  * \retval NULL on invalid parameters.
  */
 uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t *storage);

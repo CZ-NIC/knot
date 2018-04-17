@@ -138,6 +138,22 @@ static void test_dname_lf(void)
 	ok(out != NULL && out[0] == '\x00', "knot_dname_lf: zero-label DNAME converted");
 }
 
+static void test_dname_storage(void)
+{
+	const knot_dname_t *dname = (uint8_t *)"\x04""test";
+	size_t dname_len = knot_dname_size(dname);
+
+	knot_dname_storage_t storage;
+	size_t store_len = knot_dname_store(&storage, dname);
+	size_t storage_len = knot_dname_size(&storage.dname);
+
+	ok(store_len == dname_len && storage_len == dname_len &&
+	   memcmp(&storage, dname, dname_len) == 0 &&
+	   memcmp(&storage.data, dname, dname_len) == 0 &&
+	   memcmp(&storage.dname, dname, dname_len) == 0,
+	   "knot_dname_storage: valid name");
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -563,9 +579,11 @@ int main(int argc, char *argv[])
 
 	knot_dname_free(d, NULL);
 
-	/* DNAME CONVERSION TO LOOK-UP FORMAT CHECK */
+	/* OTHER CHECKS */
 
 	test_dname_lf();
+
+	test_dname_storage();
 
 	return 0;
 }
