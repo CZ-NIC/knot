@@ -157,7 +157,7 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 	}
 
 	ret = zone_contents_diff(old_cont, new_cont, &update->change);
-	if (ret != KNOT_EOK && ret != KNOT_ENODIFF) {
+	if (ret != KNOT_EOK && ret != KNOT_ENODIFF && ret != KNOT_ESEMCHECK) {
 		free(update->a_ctx);
 		changeset_clear(&update->change);
 		return ret;
@@ -165,6 +165,15 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
 	apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+
+	if (ret == KNOT_ESEMCHECK) {
+		ret = zone_update_increment_soa(update, conf());
+		if (ret != KNOT_EOK) {
+			zone_update_clear(update);
+			return ret;
+		}
+		log_zone_info(zone->name, "automatic SOA serial increment");
+	}
 
 	return KNOT_EOK;
 }
@@ -532,7 +541,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 	uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
 	uint32_t new_serial = serial_next(old_serial, serial_policy);
 	if (serial_compare(old_serial, new_serial) != SERIAL_LOWER) {
-		log_zone_warning(update->zone->name, "updated serial is lower "
+		log_zone_warning(update->zone->name, "updated SOA serial is lower "
 		                 "than current, serial %u -> %u",
 		                 old_serial, new_serial);
 	}
