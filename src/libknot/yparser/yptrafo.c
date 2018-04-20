@@ -638,7 +638,8 @@ int yp_option_to_bin(
 	YP_CHECK_PARAMS_BIN;
 
 	while (opts->name != NULL) {
-		if (strncasecmp((char *)in->position, opts->name, YP_LEN) == 0) {
+		if (YP_LEN == strlen(opts->name) &&
+		    strncasecmp((char *)in->position, opts->name, YP_LEN) == 0) {
 			wire_ctx_write_u8(out, opts->id);
 			wire_ctx_skip(in, YP_LEN);
 			YP_CHECK_RET;
