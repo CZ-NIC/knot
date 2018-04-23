@@ -719,7 +719,7 @@ static int rr_already_signed(const knot_rrset_t *rrset, trie_t *t,
 	*rr_signed = false;
 	// Create a key = RRSet owner converted to sortable format
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(rrset->owner, &lf_storage);
+	uint8_t *lf = knot_dname_lf(rrset->owner, lf_storage);
 	assert(lf);
 	trie_val_t stored_info = (signed_info_t *)trie_get_try(t, (char *)lf+1,
 	                                                      *lf);

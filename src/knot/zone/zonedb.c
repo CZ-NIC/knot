@@ -70,7 +70,7 @@ int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 
 	assert(zone->name);
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(zone->name, &lf_storage);
+	uint8_t *lf = knot_dname_lf(zone->name, lf_storage);
 	assert(lf);
 
 	*trie_get_ins(db->trie, (char *)lf + 1, *lf) = zone;
@@ -85,7 +85,7 @@ int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
 	}
 
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(zone_name, &lf_storage);
+	uint8_t *lf = knot_dname_lf(zone_name, lf_storage);
 	assert(lf);
 
 	trie_val_t *rval = trie_get_try(db->trie, (char *)lf + 1, *lf);
@@ -103,7 +103,7 @@ zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 	}
 
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(zone_name, &lf_storage);
+	uint8_t *lf = knot_dname_lf(zone_name, lf_storage);
 	assert(lf);
 
 	trie_val_t *val = trie_get_try(db->trie, (char *)lf + 1, *lf);
@@ -122,7 +122,7 @@ zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *zone_name
 
 	while (true) {
 		knot_dname_storage_t lf_storage;
-		uint8_t *lf = knot_dname_lf(zone_name, &lf_storage);
+		uint8_t *lf = knot_dname_lf(zone_name, lf_storage);
 		assert(lf);
 
 		trie_val_t *val = trie_get_try(db->trie, (char *)lf + 1, *lf);

@@ -35,10 +35,7 @@
 typedef uint8_t knot_dname_t;
 
 /*! \brief Local domain name storage. */
-typedef union {
-	knot_dname_t dname;
-	uint8_t data[KNOT_DNAME_MAXLEN];
-} knot_dname_storage_t;
+typedef uint8_t knot_dname_storage_t[KNOT_DNAME_MAXLEN];
 
 /*!
  * \brief Check dname on the wire for constraints.
@@ -81,7 +78,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
  * \retval 0 if invalid argument.
  */
 _mustcheck_
-size_t knot_dname_store(knot_dname_storage_t *dst, const knot_dname_t *name);
+size_t knot_dname_store(knot_dname_storage_t dst, const knot_dname_t *name);
 
 /*!
  * \brief Duplicates the given domain name.
@@ -353,6 +350,6 @@ size_t knot_dname_labels(const uint8_t *name, const uint8_t *pkt);
  * \retval Lookup format if successful (pointer into the storage).
  * \retval NULL on invalid parameters.
  */
-uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t *storage);
+uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t storage);
 
 /*! @} */

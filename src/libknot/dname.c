@@ -161,7 +161,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
 }
 
 _public_
-size_t knot_dname_store(knot_dname_storage_t *dst, const knot_dname_t *name)
+size_t knot_dname_store(knot_dname_storage_t dst, const knot_dname_t *name)
 {
 	if (dst == NULL || name == NULL) {
 		return 0;
@@ -169,7 +169,7 @@ size_t knot_dname_store(knot_dname_storage_t *dst, const knot_dname_t *name)
 
 	size_t len = knot_dname_size(name);
 	assert(len <= KNOT_DNAME_MAXLEN);
-	memcpy(dst->data, name, len);
+	memcpy(dst, name, len);
 
 	return len;
 }
@@ -682,8 +682,8 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 	knot_dname_storage_t lf1_storage;
 	knot_dname_storage_t lf2_storage;
 
-	uint8_t *lf1 = knot_dname_lf(d1, &lf1_storage);
-	uint8_t *lf2 = knot_dname_lf(d2, &lf2_storage);
+	uint8_t *lf1 = knot_dname_lf(d1, lf1_storage);
+	uint8_t *lf2 = knot_dname_lf(d2, lf2_storage);
 	assert(lf1 && lf2);
 
 	/* Compare common part. */
@@ -772,14 +772,14 @@ size_t knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 }
 
 _public_
-uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t *storage)
+uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t storage)
 {
 	if (src == NULL || storage == NULL) {
 		return NULL;
 	}
 
 	/* Writing from the end. */
-	storage->data[KNOT_DNAME_MAXLEN - 1] = '\0';
+	storage[KNOT_DNAME_MAXLEN - 1] = '\0';
 	size_t idx = KNOT_DNAME_MAXLEN - 1;
 
 	while (*src != 0) {
@@ -787,14 +787,14 @@ uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t *storage)
 
 		assert(idx >= len);
 		idx -= len;
-		memcpy(&storage->data[idx], src, len);
-		storage->data[idx] = '\0';
+		memcpy(&storage[idx], src, len);
+		storage[idx] = '\0';
 
 		src += len;
 	}
 
 	assert(KNOT_DNAME_MAXLEN >= 1 + idx);
-	storage->data[idx] = KNOT_DNAME_MAXLEN - 1 - idx;
+	storage[idx] = KNOT_DNAME_MAXLEN - 1 - idx;
 
-	return &storage->data[idx];
+	return &storage[idx];
 }

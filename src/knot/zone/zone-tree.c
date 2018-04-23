@@ -35,7 +35,7 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 
 	assert(node->owner);
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(node->owner, &lf_storage);
+	uint8_t *lf = knot_dname_lf(node->owner, lf_storage);
 	assert(lf);
 
 	*trie_get_ins(tree, (char *)lf + 1, *lf) = node;
@@ -54,7 +54,7 @@ zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
 	}
 
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(owner, &lf_storage);
+	uint8_t *lf = knot_dname_lf(owner, lf_storage);
 	assert(lf);
 
 	trie_val_t *val = trie_get_try(tree, (char *)lf + 1, *lf);
@@ -79,7 +79,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	}
 
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(owner, &lf_storage);
+	uint8_t *lf = knot_dname_lf(owner, lf_storage);
 	assert(lf);
 
 	trie_val_t *fval = NULL;
@@ -123,7 +123,7 @@ static void remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 	}
 
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(owner, &lf_storage);
+	uint8_t *lf = knot_dname_lf(owner, lf_storage);
 	assert(lf);
 
 	trie_val_t *rval = trie_get_try(tree, (char *)lf + 1, *lf);
