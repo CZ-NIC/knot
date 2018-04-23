@@ -393,6 +393,24 @@ int main(int argc, char *argv[])
 	ok(s != NULL, "dname_to_str: dname length > 255");
 	free(s);
 
+	/* output overflow sanity check */
+	uint8_t in[4] = "\x02""\x00\x00""\x00";
+	for (uint16_t i = 0; i < UINT16_MAX; i++) {
+		memcpy(in + 1, &i, sizeof(i));
+		for (int j = 3; j < 8; j++) {
+			char tmp[j];
+			char *out_static = knot_dname_to_str(tmp, in, sizeof(tmp));
+			char *out_dynamic = knot_dname_to_str_alloc(in);
+			if (out_dynamic == NULL) {
+				ok(out_dynamic != NULL, "dname_to_str_alloc: invalid input");
+			} else if (strlen(out_dynamic) < sizeof(tmp) - 1 &&
+				   out_static == NULL) {
+				ok(out_static != NULL, "dname_to_str: invalid input");
+			}
+			free(out_dynamic);
+		}
+	}
+
 	/* NULL output, positive maxlen */
 	s = "aa.";
 	d = knot_dname_from_str(NULL, s, 1);

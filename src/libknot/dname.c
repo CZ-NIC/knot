@@ -244,6 +244,9 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 
 			/* Write label separation. */
 			if (str_len > 0 || dname_size == 1) {
+				if (alloc_size <= str_len + 1) {
+					return NULL;
+				}
 				res[str_len++] = '.';
 			}
 
@@ -252,6 +255,9 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 
 		if (is_alnum(c) || c == '-' || c == '_' || c == '*' ||
 		    c == '/') {
+			if (alloc_size <= str_len + 1) {
+				return NULL;
+			}
 			res[str_len++] = c;
 		} else if (is_punct(c) && c != '#') {
 			/* Exclusion of '#' character is to avoid possible
@@ -310,6 +316,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 	}
 
 	/* String_termination. */
+	assert(str_len < alloc_size);
 	res[str_len] = 0;
 
 	return res;
