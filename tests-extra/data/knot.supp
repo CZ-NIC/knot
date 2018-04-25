@@ -7,3 +7,11 @@
    fun:call_rcu_memb
 }
 
+{
+   liburcu/call_rcu
+   Memcheck:Leak
+   match-leak-kinds: possible,reachable
+   fun:malloc
+   ...
+   fun:call_rcu_memb
+}
