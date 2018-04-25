@@ -13,6 +13,8 @@ gawk
 objdump
 (valgrind)
 (gdb)
+(get "c09-dns-query-r1.jar" and "c09-dns-zonetransfer-r1.jar" from
+ https://www.ee.oulu.fi/roles/ouspg/PROTOS_Test-Suite_c09-dns)
 
 Python modules:
 ---------------
@@ -25,12 +27,15 @@ Ubuntu:
 
 Disable apparmor protection for system Bind:
 # sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
+or
+# sudo ln -s /etc/apparmor.d/usr.sbin.named /etc/apparmor.d/disable/
+# sudo /etc/init.d/apparmor restart
 
 Allow ptrace:
 # echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
 or
-change file /etc/sysctl.d/10-ptrace.conf
-kernel.yama.ptrace_scope = 0
+# vim /etc/sysctl.d/10-ptrace.conf
+# kernel.yama.ptrace_scope = 0
 
 Running in docker container:
 ----------------------------
