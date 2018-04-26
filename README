@@ -24,7 +24,7 @@ Install optional packages to override embedded libraries:
 $ sudo apt-get install liblmdb-dev
 
 Install optional packages:
-$ sudo apt-get install libcap-ng-dev libsystemd-dev libidn11-dev protobuf-c-compiler libfstrm-dev
+$ sudo apt-get install libcap-ng-dev libsystemd-dev libidn2-0-dev protobuf-c-compiler libfstrm-dev
 
 Fedora like distributions
 -------------------------
