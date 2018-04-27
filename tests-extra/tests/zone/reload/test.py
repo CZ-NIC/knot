@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for reload of a changed zone (serial up, nochange, serial down). '''
+'''Test for reload of a changed zone (serial up, nochange, serial down).'''
 
 from dnstest.test import Test
 from dnstest.utils import set_err, detail_log
@@ -19,7 +19,7 @@ t.start()
 # Load zones
 serial = master.zone_wait(zone)
 
-def reload_zone(serial, version, exp_serial, exp_version):
+def reload_zone(version, exp_serial, exp_version):
     master.update_zonefile(zone, version)
     master.reload()
     new_serial = master.zone_wait(zone)
@@ -31,17 +31,13 @@ def reload_zone(serial, version, exp_serial, exp_version):
     resp.check(rcode="NOERROR")
 
 # Zone changes, serial increases (create changeset)
-version = 1
-serial = serial + 1
-reload_zone(serial, version, serial, version)
+reload_zone(1, serial + 1, 1)
 
-# Zone changes, serial doesn't change (no new changeset)
-version += 1
-reload_zone(serial, version, serial, version - 1)
+# Zone changes, serial doesn't change (create changeset, increment serial automatically)
+reload_zone(2, serial + 2, 2)
 
 # Zone changes, serial jumps out-of-range (journal is not applicable)
-version += 1
-reload_zone(serial - 2, version, serial, version - 2)
+reload_zone(3, serial + 2, 2)
 
 # Stop master.
 master.stop()
