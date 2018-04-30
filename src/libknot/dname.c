@@ -272,7 +272,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 			/* Write label separation. */
 			if (str_len > 0 || dname_size == 1) {
 				if (alloc_size <= str_len + 1) {
-					return NULL;
+					goto dname_to_str_failed;
 				}
 				res[str_len++] = '.';
 			}
@@ -283,7 +283,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 		if (is_alnum(c) || c == '-' || c == '_' || c == '*' ||
 		    c == '/') {
 			if (alloc_size <= str_len + 1) {
-				return NULL;
+				goto dname_to_str_failed;
 			}
 			res[str_len++] = c;
 		} else if (is_punct(c) && c != '#') {
@@ -294,15 +294,14 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 
 			if (dst != NULL) {
 				if (maxlen <= str_len + 2) {
-					return NULL;
+					goto dname_to_str_failed;
 				}
 			} else {
 				/* Extend output buffer for \x format. */
 				alloc_size += 1;
 				char *extended = realloc(res, alloc_size);
 				if (extended == NULL) {
-					free(res);
-					return NULL;
+					goto dname_to_str_failed;
 				}
 				res = extended;
 			}
@@ -313,15 +312,14 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 		} else {
 			if (dst != NULL) {
 				if (maxlen <= str_len + 4) {
-					return NULL;
+					goto dname_to_str_failed;
 				}
 			} else {
 				/* Extend output buffer for \DDD format. */
 				alloc_size += 3;
 				char *extended = realloc(res, alloc_size);
 				if (extended == NULL) {
-					free(res);
-					return NULL;
+					goto dname_to_str_failed;
 				}
 				res = extended;
 			}
@@ -330,10 +328,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 			int ret = snprintf(res + str_len, alloc_size - str_len,
 			                   "\\%03u", c);
 			if (ret <= 0 || ret >= alloc_size - str_len) {
-				if (dst == NULL) {
-					free(res);
-				}
-				return NULL;
+				goto dname_to_str_failed;
 			}
 
 			str_len += ret;
@@ -347,6 +342,14 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 	res[str_len] = 0;
 
 	return res;
+
+dname_to_str_failed:
+
+	if (dst == NULL) {
+		free(res);
+	}
+
+	return NULL;
 }
 
 _public_
