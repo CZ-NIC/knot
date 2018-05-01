@@ -43,13 +43,19 @@ static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 		return DNSSEC_NSEC3_HASHING_ERROR;
 	}
 
-	int result = dnssec_binary_resize(hash, hash_size);
-	if (result != DNSSEC_EOK) {
-		return result;
+	if (!hash->data) {
+		int result = dnssec_binary_resize(hash, hash_size);
+		if (result != DNSSEC_EOK) {
+			return result;
+		}
+	} else if (hash->size < hash_size) {
+		return DNSSEC_EINVAL;
+	} else {
+		hash->size = hash_size;
 	}
 
 	_cleanup_hash_ gnutls_hash_hd_t digest = NULL;
-	result = gnutls_hash_init(&digest, algorithm);
+	int result = gnutls_hash_init(&digest, algorithm);
 	if (result < 0) {
 		return DNSSEC_NSEC3_HASHING_ERROR;
 	}

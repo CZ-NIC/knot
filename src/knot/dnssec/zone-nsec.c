@@ -148,18 +148,18 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
 		.size = knot_dname_size(owner)
 	};
 
-	dnssec_binary_t hash = { 0 };
+	uint8_t hash_data[64];
+	dnssec_binary_t hash = {
+		.data = hash_data,
+		.size = sizeof(hash_data)
+	};
 
 	int ret = dnssec_nsec3_hash(&data, params, &hash);
 	if (ret != DNSSEC_EOK) {
 		return knot_error_from_libdnssec(ret);
 	}
 
-	ret = knot_nsec3_hash_to_dname(out, out_size, hash.data, hash.size, zone_apex);
-
-	dnssec_binary_free(&hash);
-
-	return ret;
+	return knot_nsec3_hash_to_dname(out, out_size, hash.data, hash.size, zone_apex);
 }
 
 static bool nsec3param_valid(const knot_rdataset_t *rrs,
