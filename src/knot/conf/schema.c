@@ -87,8 +87,9 @@ const knot_lookup_t acl_actions[] = {
 };
 
 static const knot_lookup_t serial_policies[] = {
-	{ SERIAL_POLICY_INCREMENT, "increment" },
-	{ SERIAL_POLICY_UNIXTIME,  "unixtime" },
+	{ SERIAL_POLICY_INCREMENT,  "increment" },
+	{ SERIAL_POLICY_UNIXTIME,   "unixtime" },
+	{ SERIAL_POLICY_DATESERIAL, "dateserial" },
 	{ 0, NULL }
 };
 

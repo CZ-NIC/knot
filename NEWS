@@ -1,3 +1,11 @@
+Knot DNS 2.7.0 (2018-xx-xx)
+===========================
+
+Features:
+---------
+ - New zone serial policy DATESERIAL: yyyyMMDDvv (Thanks to Wolfgang Jung)
+
+
 Knot DNS 2.6.0 (2017-09-29)
 ===========================
 
