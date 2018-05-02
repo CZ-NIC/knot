@@ -14,14 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file
- *
  * \author Robert Edmonds <edmonds@fsi.io>
  *
  * \brief Public interface for dnstap.
- *
- * \addtogroup dnstap
- * @{
  */
 
 #pragma once
@@ -49,5 +44,3 @@
  * \retval NULL         if error.
  */
 uint8_t* dt_pack(const Dnstap__Dnstap *d, uint8_t **buf, size_t *sz);
-
-/*! @} */

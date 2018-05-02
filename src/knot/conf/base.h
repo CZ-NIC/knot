@@ -13,15 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-/*!
- * \file
- *
- * Server configuration core.
- *
- * \addtogroup config
- *
- * @{
- */
 
 #pragma once
 
@@ -286,5 +277,3 @@ int conf_export(
 	const char *file_name,
 	yp_style_t style
 );
-
-/*! @} */

@@ -14,14 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file
- *
  * \author Robert Edmonds <edmonds@fsi.io>
  *
  * \brief Dnstap file writer.
- *
- * \addtogroup dnstap
- * @{
  */
 
 #pragma once
@@ -73,5 +68,3 @@ void dt_writer_free(dt_writer_t *writer);
  * \retval KNOT_ENOMEM
  */
 int dt_writer_write(dt_writer_t *writer, const ProtobufCMessage *msg);
-
-/*! @} */

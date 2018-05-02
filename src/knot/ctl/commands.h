@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Server control commands.
- *
- * \addtogroup ctl
- * @{
- */
 
 #pragma once
 
@@ -141,5 +133,3 @@ void ctl_log_data(knot_ctl_data_t *data);
  * \return True if presented.
  */
 bool ctl_has_flag(const char *flags, const char *flag);
-
-/*! @} */

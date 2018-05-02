@@ -14,14 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file
- *
  * \author Robert Edmonds <edmonds@fsi.io>
  *
  * \brief Dnstap message interface.
- *
- * \addtogroup dnstap
- * @{
  */
 
 #pragma once
@@ -65,5 +60,3 @@ int dt_message_fill(Dnstap__Message             *m,
                     const void                  *wire,
                     const size_t                len_wire,
                     const struct timespec       *mtime);
-
-/*! @} */

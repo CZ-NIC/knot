@@ -14,12 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file
- *
  * \brief Dnstap file reader.
- *
- * \addtogroup dnstap
- * @{
  */
 
 #pragma once
@@ -75,5 +70,3 @@ int dt_reader_read(dt_reader_t *reader, Dnstap__Dnstap **d);
  * \param d                     The frame to be freed.
  */
 void dt_reader_free_frame(dt_reader_t *reader, Dnstap__Dnstap **d);
-
-/*! @} */

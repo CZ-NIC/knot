@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-/*!
- * \file
- *
- * \brief Knot control processing.
- *
- * \addtogroup knot_utils
- * @{
- */
 
 #pragma once
 
@@ -75,5 +67,3 @@ void unset_ctl(knot_ctl_t *ctl);
  * \return Error code, KNOT_EOK if successful.
  */
 int process_cmd(int argc, const char **argv, params_t *params);
-
-/*! @} */

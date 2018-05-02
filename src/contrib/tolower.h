@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,12 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file
- *
  * \brief Table for converting ASCII characters to lowercase.
- *
- * \addtogroup contrib
- * @{
  */
 
 #pragma once
@@ -54,5 +49,3 @@ static inline uint8_t knot_tolower(uint8_t c) {
 
 	return tolower_table[c];
 }
-
-/*! @} */

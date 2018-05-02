@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief kdig command line parameters.
- *
- * \addtogroup knot_utils
- * @{
- */
 
 #pragma once
 
@@ -182,5 +174,3 @@ bool ednsopt_list_empty(const list_t *list);
 int kdig_init(kdig_params_t *params);
 int kdig_parse(kdig_params_t *params, int argc, char *argv[]);
 void kdig_clean(kdig_params_t *params);
-
-/*! @} */

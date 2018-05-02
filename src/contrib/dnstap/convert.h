@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,14 +12,9 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 /*!
- * \file
- *
  * \brief Dnstap identifiers conversions.
- *
- * \addtogroup dnstap
- * @{
  */
 
 #pragma once
@@ -62,5 +57,3 @@ bool dt_message_type_is_response(Dnstap__Message__Type type);
  * Check if a message role is any type of an initiator.
  */
 bool dt_message_role_is_initiator(Dnstap__Message__Type type);
-
-/*! @} */

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,12 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file
- *
  * \brief Common macros.
- *
- * \addtogroup contrib
- * @{
  */
 
 #pragma once
@@ -46,5 +41,3 @@
 /*! \brief Optimize for x to be false value. */
 #define unlikely(x) __builtin_expect((x), 0)
 #endif
-
-/*! @} */

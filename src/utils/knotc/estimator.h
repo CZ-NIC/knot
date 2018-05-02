@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-/*!
- * \file
- *
- * \brief Memory estimation for zone files.
- *
- * \addtogroup knot_utils
- * @{
- */
 
 #pragma once
 
@@ -70,5 +62,3 @@ void estimator_rrset_memsize_wrap(zs_scanner_t *scanner);
  * \param data Unused variable.
  */
 int estimator_free_trie_node(trie_val_t *val, void *data);
-
-/*! @} */

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,15 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-/*!
- * \file
- *
- * Configuration interface.
- *
- * \addtogroup config
- *
- * @{
- */
 
 #pragma once
 
@@ -225,5 +216,3 @@ int conf_io_unset(
 int conf_io_check(
 	conf_io_t *io
 );
-
-/*! @} */

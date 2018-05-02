@@ -13,16 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file knsupdate_params.h
- *
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief knsupdate command line parameters.
- *
- * \addtogroup knot_utils
- * @{
- */
 
 #pragma once
 
@@ -82,5 +72,3 @@ int knsupdate_set_ttl(knsupdate_params_t *params, const uint32_t ttl);
 int knsupdate_set_origin(knsupdate_params_t *params, const char *origin);
 void knsupdate_clean(knsupdate_params_t *params);
 void knsupdate_reset(knsupdate_params_t *params);
-
-/*! @} */

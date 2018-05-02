@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,15 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-/*!
- * \file
- *
- * Server configuration interface.
- *
- * \addtogroup config
- *
- * @{
- */
 
 #pragma once
 
@@ -722,5 +713,3 @@ static inline conf_remote_t conf_remote(
 	return conf_remote_txn(conf, &conf->read_txn, id, index);
 
 }
-
-/*! @} */
