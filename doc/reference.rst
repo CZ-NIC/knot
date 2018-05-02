@@ -1110,7 +1110,7 @@ Definition of zones served by the server.
      dnssec-signing: BOOL
      dnssec-policy: STR
      request-edns-option: INT:[HEXSTR]
-     serial-policy: increment | unixtime
+     serial-policy: increment | unixtime | dateserial
      min-refresh-interval: TIME
      max-refresh-interval: TIME
      module: STR/STR ...
@@ -1382,12 +1382,16 @@ Possible values:
 
 - ``increment`` – The serial is incremented according to serial number arithmetic
 - ``unixtime`` – The serial is set to the current unix time
+- ``dateserial`` – The 10-digit serial (YYYYMMDDnn) is incremented, the first
+                   8 digits match the current iso-date
 
 .. NOTE::
    If your serial was in other than unix time format, be careful
    with the transition to unix time.  It may happen that the new serial will
    be \'lower\' than the old one. If this is the case, the transition should be
    done by hand (:rfc:`1982`).
+
+   Use dateserial only if you expect less than 100 updates per day per zone.
 
 *Default:* increment
 

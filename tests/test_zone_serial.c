@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,10 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
 #include <tap/basic.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "knot/zone/serial.h"
+#include "knot/conf/schema.h"
+#include "contrib/strtonum.h"
 
 enum serials {
 	S_LOWEST = 0,			// lowest value
@@ -38,9 +42,36 @@ static uint32_t random_serial(void)
 	return s;
 }
 
+static void check_dateserial(uint32_t current, uint32_t expected, const char *msg)
+{
+	uint32_t next = serial_next(current, SERIAL_POLICY_DATESERIAL);
+	ok(next == expected, "dateserial: %s", msg);
+}
+
+static void test_dateserial(void)
+{
+	time_t now = time(NULL);
+
+	struct tm *gm_ret = gmtime(&now);
+	assert(gm_ret);
+
+	char str[32];
+	int ret = strftime(str, sizeof(str), "%Y%m%d00", gm_ret);
+	assert(ret > 0);
+
+	uint32_t serial0;
+	ret = str_to_u32(str, &serial0);
+	assert(ret == KNOT_EOK);
+
+	check_dateserial(2000010100, serial0, "from old date");
+	check_dateserial(serial0, serial0 + 1, "today's first increment");
+	check_dateserial(serial0 + 98, serial0 + 99, "today's last increment");
+	check_dateserial(2100010100, 2100010101, "from future date");
+}
+
 int main(int argc, char *argv[])
 {
-	plan(20);
+	plan_lazy();
 
 	/* Serial compare test. */
 	ok(serial_compare(S_LOWEST, S_BELOW_MIDDLE) == SERIAL_LOWER,
@@ -97,6 +128,8 @@ int main(int argc, char *argv[])
 	   "serial compare: random opposites (s1 < s2)");
 	ok(serial_compare(s2, s1) == SERIAL_INCOMPARABLE,
 	   "serial compare: random opposites (s2 < s1)");
+
+	test_dateserial();
 
 	return 0;
 }

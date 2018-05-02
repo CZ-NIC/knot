@@ -47,7 +47,8 @@ inline static bool serial_equal(uint32_t a, uint32_t b)
  * \brief Get next serial for given serial update policy.
  *
  * \param current  Current SOA serial.
- * \param policy   SERIAL_POLICY_INCREMENT or SERIAL_POLICY_UNIXTIME.
+ * \param policy   SERIAL_POLICY_INCREMENT, SERIAL_POLICY_UNIXTIME or
+ *                 SERIAL_POLICY_DATESERIAL.
  *
  * \return New serial.
  */

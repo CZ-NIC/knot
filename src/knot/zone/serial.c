@@ -35,6 +35,28 @@ serial_cmp_result_t serial_compare(uint32_t s1, uint32_t s2)
 	return diffbrief2result[diffbrief];
 }
 
+static uint32_t serial_next_date(uint32_t current)
+{
+	uint32_t next = current + 1;
+
+	struct tm now;
+	time_t current_time = time(NULL);
+	struct tm *gmtime_result = gmtime_r(&current_time, &now);
+	if (gmtime_result == NULL) {
+		return next;
+	}
+
+	uint32_t yyyyMMdd00 = (1900 + now.tm_year) * 1000000 +
+	                      (   1 + now.tm_mon ) *   10000 +
+	                      (       now.tm_mday) *     100;
+
+	if (next < yyyyMMdd00) {
+		next = yyyyMMdd00;
+	}
+
+	return next;
+}
+
 uint32_t serial_next(uint32_t current, int policy)
 {
 	switch (policy) {
@@ -42,6 +64,8 @@ uint32_t serial_next(uint32_t current, int policy)
 		return current + 1;
 	case SERIAL_POLICY_UNIXTIME:
 		return time(NULL);
+	case SERIAL_POLICY_DATESERIAL:
+		return serial_next_date(current);
 	default:
 		assert(0);
 		return 0;
