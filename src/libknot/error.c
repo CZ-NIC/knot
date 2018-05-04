@@ -49,43 +49,30 @@ static const struct error errors[] = {
 
 	/* General errors. */
 	{ KNOT_ERROR,        "failed" },
-	{ KNOT_ENOTRUNNING,  "resource is not running" },
 	{ KNOT_EPARSEFAIL,   "parser failed" },
 	{ KNOT_ESEMCHECK,    "semantic check" },
-	{ KNOT_EEXPIRED,     "resource is expired" },
 	{ KNOT_EUPTODATE,    "zone is up-to-date" },
 	{ KNOT_EFEWDATA,     "not enough data to parse" },
 	{ KNOT_ESPACE,       "not enough space provided" },
 	{ KNOT_EMALF,        "malformed data" },
-	{ KNOT_ECRYPTO,      "error in crypto library" },
 	{ KNOT_ENSEC3PAR,    "missing or wrong NSEC3PARAM record" },
 	{ KNOT_ENSEC3CHAIN,  "missing or wrong NSEC3 chain in the zone" },
 	{ KNOT_EOUTOFZONE,   "name does not belong to the zone" },
-	{ KNOT_EHASH,        "error in hash table" },
 	{ KNOT_EZONEINVAL,   "invalid zone file" },
-	{ KNOT_EZONENOENT,   "zone file not found" },
 	{ KNOT_ENOZONE,      "no such zone found" },
 	{ KNOT_ENONODE,      "no such node in zone found" },
 	{ KNOT_ENORECORD,    "no such record in zone found" },
 	{ KNOT_ENOMASTER,    "no usable master" },
-	{ KNOT_EDNAMEPTR,    "domain name pointer larger than allowed" },
-	{ KNOT_EPAYLOAD,     "invalid EDNS payload size" },
 	{ KNOT_EPREREQ,      "UPDATE prerequisity not met" },
 	{ KNOT_ETTL,         "TTL mismatch" },
 	{ KNOT_ENOXFR,       "transfer was not sent" },
-	{ KNOT_ENOIXFR,      "transfer is not IXFR (is in AXFR format)" },
-	{ KNOT_EXFRREFUSED,  "zone transfer refused by the server" },
 	{ KNOT_EDENIED,      "not allowed" },
 	{ KNOT_ECONN,        "connection reset" },
 	{ KNOT_ETIMEOUT,     "connection timeout" },
-	{ KNOT_EIXFRSPACE,   "IXFR reply did not fit in" },
-	{ KNOT_ECNAME,       "CNAME loop found in zone" },
 	{ KNOT_ENODIFF,      "cannot create zone diff" },
-	{ KNOT_EDSDIGESTLEN, "DS digest length does not match digest type" },
 	{ KNOT_ENOTSIG,      "expected a TSIG or SIG(0)" },
 	{ KNOT_ELIMIT,       "exceeded response rate limit" },
 	{ KNOT_EZONESIZE,    "zone size exceeded" },
-	{ KNOT_EWRITABLE,    "file is not writable" },
 	{ KNOT_EOF,          "end of file" },
 	{ KNOT_ESYSTEM,      "system error" },
 	{ KNOT_EFILE,        "file error" },
@@ -114,11 +101,6 @@ static const struct error errors[] = {
 	{ KNOT_TSIG_EBADKEY,   "TSIG key not recognized or invalid" },
 	{ KNOT_TSIG_EBADTIME,  "TSIG out of time window" },
 	{ KNOT_TSIG_EBADTRUNC, "TSIG bad truncation" },
-
-	/* Key parsing errors. */
-	{ KNOT_KEY_EPUBLIC_KEY_OPEN,    "cannot open public key file" },
-	{ KNOT_KEY_EPRIVATE_KEY_OPEN,   "cannot open private key file" },
-	{ KNOT_KEY_EPUBLIC_KEY_INVALID, "public key file is invalid" },
 
 	/* DNSSEC errors. */
 	{ KNOT_DNSSEC_ENOKEY,          "no keys for signing" },
@@ -182,8 +164,6 @@ int knot_error_from_libdnssec(int libdnssec_errcode)
 		return KNOT_ERROR;
 	case DNSSEC_MALFORMED_DATA:
 		return KNOT_EMALF;
-	case DNSSEC_OUT_OF_RANGE:
-		return KNOT_ERANGE;
 	case DNSSEC_NOT_FOUND:
 		return KNOT_ENOENT;
 	case DNSSEC_NO_PUBLIC_KEY:

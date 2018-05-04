@@ -34,7 +34,6 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_ERROR,			"unspecified error" },
 	{ DNSSEC_NOT_IMPLEMENTED_ERROR,	"not implemented" },
 	{ DNSSEC_MALFORMED_DATA,	"malformed data" },
-	{ DNSSEC_OUT_OF_RANGE,		"value out of range" },
 	{ DNSSEC_NOT_FOUND,		"not found" },
 
 	{ DNSSEC_PKCS8_IMPORT_ERROR,	"PKCS #8 import error" },
@@ -63,10 +62,6 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_INVALID_DS_ALGORITHM,	"invalid DS algorithm" },
 	{ DNSSEC_DS_HASHING_ERROR,	"DS hashing error" },
 
-	{ DNSSEC_CONFIG_MALFORMED,	"malformed config value" },
-	{ DNSSEC_CONFIG_INVALID_KEY_ID,	"invalid key ID in config" },
-
-	{ DNSSEC_KEYSTORE_INVALID_BACKEND, "invalid KASP keystore backend" },
 	{ DNSSEC_KEYSTORE_INVALID_CONFIG,  "invalid KASP keystore configuration" },
 
 	{ DNSSEC_P11_FAILED_TO_LOAD_MODULE, "failed to load PKCS #11 module" },
