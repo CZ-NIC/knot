@@ -245,7 +245,9 @@ uint16_t knot_pkt_rr_offset(const knot_pktsection_t *section, uint16_t i);
  *
  * \param pkt Given packet.
  * \param flags Parsing flags (allowed KNOT_PF_KEEPWIRE)
- * \return KNOT_EOK, KNOT_EMALF and other errors
+ * \retval KNOT_EOK if success.
+ * \retval KNOT_ETRAIL if success but with some trailing data.
+ * \retval KNOT_EMALF and other errors.
  */
 int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags);
 

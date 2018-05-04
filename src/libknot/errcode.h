@@ -156,6 +156,8 @@ enum knot_error {
 	KNOT_NO_PUBLIC_KEY,
 	KNOT_NO_PRIVATE_KEY,
 
+	KNOT_ETRAIL,
+
 	KNOT_ERROR_MAX = -501
 };
 

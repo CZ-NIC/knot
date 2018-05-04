@@ -852,7 +852,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 
 	/* Check for trailing garbage. */
 	if (pkt->parsed < pkt->size) {
-		return KNOT_EMALF;
+		return KNOT_ETRAIL;
 	}
 
 	return KNOT_EOK;
