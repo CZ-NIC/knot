@@ -703,8 +703,9 @@ static void jsonw_rdata(jsonw_t *w, const knot_rrset_t *rrset, size_t pos)
 
 	const knot_dump_style_t *style = &KNOT_DUMP_STYLE_DEFAULT;
 	if (knot_rrset_txt_dump_data(rrset, pos, buf, size, style) < 0) {
-		free(buf);
-		abort();
+		buf[0] = '\0';
+//		free(buf);
+//		abort();
 	}
 
 	jsonw_str(w, buf);
@@ -782,6 +783,173 @@ static void json_print_packet_google(const knot_pkt_t *pkt, const net_t *net)
 	jsonw_free(w);
 }
 
+static void json_print_section(jsonw_t *w, const char *name,
+                               const knot_pktsection_t *section)
+{
+	if (section->count == 0) {
+		return;
+	}
+
+	jsonw_str(w, name);
+	jsonw_list(w);
+
+	for (int i = 0; i < section->count; i++) {
+		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		jsonw_object(w);
+		jsonw_str(w, "name");
+		jsonw_dname(w, rr->owner);
+		jsonw_str(w, "type");
+		jsonw_int(w, rr->type);
+		jsonw_str(w, "class");
+		jsonw_int(w, rr->rclass);
+		jsonw_str(w, "ttl");
+		jsonw_int(w, rr->ttl);
+		jsonw_str(w, "rdata");
+		jsonw_rdata(w, rr, i);
+		jsonw_end(w); // object
+	}
+
+	jsonw_end(w); // list
+}
+
+static void json_print_edns(jsonw_t *w, const knot_rrset_t *edns)
+{
+	if (!edns) {
+		return;
+	}
+
+	jsonw_str(w, "edns");
+	jsonw_object(w);
+
+	jsonw_str(w, "version");
+	jsonw_int(w, knot_edns_get_version(edns));
+	jsonw_str(w, "udp_size");
+	jsonw_int(w, knot_edns_get_payload(edns));
+
+	knot_rdata_t *rdata = knot_rdataset_at(&edns->rrs, 0);
+	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
+
+	while (wire_ctx_available(&wire) >= KNOT_EDNS_OPTION_HDRLEN) {
+		uint16_t opt_code = wire_ctx_read_u16(&wire);
+		uint16_t opt_len = wire_ctx_read_u16(&wire);
+		uint8_t *opt_data = wire.position;
+		if (wire.error != KNOT_EOK) {
+			break;
+		}
+
+		switch (opt_code) {
+		case KNOT_EDNS_OPTION_NSID:
+			jsonw_str(w, "nsid");
+			jsonw_str(w, "todo");
+			//print_nsid(opt_data, opt_len);
+			break;
+		case KNOT_EDNS_OPTION_CLIENT_SUBNET:
+			jsonw_str(w, "subnet");
+			jsonw_str(w, "todo");
+			break;
+		case KNOT_EDNS_OPTION_PADDING:
+			jsonw_str(w, "padding");
+			jsonw_int(w, opt_len);
+			break;
+		case KNOT_EDNS_OPTION_COOKIE:
+			jsonw_str(w, "cookie");
+			jsonw_str(w, "todo");
+			break;
+		default:
+			// ignore
+			break;
+		}
+
+		wire_ctx_skip(&wire, opt_len);
+	}
+
+	jsonw_end(w); // dict
+}
+
+static void json_print_packet(const knot_pkt_t *pkt, const net_t *net)
+{
+	const knot_rrset_t *edns = NULL;
+	if (knot_pkt_has_edns(pkt)) {
+		edns = pkt->opt_rr;
+	}
+
+	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
+
+	jsonw_object(w);
+
+	jsonw_str(w, "header");
+	jsonw_object(w);
+	jsonw_str(w, "id");
+	jsonw_int(w, knot_wire_get_id(pkt->wire));
+	jsonw_str(w, "rcode");
+	jsonw_int(w, knot_pkt_ext_rcode(pkt));
+	jsonw_str(w, "opcode");
+	jsonw_int(w, knot_wire_get_opcode(pkt->wire));
+	jsonw_str(w, "qr");
+	jsonw_bool(w, knot_wire_get_qr(pkt->wire));
+	jsonw_str(w, "aa");
+	jsonw_bool(w, knot_wire_get_aa(pkt->wire));
+	jsonw_str(w, "tc");
+	jsonw_bool(w, knot_wire_get_tc(pkt->wire));
+	jsonw_str(w, "rd");
+	jsonw_bool(w, knot_wire_get_rd(pkt->wire));
+	jsonw_str(w, "ra");
+	jsonw_bool(w, knot_wire_get_ra(pkt->wire));
+	jsonw_str(w, "ad");
+	jsonw_bool(w, knot_wire_get_ad(pkt->wire));
+	jsonw_str(w, "cd");
+	jsonw_bool(w, knot_wire_get_cd(pkt->wire));
+	jsonw_str(w, "do");
+	jsonw_bool(w, edns && knot_edns_do(edns));
+	jsonw_end(w); // header object
+
+	jsonw_str(w, "question");
+	jsonw_list(w);
+	jsonw_object(w);
+	jsonw_str(w, "name");
+	jsonw_dname(w, knot_pkt_qname(pkt));
+	jsonw_str(w, "type");
+	jsonw_int(w, knot_pkt_qtype(pkt));
+	jsonw_str(w, "class");
+	jsonw_int(w, knot_pkt_qclass(pkt));
+	jsonw_end(w); // list
+	jsonw_end(w); // dict
+
+	json_print_section(w, "answer", knot_pkt_section(pkt, KNOT_ANSWER));
+	json_print_section(w, "authority", knot_pkt_section(pkt, KNOT_AUTHORITY));
+	json_print_section(w, "additional", knot_pkt_section(pkt, KNOT_ADDITIONAL));
+
+	json_print_edns(w, edns);
+
+	jsonw_str(w, "stats");
+	jsonw_object(w);
+	jsonw_str(w, "time");
+	jsonw_str(w, "");
+	jsonw_str(w, "remote_ip");
+	jsonw_str(w, "");
+	jsonw_str(w, "remote_port");
+	jsonw_int(w, 0);
+	jsonw_str(w, "messages");
+	jsonw_int(w, 0);
+	jsonw_str(w, "records");
+	jsonw_int(w, 0);
+	jsonw_str(w, "received_bytes");
+	jsonw_int(w, 0);
+	jsonw_str(w, "sent_bytes");
+	jsonw_int(w, 0);
+	jsonw_str(w, "duration_ms");
+	jsonw_int(w, 0);
+	jsonw_end(w); // dict
+
+	// TODO: TSIG information
+	// TODO: TLS information
+
+	jsonw_end(w); // object
+
+	jsonw_free(w);
+}
+
+
 knot_pkt_t *create_empty_packet(const uint16_t max_size)
 {
 	// Create packet skeleton.
@@ -833,6 +1001,8 @@ void print_packet(const knot_pkt_t *packet,
 	case PRINT_JSON:
 		if (style->json_format == JSON_FORMAT_GOOGLE) {
 			return json_print_packet_google(packet, net);
+		} else if (style->json_format == JSON_FORMAT_DEFAULT) {
+			return json_print_packet(packet, net);
 		} else {
 			abort();
 		}
