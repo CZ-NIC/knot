@@ -107,7 +107,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	bool dnssec_enable = conf_bool(&val);
+	bool dnssec_enable = conf_bool(&val), zu_from_zf_conts = false;
 	zone_update_t up = { 0 };
 
 	// Create zone_update structure according to current state.
@@ -120,6 +120,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			// throw old zone contents and load new from ZF
 			ret = zone_update_from_contents(&up, zone, zf_conts,
 							(load_from == JOURNAL_CONTENT_NONE ? UPDATE_FULL : UPDATE_INCREMENTAL));
+			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
 			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL);
@@ -151,6 +152,7 @@ int event_load(conf_t *conf, zone_t *zone)
 				ret = zone_update_from_contents(&up, zone, zf_conts,
 				                                (load_from == JOURNAL_CONTENT_NONE ?
 				                                 UPDATE_FULL : UPDATE_INCREMENTAL));
+				zu_from_zf_conts = true;
 			}
 		}
 	}
@@ -184,6 +186,11 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			goto cleanup;
+		}
+		if (zu_from_zf_conts && (up.flags & UPDATE_INCREMENTAL)) {
+			log_zone_warning(zone->name, "with automatic DNSSEC signing, it's recommended to use"
+						     " zonefile-load: difference, otherwise might be unexpected"
+						     " results, mostly if this is a master");
 		}
 	}
 
