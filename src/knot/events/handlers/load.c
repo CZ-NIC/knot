@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,10 +27,28 @@
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
+#include "knot/updates/acl.h"
 
 static bool dontcare_load_error(conf_t *conf, const zone_t *zone)
 {
 	return (zone->contents == NULL && zone_load_can_bootstrap(conf, zone->name));
+}
+
+static bool allowed_xfr(conf_t *conf, const zone_t *zone)
+{
+	conf_val_t acl = conf_zone_get(conf, C_ACL, zone->name);
+	while (acl.code == KNOT_EOK) {
+		conf_val_t action = conf_id_get(conf, C_ACL, C_ACTION, &acl);
+		while (action.code == KNOT_EOK) {
+			if (conf_opt(&action) == ACL_ACTION_TRANSFER) {
+				return true;
+			}
+			conf_val_next(&action);
+		}
+		conf_val_next(&acl);
+	}
+
+	return false;
 }
 
 int event_load(conf_t *conf, zone_t *zone)
@@ -106,7 +124,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	bool dnssec_enable = conf_bool(&val);
+	bool dnssec_enable = conf_bool(&val), zu_from_zf_conts = false;
 	zone_update_t up = { 0 };
 
 	// Create zone_update structure according to current state.
@@ -116,7 +134,9 @@ int event_load(conf_t *conf, zone_t *zone)
 			goto cleanup;
 		} else if (zf_from == ZONEFILE_LOAD_WHOLE) {
 			ret = zone_update_from_contents(&up, zone, zf_conts,
-							(load_from == JOURNAL_CONTENT_NONE ? UPDATE_FULL : UPDATE_INCREMENTAL));
+			                                (load_from == JOURNAL_CONTENT_NONE ?
+			                                 UPDATE_FULL : UPDATE_INCREMENTAL));
+			zu_from_zf_conts = true;
 		} else {
 			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL);
 		}
@@ -127,8 +147,9 @@ int event_load(conf_t *conf, zone_t *zone)
 			} else {
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts, UPDATE_INCREMENTAL);
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
-					log_zone_warning(zone->name, "zonefile changed with SOA serial %s, "
-					                 "ignoring zonefile and loading from journal",
+					log_zone_warning(zone->name,
+					                 "zone file changed with SOA serial %s, "
+					                 "ignoring zone file and loading from journal",
 					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
 					zone_contents_deep_free(&zf_conts);
 					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
@@ -143,6 +164,9 @@ int event_load(conf_t *conf, zone_t *zone)
 				ret = zone_update_from_contents(&up, zone, zf_conts,
 				                                (load_from == JOURNAL_CONTENT_NONE ?
 				                                 UPDATE_FULL : UPDATE_INCREMENTAL));
+				if (zf_from == ZONEFILE_LOAD_WHOLE) {
+					zu_from_zf_conts = true;
+				}
 			}
 		}
 	}
@@ -176,6 +200,12 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			goto cleanup;
+		}
+		if (zu_from_zf_conts && (up.flags & UPDATE_INCREMENTAL) && allowed_xfr(conf, zone)) {
+			log_zone_warning(zone->name,
+			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
+			                 "'zonefile-load: difference' should be set to avoid malformed "
+			                 "IXFR after manual zone file update");
 		}
 	}
 
