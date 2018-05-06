@@ -59,7 +59,9 @@ typedef enum {
 	/*!< Brief host output. */
 	FORMAT_HOST,
 	/*!< Brief nsupdate output. */
-	FORMAT_NSUPDATE
+	FORMAT_NSUPDATE,
+	/*!< Machine readable JSON format (RFC 8427). */
+	FORMAT_JSON
 } format_t;
 
 /*! \brief Text output settings. */

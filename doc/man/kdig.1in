@@ -337,6 +337,9 @@ is an optional hex encoded string to use as EDNS option value. This argument
 can be used multiple times. +noednsopt clears all EDNS options specified by
 +ednsopt.
 .TP
+\fB+\fP[\fBno\fP]\fBjson\fP
+Use JSON for output encoding (RFC 8427).
+.TP
 \fB+noidn\fP
 Disable the IDN transformation to ASCII and vice versa. IDN support depends
 on libidn availability during project building! If used in \fIcommon\-settings\fP,

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
+#include "contrib/json.h"
 
 /*!
  * \brief Allocates empty packet and sets packet size and random id.
@@ -68,9 +69,58 @@ void print_footer_xfr(const size_t  total_len,
                       const style_t *style);
 
 /*!
- * \brief Prints one response packet.
+ * \brief Prints initial JSON part of XFR output.
  *
- * \param packet	Response packet.
+ * \param query		Query packet.
+ * \param exec_time	Time of the packet creation.
+ * \param style		Style of the output.
+ *
+ * \retval JSON witter	if success.
+ * \retval NULL		if error.
+ */
+jsonw_t *print_header_xfr_json(const knot_pkt_t *query,
+                               const time_t     exec_time,
+                               const style_t    *style);
+
+/*!
+ * \brief Prints one XFR reply packet in JSON.
+ *
+ * \param w		JSON writter.
+ * \param reply		Reply packet (possibly one of many).
+ * \param exec_time	Time of the packet creation.
+ */
+void print_data_xfr_json(jsonw_t          *w,
+                         const knot_pkt_t *reply,
+                         const time_t     exec_time);
+
+/*!
+ * \brief Prints trailing JSON part of XFR output.
+ *
+ * \param w		JSON writter.
+ * \param style		Style of the output.
+ */
+void print_footer_xfr_json(jsonw_t       **w,
+                           const style_t *style);
+
+/*!
+ * \brief Prints one or query/reply pair of DNS packets in JSON format.
+ *
+ * \param query		Query DNS packet.
+ * \param reply		Reply DNS packet.
+ * \param net		Connection information.
+ * \param exec_time	Time of the packet creation.
+ * \param style		Style of the output.
+ */
+void print_packets_json(const knot_pkt_t *query,
+                        const knot_pkt_t *reply,
+                        const net_t      *net,
+                        const time_t     exec_time,
+                        const style_t    *style);
+
+/*!
+ * \brief Prints one DNS packet.
+ *
+ * \param packet	DNS packet.
  * \param net		Connection information.
  * \param size		Original packet wire size.
  * \param elapsed	Total elapsed time.

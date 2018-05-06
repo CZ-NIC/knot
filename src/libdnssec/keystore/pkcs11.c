@@ -214,7 +214,7 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 		return DNSSEC_KEY_GENERATE_ERROR;
 	}
 
-	char *id = bin_to_hex(cka_id.data, cka_id.size);
+	char *id = bin_to_hex(cka_id.data, cka_id.size, false);
 	if (id == NULL) {
 		return DNSSEC_ENOMEM;
 	}
@@ -297,7 +297,7 @@ static int pkcs11_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_p
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	*id_ptr = bin_to_hex(id.data, id.size);
+	*id_ptr = bin_to_hex(id.data, id.size, false);
 	if (*id_ptr == NULL) {
 		return DNSSEC_ENOMEM;
 	}

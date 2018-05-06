@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /*!
  * Simple pretty JSON writer.
@@ -74,6 +75,11 @@ void jsonw_int(jsonw_t *w, const char *key, int value);
  * Write boolean value as JSON.
  */
 void jsonw_bool(jsonw_t *w, const char *key, bool value);
+
+/*!
+ * Write binary data encoded to HEX as JSON.
+ */
+void jsonw_hex(jsonw_t *w, const char *key, const uint8_t *data, size_t len);
 
 /*!
  * Terminate in-progress object or list.
