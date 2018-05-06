@@ -1317,6 +1317,32 @@ static int opt_noidn(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_json(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	if (arg == NULL || strcmp(arg, "default") == 0) {
+		q->style.print = PRINT_JSON;
+	} else if (strcmp(arg, "google") == 0) {
+		q->style.print = PRINT_JSON;
+		q->style.json_format = JSON_FORMAT_GOOGLE;
+	} else {
+		ERR("invalid +json=%s\n", arg);
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+static int opt_nojson(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.print = PRINT_PLAIN;
+
+	return KNOT_EINVAL;
+}
+
 static const param_t kdig_opts2[] = {
 	{ "multiline",      ARG_NONE,     opt_multiline },
 	{ "nomultiline",    ARG_NONE,     opt_nomultiline },
@@ -1477,6 +1503,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "ednsopt",        ARG_REQUIRED, opt_ednsopt },
 	{ "noednsopt",      ARG_NONE,     opt_noednsopt },
+
+	{ "json",           ARG_OPTIONAL, opt_json },
+	{ "nojson",         ARG_NONE,     opt_nojson },
 
 	/* "idn" doesn't work since it must be called before query creation. */
 	{ "noidn",          ARG_NONE,     opt_noidn },
