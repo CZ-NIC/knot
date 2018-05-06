@@ -20,6 +20,7 @@
 
 #include "libdnssec/random.h"
 #include "utils/common/exec.h"
+#include "utils/common/json.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
@@ -471,22 +472,7 @@ static void print_error_host(const knot_pkt_t *packet, const style_t *style)
 	free(owner);
 }
 
-knot_pkt_t *create_empty_packet(const uint16_t max_size)
-{
-	// Create packet skeleton.
-	knot_pkt_t *packet = knot_pkt_new(NULL, max_size, NULL);
-	if (packet == NULL) {
-		DBG_NULL;
-		return NULL;
-	}
-
-	// Set random sequence id.
-	knot_wire_set_id(packet->wire, dnssec_random_uint16_t());
-
-	return packet;
-}
-
-void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
+static void plain_print_header_xfr(const knot_pkt_t *packet, const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -517,8 +503,8 @@ void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
 	}
 }
 
-void print_data_xfr(const knot_pkt_t *packet,
-                    const style_t    *style)
+static void plain_print_data_xfr(const knot_pkt_t *packet,
+                                 const style_t    *style)
 {
 	if (packet == NULL || style == NULL) {
 		DBG_NULL;
@@ -547,13 +533,13 @@ void print_data_xfr(const knot_pkt_t *packet,
 	}
 }
 
-void print_footer_xfr(const size_t  total_len,
-                      const size_t  msg_count,
-                      const size_t  rr_count,
-                      const net_t   *net,
-                      const float   elapsed,
-                      const time_t  exec_time,
-                      const style_t *style)
+static void plain_print_footer_xfr(const size_t  total_len,
+                                   const size_t  msg_count,
+                                   const size_t  rr_count,
+                                   const net_t   *net,
+                                   const float   elapsed,
+                                   const time_t  exec_time,
+                                   const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -566,13 +552,13 @@ void print_footer_xfr(const size_t  total_len,
 	}
 }
 
-void print_packet(const knot_pkt_t *packet,
-                  const net_t      *net,
-                  const size_t     size,
-                  const float      elapsed,
-                  const time_t     exec_time,
-                  const bool       incoming,
-                  const style_t    *style)
+static void plain_print_packet(const knot_pkt_t *packet,
+                               const net_t      *net,
+                               const size_t     size,
+                               const float      elapsed,
+                               const time_t     exec_time,
+                               const bool       incoming,
+                               const style_t    *style)
 {
 	if (packet == NULL || style == NULL) {
 		DBG_NULL;
@@ -688,4 +674,52 @@ void print_packet(const knot_pkt_t *packet,
 		printf("\n");
 		print_footer(size, 0, 0, net, elapsed, exec_time, incoming);
 	}
+}
+
+knot_pkt_t *create_empty_packet(const uint16_t max_size)
+{
+	// Create packet skeleton.
+	knot_pkt_t *packet = knot_pkt_new(NULL, max_size, NULL);
+	if (packet == NULL) {
+		DBG_NULL;
+		return NULL;
+	}
+
+	// Set random sequence id.
+	knot_wire_set_id(packet->wire, dnssec_random_uint16_t());
+
+	return packet;
+}
+
+void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
+{
+	return plain_print_header_xfr(packet, style);
+}
+
+void print_data_xfr(const knot_pkt_t *packet, const style_t *style)
+{
+	return plain_print_data_xfr(packet, style);
+}
+
+void print_footer_xfr(const size_t  total_len,
+                      const size_t  msg_count,
+                      const size_t  rr_count,
+                      const net_t   *net,
+                      const float   elapsed,
+                      const time_t  exec_time,
+                      const style_t *style)
+{
+	return plain_print_footer_xfr(total_len, msg_count, rr_count, net,
+	                              elapsed, exec_time, style);
+}
+
+void print_packet(const knot_pkt_t *packet,
+                  const net_t      *net,
+                  const size_t     size,
+                  const float      elapsed,
+                  const time_t     exec_time,
+                  const bool       incoming,
+                  const style_t    *style)
+{
+	return plain_print_packet(packet, net, size, elapsed, exec_time, incoming, style);
 }
