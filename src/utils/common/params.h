@@ -56,6 +56,14 @@ typedef enum {
 	PROTO_UDP
 } protocol_t;
 
+/*! \brief Print format. */
+typedef enum {
+	/*!< Plain human readable format. */
+	PRINT_PLAIN,
+	/*!< Machine readable JSON format. */
+	PRINT_JSON,
+} print_t;
+
 /*! \brief Variants of output type. */
 typedef enum {
 	/*!< Verbose output (same for host and dig). */
@@ -65,13 +73,23 @@ typedef enum {
 	/*!< Brief host output. */
 	FORMAT_HOST,
 	/*!< Brief nsupdate output. */
-	FORMAT_NSUPDATE
+	FORMAT_NSUPDATE,
 } format_t;
+
+/*! \brief Variants of JSON format. */
+typedef enum {
+	/*!< Custom JSON format. */
+	JSON_FORMAT_DEFAULT,
+	/*!< dns.google.com format. */
+	JSON_FORMAT_GOOGLE,
+} json_format_t;
 
 /*! \brief Text output settings. */
 typedef struct {
 	/*!< Output format. */
+	print_t		print;
 	format_t	format;
+	json_format_t	json_format;
 
 	/*!< Style of rrset dump. */
 	knot_dump_style_t	style;
