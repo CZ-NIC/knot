@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -95,7 +96,7 @@ void *memzero(void *s, size_t n);
 /*!
  * \brief Convert binary data to hexadecimal string.
  */
-char *bin_to_hex(const uint8_t *bin, size_t bin_len);
+char *bin_to_hex(const uint8_t *bin, size_t bin_len, bool upper_case);
 
 /*!
  * \brief Convert hex encoded string to binary data.

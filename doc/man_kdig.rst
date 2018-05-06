@@ -316,6 +316,9 @@ Options
   can be used multiple times. +noednsopt clears all EDNS options specified by
   +ednsopt.
 
+**+**\ [\ **no**\ ]\ **json**
+  Use JSON for output encoding (RFC 8427).
+
 **+noidn**
   Disable the IDN transformation to ASCII and vice versa. IDN support depends
   on libidn availability during project building! If used in *common-settings*,

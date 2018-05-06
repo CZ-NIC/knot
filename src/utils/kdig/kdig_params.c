@@ -1346,6 +1346,24 @@ static int opt_noidn(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_json(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.format = FORMAT_JSON;
+
+	return KNOT_EOK;
+}
+
+static int opt_nojson(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.format = FORMAT_FULL;
+
+	return KNOT_EINVAL;
+}
+
 static const param_t kdig_opts2[] = {
 	{ "multiline",      ARG_NONE,     opt_multiline },
 	{ "nomultiline",    ARG_NONE,     opt_nomultiline },
@@ -1509,6 +1527,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "ednsopt",        ARG_REQUIRED, opt_ednsopt },
 	{ "noednsopt",      ARG_NONE,     opt_noednsopt },
+
+	{ "json",           ARG_NONE,     opt_json },
+	{ "nojson",         ARG_NONE,     opt_nojson },
 
 	/* "idn" doesn't work since it must be called before query creation. */
 	{ "noidn",          ARG_NONE,     opt_noidn },
@@ -2243,6 +2264,7 @@ static void print_help(void)
 	       "       +[no]cookie[=HEX]          Attach EDNS(0) cookie to the query.\n"
 	       "       +[no]badcookie             Repeat a query with the correct cookie.\n"
 	       "       +[no]ednsopt=CODE[:HEX]    Set custom EDNS option.\n"
+	       "       +[no]json                  Use JSON for output encoding (RFC 8427).\n"
 	       "       +noidn                     Disable IDN transformation.\n"
 	       "\n"
 	       "       -h, --help                 Print the program help.\n"

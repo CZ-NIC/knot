@@ -20,6 +20,8 @@
 
 #include "contrib/json.h"
 
+#include "contrib/string.h"
+
 #define MAX_DEPTH 8
 
 enum {
@@ -199,6 +201,17 @@ void jsonw_bool(jsonw_t *w, const char *key, bool value)
 
 	align_key(w, key);
 	fprintf(w->out, "%s", value ? "true" : "false");
+}
+
+void jsonw_hex(jsonw_t *w, const char *key, const uint8_t *data, size_t len)
+{
+	assert(w);
+
+	char *hex = bin_to_hex(data, len, true);
+	if (hex != NULL) {
+		jsonw_str(w, key, hex);
+	}
+	free(hex);
 }
 
 void jsonw_end(jsonw_t *w)

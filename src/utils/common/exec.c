@@ -30,6 +30,8 @@
 #include "contrib/ucw/lists.h"
 #include "contrib/wire_ctx.h"
 
+static const char *JSON_INDENT = "  ";
+
 static knot_lookup_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },
 	{ KNOT_RRTYPE_NS,     "nameserver is" },
@@ -534,6 +536,124 @@ static void print_error_host(const knot_pkt_t *packet, const style_t *style)
 	free(owner);
 }
 
+static void json_dname(jsonw_t *w, const char *key, const knot_dname_t *dname)
+{
+	knot_dname_txt_storage_t name;
+	if (knot_dname_to_str(name, dname, sizeof(name)) != NULL) {
+		jsonw_str(w, key, name);
+	}
+}
+
+static void json_rdata(jsonw_t *w, const knot_rrset_t *rrset)
+{
+	char type[16];
+	if (knot_rrtype_to_string(rrset->type, type, sizeof(type)) <= 0 ||
+	    strncmp(type, "TYPE", 4) == 0) { // Unknown/hex format.
+		return;
+	}
+
+	char key[32] = "rdata";
+	strlcat(key, type, sizeof(key));
+
+	char data[16384];
+	const knot_dump_style_t *style = &KNOT_DUMP_STYLE_DEFAULT;
+	if (knot_rrset_txt_dump_data(rrset, 0, data, sizeof(data), style) > 0) {
+		jsonw_str(w, key, data);
+	}
+}
+
+static void json_print_section(jsonw_t *w, const char *name,
+                               const knot_pktsection_t *section)
+{
+	if (section->count == 0) {
+		return;
+	}
+
+	char str[16];
+
+	jsonw_list(w, name);
+
+	for (int i = 0; i < section->count; i++) {
+		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		jsonw_object(w, NULL);
+		json_dname(w, "NAME", rr->owner);
+		jsonw_int(w, "TYPE", rr->type);
+		if (knot_rrtype_to_string(rr->type, str, sizeof(str)) > 0) {
+			jsonw_str(w, "TYPEname", str);
+		}
+		jsonw_int(w, "CLASS", rr->rclass);
+		if (rr->type != KNOT_RRTYPE_OPT && // OPT class meaning is different.
+		    knot_rrclass_to_string(rr->rclass, str, sizeof(str)) > 0) {
+			jsonw_str(w, "CLASSname", str);
+		}
+		jsonw_int(w, "TTL", rr->ttl);
+		if (rr->type != KNOT_RRTYPE_OPT) { // OPT with HEX rdata.
+			json_rdata(w, rr);
+		}
+		jsonw_int(w, "RDLENGTH", rr->rrs.rdata->len);
+		if (rr->rrs.rdata->len > 0 ) {
+			jsonw_hex(w, "RDATAHEX", rr->rrs.rdata->data, rr->rrs.rdata->len);
+		}
+		jsonw_end(w);
+	}
+
+	jsonw_end(w);
+}
+
+static void print_packet_json(jsonw_t *w, const knot_pkt_t *pkt, time_t time)
+{
+	if (pkt == NULL) {
+		return;
+	}
+
+	char str[16];
+
+	struct tm tm;
+	char date[64];
+	localtime_r(&time, &tm);
+	strftime(date, sizeof(date), "%Y-%m-%dT%H:%M:%S%z", &tm);
+	jsonw_str(w, "dateString", date);
+	jsonw_int(w, "dateSeconds", time);
+
+	jsonw_int(w, "msgLength", pkt->size);
+
+	if (pkt->parsed >= KNOT_WIRE_HEADER_SIZE) {
+		jsonw_int(w, "ID", knot_wire_get_id(pkt->wire));
+		jsonw_int(w, "QR", (bool)knot_wire_get_qr(pkt->wire));
+		jsonw_int(w, "Opcode", knot_wire_get_opcode(pkt->wire));
+		jsonw_int(w, "AA", (bool)knot_wire_get_aa(pkt->wire));
+		jsonw_int(w, "TC", (bool)knot_wire_get_tc(pkt->wire));
+		jsonw_int(w, "RD", (bool)knot_wire_get_rd(pkt->wire));
+		jsonw_int(w, "RA", (bool)knot_wire_get_ra(pkt->wire));
+		jsonw_int(w, "AD", (bool)knot_wire_get_ad(pkt->wire));
+		jsonw_int(w, "CD", (bool)knot_wire_get_cd(pkt->wire));
+		jsonw_int(w, "RCODE", knot_wire_get_rcode(pkt->wire));
+		jsonw_int(w, "QDCOUNT", knot_wire_get_qdcount(pkt->wire));
+		jsonw_int(w, "ANCOUNT", knot_wire_get_ancount(pkt->wire));
+		jsonw_int(w, "NSCOUNT", knot_wire_get_nscount(pkt->wire));
+		jsonw_int(w, "ARCOUNT", knot_wire_get_arcount(pkt->wire));
+	}
+	if (knot_wire_get_qdcount(pkt->wire) == 1) {
+		json_dname(w, "QNAME", knot_pkt_qname(pkt));
+		jsonw_int(w, "QTYPE", knot_pkt_qtype(pkt));
+		if (knot_rrtype_to_string(knot_pkt_qtype(pkt), str, sizeof(str)) > 0) {
+			jsonw_str(w, "QTYPEname", str);
+		}
+		jsonw_int(w, "QCLASS", knot_pkt_qclass(pkt));
+		if (knot_rrclass_to_string(knot_pkt_qclass(pkt), str, sizeof(str)) > 0) {
+			jsonw_str(w, "QCLASSname", str);
+		}
+	}
+	if (pkt->rrset_count) {
+		json_print_section(w, "answerRRs", knot_pkt_section(pkt, KNOT_ANSWER));
+		json_print_section(w, "authorityRRs", knot_pkt_section(pkt, KNOT_AUTHORITY));
+		json_print_section(w, "additionalRRs", knot_pkt_section(pkt, KNOT_ADDITIONAL));
+	}
+	if (pkt->parsed < pkt->size) {
+		jsonw_hex(w, "messageOctetsHEX", pkt->wire, pkt->size);
+	}
+}
+
 knot_pkt_t *create_empty_packet(const uint16_t max_size)
 {
 	// Create packet skeleton.
@@ -547,6 +667,64 @@ knot_pkt_t *create_empty_packet(const uint16_t max_size)
 	knot_wire_set_id(packet->wire, dnssec_random_uint16_t());
 
 	return packet;
+}
+
+jsonw_t *print_header_xfr_json(const knot_pkt_t *query,
+                               const time_t     exec_time,
+                               const style_t    *style)
+{
+	if (style == NULL) {
+		DBG_NULL;
+		return NULL;
+	}
+
+	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
+	if (w == NULL) {
+		return NULL;
+	}
+
+	if (style->show_query) {
+		jsonw_object(w, NULL);
+		jsonw_object(w, "queryMessage");
+		print_packet_json(w, query, exec_time);
+		jsonw_end(w);
+		jsonw_list(w, "responseMessage");
+	} else {
+		jsonw_list(w, NULL);
+	}
+
+	return w;
+}
+
+void print_data_xfr_json(jsonw_t          *w,
+                         const knot_pkt_t *reply,
+                         const time_t     exec_time)
+{
+	if (w == NULL) {
+		DBG_NULL;
+		return;
+	}
+
+	jsonw_object(w, NULL);
+	print_packet_json(w, reply, exec_time);
+	jsonw_end(w);
+}
+
+void print_footer_xfr_json(jsonw_t       **w,
+                           const style_t *style)
+{
+	if (w == NULL || style == NULL) {
+		DBG_NULL;
+		return;
+	}
+
+	jsonw_end(*w); // list (responseMessage)
+	if (style->show_query) {
+		jsonw_end(*w); // object
+	}
+
+	jsonw_free(w);
+	*w = NULL;
 }
 
 void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
@@ -627,6 +805,40 @@ void print_footer_xfr(const size_t  total_len,
 		print_footer(total_len, msg_count, rr_count, net, elapsed,
 		             exec_time, true);
 	}
+}
+
+void print_packets_json(const knot_pkt_t *query,
+                        const knot_pkt_t *reply,
+                        const net_t      *net,
+                        const time_t     exec_time,
+                        const style_t    *style)
+{
+	if (style == NULL) {
+		DBG_NULL;
+		return;
+	}
+
+	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
+	if (w == NULL) {
+		return;
+	}
+	jsonw_object(w, NULL);
+
+	if (style->show_query) {
+		jsonw_object(w, "queryMessage");
+		print_packet_json(w, query, exec_time);
+		jsonw_end(w);
+		jsonw_object(w, "responseMessage");
+	}
+
+	print_packet_json(w, reply, exec_time);
+
+	if (style->show_query) {
+		jsonw_end(w);
+	}
+
+	jsonw_end(w);
+	jsonw_free(&w);
 }
 
 void print_packet(const knot_pkt_t *packet,
