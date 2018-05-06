@@ -14,6 +14,8 @@ libknotus_la_SOURCES = \
 	utils/common/exec.h			\
 	utils/common/hex.c			\
 	utils/common/hex.h			\
+	utils/common/json.c			\
+	utils/common/json.h			\
 	utils/common/lookup.c			\
 	utils/common/lookup.h			\
 	utils/common/msg.c			\
