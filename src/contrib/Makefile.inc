@@ -37,6 +37,8 @@ libcontrib_la_SOURCES = \
 	contrib/files.h				\
 	contrib/getline.c			\
 	contrib/getline.h			\
+	contrib/json.c				\
+	contrib/json.h				\
 	contrib/macros.h			\
 	contrib/mempattern.c			\
 	contrib/mempattern.h			\

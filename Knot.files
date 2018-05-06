@@ -23,6 +23,8 @@ src/contrib/files.c
 src/contrib/files.h
 src/contrib/getline.c
 src/contrib/getline.h
+src/contrib/json.c
+src/contrib/json.h
 src/contrib/libbpf/bpf/bpf.c
 src/contrib/libbpf/bpf/bpf.h
 src/contrib/libbpf/bpf/bpf_core_read.h
