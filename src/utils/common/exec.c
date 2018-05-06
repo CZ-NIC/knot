@@ -676,6 +676,112 @@ static void plain_print_packet(const knot_pkt_t *packet,
 	}
 }
 
+/*! Indentation used in JSON output. */
+static const char *JSON_INDENT = "  ";
+
+/*! Write domain name in presentation form as JSON string. */
+static void jsonw_dname(jsonw_t *w, const knot_dname_t *dname)
+{
+	char *name = knot_dname_to_str_alloc(dname);
+	if (!name) {
+		abort();
+	}
+
+	jsonw_str(w, name);
+
+	free(name);
+}
+
+/*! Write RDATA in presentation form as JSON string. */
+static void jsonw_rdata(jsonw_t *w, const knot_rrset_t *rrset, size_t pos)
+{
+	static const size_t size = 8096;
+	char *buf = calloc(size, sizeof(char));
+	if (!buf) {
+		abort();
+	}
+
+	const knot_dump_style_t *style = &KNOT_DUMP_STYLE_DEFAULT;
+	if (knot_rrset_txt_dump_data(rrset, pos, buf, size, style) < 0) {
+		free(buf);
+		abort();
+	}
+
+	jsonw_str(w, buf);
+	free(buf);
+}
+
+static void json_print_section_google(jsonw_t *w, const char *name,
+                                      const knot_pktsection_t *section)
+{
+	if (section->count == 0) {
+		return;
+	}
+
+	jsonw_str(w, name);
+	jsonw_list(w);
+
+	for (int i = 0; i < section->count; i++) {
+		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		jsonw_object(w);
+		jsonw_str(w, "name");
+		jsonw_dname(w, rr->owner);
+		jsonw_str(w, "type");
+		jsonw_int(w, rr->type);
+		jsonw_str(w, "TTL");
+		jsonw_int(w, rr->ttl);
+		jsonw_str(w, "data");
+		jsonw_rdata(w, rr, i);
+		jsonw_end(w); // object
+	}
+
+	jsonw_end(w); // list
+}
+
+static void json_print_packet_google(const knot_pkt_t *pkt, const net_t *net)
+{
+	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
+
+	jsonw_object(w);
+
+	jsonw_str(w, "Status");
+	jsonw_int(w, knot_pkt_ext_rcode(pkt));
+
+	jsonw_str(w, "TC");
+	jsonw_bool(w, knot_wire_get_tc(pkt->wire));
+	jsonw_str(w, "RD");
+	jsonw_bool(w, knot_wire_get_rd(pkt->wire));
+	jsonw_str(w, "RA");
+	jsonw_bool(w, knot_wire_get_ra(pkt->wire));
+	jsonw_str(w, "AD");
+	jsonw_bool(w, knot_wire_get_ad(pkt->wire));
+	jsonw_str(w, "CD");
+	jsonw_bool(w, knot_wire_get_cd(pkt->wire));
+
+	jsonw_str(w, "Question");
+	jsonw_list(w);
+	jsonw_object(w);
+	jsonw_str(w, "name");
+	jsonw_dname(w, knot_pkt_qname(pkt));
+	jsonw_str(w, "type");
+	jsonw_int(w, knot_pkt_qtype(pkt));
+	jsonw_end(w); // list
+	jsonw_end(w); // object
+
+	json_print_section_google(w, "Answer", knot_pkt_section(pkt, KNOT_ANSWER));
+	json_print_section_google(w, "Authority", knot_pkt_section(pkt, KNOT_AUTHORITY));
+	json_print_section_google(w, "Additional", knot_pkt_section(pkt, KNOT_ADDITIONAL));
+
+	jsonw_str(w, "Comment");
+	char comment[256] = {0};
+	snprintf(comment, sizeof(comment), "Response from %s.", net->remote_str);
+	jsonw_str(w, comment);
+
+	jsonw_end(w); // object
+
+	jsonw_free(w);
+}
+
 knot_pkt_t *create_empty_packet(const uint16_t max_size)
 {
 	// Create packet skeleton.
@@ -721,5 +827,16 @@ void print_packet(const knot_pkt_t *packet,
                   const bool       incoming,
                   const style_t    *style)
 {
-	return plain_print_packet(packet, net, size, elapsed, exec_time, incoming, style);
+	switch (style->print) {
+	case PRINT_PLAIN:
+		return plain_print_packet(packet, net, size, elapsed, exec_time, incoming, style);
+	case PRINT_JSON:
+		if (style->json_format == JSON_FORMAT_GOOGLE) {
+			return json_print_packet_google(packet, net);
+		} else {
+			abort();
+		}
+	default:
+		abort();
+	}
 }
