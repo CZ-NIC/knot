@@ -113,19 +113,24 @@ int event_load(conf_t *conf, zone_t *zone)
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
 		if (zf_conts == NULL) {
+			// nothing to be re-loaded
 			ret = KNOT_EOK;
 			goto cleanup;
 		} else if (zf_from == ZONEFILE_LOAD_WHOLE) {
+			// throw old zone contents and load new from ZF
 			ret = zone_update_from_contents(&up, zone, zf_conts,
 							(load_from == JOURNAL_CONTENT_NONE ? UPDATE_FULL : UPDATE_INCREMENTAL));
 		} else {
+			// compute ZF diff and if success, apply it
 			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL);
 		}
 	} else {
 		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
 			if (zf_conts == NULL) {
+				// load zone-in-journal
 				ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
 			} else {
+				// load zone-in-journal, compute ZF diff and if success, apply it
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts, UPDATE_INCREMENTAL);
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name, "zone file changed with SOA serial %s, "
@@ -139,8 +144,10 @@ int event_load(conf_t *conf, zone_t *zone)
 			}
 		} else {
 			if (zf_conts == NULL) {
+				// nothing to be loaded
 				ret = KNOT_ENOENT;
 			} else {
+				// load from ZF
 				ret = zone_update_from_contents(&up, zone, zf_conts,
 				                                (load_from == JOURNAL_CONTENT_NONE ?
 				                                 UPDATE_FULL : UPDATE_INCREMENTAL));
