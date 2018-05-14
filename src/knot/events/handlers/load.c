@@ -27,10 +27,28 @@
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
+#include "knot/updates/acl.h"
 
 static bool dontcare_load_error(conf_t *conf, const zone_t *zone)
 {
 	return (zone->contents == NULL && zone_load_can_bootstrap(conf, zone->name));
+}
+
+static bool allowed_xfr(conf_t *conf, const zone_t *zone)
+{
+	conf_val_t acl = conf_zone_get(conf, C_ACL, zone->name);
+	while (acl.code == KNOT_EOK) {
+		conf_val_t action = conf_id_get(conf, C_ACL, C_ACTION, &acl);
+		while (action.code == KNOT_EOK) {
+			if (conf_opt(&action) == ACL_ACTION_TRANSFER) {
+				return true;
+			}
+			conf_val_next(&action);
+		}
+		conf_val_next(&acl);
+	}
+
+	return false;
 }
 
 int event_load(conf_t *conf, zone_t *zone)
@@ -119,7 +137,8 @@ int event_load(conf_t *conf, zone_t *zone)
 		} else if (zf_from == ZONEFILE_LOAD_WHOLE) {
 			// throw old zone contents and load new from ZF
 			ret = zone_update_from_contents(&up, zone, zf_conts,
-							(load_from == JOURNAL_CONTENT_NONE ? UPDATE_FULL : UPDATE_INCREMENTAL));
+			                                (load_from == JOURNAL_CONTENT_NONE ?
+			                                 UPDATE_FULL : UPDATE_INCREMENTAL));
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
@@ -134,7 +153,8 @@ int event_load(conf_t *conf, zone_t *zone)
 				// load zone-in-journal, compute ZF diff and if success, apply it
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts, UPDATE_INCREMENTAL);
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
-					log_zone_warning(zone->name, "zone file changed with SOA serial %s, "
+					log_zone_warning(zone->name,
+					                 "zone file changed with SOA serial %s, "
 					                 "ignoring zone file and loading from journal",
 					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
 					zone_contents_deep_free(zf_conts);
@@ -152,7 +172,9 @@ int event_load(conf_t *conf, zone_t *zone)
 				ret = zone_update_from_contents(&up, zone, zf_conts,
 				                                (load_from == JOURNAL_CONTENT_NONE ?
 				                                 UPDATE_FULL : UPDATE_INCREMENTAL));
-				zu_from_zf_conts = true;
+				if (zf_from == ZONEFILE_LOAD_WHOLE) {
+					zu_from_zf_conts = true;
+				}
 			}
 		}
 	}
@@ -187,10 +209,10 @@ int event_load(conf_t *conf, zone_t *zone)
 			zone_update_clear(&up);
 			goto cleanup;
 		}
-		if (zu_from_zf_conts && (up.flags & UPDATE_INCREMENTAL)) {
-			log_zone_warning(zone->name, "with automatic DNSSEC signing, it's recommended to use"
-						     " zonefile-load: difference, otherwise might be unexpected"
-						     " results, mostly if this is a master");
+		if (zu_from_zf_conts && (up.flags & UPDATE_INCREMENTAL) && allowed_xfr(conf, zone)) {
+			log_zone_warning(zone->name,
+			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
+			                 "'zonefile-load: difference' should be set to avoid malformed IXFR");
 		}
 	}
 
