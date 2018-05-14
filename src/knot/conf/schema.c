@@ -156,6 +156,7 @@ static const yp_item_t desc_server[] = {
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD, YP_SSIZE } },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
+	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 
