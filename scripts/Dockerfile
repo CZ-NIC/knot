@@ -3,7 +3,7 @@ MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 
 # Select entrypoint
 WORKDIR /root
-CMD ["/usr/local/sbin/knotd"]
+CMD /sbin/knotd & /sbin/knotc
 
 # Expose port
 EXPOSE 53/UDP 53/TCP
@@ -32,3 +32,7 @@ apt-get purge -q -y ${BUILD_PKGS} && \
 apt-get autoremove -q -y && \
 apt-get clean && \
 rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Use example configuration and zone
+RUN mv /etc/knot/knot.sample.conf /etc/knot/knot.conf && \
+echo '  - domain: example.com\n    file: "/etc/knot/example.com.zone"' >> /etc/knot/knot.conf
