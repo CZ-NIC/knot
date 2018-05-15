@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -417,9 +417,10 @@ knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type);
 
 /*! General query processing states. */
 typedef enum {
-	KNOTD_STATE_NOOP = 0, /*!< No response. */
-	KNOTD_STATE_DONE = 4, /*!< Finished. */
-	KNOTD_STATE_FAIL = 5, /*!< Error. */
+	KNOTD_STATE_NOOP  = 0, /*!< No response. */
+	KNOTD_STATE_DONE  = 4, /*!< Finished. */
+	KNOTD_STATE_FAIL  = 5, /*!< Error. */
+	KNOTD_STATE_FINAL = 6, /*!< Finished and finalized (QNAME, EDNS, TSIG). */
 } knotd_state_t;
 
 /*! brief Internet query processing states. */

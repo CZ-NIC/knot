@@ -116,7 +116,7 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 		knot_tsig_append(pkt->wire, &pkt->size, pkt->max_size, pkt->tsig_rr);
 	}
 
-	return KNOTD_STATE_DONE;
+	return (proxy->fallback ? KNOTD_STATE_DONE : KNOTD_STATE_FINAL);
 }
 
 int dnsproxy_load(knotd_mod_t *mod)
