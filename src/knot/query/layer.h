@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,7 +32,8 @@ typedef enum {
 	KNOT_STATE_PRODUCE,    //!< Produce data.
 	KNOT_STATE_RESET,      //!< Restart processing.
 	KNOT_STATE_DONE,       //!< Finished.
-	KNOT_STATE_FAIL        //!< Error.
+	KNOT_STATE_FAIL,       //!< Error.
+	KNOT_STATE_FINAL,      //!< Finished and finalized.
 } knot_layer_state_t;
 
 typedef struct knot_layer_api knot_layer_api_t;

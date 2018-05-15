@@ -549,6 +549,10 @@ finish:
 		/* Error processing. */
 		next_state = process_query_err(ctx, pkt);
 		break;
+	case KNOT_STATE_FINAL:
+		/* Just skipped postprocessing. */
+		next_state = KNOT_STATE_DONE;
+		break;
 	default:
 		set_rcode_to_packet(pkt, qdata);
 	}
