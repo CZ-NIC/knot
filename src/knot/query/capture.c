@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,6 +36,15 @@ static int begin(knot_layer_t *ctx, void *module_param)
 
 static int prepare_query(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
+	assert(pkt && ctx && ctx->data);
+	struct capture_param *param = ctx->data;
+
+	// Restore to original QNAME if requested.
+	if (param->orig_qname != NULL && param->orig_qname[0] != '\0') {
+		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
+		       param->orig_qname, pkt->qname_size);
+	}
+
 	return KNOT_STATE_CONSUME;
 }
 
