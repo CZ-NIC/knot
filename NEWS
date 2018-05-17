@@ -1,3 +1,22 @@
+Knot DNS 2.6.7 (2018-05-17)
+===========================
+
+Features:
+---------
+ - Added 'dateserial' (YYYYMMDDnn) serial policy configuration (Thanks to Wolfgang Jung)
+
+Improvements:
+-------------
+ - Trailing data indication from the packet parser (libknot)
+ - Better configuration check for a problematical option combination
+
+Bugfixes:
+---------
+ - Incomplete configuration option item name check
+ - Possible buffer overflow in 'knot_dname_to_str' (libknot)
+ - Module dnsproxy doesn't preserve letter case of QNAME
+ - Module dnsproxy duplicates OPT and TSIG in the non-fallback mode
+
 Knot DNS 2.6.6 (2018-04-11)
 ===========================
 
