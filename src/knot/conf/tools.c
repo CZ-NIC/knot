@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@
 #include "knot/conf/module.h"
 #include "knot/conf/schema.h"
 #include "knot/common/log.h"
-#include "knot/updates/acl.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/string.h"
@@ -469,37 +468,6 @@ int check_zone(
 		              "IXFR from differences setting is obsolete "
 		              "and will be removed in the next major release, use "
 		              "zone.zonefile-load instead");
-	}
-
-	// Check for dnssec_signing + zonefile_load whole + acl transfer.
-	conf_val_t dnssec = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                      C_DNSSEC_SIGNING, zone);
-	unsigned zf_load = conf_zonefile_load_txn(args->extra->conf, args->extra->txn,
-		                                    zone);
-	if (conf_bool(&dnssec) && zf_load == ZONEFILE_LOAD_WHOLE) {
-		conf_val_t acl = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-		                                   C_ACL, zone);
-		bool stop = false;
-		while (acl.code == KNOT_EOK && !stop) {
-			conf_val_t action = conf_id_get_txn(args->extra->conf,
-			                                    args->extra->txn,
-			                                    C_ACL, C_ACTION, &acl);
-			while (action.code == KNOT_EOK) {
-				if (conf_opt(&action) != ACL_ACTION_TRANSFER) {
-					conf_val_next(&action);
-					continue;
-				}
-
-				CONF_LOG_ZONE(LOG_NOTICE, zone,
-				         "zone file change with DNSSEC signing can "
-				         "result in malformed outgoing IXFR, consider "
-				         "zone.zonefile-load setting");
-				stop = true;
-				break;
-			}
-
-			conf_val_next(&acl);
-		}
 	}
 
 	return KNOT_EOK;
