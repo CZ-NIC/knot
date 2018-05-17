@@ -212,7 +212,8 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (zu_from_zf_conts && (up.flags & UPDATE_INCREMENTAL) && allowed_xfr(conf, zone)) {
 			log_zone_warning(zone->name,
 			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
-			                 "'zonefile-load: difference' should be set to avoid malformed IXFR");
+			                 "'zonefile-load: difference' should be set to avoid malformed "
+			                 "IXFR after manual zone file update");
 		}
 	}
 
