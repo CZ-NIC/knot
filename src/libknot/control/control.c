@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,12 +126,8 @@ static void reset_buffers(knot_ctl_t *ctx)
 
 static void clean_data(knot_ctl_t *ctx)
 {
-	for (knot_ctl_idx_t i = 0; i < KNOT_CTL_IDX__COUNT; i++) {
-		if (ctx->data[i] != NULL) {
-			mm_free(&ctx->mm, (void *)ctx->data[i]);
-			ctx->data[i] = NULL;
-		}
-	}
+	mp_flush(ctx->mm.ctx);
+	memset(ctx->data, 0, sizeof(ctx->data));
 }
 
 static void close_sock(int *sock)
