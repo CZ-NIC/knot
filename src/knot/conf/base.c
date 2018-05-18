@@ -30,7 +30,6 @@
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
-#include "contrib/ucw/mempool.h"
 
 // The active configuration.
 conf_t *s_conf;
@@ -170,7 +169,7 @@ int conf_new(
 		ret = KNOT_ENOMEM;
 		goto new_error;
 	}
-	mm_ctx_mempool(out->mm, MM_DEFAULT_BLKSIZE);
+	mm_ctx_init(out->mm);
 
 	// Initialize query modules list.
 	out->query_modules = mm_alloc(out->mm, sizeof(list_t));
@@ -396,7 +395,6 @@ void conf_free(
 	}
 	if (conf->io.zones != NULL) {
 		trie_free(conf->io.zones);
-		mm_free(conf->mm, conf->io.zones);
 	}
 
 	conf_mod_load_purge(conf, false);
@@ -409,7 +407,6 @@ void conf_free(
 			conf->api->deinit(conf->db);
 		}
 		if (conf->mm != NULL) {
-			mp_delete(conf->mm->ctx);
 			free(conf->mm);
 		}
 	}
