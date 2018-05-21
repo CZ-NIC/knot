@@ -345,6 +345,7 @@ conf_t *conf_update(
 			conf->io.zones = s_conf->io.zones;
 		}
 		if ((flags & CONF_UPD_FMODULES) && s_conf != NULL) {
+			mm_free(conf->mm, conf->query_modules);
 			conf->query_modules = s_conf->query_modules;
 			conf->query_plan = s_conf->query_plan;
 		}
