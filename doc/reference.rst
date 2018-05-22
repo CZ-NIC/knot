@@ -141,6 +141,7 @@ General options related to the server.
      max-udp-payload: SIZE
      max-ipv4-udp-payload: SIZE
      max-ipv6-udp-payload: SIZE
+     edns-client-subnet: BOOL
      listen: ADDR[@INT] ...
 
 .. _server_identity:
@@ -310,6 +311,16 @@ max-ipv6-udp-payload
 Maximum EDNS0 UDP payload size for IPv6.
 
 *Default:* 4096
+
+.. _server_edns-client-subnet:
+
+edns-client-subnet
+------------------
+
+Enable or disable EDNS Client Subnet support. If enabled, responses to queries containing the EDNS Client Subnet option
+always contain a valid EDNS Client Subnet option according to :rfc:`7871`.
+
+*Default:* off
 
 .. _server_listen:
 

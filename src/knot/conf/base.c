@@ -138,6 +138,9 @@ static void init_cache(
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
 
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
+
+	val = conf_get(conf, C_SRV, C_ECS);
+	conf->cache.use_ecs = conf_bool(&val);
 }
 
 int conf_new(

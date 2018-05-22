@@ -291,6 +291,34 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 		}
 	}
 
+	/* Initialize EDNS Client Subnet if configured and present in query. */
+	if (conf()->cache.use_ecs) {
+		uint8_t *ecs_opt = knot_pkt_edns_option(query, KNOT_EDNS_OPTION_CLIENT_SUBNET);
+		if (ecs_opt != NULL) {
+			qdata->ecs = mm_alloc(qdata->mm, sizeof(knot_edns_client_subnet_t));
+			if (qdata->ecs == NULL) {
+				return KNOT_ENOMEM;
+			}
+			const uint8_t *ecs_data = knot_edns_opt_get_data(ecs_opt);
+			uint16_t ecs_len = knot_edns_opt_get_length(ecs_opt);
+			ret = knot_edns_client_subnet_parse(qdata->ecs, ecs_data, ecs_len);
+			if (ret != KNOT_EOK) {
+				qdata->rcode = KNOT_RCODE_FORMERR;
+				return ret;
+			}
+			qdata->ecs->scope_len = 0;
+
+			/* Reserve space for the option in the answer. */
+			ret = knot_edns_reserve_option(&qdata->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET,
+			                               ecs_len, NULL, qdata->mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	} else {
+		qdata->ecs = NULL;
+	}
+
 	return answer_edns_reserve(resp, qdata);
 }
 
@@ -300,8 +328,22 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 		return KNOT_EOK;
 	}
 
+	/* Add ECS if present. */
+	int ret = KNOT_EOK;
+	if (qdata->ecs != NULL) {
+		uint8_t *ecs_opt = knot_edns_get_option(&qdata->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET);
+		if (ecs_opt != NULL) {
+			uint8_t *ecs_data = knot_edns_opt_get_data(ecs_opt);
+			uint16_t ecs_len = knot_edns_opt_get_length(ecs_opt);
+			ret = knot_edns_client_subnet_write(ecs_data, ecs_len, qdata->ecs);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
 	/* Reclaim reserved size. */
-	int ret = knot_pkt_reclaim(resp, knot_edns_wire_size(&qdata->opt_rr));
+	ret = knot_pkt_reclaim(resp, knot_edns_wire_size(&qdata->opt_rr));
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -40,6 +40,7 @@
 #define C_DNSSEC_POLICY		"\x0D""dnssec-policy"
 #define C_DNSSEC_SIGNING	"\x0E""dnssec-signing"
 #define C_DOMAIN		"\x06""domain"
+#define C_ECS			"\x12""edns-client-subnet"
 #define C_FILE			"\x04""file"
 #define C_GLOBAL_MODULE		"\x0D""global-module"
 #define C_ID			"\x02""id"

@@ -380,14 +380,15 @@ typedef struct {
 
 /*! Query processing data context. */
 typedef struct {
-	knot_pkt_t *query;        /*!< Query to be solved. */
-	knotd_query_type_t type;  /*!< Query packet type. */
-	const knot_dname_t *name; /*!< Currently processed name. */
-	uint16_t rcode;           /*!< Resulting RCODE (Whole extended RCODE). */
-	uint16_t rcode_tsig;      /*!< Resulting TSIG RCODE. */
-	knot_rrset_t opt_rr;      /*!< OPT record. */
-	knot_sign_context_t sign; /*!< Signing context. */
-	bool err_truncated;       /*!< Set TC bit if error reply. */
+	knot_pkt_t *query;              /*!< Query to be solved. */
+	knotd_query_type_t type;        /*!< Query packet type. */
+	const knot_dname_t *name;       /*!< Currently processed name. */
+	uint16_t rcode;                 /*!< Resulting RCODE (Whole extended RCODE). */
+	uint16_t rcode_tsig;            /*!< Resulting TSIG RCODE. */
+	knot_rrset_t opt_rr;            /*!< OPT record. */
+	knot_sign_context_t sign;       /*!< Signing context. */
+	knot_edns_client_subnet_t *ecs; /*!< EDNS Client Subnet option. */
+	bool err_truncated;             /*!< Set TC bit if error reply. */
 
 	/*! Persistent items on processing reset. */
 	knot_mm_t *mm;                /*!< Memory context. */
