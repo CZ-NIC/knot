@@ -119,6 +119,9 @@ Remove the specified key from zone. If the key was not shared, it is also delete
 \fBshare\fP \fIkey_ID\fP
 Import a key (specified by full key ID) from another zone as shared. After this, the key is
 owned by both zones equally.
+.TP
+\fBpregenerate\fP \fIperiod_secs\fP
+Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
 .UNINDENT
 .SS Generate arguments
 .sp

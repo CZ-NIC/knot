@@ -97,6 +97,9 @@ Commands
   Import a key (specified by full key ID) from another zone as shared. After this, the key is
   owned by both zones equally.
 
+**pregenerate** *period_secs*
+  Pre-generate ZSKs for use with offline KSK, for the specified period starting from now.
+
 Generate arguments
 ..................
 
