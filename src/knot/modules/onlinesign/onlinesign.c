@@ -529,7 +529,9 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 	}
 	if (ret == KNOT_EOK || knot_time_cmp(ctx->event_rollover, ctx->kctx.now) <= 0) {
+		knotd_mod_log(mod, LOG_ERR, "onlinesign: rollover");
 		ret = knot_dnssec_key_rollover(&ctx->kctx, &resch);
+		knotd_mod_log(mod, LOG_ERR, "onlinesign: rollvoer done");
 	}
 	if (ret == KNOT_EOK) {
 		if (resch.plan_ds_query && ctx->kctx.policy->ksk_sbm_check_interval > 0) {
