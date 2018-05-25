@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 #include "utils/common/resolv.h"
 #include "utils/common/token.h"
 #include "libknot/libknot.h"
+#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/strtonum.h"
@@ -254,7 +255,8 @@ int params_parse_type(const char *value, uint16_t *rtype, int64_t *serial,
 	char *type_char = strndup(value, param_pos);
 
 	if (knot_rrtype_from_string(type_char, rtype) != 0) {
-		if (strncasecmp(type_char, "NOTIFY", strlen("NOTIFY")) == 0) {
+		size_t cmp_len = MAX(strlen("NOTIFY"), param_pos);
+		if (strncasecmp(type_char, "NOTIFY", cmp_len) == 0) {
 			*rtype = KNOT_RRTYPE_SOA;
 			*notify = true;
 		} else {
