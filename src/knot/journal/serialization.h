@@ -96,3 +96,32 @@ int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],
 int deserialize_rrset_chunks(wire_ctx_t *wire, knot_rrset_t *rrset,
                              uint8_t *src_chunks[], const size_t *chunk_sizes,
                              size_t chunks_count, size_t *cur_chunk);
+
+/*!
+ * \brief Simply serialize RRset w/o any chunking.
+ *
+ * \param wire
+ * \param rrset
+ *
+ * \return KNOT_E*
+ */
+int serialize_rrset(wire_ctx_t *wire, const knot_rrset_t *rrset);
+
+/*!
+ * \brief Simply deserialize RRset w/o any chunking.
+ *
+ * \param wire
+ * \param rrset
+ *
+ * \return KNOT_E*
+ */
+int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset);
+
+/*!
+ * \brief Space needed to serialize RRset.
+ *
+ * \param rrset RRset.
+ *
+ * \return RRset binary size.
+ */
+size_t rrset_serialized_size(const knot_rrset_t *rrset);
