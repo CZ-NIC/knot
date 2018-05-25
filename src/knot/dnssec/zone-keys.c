@@ -319,7 +319,13 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 
 		zone_key_t *key = &keyset->keys[i];
 		int r = dnssec_key_import_keystore(key->key, keystore, key->id);
-		if (r != DNSSEC_EOK && r != DNSSEC_KEY_ALREADY_PRESENT) {
+		switch (r) {
+		case DNSSEC_EOK:
+		case DNSSEC_KEY_ALREADY_PRESENT:
+			break;
+		case DNSSEC_ENOENT: // we hope that this is just offline KSK
+			break;
+		default:
 			return r;
 		}
 	}
