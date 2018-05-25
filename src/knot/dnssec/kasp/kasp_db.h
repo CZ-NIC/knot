@@ -233,3 +233,25 @@ int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char
  * \return KNOT_E*
  */
 int kasp_db_list_zones(kasp_db_t *db, list_t *dst);
+
+/*!
+ * \brief Store pre-generated RRSIG for offline KSK usage.
+ *
+ * \param db         KASP db.
+ * \param for_time   Timestamp in future in which the RRSIG shall be used.
+ * \param rrsig      The rrsig to be stored.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_rrset_t *rrsig);
+
+/*!
+ * \brief Load pregenerated RRSIG.
+ *
+ * \param db         KASP db.
+ * \param for_time   Now. Closest RRSIG (timestamp equals or is closest lower).
+ * \param rrsig      Output: the RRSIG.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_load_offline_rrsig(kasp_db_t *db, knot_time_t for_time, knot_rrset_t *rrsig);
