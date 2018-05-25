@@ -37,3 +37,5 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, knot_time_print_t format);
 int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key);
 
 int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key);
+
+int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, knot_time_t upto);

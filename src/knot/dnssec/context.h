@@ -38,6 +38,8 @@ typedef struct {
 	char *kasp_zone_path;
 
 	bool rrsig_drop_existing;
+	bool keep_deleted_keys;
+	bool rollover_only_zsk;
 } kdnssec_ctx_t;
 
 /*!

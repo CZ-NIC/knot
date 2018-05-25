@@ -29,6 +29,8 @@
 #include "libdnssec/error.h"
 #include "libdnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"
+#include "knot/dnssec/key-events.h"
+#include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libzscanner/scanner.h"
 
@@ -765,5 +767,25 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 
 	free(base64_output);
 	free(name);
+	return KNOT_EOK;
+}
+
+int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
+{
+	ctx->keep_deleted_keys = true;
+	ctx->rollover_only_zsk = true;
+	ctx->policy->manual = false;
+
+	while (knot_time_cmp(ctx->now, upto) <= 0) {
+		zone_sign_reschedule_t resch = { 0 };
+		resch.allow_rollover = true;
+		int ret = knot_dnssec_key_rollover(ctx, &resch);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		ctx->now = resch.next_rollover;
+	}
+
 	return KNOT_EOK;
 }
