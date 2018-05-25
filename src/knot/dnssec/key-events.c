@@ -367,6 +367,10 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 			continue;
 		}
 		if (key->is_ksk) {
+			if (ctx->rollover_only_zsk) {
+				continue;
+			}
+
 			switch (get_key_state(key, ctx->now)) {
 			case DNSSEC_KEY_STATE_PRE_ACTIVE:
 				keytime = alg_publish_time(key->timing.pre_active, ctx);
@@ -431,11 +435,14 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				keytime = alg_remove_time(key->timing.post_active, ctx);
 				restype = REMOVE;
 				break;
-			case DNSSEC_KEY_STATE_RETIRED:
 			case DNSSEC_KEY_STATE_REMOVED:
 				// ad REMOVED state: normally this wouldn't happen
 				// (key in removed state is instantly deleted)
 				// but if imported keys, they can be in this state
+				if (ctx->keep_deleted_keys) {
+					break;
+				} // else FALLBACK
+			case DNSSEC_KEY_STATE_RETIRED:
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
 				keytime = ksk_remove_time(keytime, ctx);;
 				restype = REMOVE;
@@ -545,7 +552,11 @@ static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
 	key->timing.remove = ctx->now;
 
-	return kdnssec_delete_key(ctx, key);
+	if (ctx->keep_deleted_keys) {
+		return KNOT_EOK;
+	} else {
+		return kdnssec_delete_key(ctx, key);
+	}
 }
 
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
@@ -604,7 +615,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 	// algorithm rollover
-	if (algorithm_present(ctx, ctx->policy->algorithm) == 0 &&
+	if (!ctx->rollover_only_zsk &&
+	    algorithm_present(ctx, ctx->policy->algorithm) == 0 &&
 	    !running_rollover(ctx) && allowed_general_roll && ret == KNOT_EOK) {
 		ret = generate_ksk(ctx, 0, true);
 		if (!ctx->policy->singe_type_signing && ret == KNOT_EOK) {
@@ -616,7 +628,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 	// scheme rollover
-	if (!signing_scheme_present(ctx) && allowed_general_roll &&
+	if (!ctx->rollover_only_zsk &&
+	    !signing_scheme_present(ctx) && allowed_general_roll &&
 	    !running_rollover(ctx) && ret == KNOT_EOK) {
 		ret = generate_ksk(ctx, 0, false);
 		if (!ctx->policy->singe_type_signing && ret == KNOT_EOK) {
