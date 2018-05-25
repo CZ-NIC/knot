@@ -828,15 +828,3 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 	free(name);
 	return KNOT_EOK;
 }
-
-int keymgr_del_all_old(kdnssec_ctx_t *ctx)
-{
-	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (knot_time_cmp(key->timing.remove, ctx->now) < 0) {
-			int ret = kdnssec_delete_key(ctx, key);
-			printf("- %s\n", knot_strerror(ret));
-		}
-	}
-	return kdnssec_ctx_commit(ctx);
-}
