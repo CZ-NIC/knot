@@ -1015,13 +1015,15 @@ static int contents_adjust(zone_contents_t *contents, bool normal)
 	contents->size = 0;
 	contents->dnssec = node_rrtype_is_signed(contents->apex, KNOT_RRTYPE_SOA);
 
-	ret = adjust_nodes(contents->nodes, &arg,
-	                   normal ? adjust_normal_node : adjust_pointers);
+	// NSEC3 nodes must be adjusted first, because we already need the NSEC3 chain
+	// to be closed before we adjust NSEC3 pointers in adjust_normal_node
+	ret = adjust_nodes(contents->nsec3_nodes, &arg, adjust_nsec3_node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = adjust_nodes(contents->nsec3_nodes, &arg, adjust_nsec3_node);
+	ret = adjust_nodes(contents->nodes, &arg,
+	                   normal ? adjust_normal_node : adjust_pointers);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
