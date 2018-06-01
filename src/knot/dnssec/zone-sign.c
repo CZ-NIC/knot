@@ -585,7 +585,7 @@ typedef struct {
 
 /*- private API - DNSKEY handling --------------------------------------------*/
 
-static int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
+int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
 	assert(rrset);
 	assert(zone_key);
