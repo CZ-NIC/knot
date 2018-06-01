@@ -236,13 +236,30 @@ static int adjust_nsec3_pointers(zone_node_t **tnode, void *data)
 
 	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
 	zone_node_t *node = *tnode;
+	const zone_node_t *ignored;
 
 	// Connect to NSEC3 node (only if NSEC3 tree is not empty)
+	node->nsec3_wildcard_prev = NULL;
 	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
 	int ret = create_nsec3_name(nsec3_name, sizeof(nsec3_name), args->zone,
 	                            node->owner);
 	if (ret == KNOT_EOK) {
 		node->nsec3_node = zone_tree_get(args->zone->nsec3_nodes, nsec3_name);
+
+		// Connect to NSEC3 node proving nonexistence of wildcard.
+		size_t wildcard_size = knot_dname_size(node->owner) + 2;
+		if (wildcard_size <= KNOT_DNAME_MAXLEN) {
+			assert(wildcard_size > 2);
+			knot_dname_t wildcard[wildcard_size];
+			memcpy(wildcard, "\x01""*", 2);
+			memcpy(wildcard + 2, node->owner, wildcard_size - 2);
+			ret = zone_contents_find_nsec3_for_name(args->zone, wildcard, &ignored,
+			                                        (const zone_node_t **)&node->nsec3_wildcard_prev);
+			if (ret == ZONE_NAME_FOUND) {
+				node->nsec3_wildcard_prev = NULL;
+				ret = KNOT_EOK;
+			}
+		}
 	} else if (ret == KNOT_ENSEC3PAR) {
 		node->nsec3_node = NULL;
 		ret = KNOT_EOK;

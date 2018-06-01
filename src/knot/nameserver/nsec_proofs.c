@@ -446,9 +446,11 @@ static int put_nsec3_nxdomain(const knot_dname_t *qname,
 
 	// NSEC3 covering the (nonexistent) wildcard at the closest encloser.
 
-	CREATE_WILDCARD(wildcard, cpe->owner)
+	if (cpe->nsec3_wildcard_prev == NULL) {
+		return KNOT_ERROR;
+	}
 
-	return put_covering_nsec3(zone, wildcard, qdata, resp);
+	return put_nsec3_from_node(cpe->nsec3_wildcard_prev, qdata, resp);
 }
 
 /*!
