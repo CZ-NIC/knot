@@ -30,6 +30,7 @@
 #include "libdnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/key-events.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-sign.h"
@@ -771,7 +772,7 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 	return KNOT_EOK;
 }
 
-static int pregenerate_once(kdnssec_ctx_t *ctx, zone_update_t *temp_up, knot_time_t *next)
+static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 {
 	zone_sign_reschedule_t resch = { 0 };
 	resch.allow_rollover = true;
@@ -792,25 +793,38 @@ static int pregenerate_once(kdnssec_ctx_t *ctx, zone_update_t *temp_up, knot_tim
 		printf("load keys failed\n");
 		return ret;
 	}
-	ret = knot_zone_sign_update_dnskeys(temp_up, &keyset, ctx);
-	if (ret != KNOT_EOK) {
-		printf("update dnskeys failed\n");
+	knot_rrset_t *dnskey = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN, ctx->policy->dnskey_ttl, NULL);
+	knot_rrset_t *rrsig = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, ctx->policy->dnskey_ttl, NULL);
+	if (dnskey == NULL || rrsig == NULL) {
+		ret = KNOT_ENOMEM;
 		goto done;
+	}
+	for (int i = 0; i < keyset.count; i++) {
+		zone_key_t *key = &keyset.keys[i];
+		if (key->is_public) {
+			ret = rrset_add_zone_key(dnskey, key);
+			if (ret != KNOT_EOK) {
+				printf("add zone key failed\n");
+				goto done;
+			}
+		}
 	}
 
 	// sign the DNSKEY rrset
-	knot_time_t expire_at = 0;
-	ret = knot_zone_sign_update(temp_up, &keyset, ctx, &expire_at);
-	if (ret != KNOT_EOK) {
-		printf("sign update failed\n");
-		goto done;
+	for (int i = 0; i < keyset.count; i++) {
+		zone_key_t *key = &keyset.keys[i];
+		if (key->is_active && key->is_ksk) {
+			ret = knot_sign_rrset(rrsig, dnskey, key->key, key->ctx, ctx, NULL);
+			if (ret != KNOT_EOK) {
+				printf("sign rrset failed\n");
+				goto done;
+			}
+		}
 	}
-	(void)expire_at;
 
-	// extract the RRSIG rrset and store it to KASP db
-	knot_rrset_t rrsig = node_rrset(temp_up->new_cont->apex, KNOT_RRTYPE_RRSIG);
-	assert(!knot_rrset_empty(&rrsig));
-	ret = kasp_db_store_offline_rrsig(*ctx->kasp_db, ctx->now, &rrsig);
+	// store it to KASP db
+	assert(!knot_rrset_empty(rrsig));
+	ret = kasp_db_store_offline_rrsig(*ctx->kasp_db, ctx->now, rrsig);
 	if (ret != KNOT_EOK) {
 		printf("store rrsig failed\n");
 		goto done;
@@ -821,37 +835,16 @@ static int pregenerate_once(kdnssec_ctx_t *ctx, zone_update_t *temp_up, knot_tim
 		*next = resch.next_rollover;
 	}
 done:
+	knot_rrset_free(dnskey, NULL);
+	knot_rrset_free(rrsig, NULL);
 	free_zone_keys(&keyset);
 	return ret;
-}
-
-static zone_t *make_dummy_zone(const knot_dname_t *name)
-{
-	zone_t *z = zone_new(name);
-	if (z != NULL) {
-		z->contents = zone_contents_new(z->name);
-		if (z->contents == NULL) {
-			zone_free(&z);
-			return NULL;
-		}
-		knot_rrset_t dummy_soa;
-		knot_rrset_init(&dummy_soa, z->name, KNOT_RRTYPE_SOA, KNOT_CLASS_IN, 0);
-		uint8_t dummy_rd[] = { 0, 0, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 9, 8, 7, 6, 0, 0, 0, 0 };
-		knot_rrset_add_rdata(&dummy_soa, dummy_rd, sizeof(dummy_rd), NULL);
-		if (node_add_rrset(z->contents->apex, &dummy_soa, NULL) != KNOT_EOK) {
-			zone_free(&z);
-			return NULL;
-		}
-	}
-	return z;
 }
 
 int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
 {
 	knot_time_t next = ctx->now;
-	zone_update_t up = { 0 }; // just a temporary structure, avoiding to init it on every pregenerate_once()
-	zone_t *temp = make_dummy_zone(ctx->zone->dname);
-	int ret = (temp != NULL ? zone_update_init(&up, temp, UPDATE_INCREMENTAL) : KNOT_ENOMEM);
+	int ret = KNOT_EOK;
 
 	ctx->keep_deleted_keys = true;
 	ctx->rollover_only_zsk = true;
@@ -859,13 +852,8 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
 
 	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
 		ctx->now = next;
-		ret = pregenerate_once(ctx, &up, &next);
+		ret = pregenerate_once(ctx,  &next);
 	}
-
-	if (up.zone != NULL) {
-		zone_update_clear(&up);
-	}
-	zone_free(&temp);
 
 	return ret;
 }
