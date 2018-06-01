@@ -745,7 +745,7 @@ int kasp_db_list_zones(kasp_db_t *db, list_t *dst)
 
 static void for_time2string(char str[21], knot_time_t t)
 {
-	snprintf(str, 21, "%20lu", t);
+	snprintf(str, 21, "%020lu", t);
 }
 
 int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_rrset_t *rrsig)

@@ -67,8 +67,10 @@ static void print_help(void)
 	       "                (syntax: delete <key_spec>)\n"
 	       "  set          Set existing key's timing attribute.\n"
 	       "                (syntax: set <key_spec> <attribute_name>=<value>...)\n"
-	       "  pregenerate  Pre-generate ZSKs for later rollovers with offline KSK.\n"
+	       "  pregenerate  Pre-generate ZSKs and DNSKEY signatures for later rollovers with offline KSK.\n"
 	       "                (syntax: pregenerate <period_secs>)\n"
+	       "  show-rrsig   Print a pre-generated DNSKEY RRSIG for specified timestamp.\n"
+	       "                (syntax: show-rrsig <timestamp>)\n"
 	       "\n"
 	       "Key specification:\n"
 	       "  either the key tag (number) or [a prefix of] key ID.\n"
@@ -194,6 +196,9 @@ static int key_command(int argc, char *argv[], int optind)
 	} else if (strcmp(argv[1], "pregenerate") == 0) {
 		CHECK_MISSING_ARG("Period not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, knot_time() + atol(argv[2]));
+	} else if (strcmp(argv[1], "show-rrsig") == 0) {
+		CHECK_MISSING_ARG("Timestamp not specified");
+		ret = keymgr_print_rrsig(&kctx, atol(argv[2]));
 	} else {
 		printf("Wrong zone-key command: %s\n", argv[1]);
 		goto main_end;
