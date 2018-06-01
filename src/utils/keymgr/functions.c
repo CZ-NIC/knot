@@ -32,6 +32,7 @@
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-keys.h"
+#include "knot/dnssec/zone-sign.h"
 #include "libzscanner/scanner.h"
 
 static bool is_timestamp(char *arg, knot_kasp_key_timing_t *timing)
@@ -787,22 +788,124 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 	return KNOT_EOK;
 }
 
+static int pregenerate_once(kdnssec_ctx_t *ctx, zone_update_t *temp_up, knot_time_t *next)
+{
+	zone_sign_reschedule_t resch = { 0 };
+	resch.allow_rollover = true;
+
+	// generate ZSKs
+	int ret = knot_dnssec_key_rollover(ctx, &resch);
+	if (ret != KNOT_EOK) {
+		printf("rollover failed\n");
+		return ret;
+	}
+	// we don't need to do anything explicitly with the generated ZSKs
+	// they're simply stored in KASP db
+
+	// prepare the DNSKEY rrset to be signed
+	zone_keyset_t keyset = { 0 };
+	ret = load_zone_keys(ctx, &keyset, false);
+	if (ret != KNOT_EOK) {
+		printf("load keys failed\n");
+		return ret;
+	}
+	ret = knot_zone_sign_update_dnskeys(temp_up, &keyset, ctx);
+	if (ret != KNOT_EOK) {
+		printf("update dnskeys failed\n");
+		goto done;
+	}
+
+	// sign the DNSKEY rrset
+	knot_time_t expire_at = 0;
+	ret = knot_zone_sign_update(temp_up, &keyset, ctx, &expire_at);
+	if (ret != KNOT_EOK) {
+		printf("sign update failed\n");
+		goto done;
+	}
+	(void)expire_at;
+
+	// extract the RRSIG rrset and store it to KASP db
+	knot_rrset_t rrsig = node_rrset(temp_up->new_cont->apex, KNOT_RRTYPE_RRSIG);
+	assert(!knot_rrset_empty(&rrsig));
+	ret = kasp_db_store_offline_rrsig(*ctx->kasp_db, ctx->now, &rrsig);
+	if (ret != KNOT_EOK) {
+		printf("store rrsig failed\n");
+		goto done;
+	}
+
+	*next = resch.next_sign;
+	if (knot_time_cmp(resch.next_rollover, *next) < 0) {
+		*next = resch.next_rollover;
+	}
+done:
+	free_zone_keys(&keyset);
+	return ret;
+}
+
+static zone_t *make_dummy_zone(const knot_dname_t *name)
+{
+	zone_t *z = zone_new(name);
+	if (z != NULL) {
+		z->contents = zone_contents_new(z->name);
+		if (z->contents == NULL) {
+			zone_free(&z);
+			return NULL;
+		}
+		knot_rrset_t dummy_soa;
+		knot_rrset_init(&dummy_soa, z->name, KNOT_RRTYPE_SOA, KNOT_CLASS_IN, 0);
+		uint8_t dummy_rd[] = { 0, 0, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 9, 8, 7, 6, 0, 0, 0, 0 };
+		knot_rrset_add_rdata(&dummy_soa, dummy_rd, sizeof(dummy_rd), NULL);
+		if (node_add_rrset(z->contents->apex, &dummy_soa, NULL) != KNOT_EOK) {
+			zone_free(&z);
+			return NULL;
+		}
+	}
+	return z;
+}
+
 int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
 {
+	knot_time_t next = ctx->now;
+	zone_update_t up = { 0 }; // just a temporary structure, avoiding to init it on every pregenerate_once()
+	zone_t *temp = make_dummy_zone(ctx->zone->dname);
+	int ret = (temp != NULL ? zone_update_init(&up, temp, UPDATE_INCREMENTAL) : KNOT_ENOMEM);
+
 	ctx->keep_deleted_keys = true;
 	ctx->rollover_only_zsk = true;
 	ctx->policy->manual = false;
 
-	while (knot_time_cmp(ctx->now, upto) <= 0) {
-		zone_sign_reschedule_t resch = { 0 };
-		resch.allow_rollover = true;
-		int ret = knot_dnssec_key_rollover(ctx, &resch);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
-		ctx->now = resch.next_rollover;
+	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
+		ctx->now = next;
+		ret = pregenerate_once(ctx, &up, &next);
 	}
 
-	return KNOT_EOK;
+	if (up.zone != NULL) {
+		zone_update_clear(&up);
+	}
+	zone_free(&temp);
+
+	return ret;
+}
+
+int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
+{
+	knot_rrset_t rrsig = { 0 };
+	knot_rrset_init(&rrsig, ctx->zone->dname, KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, 0);
+	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, when, &rrsig);
+	if (ret == KNOT_EOK) {
+		size_t out_size = 512;
+		char *out = malloc(out_size);
+		if (out == NULL) {
+			ret = KNOT_ENOMEM;
+		} else {
+			ret = knot_rrset_txt_dump(&rrsig, &out, &out_size, &KNOT_DUMP_STYLE_DEFAULT);
+			if (ret >= 0) {
+				printf("%s\n", out);
+				ret = KNOT_EOK;
+			}
+			free(out);
+		}
+	}
+	knot_rrset_clear(&rrsig, NULL);
+	return ret;
 }
