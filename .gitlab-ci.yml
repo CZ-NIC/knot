@@ -24,8 +24,8 @@ stages:
   tags:
     - dind
   only:
-    - triggers
-    - schedules
+    variables:
+      - $SCHEDULE_TYPE == "weekly"
 
 docker:knot-dns:debian:
   <<: *image
@@ -281,7 +281,8 @@ obs:devel:
   <<: *debian_stable
   stage: deploy
   only:
-    - schedules
+    variables:
+      - $SCHEDULE_TYPE == "nightly"
   except: []
   dependencies:
     - build:archive
