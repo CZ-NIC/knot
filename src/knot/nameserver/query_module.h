@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,8 +60,7 @@ int query_plan_step(struct query_plan *plan, knotd_stage_t stage,
 
 /*! \brief Open query module identified by name. */
 knotd_mod_t *query_module_open(conf_t *conf, conf_mod_id_t *mod_id,
-                               struct query_plan *plan, const knot_dname_t *zone,
-                               knot_mm_t *mm);
+                               struct query_plan *plan, const knot_dname_t *zone);
 
 /*! \brief Close query module. */
 void query_module_close(knotd_mod_t *module);
@@ -82,7 +81,6 @@ typedef struct {
 
 struct knotd_mod {
 	node_t node;
-	knot_mm_t *mm;
 	conf_t *config;
 	conf_mod_id_t *id;
 	struct query_plan *plan;

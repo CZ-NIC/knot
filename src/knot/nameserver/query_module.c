@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -124,8 +124,7 @@ int knotd_mod_in_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_in_hook_f
 }
 
 knotd_mod_t *query_module_open(conf_t *conf, conf_mod_id_t *mod_id,
-                               struct query_plan *plan, const knot_dname_t *zone,
-                               knot_mm_t *mm)
+                               struct query_plan *plan, const knot_dname_t *zone)
 {
 	if (conf == NULL || mod_id == NULL || plan == NULL) {
 		return NULL;
@@ -139,13 +138,12 @@ knotd_mod_t *query_module_open(conf_t *conf, conf_mod_id_t *mod_id,
 	}
 
 	/* Create query module. */
-	knotd_mod_t *module = mm_calloc(mm, 1, sizeof(knotd_mod_t));
+	knotd_mod_t *module = calloc(1, sizeof(knotd_mod_t));
 	if (module == NULL) {
 		return NULL;
 	}
 
 	module->plan = plan;
-	module->mm = mm;
 	module->config = conf;
 	module->zone = zone;
 	module->id = mod_id;
@@ -162,7 +160,7 @@ void query_module_close(knotd_mod_t *module)
 
 	knotd_mod_stats_free(module);
 	conf_free_mod_id(module->id);
-	mm_free(module->mm, module);
+	free(module);
 }
 
 _public_
@@ -230,7 +228,7 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 	mod_ctr_t *stats = NULL;
 	if (mod->stats == NULL) {
 		assert(mod->stats_count == 0);
-		stats = mm_alloc(mod->mm, sizeof(*stats));
+		stats = malloc(sizeof(*stats));
 		if (stats == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -239,7 +237,7 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 		assert(mod->stats_count > 0);
 		size_t old_size = mod->stats_count * sizeof(*stats);
 		size_t new_size = old_size + sizeof(*stats);
-		stats = mm_realloc(mod->mm, mod->stats, new_size, old_size);
+		stats = realloc(mod->stats, new_size);
 		if (stats == NULL) {
 			knotd_mod_stats_free(mod);
 			return KNOT_ENOMEM;
@@ -254,7 +252,7 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 		stats->counter = 0;
 	} else {
 		size_t size = idx_count * sizeof(((mod_ctr_t *)0)->counter);
-		stats->counters = mm_calloc(mod->mm, 1, size);
+		stats->counters = calloc(1, size);
 		if (stats->counters == NULL) {
 			knotd_mod_stats_free(mod);
 			return KNOT_ENOMEM;
@@ -276,11 +274,11 @@ void knotd_mod_stats_free(knotd_mod_t *mod)
 
 	for (int i = 0; i < mod->stats_count; i++) {
 		if (mod->stats[i].count > 1) {
-			mm_free(mod->mm, mod->stats[i].counters);
+			free(mod->stats[i].counters);
 		}
 	}
 
-	mm_free(mod->mm, mod->stats);
+	free(mod->stats);
 }
 
 #define STATS_BODY(OPERATION) { \

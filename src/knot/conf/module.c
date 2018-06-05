@@ -397,7 +397,7 @@ void conf_activate_modules(
 
 		// Open the module.
 		knotd_mod_t *mod = query_module_open(conf, mod_id, *query_plan,
-		                                     zone_name, conf->mm);
+		                                     zone_name);
 		if (mod == NULL) {
 			MOD_ID_LOG(zone_name, error, mod_id, "failed to open");
 			conf_free_mod_id(mod_id);
