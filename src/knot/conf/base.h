@@ -81,8 +81,6 @@ typedef struct {
 	const struct knot_db_api *api;
 	/*! Configuration schema. */
 	yp_item_t *schema;
-	/*! Memory context. */
-	knot_mm_t *mm;
 	/*! Configuration database. */
 	knot_db_t *db;
 

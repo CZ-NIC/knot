@@ -27,7 +27,6 @@
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/files.h"
-#include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 
@@ -166,16 +165,8 @@ int conf_new(
 		goto new_error;
 	}
 
-	// Initialize a config mempool.
-	out->mm = malloc(sizeof(knot_mm_t));
-	if (out->mm == NULL) {
-		ret = KNOT_ENOMEM;
-		goto new_error;
-	}
-	mm_ctx_init(out->mm);
-
 	// Initialize query modules list.
-	out->query_modules = mm_alloc(out->mm, sizeof(list_t));
+	out->query_modules = malloc(sizeof(list_t));
 	if (out->query_modules == NULL) {
 		ret = KNOT_ENOMEM;
 		goto new_error;
@@ -201,7 +192,7 @@ int conf_new(
 			goto new_error;
 		}
 
-		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
+		ret = out->api->init(&out->db, NULL, &lmdb_opts);
 
 		// Remove the database to ensure it is temporary.
 		if (!remove_path(lmdb_opts.path)) {
@@ -217,7 +208,7 @@ int conf_new(
 			lmdb_opts.flags.env |= KNOT_DB_LMDB_RDONLY;
 		}
 
-		ret = out->api->init(&out->db, out->mm, &lmdb_opts);
+		ret = out->api->init(&out->db, NULL, &lmdb_opts);
 	}
 	if (ret != KNOT_EOK) {
 		goto new_error;
@@ -295,11 +286,10 @@ int conf_clone(
 
 	// Set shared items.
 	out->api = s_conf->api;
-	out->mm = s_conf->mm;
 	out->db = s_conf->db;
 
 	// Initialize query modules list.
-	out->query_modules = mm_alloc(out->mm, sizeof(list_t));
+	out->query_modules = malloc(sizeof(list_t));
 	if (out->query_modules == NULL) {
 		yp_schema_free(out->schema);
 		free(out);
@@ -310,7 +300,7 @@ int conf_clone(
 	// Open common read-only transaction.
 	ret = conf_refresh_txn(out);
 	if (ret != KNOT_EOK) {
-		mm_free(out->mm, out->query_modules);
+		free(out->query_modules);
 		yp_schema_free(out->schema);
 		free(out);
 		return ret;
@@ -349,7 +339,7 @@ conf_t *conf_update(
 			conf->io.zones = s_conf->io.zones;
 		}
 		if ((flags & CONF_UPD_FMODULES) && s_conf != NULL) {
-			mm_free(conf->mm, conf->query_modules);
+			free(conf->query_modules);
 			conf->query_modules = s_conf->query_modules;
 			conf->query_plan = s_conf->query_plan;
 		}
@@ -403,15 +393,12 @@ void conf_free(
 
 	conf_mod_load_purge(conf, false);
 	conf_deactivate_modules(conf->query_modules, &conf->query_plan);
-	mm_free(conf->mm, conf->query_modules);
+	free(conf->query_modules);
 	conf_mod_unload_shared(conf);
 
 	if (!conf->is_clone) {
 		if (conf->api != NULL) {
 			conf->api->deinit(conf->db);
-		}
-		if (conf->mm != NULL) {
-			free(conf->mm);
 		}
 	}
 

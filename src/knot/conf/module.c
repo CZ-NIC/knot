@@ -378,7 +378,7 @@ void conf_activate_modules(
 	}
 
 	// Create query plan.
-	*query_plan = query_plan_create(conf->mm);
+	*query_plan = query_plan_create();
 	if (*query_plan == NULL) {
 		ret = KNOT_ENOMEM;
 		goto activate_error;

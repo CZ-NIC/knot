@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -824,7 +824,7 @@ static void upd_changes(
 	// Prepare zone changes storage if it doesn't exist.
 	trie_t *zones = conf()->io.zones;
 	if (zones == NULL) {
-		zones = trie_create(conf()->mm);
+		zones = trie_create(NULL);
 		if (zones == NULL) {
 			return;
 		}

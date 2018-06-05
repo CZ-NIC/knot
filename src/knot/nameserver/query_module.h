@@ -44,12 +44,11 @@ struct query_step {
  *  assembly phase, for example 'before processing', 'answer section' and so on.
  */
 struct query_plan {
-	knot_mm_t *mm;
 	list_t stage[KNOTD_STAGES];
 };
 
 /*! \brief Create an empty query plan. */
-struct query_plan *query_plan_create(knot_mm_t *mm);
+struct query_plan *query_plan_create(void);
 
 /*! \brief Free query plan and all planned steps. */
 void query_plan_free(struct query_plan *plan);

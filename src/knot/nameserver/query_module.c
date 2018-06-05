@@ -26,7 +26,6 @@
 #include "knot/conf/tools.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
-#include "contrib/mempattern.h"
 
 #ifdef HAVE_ATOMIC
  #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
@@ -45,14 +44,13 @@ int knotd_conf_check_ref(knotd_conf_check_args_t *args)
 	return check_ref(args);
 }
 
-struct query_plan *query_plan_create(knot_mm_t *mm)
+struct query_plan *query_plan_create(void)
 {
-	struct query_plan *plan = mm_alloc(mm, sizeof(struct query_plan));
+	struct query_plan *plan = malloc(sizeof(struct query_plan));
 	if (plan == NULL) {
 		return NULL;
 	}
 
-	plan->mm = mm;
 	for (unsigned i = 0; i < KNOTD_STAGES; ++i) {
 		init_list(&plan->stage[i]);
 	}
@@ -69,17 +67,16 @@ void query_plan_free(struct query_plan *plan)
 	for (unsigned i = 0; i < KNOTD_STAGES; ++i) {
 		struct query_step *step = NULL, *next = NULL;
 		WALK_LIST_DELSAFE(step, next, plan->stage[i]) {
-			mm_free(plan->mm, step);
+			free(step);
 		}
 	}
 
-	mm_free(plan->mm, plan);
+	free(plan);
 }
 
-static struct query_step *make_step(knot_mm_t *mm, query_step_process_f process,
-                                    void *ctx)
+static struct query_step *make_step(query_step_process_f process, void *ctx)
 {
-	struct query_step *step = mm_calloc(mm, 1, sizeof(struct query_step));
+	struct query_step *step = calloc(1, sizeof(struct query_step));
 	if (step == NULL) {
 		return NULL;
 	}
@@ -93,7 +90,7 @@ static struct query_step *make_step(knot_mm_t *mm, query_step_process_f process,
 int query_plan_step(struct query_plan *plan, knotd_stage_t stage,
                     query_step_process_f process, void *ctx)
 {
-	struct query_step *step = make_step(plan->mm, process, ctx);
+	struct query_step *step = make_step(process, ctx);
 	if (step == NULL) {
 		return KNOT_ENOMEM;
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@
 #include "libknot/libknot.h"
 #include "knot/nameserver/query_module.h"
 #include "libknot/packet/pkt.h"
-#include "contrib/mempattern.h"
-#include "contrib/ucw/mempool.h"
 
 /* Universal processing stage. */
 unsigned state_visit(unsigned state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
@@ -39,15 +37,11 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	/* Create processing context. */
-	knot_mm_t mm;
-	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
-
 	/* Create a map of expected steps. */
 	bool state_map[KNOTD_STAGES] = { false };
 
 	/* Prepare query plan. */
-	struct query_plan *plan = query_plan_create(&mm);
+	struct query_plan *plan = query_plan_create();
 	ok(plan != NULL, "query_plan: create");
 
 	/* Register all stage visits. */
@@ -84,9 +78,6 @@ int main(int argc, char *argv[])
 
 	/* Free the query plan. */
 	query_plan_free(plan);
-
-	/* Cleanup. */
-	mp_delete((struct mempool *)mm.ctx);
 
 	return 0;
 }
