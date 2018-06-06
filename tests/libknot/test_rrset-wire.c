@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -192,7 +192,7 @@ static const struct wire_data FROM_CASES[FROM_CASE_COUNT] = {
 
 #define TEST_CASE_FROM(rrset, i) size_t _pos##i = FROM_CASES[i].pos; \
 	ok(knot_rrset_rr_from_wire(FROM_CASES[i].wire, &_pos##i, FROM_CASES[i].size, \
-	NULL, rrset, true) == FROM_CASES[i].code, "rrset wire: %s", FROM_CASES[i].msg)
+	rrset, NULL, true) == FROM_CASES[i].code, "rrset wire: %s", FROM_CASES[i].msg)
 
 static void test_inputs(void)
 {
@@ -210,7 +210,7 @@ static void check_canon(uint8_t *wire, size_t size, size_t pos, bool canon,
 	knot_rrset_t rrset;
 	knot_rrset_init_empty(&rrset);
 
-	int ret = knot_rrset_rr_from_wire(wire, &pos, size, NULL, &rrset, canon);
+	int ret = knot_rrset_rr_from_wire(wire, &pos, size, &rrset, NULL, canon);
 	is_int(KNOT_EOK, ret, "OK %s canonization", canon ? "with" : "without");
 	ok(memcmp(rrset.owner, qname, knot_dname_size(qname)) == 0, "compare owner");
 

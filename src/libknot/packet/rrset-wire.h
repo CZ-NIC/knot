@@ -52,16 +52,16 @@ static inline int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
 /*!
 * \brief Creates one RR from wire, stores it into \a rrset.
 *
-* \param pkt_wire    Source wire (the whole packet).
-* \param pos         Position in \a wire where to start parsing.
-* \param pkt_size    Total size of data in \a wire (size of the packet).
-* \param mm          Memory context.
-* \param rrset       Destination RRSet.
-* \param canonical   Convert rrset to canonical format indication.
+* \param wire       Source wire (the whole packet).
+* \param pos        Position in \a wire where to start parsing.
+* \param max_size   Total size of data in \a wire (size of the packet).
+* \param rrset      Destination RRSet.
+* \param mm         Memory context.
+* \param canonical  Convert rrset to canonical format indication.
 *
 * \return KNOT_E*
 */
-int knot_rrset_rr_from_wire(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
-                            knot_mm_t *mm, knot_rrset_t *rrset, bool canonical);
+int knot_rrset_rr_from_wire(const uint8_t *wire, size_t *pos, size_t max_size,
+                            knot_rrset_t *rrset, knot_mm_t *mm, bool canonical);
 
 /*! @} */
