@@ -292,43 +292,17 @@ static inline uint16_t knot_pkt_rr_offset(const knot_pktsection_t *section,
  * Parses both QUESTION and all packet sections,
  * includes semantic checks over specific RRs (TSIG, OPT).
  *
- * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
+ * \note If KNOT_PF_KEEPWIRE is set, TSIG RR is not stripped from the wire
+ *       and is processed as any other RR.
  *
- * \param pkt Given packet.
- * \param flags Parsing flags (allowed KNOT_PF_KEEPWIRE)
+ * \param  pkt Given packet.
+ * \param  flags Parsing flags (allowed KNOT_PF_KEEPWIRE)
+ *
  * \retval KNOT_EOK if success.
  * \retval KNOT_ETRAIL if success but with some trailing data.
  * \retval KNOT_EMALF and other errors.
  */
 int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags);
-
-/*!
- * \brief Parse packet header and a QUESTION section.
- */
-int knot_pkt_parse_question(knot_pkt_t *pkt);
-
-/*!
- * \brief Parse single resource record.
- *
- * \note When KNOT_PF_KEEPWIRE is set, TSIG RR is not stripped from the wire
- *       and is processed as any other RR.
- *
- * \param pkt
- * \param flags
- * \return KNOT_EOK, KNOT_EFEWDATA if not enough data or various errors
- */
-int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags);
-
-/*!
- * \brief Parse whole packet payload.
- *
- * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
- *
- * \param pkt
- * \param flags
- * \return KNOT_EOK, KNOT_EFEWDATA if not enough data or various errors
- */
-int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags);
 
 /*!
  * \brief Get packet extended RCODE.

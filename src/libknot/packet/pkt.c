@@ -561,30 +561,9 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 	return KNOT_EOK;
 }
 
-_public_
-int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
+static int parse_question(knot_pkt_t *pkt)
 {
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Reset parse state. */
-	sections_reset(pkt);
-
-	int ret = knot_pkt_parse_question(pkt);
-	if (ret == KNOT_EOK) {
-		ret = knot_pkt_parse_payload(pkt, flags);
-	}
-
-	return ret;
-}
-
-_public_
-int knot_pkt_parse_question(knot_pkt_t *pkt)
-{
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(pkt);
 
 	/* Check at least header size. */
 	if (pkt->size < KNOT_WIRE_HEADER_SIZE) {
@@ -665,12 +644,9 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 	return KNOT_EOK;
 }
 
-_public_
-int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
+static int parse_rr(knot_pkt_t *pkt, unsigned flags)
 {
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(pkt);
 
 	if (pkt->parsed >= pkt->size) {
 		return KNOT_EFEWDATA;
@@ -716,7 +692,7 @@ static int parse_section(knot_pkt_t *pkt, unsigned flags)
 
 	/* Parse all RRs belonging to the section. */
 	for (rr_parsed = 0; rr_parsed < rr_count; ++rr_parsed) {
-		int ret = knot_pkt_parse_rr(pkt, flags);
+		int ret = parse_rr(pkt, flags);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -725,14 +701,10 @@ static int parse_section(knot_pkt_t *pkt, unsigned flags)
 	return KNOT_EOK;
 }
 
-_public_
-int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
+static int parse_payload(knot_pkt_t *pkt, unsigned flags)
 {
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	assert(pkt->wire != NULL);
+	assert(pkt);
+	assert(pkt->wire);
 	assert(pkt->size > 0);
 
 	/* Reserve memory in advance to avoid resizing. */
@@ -775,6 +747,24 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	}
 
 	return KNOT_EOK;
+}
+
+_public_
+int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
+{
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Reset parse state. */
+	sections_reset(pkt);
+
+	int ret = parse_question(pkt);
+	if (ret == KNOT_EOK) {
+		ret = parse_payload(pkt, flags);
+	}
+
+	return ret;
 }
 
 _public_

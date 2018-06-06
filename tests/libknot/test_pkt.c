@@ -17,11 +17,7 @@
 #include <tap/basic.h>
 
 #include "libknot/libknot.h"
-#include "libknot/descriptor.h"
-#include "libknot/libknot.h"
-#include "libknot/packet/pkt.h"
-#include "libknot/rrtype/tsig.h"
-#include "contrib/mempattern.h"
+#include "libknot/packet/pkt.c"
 #include "contrib/ucw/mempool.h"
 
 #define TTL 7200
@@ -167,11 +163,11 @@ int main(int argc, char *argv[])
 	ok(in != NULL, "pkt: create packet for parsing");
 
 	/* Read packet header. */
-	ret = knot_pkt_parse_question(in);
+	ret = parse_question(in);
 	is_int(KNOT_EOK, ret, "pkt: read header");
 
 	/* Read packet payload. */
-	ret = knot_pkt_parse_payload(in, 0);
+	ret = parse_payload(in, 0);
 	is_int(KNOT_EOK, ret, "pkt: read payload");
 
 	/* Compare parsed packet to written packet. */
