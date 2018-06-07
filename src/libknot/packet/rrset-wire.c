@@ -24,10 +24,9 @@
 #include "libknot/rrtype/naptr.h"
 #include "libknot/rrtype/rrsig.h"
 #include "contrib/macros.h"
+#include "contrib/mempattern.h"
 #include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
-
-#define RR_HEADER_SIZE 10
 
 /*!
  * \brief Get maximal size of a domain name in a wire with given capacity.
@@ -572,43 +571,51 @@ int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
 /*!
  * \brief Parse header of one RR from packet wireformat.
  */
-static int parse_header(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
+static int parse_header(const uint8_t *wire, size_t *pos, size_t pkt_size,
                         knot_mm_t *mm, knot_rrset_t *rrset, uint16_t *rdlen)
 {
-	assert(pkt_wire);
+	assert(wire);
 	assert(pos);
 	assert(rrset);
 	assert(rdlen);
 
-	knot_dname_t *owner = knot_dname_parse(pkt_wire, pos, pkt_size, mm);
+	wire_ctx_t src = wire_ctx_init_const(wire, pkt_size);
+	wire_ctx_set_offset(&src, *pos);
+
+	int compr_size = knot_dname_wire_check(src.position, wire + pkt_size, wire);
+	if (compr_size <= 0) {
+		return KNOT_EMALF;
+	}
+
+	uint8_t buff[KNOT_DNAME_MAXLEN];
+	int decompr_size = knot_dname_unpack(buff, src.position, sizeof(buff), wire);
+	if (decompr_size <= 0) {
+		return KNOT_EMALF;
+	}
+
+	knot_dname_t *owner = mm_alloc(mm, decompr_size);
 	if (owner == NULL) {
-		return KNOT_EMALF;
+		return KNOT_ENOMEM;
 	}
+	memcpy(owner, buff, decompr_size);
+	wire_ctx_skip(&src, compr_size);
 
-	if (pkt_size - *pos < RR_HEADER_SIZE) {
+	uint16_t type = wire_ctx_read_u16(&src);
+	uint16_t rclass = wire_ctx_read_u16(&src);
+	uint32_t ttl = wire_ctx_read_u32(&src);
+	*rdlen = wire_ctx_read_u16(&src);
+
+	if (src.error != KNOT_EOK) {
 		knot_dname_free(owner, mm);
 		return KNOT_EMALF;
 	}
 
-	wire_ctx_t wire = wire_ctx_init_const(pkt_wire, pkt_size);
-	wire_ctx_set_offset(&wire, *pos);
-
-	uint16_t type = wire_ctx_read_u16(&wire);
-	uint16_t rclass = wire_ctx_read_u16(&wire);
-	uint32_t ttl = wire_ctx_read_u32(&wire);
-	*rdlen = wire_ctx_read_u16(&wire);
-
-	*pos = wire_ctx_offset(&wire);
-
-	if (wire.error != KNOT_EOK) {
-		knot_dname_free(owner, mm);
-		return wire.error;
-	}
-
-	if (wire_ctx_available(&wire) < *rdlen) {
+	if (wire_ctx_available(&src) < *rdlen) {
 		knot_dname_free(owner, mm);
 		return KNOT_EMALF;
 	}
+
+	*pos = wire_ctx_offset(&src);
 
 	knot_rrset_init(rrset, owner, type, rclass, ttl);
 

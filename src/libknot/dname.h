@@ -55,20 +55,6 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
                           const uint8_t *pkt);
 
 /*!
- * \brief Parse dname from wire.
- *
- * \param pkt     Message in wire format.
- * \param pos     Position of the domain name on wire.
- * \param maxpos  Domain name length.
- * \param mm      Memory context.
- *
- * \return parsed domain name or NULL.
- */
-_mustcheck_
-knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
-                               knot_mm_t *mm);
-
-/*!
  * \brief Duplicates the given domain name to a local storage.
  *
  * \param dst   Destination storage.

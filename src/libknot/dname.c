@@ -125,42 +125,6 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 }
 
 _public_
-knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
-                               knot_mm_t *mm)
-{
-	if (pkt == NULL || pos == NULL) {
-		return NULL;
-	}
-
-	const uint8_t *name = pkt + *pos;
-	const uint8_t *endp = pkt + maxpos;
-	int parsed = knot_dname_wire_check(name, endp, pkt);
-	if (parsed < 0) {
-		return NULL;
-	}
-
-	/* Calculate decompressed length. */
-	size_t decompressed_len = knot_dname_realsize(name, pkt);
-	if (decompressed_len == 0) {
-		return NULL;
-	}
-
-	/* Allocate space for the name. */
-	knot_dname_t *res = mm_alloc(mm, decompressed_len);
-	if (res != NULL) {
-		/* Unpack name (expand compression pointers). */
-		if (knot_dname_unpack(res, name, decompressed_len, pkt) > 0) {
-			*pos += parsed;
-		} else {
-			mm_free(mm, res);
-			res = NULL;
-		}
-	}
-
-	return res;
-}
-
-_public_
 size_t knot_dname_store(knot_dname_storage_t dst, const knot_dname_t *name)
 {
 	if (dst == NULL || name == NULL) {
