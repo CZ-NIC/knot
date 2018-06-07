@@ -173,86 +173,6 @@ static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
 	return write_rdata_fixed(src, src_avail, dst, dst_avail, ret);
 }
 
-/*!
- * \brief Compute total length of RDATA blocks.
- */
-static int rdata_len_block(const uint8_t **src, size_t *src_avail,
-                           const uint8_t *pkt_wire, int block_type)
-{
-	int ret, compr_size;
-
-	switch (block_type) {
-	case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
-	case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
-	case KNOT_RDATA_WF_FIXED_DNAME:
-		compr_size = knot_dname_wire_check(*src, *src + *src_avail,
-		                                   pkt_wire);
-		if (compr_size <= 0) {
-			return KNOT_EMALF;
-		}
-
-		ret = knot_dname_realsize(*src, pkt_wire);
-		*src += compr_size;
-		*src_avail -= compr_size;
-		break;
-	case KNOT_RDATA_WF_NAPTR_HEADER:
-		ret = knot_naptr_header_size(*src, *src + *src_avail);
-		if (ret < 0) {
-			return ret;
-		}
-
-		*src += ret;
-		*src_avail -= ret;
-		break;
-	case KNOT_RDATA_WF_REMAINDER:
-		ret = *src_avail;
-		*src += ret;
-		*src_avail -= ret;
-		break;
-	default:
-		/* Fixed size block */
-		assert(block_type > 0);
-		ret = block_type;
-		if (*src_avail < ret) {
-			return KNOT_EMALF;
-		}
-
-		*src += ret;
-		*src_avail -= ret;
-		break;
-	}
-
-	return ret;
-}
-
-/*!
- * \brief Compute total length of RDATA blocks.
- */
-static int rdata_len(const uint8_t **src, size_t *src_avail,
-                     const uint8_t *pkt_wire,
-                     const knot_rdata_descriptor_t *desc)
-{
-	int _len = 0;
-	const uint8_t *_src = *src;
-	size_t _src_avail = *src_avail;
-
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int block_type = desc->block_types[i];
-		int ret = rdata_len_block(&_src, &_src_avail, pkt_wire, block_type);
-		if (ret < 0) {
-			return ret;
-		}
-		_len += ret;
-	}
-
-	if (_src_avail > 0) {
-		/* Trailing data in message. */
-		return KNOT_EMALF;
-	}
-
-	return _len;
-}
-
 /*- RRSet to wire -----------------------------------------------------------*/
 
 /*! \brief Helper for \ref compr_put_dname, writes label(s) with size checks. */
@@ -769,19 +689,12 @@ static bool allow_zero_rdata(const knot_rrset_t *rr,
 	       desc->type_name == NULL;        // Unknown RR type
 }
 
-/*!
- * \brief Parse RDATA part of one RR from packet wireformat.
- */
 static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
                        knot_mm_t *mm, uint16_t rdlength, knot_rrset_t *rrset)
 {
 	assert(pkt_wire);
 	assert(pos);
 	assert(rrset);
-
-	if (pkt_size - *pos < rdlength) {
-		return KNOT_EMALF;
-	}
 
 	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
 	if (desc->type_name == NULL) {
@@ -794,48 +707,39 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 		} else {
 			return KNOT_EMALF;
 		}
-	}
-
-	/* Source and destination buffer */
-
-	const uint8_t *src = pkt_wire + *pos;
-	size_t src_avail = rdlength;
-
-	int buffer_size = rdata_len(&src, &src_avail, pkt_wire, desc);
-	if (buffer_size < 0) {
-		return buffer_size;
-	}
-
-	if (buffer_size > KNOT_RDATA_MAXLEN) {
-		/* DNAME compression caused RDATA overflow. */
+	} else if (pkt_size - *pos < rdlength) {
 		return KNOT_EMALF;
 	}
 
-	knot_rdataset_t *rrs = &rrset->rrs;
-	int ret = knot_rdataset_reserve(rrs, buffer_size, mm);
+	// Buffer for parsed rdata (decompression extends rdata length).
+	const size_t max_rdata_len = UINT16_MAX;
+	uint8_t buf[knot_rdata_size(max_rdata_len)];
+	knot_rdata_t *rdata = (knot_rdata_t *)buf;
+
+	const uint8_t *src = pkt_wire + *pos;
+	size_t src_avail = rdlength;
+	uint8_t *dst = rdata->data;
+	size_t dst_avail = max_rdata_len;
+
+	// Parse RDATA.
+	int ret = rdata_traverse_parse(&src, &src_avail, &dst, &dst_avail, desc, pkt_wire);
+	if (ret != KNOT_EOK) {
+		return KNOT_EMALF;
+	}
+
+	// Check for trailing data.
+	size_t real_len = max_rdata_len - dst_avail;
+	if (real_len < rdlength) {
+		return KNOT_EMALF;
+	}
+	rdata->len = real_len;
+
+	ret = knot_rdataset_add(&rrset->rrs, rdata, mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	knot_rdata_t *rr = knot_rdataset_at(rrs, rrs->rr_count - 1);
-	assert(rr);
-	uint8_t *dst = rr->data;
-	size_t dst_avail = buffer_size;
-
-	/* Parse RDATA */
-	ret = rdata_traverse_parse(&src, &src_avail, &dst, &dst_avail, desc, pkt_wire);
-	if (ret != KNOT_EOK) {
-		knot_rdataset_unreserve(rrs, mm);
-		return ret;
-	}
-
-	ret = knot_rdataset_sort_at(rrs, rrs->rr_count - 1, mm);
-	if (ret != KNOT_EOK) {
-		knot_rdataset_unreserve(rrs, mm);
-		return ret;
-	}
-
-	/* Update position pointer. */
+	// Update position pointer.
 	*pos += rdlength;
 
 	return KNOT_EOK;
