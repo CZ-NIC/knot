@@ -574,7 +574,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		}
 	}
 	// algorithm rollover
-	if (algorithm_present(ctx, ctx->policy->algorithm) == 0 &&
+	if (!ctx->rollover_only_zsk &&
+	    algorithm_present(ctx, ctx->policy->algorithm) == 0 &&
 	    !running_rollover(ctx) && ret == KNOT_EOK) {
 		if (ctx->policy->ksk_shared) {
 			ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, 0, true);
@@ -590,7 +591,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		}
 	}
 	// scheme rollover
-	if (!signing_scheme_present(ctx) &&
+	if (!ctx->rollover_only_zsk &&
+	    !signing_scheme_present(ctx) &&
 	    !running_rollover(ctx) && ret == KNOT_EOK) {
 		if (ctx->policy->ksk_shared) {
 			ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, 0, false);
