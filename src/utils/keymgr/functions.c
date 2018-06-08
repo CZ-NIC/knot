@@ -29,7 +29,11 @@
 #include "libdnssec/error.h"
 #include "libdnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"
+#include "knot/dnssec/key-events.h"
+#include "knot/dnssec/rrset-sign.h"
+#include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-keys.h"
+#include "knot/dnssec/zone-sign.h"
 #include "libzscanner/scanner.h"
 
 static bool is_timestamp(char *arg, knot_kasp_key_timing_t *timing)
@@ -823,4 +827,16 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 	free(base64_output);
 	free(name);
 	return KNOT_EOK;
+}
+
+int keymgr_del_all_old(kdnssec_ctx_t *ctx)
+{
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (knot_time_cmp(key->timing.remove, ctx->now) < 0) {
+			int ret = kdnssec_delete_key(ctx, key);
+			printf("- %s\n", knot_strerror(ret));
+		}
+	}
+	return kdnssec_ctx_commit(ctx);
 }
