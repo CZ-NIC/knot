@@ -119,6 +119,9 @@ Remove the specified key from zone. If the key was not shared, it is also delete
 \fBshare\fP \fIkey_ID\fP
 Import a key (specified by full key ID) from another zone as shared. After this, the key is
 owned by both zones equally.
+.TP
+\fBdel\-all\-old\fP
+Delete old keys that are in state \(aqremoved\(aq.
 .UNINDENT
 .SS Generate arguments
 .sp
