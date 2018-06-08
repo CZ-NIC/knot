@@ -861,8 +861,8 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
 int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
 {
 	knot_rrset_t rrsig = { 0 };
-	knot_rrset_init(&rrsig, ctx->zone->dname, KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, 0);
-	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, when, &rrsig);
+	knot_rrset_init_empty(&rrsig);
+	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, &rrsig);
 	if (ret == KNOT_EOK) {
 		size_t out_size = 512;
 		char *out = malloc(out_size);

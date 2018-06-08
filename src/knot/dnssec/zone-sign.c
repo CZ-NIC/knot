@@ -341,13 +341,13 @@ static bool load_offline_rrsig(const knot_rrset_t *covered,
                                knot_rrset_t *rrsig,
                                const kdnssec_ctx_t *ctx)
 {
-	knot_rrset_init(rrsig, covered->owner, KNOT_RRTYPE_RRSIG, covered->rclass, covered->ttl);
+        knot_rrset_init_empty(rrsig);
 
 	if (!can_have_offline_rrsig(covered, ctx->zone->dname)) {
 		return false;
 	}
 
-	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->now, rrsig);
+	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, covered->owner, ctx->now, rrsig);
 	printf("load offline rrsig (%s)\n", knot_strerror(ret));
 	if (ret != KNOT_EOK) {
 		if (ret != KNOT_ENOENT) {
@@ -421,7 +421,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	}
 
 	knot_rdataset_clear(&to_add.rrs, NULL);
-	knot_rdataset_clear(&offline_rrsigs.rrs, NULL);
+	knot_rrset_clear(&offline_rrsigs, NULL);
 
 	return result;
 }
