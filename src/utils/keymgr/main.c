@@ -69,6 +69,7 @@ static void print_help(void)
 	       "                 (syntax: delete <key_spec>)\n"
 	       "  set           Set existing key's timing attribute.\n"
 	       "                 (syntax: set <key_spec> <attribute_name>=<value>...)\n"
+	       "  del-all-old   Delete old keys that are in state 'removed'.\n"
 	       "\n"
 	       "Key specification:\n"
 	       "  either the key tag (number) or [a prefix of] key ID.\n"
@@ -194,6 +195,8 @@ static int key_command(int argc, char *argv[], int optind)
 		if (ret == KNOT_EOK) {
 			ret = kdnssec_delete_key(&kctx, key2del);
 		}
+	} else if (strcmp(argv[1], "del-all-old") == 0) {
+		ret = keymgr_del_all_old(&kctx);
 	} else {
 		printf("Wrong zone-key command: %s\n", argv[1]);
 		goto main_end;
