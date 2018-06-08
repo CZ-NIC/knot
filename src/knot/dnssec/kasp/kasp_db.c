@@ -32,13 +32,13 @@ struct kasp_db {
 };
 
 typedef enum {
+	KASPDBKEY_OFFLINE_RRSIG = 0x0, // this MUST be always first, because we use LEQ operator
 	KASPDBKEY_PARAMS = 0x1,
 	KASPDBKEY_POLICYLAST = 0x2,
 	KASPDBKEY_NSEC3SALT = 0x3,
 	KASPDBKEY_NSEC3TIME = 0x4,
 	KASPDBKEY_MASTERSERIAL = 0x5,
 	KASPDBKEY_LASTSIGNEDSERIAL = 0x6,
-	KASPDBKEY_OFFLINE_RRSIG = 0x7,
 } keyclass_t;
 
 static const knot_db_api_t *db_api = NULL;
@@ -785,11 +785,11 @@ int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, kno
 	with_txn(KEYS_RO, NULL);
 	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RRSIG, for_dname, for_time_str), val;
 	ret = db_api->find(txn, &key, &val, KNOT_DB_LEQ);
-	free_key(&key);
 	if (ret == KNOT_EOK) {
 		wire_ctx_t wire = wire_ctx_init(val.data, val.len);
 		ret = deserialize_rrset(&wire, rrsig);
 	}
+	free_key(&key);
 	with_txn_end(NULL);
 	return ret;
 }
