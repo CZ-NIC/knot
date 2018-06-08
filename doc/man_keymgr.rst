@@ -97,6 +97,9 @@ Commands
   Import a key (specified by full key ID) from another zone as shared. After this, the key is
   owned by both zones equally.
 
+**del-all-old**
+  Delete old keys that are in state 'removed'.
+
 Generate arguments
 ..................
 
