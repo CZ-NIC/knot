@@ -615,7 +615,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 	// algorithm rollover
-	if (algorithm_present(ctx, ctx->policy->algorithm) == 0 &&
+	if (!ctx->rollover_only_zsk &&
+	    algorithm_present(ctx, ctx->policy->algorithm) == 0 &&
 	    !running_rollover(ctx) && allowed_general_roll && ret == KNOT_EOK) {
 		ret = generate_ksk(ctx, 0, true);
 		if (!ctx->policy->singe_type_signing && ret == KNOT_EOK) {
@@ -627,7 +628,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 	// scheme rollover
-	if (!signing_scheme_present(ctx) && allowed_general_roll &&
+	if (!ctx->rollover_only_zsk &&
+	    !signing_scheme_present(ctx) && allowed_general_roll &&
 	    !running_rollover(ctx) && ret == KNOT_EOK) {
 		ret = generate_ksk(ctx, 0, false);
 		if (!ctx->policy->singe_type_signing && ret == KNOT_EOK) {
