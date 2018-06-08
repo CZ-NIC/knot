@@ -783,7 +783,7 @@ int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_
 	return ret;
 }
 
-int kasp_db_load_offline_rrsig(kasp_db_t *db, knot_time_t for_time, knot_rrset_t *rrsig)
+int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, knot_time_t for_time, knot_rrset_t *rrsig)
 {
 	if (db == NULL || rrsig == NULL) {
 		return KNOT_EINVAL;
@@ -792,7 +792,7 @@ int kasp_db_load_offline_rrsig(kasp_db_t *db, knot_time_t for_time, knot_rrset_t
 	char for_time_str[21];
 	for_time2string(for_time_str, for_time);
 	with_txn(KEYS_RO, NULL);
-	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RRSIG, rrsig->owner, for_time_str), val;
+	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RRSIG, for_dname, for_time_str), val;
 	ret = db_api->find(txn, &key, &val, KNOT_DB_LEQ);
 	free_key(&key);
 	if (ret == KNOT_EOK) {

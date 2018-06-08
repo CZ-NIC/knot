@@ -249,9 +249,10 @@ int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_
  * \brief Load pregenerated RRSIG.
  *
  * \param db         KASP db.
+ * \param for_dname  Name of the related zone.
  * \param for_time   Now. Closest RRSIG (timestamp equals or is closest lower).
  * \param rrsig      Output: the RRSIG.
  *
  * \return KNOT_E*
  */
-int kasp_db_load_offline_rrsig(kasp_db_t *db, knot_time_t for_time, knot_rrset_t *rrsig);
+int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, knot_time_t for_time, knot_rrset_t *rrsig);
