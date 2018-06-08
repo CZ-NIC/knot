@@ -102,7 +102,8 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   const knot_rrset_t *rrsigs,
 				   const dnssec_key_t *key,
 				   dnssec_sign_ctx_t *ctx,
-				   const kdnssec_ctx_t *dnssec_ctx)
+				   const kdnssec_ctx_t *dnssec_ctx,
+				   uint16_t *at)
 {
 	assert(key);
 
@@ -124,6 +125,9 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 
 		if (knot_check_signature(covered, rrsigs, i, key, ctx,
 		                         dnssec_ctx) == KNOT_EOK) {
+			if (at != NULL) {
+				*at = i;
+			}
 			return true;
 		}
 	}
@@ -156,7 +160,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 		}
 
 		if (!valid_signature_exists(covered, rrsigs, key->key,
-		                            key->ctx, dnssec_ctx)) {
+					    key->ctx, dnssec_ctx, NULL)) {
 			return false;
 		}
 	}
@@ -272,6 +276,33 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	return result;
 }
 
+static bool can_have_offline_rrsig(const knot_rrset_t *rr, const knot_dname_t *zone_apex)
+{
+	return (rr->type == KNOT_RRTYPE_DNSKEY && knot_dname_cmp(rr->owner, zone_apex) == 0);
+}
+
+static bool load_offline_rrsig(const knot_rrset_t *covered,
+                               knot_rrset_t *rrsig,
+                               const kdnssec_ctx_t *ctx)
+{
+	knot_rrset_init(rrsig, covered->owner, KNOT_RRTYPE_RRSIG, covered->rclass, covered->ttl);
+
+	if (!can_have_offline_rrsig(covered, ctx->zone->dname)) {
+		return false;
+	}
+
+	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->now, rrsig);
+	printf("load offline rrsig (%s)\n", knot_strerror(ret));
+	if (ret != KNOT_EOK) {
+		if (ret != KNOT_ENOENT) {
+			// TODO warning
+		}
+		return false;
+	}
+
+	return true;
+}
+
 /*!
  * \brief Add missing RRSIGs into the changeset for adding.
  *
@@ -294,8 +325,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	assert(changeset);
 
 	int result = KNOT_EOK;
-	knot_rrset_t to_add;
+	knot_rrset_t to_add, offline_rrsigs;
 	knot_rrset_init_empty(&to_add);
+	(void)load_offline_rrsig(covered, &offline_rrsigs, dnssec_ctx);
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const zone_key_t *key = &zone_keys->keys[i];
@@ -303,12 +335,23 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 			continue;
 		}
 
-		if (valid_signature_exists(covered, rrsigs, key->key, key->ctx, dnssec_ctx)) {
+		if (valid_signature_exists(covered, rrsigs, key->key, key->ctx, dnssec_ctx, NULL)) {
 			continue;
 		}
 
 		if (knot_rrset_empty(&to_add)) {
 			to_add = create_empty_rrsigs_for(covered);
+		}
+
+		uint16_t at_offline;
+		if (valid_signature_exists(covered, &offline_rrsigs, key->key, key->ctx, dnssec_ctx, &at_offline)) {
+			printf("using offline RRSIG.\n");
+			knot_rdata_t *offline_rd = knot_rdataset_at(&offline_rrsigs.rrs, at_offline);
+			result = knot_rrset_add_rdata(&to_add, offline_rd->data, offline_rd->len, NULL);
+			if (result != KNOT_EOK) {
+				break;
+			}
+			continue;
 		}
 
 		result = knot_sign_rrset(&to_add, covered, key->key, key->ctx, dnssec_ctx, NULL);
@@ -322,6 +365,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	}
 
 	knot_rdataset_clear(&to_add.rrs, NULL);
+	knot_rdataset_clear(&offline_rrsigs.rrs, NULL);
 
 	return result;
 }
