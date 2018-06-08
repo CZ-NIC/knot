@@ -47,6 +47,10 @@ knot.dnssec(zone).manual = True
 ZONE = "example.com."
 WAIT_SIGN = 2
 
+# we need to have confile to run keymgr
+knot.port = 1234 # this will be overwritten, but we need dummy
+knot.gen_confile()
+
 # generate initial keys (one always enabled, one for testing)
 knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0", retire="+1d", remove="+1d")
 knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", ready="+0", active="+0", retire="+1d", remove="+1d")
