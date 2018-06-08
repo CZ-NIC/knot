@@ -100,6 +100,12 @@ Commands
 **pregenerate** *period_secs*
   Pre-generate ZSKs for use with offline KSK, for the specified period starting from now.
 
+**show-rrsig** *timestamp*
+  Print a pre-generated DNSKEY RRSIG for specified timestamp.
+
+**del-all-old**
+  Delete old keys that are in state 'removed'.
+
 Generate arguments
 ..................
 

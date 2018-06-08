@@ -122,6 +122,12 @@ owned by both zones equally.
 .TP
 \fBpregenerate\fP \fIperiod_secs\fP
 Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
+.TP
+\fBshow\-rrsig\fP \fItimestamp\fP
+Print a pre\-generated DNSKEY RRSIG for specified timestamp.
+.TP
+\fBdel\-all\-old\fP
+Delete old keys that are in state \(aqremoved\(aq.
 .UNINDENT
 .SS Generate arguments
 .sp
