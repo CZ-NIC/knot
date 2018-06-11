@@ -254,6 +254,15 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	return written;
 }
 
+#define WRITE_OWNER_CHECK(size, dst_avail) \
+	if ((size) > *(dst_avail)) { \
+		return KNOT_ESPACE; \
+	}
+
+#define WRITE_OWNER_INCR(dst, dst_avail, size) \
+	*(dst) += (size); \
+	*(dst_avail) -= (size);
+
 static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_avail,
                        knot_compr_t *compr)
 {
@@ -267,29 +276,21 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 		owner_pointer = compr_get_ptr(compr, KNOT_COMPR_HINT_OWNER);
 	}
 
-	// Check size.
-	size_t owner_size = 0;
-	if (owner_pointer > 0) {
-		owner_size = sizeof(uint16_t);
-	} else {
-		owner_size = knot_dname_size(rrset->owner);
-	}
-
-	if (owner_size > *dst_avail) {
-		return KNOT_ESPACE;
-	}
-
 	// Write result.
 	if (owner_pointer > 0) {
+		WRITE_OWNER_CHECK(sizeof(uint16_t), dst_avail);
 		knot_wire_put_pointer(*dst, owner_pointer);
+		WRITE_OWNER_INCR(dst, dst_avail, sizeof(uint16_t));
 	// Check for coincidence with previous RR set.
 	} else if (compr != NULL && compr->suffix.pos != 0 && *rrset->owner != '\0' &&
 	           dname_equal_wire(rrset->owner, compr->wire + compr->suffix.pos,
 	                            compr->wire)) {
+		WRITE_OWNER_CHECK(sizeof(uint16_t), dst_avail);
 		knot_wire_put_pointer(*dst, compr->suffix.pos);
 		compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER,
-		              compr->wire + compr->suffix.pos, owner_size);
-		owner_size = sizeof(uint16_t);
+		              compr->wire + compr->suffix.pos,
+		              knot_dname_size(rrset->owner));
+		WRITE_OWNER_INCR(dst, dst_avail, sizeof(uint16_t));
 	} else {
 		if (compr != NULL) {
 			compr->suffix.pos = KNOT_WIRE_HEADER_SIZE;
@@ -297,6 +298,7 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 				knot_dname_labels(compr->wire + compr->suffix.pos,
 				                  compr->wire);
 		}
+		// WRITE_OWNER_CHECK not needed, compr_put_dname has a check.
 		int written = compr_put_dname(rrset->owner, *dst,
 		                              dname_max(*dst_avail), compr);
 		if (written < 0) {
@@ -304,12 +306,8 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 		}
 
 		compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER, *dst, written);
-		owner_size = written;
+		WRITE_OWNER_INCR(dst, dst_avail, written);
 	}
-
-	// Update buffer.
-	*dst += owner_size;
-	*dst_avail -= owner_size;
 
 	return KNOT_EOK;
 }
