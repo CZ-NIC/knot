@@ -357,19 +357,6 @@ static int put_wildcard_answer(const zone_node_t *wildcard,
 }
 
 /*!
- * \brief Create a wildcard child of a name as a local variable.
- *
- * \param out     Name of the output wariable.
- * \param parent  Parent of the wildcard.
- */
-#define CREATE_WILDCARD(out, parent) \
-	int size = knot_dname_size(parent); \
-	if (size < 0 || size > KNOT_DNAME_MAXLEN - 2) return KNOT_EINVAL; \
-	uint8_t out[2 + size]; \
-	memcpy(out, "\x01""*", 2); \
-	memcpy(out + 2, parent, size);
-
-/*!
  * \brief Put NSECs for NXDOMAIN error into the response.
  *
  * Adds up to two NSEC records. We have to prove that the queried name doesn't
@@ -407,7 +394,14 @@ static int put_nsec_nxdomain(const zone_contents_t *zone,
 
 	// NOTE: closest may be empty non-terminal and thus not authoritative.
 
-	CREATE_WILDCARD(wildcard, closest->owner)
+	size_t size = knot_dname_size(closest->owner);
+	if (size > KNOT_DNAME_MAXLEN - 2) {
+		return KNOT_EINVAL;
+	}
+	assert(size > 0);
+	uint8_t wildcard[2 + size];
+	memcpy(wildcard, "\x01""*", 2);
+	memcpy(wildcard + 2, closest->owner, size);
 
 	return put_covering_nsec(zone, wildcard, qdata, resp);
 }
