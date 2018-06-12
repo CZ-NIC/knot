@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -78,6 +78,11 @@ const char *syntax_error3 =
 	"f:\n"
 	"   a: b\n"
 	"  c: d\n";
+
+const char *dname_ok =
+	".:\n"
+	"dom-ain:\n"
+	"\\070-\\071.\\072.:";
 
 int main(int argc, char *argv[])
 {
@@ -228,6 +233,20 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "parse key1");
 	ret = yp_parse(yp);
 	is_int(KNOT_YP_EINVAL_INDENT, ret, "parse key1 - invalid indentation");
+
+#define CHECK_DNAME(str) \
+	ret = yp_parse(yp); \
+	is_int(KNOT_EOK, ret, "parse dname " str); \
+	ok(yp->key_len == strlen(str) && strcmp(yp->key, str) == 0 && yp->data_len == 0 && \
+	   yp->event == YP_EKEY0 && yp->line_count == line++, "compare " str);
+
+	// Dname key value.
+	ret = yp_set_input_string(yp, dname_ok, strlen(dname_ok));
+	is_int(KNOT_EOK, ret, "set input string");
+	line = 1;
+	CHECK_DNAME(".");
+	CHECK_DNAME("dom-ain");
+	CHECK_DNAME("\\070-\\071.\\072.");
 
 	yp_deinit(yp);
 

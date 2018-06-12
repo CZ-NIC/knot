@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -134,7 +134,7 @@
 		}
 		parser->indent = 0;
 	}
-	key_name = (alnum . ('-' | alnum)*) >_key_init $_key;
+	key_name = ((alnum | [\\.]) . (alnum | [\\.\-])*) >_key_init $_key;
 	key0 =                                                  key_name %_key0_exit;
 	key1 =   sep                                 $_indent . key_name %_key1_exit;
 	id   = ((sep $_id)? . '-' >_dash_init . sep) $_indent . key_name %_id_exit;
