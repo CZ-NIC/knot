@@ -261,6 +261,8 @@ int zs_set_input_string(
 	const char *input,
 	size_t size)
 {
+	s->state = ZS_STATE_NONE;
+
 	return set_input_string(s, input, size, false);
 }
 
@@ -351,6 +353,8 @@ int zs_set_input_file(
 		input_deinit(s, false);
 		return -1;
 	}
+
+	s->state = ZS_STATE_NONE;
 
 	return 0;
 }
