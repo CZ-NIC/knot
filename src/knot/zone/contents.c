@@ -279,6 +279,20 @@ static int measure_size(zone_node_t *node, void *data){
 	return KNOT_EOK;
 }
 
+static bool nsec3_params_match(const knot_rdataset_t *rrs,
+                               const dnssec_nsec3_params_t *params,
+                               size_t rdata_pos)
+{
+	assert(rrs != NULL);
+	assert(params != NULL);
+
+	return (knot_nsec3_algorithm(rrs, rdata_pos) == params->algorithm
+	        && knot_nsec3_iterations(rrs, rdata_pos) == params->iterations
+	        && knot_nsec3_salt_length(rrs, rdata_pos) == params->salt.size
+	        && memcmp(knot_nsec3_salt(rrs, rdata_pos), params->salt.data,
+	                  params->salt.size) == 0);
+}
+
 /*!
  * \brief Adjust normal (non NSEC3) node.
  *
@@ -336,6 +350,14 @@ static int adjust_nsec3_node(zone_node_t **tnode, void *data)
 	args->previous_node = node;
 
 	measure_size(*tnode, &args->zone->size);
+
+	// check if this node belongs to correct chain
+	const knot_rdataset_t *nsec3_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC3);
+	for (uint16_t i = 0; nsec3_rrs != NULL && i < nsec3_rrs->rr_count; i++) {
+		if (nsec3_params_match(nsec3_rrs, &args->zone->nsec3_params, i)) {
+			node->flags |= NODE_FLAGS_IN_NSEC3_CHAIN;
+		}
+	}
 
 	return KNOT_EOK;
 }
@@ -399,20 +421,6 @@ static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
 	*previous = prev;
 
 	return match > 0;
-}
-
-static bool nsec3_params_match(const knot_rdataset_t *rrs,
-                               const dnssec_nsec3_params_t *params,
-                               size_t rdata_pos)
-{
-	assert(rrs != NULL);
-	assert(params != NULL);
-
-	return (knot_nsec3_algorithm(rrs, rdata_pos) == params->algorithm
-		&& knot_nsec3_iterations(rrs, rdata_pos) == params->iterations
-		&& knot_nsec3_salt_length(rrs, rdata_pos) == params->salt.size
-		&& memcmp(knot_nsec3_salt(rrs, rdata_pos), params->salt.data,
-		          params->salt.size) == 0);
 }
 
 zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
@@ -897,33 +905,18 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 		*nsec3_previous = prev;
 	}
 
-	/* The previous may be from wrong NSEC3 chain. Search for previous
-	 * from the right chain. Check iterations, hash algorithm and salt
-	 * values and compare them to the ones from NSEC3PARAM.
-	 */
-	const knot_rdataset_t *nsec3_rrs = node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
+	// The previous may be from wrong NSEC3 chain. Search for previous from the right chain.
 	const zone_node_t *original_prev = *nsec3_previous;
-
-	ret = match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
-
-	while (nsec3_rrs) {
-		for (uint16_t i = 0; i < nsec3_rrs->rr_count; i++) {
-			if (nsec3_params_match(nsec3_rrs, &zone->nsec3_params, i)) {
-				return ret;
-			}
-		}
-
-		/* This RRSET was not a match, try the one from previous node. */
+	while (!((*nsec3_previous)->flags & NODE_FLAGS_IN_NSEC3_CHAIN)) {
 		*nsec3_previous = (*nsec3_previous)->prev;
-		nsec3_rrs = node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
-		if (*nsec3_previous == original_prev || nsec3_rrs == NULL) {
+		if (*nsec3_previous == original_prev || *nsec3_previous == NULL) {
 			// cycle
 			*nsec3_previous = NULL;
 			break;
 		}
 	}
 
-	return ret;
+	return (match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND);
 }
 
 const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *contents,

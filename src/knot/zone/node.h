@@ -80,7 +80,9 @@ enum node_flags {
 	/*! \brief Node is empty and will be deleted after update. */
 	NODE_FLAGS_EMPTY =           1 << 3,
 	/*! \brief Node has a wildcard child. */
-	NODE_FLAGS_WILDCARD_CHILD =  1 << 4
+	NODE_FLAGS_WILDCARD_CHILD =  1 << 4,
+	/*! \brief Is this NSEC3 node compatible with zone's NSEC3PARAMS ? */
+	NODE_FLAGS_IN_NSEC3_CHAIN =  1 << 5,
 };
 
 /*!
