@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ typedef struct {
 inline static void knot_rdata_init(knot_rdata_t *rdata, uint16_t len, const uint8_t *data)
 {
 	assert(rdata);
+	assert(data);
 	rdata->len = len;
 	memcpy(rdata->data, data, len);
 }

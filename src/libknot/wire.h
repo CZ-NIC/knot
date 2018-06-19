@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -38,6 +39,7 @@
  */
 inline static uint16_t knot_wire_read_u16(const uint8_t *pos)
 {
+	assert(pos);
 	uint16_t result;
 	memcpy(&result, pos, sizeof(result));
 	return be16toh(result);
@@ -52,6 +54,7 @@ inline static uint16_t knot_wire_read_u16(const uint8_t *pos)
  */
 inline static uint32_t knot_wire_read_u32(const uint8_t *pos)
 {
+	assert(pos);
 	uint32_t result;
 	memcpy(&result, pos, sizeof(result));
 	return be32toh(result);
@@ -66,6 +69,7 @@ inline static uint32_t knot_wire_read_u32(const uint8_t *pos)
  */
 inline static uint64_t knot_wire_read_u48(const uint8_t *pos)
 {
+	assert(pos);
 	uint64_t input = 0;
 	memcpy((uint8_t *)&input + 1, pos, 6);
 	return be64toh(input) >> 8;
@@ -80,6 +84,7 @@ inline static uint64_t knot_wire_read_u48(const uint8_t *pos)
  */
 inline static uint64_t knot_wire_read_u64(const uint8_t *pos)
 {
+	assert(pos);
 	uint64_t result;
 	memcpy(&result, pos, sizeof(result));
 	return be64toh(result);
@@ -95,6 +100,7 @@ inline static uint64_t knot_wire_read_u64(const uint8_t *pos)
  */
 inline static void knot_wire_write_u16(uint8_t *pos, uint16_t data)
 {
+	assert(pos);
 	uint16_t beval = htobe16(data);
 	memcpy(pos, &beval, sizeof(beval));
 }
@@ -109,6 +115,7 @@ inline static void knot_wire_write_u16(uint8_t *pos, uint16_t data)
  */
 inline static void knot_wire_write_u32(uint8_t *pos, uint32_t data)
 {
+	assert(pos);
 	uint32_t beval = htobe32(data);
 	memcpy(pos, &beval, sizeof(beval));
 }
@@ -123,6 +130,7 @@ inline static void knot_wire_write_u32(uint8_t *pos, uint32_t data)
  */
 inline static void knot_wire_write_u48(uint8_t *pos, uint64_t data)
 {
+	assert(pos);
 	uint64_t swapped = htobe64(data << 8);
 	memcpy(pos, (uint8_t *)&swapped + 1, 6);
 }
@@ -137,6 +145,7 @@ inline static void knot_wire_write_u48(uint8_t *pos, uint64_t data)
  */
 inline static void knot_wire_write_u64(uint8_t *pos, uint64_t data)
 {
+	assert(pos);
 	uint64_t beval = htobe64(data);
 	memcpy(pos, &beval, sizeof(beval));
 }
