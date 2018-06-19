@@ -51,9 +51,11 @@ typedef struct {
 inline static void knot_rdata_init(knot_rdata_t *rdata, uint16_t len, const uint8_t *data)
 {
 	assert(rdata);
-	assert(data);
 	rdata->len = len;
-	memcpy(rdata->data, data, len);
+	if (rdata->len > 0) {
+		assert(data);
+		memcpy(rdata->data, data, len);
+	}
 }
 
 /*!
