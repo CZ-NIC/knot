@@ -80,8 +80,8 @@ typedef struct {
 } geoip_ctx_t;
 
 typedef struct {
+	struct sockaddr_storage *addr;
 	uint8_t prefix;
-	in_addr_t addr;
 } subnet_t;
 
 typedef struct {
@@ -139,17 +139,39 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t view, geoip_ctx_t *c
 	return ret;
 }
 
-static bool addr_in_subnet(in_addr_t addr, subnet_t subnet)
+static bool addr_in_subnet(const struct sockaddr_storage *addr, subnet_t subnet)
 {
-	uint8_t mask_data[sizeof(in_addr_t)] = { 0 };
-	for (int i = 0; i < subnet.prefix / 8; i++) {
-		mask_data[i] = UINT8_MAX;
+	if (subnet.addr->ss_family != addr->ss_family) {
+		return false;
 	}
-	if (subnet.prefix % 8 != 0) {
-		mask_data[subnet.prefix / 8] = ((1 << (subnet.prefix % 8)) - 1) << (8 - subnet.prefix % 8);
+	uint8_t *raw_addr = NULL;
+	uint8_t *raw_subnet = NULL;
+	switch(addr->ss_family) {
+	case AF_INET:
+		raw_addr = (uint8_t *)&((const struct sockaddr_in *)addr)->sin_addr;
+		raw_subnet = (uint8_t *)&((const struct sockaddr_in *)subnet.addr)->sin_addr;
+		break;
+	case AF_INET6:
+		raw_addr = (uint8_t *)&((const struct sockaddr_in6 *)addr)->sin6_addr;
+		raw_subnet = (uint8_t *)&((const struct sockaddr_in6 *)subnet.addr)->sin6_addr;
+		break;
+	default:
+		return false;
 	}
-	in_addr_t *mask = (in_addr_t *)mask_data;
-	return (addr & *mask) == subnet.addr;
+	uint8_t nbytes = subnet.prefix / 8;
+	uint8_t nbits = subnet.prefix % 8;
+	for (int i = 0; i < nbytes; i++) {
+		if (raw_addr[i] != raw_subnet[i]) {
+			return false;
+		}
+	}
+	if (nbits != 0) {
+		uint8_t mask = ((1 << nbits) - 1) << (8 - nbits);
+		if ((raw_addr[nbytes] & mask) != raw_subnet[nbytes]) {
+			return false;
+		}
+	}
+	return true;
 }
 
 static bool addr_in_geo(knotd_mod_t *mod, const struct sockaddr *addr, geodata_t geodata, uint16_t *netmask)
@@ -216,7 +238,6 @@ static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *
 		return KNOT_EOK;
 	}
 
-	int ret = KNOT_EOK;
 	if (key != NULL) {
 		view->rrsigs = malloc(sizeof(knot_rrset_t) * view->count);
 		if (view->rrsigs == NULL) {
@@ -229,7 +250,7 @@ static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *
 			}
 			knot_rrset_init(&view->rrsigs[i], owner_cpy, KNOT_RRTYPE_RRSIG,
 			                KNOT_CLASS_IN, ctx->ttl);
-			ret = knot_sign_rrset(&view->rrsigs[i], &view->rrsets[i],
+			int ret = knot_sign_rrset(&view->rrsigs[i], &view->rrsets[i],
 			                      key->key, key->ctx, &ctx->kctx, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -237,8 +258,7 @@ static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *
 		}
 	}
 
-	ret = add_view_to_trie(owner, *view, ctx);
-	return ret;
+	return add_view_to_trie(owner, *view, ctx);
 }
 
 static int init_geo_view(geo_view_t *view)
@@ -259,9 +279,11 @@ static int init_geo_view(geo_view_t *view)
 
 static void clear_geo_view(geo_view_t *view)
 {
-	if (view->geodata.city != NULL) {
-		free(view->geodata.city);
+	if (view == NULL) {
+		return;
 	}
+	free(view->geodata.city);
+	free(view->subnet.addr);
 	for (int j = 0; j < view->count; j++) {
 		knot_rrset_clear(&view->rrsets[j], NULL);
 		if (view->rrsigs != NULL) {
@@ -358,14 +380,9 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 
 		// New geo view description starts.
 		if (yp->event == YP_EID) {
-			if (yp->data_len < 4 || yp->data[ISO_CODE_LEN] != ';') {
-				ret = KNOT_EINVAL;
-				goto cleanup;
-			}
-
 			// Initialize new geo view.
 			free(view);
-			view = malloc(sizeof(geo_view_t));
+			view = calloc(1, sizeof(geo_view_t));
 			if (view == NULL) {
 				ret = KNOT_ENOMEM;
 				goto cleanup;
@@ -377,6 +394,11 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 
 			// Parse geodata/subnet. TODO more generally!
 			if (ctx->mode == MODE_GEODB) {
+				if (yp->data_len < 4 || yp->data[ISO_CODE_LEN] != ';') {
+					ret = KNOT_EINVAL;
+					goto cleanup;
+				}
+
 				size_t copied = strlcpy(view->geodata.country_iso, yp->data, ISO_CODE_LEN + 1);
 				view->geodata.city_len = yp->data_len - ISO_CODE_LEN - 1;
 				if ( view->geodata.city_len == 0 ||
@@ -394,12 +416,32 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 			}
 
 			if (ctx->mode == MODE_SUBNET) {
+				// Parse subnet prefix length.
 				char *slash = strchr(yp->data, '/');
 				view->subnet.prefix = atoi(slash + 1);
 				*slash = '\0';
-				inet_pton(AF_INET, yp->data, &view->subnet.addr);
-			}
 
+				// Parse address.
+				view->subnet.addr = calloc(1, sizeof(struct sockaddr_storage));
+				if (view->subnet.addr == NULL) {
+					ret = KNOT_ENOMEM;
+					goto cleanup;
+				}
+				void *write_addr = &((struct sockaddr_in *)view->subnet.addr)->sin_addr;
+				// Try to parse as IPv4 address.
+				ret = inet_pton(AF_INET, yp->data, write_addr);
+				if (ret == 1) {
+					view->subnet.addr->ss_family = AF_INET;
+				} else { // Try to parse as IPv6 address.
+					write_addr = &((struct sockaddr_in6 *)view->subnet.addr)->sin6_addr;
+					ret = inet_pton(AF_INET6, yp->data, write_addr);
+					if (ret != 1) {
+						ret = KNOT_EINVAL;
+						goto cleanup;
+					}
+					view->subnet.addr->ss_family = AF_INET6;
+				}
+			}
 		}
 
 		// Next rrset of the current view.
@@ -532,11 +574,9 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	}
 
 	if (ctx->mode == MODE_SUBNET) {
-		in_addr_t addr = ((struct sockaddr_in *)remote)->sin_addr.s_addr;
-
-		// Check whether the remote falls into any geo subnet.
+		// Check whether the remote falls into any of the configured subnets.
 		for (int i = 0; i < data->count; i++) {
-			if (addr_in_subnet(addr, data->views[i].subnet)) {
+			if (addr_in_subnet(remote, data->views[i].subnet)) {
 				// Update ECS if used.
 				if (qdata->ecs != NULL) {
 					qdata->ecs->scope_len = data->views[i].subnet.prefix;
