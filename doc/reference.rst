@@ -1113,7 +1113,7 @@ Definition of zones served by the server.
      semantic-checks: BOOL
      disable-any: BOOL
      zonefile-sync: TIME
-     zonefile-load: none | difference | whole
+     zonefile-load: none | difference | difference-no-serial | whole
      journal-content: none | changes | all
      max-journal-usage: SIZE
      max-journal-depth: INT
@@ -1288,8 +1288,10 @@ Selects how the zonefile contents are applied during zone load.
 Possible values:
 
 - ``none`` – The zonefile is not used at all.
-- ``difference`` – If the zone contents are available during server start or reload,
-  the difference is computed between them and the zonefile, checked and applied afterwards.
+- ``difference`` – If the zone contents is available during server start or reload,
+  the difference is computed between them and the zonefile, checked, and applied afterwards.
+- ``difference-no-serial`` – Same as ``difference``, but the SOA serial in the zonefile is
+  ignored, the server takes care of incrementing the serial automatically.
 - ``whole`` – Zone contents are loaded from zonefile.
 
 When ``difference`` is configured and there are no zone contents yet (cold start of Knot

@@ -145,6 +145,7 @@ enum {
 	ZONEFILE_LOAD_NONE  = 0,
 	ZONEFILE_LOAD_DIFF  = 1,
 	ZONEFILE_LOAD_WHOLE = 2,
+	ZONEFILE_LOAD_DIFSE = 3,
 };
 
 extern const knot_lookup_t acl_actions[];

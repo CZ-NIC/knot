@@ -95,6 +95,17 @@ int event_load(conf_t *conf, zone_t *zone)
 			}
 			goto cleanup;
 		}
+
+		// If configured and possible, fix the SOA serial of zonefile.
+		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE) {
+			zone_contents_t *relevant = (zone->contents != NULL ? zone->contents : journal_conts);
+			if (relevant != NULL) {
+				uint32_t serial = zone_contents_serial(relevant);
+				conf_val_t policy = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
+				zone_contents_set_soa_serial(zf_conts, serial_next(serial, conf_opt(&policy)));
+			}
+		}
+
 		// If configured and appliable to zonefile, load journal changes.
 		zone->zonefile.serial = zone_contents_serial(zf_conts);
 		zone->zonefile.exists = (zf_conts != NULL);
@@ -200,6 +211,17 @@ int event_load(conf_t *conf, zone_t *zone)
 	// The contents are already part of zone_update.
 	zf_conts = NULL;
 	journal_conts = NULL;
+
+	// If the change is only automatically incremented SOA serial, make it no change.
+	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & UPDATE_INCREMENTAL) &&
+	    changeset_differs_just_serial(&up.change)) {
+		uint32_t orig_ser = knot_soa_serial(&up.change.soa_from->rrs);
+		ret = changeset_remove_addition(&up.change, up.change.soa_to);
+		zone_contents_set_soa_serial(up.new_cont, orig_ser);
+		if (ret != KNOT_EOK) {
+			goto cleanup;
+		}
+	}
 
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { .allow_rollover = true, .allow_nsec3resalt = true, };
