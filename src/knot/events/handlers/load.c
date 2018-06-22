@@ -95,6 +95,17 @@ int event_load(conf_t *conf, zone_t *zone)
 			}
 			goto cleanup;
 		}
+
+		// If configured and possible, fix the SOA serial of zonefile.
+		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE) {
+			zone_contents_t *relevant = (zone->contents != NULL ? zone->contents : journal_conts);
+			if (relevant != NULL) {
+				uint32_t rel_serial = zone_contents_serial(relevant);
+				conf_val_t serpol = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
+				zone_contents_set_soa_serial(zf_conts, serial_next(rel_serial, conf_opt(&serpol)));
+			}
+		}
+
 		// If configured and appliable to zonefile, load journal changes.
 		zone->zonefile.serial = zone_contents_serial(zf_conts);
 		zone->zonefile.exists = (zf_conts != NULL);
