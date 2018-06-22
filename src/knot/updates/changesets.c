@@ -531,6 +531,25 @@ int changeset_cancelout(changeset_t *ch)
 	return ret;
 }
 
+bool changeset_differs_just_serial(const changeset_t *ch)
+{
+	if (ch == NULL || ch->soa_from == NULL || ch->soa_to == NULL) {
+		return false;
+	}
+
+	if (!zone_contents_is_empty(ch->remove) || !zone_contents_is_empty(ch->add)) {
+		return false;
+	}
+
+	knot_rrset_t *soa_to_cpy = knot_rrset_copy(ch->soa_to, NULL);
+	knot_soa_serial_set(&soa_to_cpy->rrs, knot_soa_serial(&ch->soa_from->rrs));
+
+	bool res = knot_rrset_equal(ch->soa_from, soa_to_cpy, KNOT_RRSET_COMPARE_WHOLE);
+	knot_rrset_free(soa_to_cpy, NULL);
+
+	return res;
+}
+
 int changeset_to_contents(changeset_t *ch, zone_contents_t **out)
 {
 	assert(ch->soa_from == NULL);

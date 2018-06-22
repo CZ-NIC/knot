@@ -159,6 +159,16 @@ int changeset_preapply_fix(const zone_contents_t *zone, changeset_t *ch);
 int changeset_cancelout(changeset_t *ch);
 
 /*!
+ * \brief Check the changes and SOA, ignoring possibly updated SOA serial.
+ *
+ * \param ch  Changeset in question.
+ *
+ * \return false if the changeset changes other records than SOA, or some SOA field other than serial changed
+ *         true otherwise
+ */
+bool changeset_differs_just_serial(const changeset_t *ch);
+
+/*!
  * \brief Loads zone contents from botstrap changeset.
  *
  * \param ch  Changeset to load from, will be freed!

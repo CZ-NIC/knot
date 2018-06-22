@@ -212,6 +212,17 @@ int event_load(conf_t *conf, zone_t *zone)
 	zf_conts = NULL;
 	journal_conts = NULL;
 
+	// If the change is only automatically incremented SOA serial, make it no change.
+	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & UPDATE_INCREMENTAL) &&
+	    changeset_differs_just_serial(&up.change)) {
+		uint32_t orig_ser = knot_soa_serial(&up.change.soa_from->rrs);
+		ret = changeset_remove_addition(&up.change, up.change.soa_to);
+		zone_contents_set_soa_serial(up.new_cont, orig_ser);
+		if (ret != KNOT_EOK) {
+			goto cleanup;
+		}
+	}
+
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { .allow_rollover = true, .allow_nsec3resalt = true, };
 	if (dnssec_enable) {
