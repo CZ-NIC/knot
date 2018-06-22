@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * \brief Create diff between two zone trees.
  * */
 int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone2,
-                       changeset_t *changeset);
+                       changeset_t *changeset, bool ignore_dnssec);
 
 /*!
  * \brief Add diff between two zone trees into the changeset.

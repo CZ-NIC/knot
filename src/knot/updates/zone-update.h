@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,7 +76,7 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
  * \return KNOT_E*
  */
 int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_contents_t *old_cont,
-                                 zone_contents_t *new_cont, zone_update_flags_t flags);
+                                 zone_contents_t *new_cont, zone_update_flags_t flags, bool ignore_dnssec);
 
 /*!
  * \brief Inits a zone update based on new zone contents.
@@ -227,6 +227,16 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
  * \return KNOT_E*
  */
 int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes);
+
+/*!
+ * \brief Applies the changeset in reverse, rsets from REM section are added and from ADD section removed.
+ *
+ * \param update   Zone update.
+ * \param changes  Changes to be un-done.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t *changes);
 
 /*!
  * \brief Increment SOA serial (according to cofigured policy) in the update.

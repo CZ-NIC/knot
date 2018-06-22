@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -161,10 +161,13 @@ int changeset_cancelout(changeset_t *ch);
 /*!
  * \brief Check the changes and SOA, ignoring possibly updated SOA serial.
  *
+ * \note Also tolerates changed RRSIG of SOA.
+ *
  * \param ch  Changeset in question.
  *
- * \return false if the changeset changes other records than SOA, or some SOA field other than serial changed
- *         true otherwise
+ * \retval false  If the changeset changes other records than SOA, or some SOA field
+ *                other than serial changed.
+ * \retval true   Otherwise.
  */
 bool changeset_differs_just_serial(const changeset_t *ch);
 
@@ -214,6 +217,15 @@ void changesets_free(list_t *chgs);
  * \param ch  Changeset to clear.
  */
 void changeset_clear(changeset_t *ch);
+
+/*!
+ * \brief Copy changeset to newly allocated space, all rrsigs are copied.
+ *
+ * \param ch  Changeset to be copied.
+ *
+ * \return a copy, or NULL if error.
+ */
+changeset_t *changeset_clone(const changeset_t *ch);
 
 /*!
  * \brief Frees single changeset.

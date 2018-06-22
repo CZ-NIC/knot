@@ -537,17 +537,26 @@ bool changeset_differs_just_serial(const changeset_t *ch)
 		return false;
 	}
 
-	if (!zone_contents_is_empty(ch->remove) || !zone_contents_is_empty(ch->add)) {
-		return false;
-	}
-
 	knot_rrset_t *soa_to_cpy = knot_rrset_copy(ch->soa_to, NULL);
-	knot_soa_serial_set(&soa_to_cpy->rrs, knot_soa_serial(&ch->soa_from->rrs));
+	knot_soa_serial_set(soa_to_cpy->rrs.rdata, knot_soa_serial(ch->soa_from->rrs.rdata));
 
-	bool res = knot_rrset_equal(ch->soa_from, soa_to_cpy, KNOT_RRSET_COMPARE_WHOLE);
+	bool ret = knot_rrset_equal(ch->soa_from, soa_to_cpy, KNOT_RRSET_COMPARE_WHOLE);
 	knot_rrset_free(soa_to_cpy, NULL);
 
-	return res;
+	changeset_iter_t itt;
+	changeset_iter_all(&itt, ch);
+
+	knot_rrset_t rrset = changeset_iter_next(&itt);
+	while (!knot_rrset_empty(&rrset) && ret) {
+		if (rrset.type != KNOT_RRTYPE_RRSIG || rrset.rrs.count != 1 ||
+		    knot_rrsig_type_covered(rrset.rrs.rdata) != KNOT_RRTYPE_SOA) {
+			ret = false;
+		}
+		rrset = changeset_iter_next(&itt);
+	}
+	changeset_iter_clear(&itt);
+
+	return ret;
 }
 
 int changeset_to_contents(changeset_t *ch, zone_contents_t **out)
@@ -646,6 +655,49 @@ void changeset_clear(changeset_t *ch)
 
 	// Delete binary data
 	free(ch->data);
+}
+
+changeset_t *changeset_clone(const changeset_t *ch)
+{
+	if (ch == NULL) {
+		return NULL;
+	}
+
+	changeset_t *res = changeset_new(ch->soa_from->owner);
+	if (res == NULL) {
+		return NULL;
+	}
+
+	res->soa_from = knot_rrset_copy(ch->soa_from, NULL);
+	res->soa_to = knot_rrset_copy(ch->soa_to, NULL);
+
+	int ret = KNOT_EOK;
+	changeset_iter_t itt;
+
+	changeset_iter_rem(&itt, ch);
+	knot_rrset_t rr = changeset_iter_next(&itt);
+	while (!knot_rrset_empty(&rr) && ret == KNOT_EOK) {
+		ret = changeset_add_removal(res, &rr, 0);
+		rr = changeset_iter_next(&itt);
+	}
+	changeset_iter_clear(&itt);
+
+	changeset_iter_add(&itt, ch);
+	rr = changeset_iter_next(&itt);
+	while (!knot_rrset_empty(&rr) && ret == KNOT_EOK) {
+		ret = changeset_add_addition(res, &rr, 0);
+		rr = changeset_iter_next(&itt);
+	}
+	changeset_iter_clear(&itt);
+
+	if ((ch->soa_from != NULL && res->soa_from == NULL) ||
+	    (ch->soa_to != NULL && res->soa_to == NULL) ||
+	    ret != KNOT_EOK) {
+		changeset_free(res);
+		return NULL;
+	}
+
+	return res;
 }
 
 void changeset_free(changeset_t *ch)
