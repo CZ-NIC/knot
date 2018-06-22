@@ -138,6 +138,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val), zu_from_zf_conts = false;
 	zone_update_t up = { 0 };
+	bool ignore_dnssec = (zf_from == ZONEFILE_LOAD_DIFSE && dnssec_enable);
 
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
@@ -153,7 +154,9 @@ int event_load(conf_t *conf, zone_t *zone)
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
-			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL);
+			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
+			zone_contents_deep_free(zf_conts);
+			zf_conts = NULL;
 		}
 	} else {
 		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
@@ -162,16 +165,18 @@ int event_load(conf_t *conf, zone_t *zone)
 				ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
 			} else {
 				// load zone-in-journal, compute ZF diff and if success, apply it
-				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts, UPDATE_INCREMENTAL);
+				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
+				zone_contents_deep_free(zf_conts);
+				zf_conts = NULL;
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name,
 					                 "zone file changed with SOA serial %s, "
 					                 "ignoring zone file and loading from journal",
 					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
-					zone_contents_deep_free(zf_conts);
 					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
 				} else {
 					zone_contents_deep_free(journal_conts);
+					journal_conts = NULL;
 				}
 			}
 		} else {
@@ -212,17 +217,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	zf_conts = NULL;
 	journal_conts = NULL;
 
-	// If the change is only automatically incremented SOA serial, make it no change.
-	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & UPDATE_INCREMENTAL) &&
-	    changeset_differs_just_serial(&up.change)) {
-		uint32_t orig_ser = knot_soa_serial(&up.change.soa_from->rrs);
-		ret = changeset_remove_addition(&up.change, up.change.soa_to);
-		zone_contents_set_soa_serial(up.new_cont, orig_ser);
-		if (ret != KNOT_EOK) {
-			goto cleanup;
-		}
-	}
-
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { .allow_rollover = true, .allow_nsec3resalt = true, };
 	if (dnssec_enable) {
@@ -236,6 +230,24 @@ int event_load(conf_t *conf, zone_t *zone)
 			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
 			                 "'zonefile-load: difference' should be set to avoid malformed "
 			                 "IXFR after manual zone file update");
+		}
+	}
+
+	// If the change is only automatically incremented SOA serial, make it no change.
+	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & UPDATE_INCREMENTAL) &&
+	    changeset_differs_just_serial(&up.change)) {
+		changeset_t *cpy = changeset_clone(&up.change);
+		if (cpy == NULL) {
+			ret = KNOT_ENOMEM;
+			goto cleanup;
+		}
+		ret = zone_update_apply_changeset_reverse(&up, cpy);
+		changeset_free(cpy);
+		if (ret == KNOT_EOK) {
+			ret = changeset_remove_addition(&up.change, up.change.soa_to);
+		}
+		if (ret != KNOT_EOK) {
+			goto cleanup;
 		}
 	}
 

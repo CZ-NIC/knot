@@ -165,6 +165,8 @@ int changeset_cancelout(changeset_t *ch);
  *
  * \return false if the changeset changes other records than SOA, or some SOA field other than serial changed
  *         true otherwise
+ *
+ * \note also tolerates changed RRSIG of SOA
  */
 bool changeset_differs_just_serial(const changeset_t *ch);
 
@@ -214,6 +216,15 @@ void changesets_free(list_t *chgs);
  * \param ch  Changeset to clear.
  */
 void changeset_clear(changeset_t *ch);
+
+/*!
+ * \brief Copy changeset to newly allocated space, all rrsigs are copied.
+ *
+ * \param ch  Changeset to be copied.
+ *
+ * \return a copy, or NULL if error.
+ */
+changeset_t *changeset_clone(const changeset_t *ch);
 
 /*!
  * \brief Frees single changeset.

@@ -1296,6 +1296,9 @@ Possible values:
 When ``difference`` is configured and there are no zone contents yet (cold start of Knot
 and no zone contents in journal), it behaves the same way like ``whole``.
 
+When ``difference-no-serial`` is configured and :ref:`automatic singing<zone_dnssec-signing>` is enabled,
+RRSIG, nSEC and NSEC3 records are ignored during computation of differences.
+
 *Default:* whole
 
 .. _zone_journal-content:

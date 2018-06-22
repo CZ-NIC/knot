@@ -23,7 +23,7 @@
  * \brief Create diff between two zone trees.
  * */
 int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone2,
-                       changeset_t *changeset);
+                       changeset_t *changeset, bool ignore_dnssec);
 
 /*!
  * \brief Add diff between two zone trees into the changeset.
