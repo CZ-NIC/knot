@@ -241,6 +241,9 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
+	// Seized by zone_update. Don't free the contents again in axfr_cleanup.
+	data->axfr.zone = NULL;
+
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
@@ -272,7 +275,6 @@ static int axfr_finalize(struct refresh_data *data)
 
 	xfr_log_publish(data->zone->name, data->remote, old_serial,
 	                zone_contents_serial(new_zone), bootstrap);
-	data->axfr.zone = NULL; // seized
 
 	return KNOT_EOK;
 }
