@@ -23,7 +23,7 @@
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
 #include "knot/dnssec/key-events.h"
-#include "knot/events/handlers.h"
+#include "knot/events/events.h"
 #include "knot/events/log.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
@@ -1138,7 +1138,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 
 	// Expire the zone.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
-		(void)event_expire(conf(), zone);
+		zone_events_schedule_user(zone, ZONE_EVENT_EXPIRE);
 	}
 
 	// Purge the zone file.
