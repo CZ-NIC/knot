@@ -142,6 +142,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     server.gen_confile()
     server.reload()
 
+    t.sleep(server.dnssec(zone).propagation_delay + 1) # check that Knot does wait for the submittion to succeed
     submission_cb()
     t.sleep(4)
     if before_keys < 2 or after_keys > 1:
