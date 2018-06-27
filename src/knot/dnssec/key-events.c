@@ -472,7 +472,7 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		key_state_t keystate = get_key_state(key, ctx->now);
 		uint8_t keyalg = dnssec_key_get_algorithm(key->key);
-		if (((newkey->is_ksk && key->is_ksk) || (newkey->is_zsk && key->is_zsk))
+		if (((newkey->is_ksk && key->is_ksk) || (newkey->is_zsk && key->is_zsk && !key->is_ksk))
 		    && keystate == DNSSEC_KEY_STATE_ACTIVE) {
 			if (key->is_ksk || keyalg != dnssec_key_get_algorithm(newkey->key)) {
 				key->timing.retire_active = ctx->now;
