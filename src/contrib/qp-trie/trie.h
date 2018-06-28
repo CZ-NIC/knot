@@ -1,4 +1,5 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+    Copyright (C) 2018 Tony Finch <dot@dotat.at>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +39,20 @@ typedef struct trie trie_t;
 
 /*! \brief Opaque type for holding a QP-trie iterator. */
 typedef struct trie_it trie_it_t;
+
+/*! \brief Callback for performing actions on a trie leaf
+ *
+ * Used during copy-on-write transactions
+ *
+ * \param val	The value of the element to be altered
+ * \param key	The key of the element to be altered
+ * \param len	The length of key
+ * \param d	Additional user data
+ */
+typedef void trie_cb(trie_val_t val, const char *key, size_t len, void *d);
+
+/*! \brief Opaque type for holding the copy-on-write state for a QP-trie. */
+typedef struct trie_cow trie_cow_t;
 
 /*! \brief Create a trie instance. */
 trie_t* trie_create(knot_mm_t *mm);
@@ -110,3 +125,85 @@ const char* trie_it_key(trie_it_t *it, size_t *len);
 
 /*! \brief Return pointer to the value of the current element (writable). */
 trie_val_t* trie_it_val(trie_it_t *it);
+
+/*! \brief Start a COW transaction
+ *
+ * A copy-on-write transaction starts with a call to trie_cow() which
+ * creates a shared clone of the trie and saves both old and new roots
+ * in the COW context.
+ *
+ * During the COW transaction, you call trie_cow_ins() or
+ * trie_cow_del() as necessary. These calls ensure that the relevant
+ * parts of the (new) trie are copied so that they can be modified
+ * freely.
+ *
+ * Your trie_val_t objects must be able to distinguish their
+ * reachability, either shared, or old-only, or new-only. Before a COW
+ * transaction the reachability of your objects is indeterminate.
+ * During a transaction, any trie_val_t objects that might be affected
+ * (because they are adjacent to a trie_get_cow() or trie_del_cow())
+ * are first marked as shared using the callback you pass to
+ * trie_cow().
+ *
+ * When the transaction is complete, to commit, call trie_cow_new() to
+ * get the new root, swap the old and new trie roots (e.g. with
+ * rcu_xchg_pointer) then after any readers have finished with the old
+ * trie, call trie_cow_commit() (e.g. using call_rcu()). For a
+ * rollback, you can just call trie_cow_rollback() since that doesn't
+ * conflict with readers.
+ *
+ * \param old		the old trie
+ * \param mark_shared	callback to mark a leaf as shared
+ * \param d		extra data for the callback
+ * \return		a pointer to a COW context,
+ *			or NULL if there was a failure
+ */
+trie_cow_t* trie_cow(trie_t *old, trie_cb *mark_shared, void *d);
+
+/*! \brief get the new trie from a COW context */
+trie_t* trie_cow_new(trie_cow_t *cow);
+
+/*! \brief variant of trie_get_ins() for use during COW transactions
+ *
+ * As necessary, this copies path from the root of the trie to the
+ * leaf, so that it is no longer shared. Any leaves adjacent to this
+ * path are marked as shared using the mark_shared callback passed to
+ * trie_cow().
+ *
+ * It is your responsibility to COW your trie_val_t objects. If you copy an
+ * object you must change the original's reachability from shared to old-only.
+ * New objects (including copies) must have new-only reachability.
+ */
+trie_val_t* trie_get_cow(trie_cow_t *cow, const char *key, uint32_t len);
+
+/*!
+ * \brief variant of trie_del() for use during COW transactions
+ *
+ * The mark_shared callback is invoked as necessary, in the same way
+ * as trie_get_cow().
+ *
+ * Returns KNOT_EOK if the key was removed or KNOT_ENOENT if not found.
+ * If val!=NULL and deletion succeeded, the *val is set to the deleted
+ * value pointer.
+ */
+int trie_del_cow(trie_cow_t *cow, const char *key, uint32_t len, trie_val_t *val);
+
+/*! \brief clean up the old trie after committing a COW transaction
+ *
+ * Your callback is invoked for any trie_val_t objects that might need
+ * cleaning up; you must free any objects you have marked as old-only
+ * and retain objects with shared reachability.
+ *
+ * The cow object is free()d, and the new trie root is returned.
+ */
+trie_t* trie_cow_commit(trie_cow_t *cow, trie_cb *cb, void *d);
+
+/*! \brief clean up the new trie after rolling back a COW transaction
+ *
+ * Your callback is invoked for any trie_val_t objects that might need
+ * cleaning up; you must free any objects you have marked as new-only
+ * and retain objects with shared reachability.
+ *
+ * The cow object is free()d, and the old trie root is returned.
+ */
+trie_t* trie_cow_rollback(trie_cow_t *cow, trie_cb *cb, void *d);

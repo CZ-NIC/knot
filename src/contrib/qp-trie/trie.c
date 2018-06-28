@@ -1,4 +1,5 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+    Copyright (C) 2018 Tony Finch <dot@dotat.at>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,14 +37,20 @@ typedef uint bitmap_t; /*!< Bit-maps, using the range of 1<<0 to 1<<16 (inclusiv
 typedef char static_assert_pointer_fits_in_word
 	[sizeof(word) >= sizeof(uintptr_t) ? 1 : -1];
 
+#define KEYLENBITS 31
+
 /*! \brief trie keys have lengths
  *
  * 32 bits are enough for key lengths; probably even 16 bits would be.
- * However, a 32 bit length means the alignment will be a multiple of 4,
- * allowing us to stash flags in the bottom bits of a pointer to a key.
+ * However, a 32 bit length means the alignment will be a multiple of
+ * 4, allowing us to stash the COW and BRANCH flags in the bottom bits
+ * of a pointer to a key.
+ *
+ * We need to steal a couple of bits from the length to keep the COW
+ * state of key allocations.
  */
 typedef struct {
-	uint32_t len;
+	uint32_t cow:1, len:KEYLENBITS;
 	char chars[];
 } tkey_t;
 
@@ -117,6 +124,7 @@ struct trie {
  */
 enum {
 	TSHIFT_BRANCH = 0,
+	TSHIFT_COW,
 	TSHIFT_BMP,
 	TOP_BMP = TSHIFT_BMP + TWIDTH_BMP,
 	TSHIFT_INDEX = TOP_BMP,
@@ -135,8 +143,11 @@ typedef char static_assert_bmp_fits
 /*! \brief is this node a branch or a leaf? */
 #define TFLAG_BRANCH (BIG1 << TSHIFT_BRANCH)
 
+/*! \brief copy-on-write flag, used in both leaves and branches */
+#define TFLAG_COW (BIG1 << TSHIFT_COW)
+
 /*! \brief for extracting pointer to key */
-#define TMASK_LEAF (~(word)(TFLAG_BRANCH))
+#define TMASK_LEAF (~(word)(TFLAG_BRANCH | TFLAG_COW))
 
 /*! \brief mask for extracting nibble index */
 #define TMASK_INDEX TMASK(TWIDTH_INDEX,  TSHIFT_INDEX)
@@ -150,9 +161,12 @@ typedef char static_assert_bmp_fits
 /*! \brief Initialize a new leaf, copying the key, and returning failure code. */
 static int mkleaf(node_t *leaf, const char *key, uint32_t len, knot_mm_t *mm)
 {
+	if (unlikely((word)len > (BIG1 << KEYLENBITS)))
+		return KNOT_ENOMEM;
 	tkey_t *lkey = mm_alloc(mm, sizeof(tkey_t) + len);
 	if (unlikely(!lkey))
 		return KNOT_ENOMEM;
+	lkey->cow = 0;
 	lkey->len = len;
 	memcpy(lkey->chars, key, len);
 	word i = (uintptr_t)lkey;
@@ -380,26 +394,10 @@ trie_val_t* trie_get_try(trie_t *tbl, const char *key, uint32_t len)
 	return tvalp(t);
 }
 
-int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val)
+static int del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
 {
-	assert(tbl);
-	if (!tbl->weight)
-		return KNOT_ENOENT;
-	node_t *t = &tbl->root; // current and parent node
-	node_t *p = NULL;
-	bitmap_t b = 0;
-	while (isbranch(t)) {
-		__builtin_prefetch(twigs(t));
-		b = twigbit(t, key, len);
-		if (!hastwig(t, b))
-			return KNOT_ENOENT;
-		p = t;
-		t = twig(t, twigoff(t, b));
-	}
-	tkey_t *lkey = tkey(t);
-	if (key_cmp(key, len, lkey->chars, lkey->len) != 0)
-		return KNOT_ENOENT;
-	mm_free(&tbl->mm, lkey);
+	assert(!tkey(t)->cow);
+	mm_free(&tbl->mm, tkey(t));
 	if (val != NULL)
 		*val = *tvalp(t); // we return trie_val_t directly when deleting
 	--tbl->weight;
@@ -429,6 +427,28 @@ int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val)
 	// array is OK - only beware that next time the prev_size
 	// passed to mm_realloc will not be correct; TODO?
 	return KNOT_EOK;
+}
+
+int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val)
+{
+	assert(tbl);
+	if (!tbl->weight)
+		return KNOT_ENOENT;
+	node_t *t = &tbl->root; // current and parent node
+	node_t *p = NULL;
+	bitmap_t b = 0;
+	while (isbranch(t)) {
+		__builtin_prefetch(twigs(t));
+		b = twigbit(t, key, len);
+		if (!hastwig(t, b))
+			return KNOT_ENOENT;
+		p = t;
+		t = twig(t, twigoff(t, b));
+	}
+	tkey_t *lkey = tkey(t);
+	if (key_cmp(key, len, lkey->chars, lkey->len) != 0)
+		return KNOT_ENOENT;
+	return del_found(tbl, t, p, b, val);
 }
 
 /*!
@@ -538,7 +558,8 @@ static int ns_find_branch(nstack_t *ns, const char *key, uint32_t len,
 	tkey_t *lkey = tkey(ns->stack[ns->len-1]);
 	// Find index of the first char that differs.
 	size_t bytei = 0;
-	for (bytei = 0; bytei < MIN(len,lkey->len); bytei++) {
+	uint32_t klen = lkey->len;
+	for (bytei = 0; bytei < MIN(len,klen); bytei++) {
 		if (key[bytei] != lkey->chars[bytei])
 			break;
 	}
@@ -548,7 +569,7 @@ static int ns_find_branch(nstack_t *ns, const char *key, uint32_t len,
 		index = TMAX_INDEX;
 		goto success;
 	}
-	if (likely(bytei < MIN(len,lkey->len))) {
+	if (likely(bytei < MIN(len,klen))) {
 		byte k2 = (byte)lkey->chars[bytei];
 		byte k1 = (byte)key[bytei];
 		if (((k1 ^ k2) & 0xf0) == 0)
@@ -719,7 +740,7 @@ int trie_get_leq(trie_t *tbl, const char *key, uint32_t len, trie_val_t **val)
 	// Now we re-do the first "non-matching" step in the trie
 	// but try the previous child if key was less (it may not exist)
 	int i = hastwig(t, b)
-		? twigoff(t, b) - (kbit < tbit)
+		? (int)twigoff(t, b) - (kbit < tbit)
 		: (int)twigoff(t, b) - 1 /* twigoff returns successor when !hastwig */;
 	if (i >= 0) {
 		ERR_RETURN(ns_longer(ns));
@@ -735,7 +756,12 @@ success:
 	}
 }
 
-trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len)
+/* see below */
+static int cow_pushdown(trie_cow_t *cow, nstack_t *ns);
+
+/*! \brief implementation of trie_get_ins() and trie_get_cow() */
+static trie_val_t* cow_get_ins(trie_cow_t *cow, trie_t *tbl,
+			       const char *key, uint32_t len)
 {
 	assert(tbl);
 	// First leaf in an empty tbl?
@@ -754,6 +780,8 @@ trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len)
 	index_t idiff;
 	bitmap_t tbit, kbit;
 	if (unlikely(ns_find_branch(ns, key, len, &idiff, &tbit, &kbit)))
+		return NULL;
+	if (unlikely(cow && cow_pushdown(cow, ns) != KNOT_EOK))
 		return NULL;
 	node_t *t = ns->stack[ns->len - 1];
 	if (idiff == TMAX_INDEX) // the same key was already present
@@ -799,6 +827,11 @@ err_leaf:
 	mm_free(&tbl->mm, tkey(&leaf));
 	return NULL;
 	}
+}
+
+trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len)
+{
+	return cow_get_ins(NULL, tbl, key, len);
 }
 
 /*! \brief Apply a function to every trie_val_t*, in order; a recursive solution. */
@@ -877,4 +910,284 @@ trie_val_t* trie_it_val(trie_it_t *it)
 	node_t *t = it->stack[it->len - 1];
 	assert(!isbranch(t));
 	return tvalp(t);
+}
+
+/*!\file
+ *
+ * \section About copy-on-write
+ *
+ * In these notes I'll use the term "object" to refer to either the
+ * twig array of a branch, or the application's data that is referred
+ * to by a leaf's trie_val_t pointer. Note that for COW we don't care
+ * about trie node_t structs themselves, but the objects that they
+ * point to.
+ *
+ * \subsection COW states
+ *
+ * During a COW transaction an object can be in one of three states:
+ * shared, only in the old trie, or only in the new trie. When a
+ * transaction is rolled back, the only-new objects are freed; when a
+ * transaction is committed the new trie takes the place of the old
+ * one and only-old objects are freed.
+ *
+ * \subsection branch marks and regions
+ *
+ * A branch object can be marked by setting the COW flag in the first
+ * element of its twig array. Marked branches partition the trie into
+ * regions; an object's state depends on its region.
+ *
+ * The unmarked branch objects between a trie's root and the marked
+ * branches (excluding the marked branches themselves) is exclusively
+ * owned: either old-only (if you started from the old root) or
+ * new-only (if you started from the new root).
+ *
+ * Marked branch objects, and all objects reachable from marked branch
+ * objects, are in the shared region accessible from both old and new
+ * roots. All branch objects below a marked branch must be unmarked.
+ * (That is, there is at most one marked branch object on any path
+ * from the root of a trie.)
+ *
+ * Branch nodes in the new-only region can be modified in place, in
+ * the same way as an original qp trie. Branch nodes in the old-only
+ * or shared regions must not be modified.
+ *
+ * \subsection app object states
+ *
+ * The app objects reachable from the new-only and old-only regions
+ * explicitly record their state in a way determined by the
+ * application. (These app objects are reachable from the old and new
+ * roots by traversing only unmarked branch objects.)
+ *
+ * The app objects reachable from marked branch objects are implicitly
+ * shared, but their state field has an indeterminate value. If an app
+ * object was previously touched by a rolled-back transaction it may
+ * be marked shared or old-only; if it was previously touched by a
+ * committed transaction it may be marked shared or new-only.
+ *
+ * \subsection key states
+ *
+ * The memory allocated for tkey_t objects also needs to track its
+ * sharing state. They have a "cow" flag to mark when they are shared.
+ * Keys are relatively lazily copied (to make them exclusive) when
+ * their leaf node is touched by a COW mutation.
+ *
+ * [An alternative technique might be to copy them more eagerly, in
+ * cow_pushdown(), which would avoid the need for a flag bit at the
+ * cost of more allocator churn in a transaction.]
+ *
+ * \subsection outside COW
+ *
+ * When a COW transaction is not in progress, there are no marked
+ * branch objects, so everything is exclusively owned. When a COW
+ * transaction is finished (committed or rolled back), the branch
+ * marks are removed. Since they are in the shared region, this branch
+ * cleanup is visible to both old and new tries.
+ *
+ * However the state of app objects is not clean between COW
+ * transactions. When a COW transaction is committed, we traverse the
+ * old-only region to find old-only app objects that should be freed
+ * (and vice versa for rollback). In general, there will be app
+ * objects that are only reachable from the new-only region, and that
+ * have a mixture of shared and new states.
+ */
+
+/*! \brief Trie copy-on-write state */
+struct trie_cow {
+	trie_t *old;
+	trie_t *new;
+	trie_cb *mark_shared;
+	void *d;
+};
+
+/*! \brief is this a marked branch object */
+static bool cow_marked(node_t *t)
+{
+	return isbranch(t) && (twigs(t)->i & TFLAG_COW);
+}
+
+/*! \brief is this a leaf with a marked key */
+static bool cow_key(node_t *t)
+{
+	return !isbranch(t) && tkey(t)->cow;
+}
+
+/*! \brief remove mark from a branch object */
+static void clear_cow(node_t *t)
+{
+	assert(isbranch(t));
+	twigs(t)->i &= ~TFLAG_COW;
+}
+
+/*! \brief mark a node as shared
+ *
+ * For branches this marks the twig array (in COW terminology, the
+ * branch object); for leaves it uses the callback to mark the app
+ * object.
+ */
+static void mark_cow(trie_cow_t *cow, node_t *t)
+{
+	if (isbranch(t)) {
+		node_t *object = twigs(t);
+		object->i |= TFLAG_COW;
+	} else {
+		tkey_t *lkey = tkey(t);
+		trie_val_t *valp = tvalp(t);
+		lkey->cow = 1;
+		cow->mark_shared(*valp, lkey->chars, lkey->len, cow->d);
+	}
+}
+
+/*! \brief push exclusive COW region down one node */
+static int cow_pushdown_one(trie_cow_t *cow, node_t *t)
+{
+	uint cc = branch_weight(t);
+	node_t *nt = mm_alloc(&cow->new->mm, sizeof(node_t) * cc);
+	if (nt == NULL)
+		return KNOT_ENOMEM;
+	/* mark all the children */
+	for (uint ci = 0; ci < cc; ++ci)
+		mark_cow(cow, twig(t, ci));
+	/* this node must be unmarked in both old and new versions */
+	clear_cow(t);
+	t->p = memcpy(nt, twigs(t), sizeof(node_t) * cc);
+	return KNOT_EOK;
+}
+
+/*! \brief push exclusive COW region to cover a whole node stack */
+static int cow_pushdown(trie_cow_t *cow, nstack_t *ns)
+{
+	node_t *new_twigs = NULL;
+	node_t *old_twigs = NULL;
+	for (uint i = 0; i < ns->len; i++) {
+		/* if we did a pushdown on the previous iteration, we
+		   need to update this stack entry so it points into
+		   the parent's new twigs instead of the old ones */
+		if (new_twigs != old_twigs)
+			ns->stack[i] = new_twigs + (ns->stack[i] - old_twigs);
+		if (cow_marked(ns->stack[i])) {
+			old_twigs = twigs(ns->stack[i]);
+			if (cow_pushdown_one(cow, ns->stack[i]))
+				return KNOT_ENOMEM;
+			new_twigs = twigs(ns->stack[i]);
+		} else {
+			new_twigs = NULL;
+			old_twigs = NULL;
+			/* ensure key is exclusively owned */
+			if (cow_key(ns->stack[i])) {
+				node_t oleaf = *ns->stack[i];
+				tkey_t *okey = tkey(&oleaf);
+				if(mkleaf(ns->stack[i], okey->chars, okey->len,
+					  &cow->new->mm))
+					return KNOT_ENOMEM;
+				ns->stack[i]->p = oleaf.p;
+				okey->cow = 0;
+			}
+		}
+	}
+	return KNOT_EOK;
+}
+
+trie_cow_t* trie_cow(trie_t *old, trie_cb *mark_shared, void *d)
+{
+	knot_mm_t *mm = &old->mm;
+	trie_t *new = mm_alloc(mm, sizeof(trie_t));
+	trie_cow_t *cow = mm_alloc(mm, sizeof(trie_cow_t));
+	if (new == NULL || cow == NULL) {
+		mm_free(mm, new);
+		mm_free(mm, cow);
+		return NULL;
+	}
+	new->mm = old->mm;
+	new->root = old->root;
+	new->weight = old->weight;
+	cow->old = old;
+	cow->new = new;
+	cow->mark_shared = mark_shared;
+	cow->d = d;
+	if (old->weight)
+		mark_cow(cow, &old->root);
+	return cow;
+}
+
+trie_t* trie_cow_new(trie_cow_t *cow)
+{
+	assert(cow != NULL);
+	return cow->new;
+}
+
+trie_val_t* trie_get_cow(trie_cow_t *cow, const char *key, uint32_t len)
+{
+	return cow_get_ins(cow, cow->new, key, len);
+}
+
+int trie_del_cow(trie_cow_t *cow, const char *key, uint32_t len, trie_val_t *val)
+{
+	trie_t *tbl = cow->new;
+	// First leaf in an empty tbl?
+	if (unlikely(!tbl->weight))
+		return KNOT_ENOENT;
+	{ // Intentionally un-indented; until end of function, to bound cleanup attr.
+	// Find the branching-point
+	__attribute__((cleanup(ns_cleanup)))
+		nstack_t ns_local;
+	ns_init(&ns_local, tbl);
+	nstack_t *ns = &ns_local;
+	index_t idiff;
+	bitmap_t tbit, kbit;
+	ERR_RETURN(ns_find_branch(ns, key, len, &idiff, &tbit, &kbit));
+	if (idiff != TMAX_INDEX)
+		return KNOT_ENOENT;
+	ERR_RETURN(cow_pushdown(cow, ns));
+	node_t *t = ns->stack[ns->len - 1];
+	node_t *p = ns->len >= 2 ? ns->stack[ns->len - 2] : NULL;
+	return del_found(tbl, t, p, p ? twigbit(p, key, len) : 0, val);
+	}
+}
+
+/*! \brief clean up after a COW transaction, recursively */
+static void cow_cleanup(trie_cow_t *cow, node_t *t, trie_cb *cb, void *d)
+{
+	if (cow_marked(t)) {
+		// we have hit the shared region, so just reset the mark
+		clear_cow(t);
+		return;
+	} else if (isbranch(t)) {
+		// traverse and free the exclusive region
+		uint cc = branch_weight(t);
+		for (uint ci = 0; ci < cc; ++ci)
+			cow_cleanup(cow, twig(t, ci), cb, d);
+		mm_free(&cow->new->mm, twigs(t));
+		return;
+	} else {
+		// application must decide how to clean up its values
+		tkey_t *lkey = tkey(t);
+		trie_val_t *valp = tvalp(t);
+		cb(*valp, lkey->chars, lkey->len, d);
+		// clean up exclusively-owned keys
+		if (lkey->cow)
+			lkey->cow = 0;
+		else
+			mm_free(&cow->new->mm, lkey);
+		return;
+	}
+}
+
+trie_t* trie_cow_commit(trie_cow_t *cow, trie_cb *cb, void *d)
+{
+	trie_t *ret = cow->new;
+	if (cow->old->weight)
+		cow_cleanup(cow, &cow->old->root, cb, d);
+	mm_free(&ret->mm, cow->old);
+	mm_free(&ret->mm, cow);
+	return ret;
+}
+
+trie_t* trie_cow_rollback(trie_cow_t *cow, trie_cb *cb, void *d)
+{
+	trie_t *ret = cow->old;
+	if (cow->new->weight)
+		cow_cleanup(cow, &cow->new->root, cb, d);
+	mm_free(&ret->mm, cow->new);
+	mm_free(&ret->mm, cow);
+	return ret;
 }
