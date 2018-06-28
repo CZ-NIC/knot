@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -138,11 +138,13 @@ static int axfr_query_init(knotd_qdata_t *qdata)
 
 	/* Put data to process. */
 	xfr_stats_begin(&axfr->proc.stats);
-	zone_contents_t *zone = qdata->extra->zone->contents;
-	ptrlist_add(&axfr->proc.nodes, zone->nodes, mm);
+	zone_contents_t *contents = qdata->extra->zone->contents;
+	/* Must be non-NULL for the first message. */
+	assert(contents);
+	ptrlist_add(&axfr->proc.nodes, contents->nodes, mm);
 	/* Put NSEC3 data if exists. */
-	if (!zone_tree_is_empty(zone->nsec3_nodes)) {
-		ptrlist_add(&axfr->proc.nodes, zone->nsec3_nodes, mm);
+	if (!zone_tree_is_empty(contents->nsec3_nodes)) {
+		ptrlist_add(&axfr->proc.nodes, contents->nsec3_nodes, mm);
 	}
 
 	/* Set up cleanup callback. */
