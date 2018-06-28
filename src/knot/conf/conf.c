@@ -31,6 +31,8 @@
 #include "contrib/wire_ctx.h"
 #include "contrib/openbsd/strlcat.h"
 
+#define DBG_LOG(err) CONF_LOG(LOG_DEBUG, "%s (%s)", __func__, knot_strerror((err)));
+
 conf_val_t conf_get_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
@@ -41,7 +43,7 @@ conf_val_t conf_get_txn(
 
 	if (key0_name == NULL || key1_name == NULL) {
 		val.code = KNOT_EINVAL;
-		CONF_LOG(LOG_DEBUG, "conf_get (%s)", knot_strerror(val.code));
+		DBG_LOG(val.code);
 		return val;
 	}
 
@@ -69,7 +71,7 @@ conf_val_t conf_rawid_get_txn(
 
 	if (key0_name == NULL || key1_name == NULL || id == NULL) {
 		val.code = KNOT_EINVAL;
-		CONF_LOG(LOG_DEBUG, "conf_rawid_get (%s)", knot_strerror(val.code));
+		DBG_LOG(val.code);
 		return val;
 	}
 
@@ -98,7 +100,7 @@ conf_val_t conf_id_get_txn(
 	if (key0_name == NULL || key1_name == NULL || id == NULL ||
 	    id->code != KNOT_EOK) {
 		val.code = KNOT_EINVAL;
-		CONF_LOG(LOG_DEBUG, "conf_id_get (%s)", knot_strerror(val.code));
+		DBG_LOG(val.code);
 		return val;
 	}
 
@@ -127,7 +129,7 @@ conf_val_t conf_mod_get_txn(
 
 	if (key1_name == NULL || mod_id == NULL) {
 		val.code = KNOT_EINVAL;
-		CONF_LOG(LOG_DEBUG, "conf_mod_get (%s)", knot_strerror(val.code));
+		DBG_LOG(val.code);
 		return val;
 	}
 
@@ -155,7 +157,7 @@ conf_val_t conf_zone_get_txn(
 
 	if (key1_name == NULL || dname == NULL) {
 		val.code = KNOT_EINVAL;
-		CONF_LOG(LOG_DEBUG, "conf_zone_get (%s)", knot_strerror(val.code));
+		DBG_LOG(val.code);
 		return val;
 	}
 
@@ -216,7 +218,7 @@ conf_val_t conf_default_get_txn(
 
 	if (key1_name == NULL) {
 		val.code = KNOT_EINVAL;
-		CONF_LOG(LOG_DEBUG, "conf_default_get (%s)", knot_strerror(val.code));
+		DBG_LOG(val.code);
 		return val;
 	}
 
@@ -244,7 +246,7 @@ bool conf_rawid_exists_txn(
 	size_t id_len)
 {
 	if (key0_name == NULL || id == NULL) {
-		CONF_LOG(LOG_DEBUG, "conf_rawid_exists (%s)", knot_strerror(KNOT_EINVAL));
+		DBG_LOG(KNOT_EINVAL);
 		return false;
 	}
 
@@ -269,7 +271,7 @@ bool conf_id_exists_txn(
 	conf_val_t *id)
 {
 	if (key0_name == NULL || id == NULL || id->code != KNOT_EOK) {
-		CONF_LOG(LOG_DEBUG, "conf_id_exists (%s)", knot_strerror(KNOT_EINVAL));
+		DBG_LOG(KNOT_EINVAL);
 		return false;
 	}
 
