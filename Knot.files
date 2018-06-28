@@ -438,6 +438,7 @@ tests/contrib/test_dynarray.c
 tests/contrib/test_heap.c
 tests/contrib/test_net.c
 tests/contrib/test_net_shortwrite.c
+tests/contrib/test_qp-cow.c
 tests/contrib/test_qp-trie.c
 tests/contrib/test_siphash.c
 tests/contrib/test_sockaddr.c
