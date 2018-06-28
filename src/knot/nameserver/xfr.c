@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,8 +27,12 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata)
 	knot_mm_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->extra->ext;
 
-	zone_contents_t *zone = qdata->extra->zone->contents;
-	knot_rrset_t soa_rr = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	/* Check if the zone wasn't expired during multi-message transfer. */
+	zone_contents_t *contents = qdata->extra->zone->contents;
+	if (contents == NULL) {
+		return KNOT_ENOZONE;
+	}
+	knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
 
 	/* Prepend SOA on first packet. */
 	if (xfer->stats.messages == 0) {
