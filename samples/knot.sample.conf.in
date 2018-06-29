@@ -4,10 +4,9 @@
 #
 
 server:
-    # Listen on all configured IPv4 interfaces.
-    listen: 0.0.0.0@53
-    # Listen on all configured IPv6 interfaces.
-    listen: ::@53
+    # Listen on IPv4 and IPv6 localhost
+    listen: 127.0.0.1@53
+    listen: ::1@53
     # User for running the server.
     # user: knot:knot
 
