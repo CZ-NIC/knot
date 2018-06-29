@@ -34,25 +34,11 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-<<<<<<< HEAD
-#if HAVE_MAXMINDDB
-#include <maxminddb.h>
-#endif
-
-#define MOD_GEO_CONF_FILE "\x0D""geo-conf-file"
-#define MOD_TTL "\x03""ttl"
-#define MOD_MODE "\x04""mode"
-#define MOD_GEODB_FILE "\x0A""geodb-file"
-
-// MaxMind DB related constants.
-#define ISO_CODE_LEN 2
-=======
 #define MOD_CONFIG_FILE	"\x0B""config-file"
 #define MOD_TTL		"\x03""ttl"
 #define MOD_MODE	"\x04""mode"
 #define MOD_GEODB_FILE	"\x0A""geodb-file"
 #define MOD_GEODB_KEY	"\x09""geodb-key"
->>>>>>> fb31d19a2... blbost
 
 enum operation_mode {
 	MODE_SUBNET,
@@ -63,6 +49,20 @@ static const knot_lookup_t modes[] = {
 	{ MODE_SUBNET, "subnet" },
 	{ MODE_GEODB, "geodb" },
 	{ 0, NULL }
+};
+
+enum geodb_key {
+	CONTINENT,
+	COUNTRY,
+	CITY,
+	ISP
+};
+
+static const knot_lookup_t geodb_keys[] = {
+	{ CONTINENT, "continent" },
+	{ COUNTRY, "country" },
+	{ CITY, "city" },
+	{ ISP, "isp" }
 };
 
 const yp_item_t geoip_conf[] = {
@@ -76,6 +76,7 @@ const yp_item_t geoip_conf[] = {
 
 int geoip_conf_check(knotd_conf_check_args_t *args)
 {
+
 	knotd_conf_t conf = knotd_conf_check_item(args, MOD_CONFIG_FILE);
 	if (conf.count == 0) {
 		args->err_str = "no configuration file specified";
@@ -94,6 +95,8 @@ int geoip_conf_check(knotd_conf_check_args_t *args)
 
 typedef struct {
 	enum operation_mode mode;
+	enum geodb_key keys[GEODB_KEYS];
+	uint16_t keyc;
 	uint32_t ttl;
 	trie_t *geo_trie;
 
@@ -107,19 +110,13 @@ typedef struct {
 } geoip_ctx_t;
 
 typedef struct {
-	struct sockaddr_storage *addr;
-	uint8_t prefix;
-} subnet_t;
+	struct sockaddr_storage *subnet;
+	uint8_t subnet_prefix;
 
-typedef struct {
-	char country_iso[3];
-	char *city;
-	uint16_t city_len;
-} geodata_t;
+	char *geodata[GEODB_KEYS];
+	uint32_t geodata_len[GEODB_KEYS];
+	uint8_t geodepth;
 
-typedef struct {
-	subnet_t subnet;
-	geodata_t geodata;
 	size_t count, avail;
 	knot_rrset_t *rrsets;
 	knot_rrset_t *rrsigs;
@@ -166,9 +163,9 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t view, geoip_ctx_t *c
 	return ret;
 }
 
-static bool addr_in_subnet(const struct sockaddr_storage *addr, subnet_t subnet)
+static bool addr_in_subnet(const struct sockaddr_storage *addr, geo_view_t *view)
 {
-	if (subnet.addr->ss_family != addr->ss_family) {
+	if (view->subnet->ss_family != addr->ss_family) {
 		return false;
 	}
 	uint8_t *raw_addr = NULL;
@@ -176,17 +173,17 @@ static bool addr_in_subnet(const struct sockaddr_storage *addr, subnet_t subnet)
 	switch(addr->ss_family) {
 	case AF_INET:
 		raw_addr = (uint8_t *)&((const struct sockaddr_in *)addr)->sin_addr;
-		raw_subnet = (uint8_t *)&((const struct sockaddr_in *)subnet.addr)->sin_addr;
+		raw_subnet = (uint8_t *)&((const struct sockaddr_in *)view->subnet)->sin_addr;
 		break;
 	case AF_INET6:
 		raw_addr = (uint8_t *)&((const struct sockaddr_in6 *)addr)->sin6_addr;
-		raw_subnet = (uint8_t *)&((const struct sockaddr_in6 *)subnet.addr)->sin6_addr;
+		raw_subnet = (uint8_t *)&((const struct sockaddr_in6 *)view->subnet)->sin6_addr;
 		break;
 	default:
 		return false;
 	}
-	uint8_t nbytes = subnet.prefix / 8;
-	uint8_t nbits = subnet.prefix % 8;
+	uint8_t nbytes = view->subnet_prefix / 8;
+	uint8_t nbits = view->subnet_prefix % 8;
 	for (int i = 0; i < nbytes; i++) {
 		if (raw_addr[i] != raw_subnet[i]) {
 			return false;
@@ -201,7 +198,7 @@ static bool addr_in_subnet(const struct sockaddr_storage *addr, subnet_t subnet)
 	return true;
 }
 
-static bool addr_in_geo(knotd_mod_t *mod, const struct sockaddr *addr, geodata_t geodata, uint16_t *netmask)
+static bool addr_in_geo(knotd_mod_t *mod, const struct sockaddr *addr, geo_view_t *view, uint16_t *netmask)
 {
 #if HAVE_MAXMINDDB
 	geoip_ctx_t *ctx = (geoip_ctx_t *)knotd_mod_ctx(mod);
@@ -219,40 +216,29 @@ static bool addr_in_geo(knotd_mod_t *mod, const struct sockaddr *addr, geodata_t
 
 	// Set netmask value.
 	*netmask = res.netmask;
+	MMDB_entry_data_s entry;
 
-	MMDB_entry_data_s iso_entry;
-	MMDB_entry_data_s city_entry;
-
-	// Get remote country ISO code.
-	mmdb_error = MMDB_get_value(&res.entry, &iso_entry, "country", "iso_code", NULL);
-	if (mmdb_error != MMDB_SUCCESS) {
-		knotd_mod_log(mod, LOG_ERR, "an error in MMDB occured (country)");
-		return false;
-	}
-	if (!iso_entry.has_data || iso_entry.type != MMDB_DATA_TYPE_UTF8_STRING
-	    || iso_entry.data_size != ISO_CODE_LEN) {
-		return false;
-	}
-
-	// Get remote city name.
-	mmdb_error = MMDB_get_value(&res.entry, &city_entry, "city", "names", "en", NULL);
-	if (mmdb_error != MMDB_SUCCESS &&
-	    mmdb_error != MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR) {
-		knotd_mod_log(mod, LOG_ERR, "an error in MMDB occured (city)");
-		return false;
-	}
-
-	// Compare geodata.
-	if (memcmp(geodata.country_iso, iso_entry.utf8_string, ISO_CODE_LEN) != 0) {
-		return false;
-	}
-	if (geodata.city == NULL) {
-		return true;
-	}
-	if (!city_entry.has_data || city_entry.type != MMDB_DATA_TYPE_UTF8_STRING
-	    || geodata.city_len != city_entry.data_size
-	    || memcmp(geodata.city, city_entry.utf8_string, geodata.city_len)) {
-		return false;
+	// Iterate over configured geo keys.
+	for (uint16_t i = 0; i < ctx->keyc; i++) {
+		enum geodb_key key = ctx->keys[i];
+		// Nothing to do if the view does not specify this key.
+		if (view->geodata[key] == NULL) {
+			continue;
+		}
+		mmdb_error = MMDB_aget_value(&res.entry, &entry, paths[key].path);
+		if (mmdb_error != MMDB_SUCCESS &&
+		    mmdb_error != MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR) {
+			knotd_mod_log(mod, LOG_ERR, "an entry error in MMDB occured (%s)", geodb_keys[key].name);
+			return false;
+		}
+		if (mmdb_error == MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR ||
+		    !entry.has_data || entry.type != MMDB_DATA_TYPE_UTF8_STRING) {
+			return false;
+		}
+		if (view->geodata_len[key] != entry.data_size ||
+		    memcmp(view->geodata[key], entry.utf8_string, entry.data_size) != 0) {
+			return false;
+		}
 	}
 	return true;
 #endif
@@ -309,8 +295,10 @@ static void clear_geo_view(geo_view_t *view)
 	if (view == NULL) {
 		return;
 	}
-	free(view->geodata.city);
-	free(view->subnet.addr);
+	for (int i = 0; i < GEODB_KEYS; i++) {
+		free(view->geodata[i]);
+	}
+	free(view->subnet);
 	for (int j = 0; j < view->count; j++) {
 		knot_rrset_clear(&view->rrsets[j], NULL);
 		if (view->rrsigs != NULL) {
@@ -419,54 +407,59 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 				goto cleanup;
 			}
 
-			// Parse geodata/subnet. TODO more generally!
+			// Parse geodata/subnet.
 			if (ctx->mode == MODE_GEODB) {
-				if (yp->data_len < 4 || yp->data[ISO_CODE_LEN] != ';') {
-					ret = KNOT_EINVAL;
-					goto cleanup;
-				}
-
-				size_t copied = strlcpy(view->geodata.country_iso, yp->data, ISO_CODE_LEN + 1);
-				view->geodata.city_len = yp->data_len - ISO_CODE_LEN - 1;
-				if ( view->geodata.city_len == 0 ||
-						(view->geodata.city_len == 1 && yp->data[ISO_CODE_LEN + 1] == '*')) {
-					view->geodata.city = NULL;
-				} else {
-					view->geodata.city = malloc(view->geodata.city_len);
-					copied = strlcpy(view->geodata.city, yp->data + ISO_CODE_LEN + 1,
-													 view->geodata.city_len);
-					if (copied != view->geodata.city_len) {
-						ret = KNOT_EINVAL;
-						goto cleanup;
+				char *beg = yp->data;
+				char *end = beg;
+				uint16_t i = 0;
+				while (1) {
+					beg = end;
+					end = strchrnul(beg, ';');
+					uint32_t key_len = end - beg;
+					if (key_len != 0 && !(key_len == 1 && *beg == '*')) {
+						view->geodepth = i + 1;
+						enum geodb_key key = ctx->keys[i];
+						view->geodata[key] = malloc(key_len + 1);
+						if (view->geodata[key] == NULL) {
+							ret = KNOT_ENOMEM;
+							goto cleanup;
+						}
+						strlcpy(view->geodata[key], beg, key_len + 1);
+						view->geodata_len[key] = key_len;
 					}
+					if (*end == '\0') {
+						break;
+					}
+					i++;
+					end++;
 				}
 			}
 
 			if (ctx->mode == MODE_SUBNET) {
 				// Parse subnet prefix length.
 				char *slash = strchr(yp->data, '/');
-				view->subnet.prefix = atoi(slash + 1);
+				view->subnet_prefix= atoi(slash + 1);
 				*slash = '\0';
 
 				// Parse address.
-				view->subnet.addr = calloc(1, sizeof(struct sockaddr_storage));
-				if (view->subnet.addr == NULL) {
+				view->subnet = calloc(1, sizeof(struct sockaddr_storage));
+				if (view->subnet == NULL) {
 					ret = KNOT_ENOMEM;
 					goto cleanup;
 				}
-				void *write_addr = &((struct sockaddr_in *)view->subnet.addr)->sin_addr;
+				void *write_addr = &((struct sockaddr_in *)view->subnet)->sin_addr;
 				// Try to parse as IPv4 address.
 				ret = inet_pton(AF_INET, yp->data, write_addr);
 				if (ret == 1) {
-					view->subnet.addr->ss_family = AF_INET;
+					view->subnet->ss_family = AF_INET;
 				} else { // Try to parse as IPv6 address.
-					write_addr = &((struct sockaddr_in6 *)view->subnet.addr)->sin6_addr;
+					write_addr = &((struct sockaddr_in6 *)view->subnet)->sin6_addr;
 					ret = inet_pton(AF_INET6, yp->data, write_addr);
 					if (ret != 1) {
 						ret = KNOT_EINVAL;
 						goto cleanup;
 					}
-					view->subnet.addr->ss_family = AF_INET6;
+					view->subnet->ss_family = AF_INET6;
 				}
 			}
 		}
@@ -603,10 +596,10 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	if (ctx->mode == MODE_SUBNET) {
 		// Check whether the remote falls into any of the configured subnets.
 		for (int i = 0; i < data->count; i++) {
-			if (addr_in_subnet(remote, data->views[i].subnet)) {
+			if (addr_in_subnet(remote, &data->views[i])) {
 				// Update ECS if used.
 				if (qdata->ecs != NULL) {
-					qdata->ecs->scope_len = data->views[i].subnet.prefix;
+					qdata->ecs->scope_len = data->views[i].subnet_prefix;
 				}
 
 				knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &data->views[i].rrsets[0], 0);
@@ -622,7 +615,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		// Check whether the remote falls into any geo location.
 		for (int i = 0; i < data->count; i++) {
 			uint16_t netmask = 0;
-			if (addr_in_geo(mod, (const struct sockaddr *)remote, data->views[i].geodata, &netmask)) {
+			if (addr_in_geo(mod, (const struct sockaddr *)remote, &data->views[i], &netmask)) {
 				// Update ECS if used.
 				if (qdata->ecs != NULL) {
 					qdata->ecs->scope_len = netmask;
@@ -667,17 +660,23 @@ int geoip_load(knotd_mod_t *mod)
 
 	int ret;
 
-	// Initialize geodb if configured.
-#if HAVE_MAXMINDDB
 	if (ctx->mode == MODE_GEODB) {
+#if HAVE_MAXMINDDB // Initialize geodb if configured.
 		conf = knotd_conf_mod(mod, MOD_GEODB_FILE);
 		ret = MMDB_open(conf.single.string, MMDB_MODE_MMAP, &ctx->db);
 		if (ret != MMDB_SUCCESS) {
 			knotd_mod_log(mod, LOG_ERR, "failed to open Geo DB");
 			return KNOT_EINVAL;
 		}
-	}
 #endif
+		// Load configured geodb keys.
+		conf = knotd_conf_mod(mod, MOD_GEODB_KEY);
+		ctx->keyc = conf.count;
+		for (size_t i = 0; i < conf.count; i++) {
+			ctx->keys[i] = conf.multi[i].option;
+		}
+		knotd_conf_free(&conf);
+	}
 
 	// Is DNSSEC used on this zone?
 	conf = knotd_conf_zone(mod, C_DNSSEC_SIGNING, knotd_mod_zone(mod));
@@ -723,4 +722,4 @@ void geoip_unload(knotd_mod_t *mod)
 }
 
 KNOTD_MOD_API(geoip, KNOTD_MOD_FLAG_SCOPE_ZONE | KNOTD_MOD_FLAG_OPT_CONF,
-              geoip_load, geoip_unload, geoip_conf, NULL);
+             geoip_load, geoip_unload, geoip_conf, geoip_conf_check);
