@@ -344,6 +344,7 @@ int main(int argc, char *argv[])
 	switch (argc - optind) {
 	case 2:
 		name = knot_dname_from_str_alloc(argv[optind + 1]);
+		knot_dname_to_lower(name);
 		// FALLTHROUGH
 	case 1:
 		db = argv[optind];
