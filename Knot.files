@@ -423,6 +423,8 @@ src/utils/knsupdate/knsupdate_params.h
 src/utils/kzonecheck/main.c
 src/utils/kzonecheck/zone_check.c
 src/utils/kzonecheck/zone_check.h
+tests-fuzz/fuzz_dname_from_str.c
+tests-fuzz/fuzz_dname_to_str.c
 tests-fuzz/fuzz_packet.c
 tests-fuzz/fuzz_zscanner.c
 tests-fuzz/knotd_wrap/afl-loop.h
