@@ -127,7 +127,7 @@ typedef struct {
 	geo_view_t *views;
 } geo_trie_val_t;
 
-static int add_view_to_trie(knot_dname_t *owner, geo_view_t view, geoip_ctx_t *ctx)
+static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *ctx)
 {
 	int ret = KNOT_EOK;
 
@@ -140,13 +140,13 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t view, geoip_ctx_t *c
 		new_val->avail = 1;
 		new_val->count = 1;
 		new_val->views = malloc(sizeof(geo_view_t));
-		new_val->views[0] = view;
+		new_val->views[0] = *view;
 
 		// Add new value to trie.
 		*val = new_val;
 	} else {
 		// Double the views array in size if necessary.
-		if (cur_val->avail >= cur_val->count) {
+		if (cur_val->avail == cur_val->count) {
 			void *alloc_ret = realloc(cur_val->views,
 			                          2 * cur_val->avail * sizeof(geo_view_t));
 			if (alloc_ret == NULL) {
@@ -157,7 +157,7 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t view, geoip_ctx_t *c
 		}
 
 		// Insert new element.
-		cur_val->views[cur_val->count++] = view;
+		cur_val->views[cur_val->count++] = *view;
 	}
 
 	return ret;
@@ -251,6 +251,7 @@ static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *
 		return KNOT_EOK;
 	}
 
+	int ret = KNOT_EOK;
 	if (key != NULL) {
 		view->rrsigs = malloc(sizeof(knot_rrset_t) * view->count);
 		if (view->rrsigs == NULL) {
@@ -263,7 +264,7 @@ static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *
 			}
 			knot_rrset_init(&view->rrsigs[i], owner_cpy, KNOT_RRTYPE_RRSIG,
 			                KNOT_CLASS_IN, ctx->ttl);
-			int ret = knot_sign_rrset(&view->rrsigs[i], &view->rrsets[i],
+			ret = knot_sign_rrset(&view->rrsigs[i], &view->rrsets[i],
 			                      key->key, key->ctx, &ctx->kctx, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -271,7 +272,13 @@ static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *
 		}
 	}
 
-	return add_view_to_trie(owner, *view, ctx);
+	ret = add_view_to_trie(owner, view, ctx);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	view->rrsets = NULL;
+	view->rrsigs = NULL;
+	return ret;
 }
 
 static int init_geo_view(geo_view_t *view)
@@ -306,7 +313,9 @@ static void clear_geo_view(geo_view_t *view)
 		}
 	}
 	free(view->rrsets);
+	view->rrsets = NULL;
 	free(view->rrsigs);
+	view->rrsigs = NULL;
 }
 
 static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
@@ -316,7 +325,10 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 	zs_scanner_t *scanner = NULL;
 	knot_dname_t owner_buff[KNOT_DNAME_MAXLEN];
 	knot_dname_t *owner = NULL;
-	geo_view_t *view = NULL;
+	geo_view_t *view = calloc(1, sizeof(geo_view_t));
+	if (view == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	yp = malloc(sizeof(yp_parser_t));
 	if (yp == NULL) {
@@ -381,7 +393,6 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 				ret = KNOT_ENOMEM;
 				goto cleanup;
 			}
-			knotd_mod_log(mod, LOG_DEBUG, "%s", set_origin);
 
 			// Set owner as origin for future record parses.
 			if (zs_set_input_string(scanner, set_origin, strlen(set_origin)) != 0
@@ -396,12 +407,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		// New geo view description starts.
 		if (yp->event == YP_EID) {
 			// Initialize new geo view.
-			free(view);
-			view = calloc(1, sizeof(geo_view_t));
-			if (view == NULL) {
-				ret = KNOT_ENOMEM;
-				goto cleanup;
-			}
+			memset(view, 0, sizeof(geo_view_t));
 			ret = init_geo_view(view);
 			if (ret != KNOT_EOK) {
 				goto cleanup;
@@ -490,11 +496,13 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 						goto cleanup;
 					}
 					view->rrsets = alloc_ret;
+					view->avail *= 2;
 				}
 				add_rr = &view->rrsets[view->count++];
 				knot_dname_t *owner_cpy = knot_dname_copy(owner, NULL);
 				if (owner_cpy == NULL) {
-					return KNOT_ENOMEM;
+					ret = KNOT_ENOMEM;
+					goto cleanup;
 				}
 				knot_rrset_init(add_rr, owner_cpy, rr_type, KNOT_CLASS_IN, ctx->ttl);
 			}
@@ -505,7 +513,6 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 				ret = KNOT_ENOMEM;
 				goto cleanup;
 			}
-			knotd_mod_log(mod, LOG_DEBUG, "%s", input_string);
 
 			if (zs_set_input_string(scanner, input_string, strlen(input_string)) != 0 ||
 			    zs_parse_record(scanner) != 0 ||
@@ -570,11 +577,8 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	geoip_ctx_t *ctx = (geoip_ctx_t *)knotd_mod_ctx(mod);
 
-	// Geolocate only A or AAAA records.
+	// Save the query type.
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
-	if (qtype != KNOT_RRTYPE_A && qtype != KNOT_RRTYPE_AAAA) {
-		return state;
-	}
 
 	// Check if geolocation is available for given query.
 	knot_dname_t *qname = knot_pkt_qname(qdata->query);
@@ -588,55 +592,79 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	geo_trie_val_t *data = *val;
 
 	// Check if EDNS Client Subnet is available.
-	const struct sockaddr_storage *remote = NULL;
+	const struct sockaddr_storage *remote = qdata->params->remote;
 	if (knot_edns_client_subnet_get_addr((struct sockaddr_storage *)remote, qdata->ecs) != KNOT_EOK) {
 		remote = qdata->params->remote;
 	}
 
 	if (ctx->mode == MODE_SUBNET) {
-		// Check whether the remote falls into any of the configured subnets.
+		// Find the best subnet containing the remote and the rrset the query asked for.
+		uint8_t best_prefix = 0;
+		knot_rrset_t *rr = NULL;
+		knot_rrset_t *rrsig = NULL;
 		for (int i = 0; i < data->count; i++) {
-			if (addr_in_subnet(remote, &data->views[i])) {
-				// Update ECS if used.
-				if (qdata->ecs != NULL) {
-					qdata->ecs->scope_len = data->views[i].subnet_prefix;
+			geo_view_t *view = &data->views[i];
+			if (addr_in_subnet(remote, view) && view->subnet_prefix >= best_prefix) {
+				for (int j = 0; j < view->count; j++) {
+					if (view->rrsets[j].type == qtype) {
+						best_prefix = view->subnet_prefix;
+						rr = &view->rrsets[j];
+						if (view->rrsigs != NULL) {
+							rrsig = &view->rrsigs[j];
+						}
+						break;
+					}
 				}
-
-				knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &data->views[i].rrsets[0], 0);
-				if (ctx->dnssec && knot_pkt_has_dnssec(qdata->query)) {
-					knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &data->views[i].rrsigs[0], 0);
-				}
-				return KNOTD_IN_STATE_HIT;
 			}
+		}
+		if (rr != NULL) {
+			// Update ECS if used.
+			if (qdata->ecs != NULL) {
+				qdata->ecs->scope_len = best_prefix;
+			}
+
+			knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rr, 0);
+			if (ctx->dnssec && knot_pkt_has_dnssec(qdata->query) && rrsig != NULL) {
+				knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rrsig, 0);
+			}
+			return KNOTD_IN_STATE_HIT;
 		}
 	}
 
 	if (ctx->mode == MODE_GEODB) {
+		uint16_t netmask = 0;
+		uint8_t best_depth = 0;
+		knot_rrset_t *rr = NULL;
+		knot_rrset_t *rrsig = NULL;
 		// Check whether the remote falls into any geo location.
 		for (int i = 0; i < data->count; i++) {
-			uint16_t netmask = 0;
-			if (addr_in_geo(mod, (const struct sockaddr *)remote, &data->views[i], &netmask)) {
-				// Update ECS if used.
-				if (qdata->ecs != NULL) {
-					qdata->ecs->scope_len = netmask;
+			geo_view_t *view = &data->views[i];
+			if (addr_in_geo(mod, (const struct sockaddr *)remote, view, &netmask) &&
+			    view->geodepth >= best_depth) {
+				for (int j = 0; j < view->count; j++) {
+					if (view->rrsets[j].type == qtype) {
+						best_depth = view->geodepth;
+						rr = &view->rrsets[j];
+						if (view->rrsigs != NULL) {
+							rrsig = &view->rrsigs[j];
+						}
+						break;
+					}
 				}
-
-				knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &data->views[i].rrsets[0], 0);
-				if (ctx->dnssec && knot_pkt_has_dnssec(qdata->query)) {
-					knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, &data->views[i].rrsigs[0], 0);
-				}
-				return KNOTD_IN_STATE_HIT;
 			}
 		}
-	}
+		// Update ECS if used.
+		if (rr != NULL) {
+			if (qdata->ecs != NULL) {
+				qdata->ecs->scope_len = netmask;
+			}
 
-	// Dump found rrsets for debug reasons.
-	for (int i = 0; i < data->count; i++) {
-		size_t dump_size = 1024;
-		char *txt_dump = malloc(dump_size);
-		knot_rrset_txt_dump(&data->views[i].rrsets[0], &txt_dump, &dump_size, &KNOT_DUMP_STYLE_DEFAULT);
-		knotd_mod_log(mod, LOG_DEBUG, "%s", txt_dump);
-		free(txt_dump);
+			knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rr, 0);
+			if (ctx->dnssec && knot_pkt_has_dnssec(qdata->query) && rrsig != NULL) {
+				knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rrsig, 0);
+			}
+			return KNOTD_IN_STATE_HIT;
+		}
 	}
 
 	return state;
