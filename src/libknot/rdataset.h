@@ -62,7 +62,7 @@ inline static void knot_rdataset_init(knot_rdataset_t *rrs)
  *
  * \return Next RR.
  */
-static inline knot_rdata_t *knot_rdata_next(knot_rdata_t *rr)
+static inline knot_rdata_t *knot_rdataset_next(knot_rdata_t *rr)
 {
 	assert(rr);
 	return (knot_rdata_t *)((uint8_t *)rr + knot_rdata_size(rr->len));
