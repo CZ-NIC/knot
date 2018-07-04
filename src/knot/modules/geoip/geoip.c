@@ -669,7 +669,7 @@ int geoip_load(knotd_mod_t *mod)
 
 	knotd_mod_ctx_set(mod, ctx);
 
-	return knotd_mod_in_hook(mod, KNOTD_STAGE_BEGIN, geoip_process);
+	return knotd_mod_in_hook(mod, KNOTD_STAGE_PREANSWER, geoip_process);
 }
 
 void geoip_unload(knotd_mod_t *mod)
