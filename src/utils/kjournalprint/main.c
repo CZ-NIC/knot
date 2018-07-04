@@ -110,7 +110,7 @@ static int rrtypelist_callback(zone_node_t *node, void *data)
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
 		rrtypelist_add(ctx->arr, rrset.type);
-		*ctx->counter += rrset.rrs.rr_count;
+		*ctx->counter += rrset.rrs.count;
 	}
 	return KNOT_EOK;
 }

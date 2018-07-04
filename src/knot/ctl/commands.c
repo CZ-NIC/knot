@@ -540,7 +540,7 @@ static int send_rrset(knot_rrset_t *rrset, send_ctx_t *ctx)
 		return KNOT_ESPACE;
 	}
 
-	for (size_t i = 0; i < rrset->rrs.rr_count; ++i) {
+	for (size_t i = 0; i < rrset->rrs.count; ++i) {
 		ret = knot_rrset_txt_dump_data(rrset, i, ctx->rdata,
 		                               sizeof(ctx->rdata), &ctx->style);
 		if (ret < 0) {

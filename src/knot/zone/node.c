@@ -76,7 +76,7 @@ static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset,
 /*! \brief Checks if the added RR has the same TTL as the first RR in the node. */
 static bool ttl_changed(struct rr_data *node_data, const knot_rrset_t *rrset)
 {
-	if (rrset->type == KNOT_RRTYPE_RRSIG || node_data->rrs.rr_count == 0) {
+	if (rrset->type == KNOT_RRTYPE_RRSIG || node_data->rrs.count == 0) {
 		return false;
 	}
 
@@ -272,7 +272,7 @@ bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type)
 		return false;
 	}
 
-	uint16_t rrsigs_rdata_count = rrsigs->rr_count;
+	uint16_t rrsigs_rdata_count = rrsigs->count;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		const uint16_t type_covered =
 			knot_rrsig_type_covered(rrsigs, i);

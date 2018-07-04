@@ -114,7 +114,7 @@ void serialize_prepare(serialize_ctx_t *ctx, size_t max_size, size_t *realsize)
 	size_t candidate = 0;
 	long tmp_phase = ctx->rrset_phase;
 	while (1) {
-		if (tmp_phase >= ctx->rrset_buf[ctx->rrset_buf_size - 1].rrs.rr_count) {
+		if (tmp_phase >= ctx->rrset_buf[ctx->rrset_buf_size - 1].rrs.count) {
 			if (ctx->rrset_buf_size >= RRSET_BUF_MAXSIZE) {
 				return;
 			}
@@ -145,7 +145,7 @@ void serialize_chunk(serialize_ctx_t *ctx, uint8_t *dst_chunk, size_t chunk_size
 	wire_ctx_t wire = wire_ctx_init(dst_chunk, chunk_size);
 
 	for (size_t i = 0; ; ) {
-		if (ctx->rrset_phase >= ctx->rrset_buf[i].rrs.rr_count) {
+		if (ctx->rrset_phase >= ctx->rrset_buf[i].rrs.count) {
 			if (++i >= ctx->rrset_buf_size) {
 				break;
 			}
@@ -160,7 +160,7 @@ void serialize_chunk(serialize_ctx_t *ctx, uint8_t *dst_chunk, size_t chunk_size
 			wire_ctx_skip(&wire, size);
 			wire_ctx_write_u16(&wire, ctx->rrset_buf[i].type);
 			wire_ctx_write_u16(&wire, ctx->rrset_buf[i].rclass);
-			wire_ctx_write_u16(&wire, ctx->rrset_buf[i].rrs.rr_count);
+			wire_ctx_write_u16(&wire, ctx->rrset_buf[i].rrs.count);
 		} else {
 			const knot_rdata_t *rr = knot_rdataset_at(&ctx->rrset_buf[i].rrs,
 			                                          ctx->rrset_phase);
@@ -265,7 +265,7 @@ int deserialize_rrset_chunks(wire_ctx_t *wire, knot_rrset_t *rrset,
 
 static uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rrs.rr_count == 0) {
+	if (rrset == NULL || rrset->rrs.count == 0) {
 		return 0;
 	}
 
@@ -273,7 +273,7 @@ static uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 	uint64_t size = knot_dname_size(rrset->owner) + 3 * sizeof(uint16_t);
 
 	// RRs.
-	for (uint16_t i = 0; i < rrset->rrs.rr_count; i++) {
+	for (uint16_t i = 0; i < rrset->rrs.count; i++) {
 		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, i);
 		assert(rr);
 

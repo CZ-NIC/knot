@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 	// Test init
 	knot_rdataset_t rdataset;
 	knot_rdataset_init(&rdataset);
-	ok(rdataset.data == NULL && rdataset.rr_count == 0, "rdataset: init.");
+	ok(rdataset.rdata == NULL && rdataset.count == 0, "rdataset: init.");
 
 	// Test rdata addition
 	uint8_t buf_gt[knot_rdata_size(4)];
@@ -44,16 +44,16 @@ int main(int argc, char *argv[])
 	int ret = knot_rdataset_add(NULL, NULL, NULL);
 	is_int(KNOT_EINVAL, ret, "rdataset: add NULL.");
 	ret = knot_rdataset_add(&rdataset, rdata_gt, NULL);
-	bool add_ok = ret == KNOT_EOK && rdataset.rr_count == 1 &&
-	              knot_rdata_cmp(rdata_gt, rdataset.data) == 0;
+	bool add_ok = ret == KNOT_EOK && rdataset.count == 1 &&
+	              knot_rdata_cmp(rdata_gt, rdataset.rdata) == 0;
 	ok(add_ok, "rdataset: add.");
 
 	uint8_t buf_lo[knot_rdata_size(4)];
 	knot_rdata_t *rdata_lo = (knot_rdata_t *)buf_lo;
 	knot_rdata_init(rdata_lo, 4, (uint8_t *)"abcd");
 	ret = knot_rdataset_add(&rdataset, rdata_lo, NULL);
-	add_ok = ret == KNOT_EOK && rdataset.rr_count == 2 &&
-	         knot_rdata_cmp(rdata_lo, rdataset.data) == 0;
+	add_ok = ret == KNOT_EOK && rdataset.count == 2 &&
+	         knot_rdata_cmp(rdata_lo, rdataset.rdata) == 0;
 	ok(add_ok, "rdataset: add lower.");
 
 	// Test getters
@@ -69,9 +69,9 @@ int main(int argc, char *argv[])
 	   "rdataset: copy NULL.");
 	knot_rdataset_t copy;
 	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
-	const bool copy_ok = ret == KNOT_EOK && copy.rr_count == rdataset.rr_count &&
+	const bool copy_ok = ret == KNOT_EOK && copy.count == rdataset.count &&
 	                     knot_rdataset_size(&copy) == knot_rdataset_size(&rdataset) &&
-	                     memcmp(rdataset.data, copy.data,
+	                     memcmp(rdataset.rdata, copy.rdata,
 	                            knot_rdataset_size(&rdataset)) == 0;
 	ok(copy_ok, "rdataset: copy");
 
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 
 	// Test clear
 	knot_rdataset_clear(&copy, NULL);
-	ok(copy.rr_count == 0 && copy.data == NULL, "rdataset: clear.");
+	ok(copy.count == 0 && copy.rdata == NULL, "rdataset: clear.");
 
 	// Test not equal (different count)
 	ok(!knot_rdataset_eq(&rdataset, &copy), "rdataset: not equal - count");
@@ -100,10 +100,10 @@ int main(int argc, char *argv[])
 	ret = knot_rdataset_merge(&empty, &rdataset, NULL);
 	bool merge_ok = ret == KNOT_EOK && knot_rdataset_eq(&empty, &rdataset);
 	ok(merge_ok, "rdataset: merge empty.");
-	knot_rdata_t *data_before = rdataset.data;
+	knot_rdata_t *data_before = rdataset.rdata;
 	ret = knot_rdataset_merge(&rdataset, &rdataset, NULL);
-	merge_ok = ret == KNOT_EOK && rdataset.rr_count == 2 &&
-	           data_before == rdataset.data;
+	merge_ok = ret == KNOT_EOK && rdataset.count == 2 &&
+	           data_before == rdataset.rdata;
 	ok(merge_ok, "rdataset: merge self.");
 
 	knot_rdataset_clear(&empty, NULL);
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 	RDATASET_INIT_WITH(rdataset_lo, rdata_lo);
 	RDATASET_INIT_WITH(rdataset_gt, rdata_gt);
 	ret = knot_rdataset_intersect(&rdataset_lo, &rdataset_gt, &intersection, NULL);
-	intersect_ok = ret == KNOT_EOK && intersection.rr_count == 0;
+	intersect_ok = ret == KNOT_EOK && intersection.count == 0;
 	ok(intersect_ok, "rdataset: intersect no common.");
 
 	ret = knot_rdataset_intersect(&rdataset, &rdataset_lo, &intersection, NULL);
@@ -157,29 +157,29 @@ int main(int argc, char *argv[])
 	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
 	assert(ret == KNOT_EOK);
 	ok(knot_rdataset_subtract(&copy, &copy, NULL) == KNOT_EOK &&
-	   copy.rr_count == 0, "rdataset: subtract self.");
+	   copy.count == 0, "rdataset: subtract self.");
 
 	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
 	assert(ret == KNOT_EOK);
 	ret = knot_rdataset_subtract(&copy, &rdataset, NULL);
-	bool subtract_ok = ret == KNOT_EOK && copy.rr_count == 0;
+	bool subtract_ok = ret == KNOT_EOK && copy.count == 0;
 	ok(subtract_ok, "rdataset: subtract identical.");
 
 	RDATASET_INIT_WITH(rdataset_lo, rdata_lo);
 	RDATASET_INIT_WITH(rdataset_gt, rdata_gt);
-	data_before = rdataset_lo.data;
+	data_before = rdataset_lo.rdata;
 	ret = knot_rdataset_subtract(&rdataset_lo, &rdataset_gt, NULL);
-	subtract_ok = ret == KNOT_EOK && rdataset_lo.rr_count == 1 &&
-	              rdataset_lo.data == data_before;
+	subtract_ok = ret == KNOT_EOK && rdataset_lo.count == 1 &&
+	              rdataset_lo.rdata == data_before;
 	ok(subtract_ok, "rdataset: subtract no common.");
 
 	ret = knot_rdataset_subtract(&rdataset, &rdataset_gt, NULL);
-	subtract_ok = ret == KNOT_EOK && rdataset.rr_count == 1;
+	subtract_ok = ret == KNOT_EOK && rdataset.count == 1;
 	ok(subtract_ok, "rdataset: subtract the second.");
 
 	ret = knot_rdataset_subtract(&rdataset, &rdataset_lo, NULL);
-	subtract_ok = ret == KNOT_EOK && rdataset.rr_count == 0 &&
-	              rdataset.data == NULL;
+	subtract_ok = ret == KNOT_EOK && rdataset.count == 0 &&
+	              rdataset.rdata == NULL;
 	ok(subtract_ok, "rdataset: subtract last.");
 
 	RDATASET_INIT_WITH(rdataset, rdata_gt);

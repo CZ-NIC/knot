@@ -120,7 +120,7 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 	rr_data->additional = NULL;
 
 	const knot_rdataset_t *rrs = &rr_data->rrs;
-	uint16_t rdcount = rrs->rr_count;
+	uint16_t rdcount = rrs->count;
 
 	uint16_t mandatory_count = 0;
 	uint16_t others_count = 0;
@@ -353,7 +353,7 @@ static int adjust_nsec3_node(zone_node_t **tnode, void *data)
 
 	// check if this node belongs to correct chain
 	const knot_rdataset_t *nsec3_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC3);
-	for (uint16_t i = 0; nsec3_rrs != NULL && i < nsec3_rrs->rr_count; i++) {
+	for (uint16_t i = 0; nsec3_rrs != NULL && i < nsec3_rrs->count; i++) {
 		if (nsec3_params_match(nsec3_rrs, &args->zone->nsec3_params, i)) {
 			node->flags |= NODE_FLAGS_IN_NSEC3_CHAIN;
 		}
@@ -641,7 +641,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		return ret;
 	}
 
-	if (node_rrs->rr_count == 0) {
+	if (node_rrs->count == 0) {
 		// RRSet is empty now, remove it from node, all data freed.
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
@@ -966,7 +966,7 @@ static int load_nsec3param(zone_contents_t *contents)
 		return KNOT_EOK;
 	}
 
-	if (rrs->rr_count < 1) {
+	if (rrs->count < 1) {
 		return KNOT_EINVAL;
 	}
 

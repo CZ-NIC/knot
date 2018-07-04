@@ -46,8 +46,8 @@ static int load_soas(const zone_contents_t *zone1, const zone_contents_t *zone2,
 		return KNOT_EINVAL;
 	}
 
-	if (soa_rrset1.rrs.rr_count == 0 ||
-	    soa_rrset2.rrs.rr_count == 0) {
+	if (soa_rrset1.rrs.count == 0 ||
+	    soa_rrset2.rrs.count == 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -129,7 +129,7 @@ static int rdata_return_changes(const knot_rrset_t *rrset1,
 	* changed/removed rdatas. This has awful computation time.
 	*/
 	bool ttl_differ = rrset1->ttl != rrset2->ttl;
-	uint16_t rr1_count = rrset1->rrs.rr_count;
+	uint16_t rr1_count = rrset1->rrs.count;
 	for (uint16_t i = 0; i < rr1_count; ++i) {
 		if (ttl_differ || !rr_exists(rrset2, rrset1, i)) {
 			/*

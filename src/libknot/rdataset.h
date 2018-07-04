@@ -34,8 +34,8 @@
 
 /*!< \brief Set of RRs. */
 typedef struct {
-	uint16_t rr_count;  /*!< \brief Count of RRs stored in the structure. */
-	knot_rdata_t *data; /*!< \brief Actual data, canonically sorted. */
+	uint16_t count;      /*!< \brief Count of RRs stored in the structure. */
+	knot_rdata_t *rdata; /*!< \brief Serialized rdata, canonically sorted. */
 } knot_rdataset_t;
 
 /*!
@@ -46,8 +46,8 @@ typedef struct {
 inline static void knot_rdataset_init(knot_rdataset_t *rrs)
 {
 	if (rrs != NULL) {
-		rrs->rr_count = 0;
-		rrs->data = NULL;
+		rrs->count = 0;
+		rrs->rdata = NULL;
 	}
 }
 
@@ -211,7 +211,7 @@ int knot_rdataset_sort_at(knot_rdataset_t *rrs, uint16_t pos, knot_mm_t *mm);
 
 /*! \brief Check helper. */
 #define KNOT_RDATASET_CHECK(rrs, pos) \
-	assert(rrs && rrs->data && rrs->rr_count > 0 && pos < rrs->rr_count);
+	assert(rrs && rrs->rdata && rrs->count > 0 && pos < rrs->count);
 
 /*! \brief Access helper. */
 static inline

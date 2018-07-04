@@ -163,7 +163,7 @@ static int check_not_in_use(zone_update_t *update,
 /*!< \brief Returns true if rrset has 0 data or RDATA of size 0 (we need TTL).*/
 static bool rrset_empty(const knot_rrset_t *rrset)
 {
-	uint16_t rr_count = rrset->rrs.rr_count;
+	uint16_t rr_count = rrset->rrs.count;
 	if (rr_count == 0) {
 		return true;
 	}
@@ -282,7 +282,7 @@ static bool node_contains_rr(const zone_node_t *node,
 {
 	const knot_rdataset_t *zone_rrs = node_rdataset(node, rr->type);
 	if (zone_rrs) {
-		assert(rr->rrs.rr_count == 1);
+		assert(rr->rrs.count == 1);
 		return knot_rdataset_member(zone_rrs, knot_rdataset_at(&rr->rrs, 0));
 	} else {
 		return false;
@@ -494,7 +494,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 			// Zone without apex NS.
 			return KNOT_EOK;
 		}
-		if (ns_rrs->rr_count == 1) {
+		if (ns_rrs->count == 1) {
 			// Cannot remove last apex NS RR.
 			return KNOT_EOK;
 		}
@@ -507,7 +507,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	}
 
 	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
-	if (!knot_rdataset_member(rrs, rr->rrs.data)) {
+	if (!knot_rdataset_member(rrs, rr->rrs.rdata)) {
 		// Node does not contain this RR
 		return KNOT_EOK;
 	}

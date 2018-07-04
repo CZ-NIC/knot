@@ -139,7 +139,7 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
                          knot_mm_t *mm)
 {
-	assert(opt->rrs.rr_count == 1);
+	assert(opt->rrs.count == 1);
 
 	// extract old RDATA
 
@@ -244,7 +244,7 @@ _public_
 int knot_edns_get_options(knot_rrset_t *opt_rr, knot_edns_options_t **out,
                           knot_mm_t *mm)
 {
-	if (opt_rr == NULL || opt_rr->rrs.rr_count > 1 || out == NULL) {
+	if (opt_rr == NULL || opt_rr->rrs.count > 1 || out == NULL) {
 		return KNOT_EINVAL;
 	}
 

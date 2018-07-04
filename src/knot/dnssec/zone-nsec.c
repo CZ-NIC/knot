@@ -174,7 +174,7 @@ static bool nsec3param_valid(const knot_rdataset_t *rrs,
 	}
 
 	// multiple NSEC3 records
-	if (rrs->rr_count != 1) {
+	if (rrs->count != 1) {
 		return false;
 	}
 

@@ -349,7 +349,7 @@ static int check_rrsig_rdata(sem_handler_t *handler,
 			return KNOT_EOK;
 		}
 
-		for (int i = 0; i < dnskeys->rr_count; i++) {
+		for (int i = 0; i < dnskeys->count; i++) {
 			uint16_t flags = knot_dnskey_flags(dnskeys, i);
 			uint8_t proto = knot_dnskey_proto(dnskeys, i);
 			/* RFC 4034 2.1.1 & 2.1.2 */
@@ -432,7 +432,7 @@ static int check_rrsig_in_rrset(sem_handler_t *handler,
 	}
 
 	bool verified = false;
-	for (uint16_t i = 0; ret == KNOT_EOK && i < (&rrsigs)->rr_count; ++i) {
+	for (uint16_t i = 0; ret == KNOT_EOK && i < (&rrsigs)->count; ++i) {
 		ret = check_rrsig_rdata(handler, zone, node, &rrsigs, i, rrset,
 		                        context, level, &verified);
 	}
@@ -468,7 +468,7 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 	}
 
 	// check glue record for delegation
-	for (int i = 0; i < ns_rrs->rr_count; ++i) {
+	for (int i = 0; i < ns_rrs->count; ++i) {
 		const knot_dname_t *ns_dname = knot_ns_name(ns_rrs, i);
 		if (!knot_dname_is_sub(ns_dname, node->owner)) {
 			continue;
@@ -515,11 +515,11 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 		return KNOT_EOK;
 	}
 
-	if (cdss->rr_count != 1) {
+	if (cdss->count != 1) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_CDS_MULTIPLE, NULL);
 	}
-	if (cdnskeys->rr_count != 1) {
+	if (cdnskeys->count != 1) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_CDNSKEY_MULTIPLE, NULL);
 	}
@@ -530,7 +530,7 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 
 	const knot_rdataset_t *dnskeys = node_rdataset(data->zone->apex,
 	                                               KNOT_RRTYPE_DNSKEY);
-	for (int i = 0; dnskeys != NULL && i < dnskeys->rr_count; i++) {
+	for (int i = 0; dnskeys != NULL && i < dnskeys->count; i++) {
 		knot_rdata_t *dnskey = knot_rdataset_at(dnskeys, i);
 		if (knot_rdata_cmp(dnskey, cdnskey) != 0) {
 			continue;
@@ -585,7 +585,7 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 		return KNOT_EOK;
 	}
 
-	for (int i = 0; i < dss->rr_count; i++) {
+	for (int i = 0; i < dss->count; i++) {
 		uint16_t keytag = knot_ds_key_tag(dss, i);
 		uint8_t digest_type = knot_ds_digest_type(dss, i);
 
@@ -772,7 +772,7 @@ static int check_nsec(const zone_node_t *node, semchecks_data_t *data)
 	}
 
 	/* Test that only one record is in the NSEC RRSet */
-	if (nsec_rrs->rr_count != 1) {
+	if (nsec_rrs->count != 1) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_NSEC_RDATA_MULTIPLE, NULL);
 	}
@@ -1015,7 +1015,7 @@ static int check_cname(const zone_node_t *node, semchecks_data_t *data)
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_CNAME_EXTRA_RECORDS, NULL);
 	}
-	if (cname_rrs->rr_count != 1) {
+	if (cname_rrs->count != 1) {
 		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_CNAME_MULTIPLE, NULL);
@@ -1114,7 +1114,7 @@ static void check_dnskey(zone_contents_t *zone, sem_handler_t *handler)
 		return;
 	}
 
-	for (int i = 0; i < dnskeys->rr_count; i++) {
+	for (int i = 0; i < dnskeys->count; i++) {
 		knot_rdata_t *dnskey = knot_rdataset_at(dnskeys, i);
 		dnssec_key_t *key;
 		int ret = dnssec_key_from_rdata(&key, zone->apex->owner,

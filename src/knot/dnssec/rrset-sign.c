@@ -281,11 +281,11 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
 		return KNOT_ENOENT;
 	}
 
-	if (out_sig == NULL || out_sig->rr_count > 0) {
+	if (out_sig == NULL || out_sig->count > 0) {
 		return KNOT_EINVAL;
 	}
 
-	for (int i = 0; i < rrsig_rrs->rr_count; ++i) {
+	for (int i = 0; i < rrsig_rrs->count; ++i) {
 		if (type == knot_rrsig_type_covered(rrsig_rrs, i)) {
 			const knot_rdata_t *rr_to_copy = knot_rdataset_at(rrsig_rrs, i);
 			int ret = knot_rdataset_add(out_sig, rr_to_copy, mm);
@@ -296,7 +296,7 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
 		}
 	}
 
-	return out_sig->rr_count > 0 ? KNOT_EOK : KNOT_ENOENT;
+	return out_sig->count > 0 ? KNOT_EOK : KNOT_ENOENT;
 }
 
 /*- Verification of signatures -----------------------------------------------*/

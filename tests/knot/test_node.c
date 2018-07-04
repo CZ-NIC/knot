@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	// Test remove RRset
 	node_remove_rdataset(node, KNOT_RRTYPE_AAAA);
 	ok(node->rrset_count == 2, "Node: remove non-existent rdataset.");
-	void *to_free = node_rdataset(node, KNOT_RRTYPE_TXT)->data;
+	void *to_free = node_rdataset(node, KNOT_RRTYPE_TXT)->rdata;
 	node_remove_rdataset(node, KNOT_RRTYPE_TXT);
 	ok(node->rrset_count == 1, "Node: remove existing rdataset.");
 

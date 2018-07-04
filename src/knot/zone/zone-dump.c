@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 		if (ret < 0) {
 			return ret;
 		}
-		params->rr_count += soa.rrs.rr_count;
+		params->rr_count += soa.rrs.count;
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -72,7 +72,7 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 		if (ret < 0) {
 			return ret;
 		}
-		params->rr_count +=  rrset.rrs.rr_count;
+		params->rr_count +=  rrset.rrs.count;
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -128,7 +128,7 @@ static int node_dump_text(zone_node_t *node, void *data)
 		if (ret < 0) {
 			return ret;
 		}
-		params->rr_count += rrset.rrs.rr_count;
+		params->rr_count += rrset.rrs.count;
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}

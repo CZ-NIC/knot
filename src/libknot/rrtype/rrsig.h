@@ -91,7 +91,7 @@ void knot_rrsig_signature(const knot_rdataset_t *rrs, size_t pos,
 		return;
 	}
 
-	if (rrs == NULL || pos >= rrs->rr_count) {
+	if (rrs == NULL || pos >= rrs->count) {
 		*signature = NULL;
 		*signature_size = 0;
 		return;

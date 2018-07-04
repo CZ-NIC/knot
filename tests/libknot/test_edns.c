@@ -143,7 +143,7 @@ static void check_header(knot_rrset_t *opt_rr, uint16_t payload, uint8_t ver,
 	ok(check, "%s: max payload", msg);
 
 	/* The OPT RR should have exactly one RDATA. */
-	check = (opt_rr->rrs.rr_count == 1);
+	check = (opt_rr->rrs.count == 1);
 	ok(check, "%s: RR count == 1", msg);
 
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);

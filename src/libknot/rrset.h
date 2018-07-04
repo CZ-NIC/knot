@@ -165,7 +165,7 @@ bool knot_rrset_equal(const knot_rrset_t *r1, const knot_rrset_t *r2,
  */
 inline static bool knot_rrset_empty(const knot_rrset_t *rrset)
 {
-	return rrset == NULL || rrset->rrs.rr_count == 0;
+	return rrset == NULL || rrset->rrs.count == 0;
 }
 
 /*!

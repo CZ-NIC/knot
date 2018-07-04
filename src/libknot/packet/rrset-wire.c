@@ -316,7 +316,7 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
                               uint8_t **dst, size_t *dst_avail)
 {
 	assert(rrset);
-	assert(rrset_index < rrset->rrs.rr_count);
+	assert(rrset_index < rrset->rrs.count);
 	assert(dst && *dst);
 	assert(dst_avail);
 
@@ -420,7 +420,7 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
                        uint8_t **dst, size_t *dst_avail, knot_compr_t *compr)
 {
 	assert(rrset);
-	assert(rrset_index < rrset->rrs.rr_count);
+	assert(rrset_index < rrset->rrs.count);
 	assert(dst && *dst);
 	assert(dst_avail);
 
@@ -486,17 +486,17 @@ int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
 	if (rrset == NULL || wire == NULL) {
 		return KNOT_EINVAL;
 	}
-	if (rrset->rrs.rr_count == 0) {
+	if (rrset->rrs.count == 0) {
 		return 0;
 	}
 	if (rotate != 0) {
-		rotate %= rrset->rrs.rr_count;
+		rotate %= rrset->rrs.count;
 	}
 
 	uint8_t *write = wire;
 	size_t capacity = max_size;
 
-	uint16_t count = rrset->rrs.rr_count;
+	uint16_t count = rrset->rrs.count;
 	for (uint16_t i = rotate; i < count + rotate; i++) {
 		uint16_t pos = (i < count) ? i : (i - count);
 		int ret = write_rr(rrset, pos, &write, &capacity, compr);

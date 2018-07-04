@@ -824,7 +824,7 @@ int process_query_put_rr(knot_pkt_t *pkt, knotd_qdata_t *qdata,
                          const knot_rrset_t *rr, const knot_rrset_t *rrsigs,
                          uint16_t compr_hint, uint32_t flags)
 {
-	if (rr->rrs.rr_count < 1) {
+	if (rr->rrs.count < 1) {
 		return KNOT_EMALF;
 	}
 

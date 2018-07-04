@@ -359,7 +359,7 @@ static void print_section_dig(const knot_rrset_t *rrsets,
 
 	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t *rrset = &rrsets[i];
-		uint16_t rrset_rdata_count = rrset->rrs.rr_count;
+		uint16_t rrset_rdata_count = rrset->rrs.count;
 		for (uint16_t j = 0; j < rrset_rdata_count; j++) {
 			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen,
 			                                &(style->style)) < 0) {
@@ -403,7 +403,7 @@ static void print_section_host(const knot_rrset_t *rrsets,
 		}
 		descr = knot_lookup_by_id(rtypes, rrset->type);
 
-		uint16_t rrset_rdata_count = rrset->rrs.rr_count;
+		uint16_t rrset_rdata_count = rrset->rrs.count;
 		for (uint16_t j = 0; j < rrset_rdata_count; j++) {
 			if (rrset->type == KNOT_RRTYPE_CNAME &&
 			    style->hide_cname) {

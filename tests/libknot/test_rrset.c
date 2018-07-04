@@ -31,7 +31,7 @@ static bool check_rrset(const knot_rrset_t *rrset, const knot_dname_t *owner,
 	const bool dname_cmp = owner == NULL ? rrset->owner == NULL :
 	                                       knot_dname_is_equal(rrset->owner, owner);
 	return rrset->type == type && rrset->rclass == rclass && dname_cmp &&
-	       rrset->ttl == ttl && rrset->rrs.rr_count == 0; // We do not test rdataset here
+	       rrset->ttl == ttl && rrset->rrs.count == 0; // We do not test rdataset here
 }
 
 int main(int argc, char *argv[])
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 	// Test empty
 	ok(knot_rrset_empty(rrset), "rrset: empty.");
 	ok(knot_rrset_empty(NULL), "rrset: empty NULL.");
-	copy->rrs.rr_count = 1;
+	copy->rrs.count = 1;
 	ok(!knot_rrset_empty(copy), "rrset: not empty.");
 
 	// Test init empty

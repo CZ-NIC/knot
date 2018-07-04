@@ -110,7 +110,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 		return false;
 	}
 
-	uint16_t rrsigs_rdata_count = rrsigs->rrs.rr_count;
+	uint16_t rrsigs_rdata_count = rrsigs->rrs.count;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; i++) {
 		uint16_t rr_keytag = knot_rrsig_key_tag(&rrsigs->rrs, i);
 		uint16_t rr_covered = knot_rrsig_type_covered(&rrsigs->rrs, i);
@@ -278,7 +278,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		return KNOT_EOK;
 	}
 
-	uint16_t rrsig_rdata_count = synth_rrsig.rrs.rr_count;
+	uint16_t rrsig_rdata_count = synth_rrsig.rrs.count;
 	for (uint16_t i = 0; i < rrsig_rdata_count; i++) {
 		struct keyptr_dynarray keys = get_matching_zone_keys(&synth_rrsig, i, zone_keys);
 		int endloop = 0; // 1 - continue; 2 - break
@@ -481,7 +481,7 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
 		return KNOT_EOK;
 	}
 
-	uint16_t rrsigs_rdata_count = rrsigs->rrs.rr_count;
+	uint16_t rrsigs_rdata_count = rrsigs->rrs.count;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		uint16_t type_covered = knot_rrsig_type_covered(&rrsigs->rrs, i);
 		if (!node_rrtype_exists(node, type_covered)) {

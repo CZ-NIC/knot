@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,10 +76,10 @@ static int replace_rdataset_with_copy(zone_node_t *node, uint16_t type)
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(copy, rrs->data, knot_rdataset_size(rrs));
+	memcpy(copy, rrs->rdata, knot_rdataset_size(rrs));
 
 	// Store new data into node RRS.
-	rrs->data = copy;
+	rrs->rdata = copy;
 
 	return KNOT_EOK;
 }
@@ -126,7 +126,7 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 		return false;
 	}
 
-	for (uint16_t i = 0; i < rr->rrs.rr_count; ++i) {
+	for (uint16_t i = 0; i < rr->rrs.count; ++i) {
 		knot_rdata_t *rr_cmp = knot_rdataset_at(&rr->rrs, i);
 		if (knot_rdataset_member(node_rrs, rr_cmp)) {
 			// At least one RR matches.
@@ -264,7 +264,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&changed_rrset)) {
 		// Modifying existing RRSet.
-		knot_rdata_t *old_data = changed_rrset.rrs.data;
+		knot_rdata_t *old_data = changed_rrset.rrs.rdata;
 		int ret = replace_rdataset_with_copy(node, rr->type);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -283,7 +283,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	if (ret == KNOT_EOK || ret == KNOT_ETTL) {
 		// RR added, store for possible rollback.
 		knot_rdataset_t *rrs = node_rdataset(node, rr->type);
-		int data_ret = add_new_data(ctx, rrs->data);
+		int data_ret = add_new_data(ctx, rrs->rdata);
 		if (data_ret != KNOT_EOK) {
 			knot_rdataset_clear(rrs, NULL);
 			return data_ret;
@@ -326,7 +326,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	                    contents->nsec3_nodes : contents->nodes;
 
 	knot_rrset_t removed_rrset = node_rrset(node, rr->type);
-	knot_rdata_t *old_data = removed_rrset.rrs.data;
+	knot_rdata_t *old_data = removed_rrset.rrs.rdata;
 	int ret = replace_rdataset_with_copy(node, rr->type);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -347,9 +347,9 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		return ret;
 	}
 
-	if (changed_rrs->rr_count > 0) {
+	if (changed_rrs->count > 0) {
 		// Subtraction left some data in RRSet, store it for rollback.
-		ret = add_new_data(ctx, changed_rrs->data);
+		ret = add_new_data(ctx, changed_rrs->rdata);
 		if (ret != KNOT_EOK) {
 			knot_rdataset_clear(changed_rrs, NULL);
 			return ret;

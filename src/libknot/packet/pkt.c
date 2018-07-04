@@ -43,8 +43,8 @@ static bool pkt_contains(const knot_pkt_t *packet, const knot_rrset_t *rrset)
 
 	for (int i = 0; i < packet->rrset_count; ++i) {
 		const uint16_t type = packet->rr[i].type;
-		const knot_rdata_t *data = packet->rr[i].rrs.data;
-		if (type == rrset->type && data == rrset->rrs.data) {
+		const knot_rdata_t *data = packet->rr[i].rrs.rdata;
+		if (type == rrset->type && data == rrset->rrs.rdata) {
 			return true;
 		}
 	}
@@ -544,7 +544,7 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 	}
 
 	size_t len = ret;
-	uint16_t rr_added = rr->rrs.rr_count;
+	uint16_t rr_added = rr->rrs.count;
 
 	/* Keep reference to special types. */
 	if (rr->type == KNOT_RRTYPE_OPT) {
@@ -736,7 +736,7 @@ static int parse_payload(knot_pkt_t *pkt, unsigned flags)
 	const knot_pktsection_t *ar = knot_pkt_section(pkt, KNOT_ADDITIONAL);
 	if (pkt->tsig_rr != NULL) {
 		const knot_rrset_t *last_rr = knot_pkt_rr(ar, ar->count - 1);
-		if (ar->count > 0 && pkt->tsig_rr->rrs.data != last_rr->rrs.data) {
+		if (ar->count > 0 && pkt->tsig_rr->rrs.rdata != last_rr->rrs.rdata) {
 			return KNOT_EMALF;
 		}
 	}

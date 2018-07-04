@@ -76,7 +76,7 @@ static bool handle_err(zcreator_t *zc, const knot_rrset_t *rr, int ret, bool mas
 
 int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 {
-	if (zc == NULL || rr == NULL || rr->rrs.rr_count != 1) {
+	if (zc == NULL || rr == NULL || rr->rrs.count != 1) {
 		return KNOT_EINVAL;
 	}
 

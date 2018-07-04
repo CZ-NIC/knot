@@ -44,7 +44,7 @@ inline static bool valid_nsec3_node(const zone_node_t *node)
 		return false;
 	}
 
-	if (nsec3->rr_count != 1) {
+	if (nsec3->count != 1) {
 		return false;
 	}
 

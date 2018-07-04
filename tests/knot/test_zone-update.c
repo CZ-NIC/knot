@@ -41,7 +41,7 @@ static bool node_contains_rr(const zone_node_t *node,
 {
 	const knot_rdataset_t *zone_rrs = node_rdataset(node, rr->type);
 	if (zone_rrs) {
-		for (size_t i = 0; i < rr->rrs.rr_count; ++i) {
+		for (size_t i = 0; i < rr->rrs.count; ++i) {
 			if (!knot_rdataset_member(zone_rrs, knot_rdataset_at(&rr->rrs, i))) {
 				return false;
 			}
@@ -124,7 +124,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	knot_rdataset_clear(&rrset.rrs, NULL);
 	knot_dname_t *rem_node_name = knot_dname_from_str_alloc("node.test");
 	node = (zone_node_t *) zone_update_get_node(&update, rem_node_name);
-	assert(node && node_rdataset(node, KNOT_RRTYPE_TXT)->rr_count == 2);
+	assert(node && node_rdataset(node, KNOT_RRTYPE_TXT)->count == 2);
 	/* Node removal */
 	ret = zone_update_remove_node(&update, rem_node_name);
 	node = (zone_node_t *) zone_update_get_node(&update, rem_node_name);
@@ -201,7 +201,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	is_int(KNOT_EOK, ret, "incremental zone update: addition");
 
 	const zone_node_t *synth_node = zone_update_get_apex(&update);
-	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 2,
+	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->count == 2,
 	   "incremental zone update: add change");
 
 	if (zs_set_input_string(sc, del_str, strlen(del_str)) != 0 ||
@@ -214,7 +214,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	knot_rdataset_clear(&rrset.rrs, NULL);
 
 	synth_node = zone_update_get_apex(&update);
-	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 1,
+	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->count == 1,
 	   "incremental zone update: del change");
 
 	/* Prepare node removal */
@@ -228,7 +228,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 
 	knot_dname_t *rem_node_name = knot_dname_from_str_alloc("node.test");
 	synth_node = zone_update_get_node(&update, rem_node_name);
-	assert(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->rr_count == 2);
+	assert(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->count == 2);
 	/* Node Removal */
 	ret = zone_update_remove_node(&update, rem_node_name);
 	synth_node = zone_update_get_node(&update, rem_node_name);

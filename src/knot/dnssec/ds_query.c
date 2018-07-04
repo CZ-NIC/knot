@@ -94,7 +94,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	for (size_t j = 0; j < answer->count; j++) {
 		const knot_rrset_t *rr = knot_pkt_rr(answer, j);
-		if (!rr || rr->type != KNOT_RRTYPE_DS || rr->rrs.rr_count != 1) {
+		if (!rr || rr->type != KNOT_RRTYPE_DS || rr->rrs.count != 1) {
 			ns_log(LOG_WARNING, data->zone_name, LOG_OPERATION_PARENT,
 			       LOG_DIRECTION_OUT, data->remote, "malformed message");
 			return KNOT_STATE_FAIL;

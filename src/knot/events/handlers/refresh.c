@@ -832,7 +832,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	const knot_rrset_t *rr = answer->count == 1 ? knot_pkt_rr(answer, 0) : NULL;
-	if (!rr || rr->type != KNOT_RRTYPE_SOA || rr->rrs.rr_count != 1) {
+	if (!rr || rr->type != KNOT_RRTYPE_SOA || rr->rrs.count != 1) {
 		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
 		            "malformed message");
 		return KNOT_STATE_FAIL;

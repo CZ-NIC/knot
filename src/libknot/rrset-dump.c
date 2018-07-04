@@ -1921,7 +1921,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	} else if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
 		return KNOT_ESPACE;
 	}
-	if (rrset->rrs.rr_count > 0) {
+	if (rrset->rrs.count > 0) {
 		ret = snprintf(dst + len, maxlen - len, "%s%c", buf, sep);
 	} else {
 		ret = snprintf(dst + len, maxlen - len, "%s", buf);
@@ -1946,7 +1946,7 @@ static int rrset_txt_dump(const knot_rrset_t      *rrset,
 	dst[0] = '\0';
 
 	// Loop over rdata in rrset.
-	uint16_t rr_count = rrset->rrs.rr_count;
+	uint16_t rr_count = rrset->rrs.count;
 	for (uint16_t i = 0; i < rr_count; i++) {
 		// Dump rdata owner, class, ttl and type.
 		uint32_t ttl = ((style->original_ttl && rrset->type == KNOT_RRTYPE_RRSIG) ?

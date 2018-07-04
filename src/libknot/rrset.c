@@ -149,7 +149,7 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
 _public_
 int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rrs.rr_count != 1) {
+	if (rrset == NULL || rrset->rrs.count != 1) {
 		return KNOT_EINVAL;
 	}
 
@@ -214,7 +214,7 @@ size_t knot_rrset_size(const knot_rrset_t *rrset)
 		return 0;
 	}
 
-	uint16_t rr_count = rrset->rrs.rr_count;
+	uint16_t rr_count = rrset->rrs.count;
 
 	size_t total_size = knot_dname_size(rrset->owner) * rr_count;
 
