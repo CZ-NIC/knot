@@ -52,6 +52,23 @@ inline static void knot_rdataset_init(knot_rdataset_t *rrs)
 }
 
 /*!
+ * \brief Advance to the next rdata in a rdataset.
+ *
+ * Useful for iteration.
+ *
+ * \note Ensure that this operation makes sense!
+ *
+ * \param rr  Current RR.
+ *
+ * \return Next RR.
+ */
+static inline knot_rdata_t *knot_rdata_next(knot_rdata_t *rr)
+{
+	assert(rr);
+	return (knot_rdata_t *)((uint8_t *)rr + knot_rdata_size(rr->len));
+}
+
+/*!
  * \brief Frees data initialized by RRS structure, but not the structure itself.
  *
  * \param rrs  Structure to be cleared.
