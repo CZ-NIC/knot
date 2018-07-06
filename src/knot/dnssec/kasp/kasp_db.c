@@ -649,6 +649,15 @@ int kasp_db_get_policy_last(kasp_db_t *db, const char *policy_string, knot_dname
 				free(*lp_zone);
 				free(*lp_keyid);
 				ret = KNOT_ENOMEM;
+			} else {
+				// check that the shared key ID really exists
+				key = make_key(KASPDBKEY_PARAMS, *lp_zone, *lp_keyid);
+				ret = db_api->find(txn, &key, &val, 0);
+				free_key(&key);
+				if (ret != KNOT_EOK) {
+					free(*lp_zone);
+					free(*lp_keyid);
+				}
 			}
 		}
 	}
