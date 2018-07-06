@@ -59,11 +59,17 @@ static uint32_t serial_next_date(uint32_t current)
 
 uint32_t serial_next(uint32_t current, int policy)
 {
+	uint32_t candidate;
 	switch (policy) {
 	case SERIAL_POLICY_INCREMENT:
 		return current + 1;
 	case SERIAL_POLICY_UNIXTIME:
-		return time(NULL);
+		candidate = time(NULL);
+		if (serial_compare(candidate, current) != SERIAL_GREATER) {
+			return current + 1;
+		} else {
+			return candidate;
+		}
 	case SERIAL_POLICY_DATESERIAL:
 		return serial_next_date(current);
 	default:
