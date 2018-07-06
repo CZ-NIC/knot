@@ -1237,10 +1237,9 @@ Possible values:
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-If your serial was in other than unix time format, be careful
-with the transition to unix time.  It may happen that the new serial will
-be \(aqlower\(aq than the old one. If this is the case, the transition should be
-done by hand (\fI\%RFC 1982\fP).
+In case of \fBunixtime\fP, if the resulting serial is lower or equal than current zone
+(this happens e.g. in case of migrating from other policy or frequent updates)
+the serial is incremented instead.
 .sp
 Use dateserial only if you expect less than 100 updates per day per zone.
 .UNINDENT
