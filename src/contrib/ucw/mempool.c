@@ -178,6 +178,9 @@ mp_free_big_chain(struct mempool_chunk *chunk)
 void
 mp_delete(struct mempool *pool)
 {
+	if (pool == NULL) {
+		return;
+	}
 	DBG("Deleting mempool %p", pool);
 	mp_free_big_chain(pool->state.last[1]);
 	mp_free_chain(pool->unused);
