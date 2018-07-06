@@ -98,8 +98,7 @@ void serialize_prepare(serialize_ctx_t *ctx, size_t max_size, size_t *realsize)
 	*realsize = 0;
 
 	// check if we are in middle of a rrset
-	if (ctx->rrset_phase != SERIALIZE_RRSET_INIT) {
-		assert(ctx->rrset_buf_size > 0);
+	if (ctx->rrset_buf_size > 0) {
 		ctx->rrset_buf[0] = ctx->rrset_buf[ctx->rrset_buf_size - 1];
 		ctx->rrset_buf_size = 1;
 	} else {
