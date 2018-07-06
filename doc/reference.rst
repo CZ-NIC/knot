@@ -1397,10 +1397,9 @@ Possible values:
                    8 digits match the current iso-date
 
 .. NOTE::
-   If your serial was in other than unix time format, be careful
-   with the transition to unix time.  It may happen that the new serial will
-   be \'lower\' than the old one. If this is the case, the transition should be
-   done by hand (:rfc:`1982`).
+   In case of ``unixtime``, if the resulting serial is lower or equal than current zone
+   (this happens e.g. in case of migrating from other policy or frequent updates)
+   the serial is incremented instead.
 
    Use dateserial only if you expect less than 100 updates per day per zone.
 
