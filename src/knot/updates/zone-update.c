@@ -514,11 +514,12 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 		log_zone_warning(update->zone->name, "updated serial is lower "
 		                 "than current, serial %u -> %u",
 		                 old_serial, new_serial);
+		ret = KNOT_ESOAINVAL;
+	} else {
+		knot_soa_serial_set(&soa_cpy->rrs, new_serial);
+
+		ret = zone_update_add(update, soa_cpy);
 	}
-
-	knot_soa_serial_set(&soa_cpy->rrs, new_serial);
-
-	ret = zone_update_add(update, soa_cpy);
 	knot_rrset_free(&soa_cpy, NULL);
 
 	return ret;
