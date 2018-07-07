@@ -117,8 +117,7 @@ static inline
 size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	return KNOT_EDNS_MIN_SIZE + rdata->len;
+	return KNOT_EDNS_MIN_SIZE + opt_rr->rrs.rdata->len;
 }
 
 /*!

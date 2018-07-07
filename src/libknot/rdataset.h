@@ -198,17 +198,4 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
                            knot_mm_t *mm);
 
-/*! \brief Check helper. */
-#define KNOT_RDATASET_CHECK(rrs, pos) \
-	assert(rrs && rrs->rdata && rrs->count > 0 && pos < rrs->count);
-
-/*! \brief Access helper. */
-static inline
-uint8_t *knot_rdata_offset(const knot_rdataset_t *rrs, uint16_t pos, uint16_t offset)
-{
-	knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
-	assert(rr);
-	return rr->data + offset;
-}
-
 /*! @} */

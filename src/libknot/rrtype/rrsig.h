@@ -23,87 +23,77 @@
 #pragma once
 
 #include "libknot/dname.h"
-#include "libknot/rdataset.h"
+#include "libknot/rdata.h"
 #include "libknot/wire.h"
 
 static inline
-uint16_t knot_rrsig_type_covered(const knot_rdataset_t *rrs, size_t pos)
+uint16_t knot_rrsig_type_covered(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 0));
+	assert(rdata);
+	return knot_wire_read_u16(rdata->data);
 }
 
 static inline
-uint8_t knot_rrsig_algorithm(const knot_rdataset_t *rrs, size_t pos)
+uint8_t knot_rrsig_alg(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return *knot_rdata_offset(rrs, pos, 2);
+	assert(rdata);
+	return *(rdata->data + 2);
 }
 
 static inline
-uint8_t knot_rrsig_labels(const knot_rdataset_t *rrs, size_t pos)
+uint8_t knot_rrsig_labels(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return *knot_rdata_offset(rrs, pos, 3);
+	assert(rdata);
+	return *(rdata->data + 3);
 }
 
 static inline
-uint32_t knot_rrsig_original_ttl(const knot_rdataset_t *rrs, size_t pos)
+uint32_t knot_rrsig_original_ttl(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_wire_read_u32(knot_rdata_offset(rrs, pos, 4));
+	assert(rdata);
+	return knot_wire_read_u32(rdata->data + 4);
 }
 
 static inline
-uint32_t knot_rrsig_sig_expiration(const knot_rdataset_t *rrs, size_t pos)
+uint32_t knot_rrsig_sig_expiration(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_wire_read_u32(knot_rdata_offset(rrs, pos, 8));
+	assert(rdata);
+	return knot_wire_read_u32(rdata->data + 8);
 }
 
 static inline
-uint32_t knot_rrsig_sig_inception(const knot_rdataset_t *rrs, size_t pos)
+uint32_t knot_rrsig_sig_inception(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_wire_read_u32(knot_rdata_offset(rrs, pos, 12));
+	assert(rdata);
+	return knot_wire_read_u32(rdata->data + 12);
 }
 
 static inline
-uint16_t knot_rrsig_key_tag(const knot_rdataset_t *rrs, size_t pos)
+uint16_t knot_rrsig_key_tag(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 16));
+	assert(rdata);
+	return knot_wire_read_u16(rdata->data + 16);
 }
 
 static inline
-const knot_dname_t *knot_rrsig_signer_name(const knot_rdataset_t *rrs,
-                                           size_t pos)
+const knot_dname_t *knot_rrsig_signer_name(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_rdata_offset(rrs, pos, 18);
+	assert(rdata);
+	return rdata->data + 18;
 }
 
 static inline
-void knot_rrsig_signature(const knot_rdataset_t *rrs, size_t pos,
-                          uint8_t **signature, size_t *signature_size)
+uint16_t knot_rrsig_signature_len(const knot_rdata_t *rdata)
 {
-	if (!signature || !signature_size) {
-		return;
-	}
+	assert(rdata);
+	return rdata->len - 18 - knot_dname_size(knot_rrsig_signer_name(rdata));
+}
 
-	if (rrs == NULL || pos >= rrs->count) {
-		*signature = NULL;
-		*signature_size = 0;
-		return;
-	}
-
-	uint8_t *rdata = knot_rdata_offset(rrs, pos, 0);
-	uint8_t *signer = rdata + 18;
-	size_t total_size = knot_rdataset_at(rrs, pos)->len;
-	size_t header_size = 18 + knot_dname_size(signer);
-
-	*signature = rdata + header_size;
-	*signature_size = total_size - header_size;
+static inline
+const uint8_t *knot_rrsig_signature(const knot_rdata_t *rdata)
+{
+	assert(rdata);
+	return rdata->data + 18 + knot_dname_size(knot_rrsig_signer_name(rdata));
 }
 
 /*! @} */

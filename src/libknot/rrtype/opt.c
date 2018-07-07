@@ -143,9 +143,8 @@ static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
 
 	// extract old RDATA
 
-	knot_rdata_t *old_rdata = knot_rdataset_at(&opt->rrs, 0);
-	uint8_t *old_data = old_rdata->data;
-	uint16_t old_data_len = old_rdata->len;
+	uint8_t *old_data = opt->rrs.rdata->data;
+	uint16_t old_data_len = opt->rrs.rdata->len;
 
 	// construct new RDATA
 
@@ -172,7 +171,7 @@ static uint8_t *edns_add(knot_rrset_t *opt, uint16_t code, uint16_t size,
 		return NULL;
 	}
 
-	return knot_rdataset_at(&opt->rrs, 0)->data + offset;
+	return opt->rrs.rdata->data + offset;
 }
 
 _public_
@@ -220,7 +219,7 @@ uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code)
 		return NULL;
 	}
 
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	knot_rdata_t *rdata = opt_rr->rrs.rdata;
 	if (rdata == NULL || rdata->len == 0) {
 		return NULL;
 	}
@@ -248,7 +247,7 @@ int knot_edns_get_options(knot_rrset_t *opt_rr, knot_edns_options_t **out,
 		return KNOT_EINVAL;
 	}
 
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	knot_rdata_t *rdata = opt_rr->rrs.rdata;
 	if (rdata == NULL || rdata->len == 0) {
 		return KNOT_EOK;
 	}

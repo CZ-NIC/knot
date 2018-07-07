@@ -24,55 +24,58 @@
 
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
-#include "libknot/rdataset.h"
+#include "libknot/rdata.h"
 
 static inline
-const knot_dname_t *knot_cname_name(const knot_rdataset_t *rrs)
+const knot_dname_t *knot_cname_name(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, 0);
-	return knot_rdata_offset(rrs, 0, 0);
+	assert(rdata);
+	return rdata->data;
 }
 
 static inline
-const knot_dname_t *knot_dname_target(const knot_rdataset_t *rrs)
+const knot_dname_t *knot_dname_target(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, 0);
-	return knot_rdata_offset(rrs, 0, 0);
+	assert(rdata);
+	return rdata->data;
 }
 
 static inline
-const knot_dname_t *knot_ns_name(const knot_rdataset_t *rrs, size_t pos)
+const knot_dname_t *knot_ns_name(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_rdata_offset(rrs, pos, 0);
+	assert(rdata);
+	return rdata->data;
 }
 
 static inline
-const knot_dname_t *knot_mx_name(const knot_rdataset_t *rrs, size_t pos)
+const knot_dname_t *knot_mx_name(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_rdata_offset(rrs, pos, 2);
+	assert(rdata);
+	return rdata->data + 2;
 }
 
 static inline
-const knot_dname_t *knot_srv_name(const knot_rdataset_t *rrs, size_t pos)
+const knot_dname_t *knot_srv_name(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_rdata_offset(rrs, pos, 6);
+	assert(rdata);
+	return rdata->data + 6;
 }
 
 static inline
-const knot_dname_t *knot_rdata_name(const knot_rdataset_t *rrs, size_t pos, uint16_t type)
+const knot_dname_t *knot_rdata_name(const knot_rdata_t *rdata, uint16_t type)
 {
+	assert(rdata);
 	switch (type) {
 		case KNOT_RRTYPE_NS:
-			return knot_ns_name(rrs, pos);
+			return knot_ns_name(rdata);
 		case KNOT_RRTYPE_MX:
-			return knot_mx_name(rrs, pos);
+			return knot_mx_name(rdata);
 		case KNOT_RRTYPE_SRV:
-			return knot_srv_name(rrs, pos);
+			return knot_srv_name(rdata);
 		case KNOT_RRTYPE_CNAME:
-			return knot_cname_name(rrs);
+			return knot_cname_name(rdata);
+		case KNOT_RRTYPE_DNAME:
+			return knot_dname_target(rdata);
 	}
 
 	return NULL;

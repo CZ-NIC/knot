@@ -23,25 +23,27 @@
 #pragma once
 
 #include "libknot/dname.h"
-#include "libknot/rdataset.h"
+#include "libknot/rdata.h"
 
 static inline
-const knot_dname_t *knot_nsec_next(const knot_rdataset_t *rrs)
+const knot_dname_t *knot_nsec_next(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, 0);
-	return knot_rdata_offset(rrs, 0, 0);
+	assert(rdata);
+	return rdata->data;
 }
 
 static inline
-void knot_nsec_bitmap(const knot_rdataset_t *rrs,
-                      uint8_t **bitmap, uint16_t *size)
+uint16_t knot_nsec_bitmap_len(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, 0);
-	knot_rdata_t *rr = knot_rdataset_at(rrs, 0);
-	int next_size = knot_dname_size(knot_nsec_next(rrs));
+	assert(rdata);
+	return rdata->len - knot_dname_size(knot_nsec_next(rdata));
+}
 
-	*bitmap = rr->data + next_size;
-	*size = rr->len - next_size;
+static inline
+const uint8_t *knot_nsec_bitmap(const knot_rdata_t *rdata)
+{
+	assert(rdata);
+	return rdata->data + knot_dname_size(knot_nsec_next(rdata));
 }
 
 /*! @} */

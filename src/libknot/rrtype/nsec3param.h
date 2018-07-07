@@ -22,42 +22,42 @@
 
 #pragma once
 
-#include "libknot/rdataset.h"
+#include "libknot/rdata.h"
 #include "libknot/wire.h"
 
 static inline
-uint8_t knot_nsec3param_algorithm(const knot_rdataset_t *rrs, size_t pos)
+uint8_t knot_nsec3param_alg(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return *knot_rdata_offset(rrs, pos, 0);
+	assert(rdata);
+	return *(rdata->data);
 }
 
 static inline
-uint8_t knot_nsec3param_flags(const knot_rdataset_t *rrs, size_t pos)
+uint8_t knot_nsec3param_flags(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return *knot_rdata_offset(rrs, pos, 1);
+	assert(rdata);
+	return *(rdata->data + 1);
 }
 
 static inline
-uint16_t knot_nsec3param_iterations(const knot_rdataset_t *rrs, size_t pos)
+uint16_t knot_nsec3param_iters(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 2));
+	assert(rdata);
+	return knot_wire_read_u16(rdata->data + 2);
 }
 
 static inline
-uint8_t knot_nsec3param_salt_length(const knot_rdataset_t *rrs, size_t pos)
+uint8_t knot_nsec3param_salt_len(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return *knot_rdata_offset(rrs, pos, 4);
+	assert(rdata);
+	return *(rdata->data + 4);
 }
 
 static inline
-const uint8_t *knot_nsec3param_salt(const knot_rdataset_t *rrs, size_t pos)
+const uint8_t *knot_nsec3param_salt(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_rdata_offset(rrs, pos, 5);
+	assert(rdata);
+	return rdata->data + 5;
 }
 
 /*! @} */

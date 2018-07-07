@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "libknot/rdataset.h"
+#include "libknot/rdata.h"
 #include "libknot/wire.h"
 
 /*!
@@ -32,68 +32,66 @@
 #define KNOT_NSEC3_FLAG_OPT_OUT		1
 
 static inline
-uint8_t knot_nsec3_algorithm(const knot_rdataset_t *rrs, size_t pos)
+uint8_t knot_nsec3_alg(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return *knot_rdata_offset(rrs, pos, 0);
+	assert(rdata);
+	return *(rdata->data);
 }
 
 static inline
-uint8_t knot_nsec3_flags(const knot_rdataset_t *rrs, size_t pos)
+uint8_t knot_nsec3_flags(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return *knot_rdata_offset(rrs, pos, 1);
+	assert(rdata);
+	return *(rdata->data + 1);
 }
 
 static inline
-uint16_t knot_nsec3_iterations(const knot_rdataset_t *rrs, size_t pos)
+uint16_t knot_nsec3_iters(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 2));
+	assert(rdata);
+	return knot_wire_read_u16(rdata->data + 2);
 }
 
 static inline
-uint8_t knot_nsec3_salt_length(const knot_rdataset_t *rrs, size_t pos)
+uint8_t knot_nsec3_salt_len(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return *(knot_rdata_offset(rrs, pos, 0) + 4);
+	assert(rdata);
+	return *(rdata->data + 4);
 }
 
 static inline
-const uint8_t *knot_nsec3_salt(const knot_rdataset_t *rrs, size_t pos)
+const uint8_t *knot_nsec3_salt(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	return knot_rdata_offset(rrs, pos, 5);
+	assert(rdata);
+	return rdata->data + 5;
 }
 
 static inline
-void knot_nsec3_next_hashed(const knot_rdataset_t *rrs, size_t pos,
-                            uint8_t **name, uint8_t *name_size)
+uint8_t knot_nsec3_next_len(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
-	uint8_t salt_size = knot_nsec3_salt_length(rrs, pos);
-	*name_size = *knot_rdata_offset(rrs, pos, 4 + salt_size + 1);
-	*name = knot_rdata_offset(rrs, pos, 4 + salt_size + 2);
+	assert(rdata);
+	return *(rdata->data + 5 + knot_nsec3_salt_len(rdata));
 }
 
 static inline
-void knot_nsec3_bitmap(const knot_rdataset_t *rrs, size_t pos,
-                       uint8_t **bitmap, uint16_t *size)
+const uint8_t *knot_nsec3_next(const knot_rdata_t *rdata)
 {
-	KNOT_RDATASET_CHECK(rrs, pos);
+	assert(rdata);
+	return rdata->data + 6 + knot_nsec3_salt_len(rdata);
+}
 
-	/* Bitmap is last, skip all the items. */
-	size_t offset = 6; //hash alg., flags, iterations, salt len., hash len.
-	offset += knot_nsec3_salt_length(rrs, pos); //salt
+static inline
+uint16_t knot_nsec3_bitmap_len(const knot_rdata_t *rdata)
+{
+	assert(rdata);
+	return rdata->len - 6 - knot_nsec3_salt_len(rdata) - knot_nsec3_next_len(rdata);
+}
 
-	uint8_t *next_hashed = NULL;
-	uint8_t next_hashed_size = 0;
-	knot_nsec3_next_hashed(rrs, pos, &next_hashed, &next_hashed_size);
-	offset += next_hashed_size; //hash
-
-	*bitmap = knot_rdata_offset(rrs, pos, offset);
-	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
-	*size = rr->len - offset;
+static inline
+const uint8_t *knot_nsec3_bitmap(const knot_rdata_t *rdata)
+{
+	assert(rdata);
+	return rdata->data + 6 + knot_nsec3_salt_len(rdata) + knot_nsec3_next_len(rdata);
 }
 
 /*! @} */
