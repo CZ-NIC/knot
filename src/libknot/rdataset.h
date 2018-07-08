@@ -198,17 +198,6 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
                            knot_mm_t *mm);
 
-/*!
- * \brief Sorts the dataset. Removes the element if found to be duplicate.
- *
- * \param rrs  RRS to sort.
- * \param pos  Position of the element to sort (counted from 0).
- * \param mm   Memory context used to remove the element if duplicate.
- *
- * \return KNOT_E*
- */
-int knot_rdataset_sort_at(knot_rdataset_t *rrs, uint16_t pos, knot_mm_t *mm);
-
 /*! \brief Check helper. */
 #define KNOT_RDATASET_CHECK(rrs, pos) \
 	assert(rrs && rrs->rdata && rrs->count > 0 && pos < rrs->count);

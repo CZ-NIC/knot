@@ -196,10 +196,6 @@ int main(int argc, char *argv[])
 
 	knot_rdata_init(knot_rdataset_at(&rdataset, 1), 4, (uint8_t *)"abcd");
 
-	ret = knot_rdataset_sort_at(&rdataset, 1, NULL);
-	bool sort_ok = ret == KNOT_EOK && knot_rdataset_eq(&rdataset, &copy);
-	ok(sort_ok, "rdataset: sort reserved space");
-
 	knot_rdataset_clear(&copy, NULL);
 	knot_rdataset_clear(&rdataset, NULL);
 	knot_rdataset_clear(&rdataset_lo, NULL);
