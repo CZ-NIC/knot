@@ -73,6 +73,11 @@ Commands
   Imports a DNSSEC key from PEM file. The key parameters (same as for the generate action) need to be
   specified (mainly algorithm, timers...) because they are not contained in the PEM format.
 
+**import-pkcs11** *key_id* [*arguments*...]
+  Imports a DNSSEC key from PKCS #11 storage. The key parameters (same as for the generate action) need to be
+  specified (mainly algorithm, timers...) because they are not available. In fact, no key
+  data is imported, only KASP database metadata is created.
+
 **set** *key_spec* [*arguments*...]
   Changes a timing argument of an existing key to a new timestamp. *Key_spec* is either the
   key tag or a prefix of the key ID; *arguments* are like for **generate**, but just the
