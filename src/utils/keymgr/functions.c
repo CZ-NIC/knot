@@ -377,9 +377,10 @@ fail:
 	return knot_error_from_libdnssec(ret);
 }
 
-int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, char *argv[])
+static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
+                      int argc, char *argv[])
 {
-	if (ctx == NULL || import_file == NULL) {
+	if (ctx == NULL || param == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -389,54 +390,60 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	kdnssec_generate_flags_t flags = 0;
 	uint16_t keysize = 0;
 	if (!genkeyargs(argc, argv, false, &flags, &ctx->policy->algorithm,
-			&keysize, &timing, NULL)) {
+	                &keysize, &timing, NULL)) {
 		return KNOT_EINVAL;
 	}
 
 	normalize_generate_flags(&flags);
 
-	// open file
-	int fd = open(import_file, O_RDONLY, 0);
-	if (fd == -1) {
-		return knot_map_errno();
-	}
-
-	// determine size
-	off_t fsize = lseek(fd, 0, SEEK_END);
-	if (fsize == -1) {
-		close(fd);
-		return knot_map_errno();
-	}
-	if (lseek(fd, 0, SEEK_SET) == -1) {
-		close(fd);
-		return knot_map_errno();
-	}
-
 	dnssec_key_t *key = NULL;
 	char *keyid = NULL;
+	int ret = KNOT_EOK;
 
-	// alloc memory
-	dnssec_binary_t pem = { 0 };
-	int ret = dnssec_binary_alloc(&pem, fsize);
-	if (ret != DNSSEC_EOK) {
+	if (backend == KEYSTORE_BACKEND_PEM) {
+		// open file
+		int fd = open(param, O_RDONLY, 0);
+		if (fd == -1) {
+			return knot_map_errno();
+		}
+
+		// determine size
+		off_t fsize = lseek(fd, 0, SEEK_END);
+		if (fsize == -1) {
+			close(fd);
+			return knot_map_errno();
+		}
+		if (lseek(fd, 0, SEEK_SET) == -1) {
+			close(fd);
+			return knot_map_errno();
+		}
+
+		// alloc memory
+		dnssec_binary_t pem = { 0 };
+		ret = dnssec_binary_alloc(&pem, fsize);
+		if (ret != DNSSEC_EOK) {
+			close(fd);
+			goto fail;
+		}
+
+		// read pem
+		ssize_t read_count = read(fd, pem.data, pem.size);
 		close(fd);
-		goto fail;
-	}
+		if (read_count == -1) {
+			dnssec_binary_free(&pem);
+			ret = knot_map_errno();
+			goto fail;
+		}
 
-	// read pem
-	ssize_t read_count = read(fd, pem.data, pem.size);
-	close(fd);
-	if (read_count == -1) {
+		// put pem to kesytore
+		ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
-		ret = knot_map_errno();
-		goto fail;
-	}
-
-	// put pem to kesytore
-	ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
-	dnssec_binary_free(&pem);
-	if (ret != DNSSEC_EOK) {
-		goto fail;
+		if (ret != DNSSEC_EOK) {
+			goto fail;
+		}
+	} else {
+		assert(backend == KEYSTORE_BACKEND_PKCS11);
+		keyid = strdup(param);
 	}
 
 	// create dnssec key
@@ -484,6 +491,16 @@ fail:
 	dnssec_key_free(key);
 	free(keyid);
 	return knot_error_from_libdnssec(ret);
+}
+
+int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, char *argv[])
+{
+	return import_key(ctx, KEYSTORE_BACKEND_PEM, import_file, argc, argv);
+}
+
+int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, const char *key_id, int argc, char *argv[])
+{
+	return import_key(ctx, KEYSTORE_BACKEND_PKCS11, key_id, argc, argv);
 }
 
 static void print_tsig(dnssec_tsig_algorithm_t mac, const char *name,

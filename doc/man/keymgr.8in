@@ -96,6 +96,11 @@ Takes one argument: path to BIND public key file.
 Imports a DNSSEC key from PEM file. The key parameters (same as for the generate action) need to be
 specified (mainly algorithm, timers...) because they are not contained in the PEM format.
 .TP
+\fBimport\-pkcs11\fP \fIkey_id\fP [\fIarguments\fP\&...]
+Imports a DNSSEC key from PKCS #11 storage. The key parameters (same as for the generate action) need to be
+specified (mainly algorithm, timers...) because they are not available. In fact, no key
+data is imported, only KASP database metadata is created.
+.TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
 Changes a timing argument (or ksk/zsk) of an existing key to a new value. \fIKey_spec\fP is either the
 key tag or a prefix of the key ID; \fIarguments\fP are like for \fBgenerate\fP, but just the related ones.

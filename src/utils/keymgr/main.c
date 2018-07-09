@@ -48,25 +48,27 @@ static void print_help(void)
 	       "  -V, --version            Print the program version.\n"
 	       "\n"
 	       "Commands:\n"
-	       "  list         List all zone's DNSSEC keys.\n"
-	       "  generate     Generate new DNSSEC key.\n"
-	       "                (syntax: generate <attribute_name>=<value>...)\n"
-	       "  import-bind  Import BIND-style key file pair (.key + .private).\n"
-	       "                (syntax: import-bind <key_file_name>)\n"
-	       "  import-pub   Import public-only key to be published in the zone (in BIND .key format).\n"
-	       "                (syntax: import-pub <key_file_name>)\n"
-	       "  import-pem   Import key in PEM format. Specify its parameters manually.\n"
-	       "                (syntax: import-pem <pem_file_path> <attribute_name>=<value>...)\n"
-	       "  ds           Generate DS record(s) for specified key.\n"
-	       "                (syntax: ds <key_spec>)\n"
-	       "  dnskey       Generate DNSKEY record for specified key.\n"
-	       "                (syntax: dnskey <key_spec>)\n"
-	       "  share        Share an existing key of another zone with the specified zone.\n"
-	       "                (syntax: share <full_key_ID>\n"
-	       "  delete       Remove the specified key from zone.\n"
-	       "                (syntax: delete <key_spec>)\n"
-	       "  set          Set existing key's timing attribute.\n"
-	       "                (syntax: set <key_spec> <attribute_name>=<value>...)\n"
+	       "  list          List all zone's DNSSEC keys.\n"
+	       "  generate      Generate new DNSSEC key.\n"
+	       "                 (syntax: generate <attribute_name>=<value>...)\n"
+	       "  import-bind   Import BIND-style key file pair (.key + .private).\n"
+	       "                 (syntax: import-bind <key_file_name>)\n"
+	       "  import-pub    Import public-only key to be published in the zone (in BIND .key format).\n"
+	       "                 (syntax: import-pub <key_file_name>)\n"
+	       "  import-pem    Import key in PEM format. Specify its parameters manually.\n"
+	       "                 (syntax: import-pem <pem_file_path> <attribute_name>=<value>...)\n"
+	       "  import-pkcs11 Import key stored in PKCS11 storage. Specify its parameters manually.\n"
+	       "                 (syntax: import-pkcs11 <key_id> <attribute_name>=<value>...)\n"
+	       "  ds            Generate DS record(s) for specified key.\n"
+	       "                 (syntax: ds <key_spec>)\n"
+	       "  dnskey        Generate DNSKEY record for specified key.\n"
+	       "                 (syntax: dnskey <key_spec>)\n"
+	       "  share         Share an existing key of another zone with the specified zone.\n"
+	       "                 (syntax: share <full_key_ID>\n"
+	       "  delete        Remove the specified key from zone.\n"
+	       "                 (syntax: delete <key_spec>)\n"
+	       "  set           Set existing key's timing attribute.\n"
+	       "                 (syntax: set <key_spec> <attribute_name>=<value>...)\n"
 	       "\n"
 	       "Key specification:\n"
 	       "  either the key tag (number) or [a prefix of] key ID.\n"
@@ -134,6 +136,9 @@ static int key_command(int argc, char *argv[], int optind)
 	} else if (strcmp(argv[1], "import-pem") == 0) {
 		CHECK_MISSING_ARG("PEM file to import not specified");
 		ret = keymgr_import_pem(&kctx, argv[2], argc - 3, argv + 3);
+	} else if (strcmp(argv[1], "import-pkcs11") == 0) {
+		CHECK_MISSING_ARG("Key ID to import not specified");
+		ret = keymgr_import_pkcs11(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (strcmp(argv[1], "set") == 0) {
 		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2set;
