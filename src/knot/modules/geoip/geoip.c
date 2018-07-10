@@ -198,26 +198,8 @@ static bool addr_in_subnet(const struct sockaddr_storage *addr, geo_view_t *view
 	return true;
 }
 
-static bool addr_in_geo(knotd_mod_t *mod, const struct sockaddr *addr, geo_view_t *view, uint16_t *netmask)
+static bool addr_in_geo(geoip_ctx_t *ctx, geo_view_t *view, geo_view_t *client_view)
 {
-#if HAVE_MAXMINDDB
-	geoip_ctx_t *ctx = (geoip_ctx_t *)knotd_mod_ctx(mod);
-
-	int mmdb_error = 0;
-	MMDB_lookup_result_s res;
-	res = MMDB_lookup_sockaddr(&ctx->db, addr, &mmdb_error);
-	if (mmdb_error != MMDB_SUCCESS) {
-		knotd_mod_log(mod, LOG_ERR, "a lookup error in MMDB occured");
-		return false;
-	}
-	if (!res.found_entry) {
-		return false;
-	}
-
-	// Set netmask value.
-	*netmask = res.netmask;
-	MMDB_entry_data_s entry;
-
 	// Iterate over configured geo keys.
 	for (uint16_t i = 0; i < ctx->keyc; i++) {
 		enum geodb_key key = ctx->keys[i];
@@ -225,24 +207,13 @@ static bool addr_in_geo(knotd_mod_t *mod, const struct sockaddr *addr, geo_view_
 		if (view->geodata[key] == NULL) {
 			continue;
 		}
-		mmdb_error = MMDB_aget_value(&res.entry, &entry, paths[key].path);
-		if (mmdb_error != MMDB_SUCCESS &&
-		    mmdb_error != MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR) {
-			knotd_mod_log(mod, LOG_ERR, "an entry error in MMDB occured (%s)", geodb_keys[key].name);
-			return false;
-		}
-		if (mmdb_error == MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR ||
-		    !entry.has_data || entry.type != MMDB_DATA_TYPE_UTF8_STRING) {
-			return false;
-		}
-		if (view->geodata_len[key] != entry.data_size ||
-		    memcmp(view->geodata[key], entry.utf8_string, entry.data_size) != 0) {
+		if (client_view->geodata[key] == NULL ||
+		    view->geodata_len[key] != client_view->geodata_len[key] ||
+		    memcmp(view->geodata[key], client_view->geodata[key], view->geodata_len[key]) != 0) {
 			return false;
 		}
 	}
 	return true;
-#endif
-	return false;
 }
 
 static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *key, geoip_ctx_t *ctx)
@@ -632,15 +603,45 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	}
 
 	if (ctx->mode == MODE_GEODB) {
-		uint16_t netmask = 0;
+#if HAVE_MAXMINDDB
+		int mmdb_error = 0;
+		MMDB_lookup_result_s res;
+		res = MMDB_lookup_sockaddr(&ctx->db, (struct sockaddr *)remote, &mmdb_error);
+		if (mmdb_error != MMDB_SUCCESS) {
+			knotd_mod_log(mod, LOG_ERR, "a lookup error in MMDB occured");
+			return state;
+		}
+		if (!res.found_entry) {
+			return state;
+		}
+
+		geo_view_t client_view;
+		MMDB_entry_data_s entry;
+		// Set the remote's geo information.
+		for (uint16_t i = 0; i < ctx->keyc; i++) {
+			enum geodb_key key = ctx->keys[i];
+			client_view.geodata[key] = NULL;
+			mmdb_error = MMDB_aget_value(&res.entry, &entry, paths[key].path);
+			if (mmdb_error != MMDB_SUCCESS &&
+				mmdb_error != MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR) {
+				knotd_mod_log(mod, LOG_ERR, "an entry error in MMDB occured (%s)", geodb_keys[key].name);
+				return state;
+			}
+			if (mmdb_error == MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR ||
+				!entry.has_data || entry.type != MMDB_DATA_TYPE_UTF8_STRING) {
+				continue;
+			}
+			client_view.geodata[key] = (char *)entry.utf8_string;
+			client_view.geodata_len[key] = entry.data_size;
+		}
+
 		uint8_t best_depth = 0;
 		knot_rrset_t *rr = NULL;
 		knot_rrset_t *rrsig = NULL;
 		// Check whether the remote falls into any geo location.
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
-			if (addr_in_geo(mod, (const struct sockaddr *)remote, view, &netmask) &&
-			    view->geodepth >= best_depth) {
+			if (addr_in_geo(ctx, view, &client_view) && view->geodepth >= best_depth) {
 				for (int j = 0; j < view->count; j++) {
 					if (view->rrsets[j].type == qtype) {
 						best_depth = view->geodepth;
@@ -653,10 +654,10 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 				}
 			}
 		}
-		// Update ECS if used.
 		if (rr != NULL) {
+			// Update ECS if used.
 			if (qdata->ecs != NULL) {
-				qdata->ecs->scope_len = netmask;
+				qdata->ecs->scope_len = res.netmask;
 			}
 
 			knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rr, 0);
@@ -665,6 +666,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 			}
 			return KNOTD_IN_STATE_HIT;
 		}
+#endif
 	}
 
 	return state;
