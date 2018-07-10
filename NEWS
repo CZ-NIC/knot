@@ -1,3 +1,24 @@
+Knot DNS 2.6.8 (2018-07-10)
+===========================
+
+Features:
+---------
+ - New 'import-pkcs11' command in keymgr
+
+Improvements:
+-------------
+ - Unixtime serial policy mimics Bind – increment if lower #593
+
+Bugfixes:
+---------
+ - Creeping memory consuption upon server reload #584
+ - Kdig incorrectly detects QNAME if 'notify' is a prefix
+ - Server crashes when zone sign fails #587
+ - CSK->KZSK rollover retires CSK early #588
+ - Server crashes when zone expires during outgoing multi-message transfer
+ - Kjournalprint doesn't convert zone name argument to lower-case
+ - Cannot switch to a previously used ksk-shared dnssec policy #589
+
 Knot DNS 2.6.7 (2018-05-17)
 ===========================
 
