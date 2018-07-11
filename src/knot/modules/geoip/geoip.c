@@ -154,20 +154,20 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *
 	return ret;
 }
 
-static bool addr_in_subnet(const struct sockaddr_storage *addr, geo_view_t *view)
+static bool remote_in_subnet(const struct sockaddr_storage *remote, geo_view_t *view)
 {
-	if (view->subnet->ss_family != addr->ss_family) {
+	if (view->subnet->ss_family != remote->ss_family) {
 		return false;
 	}
 	uint8_t *raw_addr = NULL;
 	uint8_t *raw_subnet = NULL;
-	switch(addr->ss_family) {
+	switch(remote->ss_family) {
 	case AF_INET:
-		raw_addr = (uint8_t *)&((const struct sockaddr_in *)addr)->sin_addr;
+		raw_addr = (uint8_t *)&((const struct sockaddr_in *)remote)->sin_addr;
 		raw_subnet = (uint8_t *)&((const struct sockaddr_in *)view->subnet)->sin_addr;
 		break;
 	case AF_INET6:
-		raw_addr = (uint8_t *)&((const struct sockaddr_in6 *)addr)->sin6_addr;
+		raw_addr = (uint8_t *)&((const struct sockaddr_in6 *)remote)->sin6_addr;
 		raw_subnet = (uint8_t *)&((const struct sockaddr_in6 *)view->subnet)->sin6_addr;
 		break;
 	default:
@@ -189,7 +189,7 @@ static bool addr_in_subnet(const struct sockaddr_storage *addr, geo_view_t *view
 	return true;
 }
 
-static bool addr_in_geo(geoip_ctx_t *ctx, geo_view_t *view, geo_view_t *client_view)
+static bool remote_in_geo(geoip_ctx_t *ctx, geo_view_t *view, geo_view_t *remote_view)
 {
 	// Iterate over configured geo keys.
 	for (uint16_t i = 0; i < ctx->keyc; i++) {
@@ -198,9 +198,9 @@ static bool addr_in_geo(geoip_ctx_t *ctx, geo_view_t *view, geo_view_t *client_v
 		if (view->geodata[key] == NULL) {
 			continue;
 		}
-		if (client_view->geodata[key] == NULL ||
-		    view->geodata_len[key] != client_view->geodata_len[key] ||
-		    memcmp(view->geodata[key], client_view->geodata[key], view->geodata_len[key]) != 0) {
+		if (remote_view->geodata[key] == NULL ||
+		    view->geodata_len[key] != remote_view->geodata_len[key] ||
+		    memcmp(view->geodata[key], remote_view->geodata[key], view->geodata_len[key]) != 0) {
 			return false;
 		}
 	}
@@ -558,43 +558,34 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		remote = qdata->params->remote;
 	}
 
+	knot_rrset_t *rr = NULL;
+	knot_rrset_t *rrsig = NULL;
+	knot_rrset_t *cname = NULL;
+	knot_rrset_t *cnamesig = NULL;
+	uint16_t netmask = 0;
 	if (ctx->mode == MODE_SUBNET) {
-		// Find the best subnet containing the remote and the rrset the query asked for.
+		// Find the best subnet containing the remote and queried rrset.
 		uint8_t best_prefix = 0;
-		knot_rrset_t *rr = NULL;
-		knot_rrset_t *rrsig = NULL;
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
-			if (addr_in_subnet(remote, view) && view->subnet_prefix >= best_prefix) {
+			if (rr == NULL || (view->subnet_prefix > best_prefix && remote_in_subnet(remote, view))) {
 				for (int j = 0; j < view->count; j++) {
 					if (view->rrsets[j].type == qtype) {
 						best_prefix = view->subnet_prefix;
 						rr = &view->rrsets[j];
-						if (view->rrsigs != NULL) {
-							rrsig = &view->rrsigs[j];
-						}
+						rrsig = (view->rrsigs) ? &view->rrsigs[j] : NULL;
 						break;
+					} else if (view->rrsets[j].type == KNOT_RRTYPE_CNAME) {
+						best_prefix = view->subnet_prefix;
+						cname = &view->rrsets[j];
+						cnamesig = (view->rrsigs) ? &view->rrsigs[j] : NULL;
 					}
 				}
 			}
 		}
-		if (rr != NULL) {
-			// Update ECS if used.
-			if (qdata->ecs != NULL) {
-				qdata->ecs->scope_len = best_prefix;
-			}
-
-			knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rr, 0);
-			if (ctx->dnssec && knot_pkt_has_dnssec(qdata->query) && rrsig != NULL) {
-				knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rrsig, 0);
-			}
-			return KNOTD_IN_STATE_HIT;
-		}
-	}
-
-	if (ctx->mode == MODE_GEODB) {
+		netmask = best_prefix;
+	} else if (ctx->mode == MODE_GEODB) {
 		geo_view_t remote_view;
-		uint16_t netmask;
 		int ret = geodb_query(ctx->geodb, (struct sockaddr *)remote, ctx->keys, ctx->keyc,
 		                      remote_view.geodata, remote_view.geodata_len, &netmask);
 		if (ret != 0) {
@@ -602,36 +593,44 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 
 		uint8_t best_depth = 0;
-		knot_rrset_t *rr = NULL;
-		knot_rrset_t *rrsig = NULL;
-		// Check whether the remote falls into any geo location.
+		// Find the best geo view containing the remote and queried rrset.
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
-			if (addr_in_geo(ctx, view, &remote_view) && view->geodepth >= best_depth) {
+			if (rr == NULL || (view->geodepth > best_depth && remote_in_geo(ctx, view, &remote_view))) {
 				for (int j = 0; j < view->count; j++) {
 					if (view->rrsets[j].type == qtype) {
 						best_depth = view->geodepth;
 						rr = &view->rrsets[j];
-						if (view->rrsigs != NULL) {
-							rrsig = &view->rrsigs[j];
-						}
+						rrsig = (view->rrsigs) ? &view->rrsigs[j] : NULL;
 						break;
+					} else if (view->rrsets[j].type == KNOT_RRTYPE_CNAME) {
+						best_depth = view->geodepth;
+						cname = &view->rrsets[j];
+						cnamesig = (view->rrsigs) ? &view->rrsigs[j] : NULL;
 					}
 				}
 			}
 		}
-		if (rr != NULL) {
-			// Update ECS if used.
-			if (qdata->ecs != NULL) {
-				qdata->ecs->scope_len = netmask;
-			}
+	}
 
-			knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rr, 0);
-			if (ctx->dnssec && knot_pkt_has_dnssec(qdata->query) && rrsig != NULL) {
-				knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rrsig, 0);
-			}
-			return KNOTD_IN_STATE_HIT;
+	// Return CNAME if only CNAME is found.
+	if (rr == NULL && cname != NULL) {
+		rr = cname;
+		rrsig = cnamesig;
+	}
+
+	// Answer the query if possible.
+	if (rr != NULL) {
+		// Update ECS if used.
+		if (qdata->ecs != NULL && netmask > 0) {
+			qdata->ecs->scope_len = netmask;
 		}
+
+		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rr, 0);
+		if (ctx->dnssec && knot_pkt_has_dnssec(qdata->query) && rrsig != NULL) {
+			knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rrsig, 0);
+		}
+		return KNOTD_IN_STATE_HIT;
 	}
 
 	return state;
