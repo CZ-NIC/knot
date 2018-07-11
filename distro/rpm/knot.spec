@@ -26,6 +26,7 @@ BuildRequires:	gnupg2
 %endif
 
 # Required dependencies
+BuildRequires:	gcc
 BuildRequires:	pkgconfig(liburcu)
 BuildRequires:	pkgconfig(gnutls) >= 3.3
 BuildRequires:	pkgconfig(libedit)
