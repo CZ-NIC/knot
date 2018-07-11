@@ -178,10 +178,9 @@ static bool nsec3param_valid(const knot_rdataset_t *rrs,
 		return false;
 	}
 
-	knot_rdata_t *rrd = knot_rdataset_at(rrs, 0);
 	dnssec_binary_t rdata = {
-		.size = rrd->len,
-		.data = rrd->data,
+		.size = rrs->rdata->len,
+		.data = rrs->rdata->data,
 	};
 
 	dnssec_nsec3_params_t parsed = { 0 };
@@ -342,7 +341,7 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t nsec_ttl = knot_soa_minimum(soa);
+	uint32_t nsec_ttl = knot_soa_minimum(soa->rdata);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
 	changeset_t ch;
@@ -409,8 +408,8 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t nsec_ttl_old = knot_soa_minimum(soa_old);
-	uint32_t nsec_ttl_new = knot_soa_minimum(soa_new);
+	uint32_t nsec_ttl_old = knot_soa_minimum(soa_old->rdata);
+	uint32_t nsec_ttl_new = knot_soa_minimum(soa_new->rdata);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
 	changeset_t ch;

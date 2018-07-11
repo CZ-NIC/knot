@@ -269,8 +269,8 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
-	bool soa_changed = (knot_soa_serial(node_rdataset(update->zone->contents->apex, KNOT_RRTYPE_SOA)) !=
-			    knot_soa_serial(node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA)));
+	bool soa_changed = (knot_soa_serial(node_rdataset(update->zone->contents->apex, KNOT_RRTYPE_SOA)->rdata) !=
+			    knot_soa_serial(node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA)->rdata));
 
 	if (zone_update_no_change(update) && !soa_changed &&
 	    !knot_zone_sign_soa_expired(update->new_cont, &keyset, &ctx)) {

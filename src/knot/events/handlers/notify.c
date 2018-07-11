@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	if (ret == KNOT_EOK) {
 		NOTIFY_LOG(LOG_INFO, zone->name, dst,
-			   "serial %u", knot_soa_serial(&soa->rrs));
+			   "serial %u", knot_soa_serial(soa->rrs.rdata));
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_LOG(LOG_WARNING, zone->name, dst,
 		           "failed (%s)", knot_strerror(ret));

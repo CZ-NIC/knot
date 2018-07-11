@@ -1003,7 +1003,7 @@ int journal_load_bootstrap(journal_t *j, list_t *dst)
 		goto jlb_end;
 	}
 	add_tail(dst, &bch->n);
-	uint32_t from = knot_soa_serial(&bch->soa_to->rrs);
+	uint32_t from = knot_soa_serial(bch->soa_to->rrs.rdata);
 
 	uint32_t ls = txn->shadow_md.last_serial;
 	iterate(j, txn, load_list_itercb, JOURNAL_ITERATION_CHANGESETS, &dst,
@@ -1286,7 +1286,7 @@ static int merge_unflushed_changesets(journal_t *j, txn_t *_txn, changeset_t **m
 		txn->ret = load_one(j, txn, from, mch);
 		if (!was_merged && was_flushed && txn->ret == KNOT_EOK) {
 			// we have to jump to ONE AFTER last_flushed
-			from = knot_soa_serial(&(*mch)->soa_to->rrs);
+			from = knot_soa_serial((*mch)->soa_to->rrs.rdata);
 			changeset_free(*mch);
 			*mch = NULL;
 			txn->ret = load_one(j, txn, from, mch);
@@ -1295,7 +1295,7 @@ static int merge_unflushed_changesets(journal_t *j, txn_t *_txn, changeset_t **m
 	if (txn->ret != KNOT_EOK) {
 		goto m_u_ch_end;
 	}
-	from = knot_soa_serial(&(*mch)->soa_to->rrs);
+	from = knot_soa_serial((*mch)->soa_to->rrs.rdata);
 
 	if (!serial_equal(from, txn->shadow_md.last_serial_to)) {
 		txn->ret = iterate(j, txn, merge_itercb, JOURNAL_ITERATION_CHANGESETS,
@@ -1437,7 +1437,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	// PART 4: continuity and duplicity check
 	changeset_t * chs_head = (HEAD(*changesets));
 	bool is_first_bootstrap = (chs_head->soa_from == NULL);
-	uint32_t serial = is_first_bootstrap ? 0 : knot_soa_serial(&chs_head->soa_from->rrs);
+	uint32_t serial = is_first_bootstrap ? 0 : knot_soa_serial(chs_head->soa_from->rrs.rdata);
 	if (md_flag(txn, SERIAL_TO_VALID) && (is_first_bootstrap ||
 	    !serial_equal(txn->shadow_md.last_serial_to, serial)) &&
 	    !inserting_bootstrap /* if inserting bootstrap, drop_journal() was called, so no discontinuity */) {
@@ -1455,7 +1455,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 		txn_restart(txn);
 	}
 	WALK_LIST(ch, *changesets) {
-		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
+		uint32_t serial_to = knot_soa_serial(ch->soa_to->rrs.rdata);
 		bool is_this_bootstrap = (ch->soa_from == NULL);
 		bool is_this_merged = (inserting_merged && ch == TAIL(*changesets));
 		if (is_this_bootstrap || is_this_merged) {
@@ -1497,8 +1497,8 @@ static int store_changesets(journal_t *j, list_t *changesets)
 
 		bool is_this_merged = (inserting_merged && ch == TAIL(*changesets));
 		bool is_this_bootstrap = (ch->soa_from == NULL);
-		uint32_t serial = is_this_bootstrap ? 0 : knot_soa_serial(&ch->soa_from->rrs);
-		uint32_t serial_to = knot_soa_serial(&ch->soa_to->rrs);
+		uint32_t serial = is_this_bootstrap ? 0 : knot_soa_serial(ch->soa_from->rrs.rdata);
+		uint32_t serial_to = knot_soa_serial(ch->soa_to->rrs.rdata);
 
 		while (serialize_unfinished(sctx)) {
 			size_t chunk_size;
@@ -2088,7 +2088,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 		ret = load_bootstrap_changeset(j, txn, &ch);
 		switch (ret) {
 		case KNOT_EOK:
-			sto = knot_soa_serial(&ch->soa_to->rrs);
+			sto = knot_soa_serial(ch->soa_to->rrs.rdata);
 			jch_info("bootstrap changeset loaded, sto %u", sto);
 			changeset_free(ch);
 			break;
@@ -2108,7 +2108,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 		goto check_merged;
 	}
 
-	sfrom = knot_soa_serial(&ch->soa_from->rrs), sto = knot_soa_serial(&ch->soa_to->rrs);
+	sfrom = knot_soa_serial(ch->soa_from->rrs.rdata), sto = knot_soa_serial(ch->soa_to->rrs.rdata);
 	if (!serial_equal(txn->shadow_md.first_serial, sfrom)) {
 		jch_warn("first changeset's serial 'from' %u is not ok", sfrom);
 	}
@@ -2120,7 +2120,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 			jch_warn("can't read last flushed changeset %u (%s)",
 			         txn->shadow_md.last_flushed, knot_strerror(ret));
 		} else {
-			first_unflushed = knot_soa_serial(&ch->soa_to->rrs);
+			first_unflushed = knot_soa_serial(ch->soa_to->rrs.rdata);
 		}
 	}
 	if (ret == KNOT_EOK) {
@@ -2135,7 +2135,7 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 	if (ret != KNOT_EOK) {
 		jch_warn("can't read second changeset %u (%s)", sto, knot_strerror(ret));
 	} else {
-		sfrom = knot_soa_serial(&ch->soa_from->rrs);
+		sfrom = knot_soa_serial(ch->soa_from->rrs.rdata);
 		if (!serial_equal(sfrom, sto)) {
 			jch_warn("second changeset's serial 'from' %u is not ok", sfrom);
 		}
@@ -2160,14 +2160,14 @@ int journal_check(journal_t *j, journal_check_level_t warn_level)
 	}
 
 	ch = HEAD(l);
-	if (!serial_equal(sfrom, knot_soa_serial(&ch->soa_from->rrs))) {
+	if (!serial_equal(sfrom, knot_soa_serial(ch->soa_from->rrs.rdata))) {
 		jch_warn("first listed changeset's serial 'from' %u is not ok",
-		         knot_soa_serial(&ch->soa_from->rrs));
+		         knot_soa_serial(ch->soa_from->rrs.rdata));
 	}
 	ch = TAIL(l);
-	if (!serial_equal(sto, knot_soa_serial(&ch->soa_to->rrs))) {
+	if (!serial_equal(sto, knot_soa_serial(ch->soa_to->rrs.rdata))) {
 		jch_warn("last listed changeset's serial 'to' %u is not ok",
-		         knot_soa_serial(&ch->soa_to->rrs));
+		         knot_soa_serial(ch->soa_to->rrs.rdata));
 	}
 	changesets_free(&l);
 
@@ -2181,8 +2181,8 @@ check_merged:
 		if (ret != KNOT_EOK) {
 			jch_warn("can't read merged changeset (%s)", knot_strerror(ret));
 		} else {
-			sfrom = knot_soa_serial(&ch->soa_from->rrs);
-			sto = knot_soa_serial(&ch->soa_to->rrs);
+			sfrom = knot_soa_serial(ch->soa_from->rrs.rdata);
+			sto = knot_soa_serial(ch->soa_to->rrs.rdata);
 			jch_info("merged changeset %u -> %u (size %zu)", sfrom, sto,
 			         changeset_serialized_size(ch));
 			if (!serial_equal(sfrom, txn->shadow_md.merged_serial)) {

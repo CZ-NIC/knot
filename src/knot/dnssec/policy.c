@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 static uint32_t zone_soa_min_ttl(const zone_contents_t *zone)
 {
 	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	return knot_soa_minimum(&soa.rrs);
+	return knot_soa_minimum(soa.rrs.rdata);
 }
 
 static uint32_t zone_soa_ttl(const zone_contents_t *zone)

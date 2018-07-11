@@ -253,7 +253,8 @@ static void print_section_opt(const knot_pkt_t *packet)
 	       knot_edns_get_payload(packet->opt_rr),
 	       ercode_str);
 
-	knot_rdata_t *rdata = knot_rdataset_at(&packet->opt_rr->rrs, 0);
+	assert(packet->opt_rr->rrs.count > 0);
+	knot_rdata_t *rdata = packet->opt_rr->rrs.rdata;
 	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
 
 	while (wire_ctx_available(&wire) >= KNOT_EDNS_OPTION_HDRLEN) {

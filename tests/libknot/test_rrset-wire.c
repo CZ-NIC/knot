@@ -214,7 +214,7 @@ static void check_canon(uint8_t *wire, size_t size, size_t pos, bool canon,
 	is_int(KNOT_EOK, ret, "OK %s canonization", canon ? "with" : "without");
 	ok(memcmp(rrset.owner, qname, knot_dname_size(qname)) == 0, "compare owner");
 
-	uint8_t *rdata = knot_rdataset_at(&rrset.rrs, 0)->data;
+	uint8_t *rdata = rrset.rrs.rdata->data;
 	ok(memcmp(rdata, dname, knot_dname_size(dname)) == 0, "compare rdata dname");
 
 	knot_rrset_clear(&rrset, NULL);

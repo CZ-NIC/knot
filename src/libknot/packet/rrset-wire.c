@@ -327,7 +327,8 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 	wire_ctx_write_u16(&write, rrset->rclass);
 
 	if (rrset->type == KNOT_RRTYPE_RRSIG) {
-		wire_ctx_write_u32(&write, knot_rrsig_original_ttl(&rrset->rrs, rrset_index));
+		const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
+		wire_ctx_write_u32(&write, knot_rrsig_original_ttl(rdata));
 	} else {
 		wire_ctx_write_u32(&write, rrset->ttl);
 	}

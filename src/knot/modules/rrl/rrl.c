@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ static const knot_dname_t *name_from_rrsig(const knot_rrset_t *rr)
 	}
 
 	// This is a signature.
-	return knot_rrsig_signer_name(&rr->rrs, 0);
+	return knot_rrsig_signer_name(rr->rrs.rdata);
 }
 
 static const knot_dname_t *name_from_authrr(const knot_rrset_t *rr)

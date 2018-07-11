@@ -102,7 +102,7 @@ static int ixfr_load_chsets(chgset_ctx_list_t *chgsets, zone_t *zone,
 
 	/* Compare serials. */
 	uint32_t serial_to = zone_contents_serial(zone->contents);
-	uint32_t serial_from = knot_soa_serial(&their_soa->rrs);
+	uint32_t serial_from = knot_soa_serial(their_soa->rrs.rdata);
 	if (serial_compare(serial_to, serial_from) & SERIAL_MASK_LEQ) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
 	}

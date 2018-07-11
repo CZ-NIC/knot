@@ -129,7 +129,8 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 
 	/* Scan new additional nodes. */
 	for (uint16_t i = 0; i < rdcount; i++) {
-		const knot_dname_t *dname = knot_rdata_name(rrs, i, rr_data->type);
+		knot_rdata_t *rdata = knot_rdataset_at(rrs, i);
+		const knot_dname_t *dname = knot_rdata_name(rdata, rr_data->type);
 		const zone_node_t *node = NULL, *encloser = NULL, *prev = NULL;
 
 		/* Try to find node for the dname in the RDATA. */
@@ -286,10 +287,12 @@ static bool nsec3_params_match(const knot_rdataset_t *rrs,
 	assert(rrs != NULL);
 	assert(params != NULL);
 
-	return (knot_nsec3_algorithm(rrs, rdata_pos) == params->algorithm
-	        && knot_nsec3_iterations(rrs, rdata_pos) == params->iterations
-	        && knot_nsec3_salt_length(rrs, rdata_pos) == params->salt.size
-	        && memcmp(knot_nsec3_salt(rrs, rdata_pos), params->salt.data,
+	knot_rdata_t *rdata = knot_rdataset_at(rrs, rdata_pos);
+
+	return (knot_nsec3_alg(rdata) == params->algorithm
+	        && knot_nsec3_iters(rdata) == params->iterations
+	        && knot_nsec3_salt_len(rdata) == params->salt.size
+	        && memcmp(knot_nsec3_salt(rdata), params->salt.data,
 	                  params->salt.size) == 0);
 }
 
@@ -970,10 +973,9 @@ static int load_nsec3param(zone_contents_t *contents)
 		return KNOT_EINVAL;
 	}
 
-	knot_rdata_t *rr = knot_rdataset_at(rrs, 0);
 	dnssec_binary_t rdata = {
-		.size = rr->len,
-		.data = rr->data,
+		.size = rrs->rdata->len,
+		.data = rrs->rdata->data,
 	};
 
 	dnssec_nsec3_params_t new_params = { 0 };
@@ -1148,14 +1150,14 @@ uint32_t zone_contents_serial(const zone_contents_t *zone)
 		return 0;
 	}
 
-	return knot_soa_serial(soa);
+	return knot_soa_serial(soa->rdata);
 }
 
 void zone_contents_set_soa_serial(zone_contents_t *zone, uint32_t new_serial)
 {
 	knot_rdataset_t *soa;
 	if (zone != NULL && (soa = node_rdataset(zone->apex, KNOT_RRTYPE_SOA)) != NULL) {
-		knot_soa_serial_set(soa, new_serial);
+		knot_soa_serial_set(soa->rdata, new_serial);
 	}
 }
 

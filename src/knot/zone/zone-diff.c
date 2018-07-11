@@ -51,8 +51,8 @@ static int load_soas(const zone_contents_t *zone1, const zone_contents_t *zone2,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t soa_serial1 = knot_soa_serial(&soa_rrset1.rrs);
-	uint32_t soa_serial2 = knot_soa_serial(&soa_rrset2.rrs);
+	uint32_t soa_serial1 = knot_soa_serial(soa_rrset1.rrs.rdata);
+	uint32_t soa_serial2 = knot_soa_serial(soa_rrset2.rrs.rdata);
 
 	if (serial_compare(soa_serial1, soa_serial2) == SERIAL_EQUAL) {
 		return KNOT_ENODIFF;
@@ -103,13 +103,6 @@ static int remove_node(const zone_node_t *node, changeset_t *changeset)
 	return KNOT_EOK;
 }
 
-static bool rr_exists(const knot_rrset_t *in, const knot_rrset_t *ref,
-                      size_t ref_pos)
-{
-	knot_rdata_t *to_check = knot_rdataset_at(&ref->rrs, ref_pos);
-	return knot_rdataset_member(&in->rrs, to_check);
-}
-
 static int rdata_return_changes(const knot_rrset_t *rrset1,
                                 const knot_rrset_t *rrset2,
                                 knot_rrset_t *changes)
@@ -129,20 +122,20 @@ static int rdata_return_changes(const knot_rrset_t *rrset1,
 	* changed/removed rdatas. This has awful computation time.
 	*/
 	bool ttl_differ = rrset1->ttl != rrset2->ttl;
-	uint16_t rr1_count = rrset1->rrs.count;
-	for (uint16_t i = 0; i < rr1_count; ++i) {
-		if (ttl_differ || !rr_exists(rrset2, rrset1, i)) {
+	knot_rdata_t *rr1 = rrset1->rrs.rdata;
+	for (uint16_t i = 0; i < rrset1->rrs.count; ++i) {
+		if (ttl_differ || !knot_rdataset_member(&rrset2->rrs, rr1)) {
 			/*
 			 * No such RR is present in 'rrset2'. We'll copy
 			 * index 'i' into 'changes' RRSet.
 			 */
-			knot_rdata_t *add_rr = knot_rdataset_at(&rrset1->rrs, i);
-			int ret = knot_rdataset_add(&changes->rrs, add_rr, NULL);
+			int ret = knot_rdataset_add(&changes->rrs, rr1, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rdataset_clear(&changes->rrs, NULL);
 				return ret;
 			}
 		}
+		rr1 = knot_rdataset_next(rr1);
 	}
 
 	return KNOT_EOK;

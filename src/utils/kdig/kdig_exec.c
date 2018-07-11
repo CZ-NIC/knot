@@ -453,7 +453,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 		}
 
 		// Set SOA serial.
-		knot_soa_serial_set(&soa->rrs, query->serial);
+		knot_soa_serial_set(soa->rrs.rdata, query->serial);
 
 		ret = knot_pkt_put(packet, KNOT_COMPR_HINT_NONE, soa, KNOT_PF_FREE);
 		if (ret != KNOT_EOK) {
@@ -534,7 +534,7 @@ static int64_t first_serial_check(const knot_pkt_t *reply)
 	if (first->type != KNOT_RRTYPE_SOA) {
 		return -1;
 	} else {
-		return knot_soa_serial(&first->rrs);
+		return knot_soa_serial(first->rrs.rdata);
 	}
 }
 
@@ -554,7 +554,7 @@ static bool finished_xfr(const uint32_t serial, const knot_pkt_t *reply,
 	} else if (answer->count == 1 && msg_count == 1) {
 		return is_ixfr;
 	} else {
-		return knot_soa_serial(&last->rrs) == serial;
+		return knot_soa_serial(last->rrs.rdata) == serial;
 	}
 }
 

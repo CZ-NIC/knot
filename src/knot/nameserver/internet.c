@@ -72,7 +72,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 
 	/* Replace last labels of qname with DNAME. */
 	const knot_dname_t *dname_wire = dname_rr->owner;
-	const knot_dname_t *dname_tgt = knot_dname_target(&dname_rr->rrs);
+	const knot_dname_t *dname_tgt = knot_dname_target(dname_rr->rrs.rdata);
 	size_t labels = knot_dname_labels(dname_wire, NULL);
 	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt, mm);
 	if (cname == NULL) {
@@ -102,10 +102,10 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname_t *qname)
 {
 	if (knot_dname_labels(qname, NULL) - knot_dname_labels(rrset->owner, NULL) +
-	    knot_dname_labels(knot_dname_target(&rrset->rrs), NULL) > KNOT_DNAME_MAXLABELS) {
+	    knot_dname_labels(knot_dname_target(rrset->rrs.rdata), NULL) > KNOT_DNAME_MAXLABELS) {
 		return true;
 	} else if (knot_dname_size(qname) - knot_dname_size(rrset->owner) +
-	           knot_dname_size(knot_dname_target(&rrset->rrs)) > KNOT_DNAME_MAXLEN) {
+	           knot_dname_size(knot_dname_target(rrset->rrs.rdata)) > KNOT_DNAME_MAXLEN) {
 		return true;
 	} else {
 		return false;
@@ -309,7 +309,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 	}
 
 	/* Now follow the next CNAME TARGET. */
-	qdata->name = knot_cname_name(&cname_rr.rrs);
+	qdata->name = knot_cname_name(cname_rr.rrs.rdata);
 
 	return KNOTD_IN_STATE_FOLLOW;
 }

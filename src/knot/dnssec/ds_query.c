@@ -100,7 +100,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 			return KNOT_STATE_FAIL;
 		}
 
-		if (match_key_ds(data->key, knot_rdataset_at(&rr->rrs, 0))) {
+		if (match_key_ds(data->key, rr->rrs.rdata)) {
 			match = true;
 			break;
 		}

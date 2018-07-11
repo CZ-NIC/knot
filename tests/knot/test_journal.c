@@ -78,7 +78,7 @@ static void init_soa(knot_rrset_t *rr, const uint32_t serial, const knot_dname_t
 
 	uint8_t soa_data[MIN_SOA_SIZE] = { 0 };
 	int ret = knot_rrset_add_rdata(rr, soa_data, sizeof(soa_data), NULL);
-	knot_soa_serial_set(&rr->rrs, serial);
+	knot_soa_serial_set(rr->rrs.rdata, serial);
 	(void)ret;
 	assert(ret == KNOT_EOK);
 }
@@ -232,8 +232,8 @@ static bool test_continuity(list_t *l)
 		}
 		changeset_t *ch1 = (changeset_t *) n;
 		changeset_t *ch2 = (changeset_t *) n->next;
-		key1 = knot_soa_serial(&ch1->soa_to->rrs);
-		key2 = knot_soa_serial(&ch2->soa_from->rrs);
+		key1 = knot_soa_serial(ch1->soa_to->rrs.rdata);
+		key2 = knot_soa_serial(ch2->soa_from->rrs.rdata);
 		if (key1 != key2) {
 			return KNOT_EINVAL;
 		}
@@ -404,7 +404,7 @@ static void test_store_load(void)
 
 	/* Load all previous changesets. */
 	ret = journal_load_changesets(j, &l, 1);
-	ok(ret == KNOT_EOK && knot_soa_serial(&((changeset_t *)TAIL(l))->soa_to->rrs) == m_serial,
+	ok(ret == KNOT_EOK && knot_soa_serial(((changeset_t *)TAIL(l))->soa_to->rrs.rdata) == m_serial,
 	   "journal: load all changesets");
 
 	/* Check for changeset ordering. */

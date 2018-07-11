@@ -242,7 +242,7 @@ uint32_t zone_update_current_serial(zone_update_t *update)
 {
 	const zone_node_t *apex = zone_update_get_apex(update);
 	if (apex != NULL) {
-		return knot_soa_serial(node_rdataset(apex, KNOT_RRTYPE_SOA));
+		return knot_soa_serial(node_rdataset(apex, KNOT_RRTYPE_SOA)->rdata);
 	} else {
 		return 0;
 	}
@@ -538,7 +538,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 		return ret;
 	}
 
-	uint32_t old_serial = knot_soa_serial(&soa_cpy->rrs);
+	uint32_t old_serial = knot_soa_serial(soa_cpy->rrs.rdata);
 	uint32_t new_serial = serial_next(old_serial, serial_policy);
 	if (serial_compare(old_serial, new_serial) != SERIAL_LOWER) {
 		log_zone_warning(update->zone->name, "updated SOA serial is lower "
@@ -546,7 +546,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 		                 old_serial, new_serial);
 		ret = KNOT_ESOAINVAL;
 	} else {
-		knot_soa_serial_set(&soa_cpy->rrs, new_serial);
+		knot_soa_serial_set(soa_cpy->rrs.rdata, new_serial);
 
 		ret = zone_update_add(update, soa_cpy);
 	}

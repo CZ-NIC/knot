@@ -285,15 +285,16 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
 		return KNOT_EINVAL;
 	}
 
+	knot_rdata_t *rr_to_copy = rrsig_rrs->rdata;
 	for (int i = 0; i < rrsig_rrs->count; ++i) {
-		if (type == knot_rrsig_type_covered(rrsig_rrs, i)) {
-			const knot_rdata_t *rr_to_copy = knot_rdataset_at(rrsig_rrs, i);
+		if (type == knot_rrsig_type_covered(rr_to_copy)) {
 			int ret = knot_rdataset_add(out_sig, rr_to_copy, mm);
 			if (ret != KNOT_EOK) {
 				knot_rdataset_clear(out_sig, mm);
 				return ret;
 			}
 		}
+		rr_to_copy = knot_rdataset_next(rr_to_copy);
 	}
 
 	return out_sig->count > 0 ? KNOT_EOK : KNOT_ENOENT;
@@ -304,19 +305,17 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
 /*!
  * \brief Check if the signature is expired.
  *
- * \param rrsigs  RR set with RRSIGs.
- * \param pos     Number of RR in the RR set.
+ * \param rrsig   RRSIG rdata.
  * \param policy  DNSSEC policy.
  *
  * \return Signature is expired or should be replaced soon.
  */
-static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
-                                 uint32_t now, uint32_t refresh_before)
+static bool is_expired_signature(const knot_rdata_t *rrsig, uint32_t now,
+                                 uint32_t refresh_before)
 {
-	assert(!knot_rrset_empty(rrsigs));
-	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
+	assert(rrsig);
 
-	uint32_t expire_at = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	uint32_t expire_at = knot_rrsig_sig_expiration(rrsig);
 	uint32_t expire_in = expire_at > now ? expire_at - now : 0;
 
 	return expire_in <= refresh_before;
@@ -333,21 +332,21 @@ int knot_check_signature(const knot_rrset_t *covered,
 		return KNOT_EINVAL;
 	}
 
-	if (is_expired_signature(rrsigs, pos, dnssec_ctx->now,
+	knot_rdata_t *rrsig = knot_rdataset_at(&rrsigs->rrs, pos);
+	assert(rrsig);
+
+	if (is_expired_signature(rrsig, dnssec_ctx->now,
 	                         dnssec_ctx->policy->rrsig_refresh_before)) {
 		return DNSSEC_INVALID_SIGNATURE;
 	}
 
 	// identify fields in the signature being validated
 
-	uint8_t *rdata = knot_rdataset_at(&rrsigs->rrs, pos)->data;
-	if (!rdata) {
-		return KNOT_EINVAL;
-	}
-
-	dnssec_binary_t signature = { 0 };
-	knot_rrsig_signature(&rrsigs->rrs, pos, &signature.data, &signature.size);
-	if (!signature.data) {
+	dnssec_binary_t signature = {
+		.size = knot_rrsig_signature_len(rrsig),
+		.data = (uint8_t *)knot_rrsig_signature(rrsig)
+	};
+	if (signature.data == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -358,7 +357,7 @@ int knot_check_signature(const knot_rrset_t *covered,
 		return result;
 	}
 
-	result = knot_sign_ctx_add_data(sign_ctx, rdata, covered);
+	result = knot_sign_ctx_add_data(sign_ctx, rrsig->data, covered);
 	if (result != KNOT_EOK) {
 		return result;
 	}

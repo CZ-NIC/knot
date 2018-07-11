@@ -272,12 +272,11 @@ static uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 	uint64_t size = knot_dname_size(rrset->owner) + 3 * sizeof(uint16_t);
 
 	// RRs.
+	knot_rdata_t *rr = rrset->rrs.rdata;
 	for (uint16_t i = 0; i < rrset->rrs.count; i++) {
-		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, i);
-		assert(rr);
-
 		// TTL + RR size + RR.
 		size += sizeof(uint32_t) + sizeof(uint16_t) + rr->len;
+		rr = knot_rdataset_next(rr);
 	}
 
 	return size;

@@ -114,24 +114,25 @@ static int add_new_data(apply_ctx_t *ctx, knot_rdata_t *new_data)
 }
 
 /*! \brief Returns true if given RR is present in node and can be removed. */
-static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
+static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset)
 {
 	if (node == NULL) {
 		// Node does not exist, cannot remove anything.
 		return false;
 	}
-	const knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
+	const knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
 	if (node_rrs == NULL) {
 		// Node does not have this type at all.
 		return false;
 	}
 
-	for (uint16_t i = 0; i < rr->rrs.count; ++i) {
-		knot_rdata_t *rr_cmp = knot_rdataset_at(&rr->rrs, i);
+	knot_rdata_t *rr_cmp = rrset->rrs.rdata;
+	for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
 		if (knot_rdataset_member(node_rrs, rr_cmp)) {
 			// At least one RR matches.
 			return true;
 		}
+		rr_cmp = knot_rdataset_next(rr_cmp);
 	}
 
 	// Node does have the type, but no RRs match.
@@ -194,7 +195,7 @@ static int apply_single(apply_ctx_t *ctx, const changeset_t *chset)
 
 	// check if serial matches
 	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL || (!ignore_soa && knot_soa_serial(soa) != knot_soa_serial(&chset->soa_from->rrs))) {
+	if (soa == NULL || (!ignore_soa && knot_soa_serial(soa->rdata) != knot_soa_serial(chset->soa_from->rrs.rdata))) {
 		return KNOT_EINVAL;
 	}
 

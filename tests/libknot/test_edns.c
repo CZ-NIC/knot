@@ -146,7 +146,7 @@ static void check_header(knot_rrset_t *opt_rr, uint16_t payload, uint8_t ver,
 	check = (opt_rr->rrs.count == 1);
 	ok(check, "%s: RR count == 1", msg);
 
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	knot_rdata_t *rdata = opt_rr->rrs.rdata;
 	check = (rdata != NULL);
 	ok(check, "%s: RDATA exists", msg);
 
@@ -251,7 +251,7 @@ static void test_setters(knot_rrset_t *opt_rr)
 	is_int(KNOT_EOK, ret, "OPT RR setters: add empty option 2 (ret = %s)",
 	   knot_strerror(ret));
 
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	knot_rdata_t *rdata = opt_rr->rrs.rdata;
 	ok(rdata != NULL, "OPT RR setters: non-empty RDATA");
 
 	/* Check proper option */

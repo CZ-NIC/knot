@@ -160,18 +160,17 @@ static int check_not_in_use(zone_update_t *update,
 	}
 }
 
-/*!< \brief Returns true if rrset has 0 data or RDATA of size 0 (we need TTL).*/
+/*!< \brief Returns true if rrset has 0 data or RDATA of size 0 (we need TTL). */
 static bool rrset_empty(const knot_rrset_t *rrset)
 {
-	uint16_t rr_count = rrset->rrs.count;
-	if (rr_count == 0) {
+	switch (rrset->rrs.count) {
+	case 0:
 		return true;
+	case 1:
+		return rrset->rrs.rdata->len == 0;
+	default:
+		return false;
 	}
-	if (rr_count == 1) {
-		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, 0);
-		return rr->len == 0;
-	}
-	return false;
 }
 
 /*< \brief Returns true if DDNS should deny updating DNSSEC-related record. */
@@ -278,12 +277,12 @@ static bool should_replace(const knot_rrset_t *rrset)
 
 /*!< \brief Returns true if node contains given RR in its RRSets. */
 static bool node_contains_rr(const zone_node_t *node,
-                             const knot_rrset_t *rr)
+                             const knot_rrset_t *rrset)
 {
-	const knot_rdataset_t *zone_rrs = node_rdataset(node, rr->type);
-	if (zone_rrs) {
-		assert(rr->rrs.count == 1);
-		return knot_rdataset_member(zone_rrs, knot_rdataset_at(&rr->rrs, 0));
+	const knot_rdataset_t *zone_rrs = node_rdataset(node, rrset->type);
+	if (zone_rrs != NULL) {
+		assert(rrset->rrs.count == 1);
+		return knot_rdataset_member(zone_rrs, rrset->rrs.rdata);
 	} else {
 		return false;
 	}
@@ -313,7 +312,7 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 {
 	if (rr->type == KNOT_RRTYPE_SOA &&
 	    (rr->rclass == KNOT_CLASS_NONE || rr->rclass == KNOT_CLASS_ANY ||
-	     (serial_compare(knot_soa_serial(&rr->rrs), sn) != SERIAL_GREATER))) {
+	     (serial_compare(knot_soa_serial(rr->rrs.rdata), sn) != SERIAL_GREATER))) {
 		return true;
 	}
 
@@ -740,7 +739,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t sn_old = knot_soa_serial(zone_update_from(update));
+	uint32_t sn_old = knot_soa_serial(zone_update_from(update)->rdata);
 
 	// Process all RRs in the authority section.
 	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);

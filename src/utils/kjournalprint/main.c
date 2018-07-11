@@ -73,11 +73,11 @@ static void print_changeset(const changeset_t *chs, bool color)
 	printf(color ? YLW : "");
 	if (chs->soa_from == NULL) {
 		printf(";; Zone-in-journal, serial: %u\n",
-		       knot_soa_serial(&chs->soa_to->rrs));
+		       knot_soa_serial(chs->soa_to->rrs.rdata));
 	} else {
 		printf(";; Changes between zone versions: %u -> %u\n",
-		       knot_soa_serial(&chs->soa_from->rrs),
-		       knot_soa_serial(&chs->soa_to->rrs));
+		       knot_soa_serial(chs->soa_from->rrs.rdata),
+		       knot_soa_serial(chs->soa_to->rrs.rdata));
 	}
 	changeset_print(chs, stdout, color);
 }
@@ -127,11 +127,11 @@ static void print_changeset_debugmode(const changeset_t *chs)
 	(void)zone_contents_nsec3_apply(chs->add, rrtypelist_callback, &ctx_plus);
 
 	if (chs->soa_from == NULL) {
-		printf("Zone-in-journal %u  +++: %zu\t size: %zu\t", knot_soa_serial(&chs->soa_to->rrs),
+		printf("Zone-in-journal %u  +++: %zu\t size: %zu\t", knot_soa_serial(chs->soa_to->rrs.rdata),
 		       count_plus, changeset_serialized_size(chs));
 	} else {
-		printf("%u -> %u  ---: %zu\t  +++: %zu\t size: %zu\t", knot_soa_serial(&chs->soa_from->rrs),
-		       knot_soa_serial(&chs->soa_to->rrs), count_minus, count_plus, changeset_serialized_size(chs));
+		printf("%u -> %u  ---: %zu\t  +++: %zu\t size: %zu\t", knot_soa_serial(chs->soa_from->rrs.rdata),
+		       knot_soa_serial(chs->soa_to->rrs.rdata), count_minus, count_plus, changeset_serialized_size(chs));
 	}
 
 	char temp[100];
@@ -241,7 +241,8 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 			}
 			WALK_LIST(chs, db) {
 				print_changeset_debugmode(chs);
-				if (last_flushed.valid && serial_equal(knot_soa_serial(&chs->soa_from->rrs), last_flushed.serial)) {
+				if (last_flushed.valid &&
+				    serial_equal(knot_soa_serial(chs->soa_from->rrs.rdata), last_flushed.serial)) {
 					break;
 				}
 			}

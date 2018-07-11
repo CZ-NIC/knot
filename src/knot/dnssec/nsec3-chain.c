@@ -370,14 +370,13 @@ static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
 static int connect_nsec3_base(knot_rdataset_t *a_rrs, const knot_dname_t *b_name)
 {
 	assert(a_rrs);
-	uint8_t algorithm = knot_nsec3_algorithm(a_rrs, 0);
+	uint8_t algorithm = knot_nsec3_alg(a_rrs->rdata);
 	if (algorithm == 0) {
 		return KNOT_EINVAL;
 	}
 
-	uint8_t *raw_hash = NULL;
-	uint8_t raw_length = 0;
-	knot_nsec3_next_hashed(a_rrs, 0, &raw_hash, &raw_length);
+	uint8_t raw_length = knot_nsec3_next_len(a_rrs->rdata);
+	uint8_t *raw_hash = (uint8_t *)knot_nsec3_next(a_rrs->rdata);
 	if (raw_hash == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -606,7 +605,8 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 					ret = changeset_add_removal(chgset, &rem_rrsig, 0);
 				}
 			}
-			knot_nsec3_next_hashed(&rem_nsec3.rrs, 0, &next_hash, &next_length);
+			next_hash = (uint8_t *)knot_nsec3_next(rem_nsec3.rrs.rdata);
+			next_length = knot_nsec3_next_len(rem_nsec3.rrs.rdata);
 		}
 	}
 
@@ -621,9 +621,8 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 
 		// copy hash of next element from removed record
 		if (next_hash != NULL) {
-			uint8_t *raw_hash = NULL;
-			uint8_t raw_length = 0;
-			knot_nsec3_next_hashed(&add_nsec3.rrs, 0, &raw_hash, &raw_length);
+			uint8_t *raw_hash = (uint8_t *)knot_nsec3_next(add_nsec3.rrs.rdata);
+			uint8_t raw_length = knot_nsec3_next_len(add_nsec3.rrs.rdata);
 			assert(raw_hash != NULL);
 			if (raw_length != next_length) {
 				ret = KNOT_EMALF;

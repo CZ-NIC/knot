@@ -87,7 +87,7 @@ static void timers_sanitize(conf_t *conf, zone_t *zone)
 	// replace SOA expire if we have better knowledge
 	if (!zone_contents_is_empty(zone->contents)) {
 		const knot_rdataset_t *soa = zone_soa(zone);
-		zone->timers.soa_expire = knot_soa_expire(soa);
+		zone->timers.soa_expire = knot_soa_expire(soa->rdata);
 	}
 
 	// assume now if we don't know when we flushed

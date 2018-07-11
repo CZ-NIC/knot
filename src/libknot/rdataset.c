@@ -39,11 +39,12 @@ static knot_rdata_t *rr_seek(const knot_rdataset_t *rrs, uint16_t pos)
 
 static int find_rr_pos(const knot_rdataset_t *rrs, const knot_rdata_t *rr)
 {
+	knot_rdata_t *search_rr = rrs->rdata;
 	for (uint16_t i = 0; i < rrs->count; ++i) {
-		const knot_rdata_t *search_rr = rr_seek(rrs, i);
 		if (knot_rdata_cmp(rr, search_rr) == 0) {
 			return i;
 		}
+		search_rr = knot_rdataset_next(search_rr);
 	}
 
 	return KNOT_ENOENT;
@@ -256,12 +257,14 @@ bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2)
 		return false;
 	}
 
+	knot_rdata_t *rr1 = rrs1->rdata;
+	knot_rdata_t *rr2 = rrs2->rdata;
 	for (uint16_t i = 0; i < rrs1->count; ++i) {
-		const knot_rdata_t *rr1 = rr_seek(rrs1, i);
-		const knot_rdata_t *rr2 = rr_seek(rrs2, i);
 		if (knot_rdata_cmp(rr1, rr2) != 0) {
 			return false;
 		}
+		rr1 = knot_rdataset_next(rr1);
+		rr2 = knot_rdataset_next(rr2);
 	}
 
 	return true;
@@ -274,8 +277,8 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr)
 		return false;
 	}
 
+	knot_rdata_t *cmp_rr = rrs->rdata;
 	for (uint16_t i = 0; i < rrs->count; ++i) {
-		const knot_rdata_t *cmp_rr = rr_seek(rrs, i);
 		int cmp = knot_rdata_cmp(cmp_rr, rr);
 		if (cmp == 0) {
 			// Match.
@@ -284,6 +287,7 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr)
 			// 'Greater' RR present, no need to continue.
 			return false;
 		}
+		cmp_rr = knot_rdataset_next(cmp_rr);
 	}
 
 	return false;
@@ -297,12 +301,13 @@ int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2,
 		return KNOT_EINVAL;
 	}
 
+	knot_rdata_t *rr2 = rrs2->rdata;
 	for (uint16_t i = 0; i < rrs2->count; ++i) {
-		const knot_rdata_t *rr = rr_seek(rrs2, i);
-		int ret = knot_rdataset_add(rrs1, rr, mm);
+		int ret = knot_rdataset_add(rrs1, rr2, mm);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+		rr2 = knot_rdataset_next(rr2);
 	}
 
 	return KNOT_EOK;
@@ -317,16 +322,17 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
 	}
 
 	knot_rdataset_init(out);
+	knot_rdata_t *rr1 = rrs1->rdata;
 	for (uint16_t i = 0; i < rrs1->count; ++i) {
-		const knot_rdata_t *rr = rr_seek(rrs1, i);
-		if (knot_rdataset_member(rrs2, rr)) {
+		if (knot_rdataset_member(rrs2, rr1)) {
 			// Add RR into output intersection RRSet.
-			int ret = knot_rdataset_add(out, rr, mm);
+			int ret = knot_rdataset_add(out, rr1, mm);
 			if (ret != KNOT_EOK) {
 				knot_rdataset_clear(out, mm);
 				return ret;
 			}
 		}
+		rr1 = knot_rdataset_next(rr1);
 	}
 
 	return KNOT_EOK;
@@ -346,8 +352,8 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 		return KNOT_EOK;
 	}
 
+	knot_rdata_t *to_remove = what->rdata;
 	for (uint16_t i = 0; i < what->count; ++i) {
-		const knot_rdata_t *to_remove = rr_seek(what, i);
 		int pos_to_remove = find_rr_pos(from, to_remove);
 		if (pos_to_remove >= 0) {
 			int ret = remove_rr_at(from, pos_to_remove, mm);
@@ -355,6 +361,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 				return ret;
 			}
 		}
+		to_remove = knot_rdataset_next(to_remove);
 	}
 
 	return KNOT_EOK;

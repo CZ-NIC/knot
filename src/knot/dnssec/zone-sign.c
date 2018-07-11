@@ -111,9 +111,11 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 	}
 
 	uint16_t rrsigs_rdata_count = rrsigs->rrs.count;
+	knot_rdata_t *rdata = rrsigs->rrs.rdata;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; i++) {
-		uint16_t rr_keytag = knot_rrsig_key_tag(&rrsigs->rrs, i);
-		uint16_t rr_covered = knot_rrsig_type_covered(&rrsigs->rrs, i);
+		uint16_t rr_keytag = knot_rrsig_key_tag(rdata);
+		uint16_t rr_covered = knot_rrsig_type_covered(rdata);
+		rdata = knot_rdataset_next(rdata);
 
 		uint16_t keytag = dnssec_key_get_keytag(key);
 		if (rr_keytag != keytag || rr_covered != covered->type) {
@@ -201,39 +203,17 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 }
 
 /*!
- * \brief Get zone key for given RRSIG (checks key tag only).
- *
- * \param rrsigs  RR set with RRSIGs.
- * \param pos     Number of RR in RR set.
- * \param keys    Zone keys.
- *
- * \return Dynarray of such keys.
- */
-static keyptr_dynarray_t get_matching_zone_keys(const knot_rrset_t *rrsigs,
-                                                     size_t pos, const zone_keyset_t *keys)
-{
-	assert(rrsigs && rrsigs->type == KNOT_RRTYPE_RRSIG);
-	assert(keys);
-
-	uint16_t keytag = knot_rrsig_key_tag(&rrsigs->rrs, pos);
-
-	return get_zone_keys(keys, keytag);
-}
-
-/*!
  * \brief Note earliest expiration of a signature.
  *
- * \param rrsigs      RR set with RRSIGs.
- * \param pos         Position of RR in rrsigs.
+ * \param rrsig       RRSIG rdata.
  * \param expires_at  Current earliest expiration, will be updated.
  */
-static void note_earliest_expiration(const knot_rrset_t *rrsigs, size_t pos,
-                                     knot_time_t *expires_at)
+static void note_earliest_expiration(const knot_rdata_t *rrsig, knot_time_t *expires_at)
 {
-	assert(rrsigs);
+	assert(rrsig);
 	assert(expires_at);
 
-	uint32_t curr_rdata = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	uint32_t curr_rdata = knot_rrsig_sig_expiration(rrsig);
 	knot_time_t current = knot_time_from_u32(curr_rdata);
 	*expires_at = knot_time_min(current, *expires_at);
 }
@@ -280,7 +260,10 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 
 	uint16_t rrsig_rdata_count = synth_rrsig.rrs.count;
 	for (uint16_t i = 0; i < rrsig_rdata_count; i++) {
-		struct keyptr_dynarray keys = get_matching_zone_keys(&synth_rrsig, i, zone_keys);
+		knot_rdata_t *rr = knot_rdataset_at(&synth_rrsig.rrs, i);
+		uint16_t keytag = knot_rrsig_key_tag(rr);
+
+		struct keyptr_dynarray keys = get_zone_keys(zone_keys, keytag);
 		int endloop = 0; // 1 - continue; 2 - break
 
 		dynarray_foreach(keyptr, zone_key_t *, key, keys) {
@@ -291,7 +274,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 			                              (*key)->key, (*key)->ctx, dnssec_ctx);
 			if (result == KNOT_EOK) {
 				// valid signature
-				note_earliest_expiration(&synth_rrsig, i, expires_at);
+				note_earliest_expiration(rr, expires_at);
 				endloop = 1;
 				break;
 			} else if (result != DNSSEC_INVALID_SIGNATURE) {
@@ -311,8 +294,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 			to_remove = create_empty_rrsigs_for(&synth_rrsig);
 		}
 
-		knot_rdata_t *rr_rem = knot_rdataset_at(&synth_rrsig.rrs, i);
-		result = knot_rdataset_add(&to_remove.rrs, rr_rem, NULL);
+		result = knot_rdataset_add(&to_remove.rrs, rr, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -482,14 +464,14 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
 	}
 
 	uint16_t rrsigs_rdata_count = rrsigs->rrs.count;
+	knot_rdata_t *rdata = rrsigs->rrs.rdata;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
-		uint16_t type_covered = knot_rrsig_type_covered(&rrsigs->rrs, i);
+		uint16_t type_covered = knot_rrsig_type_covered(rdata);
 		if (!node_rrtype_exists(node, type_covered)) {
 			knot_rrset_t to_remove;
 			knot_rrset_init(&to_remove, rrsigs->owner, rrsigs->type,
 			                rrsigs->rclass, rrsigs->ttl);
-			knot_rdata_t *rr_rem = knot_rdataset_at(&rrsigs->rrs, i);
-			int ret = knot_rdataset_add(&to_remove.rrs, rr_rem, NULL);
+			int ret = knot_rdataset_add(&to_remove.rrs, rdata, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -499,6 +481,7 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
 				return ret;
 			}
 		}
+		rdata = knot_rdataset_next(rdata);
 	}
 
 	return KNOT_EOK;

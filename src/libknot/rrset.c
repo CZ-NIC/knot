@@ -143,7 +143,7 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
 	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
 	return ((rr->type == KNOT_RRTYPE_NSEC3) ||
 	        (rr->type == KNOT_RRTYPE_RRSIG
-	         && knot_rrsig_type_covered(&rr->rrs, 0) == KNOT_RRTYPE_NSEC3));
+	         && knot_rrsig_type_covered(rr->rrs.rdata) == KNOT_RRTYPE_NSEC3));
 }
 
 _public_
@@ -166,10 +166,8 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
 	}
 
-	knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, 0);
-	assert(rdata);
-	uint16_t rdlen = rdata->len;
-	uint8_t *pos = rdata->data;
+	uint16_t rdlen = rrset->rrs.rdata->len;
+	uint8_t *pos = rrset->rrs.rdata->data;
 	uint8_t *endpos = pos + rdlen;
 
 	/* No RDATA */
@@ -218,11 +216,11 @@ size_t knot_rrset_size(const knot_rrset_t *rrset)
 
 	size_t total_size = knot_dname_size(rrset->owner) * rr_count;
 
+	knot_rdata_t *rr = rrset->rrs.rdata;
 	for (size_t i = 0; i < rr_count; ++i) {
-		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, i);
-		assert(rr);
 		/* 10B = TYPE + CLASS + TTL + RDLENGTH */
 		total_size += rr->len + 10;
+		rr = knot_rdataset_next(rr);
 	}
 
 	return total_size;

@@ -355,7 +355,7 @@ static void incr_edns_option(knotd_mod_t *mod, const knot_pkt_t *pkt, unsigned c
 		return;
 	}
 
-	knot_rdata_t *rdata = knot_rdataset_at(&pkt->opt_rr->rrs, 0);
+	knot_rdata_t *rdata = pkt->opt_rr->rrs.rdata;
 	if (rdata == NULL || rdata->len == 0) {
 		return;
 	}

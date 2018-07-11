@@ -239,7 +239,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// Schedule depedent events.
 	const knot_rdataset_t *soa = zone_soa(zone);
-	zone->timers.soa_expire = knot_soa_expire(soa);
+	zone->timers.soa_expire = knot_soa_expire(soa->rdata);
 
 	if (dnssec_enable) {
 		event_dnssec_reschedule(conf, zone, &dnssec_refresh, false); // false since we handle NOTIFY below

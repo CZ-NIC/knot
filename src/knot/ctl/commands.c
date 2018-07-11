@@ -182,7 +182,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		if (zone->contents != NULL) {
 			knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
 			                                     KNOT_RRTYPE_SOA);
-			ret = snprintf(buff, sizeof(buff), "%u", knot_soa_serial(soa));
+			ret = snprintf(buff, sizeof(buff), "%u", knot_soa_serial(soa->rdata));
 		} else {
 			ret = snprintf(buff, sizeof(buff), "none");
 		}

@@ -37,14 +37,16 @@ knot_rrset_t rrset;
 
 /*!< \brief Returns true if node contains given RR in its RRSets. */
 static bool node_contains_rr(const zone_node_t *node,
-                             const knot_rrset_t *rr)
+                             const knot_rrset_t *rrset)
 {
-	const knot_rdataset_t *zone_rrs = node_rdataset(node, rr->type);
-	if (zone_rrs) {
-		for (size_t i = 0; i < rr->rrs.count; ++i) {
-			if (!knot_rdataset_member(zone_rrs, knot_rdataset_at(&rr->rrs, i))) {
+	const knot_rdataset_t *zone_rrs = node_rdataset(node, rrset->type);
+	if (zone_rrs != NULL) {
+		knot_rdata_t *rr = rrset->rrs.rdata;
+		for (size_t i = 0; i < rrset->rrs.count; ++i) {
+			if (!knot_rdataset_member(zone_rrs, rr)) {
 				return false;
 			}
+			rr = knot_rdataset_next(rr);
 		}
 
 		return true;
