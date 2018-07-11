@@ -24,6 +24,7 @@
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/string.h"
 #include "libzscanner/scanner.h"
+#include "geodb.h"
 
 // Next dependecies force static module!
 #include "knot/dnssec/rrset-sign.h"
@@ -33,10 +34,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
-
-#if HAVE_MAXMINDDB
-#include <maxminddb.h>
-#endif
 
 #define MOD_CONF_FILE "\x09""conf-file"
 #define MOD_TTL "\x03""ttl"
@@ -53,13 +50,6 @@ static const knot_lookup_t modes[] = {
 	{ MODE_SUBNET, "subnet" },
 	{ MODE_GEODB, "geodb" },
 	{ 0, NULL }
-};
-
-enum geodb_key {
-	CONTINENT,
-	COUNTRY,
-	CITY,
-	ISP
 };
 
 static const knot_lookup_t geodb_keys[] = {
@@ -96,21 +86,6 @@ int geoip_conf_check(knotd_conf_check_args_t *args)
 	return KNOT_EOK;
 }
 
-// MaxMind DB related constants.
-#define MAX_PATH_LEN 4
-#define GEODB_KEYS 4
-
-typedef struct {
-	const char *path[MAX_PATH_LEN];
-}mmdb_path_t;
-
-mmdb_path_t paths[] = {
-	{{"continent", "code", NULL}},
-	{{"country", "iso_code", NULL}},
-	{{"city", "names", "en", NULL}},
-	{{"isp", NULL}}
-};
-
 typedef struct {
 	enum operation_mode mode;
 	enum geodb_key keys[GEODB_KEYS];
@@ -122,9 +97,7 @@ typedef struct {
 	zone_keyset_t keyset;
 	kdnssec_ctx_t kctx;
 
-#if HAVE_MAXMINDDB
-	MMDB_s db;
-#endif
+	void *geodb;
 } geoip_ctx_t;
 
 typedef struct {
@@ -552,9 +525,8 @@ void clear_geo_ctx(geoip_ctx_t *ctx)
 {
 	kdnssec_ctx_deinit(&ctx->kctx);
 	free_zone_keys(&ctx->keyset);
-#if HAVE_MAXMINDDB
-	MMDB_close(&ctx->db);
-#endif
+	geodb_close(ctx->geodb);
+	free(ctx->geodb);
 	clear_geo_trie(ctx->geo_trie);
 	trie_free(ctx->geo_trie);
 }
@@ -621,36 +593,12 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	}
 
 	if (ctx->mode == MODE_GEODB) {
-#if HAVE_MAXMINDDB
-		int mmdb_error = 0;
-		MMDB_lookup_result_s res;
-		res = MMDB_lookup_sockaddr(&ctx->db, (struct sockaddr *)remote, &mmdb_error);
-		if (mmdb_error != MMDB_SUCCESS) {
-			knotd_mod_log(mod, LOG_ERR, "a lookup error in MMDB occured");
+		geo_view_t remote_view;
+		uint16_t netmask;
+		int ret = geodb_query(ctx->geodb, (struct sockaddr *)remote, ctx->keys, ctx->keyc,
+		                      remote_view.geodata, remote_view.geodata_len, &netmask);
+		if (ret != 0) {
 			return state;
-		}
-		if (!res.found_entry) {
-			return state;
-		}
-
-		geo_view_t client_view;
-		MMDB_entry_data_s entry;
-		// Set the remote's geo information.
-		for (uint16_t i = 0; i < ctx->keyc; i++) {
-			enum geodb_key key = ctx->keys[i];
-			client_view.geodata[key] = NULL;
-			mmdb_error = MMDB_aget_value(&res.entry, &entry, paths[key].path);
-			if (mmdb_error != MMDB_SUCCESS &&
-				mmdb_error != MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR) {
-				knotd_mod_log(mod, LOG_ERR, "an entry error in MMDB occured (%s)", geodb_keys[key].name);
-				return state;
-			}
-			if (mmdb_error == MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR ||
-				!entry.has_data || entry.type != MMDB_DATA_TYPE_UTF8_STRING) {
-				continue;
-			}
-			client_view.geodata[key] = (char *)entry.utf8_string;
-			client_view.geodata_len[key] = entry.data_size;
 		}
 
 		uint8_t best_depth = 0;
@@ -659,7 +607,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		// Check whether the remote falls into any geo location.
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
-			if (addr_in_geo(ctx, view, &client_view) && view->geodepth >= best_depth) {
+			if (addr_in_geo(ctx, view, &remote_view) && view->geodepth >= best_depth) {
 				for (int j = 0; j < view->count; j++) {
 					if (view->rrsets[j].type == qtype) {
 						best_depth = view->geodepth;
@@ -675,7 +623,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		if (rr != NULL) {
 			// Update ECS if used.
 			if (qdata->ecs != NULL) {
-				qdata->ecs->scope_len = res.netmask;
+				qdata->ecs->scope_len = netmask;
 			}
 
 			knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rr, 0);
@@ -684,7 +632,6 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 			}
 			return KNOTD_IN_STATE_HIT;
 		}
-#endif
 	}
 
 	return state;
@@ -709,14 +656,14 @@ int geoip_load(knotd_mod_t *mod)
 	int ret;
 
 	if (ctx->mode == MODE_GEODB) {
-#if HAVE_MAXMINDDB // Initialize geodb if configured.
+		// Initialize geodb.
 		conf = knotd_conf_mod(mod, MOD_GEODB_FILE);
-		ret = MMDB_open(conf.single.string, MMDB_MODE_MMAP, &ctx->db);
-		if (ret != MMDB_SUCCESS) {
+		ctx->geodb = geodb_open(conf.single.string);
+		if (ctx->geodb == NULL) {
 			knotd_mod_log(mod, LOG_ERR, "failed to open Geo DB");
 			return KNOT_EINVAL;
 		}
-#endif
+
 		// Load configured geodb keys.
 		conf = knotd_conf_mod(mod, MOD_GEODB_KEY);
 		ctx->keyc = conf.count;
