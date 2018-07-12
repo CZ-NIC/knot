@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
 #include <tap/basic.h>
 #include <stdlib.h>
 #include <time.h>
@@ -53,15 +52,15 @@ static void test_dateserial(void)
 	time_t now = time(NULL);
 
 	struct tm *gm_ret = gmtime(&now);
-	assert(gm_ret);
 
 	char str[32];
-	int ret = strftime(str, sizeof(str), "%Y%m%d00", gm_ret);
-	assert(ret > 0);
+	int ret1 = strftime(str, sizeof(str), "%Y%m%d00", gm_ret);
 
-	uint32_t serial0;
-	ret = str_to_u32(str, &serial0);
-	assert(ret == KNOT_EOK);
+	uint32_t serial0 = 0;
+	int ret2 = str_to_u32(str, &serial0);
+
+	ok(gm_ret != NULL && ret1 > 0 && ret2 == KNOT_EOK,
+	   "dateseril: prepare current value");
 
 	check_dateserial(2000010100, serial0, "from old date");
 	check_dateserial(serial0, serial0 + 1, "today's first increment");
