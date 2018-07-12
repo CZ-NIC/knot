@@ -1,4 +1,6 @@
-knot_modules_geoip_la_SOURCES = knot/modules/geoip/geoip.c
+knot_modules_geoip_la_SOURCES = knot/modules/geoip/geoip.c \
+                                knot/modules/geoip/geodb.c \
+                                knot/modules/geoip/geodb.h
 EXTRA_DIST +=                     knot/modules/geoip/geoip.rst
 
 if STATIC_MODULE_geoip
