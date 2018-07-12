@@ -21,7 +21,6 @@
 #include "knot/conf/conf.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/sockaddr.h"
-#include "contrib/openbsd/strlcpy.h"
 #include "contrib/string.h"
 #include "libzscanner/scanner.h"
 #include "geodb.h"
@@ -50,13 +49,6 @@ static const knot_lookup_t modes[] = {
 	{ MODE_SUBNET, "subnet" },
 	{ MODE_GEODB, "geodb" },
 	{ 0, NULL }
-};
-
-static const knot_lookup_t geodb_keys[] = {
-	{ CONTINENT, "continent" },
-	{ COUNTRY, "country" },
-	{ CITY, "city" },
-	{ ISP, "isp" }
 };
 
 const yp_item_t geoip_conf[] = {
@@ -89,8 +81,6 @@ int geoip_conf_check(knotd_conf_check_args_t *args)
 
 typedef struct {
 	enum operation_mode mode;
-	enum geodb_key keys[GEODB_KEYS];
-	uint16_t keyc;
 	uint32_t ttl;
 	trie_t *geo_trie;
 
@@ -99,14 +89,17 @@ typedef struct {
 	kdnssec_ctx_t kctx;
 
 	void *geodb;
+	void *entries;
+	geodb_path_t paths[GEODB_MAX_DEPTH];
+	uint16_t path_count;
 } geoip_ctx_t;
 
 typedef struct {
 	struct sockaddr_storage *subnet;
 	uint8_t subnet_prefix;
 
-	char *geodata[GEODB_KEYS];
-	uint32_t geodata_len[GEODB_KEYS];
+	void *geodata[GEODB_MAX_DEPTH];
+	uint32_t geodata_len[GEODB_MAX_DEPTH];
 	uint8_t geodepth;
 
 	size_t count, avail;
@@ -190,27 +183,9 @@ static bool remote_in_subnet(const struct sockaddr_storage *remote, geo_view_t *
 	return true;
 }
 
-static bool remote_in_geo(geoip_ctx_t *ctx, geo_view_t *view, geo_view_t *remote_view)
-{
-	// Iterate over configured geo keys.
-	for (uint16_t i = 0; i < ctx->keyc; i++) {
-		enum geodb_key key = ctx->keys[i];
-		// Nothing to do if the view does not specify this key.
-		if (view->geodata[key] == NULL) {
-			continue;
-		}
-		if (remote_view->geodata[key] == NULL ||
-		    view->geodata_len[key] != remote_view->geodata_len[key] ||
-		    memcmp(view->geodata[key], remote_view->geodata[key], view->geodata_len[key]) != 0) {
-			return false;
-		}
-	}
-	return true;
-}
-
 static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *key, geoip_ctx_t *ctx)
 {
-	if (view == NULL) {
+	if (view == NULL || view->count == 0) {
 		return KNOT_EOK;
 	}
 
@@ -239,8 +214,8 @@ static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	view->rrsets = NULL;
-	view->rrsigs = NULL;
+
+	memset(view, 0, sizeof(*view));
 	return ret;
 }
 
@@ -265,7 +240,7 @@ static void clear_geo_view(geo_view_t *view)
 	if (view == NULL) {
 		return;
 	}
-	for (int i = 0; i < GEODB_KEYS; i++) {
+	for (int i = 0; i < GEODB_MAX_DEPTH; i++) {
 		free(view->geodata[i]);
 	}
 	free(view->subnet);
@@ -351,7 +326,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 			}
 
 			char *set_origin = sprintf_alloc("$ORIGIN %s%s\n", yp->key,
-			                                 (yp->key[yp->key_len-1] == '.') ? "" : ".");
+			                                 (yp->key[yp->key_len - 1] == '.') ? "" : ".");
 			if (set_origin == NULL) {
 				ret = KNOT_ENOMEM;
 				goto cleanup;
@@ -370,7 +345,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		// New geo view description starts.
 		if (yp->event == YP_EID) {
 			// Initialize new geo view.
-			memset(view, 0, sizeof(geo_view_t));
+			memset(view, 0, sizeof(*view));
 			ret = init_geo_view(view);
 			if (ret != KNOT_EOK) {
 				goto cleanup;
@@ -378,29 +353,11 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 
 			// Parse geodata/subnet.
 			if (ctx->mode == MODE_GEODB) {
-				char *beg = yp->data;
-				char *end = beg;
-				uint16_t i = 0;
-				while (1) {
-					beg = end;
-					end = strchrnul(beg, ';');
-					uint32_t key_len = end - beg;
-					if (key_len != 0 && !(key_len == 1 && *beg == '*')) {
-						view->geodepth = i + 1;
-						enum geodb_key key = ctx->keys[i];
-						view->geodata[key] = malloc(key_len + 1);
-						if (view->geodata[key] == NULL) {
-							ret = KNOT_ENOMEM;
-							goto cleanup;
-						}
-						strlcpy(view->geodata[key], beg, key_len + 1);
-						view->geodata_len[key] = key_len;
-					}
-					if (*end == '\0') {
-						break;
-					}
-					i++;
-					end++;
+				if (parse_geodata((char *)yp->data, view->geodata, view->geodata_len,
+				    &view->geodepth, ctx->paths, ctx->path_count) != 0) {
+					knotd_mod_log(mod, LOG_ERR, "could not parse geoip conf-file");
+					ret = KNOT_EINVAL;
+					goto cleanup;
 				}
 			}
 
@@ -453,7 +410,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 			if (add_rr == NULL) {
 				if (view->count == view->avail) {
 					void *alloc_ret = realloc(view->rrsets,
-					                             2 * view->avail * sizeof(knot_rrset_t));
+					                          2 * view->avail * sizeof(knot_rrset_t));
 					if (alloc_ret == NULL) {
 						ret = KNOT_ENOMEM;
 						goto cleanup;
@@ -530,6 +487,12 @@ void clear_geo_ctx(geoip_ctx_t *ctx)
 	free(ctx->geodb);
 	clear_geo_trie(ctx->geo_trie);
 	trie_free(ctx->geo_trie);
+	for (int i = 0; i < ctx->path_count; i++) {
+		for (int j = 0; j < GEODB_MAX_PATH_LEN; j++) {
+			free(ctx->paths[i].path[j]);
+		}
+	}
+	free(ctx->entries);
 }
 
 static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
@@ -586,9 +549,8 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 		netmask = best_prefix;
 	} else if (ctx->mode == MODE_GEODB) {
-		geo_view_t remote_view;
-		int ret = geodb_query(ctx->geodb, (struct sockaddr *)remote, ctx->keys, ctx->keyc,
-		                      remote_view.geodata, remote_view.geodata_len, &netmask);
+		int ret = geodb_query(ctx->geodb, ctx->entries, (struct sockaddr *)remote,
+		                      ctx->paths, ctx->path_count, &netmask);
 		if (ret != 0) {
 			return state;
 		}
@@ -597,7 +559,8 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		// Find the best geo view containing the remote and queried rrset.
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
-			if (rr == NULL || (view->geodepth > best_depth && remote_in_geo(ctx, view, &remote_view))) {
+			if (rr == NULL || (view->geodepth > best_depth &&
+			    remote_in_geo(view->geodata, view->geodata_len, view->geodepth, ctx->entries))) {
 				for (int j = 0; j < view->count; j++) {
 					if (view->rrsets[j].type == qtype) {
 						best_depth = view->geodepth;
@@ -666,11 +629,26 @@ int geoip_load(knotd_mod_t *mod)
 
 		// Load configured geodb keys.
 		conf = knotd_conf_mod(mod, MOD_GEODB_KEY);
-		ctx->keyc = conf.count;
+		ctx->path_count = conf.count;
+		if (ctx->path_count > GEODB_MAX_DEPTH) {
+			knotd_mod_log(mod, LOG_ERR, "maximal number of geodb-key items (%d) exceeded", GEODB_MAX_DEPTH);
+			knotd_conf_free(&conf);
+			return KNOT_EINVAL;
+		}
 		for (size_t i = 0; i < conf.count; i++) {
-			ctx->keys[i] = conf.multi[i].option;
+			if (parse_geodb_path(&ctx->paths[i], (char *)conf.multi[i].string) != 0) {
+				knotd_mod_log(mod, LOG_ERR, "unrecognized geodb-key format");
+				knotd_conf_free(&conf);
+				return KNOT_EINVAL;
+			}
 		}
 		knotd_conf_free(&conf);
+
+		// Allocate space for query entries.
+		ctx->entries = geodb_alloc_entries(ctx->path_count);
+		if (ctx->entries == NULL) {
+			return KNOT_ENOMEM;
+		}
 	}
 
 	// Is DNSSEC used on this zone?
