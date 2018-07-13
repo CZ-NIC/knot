@@ -99,7 +99,7 @@ static int replace_soa(zone_contents_t *contents, const knot_rrset_t *rr)
 int zone_update_init_base(zone_update_t *update, zone_t *zone,
 			  zone_contents_t *old_contents, zone_update_flags_t flags)
 {
-	if (update == NULL || zone == NULL || old_contents == NULL) {
+	if (update == NULL || zone == NULL || (old_contents == NULL && (flags & UPDATE_INCREMENTAL))) {
 		return KNOT_EINVAL;
 	}
 
