@@ -9,7 +9,6 @@ RUN apt-get -y install \
 	autoconf \
 	automake \
 	autotools-dev \
-	bash-completion \
 	build-essential \
 	clang-6.0 \
 	curl \
@@ -18,15 +17,16 @@ RUN apt-get -y install \
 	libedit-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
-	libidn11-dev \
+	libidn2-0-dev \
 	liblmdb-dev \
+	libmaxminddb-dev \
 	libprotobuf-c-dev \
 	libsystemd-dev \
 	libtool \
 	liburcu-dev \
 	locales-all \
 	pkg-config \
-	protobuf-c-compiler	\
+	protobuf-c-compiler \
 	python-sphinx \
 	texinfo texlive \
 	texlive-font-utils \

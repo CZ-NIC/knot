@@ -14,6 +14,7 @@ RUN yum -y install \
 	'pkgconfig(libedit)' \
 	'pkgconfig(libfstrm)' \
 	'pkgconfig(libidn2)' \
+	'pkgconfig(libmaxminddb)' \
 	'pkgconfig(libprotobuf-c)' \
 	'pkgconfig(libsystemd)' \
 	'pkgconfig(liburcu)' \

@@ -9,7 +9,6 @@ RUN apt-get -y install \
 	autoconf \
 	automake \
 	autotools-dev \
-	bash-completion \
 	build-essential \
 	curl \
 	ghostscript \
@@ -17,8 +16,9 @@ RUN apt-get -y install \
 	libedit-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
-	libidn11-dev \
+	libidn2-0-dev \
 	liblmdb-dev \
+	libmaxminddb-dev \
 	libprotobuf-c-dev \
 	libsystemd-dev \
 	libtool \
@@ -26,7 +26,7 @@ RUN apt-get -y install \
 	locales-all \
 	osc \
 	pkg-config \
-	protobuf-c-compiler	\
+	protobuf-c-compiler \
 	python-sphinx \
 	texinfo texlive \
 	texlive-font-utils \
