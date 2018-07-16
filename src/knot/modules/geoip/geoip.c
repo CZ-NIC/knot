@@ -517,9 +517,10 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	geo_trie_val_t *data = *val;
 
 	// Check if EDNS Client Subnet is available.
+	struct sockaddr_storage ecs_addr = { 0 };
 	const struct sockaddr_storage *remote = qdata->params->remote;
-	if (knot_edns_client_subnet_get_addr((struct sockaddr_storage *)remote, qdata->ecs) != KNOT_EOK) {
-		remote = qdata->params->remote;
+	if (knot_edns_client_subnet_get_addr(&ecs_addr, qdata->ecs) == KNOT_EOK) {
+		remote = &ecs_addr;
 	}
 
 	knot_rrset_t *rr = NULL;
@@ -551,6 +552,11 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	} else if (ctx->mode == MODE_GEODB) {
 		int ret = geodb_query(ctx->geodb, ctx->entries, (struct sockaddr *)remote,
 		                      ctx->paths, ctx->path_count, &netmask);
+		// MMDB may supply IPv6 prefixes even for IPv4 address, see man libmaxminddb.
+		if (remote->ss_family == AF_INET && netmask > 32) {
+			netmask -= 96;
+		}
+
 		if (ret != 0) {
 			return state;
 		}
@@ -559,8 +565,8 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		// Find the best geo view containing the remote and queried rrset.
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
-			if (rr == NULL || (view->geodepth > best_depth &&
-			    remote_in_geo(view->geodata, view->geodata_len, view->geodepth, ctx->entries))) {
+			if ((rr == NULL || view->geodepth > best_depth) &&
+			    remote_in_geo(view->geodata, view->geodata_len, view->geodepth, ctx->entries)) {
 				for (int j = 0; j < view->count; j++) {
 					if (view->rrsets[j].type == qtype) {
 						best_depth = view->geodepth;
