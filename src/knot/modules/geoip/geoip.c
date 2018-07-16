@@ -22,6 +22,7 @@
 #include "contrib/ucw/lists.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
+#include "contrib/strtonum.h"
 #include "libzscanner/scanner.h"
 #include "geodb.h"
 
@@ -256,6 +257,141 @@ static void clear_geo_view(geo_view_t *view)
 	view->rrsigs = NULL;
 }
 
+static int parse_origin(yp_parser_t *yp, zs_scanner_t *scanner)
+{
+	char *set_origin = sprintf_alloc("$ORIGIN %s%s\n", yp->key,
+	                                 (yp->key[yp->key_len - 1] == '.') ? "" : ".");
+	if (set_origin == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Set owner as origin for future record parses.
+	if (zs_set_input_string(scanner, set_origin, strlen(set_origin)) != 0
+		|| zs_parse_record(scanner) != 0) {
+		free(set_origin);
+		return KNOT_EPARSEFAIL;
+	}
+	free(set_origin);
+	return KNOT_EOK;
+}
+
+static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_view_t *view)
+{
+	// Initialize new geo view.
+	memset(view, 0, sizeof(*view));
+	int ret = init_geo_view(view);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Parse geodata/subnet.
+	if (ctx->mode == MODE_GEODB) {
+		if (parse_geodata((char *)yp->data, view->geodata, view->geodata_len,
+			&view->geodepth, ctx->paths, ctx->path_count) != 0) {
+			knotd_mod_log(mod, LOG_ERR, "invalid geo format (%s) on line %zu", yp->data, yp->line_count);
+			return KNOT_EINVAL;
+		}
+	} else if (ctx->mode == MODE_SUBNET) {
+		// Locate the optional slash in the subnet string.
+		char *slash = strchrnul(yp->data, '/');
+		*slash = '\0';
+
+		// Parse address.
+		view->subnet = calloc(1, sizeof(struct sockaddr_storage));
+		if (view->subnet == NULL) {
+			return KNOT_ENOMEM;
+		}
+		void *write_addr = &((struct sockaddr_in *)view->subnet)->sin_addr;
+		// Try to parse as IPv4 address.
+		ret = inet_pton(AF_INET, yp->data, write_addr);
+		if (ret == 1) {
+			view->subnet->ss_family = AF_INET;
+			view->subnet_prefix = 32;
+		} else { // Try to parse as IPv6 address.
+			write_addr = &((struct sockaddr_in6 *)view->subnet)->sin6_addr;
+			ret = inet_pton(AF_INET6, yp->data, write_addr);
+			if (ret != 1) {
+				knotd_mod_log(mod, LOG_ERR, "invalid address format (%s) on line %zu", yp->data, yp->line_count);
+				return KNOT_EINVAL;
+			}
+			view->subnet->ss_family = AF_INET6;
+			view->subnet_prefix = 128;
+		}
+
+		// Parse subnet prefix.
+		if (slash < yp->data + yp->data_len - 1) {
+			ret = str_to_u8(slash + 1, &view->subnet_prefix);
+			if (ret != KNOT_EOK) {
+				knotd_mod_log(mod, LOG_ERR, "invalid prefix (%s) on line %zu", slash + 1, yp->line_count);
+				return ret;
+			}
+			if (view->subnet->ss_family == AF_INET && view->subnet_prefix > 32) {
+				view->subnet_prefix = 32;
+				knotd_mod_log(mod, LOG_WARNING, "IPv4 prefix too large on line %zu, set to 32", yp->line_count);
+			}
+			if (view->subnet->ss_family == AF_INET6 && view->subnet_prefix > 128) {
+				view->subnet_prefix = 128;
+				knotd_mod_log(mod, LOG_WARNING, "IPv6 prefix too large on line %zu, set to 128", yp->line_count);
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+int parse_rr(knotd_mod_t *mod, yp_parser_t *yp, zs_scanner_t *scanner,
+             knot_dname_t *owner, geo_view_t *view, uint32_t ttl)
+{
+	uint16_t rr_type = KNOT_RRTYPE_A;
+	if (knot_rrtype_from_string(yp->key, &rr_type) != 0) {
+		knotd_mod_log(mod, LOG_ERR, "invalid RR type in config on line %zu", yp->line_count);
+		return KNOT_EINVAL;
+	}
+
+	knot_rrset_t *add_rr = NULL;
+	for (size_t i = 0; i < view->count; i++) {
+		if (view->rrsets[i].type == rr_type) {
+			add_rr = &view->rrsets[i];
+			break;
+		}
+	}
+
+	if (add_rr == NULL) {
+		if (view->count == view->avail) {
+			void *alloc_ret = realloc(view->rrsets,
+									  2 * view->avail * sizeof(knot_rrset_t));
+			if (alloc_ret == NULL) {
+				return KNOT_ENOMEM;
+			}
+			view->rrsets = alloc_ret;
+			view->avail *= 2;
+		}
+		add_rr = &view->rrsets[view->count++];
+		knot_dname_t *owner_cpy = knot_dname_copy(owner, NULL);
+		if (owner_cpy == NULL) {
+			return KNOT_ENOMEM;
+		}
+		knot_rrset_init(add_rr, owner_cpy, rr_type, KNOT_CLASS_IN, ttl);
+	}
+
+	// Parse record.
+	char *input_string = sprintf_alloc("@ %s %s\n", yp->key, yp->data);
+	if (input_string == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	if (zs_set_input_string(scanner, input_string, strlen(input_string)) != 0 ||
+		zs_parse_record(scanner) != 0 ||
+		scanner->state != ZS_STATE_DATA) {
+		free(input_string);
+		return KNOT_EPARSEFAIL;
+	}
+	free(input_string);
+
+	// Add new rdata to current rrset.
+	return knot_rrset_add_rdata(add_rr, scanner->r_data, scanner->r_data_length, NULL);
+}
+
 static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 {
 	int ret = KNOT_EOK;
@@ -268,6 +404,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		return KNOT_ENOMEM;
 	}
 
+	// Initialize yparser.
 	yp = malloc(sizeof(yp_parser_t));
 	if (yp == NULL) {
 		return KNOT_ENOMEM;
@@ -280,6 +417,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		goto cleanup;
 	}
 
+	// Initialize zscanner.
 	scanner = malloc(sizeof(zs_scanner_t));
 	if (scanner == NULL) {
 		ret = KNOT_ENOMEM;
@@ -290,6 +428,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		goto cleanup;
 	}
 
+	// Prepare ZSK for signing.
 	zone_key_t *key = NULL;
 	if (ctx->dnssec) {
 		for (size_t i = 0; i < ctx->keyset.count; i++) {
@@ -299,7 +438,9 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		}
 	}
 
+	// Main loop.
 	while (1) {
+		// Get the next item in config.
 		ret = yp_parse(yp);
 		if (ret == KNOT_EOF) {
 			ret = finalize_geo_view(view, owner, key, ctx);
@@ -310,6 +451,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 			goto cleanup;
 		}
 
+		// If the next item is not a rrset, the current view is finished.
 		if (yp->event != YP_EKEY1) {
 			ret = finalize_geo_view(view, owner, key, ctx);
 			if (ret != KNOT_EOK) {
@@ -317,134 +459,31 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 			}
 		}
 
+		// Next domain.
 		if (yp->event == YP_EKEY0) {
 			owner = knot_dname_from_str(owner_buff, yp->key, sizeof(owner_buff));
 			if (owner == NULL) {
 				ret = KNOT_EINVAL;
-				knotd_mod_log(mod, LOG_ERR, "invalid domain name in config");
+				knotd_mod_log(mod, LOG_ERR, "invalid domain name in config on line %zu", yp->line_count);
 				goto cleanup;
 			}
-
-			char *set_origin = sprintf_alloc("$ORIGIN %s%s\n", yp->key,
-			                                 (yp->key[yp->key_len - 1] == '.') ? "" : ".");
-			if (set_origin == NULL) {
-				ret = KNOT_ENOMEM;
-				goto cleanup;
-			}
-
-			// Set owner as origin for future record parses.
-			if (zs_set_input_string(scanner, set_origin, strlen(set_origin)) != 0
-			    || zs_parse_record(scanner) != 0) {
-				free(set_origin);
-				ret = KNOT_EPARSEFAIL;
-				goto cleanup;
-			}
-			free(set_origin);
-		}
-
-		// New geo view description starts.
-		if (yp->event == YP_EID) {
-			// Initialize new geo view.
-			memset(view, 0, sizeof(*view));
-			ret = init_geo_view(view);
+			ret = parse_origin(yp, scanner);
 			if (ret != KNOT_EOK) {
 				goto cleanup;
 			}
+		}
 
-			// Parse geodata/subnet.
-			if (ctx->mode == MODE_GEODB) {
-				if (parse_geodata((char *)yp->data, view->geodata, view->geodata_len,
-				    &view->geodepth, ctx->paths, ctx->path_count) != 0) {
-					knotd_mod_log(mod, LOG_ERR, "could not parse geoip conf-file");
-					ret = KNOT_EINVAL;
-					goto cleanup;
-				}
-			}
-
-			if (ctx->mode == MODE_SUBNET) {
-				// Parse subnet prefix length.
-				char *slash = strchr(yp->data, '/');
-				view->subnet_prefix= atoi(slash + 1);
-				*slash = '\0';
-
-				// Parse address.
-				view->subnet = calloc(1, sizeof(struct sockaddr_storage));
-				if (view->subnet == NULL) {
-					ret = KNOT_ENOMEM;
-					goto cleanup;
-				}
-				void *write_addr = &((struct sockaddr_in *)view->subnet)->sin_addr;
-				// Try to parse as IPv4 address.
-				ret = inet_pton(AF_INET, yp->data, write_addr);
-				if (ret == 1) {
-					view->subnet->ss_family = AF_INET;
-				} else { // Try to parse as IPv6 address.
-					write_addr = &((struct sockaddr_in6 *)view->subnet)->sin6_addr;
-					ret = inet_pton(AF_INET6, yp->data, write_addr);
-					if (ret != 1) {
-						ret = KNOT_EINVAL;
-						goto cleanup;
-					}
-					view->subnet->ss_family = AF_INET6;
-				}
+		// Next view.
+		if (yp->event == YP_EID) {
+			ret = parse_view(mod, ctx, yp, view);
+			if (ret != KNOT_EOK) {
+				goto cleanup;
 			}
 		}
 
-		// Next rrset of the current view.
+		// Next RR of the current view.
 		if (yp->event == YP_EKEY1) {
-			uint16_t rr_type = KNOT_RRTYPE_A;
-			if (knot_rrtype_from_string(yp->key, &rr_type) != 0) {
-				knotd_mod_log(mod, LOG_ERR, "invalid RR type in config");
-				ret = KNOT_EINVAL;
-				goto cleanup;
-			}
-
-			knot_rrset_t *add_rr = NULL;
-			for (size_t i = 0; i < view->count; i++) {
-				if (view->rrsets[i].type == rr_type) {
-					add_rr = &view->rrsets[i];
-					break;
-				}
-			}
-
-			if (add_rr == NULL) {
-				if (view->count == view->avail) {
-					void *alloc_ret = realloc(view->rrsets,
-					                          2 * view->avail * sizeof(knot_rrset_t));
-					if (alloc_ret == NULL) {
-						ret = KNOT_ENOMEM;
-						goto cleanup;
-					}
-					view->rrsets = alloc_ret;
-					view->avail *= 2;
-				}
-				add_rr = &view->rrsets[view->count++];
-				knot_dname_t *owner_cpy = knot_dname_copy(owner, NULL);
-				if (owner_cpy == NULL) {
-					ret = KNOT_ENOMEM;
-					goto cleanup;
-				}
-				knot_rrset_init(add_rr, owner_cpy, rr_type, KNOT_CLASS_IN, ctx->ttl);
-			}
-
-			// Parse record.
-			char *input_string = sprintf_alloc("@ %s %s\n", yp->key, yp->data);
-			if (input_string == NULL) {
-				ret = KNOT_ENOMEM;
-				goto cleanup;
-			}
-
-			if (zs_set_input_string(scanner, input_string, strlen(input_string)) != 0 ||
-			    zs_parse_record(scanner) != 0 ||
-			    scanner->state != ZS_STATE_DATA) {
-				free(input_string);
-				ret = KNOT_EPARSEFAIL;
-				goto cleanup;
-			}
-			free(input_string);
-
-			// Add new rdata to current rrset.
-			ret = knot_rrset_add_rdata(add_rr, scanner->r_data, scanner->r_data_length, NULL);
+			ret = parse_rr(mod, yp, scanner, owner, view, ctx->ttl);
 			if (ret != KNOT_EOK) {
 				goto cleanup;
 			}
@@ -533,7 +572,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		uint8_t best_prefix = 0;
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
-			if (rr == NULL || (view->subnet_prefix > best_prefix && remote_in_subnet(remote, view))) {
+			if ((rr == NULL || view->subnet_prefix > best_prefix) && remote_in_subnet(remote, view)) {
 				for (int j = 0; j < view->count; j++) {
 					if (view->rrsets[j].type == qtype) {
 						best_prefix = view->subnet_prefix;
