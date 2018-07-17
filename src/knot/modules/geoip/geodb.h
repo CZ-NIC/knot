@@ -16,9 +16,17 @@
 
 #pragma once
 
-#include<libknot/libknot.h>
+#include <libknot/libknot.h>
 #if HAVE_MAXMINDDB
 #include <maxminddb.h>
+#endif
+
+#if HAVE_MAXMINDDB
+#define geodb_t		MMDB_s
+#define geodb_data_t	MMDB_entry_data_s
+#else
+#define geodb_t		void
+#define geodb_data_t	void
 #endif
 
 // MaxMind DB related constants.
@@ -30,28 +38,28 @@ typedef enum {
 	GEODB_KEY_TXT
 } geodb_key_type_t;
 
-static const knot_lookup_t geodb_key_types[] =  {
+static const knot_lookup_t geodb_key_types[] = {
 	{ GEODB_KEY_ID, "id" },
 	{ GEODB_KEY_TXT, "" }
 };
 
 typedef struct {
 	geodb_key_type_t type;
-	char *path[GEODB_MAX_PATH_LEN];
-}geodb_path_t;
+	char *path[GEODB_MAX_PATH_LEN + 1]; // MMDB_aget_value() requires last member to be NULL.
+} geodb_path_t;
 
-int parse_geodb_path(geodb_path_t *path, char *input);
+int parse_geodb_path(geodb_path_t *path, const char *input);
 
-int parse_geodata(char *input, void **geodata, uint32_t *geodata_len, uint8_t *geodepth,
-                  geodb_path_t *path, uint16_t path_cnt);
+int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
+                     uint8_t *geodepth, geodb_path_t *path, uint16_t path_cnt);
 
-void *geodb_open(const char *filename);
+geodb_t *geodb_open(const char *filename);
 
-void *geodb_alloc_entries(uint16_t count);
+geodb_data_t *geodb_alloc_entries(uint16_t count);
 
-void geodb_close(void *geodb);
+void geodb_close(geodb_t *geodb);
 
-int geodb_query(void *geodb, void *entries, struct sockaddr *remote,
+int geodb_query(geodb_t *geodb, geodb_data_t *entries, struct sockaddr *remote,
                 geodb_path_t *paths, uint16_t path_cnt, uint16_t *netmask);
 
-bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, void *entries);
+bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, geodb_data_t *entries);
