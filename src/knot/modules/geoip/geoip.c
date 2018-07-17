@@ -285,7 +285,7 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 
 	// Parse geodata/subnet.
 	if (ctx->mode == MODE_GEODB) {
-		if (parse_geodata((char *)yp->data, view->geodata, view->geodata_len,
+		if (parse_geodb_data((char *)yp->data, view->geodata, view->geodata_len,
 			&view->geodepth, ctx->paths, ctx->path_count) != 0) {
 			knotd_mod_log(mod, LOG_ERR, "invalid geo format (%s) on line %zu", yp->data, yp->line_count);
 			return KNOT_EINVAL;

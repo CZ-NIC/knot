@@ -30,7 +30,7 @@ typedef enum {
 	GEODB_KEY_TXT
 } geodb_key_type_t;
 
-static const knot_lookup_t geodb_key_types[] =  {
+static const knot_lookup_t geodb_key_types[] = {
 	{ GEODB_KEY_ID, "id" },
 	{ GEODB_KEY_TXT, "" }
 };
@@ -38,12 +38,12 @@ static const knot_lookup_t geodb_key_types[] =  {
 typedef struct {
 	geodb_key_type_t type;
 	char *path[GEODB_MAX_PATH_LEN];
-}geodb_path_t;
+} geodb_path_t;
 
-int parse_geodb_path(geodb_path_t *path, char *input);
+int parse_geodb_path(geodb_path_t *path, const char *input);
 
-int parse_geodata(char *input, void **geodata, uint32_t *geodata_len, uint8_t *geodepth,
-                  geodb_path_t *path, uint16_t path_cnt);
+int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
+                     uint8_t *geodepth, geodb_path_t *path, uint16_t path_cnt);
 
 void *geodb_open(const char *filename);
 
