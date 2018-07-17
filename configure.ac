@@ -306,7 +306,7 @@ doc_modules=""
 KNOT_MODULE([cookies],     "yes")
 KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
 KNOT_MODULE([dnstap],      "no")
-KNOT_MODULE([geoip],       "yes")
+KNOT_MODULE([geoip],       "no",  "non-shareable")
 KNOT_MODULE([noudp],       "yes")
 KNOT_MODULE([onlinesign],  "yes", "non-shareable")
 KNOT_MODULE([rrl],         "yes")
@@ -618,7 +618,7 @@ result_msg_base="  Knot DNS $VERSION
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
     Utilities with Dnstap:  ${enable_dnstap}
-    MaxMind DB:             ${enable_maxminddb} ${libmaxminddb_LIBS} ${libmaxminddb_CFLAGS}
+    MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}
     PKCS #11 support:       ${enable_pkcs11}
     Ed25519 support:        ${enable_ed25519}
