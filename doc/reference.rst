@@ -1290,14 +1290,12 @@ Possible values:
 - ``none`` – The zonefile is not used at all.
 - ``difference`` – If the zone contents are available during server start or reload,
   the difference is computed between them and the zonefile, checked and applied afterwards.
-- ``difference-no-serial`` – Same like ``difference``, but the SOA serial in zonefile is ignored, Knot takes care of incrementing the serial automatically.
+- ``difference-no-dnssec`` - Same like ``difference``, but if :ref:`automatic singing<zone_dnssec-signing>` is enabled, RRSIG, NSEC and NSEC3 records are ignored during computation of differences.
+- ``difference-no-serial`` – Same like ``difference-no-serial``, but the SOA serial in zonefile is ignored, Knot takes care of incrementing the serial automatically.
 - ``whole`` – Zone contents are loaded from zonefile.
 
 When ``difference`` is configured and there are no zone contents yet (cold start of Knot
 and no zone contents in journal), it behaves the same way like ``whole``.
-
-When ``difference-no-serial`` is configured and :ref:`automatic singing<zone_dnssec-signing>` is enabled,
-RRSIG, nSEC and NSEC3 records are ignored during computation of differences.
 
 *Default:* whole
 

@@ -138,7 +138,8 @@ int event_load(conf_t *conf, zone_t *zone)
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val), zu_from_zf_conts = false;
 	zone_update_t up = { 0 };
-	bool ignore_dnssec = (zf_from == ZONEFILE_LOAD_DIFSE && dnssec_enable);
+	bool ignore_dnssec = ((zf_from == ZONEFILE_LOAD_DIFDS || zf_from == ZONEFILE_LOAD_DIFSE)
+	                      && dnssec_enable);
 
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {

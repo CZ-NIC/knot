@@ -406,6 +406,19 @@ the SOA serial number to a higher value, than the current SOA serial in the zone
 Example 3A
 ----------
 
+Input-only zonefile with DNSSEC::
+
+   zonefile-sync: -1
+   zonefile-load: difference-no-dnssec
+   journal-contents: changes
+
+With automatic DNSSEC signing, the difference would remove all the RRSIGs first and
+then re-sign whole zone. This option helps keeping the signatures of untouched records,
+minimizing the resulting changeset.
+
+Example 3B
+----------
+
 Leave SOA serial incrementation to Knot::
 
    zonefile-sync: -1

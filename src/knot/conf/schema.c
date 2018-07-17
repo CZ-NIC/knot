@@ -103,6 +103,7 @@ static const knot_lookup_t journal_content[] = {
 static const knot_lookup_t zonefile_load[] = {
 	{ ZONEFILE_LOAD_NONE,  "none" },
 	{ ZONEFILE_LOAD_DIFF,  "difference" },
+	{ ZONEFILE_LOAD_DIFDS, "difference-no-dnssec"},
 	{ ZONEFILE_LOAD_DIFSE, "difference-no-serial" },
 	{ ZONEFILE_LOAD_WHOLE, "whole" },
 	{ 0, NULL }
