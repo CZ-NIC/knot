@@ -45,7 +45,7 @@ static const knot_lookup_t geodb_key_types[] = {
 
 typedef struct {
 	geodb_key_type_t type;
-	char *path[GEODB_MAX_PATH_LEN];
+	char *path[GEODB_MAX_PATH_LEN + 1]; // MMDB_aget_value() requires last member to be NULL.
 } geodb_path_t;
 
 int parse_geodb_path(geodb_path_t *path, const char *input);
