@@ -25,7 +25,7 @@ static const uint16_t type_map[] = {
 };
 #endif
 
-int parse_geodb_path(geodb_path_t *path, char *input)
+int parse_geodb_path(geodb_path_t *path, const char *input)
 {
 	if (path == NULL || input == NULL) {
 		return -1;
@@ -33,7 +33,7 @@ int parse_geodb_path(geodb_path_t *path, char *input)
 
 	// Parse optional type of key.
 	path->type = GEODB_KEY_TXT;
-	char *delim = input;
+	const char *delim = input;
 	if (input[0] == '(') {
 		delim = strchrnul(input, ')');
 		if (*delim != ')') {
@@ -74,8 +74,8 @@ int parse_geodb_path(geodb_path_t *path, char *input)
 	return 0;
 }
 
-int parse_geodata(char *input, void **geodata, uint32_t *geodata_len,
-                  uint8_t *geodepth, geodb_path_t *path, uint16_t path_cnt)
+int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
+                     uint8_t *geodepth, geodb_path_t *path, uint16_t path_cnt)
 {
 	char *delim = NULL;
 	uint16_t key_len = 0;
