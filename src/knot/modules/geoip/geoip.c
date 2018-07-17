@@ -88,8 +88,8 @@ typedef struct {
 	zone_keyset_t keyset;
 	kdnssec_ctx_t kctx;
 
-	void *geodb;
-	void *entries;
+	geodb_t *geodb;
+	geodb_data_t *entries;
 	geodb_path_t paths[GEODB_MAX_DEPTH];
 	uint16_t path_count;
 } geoip_ctx_t;

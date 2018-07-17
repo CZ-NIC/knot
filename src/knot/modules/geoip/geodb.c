@@ -113,7 +113,7 @@ int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
 	return 0;
 }
 
-void *geodb_open(const char *filename)
+geodb_t *geodb_open(const char *filename)
 {
 #if HAVE_MAXMINDDB
 	MMDB_s *db = calloc(1, sizeof(MMDB_s));
@@ -124,35 +124,36 @@ void *geodb_open(const char *filename)
 	if (mmdb_error != MMDB_SUCCESS) {
 		return NULL;
 	}
-	return (void *)db;
-#endif
+	return db;
+#else
 	return NULL;
+#endif
 }
 
-void *geodb_alloc_entries(uint16_t count)
+geodb_data_t *geodb_alloc_entries(uint16_t count)
 {
 #if HAVE_MAXMINDDB
 	MMDB_entry_data_s *entries = calloc(count, sizeof(MMDB_entry_data_s));
-	return (void *)entries;
+	return entries;
+#else
+	return NULL;
 #endif
 }
 
-void geodb_close(void *geodb)
+void geodb_close(geodb_t *geodb)
 {
 #if HAVE_MAXMINDDB
-	MMDB_s *db = (MMDB_s *)geodb;
-	MMDB_close(db);
+	MMDB_close(geodb);
 #endif
 }
 
-int geodb_query(void *geodb, void *entries, struct sockaddr *remote,
+int geodb_query(geodb_t *geodb, geodb_data_t *entries, struct sockaddr *remote,
                 geodb_path_t *paths, uint16_t path_cnt, uint16_t *netmask)
 {
 #if HAVE_MAXMINDDB
-	MMDB_s *db = (MMDB_s *)geodb;
 	int mmdb_error = 0;
 	MMDB_lookup_result_s res;
-	res = MMDB_lookup_sockaddr(db, remote, &mmdb_error);
+	res = MMDB_lookup_sockaddr(geodb, remote, &mmdb_error);
 	if (mmdb_error != MMDB_SUCCESS || !res.found_entry) {
 		return -1;
 	}
@@ -160,49 +161,48 @@ int geodb_query(void *geodb, void *entries, struct sockaddr *remote,
 	// Save netmask.
 	*netmask = res.netmask;
 
-	MMDB_entry_data_s *entry = (MMDB_entry_data_s *)entries;
 	for (uint16_t i = 0; i < path_cnt; i++) {
 		// Get the value of the next key.
-		mmdb_error = MMDB_aget_value(&res.entry, &entry[i], (const char *const*)paths[i].path);
+		mmdb_error = MMDB_aget_value(&res.entry, &entries[i], (const char *const*)paths[i].path);
 		if (mmdb_error != MMDB_SUCCESS && mmdb_error != MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR) {
 			return -1;
 		}
-		if (mmdb_error == MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR || !entry[i].has_data) {
-			entry[i].has_data = false;
+		if (mmdb_error == MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR || !entries[i].has_data) {
+			entries[i].has_data = false;
 			continue;
 		}
 		// Check the type.
-		if (entry[i].type != type_map[paths[i].type]) {
-			entry[i].has_data = false;
+		if (entries[i].type != type_map[paths[i].type]) {
+			entries[i].has_data = false;
 			continue;
 		}
 	}
 	return 0;
-#endif
+#else
 	return -1;
+#endif
 }
 
-bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, void *entries)
+bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, geodb_data_t *entries)
 {
 #if HAVE_MAXMINDDB
-	MMDB_entry_data_s *entry = (MMDB_entry_data_s *)entries;
 	for (int i = 0; i < geodepth; i++) {
 		// Nothing to do if current geodata do not specify this key.
 		if (geodata[i] == NULL) {
 			continue;
 		}
-		if (!entry[i].has_data) {
+		if (!entries[i].has_data) {
 			return false;
 		}
-		switch (entry[i].type) {
+		switch (entries[i].type) {
 		case MMDB_DATA_TYPE_UTF8_STRING:
-			if (geodata_len[i] != entry[i].data_size ||
-			    memcmp(geodata[i], entry[i].utf8_string, geodata_len[i]) != 0) {
+			if (geodata_len[i] != entries[i].data_size ||
+			    memcmp(geodata[i], entries[i].utf8_string, geodata_len[i]) != 0) {
 				return false;
 			}
 			break;
 		case MMDB_DATA_TYPE_UINT32:
-			if (*((uint32_t *)geodata[i]) != entry[i].uint32) {
+			if (*((uint32_t *)geodata[i]) != entries[i].uint32) {
 				return false;
 			}
 			break;
@@ -211,6 +211,7 @@ bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, voi
 		}
 	}
 	return true;
-#endif
+#else
 	return false;
+#endif
 }
