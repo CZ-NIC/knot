@@ -102,6 +102,7 @@ int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
 				if (str_to_u32(input, (uint32_t *)geodata[i]) != KNOT_EOK) {
 					return -1;
 				}
+				geodata_len[i] = sizeof(uint32_t);
 			}
 		}
 		if (*delim == '\0') {
