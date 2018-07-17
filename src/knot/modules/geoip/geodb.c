@@ -113,7 +113,7 @@ int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
 	return 0;
 }
 
-void *geodb_open(const char *filename)
+geodb_t *geodb_open(const char *filename)
 {
 #if HAVE_MAXMINDDB
 	MMDB_s *db = calloc(1, sizeof(MMDB_s));
@@ -124,24 +124,26 @@ void *geodb_open(const char *filename)
 	if (mmdb_error != MMDB_SUCCESS) {
 		return NULL;
 	}
-	return (void *)db;
-#endif
+	return db;
+#else
 	return NULL;
+#endif
 }
 
-void *geodb_alloc_entries(uint16_t count)
+geodb_data_t *geodb_alloc_entries(uint16_t count)
 {
 #if HAVE_MAXMINDDB
 	MMDB_entry_data_s *entries = calloc(count, sizeof(MMDB_entry_data_s));
-	return (void *)entries;
+	return entries;
+#else
+	return NULL;
 #endif
 }
 
-void geodb_close(void *geodb)
+void geodb_close(geodb_t *geodb)
 {
 #if HAVE_MAXMINDDB
-	MMDB_s *db = (MMDB_s *)geodb;
-	MMDB_close(db);
+	MMDB_close(geodb);
 #endif
 }
 
@@ -178,8 +180,9 @@ int geodb_query(void *geodb, void *entries, struct sockaddr *remote,
 		}
 	}
 	return 0;
-#endif
+#else
 	return -1;
+#endif
 }
 
 bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, void *entries)
@@ -211,6 +214,7 @@ bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, voi
 		}
 	}
 	return true;
-#endif
+#else
 	return false;
+#endif
 }
