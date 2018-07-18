@@ -119,6 +119,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			ret = zone_load_journal(conf, zone, zf_conts);
 			if (ret != KNOT_EOK) {
 				zone_contents_deep_free(zf_conts);
+				zf_conts = NULL;
 				log_zone_warning(zone->name, "failed to load journal (%s)",
 				                 knot_strerror(ret));
 			}
