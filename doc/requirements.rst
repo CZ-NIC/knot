@@ -61,8 +61,8 @@ Required libraries
 Knot DNS requires a few libraries to be available:
 
 * libedit
-* GnuTLS >= 3.3
-* Userspace RCU >= 0.5.4
+* gnutls >= 3.3
+* liburcu >= 0.5.4
 * lmdb >= 0.9.15
 
 .. NOTE::
@@ -72,19 +72,20 @@ Knot DNS requires a few libraries to be available:
 Optional libraries
 ==================
 
-International Domain Names support (IDNA2003 or IDNA2008) in kdig needs:
+International Domain Names support (IDNA2008 or IDNA2003) in **kdig**:
 
-* libidn or libidn2
+* libidn2 (or libidn)
 
-Systemd's startup notifications mechanism and journald logging need:
+Systemd's startup notification mechanism and journald logging:
 
 * libsystemd
 
-Dnstap support in kdig and module dnstap need:
+Dnstap support in **kdig** or module :ref:`dnstap<mod-dnstap>`:
 
 * fstrm (and protobuf-c if building from source code)
 
-POSIX 1003.1e :manpage:`capabilites(7)` by sandboxing exposed threads.
-Most rights are stripped from the exposed threads for security reasons.
+Linux :manpage:`capabilities(7)` support, which allows the server to be started
+as a non-root user/group, binding to privileged ports (53), and giving up all
+its capabilities, resulting in a completely unprivileged process:
 
 * libcap-ng >= 0.6.4
