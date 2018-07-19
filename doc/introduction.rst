@@ -56,6 +56,7 @@ Remarkable module extensions:
 * DNS request traffic statistics
 * Dnstap traffic logging
 * Online DNSSEC signing
+* GeoIP response tailoring supporting ECS and DNSSEC 
 
 License
 =======
