@@ -35,7 +35,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#define MOD_CONF_FILE	"\x09""conf-file"
+#define MOD_CONFIG_FILE	"\x0B""config-file"
 #define MOD_TTL		"\x03""ttl"
 #define MOD_MODE	"\x04""mode"
 #define MOD_GEODB_FILE	"\x0A""geodb-file"
@@ -53,7 +53,7 @@ static const knot_lookup_t modes[] = {
 };
 
 const yp_item_t geoip_conf[] = {
-	{ MOD_CONF_FILE,  YP_TSTR, YP_VNONE },
+	{ MOD_CONFIG_FILE,  YP_TSTR, YP_VNONE },
 	{ MOD_TTL,        YP_TINT, YP_VINT = { 0, UINT32_MAX, 60, YP_STIME } },
 	{ MOD_MODE,       YP_TOPT, YP_VOPT = { modes, MODE_SUBNET} },
 	{ MOD_GEODB_FILE, YP_TSTR, YP_VNONE },
@@ -63,7 +63,7 @@ const yp_item_t geoip_conf[] = {
 
 int geoip_conf_check(knotd_conf_check_args_t *args)
 {
-	knotd_conf_t conf = knotd_conf_check_item(args, MOD_CONF_FILE);
+	knotd_conf_t conf = knotd_conf_check_item(args, MOD_CONFIG_FILE);
 	if (conf.count == 0) {
 		args->err_str = "no configuration file specified";
 		return KNOT_EINVAL;
@@ -416,7 +416,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		return KNOT_ENOMEM;
 	}
 	yp_init(yp);
-	knotd_conf_t conf = knotd_conf_mod(mod, MOD_CONF_FILE);
+	knotd_conf_t conf = knotd_conf_mod(mod, MOD_CONFIG_FILE);
 	ret = yp_set_input_file(yp, conf.single.string);
 	if (ret != KNOT_EOK) {
 		knotd_mod_log(mod, LOG_ERR, "failed to load configuration file");
