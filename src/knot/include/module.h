@@ -494,4 +494,11 @@ int knotd_mod_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_hook_f hook)
  */
 int knotd_mod_in_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_in_hook_f hook);
 
+/*** DNSSEC API. ***/
+
+int knotd_mod_dnssec_load(knotd_mod_t *mod);
+
+int knotd_mod_dnssec_sign_rrset(knotd_mod_t *mod, knot_rrset_t *rrsigs,
+                                const knot_rrset_t *rrset);
+
 /*! @} */

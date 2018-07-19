@@ -227,24 +227,6 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t
 	return nsec;
 }
 
-// this is copied from zone-sign.c
-static bool use_key(const zone_key_t *key, const knot_rrset_t *covered)
-{
-	assert(key);
-	assert(covered);
-
-	if (!key->is_active) {
-		return false;
-	}
-
-	bool is_apex = knot_dname_is_equal(covered->owner,
-	                                   dnssec_key_get_dname(key->key));
-
-	bool is_zone_key = is_apex && covered->type == KNOT_RRTYPE_DNSKEY;
-
-	return (key->is_ksk && is_zone_key) || (key->is_zsk && !is_zone_key);
-}
-
 static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
                                 const knot_rrset_t *cover,
                                 online_sign_ctx_t *module_ctx,
@@ -275,7 +257,7 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 	for (size_t i = 0; i < module_ctx->keyset.count; i++) {
 		zone_key_t *kkey = &module_ctx->keyset.keys[i];
 
-		if (!use_key(kkey, copy)) {
+		if (!knot_zone_sign_use_key(kkey, copy)) {
 			continue;
 		}
 

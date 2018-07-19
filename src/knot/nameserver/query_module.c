@@ -24,6 +24,8 @@
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/conf/tools.h"
+#include "knot/dnssec/rrset-sign.h"
+#include "knot/dnssec/zone-sign.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
 
@@ -157,6 +159,8 @@ void query_module_close(knotd_mod_t *module)
 
 	knotd_mod_stats_free(module);
 	conf_free_mod_id(module->id);
+	free_zone_keys(&module->keyset);
+	kdnssec_ctx_deinit(module->dnssec);
 	free(module);
 }
 
@@ -523,4 +527,43 @@ knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type)
 	}
 
 	return node_rrset(qdata->extra->zone->contents->apex, type);
+}
+
+_public_
+int knotd_mod_dnssec_load(knotd_mod_t *mod)
+{
+	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = load_zone_keys(mod->dnssec, &mod->keyset, false);
+	if (ret != KNOT_EOK) {
+		kdnssec_ctx_deinit(mod->dnssec);
+		mod->dnssec = NULL;
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knotd_mod_dnssec_sign_rrset(knotd_mod_t *mod, knot_rrset_t *rrsigs,
+                                const knot_rrset_t *rrset)
+{
+	for (size_t i = 0; i < mod->keyset.count; i++) {
+		zone_key_t *key = &mod->keyset.keys[i];
+
+		if (!knot_zone_sign_use_key(key, rrset)) {
+			continue;
+		}
+
+		int ret;// = knot_sign_rrset(rrsigs, rrset, key, mod->dnssec, &module_ctx->kctx, NULL);
+		if (ret != KNOT_EOK) {
+			knot_rrset_free(rrsigs, NULL);
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
 }
