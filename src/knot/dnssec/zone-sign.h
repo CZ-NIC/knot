@@ -36,6 +36,16 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
                                   const kdnssec_ctx_t *dnssec_ctx);
 
 /*!
+ * \brief Check if key can be used to sign given RR.
+ *
+ * \param key      Zone key.
+ * \param covered  RR to be checked.
+ *
+ * \return The RR should be signed.
+ */
+bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered);
+
+/*!
  * \brief Update zone signatures and store performed changes in update.
  *
  * Updates RRSIGs, NSEC(3)s, and DNSKEYs.
