@@ -26,6 +26,7 @@ Build-Depends:
  liburcu-dev (>= 0.4),
  pkg-config,
  protobuf-c-compiler,
+Standards-Version: 4.1.5
 Homepage: https://www.knot-dns.cz/
 
 Package: knot
