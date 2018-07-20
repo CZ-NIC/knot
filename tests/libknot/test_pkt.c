@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 	ok(in != NULL, "pkt: create packet for parsing");
 
 	/* Read packet header. */
-	ret = parse_question(in);
+	ret = knot_pkt_parse_question(in);
 	is_int(KNOT_EOK, ret, "pkt: read header");
 
 	/* Read packet payload. */

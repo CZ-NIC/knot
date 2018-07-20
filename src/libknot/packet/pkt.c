@@ -561,9 +561,12 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 	return KNOT_EOK;
 }
 
-static int parse_question(knot_pkt_t *pkt)
+_public_
+int knot_pkt_parse_question(knot_pkt_t *pkt)
 {
-	assert(pkt);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	/* Check at least header size. */
 	if (pkt->size < KNOT_WIRE_HEADER_SIZE) {
@@ -759,7 +762,7 @@ int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 	/* Reset parse state. */
 	sections_reset(pkt);
 
-	int ret = parse_question(pkt);
+	int ret = knot_pkt_parse_question(pkt);
 	if (ret == KNOT_EOK) {
 		ret = parse_payload(pkt, flags);
 	}

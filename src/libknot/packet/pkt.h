@@ -305,6 +305,11 @@ static inline uint16_t knot_pkt_rr_offset(const knot_pktsection_t *section,
 int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags);
 
 /*!
+ * \brief Parse packet header and a QUESTION section.
+ */
+int knot_pkt_parse_question(knot_pkt_t *pkt);
+
+/*!
  * \brief Get packet extended RCODE.
  *
  * Extended RCODE is created by considering TSIG RCODE, EDNS RCODE and
