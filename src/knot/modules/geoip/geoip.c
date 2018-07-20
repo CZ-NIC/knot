@@ -48,11 +48,11 @@ static const knot_lookup_t modes[] = {
 };
 
 const yp_item_t geoip_conf[] = {
-	{ MOD_CONFIG_FILE,  YP_TSTR, YP_VNONE },
-	{ MOD_TTL,        YP_TINT, YP_VINT = { 0, UINT32_MAX, 60, YP_STIME } },
-	{ MOD_MODE,       YP_TOPT, YP_VOPT = { modes, MODE_SUBNET} },
-	{ MOD_GEODB_FILE, YP_TSTR, YP_VNONE },
-	{ MOD_GEODB_KEY,  YP_TSTR, YP_VSTR = { "country/iso_code" }, YP_FMULTI },
+	{ MOD_CONFIG_FILE, YP_TSTR, YP_VNONE },
+	{ MOD_TTL,         YP_TINT, YP_VINT = { 0, UINT32_MAX, 60, YP_STIME } },
+	{ MOD_MODE,        YP_TOPT, YP_VOPT = { modes, MODE_SUBNET} },
+	{ MOD_GEODB_FILE,  YP_TSTR, YP_VNONE },
+	{ MOD_GEODB_KEY,   YP_TSTR, YP_VSTR = { "country/iso_code" }, YP_FMULTI },
 	{ NULL }
 };
 
@@ -336,8 +336,8 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 	return KNOT_EOK;
 }
 
-int parse_rr(knotd_mod_t *mod, yp_parser_t *yp, zs_scanner_t *scanner,
-             knot_dname_t *owner, geo_view_t *view, uint32_t ttl)
+static int parse_rr(knotd_mod_t *mod, yp_parser_t *yp, zs_scanner_t *scanner,
+                    knot_dname_t *owner, geo_view_t *view, uint32_t ttl)
 {
 	uint16_t rr_type = KNOT_RRTYPE_A;
 	if (knot_rrtype_from_string(yp->key, &rr_type) != 0) {
@@ -507,7 +507,7 @@ static void clear_geo_trie(trie_t *trie)
 	trie_clear(trie);
 }
 
-void free_geoip_ctx(geoip_ctx_t *ctx)
+static void free_geoip_ctx(geoip_ctx_t *ctx)
 {
 	geodb_close(ctx->geodb);
 	free(ctx->geodb);
@@ -648,6 +648,10 @@ int geoip_load(knotd_mod_t *mod)
 
 	// Initialize the dname trie.
 	ctx->geo_trie = trie_create(NULL);
+	if (ctx->geo_trie == NULL) {
+		free_geoip_ctx(ctx);
+		return KNOT_ENOMEM;
+	}
 
 	if (ctx->mode == MODE_GEODB) {
 		// Initialize geodb.
