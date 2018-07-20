@@ -306,7 +306,7 @@ doc_modules=""
 KNOT_MODULE([cookies],     "yes")
 KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
 KNOT_MODULE([dnstap],      "no")
-KNOT_MODULE([geoip],       "no",  "non-shareable")
+KNOT_MODULE([geoip],       "no")
 KNOT_MODULE([noudp],       "yes")
 KNOT_MODULE([onlinesign],  "yes", "non-shareable")
 KNOT_MODULE([rrl],         "yes")

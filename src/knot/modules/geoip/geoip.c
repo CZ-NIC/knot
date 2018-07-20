@@ -14,26 +14,21 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
+#include <string.h>
+#include <arpa/inet.h>
+
+#include "knot/conf/schema.h"
 #include "knot/include/module.h"
+#include "knot/modules/geoip/geodb.h"
 #include "libknot/libknot.h"
 #include "contrib/qp-trie/trie.h"
 #include "contrib/mempattern.h"
-#include "knot/conf/conf.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "libzscanner/scanner.h"
-#include "geodb.h"
-
-// Next dependecies force static module!
-#include "knot/dnssec/rrset-sign.h"
-#include "knot/dnssec/zone-keys.h"
-#include "knot/nameserver/query_module.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <arpa/inet.h>
 
 #define MOD_CONFIG_FILE	"\x0B""config-file"
 #define MOD_TTL		"\x03""ttl"
@@ -84,10 +79,7 @@ typedef struct {
 	enum operation_mode mode;
 	uint32_t ttl;
 	trie_t *geo_trie;
-
 	bool dnssec;
-	zone_keyset_t keyset;
-	kdnssec_ctx_t kctx;
 
 	geodb_t *geodb;
 	geodb_data_t *entries;
@@ -184,7 +176,7 @@ static bool remote_in_subnet(const struct sockaddr_storage *remote, geo_view_t *
 	return true;
 }
 
-static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *key,
+static int finalize_geo_view(knotd_mod_t *mod, geo_view_t *view, knot_dname_t *owner,
                              geoip_ctx_t *ctx)
 {
 	if (view == NULL || view->count == 0) {
@@ -192,7 +184,7 @@ static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *
 	}
 
 	int ret = KNOT_EOK;
-	if (key != NULL) {
+	if (ctx->dnssec) {
 		view->rrsigs = malloc(sizeof(knot_rrset_t) * view->count);
 		if (view->rrsigs == NULL) {
 			return KNOT_ENOMEM;
@@ -204,8 +196,8 @@ static int finalize_geo_view(geo_view_t *view, knot_dname_t *owner, zone_key_t *
 			}
 			knot_rrset_init(&view->rrsigs[i], owner_cpy, KNOT_RRTYPE_RRSIG,
 			                KNOT_CLASS_IN, ctx->ttl);
-			ret = knot_sign_rrset(&view->rrsigs[i], &view->rrsets[i],
-			                      key->key, key->ctx, &ctx->kctx, NULL);
+			ret = knotd_mod_dnssec_sign_rrset(mod, &view->rrsigs[i],
+			                                  &view->rrsets[i], NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -414,7 +406,8 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 	// Initialize yparser.
 	yp = malloc(sizeof(yp_parser_t));
 	if (yp == NULL) {
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto cleanup;
 	}
 	yp_init(yp);
 	knotd_conf_t conf = knotd_conf_mod(mod, MOD_CONFIG_FILE);
@@ -435,22 +428,12 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		goto cleanup;
 	}
 
-	// Prepare ZSK for signing.
-	zone_key_t *key = NULL;
-	if (ctx->dnssec) {
-		for (size_t i = 0; i < ctx->keyset.count; i++) {
-			if (ctx->keyset.keys[i].is_zsk) {
-				key = &ctx->keyset.keys[i];
-			}
-		}
-	}
-
 	// Main loop.
 	while (1) {
 		// Get the next item in config.
 		ret = yp_parse(yp);
 		if (ret == KNOT_EOF) {
-			ret = finalize_geo_view(view, owner, key, ctx);
+			ret = finalize_geo_view(mod, view, owner, ctx);
 			goto cleanup;
 		}
 		if (ret != KNOT_EOK) {
@@ -460,7 +443,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 
 		// If the next item is not a rrset, the current view is finished.
 		if (yp->event != YP_EKEY1) {
-			ret = finalize_geo_view(view, owner, key, ctx);
+			ret = finalize_geo_view(mod, view, owner, ctx);
 			if (ret != KNOT_EOK) {
 				goto cleanup;
 			}
@@ -527,8 +510,6 @@ static void clear_geo_trie(trie_t *trie)
 
 static void free_geoip_ctx(geoip_ctx_t *ctx)
 {
-	kdnssec_ctx_deinit(&ctx->kctx);
-	free_zone_keys(&ctx->keyset);
 	geodb_close(ctx->geodb);
 	free(ctx->geodb);
 	clear_geo_trie(ctx->geo_trie);
@@ -714,14 +695,15 @@ int geoip_load(knotd_mod_t *mod)
 	conf = knotd_conf_zone(mod, C_DNSSEC_SIGNING, knotd_mod_zone(mod));
 	ctx->dnssec = conf.single.boolean;
 	if (ctx->dnssec) {
-		int ret = kdnssec_ctx_init(mod->config, &ctx->kctx, knotd_mod_zone(mod), NULL);
+		int ret = knotd_mod_dnssec_init(mod);
 		if (ret != KNOT_EOK) {
+			knotd_mod_log(mod, LOG_ERR, "failed to initialize DNSSEC");
 			free_geoip_ctx(ctx);
 			return ret;
 		}
-		ret = load_zone_keys(&ctx->kctx, &ctx->keyset, false);
+		ret = knotd_mod_dnssec_load_keyset(mod, false);
 		if (ret != KNOT_EOK) {
-			knotd_mod_log(mod, LOG_ERR, "failed to load keys");
+			knotd_mod_log(mod, LOG_ERR, "failed to load DNSSEC keys");
 			free_geoip_ctx(ctx);
 			return ret;
 		}
