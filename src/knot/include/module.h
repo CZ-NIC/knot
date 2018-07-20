@@ -493,4 +493,38 @@ int knotd_mod_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_hook_f hook)
  */
 int knotd_mod_in_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_in_hook_f hook);
 
+/*** DNSSEC API. ***/
+
+/*!
+ * Initializes DNSSEC signing context.
+ *
+ * \param[in] mod  Module context.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int knotd_mod_dnssec_init(knotd_mod_t *mod);
+
+/*!
+ * Loads available DNSSEC signing keys.
+ *
+ * \param[in] mod      Module context.
+ * \param[in] verbose  Print key summary into log indication.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int knotd_mod_dnssec_load_keyset(knotd_mod_t *mod, bool verbose);
+
+/*!
+ * Generates RRSIGs for given RRSet.
+ *
+ * \param[in] mod      Module context.
+ * \param[out] rrsigs  Output RRSIG RRSet.
+ * \param[in] rrset    Input RRSet to generate RRSIGs for.
+ * \param[in] mm       Memory context.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int knotd_mod_dnssec_sign_rrset(knotd_mod_t *mod, knot_rrset_t *rrsigs,
+                                const knot_rrset_t *rrset, knot_mm_t *mm);
+
 /*! @} */
