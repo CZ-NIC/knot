@@ -24,6 +24,8 @@
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/conf/tools.h"
+#include "knot/dnssec/rrset-sign.h"
+#include "knot/dnssec/zone-sign.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
 
@@ -157,6 +159,12 @@ void query_module_close(knotd_mod_t *module)
 
 	knotd_mod_stats_free(module);
 	conf_free_mod_id(module->id);
+
+	free_zone_keys(module->keyset);
+	free(module->keyset);
+	kdnssec_ctx_deinit(module->dnssec);
+	free(module->dnssec);
+
 	free(module);
 }
 
@@ -523,4 +531,73 @@ knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type)
 	}
 
 	return node_rrset(qdata->extra->zone->contents->apex, type);
+}
+
+_public_
+int knotd_mod_dnssec_init(knotd_mod_t *mod)
+{
+	if (mod == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	mod->dnssec = calloc(1, sizeof(*(mod->dnssec)));
+	if (mod->dnssec == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone, mod->id);
+	if (ret != KNOT_EOK) {
+		free(mod->dnssec);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knotd_mod_dnssec_load_keyset(knotd_mod_t *mod, bool verbose)
+{
+	if (mod == NULL || mod->dnssec == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	mod->keyset = calloc(1, sizeof(*(mod->keyset)));
+	if (mod->keyset == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+
+	int ret = load_zone_keys(mod->dnssec, mod->keyset, verbose);
+	if (ret != KNOT_EOK) {
+		free(mod->keyset);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knotd_mod_dnssec_sign_rrset(knotd_mod_t *mod, knot_rrset_t *rrsigs,
+                                const knot_rrset_t *rrset, knot_mm_t *mm)
+{
+	if (mod == NULL || mod->keyset == NULL || rrsigs == NULL || rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (size_t i = 0; i < mod->keyset->count; i++) {
+		zone_key_t *key = &mod->keyset->keys[i];
+
+		if (!knot_zone_sign_use_key(key, rrset)) {
+			continue;
+		}
+
+		int ret = knot_sign_rrset(rrsigs, rrset, key->key, key->ctx,
+		                          mod->dnssec, mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_free(rrsigs, NULL);
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
 }
