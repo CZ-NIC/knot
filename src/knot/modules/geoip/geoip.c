@@ -47,6 +47,11 @@ static const knot_lookup_t modes[] = {
 	{ 0, NULL }
 };
 
+static const char* mode_key[] = {
+	[MODE_SUBNET] = "net",
+	[MODE_GEODB] = "geo"
+};
+
 const yp_item_t geoip_conf[] = {
 	{ MOD_CONFIG_FILE, YP_TSTR, YP_VNONE },
 	{ MOD_TTL,         YP_TINT, YP_VINT = { 0, UINT32_MAX, 60, YP_STIME } },
@@ -110,8 +115,12 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *
 	int ret = KNOT_EOK;
 
 	// Find the node belonging to the owner.
-	trie_val_t *val = trie_get_ins(ctx->geo_trie, (char *)owner, knot_dname_size(owner));
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(owner, lf_storage);
+	assert(lf);
+	trie_val_t *val = trie_get_ins(ctx->geo_trie, (char *)lf + 1, *lf);
 	geo_trie_val_t *cur_val = *val;
+
 	if (cur_val == NULL) {
 		// Create new node value.
 		geo_trie_val_t *new_val = calloc(1, sizeof(geo_trie_val_t));
@@ -277,6 +286,14 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 		return ret;
 	}
 
+	// Check view type syntax.
+	int key_len = strlen(mode_key[ctx->mode]);
+	if (yp->key_len != key_len || memcmp(yp->key, mode_key[ctx->mode], key_len) != 0) {
+		knotd_mod_log(mod, LOG_ERR, "invalid key type (%s) on line %zu",
+		              yp->key, yp->line_count);
+		return KNOT_EINVAL;
+	}
+
 	// Parse geodata/subnet.
 	if (ctx->mode == MODE_GEODB) {
 		if (parse_geodb_data((char *)yp->data, view->geodata, view->geodata_len,
@@ -344,6 +361,12 @@ static int parse_rr(knotd_mod_t *mod, yp_parser_t *yp, zs_scanner_t *scanner,
 	if (knot_rrtype_from_string(yp->key, &rr_type) != 0) {
 		knotd_mod_log(mod, LOG_ERR, "invalid RR type in config on line %zu",
 		              yp->line_count);
+		return KNOT_EINVAL;
+	}
+
+	if (knot_rrtype_is_dnssec(rr_type)) {
+		knotd_mod_log(mod, LOG_ERR, "DNSSEC records not allowed in config (%s on line %zu)",
+		              yp->key, yp->line_count);
 		return KNOT_EINVAL;
 	}
 
@@ -528,15 +551,24 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 {
 	assert(pkt && qdata && mod);
 
+	// Nothing to do if the query was already resolved by a previous module.
+	if (state == KNOTD_IN_STATE_HIT) {
+		return state;
+	}
+
 	geoip_ctx_t *ctx = (geoip_ctx_t *)knotd_mod_ctx(mod);
 
 	// Save the query type.
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
 
 	// Check if geolocation is available for given query.
-	knot_dname_t *qname = knot_pkt_qname(qdata->query);
-	size_t qname_len = knot_dname_size(qname);
-	trie_val_t *val = trie_get_try(ctx->geo_trie, (char *)qname, qname_len);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(knot_pkt_qname(qdata->query), lf_storage);
+	// Exit if no qname.
+	if (lf == NULL) {
+		return state;
+	}
+	trie_val_t *val = trie_get_try(ctx->geo_trie, (char *)lf + 1, *lf);
 	if (val == NULL) {
 		// Nothing to do in this module.
 		return state;
