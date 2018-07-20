@@ -1,20 +1,22 @@
 .. _mod-geoip:
 
-``geoip`` — Geography-based responses 
+``geoip`` — Geography-based responses
 =====================================
 
 This module offers response tailoring based on client's
 subnet or geographic location. It supports GeoIP databases
-in the MaxMind DB format, such as `GeoIP2 <https://dev.maxmind.com/geoip/geoip2/downloadable/>`_ 
+in the MaxMind DB format, such as `GeoIP2 <https://dev.maxmind.com/geoip/geoip2/downloadable/>`_
 or the free version `GeoLite2 <https://dev.maxmind.com/geoip/geoip2/geolite2/>`_.
-Furthermore, the module uses EDNS Client Subnet as per :rfc:`7871` to choose 
-more accurate responses. 
+Furthermore, if queries contain EDNS Client Subnet option as per :rfc:`7871`,
+the module takes advantage of this information to provide more accurate responses.
 
 The module can be enabled only per zone.
 
 .. NOTE::
-   If dnssec-signing is enabled, RRs returned from the module are signed by the zone's ZSK when the module is loaded. It is STRONGLY RECOMMENDED
-   to use this setting only with manual key rollover, since the module has to be reloaded when the zone's signing key changes.
+   If dnssec-signing is enabled, RRs returned from the module are signed by the
+   zone's ZSK when the module is loaded. It is STRONGLY RECOMMENDED to use
+   this setting only with manual key rollover, since the module has to be
+   reloaded when the zone's signing key changes.
 
 Example
 -------
@@ -26,8 +28,8 @@ Example
        ttl: 20
        mode: geodb
        geodb-file: /path/to/GeoLite2-City.mmdb
-       geodb-key: [country/iso_code, (id)city/geoname_id]
-   
+       geodb-key: [ country/iso_code, city/names/en ]
+
    zone:
      - domain: example.com.
        module: mod-geoip/default
@@ -36,18 +38,26 @@ Example
   the desired responses to clients querying from specific subnets::
 
    foo.example.com:
-     - subnet: 24.121.0.0/16
-       A: 24.121.1.3
-     - subnet:
-   ... 
+     - subnet: 10.0.0.0/24
+       A: [ 192.168.1.1, 192.168.1.2 ]
+       AAAA: [ 2001:DB8::1, 2001:DB8::2 ]
+       TXT: "subnet 10.0.0.0/24"
+     ...
+   bar.example.com:
+     - subnet: 2001:DB8::/32
+       A: 192.168.1.3
+       AAAA: 2001:DB8::3
+       TXT: "subnet 2001:DB8::/32"
+   ...
 
   or geographic locations::
 
    foo.example.com:
      - geo: "CZ;Prague"
-       A: 88.101.196.14
+       CNAME: foo.example.org
      - geo: "US;Las Vegas"
-       A: 104.140.196.31
+       CNAME: foo.example.net
+   ...
 
 Module reference
 ----------------
