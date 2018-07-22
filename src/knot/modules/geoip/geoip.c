@@ -660,6 +660,10 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		if (ctx->dnssec && knot_pkt_has_dnssec(qdata->query) && rrsig != NULL) {
 			knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rrsig, 0);
 		}
+
+		// We've got an answer, set the AA bit.
+		knot_wire_set_aa(pkt->wire);
+
 		return KNOTD_IN_STATE_HIT;
 	}
 
