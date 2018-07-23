@@ -1,0 +1,186 @@
+.. _mod-geoip:
+
+``geoip`` — Geography-based responses
+=====================================
+
+This module offers response tailoring based on client's
+subnet or geographic location. It supports GeoIP databases
+in the MaxMind DB format, such as `GeoIP2 <https://dev.maxmind.com/geoip/geoip2/downloadable/>`_
+or the free version `GeoLite2 <https://dev.maxmind.com/geoip/geoip2/geolite2/>`_.
+
+The module can be enabled only per zone.
+
+.. NOTE::
+   If :ref:`EDNS Client Subnet<server_edns-client-subnet>` support is enabled
+   and if a query contains this option, the module takes advantage of this
+   information to provide a more accurate response.
+
+DNSSEC support
+--------------
+
+There are two ways to enable DNSSEC signing of tailored responses.
+If automatic DNSSEC signing is enabled, record signatures are precomputed when the module is loaded. 
+This has a speed benefit, however note that every RRset configured in the module should
+have a **default** RRset of the same type contained in the zone, so that the NSEC(3)
+chain can be built correctly. Also, it is STRONGLY RECOMMENDED to use manual key rollover in this setting,
+as the module has to be reloaded when the signing key changes.
+
+Alternatively, the :ref:`geoip<mod-geoip>` module may be combined with the :ref:`onlinesign<mod-onlinesign>` module
+and the tailored responses can be signed on the fly. This approach is more computationally demanding for the server.
+
+
+Example
+-------
+* An example configuration.::
+
+   mod-geoip:
+     - id: default
+       config-file: /path/to/geo.conf
+       ttl: 20
+       mode: geodb
+       geodb-file: /path/to/GeoLite2-City.mmdb
+       geodb-key: [ country/iso_code, city/names/en ]
+
+   zone:
+     - domain: example.com.
+       module: mod-geoip/default
+
+
+Configuration file
+------------------
+
+Every instance of the module requires an additional :ref:`mod-geoip_config-file` in which the desired responses to queries from
+various locations are configured. This file has the following simple format:
+
+::
+
+   domain-name1:
+     - geo|net: location1
+       RR-Type1: RDATA
+       RR-Type2: RDATA
+       ...
+     - geo|net: location2
+       RR-Type1: RDATA
+     ...
+   domain-name2:
+   ...
+
+
+Example
+-------
+
+* Example :ref:`mod-geoip_config-file` for subnets
+
+::
+
+   foo.example.com:
+     - net: 10.0.0.0/24
+       A: [ 192.168.1.1, 192.168.1.2 ]
+       AAAA: [ 2001:DB8::1, 2001:DB8::2 ]
+       TXT: "subnet 10.0.0.0/24"
+     ...
+   bar.example.com:
+     - net: 2001:DB8::/32
+       A: 192.168.1.3
+       AAAA: 2001:DB8::3
+       TXT: "subnet 2001:DB8::/32"
+   ...
+
+* Example :ref:`mod-geoip_config-file` for geographic locations
+
+::
+
+   foo.example.com:
+     - geo: "CZ;Prague"
+       CNAME: cz.foo.example.com
+     - geo: "US;Las Vegas"
+       CNAME: vegas.foo.example.net
+     - geo: "US;*"
+       CNAME: us.foo.example.net
+   ...
+
+
+Module reference
+----------------
+
+::
+
+ mod-geoip:
+   - id: STR
+     config-file: STR
+     ttl: TIME
+     mode: geodb | subnet
+     geodb-file: STR
+     geodb-key: STR ...
+
+.. _mod-geoip_id:
+
+id
+..
+
+A module identifier.
+
+.. _mod-geoip_config-file:
+
+config-file
+...........
+
+Full path to the response configuration file as described above.
+
+*Required*
+
+.. _mod-geoip_ttl:
+
+ttl
+...
+
+The time to live of Resource Records returned by the module.
+
+*Default:* 60
+
+.. _mod-geoip_mode:
+
+mode
+....
+
+The mode of operation of the module. When set to **subnet**, responses
+are tailored according to subnets. When set to **geodb**, responses
+are tailored according to geographic data retrieved from the configured
+database.
+
+.. _mod-geoip_geodb-file:
+
+geodb-file
+..........
+
+Full path to a .mmdb file containing the GeoIP database.
+
+*Reqired if* **mode** *is set to* **geodb**
+
+.. _mod-geoip_geodb-key:
+
+geodb-key
+.........
+
+Multi-valued item, can be specified up to **8** times. Each **geodb-key** specifies
+a path to a key in a node in the supplied GeoIP database. The module currently supports
+two types of values: **string** or **32-bit unsigned int**. In the latter
+case, the key has to be prefixed with **(id)**. Common choices of keys include:
+
+* **continent/code**
+
+* **country/iso_code**
+
+* **(id)country/geoname_id**
+
+* **city/names/en**
+
+* **(id)city/geoname_id**
+
+* **isp**
+
+* ...
+
+In the zone's config file for the module the values of the keys are entered in the same order
+as the keys in the module's configuration, separated by a semicolon. Enter the value **"*"**
+if the key is allowed to have any value.

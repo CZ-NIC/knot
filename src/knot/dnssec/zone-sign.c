@@ -132,44 +132,6 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 }
 
 /*!
- * \brief Check if key can be used to sign given RR.
- *
- * \param key      Zone key.
- * \param covered  RR to be checked.
- *
- * \return The RR should be signed.
- */
-static bool use_key(const zone_key_t *key, const knot_rrset_t *covered)
-{
-	assert(key);
-	assert(covered);
-
-	if (!key->is_active) {
-		return false;
-	}
-
-	// this may be a problem with offline KSK
-	bool cds_sign_by_ksk = true;
-
-	assert(key->is_zsk || key->is_ksk);
-	bool is_apex = knot_dname_is_equal(covered->owner,
-	                                   dnssec_key_get_dname(key->key));
-	if (!is_apex) {
-		return key->is_zsk;
-	}
-
-	switch (covered->type) {
-	case KNOT_RRTYPE_DNSKEY:
-		return key->is_ksk;
-	case KNOT_RRTYPE_CDS:
-	case KNOT_RRTYPE_CDNSKEY:
-		return (cds_sign_by_ksk ? key->is_ksk : key->is_zsk);
-	default:
-		return key->is_zsk;
-	}
-}
-
-/*!
  * \brief Check if valid signature exist for all keys for a given RR set.
  *
  * \param covered    RR set with covered records.
@@ -189,7 +151,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		zone_key_t *key = &zone_keys->keys[i];
-		if (!use_key(key, covered)) {
+		if (!knot_zone_sign_use_key(key, covered)) {
 			continue;
 		}
 
@@ -337,7 +299,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const zone_key_t *key = &zone_keys->keys[i];
-		if (!use_key(key, covered)) {
+		if (!knot_zone_sign_use_key(key, covered)) {
 			continue;
 		}
 
@@ -1003,6 +965,37 @@ cleanup:
 	knot_rrset_free(add_cdss, NULL);
 	changeset_clear(&ch);
 	return ret;
+}
+
+bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
+{
+	if (key == NULL || covered == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (!key->is_active) {
+		return false;
+	}
+
+	// this may be a problem with offline KSK
+	bool cds_sign_by_ksk = true;
+
+	assert(key->is_zsk || key->is_ksk);
+	bool is_apex = knot_dname_is_equal(covered->owner,
+	                                   dnssec_key_get_dname(key->key));
+	if (!is_apex) {
+		return key->is_zsk;
+	}
+
+	switch (covered->type) {
+	case KNOT_RRTYPE_DNSKEY:
+		return key->is_ksk;
+	case KNOT_RRTYPE_CDS:
+	case KNOT_RRTYPE_CDNSKEY:
+		return (cds_sign_by_ksk ? key->is_ksk : key->is_zsk);
+	default:
+		return key->is_zsk;
+	}
 }
 
 bool knot_zone_sign_soa_expired(const zone_contents_t *zone,

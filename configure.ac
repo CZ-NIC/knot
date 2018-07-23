@@ -306,6 +306,7 @@ doc_modules=""
 KNOT_MODULE([cookies],     "yes")
 KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
 KNOT_MODULE([dnstap],      "no")
+KNOT_MODULE([geoip],       "yes")
 KNOT_MODULE([noudp],       "yes")
 KNOT_MODULE([onlinesign],  "yes", "non-shareable")
 KNOT_MODULE([rrl],         "yes")
@@ -344,6 +345,41 @@ AM_CONDITIONAL([HAVE_DNSTAP], test "$enable_dnstap" != "no")
 AM_CONDITIONAL([HAVE_LIBDNSTAP], test "$enable_dnstap" != "no" -o \
                                       "$STATIC_MODULE_dnstap" != "no" -o \
                                       "$SHARED_MODULE_dnstap" != "no")
+# MaxMind DB for the GeoIP module
+AC_ARG_ENABLE([maxminddb],
+    AS_HELP_STRING([--enable-maxminddb=auto|yes|no], [enable MaxMind DB [default=auto]]),
+    [enable_maxminddb="$enableval"], [enable_maxminddb=auto])
+
+AS_IF([test "$enable_daemon" = "no"],[enable_maxminddb=no])
+AS_CASE([$enable_maxminddb],
+  [no],[],
+  [auto],[PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb], [enable_maxminddb=yes], [enable_maxminddb=no])],
+  [yes], [PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb])],
+  [*],[
+    save_CFLAGS="$CFLAGS"
+    save_LIBS="$LIBS"
+    AS_IF([test "$enable_maxminddb" != ""],[
+      LIBS="$LIBS -L$enable_maxminddb"
+      CFLAGS="$CFLAGS -I$enable_maxminddb/include"
+      ])
+    AC_SEARCH_LIBS([MMDB_open], [maxminddb], [
+      AS_IF([test "$enable_maxminddb" != ""], [
+        libmaxminddb_CFLAGS="-I$enable_maxminddb/include"
+        libmaxminddb_LIBS="-L$enable_maxminddb -lmaxminddb"
+  ],[
+  libmaxminddb_CFLAGS=""
+  libmaxminddb_LIBS="$ac_cv_search_MMDB_open"
+        ])
+      ],[AC_MSG_ERROR("not found in `$enable_maxminddb'")])
+    CFLAGS="$save_CFLAGS"
+    LIBS="$save_LIBS"
+    AC_SUBST([libmaxminddb_CFLAGS])
+    AC_SUBST([libmaxminddb_LIBS])
+    enable_maxminddb=yes
+    ])
+
+AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
+AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
 dnl Check for LMDB
 lmdb_MIN_VERSION_MAJOR=0
@@ -582,6 +618,7 @@ result_msg_base="  Knot DNS $VERSION
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
     Utilities with Dnstap:  ${enable_dnstap}
+    MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}
     PKCS #11 support:       ${enable_pkcs11}
     Ed25519 support:        ${enable_ed25519}
