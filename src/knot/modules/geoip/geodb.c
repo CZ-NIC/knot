@@ -112,6 +112,15 @@ int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
 	return 0;
 }
 
+bool geodb_available(void)
+{
+#if HAVE_MAXMINDDB
+	return true;
+#else
+	return false;
+#endif
+}
+
 geodb_t *geodb_open(const char *filename)
 {
 #if HAVE_MAXMINDDB

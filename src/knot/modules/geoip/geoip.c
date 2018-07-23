@@ -69,6 +69,10 @@ int geoip_conf_check(knotd_conf_check_args_t *args)
 	}
 	conf = knotd_conf_check_item(args, MOD_MODE);
 	if (conf.count == 1 && conf.single.option == MODE_GEODB) {
+		if (!geodb_available()) {
+			args->err_str = "geodb mode not available";
+			return KNOT_EINVAL;
+		}
 		conf = knotd_conf_check_item(args, MOD_GEODB_FILE);
 		if (conf.count == 0) {
 			args->err_str = "no geodb file specified while in geodb mode";

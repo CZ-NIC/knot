@@ -53,6 +53,8 @@ int parse_geodb_path(geodb_path_t *path, const char *input);
 int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
                      uint8_t *geodepth, geodb_path_t *path, uint16_t path_cnt);
 
+bool geodb_available(void);
+
 geodb_t *geodb_open(const char *filename);
 
 geodb_data_t *geodb_alloc_entries(uint16_t count);
