@@ -596,7 +596,6 @@ int knotd_mod_dnssec_sign_rrset(knotd_mod_t *mod, knot_rrset_t *rrsigs,
 		int ret = knot_sign_rrset(rrsigs, rrset, key->key, key->ctx,
 		                          mod->dnssec, mm);
 		if (ret != KNOT_EOK) {
-			knot_rrset_free(rrsigs, NULL);
 			return ret;
 		}
 	}

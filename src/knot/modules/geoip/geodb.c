@@ -70,7 +70,7 @@ int parse_geodb_path(geodb_path_t *path, const char *input)
 		input = delim + 1;
 	}
 
-	return (len == 0) ? -1 : 0;
+	return 0;
 }
 
 int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
