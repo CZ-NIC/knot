@@ -306,7 +306,10 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 		}
 	} else if (ctx->mode == MODE_SUBNET) {
 		// Locate the optional slash in the subnet string.
-		char *slash = strchrnul(yp->data, '/');
+		char *slash = strchr(yp->data, '/');
+		if (slash == NULL) {
+			slash = yp->data + yp->data_len;
+		}
 		*slash = '\0';
 
 		// Parse address.

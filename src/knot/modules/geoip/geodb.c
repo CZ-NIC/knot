@@ -35,8 +35,8 @@ int parse_geodb_path(geodb_path_t *path, const char *input)
 	path->type = GEODB_KEY_TXT;
 	const char *delim = input;
 	if (input[0] == '(') {
-		delim = strchrnul(input, ')');
-		if (*delim != ')') {
+		delim = strchr(input, ')');
+		if (delim == NULL) {
 			return -1;
 		}
 		input++;
@@ -53,7 +53,10 @@ int parse_geodb_path(geodb_path_t *path, const char *input)
 	// Parse the path.
 	uint16_t len = 0;
 	while (1) {
-		delim = strchrnul(input, '/');
+		delim = strchr(input, '/');
+		if (delim == NULL) {
+			delim = input + strlen(input);
+		}
 		path->path[len] = malloc(delim - input + 1);
 		if (path->path[len] == NULL) {
 			return -1;
@@ -74,7 +77,10 @@ int parse_geodb_data(const char *input, void **geodata, uint32_t *geodata_len,
                      uint8_t *geodepth, geodb_path_t *path, uint16_t path_cnt)
 {
 	for (uint16_t i = 0; i < path_cnt; i++) {
-		const char *delim = strchrnul(input, ';');
+		const char *delim = strchr(input, ';');
+		if (delim == NULL) {
+			delim = input + strlen(input);
+		}
 		uint16_t key_len = delim - input;
 		if (key_len > 0 && !(key_len == 1 && *input == '*')) {
 			*geodepth = i + 1;
