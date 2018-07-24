@@ -66,6 +66,7 @@ typedef struct zone
 		time_t mtime;
 		uint32_t serial;
 		bool exists;
+		bool changed;
 	} zonefile;
 
 	/*! \brief Zone events. */

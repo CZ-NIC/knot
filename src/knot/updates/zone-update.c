@@ -683,6 +683,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return KNOT_EZONESIZE;
 	}
 
+	/* Check if the zone has changed and possible flush makes sense. */
+	if (!changeset_empty(&update->change)) {
+		update->zone->zonefile.changed = true;
+	}
+
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, new_contents);
