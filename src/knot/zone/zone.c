@@ -103,10 +103,11 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 		return KNOT_EOK;
 	}
 
-	/* Check for difference against zonefile serial. */
+	/* Check for updated zone. */
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);
-	if (!force && zone->zonefile.exists && zone->zonefile.serial == serial_to) {
+	if (!force && zone->zonefile.exists && zone->zonefile.serial == serial_to &&
+	    !zone->zonefile.resigned) {
 		ret = KNOT_EOK; /* No differences. */
 		goto flush_journal_replan;
 	}
@@ -142,10 +143,11 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 
 	free(zonefile);
 
-	/* Update zone file serial and journal. */
+	/* Update zone file attributes. */
 	zone->zonefile.exists = true;
 	zone->zonefile.mtime = st.st_mtime;
 	zone->zonefile.serial = serial_to;
+	zone->zonefile.resigned = false;
 
 	/* Flush journal. */
 	if (zone->journal && journal_exists(zone->journal_db, zone->name)) {
