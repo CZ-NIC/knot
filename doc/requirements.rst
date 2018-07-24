@@ -89,3 +89,8 @@ as a non-root user/group, binding to privileged ports (53), and giving up all
 its capabilities, resulting in a completely unprivileged process:
 
 * libcap-ng >= 0.6.4
+
+MaxMind database for **geodb** support in module :ref:`geoip<mod-geoip>`:
+
+* libmaxminddb0
+

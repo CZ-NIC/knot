@@ -25,8 +25,9 @@ have a **default** RRset of the same type contained in the zone, so that the NSE
 chain can be built correctly. Also, it is STRONGLY RECOMMENDED to use manual key rollover in this setting,
 as the module has to be reloaded when the signing key changes.
 
-Alternatively, the :ref:`geoip<mod-geoip>` module may be combined with the :ref:`onlinesign<mod-onlinesign>` module
-and the tailored responses can be signed on the fly. This approach is more computationally demanding for the server.
+Alternatively, the :ref:`geoip<mod-geoip>` module may be combined with the
+:ref:`onlinesign<mod-onlinesign>` module and the tailored responses can be signed
+on the fly. This approach is more computationally demanding for the server.
 
 
 Example
@@ -49,8 +50,9 @@ Example
 Configuration file
 ------------------
 
-Every instance of the module requires an additional :ref:`mod-geoip_config-file` in which the desired responses to queries from
-various locations are configured. This file has the following simple format:
+Every instance of the module requires an additional :ref:`mod-geoip_config-file`
+in which the desired responses to queries from various locations are configured.
+This file has the following simple format:
 
 ::
 
@@ -143,10 +145,15 @@ The time to live of Resource Records returned by the module.
 mode
 ....
 
-The mode of operation of the module. When set to **subnet**, responses
-are tailored according to subnets. When set to **geodb**, responses
-are tailored according to geographic data retrieved from the configured
-database.
+The mode of operation of the module.
+
+Possible values:
+
+- ``subnet`` – Responses are tailored according to subnets.
+- ``geodb`` – Responses are tailored according to geographic data retrieved
+  from the configured database.
+
+*Default:* subnet
 
 .. _mod-geoip_geodb-file:
 
@@ -155,7 +162,7 @@ geodb-file
 
 Full path to a .mmdb file containing the GeoIP database.
 
-*Reqired if* **mode** *is set to* **geodb**
+*Reqired if* :ref:`mod-geoip_mode` *is set to* **geodb**
 
 .. _mod-geoip_geodb-key:
 
