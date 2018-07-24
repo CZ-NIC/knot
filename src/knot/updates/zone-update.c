@@ -683,6 +683,14 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return KNOT_EZONESIZE;
 	}
 
+	/* Check if the zone was re-signed upon zone load to ensure proper flush
+	 * even if the SOA serial wasn't incremented by re-signing. */
+	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
+	bool dnssec = conf_bool(&val);
+	if (!changeset_empty(&update->change) && dnssec) {
+		update->zone->zonefile.resigned = true;
+	}
+
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, new_contents);
