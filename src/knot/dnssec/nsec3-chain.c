@@ -825,9 +825,36 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 
 	nsec_chain_iterate_data_t data = { ttl, changeset, update->new_cont };
 
+	changeset_iter_t it;
+	changeset_iter_rem(&it, changeset);
+	knot_rrset_t rr;
+	printf("CHANGESET 1\n");
+	do {
+		rr = changeset_iter_next(&it);
+		if (!knot_rrset_empty(&rr)) {
+			char *dump = malloc(100);
+			size_t dumpsize = 100;
+			knot_rrset_txt_dump(&rr, &dump, &dumpsize, &KNOT_DUMP_STYLE_DEFAULT);
+			printf("%s\n", dump);
+			free(dump);
+		}
+	} while (!knot_rrset_empty(&rr));
+	changeset_iter_clear(&it);
+
 	ret = knot_nsec_chain_iterate_fix(update->zone->contents->nsec3_nodes,
 	                                  update->new_cont->nsec3_nodes,
 	                                  connect_nsec3_nodes2, &data);
 
+	changeset_iter_rem(&it, changeset);
+	printf("CHANGESET 2\n");
+	do {
+		rr = changeset_iter_next(&it);
+		char *dump = malloc(100);
+		size_t dumpsize = 100;
+		knot_rrset_txt_dump(&rr, &dump, &dumpsize, &KNOT_DUMP_STYLE_DEFAULT);
+		printf("%s\n", dump);
+		free(dump);
+	} while (!knot_rrset_empty(&rr));
+	changeset_iter_clear(&it);
 	return ret;
 }

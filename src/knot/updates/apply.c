@@ -142,11 +142,17 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset)
 /*! \brief Removes all RRs from changeset from zone contents. */
 static int apply_remove(apply_ctx_t *ctx, const changeset_t *chset)
 {
+	printf("calling apply_remove!\n");
 	changeset_iter_t itt;
 	changeset_iter_rem(&itt, chset);
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
+		char *dump = malloc(100);
+		size_t dumpsize = 100;
+		knot_rrset_txt_dump(&rr, &dump, &dumpsize, &KNOT_DUMP_STYLE_DEFAULT);
+		printf("%s\n", dump);
+		free(dump);
 		int ret = apply_remove_rr(ctx, &rr);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
@@ -364,6 +370,9 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != contents->apex) {
+			char *dname = knot_dname_to_str_alloc(node->owner);
+			printf("removing node %s\n", dname);
+			free(dname);
 			zone_tree_delete_empty(tree, node);
 		}
 	}
