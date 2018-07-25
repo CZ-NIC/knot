@@ -304,5 +304,5 @@ done:
 	free_zone_keys(&keyset);
 	kdnssec_ctx_deinit(&ctx);
 
-	return KNOT_EOK;
+	return result;
 }
