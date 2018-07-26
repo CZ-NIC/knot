@@ -451,7 +451,10 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 	}
 
 	if (ret == KNOT_EOK) {
+		// Disable strict changeset application momentarily for the NSEC chain fix.
+		update->a_ctx->flags &= ~APPLY_STRICT;
 		ret = zone_update_apply_changeset(update, &ch);
+		update->a_ctx->flags |= APPLY_STRICT;
 	}
 
 cleanup:
