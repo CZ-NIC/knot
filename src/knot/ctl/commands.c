@@ -417,12 +417,30 @@ static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
+static void zone_txn_update_clear(zone_t *zone)
+{
+	assert(zone->control_update);
+
+	zone_update_clear(zone->control_update);
+	free(zone->control_update);
+	zone->control_update = NULL;
+}
+
 static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
 	if (zone->control_update == NULL) {
 		return KNOT_TXN_ENOTEXISTS;
+	}
+
+	// NOOP if empty changeset/contents.
+	if (((zone->control_update->flags & UPDATE_INCREMENTAL) &&
+	     changeset_empty(&zone->control_update->change)) ||
+	    ((zone->control_update->flags & UPDATE_FULL) &&
+	     zone_contents_is_empty(zone->control_update->new_cont))) {
+		zone_txn_update_clear(zone);
+		return KNOT_EOK;
 	}
 
 	// Sign update.
@@ -432,9 +450,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		zone_sign_reschedule_t resch = { 0 };
 		int ret = knot_dnssec_sign_update(zone->control_update, &resch);
 		if (ret != KNOT_EOK) {
-			zone_update_clear(zone->control_update);
-			free(zone->control_update);
-			zone->control_update = NULL;
+			zone_txn_update_clear(zone);
 			return ret;
 		}
 		log_dnssec_next(zone->name, (time_t)resch.next_sign);
@@ -451,9 +467,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		return ret;
 	}
 
-	zone_update_clear(zone->control_update);
-	free(zone->control_update);
-	zone->control_update = NULL;
+	zone_txn_update_clear(zone);
 
 	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 
@@ -468,9 +482,7 @@ static int zone_txn_abort(zone_t *zone, ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	zone_update_clear(zone->control_update);
-	free(zone->control_update);
-	zone->control_update = NULL;
+	zone_txn_update_clear(zone);
 
 	return KNOT_EOK;
 }
