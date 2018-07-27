@@ -136,6 +136,7 @@ geodb_t *geodb_open(const char *filename)
 	}
 	int mmdb_error = MMDB_open(filename, MMDB_MODE_MMAP, db);
 	if (mmdb_error != MMDB_SUCCESS) {
+		free(db);
 		return NULL;
 	}
 	return db;
