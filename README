@@ -51,7 +51,7 @@ with newer GnuTLS is required instead of gnutls-devel.
 2) Install Knot DNS
 
 Get the source code:
-$ git clone git://git.nic.cz/knot-dns.git
+$ git clone https://gitlab.labs.nic.cz/knot/knot-dns.git
 Or extract source package to knot-dns directory
 
 Compile Knot
