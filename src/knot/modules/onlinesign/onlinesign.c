@@ -507,6 +507,7 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		ctx->event_rollover = resch.next_rollover;
 
 		free_zone_keys(mod->keyset);
+		free(mod->keyset);
 		ret = knotd_mod_dnssec_load_keyset(mod, true);
 		if (ret != KNOT_EOK) {
 			ctx->zone_doomed = true;
