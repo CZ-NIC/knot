@@ -289,3 +289,34 @@ class ModCookies(KnotModule):
         conf.end()
 
         return conf
+
+class ModGeoip(KnotModule):
+    '''GeoIP module'''
+    
+    mod_name = "geoip"
+
+    def __init__(self, config_file="net.conf", mode="subnet", geodb_file=None, geodb_key=[]):
+        super().__init__()
+        self.config_file = config_file
+        self.mode = mode
+        self.geodb_file = geodb_file
+        self.geodb_key = geodb_key
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        conf.item_str("config-file", self.config_file)
+        conf.item_str("mode", self.mode)
+        if self.geodb_file:
+            conf.item_str("geodb-file", self.geodb_file)
+        for key in self.geodb_key:
+            conf.item_str("geodb-key", key)
+        conf.item_str("ttl", "1234")
+        conf.end()
+
+        return conf
+
+
