@@ -61,7 +61,7 @@ check_rcode(knot, query, rcodeNoerror, "NO EDNS")
 query = dns.message.make_query("dns1.example.com", "A", use_edns=True)
 check_rcode(knot, query, rcodeNoerror, "NO COOKIE OPT")
 
-# Try a query without a server cookie 
+# Try a query without a server cookie
 cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
 query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
 response = check_rcode(knot, query, rcodeBadcookie, "ONLY CLIENT COOKIE")
