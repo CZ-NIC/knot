@@ -1,4 +1,4 @@
-libknot.so.7 libknot7 #MINVER#
+libknot.so.8 libknot8 #MINVER#
  KNOT_DB_LMDB_DUPSORT@Base 2.5.0
  KNOT_DB_LMDB_INTEGERKEY@Base 2.4.0
  KNOT_DB_LMDB_MAPASYNC@Base 2.5.0
@@ -7,16 +7,6 @@ libknot.so.7 libknot7 #MINVER#
  KNOT_DB_LMDB_RDONLY@Base 2.3.0
  KNOT_DB_LMDB_WRITEMAP@Base 2.5.0
  KNOT_DUMP_STYLE_DEFAULT@Base 2.3.0
- knot_a_addr@Base 2.3.0
- knot_aaaa_addr@Base 2.3.0
- knot_binary_dup@Base 2.3.0
- knot_binary_free@Base 2.3.0
- knot_binary_from_base64@Base 2.3.0
- knot_binary_from_string@Base 2.3.0
- knot_cc_alg_fnv64@Base 2.3.0
- knot_cc_check@Base 2.3.0
- knot_cc_input_is_valid@Base 2.3.0
- knot_compr_put_dname@Base 2.3.0
  knot_ctl_accept@Base 2.3.0
  knot_ctl_alloc@Base 2.3.0
  knot_ctl_bind@Base 2.3.0
@@ -34,84 +24,62 @@ libknot.so.7 libknot7 #MINVER#
  knot_db_lmdb_iter_del@Base 2.3.0
  knot_db_lmdb_txn_begin@Base 2.3.0
  knot_db_trie_api@Base 2.3.0
- knot_dname_align@Base 2.3.0
- knot_dname_cat@Base 2.3.0
  knot_dname_cmp@Base 2.3.0
  knot_dname_copy@Base 2.3.0
- knot_dname_copy_part@Base 2.3.0
  knot_dname_free@Base 2.3.0
  knot_dname_from_str@Base 2.3.0
+ knot_dname_in_bailiwick@Base 2.7.0
  knot_dname_is_equal@Base 2.3.0
- knot_dname_is_wildcard@Base 2.3.0
- knot_dname_label_is_equal@Base 2.6.0
  knot_dname_labels@Base 2.3.0
- knot_dname_lf@Base 2.3.0
+ knot_dname_lf@Base 2.7.0
  knot_dname_matched_labels@Base 2.3.0
- knot_dname_parse@Base 2.3.0
  knot_dname_prefixlen@Base 2.3.0
  knot_dname_realsize@Base 2.3.0
  knot_dname_replace_suffix@Base 2.3.0
  knot_dname_size@Base 2.3.0
+ knot_dname_store@Base 2.7.0
  knot_dname_to_lower@Base 2.3.0
  knot_dname_to_str@Base 2.3.0
  knot_dname_to_wire@Base 2.3.0
  knot_dname_unpack@Base 2.3.0
  knot_dname_wire_check@Base 2.3.0
- knot_dnskey_flags@Base 2.3.0
  knot_dnssec_alg_names@Base 2.3.0
- knot_ds_alg@Base 2.3.0
- knot_ds_digest@Base 2.3.0
- knot_ds_digest_type@Base 2.3.0
- knot_ds_key_tag@Base 2.3.0
  knot_edns_add_option@Base 2.3.0
+ knot_edns_alignment_size@Base 2.7.0
  knot_edns_chain_parse@Base 2.4.0
  knot_edns_chain_size@Base 2.4.0
  knot_edns_chain_write@Base 2.4.0
- knot_edns_check_record@Base 2.3.0
  knot_edns_client_subnet_get_addr@Base 2.3.1
  knot_edns_client_subnet_parse@Base 2.3.0
  knot_edns_client_subnet_set_addr@Base 2.3.1
  knot_edns_client_subnet_size@Base 2.3.1
  knot_edns_client_subnet_write@Base 2.3.1
- knot_edns_default_padding_size@Base 2.5.0
- knot_edns_do@Base 2.3.0
+ knot_edns_cookie_client_check@Base 2.7.0
+ knot_edns_cookie_client_generate@Base 2.7.0
+ knot_edns_cookie_parse@Base 2.7.0
+ knot_edns_cookie_server_check@Base 2.7.0
+ knot_edns_cookie_server_generate@Base 2.7.0
+ knot_edns_cookie_size@Base 2.7.0
+ knot_edns_cookie_write@Base 2.7.0
  knot_edns_get_ext_rcode@Base 2.3.0
  knot_edns_get_option@Base 2.3.0
- knot_edns_get_payload@Base 2.3.0
+ knot_edns_get_options@Base 2.7.0
  knot_edns_get_version@Base 2.3.0
- knot_edns_has_option@Base 2.3.0
  knot_edns_init@Base 2.3.0
  knot_edns_keepalive_parse@Base 2.4.0
  knot_edns_keepalive_size@Base 2.4.0
  knot_edns_keepalive_write@Base 2.4.0
- knot_edns_opt_cookie_data_len@Base 2.3.0
- knot_edns_opt_cookie_parse@Base 2.3.0
- knot_edns_opt_cookie_write@Base 2.3.0
- knot_edns_opt_get_code@Base 2.3.0
- knot_edns_opt_get_length@Base 2.3.0
- knot_edns_remove_options@Base 2.3.0
  knot_edns_reserve_option@Base 2.3.0
- knot_edns_reserve_unique_option@Base 2.3.0
- knot_edns_set_do@Base 2.3.0
  knot_edns_set_ext_rcode@Base 2.3.0
- knot_edns_set_payload@Base 2.3.0
  knot_edns_set_version@Base 2.3.0
- knot_edns_wire_size@Base 2.3.0
  knot_error_from_libdnssec@Base 2.5.0
  knot_get_obsolete_rdata_descriptor@Base 2.3.0
  knot_get_rdata_descriptor@Base 2.3.0
  knot_naptr_header_size@Base 2.3.0
- knot_nsec3_bitmap@Base 2.3.0
- knot_nsec3_iterations@Base 2.3.0
- knot_nsec3param_algorithm@Base 2.3.0
- knot_nsec3param_flags@Base 2.3.0
- knot_nsec3param_iterations@Base 2.3.0
- knot_nsec3param_salt@Base 2.3.0
- knot_nsec3param_salt_length@Base 2.3.0
  knot_opcode_names@Base 2.3.0
+ knot_opt_code_to_string@Base 2.7.0
  knot_pkt_begin@Base 2.3.0
  knot_pkt_clear@Base 2.3.0
- knot_pkt_clear_payload@Base 2.3.0
  knot_pkt_copy@Base 2.3.0
  knot_pkt_ext_rcode@Base 2.4.0
  knot_pkt_ext_rcode_name@Base 2.4.0
@@ -119,88 +87,46 @@ libknot.so.7 libknot7 #MINVER#
  knot_pkt_init_response@Base 2.3.0
  knot_pkt_new@Base 2.3.0
  knot_pkt_parse@Base 2.3.0
- knot_pkt_parse_payload@Base 2.3.0
  knot_pkt_parse_question@Base 2.3.0
- knot_pkt_parse_rr@Base 2.3.0
- knot_pkt_parse_section@Base 2.3.0
- knot_pkt_put@Base 2.3.0
  knot_pkt_put_question@Base 2.3.0
- knot_pkt_qclass@Base 2.3.0
- knot_pkt_qname@Base 2.3.0
- knot_pkt_qtype@Base 2.3.0
- knot_pkt_question_size@Base 2.3.0
+ knot_pkt_put_rotate@Base 2.7.0
  knot_pkt_reclaim@Base 2.3.0
  knot_pkt_reserve@Base 2.3.0
- knot_pkt_rr@Base 2.3.0
- knot_pkt_rr_offset@Base 2.3.0
- knot_pkt_section@Base 2.3.0
  knot_rcode_names@Base 2.3.0
- knot_rdata_array_size@Base 2.3.0
- knot_rdata_cmp@Base 2.3.0
- knot_rdata_data@Base 2.3.0
- knot_rdata_init@Base 2.3.0
- knot_rdata_rdlen@Base 2.3.0
- knot_rdata_set_rdlen@Base 2.3.0
- knot_rdata_set_ttl@Base 2.3.0
- knot_rdata_ttl@Base 2.3.0
  knot_rdataset_add@Base 2.3.0
  knot_rdataset_at@Base 2.3.0
  knot_rdataset_clear@Base 2.3.0
  knot_rdataset_copy@Base 2.3.0
  knot_rdataset_eq@Base 2.3.0
- knot_rdataset_gather@Base 2.3.1
- knot_rdataset_init@Base 2.3.0
  knot_rdataset_intersect@Base 2.3.0
  knot_rdataset_member@Base 2.3.0
  knot_rdataset_merge@Base 2.3.0
  knot_rdataset_reserve@Base 2.3.0
- knot_rdataset_set_ttl@Base 2.3.0
  knot_rdataset_size@Base 2.3.0
- knot_rdataset_sort_at@Base 2.3.0
- knot_rdataset_subtract@Base 2.3.0
- knot_rdataset_ttl@Base 2.3.0
+ knot_rdataset_subtract@Base 2.7.0
  knot_rdataset_unreserve@Base 2.3.0
  knot_rrclass_from_string@Base 2.3.0
  knot_rrclass_to_string@Base 2.3.0
- knot_rrset_add_rdata@Base 2.3.0
+ knot_rrset_add_rdata@Base 2.7.0
  knot_rrset_clear@Base 2.3.0
  knot_rrset_copy@Base 2.3.0
- knot_rrset_empty@Base 2.3.0
  knot_rrset_equal@Base 2.3.0
  knot_rrset_free@Base 2.3.0
- knot_rrset_init@Base 2.3.0
- knot_rrset_init_empty@Base 2.3.0
  knot_rrset_is_nsec3rel@Base 2.3.0
- knot_rrset_new@Base 2.3.0
+ knot_rrset_new@Base 2.7.0
  knot_rrset_rr_from_wire@Base 2.3.0
  knot_rrset_rr_to_canonical@Base 2.3.0
  knot_rrset_size@Base 2.3.0
- knot_rrset_to_wire@Base 2.3.0
- knot_rrset_ttl@Base 2.3.0
+ knot_rrset_to_wire_rotate@Base 2.7.0
  knot_rrset_txt_dump@Base 2.3.0
  knot_rrset_txt_dump_data@Base 2.3.0
  knot_rrset_txt_dump_header@Base 2.3.0
- knot_rrsig_key_tag@Base 2.3.0
- knot_rrsig_original_ttl@Base 2.3.0
- knot_rrsig_sig_expiration@Base 2.3.0
- knot_rrsig_sig_inception@Base 2.3.0
- knot_rrsig_type_covered@Base 2.3.0
  knot_rrtype_additional_needed@Base 2.3.0
  knot_rrtype_from_string@Base 2.3.0
  knot_rrtype_is_dnssec@Base 2.3.0
  knot_rrtype_is_metatype@Base 2.3.0
  knot_rrtype_should_be_lowercased@Base 2.3.0
  knot_rrtype_to_string@Base 2.3.0
- knot_sc_alg_fnv64@Base 2.3.0
- knot_sc_check@Base 2.3.0
- knot_sc_input_is_valid@Base 2.3.0
- knot_sc_parse@Base 2.3.0
- knot_soa_expire@Base 2.3.0
- knot_soa_minimum@Base 2.3.0
- knot_soa_refresh@Base 2.3.0
- knot_soa_retry@Base 2.3.0
- knot_soa_serial@Base 2.3.0
- knot_soa_serial_set@Base 2.3.0
  knot_strerror@Base 2.3.0
  knot_tsig_add@Base 2.3.0
  knot_tsig_append@Base 2.3.0
@@ -236,22 +162,6 @@ libknot.so.7 libknot7 #MINVER#
  knot_tsig_sign_next@Base 2.3.0
  knot_tsig_wire_maxsize@Base 2.3.0
  knot_tsig_wire_size@Base 2.4.1
- knot_wire_add_ancount@Base 2.3.0
- knot_wire_add_arcount@Base 2.3.0
- knot_wire_add_nscount@Base 2.3.0
- knot_wire_add_qdcount@Base 2.3.0
- knot_wire_get_ancount@Base 2.3.0
- knot_wire_get_arcount@Base 2.3.0
- knot_wire_get_id@Base 2.3.0
- knot_wire_get_nscount@Base 2.3.0
- knot_wire_get_pointer@Base 2.3.0
- knot_wire_get_qdcount@Base 2.3.0
- knot_wire_put_pointer@Base 2.3.0
- knot_wire_set_ancount@Base 2.3.0
- knot_wire_set_arcount@Base 2.3.0
- knot_wire_set_id@Base 2.3.0
- knot_wire_set_nscount@Base 2.3.0
- knot_wire_set_qdcount@Base 2.3.0
  yp_addr@Base 2.5.0
  yp_addr_noport@Base 2.5.0
  yp_addr_noport_to_bin@Base 2.5.0
@@ -262,7 +172,6 @@ libknot.so.7 libknot7 #MINVER#
  yp_addr_to_txt@Base 2.5.0
  yp_base64_to_bin@Base 2.5.0
  yp_base64_to_txt@Base 2.5.0
- yp_bin_len@Base 2.5.0
  yp_bool_to_bin@Base 2.5.0
  yp_bool_to_txt@Base 2.5.0
  yp_deinit@Base 2.5.0
@@ -274,7 +183,6 @@ libknot.so.7 libknot7 #MINVER#
  yp_hex_to_bin@Base 2.5.0
  yp_hex_to_txt@Base 2.5.0
  yp_init@Base 2.5.0
- yp_int@Base 2.5.0
  yp_int_to_bin@Base 2.5.0
  yp_int_to_txt@Base 2.5.0
  yp_item_to_bin@Base 2.5.0

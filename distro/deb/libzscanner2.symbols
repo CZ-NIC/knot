@@ -1,4 +1,4 @@
-libzscanner.so.1 libzscanner1 #MINVER#
+libzscanner.so.2 libzscanner2 #MINVER#
  zs_deinit@Base 2.3.0
  zs_errorname@Base 2.3.0
  zs_init@Base 2.3.0
