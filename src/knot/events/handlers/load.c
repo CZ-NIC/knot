@@ -96,6 +96,11 @@ int event_load(conf_t *conf, zone_t *zone)
 			goto cleanup;
 		}
 
+		// Save zonefile information.
+		zone->zonefile.serial = zone_contents_serial(zf_conts);
+		zone->zonefile.exists = (zf_conts != NULL);
+		zone->zonefile.mtime = mtime;
+
 		// If configured and possible, fix the SOA serial of zonefile.
 		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE) {
 			zone_contents_t *relevant = (zone->contents != NULL ? zone->contents : journal_conts);
@@ -107,10 +112,6 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 
 		// If configured and appliable to zonefile, load journal changes.
-		zone->zonefile.serial = zone_contents_serial(zf_conts);
-		zone->zonefile.exists = (zf_conts != NULL);
-		zone->zonefile.mtime = mtime;
-
 		bool journal_load_configured1 = (load_from == JOURNAL_CONTENT_CHANGES);
 		bool journal_load_configured2 = (load_from == JOURNAL_CONTENT_ALL);
 
