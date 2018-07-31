@@ -26,9 +26,9 @@
 
 #include <urcu.h>
 
-static int init_incremental(zone_update_t *update, zone_t *zone)
+static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents)
 {
-	if (zone->contents == NULL) {
+	if (old_contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -39,7 +39,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 
 	update->new_cont_deep_copy = false;
 
-	ret = apply_prepare_zone_copy(zone->contents, &update->new_cont);
+	ret = apply_prepare_zone_copy(old_contents, &update->new_cont);
 	if (ret != KNOT_EOK) {
 		changeset_clear(&update->change);
 		return ret;
@@ -50,7 +50,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone)
 
 	/* Copy base SOA RR. */
 	update->change.soa_from =
-		node_create_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+		node_create_rrset(old_contents->apex, KNOT_RRTYPE_SOA);
 	if (update->change.soa_from == NULL) {
 		zone_contents_free(update->new_cont);
 		changeset_clear(&update->change);
@@ -96,11 +96,10 @@ static int replace_soa(zone_contents_t *contents, const knot_rrset_t *rr)
 	return ret;
 }
 
-/* ------------------------------- API -------------------------------------- */
-
-int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t flags)
+int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents,
+              zone_update_flags_t flags)
 {
-	if (update == NULL || zone == NULL) {
+	if (update == NULL || zone == NULL || (old_contents == NULL && (flags & UPDATE_INCREMENTAL))) {
 		return KNOT_EINVAL;
 	}
 
@@ -117,7 +116,7 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 
 	int ret = KNOT_EINVAL;
 	if (flags & UPDATE_INCREMENTAL) {
-		ret = init_incremental(update, zone);
+		ret = init_incremental(update, zone, old_contents);
 	} else if (flags & UPDATE_FULL) {
 		ret = init_full(update, zone);
 	}
@@ -128,45 +127,49 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 	return ret;
 }
 
+/* ------------------------------- API -------------------------------------- */
+
+int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t flags)
+{
+	return init_base(update, zone, zone->contents, flags);
+}
+
 int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_contents_t *old_cont,
-                                 zone_contents_t *new_cont, zone_update_flags_t flags)
+				 zone_contents_t *new_cont, zone_update_flags_t flags, bool ignore_dnssec)
 {
 	if (update == NULL || zone == NULL || new_cont == NULL ||
 	    !(flags & UPDATE_INCREMENTAL) || (flags & UPDATE_FULL)) {
 		return KNOT_EINVAL;
 	}
 
-	memset(update, 0, sizeof(*update));
-	update->zone = zone;
-
-	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
-	update->flags = flags;
-
-	update->new_cont = new_cont;
-	update->new_cont_deep_copy = true;
-
-	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
-	if (update->a_ctx == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	int ret = changeset_init(&update->change, zone->name);
+	changeset_t diff;
+	int ret = changeset_init(&diff, zone->name);
 	if (ret != KNOT_EOK) {
-		free(update->a_ctx);
 		return ret;
 	}
 
-	ret = zone_contents_diff(old_cont, new_cont, &update->change);
+	ret = zone_contents_diff(old_cont, new_cont, &diff, ignore_dnssec);
 	if (ret != KNOT_EOK && ret != KNOT_ENODIFF && ret != KNOT_ESEMCHECK) {
-		free(update->a_ctx);
-		changeset_clear(&update->change);
+		changeset_clear(&diff);
 		return ret;
 	}
 
-	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
-	apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	ret = init_base(update, zone, old_cont, flags);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&diff);
+		return ret;
+	}
 
-	if (ret == KNOT_ESEMCHECK) {
+	bool diff_semcheck = (ret == KNOT_ESEMCHECK);
+
+	ret = zone_update_apply_changeset(update, &diff);
+	changeset_clear(&diff);
+	if (ret != KNOT_EOK) {
+		zone_update_clear(update);
+		return ret;
+	}
+
+	if (diff_semcheck) {
 		ret = zone_update_increment_soa(update, conf());
 		if (ret != KNOT_EOK) {
 			zone_update_clear(update);
@@ -520,6 +523,16 @@ int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes)
 		ret = zone_update_apply_changeset(update, changes);
 	}
 	return ret;
+}
+
+int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t *changes)
+{
+	changeset_t reverse;
+	reverse.remove = changes->add;
+	reverse.add = changes->remove;
+	reverse.soa_from = changes->soa_to;
+	reverse.soa_to = changes->soa_from;
+	return zone_update_apply_changeset(update, &reverse);
 }
 
 static int set_new_soa(zone_update_t *update, unsigned serial_policy)

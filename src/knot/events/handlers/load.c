@@ -95,11 +95,23 @@ int event_load(conf_t *conf, zone_t *zone)
 			}
 			goto cleanup;
 		}
-		// If configured and appliable to zonefile, load journal changes.
+
+		// Save zonefile information.
 		zone->zonefile.serial = zone_contents_serial(zf_conts);
 		zone->zonefile.exists = (zf_conts != NULL);
 		zone->zonefile.mtime = mtime;
 
+		// If configured and possible, fix the SOA serial of zonefile.
+		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE) {
+			zone_contents_t *relevant = (zone->contents != NULL ? zone->contents : journal_conts);
+			if (relevant != NULL) {
+				uint32_t serial = zone_contents_serial(relevant);
+				conf_val_t policy = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
+				zone_contents_set_soa_serial(zf_conts, serial_next(serial, conf_opt(&policy)));
+			}
+		}
+
+		// If configured and appliable to zonefile, load journal changes.
 		bool journal_load_configured1 = (load_from == JOURNAL_CONTENT_CHANGES);
 		bool journal_load_configured2 = (load_from == JOURNAL_CONTENT_ALL);
 
@@ -108,6 +120,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			ret = zone_load_journal(conf, zone, zf_conts);
 			if (ret != KNOT_EOK) {
 				zone_contents_deep_free(zf_conts);
+				zf_conts = NULL;
 				log_zone_warning(zone->name, "failed to load journal (%s)",
 				                 knot_strerror(ret));
 			}
@@ -127,6 +140,8 @@ int event_load(conf_t *conf, zone_t *zone)
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val), zu_from_zf_conts = false;
 	zone_update_t up = { 0 };
+	bool ignore_dnssec = ((zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE)
+	                      && dnssec_enable);
 
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
@@ -142,7 +157,9 @@ int event_load(conf_t *conf, zone_t *zone)
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
-			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL);
+			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
+			zone_contents_deep_free(zf_conts);
+			zf_conts = NULL;
 		}
 	} else {
 		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
@@ -151,16 +168,18 @@ int event_load(conf_t *conf, zone_t *zone)
 				ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
 			} else {
 				// load zone-in-journal, compute ZF diff and if success, apply it
-				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts, UPDATE_INCREMENTAL);
+				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
+				zone_contents_deep_free(zf_conts);
+				zf_conts = NULL;
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name,
 					                 "zone file changed with SOA serial %s, "
 					                 "ignoring zone file and loading from journal",
 					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
-					zone_contents_deep_free(zf_conts);
 					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
 				} else {
 					zone_contents_deep_free(journal_conts);
+					journal_conts = NULL;
 				}
 			}
 		} else {
@@ -214,6 +233,24 @@ int event_load(conf_t *conf, zone_t *zone)
 			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
 			                 "'zonefile-load: difference' should be set to avoid malformed "
 			                 "IXFR after manual zone file update");
+		}
+	}
+
+	// If the change is only automatically incremented SOA serial, make it no change.
+	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & UPDATE_INCREMENTAL) &&
+	    changeset_differs_just_serial(&up.change)) {
+		changeset_t *cpy = changeset_clone(&up.change);
+		if (cpy == NULL) {
+			ret = KNOT_ENOMEM;
+			goto cleanup;
+		}
+		ret = zone_update_apply_changeset_reverse(&up, cpy);
+		changeset_free(cpy);
+		if (ret == KNOT_EOK) {
+			ret = changeset_remove_addition(&up.change, up.change.soa_to);
+		}
+		if (ret != KNOT_EOK) {
+			goto cleanup;
 		}
 	}
 
