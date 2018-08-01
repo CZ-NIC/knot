@@ -1119,7 +1119,7 @@ on the disk (see \fI\%file\fP). The server will serve the latest
 zone even after a restart using zone journal, but the zone file on the disk will
 only be synced after \fBzonefile\-sync\fP time has expired (or after manual zone
 flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
-DNSSEC signing. In order to completely disable automatic zonefile synchronization,
+DNSSEC signing. In order to completely disable automatic zone file synchronization,
 set the value to \-1. In that case, it is still possible to force a manual zone flush
 using the \fB\-f\fP option.
 .sp
@@ -1134,20 +1134,21 @@ the immediate sync with a zone file is not desirable, increase the value.
 \fIDefault:\fP 0 (immediate)
 .SS zonefile\-load
 .sp
-Selects how the zonefile contents are applied during zone load.
+Selects how the zone file contents are applied during zone load.
 .sp
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBnone\fP – The zonefile is not used at all.
+\fBnone\fP – The zone file is not used at all.
 .IP \(bu 2
-\fBdifference\fP – If the zone contents is available during server start or reload,
-the difference is computed between them and the zonefile, checked, and applied afterwards.
+\fBdifference\fP – If the zone contents are already available during server start or reload,
+the difference is computed between them and the contents of the zone file. This difference is then checked for semantic errors and
+applied to the current zone contents.
 .IP \(bu 2
-\fBdifference\-no\-serial\fP – Same as \fBdifference\fP, but the SOA serial in the zonefile is
+\fBdifference\-no\-serial\fP – Same as \fBdifference\fP, but the SOA serial in the zone file is
 ignored, the server takes care of incrementing the serial automatically.
 .IP \(bu 2
-\fBwhole\fP – Zone contents are loaded from zonefile.
+\fBwhole\fP – Zone contents are loaded from the zone file.
 .UNINDENT
 .sp
 When \fBdifference\fP is configured and there are no zone contents yet (cold start of Knot

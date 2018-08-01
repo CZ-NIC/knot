@@ -251,7 +251,7 @@ A full example of setting up a completely new zone from scratch::
 .. _Editing zone file:
 
 Reading and editing the zone file safely
-====================================
+========================================
 
 It's always possible to read and edit the zone contents via zone file manipulation.
 However, it may lead to confusion if zone contents are continuously changing or
