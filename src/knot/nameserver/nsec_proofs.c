@@ -117,16 +117,15 @@ static const zone_node_t *nsec3_encloser(const zone_node_t *closest)
 static const knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
                                            const knot_dname_t *name)
 {
+	// make name only one label longer than closest_encloser
 	size_t ce_labels = knot_dname_labels(closest_encloser, NULL);
 	size_t qname_labels = knot_dname_labels(name, NULL);
-
-	// the common labels should match
-	assert(knot_dname_matched_labels(closest_encloser, name) == ce_labels);
-
-	// chop some labels from the qname
 	for (int i = 0; i < (qname_labels - ce_labels - 1); ++i) {
 		name = knot_wire_next_label(name, NULL);
 	}
+
+	// the common labels should match
+	assert(knot_dname_is_equal(knot_wire_next_label(name, NULL), closest_encloser));
 
 	return name;
 }
