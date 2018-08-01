@@ -201,7 +201,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 		return KNOT_EMALF;
 	}
 
-	if (!knot_dname_in(update->zone->name, rrset->owner)) {
+	if (knot_dname_in_bailiwick(rrset->owner, update->zone->name) < 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
@@ -628,12 +628,12 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 	/* Accept both subdomain and dname match. */
 	const knot_dname_t *owner = rrset->owner;
 	const knot_dname_t *qname = knot_pkt_qname(query);
-	const bool is_sub = knot_dname_is_sub(owner, qname);
-	const bool is_apex = knot_dname_is_equal(owner, qname);
-	if (!is_sub && !is_apex) {
+	const int in_bailiwick = knot_dname_in_bailiwick(owner, qname);
+	if (in_bailiwick < 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
+	const bool is_apex = in_bailiwick == 0;
 
 	if (is_dnssec_protected(rrset->type, is_apex)) {
 		*rcode = KNOT_RCODE_REFUSED;
