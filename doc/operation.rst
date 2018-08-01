@@ -248,15 +248,15 @@ A full example of setting up a completely new zone from scratch::
     $ knotc zone-set example.com www 3600 A 192.168.0.100
     $ knotc zone-commit example.com
 
-.. _Editing zonefile:
+.. _Editing zone file:
 
-Reading and editing zone file safely
+Reading and editing the zone file safely
 ====================================
 
 It's always possible to read and edit the zone contents via zone file manipulation.
 However, it may lead to confusion if zone contents are continuously changing or
 in case of operator's mistake. This paragraph describes a safe way to modify zone
-by editing zone file, taking advantage of zone freeze/thaw feature.::
+by editing the zone file, taking advantage of zone freeze/thaw feature.::
 
     $ knotc zone-freeze example.com.
     $ while ! knotc zone-status example.com. +freeze | grep -q 'freeze: yes'; do sleep 1; done
@@ -281,8 +281,8 @@ Zone loading
 The process how the server loads a zone is influenced by the configuration of the
 :ref:`zonefile-load <zone_zonefile-load>` and :ref:`journal-content <zone_journal-content>`
 parameters (also DNSSEC signing applies), the existence of a zone file and journal
-(and their relative out-of-dateness), and wheather it is a cold start of the server
-or a zone reload (invoked by e.g. knotc interface). Please note that zone transfers
+(and their relative out-of-dateness), and whether it is a cold start of the server
+or a zone reload (e.g. invoked by the knotc interface). Please note that zone transfers
 are not taken into account here – they are planned after the zone is loaded
 (including AXFR bootstrap).
 
@@ -294,7 +294,7 @@ The zone file should be either unchaged since last load or changed with incremen
 SOA serial. In the case of a decreased SOA serial, the load is interrupted with
 an error; if unchanged, it is increased by the server.
 
-Anyway, unless an error, the resulting zone contents is (after potential DNSSEC signing)
+If the procedure described above succeeds without errors, the resulting zone contents are (after potential DNSSEC signing)
 used as the new zone.
 
 The option "`journal-content: all`" lets the server, beside better performance, to keep
@@ -307,9 +307,9 @@ effectively work like a zone reload with the old contents loaded from the journa
 Journal behaviour
 =================
 
-Zone journal keeps some history of changes of the zone. It is useful for
-responding to IXFR queries. Also if zone file flush is disabled,
-journal keeps diff between zonefile and zone for the case of server shutdown.
+The zone journal keeps some history of changes made to the zone. It is useful for
+responding to IXFR queries. Also if :ref:`zone file flush <zone_zonefile-sync>` is disabled,
+journal keeps diff between the zone file and zone for the case of server shutdown.
 The history is stored in changesets – diffs of zone contents between two
 (usually subsequent) zone serials.
 
@@ -322,15 +322,15 @@ and some dirty-chunks-management involves.
 Each zone journal has own :ref:`usage limit <zone_max-journal-usage>`
 on how much DB space it may occupy. Before hitting the limit,
 changesets are stored one-by-one and whole history is linear. While hitting the limit,
-the zone is flushed into zone file, and oldest changesets are deleted as needed to free
+the zone is flushed into the zone file, and oldest changesets are deleted as needed to free
 some space. Actually, twice [#fn-hc]_ the needed amount is deleted to
 prevent too frequent deletes. Further zone file flush is invoked after the journal runs out of deletable
 "flushed changesets".
 
-If zone file flush is disabled, instead of flushing the zone, the journal tries to
+If :ref:`zone file flush <zone_zonefile-sync>` is disabled, then instead of flushing the zone, the journal tries to
 save space by merging older changesets into one. It works well if the changes rewrite
 each other, e.g. periodically changing few zone records, re-signing whole zone...
-The diff between the zone file and the zone is thus preserved, even if journal deletes some
+The difference between the zone file and the zone is thus preserved, even if journal deletes some
 older changesets.
 
 If the journal is used to store both zone history and contents, a special changeset
@@ -345,12 +345,12 @@ command.
 
 .. [#fn-hc] This constant is hardcoded.
 
-.. _Handling, zonefile, journal, changes, serials:
+.. _Handling, zone file, journal, changes, serials:
 
 Handling zone file, journal, changes, serials
 =============================================
 
-Some configuration options regarding zone file and journal, together with operation
+Some configuration options regarding the zone file and journal, together with operation
 procedures, might lead to unexpected results. This chapter shall point out
 some interference and both recommend and warn before some combinations thereof.
 Unfortunately, there is no optimal combination of configuration options,
@@ -359,7 +359,7 @@ every approach has some disadvantages.
 Example 1
 ---------
 
-Keep zonefile updated::
+Keep the zone file updated::
 
    zonefile-sync: 0
    zonefile-load: whole
@@ -367,9 +367,9 @@ Keep zonefile updated::
 
 This is actually setting default values. The user can always check the current zone
 contents in the zonei file, and also modify it (recommended with server turned-off or
-taking the :ref:`safe way<Editing zonefile>`). Journal serves here just as a source of
+taking the :ref:`safe way<Editing zone file>`). Journal serves here just as a source of
 history for slaves' IXFR. Some users dislike that the server overwrites their prettily
-prepared zonefile.
+prepared zone file.
 
 Example 2
 ---------
@@ -380,7 +380,7 @@ Zonefileless setup::
    zonefile-load: none
    journal-contents: all
 
-Zone contents is stored just in the journal. The zone is updated by DDNS,
+Zone contents are stored just in the journal. The zone is updated by DDNS,
 zone transfer, or via the control interface. The user might have filled the
 zone contents initially from a zone file by setting "zonefile-load: whole" temporarily.
 It's also a good setup for slaves. Anyway, it's recommended to carefully tune
@@ -389,13 +389,13 @@ the journal-size-related options to avoid surprises of journal getting full.
 Example 3
 ---------
 
-Input-only zonefile::
+Input-only zone file::
 
    zonefile-sync: -1
    zonefile-load: difference
    journal-contents: changes
 
-The user can make changes to the zone by editing the zone file, and his pretty zonefile
+The user can make changes to the zone by editing the zone file, and his pretty zone file
 gets never overwritten and filled with DNSSEC-related autogenerated records – they are
 only stored in the journal.
 

@@ -1268,7 +1268,7 @@ on the disk (see :ref:`file<zone_file>`). The server will serve the latest
 zone even after a restart using zone journal, but the zone file on the disk will
 only be synced after ``zonefile-sync`` time has expired (or after manual zone
 flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
-DNSSEC signing. In order to completely disable automatic zonefile synchronization,
+DNSSEC signing. In order to completely disable automatic zone file synchronization,
 set the value to -1. In that case, it is still possible to force a manual zone flush
 using the ``-f`` option.
 
@@ -1283,16 +1283,17 @@ using the ``-f`` option.
 zonefile-load
 -------------
 
-Selects how the zonefile contents are applied during zone load.
+Selects how the zone file contents are applied during zone load.
 
 Possible values:
 
-- ``none`` – The zonefile is not used at all.
-- ``difference`` – If the zone contents is available during server start or reload,
-  the difference is computed between them and the zonefile, checked, and applied afterwards.
-- ``difference-no-serial`` – Same as ``difference``, but the SOA serial in the zonefile is
+- ``none`` – The zone file is not used at all.
+- ``difference`` – If the zone contents are already available during server start or reload,
+  the difference is computed between them and the contents of the zone file. This difference is then checked for semantic errors and
+  applied to the current zone contents.
+- ``difference-no-serial`` – Same as ``difference``, but the SOA serial in the zone file is
   ignored, the server takes care of incrementing the serial automatically.
-- ``whole`` – Zone contents are loaded from zonefile.
+- ``whole`` – Zone contents are loaded from the zone file.
 
 When ``difference`` is configured and there are no zone contents yet (cold start of Knot
 and no zone contents in journal), it behaves the same way like ``whole``.
