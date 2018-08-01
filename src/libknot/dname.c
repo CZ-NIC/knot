@@ -517,44 +517,6 @@ size_t knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt)
 }
 
 _public_
-bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
-{
-	if (sub == NULL || domain == NULL || sub == domain) {
-		return false;
-	}
-
-	/* Subdomain must have more labels than parent. */
-	size_t sub_l = knot_dname_labels(sub, NULL);
-	size_t domain_l = knot_dname_labels(domain, NULL);
-	if (sub_l <= domain_l) {
-		return false;
-	}
-
-	/* Align end-to-end to common suffix. */
-	int common = dname_align(&sub, sub_l, &domain, domain_l);
-
-	/* Compare common suffix. */
-	while (common > 0) {
-		/* Compare label. */
-		if (!label_is_equal(sub, domain)) {
-			return false;
-		}
-		/* Next label. */
-		sub = knot_wire_next_label(sub, NULL);
-		domain = knot_wire_next_label(domain, NULL);
-		--common;
-	}
-
-	return true;
-}
-
-_public_
-bool knot_dname_in(const knot_dname_t *domain, const knot_dname_t *sub)
-{
-	return knot_dname_is_equal(domain, sub) || knot_dname_is_sub(sub, domain);
-}
-
-_public_
 size_t knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 {
 	/* Count labels. */
@@ -771,4 +733,23 @@ uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t storage)
 	storage[idx] = KNOT_DNAME_MAXLEN - 1 - idx;
 
 	return &storage[idx];
+}
+
+_public_
+int knot_dname_in_bailiwick(const knot_dname_t *name, const knot_dname_t *bailiwick)
+{
+	if (name == NULL || bailiwick == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int label_diff = knot_dname_labels(name, NULL) - knot_dname_labels(bailiwick, NULL);
+	if (label_diff < 0) {
+		return KNOT_EOUTOFZONE;
+	}
+
+	for (int i = 0; i < label_diff; ++i) {
+		name = knot_wire_next_label(name, NULL);
+	}
+
+	return knot_dname_is_equal(name, bailiwick) ? label_diff : KNOT_EOUTOFZONE;
 }

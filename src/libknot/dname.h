@@ -190,30 +190,6 @@ _pure_
 size_t knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt);
 
 /*!
- * \brief Checks if one domain name is a (strict) subdomain of other.
- *
- * \param sub     Domain name to be the possible subdomain.
- * \param domain  Domain name to be the possible parent domain.
- *
- * \retval true \a sub is a (strict) subdomain of \a domain.
- * \retval false otherwise.
- */
-_pure_
-bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain);
-
-/*!
- * \brief Check if the domain name is a subdomain of or equal to other.
- *
- * \param domain  Domain name to be the possible parent domain.
- * \param sub     Domain name to be the possible subdomain.
- *
- * \retval true \a sub us a subdomain or equal to \a domain.
- * \retval false otherwise.
- */
-_pure_
-bool knot_dname_in(const knot_dname_t *domain, const knot_dname_t *sub);
-
-/*!
  * \brief Checks if the domain name is a wildcard.
  *
  * \param name  Domain name to check.
@@ -337,5 +313,47 @@ size_t knot_dname_labels(const uint8_t *name, const uint8_t *pkt);
  * \retval NULL on invalid parameters.
  */
 uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t storage);
+
+/*!
+ * \brief Check whether a domain name is under another one and how deep.
+ *
+ * \param name       The longer name to check.
+ * \param bailiwick  The shorter name to check.
+ *
+ * \retval >=0 a subdomain nested this many labels.
+ * \retval <0 not a subdomain (KNOT_EOUTOFZONE) or another error (KNOT_EINVAL).
+ */
+int knot_dname_in_bailiwick(const knot_dname_t *name, const knot_dname_t *bailiwick);
+
+/*!
+ * \brief Checks if one domain name is a (strict) subdomain of other.
+ *
+ * \param sub     Domain name to be the possible subdomain.
+ * \param domain  Domain name to be the possible parent domain.
+ *
+ * \retval true \a sub is a (strict) subdomain of \a domain.
+ * \retval false otherwise.
+ */
+static inline
+bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
+{
+	return knot_dname_in_bailiwick(sub, domain) > 0;
+}
+
+/*!
+ * \brief Check if the domain name is a subdomain of or equal to other.
+ *
+ * \param domain  Domain name to be the possible parent domain.
+ * \param sub     Domain name to be the possible subdomain.
+ *
+ * \retval true \a sub us a subdomain or equal to \a domain.
+ * \retval false otherwise.
+ */
+static inline
+bool knot_dname_in(const knot_dname_t *domain, const knot_dname_t *sub)
+{
+	return knot_dname_in_bailiwick(sub, domain) >= 0;
+}
+
 
 /*! @} */
