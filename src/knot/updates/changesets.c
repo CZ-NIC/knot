@@ -663,7 +663,7 @@ changeset_t *changeset_clone(const changeset_t *ch)
 		return NULL;
 	}
 
-	changeset_t *res = changeset_new(ch->soa_from->owner);
+	changeset_t *res = changeset_new(ch->add->apex->owner);
 	if (res == NULL) {
 		return NULL;
 	}

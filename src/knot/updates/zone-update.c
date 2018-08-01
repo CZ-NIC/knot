@@ -154,13 +154,15 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 		return ret;
 	}
 
+	// True if nonempty changes were made but the serial
+	// remained the same and has to be incremented.
+	bool diff_semcheck = (ret == KNOT_ESEMCHECK);
+
 	ret = init_base(update, zone, old_cont, flags);
 	if (ret != KNOT_EOK) {
 		changeset_clear(&diff);
 		return ret;
 	}
-
-	bool diff_semcheck = (ret == KNOT_ESEMCHECK);
 
 	ret = zone_update_apply_changeset(update, &diff);
 	changeset_clear(&diff);
