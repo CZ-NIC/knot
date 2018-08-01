@@ -201,7 +201,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 		return KNOT_EMALF;
 	}
 
-	if (!knot_dname_in(update->zone->name, rrset->owner)) {
+	if (knot_dname_in_bailiwick(rrset->owner, update->zone->name) < 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}

@@ -339,20 +339,4 @@ int knot_dname_in_bailiwick(const knot_dname_t *domain, const knot_dname_t *bail
 	return knot_dname_is_equal(domain, bail) ? label_diff : KNOT_EOUTOFZONE;
 }
 
-/*!
- * \brief Check if the domain name is a subdomain of or equal to other.
- *
- * \param domain  Domain name to be the possible parent domain.
- * \param sub     Domain name to be the possible subdomain.
- *
- * \retval true \a sub us a subdomain or equal to \a domain.
- * \retval false otherwise.
- */
-static inline
-bool knot_dname_in(const knot_dname_t *domain, const knot_dname_t *sub)
-{
-	return knot_dname_in_bailiwick(sub, domain) >= 0;
-}
-
-
 /*! @} */

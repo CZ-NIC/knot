@@ -636,7 +636,7 @@ static int ixfr_step(const knot_rrset_t *rr, struct refresh_data *data)
 
 static int ixfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 {
-	if (!knot_dname_in(data->zone->name, rr->owner)) {
+	if (knot_dname_in_bailiwick(rr->owner, data->zone->name) < 0) {
 		return KNOT_STATE_CONSUME;
 	}
 
