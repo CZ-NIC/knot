@@ -519,25 +519,25 @@ int main(int argc, char *argv[])
 	d2 = knot_dname_from_str_alloc(t);
 	t = "ab.cd.ef";
 	d = knot_dname_from_str_alloc(t);
-	ok(!knot_dname_is_sub(d, d2), "dname_subdomain: equal name");
+	ok(knot_dname_in_bailiwick(d, d2) == 0, "dname_subdomain: equal name");
 	knot_dname_free(d, NULL);
 
 	/* true subdomain */
 	t = "0.ab.cd.ef";
 	d = knot_dname_from_str_alloc(t);
-	ok(knot_dname_is_sub(d, d2), "dname_subdomain: true subdomain");
+	ok(knot_dname_in_bailiwick(d, d2) == 1, "dname_subdomain: true subdomain");
 	knot_dname_free(d, NULL);
 
 	/* not subdomain */
 	t = "cd.ef";
 	d = knot_dname_from_str_alloc(t);
-	ok(!knot_dname_is_sub(d, d2), "dname_subdomain: not subdomain");
+	ok(knot_dname_in_bailiwick(d, d2) < 0, "dname_subdomain: not subdomain");
 	knot_dname_free(d, NULL);
 
 	/* root subdomain */
 	t = ".";
 	d = knot_dname_from_str_alloc(t);
-	ok(knot_dname_is_sub(d2, d), "dname_subdomain: root subdomain");
+	ok(knot_dname_in_bailiwick(d2, d) == 3, "dname_subdomain: root subdomain");
 	knot_dname_free(d, NULL);
 	knot_dname_free(d2, NULL);
 
