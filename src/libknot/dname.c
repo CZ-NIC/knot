@@ -517,44 +517,6 @@ size_t knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt)
 }
 
 _public_
-bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
-{
-	if (sub == NULL || domain == NULL || sub == domain) {
-		return false;
-	}
-
-	/* Subdomain must have more labels than parent. */
-	size_t sub_l = knot_dname_labels(sub, NULL);
-	size_t domain_l = knot_dname_labels(domain, NULL);
-	if (sub_l <= domain_l) {
-		return false;
-	}
-
-	/* Align end-to-end to common suffix. */
-	int common = dname_align(&sub, sub_l, &domain, domain_l);
-
-	/* Compare common suffix. */
-	while (common > 0) {
-		/* Compare label. */
-		if (!label_is_equal(sub, domain)) {
-			return false;
-		}
-		/* Next label. */
-		sub = knot_wire_next_label(sub, NULL);
-		domain = knot_wire_next_label(domain, NULL);
-		--common;
-	}
-
-	return true;
-}
-
-_public_
-bool knot_dname_in(const knot_dname_t *domain, const knot_dname_t *sub)
-{
-	return knot_dname_is_equal(domain, sub) || knot_dname_is_sub(sub, domain);
-}
-
-_public_
 size_t knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 {
 	/* Count labels. */
