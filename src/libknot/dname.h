@@ -190,12 +190,12 @@ _pure_
 size_t knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt);
 
 /*!
- * \brief Checks if one domain name is a subdomain of other.
+ * \brief Checks if one domain name is a (strict) subdomain of other.
  *
  * \param sub     Domain name to be the possible subdomain.
  * \param domain  Domain name to be the possible parent domain.
  *
- * \retval true \a sub is a subdomain of \a domain.
+ * \retval true \a sub is a (strict) subdomain of \a domain.
  * \retval false otherwise.
  */
 _pure_
