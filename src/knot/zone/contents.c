@@ -149,7 +149,7 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 		glue_t *glue;
 		if ((node->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH)) &&
 		    rr_data->type == KNOT_RRTYPE_NS &&
-		    knot_dname_in(owner, node->owner)) {
+		    knot_dname_in_bailiwick(node->owner, owner) >= 0) {
 			glue = &mandatory[mandatory_count++];
 			glue->optional = false;
 		} else {
@@ -818,7 +818,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	if (!knot_dname_in(zone->apex->owner, name)) {
+	if (knot_dname_in_bailiwick(name, zone->apex->owner) < 0) {
 		return KNOT_EOUTOFZONE;
 	}
 
