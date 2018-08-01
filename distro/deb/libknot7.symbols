@@ -43,7 +43,6 @@ libknot.so.7 libknot7 #MINVER#
  knot_dname_from_str@Base 2.3.0
  knot_dname_in@Base 2.3.0
  knot_dname_is_equal@Base 2.3.0
- knot_dname_is_sub@Base 2.3.0
  knot_dname_is_wildcard@Base 2.3.0
  knot_dname_label_is_equal@Base 2.6.0
  knot_dname_labels@Base 2.3.0

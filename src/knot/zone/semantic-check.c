@@ -472,7 +472,7 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 	for (int i = 0; i < ns_rrs->count; ++i) {
 		knot_rdata_t *ns_rr = knot_rdataset_at(ns_rrs, i);
 		const knot_dname_t *ns_dname = knot_ns_name(ns_rr);
-		if (!knot_dname_is_sub(ns_dname, node->owner)) {
+		if (knot_dname_in_bailiwick(ns_dname, node->owner) <= 0) {
 			continue;
 		}
 

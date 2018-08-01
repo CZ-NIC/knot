@@ -65,7 +65,7 @@ static int check_node(const zone_contents_t *contents, const zone_node_t *node)
 	assert(contents->apex != NULL);
 	assert(node);
 
-	if (!knot_dname_is_sub(node->owner, contents->apex->owner)) {
+	if (knot_dname_in_bailiwick(node->owner, contents->apex->owner) <= 0) {
 		return KNOT_EOUTOFZONE;
 	}
 
@@ -590,8 +590,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 	}
 
 	// check if the RRSet belongs to the zone
-	if (!knot_dname_is_sub(rr->owner, z->apex->owner) &&
-	    !knot_dname_is_equal(rr->owner, z->apex->owner)) {
+	if (knot_dname_in_bailiwick(rr->owner, z->apex->owner) < 0) {
 		return KNOT_EOUTOFZONE;
 	}
 
@@ -622,8 +621,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 	}
 
 	// check if the RRSet belongs to the zone
-	if (!knot_dname_is_sub(rr->owner, z->apex->owner) &&
-	    !knot_dname_is_equal(rr->owner, z->apex->owner)) {
+	if (knot_dname_in_bailiwick(rr->owner, z->apex->owner) < 0) {
 		return KNOT_EOUTOFZONE;
 	}
 
