@@ -244,6 +244,18 @@ AS_IF([test "$enable_systemd" = "yes"],[
 
 ]) dnl enable_daemon
 
+# Alternative memory allocator
+malloc_LIBS=
+AC_ARG_WITH([memory-allocator],
+  AS_HELP_STRING([--with-memory-allocator=auto|library], [Use specific memory allocator for the server [default=auto]]),
+  AS_CASE([$withval],
+    [auto], [],
+    [*],    [malloc_LIBS="-l$withval"]
+  )
+  with_memory_allocator=[$withval]
+)
+AS_IF([test "$with_memory_allocator" = ""], [with_memory_allocator="auto"])
+AC_SUBST([malloc_LIBS])
 
 dnl Check for userspace-rcu library
 AC_ARG_WITH(urcu,
@@ -615,6 +627,7 @@ result_msg_base="  Knot DNS $VERSION
 
     Use recvmmsg:           ${enable_recvmmsg}
     Use SO_REUSEPORT:       ${enable_reuseport}
+    Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
     Utilities with Dnstap:  ${enable_dnstap}

@@ -105,7 +105,7 @@ knotc_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libedit_CFLAGS)
 knotc_LDADD            = libcontrib.la libknotd.la libknotus.la $(libedit_LIBS)
 knotc_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
 knotd_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(liburcu_CFLAGS)
-knotd_LDADD            = libcontrib.la libknotd.la $(liburcu_LIBS)
+knotd_LDADD            = $(malloc_LIBS) libcontrib.la libknotd.la $(liburcu_LIBS)
 knotd_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
 
 if HAVE_UTILS
