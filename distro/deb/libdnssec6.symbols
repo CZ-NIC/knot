@@ -1,13 +1,4 @@
-libdnssec.so.5 libdnssec5 #MINVER#
- bignum_size_s@Base 2.3.0
- bignum_size_u@Base 2.3.0
- bignum_write@Base 2.3.0
- bin_to_hex@Base 2.3.0
- bin_to_hex_static@Base 2.3.0
- dname_copy@Base 2.3.0
- dname_equal@Base 2.3.0
- dname_length@Base 2.3.0
- dname_normalize@Base 2.3.0
+libdnssec.so.6 libdnssec6 #MINVER#
  dnssec_algorithm_digest_support@Base 2.6.0
  dnssec_algorithm_key_size_check@Base 2.3.0
  dnssec_algorithm_key_size_default@Base 2.3.0
@@ -90,6 +81,7 @@ libdnssec.so.5 libdnssec5 #MINVER#
  dnssec_nsec3_params_from_rdata@Base 2.3.0
  dnssec_nsec_bitmap_add@Base 2.3.0
  dnssec_nsec_bitmap_clear@Base 2.3.0
+ dnssec_nsec_bitmap_contains@Base 2.7.0
  dnssec_nsec_bitmap_free@Base 2.3.0
  dnssec_nsec_bitmap_new@Base 2.3.0
  dnssec_nsec_bitmap_size@Base 2.3.0
@@ -114,15 +106,3 @@ libdnssec.so.5 libdnssec5 #MINVER#
  dnssec_tsig_optimal_key_size@Base 2.3.0
  dnssec_tsig_size@Base 2.3.0
  dnssec_tsig_write@Base 2.3.0
- fs_mkdir@Base 2.3.0
- hex_to_bin@Base 2.3.0
- hex_to_bin_static@Base 2.3.0
- keyid_pubkey@Base 2.3.0
- keyid_pubkey_hex@Base 2.3.0
- keyid_x509@Base 2.3.0
- keyid_x509_hex@Base 2.3.0
- pem_from_x509@Base 2.3.0
- pem_generate@Base 2.3.0
- pem_keyid@Base 2.3.0
- pem_privkey@Base 2.3.0
- pem_x509@Base 2.3.0
