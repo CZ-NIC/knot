@@ -35,7 +35,7 @@
 /*** Query module API. ***/
 
 /*! Current module ABI version. */
-#define KNOTD_MOD_ABI_VERSION	100
+#define KNOTD_MOD_ABI_VERSION	200
 /*! Module configuration name prefix. */
 #define KNOTD_MOD_NAME_PREFIX	"mod-"
 

@@ -30,10 +30,8 @@ libknot.so.8 libknot8 #MINVER#
  knot_dname_from_str@Base 2.3.0
  knot_dname_in_bailiwick@Base 2.7.0
  knot_dname_is_equal@Base 2.3.0
- knot_dname_is_wildcard@Base 2.3.0
- knot_dname_label_is_equal@Base 2.6.0
  knot_dname_labels@Base 2.3.0
- knot_dname_lf@Base 2.3.0
+ knot_dname_lf@Base 2.7.0
  knot_dname_matched_labels@Base 2.3.0
  knot_dname_prefixlen@Base 2.3.0
  knot_dname_realsize@Base 2.3.0
@@ -105,17 +103,17 @@ libknot.so.8 libknot8 #MINVER#
  knot_rdataset_merge@Base 2.3.0
  knot_rdataset_reserve@Base 2.3.0
  knot_rdataset_size@Base 2.3.0
- knot_rdataset_subtract@Base 2.3.0
+ knot_rdataset_subtract@Base 2.7.0
  knot_rdataset_unreserve@Base 2.3.0
  knot_rrclass_from_string@Base 2.3.0
  knot_rrclass_to_string@Base 2.3.0
- knot_rrset_add_rdata@Base 2.3.0
+ knot_rrset_add_rdata@Base 2.7.0
  knot_rrset_clear@Base 2.3.0
  knot_rrset_copy@Base 2.3.0
  knot_rrset_equal@Base 2.3.0
  knot_rrset_free@Base 2.3.0
  knot_rrset_is_nsec3rel@Base 2.3.0
- knot_rrset_new@Base 2.3.0
+ knot_rrset_new@Base 2.7.0
  knot_rrset_rr_from_wire@Base 2.3.0
  knot_rrset_rr_to_canonical@Base 2.3.0
  knot_rrset_size@Base 2.3.0

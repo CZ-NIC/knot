@@ -23,7 +23,7 @@ AC_CANONICAL_HOST
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 AC_SUBST([libknot_VERSION_INFO],["-version-info 8:0:0"])
 AC_SUBST([libdnssec_VERSION_INFO],["-version-info 6:0:0"])
-AC_SUBST([libzscanner_VERSION_INFO],["-version-info 1:0:0"])
+AC_SUBST([libzscanner_VERSION_INFO],["-version-info 2:0:0"])
 
 AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)
 AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
