@@ -1,10 +1,210 @@
-Knot DNS 2.7.0 (2018-xx-xx)
+Knot DNS 2.7.0 (2018-08-03)
 ===========================
 
 Features:
 ---------
- - New zone serial policy DATESERIAL: yyyyMMDDvv (Thanks to Wolfgang Jung)
+New DNS Cookies module and related '+cookie' kdig option
+New module for response tailoring according to client's subnet or geographic location
+General EDNS Client Subnet support in the server
+OSS-Fuzz integration (Thanks to Jonathan Foote)
+New '+ednsopt' kdig option (Thanks to Jan Včelák)
+Online Signing support for automatic key rollover
+Non-normal file (e.g. pipe) loading support in zscanner #542
+Automatic SOA serial incrementation if non-empty zone difference
+New zone file load option for ignoring zone file's SOA serial
+New build-time option for alternative malloc specification
+Structured logging for DNSSEC key submission event
+Empty QNAME support in kdig
 
+Improvements:
+-------------
+Various library and server optimizations
+Reduced memory consumption of outgoing IXFR processing
+Linux capabilities use overhaul #546 (Thanks to Robert Edmonds)
+Online Signing properly signs delegations and CNAME records
+CDS/CDNSKEY rrset is signed with KSK instead of ZSK
+DNSSEC-related records are ignored when loading zone difference with signing enabled
+Minimum allowed RSA key length was increased to 1024
+Removed explicit dependency on Nettle
+
+Bugfixes:
+---------
+Possible uninitialized address buffer use in zscanner
+Possible index overflow during multiline record parsing in zscanner
+kdig +tls sometimes consumes 100 % CPU #561
+Single-Type Signing doesn't work with single ZSK key #566
+Zone not flushed after re-signing during zone load #594
+Server crashes when committing empty zone transaction
+Incoming IXFR with on-slave signing sometimes leads to memory corruption #595
+
+Compatibility:
+--------------
+Removed obsolete RRL configuration
+Removed obsolete module names 'mod-online-sign' and 'mod-synth-record'
+Removed obsolete 'ixfr-from-differences' configuration option
+Removed old journal migration
+Removed module rosedb
+
+Knot DNS 2.6.8 (2018-07-10)
+===========================
+
+Features:
+---------
+ - New 'import-pkcs11' command in keymgr
+
+Improvements:
+-------------
+ - Unixtime serial policy mimics Bind – increment if lower #593
+
+Bugfixes:
+---------
+ - Creeping memory consuption upon server reload #584
+ - Kdig incorrectly detects QNAME if 'notify' is a prefix
+ - Server crashes when zone sign fails #587
+ - CSK->KZSK rollover retires CSK early #588
+ - Server crashes when zone expires during outgoing multi-message transfer
+ - Kjournalprint doesn't convert zone name argument to lower-case
+ - Cannot switch to a previously used ksk-shared dnssec policy #589
+
+Knot DNS 2.6.7 (2018-05-17)
+===========================
+
+Features:
+---------
+ - Added 'dateserial' (YYYYMMDDnn) serial policy configuration (Thanks to Wolfgang Jung)
+
+Improvements:
+-------------
+ - Trailing data indication from the packet parser (libknot)
+ - Better configuration check for a problematical option combination
+
+Bugfixes:
+---------
+ - Incomplete configuration option item name check
+ - Possible buffer overflow in 'knot_dname_to_str' (libknot)
+ - Module dnsproxy doesn't preserve letter case of QNAME
+ - Module dnsproxy duplicates OPT and TSIG in the non-fallback mode
+
+Knot DNS 2.6.6 (2018-04-11)
+===========================
+
+Features:
+---------
+ - New EDNS option counters in the statistics module
+ - New '+orphan' filter for the 'zone-purge' operation
+
+Improvements:
+-------------
+ - Reduced memory consuption of disabled statistics metrics
+ - Some spelling fixes (Thanks to Daniel Kahn Gillmor)
+ - Server no longer fails to start if MODULE_DIR doesn't exist
+ - Configuration include doesn't fail if empty wildcard match
+ - Added a configuration check for a problematical option combination
+
+Bugfixes:
+---------
+ - NSEC3 chain not re-created when SOA minimum TTL changed
+ - Failed to start server if no template is configured
+ - Possibly incorrect SOA serial upon changed zone reload with DNSSEC signing
+ - Inaccurate outgoing zone transfer size in the log message
+ - Invalid dname compression if empty question section
+ - Missing EDNS in EMALF responses
+
+Knot DNS 2.6.5 (2018-02-12)
+===========================
+
+Features:
+---------
+ - New 'zone-notify' command in knotc
+ - Kdig uses '@server' as a hostname for TLS authenticaion if '+tls-ca' is set
+
+Improvements:
+-------------
+ - Better heap memory trimming for zone operations
+ - Added proper polling for TLS operations in kdig
+ - Configuration export uses stdout as a default output
+ - Simplified detection of atomic operations
+ - Added '--disable-modules' configure option
+ - Small documentation updates
+
+Bugfixes:
+---------
+ - Zone retransfer doesn't work well if more masters configured
+ - Kdig can leak or double free memory in corner cases
+ - Inconsistent error outputs from dynamic configuration operations
+ - Failed to generate documentation on OpenBSD
+
+Knot DNS 2.6.4 (2018-01-02)
+===========================
+
+Features:
+---------
+ - Module synthrecord allows multiple 'network' specification
+ - New CSK handling support in keymgr
+
+Improvements:
+-------------
+ - Allowed configuration for infinite zsk lifetime
+ - Increased performance and security of the module synthrecord
+ - Signing changeset is stored into journal even if 'zonefile-load' is whole
+
+Bugfixes:
+---------
+ - Unintentional zone re-sign during reload if empty NSEC3 salt
+ - Inconsistent zone names in journald structured logs
+ - Malformed outgoing transfer for big zone with TSIG
+ - Some minor DNSSEC-related issues
+
+Knot DNS 2.6.3 (2017-11-24)
+===========================
+
+Bugfixes:
+---------
+ - Wrong detection of signing scheme rollover
+
+Knot DNS 2.6.2 (2017-11-23)
+===========================
+
+Features:
+---------
+ - CSK algorithm rollover and (KSK, ZSK) <-> CSK rollover support
+
+Improvements:
+-------------
+ - Allowed explicit configuration for infinite ksk lifetime
+ - Proper error messages instead of unclear error codes in server log
+ - Better support for old compilers
+
+Bugfixes:
+---------
+ - Unexpected reply for DS query with an owner below a delegation point
+ - Old dependencies in the pkg-config file
+
+Knot DNS 2.6.1 (2017-11-02)
+===========================
+
+Features:
+---------
+ - NSEC3 Opt-Out support in the DNSSEC signing
+ - New CDS/CDNSKEY publish configuration option
+
+Improvements:
+-------------
+ - Simplified DNSSEC log message with DNSKEY details
+ - +tls-hostname in kdig implies +tls-ca if neither +tls-ca nor +tls-pin is given
+ - New documentation sections for DNSSEC key rollovers and shared keys
+ - Keymgr no longer prints useless algorithm number for generated key
+ - Kdig prints unknown RCODE in a numeric format
+ - Better support for LLVM libFuzzer
+
+Bugfixes:
+---------
+ - Faulty DNAME semantic check if present in the zone apex and NSEC3 is used
+ - Immediate zone flush not scheduled during the zone load event
+ - Server crashes upon dynamic zone addition if a query module is loaded
+ - Kdig fails to connect over TLS due to SNI is set to server IP address
+ - Possible out-of-bounds memory access at the end of the input
+ - TCP Fast Open enabled by default in kdig breaks TLS connection
 
 Knot DNS 2.6.0 (2017-09-29)
 ===========================
@@ -35,6 +235,31 @@ Bugfixes:
 ---------
  - Incorrect journal free space computation causing inefficient space handling
  - Interface-automatic broken on Linux in the presence of asymmetric routing
+
+Knot DNS 2.5.7 (2018-01-02)
+===========================
+
+Bugfixes:
+---------
+ - Unintentional zone re-sign during reload if empty NSEC3 salt
+ - Inconsistent zone names in journald structured logs
+ - Malformed outgoing transfer for big zone with TSIG
+ - Unexpected reply for DS query with an owner below a delegation point
+ - Old dependencies in the pkg-config file
+
+Knot DNS 2.5.6 (2017-11-02)
+===========================
+
+Improvements:
+-------------
+ - Keymgr no longer prints useless algorithm number for generated key
+
+Bugfixes:
+---------
+ - Faulty DNAME semantic check if present in the zone apex and NSEC3 is used
+ - Immediate zone flush not scheduled during the zone load event
+ - Server crashes upon dynamic zone addition if a query module is loaded
+ - Kdig fails to connect over TLS due to SNI is set to server IP address
 
 Knot DNS 2.5.5 (2017-09-29)
 ===========================
@@ -264,6 +489,21 @@ Features:
  - New statistics module for traffic measuring
  - Automatic deletion of retired DNSSEC keys
  - New control logging category
+
+Knot DNS 2.3.4 (2017-11-20)
+===========================
+
+Security:
+---------
+ - CVE-2017-11104: Improper TSIG validity period check can allow TSIG forgery (Thanks to Synacktiv!)
+
+Bugfixes:
+---------
+ - Unexpected response for DS query below delegation poing
+ - Zone events not rescheduled upon server reload (Thanks to Mark Warren)
+ - Missing trailing dot in the keymgr DS owner output
+ - Malformed output from kjournalprint
+ - Redundant SO_REUSEPORT activation on the TCP socket
 
 Knot DNS 2.3.3 (2016-12-08)
 ===========================
