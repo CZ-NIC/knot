@@ -392,9 +392,9 @@ int serialize_rrset(wire_ctx_t *wire, const knot_rrset_t *rrset)
 	wire_ctx_skip(wire, size);
 	wire_ctx_write_u16(wire, rrset->type);
 	wire_ctx_write_u16(wire, rrset->rclass);
-	wire_ctx_write_u16(wire, rrset->rrs.rr_count);
+	wire_ctx_write_u16(wire, rrset->rrs.count);
 
-	for (size_t phase = 0; phase < rrset->rrs.rr_count; phase++) {
+	for (size_t phase = 0; phase < rrset->rrs.count; phase++) {
 		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, phase);
 		assert(rr);
 		uint16_t rdlen = rr->len;
@@ -452,14 +452,14 @@ int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset)
 
 size_t rrset_serialized_size(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rrs.rr_count == 0) {
+	if (rrset == NULL || rrset->rrs.count == 0) {
 		return 0;
 	}
 
 	// Owner size + type + class + RR count.
 	size_t size = knot_dname_size(rrset->owner) + 3 * sizeof(uint16_t);
 
-	for (uint16_t i = 0; i < rrset->rrs.rr_count; i++) {
+	for (uint16_t i = 0; i < rrset->rrs.count; i++) {
 		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, i);
 		assert(rr);
 		// TTL + RR size + RR.
