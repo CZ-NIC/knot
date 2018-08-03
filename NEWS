@@ -3,47 +3,47 @@ Knot DNS 2.7.0 (2018-08-03)
 
 Features:
 ---------
-New DNS Cookies module and related '+cookie' kdig option
-New module for response tailoring according to client's subnet or geographic location
-General EDNS Client Subnet support in the server
-OSS-Fuzz integration (Thanks to Jonathan Foote)
-New '+ednsopt' kdig option (Thanks to Jan Včelák)
-Online Signing support for automatic key rollover
-Non-normal file (e.g. pipe) loading support in zscanner #542
-Automatic SOA serial incrementation if non-empty zone difference
-New zone file load option for ignoring zone file's SOA serial
-New build-time option for alternative malloc specification
-Structured logging for DNSSEC key submission event
-Empty QNAME support in kdig
+ - New DNS Cookies module and related '+cookie' kdig option
+ - New module for response tailoring according to client's subnet or geographic location
+ - General EDNS Client Subnet support in the server
+ - OSS-Fuzz integration (Thanks to Jonathan Foote)
+ - New '+ednsopt' kdig option (Thanks to Jan Včelák)
+ - Online Signing support for automatic key rollover
+ - Non-normal file (e.g. pipe) loading support in zscanner #542
+ - Automatic SOA serial incrementation if non-empty zone difference
+ - New zone file load option for ignoring zone file's SOA serial
+ - New build-time option for alternative malloc specification
+ - Structured logging for DNSSEC key submission event
+ - Empty QNAME support in kdig
 
 Improvements:
 -------------
-Various library and server optimizations
-Reduced memory consumption of outgoing IXFR processing
-Linux capabilities use overhaul #546 (Thanks to Robert Edmonds)
-Online Signing properly signs delegations and CNAME records
-CDS/CDNSKEY rrset is signed with KSK instead of ZSK
-DNSSEC-related records are ignored when loading zone difference with signing enabled
-Minimum allowed RSA key length was increased to 1024
-Removed explicit dependency on Nettle
+ - Various library and server optimizations
+ - Reduced memory consumption of outgoing IXFR processing
+ - Linux capabilities use overhaul #546 (Thanks to Robert Edmonds)
+ - Online Signing properly signs delegations and CNAME records
+ - CDS/CDNSKEY rrset is signed with KSK instead of ZSK
+ - DNSSEC-related records are ignored when loading zone difference with signing enabled
+ - Minimum allowed RSA key length was increased to 1024
+ - Removed explicit dependency on Nettle
 
 Bugfixes:
 ---------
-Possible uninitialized address buffer use in zscanner
-Possible index overflow during multiline record parsing in zscanner
-kdig +tls sometimes consumes 100 % CPU #561
-Single-Type Signing doesn't work with single ZSK key #566
-Zone not flushed after re-signing during zone load #594
-Server crashes when committing empty zone transaction
-Incoming IXFR with on-slave signing sometimes leads to memory corruption #595
+ - Possible uninitialized address buffer use in zscanner
+ - Possible index overflow during multiline record parsing in zscanner
+ - kdig +tls sometimes consumes 100 % CPU #561
+ - Single-Type Signing doesn't work with single ZSK key #566
+ - Zone not flushed after re-signing during zone load #594
+ - Server crashes when committing empty zone transaction
+ - Incoming IXFR with on-slave signing sometimes leads to memory corruption #595
 
 Compatibility:
 --------------
-Removed obsolete RRL configuration
-Removed obsolete module names 'mod-online-sign' and 'mod-synth-record'
-Removed obsolete 'ixfr-from-differences' configuration option
-Removed old journal migration
-Removed module rosedb
+ - Removed obsolete RRL configuration
+ - Removed obsolete module names 'mod-online-sign' and 'mod-synth-record'
+ - Removed obsolete 'ixfr-from-differences' configuration option
+ - Removed old journal migration
+ - Removed module rosedb
 
 Knot DNS 2.6.8 (2018-07-10)
 ===========================
