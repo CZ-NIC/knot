@@ -27,3 +27,5 @@ int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when);
 int keymgr_delete_rrsig(kdnssec_ctx_t *ctx, knot_time_t until);
 
 int keymgr_del_all_old(kdnssec_ctx_t *ctx);
+
+int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto);
