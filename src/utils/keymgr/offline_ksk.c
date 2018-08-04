@@ -41,9 +41,22 @@ static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 	// we don't need to do anything explicitly with the generated ZSKs
 	// they're simply stored in KASP db
 
+	*next = resch.next_rollover;
+	return KNOT_EOK;
+}
+
+static void update_next_resign(knot_time_t *next, knot_time_t now, knot_time_t key_timer)
+{
+	if (knot_time_cmp(now, key_timer) < 0) {
+		*next = knot_time_min(*next, key_timer);
+	}
+}
+
+static int presign_once(kdnssec_ctx_t *ctx, knot_time_t *next)
+{
 	// prepare the DNSKEY rrset to be signed
 	zone_keyset_t keyset = { 0 };
-	ret = load_zone_keys(ctx, &keyset, false);
+	int ret = load_zone_keys(ctx, &keyset, false);
 	if (ret != KNOT_EOK) {
 		printf("load keys failed\n");
 		return ret;
@@ -85,10 +98,14 @@ static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 		goto done;
 	}
 
-	*next = resch.next_sign;
-	if (knot_time_cmp(resch.next_rollover, *next) < 0) {
-		*next = resch.next_rollover;
+	// next re-sign when rrsig expire or dnskey rrset changes
+	*next = ctx->now + ctx->policy->rrsig_lifetime - ctx->policy->rrsig_refresh_before;
+	for (int i = 0; i < ctx->zone->num_keys; i++) {
+		update_next_resign(next, ctx->now, ctx->zone->keys[i].timing.publish);
+		update_next_resign(next, ctx->now, ctx->zone->keys[i].timing.retire_active);
+		update_next_resign(next, ctx->now, ctx->zone->keys[i].timing.remove);
 	}
+
 done:
 	knot_rrset_free(dnskey, NULL);
 	knot_rrset_free(rrsig, NULL);
@@ -107,7 +124,25 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
 
 	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
 		ctx->now = next;
+		printf("pregenerate %lu\n", ctx->now);
 		ret = pregenerate_once(ctx,  &next);
+	}
+
+	return ret;
+}
+
+int keymgr_presign_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
+{
+	knot_time_t next = ctx->now;
+	int ret = KNOT_EOK;
+
+	ctx->keep_deleted_keys = true;
+	ctx->policy->manual = true;
+
+	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
+		ctx->now = next;
+		printf("presign %lu\n", ctx->now);
+		ret = presign_once(ctx, &next);
 	}
 
 	return ret;
@@ -147,4 +182,3 @@ int keymgr_del_all_old(kdnssec_ctx_t *ctx)
 	}
 	return kdnssec_ctx_commit(ctx);
 }
-
