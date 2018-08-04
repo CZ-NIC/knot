@@ -119,9 +119,15 @@ Remove the specified key from zone. If the key was not shared, it is also delete
 \fBshare\fP \fIkey_ID\fP
 Import a key (specified by full key ID) from another zone as shared. After this, the key is
 owned by both zones equally.
+.UNINDENT
+.SS Commands related to Offline KSK feature
+.INDENT 0.0
 .TP
 \fBpregenerate\fP \fIperiod_secs\fP
 Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
+.TP
+\fBpresign\fP \fIperiod_secs\fP
+Sign pre\-generated ZSKs, for the specified period starting from now.
 .TP
 \fBshow\-rrsig\fP \fItimestamp\fP
 Print a pre\-generated DNSKEY RRSIG for specified timestamp.

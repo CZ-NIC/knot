@@ -74,6 +74,8 @@ static void print_help(void)
 	       "Commands related to Offline KSK feature:\n"
 	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
 	       "                 (syntax: pregenerate <period_secs>)\n"
+	       "  presign       Pre-generate RRSIG signatures for pregenerated ZSKs.\n"
+	       "                 (syntax: presign <period_secs>)\n"
 	       "  show-rrsig    Print a pre-generated DNSKEY RRSIG for specified timestamp.\n"
 	       "                 (syntax: show-rrsig <timestamp>)\n"
 	       "  del-all-old   Delete old keys that are in state 'removed'.\n"
@@ -205,6 +207,9 @@ static int key_command(int argc, char *argv[], int optind)
 	} else if (strcmp(argv[1], "pregenerate") == 0) {
 		CHECK_MISSING_ARG("Period not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, knot_time() + atol(argv[2]));
+	} else if (strcmp(argv[1], "presign") == 0) {
+		CHECK_MISSING_ARG("Timestamp not specified");
+		ret = keymgr_presign_zsks(&kctx, knot_time() + atol(argv[2]));
 	} else if (strcmp(argv[1], "show-rrsig") == 0) {
 		CHECK_MISSING_ARG("Timestamp not specified");
 		ret = keymgr_print_rrsig(&kctx, atol(argv[2]));

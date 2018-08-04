@@ -9,6 +9,7 @@ import os
 import shutil
 import datetime
 import subprocess
+import time
 from subprocess import check_call
 
 from dnstest.utils import *
@@ -73,6 +74,8 @@ t = Test()
 
 knot = t.server("knot")
 ZONE = "example.com."
+FUTURE = 100
+
 zone = t.zone(ZONE)
 t.link(zone, knot)
 
@@ -91,7 +94,8 @@ knot.gen_confile()
 key_ksk = knot.gen_key(zone, ksk=True, alg="ECDSAP384SHA384", key_len=384)
 key_zsk = knot.gen_key(zone, ksk=False, alg="ECDSAP384SHA384", key_len=384)
 
-Keymgr.run_check(knot.confile, ZONE, "pregenerate", "100")
+Keymgr.run_check(knot.confile, ZONE, "pregenerate", str(FUTURE))
+Keymgr.run_check(knot.confile, ZONE, "presign", str(FUTURE))
 
 os.remove(knot.keydir + "/keys/" + key_ksk.keyid + ".pem")
 
