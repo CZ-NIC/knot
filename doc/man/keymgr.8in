@@ -132,6 +132,9 @@ Sign pre\-generated ZSKs, for the specified period starting from now.
 \fBshow\-rrsig\fP \fItimestamp\fP
 Print a pre\-generated DNSKEY RRSIG for specified timestamp.
 .TP
+\fBdel\-rrsig\fP \fIperiod_secs\fP
+Delete pre\-generated DNSKEY RRSIGs for the specified period starting from time zero.
+.TP
 \fBdel\-all\-old\fP
 Delete old keys that are in state \(aqremoved\(aq.
 .UNINDENT

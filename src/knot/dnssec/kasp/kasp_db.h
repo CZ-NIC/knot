@@ -256,3 +256,14 @@ int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_
  * \return KNOT_E*
  */
 int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, knot_time_t for_time, knot_rrset_t *rrsig);
+
+/*!
+ * \brief Delete pregenerated RRSIGs from beginning to the specified timestamp.
+ *
+ * \param db      KASP db.
+ * \param zone    Zone in question.
+ * \param until   The upper time bound to delete.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone, knot_time_t until);

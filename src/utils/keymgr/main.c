@@ -78,6 +78,8 @@ static void print_help(void)
 	       "                 (syntax: presign <period_secs>)\n"
 	       "  show-rrsig    Print a pre-generated DNSKEY RRSIG for specified timestamp.\n"
 	       "                 (syntax: show-rrsig <timestamp>)\n"
+	       "  del-rrsig     Delete pre-generated DNSKEY RRSIGs until specified timestamp.\n"
+	       "                 (syntax: del-rrsig <timestamp>)\n"
 	       "  del-all-old   Delete old keys that are in state 'removed'.\n"
 	       "\n"
 	       "Key specification:\n"
@@ -213,6 +215,9 @@ static int key_command(int argc, char *argv[], int optind)
 	} else if (strcmp(argv[1], "show-rrsig") == 0) {
 		CHECK_MISSING_ARG("Timestamp not specified");
 		ret = keymgr_print_rrsig(&kctx, atol(argv[2]));
+	} else if (strcmp(argv[1], "del-rrsig") == 0) {
+		CHECK_MISSING_ARG("Timestamp not specified");
+		ret = keymgr_delete_rrsig(&kctx, knot_time() + atol(argv[2]));
 	} else if (strcmp(argv[1], "del-all-old") == 0) {
 		ret = keymgr_del_all_old(&kctx);
 	} else {
