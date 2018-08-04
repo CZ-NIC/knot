@@ -57,6 +57,7 @@ class ZoneDnssec(object):
         self.ksk_sbm_check = []
         self.ksk_sbm_check_interval = None
         self.ksk_shared = None
+        self.cds_publish = None
 
 class Zone(object):
     '''DNS zone description'''
@@ -1197,6 +1198,7 @@ class Knot(Server):
             if len(z.dnssec.ksk_sbm_check) > 0:
                 s.item("ksk-submission", z.name)
             self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
+            self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
         if have_policy:
             s.end()
 
