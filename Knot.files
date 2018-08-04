@@ -403,6 +403,8 @@ src/utils/keymgr/bind_privkey.h
 src/utils/keymgr/functions.c
 src/utils/keymgr/functions.h
 src/utils/keymgr/main.c
+src/utils/keymgr/offline_ksk.c
+src/utils/keymgr/offline_ksk.h
 src/utils/khost/khost_main.c
 src/utils/khost/khost_params.c
 src/utils/khost/khost_params.h

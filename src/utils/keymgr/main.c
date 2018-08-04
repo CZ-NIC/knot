@@ -27,6 +27,7 @@
 #include "libknot/libknot.h"
 #include "utils/common/params.h"
 #include "utils/keymgr/functions.h"
+#include "utils/keymgr/offline_ksk.h"
 
 #define PROGRAM_NAME	"keymgr"
 
@@ -69,6 +70,8 @@ static void print_help(void)
 	       "                 (syntax: delete <key_spec>)\n"
 	       "  set           Set existing key's timing attribute.\n"
 	       "                 (syntax: set <key_spec> <attribute_name>=<value>...)\n"
+	       "\n"
+	       "Commands related to Offline KSK feature:\n"
 	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
 	       "                 (syntax: pregenerate <period_secs>)\n"
 	       "  show-rrsig    Print a pre-generated DNSKEY RRSIG for specified timestamp.\n"
