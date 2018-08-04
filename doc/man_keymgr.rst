@@ -115,6 +115,16 @@ Commands related to Offline KSK feature
 **del-all-old**
   Delete old keys that are in state 'removed'.
 
+**generate-ksr** *period_secs*
+  Print to stdout KeySigningRequest based on pre-generated ZSKs for specified period.
+
+**sign-ksr** *ksr_file*
+  Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
+
+**import-skr** *skr_file*
+  Read SignedKeyResponse from a text file and import the signatures for later use in zone. (The signatures
+  are not at all checked at import time, but they will be ignored at signing time if invalid.)
+
 Generate arguments
 ..................
 
