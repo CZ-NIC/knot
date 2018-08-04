@@ -81,6 +81,8 @@ static void print_help(void)
 	       "  del-rrsig     Delete pre-generated DNSKEY RRSIGs until specified timestamp.\n"
 	       "                 (syntax: del-rrsig <timestamp>)\n"
 	       "  del-all-old   Delete old keys that are in state 'removed'.\n"
+	       "  generate-ksr  Print to stdout KeySigningRequest based on pre-generated ZSKS.\n"
+	       "                 (syntax: generate-ksr <timestamp>)\n"
 	       "\n"
 	       "Key specification:\n"
 	       "  either the key tag (number) or [a prefix of] key ID.\n"
@@ -220,6 +222,9 @@ static int key_command(int argc, char *argv[], int optind)
 		ret = keymgr_delete_rrsig(&kctx, knot_time() + atol(argv[2]));
 	} else if (strcmp(argv[1], "del-all-old") == 0) {
 		ret = keymgr_del_all_old(&kctx);
+	} else if (strcmp(argv[1], "generate-ksr") == 0) {
+		CHECK_MISSING_ARG("Timestamp not specified");
+		ret = keymgr_print_ksr(&kctx, knot_time() + atol(argv[2]));
 	} else {
 		printf("Wrong zone-key command: %s\n", argv[1]);
 		goto main_end;

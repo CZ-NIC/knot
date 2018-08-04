@@ -137,6 +137,9 @@ Delete pre\-generated DNSKEY RRSIGs for the specified period starting from time 
 .TP
 \fBdel\-all\-old\fP
 Delete old keys that are in state \(aqremoved\(aq.
+.TP
+\fBgenerate\-ksr\fP \fIperiod_secs\fP
+Print to stdout KeySigningRequest based on pre\-generated ZSKs for specified period.
 .UNINDENT
 .SS Generate arguments
 .sp
