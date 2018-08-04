@@ -109,6 +109,9 @@ Commands related to Offline KSK feature
 **show-rrsig** *timestamp*
   Print a pre-generated DNSKEY RRSIG for specified timestamp.
 
+**del-rrsig** *period_secs*
+  Delete pre-generated DNSKEY RRSIGs for the specified period starting from time zero.
+
 **del-all-old**
   Delete old keys that are in state 'removed'.
 
