@@ -33,10 +33,11 @@ BuildRequires:	pkgconfig(libedit)
 
 # Optional dependencies
 BuildRequires:	pkgconfig(libcap-ng)
-BuildRequires:	pkgconfig(libidn2)
-BuildRequires:	pkgconfig(libsystemd)
 BuildRequires:	pkgconfig(libfstrm)
+BuildRequires:	pkgconfig(libidn2)
+BuildRequires:	pkgconfig(libmaxminddb)
 BuildRequires:	pkgconfig(libprotobuf-c)
+BuildRequires:	pkgconfig(libsystemd)
 BuildRequires:	pkgconfig(systemd)
 
 # Distro-dependent dependencies
