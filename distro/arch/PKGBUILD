@@ -12,9 +12,17 @@ pkgdesc="High-performance authoritative-only DNS server"
 arch=('x86_64')
 url="https://www.knot-dns.cz/"
 license=('GPL3')
-depends=('lmdb' 'liburcu' 'protobuf-c' 'fstrm' 'libedit' 'systemd' 'libcap-ng' 'gnutls' 'libidn2')
+depends=('fstrm'
+         'gnutls'
+         'libcap-ng'
+         'libedit'
+         'libidn2'
+         'libmaxminddb'
+         'liburcu'
+         'lmdb'
+         'protobuf-c'
+         'systemd')
 backup=('etc/knot/knot.conf')
-
 source=("${pkgname}_${pkgver}.orig.tar.xz"
         "${pkgname}.service"
         "${pkgname}.sysusers"

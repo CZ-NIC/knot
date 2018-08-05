@@ -20,6 +20,7 @@ Build-Depends:
  libgnutls28-dev,
  libidn11-dev,
  liblmdb-dev,
+ libmaxminddb-dev,
  libprotobuf-c-dev,
  libsystemd-dev [linux-any] | libsystemd-daemon-dev [linux-any],
  libsystemd-dev [linux-any] | libsystemd-journal-dev [linux-any],
