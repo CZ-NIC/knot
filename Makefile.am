@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = src tests tests-fuzz python samples doc
+SUBDIRS = src tests tests-fuzz python samples distro doc
 
 .PHONY: singlehtml install-singlehtml
 singlehtml install-singlehtml:
