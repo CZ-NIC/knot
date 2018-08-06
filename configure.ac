@@ -650,6 +650,7 @@ AC_CONFIG_FILES([Makefile
                  tests/Makefile
                  tests-fuzz/Makefile
                  samples/Makefile
+                 distro/Makefile
                  python/Makefile
                  src/Makefile
                  src/knot/modules/static_modules.h
