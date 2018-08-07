@@ -139,6 +139,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, knotd_qdata_t *qdata)
 
 	unsigned put_rr_flags = (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) ?
 	                        KNOT_PF_NULL : KNOT_PF_NOTRUNC;
+	put_rr_flags |= KNOT_PF_TTL_ORIG;
 
 	int ret = KNOT_EOK;
 	switch (type) {

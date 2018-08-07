@@ -39,16 +39,19 @@
  *
  * \return Output size, negative number on error (KNOT_E*).
  */
-int knot_rrset_to_wire_flagged(const knot_rrset_t *rrset, uint8_t *wire,
-				uint16_t max_size, uint16_t rotate,
-				knot_compr_t *compr, uint16_t flags);
+int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
+                             uint16_t max_size, uint16_t rotate,
+                             knot_compr_t *compr, uint16_t flags);
 
+/* TODO: remove in next major version. */
+int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
+                              uint16_t max_size, uint16_t rotate,
+                              knot_compr_t *compr);
+
+/* TODO: change to static inline in next major version. */
 /*! \brief Same as knot_rrset_to_wire_flagged but without rrset rotation and flags. */
-static inline int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
-                                     uint16_t max_size, knot_compr_t *compr)
-{
-	return knot_rrset_to_wire_flagged(rrset, wire, max_size, 0, compr, 0);
-}
+int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
+                       uint16_t max_size, knot_compr_t *compr);
 
 /*!
 * \brief Creates one RR from wire, stores it into \a rrset.

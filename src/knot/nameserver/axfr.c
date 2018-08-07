@@ -50,7 +50,7 @@ static int axfr_put_rrsets(knot_pkt_t *pkt, zone_node_t *node,
 			continue;
 		}
 
-		int ret = knot_pkt_put(pkt, 0, &rrset, KNOT_PF_NOTRUNC);
+		int ret = knot_pkt_put(pkt, 0, &rrset, KNOT_PF_NOTRUNC | KNOT_PF_TTL_ORIG);
 		if (ret != KNOT_EOK) {
 			/* If something failed, remember the current RR for later. */
 			state->cur_rrset = i;
