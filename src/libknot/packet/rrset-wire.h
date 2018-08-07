@@ -35,18 +35,25 @@
  * \param max_size  Capacity of wire buffer.
  * \param rotate    Rotate the RR order by this count.
  * \param compr     Compression context.
+ * \param flags     Flags; currently only KNOT_PF_TTL_ORIG is accepted.
  *
  * \return Output size, negative number on error (KNOT_E*).
  */
+int knot_rrset_to_wire_flagged(const knot_rrset_t *rrset, uint8_t *wire,
+				uint16_t max_size, uint16_t rotate,
+				knot_compr_t *compr, uint16_t flags);
+
+/*! \brief knot_rrset_to_wire_flagged without the flags parameter. */
 int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
                               uint16_t max_size, uint16_t rotate,
                               knot_compr_t *compr);
+/* TODO: inline from header in some later libknot version or maybe remove? */
 
-/*! \brief Same as knot_rrset_to_wire but without rrset rotation. */
+/*! \brief Same as knot_rrset_to_wire_flagged but without rrset rotation and flags. */
 static inline int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
                                      uint16_t max_size, knot_compr_t *compr)
 {
-	return knot_rrset_to_wire_rotate(rrset, wire, max_size, 0, compr);
+	return knot_rrset_to_wire_flagged(rrset, wire, max_size, 0, compr, 0);
 }
 
 /*!
