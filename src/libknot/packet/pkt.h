@@ -49,6 +49,7 @@ enum {
 	KNOT_PF_CHECKDUP  = 1 << 3, /*!< Check for duplicates. */
 	KNOT_PF_KEEPWIRE  = 1 << 4, /*!< Keep wireformat untouched when parsing. */
 	KNOT_PF_NOCANON   = 1 << 5, /*!< Don't canonicalize rrsets during parsing. */
+	KNOT_PF_TTL_ORIG  = 1 << 6, /*!< Write RRSIGs with their original TTL. */
 };
 
 typedef struct knot_pkt knot_pkt_t;
