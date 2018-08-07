@@ -117,6 +117,7 @@ libknot.so.8 libknot8 #MINVER#
  knot_rrset_rr_from_wire@Base 2.3.0
  knot_rrset_rr_to_canonical@Base 2.3.0
  knot_rrset_size@Base 2.3.0
+ knot_rrset_to_wire_extra@Base 2.7.1
  knot_rrset_to_wire_rotate@Base 2.7.0
  knot_rrset_txt_dump@Base 2.3.0
  knot_rrset_txt_dump_data@Base 2.3.0

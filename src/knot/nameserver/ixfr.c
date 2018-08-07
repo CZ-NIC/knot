@@ -36,7 +36,7 @@
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
-	int ret = knot_pkt_put((pkt), 0, (rr), KNOT_PF_NOTRUNC); \
+	int ret = knot_pkt_put((pkt), 0, (rr), KNOT_PF_NOTRUNC | KNOT_PF_TTL_ORIG); \
 	if (ret != KNOT_EOK) { \
 		return ret; \
 	}
