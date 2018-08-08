@@ -246,7 +246,8 @@ AS_IF([test "$enable_systemd" = "yes"],[
 # Alternative memory allocator
 malloc_LIBS=
 AC_ARG_WITH([memory-allocator],
-  AS_HELP_STRING([--with-memory-allocator=auto|library], [Use specific memory allocator for the server [default=auto]]),
+  AS_HELP_STRING([--with-memory-allocator=auto|LIBRARY],
+                 [Use specific memory allocator for the server (e.g. jemalloc) [default=auto]]),
   AS_CASE([$withval],
     [auto], [],
     [*],    [malloc_LIBS="-l$withval"]
