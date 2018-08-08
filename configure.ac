@@ -68,8 +68,7 @@ AC_CONFIG_FILES([src/knotd.pc
                  ])
 
 # Default directories
-knot_prefix="/usr/local"
-AC_PREFIX_DEFAULT([$knot_prefix])
+knot_prefix=$ac_default_prefix
 AS_IF([test "$prefix" != NONE], [knot_prefix=$prefix])
 
 run_dir="${localstatedir}/run/knot"
