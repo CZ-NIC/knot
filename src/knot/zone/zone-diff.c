@@ -144,7 +144,7 @@ static int rdata_return_changes(const knot_rrset_t *rrset1,
 	* After the list has been traversed, we have a list of
 	* changed/removed rdatas. This has awful computation time.
 	*/
-	bool ttl_differ = rrset1->ttl != rrset2->ttl;
+	bool ttl_differ = rrset1->ttl != rrset2->ttl && rrset1->type != KNOT_RRTYPE_RRSIG;
 	knot_rdata_t *rr1 = rrset1->rrs.rdata;
 	for (uint16_t i = 0; i < rrset1->rrs.count; ++i) {
 		if (ttl_differ || !knot_rdataset_member(&rrset2->rrs, rr1)) {
