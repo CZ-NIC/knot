@@ -603,14 +603,6 @@ If enabled, automatic key management is not used.
 If enabled, Single\-Type Signing Scheme is used in the automatic key management
 mode.
 .sp
-\fBNOTE:\fP
-.INDENT 0.0
-.INDENT 3.5
-Because key rollover is not supported yet, just one combined signing key is
-generated if none is available.
-.UNINDENT
-.UNINDENT
-.sp
 \fIDefault:\fP off
 .SS algorithm
 .sp

@@ -689,10 +689,6 @@ single-type-signing
 If enabled, Single-Type Signing Scheme is used in the automatic key management
 mode.
 
-.. NOTE::
-   Because key rollover is not supported yet, just one combined signing key is
-   generated if none is available.
-
 *Default:* off
 
 .. _policy_algorithm:
