@@ -1,48 +1,43 @@
-#
 # This is a sample of a minimal configuration file for Knot DNS.
-# For more details, see man 5 knot.conf or refer to the server documentation.
-#
+# See knot.conf(5) or refer to the server documentation.
 
 server:
-    # Listen on IPv4 and IPv6 localhost
-    listen: 127.0.0.1@53
-    listen: ::1@53
-    # User for running the server.
-    # user: knot:knot
+    rundir: "@run_dir@"
+    user: knot:knot
+    listen: [ 127.0.0.1@53, ::1@53 ]
 
 log:
-    # Log info and more serious events to syslog.
   - target: syslog
     any: info
 
 remote:
 #  - id: slave
-#    address: 203.0.113.1@53
+#    address: 192.168.1.1@53
 #
 #  - id: master
-#    address: 198.51.100.1@53
+#    address: 192.168.2.1@53
 
 acl:
 #  - id: acl_slave
-#    address: 203.0.113.1
+#    address: 192.168.1.1
 #    action: transfer
 
 #  - id: acl_master
-#    address: 198.51.100.1
+#    address: 192.168.2.1
 #    action: notify
 
 template:
-#  - id: default
-#    storage: "@storage_dir@"
+  - id: default
+    storage: "@storage_dir@"
+    file: "%s.zone"
 
 zone:
-#    # Master zone.
+#    # Master zone
 #  - domain: example.com
-#    file: "example.com.zone"
 #    notify: slave
 #    acl: acl_slave
 
-#    # Slave zone.
+#    # Slave zone
 #  - domain: example.net
 #    master: master
 #    acl: acl_master
