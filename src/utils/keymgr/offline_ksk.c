@@ -168,22 +168,15 @@ int keymgr_presign_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
 	return ret;
 }
 
-static int dump_rrset_to_stdout(knot_rrset_t *rrset)
+static int dump_rrset_to_buf(const knot_rrset_t *rrset, char **buf, size_t *buf_size)
 {
-	size_t out_size = 512;
-	char *out = malloc(out_size);
-	int ret = KNOT_EOK;
-	if (out == NULL) {
-		ret = KNOT_ENOMEM;
-	} else {
-		ret = knot_rrset_txt_dump(rrset, &out, &out_size, &KNOT_DUMP_STYLE_DEFAULT);
-		if (ret >= 0) {
-			printf("%s", out);
-			ret = KNOT_EOK;
+	if (*buf == NULL) {
+		*buf = malloc(*buf_size);
+		if (*buf == NULL) {
+			return KNOT_ENOMEM;
 		}
-		free(out);
 	}
-	return ret;
+	return knot_rrset_txt_dump(rrset, buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
 }
 
 int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
@@ -192,7 +185,14 @@ int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
 	knot_rrset_init_empty(&rrsig);
 	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, &rrsig);
 	if (ret == KNOT_EOK) {
-		ret = dump_rrset_to_stdout(&rrsig);
+		char *buf = NULL;
+		size_t buf_size = 512;
+		ret = dump_rrset_to_buf(&rrsig, &buf, &buf_size);
+		if (ret >= 0) {
+			printf("%s", buf);
+			ret = KNOT_EOK;
+		}
+		free(buf);
 	}
 	knot_rrset_clear(&rrsig, NULL);
 	return ret;
@@ -215,7 +215,7 @@ int keymgr_del_all_old(kdnssec_ctx_t *ctx)
 	return kdnssec_ctx_commit(ctx);
 }
 
-static int ksr_once(kdnssec_ctx_t *ctx)
+static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size)
 {
 	knot_rrset_t *dnskey = NULL;
 	zone_keyset_t keyset = { 0 };
@@ -223,9 +223,11 @@ static int ksr_once(kdnssec_ctx_t *ctx)
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
-
-	printf(";;KSR %lu %hu\n", ctx->now, dnskey->rrs.count);
-	ret = dump_rrset_to_stdout(dnskey);
+	ret = dump_rrset_to_buf(dnskey, buf, buf_size);
+	if (ret >= 0) {
+		printf(";;KSR %lu %hu %d\n%s", ctx->now, dnskey->rrs.count, ret, *buf);
+		ret = KNOT_EOK;
+	}
 
 done:
 	knot_rrset_free(dnskey, NULL);
@@ -237,10 +239,12 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto)
 {
 	knot_time_t next = ctx->now;
 	int ret = KNOT_EOK;
+	char *buf = NULL;
+	size_t buf_size = 4096;
 
 	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
 		ctx->now = next;
-		ret = ksr_once(ctx);
+		ret = ksr_once(ctx, &buf, &buf_size);
 		next_resign(&next, ctx);
 	}
 	printf(";;");
