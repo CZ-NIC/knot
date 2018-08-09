@@ -34,7 +34,7 @@
         zypper addrepo --no-gpgcheck https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/openSUSE_Tumbleweed/home:CZ-NIC:{{ item }}.repo &&
         zypper refresh
       openSUSE Leap: |
-        zypper addrepo --no-gpgcheck https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/openSUSE_Leap_42.3/home:CZ-NIC:{{ item }}.repo &&
+        zypper addrepo --no-gpgcheck https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/openSUSE_Leap_15.0/home:CZ-NIC:{{ item }}.repo &&
         zypper refresh
     show_package_version:
       Archlinux:
