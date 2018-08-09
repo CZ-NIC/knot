@@ -13,8 +13,7 @@ URL:		http://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
 
 Source2:	%{name}.service
-Source3:	%{name}.conf
-Source4:	%{name}.tmpfiles
+Source3:	%{name}.tmpfiles
 
 %if 0%{GPG_CHECK}
 Source1:	http://public.nic.cz/files/knot-dns/%{name}-%{version}.tar.xz.asc
@@ -134,19 +133,19 @@ make install DESTDIR=%{buildroot}
 
 # install documentation
 install -d -m 0755 %{buildroot}%{_pkgdocdir}/samples
-install -p -m 0644 -t %{buildroot}%{_pkgdocdir}/samples samples/*.conf samples/*.zone*
+install -p -m 0644 -t %{buildroot}%{_pkgdocdir}/samples samples/*.zone*
 install -p -m 0644 NEWS README %{buildroot}%{_pkgdocdir}
 cp -av doc/_build/html %{buildroot}%{_pkgdocdir}
 [ -r %{buildroot}%{_pkgdocdir}/html/index.html ] || exit 1
 rm -f %{buildroot}%{_pkgdocdir}/html/.buildinfo
 
-# install customized configuration file
+# install configuration file
 rm %{buildroot}%{_sysconfdir}/%{name}/*
-install -p -m 0644 -D %{SOURCE3} %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
+install -p -m 0644 -D samples/%{name}.sample.conf %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
 
 # install systemd files
 install -p -m 0644 -D %{SOURCE2} %{buildroot}%{_unitdir}/%{name}.service
-install -p -m 0644 -D %{SOURCE4} %{buildroot}%{_tmpfilesdir}/%{name}.conf
+install -p -m 0644 -D %{SOURCE3} %{buildroot}%{_tmpfilesdir}/%{name}.conf
 
 # create storage dir and key dir
 install -d %{buildroot}%{_sharedstatedir}
