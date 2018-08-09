@@ -263,10 +263,11 @@ int event_load(conf_t *conf, zone_t *zone)
 	uint32_t new_serial = zone_contents_serial(zone->contents);
 
 	if (old_contents_exist) {
-		log_zone_info(zone->name, "loaded, serial %u -> %u",
-		              old_serial, new_serial);
+		log_zone_info(zone->name, "loaded, serial %u -> %u, %zu bytes",
+		              old_serial, new_serial, zone->contents->size);
 	} else {
-		log_zone_info(zone->name, "loaded, serial %u", new_serial);
+		log_zone_info(zone->name, "loaded, serial %u, %zu bytes",
+		              new_serial, zone->contents->size);
 	}
 
 	if (zone->control_update != NULL) {
