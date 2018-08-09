@@ -543,9 +543,11 @@ static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *ar
 
 static int send_rrset(knot_rrset_t *rrset, send_ctx_t *ctx)
 {
-	int ret = snprintf(ctx->ttl, sizeof(ctx->ttl), "%u", rrset->ttl);
-	if (ret <= 0 || ret >= sizeof(ctx->ttl)) {
-		return KNOT_ESPACE;
+	if (rrset->type != KNOT_RRTYPE_RRSIG) {
+		int ret = snprintf(ctx->ttl, sizeof(ctx->ttl), "%u", rrset->ttl);
+		if (ret <= 0 || ret >= sizeof(ctx->ttl)) {
+			return KNOT_ESPACE;
+		}
 	}
 
 	if (knot_rrtype_to_string(rrset->type, ctx->type, sizeof(ctx->type)) < 0) {
@@ -553,8 +555,16 @@ static int send_rrset(knot_rrset_t *rrset, send_ctx_t *ctx)
 	}
 
 	for (size_t i = 0; i < rrset->rrs.count; ++i) {
-		ret = knot_rrset_txt_dump_data(rrset, i, ctx->rdata,
-		                               sizeof(ctx->rdata), &ctx->style);
+		if (rrset->type == KNOT_RRTYPE_RRSIG) {
+			int ret = snprintf(ctx->ttl, sizeof(ctx->ttl), "%u",
+			                   knot_rrsig_original_ttl(knot_rdataset_at(&rrset->rrs, i)));
+			if (ret <= 0 || ret >= sizeof(ctx->ttl)) {
+				return KNOT_ESPACE;
+			}
+		}
+
+		int ret = knot_rrset_txt_dump_data(rrset, i, ctx->rdata,
+		                                   sizeof(ctx->rdata), &ctx->style);
 		if (ret < 0) {
 			return ret;
 		}
