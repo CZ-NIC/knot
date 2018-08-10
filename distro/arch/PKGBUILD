@@ -23,14 +23,8 @@ depends=('fstrm'
          'protobuf-c'
          'systemd')
 backup=('etc/knot/knot.conf')
-source=("${pkgname}_${pkgver}.orig.tar.xz"
-        "${pkgname}.service"
-        "${pkgname}.sysusers"
-        "${pkgname}.tmpfiles.arch")
-sha256sums=('SKIP'
-            'SKIP'
-            'SKIP'
-            'SKIP')
+source=("${pkgname}_${pkgver}.orig.tar.xz")
+sha256sums=('SKIP')
 validpgpkeys=('742FA4E95829B6C5EAC6B85710BB7AF6FEBBD6AB') # Daniel Salzman <daniel.salzman@nic.cz>
 
 build() {
@@ -71,7 +65,7 @@ package() {
     mv "${pkgdir}"/etc/knot/{knot.sample.conf,knot.conf}
 
     cd ..
-    install -Dm644 ${pkgname}.service -t "${pkgdir}"/usr/lib/systemd/system/
-    install -Dm644 ${pkgname}.tmpfiles.arch "${pkgdir}"/usr/lib/tmpfiles.d/${pkgname}.conf
-    install -Dm644 ${pkgname}.sysusers "${pkgdir}"/usr/lib/sysusers.d/${pkgname}.conf
+    install -Dm644 ${srcdir}/${pkgname}-${pkgver}/distro/common/${pkgname}.service -t "${pkgdir}"/usr/lib/systemd/system/
+    install -Dm644 ${srcdir}/${pkgname}-${pkgver}/distro/arch/${pkgname}.tmpfiles.arch "${pkgdir}"/usr/lib/tmpfiles.d/${pkgname}.conf
+    install -Dm644 ${srcdir}/${pkgname}-${pkgver}/distro/arch/${pkgname}.sysusers "${pkgdir}"/usr/lib/sysusers.d/${pkgname}.conf
 }
