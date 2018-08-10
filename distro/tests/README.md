@@ -14,15 +14,21 @@ a zone and config file, starts the knot.service and attempts to
 resolve the entry from created zone file.
 
 By default, the *knot-dns-devel* repo is used. To test the
-*knot-dns-latest* repo, set it in `repos.yaml` (or use the
-test-distro.sh script which overwrites this file). If you're running
-tests in parallel, they all HAVE TO use the same repo.
+*knot-dns-latest* or *knot-dns-testing* repo, set it in `repos.yaml`
+(or use the test-distro.sh script which overwrites this file). If
+you're running tests in parallel, they all HAVE TO use the same repo.
 
 Run the following command for every distro (aka directory with
 Vagrantfile):
 
 ```
 ./test-distro.sh devel debian9
+```
+
+or
+
+```
+./test-distro.sh testing debian9
 ```
 
 or
