@@ -11,6 +11,9 @@ case "$repo" in
 	devel)
 		echo -e 'repos:\n  - knot-dns-devel' > repos.yaml
 		;;
+	testing)
+		echo -e 'repos:\n  - knot-dns-testing' > repos.yaml
+        ;;
 	latest)
 		echo -e 'repos:\n  - knot-dns-latest' > repos.yaml
 		;;
