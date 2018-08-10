@@ -201,8 +201,17 @@ int process_cmd(int argc, const char **argv, params_t *params)
 		return KNOT_ENOENT;
 	}
 
-	/* Check for exit. */
+	/* Check for exit or --force toggle. */
 	if (desc->fcn == NULL) {
+		if (strcmp("force", desc->name) == 0) {
+			params->force = !params->force;
+			if (params->force) {
+				log_info("The --force flag is now enabled.");
+			} else {
+				log_info("The --force flag is now disabled.");
+			}
+			return KNOT_EOK;
+		}
 		return KNOT_CTL_ESTOP;
 	}
 

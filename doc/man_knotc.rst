@@ -48,6 +48,9 @@ Parameters
 Actions
 .......
 
+**force**
+  Toggle the --force flag when in interactive mode.
+
 **status** [*detail*]
   Check if the server is running. Details are **version** for the running
   server version, **workers** for the numbers of worker threads,

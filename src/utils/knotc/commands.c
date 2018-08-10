@@ -32,6 +32,7 @@
 #include "utils/knotc/estimator.h"
 
 #define CMD_EXIT		"exit"
+#define CMD_FORCE		"force"
 
 #define CMD_STATUS		"status"
 #define CMD_STOP		"stop"
@@ -1057,6 +1058,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 
 const cmd_desc_t cmd_table[] = {
 	{ CMD_EXIT,            NULL,              CTL_NONE },
+	{ CMD_FORCE,           NULL,              CTL_NONE },
 
 	{ CMD_STATUS,          cmd_ctl,           CTL_STATUS,          CMD_FOPT_DATA},
 	{ CMD_STOP,            cmd_ctl,           CTL_STOP },
@@ -1105,6 +1107,7 @@ const cmd_desc_t cmd_table[] = {
 
 static const cmd_help_t cmd_help_table[] = {
 	{ CMD_EXIT,            "",                                       "Exit interactive mode." },
+	{ CMD_FORCE,           "",                                       "Toggle the --force flag in interactive mode."},
 	{ "",                  "",                                       "" },
 	{ CMD_STATUS,          "[<detail>]",                             "Check if the server is running." },
 	{ CMD_STOP,            "",                                       "Stop the server if running." },

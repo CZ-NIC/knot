@@ -71,6 +71,9 @@ Print the program version.
 .SS Actions
 .INDENT 0.0
 .TP
+\fBforce\fP
+Toggle the \-\-force flag when in interactive mode.
+.TP
 \fBstatus\fP [\fIdetail\fP]
 Check if the server is running. Details are \fBversion\fP for the running
 server version, \fBworkers\fP for the numbers of worker threads,
