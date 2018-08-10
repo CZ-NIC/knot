@@ -3,6 +3,7 @@
 
 %define GPG_CHECK 0
 %define VERSION __VERSION__
+%define repodir %{_builddir}/%{name}-%{version}
 
 Summary:	High-performance authoritative DNS server
 Name:		knot
@@ -11,9 +12,6 @@ Release:	1%{?dist}
 License:	GPLv3
 URL:		http://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
-
-Source2:	%{name}.service
-Source3:	%{name}.tmpfiles
 
 %if 0%{GPG_CHECK}
 Source1:	http://public.nic.cz/files/knot-dns/%{name}-%{version}.tar.xz.asc
@@ -141,11 +139,11 @@ rm -f %{buildroot}%{_pkgdocdir}/html/.buildinfo
 
 # install configuration file
 rm %{buildroot}%{_sysconfdir}/%{name}/*
-install -p -m 0644 -D samples/%{name}.sample.conf %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
+install -p -m 0644 -D %{repodir}/samples/%{name}.sample.conf %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
 
 # install systemd files
-install -p -m 0644 -D %{SOURCE2} %{buildroot}%{_unitdir}/%{name}.service
-install -p -m 0644 -D %{SOURCE3} %{buildroot}%{_tmpfilesdir}/%{name}.conf
+install -p -m 0644 -D %{repodir}/distro/common/%{name}.service %{buildroot}%{_unitdir}/%{name}.service
+install -p -m 0644 -D %{repodir}/distro/common/%{name}.tmpfiles %{buildroot}%{_tmpfilesdir}/%{name}.conf
 
 # create storage dir and key dir
 install -d %{buildroot}%{_sharedstatedir}
