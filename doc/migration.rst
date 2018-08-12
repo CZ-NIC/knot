@@ -87,6 +87,14 @@ by the :ref:`policy_algorithm` option.
 The ``ixfr-from-differences`` zone/template option was deprecated in favor of
 the :ref:`zone_zonefile-load` option.
 
+.. _Upgrade 2.6.x to 2.7.x:
+
+Upgrade 2.6.x to 2.7.x
+======================
+
+Upgrading from Knot DNS version 2.6.x to 2.7.x is seamless if no obsolete
+configuration or module rosedb is used.
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users
