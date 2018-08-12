@@ -639,6 +639,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)
 	int ret = KNOT_EOK;
 	uint32_t flags = optional ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;
 	flags |= KNOT_PF_FREE; // Free all RRSIGs, they are synthesized
+	flags |= KNOT_PF_ORIGTTL;
 
 	/* Append RRSIGs for section. */
 	struct rrsig_info *info = NULL;
