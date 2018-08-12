@@ -18,7 +18,7 @@ Build-Depends:
  libedit-dev,
  libfstrm-dev,
  libgnutls28-dev,
- libidn11-dev,
+ libidn2-0-dev,
  liblmdb-dev,
  libmaxminddb-dev,
  libprotobuf-c-dev,
@@ -35,6 +35,7 @@ Architecture: any
 Depends:
  adduser,
  libdnssec6 (= ${binary:Version}),
+ libjemalloc1,
  libknot8 (= ${binary:Version}),
  libzscanner2 (= ${binary:Version}),
  lsb-base (>= 3.0-6),
@@ -128,7 +129,6 @@ Multi-Arch: same
 Depends:
  libdnssec6 (= ${binary:Version}),
  libgnutls28-dev,
- libjansson-dev,
  libknot8 (= ${binary:Version}),
  libzscanner2 (= ${binary:Version}),
  ${misc:Depends},
