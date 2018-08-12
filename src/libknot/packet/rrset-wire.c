@@ -313,7 +313,7 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 }
 
 static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
-                              uint8_t **dst, size_t *dst_avail)
+                              uint8_t **dst, size_t *dst_avail, uint16_t flags)
 {
 	assert(rrset);
 	assert(rrset_index < rrset->rrs.count);
@@ -326,7 +326,7 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 	wire_ctx_write_u16(&write, rrset->type);
 	wire_ctx_write_u16(&write, rrset->rclass);
 
-	if (rrset->type == KNOT_RRTYPE_RRSIG) {
+	if ((flags & KNOT_PF_ORIGTTL) && rrset->type == KNOT_RRTYPE_RRSIG) {
 		const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
 		wire_ctx_write_u32(&write, knot_rrsig_original_ttl(rdata));
 	} else {
@@ -463,15 +463,15 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 	return KNOT_EOK;
 }
 
-static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index,
-                    uint8_t **dst, size_t *dst_avail, knot_compr_t *compr)
+static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index, uint8_t **dst,
+                    size_t *dst_avail, knot_compr_t *compr, uint16_t flags)
 {
 	int ret = write_owner(rrset, dst, dst_avail, compr);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = write_fixed_header(rrset, rrset_index, dst, dst_avail);
+	ret = write_fixed_header(rrset, rrset_index, dst, dst_avail, flags);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -480,9 +480,9 @@ static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index,
 }
 
 _public_
-int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
-                              uint16_t max_size, uint16_t rotate,
-                              knot_compr_t *compr)
+int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
+                             uint16_t max_size, uint16_t rotate,
+                             knot_compr_t *compr, uint16_t flags)
 {
 	if (rrset == NULL || wire == NULL) {
 		return KNOT_EINVAL;
@@ -500,13 +500,28 @@ int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
 	uint16_t count = rrset->rrs.count;
 	for (uint16_t i = rotate; i < count + rotate; i++) {
 		uint16_t pos = (i < count) ? i : (i - count);
-		int ret = write_rr(rrset, pos, &write, &capacity, compr);
+		int ret = write_rr(rrset, pos, &write, &capacity, compr, flags);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
 
 	return write - wire;
+}
+
+_public_
+int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
+                       uint16_t max_size, knot_compr_t *compr)
+{
+	return knot_rrset_to_wire_extra(rrset, wire, max_size, 0, compr, 0);
+}
+
+_public_
+int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
+                              uint16_t max_size, uint16_t rotate,
+                              knot_compr_t *compr)
+{
+	return knot_rrset_to_wire_extra(rrset, wire, max_size, rotate, compr, 0);
 }
 
 static int parse_header(const uint8_t *wire, size_t *pos, size_t pkt_size,
