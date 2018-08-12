@@ -42,6 +42,7 @@ override_dh_auto_configure:
 	  --with-rundir=/run/knot \
 	  --with-moduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/knot \
 	  --with-storage=/var/lib/knot \
+	  --with-memory-allocator=jemalloc \
 	  --enable-systemd=auto \
 	  --enable-dnstap \
 	  --with-module-dnstap=yes \
