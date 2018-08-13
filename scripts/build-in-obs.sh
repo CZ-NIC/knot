@@ -8,11 +8,11 @@
 project=home:CZ-NIC:$1
 package=knot
 
-if ! [[ "$1" == *-devel ]]; then
+if ! [[ "$1" == *-devel || "$1" == *-testing ]]; then
 	read -p "Pushing to '$project', are you sure? [y/N]: " yn
 	case $yn in
-		[Yy]* ) break;;
-		* ) exit 1; break;;
+		[Yy]* ) ;;
+		* ) exit 1; ;;
 	esac
 fi
 
