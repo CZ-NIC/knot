@@ -48,10 +48,12 @@ int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
                               uint16_t max_size, uint16_t rotate,
                               knot_compr_t *compr);
 
-/* TODO: change to static inline in next major version. */
 /*! \brief Same as knot_rrset_to_wire_extra but without rrset rotation and flags. */
-int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
-                       uint16_t max_size, knot_compr_t *compr);
+static inline int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
+                                     uint16_t max_size, knot_compr_t *compr)
+{
+	return knot_rrset_to_wire_extra(rrset, wire, max_size, 0, compr, 0);
+}
 
 /*!
 * \brief Creates one RR from wire, stores it into \a rrset.

@@ -510,13 +510,6 @@ int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
 }
 
 _public_
-int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
-                       uint16_t max_size, knot_compr_t *compr)
-{
-	return knot_rrset_to_wire_extra(rrset, wire, max_size, 0, compr, 0);
-}
-
-_public_
 int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
                               uint16_t max_size, uint16_t rotate,
                               knot_compr_t *compr)
