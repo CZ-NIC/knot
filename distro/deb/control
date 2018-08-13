@@ -19,6 +19,7 @@ Build-Depends:
  libfstrm-dev,
  libgnutls28-dev,
  libidn2-0-dev,
+ libjemalloc-dev,
  liblmdb-dev,
  libmaxminddb-dev,
  libprotobuf-c-dev,
@@ -35,7 +36,6 @@ Architecture: any
 Depends:
  adduser,
  libdnssec6 (= ${binary:Version}),
- libjemalloc1,
  libknot8 (= ${binary:Version}),
  libzscanner2 (= ${binary:Version}),
  lsb-base (>= 3.0-6),
