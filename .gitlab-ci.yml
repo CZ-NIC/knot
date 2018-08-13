@@ -326,6 +326,23 @@ obs:devel:
     - echo -e "[general]\napiurl = https://api.opensuse.org\n\n[https://api.opensuse.org]\nuser = CZ-NIC-automation\npass = $OBS_PASSWORD" > /root/.oscrc
     - scripts/build-in-obs.sh knot-dns-devel
 
+obs:testing:
+  <<: *debian_stable
+  stage: deploy
+  except: []
+  when: manual
+  script:
+    - autoreconf -fi  # same as build:archive, which is skipped for MR
+    - mkdir _build
+    - cd _build
+    - ../configure
+    - make distcheck V=1
+    - cd ..
+    - mv _build/*.tar.xz ./
+    - scripts/make-distrofiles.sh -s
+    - echo -e "[general]\napiurl = https://api.opensuse.org\n\n[https://api.opensuse.org]\nuser = CZ-NIC-automation\npass = $OBS_PASSWORD" > /root/.oscrc
+    - scripts/build-in-obs.sh knot-dns-testing
+
 build:documentation:
   <<: *debian_stable
   stage: documentation
