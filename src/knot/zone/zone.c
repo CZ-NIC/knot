@@ -545,11 +545,19 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 				preferred.addr.ss_family = AF_UNSPEC;
 				continue;
 			}
+
 			int ret = callback(conf, zone, &master, callback_data);
 			if (ret == KNOT_EOK) {
 				success = true;
 				break;
 			}
+
+			char addr_str[SOCKADDR_STRLEN] = { 0 };
+			sockaddr_tostr(addr_str, sizeof(addr_str),
+			               (struct sockaddr *)&master.addr);
+			log_zone_debug(zone->name, "%s, remote %s, address %s, failed (%s)",
+			               err_str, conf_str(&masters), addr_str,
+			               knot_strerror(ret));
 		}
 
 		if (!success) {
