@@ -244,6 +244,7 @@ static inline knot_rrset_t node_rrset(const zone_node_t *node, uint16_t type)
 			knot_rrset_init(&rrset, node->owner, type, KNOT_CLASS_IN,
 			                rr_data->ttl);
 			rrset.rrs = rr_data->rrs;
+			additional_clear(rrset.additional);
 			rrset.additional = rr_data->additional;
 			return rrset;
 		}
@@ -273,6 +274,7 @@ static inline knot_rrset_t node_rrset_at(const zone_node_t *node, size_t pos)
 	knot_rrset_init(&rrset, node->owner, rr_data->type, KNOT_CLASS_IN,
 	                rr_data->ttl);
 	rrset.rrs = rr_data->rrs;
+	additional_clear(rrset.additional);
 	rrset.additional = rr_data->additional;
 	return rrset;
 }

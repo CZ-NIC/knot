@@ -161,6 +161,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 
 	for (uint16_t i = 0; i < src->rrset_count; ++i) {
 		// Clear additionals in the copy.
+		additional_clear(dst->rrs[i].additional);
 		dst->rrs[i].additional = NULL;
 	}
 
