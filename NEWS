@@ -1,3 +1,17 @@
+Knot DNS 2.6.9 (2018-08-14)
+===========================
+
+Improvements:
+-------------
+ - Added zone wire size to zone loading log message
+ - Added debug log message for each unsuccessful remote address operation
+
+Bugfixes:
+---------
+ - Zone not flushed after re-signing during zone load #594
+ - Server crashes when committing empty zone transaction
+ - Incoming IXFR with on-slave signing sometimes leads to memory corruption #595
+
 Knot DNS 2.6.8 (2018-07-10)
 ===========================
 
