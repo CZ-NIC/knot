@@ -179,6 +179,12 @@ static const algorithm_functions_t eddsa_functions = {
 	.dnssec_to_x509 = eddsa_copy_signature,
 };
 
+#define gost_copy_signature rsa_copy_signature
+static const algorithm_functions_t gost_functions = {
+	.x509_to_dnssec = gost_copy_signature,
+	.dnssec_to_x509 = gost_copy_signature,
+};
+
 /* -- crypto helper functions --------------------------------------------- */
 
 static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
@@ -197,6 +203,8 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 	case DNSSEC_KEY_ALGORITHM_ED25519:
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return &eddsa_functions;
+	case DNSSEC_KEY_ALGORITHM_ECC_GOST:
+		return &gost_functions;
 	default:
 		return NULL;
 	}
@@ -223,6 +231,10 @@ static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 		return GNUTLS_DIG_SHA384;
 	case DNSSEC_KEY_ALGORITHM_ED25519:
 		return GNUTLS_DIG_SHA512;
+#ifdef HAVE_GOST
+	case DNSSEC_KEY_ALGORITHM_ECC_GOST:
+		return GNUTLS_DIG_GOSTR_94;
+#endif
 	case DNSSEC_KEY_ALGORITHM_ED448:
 	default:
 		return GNUTLS_DIG_UNKNOWN;
@@ -246,13 +258,17 @@ static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_key_t *key)
 		return GNUTLS_SIGN_RSA_SHA512;
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return GNUTLS_SIGN_ECDSA_SHA384;
-	case DNSSEC_KEY_ALGORITHM_ED25519:
 #ifdef HAVE_ED25519
+	case DNSSEC_KEY_ALGORITHM_ED25519:
 		return GNUTLS_SIGN_EDDSA_ED25519;
 #endif
-	case DNSSEC_KEY_ALGORITHM_ED448:
 #ifdef HAVE_ED448
+	case DNSSEC_KEY_ALGORITHM_ED448:
 		return GNUTLS_SIGN_EDDSA_ED448;
+#endif
+#ifdef HAVE_GOST
+	case DNSSEC_KEY_ALGORITHM_ECC_GOST:
+		return GNUTLS_SIGN_GOST_94;
 #endif
 	default:
 		return GNUTLS_SIGN_UNKNOWN;
