@@ -161,6 +161,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 
 	for (uint16_t i = 0; i < src->rrset_count; ++i) {
 		// Clear additionals in the copy.
+		additional_clear(dst->rrs[i].additional);
 		dst->rrs[i].additional = NULL;
 	}
 
@@ -203,6 +204,8 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
+			// We need to free additionals from this rr_data before it gets overwritten.
+			additional_clear(node->rrs[i].additional);
 			memmove(node->rrs + i, node->rrs + i + 1,
 			        (node->rrset_count - i - 1) * sizeof(struct rr_data));
 			--node->rrset_count;
