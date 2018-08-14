@@ -1,3 +1,18 @@
+Knot DNS 2.7.1 (2018-08-14)
+===========================
+
+Improvements:
+-------------
+ - Added zone wire size information to zone loading log message
+ - Added debug log message for each unsuccessful remote address operation
+ - Various improvements for packaging
+
+Bugfixes:
+---------
+ - Incompatible handling of RRSIG TTL value when creating a DNS message
+ - Incorrect RRSIG TTL value in zone differences and knotc zone operation outputs
+ - Default configure prefix is ignored
+
 Knot DNS 2.7.0 (2018-08-03)
 ===========================
 
@@ -44,6 +59,20 @@ Compatibility:
  - Removed obsolete 'ixfr-from-differences' configuration option
  - Removed old journal migration
  - Removed module rosedb
+
+Knot DNS 2.6.9 (2018-08-14)
+===========================
+
+Improvements:
+-------------
+ - Added zone wire size to zone loading log message
+ - Added debug log message for each unsuccessful remote address operation
+
+Bugfixes:
+---------
+ - Zone not flushed after re-signing during zone load #594
+ - Server crashes when committing empty zone transaction
+ - Incoming IXFR with on-slave signing sometimes leads to memory corruption #595
 
 Knot DNS 2.6.8 (2018-07-10)
 ===========================

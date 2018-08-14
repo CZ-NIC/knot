@@ -2,7 +2,7 @@ AC_PREREQ([2.60])
 
 m4_define([knot_VERSION_MAJOR], 2)dnl
 m4_define([knot_VERSION_MINOR], 7)dnl
-m4_define([knot_VERSION_PATCH], 0)dnl Leave empty if the master branch!
+m4_define([knot_VERSION_PATCH], 1)dnl Leave empty if the master branch!
 m4_include([m4/knot-version.m4])
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
