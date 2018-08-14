@@ -64,8 +64,7 @@ package() {
     rm "${pkgdir}"/etc/knot/example.com.zone
     mv "${pkgdir}"/etc/knot/{knot.sample.conf,knot.conf}
 
-    cd ..
-    install -Dm644 ${srcdir}/${pkgname}-${pkgver}/distro/common/${pkgname}.service -t "${pkgdir}"/usr/lib/systemd/system/
-    install -Dm644 ${srcdir}/${pkgname}-${pkgver}/distro/arch/${pkgname}.tmpfiles.arch "${pkgdir}"/usr/lib/tmpfiles.d/${pkgname}.conf
-    install -Dm644 ${srcdir}/${pkgname}-${pkgver}/distro/arch/${pkgname}.sysusers "${pkgdir}"/usr/lib/sysusers.d/${pkgname}.conf
+    install -Dm644 distro/common/${pkgname}.service -t "${pkgdir}"/usr/lib/systemd/system/
+    install -Dm644 distro/arch/${pkgname}.tmpfiles.arch "${pkgdir}"/usr/lib/tmpfiles.d/${pkgname}.conf
+    install -Dm644 distro/arch/${pkgname}.sysusers "${pkgdir}"/usr/lib/sysusers.d/${pkgname}.conf
 }
