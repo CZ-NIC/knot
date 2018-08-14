@@ -189,6 +189,45 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 }
 #endif
 
+#ifdef HAVE_GOST
+static inline void swap_u8(uint8_t *a, uint8_t *b)
+{
+	const uint8_t tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+static int gost_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
+{
+	assert(key);
+	assert(rdata);
+
+	int result = dnssec_binary_alloc(rdata, 64);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+	gnutls_datum_t points[2] = {
+		{ .data = rdata->data,      .size = 32 },
+		{ .data = rdata->data + 32, .size = 32 }
+	};
+
+	/* Note: we might possibly verify the curve and digest IDs returned. */
+	result = gnutls_pubkey_export_gost_raw2(key, NULL, NULL, NULL,
+			&points[0], &points[1], 0);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_EXPORT_ERROR;
+	}
+
+	/* Now we need to swap "endianness" of the two points. */
+	for (int i = 0; i < 2; ++i) {
+		for (int j = 0; j < 16; ++j) {
+			swap_u8(&points[i].data[j], &points[i].data[31-j]);
+		}
+	}
+
+	return DNSSEC_EOK;
+}
+#endif
+
 /* -- crypto to DNSSEC ------------------------------------------------------*/
 
 /*!
@@ -322,6 +361,36 @@ static int eddsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 }
 #endif
 
+#ifdef HAVE_GOST
+static int gost_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
+{
+	assert(rdata);
+	assert(key);
+
+	/* Unfortunately we have to reverse the "endiannes" of the two points. */
+	uint8_t data[2][32];
+	assert(rdata->size == sizeof(data));
+	const gnutls_datum_t point_x = { .data = data[0], .size = 32 };
+	const gnutls_datum_t point_y = { .data = data[1], .size = 32 };
+	for (int i = 0; i < 2; ++i) {
+		const uint8_t *base = rdata->data + i * 32;
+		for (int j = 0; j < 32; ++j) {
+			data[i][j] = base[31 - j];
+		}
+	}
+
+	int result = gnutls_pubkey_import_gost_raw(key, GNUTLS_PK_GOST_01,
+			GNUTLS_DIG_GOSTR_94, GNUTLS_GOST_PARAMSET_UNKNOWN,
+			&point_x, &point_y);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	return DNSSEC_EOK;
+}
+#endif
+
+
 /* -- internal API --------------------------------------------------------- */
 
 /*!
@@ -346,6 +415,9 @@ int convert_pubkey_to_dnskey(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 #ifdef HAVE_ED448
 	case GNUTLS_PK_EDDSA_ED448: return eddsa_pubkey_to_rdata(key, rdata);
 #endif
+#ifdef HAVE_GOST
+	case GNUTLS_PK_GOST_01: return gost_pubkey_to_rdata(key, rdata);
+#endif
 	default: return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 }
@@ -369,6 +441,9 @@ int convert_dnskey_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
 #endif
 #ifdef HAVE_ED448
 	case GNUTLS_PK_EDDSA_ED448: return eddsa_rdata_to_pubkey(rdata, key);
+#endif
+#ifdef HAVE_GOST
+	case GNUTLS_PK_GOST_01: return gost_rdata_to_pubkey(rdata, key);
 #endif
 	default: return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
