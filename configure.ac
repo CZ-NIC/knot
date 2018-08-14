@@ -163,6 +163,12 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
         [enable_ed25519=no],
         [#include <gnutls/gnutls.h>])
 
+    AC_CHECK_DECL([GNUTLS_PK_GOST_01],
+        [AC_DEFINE([HAVE_GOST], [1], [GnuTLS GOST support available])
+         enable_gost=yes],
+        [enable_gost=no],
+        [#include <gnutls/gnutls.h>])
+
     AC_CHECK_FUNC([gnutls_privkey_sign_data2],
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
 
@@ -635,6 +641,7 @@ result_msg_base="  Knot DNS $VERSION
     Systemd integration:    ${enable_systemd}
     PKCS #11 support:       ${enable_pkcs11}
     Ed25519 support:        ${enable_ed25519}
+    GOST support:           ${enable_gost}
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
     LibFuzzer:              ${with_fuzzer}
