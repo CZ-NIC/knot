@@ -360,7 +360,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 			return ret;
 		}
 	} else {
-		// RRSet is empty now, remove it from node, all data freed.
+		// RRSet is empty now, remove it from node, all data freed, except additionals.
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != contents->apex) {

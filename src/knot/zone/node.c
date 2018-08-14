@@ -203,6 +203,8 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
+			// We need to free additionals from this rr_data before it gets overwritten.
+			additional_clear(node->rrs[i].additional);
 			memmove(node->rrs + i, node->rrs + i + 1,
 			        (node->rrset_count - i - 1) * sizeof(struct rr_data));
 			--node->rrset_count;

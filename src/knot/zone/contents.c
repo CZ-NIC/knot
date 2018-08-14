@@ -1125,11 +1125,11 @@ void zone_contents_deep_free(zone_contents_t *contents)
 	}
 
 	if (contents != NULL) {
-		// Delete NSEC3 tree
+		// Delete NSEC3 tree.
 		(void)zone_tree_apply(contents->nsec3_nodes,
 		                      destroy_node_rrsets_from_tree, NULL);
 
-		// Delete normal tree
+		// Delete the normal tree.
 		(void)zone_tree_apply(contents->nodes,
 		                      destroy_node_rrsets_from_tree, NULL);
 	}

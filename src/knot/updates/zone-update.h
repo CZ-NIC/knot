@@ -45,7 +45,7 @@ typedef enum {
 	UPDATE_FULL           = 1 << 0, /*!< Replace the old zone by a complete new one. */
 	UPDATE_INCREMENTAL    = 1 << 1, /*!< Apply changes to the old zone. */
 	UPDATE_SIGN           = 1 << 2, /*!< Sign the resulting zone. */
-	UPDATE_DIFF           = 1 << 3, /*!< In the case of full update, create a diff for journal. */
+	UPDATE_JOURNAL        = 1 << 3, /*!< Using zone-in-journal for a diff update. */
 	UPDATE_STRICT         = 1 << 4, /*!< Apply changes strictly, i.e. fail when removing nonexistent RR. */
 } zone_update_flags_t;
 
