@@ -131,7 +131,7 @@ Actions
   Purge zone data, zone file, journal, timers, and/or KASP data of specified zones.
   Available filters are **+expire**, **+zonefile**, **+journal**, **+timers**,
   and **+kaspdb**. If no filter is specified, all filters are enabled.
-  It the zone is no longer configured, add **+orphan** filter (zone file cannot
+  If the zone is no longer configured, add **+orphan** filter (zone file cannot
   be purged in this case).
 
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
