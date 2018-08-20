@@ -176,11 +176,8 @@ int conf_mod_load_common(
 
 		// Process each module in the directory.
 		for (size_t i = 0; i < glob_buf.gl_pathc; i++) {
-			ret = conf_mod_load_extra(conf, NULL, glob_buf.gl_pathv[i],
+			(void)conf_mod_load_extra(conf, NULL, glob_buf.gl_pathv[i],
 			                          false);
-			if (ret != KNOT_EOK) {
-				break;
-			}
 		}
 
 		globfree(&glob_buf);
