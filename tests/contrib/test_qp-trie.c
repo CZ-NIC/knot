@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -110,8 +110,10 @@ int main(int argc, char *argv[])
 	srand(time(NULL));
 	unsigned key_count = 100000;
 	char **keys = malloc(sizeof(char*) * key_count);
+	/* key must have at least one char and a nul terminator
+	   so that the before/after checks have a char to modify */
 	for (unsigned i = 0; i < key_count; ++i) {
-		keys[i] = str_key_rand(KEY_MAXLEN);
+		keys[i] = str_key_rand(rand() % (KEY_MAXLEN - 2) + 2);
 	}
 
 	/* Sort random keys. */
