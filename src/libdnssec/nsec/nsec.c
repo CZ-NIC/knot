@@ -96,7 +96,7 @@ bool dnssec_nsec_bitmap_contains(const uint8_t *bitmap, uint16_t size, uint16_t 
 		uint8_t block_size = bitmap[bitmap_pos++]; // Skip window block size.
 
 		// Size checks.
-		if (block_size == 0 || bitmap_pos + block_size < size) {
+		if (block_size == 0 || bitmap_pos + block_size > size) {
 			return false;
 		}
 
@@ -106,6 +106,7 @@ bool dnssec_nsec_bitmap_contains(const uint8_t *bitmap, uint16_t size, uint16_t 
 				// Check if the bit for type is set.
 				return bitmap[bitmap_pos + bitmap_idx] & bit_mask;
 			}
+			return false;
 		} else {
 			bitmap_pos += block_size;
 		}
