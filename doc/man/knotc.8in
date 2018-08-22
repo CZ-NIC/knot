@@ -125,6 +125,16 @@ directory.
 Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.
 This command is valid for zones with automatic DNSSEC signing.
 .TP
+\fBzone\-ksk\-rollover\fP \fIzone\fP
+On the specified zone with automatic DNSSEC signing and key management,
+even when the KSK has a lifetime to go, publish new KSK and immediately
+start the KSK rollover.
+.TP
+\fBzone\-zsk\-rollover\fP \fIzone\fP
+On the specified zone with automatic DNSSEC signing and key management,
+even when the ZSK has a lifetime to go, publish new ZSK and immediately
+start the ZSK rollover.
+.TP
 \fBzone\-read\fP \fIzone\fP [\fIowner\fP [\fItype\fP]]
 Get zone data that are currently being presented.
 .TP

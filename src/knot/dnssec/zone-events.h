@@ -31,14 +31,21 @@ enum zone_sign_flags {
 
 typedef enum zone_sign_flags zone_sign_flags_t;
 
+typedef enum {
+	KEY_ROLL_ALLOW_KSK_ROLL = (1 << 0),
+	KEY_ROLL_FORCE_KSK_ROLL = (1 << 1),
+	KEY_ROLL_ALLOW_ZSK_ROLL = (1 << 2),
+	KEY_ROLL_FORCE_ZSK_ROLL = (1 << 3),
+	KEY_ROLL_DO_NSEC3RESALT = (1 << 4),
+} zone_sign_roll_flags_t;
+
 typedef struct {
-        knot_time_t next_sign;
-        knot_time_t next_rollover;
-        knot_time_t next_nsec3resalt;
-        bool keys_changed;
-        bool plan_ds_query;
-        bool allow_rollover; // this one is set by the caller
-        bool allow_nsec3resalt; // this one is set by the caller and modified by the salter
+	knot_time_t next_sign;
+	knot_time_t next_rollover;
+	knot_time_t next_nsec3resalt;
+	knot_time_t last_nsec3resalt;
+	bool keys_changed;
+	bool plan_ds_query;
 } zone_sign_reschedule_t;
 
 /*!
@@ -58,12 +65,14 @@ int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
  *
  * \param update       Zone Update structure with current zone contents to be updated by signing.
  * \param flags        Zone signing flags.
+ * \param roll_flags   Key rollover flags,
  * \param reschedule   Signature refresh time of the oldest signature in zone.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_dnssec_zone_sign(zone_update_t *update,
                           zone_sign_flags_t flags,
+                          zone_sign_roll_flags_t roll_flags,
                           zone_sign_reschedule_t *reschedule);
 
 /*!
@@ -87,9 +96,9 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
  * proper DNSSEC chain.
  *
  * \param ctx           zone signing context
- * \param salt_changed  output if KNOT_EOK: was the salt changed ? (if so, please re-sign)
+ * \param salt_changed  output if KNOT_EOK: when was the salt last changed? (either ctx->now or 0)
  * \param when_resalt   output: tmestamp when next resalt takes place
  *
  * \return KNOT_E*
  */
-int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, knot_time_t *when_resalt);
+int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_time_t *when_resalt);

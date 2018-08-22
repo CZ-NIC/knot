@@ -31,11 +31,12 @@
  * proper DNSSEC chain.
  *
  * \param ctx           zone signing context
+ * \param flags         determine if some actions are forced
  * \param reschedule    Out: timestamp of desired next invoke
  *
  * \return KNOT_E*
  */
-int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule);
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags, zone_sign_reschedule_t *reschedule);
 
 /*!
  * \brief Set the submitted KSK to active state and the active one to retired

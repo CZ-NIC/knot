@@ -34,6 +34,8 @@ typedef enum zone_flag_t {
 	ZONE_FORCE_AXFR   = 1 << 0, /* Force AXFR as next transfer. */
 	ZONE_FORCE_RESIGN = 1 << 1, /* Force zone re-sign. */
 	ZONE_FORCE_FLUSH  = 1 << 2, /* Force zone flush. */
+	ZONE_FORCE_KSK_ROLLOVER = 1 << 3,
+	ZONE_FORCE_ZSK_ROLLOVER = 1 << 4,
 } zone_flag_t;
 
 /*!

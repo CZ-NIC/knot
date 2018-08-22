@@ -28,7 +28,7 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 
-static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags,
+static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
 		     kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
 {
 	assert(zone);
@@ -43,15 +43,12 @@ static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags,
 
 	// perform nsec3resalt if pending
 
-	if (reschedule->allow_nsec3resalt) {
-		r = knot_dnssec_nsec3resalt(ctx, &reschedule->allow_nsec3resalt, &reschedule->next_nsec3resalt);
+	if (roll_flags & KEY_ROLL_DO_NSEC3RESALT) {
+		r = knot_dnssec_nsec3resalt(ctx, &reschedule->last_nsec3resalt, &reschedule->next_nsec3resalt);
 	}
 
 	// perform key rollover if needed
-
-	if (reschedule->allow_rollover) {
-		r = knot_dnssec_key_rollover(ctx, reschedule);
-	}
+	r = knot_dnssec_key_rollover(ctx, roll_flags, reschedule);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -105,7 +102,7 @@ static int generate_salt(dnssec_binary_t *salt, uint16_t length)
 
 // TODO preserve the resalt timeout in timers-db instead of kasp_db
 
-int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, knot_time_t *when_resalt)
+int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_time_t *when_resalt)
 {
 	int ret = KNOT_EOK;
 
@@ -130,7 +127,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, knot_time_t 
 		if (ret == KNOT_EOK) {
 			ctx->zone->nsec3_salt_created = ctx->now;
 			ret = kdnssec_ctx_commit(ctx);
-			*salt_changed = true;
+			*salt_changed = ctx->now;
 		}
 		// continue to planning next resalt even if NOK
 		*when_resalt = knot_time_add(ctx->now, ctx->policy->nsec3_salt_lifetime);
@@ -140,7 +137,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool *salt_changed, knot_time_t 
 }
 
 int knot_dnssec_zone_sign(zone_update_t *update,
-                          zone_sign_flags_t flags,
+                          zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
                           zone_sign_reschedule_t *reschedule)
 {
 	if (!update || !reschedule) {
@@ -154,7 +151,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	// signing pipeline
 
-	result = sign_init(update->new_cont, flags, &ctx, reschedule);
+	result = sign_init(update->new_cont, flags, roll_flags, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -239,7 +236,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 
 	// signing pipeline
 
-	result = sign_init(update->new_cont, 0, &ctx, reschedule);
+	result = sign_init(update->new_cont, 0, 0, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
