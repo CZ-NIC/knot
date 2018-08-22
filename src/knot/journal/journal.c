@@ -1820,7 +1820,7 @@ scrape_end:
 
 void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_serial,
 			   kserial_t *first_serial, kserial_t *last_flushed, kserial_t *serial_to,
-			   uint64_t *occupied)
+			   uint64_t *occupied, uint64_t *occupied_all_zones)
 {
 	// NOTE: there is NEVER the situation that only merged changeset would be present and no common changeset in db.
 
@@ -1845,6 +1845,8 @@ void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_
 		}
 		return;
 	}
+
+	uint64_t occupied_total = knot_db_lmdb_get_usage(j->db->db);
 
 	local_txn_t(txn, j);
 	txn_begin(txn, false);
@@ -1876,9 +1878,12 @@ void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_
 		if (last_inserter != NULL && knot_dname_is_equal(last_inserter, j->zone)) {
 			size_t lz_occupied;
 			md_get_common_last_occupied(txn, &lz_occupied);
-			*occupied += knot_db_lmdb_get_usage(j->db->db) - lz_occupied;
+			*occupied += occupied_total - lz_occupied;
 		}
 		free(last_inserter);
+	}
+	if (occupied_all_zones != NULL) {
+		*occupied_all_zones = occupied_total;
 	}
 
 	txn_abort(txn);

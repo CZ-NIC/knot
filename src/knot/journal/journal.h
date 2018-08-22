@@ -214,7 +214,7 @@ int journal_scrape(journal_t *journal);
  */
 void journal_metadata_info(journal_t *journal, bool *is_empty, kserial_t *merged_serial,
                            kserial_t *first_serial, kserial_t *last_flushed,
-                           kserial_t *serial_to, uint64_t *occupied);
+                           kserial_t *serial_to, uint64_t *occupied, uint64_t *occupied_all_zones);
 
 /*! \brief Check the journal consistency, errors to stderr.
  *

@@ -184,8 +184,9 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 
 	bool has_bootstrap;
 	kserial_t merged_serial, serial_from, last_flushed, serial_to;
-	uint64_t occupied;
-	journal_metadata_info(j, &has_bootstrap, &merged_serial, &serial_from, &last_flushed, &serial_to, &occupied);
+	uint64_t occupied, occupied_all;
+	journal_metadata_info(j, &has_bootstrap, &merged_serial, &serial_from,
+			      &last_flushed, &serial_to, &occupied, &occupied_all);
 
 	bool alternative_from = (has_bootstrap || merged_serial.valid);
 	bool is_empty = (!alternative_from && !serial_from.valid);
@@ -245,7 +246,8 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 	}
 
 	if (debugmode) {
-		printf("Occupied: %"PRIu64" KiB\n", occupied / 1024);
+		printf("Occupied this zone (approx): %"PRIu64" KiB\n", occupied / 1024);
+		printf("Occupied all zones together: %"PRIu64" KiB\n", occupied_all / 1024);
 	}
 
 pj_finally:

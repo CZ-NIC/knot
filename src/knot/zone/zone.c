@@ -398,7 +398,7 @@ int zone_journal_serial(conf_t *conf, zone_t *zone, bool *is_empty, uint32_t *se
 	int ret = open_journal(zone);
 	if (ret == KNOT_EOK) {
 		kserial_t ks;
-		journal_metadata_info(zone->journal, is_empty, NULL, NULL, NULL, &ks, NULL);
+		journal_metadata_info(zone->journal, is_empty, NULL, NULL, NULL, &ks, NULL, NULL);
 		*serial_to = (ks.valid ? ks.serial : 0);
 	}
 
