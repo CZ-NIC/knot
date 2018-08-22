@@ -192,6 +192,15 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 
 #define GEN_KSK_FLAGS (DNSKEY_GENERATE_KSK | (ctx->policy->singe_type_signing ? DNSKEY_GENERATE_ZSK : 0))
 
+static int generate_ksk(kdnssec_ctx_t *ctx, knot_time_t when_active, bool pre_active)
+{
+	if (ctx->policy->ksk_shared) {
+		return share_or_generate_key(ctx, GEN_KSK_FLAGS, when_active, pre_active);
+	} else {
+		return generate_key(ctx, GEN_KSK_FLAGS, when_active, pre_active);
+	}
+}
+
 static bool running_rollover(const kdnssec_ctx_t *ctx)
 {
 	bool res = false;
@@ -343,7 +352,7 @@ static knot_time_t alg_remove_time(knot_time_t post_active_time, const kdnssec_c
 	return MAX(ksk_remove_time(post_active_time, ctx), zsk_remove_time(post_active_time, ctx));
 }
 
-static roll_action_t next_action(kdnssec_ctx_t *ctx)
+static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags)
 {
 	roll_action_t res = { 0 };
 	res.time = 0;
@@ -352,7 +361,9 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx)
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		knot_time_t keytime = 0;
 		roll_action_type_t restype = INVALID;
-		if (key->is_pub_only) {
+		if (key->is_pub_only ||
+		    (key->is_ksk && !(flags & KEY_ROLL_ALLOW_KSK_ROLL)) ||
+		    (key->is_zsk && !(flags & KEY_ROLL_ALLOW_ZSK_ROLL))) {
 			continue;
 		}
 		if (key->is_ksk) {
@@ -537,7 +548,8 @@ static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	return kdnssec_delete_key(ctx, key);
 }
 
-int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
+                             zone_sign_reschedule_t *reschedule)
 {
 	if (ctx == NULL || reschedule == NULL) {
 		return KNOT_EINVAL;
@@ -546,6 +558,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		return KNOT_EOK;
 	}
 	int ret = KNOT_EOK;
+	bool allowed_general_roll = ((flags & KEY_ROLL_ALLOW_KSK_ROLL) && (flags & KEY_ROLL_ALLOW_ZSK_ROLL));
 	// generate initial keys if missing
 	if (!key_present(ctx, true, false) && !key_present(ctx, true, true)) {
 		if (ctx->policy->ksk_shared) {
@@ -562,14 +575,36 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 			}
 		}
 	}
+	// forced KSK rollover
+	if ((flags & KEY_ROLL_FORCE_KSK_ROLL) && ret == KNOT_EOK) {
+		flags &= ~KEY_ROLL_FORCE_KSK_ROLL;
+		if (running_rollover(ctx)) {
+			log_zone_warning(ctx->zone->dname, "DNSSEC, ignoring forced KSK rollover "
+			                                   "due to running rollover");
+		} else {
+			ret = generate_ksk(ctx, 0, false);
+			if (ret == KNOT_EOK) {
+				log_zone_info(ctx->zone->dname, "DNSSEC, KSK rollover started");
+			}
+		}
+	}
+	// forced ZSK rollover
+	if ((flags & KEY_ROLL_FORCE_ZSK_ROLL) && ret == KNOT_EOK) {
+		flags &= ~KEY_ROLL_FORCE_ZSK_ROLL;
+		if (running_rollover(ctx)) {
+			log_zone_warning(ctx->zone->dname, "DNSSEC, ignoring forced ZSK rollover "
+			                                   "due to running rollover");
+		} else {
+			ret = generate_key(ctx, DNSKEY_GENERATE_ZSK, 0, false);
+			if (ret == KNOT_EOK) {
+				log_zone_info(ctx->zone->dname, "DNSSEC, ZSK rollover started");
+			}
+		}
+	}
 	// algorithm rollover
 	if (algorithm_present(ctx, ctx->policy->algorithm) == 0 &&
-	    !running_rollover(ctx) && ret == KNOT_EOK) {
-		if (ctx->policy->ksk_shared) {
-			ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, 0, true);
-		} else {
-			ret = generate_key(ctx, GEN_KSK_FLAGS, 0, true);
-		}
+	    !running_rollover(ctx) && allowed_general_roll && ret == KNOT_EOK) {
+		ret = generate_ksk(ctx, 0, true);
 		if (!ctx->policy->singe_type_signing && ret == KNOT_EOK) {
 			ret = generate_key(ctx, DNSKEY_GENERATE_ZSK, 0, true);
 		}
@@ -579,13 +614,9 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		}
 	}
 	// scheme rollover
-	if (!signing_scheme_present(ctx) &&
+	if (!signing_scheme_present(ctx) && allowed_general_roll &&
 	    !running_rollover(ctx) && ret == KNOT_EOK) {
-		if (ctx->policy->ksk_shared) {
-			ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, 0, false);
-		} else {
-			ret = generate_key(ctx, GEN_KSK_FLAGS, 0, false);
-		}
+		ret = generate_ksk(ctx, 0, false);
 		if (!ctx->policy->singe_type_signing && ret == KNOT_EOK) {
 			ret = generate_key(ctx, DNSKEY_GENERATE_ZSK, 0, false);
 		}
@@ -598,17 +629,17 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		return ret;
 	}
 
-	roll_action_t next = next_action(ctx);
+	roll_action_t next = next_action(ctx, flags);
 
 	reschedule->next_rollover = next.time;
 
 	if (knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
 		switch (next.type) {
 		case GENERATE:
-			if (next.ksk && ctx->policy->ksk_shared) {
-				ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, 0, false);
+			if (next.ksk) {
+				ret = generate_ksk(ctx, 0, false);
 			} else {
-				ret = generate_key(ctx, next.ksk ? GEN_KSK_FLAGS : DNSKEY_GENERATE_ZSK, 0, false);
+				ret = generate_key(ctx, DNSKEY_GENERATE_ZSK, 0, false);
 			}
 			if (ret == KNOT_EOK) {
 				log_zone_info(ctx->zone->dname, "DNSSEC, %cSK rollover started",
@@ -637,7 +668,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 
 		if (ret == KNOT_EOK) {
 			reschedule->keys_changed = true;
-			next = next_action(ctx);
+			next = next_action(ctx, flags);
 			reschedule->next_rollover = next.time;
 		} else {
 			log_zone_warning(ctx->zone->dname, "DNSSEC, key rollover, action %s (%s)",
@@ -648,7 +679,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 	}
 
 	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
-		return knot_dnssec_key_rollover(ctx, reschedule);
+		return knot_dnssec_key_rollover(ctx, flags, reschedule);
 	}
 
 	if (reschedule->keys_changed) {

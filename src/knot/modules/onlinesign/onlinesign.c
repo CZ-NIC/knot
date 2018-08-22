@@ -476,7 +476,7 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
                                     knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
 	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
-	zone_sign_reschedule_t resch = { .allow_rollover = true };
+	zone_sign_reschedule_t resch = { 0 };
 
 	(void)pkt, (void)qdata;
 
@@ -496,7 +496,7 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 	}
 	if (ret == KNOT_EOK || knot_time_cmp(ctx->event_rollover, mod->dnssec->now) <= 0) {
-		ret = knot_dnssec_key_rollover(mod->dnssec, &resch);
+		ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 	}
 	if (ret == KNOT_EOK) {
 		if (resch.plan_ds_query && mod->dnssec->policy->ksk_sbm_check_interval > 0) {
@@ -614,10 +614,8 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 	// Force Singe-Type signing scheme. This is only important for compatibility with older versions.
 	mod->dnssec->policy->singe_type_signing = true;
 
-	zone_sign_reschedule_t resch = {
-		.allow_rollover = true
-	};
-	ret = knot_dnssec_key_rollover(mod->dnssec, &resch);
+	zone_sign_reschedule_t resch = { 0 };
+	ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 	if (ret != KNOT_EOK) {
 		free(ctx);
 		return ret;

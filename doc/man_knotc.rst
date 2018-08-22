@@ -102,6 +102,11 @@ Actions
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
   This command is valid for zones with automatic DNSSEC signing.
 
+**zone-key-rollover** *zone* *key_type*
+  On the specified zone with automatic DNSSEC signing and key management,
+  even when the key has a lifetime to go, publish new key and immediately
+  start the key rollover. Key type can be **ksk** (even for CSK) or **zsk**.
+
 **zone-read** *zone* [*owner* [*type*]]
   Get zone data that are currently being presented.
 
