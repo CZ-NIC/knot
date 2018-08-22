@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,12 +30,14 @@
  * but also during zone load so that the zone gets loaded already with
  * proper DNSSEC chain.
  *
- * \param ctx           zone signing context
- * \param reschedule    Out: timestamp of desired next invoke
+ * \param ctx         Zone signing context
+ * \param flags       Determine if some actions are forced
+ * \param reschedule  Out: timestamp of desired next invoke
  *
  * \return KNOT_E*
  */
-int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule);
+int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
+                             zone_sign_reschedule_t *reschedule);
 
 /*!
  * \brief Set the submitted KSK to active state and the active one to retired

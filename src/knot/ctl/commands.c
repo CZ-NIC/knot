@@ -352,6 +352,27 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
+static int zone_key_roll(zone_t *zone, ctl_args_t *args)
+{
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+	if (!conf_bool(&val)) {
+		return KNOT_ENOTSUP;
+	}
+
+	const char *key_type = args->data[KNOT_CTL_IDX_TYPE];
+	if (strncasecmp(key_type, "ksk", 3) == 0) {
+		zone->flags |= ZONE_FORCE_KSK_ROLL;
+	} else if (strncasecmp(key_type, "zsk", 3) == 0) {
+		zone->flags |= ZONE_FORCE_ZSK_ROLL;
+	} else {
+		return KNOT_EINVAL;
+	}
+
+	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
+
+	return KNOT_EOK;
+}
+
 static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
@@ -1334,6 +1355,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
+	case CTL_ZONE_KEY_ROLL:
+		return zones_apply(args, zone_key_roll);
 	case CTL_ZONE_KSK_SBM:
 		return zones_apply(args, zone_ksk_sbm_confirm);
 	case CTL_ZONE_FREEZE:
@@ -1762,16 +1785,17 @@ static const desc_t cmd_table[] = {
 	[CTL_RELOAD]          = { "reload",          ctl_server },
 	[CTL_STATS]           = { "stats",           ctl_stats },
 
-	[CTL_ZONE_STATUS]     = { "zone-status",     ctl_zone },
-	[CTL_ZONE_RELOAD]     = { "zone-reload",     ctl_zone },
-	[CTL_ZONE_REFRESH]    = { "zone-refresh",    ctl_zone },
-	[CTL_ZONE_RETRANSFER] = { "zone-retransfer", ctl_zone },
-	[CTL_ZONE_NOTIFY]     = { "zone-notify",     ctl_zone },
-	[CTL_ZONE_FLUSH]      = { "zone-flush",      ctl_zone },
-	[CTL_ZONE_SIGN]       = { "zone-sign",       ctl_zone },
+	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone },
+	[CTL_ZONE_RELOAD]     = { "zone-reload",        ctl_zone },
+	[CTL_ZONE_REFRESH]    = { "zone-refresh",       ctl_zone },
+	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone },
+	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone },
+	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone },
+	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone },
+	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone },
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
-	[CTL_ZONE_FREEZE]     = { "zone-freeze",     ctl_zone },
-	[CTL_ZONE_THAW]       = { "zone-thaw",       ctl_zone },
+	[CTL_ZONE_FREEZE]     = { "zone-freeze",        ctl_zone },
+	[CTL_ZONE_THAW]       = { "zone-thaw",          ctl_zone },
 
 	[CTL_ZONE_READ]       = { "zone-read",       ctl_zone },
 	[CTL_ZONE_BEGIN]      = { "zone-begin",      ctl_zone },
