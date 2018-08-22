@@ -678,10 +678,10 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, knot_time_print_t format)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		printf("%s ksk=%s zsk=%s tag=%05d algorithm=%d public-only=%s ", key->id,
+		printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u public-only=%s ", key->id,
 		       (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
 		       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
-		       (key->is_pub_only ? "yes" : "no "));
+		       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "));
 		print_timer("created",       key->timing.created,        format, ' ');
 		print_timer("pre-active",    key->timing.pre_active,     format, ' ');
 		print_timer("publish",       key->timing.publish,        format, ' ');
