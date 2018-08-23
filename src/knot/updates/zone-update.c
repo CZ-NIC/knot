@@ -26,7 +26,7 @@
 
 #include <urcu.h>
 
-static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents)
+static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents, bool deep_copy)
 {
 	if (old_contents == NULL) {
 		return KNOT_EINVAL;
@@ -37,12 +37,16 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 		return ret;
 	}
 
-	update->new_cont_deep_copy = false;
-
-	ret = apply_prepare_zone_copy(old_contents, &update->new_cont);
-	if (ret != KNOT_EOK) {
-		changeset_clear(&update->change);
-		return ret;
+	if (deep_copy) {
+		update->new_cont_deep_copy = true;
+		update->new_cont = old_contents;
+	} else {
+		update->new_cont_deep_copy = false;
+		ret = apply_prepare_zone_copy(old_contents, &update->new_cont);
+		if (ret != KNOT_EOK) {
+			changeset_clear(&update->change);
+			return ret;
+		}
 	}
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
@@ -116,7 +120,7 @@ int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents
 
 	int ret = KNOT_EINVAL;
 	if (flags & UPDATE_INCREMENTAL) {
-		ret = init_incremental(update, zone, old_contents);
+		ret = init_incremental(update, zone, old_contents, flags & UPDATE_JOURNAL);
 	} else if (flags & UPDATE_FULL) {
 		ret = init_full(update, zone);
 	}
