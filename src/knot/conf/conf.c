@@ -652,6 +652,7 @@ struct sockaddr_storage conf_addr_range(
 
 	if (val->code == KNOT_EOK) {
 		conf_val(val);
+		assert(val->data);
 		out = yp_addr_noport(val->data);
 		// addr_type, addr, format, formatted_data (port| addr| empty).
 		const uint8_t *format = val->data + sizeof(uint8_t) +
