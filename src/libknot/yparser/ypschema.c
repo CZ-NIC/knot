@@ -174,7 +174,7 @@ static int schema_copy(
 {
 	// Copy the schema.
 	for (int i = 0; src[i].name != NULL; i++) {
-		int ret = set_item(dst + i, src + i, schema);
+		int ret = set_item(&dst[i], &src[i], schema);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

@@ -604,6 +604,7 @@ struct sockaddr_storage conf_addr(
 	if (val->code == KNOT_EOK) {
 		bool no_port;
 		conf_val(val);
+		assert(val->data);
 		out = yp_addr(val->data, &no_port);
 
 		if (out.ss_family == AF_UNIX) {
@@ -745,6 +746,7 @@ conf_mod_id_t* conf_mod_id(
 
 	if (val->code == KNOT_EOK) {
 		conf_val(val);
+		assert(val->data);
 
 		mod_id = malloc(sizeof(conf_mod_id_t));
 		if (mod_id == NULL) {
