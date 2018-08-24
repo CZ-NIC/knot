@@ -27,8 +27,8 @@
 
 dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC)
 
-const uint16_t DNSKEY_FLAGS_KSK = 257;
-const uint16_t DNSKEY_FLAGS_ZSK = 256;
+const uint16_t DNSKEY_FLAGS_KSK = KNOT_DNSKEY_FLAG_ZONE | KNOT_DNSKEY_FLAG_SEP;
+const uint16_t DNSKEY_FLAGS_ZSK = KNOT_DNSKEY_FLAG_ZONE;
 
 uint16_t dnskey_flags(bool is_ksk)
 {
