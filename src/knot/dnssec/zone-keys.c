@@ -27,14 +27,6 @@
 
 dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC)
 
-const uint16_t DNSKEY_FLAGS_KSK = 257;
-const uint16_t DNSKEY_FLAGS_ZSK = 256;
-
-uint16_t dnskey_flags(bool is_ksk)
-{
-	return is_ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK;
-}
-
 void normalize_generate_flags(kdnssec_generate_flags_t *flags)
 {
 	if (!(*flags & DNSKEY_GENERATE_KSK) && !(*flags & DNSKEY_GENERATE_ZSK)) {
