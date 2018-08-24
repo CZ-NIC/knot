@@ -10,7 +10,7 @@ Name:		knot
 Version:	%{VERSION}
 Release:	1%{?dist}
 License:	GPLv3
-URL:		http://www.knot-dns.cz
+URL:		https://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
 
 %if 0%{GPG_CHECK}
