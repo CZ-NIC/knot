@@ -33,11 +33,3 @@ struct dnssec_key {
 	gnutls_privkey_t private_key;
 	unsigned bits;
 };
-
-static const uint16_t DNSKEY_FLAGS_KSK = 257;
-static const uint16_t DNSKEY_FLAGS_ZSK = 256;
-
-static inline uint16_t dnskey_flags(bool is_ksk)
-{
-	return is_ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK;
-}

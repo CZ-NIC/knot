@@ -25,7 +25,13 @@
 #include "libknot/rdata.h"
 #include "libknot/wire.h"
 
-#define KNOT_DNSKEY_FLAG_KSK	1
+/*! See https://www.iana.org/assignments/dnskey-flags */
+/*! /brief "Secure entry point" marks KSK and CSK in practice. */
+#define KNOT_DNSKEY_FLAG_SEP	1
+/*! /brief The key is ALLOWED to be used for zone contents signing. */
+#define KNOT_DNSKEY_FLAG_ZONE	256
+/*! /brief The key MUST NOT be used for validation. */
+#define KNOT_DNSKEY_FLAG_REVOKE	128
 
 static inline
 uint16_t knot_dnskey_flags(const knot_rdata_t *rdata)
