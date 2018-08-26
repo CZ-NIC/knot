@@ -130,7 +130,7 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	return ret;
 }
 
-static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls, rrl_req_t *req,
+static int rrl_clsname(uint8_t *dst, size_t maxlen, uint8_t cls, rrl_req_t *req,
                        const knot_dname_t *name)
 {
 	if (name == NULL) {
@@ -152,10 +152,10 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls, rrl_req_t *req,
 	}
 
 	/* Write to wire */
-	return knot_dname_to_wire((uint8_t *)dst, name, maxlen);
+	return knot_dname_to_wire(dst, name, maxlen);
 }
 
-static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage *a,
+static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_storage *a,
                         rrl_req_t *req, const knot_dname_t *name)
 {
 	/* Class */
@@ -370,7 +370,7 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
                             rrl_req_t *req, const knot_dname_t *zone, uint32_t stamp,
                             int *lock)
 {
-	char buf[RRL_CLSBLK_MAXLEN];
+	uint8_t buf[RRL_CLSBLK_MAXLEN];
 	int len = rrl_classify(buf, sizeof(buf), a, req, zone);
 	if (len < 0) {
 		return NULL;
@@ -382,7 +382,7 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
 	pthread_mutex_lock(&t->ll);
 
 	/* Find an exact match in <id, id + HOP_LEN). */
-	char *qname = buf + sizeof(uint8_t) + sizeof(uint64_t);
+	uint8_t *qname = buf + sizeof(uint8_t) + sizeof(uint64_t);
 	uint64_t netblk;
 	memcpy(&netblk, buf + sizeof(uint8_t), sizeof(netblk));
 	rrl_item_t match = {
@@ -391,7 +391,7 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
 		.ntok = t->rate * RRL_CAPACITY,
 		.cls = buf[0],
 		.flags = RRL_BF_NULL,
-		.qname = SipHash24(&t->key, qname + 1, *qname),
+		.qname = SipHash24(&t->key, qname + 1, qname[0]),
 		.time = stamp
 	};
 
