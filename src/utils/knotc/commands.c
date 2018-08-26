@@ -47,8 +47,7 @@
 #define CMD_ZONE_NOTIFY         "zone-notify"
 #define CMD_ZONE_FLUSH		"zone-flush"
 #define CMD_ZONE_SIGN		"zone-sign"
-#define CMD_ZONE_KSK_ROLL       "zone-ksk-rollover"
-#define CMD_ZONE_ZSK_ROLL       "zone-zsk-rollover"
+#define CMD_ZONE_KEY_ROLL       "zone-key-rollover"
 #define CMD_ZONE_KSK_SBM	"zone-ksk-submitted"
 #define CMD_ZONE_FREEZE		"zone-freeze"
 #define CMD_ZONE_THAW		"zone-thaw"
@@ -244,8 +243,7 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_ZONE_NOTIFY:
 	case CTL_ZONE_FLUSH:
 	case CTL_ZONE_SIGN:
-	case CTL_ZONE_KSK_ROLL:
-	case CTL_ZONE_ZSK_ROLL:
+	case CTL_ZONE_KEY_ROLL:
 	case CTL_ZONE_KSK_SBM:
 	case CTL_ZONE_BEGIN:
 	case CTL_ZONE_COMMIT:
@@ -367,8 +365,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_NOTIFY:
 	case CTL_ZONE_FLUSH:
 	case CTL_ZONE_SIGN:
-	case CTL_ZONE_KSK_ROLL:
-	case CTL_ZONE_ZSK_ROLL:
+	case CTL_ZONE_KEY_ROLL:
 	case CTL_ZONE_KSK_SBM:
 	case CTL_ZONE_FREEZE:
 	case CTL_ZONE_THAW:
@@ -648,6 +645,24 @@ static int cmd_zone_memstats(cmd_args_t *args)
 	}
 
 	return ret;
+}
+
+static int cmd_zone_key_roll_ctl(cmd_args_t *args)
+{
+	int ret = check_args(args, 2, 2);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
+		[KNOT_CTL_IDX_ZONE] = args->argv[1],
+		[KNOT_CTL_IDX_DATA] = args->argv[0],
+	};
+
+	CTL_SEND_DATA
+	CTL_SEND_BLOCK
+	return ctl_receive(args);
 }
 
 static int cmd_zone_ctl(cmd_args_t *args)
@@ -1078,8 +1093,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_NOTIFY,     cmd_zone_ctl,        CTL_ZONE_NOTIFY,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_FLUSH,      cmd_zone_filter_ctl, CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,        CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
-	{ CMD_ZONE_KSK_ROLL,   cmd_zone_ctl,        CTL_ZONE_KSK_ROLL,   CMD_FREQ_ZONE },
-	{ CMD_ZONE_ZSK_ROLL,   cmd_zone_ctl,        CTL_ZONE_ZSK_ROLL,   CMD_FREQ_ZONE },
+	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl,CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE },
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,        CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE },
 	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,        CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_THAW,       cmd_zone_ctl,        CTL_ZONE_THAW,       CMD_FOPT_ZONE },
@@ -1127,8 +1141,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check)." },
 	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",              "Flush zone journal into the zone file." },
 	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone." },
-	{ CMD_ZONE_KSK_ROLL,   "<zone>",                                 "Trigger an immediate KSK rollover on a zone with automatic key management." },
-	{ CMD_ZONE_ZSK_ROLL,   "<zone>",                                 "Trigger an immediate ZSK rollover on a zone with automatic key management." },
+	{ CMD_ZONE_KEY_ROLL,   "<keytype> <zone>",                       "Trigger an immediate key rollover on a zone with automatic key management." },
 	{ CMD_ZONE_KSK_SBM,    "<zone>",                                 "\b\b\bWhen KSK submission, confirm parent's DS presence manually." },
 	{ CMD_ZONE_FREEZE,     "[<zone>...]",                            "Temporarily postpone automatic zone-changing events." },
 	{ CMD_ZONE_THAW,       "[<zone>...]",                            "Dismiss zone freeze." },

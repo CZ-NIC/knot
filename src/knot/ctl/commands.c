@@ -352,31 +352,22 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-static int zone_ksk_roll(zone_t *zone, ctl_args_t *args)
+static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 {
-	UNUSED(args);
-
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (!conf_bool(&val)) {
 		return KNOT_ENOTSUP;
 	}
 
-	zone->flags |= ZONE_FORCE_KSK_ROLLOVER;
-	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
-
-	return KNOT_EOK;
-}
-
-static int zone_zsk_roll(zone_t *zone, ctl_args_t *args)
-{
-	UNUSED(args);
-
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
-	if (!conf_bool(&val)) {
-		return KNOT_ENOTSUP;
+	const char *keytype = args->data[KNOT_CTL_IDX_DATA];
+	if (strncasecmp(keytype, "ksk", 3) == 0) {
+		zone->flags |= ZONE_FORCE_KSK_ROLLOVER;
+	} else if (strncasecmp(keytype, "zsk", 3) == 0) {
+		zone->flags |= ZONE_FORCE_ZSK_ROLLOVER;
+	} else {
+		return KNOT_DNSSEC_EMISSINGKEYTYPE;
 	}
 
-	zone->flags |= ZONE_FORCE_ZSK_ROLLOVER;
 	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
 
 	return KNOT_EOK;
@@ -1364,10 +1355,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
-	case CTL_ZONE_KSK_ROLL:
-		return zones_apply(args, zone_ksk_roll);
-	case CTL_ZONE_ZSK_ROLL:
-		return zones_apply(args, zone_zsk_roll);
+	case CTL_ZONE_KEY_ROLL:
+		return zones_apply(args, zone_key_roll);
 	case CTL_ZONE_KSK_SBM:
 		return zones_apply(args, zone_ksk_sbm_confirm);
 	case CTL_ZONE_FREEZE:
@@ -1803,8 +1792,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_NOTIFY]     = { "zone-notify",     ctl_zone },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",      ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",       ctl_zone },
-	[CTL_ZONE_KSK_ROLL]   = { "zone-ksk-rollover",  ctl_zone },
-	[CTL_ZONE_ZSK_ROLL]   = { "zone-zsk-rollover",  ctl_zone },
+	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone },
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
 	[CTL_ZONE_FREEZE]     = { "zone-freeze",     ctl_zone },
 	[CTL_ZONE_THAW]       = { "zone-thaw",       ctl_zone },
