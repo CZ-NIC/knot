@@ -140,6 +140,9 @@ Delete old keys that are in state \(aqremoved\(aq.
 .TP
 \fBgenerate\-ksr\fP \fIperiod_secs\fP
 Print to stdout KeySigningRequest based on pre\-generated ZSKs for specified period.
+.TP
+\fBsign\-ksr\fP \fIksr_file\fP
+Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
 .UNINDENT
 .SS Generate arguments
 .sp
