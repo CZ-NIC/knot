@@ -118,6 +118,9 @@ Commands related to Offline KSK feature
 **generate-ksr** *period_secs*
   Print to stdout KeySigningRequest based on pre-generated ZSKs for specified period.
 
+**sign-ksr** *ksr_file*
+  Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
+
 Generate arguments
 ..................
 
