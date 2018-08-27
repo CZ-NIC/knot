@@ -16,6 +16,7 @@ Build-Depends-Indep:
 Build-Depends:
  debhelper (>= 9),
  latexmk,
+ libcap-ng-dev,
  libedit-dev,
  libfstrm-dev,
  libgnutls28-dev,
