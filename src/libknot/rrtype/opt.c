@@ -310,7 +310,7 @@ typedef struct {
 /*!
  * \brief Supported EDNS Client Subnet families.
  *
- * http://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
+ * https://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
  */
 static const ecs_family_t ECS_FAMILIES[] = {
 	ECS_INIT(AF_INET,  KNOT_ADDR_FAMILY_IPV4, struct sockaddr_in,  sin_addr),

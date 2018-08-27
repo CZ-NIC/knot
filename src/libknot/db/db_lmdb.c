@@ -155,7 +155,7 @@ static int dbase_open_env(struct lmdb_env *env, struct knot_db_lmdb_opts *opts)
 	 *
 	 * MDB assumes a unified buffer cache.
 	 *
-	 * See http://www.openldap.org/pub/hyc/mdm-paper.pdf section 3.1,
+	 * See https://www.openldap.org/pub/hyc/mdm-paper.pdf section 3.1,
 	 * references 17, 18, and 19.
 	 *
 	 * From Howard Chu: "This requirement can be relaxed in the

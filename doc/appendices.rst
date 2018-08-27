@@ -33,7 +33,7 @@ support.
      - RSA 1024-bit
      - RSA 2048-bit
      - RSA 4096-bit
-   * - `Feitian ePass 2003 <http://www.ftsafe.com/product/epass/epass2003>`_
+   * - `Feitian ePass 2003 <https://www.ftsafe.com/product/epass/epass2003>`_
      - |yes|
      - |no|
      - |no|
@@ -42,7 +42,7 @@ support.
      - |yes|
      - |yes|
      - |no|
-   * - `SafeNet Network HSM (Luna SA 4) <http://www.safenet-inc.com/data-encryption/hardware-security-modules-hsms/luna-hsms-key-management/luna-sa-network-hsm/>`_
+   * - `SafeNet Network HSM (Luna SA 4) <https://safenet.gemalto.com/data-encryption/hardware-security-modules-hsms/luna-hsms-key-management/luna-sa-network-hsm/>`_
      - |yes|
      - |no|
      - |no|
