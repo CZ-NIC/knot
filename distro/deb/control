@@ -168,14 +168,14 @@ Description: Clients provided with Knot DNS (kdig, knslookup, knsupdate)
  This package delivers various client programs related to DNS that are
  derived from the Knot DNS source tree.
  .
-  - [k]dig - query the DNS in various ways
-  - [k]nsupdate - perform dynamic updates (See RFC2136)
+  - kdig - query the DNS in various ways
+  - knsupdate - perform dynamic updates (See RFC2136)
  .
  Those clients were designed to be 1:1 compatible with BIND dnsutils,
  but they provide some enhancements, which are documented in respective
  manpages.
  .
- WARNING: [k]nslookup is not provided as it is considered obsolete.
+ WARNING: knslookup is not provided as it is considered obsolete.
 
 Package: knot-host
 Architecture: any
