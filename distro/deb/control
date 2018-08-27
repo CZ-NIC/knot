@@ -3,7 +3,8 @@ Section: net
 Priority: optional
 Maintainer: Knot DNS <knot-dns@labs.nic.cz>
 Uploaders:
- Tomas Krizek <tomas.krizek@nic.cz>
+ Tomas Krizek <tomas.krizek@nic.cz>,
+ Daniel Salzman <daniel.salzman@nic.cz>,
 Build-Depends-Indep:
  ghostscript,
  python3-sphinx,
@@ -30,6 +31,9 @@ Build-Depends:
  protobuf-c-compiler,
 Standards-Version: 4.2.0
 Homepage: https://www.knot-dns.cz/
+Vcs-Browser: https://gitlab.labs.nic.cz/knot/knot-dns
+Vcs-Git: https://gitlab.labs.nic.cz/knot/knot-dns.git
+Rules-Requires-Root: no
 
 Package: knot
 Architecture: any
