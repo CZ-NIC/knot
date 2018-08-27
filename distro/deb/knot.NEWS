@@ -5,7 +5,7 @@ knot (2.0.0-1) unstable; urgency=medium
   and the package will automatically save the existing configuration
   file to /var/backups/knot/<TIMESTAMP> directory and convert the
   configuration file into the new format.  The Knot DNS team worked
-  hard to make this transition as smooth as possilbe, but you are
+  hard to make this transition as smooth as possible, but you are
   strongly advised to check the results if everything went as
   expected.
 
