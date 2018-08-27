@@ -545,13 +545,13 @@ AC_SEARCH_LIBS([capng_apply], [cap-ng])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS_ONCE([cap-ng.h pthread_np.h signal.h sys/time.h sys/wait.h sys/uio.h])
+AC_CHECK_HEADERS_ONCE([cap-ng.h pthread_np.h sys/uio.h])
 
-# Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim poll \
-                posix_memalign pthread_setaffinity_np setgroups strlcat strlcpy \
-                initgroups accept4])
+# Checks for optional library functions.
+AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
+                pthread_setaffinity_np setgroups strlcat strlcpy sysctlbyname])
 
+# Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
   AC_MSG_ERROR([vasprintf support in the libc is required])])
 
