@@ -559,9 +559,25 @@ AS_IF([test "$enable_cap_ng" = yes],
   [AC_DEFINE([ENABLE_CAP_NG], [1], [POSIX capabilities available])]
 )
 
+save_LIBS="$LIBS"
+AC_SEARCH_LIBS([pthread_create], [pthread], [
+  pthread_LIBS="$ac_cv_search_pthread_create"
+  AC_SUBST([pthread_LIBS])
+],[
+  AC_MSG_ERROR([pthreads not found])
+])
+LIBS="$save_LIBS"
+
+save_LIBS="$LIBS"
+AC_SEARCH_LIBS([dlopen], [dl], [
+  dlopen_LIBS="$ac_cv_search_dlopen"
+  AC_SUBST([dlopen_LIBS])
+],[
+  AC_MSG_ERROR([dlopen not found])
+])
+LIBS="$save_LIBS"
+
 AC_SEARCH_LIBS([pow], [m], [], [AC_MSG_ERROR([math not found])])
-AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
-AC_SEARCH_LIBS([dlopen], [dl], [], [AC_MSG_ERROR([dlopen not found])])
 AC_SEARCH_LIBS([clock_gettime], [rt])
 
 # Checks for header files.
