@@ -31,3 +31,5 @@ int keymgr_del_all_old(kdnssec_ctx_t *ctx);
 int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto);
 
 int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file);
+
+int keymgr_import_skr(kdnssec_ctx_t *ctx, const char *skr_file);
