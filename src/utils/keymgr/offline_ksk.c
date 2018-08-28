@@ -310,7 +310,21 @@ static void ksr_sign_once(zs_scanner_t *sc)
 	}
 }
 
-static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_scanner_t *))
+static void skr_import_once(zs_scanner_t *sc)
+{
+	ksr_sign_ctx_t *ctx = sc->process.data;
+
+	sc->error.code = knot_rrset_add_rdata(ctx->rr, sc->r_data, sc->r_data_length, NULL);
+	ctx->rr->ttl = sc->r_ttl;
+
+	if (sc->error.code == KNOT_EOK && sc->buffer_length > 9 && strncmp((const char *)sc->buffer, " end SKR ", 9) == 0) {
+		knot_time_t for_time = atol((const char *)sc->buffer + 9);
+		sc->error.code = kasp_db_store_offline_rrsig(*ctx->kctx->kasp_db, for_time, ctx->rr);
+		knot_rdataset_clear(&ctx->rr->rrs, NULL);
+	}
+}
+
+static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_scanner_t *), uint16_t rrtype)
 {
 	zs_scanner_t sc = { 0 };
 	int ret = zs_init(&sc, "", KNOT_CLASS_IN, 0);
@@ -325,7 +339,7 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_sc
 	}
 
 	knot_rrset_t rr = { 0 };
-	knot_rrset_init(&rr, ctx->zone->dname, KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
+	knot_rrset_init(&rr, ctx->zone->dname, rrtype, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
 
 	ksr_sign_ctx_t pctx = { &rr, ctx };
 	ret = zs_set_processing(&sc, cb, NULL, &pctx);
@@ -348,5 +362,12 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_sc
 
 int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file)
 {
-	return read_ksr_skr(ctx, ksr_file, ksr_sign_once);
+	int ret = read_ksr_skr(ctx, ksr_file, ksr_sign_once, KNOT_RRTYPE_DNSKEY);
+	printf(";;");
+	return ret;
+}
+
+int keymgr_import_skr(kdnssec_ctx_t *ctx, const char *skr_file)
+{
+	return read_ksr_skr(ctx, skr_file, skr_import_once, KNOT_RRTYPE_RRSIG);
 }

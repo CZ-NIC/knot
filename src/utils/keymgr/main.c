@@ -85,6 +85,8 @@ static void print_help(void)
 	       "                 (syntax: generate-ksr <timestamp>)\n"
 	       "  sign-ksr      Read KeySigningRequest from a file, sign it and print SignedKeyResponse to stdout.\n"
 	       "                 (syntax: sign-ksr <ksr_file>)\n"
+	       "  import-skr    Import DNSKEY record signatures from a SignedKeyResponse.\n"
+	       "                 (syntax: import-skr <skr_file>)\n"
 	       "\n"
 	       "Key specification:\n"
 	       "  either the key tag (number) or [a prefix of] key ID.\n"
@@ -230,6 +232,9 @@ static int key_command(int argc, char *argv[], int optind)
 	} else if (strcmp(argv[1], "sign-ksr") == 0) {
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_sign_ksr(&kctx, argv[2]);
+	} else if (strcmp(argv[1], "import-skr") == 0) {
+		CHECK_MISSING_ARG("Input file not specified");
+		ret = keymgr_import_skr(&kctx, argv[2]);
 	} else {
 		printf("Wrong zone-key command: %s\n", argv[1]);
 		goto main_end;
