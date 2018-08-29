@@ -537,15 +537,36 @@ AS_IF([test "$enable_utilities" = "yes"], [
   ])
 ]) # Knot DNS utilities dependencies
 
+AS_IF([test "$enable_daemon" = "yes"], [
+  PKG_CHECK_MODULES([cap_ng], [cap-ng], [enable_cap_ng=yes], [
+    enable_cap_ng=no
+    AC_CHECK_HEADER([cap-ng.h], [
+      save_LIBS="$LIBS"
+      AC_SEARCH_LIBS([capng_apply], [cap-ng], [
+        enable_cap_ng=yes
+        cap_ng_LIBS="$ac_cv_search_capng_apply"
+        AC_SUBST([cap_ng_LIBS])
+      ])
+      LIBS="$save_LIBS"
+    ])
+  ])
+], [
+  enable_cap_ng=no
+  cap_ng_LIBS=
+])
+
+AS_IF([test "$enable_cap_ng" = yes],
+  [AC_DEFINE([ENABLE_CAP_NG], [1], [POSIX capabilities available])]
+)
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([dlopen], [dl])
 AC_SEARCH_LIBS([clock_gettime], [rt])
-AC_SEARCH_LIBS([capng_apply], [cap-ng])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS_ONCE([cap-ng.h pthread_np.h sys/uio.h])
+AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h])
 
 # Checks for optional library functions.
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
@@ -633,6 +654,7 @@ result_msg_base="  Knot DNS $VERSION
     Utilities with Dnstap:  ${enable_dnstap}
     MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}
+    POSIX capabilities      ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
     Ed25519 support:        ${enable_ed25519}
     Code coverage:          ${enable_code_coverage}
