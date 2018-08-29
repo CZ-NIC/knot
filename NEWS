@@ -1,3 +1,19 @@
+Knot DNS 2.7.2 (2018-08-29)
+===========================
+
+Improvements:
+-------------
+ - Keymgr list command displays also key size
+ - Kjournalprint displays total occupied size in the debug mode
+ - Server doesn't stop if failed to load a shared module from the module directory
+
+Bugfixes:
+---------
+ - Sometimes incorrect result from dnssec_nsec_bitmap_contains (libdnssec)
+ - Server can crash when loading zone file difference and zone-in-journal is set
+ - Incorrect treatment of specific queries in the module RRL
+ - Failed to link module Cookies as a shared library
+
 Knot DNS 2.7.1 (2018-08-14)
 ===========================
 
