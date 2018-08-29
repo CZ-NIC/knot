@@ -28,7 +28,7 @@ knotd_stdio_SOURCES = \
 
 knotd_stdio_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS)
 knotd_stdio_LDADD = $(top_builddir)/src/libknotd.la $(top_builddir)/src/libcontrib.la \
-                    $(liburcu_LIBS)
+                    $(liburcu_LIBS) $(cap_ng_LIBS)
 
 BUILT_SOURCES = knotd_wrap/main.c
 CLEANFILES = knotd_wrap/main.c

@@ -25,9 +25,9 @@
 #include <sys/stat.h>
 #include <urcu.h>
 
-#ifdef HAVE_CAP_NG_H
+#ifdef ENABLE_CAP_NG
 #include <cap-ng.h>
-#endif /* HAVE_CAP_NG_H */
+#endif
 
 #ifdef ENABLE_SYSTEMD
 #include <systemd/sd-daemon.h>
@@ -186,7 +186,7 @@ static void enable_signals(void)
 /*! \brief Drop POSIX 1003.1e capabilities. */
 static void drop_capabilities(void)
 {
-#ifdef HAVE_CAP_NG_H
+#ifdef ENABLE_CAP_NG
 	/* Drop all capabilities. */
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
 		capng_clear(CAPNG_SELECT_BOTH);
@@ -199,7 +199,7 @@ static void drop_capabilities(void)
 	} else {
 		log_info("process not allowed to set capabilities, skipping");
 	}
-#endif /* HAVE_CAP_NG_H */
+#endif /* ENABLE_CAP_NG */
 }
 
 /*! \brief Event loop listening for signals and remote commands. */
