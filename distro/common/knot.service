@@ -1,7 +1,7 @@
 [Unit]
 Description=Knot DNS server
 Wants=network-online.target
-After=syslog.target network-online.target
+After=network-online.target
 Documentation=man:knotd(8) man:knot.conf(5) man:knotc(8)
 
 [Service]
@@ -10,10 +10,10 @@ User=knot
 Group=knot
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_SETPCAP
 AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_SETPCAP
+ExecStartPre=/usr/sbin/knotc conf-check
 ExecStart=/usr/sbin/knotd
 ExecReload=/usr/sbin/knotc reload
 Restart=on-abort
-ExecStartPre=/usr/sbin/knotc conf-check
 
 [Install]
 WantedBy=multi-user.target
