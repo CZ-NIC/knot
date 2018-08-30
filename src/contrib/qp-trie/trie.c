@@ -209,7 +209,7 @@ static bool isbranch(const node_t *t)
 static tkey_t *tkey(const node_t *t)
 {
 	assert(!isbranch(t));
-	return (tkey_t *)(t->i & TMASK_LEAF);
+	return (tkey_t *)(uintptr_t)(t->i & TMASK_LEAF);
 }
 
 static trie_val_t *tvalp(node_t *t)
