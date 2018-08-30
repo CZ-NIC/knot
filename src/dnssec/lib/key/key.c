@@ -347,7 +347,23 @@ unsigned dnssec_key_get_size(const dnssec_key_t *key)
 	}
 
 	unsigned bits = 0;
-	gnutls_pubkey_get_pk_algorithm(key->public_key, &bits);
+	uint8_t algorithm = dnssec_key_get_algorithm(key);
+	switch (algorithm) {
+	case 13:
+		bits = 256;
+		break;
+	case 14:
+		bits = 384;
+		break;
+	case 15:
+		bits = 256;
+		break;
+	case 16:
+		bits = 456;
+		break;
+	default:
+		gnutls_pubkey_get_pk_algorithm(key->public_key, &bits);
+	}
 
 	return bits;
 }
