@@ -10,11 +10,11 @@ Name:		knot
 Version:	%{VERSION}
 Release:	1%{?dist}
 License:	GPLv3
-URL:		http://www.knot-dns.cz
+URL:		https://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
 
 %if 0%{GPG_CHECK}
-Source1:	http://public.nic.cz/files/knot-dns/%{name}-%{version}.tar.xz.asc
+Source1:	https://secure.nic.cz/files/knot-dns/%{name}-%{version}.tar.xz.asc
 # PGP keys used to sign upstream releases
 # Export with --armor using command from https://fedoraproject.org/wiki/PackagingDrafts:GPGSignatures
 # Don't forget to update %%prep section when adding/removing keys
