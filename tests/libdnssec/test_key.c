@@ -41,17 +41,6 @@ static void check_key_tag(dnssec_key_t *key, const key_parameters_t *params)
 
 static void check_key_size(dnssec_key_t *key, const key_parameters_t *params)
 {
-	switch (params->algorithm) {
-	case 13:
-	case 14:
-	case 15:
-	case 16:
-		if (!dnssec_key_can_sign(key)) {
-			skip("key size without private key known to be broken");
-			return;
-		}
-	}
-
 	ok(dnssec_key_get_size(key) == params->bit_size,
 	   "key size %u bits", params->bit_size);
 }
