@@ -45,8 +45,8 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 		zone->timers.next_parent_ds_q = now;
 	}
 
-	if (refresh->allow_nsec3resalt) {
-		zone->timers.last_resalt = time(NULL);
+	if (refresh->last_nsec3resalt) {
+		zone->timers.last_resalt = refresh->last_nsec3resalt;
 	}
 
 	zone_events_schedule_at(zone,
@@ -62,7 +62,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	zone_sign_reschedule_t resch = { 0 };
-	resch.allow_rollover = true;
+	zone_sign_roll_flags_t r_flags = KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL;
 	int sign_flags = 0;
 
 	if (zone->flags & ZONE_FORCE_RESIGN) {
@@ -76,7 +76,16 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	}
 
 	if (zone_events_get_time(zone, ZONE_EVENT_NSEC3RESALT) <= time(NULL)) {
-		resch.allow_nsec3resalt = true;
+		r_flags |= KEY_ROLL_DO_NSEC3RESALT;
+	}
+
+	if (zone->flags & ZONE_FORCE_KSK_ROLL) {
+		zone->flags &= ~ZONE_FORCE_KSK_ROLL;
+		r_flags |= KEY_ROLL_FORCE_KSK_ROLL;
+	}
+	if (zone->flags & ZONE_FORCE_ZSK_ROLL) {
+		zone->flags &= ~ZONE_FORCE_ZSK_ROLL;
+		r_flags |= KEY_ROLL_FORCE_ZSK_ROLL;
 	}
 
 	zone_update_t up;
@@ -85,7 +94,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	ret = knot_dnssec_zone_sign(&up, sign_flags, &resch);
+	ret = knot_dnssec_zone_sign(&up, sign_flags, r_flags, &resch);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}

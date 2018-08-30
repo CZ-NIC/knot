@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 int event_nsec3resalt(conf_t *conf, zone_t *zone)
 {
-	bool salt_changed = false;
+	knot_time_t salt_changed = 0;
 	knot_time_t next_resalt = 0;
 
 	kdnssec_ctx_t kctx = { 0 };
@@ -30,8 +30,7 @@ int event_nsec3resalt(conf_t *conf, zone_t *zone)
 	}
 
 	ret = knot_dnssec_nsec3resalt(&kctx, &salt_changed, &next_resalt);
-
-	if (ret == KNOT_EOK && salt_changed) {
+	if (ret == KNOT_EOK && salt_changed != 0) {
 		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 		zone->timers.last_resalt = kctx.now;
 	}
