@@ -11,7 +11,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <assert.h>
@@ -155,7 +155,7 @@ static int dbase_open_env(struct lmdb_env *env, struct knot_db_lmdb_opts *opts)
 	 *
 	 * MDB assumes a unified buffer cache.
 	 *
-	 * See http://www.openldap.org/pub/hyc/mdm-paper.pdf section 3.1,
+	 * See https://www.openldap.org/pub/hyc/mdm-paper.pdf section 3.1,
 	 * references 17, 18, and 19.
 	 *
 	 * From Howard Chu: "This requirement can be relaxed in the

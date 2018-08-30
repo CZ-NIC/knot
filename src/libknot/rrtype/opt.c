@@ -11,7 +11,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <assert.h>
@@ -310,7 +310,7 @@ typedef struct {
 /*!
  * \brief Supported EDNS Client Subnet families.
  *
- * http://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
+ * https://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
  */
 static const ecs_family_t ECS_FAMILIES[] = {
 	ECS_INIT(AF_INET,  KNOT_ADDR_FAMILY_IPV4, struct sockaddr_in,  sin_addr),

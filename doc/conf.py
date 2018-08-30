@@ -44,7 +44,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'Knot DNS'
 copyright = u'Copyright 2010–%d, CZ.NIC, z.s.p.o.' % time.localtime().tm_year
-author = 'CZ.NIC Labs <http://www.knot-dns.cz>'
+author = 'CZ.NIC Labs <https://www.knot-dns.cz>'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

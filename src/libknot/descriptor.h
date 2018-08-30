@@ -11,7 +11,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 /*!
  * \file
@@ -32,7 +32,7 @@
 /*!
  * \brief Resource record class codes.
  *
- * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ * https://www.iana.org/assignments/dns-parameters/dns-parameters.xml
  */
 enum knot_rr_class {
 	KNOT_CLASS_IN   =   1,
@@ -45,7 +45,7 @@ enum knot_rr_class {
  * \brief Resource record type constants.
  *
  * References:
- * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ * https://www.iana.org/assignments/dns-parameters/dns-parameters.xml
  * RFC 3597#4
  *
  * METATYPE: Contains DNS data that can't be in a zone file.
@@ -123,7 +123,7 @@ enum knot_rr_type {
  * \brief Some (OBSOLETE) resource record type constants.
  *
  * References:
- * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ * https://www.iana.org/assignments/dns-parameters/dns-parameters.xml
  * RFC 3597#4
  *
  * \note These records can contain compressed domain name in rdata so

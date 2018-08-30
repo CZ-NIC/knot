@@ -13,7 +13,7 @@
  *
  * Coverity Scan doesn't pick up modifications automatically. The model file
  * must be uploaded by an admin in the analysis settings of
- * http://scan.coverity.com/projects/200
+ * https://scan.coverity.com/projects/200
  */
 
 /* empty modeling file for now */

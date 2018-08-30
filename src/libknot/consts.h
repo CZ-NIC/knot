@@ -11,7 +11,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 /*!
  * \file
@@ -45,7 +45,7 @@
 /*!
  * \brief Address family numbers.
  *
- * http://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
+ * https://www.iana.org/assignments/address-family-numbers/address-family-numbers.xml
  */
 typedef enum {
 	KNOT_ADDR_FAMILY_IPV4 = 1, /*!< IP version 4. */
@@ -55,7 +55,7 @@ typedef enum {
 /*!
  * \brief DNS operation codes (OPCODEs).
  *
- * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ * https://www.iana.org/assignments/dns-parameters/dns-parameters.xml
  */
 typedef enum {
 	KNOT_OPCODE_QUERY  = 0, /*!< Standard query. */
@@ -68,7 +68,7 @@ typedef enum {
 /*!
  * \brief DNS reply codes (RCODEs).
  *
- * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ * https://www.iana.org/assignments/dns-parameters/dns-parameters.xml
  */
 typedef enum {
 	KNOT_RCODE_NOERROR   =  0, /*!< No error. */
@@ -116,7 +116,7 @@ enum knot_ds_algorithm_len
 /*!
  * \brief Constants for DNSSEC algorithm types.
  *
- * Source: http://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
+ * Source: https://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
  */
 typedef enum {
 	KNOT_DS_ALG_SHA1   = 1,
@@ -128,7 +128,7 @@ typedef enum {
 /*!
  * \brief DNSSEC algorithm numbers.
  *
- * http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
+ * https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
  */
 typedef enum {
 	KNOT_DNSSEC_ALG_RSAMD5             =   1,
