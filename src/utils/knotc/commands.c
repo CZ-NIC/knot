@@ -1188,6 +1188,7 @@ void print_commands(void)
 	       "Note:\n"
 	       " Use @ owner to denote the zone name.\n"
 	       " Empty or '--' <zone> parameter means all zones or all zones with a transaction.\n"
+	       " '--force' or '-f' may be used as the first <zone> parameter to force a single operation.\n"
 	       " Type <item> parameter in the form of <section>[<identifier>].<name>.\n"
 	       " (*) indicates a local operation which requires a configuration.\n");
 }

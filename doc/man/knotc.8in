@@ -223,6 +223,8 @@ Unset the item data in the transaction.
 .sp
 Empty or \fB\-\-\fP \fIzone\fP parameter means all zones or all zones with a transaction.
 .sp
+\fB\-f\fP or \fB\-\-force\fP may be used as the first \fIzone\fP parameter to force a single operation.
+.sp
 Use \fB@\fP \fIowner\fP to denote the zone name.
 .sp
 Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIname\fP].

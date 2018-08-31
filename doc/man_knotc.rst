@@ -201,6 +201,8 @@ Note
 
 Empty or **--** *zone* parameter means all zones or all zones with a transaction.
 
+**-f** or **--force** may be used as the first *zone* parameter to force a single operation.
+
 Use **@** *owner* to denote the zone name.
 
 Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *name*].
