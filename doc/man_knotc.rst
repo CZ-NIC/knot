@@ -207,6 +207,8 @@ Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *n
 
 (*) indicates a local operation which requires a configuration.
 
+Use **--force** or **-f** as the first parameter of any command to force it.
+
 Interactive mode
 ................
 
