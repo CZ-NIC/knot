@@ -54,12 +54,18 @@ static void update_next_resign(knot_time_t *next, knot_time_t now, knot_time_t k
 
 static void next_resign(knot_time_t *next, kdnssec_ctx_t *ctx)
 {
-	// next re-sign when rrsig expire or dnskey rrset changes
+	// next re-sign when rrsig expire or dnskey rrset changes or set of active KSKs changes
 	*next = ctx->now + ctx->policy->rrsig_lifetime - ctx->policy->rrsig_refresh_before;
 	for (int i = 0; i < ctx->zone->num_keys; i++) {
-		update_next_resign(next, ctx->now, ctx->zone->keys[i].timing.publish);
-		update_next_resign(next, ctx->now, ctx->zone->keys[i].timing.retire_active);
-		update_next_resign(next, ctx->now, ctx->zone->keys[i].timing.remove);
+		knot_kasp_key_t *k = &ctx->zone->keys[i];
+		update_next_resign(next, ctx->now, k->timing.publish);
+		update_next_resign(next, ctx->now, k->timing.retire_active);
+		update_next_resign(next, ctx->now, k->timing.remove);
+		if (k->is_ksk) {
+			update_next_resign(next, ctx->now, k->timing.ready);
+			update_next_resign(next, ctx->now, k->timing.active); // needed just if the key skips ready stage
+			update_next_resign(next, ctx->now, k->timing.retire);
+		}
 	}
 }
 
