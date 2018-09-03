@@ -38,9 +38,8 @@ master.zones[zone[0].name].zfile.update_soa()
 m_mtime0 = os.stat(m_zfpath).st_mtime
 t.sleep(1.5)
 master.reload()
+t.sleep(10)
 master.ctl("zone-thaw")
-
-t.sleep(4)
 
 # DDNS test
 m_mtime1 = os.stat(m_zfpath).st_mtime
