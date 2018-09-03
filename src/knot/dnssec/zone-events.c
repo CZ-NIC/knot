@@ -45,6 +45,9 @@ static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags, zone_
 
 	if (roll_flags & KEY_ROLL_DO_NSEC3RESALT) {
 		r = knot_dnssec_nsec3resalt(ctx, &reschedule->last_nsec3resalt, &reschedule->next_nsec3resalt);
+		if (r != KNOT_EOK) {
+			return r;
+		}
 	}
 
 	// perform key rollover if needed
