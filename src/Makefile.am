@@ -225,7 +225,7 @@ libknotus_la_SOURCES =				\
 	utils/common/token.c			\
 	utils/common/token.h
 
-libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libidn2_LIBS) \
+libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libidn2_CFLAGS) \
                         $(libidn_CFLAGS) $(libedit_CFLAGS) $(gnutls_CFLAGS)
 libknotus_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libknotus_la_LIBADD   = libcontrib.la libknot.la $(libidn2_LIBS) $(libidn_LIBS) \
