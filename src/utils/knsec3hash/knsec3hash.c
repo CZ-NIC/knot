@@ -25,7 +25,6 @@
 #include "contrib/strtonum.h"
 #include "libdnssec/error.h"
 #include "libdnssec/nsec.h"
-#include "libdnssec/shared/dname.h"
 #include "libdnssec/shared/hex.h"
 #include "libknot/libknot.h"
 
@@ -151,9 +150,8 @@ int main(int argc, char *argv[])
 		error("Cannot parse domain name.");
 		goto fail;
 	}
-	dname.size = dname_length(dname.data);
-
-	dname_normalize(dname.data);
+	knot_dname_to_lower(dname.data);
+	dname.size = knot_dname_size(dname.data);
 
 	int r = dnssec_nsec3_hash(&dname, &nsec3_params, &digest);
 	if (r != DNSSEC_EOK) {
