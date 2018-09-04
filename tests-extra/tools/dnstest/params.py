@@ -42,7 +42,7 @@ debug = False
 # KNOT_TEST_VALGRIND - valgrind binary if defined.
 valgrind_bin = get_binary("KNOT_TEST_VALGRIND", "valgrind")
 # KNOT_TEST_VALGRIND_FLAGS - valgrind flags.
-# Server settings: "--leak-check=full --track-origins=yes --vgdb=yes --verbose --trace-children=yes --trace-children-skip=/usr/*sh,/bin/*sh"
+# For nightly testing add --track-origins=yes
 valgrind_flags = get_param("KNOT_TEST_VALGRIND_FLAGS",
                            "--leak-check=full --show-leak-kinds=all --vgdb=yes --verbose --trace-children=yes --trace-children-skip=/usr/*sh,/bin/*sh")
 # KNOT_TEST_GDB - gdb binary.
