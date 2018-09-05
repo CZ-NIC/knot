@@ -21,6 +21,7 @@
 #include "libdnssec/key.h"
 #include "libdnssec/keytag.h"
 #include "libdnssec/sign.h"
+#include "knot/common/log.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
@@ -281,26 +282,21 @@ static bool can_have_offline_rrsig(const knot_rrset_t *rr, const knot_dname_t *z
 	return (rr->type == KNOT_RRTYPE_DNSKEY && knot_dname_cmp(rr->owner, zone_apex) == 0);
 }
 
-static bool load_offline_rrsig(const knot_rrset_t *covered,
+static int load_offline_rrsig(const knot_rrset_t *covered,
                                knot_rrset_t *rrsig,
                                const kdnssec_ctx_t *ctx)
 {
         knot_rrset_init_empty(rrsig);
 
 	if (!can_have_offline_rrsig(covered, ctx->zone->dname)) {
-		return false;
+		return KNOT_EOK;
 	}
 
 	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, covered->owner, ctx->now, rrsig);
-	printf("load offline rrsig (%s)\n", knot_strerror(ret));
-	if (ret != KNOT_EOK) {
-		if (ret != KNOT_ENOENT) {
-			// TODO warning
-		}
-		return false;
+	if (ret == KNOT_ENOENT) {
+		ret = KNOT_EOK;
 	}
-
-	return true;
+	return ret;
 }
 
 /*!
@@ -324,10 +320,13 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	assert(zone_keys);
 	assert(changeset);
 
-	int result = KNOT_EOK;
 	knot_rrset_t to_add, offline_rrsigs;
 	knot_rrset_init_empty(&to_add);
-	(void)load_offline_rrsig(covered, &offline_rrsigs, dnssec_ctx);
+	int result = load_offline_rrsig(covered, &offline_rrsigs, dnssec_ctx);
+	if (result != KNOT_EOK) {
+		log_zone_warning(dnssec_ctx->zone->dname, "DNSSEC, failed to load offline DNSKEY RRSIG (%s)",
+				 knot_strerror(result));
+	}
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const zone_key_t *key = &zone_keys->keys[i];
@@ -345,7 +344,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 		uint16_t at_offline;
 		if (valid_signature_exists(covered, &offline_rrsigs, key->key, key->ctx, dnssec_ctx, &at_offline)) {
-			printf("using offline RRSIG.\n");
+			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");
 			knot_rdata_t *offline_rd = knot_rdataset_at(&offline_rrsigs.rrs, at_offline);
 			result = knot_rrset_add_rdata(&to_add, offline_rd->data, offline_rd->len, NULL);
 			if (result != KNOT_EOK) {
