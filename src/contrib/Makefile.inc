@@ -3,7 +3,7 @@ noinst_LTLIBRARIES += libcontrib.la
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 if !HAVE_LMDB
-libcontrib_la_LDFLAGS += $(pthread_LIBS)
+libcontrib_la_LIBADD   = $(pthread_LIBS)
 endif !HAVE_LMDB
 
 EXTRA_DIST += \
@@ -72,7 +72,7 @@ if HAVE_LIBDNSTAP
 noinst_LTLIBRARIES += libdnstap.la
 
 libdnstap_la_CPPFLAGS = $(AM_CPPFLAGS) $(DNSTAP_CFLAGS)
-libdnstap_la_LDFLAGS  = $(AM_LDFLAGS) $(DNSTAP_LIBS)
+libdnstap_la_LIBADD   = $(DNSTAP_LIBS)
 
 SUFFIXES = .proto .pb-c.c .pb-c.h
 
