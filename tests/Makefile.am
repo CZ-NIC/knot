@@ -40,8 +40,6 @@ libtap_la_SOURCES = \
 
 EXTRA_PROGRAMS = tap/runtests
 
-tap_runtests_LDADD =
-
 check_PROGRAMS = \
 	contrib/test_base32hex			\
 	contrib/test_base64			\
