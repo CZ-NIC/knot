@@ -71,10 +71,10 @@ knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 knsupdate_LDADD        = libknotus.la libzscanner.la
 
 if HAVE_DNSTAP
-kdig_LDADD             += $(DNSTAP_LIBS) libdnstap.la
-khost_LDADD            += $(DNSTAP_LIBS) libdnstap.la
 kdig_CPPFLAGS          += $(DNSTAP_CFLAGS)
+kdig_LDADD             += $(DNSTAP_LIBS) libdnstap.la
 khost_CPPFLAGS         += $(DNSTAP_CFLAGS)
+khost_LDADD            += $(DNSTAP_LIBS) libdnstap.la
 endif HAVE_DNSTAP
 endif HAVE_UTILS
 
