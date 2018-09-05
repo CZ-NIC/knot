@@ -119,6 +119,11 @@ for keyparm in keys_list.splitlines():
     parm2 = keyparm.replace("-", "_").split()[6:]
     Keymgr.run_check(signer.confile, ZONE, "import-pem", pem, parm1, *parm2)
 
+# start server
+t.start()
+knot.zone_wait(zone)
+check_zone(knot, zone, 2, 1, 1, "init")
+
 # delete KSKs in "knot" and ZSKs in "signer"
 os.remove(knot.keydir + "/keys/" + key_ksk1 + ".pem")
 os.remove(knot.keydir + "/keys/" + key_ksk2 + ".pem")
@@ -133,14 +138,10 @@ writef(KSR, out)
 _, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
 writef(SKR, out)
 Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
+knot.ctl("zone-sign")
 
 TICK_SAFE = TICK + TICK // 2;
-
-# run it and see if the signing and rollovers work well
-t.start()
-knot.zone_wait(zone)
-check_zone(knot, zone, 2, 1, 1, "init")
-
+# see if the signing and rollovers work well
 wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE)
 check_zone(knot, zone, 3, 1, 1, "KSK rollover: publish")
 
