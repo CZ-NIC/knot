@@ -2,6 +2,9 @@ noinst_LTLIBRARIES += libcontrib.la
 
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
+if !HAVE_LMDB
+libcontrib_la_LDFLAGS += $(pthread_LIBS)
+endif !HAVE_LMDB
 
 EXTRA_DIST += \
 	contrib/licenses/0BSD			\
