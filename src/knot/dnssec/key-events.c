@@ -584,6 +584,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		} else {
 			ret = generate_ksk(ctx, 0, false);
 			if (ret == KNOT_EOK) {
+				reschedule->keys_changed = true;
 				log_zone_info(ctx->zone->dname, "DNSSEC, KSK rollover started");
 			}
 		}
@@ -597,6 +598,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		} else {
 			ret = generate_key(ctx, DNSKEY_GENERATE_ZSK, 0, false);
 			if (ret == KNOT_EOK) {
+				reschedule->keys_changed = true;
 				log_zone_info(ctx->zone->dname, "DNSSEC, ZSK rollover started");
 			}
 		}
