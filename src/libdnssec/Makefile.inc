@@ -22,9 +22,8 @@ libshared_la_SOURCES = \
 	libdnssec/shared/shared.h
 
 libdnssec_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS)
-libdnssec_la_LDFLAGS  = $(AM_LDFLAGS) $(libdnssec_VERSION_INFO) $(gnutls_LIBS) \
-                        $(LDFLAG_EXCLUDE_LIBS)
-libdnssec_la_LIBADD   = libshared.la
+libdnssec_la_LDFLAGS  = $(AM_LDFLAGS) $(libdnssec_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS)
+libdnssec_la_LIBADD   = libshared.la $(gnutls_LIBS)
 
 include_libdnssecdir = $(includedir)/libdnssec
 include_libdnssec_HEADERS = \
