@@ -22,9 +22,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "contrib/files.h"
 #include "libdnssec/binary.h"
 #include "libdnssec/error.h"
-#include "libdnssec/shared/fs.h"
 #include "libdnssec/key.h"
 #include "libdnssec/keystore.h"
 #include "libdnssec/keystore/internal.h"
@@ -161,7 +161,7 @@ static int pkcs8_dir_init(void *handle, const char *path)
 		return DNSSEC_EINVAL;
 	}
 
-	return fs_mkdir(path, DIR_INIT_MODE, true);
+	return make_dir(path, DIR_INIT_MODE, true);
 }
 
 static int pkcs8_dir_open(void *_handle, const char *config)

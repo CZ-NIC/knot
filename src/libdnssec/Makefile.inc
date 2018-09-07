@@ -11,8 +11,6 @@ libshared_la_SOURCES = \
 	libdnssec/shared/binary_wire.h		\
 	libdnssec/shared/dname.c		\
 	libdnssec/shared/dname.h		\
-	libdnssec/shared/fs.c			\
-	libdnssec/shared/fs.h			\
 	libdnssec/shared/hex.c			\
 	libdnssec/shared/hex.h			\
 	libdnssec/shared/keyid_gnutls.c		\
