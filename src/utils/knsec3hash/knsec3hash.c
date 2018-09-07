@@ -22,10 +22,10 @@
 #include <string.h>
 
 #include "contrib/base32hex.h"
+#include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "libdnssec/error.h"
 #include "libdnssec/nsec.h"
-#include "libdnssec/shared/hex.h"
 #include "libknot/libknot.h"
 
 #define PROGRAM_NAME "knsec3hash"
@@ -57,7 +57,8 @@ static int str_to_salt(const char *str, dnssec_binary_t *salt)
 		salt->size = 0;
 		return DNSSEC_EOK;
 	} else {
-		return hex_to_bin(str, salt);
+		salt->data = hex_to_bin(str, &salt->size);
+		return (salt->data != NULL ? DNSSEC_EOK : DNSSEC_EINVAL);
 	}
 }
 

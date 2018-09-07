@@ -20,12 +20,12 @@
 #include <gnutls/x509.h>
 #include <string.h>
 
+#include "contrib/string.h"
 #include "libdnssec/binary.h"
 #include "libdnssec/error.h"
 #include "libdnssec/keyid.h"
 #include "libdnssec/shared/keyid_gnutls.h"
 #include "libdnssec/shared/shared.h"
-#include "libdnssec/shared/hex.h"
 
 /*!
  * Get binary key ID from a key (public or private).
@@ -70,7 +70,12 @@ static int keyid_hex(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, char **i
 		return r;
 	}
 
-	return bin_to_hex(&bin, id);
+	*id = bin_to_hex(bin.data, bin.size);
+	if (*id == NULL) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return DNSSEC_EOK;
 }
 
 int keyid_x509(gnutls_x509_privkey_t key, dnssec_binary_t *id)
