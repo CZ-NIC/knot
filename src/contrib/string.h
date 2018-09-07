@@ -80,3 +80,13 @@ int const_time_memcmp(const void *s1, const void *s2, size_t n);
  * \return Pointer to the memory.
  */
 void *memzero(void *s, size_t n);
+
+/*!
+ * \brief Convert binary data to hexadecimal string.
+ */
+char *bin_to_hex(const uint8_t *bin, size_t bin_len);
+
+/*!
+ * \brief Convert hex encoded string to binary data.
+ */
+uint8_t *hex_to_bin(const char *hex, size_t *out_len);

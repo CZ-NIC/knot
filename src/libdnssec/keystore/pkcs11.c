@@ -17,8 +17,8 @@
 #include <gnutls/gnutls.h>
 #include <pthread.h>
 
+#include "contrib/string.h"
 #include "libdnssec/error.h"
-#include "libdnssec/shared/hex.h"
 #include "libdnssec/keyid.h"
 #include "libdnssec/shared/keyid_gnutls.h"
 #include "libdnssec/keystore.h"
@@ -213,9 +213,8 @@ static char *get_object_id(gnutls_pkcs11_obj_t object)
 		return NULL;
 	}
 
-	const dnssec_binary_t bin = { .data = buffer, .size = sizeof(buffer) };
-	char *id = NULL;
-	if (bin_to_hex(&bin, &id) != DNSSEC_EOK) {
+	char *id = bin_to_hex(buffer, sizeof(buffer));
+	if (id == NULL) {
 		return NULL;
 	}
 
@@ -274,9 +273,8 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 		return DNSSEC_KEY_GENERATE_ERROR;
 	}
 
-	char *id = NULL;
-	r = bin_to_hex(&cka_id, &id);
-	if (r != DNSSEC_EOK) {
+	char *id = bin_to_hex(cka_id.data, cka_id.size);
+	if (id == NULL) {
 		return DNSSEC_ENOMEM;
 	}
 
@@ -358,7 +356,12 @@ static int pkcs11_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_p
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	return bin_to_hex(&id, id_ptr);
+	*id_ptr = bin_to_hex(id.data, id.size);
+	if (id_ptr == NULL) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return DNSSEC_EOK;
 }
 
 static int pkcs11_remove_key(void *_ctx, const char *id)

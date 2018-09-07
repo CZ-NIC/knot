@@ -66,7 +66,7 @@ kdig_LDADD             = libknotus.la
 khost_CPPFLAGS         = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 khost_LDADD            = libknotus.la
 knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS)
-knsec3hash_LDADD       = libcontrib.la libdnssec.la libknot.la libshared.la
+knsec3hash_LDADD       = libcontrib.la libdnssec.la libknot.la
 knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 knsupdate_LDADD        = libknotus.la libzscanner.la
 
