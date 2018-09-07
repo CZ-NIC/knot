@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -109,4 +110,76 @@ static volatile memset_t volatile_memset = memset;
 void *memzero(void *s, size_t n)
 {
 	return volatile_memset(s, 0, n);
+}
+
+static const char BIN_TO_HEX[] = {
+	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
+};
+
+char *bin_to_hex(const uint8_t *bin, size_t bin_len)
+{
+	if (bin == NULL) {
+		return NULL;
+	}
+
+	size_t hex_size = bin_len * 2;
+	char *hex = malloc(hex_size + 1);
+	if (hex == NULL) {
+		return NULL;
+	}
+
+	for (size_t i = 0; i < bin_len; i++) {
+		hex[2 * i]     = BIN_TO_HEX[bin[i] >> 4];
+		hex[2 * i + 1] = BIN_TO_HEX[bin[i] & 0x0f];
+	}
+	hex[hex_size] = '\0';
+
+	return hex;
+}
+
+/*!
+ * Convert HEX character to numeric value (assumes valid input).
+ */
+static uint8_t hex_to_number(const char hex)
+{
+	if (hex >= '0' && hex <= '9') {
+		return hex - '0';
+	} else if (hex >= 'a' && hex <= 'f') {
+		return hex - 'a' + 10;
+	} else {
+		assert(hex >= 'A' && hex <= 'F');
+		return hex - 'A' + 10;
+	}
+}
+
+uint8_t *hex_to_bin(const char *hex, size_t *out_len)
+{
+	if (hex == NULL || out_len == NULL) {
+		return NULL;
+	}
+
+	size_t hex_len = strlen(hex);
+	if (hex_len % 2 != 0) {
+		return NULL;
+	}
+
+	size_t bin_len = hex_len / 2;
+	uint8_t *bin = malloc(bin_len + 1);
+	if (bin == NULL) {
+		return NULL;
+	}
+
+	for (size_t i = 0; i < bin_len; i++) {
+		if (!is_xdigit(hex[2 * i]) || !is_xdigit(hex[2 * i + 1])) {
+			free(bin);
+			return NULL;
+		}
+		uint8_t high = hex_to_number(hex[2 * i]);
+		uint8_t low  = hex_to_number(hex[2 * i + 1]);
+		bin[i] = high << 4 | low;
+	}
+
+	*out_len = bin_len;
+
+	return bin;
 }
