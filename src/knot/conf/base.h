@@ -146,7 +146,7 @@ typedef enum {
 	CONF_UPD_FNONE    = 0,      /*!< Empty flag. */
 	CONF_UPD_FNOFREE  = 1 << 0, /*!< Disable auto-free of previous config. */
 	CONF_UPD_FMODULES = 1 << 1, /*!< Reuse previous global modules. */
-	CONF_UPD_FCONFIO  = 1 << 2, /*!< Reuse previous cofio reload context. */
+	CONF_UPD_FCONFIO  = 1 << 2, /*!< Reuse previous confio reload context. */
 } conf_update_flag_t;
 
 /*!
