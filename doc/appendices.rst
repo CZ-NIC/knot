@@ -69,6 +69,15 @@ support.
      - |yes|
      - |yes|
      - |yes|
+   * - `Utimaco SecurityServer (V4) <https://hsm.utimaco.com/products-hardware-security-modules/general-purpose-hsm/securityserver-cse/>`_
+     - |yes|
+     - |yes|
+     - |no|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
 
 .. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
