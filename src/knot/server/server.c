@@ -662,7 +662,7 @@ int server_reload(server_t *server)
 	}
 
 	conf_update_flag_t upd_flags = CONF_UPD_FNOFREE;
-	if (full) {
+	if (!full) {
 		upd_flags |= CONF_UPD_FCONFIO;
 	}
 	if (reuse_modules) {
