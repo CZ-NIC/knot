@@ -69,6 +69,15 @@ support.
      - |yes|
      - |yes|
      - |yes|
+   * - `Utimaco SecurityServer (V4) <https://hsm.utimaco.com/products-hardware-security-modules/general-purpose-hsm/securityserver-cse/>`_ [#fn-utimaco]_
+     - |yes|
+     - |yes|
+     - |no|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
+     - |yes|
 
 .. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
@@ -80,6 +89,8 @@ support.
      - |yes|
      - |yes|
      - |no|
+
+.. [#fn-utimaco] Requires setting the number of background workers to 1!
 
 The following table summarizes supported DNSSEC algorithm numbers and minimal
 GnuTLS library version required. Any algorithm may work with older library,
