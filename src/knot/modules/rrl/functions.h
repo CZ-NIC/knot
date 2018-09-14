@@ -90,15 +90,15 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate);
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
  *
  * \param rrl RRL table.
- * \param a Source address.
+ * \param remote Source address.
  * \param req RRL request (containing resp., flags and question).
  * \param zone Zone name related to the response (or NULL).
  * \param mod Query module (needed for logging).
  * \retval KNOT_EOK if passed.
  * \retval KNOT_ELIMIT when the limit is reached.
  */
-int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
-              const knot_dname_t *zone, knotd_mod_t *mod);
+int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
+              rrl_req_t *req, const knot_dname_t *zone, knotd_mod_t *mod);
 
 /*!
  * \brief Roll a dice whether answer slips or not.
