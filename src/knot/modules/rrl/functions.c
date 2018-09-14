@@ -155,7 +155,7 @@ static int rrl_clsname(uint8_t *dst, size_t maxlen, uint8_t cls, rrl_req_t *req,
 	return knot_dname_to_wire(dst, name, maxlen);
 }
 
-static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_storage *a,
+static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_storage *remote,
                         rrl_req_t *req, const knot_dname_t *name)
 {
 	/* Class */
@@ -164,19 +164,19 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	int blklen = sizeof(cls);
 
 	/* Address (in network byteorder, adjust masks). */
-	uint64_t nb = 0;
-	if (a->ss_family == AF_INET6) {
-		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)a;
-		nb = *((uint64_t *)(&ipv6->sin6_addr)) & RRL_V6_PREFIX;
+	uint64_t netblk = 0;
+	if (remote->ss_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
+		netblk = *((uint64_t *)(&ipv6->sin6_addr)) & RRL_V6_PREFIX;
 	} else {
-		struct sockaddr_in *ipv4 = (struct sockaddr_in *)a;
-		nb = ((uint32_t)ipv4->sin_addr.s_addr) & RRL_V4_PREFIX;
+		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
+		netblk = ((uint32_t)ipv4->sin_addr.s_addr) & RRL_V4_PREFIX;
 	}
-	if (blklen + sizeof(nb) > maxlen) {
+	if (blklen + sizeof(netblk) > maxlen) {
 		return KNOT_ESPACE;
 	}
-	memcpy(dst + blklen, (void *)&nb, sizeof(nb));
-	blklen += sizeof(nb);
+	memcpy(dst + blklen, (void *)&netblk, sizeof(netblk));
+	blklen += sizeof(netblk);
 
 	/* Name */
 	uint16_t *len_pos = (uint16_t *)(dst + blklen);
@@ -366,20 +366,20 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 }
 
 /*! \brief Get bucket for current combination of parameters. */
-static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
+static rrl_item_t *rrl_hash(rrl_table_t *rrl, const struct sockaddr_storage *remote,
                             rrl_req_t *req, const knot_dname_t *zone, uint32_t stamp,
                             int *lock)
 {
 	uint8_t buf[RRL_CLSBLK_MAXLEN];
-	int len = rrl_classify(buf, sizeof(buf), a, req, zone);
+	int len = rrl_classify(buf, sizeof(buf), remote, req, zone);
 	if (len < 0) {
 		return NULL;
 	}
 
-	uint32_t id = SipHash24(&t->key, buf, len) % t->size;
+	uint32_t id = SipHash24(&rrl->key, buf, len) % rrl->size;
 
 	/* Lock for lookup. */
-	pthread_mutex_lock(&t->ll);
+	pthread_mutex_lock(&rrl->ll);
 
 	/* Find an exact match in <id, id + HOP_LEN). */
 	uint8_t *qname = buf + sizeof(uint8_t) + sizeof(uint64_t);
@@ -388,33 +388,33 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
 	rrl_item_t match = {
 		.hop = 0,
 		.netblk = netblk,
-		.ntok = t->rate * RRL_CAPACITY,
+		.ntok = rrl->rate * RRL_CAPACITY,
 		.cls = buf[0],
 		.flags = RRL_BF_NULL,
-		.qname = SipHash24(&t->key, qname + 1, qname[0]),
+		.qname = SipHash24(&rrl->key, qname + 1, qname[0]),
 		.time = stamp
 	};
 
-	unsigned d = find_match(t, id, &match);
+	unsigned d = find_match(rrl, id, &match);
 	if (d > HOP_LEN) { /* not an exact match, find free element [f] */
-		d = find_free(t, id, stamp);
+		d = find_free(rrl, id, stamp);
 	}
 
 	/* Reduce distance to fit <id, id + HOP_LEN) */
-	unsigned f = (id + d) % t->size;
+	unsigned f = (id + d) % rrl->size;
 	while (d >= HOP_LEN) {
-		d = reduce_dist(t, id, d, &f);
+		d = reduce_dist(rrl, id, d, &f);
 	}
 
 	/* Assign granular lock and unlock lookup. */
-	*lock = f % t->lk_count;
-	rrl_lock(t, *lock);
-	pthread_mutex_unlock(&t->ll);
+	*lock = f % rrl->lk_count;
+	rrl_lock(rrl, *lock);
+	pthread_mutex_unlock(&rrl->ll);
 
 	/* found free elm 'k' which is in <id, id + HOP_LEN) */
-	t->arr[id].hop |= (1 << d);
-	rrl_item_t *b = t->arr + f;
-	assert(f == (id+d) % t->size);
+	rrl->arr[id].hop |= (1 << d);
+	rrl_item_t *b = rrl->arr + f;
+	assert(f == (id+d) % rrl->size);
 
 	/* Inspect bucket state. */
 	unsigned hop = b->hop;
@@ -427,7 +427,7 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
 		if (!(b->flags & RRL_BF_SSTART)) {
 			memcpy(b, &match, sizeof(rrl_item_t));
 			b->hop = hop;
-			b->ntok = t->rate + t->rate / RRL_SSTART;
+			b->ntok = rrl->rate + rrl->rate / RRL_SSTART;
 			b->flags |= RRL_BF_SSTART;
 		}
 	}
@@ -435,10 +435,10 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
 	return b;
 }
 
-int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
-              const knot_dname_t *zone, knotd_mod_t *mod)
+int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
+              rrl_req_t *req, const knot_dname_t *zone, knotd_mod_t *mod)
 {
-	if (!rrl || !req || !a) {
+	if (!rrl || !req || !remote) {
 		return KNOT_EINVAL;
 	}
 
@@ -446,8 +446,8 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 	int ret = KNOT_EOK;
 	int lock = -1;
 	uint32_t now = time_now().tv_sec;
-	rrl_item_t *b = rrl_hash(rrl, a, req, zone, now, &lock);
-	if (!b) {
+	rrl_item_t *bucket = rrl_hash(rrl, remote, req, zone, now, &lock);
+	if (!bucket) {
 		if (lock > -1) {
 			rrl_unlock(rrl, lock);
 		}
@@ -455,41 +455,41 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 	}
 
 	/* Calculate rate for dT */
-	uint32_t dt = now - b->time;
+	uint32_t dt = now - bucket->time;
 	if (dt > RRL_CAPACITY) {
 		dt = RRL_CAPACITY;
 	}
 	/* Visit bucket. */
-	b->time = now;
+	bucket->time = now;
 	if (dt > 0) { /* Window moved. */
 
 		/* Check state change. */
-		if ((b->ntok > 0 || dt > 1) && (b->flags & RRL_BF_ELIMIT)) {
-			b->flags &= ~RRL_BF_ELIMIT;
-			rrl_log_state(mod, a, b->flags, b->cls);
+		if ((bucket->ntok > 0 || dt > 1) && (bucket->flags & RRL_BF_ELIMIT)) {
+			bucket->flags &= ~RRL_BF_ELIMIT;
+			rrl_log_state(mod, remote, bucket->flags, bucket->cls);
 		}
 
 		/* Add new tokens. */
 		uint32_t dn = rrl->rate * dt;
-		if (b->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
-			b->flags &= ~RRL_BF_SSTART;
+		if (bucket->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
+			bucket->flags &= ~RRL_BF_SSTART;
 		}
-		b->ntok += dn;
-		if (b->ntok > RRL_CAPACITY * rrl->rate) {
-			b->ntok = RRL_CAPACITY * rrl->rate;
+		bucket->ntok += dn;
+		if (bucket->ntok > RRL_CAPACITY * rrl->rate) {
+			bucket->ntok = RRL_CAPACITY * rrl->rate;
 		}
 	}
 
 	/* Last item taken. */
-	if (b->ntok == 1 && !(b->flags & RRL_BF_ELIMIT)) {
-		b->flags |= RRL_BF_ELIMIT;
-		rrl_log_state(mod, a, b->flags, b->cls);
+	if (bucket->ntok == 1 && !(bucket->flags & RRL_BF_ELIMIT)) {
+		bucket->flags |= RRL_BF_ELIMIT;
+		rrl_log_state(mod, remote, bucket->flags, bucket->cls);
 	}
 
 	/* Decay current bucket. */
-	if (b->ntok > 0) {
-		--b->ntok;
-	} else if (b->ntok == 0) {
+	if (bucket->ntok > 0) {
+		--bucket->ntok;
+	} else if (bucket->ntok == 0) {
 		ret = KNOT_ELIMIT;
 	}
 
