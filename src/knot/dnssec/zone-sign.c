@@ -854,6 +854,39 @@ int knot_zone_sign(zone_update_t *update,
 	return result;
 }
 
+keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
+					      zone_keyset_t *zone_keys)
+{
+	keyptr_dynarray_t r = { 0 };
+	zone_key_t *ksk_for_cds = NULL;
+	unsigned crp = ctx->policy->child_records_publish;
+	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ? 0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
+
+	for (int i = 0; i < zone_keys->count; i++) {
+		zone_key_t *key = &zone_keys->keys[i];
+		// determine which key (if any) will be the one for CDS/CDNSKEY
+		if (key->is_ksk && key->cds_priority > kfc_prio) {
+			ksk_for_cds = key;
+			kfc_prio = key->cds_priority;
+		}
+	}
+
+	for (int i = 0; i < zone_keys->count; i++) {
+		zone_key_t *key = &zone_keys->keys[i];
+		// determine which key (if any) will be the one for CDS/CDNSKEY
+		if (key->is_ksk && key->cds_priority > kfc_prio) {
+			ksk_for_cds = key;
+			kfc_prio = key->cds_priority;
+		}
+	}
+
+	if (ksk_for_cds != NULL) {
+		keyptr_dynarray_add(&r, &ksk_for_cds);
+	}
+
+	return r;
+}
+
 int knot_zone_sign_update_dnskeys(zone_update_t *update,
                                   zone_keyset_t *zone_keys,
                                   const kdnssec_ctx_t *dnssec_ctx)
@@ -869,6 +902,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	knot_rrset_t *add_dnskeys = NULL;
 	knot_rrset_t *add_cdnskeys = NULL;
 	knot_rrset_t *add_cdss = NULL;
+	keyptr_dynarray_t kcdnskeys = { 0 };
 	uint32_t dnskey_ttl = dnssec_ctx->policy->dnskey_ttl;
 	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa)) {
@@ -902,31 +936,23 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		ret = KNOT_ENOMEM;
 		CHECK_RET;
 	}
-	zone_key_t *ksk_for_cds = NULL;
-	unsigned crp = dnssec_ctx->policy->child_records_publish;
-	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ? 0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
 	for (int i = 0; i < zone_keys->count; i++) {
 		zone_key_t *key = &zone_keys->keys[i];
 		if (key->is_public) {
 			ret = rrset_add_zone_key(add_dnskeys, key);
 			CHECK_RET;
 		}
-
-		// determine which key (if any) will be the one for CDS/CDNSKEY
-		if (key->is_ksk && key->cds_priority > kfc_prio) {
-			ksk_for_cds = key;
-			kfc_prio = key->cds_priority;
-		}
 	}
 
-	if (ksk_for_cds != NULL) {
-		ret = rrset_add_zone_key(add_cdnskeys, ksk_for_cds);
+	kcdnskeys = knot_zone_sign_get_cdnskeys(dnssec_ctx, zone_keys);
+	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
+		ret = rrset_add_zone_key(add_cdnskeys, *ksk_for_cds);
 		CHECK_RET;
-		ret = rrset_add_zone_ds(add_cdss, ksk_for_cds);
+		ret = rrset_add_zone_ds(add_cdss, *ksk_for_cds);
 		CHECK_RET;
 	}
 
-	if (crp == CHILD_RECORDS_EMPTY) {
+	if (dnssec_ctx->policy->child_records_publish == CHILD_RECORDS_EMPTY) {
 		const uint8_t cdnskey_empty[5] = { 0, 0, 3, 0, 0 };
 		const uint8_t cds_empty[5] = { 0, 0, 0, 0, 0 };
 		ret = knot_rrset_add_rdata(add_cdnskeys, cdnskey_empty,
@@ -960,6 +986,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 #undef CHECK_RET
 
 cleanup:
+	keyptr_dynarray_free(&kcdnskeys);
 	knot_rrset_free(add_dnskeys, NULL);
 	knot_rrset_free(add_cdnskeys, NULL);
 	knot_rrset_free(add_cdss, NULL);
