@@ -415,16 +415,16 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 		switch (operation) {
 		case OPERATION_QUERY:
 			knotd_mod_stats_incr(mod, CTR_REQ_BYTES, REQ_BYTES_QUERY,
-			                     qdata->query->size);
+			                     knot_pkt_size(qdata->query));
 			break;
 		case OPERATION_UPDATE:
 			knotd_mod_stats_incr(mod, CTR_REQ_BYTES, REQ_BYTES_UPDATE,
-			                     qdata->query->size);
+			                     knot_pkt_size(qdata->query));
 			break;
 		default:
 			if (xfr_packets <= 1) {
 				knotd_mod_stats_incr(mod, CTR_REQ_BYTES, REQ_BYTES_OTHER,
-				                     qdata->query->size);
+				                     knot_pkt_size(qdata->query));
 			}
 			break;
 		}
@@ -435,16 +435,16 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 		switch (operation) {
 		case OPERATION_QUERY:
 			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_REPLY,
-			                     pkt->size);
+			                     knot_pkt_size(pkt));
 			break;
 		case OPERATION_AXFR:
 		case OPERATION_IXFR:
 			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_TRANSFER,
-			                     pkt->size);
+			                     knot_pkt_size(pkt));
 			break;
 		default:
 			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_OTHER,
-			                     pkt->size);
+			                     knot_pkt_size(pkt));
 			break;
 		}
 	}
@@ -573,13 +573,13 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 
 	// Count the query size.
 	if (stats->qsize) {
-		uint64_t idx = qdata->query->size / BUCKET_SIZE;
+		uint64_t idx = knot_pkt_size(qdata->query) / BUCKET_SIZE;
 		knotd_mod_stats_incr(mod, CTR_QSIZE, MIN(idx, QSIZE_MAX_IDX), 1);
 	}
 
 	// Count the reply size.
 	if (stats->rsize && state != KNOTD_STATE_NOOP) {
-		uint64_t idx = pkt->size / BUCKET_SIZE;
+		uint64_t idx = knot_pkt_size(pkt) / BUCKET_SIZE;
 		knotd_mod_stats_incr(mod, CTR_RSIZE, MIN(idx, RSIZE_MAX_IDX), 1);
 	}
 
