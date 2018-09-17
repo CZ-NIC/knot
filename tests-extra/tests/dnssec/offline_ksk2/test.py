@@ -116,7 +116,7 @@ _, keys_list, _ = Keymgr.run_check(knot.confile, ZONE, "list")
 for keyparm in keys_list.splitlines():
     pem = knot.keydir + "/keys/" + keyparm.split()[0] + ".pem"
     parm1 = keyparm.split()[1]
-    parm2 = keyparm.replace("-", "_").split()[6:]
+    parm2 = keyparm.replace("-", "_").split()[7:]
     Keymgr.run_check(signer.confile, ZONE, "import-pem", pem, parm1, *parm2)
 
 # start server

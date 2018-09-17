@@ -30,10 +30,9 @@
 static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 {
 	zone_sign_reschedule_t resch = { 0 };
-	resch.allow_rollover = true;
 
 	// generate ZSKs
-	int ret = knot_dnssec_key_rollover(ctx, &resch);
+	int ret = knot_dnssec_key_rollover(ctx, KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 	if (ret != KNOT_EOK) {
 		printf("rollover failed\n");
 		return ret;
