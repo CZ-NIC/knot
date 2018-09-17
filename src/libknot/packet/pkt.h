@@ -393,4 +393,10 @@ static inline int knot_pkt_default_padding_size(const knot_pkt_t *pkt,
 	}
 }
 
+static inline size_t knot_pkt_size(const knot_pkt_t *pkt)
+{
+	assert(pkt);
+	return pkt->size + (knot_pkt_has_tsig(pkt) ? pkt->tsig_wire.len : 0);
+}
+
 /*! @} */
