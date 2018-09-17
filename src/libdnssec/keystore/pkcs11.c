@@ -357,7 +357,7 @@ static int pkcs11_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_p
 	}
 
 	*id_ptr = bin_to_hex(id.data, id.size);
-	if (id_ptr == NULL) {
+	if (*id_ptr == NULL) {
 		return DNSSEC_ENOMEM;
 	}
 
