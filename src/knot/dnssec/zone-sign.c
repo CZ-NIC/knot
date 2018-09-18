@@ -279,7 +279,18 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 
 static bool can_have_offline_rrsig(const knot_rrset_t *rr, const knot_dname_t *zone_apex)
 {
-	return (rr->type == KNOT_RRTYPE_DNSKEY && knot_dname_cmp(rr->owner, zone_apex) == 0);
+	if (knot_dname_cmp(rr->owner, zone_apex) != 0) {
+		return false;
+	}
+
+	switch (rr->type) {
+	case KNOT_RRTYPE_DNSKEY:
+	case KNOT_RRTYPE_CDNSKEY:
+	case KNOT_RRTYPE_CDS:
+		return true;
+	default:
+		return false;
+	}
 }
 
 static int load_offline_rrsig(const knot_rrset_t *covered,
@@ -344,13 +355,17 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 		uint16_t at_offline;
 		if (valid_signature_exists(covered, &offline_rrsigs, key->key, key->ctx, dnssec_ctx, &at_offline)) {
-			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");
+			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline %s RRSIG",
+				      knot_get_rdata_descriptor(covered->type)->type_name);
 			knot_rdata_t *offline_rd = knot_rdataset_at(&offline_rrsigs.rrs, at_offline);
 			result = knot_rrset_add_rdata(&to_add, offline_rd->data, offline_rd->len, NULL);
 			if (result != KNOT_EOK) {
 				break;
 			}
 			continue;
+		} else if (!knot_rrset_empty(&offline_rrsigs)) {
+			log_zone_warning(dnssec_ctx->zone->dname, "DNSSEC, loaded offline %s RRSIGs but not usable for signing by %hu",
+					 knot_get_rdata_descriptor(covered->type)->type_name, dnssec_key_get_keytag(key->key));
 		}
 
 		result = knot_sign_rrset(&to_add, covered, key->key, key->ctx, dnssec_ctx, NULL);
@@ -639,7 +654,7 @@ int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
 	return knot_rrset_add_rdata(rrset, dnskey_rdata.data, dnskey_rdata.size, NULL);
 }
 
-static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
+int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
 	assert(rrset);
 	assert(zone_key);

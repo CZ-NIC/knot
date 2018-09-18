@@ -69,40 +69,56 @@ static void next_resign(knot_time_t *next, kdnssec_ctx_t *ctx)
 }
 
 // please free *_dnskey and keyset even if returned error
-static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_keyset_t *keyset)
+static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey,
+			     knot_rrset_t **_cdnskey, knot_rrset_t **_cds, zone_keyset_t *keyset)
 {
+	keyptr_dynarray_t ckeys = { 0 };
+
 	// prepare the DNSKEY rrset to be signed
 	knot_rrset_t *dnskey = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN, ctx->policy->dnskey_ttl, NULL);
+	*_dnskey = dnskey;
 	if (dnskey == NULL) {
+		return KNOT_ENOMEM;
+	}
+	knot_rrset_t *cdnskey = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_CDNSKEY, KNOT_CLASS_IN, 0, NULL);
+	*_cdnskey = cdnskey;
+	if (cdnskey == NULL) {
+		return KNOT_ENOMEM;
+	}
+	knot_rrset_t *cds = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_CDS, KNOT_CLASS_IN, 0, NULL);
+	*_cds = cds;
+	if (cds == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	int ret = load_zone_keys(ctx, keyset, false);
-	if (ret != KNOT_EOK) {
-		printf("load keys failed\n");
-		return ret;
-	}
 
-	for (int i = 0; i < keyset->count; i++) {
-		zone_key_t *key = &keyset->keys[i];
-		if (key->is_public) {
-			ret = rrset_add_zone_key(dnskey, key);
-			if (ret != KNOT_EOK) {
-				printf("add zone key failed\n");
-				return ret;
-			}
+	ckeys = knot_zone_sign_get_cdnskeys(ctx, keyset);
+	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, ckeys) {
+		if (ret == KNOT_EOK) {
+			ret = rrset_add_zone_key(cdnskey, *ksk_for_cds);
+		}
+		if (ret == KNOT_EOK) {
+			ret = rrset_add_zone_ds(cds, *ksk_for_cds);
 		}
 	}
 
-	*_dnskey = dnskey;
-	return KNOT_EOK;
+	for (int i = 0; i < keyset->count && ret == KNOT_EOK; i++) {
+		zone_key_t *key = &keyset->keys[i];
+		if (key->is_public) {
+			ret = rrset_add_zone_key(dnskey, key);
+		}
+	}
+
+	keyptr_dynarray_free(&ckeys);
+	return ret;
 }
 
 static int presign_once(kdnssec_ctx_t *ctx)
 {
-	knot_rrset_t *dnskey = NULL, *rrsig = NULL;
+	knot_rrset_t *dnskey = NULL, *cdnskey = NULL, *cds = NULL, *rrsig = NULL;
 	zone_keyset_t keyset = { 0 };
-	int ret = load_dnskey_rrset(ctx, &dnskey, &keyset);
+	int ret = load_dnskey_rrset(ctx, &dnskey, &cdnskey, &cds, &keyset);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
@@ -117,12 +133,20 @@ static int presign_once(kdnssec_ctx_t *ctx)
 	for (int i = 0; i < keyset.count; i++) {
 		zone_key_t *key = &keyset.keys[i];
 		if (key->is_active && key->is_ksk) {
-			ret = knot_sign_rrset(rrsig, dnskey, key->key, key->ctx, ctx, NULL);
-			if (ret != KNOT_EOK) {
-				printf("sign rrset failed\n");
-				goto done;
+			if (ret == KNOT_EOK) {
+				ret = knot_sign_rrset(rrsig, dnskey, key->key, key->ctx, ctx, NULL);
+			}
+			if (ret == KNOT_EOK && !knot_rrset_empty(cdnskey)) {
+				ret = knot_sign_rrset(rrsig, cdnskey, key->key, key->ctx, ctx, NULL);
+			}
+			if (ret == KNOT_EOK && !knot_rrset_empty(cds)) {
+				ret = knot_sign_rrset(rrsig, cds, key->key, key->ctx, ctx, NULL);
 			}
 		}
+	}
+	if (ret != KNOT_EOK) {
+		printf("sign rrset failed\n");
+		goto done;
 	}
 
 	// store it to KASP db
@@ -135,6 +159,8 @@ static int presign_once(kdnssec_ctx_t *ctx)
 
 done:
 	knot_rrset_free(dnskey, NULL);
+	knot_rrset_free(cdnskey, NULL);
+	knot_rrset_free(cds, NULL);
 	knot_rrset_free(rrsig, NULL);
 	free_zone_keys(&keyset);
 	return ret;
@@ -229,16 +255,24 @@ static void print_generated_message()
 
 static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size)
 {
-	knot_rrset_t *dnskey = NULL;
+	knot_rrset_t *dnskey = NULL, *cdnskey = NULL, *cds = NULL;
 	zone_keyset_t keyset = { 0 };
-	int ret = load_dnskey_rrset(ctx, &dnskey, &keyset);
+	int ret = load_dnskey_rrset(ctx, &dnskey, &cdnskey, &cds, &keyset);
 	if (ret != KNOT_EOK) {
 		goto done;
+	}
+	ret = dump_rrset_to_buf(cdnskey, buf, buf_size);
+	if (ret >= 0) {
+		printf(";;KSR =================\n%s", *buf);
+	}
+	ret = dump_rrset_to_buf(cds, buf, buf_size);
+	if (ret >= 0) {
+		printf("%s", *buf);
 	}
 	ret = dump_rrset_to_buf(dnskey, buf, buf_size);
 	if (ret >= 0) {
 		(*buf)[strlen(*buf) - 1] = '\0'; // remove trailing newline
-		printf(";;KSR %lu %hu %d\n%s ; end KSR %lu\n", ctx->now, dnskey->rrs.count, ret, *buf, ctx->now);
+		printf("%s ; end KSR %lu\n", *buf, ctx->now);
 		ret = KNOT_EOK;
 	}
 
@@ -269,10 +303,12 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto)
 
 typedef struct {
 	knot_rrset_t *rr;
+	knot_rrset_t *cdnskey;
+	knot_rrset_t *cds;
 	kdnssec_ctx_t *kctx;
 } ksr_sign_ctx_t;
 
-static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *dnskey)
+static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *dnskey, knot_rrset_t *cdnskey, knot_rrset_t *cds)
 {
 	zone_keyset_t keyset = { 0 };
 	char *buf = NULL;
@@ -287,15 +323,22 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *dnskey)
 		goto done;
 	}
 	// no check if the KSK used for signing (in keyset) is contained in DNSKEY record being signed (in KSR) !
-	for (int i = 0; i < keyset.count; i++) {
+	for (int i = 0; i < keyset.count && ret == KNOT_EOK; i++) {
 		zone_key_t *key = &keyset.keys[i];
 		if (key->is_active && key->is_ksk) {
 			ret = knot_sign_rrset(rrsig, dnskey, key->key, key->ctx, ctx, NULL);
-			if (ret != KNOT_EOK) {
-				goto done;
+			if (ret == KNOT_EOK && !knot_rrset_empty(cdnskey)) {
+				ret = knot_sign_rrset(rrsig, cdnskey, key->key, key->ctx, ctx, NULL);
+			}
+			if (ret == KNOT_EOK && !knot_rrset_empty(cds)) {
+				ret = knot_sign_rrset(rrsig, cds, key->key, key->ctx, ctx, NULL);
 			}
 		}
 	}
+	if (ret != KNOT_EOK) {
+		goto done;
+	}
+
 	ret = dump_rrset_to_buf(rrsig, &buf, &buf_size);
 	if (ret >= 0) {
 		buf[strlen(buf) - 1] = '\0'; // remove trailing newline
@@ -313,14 +356,31 @@ done:
 static void ksr_sign_once(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
+	knot_rrset_t *rr_add = NULL;
+	switch (sc->r_type) {
+	case KNOT_RRTYPE_DNSKEY:
+		rr_add = ctx->rr;
+		break;
+	case KNOT_RRTYPE_CDNSKEY:
+		rr_add = ctx->cdnskey;
+		break;
+	case KNOT_RRTYPE_CDS:
+		rr_add = ctx->cds;
+		break;
+	default:
+		sc->error.code = KNOT_ESEMCHECK;
+		return;
+	}
 
-	sc->error.code = knot_rrset_add_rdata(ctx->rr, sc->r_data, sc->r_data_length, NULL);
+	sc->error.code = knot_rrset_add_rdata(rr_add, sc->r_data, sc->r_data_length, NULL);
 	ctx->rr->ttl = sc->r_ttl;
 
 	if (sc->error.code == KNOT_EOK && sc->buffer_length > 9 && strncmp((const char *)sc->buffer, " end KSR ", 9) == 0) {
 		ctx->kctx->now = atol((const char *)sc->buffer + 9);
-		sc->error.code = ksr_sign_dnskey(ctx->kctx, ctx->rr);
+		sc->error.code = ksr_sign_dnskey(ctx->kctx, ctx->rr, ctx->cdnskey, ctx->cds);
 		knot_rdataset_clear(&ctx->rr->rrs, NULL);
+		knot_rdataset_clear(&ctx->cdnskey->rrs, NULL);
+		knot_rdataset_clear(&ctx->cds->rrs, NULL);
 	}
 }
 
@@ -352,10 +412,12 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_sc
 		return KNOT_EFILE;
 	}
 
-	knot_rrset_t rr = { 0 };
+	knot_rrset_t rr = { 0 }, cdnskey = { 0 }, cds = { 0};
 	knot_rrset_init(&rr, ctx->zone->dname, rrtype, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
+	knot_rrset_init(&cdnskey, ctx->zone->dname, KNOT_RRTYPE_CDNSKEY, KNOT_CLASS_IN, 0);
+	knot_rrset_init(&cds, ctx->zone->dname, KNOT_RRTYPE_CDS, KNOT_CLASS_IN, 0);
 
-	ksr_sign_ctx_t pctx = { &rr, ctx };
+	ksr_sign_ctx_t pctx = { &rr, &cdnskey, &cds, ctx };
 	ret = zs_set_processing(&sc, cb, NULL, &pctx);
 	if (ret < 0) {
 		zs_deinit(&sc);
@@ -370,6 +432,8 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_sc
 		ret = KNOT_EMALF;
 	}
 	knot_rdataset_clear(&rr.rrs, NULL);
+	knot_rdataset_clear(&cdnskey.rrs, NULL);
+	knot_rdataset_clear(&cds.rrs, NULL);
 	zs_deinit(&sc);
 	return ret;
 }
