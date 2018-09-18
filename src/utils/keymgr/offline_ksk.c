@@ -246,6 +246,13 @@ int keymgr_del_all_old(kdnssec_ctx_t *ctx)
 	return kdnssec_ctx_commit(ctx);
 }
 
+static void print_generated_message()
+{
+	char buf[64] = { 0 };
+	knot_time_print(TIME_PRINT_ISO8601, knot_time(), buf, sizeof(buf));
+	printf("generated on %s by KnotDNS %s\n", buf, VERSION);
+}
+
 static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size)
 {
 	knot_rrset_t *dnskey = NULL, *cdnskey = NULL, *cds = NULL;
@@ -287,7 +294,8 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto)
 		ret = ksr_once(ctx, &buf, &buf_size);
 		next_resign(&next, ctx);
 	}
-	printf(";;");
+	printf(";; KeySigningRequest ");
+	print_generated_message();
 
 	free(buf);
 	return ret;
@@ -433,7 +441,8 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_sc
 int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file)
 {
 	int ret = read_ksr_skr(ctx, ksr_file, ksr_sign_once, KNOT_RRTYPE_DNSKEY);
-	printf(";;");
+	printf(";; SignedKeyResponse ");
+	print_generated_message();
 	return ret;
 }
 

@@ -229,9 +229,11 @@ static int key_command(int argc, char *argv[], int optind)
 	} else if (strcmp(argv[1], "generate-ksr") == 0) {
 		CHECK_MISSING_ARG("Timestamp not specified");
 		ret = keymgr_print_ksr(&kctx, knot_time() + atol(argv[2]));
+		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "sign-ksr") == 0) {
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_sign_ksr(&kctx, argv[2]);
+		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "import-skr") == 0) {
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_import_skr(&kctx, argv[2]);
