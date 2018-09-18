@@ -289,6 +289,7 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto)
 	}
 	printf(";;");
 
+	free(buf);
 	return ret;
 }
 
