@@ -23,6 +23,7 @@
 #include "knot/dnssec/zone-keys.h"
 
 int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key);
+int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key);
 
 /*!
  * \brief Adds/removes DNSKEY (and CDNSKEY, CDS) records to zone according to zone keyset.
