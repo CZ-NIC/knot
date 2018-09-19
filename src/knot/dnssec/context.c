@@ -112,6 +112,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 			conf_val_next(&val);
 		}
 	}
+
+	val = conf_id_get(conf(), C_POLICY, C_OFFLINE_KSK, id);
+	policy->offline_ksk = conf_bool(&val);
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
@@ -209,6 +212,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		}
 		free(ctx->policy);
 	}
+	knot_rrset_free(ctx->offline_rrsig, NULL);
 	dnssec_keystore_deinit(ctx->keystore);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);

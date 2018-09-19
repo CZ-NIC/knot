@@ -170,7 +170,8 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	log_zone_info(zone_name, "DNSSEC, signing started");
 
-	result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx);
+	knot_time_t next_resign = 0;
+	result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &next_resign);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
 			       knot_strerror(result));
@@ -217,7 +218,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 done:
 	if (result == KNOT_EOK) {
-		reschedule->next_sign = schedule_next(&ctx, &keyset, zone_expire);
+		reschedule->next_sign = schedule_next(&ctx, &keyset, knot_time_min(zone_expire, next_resign));
 	}
 
 	free_zone_keys(&keyset);

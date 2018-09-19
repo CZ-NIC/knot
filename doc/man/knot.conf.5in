@@ -595,6 +595,7 @@ policy:
     nsec3\-salt\-lifetime: TIME
     ksk\-submission: submission_id
     cds\-cdnskey\-publish: none | delete\-dnssec | always
+    offline\-ksk: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -776,6 +777,11 @@ Possible values:
 .UNINDENT
 .sp
 \fIDefault:\fP always
+.SS offline\-ksk
+.sp
+Specifies if Offline KSK feature is enabled.
+.sp
+\fIDefault:\fP off
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone

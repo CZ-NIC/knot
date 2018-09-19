@@ -40,6 +40,8 @@ typedef struct {
 	bool rrsig_drop_existing;
 	bool keep_deleted_keys;
 	bool rollover_only_zsk;
+
+	knot_rrset_t *offline_rrsig;
 } kdnssec_ctx_t;
 
 /*!
