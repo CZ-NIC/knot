@@ -94,35 +94,23 @@ knot.dnssec(zone).dnskey_ttl = 2
 knot.dnssec(zone).zsk_lifetime = STARTUP + 6*TICK # see ksk1 lifetime
 knot.dnssec(zone).ksk_lifetime = 300 # this can be possibly left also infinity
 knot.dnssec(zone).propagation_delay = TICK-2
-knot.dnssec(zone).cds_publish = "none"
+knot.dnssec(zone).offline_ksk = "on"
 knot.port = 1234 # dummy, will be overwritten
 knot.gen_confile()
 
-def tickf(when):
-    return "+%d" % (STARTUP + when * TICK)
-
-# generate keys, including manual KSK rollover on the beginning
-key_ksk1 = knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0", retire=tickf(4), remove=tickf(5))
-key_ksk2 = knot.key_gen(ZONE, ksk="true", created="+0", publish=tickf(2), ready=tickf(3), active=tickf(4), retire="+2h", remove="+3h")
-key_zsk1 = knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", active="+0")
-
-# signer knot, copy everything from "knot"
 signer = t.server("knot")
 t.link(zone, signer)
 signer.zones[ZONE].dnssec = knot.zones[ZONE].dnssec
 signer.port = 1235
 signer.gen_confile()
-_, keys_list, _ = Keymgr.run_check(knot.confile, ZONE, "list")
-for keyparm in keys_list.splitlines():
-    pem = knot.keydir + "/keys/" + keyparm.split()[0] + ".pem"
-    parm1 = keyparm.split()[1]
-    parm2 = keyparm.replace("-", "_").split()[7:]
-    Keymgr.run_check(signer.confile, ZONE, "import-pem", pem, parm1, *parm2)
 
-# delete KSKs in "knot" and ZSKs in "signer"
-os.remove(knot.keydir + "/keys/" + key_ksk1 + ".pem")
-os.remove(knot.keydir + "/keys/" + key_ksk2 + ".pem")
-os.remove(signer.keydir + "/keys/" + key_zsk1 + ".pem")
+def tickf(when):
+    return "+%d" % (STARTUP + when * TICK)
+
+# generate keys, including manual KSK rollover on the beginning
+key_ksk1 = signer.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0", retire=tickf(4), remove=tickf(5))
+key_ksk2 = signer.key_gen(ZONE, ksk="true", created="+0", publish=tickf(2), ready=tickf(3), active=tickf(4), retire="+2h", remove="+3h")
+key_zsk1 = knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", active="+0")
 
 # pregenerate keys, exchange KSR, pre-sign it, exchange SKR
 KSR = knot.keydir + "/ksr"

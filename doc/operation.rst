@@ -697,24 +697,23 @@ human-readable.
 
 For the "ZSK side" (i.e. the operator of the DNS server), the pre-requirements are
 similar to pervious case: proper DNSSEC configuration with :ref:`zsk-lifetime <policy_zsk-lifetime>`
-but :ref:`manual <policy_manual>`, a complete KASP db with the public part of the KSK
-(or multiple KSKs if in the middle of a rollover), but without its private part.
+but :ref:`manual <policy_manual>`, a complete KASP db with just ZSKs. Also
+:ref:`offline-ksk <policy_offline-ksk>` must be enabled.
 
 For the "KSK side" (i.e. the operator of the KSK signer), the pre-requirements are
 equal Knot configuration (at least the :ref:`Policy section` must be identical) and a KASP db
-with the KSK(s). The timers for the KSKs must be identical on both sides! The ZSKs are not
-necessary here, but their public parts might be in the KASP db too.
+with the KSK(s).
 
 The first step for the "ZSK side" is the same as previously: ``keymgr pregenerate``. Then,
 the operator shall export the public parts of the future ZSKs (in facts in the form of
-complete future DNSKEY records) by calling ``keymgr generate-ksr``. The output
+future DNSKEY records) by calling ``keymgr generate-ksr``. The output
 (called Key Signing Request; perhaps redirected to a file) shall be then sent to the
 "KSK side" e.g. via e-mail.
 
 The third step is done by "KSK side" by using the command ``keymgr sign-ksr`` with
-the KSR file as the parameter. This signs all the future forms of DNSKEY record,
-creating the future RRSIGs, which are again printed on output (and called Signed Key
-Response). This shall be sent back to "ZSK side".
+the KSR file as the parameter. This completes and signs all the future forms of DNSKEY record,
+creating the future RRSIGs (adding also CDNSKEYs and CDSs), which are again printed on output
+(and called Signed Key Response). This shall be sent back to "ZSK side".
 
 The last step is importing the signatures from SKR to the KASP db for later use,
 this is done by ``keymgr import-skr``, followed by (as previously) ``knotc zone-resign``
