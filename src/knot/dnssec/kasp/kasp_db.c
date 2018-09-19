@@ -797,6 +797,9 @@ int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, kno
 	if (ret == KNOT_EOK) {
 		wire_ctx_t wire = wire_ctx_init(val.data, val.len);
 		ret = deserialize_rrset(&wire, rrsig);
+		if (ret == KNOT_EOK && knot_dname_cmp(rrsig->owner, for_dname) != 0) {
+			ret = KNOT_ENOENT;
+		}
 	}
 	free_key(&key);
 	with_txn_end(NULL);
@@ -817,7 +820,8 @@ int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone, knot_t
 	free_key(&key);
 
 	while (ret == KNOT_EOK && iter != NULL && (ret = db_api->iter_key(iter, &key)) == KNOT_EOK &&
-	       key.len > 20 && *(uint8_t *)key.data == KASPDBKEY_OFFLINE_RRSIG && atoll(key.data + key.len - 21) <= until) {
+	       key.len > 20 && *(uint8_t *)key.data == KASPDBKEY_OFFLINE_RRSIG && atoll(key.data + key.len - 21) <= until &&
+	       knot_dname_cmp((const knot_dname_t *)(key.data + 1), zone) == 0) {
 		ret = knot_db_lmdb_iter_del(iter);
 		iter = db_api->iter_next(iter);
 	}
