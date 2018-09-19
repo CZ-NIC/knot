@@ -292,8 +292,8 @@ static int load_offline_rrsig(const knot_rrset_t *covered,
 		return KNOT_EOK;
 	}
 
-	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, covered->owner, ctx->now, rrsig);
-	if (ret == KNOT_ENOENT) {
+	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, covered->owner, ctx->now, rrsig, NULL, NULL, NULL); // TODO
+	if (ret == KNOT_ENOENT || ret == KNOT_EINVAL) {
 		ret = KNOT_EOK;
 	}
 	return ret;
