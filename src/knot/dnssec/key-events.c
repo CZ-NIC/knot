@@ -584,12 +584,14 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	bool allowed_general_roll = ((flags & KEY_ROLL_ALLOW_KSK_ROLL) && (flags & KEY_ROLL_ALLOW_ZSK_ROLL));
 	// generate initial keys if missing
 	if (!key_present(ctx, true, false) && !key_present(ctx, true, true)) {
-		if (ctx->policy->ksk_shared) {
-			ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
-		} else {
-			ret = generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
+		if (!ctx->rollover_only_zsk) {
+			if (ctx->policy->ksk_shared) {
+				ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
+			} else {
+				ret = generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
+			}
+			reschedule->plan_ds_query = true;
 		}
-		reschedule->plan_ds_query = true;
 		if (ret == KNOT_EOK) {
 			reschedule->keys_changed = true;
 			if (!ctx->policy->singe_type_signing &&

@@ -429,6 +429,13 @@ int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset)
 	if (wire->error != KNOT_EOK) {
 		return wire->error;
 	}
+	if (rrset->owner != NULL) {
+		if (knot_dname_cmp(owner, rrset->owner) != 0) {
+			knot_dname_free(owner, NULL);
+			return KNOT_ESEMCHECK;
+		}
+		knot_rrset_clear(rrset, NULL);
+	}
 	knot_rrset_init(rrset, owner, type, rclass, 0);
 
 	for (size_t phase = 0; phase < rrcount && wire_ctx_available(wire) > 0; phase++) {
@@ -452,7 +459,7 @@ int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset)
 
 size_t rrset_serialized_size(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rrs.count == 0) {
+	if (rrset == NULL) {
 		return 0;
 	}
 

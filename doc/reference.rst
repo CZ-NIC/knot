@@ -684,6 +684,7 @@ DNSSEC policy configuration.
      nsec3-salt-lifetime: TIME
      ksk-submission: submission_id
      cds-cdnskey-publish: none | delete-dnssec | always
+     offline-ksk: BOOL
 
 .. _policy_id:
 
@@ -922,6 +923,15 @@ Possible values:
 - ``always`` - Always publish CDS and CDNSKEY records for the current KSK.
 
 *Default:* always
+
+.. _policy_offline-ksk:
+
+offline-ksk
+-----------
+
+Specifies if Offline KSK feature is enabled.
+
+*Default:* off
 
 .. _Remote section:
 
