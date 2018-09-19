@@ -25,6 +25,20 @@
 int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key);
 
 /*!
+ * \brief Prepare DNSKEYs, CDNSKEYs and CDSs to be added to the zone into rrsets.
+ *
+ * \param zone_keys     Zone keyset.
+ * \param dnssec_ctx    KASP context.
+ * \param add_dnskeys   RRSet for DNSKEYs.
+ * \param add_cdnskeys  RRSet for CDNSKEYs.
+ * \param add_cdss      RRSet for CDSs.
+ *
+ * \return KNOT_E*
+ */
+int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dnssec_ctx,
+			       knot_rrset_t *add_dnskeys, knot_rrset_t *add_cdnskeys, knot_rrset_t *add_cdss);
+
+/*!
  * \brief Adds/removes DNSKEY (and CDNSKEY, CDS) records to zone according to zone keyset.
  *
  * \param update     Structure holding zone contents and to be updated with changes.
