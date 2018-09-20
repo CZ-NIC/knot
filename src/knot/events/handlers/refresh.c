@@ -359,6 +359,7 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	if (data->initial_soa_copy != NULL) {
 		next = axfr_consume_rr(data->initial_soa_copy, data);
 		knot_rrset_free(data->initial_soa_copy, data->mm);
+		data->initial_soa_copy = NULL;
 		if (next != KNOT_STATE_CONSUME) {
 			return next;
 		}
@@ -783,6 +784,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	if (data->initial_soa_copy != NULL) {
 		next = ixfr_consume_rr(data->initial_soa_copy, data);
 		knot_rrset_free(data->initial_soa_copy, data->mm);
+		data->initial_soa_copy = NULL;
 		if (next != KNOT_STATE_CONSUME) {
 			return next;
 		}
