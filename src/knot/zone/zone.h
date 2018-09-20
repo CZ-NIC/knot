@@ -161,7 +161,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 
 
 /*! \brief Enqueue UPDATE request for processing. */
-int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *params);
+int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *params,
+                        knot_tsig_key_t *key);
 
 /*! \brief Dequeue UPDATE request. Returns number of queued updates. */
 size_t zone_update_dequeue(zone_t *zone, list_t *updates);

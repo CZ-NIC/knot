@@ -52,6 +52,7 @@ struct knot_request {
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
 	tsig_ctx_t tsig;
+	knot_tsig_key_t tsig_key;
 
 	knot_sign_context_t sign; /* TODO: Remove. Used in updates only, should
 	                             be part of the zone update context. */

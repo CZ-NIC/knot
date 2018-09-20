@@ -18,6 +18,7 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/include/module.h"
+#include "knot/nameserver/process_query.h"
 
 /*!
  * \brief Answer query from an IN class zone.

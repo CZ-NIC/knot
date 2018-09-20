@@ -4,7 +4,7 @@
 
 from dnstest.test import Test
 
-t = Test()
+t = Test(tsig=True)
 
 srv = t.server("knot")
 zone = t.zone("ddns.", storage=".")

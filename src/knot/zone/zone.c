@@ -564,7 +564,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 	return success ? KNOT_EOK : KNOT_ENOMASTER;
 }
 
-int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *params)
+int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *params,
+                        knot_tsig_key_t *key)
 {
 	if (zone == NULL || pkt == NULL || params == NULL) {
 		return KNOT_EINVAL;
@@ -588,6 +589,8 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *par
 		free(req);
 		return ret;
 	}
+
+	req->tsig_key = *key;
 
 	pthread_mutex_lock(&zone->ddns_lock);
 

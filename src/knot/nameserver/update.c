@@ -31,6 +31,7 @@
 #include "knot/events/events.h"
 #include "libknot/libknot.h"
 #include "contrib/net.h"
+#include "contrib/string.h"
 #include "contrib/time.h"
 
 #define UPDATE_LOG(priority, qdata, fmt...) \
@@ -315,23 +316,9 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	}
 }
 
-static bool update_tsig_check(conf_t *conf, knotd_qdata_t *qdata, struct knot_request *req)
-{
-	// Check that ACL is still valid.
-	if (!process_query_acl_check(conf, qdata->extra->zone->name, ACL_ACTION_UPDATE, qdata) ||
-	    process_query_verify(qdata) != KNOT_EOK) {
-		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
-		return false;
-	}
-
-	// Store signing context for response.
-	req->sign = qdata->sign;
-
-	return true;
-}
-
 static void send_update_response(conf_t *conf, const zone_t *zone, struct knot_request *req)
 {
+	//TODO TSIG
 	if (req->resp) {
 		if (!zone_is_slave(conf, zone)) {
 			// Sign the response with TSIG where applicable
@@ -372,8 +359,7 @@ static void send_update_responses(conf_t *conf, const zone_t *zone, list_t *upda
 	ptrlist_free(updates, NULL);
 }
 
-static int init_update_responses(conf_t *conf, const zone_t *zone, list_t *updates,
-                                 size_t *update_count)
+static int init_update_responses(list_t *updates)
 {
 	ptrnode_t *node = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
@@ -385,26 +371,18 @@ static int init_update_responses(conf_t *conf, const zone_t *zone, list_t *updat
 
 		assert(req->query);
 		knot_pkt_init_response(req->resp, req->query);
-		if (zone_is_slave(conf, zone)) {
-			// Don't check TSIG for forwards.
-			continue;
-		}
 
-		knotd_qdata_params_t params = {
-			.remote = &req->remote
-		};
-		knotd_qdata_t qdata;
-		knotd_qdata_extra_t extra;
-		init_qdata_from_request(&qdata, zone, req, &params, &extra);
+		/*
+	// Check that ACL is still valid.
+	if (!process_query_acl_check(conf, qdata->extra->zone->name, ACL_ACTION_UPDATE, qdata) ||
+	    process_query_verify(qdata) != KNOT_EOK) {
+		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
+		return false;
+	}
 
-		if (!update_tsig_check(conf, &qdata, req)) {
-			// ACL/TSIG check failed, send response.
-			send_update_response(conf, zone, req);
-			// Remove this request from processing list.
-			free_request(req);
-			ptrlist_rem(node, NULL);
-			*update_count -= 1;
-		}
+	// Store signing context for response.
+	req->sign = qdata->sign;
+	*/
 	}
 
 	return KNOT_EOK;
@@ -423,16 +401,18 @@ int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_UPDATE);
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
-
+	/* Check frozen zone. */
 	NS_NEED_NOT_FROZEN(qdata, KNOT_RCODE_REFUSED);
 
 	/* Restore original QNAME for DDNS ACL checks. */
 	process_query_qname_case_restore(qdata->query, qdata);
 	/* Store update into DDNS queue. */
-	int ret = zone_update_enqueue(zone, qdata->query, qdata->params);
+	int ret = zone_update_enqueue(zone, qdata->query, qdata->params,
+	                              &qdata->sign.tsig_key);
 	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
+	memzero(&qdata->sign.tsig_key, sizeof(qdata->sign.tsig_key));
 
 	/* No immediate response. */
 	return KNOT_STATE_NOOP;
@@ -448,7 +428,7 @@ void updates_execute(conf_t *conf, zone_t *zone)
 	}
 
 	/* Init updates respones. */
-	int ret = init_update_responses(conf, zone, &updates, &update_count);
+	int ret = init_update_responses(&updates);
 	if (ret != KNOT_EOK) {
 		/* Send what responses we can. */
 		set_rcodes(&updates, KNOT_RCODE_SERVFAIL);
