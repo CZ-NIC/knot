@@ -410,6 +410,68 @@ static int init_update_responses(conf_t *conf, const zone_t *zone, list_t *updat
 	return KNOT_EOK;
 }
 
+int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *params)
+{
+	if (zone == NULL || pkt == NULL || params == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Create serialized request. */
+	struct knot_request *req = malloc(sizeof(struct knot_request));
+	if (req == NULL) {
+		return KNOT_ENOMEM;
+	}
+	memset(req, 0, sizeof(struct knot_request));
+
+	/* Copy socket and request. */
+	req->fd = dup(params->socket);
+	memcpy(&req->remote, params->remote, sizeof(struct sockaddr_storage));
+
+	req->query = knot_pkt_new(NULL, pkt->max_size, NULL);
+	int ret = knot_pkt_copy(req->query, pkt);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(req->query);
+		free(req);
+		return ret;
+	}
+
+	pthread_mutex_lock(&zone->ddns_lock);
+
+	/* Enqueue created request. */
+	ptrlist_add(&zone->ddns_queue, req, NULL);
+	++zone->ddns_queue_size;
+
+	pthread_mutex_unlock(&zone->ddns_lock);
+
+	/* Schedule UPDATE event. */
+	zone_events_schedule_now(zone, ZONE_EVENT_UPDATE);
+
+	return KNOT_EOK;
+}
+
+size_t zone_update_dequeue(zone_t *zone, list_t *updates)
+{
+	if (zone == NULL || updates == NULL) {
+		return 0;
+	}
+
+	pthread_mutex_lock(&zone->ddns_lock);
+	if (EMPTY_LIST(zone->ddns_queue)) {
+		/* Lost race during reload. */
+		pthread_mutex_unlock(&zone->ddns_lock);
+		return 0;
+	}
+
+	*updates = zone->ddns_queue;
+	size_t update_count = zone->ddns_queue_size;
+	init_list(&zone->ddns_queue);
+	zone->ddns_queue_size = 0;
+
+	pthread_mutex_unlock(&zone->ddns_lock);
+
+	return update_count;
+}
+
 int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	/* RFC1996 require SOA question. */
