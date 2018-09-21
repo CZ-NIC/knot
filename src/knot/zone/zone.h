@@ -159,13 +159,6 @@ typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *r
 int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
                     void *callback_data, const char *err_str);
 
-
-/*! \brief Enqueue UPDATE request for processing. */
-int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *params);
-
-/*! \brief Dequeue UPDATE request. Returns number of queued updates. */
-size_t zone_update_dequeue(zone_t *zone, list_t *updates);
-
 /*! \brief Write zone contents to zonefile, but into different directory. */
 int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir);
 
