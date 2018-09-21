@@ -87,7 +87,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	query_edns_data_init(&data.edns, conf, zone->name, slave->addr.ss_family);
 
-	struct knot_requestor requestor = { 0 };
+	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &NOTIFY_API, &data, NULL);
 
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
@@ -98,7 +98,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	const struct sockaddr *dst = (struct sockaddr *)&slave->addr;
 	const struct sockaddr *src = (struct sockaddr *)&slave->via;
-	struct knot_request *req = knot_request_make(NULL, dst, src, pkt, &slave->key, 0);
+	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &slave->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
