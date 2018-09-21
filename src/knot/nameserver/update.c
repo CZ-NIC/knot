@@ -39,7 +39,7 @@
 
 static void init_qdata_from_request(knotd_qdata_t *qdata,
                                     const zone_t *zone,
-                                    struct knot_request *req,
+                                    knot_request_t *req,
                                     knotd_qdata_params_t *params,
                                     knotd_qdata_extra_t *extra)
 {
@@ -52,7 +52,7 @@ static void init_qdata_from_request(knotd_qdata_t *qdata,
 	qdata->extra->zone = zone;
 }
 
-static int check_prereqs(struct knot_request *request,
+static int check_prereqs(knot_request_t *request,
                          const zone_t *zone, zone_update_t *update,
                          knotd_qdata_t *qdata)
 {
@@ -69,7 +69,7 @@ static int check_prereqs(struct knot_request *request,
 	return KNOT_EOK;
 }
 
-static int process_single_update(struct knot_request *request,
+static int process_single_update(knot_request_t *request,
                                  const zone_t *zone, zone_update_t *update,
                                  knotd_qdata_t *qdata)
 {
@@ -90,7 +90,7 @@ static void set_rcodes(list_t *requests, const uint16_t rcode)
 {
 	ptrnode_t *node = NULL;
 	WALK_LIST(node, *requests) {
-		struct knot_request *req = node->d;
+		knot_request_t *req = node->d;
 		if (knot_wire_get_rcode(req->resp->wire) == KNOT_RCODE_NOERROR) {
 			knot_wire_set_rcode(req->resp->wire, rcode);
 		}
@@ -107,7 +107,7 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 	// Walk all the requests and process.
 	ptrnode_t *node = NULL;
 	WALK_LIST(node, *requests) {
-		struct knot_request *req = node->d;
+		knot_request_t *req = node->d;
 		// Init qdata structure for logging (unique per-request).
 		knotd_qdata_params_t params = {
 			.remote = &req->remote
@@ -218,7 +218,7 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
 }
 
-static int remote_forward(conf_t *conf, struct knot_request *request, conf_remote_t *remote)
+static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *remote)
 {
 	/* Copy request and assign new ID. */
 	knot_pkt_t *query = knot_pkt_new(NULL, request->query->max_size, NULL);
@@ -237,7 +237,7 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 	};
 
 	/* Create requestor instance. */
-	struct knot_requestor re;
+	knot_requestor_t re;
 	ret = knot_requestor_init(&re, capture, &capture_param, NULL);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(query);
@@ -247,7 +247,7 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 	/* Create a request. */
 	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
 	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	struct knot_request *req = knot_request_make(re.mm, dst, src, query, NULL, 0);
+	knot_request_t *req = knot_request_make(re.mm, dst, src, query, NULL, 0);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
 		knot_pkt_free(query);
@@ -264,7 +264,7 @@ static int remote_forward(conf_t *conf, struct knot_request *request, conf_remot
 	return ret;
 }
 
-static void forward_request(conf_t *conf, zone_t *zone, struct knot_request *request)
+static void forward_request(conf_t *conf, zone_t *zone, knot_request_t *request)
 {
 	/* Read the ddns master or the first master. */
 	conf_val_t remote = conf_zone_get(conf, C_DDNS_MASTER, zone->name);
@@ -310,7 +310,7 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 
 	ptrnode_t *node = NULL;
 	WALK_LIST(node, *requests) {
-		struct knot_request *req = node->d;
+		knot_request_t *req = node->d;
 		forward_request(conf, zone, req);
 	}
 }
@@ -330,7 +330,7 @@ static bool update_tsig_check(conf_t *conf, knotd_qdata_t *qdata, struct knot_re
 	return true;
 }
 
-static void send_update_response(conf_t *conf, const zone_t *zone, struct knot_request *req)
+static void send_update_response(conf_t *conf, const zone_t *zone, knot_request_t *req)
 {
 	if (req->resp) {
 		if (!zone_is_slave(conf, zone)) {
@@ -353,7 +353,7 @@ static void send_update_response(conf_t *conf, const zone_t *zone, struct knot_r
 	}
 }
 
-static void free_request(struct knot_request *req)
+static void free_request(knot_request_t *req)
 {
 	close(req->fd);
 	knot_pkt_free(req->query);
@@ -365,7 +365,7 @@ static void send_update_responses(conf_t *conf, const zone_t *zone, list_t *upda
 {
 	ptrnode_t *node = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
-		struct knot_request *req = node->d;
+		knot_request_t *req = node->d;
 		send_update_response(conf, zone, req);
 		free_request(req);
 	}
@@ -377,7 +377,7 @@ static int init_update_responses(conf_t *conf, const zone_t *zone, list_t *updat
 {
 	ptrnode_t *node = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
-		struct knot_request *req = node->d;
+		knot_request_t *req = node->d;
 		req->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 		if (req->resp == NULL) {
 			return KNOT_ENOMEM;
