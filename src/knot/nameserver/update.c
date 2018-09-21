@@ -31,6 +31,7 @@
 #include "knot/events/events.h"
 #include "libknot/libknot.h"
 #include "contrib/net.h"
+#include "contrib/string.h"
 #include "contrib/time.h"
 
 #define UPDATE_LOG(priority, qdata, fmt...) \
@@ -315,21 +316,6 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	}
 }
 
-static bool update_tsig_check(conf_t *conf, knotd_qdata_t *qdata, struct knot_request *req)
-{
-	// Check that ACL is still valid.
-	if (!process_query_acl_check(conf, qdata->extra->zone->name, ACL_ACTION_UPDATE, qdata) ||
-	    process_query_verify(qdata) != KNOT_EOK) {
-		knot_wire_set_rcode(req->resp->wire, qdata->rcode);
-		return false;
-	}
-
-	// Store signing context for response.
-	req->sign = qdata->sign;
-
-	return true;
-}
-
 static void send_update_response(conf_t *conf, const zone_t *zone, knot_request_t *req)
 {
 	if (req->resp) {
@@ -372,8 +358,7 @@ static void send_update_responses(conf_t *conf, const zone_t *zone, list_t *upda
 	ptrlist_free(updates, NULL);
 }
 
-static int init_update_responses(conf_t *conf, const zone_t *zone, list_t *updates,
-                                 size_t *update_count)
+static int init_update_responses(list_t *updates)
 {
 	ptrnode_t *node = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
@@ -385,55 +370,37 @@ static int init_update_responses(conf_t *conf, const zone_t *zone, list_t *updat
 
 		assert(req->query);
 		knot_pkt_init_response(req->resp, req->query);
-		if (zone_is_slave(conf, zone)) {
-			// Don't check TSIG for forwards.
-			continue;
-		}
-
-		knotd_qdata_params_t params = {
-			.remote = &req->remote
-		};
-		knotd_qdata_t qdata;
-		knotd_qdata_extra_t extra;
-		init_qdata_from_request(&qdata, zone, req, &params, &extra);
-
-		if (!update_tsig_check(conf, &qdata, req)) {
-			// ACL/TSIG check failed, send response.
-			send_update_response(conf, zone, req);
-			// Remove this request from processing list.
-			free_request(req);
-			ptrlist_rem(node, NULL);
-			*update_count -= 1;
-		}
 	}
 
 	return KNOT_EOK;
 }
 
-int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *params)
+static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 {
-	if (zone == NULL || pkt == NULL || params == NULL) {
+	if (zone == NULL || qdata == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	/* Create serialized request. */
-	struct knot_request *req = malloc(sizeof(struct knot_request));
+	knot_request_t *req = calloc(1, sizeof(*req));
 	if (req == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(req, 0, sizeof(struct knot_request));
 
 	/* Copy socket and request. */
-	req->fd = dup(params->socket);
-	memcpy(&req->remote, params->remote, sizeof(struct sockaddr_storage));
+	req->fd = dup(qdata->params->socket);
+	memcpy(&req->remote, qdata->params->remote, sizeof(req->remote));
 
-	req->query = knot_pkt_new(NULL, pkt->max_size, NULL);
-	int ret = knot_pkt_copy(req->query, pkt);
+	req->query = knot_pkt_new(NULL, qdata->query->max_size, NULL);
+	int ret = knot_pkt_copy(req->query, qdata->query);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(req->query);
 		free(req);
 		return ret;
 	}
+
+	req->sign = qdata->sign;
+	memzero(&qdata->sign, sizeof(qdata->sign));
 
 	pthread_mutex_lock(&zone->ddns_lock);
 
@@ -449,7 +416,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, knotd_qdata_params_t *par
 	return KNOT_EOK;
 }
 
-size_t zone_update_dequeue(zone_t *zone, list_t *updates)
+static size_t update_dequeue(zone_t *zone, list_t *updates)
 {
 	if (zone == NULL || updates == NULL) {
 		return 0;
@@ -485,13 +452,13 @@ int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_UPDATE);
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
-
+	/* Check frozen zone. */
 	NS_NEED_NOT_FROZEN(qdata, KNOT_RCODE_REFUSED);
 
 	/* Restore original QNAME for DDNS ACL checks. */
 	process_query_qname_case_restore(qdata->query, qdata);
 	/* Store update into DDNS queue. */
-	int ret = zone_update_enqueue(zone, qdata->query, qdata->params);
+	int ret = update_enqueue(zone, qdata);
 	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
@@ -504,13 +471,13 @@ void updates_execute(conf_t *conf, zone_t *zone)
 {
 	/* Get list of pending updates. */
 	list_t updates;
-	size_t update_count = zone_update_dequeue(zone, &updates);
+	size_t update_count = update_dequeue(zone, &updates);
 	if (update_count == 0) {
 		return;
 	}
 
 	/* Init updates respones. */
-	int ret = init_update_responses(conf, zone, &updates, &update_count);
+	int ret = init_update_responses(&updates);
 	if (ret != KNOT_EOK) {
 		/* Send what responses we can. */
 		set_rcodes(&updates, KNOT_RCODE_SERVFAIL);
