@@ -30,17 +30,16 @@
 /*!
  * \brief TSIG key.
  */
-struct knot_tsig_key {
+typedef struct {
 	dnssec_tsig_algorithm_t algorithm;
 	knot_dname_t *name;
 	dnssec_binary_t secret;
-};
-typedef struct knot_tsig_key knot_tsig_key_t;
+} knot_tsig_key_t;
 
 /*!
  * \brief Packet signing context.
  */
-typedef struct knot_sign_context {
+typedef struct {
 	knot_tsig_key_t tsig_key;
 	uint8_t *tsig_buf;
 	uint8_t *tsig_digest;

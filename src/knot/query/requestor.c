@@ -23,9 +23,9 @@
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 
-static bool use_tcp(struct knot_request *request)
+static bool use_tcp(knot_request_t *request)
 {
-	return (request->flags & KNOT_RQ_UDP) == 0;
+	return (request->flags & KNOT_REQUEST_UDP) == 0;
 }
 
 static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer)
@@ -34,7 +34,7 @@ static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer
 }
 
 /*! \brief Ensure a socket is connected. */
-static int request_ensure_connected(struct knot_request *request)
+static int request_ensure_connected(knot_request_t *request)
 {
 	if (request->fd >= 0) {
 		return KNOT_EOK;
@@ -51,7 +51,7 @@ static int request_ensure_connected(struct knot_request *request)
 	return KNOT_EOK;
 }
 
-static int request_send(struct knot_request *request, int timeout_ms)
+static int request_send(knot_request_t *request, int timeout_ms)
 {
 	/* Initiate non-blocking connect if not connected. */
 	int ret = request_ensure_connected(request);
@@ -77,7 +77,7 @@ static int request_send(struct knot_request *request, int timeout_ms)
 	return KNOT_EOK;
 }
 
-static int request_recv(struct knot_request *request, int timeout_ms)
+static int request_recv(knot_request_t *request, int timeout_ms)
 {
 	knot_pkt_t *resp = request->resp;
 	knot_pkt_clear(resp);
@@ -106,22 +106,21 @@ static int request_recv(struct knot_request *request, int timeout_ms)
 	return ret;
 }
 
-struct knot_request *knot_request_make(knot_mm_t *mm,
-                                       const struct sockaddr *remote,
-                                       const struct sockaddr *source,
-                                       knot_pkt_t *query,
-                                       const knot_tsig_key_t *tsig_key,
-                                       unsigned flags)
+knot_request_t *knot_request_make(knot_mm_t *mm,
+                                  const struct sockaddr *remote,
+                                  const struct sockaddr *source,
+                                  knot_pkt_t *query,
+                                  const knot_tsig_key_t *tsig_key,
+                                  knot_request_flag_t flags)
 {
 	if (remote == NULL || query == NULL) {
 		return NULL;
 	}
 
-	struct knot_request *request = mm_alloc(mm, sizeof(*request));
+	knot_request_t *request = mm_calloc(mm, 1, sizeof(*request));
 	if (request == NULL) {
 		return NULL;
 	}
-	memset(request, 0, sizeof(*request));
 
 	request->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, mm);
 	if (request->resp == NULL) {
@@ -147,7 +146,7 @@ struct knot_request *knot_request_make(knot_mm_t *mm,
 	return request;
 }
 
-void knot_request_free(struct knot_request *request, knot_mm_t *mm)
+void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 {
 	if (request == NULL) {
 		return;
@@ -163,7 +162,7 @@ void knot_request_free(struct knot_request *request, knot_mm_t *mm)
 	mm_free(mm, request);
 }
 
-int knot_requestor_init(struct knot_requestor *requestor,
+int knot_requestor_init(knot_requestor_t *requestor,
                         const knot_layer_api_t *proc, void *proc_param,
                         knot_mm_t *mm)
 {
@@ -180,7 +179,7 @@ int knot_requestor_init(struct knot_requestor *requestor,
 	return KNOT_EOK;
 }
 
-void knot_requestor_clear(struct knot_requestor *requestor)
+void knot_requestor_clear(knot_requestor_t *requestor)
 {
 	if (requestor == NULL) {
 		return;
@@ -191,14 +190,13 @@ void knot_requestor_clear(struct knot_requestor *requestor)
 	memset(requestor, 0, sizeof(*requestor));
 }
 
-static int request_reset(struct knot_requestor *req,
-                         struct knot_request *last)
+static int request_reset(knot_requestor_t *req, knot_request_t *last)
 {
 	knot_layer_reset(&req->layer);
 	tsig_reset(&last->tsig);
 
-	if (req->layer.flags & KNOT_RQ_LAYER_CLOSE) {
-		req->layer.flags &= ~KNOT_RQ_LAYER_CLOSE;
+	if (req->layer.flags & KNOT_REQUESTOR_CLOSE) {
+		req->layer.flags &= ~KNOT_REQUESTOR_CLOSE;
 		if (last->fd >= 0) {
 			close(last->fd);
 			last->fd = -1;
@@ -212,8 +210,7 @@ static int request_reset(struct knot_requestor *req,
 	return KNOT_EOK;
 }
 
-static int request_produce(struct knot_requestor *req,
-                           struct knot_request *last,
+static int request_produce(knot_requestor_t *req, knot_request_t *last,
                            int timeout_ms)
 {
 	knot_layer_produce(&req->layer, last->query);
@@ -231,8 +228,7 @@ static int request_produce(struct knot_requestor *req,
 	return ret;
 }
 
-static int request_consume(struct knot_requestor *req,
-                           struct knot_request *last,
+static int request_consume(knot_requestor_t *req, knot_request_t *last,
                            int timeout_ms)
 {
 	int ret = request_recv(last, timeout_ms);
@@ -275,7 +271,7 @@ static bool layer_active(knot_layer_state_t state)
 	}
 }
 
-static int request_io(struct knot_requestor *req, struct knot_request *last,
+static int request_io(knot_requestor_t *req, knot_request_t *last,
                       int timeout_ms)
 {
 	switch (req->layer.state) {
@@ -290,11 +286,10 @@ static int request_io(struct knot_requestor *req, struct knot_request *last,
 	}
 }
 
-int knot_requestor_exec(struct knot_requestor *requestor,
-                        struct knot_request *request,
+int knot_requestor_exec(knot_requestor_t *requestor, knot_request_t *request,
                         int timeout_ms)
 {
-	if (!requestor || !request) {
+	if (requestor == NULL || request == NULL) {
 		return KNOT_EINVAL;
 	}
 

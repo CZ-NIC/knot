@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,38 +24,34 @@
 #include "libknot/mm_ctx.h"
 #include "libknot/rrtype/tsig.h"
 
-struct knot_request;
+typedef enum {
+	KNOT_REQUEST_UDP = 1 << 0  /*!< Use UDP for requests. */
+} knot_request_flag_t;
 
-/* Requestor flags. */
-enum {
-	KNOT_RQ_UDP = 1 << 0  /* Use UDP for requests. */
-};
-
-enum {
-	KNOT_RQ_LAYER_CLOSE = 1 << 0
-};
+typedef enum {
+	KNOT_REQUESTOR_CLOSE = 1 << 0
+} knot_requestor_flag_t;
 
 /*! \brief Requestor structure.
  *
  *  Requestor holds a FIFO of pending queries.
  */
-struct knot_requestor {
+typedef struct {
 	knot_mm_t *mm;       /*!< Memory context. */
 	knot_layer_t layer;  /*!< Response processing layer. */
-};
+} knot_requestor_t;
 
 /*! \brief Request data (socket, payload, response, TSIG and endpoints). */
-struct knot_request {
+typedef struct {
 	int fd;
-	unsigned flags;
+	knot_request_flag_t flags;
 	struct sockaddr_storage remote, source;
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
 	tsig_ctx_t tsig;
 
-	knot_sign_context_t sign; /* TODO: Remove. Used in updates only, should
-	                             be part of the zone update context. */
-};
+	knot_sign_context_t sign; /*!< Required for async. DDNS processing. */
+} knot_request_t;
 
 /*!
  * \brief Make request out of endpoints and query.
@@ -69,12 +65,12 @@ struct knot_request {
  *
  * \return Prepared request or NULL in case of error.
  */
-struct knot_request *knot_request_make(knot_mm_t *mm,
-                                       const struct sockaddr *dst,
-                                       const struct sockaddr *src,
-                                       knot_pkt_t *query,
-                                       const knot_tsig_key_t *key,
-                                       unsigned flags);
+knot_request_t *knot_request_make(knot_mm_t *mm,
+                                  const struct sockaddr *dst,
+                                  const struct sockaddr *src,
+                                  knot_pkt_t *query,
+                                  const knot_tsig_key_t *key,
+                                  knot_request_flag_t flags);
 
 /*!
  * \brief Free request and associated data.
@@ -82,7 +78,7 @@ struct knot_request *knot_request_make(knot_mm_t *mm,
  * \param request Freed request.
  * \param mm      Memory context.
  */
-void knot_request_free(struct knot_request *request, knot_mm_t *mm);
+void knot_request_free(knot_request_t *request, knot_mm_t *mm);
 
 /*!
  * \brief Initialize requestor structure.
@@ -94,7 +90,7 @@ void knot_request_free(struct knot_request *request, knot_mm_t *mm);
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_init(struct knot_requestor *requestor,
+int knot_requestor_init(knot_requestor_t *requestor,
                         const knot_layer_api_t *proc, void *proc_param,
                         knot_mm_t *mm);
 
@@ -103,7 +99,7 @@ int knot_requestor_init(struct knot_requestor *requestor,
  *
  * \param requestor Requestor instance.
  */
-void knot_requestor_clear(struct knot_requestor *requestor);
+void knot_requestor_clear(knot_requestor_t *requestor);
 
 /*!
  * \brief Execute a request.
@@ -114,6 +110,6 @@ void knot_requestor_clear(struct knot_requestor *requestor);
  *
  * \return KNOT_EOK or error
  */
-int knot_requestor_exec(struct knot_requestor *requestor,
-                        struct knot_request *request,
+int knot_requestor_exec(knot_requestor_t *requestor,
+                        knot_request_t *request,
                         int timeout_ms);
