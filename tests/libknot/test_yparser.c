@@ -42,12 +42,14 @@ const char *syntax_ok =
 	" f: [ f] # comment\n"
 	" f: [f ]\n"
 	" f: [ f ]\n"
+	" f: [ \"f\" ]\n"
 	"\n"
 	"c: [a,b]\n"
 	"c: [a, b]\n"
 	"c: [a ,b]\n"
 	"c: [a , b]\n"
 	"c: [ a , b ]\n"
+	"c: [ \"a\" , \"b\" ]\n"
 	"\n"
 	"- d: d\n"
 	"- d : d # comment\n"
@@ -84,22 +86,21 @@ const char *dname_ok =
 	"dom-ain:\n"
 	"\\070-\\071.\\072.:";
 
-int main(int argc, char *argv[])
+const char *quotes_ok =
+	"g: \"\"\n"
+	"g: a\\ b\n"
+	"g: \"\\# 1 00\"\n"
+	"g: \"\\\"\\\"\"\n"
+	"g: \" a \\\" b \\\" \\\"c\\\" \"\n"
+	"g: \"\\@ \\[ \\# \\, \\]\"\n";
+
+static void test_syntax_ok(yp_parser_t *yp)
 {
-	plan_lazy();
-
-	int ret;
-	size_t line;
-
-	yp_parser_t yparser;
-	yp_parser_t *yp = &yparser;
-	yp_init(yp);
-
 	// OK input.
-	ret = yp_set_input_string(yp, syntax_ok, strlen(syntax_ok));
+	int ret = yp_set_input_string(yp, syntax_ok, strlen(syntax_ok));
 	is_int(KNOT_EOK, ret, "set input string");
 
-	line = 3;
+	size_t line = 3;
 	for (int i = 0; i < 3; i++) {
 		ret = yp_parse(yp);
 		is_int(KNOT_EOK, ret, "parse %i. key0", i);
@@ -108,7 +109,7 @@ int main(int argc, char *argv[])
 		   yp->line_count == line + i, "compare %i. key0", i);
 	}
 
-	line = 7;
+	line += 4;
 	for (int i = 0; i < 6; i++) {
 		ret = yp_parse(yp);
 		is_int(KNOT_EOK, ret, "parse %i. key0 with value", i);
@@ -118,8 +119,8 @@ int main(int argc, char *argv[])
 		   "compare %i. key0 with value", i);
 	}
 
-	line = 14;
-	for (int i = 0; i < 6; i++) {
+	line += 7;
+	for (int i = 0; i < 7; i++) {
 		ret = yp_parse(yp);
 		is_int(KNOT_EOK, ret, "parse %i. key1 with value", i);
 		ok(yp->key_len == 1 && yp->key[0] == 'f' &&
@@ -128,8 +129,8 @@ int main(int argc, char *argv[])
 		   "compare %i. key1 with value", i);
 	}
 
-	line = 21;
-	for (int i = 0; i < 5; i++) {
+	line += 8;
+	for (int i = 0; i < 6; i++) {
 		ret = yp_parse(yp);
 		is_int(KNOT_EOK, ret, "parse %i. key0 with first value", i);
 		ok(yp->key_len == 1 && yp->key[0] == 'c' &&
@@ -145,7 +146,7 @@ int main(int argc, char *argv[])
 		   "compare %i. key0 with second value", i);
 	}
 
-	line = 27;
+	line += 7;
 	for (int i = 0; i < 2; i++) {
 		ret = yp_parse(yp);
 		is_int(KNOT_EOK, ret, "parse %i. id", i);
@@ -155,7 +156,7 @@ int main(int argc, char *argv[])
 		   "compare %i. id", i);
 	}
 
-	line = 30;
+	line += 3;
 	ret = yp_parse(yp);
 	is_int(KNOT_EOK, ret, "parse key0 with quoted value");
 	ok(yp->key_len == 1 && yp->key[0] == 'e' && yp->data_len == 10 &&
@@ -163,7 +164,7 @@ int main(int argc, char *argv[])
 	   yp->event == YP_EKEY0 && yp->line_count == line,
 	   "compare key0 with quoted value");
 
-	line = 32;
+	line += 2;
 	ret = yp_parse(yp);
 	is_int(KNOT_EOK, ret, "parse key0");
 	ok(yp->key_len == 4 && strcmp(yp->key, "zone") == 0 &&
@@ -171,7 +172,7 @@ int main(int argc, char *argv[])
 	   yp->event == YP_EKEY0 && yp->line_count == line,
 	   "compare key0 value");
 
-	line = 35;
+	line += 3;
 	for (int i = 0; i < 2; i++) {
 		ret = yp_parse(yp);
 		is_int(KNOT_EOK, ret, "parse %i. id", i);
@@ -187,7 +188,7 @@ int main(int argc, char *argv[])
 		   "compare key1");
 	}
 
-	line = 39;
+	line += 4;
 	ret = yp_parse(yp);
 	is_int(KNOT_EOK, ret, "parse key0");
 	ok(yp->key_len == 5 && strcmp(yp->key, "zone2") == 0 &&
@@ -203,37 +204,24 @@ int main(int argc, char *argv[])
 
 	ret = yp_parse(yp);
 	is_int(KNOT_EOF, ret, "parse EOF");
+}
 
-	// Error input 1.
-	ret = yp_set_input_string(yp, syntax_error1, strlen(syntax_error1));
-	is_int(KNOT_EOK, ret, "set error input string 1");
+static void test_syntax_error(yp_parser_t *yp, const char *input)
+{
+	static int count = 1;
+
+	int ret = yp_set_input_string(yp, input, strlen(input));
+	is_int(KNOT_EOK, ret, "set error input string %i", count++);
 	ret = yp_parse(yp);
 	is_int(KNOT_EOK, ret, "parse key0");
 	ret = yp_parse(yp);
 	is_int(KNOT_EOK, ret, "parse key1");
 	ret = yp_parse(yp);
 	is_int(KNOT_YP_EINVAL_INDENT, ret, "parse key1 - invalid indentation");
+}
 
-	// Error input 2.
-	ret = yp_set_input_string(yp, syntax_error2, strlen(syntax_error2));
-	is_int(KNOT_EOK, ret, "set error input string 2");
-	ret = yp_parse(yp);
-	is_int(KNOT_EOK, ret, "parse key0");
-	ret = yp_parse(yp);
-	is_int(KNOT_EOK, ret, "parse key1");
-	ret = yp_parse(yp);
-	is_int(KNOT_YP_EINVAL_INDENT, ret, "parse key1 - invalid indentation");
-
-	// Error input 3.
-	ret = yp_set_input_string(yp, syntax_error3, strlen(syntax_error3));
-	is_int(KNOT_EOK, ret, "set error input string 3");
-	ret = yp_parse(yp);
-	is_int(KNOT_EOK, ret, "parse key0");
-	ret = yp_parse(yp);
-	is_int(KNOT_EOK, ret, "parse key1");
-	ret = yp_parse(yp);
-	is_int(KNOT_YP_EINVAL_INDENT, ret, "parse key1 - invalid indentation");
-
+static void test_dname(yp_parser_t *yp)
+{
 #define CHECK_DNAME(str) \
 	ret = yp_parse(yp); \
 	is_int(KNOT_EOK, ret, "parse dname " str); \
@@ -241,14 +229,52 @@ int main(int argc, char *argv[])
 	   yp->event == YP_EKEY0 && yp->line_count == line++, "compare " str);
 
 	// Dname key value.
-	ret = yp_set_input_string(yp, dname_ok, strlen(dname_ok));
+	int ret = yp_set_input_string(yp, dname_ok, strlen(dname_ok));
 	is_int(KNOT_EOK, ret, "set input string");
-	line = 1;
+
+	size_t line = 1;
 	CHECK_DNAME(".");
 	CHECK_DNAME("dom-ain");
 	CHECK_DNAME("\\070-\\071.\\072.");
 
-	yp_deinit(yp);
+}
+
+static void test_quotes(yp_parser_t *yp)
+{
+#define CHECK_QUOTE(str) \
+	ret = yp_parse(yp); \
+	is_int(KNOT_EOK, ret, "parse quoted " str); \
+	ok(yp->key_len == 1 && yp->key[0] == 'g' && \
+	   yp->data_len == strlen(str) && strcmp(yp->data, str) == 0 && \
+	   yp->event == YP_EKEY0 && yp->line_count == line++, "compare " str);
+
+	int ret = yp_set_input_string(yp, quotes_ok, strlen(quotes_ok));
+	is_int(KNOT_EOK, ret, "set input string");
+
+	size_t line = 1;
+	CHECK_QUOTE("");
+	CHECK_QUOTE("a\\ b");
+	CHECK_QUOTE("\\# 1 00");
+	CHECK_QUOTE("\"\"");
+	CHECK_QUOTE(" a \" b \" \"c\" ");
+	CHECK_QUOTE("\\@ \\[ \\# \\, \\]");
+}
+
+int main(int argc, char *argv[])
+{
+	plan_lazy();
+
+	yp_parser_t yp;
+	yp_init(&yp);
+
+	test_syntax_ok(&yp);
+	test_syntax_error(&yp, syntax_error1);
+	test_syntax_error(&yp, syntax_error2);
+	test_syntax_error(&yp, syntax_error3);
+	test_dname(&yp);
+	test_quotes(&yp);
+
+	yp_deinit(&yp);
 
 	return 0;
 }
