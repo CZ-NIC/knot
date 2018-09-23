@@ -83,6 +83,8 @@ The ``default`` template identifier is reserved for the default template::
 .. NOTE::
    Each template option can be explicitly overridden in zone-specific configuration.
 
+.. _ACL:
+
 Access control list (ACL)
 =========================
 
