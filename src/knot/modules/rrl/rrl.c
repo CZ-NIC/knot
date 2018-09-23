@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "contrib/sockaddr.h"
 #include "knot/include/module.h"
 #include "knot/nameserver/process_query.h" // Dependency on qdata->extra!
 #include "knot/modules/rrl/functions.h"
@@ -75,30 +74,6 @@ static const knot_dname_t *name_from_authrr(const knot_rrset_t *rr)
 	return rr->owner;
 }
 
-static bool addr_range_match(const knotd_conf_t *range, const struct sockaddr_storage *addr)
-{
-	assert(range && addr);
-
-	for (size_t i = 0; i < range->count; i++) {
-		knotd_conf_val_t *val = &range->multi[i];
-		if (val->addr_max.ss_family == AF_UNSPEC) {
-			if (sockaddr_net_match((struct sockaddr *)addr,
-			                       (struct sockaddr *)&val->addr,
-			                       val->addr_mask)) {
-				return true;
-			}
-		} else {
-			if (sockaddr_range_match((struct sockaddr *)addr,
-			                         (struct sockaddr *)&val->addr,
-			                         (struct sockaddr *)&val->addr_max)) {
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
 static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
@@ -117,7 +92,7 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Exempt clients.
-	if (addr_range_match(&ctx->whitelist, qdata->params->remote)) {
+	if (knotd_conf_addr_range_match(&ctx->whitelist, qdata->params->remote)) {
 		return state;
 	}
 
