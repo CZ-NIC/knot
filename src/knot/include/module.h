@@ -337,6 +337,17 @@ knotd_conf_t knotd_conf_check_item(knotd_conf_check_args_t *args,
                                    const yp_name_t *item_name);
 
 /*!
+ * \brief Checks if address is in at least one of given ranges.
+ *
+ * \param[in] range
+ * \param[in] addr
+ *
+ * \return true if addr is in at least one range, false otherwise.
+ */
+bool knotd_conf_addr_range_match(const knotd_conf_t *range,
+                                 const struct sockaddr_storage *addr);
+
+/*!
  * Deallocates multi-valued configuration values.
  *
  * \param[in] conf  Configuration value.
