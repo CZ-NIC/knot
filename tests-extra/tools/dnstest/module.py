@@ -289,3 +289,27 @@ class ModCookies(KnotModule):
         conf.end()
 
         return conf
+
+class ModQueryacl(KnotModule):
+    '''Query ACL module'''
+    
+    mod_name = "queryacl"
+
+    def __init__(self, address=None, interface=None):
+        super().__init__()
+        self.address = address
+        self.interface = interface
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+        
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        if self.address:
+            conf.item_str("address", self.address)
+        if self.interface:
+            conf.item_str("interface", self.interface)
+        conf.end()
+
+        return conf
