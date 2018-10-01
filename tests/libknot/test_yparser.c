@@ -248,18 +248,16 @@ int main(int argc, char *argv[])
 	CHECK_DNAME("dom-ain");
 	CHECK_DNAME("\\070-\\071.\\072.");
 
-	/*
-//TODO
 #include <stdio.h>
 const char *quotes_ok =
-	"g: \"\"a b\" \"c  d\"";
+	"g: \" \\\"a b\\\" \\\" c d \\\"  \"";
 
+printf("<%s>\n", quotes_ok);
 	ret = yp_set_input_string(yp, quotes_ok, strlen(quotes_ok));
 	is_int(KNOT_EOK, ret, "set input string");
 	ret = yp_parse(yp);
 	is_int(KNOT_EOK, ret, "parse");
 	printf("<%.*s>\n", yp->data_len, yp->data);
-	*/
 
 	yp_deinit(yp);
 
