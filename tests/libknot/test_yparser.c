@@ -250,11 +250,15 @@ int main(int argc, char *argv[])
 
 #include <stdio.h>
 const char *quotes_ok =
-	"g: \" \\\"a b\\\" \\\" c d \\\"  \"";
+	"g: \" \\\"a b\\\" \\\" c d \\\"  \"\n"
+	"h: \" \\\"a \%b\\\" \"";
 
 printf("<%s>\n", quotes_ok);
 	ret = yp_set_input_string(yp, quotes_ok, strlen(quotes_ok));
 	is_int(KNOT_EOK, ret, "set input string");
+	ret = yp_parse(yp);
+	is_int(KNOT_EOK, ret, "parse");
+	printf("<%.*s>\n", yp->data_len, yp->data);
 	ret = yp_parse(yp);
 	is_int(KNOT_EOK, ret, "parse");
 	printf("<%.*s>\n", yp->data_len, yp->data);

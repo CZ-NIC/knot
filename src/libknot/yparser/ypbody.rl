@@ -66,6 +66,9 @@
 		}
 		parser->data[parser->data_len++] = fc;
 	}
+	action _item_rewrite {
+		parser->data_len--;
+	}
 	action _item_data_exit {
 		// Return if a value parsed.
 		parser->data[parser->data_len] = '\0';
@@ -76,15 +79,15 @@
 	quote_char = '\"';
 	list_char = [\[,\]];
 	data_char =
-		( (ascii - space - cntrl - quote_char - '\\'
-		   - sep_char - comment_char - list_char)         $_item_data
-		| ('\\' . '\"')                                   @_item_data
-		);
+		( (ascii - space - cntrl - quote_char - sep_char -
+		   comment_char - list_char)
+		| ('\\' %_item_rewrite . quote_char)
+		) $_item_data;
 	data_str_char =
-		( data_char
+		( (data_char)
 		| (sep_char | comment_char | list_char) $_item_data
 		);
-	data_str = (quote_char . data_str_char* . quote_char);
+	data_str = (quote_char . data_str_char* <: quote_char);
 	item_data = (data_char+ | data_str) >_item_data_init %_item_data_exit;
 	item_data_plus = item_data . ((sep? . ',' . sep?) . item_data)*;
 	item_data_list = '\[' . sep? . item_data_plus . sep? . '\]';
