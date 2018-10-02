@@ -277,28 +277,6 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	return result;
 }
 
-static bool can_have_offline_rrsig(const knot_rrset_t *rr, const knot_dname_t *zone_apex)
-{
-	return (rr->type == KNOT_RRTYPE_DNSKEY && knot_dname_cmp(rr->owner, zone_apex) == 0);
-}
-
-static int load_offline_rrsig(const knot_rrset_t *covered,
-                               knot_rrset_t *rrsig,
-                               const kdnssec_ctx_t *ctx)
-{
-        knot_rrset_init_empty(rrsig);
-
-	if (!can_have_offline_rrsig(covered, ctx->zone->dname)) {
-		return KNOT_EOK;
-	}
-
-	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, covered->owner, ctx->now, rrsig, NULL, NULL, NULL); // TODO
-	if (ret == KNOT_ENOENT || ret == KNOT_EINVAL) {
-		ret = KNOT_EOK;
-	}
-	return ret;
-}
-
 /*!
  * \brief Add missing RRSIGs into the changeset for adding.
  *
@@ -320,13 +298,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	assert(zone_keys);
 	assert(changeset);
 
-	knot_rrset_t to_add, offline_rrsigs;
+	int result = KNOT_EOK;
+	knot_rrset_t to_add;
 	knot_rrset_init_empty(&to_add);
-	int result = load_offline_rrsig(covered, &offline_rrsigs, dnssec_ctx);
-	if (result != KNOT_EOK) {
-		log_zone_warning(dnssec_ctx->zone->dname, "DNSSEC, failed to load offline DNSKEY RRSIG (%s)",
-				 knot_strerror(result));
-	}
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const zone_key_t *key = &zone_keys->keys[i];
@@ -342,17 +316,6 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 			to_add = create_empty_rrsigs_for(covered);
 		}
 
-		uint16_t at_offline;
-		if (valid_signature_exists(covered, &offline_rrsigs, key->key, key->ctx, dnssec_ctx, &at_offline)) {
-			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");
-			knot_rdata_t *offline_rd = knot_rdataset_at(&offline_rrsigs.rrs, at_offline);
-			result = knot_rrset_add_rdata(&to_add, offline_rd->data, offline_rd->len, NULL);
-			if (result != KNOT_EOK) {
-				break;
-			}
-			continue;
-		}
-
 		result = knot_sign_rrset(&to_add, covered, key->key, key->ctx, dnssec_ctx, NULL);
 		if (result != KNOT_EOK) {
 			break;
@@ -364,7 +327,6 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	}
 
 	knot_rdataset_clear(&to_add.rrs, NULL);
-	knot_rrset_clear(&offline_rrsigs, NULL);
 
 	return result;
 }
@@ -983,6 +945,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	knot_rrset_t *add_dnskeys = NULL;
 	knot_rrset_t *add_cdnskeys = NULL;
 	knot_rrset_t *add_cdss = NULL;
+	knot_rrset_t *add_rrsigs = NULL;
 	uint32_t dnskey_ttl = dnssec_ctx->policy->dnskey_ttl;
 	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa)) {
@@ -1012,12 +975,22 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	                              0, NULL);
 	add_cdss = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDS, soa.rclass,
 	                          0, NULL);
-	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL) {
+	add_rrsigs = knot_rrset_new(apex->owner, KNOT_RRTYPE_RRSIG, soa.rclass,
+	                            dnskey_ttl, NULL);
+	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL || add_rrsigs == NULL) {
 		ret = KNOT_ENOMEM;
 		CHECK_RET;
 	}
 
-	ret = knot_zone_sign_add_dnskeys(zone_keys, dnssec_ctx, add_dnskeys, add_cdnskeys, add_cdss);
+	ret = kasp_db_load_offline_rrsig(*dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, add_rrsigs, add_dnskeys, add_cdnskeys, add_cdss);
+	if (ret == KNOT_ENOENT) {
+		ret = knot_zone_sign_add_dnskeys(zone_keys, dnssec_ctx, add_dnskeys, add_cdnskeys, add_cdss);
+	} else if (ret == KNOT_EOK) {
+		log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");
+	} else {
+		log_zone_warning(dnssec_ctx->zone->dname, "DNSSEC, failed to load offline DNSKEY RRSIG (%s)",
+				 knot_strerror(ret));
+	}
 	CHECK_RET;
 
 	if (!knot_rrset_empty(add_cdnskeys)) {
@@ -1037,6 +1010,11 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		                                               CHANGESET_CHECK_CANCELOUT);
 		CHECK_RET;
 	}
+	if (!knot_rrset_empty(add_rrsigs)) {
+		ret = changeset_add_addition(&ch, add_rrsigs, CHANGESET_CHECK |
+		                                              CHANGESET_CHECK_CANCELOUT);
+		CHECK_RET;
+	}
 
 	ret = zone_update_apply_changeset(update, &ch);
 
@@ -1046,6 +1024,7 @@ cleanup:
 	knot_rrset_free(add_dnskeys, NULL);
 	knot_rrset_free(add_cdnskeys, NULL);
 	knot_rrset_free(add_cdss, NULL);
+	knot_rrset_free(add_rrsigs, NULL);
 	changeset_clear(&ch);
 	return ret;
 }

@@ -452,7 +452,7 @@ int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset)
 
 size_t rrset_serialized_size(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rrs.count == 0) {
+	if (rrset == NULL) {
 		return 0;
 	}
 

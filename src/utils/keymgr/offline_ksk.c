@@ -377,7 +377,7 @@ static void skr_import_once(zs_scanner_t *sc)
 
 	if (sc->error.code == KNOT_EOK && sc->buffer_length > 9 && strncmp((const char *)sc->buffer, " end SKR ", 9) == 0) {
 		knot_time_t for_time = atol((const char *)sc->buffer + 9);
-		sc->error.code = kasp_db_store_offline_rrsig(*ctx->kctx->kasp_db, for_time, ctx->dnskey, ctx->cdnskey, ctx->cds, ctx->rrsig);
+		sc->error.code = kasp_db_store_offline_rrsig(*ctx->kctx->kasp_db, for_time, ctx->rrsig, ctx->dnskey, ctx->cdnskey, ctx->cds);
 		knot_rdataset_clear(&ctx->dnskey->rrs, NULL);
 		knot_rdataset_clear(&ctx->cdnskey->rrs, NULL);
 		knot_rdataset_clear(&ctx->cds->rrs, NULL);
