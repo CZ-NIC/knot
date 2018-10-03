@@ -123,12 +123,25 @@ directory.
 .TP
 \fBzone\-sign\fP [\fIzone\fP\&...]
 Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.
-This command is valid for zones with automatic DNSSEC signing.
+This command is valid for zones with DNSSEC signing enabled.
 .TP
 \fBzone\-key\-rollover\fP \fIzone\fP \fIkey_type\fP
-On the specified zone with automatic DNSSEC signing and key management,
-even when the key has a lifetime to go, publish new key and immediately
-start the key rollover. Key type can be \fBksk\fP (also for CSK) or \fBzsk\fP\&.
+Trigger immediate key rollover. Publish new key and start a key rollover,
+even when the key has a lifetime to go. Key type can be \fBksk\fP (also for CSK)
+or \fBzsk\fP\&. This command is valid for zones with DNSSEC signing and automatic
+key management enabled.
+.TP
+\fBzone\-ksk\-submitted\fP \fIzone\fP\&...
+Use when the zone\(aqs KSK rollover is in submittion phase. By calling this command
+the user confirms manually that the parent zone contains DS record for the new
+KSK in submission phase and the old KSK can be retired.
+.TP
+\fBzone\-freeze\fP [\fIzone\fP\&...]
+Temporarily postpone zone\-changing events (load, refresh, update, flush, and
+DNSSEC signing).
+.TP
+\fBzone\-thaw\fP [\fIzone\fP\&...]
+Dismiss zone freeze.
 .TP
 \fBzone\-read\fP \fIzone\fP [\fIowner\fP [\fItype\fP]]
 Get zone data that are currently being presented.
@@ -165,18 +178,6 @@ be purged in this case).
 \fBzone\-stats\fP \fIzone\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
 Show zone statistics counter(s). To print also counters with value 0, use
 force option.
-.TP
-\fBzone\-freeze\fP [\fIzone\fP\&...]
-Temporarily postpone zone\-changing events (load, refresh, update, flush, and
-DNSSEC signing).
-.TP
-\fBzone\-thaw\fP [\fIzone\fP\&...]
-Dismiss zone freeze.
-.TP
-\fBzone\-ksk\-submitted\fP \fIzone\fP
-Use when the zone\(aqs KSK rollover is in submittion phase. By calling this command
-the user confirms manually that the parent zone contains DS record for the new
-KSK in submission phase and the old KSK can be retired.
 .TP
 \fBconf\-init\fP
 Initialize the configuration database. (*)

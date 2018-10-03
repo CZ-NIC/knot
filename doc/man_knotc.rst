@@ -100,12 +100,25 @@ Actions
 
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
-  This command is valid for zones with automatic DNSSEC signing.
+  This command is valid for zones with DNSSEC signing enabled.
 
 **zone-key-rollover** *zone* *key_type*
-  On the specified zone with automatic DNSSEC signing and key management,
-  even when the key has a lifetime to go, publish new key and immediately
-  start the key rollover. Key type can be **ksk** (also for CSK) or **zsk**.
+  Trigger immediate key rollover. Publish new key and start a key rollover,
+  even when the key has a lifetime to go. Key type can be **ksk** (also for CSK)
+  or **zsk**. This command is valid for zones with DNSSEC signing and automatic
+  key management enabled.
+
+**zone-ksk-submitted** *zone*...
+  Use when the zone's KSK rollover is in submittion phase. By calling this command
+  the user confirms manually that the parent zone contains DS record for the new
+  KSK in submission phase and the old KSK can be retired.
+
+**zone-freeze** [*zone*...]
+  Temporarily postpone zone-changing events (load, refresh, update, flush, and
+  DNSSEC signing).
+
+**zone-thaw** [*zone*...]
+  Dismiss zone freeze.
 
 **zone-read** *zone* [*owner* [*type*]]
   Get zone data that are currently being presented.
@@ -142,18 +155,6 @@ Actions
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use
   force option.
-
-**zone-freeze** [*zone*...]
-  Temporarily postpone zone-changing events (load, refresh, update, flush, and
-  DNSSEC signing).
-
-**zone-thaw** [*zone*...]
-  Dismiss zone freeze.
-
-**zone-ksk-submitted** *zone*
-  Use when the zone's KSK rollover is in submittion phase. By calling this command
-  the user confirms manually that the parent zone contains DS record for the new
-  KSK in submission phase and the old KSK can be retired.
 
 **conf-init**
   Initialize the configuration database. (*)
