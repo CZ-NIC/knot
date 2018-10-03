@@ -603,6 +603,9 @@ rollover must be pushed forward manually.
 
 *Default:* not set
 
+.. TIP::
+   A DNSSEC-validating resolver can be set as a parent.
+
 .. _submission_check-interval:
 
 check-interval

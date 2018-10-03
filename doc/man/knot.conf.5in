@@ -538,6 +538,13 @@ have a corresponding DS for the rollover to continue. If none is specified, the
 rollover must be pushed forward manually.
 .sp
 \fIDefault:\fP not set
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+A DNSSEC\-validating resolver can be set as a parent.
+.UNINDENT
+.UNINDENT
 .SS check\-interval
 .sp
 Interval for periodic checks of DS presence on parent\(aqs DNS servers, in the
