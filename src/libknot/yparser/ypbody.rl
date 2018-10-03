@@ -80,8 +80,9 @@
 	list_char = [\[,\]];
 	data_char =
 		( (ascii - space - cntrl - quote_char - sep_char -
-		   comment_char - list_char)
-		| ('\\' %_item_rewrite . quote_char)
+		   comment_char - list_char - '\\')
+		| ('\\' . quote_char >_item_rewrite)
+		| ('\\' . (32..126 - quote_char))
 		) $_item_data;
 	data_str_char =
 		( (data_char)
