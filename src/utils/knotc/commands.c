@@ -1072,7 +1072,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_NOTIFY,     cmd_zone_ctl,        CTL_ZONE_NOTIFY,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_FLUSH,      cmd_zone_filter_ctl, CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,        CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
-	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,        CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE },
+	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,        CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,        CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_THAW,       cmd_zone_ctl,        CTL_ZONE_THAW,       CMD_FOPT_ZONE },
 
@@ -1119,7 +1119,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check)." },
 	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",              "Flush zone journal into the zone file." },
 	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone." },
-	{ CMD_ZONE_KSK_SBM,    "<zone>",                                 "\b\b\bWhen KSK submission, confirm parent's DS presence manually." },
+	{ CMD_ZONE_KSK_SBM,    "<zone>...",                              "When KSK submission, confirm parent's DS presence." },
 	{ CMD_ZONE_FREEZE,     "[<zone>...]",                            "Temporarily postpone automatic zone-changing events." },
 	{ CMD_ZONE_THAW,       "[<zone>...]",                            "Dismiss zone freeze." },
 	{ "",                  "",                                       "" },
@@ -1156,7 +1156,7 @@ void print_commands(void)
 	printf("\nActions:\n");
 
 	for (const cmd_help_t *cmd = cmd_help_table; cmd->name != NULL; cmd++) {
-		printf(" %-15s %-38s %s\n", cmd->name, cmd->params, cmd->desc);
+		printf(" %-18s %-38s %s\n", cmd->name, cmd->params, cmd->desc);
 	}
 
 	printf("\n"
