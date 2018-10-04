@@ -255,11 +255,18 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto)
 	char *buf = NULL;
 	size_t buf_size = 4096;
 
-	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
+	while (ret == KNOT_EOK && knot_time_cmp(next, upto) < 0) {
 		ctx->now = next;
 		ret = ksr_once(ctx, &buf, &buf_size);
-		next_resign(&next, ctx);
+		next_resign(&next, ctx); // TODO replace by knot_get_next_zone_key_event called from within ksr_once() !!
 	}
+	if (ret != KNOT_EOK) {
+		free(buf);
+		return ret;
+	}
+	ctx->now = upto;
+	ret = ksr_once(ctx, &buf, &buf_size);
+
 	printf(";; KeySigningRequest ");
 	print_generated_message();
 
@@ -269,13 +276,14 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto)
 
 typedef struct {
 	knot_rrset_t *dnskey;
+	knot_rrset_t *dnskey_prev;
 	knot_rrset_t *cdnskey;
 	knot_rrset_t *cds;
 	knot_rrset_t *rrsig;
 	kdnssec_ctx_t *kctx;
 } ksr_sign_ctx_t;
 
-static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *dnskey)
+static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *dnskey, knot_time_t *next_sign)
 {
 	zone_keyset_t keyset = { 0 };
 	char *buf = NULL;
@@ -332,7 +340,37 @@ done:
 	knot_rrset_free(cdnskey, NULL);
 	knot_rrset_free(cds, NULL);
 	knot_rrset_free(rrsig, NULL);
+	if (ret == KNOT_EOK) {
+		*next_sign = knot_get_next_zone_key_event(&keyset);
+	}
 	free_zone_keys(&keyset);
+	return ret;
+}
+
+static int process_skr_between_ksrs(ksr_sign_ctx_t *ctx, knot_time_t next_ksr)
+{
+	static knot_time_t prev_ksr = 0;
+
+	assert((prev_ksr == 0 ? 1 : 0) == (knot_rrset_empty(ctx->dnskey_prev) ? 1 : 0));
+
+	if (!knot_rrset_empty(ctx->dnskey_prev)) {
+		for (knot_time_t inbetween_skr = prev_ksr; inbetween_skr < next_ksr; ) {
+			ctx->kctx->now = inbetween_skr;
+			int ret = ksr_sign_dnskey(ctx->kctx, ctx->dnskey_prev, &inbetween_skr);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	// finally, do the "requested" SKR and copy ctx->dnskey into ct->rrsig
+	ctx->kctx->now = next_ksr;
+	int ret = ksr_sign_dnskey(ctx->kctx, ctx->dnskey, &prev_ksr);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_rdataset_clear(&ctx->dnskey_prev->rrs, NULL);
+	ret = knot_rdataset_copy(&ctx->dnskey_prev->rrs, &ctx->dnskey->rrs, NULL);
 	return ret;
 }
 
@@ -344,8 +382,8 @@ static void ksr_sign_once(zs_scanner_t *sc)
 	ctx->dnskey->ttl = sc->r_ttl;
 
 	if (sc->error.code == KNOT_EOK && sc->buffer_length > 9 && strncmp((const char *)sc->buffer, " end KSR ", 9) == 0) {
-		ctx->kctx->now = atol((const char *)sc->buffer + 9);
-		sc->error.code = ksr_sign_dnskey(ctx->kctx, ctx->dnskey);
+		knot_time_t next_ksr = atol((const char *)sc->buffer + 9);
+		sc->error.code = process_skr_between_ksrs(ctx, next_ksr);
 		knot_rdataset_clear(&ctx->dnskey->rrs, NULL);
 	}
 }
@@ -399,13 +437,14 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_sc
 		return KNOT_EFILE;
 	}
 
-	knot_rrset_t dnskey = { 0 }, cdnskey = { 0 }, cds = { 0 }, rrsig = { 0 };
+	knot_rrset_t dnskey = { 0 }, dnskey_prev = { 0 }, cdnskey = { 0 }, cds = { 0 }, rrsig = { 0 };
 	knot_rrset_init(&dnskey, ctx->zone->dname, KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
+	knot_rrset_init(&dnskey_prev, ctx->zone->dname, KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
 	knot_rrset_init(&cdnskey, ctx->zone->dname, KNOT_RRTYPE_CDNSKEY, KNOT_CLASS_IN, 0);
 	knot_rrset_init(&cds, ctx->zone->dname, KNOT_RRTYPE_CDS, KNOT_CLASS_IN, 0);
 	knot_rrset_init(&rrsig, ctx->zone->dname, KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
 
-	ksr_sign_ctx_t pctx = { &dnskey, &cdnskey, &cds, &rrsig, ctx };
+	ksr_sign_ctx_t pctx = { &dnskey, &dnskey_prev, &cdnskey, &cds, &rrsig, ctx };
 	ret = zs_set_processing(&sc, cb, NULL, &pctx);
 	if (ret < 0) {
 		zs_deinit(&sc);
@@ -421,6 +460,7 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_sc
 		ret = KNOT_EMALF;
 	}
 	knot_rdataset_clear(&dnskey.rrs, NULL);
+	knot_rdataset_clear(&dnskey_prev.rrs, NULL);
 	knot_rdataset_clear(&cdnskey.rrs, NULL);
 	knot_rdataset_clear(&cds.rrs, NULL);
 	knot_rdataset_clear(&rrsig.rrs, NULL);

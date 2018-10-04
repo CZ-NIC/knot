@@ -212,6 +212,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		}
 		free(ctx->policy);
 	}
+	knot_rrset_free(ctx->offline_rrsig, NULL);
 	dnssec_keystore_deinit(ctx->keystore);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);

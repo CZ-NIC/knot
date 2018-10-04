@@ -49,7 +49,7 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
  */
 int knot_zone_sign_update_dnskeys(zone_update_t *update,
                                   zone_keyset_t *zone_keys,
-                                  const kdnssec_ctx_t *dnssec_ctx);
+                                  kdnssec_ctx_t *dnssec_ctx);
 
 /*!
  * \brief Check if key can be used to sign given RR.
