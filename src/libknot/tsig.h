@@ -41,11 +41,8 @@ typedef struct {
  */
 typedef struct {
 	knot_tsig_key_t tsig_key;
-	uint8_t *tsig_buf;
 	uint8_t *tsig_digest;
-	size_t tsig_buflen;
 	size_t tsig_digestlen;
-	uint8_t tsig_runlen;
 	uint64_t tsig_time_signed;
 	size_t pkt_count;
 } knot_sign_context_t;
