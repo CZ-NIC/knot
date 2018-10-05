@@ -126,9 +126,6 @@ owned by both zones equally.
 \fBpregenerate\fP \fIperiod_secs\fP
 Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
 .TP
-\fBpresign\fP \fIperiod_secs\fP
-Sign pre\-generated ZSKs, for the specified period starting from now.
-.TP
 \fBshow\-rrsig\fP \fItimestamp\fP
 Print a pre\-generated DNSKEY RRSIG for specified timestamp.
 .TP
