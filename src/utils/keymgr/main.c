@@ -215,9 +215,6 @@ static int key_command(int argc, char *argv[], int optind)
 	} else if (strcmp(argv[1], "pregenerate") == 0) {
 		CHECK_MISSING_ARG("Period not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, knot_time() + atol(argv[2]));
-	} else if (strcmp(argv[1], "presign") == 0) {
-		CHECK_MISSING_ARG("Timestamp not specified");
-		ret = keymgr_presign_zsks(&kctx, knot_time() + atol(argv[2]));
 	} else if (strcmp(argv[1], "show-rrsig") == 0) {
 		CHECK_MISSING_ARG("Timestamp not specified");
 		ret = keymgr_print_rrsig(&kctx, atol(argv[2]));
