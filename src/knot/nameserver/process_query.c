@@ -859,7 +859,8 @@ int process_query_put_rr(knot_pkt_t *pkt, knotd_qdata_t *qdata,
 	}
 
 	uint16_t prev_count = pkt->rrset_count;
-	ret = knot_pkt_put(pkt, compr_hint, &to_add, flags);
+	ret = knot_pkt_put_rotate(pkt, compr_hint, &to_add, knot_wire_get_id(qdata->query->wire),
+	                          flags);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
 		knot_rrset_clear(&to_add, &pkt->mm);
 		return ret;
