@@ -112,20 +112,6 @@ key_ksk1 = signer.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+
 key_ksk2 = signer.key_gen(ZONE, ksk="true", created="+0", publish=tickf(2), ready=tickf(3), active=tickf(4), retire="+2h", remove="+3h")
 key_zsk1 = knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", active="+0")
 
-# signer knot, copy everything from "knot"
-
-#_, keys_list, _ = Keymgr.run_check(knot.confile, ZONE, "list")
-#for keyparm in keys_list.splitlines():
-#    pem = knot.keydir + "/keys/" + keyparm.split()[0] + ".pem"
-#    parm1 = keyparm.split()[1]
-#    parm2 = keyparm.replace("-", "_").split()[7:]
-#    Keymgr.run_check(signer.confile, ZONE, "import-pem", pem, parm1, *parm2)
-
-# delete KSKs in "knot" and ZSKs in "signer"
-#os.remove(knot.keydir + "/keys/" + key_ksk1 + ".pem")
-#os.remove(knot.keydir + "/keys/" + key_ksk2 + ".pem")
-#os.remove(signer.keydir + "/keys/" + key_zsk1 + ".pem")
-
 # pregenerate keys, exchange KSR, pre-sign it, exchange SKR
 KSR = knot.keydir + "/ksr"
 SKR = knot.keydir + "/skr"

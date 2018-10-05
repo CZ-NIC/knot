@@ -186,20 +186,41 @@ static int dump_rrset_to_buf(const knot_rrset_t *rrset, char **buf, size_t *buf_
 
 int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
 {
-	knot_rrset_t rrsig = { 0 };
-	knot_rrset_init_empty(&rrsig);
-	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, NULL, &rrsig, NULL, NULL, NULL); // TODO
+	knot_time_t next = 0;
+	knot_rrset_t rrsig = { 0 }, dnskey = { 0 }, cdnskey = { 0 }, cds = { 0 };
+	knot_rrset_init(&rrsig, knot_dname_copy(ctx->zone->dname, NULL),
+	                KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
+	knot_rrset_init_empty(&dnskey);
+	knot_rrset_init_empty(&cdnskey);
+	knot_rrset_init_empty(&cds);
+	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, &next, &rrsig, &dnskey, &cdnskey, &cds);
 	if (ret == KNOT_EOK) {
 		char *buf = NULL;
 		size_t buf_size = 512;
 		ret = dump_rrset_to_buf(&rrsig, &buf, &buf_size);
 		if (ret >= 0) {
 			printf("%s", buf);
+			ret = dump_rrset_to_buf(&dnskey, &buf, &buf_size);
+		}
+		if (ret >= 0) {
+			printf("%s", buf);
+			ret = dump_rrset_to_buf(&cdnskey, &buf, &buf_size);
+		}
+		if (ret >= 0) {
+			printf("%s", buf);
+			ret = dump_rrset_to_buf(&cds, &buf, &buf_size);
+		}
+		if (ret >= 0) {
+			printf("%s", buf);
 			ret = KNOT_EOK;
 		}
 		free(buf);
+		printf("; next %lu\n", next);
 	}
 	knot_rrset_clear(&rrsig, NULL);
+	knot_rrset_clear(&dnskey, NULL);
+	knot_rrset_clear(&cdnskey, NULL);
+	knot_rrset_clear(&cds, NULL);
 	return ret;
 }
 
@@ -227,7 +248,7 @@ static void print_generated_message()
 	printf("generated on %s by KnotDNS %s\n", buf, VERSION);
 }
 
-static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size)
+static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_t *next_ksr)
 {
 	knot_rrset_t *dnskey = NULL;
 	zone_keyset_t keyset = { 0 };
@@ -243,6 +264,9 @@ static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size)
 	}
 
 done:
+	if (ret == KNOT_EOK && next_ksr != NULL) {
+		*next_ksr = knot_get_next_zone_key_event(&keyset);
+	}
 	knot_rrset_free(dnskey, NULL);
 	free_zone_keys(&keyset);
 	return ret;
@@ -257,15 +281,15 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto)
 
 	while (ret == KNOT_EOK && knot_time_cmp(next, upto) < 0) {
 		ctx->now = next;
-		ret = ksr_once(ctx, &buf, &buf_size);
-		next_resign(&next, ctx); // TODO replace by knot_get_next_zone_key_event called from within ksr_once() !!
+		ret = ksr_once(ctx, &buf, &buf_size, &next);
 	}
 	if (ret != KNOT_EOK) {
 		free(buf);
 		return ret;
 	}
 	ctx->now = upto;
-	ret = ksr_once(ctx, &buf, &buf_size);
+	// force end of period as a KSR timestamp
+	ret = ksr_once(ctx, &buf, &buf_size, NULL);
 
 	printf(";; KeySigningRequest ");
 	print_generated_message();
