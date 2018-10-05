@@ -103,9 +103,6 @@ Commands related to Offline KSK feature
 **pregenerate** *period_secs*
   Pre-generate ZSKs for use with offline KSK, for the specified period starting from now.
 
-**presign** *period_secs*
-  Sign pre-generated ZSKs, for the specified period starting from now.
-
 **show-rrsig** *timestamp*
   Print a pre-generated DNSKEY RRSIG for specified timestamp.
 
