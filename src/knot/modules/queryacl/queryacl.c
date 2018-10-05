@@ -17,7 +17,7 @@
 #include "knot/include/module.h"
 #include "contrib/sockaddr.h"
 
-#define MOD_ADDRESS		"\x07""address"
+#define MOD_ADDRESS	"\x07""address"
 #define MOD_INTERFACE	"\x09""interface"
 
 const yp_item_t queryacl_conf[] = {
@@ -40,25 +40,24 @@ static knotd_state_t queryacl_process(knotd_state_t state, knot_pkt_t *pkt,
 
 	// Get interface address.
 	struct sockaddr_storage iface;
-	socklen_t iface_len = sizeof(struct sockaddr_storage);
+	socklen_t iface_len = sizeof(iface);
 	if (getsockname(qdata->params->socket, (struct sockaddr *)&iface, &iface_len) != 0) {
 		knotd_mod_log(mod, LOG_ERR, "failed to get interface address");
 		return KNOTD_STATE_FAIL;
 	}
 
-	bool addr_ok = true;
 	if (ctx->allow_addr.count > 0) {
-		addr_ok = knotd_conf_addr_range_match(&ctx->allow_addr, qdata->params->remote);
+		if (!knotd_conf_addr_range_match(&ctx->allow_addr, qdata->params->remote)) {
+			qdata->rcode = KNOT_RCODE_NOTAUTH;
+			return KNOTD_STATE_FAIL;
+		}
 	}
 
-	bool iface_ok = true;
 	if (ctx->allow_iface.count > 0) {
-		iface_ok = knotd_conf_addr_range_match(&ctx->allow_iface, &iface);
-	}
-
-	if (!addr_ok || !iface_ok) {
-		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		return KNOTD_STATE_FAIL;
+		if (!knotd_conf_addr_range_match(&ctx->allow_iface, &iface)) {
+			qdata->rcode = KNOT_RCODE_NOTAUTH;
+			return KNOTD_STATE_FAIL;
+		}
 	}
 
 	return state;
