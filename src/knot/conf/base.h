@@ -112,6 +112,7 @@ typedef struct {
 		int32_t srv_tcp_idle_timeout;
 		int32_t srv_tcp_reply_timeout;
 		int32_t srv_max_tcp_clients;
+		bool srv_rotate;
 		int32_t ctl_timeout;
 		conf_val_t srv_nsid;
 		bool use_ecs;

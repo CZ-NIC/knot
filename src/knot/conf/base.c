@@ -136,6 +136,8 @@ static void init_cache(
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
 
+	conf->cache.srv_rotate = true;
+
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
 
 	val = conf_get(conf, C_SRV, C_ECS);
