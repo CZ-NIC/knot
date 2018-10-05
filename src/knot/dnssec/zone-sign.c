@@ -938,7 +938,8 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
 
 int knot_zone_sign_update_dnskeys(zone_update_t *update,
                                   zone_keyset_t *zone_keys,
-                                  kdnssec_ctx_t *dnssec_ctx)
+                                  kdnssec_ctx_t *dnssec_ctx,
+                                  knot_time_t *next_resign)
 {
 	if (update == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
 		return KNOT_EINVAL;
@@ -989,7 +990,8 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	}
 
 	if (dnssec_ctx->policy->offline_ksk) {
-		ret = kasp_db_load_offline_rrsig(*dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, add_rrsigs, add_dnskeys, add_cdnskeys, add_cdss);
+		ret = kasp_db_load_offline_rrsig(*dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, next_resign,
+		                                 add_rrsigs, add_dnskeys, add_cdnskeys, add_cdss);
 		if (ret == KNOT_EOK) {
 			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");
 		} else {

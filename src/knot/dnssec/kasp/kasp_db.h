@@ -256,7 +256,7 @@ int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_
  *
  * \return KNOT_E*
  */
-int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, knot_time_t for_time,
+int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, knot_time_t for_time, knot_time_t *next_time,
                                knot_rrset_t *rrsig, knot_rrset_t *dnskey, knot_rrset_t *cdnskey, knot_rrset_t *cds);
 
 /*!

@@ -188,7 +188,7 @@ int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
 {
 	knot_rrset_t rrsig = { 0 };
 	knot_rrset_init_empty(&rrsig);
-	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, &rrsig, NULL, NULL, NULL); // TODO
+	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, NULL, &rrsig, NULL, NULL, NULL); // TODO
 	if (ret == KNOT_EOK) {
 		char *buf = NULL;
 		size_t buf_size = 512;
@@ -283,7 +283,7 @@ typedef struct {
 	kdnssec_ctx_t *kctx;
 } ksr_sign_ctx_t;
 
-static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *dnskey, knot_time_t *next_sign)
+static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t *next_sign)
 {
 	zone_keyset_t keyset = { 0 };
 	char *buf = NULL;
@@ -292,10 +292,11 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *dnskey, knot_time_t
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	knot_rrset_t *cdnskey = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_CDNSKEY, KNOT_CLASS_IN, 0, NULL);
-	knot_rrset_t *cds = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_CDS, KNOT_CLASS_IN, 0, NULL);
-	knot_rrset_t *rrsig = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, ctx->policy->dnskey_ttl, NULL);
-	if (cdnskey == NULL || cds == NULL || rrsig == NULL) {
+	knot_rrset_t *dnskey = knot_rrset_copy(zsk, NULL);
+	knot_rrset_t *cdnskey = knot_rrset_new(zsk->owner, KNOT_RRTYPE_CDNSKEY, zsk->rclass, 0, NULL);
+	knot_rrset_t *cds = knot_rrset_new(zsk->owner, KNOT_RRTYPE_CDS, zsk->rclass, 0, NULL);
+	knot_rrset_t *rrsig = knot_rrset_new(zsk->owner, KNOT_RRTYPE_RRSIG, zsk->rclass, zsk->ttl, NULL);
+	if (dnskey == NULL || cdnskey == NULL || cds == NULL || rrsig == NULL) {
 		ret = KNOT_ENOMEM;
 		goto done;
 	}
@@ -337,6 +338,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *dnskey, knot_time_t
 
 done:
 	free(buf);
+	knot_rrset_free(dnskey, NULL);
 	knot_rrset_free(cdnskey, NULL);
 	knot_rrset_free(cds, NULL);
 	knot_rrset_free(rrsig, NULL);

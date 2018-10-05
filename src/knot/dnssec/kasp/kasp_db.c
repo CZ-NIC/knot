@@ -795,7 +795,7 @@ int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_
 	return ret;
 }
 
-int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, knot_time_t for_time,
+int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, knot_time_t for_time, knot_time_t *next_time,
 			       knot_rrset_t *rrsig, knot_rrset_t *dnskey, knot_rrset_t *cdnskey, knot_rrset_t *cds)
 {
 	if (db == NULL || rrsig == NULL || dnskey == NULL || cdnskey == NULL || cds == NULL) {
@@ -805,25 +805,46 @@ int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, kno
 	char for_time_str[21];
 	for_time2string(for_time_str, for_time);
 	with_txn(KEYS_RO, NULL);
-	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RRSIG, for_dname, for_time_str), val;
-	ret = db_api->find(txn, &key, &val, KNOT_DB_LEQ);
-	if (ret == KNOT_EOK) {
-		wire_ctx_t wire = wire_ctx_init(val.data, val.len);
-		ret = deserialize_rrset(&wire, rrsig);
-		if (ret == KNOT_EOK && knot_dname_cmp(rrsig->owner, for_dname) != 0) {
-			ret = KNOT_ENOENT;
-		}
-		if (ret == KNOT_EOK) {
-			ret = deserialize_rrset(&wire, dnskey);
-		}
-		if (ret == KNOT_EOK) {
-			ret = deserialize_rrset(&wire, cdnskey);
-		}
-		if (ret == KNOT_EOK) {
-			ret = deserialize_rrset(&wire, cds);
+	knot_db_val_t search = make_key(KASPDBKEY_OFFLINE_RRSIG, for_dname, for_time_str), key, val;
+	knot_db_iter_t *it = db_api->iter_begin(txn, KNOT_DB_NOOP);
+	if (it == NULL) {
+		ret = KNOT_ERROR;
+		goto cleanup;
+	}
+	it = db_api->iter_seek(it, &search, KNOT_DB_LEQ);
+	if (it == NULL) {
+		ret = KNOT_ENOENT;
+		goto cleanup;
+	}
+	if (db_api->iter_key(it, &key) != KNOT_EOK || db_api->iter_val(it, &val) != KNOT_EOK) {
+		ret = KNOT_ERROR;
+		goto cleanup;
+	}
+	if (knot_dname_cmp((const knot_dname_t *)key.data + 1, rrsig->owner) != 0) {
+		ret = KNOT_ENOENT;
+		goto cleanup;
+	}
+	wire_ctx_t wire = wire_ctx_init(val.data, val.len);
+#define CHK_RET if (ret != KNOT_EOK) goto cleanup;
+	ret = deserialize_rrset(&wire, rrsig);
+	CHK_RET
+	ret = deserialize_rrset(&wire, dnskey);
+	CHK_RET
+	ret = deserialize_rrset(&wire, cdnskey);
+	CHK_RET
+	ret = deserialize_rrset(&wire, cds);
+	CHK_RET
+#undef CHK_RET
+	*next_time = 0;
+	if ((it = db_api->iter_next(it)) != NULL && db_api->iter_key(it, &key) == KNOT_EOK) {
+		const knot_dname_t *next_name = (const knot_dname_t *)key.data + 1;
+		if (knot_dname_cmp(next_name, rrsig->owner) == 0) {
+			*next_time = atol((char *)key.data + 1 + knot_dname_size(next_name));
 		}
 	}
-	free_key(&key);
+cleanup:
+	db_api->iter_finish(it);
+	free_key(&search);
 	with_txn_end(NULL);
 	return ret;
 }
