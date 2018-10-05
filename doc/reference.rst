@@ -142,6 +142,7 @@ General options related to the server.
      max-ipv4-udp-payload: SIZE
      max-ipv6-udp-payload: SIZE
      edns-client-subnet: BOOL
+     answer-rotation: BOOL
      listen: ADDR[@INT] ...
 
 .. _server_identity:
@@ -317,8 +318,19 @@ Maximum EDNS0 UDP payload size for IPv6.
 edns-client-subnet
 ------------------
 
-Enable or disable EDNS Client Subnet support. If enabled, responses to queries containing the EDNS Client Subnet option
+Enable or disable EDNS Client Subnet support. If enabled, responses to queries
+containing the EDNS Client Subnet option
 always contain a valid EDNS Client Subnet option according to :rfc:`7871`.
+
+*Default:* off
+
+.. _server_answer-rotation:
+
+answer-rotation
+---------------
+
+Enable or disable sorted-rrset rotation in the answer section of normal replies.
+The rotation shift is simply determined by a query ID.
 
 *Default:* off
 

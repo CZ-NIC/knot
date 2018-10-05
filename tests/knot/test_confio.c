@@ -909,7 +909,8 @@ static void test_conf_io_list(void)
 	      "server.max-udp-payload\n"
 	      "server.max-ipv4-udp-payload\n"
 	      "server.max-ipv6-udp-payload\n"
-	      "server.edns-client-subnet";
+	      "server.edns-client-subnet\n"
+	      "server.answer-rotation";
 	ok(strcmp(ref, out) == 0, "compare result");
 }
 
@@ -926,6 +927,7 @@ static const yp_item_t desc_server[] = {
 	{ C_MAX_IPV4_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
 	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
+	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 
