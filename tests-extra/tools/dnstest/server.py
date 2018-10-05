@@ -391,11 +391,10 @@ class Server(object):
         f.write(self.get_config())
         f.close()
 
-    def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
-            timeout=None, tries=3, flags="", bufsize=None, edns=None,
-            nsid=False, dnssec=False, log_no_sep=False, tsig=None, addr=None, source=None):
-        if addr is None:
-            addr = self.addr
+    def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
+            tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
+            log_no_sep=False, tsig=None, addr=None, source=None):
+
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
             if len(rname) != 1:
@@ -500,9 +499,12 @@ class Server(object):
             if param != "self":
                 args[param] = params.locals[param]
 
+        if addr is None:
+            addr = self.addr
+
         # Add source to dig flags if present
         if source is not None:
-            dig_flags += " -b" + source
+            dig_flags += " -b " + source
 
         check_log("DIG %s %s %s @%s -p %i %s" %
                   (rname, rtype_str, rclass, addr, self.port, dig_flags))
@@ -541,15 +543,11 @@ class Server(object):
                                          use_udp=udp, serial=int(serial),
                                          **key_params)
                 elif udp:
-                    if source != None:
-                        resp = dns.query.udp(query,addr, port=self.port,
-                                             timeout=timeout, source=source)
-                    else:
-                        resp = dns.query.udp(query, addr, port=self.port,
-                                             timeout=timeout)
+                    resp = dns.query.udp(query, addr, port=self.port,
+                                         timeout=timeout, source=source)
                 else:
                     resp = dns.query.tcp(query, addr, port=self.port,
-                                         timeout=timeout)
+                                         timeout=timeout, source=source)
 
                 if not log_no_sep:
                     detail_log(SEP)

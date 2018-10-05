@@ -22,7 +22,7 @@ class KnotConf(object):
 
     def item_str(self, name, value):
         self.conf += "        %s: \"%s\"\n" % (name, value)
-    
+
     def item_list(self, name, values):
         self.conf += "        %s: [" % name
         self.conf += ', '.join(str(value) for value in values)
