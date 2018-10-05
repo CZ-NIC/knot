@@ -158,6 +158,7 @@ static const yp_item_t desc_server[] = {
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
+	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 

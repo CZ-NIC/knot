@@ -23,6 +23,7 @@
 #define C_ACTION		"\x06""action"
 #define C_ADDR			"\x07""address"
 #define C_ALG			"\x09""algorithm"
+#define C_ANS_ROTATION		"\x0F""answer-rotation"
 #define C_ANY			"\x03""any"
 #define C_APPEND		"\x06""append"
 #define C_ASYNC_START		"\x0B""async-start"
