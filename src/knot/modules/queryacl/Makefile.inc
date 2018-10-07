@@ -1,4 +1,4 @@
-knot_modules_queryacl_la_SOURCES = knot/modules/queryacl/queryacl.c \
+knot_modules_queryacl_la_SOURCES = knot/modules/queryacl/queryacl.c
 EXTRA_DIST +=                      knot/modules/queryacl/queryacl.rst
 
 if STATIC_MODULE_queryacl
