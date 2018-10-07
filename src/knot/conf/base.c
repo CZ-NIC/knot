@@ -139,7 +139,7 @@ static void init_cache(
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
 
 	val = conf_get(conf, C_SRV, C_ECS);
-	conf->cache.use_ecs = conf_bool(&val);
+	conf->cache.srv_ecs = conf_bool(&val);
 
 	val = conf_get(conf, C_SRV, C_ANS_ROTATION);
 	conf->cache.srv_ans_rotate = conf_bool(&val);

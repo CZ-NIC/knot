@@ -292,7 +292,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	}
 
 	/* Initialize EDNS Client Subnet if configured and present in query. */
-	if (conf()->cache.use_ecs) {
+	if (conf()->cache.srv_ecs) {
 		uint8_t *ecs_opt = knot_pkt_edns_option(query, KNOT_EDNS_OPTION_CLIENT_SUBNET);
 		if (ecs_opt != NULL) {
 			qdata->ecs = mm_alloc(qdata->mm, sizeof(knot_edns_client_subnet_t));

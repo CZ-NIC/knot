@@ -114,7 +114,7 @@ typedef struct {
 		int32_t srv_max_tcp_clients;
 		int32_t ctl_timeout;
 		conf_val_t srv_nsid;
-		bool use_ecs;
+		bool srv_ecs;
 		bool srv_ans_rotate;
 	} cache;
 
