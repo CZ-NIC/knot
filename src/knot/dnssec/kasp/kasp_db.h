@@ -268,4 +268,4 @@ int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, kno
  *
  * \return KNOT_E*
  */
-int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone, knot_time_t until);
+int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone, knot_time_t from, knot_time_t to);

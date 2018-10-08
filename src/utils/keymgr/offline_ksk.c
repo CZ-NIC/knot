@@ -143,9 +143,9 @@ int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
 	return ret;
 }
 
-int keymgr_delete_rrsig(kdnssec_ctx_t *ctx, knot_time_t until)
+int keymgr_delete_rrsig(kdnssec_ctx_t *ctx, knot_time_t from, knot_time_t to)
 {
-	return kasp_db_delete_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, until);
+	return kasp_db_delete_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, from, to);
 }
 
 int keymgr_del_all_old(kdnssec_ctx_t *ctx)
