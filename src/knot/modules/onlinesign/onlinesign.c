@@ -30,6 +30,7 @@
 #include "knot/nameserver/process_query.h"
 
 #define MOD_POLICY	"\x06""policy"
+#define MOD_NSEC_BITMAP	"\x0B""nsec-bitmap"
 
 int policy_check(knotd_conf_check_args_t *args)
 {
@@ -41,14 +42,25 @@ int policy_check(knotd_conf_check_args_t *args)
 	return ret;
 }
 
+int bitmap_check(knotd_conf_check_args_t *args)
+{
+	uint16_t num;
+	int ret = knot_rrtype_from_string((const char *)args->data, &num);
+	if (ret != 0) {
+		args->err_str = "invalid RR type";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 const yp_item_t online_sign_conf[] = {
-	{ MOD_POLICY, YP_TREF, YP_VREF = { C_POLICY }, YP_FNONE, { policy_check } },
+	{ MOD_POLICY,      YP_TREF, YP_VREF = { C_POLICY }, YP_FNONE, { policy_check } },
+	{ MOD_NSEC_BITMAP, YP_TSTR, YP_VNONE, YP_FMULTI, { bitmap_check } },
 	{ NULL }
 };
 
 /*!
- * \brief RR types to force in synthesised NSEC maps.
- *
  * We cannot determine the true NSEC bitmap because of dynamic modules which
  * can synthesize some types on-the-fly. The base NSEC map will be determined
  * from zone content and this list of types.
@@ -56,10 +68,8 @@ const yp_item_t online_sign_conf[] = {
  * The types in the NSEC bitmap really don't have to exist. Only the QTYPE
  * must not be present. This will make the validation work with resolvers
  * performing negative caching.
- *
- * This list should contain all RR types, which can be potentionally
- * synthesized by other modules.
  */
+
 static const uint16_t NSEC_FORCE_TYPES[] = {
 	KNOT_RRTYPE_A,
 	KNOT_RRTYPE_AAAA,
@@ -71,6 +81,8 @@ typedef struct {
 	knot_time_t event_parent_ds_q;
 	pthread_mutex_t event_mutex;
 	pthread_rwlock_t signing_mutex;
+
+	uint16_t *nsec_force_types;
 
 	bool zone_doomed;
 } online_sign_ctx_t;
@@ -124,11 +136,12 @@ static void bitmap_add_zone(dnssec_nsec_bitmap_t *map, const zone_node_t *node)
  *
  * \param qtype  Current QTYPE, will never be added into the map.
  */
-static void bitmap_add_forced(dnssec_nsec_bitmap_t *map, uint16_t qtype)
+static void bitmap_add_forced(dnssec_nsec_bitmap_t *map, uint16_t qtype,
+                              const uint16_t *force_types)
 {
-	for (const uint16_t *type = NSEC_FORCE_TYPES; *type; type += 1) {
-		if (*type != qtype) {
-			dnssec_nsec_bitmap_add(map, *type);
+	for (int i = 0; force_types[i] > 0; i++) {
+		if (force_types[i] != qtype) {
+			dnssec_nsec_bitmap_add(map, force_types[i]);
 		}
 	}
 }
@@ -152,7 +165,8 @@ static void bitmap_add_section(dnssec_nsec_bitmap_t *map, const knot_pktsection_
  * - For non-ANY query, the bitmap will contain types from zone and forced
  *   types which can be potentionally synthesized by other query modules.
  */
-static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *qdata, bool add_forced)
+static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *qdata,
+                                          const uint16_t *force_types)
 {
 	dnssec_nsec_bitmap_t *map = dnssec_nsec_bitmap_new();
 	if (!map) {
@@ -171,8 +185,8 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *
 		bitmap_add_section(map, answer);
 	} else {
 		bitmap_add_zone(map, qdata->extra->node);
-		if (add_forced && !node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
-			bitmap_add_forced(map, qtype);
+		if (force_types != NULL && !node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
+			bitmap_add_forced(map, qtype, force_types);
 		}
 	}
 
@@ -184,7 +198,8 @@ static bool is_deleg(const knot_pkt_t *pkt)
 	return !knot_wire_get_aa(pkt->wire);
 }
 
-static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t *mm)
+static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knotd_mod_t *mod,
+                                knot_mm_t *mm)
 {
 	const knot_dname_t *nsec_owner = is_deleg(pkt) ? qdata->extra->encloser->owner : qdata->name;
 	knot_rrset_t *nsec = knot_rrset_new(nsec_owner, KNOT_RRTYPE_NSEC,
@@ -199,7 +214,14 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knot_mm_t
 		return NULL;
 	}
 
-	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata, !is_deleg(pkt));
+	// If necessary, prepare types to force into NSEC bitmap.
+	uint16_t *force_types = NULL;
+	if (!is_deleg(pkt)) {
+		online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
+		force_types = ctx->nsec_force_types;
+	}
+
+	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata, force_types);
 	if (!bitmap) {
 		free(next);
 		knot_rrset_free(nsec, mm);
@@ -344,7 +366,7 @@ static knotd_in_state_t synth_authority(knotd_in_state_t state, knot_pkt_t *pkt,
 	// synthesise NSEC
 
 	if (want_dnssec(qdata)) {
-		knot_rrset_t *nsec = synth_nsec(pkt, qdata, &pkt->mm);
+		knot_rrset_t *nsec = synth_nsec(pkt, qdata, mod, &pkt->mm);
 		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, nsec, KNOT_PF_FREE);
 		if (r != DNSSEC_EOK) {
 			knot_rrset_free(nsec, &pkt->mm);
@@ -597,7 +619,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 	}
 
 	if (qtype_match(qdata, KNOT_RRTYPE_NSEC)) {
-		knot_rrset_t *nsec = synth_nsec(pkt, qdata, &pkt->mm);
+		knot_rrset_t *nsec = synth_nsec(pkt, qdata, mod, &pkt->mm);
 		if (!nsec) {
 			return KNOTD_IN_STATE_ERROR;
 		}
@@ -619,6 +641,7 @@ static void online_sign_ctx_free(online_sign_ctx_t *ctx)
 	pthread_mutex_destroy(&ctx->event_mutex);
 	pthread_rwlock_destroy(&ctx->signing_mutex);
 
+	free(ctx->nsec_force_types);
 	free(ctx);
 }
 
@@ -666,6 +689,32 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 	return KNOT_EOK;
 }
 
+int load_nsec_bitmap(online_sign_ctx_t *ctx, knotd_conf_t *conf)
+{
+	int count = (conf->count > 0) ? conf->count : sizeof(NSEC_FORCE_TYPES) / sizeof(uint16_t);
+	ctx->nsec_force_types = calloc(count + 1, sizeof(uint16_t));
+	if (ctx->nsec_force_types == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	if (conf->count == 0) {
+		// Use the default list.
+		for (int i = 0; NSEC_FORCE_TYPES[i] > 0; i++) {
+			ctx->nsec_force_types[i] = NSEC_FORCE_TYPES[i];
+		}
+	} else {
+		for (int i = 0; i < conf->count; i++) {
+			int ret = knot_rrtype_from_string(conf->multi[i].string,
+			                                  &ctx->nsec_force_types[i]);
+			if (ret != 0) {
+				return KNOT_EINVAL;
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 int online_sign_load(knotd_mod_t *mod)
 {
 	knotd_conf_t conf = knotd_conf_zone(mod, C_DNSSEC_SIGNING,
@@ -676,11 +725,19 @@ int online_sign_load(knotd_mod_t *mod)
 	}
 
 	online_sign_ctx_t *ctx = NULL;
-	int r = online_sign_ctx_new(&ctx, mod);
-	if (r != KNOT_EOK) {
+	int ret = online_sign_ctx_new(&ctx, mod);
+	if (ret != KNOT_EOK) {
 		knotd_mod_log(mod, LOG_ERR, "failed to initialize signing key (%s)",
-		              knot_strerror(r));
+		              knot_strerror(ret));
 		return KNOT_ERROR;
+	}
+
+	conf = knotd_conf_mod(mod, MOD_NSEC_BITMAP);
+	ret = load_nsec_bitmap(ctx, &conf);
+	knotd_conf_free(&conf);
+	if (ret != KNOT_EOK) {
+		online_sign_ctx_free(ctx);
+		return ret;
 	}
 
 	knotd_mod_ctx_set(mod, ctx);
