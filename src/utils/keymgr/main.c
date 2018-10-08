@@ -219,8 +219,12 @@ static int key_command(int argc, char *argv[], int optind)
 		CHECK_MISSING_ARG("Timestamp not specified");
 		ret = keymgr_print_rrsig(&kctx, atol(argv[2]));
 	} else if (strcmp(argv[1], "del-rrsig") == 0) {
-		CHECK_MISSING_ARG("Timestamp not specified");
-		ret = keymgr_delete_rrsig(&kctx, knot_time() + atol(argv[2]));
+		if (argc < 4) {
+			printf("Timestamps from-to not specified\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		ret = keymgr_delete_rrsig(&kctx, atol(argv[2]), atol(argv[3]));
 	} else if (strcmp(argv[1], "del-all-old") == 0) {
 		ret = keymgr_del_all_old(&kctx);
 	} else if (strcmp(argv[1], "generate-ksr") == 0) {

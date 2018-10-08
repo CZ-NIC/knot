@@ -186,6 +186,21 @@ static knot_db_val_t make_key(keyclass_t kclass, const knot_dname_t *dname, cons
 	return res;
 }
 
+static keyclass_t key_class(const knot_db_val_t *key)
+{
+	return ((uint8_t *)key->data)[0];
+}
+
+static const knot_dname_t *key_dname(const knot_db_val_t *key)
+{
+	return (key->data + 1);
+}
+
+static const char *key_str(const knot_db_val_t *key)
+{
+	return (key->data + 1 + knot_dname_size(key_dname(key)));
+}
+
 static void free_key(knot_db_val_t *key)
 {
 	free(key->data);
@@ -837,9 +852,8 @@ int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, kno
 #undef CHK_RET
 	*next_time = 0;
 	if ((it = db_api->iter_next(it)) != NULL && db_api->iter_key(it, &key) == KNOT_EOK) {
-		const knot_dname_t *next_name = (const knot_dname_t *)key.data + 1;
-		if (knot_dname_cmp(next_name, rrsig->owner) == 0) {
-			*next_time = atol((char *)key.data + 1 + knot_dname_size(next_name));
+		if (knot_dname_cmp(key_dname(&key), rrsig->owner) == 0) {
+			*next_time = atol(key_str(&key));
 		}
 	}
 cleanup:
@@ -849,7 +863,7 @@ cleanup:
 	return ret;
 }
 
-int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone, knot_time_t until)
+int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone, knot_time_t from, knot_time_t to)
 {
 	if (db == NULL) {
 		return KNOT_EINVAL;
@@ -858,16 +872,20 @@ int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone, knot_t
 	with_txn(KEYS_RW, NULL);
 	knot_db_iter_t *iter = db_api->iter_begin(txn, KNOT_DB_NOOP);
 
-	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RRSIG, zone, "00000000000000000000");
+	char for_time_str[21];
+	for_time2string(for_time_str, from);
+	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RRSIG, zone, for_time_str);
 	iter = db_api->iter_seek(iter, &key, KNOT_DB_GEQ);
 	free_key(&key);
 
 	while (ret == KNOT_EOK && iter != NULL && (ret = db_api->iter_key(iter, &key)) == KNOT_EOK &&
-	       key.len > 20 && *(uint8_t *)key.data == KASPDBKEY_OFFLINE_RRSIG && atoll(key.data + key.len - 21) <= until &&
-	       knot_dname_cmp((const knot_dname_t *)(key.data + 1), zone) == 0) {
+	       key.len > 20 && key_class(&key) == KASPDBKEY_OFFLINE_RRSIG &&
+	       knot_time_cmp(atol(key_str(&key)), to) <= 0 &&
+	       knot_dname_cmp(key_dname(&key), zone) == 0) {
 		ret = knot_db_lmdb_iter_del(iter);
 		iter = db_api->iter_next(iter);
 	}
+	db_api->iter_finish(iter);
 	with_txn_end(NULL);
 	return ret;
 }
