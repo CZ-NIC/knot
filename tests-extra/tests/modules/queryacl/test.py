@@ -26,6 +26,9 @@ t.start()
 
 knot.zones_wait(zones)
 
+# Wait for server to start listening on the control socket.
+t.sleep(3)
+
 ctl.connect(os.path.join(knot.dir, "knot.sock"))
 ctl.send_block(cmd="conf-begin")
 ctl.receive_block()
