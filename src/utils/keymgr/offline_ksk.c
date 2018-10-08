@@ -80,7 +80,6 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
 	int ret = KNOT_EOK;
 
 	ctx->keep_deleted_keys = true;
-	ctx->rollover_only_zsk = true;
 	ctx->policy->manual = false;
 
 	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
