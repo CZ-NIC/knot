@@ -250,7 +250,10 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 		return NULL;
 	}
 
+	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
+	pthread_rwlock_rdlock(&ctx->signing_mutex);
 	int ret = knotd_mod_dnssec_sign_rrset(mod, rrsig, copy, mm);
+	pthread_rwlock_unlock(&ctx->signing_mutex);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(copy, NULL);
 		knot_rrset_free(rrsig, mm);
