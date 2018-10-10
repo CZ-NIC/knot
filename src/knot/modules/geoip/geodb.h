@@ -26,7 +26,7 @@
 #define geodb_data_t	MMDB_entry_data_s
 #else
 #define geodb_t		void
-#define geodb_data_t	void
+#define geodb_data_t	char
 #endif
 
 // MaxMind DB related constants.
