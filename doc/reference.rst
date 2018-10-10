@@ -903,7 +903,7 @@ Possible values:
 offline-ksk
 -----------
 
-Specifies if Offline KSK feature is enabled.
+Specifies if :ref:`Offline KSK <DNSSEC Offline KSK>` feature is enabled.
 
 *Default:* off
 
