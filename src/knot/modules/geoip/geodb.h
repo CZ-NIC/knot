@@ -57,8 +57,6 @@ bool geodb_available(void);
 
 geodb_t *geodb_open(const char *filename);
 
-geodb_data_t *geodb_alloc_entries(uint16_t count);
-
 void geodb_close(geodb_t *geodb);
 
 int geodb_query(geodb_t *geodb, geodb_data_t *entries, struct sockaddr *remote,
