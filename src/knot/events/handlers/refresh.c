@@ -414,7 +414,12 @@ static void ixfr_cleanup(struct refresh_data *data)
 static int ixfr_finalize(struct refresh_data *data)
 {
 	uint32_t master_serial;
-	(void)zone_get_master_serial(data->zone, &master_serial);
+	int ret = zone_get_master_serial(data->zone, &master_serial);
+	if (ret != KNOT_EOK) {
+		log_zone_error(data->zone->name, "Failed reading master's serial"
+			       "from KASP DB (%s)", knot_strerror(ret));
+		return ret;
+	}
 	uint32_t local_serial = zone_contents_serial(data->zone->contents);
 	uint32_t lastsigned_serial = local_serial;
 	bool have_lastsigned = zone_get_lastsigned_serial(data->zone, &lastsigned_serial);
@@ -436,7 +441,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	}
 
 	zone_update_t up = { 0 };
-	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
+	ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -732,8 +737,13 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	if (data->ixfr.proc == NULL) {
 		const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
-		uint32_t master_serial = knot_soa_serial(data->soa->rrs.rdata);
-		(void)zone_get_master_serial(data->zone, &master_serial);
+		uint32_t master_serial;
+		int ret = zone_get_master_serial(data->zone, &master_serial);
+		if (ret != KNOT_EOK) {
+			log_zone_error(data->zone->name, "Failed reading master's serial"
+				       "from KASP DB (%s)", knot_strerror(ret));
+			return KNOT_STATE_FAIL;
+		}
 		data->xfr_type = determine_xfr_type(answer, master_serial,
 		                                    data->initial_soa_copy);
 		switch (data->xfr_type) {
@@ -767,7 +777,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			return KNOT_STATE_FAIL;
 		}
 
-		int ret = ixfr_init(data);
+		ret = ixfr_init(data);
 		if (ret != KNOT_EOK) {
 			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "failed to initialize (%s)", knot_strerror(ret));
@@ -840,8 +850,13 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_FAIL;
 	}
 
-	uint32_t local_serial = knot_soa_serial(data->soa->rrs.rdata);
-	(void)zone_get_master_serial(data->zone, &local_serial);
+	uint32_t local_serial;
+	int ret = zone_get_master_serial(data->zone, &local_serial);
+	if (ret != KNOT_EOK) {
+		log_zone_error(data->zone->name, "Failed reading master's serial"
+			       "from KASP DB (%s)", knot_strerror(ret));
+		return KNOT_STATE_FAIL;
+	}
 	uint32_t remote_serial = knot_soa_serial(rr->rrs.rdata);
 	bool current = serial_is_current(local_serial, remote_serial);
 	bool master_uptodate = serial_is_current(remote_serial, local_serial);
@@ -874,6 +889,10 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		knot_rrset_t *sending_soa = knot_rrset_copy(data->soa, data->mm);
 		uint32_t master_serial;
 		int ret = zone_get_master_serial(data->zone, &master_serial);
+		if (ret != KNOT_EOK) {
+			log_zone_error(data->zone->name, "Failed reading master's serial"
+			               "from KASP DB (%s)", knot_strerror(ret));
+		}
 		if (sending_soa == NULL || ret != KNOT_EOK) {
 			knot_rrset_free(sending_soa, data->mm);
 			return KNOT_STATE_FAIL;
