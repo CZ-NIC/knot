@@ -89,7 +89,6 @@ typedef struct {
 	bool dnssec;
 
 	geodb_t *geodb;
-	geodb_data_t *entries;
 	geodb_path_t paths[GEODB_MAX_DEPTH];
 	uint16_t path_count;
 } geoip_ctx_t;
@@ -549,7 +548,6 @@ static void free_geoip_ctx(geoip_ctx_t *ctx)
 			free(ctx->paths[i].path[j]);
 		}
 	}
-	free(ctx->entries);
 	free(ctx);
 }
 
@@ -617,7 +615,9 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 		netmask = best_prefix;
 	} else if (ctx->mode == MODE_GEODB) {
-		int ret = geodb_query(ctx->geodb, ctx->entries, (struct sockaddr *)remote,
+		geodb_data_t entries[ctx->path_count];
+
+		int ret = geodb_query(ctx->geodb, entries, (struct sockaddr *)remote,
 		                      ctx->paths, ctx->path_count, &netmask);
 		// MMDB may supply IPv6 prefixes even for IPv4 address, see man libmaxminddb.
 		if (remote->ss_family == AF_INET && netmask > 32) {
@@ -633,7 +633,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
 			if ((rr == NULL || view->geodepth > best_depth) &&
-			    remote_in_geo(view->geodata, view->geodata_len, view->geodepth, ctx->entries)) {
+			    remote_in_geo(view->geodata, view->geodata_len, view->geodepth, entries)) {
 				for (int j = 0; j < view->count; j++) {
 					if (view->rrsets[j].type == qtype) {
 						best_depth = view->geodepth;
@@ -726,13 +726,6 @@ int geoip_load(knotd_mod_t *mod)
 			}
 		}
 		knotd_conf_free(&conf);
-
-		// Allocate space for query entries.
-		ctx->entries = geodb_alloc_entries(ctx->path_count);
-		if (ctx->entries == NULL) {
-			free_geoip_ctx(ctx);
-			return KNOT_ENOMEM;
-		}
 	}
 
 	// Is DNSSEC used on this zone?

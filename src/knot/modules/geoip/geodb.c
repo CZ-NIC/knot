@@ -145,16 +145,6 @@ geodb_t *geodb_open(const char *filename)
 #endif
 }
 
-geodb_data_t *geodb_alloc_entries(uint16_t count)
-{
-#if HAVE_MAXMINDDB
-	MMDB_entry_data_s *entries = calloc(count, sizeof(MMDB_entry_data_s));
-	return entries;
-#else
-	return NULL;
-#endif
-}
-
 void geodb_close(geodb_t *geodb)
 {
 #if HAVE_MAXMINDDB
