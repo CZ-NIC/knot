@@ -645,8 +645,8 @@ performing a ZSK rollover, the DNSKEY records will be pre-generated and signed b
 of :doc:`keymgr <man_keymgr>` utility.
 
 For the "ZSK side" (i.e. the operator of the DNS server), the pre-requirements are:
-proper DNSSEC policy configuration of e.g. :ref:`zsk-lifetime <policy_zsk-lifetime>`,
-but :ref:`manual <policy_manual>` set to "on", and a complete KASP db with just ZSKs. Also
+proper DNSSEC policy configuration (e.g. :ref:`zsk-lifetime <policy_zsk-lifetime>`),
+but :ref:`manual <policy_manual>` set to "on", and a complete KASP db with just ZSK(s). Also
 :ref:`offline-ksk <policy_offline-ksk>` must be enabled.
 
 For the "KSK side" (i.e. the operator of the KSK signer), the pre-requirements are
@@ -655,14 +655,14 @@ with the KSK(s).
 
 The first step for the "ZSK side" is the :doc:`keymgr <man_keymgr>` command
 ``keymgr pregenerate`` to prepare the ZSKs for a specified period ahead.
-For example, if he chooses *2 x zsk_lifetime + 4 x propagation_delay*, it will
+For example, if the period is *2 x zsk_lifetime + 4 x propagation_delay*, it will
 probably prepare two complete future key rollovers. The newly-generated
 ZSKs remain in non-published state until their rollover start, i.e. the time 
 they would otherwise be generated in case of automatic key management.
 
-Then,
-the operator shall export the public parts of the future ZSKs (in facts in the form of
-future DNSKEY records) by calling ``keymgr generate-ksr``. The output
+Then, the "ZSK side" shall export the public parts of the future ZSKs (in the form
+similar to DNSKEY records) by calling ``keymgr generate-ksr``
+with the same period as a parameter. The output
 (called Key Signing Request; perhaps redirected to a file) shall be then sent to the
 "KSK side" e.g. via e-mail.
 
@@ -672,10 +672,12 @@ creating the future RRSIGs (adding also CDNSKEYs and CDSs), which are again prin
 (and called Signed Key Response). This shall be sent back to "ZSK side".
 
 The last step is importing the signatures from SKR to the KASP db for later use,
-this is done by ``keymgr import-skr``, followed by (as previously) ``knotc zone-resign``
+this is done by ``keymgr import-skr``, followed by ``knotc zone-resign``
 command, so that the future zone re-signs are properly planned
-in the event subsystem. Then the future ZSKs and DNSKEY record signatures are ready in KASP db for
-later usage.
+in the event subsystem. Then the future ZSKs and DNSKEY records with signatures are ready
+in KASP db for later usage. Knot automatically uses them in correct time intervals.
+This whole procedure needs to be repeated when the period selected on the beginning
+is going to run out.
 
 .. _Controlling running daemon:
 
