@@ -1,3 +1,27 @@
+Knot DNS 2.7.3 (2018-10-11)
+===========================
+
+Features:
+---------
+ - New queryacl module for query access control
+ - Configurable answer rrset rotation #612
+ - Configurable NSEC bitmap in online signing
+
+Improvements:
+-------------
+ - Better error logging for KASP DB operations #601
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - Keymgr "list" output doesn't show key size for ECDSA algorithms #602
+ - Failed to link statically with embedded LMDB
+ - Configuration commit causes zone reload for all zones
+ - The statistics module overlooks TSIG record in a request
+ - Improper processing of an AXFR-style-IXFR response consisting of one-record messages
+ - Race condition in online signing during key rollover #600
+ - Server can crash if geoip module is enabled in the geo mode
+
 Knot DNS 2.7.2 (2018-08-29)
 ===========================
 
