@@ -22,8 +22,10 @@ There are two ways to enable DNSSEC signing of tailored responses.
 If automatic DNSSEC signing is enabled, record signatures are precomputed when the module is loaded. 
 This has a speed benefit, however note that every RRset configured in the module should
 have a **default** RRset of the same type contained in the zone, so that the NSEC(3)
-chain can be built correctly. Also, it is STRONGLY RECOMMENDED to use manual key rollover in this setting,
-as the module has to be reloaded when the signing key changes.
+chain can be built correctly. Also, it is STRONGLY RECOMMENDED to use
+:ref:`manual key management <dnssec-manual-key-management>` in this setting,
+as the corresponding zone has to be reloaded when the signing key changes and to
+have better control over key synchronization to all instances of the server.
 
 .. NOTE::
    If the GeoIP module is used with automatic DNSSEC signing, the keys for computing record signatures
@@ -87,14 +89,22 @@ Example
      - net: 10.0.0.0/24
        A: [ 192.168.1.1, 192.168.1.2 ]
        AAAA: [ 2001:DB8::1, 2001:DB8::2 ]
-       TXT: "subnet 10.0.0.0/24"
+       TXT: "subnet\ 10.0.0.0/24"
      ...
    bar.example.com:
      - net: 2001:DB8::/32
        A: 192.168.1.3
        AAAA: 2001:DB8::3
-       TXT: "subnet 2001:DB8::/32"
+       TXT: "subnet\ 2001:DB8::/32"
    ...
+
+.. NOTE::
+   If a space or a quotation mark is a part of record data, such a character
+   must be prefixed with a backslash. The following notations are equivalent::
+
+     Multi-word\ string
+     "Multi-word\ string"
+     "\"Multi-word string\""
 
 * Example :ref:`mod-geoip_config-file` for geographic locations
 
