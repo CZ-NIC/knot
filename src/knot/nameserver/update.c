@@ -344,6 +344,7 @@ static void free_request(knot_request_t *req)
 	close(req->fd);
 	knot_pkt_free(req->query);
 	knot_pkt_free(req->resp);
+	dnssec_binary_free(&req->sign.tsig_key.secret);
 	free(req);
 }
 
@@ -398,8 +399,20 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 		return ret;
 	}
 
-	req->sign = qdata->sign;
-	memzero(&qdata->sign, sizeof(qdata->sign));
+	if (qdata->sign.tsig_key.name != NULL) {
+		req->sign = qdata->sign;
+		req->sign.tsig_digest = (uint8_t *)knot_tsig_rdata_mac(req->query->tsig_rr);
+		req->sign.tsig_digestlen = knot_tsig_rdata_mac_length(req->query->tsig_rr);
+		req->sign.tsig_key.name = req->query->tsig_rr->owner;
+		req->sign.tsig_key.algorithm = knot_tsig_rdata_alg(req->query->tsig_rr);
+		ret = dnssec_binary_dup(&qdata->sign.tsig_key.secret, &req->sign.tsig_key.secret);
+		if (ret != KNOT_EOK) {
+			knot_pkt_free(req->query);
+			free(req);
+			return ret;
+		}
+		memzero(&qdata->sign, sizeof(qdata->sign));
+	}
 
 	pthread_mutex_lock(&zone->ddns_lock);
 
