@@ -137,7 +137,7 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		.result_logged = false,
 	};
 
-	struct knot_requestor requestor;
+	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &ds_query_api, &data, NULL);
 
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
@@ -148,7 +148,7 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 
 	const struct sockaddr *dst = (struct sockaddr *)&parent->addr;
 	const struct sockaddr *src = (struct sockaddr *)&parent->via;
-	struct knot_request *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
+	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -78,9 +78,9 @@ static void *responder_thread(void *arg)
 
 /* Test implementations. */
 
-static struct knot_request *make_query(struct knot_requestor *requestor,
-                                       const struct sockaddr_storage *dst,
-                                       const struct sockaddr_storage *src)
+static knot_request_t *make_query(knot_requestor_t *requestor,
+                                  const struct sockaddr_storage *dst,
+                                  const struct sockaddr_storage *src)
 {
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	assert(pkt);
@@ -91,23 +91,23 @@ static struct knot_request *make_query(struct knot_requestor *requestor,
 	                         (struct sockaddr *)src, pkt, NULL, 0);
 }
 
-static void test_disconnected(struct knot_requestor *requestor,
+static void test_disconnected(knot_requestor_t *requestor,
                               const struct sockaddr_storage *dst,
                               const struct sockaddr_storage *src)
 {
-	struct knot_request *req = make_query(requestor, dst, src);
+	knot_request_t *req = make_query(requestor, dst, src);
 	int ret = knot_requestor_exec(requestor, req, TIMEOUT);
 	is_int(KNOT_ECONN, ret, "requestor: disconnected/exec");
 	knot_request_free(req, requestor->mm);
 
 }
 
-static void test_connected(struct knot_requestor *requestor,
+static void test_connected(knot_requestor_t *requestor,
                            const struct sockaddr_storage *dst,
                            const struct sockaddr_storage *src)
 {
 	/* Enqueue packet. */
-	struct knot_request *req = make_query(requestor, dst, src);
+	knot_request_t *req = make_query(requestor, dst, src);
 	int ret = knot_requestor_exec(requestor, req, TIMEOUT);
 	is_int(KNOT_EOK, ret, "requestor: connected/exec");
 	knot_request_free(req, requestor->mm);
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 	mm_ctx_mempool(&mm, MM_DEFAULT_BLKSIZE);
 
 	/* Initialize requestor. */
-	struct knot_requestor requestor;
+	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &dummy_module, NULL, &mm);
 
 	/* Define endpoints. */

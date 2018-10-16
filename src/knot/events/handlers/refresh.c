@@ -957,7 +957,7 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
 		            "fallback to AXFR");
 		ixfr_cleanup(data);
-		layer->flags |= KNOT_RQ_LAYER_CLOSE;
+		layer->flags |= KNOT_REQUESTOR_CLOSE;
 		data->xfr_type = XFR_TYPE_AXFR;
 		return KNOT_STATE_RESET;
 	}
@@ -1067,7 +1067,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
 
-	struct knot_requestor requestor;
+	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &REFRESH_API, &data, NULL);
 
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
@@ -1078,7 +1078,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	const struct sockaddr *dst = (struct sockaddr *)&master->addr;
 	const struct sockaddr *src = (struct sockaddr *)&master->via;
-	struct knot_request *req = knot_request_make(NULL, dst, src, pkt, &master->key, 0);
+	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &master->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
