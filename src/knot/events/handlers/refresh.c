@@ -952,16 +952,6 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		}
 	}
 
-	// IXFR to AXFR failover
-	if (data->xfr_type == XFR_TYPE_IXFR && next == KNOT_STATE_FAIL) {
-		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
-		            "fallback to AXFR");
-		ixfr_cleanup(data);
-		layer->flags |= KNOT_RQ_LAYER_CLOSE;
-		data->xfr_type = XFR_TYPE_AXFR;
-		return KNOT_STATE_RESET;
-	}
-
 	return next;
 }
 
@@ -1087,7 +1077,17 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	int timeout = conf->cache.srv_tcp_reply_timeout * 1000;
 
-	int ret = knot_requestor_exec(&requestor, req, timeout);
+	int ret;
+
+	// while loop runs 0x or 1x; IXFR to AXFR failover
+	while ((ret = knot_requestor_exec(&requestor, req, timeout)) != KNOT_EOK &&
+	       data.xfr_type == XFR_TYPE_IXFR) {
+		data.xfr_type = XFR_TYPE_AXFR;
+		requestor.layer.state = KNOT_STATE_RESET;
+		requestor.layer.flags |= KNOT_RQ_LAYER_CLOSE;
+		REFRESH_LOG(LOG_WARNING, data.zone->name, data.remote,
+		            "fallback to AXFR");
+	}
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
 
