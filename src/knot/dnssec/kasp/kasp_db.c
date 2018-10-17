@@ -790,7 +790,7 @@ int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_
 		free_key(&key);
 		return KNOT_ENOMEM;
 	}
-	with_txn(KEYS_RW, NULL);
+	with_txn(KEYS_RW, key.data, val.data, NULL);
 	wire_ctx_t wire = wire_ctx_init(val.data, val.len);
 	ret = serialize_rrset(&wire, rrsig);
 	if (ret == KNOT_EOK) {
@@ -806,6 +806,7 @@ int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_
 		ret = db_api->insert(txn, &key, &val, 0);
 	}
 	free_key(&key);
+	free_key(&val);
 	with_txn_end(NULL);
 	return ret;
 }
