@@ -327,7 +327,7 @@ int params_parse_wait(const char *value, int32_t *dst)
 		return KNOT_EINVAL;
 	}
 
-	uint32_t num;
+	uint32_t num = 0;
 	int ret = str_to_u32(value, &num);
 	if (ret != KNOT_EOK) {
 		return ret;
