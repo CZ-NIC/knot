@@ -466,12 +466,14 @@ AS_IF([test "$with_lmdb" != "no"],[
 AS_IF([test "$have_lmdb" != "no"],[
     AC_SUBST([lmdb_LIBS])
     enable_lmdb=shared
+    external_lmdb_LIBS=$lmdb_LIBS
     ],[
     enable_lmdb=embedded
     lmdb_CFLAGS="-I\$(top_srcdir)/src/contrib/lmdb"
     ])
 AM_CONDITIONAL([HAVE_LMDB], test "$enable_lmdb" = "shared")
 AC_SUBST([lmdb_CFLAGS])
+AC_SUBST([external_lmdb_LIBS])
 
 # LMDB mapping sizes
 conf_mapsize_default=500
