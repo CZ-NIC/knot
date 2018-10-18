@@ -159,7 +159,7 @@ int keymgr_del_all_old(kdnssec_ctx_t *ctx)
 	return kdnssec_ctx_commit(ctx);
 }
 
-static void print_generated_message()
+static void print_generated_message(void)
 {
 	char buf[64] = { 0 };
 	knot_time_print(TIME_PRINT_ISO8601, knot_time(), buf, sizeof(buf));
@@ -177,7 +177,7 @@ static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_
 	ret = dump_rrset_to_buf(dnskey, buf, buf_size);
 	if (ret >= 0) {
 		(*buf)[strlen(*buf) - 1] = '\0'; // remove trailing newline
-		printf(";;KSR %lu %hu %d\n%s ; end KSR %lu\n", ctx->now, dnskey->rrs.count, ret, *buf, ctx->now);
+		printf(";;KSR ver 1.0 ===========\n%s ; end KSR %lu\n", *buf, ctx->now);
 		ret = KNOT_EOK;
 	}
 
@@ -258,7 +258,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t *n
 			}
 		}
 	}
-	printf(";;SKR ===========\n");
+	printf(";;SKR ver 1.0 ===========\n");
 	ret = dump_rrset_to_buf(dnskey, &buf, &buf_size);
 	if (ret >= 0) {
 		printf("%s", buf);
