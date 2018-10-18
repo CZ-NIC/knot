@@ -1057,7 +1057,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
 
-	struct knot_requestor requestor;
+	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &REFRESH_API, &data, NULL);
 
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
@@ -1068,7 +1068,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	const struct sockaddr *dst = (struct sockaddr *)&master->addr;
 	const struct sockaddr *src = (struct sockaddr *)&master->via;
-	struct knot_request *req = knot_request_make(NULL, dst, src, pkt, &master->key, 0);
+	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &master->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
@@ -1087,7 +1087,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		ixfr_cleanup(&data);
 		data.xfr_type = XFR_TYPE_AXFR;
 		requestor.layer.state = KNOT_STATE_RESET;
-		requestor.layer.flags |= KNOT_RQ_LAYER_CLOSE;
+		requestor.layer.flags |= KNOT_REQUESTOR_CLOSE;
 	}
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
