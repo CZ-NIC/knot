@@ -21,7 +21,6 @@
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/events/handlers.h"
-#include "knot/events/log.h"
 #include "knot/events/replan.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"

@@ -24,7 +24,7 @@
 #include "knot/ctl/commands.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/events/events.h"
-#include "knot/events/log.h"
+#include "knot/events/handlers.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/timers.h"

@@ -19,10 +19,23 @@
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/events/log.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/zone.h"
 #include "libknot/errcode.h"
+
+void log_dnssec_next(const knot_dname_t *zone, knot_time_t refresh_at)
+{
+	char time_str[64] = { 0 };
+	struct tm time_gm = { 0 };
+	time_t refresh = refresh_at;
+	localtime_r(&refresh, &time_gm);
+	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
+	if (refresh_at == 0) {
+		log_zone_warning(zone, "DNSSEC, next signing not scheduled");
+	} else {
+		log_zone_info(zone, "DNSSEC, next signing at %s", time_str);
+	}
+}
 
 void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 			     const zone_sign_reschedule_t *refresh, bool zone_changed)
