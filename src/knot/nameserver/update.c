@@ -167,8 +167,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 			return ret;
 		}
-		log_dnssec_next(zone->name, (time_t)resch.next_sign);
-		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, (time_t)resch.next_sign);
+		event_dnssec_reschedule(conf, zone, &resch, false); // false since we handle NOTIFY after processing ddns queue
 	}
 
 	// Apply changes.
