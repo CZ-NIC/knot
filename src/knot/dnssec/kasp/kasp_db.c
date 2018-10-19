@@ -32,13 +32,13 @@ struct kasp_db {
 };
 
 typedef enum {
-	KASPDBKEY_OFFLINE_RRSIG = 0x0, // this MUST be always first, because we use LEQ operator
 	KASPDBKEY_PARAMS = 0x1,
 	KASPDBKEY_POLICYLAST = 0x2,
 	KASPDBKEY_NSEC3SALT = 0x3,
 	KASPDBKEY_NSEC3TIME = 0x4,
 	KASPDBKEY_MASTERSERIAL = 0x5,
 	KASPDBKEY_LASTSIGNEDSERIAL = 0x6,
+	KASPDBKEY_OFFLINE_RRSIG = 0x7,
 } keyclass_t;
 
 static const knot_db_api_t *db_api = NULL;
@@ -836,7 +836,8 @@ int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, kno
 		ret = KNOT_ERROR;
 		goto cleanup;
 	}
-	if (knot_dname_cmp((const knot_dname_t *)key.data + 1, rrsig->owner) != 0) {
+	if (key_class(&key) != KASPDBKEY_OFFLINE_RRSIG ||
+	    knot_dname_cmp((const knot_dname_t *)key.data + 1, rrsig->owner) != 0) {
 		ret = KNOT_ENOENT;
 		goto cleanup;
 	}
@@ -853,7 +854,8 @@ int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, kno
 #undef CHK_RET
 	*next_time = 0;
 	if ((it = db_api->iter_next(it)) != NULL && db_api->iter_key(it, &key) == KNOT_EOK) {
-		if (knot_dname_cmp(key_dname(&key), rrsig->owner) == 0) {
+		if (key_class(&key) == KASPDBKEY_OFFLINE_RRSIG &&
+		    knot_dname_cmp(key_dname(&key), rrsig->owner) == 0) {
 			*next_time = atol(key_str(&key));
 		}
 	}
