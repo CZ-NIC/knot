@@ -23,7 +23,7 @@
 #include "knot/zone/zone.h"
 #include "libknot/errcode.h"
 
-void log_dnssec_next(const knot_dname_t *zone, knot_time_t refresh_at)
+static void log_dnssec_next(const knot_dname_t *zone, knot_time_t refresh_at)
 {
 	char time_str[64] = { 0 };
 	struct tm time_gm = { 0 };
