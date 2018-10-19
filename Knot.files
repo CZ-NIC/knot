@@ -130,8 +130,6 @@ src/knot/events/handlers/nsec3resalt.c
 src/knot/events/handlers/parent_ds_query.c
 src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
-src/knot/events/log.c
-src/knot/events/log.h
 src/knot/events/replan.c
 src/knot/events/replan.h
 src/knot/include/module.h

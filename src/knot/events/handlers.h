@@ -20,6 +20,8 @@
 #include "knot/zone/zone.h"
 #include "knot/dnssec/zone-events.h" // zone_sign_reschedule_t
 
+void log_dnssec_next(const knot_dname_t *zone, knot_time_t refresh_at);
+
 /*! \brief Loads or reloads potentially changed zone. */
 int event_load(conf_t *conf, zone_t *zone);
 /*! \brief Refresh a zone from a master. */
