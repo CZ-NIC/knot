@@ -19,10 +19,23 @@
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/events/log.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/zone.h"
 #include "libknot/errcode.h"
+
+static void log_dnssec_next(const knot_dname_t *zone, knot_time_t refresh_at)
+{
+	char time_str[64] = { 0 };
+	struct tm time_gm = { 0 };
+	time_t refresh = refresh_at;
+	localtime_r(&refresh, &time_gm);
+	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
+	if (refresh_at == 0) {
+		log_zone_warning(zone, "DNSSEC, next signing not scheduled");
+	} else {
+		log_zone_info(zone, "DNSSEC, next signing at %s", time_str);
+	}
+}
 
 void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 			     const zone_sign_reschedule_t *refresh, bool zone_changed)
@@ -33,10 +46,6 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 
 	if (knot_time_cmp(refresh->next_rollover, refresh_at) < 0) {
 		refresh_at = refresh->next_rollover;
-	}
-
-	if (refresh_at <= 0) {
-		return;
 	}
 
 	log_dnssec_next(zone->name, (time_t)refresh_at);
@@ -50,7 +59,7 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 	}
 
 	zone_events_schedule_at(zone,
-		ZONE_EVENT_DNSSEC, (time_t)refresh_at,
+		ZONE_EVENT_DNSSEC, refresh_at ? (time_t)refresh_at : ignore,
 		ZONE_EVENT_PARENT_DS_Q, refresh->plan_ds_query ? now : ignore,
 		ZONE_EVENT_NSEC3RESALT, refresh->next_nsec3resalt ? refresh->next_nsec3resalt : ignore,
 		ZONE_EVENT_NOTIFY, zone_changed ? now : ignore
