@@ -19,7 +19,7 @@
 #include "libdnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/events/log.h"
+#include "knot/events/handlers.h"
 #include "knot/query/capture.h"
 #include "knot/query/requestor.h"
 #include "knot/nameserver/update.h"

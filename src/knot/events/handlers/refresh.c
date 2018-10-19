@@ -23,7 +23,6 @@
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/events/handlers.h"
-#include "knot/events/log.h"
 #include "knot/events/replan.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/query/layer.h"
