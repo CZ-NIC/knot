@@ -474,8 +474,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 			zone_txn_update_clear(zone);
 			return ret;
 		}
-		log_dnssec_next(zone->name, (time_t)resch.next_sign);
-		zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, (time_t)resch.next_sign);
+		event_dnssec_reschedule(conf(), zone, &resch, false);
 	}
 
 	int ret = zone_update_commit(conf(), zone->control_update);
