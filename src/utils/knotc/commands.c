@@ -1143,8 +1143,8 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check)." },
 	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",              "Flush zone journal into the zone file." },
 	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone." },
-	{ CMD_ZONE_KEY_ROLL,   "<zone> <keytype>",                       "Trigger immediate key rollover." },
-	{ CMD_ZONE_KSK_SBM,    "<zone>...",                              "When KSK submission, confirm parent's DS presence." },
+	{ CMD_ZONE_KEY_ROLL,   " <zone> ksk|zsk",                        "Trigger immediate key rollover." },
+	{ CMD_ZONE_KSK_SBM,    " <zone>...",                             "When KSK submission, confirm parent's DS presence." },
 	{ CMD_ZONE_FREEZE,     "[<zone>...]",                            "Temporarily postpone automatic zone-changing events." },
 	{ CMD_ZONE_THAW,       "[<zone>...]",                            "Dismiss zone freeze." },
 	{ "",                  "",                                       "" },
@@ -1162,7 +1162,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ "",                  "",                                       "" },
 	{ CMD_CONF_INIT,       "",                                       "Initialize the confdb. (*)" },
 	{ CMD_CONF_CHECK,      "",                                       "Check the server configuration. (*)" },
-	{ CMD_CONF_IMPORT,     "<filename>",                             "Import a config file into the confdb. (*)" },
+	{ CMD_CONF_IMPORT,     " <filename>",                            "Import a config file into the confdb. (*)" },
 	{ CMD_CONF_EXPORT,     "[<filename>]",                           "Export the confdb into a config file or stdout. (*)" },
 	{ CMD_CONF_LIST,       "[<item>...]",                            "List the confdb sections or section items." },
 	{ CMD_CONF_READ,       "[<item>...]",                            "Get the item from the active confdb." },
@@ -1189,5 +1189,6 @@ void print_commands(void)
 	       " Use @ owner to denote the zone name.\n"
 	       " Empty or '--' <zone> parameter means all zones or all zones with a transaction.\n"
 	       " Type <item> parameter in the form of <section>[<identifier>].<name>.\n"
-	       " (*) indicates a local operation which requires a configuration.\n");
+	       " (*) indicates a local operation which requires a configuration.\n"
+	       " Use '--force' or '-f' as the first parameter of any command to force it.\n");
 }

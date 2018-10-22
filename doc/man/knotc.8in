@@ -229,6 +229,8 @@ Use \fB@\fP \fIowner\fP to denote the zone name.
 Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\fB\&.\fP\fIname\fP].
 .sp
 (*) indicates a local operation which requires a configuration.
+.sp
+Use \fB\-\-force\fP or \fB\-f\fP as the first parameter of any command to force it.
 .SS Interactive mode
 .sp
 The utility provides interactive mode with basic line editing functionality,

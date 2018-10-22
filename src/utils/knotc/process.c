@@ -39,6 +39,14 @@ static const cmd_desc_t *get_cmd_desc(const char *command)
 	return desc;
 }
 
+static bool get_cmd_force_flag(const char *arg)
+{
+	if (strcmp(arg, "-f") == 0 || strcmp(arg, "--force") == 0) {
+		return true;
+	}
+	return false;
+}
+
 int set_config(const cmd_desc_t *desc, params_t *params)
 {
 	if (params->config != NULL && params->confdb != NULL) {
@@ -219,6 +227,13 @@ int process_cmd(int argc, const char **argv, params_t *params)
 		.argv = argv + 1,
 		.force = params->force
 	};
+
+	/* Check for --force flag after command. */
+	if (args.argc > 0 && get_cmd_force_flag(args.argv[0])) {
+		args.force = true;
+		args.argc--;
+		args.argv++;
+	}
 
 	/* Set control interface if necessary. */
 	ret = set_ctl(&args.ctl, desc, params);
