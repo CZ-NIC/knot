@@ -151,41 +151,6 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *
 	return ret;
 }
 
-static bool remote_in_subnet(const struct sockaddr_storage *remote, geo_view_t *view)
-{
-	if (view->subnet->ss_family != remote->ss_family) {
-		return false;
-	}
-	uint8_t *raw_addr = NULL;
-	uint8_t *raw_subnet = NULL;
-	switch(remote->ss_family) {
-	case AF_INET:
-		raw_addr = (uint8_t *)&((const struct sockaddr_in *)remote)->sin_addr;
-		raw_subnet = (uint8_t *)&((const struct sockaddr_in *)view->subnet)->sin_addr;
-		break;
-	case AF_INET6:
-		raw_addr = (uint8_t *)&((const struct sockaddr_in6 *)remote)->sin6_addr;
-		raw_subnet = (uint8_t *)&((const struct sockaddr_in6 *)view->subnet)->sin6_addr;
-		break;
-	default:
-		return false;
-	}
-	uint8_t nbytes = view->subnet_prefix / 8;
-	uint8_t nbits = view->subnet_prefix % 8;
-	for (int i = 0; i < nbytes; i++) {
-		if (raw_addr[i] != raw_subnet[i]) {
-			return false;
-		}
-	}
-	if (nbits != 0) {
-		uint8_t mask = ((1 << nbits) - 1) << (8 - nbits);
-		if ((raw_addr[nbytes] & mask) != raw_subnet[nbytes]) {
-			return false;
-		}
-	}
-	return true;
-}
-
 static int finalize_geo_view(knotd_mod_t *mod, geo_view_t *view, knot_dname_t *owner,
                              geoip_ctx_t *ctx)
 {
@@ -316,22 +281,18 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 		if (view->subnet == NULL) {
 			return KNOT_ENOMEM;
 		}
-		void *write_addr = &((struct sockaddr_in *)view->subnet)->sin_addr;
-		// Try to parse as IPv4 address.
-		ret = inet_pton(AF_INET, yp->data, write_addr);
-		if (ret == 1) {
-			view->subnet->ss_family = AF_INET;
-			view->subnet_prefix = 32;
-		} else { // Try to parse as IPv6 address.
-			write_addr = &((struct sockaddr_in6 *)view->subnet)->sin6_addr;
-			ret = inet_pton(AF_INET6, yp->data, write_addr);
-			if (ret != 1) {
-				knotd_mod_log(mod, LOG_ERR, "invalid address format (%s) on line %zu",
-				              yp->data, yp->line_count);
-				return KNOT_EINVAL;
-			}
-			view->subnet->ss_family = AF_INET6;
+		// Try to parse as IPv4.
+		ret = sockaddr_set(view->subnet, AF_INET, yp->data, 0);
+		view->subnet_prefix = 32;
+		if (ret != KNOT_EOK) {
+			// Try to parse as IPv6.
+			ret = sockaddr_set(view->subnet, AF_INET6 ,yp->data, 0);
 			view->subnet_prefix = 128;
+		}
+		if (ret != KNOT_EOK) {
+			knotd_mod_log(mod, LOG_ERR, "invalid address format (%s) on line %zu",
+			              yp->data, yp->line_count);
+			return KNOT_EINVAL;
 		}
 
 		// Parse subnet prefix.
@@ -598,7 +559,8 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		uint8_t best_prefix = 0;
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
-			if ((rr == NULL || view->subnet_prefix > best_prefix) && remote_in_subnet(remote, view)) {
+			if ((rr == NULL || view->subnet_prefix > best_prefix) &&
+			    sockaddr_net_match((struct sockaddr *)remote, (struct sockaddr *)view->subnet, view->subnet_prefix)) {
 				for (int j = 0; j < view->count; j++) {
 					if (view->rrsets[j].type == qtype) {
 						best_prefix = view->subnet_prefix;
