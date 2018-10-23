@@ -62,5 +62,5 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 	free_zone_keys(&keyset);
 	kdnssec_ctx_deinit(&ctx);
 
-	return KNOT_EOK; // allways ok, if failure it has been rescheduled
+	return KNOT_EOK; // Always ok, if failure it has been rescheduled.
 }
