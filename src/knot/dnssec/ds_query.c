@@ -174,19 +174,20 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 
 static bool parents_have_ds(kdnssec_ctx_t *kctx, zone_key_t *key, size_t timeout)
 {
-	bool success = false;
+	bool success = true;
+	bool has_ds = false;
 	dynarray_foreach(parent, knot_kasp_parent_t, i, kctx->policy->parents) {
-		success = false;
+		has_ds = false;
 		for (size_t j = 0; j < i->addrs; j++) {
 			int ret = try_ds(kctx->zone->dname, &i->addr[j], key, timeout);
 			if (ret == KNOT_EOK) {
-				success = true;
+				has_ds = true;
 				break;
 			}
 		}
-		// Each parent must succeed.
-		if (!success) {
-			return false;
+		// Each parent must succeed, but we will try all anyways.
+		if (!has_ds) {
+			success = false;
 		}
 	}
 	return success;
