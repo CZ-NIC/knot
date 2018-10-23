@@ -70,8 +70,11 @@ static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags, zone_
 static knot_time_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
 				 knot_time_t zone_expire)
 {
-	knot_time_t zone_refresh = knot_time_add(zone_expire, -(knot_timediff_t)kctx->policy->rrsig_refresh_before);
-	assert(zone_refresh > 0);
+	knot_time_t zone_refresh = 0;
+	if (zone_expire > 0) {
+		zone_refresh = knot_time_add(zone_expire, -(knot_timediff_t)kctx->policy->rrsig_refresh_before);
+		assert(zone_refresh > 0);
+	}
 
 	knot_time_t dnskey_update = knot_get_next_zone_key_event(keyset);
 	knot_time_t next = knot_time_min(zone_refresh, dnskey_update);
@@ -294,14 +297,11 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 
 	log_zone_info(zone_name, "DNSSEC, successfully signed");
 
-	// schedule next re-signing (only new signatures are made)
-	reschedule->next_sign = ctx.now + ctx.policy->rrsig_lifetime - ctx.policy->rrsig_refresh_before;
-	assert(reschedule->next_sign > 0);
-	(void)expire_at; // the result of expire_at is actually unused because we computed next_sign easily
-			 // we can freely reschedule dnssec event to next_sign because if it's already scheduled
-			 // to earlier time, it won't get postponed
-
 done:
+	if (result == KNOT_EOK) {
+		reschedule->next_sign = schedule_next(&ctx, &keyset, expire_at);
+	}
+
 	free_zone_keys(&keyset);
 	kdnssec_ctx_deinit(&ctx);
 
