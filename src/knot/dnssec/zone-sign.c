@@ -727,7 +727,9 @@ static int rr_already_signed(const knot_rrset_t *rrset, trie_t *t,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int sign_changeset_wrap(knot_rrset_t *chg_rrset, changeset_signing_data_t *args)
+static int sign_changeset_wrap(knot_rrset_t *chg_rrset,
+                               changeset_signing_data_t *args,
+                               knot_time_t *expire_at)
 {
 	// Find RR's node in zone, find out if we need to sign this RR
 	const zone_node_t *node =
@@ -756,10 +758,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, changeset_signing_data_t
 		}
 
 		if (should_sign) {
-			return force_resign_rrset(&zone_rrset, &rrsigs,
-			                          args->zone_keys,
-			                          args->dnssec_ctx,
-			                          args->changeset);
+			return resign_rrset(&zone_rrset, &rrsigs, args->zone_keys,
+			                    args->dnssec_ctx, args->changeset, expire_at);
 		} else {
 			/*
 			 * If RRSet in zone DOES have RRSIGs although we
@@ -1013,10 +1013,11 @@ bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
 }
 
 static int sign_changeset(const zone_contents_t *zone,
-                             const changeset_t *in_ch,
-                             changeset_t *out_ch,
-                             const zone_keyset_t *zone_keys,
-                             const kdnssec_ctx_t *dnssec_ctx)
+                          const changeset_t *in_ch,
+                          changeset_t *out_ch,
+                          const zone_keyset_t *zone_keys,
+                          const kdnssec_ctx_t *dnssec_ctx,
+                          knot_time_t *expire_at)
 {
 	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
@@ -1040,7 +1041,7 @@ static int sign_changeset(const zone_contents_t *zone,
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
-		int ret = sign_changeset_wrap(&rr, &args);
+		int ret = sign_changeset_wrap(&rr, &args, expire_at);
 		if (ret != KNOT_EOK) {
 			changeset_iter_clear(&itt);
 			return ret;
@@ -1050,13 +1051,13 @@ static int sign_changeset(const zone_contents_t *zone,
 	changeset_iter_clear(&itt);
 
 	if (!knot_rrset_empty(in_ch->soa_from)) {
-		int ret = sign_changeset_wrap(in_ch->soa_from, &args);
+		int ret = sign_changeset_wrap(in_ch->soa_from, &args, expire_at);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
 	if (!knot_rrset_empty(in_ch->soa_to)) {
-		int ret = sign_changeset_wrap(in_ch->soa_to, &args);
+		int ret = sign_changeset_wrap(in_ch->soa_to, &args, expire_at);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -1156,7 +1157,8 @@ int knot_zone_sign_update(zone_update_t *update,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		ret = sign_changeset(update->new_cont, &update->change, &sec_ch, zone_keys, dnssec_ctx);
+		ret = sign_changeset(update->new_cont, &update->change, &sec_ch,
+		                     zone_keys, dnssec_ctx, expire_at);
 		if (ret == KNOT_EOK) {
 			ret = zone_update_apply_changeset_fix(update, &sec_ch);
 		}
