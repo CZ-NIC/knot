@@ -258,7 +258,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 
 int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
                     const dnssec_key_t *key, dnssec_sign_ctx_t *sign_ctx,
-                    const kdnssec_ctx_t *dnssec_ctx, knot_mm_t *mm)
+                    const kdnssec_ctx_t *dnssec_ctx, knot_mm_t *mm, knot_time_t *expires)
 {
 	if (knot_rrset_empty(covered) || !key || !sign_ctx || !dnssec_ctx ||
 	    rrsigs->type != KNOT_RRTYPE_RRSIG ||
@@ -270,8 +270,12 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	uint32_t sig_incept = dnssec_ctx->now - RRSIG_INCEPT_IN_PAST;
 	uint32_t sig_expire = dnssec_ctx->now + dnssec_ctx->policy->rrsig_lifetime;
 
-	return rrsigs_create_rdata(rrsigs, sign_ctx, covered, key, sig_incept,
-	                           sig_expire, mm);
+	int ret = rrsigs_create_rdata(rrsigs, sign_ctx, covered, key, sig_incept,
+	                              sig_expire, mm);
+	if (ret == KNOT_EOK && expires != NULL) {
+		*expires = knot_time_min(*expires, sig_expire);
+	}
+	return ret;
 }
 
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,

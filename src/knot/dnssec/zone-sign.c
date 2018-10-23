@@ -280,6 +280,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
  * \param zone_keys   Zone keys.
  * \param dnssec_ctx  DNSSEC signing context
  * \param changeset   Changeset to be updated.
+ * \param expires_at  Earliest RRSIG expiration.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -287,7 +288,8 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
                               const knot_rrset_t *rrsigs,
                               const zone_keyset_t *zone_keys,
                               const kdnssec_ctx_t *dnssec_ctx,
-                              changeset_t *changeset)
+                              changeset_t *changeset,
+                              knot_time_t *expires_at)
 {
 	assert(!knot_rrset_empty(covered));
 	assert(zone_keys);
@@ -311,7 +313,8 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 			to_add = create_empty_rrsigs_for(covered);
 		}
 
-		result = knot_sign_rrset(&to_add, covered, key->key, key->ctx, dnssec_ctx, NULL);
+		result = knot_sign_rrset(&to_add, covered, key->key, key->ctx,
+		                         dnssec_ctx, NULL, expires_at);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -383,7 +386,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 		}
 	}
 
-	return add_missing_rrsigs(covered, NULL, zone_keys, dnssec_ctx, changeset);
+	return add_missing_rrsigs(covered, NULL, zone_keys, dnssec_ctx, changeset, NULL);
 }
 
 /*!
@@ -414,7 +417,7 @@ static int resign_rrset(const knot_rrset_t *covered,
 	}
 
 	return add_missing_rrsigs(covered, rrsigs, zone_keys, dnssec_ctx,
-	                          changeset);
+	                          changeset, expires_at);
 }
 
 static int remove_standalone_rrsigs(const zone_node_t *node,
@@ -1086,7 +1089,7 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 		    rr.type == KNOT_RRTYPE_NSEC3 ||
 		    rr.type == KNOT_RRTYPE_NSEC3PARAM) {
 			int ret =  add_missing_rrsigs(&rr, NULL, zone_keys,
-			                              dnssec_ctx, changeset);
+			                              dnssec_ctx, changeset, NULL);
 			if (ret != KNOT_EOK) {
 				changeset_iter_clear(&itt);
 				return ret;
