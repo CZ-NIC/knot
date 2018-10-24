@@ -376,7 +376,17 @@ A key name identifier.
 algorithm
 ---------
 
-A key algorithm.
+A TSIG key algorithm. See
+`TSIG Algorithm Numbers <https://www.iana.org/assignments/tsig-algorithm-names/tsig-algorithm-names.xhtml>`_.
+
+Possible values:
+
+- ``hmac-md5``
+- ``hmac-sha1``
+- ``hmac-sha224``
+- ``hmac-sha256``
+- ``hmac-sha384``
+- ``hmac-sha512``
 
 *Default:* not set
 
@@ -443,9 +453,9 @@ An ordered list of allowed (or denied) actions.
 
 Possible values:
 
-- ``transfer`` – Allow zone transfer
-- ``notify`` – Allow incoming notify
-- ``update`` – Allow zone updates
+- ``notify`` – Allow incoming notify.
+- ``transfer`` – Allow zone transfer.
+- ``update`` – Allow zone updates.
 
 *Default:* not set
 
@@ -561,7 +571,12 @@ A keystore identifier.
 backend
 -------
 
-A key storage backend type. A directory with PEM files or a PKCS #11 storage.
+A key storage backend type.
+
+Possible values:
+
+- ``pem`` – PEM files.
+- ``pkcs11`` – PKCS #11 storage.
 
 *Default:* pem
 
@@ -711,7 +726,18 @@ mode.
 algorithm
 ---------
 
-An algorithm of signing keys and issued signatures.
+An algorithm of signing keys and issued signatures. See
+`DNSSEC Algorithm Numbers <https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml#dns-sec-alg-numbers-1>`_.
+
+Possible values:
+
+- ``rsasha1``
+- ``rsasha1-nsec3-sha1``
+- ``rsasha256``
+- ``rsasha512``
+- ``ecdsap256sha256``
+- ``ecdsap384sha384``
+- ``ed25519``
 
 *Default:* ecdsap256sha256
 
@@ -754,7 +780,7 @@ A TTL value for DNSKEY records added into zone apex.
 *Default:* zone SOA TTL
 
 .. NOTE::
-   has infuence over ZSK key lifetime
+   Has infuence over ZSK key lifetime.
 
 .. _policy_zsk-lifetime:
 
@@ -795,10 +821,10 @@ propagation-delay
 An extra delay added for each key rollover step. This value should be high
 enough to cover propagation of data from the master server to all slaves.
 
-*Default:* 1 day
+*Default:* 1 hour
 
 .. NOTE::
-   has infuence over ZSK key lifetime
+   Has infuence over ZSK key lifetime.
 
 .. _policy_rrsig-lifetime:
 
@@ -891,9 +917,9 @@ Controls if and how shall the CDS and CDNSKEY be published in the zone.
 
 Possible values:
 
-- ``none`` - never publish any CDS or CDNSKEY records in the zone
-- ``delete-dnssec`` - publish special CDS and CDNSKEY records indicating turning off DNSSEC
-- ``always`` - always publish CDS and CDNSKEY records for the current KSK
+- ``none`` - Never publish any CDS or CDNSKEY records in the zone.
+- ``delete-dnssec`` - Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
+- ``always`` - Always publish CDS and CDNSKEY records for the current KSK.
 
 *Default:* always
 
@@ -1033,10 +1059,10 @@ and durability.
 Possible values:
 
 - ``robust`` – The journal DB disk sychronization ensures DB durability but is
-  generally slower
+  generally slower.
 - ``asynchronous`` – The journal DB disk synchronization is optimized for
   better performance at the expense of lower DB durability; this mode is
-  recommended only on slave nodes with many zones
+  recommended only on slave nodes with many zones.
 
 .. NOTE::
    This option is only available in the *default* template.
@@ -1170,18 +1196,18 @@ file
 A path to the zone file. Non-absolute path is relative to
 :ref:`storage<zone_storage>`. It is also possible to use the following formatters:
 
-- ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – means the *N*\ th
+- ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – Means the *N*\ th
   character or a sequence of characters beginning from the *N*\ th and ending
   with the *M*\ th character of the textual zone name (see ``%s``). The
   indexes are counted from 0 from the left. All dots (including the terminal
   one) are considered. If the character is not available, the formatter has no effect.
-- ``%l[``\ *N*\ ``]`` – means the *N*\ th label of the textual zone name
+- ``%l[``\ *N*\ ``]`` – Means the *N*\ th label of the textual zone name
   (see ``%s``). The index is counted from 0 from the right (0 ~ TLD).
   If the label is not available, the formatter has no effect.
-- ``%s`` – means the current zone name in the textual representation.
+- ``%s`` – Means the current zone name in the textual representation.
   The zone name doesn't include the terminating dot (the result for the root
   zone is the empty string!).
-- ``%%`` – means the ``%`` character
+- ``%%`` – Means the ``%`` character.
 
 .. WARNING::
   Beware of special characters which are escaped or encoded in the \\DDD form
@@ -1233,7 +1259,7 @@ or disallow zone transfers, updates or incoming notifies.
 semantic-checks
 ---------------
 
-If enabled, extra zone file semantic checks are turned on.
+If enabled, extra zone semantic checks are turned on.
 
 Several checks are enabled by default and cannot be turned off. An error in
 mandatory checks causes zone not to be loaded. An error in extra checks is
@@ -1300,7 +1326,8 @@ Possible values:
 
 - ``none`` – The zone file is not used at all.
 - ``difference`` – If the zone contents are already available during server start or reload,
-  the difference is computed between them and the contents of the zone file. This difference is then checked for semantic errors and
+  the difference is computed between them and the contents of the zone file. This difference
+  is then checked for semantic errors and
   applied to the current zone contents.
 - ``difference-no-serial`` – Same as ``difference``, but the SOA serial in the zone file is
   ignored, the server takes care of incrementing the serial automatically.
@@ -1353,7 +1380,7 @@ Maximum history length of journal.
 .. _zone_max_zone_size:
 
 max-zone-size
-----------------
+-------------
 
 Maximum size of the zone. The size is measured as size of the zone records
 in wire format without compression. The limit is enforced for incoming zone
@@ -1405,10 +1432,10 @@ no change is made.
 
 Possible values:
 
-- ``increment`` – The serial is incremented according to serial number arithmetic
-- ``unixtime`` – The serial is set to the current unix time
+- ``increment`` – The serial is incremented according to serial number arithmetic.
+- ``unixtime`` – The serial is set to the current unix time.
 - ``dateserial`` – The 10-digit serial (YYYYMMDDnn) is incremented, the first
-                   8 digits match the current iso-date
+  8 digits match the current iso-date.
 
 .. NOTE::
    In case of ``unixtime``, if the resulting serial is lower or equal than current zone
@@ -1458,17 +1485,12 @@ file.
 
 There are 6 logging severity levels:
 
-- ``critical`` – Non-recoverable error resulting in server shutdown
-
-- ``error`` – Recoverable error, action should be taken
-
-- ``warning`` – Warning that might require user action
-
-- ``notice`` – Server notice or hint
-
-- ``info`` – Informational message
-
-- ``debug`` – Debug messages (must be turned on at compile time)
+- ``critical`` – Non-recoverable error resulting in server shutdown.
+- ``error`` – Recoverable error, action should be taken.
+- ``warning`` – Warning that might require user action.
+- ``notice`` – Server notice or hint.
+- ``info`` – Informational message.
+- ``debug`` – Debug messages (must be turned on at compile time).
 
 In the case of missing log section, ``warning`` or more serious messages
 will be logged to both standard error output and syslog. The ``info`` and
@@ -1492,10 +1514,10 @@ A logging output.
 
 Possible values:
 
-- ``stdout`` – Standard output
-- ``stderr`` – Standard error output
-- ``syslog`` – Syslog
-- *file\_name* – File
+- ``stdout`` – Standard output.
+- ``stderr`` – Standard error output.
+- ``syslog`` – Syslog.
+- *file\_name* – A specific file.
 
 .. _log_server:
 
