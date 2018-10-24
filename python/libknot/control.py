@@ -4,6 +4,8 @@ Example:
     import json
     from libknot.control import *
 
+    #load_lib("/usr/lib/libknot.so")
+
     ctl = KnotCtl()
     ctl.connect("/var/run/knot/knot.sock")
 
