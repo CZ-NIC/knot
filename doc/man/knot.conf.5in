@@ -347,7 +347,24 @@ opposite master/slave server(s).
 .UNINDENT
 .SS algorithm
 .sp
-A key algorithm.
+A TSIG key algorithm. See
+\fI\%TSIG Algorithm Numbers\fP\&.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBhmac\-md5\fP
+.IP \(bu 2
+\fBhmac\-sha1\fP
+.IP \(bu 2
+\fBhmac\-sha224\fP
+.IP \(bu 2
+\fBhmac\-sha256\fP
+.IP \(bu 2
+\fBhmac\-sha384\fP
+.IP \(bu 2
+\fBhmac\-sha512\fP
+.UNINDENT
 .sp
 \fIDefault:\fP not set
 .SS secret
@@ -397,11 +414,11 @@ An ordered list of allowed (or denied) actions.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBtransfer\fP – Allow zone transfer
+\fBnotify\fP – Allow incoming notify.
 .IP \(bu 2
-\fBnotify\fP – Allow incoming notify
+\fBtransfer\fP – Allow zone transfer.
 .IP \(bu 2
-\fBupdate\fP – Allow zone updates
+\fBupdate\fP – Allow zone updates.
 .UNINDENT
 .sp
 \fIDefault:\fP not set
@@ -491,7 +508,15 @@ keystore:
 A keystore identifier.
 .SS backend
 .sp
-A key storage backend type. A directory with PEM files or a PKCS #11 storage.
+A key storage backend type.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBpem\fP – PEM files.
+.IP \(bu 2
+\fBpkcs11\fP – PKCS #11 storage.
+.UNINDENT
 .sp
 \fIDefault:\fP pem
 .SS config
@@ -621,7 +646,26 @@ mode.
 \fIDefault:\fP off
 .SS algorithm
 .sp
-An algorithm of signing keys and issued signatures.
+An algorithm of signing keys and issued signatures. See
+\fI\%DNSSEC Algorithm Numbers\fP\&.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBrsasha1\fP
+.IP \(bu 2
+\fBrsasha1\-nsec3\-sha1\fP
+.IP \(bu 2
+\fBrsasha256\fP
+.IP \(bu 2
+\fBrsasha512\fP
+.IP \(bu 2
+\fBecdsap256sha256\fP
+.IP \(bu 2
+\fBecdsap384sha384\fP
+.IP \(bu 2
+\fBed25519\fP
+.UNINDENT
 .sp
 \fIDefault:\fP ecdsap256sha256
 .sp
@@ -656,7 +700,7 @@ A TTL value for DNSKEY records added into zone apex.
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-has infuence over ZSK key lifetime
+Has infuence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
 .SS zsk\-lifetime
@@ -695,12 +739,12 @@ This applies for CSK lifetime if single\-type\-signing is enabled.
 An extra delay added for each key rollover step. This value should be high
 enough to cover propagation of data from the master server to all slaves.
 .sp
-\fIDefault:\fP 1 day
+\fIDefault:\fP 1 hour
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-has infuence over ZSK key lifetime
+Has infuence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
 .SS rrsig\-lifetime
@@ -768,11 +812,11 @@ This only applies if the zone keys are automatically managed by the server.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBnone\fP \- never publish any CDS or CDNSKEY records in the zone
+\fBnone\fP \- Never publish any CDS or CDNSKEY records in the zone.
 .IP \(bu 2
-\fBdelete\-dnssec\fP \- publish special CDS and CDNSKEY records indicating turning off DNSSEC
+\fBdelete\-dnssec\fP \- Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
 .IP \(bu 2
-\fBalways\fP \- always publish CDS and CDNSKEY records for the current KSK
+\fBalways\fP \- Always publish CDS and CDNSKEY records for the current KSK.
 .UNINDENT
 .sp
 \fIDefault:\fP always
@@ -894,11 +938,11 @@ Possible values:
 .INDENT 0.0
 .IP \(bu 2
 \fBrobust\fP – The journal DB disk sychronization ensures DB durability but is
-generally slower
+generally slower.
 .IP \(bu 2
 \fBasynchronous\fP – The journal DB disk synchronization is optimized for
 better performance at the expense of lower DB durability; this mode is
-recommended only on slave nodes with many zones
+recommended only on slave nodes with many zones.
 .UNINDENT
 .sp
 \fBNOTE:\fP
@@ -1024,21 +1068,21 @@ A path to the zone file. Non\-absolute path is relative to
 \fI\%storage\fP\&. It is also possible to use the following formatters:
 .INDENT 0.0
 .IP \(bu 2
-\fB%c[\fP\fIN\fP\fB]\fP or \fB%c[\fP\fIN\fP\fB\-\fP\fIM\fP\fB]\fP – means the \fIN\fPth
+\fB%c[\fP\fIN\fP\fB]\fP or \fB%c[\fP\fIN\fP\fB\-\fP\fIM\fP\fB]\fP – Means the \fIN\fPth
 character or a sequence of characters beginning from the \fIN\fPth and ending
 with the \fIM\fPth character of the textual zone name (see \fB%s\fP). The
 indexes are counted from 0 from the left. All dots (including the terminal
 one) are considered. If the character is not available, the formatter has no effect.
 .IP \(bu 2
-\fB%l[\fP\fIN\fP\fB]\fP – means the \fIN\fPth label of the textual zone name
+\fB%l[\fP\fIN\fP\fB]\fP – Means the \fIN\fPth label of the textual zone name
 (see \fB%s\fP). The index is counted from 0 from the right (0 ~ TLD).
 If the label is not available, the formatter has no effect.
 .IP \(bu 2
-\fB%s\fP – means the current zone name in the textual representation.
+\fB%s\fP – Means the current zone name in the textual representation.
 The zone name doesn\(aqt include the terminating dot (the result for the root
 zone is the empty string!).
 .IP \(bu 2
-\fB%%\fP – means the \fB%\fP character
+\fB%%\fP – Means the \fB%\fP character.
 .UNINDENT
 .sp
 \fBWARNING:\fP
@@ -1075,7 +1119,7 @@ or disallow zone transfers, updates or incoming notifies.
 \fIDefault:\fP not set
 .SS semantic\-checks
 .sp
-If enabled, extra zone file semantic checks are turned on.
+If enabled, extra zone semantic checks are turned on.
 .sp
 Several checks are enabled by default and cannot be turned off. An error in
 mandatory checks causes zone not to be loaded. An error in extra checks is
@@ -1149,7 +1193,8 @@ Possible values:
 \fBnone\fP – The zone file is not used at all.
 .IP \(bu 2
 \fBdifference\fP – If the zone contents are already available during server start or reload,
-the difference is computed between them and the contents of the zone file. This difference is then checked for semantic errors and
+the difference is computed between them and the contents of the zone file. This difference
+is then checked for semantic errors and
 applied to the current zone contents.
 .IP \(bu 2
 \fBdifference\-no\-serial\fP – Same as \fBdifference\fP, but the SOA serial in the zone file is
@@ -1234,15 +1279,12 @@ no change is made.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBincrement\fP – The serial is incremented according to serial number arithmetic
+\fBincrement\fP – The serial is incremented according to serial number arithmetic.
 .IP \(bu 2
-\fBunixtime\fP – The serial is set to the current unix time
+\fBunixtime\fP – The serial is set to the current unix time.
 .IP \(bu 2
-.INDENT 2.0
-.TP
 \fBdateserial\fP – The 10\-digit serial (YYYYMMDDnn) is incremented, the first
-8 digits match the current iso\-date
-.UNINDENT
+8 digits match the current iso\-date.
 .UNINDENT
 .sp
 \fBNOTE:\fP
@@ -1282,17 +1324,17 @@ file.
 There are 6 logging severity levels:
 .INDENT 0.0
 .IP \(bu 2
-\fBcritical\fP – Non\-recoverable error resulting in server shutdown
+\fBcritical\fP – Non\-recoverable error resulting in server shutdown.
 .IP \(bu 2
-\fBerror\fP – Recoverable error, action should be taken
+\fBerror\fP – Recoverable error, action should be taken.
 .IP \(bu 2
-\fBwarning\fP – Warning that might require user action
+\fBwarning\fP – Warning that might require user action.
 .IP \(bu 2
-\fBnotice\fP – Server notice or hint
+\fBnotice\fP – Server notice or hint.
 .IP \(bu 2
-\fBinfo\fP – Informational message
+\fBinfo\fP – Informational message.
 .IP \(bu 2
-\fBdebug\fP – Debug messages (must be turned on at compile time)
+\fBdebug\fP – Debug messages (must be turned on at compile time).
 .UNINDENT
 .sp
 In the case of missing log section, \fBwarning\fP or more serious messages
@@ -1320,13 +1362,13 @@ A logging output.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBstdout\fP – Standard output
+\fBstdout\fP – Standard output.
 .IP \(bu 2
-\fBstderr\fP – Standard error output
+\fBstderr\fP – Standard error output.
 .IP \(bu 2
-\fBsyslog\fP – Syslog
+\fBsyslog\fP – Syslog.
 .IP \(bu 2
-\fIfile_name\fP – File
+\fIfile_name\fP – A specific file.
 .UNINDENT
 .SS server
 .sp
