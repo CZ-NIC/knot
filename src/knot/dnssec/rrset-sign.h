@@ -30,6 +30,7 @@
  * \param sign_ctx    Signing context.
  * \param dnssec_ctx  DNSSEC context.
  * \param mm          Memory context.
+ * \param expires     Out: When will the new RRSIG expire.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -38,7 +39,8 @@ int knot_sign_rrset(knot_rrset_t *rrsigs,
                     const dnssec_key_t *key,
                     dnssec_sign_ctx_t *sign_ctx,
                     const kdnssec_ctx_t *dnssec_ctx,
-                    knot_mm_t *mm);
+                    knot_mm_t *mm,
+                    knot_time_t *expires);
 
 /*!
  * \brief Add all data covered by signature into signing context.
