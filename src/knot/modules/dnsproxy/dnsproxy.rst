@@ -43,11 +43,6 @@ When clients query for anything in the ``local.zone``, they will be
 responded to locally. The rest of the requests will be forwarded to the
 specified server (``10.0.1.1`` in this case).
 
-To use dnsproxy to forward queries to local Knot Resolver, make sure to
-`override its default port<https://knot-resolver.readthedocs.io/en/stable/daemon.html#kresd-socket-override-port>`_.
-The selected port can be specified in the ``address`` field like
-``127.0.0.1@53000``.
-
 Module reference
 ----------------
 
