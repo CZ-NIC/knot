@@ -43,11 +43,6 @@ int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
                              uint16_t max_size, uint16_t rotate,
                              knot_compr_t *compr, uint16_t flags);
 
-/* TODO: remove in next major version. */
-int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
-                              uint16_t max_size, uint16_t rotate,
-                              knot_compr_t *compr);
-
 /*! \brief Same as knot_rrset_to_wire_extra but without rrset rotation and flags. */
 static inline int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
                                      uint16_t max_size, knot_compr_t *compr)

@@ -509,14 +509,6 @@ int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
 	return write - wire;
 }
 
-_public_
-int knot_rrset_to_wire_rotate(const knot_rrset_t *rrset, uint8_t *wire,
-                              uint16_t max_size, uint16_t rotate,
-                              knot_compr_t *compr)
-{
-	return knot_rrset_to_wire_extra(rrset, wire, max_size, rotate, compr, 0);
-}
-
 static int parse_header(const uint8_t *wire, size_t *pos, size_t pkt_size,
                         knot_mm_t *mm, knot_rrset_t *rrset, uint16_t *rdlen)
 {
