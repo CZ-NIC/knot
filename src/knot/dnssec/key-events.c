@@ -322,6 +322,7 @@ static knot_time_t ksk_retire_time(knot_time_t retire_active_time, const kdnssec
 	if (retire_active_time <= 0) {
 		return 0;
 	}
+	// this is not correct! It should be parent DS TTL.
 	return knot_time_add(retire_active_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
 }
 
@@ -388,8 +389,11 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				}
 				break;
 			case DNSSEC_KEY_STATE_RETIRE_ACTIVE:
-				keytime = ksk_retire_time(key->timing.retire_active, ctx);
-				restype = RETIRE;
+				if (key->timing.retire == 0) { // this shouldn't normally happen
+					// when a KSK is retire_active, it has already retire or post_active timer set
+					keytime = ksk_retire_time(key->timing.retire_active, ctx);
+					restype = RETIRE;
+				}
 				break;
 			case DNSSEC_KEY_STATE_POST_ACTIVE:
 				keytime = alg_remove_time(key->timing.post_active, ctx);
@@ -473,7 +477,9 @@ static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 	return KNOT_EOK;
 }
 
-static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
+static int exec_ksk_retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *key, uint32_t delay);
+
+static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint32_t active_retire_delay)
 {
 	if (newkey->is_ksk) {
 		log_zone_notice(ctx->zone->dname, "DNSSEC, KSK submission, confirmed");
@@ -489,6 +495,14 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 				key->timing.retire_active = ctx->now;
 			} else {
 				key->timing.retire = ctx->now;
+			}
+		}
+		if (newkey->is_ksk && (keystate == DNSSEC_KEY_STATE_ACTIVE ||
+		                       keystate == DNSSEC_KEY_STATE_RETIRE_ACTIVE)) {
+			if (keyalg != dnssec_key_get_algorithm(newkey->key)) {
+				key->timing.post_active = ctx->now + active_retire_delay;
+			} else if (key->is_ksk) {
+				key->timing.retire = ctx->now + active_retire_delay;
 			}
 		}
 	}
@@ -511,7 +525,7 @@ static int exec_publish(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	return KNOT_EOK;
 }
 
-static int exec_ksk_retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
+static int exec_ksk_retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *key, uint32_t delay)
 {
 	bool alg_rollover = false;
 	knot_kasp_key_t *alg_rollover_friend = NULL;
@@ -529,10 +543,10 @@ static int exec_ksk_retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_RETIRE_ACTIVE);
 
 	if (alg_rollover) {
-		key->timing.post_active = ctx->now;
-		alg_rollover_friend->timing.post_active = ctx->now;
+		key->timing.post_active = ctx->now + delay;
+		alg_rollover_friend->timing.post_active = ctx->now + delay;
 	} else {
-		key->timing.retire = ctx->now;
+		key->timing.retire = ctx->now + delay;
 	}
 
 	return KNOT_EOK;
@@ -656,10 +670,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			reschedule->plan_ds_query = true;
 			break;
 		case REPLACE:
-			ret = exec_new_signatures(ctx, next.key);
+			ret = exec_new_signatures(ctx, next.key, 0);
 			break;
 		case RETIRE:
-			ret = exec_ksk_retire(ctx, next.key);
+			ret = exec_ksk_retire(ctx, next.key, 0);
 			break;
 		case REMOVE:
 			ret = exec_remove_old_key(ctx, next.key);
@@ -690,12 +704,12 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	return ret;
 }
 
-int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx)
+int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (key->is_ksk && get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
-			int ret = exec_new_signatures(ctx, key);
+			int ret = exec_new_signatures(ctx, key, retire_delay);
 			if (ret == KNOT_EOK) {
 				ret = kdnssec_ctx_commit(ctx);
 			}

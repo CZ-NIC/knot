@@ -170,7 +170,7 @@ def cds_submission():
     cds = child.dig(ZONE, "CDS")
     cds_rdata = cds.resp.answer[0].to_rdataset()[0].to_text()
     up = parent.update(parent_zone)
-    up.add(ZONE, 3600, "DS", cds_rdata)
+    up.add(ZONE, 7, "DS", cds_rdata)
     up.send("NOERROR")
 
 child.zonefile_sync = 24 * 60 * 60
