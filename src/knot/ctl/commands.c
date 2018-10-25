@@ -384,7 +384,7 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 		return ret;
 	}
 
-	ret = knot_dnssec_ksk_sbm_confirm(&ctx);
+	ret = knot_dnssec_ksk_sbm_confirm(&ctx, 0);
 	kdnssec_ctx_deinit(&ctx);
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
