@@ -13,16 +13,16 @@ t.link(zones, knot)
 t.start()
 
 # one KSK
-knot.gen_key(zones[0], ksk=True, alg="ECDSAP256SHA256", key_len="256")
+knot.gen_key(zones[0], ksk=True, zsk=True, alg="ECDSAP256SHA256", key_len="256")
 
 # multiple KSKs
-knot.gen_key(zones[1], ksk=True, alg="ECDSAP384SHA384", key_len="384")
-knot.gen_key(zones[1], ksk=True, alg="ECDSAP256SHA256", key_len="256")
+knot.gen_key(zones[1], ksk=True, zsk=True, alg="ECDSAP384SHA384", key_len="384")
+knot.gen_key(zones[1], ksk=True, zsk=True, alg="ECDSAP256SHA256", key_len="256")
 
 # different algorithms: KSK+ZSK pair, one KSK
 knot.gen_key(zones[2], ksk=True, alg="ECDSAP256SHA256", key_len="256")
 knot.gen_key(zones[2], ksk=False, alg="ECDSAP256SHA256", key_len="256")
-knot.gen_key(zones[2], ksk=True, alg="ECDSAP384SHA384", key_len="384")
+knot.gen_key(zones[2], ksk=True, zsk=True, alg="ECDSAP384SHA384", key_len="384")
 
 # one ZSK
 knot.gen_key(zones[3], ksk=False, alg="ECDSAP256SHA256", key_len="256").change_role(ksk=True, zsk=True)

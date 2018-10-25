@@ -108,13 +108,17 @@ class Keymgr(object):
 class Key(object):
     '''DNSSEC key generator'''
 
-    def __init__(self, key_dir, zone_name, ksk=False, alg="ECDSAP256SHA256",
+    def __init__(self, key_dir, zone_name, ksk=False, zsk=None, alg="ECDSAP256SHA256",
                  key_len=-1, addtopolicy=None):
         self.dir = key_dir
         self.zone_name = zone_name
         self.alg = alg
         self.len = int(key_len)
         self.ksk = bool(ksk)
+        if zsk is None:
+            self.zsk = not self.ksk
+        else:
+            self.zsk = bool(zsk)
         self.addtopolicy = addtopolicy
         self.keyid = None
 
@@ -133,6 +137,7 @@ class Key(object):
         cmd = [
             self.zone_name, "generate",
             "ksk=" + str(self.ksk),
+            "zsk=" + str(self.zsk),
             "algorithm=" + str(self.alg),
             "size=" + str(self.len)
         ]

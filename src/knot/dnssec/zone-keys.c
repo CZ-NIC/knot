@@ -255,28 +255,6 @@ static bool is_nsec3_allowed(uint8_t algorithm)
 	}
 }
 
-static void ksk2csk(kdnssec_ctx_t *ctx, zone_keyset_t *keyset, uint8_t alg)
-{
-	for (size_t j = 0; j < keyset->count; j++) {
-		zone_key_t *key = &keyset->keys[j];
-		if (dnssec_key_get_algorithm(key->key) == alg) {
-			assert(key->is_ksk);
-			key->is_zsk = true;
-		}
-	}
-
-	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (dnssec_key_get_algorithm(key->key) == alg) {
-			assert(key->is_ksk);
-			key->is_zsk = true;
-		}
-	}
-
-	log_zone_info(ctx->zone->dname, "DNSSEC, Single-Type Signing "
-	                                "Scheme enabled");
-}
-
 static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 {
 	uint8_t alg_usage[256] = { 0 };
@@ -307,11 +285,6 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 			continue; // no public keys, ignore
 		}
 		switch (alg_usage[i]) {
-		case 5: // because migrating from older version OR from manual setup
-			ksk2csk(ctx, keyset, i);
-			alg_usage[i] |= 10;
-			keys_changed = true;
-			// FALLTHROUGH
 		case 15: // all keys ready for signing
 			have_active_alg = true;
 			break;
