@@ -90,6 +90,10 @@ int query_put_edns(knot_pkt_t *pkt, const struct query_edns_data *edns)
 		return ret;
 	}
 
+	if (edns->do_flag) {
+		knot_edns_set_do(&opt_rr);
+	}
+
 	if (edns->custom_code != 0) {
 		ret = knot_edns_add_option(&opt_rr, edns->custom_code,
 		                           edns->custom_len, edns->custom_data,
