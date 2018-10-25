@@ -10,4 +10,4 @@ try:
     import libknot.control
     libknot.control.load_lib(params.libknot_lib)
 except:
-    raise Skip("libknot not available")
+    raise Skip("libknot not available or set KNOT_TEST_LIBKNOT to another libknot without ASAN")
