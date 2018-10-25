@@ -544,20 +544,21 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		} else {
 			ctx->event_parent_ds_q = 0;
 		}
+
 		ctx->event_rollover = resch.next_rollover;
 
-		if (resch.keys_changed) {
-			pthread_rwlock_wrlock(&ctx->signing_mutex);
-			free_zone_keys(mod->keyset);
-			free(mod->keyset);
-			mod->keyset = NULL;
-			ret = knotd_mod_dnssec_load_keyset(mod, true);
-			if (ret != KNOT_EOK) {
-				ctx->zone_doomed = true;
-				state = KNOTD_IN_STATE_ERROR;
-			}
-			pthread_rwlock_unlock(&ctx->signing_mutex);
+		pthread_rwlock_wrlock(&ctx->signing_mutex);
+		free_zone_keys(mod->keyset);
+		free(mod->keyset);
+		mod->keyset = NULL;
+		ret = knotd_mod_dnssec_load_keyset(mod, true);
+		if (ret != KNOT_EOK) {
+			ctx->zone_doomed = true;
+			state = KNOTD_IN_STATE_ERROR;
+		} else {
+			ctx->event_rollover = knot_time_min(ctx->event_rollover, knot_get_next_zone_key_event(mod->keyset));
 		}
+		pthread_rwlock_unlock(&ctx->signing_mutex);
 	}
 	pthread_mutex_unlock(&ctx->event_mutex);
 
@@ -680,6 +681,8 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 		free(ctx);
 		return ret;
 	}
+
+	ctx->event_rollover = knot_time_min(ctx->event_rollover, knot_get_next_zone_key_event(mod->keyset));
 
 	pthread_mutex_init(&ctx->event_mutex, NULL);
 	pthread_rwlock_init(&ctx->signing_mutex, NULL);
