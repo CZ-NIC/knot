@@ -33,6 +33,8 @@ typedef struct {
 	list_t pins;
 	/*! Required server hostname. */
 	char *hostname;
+	/*! Optional server name indicator. */
+	char *sni;
 } tls_params_t;
 
 /*! \brief TLS context. */
