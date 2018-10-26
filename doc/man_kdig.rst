@@ -230,6 +230,9 @@ Options
 **+**\ [\ **no**\ ]\ **tls-hostname**\ =\ *STR*
   Use TLS with a remote server hostname check.
 
+**+**\ [\ **no**\ ]\ **tls-sni**\ =\ *STR*
+  Use TLS with a Server Name Indication.
+
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 

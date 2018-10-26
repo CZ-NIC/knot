@@ -698,6 +698,26 @@ static int opt_notls_hostname(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_tls_sni(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	free(q->tls.sni);
+	q->tls.sni = strdup(arg);
+
+	return opt_tls(arg, query);
+}
+
+static int opt_notls_sni(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	free(q->tls.sni);
+	q->tls.sni = NULL;
+
+	return KNOT_EOK;
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1182,6 +1202,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "tls-hostname",   ARG_REQUIRED, opt_tls_hostname },
 	{ "notls-hostname", ARG_NONE,     opt_notls_hostname },
+
+	{ "tls-sni",        ARG_REQUIRED, opt_tls_sni },
+	{ "notls-sni",      ARG_NONE,     opt_notls_sni },
 
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
@@ -1883,6 +1906,7 @@ static void print_help(void)
 	       "       +[no]tls-ca[=FILE]        Use TLS with Out-Of-Band privacy profile.\n"
 	       "       +[no]tls-pin=BASE64       Use TLS with pinned certificate.\n"
 	       "       +[no]tls-hostname=STR     Use TLS with remote server hostname.\n"
+	       "       +[no]tls-sni=STR          Use TLS with Server Name Indication.\n"
 	       "       +[no]nsid                 Request NSID.\n"
 	       "       +[no]bufsize=B            Set EDNS buffer size.\n"
 	       "       +[no]padding[=N]          Pad with EDNS(0) (default or specify size).\n"
