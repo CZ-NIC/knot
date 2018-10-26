@@ -146,6 +146,32 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 	return true;
 }
 
+static bool _check_lower(knot_time_t a, knot_time_t b,
+			 const char *a_name, const char *b_name)
+{
+	if (knot_time_cmp(a, b) > 0) {
+		fprintf(stderr, "Semantic error: expected '%s' before '%s'.\n", a_name, b_name);
+		return false;
+	}
+	return true;
+}
+
+#define check_lower(t, a, b) if (!_check_lower(t->a, t->b, #a, #b)) return KNOT_ESEMCHECK
+
+static int check_timers(const knot_kasp_key_timing_t *t)
+{
+	check_lower(t, publish, active);
+	check_lower(t, active, retire_active);
+	check_lower(t, active, retire);
+	check_lower(t, active, post_active);
+	if (t->post_active == 0) {
+		check_lower(t, retire, remove);
+	}
+	return KNOT_EOK;
+}
+
+#undef check_lower
+
 // modifies ctx->policy options, so don't do anything afterwards !
 int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 {
@@ -158,6 +184,12 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 			&keysize, &gen_timing, &addtopolicy)) {
 		return KNOT_EINVAL;
 	}
+
+	int ret = check_timers(&gen_timing);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	if (keysize > 0) {
 		if ((flags & DNSKEY_GENERATE_KSK)) {
 			ctx->policy->ksk_size = keysize;
@@ -177,7 +209,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 	}
 
 	knot_kasp_key_t *key = NULL;
-	int ret = kdnssec_generate_key(ctx, flags, &key);
+	ret = kdnssec_generate_key(ctx, flags, &key);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -394,11 +426,15 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		return KNOT_EINVAL;
 	}
 
+	int ret = check_timers(&timing);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	normalize_generate_flags(&flags);
 
 	dnssec_key_t *key = NULL;
 	char *keyid = NULL;
-	int ret = KNOT_EOK;
 
 	if (backend == KEYSTORE_BACKEND_PEM) {
 		// open file
@@ -655,6 +691,10 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 	kdnssec_generate_flags_t flags = ((key->is_ksk ? DNSKEY_GENERATE_KSK : 0) | (key->is_zsk ? DNSKEY_GENERATE_ZSK : 0));
 
 	if (genkeyargs(argc, argv, true, &flags, NULL, NULL, &temp, NULL)) {
+		int ret = check_timers(&temp);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		key->timing = temp;
 		key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 		key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
