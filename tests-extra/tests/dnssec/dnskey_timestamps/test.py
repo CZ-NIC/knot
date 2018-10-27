@@ -88,7 +88,7 @@ t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "deleted, inactive")
 
 # key not published, active (algorithm rotation)
-knot.key_set(ZONE, KEYID, publish="+10y", ready="-10y", active="-10y", retire="0", remove="0")
+knot.key_set(ZONE, KEYID, publish="+10y", ready="+10y", active="+10y", pre_active="-10y", retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, True, "not published, active")
@@ -101,7 +101,7 @@ check_log("Planned events")
 
 # key about to be published
 event_in = 7
-knot.key_set(ZONE, KEYID, publish=("+%d" % event_in), ready="+10y", active="+10y", retire="0", remove="0")
+knot.key_set(ZONE, KEYID, publish=("+%d" % event_in), ready="+10y", active="+10y", pre_active="0", retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "to be published - pre")

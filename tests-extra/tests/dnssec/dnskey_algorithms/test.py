@@ -68,9 +68,9 @@ knot.key_gen("rsa_now_ecdsa_future", algorithm="13", ksk="true",  created=GEN, p
 knot.key_gen("rsa_now_ecdsa_future", algorithm="8",  ksk="true",  created=GEN, publish=PAST, ready=PAST, active=PAST, retire=INF, remove=INF, size="1024")
 # KSK+ZSK, algorithm rollover (signatures pre-published)
 knot.key_gen("rsa_ecdsa_roll",       algorithm="8",  ksk="false", created=GEN, publish=PAST, ready=PAST, active=PAST, retire=INF, remove=INF, size="1024")
-knot.key_gen("rsa_ecdsa_roll",       algorithm="13", ksk="true",  created=GEN, publish=FUTU, ready=PAST, active=PAST, retire=INF, remove=INF, size="256")
+knot.key_gen("rsa_ecdsa_roll",       algorithm="13", ksk="true",  created=GEN, publish=FUTU, pre_active=PAST, active=FUTU, retire=INF, remove=INF, size="256")
 knot.key_gen("rsa_ecdsa_roll",       algorithm="8",  ksk="true",  created=GEN, publish=PAST, ready=PAST, active=PAST, retire=INF, remove=INF, size="1024")
-knot.key_gen("rsa_ecdsa_roll",       algorithm="13", ksk="false", created=GEN, publish=FUTU, ready=PAST, active=PAST, retire=INF, remove=INF, size="256")
+knot.key_gen("rsa_ecdsa_roll",       algorithm="13", ksk="false", created=GEN, publish=FUTU, pre_active=PAST, active=FUTU, retire=INF, remove=INF, size="256")
 # STSS: KSK only
 knot.key_gen("stss_ksk",             algorithm="8",  ksk="true", zsk="true", created=GEN, publish=PAST, ready=PAST, active=PAST, retire=INF, remove=INF, size="1024")
 # STSS: two KSKs
@@ -90,8 +90,8 @@ knot.key_gen("rsa_split_ecdsa_stss", algorithm="13", ksk="true", zsk="true", cre
 knot.key_gen("rsa_future_all",       algorithm="8",  ksk="false", created=GEN, publish=FUTU, ready=FUTU, active=FUTU, retire=INF, remove=INF, size="1024")
 knot.key_gen("rsa_future_all",       algorithm="8",  ksk="true",  created=GEN, publish=FUTU, ready=FUTU, active=FUTU, retire=INF, remove=INF, size="1024")
 # key active, not published
-knot.key_gen("rsa_future_publish",   algorithm="8",  ksk="false", created=GEN, publish=FUTU, ready=PAST, active=PAST, retire=INF, remove=INF, size="1024")
-knot.key_gen("rsa_future_publish",   algorithm="8",  ksk="true",  created=GEN, publish=FUTU, ready=PAST, active=PAST, retire=INF, remove=INF, size="1024")
+knot.key_gen("rsa_future_publish",   algorithm="8",  ksk="false", created=GEN, publish=FUTU, pre_active=PAST, active=FUTU, retire=INF, remove=INF, size="1024")
+knot.key_gen("rsa_future_publish",   algorithm="8",  ksk="true",  created=GEN, publish=FUTU, pre_active=PAST, active=FUTU, retire=INF, remove=INF, size="1024")
 # key published, not active
 knot.key_gen("rsa_future_active",    algorithm="8",  ksk="true",  created=GEN, publish=PAST, ready=FUTU, active=FUTU, retire=INF, remove=INF, size="1024")
 knot.key_gen("rsa_future_active",    algorithm="8",  ksk="false", created=GEN, publish=PAST, ready=FUTU, active=FUTU, retire=INF, remove=INF, size="1024")
