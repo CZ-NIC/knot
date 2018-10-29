@@ -128,7 +128,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// If configured contents=all, but not present, store zonefile.
 	if (load_from == JOURNAL_CONTENT_ALL &&
-	    journal_conts == NULL && zf_conts != NULL) {
+	    journal_conts == NULL && zf_conts != NULL && !old_contents_exist) {
 		ret = zone_in_journal_store(conf, zone, zf_conts);
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to write zone-in-journal (%s)",
