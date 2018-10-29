@@ -163,6 +163,8 @@ parent = t.server("knot")
 parent_zone = t.zone("com.", storage=".")
 t.link(parent_zone, parent)
 
+parent.dnssec(parent_zone).enable = True
+
 child = t.server("knot")
 child_zone = t.zone("example.com.")
 t.link(child_zone, child)
@@ -171,7 +173,7 @@ def cds_submission():
     cds = child.dig(ZONE, "CDS")
     cds_rdata = cds.resp.answer[0].to_rdataset()[0].to_text()
     up = parent.update(parent_zone)
-    up.add(ZONE, 3600, "DS", cds_rdata)
+    up.add(ZONE, 7, "DS", cds_rdata)
     up.send("NOERROR")
 
 child.zonefile_sync = 24 * 60 * 60
@@ -192,6 +194,9 @@ ZONE = "example.com."
 
 t.start()
 child.zone_wait(child_zone)
+
+cds_submission()
+t.sleep(5)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_alg_rollover(t, child, child_zone, 2, 1, "KZSK to CSK alg", "ECDSAP256SHA256", True, cds_submission)

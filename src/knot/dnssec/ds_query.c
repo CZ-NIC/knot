@@ -16,6 +16,7 @@
 
 #include <assert.h>
 
+#include "contrib/macros.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/ds_query.h"
@@ -50,8 +51,12 @@ struct ds_query_data {
 
 	zone_key_t *key;
 
+	uint16_t edns_max_payload;
+
 	bool ds_ok;
 	bool result_logged;
+
+	uint32_t ttl;
 };
 
 static int ds_query_begin(knot_layer_t *layer, void *params)
@@ -64,10 +69,16 @@ static int ds_query_begin(knot_layer_t *layer, void *params)
 static int ds_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct ds_query_data *data = layer->data;
+	struct query_edns_data edns = { .max_payload = data->edns_max_payload, .do_flag = true, };
 
 	query_init_pkt(pkt);
 
 	int r = knot_pkt_put_question(pkt, data->zone_name, KNOT_CLASS_IN, KNOT_RRTYPE_DS);
+	if (r != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
+
+	r = query_put_edns(pkt, &edns);
 	if (r != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
@@ -94,14 +105,19 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	for (size_t j = 0; j < answer->count; j++) {
 		const knot_rrset_t *rr = knot_pkt_rr(answer, j);
-		if (!rr || rr->type != KNOT_RRTYPE_DS || rr->rrs.count != 1) {
-			ns_log(LOG_WARNING, data->zone_name, LOG_OPERATION_PARENT,
-			       LOG_DIRECTION_OUT, data->remote, "malformed message");
-			return KNOT_STATE_FAIL;
-		}
-
-		if (match_key_ds(data->key, rr->rrs.rdata)) {
-			match = true;
+		switch ((rr && rr->rrs.count > 0) ? rr->type : 0) {
+		case KNOT_RRTYPE_DS:
+			if (match_key_ds(data->key, rr->rrs.rdata)) {
+				match = true;
+				if (data->ttl == 0) { // fallback: if there is no RRSIG
+					data->ttl = rr->ttl;
+				}
+			}
+			break;
+		case KNOT_RRTYPE_RRSIG:
+			data->ttl = knot_rrsig_original_ttl(rr->rrs.rdata);
+			break;
+		default:
 			break;
 		}
 	}
@@ -110,7 +126,9 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	       LOG_DIRECTION_OUT, data->remote, "KSK submission attempt: %s",
 	       (match ? "positive" : "negative"));
 
-	if (match) data->ds_ok = true;
+	if (match) {
+		data->ds_ok = true;
+	}
 	return KNOT_STATE_DONE;
 }
 
@@ -122,7 +140,8 @@ static const knot_layer_api_t ds_query_api = {
 	.finish = NULL,
 };
 
-static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zone_key_t *key, size_t timeout)
+static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zone_key_t *key,
+                  size_t timeout, uint32_t *ds_ttl)
 {
 	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
 
@@ -135,6 +154,7 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		.key = key,
 		.ds_ok = false,
 		.result_logged = false,
+		.ttl = 0,
 	};
 
 	knot_requestor_t requestor;
@@ -155,6 +175,10 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		return KNOT_ENOMEM;
 	}
 
+	data.edns_max_payload = dst->sa_family == AF_INET6 ?
+	                        conf()->cache.srv_max_ipv6_udp_payload :
+	                        conf()->cache.srv_max_ipv4_udp_payload;
+
 	int ret = knot_requestor_exec(&requestor, req, timeout);
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
@@ -169,18 +193,26 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		       LOG_DIRECTION_OUT, data.remote, "failed (%s)", knot_strerror(ret));
 	}
 
+	*ds_ttl = data.ttl;
+
 	return ret;
 }
 
-static bool parents_have_ds(kdnssec_ctx_t *kctx, zone_key_t *key, size_t timeout)
+static bool parents_have_ds(kdnssec_ctx_t *kctx, zone_key_t *key, size_t timeout,
+                            uint32_t *max_ds_ttl)
 {
 	bool success = false;
 	dynarray_foreach(parent, knot_kasp_parent_t, i, kctx->policy->parents) {
 		success = false;
 		for (size_t j = 0; j < i->addrs; j++) {
-			int ret = try_ds(kctx->zone->dname, &i->addr[j], key, timeout);
+			uint32_t ds_ttl = 0;
+			int ret = try_ds(kctx->zone->dname, &i->addr[j], key, timeout, &ds_ttl);
 			if (ret == KNOT_EOK) {
+				*max_ds_ttl = MAX(*max_ds_ttl, ds_ttl);
 				success = true;
+				break;
+			} else if (ret == KNOT_ENORECORD) {
+				// parent was queried successfully, answer was negative
 				break;
 			}
 		}
@@ -194,12 +226,13 @@ static bool parents_have_ds(kdnssec_ctx_t *kctx, zone_key_t *key, size_t timeout
 
 int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t timeout)
 {
+	uint32_t max_ds_ttl = 0;
+
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
-		if (key->is_ksk &&
-		    key->cds_priority > 1) {
-			if (parents_have_ds(kctx, key, timeout)) {
-				return knot_dnssec_ksk_sbm_confirm(kctx);
+		if (key->is_ksk && key->cds_priority > 1) {
+			if (parents_have_ds(kctx, key, timeout, &max_ds_ttl)) {
+				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl);
 			} else {
 				return KNOT_ENOENT;
 			}
