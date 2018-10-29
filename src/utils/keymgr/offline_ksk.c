@@ -52,6 +52,7 @@ static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_ke
 	if (dnskey == NULL) {
 		return KNOT_ENOMEM;
 	}
+	*_dnskey = dnskey;
 
 	int ret = load_zone_keys(ctx, keyset, false);
 	if (ret != KNOT_EOK) {
@@ -70,7 +71,6 @@ static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_ke
 		}
 	}
 
-	*_dnskey = dnskey;
 	return KNOT_EOK;
 }
 
