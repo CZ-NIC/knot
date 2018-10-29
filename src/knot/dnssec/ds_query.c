@@ -211,6 +211,9 @@ static bool parents_have_ds(kdnssec_ctx_t *kctx, zone_key_t *key, size_t timeout
 				*max_ds_ttl = MAX(*max_ds_ttl, ds_ttl);
 				success = true;
 				break;
+			} else if (ret == KNOT_ENORECORD) {
+				// parent was queried successfully, answer was negative
+				break;
 			}
 		}
 		// Each parent must succeed.
