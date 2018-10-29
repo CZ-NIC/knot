@@ -474,7 +474,8 @@ lines of :rfc:`6781#section-4.1.2`::
   2017-10-24T15:41:22 notice: [example.com.] DNSSEC, KSK submission, waiting for confirmation
 
 At this point new KSK has to be submitted to the parent zone. Knot detects the updated parent's DS
-record automatically if :ref:`parent DS check<Submission section>` is configured, otherwise the
+record automatically (and waits for additional period of the DS's TTL before retiring the old key)
+if :ref:`parent DS check<Submission section>` is configured, otherwise the
 operator must confirm it manually with ``knotc zone-ksk-submitted``::
 
   2017-10-24T15:41:23 notice: [example.com.] DNSSEC, KSK submission, confirmed
