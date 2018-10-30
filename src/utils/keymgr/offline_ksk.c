@@ -253,10 +253,10 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t *n
 		zone_key_t *key = &keyset.keys[i];
 		if (key->is_active && key->is_ksk) {
 			ret = knot_sign_rrset(rrsig, dnskey, key->key, key->ctx, ctx, NULL, NULL);
-			if (ret == KNOT_EOK && knot_zone_sign_use_key(key, cdnskey)) {
+			if (ret == KNOT_EOK && !knot_rrset_empty(cdnskey) && knot_zone_sign_use_key(key, cdnskey)) {
 				ret = knot_sign_rrset(rrsig, cdnskey, key->key, key->ctx, ctx, NULL, NULL);
 			}
-			if (ret == KNOT_EOK && knot_zone_sign_use_key(key, cds)) {
+			if (ret == KNOT_EOK && !knot_rrset_empty(cds) && knot_zone_sign_use_key(key, cds)) {
 				ret = knot_sign_rrset(rrsig, cds, key->key, key->ctx, ctx, NULL, NULL);
 			}
 			if (ret != KNOT_EOK) {
