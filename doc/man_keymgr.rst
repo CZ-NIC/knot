@@ -100,7 +100,7 @@ Commands
 Commands related to Offline KSK feature
 .......................................
 
-**pregenerate** *period_secs*
+**pregenerate** *timestamp*
   Pre-generate ZSKs for use with offline KSK, for the specified period starting from now.
 
 **show-rrsig** *timestamp*

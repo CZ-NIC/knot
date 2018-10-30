@@ -123,7 +123,7 @@ owned by both zones equally.
 .SS Commands related to Offline KSK feature
 .INDENT 0.0
 .TP
-\fBpregenerate\fP \fIperiod_secs\fP
+\fBpregenerate\fP \fItimestamp\fP
 Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
 .TP
 \fBshow\-rrsig\fP \fItimestamp\fP

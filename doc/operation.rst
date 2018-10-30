@@ -631,50 +631,62 @@ zone, e.g. turning off DNSSEC, removing all the keys and signatures as desired.
 DNSSEC Offline KSK
 ==================
 
-Knot DNS allows a special mode of operation where the private part of Key Signing Key is
-not available to the daemon, rather stored securely in an offline storage. This requires
-obviously that KSK/ZSK signing scheme is used. Zone Signing Key is always fully available
-to Knot in order to sign common changes to zone contents.
+Knot DNS allows a special mode of operation where the private part of the Key Signing Key is
+not available to the daemon, but it is rather stored securely in an offline storage. This requires
+that the KSK/ZSK signing scheme is used (i.e. :ref:`policy_single-type-signing` is off). 
+The Zone Signing Key is always fully available to the daemon in order to sign common changes to the zone contents.
 
-The server (called "ZSK side") only uses ZSK to sign zone contents and its changes. Before
+The server (or the "ZSK side") only uses ZSK to sign zone contents and its changes. Before
 performing a ZSK rollover, the DNSKEY records will be pre-generated and signed by the
-"KSK side". Both sides exchange keys in the form of human-readable messages with the help
+signer (the "KSK side"). Both sides exchange keys in the form of human-readable messages with the help
 of :doc:`keymgr <man_keymgr>` utility.
 
-For the "ZSK side" (i.e. the operator of the DNS server), the pre-requirements are:
-proper DNSSEC policy configuration (e.g. :ref:`zsk-lifetime <policy_zsk-lifetime>`),
-but :ref:`manual <policy_manual>` set to "on", and a complete KASP db with just ZSK(s). Also
-:ref:`offline-ksk <policy_offline-ksk>` must be enabled.
+Pre-requisites
+--------------
 
-For the "KSK side" (i.e. the operator of the KSK signer), the pre-requirements are
-equal Knot configuration (at least the :ref:`Policy section` must be identical) and a KASP db
-with the KSK(s).
+For the "ZSK side" (i.e. the operator of the DNS server), the pre-requisites are:
 
-The first step for the "ZSK side" is the :doc:`keymgr <man_keymgr>` command
-``keymgr pregenerate`` to prepare the ZSKs for a specified period ahead.
-For example, if the period is *2 x zsk_lifetime + 4 x propagation_delay*, it will
-probably prepare two complete future key rollovers. The newly-generated
-ZSKs remain in non-published state until their rollover start, i.e. the time 
-they would otherwise be generated in case of automatic key management.
+- properly configured :ref:`DNSSEC policy <Policy section>` (e.g. :ref:`zsk-lifetime <policy_zsk-lifetime>`),
+- :ref:`manual <policy_manual>` set to `on`
+- :ref:`offline-ksk <policy_offline-ksk>` set to `on`
+- a complete KASP db with just ZSK(s)
 
-Then, the "ZSK side" shall export the public parts of the future ZSKs (in the form
-similar to DNSKEY records) by calling ``keymgr generate-ksr``
-with the same period as a parameter. The output
-(called Key Signing Request; perhaps redirected to a file) shall be then sent to the
-"KSK side" e.g. via e-mail.
+For the "KSK side" (i.e. the operator of the KSK signer), the pre-requisites are:
 
-The third step is done by "KSK side" by using the command ``keymgr sign-ksr`` with
-the KSR file as the parameter. This completes and signs all the future forms of DNSKEY record,
-creating the future RRSIGs (adding also CDNSKEYs and CDSs), which are again printed on output
-(and called Signed Key Response). This shall be sent back to "ZSK side".
+- Knot configuration equal to the "ZSK side" (at least the :ref:`Policy section` must be identical) 
+- a KASP db with the KSK(s)
 
-The last step is importing the signatures from SKR to the KASP db for later use,
-this is done by ``keymgr import-skr``, followed by ``knotc zone-resign``
-command, so that the future zone re-signs are properly planned
-in the event subsystem. Then the future ZSKs and DNSKEY records with signatures are ready
-in KASP db for later usage. Knot automatically uses them in correct time intervals.
-This whole procedure needs to be repeated when the period selected on the beginning
-is going to run out.
+Generating and signing future ZSKs
+----------------------------------
+
+1.  Use the ``keymgr pregenerate`` command to prepare the ZSKs for a specified period of `P` seconds ahead.::
+        $ keymgr -c /path/to/ZSK_side.conf example.com. pregenerate 
+    
+    For example, if the period is *2 x zsk_lifetime + 4 x propagation_delay*, it will
+    probably prepare two complete future key rollovers. The newly-generated
+    ZSKs remain in non-published state until their rollover start, i.e. the time 
+    they would otherwise be generated in case of automatic key management.
+
+2.  Then, the "ZSK side" shall export the public parts of the future ZSKs (in the form
+    similar to DNSKEY records) by calling ``keymgr generate-ksr``
+    with the same period as a parameter. The output
+    (called Key Signing Request; perhaps redirected to a file) shall be then sent to the
+    "KSK side" e.g. via e-mail.
+
+3.  The third step is done by "KSK side" by using the command ``keymgr sign-ksr`` with
+    the KSR file as the parameter. This completes and signs all the future forms of DNSKEY record,
+    creating the future RRSIGs (adding also CDNSKEYs and CDSs), which are again printed on output
+    (and called Signed Key Response). This shall be sent back to "ZSK side".
+
+4.  The last step is importing the signatures from SKR to the KASP db for later use,
+    this is done by ``keymgr import-skr``, followed by ``knotc zone-resign``
+    command, so that the future zone re-signs are properly planned
+    in the event subsystem. Then the future ZSKs and DNSKEY records with signatures are ready
+    in KASP db for later usage. Knot automatically uses them in correct time intervals.
+    This whole procedure needs to be repeated when the period selected on the beginning
+    is going to run out.
+
+5. ``knotc zone-sign``
 
 .. _Controlling running daemon:
 

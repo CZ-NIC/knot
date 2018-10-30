@@ -26,6 +26,7 @@
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-sign.h"
 #include "libzscanner/scanner.h"
+#include "utils/keymgr/functions.h"
 
 static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 {
@@ -74,10 +75,16 @@ static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_ke
 	return KNOT_EOK;
 }
 
-int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, knot_time_t upto)
+int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg)
 {
+	knot_time_t upto;
+	int ret = parse_timestamp(arg, &upto);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	knot_time_t next = ctx->now;
-	int ret = KNOT_EOK;
+	ret = KNOT_EOK;
 
 	ctx->keep_deleted_keys = true;
 	ctx->policy->manual = false;
@@ -102,8 +109,14 @@ static int dump_rrset_to_buf(const knot_rrset_t *rrset, char **buf, size_t *buf_
 	return knot_rrset_txt_dump(rrset, buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
 }
 
-int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
+int keymgr_print_rrsig(kdnssec_ctx_t *ctx, char *arg)
 {
+	knot_time_t when;
+	int ret = parse_timestamp(arg, &when);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	knot_time_t next = 0;
 	knot_rrset_t rrsig = { 0 }, dnskey = { 0 }, cdnskey = { 0 }, cds = { 0 };
 	knot_rrset_init(&rrsig, knot_dname_copy(ctx->zone->dname, NULL),
@@ -111,7 +124,7 @@ int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
 	knot_rrset_init_empty(&dnskey);
 	knot_rrset_init_empty(&cdnskey);
 	knot_rrset_init_empty(&cds);
-	int ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, &next, &rrsig, &dnskey, &cdnskey, &cds);
+	ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, &next, &rrsig, &dnskey, &cdnskey, &cds);
 	if (ret == KNOT_EOK) {
 		char *buf = NULL;
 		size_t buf_size = 512;
@@ -142,8 +155,17 @@ int keymgr_print_rrsig(kdnssec_ctx_t *ctx, knot_time_t when)
 	return ret;
 }
 
-int keymgr_delete_rrsig(kdnssec_ctx_t *ctx, knot_time_t from, knot_time_t to)
+int keymgr_delete_rrsig(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 {
+	knot_time_t from, to;
+	int ret = parse_timestamp(arg_from, &from);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	ret = parse_timestamp(arg_to, &to);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	return kasp_db_delete_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, from, to);
 }
 
@@ -190,10 +212,16 @@ done:
 	return ret;
 }
 
-int keymgr_print_ksr(kdnssec_ctx_t *ctx, knot_time_t upto)
+int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg)
 {
+	knot_time_t upto;
+	int ret = parse_timestamp(arg, &upto);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	knot_time_t next = ctx->now;
-	int ret = KNOT_EOK;
+	ret = KNOT_EOK;
 	char *buf = NULL;
 	size_t buf_size = 4096;
 
