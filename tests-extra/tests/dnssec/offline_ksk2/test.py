@@ -95,6 +95,7 @@ knot.dnssec(zone).zsk_lifetime = STARTUP + 6*TICK # see ksk1 lifetime
 knot.dnssec(zone).ksk_lifetime = 300 # this can be possibly left also infinity
 knot.dnssec(zone).propagation_delay = TICK-2
 knot.dnssec(zone).offline_ksk = "on"
+knot.dnssec(zone).cds_publish = "rollover"
 knot.port = 1234 # dummy, will be overwritten
 knot.gen_confile()
 
