@@ -288,6 +288,7 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 		case 15: // all keys ready for signing
 			have_active_alg = true;
 			break;
+		case 5:
 		case 10:
 			if (ctx->policy->offline_ksk) {
 				have_active_alg = true;
