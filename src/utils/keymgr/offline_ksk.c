@@ -301,9 +301,8 @@ static int process_skr_between_ksrs(ksr_sign_ctx_t *ctx, knot_time_t next_ksr)
 {
 	static knot_time_t prev_ksr = 0;
 
-	assert((prev_ksr == 0 ? 1 : 0) == (knot_rrset_empty(ctx->dnskey_prev) ? 1 : 0));
-
-	if (!knot_rrset_empty(ctx->dnskey_prev)) {
+	if (prev_ksr != 0) {
+		assert(!knot_rrset_empty(ctx->dnskey_prev));
 		for (knot_time_t inbetween_skr = prev_ksr; inbetween_skr < next_ksr; ) {
 			ctx->kctx->now = inbetween_skr;
 			int ret = ksr_sign_dnskey(ctx->kctx, ctx->dnskey_prev, &inbetween_skr);
