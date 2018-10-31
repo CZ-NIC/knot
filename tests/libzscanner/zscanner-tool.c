@@ -211,6 +211,7 @@ int main(int argc, char *argv[])
 		break;
 	case 1:
 		ret = zs_set_processing(s, debug_process_record, debug_process_error, NULL);
+		ret += zs_set_processing_comment(s, debug_process_comment);
 		break;
 	case 2:
 		ret = zs_set_processing(s, test_process_record, test_process_error, NULL);
