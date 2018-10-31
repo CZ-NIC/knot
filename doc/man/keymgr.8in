@@ -123,19 +123,19 @@ owned by both zones equally.
 .SS Commands related to Offline KSK feature
 .INDENT 0.0
 .TP
-\fBpregenerate\fP \fIperiod_secs\fP
+\fBpregenerate\fP \fItimestamp\fP
 Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
 .TP
 \fBshow\-rrsig\fP \fItimestamp\fP
 Print a pre\-generated DNSKEY RRSIG for specified timestamp.
 .TP
-\fBdel\-rrsig\fP \fIperiod_secs\fP
+\fBdel\-rrsig\fP \fItimestamp\fP
 Delete pre\-generated DNSKEY RRSIGs for the specified period starting from time zero.
 .TP
 \fBdel\-all\-old\fP
 Delete old keys that are in state \(aqremoved\(aq.
 .TP
-\fBgenerate\-ksr\fP \fIperiod_secs\fP
+\fBgenerate\-ksr\fP \fItimestamp\fP
 Print to stdout KeySigningRequest based on pre\-generated ZSKs for specified period.
 .TP
 \fBsign\-ksr\fP \fIksr_file\fP
