@@ -179,6 +179,8 @@ struct zs_scanner {
 		void (*record)(zs_scanner_t *);
 		/*! Callback function for wrong situations. */
 		void (*error)(zs_scanner_t *);
+		/*! Callback function for pure comment line. */
+		void (*comment)(zs_scanner_t *);
 		/*! Arbitrary data useful inside callback functions. */
 		void *data;
 	} process;
@@ -331,6 +333,12 @@ int zs_set_processing(
 	zs_scanner_t *scanner,
 	void (*process_record)(zs_scanner_t *),
 	void (*process_error)(zs_scanner_t *),
+	void *data
+);
+
+int zs_set_processing_comment(
+	zs_scanner_t *scanner,
+	void (*process_comment)(zs_scanner_t *),
 	void *data
 );
 
