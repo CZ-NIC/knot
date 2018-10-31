@@ -376,6 +376,20 @@ int zs_set_processing(
 	return 0;
 }
 
+__attribute__((visibility("default")))
+int zs_set_processing_comment(
+	zs_scanner_t *s,
+	void (*process_comment)(zs_scanner_t *))
+{
+	if (s == NULL) {
+		return -1;
+	}
+
+	s->process.comment = process_comment;
+
+	return 0;
+}
+
 typedef enum {
 	WRAP_NONE,     // Initial state.
 	WRAP_DETECTED, // Input block end is a first '\' in rdata.
@@ -1705,6 +1719,16 @@ tr89:
 tr92:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1127; goto _out;}
+			}
+		}
 	}
 	{
 		if (rdata_tail - s->r_data > UINT16_MAX) {
@@ -1737,6 +1761,16 @@ tr92:
 tr666:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1127; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -1749,6 +1783,16 @@ tr760:
 	}
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1127; goto _out;}
+			}
+		}
 	}
 	{
 		if (rdata_tail - s->r_data > UINT16_MAX) {
@@ -1812,6 +1856,16 @@ tr878:
 	}
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1127; goto _out;}
+			}
+		}
 	}
 	goto st1127;
 tr882:
@@ -1844,6 +1898,16 @@ tr882:
 	}
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1127; goto _out;}
+			}
+		}
 	}
 	goto st1127;
 tr3618:
@@ -3148,6 +3212,16 @@ tr34:
 tr719:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 3; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -3421,6 +3495,16 @@ tr64:
 tr96:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 5; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -13809,6 +13893,16 @@ case 13:
 tr112:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1128; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -19321,6 +19415,16 @@ tr648:
 tr606:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 64; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -21152,6 +21256,16 @@ case 141:
 tr914:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1129; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -21517,6 +21631,16 @@ tr637:
 tr664:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 145; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -21996,6 +22120,16 @@ tr610:
 tr912:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1130; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -22004,6 +22138,16 @@ tr912:
 tr801:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1130; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -22400,6 +22544,16 @@ tr687:
 tr691:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 161; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -22554,6 +22708,16 @@ tr22:
 tr910:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1132; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -22562,6 +22726,16 @@ tr910:
 tr756:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1132; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -22692,6 +22866,16 @@ tr824:
 tr827:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1132; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -23010,6 +23194,16 @@ tr701:
 tr704:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 164; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -23570,6 +23764,16 @@ tr731:
 tr896:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 171; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -27448,6 +27652,16 @@ tr133:
 tr874:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1135; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -27456,6 +27670,16 @@ tr874:
 tr772:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1135; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -36243,6 +36467,16 @@ tr968:
 tr1007:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 292; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -36521,6 +36755,16 @@ tr988:
 tr991:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1141; goto _out;}
+			}
+		}
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
@@ -36922,6 +37166,16 @@ tr1012:
 tr1043:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 301; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -37239,6 +37493,16 @@ tr1031:
 tr1034:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1142; goto _out;}
+			}
+		}
 	}
 	{
 		s->zone_origin_length = s->dname_tmp_length;
@@ -37504,6 +37768,16 @@ tr1047:
 tr1101:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 313; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -38191,6 +38465,16 @@ tr1083:
 	cs = 1143;
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; goto _out;}
+			}
+		}
 	}
 	{
 		// Extend relative file path.
@@ -38518,6 +38802,16 @@ tr1092:
 	cs = 1144;
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -38647,6 +38941,16 @@ tr1096:
 tr1099:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 326; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -38891,6 +39195,16 @@ tr1111:
 tr1117:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 333; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -39143,6 +39457,16 @@ tr1145:
 tr1172:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 337; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -47469,6 +47793,16 @@ tr1615:
 tr1646:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 469; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -47589,6 +47923,16 @@ tr1630:
 tr1644:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 471; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -47733,6 +48077,16 @@ tr1636:
 tr1642:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 473; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -48078,6 +48432,16 @@ tr1650:
 tr1686:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 478; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -48287,6 +48651,16 @@ tr1665:
 tr1679:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 480; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -48431,6 +48805,16 @@ tr1671:
 tr1677:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 482; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -50798,6 +51182,16 @@ tr1878:
 tr2022:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 638; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -50933,6 +51327,16 @@ tr1890:
 tr2020:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 640; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -51090,6 +51494,16 @@ tr1902:
 tr2018:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 642; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -51285,6 +51699,16 @@ tr1920:
 tr2003:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 644; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -51577,6 +52001,16 @@ tr1937:
 tr1988:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 646; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -51869,6 +52303,16 @@ tr1954:
 tr1973:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 648; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -53455,6 +53899,16 @@ tr2033:
 tr2037:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 670; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -53732,6 +54186,16 @@ tr2048:
 tr2052:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 675; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -53985,6 +54449,16 @@ tr2064:
 tr2068:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 680; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -54276,6 +54750,16 @@ tr2083:
 tr2089:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 685; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -54793,6 +55277,16 @@ tr2107:
 tr2350:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 691; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -54972,6 +55466,16 @@ tr2119:
 tr2348:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 693; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -55158,6 +55662,16 @@ tr2131:
 tr2339:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 695; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -55463,6 +55977,16 @@ tr2136:
 tr2332:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 697; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -55620,6 +56144,16 @@ tr2151:
 tr2330:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 699; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -55799,6 +56333,16 @@ tr2163:
 tr2328:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 701; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -55985,6 +56529,16 @@ tr2175:
 tr2319:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 703; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -56290,6 +56844,16 @@ tr2180:
 tr2312:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 705; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -56499,6 +57063,16 @@ tr2200:
 tr2299:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 708; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -56881,6 +57455,16 @@ tr2220:
 tr2286:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 710; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -57247,6 +57831,16 @@ tr2239:
 tr2273:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 712; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -57613,6 +58207,16 @@ tr2256:
 tr2261:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 714; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -61654,6 +62258,16 @@ tr2362:
 tr2394:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 746; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -61839,6 +62453,16 @@ tr2374:
 tr2392:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 748; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -62024,6 +62648,16 @@ tr2386:
 tr2390:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 750; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -62420,6 +63054,16 @@ tr2406:
 tr2463:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 757; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -62605,6 +63249,16 @@ tr2418:
 tr2461:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 759; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -62770,6 +63424,16 @@ tr2429:
 tr2459:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 761; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -62935,6 +63599,16 @@ tr2440:
 tr2457:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 763; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -63100,6 +63774,16 @@ tr2451:
 tr2455:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 765; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -63576,6 +64260,16 @@ tr2468:
 tr2495:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 774; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -63696,6 +64390,16 @@ tr2481:
 tr2493:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 776; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -63853,6 +64557,16 @@ tr2486:
 tr2491:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 778; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -64084,6 +64798,16 @@ tr2503:
 tr2526:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 783; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -65047,6 +65771,16 @@ tr2542:
 tr2579:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 796; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -65204,6 +65938,16 @@ tr2547:
 tr2577:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 798; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -65324,6 +66068,16 @@ tr2561:
 tr2575:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 800; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -65472,6 +66226,16 @@ tr2567:
 tr2573:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 802; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -65898,6 +66662,16 @@ tr2591:
 tr2619:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 809; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -66079,6 +66853,16 @@ tr2603:
 tr2617:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 811; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -66227,6 +67011,16 @@ tr2609:
 tr2615:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 813; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -66613,6 +67407,16 @@ tr2635:
 tr2828:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 819; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -66764,6 +67568,16 @@ tr2640:
 tr2690:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 821; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -66884,6 +67698,16 @@ tr2654:
 tr2688:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 823; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -67099,6 +67923,16 @@ tr2667:
 tr2682:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 825; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -67568,6 +68402,16 @@ tr2671:
 tr2684:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 828; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -68150,6 +68994,16 @@ tr2675:
 tr2686:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 830; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -69269,6 +70123,16 @@ tr2694:
 tr2737:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 835; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -69389,6 +70253,16 @@ tr2708:
 tr2735:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 837; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -69754,6 +70628,16 @@ tr2741:
 tr2782:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 842; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -69874,6 +70758,16 @@ tr2754:
 tr2780:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 844; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -70251,6 +71145,16 @@ tr2786:
 tr2826:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 849; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -70371,6 +71275,16 @@ tr2799:
 tr2824:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 851; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -70815,6 +71729,16 @@ tr2857:
 tr2953:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 858; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -72190,6 +73114,16 @@ tr2862:
 tr2951:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 860; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -72310,6 +73244,16 @@ tr2875:
 tr2949:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 862; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -72491,6 +73435,16 @@ tr2888:
 tr2947:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 864; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -72664,6 +73618,16 @@ tr2900:
 tr2945:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 866; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -72941,6 +73905,16 @@ tr2912:
 tr2943:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 868; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -73230,6 +74204,16 @@ tr2924:
 tr2941:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 870; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -73393,6 +74377,16 @@ tr2935:
 tr2939:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 872; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -76275,6 +77269,16 @@ tr3291:
 tr3317:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1015; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -76460,6 +77464,16 @@ tr3303:
 tr3315:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1017; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -76613,6 +77627,16 @@ tr3308:
 tr3313:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1019; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -76976,6 +78000,16 @@ tr3331:
 tr3395:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1028; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -77157,6 +78191,16 @@ tr3343:
 tr3393:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1030; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -77338,6 +78382,16 @@ tr3356:
 tr3391:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1032; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -77503,6 +78557,16 @@ tr3368:
 tr3387:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1034; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -78280,6 +79344,16 @@ tr3407:
 tr3442:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1057; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -78461,6 +79535,16 @@ tr3419:
 tr3440:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1059; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -78642,6 +79726,16 @@ tr3432:
 tr3438:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1061; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -79115,6 +80209,16 @@ tr3454:
 tr3496:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1070; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -79296,6 +80400,16 @@ tr3466:
 tr3494:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1072; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -79477,6 +80591,16 @@ tr3478:
 tr3492:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1074; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -79625,6 +80749,16 @@ tr3484:
 tr3490:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1076; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -80064,6 +81198,16 @@ tr3508:
 tr3513:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1083; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -80374,6 +81518,16 @@ tr3525:
 tr3539:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1088; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -81096,6 +82250,16 @@ tr3564:
 tr3582:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1113; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -81281,6 +82445,16 @@ tr3576:
 tr3580:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1115; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -81614,6 +82788,16 @@ tr3594:
 tr3611:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1121; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;
@@ -81775,6 +82959,16 @@ tr3605:
 tr3609:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; cs = 1123; goto _out;}
+			}
+		}
 	}
 	{
 		s->line_counter++;

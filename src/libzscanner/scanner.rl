@@ -377,6 +377,20 @@ int zs_set_processing(
 	return 0;
 }
 
+__attribute__((visibility("default")))
+int zs_set_processing_comment(
+	zs_scanner_t *s,
+	void (*process_comment)(zs_scanner_t *))
+{
+	if (s == NULL) {
+		return -1;
+	}
+
+	s->process.comment = process_comment;
+
+	return 0;
+}
+
 typedef enum {
 	WRAP_NONE,     // Initial state.
 	WRAP_DETECTED, // Input block end is a first '\' in rdata.
