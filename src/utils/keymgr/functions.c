@@ -36,7 +36,18 @@
 #include "knot/dnssec/zone-sign.h"
 #include "libzscanner/scanner.h"
 
-static bool is_timestamp(char *arg, knot_kasp_key_timing_t *timing)
+int parse_timestamp(char *arg, knot_time_t *stamp)
+{
+	int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
+	                          arg, stamp);
+	if (ret < 0) {
+		printf("Invalid timestamp: %s\n", arg);
+		return KNOT_EINVAL;
+	}
+	return KNOT_EOK;
+}
+
+static bool init_timestamps(char *arg, knot_kasp_key_timing_t *timing)
 {
 	knot_time_t *dst = NULL;
 
@@ -63,10 +74,8 @@ static bool is_timestamp(char *arg, knot_kasp_key_timing_t *timing)
 	}
 
 	knot_time_t stamp;
-	int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
-	                          strchr(arg, '=') + 1, &stamp);
-	if (ret < 0) {
-		printf("Invalid timestamp: %s\n", arg);
+	int ret = parse_timestamp(strchr(arg, '=') + 1, &stamp);
+	if (ret != KNOT_EOK) {
 		return true;
 	}
 
@@ -141,7 +150,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			*keysize = atol(argv[i] + 5);
 		} else if (!just_timing && strncasecmp(argv[i], "addtopolicy=", 12) == 0) {
 			*addtopolicy = argv[i] + 12;
-		} else if (!is_timestamp(argv[i], timing)) {
+		} else if (!init_timestamps(argv[i], timing)) {
 			printf("Invalid parameter: %s\n", argv[i]);
 			return false;
 		}
