@@ -18,6 +18,8 @@
 
 #include "knot/dnssec/context.h"
 
+int parse_timestamp(char *arg, knot_time_t *stamp);
+
 int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]);
 
 int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_only);

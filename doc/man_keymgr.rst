@@ -100,19 +100,19 @@ Commands
 Commands related to Offline KSK feature
 .......................................
 
-**pregenerate** *period_secs*
+**pregenerate** *timestamp*
   Pre-generate ZSKs for use with offline KSK, for the specified period starting from now.
 
 **show-rrsig** *timestamp*
   Print a pre-generated DNSKEY RRSIG for specified timestamp.
 
-**del-rrsig** *period_secs*
+**del-rrsig** *timestamp*
   Delete pre-generated DNSKEY RRSIGs for the specified period starting from time zero.
 
 **del-all-old**
   Delete old keys that are in state 'removed'.
 
-**generate-ksr** *period_secs*
+**generate-ksr** *timestamp*
   Print to stdout KeySigningRequest based on pre-generated ZSKs for specified period.
 
 **sign-ksr** *ksr_file*
