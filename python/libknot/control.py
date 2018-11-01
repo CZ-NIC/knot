@@ -25,9 +25,9 @@ Example:
         ctl.close()
 """
 
+import sys
 from ctypes import cdll, c_void_p, c_int, c_char_p, c_uint, byref
 from enum import IntEnum
-from sys import platform
 
 CTL_ALLOC = None
 CTL_FREE = None
