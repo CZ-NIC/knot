@@ -362,6 +362,10 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 	int ret = co_ch ? zone_change_store(conf, zone, co_ch) : KNOT_ENOMEM;
 	changeset_from_contents_free(co_ch);
 
+	if (ret == KNOT_EOK) {
+		log_zone_info(zone->name, "zone stored to journal serial %u", zone_contents_serial(new_contents));
+	}
+
 	return ret;
 }
 
