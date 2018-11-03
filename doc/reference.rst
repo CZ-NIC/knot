@@ -587,7 +587,7 @@ config
 
 A backend specific configuration. A directory with PEM files (the path can
 be specified as a relative path to :ref:`kasp-db<template_kasp-db>`) or
-a configuration string for PKCS #11 storage.
+a configuration string for PKCS #11 storage (`<pkcs11-url> <module-path>`).
 
 .. NOTE::
    Example configuration string for PKCS #11::
@@ -683,7 +683,7 @@ DNSSEC policy configuration.
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
      ksk-submission: submission_id
-     cds-cdnskey-publish: none | delete-dnssec | always
+     cds-cdnskey-publish: none | delete-dnssec | rollover | always
 
 .. _policy_id:
 
@@ -917,10 +917,10 @@ Controls if and how shall the CDS and CDNSKEY be published in the zone.
 
 Possible values:
 
-- ``none`` - Never publish any CDS or CDNSKEY records in the zone.
-- ``delete-dnssec`` - Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
-- ``rollover`` - Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
-- ``always`` - Always publish CDS and CDNSKEY records for the current KSK.
+- ``none`` – Never publish any CDS or CDNSKEY records in the zone.
+- ``delete-dnssec`` – Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
+- ``rollover`` – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
+- ``always`` – Always publish CDS and CDNSKEY records for the current KSK.
 
 *Default:* always
 

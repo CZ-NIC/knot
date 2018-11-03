@@ -523,7 +523,7 @@ Possible values:
 .sp
 A backend specific configuration. A directory with PEM files (the path can
 be specified as a relative path to \fI\%kasp\-db\fP) or
-a configuration string for PKCS #11 storage.
+a configuration string for PKCS #11 storage (\fI<pkcs11\-url> <module\-path>\fP).
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -619,7 +619,7 @@ policy:
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
     ksk\-submission: submission_id
-    cds\-cdnskey\-publish: none | delete\-dnssec | always
+    cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always
 .ft P
 .fi
 .UNINDENT
@@ -812,11 +812,13 @@ This only applies if the zone keys are automatically managed by the server.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBnone\fP \- Never publish any CDS or CDNSKEY records in the zone.
+\fBnone\fP – Never publish any CDS or CDNSKEY records in the zone.
 .IP \(bu 2
-\fBdelete\-dnssec\fP \- Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
+\fBdelete\-dnssec\fP – Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
 .IP \(bu 2
-\fBalways\fP \- Always publish CDS and CDNSKEY records for the current KSK.
+\fBrollover\fP – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
+.IP \(bu 2
+\fBalways\fP – Always publish CDS and CDNSKEY records for the current KSK.
 .UNINDENT
 .sp
 \fIDefault:\fP always
