@@ -31,11 +31,11 @@
         apt-key add - < Release.key &&
         apt-get update
       openSUSE Tumbleweed: |
-        zypper addrepo --no-gpgcheck https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/openSUSE_Tumbleweed/home:CZ-NIC:{{ item }}.repo &&
-        zypper refresh
+        zypper addrepo https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/openSUSE_Tumbleweed/home:CZ-NIC:{{ item }}.repo &&
+        zypper --gpg-auto-import-keys refresh
       openSUSE Leap: |
-        zypper addrepo --no-gpgcheck https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/openSUSE_Leap_15.0/home:CZ-NIC:{{ item }}.repo &&
-        zypper refresh
+        zypper addrepo https://download.opensuse.org/repositories/home:CZ-NIC:{{ item }}/openSUSE_Leap_15.0/home:CZ-NIC:{{ item }}.repo &&
+        zypper --gpg-auto-import-keys refresh
     show_package_version:
       Archlinux:
         pacman -Qi knot | grep '^Version'
@@ -57,7 +57,8 @@
       raw: |
         yum install -y python2 python2-dnf libselinux-python || \
         pacman -Sy python2 --noconfirm || \
-        apt-get install -y python || \
+        (zypper --gpg-auto-import-keys refresh && zypper install -y python) || \
+        (apt-get update && apt-get install -y python) || \
         :
       ignore_errors: true
     - name: gather facts
