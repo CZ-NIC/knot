@@ -54,7 +54,6 @@ int event_load(conf_t *conf, zone_t *zone)
 {
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
 	bool old_contents_exist = (zone->contents != NULL);
-	uint32_t old_serial = (old_contents_exist ? zone_contents_serial(zone->contents) : 0);
 
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, zone->name);
 	unsigned load_from = conf_opt(&val);
@@ -70,7 +69,6 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (ret != KNOT_EOK) {
 			journal_conts = NULL;
 		}
-		old_serial = zone_contents_serial(journal_conts);
 	}
 
 	// If configured, attempt to load zonefile.
@@ -101,13 +99,18 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone->zonefile.mtime = mtime;
 
 		// If configured and possible, fix the SOA serial of zonefile.
-		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE) {
-			zone_contents_t *relevant = (zone->contents != NULL ? zone->contents : journal_conts);
-			if (relevant != NULL) {
-				uint32_t serial = zone_contents_serial(relevant);
-				conf_val_t policy = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
-				zone_contents_set_soa_serial(zf_conts, serial_next(serial, conf_opt(&policy)));
-			}
+		zone_contents_t *relevant = (zone->contents != NULL ? zone->contents : journal_conts);
+		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE && relevant != NULL) {
+			uint32_t serial = zone_contents_serial(relevant);
+			conf_val_t policy = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
+			uint32_t set = serial_next(serial, conf_opt(&policy));
+			zone_contents_set_soa_serial(zf_conts, set);
+			log_zone_info(zone->name, "zone file parsed, serial corrected %u -> %u",
+			              zone->zonefile.serial, set);
+			zone->zonefile.serial = set;
+		} else {
+			log_zone_info(zone->name, "zone file parsed, serial %u",
+			              zone->zonefile.serial);
 		}
 
 		// If configured and appliable to zonefile, load journal changes.
@@ -252,15 +255,20 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 	}
 
+	bool incremental = ((up.flags & UPDATE_INCREMENTAL) && !zone_update_no_change(&up));
+	uint32_t old_serial = (!incremental ? 0 :
+		(up.zone->contents ? zone_contents_serial(up.zone->contents) : zone->zonefile.serial)
+	);
+	uint32_t new_serial = zone_contents_serial(up.new_cont);
+
 	// Commit zone_update back to zone (including journal update, rcu,...).
 	ret = zone_update_commit(conf, &up);
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
 		goto cleanup;
 	}
-	uint32_t new_serial = zone_contents_serial(zone->contents);
 
-	if (old_contents_exist) {
+	if (incremental) {
 		log_zone_info(zone->name, "loaded, serial %u -> %u, %zu bytes",
 		              old_serial, new_serial, zone->contents->size);
 	} else {
