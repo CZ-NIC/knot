@@ -20,9 +20,9 @@
 
 int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg);
 
-int keymgr_print_rrsig(kdnssec_ctx_t *ctx, char *arg);
+int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg);
 
-int keymgr_delete_rrsig(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to);
+int keymgr_delete_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to);
 
 int keymgr_del_all_old(kdnssec_ctx_t *ctx);
 

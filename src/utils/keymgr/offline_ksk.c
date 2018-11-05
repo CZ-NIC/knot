@@ -109,7 +109,7 @@ static int dump_rrset_to_buf(const knot_rrset_t *rrset, char **buf, size_t *buf_
 	return knot_rrset_txt_dump(rrset, buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
 }
 
-int keymgr_print_rrsig(kdnssec_ctx_t *ctx, char *arg)
+int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg)
 {
 	knot_time_t when;
 	int ret = parse_timestamp(arg, &when);
@@ -124,8 +124,8 @@ int keymgr_print_rrsig(kdnssec_ctx_t *ctx, char *arg)
 	knot_rrset_init_empty(&dnskey);
 	knot_rrset_init_empty(&cdnskey);
 	knot_rrset_init_empty(&cds);
-	ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, &next,
-	                                 &rrsig, &dnskey, &cdnskey, &cds);
+	ret = kasp_db_load_offline_records(*ctx->kasp_db, ctx->zone->dname, when, &next,
+	                                   &rrsig, &dnskey, &cdnskey, &cds);
 	if (ret == KNOT_EOK) {
 		char *buf = NULL;
 		size_t buf_size = 512;
@@ -156,7 +156,7 @@ int keymgr_print_rrsig(kdnssec_ctx_t *ctx, char *arg)
 	return ret;
 }
 
-int keymgr_delete_rrsig(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
+int keymgr_delete_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 {
 	knot_time_t from, to;
 	int ret = parse_timestamp(arg_from, &from);
@@ -167,7 +167,7 @@ int keymgr_delete_rrsig(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	return kasp_db_delete_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, from, to);
+	return kasp_db_delete_offline_records(*ctx->kasp_db, ctx->zone->dname, from, to);
 }
 
 int keymgr_del_all_old(kdnssec_ctx_t *ctx)
@@ -393,7 +393,7 @@ static void skr_import_once(zs_scanner_t *sc)
 
 	if (sc->error.code == KNOT_EOK && sc->buffer_length > 9 && strncmp((const char *)sc->buffer, " end SKR ", 9) == 0) {
 		knot_time_t for_time = atol((const char *)sc->buffer + 9);
-		sc->error.code = kasp_db_store_offline_rrsig(*ctx->kctx->kasp_db, for_time, ctx->rrsig, ctx->dnskey, ctx->cdnskey, ctx->cds);
+		sc->error.code = kasp_db_store_offline_records(*ctx->kctx->kasp_db, for_time, ctx->rrsig, ctx->dnskey, ctx->cdnskey, ctx->cds);
 		knot_rdataset_clear(&ctx->dnskey->rrs, NULL);
 		knot_rdataset_clear(&ctx->cdnskey->rrs, NULL);
 		knot_rdataset_clear(&ctx->cds->rrs, NULL);

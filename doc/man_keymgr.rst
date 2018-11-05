@@ -103,11 +103,11 @@ Commands related to Offline KSK feature
 **pregenerate** *timestamp*
   Pre-generate ZSKs for use with offline KSK, for the specified period starting from now.
 
-**show-rrsig** *timestamp*
-  Print a pre-generated DNSKEY RRSIG for specified timestamp.
+**show-offline** *timestamp*
+  Print pre-generated offline key-related records for specified timestamp.
 
-**del-rrsig** *timestamp*
-  Delete pre-generated DNSKEY RRSIGs for the specified period starting from time zero.
+**del-offline** *timestamp-from* *timestamp-to*
+  Delete pre-generated offline key-related records in specified time interval.
 
 **del-all-old**
   Delete old keys that are in state 'removed'.
