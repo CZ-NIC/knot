@@ -14,7 +14,9 @@ zone = t.zone("example.com.", storage=".")
 t.link(zone, knot)
 
 ModGeoip.check()
-mod_geoip = ModGeoip(t.data_dir + "geo.conf", "geodb", t.data_dir + "db.mmdb", ["country/iso_code", "(id)city/geoname_id"])
+
+mod_geoip = ModGeoip(t.data_dir + "geo.conf", "geodb", t.data_dir + "db.mmdb",
+                     ["country/iso_code", "(id)city/geoname_id"])
 knot.add_module(zone, mod_geoip);
 
 t.start()
