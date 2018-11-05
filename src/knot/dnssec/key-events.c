@@ -441,7 +441,7 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				// but if imported keys, they can be in this state
 				if (ctx->keep_deleted_keys) {
 					break;
-				} // else FALLBACK
+				} // else FALLTHROUGH
 			case DNSSEC_KEY_STATE_RETIRED:
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
 				keytime = ksk_remove_time(keytime, ctx);;

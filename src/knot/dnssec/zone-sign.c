@@ -96,6 +96,7 @@ static bool apex_dnssec_changed(zone_update_t *update)
  * \param key      Signing key.
  * \param ctx      Signing context.
  * \param policy   DNSSEC policy.
+ * \param at       RRSIG position.
  *
  * \return The signature exists and is valid.
  */
@@ -597,18 +598,19 @@ typedef struct {
 	trie_t *signed_tree;
 } changeset_signing_data_t;
 
-/*- private API - DNSKEY handling --------------------------------------------*/
-
 int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
-	assert(rrset);
-	assert(zone_key);
+	if (rrset == NULL || zone_key == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	dnssec_binary_t dnskey_rdata = { 0 };
 	dnssec_key_get_rdata(zone_key->key, &dnskey_rdata);
 
 	return knot_rrset_add_rdata(rrset, dnskey_rdata.data, dnskey_rdata.size, NULL);
 }
+
+/*- private API - DNSKEY handling --------------------------------------------*/
 
 static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
@@ -937,7 +939,6 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
 	keyptr_dynarray_free(&kcdnskeys);
 	return ret;
 }
-
 
 int knot_zone_sign_update_dnskeys(zone_update_t *update,
                                   zone_keyset_t *zone_keys,
