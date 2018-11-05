@@ -994,7 +994,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	}
 
 	if (dnssec_ctx->policy->offline_ksk) {
-		ret = kasp_db_load_offline_rrsig(*dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, next_resign,
+		ret = kasp_db_load_offline_records(*dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, next_resign,
 		                                 add_rrsigs, add_dnskeys, add_cdnskeys, add_cdss);
 		if (ret == KNOT_EOK) {
 			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");

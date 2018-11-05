@@ -126,11 +126,11 @@ owned by both zones equally.
 \fBpregenerate\fP \fItimestamp\fP
 Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
 .TP
-\fBshow\-rrsig\fP \fItimestamp\fP
-Print a pre\-generated DNSKEY RRSIG for specified timestamp.
+\fBshow\-offline\fP \fItimestamp\fP
+Print pre\-generated offline key\-related records for specified timestamp.
 .TP
-\fBdel\-rrsig\fP \fItimestamp\fP
-Delete pre\-generated DNSKEY RRSIGs for the specified period starting from time zero.
+\fBdel\-rrsig\fP \fItimestamp\-from\fP \fItimestamp\-to\fP
+Delete pre\-generated offline key\-related records in specified time interval.
 .TP
 \fBdel\-all\-old\fP
 Delete old keys that are in state \(aqremoved\(aq.
