@@ -124,7 +124,8 @@ int keymgr_print_rrsig(kdnssec_ctx_t *ctx, char *arg)
 	knot_rrset_init_empty(&dnskey);
 	knot_rrset_init_empty(&cdnskey);
 	knot_rrset_init_empty(&cds);
-	ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, &next, &rrsig, &dnskey, &cdnskey, &cds);
+	ret = kasp_db_load_offline_rrsig(*ctx->kasp_db, ctx->zone->dname, when, &next,
+	                                 &rrsig, &dnskey, &cdnskey, &cds);
 	if (ret == KNOT_EOK) {
 		char *buf = NULL;
 		size_t buf_size = 512;

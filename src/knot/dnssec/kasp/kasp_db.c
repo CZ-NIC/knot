@@ -525,7 +525,8 @@ int kasp_db_add_key(kasp_db_t *db, const knot_dname_t *zone_name, const key_para
 	return ret;
 }
 
-int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from, const knot_dname_t *zone_to, const char *key_id)
+int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from,
+                      const knot_dname_t *zone_to, const char *key_id)
 {
 	if (db == NULL || db->keys_db == NULL || zone_from == NULL ||
 	    zone_to == NULL || key_id == NULL) {
@@ -874,7 +875,7 @@ cleanup:
 }
 
 int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone,
-                                 knot_time_t from, knot_time_t to)
+                                 knot_time_t from_time, knot_time_t to_time)
 {
 	if (db == NULL) {
 		return KNOT_EINVAL;
@@ -884,14 +885,14 @@ int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone,
 	knot_db_iter_t *iter = db_api->iter_begin(txn, KNOT_DB_NOOP);
 
 	char for_time_str[TIME_STRLEN + 1];
-	for_time2string(for_time_str, from);
+	for_time2string(for_time_str, from_time);
 	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RRSIG, zone, for_time_str);
 	iter = db_api->iter_seek(iter, &key, KNOT_DB_GEQ);
 	free_key(&key);
 
 	while (ret == KNOT_EOK && iter != NULL && (ret = db_api->iter_key(iter, &key)) == KNOT_EOK &&
 	       key.len > TIME_STRLEN && key_class(&key) == KASPDBKEY_OFFLINE_RRSIG &&
-	       knot_time_cmp(atol(key_str(&key)), to) <= 0 &&
+	       knot_time_cmp(atol(key_str(&key)), to_time) <= 0 &&
 	       knot_dname_cmp(key_dname(&key), zone) == 0) {
 		ret = knot_db_lmdb_iter_del(iter);
 		iter = db_api->iter_next(iter);
