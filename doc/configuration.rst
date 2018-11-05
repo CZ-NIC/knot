@@ -488,6 +488,22 @@ activated.  A few moments later, the old key will be deactivated and removed.
 You can use exact time specification to make these two actions happen in one
 go.
 
+.. WARNING::
+   If you ever decide to switch from manual key management to automatic key management
+   while the server is running, note that the automatic key management uses
+   :ref:`policy_zsk-lifetime` and :ref:`policy_ksk-lifetime` policy configuration
+   options to schedule key rollovers and it internally uses timestamps of keys differently
+   than in the manual case. As a consequence it might break if the ``retire`` or ``remove`` timestamps
+   are set for the manually generated keys currently in use. Make sure to set these timestamps
+   to zero using :doc:`keymgr <man_keymgr>`:
+
+   .. code-block:: console
+
+       $ keymgr myzone.test. set <key_id> retire=0 remove=0
+
+   and configure your policy suitably according to :ref:`dnssec-automatic-zsk-management`
+   and :ref:`dnssec-automatic-ksk-management`.
+
 .. _dnssec-signing:
 
 Zone signing
