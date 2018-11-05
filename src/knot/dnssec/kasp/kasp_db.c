@@ -16,6 +16,7 @@
 
 #include "knot/dnssec/kasp/kasp_db.h"
 
+#include <inttypes.h>
 #include <stdarg.h> // just for va_free()
 #include <pthread.h>
 #include <sys/stat.h>
@@ -767,20 +768,24 @@ int kasp_db_list_zones(kasp_db_t *db, list_t *dst)
 	return (EMPTY_LIST(*dst) ? KNOT_ENOENT : KNOT_EOK);
 }
 
-static void for_time2string(char str[21], knot_time_t t)
+#define TIME_STRLEN 20
+static void for_time2string(char str[TIME_STRLEN + 1], knot_time_t t)
 {
-	snprintf(str, 21, "%020lu", t);
+	(void)snprintf(str, TIME_STRLEN + 1, "%0.*"PRIu64, TIME_STRLEN, t);
 }
 
-int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_rrset_t *rrsig, const knot_rrset_t *dnskey,
-                                const knot_rrset_t *cdnskey, const knot_rrset_t *cds)
+int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_rrset_t *rrsig,
+                                const knot_rrset_t *dnskey, const knot_rrset_t *cdnskey,
+                                const knot_rrset_t *cds)
 {
-	if (db == NULL || rrsig == NULL || rrsig->type != KNOT_RRTYPE_RRSIG || dnskey == NULL || dnskey->type != KNOT_RRTYPE_DNSKEY ||
-	    cdnskey == NULL || cdnskey->type != KNOT_RRTYPE_CDNSKEY || cds == NULL || cds->type != KNOT_RRTYPE_CDS) {
+	if (db == NULL || rrsig == NULL || rrsig->type != KNOT_RRTYPE_RRSIG ||
+	    dnskey == NULL || dnskey->type != KNOT_RRTYPE_DNSKEY ||
+	    cdnskey == NULL || cdnskey->type != KNOT_RRTYPE_CDNSKEY ||
+	    cds == NULL || cds->type != KNOT_RRTYPE_CDS) {
 		return KNOT_EINVAL;
 	}
 
-	char for_time_str[21];
+	char for_time_str[TIME_STRLEN + 1];
 	for_time2string(for_time_str, for_time);
 	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RRSIG, rrsig->owner, for_time_str), val;
 	val.len = rrset_serialized_size(rrsig) + rrset_serialized_size(dnskey) +
@@ -811,14 +816,16 @@ int kasp_db_store_offline_rrsig(kasp_db_t *db, knot_time_t for_time, const knot_
 	return ret;
 }
 
-int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname, knot_time_t for_time, knot_time_t *next_time,
-			       knot_rrset_t *rrsig, knot_rrset_t *dnskey, knot_rrset_t *cdnskey, knot_rrset_t *cds)
+int kasp_db_load_offline_rrsig(kasp_db_t *db, const knot_dname_t *for_dname,
+                               knot_time_t for_time, knot_time_t *next_time,
+                               knot_rrset_t *rrsig, knot_rrset_t *dnskey,
+                               knot_rrset_t *cdnskey, knot_rrset_t *cds)
 {
 	if (db == NULL || rrsig == NULL || dnskey == NULL || cdnskey == NULL || cds == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	char for_time_str[21];
+	char for_time_str[TIME_STRLEN + 1];
 	for_time2string(for_time_str, for_time);
 	with_txn(KEYS_RO, NULL);
 	knot_db_val_t search = make_key(KASPDBKEY_OFFLINE_RRSIG, for_dname, for_time_str), key, val;
@@ -866,7 +873,8 @@ cleanup:
 	return ret;
 }
 
-int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone, knot_time_t from, knot_time_t to)
+int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone,
+                                 knot_time_t from, knot_time_t to)
 {
 	if (db == NULL) {
 		return KNOT_EINVAL;
@@ -875,14 +883,14 @@ int kasp_db_delete_offline_rrsig(kasp_db_t *db, const knot_dname_t *zone, knot_t
 	with_txn(KEYS_RW, NULL);
 	knot_db_iter_t *iter = db_api->iter_begin(txn, KNOT_DB_NOOP);
 
-	char for_time_str[21];
+	char for_time_str[TIME_STRLEN + 1];
 	for_time2string(for_time_str, from);
 	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RRSIG, zone, for_time_str);
 	iter = db_api->iter_seek(iter, &key, KNOT_DB_GEQ);
 	free_key(&key);
 
 	while (ret == KNOT_EOK && iter != NULL && (ret = db_api->iter_key(iter, &key)) == KNOT_EOK &&
-	       key.len > 20 && key_class(&key) == KASPDBKEY_OFFLINE_RRSIG &&
+	       key.len > TIME_STRLEN && key_class(&key) == KASPDBKEY_OFFLINE_RRSIG &&
 	       knot_time_cmp(atol(key_str(&key)), to) <= 0 &&
 	       knot_dname_cmp(key_dname(&key), zone) == 0) {
 		ret = knot_db_lmdb_iter_del(iter);
