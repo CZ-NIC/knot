@@ -23,6 +23,7 @@
 #include "libdnssec/sign.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/key-events.h"
+#include "knot/dnssec/key_records.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
 #include "libknot/libknot.h"
@@ -904,16 +905,16 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 }
 
 int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dnssec_ctx,
-			       knot_rrset_t *add_dnskeys, knot_rrset_t *add_cdnskeys, knot_rrset_t *add_cdss)
+			       key_records_t *add_r)
 {
-	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL) {
+	if (add_r == NULL) {
 		return KNOT_EINVAL;
 	}
 	int ret = KNOT_EOK;
 	for (int i = 0; i < zone_keys->count; i++) {
 		zone_key_t *key = &zone_keys->keys[i];
 		if (key->is_public) {
-			ret = rrset_add_zone_key(add_dnskeys, key);
+			ret = rrset_add_zone_key(&add_r->dnskey, key);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -921,18 +922,18 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
 	}
 	keyptr_dynarray_t kcdnskeys = knot_zone_sign_get_cdnskeys(dnssec_ctx, zone_keys);
 	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
-		ret = rrset_add_zone_key(add_cdnskeys, *ksk_for_cds);
+		ret = rrset_add_zone_key(&add_r->cdnskey, *ksk_for_cds);
 		if (ret == KNOT_EOK) {
-			ret = rrset_add_zone_ds(add_cdss, *ksk_for_cds);
+			ret = rrset_add_zone_ds(&add_r->cds, *ksk_for_cds);
 		}
 	}
 
 	if (dnssec_ctx->policy->child_records_publish == CHILD_RECORDS_EMPTY && ret == KNOT_EOK) {
 		const uint8_t cdnskey_empty[5] = { 0, 0, 3, 0, 0 };
 		const uint8_t cds_empty[5] = { 0, 0, 0, 0, 0 };
-		ret = knot_rrset_add_rdata(add_cdnskeys, cdnskey_empty, sizeof(cdnskey_empty), NULL);
+		ret = knot_rrset_add_rdata(&add_r->cdnskey, cdnskey_empty, sizeof(cdnskey_empty), NULL);
 		if (ret == KNOT_EOK) {
-			ret = knot_rrset_add_rdata(add_cdss, cds_empty, sizeof(cds_empty), NULL);
+			ret = knot_rrset_add_rdata(&add_r->cds, cds_empty, sizeof(cds_empty), NULL);
 		}
 	}
 
@@ -953,11 +954,8 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	knot_rrset_t dnskeys = node_rrset(apex, KNOT_RRTYPE_DNSKEY);
 	knot_rrset_t cdnskeys = node_rrset(apex, KNOT_RRTYPE_CDNSKEY);
 	knot_rrset_t cdss = node_rrset(apex, KNOT_RRTYPE_CDS);
-	knot_rrset_t *add_dnskeys = NULL;
-	knot_rrset_t *add_cdnskeys = NULL;
-	knot_rrset_t *add_cdss = NULL;
-	knot_rrset_t *add_rrsigs = NULL;
-	uint32_t dnskey_ttl = dnssec_ctx->policy->dnskey_ttl;
+	key_records_t add_r;
+	memset(&add_r, 0, sizeof(add_r));
 	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa)) {
 		return KNOT_EINVAL;
@@ -980,22 +978,10 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	CHECK_RET;
 
 	// add DNSKEYs, CDNSKEYs and CDSs
-	add_dnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_DNSKEY, soa.rclass,
-	                             dnskey_ttl, NULL);
-	add_cdnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDNSKEY, soa.rclass,
-	                              0, NULL);
-	add_cdss = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDS, soa.rclass,
-	                          0, NULL);
-	add_rrsigs = knot_rrset_new(apex->owner, KNOT_RRTYPE_RRSIG, soa.rclass,
-	                            dnskey_ttl, NULL);
-	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL || add_rrsigs == NULL) {
-		ret = KNOT_ENOMEM;
-		CHECK_RET;
-	}
+	key_records_init(dnssec_ctx, &add_r);
 
 	if (dnssec_ctx->policy->offline_ksk) {
-		ret = kasp_db_load_offline_records(*dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, next_resign,
-		                                 add_rrsigs, add_dnskeys, add_cdnskeys, add_cdss);
+		ret = kasp_db_load_offline_records(*dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, next_resign, &add_r);
 		if (ret == KNOT_EOK) {
 			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");
 		} else {
@@ -1003,31 +989,30 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 					 knot_strerror(ret));
 		}
 	} else {
-		ret = knot_zone_sign_add_dnskeys(zone_keys, dnssec_ctx, add_dnskeys, add_cdnskeys, add_cdss);
+		ret = knot_zone_sign_add_dnskeys(zone_keys, dnssec_ctx, &add_r);
 	}
 	CHECK_RET;
 
-	if (!knot_rrset_empty(add_cdnskeys)) {
-		ret = changeset_add_addition(&ch, add_cdnskeys, CHANGESET_CHECK |
-		                                                CHANGESET_CHECK_CANCELOUT);
+	if (!knot_rrset_empty(&add_r.cdnskey)) {
+		ret = changeset_add_addition(&ch, &add_r.cdnskey,
+			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 		CHECK_RET;
 	}
 
-	if (!knot_rrset_empty(add_cdss)) {
-		ret = changeset_add_addition(&ch, add_cdss, CHANGESET_CHECK |
-		                                            CHANGESET_CHECK_CANCELOUT);
+	if (!knot_rrset_empty(&add_r.cds)) {
+		ret = changeset_add_addition(&ch, &add_r.cds,
+			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 		CHECK_RET;
 	}
 
-	if (!knot_rrset_empty(add_dnskeys)) {
-		ret = changeset_add_addition(&ch, add_dnskeys, CHANGESET_CHECK |
-		                                               CHANGESET_CHECK_CANCELOUT);
+	if (!knot_rrset_empty(&add_r.dnskey)) {
+		ret = changeset_add_addition(&ch, &add_r.dnskey,
+			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 		CHECK_RET;
 	}
 
-	if (!knot_rrset_empty(add_rrsigs)) {
-		dnssec_ctx->offline_rrsig = add_rrsigs;
-		add_rrsigs = NULL; // prevent free
+	if (!knot_rrset_empty(&add_r.rrsig)) {
+		dnssec_ctx->offline_rrsig = knot_rrset_copy(&add_r.rrsig, NULL);
 	}
 
 	ret = zone_update_apply_changeset(update, &ch);
@@ -1035,10 +1020,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 #undef CHECK_RET
 
 cleanup:
-	knot_rrset_free(add_dnskeys, NULL);
-	knot_rrset_free(add_cdnskeys, NULL);
-	knot_rrset_free(add_cdss, NULL);
-	knot_rrset_free(add_rrsigs, NULL);
+	key_records_clear(&add_r);
 	changeset_clear(&ch);
 	return ret;
 }

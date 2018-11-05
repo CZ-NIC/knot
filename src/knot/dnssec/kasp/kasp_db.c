@@ -23,6 +23,7 @@
 
 #include "contrib/files.h"
 #include "contrib/wire_ctx.h"
+#include "knot/dnssec/key_records.h"
 #include "knot/journal/serialization.h"
 
 struct kasp_db {
@@ -775,22 +776,16 @@ static void for_time2string(char str[TIME_STRLEN + 1], knot_time_t t)
 	(void)snprintf(str, TIME_STRLEN + 1, "%0.*"PRIu64, TIME_STRLEN, t);
 }
 
-int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const knot_rrset_t *rrsig,
-                                  const knot_rrset_t *dnskey, const knot_rrset_t *cdnskey,
-                                  const knot_rrset_t *cds)
+int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const key_records_t *r)
 {
-	if (db == NULL || rrsig == NULL || rrsig->type != KNOT_RRTYPE_RRSIG ||
-	    dnskey == NULL || dnskey->type != KNOT_RRTYPE_DNSKEY ||
-	    cdnskey == NULL || cdnskey->type != KNOT_RRTYPE_CDNSKEY ||
-	    cds == NULL || cds->type != KNOT_RRTYPE_CDS) {
+	if (db == NULL || r == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	char for_time_str[TIME_STRLEN + 1];
 	for_time2string(for_time_str, for_time);
-	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RECORDS, rrsig->owner, for_time_str), val;
-	val.len = rrset_serialized_size(rrsig) + rrset_serialized_size(dnskey) +
-	          rrset_serialized_size(cdnskey) + rrset_serialized_size(cds);
+	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RECORDS, r->rrsig.owner, for_time_str), val;
+	val.len = key_records_serialized_size(r);
 	val.data = malloc(val.len);
 	if (val.data == NULL) {
 		free_key(&key);
@@ -798,16 +793,7 @@ int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const kno
 	}
 	with_txn(KEYS_RW, key.data, val.data, NULL);
 	wire_ctx_t wire = wire_ctx_init(val.data, val.len);
-	ret = serialize_rrset(&wire, rrsig);
-	if (ret == KNOT_EOK) {
-		ret = serialize_rrset(&wire, dnskey);
-	}
-	if (ret == KNOT_EOK) {
-		ret = serialize_rrset(&wire, cdnskey);
-	}
-	if (ret == KNOT_EOK) {
-		ret = serialize_rrset(&wire, cds);
-	}
+	ret = key_records_serialize(&wire, r);
 	if (ret == KNOT_EOK) {
 		ret = db_api->insert(txn, &key, &val, 0);
 	}
@@ -819,10 +805,9 @@ int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const kno
 
 int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
                                  knot_time_t for_time, knot_time_t *next_time,
-                                 knot_rrset_t *rrsig, knot_rrset_t *dnskey,
-                                 knot_rrset_t *cdnskey, knot_rrset_t *cds)
+                                 key_records_t *r)
 {
-	if (db == NULL || rrsig == NULL || dnskey == NULL || cdnskey == NULL || cds == NULL) {
+	if (db == NULL || r == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -845,25 +830,19 @@ int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
 		goto cleanup;
 	}
 	if (key_class(&key) != KASPDBKEY_OFFLINE_RECORDS ||
-	    knot_dname_cmp((const knot_dname_t *)key.data + 1, rrsig->owner) != 0) {
+	    knot_dname_cmp((const knot_dname_t *)key.data + 1, r->rrsig.owner) != 0) {
 		ret = KNOT_ENOENT;
 		goto cleanup;
 	}
 	wire_ctx_t wire = wire_ctx_init(val.data, val.len);
-#define CHK_RET if (ret != KNOT_EOK) goto cleanup;
-	ret = deserialize_rrset(&wire, rrsig);
-	CHK_RET
-	ret = deserialize_rrset(&wire, dnskey);
-	CHK_RET
-	ret = deserialize_rrset(&wire, cdnskey);
-	CHK_RET
-	ret = deserialize_rrset(&wire, cds);
-	CHK_RET
-#undef CHK_RET
+	ret = key_records_deserialize(&wire, r);
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
 	*next_time = 0;
 	if ((it = db_api->iter_next(it)) != NULL && db_api->iter_key(it, &key) == KNOT_EOK) {
 		if (key_class(&key) == KASPDBKEY_OFFLINE_RECORDS &&
-		    knot_dname_cmp(key_dname(&key), rrsig->owner) == 0) {
+		    knot_dname_cmp(key_dname(&key), r->rrsig.owner) == 0) {
 			*next_time = atol(key_str(&key));
 		}
 	}

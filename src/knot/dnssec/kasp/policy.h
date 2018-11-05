@@ -74,6 +74,16 @@ typedef struct {
 dynarray_declare(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_PUBLIC, 3)
 
 /*!
+ * Set of DNSSEC key related records.
+ */
+typedef struct {
+	knot_rrset_t dnskey;
+	knot_rrset_t cdnskey;
+	knot_rrset_t cds;
+	knot_rrset_t rrsig;
+} key_records_t;
+
+/*!
  * Key and signature policy.
  */
 typedef struct {

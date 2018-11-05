@@ -236,42 +236,33 @@ int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char
 int kasp_db_list_zones(kasp_db_t *db, list_t *dst);
 
 /*!
- * \brief Store pre-generated RRSIG for offline KSK usage.
+ * \brief Store pre-generated records for offline KSK usage.
  *
  * \param db         KASP db.
  * \param for_time   Timestamp in future in which the RRSIG shall be used.
- * \param rrsig      The RRSIG to be stored.
- * \param dnskey     The DNSKEY rrset to be stored.
- * \param cdnskey    The CDNSKEY rrset to be stored.
- * \param cds        The CDS rrset to be stored.
+ * \param r          Records to be stored.
  *
  * \return KNOT_E*
  */
-int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const knot_rrset_t *rrsig,
-                                  const knot_rrset_t *dnskey, const knot_rrset_t *cdnskey,
-                                  const knot_rrset_t *cds);
+int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const key_records_t *r);
 
 /*!
- * \brief Load pregenerated RRSIG.
+ * \brief Load pregenerated records for offline signing.
  *
  * \param db         KASP db.
  * \param for_dname  Name of the related zone.
  * \param for_time   Now. Closest RRSIG (timestamp equals or is closest lower).
  * \param next_time  Out: timestamp of next saved RRSIG (for easy "iteration").
- * \param rrsig      Out: the RRSIG rrset.
- * \param dnskey     Out: the DNSKEY rrset.
- * \param cdnskey    Out: the CDNSKEY rrset.
- * \param cds        Out: the CDS rrset.
+ * \param r          Out: offline records.
  *
  * \return KNOT_E*
  */
 int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
                                  knot_time_t for_time, knot_time_t *next_time,
-                                 knot_rrset_t *rrsig, knot_rrset_t *dnskey,
-                                 knot_rrset_t *cdnskey, knot_rrset_t *cds);
+                                 key_records_t *r);
 
 /*!
- * \brief Delete pregenerated RRSIGs for specified time interval.
+ * \brief Delete pregenerated records for specified time interval.
  *
  * \param db         KASP db.
  * \param zone       Zone in question.
