@@ -247,9 +247,7 @@ int kasp_db_list_zones(kasp_db_t *db, list_t *dst);
  *
  * \return KNOT_E*
  */
-int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const knot_rrset_t *rrsig,
-                                  const knot_rrset_t *dnskey, const knot_rrset_t *cdnskey,
-                                  const knot_rrset_t *cds);
+int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const key_records_t *r);
 
 /*!
  * \brief Load pregenerated RRSIG.
@@ -267,8 +265,7 @@ int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const kno
  */
 int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
                                  knot_time_t for_time, knot_time_t *next_time,
-                                 knot_rrset_t *rrsig, knot_rrset_t *dnskey,
-                                 knot_rrset_t *cdnskey, knot_rrset_t *cds);
+                                 key_records_t *r);
 
 /*!
  * \brief Delete pregenerated RRSIGs for specified time interval.

@@ -103,6 +103,8 @@ src/knot/dnssec/kasp/keystore.h
 src/knot/dnssec/kasp/policy.h
 src/knot/dnssec/key-events.c
 src/knot/dnssec/key-events.h
+src/knot/dnssec/key_records.c
+src/knot/dnssec/key_records.h
 src/knot/dnssec/nsec-chain.c
 src/knot/dnssec/nsec-chain.h
 src/knot/dnssec/nsec3-chain.c
