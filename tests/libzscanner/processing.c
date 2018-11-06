@@ -86,6 +86,13 @@ void debug_process_record(zs_scanner_t *s)
 	fflush(stdout);
 }
 
+void debug_process_comment(zs_scanner_t *s)
+{
+	printf("LINE(%03"PRIu64") COMMENT(%.*s)\n", s->line_counter,
+	       (int)s->buffer_length, s->buffer);
+	fflush(stdout);
+}
+
 void test_process_error(zs_scanner_t *s)
 {
 	if (s->error.fatal) {

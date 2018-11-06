@@ -51,6 +51,16 @@
 	}
 	action _comment_exit {
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				fbreak;
+			}
+		}
 	}
 
 	action _rest_init {
