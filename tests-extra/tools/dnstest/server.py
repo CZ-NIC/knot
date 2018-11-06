@@ -119,7 +119,7 @@ class Server(object):
         self.version = None
 
         self.addr = None
-        self.port = None
+        self.port = 0 # Needed for keymgr when port not yet generated
         self.fixed_port = False
         self.ctlport = None
         self.external = False

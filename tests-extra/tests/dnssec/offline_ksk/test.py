@@ -96,13 +96,15 @@ knot.dnssec(zone).ksk_lifetime = 300 # this can be possibly left also infinity
 knot.dnssec(zone).propagation_delay = TICK-2
 knot.dnssec(zone).offline_ksk = "on"
 knot.dnssec(zone).cds_publish = "rollover"
-knot.port = 1234 # dummy, will be overwritten
+
+# needed for keymgr
 knot.gen_confile()
 
 signer = t.server("knot")
 t.link(zone, signer)
 signer.zones[ZONE].dnssec = knot.zones[ZONE].dnssec
-signer.port = 1235
+
+# needed for keymgr
 signer.gen_confile()
 
 def tickf(when):

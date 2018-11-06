@@ -50,7 +50,7 @@ knot.zonefile_sync = "0"
 # install KASP db (one always enabled, one for testing)
 shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
 
-knot.port = 1234 # this will be overwritten, but we need dummy
+# needed for keymgr
 knot.gen_confile()
 
 # parameters

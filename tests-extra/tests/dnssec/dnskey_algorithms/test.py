@@ -51,7 +51,7 @@ GEN="1450000000"
 PAST="189000000"
 FUTU="2711000000"
 
-knot.port = 1234 # this will be overwritten, but we need dummy
+# needed for keymgr
 knot.gen_confile()
 
 ## Valid scenarios
