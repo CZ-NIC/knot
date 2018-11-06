@@ -230,15 +230,17 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg)
 typedef struct {
 	key_records_t r;
 	knot_time_t timestamp;
-	knot_rrset_t *dnskey_prev;
 	kdnssec_ctx_t *kctx;
 } ksr_sign_ctx_t;
 
-static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t *next_sign)
+static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t now, knot_time_t *next_sign)
 {
 	zone_keyset_t keyset = { 0 };
 	char *buf = NULL;
 	size_t buf_size = 4096;
+
+	ctx->now = now;
+
 	int ret = load_zone_keys(ctx, &keyset, false);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -277,30 +279,15 @@ done:
 	return ret;
 }
 
-static int process_skr_between_ksrs(ksr_sign_ctx_t *ctx, knot_time_t next_ksr)
+static int process_skr_between_ksrs(ksr_sign_ctx_t *ctx, knot_time_t from, knot_time_t to)
 {
-	static knot_time_t prev_ksr = 0;
-
-	if (prev_ksr != 0) {
-		assert(!knot_rrset_empty(ctx->dnskey_prev));
-		for (knot_time_t inbetween_skr = prev_ksr; inbetween_skr < next_ksr; ) {
-			ctx->kctx->now = inbetween_skr;
-			int ret = ksr_sign_dnskey(ctx->kctx, ctx->dnskey_prev, &inbetween_skr);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
+	for (knot_time_t t = from; t < to /* if (t == infinity) stop */; ) {
+		int ret = ksr_sign_dnskey(ctx->kctx, &ctx->r.dnskey, t, &t);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 	}
-
-	// finally, do the "requested" SKR and copy ctx->dnskey into ct->rrsig
-	ctx->kctx->now = next_ksr;
-	int ret = ksr_sign_dnskey(ctx->kctx, &ctx->r.dnskey, &prev_ksr);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	knot_rdataset_clear(&ctx->dnskey_prev->rrs, NULL);
-	ret = knot_rdataset_copy(&ctx->dnskey_prev->rrs, &ctx->r.dnskey.rrs, NULL);
-	return ret;
+	return KNOT_EOK;
 }
 
 static void ksr_sign_header(zs_scanner_t *sc)
@@ -316,9 +303,13 @@ static void ksr_sign_header(zs_scanner_t *sc)
 	}
 	(void)header_ver;
 
-	// sign previous KSR
+	// sign previous KSR and inbetween KSK changes
 	if (ctx->timestamp > 0) {
-		sc->error.code = process_skr_between_ksrs(ctx, ctx->timestamp);
+		knot_time_t inbetween_from;
+		sc->error.code = ksr_sign_dnskey(ctx->kctx, &ctx->r.dnskey, ctx->timestamp, &inbetween_from);
+		if (next_timestamp > 0 && sc->error.code == KNOT_EOK) {
+			sc->error.code = process_skr_between_ksrs(ctx, inbetween_from, next_timestamp);
+		}
 		key_records_clear_rdatasets(&ctx->r);
 	}
 
@@ -378,12 +369,8 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
 		return KNOT_EFILE;
 	}
 
-	knot_rrset_t dnskey_prev = { 0 };
-	knot_rrset_init(&dnskey_prev, ctx->zone->dname, KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
-
 	ksr_sign_ctx_t pctx;
 	key_records_init(ctx, &pctx.r);
-	pctx.dnskey_prev = &dnskey_prev;
 	pctx.kctx = ctx;
 	pctx.timestamp = 0;
 	ret = zs_set_processing(&sc, cb_record, NULL, &pctx);
@@ -402,7 +389,6 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
 		ret = KNOT_EMALF;
 	}
 	key_records_clear(&pctx.r);
-	knot_rdataset_clear(&dnskey_prev.rrs, NULL);
 	zs_deinit(&sc);
 	return ret;
 }
