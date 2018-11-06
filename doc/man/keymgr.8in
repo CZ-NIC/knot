@@ -120,6 +120,31 @@ Remove the specified key from zone. If the key was not shared, it is also delete
 Import a key (specified by full key ID) from another zone as shared. After this, the key is
 owned by both zones equally.
 .UNINDENT
+.SS Commands related to Offline KSK feature
+.INDENT 0.0
+.TP
+\fBpregenerate\fP \fItimestamp\fP
+Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
+.TP
+\fBshow\-offline\fP \fItimestamp\fP
+Print pre\-generated offline key\-related records for specified timestamp.
+.TP
+\fBdel\-offline\fP \fItimestamp\-from\fP \fItimestamp\-to\fP
+Delete pre\-generated offline key\-related records in specified time interval.
+.TP
+\fBdel\-all\-old\fP
+Delete old keys that are in state \(aqremoved\(aq.
+.TP
+\fBgenerate\-ksr\fP \fItimestamp\fP
+Print to stdout KeySigningRequest based on pre\-generated ZSKs for specified period.
+.TP
+\fBsign\-ksr\fP \fIksr_file\fP
+Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
+.TP
+\fBimport\-skr\fP \fIskr_file\fP
+Read SignedKeyResponse from a text file and import the signatures for later use in zone. (The signatures
+are not at all checked at import time, but they will be ignored at signing time if invalid.)
+.UNINDENT
 .SS Generate arguments
 .sp
 Arguments are separated by space, each of them is in format \(aqname=value\(aq.

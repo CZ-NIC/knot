@@ -27,6 +27,7 @@
 #include "libknot/libknot.h"
 #include "utils/common/params.h"
 #include "utils/keymgr/functions.h"
+#include "utils/keymgr/offline_ksk.h"
 
 #define PROGRAM_NAME	"keymgr"
 
@@ -69,6 +70,23 @@ static void print_help(void)
 	       "                 (syntax: delete <key_spec>)\n"
 	       "  set           Set existing key's timing attribute.\n"
 	       "                 (syntax: set <key_spec> <attribute_name>=<value>...)\n"
+	       "\n"
+	       "Commands related to Offline KSK feature:\n"
+	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
+	       "                 (syntax: pregenerate <timestamp>)\n"
+	       "  presign       Pre-generate RRSIG signatures for pregenerated ZSKs.\n"
+	       "                 (syntax: presign <timestamp>)\n"
+	       "  show-offline  Print pre-generated offline key-related records for specified timestamp.\n"
+	       "                 (syntax: show-offline <timestamp>)\n"
+	       "  del-offline   Delete pre-generated offline key-related records in specified time interval.\n"
+	       "                 (syntax: del-offline <from> <to>)\n"
+	       "  del-all-old   Delete old keys that are in state 'removed'.\n"
+	       "  generate-ksr  Print to stdout KeySigningRequest based on pre-generated ZSKS.\n"
+	       "                 (syntax: generate-ksr <timestamp>)\n"
+	       "  sign-ksr      Read KeySigningRequest from a file, sign it and print SignedKeyResponse to stdout.\n"
+	       "                 (syntax: sign-ksr <ksr_file>)\n"
+	       "  import-skr    Import DNSKEY record signatures from a SignedKeyResponse.\n"
+	       "                 (syntax: import-skr <skr_file>)\n"
 	       "\n"
 	       "Key specification:\n"
 	       "  either the key tag (number) or [a prefix of] key ID.\n"
@@ -194,6 +212,32 @@ static int key_command(int argc, char *argv[], int optind)
 		if (ret == KNOT_EOK) {
 			ret = kdnssec_delete_key(&kctx, key2del);
 		}
+	} else if (strcmp(argv[1], "pregenerate") == 0) {
+		CHECK_MISSING_ARG("Period not specified");
+		ret = keymgr_pregenerate_zsks(&kctx, argv[2]);
+	} else if (strcmp(argv[1], "show-offline") == 0) {
+		CHECK_MISSING_ARG("Timestamp not specified");
+		ret = keymgr_print_offline_records(&kctx, argv[2]);
+	} else if (strcmp(argv[1], "del-offline") == 0) {
+		if (argc < 4) {
+			printf("Timestamps from-to not specified\n");
+			ret = KNOT_EINVAL;
+			goto main_end;
+		}
+		ret = keymgr_delete_offline_records(&kctx, argv[2], argv[3]);
+	} else if (strcmp(argv[1], "del-all-old") == 0) {
+		ret = keymgr_del_all_old(&kctx);
+	} else if (strcmp(argv[1], "generate-ksr") == 0) {
+		CHECK_MISSING_ARG("Timestamp not specified");
+		ret = keymgr_print_ksr(&kctx, argv[2]);
+		print_ok_on_succes = false;
+	} else if (strcmp(argv[1], "sign-ksr") == 0) {
+		CHECK_MISSING_ARG("Input file not specified");
+		ret = keymgr_sign_ksr(&kctx, argv[2]);
+		print_ok_on_succes = false;
+	} else if (strcmp(argv[1], "import-skr") == 0) {
+		CHECK_MISSING_ARG("Input file not specified");
+		ret = keymgr_import_skr(&kctx, argv[2]);
 	} else {
 		printf("Wrong zone-key command: %s\n", argv[1]);
 		goto main_end;

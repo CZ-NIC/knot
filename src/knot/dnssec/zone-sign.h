@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,20 @@
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-keys.h"
 
+int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key);
+
+/*!
+ * \brief Prepare DNSKEYs, CDNSKEYs and CDSs to be added to the zone into rrsets.
+ *
+ * \param zone_keys     Zone keyset.
+ * \param dnssec_ctx    KASP context.
+ * \param add_r         RRSets to be added.
+ *
+ * \return KNOT_E*
+ */
+int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dnssec_ctx,
+			       key_records_t *add_r);
+
 /*!
  * \brief Adds/removes DNSKEY (and CDNSKEY, CDS) records to zone according to zone keyset.
  *
@@ -33,7 +47,8 @@
  */
 int knot_zone_sign_update_dnskeys(zone_update_t *update,
                                   zone_keyset_t *zone_keys,
-                                  const kdnssec_ctx_t *dnssec_ctx);
+                                  kdnssec_ctx_t *dnssec_ctx,
+                                  knot_time_t *next_resign);
 
 /*!
  * \brief Check if key can be used to sign given RR.
@@ -44,6 +59,17 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
  * \return The RR should be signed.
  */
 bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered);
+
+/*!
+ * \brief Return those keys for whose the CDNSKEY/CDS records shall be created.
+ *
+ * \param ctx        DNSSEC context.
+ * \param zone_keys  Zone keyset, includeing ZSKs.
+ *
+ * \return Dynarray containing pointers on some KSKs in keyset.
+ */
+keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
+					      zone_keyset_t *zone_keys);
 
 /*!
  * \brief Update zone signatures and store performed changes in update.

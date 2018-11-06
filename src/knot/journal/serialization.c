@@ -190,7 +190,7 @@ void serialize_deinit(serialize_ctx_t *ctx)
 	free(ctx);
 }
 
-static int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset, long *phase)
+static int _deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset, long *phase)
 {
 	assert(wire != NULL && rrset != NULL && phase != NULL);
 	assert(*phase >= SERIALIZE_RRSET_INIT && *phase < SERIALIZE_RRSET_DONE);
@@ -245,7 +245,7 @@ int deserialize_rrset_chunks(wire_ctx_t *wire, knot_rrset_t *rrset,
 {
 	long phase = SERIALIZE_RRSET_INIT;
 	while (1) {
-		int ret = deserialize_rrset(wire, rrset, &phase);
+		int ret = _deserialize_rrset(wire, rrset, &phase);
 		if (ret != KNOT_EOK || phase == SERIALIZE_RRSET_DONE) {
 			return ret;
 		}
@@ -377,4 +377,101 @@ int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],
 	}
 
 	return wire.error;
+}
+
+int serialize_rrset(wire_ctx_t *wire, const knot_rrset_t *rrset)
+{
+	assert(wire != NULL && rrset != NULL);
+
+	// write owner, type, class, rrcnt
+	int size = knot_dname_to_wire(wire->position, rrset->owner,
+				      wire_ctx_available(wire));
+	if (size < 0 || wire_ctx_available(wire) < size + 3 * sizeof(uint16_t)) {
+			assert(0);
+	}
+	wire_ctx_skip(wire, size);
+	wire_ctx_write_u16(wire, rrset->type);
+	wire_ctx_write_u16(wire, rrset->rclass);
+	wire_ctx_write_u16(wire, rrset->rrs.count);
+
+	for (size_t phase = 0; phase < rrset->rrs.count; phase++) {
+		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, phase);
+		assert(rr);
+		uint16_t rdlen = rr->len;
+		if (wire_ctx_available(wire) < sizeof(uint32_t) + sizeof(uint16_t) + rdlen) {
+			assert(0);
+		}
+		wire_ctx_write_u32(wire, rrset->ttl);
+		wire_ctx_write_u16(wire, rdlen);
+		wire_ctx_write(wire, rr->data, rdlen);
+	}
+
+	return KNOT_EOK;
+}
+
+int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset)
+{
+	assert(wire != NULL && rrset != NULL);
+
+	// Read owner, rtype, rclass and RR count.
+	int size = knot_dname_size(wire->position);
+	if (size < 0) {
+		assert(0);
+	}
+	knot_dname_t *owner = knot_dname_copy(wire->position, NULL);
+	if (owner == NULL || wire_ctx_available(wire) < size + 3 * sizeof(uint16_t)) {
+		return KNOT_EMALF;
+	}
+	wire_ctx_skip(wire, size);
+	uint16_t type = wire_ctx_read_u16(wire);
+	uint16_t rclass = wire_ctx_read_u16(wire);
+	uint16_t rrcount = wire_ctx_read_u16(wire);
+	if (wire->error != KNOT_EOK) {
+		return wire->error;
+	}
+	if (rrset->owner != NULL) {
+		if (knot_dname_cmp(owner, rrset->owner) != 0) {
+			knot_dname_free(owner, NULL);
+			return KNOT_ESEMCHECK;
+		}
+		knot_rrset_clear(rrset, NULL);
+	}
+	knot_rrset_init(rrset, owner, type, rclass, 0);
+
+	for (size_t phase = 0; phase < rrcount && wire_ctx_available(wire) > 0; phase++) {
+		uint32_t ttl = wire_ctx_read_u32(wire);
+		uint32_t rdata_size = wire_ctx_read_u16(wire);
+		if (phase == 0) {
+			rrset->ttl = ttl;
+		}
+		if (wire->error != KNOT_EOK ||
+		    wire_ctx_available(wire) < rdata_size ||
+		    knot_rrset_add_rdata(rrset, wire->position, rdata_size,
+					 NULL) != KNOT_EOK) {
+			knot_rrset_clear(rrset, NULL);
+			return KNOT_EMALF;
+		}
+		wire_ctx_skip(wire, rdata_size);
+	}
+
+	return KNOT_EOK;
+}
+
+size_t rrset_serialized_size(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return 0;
+	}
+
+	// Owner size + type + class + RR count.
+	size_t size = knot_dname_size(rrset->owner) + 3 * sizeof(uint16_t);
+
+	for (uint16_t i = 0; i < rrset->rrs.count; i++) {
+		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, i);
+		assert(rr);
+		// TTL + RR size + RR.
+		size += sizeof(uint32_t) + sizeof(uint16_t) + rr->len;
+	}
+
+	return size;
 }

@@ -288,6 +288,13 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 		case 15: // all keys ready for signing
 			have_active_alg = true;
 			break;
+		case 5:
+		case 10:
+			if (ctx->policy->offline_ksk) {
+				have_active_alg = true;
+				break;
+			}
+			// else FALLTHROUGH
 		default:
 			return KNOT_DNSSEC_EMISSINGKEYTYPE;
 		}
@@ -319,7 +326,11 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 
 		zone_key_t *key = &keyset->keys[i];
 		int r = dnssec_key_import_keystore(key->key, keystore, key->id);
-		if (r != DNSSEC_EOK && r != DNSSEC_KEY_ALREADY_PRESENT) {
+		switch (r) {
+		case DNSSEC_EOK:
+		case DNSSEC_KEY_ALREADY_PRESENT:
+			break;
+		default:
 			return r;
 		}
 	}

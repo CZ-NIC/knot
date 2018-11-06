@@ -86,10 +86,10 @@ class Tsig(object):
 
 class Keymgr(object):
     @classmethod
-    def run(cls, kasp_dir, *args):
+    def run(cls, conf_file, *args):
         cmdline = [dnstest.params.keymgr_bin]
-        if kasp_dir:
-            cmdline += ["-d", kasp_dir]
+        if conf_file:
+            cmdline += ["-c", conf_file]
         cmdline += list(args)
 
         cmd = Popen(cmdline, stdout=PIPE, stderr=PIPE, universal_newlines=True)
@@ -97,8 +97,8 @@ class Keymgr(object):
         return (cmd.returncode, stdout, stderr)
 
     @classmethod
-    def run_check(cls, kasp_dir, *args):
-        result = cls.run(kasp_dir, *args)
+    def run_check(cls, conf_file, *args):
+        result = cls.run(conf_file, *args)
         exit_code, _, _ = result
         if exit_code != 0:
             raise Failed("Failed to run keymgr command %s." % list(args))
@@ -108,9 +108,9 @@ class Keymgr(object):
 class Key(object):
     '''DNSSEC key generator'''
 
-    def __init__(self, key_dir, zone_name, ksk=False, zsk=None, alg="ECDSAP256SHA256",
+    def __init__(self, confile, zone_name, ksk=False, zsk=None, alg="ECDSAP256SHA256",
                  key_len=-1, addtopolicy=None):
-        self.dir = key_dir
+        self.confile = confile
         self.zone_name = zone_name
         self.alg = alg
         self.len = int(key_len)
@@ -131,7 +131,7 @@ class Key(object):
                 self.len = 256
 
     def _keymgr(self, *args):
-        return Keymgr.run(self.dir, *args)
+        return Keymgr.run(self.confile, *args)
 
     def _gen_command(self):
         cmd = [

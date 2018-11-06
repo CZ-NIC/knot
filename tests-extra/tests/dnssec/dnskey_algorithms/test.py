@@ -51,6 +51,9 @@ GEN="1450000000"
 PAST="189000000"
 FUTU="2711000000"
 
+# needed for keymgr
+knot.gen_confile()
+
 ## Valid scenarios
 
 # KSK+ZSK, simple

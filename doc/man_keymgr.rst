@@ -97,6 +97,31 @@ Commands
   Import a key (specified by full key ID) from another zone as shared. After this, the key is
   owned by both zones equally.
 
+Commands related to Offline KSK feature
+.......................................
+
+**pregenerate** *timestamp*
+  Pre-generate ZSKs for use with offline KSK, for the specified period starting from now.
+
+**show-offline** *timestamp*
+  Print pre-generated offline key-related records for specified timestamp.
+
+**del-offline** *timestamp-from* *timestamp-to*
+  Delete pre-generated offline key-related records in specified time interval.
+
+**del-all-old**
+  Delete old keys that are in state 'removed'.
+
+**generate-ksr** *timestamp*
+  Print to stdout KeySigningRequest based on pre-generated ZSKs for specified period.
+
+**sign-ksr** *ksr_file*
+  Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
+
+**import-skr** *skr_file*
+  Read SignedKeyResponse from a text file and import the signatures for later use in zone. (The signatures
+  are not at all checked at import time, but they will be ignored at signing time if invalid.)
+
 Generate arguments
 ..................
 

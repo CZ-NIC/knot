@@ -16,12 +16,15 @@
 
 #include "knot/dnssec/kasp/kasp_db.h"
 
+#include <inttypes.h>
 #include <stdarg.h> // just for va_free()
 #include <pthread.h>
 #include <sys/stat.h>
 
 #include "contrib/files.h"
 #include "contrib/wire_ctx.h"
+#include "knot/dnssec/key_records.h"
+#include "knot/journal/serialization.h"
 
 struct kasp_db {
 	knot_db_t *keys_db;
@@ -37,6 +40,7 @@ typedef enum {
 	KASPDBKEY_NSEC3TIME = 0x4,
 	KASPDBKEY_MASTERSERIAL = 0x5,
 	KASPDBKEY_LASTSIGNEDSERIAL = 0x6,
+	KASPDBKEY_OFFLINE_RECORDS = 0x7,
 } keyclass_t;
 
 static const knot_db_api_t *db_api = NULL;
@@ -182,6 +186,21 @@ static knot_db_val_t make_key(keyclass_t kclass, const knot_dname_t *dname, cons
 		res.len = 0;
 	}
 	return res;
+}
+
+static keyclass_t key_class(const knot_db_val_t *key)
+{
+	return ((uint8_t *)key->data)[0];
+}
+
+static const knot_dname_t *key_dname(const knot_db_val_t *key)
+{
+	return (key->data + 1);
+}
+
+static const char *key_str(const knot_db_val_t *key)
+{
+	return (key->data + 1 + knot_dname_size(key_dname(key)));
 }
 
 static void free_key(knot_db_val_t *key)
@@ -507,7 +526,8 @@ int kasp_db_add_key(kasp_db_t *db, const knot_dname_t *zone_name, const key_para
 	return ret;
 }
 
-int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from, const knot_dname_t *zone_to, const char *key_id)
+int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from,
+                      const knot_dname_t *zone_to, const char *key_id)
 {
 	if (db == NULL || db->keys_db == NULL || zone_from == NULL ||
 	    zone_to == NULL || key_id == NULL) {
@@ -748,4 +768,115 @@ int kasp_db_list_zones(kasp_db_t *db, list_t *dst)
 		return ret;
 	}
 	return (EMPTY_LIST(*dst) ? KNOT_ENOENT : KNOT_EOK);
+}
+
+#define TIME_STRLEN 20
+static void for_time2string(char str[TIME_STRLEN + 1], knot_time_t t)
+{
+	(void)snprintf(str, TIME_STRLEN + 1, "%0.*"PRIu64, TIME_STRLEN, t);
+}
+
+int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const key_records_t *r)
+{
+	if (db == NULL || r == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	char for_time_str[TIME_STRLEN + 1];
+	for_time2string(for_time_str, for_time);
+	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RECORDS, r->rrsig.owner, for_time_str), val;
+	val.len = key_records_serialized_size(r);
+	val.data = malloc(val.len);
+	if (val.data == NULL) {
+		free_key(&key);
+		return KNOT_ENOMEM;
+	}
+	with_txn(KEYS_RW, key.data, val.data, NULL);
+	wire_ctx_t wire = wire_ctx_init(val.data, val.len);
+	ret = key_records_serialize(&wire, r);
+	if (ret == KNOT_EOK) {
+		ret = db_api->insert(txn, &key, &val, 0);
+	}
+	free_key(&key);
+	free_key(&val);
+	with_txn_end(NULL);
+	return ret;
+}
+
+int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
+                                 knot_time_t for_time, knot_time_t *next_time,
+                                 key_records_t *r)
+{
+	if (db == NULL || r == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	char for_time_str[TIME_STRLEN + 1];
+	for_time2string(for_time_str, for_time);
+	with_txn(KEYS_RO, NULL);
+	knot_db_val_t search = make_key(KASPDBKEY_OFFLINE_RECORDS, for_dname, for_time_str), key, val;
+	knot_db_iter_t *it = db_api->iter_begin(txn, KNOT_DB_NOOP);
+	if (it == NULL) {
+		ret = KNOT_ERROR;
+		goto cleanup;
+	}
+	it = db_api->iter_seek(it, &search, KNOT_DB_LEQ);
+	if (it == NULL) {
+		ret = KNOT_ENOENT;
+		goto cleanup;
+	}
+	if (db_api->iter_key(it, &key) != KNOT_EOK || db_api->iter_val(it, &val) != KNOT_EOK) {
+		ret = KNOT_ERROR;
+		goto cleanup;
+	}
+	if (key_class(&key) != KASPDBKEY_OFFLINE_RECORDS ||
+	    knot_dname_cmp((const knot_dname_t *)key.data + 1, r->rrsig.owner) != 0) {
+		ret = KNOT_ENOENT;
+		goto cleanup;
+	}
+	wire_ctx_t wire = wire_ctx_init(val.data, val.len);
+	ret = key_records_deserialize(&wire, r);
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
+	*next_time = 0;
+	if ((it = db_api->iter_next(it)) != NULL && db_api->iter_key(it, &key) == KNOT_EOK) {
+		if (key_class(&key) == KASPDBKEY_OFFLINE_RECORDS &&
+		    knot_dname_cmp(key_dname(&key), r->rrsig.owner) == 0) {
+			*next_time = atol(key_str(&key));
+		}
+	}
+cleanup:
+	db_api->iter_finish(it);
+	free_key(&search);
+	with_txn_end(NULL);
+	return ret;
+}
+
+int kasp_db_delete_offline_records(kasp_db_t *db, const knot_dname_t *zone,
+                                   knot_time_t from_time, knot_time_t to_time)
+{
+	if (db == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	with_txn(KEYS_RW, NULL);
+	knot_db_iter_t *iter = db_api->iter_begin(txn, KNOT_DB_NOOP);
+
+	char for_time_str[TIME_STRLEN + 1];
+	for_time2string(for_time_str, from_time);
+	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RECORDS, zone, for_time_str);
+	iter = db_api->iter_seek(iter, &key, KNOT_DB_GEQ);
+	free_key(&key);
+
+	while (ret == KNOT_EOK && iter != NULL && (ret = db_api->iter_key(iter, &key)) == KNOT_EOK &&
+	       key.len > TIME_STRLEN && key_class(&key) == KASPDBKEY_OFFLINE_RECORDS &&
+	       knot_time_cmp(atol(key_str(&key)), to_time) <= 0 &&
+	       knot_dname_cmp(key_dname(&key), zone) == 0) {
+		ret = knot_db_lmdb_iter_del(iter);
+		iter = db_api->iter_next(iter);
+	}
+	db_api->iter_finish(iter);
+	with_txn_end(NULL);
+	return ret;
 }

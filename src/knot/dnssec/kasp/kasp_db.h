@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -138,7 +138,8 @@ int kasp_db_add_key(kasp_db_t *db, const knot_dname_t *zone_name, const key_para
  *
  * \return KNOT_E*
  */
-int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from, const knot_dname_t *zone_to, const char *key_id);
+int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from,
+                      const knot_dname_t *zone_to, const char *key_id);
 
 /*!
  * \brief Store NSEC3 salt for given zone (possibly overwrites old salt).
@@ -233,3 +234,42 @@ int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char
  * \return KNOT_E*
  */
 int kasp_db_list_zones(kasp_db_t *db, list_t *dst);
+
+/*!
+ * \brief Store pre-generated records for offline KSK usage.
+ *
+ * \param db         KASP db.
+ * \param for_time   Timestamp in future in which the RRSIG shall be used.
+ * \param r          Records to be stored.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const key_records_t *r);
+
+/*!
+ * \brief Load pregenerated records for offline signing.
+ *
+ * \param db         KASP db.
+ * \param for_dname  Name of the related zone.
+ * \param for_time   Now. Closest RRSIG (timestamp equals or is closest lower).
+ * \param next_time  Out: timestamp of next saved RRSIG (for easy "iteration").
+ * \param r          Out: offline records.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
+                                 knot_time_t for_time, knot_time_t *next_time,
+                                 key_records_t *r);
+
+/*!
+ * \brief Delete pregenerated records for specified time interval.
+ *
+ * \param db         KASP db.
+ * \param zone       Zone in question.
+ * \param from_time  Lower bound of the time interval (0 = infinity).
+ * \param to_time    Upper bound of the time interval (0 = infinity).
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_delete_offline_records(kasp_db_t *db, const knot_dname_t *zone,
+                                   knot_time_t from_time, knot_time_t to_time);

@@ -435,11 +435,14 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				keytime = alg_remove_time(key->timing.post_active, ctx);
 				restype = REMOVE;
 				break;
-			case DNSSEC_KEY_STATE_RETIRED:
 			case DNSSEC_KEY_STATE_REMOVED:
 				// ad REMOVED state: normally this wouldn't happen
 				// (key in removed state is instantly deleted)
 				// but if imported keys, they can be in this state
+				if (ctx->keep_deleted_keys) {
+					break;
+				} // else FALLTHROUGH
+			case DNSSEC_KEY_STATE_RETIRED:
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
 				keytime = ksk_remove_time(keytime, ctx);;
 				restype = REMOVE;
@@ -557,7 +560,11 @@ static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
 	key->timing.remove = ctx->now;
 
-	return kdnssec_delete_key(ctx, key);
+	if (ctx->keep_deleted_keys) {
+		return KNOT_EOK;
+	} else {
+		return kdnssec_delete_key(ctx, key);
+	}
 }
 
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
@@ -573,13 +580,15 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	bool allowed_general_roll = ((flags & KEY_ROLL_ALLOW_KSK_ROLL) && (flags & KEY_ROLL_ALLOW_ZSK_ROLL));
 	// generate initial keys if missing
 	if (!key_present(ctx, true, false) && !key_present(ctx, true, true)) {
-		if (ctx->policy->ksk_shared) {
-			ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
-		} else {
-			ret = generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
+		if ((flags & KEY_ROLL_ALLOW_KSK_ROLL)) {
+			if (ctx->policy->ksk_shared) {
+				ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
+			} else {
+				ret = generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
+			}
+			reschedule->plan_ds_query = true;
 		}
-		reschedule->plan_ds_query = true;
-		if (ret == KNOT_EOK) {
+		if (ret == KNOT_EOK && (flags & KEY_ROLL_ALLOW_ZSK_ROLL)) {
 			reschedule->keys_changed = true;
 			if (!ctx->policy->singe_type_signing &&
 			    !key_present(ctx, false, true)) {
@@ -588,7 +597,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 	// forced KSK rollover
-	if ((flags & KEY_ROLL_FORCE_KSK_ROLL) && ret == KNOT_EOK) {
+	if ((flags & KEY_ROLL_FORCE_KSK_ROLL) && ret == KNOT_EOK && (flags & KEY_ROLL_ALLOW_KSK_ROLL)) {
 		flags &= ~KEY_ROLL_FORCE_KSK_ROLL;
 		if (running_rollover(ctx)) {
 			log_zone_warning(ctx->zone->dname, "DNSSEC, ignoring forced KSK rollover "
@@ -602,7 +611,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 	// forced ZSK rollover
-	if ((flags & KEY_ROLL_FORCE_ZSK_ROLL) && ret == KNOT_EOK) {
+	if ((flags & KEY_ROLL_FORCE_ZSK_ROLL) && ret == KNOT_EOK && (flags & KEY_ROLL_ALLOW_ZSK_ROLL)) {
 		flags &= ~KEY_ROLL_FORCE_ZSK_ROLL;
 		if (running_rollover(ctx)) {
 			log_zone_warning(ctx->zone->dname, "DNSSEC, ignoring forced ZSK rollover "

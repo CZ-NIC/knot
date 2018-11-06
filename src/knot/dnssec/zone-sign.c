@@ -21,7 +21,9 @@
 #include "libdnssec/key.h"
 #include "libdnssec/keytag.h"
 #include "libdnssec/sign.h"
+#include "knot/common/log.h"
 #include "knot/dnssec/key-events.h"
+#include "knot/dnssec/key_records.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
 #include "libknot/libknot.h"
@@ -95,6 +97,7 @@ static bool apex_dnssec_changed(zone_update_t *update)
  * \param key      Signing key.
  * \param ctx      Signing context.
  * \param policy   DNSSEC policy.
+ * \param at       RRSIG position.
  *
  * \return The signature exists and is valid.
  */
@@ -102,7 +105,8 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   const knot_rrset_t *rrsigs,
 				   const dnssec_key_t *key,
 				   dnssec_sign_ctx_t *ctx,
-				   const kdnssec_ctx_t *dnssec_ctx)
+				   const kdnssec_ctx_t *dnssec_ctx,
+				   uint16_t *at)
 {
 	assert(key);
 
@@ -124,6 +128,9 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 
 		if (knot_check_signature(covered, rrsigs, i, key, ctx,
 		                         dnssec_ctx) == KNOT_EOK) {
+			if (at != NULL) {
+				*at = i;
+			}
 			return true;
 		}
 	}
@@ -156,7 +163,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 		}
 
 		if (!valid_signature_exists(covered, rrsigs, key->key,
-		                            key->ctx, dnssec_ctx)) {
+					    key->ctx, dnssec_ctx, NULL)) {
 			return false;
 		}
 	}
@@ -299,13 +306,19 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	knot_rrset_t to_add;
 	knot_rrset_init_empty(&to_add);
 
+	if (covered->type == KNOT_RRTYPE_DNSKEY &&
+	    knot_dname_cmp(covered->owner, dnssec_ctx->zone->dname) == 0 &&
+	    dnssec_ctx->offline_rrsig != NULL) {
+		return changeset_add_addition(changeset, dnssec_ctx->offline_rrsig, CHANGESET_CHECK);
+	}
+
 	for (int i = 0; i < zone_keys->count; i++) {
 		const zone_key_t *key = &zone_keys->keys[i];
 		if (!knot_zone_sign_use_key(key, covered)) {
 			continue;
 		}
 
-		if (valid_signature_exists(covered, rrsigs, key->key, key->ctx, dnssec_ctx)) {
+		if (valid_signature_exists(covered, rrsigs, key->key, key->ctx, dnssec_ctx, NULL)) {
 			continue;
 		}
 
@@ -586,18 +599,19 @@ typedef struct {
 	trie_t *signed_tree;
 } changeset_signing_data_t;
 
-/*- private API - DNSKEY handling --------------------------------------------*/
-
-static int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
+int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
-	assert(rrset);
-	assert(zone_key);
+	if (rrset == NULL || zone_key == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	dnssec_binary_t dnskey_rdata = { 0 };
 	dnssec_key_get_rdata(zone_key->key, &dnskey_rdata);
 
 	return knot_rrset_add_rdata(rrset, dnskey_rdata.data, dnskey_rdata.size, NULL);
 }
+
+/*- private API - DNSKEY handling --------------------------------------------*/
 
 static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
@@ -857,9 +871,80 @@ int knot_zone_sign(zone_update_t *update,
 	return result;
 }
 
+keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
+					      zone_keyset_t *zone_keys)
+{
+	keyptr_dynarray_t r = { 0 };
+	zone_key_t *ksk_for_cds = NULL;
+	unsigned crp = ctx->policy->child_records_publish;
+	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ? 0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
+
+	for (int i = 0; i < zone_keys->count; i++) {
+		zone_key_t *key = &zone_keys->keys[i];
+		// determine which key (if any) will be the one for CDS/CDNSKEY
+		if (key->is_ksk && key->cds_priority > kfc_prio) {
+			ksk_for_cds = key;
+			kfc_prio = key->cds_priority;
+		}
+	}
+
+	for (int i = 0; i < zone_keys->count; i++) {
+		zone_key_t *key = &zone_keys->keys[i];
+		// determine which key (if any) will be the one for CDS/CDNSKEY
+		if (key->is_ksk && key->cds_priority > kfc_prio) {
+			ksk_for_cds = key;
+			kfc_prio = key->cds_priority;
+		}
+	}
+
+	if (ksk_for_cds != NULL) {
+		keyptr_dynarray_add(&r, &ksk_for_cds);
+	}
+
+	return r;
+}
+
+int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dnssec_ctx,
+			       key_records_t *add_r)
+{
+	if (add_r == NULL) {
+		return KNOT_EINVAL;
+	}
+	int ret = KNOT_EOK;
+	for (int i = 0; i < zone_keys->count; i++) {
+		zone_key_t *key = &zone_keys->keys[i];
+		if (key->is_public) {
+			ret = rrset_add_zone_key(&add_r->dnskey, key);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+	keyptr_dynarray_t kcdnskeys = knot_zone_sign_get_cdnskeys(dnssec_ctx, zone_keys);
+	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
+		ret = rrset_add_zone_key(&add_r->cdnskey, *ksk_for_cds);
+		if (ret == KNOT_EOK) {
+			ret = rrset_add_zone_ds(&add_r->cds, *ksk_for_cds);
+		}
+	}
+
+	if (dnssec_ctx->policy->child_records_publish == CHILD_RECORDS_EMPTY && ret == KNOT_EOK) {
+		const uint8_t cdnskey_empty[5] = { 0, 0, 3, 0, 0 };
+		const uint8_t cds_empty[5] = { 0, 0, 0, 0, 0 };
+		ret = knot_rrset_add_rdata(&add_r->cdnskey, cdnskey_empty, sizeof(cdnskey_empty), NULL);
+		if (ret == KNOT_EOK) {
+			ret = knot_rrset_add_rdata(&add_r->cds, cds_empty, sizeof(cds_empty), NULL);
+		}
+	}
+
+	keyptr_dynarray_free(&kcdnskeys);
+	return ret;
+}
+
 int knot_zone_sign_update_dnskeys(zone_update_t *update,
                                   zone_keyset_t *zone_keys,
-                                  const kdnssec_ctx_t *dnssec_ctx)
+                                  kdnssec_ctx_t *dnssec_ctx,
+                                  knot_time_t *next_resign)
 {
 	if (update == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
 		return KNOT_EINVAL;
@@ -869,10 +954,8 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	knot_rrset_t dnskeys = node_rrset(apex, KNOT_RRTYPE_DNSKEY);
 	knot_rrset_t cdnskeys = node_rrset(apex, KNOT_RRTYPE_CDNSKEY);
 	knot_rrset_t cdss = node_rrset(apex, KNOT_RRTYPE_CDS);
-	knot_rrset_t *add_dnskeys = NULL;
-	knot_rrset_t *add_cdnskeys = NULL;
-	knot_rrset_t *add_cdss = NULL;
-	uint32_t dnskey_ttl = dnssec_ctx->policy->dnskey_ttl;
+	key_records_t add_r;
+	memset(&add_r, 0, sizeof(add_r));
 	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa)) {
 		return KNOT_EINVAL;
@@ -895,67 +978,41 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	CHECK_RET;
 
 	// add DNSKEYs, CDNSKEYs and CDSs
-	add_dnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_DNSKEY, soa.rclass,
-	                             dnskey_ttl, NULL);
-	add_cdnskeys = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDNSKEY, soa.rclass,
-	                              0, NULL);
-	add_cdss = knot_rrset_new(apex->owner, KNOT_RRTYPE_CDS, soa.rclass,
-	                          0, NULL);
-	if (add_dnskeys == NULL || add_cdnskeys == NULL || add_cdss == NULL) {
-		ret = KNOT_ENOMEM;
-		CHECK_RET;
-	}
-	zone_key_t *ksk_for_cds = NULL;
-	unsigned crp = dnssec_ctx->policy->child_records_publish;
-	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ? 0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
-	for (int i = 0; i < zone_keys->count; i++) {
-		zone_key_t *key = &zone_keys->keys[i];
-		if (key->is_public) {
-			ret = rrset_add_zone_key(add_dnskeys, key);
-			CHECK_RET;
+	key_records_init(dnssec_ctx, &add_r);
+
+	if (dnssec_ctx->policy->offline_ksk) {
+		ret = kasp_db_load_offline_records(*dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, next_resign, &add_r);
+		if (ret == KNOT_EOK) {
+			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");
+		} else {
+			log_zone_warning(dnssec_ctx->zone->dname, "DNSSEC, failed to load offline DNSKEY RRSIG (%s)",
+					 knot_strerror(ret));
 		}
-
-		// determine which key (if any) will be the one for CDS/CDNSKEY
-		if (key->is_ksk && key->cds_priority > kfc_prio) {
-			ksk_for_cds = key;
-			kfc_prio = key->cds_priority;
-		}
+	} else {
+		ret = knot_zone_sign_add_dnskeys(zone_keys, dnssec_ctx, &add_r);
 	}
+	CHECK_RET;
 
-	if (ksk_for_cds != NULL) {
-		ret = rrset_add_zone_key(add_cdnskeys, ksk_for_cds);
-		CHECK_RET;
-		ret = rrset_add_zone_ds(add_cdss, ksk_for_cds);
+	if (!knot_rrset_empty(&add_r.cdnskey)) {
+		ret = changeset_add_addition(&ch, &add_r.cdnskey,
+			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 		CHECK_RET;
 	}
 
-	if (crp == CHILD_RECORDS_EMPTY) {
-		const uint8_t cdnskey_empty[5] = { 0, 0, 3, 0, 0 };
-		const uint8_t cds_empty[5] = { 0, 0, 0, 0, 0 };
-		ret = knot_rrset_add_rdata(add_cdnskeys, cdnskey_empty,
-		                           sizeof(cdnskey_empty), NULL);
-		CHECK_RET;
-		ret = knot_rrset_add_rdata(add_cdss, cds_empty,
-		                           sizeof(cds_empty), NULL);
+	if (!knot_rrset_empty(&add_r.cds)) {
+		ret = changeset_add_addition(&ch, &add_r.cds,
+			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 		CHECK_RET;
 	}
 
-	if (!knot_rrset_empty(add_cdnskeys)) {
-		ret = changeset_add_addition(&ch, add_cdnskeys, CHANGESET_CHECK |
-		                                                CHANGESET_CHECK_CANCELOUT);
+	if (!knot_rrset_empty(&add_r.dnskey)) {
+		ret = changeset_add_addition(&ch, &add_r.dnskey,
+			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 		CHECK_RET;
 	}
 
-	if (!knot_rrset_empty(add_cdss)) {
-		ret = changeset_add_addition(&ch, add_cdss, CHANGESET_CHECK |
-		                                            CHANGESET_CHECK_CANCELOUT);
-		CHECK_RET;
-	}
-
-	if (!knot_rrset_empty(add_dnskeys)) {
-		ret = changeset_add_addition(&ch, add_dnskeys, CHANGESET_CHECK |
-		                                               CHANGESET_CHECK_CANCELOUT);
-		CHECK_RET;
+	if (!knot_rrset_empty(&add_r.rrsig)) {
+		dnssec_ctx->offline_rrsig = knot_rrset_copy(&add_r.rrsig, NULL);
 	}
 
 	ret = zone_update_apply_changeset(update, &ch);
@@ -963,9 +1020,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 #undef CHECK_RET
 
 cleanup:
-	knot_rrset_free(add_dnskeys, NULL);
-	knot_rrset_free(add_cdnskeys, NULL);
-	knot_rrset_free(add_cdss, NULL);
+	key_records_clear(&add_r);
 	changeset_clear(&ch);
 	return ret;
 }

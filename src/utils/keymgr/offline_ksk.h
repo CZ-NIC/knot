@@ -11,21 +11,23 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #pragma once
 
-#include "libzscanner/scanner.h"
+#include "knot/dnssec/context.h"
 
-void debug_process_error(zs_scanner_t *scanner);
+int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg);
 
-void debug_process_record(zs_scanner_t *scanner);
+int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg);
 
-void debug_process_comment(zs_scanner_t *scanner);
+int keymgr_delete_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to);
 
-void test_process_error(zs_scanner_t *scanner);
+int keymgr_del_all_old(kdnssec_ctx_t *ctx);
 
-void test_process_record(zs_scanner_t *scanner);
+int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg);
 
-int test_date_to_timestamp(void);
+int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file);
+
+int keymgr_import_skr(kdnssec_ctx_t *ctx, const char *skr_file);

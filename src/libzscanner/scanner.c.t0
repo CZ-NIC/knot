@@ -5739,6 +5739,20 @@ int zs_set_processing(
 	return 0;
 }
 
+__attribute__((visibility("default")))
+int zs_set_processing_comment(
+	zs_scanner_t *s,
+	void (*process_comment)(zs_scanner_t *))
+{
+	if (s == NULL) {
+		return -1;
+	}
+
+	s->process.comment = process_comment;
+
+	return 0;
+}
+
 typedef enum {
 	WRAP_NONE,     // Initial state.
 	WRAP_DETECTED, // Input block end is a first '\' in rdata.
@@ -6003,6 +6017,16 @@ _match:
 	case 6:
 	{
 		s->buffer[s->buffer_length++] = 0;
+
+		// Execute the comment callback.
+		if (s->process.automatic && s->process.comment != NULL) {
+			s->process.comment(s);
+
+			// Stop if required from the callback.
+			if (s->state == ZS_STATE_STOP) {
+				{p++; goto _out; }
+			}
+		}
 	}
 	break;
 	case 7:

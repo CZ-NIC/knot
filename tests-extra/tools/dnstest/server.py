@@ -57,6 +57,8 @@ class ZoneDnssec(object):
         self.ksk_sbm_check = []
         self.ksk_sbm_check_interval = None
         self.ksk_shared = None
+        self.cds_publish = None
+        self.offline_ksk = None
 
 class Zone(object):
     '''DNS zone description'''
@@ -117,7 +119,7 @@ class Server(object):
         self.version = None
 
         self.addr = None
-        self.port = None
+        self.port = 0 # Needed for keymgr when port not yet generated
         self.fixed_port = False
         self.ctlport = None
         self.external = False
@@ -672,7 +674,7 @@ class Server(object):
     def gen_key(self, zone, **args):
         zone = zone_arg_check(zone)
 
-        key = dnstest.keys.Key(self.keydir, zone.name, **args)
+        key = dnstest.keys.Key(self.confile, zone.name, **args)
         key.generate()
 
         return key
@@ -961,13 +963,13 @@ class Knot(Server):
 
     def key_gen(self, zone_name, **new_params):
         set_params = [ option + "=" + value for option, value in new_params.items() ]
-        res = dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "generate", *set_params)
+        res = dnstest.keys.Keymgr.run_check(self.confile, zone_name, "generate", *set_params)
         errcode, stdo, stde = res
         return stdo.split()[-1]
 
     def key_set(self, zone_name, key_id, **new_values):
         set_params = [ option + "=" + value for option, value in new_values.items() ]
-        dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "set", key_id, *set_params)
+        dnstest.keys.Keymgr.run_check(self.confile, zone_name, "set", key_id, *set_params)
 
     def key_import_bind(self, zone_name):
         if zone_name not in self.zones:
@@ -978,7 +980,7 @@ class Knot(Server):
             pkey = os.path.basename(pkey_path)
             m = re.match(r'K(?P<name>[^+]+)\+(?P<algo>\d+)\+(?P<tag>\d+)\.private', pkey)
             if m and m.group("name") == zone_name.lower():
-                dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "import-bind", pkey_path)
+                dnstest.keys.Keymgr.run_check(self.confile, zone_name, "import-bind", pkey_path)
 
     def _on_str_hex(self, conf, name, value):
         if value == True:
@@ -1197,6 +1199,8 @@ class Knot(Server):
             if len(z.dnssec.ksk_sbm_check) > 0:
                 s.item("ksk-submission", z.name)
             self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
+            self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
+            self._str(s, "offline-ksk", z.dnssec.offline_ksk)
         if have_policy:
             s.end()
 

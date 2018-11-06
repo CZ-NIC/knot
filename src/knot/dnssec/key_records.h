@@ -12,20 +12,27 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
+*/
 
 #pragma once
 
-#include "libzscanner/scanner.h"
+#include "contrib/wire_ctx.h"
+#include "knot/dnssec/zone-keys.h"
 
-void debug_process_error(zs_scanner_t *scanner);
+void key_records_init(const kdnssec_ctx_t *ctx, key_records_t *r);
 
-void debug_process_record(zs_scanner_t *scanner);
+int key_records_add_rdata(key_records_t *r, uint16_t rrtype, uint8_t *rdata, uint16_t rdlen, uint32_t ttl);
 
-void debug_process_comment(zs_scanner_t *scanner);
+void key_records_clear(key_records_t *r);
 
-void test_process_error(zs_scanner_t *scanner);
+void key_records_clear_rdatasets(key_records_t *r);
 
-void test_process_record(zs_scanner_t *scanner);
+int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r);
 
-int test_date_to_timestamp(void);
+int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx);
+
+size_t key_records_serialized_size(const key_records_t *r);
+
+int key_records_serialize(wire_ctx_t *wire, const key_records_t *r);
+
+int key_records_deserialize(wire_ctx_t *wire, key_records_t *r);
