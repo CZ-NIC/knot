@@ -29,6 +29,8 @@
 #include "libzscanner/scanner.h"
 #include "utils/keymgr/functions.h"
 
+#define KSR_SKR_VER "1.0"
+
 static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 {
 	zone_sign_reschedule_t resch = { 0 };
@@ -180,8 +182,7 @@ static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_
 	}
 	ret = dump_rrset_to_buf(dnskey, buf, buf_size);
 	if (ret >= 0) {
-		(*buf)[strlen(*buf) - 1] = '\0'; // remove trailing newline
-		printf(";;KSR ver 1.0 ===========\n%s ; end KSR %lu\n", *buf, ctx->now);
+		printf(";; KeySigningRequest %s %lu ===========\n%s", KSR_SKR_VER, ctx->now, *buf);
 		ret = KNOT_EOK;
 	}
 
@@ -219,7 +220,7 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg)
 	// force end of period as a KSR timestamp
 	ret = ksr_once(ctx, &buf, &buf_size, NULL);
 
-	printf(";; KeySigningRequest ");
+	printf(";; KeySigningRequest %s ", KSR_SKR_VER);
 	print_generated_message();
 
 	free(buf);
@@ -228,6 +229,7 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg)
 
 typedef struct {
 	key_records_t r;
+	knot_time_t timestamp;
 	knot_rrset_t *dnskey_prev;
 	kdnssec_ctx_t *kctx;
 } ksr_sign_ctx_t;
@@ -262,11 +264,9 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t *n
 			goto done;
 		}
 	}
-	printf(";;SKR ver 1.0 ===========\n");
 	ret = key_records_dump(&buf, &buf_size, &r);
 	if (ret == KNOT_EOK) {
-		buf[strlen(buf) - 1] = '\0'; // remove trailing newline
-		printf("%s ; end SKR %lu\n", buf, ctx->now);
+		printf(";; SignedKeyResponse %s %lu ===========\n%s", KSR_SKR_VER, ctx->now, buf);
 		*next_sign = knot_get_next_zone_key_event(&keyset);
 	}
 
@@ -303,33 +303,68 @@ static int process_skr_between_ksrs(ksr_sign_ctx_t *ctx, knot_time_t next_ksr)
 	return ret;
 }
 
+static void ksr_sign_header(zs_scanner_t *sc)
+{
+	ksr_sign_ctx_t *ctx = sc->process.data;
+
+	// parse header
+	float header_ver;
+	knot_time_t next_timestamp = 0;
+	if (sc->error.code != KNOT_EOK ||
+	    sscanf((const char *)sc->buffer, "; KeySigningRequest %f %lu", &header_ver, &next_timestamp) < 1) {
+		return;
+	}
+	(void)header_ver;
+
+	// sign previous KSR
+	if (ctx->timestamp > 0) {
+		sc->error.code = process_skr_between_ksrs(ctx, ctx->timestamp);
+		key_records_clear_rdatasets(&ctx->r);
+	}
+
+	// start new KSR
+	ctx->timestamp = next_timestamp;
+}
+
 static void ksr_sign_once(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
 
 	sc->error.code = knot_rrset_add_rdata(&ctx->r.dnskey, sc->r_data, sc->r_data_length, NULL);
 	ctx->r.dnskey.ttl = sc->r_ttl;
+}
 
-	if (sc->error.code == KNOT_EOK && sc->buffer_length > 9 && strncmp((const char *)sc->buffer, " end KSR ", 9) == 0) {
-		knot_time_t next_ksr = atol((const char *)sc->buffer + 9);
-		sc->error.code = process_skr_between_ksrs(ctx, next_ksr);
+static void skr_import_header(zs_scanner_t *sc)
+{
+	ksr_sign_ctx_t *ctx = sc->process.data;
+
+	// parse header
+	float header_ver;
+	knot_time_t next_timestamp;
+	if (sc->error.code != KNOT_EOK ||
+	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %lu", &header_ver, &next_timestamp) < 1) {
+		return;
+	}
+	(void)header_ver;
+
+	// store previous SKR
+	if (ctx->timestamp > 0) {
+		sc->error.code = kasp_db_store_offline_records(*ctx->kctx->kasp_db, ctx->timestamp, &ctx->r);
 		key_records_clear_rdatasets(&ctx->r);
 	}
+
+	// start new SKR
+	ctx->timestamp = next_timestamp;
 }
 
 static void skr_import_once(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
 	sc->error.code = key_records_add_rdata(&ctx->r, sc->r_type, sc->r_data, sc->r_data_length, sc->r_ttl);
-
-	if (sc->error.code == KNOT_EOK && sc->buffer_length > 9 && strncmp((const char *)sc->buffer, " end SKR ", 9) == 0) {
-		knot_time_t for_time = atol((const char *)sc->buffer + 9);
-		sc->error.code = kasp_db_store_offline_records(*ctx->kctx->kasp_db, for_time, &ctx->r);
-		key_records_clear_rdatasets(&ctx->r);
-	}
 }
 
-static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_scanner_t *))
+static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
+                        void (*cb_header)(zs_scanner_t *), void (*cb_record)(zs_scanner_t *))
 {
 	zs_scanner_t sc = { 0 };
 	int ret = zs_init(&sc, "", KNOT_CLASS_IN, 0);
@@ -350,11 +385,13 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_sc
 	key_records_init(ctx, &pctx.r);
 	pctx.dnskey_prev = &dnskey_prev;
 	pctx.kctx = ctx;
-	ret = zs_set_processing(&sc, cb, NULL, &pctx);
+	pctx.timestamp = 0;
+	ret = zs_set_processing(&sc, cb_record, NULL, &pctx);
 	if (ret < 0) {
 		zs_deinit(&sc);
 		return KNOT_EBUSY;
 	}
+	sc.process.comment = cb_header;
 
 	ret = zs_parse_all(&sc);
 
@@ -372,13 +409,13 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile, void (*cb)(zs_sc
 
 int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file)
 {
-	int ret = read_ksr_skr(ctx, ksr_file, ksr_sign_once);
-	printf(";; SignedKeyResponse ");
+	int ret = read_ksr_skr(ctx, ksr_file, ksr_sign_header, ksr_sign_once);
+	printf(";; SignedKeyResponse %s ", KSR_SKR_VER);
 	print_generated_message();
 	return ret;
 }
 
 int keymgr_import_skr(kdnssec_ctx_t *ctx, const char *skr_file)
 {
-	return read_ksr_skr(ctx, skr_file, skr_import_once);
+	return read_ksr_skr(ctx, skr_file, skr_import_header, skr_import_once);
 }
