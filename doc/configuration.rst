@@ -489,8 +489,8 @@ You can use exact time specification to make these two actions happen in one
 go.
 
 .. WARNING::
-   If you ever decide to switch from manual key management to automatic key management
-   while the server is running, note that the automatic key management uses
+   If you ever decide to switch from manual key management to automatic key management,
+   note that the automatic key management uses
    :ref:`policy_zsk-lifetime` and :ref:`policy_ksk-lifetime` policy configuration
    options to schedule key rollovers and it internally uses timestamps of keys differently
    than in the manual case. As a consequence it might break if the ``retire`` or ``remove`` timestamps
