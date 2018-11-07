@@ -292,7 +292,7 @@ class ModCookies(KnotModule):
 
 class ModQueryacl(KnotModule):
     '''Query ACL module'''
-    
+
     mod_name = "queryacl"
 
     def __init__(self, address=None, interface=None):
@@ -303,7 +303,7 @@ class ModQueryacl(KnotModule):
     def get_conf(self, conf=None):
         if not conf:
             conf = dnstest.config.KnotConf()
-        
+
         conf.begin(self.conf_name)
         conf.id_item("id", self.conf_id)
         if self.address:
@@ -331,6 +331,21 @@ class ModGeoip(KnotModule):
         self.mode = mode
         self.geodb_file = geodb_file
         self.geodb_key = geodb_key
+
+    @classmethod
+    def check(self):
+        '''Extended module check by libmaxminddb dependency check'''
+        super().check()
+
+        try:
+            proc = Popen(self._check_cmd(), stdout=PIPE, stderr=PIPE,
+                         universal_newlines=True)
+            (out, err) = proc.communicate()
+            if re.search("MMDB_open", out):
+                return
+            raise Skip()
+        except:
+            raise Skip("Library 'maxminddb' not detected")
 
     def get_conf(self, conf=None):
         if not conf:
