@@ -420,6 +420,7 @@ int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset)
 	}
 	knot_dname_t *owner = knot_dname_copy(wire->position, NULL);
 	if (owner == NULL || wire_ctx_available(wire) < size + 3 * sizeof(uint16_t)) {
+		knot_dname_free(owner, NULL);
 		return KNOT_EMALF;
 	}
 	wire_ctx_skip(wire, size);
@@ -427,6 +428,7 @@ int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset)
 	uint16_t rclass = wire_ctx_read_u16(wire);
 	uint16_t rrcount = wire_ctx_read_u16(wire);
 	if (wire->error != KNOT_EOK) {
+		knot_dname_free(owner, NULL);
 		return wire->error;
 	}
 	if (rrset->owner != NULL) {
