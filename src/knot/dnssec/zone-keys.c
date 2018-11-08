@@ -258,7 +258,7 @@ static bool is_nsec3_allowed(uint8_t algorithm)
 static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 {
 	uint8_t alg_usage[256] = { 0 };
-	bool keys_changed = false, have_active_alg = false;
+	bool have_active_alg = false;
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
@@ -302,10 +302,6 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 
 	if (!have_active_alg) {
 		return KNOT_DNSSEC_ENOKEY;
-	}
-
-	if (keys_changed) {
-		return kdnssec_ctx_commit(ctx);
 	}
 
 	return KNOT_EOK;
