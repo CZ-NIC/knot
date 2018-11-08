@@ -378,7 +378,7 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx)
 				}
 				break;
 			case DNSSEC_KEY_STATE_RETIRE_ACTIVE:
-				if (key->timing.retire == 0) { // this shouldn't normally happen
+				if (key->timing.retire == 0 && key->timing.post_active == 0) { // this shouldn't normally happen
 					// when a KSK is retire_active, it has already retire or post_active timer set
 					keytime = ksk_retire_time(key->timing.retire_active, ctx);
 					restype = RETIRE;
