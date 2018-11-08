@@ -501,11 +501,6 @@ void updates_execute(conf_t *conf, zone_t *zone)
 		return;
 	}
 
-	if (update_count == 0) {
-		/* All updates failed their ACL checks. */
-		return;
-	}
-
 	/* Process update list - forward if zone has master, or execute.
 	   RCODEs are set. */
 	if (zone_is_slave(conf, zone)) {
