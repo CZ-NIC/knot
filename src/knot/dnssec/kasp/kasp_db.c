@@ -773,7 +773,7 @@ int kasp_db_list_zones(kasp_db_t *db, list_t *dst)
 #define TIME_STRLEN 20
 static void for_time2string(char str[TIME_STRLEN + 1], knot_time_t t)
 {
-	(void)snprintf(str, TIME_STRLEN + 1, "%0.*"PRIu64, TIME_STRLEN, t);
+	(void)snprintf(str, TIME_STRLEN + 1, "%0*"PRIu64, TIME_STRLEN, t);
 }
 
 int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const key_records_t *r)
