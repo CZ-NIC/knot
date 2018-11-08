@@ -25,6 +25,7 @@
 // Next dependencies force static module!
 #include "knot/dnssec/ds_query.h"
 #include "knot/dnssec/key-events.h"
+#include "knot/dnssec/policy.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
@@ -536,6 +537,7 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 	}
 	if (ret == KNOT_EOK || knot_time_cmp(ctx->event_rollover, mod->dnssec->now) <= 0) {
+		update_policy_from_zone(mod->dnssec->policy, qdata->extra->zone->contents);
 		ret = knot_dnssec_key_rollover(mod->dnssec, &resch);
 	}
 	if (ret == KNOT_EOK) {

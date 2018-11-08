@@ -42,5 +42,5 @@ void update_policy_from_zone(knot_kasp_policy_t *policy,
 	}
 
 	policy->soa_minimal_ttl = zone_soa_min_ttl(zone);
-	policy->zone_maximal_ttl = 0; // TODO
+	policy->zone_maximal_ttl = zone->max_ttl;
 }

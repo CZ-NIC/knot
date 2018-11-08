@@ -42,6 +42,7 @@ typedef struct zone_contents {
 
 	dnssec_nsec3_params_t nsec3_params;
 	size_t size;
+	uint32_t max_ttl;
 	bool dnssec;
 } zone_contents_t;
 
@@ -273,5 +274,15 @@ bool zone_contents_is_empty(const zone_contents_t *zone);
  * \return Measured size
  */
 size_t zone_contents_measure_size(zone_contents_t *zone);
+
+/*!
+ * \brief Obtain maximal TTL above all the records in zone.
+ *
+ * The value is also stored in zone_contents structure.
+ *
+ * \param zone   Zone in question.
+ * \return Maximal TTL.
+ */
+uint32_t zone_contents_max_ttl(zone_contents_t *zone);
 
 /*! @} */

@@ -280,6 +280,16 @@ static int measure_size(zone_node_t *node, void *data){
 	return KNOT_EOK;
 }
 
+static int measure_max_ttl(zone_node_t *node, void *data){
+
+	uint32_t *max = data;
+	int rrset_count = node->rrset_count;
+	for (int i = 0; i < rrset_count; i++) {
+		*max = MAX(*max, node->rrs[i].ttl);
+	}
+	return KNOT_EOK;
+}
+
 static bool nsec3_params_match(const knot_rdataset_t *rrs,
                                const dnssec_nsec3_params_t *params,
                                size_t rdata_pos)
@@ -319,7 +329,9 @@ static int adjust_normal_node(zone_node_t **tnode, void *data)
 		return ret;
 	}
 
-	measure_size(*tnode, &((zone_adjust_arg_t *)data)->zone->size);
+	zone_adjust_arg_t *arg = data;
+	measure_size(*tnode, &arg->zone->size);
+	measure_max_ttl(*tnode, &arg->zone->max_ttl);
 
 	// Connect nodes to their NSEC3 nodes
 	return adjust_nsec3_pointers(tnode, data);
@@ -353,6 +365,7 @@ static int adjust_nsec3_node(zone_node_t **tnode, void *data)
 	args->previous_node = node;
 
 	measure_size(*tnode, &args->zone->size);
+	measure_max_ttl(*tnode, &args->zone->max_ttl);
 
 	// check if this node belongs to correct chain
 	const knot_rdataset_t *nsec3_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC3);
@@ -1177,4 +1190,11 @@ size_t zone_contents_measure_size(zone_contents_t *zone)
 	zone->size = 0;
 	zone_contents_apply(zone, measure_size, &zone->size);
 	return zone->size;
+}
+
+uint32_t zone_contents_max_ttl(zone_contents_t *zone)
+{
+	zone->max_ttl = 0;
+	zone_contents_apply(zone, measure_max_ttl, &zone->size);
+	return zone->max_ttl;
 }

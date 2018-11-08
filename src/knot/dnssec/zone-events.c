@@ -28,7 +28,7 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 
-static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags,
+static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags,
 		     kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
 {
 	assert(zone);
@@ -47,6 +47,15 @@ static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags,
 		r = knot_dnssec_nsec3resalt(ctx, &reschedule->allow_nsec3resalt, &reschedule->next_nsec3resalt);
 	}
 
+	r = zone_contents_adjust_full(zone);
+	if (r != KNOT_EOK) {
+		return r;
+	}
+
+	// update policy based on the zone content
+
+	update_policy_from_zone(ctx->policy, zone);
+
 	// perform key rollover if needed
 
 	if (reschedule->allow_rollover) {
@@ -55,10 +64,6 @@ static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags,
 	if (r != KNOT_EOK) {
 		return r;
 	}
-
-	// update policy based on the zone content
-
-	update_policy_from_zone(ctx->policy, zone);
 
 	// RRSIG handling
 
