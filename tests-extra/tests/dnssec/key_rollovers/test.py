@@ -166,7 +166,7 @@ t.link(parent_zone, parent)
 parent.dnssec(parent_zone).enable = True
 
 child = t.server("knot")
-child_zone = t.zone("example.com.")
+child_zone = t.zone("example.com.", storage=".")
 t.link(child_zone, child)
 
 def cds_submission():
