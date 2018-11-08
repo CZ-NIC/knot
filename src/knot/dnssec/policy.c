@@ -37,7 +37,8 @@ void update_policy_from_zone(knot_kasp_policy_t *policy,
 	assert(policy);
 	assert(zone);
 
-	if (policy->dnskey_ttl == 0) {
+	// Use SOA TTL if not configured.
+	if (policy->dnskey_ttl == UINT32_MAX) {
 		policy->dnskey_ttl = zone_soa_ttl(zone);
 	}
 
