@@ -699,6 +699,36 @@ Generating and signing future ZSKs
    Knot automatically uses them in correct time intervals.
    The entire procedure must to be repeated before the time period selected at the beginning passes.
 
+.. _Backing up KASP db:
+
+Backing up or transfering KASP db
+=================================
+
+If you would like make a backup of your KASP db or transfer your cryptographic
+keys to a different server (e.g. from a master server to a slave server),
+you may utilize the tools provided by the `lmdb-utils <https://packages.ubuntu.com/bionic/lmdb-utils>`_ 
+package, if it is available for your operating system. These tools allow you
+to convert the contents of any LMDB database to a portable plain text format
+which can be imported to any other LMDB database. Any other files included in the
+:ref:`template_kasp-db` directory have to be handled separately.
+
+Use the ``mdb_dump -a`` command with the configured :ref:`template_kasp-db` directory
+as an argument to convert the contents of the LMDB database to a portable text format:
+
+.. code-block:: console
+
+   $ mdb_dump -a /path/to/keys
+
+Save the output of the command to a text file. You many then Import the file
+into a different LMDB database using the ``mdb_load -f`` command, supplying the path
+to the file and the path to the database directory as arguments:
+
+.. code-block:: console
+
+    $ mdb_load -f /path/to/dump_file /path/to/keys
+
+
+
 .. _Controlling running daemon:
 
 Daemon controls
