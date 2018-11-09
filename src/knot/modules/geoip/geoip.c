@@ -481,9 +481,9 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		if (yp->event == YP_EKEY0) {
 			owner = knot_dname_from_str(owner_buff, yp->key, sizeof(owner_buff));
 			if (owner == NULL) {
-				ret = KNOT_EINVAL;
 				knotd_mod_log(mod, LOG_ERR, "invalid domain name in config on line %zu",
 				              yp->line_count);
+				ret = KNOT_EINVAL;
 				goto cleanup;
 			}
 			ret = parse_origin(yp, scanner);
@@ -502,6 +502,14 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 
 		// Next RR of the current view.
 		if (yp->event == YP_EKEY1) {
+			// Check whether we really are in a view.
+			if (view->avail <= 0) {
+				knotd_mod_log(mod, LOG_ERR, "missing '%s' in config before line %zu",
+				              (ctx->mode == MODE_SUBNET) ? "- net: SUBNET" : "- geo: LOCATION",
+				              yp->line_count);
+				ret = KNOT_EINVAL;
+				goto cleanup;
+			}
 			ret = parse_rr(mod, yp, scanner, owner, view, ctx->ttl);
 			if (ret != KNOT_EOK) {
 				goto cleanup;
