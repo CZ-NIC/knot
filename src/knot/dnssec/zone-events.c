@@ -45,6 +45,9 @@ static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags,
 
 	if (reschedule->allow_nsec3resalt) {
 		r = knot_dnssec_nsec3resalt(ctx, &reschedule->allow_nsec3resalt, &reschedule->next_nsec3resalt);
+		if (r != KNOT_EOK) {
+			return r;
+		}
 	}
 
 	r = zone_contents_adjust_full(zone);
