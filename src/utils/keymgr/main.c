@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "contrib/string.h"
+#include "contrib/strtonum.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
@@ -345,7 +346,7 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
-	int opt = 0;
+	int opt = 0, parm = 0;
 	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
@@ -373,8 +374,10 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 't':
-			ret = keymgr_generate_tsig(optarg, (argc > optind ? argv[optind] : "hmac-sha256"),
-			                           (argc > optind + 1 ? atol(argv[optind + 1]) : 0));
+			if (argc > optind + 1) {
+				(void)str_to_int(argv[optind + 1], &parm, 0, 65536);
+			}
+			ret = keymgr_generate_tsig(optarg, (argc > optind ? argv[optind] : "hmac-sha256"), parm);
 			if (ret != KNOT_EOK) {
 				printf("Failed to generate TSIG (%s)\n", knot_strerror(ret));
 			}

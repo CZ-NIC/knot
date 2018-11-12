@@ -112,6 +112,11 @@ inline static int str_to_u32(const char *src, uint32_t *dst)
 	CONVERT(uint, uint32_t, 0, UINT32_MAX, src, dst);
 }
 
+inline static int str_to_u64(const char *src, uint64_t *dst)
+{
+	CONVERT(uint, uint64_t, 0, UINT64_MAX, src, dst);
+}
+
 inline static int str_to_size(const char *src, size_t *dst, size_t min, size_t max)
 {
 	CONVERT(uint, size_t, min, max, src, dst);

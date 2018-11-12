@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 
 #include "contrib/files.h"
+#include "contrib/strtonum.h"
 #include "contrib/wire_ctx.h"
 #include "knot/dnssec/key_records.h"
 #include "knot/journal/serialization.h"
@@ -201,6 +202,14 @@ static const knot_dname_t *key_dname(const knot_db_val_t *key)
 static const char *key_str(const knot_db_val_t *key)
 {
 	return (key->data + 1 + knot_dname_size(key_dname(key)));
+}
+
+// returns zero time (= infinity) if failure!
+static knot_time_t key_time(const knot_db_val_t *key)
+{
+	uint64_t r = 0;
+	(void)str_to_u64(key_str(key), &r);
+	return r;
 }
 
 static void free_key(knot_db_val_t *key)
@@ -843,7 +852,7 @@ int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
 	if ((it = db_api->iter_next(it)) != NULL && db_api->iter_key(it, &key) == KNOT_EOK) {
 		if (key_class(&key) == KASPDBKEY_OFFLINE_RECORDS &&
 		    knot_dname_cmp(key_dname(&key), r->rrsig.owner) == 0) {
-			*next_time = atol(key_str(&key));
+			*next_time = key_time(&key);
 		}
 	}
 cleanup:
@@ -871,7 +880,7 @@ int kasp_db_delete_offline_records(kasp_db_t *db, const knot_dname_t *zone,
 
 	while (ret == KNOT_EOK && iter != NULL && (ret = db_api->iter_key(iter, &key)) == KNOT_EOK &&
 	       key.len > TIME_STRLEN && key_class(&key) == KASPDBKEY_OFFLINE_RECORDS &&
-	       knot_time_cmp(atol(key_str(&key)), to_time) <= 0 &&
+	       knot_time_cmp(key_time(&key), to_time) <= 0 &&
 	       knot_dname_cmp(key_dname(&key), zone) == 0) {
 		ret = knot_db_lmdb_iter_del(iter);
 		iter = db_api->iter_next(iter);
