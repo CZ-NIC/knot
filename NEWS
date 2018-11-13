@@ -1,3 +1,28 @@
+Knot DNS 2.7.4 (2018-11-13)
+===========================
+
+Features:
+---------
+ - Added SNI configuration for TLS in kdig (Thanks to Alexander Schultz)
+
+Improvements:
+-------------
+ - Added warning log when DNSSEC events not successfully scheduled
+ - New semantic check on timer values in keymgr
+ - DS query no longer asks other addresses if got a negative answer
+ - Reintroduced 'rollover' configuration option for CDS/CDNSKEY publication
+ - Extended logging for zone loading
+ - Various documentation improvements
+
+Bugfixes:
+---------
+ - Failed to import module configuration #613
+ - Improper Cflags value in libknot.pc if built with embedded LMDB #615
+ - IXFR doesn't fall back to AXFR if malformed reply
+ - DNSSEC events not correctly scheduled for empty zone updates
+ - During algorithm rollover old keys get removed before DS TTL expires #617
+ - Maximum zone's RRSIG TTL not considered during algorithm rollover #620
+
 Knot DNS 2.7.3 (2018-10-11)
 ===========================
 
