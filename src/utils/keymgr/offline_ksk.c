@@ -94,7 +94,7 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg)
 
 	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
 		ctx->now = next;
-		printf("pregenerate %lu\n", ctx->now);
+		printf("pregenerate %"PRIu64"\n", ctx->now);
 		ret = pregenerate_once(ctx, &next);
 	}
 
@@ -133,7 +133,7 @@ int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg)
 			ret = KNOT_EOK;
 		}
 		free(buf);
-		printf("; next %lu\n", next);
+		printf("; next %"PRIu64"\n", next);
 	}
 	key_records_clear(&r);
 	return ret;
@@ -182,7 +182,7 @@ static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_
 	}
 	ret = dump_rrset_to_buf(dnskey, buf, buf_size);
 	if (ret >= 0) {
-		printf(";; KeySigningRequest %s %lu ===========\n%s", KSR_SKR_VER, ctx->now, *buf);
+		printf(";; KeySigningRequest %s %"PRIu64" ===========\n%s", KSR_SKR_VER, ctx->now, *buf);
 		ret = KNOT_EOK;
 	}
 
@@ -268,7 +268,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	}
 	ret = key_records_dump(&buf, &buf_size, &r);
 	if (ret == KNOT_EOK) {
-		printf(";; SignedKeyResponse %s %lu ===========\n%s", KSR_SKR_VER, ctx->now, buf);
+		printf(";; SignedKeyResponse %s %"PRIu64" ===========\n%s", KSR_SKR_VER, ctx->now, buf);
 		*next_sign = knot_get_next_zone_key_event(&keyset);
 	}
 
@@ -298,7 +298,7 @@ static void ksr_sign_header(zs_scanner_t *sc)
 	float header_ver;
 	knot_time_t next_timestamp = 0;
 	if (sc->error.code != KNOT_EOK ||
-	    sscanf((const char *)sc->buffer, "; KeySigningRequest %f %lu", &header_ver, &next_timestamp) < 1) {
+	    sscanf((const char *)sc->buffer, "; KeySigningRequest %f %"PRIu64, &header_ver, &next_timestamp) < 1) {
 		return;
 	}
 	(void)header_ver;
@@ -333,7 +333,7 @@ static void skr_import_header(zs_scanner_t *sc)
 	float header_ver;
 	knot_time_t next_timestamp;
 	if (sc->error.code != KNOT_EOK ||
-	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %lu", &header_ver, &next_timestamp) < 1) {
+	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %"PRIu64, &header_ver, &next_timestamp) < 1) {
 		return;
 	}
 	(void)header_ver;
