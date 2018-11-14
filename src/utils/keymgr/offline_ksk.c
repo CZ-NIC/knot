@@ -52,7 +52,8 @@ static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_keyset_t *keyset)
 {
 	// prepare the DNSKEY rrset to be signed
-	knot_rrset_t *dnskey = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_DNSKEY, KNOT_CLASS_IN, ctx->policy->dnskey_ttl, NULL);
+	knot_rrset_t *dnskey = knot_rrset_new(ctx->zone->dname, KNOT_RRTYPE_DNSKEY,
+	                                      KNOT_CLASS_IN, ctx->policy->dnskey_ttl, NULL);
 	if (dnskey == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -182,7 +183,8 @@ static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_
 	}
 	ret = dump_rrset_to_buf(dnskey, buf, buf_size);
 	if (ret >= 0) {
-		printf(";; KeySigningRequest %s %"PRIu64" ===========\n%s", KSR_SKR_VER, ctx->now, *buf);
+		printf(";; KeySigningRequest %s %"PRIu64" ===========\n%s",
+		       KSR_SKR_VER, ctx->now, *buf);
 		ret = KNOT_EOK;
 	}
 
@@ -233,7 +235,8 @@ typedef struct {
 	kdnssec_ctx_t *kctx;
 } ksr_sign_ctx_t;
 
-static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t now, knot_time_t *next_sign)
+static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t now,
+                           knot_time_t *next_sign)
 {
 	zone_keyset_t keyset = { 0 };
 	char *buf = NULL;
@@ -268,7 +271,8 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	}
 	ret = key_records_dump(&buf, &buf_size, &r);
 	if (ret == KNOT_EOK) {
-		printf(";; SignedKeyResponse %s %"PRIu64" ===========\n%s", KSR_SKR_VER, ctx->now, buf);
+		printf(";; SignedKeyResponse %s %"PRIu64" ===========\n%s",
+		       KSR_SKR_VER, ctx->now, buf);
 		*next_sign = knot_get_next_zone_key_event(&keyset);
 	}
 
@@ -298,7 +302,8 @@ static void ksr_sign_header(zs_scanner_t *sc)
 	float header_ver;
 	knot_time_t next_timestamp = 0;
 	if (sc->error.code != KNOT_EOK ||
-	    sscanf((const char *)sc->buffer, "; KeySigningRequest %f %"PRIu64, &header_ver, &next_timestamp) < 1) {
+	    sscanf((const char *)sc->buffer, "; KeySigningRequest %f %"PRIu64,
+	           &header_ver, &next_timestamp) < 1) {
 		return;
 	}
 	(void)header_ver;
@@ -306,9 +311,11 @@ static void ksr_sign_header(zs_scanner_t *sc)
 	// sign previous KSR and inbetween KSK changes
 	if (ctx->timestamp > 0) {
 		knot_time_t inbetween_from;
-		sc->error.code = ksr_sign_dnskey(ctx->kctx, &ctx->r.dnskey, ctx->timestamp, &inbetween_from);
+		sc->error.code = ksr_sign_dnskey(ctx->kctx, &ctx->r.dnskey, ctx->timestamp,
+		                                 &inbetween_from);
 		if (next_timestamp > 0 && sc->error.code == KNOT_EOK) {
-			sc->error.code = process_skr_between_ksrs(ctx, inbetween_from, next_timestamp);
+			sc->error.code = process_skr_between_ksrs(ctx, inbetween_from,
+			                                          next_timestamp);
 		}
 		key_records_clear_rdatasets(&ctx->r);
 	}
@@ -333,14 +340,16 @@ static void skr_import_header(zs_scanner_t *sc)
 	float header_ver;
 	knot_time_t next_timestamp;
 	if (sc->error.code != KNOT_EOK ||
-	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %"PRIu64, &header_ver, &next_timestamp) < 1) {
+	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %"PRIu64,
+	           &header_ver, &next_timestamp) < 1) {
 		return;
 	}
 	(void)header_ver;
 
 	// store previous SKR
 	if (ctx->timestamp > 0) {
-		sc->error.code = kasp_db_store_offline_records(*ctx->kctx->kasp_db, ctx->timestamp, &ctx->r);
+		sc->error.code = kasp_db_store_offline_records(*ctx->kctx->kasp_db,
+		                                               ctx->timestamp, &ctx->r);
 		key_records_clear_rdatasets(&ctx->r);
 	}
 
@@ -351,7 +360,8 @@ static void skr_import_header(zs_scanner_t *sc)
 static void skr_import_once(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
-	sc->error.code = key_records_add_rdata(&ctx->r, sc->r_type, sc->r_data, sc->r_data_length, sc->r_ttl);
+	sc->error.code = key_records_add_rdata(&ctx->r, sc->r_type, sc->r_data,
+	                                       sc->r_data_length, sc->r_ttl);
 }
 
 static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
