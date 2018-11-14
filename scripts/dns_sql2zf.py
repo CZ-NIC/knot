@@ -31,6 +31,7 @@ import re
 from subprocess import DEVNULL, PIPE, Popen
 
 # globals
+connection = None
 soa_serial = int(time.time())
 config = configparser.ConfigParser()
 fix_absolute = False
@@ -70,15 +71,15 @@ def remove_dot(s):
 def fix_abs(name):
     return remove_dot(name) + '.' if fix_absolute else name
 
-def domain_get_records(domain):
+def domain_get_records(domain, txn):
     if str(domain).isdigit():
-        return Records.select(Records.q.domain == domain)
+        return Records.select(Records.q.domain == domain, connection=txn)
     else:
         dn = remove_dot(domain)
-        return Records.select(AND(Domains.q.id == Records.q.domain, Domains.q.name == dn))
+        return Records.select(AND(Domains.q.id == Records.q.domain, Domains.q.name == dn), connection=txn)
 
-def domain_id2name(domain):
-    return Domains.select(Domains.q.id == domain)[0].name
+def domain_id2name(domain, txn):
+    return Domains.select(Domains.q.id == domain, connection=txn)[0].name
 
 def get_config(key, default_val):
     global config
@@ -146,21 +147,21 @@ def print_record(record, outfile):
     record = ("%s. %d %s %s\n" % (record.name, record.ttl, t, content))
     outfile.write(record)
 
-def print_domain(domain, change_type = 0):
+def print_domain(domain, change_type = 0, txn = None):
     global knotc_socket
-    dn = domain_id2name(domain) if str(domain).isdigit() else domain
+    dn = domain_id2name(domain, txn) if str(domain).isdigit() else domain
     f = open(zone_storage(dn), "w")
-    for r in domain_get_records(domain):
+    for r in domain_get_records(domain, txn):
         print_record(r, f)
     f.close()
     if knotc_socket is not None:
         knotc_send(change_type, dn)
     print("Updated zone %s" % dn, file=sys.stderr)
 
-def domain_from_change(change):
+def domain_from_change(change, txn):
     global knotc_socket
     if change.type >= 0:
-        print_domain(change.domain.name, change.type)
+        print_domain(change.domain.name, change.type, txn)
     else:
         dn = change.domain.name
         try:
@@ -173,15 +174,25 @@ def domain_from_change(change):
             print("Warning: removed zone '%s', but unspecified knotc socket." % dn, file=sys.stderr)
 
 def process_changes(startwith):
+    global connection
     processed = []
     try:
-        for ch in Changes.select(Changes.q.id > startwith):
-            domain_from_change(ch)
+        txn = connection.transaction()
+        for ch in Changes.select(Changes.q.id > startwith, connection=txn):
+            domain_from_change(ch, txn)
             processed.append(ch.id)
+        txn.commit()
     finally:
         if len(processed) > 0:
             print("Processed up to change_id %d" % processed[-1], file=sys.stderr)
         # TODO delete processed ?
+
+def process_all():
+    global connection
+    txn = connection.transaction()
+    for d in Domains.select(connection=txn):
+        print_domain(d.id, txn = txn)
+    txn.commit()
 
 def read_config_file(filename):
     global config
@@ -196,6 +207,7 @@ def main():
     global knotc_socket
     global soa_serial
     global fix_absolute
+    global connection
 
     argp = argparse.ArgumentParser(prog='dns_sql2zf', description="Export DNS records from Mysql or Postgres DB into zonefile.", epilog="(C) CZ.NIC, GPLv3") # TODO better epilog
     argp.add_argument(dest='domains', metavar='zone', nargs='*', help='Zone to be exported.')
@@ -232,8 +244,7 @@ def main():
         print_domain(domain)
 
     if args.all:
-        for d in Domains.select():
-            print_domain(d.id)
+        process_all()
 
     if args.from_changes is not None:
         process_changes(args.from_changes[0])
