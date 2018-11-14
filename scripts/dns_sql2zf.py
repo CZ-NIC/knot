@@ -116,6 +116,10 @@ def knotc_single(*args):
     if p.returncode != 0:
         raise Exception("error: knotc %s failed: '%s'" % (str(args), stderr))
 
+def zone_template(zone):
+    # this function is intended to be patched by user's bussiness logic
+    return None
+
 def knotc_send(type, zone):
     if type == 0:
         knotc_single("zone-reload", zone)
@@ -125,6 +129,9 @@ def knotc_send(type, zone):
             if type > 0:
                 knotc_single("conf-set", "zone[%s]" % zone)
                 knotc_single("conf-set", "zone[%s].file" % zone, zone_storage(zone))
+                template = zone_template(remove_dot(zone))
+                if template is not None:
+                    knotc_single("conf-set", "zone[%s].template" % zone, template)
             else:
                 knotc_single("conf-unset", "zone[%s]" % zone)
             knotc_single("conf-commit")
