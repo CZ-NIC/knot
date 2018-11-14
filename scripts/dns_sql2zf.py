@@ -37,6 +37,7 @@ fix_absolute = False
 storage = os.getcwd()
 knotc_binary = "knotc"
 knotc_socket = None
+slave_mode = False
 
 class Domains(SQLObject):
     # id = IntCol() # implicitly there
@@ -120,8 +121,9 @@ def zone_template(zone):
     return None
 
 def knotc_send(type, zone):
+    global slave_mode
     if type == 0:
-        knotc_single("zone-reload", zone)
+        knotc_single("zone-reload" if not slave_mode else "zone-refresh", zone)
     else:
         try:
             knotc_single("conf-begin")
@@ -155,11 +157,13 @@ def print_record(record, outfile):
 
 def print_domain(domain, change_type = 0, txn = None):
     global knotc_socket
+    global slave_mode
     dn = domain_id2name(domain, txn) if str(domain).isdigit() else domain
-    f = open(zone_storage(dn), "w")
-    for r in domain_get_records(domain, txn):
-        print_record(r, f)
-    f.close()
+    if not slave_mode:
+        f = open(zone_storage(dn), "w")
+        for r in domain_get_records(domain, txn):
+            print_record(r, f)
+        f.close()
     if knotc_socket is not None:
         knotc_send(change_type, dn)
     print("Updated zone %s" % dn, file=sys.stderr)
@@ -214,6 +218,7 @@ def main():
     global soa_serial
     global fix_absolute
     global connection
+    global slave_mode
 
     argp = argparse.ArgumentParser(prog='dns_sql2zf', description="Export DNS records from Mysql or Postgres DB into zonefile.", epilog="(C) CZ.NIC, GPLv3") # TODO better epilog
     argp.add_argument(dest='domains', metavar='zone', nargs='*', help='Zone to be exported.')
@@ -225,6 +230,7 @@ def main():
     argp.add_argument('--absolute-names', dest='fix_absolute', action='store_true', help="Interpret names in records' contents (e.g. CNAME, NS...) as absolute even if w/o trailing dot.")
     argp.add_argument('--from-changes', dest='from_changes', metavar="from_id", nargs='?', const=[0], help="Export zones listed in extra 'changes' table.")
     argp.add_argument('--knotc', dest='knotc_socket', metavar='knot_socket', nargs=1, help="Notify Knot DNS about changes (requires: $PATH/knotc).")
+    argp.add_argument('--slave', dest='slave', action='store_true', help="Don't generate zonefiles, use 'knotc zone-refresh' instead of zone-reload.")
     argp.add_argument('--version', action='version', version='dns_sql2zf 0.1')
     args = argp.parse_args()
 
@@ -242,6 +248,9 @@ def main():
 
     if args.knotc_socket is not None:
         knotc_socket = args.knotc_socket[0]
+
+    if args.slave:
+        slave_mode = True
 
     connection = connectionForURI(args.dburi[0])
     sqlhub.processConnection = connection
