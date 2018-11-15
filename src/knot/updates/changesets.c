@@ -188,7 +188,7 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 			// Remove empty node.
 			zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
 			                 counterpart->nsec3_nodes : counterpart->nodes;
-			zone_tree_delete_empty(t, node);
+			zone_tree_delete_empty(t, NULL, node);
 		}
 	}
 

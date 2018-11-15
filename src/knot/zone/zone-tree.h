@@ -71,7 +71,7 @@ inline static bool zone_tree_is_empty(const zone_tree_t *tree)
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
-int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
+int zone_tree_insert(zone_tree_t *tree, trie_cow_t *cow, zone_node_t *node);
 
 /*!
  * \brief Finds node with the given owner in the zone tree.
@@ -113,7 +113,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
  * \param tree  The tree to remove from.
  * \param node  The node to remove.
  */
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node);
+void zone_tree_delete_empty(zone_tree_t *tree, trie_cow_t *cow, zone_node_t *node);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.

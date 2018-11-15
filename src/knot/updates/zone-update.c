@@ -42,10 +42,11 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 		update->new_cont = old_contents;
 	} else {
 		update->new_cont_deep_copy = false;
-		ret = apply_prepare_zone_copy(old_contents, &update->new_cont);
-		if (ret != KNOT_EOK) {
+
+		update->new_cont = zone_contents_init_cow(old_contents);
+		if (update->new_cont == NULL) {
 			changeset_clear(&update->change);
-			return ret;
+			return KNOT_ENOMEM;
 		}
 	}
 
@@ -303,7 +304,7 @@ void zone_update_clear(zone_update_t *update)
 			zone_contents_deep_free(update->new_cont);
 		} else {
 			update_rollback(update->a_ctx);
-			update_free_zone(update->new_cont);
+			zone_contents_free(update->new_cont);
 		}
 		changeset_clear(&update->change);
 	} else if (update->flags & UPDATE_FULL) {
@@ -748,7 +749,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		if (update->new_cont_deep_copy) {
 			callrcu_wrapper(old_contents, zone_contents_deep_free, false);
 		} else {
-			callrcu_wrapper(old_contents, update_free_zone, false);
+			zone_contents_finalize_cow(new_contents, old_contents);
+			synchronize_rcu();
 		}
 		changeset_clear(&update->change);
 	}

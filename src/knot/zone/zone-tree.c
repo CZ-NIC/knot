@@ -27,7 +27,7 @@ zone_tree_t *zone_tree_create(void)
 	return trie_create(NULL);
 }
 
-int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
+int zone_tree_insert(zone_tree_t *tree, trie_cow_t *cow, zone_node_t *node)
 {
 	if (tree == NULL || node == NULL) {
 		return KNOT_EINVAL;
@@ -38,7 +38,11 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 	uint8_t *lf = knot_dname_lf(node->owner, lf_storage);
 	assert(lf);
 
-	*trie_get_ins(tree, (char *)lf + 1, *lf) = node;
+	if (cow != NULL) {
+		*trie_get_cow(cow, (char *)lf + 1, *lf) = node;
+	} else {
+		*trie_get_ins(tree, (char *)lf + 1, *lf) = node;
+	}
 
 	return KNOT_EOK;
 }
@@ -114,7 +118,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 }
 
 /*! \brief Removes node with the given owner from the zone tree. */
-static void remove_node(zone_tree_t *tree, const knot_dname_t *owner)
+static void remove_node(zone_tree_t *tree, trie_cow_t *cow, const knot_dname_t *owner)
 {
 	assert(owner);
 
@@ -128,7 +132,11 @@ static void remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 
 	trie_val_t *rval = trie_get_try(tree, (char *)lf + 1, *lf);
 	if (rval != NULL) {
-		trie_del(tree, (char *)lf + 1, *lf, NULL);
+		if (cow != NULL) {
+			trie_del_cow(cow, (char *)lf + 1, *lf, NULL);
+		} else {
+			trie_del(tree, (char *)lf + 1, *lf, NULL);
+		}
 	}
 }
 
@@ -141,7 +149,7 @@ static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
 	}
 }
 
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
+void zone_tree_delete_empty(zone_tree_t *tree, trie_cow_t *cow, zone_node_t *node)
 {
 	if (tree == NULL || node == NULL) {
 		return;
@@ -154,12 +162,12 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 			fix_wildcard_child(parent_node, node->owner);
 			if (parent_node->parent != NULL) { /* Is not apex */
 				// Recurse using the parent node, do not delete possibly empty parent.
-				zone_tree_delete_empty(tree, parent_node);
+				zone_tree_delete_empty(tree, cow, parent_node);
 			}
 		}
 
 		// Delete node
-		remove_node(tree, node->owner);
+		remove_node(tree, cow, node->owner);
 		node_free(node, NULL);
 	}
 }

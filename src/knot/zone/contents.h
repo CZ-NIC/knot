@@ -40,6 +40,9 @@ typedef struct zone_contents {
 	zone_tree_t *nodes;
 	zone_tree_t *nsec3_nodes;
 
+	trie_cow_t *nodes_cow;       /*!< Copy-on-write context of zone tree. */
+	trie_cow_t *nsec3_cow;       /*!< Copy-on-write context of NSEC3 tree. */
+
 	dnssec_nsec3_params_t nsec3_params;
 	size_t size;
 	uint32_t max_ttl;
@@ -265,6 +268,10 @@ void zone_contents_set_soa_serial(zone_contents_t *zone, uint32_t new_serial);
  * \brief Return true if zone is empty.
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
+
+zone_contents_t *zone_contents_init_cow(zone_contents_t *old_contents);
+
+void zone_contents_finalize_cow(zone_contents_t *zone, zone_contents_t *old_contents);
 
 /*!
  * \brief Measure zone contents size.

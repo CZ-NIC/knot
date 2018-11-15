@@ -461,7 +461,7 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 		goto cleanup;
 	}
 
-	if (zone_tree_insert(contents->nodes, contents->apex) != KNOT_EOK) {
+	if (zone_tree_insert(contents->nodes, NULL, contents->apex) != KNOT_EOK) {
 		goto cleanup;
 	}
 
@@ -493,7 +493,7 @@ static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parent
 		return ret;
 	}
 
-	ret = zone_tree_insert(zone->nodes, node);
+	ret = zone_tree_insert(zone->nodes, zone->nodes_cow, node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -527,7 +527,7 @@ static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parent
 			}
 
 			/* Insert node to a tree. */
-			ret = zone_tree_insert(zone->nodes, next_node);
+			ret = zone_tree_insert(zone->nodes, zone->nodes_cow, next_node);
 			if (ret != KNOT_EOK) {
 				node_free(next_node, NULL);
 				return ret;
@@ -572,7 +572,7 @@ static int add_nsec3_node(zone_contents_t *zone, zone_node_t *node)
 	}
 
 	// how to know if this is successful??
-	ret = zone_tree_insert(zone->nsec3_nodes, node);
+	ret = zone_tree_insert(zone->nsec3_nodes, zone->nsec3_cow, node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -660,7 +660,11 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != z->apex) {
-			zone_tree_delete_empty(nsec3 ? z->nsec3_nodes : z->nodes, node);
+			if (nsec3) {
+				zone_tree_delete_empty(z->nsec3_nodes, z->nsec3_cow, node);
+			} else {
+				zone_tree_delete_empty(z->nodes, z->nodes_cow, node);
+			}
 		}
 	}
 
@@ -682,7 +686,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 
 	// Normal additions need apex ... so we need to insert directly.
-	int ret = zone_tree_insert(out->nodes, apex_cpy);
+	int ret = zone_tree_insert(out->nodes, NULL, apex_cpy);
 	if (ret != KNOT_EOK) {
 		node_free(apex_cpy, NULL);
 		return ret;
@@ -1116,17 +1120,34 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 	return KNOT_EOK;
 }
 
+static void trie_cb_void(trie_val_t val, const char *key, size_t len, void *d)
+{
+	(void)val;
+	(void)key;
+	(void)len;
+	(void)d;
+}
+
 void zone_contents_free(zone_contents_t *contents)
 {
 	if (contents == NULL) {
 		return;
 	}
 
-	// free the zone tree, but only the structure
-	zone_tree_free(&contents->nodes);
-	zone_tree_free(&contents->nsec3_nodes);
+	if (contents->nodes_cow != NULL) {
+		assert(contents->nsec3_cow != NULL);
+		trie_cow_rollback(contents->nodes_cow, trie_cb_void, NULL);
+		trie_cow_rollback(contents->nsec3_cow, trie_cb_void, NULL);
 
-	dnssec_nsec3_params_free(&contents->nsec3_params);
+		// such contents were created diffeent way by zc_cow_init()
+		// and content->nodes shall be preserved as it's the original tree!
+	} else {
+		// free the zone tree, but only the structure
+		zone_tree_free(&contents->nodes);
+		zone_tree_free(&contents->nsec3_nodes);
+
+		dnssec_nsec3_params_free(&contents->nsec3_params);
+	}
 
 	free(contents);
 }
@@ -1183,6 +1204,43 @@ bool zone_contents_is_empty(const zone_contents_t *zone)
 	bool no_nsec3 = zone_tree_is_empty(zone->nsec3_nodes);
 
 	return (apex_empty && no_non_apex && no_nsec3);
+}
+
+void zone_contents_finalize_cow(zone_contents_t *zone, zone_contents_t *old_contents)
+{
+	assert(zone->nodes_cow != NULL);
+	assert(zone->nsec3_cow != NULL);
+	trie_cow_commit(zone->nodes_cow, trie_cb_void, NULL);
+	trie_cow_commit(zone->nsec3_cow, trie_cb_void, NULL);
+	zone->nodes_cow = NULL;
+	zone->nsec3_cow = NULL;
+	free(old_contents);
+}
+
+zone_contents_t *zone_contents_init_cow(zone_contents_t *old_contents)
+{
+	zone_contents_t *c = malloc(sizeof(*c));
+	if (c == NULL) {
+		return NULL;
+	}
+	memcpy(c, old_contents, sizeof(*c));
+
+	c->nodes_cow = trie_cow(old_contents->nodes, trie_cb_void, NULL);
+	if (c->nodes_cow == NULL) {
+		free(c);
+		return NULL;
+	}
+	c->nsec3_cow = trie_cow(old_contents->nsec3_nodes, trie_cb_void, NULL);
+	if (c->nsec3_cow == NULL) {
+		trie_cow_rollback(c->nodes_cow, trie_cb_void, NULL);
+		free(c);
+		return NULL;
+	}
+	c->nodes = trie_cow_new(c->nodes_cow);
+	c->nsec3_nodes = trie_cow_new(c->nsec3_cow);
+	// TODO consider if we need to set up c->apex
+
+	return c;
 }
 
 size_t zone_contents_measure_size(zone_contents_t *zone)

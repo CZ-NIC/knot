@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	/* 2. insert test */
 	unsigned passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		if (zone_tree_insert(t, NODE + i) != KNOT_EOK) {
+		if (zone_tree_insert(t, NULL, NODE + i) != KNOT_EOK) {
 			passed = 0;
 			break;
 		}

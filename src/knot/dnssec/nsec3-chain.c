@@ -527,7 +527,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 			break;
 		}
 
-		result = zone_tree_insert(nsec3_nodes, nsec3_node);
+		result = zone_tree_insert(nsec3_nodes, NULL, nsec3_node);
 		if (result != KNOT_EOK) {
 			break;
 		}
