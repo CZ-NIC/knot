@@ -13,7 +13,7 @@ import time
 ctl_socket = "/tmp/knot.sock"
 ctl_timeout = 2
 # InfluxDB parameters.
-host = "217.31.192.164"
+host = "192.168.1.1"
 port = "8086"
 db = "KnotDNS"
 instance = "Knot"
