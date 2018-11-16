@@ -1135,10 +1135,12 @@ void zone_contents_free(zone_contents_t *contents)
 	}
 
 	if (contents->nodes_cow != NULL) {
-		assert(contents->nsec3_cow != NULL);
 		trie_cow_rollback(contents->nodes_cow, trie_cb_void, NULL);
-		trie_cow_rollback(contents->nsec3_cow, trie_cb_void, NULL);
-
+		if (contents->nsec3_cow != NULL) {
+			trie_cow_rollback(contents->nsec3_cow, trie_cb_void, NULL);
+		} else {
+			assert(contents->nsec3_nodes == NULL);
+		}
 		// such contents were created diffeent way by zc_cow_init()
 		// and content->nodes shall be preserved as it's the original tree!
 	} else {
@@ -1209,9 +1211,12 @@ bool zone_contents_is_empty(const zone_contents_t *zone)
 void zone_contents_finalize_cow(zone_contents_t *zone, zone_contents_t *old_contents)
 {
 	assert(zone->nodes_cow != NULL);
-	assert(zone->nsec3_cow != NULL);
 	trie_cow_commit(zone->nodes_cow, trie_cb_void, NULL);
-	trie_cow_commit(zone->nsec3_cow, trie_cb_void, NULL);
+	if (zone->nsec3_cow != NULL) {
+		trie_cow_commit(zone->nsec3_cow, trie_cb_void, NULL);
+	} else {
+		assert(zone->nsec3_nodes == NULL);
+	}
 	zone->nodes_cow = NULL;
 	zone->nsec3_cow = NULL;
 	free(old_contents);
@@ -1230,14 +1235,16 @@ zone_contents_t *zone_contents_init_cow(zone_contents_t *old_contents)
 		free(c);
 		return NULL;
 	}
-	c->nsec3_cow = trie_cow(old_contents->nsec3_nodes, trie_cb_void, NULL);
-	if (c->nsec3_cow == NULL) {
-		trie_cow_rollback(c->nodes_cow, trie_cb_void, NULL);
-		free(c);
-		return NULL;
+	if (old_contents->nsec3_nodes != NULL) {
+		c->nsec3_cow = trie_cow(old_contents->nsec3_nodes, trie_cb_void, NULL);
+		if (c->nsec3_cow == NULL) {
+			trie_cow_rollback(c->nodes_cow, trie_cb_void, NULL);
+			free(c);
+			return NULL;
+		}
 	}
 	c->nodes = trie_cow_new(c->nodes_cow);
-	c->nsec3_nodes = trie_cow_new(c->nsec3_cow);
+	c->nsec3_nodes = (old_contents->nsec3_nodes != NULL ? trie_cow_new(c->nsec3_cow) : NULL);
 	// TODO consider if we need to set up c->apex
 
 	return c;
