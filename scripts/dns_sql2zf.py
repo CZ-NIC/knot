@@ -44,9 +44,9 @@ class Domains(SQLObject):
     # id = IntCol() # implicitly there
     name = StringCol()
     master = StringCol()
-    last_check = StringCol()
+    last_check = IntCol()
     type = StringCol()
-    notified_serial = StringCol()
+    notified_serial = IntCol()
     account = StringCol()
 
 class Records(SQLObject):
@@ -57,9 +57,9 @@ class Records(SQLObject):
     content = StringCol()
     ttl = IntCol()
     prio = IntCol()
-    change_date = StringCol()
+    change_date = IntCol()
     ordername = StringCol()
-    auth = StringCol()
+    auth = IntCol()
 
 class Changes(SQLObject):
     # id = IntCol() # implicitly there
