@@ -24,6 +24,7 @@
 #include "utils/keymgr/bind_privkey.h"
 #include "contrib/base64.h"
 #include "contrib/ctype.h"
+#include "contrib/strtonum.h"
 #include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
 #include "libdnssec/error.h"
@@ -123,22 +124,19 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 	// parse args
 	for (int i = 0; i < argc; i++) {
 		if (!just_timing && strncasecmp(argv[i], "algorithm=", 10) == 0) {
-			if (is_digit(argv[i][10]) && atol(argv[i] + 10) < 256) {
-				*algorithm = atol(argv[i] + 10);
-				continue;
-			}
-			int al;
-			for (al = 0; al < 256; al++) {
+			int alg = 256; // invalid value
+			(void)str_to_int(argv[i] + 10, &alg, 0, 255);
+			for (int al = 0; al < 256 && alg > 255; al++) {
 				if (algnames[al] != NULL &&
 				    strcasecmp(argv[i] + 10, algnames[al]) == 0) {
-					*algorithm = al;
-					break;
+					alg = al;
 				}
 			}
-			if (al == 256) {
+			if (alg > 255) {
 				printf("Unknown algorithm: %s\n", argv[i] + 10);
 				return false;
 			}
+			*algorithm = alg;
 		} else if (strncasecmp(argv[i], "ksk=", 4) == 0) {
 			bitmap_set(flags, DNSKEY_GENERATE_KSK, str2bool(argv[i] + 4));
 		} else if (strncasecmp(argv[i], "zsk=", 4) == 0) {
@@ -147,7 +145,10 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_SPEC, true);
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, str2bool(argv[i] + 4));
 		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
-			*keysize = atol(argv[i] + 5);
+			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
+				printf("Invalid size: '%s'\n", argv[i] + 5);
+				return false;
+			}
 		} else if (!just_timing && strncasecmp(argv[i], "addtopolicy=", 12) == 0) {
 			*addtopolicy = argv[i] + 12;
 		} else if (!init_timestamps(argv[i], timing)) {
@@ -617,20 +618,6 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
 	return KNOT_EOK;
 }
 
-static long is_uint32(const char *string)
-{
-	if (*string == '\0') {
-		return -1;
-	}
-	for (const char *p = string; *p != '\0'; p++) {
-		if (!is_digit(*p)) {
-			return -1;
-		}
-	}
-	long res = atol(string);
-	return (res <= UINT32_MAX ? res : -1);
-}
-
 static bool is_hex(const char *string)
 {
 	for (const char *p = string; *p != '\0'; p++) {
@@ -643,8 +630,10 @@ static bool is_hex(const char *string)
 
 int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key)
 {
-	long spec_tag = is_uint32(key_spec), spec_len = strlen(key_spec);
-	if (spec_tag < 0 && !is_hex(key_spec)) {
+	uint16_t keytag;
+	bool has_keytag = (str_to_u16(key_spec, &keytag) == KNOT_EOK);
+	long spec_len = strlen(key_spec);
+	if (!has_keytag && !is_hex(key_spec)) {
 		printf("Error in key specification.\n");
 		return KNOT_EINVAL;
 	}
@@ -652,8 +641,8 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 	*key = NULL;
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *candidate = &ctx->zone->keys[i];
-		if ((spec_tag >= 0 && dnssec_key_get_keytag(candidate->key) == spec_tag) ||
-		    (spec_tag < 0 && strncmp(candidate->id, key_spec, spec_len) == 0)) {
+		if ((has_keytag && dnssec_key_get_keytag(candidate->key) == keytag) ||
+		    (!has_keytag && strncmp(candidate->id, key_spec, spec_len) == 0)) {
 			if (*key == NULL) {
 				*key = candidate;
 			}

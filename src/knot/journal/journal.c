@@ -597,7 +597,8 @@ static void unmake_header(const knot_db_val_t *from, uint32_t *serial_to,
 
 static int first_digit(char * of)
 {
-	return atoi(of);
+	unsigned maj, min;
+	return sscanf(of, "%u.%u", &maj, &min) == 2 ? maj : -1;
 }
 
 static void md_update_journal_count(txn_t * txn, int change_amount)
