@@ -123,7 +123,10 @@ def zone_template(zone):
 def knotc_send(type, zone):
     global slave_mode
     if type == 0:
-        knotc_single("zone-reload" if not slave_mode else "zone-refresh", zone)
+        try:
+            knotc_single("zone-reload" if not slave_mode else "zone-refresh", zone)
+        except:
+            knotc_send(1, zone)
     else:
         try:
             knotc_single("conf-begin")
