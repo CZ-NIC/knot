@@ -221,6 +221,7 @@ static int adjust_pointers(zone_node_t **tnode, void *data)
 
 	// set pointer to previous node
 	node->prev = args->previous_node;
+	printf("c %p node %s prev %p\n", args->zone->nodes, node->owner, node->prev);
 
 	// update remembered previous pointer only if authoritative
 	if (!(node->flags & NODE_FLAGS_NONAUTH) && node->rrset_count > 0) {
@@ -849,6 +850,10 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 	} else if (found == 1) {
 		// exact match
 
+		if (!prev) {
+			printf("!! c %p node %s prev %p\n", zone->nodes, node->owner, prev);
+			fflush(stdout);
+		}
 		assert(node && prev);
 
 		*match = node;
@@ -966,6 +971,7 @@ static int adjust_nodes(zone_tree_t *nodes, zone_adjust_arg_t *adjust_arg,
 	int ret = zone_tree_apply(nodes, callback, adjust_arg);
 
 	if (adjust_arg->first_node) {
+		printf("+ c %p node %s prev %p\n", nodes, adjust_arg->first_node->owner, adjust_arg->previous_node);
 		adjust_arg->first_node->prev = adjust_arg->previous_node;
 	}
 
@@ -1246,6 +1252,8 @@ zone_contents_t *zone_contents_init_cow(zone_contents_t *old_contents)
 	c->nodes = trie_cow_new(c->nodes_cow);
 	c->nsec3_nodes = (old_contents->nsec3_nodes != NULL ? trie_cow_new(c->nsec3_cow) : NULL);
 	// TODO consider if we need to set up c->apex
+
+	printf("init cow old %p new %p\n", old_contents->nodes, c->nodes);
 
 	return c;
 }
