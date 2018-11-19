@@ -38,6 +38,29 @@ typedef enum {
 	ACL_ACTION_UPDATE   = 3
 } acl_action_t;
 
+/*! \brief ACL update owner matching options. */
+typedef enum {
+	ACL_UPDATE_MATCH_NONE = 0,
+	ACL_UPDATE_MATCH_KEY  = 1,
+	ACL_UPDATE_MATCH_ZONE = 2,
+	ACL_UPDATE_MATCH_NAME = 3,
+} acl_update_t;
+
+/*! \bref ACL update owner comparison options. */
+typedef enum {
+	ACL_UPDATE_CMP_LEQ = 0,
+	ACL_UPDATE_CMP_EQ  = 1,
+	ACL_UPDATE_CMP_LE  = 2,
+} acl_update_cmp_t;
+
+/*!
+ * \brief Checks if the incoming update satisfies configured update rules.
+ *
+ *
+ */
+bool acl_update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
+                      const knot_dname_t *zone_name, knot_pkt_t *query);
+
 /*!
  * \brief Checks if the address and/or tsig key matches given ACL list.
  *
@@ -52,6 +75,7 @@ typedef enum {
  * \retval True if authenticated.
  */
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
-                 const struct sockaddr_storage *addr, knot_tsig_key_t *tsig);
+                 const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
+                 const knot_dname_t *zone_name, knot_pkt_t *query);
 
 /*! @} */

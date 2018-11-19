@@ -16,8 +16,16 @@
 
 #include "knot/updates/acl.h"
 
+bool acl_update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
+                      const knot_dname_t *zone_name, knot_pkt_t *query)
+{
+
+	return true;
+}
+
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
-                 const struct sockaddr_storage *addr, knot_tsig_key_t *tsig)
+                 const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
+                 const knot_dname_t *zone_name, knot_pkt_t *query)
 {
 	if (acl == NULL || addr == NULL || tsig == NULL) {
 		return NULL;
@@ -81,6 +89,12 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 			default: /* No match. */
 				goto next_acl;
 			}
+		}
+
+		/* If the action is update, check for update rule match. */
+		if (action == ACL_ACTION_UPDATE &&
+		    !acl_update_match(conf, acl, tsig->name, zone_name, query)) {
+			goto next_acl;
 		}
 
 		/* Check if denied. */
