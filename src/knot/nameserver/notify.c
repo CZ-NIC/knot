@@ -32,7 +32,7 @@
 static int notify_check_query(knotd_qdata_t *qdata)
 {
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_NOTIFY);
+	NS_NEED_AUTH(qdata, ACL_ACTION_NOTIFY);
 	/* RFC1996 requires SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 

@@ -66,8 +66,8 @@ struct rrsig_info {
  * \param qdata      Query data.
  * \return true if accepted, false if denied.
  */
-bool process_query_acl_check(conf_t *conf, const knot_dname_t *zone_name,
-                             acl_action_t action, knotd_qdata_t *qdata);
+bool process_query_acl_check(conf_t *conf, acl_action_t action,
+                             knotd_qdata_t *qdata);
 
 /*!
  * \brief Verify current query transaction security and update query data.
