@@ -147,6 +147,8 @@ libknotd_la_SOURCES = \
 	knot/worker/pool.h			\
 	knot/worker/queue.c			\
 	knot/worker/queue.h			\
+	knot/zone/adjust.c			\
+	knot/zone/adjust.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
 	knot/zone/node.c			\
