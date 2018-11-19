@@ -416,6 +416,10 @@ update, etc.).
      key: key_id ...
      action: notify | transfer | update ...
      deny: BOOL
+     update-owner-match: key | zone | name
+     update-owner-cmp: <= | = | <
+     update-name: STR ...
+     update-type: STR ...
 
 .. _acl_id:
 
@@ -469,6 +473,26 @@ If enabled, instead of allowing, deny the specified :ref:`action<acl_action>`,
 items. If no action is specified, deny all actions.
 
 *Default:* off
+
+.. _acl_update_owner_match:
+
+update-owner-match
+------------------
+
+.. _acl_update_owner_cmp:
+
+update-owner-cmp
+----------------
+
+.. _acl_update_name:
+
+update-name
+-----------
+
+.. _acl_update_type:
+
+update-type
+-----------
 
 .. _Control section:
 

@@ -101,85 +101,85 @@ static void test_acl_allowed(void)
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET6, "2001::1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_NONE, &addr, &key1);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_NONE, &addr, &key1, zone_name, NULL);
 	ok(ret == true, "Address, key, empty action");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET6, "2001::1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key1);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key1, zone_name, NULL);
 	ok(ret == true, "Address, key, action match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET6, "2001::2", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key1);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key1, zone_name, NULL);
 	ok(ret == false, "Address not match, key, action match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET6, "2001::1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0, zone_name, NULL);
 	ok(ret == false, "Address match, no key, action match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET6, "2001::1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key2);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key2, zone_name, NULL);
 	ok(ret == false, "Address match, key not match, action match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET6, "2001::1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key1);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key1, zone_name, NULL);
 	ok(ret == false, "Address, key match, action not match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET, "240.0.0.1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key0, zone_name, NULL);
 	ok(ret == true, "Second address match, no key, action match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET, "240.0.0.1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key1);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key1, zone_name, NULL);
 	ok(ret == false, "Second address match, extra key, action match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET, "240.0.0.2", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key0, zone_name, NULL);
 	ok(ret == false, "Denied address match, no key, action match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET, "240.0.0.2", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_UPDATE, &addr, &key0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_UPDATE, &addr, &key0, zone_name, NULL);
 	ok(ret == true, "Denied address match, no key, action not match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET, "240.0.0.3", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_UPDATE, &addr, &key0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_UPDATE, &addr, &key0, zone_name, NULL);
 	ok(ret == false, "Denied address match, no key, no action");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET, "1.1.1.1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_UPDATE, &addr, &key3);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_UPDATE, &addr, &key3, zone_name, NULL);
 	ok(ret == true, "Arbitrary address, second key, action match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET, "100.0.0.1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0, zone_name, NULL);
 	ok(ret == true, "IPv4 address from range, no key, action match");
 
 	acl = conf_zone_get(conf(), C_ACL, zone_name);
 	ok(acl.code == KNOT_EOK, "Get zone ACL");
 	check_sockaddr_set(&addr, AF_INET6, "::1", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0, zone_name, NULL);
 	ok(ret == true, "IPv6 address from range, no key, action match");
 
 	conf_free(conf());
