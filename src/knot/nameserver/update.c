@@ -460,8 +460,7 @@ int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
 	/* Need valid transaction security. */
-	zone_t *zone = (zone_t *)qdata->extra->zone;
-	NS_NEED_AUTH(qdata, zone->name, ACL_ACTION_UPDATE);
+	NS_NEED_AUTH(qdata, ACL_ACTION_UPDATE);
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 	/* Check frozen zone. */
@@ -470,7 +469,7 @@ int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Restore original QNAME for DDNS ACL checks. */
 	process_query_qname_case_restore(qdata->query, qdata);
 	/* Store update into DDNS queue. */
-	int ret = update_enqueue(zone, qdata);
+	int ret = update_enqueue((zone_t *)qdata->extra->zone, qdata);
 	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}

@@ -388,6 +388,10 @@ acl:
     key: key_id ...
     action: notify | transfer | update ...
     deny: BOOL
+    update\-owner\-match: key | zone | name
+    update\-owner\-cmp: <= | = | <
+    update\-name: STR ...
+    update\-type: STR ...
 .ft P
 .fi
 .UNINDENT
@@ -429,6 +433,10 @@ If enabled, instead of allowing, deny the specified \fI\%action\fP,
 items. If no action is specified, deny all actions.
 .sp
 \fIDefault:\fP off
+.SS update\-owner\-match
+.SS update\-owner\-cmp
+.SS update\-name
+.SS update\-type
 .SH CONTROL SECTION
 .sp
 Configuration of the server control interface.
