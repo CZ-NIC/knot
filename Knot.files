@@ -212,6 +212,8 @@ src/knot/worker/pool.c
 src/knot/worker/pool.h
 src/knot/worker/queue.c
 src/knot/worker/queue.h
+src/knot/zone/adjust.c
+src/knot/zone/adjust.h
 src/knot/zone/contents.c
 src/knot/zone/contents.h
 src/knot/zone/node.c
