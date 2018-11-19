@@ -16,8 +16,120 @@
 
 #include "knot/updates/acl.h"
 
+static bool check_rr_type(uint16_t type, conf_val_t *types)
+{
+	if (types == NULL) {
+		return true;
+	}
+	while (types->code == KNOT_EOK) {
+		uint16_t ctype;
+		int ret = knot_rrtype_from_string(conf_str(types), &ctype);
+		if (ret != 0) {
+			return false;
+		}
+		if (type == ctype) {
+			return true;
+		}
+		conf_val_next(types);
+	}
+	return false;
+}
+
+static bool compare_dnames(const knot_dname_t *rr_owner,
+                           const knot_dname_t *name, acl_update_cmp_t cmp)
+{
+	int ret = knot_dname_in_bailiwick(rr_owner, name);
+	switch(cmp) {
+	case ACL_UPDATE_CMP_LEQ:
+		return (ret >= 0);
+	case ACL_UPDATE_CMP_EQ:
+		return (ret == 0);
+	case ACL_UPDATE_CMP_LE:
+		return (ret > 0);
+	default:
+		return false;
+	}
+}
+
+static bool check_owner_name(knot_dname_t *rr_owner, const knot_dname_t *name,
+                             conf_val_t *names, acl_update_cmp_t cmp)
+{
+	if (name != NULL) {
+		return compare_dnames(rr_owner, name, cmp);
+	} else {
+		if (names == NULL) {
+			return true;
+		}
+		while (names->code == KNOT_EOK) {
+			name = conf_dname(names);
+			if (compare_dnames(rr_owner, name, cmp)) {
+				return true;
+			}
+			conf_val_next(names);
+		}
+	}
+	return false;
+}
+
+bool acl_update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
+                      const knot_dname_t *zone_name, knot_pkt_t *query)
+{
+	if (query == NULL) {
+		return true;
+	}
+
+	acl_update_match_t match = ACL_UPDATE_MATCH_NONE;
+	conf_val_t val = conf_id_get(conf, C_ACL, C_UPDATE_OWNER_MATCH, acl);
+	if (val.code == KNOT_EOK) {
+		match = conf_opt(&val);
+	}
+
+	acl_update_cmp_t cmp = ACL_UPDATE_CMP_LEQ;
+	val = conf_id_get(conf, C_ACL, C_UPDATE_OWNER_CMP, acl);
+	if (val.code == KNOT_EOK) {
+		cmp = conf_opt(&val);
+	}
+
+	const knot_dname_t *name = NULL;
+	if (match == ACL_UPDATE_MATCH_KEY) {
+		name = key_name;
+	} else if (match == ACL_UPDATE_MATCH_ZONE) {
+		name = zone_name;
+	}
+
+	conf_val_t val_names = conf_id_get(conf, C_ACL, C_UPDATE_NAME, acl);
+	conf_val_t *names = (match == ACL_UPDATE_MATCH_NAME &&
+	                     conf_val_count(&val_names) > 0) ? &val_names : NULL;
+	conf_val_t val_types = conf_id_get(conf, C_ACL, C_UPDATE_TYPE, acl);
+	conf_val_t *types = (conf_val_count(&val_types) > 0) ? &val_types : NULL;
+
+	/* Updated RRs are contained in the Authority section of the query
+	 * (RFC 2136 Section 2.2)
+	 */
+	uint16_t pos = query->sections[KNOT_AUTHORITY].pos;
+	uint16_t count = query->sections[KNOT_AUTHORITY].count;
+
+	for (uint16_t i = pos; i < pos + count; i++) {
+		knot_rrset_t *rr = &query->rr[i];
+		if (types != NULL) {
+			conf_val(types);
+		}
+		if (!check_rr_type(rr->type, types)) {
+			return false;
+		}
+		if (names != NULL) {
+			conf_val(names);
+		}
+		if (!check_owner_name(rr->owner, name, names, cmp)) {
+			return false;
+		}
+	}
+	return true;
+}
+
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
-                 const struct sockaddr_storage *addr, knot_tsig_key_t *tsig)
+                 const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
+                 const knot_dname_t *zone_name, knot_pkt_t *query)
 {
 	if (acl == NULL || addr == NULL || tsig == NULL) {
 		return NULL;
@@ -81,6 +193,12 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 			default: /* No match. */
 				goto next_acl;
 			}
+		}
+
+		/* If the action is update, check for update rule match. */
+		if (action == ACL_ACTION_UPDATE &&
+		    !acl_update_match(conf, acl, tsig->name, zone_name, query)) {
+			goto next_acl;
 		}
 
 		/* Check if denied. */
