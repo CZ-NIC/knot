@@ -416,6 +416,10 @@ update, etc.).
      key: key_id ...
      action: notify | transfer | update ...
      deny: BOOL
+     update-type: STR ...
+     update-owner: key | zone | name
+     update-owner-match: sub-or-equal | equal | sub
+     update-owner-name: STR ...
 
 .. _acl_id:
 
@@ -469,6 +473,64 @@ If enabled, instead of allowing, deny the specified :ref:`action<acl_action>`,
 items. If no action is specified, deny all actions.
 
 *Default:* off
+
+.. _acl_update_type:
+
+update-type
+-----------
+
+A list of allowed types of Resource Records in a zone update. Every record in an update
+must match one of the specified types.
+
+*Default:* not set
+
+.. _acl_update_owner:
+
+update-owner
+------------
+
+This option restricts possible owners of Resource Records in a zone update by comparing
+them to either the :ref:`TSIG key<acl_key>` identity, the current zone name, or to a list of
+domain names given by the :ref:`update-owner-name<acl_update_owner_name>` option.
+The comparison method is given by the :ref:`update-owner-match<acl_update_owner_match>` option.
+
+Possible values:
+
+- ``key`` — The owner of each updated RR must match the identity of the TSIG key if used.
+- ``name`` — The owner of each updated RR must match at least one name in the
+  :ref:`update-owner-name<acl_update_owner_name>` list.
+- ``zone`` — The owner of each updated RR must match the current zone name.
+
+*Default:* not set
+
+.. _acl_update_owner_match:
+
+update-owner-match
+------------------
+
+This option defines how the owners of Resource Records in an update are matched to the domain name(s)
+set by the :ref:`update-owner<acl_update_owner>` option.
+
+Possible values:
+
+- ``sub-or-equal`` — The owner of each Resource Record in an update must either be equal to
+  or be a subdomain of at least one domain set by :ref:`update-owner<acl_update_owner>`.
+- ``equal`` — The owner of each updated RR must be equal to at least one domain set by
+  :ref:`update-owner<acl_update_owner>`.
+- ``sub`` — The owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
+  one domain set by :ref:`update-owner<acl_update_owner>`.
+
+*Default:* sub-or-equal
+
+.. _acl_update_owner_name:
+
+update-owner-name
+-----------------
+
+A list of allowed owners of RRs in a zone update used with :ref:`update-owner<acl_update_owner>`
+set to ``name``.
+
+*Default:* not set
 
 .. _Control section:
 
@@ -751,7 +813,7 @@ Possible values:
 ksk-size
 --------
 
-A length of newly generated :abbr:`KSK (Key Signing Key)` or 
+A length of newly generated :abbr:`KSK (Key Signing Key)` or
 :abbr:`CSK (Combined Signing Key)` keys.
 
 *Default:* 2048 (rsa*), 256 (ecdsap256), 384 (ecdsap384), 256 (ed25519)
