@@ -630,7 +630,7 @@ static bool is_hex(const char *string)
 
 int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key)
 {
-	uint16_t keytag;
+	uint16_t keytag = 0;
 	bool has_keytag = (str_to_u16(key_spec, &keytag) == KNOT_EOK);
 	long spec_len = strlen(key_spec);
 	if (!has_keytag && !is_hex(key_spec)) {
