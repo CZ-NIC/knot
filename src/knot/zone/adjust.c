@@ -199,9 +199,9 @@ int zone_adjust_additionals(zone_node_t *node, const zone_contents_t *zone)
 
 int zone_adjust_normal(zone_node_t *node, const zone_contents_t *zone)
 {
-	int ret = zone_adjust_node_pointers(node, zone);
+	int ret = zone_adjust_nsec3_pointers(node, zone);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_nsec3_pointers(node, zone);
+		ret = zone_adjust_node_pointers(node, zone);
 	}
 	if (ret == KNOT_EOK) {
 		ret = zone_adjust_additionals(node, zone);
