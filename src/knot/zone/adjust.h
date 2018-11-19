@@ -18,6 +18,8 @@
 
 #include "knot/zone/contents.h"
 
+typedef int (*adjust_cb_t)(zone_node_t *, const zone_contents_t *);
+
 int zone_adjust_node_pointers(zone_node_t *node, const zone_contents_t *zone);
 
 int zone_adjust_nsec3_pointers(zone_node_t *node, const zone_contents_t *zone);
@@ -26,3 +28,8 @@ int zone_adjust_nsec3_chain(zone_node_t *node, const zone_contents_t *zone);
 
 int zone_adjust_additionals(zone_node_t *node, const zone_contents_t *zone);
 
+int zone_adjust_normal(zone_node_t *node, const zone_contents_t *zone);
+
+int zone_adjust_pointers(zone_node_t *node, const zone_contents_t *zone);
+
+int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb);

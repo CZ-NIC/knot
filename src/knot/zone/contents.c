@@ -30,12 +30,6 @@ typedef struct {
 	void *data;
 } zone_tree_func_t;
 
-typedef struct {
-	zone_node_t *first_node;
-	zone_contents_t *zone;
-	zone_node_t *previous_node;
-} zone_adjust_arg_t;
-
 static int tree_apply_cb(zone_node_t **node, void *data)
 {
 	if (node == NULL || data == NULL) {
@@ -94,130 +88,15 @@ static int destroy_node_rrsets_from_tree(zone_node_t **node, void *data)
 	return KNOT_EOK;
 }
 
-static int adjust_pointers(zone_node_t **tnode, void *data)
-{
-	assert(tnode != NULL);
-	assert(data != NULL);
-
-	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	zone_node_t *node = *tnode;
-
-	// remember first node
-	if (args->first_node == NULL) {
-		args->first_node = node;
-	}
-
-	zone_adjust_node_pointers(node, args->zone);
-
-	// set pointer to previous node
-	node->prev = args->previous_node;
-
-	// update remembered previous pointer only if authoritative
-	if (!(node->flags & NODE_FLAGS_NONAUTH) && node->rrset_count > 0) {
-		args->previous_node = node;
-	}
-
-	return KNOT_EOK;
-}
-
 static int measure_size(zone_node_t *node, void *data){
 
-	size_t *size = data;
-	int rrset_count = node->rrset_count;
-	for (int i = 0; i < rrset_count; i++) {
-		knot_rrset_t rrset = node_rrset_at(node, i);
-		*size += knot_rrset_size(&rrset);
-	}
+	node_size(node, data);
 	return KNOT_EOK;
 }
 
 static int measure_max_ttl(zone_node_t *node, void *data){
 
-	uint32_t *max = data;
-	int rrset_count = node->rrset_count;
-	for (int i = 0; i < rrset_count; i++) {
-		*max = MAX(*max, node->rrs[i].ttl);
-	}
-	return KNOT_EOK;
-}
-
-/*!
- * \brief Adjust normal (non NSEC3) node.
- *
- * Set:
- * - pointer to wildcard childs in parent nodes if applicable
- * - flags (delegation point, non-authoritative)
- * - pointer to previous node
- * - parent pointers
- *
- * \param tnode  Zone node to adjust.
- * \param data   Adjusting parameters (zone_adjust_arg_t *).
- */
-static int adjust_normal_node(zone_node_t **tnode, void *data)
-{
-	assert(tnode != NULL && *tnode);
-	assert(data != NULL);
-
-	// Do cheap operations first
-	int ret = adjust_pointers(tnode, data);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	zone_adjust_arg_t *arg = data;
-	measure_size(*tnode, &arg->zone->size);
-	measure_max_ttl(*tnode, &arg->zone->max_ttl);
-
-	// Connect nodes to their NSEC3 nodes
-	return zone_adjust_nsec3_pointers(*tnode, arg->zone);
-}
-
-/*!
- * \brief Adjust NSEC3 node.
- *
- * Set:
- * - pointer to previous node
- * - pointer to node stored in owner dname
- *
- * \param tnode  Zone node to adjust.
- * \param data   Adjusting parameters (zone_adjust_arg_t *).
- */
-static int adjust_nsec3_node(zone_node_t **tnode, void *data)
-{
-	assert(data != NULL);
-	assert(tnode != NULL);
-
-	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	zone_node_t *node = *tnode;
-
-	// remember first node
-	if (args->first_node == NULL) {
-		args->first_node = node;
-	}
-
-	// set previous node
-	node->prev = args->previous_node;
-	args->previous_node = node;
-
-	measure_size(*tnode, &args->zone->size);
-	measure_max_ttl(*tnode, &args->zone->max_ttl);
-
-	zone_adjust_nsec3_chain(node, args->zone);
-
-	return KNOT_EOK;
-}
-
-/*! \brief Discover additional records for affected nodes. */
-static int adjust_additional(zone_node_t **tnode, void *data)
-{
-	assert(data != NULL);
-	assert(tnode != NULL);
-
-	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	zone_node_t *node = *tnode;
-
-	zone_adjust_additionals(node, args->zone);
-
+	node_max_ttl(node, data);
 	return KNOT_EOK;
 }
 
@@ -647,7 +526,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
                              const zone_node_t **closest,
                              const zone_node_t **previous)
 {
-	if (!zone || !name || !match || !closest || !previous) {
+	if (!zone || !name || !match || !closest) {
 		return KNOT_EINVAL;
 	}
 
@@ -662,7 +541,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 	if (found < 0) {
 		// error
 		return found;
-	} else if (found == 1) {
+	} else if (found == 1 && previous != NULL) {
 		// exact match
 
 		assert(node && prev);
@@ -670,6 +549,14 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		*match = node;
 		*closest = node;
 		*previous = prev;
+
+		return ZONE_NAME_FOUND;
+	} else if (found == 1 && previous == NULL) {
+		// exact match, zone not adjusted yet
+
+		assert(node);
+		*match = node;
+		*closest = node;
 
 		return ZONE_NAME_FOUND;
 	} else {
@@ -686,7 +573,9 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 
 		*match = NULL;
 		*closest = node;
-		*previous = prev;
+		if (previous != NULL) {
+			*previous = prev;
+		}
 
 		return ZONE_NAME_NOT_FOUND;
 	}
@@ -770,105 +659,14 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
 	return zone_contents_find_node(contents, wildcard);
 }
 
-static int adjust_nodes(zone_tree_t *nodes, zone_adjust_arg_t *adjust_arg,
-                        zone_tree_apply_cb_t callback)
-{
-	assert(adjust_arg);
-	assert(callback);
-
-	if (zone_tree_is_empty(nodes)) {
-		return KNOT_EOK;
-	}
-
-	adjust_arg->first_node = NULL;
-	adjust_arg->previous_node = NULL;
-
-	int ret = zone_tree_apply(nodes, callback, adjust_arg);
-
-	if (adjust_arg->first_node) {
-		adjust_arg->first_node->prev = adjust_arg->previous_node;
-	}
-
-	return ret;
-}
-
-static int load_nsec3param(zone_contents_t *contents)
-{
-	assert(contents);
-	assert(contents->apex);
-
-	const knot_rdataset_t *rrs = NULL;
-	rrs = node_rdataset(contents->apex, KNOT_RRTYPE_NSEC3PARAM);
-	if (rrs == NULL) {
-		dnssec_nsec3_params_free(&contents->nsec3_params);
-		return KNOT_EOK;
-	}
-
-	if (rrs->count < 1) {
-		return KNOT_EINVAL;
-	}
-
-	dnssec_binary_t rdata = {
-		.size = rrs->rdata->len,
-		.data = rrs->rdata->data,
-	};
-
-	dnssec_nsec3_params_t new_params = { 0 };
-	int r = dnssec_nsec3_params_from_rdata(&new_params, &rdata);
-	if (r != DNSSEC_EOK) {
-		return KNOT_EMALF;
-	}
-
-	dnssec_nsec3_params_free(&contents->nsec3_params);
-	contents->nsec3_params = new_params;
-	return KNOT_EOK;
-}
-
-static int contents_adjust(zone_contents_t *contents, bool normal)
-{
-	if (contents == NULL || contents->apex == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = load_nsec3param(contents);
-	if (ret != KNOT_EOK) {
-		log_zone_error(contents->apex->owner,
-		               "failed to load NSEC3 parameters (%s)",
-		               knot_strerror(ret));
-		return ret;
-	}
-
-	zone_adjust_arg_t arg = {
-		.zone = contents
-	};
-
-	contents->size = 0;
-	contents->dnssec = node_rrtype_is_signed(contents->apex, KNOT_RRTYPE_SOA);
-
-	// NSEC3 nodes must be adjusted first, because we already need the NSEC3 chain
-	// to be closed before we adjust NSEC3 pointers in adjust_normal_node
-	ret = adjust_nodes(contents->nsec3_nodes, &arg, adjust_nsec3_node);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = adjust_nodes(contents->nodes, &arg,
-	                   normal ? adjust_normal_node : adjust_pointers);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return adjust_nodes(contents->nodes, &arg, adjust_additional);
-}
-
 int zone_contents_adjust_pointers(zone_contents_t *contents)
 {
-	return contents_adjust(contents, false);
+	return zone_adjust_contents(contents, zone_adjust_pointers, zone_adjust_nsec3_chain);
 }
 
 int zone_contents_adjust_full(zone_contents_t *contents)
 {
-	return contents_adjust(contents, true);
+	return zone_adjust_contents(contents, zone_adjust_normal, zone_adjust_nsec3_chain);
 }
 
 int zone_contents_apply(zone_contents_t *contents,
