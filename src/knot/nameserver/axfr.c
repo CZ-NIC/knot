@@ -108,7 +108,7 @@ static void axfr_query_cleanup(knotd_qdata_t *qdata)
 static int axfr_query_check(knotd_qdata_t *qdata)
 {
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_TRANSFER);
+	NS_NEED_AUTH(qdata, ACL_ACTION_TRANSFER);
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
 	return KNOT_STATE_DONE;
