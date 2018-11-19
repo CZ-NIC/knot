@@ -388,6 +388,10 @@ acl:
     key: key_id ...
     action: notify | transfer | update ...
     deny: BOOL
+    update\-type: STR ...
+    update\-owner: key | zone | name
+    update\-owner\-match: sub\-or\-equal | equal | sub
+    update\-owner\-name: STR ...
 .ft P
 .fi
 .UNINDENT
@@ -429,6 +433,53 @@ If enabled, instead of allowing, deny the specified \fI\%action\fP,
 items. If no action is specified, deny all actions.
 .sp
 \fIDefault:\fP off
+.SS update\-type
+.sp
+A list of allowed types of Resource Records in a zone update. Every record in an update
+must match one of the specified types.
+.sp
+\fIDefault:\fP not set
+.SS update\-owner
+.sp
+This option restricts possible owners of Resource Records in a zone update by comparing
+them to either the \fI\%TSIG key\fP identity, the current zone name, or to a list of
+domain names given by the \fI\%update\-owner\-name\fP option.
+The comparison method is given by the \fI\%update\-owner\-match\fP option.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBkey\fP — the owner of each updated RR must match the identity of the TSIG key if used.
+.IP \(bu 2
+\fBname\fP — the owner of each updated RR must match at least one name in the \fI\%update\-owner\-name\fP list
+.IP \(bu 2
+\fBzone\fP — the owner of each updated RR must match the current zone name
+.UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS update\-owner\-match
+.sp
+This option defines how the owners of Resource Records in an update are matched to the domain name(s)
+set by the \fI\%update\-owner\fP option.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBsub\-or\-equal\fP — the owner of each Resource Record in an update must either be equal to
+or be a subdomain of at least one domain set by \fI\%update\-owner\fP\&.
+.IP \(bu 2
+\fBequal\fP — the owner of each updated RR must be equal to at least one domain set by \fI\%update\-owner\fP\&.
+.IP \(bu 2
+\fBsub\fP — the owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
+one domain set by \fI\%update\-owner\fP\&.
+.UNINDENT
+.sp
+\fIDefault:\fP \fBsub\-or\-equal\fP
+.SS update\-owner\-name
+.sp
+A list of allowed owners of RRs in a zone update used with \fI\%update\-owner\fP set to \fBname\fP\&.
+.sp
+\fIDefault:\fP not set
 .SH CONTROL SECTION
 .sp
 Configuration of the server control interface.
