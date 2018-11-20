@@ -226,6 +226,11 @@ void apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
 
 	init_list(&ctx->old_data);
 	init_list(&ctx->new_data);
+	ctx->node_ptrs = zone_tree_create();
+	ctx->nsec3_ptrs = zone_tree_create();
+
+	// no way to report ENOMEM, sorry
+	assert(ctx->node_ptrs != NULL && ctx->nsec3_ptrs != NULL);
 
 	ctx->flags = flags;
 }
@@ -265,6 +270,8 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	if (node == NULL) {
 		return KNOT_ENOMEM;
 	}
+	zone_tree_insert(knot_rrset_is_nsec3rel(rr) ? ctx->nsec3_ptrs : ctx->node_ptrs, node);
+	// re-inserting makes no harm
 
 	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&changed_rrset)) {
@@ -327,8 +334,9 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		return KNOT_EOK;
 	}
 
-	zone_tree_t *tree = knot_rrset_is_nsec3rel(rr) ?
-	                    contents->nsec3_nodes : contents->nodes;
+	bool nsec3 = knot_rrset_is_nsec3rel(rr);
+	zone_tree_insert(nsec3 ? ctx->nsec3_ptrs : ctx->node_ptrs, node);
+	zone_tree_t *tree = nsec3 ? contents->nsec3_nodes : contents->nodes;
 
 	knot_rrset_t removed_rrset = node_rrset(node, rr->type);
 	knot_rdata_t *old_data = removed_rrset.rrs.rdata;
@@ -364,6 +372,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != contents->apex) {
+			zone_tree_remove_node(nsec3 ? ctx->nsec3_ptrs: ctx->node_ptrs, node->owner);
 			zone_tree_delete_empty(tree, node);
 		}
 	}
@@ -447,6 +456,9 @@ void update_cleanup(apply_ctx_t *ctx)
 		return;
 	}
 
+	zone_tree_free(&ctx->node_ptrs);
+	zone_tree_free(&ctx->nsec3_ptrs);
+
 	// Delete old RR data
 	rrs_list_clear(&ctx->old_data, NULL);
 	init_list(&ctx->old_data);
@@ -460,6 +472,9 @@ void update_rollback(apply_ctx_t *ctx)
 	if (ctx == NULL) {
 		return;
 	}
+
+	zone_tree_free(&ctx->node_ptrs);
+	zone_tree_free(&ctx->nsec3_ptrs);
 
 	// Delete new RR data
 	rrs_list_clear(&ctx->new_data, NULL);
