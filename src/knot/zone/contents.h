@@ -174,14 +174,6 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
                                                      const zone_node_t *parent);
 
 /*!
- * \brief Sets parent and previous pointers and node flags. (cheap operation)
- *        For both normal and NSEC3 tree
- *
- * \param contents Zone contents to be adjusted.
- */
-int zone_contents_adjust_pointers(zone_contents_t *contents);
-
-/*!
  * \brief Sets parent and previous pointers, sets node flags and NSEC3 links.
  *        This has to be called before the zone can be served.
  *
