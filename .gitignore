@@ -45,7 +45,6 @@ Makefile
 Makefile.in
 version.h
 
-/python/setup.py
 /samples/knot.sample.conf
 /src/knot/modules/static_modules.h
 

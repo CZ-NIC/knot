@@ -45,7 +45,17 @@ def load_lib(path=None):
     """Loads the libknot library."""
 
     if path is None:
-        path = "libknot.dylib" if sys.platform == "darwin" else "libknot.so"
+        version = ""
+        try:
+            from libknot import LIBKNOT_VERSION
+            version = ".%u" % int(LIBKNOT_VERSION)
+        except:
+            pass
+
+        if sys.platform == "darwin":
+            path = "libknot%s.dylib" % version
+        else:
+            path = "libknot.so%s" % version
     LIB = cdll.LoadLibrary(path)
 
     global CTL_ALLOC
