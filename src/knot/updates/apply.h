@@ -86,17 +86,6 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
 int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *ch);
 
 /*!
- * \brief Prepares the new zone contents for signing.
- *
- * Adjusted pointers are required for DNSSEC.
- *
- * \param ctx  Apply context.
- *
- * \return KNOT_E*
- */
-int apply_prepare_to_sign(apply_ctx_t *ctx);
-
-/*!
  * \brief Applies changesets directly to the zone, without copying it.
  *
  * \warning Modified zone is in inconsistent state after error and should be freed.

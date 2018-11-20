@@ -50,11 +50,6 @@ static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_r
 		}
 	}
 
-	r = zone_contents_adjust_full(zone);
-	if (r != KNOT_EOK) {
-		return r;
-	}
-
 	// update policy based on the zone content
 	update_policy_from_zone(ctx->policy, zone);
 
