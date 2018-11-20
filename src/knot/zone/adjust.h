@@ -17,6 +17,7 @@
 #pragma once
 
 #include "knot/zone/contents.h"
+#include "knot/updates/zone-update.h"
 
 typedef int (*adjust_cb_t)(zone_node_t *, const zone_contents_t *);
 
@@ -33,3 +34,5 @@ int zone_adjust_normal(zone_node_t *node, const zone_contents_t *zone);
 int zone_adjust_pointers(zone_node_t *node, const zone_contents_t *zone);
 
 int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb);
+
+int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb);

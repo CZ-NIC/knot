@@ -28,6 +28,8 @@ struct apply_ctx {
 	zone_contents_t *contents;
 	list_t old_data;          /*!< Old data, to be freed after successful update. */
 	list_t new_data;          /*!< New data, to be freed after failed update. */
+	zone_tree_t *node_ptrs;   /*!< Just pointers to the affected nodes in contents. */
+	zone_tree_t *nsec3_ptrs;  /*!< The same for NSEC3 nodes. */
 	uint32_t flags;
 };
 
