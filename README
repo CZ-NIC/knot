@@ -44,7 +44,7 @@ Install optional packages to override embedded libraries:
 
 Install optional packages:
 # dnf install \
-  libcap-ng-devel systemd-devel libidn-devel protobuf-c-devel fstrm-devel libmaxminddb-devel
+  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel
 
 When compiling on RHEL based system, the Fedora EPEL repository has to be
 enabled. Also for RHEL 6, forward compatibility package gnutls30-devel
