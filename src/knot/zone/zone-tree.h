@@ -108,6 +108,14 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
                                 zone_node_t **previous);
 
 /*!
+ * \brief Remove a node from a tree with no checks.
+ *
+ * \param tree  The tree to remove from.
+ * \param owner The node to remove.
+ */
+void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner);
+
+/*!
  * \brief Delete a node that has no RRSets and no children.
  *
  * \param tree  The tree to remove from.
