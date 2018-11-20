@@ -402,11 +402,6 @@ int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *chset)
 	return apply_add_rr(ctx, chset->soa_to);
 }
 
-int apply_prepare_to_sign(apply_ctx_t *ctx)
-{
-	return zone_contents_adjust_pointers(ctx->contents);
-}
-
 int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets)
 {
 	if (ctx == NULL || ctx->contents == NULL || chsets == NULL) {
@@ -421,7 +416,7 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets)
 		}
 	}
 
-	return zone_contents_adjust_full(ctx->contents);
+	return KNOT_EOK;
 }
 
 int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch)
@@ -431,12 +426,6 @@ int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch)
 	}
 
 	int ret = apply_single(ctx, ch);
-	if (ret != KNOT_EOK) {
-		update_rollback(ctx);
-		return ret;
-	}
-
-	ret = zone_contents_adjust_full(ctx->contents);
 	if (ret != KNOT_EOK) {
 		update_rollback(ctx);
 		return ret;

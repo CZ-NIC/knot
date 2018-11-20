@@ -212,12 +212,7 @@ static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
 
-	int ret = zone_contents_adjust_full(new_zone);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = xfr_validate(new_zone, data);
+	int ret = xfr_validate(new_zone, data);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
