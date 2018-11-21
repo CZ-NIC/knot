@@ -434,11 +434,6 @@ int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch)
 	return KNOT_EOK;
 }
 
-int apply_finalize(apply_ctx_t *ctx)
-{
-	return zone_contents_adjust_full(ctx->contents);
-}
-
 void update_cleanup(apply_ctx_t *ctx)
 {
 	if (ctx == NULL) {
