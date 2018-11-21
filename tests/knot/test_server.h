@@ -18,6 +18,7 @@
 
 #include "test_conf.h"
 #include "knot/server/server.h"
+#include "knot/zone/adjust.h"
 #include "contrib/mempattern.h"
 
 /* Some domain names. */
@@ -52,7 +53,7 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 	knot_rrset_free(soa, mm);
 
 	/* Bake the zone. */
-	zone_contents_adjust_full(root->contents);
+	(void)zone_adjust_full(root->contents);
 
 	/* Switch zone db. */
 	knot_zonedb_free(&server->zone_db);
