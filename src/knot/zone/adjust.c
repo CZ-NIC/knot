@@ -218,6 +218,22 @@ int zone_adjust_pointers(zone_node_t *node, const zone_contents_t *zone)
 	return ret;
 }
 
+int zone_adjust_void(zone_node_t *node, const zone_contents_t *zone)
+{
+	UNUSED(node);
+	UNUSED(zone);
+	return KNOT_EOK;
+}
+
+static int adjust_phase2(zone_node_t *node, const zone_contents_t *zone)
+{
+	int ret = zone_adjust_nsec3_pointers(node, zone);
+	if (ret == KNOT_EOK) {
+		ret = zone_adjust_additionals(node, zone);
+	}
+	return ret;
+}
+
 typedef struct {
 	zone_node_t *first_node;
 	const zone_contents_t *zone;
@@ -254,9 +270,6 @@ static int adjust_single(zone_node_t **tnode, void *data)
 	node_size(node, &args->zone_size);
 	node_max_ttl(node, &args->zone_max_ttl);
 
-	if (args->adjust_cb == NULL) {
-		return KNOT_EOK;
-	}
 	return args->adjust_cb(node, args->zone);
 }
 
@@ -336,11 +349,13 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 	size_t nodes_size = 0, nsec3_size = 0;
 	uint32_t nodes_max_ttl = 0, nsec3_max_ttl = 0;
 
-	ret = zone_adjust_tree(zone->nsec3_nodes, zone, nsec3_cb, &nsec3_size, &nsec3_max_ttl, true);
-	if (ret == KNOT_EOK) {
+	if (nsec3_cb != NULL) {
+		ret = zone_adjust_tree(zone->nsec3_nodes, zone, nsec3_cb, &nsec3_size, &nsec3_max_ttl, true);
+	}
+	if (ret == KNOT_EOK && nodes_cb != NULL) {
 		ret = zone_adjust_tree(zone->nodes, zone, nodes_cb, &nodes_size, &nodes_max_ttl, true);
 	}
-	if (ret == KNOT_EOK) {
+	if (ret == KNOT_EOK && nodes_cb != NULL && nsec3_cb != NULL) {
 		zone->size = nodes_size + nsec3_size;
 		zone->max_ttl = MAX(nodes_max_ttl, nsec3_max_ttl);
 	}
@@ -355,6 +370,15 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 	}
 	if (ret == KNOT_EOK && nsec3_cb != NULL) {
 		ret = zone_adjust_tree(update->a_ctx->node_ptrs, update->new_cont, nodes_cb, NULL, NULL, false);
+	}
+	return ret;
+}
+
+int zone_adjust_full(zone_contents_t *zone)
+{
+	int ret = zone_adjust_contents(zone, zone_adjust_node_pointers, zone_adjust_nsec3_chain);
+	if (ret == KNOT_EOK) {
+		ret = zone_adjust_contents(zone, adjust_phase2, NULL);
 	}
 	return ret;
 }

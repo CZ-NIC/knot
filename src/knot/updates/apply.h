@@ -108,17 +108,6 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets);
 int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch);
 
 /*!
- * \brief Finalizes the zone contents for publishing.
- *
- * Fully adjusts the zone.
- *
- * \param ctx  Apply context.
- *
- * \return KNOT_E*
- */
-int apply_finalize(apply_ctx_t *ctx);
-
-/*!
  * \brief Cleanups successful zone update.
  *
  * \param ctx  Context used to create the update.
