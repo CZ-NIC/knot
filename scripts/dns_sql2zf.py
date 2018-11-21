@@ -39,6 +39,7 @@ storage = os.getcwd()
 knotc_binary = "knotc"
 knotc_socket = None
 slave_mode = False
+conf_txn_open = False
 
 class Domains(SQLObject):
     # id = IntCol() # implicitly there
@@ -123,6 +124,7 @@ def zone_template(zone):
 
 def knotc_send(type, zone):
     global slave_mode
+    global conf_txn_open
     if type == 0:
         try:
             knotc_single("zone-reload" if not slave_mode else "zone-refresh", zone)
@@ -130,7 +132,9 @@ def knotc_send(type, zone):
             knotc_send(1, zone)
     else:
         try:
-            knotc_single("conf-begin")
+            if not conf_txn_open:
+                knotc_single("conf-begin")
+                conf_txn_open = True
             if type > 0:
                 knotc_single("conf-set", "zone[%s]" % zone)
                 knotc_single("conf-set", "zone[%s].file" % zone, zone_storage(zone))
@@ -139,9 +143,9 @@ def knotc_send(type, zone):
                     knotc_single("conf-set", "zone[%s].template" % zone, template)
             else:
                 knotc_single("conf-unset", "zone[%s]" % zone)
-            knotc_single("conf-commit")
         except:
             knotc_single("conf-abort")
+            conf_txn_open = False
             raise
 
 def print_record(record, outfile):
@@ -223,6 +227,7 @@ def main():
     global fix_absolute
     global connection
     global slave_mode
+    global conf_txn_open
 
     argp = argparse.ArgumentParser(prog='dns_sql2zf', description="Export DNS records from Mysql or Postgres DB into zonefile.", epilog="(C) CZ.NIC, GPLv3") # TODO better epilog
     argp.add_argument(dest='domains', metavar='zone', nargs='*', help='Zone to be exported.')
@@ -267,6 +272,9 @@ def main():
 
     if args.from_changes is not None:
         process_changes(args.from_changes[0])
+
+    if conf_txn_open:
+        knotc_single("conf-commit")
 
 if __name__ == "__main__":
     main()
