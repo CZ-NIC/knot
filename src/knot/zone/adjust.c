@@ -20,7 +20,7 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 
-int zone_adjust_node_pointers(zone_node_t *node, const zone_contents_t *zone) // node must be already in zone!
+int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 {
 	// clear Removed NSEC flag so that no relicts remain
 	node->flags &= ~NODE_FLAGS_REMOVED_NSEC;
@@ -46,33 +46,42 @@ int zone_adjust_node_pointers(zone_node_t *node, const zone_contents_t *zone) //
 	return KNOT_EOK; // always returns this value :)
 }
 
-int zone_adjust_nsec3_pointers(zone_node_t *node, const zone_contents_t *zone) // node must be already in zone!
+int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
 	if (!knot_is_nsec3_enabled(zone)) {
 		node->nsec3_node = NULL;
 		return KNOT_EOK;
 	}
-	const zone_node_t *ignored;
 	node->nsec3_wildcard_prev = NULL;
 	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), node->owner,
 	                                  zone->apex->owner, &zone->nsec3_params);
 	if (ret == KNOT_EOK) {
 		node->nsec3_node = zone_tree_get(zone->nsec3_nodes, nsec3_name);
+	}
+	return ret;
+}
 
-		// Connect to NSEC3 node proving nonexistence of wildcard.
-		size_t wildcard_size = knot_dname_size(node->owner) + 2;
-		if (wildcard_size <= KNOT_DNAME_MAXLEN) {
-			assert(wildcard_size > 2);
-			knot_dname_t wildcard[wildcard_size];
-			memcpy(wildcard, "\x01""*", 2);
-			memcpy(wildcard + 2, node->owner, wildcard_size - 2);
-			ret = zone_contents_find_nsec3_for_name(zone, wildcard, &ignored,
-			                                        (const zone_node_t **)&node->nsec3_wildcard_prev);
-			if (ret == ZONE_NAME_FOUND) {
-				node->nsec3_wildcard_prev = NULL;
-				ret = KNOT_EOK;
-			}
+int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
+{
+	if (!knot_is_nsec3_enabled(zone)) {
+		node->nsec3_wildcard_prev = NULL;
+		return KNOT_EOK;
+	}
+
+	const zone_node_t *ignored;
+	int ret = KNOT_EOK;
+	size_t wildcard_size = knot_dname_size(node->owner) + 2;
+	if (wildcard_size <= KNOT_DNAME_MAXLEN) {
+		assert(wildcard_size > 2);
+		knot_dname_t wildcard[wildcard_size];
+		memcpy(wildcard, "\x01""*", 2);
+		memcpy(wildcard + 2, node->owner, wildcard_size - 2);
+		ret = zone_contents_find_nsec3_for_name(zone, wildcard, &ignored,
+							(const zone_node_t **)&node->nsec3_wildcard_prev);
+		if (ret == ZONE_NAME_FOUND) {
+			node->nsec3_wildcard_prev = NULL;
+			ret = KNOT_EOK;
 		}
 	}
 	return ret;
@@ -94,7 +103,7 @@ static bool nsec3_params_match(const knot_rdataset_t *rrs,
 	                  params->salt.size) == 0);
 }
 
-int zone_adjust_nsec3_chain(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_nsec3_flags(zone_node_t *node, const zone_contents_t *zone)
 {
 	// check if this node belongs to correct chain
 	const knot_rdataset_t *nsec3_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC3);
@@ -182,7 +191,7 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 	return KNOT_EOK;
 }
 
-int zone_adjust_additionals(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_additionals(zone_node_t *node, const zone_contents_t *zone)
 {
 	/* Lookup additional records for specific nodes. */
 	for(uint16_t i = 0; i < node->rrset_count; ++i) {
@@ -197,41 +206,41 @@ int zone_adjust_additionals(zone_node_t *node, const zone_contents_t *zone)
 	return KNOT_EOK;
 }
 
-int zone_adjust_normal(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_flags_and_additionals(zone_node_t *node, const zone_contents_t *zone)
 {
-	int ret = zone_adjust_nsec3_pointers(node, zone);
+	int ret = adjust_cb_flags(node, zone);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_node_pointers(node, zone);
-	}
-	if (ret == KNOT_EOK) {
-		ret = zone_adjust_additionals(node, zone);
+		ret = adjust_cb_additionals(node, zone);
 	}
 	return ret;
 }
 
-int zone_adjust_pointers(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_flags_and_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
-	int ret = zone_adjust_node_pointers(node, zone);
+	int ret = adjust_cb_flags(node, zone);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_additionals(node, zone);
+		ret = adjust_cb_point_to_nsec3(node, zone);
 	}
 	return ret;
 }
 
-int zone_adjust_void(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_nsec3_and_additionals(zone_node_t *node, const zone_contents_t *zone)
+{
+	int ret = adjust_cb_point_to_nsec3(node, zone);
+	if (ret == KNOT_EOK) {
+		ret = adjust_cb_wildcard_nsec3(node, zone);
+	}
+	if (ret == KNOT_EOK) {
+		ret = adjust_cb_additionals(node, zone);
+	}
+	return ret;
+}
+
+int adjust_cb_void(zone_node_t *node, const zone_contents_t *zone)
 {
 	UNUSED(node);
 	UNUSED(zone);
 	return KNOT_EOK;
-}
-
-static int adjust_phase2(zone_node_t *node, const zone_contents_t *zone)
-{
-	int ret = zone_adjust_nsec3_pointers(node, zone);
-	if (ret == KNOT_EOK) {
-		ret = zone_adjust_additionals(node, zone);
-	}
-	return ret;
 }
 
 typedef struct {
@@ -376,9 +385,9 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 
 int zone_adjust_full(zone_contents_t *zone)
 {
-	int ret = zone_adjust_contents(zone, zone_adjust_node_pointers, zone_adjust_nsec3_chain);
+	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(zone, adjust_phase2, NULL);
+		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL);
 	}
 	return ret;
 }
