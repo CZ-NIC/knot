@@ -226,9 +226,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	//ret = zone_adjust_contents(zc->z, zone_adjust_node_pointers, zone_adjust_void);
-	// TODO something between. We need: node->flags, node->nsec3_node
-	ret = zone_adjust_full(zc->z);
+	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));

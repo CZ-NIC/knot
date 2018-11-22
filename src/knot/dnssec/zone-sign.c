@@ -1198,7 +1198,7 @@ int knot_zone_sign_update(zone_update_t *update,
 
 	int ret = KNOT_EOK;
 
-	ret = zone_adjust_update(update, zone_adjust_pointers, zone_adjust_nsec3_chain);
+	ret = zone_adjust_update(update, adjust_cb_flags_and_additionals, adjust_cb_nsec3_flags);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
