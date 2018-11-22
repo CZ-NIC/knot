@@ -374,10 +374,10 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb)
 {
 	int ret = KNOT_EOK;
-	if (nodes_cb != NULL) {
+	if (nsec3_cb != NULL) {
 		ret = zone_adjust_tree(update->a_ctx->nsec3_ptrs, update->new_cont, nsec3_cb, NULL, NULL, false);
 	}
-	if (ret == KNOT_EOK && nsec3_cb != NULL) {
+	if (ret == KNOT_EOK && nodes_cb != NULL) {
 		ret = zone_adjust_tree(update->a_ctx->node_ptrs, update->new_cont, nodes_cb, NULL, NULL, false);
 	}
 	return ret;
