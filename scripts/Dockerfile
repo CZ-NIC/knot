@@ -1,38 +1,74 @@
+## Intermediate stage ##
+FROM debian:stable-slim
+
+# Environment
+ENV BUILD_PKGS \
+    autoconf \
+    automake \
+    gcc \
+    git-core \
+    libedit-dev \
+    libfstrm-dev \
+    libgnutls28-dev \
+    libidn2-0-dev \
+    liblmdb-dev \
+    libmaxminddb-dev \
+    libprotobuf-c-dev \
+    libtool \
+    liburcu-dev \
+    make \
+    pkg-config \
+    protobuf-c-compiler
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -yqq ${BUILD_PKGS}
+
+# Build the project
+ARG BRANCH=master
+WORKDIR /knot-src
+RUN git clone --depth 1 -b ${BRANCH} https://gitlab.labs.nic.cz/knot/knot-dns.git /knot-src && \
+    autoreconf -if && \
+    ./configure --prefix=/tmp/knot-install \
+                --with-rundir=/rundir \
+                --with-storage=/storage \
+                --with-configdir=/config \
+                --with-module-dnstap=yes \
+                --disable-fastparser \
+                --disable-static \
+                --disable-documentation && \
+    make -j$(grep -c ^processor /proc/cpuinfo) && \
+    make install
+
+## Final stage ##
 FROM debian:stable-slim
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 
-# Select entrypoint
-WORKDIR /root
-CMD /sbin/knotd & /sbin/knotc
+# Environment
+ENV RUNTIME_PKGS \
+    libedit2 \
+    libfstrm0 \
+    libgnutls30 \
+    libidn2-0 \
+    liblmdb0 \
+    libmaxminddb0 \
+    libprotobuf-c1 \
+    liburcu4
+
+# Copy artifacts
+COPY --from=0 /tmp/knot-install/ /
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -yqq ${RUNTIME_PKGS} && \
+    rm -rf /var/lib/apt/lists/* && \
+    ldconfig
 
 # Expose port
-EXPOSE 53/UDP 53/TCP
+EXPOSE 53/UDP
+EXPOSE 53/TCP
 
-# Environment
-ENV THREADS 4
-ENV BUILD_PKGS git-core make gcc libtool autoconf pkg-config liburcu-dev \
-               liblmdb-dev libgnutls28-dev libedit-dev libidn11-dev
-ENV RUNTIME_PKGS liburcu4 liblmdb0 libgnutls30 libedit2 libidn11
-
-# Install dependencies and sources
-RUN apt-get -q -y update && \
-apt-get install -q -y ${BUILD_PKGS} ${RUNTIME_PKGS} && \
-# Compile sources
-git clone -b master https://gitlab.labs.nic.cz/knot/knot-dns.git /knot-src && \
-cd /knot-src && \
-autoreconf -if && \
-./configure --disable-static --enable-fastparser --disable-documentation && \
-make -j${THREADS} && \
-make install && \
-ldconfig && \
-# Trim down the image
-cd && \
-rm -rf /knot-src && \
-apt-get purge -q -y ${BUILD_PKGS} && \
-apt-get autoremove -q -y && \
-apt-get clean && \
-rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Use example configuration and zone
-RUN mv /etc/knot/knot.sample.conf /etc/knot/knot.conf && \
-echo '  - domain: example.com\n    file: "/etc/knot/example.com.zone"' >> /etc/knot/knot.conf
+# Prepare shared directories
+VOLUME /config
+VOLUME /rundir
+VOLUME /storage
