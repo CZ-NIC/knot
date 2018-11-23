@@ -174,7 +174,7 @@ def print_domain(domain, change_type = 0, txn = None):
         f.close()
     if knotc_socket is not None:
         knotc_send(change_type, dn)
-    print("Updated zone %s" % dn, file=sys.stderr)
+    print("Updated zone %s" % dn)
 
 def domain_from_change(change, txn):
     global knotc_socket
@@ -185,7 +185,7 @@ def domain_from_change(change, txn):
         try:
             os.remove(zone_storage(dn))
         except:
-            print("Warning: failed to delete zonefile for %s" % dn)
+            print("Warning: failed to delete zonefile for %s" % dn, file=sys.stderr)
         if knotc_socket is not None:
             knotc_send(change.type, dn)
         else:
@@ -202,8 +202,7 @@ def process_changes(startwith):
         txn.commit()
     finally:
         if len(processed) > 0:
-            print("Processed up to change_id %d" % processed[-1], file=sys.stderr)
-        # TODO delete processed ?
+            print("Processed up to change_id %d" % processed[-1])
 
 def process_all():
     global connection
@@ -229,7 +228,7 @@ def main():
     global slave_mode
     global conf_txn_open
 
-    argp = argparse.ArgumentParser(prog='dns_sql2zf', description="Export DNS records from Mysql or Postgres DB into zonefile.", epilog="(C) CZ.NIC, GPLv3") # TODO better epilog
+    argp = argparse.ArgumentParser(prog='dns_sql2zf', description="Export DNS records from Mysql or Postgres DB into zonefile.", epilog="(C) CZ.NIC, GPLv3")
     argp.add_argument(dest='domains', metavar='zone', nargs='*', help='Zone to be exported.')
     argp.add_argument('--db', dest='dburi', metavar='DB_URI', nargs=1, required=True, help='URI of database to export from (example: mysql://user:password@127.0.0.1/powerdns_db).')
     argp.add_argument('--storage', dest='storage', metavar='path', nargs=1, help='Storage for the generated zonefile (otherwise current dir).')
