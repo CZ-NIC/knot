@@ -746,7 +746,7 @@ DNSSEC policy configuration.
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
      ksk-submission: submission_id
-     cds-cdnskey-publish: none | delete-dnssec | rollover | always
+     cds-cdnskey-publish: none | delete-dnssec | rollover | always | double-ds
      offline-ksk: BOOL
 
 .. _policy_id:
@@ -991,15 +991,17 @@ cds-cdnskey-publish
 
 Controls if and how shall the CDS and CDNSKEY be published in the zone.
 
-.. NOTE::
-   This only applies if the zone keys are automatically managed by the server.
-
 Possible values:
 
 - ``none`` – Never publish any CDS or CDNSKEY records in the zone.
 - ``delete-dnssec`` – Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
 - ``rollover`` – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
-- ``always`` – Always publish CDS and CDNSKEY records for the current KSK.
+- ``always`` – Always publish one CDS and one CDNSKEY records for the current KSK.
+- ``double-ds`` – Always publish up to two CDS and two CDNSKEY records for ready and/or active KSKs.
+
+.. NOTE::
+   If the zone keys are managed manually, the CDS and CDNSKEY rrsets may contain
+   more records depending on the keys available.
 
 *Default:* always
 
