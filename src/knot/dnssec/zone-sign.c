@@ -234,7 +234,8 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		for (size_t j = 0; j < sign_ctx->count; j++) {
 			zone_key_t *key = &sign_ctx->keys[j];
 
-			if (!key->is_active || dnssec_key_get_keytag(key->key) != keytag) {
+			if ((!key->is_active && !key->is_post_active) ||
+			    dnssec_key_get_keytag(key->key) != keytag) {
 				continue;
 			}
 
@@ -794,30 +795,34 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 					      zone_keyset_t *zone_keys)
 {
 	keyptr_dynarray_t r = { 0 };
-	zone_key_t *ksk_for_cds = NULL;
 	unsigned crp = ctx->policy->child_records_publish;
-	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ? 0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		zone_key_t *key = &zone_keys->keys[i];
-		// determine which key (if any) will be the one for CDS/CDNSKEY
-		if (key->is_ksk && key->cds_priority > kfc_prio) {
-			ksk_for_cds = key;
-			kfc_prio = key->cds_priority;
+	if (crp == CHILD_RECORDS_ROLLOVER || crp == CHILD_RECORDS_ALWAYS ||
+	    crp == CHILD_RECORDS_DOUBLE_DS) {
+		// first, add strictly-ready keys
+		for (int i = 0; i < zone_keys->count; i++) {
+			zone_key_t *key = &zone_keys->keys[i];
+			if (key->is_ready) {
+				assert(key->is_ksk);
+				keyptr_dynarray_add(&r, &key);
+			}
 		}
-	}
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		zone_key_t *key = &zone_keys->keys[i];
-		// determine which key (if any) will be the one for CDS/CDNSKEY
-		if (key->is_ksk && key->cds_priority > kfc_prio) {
-			ksk_for_cds = key;
-			kfc_prio = key->cds_priority;
+		// second, add active keys
+		if ((crp == CHILD_RECORDS_ALWAYS && r.size == 0) ||
+		    (crp == CHILD_RECORDS_DOUBLE_DS)) {
+			for (int i = 0; i < zone_keys->count; i++) {
+				zone_key_t *key = &zone_keys->keys[i];
+				if (key->is_ksk && key->is_active && !key->is_ready) {
+					keyptr_dynarray_add(&r, &key);
+				}
+			}
 		}
-	}
 
-	if (ksk_for_cds != NULL) {
-		keyptr_dynarray_add(&r, &ksk_for_cds);
+		if ((crp != CHILD_RECORDS_DOUBLE_DS && r.size > 1) ||
+		    (r.size > 2)) {
+			log_zone_warning(ctx->zone->dname, "DNSSEC, published CDS/CDNSKEY records for too many (%zu) keys", r.size);
+		}
 	}
 
 	return r;
@@ -950,7 +955,7 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 		return false;
 	}
 
-	if (!key->is_active) {
+	if (!key->is_active && !key->is_post_active) {
 		return false;
 	}
 
