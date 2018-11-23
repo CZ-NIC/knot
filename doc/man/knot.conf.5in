@@ -619,7 +619,7 @@ policy:
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
     ksk\-submission: submission_id
-    cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always
+    cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always | double\-ds
     offline\-ksk: BOOL
 .ft P
 .fi
@@ -803,13 +803,6 @@ KSK submittion checks.
 .sp
 Controls if and how shall the CDS and CDNSKEY be published in the zone.
 .sp
-\fBNOTE:\fP
-.INDENT 0.0
-.INDENT 3.5
-This only applies if the zone keys are automatically managed by the server.
-.UNINDENT
-.UNINDENT
-.sp
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
@@ -819,7 +812,17 @@ Possible values:
 .IP \(bu 2
 \fBrollover\fP – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
 .IP \(bu 2
-\fBalways\fP – Always publish CDS and CDNSKEY records for the current KSK.
+\fBalways\fP – Always publish one CDS and one CDNSKEY records for the current KSK.
+.IP \(bu 2
+\fBdouble\-ds\fP – Always publish up to two CDS and two CDNSKEY records for ready and/or active KSKs.
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+If the zone keys are managed manually, the CDS and CDNSKEY rrsets may contain
+more records depending on the keys available.
+.UNINDENT
 .UNINDENT
 .sp
 \fIDefault:\fP always
