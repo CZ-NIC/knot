@@ -25,10 +25,9 @@ RUN apt-get update && \
     apt-get install -yqq ${BUILD_PKGS}
 
 # Build the project
-ARG BRANCH=master
+COPY . /knot-src
 WORKDIR /knot-src
-RUN git clone --depth 1 -b ${BRANCH} https://gitlab.labs.nic.cz/knot/knot-dns.git /knot-src && \
-    autoreconf -if && \
+RUN autoreconf -if && \
     ./configure --prefix=/tmp/knot-install \
                 --with-rundir=/rundir \
                 --with-storage=/storage \
