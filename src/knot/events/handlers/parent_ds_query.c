@@ -36,7 +36,8 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 
 	for (size_t i = 0; i < keyset.count; i++) {
 		zone_key_t *key = &keyset.keys[i];
-		if (key->is_ksk && key->cds_priority > 1) {
+		if (key->is_ready) {
+			assert(key->is_ksk);
 			char param[32];
 			(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu",
 			               dnssec_key_get_keytag(key->key));

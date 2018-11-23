@@ -226,18 +226,25 @@ static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_
 	                       knot_time_cmp(timing->post_active, now) > 0 &&
 	                       knot_time_cmp(timing->remove, now) > 0);
 
-	zone_key->is_active = (((zone_key->is_zsk && knot_time_cmp(timing->pre_active, now) <= 0) ||
-	                        (knot_time_cmp(timing->pre_active, now) <= 0 && knot_time_cmp(timing->publish, now) <= 0) ||
-	                        knot_time_cmp(timing->ready, now) <= 0 ||
+	zone_key->is_ready = (zone_key->is_ksk && knot_time_cmp(timing->ready, now) <= 0 &&
+	                      knot_time_cmp(timing->active, now) > 0);
+
+	zone_key->is_active = ((knot_time_cmp(timing->ready, now) <= 0 ||
 	                        knot_time_cmp(timing->active, now) <= 0) &&
 	                       knot_time_cmp(timing->retire, now) > 0 &&
-	                       (zone_key->is_zsk || knot_time_cmp(timing->post_active, now) > 0) &&
+	                       knot_time_cmp(timing->retire_active, now) > 0 &&
 	                       knot_time_cmp(timing->remove, now) > 0);
 
-	zone_key->cds_priority = (knot_time_cmp(timing->ready, now) <= 0 ? (
-	                          (knot_time_cmp(timing->active, now) <= 0) ? (
-	                           (knot_time_cmp(timing->retire_active, now) <= 0 ||
-	                            knot_time_cmp(timing->retire, now) <= 0) ? 0 : 1) : 2) : 0);
+	zone_key->is_post_active = false;
+	if (knot_time_cmp(timing->pre_active, now) <= 0 && knot_time_cmp(timing->ready, now) > 0 && knot_time_cmp(timing->active, now) > 0) {
+		zone_key->is_post_active = (zone_key->is_zsk || knot_time_cmp(timing->publish, now) <= 0);
+	}
+	if (knot_time_cmp(timing->retire_active, now) <= 0 &&  knot_time_cmp(timing->retire, now) > 0) {
+		zone_key->is_post_active = true;
+	} // not "else" !
+	if (knot_time_cmp(timing->post_active, now) <= 0 && knot_time_cmp(timing->remove, now) > 0) {
+		zone_key->is_post_active = zone_key->is_zsk;
+	}
 
 	return KNOT_EOK;
 }
@@ -270,14 +277,15 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 			                 dnssec_key_get_keytag(key->key));
 			key->is_public = false;
 			key->is_active = false;
-			key->cds_priority = 0;
+			key->is_ready = false;
+			key->is_post_active = false;
 			continue;
 		}
 
 		if (key->is_ksk && key->is_public) { alg_usage[alg] |= 1; }
 		if (key->is_zsk && key->is_public) { alg_usage[alg] |= 2; }
-		if (key->is_ksk && key->is_active) { alg_usage[alg] |= 4; }
-		if (key->is_zsk && key->is_active) { alg_usage[alg] |= 8; }
+		if (key->is_ksk && (key->is_active || key->is_post_active)) { alg_usage[alg] |= 4; }
+		if (key->is_zsk && (key->is_active || key->is_post_active)) { alg_usage[alg] |= 8; }
 	}
 
 	for (size_t i = 0; i < sizeof(alg_usage); i++) {
@@ -316,11 +324,10 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 	assert(keyset);
 
 	for (size_t i = 0; i < keyset->count; i++) {
-		if (!keyset->keys[i].is_active) {
+		zone_key_t *key = &keyset->keys[i];
+		if (!key->is_active && !key->is_post_active) {
 			continue;
 		}
-
-		zone_key_t *key = &keyset->keys[i];
 		int r = dnssec_key_import_keystore(key->key, keystore, key->id);
 		switch (r) {
 		case DNSSEC_EOK:
@@ -350,13 +357,14 @@ static void log_key_info(const zone_key_t *key, char *out, size_t out_len)
 		(void)snprintf(alg_code_str, sizeof(alg_code_str), "%d", alg_code);
 	}
 
-	(void)snprintf(out, out_len, "DNSSEC, key, tag %5d, algorithm %s%s%s%s%s",
+	(void)snprintf(out, out_len, "DNSSEC, key, tag %5d, algorithm %s%s%s%s%s%s",
 	               dnssec_key_get_keytag(key->key),
 	               (alg != NULL                ? alg->name  : alg_code_str),
 	               (key->is_ksk ? (key->is_zsk ? ", CSK" : ", KSK") : ""),
 	               (key->is_public             ? ", public" : ""),
-	               (key->cds_priority > 1      ? ", ready"  : ""),
-	               (key->is_active             ? ", active" : ""));
+	               (key->is_ready              ? ", ready"  : ""),
+	               (key->is_active             ? ", active" : ""),
+		       (key->is_post_active        ? ", active+": ""));
 }
 
 int log_key_sort(const void *a, const void *b)

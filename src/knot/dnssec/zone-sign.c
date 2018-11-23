@@ -236,7 +236,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		int endloop = 0; // 1 - continue; 2 - break
 
 		dynarray_foreach(keyptr, zone_key_t *, key, keys) {
-			if (!(*key)->is_active) {
+			if (!(*key)->is_active && !(*key)->is_post_active) {
 				continue;
 			}
 			result = knot_check_signature(covered, &synth_rrsig, i,
@@ -314,6 +314,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const zone_key_t *key = &zone_keys->keys[i];
+
 		if (!knot_zone_sign_use_key(key, covered)) {
 			continue;
 		}
@@ -875,30 +876,33 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 					      zone_keyset_t *zone_keys)
 {
 	keyptr_dynarray_t r = { 0 };
-	zone_key_t *ksk_for_cds = NULL;
 	unsigned crp = ctx->policy->child_records_publish;
-	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ? 0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		zone_key_t *key = &zone_keys->keys[i];
-		// determine which key (if any) will be the one for CDS/CDNSKEY
-		if (key->is_ksk && key->cds_priority > kfc_prio) {
-			ksk_for_cds = key;
-			kfc_prio = key->cds_priority;
+	if (crp != CHILD_RECORDS_NONE) {
+		// first, add strictly-ready keys
+		for (int i = 0; i < zone_keys->count; i++) {
+			zone_key_t *key = &zone_keys->keys[i];
+			if (key->is_ready) {
+				assert(key->is_ksk);
+				keyptr_dynarray_add(&r, &key);
+			}
 		}
-	}
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		zone_key_t *key = &zone_keys->keys[i];
-		// determine which key (if any) will be the one for CDS/CDNSKEY
-		if (key->is_ksk && key->cds_priority > kfc_prio) {
-			ksk_for_cds = key;
-			kfc_prio = key->cds_priority;
+		// second, add active keys
+		if ((crp == CHILD_RECORDS_ALWAYS && r.size == 0) ||
+		    (crp == CHILD_RECORDS_DOUBLE_DS)) {
+			for (int i = 0; i < zone_keys->count; i++) {
+				zone_key_t *key = &zone_keys->keys[i];
+				if (key->is_ksk && key->is_active && !key->is_ready) {
+					keyptr_dynarray_add(&r, &key);
+				}
+			}
 		}
-	}
 
-	if (ksk_for_cds != NULL) {
-		keyptr_dynarray_add(&r, &ksk_for_cds);
+		if ((crp != CHILD_RECORDS_DOUBLE_DS && r.size > 1) ||
+		    (r.size > 2)) {
+			log_zone_warning(ctx->zone->dname, "DNSSEC, published CDS/CDNSKEY records for too many (%zu) keys", r.size);
+		}
 	}
 
 	return r;
@@ -1031,7 +1035,7 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 		return KNOT_EINVAL;
 	}
 
-	if (!key->is_active) {
+	if (!key->is_active && !key->is_post_active) {
 		return false;
 	}
 
