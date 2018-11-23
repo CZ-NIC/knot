@@ -230,7 +230,8 @@ int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t time
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
-		if (key->is_ksk && key->cds_priority > 1) {
+		if (key->is_ready) {
+			assert(key->is_ksk);
 			if (parents_have_ds(kctx, key, timeout, &max_ds_ttl)) {
 				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl);
 			} else {

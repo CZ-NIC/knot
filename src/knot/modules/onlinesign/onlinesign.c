@@ -28,6 +28,7 @@
 #include "knot/dnssec/policy.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/dnssec/zone-sign.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
 
@@ -428,23 +429,6 @@ static knot_rrset_t *synth_dnskey(knotd_qdata_t *qdata, knotd_mod_t *mod,
 	return dnskey;
 }
 
-/* copied from the middle of zone-sign.c */
-static zone_key_t *ksk_for_cds(knotd_mod_t *mod)
-{
-	zone_key_t *res = NULL;
-	unsigned crp = mod->dnssec->policy->child_records_publish;
-	int kfc_prio = (crp == CHILD_RECORDS_ALWAYS ?
-	                0 : (crp == CHILD_RECORDS_ROLLOVER ? 1 : 2));
-	for (int i = 0; i < mod->keyset->count; i++) {
-		zone_key_t *key = &mod->keyset->keys[i];
-		if (key->is_ksk && key->cds_priority > kfc_prio) {
-			res = key;
-			kfc_prio = key->cds_priority;
-		}
-	}
-	return res;
-}
-
 static knot_rrset_t *synth_cdnskey(knotd_qdata_t *qdata, knotd_mod_t *mod,
                                    knot_mm_t *mm)
 {
@@ -458,21 +442,13 @@ static knot_rrset_t *synth_cdnskey(knotd_qdata_t *qdata, knotd_mod_t *mod,
 	dnssec_binary_t rdata = { 0 };
 	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
 	pthread_rwlock_rdlock(&ctx->signing_mutex);
-	zone_key_t *key = ksk_for_cds(mod);
-	if (key == NULL) {
-		pthread_rwlock_unlock(&ctx->signing_mutex);
-		knot_rrset_free(dnskey, mm);
-		return NULL;
+	keyptr_dynarray_t kcdnskeys = knot_zone_sign_get_cdnskeys(mod->dnssec, mod->keyset);
+	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cdnskey, kcdnskeys) {
+		dnssec_key_get_rdata((*ksk_for_cdnskey)->key, &rdata);
+		assert(rdata.size > 0 && rdata.data);
+		(void)knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
 	}
-	dnssec_key_get_rdata(key->key, &rdata);
-	assert(rdata.size > 0 && rdata.data);
-
-	int ret = knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
 	pthread_rwlock_unlock(&ctx->signing_mutex);
-	if (ret != KNOT_EOK) {
-		knot_rrset_free(dnskey, mm);
-		return NULL;
-	}
 
 	return dnskey;
 }
@@ -490,21 +466,13 @@ static knot_rrset_t *synth_cds(knotd_qdata_t *qdata, knotd_mod_t *mod,
 	dnssec_binary_t rdata = { 0 };
 	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
 	pthread_rwlock_rdlock(&ctx->signing_mutex);
-	zone_key_t *key = ksk_for_cds(mod);
-	if (key == NULL) {
-		pthread_rwlock_unlock(&ctx->signing_mutex);
-		knot_rrset_free(ds, mm);
-		return NULL;
+	keyptr_dynarray_t kcdnskeys = knot_zone_sign_get_cdnskeys(mod->dnssec, mod->keyset);
+	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
+		zone_key_calculate_ds(*ksk_for_cds, &rdata);
+		assert(rdata.size > 0 && rdata.data);
+		(void)knot_rrset_add_rdata(ds, rdata.data, rdata.size, mm);
 	}
-	zone_key_calculate_ds(key, &rdata);
-	assert(rdata.size > 0 && rdata.data);
-
-	int ret = knot_rrset_add_rdata(ds, rdata.data, rdata.size, mm);
 	pthread_rwlock_unlock(&ctx->signing_mutex);
-	if (ret != KNOT_EOK) {
-		knot_rrset_free(ds, mm);
-		return NULL;
-	}
 
 	return ds;
 }
