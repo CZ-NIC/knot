@@ -820,6 +820,8 @@ Possible values:
 \fBrollover\fP – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
 .IP \(bu 2
 \fBalways\fP – Always publish CDS and CDNSKEY records for the current KSK.
+.IP \(bu 2
+\fBdouble\-ds\fP – Like "always", publish up to two CDS and two CDNSKEY records for ready and/or active keys.
 .UNINDENT
 .sp
 \fIDefault:\fP always
