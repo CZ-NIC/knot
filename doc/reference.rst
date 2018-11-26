@@ -922,6 +922,7 @@ Possible values:
 - ``delete-dnssec`` – Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
 - ``rollover`` – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
 - ``always`` – Always publish CDS and CDNSKEY records for the current KSK.
+- ``double-ds`` – Like "always", publish up to two CDS and two CDNSKEY records for ready and/or active keys.
 
 *Default:* always
 

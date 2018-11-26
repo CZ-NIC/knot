@@ -899,8 +899,8 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 			}
 		}
 
-		if ((crp == CHILD_RECORDS_DOUBLE_DS && r.size > 2) ||
-		    (r.size > 1)) {
+		if ((crp != CHILD_RECORDS_DOUBLE_DS && r.size > 1) ||
+		    (r.size > 2)) {
 			log_zone_warning(ctx->zone->dname, "DNSSEC, published CDS/CDNSKEY records for too many (%zu) keys", r.size);
 		}
 	}
