@@ -172,11 +172,8 @@ be set concurrently with the \fBksk\fP flag.
 Overrides the standard setting of the Secure Entry Point flag for the generated key.
 .UNINDENT
 .sp
-The following arguments are timestamps of key lifetime:
+The following arguments are timestamps of key lifetime (see DNSSEC Key states):
 .INDENT 0.0
-.TP
-\fBcreated\fP
-Key created.
 .TP
 \fBpre_active\fP
 Key started to be used for signing, not published (only for algorithm rollover).

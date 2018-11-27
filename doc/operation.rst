@@ -409,6 +409,54 @@ current SOA serial in the zone (not in the zone file) if manually updated!
    In the case of "zonefile-load: difference-no-serial", the SOA serial is
    handled by the server automatically during server reload.
 
+.. _DNSSEC Key states:
+
+DNSSEC key states
+=================
+
+During its lifetime, DNSSEC key finds itself in different states. Most of the time it
+is usually used for signing the zone and published in the zone. In order to change
+this state, one type of a key rollover is necessary, and during this rollover,
+the key goes through various states, with respect to the rollover type and also the
+state of the other key being rolled-over.
+
+First, let's list the states of the key being rolled-in.
+
+Standard states:
+
+- ``active`` — The key is used for signing.
+- ``published`` — The key is published in the zone, but not used for signing.
+- ``ready`` (only for KSK) — The key is published in the zone and used for signing. The
+  old key is still active, since we are waiting for the DS records in the parent zone to be
+  updated (i.e. "KSK submission").
+
+Special states for algorithm rollover:
+
+- ``pre-active`` — The key is not yet published in the zone, but it's used for signing the zone.
+- ``published`` — The key is published in the zone, and it's still used for signing since the
+  pre-active state.
+
+Second, we list the states of the key being rolled-out.
+
+Standard states:
+
+- ``post-active`` — The key is still used for signing and published in the zone, waiting for
+  the updated DS records in parent zone to be acked by resolvers (KSK case) or synchronizing
+  with KSK during algorithm rollover (ZSK case).
+- ``retired`` — The key is no longer used for signing, but still published in the zone.
+- ``removed`` — The key is not used in any way (in most cases such keys are deleted immediately).
+
+Special states for algorithm rollover:
+
+- ``retire-active`` — The key is no longer published in the zone, but still used for signing.
+
+The states listed above are relevant for :doc:`keymgr <man_keymgr>` operations like generating
+a key, setting its timers and listing KASP database.
+
+On the other hand, the key "states" displayed in the server log lines while zone signing
+are not according to listed above, but just a hint what the key is currently used to
+(e.g. "public, active" = key is published in the zone and used for signing).
+
 .. _DNSSEC Key rollovers:
 
 DNSSEC key rollovers
