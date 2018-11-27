@@ -144,7 +144,7 @@ Arguments are separated by space, each of them is in format 'name=value'.
 **sep**
   Overrides the standard setting of the Secure Entry Point flag for the generated key.
 
-The following arguments are timestamps of key lifetime:
+The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key states`):
 
 **created**
   Key created.
