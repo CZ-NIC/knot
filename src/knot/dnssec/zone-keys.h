@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@
 typedef struct {
 	const char *id;
 	dnssec_key_t *key;
-	dnssec_sign_ctx_t *ctx;
 
 	dnssec_binary_t precomputed_ds;
 
@@ -48,6 +47,16 @@ typedef struct {
 	size_t count;
 	zone_key_t *keys;
 } zone_keyset_t;
+
+/*!
+ * \brief Signing context used for single signing thread.
+ */
+typedef struct {
+	size_t count;                     // number of keys in keyset
+	zone_key_t *keys;                 // keys in keyset
+	dnssec_sign_ctx_t **sign_ctxs;    // signing buffers for keys in keyset
+	const kdnssec_ctx_t *dnssec_ctx;  // dnssec context
+} zone_sign_ctx_t;
 
 /*!
  * \brief Flags determining key type
@@ -120,16 +129,6 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
 int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose);
 
 /*!
- * \brief Get zone keys by a keytag.
- *
- * \param keyset  Zone keyset.
- * \param search  Keytag to lookup a key for.
- *
- * \return Dynarray of pointers to keys.
- */
-struct keyptr_dynarray get_zone_keys(const zone_keyset_t *keyset, uint16_t search);
-
-/*!
  * \brief Free structure with zone keys and associated DNSSEC contexts.
  *
  * \param keyset  Zone keys.
@@ -156,3 +155,22 @@ knot_time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
  * \return Error code, KNOT_EOK if successful.
  */
 int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree);
+
+/*!
+ * \brief Initialize local signing context.
+ *
+ * \param keyset      Key set.
+ * \param dnssec_ctx  DNSSEC context.
+ *
+ * \return New local signing context or NULL.
+ */
+zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx);
+
+/*!
+ * \brief Free local signing context.
+ *
+ * \note This doesn't free the underlying keyset.
+ *
+ * \param ctx  Local context to be freed.
+ */
+void zone_sign_ctx_free(zone_sign_ctx_t *ctx);

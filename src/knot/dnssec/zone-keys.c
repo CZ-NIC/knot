@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -177,24 +177,15 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 /*!
  * \brief Get key feature flags from key parameters.
  */
-static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_key)
+static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_key)
 {
 	assert(kasp_key);
 	assert(zone_key);
 
 	knot_kasp_key_timing_t *timing = &kasp_key->timing;
 
-	// cryptographic context
-
-	dnssec_sign_ctx_t *ctx = NULL;
-	int r = dnssec_sign_new(&ctx, kasp_key->key);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
 	zone_key->id = kasp_key->id;
 	zone_key->key = kasp_key->key;
-	zone_key->ctx = ctx;
 
 	// next event computation
 
@@ -238,8 +229,6 @@ static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_
 	                          (knot_time_cmp(timing->active, now) <= 0) ? (
 	                           (knot_time_cmp(timing->retire_active, now) <= 0 ||
 	                            knot_time_cmp(timing->retire, now) <= 0) ? 0 : 1) : 2) : 0);
-
-	return KNOT_EOK;
 }
 
 /*!
@@ -460,30 +449,12 @@ void free_zone_keys(zone_keyset_t *keyset)
 	}
 
 	for (size_t i = 0; i < keyset->count; i++) {
-		dnssec_sign_free(keyset->keys[i].ctx);
 		dnssec_binary_free(&keyset->keys[i].precomputed_ds);
 	}
 
 	free(keyset->keys);
 
 	memset(keyset, '\0', sizeof(*keyset));
-}
-
-/*!
- * \brief Get zone keys by keytag.
- */
-struct keyptr_dynarray get_zone_keys(const zone_keyset_t *keyset, uint16_t search)
-{
-	struct keyptr_dynarray res = { 0 };
-
-	for (size_t i = 0; keyset && i < keyset->count; i++) {
-		zone_key_t *key = &keyset->keys[i];
-		if (key != NULL && dnssec_key_get_keytag(key->key) == search) {
-			keyptr_dynarray_add(&res, &key);
-		}
-	}
-
-	return res;
 }
 
 /*!
@@ -523,4 +494,36 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree)
 
 	*out_donotfree = for_key->precomputed_ds;
 	return ret;
+}
+
+zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx)
+{
+	zone_sign_ctx_t *ctx = calloc(1, sizeof(*ctx) + keyset->count * sizeof(*ctx->sign_ctxs));
+	if (ctx == NULL) {
+		return NULL;
+	}
+
+	ctx->sign_ctxs = (dnssec_sign_ctx_t **)(ctx + 1);
+	ctx->count = keyset->count;
+	ctx->keys = keyset->keys;
+	ctx->dnssec_ctx = dnssec_ctx;
+	for (size_t i = 0; i < ctx->count; i++) {
+		int ret = dnssec_sign_new(&ctx->sign_ctxs[i], ctx->keys[i].key);
+		if (ret != DNSSEC_EOK) {
+			zone_sign_ctx_free(ctx);
+			return NULL;
+		}
+	}
+
+	return ctx;
+}
+
+void zone_sign_ctx_free(zone_sign_ctx_t *ctx)
+{
+	if (ctx != NULL) {
+		for (size_t i = 0; i < ctx->count; i++) {
+			dnssec_sign_free(ctx->sign_ctxs[i]);
+		}
+		free(ctx);
+	}
 }
