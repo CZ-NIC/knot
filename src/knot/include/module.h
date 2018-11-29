@@ -527,6 +527,13 @@ int knotd_mod_dnssec_init(knotd_mod_t *mod);
 int knotd_mod_dnssec_load_keyset(knotd_mod_t *mod, bool verbose);
 
 /*!
+ * Frees up resources before re-loading DNSSEC signing keys.
+ *
+ * \param[in] mod      Module context.
+ */
+void knotd_mod_dnssec_unload_keyset(knotd_mod_t *mod);
+
+/*!
  * Generates RRSIGs for given RRSet.
  *
  * \param[in] mod      Module context.
