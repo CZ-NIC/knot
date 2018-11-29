@@ -16,6 +16,7 @@
 
 #include "knot/dnssec/key_records.h"
 
+#include "libdnssec/sign.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/journal/serialization.h"
@@ -140,16 +141,21 @@ int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_
 		return KNOT_EOK;
 	}
 
+	dnssec_sign_ctx_t *sign_ctx;
+	dnssec_sign_new(&sign_ctx, key->key);
+
 	int ret = KNOT_EOK;
 	if (!knot_rrset_empty(&r->dnskey) && knot_zone_sign_use_key(key, &r->dnskey)) {
-		ret = knot_sign_rrset(&r->rrsig, &r->dnskey, key->key, key->ctx, kctx, NULL, NULL);
+		ret = knot_sign_rrset(&r->rrsig, &r->dnskey, key->key, sign_ctx, kctx, NULL, NULL);
 	}
 	if (ret == KNOT_EOK && !knot_rrset_empty(&r->cdnskey) && knot_zone_sign_use_key(key, &r->cdnskey)) {
-		ret = knot_sign_rrset(&r->rrsig, &r->cdnskey, key->key, key->ctx, kctx, NULL, NULL);
+		ret = knot_sign_rrset(&r->rrsig, &r->cdnskey, key->key, sign_ctx, kctx, NULL, NULL);
 	}
 	if (ret == KNOT_EOK && !knot_rrset_empty(&r->cds) && knot_zone_sign_use_key(key, &r->cds)) {
-		ret = knot_sign_rrset(&r->rrsig, &r->cds, key->key, key->ctx, kctx, NULL, NULL);
+		ret = knot_sign_rrset(&r->rrsig, &r->cds, key->key, sign_ctx, kctx, NULL, NULL);
 	}
+
+	dnssec_sign_free(sign_ctx);
 	return ret;
 }
 

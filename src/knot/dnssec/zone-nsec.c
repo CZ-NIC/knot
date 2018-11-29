@@ -328,7 +328,7 @@ static dnssec_nsec3_params_t nsec3param_init(const knot_kasp_policy_t *policy,
 }
 
 int knot_zone_create_nsec_chain(zone_update_t *update,
-                                const zone_keyset_t *zone_keys,
+                                zone_keyset_t *zone_keys,
                                 const kdnssec_ctx_t *ctx,
                                 bool sign_nsec_chain)
 {
@@ -394,7 +394,7 @@ cleanup:
 
 
 int knot_zone_fix_nsec_chain(zone_update_t *update,
-                             const zone_keyset_t *zone_keys,
+                             zone_keyset_t *zone_keys,
                              const kdnssec_ctx_t *ctx,
                              bool sign_nsec_chain)
 {

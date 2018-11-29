@@ -184,17 +184,8 @@ static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_
 
 	knot_kasp_key_timing_t *timing = &kasp_key->timing;
 
-	// cryptographic context
-
-	dnssec_sign_ctx_t *ctx = NULL;
-	int r = dnssec_sign_new(&ctx, kasp_key->key);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
 	zone_key->id = kasp_key->id;
 	zone_key->key = kasp_key->key;
-	zone_key->ctx = ctx;
 
 	// next event computation
 
@@ -440,7 +431,6 @@ void free_zone_keys(zone_keyset_t *keyset)
 	}
 
 	for (size_t i = 0; i < keyset->count; i++) {
-		dnssec_sign_free(keyset->keys[i].ctx);
 		dnssec_binary_free(&keyset->keys[i].precomputed_ds);
 	}
 
@@ -503,4 +493,29 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree)
 
 	*out_donotfree = for_key->precomputed_ds;
 	return ret;
+}
+
+zone_sign_ctx_t *zone_sign_ctx(zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx)
+{
+	zone_sign_ctx_t *ctx = calloc(1, sizeof(*ctx) + keyset->count * sizeof(*ctx->sign_ctxs));
+	assert(ctx != NULL);
+	ctx->sign_ctxs = (dnssec_sign_ctx_t **)(ctx + 1);
+	ctx->count = keyset->count;
+	ctx->keys = keyset->keys;
+	ctx->dnssec_ctx = dnssec_ctx;
+	for (size_t i = 0; i < ctx->count; i++) {
+		int ret = dnssec_sign_new(&ctx->sign_ctxs[i], ctx->keys[i].key);
+		assert(ret == 0 && ctx->sign_ctxs[i] != NULL);
+	}
+	return ctx;
+}
+
+void zone_sign_ctx_free(zone_sign_ctx_t *ctx)
+{
+	if (ctx != NULL) {
+		for (size_t i = 0; i < ctx->count; i++) {
+			dnssec_sign_free(ctx->sign_ctxs[i]);
+		}
+		free(ctx);
+	}
 }

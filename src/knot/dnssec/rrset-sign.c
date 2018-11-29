@@ -19,6 +19,7 @@
 #include "contrib/wire_ctx.h"
 #include "libdnssec/error.h"
 #include "knot/dnssec/rrset-sign.h"
+#include "knot/dnssec/zone-sign.h"
 #include "libknot/libknot.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
@@ -276,6 +277,30 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 		*expires = knot_time_min(*expires, sig_expire);
 	}
 	return ret;
+}
+
+int knot_sign_rrset2(knot_rrset_t *rrsigs, const knot_rrset_t *rrset,
+                     zone_sign_ctx_t *sign_ctx, knot_mm_t *mm)
+{
+	if (sign_ctx == NULL || rrsigs == NULL || rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (size_t i = 0; i < sign_ctx->count; i++) {
+		zone_key_t *key = &sign_ctx->keys[i];
+
+		if (!knot_zone_sign_use_key(key, rrset)) {
+			continue;
+		}
+
+		int ret = knot_sign_rrset(rrsigs, rrset, key->key, sign_ctx->sign_ctxs[i],
+		                          sign_ctx->dnssec_ctx, mm, NULL);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
