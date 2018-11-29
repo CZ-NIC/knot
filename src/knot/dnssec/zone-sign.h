@@ -98,7 +98,7 @@ int knot_zone_sign(zone_update_t *update,
  * \return True if zone SOA signatures need update, false othewise.
  */
 bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
-                                const zone_keyset_t *zone_keys,
+                                zone_keyset_t *zone_keys,
                                 const kdnssec_ctx_t *dnssec_ctx);
 
 /*!
@@ -110,7 +110,7 @@ bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
+int knot_zone_sign_nsecs_in_changeset(zone_keyset_t *zone_keys,
                                       const kdnssec_ctx_t *dnssec_ctx,
                                       changeset_t *changeset);
 
@@ -157,5 +157,5 @@ int knot_zone_sign_update(zone_update_t *update,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_sign_soa(zone_update_t *update,
-                       const zone_keyset_t *zone_keys,
+                       zone_keyset_t *zone_keys,
                        const kdnssec_ctx_t *dnssec_ctx);

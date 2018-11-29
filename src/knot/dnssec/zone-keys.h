@@ -29,7 +29,6 @@
 typedef struct {
 	const char *id;
 	dnssec_key_t *key;
-	dnssec_sign_ctx_t *ctx;
 
 	dnssec_binary_t precomputed_ds;
 
@@ -48,6 +47,16 @@ typedef struct {
 	size_t count;
 	zone_key_t *keys;
 } zone_keyset_t;
+
+/*!
+ * \brief Signing context used for single signing thread.
+ */
+typedef struct _zone_sign_ctx_t {
+	size_t count;                     // number of keys in keyset
+	zone_key_t *keys;                 // keys in keyset
+	dnssec_sign_ctx_t **sign_ctxs;    // signing buffers for keys in keyset
+	const kdnssec_ctx_t *dnssec_ctx;  // dnssec context
+} zone_sign_ctx_t;
 
 /*!
  * \brief Flags determining key type
@@ -156,3 +165,22 @@ knot_time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
  * \return Error code, KNOT_EOK if successful.
  */
 int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree);
+
+/*!
+ * \brief Initialize local signing context.
+ *
+ * \param keyset       Key set.
+ * \param dnssec_ctx   DNSSEC context.
+ *
+ * \return New local signing context.
+ */
+zone_sign_ctx_t *zone_sign_ctx(zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx);
+
+/*!
+ * \brief Free local signing context.
+ *
+ * \note This doesn't free the underlying keyset.
+ *
+ * \param ctx   Local context to be freed.
+ */
+void zone_sign_ctx_free(zone_sign_ctx_t *ctx);
