@@ -89,6 +89,7 @@ struct knotd_mod {
 	const knotd_mod_api_t *api;
 	kdnssec_ctx_t *dnssec;
 	zone_keyset_t *keyset;
+	zone_sign_ctx_t *sign_ctx;
 	mod_ctr_t *stats;
 	uint32_t stats_count;
 	void *ctx;
