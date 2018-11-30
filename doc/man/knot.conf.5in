@@ -673,6 +673,7 @@ policy:
     nsec3\-opt\-out: BOOL
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
+    signing\-workers: INT
     ksk\-submission: submission_id
     cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always
     offline\-ksk: BOOL
@@ -867,6 +868,13 @@ A reference to \fI\%submission\fP section holding parameters of
 KSK submittion checks.
 .sp
 \fIDefault:\fP not set
+.SS signing\-workers
+.sp
+When signing zone or update, use this number of threads for parallel signing.
+.sp
+Those are extra threads independent of \fI\%Background workers\fP\&.
+.sp
+\fIDefault:\fP 1 (no extra threads)
 .SS cds\-cdnskey\-publish
 .sp
 Controls if and how shall the CDS and CDNSKEY be published in the zone.
