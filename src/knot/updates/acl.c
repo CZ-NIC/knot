@@ -22,12 +22,7 @@ static bool check_rr_type(uint16_t type, conf_val_t *types)
 		return true;
 	}
 	while (types->code == KNOT_EOK) {
-		uint16_t ctype;
-		int ret = knot_rrtype_from_string(conf_str(types), &ctype);
-		if (ret != 0) {
-			return false;
-		}
-		if (type == ctype) {
+		if (type == conf_int(types)) {
 			return true;
 		}
 		conf_val_next(types);
