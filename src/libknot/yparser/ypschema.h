@@ -129,6 +129,10 @@ typedef union {
 		int64_t dflt;
 		/*! Possible unit type. */
 		yp_style_t unit;
+		/*! Text to binary transformation function. */
+		int (*to_bin)(YP_TXT_BIN_PARAMS);
+		/*! Binary to text transformation function. */
+		int (*to_txt)(YP_BIN_TXT_PARAMS);
 	} i;
 	/*! Boolen variables. */
 	struct {
@@ -162,7 +166,7 @@ typedef union {
 		uint8_t const *dflt;
 		/*! Text to binary transformation function. */
 		int (*to_bin)(YP_TXT_BIN_PARAMS);
-		/*! Binary to text transformatio function. */
+		/*! Binary to text transformation function. */
 		int (*to_txt)(YP_BIN_TXT_PARAMS);
 	} d;
 	/*! Reference variables. */
