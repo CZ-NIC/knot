@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,6 +96,7 @@
 #define C_SEM_CHECKS		"\x0F""semantic-checks"
 #define C_SERIAL_POLICY		"\x0D""serial-policy"
 #define C_SERVER		"\x06""server"
+#define C_SIGNING_WORKERS	"\x0F""signing-workers"
 #define C_SINGLE_TYPE_SIGNING	"\x13""single-type-signing"
 #define C_SRV			"\x06""server"
 #define C_STATS			"\x0A""statistics"

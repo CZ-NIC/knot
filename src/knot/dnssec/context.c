@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -117,6 +117,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 			conf_val_next(&val);
 		}
 	}
+
+	val = conf_id_get(conf(), C_POLICY, C_SIGNING_WORKERS, id);
+	policy->signing_workers = conf_int(&val);
 
 	val = conf_id_get(conf(), C_POLICY, C_OFFLINE_KSK, id);
 	policy->offline_ksk = conf_bool(&val);
