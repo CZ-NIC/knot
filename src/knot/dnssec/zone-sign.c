@@ -658,9 +658,16 @@ static int zone_tree_sign(zone_tree_t *tree,
  */
 typedef struct {
 	const zone_contents_t *zone;
+	changeset_iter_t itt;
 	zone_sign_ctx_t *sign_ctx;
-	changeset_t *changeset;
-	trie_t *signed_tree;
+	changeset_t changeset;
+	knot_time_t expires_at;
+	size_t num_threads;
+	size_t thread_index;
+	size_t rrset_index;
+	int errcode;
+	int thread_init_errcode;
+	pthread_t thread;
 } changeset_signing_data_t;
 
 int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
@@ -689,117 +696,6 @@ static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
 }
 
 /*!
- * \brief Goes through list and looks for RRSet type there.
- *
- * \return True if RR type is in the list, false otherwise.
- */
-static bool rr_type_in_list(const knot_rrset_t *rr, const list_t *l)
-{
-	if (l == NULL || EMPTY_LIST(*l)) {
-		return false;
-	}
-	assert(rr);
-
-	type_node_t *n = NULL;
-	WALK_LIST(n, *l) {
-		type_node_t *type_node = (type_node_t *)n;
-		if (type_node->type == rr->type) {
-			return true;
-		}
-	};
-
-	return false;
-}
-
-static int add_rr_type_to_list(const knot_rrset_t *rr, list_t *l)
-{
-	assert(rr);
-	assert(l);
-
-	type_node_t *n = malloc(sizeof(type_node_t));
-	if (n == NULL) {
-		return KNOT_ENOMEM;
-	}
-	n->type = rr->type;
-
-	add_head(l, (node_t *)n);
-	return KNOT_EOK;
-}
-
-/*!
- * \brief Checks whether RRSet is not already in the hash table, automatically
- *        stores its pointer to the table if not found, but returns false in
- *        that case.
- *
- * \param rrset      RRSet to be checked for.
- * \param tree       Tree with already signed RRs.
- * \param rr_signed  Set to true if RR is signed already, false otherwise.
- *
- * \return KNOT_E*
- */
-static int rr_already_signed(const knot_rrset_t *rrset, trie_t *t,
-                             bool *rr_signed)
-{
-	assert(rrset);
-	assert(t);
-	*rr_signed = false;
-	// Create a key = RRSet owner converted to sortable format
-	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(rrset->owner, lf_storage);
-	assert(lf);
-	trie_val_t stored_info = (signed_info_t *)trie_get_try(t, (char *)lf+1,
-	                                                      *lf);
-	if (stored_info == NULL) {
-		// Create new info struct
-		signed_info_t *info = malloc(sizeof(signed_info_t));
-		if (info == NULL) {
-			return KNOT_ENOMEM;
-		}
-		memset(info, 0, sizeof(signed_info_t));
-		// Store actual dname repr
-		info->dname = knot_dname_copy(rrset->owner, NULL);
-		if (info->dname == NULL) {
-			free(info);
-			return KNOT_ENOMEM;
-		}
-		// Create new list to insert as a value
-		info->type_list = malloc(sizeof(list_t));
-		if (info->type_list == NULL) {
-			free(info->dname);
-			free(info);
-			return KNOT_ENOMEM;
-		}
-		init_list(info->type_list);
-		// Insert type to list
-		int ret = add_rr_type_to_list(rrset, info->type_list);
-		if (ret != KNOT_EOK) {
-			free(info->type_list);
-			free(info->dname);
-			free(info);
-			return ret;
-		}
-		*trie_get_ins(t, (char *)lf+1, *lf) = info;
-	} else {
-		signed_info_t *info = *((signed_info_t **)stored_info);
-		assert(info->type_list);
-		// Check whether the type is in the list already
-		if (rr_type_in_list(rrset, info->type_list)) {
-			*rr_signed = true;
-			return KNOT_EOK;
-		}
-		// Just update the existing list
-		int ret = add_rr_type_to_list(rrset, info->type_list);
-		if (ret != KNOT_EOK) {
-			*rr_signed = false;
-			return KNOT_EOK;
-		}
-	}
-
-	*rr_signed = false;
-	return KNOT_EOK;
-}
-
-/*!
  * \brief Wrapper function for changeset signing - to be used with changeset
  *        apply functions.
  *
@@ -823,24 +719,9 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset,
 
 		bool should_sign = knot_zone_sign_rr_should_be_signed(node, &zone_rrset);
 
-		// Check for RRSet in the 'already_signed' table
-		if (args->signed_tree && (should_sign && knot_rrset_empty(&zone_rrset))) {
-			bool already_signed = false;
-
-			int ret = rr_already_signed(chg_rrset, args->signed_tree,
-			                            &already_signed);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-			if (already_signed) {
-				/* Do not sign again. */
-				should_sign = false;
-			}
-		}
-
 		if (should_sign) {
 			return resign_rrset(&zone_rrset, &rrsigs, args->sign_ctx,
-			                    args->changeset, expire_at);
+			                    &args->changeset, expire_at);
 		} else {
 			/*
 			 * If RRSet in zone DOES have RRSIGs although we
@@ -854,43 +735,26 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset,
 			 */
 			return remove_rrset_rrsigs(chg_rrset->owner,
 			                           chg_rrset->type, &rrsigs,
-			                           args->changeset);
+			                           &args->changeset);
 		}
 	}
 
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Frees info node about update signing.
- *
- * \param val  Node to free.
- * \param d    Unused.
- */
-static int free_helper_trie_node(trie_val_t *val, void *d)
+static void *sign_changeset_thread(void *_arg)
 {
-	UNUSED(d);
-	signed_info_t *info = (signed_info_t *)*val;
-	if (info->type_list && !EMPTY_LIST(*(info->type_list))) {
-		WALK_LIST_FREE(*(info->type_list));
-	}
-	free(info->type_list);
-	knot_dname_free(info->dname, NULL);
-	knot_dname_free(info->hashed_dname, NULL);
-	free(info);
-	return KNOT_EOK;
-}
+	changeset_signing_data_t *arg = _arg;
 
-/*!
- * \brief Clears trie with info about update signing.
- *
- * \param t  Trie to clear.
- */
-static void knot_zone_clear_sorted_changes(trie_t *t)
-{
-	if (t) {
-		trie_apply(t, free_helper_trie_node, NULL);
+	knot_rrset_t rr = changeset_iter_next(&arg->itt);
+	while (!knot_rrset_empty(&rr) && arg->errcode == KNOT_EOK) {
+		if (arg->rrset_index++ % arg->num_threads == arg->thread_index) {
+			arg->errcode = sign_changeset_wrap(&rr, arg, &arg->expires_at);
+		}
+		rr = changeset_iter_next(&arg->itt);
 	}
+
+	return NULL;
 }
 
 /*- public API ---------------------------------------------------------------*/
@@ -1132,61 +996,92 @@ bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
 }
 
 static int sign_changeset(const zone_contents_t *zone,
-                          const changeset_t *in_ch,
-                          changeset_t *out_ch,
+                          size_t num_threads,
+                          zone_update_t *update,
                           zone_keyset_t *zone_keys,
                           const kdnssec_ctx_t *dnssec_ctx,
                           knot_time_t *expire_at)
 {
-	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
+	if (zone == NULL || update == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = KNOT_EOK;
+	changeset_signing_data_t args[num_threads];
+	memset(args, 0, sizeof(args));
 
-	// Create args for wrapper function - trie for duplicate sigs
-	changeset_signing_data_t args = {
-		.zone = zone,
-		.sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx),
-		.changeset = out_ch,
-		.signed_tree = trie_create(NULL)
-	};
-
-	if (args.signed_tree == NULL) {
-		return KNOT_ENOMEM;
-
-	}
-	changeset_iter_t itt;
-	changeset_iter_all(&itt, in_ch);
-
-	knot_rrset_t rr = changeset_iter_next(&itt);
-	while (!knot_rrset_empty(&rr)) {
-		ret = sign_changeset_wrap(&rr, &args, expire_at);
+	// init context structures
+	for (size_t i = 0; i < num_threads; i++) {
+		args[i].zone = update->new_cont;
+		ret = changeset_iter_all(&args[i].itt, &update->change);
 		if (ret != KNOT_EOK) {
-			changeset_iter_clear(&itt);
-			goto cleanup;
+			break;
 		}
-		rr = changeset_iter_next(&itt);
-	}
-	changeset_iter_clear(&itt);
-
-	if (!knot_rrset_empty(in_ch->soa_from)) {
-		ret = sign_changeset_wrap(in_ch->soa_from, &args, expire_at);
+		args[i].sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
+		if (args[i].sign_ctx == NULL) {
+			ret = KNOT_ENOMEM;
+			break;
+		}
+		ret = changeset_init(&args[i].changeset, update->zone->name);
 		if (ret != KNOT_EOK) {
-			goto cleanup;
+			break;
 		}
+		args[i].expires_at = 0;
+		args[i].num_threads = num_threads;
+		args[i].thread_index = i;
+		args[i].rrset_index = 0;
+		args[i].errcode = KNOT_EOK;
+		args[i].thread_init_errcode = -1;
 	}
-	if (!knot_rrset_empty(in_ch->soa_to)) {
-		ret = sign_changeset_wrap(in_ch->soa_to, &args, expire_at);
-		if (ret != KNOT_EOK) {
-			goto cleanup;
+	if (ret != KNOT_EOK) {
+		for (size_t i = 0; i < num_threads; i++) {
+			changeset_iter_clear(&args[i].itt);
+			changeset_clear(&args[i].changeset);
+			zone_sign_ctx_free(args[i].sign_ctx);
+		}
+		return ret;
+	}
+
+	if (num_threads == 1) {
+		args[0].thread_init_errcode = 0;
+		sign_changeset_thread(&args[0]);
+	} else {
+		// start working threads
+		for (size_t i = 0; i < num_threads; i++) {
+			args[i].thread_init_errcode =
+				pthread_create(&args[i].thread, NULL, sign_changeset_thread, &args[i]);
+		}
+
+		// join those threads that have been really started
+		for (size_t i = 0; i < num_threads; i++) {
+			if (args[i].thread_init_errcode == 0) {
+				args[i].thread_init_errcode = pthread_join(args[i].thread, NULL);
+			}
 		}
 	}
 
-cleanup:
-	knot_zone_clear_sorted_changes(args.signed_tree);
-	trie_free(args.signed_tree);
-	zone_sign_ctx_free(args.sign_ctx);
+	if (!knot_rrset_empty(update->change.soa_from)) {
+		ret = sign_changeset_wrap(update->change.soa_from, &args[0], expire_at);
+	}
+	if (ret == KNOT_EOK && !knot_rrset_empty(update->change.soa_to)) {
+		ret = sign_changeset_wrap(update->change.soa_to, &args[0], expire_at);
+	}
+
+	// collect return code and results
+	for (size_t i = 0; i < num_threads && ret == KNOT_EOK; i++) {
+		if (args[i].thread_init_errcode != 0) {
+			ret = knot_map_errno_code(args[i].thread_init_errcode);
+		} else {
+			ret = args[i].errcode;
+			if (ret == KNOT_EOK) {
+				ret = zone_update_apply_changeset_fix(update, &args[i].changeset);
+				*expire_at = knot_time_min(*expire_at, args[i].expires_at);
+			}
+		}
+		changeset_iter_clear(&args[i].itt);
+		changeset_clear(&args[i].changeset);
+		zone_sign_ctx_free(args[i].sign_ctx);
+	}
 
 	return ret;
 }
@@ -1256,7 +1151,8 @@ int knot_zone_sign_update(zone_update_t *update,
                           const kdnssec_ctx_t *dnssec_ctx,
                           knot_time_t *expire_at)
 {
-	if (update == NULL || zone_keys == NULL || dnssec_ctx == NULL || expire_at == NULL) {
+	if (update == NULL || zone_keys == NULL || dnssec_ctx == NULL || expire_at == NULL ||
+	    dnssec_ctx->policy->signing_workers < 1) {
 		return KNOT_EINVAL;
 	}
 
@@ -1274,17 +1170,8 @@ int knot_zone_sign_update(zone_update_t *update,
 	if (full_sign) {
 		ret = knot_zone_sign(update, zone_keys, dnssec_ctx, expire_at);
 	} else {
-		changeset_t sec_ch;
-		ret = changeset_init(&sec_ch, update->zone->name);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		ret = sign_changeset(update->new_cont, &update->change, &sec_ch,
-		                     zone_keys, dnssec_ctx, expire_at);
-		if (ret == KNOT_EOK) {
-			ret = zone_update_apply_changeset_fix(update, &sec_ch);
-		}
-		changeset_clear(&sec_ch);
+		ret = sign_changeset(update->new_cont, dnssec_ctx->policy->signing_workers,
+				     update, zone_keys, dnssec_ctx, expire_at);
 	}
 
 	return ret;
