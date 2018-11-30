@@ -182,6 +182,35 @@ int edns_opt_to_txt(
 	YP_CHECK_RET;
 }
 
+int rrtype_to_bin(
+	YP_TXT_BIN_PARAMS)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	uint16_t type;
+	int ret = knot_rrtype_from_string((char *)in->position, &type);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	wire_ctx_write_u16(out, type);
+
+	YP_CHECK_RET;
+}
+
+int rrtype_to_txt(
+	YP_BIN_TXT_PARAMS)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	uint16_t type = (uint16_t)yp_int(in->position);
+	int ret = knot_rrtype_to_string(type, (char *)out->position, out->size);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	YP_CHECK_RET;
+}
+
 int check_ref(
 	knotd_conf_check_args_t *args)
 {

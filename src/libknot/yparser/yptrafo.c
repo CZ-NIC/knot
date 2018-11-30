@@ -887,8 +887,12 @@ int yp_item_to_bin(
 
 	switch (item->type) {
 	case YP_TINT:
-		ret = yp_int_to_bin(&in, &out, NULL, item->var.i.min,
-		                    item->var.i.max, item->var.i.unit);
+		if (item->var.i.to_bin != NULL) {
+			ret = item->var.i.to_bin(&in, &out, NULL);
+		} else {
+			ret = yp_int_to_bin(&in, &out, NULL, item->var.i.min,
+			                    item->var.i.max, item->var.i.unit);
+		}
 		break;
 	case YP_TBOOL:
 		ret = yp_bool_to_bin(&in, &out, NULL);
