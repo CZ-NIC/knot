@@ -118,6 +118,7 @@ typedef struct {
 	uint32_t ksk_sbm_check_interval;
 	unsigned child_records_publish;
 	parent_dynarray_t parents;
+	uint16_t parallel_sign;
 	bool offline_ksk;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??
