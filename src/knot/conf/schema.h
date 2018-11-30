@@ -82,6 +82,7 @@
 #define C_NSEC3_SALT_LIFETIME	"\x13""nsec3-salt-lifetime"
 #define C_NSID			"\x04""nsid"
 #define C_OFFLINE_KSK		"\x0B""offline-ksk"
+#define C_PARALLEL_SIGN         "\x0D""parallel-sign"
 #define C_PARENT		"\x06""parent"
 #define C_PIDFILE		"\x07""pidfile"
 #define C_POLICY		"\x06""policy"
