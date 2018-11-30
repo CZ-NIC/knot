@@ -984,6 +984,17 @@ KSK submittion checks.
 
 *Default:* not set
 
+.. _policy_parallel-sign:
+
+parallel-sign
+-------------
+
+When signing zone or update, use this number of threads for parallel signing.
+
+Those are extra threads independent of :ref:`Background workers<server_background-workers>`.
+
+*Default:* 1 (no extra threads)
+
 .. _policy_cds-cdnskey-publish:
 
 cds-cdnskey-publish

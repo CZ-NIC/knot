@@ -867,6 +867,13 @@ A reference to \fI\%submission\fP section holding parameters of
 KSK submittion checks.
 .sp
 \fIDefault:\fP not set
+.SS parallel\-sign
+.sp
+When signing zone or update, use this number of threads for parallel signing.
+.sp
+Those are extra threads independent of \fI\%Background workers\fP\&.
+.sp
+\fIDefault:\fP 1 (no extra threads)
 .SS cds\-cdnskey\-publish
 .sp
 Controls if and how shall the CDS and CDNSKEY be published in the zone.

@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <pthread.h>
 #include <sys/types.h>
 
 #include "libdnssec/error.h"
@@ -509,9 +510,16 @@ static int sign_node_rrsets(const zone_node_t *node,
  * \brief Struct to carry data for 'sign_data' callback function.
  */
 typedef struct node_sign_args {
+	zone_tree_t *tree;
 	zone_sign_ctx_t *sign_ctx;
-	changeset_t *changeset;
+	changeset_t changeset;
 	knot_time_t expires_at;
+	size_t num_threads;
+	size_t thread_index;
+	size_t rrset_index;
+	int errcode;
+	int thread_init_errcode;
+	pthread_t thread;
 } node_sign_args_t;
 
 /*!
@@ -535,44 +543,95 @@ static int sign_node(zone_node_t **node, void *data)
 		return KNOT_EOK;
 	}
 
+	if (args->rrset_index++ % args->num_threads != args->thread_index) {
+		return KNOT_EOK;
+	}
+
 	int result = sign_node_rrsets(*node, args->sign_ctx,
-	                              args->changeset, &args->expires_at);
+	                              &args->changeset, &args->expires_at);
 
 	return result;
+}
+
+static void *tree_sign_thread(void *_arg)
+{
+	node_sign_args_t *arg = _arg;
+	arg->errcode = zone_tree_apply(arg->tree, sign_node, _arg);
+	return NULL;
 }
 
 /*!
  * \brief Update RRSIGs in a given zone tree by updating changeset.
  *
  * \param tree        Zone tree to be signed.
+ * \param num_threads Number of threads to use for parallel signing.
  * \param zone_keys   Zone keys.
  * \param policy      DNSSEC policy.
- * \param changeset   Changeset to be updated.
+ * \param update      Zone update structure to be updated.
  * \param expires_at  Expiration time of the oldest signature in zone.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int zone_tree_sign(zone_tree_t *tree,
+			  size_t num_threads,
                           zone_keyset_t *zone_keys,
                           const kdnssec_ctx_t *dnssec_ctx,
-                          changeset_t *changeset,
+                          zone_update_t *update,
                           knot_time_t *expires_at)
 {
 	assert(zone_keys);
 	assert(dnssec_ctx);
-	assert(changeset);
+	assert(update);
 
-	node_sign_args_t args = {
-		.sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx),
-		.changeset = changeset,
-		.expires_at = knot_time_add(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime),
-	};
+	int ret = KNOT_EOK;
+	node_sign_args_t args[num_threads];
+	*expires_at = knot_time_add(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime);
 
-	int result = zone_tree_apply(tree, sign_node, &args);
-	*expires_at = args.expires_at;
+	// init context structures
+	for (size_t i = 0; i < num_threads; i++) {
+		args[i].tree = tree;
+		args[i].sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
+		(void)changeset_init(&args[i].changeset, update->zone->name);
+		args[i].expires_at = 0;
+		args[i].num_threads = num_threads;
+		args[i].thread_index = i;
+		args[i].rrset_index = 0;
+		args[i].errcode = KNOT_EOK;
+		args[i].thread_init_errcode = -1;
+	}
 
-	zone_sign_ctx_free(args.sign_ctx);
-	return result;
+	if (num_threads == 1) {
+		args[0].thread_init_errcode = 0;
+		tree_sign_thread(&args[0]);
+	} else {
+		// start working threads
+		for (size_t i = 0; i < num_threads; i++) {
+			args[i].thread_init_errcode = pthread_create(&args[i].thread, NULL, tree_sign_thread, &args[i]);
+		}
+
+		// join those threads that have been really started
+		for (size_t i = 0; i < num_threads; i++) {
+			if (args[i].thread_init_errcode == 0) {
+				args[i].thread_init_errcode = pthread_join(args[i].thread, NULL);
+			}
+		}
+	}
+
+	// collect return code and results
+	for (size_t i = 0; i < num_threads && ret == KNOT_EOK; i++) {
+		if (args[i].thread_init_errcode > 0) {
+			ret = -args[i].thread_init_errcode;
+		} else {
+			ret = args[i].errcode;
+			if (ret == KNOT_EOK) {
+				ret = zone_update_apply_changeset(update, &args[i].changeset); // _fix not needed
+				*expires_at = knot_time_min(*expires_at, args[i].expires_at);
+			}
+		}
+		changeset_clear(&args[i].changeset);
+		zone_sign_ctx_free(args[i].sign_ctx);
+	}
+	return ret;
 }
 
 /*- private API - signing of NSEC(3) in changeset ----------------------------*/
@@ -824,37 +883,28 @@ int knot_zone_sign(zone_update_t *update,
                    const kdnssec_ctx_t *dnssec_ctx,
                    knot_time_t *expire_at)
 {
-	if (!update || !zone_keys || !dnssec_ctx || !expire_at) {
+	if (!update || !zone_keys || !dnssec_ctx || !expire_at ||
+	    dnssec_ctx->policy->parallel_sign < 1) {
 		return KNOT_EINVAL;
 	}
 
 	int result;
 
-	changeset_t ch;
-	result = changeset_init(&ch, update->new_cont->apex->owner);
-	if (result != KNOT_EOK) {
-		return result;
-	}
-
 	knot_time_t normal_expire = 0;
-	result = zone_tree_sign(update->new_cont->nodes, zone_keys, dnssec_ctx, &ch, &normal_expire);
+	result = zone_tree_sign(update->new_cont->nodes, dnssec_ctx->policy->parallel_sign,
+	                        zone_keys, dnssec_ctx, update, &normal_expire);
 	if (result != KNOT_EOK) {
-		changeset_clear(&ch);
 		return result;
 	}
 
 	knot_time_t nsec3_expire = 0;
-	result = zone_tree_sign(update->new_cont->nsec3_nodes, zone_keys, dnssec_ctx,
-				&ch, &nsec3_expire);
+	result = zone_tree_sign(update->new_cont->nsec3_nodes, dnssec_ctx->policy->parallel_sign,
+	                        zone_keys, dnssec_ctx, update, &nsec3_expire);
 	if (result != KNOT_EOK) {
-		changeset_clear(&ch);
 		return result;
 	}
 
 	*expire_at = knot_time_min(normal_expire, nsec3_expire);
-
-	result = zone_update_apply_changeset(update, &ch); // _fix not needed
-	changeset_clear(&ch);
 
 	return result;
 }

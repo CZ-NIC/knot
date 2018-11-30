@@ -118,6 +118,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 		}
 	}
 
+	val = conf_id_get(conf(), C_POLICY, C_PARALLEL_SIGN, id);
+	policy->parallel_sign = conf_int(&val);
+
 	val = conf_id_get(conf(), C_POLICY, C_OFFLINE_KSK, id);
 	policy->offline_ksk = conf_bool(&val);
 }
