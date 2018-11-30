@@ -745,6 +745,7 @@ DNSSEC policy configuration.
      nsec3-opt-out: BOOL
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
+     signing-threads: INT
      ksk-submission: submission_id
      cds-cdnskey-publish: none | delete-dnssec | rollover | always
      offline-ksk: BOOL
@@ -983,6 +984,20 @@ A reference to :ref:`submission<submission_id>` section holding parameters of
 KSK submittion checks.
 
 *Default:* not set
+
+.. _policy_signing-threads:
+
+signing-threads
+---------------
+
+When signing zone or update, use this number of threads for parallel signing.
+
+Those are extra threads independent of :ref:`Background workers<server_background-workers>`.
+
+.. NOTE::
+   Some steps of the DNSSEC signing operation are not parallelized.
+
+*Default:* 1 (no extra threads)
 
 .. _policy_cds-cdnskey-publish:
 
