@@ -729,13 +729,19 @@ static void *sign_changeset_thread(void *_arg)
 {
 	changeset_signing_data_t *arg = _arg;
 
+	size_t nsgn = 0;
+
 	knot_rrset_t rr = changeset_iter_next(&arg->itt);
 	while (!knot_rrset_empty(&rr) && arg->errcode == KNOT_EOK) {
 		if (arg->rrset_index++ % arg->num_threads == arg->thread_index) {
 			arg->errcode = sign_changeset_wrap(&rr, arg, &arg->expires_at);
+			nsgn++;
+
 		}
 		rr = changeset_iter_next(&arg->itt);
 	}
+
+	printf("this signed: %zu\n", nsgn);
 
 	return NULL;
 }
@@ -1003,6 +1009,8 @@ static int sign_changeset(const zone_contents_t *zone,
 		args[i].thread_init_errcode = -1;
 	}
 
+	log_zone_info(update->zone->name, "signing changes with %zu threads", num_threads);
+
 	if (num_threads == 1) {
 		args[0].thread_init_errcode = 0;
 		sign_changeset_thread(&args[0]);
@@ -1013,12 +1021,15 @@ static int sign_changeset(const zone_contents_t *zone,
 		}
 
 		// join those threads that have been really started
-		for (size_t i = 0; i < num_threads; i++) {
+		for (size_t i = num_threads -1; i >= 0 && i < 1000; i--) {
 			if (args[i].thread_init_errcode == 0) {
+				printf("join %zu\n", i);
 				args[i].thread_init_errcode = pthread_join(args[i].thread, NULL);
 			}
 		}
 	}
+
+	log_zone_info(update->zone->name, "signing changes done");
 
 	if (!knot_rrset_empty(update->change.soa_from)) {
 		ret = sign_changeset_wrap(update->change.soa_from, &args[0], expire_at);
