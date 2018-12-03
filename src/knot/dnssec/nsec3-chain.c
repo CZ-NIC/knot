@@ -616,13 +616,13 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		if (new_nsec3_n == NULL) {
 			return KNOT_ENOMEM;
 		}
-		knot_rrset_t add_nsec3 = node_rrset(new_nsec3_n, KNOT_RRTYPE_NSEC3);
-		assert(!knot_rrset_empty(&add_nsec3));
+		knot_rrset_t nsec3 = node_rrset(new_nsec3_n, KNOT_RRTYPE_NSEC3);
+		assert(!knot_rrset_empty(&nsec3));
 
 		// copy hash of next element from removed record
 		if (next_hash != NULL) {
-			uint8_t *raw_hash = (uint8_t *)knot_nsec3_next(add_nsec3.rrs.rdata);
-			uint8_t raw_length = knot_nsec3_next_len(add_nsec3.rrs.rdata);
+			uint8_t *raw_hash = (uint8_t *)knot_nsec3_next(nsec3.rrs.rdata);
+			uint8_t raw_length = knot_nsec3_next_len(nsec3.rrs.rdata);
 			assert(raw_hash != NULL);
 			if (raw_length != next_length) {
 				ret = KNOT_EMALF;
@@ -632,9 +632,9 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		}
 		if (ret == KNOT_EOK) {
 			if (next_hash == NULL) {
-				ret = zone_update_add(update, &add_nsec3);
+				ret = zone_update_add(update, &nsec3);
 			} else {
-				ret = changeset_add_addition(chgset, &add_nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+				ret = changeset_add_addition(chgset, &nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 			}
 		}
 		node_free_rrsets(new_nsec3_n, NULL);

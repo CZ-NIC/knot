@@ -385,19 +385,19 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 	if (has_limit) {
 		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
 		if (knot_pkt_has_edns(query)) {
-			uint16_t server;
+			uint16_t server_size;
 			switch (qdata->params->remote->ss_family) {
 			case AF_INET:
-				server = conf()->cache.srv_max_ipv4_udp_payload;
+				server_size = conf()->cache.srv_max_ipv4_udp_payload;
 				break;
 			case AF_INET6:
-				server = conf()->cache.srv_max_ipv6_udp_payload;
+				server_size = conf()->cache.srv_max_ipv6_udp_payload;
 				break;
 			default:
 				return KNOT_ERROR;
 			}
-			uint16_t client = knot_edns_get_payload(query->opt_rr);
-			uint16_t transfer = MIN(client, server);
+			uint16_t client_size = knot_edns_get_payload(query->opt_rr);
+			uint16_t transfer = MIN(client_size, server_size);
 			resp->max_size = MAX(resp->max_size, transfer);
 		}
 	} else {

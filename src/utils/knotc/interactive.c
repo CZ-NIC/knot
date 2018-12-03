@@ -354,7 +354,7 @@ static char *prompt(EditLine *el)
 	return PROGRAM_NAME"> ";
 }
 
-int interactive_loop(params_t *params)
+int interactive_loop(params_t *process_params)
 {
 	char *hist_file = NULL;
 	const char *home = getenv("HOME");
@@ -412,7 +412,7 @@ int interactive_loop(params_t *params)
 		}
 
 		// Process the command.
-		ret = process_cmd(argc, argv, params);
+		ret = process_cmd(argc, argv, process_params);
 
 		history(hist, &hev, H_SAVE, hist_file);
 		tok_reset(tok);

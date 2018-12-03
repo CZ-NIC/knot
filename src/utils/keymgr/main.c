@@ -102,15 +102,15 @@ static void print_help(void)
 	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
-static int key_command(int argc, char *argv[], int optind)
+static int key_command(int argc, char *argv[], int opt_ind)
 {
-	if (argc < optind + 2) {
+	if (argc < opt_ind + 2) {
 		printf("Zone name and/or command not specified\n");
 		print_help();
 		return KNOT_EINVAL;
 	}
-	argc -= optind;
-	argv += optind;
+	argc -= opt_ind;
+	argv += opt_ind;
 
 	knot_dname_t *zone_name = knot_dname_from_str_alloc(argv[0]);
 	if (zone_name == NULL) {

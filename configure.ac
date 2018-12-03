@@ -45,7 +45,7 @@ AM_PROG_CC_C_O
 AC_PROG_CPP_WERROR
 
 # Set default CFLAGS
-CFLAGS="$CFLAGS -Wall -Werror=format-security -Werror=implicit -Wstrict-prototypes"
+CFLAGS="$CFLAGS -Wall -Wshadow -Werror=format-security -Werror=implicit -Wstrict-prototypes"
 
 AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
 AX_CHECK_LINK_FLAG(["-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs="-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs=""], "")

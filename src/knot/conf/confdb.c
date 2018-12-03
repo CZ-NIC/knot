@@ -233,8 +233,8 @@ static int db_code(
 			conf->api->iter_finish(it);
 			return ret;
 		}
-		uint8_t code = ((uint8_t *)iter_val.data)[0];
-		codes[code] = true;
+		uint8_t used_code = ((uint8_t *)iter_val.data)[0];
+		codes[used_code] = true;
 
 		it = conf->api->iter_next(it);
 	}

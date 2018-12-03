@@ -742,8 +742,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 		const uint8_t *data = knot_edns_opt_get_data(opt);
 		uint16_t data_len = knot_edns_opt_get_length(opt);
-		int ret = knot_edns_cookie_parse(&new_ctx.cc, &new_ctx.sc,
-		                                 data, data_len);
+		ret = knot_edns_cookie_parse(&new_ctx.cc, &new_ctx.sc, data, data_len);
 		if (ret != KNOT_EOK) {
 			knot_pkt_free(reply);
 			ERR("bad cookie, missing EDNS cookie option\n");

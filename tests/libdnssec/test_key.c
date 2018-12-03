@@ -27,7 +27,7 @@
 #define check_attr_scalar(key, type, name, def_val, set_val) { \
 	type value = dnssec_key_get_##name(key); \
 	ok(value == def_val, #name " default"); \
-	int r = dnssec_key_set_##name(key, set_val); \
+	r = dnssec_key_set_##name(key, set_val); \
 	ok(r == DNSSEC_EOK, #name " set"); \
 	value = dnssec_key_get_##name(key); \
 	ok(value == set_val, #name " get"); \

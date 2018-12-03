@@ -1438,12 +1438,12 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	// PART 4: continuity and duplicity check
 	changeset_t * chs_head = (HEAD(*changesets));
 	bool is_first_bootstrap = (chs_head->soa_from == NULL);
-	uint32_t serial = is_first_bootstrap ? 0 : knot_soa_serial(chs_head->soa_from->rrs.rdata);
+	uint32_t first_serial = is_first_bootstrap ? 0 : knot_soa_serial(chs_head->soa_from->rrs.rdata);
 	if (md_flag(txn, SERIAL_TO_VALID) && (is_first_bootstrap ||
-	    !serial_equal(txn->shadow_md.last_serial_to, serial)) &&
+	    !serial_equal(txn->shadow_md.last_serial_to, first_serial)) &&
 	    !inserting_bootstrap /* if inserting bootstrap, drop_journal() was called, so no discontinuity */) {
 		log_zone_warning(j->zone, "journal, discontinuity in changes history (%u -> %u), dropping older changesets",
-		                 txn->shadow_md.last_serial_to, serial);
+		                 txn->shadow_md.last_serial_to, first_serial);
 		if (zone_in_journal) {
 			txn->ret = KNOT_ERANGE; // we can't drop history if zone-in-journal, so this is forbidden
 			goto store_changeset_cleanup;

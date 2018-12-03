@@ -708,7 +708,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 			return KNOT_ENOMEM;
 		}
 
-		int ret = add_node(out, to_add, true);
+		ret = add_node(out, to_add, true);
 		if (ret != KNOT_EOK) {
 			node_free(to_add, NULL);
 			trie_it_free(itt);

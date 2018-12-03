@@ -36,13 +36,12 @@ static const char *node_str2 = "node.test. IN TXT \"def\"\n";
 knot_rrset_t rrset;
 
 /*!< \brief Returns true if node contains given RR in its RRSets. */
-static bool node_contains_rr(const zone_node_t *node,
-                             const knot_rrset_t *rrset)
+static bool node_contains_rr(const zone_node_t *node, const knot_rrset_t *data)
 {
-	const knot_rdataset_t *zone_rrs = node_rdataset(node, rrset->type);
+	const knot_rdataset_t *zone_rrs = node_rdataset(node, data->type);
 	if (zone_rrs != NULL) {
-		knot_rdata_t *rr = rrset->rrs.rdata;
-		for (size_t i = 0; i < rrset->rrs.count; ++i) {
+		knot_rdata_t *rr = data->rrs.rdata;
+		for (size_t i = 0; i < data->rrs.count; ++i) {
 			if (!knot_rdataset_member(zone_rrs, rr)) {
 				return false;
 			}

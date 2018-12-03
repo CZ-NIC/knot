@@ -278,8 +278,8 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 			qdata->rcode = KNOT_RCODE_YXDOMAIN;
 		} else {
 			knot_rrset_t dname_rr = cname_rr;
-			int ret = dname_cname_synth(&dname_rr, qdata->name,
-			                            &cname_rr, &pkt->mm);
+			ret = dname_cname_synth(&dname_rr, qdata->name,
+			                        &cname_rr, &pkt->mm);
 			if (ret != KNOT_EOK) {
 				qdata->rcode = KNOT_RCODE_SERVFAIL;
 				return KNOTD_IN_STATE_ERROR;

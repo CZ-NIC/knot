@@ -38,9 +38,8 @@
 char *test_dir_name;
 journal_db_t *db;
 journal_t *j;
-const knot_dname_t *apex = (const uint8_t *)"\4test";
 
-static void set_conf(int zonefile_sync, size_t journal_usage)
+static void set_conf(int zonefile_sync, size_t journal_usage, const knot_dname_t *apex)
 {
 	char conf_str[512];
 	snprintf(conf_str, sizeof(conf_str),
@@ -267,11 +266,11 @@ static void test_journal_db(void)
 }
 
 /*! \brief Test behavior with real changesets. */
-static void test_store_load(void)
+static void test_store_load(const knot_dname_t *apex)
 {
 	int ret, ret2 = KNOT_EOK;
 
-	set_conf(1000, 512 * 1024);
+	set_conf(1000, 512 * 1024, apex);
 
 	j = journal_new();
 	ok(j != NULL, "journal: new");
@@ -613,13 +612,13 @@ static int merged_present(void)
 	return res;
 }
 
-static void test_merge(void)
+static void test_merge(const knot_dname_t *apex)
 {
 	int i, ret;
 	list_t l;
 
 	// allow merge
-	set_conf(-1, 512 * 1024);
+	set_conf(-1, 512 * 1024, apex);
 	ok(journal_merge_allowed(j), "journal: merge allowed");
 
 	ret = drop_journal(j, NULL);
@@ -657,7 +656,7 @@ static void test_merge(void)
 
 	// disallow merge
 	unset_conf();
-	set_conf(1000, 512 * 1024);
+	set_conf(1000, 512 * 1024, apex);
 	ok(!journal_merge_allowed(j), "journal: merge disallowed");
 
 	tm_rrs(NULL, 0);
@@ -665,22 +664,23 @@ static void test_merge(void)
 	unset_conf();
 }
 
-static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
+static void test_stress_base(journal_t *journal, const knot_dname_t *apex,
+                             size_t update_size, size_t file_size)
 {
 	int ret;
 	uint32_t serial = 0;
 
-	journal_close(j);
+	journal_close(journal);
 	journal_db_close(&db);
 	db = NULL;
 	ret = journal_db_init(&db, test_dir_name, file_size, JOURNAL_MODE_ASYNC);
 	assert(ret == KNOT_EOK);
 	ret = journal_open_db(&db);
 	assert(ret == KNOT_EOK);
-	ret = journal_open(j, &db, apex);
+	ret = journal_open(journal, &db, apex);
 	assert(ret == KNOT_EOK);
 
-	set_conf(1000, file_size / 2);
+	set_conf(1000, file_size / 2, apex);
 
 	changeset_t ch;
 	ret = changeset_init(&ch, apex);
@@ -691,7 +691,7 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 		serial = 0;
 		while (true) {
 			changeset_set_soa_serials(&ch, serial, serial + 1, apex);
-			ret = journal_store_changeset(j, &ch);
+			ret = journal_store_changeset(journal, &ch);
 			if (ret == KNOT_EOK) {
 				serial++;
 			} else {
@@ -699,7 +699,7 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 			}
 		}
 
-		int ret = journal_flush(j);
+		ret = journal_flush(journal);
 		ok(serial > 0 && ret == KNOT_EOK, "journal: pass #%d fillup run (%d inserts)", i, serial);
 	}
 
@@ -709,31 +709,33 @@ static void test_stress_base(journal_t *j, size_t update_size, size_t file_size)
 }
 
 /*! \brief Test behavior when writing to jurnal and flushing it. */
-static void test_stress(journal_t *j)
+static void test_stress(journal_t *journal, const knot_dname_t *apex)
 {
 	diag("stress test: small data");
-	test_stress_base(j, 40, (1024 + 512) * 1024);
+	test_stress_base(journal, apex, 40, (1024 + 512) * 1024);
 
 	diag("stress test: medium data");
-	test_stress_base(j, 400, 3 * 1024 * 1024);
+	test_stress_base(journal, apex, 400, 3 * 1024 * 1024);
 
 	diag("stress test: large data");
-	test_stress_base(j, 4000, 10 * 1024 * 1024);
+	test_stress_base(journal, apex, 4000, 10 * 1024 * 1024);
 }
 
 int main(int argc, char *argv[])
 {
 	plan_lazy();
 
+	const knot_dname_t *apex = (const uint8_t *)"\4test";
+
 	test_dir_name = test_mkdtemp();
 
 	test_journal_db();
 
-	test_store_load();
+	test_store_load(apex);
 
-	test_merge();
+	test_merge(apex);
 
-	test_stress(j);
+	test_stress(j, apex);
 
 	journal_close(j);
 	journal_free(&j);
