@@ -362,7 +362,7 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
 			goto cleanup;
 		}
 	} else {
-		int ret = knot_nsec_create_chain(update->new_cont, nsec_ttl, &ch);
+		ret = knot_nsec_create_chain(update->new_cont, nsec_ttl, &ch);
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}
