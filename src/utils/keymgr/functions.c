@@ -24,6 +24,7 @@
 #include "utils/keymgr/bind_privkey.h"
 #include "contrib/base64.h"
 #include "contrib/ctype.h"
+#include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
@@ -551,6 +552,53 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, const char *key_id, int argc, char *argv[])
 {
 	return import_key(ctx, KEYSTORE_BACKEND_PKCS11, key_id, argc, argv);
+}
+
+int keymgr_nsec3_salt(kdnssec_ctx_t *ctx, const char *new_salt)
+{
+	dnssec_binary_t salt_bin;
+	knot_time_t created;
+	int ret = kasp_db_load_nsec3salt(*ctx->kasp_db, ctx->zone->dname,
+	                                 &salt_bin, &created);
+	switch (ret) {
+	case KNOT_EOK:
+		printf("Current salt: ");
+		if (salt_bin.size == 0) {
+			printf("-");
+		}
+		for (size_t i = 0; i < salt_bin.size; i++) {
+			printf("%02X", (unsigned)salt_bin.data[i]);
+		}
+		printf("\n");
+		free(salt_bin.data);
+		break;
+	case KNOT_ENOENT:
+		printf("-- no salt --\n");
+		ret = KNOT_EOK;
+		break;
+	}
+
+	if (ret == KNOT_EOK && new_salt != NULL) {
+		if (strcmp(new_salt, "-") == 0) {
+			salt_bin.size = 0;
+		} else {
+			salt_bin.data = hex_to_bin(new_salt, &salt_bin.size);
+			if (salt_bin.data == NULL) {
+				return KNOT_EMALF;
+			}
+		}
+		if (salt_bin.size != ctx->policy->nsec3_salt_length) {
+			printf("Warning: specified salt doesn't match configured "
+			       "salt length (%d).\n",
+			       (int)ctx->policy->nsec3_salt_length);
+		}
+		ret = kasp_db_store_nsec3salt(*ctx->kasp_db, ctx->zone->dname,
+		                              &salt_bin, created);
+		if (salt_bin.size > 0) {
+			free(salt_bin.data);
+		}
+	}
+	return ret;
 }
 
 static void print_tsig(dnssec_tsig_algorithm_t mac, const char *name,
