@@ -414,8 +414,8 @@ static void test_store_load(const knot_dname_t *apex)
 	init_list(&l);
 	ret = journal_flush(j);
 	is_int(KNOT_EOK, ret, "journal: allways ok journal_flush 0");
-	ret = drop_journal(j, NULL); /* Clear the journal for the collision test */
-	is_int(KNOT_EOK, ret, "journal: allways ok drop_journal");
+	ret = journal_drop_changesets(j); /* Clear the journal for the collision test */
+	is_int(KNOT_EOK, ret, "journal: allways ok journal_drop_changesets");
 
 	/* Test for serial number collision handling. We insert changesets
 	 * with valid serial sequence that overflows and then collides with itself.
@@ -467,8 +467,8 @@ static void test_store_load(const knot_dname_t *apex)
 	init_list(&k);
 
 	/* Check bootstrap changeset */
-	ret = drop_journal(j, NULL);
-	ok(ret == KNOT_EOK, "journal: drop_journal must be ok");
+	ret = journal_drop_changesets(j);
+	ok(ret == KNOT_EOK, "journal: journal_drop_changesets must be ok");
 
 	changeset_t *m_ch6 = changeset_new(apex);
 	init_random_changeset(m_ch6, 0, 1, 128, apex, true);
@@ -621,8 +621,8 @@ static void test_merge(const knot_dname_t *apex)
 	set_conf(-1, 512 * 1024, apex);
 	ok(journal_merge_allowed(j), "journal: merge allowed");
 
-	ret = drop_journal(j, NULL);
-	is_int(KNOT_EOK, ret, "journal: drop_journal must be ok");
+	ret = journal_drop_changesets(j);
+	is_int(KNOT_EOK, ret, "journal: journal_drop_changesets must be ok");
 
 	// insert stuff and check the merge
 	for (i = 0; !merged_present() && i < 40000; i++) {
@@ -651,7 +651,7 @@ static void test_merge(const knot_dname_t *apex)
 	ok(list_size(&l) == 4, "journal: read short history of merged/unmerged changesets");
 	changesets_free(&l);
 
-	ret = drop_journal(j, NULL);
+	ret = journal_drop_changesets(j);
 	assert(ret == KNOT_EOK);
 
 	// disallow merge

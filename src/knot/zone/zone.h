@@ -115,6 +115,7 @@ void zone_free(zone_t **zone_ptr);
 void zone_control_clear(zone_t *zone);
 
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
+int zone_changes_clear(conf_t *conf, zone_t *zone);
 int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from);
 int zone_chgset_ctx_load(conf_t *conf, zone_t *zone, chgset_ctx_list_t *dst, uint32_t from);
 int zone_in_journal_load(conf_t *conf, zone_t *zone, list_t *dst);
