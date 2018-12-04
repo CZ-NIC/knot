@@ -221,6 +221,15 @@ void journal_metadata_info(journal_t *journal, bool *is_empty, kserial_t *merged
                            kserial_t *first_serial, kserial_t *last_flushed,
                            kserial_t *serial_to, uint64_t *occupied, uint64_t *occupied_all_zones);
 
+/*!
+ * \brief Delete all changesets in zone's journal, keeping metadata.
+ *
+ * \param journal  Journal to clear.
+ *
+ * \return KNOT_E*
+ */
+int journal_drop_changesets(journal_t *journal);
+
 /*! \brief Check the journal consistency, errors to stderr.
  *
  * \param journal     Journal to check.
