@@ -26,6 +26,7 @@
 #include "knot/dnssec/key_records.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
+#include "knot/zone/adjust.h"
 #include "libknot/libknot.h"
 #include "contrib/dynarray.h"
 #include "contrib/macros.h"
@@ -1197,8 +1198,7 @@ int knot_zone_sign_update(zone_update_t *update,
 
 	int ret = KNOT_EOK;
 
-
-	ret = apply_prepare_to_sign(update->a_ctx);
+	ret = zone_adjust_update(update, adjust_cb_flags_and_additionals, adjust_cb_nsec3_flags);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

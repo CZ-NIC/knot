@@ -114,11 +114,9 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 }
 
 /*! \brief Removes node with the given owner from the zone tree. */
-static void remove_node(zone_tree_t *tree, const knot_dname_t *owner)
+void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 {
-	assert(owner);
-
-	if (zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree) || owner == NULL) {
 		return;
 	}
 
@@ -159,7 +157,7 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 		}
 
 		// Delete node
-		remove_node(tree, node->owner);
+		zone_tree_remove_node(tree, node->owner);
 		node_free(node, NULL);
 	}
 }

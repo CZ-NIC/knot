@@ -28,6 +28,8 @@ struct apply_ctx {
 	zone_contents_t *contents;
 	list_t old_data;          /*!< Old data, to be freed after successful update. */
 	list_t new_data;          /*!< New data, to be freed after failed update. */
+	zone_tree_t *node_ptrs;   /*!< Just pointers to the affected nodes in contents. */
+	zone_tree_t *nsec3_ptrs;  /*!< The same for NSEC3 nodes. */
 	uint32_t flags;
 };
 
@@ -39,8 +41,10 @@ typedef struct apply_ctx apply_ctx_t;
  * \param ctx       Context to be initialized.
  * \param contents  Zone contents to apply changes onto.
  * \param flags     Flags to control the application process.
+ *
+ * \return KNOT_E*
  */
-void apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags);
+int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags);
 
 /*!
  * \brief Creates a shallow zone contents copy.
@@ -84,17 +88,6 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
 int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *ch);
 
 /*!
- * \brief Prepares the new zone contents for signing.
- *
- * Adjusted pointers are required for DNSSEC.
- *
- * \param ctx  Apply context.
- *
- * \return KNOT_E*
- */
-int apply_prepare_to_sign(apply_ctx_t *ctx);
-
-/*!
  * \brief Applies changesets directly to the zone, without copying it.
  *
  * \warning Modified zone is in inconsistent state after error and should be freed.
@@ -115,17 +108,6 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets);
  * \return KNOT_E*
  */
 int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch);
-
-/*!
- * \brief Finalizes the zone contents for publishing.
- *
- * Fully adjusts the zone.
- *
- * \param ctx  Apply context.
- *
- * \return KNOT_E*
- */
-int apply_finalize(apply_ctx_t *ctx);
 
 /*!
  * \brief Cleanups successful zone update.
