@@ -16,6 +16,7 @@
 
 #include "knot/zone/adjust.h"
 
+#include "libdnssec/error.h"
 #include "contrib/macros.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
@@ -289,10 +290,11 @@ static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adju
 		return KNOT_EOK;
 	}
 
-	zone_adjust_arg_t arg = { 0 };
-	arg.zone = zone;
-	arg.adjust_cb = adjust_cb;
-	arg.adjust_prevs = adjust_prevs;
+	zone_adjust_arg_t arg = {
+		.zone = zone,
+		.adjust_cb = adjust_cb,
+		.adjust_prevs = adjust_prevs
+	};
 
 	int ret = zone_tree_apply(tree, adjust_single, &arg);
 	if (ret != KNOT_EOK) {
@@ -335,7 +337,7 @@ static int load_nsec3param(zone_contents_t *contents)
 
 	dnssec_nsec3_params_t new_params = { 0 };
 	int r = dnssec_nsec3_params_from_rdata(&new_params, &rdata);
-	if (r != 0) {
+	if (r != DNSSEC_EOK) {
 		return KNOT_EMALF;
 	}
 

@@ -116,9 +116,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 /*! \brief Removes node with the given owner from the zone tree. */
 void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 {
-	assert(owner);
-
-	if (zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree) || owner == NULL) {
 		return;
 	}
 
