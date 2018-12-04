@@ -78,6 +78,10 @@ Commands
   specified (mainly algorithm, timers...) because they are not available. In fact, no key
   data is imported, only KASP database metadata is created.
 
+**nsec3-salt** [*new_salt*]
+  Prints the current NSEC3 salt used for signing. If *new_salt* is specified, the salt is overwritten.
+  The salt is printed and expected in hexadecimal, or dash if empty.
+
 **set** *key_spec* [*arguments*...]
   Changes a timing argument (or ksk/zsk) of an existing key to a new value. *Key_spec* is either the
   key tag or a prefix of the key ID; *arguments* are like for **generate**, but just the related ones.

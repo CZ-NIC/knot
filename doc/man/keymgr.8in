@@ -101,6 +101,10 @@ Imports a DNSSEC key from PKCS #11 storage. The key parameters (same as for the 
 specified (mainly algorithm, timers...) because they are not available. In fact, no key
 data is imported, only KASP database metadata is created.
 .TP
+\fBnsec3\-salt\fP [\fInew_salt\fP]
+Prints the current NSEC3 salt used for signing. If \fInew_salt\fP is specified, the salt is overwritten.
+The salt is printed and expected in hexadecimal, or dash if empty.
+.TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
 Changes a timing argument (or ksk/zsk) of an existing key to a new value. \fIKey_spec\fP is either the
 key tag or a prefix of the key ID; \fIarguments\fP are like for \fBgenerate\fP, but just the related ones.

@@ -26,6 +26,10 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 
 int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, const char *key_id, int argc, char *argv[]);
 
+int keymgr_nsec3_salt_print(kdnssec_ctx_t *ctx);
+
+int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt);
+
 int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits);
 
 int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key);
