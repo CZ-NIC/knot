@@ -651,14 +651,13 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
 	if (conf_opt(&val) == JOURNAL_CONTENT_ALL) {
 		ret = zone_in_journal_store(conf, update->zone, update->new_cont);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+	} else { // zone_in_journal_store does this automatically
+		ret = zone_changes_clear(conf, update->zone);
 	}
 
 	*contents_out = update->new_cont;
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*! \brief Routine for calling call_rcu() easier way.

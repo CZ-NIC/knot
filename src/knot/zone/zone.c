@@ -295,6 +295,24 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
 	return ret;
 }
 
+int zone_changes_clear(conf_t *conf, zone_t *zone)
+{
+	if (conf == NULL || zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	JOURNAL_LOCK_RW
+
+	int ret = open_journal(zone);
+	if (ret == KNOT_EOK) {
+		ret = journal_drop_changesets(zone->journal);
+	}
+
+	JOURNAL_UNLOCK_RW
+
+	return ret;
+}
+
 int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from)
 {
 	if (conf == NULL || zone == NULL || dst == NULL) {

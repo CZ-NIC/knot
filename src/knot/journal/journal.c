@@ -1940,6 +1940,11 @@ void journal_metadata_info(journal_t *j, bool *has_bootstrap, kserial_t *merged_
 	txn_abort(txn);
 }
 
+int journal_drop_changesets(journal_t *journal)
+{
+	return drop_journal(journal, NULL);
+}
+
 int journal_db_list_zones(journal_db_t **db, list_t *zones)
 {
 	uint64_t expected_count;
