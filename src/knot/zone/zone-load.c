@@ -85,7 +85,11 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 
 	/* Apply changesets. */
 	apply_ctx_t a_ctx = { 0 };
-	apply_init_ctx(&a_ctx, contents, 0);
+	ret = apply_init_ctx(&a_ctx, contents, 0);
+	if (ret != KNOT_EOK) {
+		changesets_free(&chgs);
+		return ret;
+	}
 
 	ret = apply_changesets_directly(&a_ctx, &chgs);
 	if (ret == KNOT_EOK) {
@@ -126,7 +130,12 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 	}
 
 	apply_ctx_t a_ctx = { 0 };
-	apply_init_ctx(&a_ctx, *contents, 0);
+	ret = apply_init_ctx(&a_ctx, *contents, 0);
+	if (ret != KNOT_EOK) {
+		changesets_free(&chgs);
+		return ret;
+	}
+
 	ret = apply_changesets_directly(&a_ctx, &chgs);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone loaded from journal, serial %u",

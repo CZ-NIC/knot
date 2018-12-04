@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "libdnssec/error.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/contents.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
@@ -28,12 +29,6 @@ typedef struct {
 	zone_contents_apply_cb_t func;
 	void *data;
 } zone_tree_func_t;
-
-typedef struct {
-	zone_node_t *first_node;
-	zone_contents_t *zone;
-	zone_node_t *previous_node;
-} zone_adjust_arg_t;
 
 static int tree_apply_cb(zone_node_t **node, void *data)
 {
@@ -93,311 +88,15 @@ static int destroy_node_rrsets_from_tree(zone_node_t **node, void *data)
 	return KNOT_EOK;
 }
 
-static int create_nsec3_name(uint8_t *out, size_t out_size,
-                             const zone_contents_t *zone,
-                             const knot_dname_t *name)
-{
-	assert(out);
-	assert(zone);
-	assert(name);
-
-	if (!knot_is_nsec3_enabled(zone)) {
-		return KNOT_ENSEC3PAR;
-	}
-
-	return knot_create_nsec3_owner(out, out_size, name, zone->apex->owner,
-	                               &zone->nsec3_params);
-}
-
-/*! \brief Link pointers to additional nodes for this RRSet. */
-static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_data,
-                                zone_contents_t *zone)
-{
-	assert(rr_data != NULL);
-
-	/* Drop possible previous additional nodes. */
-	additional_clear(rr_data->additional);
-	rr_data->additional = NULL;
-
-	const knot_rdataset_t *rrs = &rr_data->rrs;
-	uint16_t rdcount = rrs->count;
-
-	uint16_t mandatory_count = 0;
-	uint16_t others_count = 0;
-	glue_t mandatory[rdcount];
-	glue_t others[rdcount];
-
-	/* Scan new additional nodes. */
-	for (uint16_t i = 0; i < rdcount; i++) {
-		knot_rdata_t *rdata = knot_rdataset_at(rrs, i);
-		const knot_dname_t *dname = knot_rdata_name(rdata, rr_data->type);
-		const zone_node_t *node = NULL, *encloser = NULL, *prev = NULL;
-
-		/* Try to find node for the dname in the RDATA. */
-		zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
-		if (node == NULL && encloser != NULL
-		    && (encloser->flags & NODE_FLAGS_WILDCARD_CHILD)) {
-			/* Find wildcard child in the zone. */
-			node = zone_contents_find_wildcard_child(zone, encloser);
-			assert(node != NULL);
-		}
-
-		if (node == NULL) {
-			continue;
-		}
-
-		glue_t *glue;
-		if ((node->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH)) &&
-		    rr_data->type == KNOT_RRTYPE_NS &&
-		    knot_dname_in_bailiwick(node->owner, owner) >= 0) {
-			glue = &mandatory[mandatory_count++];
-			glue->optional = false;
-		} else {
-			glue = &others[others_count++];
-			glue->optional = true;
-		}
-		glue->node = node;
-		glue->ns_pos = i;
-	}
-
-	/* Store sorted additionals by the type, mandatory first. */
-	size_t total_count = mandatory_count + others_count;
-	if (total_count > 0) {
-		rr_data->additional = malloc(sizeof(additional_t));
-		if (rr_data->additional == NULL) {
-			return KNOT_ENOMEM;
-		}
-		rr_data->additional->count = total_count;
-
-		size_t size = total_count * sizeof(glue_t);
-		rr_data->additional->glues = malloc(size);
-		if (rr_data->additional->glues == NULL) {
-			free(rr_data->additional);
-			return KNOT_ENOMEM;
-		}
-
-		size_t mandatory_size = mandatory_count * sizeof(glue_t);
-		memcpy(rr_data->additional->glues, mandatory, mandatory_size);
-		memcpy(rr_data->additional->glues + mandatory_count, others,
-		       size - mandatory_size);
-	}
-
-	return KNOT_EOK;
-}
-
-static int adjust_pointers(zone_node_t **tnode, void *data)
-{
-	assert(tnode != NULL);
-	assert(data != NULL);
-
-	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	zone_node_t *node = *tnode;
-
-	// remember first node
-	if (args->first_node == NULL) {
-		args->first_node = node;
-	}
-
-	// clear Removed NSEC flag so that no relicts remain
-	node->flags &= ~NODE_FLAGS_REMOVED_NSEC;
-
-	// check if this node is not a wildcard child of its parent
-	if (knot_dname_is_wildcard(node->owner)) {
-		assert(node->parent != NULL);
-		node->parent->flags |= NODE_FLAGS_WILDCARD_CHILD;
-	}
-
-	// set flags (delegation point, non-authoritative)
-	if (node->parent &&
-	    (node->parent->flags & NODE_FLAGS_DELEG ||
-	     node->parent->flags & NODE_FLAGS_NONAUTH)) {
-		node->flags |= NODE_FLAGS_NONAUTH;
-	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != args->zone->apex) {
-		node->flags |= NODE_FLAGS_DELEG;
-	} else {
-		// Default.
-		node->flags = NODE_FLAGS_AUTH;
-	}
-
-	// set pointer to previous node
-	node->prev = args->previous_node;
-
-	// update remembered previous pointer only if authoritative
-	if (!(node->flags & NODE_FLAGS_NONAUTH) && node->rrset_count > 0) {
-		args->previous_node = node;
-	}
-
-	return KNOT_EOK;
-}
-
-static int adjust_nsec3_pointers(zone_node_t **tnode, void *data)
-{
-	assert(data != NULL);
-	assert(tnode != NULL);
-
-	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	zone_node_t *node = *tnode;
-	const zone_node_t *ignored;
-
-	// Connect to NSEC3 node (only if NSEC3 tree is not empty)
-	node->nsec3_wildcard_prev = NULL;
-	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
-	int ret = create_nsec3_name(nsec3_name, sizeof(nsec3_name), args->zone,
-	                            node->owner);
-	if (ret == KNOT_EOK) {
-		node->nsec3_node = zone_tree_get(args->zone->nsec3_nodes, nsec3_name);
-
-		// Connect to NSEC3 node proving nonexistence of wildcard.
-		size_t wildcard_size = knot_dname_size(node->owner) + 2;
-		if (wildcard_size <= KNOT_DNAME_MAXLEN) {
-			assert(wildcard_size > 2);
-			knot_dname_t wildcard[wildcard_size];
-			memcpy(wildcard, "\x01""*", 2);
-			memcpy(wildcard + 2, node->owner, wildcard_size - 2);
-			ret = zone_contents_find_nsec3_for_name(args->zone, wildcard, &ignored,
-			                                        (const zone_node_t **)&node->nsec3_wildcard_prev);
-			if (ret == ZONE_NAME_FOUND) {
-				node->nsec3_wildcard_prev = NULL;
-				ret = KNOT_EOK;
-			}
-		}
-	} else if (ret == KNOT_ENSEC3PAR) {
-		node->nsec3_node = NULL;
-		ret = KNOT_EOK;
-	}
-
-	return ret;
-}
-
 static int measure_size(zone_node_t *node, void *data){
 
-	size_t *size = data;
-	int rrset_count = node->rrset_count;
-	for (int i = 0; i < rrset_count; i++) {
-		knot_rrset_t rrset = node_rrset_at(node, i);
-		*size += knot_rrset_size(&rrset);
-	}
+	node_size(node, data);
 	return KNOT_EOK;
 }
 
 static int measure_max_ttl(zone_node_t *node, void *data){
 
-	uint32_t *max = data;
-	int rrset_count = node->rrset_count;
-	for (int i = 0; i < rrset_count; i++) {
-		*max = MAX(*max, node->rrs[i].ttl);
-	}
-	return KNOT_EOK;
-}
-
-static bool nsec3_params_match(const knot_rdataset_t *rrs,
-                               const dnssec_nsec3_params_t *params,
-                               size_t rdata_pos)
-{
-	assert(rrs != NULL);
-	assert(params != NULL);
-
-	knot_rdata_t *rdata = knot_rdataset_at(rrs, rdata_pos);
-
-	return (knot_nsec3_alg(rdata) == params->algorithm
-	        && knot_nsec3_iters(rdata) == params->iterations
-	        && knot_nsec3_salt_len(rdata) == params->salt.size
-	        && memcmp(knot_nsec3_salt(rdata), params->salt.data,
-	                  params->salt.size) == 0);
-}
-
-/*!
- * \brief Adjust normal (non NSEC3) node.
- *
- * Set:
- * - pointer to wildcard childs in parent nodes if applicable
- * - flags (delegation point, non-authoritative)
- * - pointer to previous node
- * - parent pointers
- *
- * \param tnode  Zone node to adjust.
- * \param data   Adjusting parameters (zone_adjust_arg_t *).
- */
-static int adjust_normal_node(zone_node_t **tnode, void *data)
-{
-	assert(tnode != NULL && *tnode);
-	assert(data != NULL);
-
-	// Do cheap operations first
-	int ret = adjust_pointers(tnode, data);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	zone_adjust_arg_t *arg = data;
-	measure_size(*tnode, &arg->zone->size);
-	measure_max_ttl(*tnode, &arg->zone->max_ttl);
-
-	// Connect nodes to their NSEC3 nodes
-	return adjust_nsec3_pointers(tnode, data);
-}
-
-/*!
- * \brief Adjust NSEC3 node.
- *
- * Set:
- * - pointer to previous node
- * - pointer to node stored in owner dname
- *
- * \param tnode  Zone node to adjust.
- * \param data   Adjusting parameters (zone_adjust_arg_t *).
- */
-static int adjust_nsec3_node(zone_node_t **tnode, void *data)
-{
-	assert(data != NULL);
-	assert(tnode != NULL);
-
-	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	zone_node_t *node = *tnode;
-
-	// remember first node
-	if (args->first_node == NULL) {
-		args->first_node = node;
-	}
-
-	// set previous node
-	node->prev = args->previous_node;
-	args->previous_node = node;
-
-	measure_size(*tnode, &args->zone->size);
-	measure_max_ttl(*tnode, &args->zone->max_ttl);
-
-	// check if this node belongs to correct chain
-	const knot_rdataset_t *nsec3_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC3);
-	for (uint16_t i = 0; nsec3_rrs != NULL && i < nsec3_rrs->count; i++) {
-		if (nsec3_params_match(nsec3_rrs, &args->zone->nsec3_params, i)) {
-			node->flags |= NODE_FLAGS_IN_NSEC3_CHAIN;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-/*! \brief Discover additional records for affected nodes. */
-static int adjust_additional(zone_node_t **tnode, void *data)
-{
-	assert(data != NULL);
-	assert(tnode != NULL);
-
-	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	zone_node_t *node = *tnode;
-
-	/* Lookup additional records for specific nodes. */
-	for(uint16_t i = 0; i < node->rrset_count; ++i) {
-		struct rr_data *rr_data = &node->rrs[i];
-		if (knot_rrtype_additional_needed(rr_data->type)) {
-			int ret = discover_additionals(node->owner, rr_data, args->zone);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-	}
-
+	node_max_ttl(node, data);
 	return KNOT_EOK;
 }
 
@@ -827,7 +526,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
                              const zone_node_t **closest,
                              const zone_node_t **previous)
 {
-	if (!zone || !name || !match || !closest || !previous) {
+	if (!zone || !name || !match || !closest) {
 		return KNOT_EINVAL;
 	}
 
@@ -842,7 +541,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 	if (found < 0) {
 		// error
 		return found;
-	} else if (found == 1) {
+	} else if (found == 1 && previous != NULL) {
 		// exact match
 
 		assert(node && prev);
@@ -850,6 +549,14 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		*match = node;
 		*closest = node;
 		*previous = prev;
+
+		return ZONE_NAME_FOUND;
+	} else if (found == 1 && previous == NULL) {
+		// exact match, zone not adjusted yet
+
+		assert(node);
+		*match = node;
+		*closest = node;
 
 		return ZONE_NAME_FOUND;
 	} else {
@@ -866,7 +573,9 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 
 		*match = NULL;
 		*closest = node;
-		*previous = prev;
+		if (previous != NULL) {
+			*previous = prev;
+		}
 
 		return ZONE_NAME_NOT_FOUND;
 	}
@@ -896,9 +605,13 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 	if (zone_tree_is_empty(zone->nsec3_nodes)) {
 		return KNOT_ENSEC3CHAIN;
 	}
+	if (!knot_is_nsec3_enabled(zone)) {
+		return KNOT_ENSEC3PAR;
+	}
 
 	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
-	int ret = create_nsec3_name(nsec3_name, sizeof(nsec3_name), zone, name);
+	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name),
+	                                  name, zone->apex->owner, &zone->nsec3_params);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -944,107 +657,6 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
 	knot_dname_to_wire(wildcard + 2, parent->owner, KNOT_DNAME_MAXLEN - 2);
 
 	return zone_contents_find_node(contents, wildcard);
-}
-
-static int adjust_nodes(zone_tree_t *nodes, zone_adjust_arg_t *adjust_arg,
-                        zone_tree_apply_cb_t callback)
-{
-	assert(adjust_arg);
-	assert(callback);
-
-	if (zone_tree_is_empty(nodes)) {
-		return KNOT_EOK;
-	}
-
-	adjust_arg->first_node = NULL;
-	adjust_arg->previous_node = NULL;
-
-	int ret = zone_tree_apply(nodes, callback, adjust_arg);
-
-	if (adjust_arg->first_node) {
-		adjust_arg->first_node->prev = adjust_arg->previous_node;
-	}
-
-	return ret;
-}
-
-static int load_nsec3param(zone_contents_t *contents)
-{
-	assert(contents);
-	assert(contents->apex);
-
-	const knot_rdataset_t *rrs = NULL;
-	rrs = node_rdataset(contents->apex, KNOT_RRTYPE_NSEC3PARAM);
-	if (rrs == NULL) {
-		dnssec_nsec3_params_free(&contents->nsec3_params);
-		return KNOT_EOK;
-	}
-
-	if (rrs->count < 1) {
-		return KNOT_EINVAL;
-	}
-
-	dnssec_binary_t rdata = {
-		.size = rrs->rdata->len,
-		.data = rrs->rdata->data,
-	};
-
-	dnssec_nsec3_params_t new_params = { 0 };
-	int r = dnssec_nsec3_params_from_rdata(&new_params, &rdata);
-	if (r != DNSSEC_EOK) {
-		return KNOT_EMALF;
-	}
-
-	dnssec_nsec3_params_free(&contents->nsec3_params);
-	contents->nsec3_params = new_params;
-	return KNOT_EOK;
-}
-
-static int contents_adjust(zone_contents_t *contents, bool normal)
-{
-	if (contents == NULL || contents->apex == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = load_nsec3param(contents);
-	if (ret != KNOT_EOK) {
-		log_zone_error(contents->apex->owner,
-		               "failed to load NSEC3 parameters (%s)",
-		               knot_strerror(ret));
-		return ret;
-	}
-
-	zone_adjust_arg_t arg = {
-		.zone = contents
-	};
-
-	contents->size = 0;
-	contents->dnssec = node_rrtype_is_signed(contents->apex, KNOT_RRTYPE_SOA);
-
-	// NSEC3 nodes must be adjusted first, because we already need the NSEC3 chain
-	// to be closed before we adjust NSEC3 pointers in adjust_normal_node
-	ret = adjust_nodes(contents->nsec3_nodes, &arg, adjust_nsec3_node);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = adjust_nodes(contents->nodes, &arg,
-	                   normal ? adjust_normal_node : adjust_pointers);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return adjust_nodes(contents->nodes, &arg, adjust_additional);
-}
-
-int zone_contents_adjust_pointers(zone_contents_t *contents)
-{
-	return contents_adjust(contents, false);
-}
-
-int zone_contents_adjust_full(zone_contents_t *contents)
-{
-	return contents_adjust(contents, true);
 }
 
 int zone_contents_apply(zone_contents_t *contents,

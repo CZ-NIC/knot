@@ -30,6 +30,7 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-dump.h"
@@ -225,7 +226,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	ret = zone_contents_adjust_full(zc->z);
+	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));

@@ -276,3 +276,19 @@ static inline knot_rrset_t node_rrset_at(const zone_node_t *node, size_t pos)
 	rrset.additional = rr_data->additional;
 	return rrset;
 }
+
+/*!
+ * \brief Compute node size.
+ *
+ * \param node   Node in question.
+ * \param size   In/out: node size will be added to this value.
+ */
+void node_size(const zone_node_t *node, size_t *size);
+
+/*!
+ * \brief Compute node maximum TTL.
+ *
+ * \param node   Node in question.
+ * \param size   In/out: this value will be maximalized with max TTL of node rrsets.
+ */
+void node_max_ttl(const zone_node_t *node, uint32_t *max);
