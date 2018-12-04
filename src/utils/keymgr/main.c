@@ -61,6 +61,8 @@ static void print_help(void)
 	       "                 (syntax: import-pem <pem_file_path> <attribute_name>=<value>...)\n"
 	       "  import-pkcs11 Import key stored in PKCS11 storage. Specify its parameters manually.\n"
 	       "                 (syntax: import-pkcs11 <key_id> <attribute_name>=<value>...)\n"
+	       "  nsec3-salt    Print current NSEC3 salt. If parameter is specified, set new salt.\n"
+	       "                 (syntax: nsec3salt [<new_salt>])\n"
 	       "  ds            Generate DS record(s) for specified key.\n"
 	       "                 (syntax: ds <key_spec>)\n"
 	       "  dnskey        Generate DNSKEY record for specified key.\n"
@@ -158,6 +160,8 @@ static int key_command(int argc, char *argv[], int opt_ind)
 	} else if (strcmp(argv[1], "import-pkcs11") == 0) {
 		CHECK_MISSING_ARG("Key ID to import not specified");
 		ret = keymgr_import_pkcs11(&kctx, argv[2], argc - 3, argv + 3);
+	} else if (strcmp(argv[1], "nsec3-salt") == 0) {
+		ret = keymgr_nsec3_salt(&kctx, argc > 2 ? argv[2] : NULL);
 	} else if (strcmp(argv[1], "set") == 0) {
 		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2set;
