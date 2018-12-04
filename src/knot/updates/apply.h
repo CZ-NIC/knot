@@ -41,8 +41,10 @@ typedef struct apply_ctx apply_ctx_t;
  * \param ctx       Context to be initialized.
  * \param contents  Zone contents to apply changes onto.
  * \param flags     Flags to control the application process.
+ *
+ * \return KNOT_E*
  */
-void apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags);
+int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags);
 
 /*!
  * \brief Creates a shallow zone contents copy.

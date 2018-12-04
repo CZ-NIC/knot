@@ -51,7 +51,11 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 	}
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
-	apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	ret = apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&update->change);
+		return ret;
+	}
 
 	/* Copy base SOA RR. */
 	update->change.soa_from =
@@ -74,7 +78,11 @@ static int init_full(zone_update_t *update, zone_t *zone)
 
 	update->new_cont_deep_copy = true;
 
-	apply_init_ctx(update->a_ctx, update->new_cont, 0);
+	int ret = apply_init_ctx(update->a_ctx, update->new_cont, 0);
+	if (ret != KNOT_EOK) {
+		zone_contents_free(update->new_cont);
+		return ret;
+	}
 
 	return KNOT_EOK;
 }
@@ -225,7 +233,12 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	}
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
-	apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	int ret = apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&update->change);
+		free(update->a_ctx);
+		return ret;
+	}
 
 	return KNOT_EOK;
 }

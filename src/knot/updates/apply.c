@@ -218,21 +218,30 @@ static int apply_single(apply_ctx_t *ctx, const changeset_t *chset)
 
 /* ------------------------------- API -------------------------------------- */
 
-void apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
+int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
 {
-	assert(ctx);
+	if (ctx == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	ctx->contents = contents;
 
 	init_list(&ctx->old_data);
 	init_list(&ctx->new_data);
-	ctx->node_ptrs = zone_tree_create();
-	ctx->nsec3_ptrs = zone_tree_create();
 
-	// no way to report ENOMEM, sorry
-	assert(ctx->node_ptrs != NULL && ctx->nsec3_ptrs != NULL);
+	ctx->node_ptrs = zone_tree_create();
+	if (ctx->node_ptrs == NULL) {
+		return KNOT_ENOMEM;
+	}
+	ctx->nsec3_ptrs = zone_tree_create();
+	if (ctx->nsec3_ptrs == NULL) {
+		zone_tree_free(&ctx->node_ptrs);
+		return KNOT_ENOMEM;
+	}
 
 	ctx->flags = flags;
+
+	return KNOT_EOK;
 }
 
 int apply_prepare_zone_copy(zone_contents_t *old_contents,
