@@ -423,6 +423,16 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags)
 	return KNOT_EOK;
 }
 
+uint32_t changeset_from(const changeset_t *ch)
+{
+	return ch->soa_from == NULL ? 0 : knot_soa_serial(ch->soa_from->rrs.rdata);
+}
+
+uint32_t changeset_to(const changeset_t *ch)
+{
+	return ch->soa_to == NULL ? 0 : knot_soa_serial(ch->soa_to->rrs.rdata);
+}
+
 typedef struct {
 	const zone_contents_t *zone;
 	changeset_t *fixing;

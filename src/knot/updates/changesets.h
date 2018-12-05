@@ -140,6 +140,24 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags);
 
 /*!
+ * \brief Get serial "from" of the changeset.
+ *
+ * \param ch   Changeset in question.
+ *
+ * \return Its serial "from", or 0 if none.
+ */
+uint32_t changeset_from(const changeset_t *ch);
+
+/*!
+ * \brief Get serial "to" of the changeset.
+ *
+ * \param ch   Changeset in question.
+ *
+ * \return Its serial "to", or 0 if none.
+ */
+uint32_t changeset_to(const changeset_t *ch);
+
+/*!
  * \brief Remove from changeset those rdata which won't be added/removed from zone.
  *
  * \param zone  The zone the changeset is going to be applied on.

@@ -28,17 +28,12 @@
 /*! \brief Minimum journal size. */
 #define JOURNAL_MIN_FSLIMIT	(1 * 1024 * 1024)
 
-typedef enum {
-	JOURNAL_MODE_ROBUST = 0, // Robust journal DB disk synchronization.
-	JOURNAL_MODE_ASYNC  = 1, // Asynchronous journal DB disk synchronization.
-} journal_mode_t;
-
 typedef struct {
 	knot_db_t *db;
 	const knot_db_api_t *db_api;
 	char *path;
 	size_t fslimit;
-	journal_mode_t mode;
+	int mode;
 	pthread_mutex_t db_mutex; // please delete this once you move DB opening from journal_open to db_init
 } journal_db_t;
 
@@ -67,7 +62,7 @@ struct journal_txn;
  * \return KNOT_E*
  */
 int journal_db_init(journal_db_t **db, const char *lmdb_dir_path, size_t lmdb_fslimit,
-                    journal_mode_t mode);
+                    int mode);
 
 /*!
  * \brief Close shared journal DB file.

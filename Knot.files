@@ -142,6 +142,16 @@ src/knot/journal/chgset_ctx.c
 src/knot/journal/chgset_ctx.h
 src/knot/journal/journal.c
 src/knot/journal/journal.h
+src/knot/journal/journal_basic.c
+src/knot/journal/journal_basic.h
+src/knot/journal/journal_metadata.c
+src/knot/journal/journal_metadata.h
+src/knot/journal/journal_read.c
+src/knot/journal/journal_read.h
+src/knot/journal/journal_write.c
+src/knot/journal/journal_write.h
+src/knot/journal/knot_lmdb.c
+src/knot/journal/knot_lmdb.h
 src/knot/journal/serialization.c
 src/knot/journal/serialization.h
 src/knot/modules/cookies/cookies.c
