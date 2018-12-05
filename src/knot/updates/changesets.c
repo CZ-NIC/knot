@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -338,7 +338,7 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 	}
 
 	const knot_rrset_t *to_remove = (rrset_cancelout == NULL ? rrset : rrset_cancelout);
-	int ret = knot_rrset_empty(to_remove) ? KNOT_EOK : add_rr_to_contents(ch->remove, to_remove);
+	int ret = (knot_rrset_empty(to_remove) || ch->remove == NULL) ? KNOT_EOK : add_rr_to_contents(ch->remove, to_remove);
 
 	if (flags & CHANGESET_CHECK) {
 		knot_rrset_free((knot_rrset_t *)rrset, NULL);
@@ -421,6 +421,16 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags)
 	ch1->soa_to = soa_copy;
 
 	return KNOT_EOK;
+}
+
+uint32_t changeset_from(const changeset_t *ch)
+{
+	return ch->soa_from == NULL ? 0 : knot_soa_serial(ch->soa_from->rrs.rdata);
+}
+
+uint32_t changeset_to(const changeset_t *ch)
+{
+	return ch->soa_to == NULL ? 0 : knot_soa_serial(ch->soa_to->rrs.rdata);
 }
 
 typedef struct {
@@ -594,6 +604,8 @@ changeset_t *changeset_from_contents(const zone_contents_t *contents)
 
 	zone_contents_deep_free(res->add);
 	res->add = copy;
+	zone_contents_deep_free(res->remove);
+	res->remove = NULL;
 	return res;
 }
 
@@ -601,7 +613,7 @@ void changeset_from_contents_free(changeset_t *ch)
 {
 	assert(ch);
 	assert(ch->soa_from == NULL);
-	assert(zone_contents_is_empty(ch->remove));
+	assert(ch->remove == NULL);
 
 	update_free_zone(ch->add);
 

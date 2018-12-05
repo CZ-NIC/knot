@@ -23,7 +23,6 @@
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
-#include "knot/journal/journal.h"
 #include "knot/updates/acl.h"
 #include "libknot/rrtype/opt.h"
 #include "libdnssec/tsig.h"
@@ -332,7 +331,7 @@ static const yp_item_t desc_template[] = {
 	{ C_JOURNAL_DB,          YP_TSTR,  YP_VSTR = { "journal" }, CONF_IO_FRLD_SRV },
 	{ C_JOURNAL_DB_MODE,     YP_TOPT,  YP_VOPT = { journal_modes, JOURNAL_MODE_ROBUST },
 	                                   CONF_IO_FRLD_SRV },
-	{ C_MAX_JOURNAL_DB_SIZE, YP_TINT,  YP_VINT = { JOURNAL_MIN_FSLIMIT, VIRT_MEM_LIMIT(TERA(100)),
+	{ C_MAX_JOURNAL_DB_SIZE, YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(TERA(100)),
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE },
 	                                               CONF_IO_FRLD_SRV },
 	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" }, CONF_IO_FRLD_SRV },
