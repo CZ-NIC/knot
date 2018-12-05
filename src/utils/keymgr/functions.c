@@ -724,7 +724,6 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, knot_time_print_t format)
 		       (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
 		       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
 		       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "));
-		print_timer("created",       key->timing.created,        format, ' ');
 		print_timer("pre-active",    key->timing.pre_active,     format, ' ');
 		print_timer("publish",       key->timing.publish,        format, ' ');
 		print_timer("ready",         key->timing.ready,          format, ' ');
