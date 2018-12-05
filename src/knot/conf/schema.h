@@ -151,6 +151,11 @@ enum {
 };
 
 enum {
+	JOURNAL_MODE_ROBUST = 0, // Robust journal DB disk synchronization.
+	JOURNAL_MODE_ASYNC  = 1, // Asynchronous journal DB disk synchronization.
+};
+
+enum {
 	ZONEFILE_LOAD_NONE  = 0,
 	ZONEFILE_LOAD_DIFF  = 1,
 	ZONEFILE_LOAD_WHOLE = 2,

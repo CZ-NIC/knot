@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -138,6 +138,24 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
  * \return KNOT_E*
  */
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags);
+
+/*!
+ * \brief Get serial "from" of the changeset.
+ *
+ * \param ch   Changeset in question.
+ *
+ * \return Its serial "from", or 0 if none.
+ */
+uint32_t changeset_from(const changeset_t *ch);
+
+/*!
+ * \brief Get serial "to" of the changeset.
+ *
+ * \param ch   Changeset in question.
+ *
+ * \return Its serial "to", or 0 if none.
+ */
+uint32_t changeset_to(const changeset_t *ch);
 
 /*!
  * \brief Remove from changeset those rdata which won't be added/removed from zone.
