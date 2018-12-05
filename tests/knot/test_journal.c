@@ -24,8 +24,10 @@
 #include <tap/basic.h>
 #include <tap/files.h>
 
+#include "knot/journal/journal_read.h"
+#include "knot/journal/journal_write.h"
+
 #include "libknot/libknot.h"
-#include "knot/journal/journal.c"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-diff.h"
 #include "libknot/rrtype/soa.h"
@@ -36,8 +38,11 @@
 #define MIN_SOA_SIZE 22
 
 char *test_dir_name;
-journal_db_t *db;
-journal_t *j;
+
+knot_lmdb_db_t jdb;
+zone_journal_t jj;
+
+unsigned env_flag;
 
 static void set_conf(int zonefile_sync, size_t journal_usage, const knot_dname_t *apex)
 {
@@ -114,6 +119,8 @@ static void init_random_changeset(changeset_t *ch, const uint32_t from, const ui
 
 	if (is_bootstrap) {
 		ch->soa_from = NULL;
+		zone_contents_deep_free(ch->remove);
+		ch->remove = NULL;
 	} else {
 		init_soa(&soa, from, apex);
 		ch->soa_from = knot_rrset_copy(&soa, NULL);
@@ -168,14 +175,26 @@ static void changeset_set_soa_serials(changeset_t *ch, uint32_t from, uint32_t t
 /*! \brief Compare two changesets for equality. */
 static bool changesets_eq(const changeset_t *ch1, changeset_t *ch2)
 {
-	if (changeset_size(ch1) != changeset_size(ch2)) {
+	bool bootstrap = (ch1->remove == NULL);
+
+	if (!bootstrap && changeset_size(ch1) != changeset_size(ch2)) {
+		return false;
+	}
+
+	if ((bootstrap && ch2->remove != NULL) ||
+	    (!bootstrap && ch2->remove == NULL)) {
 		return false;
 	}
 
 	changeset_iter_t it1;
-	changeset_iter_all(&it1, ch1);
 	changeset_iter_t it2;
-	changeset_iter_all(&it2, ch2);
+	if (bootstrap) {
+		changeset_iter_add(&it1, ch1);
+		changeset_iter_add(&it2, ch2);
+	} else {
+		changeset_iter_all(&it1, ch1);
+		changeset_iter_all(&it2, ch2);
+	}
 
 	knot_rrset_t rr1 = changeset_iter_next(&it1);
 	knot_rrset_t rr2 = changeset_iter_next(&it2);
@@ -243,82 +262,74 @@ static bool test_continuity(list_t *l)
 
 static void test_journal_db(void)
 {
-	int ret, ret2 = KNOT_EOK;
+	env_flag = journal_env_flags(JOURNAL_MODE_ASYNC);
+	knot_lmdb_init(&jdb, test_dir_name, 2048 * 1024, env_flag, NULL);
 
-	ret = journal_db_init(&db, test_dir_name, 2 * 1024 * 1024, JOURNAL_MODE_ASYNC);
-	is_int(KNOT_EOK, ret, "journal: init db (%d)", ret);
+	int ret = knot_lmdb_open(&jdb);
+	is_int(KNOT_EOK, ret, "journal: open db (%s)", knot_strerror(ret));
 
-	ret = journal_open_db(&db);
-	is_int(KNOT_EOK, ret, "journal: open db (%d)", ret);
+	ret = knot_lmdb_reconfigure(&jdb, test_dir_name, 4096 * 1024, env_flag);
+	is_int(KNOT_EOK, ret, "journal: re-open with bigger mapsize (%s)", knot_strerror(ret));
 
-	journal_db_close(&db);
-	ok(db == NULL, "journal: close and destroy db");
+	ret = knot_lmdb_reconfigure(&jdb, test_dir_name, 1024 * 1024, env_flag);
+	is_int(KNOT_EOK, ret, "journal: re-open with smaller mapsize (%s)", knot_strerror(ret));
 
-	ret = journal_db_init(&db, test_dir_name, 4 * 1024 * 1024, JOURNAL_MODE_ASYNC);
-	if (ret == KNOT_EOK) ret2 = journal_open_db(&db);
-	ok(ret == KNOT_EOK && ret2 == KNOT_EOK, "journal: open with bigger mapsize (%d, %d)", ret, ret2);
-	journal_db_close(&db);
+	knot_lmdb_deinit(&jdb);
+}
 
-	ret = journal_db_init(&db, test_dir_name, 1024 * 1024, JOURNAL_MODE_ASYNC);
-	if (ret == KNOT_EOK) ret2 = journal_open_db(&db);
-	ok(ret == KNOT_EOK && ret2 == KNOT_EOK, "journal: open with smaller mapsize (%d, %d)", ret, ret2);
-	journal_db_close(&db);
+static int load_j_list(zone_journal_t *zj, bool zij, uint32_t serial,
+                       journal_read_t **read, list_t *list)
+{
+	changeset_t *ch;
+	init_list(list);
+	int ret = journal_read_begin(*zj, zij, serial, read);
+	if (ret == KNOT_EOK) {
+		while ((ch = calloc(1, sizeof(*ch))) != NULL &&
+		       journal_read_changeset(*read, ch)) {
+			add_tail(list, &ch->n);
+		}
+		free(ch);
+		ret = journal_read_get_error(*read, KNOT_EOK);
+	}
+	return ret;
 }
 
 /*! \brief Test behavior with real changesets. */
 static void test_store_load(const knot_dname_t *apex)
 {
-	int ret, ret2 = KNOT_EOK;
-
 	set_conf(1000, 512 * 1024, apex);
 
-	j = journal_new();
-	ok(j != NULL, "journal: new");
+	knot_lmdb_init(&jdb, test_dir_name, 1536 * 1024, env_flag, NULL);
+	assert(knot_lmdb_open(&jdb) == KNOT_EOK);
 
-	ret = journal_db_init(&db, test_dir_name, (512 + 1024) * 1024, JOURNAL_MODE_ASYNC);
-	if (ret == KNOT_EOK) ret2 = journal_open(j, &db, apex);
-	is_int(KNOT_EOK, ret, "journal: open (%d, %d)", ret, ret2);
-
-	/* Save and load changeset. */
-	changeset_t *m_ch = changeset_new(apex);
-	init_random_changeset(m_ch, 0, 1, 128, apex, false);
-	ret = journal_store_changeset(j, m_ch);
-	is_int(KNOT_EOK, ret, "journal: store changeset (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_INFO);
-	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
+	jj.db = &jdb;
+	jj.zone = apex;
 	list_t l, k;
-	init_list(&l);
-	init_list(&k);
-	ret = journal_load_changesets(j, &l, 0);
-	add_tail(&k, &m_ch->n);
-	ok(ret == KNOT_EOK && changesets_list_eq(&l, &k), "journal: load changeset (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
 
-	/* Load ctx's. */
-	chgset_ctx_list_t cl = { { 0 }, 0 };
-	ret = journal_load_chgset_ctx(j, &cl, 0);
-	ok(ret == KNOT_EOK, "journal: chgset_ctx: load (%s)", knot_strerror(ret));
-	chgset_ctx_list_close(&cl);
+	changeset_t *m_ch = changeset_new(apex), r_ch, e_ch;
+	init_random_changeset(m_ch, 0, 1, 128, apex, false);
+	int ret = journal_insert(jj, m_ch);
+	is_int(KNOT_EOK, ret, "journal: store changeset (%s)", knot_strerror(ret));
+	ret = journal_sem_check(jj);
+	is_int(KNOT_EOK, ret, "journal: check after store changeset (%s)", knot_strerror(ret));
+	journal_read_t *read = NULL;
 
+	ret = load_j_list(&jj, false, changeset_from(m_ch), &read, &l);
+	is_int(KNOT_EOK, ret, "journal: read single changeset (%s)", knot_strerror(ret));
+	ok(1 == list_size(&l), "journal: read exactly one changeset");
+	ok(changesets_eq(m_ch, HEAD(l)), "journal: changeset equal after read");
 	changesets_free(&l);
-	changesets_free(&k);
 
-	/* Flush the journal. */
-	ret = journal_flush(j);
-	is_int(KNOT_EOK, ret, "journal: first and simple flush (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
-	init_list(&l);
+	journal_read_end(read);
+	ret = journal_set_flushed(jj);
+	is_int(KNOT_EOK, ret, "journal: first simple flush (%s)", knot_strerror(ret));
+
 	init_list(&k);
-
-	/* Fill the journal. */
-	ret = KNOT_EOK;
 	uint32_t serial = 1;
 	for (; ret == KNOT_EOK && serial < 40000; ++serial) {
 		changeset_t *m_ch2 = changeset_new(apex);
 		init_random_changeset(m_ch2, serial, serial + 1, 128, apex, false);
-		ret = journal_store_changeset(j, m_ch2);
+		ret = journal_insert(jj, m_ch2);
 		if (ret != KNOT_EOK) {
 			changeset_free(m_ch2);
 			break;
@@ -326,175 +337,118 @@ static void test_store_load(const knot_dname_t *apex)
 		add_tail(&k, &m_ch2->n);
 	}
 	is_int(KNOT_EBUSY, ret, "journal: overfill with changesets (%d inserted) (%d should= %d)",
-	   serial, ret, KNOT_EBUSY);
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
+	       serial, ret, KNOT_EBUSY);
+	ret = journal_sem_check(jj);
+	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
 
-	/* Load all changesets stored until now. */
-	ret = journal_load_changesets(j, &l, 1);
-	ok(ret == KNOT_EOK && changesets_list_eq(&l, &k), "journal: load changesets (%d)", ret);
-
+	ret = load_j_list(&jj, false, 1, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: load list (%s)", knot_strerror(ret));
+	ok(changesets_list_eq(&l, &k), "journal: changeset lists equal after read");
+	ok(test_continuity(&l) == KNOT_EOK, "journal: changesets are in order");
 	changesets_free(&l);
-	init_list(&l);
-	ret = journal_load_changesets(j, &l, 1);
-	ok(ret == KNOT_EOK && changesets_list_eq(&l, &k), "journal: re-load changesets (%d)", ret);
+	journal_read_end(read);
 
-	ret = journal_load_chgset_ctx(j, &cl, 1);
-	ok(ret == KNOT_EOK, "journal: chgset_ctx: load 2 (%s)", knot_strerror(ret));
-	ok(list_size(&cl.l) == list_size(&l), "journal: chgset_ctx: load size %zu ?== %zu", list_size(&cl.l), list_size(&l));
-	chgset_ctx_list_close(&cl);
-
+	ret = load_j_list(&jj, false, 1, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: load list 2nd (%s)", knot_strerror(ret));
+	ok(changesets_list_eq(&l, &k), "journal: changeset lists equal after 2nd read");
 	changesets_free(&l);
-	init_list(&l);
+	journal_read_end(read);
 
-	/* Flush the journal. */
-	ret = journal_flush(j);
-	is_int(KNOT_EOK, ret, "journal: second flush (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
+	ret = journal_set_flushed(jj);
+	is_int(KNOT_EOK, ret, "journal: flush after overfill (%s)", knot_strerror(ret));
+	ret = journal_sem_check(jj);
+	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
 
-	/* Test whether the journal kept changesets after flush. */
-	ret = journal_load_changesets(j, &l, 1);
-	ok(ret == KNOT_EOK && changesets_list_eq(&l, &k), "journal: load right after flush (%d)", ret);
+	ret = load_j_list(&jj, false, 1, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: load list (%s)", knot_strerror(ret));
+	ok(changesets_list_eq(&l, &k), "journal: changeset lists equal after flush");
+	changesets_free(&l);
+	journal_read_end(read);
 
 	changesets_free(&k);
-	changesets_free(&l);
-	init_list(&k);
-	init_list(&l);
 
-	/* Store next changeset. */
 	changeset_t ch;
 	ret = changeset_init(&ch, apex);
 	ok(ret == KNOT_EOK, "journal: changeset init (%d)", ret);
-	init_random_changeset(&ch, serial, serial + 1, 128, apex, false);
-	ret = journal_store_changeset(j, &ch);
-	changeset_clear(&ch);
+	init_random_changeset(&ch, serial, serial + 1, 555, apex, false);
+	ret = journal_insert(jj, &ch);
 	is_int(KNOT_EOK, ret, "journal: store after flush (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
-
-	/* Load last changesets. */
-	init_list(&l);
-	ret = journal_load_changesets(j, &l, serial);
+	ret = journal_sem_check(jj);
+	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
+	ret = load_j_list(&jj, false, serial, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: load after store after flush after overfill (%s)", knot_strerror(ret));
+	is_int(1, list_size(&l), "journal: single changeset in list");
+	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset unmalformed after overfill");
 	changesets_free(&l);
-	is_int(KNOT_EOK, ret, "journal: load changesets after flush (%d)", ret);
+	journal_read_end(read);
 
-	/* Flush the journal again. */
-	ret = journal_flush(j);
-	is_int(KNOT_EOK, ret, "journal: flush again (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
+	changeset_clear(&ch);
 
-	/* Fill the journal using a list. */
-	uint32_t m_serial = 1;
-	for (; m_serial < serial / 2; ++m_serial) {
-		changeset_t *m_ch7 = changeset_new(apex);
-		init_random_changeset(m_ch7, m_serial, m_serial + 1, 128, apex, false);
-		add_tail(&l, &m_ch7->n);
+	changeset_init(&ch, apex);
+	init_random_changeset(&ch, 2, 3, 100, apex, false);
+	ret = journal_insert(jj, &ch);
+	is_int(KNOT_EOK, ret, "journal: insert discontinuous changeset (%s)", knot_strerror(ret));
+	ret = journal_sem_check(jj);
+	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
+	ret = load_j_list(&jj, false, 2, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: read after discontinuity (%s)", knot_strerror(ret));
+	is_int(1, list_size(&l), "journal: dicontinuity caused journal to drop");
+	changesets_free(&l);
+	journal_read_end(read);
+
+	// Test for serial number collision handling. We insert changesets
+	// with valid serial sequence that overflows and then collides with itself.
+	// The sequence is 0 -> 1 -> 2 -> 2147483647 -> 4294967294 -> 1 which should
+	// remove changesets 0->1 and 1->2. *
+	uint32_t serials[6] = { 0, 1, 2, 2147483647, 4294967294, 1 };
+	for (int i = 0; i < 5; i++) {
+		changeset_clear(&ch);
+		changeset_init(&ch, apex);
+		init_random_changeset(&ch, serials[i], serials[i + 1], 100, apex, false);
+		ret = journal_insert(jj, &ch);
+		is_int(i == 4 ? KNOT_EBUSY : KNOT_EOK, ret, "journal: inserting cycle (%s)", knot_strerror(ret));
+		ret = journal_sem_check(jj);
+		is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
 	}
-	ret = journal_store_changesets(j, &l);
-	is_int(KNOT_EOK, ret, "journal: fill with changesets using a list (%d inserted)", m_serial);
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
-
-	/* Cleanup. */
+	ret = journal_set_flushed(jj);
+	is_int(KNOT_EOK, ret, "journal: flush in cycle (%s)", knot_strerror(ret));
+	ret = journal_insert(jj, &ch);
+	is_int(KNOT_EOK, ret, "journal: inserted cycle (%s)", knot_strerror(ret));
+	ret = journal_sem_check(jj);
+	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
+	ret = journal_read_begin(jj, false, 0, &read);
+	is_int(KNOT_ENOENT, ret, "journal: cycle removed first changeset (%d should= %d)", ret, KNOT_ENOENT);
+	ret = journal_read_begin(jj, false, 1, &read);
+	is_int(KNOT_ENOENT, ret, "journal: cycle removed second changeset (%d should= %d)", ret, KNOT_ENOENT);
+	ret = load_j_list(&jj, false, 4294967294, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: read after cycle (%s)", knot_strerror(ret));
+	ok(3 >= list_size(&l), "journal: cycle caused journal to partly drop");
+	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset unmalformed after cycle");
 	changesets_free(&l);
-	init_list(&l);
+	journal_read_end(read);
+	changeset_clear(&ch);
+	changeset_free(m_ch);
 
-	/* Load all previous changesets. */
-	ret = journal_load_changesets(j, &l, 1);
-	ok(ret == KNOT_EOK && knot_soa_serial(((changeset_t *)TAIL(l))->soa_to->rrs.rdata) == m_serial,
-	   "journal: load all changesets");
-
-	/* Check for changeset ordering. */
-	ok(test_continuity(&l) == KNOT_EOK, "journal: changesets are in order");
-
-	/* Cleanup. */
+	changeset_init(&e_ch, apex);
+	init_random_changeset(&e_ch, 0, 1, 200, apex, true);
+	ret = journal_insert_zone(jj, &e_ch);
+	is_int(KNOT_EOK, ret, "journal: insert zone-in-journal (%s)", knot_strerror(ret));
+	changeset_init(&r_ch, apex);
+	init_random_changeset(&r_ch, 1, 2, 200, apex, false);
+	ret = journal_insert(jj, &r_ch);
+	is_int(KNOT_EOK, ret, "journal: insert after zone-in-journal (%s)", knot_strerror(ret));
+	ret = load_j_list(&jj, true, 0, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: load zone-in-journal (%s)", knot_strerror(ret));
+	is_int(2, list_size(&l), "journal: read two changesets from zone-in-journal");
+	ok(changesets_eq(&e_ch, HEAD(l)), "journal: zone-in-journal unmalformed");
+	ok(changesets_eq(&r_ch, TAIL(l)), "journal: after zone-in-journal unmalformed");
 	changesets_free(&l);
-	init_list(&l);
-	ret = journal_flush(j);
-	is_int(KNOT_EOK, ret, "journal: allways ok journal_flush 0");
-	ret = journal_drop_changesets(j); /* Clear the journal for the collision test */
-	is_int(KNOT_EOK, ret, "journal: allways ok journal_drop_changesets");
+	journal_read_end(read);
+	changeset_clear(&e_ch);
+	changeset_clear(&r_ch);
 
-	/* Test for serial number collision handling. We insert changesets
-	 * with valid serial sequence that overflows and then collides with itself.
-	 * The sequence is 0 -> 1 -> 2 -> 2147483647 -> 4294967294 -> 1 which should
-	 * remove changesets 0->1 and 1->2. */
-	ok(EMPTY_LIST(k), "journal: empty list k");
-	ok(EMPTY_LIST(l), "journal: empty list l");
-	changeset_t *m_ch3 = changeset_new(apex);
-	init_random_changeset(m_ch3, 0, 1, 128, apex, false);
-	ret = journal_store_changeset(j, m_ch3);
-	is_int(KNOT_EOK, ret, "journal: allways ok journal_store_changeset 1");
-	changeset_set_soa_serials(m_ch3, 1, 2, apex);
-	ret = journal_store_changeset(j, m_ch3);
-	is_int(KNOT_EOK, ret, "journal: allways ok journal_store_changeset 2");
-	changeset_set_soa_serials(m_ch3, 2, 2147483647, apex);
-	add_tail(&k, &m_ch3->n);
-	ret = journal_store_changeset(j, m_ch3);
-	is_int(KNOT_EOK, ret, "journal: allways ok journal_store_changeset 3");
-	changeset_t *m_ch4 = changeset_new(apex);
-	init_random_changeset(m_ch4, 2147483647, 4294967294, 128, apex, false);
-	add_tail(&k, &m_ch4->n);
-	ret = journal_store_changeset(j, m_ch4);
-	is_int(KNOT_EOK, ret, "journal: allways ok journal_store_changeset 4");
-	changeset_t *m_ch5 = changeset_new(apex);
-	init_random_changeset(m_ch5, 4294967294, 1, 128, apex, false);
-	add_tail(&k, &m_ch5->n);
-	ret = journal_store_changeset(j, m_ch5);
-	is_int(KNOT_EBUSY, ret, "journal: allways ok journal_store_changeset 5");
-	ret = journal_flush(j);
-	is_int(KNOT_EOK, ret, "journal: allways ok journal_flush 1");
-	ret = journal_store_changeset(j, m_ch5);
-	is_int(KNOT_EOK, ret, "journal: allways ok journal_store_changeset 6");
-	ret = journal_flush(j);
-	is_int(KNOT_EOK, ret, "journal: allways ok journal_flush 2");
-	ret = journal_load_changesets(j, &l, 0);
-	ret2 = journal_load_changesets(j, &l, 1);
-	int ret3 = journal_load_changesets(j, &l, 2);
-	fprintf(stderr, "ret=%d ret2=%d ret3=%d\n", ret, ret2, ret3);
-	ok(ret == KNOT_ENOENT && ret2 == KNOT_ENOENT && ret3 == KNOT_EOK &&
-	   changesets_list_eq(&l, &k), "journal: serial collision");
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	is_int(KNOT_EOK, ret, "journal check (%d)", ret);
-
-	/* Cleanup. */
-	changesets_free(&l);
-	changesets_free(&k);
-
-	init_list(&l);
-	init_list(&k);
-
-	/* Check bootstrap changeset */
-	ret = journal_drop_changesets(j);
-	ok(ret == KNOT_EOK, "journal: journal_drop_changesets must be ok");
-
-	changeset_t *m_ch6 = changeset_new(apex);
-	init_random_changeset(m_ch6, 0, 1, 128, apex, true);
-	ret = journal_store_changeset(j, m_ch6);
-	ok(ret == KNOT_EOK, "journal: store bootstrap (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	ok(ret == KNOT_EOK, "journal check (%d)", ret);
-	changeset_t *m_ch7 = changeset_new(apex);
-	init_random_changeset(m_ch7, 1, 2, 128, apex, false);
-	ret = journal_store_changeset(j, m_ch7);
-	ok(ret == KNOT_EOK, "journal: store after bootstrap (%d)", ret);
-	add_tail(&k, &m_ch6->n);
-	add_tail(&k, &m_ch7->n);
-	ret = journal_load_bootstrap(j, &l);
-	ok(ret == KNOT_EOK && changesets_list_eq(&l, &k), "journal: load boostrap (%d)", ret);
-	ret = journal_check(j, JOURNAL_CHECK_STDERR);
-	ok(ret == KNOT_EOK, "journal check (%d)", ret);
-
-	changesets_free(&l);
-	changesets_free(&k);
-
-	init_list(&l);
-	init_list(&k);
-
-	ret = journal_scrape(j);
-	ok(ret == KNOT_EOK, "journal: scrape must be ok");
+	ret = journal_scrape_with_md(jj);
+	is_int(KNOT_EOK, ret, "journal: scrape with md (%s)", knot_strerror(ret));
 
 	unset_conf();
 }
@@ -605,11 +559,8 @@ static changeset_t * tm_chs(const knot_dname_t * apex, int x)
 
 static int merged_present(void)
 {
-	local_txn_t(txn, j);
-	txn_begin(txn, 0);
-	int res = md_flag(txn, MERGED_SERIAL_VALID);
-	txn_abort(txn);
-	return res;
+	bool exists, has_merged;
+	return journal_info(jj, &exists, NULL, NULL, &has_merged, NULL, NULL, NULL) == KNOT_EOK && exists && has_merged;
 }
 
 static void test_merge(const knot_dname_t *apex)
@@ -618,67 +569,67 @@ static void test_merge(const knot_dname_t *apex)
 	list_t l;
 
 	// allow merge
-	set_conf(-1, 512 * 1024, apex);
-	ok(journal_merge_allowed(j), "journal: merge allowed");
+	set_conf(-1, 100 * 1024, apex);
+	ok(!journal_allow_flush(jj), "journal: merge allowed");
 
-	ret = journal_drop_changesets(j);
+	ret = journal_scrape_with_md(jj);
 	is_int(KNOT_EOK, ret, "journal: journal_drop_changesets must be ok");
 
 	// insert stuff and check the merge
 	for (i = 0; !merged_present() && i < 40000; i++) {
-		ret = journal_store_changeset(j, tm_chs(apex, i));
+		ret = journal_insert(jj, tm_chs(apex, i));
 		is_int(KNOT_EOK, ret, "journal: journal_store_changeset must be ok");
 	}
-	init_list(&l);
-	ret = journal_load_changesets(j, &l, 0);
+	ret = journal_sem_check(jj);
+	is_int(KNOT_EOK, ret, "journal: sem check (%s)", knot_strerror(ret));
+	journal_read_t *read = NULL;
+	ret = load_j_list(&jj, false, 0, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: journal_load_changesets must be ok");
+	assert(ret == KNOT_EOK);
 	ok(list_size(&l) == 2, "journal: read the merged and one following");
 	changeset_t * mch = (changeset_t *)HEAD(l);
 	ok(list_size(&l) >= 1 && tm_rrcnt(mch, 1) == 2, "journal: merged additions # = 2");
 	ok(list_size(&l) >= 1 && tm_rrcnt(mch, -1) == 1, "journal: merged removals # = 1");
 	changesets_free(&l);
+	journal_read_end(read);
 
 	// insert one more and check the #s of results
-	journal_store_changeset(j, tm_chs(apex, i));
-	init_list(&l);
-	ret = journal_load_changesets(j, &l, 0);
+	ret = journal_insert(jj, tm_chs(apex, i));
+	is_int(KNOT_EOK, ret, "journal: insert one more (%s)", knot_strerror(ret));
+	ret = load_j_list(&jj, false, 0, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: journal_load_changesets2 must be ok");
 	ok(list_size(&l) == 3, "journal: read merged together with new changeset");
 	changesets_free(&l);
-	init_list(&l);
-	ret = journal_load_changesets(j, &l, (uint32_t) (i - 3));
+	journal_read_end(read);
+	ret = load_j_list(&jj, false, i - 3, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: journal_load_changesets3 must be ok");
 	ok(list_size(&l) == 4, "journal: read short history of merged/unmerged changesets");
 	changesets_free(&l);
+	journal_read_end(read);
 
-	ret = journal_drop_changesets(j);
+
+	ret = journal_scrape_with_md(jj);
 	assert(ret == KNOT_EOK);
 
 	// disallow merge
 	unset_conf();
 	set_conf(1000, 512 * 1024, apex);
-	ok(!journal_merge_allowed(j), "journal: merge disallowed");
+	ok(journal_allow_flush(jj), "journal: merge disallowed");
 
 	tm_rrs(NULL, 0);
 	tm_chs(NULL, 0);
 	unset_conf();
 }
 
-static void test_stress_base(journal_t *journal, const knot_dname_t *apex,
+static void test_stress_base(const knot_dname_t *apex,
                              size_t update_size, size_t file_size)
 {
 	int ret;
 	uint32_t serial = 0;
 
-	journal_close(journal);
-	journal_db_close(&db);
-	db = NULL;
-	ret = journal_db_init(&db, test_dir_name, file_size, JOURNAL_MODE_ASYNC);
-	assert(ret == KNOT_EOK);
-	ret = journal_open_db(&db);
-	assert(ret == KNOT_EOK);
-	ret = journal_open(journal, &db, apex);
-	assert(ret == KNOT_EOK);
+
+	ret = knot_lmdb_reconfigure(&jdb, test_dir_name, file_size, journal_env_flags(JOURNAL_MODE_ASYNC));
+	is_int(KNOT_EOK, ret, "journal: recofigure to mapsize %zu (%s)", file_size, knot_strerror(ret));
 
 	set_conf(1000, file_size / 2, apex);
 
@@ -691,7 +642,7 @@ static void test_stress_base(journal_t *journal, const knot_dname_t *apex,
 		serial = 0;
 		while (true) {
 			changeset_set_soa_serials(&ch, serial, serial + 1, apex);
-			ret = journal_store_changeset(journal, &ch);
+			ret = journal_insert(jj, &ch);
 			if (ret == KNOT_EOK) {
 				serial++;
 			} else {
@@ -699,8 +650,11 @@ static void test_stress_base(journal_t *journal, const knot_dname_t *apex,
 			}
 		}
 
-		ret = journal_flush(journal);
-		ok(serial > 0 && ret == KNOT_EOK, "journal: pass #%d fillup run (%d inserts)", i, serial);
+		ret = journal_set_flushed(jj);
+		if (ret == KNOT_EOK) {
+			ret = journal_sem_check(jj);
+		}
+		ok(serial > 0 && ret == KNOT_EOK, "journal: pass #%d fillup run (%d inserts) (%s)", i, serial, knot_strerror(ret));
 	}
 
 	changeset_clear(&ch);
@@ -709,16 +663,16 @@ static void test_stress_base(journal_t *journal, const knot_dname_t *apex,
 }
 
 /*! \brief Test behavior when writing to jurnal and flushing it. */
-static void test_stress(journal_t *journal, const knot_dname_t *apex)
+static void test_stress(const knot_dname_t *apex)
 {
 	diag("stress test: small data");
-	test_stress_base(journal, apex, 40, (1024 + 512) * 1024);
+	test_stress_base(apex, 40, (1024 + 512) * 1024);
 
 	diag("stress test: medium data");
-	test_stress_base(journal, apex, 400, 3 * 1024 * 1024);
+	test_stress_base(apex, 400, 3 * 1024 * 1024);
 
 	diag("stress test: large data");
-	test_stress_base(journal, apex, 4000, 10 * 1024 * 1024);
+	test_stress_base(apex, 4000, 10 * 1024 * 1024);
 }
 
 int main(int argc, char *argv[])
@@ -735,11 +689,9 @@ int main(int argc, char *argv[])
 
 	test_merge(apex);
 
-	test_stress(j, apex);
+	test_stress(apex);
 
-	journal_close(j);
-	journal_free(&j);
-	journal_db_close(&db);
+	knot_lmdb_deinit(&jdb);
 
 	test_rm_rf(test_dir_name);
 	free(test_dir_name);
