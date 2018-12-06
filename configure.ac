@@ -597,8 +597,6 @@ AC_SEARCH_LIBS([pow], [m], [
 ])
 LIBS="$save_LIBS"
 
-AC_SEARCH_LIBS([clock_gettime], [rt])
-
 # Checks for header files.
 AC_HEADER_RESOLV
 AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h])
