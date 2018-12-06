@@ -25,6 +25,9 @@ libdnssec_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS)
 libdnssec_la_LDFLAGS  = $(AM_LDFLAGS) $(libdnssec_VERSION_INFO) $(gnutls_LIBS) \
                         $(LDFLAG_EXCLUDE_LIBS)
 libdnssec_la_LIBADD   = libshared.la
+if ENABLE_PKCS11
+libdnssec_la_LIBADD  += $(pthread_LIBS)
+endif
 
 include_libdnssecdir = $(includedir)/libdnssec
 include_libdnssec_HEADERS = \
