@@ -3,7 +3,7 @@ pkgconfig_DATA  += libknot.pc
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
 libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS)
-libknot_la_LIBADD   = libcontrib.la libdnssec.la $(lmdb_LIBS)
+libknot_la_LIBADD   = libcontrib.la libdnssec.la $(math_LIBS) $(lmdb_LIBS)
 
 include_libknotdir = $(includedir)
 nobase_include_libknot_HEADERS = \

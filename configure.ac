@@ -588,7 +588,15 @@ AC_SEARCH_LIBS([dlopen], [dl], [
 ])
 LIBS="$save_LIBS"
 
-AC_SEARCH_LIBS([pow], [m], [], [AC_MSG_ERROR([math not found])])
+save_LIBS="$LIBS"
+AC_SEARCH_LIBS([pow], [m], [
+  math_LIBS="$ac_cv_search_pow"
+  AC_SUBST([math_LIBS])
+],[
+  AC_MSG_ERROR([math not found])
+])
+LIBS="$save_LIBS"
+
 AC_SEARCH_LIBS([clock_gettime], [rt])
 
 # Checks for header files.
