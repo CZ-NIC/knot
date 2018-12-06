@@ -19,8 +19,9 @@
 #include "contrib/lmdb/lmdb.h"
 
 #include <stdbool.h>
+#include <stdlib.h>
 
-typedef struct {
+typedef struct knot_lmdb_db {
 	MDB_dbi dbi;
 	MDB_env *env;
 } knot_lmdb_db_t;
