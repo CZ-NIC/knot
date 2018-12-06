@@ -18,23 +18,15 @@
 
 #include <stdarg.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "contrib/wire_ctx.h"
 #include "libknot/dname.h"
 #include "libknot/endian.h"
 #include "libknot/error.h"
 
-static bool txn_semcheck(knot_lmdb_txn_t *txn)
-{
-	if (!txn->opened && txn->ret == KNOT_EOK) {
-		txn->ret = KNOT_ESEMCHECK;
-	}
-	if (txn->ret != KNOT_EOK) {
-		knot_lmdb_abort(txn);
-		return false;
-	}
-	return true;
-}
+#define LMDB_DIR_MODE   0770
+#define LMDB_FILE_MODE  0660
 
 static void err_to_knot(int *err)
 {
@@ -57,14 +49,96 @@ static void err_to_knot(int *err)
 	}
 }
 
-void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn)
+int knot_lmdb_open(knot_lmdb_db_t *db, const char *path, knot_lmdb_db_opts_t* opt)
 {
-	unsigned flags = (db->txn_flags | (txn->is_rw ? 0 : MDB_RDONLY));
-	txn->ret = mdb_txn_begin(db->env, NULL, flags, &txn->txn);
+	MDB_txn *init_txn = NULL;
+
+	if (db == NULL || db->env != NULL || db->dbi != 0) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = mkdir(path, LMDB_DIR_MODE);
+	if (ret < 0 && errno != EEXIST) {
+		return -errno;
+	}
+
+	long page_size = sysconf(_SC_PAGESIZE);
+	if (page_size <= 0) {
+		return KNOT_ERROR;
+	}
+	size_t mapsize = (opt->mapsize / page_size + 1) * page_size;
+
+	ret = mdb_env_create(&db->env);
+	if (ret != MDB_SUCCESS) {
+		err_to_knot(&ret);
+		return ret;
+	}
+
+#ifdef __OpenBSD__
+	/*
+	 * Enforce that MDB_WRITEMAP is set.
+	 *
+	 * MDB assumes a unified buffer cache.
+	 *
+	 * See https://www.openldap.org/pub/hyc/mdm-paper.pdf section 3.1,
+	 * references 17, 18, and 19.
+	 *
+	 * From Howard Chu: "This requirement can be relaxed in the
+	 * current version of the library. If you create the environment
+	 * with the MDB_WRITEMAP option then all reads and writes are
+	 * performed using mmap, so the file buffer cache is irrelevant.
+	 * Of course then you lose the protection that the read-only
+	 * map offers."
+	 */
+	opts->flags.env |= MDB_WRITEMAP;
+#endif
+
+	ret = mdb_env_set_mapsize(db->env, mapsize);
+	if (ret == MDB_SUCCESS) {
+		ret = mdb_env_set_maxdbs(db->env, opt->maxdbs);
+	}
+	if (ret == MDB_SUCCESS) {
+		ret = mdb_env_set_maxreaders(db->env, opt->maxreaders);
+	}
+	if (ret == MDB_SUCCESS) {
+		ret = mdb_env_open(db->env, path, opt->env_flags, LMDB_FILE_MODE);
+	}
+	if (ret == MDB_SUCCESS) {
+		unsigned init_txn_flags = (opt->env_flags & MDB_RDONLY);
+		ret = mdb_txn_begin(db->env, NULL, init_txn_flags, &init_txn);
+	}
+	if (ret == MDB_SUCCESS) {
+		ret = mdb_dbi_open(init_txn, opt->dbname, MDB_CREATE, &db->dbi);
+	}
+	if (ret == MDB_SUCCESS) {
+		ret = mdb_txn_commit(init_txn);
+	}
+
+	if (ret != MDB_SUCCESS) {
+		if (init_txn != NULL) {
+			mdb_txn_abort(init_txn);
+		}
+		mdb_env_close(db->env);
+	}
+	err_to_knot(&ret);
+	return ret;
+}
+
+void knot_lmdb_close(knot_lmdb_db_t *db)
+{
+	mdb_dbi_close(db->env, db->dbi);
+	mdb_env_close(db->env);
+	memset(db, 0, sizeof(*db));
+}
+
+void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn, bool rw)
+{
+	txn->ret = mdb_txn_begin(db->env, NULL, rw ? 0 : MDB_RDONLY, &txn->txn);
 	err_to_knot(&txn->ret);
 	if (txn->ret == KNOT_EOK) {
 		txn->opened = true;
 		txn->db = db;
+		txn->is_rw = rw;
 	}
 }
 
@@ -78,6 +152,18 @@ void knot_lmdb_abort(knot_lmdb_txn_t *txn)
 		mdb_txn_abort(txn->txn);
 		txn->opened = false;
 	}
+}
+
+static bool txn_semcheck(knot_lmdb_txn_t *txn)
+{
+	if (!txn->opened && txn->ret == KNOT_EOK) {
+		txn->ret = KNOT_ESEMCHECK;
+	}
+	if (txn->ret != KNOT_EOK) {
+		knot_lmdb_abort(txn);
+		return false;
+	}
+	return true;
 }
 
 void knot_lmdb_commit(knot_lmdb_txn_t *txn)
@@ -187,6 +273,17 @@ void knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val)
 	}
 }
 
+int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val)
+{
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_lmdb_insert(&txn, &key, &val);
+	free(key.mv_data);
+	free(val.mv_data);
+	knot_lmdb_commit(&txn);
+	return txn.ret;
+}
+
 size_t knot_lmdb_usage(knot_lmdb_txn_t *txn)
 {
 	if (!txn_semcheck(txn)) {
@@ -205,6 +302,8 @@ static bool make_key_part(void *key_data, size_t key_len, const char *format, va
 	wire_ctx_t wire = wire_ctx_init(key_data, key_len);
 	const char *tmp_s;
 	const knot_dname_t *tmp_d;
+	const void *tmp_v;
+	size_t tmp;
 
 	for (const char *f = format; *f != '\0'; f++) {
 		switch (*f) {
@@ -224,9 +323,14 @@ static bool make_key_part(void *key_data, size_t key_len, const char *format, va
 			tmp_s = va_arg(arg, const char *);
 			wire_ctx_write(&wire, tmp_s, strlen(tmp_s) + 1);
 			break;
-		case 'D':
+		case 'N':
 			tmp_d = va_arg(arg, const knot_dname_t *);
 			wire_ctx_write(&wire, tmp_d, knot_dname_size(tmp_d));
+			break;
+		case 'D':
+			tmp_v = va_arg(arg, const void *);
+			tmp = va_arg(arg, size_t);
+			wire_ctx_write(&wire, tmp_v, tmp);
 			break;
 		}
 	}
@@ -265,9 +369,13 @@ MDB_val knot_lmdb_make_key(const char *format, ...)
 			tmp_s = va_arg(arg, const char *);
 			key.mv_size += strlen(tmp_s) + 1;
 			break;
-		case 'D':
+		case 'N':
 			tmp_d = va_arg(arg, const knot_dname_t *);
 			key.mv_size += knot_dname_size(tmp_d);
+			break;
+		case 'D':
+			(void)va_arg(arg, const void *);
+			key.mv_size += va_arg(arg, size_t);
 			break;
 		}
 	}
@@ -337,11 +445,18 @@ bool knot_lmdb_unmake_key(void *key_data, size_t key_len, const char *format, ..
 			}
 			wire_ctx_skip(&wire, strlen((const char *)wire.position) + 1);
 			break;
-		case 'D':
+		case 'N':
 			if (tmp != NULL) {
 				*(const knot_dname_t **)tmp = (const knot_dname_t *)wire.position;
 			}
 			wire_ctx_skip(&wire, knot_dname_size((const knot_dname_t *)wire.position));
+			break;
+		case 'D':
+			if (tmp != NULL) {
+				memcpy(tmp, wire.position, va_arg(arg, size_t));
+			} else {
+				wire_ctx_skip(&wire, va_arg(arg, size_t));
+			}
 			break;
 		}
 	}

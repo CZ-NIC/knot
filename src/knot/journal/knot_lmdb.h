@@ -23,10 +23,18 @@
 typedef struct {
 	MDB_dbi dbi;
 	MDB_env *env;
-
-	bool opened;
-	int txn_flags;
 } knot_lmdb_db_t;
+
+typedef struct {
+	size_t mapsize;
+	unsigned maxdbs;
+	unsigned maxreaders;
+	unsigned env_flags; // MDB_NOTLS, MDB_RDONLY, MDB_WRITEMAP, MDB_DUPSORT, MDB_NOSYNC, MDB_MAPASYNC
+	const char *dbname;
+} knot_lmdb_db_opts_t;
+
+#define KNOT_LMDB_DB_OPT_DEFAULT { (100 * 1024 * 1024), 0, \
+	126/* = contrib/lmdb/mdb.c DEFAULT_READERS */, 0, NULL }
 
 typedef struct {
 	MDB_txn *txn;
@@ -51,8 +59,13 @@ typedef struct {
 	MDB_val val;
 } knot_lmdb_keyval_t;
 
+int knot_lmdb_open(knot_lmdb_db_t *db, const char *path, knot_lmdb_db_opts_t* opt);
 
-void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn);
+inline bool knot_lmdb_is_open(knot_lmdb_db_t *db) { return (db->env != NULL); }
+
+void knot_lmdb_close(knot_lmdb_db_t *db);
+
+void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn, bool rw);
 
 void knot_lmdb_abort(knot_lmdb_txn_t *txn);
 
@@ -72,6 +85,8 @@ bool knot_lmdb_next(knot_lmdb_txn_t *txn);
 void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix);
 
 void knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val);
+
+int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val);
 
 size_t knot_lmdb_usage(knot_lmdb_txn_t *txn);
 
