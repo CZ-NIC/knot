@@ -176,6 +176,7 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
 ])
+AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 
 AC_ARG_ENABLE([recvmmsg],
    AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
