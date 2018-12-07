@@ -16,32 +16,18 @@
 
 #pragma once
 
-#include "libknot/dname.h" // FIXME move
-#include "knot/updates/changesets.h"
-
-//#include "knot/journal/journal_basic.h"
-
-typedef struct knot_lmdb_db knot_lmdb_db_t; // from knot_lmdb.h
-
-typedef struct {
-	bool zone_in_journal;
-	uint32_t serial;
-} journal_changeset_id_t; // FIXME move
-
-#include "knot/journal/knot_lmdb.h"
-typedef struct {
-	knot_lmdb_db_t db;
-	knot_dname_t *zone;
-} journal_t; // FIXME move
+#include "knot/journal/journal_basic.h"
 
 typedef struct journal_read journal_read_t;
 
 #define JOURNAL_READ_DONE (1)
 
-int journal_read_begin(journal_t *j, const journal_changeset_id_t *from, journal_read_t **ctx);
+int journal_read_begin(journal_t *j, journal_changeset_id_t from, journal_read_t **ctx);
 
 int journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr);
 
 int journal_read_changeset(journal_read_t *ctx, changeset_t *ch);
 
 void journal_read_end(journal_read_t *ctx);
+
+void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch);

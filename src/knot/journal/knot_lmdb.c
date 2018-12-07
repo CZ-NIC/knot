@@ -250,7 +250,7 @@ bool knot_lmdb_next(knot_lmdb_txn_t *txn)
 	return curget(txn, MDB_NEXT);
 }
 
-static bool is_prefix_of(MDB_val *prefix, MDB_val *of)
+bool knot_lmdb_is_prefix_of(MDB_val *prefix, MDB_val *of)
 {
 	return prefix->mv_size <= of->mv_size &&
 	       memcmp(prefix->mv_data, of->mv_data, prefix->mv_size) == 0;
