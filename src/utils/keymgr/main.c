@@ -161,8 +161,12 @@ static int key_command(int argc, char *argv[], int opt_ind)
 		CHECK_MISSING_ARG("Key ID to import not specified");
 		ret = keymgr_import_pkcs11(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (strcmp(argv[1], "nsec3-salt") == 0) {
-		ret = keymgr_nsec3_salt(&kctx, argc > 2 ? argv[2] : NULL);
-		print_ok_on_succes = false;
+		if (argc > 2) {
+			ret = keymgr_nsec3_salt_set(&kctx, argv[2]);
+		} else {
+			ret = keymgr_nsec3_salt_print(&kctx);
+			print_ok_on_succes = false;
+		}
 	} else if (strcmp(argv[1], "set") == 0) {
 		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2set;

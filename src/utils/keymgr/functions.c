@@ -554,7 +554,7 @@ int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, const char *key_id, int argc, char 
 	return import_key(ctx, KEYSTORE_BACKEND_PKCS11, key_id, argc, argv);
 }
 
-int keymgr_nsec3_salt(kdnssec_ctx_t *ctx, const char *new_salt)
+int keymgr_nsec3_salt_print(kdnssec_ctx_t *ctx)
 {
 	dnssec_binary_t salt_bin;
 	knot_time_t created;
@@ -577,26 +577,31 @@ int keymgr_nsec3_salt(kdnssec_ctx_t *ctx, const char *new_salt)
 		ret = KNOT_EOK;
 		break;
 	}
+	return ret;
+}
 
-	if (ret == KNOT_EOK && new_salt != NULL) {
-		if (strcmp(new_salt, "-") == 0) {
-			salt_bin.size = 0;
-		} else {
-			salt_bin.data = hex_to_bin(new_salt, &salt_bin.size);
-			if (salt_bin.data == NULL) {
-				return KNOT_EMALF;
-			}
+int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt)
+{
+	assert(new_salt);
+
+	dnssec_binary_t salt_bin;
+	if (strcmp(new_salt, "-") == 0) {
+		salt_bin.size = 0;
+	} else {
+		salt_bin.data = hex_to_bin(new_salt, &salt_bin.size);
+		if (salt_bin.data == NULL) {
+			return KNOT_EMALF;
 		}
-		if (salt_bin.size != ctx->policy->nsec3_salt_length) {
-			printf("Warning: specified salt doesn't match configured "
-			       "salt length (%d).\n",
-			       (int)ctx->policy->nsec3_salt_length);
-		}
-		ret = kasp_db_store_nsec3salt(*ctx->kasp_db, ctx->zone->dname,
-		                              &salt_bin, created);
-		if (salt_bin.size > 0) {
-			free(salt_bin.data);
-		}
+	}
+	if (salt_bin.size != ctx->policy->nsec3_salt_length) {
+		printf("Warning: specified salt doesn't match configured "
+		       "salt length (%d).\n",
+		       (int)ctx->policy->nsec3_salt_length);
+	}
+	int ret = kasp_db_store_nsec3salt(*ctx->kasp_db, ctx->zone->dname,
+	                                  &salt_bin, knot_time());
+	if (salt_bin.size > 0) {
+		free(salt_bin.data);
 	}
 	return ret;
 }
