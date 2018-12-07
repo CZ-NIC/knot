@@ -352,11 +352,20 @@ void conf_val(
 );
 
 /*!
- * Moves to the next item value.
+ * Moves to the next value of a multi-valued item.
  *
  * \param[in] val  Item value.
  */
 void conf_val_next(
+	conf_val_t *val
+);
+
+/*!
+ * Resets to the first value of a multi-valued item.
+ *
+ * \param[in] val Item value.
+ */
+void conf_val_reset(
 	conf_val_t *val
 );
 
