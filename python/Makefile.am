@@ -4,3 +4,12 @@ EXTRA_DIST =			\
 	setup.py.in		\
 	stats_http.py		\
 	stats_influxdb.py
+	
+clean-local:
+	-rm -rf dist *.egg-info
+
+dist: clean-local
+	python3 setup.py sdist
+
+upload:
+	twine upload dist/*
