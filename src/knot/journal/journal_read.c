@@ -40,9 +40,6 @@ static void update_ctx_wire(journal_read_t *ctx)
 static int go_next_changeset(journal_read_t *ctx, const knot_dname_t *zone, journal_changeset_id_t next_serial)
 {
 	ctx->key_prefix = journal_changeset_id_to_key(next_serial, zone);
-	if (ctx->key_prefix.mv_data == NULL) {
-		return KNOT_ENOMEM;
-	}
 	if (!knot_lmdb_find(&ctx->txn, &ctx->key_prefix, KNOT_LMDB_GEQ)) {
 		return JOURNAL_READ_END_READ;
 	}
@@ -213,10 +210,6 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 		chunk.mv_size += JOURNAL_HEADER_SIZE;
 
 		MDB_val key = journal_changeset_to_chunk_key(ch, i);
-		if (key.mv_data == NULL) {
-			txn->ret = KNOT_ENOMEM;
-		}
-
 		knot_lmdb_insert(txn, &key, &chunk);
 		free(key.mv_data);
 		i++;

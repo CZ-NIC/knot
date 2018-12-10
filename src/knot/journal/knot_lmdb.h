@@ -85,6 +85,8 @@ bool knot_lmdb_is_prefix_of(MDB_val *prefix, MDB_val *of);
 	     _knot_lmdb_foreach_found && knot_lmdb_is_prefix_of((prefix), &(txn)->cur_key); \
 	     _knot_lmdb_foreach_found = knot_lmdb_next((txn)))
 
+void knot_lmdb_del_cur(knot_lmdb_txn_t *txn);
+
 void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix);
 
 void knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val);

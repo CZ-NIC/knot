@@ -128,6 +128,8 @@ libknotd_la_SOURCES = \
 	knot/journal/journal_basic.h		\
 	knot/journal/journal_read.c		\
 	knot/journal/journal_read.h		\
+	knot/journal/journal_write.c		\
+	knot/journal/journal_write.h		\
 	knot/journal/knot_lmdb.c		\
 	knot/journal/knot_lmdb.h		\
 	knot/journal/serialization.c		\

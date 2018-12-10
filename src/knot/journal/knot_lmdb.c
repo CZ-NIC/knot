@@ -185,6 +185,17 @@ void knot_lmdb_commit(knot_lmdb_txn_t *txn)
 	}
 }
 
+// save the programmer's frequent checking for ENOMEM when creating search keys
+static bool txn_enomem(knot_lmdb_txn_t *txn, const MDB_val *tocheck)
+{
+	if (tocheck->mv_data == NULL) {
+		txn->ret = KNOT_ENOMEM;
+		knot_lmdb_abort(txn);
+		return false;
+	}
+	return true;
+}
+
 static bool init_cursor(knot_lmdb_txn_t *txn)
 {
 	if (txn->cursor == NULL) {
@@ -211,7 +222,7 @@ static bool curget(knot_lmdb_txn_t *txn, MDB_cursor_op op)
 
 bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how)
 {
-	if (!txn_semcheck(txn) || !init_cursor(txn)) {
+	if (!txn_semcheck(txn) || !init_cursor(txn) || !txn_enomem(txn, what)) {
 		return false;
 	}
 	txn->cur_key.mv_size = what->mv_size;
@@ -256,18 +267,24 @@ bool knot_lmdb_is_prefix_of(MDB_val *prefix, MDB_val *of)
 	       memcmp(prefix->mv_data, of->mv_data, prefix->mv_size) == 0;
 }
 
-
-void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix)
+void knot_lmdb_del_cur(knot_lmdb_txn_t *txn)
 {
-	knot_lmdb_foreach(txn, prefix) {
+	if (txn_semcheck(txn)) {
 		txn->ret = mdb_cursor_del(txn->cursor, 0);
 		err_to_knot(&txn->ret);
 	}
 }
 
+void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix)
+{
+	knot_lmdb_foreach(txn, prefix) {
+		knot_lmdb_del_cur(txn);
+	}
+}
+
 void knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val)
 {
-	if (txn_semcheck(txn)) {
+	if (txn_semcheck(txn) && txn_enomem(txn, key)) {
 		unsigned flags = (val->mv_size > 0 && val->mv_data == NULL ? MDB_RESERVE : 0);
 		txn->ret = mdb_put(txn->txn, txn->db->dbi, key, val, flags);
 		err_to_knot(&txn->ret);
@@ -464,9 +481,3 @@ bool knot_lmdb_unmake_key(void *key_data, size_t key_len, const char *format, ..
 	va_end(arg);
 	return (wire.error == KNOT_EOK && wire_ctx_available(&wire) == 0);
 }
-
-
-
-
-
-
