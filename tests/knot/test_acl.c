@@ -88,12 +88,19 @@ static void test_acl_allowed(void)
 		"  - id: acl_range_addr\n"
 		"    address: [ 100.0.0.0-100.0.0.5, ::0-::5 ]\n"
 		"    action: [ transfer ]\n"
+		"  - id: acl_update_key\n"
+		"    key: key1_md5\n"
+		"    action: update\n"
+		"    update-owner: key\n"
+		"    update-type: A\n"
 		"\n"
 		"zone:\n"
 		"  - domain: "ZONE"\n"
 		"    acl: [ acl_key_addr, acl_deny, acl_no_action_deny ]\n"
 		"    acl: [ acl_multi_addr, acl_multi_key ]\n"
-		"    acl: [ acl_range_addr ]";
+		"    acl: [ acl_range_addr ]\n"
+		"  - domain: "KEY1"\n"
+		"    acl: acl_update_key";
 
 	ret = test_conf(conf_str, NULL);
 	is_int(KNOT_EOK, ret, "Prepare configuration");
@@ -182,6 +189,19 @@ static void test_acl_allowed(void)
 	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0, zone_name, NULL);
 	ok(ret == true, "IPv6 address from range, no key, action match");
 
+	knot_pkt_t *query = knot_pkt_new(NULL, 512, NULL);
+	knot_rrset_t A;
+	knot_rrset_init(&A, key1_name, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600);
+	knot_pkt_begin(query, KNOT_ADDITIONAL);
+	knot_pkt_put(query, 0, &A, 0);
+
+	acl = conf_zone_get(conf(), C_ACL, key1_name);
+	ok(acl.code == KNOT_EOK, "Get zone ACL");
+	check_sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_UPDATE, &addr, &key1, key1_name, query);
+	ok(ret == true, "Correct type and owner, first key ,action match");
+
+	knot_pkt_free(query);
 	conf_free(conf());
 	knot_dname_free(zone_name, NULL);
 	knot_dname_free(key1_name, NULL);
