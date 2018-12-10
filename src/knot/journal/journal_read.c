@@ -31,30 +31,47 @@ struct journal_read {
 	wire_ctx_t wire;
 };
 
-int journal_read_begin(journal_t *j, journal_changeset_id_t from, journal_read_t **ctx)
+static void update_ctx_wire(journal_read_t *ctx)
+{
+	ctx->wire = wire_ctx_init_const(ctx->txn.cur_val.mv_data, ctx->txn.cur_val.mv_size);
+	wire_ctx_skip(&ctx->wire, JOURNAL_HEADER_SIZE);
+}
+
+static int go_next_changeset(journal_read_t *ctx, const knot_dname_t *zone, journal_changeset_id_t next_serial)
+{
+	ctx->key_prefix = journal_changeset_id_to_key(next_serial, zone);
+	if (ctx->key_prefix.mv_data == NULL) {
+		return KNOT_ENOMEM;
+	}
+	if (!knot_lmdb_find(&ctx->txn, &ctx->key_prefix, KNOT_LMDB_GEQ)) {
+		return JOURNAL_READ_END_READ;
+	}
+	if (ctx->txn.ret != KNOT_EOK) {
+		return ctx->txn.ret;
+	}
+	update_ctx_wire(ctx);
+	return KNOT_EOK;
+}
+
+int journal_read_begin(zone_journal_t *j, journal_changeset_id_t from, journal_read_t **ctx)
 {
 	journal_read_t *newctx = calloc(1, sizeof(*newctx));
 	if (newctx == NULL) {
 		return KNOT_ENOMEM;
 	}
-	newctx->key_prefix = journal_changeset_id_to_key(from, j->zone);
-	if (newctx->key_prefix.mv_data == NULL) {
-		free(newctx);
-		return KNOT_ENOMEM;
-	}
+
+	newctx->zone = j->zone;
 
 	knot_lmdb_begin(&j->db, &newctx->txn, false);
-	knot_lmdb_find(&newctx->txn, &newctx->key_prefix, KNOT_LMDB_GEQ);
 
-	if (newctx->txn.ret != KNOT_EOK) {
-		journal_read_end(newctx);
-	} else {
-		newctx->zone = j->zone;
-		newctx->wire = wire_ctx_init(newctx->txn.cur_val.mv_data, newctx->txn.cur_val.mv_size);
+	int ret = go_next_changeset(newctx, j->zone, from);
+	if (ret == KNOT_EOK) {
 		*ctx = newctx;
+	} else {
+		journal_read_end(newctx);
 	}
 
-	return newctx->txn.ret;
+	return ret == JOURNAL_READ_END_READ ? KNOT_ENOENT : ret;
 }
 
 void journal_read_end(journal_read_t *ctx)
@@ -64,7 +81,7 @@ void journal_read_end(journal_read_t *ctx)
 	free(ctx);
 }
 
-static void make_data_available(journal_read_t *ctx)
+static bool make_data_available(journal_read_t *ctx)
 {
 	if (wire_ctx_available(&ctx->wire) == 0) {
 		if (!knot_lmdb_next(&ctx->txn)) {
@@ -73,8 +90,7 @@ static void make_data_available(journal_read_t *ctx)
 		if (!knot_lmdb_is_prefix_of(&ctx->key_prefix, &ctx->txn.cur_key)) {
 			return false;
 		}
-		ctx->wire = wire_ctx_init_const(ctx->txn.cur_val.mv_data, ctx->txn.cur_val.mv_size);
-		wire_ctx_skip(&ctx->wire, JOURNAL_HEADER_SIZE);
+		update_ctx_wire(ctx);
 	}
 	return true;
 }
@@ -88,8 +104,10 @@ int journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rrset)
 {
 	knot_rdataset_clear(&rrset->rrs, NULL);
 	memset(rrset, 0, sizeof(*rrset));
+	journal_changeset_id_t next_serial = { false, journal_next_serial(&ctx->txn.cur_val) };
 	if (!make_data_available(ctx)) {
-		return JOURNAL_READ_DONE;
+		int ret = go_next_changeset(ctx, ctx->zone, next_serial);
+		return ret == KNOT_EOK ? JOURNAL_READ_END_CHANGESET : ret;
 	}
 	rrset->owner = ctx->wire.position;
 	wire_ctx_skip(&ctx->wire, knot_dname_size(rrset->owner));
@@ -134,7 +152,7 @@ int journal_read_changeset(journal_read_t *ctx, changeset_t *ch)
 	knot_rrset_t *soa = calloc(1, sizeof(*soa)), rr = { 0 };
 	if (tree == NULL || soa == NULL) {
 		ret = KNOT_ENOMEM;
-		goto fail;
+		goto finish;
 	}
 	memset(ch, 0, sizeof(*ch));
 
@@ -144,34 +162,38 @@ int journal_read_changeset(journal_read_t *ctx, changeset_t *ch)
 		if (ret != KNOT_EOK) { // especially, ret might be JOURNAL_READ_DONE
 			break;
 		}
-		if (rr.type == KNOT_RRTYPE_SOA) {
+		if (rr.type == KNOT_RRTYPE_SOA &&
+		    knot_dname_cmp(rr.owner, ctx->zone) == 0) {
 			ch->soa_from = soa;
 			ch->remove = tree;
 			soa = malloc(sizeof(*soa));
 			tree = zone_contents_new(ctx->zone);
 			if (tree == NULL || soa == NULL) {
 				ret = KNOT_ENOMEM;
-				goto fail;
+				goto finish;
 			}
 			*soa = rr; // note this tricky assignment
-			memset(rr, 0, sizeof(*rr));
+			memset(&rr, 0, sizeof(rr));
 		} else {
 			ret = add_rr_to_contents(tree, &rr);
 		}
 	}
 
-	if (ret == JOURNAL_READ_DONE) {
+finish:
+	switch (ret) {
+	case JOURNAL_READ_END_CHANGESET:
+		ret = KNOT_EOK;
+		// FALLTHROUGH
+	case JOURNAL_READ_END_READ:
 		ch->soa_to = soa;
 		ch->add = tree;
-		ret = KNOT_EOK;
-	} else {
-fail:
+		break;
+	default:
 		knot_rdataset_clear(&rr.rrs, NULL);
 		knot_rrset_free(soa, NULL);
 		changeset_clear(ch);
 		zone_contents_deep_free(tree);
 	}
-
 	return ret;
 }
 
@@ -203,4 +225,3 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 	free(chunk.mv_data);
 	// return value is in the txn
 }
-

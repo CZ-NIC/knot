@@ -20,9 +20,12 @@
 
 typedef struct journal_read journal_read_t;
 
-#define JOURNAL_READ_DONE (1)
+enum {
+	JOURNAL_READ_END_CHANGESET = 1,
+	JOURNAL_READ_END_READ = 2,
+};
 
-int journal_read_begin(journal_t *j, journal_changeset_id_t from, journal_read_t **ctx);
+int journal_read_begin(zone_journal_t *j, journal_changeset_id_t from, journal_read_t **ctx);
 
 int journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr);
 
