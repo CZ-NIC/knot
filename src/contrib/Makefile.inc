@@ -3,7 +3,8 @@ noinst_LTLIBRARIES += libcontrib.la
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 if !HAVE_LMDB
-libcontrib_la_LIBADD   = $(pthread_LIBS)
+libcontrib_la_CPPFLAGS += -include contrib/lmdb/mute_warnings.h
+libcontrib_la_LIBADD    = $(pthread_LIBS)
 endif !HAVE_LMDB
 
 EXTRA_DIST += \
@@ -67,7 +68,8 @@ libcontrib_la_SOURCES += \
 	contrib/lmdb/lmdb.h			\
 	contrib/lmdb/mdb.c			\
 	contrib/lmdb/midl.c			\
-	contrib/lmdb/midl.h
+	contrib/lmdb/midl.h			\
+	contrib/lmdb/mute_warnings.h
 endif !HAVE_LMDB
 
 if HAVE_LIBDNSTAP

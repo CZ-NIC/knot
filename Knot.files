@@ -23,6 +23,7 @@ src/contrib/lmdb/lmdb.h
 src/contrib/lmdb/mdb.c
 src/contrib/lmdb/midl.c
 src/contrib/lmdb/midl.h
+src/contrib/lmdb/mute_warnings.h
 src/contrib/macros.h
 src/contrib/mempattern.c
 src/contrib/mempattern.h
