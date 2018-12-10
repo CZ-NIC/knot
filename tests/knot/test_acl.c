@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <tap/basic.h>
@@ -33,6 +34,31 @@ static void check_sockaddr_set(struct sockaddr_storage *ss, int family,
 {
 	int ret = sockaddr_set(ss, family, straddr, port);
 	ok(ret == 0, "set address '%s'", straddr);
+}
+
+void check_update(conf_t *conf, knot_rrset_t *authority, knot_tsig_key_t *key,
+                  knot_dname_t *zone_name, bool allowed, const char *desc)
+{
+	struct sockaddr_storage addr;
+	check_sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
+
+	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	assert(query);
+	knot_pkt_begin(query, KNOT_AUTHORITY);
+	knot_pkt_put(query, 0, authority, 0);
+
+	knot_pkt_t *parsed = knot_pkt_new(query->wire, query->size, NULL);
+	ok(knot_pkt_parse(parsed, 0) == KNOT_EOK, "Parse update packet");
+
+	conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
+	ok(acl.code == KNOT_EOK, "Get zone ACL");
+
+	bool ret = acl_allowed(conf, &acl, ACL_ACTION_UPDATE, &addr, key,
+	                       zone_name, parsed);
+	ok(ret == allowed, "%s", desc);
+
+	knot_pkt_free(parsed);
+	knot_pkt_free(query);
 }
 
 static void test_acl_allowed(void)
@@ -88,12 +114,27 @@ static void test_acl_allowed(void)
 		"  - id: acl_range_addr\n"
 		"    address: [ 100.0.0.0-100.0.0.5, ::0-::5 ]\n"
 		"    action: [ transfer ]\n"
+		"  - id: acl_update_key\n"
+		"    key: "KEY1"\n"
+		"    update-owner: key\n"
+		"    update-type: [ AAAA, A ]\n"
+		"    action: [ update ]\n"
+		"  - id: acl_update_name\n"
+		"    key: "KEY2"\n"
+		"    update-owner: name\n"
+		"    update-owner-name: [ a."KEY2", b."KEY2" ]\n"
+		"    update-owner-match: equal\n"
+		"    action: [ update ]\n"
 		"\n"
 		"zone:\n"
 		"  - domain: "ZONE"\n"
 		"    acl: [ acl_key_addr, acl_deny, acl_no_action_deny ]\n"
 		"    acl: [ acl_multi_addr, acl_multi_key ]\n"
-		"    acl: [ acl_range_addr ]";
+		"    acl: [ acl_range_addr ]\n"
+		"  - domain: "KEY1"\n"
+		"    acl: acl_update_key\n"
+		"  - domain: "KEY2"\n"
+		"    acl: acl_update_name";
 
 	ret = test_conf(conf_str, NULL);
 	is_int(KNOT_EOK, ret, "Prepare configuration");
@@ -181,6 +222,34 @@ static void test_acl_allowed(void)
 	check_sockaddr_set(&addr, AF_INET6, "::1", 0);
 	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0, zone_name, NULL);
 	ok(ret == true, "IPv6 address from range, no key, action match");
+
+	knot_rrset_t A;
+	knot_rrset_init(&A, key1_name, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600);
+	knot_rrset_add_rdata(&A, (uint8_t *)"\x00\x00\x00\x00", 4, NULL);
+	check_update(conf(), &A, &key1, key1_name, true, "Update, tsig, type");
+
+	knot_rrset_t MX;
+	knot_rrset_init(&MX, key1_name, KNOT_RRTYPE_MX, KNOT_CLASS_IN, 3600);
+	knot_rrset_add_rdata(&MX, (uint8_t *)"\x00\x00\x00", 3, NULL);
+	check_update(conf(), &MX, &key1, key1_name, false, "Update, tsig, bad type");
+
+	check_update(conf(), &A, &key2, key2_name, false, "Update, tsig, bad name");
+
+	knot_rrset_t bA;
+	knot_dname_t *b_key2_name = knot_dname_from_str_alloc("b."KEY2);
+	ok(b_key2_name != NULL, "create b."KEY2);
+	knot_rrset_init(&bA, b_key2_name, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600);
+	knot_rrset_add_rdata(&bA, (uint8_t *)"\x00\x00\x00\x00", 4, NULL);
+	check_update(conf(), &bA, &key2, key2_name, true, "Update, tsig, name");
+	knot_dname_free(b_key2_name, NULL);
+
+	knot_rrset_t aaA;
+	knot_dname_t *aa_key2_name = knot_dname_from_str_alloc("a.a."KEY2);
+	ok(aa_key2_name != NULL, "create a.a."KEY2);
+	knot_rrset_init(&aaA, aa_key2_name, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600);
+	knot_rrset_add_rdata(&aaA, (uint8_t *)"\x00\x00\x00\x00", 4, NULL);
+	check_update(conf(), &aaA, &key2, key2_name, false, "Update, tsig, bad name");
+	knot_dname_free(aa_key2_name, NULL);
 
 	conf_free(conf());
 	knot_dname_free(zone_name, NULL);
