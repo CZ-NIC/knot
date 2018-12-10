@@ -28,7 +28,7 @@ RUN apt-get update && \
 COPY . /knot-src
 WORKDIR /knot-src
 RUN autoreconf -if && \
-    ./configure --prefix=/tmp/knot-install \
+    ./configure --prefix=/ \
                 --with-rundir=/rundir \
                 --with-storage=/storage \
                 --with-configdir=/config \
@@ -37,7 +37,7 @@ RUN autoreconf -if && \
                 --disable-static \
                 --disable-documentation && \
     make -j$(grep -c ^processor /proc/cpuinfo) && \
-    make install
+    make install DESTDIR=/tmp/knot-install
 
 ## Final stage ##
 FROM debian:stable-slim
