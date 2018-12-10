@@ -15,6 +15,7 @@
  */
 
 #include "knot/updates/acl.h"
+#include "libknot/yparser/yptrafo.h"
 
 static bool check_rr_type(uint16_t type, conf_val_t *types)
 {
@@ -22,7 +23,7 @@ static bool check_rr_type(uint16_t type, conf_val_t *types)
 		return true;
 	}
 	while (types->code == KNOT_EOK) {
-		if (type == (uint16_t)conf_int(types)) {
+		if (type == (uint16_t)yp_int(types->data)) {
 			return true;
 		}
 		conf_val_next(types);

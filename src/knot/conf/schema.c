@@ -226,8 +226,8 @@ static const yp_item_t desc_acl[] = {
 	{ C_UPDATE_OWNER,       YP_TOPT, YP_VOPT = { acl_update_owner, ACL_UPDATE_OWNER_NONE} },
 	{ C_UPDATE_OWNER_MATCH, YP_TOPT, YP_VOPT = { acl_update_owner_match, ACL_UPDATE_MATCH_SUBEQ } },
 	{ C_UPDATE_OWNER_NAME,  YP_TDNAME, YP_VNONE, YP_FMULTI },
-	{ C_UPDATE_TYPE,        YP_TINT, YP_VINT = { 0, 65535, .to_bin = rrtype_to_bin,
-	                                             .to_txt = rrtype_to_txt }, YP_FMULTI,  },
+	{ C_UPDATE_TYPE,        YP_TDATA, YP_VDATA = { 0, NULL, rrtype_to_bin, rrtype_to_txt },
+	                                  YP_FMULTI, },
 	{ C_COMMENT,            YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
