@@ -1995,11 +1995,6 @@ int journal_db_list_zones(journal_db_t **db, list_t *zones)
 	if (list_size(zones) < 1) {
 		txn->ret = KNOT_ENOENT;
 	}
-	if (list_size(zones) != expected_count) {
-		txn->ret = KNOT_EMALF;
-		ptrlist_deep_free(zones, NULL);
-		init_list(zones);
-	}
 	return txn->ret;
 }
 
