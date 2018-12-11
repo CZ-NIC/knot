@@ -70,26 +70,22 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
  * \param update          Zone Update with current zone contents and to be updated with NSEC chain.
  * \param zone_keys       Zone keys used for NSEC(3) creation.
  * \param ctx             Signing context.
- * \param sign_nsec_chain If true, the created NSEC(3) chain is signed at the end.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_create_nsec_chain(zone_update_t *update,
                                 const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *ctx,
-                                bool sign_nsec_chain);
+                                const kdnssec_ctx_t *ctx);
 
 /*!
- * \brief Fix NSEC or NSEC3 chain after zone was updated.
+ * \brief Fix NSEC or NSEC3 chain after zone was updated, and sign the changed NSECs.
  *
  * \param update           Zone Update with the update and to be update with NSEC chain.
  * \param zone_keys        Zone keys used for NSEC(3) creation.
  * \param ctx              Signing context.
- * \param sign_nsec_chain  If true, the created NSEC(3) chain is signed at the end.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_fix_nsec_chain(zone_update_t *update,
                              const zone_keyset_t *zone_keys,
-                             const kdnssec_ctx_t *ctx,
-                             bool sign_nsec_chain);
+                             const kdnssec_ctx_t *ctx);

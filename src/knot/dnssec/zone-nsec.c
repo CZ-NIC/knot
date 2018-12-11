@@ -277,8 +277,7 @@ static dnssec_nsec3_params_t nsec3param_init(const knot_kasp_policy_t *policy,
 
 int knot_zone_create_nsec_chain(zone_update_t *update,
                                 const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *ctx,
-                                bool sign_nsec_chain)
+                                const kdnssec_ctx_t *ctx)
 {
 	if (update == NULL || ctx == NULL) {
 		return KNOT_EINVAL;
@@ -306,23 +305,11 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
 	if (ctx->policy->nsec3_enabled) {
 		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl,
 					      ctx->policy->nsec3_opt_out, &ch);
-		if (ret != KNOT_EOK) {
-			goto cleanup;
-		}
 	} else {
 		ret = knot_nsec_create_chain(update->new_cont, nsec_ttl, &ch);
-		if (ret != KNOT_EOK) {
-			goto cleanup;
+		if (ret == KNOT_EOK) {
+			ret = delete_nsec3_chain(update->new_cont, &ch);
 		}
-
-		ret = delete_nsec3_chain(update->new_cont, &ch);
-		if (ret != KNOT_EOK) {
-			goto cleanup;
-		}
-	}
-
-	if (sign_nsec_chain) {
-		ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, &ch);
 	}
 
 	if (ret == KNOT_EOK) {
@@ -337,8 +324,7 @@ cleanup:
 
 int knot_zone_fix_nsec_chain(zone_update_t *update,
                              const zone_keyset_t *zone_keys,
-                             const kdnssec_ctx_t *ctx,
-                             bool sign_nsec_chain)
+                             const kdnssec_ctx_t *ctx)
 {
 	if (update == NULL || ctx == NULL) {
 		return KNOT_EINVAL;
@@ -388,10 +374,7 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 		goto cleanup;
 	}
 
-	if (sign_nsec_chain) {
-		ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, &ch);
-	}
-
+	ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, &ch);
 	if (ret == KNOT_EOK) {
 		// Disable strict changeset application momentarily for the NSEC chain fix.
 		// This is important for NSEC3, since some nodes are removed from contents
