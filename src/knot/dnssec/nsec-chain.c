@@ -132,8 +132,6 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 			return KNOT_EOK;
 		}
 
-		// Mark the node so that we do not sign this NSEC
-		a->flags |= NODE_FLAGS_REMOVED_NSEC;
 		ret = knot_nsec_changeset_remove(a, data->changeset);
 		if (ret != KNOT_EOK) {
 			knot_rdataset_clear(&new_nsec.rrs, NULL);

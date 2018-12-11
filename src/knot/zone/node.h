@@ -75,8 +75,6 @@ enum node_flags {
 	NODE_FLAGS_DELEG =           1 << 0,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	NODE_FLAGS_NONAUTH =         1 << 1,
-	/*! \brief NSEC/NSEC3 was removed from this node. */
-	NODE_FLAGS_REMOVED_NSEC =    1 << 2,
 	/*! \brief Node is empty and will be deleted after update. */
 	NODE_FLAGS_EMPTY =           1 << 3,
 	/*! \brief Node has a wildcard child. */
