@@ -178,7 +178,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	result = knot_zone_create_nsec_chain(update, &keyset, &ctx, false);
+	result = knot_zone_create_nsec_chain(update, &keyset, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to create NSEC%s chain (%s)",
 		               ctx.policy->nsec3_enabled ? "3" : "",
@@ -262,7 +262,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
-	result = knot_zone_fix_nsec_chain(update, &keyset, &ctx, true);
+	result = knot_zone_fix_nsec_chain(update, &keyset, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to fix NSEC%s chain (%s)",
 		               ctx.policy->nsec3_enabled ? "3" : "",

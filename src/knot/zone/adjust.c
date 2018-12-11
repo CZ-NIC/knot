@@ -23,9 +23,6 @@
 
 int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 {
-	// clear Removed NSEC flag so that no relicts remain
-	node->flags &= ~NODE_FLAGS_REMOVED_NSEC;
-
 	// check if this node is not a wildcard child of its parent
 	if (knot_dname_is_wildcard(node->owner)) {
 		assert(node->parent != NULL);
