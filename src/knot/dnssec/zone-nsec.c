@@ -58,58 +58,6 @@ static int delete_nsec3_chain(const zone_contents_t *zone, changeset_t *changese
 	return ret;
 }
 
-/*!
- * \brief Finds a node with the same owner as the given NSEC3 RRSet and marks it
- *        as 'removed'.
- *
- * \param rrset      RRSet whose owner will be sought in the zone tree. non-NSEC3
- *                   RRSets are ignored.
- * \param nsec3tree  NSEC3 tree to search for the node in.
- */
-static int mark_nsec3(knot_rrset_t *rrset, zone_tree_t *nsec3_tree)
-{
-	assert(rrset);
-	assert(nsec3_tree);
-
-	if (rrset->type == KNOT_RRTYPE_NSEC3) {
-		zone_node_t *node = zone_tree_get(nsec3_tree, rrset->owner);
-		if (node != NULL) {
-			node->flags |= NODE_FLAGS_REMOVED_NSEC;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-/*!
- * \brief Marks all NSEC3 nodes in zone from which RRSets are to be removed.
- *
- * For each NSEC3 RRSet in the changeset finds its node and marks it with the
- * 'removed' flag.
- */
-static int mark_removed_nsec3(const zone_contents_t *zone, changeset_t *ch)
-{
-	if (zone_tree_is_empty(zone->nsec3_nodes)) {
-		return KNOT_EOK;
-	}
-
-	changeset_iter_t itt;
-	changeset_iter_rem(&itt, ch);
-
-	knot_rrset_t rr = changeset_iter_next(&itt);
-	while (!knot_rrset_empty(&rr)) {
-		int ret = mark_nsec3(&rr, zone->nsec3_nodes);
-		if (ret != KNOT_EOK) {
-			changeset_iter_clear(&itt);
-			return ret;
-		}
-		rr = changeset_iter_next(&itt);
-	}
-	changeset_iter_clear(&itt);
-
-	return KNOT_EOK;
-}
-
 int knot_nsec3_hash_to_dname(uint8_t *out, size_t out_size, const uint8_t *hash,
                              size_t hash_size, const knot_dname_t *zone_apex)
 
@@ -368,12 +316,6 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
 		}
 
 		ret = delete_nsec3_chain(update->new_cont, &ch);
-		if (ret != KNOT_EOK) {
-			goto cleanup;
-		}
-
-		// Mark removed NSEC3 nodes, so that they are not signed later.
-		ret = mark_removed_nsec3(update->new_cont, &ch);
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}

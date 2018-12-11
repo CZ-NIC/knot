@@ -511,9 +511,6 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 		if (result != KNOT_EOK) {
 			break;
 		}
-		if (node_rrtype_exists(node, KNOT_RRTYPE_NSEC)) {
-			node->flags |= NODE_FLAGS_REMOVED_NSEC;
-		}
 		if (node->flags & NODE_FLAGS_NONAUTH || node->flags & NODE_FLAGS_EMPTY) {
 			trie_it_next(it);
 			continue;
