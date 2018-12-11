@@ -141,6 +141,7 @@ src/knot/journal/chgset_ctx.c
 src/knot/journal/chgset_ctx.h
 src/knot/journal/journal.c
 src/knot/journal/journal.h
+src/knot/journal/journal_basic.c
 src/knot/journal/journal_basic.h
 src/knot/journal/journal_read.c
 src/knot/journal/journal_read.h

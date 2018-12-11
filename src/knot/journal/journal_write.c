@@ -17,86 +17,76 @@
 #include "knot/journal/journal_write.h"
 
 #include "knot/journal/journal_read.h"
+#include "knot/journal/serialization.h"
 #include "libknot/error.h"
 
-static MDB_val metadata_key(const knot_dname_t *zone, const char *metadata)
+void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 {
-	if (zone == NULL) {
-		return knot_lmdb_make_key("IS", (uint32_t)0, metadata);
-	} else {
-		return knot_lmdb_make_key("NIS", zone, (uint32_t)0, metadata);
+	MDB_val chunk;
+	serialize_ctx_t *ser = serialize_init(ch);
+	if (ser == NULL) {
+		txn->ret = KNOT_ENOMEM;
 	}
-}
-
-static bool get_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const char *metadata)
-{
-	MDB_val key = metadata_key(zone, metadata);
-	bool ret = knot_lmdb_find(txn, &key, KNOT_LMDB_EXACT);
-	free(key.mv_data);
-	return ret;
-}
-
-static uint32_t metadata32(knot_lmdb_txn_t *txn)
-{
-	if (txn->cur_val.mv_size == sizeof(uint32_t)) {
-		return be32toh(*(uint32_t *)txn->cur_val.mv_data);
-	} else {
+	list_t chunk_ptrs;
+	init_list(&chunk_ptrs);
+	uint32_t i = 0;
+	while (serialize_unfinished(ser) && txn->ret == KNOT_EOK) {
+		serialize_prepare(ser, JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.mv_size);
+		chunk.mv_size += JOURNAL_HEADER_SIZE;
+		chunk.mv_data = NULL;
+		MDB_val key = journal_changeset_to_chunk_key(ch, i);
+		knot_lmdb_insert(txn, &key, &chunk);
 		if (txn->ret == KNOT_EOK) {
-			txn->ret = KNOT_EMALF;
+			journal_make_header(chunk.mv_data, ch);
+			serialize_chunk(ser, chunk.mv_data + JOURNAL_HEADER_SIZE, chunk.mv_size - JOURNAL_HEADER_SIZE);
+			ptrlist_add(&chunk_ptrs, chunk.mv_data, NULL);
 		}
-		return 0;
+		free(key.mv_data);
+		i++;
 	}
+
+	// storing the number of chunks into each chunk is no longer needed
+	// we just do it for backward compatibility (in case of Knot downgrade)
+	// remove this code (whole chunk_ptrs) in the future
+	ptrnode_t *chunkp;
+	WALK_LIST(chunkp, chunk_ptrs) {
+		((uint32_t *)chunkp->d)[1] = htobe32(i);
+	}
+	ptrlist_free(&chunk_ptrs, NULL);
+
+	serialize_deinit(ser);
+	// return value is in the txn
 }
 
-static uint64_t metadata64(knot_lmdb_txn_t *txn)
+void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id_t into)
 {
-	if (txn->cur_val.mv_size == sizeof(uint64_t)) {
-		return be64toh(*(uint64_t *)txn->cur_val.mv_data);
-	} else {
-		if (txn->ret == KNOT_EOK) {
-			txn->ret = KNOT_EMALF;
+	changeset_t merge;
+	journal_read_t *read = NULL;
+	bool in_remove_section = false;
+	knot_rrset_t rr = { 0 };
+	txn->ret = journal_read_begin(j, into, &read);
+	if (txn->ret != KNOT_EOK) {
+		return;
+	}
+	txn->ret = journal_read_changeset(read, &merge);
+	while (txn->ret == KNOT_EOK) {
+		txn->ret = journal_read_rrset(read, &rr);
+		if (txn->ret != KNOT_EOK) {
+			break;
 		}
-		return 0;
+		if (rr.type == KNOT_RRTYPE_SOA &&
+		    knot_dname_cmp(rr.owner, j->zone) == 0) {
+			in_remove_section = !in_remove_section;
+		}
+		txn->ret = in_remove_section ?
+			changeset_add_removal(&merge, &rr, CHANGESET_CHECK) :
+			changeset_add_addition(&merge, &rr, CHANGESET_CHECK);
 	}
-}
-
-static void set_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const char *metadata,
-                         const void *valp, size_t val_size)
-{
-	MDB_val key = metadata_key(zone, metadata);
-	MDB_val val = { val_size, (void *)valp };
-	knot_lmdb_insert(txn, &key, &val);
-	free(key.mv_data);
-}
-
-static void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter)
-{
-	uint64_t occupied_now = knot_lmdb_usage(txn);
-	uint64_t occupied_last = get_metadata(txn, NULL, "last_total_occupied") ?
-	                         metadata64(txn) : 0;
-	knot_dname_t *last_inserter = get_metadata(txn, NULL, "last_inserter_zone") ?
-	                              knot_dname_copy(txn->cur_val.mv_data, NULL) : NULL;
-	if (occupied_now == occupied_last || last_inserter == NULL) {
-		goto update_inserter;
-	}
-	uint64_t lis_occupied = get_metadata(txn, last_inserter, "occupied") ?
-	                        metadata64(txn) : 0;
-	if (lis_occupied + occupied_now > occupied_last) {
-		lis_occupied += occupied_now;
-		lis_occupied -= occupied_last;
-		lis_occupied = htobe64(lis_occupied);
-	} else {
-		lis_occupied = 0;
-	}
-	set_metadata(txn, last_inserter, "occupied", &lis_occupied, sizeof(lis_occupied));
-
-update_inserter:
-	if (last_inserter == NULL || knot_dname_cmp(last_inserter, new_inserter) != 0) {
-		set_metadata(txn, NULL, "last_inserter_zone", new_inserter, knot_dname_size(new_inserter));
-	}
-	free(last_inserter);
-	occupied_now = htobe64(occupied_now);
-	set_metadata(txn, NULL, "last_total_occupied", &occupied_now, sizeof(occupied_now));
+	journal_read_end(read);
+	txn->ret = (txn->ret == JOURNAL_READ_END_READ ? KNOT_EOK : txn->ret);
+	journal_write_changeset(txn, &merge);
+	knot_rrset_clear(&rr, NULL);
+	changeset_clear(&merge);
 }
 
 static bool delete_one(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const knot_dname_t *zone,
@@ -110,4 +100,21 @@ static bool delete_one(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const 
 		knot_lmdb_del_cur(txn);
 	}
 	return (*freed > 0);
+}
+
+bool journal_delete(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const knot_dname_t *zone,
+                    size_t tofree_size, size_t tofree_count, uint32_t stop_at_serial,
+                    size_t *freed_size, size_t *freed_count, uint32_t *stopped_at)
+{
+	*freed_size = 0;
+	*freed_count = 0;
+	size_t freed_now;
+	while ((from.zone_in_journal || from.serial != stop_at_serial) &&
+	       delete_one(txn, from, zone, &freed_now, stopped_at) &&
+	       (*freed_size += freed_now, ++(*freed_count), 1) &&
+	       *freed_size < tofree_size && *freed_count < tofree_count) {
+		from.serial = *stopped_at;
+		from.zone_in_journal = false;
+	}
+	return (*freed_count > 0);
 }

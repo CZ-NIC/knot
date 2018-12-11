@@ -18,8 +18,8 @@
 
 #include "knot/journal/knot_lmdb.h"
 
+#include "contrib/ucw/lists.h"
 #include "contrib/wire_ctx.h"
-#include "knot/journal/serialization.h"
 #include "libknot/error.h"
 
 #include <stdlib.h>
@@ -192,29 +192,4 @@ finish:
 		zone_contents_deep_free(tree);
 	}
 	return ret;
-}
-
-void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
-{
-	MDB_val chunk = { 0, malloc(JOURNAL_CHUNK_MAX) };
-	serialize_ctx_t *ser = serialize_init(ch);
-	if (chunk.mv_data == NULL || ser == NULL) {
-		txn->ret = KNOT_ENOMEM;
-	}
-
-	uint32_t i = 0;
-	while (serialize_unfinished(ser) && txn->ret == KNOT_EOK) {
-		journal_make_header(chunk.mv_data, ch);
-		serialize_prepare(ser, JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.mv_size);
-		serialize_chunk(ser, chunk.mv_data + JOURNAL_HEADER_SIZE, chunk.mv_size);
-		chunk.mv_size += JOURNAL_HEADER_SIZE;
-
-		MDB_val key = journal_changeset_to_chunk_key(ch, i);
-		knot_lmdb_insert(txn, &key, &chunk);
-		free(key.mv_data);
-		i++;
-	}
-	serialize_deinit(ser);
-	free(chunk.mv_data);
-	// return value is in the txn
 }
