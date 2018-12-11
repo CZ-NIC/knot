@@ -995,13 +995,17 @@ int conf_io_set(
 			goto set_error;
 		}
 
+		uint8_t copied_id[YP_MAX_ID_LEN];
+		io.id = copied_id;
 		while (ret == KNOT_EOK) {
-			// Get the identifier.
-			ret = conf_db_iter_id(conf(), &iter, &io.id, &io.id_len);
+			// Get the identifier and copy it because of next DB update.
+			const uint8_t *tmp_id;
+			ret = conf_db_iter_id(conf(), &iter, &tmp_id, &io.id_len);
 			if (ret != KNOT_EOK) {
 				conf_db_iter_finish(conf(), &iter);
 				goto set_error;
 			}
+			memcpy(copied_id, tmp_id, io.id_len);
 
 			// Set the data.
 			ret = set_item(&io);
@@ -1187,13 +1191,17 @@ int conf_io_unset(
 			goto unset_error;
 		}
 
+		uint8_t copied_id[YP_MAX_ID_LEN];
+		io.id = copied_id;
 		while (ret == KNOT_EOK) {
-			// Get the identifier.
-			ret = conf_db_iter_id(conf(), &iter, &io.id, &io.id_len);
+			// Get the identifier and copy it because of next DB update.
+			const uint8_t *tmp_id;
+			ret = conf_db_iter_id(conf(), &iter, &tmp_id, &io.id_len);
 			if (ret != KNOT_EOK) {
 				conf_db_iter_finish(conf(), &iter);
 				goto unset_error;
 			}
+			memcpy(copied_id, tmp_id, io.id_len);
 
 			// Unset the section data.
 			ret = unset_section_data(&io);
