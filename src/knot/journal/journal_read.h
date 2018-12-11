@@ -32,5 +32,3 @@ int journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr);
 int journal_read_changeset(journal_read_t *ctx, changeset_t *ch);
 
 void journal_read_end(journal_read_t *ctx);
-
-void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch);

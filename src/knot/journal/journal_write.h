@@ -18,4 +18,12 @@
 
 #include "knot/journal/journal_basic.h"
 
+void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch);
+
+void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id_t into);
+
+bool journal_delete(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const knot_dname_t *zone,
+                    size_t tofree_size, size_t tofree_count, uint32_t stop_at_serial,
+                    size_t *freed_size, size_t *freed_count, uint32_t *stopped_at);
+
 int journal_put(zone_journal_t *j, const changeset_t *ch);

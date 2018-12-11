@@ -41,4 +41,7 @@ void journal_make_header(void *chunk, const changeset_t *ch);
 
 uint32_t journal_next_serial(const MDB_val *chunk);
 
+bool journal_serial_to(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const knot_dname_t *zone,
+                       uint32_t *serial_to);
+
 void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter);

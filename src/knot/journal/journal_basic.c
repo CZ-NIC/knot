@@ -48,6 +48,18 @@ uint32_t journal_next_serial(const MDB_val *chunk)
 	return be32toh(*(uint32_t *)chunk->mv_data);
 }
 
+bool journal_serial_to(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const knot_dname_t *zone,
+                       uint32_t *serial_to)
+{
+	MDB_val key = journal_changeset_id_to_key(from, zone);
+	bool found = knot_lmdb_find(txn, &key, KNOT_LMDB_GEQ);
+	if (found) {
+		*serial_to = journal_next_serial(&txn->cur_val);
+	}
+	free(key.mv_data);
+	return found;
+}
+
 static void fix_endian(void *data, size_t data_size, bool in)
 {
 	uint8_t tmp[data_size];

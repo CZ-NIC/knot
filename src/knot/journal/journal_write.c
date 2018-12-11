@@ -112,7 +112,7 @@ bool journal_delete(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const kno
 	while ((from.zone_in_journal || from.serial != stop_at_serial) &&
 	       delete_one(txn, from, zone, &freed_now, stopped_at) &&
 	       (*freed_size += freed_now, ++(*freed_count), 1) &&
-	       *freed_size < tofree_size && *freed_count < tofree_count) {
+	       (*freed_size < tofree_size || *freed_count < tofree_count)) {
 		from.serial = *stopped_at;
 		from.zone_in_journal = false;
 	}
