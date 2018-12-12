@@ -27,8 +27,6 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 	if (ser == NULL) {
 		txn->ret = KNOT_ENOMEM;
 	}
-	list_t chunk_ptrs;
-	init_list(&chunk_ptrs);
 	uint32_t i = 0;
 	while (serialize_unfinished(ser) && txn->ret == KNOT_EOK) {
 		serialize_prepare(ser, JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.mv_size);
@@ -39,21 +37,10 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 		if (txn->ret == KNOT_EOK) {
 			journal_make_header(chunk.mv_data, ch);
 			serialize_chunk(ser, chunk.mv_data + JOURNAL_HEADER_SIZE, chunk.mv_size - JOURNAL_HEADER_SIZE);
-			ptrlist_add(&chunk_ptrs, chunk.mv_data, NULL);
 		}
 		free(key.mv_data);
 		i++;
 	}
-
-	// storing the number of chunks into each chunk is no longer needed
-	// we just do it for backward compatibility (in case of Knot downgrade)
-	// remove this code (whole chunk_ptrs) in the future
-	ptrnode_t *chunkp;
-	WALK_LIST(chunkp, chunk_ptrs) {
-		((uint32_t *)chunkp->d)[1] = htobe32(i);
-	}
-	ptrlist_free(&chunk_ptrs, NULL);
-
 	serialize_deinit(ser);
 	// return value is in the txn
 }
