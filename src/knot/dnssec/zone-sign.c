@@ -878,7 +878,8 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 	keyptr_dynarray_t r = { 0 };
 	unsigned crp = ctx->policy->child_records_publish;
 
-	if (crp != CHILD_RECORDS_NONE) {
+	if (crp == CHILD_RECORDS_ROLLOVER || crp == CHILD_RECORDS_ALWAYS ||
+	    crp == CHILD_RECORDS_DOUBLE_DS) {
 		// first, add strictly-ready keys
 		for (int i = 0; i < zone_keys->count; i++) {
 			zone_key_t *key = &zone_keys->keys[i];
