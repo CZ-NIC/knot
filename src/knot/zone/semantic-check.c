@@ -113,15 +113,11 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 
 	[SEM_ERR_CDS_NONE] =
 	"missing CDS",
-	[SEM_ERR_CDS_MULTIPLE] =
-	"multiple CDS records",
 	[SEM_ERR_CDS_NOT_MATCH] =
 	"CDS not match CDNSKEY",
 
 	[SEM_ERR_CDNSKEY_NONE] =
 	"missing CDNSKEY",
-	[SEM_ERR_CDNSKEY_MULTIPLE] =
-	"multiple CDNSKEY records",
 	[SEM_ERR_CDNSKEY_NO_DNSKEY] =
 	"CDNSKEY not match DNSKEY",
 
@@ -517,57 +513,76 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 		return KNOT_EOK;
 	}
 
-	if (cdss->count != 1) {
-		data->handler->cb(data->handler, data->zone, node,
-		                  SEM_ERR_CDS_MULTIPLE, NULL);
-	}
-	if (cdnskeys->count != 1) {
-		data->handler->cb(data->handler, data->zone, node,
-		                  SEM_ERR_CDNSKEY_MULTIPLE, NULL);
-	}
-
-	knot_rdata_t *cdnskey = cdnskeys->rdata;
-	knot_rdata_t *cds = cdss->rdata;
-	uint8_t digest_type = knot_ds_digest_type(cdss->rdata);
-
 	const knot_rdataset_t *dnskeys = node_rdataset(data->zone->apex,
 	                                               KNOT_RRTYPE_DNSKEY);
-	for (int i = 0; dnskeys != NULL && i < dnskeys->count; i++) {
-		knot_rdata_t *dnskey = knot_rdataset_at(dnskeys, i);
-		if (knot_rdata_cmp(dnskey, cdnskey) != 0) {
-			continue;
-		}
+	if (dnskeys == NULL) {
+		data->handler->cb(data->handler, data->zone, node,
+		                  SEM_ERR_CDNSKEY_NO_DNSKEY, NULL);
+	}
 
-		dnssec_key_t *key;
-		int ret = dnssec_key_from_rdata(&key, data->zone->apex->owner,
-		                                dnskey->data, dnskey->len);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+	// check every CDNSKEY for corresponding DNSKEY
+	for (int i = 0; i < cdnskeys->count; i++) {
+		knot_rdata_t *cdnskey = knot_rdataset_at(cdnskeys, i);
 
-		dnssec_binary_t cds_calc = { 0 };
-		dnssec_binary_t cds_orig = { .size = cds->len, .data = cds->data };
-		ret = dnssec_key_create_ds(key, digest_type, &cds_calc);
-		if (ret != KNOT_EOK) {
+		bool match = false;
+		for (int j = 0; j < dnskeys->count; j++) {
+			knot_rdata_t *dnskey = knot_rdataset_at(dnskeys, j);
+
+			if (knot_rdata_cmp(dnskey, cdnskey) == 0) {
+				match = true;
+				break;
+			}
+		}
+		if (!match) {
+			data->handler->cb(data->handler, data->zone, node,
+			                  SEM_ERR_CDNSKEY_NO_DNSKEY, NULL);
+		}
+	}
+
+	// check every CDS for corresponding CDNSKEY
+	for (int i = 0; i < cdss->count; i++) {
+		knot_rdata_t *cds = knot_rdataset_at(cdss, i);
+		uint8_t digest_type = knot_ds_digest_type(cds);
+
+		bool match = false;
+		for (int j = 0; j < cdnskeys->count; j++) {
+			knot_rdata_t *cdnskey = knot_rdataset_at(cdnskeys, j);
+
+			dnssec_key_t *key;
+			int ret = dnssec_key_from_rdata(&key, data->zone->apex->owner,
+			                                cdnskey->data, cdnskey->len);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+
+			dnssec_binary_t cds_calc = { 0 };
+			dnssec_binary_t cds_orig = { .size = cds->len, .data = cds->data };
+			ret = dnssec_key_create_ds(key, digest_type, &cds_calc);
+			if (ret != KNOT_EOK) {
+				dnssec_key_free(key);
+				return ret;
+			}
+
+			ret = dnssec_binary_cmp(&cds_orig, &cds_calc);
+			dnssec_binary_free(&cds_calc);
 			dnssec_key_free(key);
-			return ret;
+			if (ret == 0) {
+				match = true;
+				break;
+			}
 		}
-
-		ret = dnssec_binary_cmp(&cds_orig, &cds_calc);
-		dnssec_binary_free(&cds_calc);
-		dnssec_key_free(key);
-		if (ret == 0) {
-			return KNOT_EOK;
-		} else {
+		if (!match) {
 			data->handler->cb(data->handler, data->zone, node,
 			                  SEM_ERR_CDS_NOT_MATCH, NULL);
 		}
 	}
 
-	if (dnskeys != NULL) {
+	// check orphaned CDS
+	if (cdss->count > cdnskeys->count) {
 		data->handler->cb(data->handler, data->zone, node,
-		                  SEM_ERR_CDNSKEY_NO_DNSKEY, NULL);
+		                  SEM_ERR_CDS_NOT_MATCH, NULL);
 	}
+
 	return KNOT_EOK;
 }
 

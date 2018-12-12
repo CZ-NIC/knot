@@ -41,9 +41,7 @@ if [ ! -x $KZONECHECK ]; then
 fi
 
 # error messages exported from knot/src/zone/semantic-check.c
-CDNSKEY_MULTIPLE="multiple CDNSKEY records"
 CDNSKEY_NONE="missing CDNSKEY"
-CDS_MULTIPLE="multiple CDS records"
 CDS_NONE="missing CDS"
 CDS_NOT_MATCH="CDS not match CDNSKEY"
 CNAME_EXTRA_RECORDS="more records exist at CNAME"
@@ -115,8 +113,6 @@ expect_error "cdnskey.invalid.param" 0 1 "$CDS_NOT_MATCH"
 expect_error "cdnskey.nocds" 0 1 "$CDS_NONE"
 expect_error "cdnskey.nocdnskey" 0 1 "$CDNSKEY_NONE"
 expect_error "cdnskey.nodnskey" 0 1 "$CDNSKEY_NOT_MATCH"
-expect_error "cdnskey.two" 0 1 "$CDS_MULTIPLE"
-expect_error "cdnskey.two" 0 1 "$CDNSKEY_MULTIPLE"
 
 test_correct "rrsig_ttl.signed"
 test_correct "no_error_delegaton_bitmap.signed"
