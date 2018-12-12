@@ -619,7 +619,7 @@ policy:
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
     ksk\-submission: submission_id
-    cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always
+    cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always | double\-ds
     offline\-ksk: BOOL
 .ft P
 .fi
@@ -821,7 +821,7 @@ Possible values:
 .IP \(bu 2
 \fBalways\fP – Always publish CDS and CDNSKEY records for the current KSK.
 .IP \(bu 2
-\fBdouble\-ds\fP – Like "always", publish up to two CDS and two CDNSKEY records for ready and/or active keys.
+\fBdouble\-ds\fP – Always publish up to two CDS and two CDNSKEY records for ready and/or active KSKs.
 .UNINDENT
 .sp
 \fIDefault:\fP always
