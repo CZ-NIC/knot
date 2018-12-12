@@ -815,8 +815,8 @@ class Bind(Server):
         s.item("additional-from-auth", "false")
         s.item("additional-from-cache", "false")
         s.item("notify-delay", "0")
-        #s.item("notify-rate", "1000")
-        #s.item("startup-notify-rate", "1000")
+        s.item("notify-rate", "1000")
+        s.item("startup-notify-rate", "1000")
         s.item("serial-query-rate", "1000")
         s.end()
 
