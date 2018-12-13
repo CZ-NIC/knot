@@ -42,4 +42,12 @@ void journal_load_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, journ
 
 void journal_store_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const journal_metadata_t *md);
 
+void journal_metadata_after_delete(journal_metadata_t *md, uint32_t deleted_upto,
+                                   size_t deleted_count);
+
+void journal_metadata_after_merge(journal_metadata_t *md, uint32_t merged_serial,
+                                  uint32_t merged_serial_to);
+
+void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint32_t serial_to);
+
 void journal_scrape(zone_journal_t *j);

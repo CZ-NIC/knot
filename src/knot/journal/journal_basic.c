@@ -59,3 +59,15 @@ bool journal_serial_to(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const 
 	free(key.mv_data);
 	return found;
 }
+
+bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint32_t *serial_to)
+{
+	journal_changeset_id_t id = { true, 0 };
+	MDB_val key = journal_changeset_id_to_key(id, zone);
+	bool found = knot_lmdb_find(txn, &key, KNOT_LMDB_GEQ);
+	if (found && serial_to != NULL) {
+		*serial_to = journal_next_serial(&txn->cur_val);
+	}
+	free(key.mv_data);
+	return found;
+}

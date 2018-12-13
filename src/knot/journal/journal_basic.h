@@ -45,3 +45,5 @@ bool journal_serial_to(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const 
                        uint32_t *serial_to);
 
 void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter);
+
+bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint32_t *serial_to);

@@ -202,23 +202,41 @@ void journal_store_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, cons
 void journal_metadata_after_delete(journal_metadata_t *md, uint32_t deleted_upto,
                                    size_t deleted_count)
 {
-	if (!(md->flags & SERIAL_TO_VALID)) {
+	if (deleted_count == 0) {
 		return;
 	}
-	assert(md->first_serial != md->flushed_upto || deleted_count == 0); // don't allow deleting in unflushed zone
+	assert((md->flags & SERIAL_TO_VALID));
+	assert(md->first_serial != md->flushed_upto); // don't allow deleting in unflushed zone
 	if (deleted_upto == md->serial_to) {
 		assert(md->flushed_upto == md->serial_to);
 		md->flags &= ~SERIAL_TO_VALID;
 	} else {
 		md->first_serial = deleted_upto;
 	}
-	md->changeset_count += deleted_count;
+	md->changeset_count -= deleted_count;
 }
 
 void journal_metadata_after_merge(journal_metadata_t *md, uint32_t merged_serial,
                                   uint32_t merged_serial_to)
 {
+	if ((md->flags & MERGED_SERIAL_VALID)) {
+		assert(merged_serial == md->merged_serial);
+	} else {
+		md->merged_serial = merged_serial;
+		md->flags |= MERGED_SERIAL_VALID;
+	}
+	md->flushed_upto = merged_serial_to;
+}
 
+void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint32_t serial_to)
+{
+	if ((md->flags & SERIAL_TO_VALID)) {
+		assert(serial == md->serial_to);
+	} else {
+		md->first_serial = serial;
+		md->flags |= SERIAL_TO_VALID;
+	}
+	md->serial_to = serial_to;
 }
 
 void journal_scrape(zone_journal_t *j)
