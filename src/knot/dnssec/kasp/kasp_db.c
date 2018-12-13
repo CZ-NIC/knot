@@ -839,7 +839,7 @@ int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
 		goto cleanup;
 	}
 	if (key_class(&key) != KASPDBKEY_OFFLINE_RECORDS ||
-	    knot_dname_cmp((const knot_dname_t *)key.data + 1, r->rrsig.owner) != 0) {
+	    knot_dname_cmp((const knot_dname_t *)key.data + 1, for_dname) != 0) {
 		ret = KNOT_ENOENT;
 		goto cleanup;
 	}

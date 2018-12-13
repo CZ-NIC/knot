@@ -105,7 +105,7 @@ int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r)
 		ret = knot_rrset_txt_dump(&r->rrsig, buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
 		total += ret;
 	}
-	if (ret >= 0 && total < *buf_size) {
+	if (ret >= 0 && total > *buf_size) {
 		free(*buf);
 		*buf_size = total;
 		*buf = malloc(*buf_size);
