@@ -740,10 +740,10 @@ Possible values:
 - ``ecdsap384sha384``
 - ``ed25519``
 
-*Default:* ecdsap256sha256
-
 .. NOTE::
    Ed25519 algorithm is only available when compiled with GnuTLS 3.6.0+.
+
+*Default:* ecdsap256sha256
 
 .. _policy_ksk-size:
 
@@ -778,10 +778,10 @@ dnskey-ttl
 
 A TTL value for DNSKEY records added into zone apex.
 
-*Default:* zone SOA TTL
-
 .. NOTE::
    Has infuence over ZSK key lifetime.
+
+*Default:* zone SOA TTL
 
 .. _policy_zsk-lifetime:
 
@@ -790,12 +790,12 @@ zsk-lifetime
 
 A period between ZSK publication and the next rollover initiation.
 
-*Default:* 30 days
-
 .. NOTE::
    ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
 
    Zero (aka infinity) value causes no ZSK rollover as a result.
+
+*Default:* 30 days
 
 .. _policy_ksk-lifetime:
 
@@ -803,8 +803,6 @@ ksk-lifetime
 ------------
 
 A period between KSK publication and the next rollover initiation.
-
-*Default:* 0
 
 .. NOTE::
    KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
@@ -814,6 +812,8 @@ A period between KSK publication and the next rollover initiation.
 
    This applies for CSK lifetime if single-type-signing is enabled.
 
+*Default:* 0
+
 .. _policy_propagation-delay:
 
 propagation-delay
@@ -822,10 +822,10 @@ propagation-delay
 An extra delay added for each key rollover step. This value should be high
 enough to cover propagation of data from the master server to all slaves.
 
-*Default:* 1 hour
-
 .. NOTE::
    Has infuence over ZSK key lifetime.
+
+*Default:* 1 hour
 
 .. _policy_rrsig-lifetime:
 
@@ -1112,10 +1112,10 @@ kasp-db
 A KASP database path. Non-absolute path is relative to
 :ref:`storage<zone_storage>`.
 
-*Default:* :ref:`storage<zone_storage>`/keys
-
 .. NOTE::
    This option is only available in the *default* template.
+
+*Default:* :ref:`storage<zone_storage>`/keys
 
 .. _template_max-kasp-db-size:
 
@@ -1373,11 +1373,11 @@ max-journal-usage
 
 Policy how much space in journal DB will the zone's journal occupy.
 
-*Default:* 100 MiB
-
 .. NOTE::
    Journal DB may grow far above the sum of max-journal-usage across
    all zones, because of DB free space fragmentation.
+
+*Default:* 100 MiB
 
 .. _zone_max_journal_depth:
 
