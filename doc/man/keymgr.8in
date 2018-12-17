@@ -130,8 +130,9 @@ owned by both zones equally.
 \fBpregenerate\fP \fItimestamp\fP
 Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
 .TP
-\fBshow\-offline\fP \fItimestamp\fP
-Print pre\-generated offline key\-related records for specified timestamp.
+\fBshow\-offline\fP \fItimestamp\-from\fP [\fItimestamp\-to\fP]
+Print pre\-generated offline key\-related records for specified time interval. If \fItimestamp_to\fP
+is omitted, it will be to infinity.
 .TP
 \fBdel\-offline\fP \fItimestamp\-from\fP \fItimestamp\-to\fP
 Delete pre\-generated offline key\-related records in specified time interval.

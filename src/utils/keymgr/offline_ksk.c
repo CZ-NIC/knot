@@ -122,30 +122,43 @@ static int dump_rrset_to_buf(const knot_rrset_t *rrset, char **buf, size_t *buf_
 	return knot_rrset_txt_dump(rrset, buf, buf_size, &style);
 }
 
-int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg)
+static void print_header(const char *of_what, knot_time_t timestamp, const char *contents)
 {
-	knot_time_t when;
-	int ret = parse_timestamp(arg, &when);
+	char date[64] = { 0 };
+	(void)knot_time_print(TIME_PRINT_ISO8601, timestamp, date, sizeof(date));
+	printf(";; %s %"PRIu64" (%s) =========\n%s", of_what,
+	       timestamp, date, contents);
+}
+
+int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
+{
+	knot_time_t from, to, next = 0;
+	int ret = parse_timestamp(arg_from, &from);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
-	knot_time_t next = 0;
-	key_records_t r;
-	memset(&r, 0, sizeof(r));
-	ret = kasp_db_load_offline_records(*ctx->kasp_db, ctx->zone->dname, when, &next, &r);
-	if (ret == KNOT_EOK) {
-		char *buf = NULL;
-		size_t buf_size = 512;
-		ret = key_records_dump(&buf, &buf_size, &r, true);
-		if (ret == KNOT_EOK) {
-			printf("%s", buf);
-			ret = KNOT_EOK;
+	if (arg_to != NULL) {
+		ret = parse_timestamp(arg_to, &to);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
-		free(buf);
-		printf("; next %"PRIu64"\n", next);
 	}
-	key_records_clear(&r);
+	char *buf = NULL;
+	size_t buf_size = 512;
+	for (knot_time_t i = from; ret == KNOT_EOK && i != 0 && (arg_to == NULL || knot_time_cmp(i, to) < 0); i = next) {
+		key_records_t r;
+		memset(&r, 0, sizeof(r));
+		ret = kasp_db_load_offline_records(*ctx->kasp_db, ctx->zone->dname, i, &next, &r);
+		if (ret == KNOT_EOK) {
+			ret = key_records_dump(&buf, &buf_size, &r, true);
+		}
+		if (ret == KNOT_EOK) {
+			print_header("Offline records for", i, buf);
+		}
+		key_records_clear(&r);
+	}
+	free(buf);
+
 	return ret;
 }
 
@@ -182,14 +195,6 @@ static void print_generated_message(void)
 	printf("generated at %s by Knot DNS %s\n", buf, VERSION);
 }
 
-static void print_header(const char *of_what, knot_time_t timestamp, const char *contents)
-{
-	char date[64] = { 0 };
-	(void)knot_time_print(TIME_PRINT_ISO8601, timestamp, date, sizeof(date));
-	printf(";; %s %s %"PRIu64" (%s) =========\n%s", of_what, KSR_SKR_VER,
-	       timestamp, date, contents);
-}
-
 static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_t *next_ksr)
 {
 	knot_rrset_t *dnskey = NULL;
@@ -200,7 +205,7 @@ static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_
 	}
 	ret = dump_rrset_to_buf(dnskey, buf, buf_size);
 	if (ret >= 0) {
-		print_header("KeySigningRequest", ctx->now, *buf);
+		print_header("KeySigningRequest "KSR_SKR_VER, ctx->now, *buf);
 		ret = KNOT_EOK;
 	}
 
@@ -287,7 +292,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	}
 	ret = key_records_dump(&buf, &buf_size, &r, true);
 	if (ret == KNOT_EOK) {
-		print_header("SignedKeyResponse", ctx->now, buf);
+		print_header("SignedKeyResponse "KSR_SKR_VER, ctx->now, buf);
 		*next_sign = knot_get_next_zone_key_event(&keyset);
 	}
 
