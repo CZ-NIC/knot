@@ -205,8 +205,8 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 		return ret;
 	}
 
-	if ((flags & DNSKEY_GENERATE_KSK)) {
-		gen_timing.ready = now;
+	if ((flags & DNSKEY_GENERATE_KSK) && gen_timing.ready == infty) {
+		gen_timing.ready = gen_timing.active;
 	}
 
 	if (keysize > 0) {
