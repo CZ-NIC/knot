@@ -75,7 +75,7 @@ void key_records_clear_rdatasets(key_records_t *r)
 	knot_rdataset_clear(&r->rrsig.rrs, NULL);
 }
 
-int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r)
+int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool verbose)
 {
 	if (*buf == NULL) {
 		if (*buf_size == 0) {
@@ -86,13 +86,23 @@ int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r)
 			return KNOT_ENOMEM;
 		}
 	}
-	int ret = KNOT_EOK;
+
+	const knot_dump_style_t verb_style = {
+		.wrap = true,
+		.show_ttl = true,
+		.verbose = true,
+		.original_ttl = true,
+		.human_tmstamp = true
+	};
+	const knot_dump_style_t *style = verbose ? &verb_style : &KNOT_DUMP_STYLE_DEFAULT;
+
+	int ret = 0;
 	size_t total = 1;
 	const knot_rrset_t *all_rr[4] = { &r->dnskey, &r->cdnskey, &r->cds, &r->rrsig };
 	// first go: just detect the size
 	for (int i = 0; i < 4; i++) {
 		if (ret >= 0 && !knot_rrset_empty(all_rr[i])) {
-			ret = knot_rrset_txt_dump(all_rr[i], buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
+			ret = knot_rrset_txt_dump(all_rr[i], buf, buf_size, style);
 			(void)buf;
 			total += ret;
 		}
@@ -110,7 +120,7 @@ int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r)
 	//second go: do it
 	for (int i = 0; i < 4; i++) {
 		if (ret >= 0 && !knot_rrset_empty(all_rr[i])) {
-			ret = knot_rrset_txt_dump(all_rr[i], &fake_buf, &fake_size, &KNOT_DUMP_STYLE_DEFAULT);
+			ret = knot_rrset_txt_dump(all_rr[i], &fake_buf, &fake_size, style);
 			fake_buf += ret, fake_size -= ret;
 		}
 	}
