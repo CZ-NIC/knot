@@ -109,7 +109,11 @@ static int dump_rrset_to_buf(const knot_rrset_t *rrset, char **buf, size_t *buf_
 			return KNOT_ENOMEM;
 		}
 	}
-	return knot_rrset_txt_dump(rrset, buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
+	knot_dump_style_t style = { .wrap = true, .show_class = false, .show_ttl = true,
+	                            .verbose = true, .original_ttl = true, .empty_ttl = false,
+	                            .human_ttl = false, .human_tmstamp = true,
+	                            .hide_crypto = false, .ascii_to_idn = NULL };
+	return knot_rrset_txt_dump(rrset, buf, buf_size, &style);
 }
 
 int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg)
@@ -127,7 +131,7 @@ int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg)
 	if (ret == KNOT_EOK) {
 		char *buf = NULL;
 		size_t buf_size = 512;
-		ret = key_records_dump(&buf, &buf_size, &r);
+		ret = key_records_dump(&buf, &buf_size, &r, true);
 		if (ret == KNOT_EOK) {
 			printf("%s", buf);
 			ret = KNOT_EOK;
@@ -268,7 +272,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 			goto done;
 		}
 	}
-	ret = key_records_dump(&buf, &buf_size, &r);
+	ret = key_records_dump(&buf, &buf_size, &r, true);
 	if (ret == KNOT_EOK) {
 		printf(";; SignedKeyResponse %s %"PRIu64" ===========\n%s",
 		       KSR_SKR_VER, ctx->now, buf);
