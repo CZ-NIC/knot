@@ -176,6 +176,14 @@ static void print_generated_message(void)
 	printf("generated at %s by Knot DNS %s\n", buf, VERSION);
 }
 
+static void print_header(const char *of_what, knot_time_t timestamp, const char *contents)
+{
+	char date[64] = { 0 };
+	(void)knot_time_print(TIME_PRINT_ISO8601, timestamp, date, sizeof(date));
+	printf(";; %s %s %"PRIu64" (%s) =========\n%s", of_what, KSR_SKR_VER,
+	       timestamp, date, contents);
+}
+
 static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_t *next_ksr)
 {
 	knot_rrset_t *dnskey = NULL;
@@ -186,8 +194,7 @@ static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_
 	}
 	ret = dump_rrset_to_buf(dnskey, buf, buf_size);
 	if (ret >= 0) {
-		printf(";; KeySigningRequest %s %"PRIu64" ===========\n%s",
-		       KSR_SKR_VER, ctx->now, *buf);
+		print_header("KeySigningRequest", ctx->now, *buf);
 		ret = KNOT_EOK;
 	}
 
@@ -274,8 +281,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	}
 	ret = key_records_dump(&buf, &buf_size, &r, true);
 	if (ret == KNOT_EOK) {
-		printf(";; SignedKeyResponse %s %"PRIu64" ===========\n%s",
-		       KSR_SKR_VER, ctx->now, buf);
+		print_header("SignedKeyResponse", ctx->now, buf);
 		*next_sign = knot_get_next_zone_key_event(&keyset);
 	}
 
