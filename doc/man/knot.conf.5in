@@ -723,14 +723,14 @@ Possible values:
 \fBed25519\fP
 .UNINDENT
 .sp
-\fIDefault:\fP ecdsap256sha256
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
 Ed25519 algorithm is only available when compiled with GnuTLS 3.6.0+.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP ecdsap256sha256
 .SS ksk\-size
 .sp
 A length of newly generated KSK or
@@ -751,14 +751,14 @@ If enabled, all zones with this policy assigned will share one KSK.
 .sp
 A TTL value for DNSKEY records added into zone apex.
 .sp
-\fIDefault:\fP zone SOA TTL
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
 Has infuence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP zone SOA TTL
 .SS zone\-max\-ttl
 .sp
 Maximal TTL value among all the records in zone.
@@ -776,8 +776,6 @@ explicitly whenever possible. It\(aqs required for DNSSEC Offline KSK\&.
 .sp
 A period between ZSK publication and the next rollover initiation.
 .sp
-\fIDefault:\fP 30 days
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
@@ -786,11 +784,11 @@ ZSK key lifetime is also infuenced by propagation\-delay and dnskey\-ttl
 Zero (aka infinity) value causes no ZSK rollover as a result.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP 30 days
 .SS ksk\-lifetime
 .sp
 A period between KSK publication and the next rollover initiation.
-.sp
-\fIDefault:\fP 0
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -803,12 +801,12 @@ Zero (aka infinity) value causes no KSK rollover as a result.
 This applies for CSK lifetime if single\-type\-signing is enabled.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP 0
 .SS propagation\-delay
 .sp
 An extra delay added for each key rollover step. This value should be high
 enough to cover propagation of data from the master server to all slaves.
-.sp
-\fIDefault:\fP 1 hour
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -816,6 +814,8 @@ enough to cover propagation of data from the master server to all slaves.
 Has infuence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP 1 hour
 .SS rrsig\-lifetime
 .sp
 A validity period of newly issued signatures.
@@ -1059,14 +1059,14 @@ This option is only available in the \fIdefault\fP template.
 A KASP database path. Non\-absolute path is relative to
 \fI\%storage\fP\&.
 .sp
-\fIDefault:\fP \fI\%storage\fP/keys
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
 This option is only available in the \fIdefault\fP template.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP \fI\%storage\fP/keys
 .SS max\-kasp\-db\-size
 .sp
 Hard limit for the KASP database maximum size.
@@ -1305,8 +1305,6 @@ Possible values:
 .sp
 Policy how much space in journal DB will the zone\(aqs journal occupy.
 .sp
-\fIDefault:\fP 100 MiB
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
@@ -1314,6 +1312,8 @@ Journal DB may grow far above the sum of max\-journal\-usage across
 all zones, because of DB free space fragmentation.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP 100 MiB
 .SS max\-journal\-depth
 .sp
 Maximum history length of journal.
