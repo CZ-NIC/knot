@@ -389,7 +389,7 @@ int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_
 		struct tm lt;
 		time_t tt = (time_t)time;
 		ret = (localtime_r(&tt, &lt) == NULL ? -1 :
-		       strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%S", &lt));
+		       strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%SZ", &lt));
 		return (ret > 0 ? 0 : -1);
 	case TIME_PRINT_RELSEC:
 		ret = snprintf(dst, dst_len, "%+"KNOT_TIMEDIFF_PRINTF,
