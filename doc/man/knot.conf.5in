@@ -608,6 +608,7 @@ policy:
     zsk\-size: SIZE
     ksk\-shared: BOOL
     dnskey\-ttl: TIME
+    zone\-max\-ttl: TIME
     zsk\-lifetime: TIME
     ksk\-lifetime: TIME
     propagation\-delay: TIME
@@ -702,6 +703,20 @@ A TTL value for DNSKEY records added into zone apex.
 .INDENT 0.0
 .INDENT 3.5
 Has infuence over ZSK key lifetime.
+.UNINDENT
+.UNINDENT
+.SS zone\-max\-ttl
+.sp
+Maximal TTL value among all the records in zone.
+.sp
+\fIDefault:\fP computed after zone is loaded
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+It\(aqs generally recommended to override the maximal TTL computation by setting this
+explicitly whenever possible. It\(aqs required in case of DNSSEC Offline KSK
+feature.
 .UNINDENT
 .UNINDENT
 .SS zsk\-lifetime

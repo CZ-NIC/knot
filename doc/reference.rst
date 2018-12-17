@@ -672,6 +672,7 @@ DNSSEC policy configuration.
      zsk-size: SIZE
      ksk-shared: BOOL
      dnskey-ttl: TIME
+     zone-max-ttl: TIME
      zsk-lifetime: TIME
      ksk-lifetime: TIME
      propagation-delay: TIME
@@ -773,6 +774,8 @@ If enabled, all zones with this policy assigned will share one KSK.
 
 *Default:* off
 
+.. _policy_dnskey-ttl:
+
 dnskey-ttl
 ----------
 
@@ -782,6 +785,20 @@ A TTL value for DNSKEY records added into zone apex.
 
 .. NOTE::
    Has infuence over ZSK key lifetime.
+
+.. _policy_zone-max-ttl:
+
+zone-max-ttl
+------------
+
+Maximal TTL value among all the records in zone.
+
+*Default:* computed after zone is loaded
+
+.. NOTE::
+   It's generally recommended to override the maximal TTL computation by setting this
+   explicitly whenever possible. It's required in case of :ref:`DNSSEC Offline KSK`
+   feature.
 
 .. _policy_zsk-lifetime:
 

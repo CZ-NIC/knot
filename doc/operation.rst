@@ -652,6 +652,7 @@ For the ZSK side (i.e. the operator of the DNS server), the pre-requisites are:
 - properly configured :ref:`DNSSEC policy <Policy section>` (e.g. :ref:`zsk-lifetime <policy_zsk-lifetime>`),
 - :ref:`manual <policy_manual>` set to `on`
 - :ref:`offline-ksk <policy_offline-ksk>` set to `on`
+- :ref:`dnskey-ttl <policy_dnskey-ttl>` and :ref:`zone-max-ttl <policy_zone-max-ttl>` set up explicitly
 - a complete KASP DB with just ZSK(s)
 
 For the KSK side (i.e. the operator of the KSK signer), the pre-requisites are:

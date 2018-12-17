@@ -91,6 +91,7 @@ knot.dnssec(zone).enable = True
 knot.dnssec(zone).manual = True
 knot.dnssec(zone).alg = "ECDSAP384SHA384"
 knot.dnssec(zone).dnskey_ttl = 2
+knot.dnssec(zone).zone_max_ttl = 3
 knot.dnssec(zone).zsk_lifetime = STARTUP + 6*TICK # see ksk1 lifetime
 knot.dnssec(zone).ksk_lifetime = 300 # this can be possibly left also infinity
 knot.dnssec(zone).propagation_delay = TICK-2

@@ -249,6 +249,8 @@ static const yp_item_t desc_policy[] = {
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_DNSKEY_TTL,          YP_TINT,  YP_VINT = { 0, UINT32_MAX, YP_NIL, YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
+	{ C_ZONE_MAX_TLL,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, YP_NIL, YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
 	{ C_ZSK_LIFETIME,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(30), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_KSK_LIFETIME,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
