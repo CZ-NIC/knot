@@ -444,7 +444,7 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				} // else FALLTHROUGH
 			case DNSSEC_KEY_STATE_RETIRED:
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
-				keytime = ksk_remove_time(keytime, ctx);;
+				keytime = zsk_remove_time(keytime, ctx);;
 				restype = REMOVE;
 				break;
 			case DNSSEC_KEY_STATE_READY:
