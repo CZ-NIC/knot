@@ -95,7 +95,6 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg)
 
 	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
 		ctx->now = next;
-		printf("pregenerate %"PRIu64"\n", ctx->now);
 		ret = pregenerate_once(ctx, &next);
 	}
 
