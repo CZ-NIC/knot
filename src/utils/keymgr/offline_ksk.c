@@ -93,6 +93,12 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg)
 	ctx->keep_deleted_keys = true;
 	ctx->policy->manual = false;
 
+	if (ctx->policy->dnskey_ttl       == UINT32_MAX ||
+	    ctx->policy->zone_maximal_ttl == UINT32_MAX) {
+		printf("Error: dnskey-ttl and zone-max-ttl not configured.\n");
+		return KNOT_ESEMCHECK;
+	}
+
 	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
 		ctx->now = next;
 		ret = pregenerate_once(ctx, &next);

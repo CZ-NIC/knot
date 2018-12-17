@@ -116,6 +116,7 @@
 #define C_ZONE			"\x04""zone"
 #define C_ZONEFILE_LOAD		"\x0D""zonefile-load"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
+#define C_ZONE_MAX_TLL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
 

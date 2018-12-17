@@ -44,6 +44,7 @@ class ZoneDnssec(object):
         self.ksk_size = None
         self.zsk_size = None
         self.dnskey_ttl = None
+        self.zone_max_ttl = None
         self.ksk_lifetime = None
         self.zsk_lifetime = None
         self.propagation_delay = None
@@ -1186,6 +1187,7 @@ class Knot(Server):
             self._str(s, "ksk_size", z.dnssec.ksk_size)
             self._str(s, "zsk_size", z.dnssec.zsk_size)
             self._str(s, "dnskey-ttl", z.dnssec.dnskey_ttl)
+            self._str(s, "zone-max-ttl", z.dnssec.zone_max_ttl)
             self._str(s, "ksk-lifetime", z.dnssec.ksk_lifetime)
             self._str(s, "zsk-lifetime", z.dnssec.zsk_lifetime)
             self._str(s, "propagation-delay", z.dnssec.propagation_delay)

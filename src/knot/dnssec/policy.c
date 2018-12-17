@@ -19,12 +19,6 @@
 #include "knot/dnssec/policy.h"
 #include "libknot/rrtype/soa.h"
 
-static uint32_t zone_soa_min_ttl(const zone_contents_t *zone)
-{
-	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	return knot_soa_minimum(soa.rrs.rdata);
-}
-
 static uint32_t zone_soa_ttl(const zone_contents_t *zone)
 {
 	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
@@ -37,11 +31,11 @@ void update_policy_from_zone(knot_kasp_policy_t *policy,
 	assert(policy);
 	assert(zone);
 
-	// Use SOA TTL if not configured.
 	if (policy->dnskey_ttl == UINT32_MAX) {
 		policy->dnskey_ttl = zone_soa_ttl(zone);
 	}
 
-	policy->soa_minimal_ttl = zone_soa_min_ttl(zone);
-	policy->zone_maximal_ttl = zone->max_ttl;
+	if (policy->zone_maximal_ttl == UINT32_MAX) {
+		policy->zone_maximal_ttl = zone->max_ttl;
+	}
 }
