@@ -122,6 +122,8 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"CDNSKEY not match DNSKEY",
 	[SEM_ERR_CDNSKEY_NO_CDS] =
 	"CDNSKEY without corresponding CDS",
+	[SEM_ERR_CDNSKEY_INVALID_DELETE] =
+	"invalid CDNSKEY/CDS for DNSSEC delete algorithm",
 
 	[SEM_ERR_UNKNOWN] =
 	"unknown error"
@@ -522,9 +524,18 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 		                  SEM_ERR_DNSKEY_NONE, NULL);
 	}
 
+	bool delete_cds = false, delete_cdnskey = false;
+
 	// check every CDNSKEY for corresponding DNSKEY
 	for (int i = 0; i < cdnskeys->count; i++) {
 		knot_rdata_t *cdnskey = knot_rdataset_at(cdnskeys, i);
+
+		// skip delete-dnssec CDNSKEY
+		if (knot_dnskey_key_len(cdnskey) == 1 &&
+		    knot_dnskey_key(cdnskey)[0] == 0) {
+			delete_cdnskey = true;
+			continue;
+		}
 
 		bool match = false;
 		for (int j = 0; j < dnskeys->count; j++) {
@@ -545,6 +556,12 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 	for (int i = 0; i < cdss->count; i++) {
 		knot_rdata_t *cds = knot_rdataset_at(cdss, i);
 		uint8_t digest_type = knot_ds_digest_type(cds);
+
+		// skip delete-dnssec CDS
+		if (knot_ds_digest_len(cds) == 1 && knot_ds_digest(cds)[0] == 0) {
+			delete_cds = true;
+			continue;
+		}
 
 		bool match = false;
 		for (int j = 0; j < cdnskeys->count; j++) {
@@ -577,6 +594,13 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 			data->handler->cb(data->handler, data->zone, node,
 			                  SEM_ERR_CDS_NOT_MATCH, NULL);
 		}
+	}
+
+	// check delete-dnssec records
+	if ((delete_cds && (!delete_cdnskey || cdss->count > 1)) ||
+	    (delete_cdnskey && (!delete_cds || cdnskeys->count > 1))) {
+		data->handler->cb(data->handler, data->zone, node,
+		                  SEM_ERR_CDNSKEY_INVALID_DELETE, NULL);
 	}
 
 	// check orphaned CDS
