@@ -63,12 +63,6 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 		return KNOT_STATE_FAIL; \
 	}
 
-/*! \brief Require maximum number of unsigned messages. */
-#define NS_NEED_TSIG_SIGNED(tsig_ctx, max_unsigned) \
-	if (tsig_unsigned_count(tsig_ctx) > max_unsigned) { \
-		return KNOT_STATE_FAIL; \
-	}
-
 /*! \brief Require the zone not to be frozen. */
 #define NS_NEED_NOT_FROZEN(qdata, error_rcode) \
 	if ((qdata)->extra->zone->events.ufrozen) { \
