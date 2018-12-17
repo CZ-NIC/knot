@@ -169,7 +169,7 @@ static void print_generated_message(void)
 {
 	char buf[64] = { 0 };
 	knot_time_print(TIME_PRINT_ISO8601, knot_time(), buf, sizeof(buf));
-	printf("generated on %s by KnotDNS %s\n", buf, VERSION);
+	printf("generated at %s by Knot DNS %s\n", buf, VERSION);
 }
 
 static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_t *next_ksr)
