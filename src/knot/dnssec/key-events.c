@@ -430,7 +430,7 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx)
 				// (key in removed state is instantly deleted)
 				// but if imported keys, they can be in this state
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
-				keytime = ksk_remove_time(keytime, ctx);;
+				keytime = zsk_remove_time(keytime, ctx);
 				restype = REMOVE;
 				break;
 			case DNSSEC_KEY_STATE_READY:
