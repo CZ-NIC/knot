@@ -125,7 +125,9 @@ Commands related to Offline KSK feature
 
 **import-skr** *skr_file*
   Read SignedKeyResponse from a text file and import the signatures for later use in zone. (The signatures
-  are not at all checked at import time, but they will be ignored at signing time if invalid.)
+  are not at all checked at import time, but they will be ignored at signing time if invalid.) If some
+  signatures had been already imported, they will be deleted for the preiod from beginning of the SKR
+  to infinity.
 
 Generate arguments
 ..................
