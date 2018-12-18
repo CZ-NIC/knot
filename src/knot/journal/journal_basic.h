@@ -47,3 +47,11 @@ bool journal_serial_to(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const 
 void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter);
 
 bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint32_t *serial_to);
+
+bool journal_flush_allowed(zone_journal_t *j);
+
+size_t journal_max_usage(zone_journal_t *j);
+
+size_t journal_max_changesets(zone_journal_t *j);
+
+int journal_set_flushed(zone_journal_t *j);

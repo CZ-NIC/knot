@@ -16,6 +16,8 @@
 
 #include "knot/journal/journal_write.h"
 
+#include "contrib/macros.h"
+#include "knot/journal/journal_metadata.h"
 #include "knot/journal/journal_read.h"
 #include "knot/journal/serialization.h"
 #include "libknot/error.h"
@@ -104,4 +106,62 @@ bool journal_delete(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const kno
 		from.zone_in_journal = false;
 	}
 	return (*freed_count > 0);
+}
+
+void journal_try_flush(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata_t *md)
+{
+	journal_changeset_id_t id = { true, 0 };
+	bool flush = journal_flush_allowed(j);
+	if (journal_have_zone_in_j(txn, j->zone, NULL)) {
+		journal_merge(j, txn, id);
+		if (!flush) {
+			journal_metadata_after_merge(md, id, md->serial_to);
+		}
+	} else if (!flush) {
+		id.zone_in_journal = false;
+		id.serial = ((md->flags & MERGED_SERIAL_VALID) ? md->merged_serial : md->first_serial);
+		journal_merge(j, txn, id);
+		journal_metadata_after_merge(md, id, md->serial_to);
+	}
+
+	if (flush) {
+		// delete merged serial if (very unlikely) exists
+		if ((md->flags & MERGED_SERIAL_VALID)) {
+			journal_changeset_id_t merged = { false, md->merged_serial };
+			size_t unused;
+			(void)delete_one(txn, merged, j->zone, &unused, (uint32_t *)&unused);
+			md->flags &= ~MERGED_SERIAL_VALID;
+		}
+
+		// commit partial job and ask zone to flush itself
+		journal_store_metadata(txn, j->zone, md);
+		knot_lmdb_commit(txn);
+		if (txn->ret == KNOT_EOK) {
+			txn->ret = KNOT_EBUSY;
+		}
+	}
+}
+
+void journal_fix_occupation(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata_t *md)
+{
+	uint64_t occupied = journal_get_occupied(txn, j->zone), freed = 0;
+	int64_t need_tofree = occupied - journal_max_usage(j);
+	size_t count = md->changeset_count, removed = 0;
+	ssize_t need_todel = count - journal_max_changesets(j);
+	journal_changeset_id_t from = { false, md->first_serial };
+
+	while (need_tofree > 0 || need_todel > 0) {
+		journal_delete(txn, from, j->zone, MAX(need_tofree, 0), MAX(need_todel, 0), md->flushed_upto, &freed, &removed, &from.serial);
+		if (freed == 0) {
+			if (md->flushed_upto != md->serial_to) {
+				journal_try_flush(j, txn, md);
+			} else {
+				break;
+			}
+		} else {
+			journal_metadata_after_delete(md, from.serial, removed);
+			need_tofree -= freed;
+			need_todel -= removed;
+		}
+	}
 }

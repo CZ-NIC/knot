@@ -16,6 +16,8 @@
 
 #include "knot/journal/journal_basic.h"
 
+#include "knot/conf/conf.h"
+#include "knot/journal/journal_metadata.h"
 #include "libknot/error.h"
 
 MDB_val journal_changeset_id_to_key(journal_changeset_id_t id, const knot_dname_t *zone)
@@ -70,4 +72,34 @@ bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint
 	}
 	free(key.mv_data);
 	return found;
+}
+
+bool journal_flush_allowed(zone_journal_t *j)
+{
+	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, j->zone);
+	return conf_int(&val) >= 0;
+}
+
+size_t journal_max_usage(zone_journal_t *j)
+{
+	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_USAGE, j->zone);
+	return conf_int(&val);
+}
+
+size_t journal_max_changesets(zone_journal_t *j)
+{
+	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_DEPTH, j->zone);
+	return conf_int(&val);
+}
+
+int journal_set_flushed(zone_journal_t *j)
+{
+	knot_lmdb_txn_t txn = { 0 };
+	journal_metadata_t md = { 0 };
+	knot_lmdb_begin(&j->db, &txn, true);
+	journal_load_metadata(&txn, j->zone, &md);
+	md.flushed_upto = md.serial_to;
+	journal_store_metadata(&txn, j->zone, &md);
+	knot_lmdb_commit(&txn);
+	return txn.ret;
 }

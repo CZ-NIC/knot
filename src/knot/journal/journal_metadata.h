@@ -38,6 +38,8 @@ enum journal_metadata_flags {
 
 void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter);
 
+uint64_t journal_get_occupied(knot_lmdb_txn_t *txn, const knot_dname_t *zone);
+
 void journal_load_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, journal_metadata_t *md);
 
 void journal_store_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const journal_metadata_t *md);
@@ -45,9 +47,9 @@ void journal_store_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, cons
 void journal_metadata_after_delete(journal_metadata_t *md, uint32_t deleted_upto,
                                    size_t deleted_count);
 
-void journal_metadata_after_merge(journal_metadata_t *md, uint32_t merged_serial,
+void journal_metadata_after_merge(journal_metadata_t *md, journal_changeset_id_t merged_serial,
                                   uint32_t merged_serial_to);
 
 void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint32_t serial_to);
 
-void journal_scrape(zone_journal_t *j);
+void journal_scrape_with_md(zone_journal_t *j);
