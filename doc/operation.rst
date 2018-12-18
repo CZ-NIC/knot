@@ -657,7 +657,9 @@ For the ZSK side (i.e. the operator of the DNS server), the pre-requisites are:
 
 For the KSK side (i.e. the operator of the KSK signer), the pre-requisites are:
 
-- Knot configuration equal to the ZSK side (at least the :ref:`Policy section` must be identical)
+- Knot configuration equal to the ZSK side (at least relevant parts of corresponding
+  :ref:`policy <Policy section>`, :ref:`zone <Zone section>`, and :ref:`template <Template section>`
+  sections must be identical)
 - a KASP DB with the KSK(s)
 
 Generating and signing future ZSKs
@@ -674,15 +676,15 @@ Generating and signing future ZSKs
     they would be generated in case of automatic key management.
 
 2.  Use the ``keymgr generate-ksr`` command on the ZSK side to export the public parts of the future ZSKs in a form
-    similar to DNSKEY records. Use the same time period as in the first step::
+    similar to DNSKEY records. You might use the same time period as in the first step::
 
-     $ keymgr -c /path/to/ZSK/side.conf example.com. generate-ksr +6mo
+     $ keymgr -c /path/to/ZSK/side.conf example.com. generate-ksr +0 +6mo > /path/to/ksr/file
 
     Save the output of the command (called the Key Signing Request or KSR) to a file and transfer it to the KSK side e.g. via e-mail.
 
 3.  Use the ``keymgr sign-ksr`` command on the KSK side with the KSR file from the previous step as a parameter::
 
-     $ keymgr -c /path/to/KSK/side.conf example.com. sign-ksr /path/to/ksr/file
+     $ keymgr -c /path/to/KSK/side.conf example.com. sign-ksr /path/to/ksr/file > /path/to/skr/file
 
     This creates all the future forms of the DNSKEY, CDNSKEY and CSK records and all the respective RRSIGs and prints them on output. Save
     the output of the command (called the Signed Key Response or SKR) to a file and transfer it back to the ZSK side.
@@ -698,7 +700,9 @@ Generating and signing future ZSKs
 
 6. Now the future ZSKs and DNSKEY records with signatures are ready in KASP DB for later usage.
    Knot automatically uses them in correct time intervals.
-   The entire procedure must to be repeated before the time period selected at the beginning passes.
+   The entire procedure must to be repeated before the time period selected at the beginning passes,
+   or whenever a configuration is changed significantly. Over-importing new SKR across some previously-imported
+   one leads to deleting the old offline records.
 
 .. _DNSSEC Export Import  KASP DB:
 
