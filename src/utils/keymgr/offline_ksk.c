@@ -370,8 +370,13 @@ static void skr_import_header(zs_scanner_t *sc)
 	}
 	(void)header_ver;
 
+	// delete possibly existing conflicting offline records
+	sc->error.code = kasp_db_delete_offline_records(
+		*ctx->kctx->kasp_db, ctx->kctx->zone->dname, next_timestamp, 0
+	);
+
 	// store previous SKR
-	if (ctx->timestamp > 0) {
+	if (ctx->timestamp > 0 && sc->error.code == KNOT_EOK) {
 		sc->error.code = kasp_db_store_offline_records(*ctx->kctx->kasp_db,
 		                                               ctx->timestamp, &ctx->r);
 		key_records_clear_rdatasets(&ctx->r);

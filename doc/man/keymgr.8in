@@ -148,7 +148,9 @@ Read KeySigingRequest from a text file, sign it using local keyset and print Sig
 .TP
 \fBimport\-skr\fP \fIskr_file\fP
 Read SignedKeyResponse from a text file and import the signatures for later use in zone. (The signatures
-are not at all checked at import time, but they will be ignored at signing time if invalid.)
+are not checked at import time, but they will be ignored at signing time if invalid.) If some
+signatures have already been imported, they will be deleted for the period from beginning of the SKR
+to infinity.
 .UNINDENT
 .SS Generate arguments
 .sp
