@@ -58,6 +58,10 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	int64_t ttl = conf_int(&val);
 	policy->dnskey_ttl = (ttl != YP_NIL) ? ttl : UINT32_MAX;
 
+	val = conf_id_get(conf(), C_POLICY, C_ZONE_MAX_TLL, id);
+	ttl = conf_int(&val);
+	policy->zone_maximal_ttl = (ttl != YP_NIL) ? ttl : UINT32_MAX;
+
 	val = conf_id_get(conf(), C_POLICY, C_ZSK_LIFETIME, id);
 	policy->zsk_lifetime = conf_int(&val);
 

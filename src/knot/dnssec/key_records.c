@@ -75,7 +75,7 @@ void key_records_clear_rdatasets(key_records_t *r)
 	knot_rdataset_clear(&r->rrsig.rrs, NULL);
 }
 
-int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r)
+int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool verbose)
 {
 	if (*buf == NULL) {
 		if (*buf_size == 0) {
@@ -86,26 +86,28 @@ int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r)
 			return KNOT_ENOMEM;
 		}
 	}
-	int ret = KNOT_EOK;
+
+	const knot_dump_style_t verb_style = {
+		.wrap = true,
+		.show_ttl = true,
+		.verbose = true,
+		.original_ttl = true,
+		.human_tmstamp = true
+	};
+	const knot_dump_style_t *style = verbose ? &verb_style : &KNOT_DUMP_STYLE_DEFAULT;
+
+	int ret = 0;
 	size_t total = 1;
+	const knot_rrset_t *all_rr[4] = { &r->dnskey, &r->cdnskey, &r->cds, &r->rrsig };
 	// first go: just detect the size
-	if (!knot_rrset_empty(&r->dnskey)) {
-		ret = knot_rrset_txt_dump(&r->dnskey, buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
-		total += ret;
+	for (int i = 0; i < 4; i++) {
+		if (ret >= 0 && !knot_rrset_empty(all_rr[i])) {
+			ret = knot_rrset_txt_dump(all_rr[i], buf, buf_size, style);
+			(void)buf;
+			total += ret;
+		}
 	}
-	if (ret >= 0 && !knot_rrset_empty(&r->cdnskey)) {
-		ret = knot_rrset_txt_dump(&r->cdnskey, buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
-		total += ret;
-	}
-	if (ret >= 0 && !knot_rrset_empty(&r->cds)) {
-		ret = knot_rrset_txt_dump(&r->cds, buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
-		total += ret;
-	}
-	if (ret >= 0 && !knot_rrset_empty(&r->rrsig)) {
-		ret = knot_rrset_txt_dump(&r->rrsig, buf, buf_size, &KNOT_DUMP_STYLE_DEFAULT);
-		total += ret;
-	}
-	if (ret >= 0 && total < *buf_size) {
+	if (ret >= 0 && total > *buf_size) {
 		free(*buf);
 		*buf_size = total;
 		*buf = malloc(*buf_size);
@@ -116,21 +118,13 @@ int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r)
 	char *fake_buf = *buf;
 	size_t fake_size = *buf_size;
 	//second go: do it
-	if (ret >= 0 && !knot_rrset_empty(&r->dnskey)) {
-		ret = knot_rrset_txt_dump(&r->dnskey, &fake_buf, &fake_size, &KNOT_DUMP_STYLE_DEFAULT);
-		fake_buf += ret, fake_size -= ret;
+	for (int i = 0; i < 4; i++) {
+		if (ret >= 0 && !knot_rrset_empty(all_rr[i])) {
+			ret = knot_rrset_txt_dump(all_rr[i], &fake_buf, &fake_size, style);
+			fake_buf += ret, fake_size -= ret;
+		}
 	}
-	if (ret >= 0 && !knot_rrset_empty(&r->cdnskey)) {
-		ret = knot_rrset_txt_dump(&r->cdnskey, &fake_buf, &fake_size, &KNOT_DUMP_STYLE_DEFAULT);
-		fake_buf += ret, fake_size -= ret;
-	}
-	if (ret >= 0 && !knot_rrset_empty(&r->cds)) {
-		ret = knot_rrset_txt_dump(&r->cds, &fake_buf, &fake_size, &KNOT_DUMP_STYLE_DEFAULT);
-		fake_buf += ret, fake_size -= ret;
-	}
-	if (ret >= 0 && !knot_rrset_empty(&r->rrsig)) {
-		ret = knot_rrset_txt_dump(&r->rrsig, &fake_buf, &fake_size, &KNOT_DUMP_STYLE_DEFAULT);
-	}
+	assert(fake_buf - *buf == total - 1);
 	return ret >= 0 ? KNOT_EOK : ret;
 }
 

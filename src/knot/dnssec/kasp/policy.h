@@ -107,8 +107,6 @@ typedef struct {
 	uint32_t nsec3_salt_lifetime;
 	uint16_t nsec3_iterations;
 	uint8_t nsec3_salt_length;
-	// SOA
-	uint32_t soa_minimal_ttl;
 	// zone
 	uint32_t zone_maximal_ttl;
 	// data propagation delay

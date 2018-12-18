@@ -79,13 +79,13 @@ static void print_help(void)
 	       "                 (syntax: pregenerate <timestamp>)\n"
 	       "  presign       Pre-generate RRSIG signatures for pregenerated ZSKs.\n"
 	       "                 (syntax: presign <timestamp>)\n"
-	       "  show-offline  Print pre-generated offline key-related records for specified timestamp.\n"
-	       "                 (syntax: show-offline <timestamp>)\n"
+	       "  show-offline  Print pre-generated offline key-related records for specified time interval (possibly to infinity).\n"
+	       "                 (syntax: show-offline <from> [<to>])\n"
 	       "  del-offline   Delete pre-generated offline key-related records in specified time interval.\n"
 	       "                 (syntax: del-offline <from> <to>)\n"
 	       "  del-all-old   Delete old keys that are in state 'removed'.\n"
 	       "  generate-ksr  Print to stdout KeySigningRequest based on pre-generated ZSKS.\n"
-	       "                 (syntax: generate-ksr <timestamp>)\n"
+	       "                 (syntax: generate-ksr <from> <to>)\n"
 	       "  sign-ksr      Read KeySigningRequest from a file, sign it and print SignedKeyResponse to stdout.\n"
 	       "                 (syntax: sign-ksr <ksr_file>)\n"
 	       "  import-skr    Import DNSKEY record signatures from a SignedKeyResponse.\n"
@@ -139,6 +139,13 @@ static int key_command(int argc, char *argv[], int opt_ind)
 
 #define CHECK_MISSING_ARG(msg) \
 	if (argc < 3) { \
+		printf("%s\n", (msg)); \
+		ret = KNOT_EINVAL; \
+		goto main_end; \
+	}
+
+#define CHECK_MISSING_ARG2(msg) \
+	if (argc < 4) { \
 		printf("%s\n", (msg)); \
 		ret = KNOT_EINVAL; \
 		goto main_end; \
@@ -227,19 +234,15 @@ static int key_command(int argc, char *argv[], int opt_ind)
 		ret = keymgr_pregenerate_zsks(&kctx, argv[2]);
 	} else if (strcmp(argv[1], "show-offline") == 0) {
 		CHECK_MISSING_ARG("Timestamp not specified");
-		ret = keymgr_print_offline_records(&kctx, argv[2]);
+		ret = keymgr_print_offline_records(&kctx, argv[2], argc > 3 ? argv[3] : NULL);
 	} else if (strcmp(argv[1], "del-offline") == 0) {
-		if (argc < 4) {
-			printf("Timestamps from-to not specified\n");
-			ret = KNOT_EINVAL;
-			goto main_end;
-		}
+		CHECK_MISSING_ARG2("Timestamps from-to not specified");
 		ret = keymgr_delete_offline_records(&kctx, argv[2], argv[3]);
 	} else if (strcmp(argv[1], "del-all-old") == 0) {
 		ret = keymgr_del_all_old(&kctx);
 	} else if (strcmp(argv[1], "generate-ksr") == 0) {
-		CHECK_MISSING_ARG("Timestamp not specified");
-		ret = keymgr_print_ksr(&kctx, argv[2]);
+		CHECK_MISSING_ARG2("Timestamps from-to not specified");
+		ret = keymgr_print_ksr(&kctx, argv[2], argv[3]);
 		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "sign-ksr") == 0) {
 		CHECK_MISSING_ARG("Input file not specified");
