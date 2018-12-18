@@ -26,7 +26,7 @@ int keymgr_delete_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_
 
 int keymgr_del_all_old(kdnssec_ctx_t *ctx);
 
-int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg);
+int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to);
 
 int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file);
 
