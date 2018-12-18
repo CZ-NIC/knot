@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * Zone contents structure and API for manipulating it.
- *
- * \addtogroup zone
- * @{
- */
 
 #pragma once
 
@@ -268,5 +260,3 @@ size_t zone_contents_measure_size(zone_contents_t *zone);
  * \return Maximal TTL.
  */
 uint32_t zone_contents_max_ttl(zone_contents_t *zone);
-
-/*! @} */

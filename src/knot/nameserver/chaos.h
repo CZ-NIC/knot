@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * \brief Chaos class processing.
- *
- * \addtogroup query_processing
- * @{
- */
 
 #pragma once
 
@@ -30,5 +22,3 @@
  * \brief Create a response for a given query in the CHAOS class.
  */
 int knot_chaos_answer(knot_pkt_t *pkt);
-
-/*! @} */
