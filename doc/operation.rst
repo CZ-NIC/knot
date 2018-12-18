@@ -674,9 +674,9 @@ Generating and signing future ZSKs
     they would be generated in case of automatic key management.
 
 2.  Use the ``keymgr generate-ksr`` command on the ZSK side to export the public parts of the future ZSKs in a form
-    similar to DNSKEY records. Use the same time period as in the first step::
+    similar to DNSKEY records. You might use the same time period as in the first step::
 
-     $ keymgr -c /path/to/ZSK/side.conf example.com. generate-ksr +6mo
+     $ keymgr -c /path/to/ZSK/side.conf example.com. generate-ksr +0 +6mo
 
     Save the output of the command (called the Key Signing Request or KSR) to a file and transfer it to the KSK side e.g. via e-mail.
 
@@ -698,7 +698,9 @@ Generating and signing future ZSKs
 
 6. Now the future ZSKs and DNSKEY records with signatures are ready in KASP DB for later usage.
    Knot automatically uses them in correct time intervals.
-   The entire procedure must to be repeated before the time period selected at the beginning passes.
+   The entire procedure must to be repeated before the time period selected at the beginning passes,
+   or whenever a configuration is changed significantly. Over-importing new SKR across some previously-imported
+   one leads to deleting the old offline records.
 
 .. _DNSSEC Export Import  KASP DB:
 
