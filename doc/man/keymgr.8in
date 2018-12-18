@@ -140,7 +140,7 @@ Delete pre\-generated offline key\-related records in specified time interval.
 \fBdel\-all\-old\fP
 Delete old keys that are in state \(aqremoved\(aq.
 .TP
-\fBgenerate\-ksr\fP \fItimestamp\fP
+\fBgenerate\-ksr\fP \fItimestamp\-from\fP \fItimestamp\-to\fP
 Print to stdout KeySigningRequest based on pre\-generated ZSKs for specified period.
 .TP
 \fBsign\-ksr\fP \fIksr_file\fP

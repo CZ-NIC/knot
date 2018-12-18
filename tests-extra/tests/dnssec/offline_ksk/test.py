@@ -120,7 +120,7 @@ key_zsk1 = knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", active="+
 KSR = knot.keydir + "/ksr"
 SKR = knot.keydir + "/skr"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+" + str(FUTURE))
-_, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+" + str(FUTURE))
+_, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
 _, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
 writef(SKR, out)

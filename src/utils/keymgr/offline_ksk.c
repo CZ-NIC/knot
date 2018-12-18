@@ -218,28 +218,29 @@ done:
 	return ret;
 }
 
-int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg)
+int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 {
-	knot_time_t upto;
-	int ret = parse_timestamp(arg, &upto);
+	knot_time_t from, to;
+	int ret = parse_timestamp(arg_from, &from);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	ret = parse_timestamp(arg_to, &to);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	knot_time_t next = ctx->now;
-	ret = KNOT_EOK;
 	char *buf = NULL;
 	size_t buf_size = 4096;
-
-	while (ret == KNOT_EOK && knot_time_cmp(next, upto) < 0) {
-		ctx->now = next;
-		ret = ksr_once(ctx, &buf, &buf_size, &next);
+	while (ret == KNOT_EOK && knot_time_cmp(from, to) < 0) {
+		ctx->now = from;
+		ret = ksr_once(ctx, &buf, &buf_size, &from);
 	}
 	if (ret != KNOT_EOK) {
 		free(buf);
 		return ret;
 	}
-	ctx->now = upto;
+	ctx->now = to;
 	// force end of period as a KSR timestamp
 	ret = ksr_once(ctx, &buf, &buf_size, NULL);
 

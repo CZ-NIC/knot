@@ -117,7 +117,7 @@ Commands related to Offline KSK feature
 **del-all-old**
   Delete old keys that are in state 'removed'.
 
-**generate-ksr** *timestamp*
+**generate-ksr** *timestamp-from* *timestamp-to*
   Print to stdout KeySigningRequest based on pre-generated ZSKs for specified period.
 
 **sign-ksr** *ksr_file*
