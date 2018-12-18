@@ -236,7 +236,7 @@ def main():
     argp.add_argument('--confile', dest='confile', metavar='file', nargs=1, help='PowerDNS configfile to obtain SOA parameters (otherwise defaults).')
     argp.add_argument('--serial', dest='soa_serial', type=int, metavar='uint32', nargs=1, help='SOA serial number (otherwise UNIX timestamp).')
     argp.add_argument('--absolute-names', dest='fix_absolute', action='store_true', help="Interpret names in records' contents (e.g. CNAME, NS...) as absolute even if w/o trailing dot.")
-    argp.add_argument('--from-changes', dest='from_changes', metavar="from_id", nargs='?', const=[0], help="Export zones listed in extra 'changes' table.")
+    argp.add_argument('--from-changes', dest='from_changes', metavar="from_id", nargs='?', const=0, help="Export zones listed in extra 'changes' table.")
     argp.add_argument('--knotc', dest='knotc_socket', metavar='knot_socket', nargs=1, help="Notify Knot DNS about changes (requires: $PATH/knotc).")
     argp.add_argument('--slave', dest='slave', action='store_true', help="Don't generate zonefiles, use 'knotc zone-refresh' instead of zone-reload.")
     argp.add_argument('--version', action='version', version='dns_sql2zf 0.1')
@@ -270,7 +270,7 @@ def main():
         process_all()
 
     if args.from_changes is not None:
-        process_changes(args.from_changes[0])
+        process_changes(args.from_changes)
 
     if conf_txn_open:
         knotc_single("conf-commit")
