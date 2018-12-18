@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,14 +52,6 @@ typedef enum {
 	ACL_UPDATE_MATCH_EQ    = 1,
 	ACL_UPDATE_MATCH_SUB   = 2,
 } acl_update_owner_match_t;
-
-/*!
- * \brief Checks if the incoming update satisfies configured update rules.
- *
- *
- */
-bool acl_update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
-                      const knot_dname_t *zone_name, knot_pkt_t *query);
 
 /*!
  * \brief Checks if the address and/or tsig key matches given ACL list.
