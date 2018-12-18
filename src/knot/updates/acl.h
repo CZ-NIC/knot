@@ -13,14 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-/*!
- * \file
- *
- * Access control list.
- *
- * \addtogroup server
- * @{
- */
 
 #pragma once
 
@@ -71,5 +63,3 @@ typedef enum {
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query);
-
-/*! @} */
