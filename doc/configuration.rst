@@ -99,6 +99,9 @@ If there are multiple ACL rules for a single zone, they are applied in the order
 of appearance in the :ref:`zone_acl` configuration item of a zone or a template.
 The first one to match the given remote is applied, the rest is ignored.
 
+For dynamic updates, additional rules may be specified, which will allow or deny updates
+according to the type or owner of Resource Records in the update.
+
 See the following examples and :ref:`ACL section`.
 
 ::
@@ -136,6 +139,16 @@ See the following examples and :ref:`ACL section`.
     zone:
       - domain: acl2.example.com
         acl: [deny_all, key_rule]
+
+::
+
+    acl
+        - id: owner_type_rule
+          action: update
+          update-owner: name  # The allowed owners are specified by the list on the next line
+          update-owner-name: [a.example.com, b.example.com, c.example.com]
+          update-owner-type: [A, AAAA, MX] # Updates are only allowed to update records of the specified types
+          update-owner-match: equal # The owners of records in an update must be exactly equal to the names in the list
 
 .. NOTE::
    If more conditions (address ranges and/or a key)
