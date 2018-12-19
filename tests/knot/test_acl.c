@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <tap/basic.h>
@@ -33,6 +34,31 @@ static void check_sockaddr_set(struct sockaddr_storage *ss, int family,
 {
 	int ret = sockaddr_set(ss, family, straddr, port);
 	ok(ret == 0, "set address '%s'", straddr);
+}
+
+void check_update(conf_t *conf, knot_rrset_t *authority, knot_tsig_key_t *key,
+                  knot_dname_t *zone_name, bool allowed, const char *desc)
+{
+	struct sockaddr_storage addr;
+	check_sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
+
+	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	assert(query);
+	knot_pkt_begin(query, KNOT_AUTHORITY);
+	knot_pkt_put(query, 0, authority, 0);
+
+	knot_pkt_t *parsed = knot_pkt_new(query->wire, query->size, NULL);
+	ok(knot_pkt_parse(parsed, 0) == KNOT_EOK, "Parse update packet");
+
+	conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
+	ok(acl.code == KNOT_EOK, "Get zone ACL");
+
+	bool ret = acl_allowed(conf, &acl, ACL_ACTION_UPDATE, &addr, key,
+	                       zone_name, parsed);
+	ok(ret == allowed, "%s", desc);
+
+	knot_pkt_free(parsed);
+	knot_pkt_free(query);
 }
 
 static void test_acl_allowed(void)
@@ -189,19 +215,11 @@ static void test_acl_allowed(void)
 	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0, zone_name, NULL);
 	ok(ret == true, "IPv6 address from range, no key, action match");
 
-	knot_pkt_t *query = knot_pkt_new(NULL, 512, NULL);
 	knot_rrset_t A;
 	knot_rrset_init(&A, key1_name, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600);
-	knot_pkt_begin(query, KNOT_ADDITIONAL);
-	knot_pkt_put(query, 0, &A, 0);
+	knot_rrset_add_rdata(&A, (uint8_t *)"\x00\x00\x00\x00", 4, NULL);
+	check_update(conf(), &A, &key1, key1_name, true, "todo");
 
-	acl = conf_zone_get(conf(), C_ACL, key1_name);
-	ok(acl.code == KNOT_EOK, "Get zone ACL");
-	check_sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
-	ret = acl_allowed(conf(), &acl, ACL_ACTION_UPDATE, &addr, &key1, key1_name, query);
-	ok(ret == true, "Correct type and owner, first key, action match");
-
-	knot_pkt_free(query);
 	conf_free(conf());
 	knot_dname_free(zone_name, NULL);
 	knot_dname_free(key1_name, NULL);
