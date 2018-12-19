@@ -404,15 +404,8 @@ void conf_val(
 		if (val->data != NULL && val->code != KNOT_EOF) {
 			return;
 		}
-
-		assert(val->blob != NULL);
-		wire_ctx_t ctx = wire_ctx_init_const(val->blob, val->blob_len);
-		uint16_t len = wire_ctx_read_u16(&ctx);
-		assert(ctx.error == KNOT_EOK);
-
-		val->data = ctx.position;
-		val->len = len;
-		val->code = KNOT_EOK;
+		// Otherwise set to the first value.
+		conf_val_reset(val);
 	} else {
 		// Check for empty data.
 		if (val->blob_len == 0) {
@@ -457,6 +450,22 @@ void conf_val_next(
 		val->len = 0;
 		val->code = KNOT_EOF;
 	}
+}
+
+void conf_val_reset(conf_val_t *val)
+{
+	assert(val != NULL);
+	assert(val->code == KNOT_EOK || val->code == KNOT_EOF);
+	assert(val->item->flags & YP_FMULTI);
+
+	assert(val->blob != NULL);
+	wire_ctx_t ctx = wire_ctx_init_const(val->blob, val->blob_len);
+	uint16_t len = wire_ctx_read_u16(&ctx);
+	assert(ctx.error == KNOT_EOK);
+
+	val->data = ctx.position;
+	val->len = len;
+	val->code = KNOT_EOK;
 }
 
 bool conf_val_equal(

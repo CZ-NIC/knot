@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,14 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-/*!
- * \file
- *
- * \brief Common utils parameters processing.
- *
- * \addtogroup knot_utils
- * @{
  */
 
 #pragma once
@@ -166,5 +158,3 @@ int params_parse_type(const char *value, uint16_t *rtype, int64_t *serial,
 int params_parse_server(const char *value, list_t *servers, const char *def_port);
 
 int params_parse_wait(const char *value, int32_t *dst);
-
-/*! @} */

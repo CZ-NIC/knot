@@ -86,6 +86,20 @@ const knot_lookup_t acl_actions[] = {
 	{ 0, NULL }
 };
 
+const knot_lookup_t acl_update_owner[] = {
+	{ ACL_UPDATE_OWNER_KEY,  "key" },
+	{ ACL_UPDATE_OWNER_ZONE, "zone" },
+	{ ACL_UPDATE_OWNER_NAME, "name" },
+	{ 0, NULL }
+};
+
+const knot_lookup_t acl_update_owner_match[] = {
+	{ ACL_UPDATE_MATCH_SUBEQ, "sub-or-equal" },
+	{ ACL_UPDATE_MATCH_EQ,    "equal" },
+	{ ACL_UPDATE_MATCH_SUB,   "sub" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t serial_policies[] = {
 	{ SERIAL_POLICY_INCREMENT,  "increment" },
 	{ SERIAL_POLICY_UNIXTIME,   "unixtime" },
@@ -204,12 +218,17 @@ static const yp_item_t desc_key[] = {
 };
 
 static const yp_item_t desc_acl[] = {
-	{ C_ID,      YP_TSTR,  YP_VNONE, CONF_IO_FREF },
-	{ C_ADDR,    YP_TNET,  YP_VNONE, YP_FMULTI },
-	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
-	{ C_ACTION,  YP_TOPT,  YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
-	{ C_DENY,    YP_TBOOL, YP_VNONE },
-	{ C_COMMENT, YP_TSTR,  YP_VNONE },
+	{ C_ID,                 YP_TSTR,   YP_VNONE, CONF_IO_FREF },
+	{ C_ADDR,               YP_TNET,   YP_VNONE, YP_FMULTI },
+	{ C_KEY,                YP_TREF,   YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
+	{ C_ACTION,             YP_TOPT,   YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
+	{ C_DENY,               YP_TBOOL,  YP_VNONE },
+	{ C_UPDATE_OWNER,       YP_TOPT,   YP_VOPT = { acl_update_owner, ACL_UPDATE_OWNER_NONE } },
+	{ C_UPDATE_OWNER_MATCH, YP_TOPT,   YP_VOPT = { acl_update_owner_match, ACL_UPDATE_MATCH_SUBEQ } },
+	{ C_UPDATE_OWNER_NAME,  YP_TDNAME, YP_VNONE, YP_FMULTI },
+	{ C_UPDATE_TYPE,        YP_TDATA,  YP_VDATA = { 0, NULL, rrtype_to_bin, rrtype_to_txt },
+	                                   YP_FMULTI, },
+	{ C_COMMENT,            YP_TSTR,   YP_VNONE },
 	{ NULL }
 };
 
