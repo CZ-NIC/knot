@@ -213,14 +213,12 @@ void journal_metadata_after_delete(journal_metadata_t *md, uint32_t deleted_upto
 		return;
 	}
 	assert((md->flags & SERIAL_TO_VALID));
-	assert(md->first_serial != md->flushed_upto); // don't allow deleting in unflushed zone
 	if (deleted_upto == md->serial_to) {
 		assert(md->flushed_upto == md->serial_to);
 		assert(md->changeset_count == deleted_count);
 		md->flags &= ~SERIAL_TO_VALID;
-	} else {
-		md->first_serial = deleted_upto;
 	}
+	md->first_serial = deleted_upto;
 	md->changeset_count -= deleted_count;
 }
 
@@ -238,21 +236,68 @@ void journal_metadata_after_merge(journal_metadata_t *md, journal_changeset_id_t
 
 void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint32_t serial_to)
 {
-	if ((md->flags & SERIAL_TO_VALID)) {
-		assert(serial == md->serial_to);
-	} else {
+	if (md->first_serial == md->serial_to) { // no changesets yet
 		md->first_serial = serial;
-		md->flags |= SERIAL_TO_VALID;
 	}
 	md->serial_to = serial_to;
+	md->flags |= SERIAL_TO_VALID;
 }
 
-void journal_scrape_with_md(zone_journal_t *j)
+int journal_scrape_with_md(zone_journal_t *j)
 {
 	knot_lmdb_txn_t txn = { 0 };
-	knot_lmdb_begin(&j->db, &txn, true);
+	knot_lmdb_begin(j->db, &txn, true);
+
 	update_last_inserter(&txn, NULL);
 	MDB_val prefix = { knot_dname_size(j->zone), j->zone };
 	knot_lmdb_del_prefix(&txn, &prefix);
+
 	knot_lmdb_commit(&txn);
+	return txn.ret;
+}
+
+int journal_set_flushed(zone_journal_t *j)
+{
+	knot_lmdb_txn_t txn = { 0 };
+	journal_metadata_t md = { 0 };
+	knot_lmdb_begin(j->db, &txn, true);
+	journal_load_metadata(&txn, j->zone, &md);
+
+	md.flushed_upto = md.serial_to;
+
+	journal_store_metadata(&txn, j->zone, &md);
+	knot_lmdb_commit(&txn);
+	return txn.ret;
+}
+
+int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
+                 uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial)
+{
+	if (!knot_lmdb_exists(j->db)) {
+		*exists = false;
+		return KNOT_EOK;
+	}
+	int ret = knot_lmdb_open(j->db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn = { 0 };
+	journal_metadata_t md = { 0 };
+	knot_lmdb_begin(j->db, &txn, false);
+	journal_load_metadata(&txn, j->zone, &md);
+	*exists = (md.flags & SERIAL_TO_VALID);
+	if (first_serial != NULL) {
+		*first_serial = md.first_serial;
+	}
+	if (serial_to != NULL) {
+		*serial_to = md.serial_to;
+	}
+	if (has_merged != NULL) {
+		*has_merged = (md.flags & MERGED_SERIAL_VALID);
+	}
+	if (merged_serial != NULL) {
+		*merged_serial = md.merged_serial;
+	}
+	knot_lmdb_abort(&txn);
+	return txn.ret;
 }

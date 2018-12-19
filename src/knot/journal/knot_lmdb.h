@@ -24,18 +24,19 @@
 typedef struct knot_lmdb_db {
 	MDB_dbi dbi;
 	MDB_env *env;
-} knot_lmdb_db_t;
+	pthread_mutex_t opening_mutex;
 
-typedef struct {
-	size_t mapsize;
+	// those are static options. Set them before knot_lmdb_init() and set static_opts_specified to true.
 	unsigned maxdbs;
 	unsigned maxreaders;
-	unsigned env_flags; // MDB_NOTLS, MDB_RDONLY, MDB_WRITEMAP, MDB_DUPSORT, MDB_NOSYNC, MDB_MAPASYNC
 	const char *dbname;
-} knot_lmdb_db_opts_t;
+	bool static_opts_specified;
 
-#define KNOT_LMDB_DB_OPT_DEFAULT { (100 * 1024 * 1024), 0, \
-	126/* = contrib/lmdb/mdb.c DEFAULT_READERS */, 0, NULL }
+	// those are internal options. Please don't touch them directly.
+	size_t mapsize;
+	unsigned env_flags; // MDB_NOTLS, MDB_RDONLY, MDB_WRITEMAP, MDB_DUPSORT, MDB_NOSYNC, MDB_MAPASYNC
+	const char *path;
+} knot_lmdb_db_t;
 
 typedef struct {
 	MDB_txn *txn;
@@ -60,9 +61,19 @@ typedef struct {
 	MDB_val val;
 } knot_lmdb_keyval_t;
 
-int knot_lmdb_open(knot_lmdb_db_t *db, const char *path, knot_lmdb_db_opts_t* opt);
+void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags);
 
-inline bool knot_lmdb_is_open(knot_lmdb_db_t *db) { return (db->env != NULL); }
+bool knot_lmdb_exists(knot_lmdb_db_t *db);
+
+int knot_lmdb_open(knot_lmdb_db_t *db);
+
+void knot_lmdb_close(knot_lmdb_db_t *db);
+
+int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags);
+
+void knot_lmdb_deinit(knot_lmdb_db_t *db);
+
+inline static bool knot_lmdb_is_open(knot_lmdb_db_t *db) { return db->env != NULL; }
 
 void knot_lmdb_close(knot_lmdb_db_t *db);
 

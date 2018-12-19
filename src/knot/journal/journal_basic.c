@@ -91,15 +91,3 @@ size_t journal_max_changesets(zone_journal_t *j)
 	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_DEPTH, j->zone);
 	return conf_int(&val);
 }
-
-int journal_set_flushed(zone_journal_t *j)
-{
-	knot_lmdb_txn_t txn = { 0 };
-	journal_metadata_t md = { 0 };
-	knot_lmdb_begin(&j->db, &txn, true);
-	journal_load_metadata(&txn, j->zone, &md);
-	md.flushed_upto = md.serial_to;
-	journal_store_metadata(&txn, j->zone, &md);
-	knot_lmdb_commit(&txn);
-	return txn.ret;
-}

@@ -142,15 +142,18 @@ void journal_try_flush(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata
 	}
 }
 
-void journal_fix_occupation(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata_t *md)
+void journal_fix_occupation(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata_t *md,
+			    int64_t max_usage, ssize_t max_count)
 {
-	uint64_t occupied = journal_get_occupied(txn, j->zone), freed = 0;
-	int64_t need_tofree = occupied - journal_max_usage(j);
-	size_t count = md->changeset_count, removed = 0;
-	ssize_t need_todel = count - journal_max_changesets(j);
+	uint64_t occupied = journal_get_occupied(txn, j->zone), freed;
+	int64_t need_tofree = (int64_t)occupied - max_usage;
+	size_t count = md->changeset_count, removed;
+	ssize_t need_todel = (ssize_t)count - max_count;
 	journal_changeset_id_t from = { false, md->first_serial };
 
 	while (need_tofree > 0 || need_todel > 0) {
+		freed = 0;
+		removed = 0;
 		journal_delete(txn, from, j->zone, MAX(need_tofree, 0), MAX(need_todel, 0), md->flushed_upto, &freed, &removed, &from.serial);
 		if (freed == 0) {
 			if (md->flushed_upto != md->serial_to) {
@@ -164,4 +167,76 @@ void journal_fix_occupation(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_met
 			need_todel -= removed;
 		}
 	}
+}
+
+int journal_insert_zone(zone_journal_t *j, const changeset_t *ch)
+{
+	if (ch->remove != NULL) {
+		return KNOT_EINVAL;
+	}
+	int ret = knot_lmdb_open(j->db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(j->db, &txn, true);
+
+	update_last_inserter(&txn, j->zone);
+	MDB_val prefix = { knot_dname_size(j->zone), j->zone };
+	knot_lmdb_del_prefix(&txn, &prefix);
+
+	journal_write_changeset(&txn, ch);
+
+	journal_metadata_t md = { 0 };
+	md.flags = SERIAL_TO_VALID;
+	md.serial_to = changeset_to(ch);
+	md.first_serial = md.serial_to;
+	journal_store_metadata(&txn, j->zone, &md);
+
+	knot_lmdb_commit(&txn);
+	return txn.ret;
+}
+
+int journal_insert(zone_journal_t *j, const changeset_t *ch)
+{
+	size_t ch_size = changeset_serialized_size(ch);
+	size_t max_usage = journal_max_usage(j);
+	if (ch_size >= max_usage) {
+		return KNOT_ESPACE;
+	}
+	int ret = knot_lmdb_open(j->db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn = { 0 };
+	journal_metadata_t md = { 0 };
+	knot_lmdb_begin(j->db, &txn, true);
+	journal_load_metadata(&txn, j->zone, &md);
+
+	update_last_inserter(&txn, j->zone);
+	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, journal_max_changesets(j) - 1);
+
+	// avoid cycle
+	journal_changeset_id_t conflict = { false, changeset_to(ch) };
+	if (journal_contains(&txn, conflict, j->zone)) {
+		journal_fix_occupation(j, &txn, &md, INT64_MAX, 1);
+	}
+
+	// avoid discontinuity
+	if ((md.flags & SERIAL_TO_VALID) && md.serial_to != changeset_from(ch)) {
+		if (journal_have_zone_in_j(&txn, j->zone, NULL)) {
+			return KNOT_ESEMCHECK;
+		} else {
+			MDB_val prefix = { knot_dname_size(j->zone), j->zone };
+			knot_lmdb_del_prefix(&txn, &prefix);
+			memset(&md, 0, sizeof(md));
+		}
+	}
+
+	journal_write_changeset(&txn, ch);
+	journal_metadata_after_insert(&md, changeset_from(ch), changeset_to(ch));
+
+	journal_store_metadata(&txn, j->zone, &md);
+	knot_lmdb_commit(&txn);
+	return txn.ret;
 }

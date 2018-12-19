@@ -25,6 +25,8 @@ enum {
 	JOURNAL_READ_END_READ = 2,
 };
 
+typedef int (*journal_walk_cb_t)(bool special, const changeset_t *ch, void *ctx);
+
 int journal_read_begin(zone_journal_t *j, journal_changeset_id_t from, journal_read_t **ctx);
 
 int journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr);
@@ -32,3 +34,5 @@ int journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr);
 int journal_read_changeset(journal_read_t *ctx, changeset_t *ch);
 
 void journal_read_end(journal_read_t *ctx);
+
+int journal_walk(zone_journal_t *j, journal_walk_cb_t cb, void *ctx);

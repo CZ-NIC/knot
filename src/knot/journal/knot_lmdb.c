@@ -16,6 +16,7 @@
 
 #include "knot/journal/knot_lmdb.h"
 
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -50,31 +51,8 @@ static void err_to_knot(int *err)
 	}
 }
 
-int knot_lmdb_open(knot_lmdb_db_t *db, const char *path, knot_lmdb_db_opts_t* opt)
+void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
 {
-	MDB_txn *init_txn = NULL;
-
-	if (db == NULL || db->env != NULL || db->dbi != 0) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = mkdir(path, LMDB_DIR_MODE);
-	if (ret < 0 && errno != EEXIST) {
-		return -errno;
-	}
-
-	long page_size = sysconf(_SC_PAGESIZE);
-	if (page_size <= 0) {
-		return KNOT_ERROR;
-	}
-	size_t mapsize = (opt->mapsize / page_size + 1) * page_size;
-
-	ret = mdb_env_create(&db->env);
-	if (ret != MDB_SUCCESS) {
-		err_to_knot(&ret);
-		return ret;
-	}
-
 #ifdef __OpenBSD__
 	/*
 	 * Enforce that MDB_WRITEMAP is set.
@@ -91,25 +69,73 @@ int knot_lmdb_open(knot_lmdb_db_t *db, const char *path, knot_lmdb_db_opts_t* op
 	 * Of course then you lose the protection that the read-only
 	 * map offers."
 	 */
-	opts->flags.env |= MDB_WRITEMAP;
+	env_flags |= MDB_WRITEMAP;
 #endif
+	db->env = NULL;
+	db->path = path;
+	db->mapsize = mapsize;
+	db->env_flags = env_flags;
+	pthread_mutex_init(&db->opening_mutex, NULL);
+	if (!db->static_opts_specified) {
+		db->maxdbs = 0;
+		db->maxreaders = 126/* = contrib/lmdb/mdb.c DEFAULT_READERS */;
+		db->dbname = NULL;
+	}
+}
+
+bool knot_lmdb_exists(knot_lmdb_db_t *db)
+{
+	if (db->env != NULL) {
+		return true;
+	}
+	struct stat st;
+	if (stat(db->path, &st) != 0 || st.st_size == 0) {
+		return false;
+	}
+	return true;
+}
+
+static int _open(knot_lmdb_db_t *db)
+{
+	MDB_txn *init_txn = NULL;
+
+	if (db->env != NULL) {
+		return KNOT_EOK;
+	}
+
+	int ret = mkdir(db->path, LMDB_DIR_MODE);
+	if (ret < 0 && errno != EEXIST) {
+		return -errno;
+	}
+
+	long page_size = sysconf(_SC_PAGESIZE);
+	if (page_size <= 0) {
+		return KNOT_ERROR;
+	}
+	size_t mapsize = (db->mapsize / page_size + 1) * page_size;
+
+	ret = mdb_env_create(&db->env);
+	if (ret != MDB_SUCCESS) {
+		err_to_knot(&ret);
+		return ret;
+	}
 
 	ret = mdb_env_set_mapsize(db->env, mapsize);
 	if (ret == MDB_SUCCESS) {
-		ret = mdb_env_set_maxdbs(db->env, opt->maxdbs);
+		ret = mdb_env_set_maxdbs(db->env, db->maxdbs);
 	}
 	if (ret == MDB_SUCCESS) {
-		ret = mdb_env_set_maxreaders(db->env, opt->maxreaders);
+		ret = mdb_env_set_maxreaders(db->env, db->maxreaders);
 	}
 	if (ret == MDB_SUCCESS) {
-		ret = mdb_env_open(db->env, path, opt->env_flags, LMDB_FILE_MODE);
+		ret = mdb_env_open(db->env, db->path, db->env_flags, LMDB_FILE_MODE);
 	}
 	if (ret == MDB_SUCCESS) {
-		unsigned init_txn_flags = (opt->env_flags & MDB_RDONLY);
+		unsigned init_txn_flags = (db->env_flags & MDB_RDONLY);
 		ret = mdb_txn_begin(db->env, NULL, init_txn_flags, &init_txn);
 	}
 	if (ret == MDB_SUCCESS) {
-		ret = mdb_dbi_open(init_txn, opt->dbname, MDB_CREATE, &db->dbi);
+		ret = mdb_dbi_open(init_txn, db->dbname, MDB_CREATE, &db->dbi);
 	}
 	if (ret == MDB_SUCCESS) {
 		ret = mdb_txn_commit(init_txn);
@@ -120,16 +146,58 @@ int knot_lmdb_open(knot_lmdb_db_t *db, const char *path, knot_lmdb_db_opts_t* op
 			mdb_txn_abort(init_txn);
 		}
 		mdb_env_close(db->env);
+		db->env = NULL;
 	}
 	err_to_knot(&ret);
 	return ret;
 }
 
+int knot_lmdb_open(knot_lmdb_db_t *db)
+{
+	pthread_mutex_lock(&db->opening_mutex);
+	int ret = _open(db);
+	pthread_mutex_unlock(&db->opening_mutex);
+	return ret;
+}
+
+static void _close(knot_lmdb_db_t *db)
+{
+	if (db->env != NULL) {
+		mdb_dbi_close(db->env, db->dbi);
+		mdb_env_close(db->env);
+		db->env = NULL;
+	}
+}
+
 void knot_lmdb_close(knot_lmdb_db_t *db)
 {
-	mdb_dbi_close(db->env, db->dbi);
-	mdb_env_close(db->env);
-	memset(db, 0, sizeof(*db));
+	pthread_mutex_lock(&db->opening_mutex);
+	_close(db);
+	pthread_mutex_unlock(&db->opening_mutex);
+}
+
+int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
+{
+#ifdef __OpenBSD__
+	env_flags |= MDB_WRITEMAP;
+#endif
+	if (strcmp(db->path, path) == 0 && db->mapsize == mapsize && db->env_flags == env_flags) {
+		return KNOT_EOK;
+	}
+	pthread_mutex_lock(&db->opening_mutex);
+	_close(db);
+	db->path = path;
+	db->mapsize = mapsize;
+	db->env_flags = env_flags;
+	int ret = _open(db);
+	pthread_mutex_unlock(&db->opening_mutex);
+	return ret;
+}
+
+void knot_lmdb_deinit(knot_lmdb_db_t *db)
+{
+	knot_lmdb_close(db);
+	pthread_mutex_destroy(&db->opening_mutex);
 }
 
 void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn, bool rw)

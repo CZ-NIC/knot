@@ -16,6 +16,7 @@
 
 #include "knot/journal/journal_read.h"
 
+#include "knot/journal/journal_metadata.h"
 #include "knot/journal/knot_lmdb.h"
 
 #include "contrib/ucw/lists.h"
@@ -52,16 +53,25 @@ static int go_next_changeset(journal_read_t *ctx, const knot_dname_t *zone, jour
 
 int journal_read_begin(zone_journal_t *j, journal_changeset_id_t from, journal_read_t **ctx)
 {
+	if (!knot_lmdb_exists(j->db)) {
+		return KNOT_ENOENT;
+	}
+
 	journal_read_t *newctx = calloc(1, sizeof(*newctx));
 	if (newctx == NULL) {
 		return KNOT_ENOMEM;
 	}
 
+	int ret = knot_lmdb_open(j->db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	newctx->zone = j->zone;
 
-	knot_lmdb_begin(&j->db, &newctx->txn, false);
+	knot_lmdb_begin(j->db, &newctx->txn, false);
 
-	int ret = go_next_changeset(newctx, j->zone, from);
+	ret = go_next_changeset(newctx, j->zone, from);
 	if (ret == KNOT_EOK) {
 		*ctx = newctx;
 	} else {
@@ -192,4 +202,159 @@ finish:
 		zone_contents_deep_free(tree);
 	}
 	return ret;
+}
+
+void just_load_md(zone_journal_t *j, journal_metadata_t *md)
+{
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(j->db, &txn, false);
+	journal_load_metadata(&txn, j->zone, md);
+	knot_lmdb_abort(&txn);
+}
+
+// beware, this function does not operate in single txn!
+int journal_walk(zone_journal_t *j, journal_walk_cb_t cb, void *ctx)
+{
+	int ret;
+	if (!knot_lmdb_exists(j->db)) {
+		ret = cb(true, NULL, ctx);
+		if (ret == KNOT_EOK) {
+			ret = cb(false, NULL, ctx);
+		}
+		return ret;
+	}
+	ret = knot_lmdb_open(j->db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	journal_metadata_t md = { 0 };
+	journal_read_t *read = NULL;
+	changeset_t ch;
+	journal_changeset_id_t id = { false, 0 };
+	bool at_least_one = false;
+	just_load_md(j, &md);
+	if (journal_have_zone_in_j(txn, j->zone, NULL)) {
+		id.zone_in_journal = true;
+		goto read_one_special;
+	} else if ((md.flags & MERGED_SERIAL_VALID)) {
+		id.serial = md.merged_serial;
+read_one_special:
+		ret = journal_read_begin(j, id, &read);
+		if (ret == KNOT_EOK) {
+			ret = journal_read_changeset(read, &ch);
+		}
+		if (ret == KNOT_EOK) {
+			ret = cb(true, &ch, ctx);
+		}
+		changeset_clear(&ch);
+		journal_read_end(read);
+		read = NULL;
+	} else {
+		ret = cb(true, NULL, ctx);
+	}
+
+	if ((md.flags & SERIAL_TO_VALID) && md.first_serial != md.serial_to) {
+		if (ret == KNOT_EOK || ret == JOURNAL_READ_END_READ) {
+			id.zone_in_journal = false;
+			id.serial = md.first_serial;
+			ret = journal_read_begin(j, id, &read);
+		}
+		while (ret == KNOT_EOK) {
+			ret = journal_read_changeset(read, &ch);
+			if (ret == KNOT_EOK) {
+				ret = cb(false, &ch, ctx);
+				changeset_clear(&ch);
+				at_least_one = true;
+			}
+		}
+	}
+	ret = (ret == JOURNAL_READ_END_READ ? KNOT_EOK : ret);
+	journal_read_end(read);
+	if (!at_least_one && ret == KNOT_EOK) {
+		ret = cb(false, NULL, ctx);
+	}
+	return ret;
+}
+
+typedef struct {
+	size_t observed_count;
+	size_t observed_merged;
+	uint32_t merged_serial;
+	size_t observed_zij;
+	uint32_t first_serial;
+	bool first_serial_valid;
+	uint32_t last_serial;
+	bool last_serial_valid;
+} check_ctx_t;
+
+static int check_cb(bool special, const changeset_t *ch, void *vctx)
+{
+	check_ctx_t *ctx = vctx;
+	if (special && ch != NULL) {
+		if (ch->remove == NULL) {
+			ctx->observed_zij++;
+			ctx->last_serial = changeset_to(ch);
+			ctx->last_serial_valid = true;
+		} else {
+			ctx->merged_serial = changeset_from(ch);
+			ctx->observed_merged++;
+		}
+	} else if (ch != NULL) {
+		if (!ctx->first_serial_valid) {
+			ctx->first_serial = changeset_from(ch);
+			ctx->first_serial_valid = true;
+		}
+		ctx->last_serial = changeset_to(ch);
+		ctx->last_serial_valid = true;
+		ctx->observed_count++;
+	}
+	return KNOT_EOK;
+}
+
+static bool eq(bool a, bool b)
+{
+	return a ? b : !b;
+}
+
+int journal_sem_check(zone_journal_t *j)
+{
+	check_ctx_t ctx = { 0 };
+	journal_metadata_t md = { 0 };
+
+	int ret = just_load_md(j, &md);
+	if (ret == KNOT_EOK) {
+		ret = journal_walk(j, check_cb, &ctx);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (!eq((md.flags & SERIAL_TO_VALID), ctx.last_serial_valid)) {
+		return 101;
+	}
+	if (ctx.last_serial_valid && ctx.last_serial != md.serial_to) {
+		return 102;
+	}
+	if (!eq((md.flags & MERGED_SERIAL_VALID), (ctx.observed_merged > 0))) {
+		return 103;
+	}
+	if (ctx.observed_merged > 1) {
+		return 104;
+	}
+	if (ctx.observed_merged == 1 && ctx.merged_serial != md.merged_serial) {
+		return 105;
+	}
+	if (ctx.observed_zij + ctx.observed_merged > 1) {
+		return 106;
+	}
+	if (!eq(((md.flags & SERIAL_TO_VALID) && md.first_serial != md.serial_to), ctx.first_serial_valid)) {
+		return 107;
+	}
+	if (!eq(ctx.first_serial_valid, (ctx.observed_count > 0))) {
+		return 108;
+	}
+	if (ctx.first_serial_valid && ctx.first_serial != md.first_serial) {
+		return 109;
+	}
+	return KNOT_EOK;
 }
