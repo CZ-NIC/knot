@@ -153,9 +153,6 @@ Arguments are separated by space, each of them is in format 'name=value'.
 
 The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key states`):
 
-**created**
-  Key created.
-
 **pre_active**
   Key started to be used for signing, not published (only for algorithm rollover).
 
