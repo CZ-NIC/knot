@@ -175,6 +175,9 @@ static bool _check_lower(knot_time_t a, knot_time_t b,
 
 static int check_timers(const knot_kasp_key_timing_t *t)
 {
+	if (t->pre_active != 0) {
+		check_lower(t, pre_active, publish);
+	}
 	check_lower(t, publish, active);
 	check_lower(t, active, retire_active);
 	check_lower(t, active, retire);
