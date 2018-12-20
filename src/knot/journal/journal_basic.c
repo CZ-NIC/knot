@@ -40,7 +40,7 @@ MDB_val journal_changeset_to_chunk_key(const changeset_t *ch, uint32_t chunk_id)
 
 void journal_make_header(void *chunk, const changeset_t *ch)
 {
-	knot_lmdb_make_key_part(chunk, JOURNAL_HEADER_SIZE, "IILLL", changeset_from(ch),
+	knot_lmdb_make_key_part(chunk, JOURNAL_HEADER_SIZE, "IILLL", changeset_to(ch),
 	                        (uint32_t)0 /* we no longer care for # of chunks */,
 	                        (uint64_t)0, (uint64_t)0, (uint64_t)0);
 }
@@ -54,7 +54,7 @@ bool journal_serial_to(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const 
                        uint32_t *serial_to)
 {
 	MDB_val key = journal_changeset_id_to_key(from, zone);
-	bool found = knot_lmdb_find(txn, &key, KNOT_LMDB_GEQ);
+	bool found = knot_lmdb_find_prefix(txn, &key);
 	if (found) {
 		*serial_to = journal_next_serial(&txn->cur_val);
 	}
@@ -66,7 +66,7 @@ bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint
 {
 	journal_changeset_id_t id = { true, 0 };
 	MDB_val key = journal_changeset_id_to_key(id, zone);
-	bool found = knot_lmdb_find(txn, &key, KNOT_LMDB_GEQ);
+	bool found = knot_lmdb_find_prefix(txn, &key);
 	if (found && serial_to != NULL) {
 		*serial_to = journal_next_serial(&txn->cur_val);
 	}
@@ -74,19 +74,19 @@ bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint
 	return found;
 }
 
-bool journal_flush_allowed(zone_journal_t *j)
+bool journal_allow_flush(zone_journal_t *j)
 {
 	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, j->zone);
 	return conf_int(&val) >= 0;
 }
 
-size_t journal_max_usage(zone_journal_t *j)
+size_t journal_conf_max_usage(zone_journal_t *j)
 {
 	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_USAGE, j->zone);
 	return conf_int(&val);
 }
 
-size_t journal_max_changesets(zone_journal_t *j)
+size_t journal_conf_max_changesets(zone_journal_t *j)
 {
 	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_DEPTH, j->zone);
 	return conf_int(&val);

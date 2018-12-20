@@ -91,6 +91,12 @@ bool knot_lmdb_next(knot_lmdb_txn_t *txn);
 
 bool knot_lmdb_is_prefix_of(MDB_val *prefix, MDB_val *of);
 
+inline static bool knot_lmdb_find_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix)
+{
+	return knot_lmdb_find(txn, prefix, KNOT_LMDB_GEQ) &&
+	       knot_lmdb_is_prefix_of(prefix, &txn->cur_key);
+}
+
 #define knot_lmdb_foreach(txn, prefix) \
 	for (bool _knot_lmdb_foreach_found = knot_lmdb_find((txn), (prefix), KNOT_LMDB_GEQ); \
 	     _knot_lmdb_foreach_found && knot_lmdb_is_prefix_of((prefix), &(txn)->cur_key); \

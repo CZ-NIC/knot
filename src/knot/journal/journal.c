@@ -1721,7 +1721,7 @@ void journal_close(journal_t *journal)
 }
 
 int journal_db_init(journal_db_t **db, const char *lmdb_dir_path, size_t lmdb_fslimit,
-                    journal_mode_t mode)
+                    int mode)
 {
 	if (*db != NULL) {
 		return KNOT_EOK;

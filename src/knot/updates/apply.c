@@ -442,7 +442,8 @@ int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch)
 
 	return KNOT_EOK;
 }
-
+// TODO fix
+/*
 int apply_journal(apply_ctx_t *ctx, journal_read_t *journal)
 {
 	if (ctx == NULL || journal == NULL) {
@@ -451,10 +452,10 @@ int apply_journal(apply_ctx_t *ctx, journal_read_t *journal)
 
 	bool in_remove_section = false;
 	knot_rrset_t rr = { 0 };
-	int ret;
+	int ret = KNOT_EOK;
 	do {
-		ret = journal_read_rrset(journal, &rr);
-		if (ret != KNOT_EOK && ret != JOURNAL_READ_END_CHANGESET) {
+		journal_read_rrset(journal, &rr);
+		if (journal_read_ret(read) > 0) {
 			break;
 		}
 		if (rr.type == KNOT_RRTYPE_SOA &&
@@ -462,11 +463,12 @@ int apply_journal(apply_ctx_t *ctx, journal_read_t *journal)
 			in_remove_section = !in_remove_section;
 		}
 		ret = in_remove_section ? apply_remove_rr(ctx, &rr) : apply_add_rr(ctx, &rr);
+		journal_read_clear_rrset(&rr);
 	} while (ret == KNOT_EOK);
 
 	return ret == JOURNAL_READ_END_READ ? KNOT_EOK : ret;
 }
-
+*/
 void update_cleanup(apply_ctx_t *ctx)
 {
 	if (ctx == NULL) {

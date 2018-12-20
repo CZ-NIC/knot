@@ -29,9 +29,9 @@ typedef struct {
 } journal_metadata_t;
 
 enum journal_metadata_flags {
-	LAST_FLUSHED_VALID   = (1 << 0), // deprecated
-	SERIAL_TO_VALID      = (1 << 1),
-	MERGED_SERIAL_VALID  = (1 << 2),
+	JOURNAL_LAST_FLUSHED_VALID   = (1 << 0), // deprecated
+	JOURNAL_SERIAL_TO_VALID      = (1 << 1),
+	JOURNAL_MERGED_SERIAL_VALID  = (1 << 2),
 };
 
 void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter);
@@ -57,7 +57,7 @@ int journal_set_flushed(zone_journal_t *j);
 int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
                  uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial);
 
-inline static bool journal_exists(zone_journal_t *j) {
+inline static bool journal_is_existing(zone_journal_t *j) {
 	bool ex = false;
 	journal_info(j, &ex, NULL, NULL, NULL, NULL);
 	return ex;

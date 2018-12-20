@@ -24,6 +24,9 @@
 #include <tap/basic.h>
 #include <tap/files.h>
 
+#include "knot/journal/journal_read.h"
+#include "knot/journal/journal_write.h"
+
 #include "libknot/libknot.h"
 #include "knot/journal/journal.c"
 #include "knot/zone/zone.h"
@@ -38,6 +41,11 @@
 char *test_dir_name;
 journal_db_t *db;
 journal_t *j;
+
+knot_lmdb_db_t jdb;
+zone_journal_t jj;
+
+unsigned env_flag;
 
 static void set_conf(int zonefile_sync, size_t journal_usage, const knot_dname_t *apex)
 {
@@ -63,7 +71,7 @@ static void unset_conf(void)
 static int randstr(char* dst, size_t len)
 {
 	for (int i = 0; i < len - 1; ++i) {
-		dst[i] = '0' + (int) (('Z'-'0') * (rand() / (RAND_MAX + 1.0)));
+		dst[i] = '0' + (int) (('9'-'0') * (rand() / (RAND_MAX + 1.0)));
 	}
 	dst[len - 1] = '\0';
 
@@ -243,34 +251,56 @@ static bool test_continuity(list_t *l)
 
 static void test_journal_db(void)
 {
-	int ret, ret2 = KNOT_EOK;
+	env_flag = journal_env_flags(JOURNAL_MODE_ASYNC);
+	knot_lmdb_init(&jdb, test_dir_name, 2048 * 1024, env_flag);
 
-	ret = journal_db_init(&db, test_dir_name, 2 * 1024 * 1024, JOURNAL_MODE_ASYNC);
-	is_int(KNOT_EOK, ret, "journal: init db (%d)", ret);
+	int ret = knot_lmdb_open(&jdb);
+	is_int(KNOT_EOK, ret, "journal: open db (%s)", knot_strerror(ret));
 
-	ret = journal_open_db(&db);
-	is_int(KNOT_EOK, ret, "journal: open db (%d)", ret);
+	ret = knot_lmdb_reconfigure(&jdb, test_dir_name, 4096 * 1024, env_flag);
+	is_int(KNOT_EOK, ret, "journal: re-open with bigger mapsize (%s)", knot_strerror(ret));
 
-	journal_db_close(&db);
-	ok(db == NULL, "journal: close and destroy db");
+	ret = knot_lmdb_reconfigure(&jdb, test_dir_name, 1024 * 1024, env_flag);
+	is_int(KNOT_EOK, ret, "journal: re-open with smaller mapsize (%s)", knot_strerror(ret));
 
-	ret = journal_db_init(&db, test_dir_name, 4 * 1024 * 1024, JOURNAL_MODE_ASYNC);
-	if (ret == KNOT_EOK) ret2 = journal_open_db(&db);
-	ok(ret == KNOT_EOK && ret2 == KNOT_EOK, "journal: open with bigger mapsize (%d, %d)", ret, ret2);
-	journal_db_close(&db);
-
-	ret = journal_db_init(&db, test_dir_name, 1024 * 1024, JOURNAL_MODE_ASYNC);
-	if (ret == KNOT_EOK) ret2 = journal_open_db(&db);
-	ok(ret == KNOT_EOK && ret2 == KNOT_EOK, "journal: open with smaller mapsize (%d, %d)", ret, ret2);
-	journal_db_close(&db);
+	knot_lmdb_deinit(&jdb);
 }
 
 /*! \brief Test behavior with real changesets. */
 static void test_store_load(const knot_dname_t *apex)
 {
-	int ret, ret2 = KNOT_EOK;
-
 	set_conf(1000, 512 * 1024, apex);
+
+	knot_lmdb_init(&jdb, test_dir_name, 1536 * 1024, env_flag);
+	assert(knot_lmdb_open(&jdb) == KNOT_EOK);
+
+	jj.db = &jdb;
+	jj.zone = apex;
+
+	/* Save and load changeset. */
+	changeset_t *m_ch = changeset_new(apex), r_ch;
+	init_random_changeset(m_ch, 0, 1, 6, apex, false);
+	int ret = journal_insert(&jj, m_ch);
+	is_int(KNOT_EOK, ret, "journal: store changeset (%s)", knot_strerror(ret));
+	ret = journal_sem_check(&jj);
+	is_int(KNOT_EOK, ret, "journal: check after store changeset (%s)", knot_strerror(ret));
+	journal_changeset_id_t id = { false, changeset_from(m_ch) };
+	journal_read_t *read = NULL;
+	ret = journal_read_begin(&jj, id, &read);
+	is_int(KNOT_EOK, ret, "journal: read_begin (%s)", knot_strerror(ret));
+	journal_read_changeset(read, &r_ch);
+	is_int(JOURNAL_READ_END_READ, journal_read_ret(read), "journal: read single changeset (%s)", knot_strerror(ret));
+	ok(changesets_eq(m_ch, &r_ch), "journal: changeset equal after read");
+	journal_read_clear_changeset(&r_ch);
+	journal_read_end(read);
+	ret = journal_set_flushed(&jj);
+	is_int(KNOT_EOK, ret, "journal: first simple flush (%s)", knot_strerror(ret));
+
+	goto end;
+
+	int ret2 = KNOT_EOK;
+
+
 
 	j = journal_new();
 	ok(j != NULL, "journal: new");
@@ -280,7 +310,6 @@ static void test_store_load(const knot_dname_t *apex)
 	is_int(KNOT_EOK, ret, "journal: open (%d, %d)", ret, ret2);
 
 	/* Save and load changeset. */
-	changeset_t *m_ch = changeset_new(apex);
 	init_random_changeset(m_ch, 0, 1, 128, apex, false);
 	ret = journal_store_changeset(j, m_ch);
 	is_int(KNOT_EOK, ret, "journal: store changeset (%d)", ret);
@@ -495,8 +524,9 @@ static void test_store_load(const knot_dname_t *apex)
 
 	ret = journal_scrape(j);
 	ok(ret == KNOT_EOK, "journal: scrape must be ok");
-
+end:
 	unset_conf();
+	changeset_free(m_ch);
 }
 
 const uint8_t *rdA = (const uint8_t *) "\x01\x02\x03\x04";
@@ -733,13 +763,14 @@ int main(int argc, char *argv[])
 
 	test_store_load(apex);
 
-	test_merge(apex);
+	//test_merge(apex);
 
-	test_stress(j, apex);
+	//test_stress(j, apex);
 
-	journal_close(j);
-	journal_free(&j);
-	journal_db_close(&db);
+	//journal_close(j);
+	//journal_free(&j);
+	//journal_db_close(&db);
+	knot_lmdb_deinit(&jdb);
 
 	test_rm_rf(test_dir_name);
 	free(test_dir_name);

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "knot/conf/schema.h"
 #include "knot/journal/knot_lmdb.h"
 #include "knot/updates/changesets.h"
 #include "libknot/dname.h"
@@ -27,11 +28,16 @@ typedef struct {
 
 typedef struct {
 	knot_lmdb_db_t *db;
-	knot_dname_t *zone;
+	const knot_dname_t *zone;
 } zone_journal_t;
 
 #define JOURNAL_CHUNK_MAX (70 * 1024)
 #define JOURNAL_HEADER_SIZE (32)
+
+inline static unsigned journal_env_flags(int journal_mode)
+{
+	return journal_mode == JOURNAL_MODE_ASYNC ? (MDB_WRITEMAP | MDB_MAPASYNC) : 0;
+}
 
 MDB_val journal_changeset_id_to_key(journal_changeset_id_t id, const knot_dname_t *zone);
 
@@ -54,8 +60,8 @@ void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter
 
 bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint32_t *serial_to);
 
-bool journal_flush_allowed(zone_journal_t *j);
+bool journal_allow_flush(zone_journal_t *j);
 
-size_t journal_max_usage(zone_journal_t *j);
+size_t journal_conf_max_usage(zone_journal_t *j);
 
-size_t journal_max_changesets(zone_journal_t *j);
+size_t journal_conf_max_changesets(zone_journal_t *j);

@@ -150,20 +150,21 @@ static int first_digit(char * of)
 void journal_load_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, journal_metadata_t *md)
 {
 	memset(md, 0, sizeof(*md));
-	(void)get_metadata(txn, NULL, "version");
-	switch (first_digit(txn->cur_val.mv_data)) {
-	case 3:
-		// TODO warning about downgrade
-		// FALLTHROUGH
-	case 1:
-		// still supported
-		// FALLTHROUGH
-	case 2:
-		// normal operation
-		break;
-	default:
-		txn->ret = KNOT_ENOTSUP;
-		return;
+	if (get_metadata(txn, NULL, "version")) {
+		switch (first_digit(txn->cur_val.mv_data)) {
+		case 3:
+			// TODO warning about downgrade
+			// FALLTHROUGH
+		case 1:
+			// still supported
+			// FALLTHROUGH
+		case 2:
+			// normal operation
+			break;
+		default:
+			txn->ret = KNOT_ENOTSUP;
+			return;
+		}
 	}
 	md->_new_zone = !get_metadata32(txn, zone, "flags", &md->flags);
 	(void)get_metadata32(txn, zone, "first_serial",    &md->first_serial);
@@ -173,13 +174,13 @@ void journal_load_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, journ
 	(void)get_metadata32(txn, zone, "changeset_count", &md->changeset_count);
 	if (!get_metadata32(txn, zone, "flushed_upto", &md->flushed_upto)) {
 		// importing from version 1.0
-		if ((md->flags & LAST_FLUSHED_VALID)) {
+		if ((md->flags & JOURNAL_LAST_FLUSHED_VALID)) {
 			journal_changeset_id_t last_flushed = { false, 0 };
 			if (!get_metadata32(txn, zone, "last_flushed", &last_flushed.serial) ||
 			    !journal_serial_to(txn, last_flushed, zone, &md->flushed_upto)) {
 				txn->ret = KNOT_EMALF;
 			} else {
-				md->flags &= ~LAST_FLUSHED_VALID;
+				md->flags &= ~JOURNAL_LAST_FLUSHED_VALID;
 			}
 		} else {
 			md->flushed_upto = md->first_serial;
@@ -199,7 +200,7 @@ void journal_store_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, cons
 	set_metadata(txn, zone, "flags",           &md->flags,           sizeof(md->flags),           true);
 	set_metadata(txn, NULL, "version", "2.0", 4, false);
 	if (md->_new_zone) {
-		uint64_t journal_count;
+		uint64_t journal_count = 0;
 		(void)get_metadata64(txn, NULL, "journal_count", &journal_count);
 		++journal_count;
 		set_metadata(txn, NULL, "journal_count", &journal_count, sizeof(journal_count), true);
@@ -212,11 +213,11 @@ void journal_metadata_after_delete(journal_metadata_t *md, uint32_t deleted_upto
 	if (deleted_count == 0) {
 		return;
 	}
-	assert((md->flags & SERIAL_TO_VALID));
+	assert((md->flags & JOURNAL_SERIAL_TO_VALID));
 	if (deleted_upto == md->serial_to) {
 		assert(md->flushed_upto == md->serial_to);
 		assert(md->changeset_count == deleted_count);
-		md->flags &= ~SERIAL_TO_VALID;
+		md->flags &= ~JOURNAL_SERIAL_TO_VALID;
 	}
 	md->first_serial = deleted_upto;
 	md->changeset_count -= deleted_count;
@@ -225,11 +226,11 @@ void journal_metadata_after_delete(journal_metadata_t *md, uint32_t deleted_upto
 void journal_metadata_after_merge(journal_metadata_t *md, journal_changeset_id_t merged_serial,
                                   uint32_t merged_serial_to)
 {
-	if ((md->flags & MERGED_SERIAL_VALID)) {
+	if ((md->flags & JOURNAL_MERGED_SERIAL_VALID)) {
 		assert(merged_serial.serial == md->merged_serial);
 	} else if (!merged_serial.zone_in_journal) {
 		md->merged_serial = merged_serial.serial;
-		md->flags |= MERGED_SERIAL_VALID;
+		md->flags |= JOURNAL_MERGED_SERIAL_VALID;
 	}
 	md->flushed_upto = merged_serial_to;
 }
@@ -240,7 +241,8 @@ void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint
 		md->first_serial = serial;
 	}
 	md->serial_to = serial_to;
-	md->flags |= SERIAL_TO_VALID;
+	md->flags |= JOURNAL_SERIAL_TO_VALID;
+	md->changeset_count++;
 }
 
 int journal_scrape_with_md(zone_journal_t *j)
@@ -249,7 +251,7 @@ int journal_scrape_with_md(zone_journal_t *j)
 	knot_lmdb_begin(j->db, &txn, true);
 
 	update_last_inserter(&txn, NULL);
-	MDB_val prefix = { knot_dname_size(j->zone), j->zone };
+	MDB_val prefix = { knot_dname_size(j->zone), (void *)j->zone };
 	knot_lmdb_del_prefix(&txn, &prefix);
 
 	knot_lmdb_commit(&txn);
@@ -285,7 +287,7 @@ int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
 	journal_metadata_t md = { 0 };
 	knot_lmdb_begin(j->db, &txn, false);
 	journal_load_metadata(&txn, j->zone, &md);
-	*exists = (md.flags & SERIAL_TO_VALID);
+	*exists = (md.flags & JOURNAL_SERIAL_TO_VALID);
 	if (first_serial != NULL) {
 		*first_serial = md.first_serial;
 	}
@@ -293,7 +295,7 @@ int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
 		*serial_to = md.serial_to;
 	}
 	if (has_merged != NULL) {
-		*has_merged = (md.flags & MERGED_SERIAL_VALID);
+		*has_merged = (md.flags & JOURNAL_MERGED_SERIAL_VALID);
 	}
 	if (merged_serial != NULL) {
 		*merged_serial = md.merged_serial;

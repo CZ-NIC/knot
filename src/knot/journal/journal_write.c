@@ -57,10 +57,10 @@ void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id
 	if (txn->ret != KNOT_EOK) {
 		return;
 	}
-	txn->ret = journal_read_changeset(read, &merge);
-	while (txn->ret == KNOT_EOK) {
-		txn->ret = journal_read_rrset(read, &rr);
-		if (txn->ret != KNOT_EOK) {
+	journal_read_changeset(read, &merge);
+	while (journal_read_ret(read) == KNOT_EOK && txn->ret == KNOT_EOK) {
+		journal_read_rrset(read, &rr);
+		if (journal_read_ret(read) != KNOT_EOK) {
 			break;
 		}
 		if (rr.type == KNOT_RRTYPE_SOA &&
@@ -70,12 +70,13 @@ void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id
 		txn->ret = in_remove_section ?
 			changeset_add_removal(&merge, &rr, CHANGESET_CHECK) :
 			changeset_add_addition(&merge, &rr, CHANGESET_CHECK);
+		journal_read_clear_rrset(&rr);
 	}
+	txn->ret = journal_read_get_error(read, txn->ret);
 	journal_read_end(read);
-	txn->ret = (txn->ret == JOURNAL_READ_END_READ ? KNOT_EOK : txn->ret);
 	journal_write_changeset(txn, &merge);
-	knot_rrset_clear(&rr, NULL);
-	changeset_clear(&merge);
+	//knot_rrset_clear(&rr, NULL);
+	journal_read_clear_changeset(&merge);
 }
 
 static bool delete_one(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const knot_dname_t *zone,
@@ -111,7 +112,7 @@ bool journal_delete(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const kno
 void journal_try_flush(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata_t *md)
 {
 	journal_changeset_id_t id = { true, 0 };
-	bool flush = journal_flush_allowed(j);
+	bool flush = journal_allow_flush(j);
 	if (journal_have_zone_in_j(txn, j->zone, NULL)) {
 		journal_merge(j, txn, id);
 		if (!flush) {
@@ -119,18 +120,18 @@ void journal_try_flush(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata
 		}
 	} else if (!flush) {
 		id.zone_in_journal = false;
-		id.serial = ((md->flags & MERGED_SERIAL_VALID) ? md->merged_serial : md->first_serial);
+		id.serial = ((md->flags & JOURNAL_MERGED_SERIAL_VALID) ? md->merged_serial : md->first_serial);
 		journal_merge(j, txn, id);
 		journal_metadata_after_merge(md, id, md->serial_to);
 	}
 
 	if (flush) {
 		// delete merged serial if (very unlikely) exists
-		if ((md->flags & MERGED_SERIAL_VALID)) {
+		if ((md->flags & JOURNAL_MERGED_SERIAL_VALID)) {
 			journal_changeset_id_t merged = { false, md->merged_serial };
 			size_t unused;
 			(void)delete_one(txn, merged, j->zone, &unused, (uint32_t *)&unused);
-			md->flags &= ~MERGED_SERIAL_VALID;
+			md->flags &= ~JOURNAL_MERGED_SERIAL_VALID;
 		}
 
 		// commit partial job and ask zone to flush itself
@@ -182,13 +183,13 @@ int journal_insert_zone(zone_journal_t *j, const changeset_t *ch)
 	knot_lmdb_begin(j->db, &txn, true);
 
 	update_last_inserter(&txn, j->zone);
-	MDB_val prefix = { knot_dname_size(j->zone), j->zone };
+	MDB_val prefix = { knot_dname_size(j->zone), (void *)j->zone };
 	knot_lmdb_del_prefix(&txn, &prefix);
 
 	journal_write_changeset(&txn, ch);
 
 	journal_metadata_t md = { 0 };
-	md.flags = SERIAL_TO_VALID;
+	md.flags = JOURNAL_SERIAL_TO_VALID;
 	md.serial_to = changeset_to(ch);
 	md.first_serial = md.serial_to;
 	journal_store_metadata(&txn, j->zone, &md);
@@ -200,7 +201,7 @@ int journal_insert_zone(zone_journal_t *j, const changeset_t *ch)
 int journal_insert(zone_journal_t *j, const changeset_t *ch)
 {
 	size_t ch_size = changeset_serialized_size(ch);
-	size_t max_usage = journal_max_usage(j);
+	size_t max_usage = journal_conf_max_usage(j);
 	if (ch_size >= max_usage) {
 		return KNOT_ESPACE;
 	}
@@ -214,7 +215,7 @@ int journal_insert(zone_journal_t *j, const changeset_t *ch)
 	journal_load_metadata(&txn, j->zone, &md);
 
 	update_last_inserter(&txn, j->zone);
-	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, journal_max_changesets(j) - 1);
+	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, journal_conf_max_changesets(j) - 1);
 
 	// avoid cycle
 	journal_changeset_id_t conflict = { false, changeset_to(ch) };
@@ -223,11 +224,11 @@ int journal_insert(zone_journal_t *j, const changeset_t *ch)
 	}
 
 	// avoid discontinuity
-	if ((md.flags & SERIAL_TO_VALID) && md.serial_to != changeset_from(ch)) {
+	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && md.serial_to != changeset_from(ch)) {
 		if (journal_have_zone_in_j(&txn, j->zone, NULL)) {
 			return KNOT_ESEMCHECK;
 		} else {
-			MDB_val prefix = { knot_dname_size(j->zone), j->zone };
+			MDB_val prefix = { knot_dname_size(j->zone), (void *)j->zone };
 			knot_lmdb_del_prefix(&txn, &prefix);
 			memset(&md, 0, sizeof(md));
 		}
