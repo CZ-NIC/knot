@@ -20,11 +20,6 @@
 
 typedef struct journal_read journal_read_t;
 
-enum {
-	JOURNAL_READ_END_CHANGESET = 1,
-	JOURNAL_READ_END_READ = 2,
-};
-
 typedef int (*journal_walk_cb_t)(bool special, const changeset_t *ch, void *ctx);
 
 int journal_read_ret(const journal_read_t *ctx);
@@ -33,11 +28,11 @@ int journal_read_get_error(const journal_read_t *ctx, int another_error);
 
 int journal_read_begin(zone_journal_t *j, journal_changeset_id_t from, journal_read_t **ctx);
 
-void journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr);
+bool journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr, bool allow_next_changeset);
 
 void journal_read_clear_rrset(knot_rrset_t *rr);
 
-void journal_read_changeset(journal_read_t *ctx, changeset_t *ch);
+bool journal_read_changeset(journal_read_t *ctx, changeset_t *ch);
 
 void journal_read_clear_changeset(changeset_t *ch);
 

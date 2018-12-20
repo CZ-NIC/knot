@@ -71,7 +71,7 @@ static void unset_conf(void)
 static int randstr(char* dst, size_t len)
 {
 	for (int i = 0; i < len - 1; ++i) {
-		dst[i] = '0' + (int) (('9'-'0') * (rand() / (RAND_MAX + 1.0)));
+		dst[i] = '0' + (int) (('Z'-'0') * (rand() / (RAND_MAX + 1.0)));
 	}
 	dst[len - 1] = '\0';
 
@@ -278,8 +278,8 @@ static void test_store_load(const knot_dname_t *apex)
 	jj.zone = apex;
 
 	/* Save and load changeset. */
-	changeset_t *m_ch = changeset_new(apex), r_ch;
-	init_random_changeset(m_ch, 0, 1, 6, apex, false);
+	changeset_t *m_ch = changeset_new(apex), r_ch, e_ch;
+	init_random_changeset(m_ch, 0, 1, 128, apex, false);
 	int ret = journal_insert(&jj, m_ch);
 	is_int(KNOT_EOK, ret, "journal: store changeset (%s)", knot_strerror(ret));
 	ret = journal_sem_check(&jj);
@@ -288,8 +288,14 @@ static void test_store_load(const knot_dname_t *apex)
 	journal_read_t *read = NULL;
 	ret = journal_read_begin(&jj, id, &read);
 	is_int(KNOT_EOK, ret, "journal: read_begin (%s)", knot_strerror(ret));
-	journal_read_changeset(read, &r_ch);
-	is_int(JOURNAL_READ_END_READ, journal_read_ret(read), "journal: read single changeset (%s)", knot_strerror(ret));
+	bool readch = journal_read_changeset(read, &r_ch);
+	ok(readch, "journal: read single changeset");
+	ret = journal_read_get_error(read, KNOT_EOK);
+	is_int(KNOT_EOK, ret, "journal: read ctx status after successful read (%s)", knot_strerror(ret));
+	readch = journal_read_changeset(read, &e_ch);
+	ok(!readch, "journal: no-read nonexisting changeset");
+	ret = journal_read_get_error(read, KNOT_EOK);
+	is_int(KNOT_EOK, ret, "journal: read ctx status after unsuccessful read (%s)", knot_strerror(ret));
 	ok(changesets_eq(m_ch, &r_ch), "journal: changeset equal after read");
 	journal_read_clear_changeset(&r_ch);
 	journal_read_end(read);

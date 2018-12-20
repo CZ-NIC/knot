@@ -58,11 +58,7 @@ void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id
 		return;
 	}
 	journal_read_changeset(read, &merge);
-	while (journal_read_ret(read) == KNOT_EOK && txn->ret == KNOT_EOK) {
-		journal_read_rrset(read, &rr);
-		if (journal_read_ret(read) != KNOT_EOK) {
-			break;
-		}
+	while (txn->ret == KNOT_EOK && journal_read_rrset(read, &rr, true)) {
 		if (rr.type == KNOT_RRTYPE_SOA &&
 		    knot_dname_cmp(rr.owner, j->zone) == 0) {
 			in_remove_section = !in_remove_section;
