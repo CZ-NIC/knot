@@ -89,7 +89,7 @@ static bool update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
 		return true;
 	}
 
-	acl_update_owner_match_t match;
+	acl_update_owner_match_t match = ACL_UPDATE_MATCH_SUBEQ;
 	if (owner != ACL_UPDATE_OWNER_NONE) {
 		val = conf_id_get(conf, C_ACL, C_UPDATE_OWNER_MATCH, acl);
 		match = conf_opt(&val);
