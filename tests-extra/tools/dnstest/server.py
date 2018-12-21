@@ -139,6 +139,7 @@ class Server(object):
         self.disable_notify = None
         self.zonefile_sync = "1d"
         self.journal_db_size = 20 * 1024 * 1024
+        self.max_journal_usage = 5 * 1024 * 1024
         self.timer_db_size = 1 * 1024 * 1024
         self.kasp_db_size = 10 * 1024 * 1024
         self.zone_size_limit = None
@@ -1213,6 +1214,7 @@ class Knot(Server):
         s.item_str("kasp-db", self.keydir)
         s.item_str("max-kasp-db-size", self.kasp_db_size)
         s.item_str("max-journal-db-size", self.journal_db_size)
+        s.item_str("max-journal-usage", self.max_journal_usage)
         s.item_str("max-timer-db-size", self.timer_db_size)
         s.item_str("semantic-checks", "on")
         if self.disable_any:
