@@ -28,7 +28,6 @@
 #include "knot/journal/journal_write.h"
 
 #include "libknot/libknot.h"
-#include "knot/journal/journal.c"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-diff.h"
 #include "libknot/rrtype/soa.h"
@@ -39,8 +38,6 @@
 #define MIN_SOA_SIZE 22
 
 char *test_dir_name;
-journal_db_t *db;
-journal_t *j;
 
 knot_lmdb_db_t jdb;
 zone_journal_t jj;
@@ -647,21 +644,15 @@ static void test_merge(const knot_dname_t *apex)
 	unset_conf();
 }
 
-static void test_stress_base(journal_t *journal, const knot_dname_t *apex,
+static void test_stress_base(const knot_dname_t *apex,
                              size_t update_size, size_t file_size)
 {
 	int ret;
 	uint32_t serial = 0;
 
-	journal_close(journal);
-	journal_db_close(&db);
-	db = NULL;
-	ret = journal_db_init(&db, test_dir_name, file_size, JOURNAL_MODE_ASYNC);
-	assert(ret == KNOT_EOK);
-	ret = journal_open_db(&db);
-	assert(ret == KNOT_EOK);
-	ret = journal_open(journal, &db, apex);
-	assert(ret == KNOT_EOK);
+
+	ret = knot_lmdb_reconfigure(&jdb, test_dir_name, file_size, journal_env_flags(JOURNAL_MODE_ASYNC));
+	is_int(KNOT_EOK, ret, "journal: recofigure to mapsize %zu (%s)", file_size, knot_strerror(ret));
 
 	set_conf(1000, file_size / 2, apex);
 
@@ -674,7 +665,7 @@ static void test_stress_base(journal_t *journal, const knot_dname_t *apex,
 		serial = 0;
 		while (true) {
 			changeset_set_soa_serials(&ch, serial, serial + 1, apex);
-			ret = journal_store_changeset(journal, &ch);
+			ret = journal_insert(&jj, &ch);
 			if (ret == KNOT_EOK) {
 				serial++;
 			} else {
@@ -682,8 +673,11 @@ static void test_stress_base(journal_t *journal, const knot_dname_t *apex,
 			}
 		}
 
-		ret = journal_flush(journal);
-		ok(serial > 0 && ret == KNOT_EOK, "journal: pass #%d fillup run (%d inserts)", i, serial);
+		ret = journal_set_flushed(&jj);
+		if (ret == KNOT_EOK) {
+			ret = journal_sem_check(&jj);
+		}
+		ok(serial > 0 && ret == KNOT_EOK, "journal: pass #%d fillup run (%d inserts) (%s)", i, serial, knot_strerror(ret));
 	}
 
 	changeset_clear(&ch);
@@ -692,16 +686,16 @@ static void test_stress_base(journal_t *journal, const knot_dname_t *apex,
 }
 
 /*! \brief Test behavior when writing to jurnal and flushing it. */
-static void test_stress(journal_t *journal, const knot_dname_t *apex)
+static void test_stress(const knot_dname_t *apex)
 {
 	diag("stress test: small data");
-	test_stress_base(journal, apex, 40, (1024 + 512) * 1024);
+	test_stress_base(apex, 40, (1024 + 512) * 1024);
 
 	diag("stress test: medium data");
-	test_stress_base(journal, apex, 400, 3 * 1024 * 1024);
+	test_stress_base(apex, 400, 3 * 1024 * 1024);
 
 	diag("stress test: large data");
-	test_stress_base(journal, apex, 4000, 10 * 1024 * 1024);
+	test_stress_base(apex, 4000, 10 * 1024 * 1024);
 }
 
 int main(int argc, char *argv[])
@@ -718,11 +712,8 @@ int main(int argc, char *argv[])
 
 	test_merge(apex);
 
-	//test_stress(j, apex);
+	test_stress(apex);
 
-	//journal_close(j);
-	//journal_free(&j);
-	//journal_db_close(&db);
 	knot_lmdb_deinit(&jdb);
 
 	test_rm_rf(test_dir_name);
