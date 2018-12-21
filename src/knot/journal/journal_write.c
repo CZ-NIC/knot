@@ -214,12 +214,6 @@ int journal_insert(zone_journal_t *j, const changeset_t *ch)
 	update_last_inserter(&txn, j->zone);
 	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, journal_conf_max_changesets(j) - 1);
 
-	// avoid cycle
-	journal_changeset_id_t conflict = { false, changeset_to(ch) };
-	if (journal_contains(&txn, conflict, j->zone)) {
-		journal_fix_occupation(j, &txn, &md, INT64_MAX, 1);
-	}
-
 	// avoid discontinuity
 	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && md.serial_to != changeset_from(ch)) {
 		if (journal_have_zone_in_j(&txn, j->zone, NULL)) {
@@ -229,6 +223,12 @@ int journal_insert(zone_journal_t *j, const changeset_t *ch)
 			knot_lmdb_del_prefix(&txn, &prefix);
 			memset(&md, 0, sizeof(md));
 		}
+	}
+
+	// avoid cycle
+	journal_changeset_id_t conflict = { false, changeset_to(ch) };
+	if (journal_contains(&txn, conflict, j->zone)) {
+		journal_fix_occupation(j, &txn, &md, INT64_MAX, 1);
 	}
 
 	journal_write_changeset(&txn, ch);
