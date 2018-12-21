@@ -29,13 +29,11 @@ master.dnssec(zone).enable = "true"
 t.start()
 
 master.zone_wait(zone)
-slave.zone_wait(zone)
+serial = slave.zone_wait(zone)
 
 for i in range(1, 8):
     master.ctl("zone-sign")
-    t.sleep(2) # slave should merge the journal twice into the "bootstrap" changeset
-
-t.sleep(2)
+    serial = slave.zone_wait(zone, serial=serial)
 
 slave.stop()
 slave.start() # now the slave starts the zone from zone-in-journal and does not XFR
