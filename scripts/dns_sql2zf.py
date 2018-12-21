@@ -167,10 +167,13 @@ def print_domain(domain, change_type = 0, txn = None):
     global slave_mode
     dn = domain_id2name(domain, txn) if str(domain).isdigit() else domain
     if not slave_mode:
-        f = open(zone_storage(dn), "w")
+        file_name = zone_storage(dn)
+        tmp_name = "%s.tmp" % file_name
+        f = open(tmp_name, "w")
         for r in domain_get_records(domain, txn):
             print_record(r, f)
         f.close()
+        os.rename(tmp_name, file_name)
     if knotc_socket is not None:
         knotc_send(change_type, dn)
     print("Updated zone %s" % dn)
