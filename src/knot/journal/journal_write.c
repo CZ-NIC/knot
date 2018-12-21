@@ -47,7 +47,8 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 	// return value is in the txn
 }
 
-void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id_t into)
+void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id_t into,
+                   uint32_t *original_serial_to)
 {
 	changeset_t merge;
 	journal_read_t *read = NULL;
@@ -58,14 +59,19 @@ void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id
 		return;
 	}
 	journal_read_changeset(read, &merge);
+	*original_serial_to = changeset_to(&merge);
 	while (txn->ret == KNOT_EOK && journal_read_rrset(read, &rr, true)) {
 		if (rr.type == KNOT_RRTYPE_SOA &&
 		    knot_dname_cmp(rr.owner, j->zone) == 0) {
 			in_remove_section = !in_remove_section;
+			if (!in_remove_section) {
+				txn->ret = changeset_add_addition(&merge, &rr, CHANGESET_CHECK);
+			}
+		} else {
+			txn->ret = in_remove_section ?
+			    changeset_add_removal(&merge, &rr, CHANGESET_CHECK) :
+			    changeset_add_addition(&merge, &rr, CHANGESET_CHECK);
 		}
-		txn->ret = in_remove_section ?
-			changeset_add_removal(&merge, &rr, CHANGESET_CHECK) :
-			changeset_add_addition(&merge, &rr, CHANGESET_CHECK);
 		journal_read_clear_rrset(&rr);
 	}
 	txn->ret = journal_read_get_error(read, txn->ret);
@@ -97,9 +103,10 @@ bool journal_delete(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const kno
 	*freed_count = 0;
 	size_t freed_now;
 	while ((from.zone_in_journal || from.serial != stop_at_serial) &&
-	       delete_one(txn, from, zone, &freed_now, stopped_at) &&
-	       (*freed_size += freed_now, ++(*freed_count), 1) &&
-	       (*freed_size < tofree_size || *freed_count < tofree_count)) {
+	       (*freed_size < tofree_size || *freed_count < tofree_count) &&
+	       delete_one(txn, from, zone, &freed_now, stopped_at)) {
+		*freed_size += freed_now;
+		++(*freed_count);
 		from.serial = *stopped_at;
 		from.zone_in_journal = false;
 	}
@@ -110,16 +117,17 @@ void journal_try_flush(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata
 {
 	journal_changeset_id_t id = { true, 0 };
 	bool flush = journal_allow_flush(j);
+	uint32_t merge_orig;
 	if (journal_have_zone_in_j(txn, j->zone, NULL)) {
-		journal_merge(j, txn, id);
+		journal_merge(j, txn, id, &merge_orig);
 		if (!flush) {
-			journal_metadata_after_merge(md, id, md->serial_to);
+			journal_metadata_after_merge(md, id, md->serial_to, merge_orig);
 		}
 	} else if (!flush) {
 		id.zone_in_journal = false;
 		id.serial = ((md->flags & JOURNAL_MERGED_SERIAL_VALID) ? md->merged_serial : md->first_serial);
-		journal_merge(j, txn, id);
-		journal_metadata_after_merge(md, id, md->serial_to);
+		journal_merge(j, txn, id, &merge_orig);
+		journal_metadata_after_merge(md, id, md->serial_to, merge_orig);
 	}
 
 	if (flush) {
@@ -147,9 +155,9 @@ void journal_fix_occupation(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_met
 	int64_t need_tofree = (int64_t)occupied - max_usage;
 	size_t count = md->changeset_count, removed;
 	ssize_t need_todel = (ssize_t)count - max_count;
-	journal_changeset_id_t from = { false, md->first_serial };
 
 	while ((need_tofree > 0 || need_todel > 0) && txn->ret == KNOT_EOK) {
+		journal_changeset_id_t from = { false, md->first_serial };
 		freed = 0;
 		removed = 0;
 		journal_delete(txn, from, j->zone, MAX(need_tofree, 0), MAX(need_todel, 0), md->flushed_upto, &freed, &removed, &from.serial);

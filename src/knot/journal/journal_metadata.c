@@ -226,15 +226,17 @@ void journal_metadata_after_delete(journal_metadata_t *md, uint32_t deleted_upto
 }
 
 void journal_metadata_after_merge(journal_metadata_t *md, journal_changeset_id_t merged_serial,
-                                  uint32_t merged_serial_to)
+                                  uint32_t merged_serial_to, uint32_t original_serial_to)
 {
+	md->flushed_upto = merged_serial_to;
 	if ((md->flags & JOURNAL_MERGED_SERIAL_VALID)) {
 		assert(merged_serial.serial == md->merged_serial);
 	} else if (!merged_serial.zone_in_journal) {
 		md->merged_serial = merged_serial.serial;
 		md->flags |= JOURNAL_MERGED_SERIAL_VALID;
+		assert(merged_serial.serial == md->first_serial);
+		journal_metadata_after_delete(md, original_serial_to, 1); // the merged changeset writes itself instead of first one
 	}
-	md->flushed_upto = merged_serial_to;
 }
 
 void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint32_t serial_to)

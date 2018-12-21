@@ -296,6 +296,7 @@ static int load_j_one(zone_journal_t *zj, journal_changeset_id_t id, journal_rea
 static int load_j_list(zone_journal_t *zj, journal_changeset_id_t id, journal_read_t **read, list_t *list)
 {
 	changeset_t *ch;
+	init_list(list);
 	int ret = journal_read_begin(zj, id, read);
 	if (ret == KNOT_EOK) {
 		while ((ch = calloc(1, sizeof(*ch))) != NULL &&
@@ -340,7 +341,6 @@ static void test_store_load(const knot_dname_t *apex)
 	is_int(KNOT_EOK, ret, "journal: first simple flush (%s)", knot_strerror(ret));
 
 	list_t l, k;
-	init_list(&l);
 	init_list(&k);
 	uint32_t serial = 1;
 	id.serial = 1;
@@ -366,20 +366,17 @@ static void test_store_load(const knot_dname_t *apex)
 	changesets_free(&l);
 	journal_read_end(read);
 
-	init_list(&l);
 	ret = load_j_list(&jj, id, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: load list 2nd (%s)", knot_strerror(ret));
 	ok(changesets_list_eq(&l, &k), "journal: changeset lists equal after 2nd read");
 	changesets_free(&l);
 	journal_read_end(read);
 
-
 	ret = journal_set_flushed(&jj);
 	is_int(KNOT_EOK, ret, "journal: flush after overfill (%s)", knot_strerror(ret));
 	ret = journal_sem_check(&jj);
 	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
 
-	init_list(&l);
 	ret = load_j_list(&jj, id, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: load list (%s)", knot_strerror(ret));
 	ok(changesets_list_eq(&l, &k), "journal: changeset lists equal after flush");
@@ -387,7 +384,6 @@ static void test_store_load(const knot_dname_t *apex)
 	journal_read_end(read);
 
 	changesets_free(&k);
-	init_list(&l);
 
 	changeset_t ch;
 	ret = changeset_init(&ch, apex);
@@ -414,7 +410,6 @@ static void test_store_load(const knot_dname_t *apex)
 	is_int(KNOT_EOK, ret, "journal: insert discontinuous changeset (%s)", knot_strerror(ret));
 	ret = journal_sem_check(&jj);
 	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
-	init_list(&l);
 	ret = load_j_list(&jj, id, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: read after discontinuity (%s)", knot_strerror(ret));
 	is_int(1, list_size(&l), "journal: dicontinuity caused journal to drop");
@@ -448,7 +443,6 @@ static void test_store_load(const knot_dname_t *apex)
 	ret = journal_read_begin(&jj, id, &read);
 	is_int(KNOT_ENOENT, ret, "journal: cycle removed second changeset (%d should= %d)", ret, KNOT_ENOENT);
 	id.serial = 4294967294;
-	init_list(&l);
 	ret = load_j_list(&jj, id, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: read after cycle (%s)", knot_strerror(ret));
 	ok(3 >= list_size(&l), "journal: cycle caused journal to partly drop");
@@ -466,7 +460,6 @@ static void test_store_load(const knot_dname_t *apex)
 	init_random_changeset(&r_ch, 1, 2, 200, apex, false);
 	ret = journal_insert(&jj, &r_ch);
 	is_int(KNOT_EOK, ret, "journal: insert after zone-in-journal (%s)", knot_strerror(ret));
-	init_list(&l);
 	id.zone_in_journal = true;
 	ret = load_j_list(&jj, id, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: load zone-in-journal (%s)", knot_strerror(ret));
@@ -590,11 +583,8 @@ static changeset_t * tm_chs(const knot_dname_t * apex, int x)
 
 static int merged_present(void)
 {
-	local_txn_t(txn, j);
-	txn_begin(txn, 0);
-	int res = md_flag(txn, MERGED_SERIAL_VALID);
-	txn_abort(txn);
-	return res;
+	bool exists, has_merged;
+	return journal_info(&jj, &exists, NULL, NULL, &has_merged, NULL) == KNOT_EOK && exists && has_merged;
 }
 
 static void test_merge(const knot_dname_t *apex)
@@ -603,46 +593,54 @@ static void test_merge(const knot_dname_t *apex)
 	list_t l;
 
 	// allow merge
-	set_conf(-1, 512 * 1024, apex);
-	ok(journal_merge_allowed(j), "journal: merge allowed");
+	set_conf(-1, 100 * 1024, apex);
+	ok(!journal_allow_flush(&jj), "journal: merge allowed");
 
-	ret = journal_drop_changesets(j);
+	ret = journal_scrape_with_md(&jj);
 	is_int(KNOT_EOK, ret, "journal: journal_drop_changesets must be ok");
 
 	// insert stuff and check the merge
 	for (i = 0; !merged_present() && i < 40000; i++) {
-		ret = journal_store_changeset(j, tm_chs(apex, i));
+		ret = journal_insert(&jj, tm_chs(apex, i));
 		is_int(KNOT_EOK, ret, "journal: journal_store_changeset must be ok");
 	}
-	init_list(&l);
-	ret = journal_load_changesets(j, &l, 0);
+	ret = journal_sem_check(&jj);
+	is_int(KNOT_EOK, ret, "journal: sem check (%s)", knot_strerror(ret));
+	journal_changeset_id_t id = { false, 0 };
+	journal_read_t *read = NULL;
+	ret = load_j_list(&jj, id, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: journal_load_changesets must be ok");
+	assert(ret == KNOT_EOK);
 	ok(list_size(&l) == 2, "journal: read the merged and one following");
 	changeset_t * mch = (changeset_t *)HEAD(l);
 	ok(list_size(&l) >= 1 && tm_rrcnt(mch, 1) == 2, "journal: merged additions # = 2");
 	ok(list_size(&l) >= 1 && tm_rrcnt(mch, -1) == 1, "journal: merged removals # = 1");
 	changesets_free(&l);
+	journal_read_end(read);
 
 	// insert one more and check the #s of results
-	journal_store_changeset(j, tm_chs(apex, i));
-	init_list(&l);
-	ret = journal_load_changesets(j, &l, 0);
+	ret = journal_insert(&jj, tm_chs(apex, i));
+	is_int(KNOT_EOK, ret, "journal: insert one more (%s)", knot_strerror(ret));
+	ret = load_j_list(&jj, id, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: journal_load_changesets2 must be ok");
 	ok(list_size(&l) == 3, "journal: read merged together with new changeset");
 	changesets_free(&l);
-	init_list(&l);
-	ret = journal_load_changesets(j, &l, (uint32_t) (i - 3));
+	journal_read_end(read);
+	id.serial = i - 3;
+	ret = load_j_list(&jj, id, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: journal_load_changesets3 must be ok");
 	ok(list_size(&l) == 4, "journal: read short history of merged/unmerged changesets");
 	changesets_free(&l);
+	journal_read_end(read);
 
-	ret = journal_drop_changesets(j);
+
+	ret = journal_scrape_with_md(&jj);
 	assert(ret == KNOT_EOK);
 
 	// disallow merge
 	unset_conf();
 	set_conf(1000, 512 * 1024, apex);
-	ok(!journal_merge_allowed(j), "journal: merge disallowed");
+	ok(journal_allow_flush(&jj), "journal: merge disallowed");
 
 	tm_rrs(NULL, 0);
 	tm_chs(NULL, 0);
@@ -718,7 +716,7 @@ int main(int argc, char *argv[])
 
 	test_store_load(apex);
 
-	//test_merge(apex);
+	test_merge(apex);
 
 	//test_stress(j, apex);
 
