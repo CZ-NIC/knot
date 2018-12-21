@@ -397,13 +397,13 @@ static bool make_key_part(void *key_data, size_t key_len, const char *format, va
 			wire_ctx_write_u8(&wire, va_arg(arg, int));
 			break;
 		case 'H':
-			wire_ctx_write_u16(&wire, htobe16(va_arg(arg, int)));
+			wire_ctx_write_u16(&wire, va_arg(arg, int));
 			break;
 		case 'I':
-			wire_ctx_write_u32(&wire, htobe32(va_arg(arg, uint32_t)));
+			wire_ctx_write_u32(&wire, va_arg(arg, uint32_t));
 			break;
 		case 'L':
-			wire_ctx_write_u64(&wire, htobe64(va_arg(arg, uint64_t)));
+			wire_ctx_write_u64(&wire, va_arg(arg, uint64_t));
 			break;
 		case 'S':
 			tmp_s = va_arg(arg, const char *);
@@ -508,21 +508,21 @@ bool knot_lmdb_unmake_key(void *key_data, size_t key_len, const char *format, ..
 			if (tmp == NULL) {
 				wire_ctx_skip(&wire, sizeof(uint16_t));
 			} else {
-				*(uint16_t *)tmp = be16toh(wire_ctx_read_u16(&wire));
+				*(uint16_t *)tmp = wire_ctx_read_u16(&wire);
 			}
 			break;
 		case 'I':
 			if (tmp == NULL) {
 				wire_ctx_skip(&wire, sizeof(uint32_t));
 			} else {
-				*(uint32_t *)tmp = be32toh(wire_ctx_read_u32(&wire));
+				*(uint32_t *)tmp = wire_ctx_read_u32(&wire);
 			}
 			break;
 		case 'L':
 			if (tmp == NULL) {
 				wire_ctx_skip(&wire, sizeof(uint64_t));
 			} else {
-				*(uint64_t *)tmp = be64toh(wire_ctx_read_u64(&wire));
+				*(uint64_t *)tmp = wire_ctx_read_u64(&wire);
 			}
 			break;
 		case 'S':

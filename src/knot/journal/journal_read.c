@@ -388,5 +388,8 @@ int journal_sem_check(zone_journal_t *j)
 	if (ctx.first_serial_valid && ctx.first_serial != md.first_serial) {
 		return 111;
 	}
+	if (ctx.observed_count != md.changeset_count) {
+		return 112;
+	}
 	return KNOT_EOK;
 }

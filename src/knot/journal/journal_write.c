@@ -85,6 +85,7 @@ static bool delete_one(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const 
 		*next_serial = journal_next_serial(&txn->cur_val);
 		knot_lmdb_del_cur(txn);
 	}
+	free(prefix.mv_data);
 	return (*freed > 0);
 }
 
@@ -148,7 +149,7 @@ void journal_fix_occupation(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_met
 	ssize_t need_todel = (ssize_t)count - max_count;
 	journal_changeset_id_t from = { false, md->first_serial };
 
-	while (need_tofree > 0 || need_todel > 0) {
+	while ((need_tofree > 0 || need_todel > 0) && txn->ret == KNOT_EOK) {
 		freed = 0;
 		removed = 0;
 		journal_delete(txn, from, j->zone, MAX(need_tofree, 0), MAX(need_todel, 0), md->flushed_upto, &freed, &removed, &from.serial);

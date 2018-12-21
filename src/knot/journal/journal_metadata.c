@@ -161,6 +161,10 @@ void journal_load_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, journ
 		case 2:
 			// normal operation
 			break;
+		case 0:
+			// failed to read version
+			txn->ret = KNOT_ENOENT;
+			return;
 		default:
 			txn->ret = KNOT_ENOTSUP;
 			return;
@@ -168,7 +172,6 @@ void journal_load_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, journ
 	}
 	md->_new_zone = !get_metadata32(txn, zone, "flags", &md->flags);
 	(void)get_metadata32(txn, zone, "first_serial",    &md->first_serial);
-	//(void)get_metadata32(txn, zone, "last_serial",     &md->last_serial);
 	(void)get_metadata32(txn, zone, "last_serial_to",  &md->serial_to);
 	(void)get_metadata32(txn, zone, "merged_serial",   &md->merged_serial);
 	(void)get_metadata32(txn, zone, "changeset_count", &md->changeset_count);
@@ -192,7 +195,6 @@ void journal_load_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, journ
 void journal_store_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const journal_metadata_t *md)
 {
 	set_metadata(txn, zone, "first_serial",    &md->first_serial,    sizeof(md->first_serial),    true);
-	//set_metadata(txn, zone, "last_serial",     &md->last_serial,     sizeof(md->last_serial),     true);
 	set_metadata(txn, zone, "last_serial_to",  &md->serial_to,       sizeof(md->serial_to),       true);
 	set_metadata(txn, zone, "flushed_upto",    &md->flushed_upto,    sizeof(md->flushed_upto),    true);
 	set_metadata(txn, zone, "merged_serial",   &md->merged_serial,   sizeof(md->merged_serial),   true);
