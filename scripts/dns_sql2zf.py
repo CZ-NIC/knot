@@ -154,6 +154,8 @@ def print_record(record, outfile):
         content = soa_content(record.content)
     elif t == 'MX' or t == 'SRV':
         content = "%d %s" % (record.prio, record.content)
+    elif t == 'TXT' or t == 'SPF':
+        content = "\"%s\"" % record.content
     else:
         content = record.content
 
