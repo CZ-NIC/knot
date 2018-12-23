@@ -34,6 +34,8 @@ enum journal_metadata_flags {
 	JOURNAL_MERGED_SERIAL_VALID  = (1 << 2),
 };
 
+typedef int (*journals_walk_cb_t)(const knot_dname_t *zone, void *ctx);
+
 void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter);
 
 uint64_t journal_get_occupied(knot_lmdb_txn_t *txn, const knot_dname_t *zone);
@@ -55,10 +57,13 @@ int journal_scrape_with_md(zone_journal_t *j);
 int journal_set_flushed(zone_journal_t *j);
 
 int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
-                 uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial);
+                 uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial,
+                 uint64_t *occupied, uint64_t *occupied_total);
 
 inline static bool journal_is_existing(zone_journal_t *j) {
 	bool ex = false;
-	journal_info(j, &ex, NULL, NULL, NULL, NULL);
+	journal_info(j, &ex, NULL, NULL, NULL, NULL, NULL, NULL);
 	return ex;
 }
+
+int journals_walk(knot_lmdb_db_t *db, journals_walk_cb_t cb, void *ctx);

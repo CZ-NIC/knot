@@ -18,6 +18,7 @@
 
 #include <pthread.h>
 #include <stdarg.h>
+#include <stdio.h> // snprintf
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -83,16 +84,33 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
 	}
 }
 
+static bool lmdb_stat(const char *lmdb_path, struct stat *st)
+{
+	char data_mdb[strlen(lmdb_path) + 10];
+	snprintf(data_mdb, sizeof(data_mdb), "%s/data.mdb", lmdb_path);
+	return (stat(data_mdb, st) == 0 && st->st_size > 0);
+}
+
 bool knot_lmdb_exists(knot_lmdb_db_t *db)
 {
 	if (db->env != NULL) {
 		return true;
 	}
-	struct stat st;
-	if (stat(db->path, &st) != 0 || st.st_size == 0) {
-		return false;
+	struct stat unused;
+	return lmdb_stat(db->path, &unused);
+}
+
+static int fix_mapsize(knot_lmdb_db_t *db)
+{
+	if (db->mapsize == 0) {
+		struct stat st;
+		if (!lmdb_stat(db->path, &st)) {
+			return KNOT_ENOENT;
+		}
+		db->mapsize = st.st_size * 2; // twice the size as DB might grow while we read it
+		db->env_flags |= MDB_RDONLY;
 	}
-	return true;
+	return KNOT_EOK;
 }
 
 static int _open(knot_lmdb_db_t *db)
@@ -103,7 +121,12 @@ static int _open(knot_lmdb_db_t *db)
 		return KNOT_EOK;
 	}
 
-	int ret = mkdir(db->path, LMDB_DIR_MODE);
+	int ret = fix_mapsize(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = mkdir(db->path, LMDB_DIR_MODE);
 	if (ret < 0 && errno != EEXIST) {
 		return -errno;
 	}

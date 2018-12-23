@@ -581,7 +581,7 @@ static changeset_t * tm_chs(const knot_dname_t * apex, int x)
 static int merged_present(void)
 {
 	bool exists, has_merged;
-	return journal_info(&jj, &exists, NULL, NULL, &has_merged, NULL) == KNOT_EOK && exists && has_merged;
+	return journal_info(&jj, &exists, NULL, NULL, &has_merged, NULL, NULL, NULL) == KNOT_EOK && exists && has_merged;
 }
 
 static void test_merge(const knot_dname_t *apex)

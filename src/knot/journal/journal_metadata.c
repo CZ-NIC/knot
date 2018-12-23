@@ -277,7 +277,8 @@ int journal_set_flushed(zone_journal_t *j)
 }
 
 int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
-                 uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial)
+                 uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial,
+                 uint64_t *occupied, uint64_t *occupied_total)
 {
 	if (!knot_lmdb_exists(j->db)) {
 		*exists = false;
@@ -303,6 +304,42 @@ int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
 	}
 	if (merged_serial != NULL) {
 		*merged_serial = md.merged_serial;
+	}
+	if (occupied != NULL) {
+		get_metadata64(&txn, j->zone, "occupied", occupied);
+	}
+	if (occupied_total != NULL) {
+		*occupied_total = knot_lmdb_usage(&txn);
+	}
+	knot_lmdb_abort(&txn);
+	return txn.ret;
+}
+
+int journals_walk(knot_lmdb_db_t *db, journals_walk_cb_t cb, void *ctx)
+{
+	if (!knot_lmdb_exists(db)) {
+		return KNOT_EOK;
+	}
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, false);
+	uint8_t search_data[KNOT_DNAME_MAXLEN] = { 0 };
+	MDB_val search = { 1, search_data };
+	while (knot_lmdb_find(&txn, &search, KNOT_LMDB_GEQ)) {
+		knot_dname_t *found = txn.cur_key.mv_data;
+		uint32_t unused_flags;
+		if (get_metadata32(&txn, found, "flags", &unused_flags)) {
+			// matched journal DB key appears to be a zone name
+			txn.ret = cb(found, ctx);
+		}
+
+		// update searched key to next after found zone
+		search.mv_size = knot_dname_size(found);
+		memcpy(search.mv_data, found, search.mv_size);
+		((uint8_t *)search.mv_data)[search.mv_size - 1]++;
 	}
 	knot_lmdb_abort(&txn);
 	return txn.ret;
