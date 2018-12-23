@@ -292,7 +292,11 @@ size_t changeset_serialized_size(const changeset_t *ch)
 	size_t soa_to_size = rrset_binary_size(ch->soa_to);
 
 	changeset_iter_t it;
-	changeset_iter_all(&it, ch);
+	if (ch->remove == NULL) {
+		changeset_iter_add(&it, ch);
+	} else {
+		changeset_iter_all(&it, ch);
+	}
 
 	size_t change_size = 0;
 	knot_rrset_t rrset = changeset_iter_next(&it);
