@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,9 @@
 #include <sys/stat.h>
 
 #include "libknot/libknot.h"
-#include "knot/journal/journal.h"
+#include "knot/journal/journal_basic.h"
+#include "knot/journal/journal_metadata.h"
+#include "knot/journal/journal_read.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/exec.h"
 #include "contrib/dynarray.h"
@@ -46,26 +48,6 @@ static void print_help(void)
 	       " -h, --help         Print the program help.\n"
 	       " -V, --version      Print the program version.\n",
 	       PROGRAM_NAME);
-}
-
-// workaround: LMDB fails to detect proper mapsize
-static int reconfigure_mapsize(const char *journal_path, size_t *mapsize)
-{
-	char *data_mdb = sprintf_alloc("%s/data.mdb", journal_path);
-	if (data_mdb == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	struct stat st;
-	if (stat(data_mdb, &st) != 0 || st.st_size == 0) {
-		fprintf(stderr, "Journal does not exist: %s\n", journal_path);
-		free(data_mdb);
-		return KNOT_ENOENT;
-	}
-
-	*mapsize = st.st_size + st.st_size / 8; // 112.5% to allow opening when growing
-	free(data_mdb);
-	return KNOT_EOK;
 }
 
 static void print_changeset(const changeset_t *chs, bool color)
@@ -142,171 +124,85 @@ static void print_changeset_debugmode(const changeset_t *chs)
 	printf("\n");
 }
 
-int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bool debugmode)
+static int print_changeset_cb(bool special, const changeset_t *ch, void *ctx)
 {
-	list_t db;
-	init_list(&db);
-	int ret;
-	journal_db_t *jdb = NULL;
-
-	ret = journal_db_init(&jdb, path, 1, JOURNAL_MODE_ROBUST);
-	if (ret != KNOT_EOK) {
-		return ret;
+	bool *parm = ctx;
+	if (ch != NULL) {
+		if (parm[0]) {
+			print_changeset_debugmode(ch);
+		} else {
+			print_changeset(ch, parm[1]);
+		}
+		if (special && parm[0]) {
+			printf("---------------------------------------------\n");
+		}
 	}
+	return KNOT_EOK;
+}
 
-	ret = reconfigure_mapsize(jdb->path, &jdb->fslimit);
-	if (ret != KNOT_EOK) {
-		journal_db_close(&jdb);
-		return ret;
-	}
-
-	ret = journal_open_db(&jdb);
-	if (ret != KNOT_EOK) {
-		journal_db_close(&jdb);
-		return ret;
-	}
-
-	if (!journal_exists(&jdb, name)) {
-		fprintf(stderr, "This zone does not exist in DB %s\n", path);
-		ret = KNOT_ENOENT;
-	}
-
-	journal_t *j = journal_new();
-
-	if (ret == KNOT_EOK) {
-		ret = journal_open(j, &jdb, name);
-	}
-	if (ret != KNOT_EOK) {
-		journal_free(&j);
-		journal_db_close(&jdb);
-		return ret;
-	}
-
-	bool has_bootstrap;
-	kserial_t merged_serial, serial_from, last_flushed, serial_to;
+int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bool debugmode, bool do_check)
+{
+	knot_lmdb_db_t jdb = { 0 };
+	zone_journal_t j = { &jdb, name };
+	bool exists;
 	uint64_t occupied, occupied_all;
-	journal_metadata_info(j, &has_bootstrap, &merged_serial, &serial_from,
-			      &last_flushed, &serial_to, &occupied, &occupied_all);
 
-	bool alternative_from = (has_bootstrap || merged_serial.valid);
-	bool is_empty = (!alternative_from && !serial_from.valid);
-	if (is_empty) {
-		ret = KNOT_ENOENT;
-		goto pj_finally;
-	}
-
-	if (has_bootstrap) {
-		ret = journal_load_bootstrap(j, &db);
-	} else if (merged_serial.valid) {
-		ret = journal_load_changesets(j, &db, merged_serial.serial);
-	} else {
-		ret = journal_load_changesets(j, &db, serial_from.serial);
-	}
+	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST), NULL);
+	int ret = knot_lmdb_open(&jdb);
 	if (ret != KNOT_EOK) {
-		goto pj_finally;
+		return ret;
 	}
 
-	changeset_t *chs = NULL;
-
-	size_t db_remains = list_size(&db);
-
-	WALK_LIST(chs, db) {
-		if (--db_remains >= limit && limit > 0) {
-			continue;
-		}
-		if (debugmode) {
-			print_changeset_debugmode(chs);
-		} else {
-			print_changeset(chs, color);
-		}
+	ret = journal_info(j, &exists, NULL, NULL, NULL, NULL, &occupied, &occupied_all);
+	if (ret != KNOT_EOK || !exists) {
+		fprintf(stderr, "This zone does not exist in DB %s\n", path);
+		knot_lmdb_deinit(&jdb);
+		return ret == KNOT_EOK ? KNOT_ENOENT : ret;
 	}
 
-	changesets_free(&db);
-
-	if (debugmode) {
-		if ((alternative_from && serial_from.valid) ||
-		    kserial_equal(serial_from, last_flushed)) {
-			init_list(&db);
-
-			ret = journal_load_changesets(j, &db, serial_from.serial);
-			switch (ret) {
-			case KNOT_EOK:
-				printf("---- Additional history ----\n");
-				break;
-			case KNOT_ENOENT:
-				printf("---- No additional history ----\n");
-				ret = KNOT_EOK;
-				break;
-			default:
-				goto pj_finally;
-			}
-			WALK_LIST(chs, db) {
-				print_changeset_debugmode(chs);
-				if (last_flushed.valid &&
-				    serial_equal(knot_soa_serial(chs->soa_from->rrs.rdata), last_flushed.serial)) {
-					break;
-				}
-			}
-			changesets_free(&db);
-		} else {
-			printf("---- No additional history ----\n");
+	if (do_check) {
+		ret = journal_sem_check(j);
+		if (ret > 0) {
+			fprintf(stderr, "Journal semantic check error: %d\n", ret);
+		} else if (ret != KNOT_EOK) {
+			fprintf(stderr, "Journal semnatic check failed (%s).\n", knot_strerror(ret));
 		}
 	}
 
-	if (debugmode) {
+	bool parm[2] = { debugmode, color };
+	ret = journal_walk(j, print_changeset_cb, (void *)parm);
+
+	if (debugmode && ret == KNOT_EOK) {
 		printf("Occupied this zone (approx): %"PRIu64" KiB\n", occupied / 1024);
 		printf("Occupied all zones together: %"PRIu64" KiB\n", occupied_all / 1024);
 	}
 
-pj_finally:
-	journal_close(j);
-	journal_free(&j);
-	journal_db_close(&jdb);
-
+	knot_lmdb_deinit(&jdb);
 	return ret;
+}
+
+static int list_zone(const knot_dname_t *zone, void *ctx)
+{
+	char zone_str[KNOT_DNAME_TXT_MAXLEN + 1];
+	(void)ctx;
+	printf("%s\n", knot_dname_to_str(zone_str, zone, sizeof(zone_str)));
+	return KNOT_EOK;
 }
 
 int list_zones(char *path)
 {
-	journal_db_t *jdb = NULL;
-	int ret = journal_db_init(&jdb, path, 1, JOURNAL_MODE_ROBUST);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	knot_lmdb_db_t jdb = { 0 };
+	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST), NULL);
 
-	ret = reconfigure_mapsize(jdb->path, &jdb->fslimit);
-	if (ret != KNOT_EOK) {
-		journal_db_close(&jdb);
-		return ret;
-	}
-
-	ret = journal_open_db(&jdb);
-	if (ret != KNOT_EOK) {
-		journal_db_close(&jdb);
-		return ret;
-	}
-
-	list_t zones;
-	init_list(&zones);
-	ret = journal_db_list_zones(&jdb, &zones);
-	if (ret == KNOT_EOK) {
-		ptrnode_t *zn;
-		char buff[KNOT_DNAME_TXT_MAXLEN + 1];
-		WALK_LIST(zn, zones) {
-			printf("%s\n", knot_dname_to_str(buff, (knot_dname_t *)zn->d, sizeof(buff)));
-			free(zn->d);
-		}
-		ptrlist_free(&zones, NULL);
-	}
-
-	journal_db_close(&jdb);
+	int ret = journals_walk(&jdb, list_zone, NULL);
+	knot_lmdb_deinit(&jdb);
 	return ret;
 }
 
 int main(int argc, char *argv[])
 {
 	uint32_t limit = 0;
-	bool color = true, justlist = false, debugmode = false;
+	bool color = true, justlist = false, debugmode = false, docheck = false;
 
 	struct option opts[] = {
 		{ "limit",     required_argument, NULL, 'l' },
@@ -319,7 +215,7 @@ int main(int argc, char *argv[])
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "l:nzdhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "l:nzcdhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
 			if (str_to_u32(optarg, &limit) != KNOT_EOK) {
@@ -332,6 +228,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'z':
 			justlist = true;
+			break;
+		case 'c':
+			docheck = true;
 			break;
 		case 'd':
 			debugmode = true;
@@ -391,7 +290,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	int ret = print_journal(db, name, limit, color, debugmode);
+	int ret = print_journal(db, name, limit, color, debugmode, docheck);
 	free(name);
 
 	switch (ret) {
