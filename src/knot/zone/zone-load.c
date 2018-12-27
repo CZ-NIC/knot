@@ -16,6 +16,8 @@
 
 #include "knot/common/log.h"
 #include "knot/journal/journal.h"
+#include "knot/journal/journal_metadata.h"
+#include "knot/journal/journal_read.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
@@ -57,52 +59,55 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	return KNOT_EOK;
 }
 
+static int apply_one_cb(bool remove, const knot_rrset_t *rr, void *ctx)
+{
+	return remove ? apply_remove_rr(ctx, rr) : apply_add_rr(ctx, rr);
+}
+
 int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 {
 	if (conf == NULL || zone == NULL || contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Check if journal is used (later in zone_changes_load() and zone is not empty. */
-	if (zone_contents_is_empty(contents)) {
+	zone_journal_t j = { zone->journaldb, zone->name };
+
+	// Check if journal is used (later in zone_changes_load() and zone is not empty.
+	// Also check if journal exists (this operation also opens the LMDB.
+	if (zone_contents_is_empty(contents) || !journal_is_existing(&j)) {
 		return KNOT_EOK;
 	}
 
-	/* Fetch SOA serial. */
-	uint32_t serial = zone_contents_serial(contents);
-
-	/* Load journal */
-	list_t chgs;
-	init_list(&chgs);
-	int ret = zone_changes_load(conf, zone, &chgs, serial);
-	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
-		changesets_free(&chgs);
+	journal_read_t *read = NULL;
+	journal_changeset_id_t serial = { false, zone_contents_serial(contents) };
+	int ret = journal_read_begin(&j, serial, &read);
+	switch (ret) {
+	case KNOT_EOK:
+		break;
+	case KNOT_ENOENT:
+		return KNOT_EOK;
+	default:
 		return ret;
 	}
-	if (EMPTY_LIST(chgs)) {
-		return KNOT_EOK;
-	}
 
-	/* Apply changesets. */
 	apply_ctx_t a_ctx = { 0 };
 	ret = apply_init_ctx(&a_ctx, contents, 0);
 	if (ret != KNOT_EOK) {
-		changesets_free(&chgs);
+		journal_read_end(read);
 		return ret;
 	}
 
-	ret = apply_changesets_directly(&a_ctx, &chgs);
+	ret = journal_read_rrsets(read, apply_one_cb, &a_ctx);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "changes from journal applied %u -> %u",
-		              serial, zone_contents_serial(contents));
+		              serial.serial, zone_contents_serial(contents));
 	} else {
 		log_zone_error(zone->name, "failed to apply journal changes %u -> %u (%s)",
-		               serial, zone_contents_serial(contents),
+		               serial.serial, zone_contents_serial(contents),
 		               knot_strerror(ret));
 	}
 
 	update_cleanup(&a_ctx);
-	changesets_free(&chgs);
 
 	return ret;
 }
@@ -113,30 +118,33 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 		return KNOT_EINVAL;
 	}
 
-	list_t chgs;
-	init_list(&chgs);
-	int ret = zone_in_journal_load(conf, zone, &chgs);
-	if (ret != KNOT_EOK) {
-		changesets_free(&chgs);
-		return ret; // include ENOENT, which is normal operation
+	zone_journal_t j = { zone->journaldb, zone->name };
+	if (!journal_is_existing(&j)) {
+		return KNOT_ENOENT;
 	}
 
-	changeset_t *boo_ch = (changeset_t *)HEAD(chgs);
-	rem_node(&boo_ch->n);
-	ret = changeset_to_contents(boo_ch, contents);
+	journal_read_t *read = NULL;
+	journal_changeset_id_t serial = { true, 0 };
+	int ret = journal_read_begin(&j, serial, &read);
 	if (ret != KNOT_EOK) {
-		changesets_free(&chgs);
 		return ret;
 	}
 
+	changeset_t zone_in_j;
 	apply_ctx_t a_ctx = { 0 };
-	ret = apply_init_ctx(&a_ctx, *contents, 0);
+	ret = journal_read_changeset(read, &zone_in_j) ? KNOT_EOK : KNOT_ENOENT;
+	if (ret == KNOT_EOK) {
+		ret = changeset_to_contents(&zone_in_j, contents);
+	}
+	if (ret == KNOT_EOK) {
+		ret = apply_init_ctx(&a_ctx, *contents, 0);
+	}
 	if (ret != KNOT_EOK) {
-		changesets_free(&chgs);
+		journal_read_end(read);
 		return ret;
 	}
 
-	ret = apply_changesets_directly(&a_ctx, &chgs);
+	ret = journal_read_rrsets(read, apply_one_cb, &a_ctx);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone loaded from journal, serial %u",
 		              zone_contents_serial(*contents));
@@ -145,7 +153,6 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 		               knot_strerror(ret));
 	}
 	update_cleanup(&a_ctx);
-	changesets_free(&chgs);
 
 	return ret;
 }

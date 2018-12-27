@@ -19,6 +19,7 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
 #include "knot/journal/journal.h"
+#include "knot/journal/knot_lmdb.h"
 #include "knot/events/events.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/timers.h"
@@ -78,6 +79,7 @@ typedef struct zone
 
 	/*! \brief Ptr to journal DB (in struct server) */
 	journal_db_t **journal_db;
+	knot_lmdb_db_t *journaldb;
 
 	/*! \brief Preferred master lock. */
 	pthread_mutex_t preferred_lock;

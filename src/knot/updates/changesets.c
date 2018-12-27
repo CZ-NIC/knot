@@ -583,8 +583,6 @@ int changeset_to_contents(changeset_t *ch, zone_contents_t **out)
 	}
 
 	zone_contents_deep_free(ch->remove);
-	free(ch->data);
-	free(ch);
 	return ret;
 }
 
