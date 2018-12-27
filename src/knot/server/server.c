@@ -29,6 +29,7 @@
 #include "knot/conf/migration.h"
 #include "knot/conf/module.h"
 #include "knot/dnssec/kasp/kasp_db.h"
+#include "knot/journal/journal_basic.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -422,6 +423,7 @@ int server_init(server_t *server, int bg_workers)
 	conf_val_t journal_mode = conf_default_get(conf(), C_JOURNAL_DB_MODE);
 	int ret = journal_db_init(&server->journal_db, journal_dir,
 	                          conf_int(&journal_size), conf_opt(&journal_mode));
+	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode)));
 	free(journal_dir);
 	if (ret != KNOT_EOK) {
 		worker_pool_destroy(server->workers);
@@ -472,6 +474,7 @@ void server_deinit(server_t *server)
 
 	/* Close journal database if open. */
 	journal_db_close(&server->journal_db);
+	knot_lmdb_deinit(&server->journaldb);
 
 	/* Close persistent timers database. */
 	zone_timers_close(server->timers_db);
