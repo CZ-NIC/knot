@@ -22,6 +22,7 @@
 #include "knot/journal/journal_basic.h"
 #include "knot/journal/journal_metadata.h"
 #include "knot/journal/journal_read.h"
+#include "knot/journal/serialization.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/exec.h"
 #include "contrib/dynarray.h"
