@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
 #include "knot/journal/journal.h"
+#include "knot/journal/journal_basic.h"
 #include "knot/events/events.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/timers.h"
@@ -78,6 +79,7 @@ typedef struct zone
 
 	/*! \brief Ptr to journal DB (in struct server) */
 	journal_db_t **journal_db;
+	knot_lmdb_db_t *journaldb;
 
 	/*! \brief Preferred master lock. */
 	pthread_mutex_t preferred_lock;
@@ -113,6 +115,12 @@ void zone_free(zone_t **zone_ptr);
  * \param zone Zone to be cleared.
  */
 void zone_control_clear(zone_t *zone);
+
+inline static zone_journal_t zone_journal(zone_t *zone)
+{
+	zone_journal_t j = { zone->journaldb, zone->name };
+	return j;
+}
 
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
 int zone_changes_clear(conf_t *conf, zone_t *zone);
