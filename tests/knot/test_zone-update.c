@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 	knot_dname_t *apex = knot_dname_from_str_alloc("test");
 	assert(apex);
 	zone_t *zone = zone_new(apex);
-	zone->journal_db = &server.journal_db;
+	zone->journaldb = &server.journaldb;
 
 	/* Setup zscanner */
 	zs_scanner_t sc;
