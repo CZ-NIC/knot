@@ -73,7 +73,7 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
 	env_flags |= MDB_WRITEMAP;
 #endif
 	db->env = NULL;
-	db->path = path;
+	db->path = strdup(path);
 	db->mapsize = mapsize;
 	db->env_flags = env_flags;
 	pthread_mutex_init(&db->opening_mutex, NULL);
@@ -95,6 +95,9 @@ bool knot_lmdb_exists(knot_lmdb_db_t *db)
 {
 	if (db->env != NULL) {
 		return true;
+	}
+	if (db->path == NULL) {
+		return false;
 	}
 	struct stat unused;
 	return lmdb_stat(db->path, &unused);
@@ -119,6 +122,10 @@ static int _open(knot_lmdb_db_t *db)
 
 	if (db->env != NULL) {
 		return KNOT_EOK;
+	}
+
+	if (db->path == NULL) {
+		return KNOT_ENOMEM;
 	}
 
 	int ret = fix_mapsize(db);
@@ -209,7 +216,8 @@ int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, 
 	}
 	pthread_mutex_lock(&db->opening_mutex);
 	_close(db);
-	db->path = path;
+	free(db->path);
+	db->path = strdup(path);
 	db->mapsize = mapsize;
 	db->env_flags = env_flags;
 	int ret = _open(db);
@@ -221,6 +229,7 @@ void knot_lmdb_deinit(knot_lmdb_db_t *db)
 {
 	knot_lmdb_close(db);
 	pthread_mutex_destroy(&db->opening_mutex);
+	free(db->path);
 }
 
 void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn, bool rw)

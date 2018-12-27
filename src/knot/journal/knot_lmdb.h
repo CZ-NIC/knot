@@ -35,7 +35,7 @@ typedef struct knot_lmdb_db {
 	// those are internal options. Please don't touch them directly.
 	size_t mapsize;
 	unsigned env_flags; // MDB_NOTLS, MDB_RDONLY, MDB_WRITEMAP, MDB_DUPSORT, MDB_NOSYNC, MDB_MAPASYNC
-	const char *path;
+	char *path;
 } knot_lmdb_db_t;
 
 typedef struct {

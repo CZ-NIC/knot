@@ -163,6 +163,23 @@ void journal_read_clear_rrset(knot_rrset_t *rr)
 	knot_rrset_clear(rr, NULL);
 }
 
+int journal_read_rrsets(journal_read_t *read, journal_read_cb_t cb, void *ctx)
+{
+	knot_rrset_t rr = { 0 };
+	bool in_remove_section = false;
+	int ret = KNOT_EOK;
+	while (ret == KNOT_EOK && journal_read_rrset(read, &rr, true)) {
+		if (rr_is_apex_soa(&rr, read->zone)) {
+			in_remove_section = !in_remove_section;
+		}
+		ret = cb(in_remove_section, &rr, ctx);
+		journal_read_clear_rrset(&rr);
+	}
+	ret = journal_read_get_error(read, ret);
+	journal_read_end(read);
+	return ret;
+}
+
 static int add_rr_to_contents(zone_contents_t *z, const knot_rrset_t *rrset)
 {
 	zone_node_t *n = NULL;
@@ -184,8 +201,7 @@ bool journal_read_changeset(journal_read_t *ctx, changeset_t *ch)
 		goto fail;
 	}
 	while (journal_read_rrset(ctx, &rr, false)) {
-		if (rr.type == KNOT_RRTYPE_SOA &&
-		    knot_dname_cmp(rr.owner, ctx->zone) == 0) {
+		if (rr_is_apex_soa(&rr, ctx->zone)) {
 			ch->soa_from = soa;
 			ch->remove = tree;
 			soa = malloc(sizeof(*soa));

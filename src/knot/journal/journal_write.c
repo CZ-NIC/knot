@@ -47,35 +47,29 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 	// return value is in the txn
 }
 
+static int merge_cb(bool remove, const knot_rrset_t *rr, void *ctx)
+{
+	changeset_t *ch = ctx;
+	return remove ? (rr_is_apex_soa(rr, ch->soa_to->owner) ?
+	                 KNOT_EOK : changeset_add_removal(ch, rr, CHANGESET_CHECK))
+	              : changeset_add_addition(ch, rr, CHANGESET_CHECK);
+}
+
 void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id_t into,
                    uint32_t *original_serial_to)
 {
 	changeset_t merge;
 	journal_read_t *read = NULL;
-	bool in_remove_section = false;
-	knot_rrset_t rr = { 0 };
 	txn->ret = journal_read_begin(j, into, &read);
 	if (txn->ret != KNOT_EOK) {
 		return;
 	}
 	journal_read_changeset(read, &merge);
-	*original_serial_to = changeset_to(&merge);
-	while (txn->ret == KNOT_EOK && journal_read_rrset(read, &rr, true)) {
-		if (rr.type == KNOT_RRTYPE_SOA &&
-		    knot_dname_cmp(rr.owner, j->zone) == 0) {
-			in_remove_section = !in_remove_section;
-			if (!in_remove_section) {
-				txn->ret = changeset_add_addition(&merge, &rr, CHANGESET_CHECK);
-			}
-		} else {
-			txn->ret = in_remove_section ?
-			    changeset_add_removal(&merge, &rr, CHANGESET_CHECK) :
-			    changeset_add_addition(&merge, &rr, CHANGESET_CHECK);
-		}
-		journal_read_clear_rrset(&rr);
+	if (txn->ret != KNOT_EOK) {
+		return;
 	}
-	txn->ret = journal_read_get_error(read, txn->ret);
-	journal_read_end(read);
+	*original_serial_to = changeset_to(&merge);
+	txn->ret = journal_read_rrsets(read, merge_cb, &merge);
 	journal_write_changeset(txn, &merge);
 	//knot_rrset_clear(&rr, NULL);
 	journal_read_clear_changeset(&merge);

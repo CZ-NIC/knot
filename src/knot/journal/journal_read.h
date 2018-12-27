@@ -20,6 +20,8 @@
 
 typedef struct journal_read journal_read_t;
 
+typedef int (*journal_read_cb_t)(bool in_remove_section, const knot_rrset_t *rr, void *ctx);
+
 typedef int (*journal_walk_cb_t)(bool special, const changeset_t *ch, void *ctx);
 
 int journal_read_ret(const journal_read_t *ctx);
@@ -29,6 +31,14 @@ int journal_read_get_error(const journal_read_t *ctx, int another_error);
 int journal_read_begin(zone_journal_t *j, journal_changeset_id_t from, journal_read_t **ctx);
 
 bool journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr, bool allow_next_changeset);
+
+// TODO move somewhere. Libknot?
+inline static bool rr_is_apex_soa(const knot_rrset_t *rr, const knot_dname_t *apex)
+{
+	return (rr->type == KNOT_RRTYPE_SOA && knot_dname_cmp(rr->owner, apex) == 0);
+}
+
+int journal_read_rrsets(journal_read_t *read, journal_read_cb_t cb, void *ctx);
 
 void journal_read_clear_rrset(knot_rrset_t *rr);
 
