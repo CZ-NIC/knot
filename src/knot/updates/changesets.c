@@ -338,7 +338,7 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 	}
 
 	const knot_rrset_t *to_remove = (rrset_cancelout == NULL ? rrset : rrset_cancelout);
-	int ret = knot_rrset_empty(to_remove) ? KNOT_EOK : add_rr_to_contents(ch->remove, to_remove);
+	int ret = (knot_rrset_empty(to_remove) || ch->remove == NULL) ? KNOT_EOK : add_rr_to_contents(ch->remove, to_remove);
 
 	if (flags & CHANGESET_CHECK) {
 		knot_rrset_free((knot_rrset_t *)rrset, NULL);
@@ -602,6 +602,8 @@ changeset_t *changeset_from_contents(const zone_contents_t *contents)
 
 	zone_contents_deep_free(res->add);
 	res->add = copy;
+	zone_contents_deep_free(res->remove);
+	res->remove = NULL;
 	return res;
 }
 
@@ -609,7 +611,7 @@ void changeset_from_contents_free(changeset_t *ch)
 {
 	assert(ch);
 	assert(ch->soa_from == NULL);
-	assert(zone_contents_is_empty(ch->remove));
+	assert(ch->remove == NULL);
 
 	update_free_zone(ch->add);
 

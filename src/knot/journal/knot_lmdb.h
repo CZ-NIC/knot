@@ -69,6 +69,8 @@ int knot_lmdb_open(knot_lmdb_db_t *db);
 
 void knot_lmdb_close(knot_lmdb_db_t *db);
 
+int knot_lmdb_reinit(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags);
+
 int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags);
 
 void knot_lmdb_deinit(knot_lmdb_db_t *db);

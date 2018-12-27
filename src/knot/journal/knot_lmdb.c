@@ -206,7 +206,7 @@ void knot_lmdb_close(knot_lmdb_db_t *db)
 	pthread_mutex_unlock(&db->opening_mutex);
 }
 
-int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
+static int _reinit(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
 {
 #ifdef __OpenBSD__
 	env_flags |= MDB_WRITEMAP;
@@ -214,13 +214,35 @@ int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, 
 	if (strcmp(db->path, path) == 0 && db->mapsize == mapsize && db->env_flags == env_flags) {
 		return KNOT_EOK;
 	}
-	pthread_mutex_lock(&db->opening_mutex);
-	_close(db);
+	if (db->env != NULL) {
+		return KNOT_EISCONN;
+	}
 	free(db->path);
 	db->path = strdup(path);
 	db->mapsize = mapsize;
 	db->env_flags = env_flags;
-	int ret = _open(db);
+	return KNOT_EOK;
+}
+
+int knot_lmdb_reinit(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
+{
+	pthread_mutex_lock(&db->opening_mutex);
+	int ret = _reinit(db, path, mapsize, env_flags);
+	pthread_mutex_unlock(&db->opening_mutex);
+	return ret;
+}
+
+int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
+{
+	pthread_mutex_lock(&db->opening_mutex);
+	int ret = _reinit(db, path, mapsize, env_flags);
+	if (ret != KNOT_EOK) {
+		_close(db);
+		ret = _reinit(db, path, mapsize, env_flags);
+		if (ret == KNOT_EOK) {
+			ret = _open(db);
+		}
+	}
 	pthread_mutex_unlock(&db->opening_mutex);
 	return ret;
 }

@@ -243,6 +243,7 @@ void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint
 {
 	if (md->first_serial == md->serial_to) { // no changesets yet
 		md->first_serial = serial;
+		md->flushed_upto = serial;
 	}
 	md->serial_to = serial_to;
 	md->flags |= JOURNAL_SERIAL_TO_VALID;
