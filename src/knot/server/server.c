@@ -421,22 +421,14 @@ int server_init(server_t *server, int bg_workers)
 	char *journal_dir = conf_journalfile(conf());
 	conf_val_t journal_size = conf_default_get(conf(), C_MAX_JOURNAL_DB_SIZE);
 	conf_val_t journal_mode = conf_default_get(conf(), C_JOURNAL_DB_MODE);
-	int ret = journal_db_init(&server->journal_db, journal_dir,
-	                          conf_int(&journal_size), conf_opt(&journal_mode));
 	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode)));
 	free(journal_dir);
-	if (ret != KNOT_EOK) {
-		worker_pool_destroy(server->workers);
-		evsched_deinit(&server->sched);
-		return ret;
-	}
 
 	char *kasp_dir = conf_kaspdir(conf());
 	conf_val_t kasp_size = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
-	ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&kasp_size));
+	int ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&kasp_size));
 	free(kasp_dir);
 	if (ret != KNOT_EOK) {
-		journal_db_close(&server->journal_db);
 		worker_pool_destroy(server->workers);
 		evsched_deinit(&server->sched);
 		return ret;
@@ -473,7 +465,6 @@ void server_deinit(server_t *server)
 	kasp_db_close(kaspdb());
 
 	/* Close journal database if open. */
-	journal_db_close(&server->journal_db);
 	knot_lmdb_deinit(&server->journaldb);
 
 	/* Close persistent timers database. */
@@ -760,33 +751,14 @@ static int reconfigure_journal_db(conf_t *conf, server_t *server)
 	char *journal_dir = conf_journalfile(conf);
 	conf_val_t journal_size = conf_default_get(conf, C_MAX_JOURNAL_DB_SIZE);
 	conf_val_t journal_mode = conf_default_get(conf, C_JOURNAL_DB_MODE);
-	bool changed_path = (strcmp(journal_dir, server->journal_db->path) != 0);
-	bool changed_size = (conf_int(&journal_size) != server->journal_db->fslimit);
-	bool changed_mode = (conf_opt(&journal_mode) != server->journal_db->mode);
-	int ret = KNOT_EOK;
-
-	if (server->journal_db->db != NULL) {
-		if (changed_path) {
-			log_warning("ignored reconfiguration of journal DB path (already open)");
-		}
-		if (changed_size) {
-			log_warning("ignored reconfiguration of journal DB max size (already open)");
-		}
-		if (changed_mode) {
-			log_warning("ignored reconfiguration of journal DB mode (already open)");
-		}
-	} else if (changed_path || changed_size || changed_mode) {
-		journal_db_t *newjdb = NULL;
-		ret = journal_db_init(&newjdb, journal_dir, conf_int(&journal_size),
-		                      conf_opt(&journal_mode));
-		if (ret == KNOT_EOK) {
-			journal_db_close(&server->journal_db);
-			server->journal_db = newjdb;
-		}
+	int ret = knot_lmdb_reinit(&server->journaldb, journal_dir, conf_int(&journal_size),
+	                           journal_env_flags(conf_opt(&journal_mode)));
+	if (ret != KNOT_EOK) {
+		log_warning("ignored reconfiguration of journal DB (%s)", knot_strerror(ret));
 	}
 	free(journal_dir);
 
-	return ret;
+	return KNOT_EOK; // not "ret"
 }
 
 static int reconfigure_kasp_db(conf_t *conf, server_t *server)

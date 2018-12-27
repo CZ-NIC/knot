@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/events/handlers.h"
 #include "knot/events/replan.h"
+#include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
