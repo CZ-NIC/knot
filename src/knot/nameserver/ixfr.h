@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "knot/journal/journal_read.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/xfr.h"
 #include "libknot/packet/pkt.h"
@@ -38,16 +39,16 @@ struct ixfr_proc {
 	enum ixfr_state state;
 
 	/* Changes to be sent. */
-	chgset_ctx_list_t changesets;
+	journal_read_t *journal_ctx;
 
-	/* Currenty processed changeset. */
+	/* Currenty processed RRSet. */
 	knot_rrset_t cur_rr;
-	uint32_t soa_from;
-	uint32_t soa_to;
 
 	/* Processing context. */
 	knotd_qdata_t *qdata;
 	knot_mm_t *mm;
+	uint32_t soa_from;
+	uint32_t soa_to;
 };
 
 /*!
