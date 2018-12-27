@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	}
 
 	zone->journal_db = &server->journal_db;
+	zone->journaldb = &server->journaldb;
 
 	int result = zone_events_setup(zone, server->workers, &server->sched,
 	                               server->timers_db);
