@@ -18,9 +18,9 @@
 
 #include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
-#include "knot/journal/journal.h"
 #include "knot/journal/journal_basic.h"
 #include "knot/events/events.h"
+#include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/timers.h"
 #include "libknot/dname.h"
@@ -71,14 +71,10 @@ typedef struct zone
 	/*! \brief Control update context. */
 	struct zone_update *control_update;
 
-	/*! \brief Journal structure. */
-	journal_t *journal;
-
 	/*! \brief Journal access lock. */
 	pthread_mutex_t journal_lock;
 
 	/*! \brief Ptr to journal DB (in struct server) */
-	journal_db_t **journal_db;
 	knot_lmdb_db_t *journaldb;
 
 	/*! \brief Preferred master lock. */
@@ -124,11 +120,7 @@ inline static zone_journal_t zone_journal(zone_t *zone)
 
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
 int zone_changes_clear(conf_t *conf, zone_t *zone);
-int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from);
-int zone_chgset_ctx_load(conf_t *conf, zone_t *zone, chgset_ctx_list_t *dst, uint32_t from);
-int zone_in_journal_load(conf_t *conf, zone_t *zone, list_t *dst);
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents);
-int zone_journal_serial(conf_t *conf, zone_t *zone, bool *is_empty, uint32_t *serial_to);
 
 /*! \brief Synchronize zone file with journal. */
 int zone_flush_journal(conf_t *conf, zone_t *zone);
