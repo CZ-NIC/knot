@@ -43,7 +43,7 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 
 	/* Insert root zone. */
 	zone_t *root = zone_new(ROOT_DNAME);
-	root->journal_db = &server->journal_db;
+	root->journaldb = &server->journaldb;
 	root->contents = zone_contents_new(root->name);
 
 	knot_rrset_t *soa = knot_rrset_new(root->name, KNOT_RRTYPE_SOA, KNOT_CLASS_IN,

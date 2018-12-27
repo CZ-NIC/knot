@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include "knot/journal/journal_metadata.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/packet/wire.h"
 #include "contrib/mempattern.h"
@@ -27,16 +28,14 @@ static void discard_zone(zone_t *zone)
 {
 	// Don't flush if removed zone (no previous configuration available).
 	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name))) {
+		uint32_t journal_serial, zone_serial = zone_contents_serial(zone->contents);
+		bool exists;
+
 		// Flush if bootstrapped or if the journal doesn't exist.
-		if (!zone->zonefile.exists || !journal_exists(zone->journal_db, zone->name)) {
+		if (!zone->zonefile.exists || journal_info(
+			zone_journal(zone), &exists, NULL, &journal_serial, NULL, NULL, NULL, NULL
+		    ) != KNOT_EOK || !exists || journal_serial != zone_serial) {
 			zone_flush_journal(conf(), zone);
-		} else {
-			bool empty;
-			uint32_t journal_serial, zone_serial = zone_contents_serial(zone->contents);
-			int ret = zone_journal_serial(conf(), zone, &empty, &journal_serial);
-			if (ret != KNOT_EOK || empty || journal_serial != zone_serial) {
-				zone_flush_journal(conf(), zone);
-			}
 		}
 	}
 
