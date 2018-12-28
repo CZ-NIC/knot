@@ -415,6 +415,10 @@ void knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val)
 
 int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val)
 {
+	if (val.mv_data == NULL) {
+		free(key.mv_data);
+		return KNOT_ENOMEM;
+	}
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_insert(&txn, &key, &val);
