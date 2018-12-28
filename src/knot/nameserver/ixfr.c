@@ -95,9 +95,7 @@ static int ixfr_load_chsets(journal_read_t **journal_read, zone_t *zone,
 		return KNOT_EUPTODATE;
 	}
 
-	zone_journal_t j = { zone->journaldb, zone->name };
-	journal_changeset_id_t id = { false, serial_from };
-	return journal_read_begin(&j, id, journal_read);
+	return journal_read_begin(zone_journal(zone), false, serial_from, journal_read);
 }
 
 static int ixfr_query_check(knotd_qdata_t *qdata)

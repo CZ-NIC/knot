@@ -63,14 +63,14 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	assert(zone);
 
 	int ret = KNOT_EOK;
-	zone_journal_t j = { zone->journaldb, zone->name };
+	zone_journal_t j = zone_journal(zone);
 
 	bool force = zone->flags & ZONE_FORCE_FLUSH;
 	zone->flags &= ~ZONE_FORCE_FLUSH;
 
 	if (zone_contents_is_empty(zone->contents)) {
-		if (allow_empty_zone && journal_is_existing(&j)) {
-			ret = journal_set_flushed(&j);
+		if (allow_empty_zone && journal_is_existing(j)) {
+			ret = journal_set_flushed(j);
 		} else {
 			ret = KNOT_EINVAL;
 		}
@@ -132,8 +132,8 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	zone->zonefile.resigned = false;
 
 	/* Flush journal. */
-	if (journal_is_existing(&j)) {
-		ret = journal_set_flushed(&j);
+	if (journal_is_existing(j)) {
+		ret = journal_set_flushed(j);
 		if (ret != KNOT_EOK) {
 			goto flush_journal_replan;
 		}
@@ -239,15 +239,14 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
 		return KNOT_EINVAL;
 	}
 
-	zone_journal_t j = { zone->journaldb, zone->name };
-	int ret = journal_insert(&j, change);
+	int ret = journal_insert(zone_journal(zone), change);
 	if (ret == KNOT_EBUSY) {
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = flush_journal(conf, zone, true);
 		if (ret == KNOT_EOK) {
-			ret = journal_insert(&j, change);
+			ret = journal_insert(zone_journal(zone), change);
 		}
 	}
 
@@ -260,12 +259,7 @@ int zone_changes_clear(conf_t *conf, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	zone_journal_t j = { zone->journaldb, zone->name };
-	if (journal_is_existing(&j)) {
-		return journal_scrape_with_md(&j);
-	}
-
-	return KNOT_EOK;
+	return journal_scrape_with_md(zone_journal(zone));
 }
 
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents)
@@ -274,9 +268,8 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 		return KNOT_EINVAL;
 	}
 
-	zone_journal_t j = { zone->journaldb, zone->name };
 	changeset_t *co_ch = changeset_from_contents(new_contents);
-	int ret = co_ch ? journal_insert_zone(&j, co_ch) : KNOT_ENOMEM;
+	int ret = co_ch ? journal_insert_zone(zone_journal(zone), co_ch) : KNOT_ENOMEM;
 	changeset_from_contents_free(co_ch);
 
 	if (ret == KNOT_EOK) {
