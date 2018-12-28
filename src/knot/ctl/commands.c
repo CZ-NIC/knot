@@ -380,7 +380,7 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 
 	kdnssec_ctx_t ctx = { 0 };
 
-	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, NULL);
+	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, zone->kaspdb, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -1066,14 +1066,13 @@ static int orphans_purge(ctl_args_t *args)
 		// Purge KASP DB.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
 			list_t zones;
-			init_list(&zones);
-			if (kasp_db_open(*kaspdb()) == KNOT_EOK &&
-			    kasp_db_list_zones(*kaspdb(), &zones) == KNOT_EOK) {
+			if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK &&
+			    kasp_db_list_zones(&args->server->kaspdb, &zones) == KNOT_EOK) {
 				ptrnode_t *zn;
 				WALK_LIST(zn, zones) {
 					knot_dname_t *zone_name = (knot_dname_t *)zn->d;
-					if (!zone_exists(zone_name, args->server->zone_db)) {
-						(void)kasp_db_delete_all(*kaspdb(), zone_name);
+					if (!zone_exists(zone_name, &args->server->zone_db)) {
+						(void)kasp_db_delete_all(&args->server->kaspdb, zone_name);
 					}
 					knot_dname_free(zone_name, NULL);
 				}
@@ -1109,8 +1108,8 @@ static int orphans_purge(ctl_args_t *args)
 			if (!zone_exists(zone_name, args->server->zone_db)) {
 				// Purge KASP DB.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-					if (kasp_db_open(*kaspdb()) == KNOT_EOK) {
-						(void) kasp_db_delete_all(*kaspdb(), zone_name);
+					if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK) {
+						(void)kasp_db_delete_all(&args->server->kaspdb, zone_name);
 					}
 				}
 
@@ -1172,8 +1171,8 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 
 	// Purge KASP DB.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-		if (kasp_db_open(*kaspdb()) == KNOT_EOK) {
-			(void)kasp_db_delete_all(*kaspdb(), zone->name);
+		if (knot_lmdb_open(zone->kaspdb) == KNOT_EOK) {
+			(void)kasp_db_delete_all(zone->kaspdb, zone->name);
 		}
 	}
 

@@ -51,6 +51,7 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	}
 
 	zone->journaldb = &server->journaldb;
+	zone->kaspdb = &server->kaspdb;
 
 	int result = zone_events_setup(zone, server->workers, &server->sched,
 	                               server->timers_db);
