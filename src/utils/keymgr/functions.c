@@ -239,14 +239,14 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 		char *last_policy_last = NULL;
 
 		knot_dname_t *unused = NULL;
-		ret = kasp_db_get_policy_last(*ctx->kasp_db, addtopolicy, &unused,
+		ret = kasp_db_get_policy_last(ctx->kasp_db, addtopolicy, &unused,
 		                              &last_policy_last);
 		knot_dname_free(unused, NULL);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			return ret;
 		}
 
-		ret = kasp_db_set_policy_last(*ctx->kasp_db, addtopolicy, last_policy_last,
+		ret = kasp_db_set_policy_last(ctx->kasp_db, addtopolicy, last_policy_last,
 		                              ctx->zone->dname, key->id);
 		free(last_policy_last);
 		if (ret != KNOT_EOK) {
@@ -562,7 +562,7 @@ int keymgr_nsec3_salt_print(kdnssec_ctx_t *ctx)
 {
 	dnssec_binary_t salt_bin;
 	knot_time_t created;
-	int ret = kasp_db_load_nsec3salt(*ctx->kasp_db, ctx->zone->dname,
+	int ret = kasp_db_load_nsec3salt(ctx->kasp_db, ctx->zone->dname,
 	                                 &salt_bin, &created);
 	switch (ret) {
 	case KNOT_EOK:
@@ -600,7 +600,7 @@ int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt)
 		       "salt length (%d).\n",
 		       (int)ctx->policy->nsec3_salt_length);
 	}
-	int ret = kasp_db_store_nsec3salt(*ctx->kasp_db, ctx->zone->dname,
+	int ret = kasp_db_store_nsec3salt(ctx->kasp_db, ctx->zone->dname,
 	                                  &salt_bin, knot_time());
 	if (salt_bin.size > 0) {
 		free(salt_bin.data);
@@ -714,7 +714,7 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 	return KNOT_EOK;
 }
 
-int keymgr_foreign_key_id(char *argv[], knot_dname_t **key_zone, char **key_id)
+int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **key_zone, char **key_id)
 {
 	*key_zone = knot_dname_from_str_alloc(argv[0]);
 	if (*key_zone == NULL) {
@@ -723,7 +723,7 @@ int keymgr_foreign_key_id(char *argv[], knot_dname_t **key_zone, char **key_id)
 	knot_dname_to_lower(*key_zone);
 
 	kdnssec_ctx_t kctx = { 0 };
-	int ret = kdnssec_ctx_init(conf(), &kctx, *key_zone, NULL);
+	int ret = kdnssec_ctx_init(conf(), &kctx, *key_zone, kaspdb, NULL);
 	if (ret != KNOT_EOK) {
 		printf("Failed to initialize zone %s (%s)\n", argv[0], knot_strerror(ret));
 		free(*key_zone);
