@@ -178,9 +178,9 @@ void journal_load_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, journ
 	if (!get_metadata32(txn, zone, "flushed_upto", &md->flushed_upto)) {
 		// importing from version 1.0
 		if ((md->flags & JOURNAL_LAST_FLUSHED_VALID)) {
-			journal_changeset_id_t last_flushed = { false, 0 };
-			if (!get_metadata32(txn, zone, "last_flushed", &last_flushed.serial) ||
-			    !journal_serial_to(txn, last_flushed, zone, &md->flushed_upto)) {
+			uint32_t last_flushed = 0;
+			if (!get_metadata32(txn, zone, "last_flushed", &last_flushed) ||
+			    !journal_serial_to(txn, false, last_flushed, zone, &md->flushed_upto)) {
 				txn->ret = KNOT_EMALF;
 			} else {
 				md->flags &= ~JOURNAL_LAST_FLUSHED_VALID;
@@ -225,16 +225,17 @@ void journal_metadata_after_delete(journal_metadata_t *md, uint32_t deleted_upto
 	md->changeset_count -= deleted_count;
 }
 
-void journal_metadata_after_merge(journal_metadata_t *md, journal_changeset_id_t merged_serial,
+void journal_metadata_after_merge(journal_metadata_t *md, bool merged_zij, uint32_t merged_serial,
                                   uint32_t merged_serial_to, uint32_t original_serial_to)
 {
 	md->flushed_upto = merged_serial_to;
 	if ((md->flags & JOURNAL_MERGED_SERIAL_VALID)) {
-		assert(merged_serial.serial == md->merged_serial);
-	} else if (!merged_serial.zone_in_journal) {
-		md->merged_serial = merged_serial.serial;
+		assert(!merged_zij);
+		assert(merged_serial == md->merged_serial);
+	} else if (!merged_zij) {
+		md->merged_serial = merged_serial;
 		md->flags |= JOURNAL_MERGED_SERIAL_VALID;
-		assert(merged_serial.serial == md->first_serial);
+		assert(merged_serial == md->first_serial);
 		journal_metadata_after_delete(md, original_serial_to, 1); // the merged changeset writes itself instead of first one
 	}
 }
@@ -250,49 +251,52 @@ void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint
 	md->changeset_count++;
 }
 
-int journal_scrape_with_md(zone_journal_t *j)
+int journal_scrape_with_md(zone_journal_t j)
 {
+	if (!journal_is_existing(j)) {
+		return KNOT_EOK;
+	}
 	knot_lmdb_txn_t txn = { 0 };
-	knot_lmdb_begin(j->db, &txn, true);
+	knot_lmdb_begin(j.db, &txn, true);
 
 	update_last_inserter(&txn, NULL);
-	MDB_val prefix = { knot_dname_size(j->zone), (void *)j->zone };
+	MDB_val prefix = { knot_dname_size(j.zone), (void *)j.zone };
 	knot_lmdb_del_prefix(&txn, &prefix);
 
 	knot_lmdb_commit(&txn);
 	return txn.ret;
 }
 
-int journal_set_flushed(zone_journal_t *j)
+int journal_set_flushed(zone_journal_t j)
 {
 	knot_lmdb_txn_t txn = { 0 };
 	journal_metadata_t md = { 0 };
-	knot_lmdb_begin(j->db, &txn, true);
-	journal_load_metadata(&txn, j->zone, &md);
+	knot_lmdb_begin(j.db, &txn, true);
+	journal_load_metadata(&txn, j.zone, &md);
 
 	md.flushed_upto = md.serial_to;
 
-	journal_store_metadata(&txn, j->zone, &md);
+	journal_store_metadata(&txn, j.zone, &md);
 	knot_lmdb_commit(&txn);
 	return txn.ret;
 }
 
-int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
+int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial,
                  uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial,
                  uint64_t *occupied, uint64_t *occupied_total)
 {
-	if (!knot_lmdb_exists(j->db)) {
+	if (!knot_lmdb_exists(j.db)) {
 		*exists = false;
 		return KNOT_EOK;
 	}
-	int ret = knot_lmdb_open(j->db);
+	int ret = knot_lmdb_open(j.db);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 	knot_lmdb_txn_t txn = { 0 };
 	journal_metadata_t md = { 0 };
-	knot_lmdb_begin(j->db, &txn, false);
-	journal_load_metadata(&txn, j->zone, &md);
+	knot_lmdb_begin(j.db, &txn, false);
+	journal_load_metadata(&txn, j.zone, &md);
 	*exists = (md.flags & JOURNAL_SERIAL_TO_VALID);
 	if (first_serial != NULL) {
 		*first_serial = md.first_serial;
@@ -307,7 +311,7 @@ int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
 		*merged_serial = md.merged_serial;
 	}
 	if (occupied != NULL) {
-		get_metadata64(&txn, j->zone, "occupied", occupied);
+		get_metadata64(&txn, j.zone, "occupied", occupied);
 	}
 	if (occupied_total != NULL) {
 		*occupied_total = knot_lmdb_usage(&txn);

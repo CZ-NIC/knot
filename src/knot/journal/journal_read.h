@@ -28,7 +28,7 @@ int journal_read_ret(const journal_read_t *ctx);
 
 int journal_read_get_error(const journal_read_t *ctx, int another_error);
 
-int journal_read_begin(zone_journal_t *j, journal_changeset_id_t from, journal_read_t **ctx);
+int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, journal_read_t **ctx);
 
 bool journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr, bool allow_next_changeset);
 
@@ -48,6 +48,6 @@ void journal_read_clear_changeset(changeset_t *ch);
 
 void journal_read_end(journal_read_t *ctx);
 
-int journal_walk(zone_journal_t *j, journal_walk_cb_t cb, void *ctx);
+int journal_walk(zone_journal_t j, journal_walk_cb_t cb, void *ctx);
 
-int journal_sem_check(zone_journal_t *j);
+int journal_sem_check(zone_journal_t j);

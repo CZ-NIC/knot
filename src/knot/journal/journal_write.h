@@ -21,18 +21,18 @@
 
 void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch);
 
-void journal_merge(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_changeset_id_t into,
-                   uint32_t *original_serial_to);
+void journal_merge(zone_journal_t j, knot_lmdb_txn_t *txn, bool merge_zij,
+                   uint32_t merge_serial, uint32_t *original_serial_to);
 
-bool journal_delete(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const knot_dname_t *zone,
+bool journal_delete(knot_lmdb_txn_t *txn, uint32_t from, const knot_dname_t *zone,
                     size_t tofree_size, size_t tofree_count, uint32_t stop_at_serial,
                     size_t *freed_size, size_t *freed_count, uint32_t *stopped_at);
 
-void journal_try_flush(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata_t *md);
+void journal_try_flush(zone_journal_t j, knot_lmdb_txn_t *txn, journal_metadata_t *md);
 
-void journal_fix_occupation(zone_journal_t *j, knot_lmdb_txn_t *txn, journal_metadata_t *md,
+void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_metadata_t *md,
 			    int64_t max_usage, ssize_t max_count);
 
-int journal_insert_zone(zone_journal_t *j, const changeset_t *ch);
+int journal_insert_zone(zone_journal_t j, const changeset_t *ch);
 
-int journal_insert(zone_journal_t *j, const changeset_t *ch);
+int journal_insert(zone_journal_t j, const changeset_t *ch);

@@ -31,7 +31,7 @@ struct journal_read {
 	MDB_val key_prefix;
 	const knot_dname_t *zone;
 	wire_ctx_t wire;
-	journal_changeset_id_t next_id;
+	uint32_t next;
 };
 
 int journal_read_get_error(const journal_read_t *ctx, int another_error)
@@ -45,23 +45,22 @@ static void update_ctx_wire(journal_read_t *ctx)
 	wire_ctx_skip(&ctx->wire, JOURNAL_HEADER_SIZE);
 }
 
-static bool go_next_changeset(journal_read_t *ctx, const knot_dname_t *zone)
+static bool go_next_changeset(journal_read_t *ctx, bool go_zone, const knot_dname_t *zone)
 {
 	free(ctx->key_prefix.mv_data);
-	ctx->key_prefix = journal_changeset_id_to_key(ctx->next_id, zone);
+	ctx->key_prefix = journal_changeset_id_to_key(go_zone, ctx->next, zone);
 	if (!knot_lmdb_find_prefix(&ctx->txn, &ctx->key_prefix)) {
 		return false;
 	}
-	ctx->next_id.zone_in_journal = false;
-	ctx->next_id.serial = journal_next_serial(&ctx->txn.cur_val);
+	ctx->next = journal_next_serial(&ctx->txn.cur_val);
 	update_ctx_wire(ctx);
 	return true;
 }
 
-int journal_read_begin(zone_journal_t *j, journal_changeset_id_t from, journal_read_t **ctx)
+int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, journal_read_t **ctx)
 {
 	*ctx = NULL;
-	if (!knot_lmdb_exists(j->db)) {
+	if (!journal_is_existing(j)) { // this also opens the LMDB if not already
 		return KNOT_ENOENT;
 	}
 
@@ -70,17 +69,12 @@ int journal_read_begin(zone_journal_t *j, journal_changeset_id_t from, journal_r
 		return KNOT_ENOMEM;
 	}
 
-	int ret = knot_lmdb_open(j->db);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	newctx->zone = j.zone;
+	newctx->next = serial_from;
 
-	newctx->zone = j->zone;
-	newctx->next_id = from;
+	knot_lmdb_begin(j.db, &newctx->txn, false);
 
-	knot_lmdb_begin(j->db, &newctx->txn, false);
-
-	if (go_next_changeset(newctx, j->zone)) {
+	if (go_next_changeset(newctx, read_zone, j.zone)) {
 		*ctx = newctx;
 		return KNOT_EOK;
 	} else {
@@ -122,7 +116,7 @@ bool journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rrset, bool allow_nex
 	//knot_rdataset_clear(&rrset->rrs, NULL);
 	//memset(rrset, 0, sizeof(*rrset));
 	if (!make_data_available(ctx)) {
-		if (!allow_next_changeset || !go_next_changeset(ctx, ctx->zone)) {
+		if (!allow_next_changeset || !go_next_changeset(ctx, false, ctx->zone)) {
 			return false;
 		}
 	}
@@ -239,50 +233,47 @@ void journal_read_clear_changeset(changeset_t *ch)
 	memset(ch, 0, sizeof(*ch));
 }
 
-static int just_load_md(zone_journal_t *j, journal_metadata_t *md, bool *has_zij)
+static int just_load_md(zone_journal_t j, journal_metadata_t *md, bool *has_zij)
 {
 	knot_lmdb_txn_t txn = { 0 };
-	knot_lmdb_begin(j->db, &txn, false);
-	journal_load_metadata(&txn, j->zone, md);
+	knot_lmdb_begin(j.db, &txn, false);
+	journal_load_metadata(&txn, j.zone, md);
 	if (has_zij != NULL) {
-		uint32_t unused;
-		*has_zij = journal_have_zone_in_j(&txn, j->zone, &unused);
+		*has_zij = journal_contains(&txn, true, 0, j.zone);
 	}
 	knot_lmdb_abort(&txn);
 	return txn.ret;
 }
 
 // beware, this function does not operate in single txn!
-int journal_walk(zone_journal_t *j, journal_walk_cb_t cb, void *ctx)
+int journal_walk(zone_journal_t j, journal_walk_cb_t cb, void *ctx)
 {
 	int ret;
-	if (!knot_lmdb_exists(j->db)) {
+	if (!knot_lmdb_exists(j.db)) {
 		ret = cb(true, NULL, ctx);
 		if (ret == KNOT_EOK) {
 			ret = cb(false, NULL, ctx);
 		}
 		return ret;
 	}
-	ret = knot_lmdb_open(j->db);
+	ret = knot_lmdb_open(j.db);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 	journal_metadata_t md = { 0 };
 	journal_read_t *read = NULL;
 	changeset_t ch;
-	journal_changeset_id_t id = { false, 0 };
 	bool at_least_one = false, zone_in_j = false;
 	ret = just_load_md(j, &md, &zone_in_j);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 	if (zone_in_j) {
-		id.zone_in_journal = true;
+		ret = journal_read_begin(j, true, 0, &read);
 		goto read_one_special;
 	} else if ((md.flags & JOURNAL_MERGED_SERIAL_VALID)) {
-		id.serial = md.merged_serial;
+		ret = journal_read_begin(j, false, md.merged_serial, &read);
 read_one_special:
-		ret = journal_read_begin(j, id, &read);
 		if (ret == KNOT_EOK && journal_read_changeset(read, &ch)) {
 			ret = cb(true, &ch, ctx);
 			journal_read_clear_changeset(&ch);
@@ -296,9 +287,7 @@ read_one_special:
 
 	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && md.first_serial != md.serial_to &&
 	    ret == KNOT_EOK) {
-		id.zone_in_journal = false;
-		id.serial = md.first_serial;
-		ret = journal_read_begin(j, id, &read);
+		ret = journal_read_begin(j, false, md.first_serial, &read);
 		while (ret == KNOT_EOK && journal_read_changeset(read, &ch)) {
 			ret = cb(false, &ch, ctx);
 			at_least_one = true;
@@ -353,7 +342,7 @@ static bool eq(bool a, bool b)
 	return a ? b : !b;
 }
 
-int journal_sem_check(zone_journal_t *j)
+int journal_sem_check(zone_journal_t j)
 {
 	check_ctx_t ctx = { 0 };
 	journal_metadata_t md = { 0 };

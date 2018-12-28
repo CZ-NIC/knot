@@ -20,12 +20,12 @@
 #include "knot/journal/journal_metadata.h"
 #include "libknot/error.h"
 
-MDB_val journal_changeset_id_to_key(journal_changeset_id_t id, const knot_dname_t *zone)
+MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const knot_dname_t *zone)
 {
-	if (id.zone_in_journal) {
+	if (zone_in_journal) {
 		return knot_lmdb_make_key("NIS", zone, (uint32_t)0, "bootstrap");
 	} else {
-		return knot_lmdb_make_key("NII", zone, (uint32_t)0, id.serial);
+		return knot_lmdb_make_key("NII", zone, (uint32_t)0, serial);
 	}
 }
 
@@ -50,22 +50,10 @@ uint32_t journal_next_serial(const MDB_val *chunk)
 	return be32toh(*(uint32_t *)chunk->mv_data);
 }
 
-bool journal_serial_to(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const knot_dname_t *zone,
-                       uint32_t *serial_to)
+bool journal_serial_to(knot_lmdb_txn_t *txn, bool zij, uint32_t serial,
+                       const knot_dname_t *zone, uint32_t *serial_to)
 {
-	MDB_val key = journal_changeset_id_to_key(from, zone);
-	bool found = knot_lmdb_find_prefix(txn, &key);
-	if (found) {
-		*serial_to = journal_next_serial(&txn->cur_val);
-	}
-	free(key.mv_data);
-	return found;
-}
-
-bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint32_t *serial_to)
-{
-	journal_changeset_id_t id = { true, 0 };
-	MDB_val key = journal_changeset_id_to_key(id, zone);
+	MDB_val key = journal_changeset_id_to_key(zij, serial, zone);
 	bool found = knot_lmdb_find_prefix(txn, &key);
 	if (found && serial_to != NULL) {
 		*serial_to = journal_next_serial(&txn->cur_val);
@@ -74,20 +62,20 @@ bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint
 	return found;
 }
 
-bool journal_allow_flush(zone_journal_t *j)
+bool journal_allow_flush(zone_journal_t j)
 {
-	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, j->zone);
+	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, j.zone);
 	return conf_int(&val) >= 0;
 }
 
-size_t journal_conf_max_usage(zone_journal_t *j)
+size_t journal_conf_max_usage(zone_journal_t j)
 {
-	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_USAGE, j->zone);
+	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_USAGE, j.zone);
 	return conf_int(&val);
 }
 
-size_t journal_conf_max_changesets(zone_journal_t *j)
+size_t journal_conf_max_changesets(zone_journal_t j)
 {
-	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_DEPTH, j->zone);
+	conf_val_t val = conf_zone_get(conf(), C_MAX_JOURNAL_DEPTH, j.zone);
 	return conf_int(&val);
 }

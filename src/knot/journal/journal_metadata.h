@@ -47,20 +47,20 @@ void journal_store_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, cons
 void journal_metadata_after_delete(journal_metadata_t *md, uint32_t deleted_upto,
                                    size_t deleted_count);
 
-void journal_metadata_after_merge(journal_metadata_t *md, journal_changeset_id_t merged_serial,
+void journal_metadata_after_merge(journal_metadata_t *md, bool merged_zij, uint32_t merged_serial,
                                   uint32_t merged_serial_to, uint32_t original_serial_to);
 
 void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint32_t serial_to);
 
-int journal_scrape_with_md(zone_journal_t *j);
+int journal_scrape_with_md(zone_journal_t j);
 
-int journal_set_flushed(zone_journal_t *j);
+int journal_set_flushed(zone_journal_t j);
 
-int journal_info(zone_journal_t *j, bool *exists, uint32_t *first_serial,
+int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial,
                  uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial,
                  uint64_t *occupied, uint64_t *occupied_total);
 
-inline static bool journal_is_existing(zone_journal_t *j) {
+inline static bool journal_is_existing(zone_journal_t j) {
 	bool ex = false;
 	journal_info(j, &ex, NULL, NULL, NULL, NULL, NULL, NULL);
 	return ex;

@@ -22,11 +22,6 @@
 #include "libknot/dname.h"
 
 typedef struct {
-	bool zone_in_journal;
-	uint32_t serial;
-} journal_changeset_id_t;
-
-typedef struct {
 	knot_lmdb_db_t *db;
 	const knot_dname_t *zone;
 } zone_journal_t;
@@ -39,7 +34,7 @@ inline static unsigned journal_env_flags(int journal_mode)
 	return journal_mode == JOURNAL_MODE_ASYNC ? (MDB_WRITEMAP | MDB_MAPASYNC) : 0;
 }
 
-MDB_val journal_changeset_id_to_key(journal_changeset_id_t id, const knot_dname_t *zone);
+MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const knot_dname_t *zone);
 
 MDB_val journal_changeset_to_chunk_key(const changeset_t *ch, uint32_t chunk_id);
 
@@ -47,21 +42,18 @@ void journal_make_header(void *chunk, const changeset_t *ch);
 
 uint32_t journal_next_serial(const MDB_val *chunk);
 
-bool journal_serial_to(knot_lmdb_txn_t *txn, journal_changeset_id_t from, const knot_dname_t *zone,
-                       uint32_t *serial_to);
+bool journal_serial_to(knot_lmdb_txn_t *txn, bool zij, uint32_t serial,
+                       const knot_dname_t *zone, uint32_t *serial_to);
 
-inline static bool journal_contains(knot_lmdb_txn_t *txn, journal_changeset_id_t what, const knot_dname_t *zone)
+inline static bool journal_contains(knot_lmdb_txn_t *txn, bool zone, uint32_t serial, const knot_dname_t *zone_name)
 {
-	uint32_t unused;
-	return journal_serial_to(txn, what, zone, &unused);
+	return journal_serial_to(txn, zone, serial, zone_name, NULL);
 }
 
 void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter);
 
-bool journal_have_zone_in_j(knot_lmdb_txn_t *txn, const knot_dname_t *zone, uint32_t *serial_to);
+bool journal_allow_flush(zone_journal_t j);
 
-bool journal_allow_flush(zone_journal_t *j);
+size_t journal_conf_max_usage(zone_journal_t j);
 
-size_t journal_conf_max_usage(zone_journal_t *j);
-
-size_t journal_conf_max_changesets(zone_journal_t *j);
+size_t journal_conf_max_changesets(zone_journal_t j);
