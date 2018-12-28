@@ -154,7 +154,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 		return ret;
 	}
 
-	ret = journal_info(&j, &exists, NULL, NULL, NULL, NULL, &occupied, &occupied_all);
+	ret = journal_info(j, &exists, NULL, NULL, NULL, NULL, &occupied, &occupied_all);
 	if (ret != KNOT_EOK || !exists) {
 		fprintf(stderr, "This zone does not exist in DB %s\n", path);
 		knot_lmdb_deinit(&jdb);
@@ -162,7 +162,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 	}
 
 	if (do_check) {
-		ret = journal_sem_check(&j);
+		ret = journal_sem_check(j);
 		if (ret > 0) {
 			fprintf(stderr, "Journal semantic check error: %d\n", ret);
 		} else if (ret != KNOT_EOK) {
@@ -171,7 +171,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 	}
 
 	bool parm[2] = { debugmode, color };
-	ret = journal_walk(&j, print_changeset_cb, (void *)parm);
+	ret = journal_walk(j, print_changeset_cb, (void *)parm);
 
 	if (debugmode && ret == KNOT_EOK) {
 		printf("Occupied this zone (approx): %"PRIu64" KiB\n", occupied / 1024);
