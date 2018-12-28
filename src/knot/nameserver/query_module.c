@@ -164,8 +164,11 @@ void query_module_close(knotd_mod_t *module)
 	zone_sign_ctx_free(module->sign_ctx);
 	free_zone_keys(module->keyset);
 	free(module->keyset);
-	kdnssec_ctx_deinit(module->dnssec);
-	free(module->dnssec);
+	if (module->dnssec != NULL) {
+		knot_lmdb_deinit(module->dnssec->kasp_db);
+		kdnssec_ctx_deinit(module->dnssec);
+		free(module->dnssec);
+	}
 
 	free(module);
 }
@@ -566,17 +569,25 @@ knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type)
 _public_
 int knotd_mod_dnssec_init(knotd_mod_t *mod)
 {
-	if (mod == NULL) {
+	if (mod == NULL || mod->dnssec != NULL) {
 		return KNOT_EINVAL;
 	}
 
-	mod->dnssec = calloc(1, sizeof(*(mod->dnssec)));
+	knot_lmdb_db_t *kaspdb;
+
+	mod->dnssec = calloc(1, sizeof(*(mod->dnssec)) + sizeof(*kaspdb));
 	if (mod->dnssec == NULL) {
 		return KNOT_ENOMEM;
 	}
+	kaspdb = (knot_lmdb_db_t *)(mod->dnssec + 1);
+
+	char *kasp_dir = conf_kaspdir(mod->config);
+	conf_val_t kasp_size = conf_default_get(mod->config, C_MAX_KASP_DB_SIZE);
+	knot_lmdb_init(kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
+	free(kasp_dir);
 
 	conf_val_t conf = conf_zone_get(mod->config, C_DNSSEC_SIGNING, mod->zone);
-	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone,
+	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone, kaspdb,
 	                           conf_bool(&conf) ? NULL : mod->id);
 	if (ret != KNOT_EOK) {
 		free(mod->dnssec);

@@ -421,18 +421,13 @@ int server_init(server_t *server, int bg_workers)
 	char *journal_dir = conf_journalfile(conf());
 	conf_val_t journal_size = conf_default_get(conf(), C_MAX_JOURNAL_DB_SIZE);
 	conf_val_t journal_mode = conf_default_get(conf(), C_JOURNAL_DB_MODE);
-	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode)));
+	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode)), NULL);
 	free(journal_dir);
 
 	char *kasp_dir = conf_kaspdir(conf());
 	conf_val_t kasp_size = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
-	int ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&kasp_size));
+	knot_lmdb_init(&server->kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
 	free(kasp_dir);
-	if (ret != KNOT_EOK) {
-		worker_pool_destroy(server->workers);
-		evsched_deinit(&server->sched);
-		return ret;
-	}
 
 	return KNOT_EOK;
 }
@@ -462,7 +457,7 @@ void server_deinit(server_t *server)
 	evsched_deinit(&server->sched);
 
 	/* Close kasp_db. */
-	kasp_db_close(kaspdb());
+	knot_lmdb_deinit(&server->kaspdb);
 
 	/* Close journal database if open. */
 	knot_lmdb_deinit(&server->journaldb);
@@ -765,25 +760,13 @@ static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 {
 	char *kasp_dir = conf_kaspdir(conf);
 	conf_val_t kasp_size = conf_default_get(conf, C_MAX_KASP_DB_SIZE);
-	int ret = kasp_db_reconfigure(kaspdb(), kasp_dir, conf_int(&kasp_size));
-	switch (ret) {
-	case KNOT_EBUSY:
-		log_warning("ignored reconfiguration of KASP DB path (already open)");
-		break;
-	case KNOT_EEXIST:
-		ret = KNOT_EBUSY;
-		log_warning("ignored reconfiguration of KASP DB max size (already open)");
-		break;
-	case KNOT_ENODIFF:
-	case KNOT_EOK:
-		ret = KNOT_EOK;
-		break;
-	default:
-		break;
+	int ret = knot_lmdb_reinit(&server->kaspdb, kasp_dir, conf_int(&kasp_size), 0);
+	if (ret != KNOT_EOK) {
+		log_warning("ignored reconfiguration of KASP DB (%s)", knot_strerror(ret));
 	}
 	free(kasp_dir);
 
-	return ret;
+	return KNOT_EOK; // not "ret"
 }
 
 void server_reconfigure(conf_t *conf, server_t *server)
