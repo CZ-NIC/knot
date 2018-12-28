@@ -453,6 +453,24 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 	return txn.ret;
 }
 
+
+int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
+{
+	keyclass_t del_classes[] = { KASPDBKEY_NSEC3SALT, KASPDBKEY_NSEC3TIME,
+		KASPDBKEY_LASTSIGNEDSERIAL, KASPDBKEY_MASTERSERIAL,
+		KASPDBKEY_PARAMS, KASPDBKEY_OFFLINE_RECORDS, };
+	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone, NULL);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	for (int i = 0; i < sizeof(del_classes) / sizeof(*del_classes) && prefix.mv_data != NULL; i++) {
+		*(uint8_t *)prefix.mv_data = del_classes[i];
+		knot_lmdb_del_prefix(&txn, &prefix);
+	}
+	knot_lmdb_commit(&txn);
+	free(prefix.mv_data);
+	return txn.ret;
+}
+
 int kasp_db_add_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const key_params_t *params)
 {
 	MDB_val v = params_serialize(params);
@@ -467,9 +485,7 @@ int kasp_db_share_key(knot_lmdb_db_t *db, const knot_dname_t *zone_from,
 	MDB_val to =   make_key_str(KASPDBKEY_PARAMS, zone_to,   key_id);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
-	if (!knot_lmdb_find(&txn, &from, KNOT_LMDB_EXACT)) {
-		txn.ret = KNOT_ENOENT;
-	} else {
+	if (knot_lmdb_find(&txn, &from, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
 		knot_lmdb_insert(&txn, &to, &txn.cur_val);
 	}
 	knot_lmdb_commit(&txn);
@@ -478,65 +494,54 @@ int kasp_db_share_key(knot_lmdb_db_t *db, const knot_dname_t *zone_from,
 	return txn.ret;
 }
 
-int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
+int kasp_db_store_nsec3salt(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 			    const dnssec_binary_t *nsec3salt, knot_time_t salt_created)
 {
-	if (db == NULL || db->keys_db == NULL ||
-	    zone_name == NULL || nsec3salt == NULL || salt_created <= 0) {
-		return KNOT_EINVAL;
+	MDB_val key = make_key_str(KASPDBKEY_NSEC3SALT, zone_name, NULL);
+	MDB_val val1 = { nsec3salt->size, nsec3salt->data };
+	uint64_t tmp = htobe64(salt_created);
+	MDB_val val2 = { sizeof(tmp), &tmp };
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_lmdb_insert(&txn, &key, &val1);
+	if (key.mv_data != NULL) {
+		*(uint8_t *)key.mv_data = KASPDBKEY_NSEC3TIME;
 	}
-
-	with_txn(KEYS_RW, NULL);
-	knot_db_val_t key = make_key(KASPDBKEY_NSEC3SALT, zone_name, NULL);
-	knot_db_val_t val = { .len = nsec3salt->size, .data = nsec3salt->data };
-	ret = db_api->insert(txn, &key, &val, 0);
-	free_key(&key);
-	txn_check(NULL);
-	key = make_key(KASPDBKEY_NSEC3TIME, zone_name, NULL);
-	uint64_t tmp = htobe64((uint64_t)salt_created);
-	val.len = sizeof(tmp);
-	val.data = &tmp;
-	ret = db_api->insert(txn, &key, &val, 0);
-	free_key(&key);
-	with_txn_end(NULL);
-	return ret;
+	knot_lmdb_insert(&txn, &key, &val2);
+	knot_lmdb_commit(&txn);
+	free(key.mv_data);
+	return txn.ret;
 }
 
 int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
 			   dnssec_binary_t *nsec3salt, knot_time_t *salt_created)
 {
-	if (db == NULL || db->keys_db == NULL ||
-	    zone_name == NULL || nsec3salt == NULL || salt_created == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	with_txn(KEYS_RW, NULL);
-	knot_db_val_t key = make_key(KASPDBKEY_NSEC3TIME, zone_name, NULL), val = { 0 };
-	ret = db_api->find(txn, &key, &val, 0);
-	free_key(&key);
-	if (ret == KNOT_EOK) {
-		if (val.len == sizeof(uint64_t)) {
-			*salt_created = (knot_time_t)be64toh(*(uint64_t *)val.data);
-		}
-		else {
-			ret = KNOT_EMALF;
-		}
-	}
-	txn_check(NULL);
-	key = make_key(KASPDBKEY_NSEC3SALT, zone_name, NULL);
-	ret = db_api->find(txn, &key, &val, 0);
-	free_key(&key);
-	if (ret == KNOT_EOK) {
-		nsec3salt->data = malloc(val.len);
+	MDB_val key = make_key_str(KASPDBKEY_NSEC3SALT, zone_name, NULL);
+	knot_lmdb_txn_t txn = { 0 };
+	memset(nsec3salt, 0, sizeof(*nsec3salt));
+	knot_lmdb_begin(db, &txn, false);
+	if (knot_lmdb_find(&txn, &key, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
+		nsec3salt->size = txn.cur_val.mv_size;
+		nsec3salt->data = malloc(txn.cur_val.mv_size);
 		if (nsec3salt->data == NULL) {
-			ret = KNOT_ENOMEM;
+			txn.ret = KNOT_ENOMEM;
 		} else {
-			nsec3salt->size = val.len;
-			memcpy(nsec3salt->data, val.data, val.len);
+			memcpy(nsec3salt->data, txn.cur_val.mv_data, txn.cur_val.mv_size);
+		}
+		*(uint8_t *)key.mv_data = KASPDBKEY_NSEC3TIME;
+	}
+	if (knot_lmdb_find(&txn, &key, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
+		if (txn.cur_val.mv_size == sizeof(uint64_t)) {
+			*salt_created = be64toh(*(uint64_t *)val.data);
+		} else {
+			txn.ret = KNOT_EMALF;
 		}
 	}
-	with_txn_end(NULL);
-	return ret;
+	knot_lmdb_abort(&txn);
+	if (txn.ret != KNOT_EOK) {
+		free(nsec3salt->data);
+	}
+	return txn.ret;
 }
 
 int kasp_db_store_serial(kasp_db_t *db, const knot_dname_t *zone_name,
