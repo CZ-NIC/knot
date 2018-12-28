@@ -30,7 +30,7 @@
 typedef struct {
 	knot_time_t now;
 
-	kasp_db_t **kasp_db;
+	knot_lmdb_db_t *kasp_db;
 	knot_kasp_zone_t *zone;
 	knot_kasp_policy_t *policy;
 	dnssec_keystore_t *keystore;
@@ -49,10 +49,11 @@ typedef struct {
  * \param conf         Configuration.
  * \param ctx          Signing context to be initialized.
  * \param zone_name    Name of the zone.
+ * \param kaspdb       Key and signature policy database.
  * \param from_module  Module identifier if initialized from a module.
  */
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
-                     const conf_mod_id_t *from_module);
+                     knot_lmdb_db_t *kaspdb, const conf_mod_id_t *from_module);
 
 /*!
  * \brief Save the changes in ctx (in kasp zone).
