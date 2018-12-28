@@ -23,6 +23,7 @@
 #include "libknot/db/db_lmdb.h"
 #include "libknot/dname.h"
 #include "knot/dnssec/kasp/policy.h"
+#include "knot/journal/knot_lmdb.h"
 
 typedef struct kasp_db kasp_db_t;
 
@@ -30,56 +31,6 @@ typedef enum { // the enum values MUST match those from keyclass_t !!
         KASPDB_SERIAL_MASTER = 0x5,
         KASPDB_SERIAL_LASTSIGNED = 0x6,
 } kaspdb_serial_t;
-
-/*!
- * \brief Returns kasp_db_t singleton, to be used for signing all zones.
- *
- * De/initialized with server_t, used in zone contents signing context.
- */
-kasp_db_t **kaspdb(void);
-
-/*!
- * \brief Initialize kasp_db_t, prepare to simple open on-demand.
- *
- * \param db            structure to initialize
- * \param path          path to the LMDB directory (will be created)
- * \param mapsize       LMDB map size
- *
- * \return KNOT_E*
- */
-int kasp_db_init(kasp_db_t **db, const char *path, size_t mapsize);
-
-/*!
- * \brief Re-initialize kasp_db_t if not already open.
- *
- * \param db            structure to initialize
- * \param new_path      new path to LMDB
- * \param new_mapsize   new LMDB map size
- *
- * \retval KNOT_EBUSY   can't reconfigure DB path because already open
- * \retval KNOT_EEXIST  can't reconfigure mapsize because already open
- * \retval KNOT_ENODIFF already open, but no change needed => OK
- * \retval KNOT_EINVAL, KNOT_ENOMEM, etc. standard errors
- * \return KNOT_EOK     reconfigured successfully
- */
-int kasp_db_reconfigure(kasp_db_t **db, const char *new_path, size_t new_mapsize);
-
-/*!
- * \brief Determine if kasp_db possibly exists at all.
- *
- * This is useful to avoid creating kasp_db by opening it just to check if anything is there.
- */
-bool kasp_db_exists(kasp_db_t *db);
-
-/*!
- * \brief Perform real ctreate/open of KASP db.
- */
-int kasp_db_open(kasp_db_t *db);
-
-/*!
- * \brief Close KASP db if open and free the structure.
- */
-void kasp_db_close(kasp_db_t **db);
 
 /*!
  * \brief For given zone, list all keys (their IDs) belonging to it.
@@ -90,7 +41,7 @@ void kasp_db_close(kasp_db_t **db);
  *
  * \return KNOT_E* (KNOT_ENOENT if no keys)
  */
-int kasp_db_list_keys(kasp_db_t *db, const knot_dname_t *zone_name, list_t *dst);
+int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t *dst);
 
 /*!
  * \brief Remove a key from zone. Delete the key if no zone has it anymore.
@@ -102,7 +53,7 @@ int kasp_db_list_keys(kasp_db_t *db, const knot_dname_t *zone_name, list_t *dst)
  *
  * \return KNOT_E*
  */
-int kasp_db_delete_key(kasp_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used);
+int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used);
 
 /*!
  * \brief Remove all zone's keys from DB, including nsec3param
@@ -111,7 +62,7 @@ int kasp_db_delete_key(kasp_db_t *db, const knot_dname_t *zone_name, const char 
  *
  * \return KNOT_E*
  */
-int kasp_db_delete_all(kasp_db_t *db, const knot_dname_t *zone_name);
+int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
 
 /*!
  * \brief Add a key to the DB (possibly overwrite) and link it to a zone.
@@ -126,7 +77,7 @@ int kasp_db_delete_all(kasp_db_t *db, const knot_dname_t *zone_name);
  *
  * \return KNOT_E*
  */
-int kasp_db_add_key(kasp_db_t *db, const knot_dname_t *zone_name, const key_params_t *params);
+int kasp_db_add_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const key_params_t *params);
 
 /*!
  * \brief Link a key from another zone.
@@ -138,7 +89,7 @@ int kasp_db_add_key(kasp_db_t *db, const knot_dname_t *zone_name, const key_para
  *
  * \return KNOT_E*
  */
-int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from,
+int kasp_db_share_key(knot_lmdb_db_t *db, const knot_dname_t *zone_from,
                       const knot_dname_t *zone_to, const char *key_id);
 
 /*!
@@ -151,7 +102,7 @@ int kasp_db_share_key(kasp_db_t *db, const knot_dname_t *zone_from,
  *
  * \return KNOT_E*
  */
-int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
+int kasp_db_store_nsec3salt(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
                             const dnssec_binary_t *nsec3salt, knot_time_t salt_created);
 
 /*!
@@ -164,7 +115,7 @@ int kasp_db_store_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
  *
  * \return KNOT_E* (KNOT_ENOENT if not stored before)
  */
-int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
+int kasp_db_load_nsec3salt(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
                            dnssec_binary_t *nsec3salt, knot_time_t *salt_created);
 
 /*!
@@ -177,7 +128,7 @@ int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
  *
  * \return KNOT_E*
  */
-int kasp_db_store_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+int kasp_db_store_serial(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
                          kaspdb_serial_t serial_type, uint32_t serial);
 
 /*!
@@ -190,7 +141,7 @@ int kasp_db_store_serial(kasp_db_t *db, const knot_dname_t *zone_name,
  *
  * \return KNOT_E* (KNOT_ENOENT if not stored before)
  */
-int kasp_db_load_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+int kasp_db_load_serial(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
                         kaspdb_serial_t serial_type, uint32_t *serial);
 
 /*!
@@ -203,8 +154,8 @@ int kasp_db_load_serial(kasp_db_t *db, const knot_dname_t *zone_name,
  *
  * \return KNOT_E*
  */
-int kasp_db_get_policy_last(kasp_db_t *db, const char *policy_string, knot_dname_t **lp_zone,
-			    char **lp_keyid);
+int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
+                            knot_dname_t **lp_zone, char **lp_keyid);
 
 /*!
  * \brief For given policy name, try to reset last generated key.
@@ -220,7 +171,7 @@ int kasp_db_get_policy_last(kasp_db_t *db, const char *policy_string, knot_dname
  * \retval KNOT_EOK             policy-last key set up successfully to given zone/ID
  * \return KNOT_E*              common error
  */
-int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char *last_lp_keyid,
+int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const char *last_lp_keyid,
 			    const knot_dname_t *new_lp_zone, const char *new_lp_keyid);
 
 /*!
@@ -233,7 +184,7 @@ int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char
  *
  * \return KNOT_E*
  */
-int kasp_db_list_zones(kasp_db_t *db, list_t *dst);
+int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *dst);
 
 /*!
  * \brief Store pre-generated records for offline KSK usage.
@@ -244,7 +195,7 @@ int kasp_db_list_zones(kasp_db_t *db, list_t *dst);
  *
  * \return KNOT_E*
  */
-int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const key_records_t *r);
+int kasp_db_store_offline_records(knot_lmdb_db_t *db, knot_time_t for_time, const key_records_t *r);
 
 /*!
  * \brief Load pregenerated records for offline signing.
@@ -257,7 +208,7 @@ int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const key
  *
  * \return KNOT_E*
  */
-int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
+int kasp_db_load_offline_records(knot_lmdb_db_t *db, const knot_dname_t *for_dname,
                                  knot_time_t for_time, knot_time_t *next_time,
                                  key_records_t *r);
 
@@ -271,5 +222,5 @@ int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
  *
  * \return KNOT_E*
  */
-int kasp_db_delete_offline_records(kasp_db_t *db, const knot_dname_t *zone,
+int kasp_db_delete_offline_records(knot_lmdb_db_t *db, const knot_dname_t *zone,
                                    knot_time_t from_time, knot_time_t to_time);

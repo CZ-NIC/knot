@@ -129,14 +129,14 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
 		return ret;
 	}
 
-	ret = kasp_db_share_key(*ctx->kasp_db, from_zone, ctx->zone->dname, key_id);
+	ret = kasp_db_share_key(ctx->kasp_db, from_zone, ctx->zone->dname, key_id);
 	if (ret != KNOT_EOK) {
 		free(to_zone);
 		return ret;
 	}
 
 	kasp_zone_clear(ctx->zone);
-	ret = kasp_zone_load(ctx->zone, to_zone, *ctx->kasp_db);
+	ret = kasp_zone_load(ctx->zone, to_zone, ctx->kasp_db);
 	free(to_zone);
 	return ret;
 }
@@ -155,7 +155,7 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	}
 
 	bool key_still_used_in_keystore = false;
-	int ret = kasp_db_delete_key(*ctx->kasp_db, ctx->zone->dname, key_ptr->id, &key_still_used_in_keystore);
+	int ret = kasp_db_delete_key(ctx->kasp_db, ctx->zone->dname, key_ptr->id, &key_still_used_in_keystore);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
