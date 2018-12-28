@@ -351,8 +351,9 @@ bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how)
 	txn->cur_key.mv_data = what->mv_data;
 	txn->cur_val.mv_size = 0;
 	txn->cur_val.mv_data = NULL;
-	bool succ = curget(txn, how == KNOT_LMDB_EXACT ? MDB_SET : MDB_SET_RANGE);
-	if (how == KNOT_LMDB_LEQ && txn->ret == KNOT_EOK) {
+	knot_lmdb_find_t cmp = (how & 3);
+	bool succ = curget(txn, cmp == KNOT_LMDB_EXACT ? MDB_SET : MDB_SET_RANGE);
+	if (cmp == KNOT_LMDB_LEQ && txn->ret == KNOT_EOK) {
 		// LEQ is not supported by LMDB, we use GEQ and go back
 		if (succ) {
 			if (txn->cur_key.mv_size != what->mv_size ||
@@ -362,6 +363,10 @@ bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how)
 		} else {
 			succ = curget(txn, MDB_LAST);
 		}
+	}
+
+	if ((how & KNOT_LMDB_FORCE) && !succ && txn->ret == KNOT_EOK) {
+		txn->ret = KNOT_ENOENT;
 	}
 
 	return succ;

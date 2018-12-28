@@ -51,9 +51,10 @@ typedef struct {
 } knot_lmdb_txn_t;
 
 typedef enum {
-	KNOT_LMDB_EXACT,
-	KNOT_LMDB_LEQ,
-	KNOT_LMDB_GEQ,
+	KNOT_LMDB_EXACT = 3,
+	KNOT_LMDB_LEQ = 1,
+	KNOT_LMDB_GEQ = 2,
+	KNOT_LMDB_FORCE = 4,
 } knot_lmdb_find_t;
 
 typedef struct {

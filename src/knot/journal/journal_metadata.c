@@ -59,7 +59,7 @@ static bool del_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const c
 static bool get_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const char *metadata)
 {
 	MDB_val key = metadata_key(zone, metadata);
-	bool ret = knot_lmdb_find(txn, &key, KNOT_LMDB_EXACT);
+	bool ret = knot_lmdb_find(txn, &key, KNOT_LMDB_EXACT); // not FORCE
 	free(key.mv_data);
 	return ret;
 }
