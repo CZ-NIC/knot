@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -121,7 +121,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 		return KNOT_EINVAL;
 	} // for now not designed for rotating shared ZSK
 
-	int ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string,
+	int ret = kasp_db_get_policy_last(ctx->kasp_db, ctx->policy->string,
 	                                  &borrow_zone, &borrow_key);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		return ret;
@@ -146,7 +146,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 			return ret;
 		}
 
-		ret = kasp_db_set_policy_last(*ctx->kasp_db, ctx->policy->string,
+		ret = kasp_db_set_policy_last(ctx->kasp_db, ctx->policy->string,
 		                              borrow_key, ctx->zone->dname, key->id);
 		free(borrow_zone);
 		free(borrow_key);
@@ -165,7 +165,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 				return ret;
 			}
 
-			ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string,
+			ret = kasp_db_get_policy_last(ctx->kasp_db, ctx->policy->string,
 			                              &borrow_zone, &borrow_key);
 		}
 	}

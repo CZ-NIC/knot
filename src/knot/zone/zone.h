@@ -77,6 +77,9 @@ typedef struct zone
 	/*! \brief Ptr to journal DB (in struct server) */
 	knot_lmdb_db_t *journaldb;
 
+	/*! \brief Ptr to journal DB (in struct server) */
+	knot_lmdb_db_t *kaspdb;
+
 	/*! \brief Preferred master lock. */
 	pthread_mutex_t preferred_lock;
 	/*! \brief Preferred master for remote operation. */

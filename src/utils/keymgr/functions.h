@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits);
 
 int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key);
 
-int keymgr_foreign_key_id(char *argv[], knot_dname_t **key_zone, char **key_id);
+int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **key_zone, char **key_id);
 
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[]);
 
