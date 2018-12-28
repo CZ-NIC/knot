@@ -30,14 +30,14 @@
 #include "knot/zone/adjust.h"
 
 static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
-		     kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
+		     knot_lmdb_db_t *kaspdb, kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
 {
 	assert(zone);
 	assert(ctx);
 
 	const knot_dname_t *zone_name = zone->apex->owner;
 
-	int r = kdnssec_ctx_init(conf(), ctx, zone_name, NULL);
+	int r = kdnssec_ctx_init(conf(), ctx, zone_name, kaspdb, NULL);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -155,7 +155,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	// signing pipeline
 
-	result = sign_init(update->new_cont, flags, roll_flags, &ctx, reschedule);
+	result = sign_init(update->new_cont, flags, roll_flags, update->zone->kaspdb, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -246,7 +246,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 
 	// signing pipeline
 
-	result = sign_init(update->new_cont, 0, 0, &ctx, reschedule);
+	result = sign_init(update->new_cont, 0, 0, update->zone->kaspdb, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));

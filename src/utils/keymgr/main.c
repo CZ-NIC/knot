@@ -121,18 +121,15 @@ static int key_command(int argc, char *argv[], int opt_ind)
 	}
 	knot_dname_to_lower(zone_name);
 
+	knot_lmdb_db_t kaspdb = { 0 };
 	kdnssec_ctx_t kctx = { 0 };
 
 	conf_val_t mapsize = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
 	char *kasp_dir = conf_kaspdir(conf());
-	int ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&mapsize));
+	knot_lmdb_init(&kaspdb, kasp_dir, conf_int(&mapsize), 0, "keys_db");
 	free(kasp_dir);
-	if (ret != KNOT_EOK) {
-		printf("Failed to initialize KASP db (%s)\n", knot_strerror(ret));
-		goto main_end;
-	}
 
-	ret = kdnssec_ctx_init(conf(), &kctx, zone_name, NULL);
+	int ret = kdnssec_ctx_init(conf(), &kctx, zone_name, &kaspdb, NULL);
 	if (ret != KNOT_EOK) {
 		printf("Failed to initialize KASP (%s)\n", knot_strerror(ret));
 		goto main_end;
@@ -217,9 +214,9 @@ static int key_command(int argc, char *argv[], int opt_ind)
 		CHECK_MISSING_ARG("Key to be shared is not specified");
 		knot_dname_t *other_zone = NULL;
 		char *key_to_share = NULL;
-		ret = keymgr_foreign_key_id(argv, &other_zone, &key_to_share);
+		ret = keymgr_foreign_key_id(argv, &kaspdb, &other_zone, &key_to_share);
 		if (ret == KNOT_EOK) {
-			ret = kasp_db_share_key(*kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
+			ret = kasp_db_share_key(kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
 		}
 		free(other_zone);
 		free(key_to_share);
@@ -267,7 +264,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 
 main_end:
 	kdnssec_ctx_deinit(&kctx);
-	kasp_db_close(kaspdb());
+	knot_lmdb_deinit(&kaspdb);
 	free(zone_name);
 
 	return ret;
