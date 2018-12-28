@@ -70,17 +70,14 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 		return KNOT_EINVAL;
 	}
 
-	zone_journal_t j = { zone->journaldb, zone->name };
-
 	// Check if journal is used (later in zone_changes_load() and zone is not empty.
-	// Also check if journal exists (this operation also opens the LMDB.
-	if (zone_contents_is_empty(contents) || !journal_is_existing(&j)) {
+	if (zone_contents_is_empty(contents)) {
 		return KNOT_EOK;
 	}
+	uint32_t serial = zone_contents_serial(contents);
 
 	journal_read_t *read = NULL;
-	journal_changeset_id_t serial = { false, zone_contents_serial(contents) };
-	int ret = journal_read_begin(&j, serial, &read);
+	int ret = journal_read_begin(zone_journal(zone), false, serial, &read);
 	switch (ret) {
 	case KNOT_EOK:
 		break;
@@ -100,10 +97,10 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 	ret = journal_read_rrsets(read, apply_one_cb, &a_ctx);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "changes from journal applied %u -> %u",
-		              serial.serial, zone_contents_serial(contents));
+		              serial, zone_contents_serial(contents));
 	} else {
 		log_zone_error(zone->name, "failed to apply journal changes %u -> %u (%s)",
-		               serial.serial, zone_contents_serial(contents),
+		               serial, zone_contents_serial(contents),
 		               knot_strerror(ret));
 	}
 
@@ -118,14 +115,8 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 		return KNOT_EINVAL;
 	}
 
-	zone_journal_t j = { zone->journaldb, zone->name };
-	if (!journal_is_existing(&j)) {
-		return KNOT_ENOENT;
-	}
-
 	journal_read_t *read = NULL;
-	journal_changeset_id_t serial = { true, 0 };
-	int ret = journal_read_begin(&j, serial, &read);
+	int ret = journal_read_begin(zone_journal(zone), true, 0, &read);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

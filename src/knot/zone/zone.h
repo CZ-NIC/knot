@@ -18,7 +18,7 @@
 
 #include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
-#include "knot/journal/knot_lmdb.h"
+#include "knot/journal/journal_basic.h"
 #include "knot/events/events.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
@@ -111,6 +111,12 @@ void zone_free(zone_t **zone_ptr);
  * \param zone Zone to be cleared.
  */
 void zone_control_clear(zone_t *zone);
+
+inline static zone_journal_t zone_journal(zone_t *zone)
+{
+	zone_journal_t j = { zone->journaldb, zone->name };
+	return j;
+}
 
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
 int zone_changes_clear(conf_t *conf, zone_t *zone);
