@@ -123,7 +123,7 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
-		     const conf_mod_id_t *from_module)
+		     knot_lmdb_db_t *kaspdb, const conf_mod_id_t *from_module)
 {
 	if (ctx == NULL || zone_name == NULL) {
 		return KNOT_EINVAL;
@@ -138,14 +138,14 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		ret = KNOT_ENOMEM;
 		goto init_error;
 	}
-	ctx->kasp_db = kaspdb();
 
-	ret = kasp_db_open(*ctx->kasp_db);
+	ctx->kasp_db = kaspdb;
+	ret = knot_lmdb_open(ctx->kasp_db);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}
 
-	ret = kasp_zone_load(ctx->zone, zone_name, *ctx->kasp_db);
+	ret = kasp_zone_load(ctx->zone, zone_name, ctx->kasp_db);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}
@@ -201,7 +201,7 @@ int kdnssec_ctx_commit(kdnssec_ctx_t *ctx)
 
 	// do something with keytore? Probably not..
 
-	return kasp_zone_save(ctx->zone, ctx->zone->dname, *ctx->kasp_db);
+	return kasp_zone_save(ctx->zone, ctx->zone->dname, ctx->kasp_db);
 }
 
 void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)

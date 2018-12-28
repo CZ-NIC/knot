@@ -569,13 +569,18 @@ int knotd_mod_dnssec_init(knotd_mod_t *mod)
 		return KNOT_EINVAL;
 	}
 
+	char *kasp_dir = conf_kaspdir(mod->config);
+	conf_val_t kasp_size = conf_default_get(mod->config, C_MAX_KASP_DB_SIZE);
+	knot_lmdb_init(&mod->kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
+	free(kasp_dir);
+
 	mod->dnssec = calloc(1, sizeof(*(mod->dnssec)));
 	if (mod->dnssec == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	conf_val_t conf = conf_zone_get(mod->config, C_DNSSEC_SIGNING, mod->zone);
-	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone,
+	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone, &mod->kaspdb,
 	                           conf_bool(&conf) ? NULL : mod->id);
 	if (ret != KNOT_EOK) {
 		free(mod->dnssec);

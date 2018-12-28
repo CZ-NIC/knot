@@ -151,7 +151,7 @@ int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_t
 	size_t buf_size = 512;
 	for (knot_time_t i = from; ret == KNOT_EOK && i != 0 && (arg_to == NULL || knot_time_cmp(i, to) < 0); i = next) {
 		key_records_t r = { { 0 } };
-		ret = kasp_db_load_offline_records(*ctx->kasp_db, ctx->zone->dname, i, &next, &r);
+		ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname, i, &next, &r);
 		if (ret == KNOT_EOK) {
 			ret = key_records_dump(&buf, &buf_size, &r, true);
 		}
@@ -176,7 +176,7 @@ int keymgr_delete_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	return kasp_db_delete_offline_records(*ctx->kasp_db, ctx->zone->dname, from, to);
+	return kasp_db_delete_offline_records(ctx->kasp_db, ctx->zone->dname, from, to);
 }
 
 int keymgr_del_all_old(kdnssec_ctx_t *ctx)
@@ -372,12 +372,12 @@ static void skr_import_header(zs_scanner_t *sc)
 
 	// delete possibly existing conflicting offline records
 	sc->error.code = kasp_db_delete_offline_records(
-		*ctx->kctx->kasp_db, ctx->kctx->zone->dname, next_timestamp, 0
+		ctx->kctx->kasp_db, ctx->kctx->zone->dname, next_timestamp, 0
 	);
 
 	// store previous SKR
 	if (ctx->timestamp > 0 && sc->error.code == KNOT_EOK) {
-		sc->error.code = kasp_db_store_offline_records(*ctx->kctx->kasp_db,
+		sc->error.code = kasp_db_store_offline_records(ctx->kctx->kasp_db,
 		                                               ctx->timestamp, &ctx->r);
 		key_records_clear_rdatasets(&ctx->r);
 	}
