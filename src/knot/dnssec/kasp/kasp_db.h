@@ -23,6 +23,7 @@
 #include "libknot/db/db_lmdb.h"
 #include "libknot/dname.h"
 #include "knot/dnssec/kasp/policy.h"
+#include "knot/journal/knot_lmdb.h"
 
 typedef struct kasp_db kasp_db_t;
 
