@@ -96,8 +96,7 @@ void set_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const char *me
 {
 	MDB_val key = metadata_key(zone, metadata);
 	MDB_val val = { val_size, NULL };
-	knot_lmdb_insert(txn, &key, &val);
-	if (txn->ret == KNOT_EOK) {
+	if (knot_lmdb_insert(txn, &key, &val)) {
 		memcpy(val.mv_data, valp, val_size);
 		if (numeric) {
 			fix_endian(val.mv_data, val_size, false);
@@ -127,7 +126,7 @@ void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter
 update_inserter:
 	if (new_inserter == NULL) {
 		del_metadata(txn, NULL, "last_inserter_zone");
-	} else if (last_inserter == NULL || knot_dname_cmp(last_inserter, new_inserter) != 0) {
+	} else if (last_inserter == NULL || !knot_dname_is_equal(last_inserter, new_inserter)) {
 		set_metadata(txn, NULL, "last_inserter_zone", new_inserter, knot_dname_size(new_inserter), false);
 	}
 	free(last_inserter);

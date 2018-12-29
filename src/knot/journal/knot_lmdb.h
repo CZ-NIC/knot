@@ -109,7 +109,7 @@ void knot_lmdb_del_cur(knot_lmdb_txn_t *txn);
 
 void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix);
 
-void knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val);
+bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val);
 
 int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val);
 
@@ -120,3 +120,5 @@ MDB_val knot_lmdb_make_key(const char *format, ...);
 bool knot_lmdb_make_key_part(void *key_data, size_t key_len, const char *format, ...);
 
 bool knot_lmdb_unmake_key(void *key_data, size_t key_len, const char *format, ...);
+
+bool knot_lmdb_unmake_curval(knot_lmdb_txn_t *txn, const char *format, ...);

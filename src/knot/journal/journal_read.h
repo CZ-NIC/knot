@@ -35,7 +35,7 @@ bool journal_read_rrset(journal_read_t *ctx, knot_rrset_t *rr, bool allow_next_c
 // TODO move somewhere. Libknot?
 inline static bool rr_is_apex_soa(const knot_rrset_t *rr, const knot_dname_t *apex)
 {
-	return (rr->type == KNOT_RRTYPE_SOA && knot_dname_cmp(rr->owner, apex) == 0);
+	return (rr->type == KNOT_RRTYPE_SOA && knot_dname_is_equal(rr->owner, apex));
 }
 
 int journal_read_rrsets(journal_read_t *read, journal_read_cb_t cb, void *ctx);

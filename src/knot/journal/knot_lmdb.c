@@ -409,13 +409,14 @@ void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix)
 	}
 }
 
-void knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val)
+bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val)
 {
 	if (txn_semcheck(txn) && txn_enomem(txn, key)) {
 		unsigned flags = (val->mv_size > 0 && val->mv_data == NULL ? MDB_RESERVE : 0);
 		txn->ret = mdb_put(txn->txn, txn->db->dbi, key, val, flags);
 		err_to_knot(&txn->ret);
 	}
+	return (txn->ret == KNOT_EOK);
 }
 
 int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val)
@@ -552,11 +553,12 @@ bool knot_lmdb_make_key_part(void *key_data, size_t key_len, const char *format,
 	return succ;
 }
 
-bool knot_lmdb_unmake_key(void *key_data, size_t key_len, const char *format, ...)
+static bool unmake_key_part(void *key_data, size_t key_len, const char *format, va_list arg)
 {
-	va_list arg;
+	if (key_data == NULL) {
+		return false;
+	}
 	wire_ctx_t wire = wire_ctx_init(key_data, key_len);
-	va_start(arg, format);
 	for (const char *f = format; *f != '\0' && wire.error == KNOT_EOK && wire_ctx_available(&wire) > 0; f++) {
 		void *tmp = va_arg(arg, void *);
 		switch (*f) {
@@ -609,6 +611,26 @@ bool knot_lmdb_unmake_key(void *key_data, size_t key_len, const char *format, ..
 			break;
 		}
 	}
-	va_end(arg);
 	return (wire.error == KNOT_EOK && wire_ctx_available(&wire) == 0);
+}
+
+bool knot_lmdb_unmake_key(void *key_data, size_t key_len, const char *format, ...)
+{
+	va_list arg;
+	va_start(arg, format);
+	bool succ = unmake_key_part(key_data, key_len, format, arg);
+	va_end(arg);
+	return succ;
+}
+
+bool knot_lmdb_unmake_curval(knot_lmdb_txn_t *txn, const char *format, ...)
+{
+	va_list arg;
+	va_start(arg, format);
+	bool succ = unmake_key_part(txn->cur_val.mv_data, txn->cur_val.mv_size, format, arg);
+	va_end(arg);
+	if (!succ && txn->ret == KNOT_EOK) {
+		txn->ret = KNOT_EMALF;
+	}
+	return succ;
 }

@@ -35,8 +35,7 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 		chunk.mv_size += JOURNAL_HEADER_SIZE;
 		chunk.mv_data = NULL;
 		MDB_val key = journal_changeset_to_chunk_key(ch, i);
-		knot_lmdb_insert(txn, &key, &chunk);
-		if (txn->ret == KNOT_EOK) {
+		if (knot_lmdb_insert(txn, &key, &chunk)) {
 			journal_make_header(chunk.mv_data, ch);
 			serialize_chunk(ser, chunk.mv_data + JOURNAL_HEADER_SIZE, chunk.mv_size - JOURNAL_HEADER_SIZE);
 		}
