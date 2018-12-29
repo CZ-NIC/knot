@@ -17,22 +17,11 @@
 #include "knot/dnssec/kasp/kasp_db.h"
 
 #include <inttypes.h>
-#include <stdarg.h> // just for va_free()
-#include <pthread.h>
-#include <sys/stat.h>
+#include <stdio.h>
 
-#include "contrib/files.h"
 #include "contrib/strtonum.h"
 #include "contrib/wire_ctx.h"
 #include "knot/dnssec/key_records.h"
-#include "knot/journal/serialization.h"
-
-struct kasp_db {
-	knot_db_t *keys_db;
-	char *db_path;
-	size_t db_mapsize;
-	pthread_mutex_t opening_mutex;
-};
 
 typedef enum {
 	KASPDBKEY_PARAMS = 0x1,
@@ -43,135 +32,6 @@ typedef enum {
 	KASPDBKEY_LASTSIGNEDSERIAL = 0x6,
 	KASPDBKEY_OFFLINE_RECORDS = 0x7,
 } keyclass_t;
-
-static const knot_db_api_t *db_api = NULL;
-
-static kasp_db_t *global_kasp_db = NULL;
-
-kasp_db_t **kaspdb(void)
-{
-	return &global_kasp_db;
-}
-
-int kasp_db_init(kasp_db_t **db, const char *path, size_t mapsize)
-{
-	if (db == NULL || path == NULL || *db != NULL) {
-		return KNOT_EINVAL;
-	}
-
-	db_api = knot_db_lmdb_api();
-
-	*db = calloc(1, sizeof(**db));
-	if (*db == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	(*db)->db_path = strdup(path);
-	if ((*db)->db_path == NULL) {
-		free(*db);
-		return KNOT_ENOMEM;
-	}
-
-	(*db)->db_mapsize = mapsize;
-
-	pthread_mutex_init(&(*db)->opening_mutex, NULL);
-	return KNOT_EOK;
-}
-
-int kasp_db_reconfigure(kasp_db_t **db, const char *new_path, size_t new_mapsize)
-{
-	if (db == NULL || new_path == NULL || *db == NULL || (*db)->db_path == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	pthread_mutex_lock(&(*db)->opening_mutex);
-
-	bool changed_path = (strcmp(new_path, (*db)->db_path) != 0);
-	bool changed_mapsize = (new_mapsize != (*db)->db_mapsize);
-
-	if ((*db)->keys_db != NULL) {
-		pthread_mutex_unlock(&(*db)->opening_mutex);
-		if (changed_path) {
-			return KNOT_EBUSY;
-		} else if (changed_mapsize) {
-			return KNOT_EEXIST;
-		} else {
-			return KNOT_ENODIFF;
-		}
-	}
-
-	free((*db)->db_path);
-	(*db)->db_path = strdup(new_path);
-	if ((*db)->db_path == NULL) {
-		pthread_mutex_unlock(&(*db)->opening_mutex);
-		return KNOT_ENOMEM;
-	}
-	(*db)->db_mapsize = new_mapsize;
-
-	pthread_mutex_unlock(&(*db)->opening_mutex);
-	return KNOT_EOK;
-}
-
-bool kasp_db_exists(kasp_db_t *db)
-{
-	if (db->keys_db == NULL) {
-		struct stat st;
-		if (stat(db->db_path, &st) != 0) {
-			return false;
-		}
-	}
-	return true;
-}
-
-int kasp_db_open(kasp_db_t *db)
-{
-	if (db == NULL || db->db_path == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	pthread_mutex_lock(&db->opening_mutex);
-
-	if (db->keys_db != NULL) {
-		pthread_mutex_unlock(&db->opening_mutex);
-		return KNOT_EOK; // already open
-	}
-
-	int ret = make_dir(db->db_path, S_IRWXU | S_IRGRP | S_IXGRP, true);
-	if (ret != KNOT_EOK) {
-		pthread_mutex_unlock(&db->opening_mutex);
-		return ret;
-	}
-
-	struct knot_db_lmdb_opts opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
-	opts.path = db->db_path;
-	opts.mapsize = db->db_mapsize;
-	opts.maxdbs = 1;
-	opts.dbname = "keys_db";
-
-	ret = db_api->init(&db->keys_db, NULL, &opts);
-	if (ret != KNOT_EOK) {
-		pthread_mutex_unlock(&db->opening_mutex);
-		return ret;
-	}
-
-	pthread_mutex_unlock(&db->opening_mutex);
-
-	return ret;
-}
-
-void kasp_db_close(kasp_db_t **db)
-{
-	if (db != NULL && *db != NULL) {
-		pthread_mutex_lock(&(*db)->opening_mutex);
-		db_api->deinit((*db)->keys_db);
-		(*db)->keys_db = NULL;
-		pthread_mutex_unlock(&(*db)->opening_mutex);
-		free((*db)->db_path);
-		pthread_mutex_destroy(&(*db)->opening_mutex);
-		free(*db);
-		*db = NULL;
-	}
-}
 
 static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const char *str)
 {
@@ -199,7 +59,7 @@ static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const 
 static MDB_val make_key_time(keyclass_t kclass, const knot_dname_t *dname, knot_time_t time)
 {
 	char tmp[21];
-	snprintf(str, sizeof(tmp), "%0*"PRIu64, sizeof(tmp) - 1, time);
+	snprintf(tmp, sizeof(tmp), "%0*"PRIu64, (int)(sizeof(tmp) - 1), time);
 	return make_key_str(kclass, dname, tmp);
 }
 
@@ -209,7 +69,7 @@ static bool unmake_key_str(const MDB_val *keyv, char **str)
 	const knot_dname_t *dname;
 	const char *s;
 	return (knot_lmdb_unmake_key(keyv->mv_data, keyv->mv_size, "BNS", &kclass, &dname, &s) &&
-		((*str = strdup(s)) != NULL);
+		((*str = strdup(s)) != NULL));
 }
 
 static bool unmake_key_time(const MDB_val *keyv, knot_time_t *time)
@@ -219,72 +79,6 @@ static bool unmake_key_time(const MDB_val *keyv, knot_time_t *time)
 	const char *s;
 	return (knot_lmdb_unmake_key(keyv->mv_data, keyv->mv_size, "BNS", &kclass, &dname, &s) &&
 		str_to_u64(s, time) == KNOT_EOK);
-}
-
-
-
-
-
-static knot_db_val_t make_key(keyclass_t kclass, const knot_dname_t *dname, const char *str)
-{
-	size_t dnlen = knot_dname_size(dname);
-	size_t slen = (str == NULL ? 0 : strlen(str) + 1);
-	knot_db_val_t res = { .len = 1 + dnlen + slen, .data = malloc(1 + dnlen + slen) };
-	if (res.data != NULL) {
-		wire_ctx_t wire = wire_ctx_init(res.data, res.len);
-		wire_ctx_write_u8(&wire, (uint8_t)kclass);
-		wire_ctx_write(&wire, dname, dnlen);
-		wire_ctx_write(&wire, str, slen);
-	} else {
-		res.len = 0;
-	}
-	return res;
-}
-
-static keyclass_t key_class(const knot_db_val_t *key)
-{
-	return ((uint8_t *)key->data)[0];
-}
-
-static const knot_dname_t *key_dname(const knot_db_val_t *key)
-{
-	return (key->data + 1);
-}
-
-static const char *key_str(const knot_db_val_t *key)
-{
-	return (key->data + 1 + knot_dname_size(key_dname(key)));
-}
-
-// returns zero time (= infinity) if failure!
-static knot_time_t key_time(const knot_db_val_t *key)
-{
-	uint64_t r = 0;
-	(void)str_to_u64(key_str(key), &r);
-	return r;
-}
-
-static void free_key(knot_db_val_t *key)
-{
-	free(key->data);
-	memset(key, 0, sizeof(*key));
-}
-
-static char *keyid_fromkey(const knot_db_val_t *key)
-{
-	if (key->len < 2 || *(uint8_t *)key->data != KASPDBKEY_PARAMS) {
-		return NULL;
-	}
-	size_t skip = knot_dname_size((const uint8_t *)key->data + 1);
-	return (key->len < skip + 2 ? NULL : strdup(key->data + skip + 1));
-}
-
-static bool check_key_zone(const knot_db_val_t *key, const knot_dname_t *zone_name)
-{
-	if (key->len < 2 || *(uint8_t *)key->data == KASPDBKEY_POLICYLAST) {
-		return false;
-	}
-	return knot_dname_is_equal(key->data + 1, zone_name);
 }
 
 static MDB_val params_serialize(const key_params_t *params)
@@ -315,7 +109,7 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 		return false;
 	}
 
-	if (knot_lmdb_unmake_key(val->mv_data, val->mv_size = future, "LLHBBLLLLLLLLLD",
+	if (knot_lmdb_unmake_key(val->mv_data, val->mv_size, "LLHBBLLLLLLLLLD",
 		&params->public_key.size, &future, &params->keytag, &params->algorithm, &flags,
 		&params->timing.created, &params->timing.pre_active, &params->timing.publish,
 		&params->timing.ready, &params->timing.active, &params->timing.retire_active,
@@ -335,61 +129,14 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 	return false;
 }
 
-static key_params_t *keyval2params(const knot_db_val_t *key, const knot_db_val_t *val)
-{
-	key_params_t *res = calloc(1, sizeof(*res));
-	if (res != NULL) {
-		if (deserialize_key_params(res, key, val) != KNOT_EOK) {
-			free(res);
-			return NULL;
-		}
-	}
-	return res;
-}
-
-#define txn_check(...) \
-	if (ret != KNOT_EOK) { \
-		db_api->txn_abort(txn); \
-		va_free(NULL, __VA_ARGS__); \
-		return ret; \
-	} \
-
-#define with_txn(what, ...) \
-	int ret = KNOT_EOK; \
-	knot_db_txn_t local_txn, *txn = &local_txn; \
-	ret = db_api->txn_begin(db->keys_db, txn, (what & 0x1) ? 0 : KNOT_DB_RDONLY); \
-	txn_check(__VA_ARGS__); \
-
-#define with_txn_end(...) \
-	txn_check(__VA_ARGS__); \
-	ret = db_api->txn_commit(txn); \
-	if (ret != KNOT_EOK) { \
-		db_api->txn_abort(txn); \
-	} \
-
-#define KEYS_RO 0x0
-#define KEYS_RW 0x1
-
-// TODO move elsewhere
-static void va_free(void *p, ...)
-{
-	va_list args;
-	va_start(args, p);
-	for (void *f = p; f != NULL; f = va_arg(args, void *)) {
-		free(f);
-	}
-	va_end(args);
-}
-
-
 static key_params_t *txn2params(knot_lmdb_txn_t *txn)
 {
 	key_params_t *p = calloc(1, sizeof(*p));
 	if (p == NULL) {
 		txn->ret = KNOT_ENOMEM;
 	} else {
-		if (!params_deserialize(&txn.cur_val, p) ||
-		    !unmake_key_str(&txn.cur_key, &p->id)) {
+		if (!params_deserialize(&txn->cur_val, p) ||
+		    !unmake_key_str(&txn->cur_key, &p->id)) {
 			txn->ret = KNOT_EMALF;
 			free(p);
 			p = NULL;
@@ -428,7 +175,7 @@ static bool keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t *
 		if (unmake_key_str(&txn->cur_key, &found_id) &&
 		    strcmp(found_id, key_id) == 0) {
 			if (params != NULL) {
-				*params = txn2params(&txn);
+				*params = txn2params(txn);
 			}
 			free(found_id);
 			return true;
@@ -475,7 +222,7 @@ int kasp_db_add_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const key
 {
 	MDB_val v = params_serialize(params);
 	MDB_val k = make_key_str(KASPDBKEY_PARAMS, zone_name, params->id);
-	return knot_lmdb_quick_insert(db, &k, &v);
+	return knot_lmdb_quick_insert(db, k, v);
 }
 
 int kasp_db_share_key(knot_lmdb_db_t *db, const knot_dname_t *zone_from,
@@ -513,7 +260,7 @@ int kasp_db_store_nsec3salt(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	return txn.ret;
 }
 
-int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
+int kasp_db_load_nsec3salt(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 			   dnssec_binary_t *nsec3salt, knot_time_t *salt_created)
 {
 	MDB_val key = make_key_str(KASPDBKEY_NSEC3SALT, zone_name, NULL);
@@ -531,288 +278,200 @@ int kasp_db_load_nsec3salt(kasp_db_t *db, const knot_dname_t *zone_name,
 		*(uint8_t *)key.mv_data = KASPDBKEY_NSEC3TIME;
 	}
 	if (knot_lmdb_find(&txn, &key, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
-		if (txn.cur_val.mv_size == sizeof(uint64_t)) {
-			*salt_created = be64toh(*(uint64_t *)val.data);
-		} else {
-			txn.ret = KNOT_EMALF;
-		}
+		knot_lmdb_unmake_curval(&txn, "L", salt_created);
 	}
 	knot_lmdb_abort(&txn);
+	free(key.mv_data);
 	if (txn.ret != KNOT_EOK) {
 		free(nsec3salt->data);
 	}
 	return txn.ret;
 }
 
-int kasp_db_store_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+int kasp_db_store_serial(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 			 kaspdb_serial_t serial_type, uint32_t serial)
 {
-	if (db == NULL || db->keys_db == NULL || zone_name == NULL) {
-		return KNOT_EINVAL;
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
-
-	uint32_t be = htobe32(serial);
-	with_txn(KEYS_RW, NULL);
-	knot_db_val_t key = make_key((keyclass_t)serial_type, zone_name, NULL);
-	knot_db_val_t val = { .len = sizeof(uint32_t), .data = &be };
-	ret = db_api->insert(txn, &key, &val, 0);
-	free_key(&key);
-	with_txn_end(NULL);
-	return ret;
+	MDB_val k = make_key_str((keyclass_t)serial_type, zone_name, NULL);
+	MDB_val v = knot_lmdb_make_key("I", serial);
+	return knot_lmdb_quick_insert(db, k, v);
 }
 
-int kasp_db_load_serial(kasp_db_t *db, const knot_dname_t *zone_name,
+int kasp_db_load_serial(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 			kaspdb_serial_t serial_type, uint32_t *serial)
 {
-	if (db == NULL || db->keys_db == NULL || zone_name == NULL || serial == NULL) {
-		return KNOT_EINVAL;
+	if (!knot_lmdb_exists(db)) {
+		return KNOT_ENOENT;
 	}
-
-	with_txn(KEYS_RO, NULL);
-	knot_db_val_t key = make_key((keyclass_t)serial_type, zone_name, NULL), val = { 0 };
-	ret = db_api->find(txn, &key, &val, 0);
-	free_key(&key);
-	if (ret == KNOT_EOK) {
-		if (val.len == sizeof(uint32_t)) {
-			*serial = be32toh(*(uint32_t *)val.data);
-		} else {
-			ret = KNOT_EMALF;
-		}
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
-	with_txn_end(NULL);
-	return ret;
+	MDB_val k = make_key_str((keyclass_t)serial_type, zone_name, NULL);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, false);
+	if (knot_lmdb_find(&txn, &k, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
+		knot_lmdb_unmake_curval(&txn, "I", serial);
+	}
+	knot_lmdb_abort(&txn);
+	free(k.mv_data);
+	return txn.ret;
 }
 
-int kasp_db_get_policy_last(kasp_db_t *db, const char *policy_string, knot_dname_t **lp_zone,
-			    char **lp_keyid)
+int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
+                            knot_dname_t **lp_zone, char **lp_keyid)
 {
-	if (db == NULL || db->keys_db == NULL || policy_string == NULL ||
-	    lp_zone == NULL || lp_keyid == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	with_txn(KEYS_RO, NULL);
-	knot_db_val_t key = make_key(KASPDBKEY_POLICYLAST, NULL, policy_string), val = { 0 };
-	ret = db_api->find(txn, &key, &val, 0);
-	free_key(&key);
-	if (ret == KNOT_EOK) {
-		if (*(uint8_t *)val.data != KASPDBKEY_PARAMS) {
-			ret = KNOT_EMALF;
+	MDB_val k = make_key_str(KASPDBKEY_POLICYLAST, NULL, policy_string);
+	uint8_t kclass = 0;
+	knot_lmdb_txn_t txn = { 0 };
+	*lp_zone = NULL;
+	*lp_keyid = NULL;
+	knot_lmdb_begin(db, &txn, false);
+	if (knot_lmdb_find(&txn, &k, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
+		knot_lmdb_unmake_curval(&txn, "BNS", &kclass, lp_zone, lp_keyid);
+		*lp_zone = knot_dname_copy(*lp_zone, NULL);
+		*lp_keyid = strdup(*lp_keyid);
+		if (kclass != KASPDBKEY_PARAMS) {
+			txn.ret = KNOT_EMALF;
+		} else if (*lp_keyid == NULL || *lp_zone == NULL) {
+			txn.ret = KNOT_ENOMEM;
 		} else {
-			*lp_zone = knot_dname_copy((knot_dname_t *)(val.data + 1), NULL);
-			*lp_keyid = keyid_fromkey(&val);
-			if (*lp_zone == NULL || *lp_keyid == NULL) {
-				free(*lp_zone);
-				free(*lp_keyid);
-				ret = KNOT_ENOMEM;
-			} else {
-				// check that the shared key ID really exists
-				key = make_key(KASPDBKEY_PARAMS, *lp_zone, *lp_keyid);
-				ret = db_api->find(txn, &key, &val, 0);
-				free_key(&key);
-				if (ret != KNOT_EOK) {
-					free(*lp_zone);
-					free(*lp_keyid);
-				}
-			}
+			// check that the referenced key really exists
+			knot_lmdb_find(&txn, &txn.cur_val, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE);
 		}
 	}
-	with_txn_end(NULL);
-	return ret;
+	knot_lmdb_abort(&txn);
+	free(k.mv_data);
+	if (txn.ret != KNOT_EOK) {
+		free(*lp_zone);
+		free(*lp_keyid);
+	}
+	return txn.ret;
 }
 
-int kasp_db_set_policy_last(kasp_db_t *db, const char *policy_string, const char *last_lp_keyid,
+int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const char *last_lp_keyid,
 			    const knot_dname_t *new_lp_zone, const char *new_lp_keyid)
 {
-	if (db == NULL || db->keys_db == NULL ||
-	    new_lp_zone == NULL || new_lp_keyid == NULL) {
-		return KNOT_EINVAL;
-	}
-	with_txn(KEYS_RW, NULL);
-	knot_db_val_t key = make_key(KASPDBKEY_POLICYLAST, NULL, policy_string), val = { 0 };
-	ret = db_api->find(txn, &key, &val, 0);
-	switch (ret) {
-	case KNOT_EOK:
-		if (*(uint8_t *)val.data != KASPDBKEY_PARAMS) {
-			ret = KNOT_EMALF;
-		} else {
-			char *real_last = keyid_fromkey(&val);
-			if (real_last == NULL) {
-				ret = KNOT_ENOMEM;
-			} else {
-				if (last_lp_keyid == NULL || strcmp(real_last, last_lp_keyid) != 0) {
-					ret = KNOT_ESEMCHECK;
-				}
-				free(real_last);
-			}
+	MDB_val k = make_key_str(KASPDBKEY_POLICYLAST, NULL, policy_string);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	if (knot_lmdb_find(&txn, &k, KNOT_LMDB_EXACT)) {
+		// check that the last_lp_keyid matches
+		uint8_t unuse1, *unuse2;
+		const char *real_last_keyid;
+		if (knot_lmdb_unmake_curval(&txn, "BNS", &unuse1, &unuse2, &real_last_keyid) &&
+		    strcmp(last_lp_keyid, real_last_keyid) != 0) {
+			txn.ret = KNOT_ESEMCHECK;
 		}
-		break;
-	case KNOT_ENOENT:
-		ret = KNOT_EOK;
-		break;
 	}
-	if (ret == KNOT_EOK) {
-		val = make_key(KASPDBKEY_PARAMS, new_lp_zone, new_lp_keyid);
-		ret = db_api->insert(txn, &key, &val, 0);
-		free(val.data);
-	}
-	free(key.data);
-	with_txn_end(NULL);
-	return ret;
+	MDB_val v = make_key_str(KASPDBKEY_PARAMS, new_lp_zone, new_lp_keyid);
+	knot_lmdb_insert(&txn, &k, &v);
+	free(k.mv_data);
+	free(v.mv_data);
+	knot_lmdb_commit(&txn);
+	return txn.ret;
 }
 
-int kasp_db_list_zones(kasp_db_t *db, list_t *dst)
+static void add_dname_to_list(list_t *dst, const knot_dname_t *dname, int *ret)
 {
-	if (db == NULL || db->keys_db == NULL || dst == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	with_txn(KEYS_RO, NULL);
-	knot_db_iter_t *iter = db_api->iter_begin(txn, KNOT_DB_FIRST);
-	while (iter != NULL) {
-		knot_db_val_t key;
-		if (db_api->iter_key(iter, &key) == KNOT_EOK && key.len > 1 &&
-		    *(uint8_t *)key.data != KASPDBKEY_POLICYLAST) {
-			// obtain a domain name of a record in KASP db
-			knot_dname_t *key_dn = (knot_dname_t *)(key.data + 1);
-			// check if not already in dst
-			ptrnode_t *n;
-			WALK_LIST(n, *dst) {
-				knot_dname_t *exist_dn = (knot_dname_t *)n->d;
-				if (knot_dname_is_equal(key_dn, exist_dn)) {
-					key_dn = NULL;
-					break;
-				}
-			}
-			// copy it from txn and add to dst
-			if (key_dn != NULL) {
-				knot_dname_t *add_dn = knot_dname_copy(key_dn, NULL);
-				if (add_dn == NULL) {
-					ret = KNOT_ENOMEM;
-					break;
-				}
-				ptrlist_add(dst, add_dn, NULL);
-			}
+	ptrnode_t *n;
+	WALK_LIST(n, *dst) {
+		if (knot_dname_is_equal(n->d, dname)) {
+			return;
 		}
-		iter = db_api->iter_next(iter);
 	}
-	db_api->iter_finish(iter);
-	db_api->txn_abort(txn);
+	knot_dname_t *copy = knot_dname_copy(dname, NULL);
+	if (copy == NULL) {
+		*ret = KNOT_ENOMEM;
+	} else {
+		ptrlist_add(dst, copy, NULL);
+	}
+}
 
-	if (ret != KNOT_EOK) {
+int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *dst)
+{
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, false);
+	init_list(dst);
+	bool found = knot_lmdb_first(&txn);
+	while (found) {
+		uint8_t kclass;
+		const knot_dname_t *zone;
+		if (knot_lmdb_unmake_curval(&txn, "B", &kclass) &&
+		    kclass != KASPDBKEY_POLICYLAST &&
+		    knot_lmdb_unmake_curval(&txn, "BN", &kclass, &zone)) {
+			add_dname_to_list(dst, zone, &txn.ret);
+		}
+		found = knot_lmdb_next(&txn);
+	}
+	knot_lmdb_abort(&txn);
+	if (txn.ret != KNOT_EOK) {
 		ptrlist_deep_free(dst, NULL);
-		return ret;
+		return txn.ret;
 	}
 	return (EMPTY_LIST(*dst) ? KNOT_ENOENT : KNOT_EOK);
 }
 
-#define TIME_STRLEN 20
-static void for_time2string(char str[TIME_STRLEN + 1], knot_time_t t)
+int kasp_db_store_offline_records(knot_lmdb_db_t *db, knot_time_t for_time, const key_records_t *r)
 {
-	(void)snprintf(str, TIME_STRLEN + 1, "%0*"PRIu64, TIME_STRLEN, t);
+	MDB_val k = make_key_time(KASPDBKEY_OFFLINE_RECORDS, r->rrsig.owner, for_time);
+	MDB_val v = { key_records_serialized_size(r), NULL };
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	if (knot_lmdb_insert(&txn, &k, &v)) {
+		wire_ctx_t wire = wire_ctx_init(v.mv_data, v.mv_size);
+		txn.ret = key_records_serialize(&wire, r);
+	}
+	knot_lmdb_commit(&txn);
+	free(k.mv_data);
+	return txn.ret;
 }
 
-int kasp_db_store_offline_records(kasp_db_t *db, knot_time_t for_time, const key_records_t *r)
-{
-	if (db == NULL || r == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	char for_time_str[TIME_STRLEN + 1];
-	for_time2string(for_time_str, for_time);
-	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RECORDS, r->rrsig.owner, for_time_str), val;
-	val.len = key_records_serialized_size(r);
-	val.data = malloc(val.len);
-	if (val.data == NULL) {
-		free_key(&key);
-		return KNOT_ENOMEM;
-	}
-	with_txn(KEYS_RW, key.data, val.data, NULL);
-	wire_ctx_t wire = wire_ctx_init(val.data, val.len);
-	ret = key_records_serialize(&wire, r);
-	if (ret == KNOT_EOK) {
-		ret = db_api->insert(txn, &key, &val, 0);
-	}
-	free_key(&key);
-	free_key(&val);
-	with_txn_end(NULL);
-	return ret;
-}
-
-int kasp_db_load_offline_records(kasp_db_t *db, const knot_dname_t *for_dname,
+int kasp_db_load_offline_records(knot_lmdb_db_t *db, const knot_dname_t *for_dname,
                                  knot_time_t for_time, knot_time_t *next_time,
                                  key_records_t *r)
 {
-	if (db == NULL || r == NULL) {
-		return KNOT_EINVAL;
+	MDB_val prefix = make_key_str(KASPDBKEY_OFFLINE_RECORDS, for_dname, NULL);
+	if (prefix.mv_data == NULL) {
+		return KNOT_ENOMEM;
 	}
-
-	char for_time_str[TIME_STRLEN + 1];
-	for_time2string(for_time_str, for_time);
-	with_txn(KEYS_RO, NULL);
-	knot_db_val_t search = make_key(KASPDBKEY_OFFLINE_RECORDS, for_dname, for_time_str), key, val;
-	knot_db_iter_t *it = db_api->iter_begin(txn, KNOT_DB_NOOP);
-	if (it == NULL) {
-		ret = KNOT_ERROR;
-		goto cleanup;
-	}
-	it = db_api->iter_seek(it, &search, KNOT_DB_LEQ);
-	if (it == NULL) {
-		ret = KNOT_ENOENT;
-		goto cleanup;
-	}
-	if (db_api->iter_key(it, &key) != KNOT_EOK || db_api->iter_val(it, &val) != KNOT_EOK) {
-		ret = KNOT_ERROR;
-		goto cleanup;
-	}
-	if (key_class(&key) != KASPDBKEY_OFFLINE_RECORDS ||
-	    knot_dname_cmp((const knot_dname_t *)key.data + 1, for_dname) != 0) {
-		ret = KNOT_ENOENT;
-		goto cleanup;
-	}
-	wire_ctx_t wire = wire_ctx_init(val.data, val.len);
-	ret = key_records_deserialize(&wire, r);
-	if (ret != KNOT_EOK) {
-		goto cleanup;
-	}
-	*next_time = 0;
-	if ((it = db_api->iter_next(it)) != NULL && db_api->iter_key(it, &key) == KNOT_EOK) {
-		if (key_class(&key) == KASPDBKEY_OFFLINE_RECORDS &&
-		    knot_dname_cmp(key_dname(&key), r->rrsig.owner) == 0) {
-			*next_time = key_time(&key);
+	MDB_val search = make_key_time(KASPDBKEY_OFFLINE_RECORDS, for_dname, for_time);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, false);
+	if (knot_lmdb_find(&txn, &search, KNOT_LMDB_LEQ) &&
+	    knot_lmdb_is_prefix_of(&prefix, &txn.cur_key)) {
+		wire_ctx_t wire = wire_ctx_init(txn.cur_val.mv_data, txn.cur_val.mv_size);
+		txn.ret = key_records_deserialize(&wire, r);
+		if (!knot_lmdb_next(&txn) || !knot_lmdb_is_prefix_of(&prefix, &txn.cur_key) ||
+		    !unmake_key_time(&txn.cur_val, next_time)) {
+			*next_time = 0;
 		}
+	} else if (txn.ret == KNOT_EOK) {
+		txn.ret = KNOT_ENOENT;
 	}
-cleanup:
-	db_api->iter_finish(it);
-	free_key(&search);
-	with_txn_end(NULL);
-	return ret;
+	knot_lmdb_abort(&txn);
+	free(search.mv_data);
+	free(prefix.mv_data);
+	return txn.ret;
 }
 
-int kasp_db_delete_offline_records(kasp_db_t *db, const knot_dname_t *zone,
+int kasp_db_delete_offline_records(knot_lmdb_db_t *db, const knot_dname_t *zone,
                                    knot_time_t from_time, knot_time_t to_time)
 {
-	if (db == NULL) {
-		return KNOT_EINVAL;
+	MDB_val prefix = make_key_str(KASPDBKEY_OFFLINE_RECORDS, zone, NULL);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_lmdb_foreach(&txn, &prefix) {
+		knot_time_t found;
+		if (unmake_key_time(&txn.cur_val, &found) &&
+		    knot_time_cmp(found, from_time) >= 0 &&
+		    knot_time_cmp(found, to_time) <= 0) {
+			knot_lmdb_del_cur(&txn);
+		}
 	}
-
-	with_txn(KEYS_RW, NULL);
-	knot_db_iter_t *iter = db_api->iter_begin(txn, KNOT_DB_NOOP);
-
-	char for_time_str[TIME_STRLEN + 1];
-	for_time2string(for_time_str, from_time);
-	knot_db_val_t key = make_key(KASPDBKEY_OFFLINE_RECORDS, zone, for_time_str);
-	iter = db_api->iter_seek(iter, &key, KNOT_DB_GEQ);
-	free_key(&key);
-
-	while (ret == KNOT_EOK && iter != NULL && (ret = db_api->iter_key(iter, &key)) == KNOT_EOK &&
-	       key.len > TIME_STRLEN && key_class(&key) == KASPDBKEY_OFFLINE_RECORDS &&
-	       knot_time_cmp(key_time(&key), to_time) <= 0 &&
-	       knot_dname_cmp(key_dname(&key), zone) == 0) {
-		ret = knot_db_lmdb_iter_del(iter);
-		iter = db_api->iter_next(iter);
-	}
-	db_api->iter_finish(iter);
-	with_txn_end(NULL);
-	return ret;
+	knot_lmdb_commit(&txn);
+	return txn.ret;
 }

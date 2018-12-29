@@ -716,7 +716,7 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 	return KNOT_EOK;
 }
 
-int keymgr_foreign_key_id(char *argv[], knot_dname_t **key_zone, char **key_id)
+int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **key_zone, char **key_id)
 {
 	*key_zone = knot_dname_from_str_alloc(argv[0]);
 	if (*key_zone == NULL) {
@@ -725,7 +725,7 @@ int keymgr_foreign_key_id(char *argv[], knot_dname_t **key_zone, char **key_id)
 	knot_dname_to_lower(*key_zone);
 
 	kdnssec_ctx_t kctx = { 0 };
-	int ret = kdnssec_ctx_init(conf(), &kctx, *key_zone, NULL);
+	int ret = kdnssec_ctx_init(conf(), &kctx, *key_zone, kaspdb, NULL);
 	if (ret != KNOT_EOK) {
 		printf("Failed to initialize zone %s (%s)\n", argv[0], knot_strerror(ret));
 		free(*key_zone);

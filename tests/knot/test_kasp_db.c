@@ -49,7 +49,7 @@
 const knot_dname_t *zone1 = (const knot_dname_t *)"\x05""zonea";
 const knot_dname_t *zone2 = (const knot_dname_t *)"\x05""zoneb";
 
-kasp_db_t *db;
+knot_lmdb_db_t db;
 
 const key_params_t params1 = { .id = "key id 1", .keytag = 1, .timing = { 1, 11, 111, 1111, 11111 },
                                .public_key = { 520, (uint8_t *)"pk1 plus 500 chars: " CHARS500_1 } };
@@ -74,9 +74,8 @@ int main(int argc, char *argv[])
 	key_params_t *params;
 #define free_params free(params->id); free(params->public_key.data); params->id = NULL; params->public_key.data = NULL;
 
-	int ret = kasp_db_init(&db, test_dir_name, 500*1024*1024);
-	is_int(KNOT_EOK, ret, "kasp_db: init eok");
-	ret = kasp_db_open(db);
+	knot_lmdb_init(&db, test_dir_name, 500*1024*1024, 0);
+	int ret = knot_lmdb_open(db);
 	is_int(KNOT_EOK, ret, "kasp_db: open eok");
 	ok(db->keys_db != NULL, "kasp_db: keys db notnull");
 
@@ -127,7 +126,7 @@ int main(int argc, char *argv[])
 	is_int(list_size(&l), 0, "kasp_db: list keys reports no keys 2");
 	ptrlist_deep_free(&l, NULL);
 
-	kasp_db_close(&db);
+	knot_lmdb_close(&db);
 
 	test_rm_rf(test_dir_name);
 	free(test_dir_name);
