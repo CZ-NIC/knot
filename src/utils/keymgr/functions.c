@@ -588,10 +588,8 @@ int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt)
 {
 	assert(new_salt);
 
-	dnssec_binary_t salt_bin;
-	if (strcmp(new_salt, "-") == 0) {
-		salt_bin.size = 0;
-	} else {
+	dnssec_binary_t salt_bin = { 0 };
+	if (strcmp(new_salt, "-") != 0) {
 		salt_bin.data = hex_to_bin(new_salt, &salt_bin.size);
 		if (salt_bin.data == NULL) {
 			return KNOT_EMALF;
