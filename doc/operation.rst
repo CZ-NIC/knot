@@ -251,6 +251,11 @@ A full example of setting up a completely new zone from scratch::
     $ knotc zone-set example.com www 3600 A 192.168.0.100
     $ knotc zone-commit example.com
 
+.. NOTE::
+    If quotes are necessary for record data specification, don't forget to escape them::
+
+       $ knotc zone-set example.com @ 3600 TXT \"v=spf1 a:mail.example.com -all\"
+
 .. _Editing zone file:
 
 Reading and editing the zone file safely
