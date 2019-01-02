@@ -513,7 +513,7 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree)
 	return ret;
 }
 
-zone_sign_ctx_t *zone_sign_ctx(zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx)
+zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx)
 {
 	zone_sign_ctx_t *ctx = calloc(1, sizeof(*ctx) + keyset->count * sizeof(*ctx->sign_ctxs));
 	if (ctx == NULL) {

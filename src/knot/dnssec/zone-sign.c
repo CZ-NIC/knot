@@ -989,7 +989,7 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 }
 
 bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
-                                zone_keyset_t *zone_keys,
+                                const zone_keyset_t *zone_keys,
                                 const kdnssec_ctx_t *dnssec_ctx)
 {
 	assert(zone);
@@ -1065,7 +1065,7 @@ cleanup:
 	return ret;
 }
 
-int knot_zone_sign_nsecs_in_changeset(zone_keyset_t *zone_keys,
+int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
                                       const kdnssec_ctx_t *dnssec_ctx,
                                       changeset_t *changeset)
 {
@@ -1162,7 +1162,7 @@ int knot_zone_sign_update(zone_update_t *update,
 }
 
 int knot_zone_sign_soa(zone_update_t *update,
-		       zone_keyset_t *zone_keys,
+		       const zone_keyset_t *zone_keys,
 		       const kdnssec_ctx_t *dnssec_ctx)
 {
 	knot_rrset_t soa_to = node_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
