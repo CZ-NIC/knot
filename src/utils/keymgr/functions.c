@@ -574,10 +574,9 @@ int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt)
 {
 	assert(new_salt);
 
-	dnssec_binary_t salt_bin;
-	if (strcmp(new_salt, "-") == 0) {
-		salt_bin.size = 0;
-	} else if (hex_to_bin(new_salt, &salt_bin) != DNSSEC_EOK) {
+	dnssec_binary_t salt_bin = { 0 };
+	if (strcmp(new_salt, "-") != 0 &&
+	    hex_to_bin(new_salt, &salt_bin) != DNSSEC_EOK) {
 		return KNOT_EMALF;
 	}
 	if (salt_bin.size != ctx->policy->nsec3_salt_length) {
