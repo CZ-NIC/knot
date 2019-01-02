@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ int main(void)
 	r = zone_events_init(&zone);
 	ok(r == KNOT_EOK, "zone events init");
 
-	r = zone_events_setup(&zone, pool, &sched, NULL);
+	r = zone_events_setup(&zone, pool, &sched);
 	ok(r == KNOT_EOK, "zone events setup");
 
 	test_scheduling(&zone);

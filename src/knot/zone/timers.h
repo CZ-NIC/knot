@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "libknot/db/db.h"
 #include "libknot/dname.h"
+#include "knot/journal/knot_lmdb.h"
 
 /*!
  * \brief Persistent zone timers.
@@ -37,22 +37,9 @@ struct zone_timers {
 typedef struct zone_timers zone_timers_t;
 
 /*!
- * \brief Open zone timers database.
- *
- * \param[in]  path     Path to a directory with the database.
- * \param[out] db       Created database.
- * \param[in]  mapsize  LMDB mapsize.
- *
- * \return KNOT_E*
+ * \brief From zonedb.h
  */
-int zone_timers_open(const char *path, knot_db_t **db, size_t mapsize);
-
-/*!
- * \brief Closes zone timers database.
- *
- * \param db  Timer database.
- */
-void zone_timers_close(knot_db_t *db);
+typedef struct knot_zonedb knot_zonedb_t;
 
 /*!
  * \brief Load timers for one zone.
@@ -64,27 +51,8 @@ void zone_timers_close(knot_db_t *db);
  * \return KNOT_E*
  * \retval KNOT_ENOENT  Zone not found in the database.
  */
-int zone_timers_read(knot_db_t *db, const knot_dname_t *zone,
+int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
                      zone_timers_t *timers);
-
-/*!
- * \brief Init txn for zone_timers_write()
- *
- * \param db      Timer database.
- * \param txn     Handler to be initialized.
- *
- * \return KNOT_E*
- */
-int zone_timers_write_begin(knot_db_t *db, knot_db_txn_t *txn);
-
-/*!
- * \brief Close txn for zone_timers_write()
- *
- * \param txn     Handler to be closed.
- *
- * \return KNOT_E*
- */
-int zone_timers_write_end(knot_db_txn_t *txn);
 
 /*!
  * \brief Write timers for one zone.
@@ -92,12 +60,21 @@ int zone_timers_write_end(knot_db_txn_t *txn);
  * \param db      Timer database.
  * \param zone    Zone name.
  * \param timers  Loaded timers
- * \param txn     Transaction handler obtained from zone_timers_write_begin()
  *
  * \return KNOT_E*
  */
-int zone_timers_write(knot_db_t *db, const knot_dname_t *zone,
-                      const zone_timers_t *timers, knot_db_txn_t *txn);
+int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
+                      const zone_timers_t *timers);
+
+/*!
+ * \brief Write timers for all zones.
+ *
+ * \param db      Timer databse.
+ * \param zonedb  Zones database.
+ *
+ * \return KNOT_E*
+ */
+int zone_timers_write_all(knot_lmdb_db_t *db, knot_zonedb_t *zonedb);
 
 /*!
  * \brief Callback used in \ref zone_timers_sweep.
@@ -116,4 +93,4 @@ typedef bool (*sweep_cb)(const knot_dname_t *zone, void *data);
  *
  * \return KNOT_E*
  */
-int zone_timers_sweep(knot_db_t *db, sweep_cb keep_zone, void *cb_data);
+int zone_timers_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
