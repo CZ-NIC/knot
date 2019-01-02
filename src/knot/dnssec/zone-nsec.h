@@ -75,7 +75,7 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_create_nsec_chain(zone_update_t *update,
-                                zone_keyset_t *zone_keys,
+                                const zone_keyset_t *zone_keys,
                                 const kdnssec_ctx_t *ctx,
                                 bool sign_nsec_chain);
 
@@ -90,6 +90,6 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_fix_nsec_chain(zone_update_t *update,
-                             zone_keyset_t *zone_keys,
+                             const zone_keyset_t *zone_keys,
                              const kdnssec_ctx_t *ctx,
                              bool sign_nsec_chain);
