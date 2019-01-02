@@ -256,7 +256,7 @@ Options
 **+**\ [\ **no**\ ]\ **edns**\[\ =\ *N*\]
   Use EDNS version (default is 0).
 
-**+**\ [\ **no**\ ]\ **time**\ =\ *T*
+**+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
   applies to each query attempt.
 
