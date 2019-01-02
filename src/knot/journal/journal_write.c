@@ -58,16 +58,15 @@ void journal_merge(zone_journal_t j, knot_lmdb_txn_t *txn, bool merge_zij,
                    uint32_t merge_serial, uint32_t *original_serial_to)
 {
 	changeset_t merge;
+	memset(&merge, 0, sizeof(merge));
 	journal_read_t *read = NULL;
 	txn->ret = journal_read_begin(j, merge_zij, merge_serial, &read);
 	if (txn->ret != KNOT_EOK) {
 		return;
 	}
-	journal_read_changeset(read, &merge);
-	if (txn->ret != KNOT_EOK) {
-		return;
+	if (journal_read_changeset(read, &merge)) {
+		*original_serial_to = changeset_to(&merge);
 	}
-	*original_serial_to = changeset_to(&merge);
 	txn->ret = journal_read_rrsets(read, merge_cb, &merge);
 	journal_write_changeset(txn, &merge);
 	//knot_rrset_clear(&rr, NULL);

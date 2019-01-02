@@ -78,10 +78,8 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
 	db->env_flags = env_flags;
 	db->dbname = dbname;
 	pthread_mutex_init(&db->opening_mutex, NULL);
-	if (!db->static_opts_specified) {
-		db->maxdbs = 2;
-		db->maxreaders = 126/* = contrib/lmdb/mdb.c DEFAULT_READERS */;
-	}
+	db->maxdbs = 2;
+	db->maxreaders = 126/* = contrib/lmdb/mdb.c DEFAULT_READERS */;
 }
 
 static bool lmdb_stat(const char *lmdb_path, struct stat *st)
