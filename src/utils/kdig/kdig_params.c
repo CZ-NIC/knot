@@ -993,19 +993,19 @@ static int opt_noedns(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_time(const char *arg, void *query)
+static int opt_timeout(const char *arg, void *query)
 {
 	query_t *q = query;
 
 	if (params_parse_wait(arg, &q->wait) != KNOT_EOK) {
-		ERR("invalid +time=%s\n", arg);
+		ERR("invalid +timeout=%s\n", arg);
 		return KNOT_EINVAL;
 	}
 
 	return KNOT_EOK;
 }
 
-static int opt_notime(const char *arg, void *query)
+static int opt_notimeout(const char *arg, void *query)
 {
 	query_t *q = query;
 
@@ -1228,8 +1228,8 @@ static const param_t kdig_opts2[] = {
 	{ "edns",           ARG_OPTIONAL, opt_edns },
 	{ "noedns",         ARG_NONE,     opt_noedns },
 
-	{ "time",           ARG_REQUIRED, opt_time },
-	{ "notime",         ARG_NONE,     opt_notime },
+	{ "timeout",        ARG_REQUIRED, opt_timeout },
+	{ "notimeout",      ARG_NONE,     opt_notimeout },
 
 	{ "retry",          ARG_REQUIRED, opt_retry },
 	{ "noretry",        ARG_NONE,     opt_noretry },
@@ -1913,7 +1913,7 @@ static void print_help(void)
 	       "       +[no]alignment[=N]        Pad with EDNS(0) to blocksize (%u or specify size).\n"
 	       "       +[no]subnet=SUBN          Set EDNS(0) client subnet addr/prefix.\n"
 	       "       +[no]edns[=N]             Use EDNS(=version).\n"
-	       "       +[no]time=T               Set wait for reply interval in seconds.\n"
+	       "       +[no]timeout=T            Set wait for reply interval in seconds.\n"
 	       "       +[no]retry=N              Set number of retries.\n"
 	       "       +[no]cookie=HEX           Attach EDNS(0) cookie to the query.\n"
 	       "       +[no]badcookie            Repeat a query with the correct cookie.\n"
