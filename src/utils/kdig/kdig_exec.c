@@ -136,12 +136,12 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 	get_addr_str(&ss, sock_type, &net->remote_str);
 }
 
-static void process_dnstap(const query_t *query)
+static int process_dnstap(const query_t *query)
 {
 	dt_reader_t *reader = query->dt_reader;
 
 	if (query->dt_reader == NULL) {
-		return;
+		return -1;
 	}
 
 	bool first_message = true;
@@ -238,6 +238,8 @@ static void process_dnstap(const query_t *query)
 		knot_pkt_free(pkt);
 		dt_reader_free_frame(reader, &frame);
 	}
+
+	return 0;
 }
 #endif // USE_DNSTAP
 
@@ -768,23 +770,18 @@ static int process_query_packet(const knot_pkt_t      *query,
 	return 0;
 }
 
-static void process_query(const query_t *query)
+static int process_query(const query_t *query)
 {
 	node_t     *server = NULL;
 	knot_pkt_t *out_packet;
 	net_t      net;
 	int        ret;
 
-	if (query == NULL) {
-		DBG_NULL;
-		return;
-	}
-
 	// Create query packet.
 	out_packet = create_query_packet(query);
 	if (out_packet == NULL) {
 		ERR("can't create query packet\n");
-		return;
+		return -1;
 	}
 
 	// Sign the query.
@@ -792,7 +789,7 @@ static void process_query(const query_t *query)
 	ret = sign_query(out_packet, query, &sign_ctx);
 	if (ret != KNOT_EOK) {
 		ERR("can't sign the packet (%s)\n", knot_strerror(ret));
-		return;
+		return -1;
 	}
 
 	// Get connection parameters.
@@ -843,7 +840,7 @@ static void process_query(const query_t *query)
 				net_clean(&net);
 				sign_context_deinit(&sign_ctx);
 				knot_pkt_free(out_packet);
-				return;
+				return 0;
 			}
 
 			if (i < query->retries) {
@@ -859,8 +856,8 @@ static void process_query(const query_t *query)
 			net_clean(&net);
 		}
 
-		WARN("failed to query server %s@%s(%s)\n",
-		     remote->name, remote->service, get_sockname(socktype));
+		ERR("failed to query server %s@%s(%s)\n",
+		    remote->name, remote->service, get_sockname(socktype));
 
 		// If not last server, print separation.
 		if (server->next->next && query->style.show_query) {
@@ -870,6 +867,8 @@ static void process_query(const query_t *query)
 
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
+
+	return -1;
 }
 
 static int process_xfr_packet(const knot_pkt_t      *query,
@@ -1062,22 +1061,17 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	return 0;
 }
 
-static void process_xfr(const query_t *query)
+static int process_xfr(const query_t *query)
 {
 	knot_pkt_t *out_packet;
 	net_t      net;
 	int        ret;
 
-	if (query == NULL) {
-		DBG_NULL;
-		return;
-	}
-
 	// Create query packet.
 	out_packet = create_query_packet(query);
 	if (out_packet == NULL) {
 		ERR("can't create query packet\n");
-		return;
+		return -1;
 	}
 
 	// Sign the query.
@@ -1085,7 +1079,7 @@ static void process_xfr(const query_t *query)
 	ret = sign_query(out_packet, query, &sign_ctx);
 	if (ret != KNOT_EOK) {
 		ERR("can't sign the packet (%s)\n", knot_strerror(ret));
-		return;
+		return -1;
 	}
 
 	// Get connection parameters.
@@ -1107,7 +1101,7 @@ static void process_xfr(const query_t *query)
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(out_packet);
-		return;
+		return -1;
 	}
 
 	// Loop over all resolved addresses for remote.
@@ -1133,6 +1127,8 @@ static void process_xfr(const query_t *query)
 	net_clean(&net);
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
+
+	return ret;
 }
 
 int kdig_exec(const kdig_params_t *params)
@@ -1144,20 +1140,23 @@ int kdig_exec(const kdig_params_t *params)
 		return KNOT_EINVAL;
 	}
 
+	bool success = false;
+
 	// Loop over query list.
 	WALK_LIST(n, params->queries) {
 		query_t *query = (query_t *)n;
 
+		int ret = -1;
 		switch (query->operation) {
 		case OPERATION_QUERY:
-			process_query(query);
+			ret = process_query(query);
 			break;
 		case OPERATION_XFR:
-			process_xfr(query);
+			ret = process_xfr(query);
 			break;
 #if USE_DNSTAP
 		case OPERATION_LIST_DNSTAP:
-			process_dnstap(query);
+			ret = process_dnstap(query);
 			break;
 #endif // USE_DNSTAP
 		case OPERATION_LIST_SOA:
@@ -1167,11 +1166,16 @@ int kdig_exec(const kdig_params_t *params)
 			break;
 		}
 
+		// At least one operation must succeed.
+		if (ret == 0) {
+			success = true;
+		}
+
 		// If not last query, print separation.
 		if (n->next->next && params->config->style.format == FORMAT_FULL) {
 			printf("\n");
 		}
 	}
 
-	return KNOT_EOK;
+	return success ? KNOT_EOK : KNOT_ERROR;
 }
