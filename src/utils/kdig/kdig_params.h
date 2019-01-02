@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,8 +37,6 @@ typedef enum {
 	OPERATION_XFR,
 	/*!< Dump dnstap file. */
 	OPERATION_LIST_DNSTAP,
-	/*!< Query for NS and all authoritative SOA records. */
-	OPERATION_LIST_SOA
 } operation_t;
 
 /*! \brief DNS header and EDNS flags. */
