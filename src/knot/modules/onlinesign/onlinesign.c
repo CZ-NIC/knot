@@ -250,8 +250,8 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knotd_mod
 static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
                                 const knot_rrset_t *cover,
                                 knotd_mod_t *mod,
-                                knot_mm_t *mm,
-                                zone_sign_ctx_t *sign_ctx)
+                                zone_sign_ctx_t *sign_ctx,
+                                knot_mm_t *mm)
 {
 	// copy of RR set with replaced owner name
 
@@ -330,6 +330,9 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 	assert(section);
 
 	zone_sign_ctx_t *sign_ctx = zone_sign_ctx(mod->keyset, mod->dnssec);
+	if (sign_ctx == NULL) {
+		return KNOTD_IN_STATE_ERROR;
+	}
 
 	uint16_t count_unsigned = section->count;
 	for (int i = 0; i < count_unsigned; i++) {
@@ -344,7 +347,7 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 		knot_dname_unpack(owner, pkt->wire + rr_pos, sizeof(owner), pkt->wire);
 		knot_dname_to_lower(owner);
 
-		knot_rrset_t *rrsig = sign_rrset(owner, rr, mod, &pkt->mm, sign_ctx);
+		knot_rrset_t *rrsig = sign_rrset(owner, rr, mod, sign_ctx, &pkt->mm);
 		if (!rrsig) {
 			state = KNOTD_IN_STATE_ERROR;
 			break;
