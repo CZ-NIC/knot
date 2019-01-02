@@ -163,6 +163,7 @@ void query_module_close(knotd_mod_t *module)
 
 	free_zone_keys(module->keyset);
 	free(module->keyset);
+	knot_lmdb_deinit(module->dnssec->kasp_db);
 	kdnssec_ctx_deinit(module->dnssec);
 	free(module->dnssec);
 
