@@ -51,7 +51,7 @@ typedef struct {
 /*!
  * \brief Signing context used for single signing thread.
  */
-typedef struct _zone_sign_ctx_t {
+typedef struct {
 	size_t count;                     // number of keys in keyset
 	zone_key_t *keys;                 // keys in keyset
 	dnssec_sign_ctx_t **sign_ctxs;    // signing buffers for keys in keyset
@@ -169,10 +169,10 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree);
 /*!
  * \brief Initialize local signing context.
  *
- * \param keyset       Key set.
- * \param dnssec_ctx   DNSSEC context.
+ * \param keyset      Key set.
+ * \param dnssec_ctx  DNSSEC context.
  *
- * \return New local signing context.
+ * \return New local signing context or NULL.
  */
 zone_sign_ctx_t *zone_sign_ctx(zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx);
 
@@ -181,6 +181,6 @@ zone_sign_ctx_t *zone_sign_ctx(zone_keyset_t *keyset, const kdnssec_ctx_t *dnsse
  *
  * \note This doesn't free the underlying keyset.
  *
- * \param ctx   Local context to be freed.
+ * \param ctx  Local context to be freed.
  */
 void zone_sign_ctx_free(zone_sign_ctx_t *ctx);

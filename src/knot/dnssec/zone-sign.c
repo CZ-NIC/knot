@@ -11,7 +11,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <assert.h>
@@ -132,7 +132,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 }
 
 /*!
- * \brief Check if valid signature exist for all keys for a given RR set.
+ * \brief Check if valid signature exists for all keys for a given RR set.
  *
  * \param covered    RR set with covered records.
  * \param rrsigs     RR set with RRSIGs.
@@ -144,8 +144,6 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
                                  const knot_rrset_t *rrsigs,
                                  zone_sign_ctx_t *sign_ctx)
 {
-	assert(!knot_rrset_empty(covered));
-
 	for (int i = 0; i < sign_ctx->count; i++) {
 		zone_key_t *key = &sign_ctx->keys[i];
 		if (!knot_zone_sign_use_key(key, covered)) {
@@ -153,7 +151,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 		}
 
 		if (!valid_signature_exists(covered, rrsigs, key->key,
-					    sign_ctx->sign_ctxs[i],
+		                            sign_ctx->sign_ctxs[i],
 		                            sign_ctx->dnssec_ctx)) {
 			return false;
 		}
@@ -553,6 +551,10 @@ static int zone_tree_sign(zone_tree_t *tree,
 		.changeset = changeset,
 		.expires_at = knot_time_add(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime),
 	};
+
+	if (args.sign_ctx == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	int result = zone_tree_apply(tree, sign_node, &args);
 	*expires_at = args.expires_at;
@@ -960,7 +962,7 @@ cleanup:
 bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 {
 	if (key == NULL || covered == NULL) {
-		return KNOT_EINVAL;
+		return false;
 	}
 
 	if (!key->is_active) {
@@ -992,17 +994,20 @@ bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
                                 zone_keyset_t *zone_keys,
                                 const kdnssec_ctx_t *dnssec_ctx)
 {
-	assert(zone);
-	assert(zone_keys);
-	assert(dnssec_ctx);
+	if (zone == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
+		return false;
+	}
 
 	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	assert(!knot_rrset_empty(&soa));
 	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 	zone_sign_ctx_t *sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
-	assert(!knot_rrset_empty(&soa));
-	bool ase = all_signatures_exist(&soa, &rrsigs, sign_ctx);
+	if (sign_ctx == NULL) {
+		return false;
+	}
+	bool exist = all_signatures_exist(&soa, &rrsigs, sign_ctx);
 	zone_sign_ctx_free(sign_ctx);
-	return !ase;
+	return !exist;
 }
 
 static int sign_changeset(const zone_contents_t *zone,
@@ -1026,10 +1031,12 @@ static int sign_changeset(const zone_contents_t *zone,
 		.signed_tree = trie_create(NULL)
 	};
 
-	if (args.signed_tree == NULL) {
+	if (args.sign_ctx == NULL || args.signed_tree == NULL) {
+		zone_sign_ctx_free(args.sign_ctx);
+		trie_free(args.signed_tree);
 		return KNOT_ENOMEM;
-
 	}
+
 	changeset_iter_t itt;
 	changeset_iter_all(&itt, in_ch);
 
@@ -1073,10 +1080,13 @@ int knot_zone_sign_nsecs_in_changeset(zone_keyset_t *zone_keys,
 		return KNOT_EINVAL;
 	}
 
+	zone_sign_ctx_t *sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
+	if (sign_ctx == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	changeset_iter_t itt;
 	changeset_iter_add(&itt, changeset);
-
-	zone_sign_ctx_t *sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
 
 	knot_rrset_t rr = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rr)) {
@@ -1092,6 +1102,7 @@ int knot_zone_sign_nsecs_in_changeset(zone_keyset_t *zone_keys,
 		}
 		rr = changeset_iter_next(&itt);
 	}
+
 	changeset_iter_clear(&itt);
 	zone_sign_ctx_free(sign_ctx);
 
@@ -1171,6 +1182,10 @@ int knot_zone_sign_soa(zone_update_t *update,
 	int ret = changeset_init(&ch, update->zone->name);
 	if (ret == KNOT_EOK) {
 		zone_sign_ctx_t *sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
+		if (sign_ctx == NULL) {
+			changeset_clear(&ch);
+			return KNOT_ENOMEM;
+		}
 		ret = force_resign_rrset(&soa_to, &soa_rrsig, sign_ctx, &ch);
 		if (ret == KNOT_EOK) {
 			ret = zone_update_apply_changeset_fix(update, &ch);

@@ -529,7 +529,7 @@ int knotd_mod_dnssec_load_keyset(knotd_mod_t *mod, bool verbose);
 /*!
  * Frees up resources before re-loading DNSSEC signing keys.
  *
- * \param[in] mod      Module context.
+ * \param[in] mod  Module context.
  */
 void knotd_mod_dnssec_unload_keyset(knotd_mod_t *mod);
 

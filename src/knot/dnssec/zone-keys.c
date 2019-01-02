@@ -177,7 +177,7 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 /*!
  * \brief Get key feature flags from key parameters.
  */
-static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_key)
+static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_key)
 {
 	assert(kasp_key);
 	assert(zone_key);
@@ -229,8 +229,6 @@ static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_
 	                          (knot_time_cmp(timing->active, now) <= 0) ? (
 	                           (knot_time_cmp(timing->retire_active, now) <= 0 ||
 	                            knot_time_cmp(timing->retire, now) <= 0) ? 0 : 1) : 2) : 0);
-
-	return KNOT_EOK;
 }
 
 /*!
@@ -518,15 +516,22 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree)
 zone_sign_ctx_t *zone_sign_ctx(zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx)
 {
 	zone_sign_ctx_t *ctx = calloc(1, sizeof(*ctx) + keyset->count * sizeof(*ctx->sign_ctxs));
-	assert(ctx != NULL);
+	if (ctx == NULL) {
+		return NULL;
+	}
+
 	ctx->sign_ctxs = (dnssec_sign_ctx_t **)(ctx + 1);
 	ctx->count = keyset->count;
 	ctx->keys = keyset->keys;
 	ctx->dnssec_ctx = dnssec_ctx;
 	for (size_t i = 0; i < ctx->count; i++) {
 		int ret = dnssec_sign_new(&ctx->sign_ctxs[i], ctx->keys[i].key);
-		assert(ret == 0 && ctx->sign_ctxs[i] != NULL);
+		if (ret != DNSSEC_EOK) {
+			zone_sign_ctx_free(ctx);
+			return NULL;
+		}
 	}
+
 	return ctx;
 }
 

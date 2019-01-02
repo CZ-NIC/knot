@@ -606,6 +606,12 @@ int knotd_mod_dnssec_load_keyset(knotd_mod_t *mod, bool verbose)
 	}
 
 	mod->sign_ctx = zone_sign_ctx(mod->keyset, mod->dnssec);
+	if (mod->sign_ctx == NULL) {
+		free_zone_keys(mod->keyset);
+		free(mod->keyset);
+		mod->keyset = NULL;
+		return KNOT_ENOMEM;
+	}
 
 	return KNOT_EOK;
 }
