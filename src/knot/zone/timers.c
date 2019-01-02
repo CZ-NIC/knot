@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,8 +17,7 @@
 #include "knot/zone/timers.h"
 
 #include "contrib/wire_ctx.h"
-#include "libknot/db/db.h"
-#include "libknot/db/db_lmdb.h"
+#include "knot/zone/zonedb.h"
 
 /*
  * # Timer database
@@ -58,39 +57,7 @@ enum timer_id {
 	TIMER_NEXT_PARENT_DS_Q
 };
 
-#define TIMER_COUNT 6
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
-#define SERIALIZED_SIZE (TIMER_COUNT * TIMER_SIZE)
-
-/*!
- * \brief Serialize timers into a binary buffer.
- */
-static int serialize_timers(const zone_timers_t *timers, uint8_t *data, size_t size)
-{
-	if (!timers || !data || size != SERIALIZED_SIZE) {
-		return KNOT_EINVAL;
-	}
-
-	wire_ctx_t wire = wire_ctx_init(data, size);
-
-	wire_ctx_write_u8(&wire, TIMER_SOA_EXPIRE);
-	wire_ctx_write_u64(&wire, timers->soa_expire);
-	wire_ctx_write_u8(&wire, TIMER_LAST_FLUSH);
-	wire_ctx_write_u64(&wire, timers->last_flush);
-	wire_ctx_write_u8(&wire, TIMER_LAST_REFRESH);
-	wire_ctx_write_u64(&wire, timers->last_refresh);
-	wire_ctx_write_u8(&wire, TIMER_NEXT_REFRESH);
-	wire_ctx_write_u64(&wire, timers->next_refresh);
-	wire_ctx_write_u8(&wire, TIMER_LAST_RESALT);
-	wire_ctx_write_u64(&wire, timers->last_resalt);
-	wire_ctx_write_u8(&wire, TIMER_NEXT_PARENT_DS_Q);
-	wire_ctx_write_u64(&wire, timers->next_parent_ds_q);
-
-	assert(wire.error == KNOT_EOK);
-	assert(wire_ctx_available(&wire) == 0);
-
-	return KNOT_EOK;
-}
 
 /*!
  * \brief Deserialize timers from a binary buffer.
@@ -131,33 +98,21 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 	return KNOT_EOK;
 }
 
-static int txn_write_timers(knot_db_txn_t *txn, const knot_dname_t *zone,
-                            const zone_timers_t *timers)
+static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
+                             const zone_timers_t *timers)
 {
-	uint8_t data[SERIALIZED_SIZE] = { 0 };
-	int ret = serialize_timers(timers, data, sizeof(data));
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	knot_db_val_t key = { (uint8_t *)zone, knot_dname_size(zone) };
-	knot_db_val_t val = { data, sizeof(data) };
-
-	return knot_db_lmdb_api()->insert(txn, &key, &val, 0);
+	MDB_val k = { knot_dname_size(zone), (void *)zone };
+	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBL",
+		TIMER_SOA_EXPIRE,       (uint64_t)timers->soa_expire,
+		TIMER_LAST_FLUSH,       (uint64_t)timers->last_flush,
+		TIMER_LAST_REFRESH,     (uint64_t)timers->last_refresh,
+		TIMER_NEXT_REFRESH,     (uint64_t)timers->next_refresh,
+		TIMER_LAST_RESALT,      (uint64_t)timers->last_resalt,
+		TIMER_NEXT_PARENT_DS_Q, (uint64_t)timers->next_parent_ds_q);
+	knot_lmdb_insert(txn, &k, &v);
+	free(v.mv_data);
 }
 
-static int txn_read_timers(knot_db_txn_t *txn, const knot_dname_t *zone,
-                           zone_timers_t *timers)
-{
-	knot_db_val_t key = { (uint8_t *)zone, knot_dname_size(zone) };
-	knot_db_val_t val = { 0 };
-	int ret = knot_db_lmdb_api()->find(txn, &key, &val, 0);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return deserialize_timers(timers, val.data, val.len);
-}
 
 int zone_timers_open(const char *path, knot_db_t **db, size_t mapsize)
 {
@@ -181,108 +136,72 @@ void zone_timers_close(knot_db_t *db)
 	knot_db_lmdb_api()->deinit(db);
 }
 
-int zone_timers_read(knot_db_t *db, const knot_dname_t *zone,
+int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
                      zone_timers_t *timers)
 {
-	if (!db || !zone || !timers) {
-		return KNOT_EINVAL;
+	if (!knot_lmdb_exists(db)) {
+		return KNOT_ENOENT;
 	}
-
-	const knot_db_api_t *db_api = knot_db_lmdb_api();
-	assert(db_api);
-
-	knot_db_txn_t txn = { 0 };
-	int ret = db_api->txn_begin(db, &txn, KNOT_DB_RDONLY);
+	int ret = knot_lmdb_open(db);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
-	ret = txn_read_timers(&txn, zone, timers);
-	db_api->txn_abort(&txn);
-
-	return ret;
-}
-
-int zone_timers_write_begin(knot_db_t *db, knot_db_txn_t *txn)
-{
-	memset(txn, 0, sizeof(*txn));
-	return knot_db_lmdb_api()->txn_begin(db, txn, KNOT_DB_SORTED);
-}
-
-int zone_timers_write_end(knot_db_txn_t *txn)
-{
-	return knot_db_lmdb_api()->txn_commit(txn);
-}
-
-int zone_timers_write(knot_db_t *db, const knot_dname_t *zone,
-                      const zone_timers_t *timers, knot_db_txn_t *txn)
-{
-	if (!zone || !timers || (!db && !txn)) {
-		return KNOT_EINVAL;
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, false);
+	MDB_val k = { knot_dname_size(zone), (void *)zone };
+	if (knot_lmdb_find(&txn, &k, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
+		deserialize_timers(timers, txn.cur_val.mv_data, txn.cur_val.mv_size);
 	}
+	knot_lmdb_abort(&txn);
+	return txn.ret;
+}
 
-	const knot_db_api_t *db_api = knot_db_lmdb_api();
-	assert(db_api);
+int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
+                      const zone_timers_t *timers)
+{
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	txn_write_timers(&txn, zone, timers);
+	knot_lmdb_commit(&txn);
+	return txn.ret;
+}
 
-	knot_db_txn_t static_txn, *mytxn = txn;
-	if (txn == NULL) {
-		mytxn = &static_txn;
-		int ret = db_api->txn_begin(db, mytxn, KNOT_DB_SORTED);
-		if (ret != KNOT_EOK) {
-			return ret;
+static void txn_zone_write(zone_t *z, knot_lmdb_txn_t *txn)
+{
+	txn_write_timers(txn, z->name, &z->timers);
+}
+
+int zone_timers_write_all(knot_lmdb_db_t *db, knot_zonedb_t *zonedb)
+{
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_zonedb_foreach(zonedb, txn_zone_write, &txn);
+	knot_lmdb_commit(&txn);
+	return txn.ret;
+}
+
+int zone_timers_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
+{
+	if (!knot_lmdb_exists(db)) {
+		return KNOT_EOK;
+	}
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	bool found = knot_lmdb_first(&txn);
+	while (found) {
+		if (!keep_zone((const knot_dname_t *)txn.cur_key.mv_data, cb_data)) {
+			knot_lmdb_del_cur(&txn);
 		}
+		found = knot_lmdb_next(&txn);
 	}
-
-	int ret = txn_write_timers(mytxn, zone, timers);
-	if (ret != KNOT_EOK) {
-		db_api->txn_abort(mytxn);
-		return ret;
-	}
-
-	if (txn == NULL) {
-		db_api->txn_commit(mytxn);
-	}
-
-	return KNOT_EOK;
-}
-
-int zone_timers_sweep(knot_db_t *db, sweep_cb keep_zone, void *cb_data)
-{
-	if (!db || !keep_zone) {
-		return KNOT_EINVAL;
-	}
-
-	const knot_db_api_t *db_api = knot_db_lmdb_api();
-	assert(db_api);
-
-	knot_db_txn_t txn = { 0 };
-	int ret = db_api->txn_begin(db, &txn, KNOT_DB_SORTED);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	knot_db_iter_t *it = NULL;
-	for (it = db_api->iter_begin(&txn, 0); it != NULL; it = db_api->iter_next(it)) {
-		knot_db_val_t key = { 0 };
-		ret = db_api->iter_key(it, &key);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-
-		const knot_dname_t *zone = (const knot_dname_t *)key.data;
-		if (!keep_zone(zone, cb_data)) {
-			ret = db_api->del(&txn, &key);
-			if (ret != KNOT_EOK) {
-				break;
-			}
-		}
-	}
-	db_api->iter_finish(it);
-
-	if (ret != KNOT_EOK) {
-		db_api->txn_abort(&txn);
-		return ret;
-	}
-
-	return db_api->txn_commit(&txn);
+	knot_lmdb_commit(&txn);
+	return txn.ret;
 }

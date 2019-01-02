@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -618,6 +618,15 @@ static inline char* conf_kaspdir(
 	conf_t *conf)
 {
 	return conf_kaspdir_txn(conf, &conf->read_txn);
+}
+
+char* conf_timerdb_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn);
+static inline char* conf_timerdb(
+	conf_t *conf)
+{
+	return conf_timerdb_txn(conf, &conf->read_txn);
 }
 
 /*!

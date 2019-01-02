@@ -53,8 +53,7 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	zone->journaldb = &server->journaldb;
 	zone->kaspdb = &server->kaspdb;
 
-	int result = zone_events_setup(zone, server->workers, &server->sched,
-	                               server->timers_db);
+	int result = zone_events_setup(zone, server->workers, &server->sched);
 	if (result != KNOT_EOK) {
 		zone_free(&zone);
 		return NULL;
@@ -141,7 +140,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	int ret = zone_timers_read(server->timers_db, name, &zone->timers);
+	int ret = zone_timers_read(&server->timerdb, name, &zone->timers);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		log_zone_error(zone->name, "failed to load persistent timers (%s)",
 		               knot_strerror(ret));
