@@ -29,7 +29,9 @@ static const zone_timers_t MOCK_TIMERS = {
 	.soa_expire = 3600,
 	.last_refresh = 1474559950,
 	.next_refresh = 1474559960,
-	.last_flush = 1474559900,
+	.last_flush = 1,
+	.last_resalt = 2,
+	.next_parent_ds_q = 0,
 };
 
 static bool keep_all(const knot_dname_t *zone, void *data)
@@ -64,22 +66,25 @@ int main(int argc, char *argv[])
 	struct zone_timers timers = MOCK_TIMERS;
 
 	// Create database
-	knot_db_t *db = NULL;
-	int ret = zone_timers_open(dbid, &db, 1024 * 1024);
-	ok(ret == KNOT_EOK && db != NULL, "zone_timers_open()");
+	knot_lmdb_db_t _db = { 0 }, *db = &_db;
+	knot_lmdb_init(db, dbid, 1024 * 1024, 0, NULL);
+	int ret = knot_lmdb_open(db);
+	ok(ret == KNOT_EOK && db != NULL, "open timers");
 
 	// Lookup nonexistent
 	ret = zone_timers_read(db, zone, &timers);
 	is_int(KNOT_ENOENT, ret, "zone_timer_read() nonexistent");
 
 	// Write timers
-	ret = zone_timers_write(db, zone, &timers, NULL);
+	ret = zone_timers_write(db, zone, &timers);
 	is_int(KNOT_EOK, ret, "zone_timers_write()");
 
 	// Read timers
 	memset(&timers, 0, sizeof(timers));
 	ret = zone_timers_read(db, zone, &timers);
-	ok(ret == KNOT_EOK && timers_eq(&timers, &MOCK_TIMERS), "zone_timers_read()");
+	ok(ret == KNOT_EOK, "zone_timers_read()");
+	ok(timers_eq(&timers, &MOCK_TIMERS), "timers unmalformed (%u == %u, %ld == %ld etc.)",
+	   timers.soa_expire, MOCK_TIMERS.soa_expire, timers.last_refresh, MOCK_TIMERS.last_refresh);
 
 	// Sweep none
 	ret = zone_timers_sweep(db, keep_all, NULL);
@@ -94,7 +99,7 @@ int main(int argc, char *argv[])
 	is_int(KNOT_ENOENT, ret, "zone_timers_read() nonexistent");
 
 	// Clean up.
-	zone_timers_close(db);
+	knot_lmdb_deinit(db);
 	test_rm_rf(dbid);
 	free(dbid);
 
