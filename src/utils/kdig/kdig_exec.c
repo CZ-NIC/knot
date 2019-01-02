@@ -665,7 +665,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		if (reply == NULL) {
 			ERR("internal error (%s)\n", knot_strerror(KNOT_ENOMEM));
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Parse reply to the packet structure.
@@ -673,7 +673,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Compare reply header id.
@@ -959,7 +959,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		if (reply == NULL) {
 			ERR("internal error (%s)\n", knot_strerror(KNOT_ENOMEM));
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Parse reply to the packet structure.
@@ -967,7 +967,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Compare reply header id.
@@ -975,7 +975,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			ERR("reply ID mismatch from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Print leading transfer information.
@@ -989,7 +989,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			    knot_pkt_ext_rcode_name(reply));
 			knot_pkt_free(reply);
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// The first message has a special treatment.
@@ -1009,7 +1009,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 					    net->remote_str, knot_strerror(ret));
 					knot_pkt_free(reply);
 					net_close(net);
-					return 0;
+					return -1;
 				}
 			}
 
@@ -1021,7 +1021,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 				    net->remote_str);
 				knot_pkt_free(reply);
 				net_close(net);
-				return 0;
+				return -1;
 			}
 
 			// Check for question sections equality.
