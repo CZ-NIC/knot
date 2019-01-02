@@ -43,7 +43,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Knot DNS'
-copyright_year = 2018
+copyright_year = 2019
 current_year = time.localtime().tm_year
 if current_year > copyright_year:
     logging.warning('Copyright year is %d, but current year is %d.'%(copyright_year, current_year))
