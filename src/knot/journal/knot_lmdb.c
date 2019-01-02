@@ -553,12 +553,12 @@ bool knot_lmdb_make_key_part(void *key_data, size_t key_len, const char *format,
 	return succ;
 }
 
-static bool unmake_key_part(void *key_data, size_t key_len, const char *format, va_list arg)
+static bool unmake_key_part(const void *key_data, size_t key_len, const char *format, va_list arg)
 {
 	if (key_data == NULL) {
 		return false;
 	}
-	wire_ctx_t wire = wire_ctx_init(key_data, key_len);
+	wire_ctx_t wire = wire_ctx_init_const(key_data, key_len);
 	for (const char *f = format; *f != '\0' && wire.error == KNOT_EOK && wire_ctx_available(&wire) > 0; f++) {
 		void *tmp = va_arg(arg, void *);
 		size_t tmsize;
@@ -615,7 +615,7 @@ static bool unmake_key_part(void *key_data, size_t key_len, const char *format, 
 	return (wire.error == KNOT_EOK && wire_ctx_available(&wire) == 0);
 }
 
-bool knot_lmdb_unmake_key(void *key_data, size_t key_len, const char *format, ...)
+bool knot_lmdb_unmake_key(const void *key_data, size_t key_len, const char *format, ...)
 {
 	va_list arg;
 	va_start(arg, format);

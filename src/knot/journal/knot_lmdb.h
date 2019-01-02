@@ -119,6 +119,6 @@ MDB_val knot_lmdb_make_key(const char *format, ...);
 
 bool knot_lmdb_make_key_part(void *key_data, size_t key_len, const char *format, ...);
 
-bool knot_lmdb_unmake_key(void *key_data, size_t key_len, const char *format, ...);
+bool knot_lmdb_unmake_key(const void *key_data, size_t key_len, const char *format, ...);
 
 bool knot_lmdb_unmake_curval(knot_lmdb_txn_t *txn, const char *format, ...);
