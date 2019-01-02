@@ -15,7 +15,6 @@
 */
 
 #include "knot/common/log.h"
-#include "knot/journal/journal.h"
 #include "knot/journal/journal_metadata.h"
 #include "knot/journal/journal_read.h"
 #include "knot/zone/zone-diff.h"
