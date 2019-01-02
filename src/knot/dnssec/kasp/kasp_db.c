@@ -447,7 +447,7 @@ int kasp_db_load_offline_records(knot_lmdb_db_t *db, const knot_dname_t *for_dna
 		wire_ctx_t wire = wire_ctx_init(txn.cur_val.mv_data, txn.cur_val.mv_size);
 		txn.ret = key_records_deserialize(&wire, r);
 		if (!knot_lmdb_next(&txn) || !knot_lmdb_is_prefix_of(&prefix, &txn.cur_key) ||
-		    !unmake_key_time(&txn.cur_val, next_time)) {
+		    !unmake_key_time(&txn.cur_key, next_time)) {
 			*next_time = 0;
 		}
 	} else if (txn.ret == KNOT_EOK) {
