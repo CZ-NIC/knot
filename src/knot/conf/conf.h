@@ -620,6 +620,15 @@ static inline char* conf_kaspdir(
 	return conf_kaspdir_txn(conf, &conf->read_txn);
 }
 
+char* conf_timerdb_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn);
+static inline char* conf_timerdb(
+	conf_t *conf)
+{
+	return conf_timerdb_txn(conf, &conf->read_txn);
+}
+
 /*!
  * Gets the configured number of UDP threads.
  *

@@ -1087,7 +1087,7 @@ static int orphans_purge(ctl_args_t *args)
 
 		// Purge timers of unconfigured zones.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
-			(void)zone_timers_sweep(args->server->timers_db,
+			(void)zone_timers_sweep(&args->server->timerdb,
 			                        zone_exists, args->server->zone_db);
 		}
 	} else {
@@ -1121,7 +1121,7 @@ static int orphans_purge(ctl_args_t *args)
 
 				// Purge zone timers.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
-					(void)zone_timers_sweep(args->server->timers_db,
+					(void)zone_timers_sweep(&args->server->timerdb,
 					                        zone_names_distinct, zone_name);
 				}
 			}
@@ -1148,7 +1148,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	// Purge the zone timers.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
 		memset(&zone->timers, 0, sizeof(zone->timers));
-		(void)zone_timers_sweep(args->server->timers_db,
+		(void)zone_timers_sweep(&args->server->timerdb,
 		                        zone_names_distinct, zone->name);
 	}
 
