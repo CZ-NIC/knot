@@ -429,6 +429,11 @@ int server_init(server_t *server, int bg_workers)
 	knot_lmdb_init(&server->kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
 	free(kasp_dir);
 
+	char *timerdb = conf_timerdb(conf());
+	conf_val_t timerdb_size = conf_default_get(conf(), C_MAX_TIMER_DB_SIZE);
+	knot_lmdb_init(&server->timerdb, timerdb, conf_int(&timerdb_size), 0, NULL);
+	free(timerdb);
+
 	return KNOT_EOK;
 }
 
@@ -436,6 +441,16 @@ void server_deinit(server_t *server)
 {
 	if (server == NULL) {
 		return;
+	}
+
+	/* Save zone timers. */
+	if (server->zone_db != NULL) {
+		log_info("updating persistent timer DB");
+		int ret = zone_timers_write_all(&server->timerdb, server->zone_db);
+		if (ret != KNOT_EOK) {
+			log_warning("failed to update persistent timer DB (%s)",
+				    knot_strerror(ret));
+		}
 	}
 
 	/* Free remaining interfaces. */
@@ -456,14 +471,14 @@ void server_deinit(server_t *server)
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
 
+	/* Close persistent timers DB. */
+	knot_lmdb_deinit(&server->timerdb);
+
 	/* Close kasp_db. */
 	knot_lmdb_deinit(&server->kaspdb);
 
 	/* Close journal database if open. */
 	knot_lmdb_deinit(&server->journaldb);
-
-	/* Close persistent timers database. */
-	zone_timers_close(server->timers_db);
 
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
@@ -769,6 +784,15 @@ static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 	return KNOT_EOK; // not "ret"
 }
 
+static int reconfigure_timer_db(conf_t *conf, server_t *server)
+{
+	char *timerdb = conf_timerdb(conf);
+	conf_val_t timerdb_size = conf_default_get(conf, C_MAX_TIMER_DB_SIZE);
+	int ret = knot_lmdb_reconfigure(&server->timerdb, timerdb, conf_int(&timerdb_size), 0);
+	free(timerdb);
+	return ret;
+}
+
 void server_reconfigure(conf_t *conf, server_t *server)
 {
 	if (conf == NULL || server == NULL) {
@@ -799,33 +823,17 @@ void server_reconfigure(conf_t *conf, server_t *server)
 		          knot_strerror(ret));
 	}
 
+	/* Reconfiure Timer DB. */
+	if ((ret = reconfigure_timer_db(conf, server)) < 0) {
+		log_error("failed to reconfigure Timer DB (%s)",
+		          knot_strerror(ret));
+	}
+
 	/* Update bound sockets. */
 	if ((ret = reconfigure_sockets(conf, server)) < 0) {
 		log_error("failed to reconfigure server sockets (%s)",
 		          knot_strerror(ret));
 	}
-}
-
-static void reopen_timers_database(conf_t *conf, server_t *server)
-{
-	zone_timers_close(server->timers_db);
-	server->timers_db = NULL;
-
-	conf_val_t val = conf_default_get(conf, C_STORAGE);
-	char *storage = conf_abs_path(&val, NULL);
-	val = conf_default_get(conf, C_TIMER_DB);
-	char *timer_db = conf_abs_path(&val, storage);
-	free(storage);
-	val = conf_default_get(conf, C_MAX_TIMER_DB_SIZE);
-	size_t mapsize = conf_int(&val);
-
-	int ret = zone_timers_open(timer_db, &server->timers_db, mapsize);
-	if (ret != KNOT_EOK) {
-		log_warning("cannot open persistent timer DB '%s' (%s)",
-		            timer_db, knot_strerror(ret));
-	}
-
-	free(timer_db);
 }
 
 void server_update_zones(conf_t *conf, server_t *server)
@@ -844,7 +852,6 @@ void server_update_zones(conf_t *conf, server_t *server)
 	worker_pool_wait(server->workers);
 
 	/* Reload zone database and free old zones. */
-	reopen_timers_database(conf, server);
 	zonedb_reload(conf, server);
 
 	/* Trim extra heap. */

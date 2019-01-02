@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -275,7 +275,7 @@ int zone_events_init(zone_t *zone)
 }
 
 int zone_events_setup(struct zone *zone, worker_pool_t *workers,
-                      evsched_t *scheduler, knot_db_t *timers_db)
+                      evsched_t *scheduler)
 {
 	if (!zone || !workers || !scheduler) {
 		return KNOT_EINVAL;
@@ -289,7 +289,6 @@ int zone_events_setup(struct zone *zone, worker_pool_t *workers,
 
 	zone->events.event = event;
 	zone->events.pool = workers;
-	zone->events.timers_db = timers_db;
 
 	return KNOT_EOK;
 }

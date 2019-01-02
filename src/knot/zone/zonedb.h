@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include "libknot/dname.h"
 #include "contrib/qp-trie/trie.h"
 
-typedef struct {
+typedef struct knot_zonedb {
 	trie_t *trie;
 	knot_mm_t mm;
 } knot_zonedb_t;

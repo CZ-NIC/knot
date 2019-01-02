@@ -84,7 +84,7 @@ typedef struct server {
 
 	/*! \brief Zone database. */
 	knot_zonedb_t *zone_db;
-	knot_db_t *timers_db;
+	knot_lmdb_db_t timerdb;
 	knot_lmdb_db_t journaldb;
 	knot_lmdb_db_t kaspdb;
 
