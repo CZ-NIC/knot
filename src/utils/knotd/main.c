@@ -45,7 +45,6 @@
 #include "knot/common/stats.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/zone/timers.h"
 
 #define PROGRAM_NAME "knotd"
 
@@ -362,35 +361,6 @@ static int set_config(const char *confdb, const char *config, size_t max_conf_si
 	return KNOT_EOK;
 }
 
-static void write_timers(const zone_t *zone, knot_db_txn_t *txn, int *ret)
-{
-	if (*ret == KNOT_EOK) {
-		*ret = zone_timers_write(NULL, zone->name, &zone->timers, txn);
-	}
-}
-
-static void update_timerdb(server_t *server)
-{
-	if (server->timers_db == NULL) {
-		return;
-	}
-
-	log_info("updating persistent timer DB");
-
-	knot_db_txn_t txn;
-	int ret = zone_timers_write_begin(server->timers_db, &txn);
-	if (ret == KNOT_EOK) {
-		knot_zonedb_foreach(server->zone_db, write_timers, &txn, &ret);
-	}
-	if (ret == KNOT_EOK) {
-		ret = zone_timers_write_end(&txn);
-	}
-	if (ret != KNOT_EOK) {
-		log_warning("failed to update persistent timer DB (%s)",
-		            knot_strerror(ret));
-	}
-}
-
 int main(int argc, char **argv)
 {
 	bool daemonize = false;
@@ -599,9 +569,6 @@ int main(int argc, char **argv)
 	server_stop(&server);
 	server_wait(&server);
 	stats_deinit();
-
-	/* Update timers database. */
-	update_timerdb(&server);
 
 	/* Cleanup PID file. */
 	pid_cleanup();

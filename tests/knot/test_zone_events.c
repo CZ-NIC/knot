@@ -86,7 +86,7 @@ int main(void)
 	r = zone_events_init(&zone);
 	ok(r == KNOT_EOK, "zone events init");
 
-	r = zone_events_setup(&zone, pool, &sched, NULL);
+	r = zone_events_setup(&zone, pool, &sched);
 	ok(r == KNOT_EOK, "zone events setup");
 
 	test_scheduling(&zone);
