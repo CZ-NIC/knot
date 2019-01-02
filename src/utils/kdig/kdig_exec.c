@@ -1140,7 +1140,7 @@ int kdig_exec(const kdig_params_t *params)
 		return KNOT_EINVAL;
 	}
 
-	bool success = false;
+	bool success = true;
 
 	// Loop over query list.
 	WALK_LIST(n, params->queries) {
@@ -1166,9 +1166,9 @@ int kdig_exec(const kdig_params_t *params)
 			break;
 		}
 
-		// At least one operation must succeed.
-		if (ret == 0) {
-			success = true;
+		// All operations must succeed.
+		if (ret != 0) {
+			success = false;
 		}
 
 		// If not last query, print separation.
