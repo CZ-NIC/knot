@@ -828,7 +828,7 @@ static void process_query(const query_t *query)
 				// If error try next resolved address.
 				if (ret != 0) {
 					net.srv = (net.srv)->ai_next;
-					if (net.srv != NULL) {
+					if (net.srv != NULL && query->style.show_query) {
 						printf("\n");
 					}
 
@@ -847,10 +847,13 @@ static void process_query(const query_t *query)
 			}
 
 			if (i < query->retries) {
-				printf("\n");
 				DBG("retrying server %s@%s(%s)\n",
 				    remote->name, remote->service,
 				    get_sockname(socktype));
+
+				if (query->style.show_query) {
+					printf("\n");
+				}
 			}
 
 			net_clean(&net);
@@ -860,7 +863,7 @@ static void process_query(const query_t *query)
 		     remote->name, remote->service, get_sockname(socktype));
 
 		// If not last server, print separation.
-		if (server->next->next) {
+		if (server->next->next && query->style.show_query) {
 			printf("\n");
 		}
 	}
