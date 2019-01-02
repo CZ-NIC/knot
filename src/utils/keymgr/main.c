@@ -120,7 +120,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 	}
 	knot_dname_to_lower(zone_name);
 
-	knot_lmdb_db_t kaspdb;
+	knot_lmdb_db_t kaspdb = { 0 };
 	kdnssec_ctx_t kctx = { 0 };
 
 	conf_val_t mapsize = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
