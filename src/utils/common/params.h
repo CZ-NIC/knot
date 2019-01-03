@@ -72,6 +72,8 @@ typedef struct {
 	bool	show_query;
 	/*!< Show header info. */
 	bool	show_header;
+	/*!< Show section name. */
+	bool	show_section;
 	/*!< Show EDNS pseudosection. */
 	bool	show_edns;
 	/*!< Show QUERY/ZONE section. */
