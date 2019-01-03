@@ -331,8 +331,8 @@ int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
 	*lp_zone = NULL;
 	*lp_keyid = NULL;
 	knot_lmdb_begin(db, &txn, false);
-	if (knot_lmdb_find(&txn, &k, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
-		knot_lmdb_unmake_curval(&txn, "BNS", &kclass, lp_zone, lp_keyid);
+	if (knot_lmdb_find(&txn, &k, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE) &&
+	    knot_lmdb_unmake_curval(&txn, "BNS", &kclass, lp_zone, lp_keyid)) {
 		*lp_zone = knot_dname_copy(*lp_zone, NULL);
 		*lp_keyid = strdup(*lp_keyid);
 		if (kclass != KASPDBKEY_PARAMS) {
@@ -399,11 +399,9 @@ int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *dst)
 	init_list(dst);
 	bool found = knot_lmdb_first(&txn);
 	while (found) {
-		uint8_t kclass;
 		const knot_dname_t *zone;
-		if (knot_lmdb_unmake_curval(&txn, "B", &kclass) &&
-		    kclass != KASPDBKEY_POLICYLAST &&
-		    knot_lmdb_unmake_curval(&txn, "BN", &kclass, &zone)) {
+		if (*(uint8_t *)txn.cur_key.mv_data != KASPDBKEY_POLICYLAST &&
+		    knot_dname_size((zone = txn.cur_key.mv_data + 1)) < txn.cur_key.mv_size) {
 			add_dname_to_list(dst, zone, &txn.ret);
 		}
 		found = knot_lmdb_next(&txn);
@@ -467,12 +465,13 @@ int kasp_db_delete_offline_records(knot_lmdb_db_t *db, const knot_dname_t *zone,
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_foreach(&txn, &prefix) {
 		knot_time_t found;
-		if (unmake_key_time(&txn.cur_val, &found) &&
+		if (unmake_key_time(&txn.cur_key, &found) &&
 		    knot_time_cmp(found, from_time) >= 0 &&
 		    knot_time_cmp(found, to_time) <= 0) {
 			knot_lmdb_del_cur(&txn);
 		}
 	}
 	knot_lmdb_commit(&txn);
+	free(prefix.mv_data);
 	return txn.ret;
 }
