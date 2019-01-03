@@ -45,7 +45,6 @@
 #include "knot/common/stats.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/zone/timers.h"
 
 #define PROGRAM_NAME "knotd"
 
