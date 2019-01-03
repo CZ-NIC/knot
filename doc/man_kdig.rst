@@ -176,6 +176,9 @@ Options
 **+**\ [\ **no**\ ]\ **header**
   Show the packet header.
 
+**+**\ [\ **no**\ ]\ **comments**
+  Show commented section names.
+
 **+**\ [\ **no**\ ]\ **opt**
   Show the EDNS pseudosection.
 
