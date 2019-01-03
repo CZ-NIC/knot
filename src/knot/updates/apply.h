@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "knot/journal/journal_read.h"
 #include "knot/zone/contents.h"
 #include "knot/updates/changesets.h"
 #include "contrib/ucw/lists.h"
@@ -109,18 +108,6 @@ int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets);
  * \return KNOT_E*
  */
 int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch);
-
-/*!
- * \brief Applies all changesets from journal to the zone.
- *
- * \note Starting serial shall be specified when initializing journal_read_t.
- *
- * \param ctx       Apply context.
- * \param journal   Journal reading context.
- *
- * \return KNOT_E*
- */
-int apply_journal(apply_ctx_t *ctx, journal_read_t *journal);
 
 /*!
  * \brief Cleanups successful zone update.
