@@ -126,6 +126,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 	conf_val_t mapsize = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
 	char *kasp_dir = conf_kaspdir(conf());
 	knot_lmdb_init(&kaspdb, kasp_dir, conf_int(&mapsize), 0, "keys_db");
+	free(kasp_dir);
 
 	int ret = kdnssec_ctx_init(conf(), &kctx, zone_name, &kaspdb, NULL);
 	if (ret != KNOT_EOK) {
