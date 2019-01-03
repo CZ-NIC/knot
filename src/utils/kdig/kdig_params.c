@@ -69,6 +69,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 	},
 	.show_query = false,
 	.show_header = true,
+	.show_section = true,
 	.show_edns = true,
 	.show_question = true,
 	.show_answer = true,
@@ -349,6 +350,24 @@ static int opt_noheader(const char *arg, void *query)
 	query_t *q = query;
 
 	q->style.show_header = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_comments(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_section = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nocomments(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_section = false;
 
 	return KNOT_EOK;
 }
@@ -1152,6 +1171,10 @@ static const param_t kdig_opts2[] = {
 	{ "header",         ARG_NONE,     opt_header },
 	{ "noheader",       ARG_NONE,     opt_noheader },
 
+	{ "comments",       ARG_NONE,     opt_comments },
+	{ "nocomments",     ARG_NONE,     opt_nocomments },
+
+	{ "opt",            ARG_NONE,     opt_opt },
 	{ "opt",            ARG_NONE,     opt_opt },
 	{ "noopt",          ARG_NONE,     opt_noopt },
 
@@ -1889,6 +1912,7 @@ static void print_help(void)
 	       "       +[no]all                  Show all packet sections.\n"
 	       "       +[no]qr                   Show query packet.\n"
 	       "       +[no]header               Show packet header.\n"
+	       "       +[no]comments             Show commented section names.\n"
 	       "       +[no]opt                  Show EDNS pseudosection.\n"
 	       "       +[no]question             Show question section.\n"
 	       "       +[no]answer               Show answer section.\n"
