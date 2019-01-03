@@ -599,7 +599,7 @@ static int zone_tree_sign(zone_tree_t *tree,
 		args[i].errcode = KNOT_EOK;
 		args[i].thread_init_errcode = -1;
 	}
-
+//TODO zone_sign_ctx check
 	if (num_threads == 1) {
 		args[0].thread_init_errcode = 0;
 		tree_sign_thread(&args[0]);
@@ -1005,7 +1005,7 @@ static int sign_changeset(const zone_contents_t *zone,
 		args[i].errcode = KNOT_EOK;
 		args[i].thread_init_errcode = -1;
 	}
-
+//TODO check zone_sign_ctx
 	if (num_threads == 1) {
 		args[0].thread_init_errcode = 0;
 		sign_changeset_thread(&args[0]);
