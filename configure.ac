@@ -526,12 +526,12 @@ AC_ARG_WITH(libidn,
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
-      with_libidn=yes
+      with_libidn=libidn2
       AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
       AC_DEFINE([LIBIDN_HEADER], [<idn2.h>], [Define to proper libidn header])
     ], [
       PKG_CHECK_MODULES([libidn], [libidn >= 0.0.0], [
-        with_libidn=yes
+        with_libidn=libidn
         AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
         AC_DEFINE([LIBIDN_HEADER], [<idna.h>], [Define to proper libidn header])
       ], [
