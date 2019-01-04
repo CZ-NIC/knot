@@ -577,6 +577,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		return KNOT_EOK;
 	}
 	int ret = KNOT_EOK;
+	uint16_t plan_ds_keytag = 0;
 	bool allowed_general_roll = ((flags & KEY_ROLL_ALLOW_KSK_ROLL) && (flags & KEY_ROLL_ALLOW_ZSK_ROLL));
 	// generate initial keys if missing
 	if (!key_present(ctx, true, false) && !key_present(ctx, true, true)) {
@@ -586,7 +587,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			} else {
 				ret = generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
 			}
-			reschedule->plan_ds_query = true;
+			if (ret == KNOT_EOK) {
+				reschedule->plan_ds_query = true;
+				plan_ds_keytag = dnssec_key_get_keytag(ctx->zone->keys[0].key);
+			}
 		}
 		if (ret == KNOT_EOK && (flags & KEY_ROLL_ALLOW_ZSK_ROLL)) {
 			reschedule->keys_changed = true;
@@ -674,7 +678,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			break;
 		case SUBMIT:
 			ret = submit_key(ctx, next.key);
-			reschedule->plan_ds_query = true;
+			if (ret == KNOT_EOK) {
+				reschedule->plan_ds_query = true;
+				plan_ds_keytag = dnssec_key_get_keytag(next.key->key);
+			}
 			break;
 		case REPLACE:
 			ret = exec_new_signatures(ctx, next.key, 0);
@@ -702,12 +709,20 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	}
 
 	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
-		return knot_dnssec_key_rollover(ctx, flags, reschedule);
+		ret = knot_dnssec_key_rollover(ctx, flags, reschedule);
 	}
 
-	if (reschedule->keys_changed) {
+	if (ret == KNOT_EOK && reschedule->keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
 	}
+
+	if (ret == KNOT_EOK && reschedule->plan_ds_query) {
+		char param[32];
+		(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu", plan_ds_keytag);
+		log_fmt_zone(LOG_NOTICE, LOG_SOURCE_ZONE, ctx->zone->dname, param,
+			     "DNSSEC, KSK submission, waiting for confirmation");
+	}
+
 	return ret;
 }
 
