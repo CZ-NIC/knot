@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -11,7 +11,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <assert.h>
@@ -558,6 +558,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		return KNOT_EOK;
 	}
 	int ret = KNOT_EOK;
+	uint16_t plan_ds_keytag = 0;
 	// generate initial keys if missing
 	if (!key_present(ctx, true, false) && !key_present(ctx, true, true)) {
 		if (ctx->policy->ksk_shared) {
@@ -565,8 +566,9 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 		} else {
 			ret = generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
 		}
-		reschedule->plan_ds_query = true;
 		if (ret == KNOT_EOK) {
+			reschedule->plan_ds_query = true;
+			plan_ds_keytag = dnssec_key_get_keytag(ctx->zone->keys[0].key);
 			reschedule->keys_changed = true;
 			if (!ctx->policy->singe_type_signing &&
 			    !key_present(ctx, false, true)) {
@@ -632,7 +634,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 			break;
 		case SUBMIT:
 			ret = submit_key(ctx, next.key);
-			reschedule->plan_ds_query = true;
+			if (ret == KNOT_EOK) {
+				reschedule->plan_ds_query = true;
+				plan_ds_keytag = dnssec_key_get_keytag(next.key->key);
+			}
 			break;
 		case REPLACE:
 			ret = exec_new_signatures(ctx, next.key, 0);
@@ -660,12 +665,20 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_reschedule_t *resched
 	}
 
 	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
-		return knot_dnssec_key_rollover(ctx, reschedule);
+		ret = knot_dnssec_key_rollover(ctx, reschedule);
 	}
 
-	if (reschedule->keys_changed) {
+	if (ret == KNOT_EOK && reschedule->keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
 	}
+
+	if (ret == KNOT_EOK && reschedule->plan_ds_query) {
+		char param[32];
+		(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu", plan_ds_keytag);
+		log_fmt_zone(LOG_NOTICE, LOG_SOURCE_ZONE, ctx->zone->dname, param,
+			     "DNSSEC, KSK submission, waiting for confirmation");
+	}
+
 	return ret;
 }
 
