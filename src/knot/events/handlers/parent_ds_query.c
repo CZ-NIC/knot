@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "knot/common/log.h"
 #include "knot/dnssec/ds_query.h"
 #include "knot/zone/zone.h"
 
@@ -32,18 +31,6 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 	if (ret != KNOT_EOK) {
 		kdnssec_ctx_deinit(&ctx);
 		return ret;
-	}
-
-	for (size_t i = 0; i < keyset.count; i++) {
-		zone_key_t *key = &keyset.keys[i];
-		if (key->is_ksk && key->cds_priority > 1) {
-			char param[32];
-			(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu",
-			               dnssec_key_get_keytag(key->key));
-
-			log_fmt_zone(LOG_NOTICE, LOG_SOURCE_ZONE, zone->name, param,
-			             "DNSSEC, KSK submission, waiting for confirmation");
-		}
 	}
 
 	ret = knot_parent_ds_query(&ctx, &keyset, conf->cache.srv_tcp_reply_timeout * 1000);
