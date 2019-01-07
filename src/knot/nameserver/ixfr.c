@@ -18,6 +18,7 @@
 
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
+#include "knot/journal/journal_metadata.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/ixfr.h"
@@ -89,10 +90,21 @@ static int ixfr_load_chsets(journal_read_t **journal_read, zone_t *zone,
 	assert(zone);
 
 	/* Compare serials. */
-	uint32_t serial_to = zone_contents_serial(zone->contents);
+	uint32_t serial_to = zone_contents_serial(zone->contents), j_serial_to;
 	uint32_t serial_from = knot_soa_serial(their_soa->rrs.rdata);
 	if (serial_compare(serial_to, serial_from) & SERIAL_MASK_LEQ) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
+	}
+
+	zone_journal_t j = zone_journal(zone);
+	bool j_exists = false;
+	int ret = journal_info(j, &j_exists, NULL, &j_serial_to, NULL, NULL, NULL, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	} else if (!j_exists) {
+		return KNOT_ENOENT;
+	} else if (j_serial_to != serial_to) {
+		return KNOT_ERROR;
 	}
 
 	return journal_read_begin(zone_journal(zone), false, serial_from, journal_read);
@@ -167,6 +179,7 @@ static int ixfr_answer_init(knotd_qdata_t *qdata)
 	ptrlist_add(&xfer->proc.nodes, xfer->journal_ctx, mm);
 
 	xfer->soa_from = knot_soa_serial(their_soa->rrs.rdata);
+	xfer->soa_to = zone_contents_serial(qdata->extra->zone->contents);
 
 	qdata->extra->ext = xfer;
 	qdata->extra->ext_cleanup = &ixfr_answer_cleanup;
@@ -227,8 +240,8 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		ixfr = qdata->extra->ext;
 		switch (ret) {
 		case KNOT_EOK:       /* OK */
-			IXFROUT_LOG(LOG_INFO, qdata, "started, serial %u -> ?",
-				    ixfr->soa_from);
+			IXFROUT_LOG(LOG_INFO, qdata, "started, serial %u -> %u",
+				    ixfr->soa_from, ixfr->soa_to);
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
 			IXFROUT_LOG(LOG_INFO, qdata, "zone is up-to-date");

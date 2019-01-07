@@ -48,6 +48,7 @@ struct ixfr_proc {
 	knotd_qdata_t *qdata;
 	knot_mm_t *mm;
 	uint32_t soa_from;
+	uint32_t soa_to;
 };
 
 /*!
