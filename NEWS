@@ -1,3 +1,32 @@
+Knot DNS 2.7.5 (2019-01-07)
+===========================
+
+Features:
+---------
+ - Keymgr supports NSEC3 salt handling
+
+Improvements:
+-------------
+ - Zone history in journal is dropped apon AXFR-like zone update
+ - Libdnssec is no longer linked against libm #628
+ - Libdnssec is explicitly linked against libpthread if PKCS #11 enabled #629
+ - Better support for libknot packaging in Python
+ - Manually generated KSK is 'ready' by default
+ - Kdig supports '+timeout' as an alias for '+time'
+ - Kdig supports '+nocomments' option
+ - Kdig no longer prints empty lines between retries
+ - Kdig returns failure if operations not successfully resolved #632
+ - Fixed repeating of the 'KSK submission, waiting for confirmation' log
+ - Various improvements in documentation, Dockerfile, and tests
+
+Bugfixes:
+---------
+ - Knotc fails to unset huge configuration section
+ - Kjournalprint sometimes fails to display zone journal content
+ - Improper timing of ZSK removal during ZSK rollover
+ - Missing UTC time zone indication in the 'iso' keymgr list output
+ - A race condition in the online signing module
+
 Knot DNS 2.7.4 (2018-11-13)
 ===========================
 
