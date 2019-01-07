@@ -19,7 +19,6 @@
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
-#include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/include/module.h"
 #include "contrib/ucw/lists.h"
@@ -88,7 +87,6 @@ struct knotd_mod {
 	struct query_plan *plan;
 	const knot_dname_t *zone;
 	const knotd_mod_api_t *api;
-	knot_lmdb_db_t kaspdb;
 	kdnssec_ctx_t *dnssec;
 	zone_keyset_t *keyset;
 	mod_ctr_t *stats;
