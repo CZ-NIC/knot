@@ -574,6 +574,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		return KNOT_EINVAL;
 	}
 	if (ctx->policy->manual) {
+		if ((flags & (KEY_ROLL_FORCE_KSK_ROLL | KEY_ROLL_FORCE_ZSK_ROLL))) {
+			log_zone_notice(ctx->zone->dname, "DNSSEC, ignoring forced key rollover "
+							  "due to manual policy");
+		}
 		return KNOT_EOK;
 	}
 	int ret = KNOT_EOK;
