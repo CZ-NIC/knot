@@ -18,7 +18,7 @@ case "$repo" in
 		echo -e 'repos:\n  - knot-dns-latest' > repos.yaml
 		;;
 	*)
-		echo "Unknown repo, choose devel|latest"
+		echo "Unknown repo, choose devel|latest|testing"
 		exit 1
 		;;
 esac
