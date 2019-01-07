@@ -34,9 +34,6 @@ static gnutls_digest_algorithm_t lookup_algorithm(dnssec_key_digest_t algorithm)
 	case DNSSEC_KEY_DIGEST_SHA1:   return GNUTLS_DIG_SHA1;
 	case DNSSEC_KEY_DIGEST_SHA256: return GNUTLS_DIG_SHA256;
 	case DNSSEC_KEY_DIGEST_SHA384: return GNUTLS_DIG_SHA384;
-#ifdef HAVE_GOST
-	case DNSSEC_DIGEST_GOSTR_94:   return GNUTLS_DIG_GOSTR_94;
-#endif
 	default:
 		return GNUTLS_DIG_UNKNOWN;
 	};
