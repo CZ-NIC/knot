@@ -590,6 +590,18 @@ class Server(object):
                     return True
         return False
 
+    def dig_serial(self, zone_name):
+        resp = self.dig(zone_name, "SOA", udp=True, tries=1, timeout=2, log_no_sep=True)
+        if resp.resp.rcode() == 0:
+            if not resp.resp.answer:
+                        raise Failed("No SOA in ANSWER, zone='%s', server='%s'" %
+                                     (zone_name, self.name))
+
+            soa = str((resp.resp.answer[0]).to_rdataset())
+            return int(soa.split()[5])
+        else:
+            return -1
+
     def zone_wait(self, zone, serial=None, equal=False, greater=True):
         '''Try to get SOA record. With an optional serial number and given
            relation (equal or/and greater).'''
@@ -602,19 +614,11 @@ class Server(object):
 
         for t in range(60):
             try:
-                resp = self.dig(zone.name, "SOA", udp=True, tries=1,
-                                timeout=2, log_no_sep=True)
+                _serial = self.dig_serial(zone.name)
             except:
                 pass
             else:
-                if resp.resp.rcode() == 0:
-                    if not resp.resp.answer:
-                        raise Failed("No SOA in ANSWER, zone='%s', server='%s'" %
-                                     (zone.name, self.name))
-
-                    soa = str((resp.resp.answer[0]).to_rdataset())
-                    _serial = int(soa.split()[5])
-
+                if _serial >= 0:
                     if not serial:
                         break
                     elif equal and serial == _serial:

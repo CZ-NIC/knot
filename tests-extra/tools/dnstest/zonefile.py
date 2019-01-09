@@ -209,6 +209,13 @@ class ZoneFile(object):
 
         os.remove(old_name)
 
+    def get_soa_serial(self):
+        with open(self.path) as zf:
+            for line in zf:
+                if "SOA" in line:
+                    return int(line.split()[-5])
+        return -1
+
     def update_rnd(self):
         '''Add random records or re-sign zone.'''
 
