@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "knot/dnssec/ds_query.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/policy.h"
+#include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
@@ -249,6 +250,7 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knotd_mod
 static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
                                 const knot_rrset_t *cover,
                                 knotd_mod_t *mod,
+                                zone_sign_ctx_t *sign_ctx,
                                 knot_mm_t *mm)
 {
 	// copy of RR set with replaced owner name
@@ -275,7 +277,7 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 
 	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
 	pthread_rwlock_rdlock(&ctx->signing_mutex);
-	int ret = knotd_mod_dnssec_sign_rrset(mod, rrsig, copy, mm);
+	int ret = knot_sign_rrset2(rrsig, copy, sign_ctx, mm);
 	pthread_rwlock_unlock(&ctx->signing_mutex);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(copy, NULL);
@@ -327,6 +329,11 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 	const knot_pktsection_t *section = knot_pkt_section(pkt, pkt->current);
 	assert(section);
 
+	zone_sign_ctx_t *sign_ctx = zone_sign_ctx(mod->keyset, mod->dnssec);
+	if (sign_ctx == NULL) {
+		return KNOTD_IN_STATE_ERROR;
+	}
+
 	uint16_t count_unsigned = section->count;
 	for (int i = 0; i < count_unsigned; i++) {
 		const knot_rrset_t *rr = knot_pkt_rr(section, i);
@@ -340,7 +347,7 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 		knot_dname_unpack(owner, pkt->wire + rr_pos, sizeof(owner), pkt->wire);
 		knot_dname_to_lower(owner);
 
-		knot_rrset_t *rrsig = sign_rrset(owner, rr, mod, &pkt->mm);
+		knot_rrset_t *rrsig = sign_rrset(owner, rr, mod, sign_ctx, &pkt->mm);
 		if (!rrsig) {
 			state = KNOTD_IN_STATE_ERROR;
 			break;
@@ -353,6 +360,8 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 			break;
 		}
 	}
+
+	zone_sign_ctx_free(sign_ctx);
 
 	return state;
 }
@@ -550,9 +559,7 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		ctx->event_rollover = resch.next_rollover;
 
 		pthread_rwlock_wrlock(&ctx->signing_mutex);
-		free_zone_keys(mod->keyset);
-		free(mod->keyset);
-		mod->keyset = NULL;
+		knotd_mod_dnssec_unload_keyset(mod);
 		ret = knotd_mod_dnssec_load_keyset(mod, true);
 		if (ret != KNOT_EOK) {
 			ctx->zone_doomed = true;

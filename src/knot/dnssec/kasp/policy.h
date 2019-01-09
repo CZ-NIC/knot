@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -116,6 +116,7 @@ typedef struct {
 	uint32_t ksk_sbm_check_interval;
 	unsigned child_records_publish;
 	parent_dynarray_t parents;
+	uint16_t signing_threads;
 	bool offline_ksk;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??
