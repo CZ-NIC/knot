@@ -151,4 +151,10 @@ check_zone(knot, zone, 3, 1, 1, "ZSK rollover: running")
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE*2)
 check_zone(knot, zone, 2, 1, 1, "ZSK rollover: done")
 
+knot.ctl("zone-key-rollover " + ZONE + " ksk")
+t.sleep(2)
+
+knot.ctl("zone-key-rollover " + ZONE + " zsk")
+t.sleep(2)
+
 t.end()
