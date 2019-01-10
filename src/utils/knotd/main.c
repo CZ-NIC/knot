@@ -125,8 +125,14 @@ struct signal {
 /*! \brief Signals used by the server. */
 static const struct signal SIGNALS[] = {
 	{ SIGHUP,  true  },  /* Reload server. */
-	{ SIGINT,  true  },  /* Terminate server .*/
-	{ SIGTERM, true  },
+	{ SIGINT,  true  },  /* Terminate server. */
+	{ SIGTERM, true  },  /* Terminate server. */
+	{ SIGQUIT, true  },  /* Use default handler (coredump). */
+	{ SIGILL,  true  },  /* Use default handler (coredump). */
+	{ SIGABRT, true  },  /* Use default handler (coredump). */
+	{ SIGBUS,  true  },  /* Use default handler (coredump). */
+	{ SIGFPE,  true  },  /* Use default handler (coredump). */
+	{ SIGSEGV, true  },  /* Use default handler (coredump). */
 	{ SIGALRM, false },  /* Internal thread synchronization. */
 	{ SIGPIPE, false },  /* Ignored. Some I/O errors. */
 	{ 0 }
@@ -135,6 +141,8 @@ static const struct signal SIGNALS[] = {
 /*! \brief Server signal handler. */
 static void handle_signal(int signum)
 {
+	struct sigaction dflt_action = { .sa_handler = SIG_DFL };
+
 	switch (signum) {
 	case SIGHUP:
 		sig_req_reload = true;
@@ -145,6 +153,15 @@ static void handle_signal(int signum)
 			exit(EXIT_FAILURE);
 		}
 		sig_req_stop = true;
+		break;
+	case SIGQUIT:
+	case SIGILL:
+	case SIGABRT:
+	case SIGBUS:
+	case SIGFPE:
+	case SIGSEGV:
+		sigaction(signum, &dflt_action, NULL);
+		kill(getpid(), signum);
 		break;
 	default:
 		/* ignore */
