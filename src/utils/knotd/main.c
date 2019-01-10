@@ -125,8 +125,8 @@ struct signal {
 /*! \brief Signals used by the server. */
 static const struct signal SIGNALS[] = {
 	{ SIGHUP,  true  },  /* Reload server. */
-	{ SIGINT,  true  },  /* Terminate server .*/
-	{ SIGTERM, true  },
+	{ SIGINT,  true  },  /* Terminate server. */
+	{ SIGTERM, true  },  /* Terminate server. */
 	{ SIGALRM, false },  /* Internal thread synchronization. */
 	{ SIGPIPE, false },  /* Ignored. Some I/O errors. */
 	{ 0 }
@@ -159,6 +159,12 @@ static void setup_signals(void)
 	static sigset_t all;
 	sigfillset(&all);
 	sigdelset(&all, SIGPROF);
+	sigdelset(&all, SIGQUIT);
+	sigdelset(&all, SIGILL);
+	sigdelset(&all, SIGABRT);
+	sigdelset(&all, SIGBUS);
+	sigdelset(&all, SIGFPE);
+	sigdelset(&all, SIGSEGV);
 	pthread_sigmask(SIG_SETMASK, &all, NULL);
 
 	/* Setup handlers. */
