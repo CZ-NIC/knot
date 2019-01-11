@@ -303,9 +303,13 @@ int zone_changes_clear(conf_t *conf, zone_t *zone)
 
 	JOURNAL_LOCK_RW
 
-	int ret = open_journal(zone);
-	if (ret == KNOT_EOK) {
-		ret = journal_drop_changesets(zone->journal);
+	int ret = KNOT_EOK;
+
+	if (journal_exists(zone->journal_db, zone->name)) {
+		ret = open_journal(zone);
+		if (ret == KNOT_EOK) {
+			ret = journal_drop_changesets(zone->journal);
+		}
 	}
 
 	JOURNAL_UNLOCK_RW
