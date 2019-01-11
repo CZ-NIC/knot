@@ -42,7 +42,7 @@ void journal_merge(zone_journal_t j, knot_lmdb_txn_t *txn, bool merge_zij,
                    uint32_t merge_serial, uint32_t *original_serial_to);
 
 /*!
- * \brief Delete soem journal changeset in attept to fulfill usage quotas.
+ * \brief Delete some journal changesets in attempt to fulfill usage quotas.
  *
  * \param txn              Journal DB transaction.
  * \param from             Serial-from of the first cangeset to be deleted.

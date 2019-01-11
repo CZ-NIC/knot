@@ -140,7 +140,7 @@ void journal_try_flush(zone_journal_t j, knot_lmdb_txn_t *txn, journal_metadata_
 }
 
 void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_metadata_t *md,
-			    int64_t max_usage, ssize_t max_count)
+                            int64_t max_usage, ssize_t max_count)
 {
 	uint64_t occupied = journal_get_occupied(txn, j.zone), freed;
 	int64_t need_tofree = (int64_t)occupied - max_usage;

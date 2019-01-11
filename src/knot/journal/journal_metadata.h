@@ -46,7 +46,7 @@ typedef int (*journals_walk_cb_t)(const knot_dname_t *zone, void *ctx);
  * usage increase (or decrease) is accounted on the bill of the previous inserter.
  *
  * \param txn            Journal DB transaction.
- * \param new_inserter   Name of the zone that is giong to insert now. Might be NULL if no insert nor delete will be done.
+ * \param new_inserter   Name of the zone that is going to insert now. Might be NULL if no insert nor delete will be done.
  */
 void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter);
 
