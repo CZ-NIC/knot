@@ -650,9 +650,10 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 
 	/* Store new zone contents in journal. */
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
-	if (conf_opt(&val) == JOURNAL_CONTENT_ALL) {
+	unsigned content = conf_opt(&val);
+	if (content == JOURNAL_CONTENT_ALL) {
 		ret = zone_in_journal_store(conf, update->zone, update->new_cont);
-	} else { // zone_in_journal_store does this automatically
+	} else if (content != JOURNAL_CONTENT_NONE) { // zone_in_journal_store does this automatically
 		ret = zone_changes_clear(conf, update->zone);
 	}
 
