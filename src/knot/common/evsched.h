@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,7 +61,7 @@ typedef struct event {
  * \brief Event scheduler structure.
  */
 typedef struct evsched {
-	volatile bool running;     /*!< True if running. */
+	volatile bool paused;      /*!< Temporarily stop processing events. */
 	pthread_mutex_t heap_lock; /*!< Event heap locking. */
 	pthread_cond_t notify;     /*!< Event heap notification. */
 	struct heap heap;          /*!< Event heap. */
@@ -137,6 +137,17 @@ int evsched_schedule(event_t *ev, uint32_t dt);
  */
 int evsched_cancel(event_t *ev);
 
+/*! \brief Start event processing threads. */
 void evsched_start(evsched_t *sched);
+
+/*! \brief Stop event processing threads. */
 void evsched_stop(evsched_t *sched);
+
+/*! \brief Join event processing threads. */
 void evsched_join(evsched_t *sched);
+
+/*! \brief Temporarily stop processing events. */
+void evsched_pause(evsched_t *sched);
+
+/*! \brief Resume processing events. */
+void evsched_resume(evsched_t *sched);
