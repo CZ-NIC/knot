@@ -61,7 +61,7 @@ typedef struct event {
  * \brief Event scheduler structure.
  */
 typedef struct evsched {
-	volatile bool running;     /*!< True if running. */
+	volatile bool paused;
 	pthread_mutex_t heap_lock; /*!< Event heap locking. */
 	pthread_cond_t notify;     /*!< Event heap notification. */
 	struct heap heap;          /*!< Event heap. */
@@ -140,3 +140,6 @@ int evsched_cancel(event_t *ev);
 void evsched_start(evsched_t *sched);
 void evsched_stop(evsched_t *sched);
 void evsched_join(evsched_t *sched);
+
+void evsched_pause(evsched_t *sched);
+void evsched_resume(evsched_t *sched);

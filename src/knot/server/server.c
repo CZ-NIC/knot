@@ -882,8 +882,7 @@ void server_update_zones(conf_t *conf, server_t *server)
 	}
 
 	/* Suspend workers, clear wating events, finish running events. */
-	worker_pool_suspend(server->workers);
-	worker_pool_clear(server->workers);
+	evsched_pause(&server->sched);
 	worker_pool_wait(server->workers);
 
 	/* Reload zone database and free old zones. */
@@ -894,7 +893,7 @@ void server_update_zones(conf_t *conf, server_t *server)
 	mem_trim();
 
 	/* Resume workers and allow events on new zones. */
-	worker_pool_resume(server->workers);
+	evsched_resume(&server->sched);
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
