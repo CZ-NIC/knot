@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -881,9 +881,8 @@ void server_update_zones(conf_t *conf, server_t *server)
 		knot_zonedb_foreach(server->zone_db, zone_events_freeze);
 	}
 
-	/* Suspend workers, clear wating events, finish running events. */
-	worker_pool_suspend(server->workers);
-	worker_pool_clear(server->workers);
+	/* Suspend adding events to worker pool queue, wait for queued events. */
+	evsched_pause(&server->sched);
 	worker_pool_wait(server->workers);
 
 	/* Reload zone database and free old zones. */
@@ -893,8 +892,8 @@ void server_update_zones(conf_t *conf, server_t *server)
 	/* Trim extra heap. */
 	mem_trim();
 
-	/* Resume workers and allow events on new zones. */
-	worker_pool_resume(server->workers);
+	/* Resume processing events on new zones. */
+	evsched_resume(&server->sched);
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}

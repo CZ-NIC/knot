@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ static int evsched_run(dthread_t *thread)
 	/* Run event loop. */
 	pthread_mutex_lock(&sched->heap_lock);
 	while (!dt_is_cancelled(thread)) {
-		if (!!EMPTY_HEAP(&sched->heap)) {
+		if (!!EMPTY_HEAP(&sched->heap) || sched->paused) {
 			pthread_cond_wait(&sched->notify, &sched->heap_lock);
 			continue;
 		}
@@ -249,4 +249,19 @@ void evsched_stop(evsched_t *sched)
 void evsched_join(evsched_t *sched)
 {
 	dt_join(sched->thread);
+}
+
+void evsched_pause(evsched_t *sched)
+{
+	pthread_mutex_lock(&sched->heap_lock);
+	sched->paused = true;
+	pthread_mutex_unlock(&sched->heap_lock);
+}
+
+void evsched_resume(evsched_t *sched)
+{
+	pthread_mutex_lock(&sched->heap_lock);
+	sched->paused = false;
+	pthread_cond_signal(&sched->notify);
+	pthread_mutex_unlock(&sched->heap_lock);
 }
