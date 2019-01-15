@@ -58,3 +58,8 @@ void worker_queue_enqueue(worker_queue_t *queue, task_t *task);
  * \return Task or NULL if the queue is empty.
  */
 task_t *worker_queue_dequeue(worker_queue_t *queue);
+
+/*!
+ * \brief Return number of tasks in worker queue.
+ */
+size_t worker_queue_length(worker_queue_t *queue);

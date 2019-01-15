@@ -227,3 +227,16 @@ void worker_pool_clear(worker_pool_t *pool)
 	worker_queue_init(&pool->tasks);
 	pthread_mutex_unlock(&pool->lock);
 }
+
+void worker_pool_status(worker_pool_t *pool, int *running, int *queued)
+{
+	if (!pool) {
+		*running = *queued = 0;
+		return;
+	}
+
+	pthread_mutex_lock(&pool->lock);
+	*running = pool->running;
+	*queued = worker_queue_length(&pool->tasks);
+	pthread_mutex_unlock(&pool->lock);
+}

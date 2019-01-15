@@ -1405,9 +1405,12 @@ static int server_status(ctl_args_t *args)
 	if (strcasecmp(type, "version") == 0) {
 		ret = snprintf(buff, sizeof(buff), "Version: %s", PACKAGE_VERSION);
 	} else if (strcasecmp(type, "workers") == 0) {
+		int running_bkg_wrk, wrk_queue;
+		worker_pool_status(args->server->workers, &running_bkg_wrk, &wrk_queue);
 		ret = snprintf(buff, sizeof(buff), "UDP workers: %zu, TCP workers %zu, "
-		               "background workers: %zu", conf_udp_threads(conf()),
-		               conf_tcp_threads(conf()), conf_bg_threads(conf()));
+		               "background workers: %zu (running: %d, queue length: %d)",
+			       conf_udp_threads(conf()), conf_tcp_threads(conf()),
+		               conf_bg_threads(conf()), running_bkg_wrk, wrk_queue);
 	} else if (strcasecmp(type, "configure") == 0) {
 		ret = snprintf(buff, sizeof(buff), "%s", CONFIGURE_SUMMARY);
 	} else {

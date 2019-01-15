@@ -75,3 +75,8 @@ void worker_pool_assign(worker_pool_t *pool, struct task *task);
  * \brief Clear all tasks enqueued in pool processing queue.
  */
 void worker_pool_clear(worker_pool_t *pool);
+
+/*!
+ * \brief Obtain info regarding how the pool is busy.
+ */
+void worker_pool_status(worker_pool_t *pool, int *running, int *queued);

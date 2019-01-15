@@ -60,3 +60,8 @@ task_t *worker_queue_dequeue(worker_queue_t *queue)
 
 	return task;
 }
+
+size_t worker_queue_length(worker_queue_t *queue)
+{
+	return queue ? list_size(&queue->list) : 0;
+}
