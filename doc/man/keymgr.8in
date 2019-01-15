@@ -107,7 +107,8 @@ The salt is printed and expected in hexadecimal, or dash if empty.
 .TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
 Changes a timing argument (or ksk/zsk) of an existing key to a new value. \fIKey_spec\fP is either the
-key tag or a prefix of the key ID; \fIarguments\fP are like for \fBgenerate\fP, but just the related ones.
+key tag or a prefix of the key ID, with an optional \fI[tag=|id=]\fP prefix; \fIarguments\fP
+are like for \fBgenerate\fP, but just the related ones.
 .TP
 \fBds\fP [\fIkey_spec\fP]
 Generate DS record (all digest algorithms together) for specified key. \fIKey_spec\fP
