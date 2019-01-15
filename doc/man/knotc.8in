@@ -54,7 +54,7 @@ Set maximum configuration size (default is @conf_mapsize@ MiB, maximum 10000 MiB
 Use a control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 .TP
 \fB\-t\fP, \fB\-\-timeout\fP \fIseconds\fP
-Use a control timeout in seconds. Set 0 for infinity (default is 5).
+Use a control timeout in seconds. Set 0 for infinity (default is 10).
 .TP
 \fB\-f\fP, \fB\-\-force\fP
 Forced operation. Overrides some checks.

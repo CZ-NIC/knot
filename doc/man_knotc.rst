@@ -31,7 +31,7 @@ Parameters
   Use a control UNIX socket path (default is :file:`@run_dir@/knot.sock`).
 
 **-t**, **--timeout** *seconds*
-  Use a control timeout in seconds. Set 0 for infinity (default is 5).
+  Use a control timeout in seconds. Set 0 for infinity (default is 10).
 
 **-f**, **--force**
   Forced operation. Overrides some checks.
