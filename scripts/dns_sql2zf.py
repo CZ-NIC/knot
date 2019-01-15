@@ -123,6 +123,11 @@ def zone_template(zone):
     # this function is intended to be patched by user's bussiness logic
     return None
 
+# param type:
+#   -1 ... remove this zone
+#    0 ... mark this zone as modified (fallback to 2 if not exists)
+#    1 ... add zone (fallback to 0 if exists already)
+#    2 ... add zone no fallback (ignore if exists already)
 def knotc_send(type, zone):
     global slave_mode
     global conf_txn_open
@@ -134,18 +139,24 @@ def knotc_send(type, zone):
 
             knotc_zone_reload.append(zone)
         except:
-            knotc_send(1, zone)
+            knotc_send(2, zone)
     else:
         try:
             if not conf_txn_open:
                 knotc_single("conf-begin")
                 conf_txn_open = True
             if type > 0:
-                knotc_single("conf-set", "zone[%s]" % zone)
-                knotc_single("conf-set", "zone[%s].file" % zone, zone_storage(zone))
-                template = zone_template(remove_dot(zone))
-                if template is not None:
-                    knotc_single("conf-set", "zone[%s].template" % zone, template)
+                try:
+                    knotc_single("conf-set", "zone[%s]" % zone)
+                    knotc_single("conf-set", "zone[%s].file" % zone, zone_storage(zone))
+                    template = zone_template(remove_dot(zone))
+                    if template is not None:
+                        knotc_single("conf-set", "zone[%s].template" % zone, template)
+                except:
+                    if type > 1:
+                        pass
+                    else:
+                        knotc_send(0, zone)
             else:
                 knotc_single("conf-unset", "zone[%s]" % zone)
                 try:
