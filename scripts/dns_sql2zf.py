@@ -40,6 +40,7 @@ knotc_socket = None
 slave_mode = False
 conf_txn_open = False
 knotc_zone_reload = []
+knotc_timeout = 10
 
 class Domains(SQLObject):
     # id = IntCol() # implicitly there
@@ -111,8 +112,9 @@ def zone_storage(zone):
 def knotc_single(*args):
     global knotc_binary
     global knotc_socket
+    global knotc_timeout
 
-    cmd = [ knotc_binary, "-s", knotc_socket ] + list(args)
+    cmd = [ knotc_binary, "-s", knotc_socket, "-t", str(knotc_timeout) ] + list(args)
     p = Popen(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     (stdout, stderr) = p.communicate()
     if p.returncode != 0:
@@ -252,6 +254,7 @@ def main():
     global slave_mode
     global conf_txn_open
     global knotc_zone_reload
+    global knotc_timeout
 
     argp = argparse.ArgumentParser(prog='dns_sql2zf', description="Export DNS records from Mysql or Postgres DB into zonefile.", epilog="(C) CZ.NIC, GPLv3")
     argp.add_argument(dest='domains', metavar='zone', nargs='*', help='Zone to be exported.')
@@ -263,6 +266,7 @@ def main():
     argp.add_argument('--absolute-names', dest='fix_absolute', action='store_true', help="Interpret names in records' contents (e.g. CNAME, NS...) as absolute even if w/o trailing dot.")
     argp.add_argument('--from-changes', dest='from_changes', metavar="from_id", nargs='?', const=0, help="Export zones listed in extra 'changes' table.")
     argp.add_argument('--knotc', dest='knotc_socket', metavar='knot_socket', nargs=1, help="Notify Knot DNS about changes (requires: $PATH/knotc).")
+    argp.add_argument('--knotc-timeout', dest='knotc_timeout', type=int, metavar='uint32', nargs=1, help='Timeout for knotc commands (default 10).')
     argp.add_argument('--slave', dest='slave', action='store_true', help="Don't generate zonefiles, use 'knotc zone-refresh' instead of zone-reload.")
     argp.add_argument('--version', action='version', version='dns_sql2zf 0.1')
     args = argp.parse_args()
@@ -281,6 +285,9 @@ def main():
 
     if args.knotc_socket is not None:
         knotc_socket = args.knotc_socket[0]
+
+    if args.knotc_timeout is not None:
+        knotc_timeout = args.knotc_timeout[0]
 
     if args.slave:
         slave_mode = True
