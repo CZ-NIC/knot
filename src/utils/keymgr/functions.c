@@ -29,6 +29,7 @@
 #include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
 #include "libdnssec/error.h"
+#include "libdnssec/keyid.h"
 #include "libdnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/key-events.h"
@@ -553,8 +554,12 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	return import_key(ctx, KEYSTORE_BACKEND_PEM, import_file, argc, argv);
 }
 
-int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, const char *key_id, int argc, char *argv[])
+int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[])
 {
+	if (!dnssec_keyid_is_valid(key_id)) {
+		return DNSSEC_INVALID_KEY_ID;
+	}
+	dnssec_keyid_normalize(key_id);
 	return import_key(ctx, KEYSTORE_BACKEND_PKCS11, key_id, argc, argv);
 }
 
@@ -685,10 +690,24 @@ static bool is_hex(const char *string)
 
 int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **key)
 {
+	// Check if type of key spec is prescribed.
+	bool is_tag = false, is_id = false;
+	if (strncasecmp(key_spec, "tag=", 4) == 0) {
+		key_spec += 4;
+		is_tag = true;
+	} else if (strncasecmp(key_spec, "id=", 3) == 0) {
+		key_spec += 3;
+		is_id = true;
+	}
+
 	uint16_t keytag = 0;
-	bool has_keytag = (str_to_u16(key_spec, &keytag) == KNOT_EOK);
+	bool can_be_keytag = (str_to_u16(key_spec, &keytag) == KNOT_EOK);
 	long spec_len = strlen(key_spec);
-	if (!has_keytag && !is_hex(key_spec)) {
+
+	// Check if input is a valid key spec.
+	if ((is_tag && !can_be_keytag) ||
+	    (is_id && !is_hex(key_spec)) ||
+	    (!can_be_keytag && !is_hex(key_spec))) {
 		printf("Error in key specification.\n");
 		return KNOT_EINVAL;
 	}
@@ -696,8 +715,15 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 	*key = NULL;
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *candidate = &ctx->zone->keys[i];
-		if ((has_keytag && dnssec_key_get_keytag(candidate->key) == keytag) ||
-		    (!has_keytag && strncmp(candidate->id, key_spec, spec_len) == 0)) {
+
+		bool keyid_match = strlen(candidate->id) == spec_len &&
+		                   strncmp(candidate->id, key_spec, spec_len) == 0;
+		bool keytag_match = can_be_keytag &&
+		                    dnssec_key_get_keytag(candidate->key) == keytag;
+
+		if ((is_tag && keytag_match) || // Tag is prescribed.
+		    (is_id && keyid_match) ||   // Key ID is prescribed.
+		    ((!is_tag && !is_id) && (keyid_match || keytag_match))) { // Nothing is prescribed.
 			if (*key == NULL) {
 				*key = candidate;
 			}

@@ -30,9 +30,8 @@ static void test_keyid_is_valid_run(const char *param, bool should_ok)
 static void test_keyid_is_valid(void)
 {
 	test_keyid_is_valid_run(NULL, false);
-	test_keyid_is_valid_run("3e90c5cb1fad5f8512da2028fda3808e749d3bf", false);
+	test_keyid_is_valid_run("a1b1", true);
 	test_keyid_is_valid_run("9aa6dAAC706fb6fe4aceb327452a7b5FEA457544", true);
-	test_keyid_is_valid_run("eac45c184b7f476472c16d5b0c4f0c52389848001", false);
 	test_keyid_is_valid_run("9aa6daac706fb6fe4aceb32g452a7b5fea457544", false);
 }
 
