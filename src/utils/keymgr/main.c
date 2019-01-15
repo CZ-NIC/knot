@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,7 +92,8 @@ static void print_help(void)
 	       "                 (syntax: import-skr <skr_file>)\n"
 	       "\n"
 	       "Key specification:\n"
-	       "  either the key tag (number) or [a prefix of] key ID.\n"
+	       "  either the key tag (number) or [a prefix of] key ID, with an optional\n"
+	       "  [id=|keytag=] prefix.\n"
 	       "\n"
 	       "Key attributes:\n"
 	       "  algorithm  The key cryptographic algorithm: either name (e.g. RSASHA256) or\n"
