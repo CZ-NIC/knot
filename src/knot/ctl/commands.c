@@ -237,8 +237,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_EVENTS)) {
 		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
 			// Events not worth showing or used elsewhere.
-			if (i == ZONE_EVENT_LOAD || i == ZONE_EVENT_UFREEZE ||
-			    i == ZONE_EVENT_UTHAW) {
+			if (i == ZONE_EVENT_UFREEZE || i == ZONE_EVENT_UTHAW) {
 				continue;
 			}
 
