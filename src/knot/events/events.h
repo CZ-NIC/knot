@@ -59,6 +59,8 @@ typedef struct zone_events {
 	task_t task;			//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
 	bool forced[ZONE_EVENT_COUNT];  //!< Flag that the event was invoked by user ctl.
+
+	const knot_dname_t *zone_name;
 } zone_events_t;
 
 /*!

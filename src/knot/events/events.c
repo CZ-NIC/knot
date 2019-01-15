@@ -216,6 +216,8 @@ static void event_wrap(task_t *task)
 	pthread_mutex_unlock(&events->mx);
 
 	const event_info_t *info = get_event_info(type);
+	log_zone_notice(zone->name, "zone event '%s' started",
+			info->name);
 
 	/* Create a configuration copy just for this event. */
 	conf_t *conf;
@@ -231,6 +233,9 @@ static void event_wrap(task_t *task)
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "zone event '%s' failed (%s)",
 		               info->name, knot_strerror(ret));
+	} else {
+		log_zone_notice(zone->name, "zone event '%s' succeeeded",
+		                info->name);
 	}
 
 	pthread_mutex_lock(&events->mx);
@@ -252,7 +257,10 @@ static void event_dispatch(event_t *event)
 	pthread_mutex_lock(&events->mx);
 	if (!events->running && !events->frozen) {
 		events->running = true;
+		const event_info_t *info = get_event_info(get_next_event(events));
 		worker_pool_assign(events->pool, &events->task);
+		log_zone_notice(events->zone_name, "zone event '%s' assigned",
+				info->name);
 	}
 	pthread_mutex_unlock(&events->mx);
 }
@@ -270,6 +278,8 @@ int zone_events_init(zone_t *zone)
 	pthread_mutex_init(&events->reschedule_lock, NULL);
 	events->task.ctx = zone;
 	events->task.run = event_wrap;
+
+	events->zone_name = zone->name;
 
 	return KNOT_EOK;
 }
@@ -374,6 +384,9 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 	    (!events->ufrozen || !ufreeze_applies(type))) {
 		events->running = true;
 		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
+		const event_info_t *info = get_event_info(get_next_event(events));
+		log_zone_notice(zone->name, "zone event '%s' assigned directly",
+				info->name);
 		worker_pool_assign(events->pool, &events->task);
 		pthread_mutex_unlock(&events->mx);
 		return;

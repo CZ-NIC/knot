@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -198,7 +199,8 @@ void worker_pool_wait(worker_pool_t *pool)
 	}
 
 	pthread_mutex_lock(&pool->lock);
-	while (!EMPTY_LIST(pool->tasks.list) || pool->running > 0) {
+	while ((!EMPTY_LIST(pool->tasks.list) && !pool->suspended)
+	       || pool->running > 0) {
 		pthread_cond_wait(&pool->wake, &pool->lock);
 	}
 	pthread_mutex_unlock(&pool->lock);
@@ -207,6 +209,7 @@ void worker_pool_wait(worker_pool_t *pool)
 void worker_pool_assign(worker_pool_t *pool, struct task *task)
 {
 	if (!pool || !task) {
+		printf("assign assert\n");
 		return;
 	}
 

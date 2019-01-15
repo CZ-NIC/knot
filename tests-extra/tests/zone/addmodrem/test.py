@@ -106,7 +106,7 @@ def chk_serials(server):
         kn_serial = server.dig_serial(zn)
         if (kn_serial - zf_serial) not in [0, 1]:
             set_err("[%s] real serial (%d) lower than zf serial (%d)" % (zn, kn_serial, zf_serial))
-            server.ctl("zone-status %s" % zn)
+            server.ctl("zone-status")
 
 t = Test()
 s = t.server("knot")
@@ -123,6 +123,8 @@ s.zones_wait(zone_init)
 set_policy(s)
 t.sleep(2)
 s.zones_wait(zone_init)
+
+s.ctl_params = ["-c", s.confile, "-t", "120"]
 
 for i in range(1, 25):
     for j in range(1, 10):
