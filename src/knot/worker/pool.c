@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -225,5 +225,18 @@ void worker_pool_clear(worker_pool_t *pool)
 	pthread_mutex_lock(&pool->lock);
 	worker_queue_deinit(&pool->tasks);
 	worker_queue_init(&pool->tasks);
+	pthread_mutex_unlock(&pool->lock);
+}
+
+void worker_pool_status(worker_pool_t *pool, int *running, int *queued)
+{
+	if (!pool) {
+		*running = *queued = 0;
+		return;
+	}
+
+	pthread_mutex_lock(&pool->lock);
+	*running = pool->running;
+	*queued = worker_queue_length(&pool->tasks);
 	pthread_mutex_unlock(&pool->lock);
 }
