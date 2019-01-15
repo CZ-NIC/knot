@@ -29,6 +29,7 @@
 #include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
 #include "libdnssec/error.h"
+#include "libdnssec/keyid.h"
 #include "libdnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/key-events.h"
@@ -553,8 +554,12 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 	return import_key(ctx, KEYSTORE_BACKEND_PEM, import_file, argc, argv);
 }
 
-int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, const char *key_id, int argc, char *argv[])
+int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[])
 {
+	if (!dnssec_keyid_is_valid(key_id)) {
+		return DNSSEC_INVALID_KEY_ID;
+	}
+	dnssec_keyid_normalize(key_id);
 	return import_key(ctx, KEYSTORE_BACKEND_PKCS11, key_id, argc, argv);
 }
 
