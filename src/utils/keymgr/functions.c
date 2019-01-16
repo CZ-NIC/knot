@@ -14,11 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <gnutls/abstract.h>
+#include <gnutls/crypto.h>
+
+#include <fcntl.h>
 #include <limits.h>
 #include <string.h>
 #include <strings.h>
 #include <time.h>
-#include <fcntl.h>
+#include <unistd.h>
 
 #include "utils/keymgr/functions.h"
 #include "utils/keymgr/bind_privkey.h"
@@ -28,8 +32,7 @@
 #include "contrib/strtonum.h"
 #include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
-#include "libdnssec/error.h"
-#include "libdnssec/shared/shared.h"
+#include "libdnssec/dnssec.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
@@ -648,7 +651,7 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
 	}
 	assert(bits % CHAR_BIT == 0);
 
-	_cleanup_binary_ dnssec_binary_t key = { 0 };
+	dnssec_binary_t key = { 0 };
 	int r = dnssec_binary_alloc(&key, bits / CHAR_BIT);
 	if (r != DNSSEC_EOK) {
 		printf("Failed to allocate memory.");
@@ -658,17 +661,20 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
 	r = gnutls_rnd(GNUTLS_RND_KEY, key.data, key.size);
 	if (r != 0) {
 		printf("Failed to generate secret key.");
+		dnssec_binary_free(&key);
 		return knot_error_from_libdnssec(DNSSEC_KEY_GENERATE_ERROR);
 	}
 
-	_cleanup_binary_ dnssec_binary_t key_b64 = { 0 };
+	dnssec_binary_t key_b64 = { 0 };
 	r = dnssec_binary_to_base64(&key, &key_b64);
+	dnssec_binary_free(&key);
 	if (r != DNSSEC_EOK) {
 		printf("Failed to convert the key to Base64.");
 		return knot_error_from_libdnssec(r);
 	}
 
 	print_tsig(alg, tsig_name, &key_b64);
+	dnssec_binary_free(&key_b64);
 
 	return KNOT_EOK;
 }
@@ -822,13 +828,16 @@ static int print_ds(const knot_dname_t *dname, const dnssec_binary_t *rdata)
 static int create_and_print_ds(const knot_dname_t *zone_name,
 			       const dnssec_key_t *key, dnssec_key_digest_t digest)
 {
-	_cleanup_binary_ dnssec_binary_t rdata = { 0 };
+	dnssec_binary_t rdata = { 0 };
 	int r = dnssec_key_create_ds(key, digest, &rdata);
 	if (r != DNSSEC_EOK) {
 		return knot_error_from_libdnssec(r);
 	}
 
-	return print_ds(zone_name, &rdata);
+	r = print_ds(zone_name, &rdata);
+
+	dnssec_binary_free(&rdata);
+	return r;
 }
 
 int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key)
