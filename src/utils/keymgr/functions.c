@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -657,8 +657,8 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
 
 	r = gnutls_rnd(GNUTLS_RND_KEY, key.data, key.size);
 	if (r != 0) {
-		printf("Failed to generate secret the key.");
-		return knot_error_from_libdnssec(r);
+		printf("Failed to generate secret key.");
+		return knot_error_from_libdnssec(DNSSEC_KEY_GENERATE_ERROR);
 	}
 
 	_cleanup_binary_ dnssec_binary_t key_b64 = { 0 };
