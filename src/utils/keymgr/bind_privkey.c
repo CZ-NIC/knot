@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,8 +18,7 @@
 
 #include "contrib/ctype.h"
 #include "contrib/strtonum.h"
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
+#include "libdnssec/dnssec.h"
 #include "libdnssec/shared/pem.h"
 #include "libdnssec/shared/shared.h"
 #include "utils/keymgr/bind_privkey.h"
@@ -202,25 +201,30 @@ static int parse_line(bind_privkey_t *params, char *line, size_t length)
 
 int bind_privkey_parse(const char *filename, bind_privkey_t *params_ptr)
 {
-	_cleanup_fclose_ FILE *file = fopen(filename, "r");
+	FILE *file = fopen(filename, "r");
 	if (!file) {
 		return DNSSEC_NOT_FOUND;
 	}
 
 	bind_privkey_t params = { 0 };
 
-	_cleanup_free_ char *line = NULL;
+	char *line = NULL;
 	size_t size = 0;
 	ssize_t read = 0;
 	while ((read = getline(&line, &size, file)) != -1) {
 		int r = parse_line(&params, line, read);
 		if (r != DNSSEC_EOK) {
 			bind_privkey_free(&params);
+			free(line);
+			fclose(file);
 			return r;
 		}
 	}
 
 	*params_ptr = params;
+
+	free(line);
+	fclose(file);
 
 	return DNSSEC_EOK;
 }
@@ -249,7 +253,7 @@ void bind_privkey_free(bind_privkey_t *params)
 
 static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 {
-	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	gnutls_x509_privkey_t key = NULL;
 	int result = gnutls_x509_privkey_init(&key);
 	if (result != GNUTLS_E_SUCCESS) {
 		return DNSSEC_ENOMEM;
@@ -264,10 +268,14 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 
 	result = gnutls_x509_privkey_import_rsa_raw(key, &m, &e, &d, &p, &q, &u);
 	if (result != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(key);
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	return pem_from_x509(key, pem);
+	result = pem_from_x509(key, pem);
+
+	gnutls_x509_privkey_deinit(key);
+	return result;
 }
 
 /*!
@@ -300,7 +308,7 @@ static void ecdsa_extract_public_params(dnssec_key_t *key, gnutls_ecc_curve_t *c
 static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *params,
 			       dnssec_binary_t *pem)
 {
-	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	gnutls_x509_privkey_t key = NULL;
 	int result = gnutls_x509_privkey_init(&key);
 	if (result != GNUTLS_E_SUCCESS) {
 		return DNSSEC_ENOMEM;
@@ -315,12 +323,16 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 
 	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, &y, &k);
 	if (result != DNSSEC_EOK) {
+		gnutls_x509_privkey_deinit(key);
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
 	gnutls_x509_privkey_fix(key);
 
-	return pem_from_x509(key, pem);
+	result = pem_from_x509(key, pem);
+
+	gnutls_x509_privkey_deinit(key);
+	return result;
 }
 
 int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary_t *pem)
