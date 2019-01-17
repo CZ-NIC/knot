@@ -45,3 +45,5 @@ int event_uthaw(conf_t *conf, zone_t *zone);
 int event_nsec3resalt(conf_t *conf, zone_t *zone);
 /*! \brief When CDS/CDNSKEY published, look for matching DS */
 int event_parent_ds_q(conf_t *conf, zone_t *zone);
+/*! \brief After change of CDS/CDNSKEY, push the new DS to parent zone as DDNS. */
+int event_ds_push(conf_t *conf, zone_t *zone);

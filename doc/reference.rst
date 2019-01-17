@@ -770,6 +770,7 @@ DNSSEC policy configuration.
      nsec3-salt-lifetime: TIME
      signing-threads: INT
      ksk-submission: submission_id
+     ds-push: remote_id
      cds-cdnskey-publish: none | delete-dnssec | rollover | always | double-ds
      offline-ksk: BOOL
 
@@ -1031,6 +1032,24 @@ ksk-submission
 
 A reference to :ref:`submission<submission_id>` section holding parameters of
 KSK submittion checks.
+
+*Default:* not set
+
+.. _policy_ds-push:
+
+ds-push
+-------
+
+A :ref:`reference<remote_id>` to parent's DNS server. Whenever the CDS record in
+this zone is changed, corresponding DS record is sent as an update (DDNS) to
+parent DNS server.
+
+.. NOTE::
+   For proper operation ref:`cds-cdnskey-publish<policy_cds-cdnskey-publish>`
+   must not be disabled.
+
+.. NOTE::
+   This feature does not work with :ref:`Onlinesign<mod-onlinesign>` module.
 
 *Default:* not set
 
