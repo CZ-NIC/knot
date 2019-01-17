@@ -107,12 +107,12 @@ file
 
 A path to a shared library file with the module implementation.
 
-*Default:* ``${libdir}/knot/modules-${version}``/module_name.so
-(or ``${path}``/module_name.so if configured with ``--with-moduledir=path``)
-
 .. WARNING::
    If the path is not absolute, the library is searched in the set of
    system directories. See ``man dlopen`` for more details.
+
+*Default:* ``${libdir}/knot/modules-${version}``/module_name.so
+(or ``${path}``/module_name.so if configured with ``--with-moduledir=path``)
 
 .. _Server section:
 
@@ -747,7 +747,7 @@ DNSSEC policy configuration.
      nsec3-salt-lifetime: TIME
      signing-threads: INT
      ksk-submission: submission_id
-     cds-cdnskey-publish: none | delete-dnssec | rollover | always
+     cds-cdnskey-publish: none | delete-dnssec | rollover | always | double-ds
      offline-ksk: BOOL
 
 .. _policy_id:
@@ -804,10 +804,10 @@ Possible values:
 - ``ecdsap384sha384``
 - ``ed25519``
 
-*Default:* ecdsap256sha256
-
 .. NOTE::
    Ed25519 algorithm is only available when compiled with GnuTLS 3.6.0+.
+
+*Default:* ecdsap256sha256
 
 .. _policy_ksk-size:
 
@@ -844,10 +844,10 @@ dnskey-ttl
 
 A TTL value for DNSKEY records added into zone apex.
 
-*Default:* zone SOA TTL
-
 .. NOTE::
    Has infuence over ZSK key lifetime.
+
+*Default:* zone SOA TTL
 
 .. _policy_zone-max-ttl:
 
@@ -869,12 +869,12 @@ zsk-lifetime
 
 A period between ZSK publication and the next rollover initiation.
 
-*Default:* 30 days
-
 .. NOTE::
    ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
 
    Zero (aka infinity) value causes no ZSK rollover as a result.
+
+*Default:* 30 days
 
 .. _policy_ksk-lifetime:
 
@@ -882,8 +882,6 @@ ksk-lifetime
 ------------
 
 A period between KSK publication and the next rollover initiation.
-
-*Default:* 0
 
 .. NOTE::
    KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
@@ -893,6 +891,8 @@ A period between KSK publication and the next rollover initiation.
 
    This applies for CSK lifetime if single-type-signing is enabled.
 
+*Default:* 0
+
 .. _policy_propagation-delay:
 
 propagation-delay
@@ -901,10 +901,10 @@ propagation-delay
 An extra delay added for each key rollover step. This value should be high
 enough to cover propagation of data from the master server to all slaves.
 
-*Default:* 1 hour
-
 .. NOTE::
    Has infuence over ZSK key lifetime.
+
+*Default:* 1 hour
 
 .. _policy_rrsig-lifetime:
 
@@ -1006,15 +1006,17 @@ cds-cdnskey-publish
 
 Controls if and how shall the CDS and CDNSKEY be published in the zone.
 
-.. NOTE::
-   This only applies if the zone keys are automatically managed by the server.
-
 Possible values:
 
 - ``none`` – Never publish any CDS or CDNSKEY records in the zone.
 - ``delete-dnssec`` – Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
 - ``rollover`` – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
-- ``always`` – Always publish CDS and CDNSKEY records for the current KSK.
+- ``always`` – Always publish one CDS and one CDNSKEY records for the current KSK.
+- ``double-ds`` – Always publish up to two CDS and two CDNSKEY records for ready and/or active KSKs.
+
+.. NOTE::
+   If the zone keys are managed manually, the CDS and CDNSKEY rrsets may contain
+   more records depending on the keys available.
 
 *Default:* always
 
@@ -1203,10 +1205,10 @@ kasp-db
 A KASP database path. Non-absolute path is relative to
 :ref:`storage<zone_storage>`.
 
-*Default:* :ref:`storage<zone_storage>`/keys
-
 .. NOTE::
    This option is only available in the *default* template.
+
+*Default:* :ref:`storage<zone_storage>`/keys
 
 .. _template_max-kasp-db-size:
 
@@ -1464,11 +1466,11 @@ max-journal-usage
 
 Policy how much space in journal DB will the zone's journal occupy.
 
-*Default:* 100 MiB
-
 .. NOTE::
    Journal DB may grow far above the sum of max-journal-usage across
    all zones, because of DB free space fragmentation.
+
+*Default:* 100 MiB
 
 .. _zone_max_journal_depth:
 

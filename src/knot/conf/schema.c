@@ -76,6 +76,7 @@ const knot_lookup_t child_record[] = {
 	{ CHILD_RECORDS_EMPTY,    "delete-dnssec" },
 	{ CHILD_RECORDS_ROLLOVER, "rollover" },
 	{ CHILD_RECORDS_ALWAYS,   "always" },
+	{ CHILD_RECORDS_DOUBLE_DS,"double-ds" },
 	{ 0, NULL }
 };
 

@@ -6,6 +6,7 @@ Check of automatic algorithm rollover scenario.
 
 import collections
 import os
+import random
 import shutil
 import datetime
 import subprocess
@@ -14,6 +15,10 @@ from subprocess import check_call
 from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
+
+DOUBLE_DS = random.choice([True, False])
+if DOUBLE_DS:
+    check_log("DOUBLE DS ENABLED")
 
 def pregenerate_key(server, zone, alg):
     class a_class_with_name:
@@ -109,7 +114,8 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
     while CDS1 == str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
       t.sleep(1)
 
-    check_zone(server, zone, before_keys + after_keys, 2, 1, 2, desc + ": new KSK ready")
+    cdnskeys = 2 if DOUBLE_DS else 1
+    check_zone(server, zone, before_keys + after_keys, 2, cdnskeys, 2, desc + ": new KSK ready")
 
     submission_cb()
     t.sleep(4)
@@ -136,7 +142,8 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     check_zone(server, zone, total_keys, 1, 1, 1, desc + ": published new")
 
     wait_for_rrsig_count(t, server, "DNSKEY", 2, 20)
-    check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 and after_keys > 1 else 2, desc + ": new KSK ready")
+    cdnskeys = 2 if DOUBLE_DS else 1
+    check_zone(server, zone, total_keys, 2, cdnskeys, 1 if before_keys > 1 and after_keys > 1 else 2, desc + ": new KSK ready")
 
     server.dnssec(zone).ksk_lifetime = orig_ksk_lifetime
     server.gen_confile()
@@ -174,6 +181,12 @@ def cds_submission():
     cds_rdata = cds.resp.answer[0].to_rdataset()[0].to_text()
     up = parent.update(parent_zone)
     up.add(ZONE, 7, "DS", cds_rdata)
+    if DOUBLE_DS:
+        try:
+            cds_rdata = cds.resp.answer[0].to_rdataset()[1].to_text()
+            up.add(ZONE, 7, "DS", cds_rdata)
+        except:
+            pass
     up.send("NOERROR")
 
 child.zonefile_sync = 24 * 60 * 60
@@ -188,6 +201,8 @@ child.dnssec(child_zone).propagation_delay = 11
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 2
 child.dnssec(child_zone).ksk_shared = True
+if DOUBLE_DS:
+    child.dnssec(child_zone).cds_publish = "double-ds"
 
 # parameters
 ZONE = "example.com."
