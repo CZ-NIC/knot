@@ -41,6 +41,7 @@ typedef enum zone_event_type {
 	ZONE_EVENT_UTHAW,
 	ZONE_EVENT_NSEC3RESALT,
 	ZONE_EVENT_PARENT_DS_Q,
+	ZONE_EVENT_DS_PUSH,
 	// terminator
 	ZONE_EVENT_COUNT,
 } zone_event_type_t;
