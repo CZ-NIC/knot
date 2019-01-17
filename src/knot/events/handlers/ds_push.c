@@ -49,7 +49,9 @@ static int ds_push_begin(knot_layer_t *layer, void *params)
 
 static int parent_soa_produce(struct ds_push_data *data, knot_pkt_t *pkt)
 {
-	int ret = knot_pkt_put_question(pkt, data->zone, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
+	const knot_dname_t *query_name = knot_wire_next_label(data->zone, NULL);
+
+	int ret = knot_pkt_put_question(pkt, query_name, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
@@ -96,6 +98,16 @@ static int ds_push_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 	return KNOT_STATE_CONSUME;
 }
 
+static const knot_rrset_t *sect_soa(const knot_pkt_t *pkt, knot_section_t sect)
+{
+	const knot_pktsection_t *s = knot_pkt_section(pkt, sect);
+	const knot_rrset_t *rr = s->count > 0 ? knot_pkt_rr(s, 0) : NULL;
+	if (rr == NULL || rr->type != KNOT_RRTYPE_SOA || rr->rrs.count != 1) {
+		return NULL;
+	}
+	return rr;
+}
+
 static int ds_push_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct ds_push_data *data = layer->data;
@@ -106,15 +118,17 @@ static int ds_push_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_DONE;
 	}
 
-	const knot_pktsection_t *authority = knot_pkt_section(pkt, KNOT_AUTHORITY);
-	const knot_rrset_t *rr = authority->count > 0 ? knot_pkt_rr(authority, 0) : NULL;
-	if (!rr || rr->type != KNOT_RRTYPE_SOA || rr->rrs.count != 1) {
+	const knot_rrset_t *parent_soa = sect_soa(pkt, KNOT_ANSWER);
+	if (parent_soa == NULL) {
+		parent_soa = sect_soa(pkt, KNOT_AUTHORITY);
+	}
+	if (parent_soa == NULL) {
 		DS_PUSH_LOG(LOG_WARNING, data->zone, data->remote,
 		            "malformed message");
 		return KNOT_STATE_FAIL;
 	}
 
-	data->parent_soa = knot_dname_copy(rr->owner, NULL);
+	data->parent_soa = knot_dname_copy(parent_soa->owner, NULL);
 
 	return KNOT_STATE_RESET;
 }
