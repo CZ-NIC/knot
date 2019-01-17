@@ -57,6 +57,7 @@ class ZoneDnssec(object):
         self.nsec3_salt_len = None
         self.ksk_sbm_check = []
         self.ksk_sbm_check_interval = None
+        self.ds_push = None
         self.ksk_shared = None
         self.cds_publish = None
         self.offline_ksk = None
@@ -1094,7 +1095,7 @@ class Knot(Server):
                     if slave.tsig:
                         s.item_str("key", slave.tsig.name)
                     servers.add(slave.name)
-            for parent in z.dnssec.ksk_sbm_check:
+            for parent in z.dnssec.ksk_sbm_check + [ z.dnssec.ds_push ] if z.dnssec.ds_push else z.dnssec.ksk_sbm_check:
                 if parent.name not in servers:
                     if not have_remote:
                         s.begin("remote")
@@ -1201,6 +1202,8 @@ class Knot(Server):
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
             if len(z.dnssec.ksk_sbm_check) > 0:
                 s.item("ksk-submission", z.name)
+            if z.dnssec.ds_push:
+                self._str(s, "ds-push", z.dnssec.ds_push.name)
             self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
             self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
             self._str(s, "offline-ksk", z.dnssec.offline_ksk)

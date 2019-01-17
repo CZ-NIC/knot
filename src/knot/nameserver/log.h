@@ -27,6 +27,7 @@ enum log_operation {
 	LOG_OPERATION_REFRESH,
 	LOG_OPERATION_UPDATE,
 	LOG_OPERATION_PARENT,
+	LOG_OPERATION_DS_PUSH,
 };
 
 enum log_direction {
@@ -49,6 +50,8 @@ static inline const char *log_operation_name(enum log_operation operation)
 		return "DDNS";
 	case LOG_OPERATION_PARENT:
 		return "parent DS check";
+	case LOG_OPERATION_DS_PUSH:
+		return "parent DS push";
 	default:
 		return "?";
 	}

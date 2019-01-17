@@ -288,6 +288,8 @@ static const yp_item_t desc_policy[] = {
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_KSK_SBM,             YP_TREF,  YP_VREF = { C_SBM }, CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
+	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES,
+	                                   { check_ref } },
 	{ C_SIGNING_THREADS,     YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } },
 	{ C_CHILD_RECORDS,       YP_TOPT,  YP_VOPT = { child_record, CHILD_RECORDS_ALWAYS } },
 	{ C_OFFLINE_KSK,         YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
