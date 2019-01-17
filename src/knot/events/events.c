@@ -48,6 +48,7 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_UTHAW,        event_uthaw,       "update thaw" },
 	{ ZONE_EVENT_NSEC3RESALT,  event_nsec3resalt, "NSEC3 resalt" },
 	{ ZONE_EVENT_PARENT_DS_Q,  event_parent_ds_q, "parent DS query" },
+	{ ZONE_EVENT_DS_PUSH,      event_ds_push,     "parent DS push" },
 	{ 0 }
 };
 

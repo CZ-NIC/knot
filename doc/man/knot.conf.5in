@@ -675,6 +675,7 @@ policy:
     nsec3\-salt\-lifetime: TIME
     signing\-threads: INT
     ksk\-submission: submission_id
+    ds\-push: remote_id
     cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always | double\-ds
     offline\-ksk: BOOL
 .ft P
@@ -866,6 +867,20 @@ A validity period of newly issued salt field.
 .sp
 A reference to \fI\%submission\fP section holding parameters of
 KSK submittion checks.
+.sp
+\fIDefault:\fP not set
+.SS ds\-push
+.sp
+A \fI\%reference\fP to parent\(aqs DNS server. Whenever the CDS record in
+this zone is changed, corresponding DS record is sent as an update (DDNS) to
+parent DNS server.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This feature does not work with Onlinesign module.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP not set
 .SS signing\-threads
