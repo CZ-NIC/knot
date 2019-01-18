@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -94,11 +94,6 @@ static float journal_tofree_factor(journal_t *j)
 static float journal_minfree_factor(journal_t *j)
 {
 	return 0.33f;
-}
-
-static float journal_max_txn(journal_t *j)
-{
-	return 0.05f;
 }
 
 /*
@@ -1340,7 +1335,7 @@ static int store_changesets(journal_t *j, list_t *changesets)
 	// PART 1 : initializers, compute serialized_sizes, transaction start
 	changeset_t *ch;
 
-	size_t nchs = 0, inserted_size = 0, insert_txn_count = 1;
+	size_t nchs = 0, inserted_size = 0;
 	size_t serialized_size_changes = 0, serialized_size_merged = 0;
 
 	size_t chunks = 0;
@@ -1508,14 +1503,6 @@ static int store_changesets(journal_t *j, list_t *changesets)
 			}
 
 			inserted_size += chunk_size;
-			if ((float)inserted_size > journal_max_txn(j) * (float)j->db->fslimit) { // insert txn too large
-				inserted_size = 0;
-				txn->shadow_md.dirty_serial = serial;
-				txn->shadow_md.flags |= DIRTY_SERIAL_VALID;
-				txn_restart(txn);
-				insert_txn_count++;
-				txn->shadow_md.flags &= ~DIRTY_SERIAL_VALID;
-			}
 
 			if (is_this_bootstrap) {
 				txn_key_str_u32(txn, j->zone, KEY_BOOTSTRAP_CHANGESET, chunks);
