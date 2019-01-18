@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -175,6 +175,7 @@ void serialize_chunk(serialize_ctx_t *ctx, uint8_t *dst_chunk, size_t chunk_size
 		}
 		ctx->rrset_phase++;
 	}
+	assert(wire.error == KNOT_EOK);
 }
 
 bool serialize_unfinished(serialize_ctx_t *ctx)
@@ -231,6 +232,7 @@ static int _deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset, long *phase
 			return KNOT_EMALF;
 		}
 		wire_ctx_skip(wire, rdata_size);
+		assert(wire->error == KNOT_EOK);
 	}
 
 	if (*phase == 0) {
@@ -404,6 +406,7 @@ int serialize_rrset(wire_ctx_t *wire, const knot_rrset_t *rrset)
 		wire_ctx_write_u32(wire, rrset->ttl);
 		wire_ctx_write_u16(wire, rdlen);
 		wire_ctx_write(wire, rr->data, rdlen);
+		assert(wire->error == KNOT_EOK);
 	}
 
 	return KNOT_EOK;
@@ -454,6 +457,7 @@ int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset)
 			return KNOT_EMALF;
 		}
 		wire_ctx_skip(wire, rdata_size);
+		assert(wire->error == KNOT_EOK);
 	}
 
 	return KNOT_EOK;
