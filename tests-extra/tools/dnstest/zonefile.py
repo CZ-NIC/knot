@@ -249,6 +249,7 @@ class ZoneFile(object):
     def gen_rnd_ddns(self, ddns):
         '''Walk zonefile, randomly mark some records to be removed by ddns and some added'''
 
+        changes = 0
         with open(self.path, 'r') as file:
             for fline in file:
                 line = fline.split(None, 3)
@@ -256,11 +257,14 @@ class ZoneFile(object):
                     try:
                         if random.randint(1, 20) in [4, 5]:
                             ddns.delete(line[0], line[2])
+                            changes += 1
                         if random.randint(1, 20) in [2, 3] and line[2] not in ["DNAME"]:
                             ddns.add("xyz."+line[0], line[1], line[2], line[3])
+                            changes += 1
                     except (dns.rdatatype.UnknownRdatatype, dns.name.LabelTooLong, dns.name.NameTooLong):
                         # problems - simply skip. This is completely stochastic anyway.
                         pass
+        return changes
 
     def remove(self):
         '''Remove zone file.'''
