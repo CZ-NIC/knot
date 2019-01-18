@@ -717,11 +717,16 @@ class Server(object):
         else:
             self.zones[zone.name].zfile.upd_file(storage=storage, version=version)
 
-    def random_ddns(self, zone):
+    def random_ddns(self, zone, allow_empty=True):
         zone = zone_arg_check(zone)
 
         up = self.update(zone)
-        self.zones[zone.name].zfile.gen_rnd_ddns(up)
+
+        while True:
+            changes = self.zones[zone.name].zfile.gen_rnd_ddns(up)
+            if allow_empty or changes > 0:
+                break
+
         up.send("NOERROR")
 
     def add_module(self, zone, module):
