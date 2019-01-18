@@ -1170,8 +1170,7 @@ int knot_zone_sign_update(zone_update_t *update,
 
 	/* Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
 	 * If so, we have to sign the whole zone. */
-	const bool full_sign = changeset_empty(&update->change) ||
-			       apex_dnssec_changed(update);
+	const bool full_sign = apex_dnssec_changed(update);
 	if (full_sign) {
 		ret = knot_zone_sign(update, zone_keys, dnssec_ctx, expire_at);
 	} else {
