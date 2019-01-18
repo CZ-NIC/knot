@@ -27,6 +27,7 @@
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
+#include "knot/zone/adjust.h"
 
 static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
 		     kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
@@ -178,6 +179,11 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
+	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL);
+	if (result != KNOT_EOK) {
+		return result;
+	};
+
 	result = knot_zone_create_nsec_chain(update, &keyset, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to create NSEC%s chain (%s)",
@@ -251,6 +257,11 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to load keys (%s)",
 		               knot_strerror(result));
+		goto done;
+	}
+
+	result = zone_adjust_update(update, adjust_cb_flags, NULL);
+	if (result != KNOT_EOK) {
 		goto done;
 	}
 

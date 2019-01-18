@@ -1163,11 +1163,6 @@ int knot_zone_sign_update(zone_update_t *update,
 
 	int ret = KNOT_EOK;
 
-	ret = zone_adjust_update(update, adjust_cb_flags_and_additionals, adjust_cb_nsec3_flags);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	/* Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
 	 * If so, we have to sign the whole zone. */
 	const bool full_sign = apex_dnssec_changed(update);
