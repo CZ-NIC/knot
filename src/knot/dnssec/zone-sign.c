@@ -770,7 +770,10 @@ int knot_zone_sign(zone_update_t *update,
 		return KNOT_EINVAL;
 	}
 
-	int result;
+	int result = zone_adjust_contents(update->new_cont, adjust_cb_flags_and_additionals, adjust_cb_nsec3_flags);
+	if (result != KNOT_EOK) {
+		return result;
+	};
 
 	knot_time_t normal_expire = 0;
 	result = zone_tree_sign(update->new_cont->nodes, dnssec_ctx->policy->signing_threads,
