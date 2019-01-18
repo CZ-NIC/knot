@@ -1,0 +1,15 @@
+example.com.        	3	SOA	dns1.example.com. hostmaster.example.com. 2010111227 21600 3600 604800 3
+example.com.        	0	NS	dns1.example.com.
+example.com.        	2	MX	10 mail.example.com.
+dns1.example.com.   	4	A	192.0.2.1
+dns1.example.com.   	3	AAAA	2001:db8::1
+foo.example.com.    	5	A	192.0.2.4
+mail.example.com.   	3	A	192.0.2.3
+mail.example.com.   	1	AAAA	2001:db8::3
+deleg.example.com.      6   NS  dns1.example.com.
+deleg2.ent.example.com. 7   NS  dns1.example.com.
+abcd.example.com.       9   A   192.0.3.4
+abce.example.com.       9   A   192.0.3.5
+abcf.example.com.       9   A   192.0.3.6
+abcg.example.com.       9   A   192.0.3.7
+
