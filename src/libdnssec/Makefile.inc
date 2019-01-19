@@ -34,7 +34,6 @@ include_libdnssec_HEADERS = \
 	libdnssec/keyid.h			\
 	libdnssec/keystore.h			\
 	libdnssec/keytag.h			\
-	libdnssec/list.h			\
 	libdnssec/nsec.h			\
 	libdnssec/random.h			\
 	libdnssec/sign.h			\
@@ -63,8 +62,6 @@ libdnssec_la_SOURCES = \
 	libdnssec/keystore/keystore.c		\
 	libdnssec/keystore/pkcs11.c		\
 	libdnssec/keystore/pkcs8.c		\
-	libdnssec/list/list.c			\
-	libdnssec/list/ucw_clists.h		\
 	libdnssec/nsec/bitmap.c			\
 	libdnssec/nsec/hash.c			\
 	libdnssec/nsec/nsec.c			\

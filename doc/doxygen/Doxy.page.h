@@ -53,7 +53,6 @@
  - \ref keyid    — DNSSEC key ID manipulation
  - \ref keystore — DNSSEC private key store
  - \ref keytag   — DNSSEC key tag computation
- - \ref list     — Generic list container
  - \ref nsec     — NSEC and NSEC3 operations
  - \ref random   — Pseudo-random number generation
  - \ref sign     — DNSSEC signing and verification
@@ -66,7 +65,6 @@
 \defgroup keyid    keyid
 \defgroup keystore keystore
 \defgroup keytag   keytag
-\defgroup list     list
 \defgroup nsec     nsec
 \defgroup random   random
 \defgroup sign     sign

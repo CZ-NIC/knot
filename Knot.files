@@ -271,8 +271,6 @@ src/libdnssec/keystore/pkcs11.c
 src/libdnssec/keystore/pkcs8.c
 src/libdnssec/keytag.h
 src/libdnssec/list.h
-src/libdnssec/list/list.c
-src/libdnssec/list/ucw_clists.h
 src/libdnssec/nsec.h
 src/libdnssec/nsec/bitmap.c
 src/libdnssec/nsec/hash.c
