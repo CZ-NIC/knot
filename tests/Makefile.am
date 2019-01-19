@@ -65,7 +65,6 @@ check_PROGRAMS += \
 	libdnssec/test_keyid			\
 	libdnssec/test_keystore_pkcs11		\
 	libdnssec/test_keystore_pkcs8		\
-	libdnssec/test_keystore_pkcs8_dir 	\
 	libdnssec/test_keytag			\
 	libdnssec/test_list			\
 	libdnssec/test_nsec_bitmap		\

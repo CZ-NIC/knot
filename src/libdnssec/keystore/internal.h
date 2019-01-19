@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,8 +26,8 @@
 
 typedef struct keystore_functions {
 	// construction of internal context
-	int (*ctx_new)(void **ctx_ptr, void *data);
-	int (*ctx_free)(void *ctx);
+	int (*ctx_new)(void **ctx_ptr);
+	void (*ctx_free)(void *ctx);
 	// keystore init/open/close
 	int (*init)(void *ctx, const char *config);
 	int (*open)(void *ctx, const char *config);
@@ -48,5 +48,4 @@ struct dnssec_keystore {
 };
 
 int keystore_create(dnssec_keystore_t **store_ptr,
-		    const keystore_functions_t *functions,
-		    void *ctx_custom_data);
+		    const keystore_functions_t *functions);

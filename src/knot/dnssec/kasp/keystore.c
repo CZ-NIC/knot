@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ int keystore_load(const char *config, unsigned backend,
 
 	switch (backend) {
 	case KEYSTORE_BACKEND_PEM:
-		ret = dnssec_keystore_init_pkcs8_dir(keystore);
+		ret = dnssec_keystore_init_pkcs8(keystore);
 		fixed_config = fix_path(config, kasp_base_path);
 		break;
 	case KEYSTORE_BACKEND_PKCS11:

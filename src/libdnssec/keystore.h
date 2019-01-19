@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * The module provides abstraction for private key store. Basically, PKCS #8
  * and PKCS #11 interfaces are supported.
  *
- * PKCS #8 uses unencrypted PEM, and allows implementation of custom stores.
+ * PKCS #8 uses unencrypted PEM.
  *
  * PKCS #11 provides access Hardware Security Modules.
  *
@@ -98,82 +98,6 @@ struct dnssec_keystore;
 typedef struct dnssec_keystore dnssec_keystore_t;
 
 /*!
- * PKCS #8 key store callback functions for custom providers.
- */
-typedef struct dnssec_keystore_pkcs8_functions {
-	/*!
-	 * Callback to allocate key store handle.
-	 *
-	 * \param[out]  handle_ptr  Allocated key store handle.
-	 */
-	int (*handle_new)(void **handle_ptr);
-
-	/*!
-	 * Callback to deallocate key store handle.
-	 *
-	 * \param handle  Key store handle.
-	 */
-	int (*handle_free)(void *handle);
-
-	/*!
-	 * Callback to initialize the key store.
-	 *
-	 * \param handle  Key store handle.
-	 * \param config  Configuration string.
-	 */
-	int (*init)(void *handle, const char *config);
-
-	/*!
-	 * Callback to open the key store.
-	 *
-	 * \param[out] handle  Key store handle.
-	 * \param[in]  config  Configuration string.
-	 */
-	int (*open)(void *handle, const char *config);
-
-	/*!
-	 * Callback to close the key store.
-	 *
-	 * \param handle  Key store handle.
-	 */
-	int (*close)(void *handle);
-
-	/*!
-	 * Callback to read a PEM key.
-	 *
-	 * \param[in]  handle  Key store handle.
-	 * \param[in]  id      Key ID of the key to be retrieved (ASCII form).
-	 * \param[out] pem     Key material in uncencrypted PEM format.
-	 */
-	int (*read)(void *handle, const char *id, dnssec_binary_t *pem);
-
-	/*!
-	 * Callback to write a PEM key.
-	 *
-	 * \param handle  Key store handle.
-	 * \param id      Key ID of the key to be saved (ASCII form).
-	 * \param pem     Key material in unencrypted PEM format.
-	 */
-	int (*write)(void *handle, const char *id, const dnssec_binary_t *pem);
-
-	/*!
-	 * Callback to get a list of all PEM key IDs.
-	 *
-	 * \param[in]  handle  Key store handle.
-	 * \param[out] list    Allocated list of key IDs.
-	 */
-	int (*list)(void *handle, dnssec_list_t **list);
-
-	/*!
-	 * Callback to remove a PEM key.
-	 *
-	 * \param handle  Key store handle.
-	 * \param id      Key ID of the key to be removed (ASCII form).
-	 */
-	int (*remove)(void *handle, const char *id);
-} dnssec_keystore_pkcs8_functions_t;
-
-/*!
  * Create default PKCS #8 private key store context.
  *
  * The default store maintains the private keys in one directory on the file
@@ -184,18 +108,7 @@ typedef struct dnssec_keystore_pkcs8_functions {
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_keystore_init_pkcs8_dir(dnssec_keystore_t **store);
-
-/*!
- * Create custom PKCS #8 private key store context.
- *
- * \param[out] store   Opened key store.
- * \param[in]  impl    Implementation of the key store provider.
- *
- * \return Error code, DNSSEC_EOK if successful.
- */
-int dnssec_keystore_init_pkcs8_custom(dnssec_keystore_t **store,
-				      const dnssec_keystore_pkcs8_functions_t *impl);
+int dnssec_keystore_init_pkcs8(dnssec_keystore_t **store);
 
 /*!
  * Crate new PKCS #11 private key store context.

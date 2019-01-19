@@ -269,7 +269,6 @@ src/libdnssec/keystore/internal.h
 src/libdnssec/keystore/keystore.c
 src/libdnssec/keystore/pkcs11.c
 src/libdnssec/keystore/pkcs8.c
-src/libdnssec/keystore/pkcs8_dir.c
 src/libdnssec/keytag.h
 src/libdnssec/list.h
 src/libdnssec/list/list.c
@@ -485,7 +484,6 @@ tests/libdnssec/test_key_ds.c
 tests/libdnssec/test_keyid.c
 tests/libdnssec/test_keystore_pkcs11.c
 tests/libdnssec/test_keystore_pkcs8.c
-tests/libdnssec/test_keystore_pkcs8_dir.c
 tests/libdnssec/test_keytag.c
 tests/libdnssec/test_list.c
 tests/libdnssec/test_nsec_bitmap.c
