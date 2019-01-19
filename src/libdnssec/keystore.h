@@ -88,7 +88,6 @@
 
 #include <libdnssec/binary.h>
 #include <libdnssec/key.h>
-#include <libdnssec/list.h>
 
 struct dnssec_keystore;
 
@@ -144,18 +143,6 @@ int dnssec_keystore_open(dnssec_keystore_t *store, const char *config);
  * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_keystore_close(dnssec_keystore_t *store);
-
-/*!
- * Get a list of key IDs stored in the key store.
- *
- * \todo Not implemented.
- *
- * \param[in]  store  Key store.
- * \param[out] list   Resulting list of key IDs.
- *
- * \return Error code, DNSSEC_EOK if successful.
- */
-int dnssec_keystore_list_keys(dnssec_keystore_t *store, dnssec_list_t **list);
 
 /*!
  * Generate a new key in the key store.

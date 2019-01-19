@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,6 @@
 #include <libdnssec/keyid.h>
 #include <libdnssec/keystore.h>
 #include <libdnssec/keytag.h>
-#include <libdnssec/list.h>
 #include <libdnssec/nsec.h>
 #include <libdnssec/random.h>
 #include <libdnssec/sign.h>

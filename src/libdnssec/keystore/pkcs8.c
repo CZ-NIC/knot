@@ -239,12 +239,6 @@ static int pkcs8_close(void *ctx)
 	return DNSSEC_EOK;
 }
 
-static int pkcs8_list_keys(void *ctx, dnssec_list_t **list)
-{
-	// NOT IMPLEMENTED
-	return DNSSEC_EOK;
-}
-
 static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 			      unsigned bits, char **id_ptr)
 {
@@ -421,7 +415,6 @@ int dnssec_keystore_init_pkcs8(dnssec_keystore_t **store_ptr)
 		.init         = pkcs8_init,
 		.open         = pkcs8_open,
 		.close        = pkcs8_close,
-		.list_keys    = pkcs8_list_keys,
 		.generate_key = pkcs8_generate_key,
 		.import_key   = pkcs8_import_key,
 		.remove_key   = pkcs8_remove_key,

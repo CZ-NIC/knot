@@ -101,16 +101,6 @@ int dnssec_keystore_close(dnssec_keystore_t *store)
 }
 
 _public_
-int dnssec_keystore_list_keys(dnssec_keystore_t *store, dnssec_list_t **list)
-{
-	if (!store || !list) {
-		return DNSSEC_EINVAL;
-	}
-
-	return store->functions->list_keys(store->ctx, list);
-}
-
-_public_
 int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 				 dnssec_key_algorithm_t _algorithm,
 				 unsigned bits, char **id_ptr)
