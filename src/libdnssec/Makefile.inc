@@ -63,7 +63,6 @@ libdnssec_la_SOURCES = \
 	libdnssec/keystore/keystore.c		\
 	libdnssec/keystore/pkcs11.c		\
 	libdnssec/keystore/pkcs8.c		\
-	libdnssec/keystore/pkcs8_dir.c		\
 	libdnssec/list/list.c			\
 	libdnssec/list/ucw_clists.h		\
 	libdnssec/nsec/bitmap.c			\

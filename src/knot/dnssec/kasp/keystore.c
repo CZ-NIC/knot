@@ -49,7 +49,7 @@ int keystore_load(const char *config, unsigned backend,
 
 	switch (backend) {
 	case KEYSTORE_BACKEND_PEM:
-		ret = dnssec_keystore_init_pkcs8_dir(keystore);
+		ret = dnssec_keystore_init_pkcs8(keystore);
 		fixed_config = fix_path(config, kasp_base_path);
 		break;
 	case KEYSTORE_BACKEND_PKCS11:

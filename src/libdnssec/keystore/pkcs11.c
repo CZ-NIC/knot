@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -147,7 +147,7 @@ static void disable_pkcs11_callbacks(void)
 	gnutls_pkcs11_set_token_function(NULL, NULL);
 }
 
-static int pkcs11_ctx_new(void **ctx_ptr, _unused_ void *data)
+static int pkcs11_ctx_new(void **ctx_ptr)
 {
 	static pthread_once_t once = PTHREAD_ONCE_INIT;
 	pthread_once(&once, disable_pkcs11_callbacks);
@@ -162,13 +162,9 @@ static int pkcs11_ctx_new(void **ctx_ptr, _unused_ void *data)
 	return DNSSEC_EOK;
 }
 
-static int pkcs11_ctx_free(void *ctx)
+static void pkcs11_ctx_free(void *ctx)
 {
-	if (ctx) {
-		free(ctx);
-	}
-
-	return DNSSEC_EOK;
+	free(ctx);
 }
 
 static int pkcs11_init(void *ctx, const char *config)
@@ -429,7 +425,7 @@ int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store_ptr)
 		.get_private  = pkcs11_get_private,
 	};
 
-	return keystore_create(store_ptr, &IMPLEMENTATION, NULL);
+	return keystore_create(store_ptr, &IMPLEMENTATION);
 }
 
 #else // !ENABLE_PKCS11

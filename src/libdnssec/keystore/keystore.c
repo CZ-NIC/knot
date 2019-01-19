@@ -31,8 +31,7 @@
 /* -- internal API --------------------------------------------------------- */
 
 int keystore_create(dnssec_keystore_t **store_ptr,
-		    const keystore_functions_t *functions,
-		    void *ctx_custom_data)
+		    const keystore_functions_t *functions)
 {
 	assert(store_ptr);
 	assert(functions);
@@ -44,7 +43,7 @@ int keystore_create(dnssec_keystore_t **store_ptr,
 
 	store->functions = functions;
 
-	int result = functions->ctx_new(&store->ctx, ctx_custom_data);
+	int result = functions->ctx_new(&store->ctx);
 	if (result != DNSSEC_EOK) {
 		free(store);
 		return DNSSEC_ENOMEM;
