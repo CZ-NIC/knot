@@ -770,13 +770,8 @@ int knot_zone_sign(zone_update_t *update,
 		return KNOT_EINVAL;
 	}
 
-	int result = zone_adjust_contents(update->new_cont, adjust_cb_flags_and_additionals, adjust_cb_nsec3_flags);
-	if (result != KNOT_EOK) {
-		return result;
-	};
-
 	knot_time_t normal_expire = 0;
-	result = zone_tree_sign(update->new_cont->nodes, dnssec_ctx->policy->signing_threads,
+	int result = zone_tree_sign(update->new_cont->nodes, dnssec_ctx->policy->signing_threads,
 	                        zone_keys, dnssec_ctx, update, &normal_expire);
 	if (result != KNOT_EOK) {
 		return result;
@@ -1015,6 +1010,7 @@ static int sign_changeset(const zone_contents_t *zone,
 	}
 
 	int ret = KNOT_EOK;
+
 	changeset_signing_data_t args[num_threads];
 	memset(args, 0, sizeof(args));
 
@@ -1165,11 +1161,6 @@ int knot_zone_sign_update(zone_update_t *update,
 	}
 
 	int ret = KNOT_EOK;
-
-	ret = zone_adjust_update(update, adjust_cb_flags_and_additionals, adjust_cb_nsec3_flags);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
 
 	/* Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
 	 * If so, we have to sign the whole zone. */
