@@ -1,25 +1,9 @@
 lib_LTLIBRARIES += libdnssec.la
 pkgconfig_DATA  += libdnssec.pc
 
-noinst_LTLIBRARIES += libshared.la
-
-libshared_la_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
-
-libshared_la_SOURCES = \
-	libdnssec/shared/bignum.c		\
-	libdnssec/shared/bignum.h		\
-	libdnssec/shared/binary_wire.h		\
-	libdnssec/shared/dname.c		\
-	libdnssec/shared/dname.h		\
-	libdnssec/shared/keyid_gnutls.c		\
-	libdnssec/shared/keyid_gnutls.h		\
-	libdnssec/shared/pem.c			\
-	libdnssec/shared/pem.h			\
-	libdnssec/shared/shared.h
-
 libdnssec_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS)
 libdnssec_la_LDFLAGS  = $(AM_LDFLAGS) $(libdnssec_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS)
-libdnssec_la_LIBADD   = libshared.la libcontrib.la $(gnutls_LIBS)
+libdnssec_la_LIBADD   = libcontrib.la $(gnutls_LIBS)
 if ENABLE_PKCS11
 libdnssec_la_LIBADD  += $(pthread_LIBS)
 endif
@@ -68,6 +52,16 @@ libdnssec_la_SOURCES = \
 	libdnssec/p11/p11.c			\
 	libdnssec/p11/p11.h			\
 	libdnssec/random.c			\
+	libdnssec/shared/bignum.c		\
+	libdnssec/shared/bignum.h		\
+	libdnssec/shared/binary_wire.h		\
+	libdnssec/shared/dname.c		\
+	libdnssec/shared/dname.h		\
+	libdnssec/shared/keyid_gnutls.c		\
+	libdnssec/shared/keyid_gnutls.h		\
+	libdnssec/shared/pem.c			\
+	libdnssec/shared/pem.h			\
+	libdnssec/shared/shared.h		\
 	libdnssec/sign/der.c			\
 	libdnssec/sign/der.h			\
 	libdnssec/sign/sign.c			\
