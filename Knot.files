@@ -276,6 +276,8 @@ src/libdnssec/nsec/hash.c
 src/libdnssec/nsec/nsec.c
 src/libdnssec/p11/p11.c
 src/libdnssec/p11/p11.h
+src/libdnssec/pem.c
+src/libdnssec/pem.h
 src/libdnssec/random.c
 src/libdnssec/random.h
 src/libdnssec/shared/bignum.c
@@ -285,8 +287,6 @@ src/libdnssec/shared/dname.c
 src/libdnssec/shared/dname.h
 src/libdnssec/shared/keyid_gnutls.c
 src/libdnssec/shared/keyid_gnutls.h
-src/libdnssec/shared/pem.c
-src/libdnssec/shared/pem.h
 src/libdnssec/shared/shared.h
 src/libdnssec/sign.h
 src/libdnssec/sign/der.c
