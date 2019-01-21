@@ -27,7 +27,7 @@
 #include "libdnssec/error.h"
 #include "libdnssec/keystore.h"
 #include "libdnssec/keystore/internal.h"
-#include "libdnssec/shared/pem.h"
+#include "libdnssec/pem.h"
 #include "libdnssec/shared/shared.h"
 
 #define DIR_INIT_MODE 0750

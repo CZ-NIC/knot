@@ -24,7 +24,7 @@
 #include "libdnssec/keystore.h"
 #include "libdnssec/keystore/internal.h"
 #include "libdnssec/p11/p11.h"
-#include "libdnssec/shared/pem.h"
+#include "libdnssec/pem.h"
 #include "libdnssec/shared/shared.h"
 
 #ifdef ENABLE_PKCS11

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,15 +23,12 @@
 #include "libdnssec/error.h"
 #include "libdnssec/key.h"
 #include "libdnssec/keyid.h"
+#include "libdnssec/pem.h"
 #include "libdnssec/shared/keyid_gnutls.h"
-#include "libdnssec/shared/pem.h"
 #include "libdnssec/shared/shared.h"
 
-/* -- internal API --------------------------------------------------------- */
+/* -- public API --------------------------------------------------------- */
 
-/*!
- * Create GnuTLS X.509 private key from unencrypted PEM data.
- */
 int pem_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key)
 {
 	assert(pem);
@@ -59,9 +56,6 @@ int pem_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key)
 	return DNSSEC_EOK;
 }
 
-/*!
- * Create GnuTLS private key from unencrypted PEM data.
- */
 int pem_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
 {
 	assert(pem);
@@ -93,9 +87,6 @@ int pem_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
 	return DNSSEC_EOK;
 }
 
-/*!
- * Generate new key and export it in the PEM format.
- */
 int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 		 dnssec_binary_t *pem, char **id)
 {
@@ -118,7 +109,7 @@ int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 	// convert to PEM and export the ID
 
 	dnssec_binary_t _pem = { 0 };
-	r = pem_from_x509(key, &_pem);
+	r = dnssec_pem_from_x509(key, &_pem);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
@@ -150,13 +141,12 @@ static int try_export_pem(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 						pem->data, &pem->size);
 }
 
-/*!
- * Export GnuTLS X.509 private key to PEM binary.
- */
-int pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
+_public_
+int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 {
-	assert(key);
-	assert(pem);
+	if (!key || !pem) {
+		return DNSSEC_EINVAL;
+	}
 
 	dnssec_binary_t _pem = { 0 };
 	int r = try_export_pem(key, &_pem);
@@ -180,9 +170,6 @@ int pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 	return DNSSEC_EOK;
 }
 
-/*!
- * Get key ID of a private key in PEM format.
- */
 int pem_keyid(const dnssec_binary_t *pem, char **id)
 {
 	assert(pem && pem->size > 0 && pem->data);

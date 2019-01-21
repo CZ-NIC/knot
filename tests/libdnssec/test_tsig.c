@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include "binary.h"
-#include "dname.h"
+#include "dname.c"
 #include "tsig.h"
 
 static const dnssec_binary_t payload = {
