@@ -15,6 +15,7 @@
 */
 
 #include <tap/basic.h>
+#include <tap/files.h>
 
 #include "error.h"
 #include "key.h"
@@ -86,7 +87,7 @@ int main(void)
 	r = dnssec_keystore_deinit(store);
 	ok(r == DNSSEC_EOK, "deinit");
 
-	test_tmpdir_free(dir);
+	test_rm_rf(dir);
 
 	return 0;
 }
