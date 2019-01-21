@@ -78,8 +78,12 @@ int main(void)
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
 	r = dnssec_keystore_export(store, id_A, key);
 	ok(r == DNSSEC_ENOENT, "read removed");
+	dnssec_key_free(key);
 
 	// cleanup
+
+	free(id_A);
+	free(id_B);
 
 	r = dnssec_keystore_close(store);
 	ok(r == DNSSEC_EOK, "close");
@@ -88,6 +92,7 @@ int main(void)
 	ok(r == DNSSEC_EOK, "deinit");
 
 	test_rm_rf(dir);
+	free(dir);
 
 	return 0;
 }
