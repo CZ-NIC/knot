@@ -123,6 +123,13 @@ AM_CONDITIONAL([HAVE_LIBUTILS], test "$enable_utilities" != "no" -o \
 # Generic dependencies
 ######################
 
+# A temporary workaround for linking issue on FreeBSD with Clang
+AS_CASE([$host_os],
+   [freebsd*], [exclude_libs_libdnssec=no],
+   [*],        [exclude_libs_libdnssec=yes]
+)
+AM_CONDITIONAL([EXCLUDE_LIBS_LIBDNSSEC], [test "$exclude_libs_libdnssec" = "yes"])
+
 AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--disable-fastparser], [Disable use of fastest zone parser]),[],[
     # Set zone parser type - fastest on release build, slowest on dev build
