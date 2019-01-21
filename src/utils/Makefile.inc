@@ -134,7 +134,7 @@ kzonecheck_CPPFLAGS    = $(AM_CPPFLAGS)
 kzonecheck_LDADD       = libcontrib.la libknotd.la
 keymgr_CPPFLAGS        = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 keymgr_LDADD           = libcontrib.la libknotd.la libknotus.la libdnssec.la \
-                         libshared.la libzscanner.la
+                         libzscanner.la
 kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
 kjournalprint_LDADD    = libcontrib.la libknotd.la
 endif HAVE_UTILS

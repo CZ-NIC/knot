@@ -8,7 +8,6 @@ AM_CPPFLAGS = \
 LDADD = \
 	libtap.la				\
 	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libshared.la	\
 	$(top_builddir)/src/libdnssec.la	\
 	$(top_builddir)/src/libcontrib.la	\
 	$(top_builddir)/src/libzscanner.la
