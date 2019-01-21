@@ -19,7 +19,7 @@ t.start()
 
 serial = master.zone_wait(zone)
 
-master.random_ddns(zone)
+master.random_ddns(zone, allow_empty=False)
 
 serial = master.zone_wait(zone, serial)
 

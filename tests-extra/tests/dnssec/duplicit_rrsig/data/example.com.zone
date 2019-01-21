@@ -9,6 +9,3 @@ mail.example.com.   	1	AAAA	2001:db8::3
 deleg.example.com.      6   NS  dns1.example.com.
 deleg2.ent.example.com. 7   NS  dns1.example.com.
 abcd.example.com.       9   A   192.0.3.4
-abce.example.com.       9   A   192.0.3.5
-abcf.example.com.       9   A   192.0.3.6
-abcg.example.com.       9   A   192.0.3.7
