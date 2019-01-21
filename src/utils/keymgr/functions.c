@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -517,7 +517,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	dnssec_key_set_algorithm(key, ctx->policy->algorithm);
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
-	ret = dnssec_key_import_keystore(key, ctx->keystore, keyid);
+	ret = dnssec_keystore_export(ctx->keystore, keyid, key);
 	if (ret != DNSSEC_EOK) {
 		goto fail;
 	}

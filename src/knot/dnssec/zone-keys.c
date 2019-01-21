@@ -57,7 +57,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	// generate key in the keystore
 
 	char *id = NULL;
-	int r = dnssec_keystore_generate_key(ctx->keystore, algorithm, size, &id);
+	int r = dnssec_keystore_generate(ctx->keystore, algorithm, size, &id);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -81,7 +81,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	dnssec_key_set_flags(dnskey, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
 	dnssec_key_set_algorithm(dnskey, algorithm);
 
-	r = dnssec_key_import_keystore(dnskey, ctx->keystore, id);
+	r = dnssec_keystore_export(ctx->keystore, id, dnskey);
 	if (r != KNOT_EOK) {
 		dnssec_key_free(dnskey);
 		free(id);
@@ -161,7 +161,7 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	}
 
 	if (!key_still_used_in_keystore && !key_ptr->is_pub_only) {
-		ret = dnssec_keystore_remove_key(ctx->keystore, key_ptr->id);
+		ret = dnssec_keystore_remove(ctx->keystore, key_ptr->id);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -322,7 +322,7 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 		if (!key->is_active && !key->is_post_active) {
 			continue;
 		}
-		int r = dnssec_key_import_keystore(key->key, keystore, key->id);
+		int r = dnssec_keystore_export(keystore, key->id, key->key);
 		switch (r) {
 		case DNSSEC_EOK:
 		case DNSSEC_KEY_ALREADY_PRESENT:

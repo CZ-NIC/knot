@@ -234,7 +234,7 @@ static void create_dnskeys(dnssec_keystore_t *keystore,
 	r = dnssec_key_set_algorithm(p11_key, algorithm);
 	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_set_key_algorithm()");
 
-	r = dnssec_key_import_keystore(p11_key, keystore, id);
+	r = dnssec_keystore_export(keystore, id, p11_key);
 	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_key_import_keystore()");
 
 	// construct software public key
@@ -336,8 +336,8 @@ static void test_algorithm(dnssec_keystore_t *store,
 
 	diag("algorithm %d, generated key", params->algorithm);
 
-	r = dnssec_keystore_generate_key(store, params->algorithm, params->bit_size, &id_generate);
-	ok(r == DNSSEC_EOK && id_generate != NULL, "dnssec_keystore_generate_key()");
+	r = dnssec_keystore_generate(store, params->algorithm, params->bit_size, &id_generate);
+	ok(r == DNSSEC_EOK && id_generate != NULL, "dnssec_keystore_generate()");
 	test_key_use(store, params->algorithm, id_generate);
 
 	diag("algorithm %d, imported key", params->algorithm);

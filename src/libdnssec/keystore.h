@@ -35,7 +35,7 @@
  * dnssec_keystore_t *store = NULL;
  *
  * // create key store access context
- * dnssec_keystore_init_pkcs8_dir(&store);
+ * dnssec_keystore_init_pkcs8(&store);
  *
  * // open the key store
  * result = dnssec_keystore_open(&store, "/path/to/keydb");
@@ -47,7 +47,7 @@
  * int algorithm = DNSSEC_KEY_ALGORITHM_RSA_SHA256;
  * unsigned bits = 2048;
  * char *id = NULL;
- * int dnssec_keystore_generate_key(store, algorithm, bits, &key_id);
+ * int dnssec_keystore_generate(store, algorithm, bits, &key_id);
  * if (result != DNSSEC_EOK) {
  *     dnssec_keystore_close(store);
  *     return result;
@@ -63,8 +63,10 @@
  *     return result;
  * }
  *
+ * dnssec_key_set_algorithm(key, algorithm);
+ *
  * // import the key from the key store
- * result = dnssec_key_import_keystore(key, store, key_id, algorithm);
+ * result = dnssec_keystore_export(store, key_id, key);
  * if (result != DNSSEC_EOK) {
  *     free(key_id);
  *     dnssec_key_free(key);
@@ -154,9 +156,9 @@ int dnssec_keystore_close(dnssec_keystore_t *store);
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_keystore_generate_key(dnssec_keystore_t *store,
-				 dnssec_key_algorithm_t algorithm,
-				 unsigned bits, char **id_ptr);
+int dnssec_keystore_generate(dnssec_keystore_t *store,
+			     dnssec_key_algorithm_t algorithm,
+			     unsigned bits, char **id_ptr);
 
 /*!
  * Import an existing key into the key store.
@@ -178,20 +180,20 @@ int dnssec_keystore_import(dnssec_keystore_t *store, const dnssec_binary_t *pem,
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *id);
+int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id);
 
 /*!
- * Import public and/or private key from the key store into a DNSSEC key.
+ * Export public and/or private key from the key store into a DNSSEC key.
  *
  * The key algorithm has to be set before calling this function.
  *
- * \param key       DNSSEC key to be initialized.
- * \param keystore  Private key store.
- * \param id        ID of the key.
+ * \param store  Private key store.
+ * \param id     ID of the key.
+ * \param key    DNSSEC key to be initialized.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
-			       const char *id);
+int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
+			   dnssec_key_t *key);
 
 /*! @} */

@@ -44,13 +44,13 @@ int main(void)
 	// writing new content
 
 	char *id_A = NULL;
-	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256,
-	                                 1024, &id_A);
+	r = dnssec_keystore_generate(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256,
+	                             1024, &id_A);
 	ok(r == DNSSEC_EOK, "generate A");
 
 	char *id_B = NULL;
-	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256,
-	                                 1024, &id_B);
+	r = dnssec_keystore_generate(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256,
+	                             1024, &id_B);
 	ok(r == DNSSEC_EOK, "generate B");
 
 	// reading existing content
@@ -58,24 +58,24 @@ int main(void)
 	dnssec_key_t *key = NULL;
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
-	r = dnssec_key_import_keystore(key, store, id_A);
+	r = dnssec_keystore_export(store, id_A, key);
 	ok(r == DNSSEC_EOK, "read A");
 	dnssec_key_free(key);
 
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
-	r = dnssec_key_import_keystore(key, store, id_B);
+	r = dnssec_keystore_export(store, id_B, key);
 	ok(r == DNSSEC_EOK, "read B");
 	dnssec_key_free(key);
 
 	// content removal
 
-	r = dnssec_keystore_remove_key(store, id_A);
+	r = dnssec_keystore_remove(store, id_A);
 	ok(r == DNSSEC_EOK, "remove A");
 
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
-	r = dnssec_key_import_keystore(key, store, id_A);
+	r = dnssec_keystore_export(store, id_A, key);
 	ok(r == DNSSEC_ENOENT, "read removed");
 
 	// cleanup

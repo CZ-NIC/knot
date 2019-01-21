@@ -101,9 +101,9 @@ int dnssec_keystore_close(dnssec_keystore_t *store)
 }
 
 _public_
-int dnssec_keystore_generate_key(dnssec_keystore_t *store,
-				 dnssec_key_algorithm_t _algorithm,
-				 unsigned bits, char **id_ptr)
+int dnssec_keystore_generate(dnssec_keystore_t *store,
+			     dnssec_key_algorithm_t _algorithm,
+			     unsigned bits, char **id_ptr)
 {
 	if (!store || !_algorithm || !id_ptr) {
 		return DNSSEC_EINVAL;
@@ -135,20 +135,20 @@ int dnssec_keystore_import(dnssec_keystore_t *store, const dnssec_binary_t *pem,
 }
 
 _public_
-int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *key_id)
+int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id)
 {
-	if (!store || !key_id) {
+	if (!store || !id) {
 		return DNSSEC_EINVAL;
 	}
 
-	return store->functions->remove_key(store->ctx, key_id);
+	return store->functions->remove_key(store->ctx, id);
 }
 
 _public_
-int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *store,
-			       const char *id)
+int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
+			   dnssec_key_t *key)
 {
-	if (!key || !store || !id || dnssec_key_get_algorithm(key) == 0) {
+	if (!store || !id || dnssec_key_get_algorithm(key) == 0 || !key) {
 		return DNSSEC_EINVAL;
 	}
 
