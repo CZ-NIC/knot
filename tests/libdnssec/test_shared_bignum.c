@@ -17,7 +17,7 @@
 #include <tap/basic.h>
 #include <string.h>
 
-#include "bignum.h"
+#include "bignum.c"
 #include "binary.h"
 
 #define bin_init(array) { .data = array, .size = sizeof(array) }

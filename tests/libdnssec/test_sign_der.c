@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "bignum.c"
 #include "binary.h"
 #include "error.h"
 #include "sign/der.c"
