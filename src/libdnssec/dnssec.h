@@ -29,6 +29,7 @@
 #include <libdnssec/keystore.h>
 #include <libdnssec/keytag.h>
 #include <libdnssec/nsec.h>
+#include <libdnssec/pem.h>
 #include <libdnssec/random.h>
 #include <libdnssec/sign.h>
 #include <libdnssec/tsig.h>

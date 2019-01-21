@@ -19,6 +19,7 @@ include_libdnssec_HEADERS = \
 	libdnssec/keystore.h			\
 	libdnssec/keytag.h			\
 	libdnssec/nsec.h			\
+	libdnssec/pem.h				\
 	libdnssec/random.h			\
 	libdnssec/sign.h			\
 	libdnssec/tsig.h			\
@@ -51,6 +52,7 @@ libdnssec_la_SOURCES = \
 	libdnssec/nsec/nsec.c			\
 	libdnssec/p11/p11.c			\
 	libdnssec/p11/p11.h			\
+	libdnssec/pem.c				\
 	libdnssec/random.c			\
 	libdnssec/shared/bignum.c		\
 	libdnssec/shared/bignum.h		\
@@ -59,8 +61,6 @@ libdnssec_la_SOURCES = \
 	libdnssec/shared/dname.h		\
 	libdnssec/shared/keyid_gnutls.c		\
 	libdnssec/shared/keyid_gnutls.h		\
-	libdnssec/shared/pem.c			\
-	libdnssec/shared/pem.h			\
 	libdnssec/shared/shared.h		\
 	libdnssec/sign/der.c			\
 	libdnssec/sign/der.h			\
