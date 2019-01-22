@@ -40,6 +40,9 @@ typedef struct trie trie_t;
 /*! \brief Opaque type for holding a QP-trie iterator. */
 typedef struct trie_it trie_it_t;
 
+/*! \brief Callback for cloning trie values. */
+typedef trie_val_t (*trie_dup_cb)(const trie_val_t val, knot_mm_t *mm);
+
 /*! \brief Callback for performing actions on a trie leaf
  *
  * Used during copy-on-write transactions
@@ -62,6 +65,9 @@ void trie_free(trie_t *tbl);
 
 /*! \brief Clear a trie instance (make it empty). */
 void trie_clear(trie_t *tbl);
+
+/*! \brief Create a clone of existing trie. */
+trie_t* trie_dup(const trie_t *orig, trie_dup_cb dup_cb, knot_mm_t *mm);
 
 /*! \brief Return the number of keys in the trie. */
 size_t trie_weight(const trie_t *tbl);

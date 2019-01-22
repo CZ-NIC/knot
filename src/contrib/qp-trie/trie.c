@@ -369,6 +369,62 @@ void trie_clear(trie_t *tbl)
 	tbl->weight = 0;
 }
 
+static bool dup_trie(node_t *copy, const node_t *orig, trie_dup_cb dup_cb, knot_mm_t *mm)
+{
+	if (isbranch(orig)) {
+		uint n = branch_weight(orig);
+		node_t *cotw = mm_alloc(mm, n * sizeof(*cotw));
+		if (cotw == NULL) {
+			return NULL;
+		}
+		const node_t *ortw = twigs((node_t *)orig);
+		for (uint i = 0; i < n; ++i) {
+			if (!dup_trie(cotw + i, ortw + i, dup_cb, mm)) {
+				while (i-- > 0) {
+					clear_trie(cotw + i, mm);
+				}
+				mm_free(mm, cotw);
+				return false;
+			}
+		}
+		*copy = mkbranch(branch_index(orig), branch_bmp(orig), cotw);
+	} else {
+		tkey_t *key = tkey(orig);
+		if (mkleaf(copy, key->chars, key->len, mm) != KNOT_EOK) {
+			return false;
+		}
+		if ((copy->p = dup_cb(orig->p, mm)) == NULL) {
+			mm_free(mm, tkey(copy));
+			return false;
+		}
+	}
+	return true;
+}
+
+trie_t* trie_dup(const trie_t *orig, trie_dup_cb dup_cb, knot_mm_t *mm)
+{
+	if (orig == NULL) {
+		return NULL;
+	}
+	trie_t *copy = mm_alloc(mm, sizeof(*copy));
+	if (copy == NULL) {
+		return NULL;
+	}
+	copy->weight = orig->weight;
+	if (mm != NULL) {
+		copy->mm = *mm;
+	} else {
+		mm_ctx_init(&copy->mm);
+	}
+	if (copy->weight) {
+		if (!dup_trie(&copy->root, &orig->root, dup_cb, mm)) {
+			mm_free(mm, copy);
+			return NULL;
+		}
+	}
+	return copy;
+}
+
 size_t trie_weight(const trie_t *tbl)
 {
 	assert(tbl);
