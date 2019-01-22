@@ -369,61 +369,38 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nodes = trie_create(NULL);
+	out->nodes = trie_dup(z->nodes, (trie_dup_cb)node_shallow_copy, NULL);
 	if (out->nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	// Insert APEX first.
-	zone_node_t *apex_cpy = node_shallow_copy(z->apex, NULL);
-	if (apex_cpy == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	// Normal additions need apex ... so we need to insert directly.
-	int ret = zone_tree_insert(out->nodes, apex_cpy);
-	if (ret != KNOT_EOK) {
-		node_free(apex_cpy, NULL);
-		return ret;
-	}
-
-	out->apex = apex_cpy;
-
-	trie_it_t *itt = trie_it_begin(z->nodes);
+	// everything done, now just update "parent" and "apex" pointers
+	out->apex = NULL;
+	trie_it_t *itt = trie_it_begin(out->nodes);
 	if (itt == NULL) {
 		return KNOT_ENOMEM;
 	}
-
 	while (!trie_it_finished(itt)) {
-		const zone_node_t *to_cpy = (zone_node_t *)*trie_it_val(itt);
-		if (to_cpy == z->apex) {
-			// Inserted already.
-			trie_it_next(itt);
-			continue;
-		}
-		zone_node_t *to_add = node_shallow_copy(to_cpy, NULL);
-		if (to_add == NULL) {
-			trie_it_free(itt);
-			return KNOT_ENOMEM;
-		}
-
-		ret = add_node(out, to_add, true);
-		if (ret != KNOT_EOK) {
-			node_free(to_add, NULL);
-			trie_it_free(itt);
-			return ret;
+		zone_node_t *to_fix = (zone_node_t *)*trie_it_val(itt);
+		if (out->apex == NULL && knot_dname_cmp(to_fix->owner, z->apex->owner) == 0) {
+			out->apex = to_fix;
+		} else {
+			const knot_dname_t *parname = knot_wire_next_label(to_fix->owner, NULL);
+			const zone_node_t *parent = get_node(out, parname);
+			assert(parent != NULL);
+			node_set_parent(to_fix, parent);
 		}
 		trie_it_next(itt);
 	}
-
 	trie_it_free(itt);
+	assert(out->apex != NULL);
 
 	return KNOT_EOK;
 }
 
 static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nsec3_nodes = trie_create(NULL);
+	out->nsec3_nodes = trie_dup(z->nsec3_nodes, (trie_dup_cb)node_shallow_copy, NULL);
 	if (out->nsec3_nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -433,25 +410,11 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 		return KNOT_ENOMEM;
 	}
 	while (!trie_it_finished(itt)) {
-		const zone_node_t *to_cpy = (zone_node_t *)*trie_it_val(itt);
-		zone_node_t *to_add = node_shallow_copy(to_cpy, NULL);
-		if (to_add == NULL) {
-			trie_it_free(itt);
-			return KNOT_ENOMEM;
-		}
-
-		int ret = add_nsec3_node(out, to_add);
-		if (ret != KNOT_EOK) {
-			trie_it_free(itt);
-			node_free(to_add, NULL);
-			return ret;
-		}
-
+		zone_node_t *to_fix = (zone_node_t *)*trie_it_val(itt);
+		to_fix->parent = out->apex;
 		trie_it_next(itt);
 	}
-
 	trie_it_free(itt);
-
 	return KNOT_EOK;
 }
 
