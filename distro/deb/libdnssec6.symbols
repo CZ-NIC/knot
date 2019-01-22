@@ -14,8 +14,6 @@ libdnssec.so.6 libdnssec6 #MINVER#
  dnssec_crypto_cleanup@Base 2.3.0
  dnssec_crypto_init@Base 2.3.0
  dnssec_crypto_reinit@Base 2.3.0
- dnssec_item_get@Base 2.3.0
- dnssec_item_set@Base 2.3.0
  dnssec_key_can_sign@Base 2.3.0
  dnssec_key_can_verify@Base 2.3.0
  dnssec_key_clear@Base 2.3.0
@@ -31,7 +29,6 @@ libdnssec.so.6 libdnssec6 #MINVER#
  dnssec_key_get_pubkey@Base 2.3.0
  dnssec_key_get_rdata@Base 2.3.0
  dnssec_key_get_size@Base 2.3.0
- dnssec_key_import_keystore@Base 2.3.0
  dnssec_key_load_pkcs8@Base 2.3.0
  dnssec_key_new@Base 2.3.0
  dnssec_key_set_algorithm@Base 2.3.0
@@ -46,35 +43,15 @@ libdnssec.so.6 libdnssec6 #MINVER#
  dnssec_keyid_normalize@Base 2.3.0
  dnssec_keystore_close@Base 2.3.0
  dnssec_keystore_deinit@Base 2.3.0
- dnssec_keystore_generate_key@Base 2.3.0
+ dnssec_keystore_export@Base 2.8.0
+ dnssec_keystore_generate@Base 2.8.0
  dnssec_keystore_import@Base 2.3.0
  dnssec_keystore_init@Base 2.3.0
  dnssec_keystore_init_pkcs11@Base 2.3.0
- dnssec_keystore_init_pkcs8_custom@Base 2.3.0
- dnssec_keystore_init_pkcs8_dir@Base 2.3.0
- dnssec_keystore_list_keys@Base 2.3.0
+ dnssec_keystore_init_pkcs8@Base 2.8.0
  dnssec_keystore_open@Base 2.3.0
- dnssec_keystore_remove_key@Base 2.3.0
+ dnssec_keystore_remove@Base 2.8.0
  dnssec_keytag@Base 2.3.0
- dnssec_list_append@Base 2.3.0
- dnssec_list_clear@Base 2.3.0
- dnssec_list_clear_full@Base 2.3.0
- dnssec_list_contains@Base 2.3.0
- dnssec_list_free@Base 2.3.0
- dnssec_list_free_full@Base 2.3.0
- dnssec_list_head@Base 2.3.0
- dnssec_list_insert_after@Base 2.3.0
- dnssec_list_insert_before@Base 2.3.0
- dnssec_list_is_empty@Base 2.3.0
- dnssec_list_new@Base 2.3.0
- dnssec_list_next@Base 2.3.0
- dnssec_list_nth@Base 2.3.0
- dnssec_list_prepend@Base 2.3.0
- dnssec_list_prev@Base 2.3.0
- dnssec_list_remove@Base 2.3.0
- dnssec_list_search@Base 2.3.0
- dnssec_list_size@Base 2.3.0
- dnssec_list_tail@Base 2.3.0
  dnssec_nsec3_hash@Base 2.3.0
  dnssec_nsec3_hash_length@Base 2.3.0
  dnssec_nsec3_params_free@Base 2.3.0

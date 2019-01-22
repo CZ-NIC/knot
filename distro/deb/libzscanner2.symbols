@@ -7,4 +7,5 @@ libzscanner.so.2 libzscanner2 #MINVER#
  zs_set_input_file@Base 2.3.0
  zs_set_input_string@Base 2.3.0
  zs_set_processing@Base 2.3.0
+ zs_set_processing_comment@Base 2.8.0
  zs_strerror@Base 2.3.0
