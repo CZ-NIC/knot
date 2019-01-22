@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -211,7 +211,7 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	}
 
 	struct timespec t_end = time_now();
-	log_zone_info(zone->name, "DDNS, update finished, serial %u -> %u, "
+	log_zone_info(zone->name, "DDNS, finished, serial %u -> %u, "
 	              "%.02f seconds", old_serial, new_serial,
 	              time_diff_ms(&t_start, &t_end) / 1000.0);
 
