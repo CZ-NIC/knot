@@ -1,3 +1,21 @@
+Knot DNS 2.7.6 (2019-01-23)
+===========================
+
+Improvements:
+-------------
+ - Zone status also shows when the zone load is scheduled
+ - Server workers status also shows background workers utilization
+ - Default control timeout for knotc was increased to 10 seconds
+ - Pkg-config files contain auxiliary variable with library filename
+
+Bugfixes:
+---------
+ - Configuration commit or server reload can drop some pending zone events
+ - Nonempty zone journal is created even though it's disabled #635
+ - Zone is completely re-signed during empty dynamic update processing
+ - Server can crash when storing a big zone difference to the journal
+ - Failed to link on FreeBSD 12 with Clang
+
 Knot DNS 2.7.5 (2019-01-07)
 ===========================
 
