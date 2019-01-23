@@ -190,9 +190,12 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %systemd_postun_with_restart knot.service
 %endif
 
+%if 0%{?fedora}
+# https://fedoraproject.org/wiki/Changes/Removing_ldconfig_scriptlets
+%else
 %post libs -p /sbin/ldconfig
-
 %postun libs -p /sbin/ldconfig
+%endif
 
 %files
 %license COPYING
