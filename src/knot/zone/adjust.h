@@ -54,6 +54,9 @@ int adjust_cb_flags_and_nsec3(zone_node_t *node, const zone_contents_t *zone);
 // adjust_cb_point_to_nsec3, adjust_cb_wildcard_nsec3 and adjust_cb_additionals at once
 int adjust_cb_nsec3_and_additionals(zone_node_t *node, const zone_contents_t *zone);
 
+// adjust_cb_wildcard_nsec3 and adjust_cb_additionals at once
+int adjust_cb_nsec3wc_and_additionals(zone_node_t *node, const zone_contents_t *zone);
+
 // dummy callback, just make prev pointers adjusting and zone size measuring work
 int adjust_cb_void(zone_node_t *node, const zone_contents_t *zone);
 
