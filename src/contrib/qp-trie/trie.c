@@ -372,23 +372,21 @@ void trie_clear(trie_t *tbl)
 static bool dup_trie(node_t *copy, const node_t *orig, trie_dup_cb dup_cb, knot_mm_t *mm)
 {
 	if (isbranch(orig)) {
-		uint i = 0, n = branch_weight(orig);
+		uint n = branch_weight(orig);
 		node_t *cotw = mm_alloc(mm, n * sizeof(*cotw));
 		if (cotw == NULL) {
 			return NULL;
 		}
 		const node_t *ortw = twigs((node_t *)orig);
-		bool succ = true;
-		for ( ; succ && i < n; ++i) {
-			succ = dup_trie(cotw + i, ortw + i, dup_cb, mm);
-		}
-		if (!succ) {
-			--i;
-			while (i-- > 0) {
-				clear_trie(cotw + i, mm);
+		for (int i = 0; i < n; ++i) {
+			bool succ = dup_trie(cotw + i, ortw + i, dup_cb, mm);
+			if (!succ) {
+				for (--i; i >= 0; --i) {
+					clear_trie(cotw + i, mm);
+				}
+				mm_free(mm, cotw);
+				return false;
 			}
-			mm_free(mm, cotw);
-			return false;
 		}
 		*copy = mkbranch(branch_index(orig), branch_bmp(orig), cotw);
 	} else {
