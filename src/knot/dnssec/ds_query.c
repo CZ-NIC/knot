@@ -93,8 +93,10 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	struct ds_query_data *data = layer->data;
 	data->result_logged = true;
 
-	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
-		ns_log(LOG_WARNING, data->zone_name, LOG_OPERATION_PARENT,
+	uint16_t rcode = knot_pkt_ext_rcode(pkt);
+	if (rcode != KNOT_RCODE_NOERROR) {
+		ns_log((rcode == KNOT_RCODE_NXDOMAIN ? LOG_NOTICE : LOG_WARNING),
+		       data->zone_name, LOG_OPERATION_PARENT,
 		       LOG_DIRECTION_OUT, data->remote, "failed (%s)", knot_pkt_ext_rcode_name(pkt));
 		return KNOT_STATE_FAIL;
 	}
