@@ -13,6 +13,9 @@ t = Test()
 def check_deleg(deleg, nsec3_bitmap, opt_out_flag, msg):
     t.sleep(2)
     resp = master.dig(deleg + "." + zone_name, "A", dnssec=True, bufsize=4096)
+    resp.check(rcode="NOERROR")
+    if resp.resp.rcode() != 0:
+        return
     first_nsec3 = str(resp.resp.authority[1]) # assert this is the first NSEC3 in the response
     first_bitmap = ' '.join(first_nsec3.split()[9:])
     check_log("NSEC3 bitmap '%s', expected '%s' for '%s'" % (first_bitmap, nsec3_bitmap, msg))
