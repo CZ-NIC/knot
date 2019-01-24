@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,12 +13,21 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+/*!
+ * \file
+ *
+ * \addtogroup pem
+ *
+ * \brief PEM key format operations.
+ *
+ * @{
+ */
 
 #pragma once
 
 #include <gnutls/gnutls.h>
 
-#include "libdnssec/binary.h"
+#include <libdnssec/binary.h>
 
 /*!
  * Create GnuTLS X.509 private key from unencrypted PEM data.
@@ -28,7 +37,7 @@
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int pem_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key);
+int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key);
 
 /*!
  * Create GnuTLS private key from unencrypted PEM data.
@@ -38,20 +47,7 @@ int pem_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key);
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int pem_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key);
-
-/*!
- * Generate a private key and export it in the PEM format.
- *
- * \param[in]  algorithm  Algorithm to be used.
- * \param[in]  bits       Size of the key to be generated.
- * \param[out] pem        Generated key in unencrypted PEM format.
- * \param[out] id         Key ID of the generated key.
- *
- * \return Error code, DNSSEC_EOK if successful.
- */
-int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
-		 dnssec_binary_t *pem, char **id);
+int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key);
 
 /*!
  * Export GnuTLS X.509 private key to PEM binary.
@@ -61,14 +57,6 @@ int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
+int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
 
-/*!
- * Get key ID of a private key in PEM format.
- *
- * \param[in]  pem  Key in unencrypted PEM format.
- * \param[out] id   ID of the key.
- *
- * \return Error code, DNSSEC_EOK if successful.
- */
-int pem_keyid(const dnssec_binary_t *pem, char **id);
+/*! @} */

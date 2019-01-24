@@ -24,7 +24,7 @@
 #include "libdnssec/keystore.h"
 #include "libdnssec/keystore/internal.h"
 #include "libdnssec/p11/p11.h"
-#include "libdnssec/shared/pem.h"
+#include "libdnssec/pem.h"
 #include "libdnssec/shared/shared.h"
 
 #ifdef ENABLE_PKCS11
@@ -231,7 +231,7 @@ static int import_pem(const dnssec_binary_t *pem,
 	gnutls_privkey_t key = NULL;
 	gnutls_pubkey_t pubkey = NULL;
 
-	int r = pem_x509(pem, &x509_key);
+	int r = dnssec_pem_to_x509(pem, &x509_key);
 	if (r != DNSSEC_EOK) {
 		goto fail;
 	}

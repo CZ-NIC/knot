@@ -63,6 +63,9 @@ libdnssec.so.6 libdnssec6 #MINVER#
  dnssec_nsec_bitmap_new@Base 2.3.0
  dnssec_nsec_bitmap_size@Base 2.3.0
  dnssec_nsec_bitmap_write@Base 2.3.0
+ dnssec_pem_from_x509@Base 2.8.0
+ dnssec_pem_to_privkey@Base 2.8.0
+ dnssec_pem_to_x509@Base 2.8.0
  dnssec_random_binary@Base 2.3.0
  dnssec_random_buffer@Base 2.3.0
  dnssec_sign_add@Base 2.3.0

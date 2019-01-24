@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include "libdnssec/key/dnskey.h"
 #include "libdnssec/key/internal.h"
 #include "libdnssec/key/privkey.h"
-#include "libdnssec/shared/pem.h"
+#include "libdnssec/pem.h"
 #include "libdnssec/shared/shared.h"
 
 /* -- public API ----------------------------------------------------------- */
@@ -40,7 +40,7 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 	}
 
 	gnutls_privkey_t privkey = NULL;
-	int r = pem_privkey(pem, &privkey);
+	int r = dnssec_pem_to_privkey(pem, &privkey);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}

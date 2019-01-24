@@ -54,6 +54,7 @@
  - \ref keystore — DNSSEC private key store
  - \ref keytag   — DNSSEC key tag computation
  - \ref nsec     — NSEC and NSEC3 operations
+ - \ref pem      — PEM key format operations
  - \ref random   — Pseudo-random number generation
  - \ref sign     — DNSSEC signing and verification
  - \ref tsig     — TSIG signing
@@ -66,6 +67,7 @@
 \defgroup keystore keystore
 \defgroup keytag   keytag
 \defgroup nsec     nsec
+\defgroup pem      pem
 \defgroup random   random
 \defgroup sign     sign
 \defgroup tsig     tsig

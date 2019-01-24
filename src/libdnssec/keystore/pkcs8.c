@@ -27,8 +27,9 @@
 #include "libdnssec/error.h"
 #include "libdnssec/keystore.h"
 #include "libdnssec/keystore/internal.h"
-#include "libdnssec/shared/pem.h"
+#include "libdnssec/pem.h"
 #include "libdnssec/shared/shared.h"
+#include "libdnssec/shared/keyid_gnutls.h"
 
 #define DIR_INIT_MODE 0750
 
@@ -175,6 +176,48 @@ static bool key_is_duplicate(int open_error, pkcs8_dir_handle_t *handle,
 	return dnssec_binary_cmp(&old, pem) == 0;
 }
 
+static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
+			dnssec_binary_t *pem, char **id)
+{
+	assert(pem);
+	assert(id);
+
+	// generate key
+
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	int r = gnutls_x509_privkey_init(&key);
+	if (r != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
+
+	r = gnutls_x509_privkey_generate(key, algorithm, bits, 0);
+	if (r != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_GENERATE_ERROR;
+	}
+
+	// convert to PEM and export the ID
+
+	dnssec_binary_t _pem = { 0 };
+	r = dnssec_pem_from_x509(key, &_pem);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	// export key ID
+
+	char *_id = NULL;
+	r = keyid_x509_hex(key, &_id);
+	if (r != DNSSEC_EOK) {
+		dnssec_binary_free(&_pem);
+		return r;
+	}
+
+	*id = _id;
+	*pem = _pem;
+
+	return DNSSEC_EOK;
+}
+
 /* -- internal API --------------------------------------------------------- */
 
 static int pkcs8_ctx_new(void **ctx_ptr)
@@ -295,7 +338,13 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 	// retrieve key ID
 
 	char *id = NULL;
-	int r = pem_keyid(pem, &id);
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	int r = dnssec_pem_to_x509(pem, &key);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	r = keyid_x509_hex(key, &id);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
@@ -392,7 +441,7 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 	// construct the key
 
 	gnutls_privkey_t key = NULL;
-	r = pem_privkey(&pem, &key);
+	r = dnssec_pem_to_privkey(&pem, &key);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
