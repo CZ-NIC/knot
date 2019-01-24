@@ -613,13 +613,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 		}
 	}
 
-	ret = zone_adjust_contents(new_contents, adjust_cb_flags, adjust_cb_nsec3_flags, true);
-	if (ret == KNOT_EOK) {
-		ret = zone_adjust_update(update, adjust_cb_point_to_nsec3, NULL);
-	}
-	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(new_contents, adjust_cb_nsec3wc_and_additionals, NULL, false);
-	}
+	ret = zone_adjust_full(new_contents);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
 		return ret;

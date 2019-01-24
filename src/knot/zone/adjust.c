@@ -234,15 +234,6 @@ int adjust_cb_nsec3_and_additionals(zone_node_t *node, const zone_contents_t *zo
 	return ret;
 }
 
-int adjust_cb_nsec3wc_and_additionals(zone_node_t *node, const zone_contents_t *zone)
-{
-	int ret = adjust_cb_wildcard_nsec3(node, zone);
-	if (ret == KNOT_EOK) {
-		ret = adjust_cb_additionals(node, zone);
-	}
-	return ret;
-}
-
 int adjust_cb_void(zone_node_t *node, const zone_contents_t *zone)
 {
 	UNUSED(node);
