@@ -69,7 +69,7 @@ int adjust_cb_void(zone_node_t *node, const zone_contents_t *zone);
  *
  * \return KNOT_E*
  */
-int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb);
+int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb, bool measure_size);
 
 /*!
  * \brief Apply callback to nodes affected by the zone update.
