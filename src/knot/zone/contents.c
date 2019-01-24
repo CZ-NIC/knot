@@ -386,7 +386,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 			out->apex = to_fix;
 		} else {
 			const knot_dname_t *parname = knot_wire_next_label(to_fix->owner, NULL);
-			const zone_node_t *parent = get_node(out, parname);
+			zone_node_t *parent = get_node(out, parname);
 			assert(parent != NULL);
 			node_set_parent(to_fix, parent);
 		}
