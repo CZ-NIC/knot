@@ -188,36 +188,36 @@ AS_IF([test "$enable_recvmmsg" = yes],[
    AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
 
 AC_ARG_ENABLE([reuseport],
-    AS_HELP_STRING([--enable-reuseport=auto|yes|no], [enable Linux SO_REUSEPORT support [default=auto]]),
-    [enable_reuseport="$enableval"], [enable_reuseport=auto])
+  AS_HELP_STRING([--enable-reuseport=auto|yes|no],
+                 [enable SO_REUSEPORT or SO_REUSEPORT_LB (FreeBSD) support [default=auto]]),
+  [enable_reuseport="$enableval"], [enable_reuseport=auto]
+)
 
-AC_DEFUN([CHECK_REUSEPORT], [
-  AC_CHECK_DECL(
-    [SO_REUSEPORT],
-    [$1],
-    [$2],
-    [
-    #include <sys/socket.h>
-    ]
-  )])
-
-AS_IF([test "$enable_reuseport" != no], [
-  AS_CASE([$enable_reuseport],
-    [auto],[
-      AS_CASE([$host_os],
-        [linux*], [CHECK_REUSEPORT([enable_reuseport=yes], [enable_reuseport=no])],
-        [*], [enable_reuseport=no]
-      )],
-    [yes],[
-      AS_CASE([$host_os],
-        [linux*], [CHECK_REUSEPORT([enable_reuseport=yes], [AC_MSG_ERROR([SO_REUSEPORT support not detected.])])],
-        [*], [AC_MSG_ERROR(["SO_REUSEPORT not supported on $host_os."])]
-      )],
-    [*], [AC_MSG_ERROR([Invalid value of --enable-reuseport.])]
-  )])
+AS_CASE([$enable_reuseport],
+  [auto], [
+    AS_CASE([$host_os],
+      [freebsd*], [AC_CHECK_DECL([SO_REUSEPORT_LB],
+                                 [enable_reuseport=yes],
+                                 [enable_reuseport=no],
+                                 [#include <sys/socket.h>
+                                 ])],
+      [linux*], [AC_CHECK_DECL([SO_REUSEPORT],
+                               [enable_reuseport=yes],
+                               [enable_reuseport=no],
+                               [#include <sys/socket.h>
+                               ])],
+      [*], []
+    )],
+  [yes], [AC_CHECK_DECL([SO_REUSEPORT], [],
+                        [AC_MSG_ERROR([SO_REUSEPORT not supported.])],
+                        [#include <sys/socket.h>
+                        ])],
+  [no], [],
+  [*], [AC_MSG_ERROR([Invalid value of --enable-reuseport.])]
+)
 
 AS_IF([test "$enable_reuseport" = yes],[
-   AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])])
+   AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT or SO_REUSEPORT_LB.])])
 
 #########################################
 # Dependencies needed for Knot DNS daemon
