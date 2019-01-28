@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -145,7 +145,11 @@ static int enable_nonlocal(int sock, int family)
 static int enable_reuseport(int sock)
 {
 #ifdef ENABLE_REUSEPORT
+#  if defined(__FreeBSD__)
+	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT_LB);
+#  else
 	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT);
+#  endif
 #else
 	return KNOT_ENOTSUP;
 #endif
