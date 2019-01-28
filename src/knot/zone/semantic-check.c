@@ -39,6 +39,10 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 
 	[SEM_ERR_DNAME_CHILDREN] =
 	"child record exists under DNAME",
+	[SEM_ERR_DNAME_MULTIPLE] =
+	"multiple DNAME records",
+	[SEM_ERR_DNAME_EXTRA_NS] =
+	"NS record exists at DNAME",
 
 	[SEM_ERR_NS_APEX] =
 	"missing NS at the zone apex",
@@ -1042,7 +1046,7 @@ nsec3_cleanup:
  */
 static int check_cname(const zone_node_t *node, semchecks_data_t *data)
 {
-	const  knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
+	const knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrs == NULL) {
 		return KNOT_EOK;
 	}
@@ -1071,19 +1075,37 @@ static int check_cname(const zone_node_t *node, semchecks_data_t *data)
 }
 
 /*!
- * \brief Check if DNAME record has children.
+ * \brief Check if node with DNAME record satisfies RFC 6672 Section 2.
  *
  * \param node Node to check
  * \param data Semantic checks context data
  */
 static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 {
-	if (node->parent != NULL && node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
-		data->handler->fatal_error = true;
-		data->handler->cb(data->handler, data->zone, node,
-		                  SEM_ERR_DNAME_CHILDREN, NULL);
+	const knot_rdataset_t *dname_rrs = node_rdataset(node, KNOT_RRTYPE_DNAME);
+	if (dname_rrs != NULL) {
+		/* RFC 6672 Section 2.3 Paragraph 3 */
+		bool is_apex = (node->parent == NULL);
+		if (!is_apex && node_rrtype_exists(node, KNOT_RRTYPE_NS)) {
+			data->handler->fatal_error = true;
+			data->handler->cb(data->handler, data->zone, node,
+			                  SEM_ERR_DNAME_EXTRA_NS, NULL);
+		}
+		/* RFC 6672 Section 2.4 Paragraph 1 */
+		/* If the NSEC3 node of the apex is present, it is counted as apex's child. */
+		unsigned allowed_children = (is_apex && node->nsec3_node != NULL) ? 1 : 0;
+		if (node->children > allowed_children) {
+			data->handler->fatal_error = true;
+			data->handler->cb(data->handler, data->zone, node,
+			                  SEM_ERR_DNAME_CHILDREN, NULL);
+		}
+		/* RFC 6672 Section 2.4 Paragraph 2 */
+		if (dname_rrs->count != 1) {
+			data->handler->fatal_error = true;
+			data->handler->cb(data->handler, data->zone, node,
+			              SEM_ERR_DNAME_MULTIPLE, NULL);
+		}
 	}
-
 	return KNOT_EOK;
 }
 

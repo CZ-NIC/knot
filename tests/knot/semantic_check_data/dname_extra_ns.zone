@@ -1,0 +1,16 @@
+$ORIGIN example.com.
+$TTL 3600
+
+@	IN	SOA	dns1.example.com. hostmaster.example.com. (
+		2010111214	; serial
+		6h		; refresh
+		1h		; retry
+		1w		; expire
+		1d )		; minimum
+	NS	dns1
+
+dns1	A	192.0.2.1
+	AAAA	2001:DB8::1
+
+foo	DNAME	bar
+foo    NS   dns1
