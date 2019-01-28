@@ -145,7 +145,11 @@ static int enable_nonlocal(int sock, int family)
 static int enable_reuseport(int sock)
 {
 #ifdef ENABLE_REUSEPORT
+#  if defined(__FreeBSD__)
+	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT_LB);
+#  else
 	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT);
+#  endif
 #else
 	return KNOT_ENOTSUP;
 #endif
