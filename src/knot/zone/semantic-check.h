@@ -30,6 +30,7 @@ typedef enum {
 	SEM_ERR_CNAME_MULTIPLE,
 
 	SEM_ERR_DNAME_CHILDREN,
+	SEM_ERR_DNAME_MULTIPLE,
 
 	// Optional checks.
 	SEM_ERR_NS_APEX,
