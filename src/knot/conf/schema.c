@@ -248,7 +248,7 @@ static const yp_item_t desc_submission[] = {
 	                           { check_ref } },
 	{ C_CHK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME },
 	                           CONF_IO_FRLD_ZONES },
-	{ C_TIMEOUT,      YP_TINT, YP_VINT = { 1, UINT32_MAX, 0, YP_STIME },
+	{ C_TIMEOUT,      YP_TINT, YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
 	                           CONF_IO_FRLD_ZONES },
 	{ NULL }
 };
