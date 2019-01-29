@@ -71,12 +71,12 @@ static const knot_lookup_t dnssec_key_algs[] = {
 	{ 0, NULL }
 };
 
-const knot_lookup_t child_record[] = {
-	{ CHILD_RECORDS_NONE,     "none" },
-	{ CHILD_RECORDS_EMPTY,    "delete-dnssec" },
-	{ CHILD_RECORDS_ROLLOVER, "rollover" },
-	{ CHILD_RECORDS_ALWAYS,   "always" },
-	{ CHILD_RECORDS_DOUBLE_DS,"double-ds" },
+static const knot_lookup_t cds_cdnskey[] = {
+	{ CDS_CDNSKEY_NONE,      "none" },
+	{ CDS_CDNSKEY_EMPTY,     "delete-dnssec" },
+	{ CDS_CDNSKEY_ROLLOVER,  "rollover" },
+	{ CDS_CDNSKEY_ALWAYS,    "always" },
+	{ CDS_CDNSKEY_DOUBLE_DS, "double-ds" },
 	{ 0, NULL }
 };
 
@@ -87,14 +87,14 @@ const knot_lookup_t acl_actions[] = {
 	{ 0, NULL }
 };
 
-const knot_lookup_t acl_update_owner[] = {
+static const knot_lookup_t acl_update_owner[] = {
 	{ ACL_UPDATE_OWNER_KEY,  "key" },
 	{ ACL_UPDATE_OWNER_ZONE, "zone" },
 	{ ACL_UPDATE_OWNER_NAME, "name" },
 	{ 0, NULL }
 };
 
-const knot_lookup_t acl_update_owner_match[] = {
+static const knot_lookup_t acl_update_owner_match[] = {
 	{ ACL_UPDATE_MATCH_SUBEQ, "sub-or-equal" },
 	{ ACL_UPDATE_MATCH_EQ,    "equal" },
 	{ ACL_UPDATE_MATCH_SUB,   "sub" },
@@ -290,7 +290,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_KSK_SBM,             YP_TREF,  YP_VREF = { C_SBM }, CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
 	{ C_SIGNING_THREADS,     YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } },
-	{ C_CHILD_RECORDS,       YP_TOPT,  YP_VOPT = { child_record, CHILD_RECORDS_ALWAYS } },
+	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ALWAYS } },
 	{ C_OFFLINE_KSK,         YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }

@@ -794,10 +794,10 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 					      zone_keyset_t *zone_keys)
 {
 	keyptr_dynarray_t r = { 0 };
-	unsigned crp = ctx->policy->child_records_publish;
+	unsigned crp = ctx->policy->cds_cdnskey_publish;
 
-	if (crp == CHILD_RECORDS_ROLLOVER || crp == CHILD_RECORDS_ALWAYS ||
-	    crp == CHILD_RECORDS_DOUBLE_DS) {
+	if (crp == CDS_CDNSKEY_ROLLOVER || crp == CDS_CDNSKEY_ALWAYS ||
+	    crp == CDS_CDNSKEY_DOUBLE_DS) {
 		// first, add strictly-ready keys
 		for (int i = 0; i < zone_keys->count; i++) {
 			zone_key_t *key = &zone_keys->keys[i];
@@ -808,8 +808,8 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 		}
 
 		// second, add active keys
-		if ((crp == CHILD_RECORDS_ALWAYS && r.size == 0) ||
-		    (crp == CHILD_RECORDS_DOUBLE_DS)) {
+		if ((crp == CDS_CDNSKEY_ALWAYS && r.size == 0) ||
+		    (crp == CDS_CDNSKEY_DOUBLE_DS)) {
 			for (int i = 0; i < zone_keys->count; i++) {
 				zone_key_t *key = &zone_keys->keys[i];
 				if (key->is_ksk && key->is_active && !key->is_ready) {
@@ -818,7 +818,7 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 			}
 		}
 
-		if ((crp != CHILD_RECORDS_DOUBLE_DS && r.size > 1) ||
+		if ((crp != CDS_CDNSKEY_DOUBLE_DS && r.size > 1) ||
 		    (r.size > 2)) {
 			log_zone_warning(ctx->zone->dname, "DNSSEC, published CDS/CDNSKEY records for too many (%zu) keys", r.size);
 		}
@@ -851,7 +851,7 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
 		}
 	}
 
-	if (dnssec_ctx->policy->child_records_publish == CHILD_RECORDS_EMPTY && ret == KNOT_EOK) {
+	if (dnssec_ctx->policy->cds_cdnskey_publish == CDS_CDNSKEY_EMPTY && ret == KNOT_EOK) {
 		const uint8_t cdnskey_empty[5] = { 0, 0, 3, 0, 0 };
 		const uint8_t cds_empty[5] = { 0, 0, 0, 0, 0 };
 		ret = knot_rrset_add_rdata(&add_r->cdnskey, cdnskey_empty, sizeof(cdnskey_empty), NULL);

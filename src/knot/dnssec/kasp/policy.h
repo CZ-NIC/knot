@@ -114,7 +114,7 @@ typedef struct {
 	// various
 	uint32_t ksk_sbm_timeout;
 	uint32_t ksk_sbm_check_interval;
-	unsigned child_records_publish;
+	unsigned cds_cdnskey_publish;
 	parent_dynarray_t parents;
 	uint16_t signing_threads;
 	bool offline_ksk;

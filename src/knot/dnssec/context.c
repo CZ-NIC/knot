@@ -92,8 +92,8 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	val = conf_id_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id);
 	policy->nsec3_salt_lifetime = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_CHILD_RECORDS, id);
-	policy->child_records_publish = conf_opt(&val);
+	val = conf_id_get(conf(), C_POLICY, C_CDS_CDNSKEY, id);
+	policy->cds_cdnskey_publish = conf_opt(&val);
 
 	conf_val_t ksk_sbm = conf_id_get(conf(), C_POLICY, C_KSK_SBM, id);
 	if (ksk_sbm.code == KNOT_EOK) {
