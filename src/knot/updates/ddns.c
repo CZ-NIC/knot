@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -272,6 +272,7 @@ static inline bool is_node_removal(const knot_rrset_t *rr)
 static bool should_replace(const knot_rrset_t *rrset)
 {
 	return rrset->type == KNOT_RRTYPE_CNAME ||
+	       rrset->type == KNOT_RRTYPE_DNAME ||
 	       rrset->type == KNOT_RRTYPE_NSEC3PARAM;
 }
 
