@@ -1019,7 +1019,7 @@ Possible values:
    If the zone keys are managed manually, the CDS and CDNSKEY rrsets may contain
    more records depending on the keys available.
 
-*Default:* always
+*Default:* rollover
 
 .. _policy_offline-ksk:
 

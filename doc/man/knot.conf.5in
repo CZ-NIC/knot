@@ -909,7 +909,7 @@ more records depending on the keys available.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP always
+\fIDefault:\fP rollover
 .SS offline\-ksk
 .sp
 Specifies if Offline KSK feature is enabled.
