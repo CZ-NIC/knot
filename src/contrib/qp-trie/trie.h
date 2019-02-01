@@ -84,7 +84,7 @@ trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len);
  * \param tbl  Trie.
  * \param key  Searched key.
  * \param len  Key length.
- * \param val  Must be valid; it will be set to NULL if not found or errored.
+ * \param val  (optional) Value found; it will be set to NULL if not found or errored.
  * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
  *         or KNOT_E*.
  */
@@ -168,12 +168,8 @@ void trie_it_next_nosub(trie_it_t *it);
  */
 void trie_it_parent(trie_it_t *it);
 
-
-
-
-
-//Přesune iterátor na prvek zadaný klíčem, nebo na předchozí prvek (pokud není přesná shoda), nebo na poslední prvek (pokud jsou všechny existující prvky lexikograficky větší), nebo na ukončený iterátor (pokud je trie prázdná). Vrací true pokud byla přesná shoda.
-bool trie_it_get_leq(trie_it_t *it, const char *key, uint32_t len);
+/*! \brief trie_get_leq() but with an iterator. */
+int trie_it_get_leq(trie_it_t *it, const char *key, uint32_t len);
 
 
 //Smaže aktuální prvek z trie, přesune iterátor na další prvek, nebo na ukončený iterátor (?). Pozor na nekompatibilitu této funkce s COW.
