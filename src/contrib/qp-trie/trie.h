@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
     Copyright (C) 2018 Tony Finch <dot@dotat.at>
 
     This program is free software: you can redistribute it and/or modify
@@ -84,7 +84,7 @@ trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len);
  * \param tbl  Trie.
  * \param key  Searched key.
  * \param len  Key length.
- * \param val  Must be valid; it will be set to NULL if not found or errored.
+ * \param val  (optional) Value found; it will be set to NULL if not found or errored.
  * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
  *         or KNOT_E*.
  */
@@ -104,22 +104,24 @@ int trie_apply(trie_t *tbl, int (*f)(trie_val_t *, void *), void *d);
  */
 int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val);
 
-/*! \brief Create a new iterator pointing to the first element (if any). */
+
+/*! \brief Create a new iterator pointing to the first element (if any).
+ *
+ * trie_it_* functions deal with these iterators capable of walking and jumping
+ * over the trie.  Note that any modification to key-set stored by the trie
+ * will in general invalidate all iterators and you will need to begin anew.
+ * (It won't be detected - you may end up reading freed memory, etc.)
+ */
 trie_it_t* trie_it_begin(trie_t *tbl);
 
-/*!
- * \brief Advance the iterator to the next element.
- *
- * Iteration is in ascending lexicographical order.
- * In particular, the empty string would be considered as the very first.
- */
-void trie_it_next(trie_it_t *it);
-
-/*! \brief Test if the iterator has gone past the last element. */
+/*! \brief Test if the iterator has gone "past the end" (and points nowhere). */
 bool trie_it_finished(trie_it_t *it);
 
 /*! \brief Free any resources of the iterator. It's OK to call it on NULL. */
 void trie_it_free(trie_it_t *it);
+
+/*! \brief Copy the iterator.  See the warning in trie_it_begin(). */
+trie_it_t *trie_it_clone(const trie_it_t *it);
 
 /*!
  * \brief Return pointer to the key of the current element.
@@ -131,6 +133,47 @@ const char* trie_it_key(trie_it_t *it, size_t *len);
 
 /*! \brief Return pointer to the value of the current element (writable). */
 trie_val_t* trie_it_val(trie_it_t *it);
+
+/*!
+ * \brief Advance the iterator to the next element.
+ *
+ * Iteration is in ascending lexicographical order.
+ * In particular, the empty string would be considered as the very first.
+ *
+ * \TODO: in most iterator operations, ENOMEM is very unlikely
+ * but it leads to a _finished() iterator (silently).
+ * Perhaps the functions should simply return KNOT_E*
+ */
+void trie_it_next(trie_it_t *it);
+/*! \brief Advance the iterator to the previous element.  See trie_it_next(). */
+void trie_it_prev(trie_it_t *it);
+
+/*! \brief Advance iterator to the next element, looping to first after last. */
+void trie_it_next_loop(trie_it_t *it);
+/*! \brief Advance iterator to the previous element, looping to last after first. */
+void trie_it_prev_loop(trie_it_t *it);
+
+/*! \brief Advance iterator to the next element while ignoring the subtree.
+ *
+ * \note Another formulation: skip keys that are prefixed by the current key.
+ * \TODO: name, maybe _noprefixed?  The thing is that in the "subtree" meaning
+ * doesn't correspond to how the pointers go in the implementation,
+ * but we may not care much for implementation in the API...
+ */
+void trie_it_next_nosub(trie_it_t *it);
+
+/*! \brief Advance iterator to the longest prefix of the current key.
+ *
+ * \TODO: name, maybe _prefix?  Arguments similar to _nosub vs. _noprefixed.
+ */
+void trie_it_parent(trie_it_t *it);
+
+/*! \brief trie_get_leq() but with an iterator. */
+int trie_it_get_leq(trie_it_t *it, const char *key, uint32_t len);
+
+/*! \brief Remove the current element.  The iterator will get trie_it_finished() */
+void trie_it_del(trie_it_t *it);
+
 
 /*! \brief Start a COW transaction
  *
