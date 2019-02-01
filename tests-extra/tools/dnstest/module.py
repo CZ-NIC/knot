@@ -185,7 +185,8 @@ class ModOnlineSign(KnotModule):
 
     mod_name = "onlinesign"
 
-    def __init__(self, algorithm=None, key_size=None, prop_delay=3600, ksc=[ ], ksci=999, ksk_life=9999, ksk_shared=False):
+    def __init__(self, algorithm=None, key_size=None, prop_delay=3600, ksc=[ ],
+                 ksci=999, ksk_life=9999, ksk_shared=False, cds_publish="rollover"):
         super().__init__()
         self.algorithm = algorithm
         self.key_size = key_size
@@ -196,6 +197,7 @@ class ModOnlineSign(KnotModule):
         self.ksci = ksci
         self.ksk_life = ksk_life
         self.ksk_shared = ksk_shared
+        self.cds_publish = cds_publish
 
     def get_conf(self, conf=None):
         if not conf:
@@ -223,6 +225,7 @@ class ModOnlineSign(KnotModule):
                 conf.item("ksk-submission", "blahblah")
             conf.item("ksk-lifetime", self.ksk_life)
             conf.item("ksk-shared", self.ksk_shared)
+            conf.item("cds-cdnskey-publish", self.cds_publish)
             conf.end()
 
             conf.begin(self.conf_name)
