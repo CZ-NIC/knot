@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -215,12 +215,12 @@ static void handler_echo(int sock, void *_server)
 		addr = &remote;
 	}
 
-	int in = net_recv(sock, buffer, sizeof(buffer), addr, TIMEOUT);
+	int in = net_base_recv(sock, buffer, sizeof(buffer), addr, TIMEOUT);
 	if (in <= 0) {
 		return;
 	}
 
-	net_send(sock, buffer, in, (struct sockaddr *)addr, TIMEOUT);
+	net_base_send(sock, buffer, in, (struct sockaddr *)addr, TIMEOUT);
 }
 
 static void test_connected_one(const struct sockaddr_storage *server_addr,
