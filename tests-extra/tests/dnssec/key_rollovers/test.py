@@ -82,17 +82,23 @@ def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
         if rtime > timeout:
             break
 
-def wait_for_dnskey_count(t, server, dnskey_count, timeout):
+def wait_for_count(t, server, rrtype, count, timeout):
     rtime = 0
     while True:
-        qdnskeyrrsig = server.dig("example.com", "DNSKEY", dnssec=True, bufsize=4096)
-        found_dnskeys = qdnskeyrrsig.count("DNSKEY")
-        if found_dnskeys == dnskey_count:
+        q = server.dig("example.com", rrtype, dnssec=True, bufsize=4096)
+        found = q.count(rrtype)
+        if found == count:
             break
         rtime = rtime + 1
         t.sleep(1)
         if rtime > timeout:
             break
+
+def wait_after_submission(t, server):
+    if DOUBLE_DS:
+        wait_for_count(t, server, "CDNSKEY", 1, 10)
+    else:
+        t.sleep(4)
 
 def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, set_stss, submission_cb):
     check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
@@ -105,7 +111,7 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
     wait_for_rrsig_count(t, server, "SOA", 2, 20)
     check_zone(server, zone, before_keys, 1 if after_keys > 1 else 2, 1, 2, desc + ": pre active")
 
-    wait_for_dnskey_count(t, server, before_keys + after_keys, 20)
+    wait_for_count(t, server, "DNSKEY", before_keys + after_keys, 20)
     check_zone(server, zone, before_keys + after_keys, 2, 1, 2, desc + ": both algorithms active")
 
     # wait for any change in CDS records
@@ -118,10 +124,10 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
     check_zone(server, zone, before_keys + after_keys, 2, cdnskeys, 2, desc + ": new KSK ready")
 
     submission_cb()
-    t.sleep(4)
+    wait_after_submission(t, server)
     check_zone(server, zone, before_keys + after_keys, 2, 1, 2, desc + ": both still active")
 
-    wait_for_dnskey_count(t, server, after_keys, 20)
+    wait_for_count(t, server, "DNSKEY", after_keys, 20)
     check_zone(server, zone, after_keys, 1 if before_keys > 1 else 2, 1, 2, desc + ": post active")
 
     wait_for_rrsig_count(t, server, "SOA", 1, 20)
@@ -136,7 +142,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     server.gen_confile()
     server.reload()
 
-    wait_for_dnskey_count(t, server, total_keys, 20)
+    wait_for_count(t, server, "DNSKEY", total_keys, 20)
 
     t.sleep(3)
     check_zone(server, zone, total_keys, 1, 1, 1, desc + ": published new")
@@ -151,7 +157,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
 
     t.sleep(server.dnssec(zone).propagation_delay + 1) # check that Knot does wait for the submittion to succeed
     submission_cb()
-    t.sleep(4)
+    wait_after_submission(t, server)
     if before_keys < 2 or after_keys > 1:
         check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both still active")
     # else skip the test as we have no control on KSK and ZSK retiring asynchronously
@@ -161,7 +167,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
         check_zone(server, zone, total_keys, 1, 1, 1, desc + ": old key retired")
     # else skip the test as we have no control on KSK and ZSK retiring asynchronously
 
-    wait_for_dnskey_count(t, server, after_keys, 20)
+    wait_for_count(t, server, "DNSKEY", after_keys, 20)
     check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old key removed")
 
 t = Test()
