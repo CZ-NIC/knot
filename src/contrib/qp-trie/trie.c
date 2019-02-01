@@ -451,6 +451,8 @@ trie_val_t* trie_get_try(trie_t *tbl, const char *key, uint32_t len)
 	return tvalp(t);
 }
 
+/*! \brief Delete leaf t with parent p; b is the bit for t under p.
+ * Optionally return the deleted value via val.  The function can't fail. */
 static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
 {
 	assert(!tkey(t)->cow);
@@ -770,10 +772,10 @@ static int ns_prefix(nstack_t *ns)
 {
 	assert(ns && ns->len > 0);
 	// Simply walk up the trie until we find a BMP_NOBYTE child (our result).
-	while (--ns->len >= 2) {
-		node_t *t = ns->stack[ns->len - 1];
-		if (hastwig(t, BMP_NOBYTE)) {
-			ns->stack[ns->len++] = twig(t, 0);
+	while (--ns->len > 0) {
+		node_t *p = ns->stack[ns->len - 1];
+		if (hastwig(p, BMP_NOBYTE)) {
+			ns->stack[ns->len++] = twig(p, 0);
 			return KNOT_EOK;
 		}
 	}
@@ -784,11 +786,10 @@ static int ns_prefix(nstack_t *ns)
  *
  * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
  *         or KNOT_E*.
- * FIXME: review
  */
 static int ns_get_leq(nstack_t *ns, const char *key, uint32_t len)
 {
-	//XXX First find a key with longest-matching prefix
+	// First find the key with longest-matching prefix
 	index_t idiff;
 	bitmap_t tbit, kbit;
 	ERR_RETURN(ns_find_branch(ns, key, len, &idiff, &tbit, &kbit));
@@ -861,7 +862,7 @@ int trie_it_get_leq(trie_it_t *it, const char *key, uint32_t len)
 	}
 	it->len = 1;
 	int ret = ns_get_leq(it, key, len);
-	if (ret == KNOT_EOK && ret == 1) {
+	if (ret == KNOT_EOK || ret == 1) {
 		assert(trie_it_key(it, NULL));
 	} else {
 		it->len = 0;
@@ -1110,7 +1111,7 @@ void trie_it_del(trie_it_t *it)
 		const char *key = trie_it_key(it, &len);
 		b = twigbit(p, key, len);
 	}
-	// We could trie_it_next(it) now, in case we wanted that semantics.
+	// We could trie_it_{next,prev,...}(it) now, in case we wanted that semantics.
 	it->len = 0;
 	del_found(ns_gettrie(it), t, p, b, NULL);
 }
