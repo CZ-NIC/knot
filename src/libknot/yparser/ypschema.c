@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -140,15 +140,25 @@ static int set_item(
 		memcpy((void *)dst->name, src->name, src->name[0] + 2);
 	}
 
+	int ret;
+
 	// Item type specific preparation.
 	switch (src->type) {
 	case YP_TREF:
-		return set_ref_item(dst, schema);
+		ret = set_ref_item(dst, schema);
+		break;
 	case YP_TGRP:
-		return set_grp_item(dst, src, schema);
+		ret = set_grp_item(dst, src, schema);
+		break;
 	default:
-		return KNOT_EOK;
+		ret = KNOT_EOK;
 	}
+
+	if (ret != KNOT_EOK && src->flags & YP_FALLOC) {
+		free((void *)dst->name);
+	}
+
+	return ret;
 }
 
 static void unset_item(
@@ -156,12 +166,12 @@ static void unset_item(
 {
 	if (item->flags & YP_FALLOC) {
 		free((void *)item->name);
+	}
+	if (item->type & YP_TGRP) {
+		free(item->sub_items);
 		if (item->flags & YP_FALLOC) {
 			free((void *)item->var.g.sub_items);
 		}
-	}
-	if (item->sub_items != NULL) {
-		free(item->sub_items);
 	}
 
 	memset(item, 0, sizeof(yp_item_t));
@@ -194,18 +204,20 @@ int yp_schema_copy(
 
 	// Allocate space for new schema (+ terminal NULL item).
 	size_t size = (schema_count(src) + 1) * sizeof(yp_item_t);
-	*dst = malloc(size);
-	if (*dst == NULL) {
+	yp_item_t *out = malloc(size);
+	if (out == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(*dst, 0, size);
+	memset(out, 0, size);
 
 	// Copy the schema.
-	int ret = schema_copy(*dst, src, *dst);
+	int ret = schema_copy(out, src, out);
 	if (ret != KNOT_EOK) {
-		yp_schema_free(*dst);
+		free(out);
 		return ret;
 	}
+
+	*dst = out;
 
 	return KNOT_EOK;
 }
@@ -225,25 +237,27 @@ int yp_schema_merge(
 
 	// Allocate space for new schema (+ terminal NULL item).
 	size_t size = (count1 + count2 + 1) * sizeof(yp_item_t);
-	*dst = malloc(size);
-	if (*dst == NULL) {
+	yp_item_t *out = malloc(size);
+	if (out == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(*dst, 0, size);
+	memset(out, 0, size);
 
 	// Copy the first schema.
-	int ret = schema_copy(*dst, src1, *dst);
+	int ret = schema_copy(out, src1, out);
 	if (ret != KNOT_EOK) {
-		yp_schema_free(*dst);
+		free(out);
 		return ret;
 	}
 
 	// Copy the second schema.
-	ret = schema_copy(*dst + count1, src2, *dst);
+	ret = schema_copy(out + count1, src2, out);
 	if (ret != KNOT_EOK) {
-		yp_schema_free(*dst);
+		free(out);
 		return ret;
 	}
+
+	*dst = out;
 
 	return KNOT_EOK;
 }
