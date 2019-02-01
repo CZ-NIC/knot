@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -116,8 +116,8 @@ int net_accept(int sock, struct sockaddr_storage *addr);
  *
  * \return Number of bytes sent or negative error code.
  */
-ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
-                 const struct sockaddr *addr, int timeout_ms);
+ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
+                      const struct sockaddr *addr, int timeout_ms);
 
 /*!
  * \brief Receive a message from a socket.
@@ -130,8 +130,8 @@ ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
  *
  * \return Number of bytes read or negative error code.
  */
-ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
-                 struct sockaddr_storage *addr, int timeout_ms);
+ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
+                      struct sockaddr_storage *addr, int timeout_ms);
 
 /*!
  * \brief Send a message on a SOCK_DGRAM socket.
