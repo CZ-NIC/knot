@@ -171,18 +171,8 @@ void trie_it_parent(trie_it_t *it);
 /*! \brief trie_get_leq() but with an iterator. */
 int trie_it_get_leq(trie_it_t *it, const char *key, uint32_t len);
 
-
-//Smaže aktuální prvek z trie, přesune iterátor na další prvek, nebo na ukončený iterátor (?). Pozor na nekompatibilitu této funkce s COW.
-/* TODO:
- * 	- keep the iterator valid after this?
- * 	- allow in COW state?
- */
+/*! \brief Remove the current element.  The iterator will get trie_it_finished() */
 void trie_it_del(trie_it_t *it);
-
-/* +TODO: a reasonably efficient way to _get_first and _del_first for resolver
- * it's probably fast enough to have it_begin, it_{key,val} and it_del,
- * it's just using heap instead of stack... */
-
 
 
 /*! \brief Start a COW transaction

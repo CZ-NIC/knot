@@ -451,7 +451,7 @@ trie_val_t* trie_get_try(trie_t *tbl, const char *key, uint32_t len)
 	return tvalp(t);
 }
 
-static int del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
+static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
 {
 	assert(!tkey(t)->cow);
 	mm_free(&tbl->mm, tkey(t));
@@ -461,7 +461,7 @@ static int del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *
 	if (unlikely(!p)) { // whole trie was a single leaf
 		assert(tbl->weight == 0);
 		tbl->root = empty_root();
-		return KNOT_EOK;
+		return;
 	}
 	// remove leaf t as child of p
 	node_t *tp = twigs(p);
@@ -472,7 +472,7 @@ static int del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *
 		// collapse binary node p: move the other child to the parent
 		*p = tp[1 - ci];
 		mm_free(&tbl->mm, tp);
-		return KNOT_EOK;
+		return;
 	}
 	memmove(tp + ci, tp + ci + 1, sizeof(node_t) * (cc - ci - 1));
 	p->i &= ~b;
@@ -483,7 +483,6 @@ static int del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *
 	// We can ignore mm_realloc failure because an oversized twig
 	// array is OK - only beware that next time the prev_size
 	// passed to mm_realloc will not be correct; TODO?
-	return KNOT_EOK;
 }
 
 int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val)
@@ -505,7 +504,8 @@ int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val)
 	tkey_t *lkey = tkey(t);
 	if (key_cmp(key, len, lkey->chars, lkey->len) != 0)
 		return KNOT_ENOENT;
-	return del_found(tbl, t, p, b, val);
+	del_found(tbl, t, p, b, val);
+	return KNOT_EOK;
 }
 
 /*!
@@ -1091,6 +1091,30 @@ void trie_it_parent(trie_it_t *it)
 		it->len = 0;
 }
 
+void trie_it_del(trie_it_t *it)
+{
+	assert(it && it->len);
+	if (it->len == 0)
+		return;
+	node_t *t = it->stack[it->len - 1];
+	assert(!isbranch(t));
+	bitmap_t b; // del_found() needs to know which bit to zero in the bitmap
+	node_t *p;
+	if (it->len == 1) { // deleting the root
+		p = NULL;
+		b = 0; // unused
+	} else {
+		p = it->stack[it->len - 2];
+		assert(isbranch(p));
+		size_t len;
+		const char *key = trie_it_key(it, &len);
+		b = twigbit(p, key, len);
+	}
+	// We could trie_it_next(it) now, in case we wanted that semantics.
+	it->len = 0;
+	del_found(ns_gettrie(it), t, p, b, NULL);
+}
+
 
 /*!\file
  *
@@ -1303,7 +1327,6 @@ trie_val_t* trie_get_cow(trie_cow_t *cow, const char *key, uint32_t len)
 int trie_del_cow(trie_cow_t *cow, const char *key, uint32_t len, trie_val_t *val)
 {
 	trie_t *tbl = cow->new;
-	// First leaf in an empty tbl?
 	if (unlikely(!tbl->weight))
 		return KNOT_ENOENT;
 	{ // Intentionally un-indented; until end of function, to bound cleanup attr.
@@ -1320,8 +1343,9 @@ int trie_del_cow(trie_cow_t *cow, const char *key, uint32_t len, trie_val_t *val
 	ERR_RETURN(cow_pushdown(cow, ns));
 	node_t *t = ns->stack[ns->len - 1];
 	node_t *p = ns->len >= 2 ? ns->stack[ns->len - 2] : NULL;
-	return del_found(tbl, t, p, p ? twigbit(p, key, len) : 0, val);
+	del_found(tbl, t, p, p ? twigbit(p, key, len) : 0, val);
 	}
+	return KNOT_EOK;
 }
 
 /*! \brief clean up after a COW transaction, recursively */
