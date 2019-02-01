@@ -207,6 +207,7 @@ child.dnssec(child_zone).propagation_delay = 11
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 2
 child.dnssec(child_zone).ksk_shared = True
+child.dnssec(child_zone).cds_publish = "always"
 if DOUBLE_DS:
     child.dnssec(child_zone).cds_publish = "double-ds"
 
