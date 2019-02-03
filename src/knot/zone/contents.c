@@ -622,6 +622,19 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
 	return zone_contents_find_node(contents, wildcard);
 }
 
+bool zone_contents_find_node_or_wildcard(const zone_contents_t *contents,
+                                         const knot_dname_t *find,
+                                         const zone_node_t **found)
+{
+	const zone_node_t *encloser = NULL;
+	zone_contents_find_dname(contents, find, found, &encloser, NULL);
+	if (*found == NULL && encloser != NULL && (encloser->flags & NODE_FLAGS_WILDCARD_CHILD)) {
+		*found = zone_contents_find_wildcard_child(contents, encloser);
+		assert(*found != NULL);
+	}
+	return (*found != NULL);
+}
+
 int zone_contents_apply(zone_contents_t *contents,
                         zone_contents_apply_cb_t function, void *data)
 {

@@ -221,6 +221,12 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	for (uint16_t i = 0; i < additional->count; i++) {
 		glue_t *glue = &additional->glues[i];
 		uint32_t flags = KNOT_PF_NULL;
+		const zone_node_t *gnode = NULL;
+
+		if (!zone_contents_find_node_or_wildcard(qdata->extra->zone->contents,
+							 glue->name, &gnode)) {
+			continue;
+		}
 
 		/* Optional glue doesn't cause truncation. (RFC 1034/4.3.2 step 3b). */
 		if (state != KNOTD_IN_STATE_DELEG || glue->optional) {
@@ -229,9 +235,9 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 		uint16_t hint = knot_compr_hint(info, KNOT_COMPR_HINT_RDATA +
 		                                glue->ns_pos);
-		knot_rrset_t rrsigs = node_rrset(glue->node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t rrsigs = node_rrset(gnode, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
-			knot_rrset_t rrset = node_rrset(glue->node, ar_type_list[k]);
+			knot_rrset_t rrset = node_rrset(gnode, ar_type_list[k]);
 			if (knot_rrset_empty(&rrset)) {
 				continue;
 			}

@@ -48,7 +48,7 @@ typedef struct zone_node {
 
 /*!< \brief Glue node context. */
 typedef struct {
-	const zone_node_t *node; /*!< Glue node. */
+	const knot_dname_t *name;
 	uint16_t ns_pos; /*!< Corresponding NS record position (for compression). */
 	bool optional; /*!< Optional glue indicator. */
 } glue_t;

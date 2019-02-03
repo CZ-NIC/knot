@@ -165,6 +165,10 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *contents,
 const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *contents,
                                                      const zone_node_t *parent);
 
+bool zone_contents_find_node_or_wildcard(const zone_contents_t *contents,
+                                         const knot_dname_t *find,
+                                         const zone_node_t **found);
+
 /*!
  * \brief Applies the given function to each regular node in the zone.
  *
