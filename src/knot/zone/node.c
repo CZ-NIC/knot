@@ -127,6 +127,7 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 		return;
 	}
 
+	free(node->nsec3_wildcard_hash);
 	knot_dname_free(node->owner, mm);
 
 	if (node->rrs != NULL) {

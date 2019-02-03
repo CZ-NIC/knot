@@ -579,6 +579,14 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 		return ret;
 	}
 
+	return zone_contents_find_nsec3(zone, nsec3_name, nsec3_node, nsec3_previous);
+}
+
+int zone_contents_find_nsec3(const zone_contents_t *zone,
+                             const knot_dname_t *nsec3_name,
+                             const zone_node_t **nsec3_node,
+                             const zone_node_t **nsec3_previous)
+{
 	zone_node_t *found = NULL, *prev = NULL;
 	bool match = find_in_tree(zone->nsec3_nodes, nsec3_name, &found, &prev);
 

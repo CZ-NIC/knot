@@ -50,7 +50,6 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 		node->nsec3_node = NULL;
 		return KNOT_EOK;
 	}
-	node->nsec3_wildcard_prev = NULL;
 	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), node->owner,
 	                                  zone->apex->owner, &zone->nsec3_params);
@@ -63,26 +62,27 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
 	if (!knot_is_nsec3_enabled(zone)) {
-		node->nsec3_wildcard_prev = NULL;
+		node->nsec3_wildcard_hash = NULL;
 		return KNOT_EOK;
 	}
 
-	const zone_node_t *ignored;
-	int ret = KNOT_EOK;
 	size_t wildcard_size = knot_dname_size(node->owner) + 2;
 	if (wildcard_size <= KNOT_DNAME_MAXLEN) {
 		assert(wildcard_size > 2);
 		knot_dname_t wildcard[wildcard_size];
 		memcpy(wildcard, "\x01""*", 2);
 		memcpy(wildcard + 2, node->owner, wildcard_size - 2);
-		ret = zone_contents_find_nsec3_for_name(zone, wildcard, &ignored,
-							(const zone_node_t **)&node->nsec3_wildcard_prev);
-		if (ret == ZONE_NAME_FOUND) {
-			node->nsec3_wildcard_prev = NULL;
-			ret = KNOT_EOK;
+
+		dnssec_binary_t data = { wildcard_size, wildcard };
+		dnssec_binary_t hash = { 0 };
+		int ret = dnssec_nsec3_hash(&data, &zone->nsec3_params, &hash);
+		if (ret != DNSSEC_EOK) {
+			return knot_error_from_libdnssec(ret);
 		}
+		node->nsec3_wildcard_hash = hash.data;
+		assert(knot_nsec3_hashlen(zone) == hash.size);
 	}
-	return ret;
+	return KNOT_EOK;
 }
 
 static bool nsec3_params_match(const knot_rdataset_t *rrs,

@@ -40,7 +40,7 @@ typedef struct zone_node {
 	 */
 	struct zone_node *prev;
 	struct zone_node *nsec3_node; /*! NSEC3 node corresponding to this node. */
-	struct zone_node *nsec3_wildcard_prev; /*! NSEC3 node for proof of wildcard non-existence. */
+	uint8_t *nsec3_wildcard_hash;
 	uint32_t children; /*!< Count of children nodes in DNS hierarchy. */
 	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */
 	uint8_t flags; /*!< \ref node_flags enum. */

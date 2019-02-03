@@ -162,6 +162,11 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *contents,
                                       const zone_node_t **nsec3_node,
                                       const zone_node_t **nsec3_previous);
 
+int zone_contents_find_nsec3(const zone_contents_t *zone,
+                             const knot_dname_t *nsec3_name,
+                             const zone_node_t **nsec3_node,
+                             const zone_node_t **nsec3_previous);
+
 const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *contents,
                                                      const zone_node_t *parent);
 

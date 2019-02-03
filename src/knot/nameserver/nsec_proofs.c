@@ -438,12 +438,20 @@ static int put_nsec3_nxdomain(const knot_dname_t *qname,
 	}
 
 	// NSEC3 covering the (nonexistent) wildcard at the closest encloser.
+	size_t nsec3_name_size = knot_nsec3_namelen(zone);
+	knot_dname_t nsec3_wildcard_dname[nsec3_name_size];
+	ret = knot_nsec3_hash_to_dname(nsec3_wildcard_dname, nsec3_name_size, cpe->nsec3_wildcard_hash, knot_nsec3_hashlen(zone), zone->apex->owner);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
-	if (cpe->nsec3_wildcard_prev == NULL) {
+	const zone_node_t *nsec3_wildcard_prev, *ignored;
+	ret = zone_contents_find_nsec3(zone, nsec3_wildcard_dname, &ignored, &nsec3_wildcard_prev);
+	if (ret == ZONE_NAME_FOUND) {
 		return KNOT_ERROR;
 	}
 
-	return put_nsec3_from_node(cpe->nsec3_wildcard_prev, qdata, resp);
+	return put_nsec3_from_node(nsec3_wildcard_prev, qdata, resp);
 }
 
 /*!
