@@ -1088,7 +1088,7 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 	}
 
 	/* RFC 6672 Section 2.3 Paragraph 3 */
-	bool is_apex = (node->parent == NULL);
+	bool is_apex = (node->flags & NODE_FLAGS_APEX);
 	if (!is_apex && node_rrtype_exists(node, KNOT_RRTYPE_NS)) {
 		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,

@@ -163,6 +163,7 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 	if (zone_tree_insert(contents->nodes, contents->apex) != KNOT_EOK) {
 		goto cleanup;
 	}
+	contents->apex->flags |= NODE_FLAGS_APEX;
 
 	return contents;
 
