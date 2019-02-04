@@ -248,14 +248,10 @@ knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type)
 
 void node_set_parent(zone_node_t *node, zone_node_t *parent)
 {
-	if (node == NULL || node->parent == parent) {
-		return;
-	}
+	// node must not have any parent previously
+	assert(node != NULL);
+	assert(node->parent == NULL);
 
-	// decrease number of children of previous parent
-	if (node->parent != NULL) {
-		--node->parent->children;
-	}
 	// set the parent
 	node->parent = parent;
 
