@@ -297,8 +297,6 @@ static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
 		return NULL;
 	}
 
-	node_set_parent(new_node, apex_node);
-
 	knot_rrset_t nsec3_rrset;
 	int ret = create_nsec3_rrset(&nsec3_rrset, owner, nsec3_params,
 	                             rr_types, NULL, ttl);
