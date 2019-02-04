@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
     Copyright (C) 2018 Tony Finch <dot@dotat.at>
 
     This program is free software: you can redistribute it and/or modify
