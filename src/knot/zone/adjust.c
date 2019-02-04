@@ -38,7 +38,7 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 		node->flags |= NODE_FLAGS_DELEG;
 	} else {
 		// Default.
-		node->flags = NODE_FLAGS_AUTH;
+		node->flags = NODE_FLAGS_AUTH | (node->flags & NODE_FLAGS_APEX);
 	}
 
 	return KNOT_EOK; // always returns this value :)
