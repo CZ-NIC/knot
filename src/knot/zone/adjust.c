@@ -135,17 +135,32 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 	for (uint16_t i = 0; i < rdcount; i++) {
 		knot_rdata_t *rdata = knot_rdataset_at(rrs, i);
 		const knot_dname_t *dname = knot_rdata_name(rdata, rr_data->type);
+		const zone_node_t *node = NULL, *encloser = NULL;
+
+		/* Try to find node for the dname in the RDATA. */
+		zone_contents_find_dname(zone, dname, &node, &encloser, NULL);
+		if (node == NULL && encloser != NULL
+		    && (encloser->flags & NODE_FLAGS_WILDCARD_CHILD)) {
+			/* Find wildcard child in the zone. */
+			node = zone_contents_find_wildcard_child(zone, encloser);
+			assert(node != NULL);
+		}
+
+		if (node == NULL) {
+			continue;
+		}
 
 		glue_t *glue;
-		if (rr_data->type == KNOT_RRTYPE_NS &&
-		    knot_dname_in_bailiwick(dname, owner) >= 0) {
+		if ((node->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH)) &&
+		    rr_data->type == KNOT_RRTYPE_NS &&
+		    knot_dname_in_bailiwick(node->owner, owner) >= 0) {
 			glue = &mandatory[mandatory_count++];
 			glue->optional = false;
 		} else {
 			glue = &others[others_count++];
 			glue->optional = true;
 		}
-		glue->name = dname;
+		glue->node = node;
 		glue->ns_pos = i;
 	}
 
