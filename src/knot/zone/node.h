@@ -81,6 +81,8 @@ enum node_flags {
 	NODE_FLAGS_WILDCARD_CHILD =  1 << 4,
 	/*! \brief Is this NSEC3 node compatible with zone's NSEC3PARAMS ? */
 	NODE_FLAGS_IN_NSEC3_CHAIN =  1 << 5,
+	/*! \brief Node is the zone Apex. */
+	NODE_FLAGS_APEX =            1 << 6,
 };
 
 /*!

@@ -154,7 +154,7 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 		if (parent_node != NULL) {
 			parent_node->children--;
 			fix_wildcard_child(parent_node, node->owner);
-			if (parent_node->parent != NULL) { /* Is not apex */
+			if (!(parent_node->flags & NODE_FLAGS_APEX)) { /* Is not apex */
 				// Recurse using the parent node, do not delete possibly empty parent.
 				zone_tree_delete_empty(tree, parent_node);
 			}

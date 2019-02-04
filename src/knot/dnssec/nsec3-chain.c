@@ -701,7 +701,7 @@ static int nsec3_mark_empty(zone_node_t **node_p, void *data)
 		 */
 		node->flags |= NODE_FLAGS_EMPTY;
 
-		if (node->parent) {
+		if (!(node->flags & NODE_FLAGS_APEX)) {
 			/* We must decrease the parent's children count,
 			 * but only temporarily! It must be set back right after
 			 * the operation
