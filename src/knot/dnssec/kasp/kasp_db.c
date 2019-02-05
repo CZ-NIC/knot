@@ -53,6 +53,10 @@ static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const 
 		} else {
 			return knot_lmdb_make_key("BNS", (int)kclass, dname, str);
 		}
+	default:
+		assert(0);
+		MDB_val empty = { 0 };
+		return empty;
 	}
 }
 
