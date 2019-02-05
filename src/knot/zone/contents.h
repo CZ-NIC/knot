@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -94,6 +94,14 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
  */
 const zone_node_t *zone_contents_find_node(const zone_contents_t *contents, const knot_dname_t *name);
 
+/*!
+ * \brief Find a node in which the given rrset may be inserted,
+ *
+ * \param contents   Zone contents.
+ * \param rrset      RRSet to be inserted later.
+ *
+ * \return Existing node in zone which the RRSet may be inserted in; or NULL if none present.
+ */
 zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const knot_rrset_t *rrset);
 
 /*!
@@ -162,8 +170,46 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *contents,
                                       const zone_node_t **nsec3_node,
                                       const zone_node_t **nsec3_previous);
 
+/*!
+ * \brief Finds NSEC3 node and previous NSEC3 node to specified NSEC3 name.
+ *
+ * Like previous function, but the NSEC3 hashed-name is already known.
+ *
+ * \param zone             Zone contents to search in,
+ * \param nsec3_name       NSEC3 name to be searched for.
+ * \param nsec3_node       Out: NSEC3 node found.
+ * \param nsec3_previous   Out: previous NSEC3 node.
+ *
+ * \return ZONE_NAME_FOUND, ZONE_NAME_NOT_FOUND, KNOT_E*
+ */
+int zone_contents_find_nsec3(const zone_contents_t *zone,
+                             const knot_dname_t *nsec3_name,
+                             const zone_node_t **nsec3_node,
+                             const zone_node_t **nsec3_previous);
+
+/*!
+ * \brief For specified node, give a wildcard child if exists in zone.
+ *
+ * \param contents   Zone contents.
+ * \param parent     Given parent node.
+ *
+ * \return Node being a wildcard child; or NULL.
+ */
 const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *contents,
                                                      const zone_node_t *parent);
+
+/*!
+ * \brief For given name, find either exactly matching node in zone, or a matching wildcard node.
+ *
+ * \param contents   Zone contents to be searched in.
+ * \param find       Name to be searched for.
+ * \param found      Out: a node that either has owner "find" or is matching wildcard node.
+ *
+ * \return true iff found something
+ */
+bool zone_contents_find_node_or_wildcard(const zone_contents_t *contents,
+                                         const knot_dname_t *find,
+                                         const zone_node_t **found);
 
 /*!
  * \brief Applies the given function to each regular node in the zone.

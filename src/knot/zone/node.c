@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -128,6 +128,7 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 	}
 
 	knot_dname_free(node->owner, mm);
+	free(node->nsec3_wildcard_name);
 
 	if (node->rrs != NULL) {
 		mm_free(mm, node->rrs);

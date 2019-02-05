@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ typedef struct zone_node {
 	 */
 	struct zone_node *prev;
 	struct zone_node *nsec3_node; /*! NSEC3 node corresponding to this node. */
-	struct zone_node *nsec3_wildcard_prev; /*! NSEC3 node for proof of wildcard non-existence. */
+	knot_dname_t *nsec3_wildcard_name; /*! Name of NSEC3 node proving wildcard nonexistence. */
 	uint32_t children; /*!< Count of children nodes in DNS hierarchy. */
 	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */
 	uint8_t flags; /*!< \ref node_flags enum. */
