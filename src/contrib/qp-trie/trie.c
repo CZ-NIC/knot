@@ -711,7 +711,8 @@ static int ns_prev_leaf(nstack_t *ns)
 	assert(ns && ns->len > 0);
 
 	node_t *t = ns->stack[ns->len - 1];
-	if (hastwig(t, BMP_NOBYTE)) {
+	// Beware: BMP_NOBYTE child is ordered *before* its parent.
+	if (isbranch(t) && hastwig(t, BMP_NOBYTE)) {
 		ERR_RETURN(ns_longer(ns));
 		ns->stack[ns->len++] = twig(t, 0);
 		return KNOT_EOK;
