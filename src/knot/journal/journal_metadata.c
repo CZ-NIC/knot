@@ -16,25 +16,35 @@
 
 #include "knot/journal/journal_metadata.h"
 
+#include "libknot/endian.h"
 #include "libknot/error.h"
 
 static void fix_endian(void *data, size_t data_size, bool in)
 {
-	uint8_t tmp[data_size];
-	memcpy(tmp, data, data_size);
+	union {
+		uint8_t  u8;
+		uint16_t u16;
+		uint32_t u32;
+		uint64_t u64;
+	} before, after;
+
+	memcpy(&before, data, data_size);
 	switch (data_size) {
+	case sizeof(uint8_t):
+		return;
 	case sizeof(uint16_t):
-		*(uint16_t *)data = in ? be16toh(*(uint16_t *)tmp) : htobe16(*(uint16_t *)tmp);
+		after.u16 = in ? be16toh(before.u16) : htobe16(before.u16);
 		break;
 	case sizeof(uint32_t):
-		*(uint32_t *)data = in ? be32toh(*(uint32_t *)tmp) : htobe32(*(uint32_t *)tmp);
+		after.u32 = in ? be32toh(before.u32) : htobe32(before.u32);
 		break;
 	case sizeof(uint64_t):
-		*(uint64_t *)data = in ? be64toh(*(uint64_t *)tmp) : htobe64(*(uint64_t *)tmp);
+		after.u64 = in ? be64toh(before.u64) : htobe64(before.u64);
 		break;
 	default:
 		assert(0);
 	}
+	memcpy(data, &after, data_size);
 }
 
 static MDB_val metadata_key(const knot_dname_t *zone, const char *metadata)
