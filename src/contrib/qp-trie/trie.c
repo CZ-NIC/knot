@@ -28,7 +28,6 @@
 #include "contrib/mempattern.h"
 #include "libknot/errcode.h"
 
-typedef unsigned char byte;
 typedef unsigned int uint;
 typedef uint64_t index_t; /*!< nibble index into a key */
 typedef uint64_t word; /*!< A type-punned word */
@@ -260,7 +259,7 @@ static bitmap_t keybit(index_t ni, const trie_key_t *key, uint32_t len)
 	if (bytei >= len)
 		return BMP_NOBYTE;
 
-	byte ki = (byte)key[bytei];
+	uint8_t ki = (uint8_t)key[bytei];
 	uint nibble = (ni & 1) ? (ki & 0xf) : (ki >> 4);
 
 	// skip one for NOBYTE nibbles after the end of the key
@@ -633,8 +632,8 @@ static int ns_find_branch(nstack_t *ns, const trie_key_t *key, uint32_t len,
 		goto success;
 	}
 	if (likely(bytei < MIN(len,klen))) {
-		byte k2 = (byte)lkey->chars[bytei];
-		byte k1 = (byte)key[bytei];
+		uint8_t k2 = (uint8_t)lkey->chars[bytei];
+		uint8_t k1 = (uint8_t)key[bytei];
 		if (((k1 ^ k2) & 0xf0) == 0)
 			index += 1;
 	}
