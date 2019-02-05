@@ -234,6 +234,15 @@ int adjust_cb_nsec3_and_additionals(zone_node_t *node, const zone_contents_t *zo
 	return ret;
 }
 
+static int adjust_cb_nsec3_and_additionals2(zone_node_t *node, const zone_contents_t *zone)
+{
+	int ret = adjust_cb_point_to_nsec3(node, zone);
+	if (ret == KNOT_EOK) {
+		ret = adjust_cb_additionals(node, zone);
+	}
+	return ret;
+}
+
 int adjust_cb_void(zone_node_t *node, const zone_contents_t *zone)
 {
 	UNUSED(node);
@@ -391,6 +400,18 @@ int zone_adjust_full(zone_contents_t *zone)
 	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags, true);
 	if (ret == KNOT_EOK) {
 		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false);
+	}
+	return ret;
+}
+
+int zone_adjust_incremental_update(zone_update_t *update)
+{
+	int ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, true);
+	if (ret == KNOT_EOK) {
+		ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_and_additionals2, NULL, false);
+	}
+	if (ret == KNOT_EOK) {
+		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, NULL);
 	}
 	return ret;
 }

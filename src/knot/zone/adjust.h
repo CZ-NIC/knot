@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -94,3 +94,12 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
  * \return KNOT_E*
  */
 int zone_adjust_full(zone_contents_t *zone);
+
+/*!
+ * \brief Do a generally approved adjust after incremental update.
+ *
+ * \param update   Zone update to be adjusted incrementally.
+ *
+ * \return KNOT_E*
+ */
+int zone_adjust_incremental_update(zone_update_t *update);

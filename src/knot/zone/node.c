@@ -155,7 +155,9 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 	dst->rrset_count = src->rrset_count;
 	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
 	dst->rrs = mm_alloc(mm, rrlen);
-	if (dst->rrs == NULL) {
+	dst->nsec3_wildcard_name = knot_dname_copy(src->nsec3_wildcard_name, NULL);
+	if (dst->rrs == NULL ||
+	    (src->nsec3_wildcard_name != NULL && dst->nsec3_wildcard_name == NULL)) {
 		node_free(dst, mm);
 		return NULL;
 	}
