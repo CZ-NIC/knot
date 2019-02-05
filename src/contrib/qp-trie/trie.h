@@ -25,7 +25,7 @@
 /*!
  * \brief Native API of QP-tries:
  *
- * - keys are char strings, not necessarily zero-terminated,
+ * - keys are uint8_t strings, not necessarily zero-terminated,
  *   the structure copies the contents of the passed keys
  * - values are void* pointers, typically you get an ephemeral pointer to it
  * - key lengths are limited by 2^32-1 ATM
@@ -33,6 +33,8 @@
 
 /*! \brief Element value. */
 typedef void* trie_val_t;
+/*! \brief Key for indexing tries.  Sign could be flipped easily. */
+typedef uint8_t trie_key_t;
 
 /*! \brief Opaque structure holding a QP-trie. */
 typedef struct trie trie_t;
@@ -52,7 +54,7 @@ typedef trie_val_t (*trie_dup_cb)(const trie_val_t val, knot_mm_t *mm);
  * \param len	The length of key
  * \param d	Additional user data
  */
-typedef void trie_cb(trie_val_t val, const char *key, size_t len, void *d);
+typedef void trie_cb(trie_val_t val, const trie_key_t *key, size_t len, void *d);
 
 /*! \brief Opaque type for holding the copy-on-write state for a QP-trie. */
 typedef struct trie_cow trie_cow_t;
@@ -73,10 +75,10 @@ trie_t* trie_dup(const trie_t *orig, trie_dup_cb dup_cb, knot_mm_t *mm);
 size_t trie_weight(const trie_t *tbl);
 
 /*! \brief Search the trie, returning NULL on failure. */
-trie_val_t* trie_get_try(trie_t *tbl, const char *key, uint32_t len);
+trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len);
 
 /*! \brief Search the trie, inserting NULL trie_val_t on failure. */
-trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len);
+trie_val_t* trie_get_ins(trie_t *tbl, const trie_key_t *key, uint32_t len);
 
 /*!
  * \brief Search for less-or-equal element.
@@ -88,7 +90,7 @@ trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len);
  * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
  *         or KNOT_E*.
  */
-int trie_get_leq(trie_t *tbl, const char *key, uint32_t len, trie_val_t **val);
+int trie_get_leq(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t **val);
 
 /*!
  * \brief Apply a function to every trie_val_t, in order.
@@ -102,7 +104,7 @@ int trie_apply(trie_t *tbl, int (*f)(trie_val_t *, void *), void *d);
  *
  * If val!=NULL and deletion succeeded, the deleted value is set.
  */
-int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val);
+int trie_del(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t *val);
 
 
 /*! \brief Create a new iterator pointing to the first element (if any).
@@ -129,7 +131,7 @@ trie_it_t *trie_it_clone(const trie_it_t *it);
  * \note The len is uint32_t internally but size_t is better for our usage
  *       as it is without an additional type conversion.
  */
-const char* trie_it_key(trie_it_t *it, size_t *len);
+const trie_key_t* trie_it_key(trie_it_t *it, size_t *len);
 
 /*! \brief Return pointer to the value of the current element (writable). */
 trie_val_t* trie_it_val(trie_it_t *it);
@@ -169,7 +171,7 @@ void trie_it_next_nosub(trie_it_t *it);
 void trie_it_parent(trie_it_t *it);
 
 /*! \brief trie_get_leq() but with an iterator. */
-int trie_it_get_leq(trie_it_t *it, const char *key, uint32_t len);
+int trie_it_get_leq(trie_it_t *it, const trie_key_t *key, uint32_t len);
 
 /*! \brief Remove the current element.  The iterator will get trie_it_finished() */
 void trie_it_del(trie_it_t *it);
@@ -231,7 +233,7 @@ trie_t* trie_cow_new(trie_cow_t *cow);
  * object you must change the original's reachability from shared to old-only.
  * New objects (including copies) must have new-only reachability.
  */
-trie_val_t* trie_get_cow(trie_cow_t *cow, const char *key, uint32_t len);
+trie_val_t* trie_get_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len);
 
 /*!
  * \brief variant of trie_del() for use during COW transactions
@@ -243,7 +245,7 @@ trie_val_t* trie_get_cow(trie_cow_t *cow, const char *key, uint32_t len);
  * If val!=NULL and deletion succeeded, the *val is set to the deleted
  * value pointer.
  */
-int trie_del_cow(trie_cow_t *cow, const char *key, uint32_t len, trie_val_t *val);
+int trie_del_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len, trie_val_t *val);
 
 /*! \brief clean up the old trie after committing a COW transaction
  *

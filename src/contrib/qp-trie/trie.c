@@ -51,7 +51,7 @@ typedef char static_assert_pointer_fits_in_word
  */
 typedef struct {
 	uint32_t cow:1, len:KEYLENBITS;
-	char chars[];
+	trie_key_t chars[];
 } tkey_t;
 
 /*! \brief A trie node is a pair of words.
@@ -159,7 +159,7 @@ typedef char static_assert_bmp_fits
 #define BMP_NOBYTE (BIG1 << TSHIFT_BMP)
 
 /*! \brief Initialize a new leaf, copying the key, and returning failure code. */
-static int mkleaf(node_t *leaf, const char *key, uint32_t len, knot_mm_t *mm)
+static int mkleaf(node_t *leaf, const trie_key_t *key, uint32_t len, knot_mm_t *mm)
 {
 	if (unlikely((word)len > (BIG1 << KEYLENBITS)))
 		return KNOT_ENOMEM;
@@ -253,7 +253,7 @@ static uint twigoff(const node_t *t, bitmap_t bit)
 }
 
 /*! \brief Extract a nibble from a key and turn it into a bitmask. */
-static bitmap_t keybit(index_t ni, const char *key, uint32_t len)
+static bitmap_t keybit(index_t ni, const trie_key_t *key, uint32_t len)
 {
 	index_t bytei = ni >> 1;
 
@@ -268,7 +268,7 @@ static bitmap_t keybit(index_t ni, const char *key, uint32_t len)
 }
 
 /*! \brief Extract a nibble from a key and turn it into a bitmask. */
-static bitmap_t twigbit(const node_t *t, const char *key, uint32_t len)
+static bitmap_t twigbit(const node_t *t, const trie_key_t *key, uint32_t len)
 {
 	assert(isbranch(t));
 	return keybit(branch_index(t), key, len);
@@ -307,7 +307,8 @@ static uint twig_number(node_t *child, node_t *parent)
 }
 
 /*! \brief Simple string comparator. */
-static int key_cmp(const char *k1, uint32_t k1_len, const char *k2, uint32_t k2_len)
+static int key_cmp(const trie_key_t *k1, uint32_t k1_len,
+		   const trie_key_t *k2, uint32_t k2_len)
 {
 	int ret = memcmp(k1, k2, MIN(k1_len, k2_len));
 	if (ret != 0) {
@@ -432,7 +433,7 @@ size_t trie_weight(const trie_t *tbl)
 	return tbl->weight;
 }
 
-trie_val_t* trie_get_try(trie_t *tbl, const char *key, uint32_t len)
+trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 {
 	assert(tbl);
 	if (!tbl->weight)
@@ -487,7 +488,7 @@ static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t 
 	// passed to mm_realloc will not be correct; TODO?
 }
 
-int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val)
+int trie_del(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t *val)
 {
 	assert(tbl);
 	if (!tbl->weight)
@@ -599,7 +600,7 @@ static inline int ns_longer(nstack_t *ns)
  *
  *  \return KNOT_EOK or KNOT_ENOMEM.
  */
-static int ns_find_branch(nstack_t *ns, const char *key, uint32_t len,
+static int ns_find_branch(nstack_t *ns, const trie_key_t *key, uint32_t len,
                           index_t *idiff, bitmap_t *tbit, bitmap_t *kbit)
 {
 	assert(ns && ns->len && idiff);
@@ -788,7 +789,7 @@ static int ns_prefix(nstack_t *ns)
  * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
  *         or KNOT_E*.
  */
-static int ns_get_leq(nstack_t *ns, const char *key, uint32_t len)
+static int ns_get_leq(nstack_t *ns, const trie_key_t *key, uint32_t len)
 {
 	// First find the key with longest-matching prefix
 	index_t idiff;
@@ -830,7 +831,7 @@ static int ns_get_leq(nstack_t *ns, const char *key, uint32_t len)
 	return 1;
 }
 
-int trie_get_leq(trie_t *tbl, const char *key, uint32_t len, trie_val_t **val)
+int trie_get_leq(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t **val)
 {
 	assert(tbl && val);
 	if (tbl->weight == 0) {
@@ -853,7 +854,7 @@ int trie_get_leq(trie_t *tbl, const char *key, uint32_t len, trie_val_t **val)
 	return ret;
 }
 
-int trie_it_get_leq(trie_it_t *it, const char *key, uint32_t len)
+int trie_it_get_leq(trie_it_t *it, const trie_key_t *key, uint32_t len)
 {
 	assert(it && it->stack[0] && it->alen);
 	const trie_t *tbl = ns_gettrie(it);
@@ -876,7 +877,7 @@ static int cow_pushdown(trie_cow_t *cow, nstack_t *ns);
 
 /*! \brief implementation of trie_get_ins() and trie_get_cow() */
 static trie_val_t* cow_get_ins(trie_cow_t *cow, trie_t *tbl,
-			       const char *key, uint32_t len)
+			       const trie_key_t *key, uint32_t len)
 {
 	assert(tbl);
 	// First leaf in an empty tbl?
@@ -944,7 +945,7 @@ err_leaf:
 	}
 }
 
-trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len)
+trie_val_t* trie_get_ins(trie_t *tbl, const trie_key_t *key, uint32_t len)
 {
 	return cow_get_ins(NULL, tbl, key, len);
 }
@@ -1024,7 +1025,7 @@ trie_it_t *trie_it_clone(const trie_it_t *it)
 	return it2;
 }
 
-const char* trie_it_key(trie_it_t *it, size_t *len)
+const trie_key_t* trie_it_key(trie_it_t *it, size_t *len)
 {
 	assert(it && it->len);
 	node_t *t = it->stack[it->len - 1];
@@ -1109,7 +1110,7 @@ void trie_it_del(trie_it_t *it)
 		p = it->stack[it->len - 2];
 		assert(isbranch(p));
 		size_t len;
-		const char *key = trie_it_key(it, &len);
+		const trie_key_t *key = trie_it_key(it, &len);
 		b = twigbit(p, key, len);
 	}
 	// We could trie_it_{next,prev,...}(it) now, in case we wanted that semantics.
@@ -1321,12 +1322,12 @@ trie_t* trie_cow_new(trie_cow_t *cow)
 	return cow->new;
 }
 
-trie_val_t* trie_get_cow(trie_cow_t *cow, const char *key, uint32_t len)
+trie_val_t* trie_get_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len)
 {
 	return cow_get_ins(cow, cow->new, key, len);
 }
 
-int trie_del_cow(trie_cow_t *cow, const char *key, uint32_t len, trie_val_t *val)
+int trie_del_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len, trie_val_t *val)
 {
 	trie_t *tbl = cow->new;
 	if (unlikely(!tbl->weight))
