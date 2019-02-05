@@ -128,6 +128,7 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 	}
 
 	knot_dname_free(node->owner, mm);
+	free(node->nsec3_wildcard_name);
 
 	if (node->rrs != NULL) {
 		mm_free(mm, node->rrs);

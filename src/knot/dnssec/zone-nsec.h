@@ -35,6 +35,16 @@ inline static bool knot_is_nsec3_enabled(const zone_contents_t *zone)
 	return zone != NULL && zone->nsec3_params.algorithm != 0;
 }
 
+inline static size_t knot_nsec3_hashlen(const zone_contents_t *zone)
+{
+	return knot_is_nsec3_enabled(zone) ? dnssec_nsec3_hash_length(zone->nsec3_params.algorithm) : 0;
+}
+
+inline static size_t knot_nsec3_namelen(const zone_contents_t *zone)
+{
+	return 1 + ((knot_nsec3_hashlen(zone) + 4) / 5) * 8 + knot_dname_size(zone->apex->owner);
+}
+
 /*!
  * \brief Create NSEC3 owner name from hash and zone apex.
  *
