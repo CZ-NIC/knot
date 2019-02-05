@@ -65,6 +65,46 @@ zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
 	return *val;
 }
 
+int zone_tree_get_it(zone_tree_t *tree, const knot_dname_t *owner, trie_it_t **found)
+{
+	if (owner == NULL || found == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	trie_it_t *it = trie_it_begin(tree);
+	if (trie_it_finished(it)) {
+		trie_it_free(it);
+		return KNOT_ENONODE;
+	}
+
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(owner, lf_storage);
+	assert(lf);
+
+	int ret = trie_it_get_leq(it, (char *)lf + 1, *lf);
+	if (ret == KNOT_ENOENT) {
+		trie_it_free(it);
+		it = trie_it_begin(tree);
+		trie_it_prev_loop(it);
+		*found = it;
+		return 0;
+	} else if (ret < 0) {
+		trie_it_free(it);
+		return ret;
+	}
+	*found = it;
+	return ret > 0 ? 0 : 1;
+}
+
+zone_node_t *zone_tree_it_deref(trie_it_t *it)
+{
+	if (trie_it_finished(it)) {
+		//trie_it_free(it);
+		return NULL;
+	}
+	return *(zone_node_t **)trie_it_val(it);
+}
+
 int zone_tree_get_less_or_equal(zone_tree_t *tree,
                                 const knot_dname_t *owner,
                                 zone_node_t **found,

@@ -96,30 +96,7 @@ const zone_node_t *zone_contents_find_node(const zone_contents_t *contents, cons
 
 zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const knot_rrset_t *rrset);
 
-/*!
- * \brief Tries to find a node by owner in the zone contents.
- *
- * \param[in]  contents  Zone to search for the name.
- * \param[in]  name      Domain name to search for.
- * \param[out] match     Matching node or NULL.
- * \param[out] closest   Closest matching name in the zone.
- *                       May match \a match if found exactly.
- * \param[out] previous  Previous domain name in canonical order.
- *                       Always previous, won't match \a match.
- *
- * \note The encloser and previous mustn't be used directly for DNSSEC proofs.
- *       These nodes may be empty non-terminals or not authoritative.
- *
- * \retval ZONE_NAME_FOUND if node with owner \a name was found.
- * \retval ZONE_NAME_NOT_FOUND if it was not found.
- * \retval KNOT_EINVAL
- * \retval KNOT_EOUTOFZONE
- */
-int zone_contents_find_dname(const zone_contents_t *contents,
-                             const knot_dname_t *name,
-                             const zone_node_t **match,
-                             const zone_node_t **closest,
-                             const zone_node_t **previous);
+bool zone_it_prev2encloser(const knot_dname_t *name, trie_it_t *it);
 
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes

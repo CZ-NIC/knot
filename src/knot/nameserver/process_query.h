@@ -33,6 +33,7 @@ typedef struct knotd_qdata_extra {
 
 	/* Currently processed nodes. */
 	const zone_node_t *node, *encloser, *previous;
+	trie_it_t *prev_it, *encloser_it;
 
 	/* Original QNAME case. */
 	uint8_t orig_qname[KNOT_DNAME_MAXLEN];

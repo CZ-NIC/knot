@@ -135,16 +135,20 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 	for (uint16_t i = 0; i < rdcount; i++) {
 		knot_rdata_t *rdata = knot_rdataset_at(rrs, i);
 		const knot_dname_t *dname = knot_rdata_name(rdata, rr_data->type);
-		const zone_node_t *node = NULL, *encloser = NULL;
 
-		/* Try to find node for the dname in the RDATA. */
-		zone_contents_find_dname(zone, dname, &node, &encloser, NULL);
-		if (node == NULL && encloser != NULL
-		    && (encloser->flags & NODE_FLAGS_WILDCARD_CHILD)) {
-			/* Find wildcard child in the zone. */
-			node = zone_contents_find_wildcard_child(zone, encloser);
-			assert(node != NULL);
+		trie_it_t *it = NULL;
+		const zone_node_t *node = NULL, *encloser = NULL;
+		int ret = zone_tree_get_it(zone->nodes, dname, &it);
+		if (ret == ZONE_NAME_NOT_FOUND && zone_it_prev2encloser(dname, it)) {
+			encloser = zone_tree_it_deref(it);
+			if (encloser != NULL && (encloser->flags & NODE_FLAGS_WILDCARD_CHILD)) {
+				node = zone_contents_find_wildcard_child(zone, encloser);
+				assert(node != NULL);
+			}
+		} else if (ret == ZONE_NAME_FOUND) {
+			node = zone_tree_it_deref(it);
 		}
+		trie_it_free(it);
 
 		if (node == NULL) {
 			continue;

@@ -100,44 +100,6 @@ static int measure_max_ttl(zone_node_t *node, void *data){
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Tries to find the given domain name in the zone tree.
- *
- * \param zone Zone to search in.
- * \param name Domain name to find.
- * \param node Found node.
- * \param previous Previous node in canonical order (i.e. the one directly
- *                 preceding \a name in canonical order, regardless if the name
- *                 is in the zone or not).
- *
- * \retval true if the domain name was found. In such case \a node holds the
- *              zone node with \a name as its owner. \a previous is set
- *              properly.
- * \retval false if the domain name was not found. \a node may hold any (or none)
- *               node. \a previous is set properly.
- */
-static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
-                         zone_node_t **node, zone_node_t **previous)
-{
-	assert(tree != NULL);
-	assert(name != NULL);
-	assert(node != NULL);
-	assert(previous != NULL);
-
-	zone_node_t *found = NULL, *prev = NULL;
-
-	int match = zone_tree_get_less_or_equal(tree, name, &found, &prev);
-	if (match < 0) {
-		assert(0);
-		return false;
-	}
-
-	*node = found;
-	*previous = prev;
-
-	return match > 0;
-}
-
 zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 {
 	if (apex_name == NULL) {
@@ -484,65 +446,21 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const kno
 	               get_node(contents, rrset->owner);
 }
 
-int zone_contents_find_dname(const zone_contents_t *zone,
-                             const knot_dname_t *name,
-                             const zone_node_t **match,
-                             const zone_node_t **closest,
-                             const zone_node_t **previous)
+bool zone_it_prev2encloser(const knot_dname_t *name, trie_it_t *it)
 {
-	if (!zone || !name || !match || !closest) {
-		return KNOT_EINVAL;
+	zone_node_t *node = zone_tree_it_deref(it);
+	if (node == NULL) {
+		return false;
 	}
-
-	if (knot_dname_in_bailiwick(name, zone->apex->owner) < 0) {
-		return KNOT_EOUTOFZONE;
-	}
-
-	zone_node_t *node = NULL;
-	zone_node_t *prev = NULL;
-
-	int found = zone_tree_get_less_or_equal(zone->nodes, name, &node, &prev);
-	if (found < 0) {
-		// error
-		return found;
-	} else if (found == 1 && previous != NULL) {
-		// exact match
-
-		assert(node && prev);
-
-		*match = node;
-		*closest = node;
-		*previous = prev;
-
-		return ZONE_NAME_FOUND;
-	} else if (found == 1 && previous == NULL) {
-		// exact match, zone not adjusted yet
-
-		assert(node);
-		*match = node;
-		*closest = node;
-
-		return ZONE_NAME_FOUND;
-	} else {
-		// closest match
-
-		assert(!node && prev);
-
-		node = prev;
-		size_t matched_labels = knot_dname_matched_labels(node->owner, name);
-		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
-			node = node->parent;
-			assert(node);
+	size_t matched_labels = knot_dname_matched_labels(node->owner, name);
+	while (matched_labels < knot_dname_labels(node->owner, NULL)) {
+		trie_it_parent(it);
+		node = zone_tree_it_deref(it);
+		if (node == NULL) {
+			return false;
 		}
-
-		*match = NULL;
-		*closest = node;
-		if (previous != NULL) {
-			*previous = prev;
-		}
-
-		return ZONE_NAME_NOT_FOUND;
 	}
+	return true;
 }
 
 const zone_node_t *zone_contents_find_nsec3_node(const zone_contents_t *zone,
@@ -588,34 +506,34 @@ int zone_contents_find_nsec3(const zone_contents_t *zone,
                              const zone_node_t **nsec3_node,
                              const zone_node_t **nsec3_previous)
 {
-	zone_node_t *found = NULL, *prev = NULL;
-	bool match = find_in_tree(zone->nsec3_nodes, nsec3_name, &found, &prev);
-
-	*nsec3_node = found;
-
-	if (prev == NULL) {
-		// either the returned node is the root of the tree, or it is
-		// the leftmost node in the tree; in both cases node was found
-		// set the previous node of the found node
-		assert(match);
-		assert(*nsec3_node != NULL);
-		*nsec3_previous = (*nsec3_node)->prev;
-	} else {
-		*nsec3_previous = prev;
+	trie_it_t *it;
+	int ret = zone_tree_get_it(zone->nsec3_nodes, nsec3_name, &it);
+	if (ret < 0) {
+		return ret;
 	}
 
+	if (ret == ZONE_NAME_FOUND) {
+		*nsec3_node = zone_tree_it_deref(it);
+		assert(*nsec3_node != NULL);
+		trie_it_prev_loop(it);
+	} else {
+		*nsec3_node = NULL;
+	}
+
+	*nsec3_previous = zone_tree_it_deref(it);
 	// The previous may be from wrong NSEC3 chain. Search for previous from the right chain.
 	const zone_node_t *original_prev = *nsec3_previous;
 	while (!((*nsec3_previous)->flags & NODE_FLAGS_IN_NSEC3_CHAIN)) {
-		*nsec3_previous = (*nsec3_previous)->prev;
+		trie_it_prev_loop(it);
+		*nsec3_previous = zone_tree_it_deref(it);
 		if (*nsec3_previous == original_prev || *nsec3_previous == NULL) {
 			// cycle
 			*nsec3_previous = NULL;
 			break;
 		}
 	}
-
-	return (match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND);
+	trie_it_free(it);
+	return ret ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND;
 }
 
 const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *contents,

@@ -400,20 +400,32 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 static int solve_name(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	int ret = zone_contents_find_dname(qdata->extra->zone->contents, qdata->name,
-	                                   &qdata->extra->node, &qdata->extra->encloser,
-	                                   &qdata->extra->previous);
-
-	switch (ret) {
-	case ZONE_NAME_FOUND:
-		return name_found(pkt, qdata);
-	case ZONE_NAME_NOT_FOUND:
-		return name_not_found(pkt, qdata);
-	case KNOT_EOUTOFZONE:
+	if (knot_dname_in_bailiwick(qdata->name, qdata->extra->zone->contents->apex->owner) < 0) {
 		assert(state == KNOTD_IN_STATE_FOLLOW); /* CNAME/DNAME chain only. */
 		return KNOTD_IN_STATE_HIT;
-	default:
+	}
+
+	int ret = zone_tree_get_it(qdata->extra->zone->contents->nodes, qdata->name, &qdata->extra->prev_it);
+	if (ret < 0) {
 		return KNOTD_IN_STATE_ERROR;
+	}
+
+	qdata->extra->encloser_it = trie_it_clone(qdata->extra->prev_it);
+	if (ret == ZONE_NAME_FOUND) {
+		qdata->extra->node = zone_tree_it_deref(qdata->extra->prev_it);
+		qdata->extra->encloser = qdata->extra->node;
+		trie_it_prev_loop(qdata->extra->prev_it);
+	} else {
+		qdata->extra->node = NULL;
+		zone_it_prev2encloser(qdata->name, qdata->extra->encloser_it);
+		qdata->extra->encloser = zone_tree_it_deref(qdata->extra->encloser_it);
+	}
+	qdata->extra->previous = zone_tree_it_deref(qdata->extra->prev_it);
+
+	if (ret == ZONE_NAME_FOUND) {
+		return name_found(pkt, qdata);
+	} else {
+		return name_not_found(pkt, qdata);
 	}
 }
 
@@ -630,6 +642,10 @@ static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 	/* Write resulting RCODE. */
 	knot_wire_set_rcode(pkt->wire, qdata->rcode);
+
+	// TODO move anywhere ??
+	trie_it_free(qdata->extra->prev_it);
+	trie_it_free(qdata->extra->encloser_it);
 
 	return KNOT_STATE_DONE;
 }

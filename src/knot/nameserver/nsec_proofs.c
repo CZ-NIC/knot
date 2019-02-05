@@ -183,21 +183,19 @@ static int put_covering_nsec(const zone_contents_t *zone,
                              knotd_qdata_t *qdata,
                              knot_pkt_t *resp)
 {
-	const zone_node_t *match = NULL;
-	const zone_node_t *closest = NULL;
-	const zone_node_t *prev = NULL;
-
-	const zone_node_t *proof = NULL;
-
-	int ret = zone_contents_find_dname(zone, name, &match, &closest, &prev);
-	if (ret == ZONE_NAME_FOUND) {
-		proof = match;
-	} else if (ret == ZONE_NAME_NOT_FOUND) {
-		proof = nsec_previous(prev);
-	} else {
-		assert(ret < 0);
+	trie_it_t *it;
+	int ret = zone_tree_get_it(zone->nodes, name, &it);
+	if (ret < 0) {
 		return ret;
 	}
+	zone_node_t *proof = zone_tree_it_deref(it);
+	if (ret == ZONE_NAME_NOT_FOUND) {
+		while (!node_in_nsec(proof)) {
+			trie_it_prev_loop(it);
+			proof = zone_tree_it_deref(it);
+		}
+	}
+	trie_it_free(it);
 
 	return put_nsec_from_node(proof, qdata, resp);
 }

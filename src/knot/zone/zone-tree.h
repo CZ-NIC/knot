@@ -83,6 +83,10 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
  */
 zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner);
 
+int zone_tree_get_it(zone_tree_t *tree, const knot_dname_t *owner, trie_it_t **found);
+
+zone_node_t *zone_tree_it_deref(trie_it_t *it);
+
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
  *        associated node and previous node in canonical order.
