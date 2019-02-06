@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -269,6 +269,20 @@ uint32_t zone_update_current_serial(zone_update_t *update)
 	} else {
 		return 0;
 	}
+}
+
+static bool zone_update_changed_nsec3param(const zone_update_t *update)
+{
+	if (update->zone->contents == NULL) {
+		return true;
+	}
+
+	dnssec_nsec3_params_t *orig = &update->zone->contents->nsec3_params;
+	dnssec_nsec3_params_t *upd = &update->new_cont->nsec3_params;
+	return (orig->algorithm == upd->algorithm &&
+	        orig->iterations == upd->iterations &&
+	        orig->flags == upd->flags &&
+	        dnssec_binary_cmp(&orig->salt, &upd->salt) == 0);
 }
 
 const knot_rdataset_t *zone_update_from(zone_update_t *update)
@@ -602,7 +616,6 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
 
-	zone_contents_t *new_contents = update->new_cont;
 	int ret = KNOT_EOK;
 	if (zone_update_to(update) == NULL && !changeset_empty(&update->change)) {
 		/* No SOA in the update, create one according to the current policy */
@@ -613,7 +626,11 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 		}
 	}
 
-	ret = zone_adjust_full(new_contents);
+	if (zone_update_changed_nsec3param(update)) {
+		ret = zone_adjust_full(update->new_cont);
+	} else {
+		ret = zone_adjust_incremental_update(update);
+	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
 		return ret;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,7 +50,6 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 		node->nsec3_node = NULL;
 		return KNOT_EOK;
 	}
-	node->nsec3_wildcard_prev = NULL;
 	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), node->owner,
 	                                  zone->apex->owner, &zone->nsec3_params);
@@ -62,27 +61,28 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 
 int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
+	free(node->nsec3_wildcard_name);
+	node->nsec3_wildcard_name = NULL;
 	if (!knot_is_nsec3_enabled(zone)) {
-		node->nsec3_wildcard_prev = NULL;
 		return KNOT_EOK;
 	}
 
-	const zone_node_t *ignored;
-	int ret = KNOT_EOK;
 	size_t wildcard_size = knot_dname_size(node->owner) + 2;
+	size_t wildcard_nsec3 = zone_nsec3_name_len(zone);
 	if (wildcard_size <= KNOT_DNAME_MAXLEN) {
-		assert(wildcard_size > 2);
-		knot_dname_t wildcard[wildcard_size];
-		memcpy(wildcard, "\x01""*", 2);
-		memcpy(wildcard + 2, node->owner, wildcard_size - 2);
-		ret = zone_contents_find_nsec3_for_name(zone, wildcard, &ignored,
-							(const zone_node_t **)&node->nsec3_wildcard_prev);
-		if (ret == ZONE_NAME_FOUND) {
-			node->nsec3_wildcard_prev = NULL;
-			ret = KNOT_EOK;
-		}
+		return KNOT_EOK;
 	}
-	return ret;
+
+	node->nsec3_wildcard_name = malloc(wildcard_nsec3);
+	if (node->nsec3_wildcard_name == NULL) {
+		return KNOT_ENOMEM;
+	}
+	assert(wildcard_size > 2);
+	knot_dname_t wildcard[wildcard_size];
+	memcpy(wildcard, "\x01""*", 2);
+	memcpy(wildcard + 2, node->owner, wildcard_size - 2);
+	return knot_create_nsec3_owner(node->nsec3_wildcard_name, wildcard_nsec3,
+	                               wildcard, zone->apex->owner, &zone->nsec3_params);
 }
 
 static bool nsec3_params_match(const knot_rdataset_t *rrs,
@@ -135,18 +135,9 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 	for (uint16_t i = 0; i < rdcount; i++) {
 		knot_rdata_t *rdata = knot_rdataset_at(rrs, i);
 		const knot_dname_t *dname = knot_rdata_name(rdata, rr_data->type);
-		const zone_node_t *node = NULL, *encloser = NULL;
+		const zone_node_t *node = NULL;
 
-		/* Try to find node for the dname in the RDATA. */
-		zone_contents_find_dname(zone, dname, &node, &encloser, NULL);
-		if (node == NULL && encloser != NULL
-		    && (encloser->flags & NODE_FLAGS_WILDCARD_CHILD)) {
-			/* Find wildcard child in the zone. */
-			node = zone_contents_find_wildcard_child(zone, encloser);
-			assert(node != NULL);
-		}
-
-		if (node == NULL) {
+		if (!zone_contents_find_node_or_wildcard(zone, dname, &node)) {
 			continue;
 		}
 
@@ -228,6 +219,15 @@ int adjust_cb_nsec3_and_additionals(zone_node_t *node, const zone_contents_t *zo
 	if (ret == KNOT_EOK) {
 		ret = adjust_cb_wildcard_nsec3(node, zone);
 	}
+	if (ret == KNOT_EOK) {
+		ret = adjust_cb_additionals(node, zone);
+	}
+	return ret;
+}
+
+static int adjust_cb_nsec3_and_additionals2(zone_node_t *node, const zone_contents_t *zone)
+{
+	int ret = adjust_cb_point_to_nsec3(node, zone);
 	if (ret == KNOT_EOK) {
 		ret = adjust_cb_additionals(node, zone);
 	}
@@ -391,6 +391,18 @@ int zone_adjust_full(zone_contents_t *zone)
 	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags, true);
 	if (ret == KNOT_EOK) {
 		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false);
+	}
+	return ret;
+}
+
+int zone_adjust_incremental_update(zone_update_t *update)
+{
+	int ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, true);
+	if (ret == KNOT_EOK) {
+		ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_and_additionals2, NULL, false);
+	}
+	if (ret == KNOT_EOK) {
+		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, NULL);
 	}
 	return ret;
 }

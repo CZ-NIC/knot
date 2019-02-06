@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,16 @@
 inline static bool knot_is_nsec3_enabled(const zone_contents_t *zone)
 {
 	return zone != NULL && zone->nsec3_params.algorithm != 0;
+}
+
+inline static size_t zone_nsec3_hash_len(const zone_contents_t *zone)
+{
+	return knot_is_nsec3_enabled(zone) ? dnssec_nsec3_hash_length(zone->nsec3_params.algorithm) : 0;
+}
+
+inline static size_t zone_nsec3_name_len(const zone_contents_t *zone)
+{
+	return 1 + ((zone_nsec3_hash_len(zone) + 4) / 5) * 8 + knot_dname_size(zone->apex->owner);
 }
 
 /*!

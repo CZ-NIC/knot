@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -439,11 +439,13 @@ static int put_nsec3_nxdomain(const knot_dname_t *qname,
 
 	// NSEC3 covering the (nonexistent) wildcard at the closest encloser.
 
-	if (cpe->nsec3_wildcard_prev == NULL) {
+	const zone_node_t *nsec3_wildcard_prev, *ignored;
+	if (cpe->nsec3_wildcard_name == NULL ||
+	    zone_contents_find_nsec3(zone, cpe->nsec3_wildcard_name, &ignored, &nsec3_wildcard_prev) == ZONE_NAME_FOUND) {
 		return KNOT_ERROR;
 	}
 
-	return put_nsec3_from_node(cpe->nsec3_wildcard_prev, qdata, resp);
+	return put_nsec3_from_node(nsec3_wildcard_prev, qdata, resp);
 }
 
 /*!

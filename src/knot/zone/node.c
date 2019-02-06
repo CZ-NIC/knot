@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -128,6 +128,7 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 	}
 
 	knot_dname_free(node->owner, mm);
+	free(node->nsec3_wildcard_name);
 
 	if (node->rrs != NULL) {
 		mm_free(mm, node->rrs);
@@ -154,7 +155,9 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 	dst->rrset_count = src->rrset_count;
 	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
 	dst->rrs = mm_alloc(mm, rrlen);
-	if (dst->rrs == NULL) {
+	dst->nsec3_wildcard_name = knot_dname_copy(src->nsec3_wildcard_name, NULL);
+	if (dst->rrs == NULL ||
+	    (src->nsec3_wildcard_name != NULL && dst->nsec3_wildcard_name == NULL)) {
 		node_free(dst, mm);
 		return NULL;
 	}
