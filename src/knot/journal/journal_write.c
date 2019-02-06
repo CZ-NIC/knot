@@ -77,7 +77,7 @@ void journal_merge(zone_journal_t j, knot_lmdb_txn_t *txn, bool merge_zij,
 }
 
 static bool delete_one(knot_lmdb_txn_t *txn, bool del_zij, uint32_t del_serial,
-                       const knot_dname_t *zone, size_t *freed, uint32_t *next_serial)
+                       const knot_dname_t *zone, uint64_t *freed, uint32_t *next_serial)
 {
 	*freed = 0;
 	MDB_val prefix = journal_changeset_id_to_key(del_zij, del_serial, zone);
@@ -91,12 +91,12 @@ static bool delete_one(knot_lmdb_txn_t *txn, bool del_zij, uint32_t del_serial,
 }
 
 bool journal_delete(knot_lmdb_txn_t *txn, uint32_t from, const knot_dname_t *zone,
-                    size_t tofree_size, size_t tofree_count, uint32_t stop_at_serial,
-                    size_t *freed_size, size_t *freed_count, uint32_t *stopped_at)
+                    uint64_t tofree_size, size_t tofree_count, uint32_t stop_at_serial,
+                    uint64_t *freed_size, size_t *freed_count, uint32_t *stopped_at)
 {
 	*freed_size = 0;
 	*freed_count = 0;
-	size_t freed_now;
+	uint64_t freed_now;
 	while (from != stop_at_serial &&
 	       (*freed_size < tofree_size || *freed_count < tofree_count) &&
 	       delete_one(txn, false, from, zone, &freed_now, stopped_at)) {
@@ -125,7 +125,7 @@ void journal_try_flush(zone_journal_t j, knot_lmdb_txn_t *txn, journal_metadata_
 	if (flush) {
 		// delete merged serial if (very unlikely) exists
 		if ((md->flags & JOURNAL_MERGED_SERIAL_VALID)) {
-			size_t unused;
+			uint64_t unused;
 			(void)delete_one(txn, false, md->merged_serial, j.zone, &unused, (uint32_t *)&unused);
 			md->flags &= ~JOURNAL_MERGED_SERIAL_VALID;
 		}
@@ -139,19 +139,21 @@ void journal_try_flush(zone_journal_t j, knot_lmdb_txn_t *txn, journal_metadata_
 	}
 }
 
+#define U_MINUS(minuend, subtrahend) ((minuend) - MIN((minuend), (subtrahend)))
+
 void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_metadata_t *md,
                             int64_t max_usage, ssize_t max_count)
 {
 	uint64_t occupied = journal_get_occupied(txn, j.zone), freed;
-	int64_t need_tofree = (int64_t)occupied - max_usage;
+	uint64_t need_tofree = U_MINUS(occupied, max_usage);
 	size_t count = md->changeset_count, removed;
-	ssize_t need_todel = (ssize_t)count - max_count;
+	size_t need_todel = U_MINUS(count, max_count);
 
 	while ((need_tofree > 0 || need_todel > 0) && txn->ret == KNOT_EOK) {
 		uint32_t del_from = md->first_serial; // don't move this line outside of the loop
 		freed = 0;
 		removed = 0;
-		journal_delete(txn, del_from, j.zone, MAX(need_tofree, 0), MAX(need_todel, 0),
+		journal_delete(txn, del_from, j.zone, need_tofree, need_todel,
 		               md->flushed_upto, &freed, &removed, &del_from);
 		if (freed == 0) {
 			if (md->flushed_upto != md->serial_to) {
@@ -161,8 +163,8 @@ void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_meta
 			}
 		} else {
 			journal_metadata_after_delete(md, del_from, removed);
-			need_tofree -= freed;
-			need_todel -= removed;
+			need_tofree = U_MINUS(need_tofree, freed);
+			need_todel = U_MINUS(need_todel, removed);
 		}
 	}
 }

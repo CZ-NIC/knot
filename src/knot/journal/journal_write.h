@@ -57,8 +57,8 @@ void journal_merge(zone_journal_t j, knot_lmdb_txn_t *txn, bool merge_zij,
  * \return True if something was deleted (not necessarily fulfilling tofree_*).
  */
 bool journal_delete(knot_lmdb_txn_t *txn, uint32_t from, const knot_dname_t *zone,
-                    size_t tofree_size, size_t tofree_count, uint32_t stop_at_serial,
-                    size_t *freed_size, size_t *freed_count, uint32_t *stopped_at);
+                    uint64_t tofree_size, size_t tofree_count, uint32_t stop_at_serial,
+                    uint64_t *freed_size, size_t *freed_count, uint32_t *stopped_at);
 
 /*!
  * \brief Perform a merge or zone flush in order to enable deleting more changesets.
