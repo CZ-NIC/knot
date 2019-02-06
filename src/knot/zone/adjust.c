@@ -77,7 +77,7 @@ int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
 
 	size_t wildcard_size = knot_dname_size(node->owner) + 2;
 	size_t wildcard_nsec3 = zone_nsec3_name_len(zone);
-	if (wildcard_size <= KNOT_DNAME_MAXLEN) {
+	if (wildcard_size > KNOT_DNAME_MAXLEN) {
 		return KNOT_EOK;
 	}
 
