@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
     Copyright (C) 2018 Tony Finch <dot@dotat.at>
 
     This program is free software: you can redistribute it and/or modify
@@ -25,7 +25,7 @@
 /*!
  * \brief Native API of QP-tries:
  *
- * - keys are char strings, not necessarily zero-terminated,
+ * - keys are uint8_t strings, not necessarily zero-terminated,
  *   the structure copies the contents of the passed keys
  * - values are void* pointers, typically you get an ephemeral pointer to it
  * - key lengths are limited by 2^32-1 ATM
@@ -33,6 +33,8 @@
 
 /*! \brief Element value. */
 typedef void* trie_val_t;
+/*! \brief Key for indexing tries.  Sign could be flipped easily. */
+typedef uint8_t trie_key_t;
 
 /*! \brief Opaque structure holding a QP-trie. */
 typedef struct trie trie_t;
@@ -52,7 +54,7 @@ typedef trie_val_t (*trie_dup_cb)(const trie_val_t val, knot_mm_t *mm);
  * \param len	The length of key
  * \param d	Additional user data
  */
-typedef void trie_cb(trie_val_t val, const char *key, size_t len, void *d);
+typedef void trie_cb(trie_val_t val, const trie_key_t *key, size_t len, void *d);
 
 /*! \brief Opaque type for holding the copy-on-write state for a QP-trie. */
 typedef struct trie_cow trie_cow_t;
@@ -73,10 +75,10 @@ trie_t* trie_dup(const trie_t *orig, trie_dup_cb dup_cb, knot_mm_t *mm);
 size_t trie_weight(const trie_t *tbl);
 
 /*! \brief Search the trie, returning NULL on failure. */
-trie_val_t* trie_get_try(trie_t *tbl, const char *key, uint32_t len);
+trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len);
 
 /*! \brief Search the trie, inserting NULL trie_val_t on failure. */
-trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len);
+trie_val_t* trie_get_ins(trie_t *tbl, const trie_key_t *key, uint32_t len);
 
 /*!
  * \brief Search for less-or-equal element.
@@ -84,11 +86,11 @@ trie_val_t* trie_get_ins(trie_t *tbl, const char *key, uint32_t len);
  * \param tbl  Trie.
  * \param key  Searched key.
  * \param len  Key length.
- * \param val  Must be valid; it will be set to NULL if not found or errored.
+ * \param val  (optional) Value found; it will be set to NULL if not found or errored.
  * \return KNOT_EOK for exact match, 1 for previous, KNOT_ENOENT for not-found,
  *         or KNOT_E*.
  */
-int trie_get_leq(trie_t *tbl, const char *key, uint32_t len, trie_val_t **val);
+int trie_get_leq(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t **val);
 
 /*!
  * \brief Apply a function to every trie_val_t, in order.
@@ -102,24 +104,26 @@ int trie_apply(trie_t *tbl, int (*f)(trie_val_t *, void *), void *d);
  *
  * If val!=NULL and deletion succeeded, the deleted value is set.
  */
-int trie_del(trie_t *tbl, const char *key, uint32_t len, trie_val_t *val);
+int trie_del(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t *val);
 
-/*! \brief Create a new iterator pointing to the first element (if any). */
+
+/*! \brief Create a new iterator pointing to the first element (if any).
+ *
+ * trie_it_* functions deal with these iterators capable of walking and jumping
+ * over the trie.  Note that any modification to key-set stored by the trie
+ * will in general invalidate all iterators and you will need to begin anew.
+ * (It won't be detected - you may end up reading freed memory, etc.)
+ */
 trie_it_t* trie_it_begin(trie_t *tbl);
 
-/*!
- * \brief Advance the iterator to the next element.
- *
- * Iteration is in ascending lexicographical order.
- * In particular, the empty string would be considered as the very first.
- */
-void trie_it_next(trie_it_t *it);
-
-/*! \brief Test if the iterator has gone past the last element. */
+/*! \brief Test if the iterator has gone "past the end" (and points nowhere). */
 bool trie_it_finished(trie_it_t *it);
 
 /*! \brief Free any resources of the iterator. It's OK to call it on NULL. */
 void trie_it_free(trie_it_t *it);
+
+/*! \brief Copy the iterator.  See the warning in trie_it_begin(). */
+trie_it_t *trie_it_clone(const trie_it_t *it);
 
 /*!
  * \brief Return pointer to the key of the current element.
@@ -127,10 +131,51 @@ void trie_it_free(trie_it_t *it);
  * \note The len is uint32_t internally but size_t is better for our usage
  *       as it is without an additional type conversion.
  */
-const char* trie_it_key(trie_it_t *it, size_t *len);
+const trie_key_t* trie_it_key(trie_it_t *it, size_t *len);
 
 /*! \brief Return pointer to the value of the current element (writable). */
 trie_val_t* trie_it_val(trie_it_t *it);
+
+/*!
+ * \brief Advance the iterator to the next element.
+ *
+ * Iteration is in ascending lexicographical order.
+ * In particular, the empty string would be considered as the very first.
+ *
+ * \TODO: in most iterator operations, ENOMEM is very unlikely
+ * but it leads to a _finished() iterator (silently).
+ * Perhaps the functions should simply return KNOT_E*
+ */
+void trie_it_next(trie_it_t *it);
+/*! \brief Advance the iterator to the previous element.  See trie_it_next(). */
+void trie_it_prev(trie_it_t *it);
+
+/*! \brief Advance iterator to the next element, looping to first after last. */
+void trie_it_next_loop(trie_it_t *it);
+/*! \brief Advance iterator to the previous element, looping to last after first. */
+void trie_it_prev_loop(trie_it_t *it);
+
+/*! \brief Advance iterator to the next element while ignoring the subtree.
+ *
+ * \note Another formulation: skip keys that are prefixed by the current key.
+ * \TODO: name, maybe _noprefixed?  The thing is that in the "subtree" meaning
+ * doesn't correspond to how the pointers go in the implementation,
+ * but we may not care much for implementation in the API...
+ */
+void trie_it_next_nosub(trie_it_t *it);
+
+/*! \brief Advance iterator to the longest prefix of the current key.
+ *
+ * \TODO: name, maybe _prefix?  Arguments similar to _nosub vs. _noprefixed.
+ */
+void trie_it_parent(trie_it_t *it);
+
+/*! \brief trie_get_leq() but with an iterator. */
+int trie_it_get_leq(trie_it_t *it, const trie_key_t *key, uint32_t len);
+
+/*! \brief Remove the current element.  The iterator will get trie_it_finished() */
+void trie_it_del(trie_it_t *it);
+
 
 /*! \brief Start a COW transaction
  *
@@ -188,7 +233,7 @@ trie_t* trie_cow_new(trie_cow_t *cow);
  * object you must change the original's reachability from shared to old-only.
  * New objects (including copies) must have new-only reachability.
  */
-trie_val_t* trie_get_cow(trie_cow_t *cow, const char *key, uint32_t len);
+trie_val_t* trie_get_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len);
 
 /*!
  * \brief variant of trie_del() for use during COW transactions
@@ -200,7 +245,7 @@ trie_val_t* trie_get_cow(trie_cow_t *cow, const char *key, uint32_t len);
  * If val!=NULL and deletion succeeded, the *val is set to the deleted
  * value pointer.
  */
-int trie_del_cow(trie_cow_t *cow, const char *key, uint32_t len, trie_val_t *val);
+int trie_del_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len, trie_val_t *val);
 
 /*! \brief clean up the old trie after committing a COW transaction
  *

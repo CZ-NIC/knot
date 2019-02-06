@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
     Copyright (C) 2018 Tony Finch <dot@dotat.at>
 
     This program is free software: you can redistribute it and/or modify
@@ -79,7 +79,7 @@ grow_leaves(size_t maxlen, size_t leaves)
 					"abcdefghijklmnopqrstuvwxyz"
 					[prng(62)];
 			str[len] = '\0';
-			valp = trie_get_ins(trie, str, (uint32_t)len);
+			valp = trie_get_ins(trie, (uint8_t *)str, (uint32_t)len);
 			if (!valp) bail("trie_get_ins");
 		} while (*valp != NULL);
 		*valp = &leaf[i];
@@ -101,7 +101,7 @@ dead_leaves(struct cowleaf *leaf, size_t leaves)
 }
 
 static void
-mark_cb(trie_val_t val, const char *key, size_t len, void *d)
+mark_cb(trie_val_t val, const uint8_t *key, size_t len, void *d)
 {
 	struct cowleaf *leaf = val;
 	assert(leaf->cowstate == cow_unmarked &&
@@ -113,7 +113,7 @@ mark_cb(trie_val_t val, const char *key, size_t len, void *d)
 }
 
 static void
-commit_rollback(trie_val_t val, const char *key, size_t len, void *d)
+commit_rollback(trie_val_t val, const uint8_t *key, size_t len, void *d)
 {
 	struct cowleaf *leaf = val;
 	int *commit = d;
@@ -136,7 +136,7 @@ del_cow(trie_cow_t *x, struct cowleaf *leaf)
 {
 	trie_val_t val;
 	assert(KNOT_EOK == trie_del_cow(x,
-					leaf->key,
+					(uint8_t *)leaf->key,
 					(uint32_t)leaf->len,
 					&val));
 	assert(val == leaf);
@@ -203,8 +203,8 @@ main(int argc, char *argv[])
 			case(cow_absent): {
 				trie_val_t *val =
 					trie_get_cow(x,
-					    leaf[i].key,
-						     (uint32_t)leaf[i].len);
+					             (uint8_t *)leaf[i].key,
+					             (uint32_t)leaf[i].len);
 				if (!val) sysbail("trie_get_cow");
 				assert(*val == NULL && "new leaf");
 				*val = &leaf[i];
