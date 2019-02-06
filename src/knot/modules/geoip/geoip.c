@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -119,7 +119,7 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *
 	knot_dname_storage_t lf_storage;
 	uint8_t *lf = knot_dname_lf(owner, lf_storage);
 	assert(lf);
-	trie_val_t *val = trie_get_ins(ctx->geo_trie, (char *)lf + 1, *lf);
+	trie_val_t *val = trie_get_ins(ctx->geo_trie, lf + 1, *lf);
 	geo_trie_val_t *cur_val = *val;
 
 	if (cur_val == NULL) {
@@ -542,7 +542,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	if (lf == NULL) {
 		return state;
 	}
-	trie_val_t *val = trie_get_try(ctx->geo_trie, (char *)lf + 1, *lf);
+	trie_val_t *val = trie_get_try(ctx->geo_trie, lf + 1, *lf);
 	if (val == NULL) {
 		// Nothing to do in this module.
 		return state;

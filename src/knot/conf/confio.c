@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -832,7 +832,7 @@ static void upd_changes(
 	}
 
 	// Get zone status or create new.
-	trie_val_t *val = trie_get_ins(zones, (const char *)io->id, io->id_len);
+	trie_val_t *val = trie_get_ins(zones, io->id, io->id_len);
 	conf_io_type_t *current = (conf_io_type_t *)val;
 
 	switch (type) {
@@ -850,7 +850,7 @@ static void upd_changes(
 	case CONF_IO_TUNSET:
 		if (*current & CONF_IO_TSET) {
 			// Remove inserted zone -> no change.
-			trie_del(zones, (const char *)io->id, io->id_len, NULL);
+			trie_del(zones, io->id, io->id_len, NULL);
 		} else {
 			// Remove existing zone.
 			*current |= type;
