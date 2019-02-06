@@ -111,13 +111,13 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 	}
 
 	if (knot_lmdb_unmake_key(val->mv_data, val->mv_size - future, "LLHBBLLLLLLLLLD",
-		&params->public_key.size, &future, &params->keytag, &params->algorithm, &flags,
+		&keylen, &future, &params->keytag, &params->algorithm, &flags,
 		&params->timing.created, &params->timing.pre_active, &params->timing.publish,
 		&params->timing.ready, &params->timing.active, &params->timing.retire_active,
 		&params->timing.retire, &params->timing.post_active, &params->timing.remove,
-		params->public_key.data, keylen)) {
+		params->public_key.data, (size_t)keylen)) {
 
-		assert(keylen == params->public_key.size);
+		params->public_key.size = keylen;
 		params->is_ksk = ((flags & 0x01) ? true : false);
 		params->is_pub_only = ((flags & 0x04) ? true : false);
 		params->is_csk = ((flags & 0x08) ? true : false);
