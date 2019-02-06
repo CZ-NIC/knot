@@ -143,15 +143,12 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 		return NULL;
 	}
 
-	// create new node
 	zone_node_t *dst = node_new(src->owner, mm);
 	if (dst == NULL) {
 		return NULL;
 	}
 
 	dst->flags = src->flags;
-
-	// copy RRSets
 	dst->rrset_count = src->rrset_count;
 	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
 	dst->rrs = mm_alloc(mm, rrlen);
@@ -162,9 +159,9 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 		return NULL;
 	}
 	memcpy(dst->rrs, src->rrs, rrlen);
+	dst->nsec3_node = src->nsec3_node;
 
 	for (uint16_t i = 0; i < src->rrset_count; ++i) {
-		// Clear additionals in the copy.
 		dst->rrs[i].additional = NULL;
 	}
 

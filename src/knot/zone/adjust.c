@@ -50,6 +50,14 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 		node->nsec3_node = NULL;
 		return KNOT_EOK;
 	}
+	if (node->nsec3_node != NULL) {
+		// Optimization: this node has been shallow-copied from older state. Try using already known NSEC3 name.
+		zone_node_t *candidate = zone_tree_get(zone->nsec3_nodes, node->nsec3_node->owner);
+		if (candidate != NULL && (candidate->flags & NODE_FLAGS_IN_NSEC3_CHAIN)) {
+			node->nsec3_node = candidate;
+			return KNOT_EOK;
+		}
+	}
 	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), node->owner,
 	                                  zone->apex->owner, &zone->nsec3_params);
