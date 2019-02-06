@@ -530,7 +530,9 @@ MDB_val knot_lmdb_make_key(const char *format, ...)
 	va_end(arg);
 
 	// second, alloc the key and fill it
-	key.mv_data = malloc(key.mv_size);
+	if (key.mv_size > 0) {
+		key.mv_data = malloc(key.mv_size);
+	}
 	if (key.mv_data == NULL) {
 		return key;
 	}

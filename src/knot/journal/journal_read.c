@@ -196,6 +196,10 @@ bool journal_read_changeset(journal_read_t *ctx, changeset_t *ch)
 	}
 	while (journal_read_rrset(ctx, &rr, false)) {
 		if (rr_is_apex_soa(&rr, ctx->zone)) {
+			if (ch->soa_from != NULL) {
+				ctx->txn.ret = KNOT_EMALF;
+				goto fail;
+			}
 			ch->soa_from = soa;
 			ch->remove = tree;
 			soa = malloc(sizeof(*soa));

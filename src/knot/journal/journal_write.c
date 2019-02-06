@@ -110,7 +110,7 @@ bool journal_delete(knot_lmdb_txn_t *txn, uint32_t from, const knot_dname_t *zon
 void journal_try_flush(zone_journal_t j, knot_lmdb_txn_t *txn, journal_metadata_t *md)
 {
 	bool flush = journal_allow_flush(j);
-	uint32_t merge_orig;
+	uint32_t merge_orig = 0;
 	if (journal_contains(txn, true, 0, j.zone)) {
 		journal_merge(j, txn, true, 0, &merge_orig);
 		if (!flush) {
