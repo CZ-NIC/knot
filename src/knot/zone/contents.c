@@ -498,49 +498,39 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		return KNOT_EOUTOFZONE;
 	}
 
-	zone_node_t *node = NULL;
-	zone_node_t *prev = NULL;
-
-	int found = zone_tree_get_less_or_equal(zone->nodes, name, &node, &prev);
+	trie_it_t *it;
+	int found = zone_tree_get_it(zone->nodes, name, &it);
 	if (found < 0) {
 		// error
 		return found;
-	} else if (found == 1 && previous != NULL) {
+	} else if (found == 1) {
 		// exact match
-
-		assert(node && prev);
-
-		*match = node;
-		*closest = node;
-		*previous = prev;
-
-		return ZONE_NAME_FOUND;
-	} else if (found == 1 && previous == NULL) {
-		// exact match, zone not adjusted yet
-
-		assert(node);
-		*match = node;
-		*closest = node;
-
+		*match = zone_tree_it_deref(it);
+		if (previous != NULL) {
+			*previous = zone_tree_it_prev(it);
+			assert(*previous != NULL);
+			assert((*match)->prev == NULL || *previous == (*match)->prev);
+		}
+		*closest = *match;
+		trie_it_free(it);
 		return ZONE_NAME_FOUND;
 	} else {
-		// closest match
-
-		assert(!node && prev);
-
-		node = prev;
+		*match = NULL;
+		zone_node_t *node = zone_tree_it_deref(it);
+		assert(node != NULL);
+		if (previous != NULL) {
+			*previous = node;
+		}
 		size_t matched_labels = knot_dname_matched_labels(node->owner, name);
 		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
-			node = node->parent;
+			trie_it_parent(it);
+			assert(node != zone_tree_it_deref(it));
+			assert(node->parent == zone_tree_it_deref(it));
+			node = zone_tree_it_deref(it);
 			assert(node);
 		}
-
-		*match = NULL;
+		trie_it_free(it);
 		*closest = node;
-		if (previous != NULL) {
-			*previous = prev;
-		}
-
 		return ZONE_NAME_NOT_FOUND;
 	}
 }

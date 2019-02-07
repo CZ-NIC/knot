@@ -84,6 +84,41 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
 zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner);
 
 /*!
+ * \brief Try to find node with specified owner in zone tree.
+ *
+ * \param tree     Zone tree to search in.
+ * \param owner    Owner name to search for.
+ * \param found    Out: itearator to found node.
+ *
+ * \retval 1   if domain name was found among zone nodes. The iterator points to it.
+ * \retval 0   if name was not found. The iterator points to lexicographically previous node.
+ * \return KNOT_E* (the iterator is invalid and must not be freed)
+ */
+int zone_tree_get_it(zone_tree_t *tree, const knot_dname_t *owner, trie_it_t **found);
+
+/*!
+ * \brief Returns the zone node the iterator is pointing to.
+ *
+ * \param it   The iterator.
+ *
+ * \retval NULL   The iterator is no longer valid, however it sill needs to be freed.
+ * \return The pointed node.
+ */
+zone_node_t *zone_tree_it_deref(trie_it_t *it);
+
+/*!
+ * \brief Move the iterator to previous node in zone nodes' loop.
+ *
+ * \note If it was on very first node in zone, it jumps to last.
+ * \note It skips any node which is not authoritative or has zero RRSets.
+ *
+ * \param it   Iterator to be moved.
+ *
+ * \return Node pointed by the itearator after moved.
+ */
+zone_node_t *zone_tree_it_prev(trie_it_t *it);
+
+/*!
  * \brief Tries to find the given domain name in the zone tree and returns the
  *        associated node and previous node in canonical order.
  *
