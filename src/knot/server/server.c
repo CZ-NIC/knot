@@ -29,6 +29,7 @@
 #include "knot/conf/migration.h"
 #include "knot/conf/module.h"
 #include "knot/dnssec/kasp/kasp_db.h"
+#include "knot/journal/journal_basic.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -420,25 +421,18 @@ int server_init(server_t *server, int bg_workers)
 	char *journal_dir = conf_journalfile(conf());
 	conf_val_t journal_size = conf_default_get(conf(), C_MAX_JOURNAL_DB_SIZE);
 	conf_val_t journal_mode = conf_default_get(conf(), C_JOURNAL_DB_MODE);
-	int ret = journal_db_init(&server->journal_db, journal_dir,
-	                          conf_int(&journal_size), conf_opt(&journal_mode));
+	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode)), NULL);
 	free(journal_dir);
-	if (ret != KNOT_EOK) {
-		worker_pool_destroy(server->workers);
-		evsched_deinit(&server->sched);
-		return ret;
-	}
 
 	char *kasp_dir = conf_kaspdir(conf());
 	conf_val_t kasp_size = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
-	ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&kasp_size));
+	knot_lmdb_init(&server->kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
 	free(kasp_dir);
-	if (ret != KNOT_EOK) {
-		journal_db_close(&server->journal_db);
-		worker_pool_destroy(server->workers);
-		evsched_deinit(&server->sched);
-		return ret;
-	}
+
+	char *timerdb = conf_timerdb(conf());
+	conf_val_t timerdb_size = conf_default_get(conf(), C_MAX_TIMER_DB_SIZE);
+	knot_lmdb_init(&server->timerdb, timerdb, conf_int(&timerdb_size), 0, NULL);
+	free(timerdb);
 
 	return KNOT_EOK;
 }
@@ -447,6 +441,16 @@ void server_deinit(server_t *server)
 {
 	if (server == NULL) {
 		return;
+	}
+
+	/* Save zone timers. */
+	if (server->zone_db != NULL) {
+		log_info("updating persistent timer DB");
+		int ret = zone_timers_write_all(&server->timerdb, server->zone_db);
+		if (ret != KNOT_EOK) {
+			log_warning("failed to update persistent timer DB (%s)",
+				    knot_strerror(ret));
+		}
 	}
 
 	/* Free remaining interfaces. */
@@ -467,14 +471,14 @@ void server_deinit(server_t *server)
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
 
+	/* Close persistent timers DB. */
+	knot_lmdb_deinit(&server->timerdb);
+
 	/* Close kasp_db. */
-	kasp_db_close(kaspdb());
+	knot_lmdb_deinit(&server->kaspdb);
 
 	/* Close journal database if open. */
-	journal_db_close(&server->journal_db);
-
-	/* Close persistent timers database. */
-	zone_timers_close(server->timers_db);
+	knot_lmdb_deinit(&server->journaldb);
 
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
@@ -757,57 +761,35 @@ static int reconfigure_journal_db(conf_t *conf, server_t *server)
 	char *journal_dir = conf_journalfile(conf);
 	conf_val_t journal_size = conf_default_get(conf, C_MAX_JOURNAL_DB_SIZE);
 	conf_val_t journal_mode = conf_default_get(conf, C_JOURNAL_DB_MODE);
-	bool changed_path = (strcmp(journal_dir, server->journal_db->path) != 0);
-	bool changed_size = (conf_int(&journal_size) != server->journal_db->fslimit);
-	bool changed_mode = (conf_opt(&journal_mode) != server->journal_db->mode);
-	int ret = KNOT_EOK;
-
-	if (server->journal_db->db != NULL) {
-		if (changed_path) {
-			log_warning("ignored reconfiguration of journal DB path (already open)");
-		}
-		if (changed_size) {
-			log_warning("ignored reconfiguration of journal DB max size (already open)");
-		}
-		if (changed_mode) {
-			log_warning("ignored reconfiguration of journal DB mode (already open)");
-		}
-	} else if (changed_path || changed_size || changed_mode) {
-		journal_db_t *newjdb = NULL;
-		ret = journal_db_init(&newjdb, journal_dir, conf_int(&journal_size),
-		                      conf_opt(&journal_mode));
-		if (ret == KNOT_EOK) {
-			journal_db_close(&server->journal_db);
-			server->journal_db = newjdb;
-		}
+	int ret = knot_lmdb_reinit(&server->journaldb, journal_dir, conf_int(&journal_size),
+	                           journal_env_flags(conf_opt(&journal_mode)));
+	if (ret != KNOT_EOK) {
+		log_warning("ignored reconfiguration of journal DB (%s)", knot_strerror(ret));
 	}
 	free(journal_dir);
 
-	return ret;
+	return KNOT_EOK; // not "ret"
 }
 
 static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 {
 	char *kasp_dir = conf_kaspdir(conf);
 	conf_val_t kasp_size = conf_default_get(conf, C_MAX_KASP_DB_SIZE);
-	int ret = kasp_db_reconfigure(kaspdb(), kasp_dir, conf_int(&kasp_size));
-	switch (ret) {
-	case KNOT_EBUSY:
-		log_warning("ignored reconfiguration of KASP DB path (already open)");
-		break;
-	case KNOT_EEXIST:
-		ret = KNOT_EBUSY;
-		log_warning("ignored reconfiguration of KASP DB max size (already open)");
-		break;
-	case KNOT_ENODIFF:
-	case KNOT_EOK:
-		ret = KNOT_EOK;
-		break;
-	default:
-		break;
+	int ret = knot_lmdb_reinit(&server->kaspdb, kasp_dir, conf_int(&kasp_size), 0);
+	if (ret != KNOT_EOK) {
+		log_warning("ignored reconfiguration of KASP DB (%s)", knot_strerror(ret));
 	}
 	free(kasp_dir);
 
+	return KNOT_EOK; // not "ret"
+}
+
+static int reconfigure_timer_db(conf_t *conf, server_t *server)
+{
+	char *timerdb = conf_timerdb(conf);
+	conf_val_t timerdb_size = conf_default_get(conf, C_MAX_TIMER_DB_SIZE);
+	int ret = knot_lmdb_reconfigure(&server->timerdb, timerdb, conf_int(&timerdb_size), 0);
+	free(timerdb);
 	return ret;
 }
 
@@ -841,33 +823,17 @@ void server_reconfigure(conf_t *conf, server_t *server)
 		          knot_strerror(ret));
 	}
 
+	/* Reconfiure Timer DB. */
+	if ((ret = reconfigure_timer_db(conf, server)) < 0) {
+		log_error("failed to reconfigure Timer DB (%s)",
+		          knot_strerror(ret));
+	}
+
 	/* Update bound sockets. */
 	if ((ret = reconfigure_sockets(conf, server)) < 0) {
 		log_error("failed to reconfigure server sockets (%s)",
 		          knot_strerror(ret));
 	}
-}
-
-static void reopen_timers_database(conf_t *conf, server_t *server)
-{
-	zone_timers_close(server->timers_db);
-	server->timers_db = NULL;
-
-	conf_val_t val = conf_default_get(conf, C_STORAGE);
-	char *storage = conf_abs_path(&val, NULL);
-	val = conf_default_get(conf, C_TIMER_DB);
-	char *timer_db = conf_abs_path(&val, storage);
-	free(storage);
-	val = conf_default_get(conf, C_MAX_TIMER_DB_SIZE);
-	size_t mapsize = conf_int(&val);
-
-	int ret = zone_timers_open(timer_db, &server->timers_db, mapsize);
-	if (ret != KNOT_EOK) {
-		log_warning("cannot open persistent timer DB '%s' (%s)",
-		            timer_db, knot_strerror(ret));
-	}
-
-	free(timer_db);
 }
 
 void server_update_zones(conf_t *conf, server_t *server)
@@ -886,7 +852,6 @@ void server_update_zones(conf_t *conf, server_t *server)
 	worker_pool_wait(server->workers);
 
 	/* Reload zone database and free old zones. */
-	reopen_timers_database(conf, server);
 	zonedb_reload(conf, server);
 
 	/* Trim extra heap. */

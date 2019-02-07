@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/dnssec/kasp/kasp_db.h"
+#include "knot/journal/journal_read.h"
+#include "knot/journal/journal_write.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/requestor.h"
 #include "knot/updates/zone-update.h"
@@ -49,27 +51,6 @@ static void free_ddns_queue(zone_t *zone)
 	ptrlist_free(&zone->ddns_queue, NULL);
 }
 
-/*! \brief Open journal for zone. */
-static int open_journal(zone_t *zone)
-{
-	assert(zone);
-
-	int ret = journal_open(zone->journal, zone->journal_db, zone->name);
-	if (ret != KNOT_EOK) {
-		log_zone_error(zone->name, "failed to open journal '%s'",
-		               (*zone->journal_db)->path);
-	}
-
-	return ret;
-}
-
-/*! \brief Close the zone journal. */
-static void close_journal(zone_t *zone)
-{
-	assert(zone);
-	journal_close(zone->journal);
-}
-
 /*!
  * \param allow_empty_zone useful when need to flush journal but zone is not yet loaded
  * ...in this case we actually don't have to do anything because the zonefile is current,
@@ -82,13 +63,14 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	assert(zone);
 
 	int ret = KNOT_EOK;
+	zone_journal_t j = zone_journal(zone);
 
 	bool force = zone->flags & ZONE_FORCE_FLUSH;
 	zone->flags &= ~ZONE_FORCE_FLUSH;
 
 	if (zone_contents_is_empty(zone->contents)) {
-		if (allow_empty_zone && zone->journal && journal_exists(zone->journal_db, zone->name)) {
-			ret = journal_flush(zone->journal);
+		if (allow_empty_zone && journal_is_existing(j)) {
+			ret = journal_set_flushed(j);
 		} else {
 			ret = KNOT_EINVAL;
 		}
@@ -150,13 +132,8 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	zone->zonefile.resigned = false;
 
 	/* Flush journal. */
-	if (zone->journal && journal_exists(zone->journal_db, zone->name)) {
-		ret = open_journal(zone);
-		if (ret != KNOT_EOK) {
-			goto flush_journal_replan;
-		}
-
-		ret = journal_flush(zone->journal);
+	if (journal_is_existing(j)) {
+		ret = journal_set_flushed(j);
 		if (ret != KNOT_EOK) {
 			goto flush_journal_replan;
 		}
@@ -189,14 +166,6 @@ zone_t* zone_new(const knot_dname_t *name)
 
 	zone->name = knot_dname_copy(name, NULL);
 	if (zone->name == NULL) {
-		free(zone);
-		return NULL;
-	}
-
-	// Journal
-	zone->journal = journal_new();
-	if (zone->journal == NULL) {
-		knot_dname_free(zone->name, NULL);
 		free(zone);
 		return NULL;
 	}
@@ -240,13 +209,9 @@ void zone_free(zone_t **zone_ptr)
 
 	zone_t *zone = *zone_ptr;
 
-	close_journal(zone);
-
 	zone_events_deinit(zone);
 
 	knot_dname_free(zone->name, NULL);
-
-	journal_free(&zone->journal);
 
 	free_ddns_queue(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
@@ -274,23 +239,16 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
 		return KNOT_EINVAL;
 	}
 
-	JOURNAL_LOCK_RW
+	int ret = journal_insert(zone_journal(zone), change);
+	if (ret == KNOT_EBUSY) {
+		log_zone_notice(zone->name, "journal is full, flushing");
 
-	int ret = open_journal(zone);
-	if (ret == KNOT_EOK) {
-		ret = journal_store_changeset(zone->journal, change);
-		if (ret == KNOT_EBUSY) {
-			log_zone_notice(zone->name, "journal is full, flushing");
-
-			/* Transaction rolled back, journal released, we may flush. */
-			ret = flush_journal(conf, zone, true);
-			if (ret == KNOT_EOK) {
-				ret = journal_store_changeset(zone->journal, change);
-			}
+		/* Transaction rolled back, journal released, we may flush. */
+		ret = flush_journal(conf, zone, true);
+		if (ret == KNOT_EOK) {
+			ret = journal_insert(zone_journal(zone), change);
 		}
 	}
-
-	JOURNAL_UNLOCK_RW
 
 	return ret;
 }
@@ -301,77 +259,7 @@ int zone_changes_clear(conf_t *conf, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	JOURNAL_LOCK_RW
-
-	int ret = KNOT_EOK;
-
-	if (journal_exists(zone->journal_db, zone->name)) {
-		ret = open_journal(zone);
-		if (ret == KNOT_EOK) {
-			ret = journal_drop_changesets(zone->journal);
-		}
-	}
-
-	JOURNAL_UNLOCK_RW
-
-	return ret;
-}
-
-int zone_changes_load(conf_t *conf, zone_t *zone, list_t *dst, uint32_t from)
-{
-	if (conf == NULL || zone == NULL || dst == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_ENOENT;
-
-	if (journal_exists(zone->journal_db, zone->name)) {
-		ret = open_journal(zone);
-	}
-
-	if (ret == KNOT_EOK) {
-		ret = journal_load_changesets(zone->journal, dst, from);
-	}
-
-	return ret;
-}
-
-int zone_chgset_ctx_load(conf_t *conf, zone_t *zone, chgset_ctx_list_t *dst, uint32_t from)
-{
-	if (conf == NULL || zone == NULL || dst == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_ENOENT;
-
-	if (journal_exists(zone->journal_db, zone->name)) {
-		ret = open_journal(zone);
-	}
-
-	if (ret == KNOT_EOK) {
-		ret = journal_load_chgset_ctx(zone->journal, dst, from);
-	}
-
-	return ret;
-}
-
-int zone_in_journal_load(conf_t *conf, zone_t *zone, list_t *dst)
-{
-	if (conf == NULL || zone == NULL || dst == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_ENOENT;
-
-	if (journal_exists(zone->journal_db, zone->name)) {
-		ret = open_journal(zone);
-	}
-
-	if (ret == KNOT_EOK) {
-		ret = journal_load_bootstrap(zone->journal, dst);
-	}
-
-	return ret;
+	return journal_scrape_with_md(zone_journal(zone));
 }
 
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents)
@@ -381,7 +269,7 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 	}
 
 	changeset_t *co_ch = changeset_from_contents(new_contents);
-	int ret = co_ch ? zone_change_store(conf, zone, co_ch) : KNOT_ENOMEM;
+	int ret = co_ch ? journal_insert_zone(zone_journal(zone), co_ch) : KNOT_ENOMEM;
 	changeset_from_contents_free(co_ch);
 
 	if (ret == KNOT_EOK) {
@@ -398,29 +286,9 @@ int zone_flush_journal(conf_t *conf, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	JOURNAL_LOCK_RW
-
 	// NO open_journal() here.
 
 	int ret = flush_journal(conf, zone, false);
-
-	JOURNAL_UNLOCK_RW
-
-	return ret;
-}
-
-int zone_journal_serial(conf_t *conf, zone_t *zone, bool *is_empty, uint32_t *serial_to)
-{
-	if (conf == NULL || zone == NULL || is_empty == NULL || serial_to == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = open_journal(zone);
-	if (ret == KNOT_EOK) {
-		kserial_t ks;
-		journal_metadata_info(zone->journal, is_empty, NULL, NULL, NULL, &ks, NULL, NULL);
-		*serial_to = (ks.valid ? ks.serial : 0);
-	}
 
 	return ret;
 }
@@ -622,24 +490,12 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
 
 int zone_set_master_serial(zone_t *zone, uint32_t serial)
 {
-	int ret = kasp_db_open(*kaspdb());
-	if (ret == KNOT_EOK) {
-		ret = kasp_db_store_serial(*kaspdb(), zone->name, KASPDB_SERIAL_MASTER, serial);
-	}
-	return ret;
+	return kasp_db_store_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
 int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 {
-	if (!kasp_db_exists(*kaspdb())) {
-		*serial = zone_contents_serial(zone->contents);
-		return KNOT_EOK;
-	}
-	int ret = kasp_db_open(*kaspdb());
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	ret = kasp_db_load_serial(*kaspdb(), zone->name, KASPDB_SERIAL_MASTER, serial);
+	int ret = kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
 	if (ret == KNOT_ENOENT) {
 		*serial = zone_contents_serial(zone->contents);
 		return KNOT_EOK;
@@ -649,21 +505,10 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 
 int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 {
-	int ret = kasp_db_open(*kaspdb());
-	if (ret == KNOT_EOK) {
-		ret = kasp_db_store_serial(*kaspdb(), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
-	}
-	return ret;
+	return kasp_db_store_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
 }
 
 bool zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 {
-	if (!kasp_db_exists(*kaspdb())) {
-		return false;
-	}
-	int ret = kasp_db_open(*kaspdb());
-	if (ret == KNOT_EOK) {
-		ret = kasp_db_load_serial(*kaspdb(), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
-	}
-	return (ret == KNOT_EOK);
+	return kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial) == KNOT_EOK;
 }

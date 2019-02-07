@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,7 +54,6 @@ typedef struct zone_events {
 
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
-	knot_db_t *timers_db;		//!< Persistent zone timers database.
 
 	task_t task;			//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
@@ -79,12 +78,11 @@ int zone_events_init(struct zone *zone);
  * \param zone       Zone to setup.
  * \param workers    Worker thread pool.
  * \param scheduler  Event scheduler.
- * \param timers_db  Persistent timers database. Can be NULL.
  *
  * \return KNOT_E*
  */
 int zone_events_setup(struct zone *zone, worker_pool_t *workers,
-                      evsched_t *scheduler, knot_db_t *timers_db);
+                      evsched_t *scheduler);
 
 /*!
  * \brief Deinitialize zone events.

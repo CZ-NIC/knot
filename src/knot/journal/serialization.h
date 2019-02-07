@@ -69,35 +69,6 @@ void serialize_deinit(serialize_ctx_t *ctx);
 size_t changeset_serialized_size(const changeset_t *ch);
 
 /*!
- * \brief Deserializes chunked area into ch
- *
- * \param[out] ch            The changeset.
- * \param[in]  src_chunks    The chunks to deserialize.
- * \param[in]  chunks_sizes  The size of each chunk.
- * \param[in]  chunks_count  The number of chunks.
- *
- * \retval KNOT_E*
- */
-int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],
-                          const size_t *chunks_sizes, size_t chunks_count);
-
-/*!
- * \brief Deserializes single RRSet being part of a changeset serialized in chunks.
- *
- * \param wire[in]           Current chunk ready to be parsed.
- * \param rrset[out]         RRSet to be deserialized (empty before).
- * \param src_chunks[in]     All chunks of the serialized changeset.
- * \param chunk_sizes[in]    Their sizes.
- * \param chunks_count[in]   Their count.
- * \param cur_chunk[in+out]  Index of current chunk.
- *
- * \return KNOT_E*
- */
-int deserialize_rrset_chunks(wire_ctx_t *wire, knot_rrset_t *rrset,
-                             uint8_t *src_chunks[], const size_t *chunk_sizes,
-                             size_t chunks_count, size_t *cur_chunk);
-
-/*!
  * \brief Simply serialize RRset w/o any chunking.
  *
  * \param wire

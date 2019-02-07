@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,10 +50,10 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 		return NULL;
 	}
 
-	zone->journal_db = &server->journal_db;
+	zone->journaldb = &server->journaldb;
+	zone->kaspdb = &server->kaspdb;
 
-	int result = zone_events_setup(zone, server->workers, &server->sched,
-	                               server->timers_db);
+	int result = zone_events_setup(zone, server->workers, &server->sched);
 	if (result != KNOT_EOK) {
 		zone_free(&zone);
 		return NULL;
@@ -140,7 +140,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	int ret = zone_timers_read(server->timers_db, name, &zone->timers);
+	int ret = zone_timers_read(&server->timerdb, name, &zone->timers);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		log_zone_error(zone->name, "failed to load persistent timers (%s)",
 		               knot_strerror(ret));

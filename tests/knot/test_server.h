@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 
 	/* Insert root zone. */
 	zone_t *root = zone_new(ROOT_DNAME);
-	root->journal_db = &server->journal_db;
+	root->journaldb = &server->journaldb;
 	root->contents = zone_contents_new(root->name);
 
 	knot_rrset_t *soa = knot_rrset_new(root->name, KNOT_RRTYPE_SOA, KNOT_CLASS_IN,
