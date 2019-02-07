@@ -712,6 +712,13 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 
+	if (ret == KNOT_EOK && next.type == REPLACE && next.ksk &&
+	    knot_time_cmp(reschedule->next_rollover, ctx->now) > 0) {
+		// just to make sure DS check is scheduled
+		reschedule->plan_ds_query = true;
+		plan_ds_keytag = dnssec_key_get_keytag(next.key->key);
+	}
+
 	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
 		ret = knot_dnssec_key_rollover(ctx, flags, reschedule);
 	}
