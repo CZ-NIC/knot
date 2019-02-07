@@ -772,13 +772,20 @@ static int ns_next_leaf(nstack_t *ns, const bool skip_pefixed)
 static int ns_prefix(nstack_t *ns)
 {
 	assert(ns && ns->len > 0);
-	// Simply walk up the trie until we find a BMP_NOBYTE child (our result).
+	const node_t *start = ns->stack[ns->len - 1];
+	// Walk up the trie until we find a BMP_NOBYTE child.
 	while (--ns->len > 0) {
 		node_t *p = ns->stack[ns->len - 1];
-		if (hastwig(p, BMP_NOBYTE)) {
-			ns->stack[ns->len++] = twig(p, 0);
-			return KNOT_EOK;
-		}
+		if (!hastwig(p, BMP_NOBYTE))
+			continue;
+		node_t *end = twig(p, 0);
+		// In case we started in a BMP_NOBYTE leaf, the first step up
+		// did NOT shorten the key and we would get back into the same
+		// node again.
+		if (end == start)
+			continue;
+		ns->stack[ns->len++] = end;
+		return KNOT_EOK;
 	}
 	return KNOT_ENOENT; // not found, as no more parent is available
 }
