@@ -193,7 +193,7 @@ static void xfr_log_publish(const knot_dname_t *zone_name,
 
 static int axfr_init(struct refresh_data *data)
 {
-	zone_contents_t *new_zone = zone_contents_new(data->zone->name);
+	zone_contents_t *new_zone = zone_contents_new(data->zone->name, true);
 	if (new_zone == NULL) {
 		return KNOT_ENOMEM;
 	}
