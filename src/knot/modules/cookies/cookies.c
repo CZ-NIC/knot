@@ -36,12 +36,25 @@
 
 #define MOD_SECRET_LIFETIME "\x0F""secret-lifetime"
 #define MOD_BADCOOKIE_SLIP  "\x0E""badcookie-slip"
+#define MOD_SECRET          "\x06""secret"
 
 const yp_item_t cookies_conf[] = {
 	{ MOD_SECRET_LIFETIME, YP_TINT, YP_VINT = { 1, 36*24*3600, 26*3600, YP_STIME } },
 	{ MOD_BADCOOKIE_SLIP,  YP_TINT, YP_VINT = { 1, INT32_MAX, 1 } },
+	{ MOD_SECRET,          YP_THEX, YP_VNONE },
 	{ NULL }
 };
+
+int cookies_conf_check(knotd_conf_check_args_t *args)
+{
+	knotd_conf_t conf = knotd_conf_check_item(args, MOD_SECRET);
+	if (conf.count == 1 && conf.single.data_len != KNOT_EDNS_COOKIE_SECRET_SIZE) {
+		args->err_str = "the length of the cookie secret "
+		                "MUST BE 128 bits (32 HEX characters)";
+		return KNOT_EINVAL;
+	}
+	return KNOT_EOK;
+}
 
 typedef struct {
 	struct {
@@ -235,23 +248,29 @@ int cookies_load(knotd_mod_t *mod)
 	}
 
 	// Initialize the server secret.
-	ret = dnssec_random_buffer((uint8_t *)&ctx->secret, sizeof(ctx->secret));
-	if (ret != KNOT_EOK) {
-		free(ctx);
-		return ret;
-	}
+	conf = knotd_conf_mod(mod, MOD_SECRET);
+	if (conf.count == 1) {
+		assert(conf.single.data_len == KNOT_EDNS_COOKIE_SECRET_SIZE);
+		memcpy(&ctx->secret, conf.single.data, conf.single.data_len);
+	} else {
+		ret = dnssec_random_buffer((uint8_t *)&ctx->secret, sizeof(ctx->secret));
+		if (ret != KNOT_EOK) {
+			free(ctx);
+			return ret;
+		}
 
-	knotd_mod_ctx_set(mod, ctx);
-
-	// Start the secret rollover thread.
-	if (pthread_create(&ctx->update_secret, NULL, update_secret, (void *)mod)) {
-		knotd_mod_log(mod, LOG_ERR, "failed to create the secret rollover thread");
+		// Start the secret rollover thread.
+		if (pthread_create(&ctx->update_secret, NULL, update_secret, (void *)mod)) {
+			knotd_mod_log(mod, LOG_ERR, "failed to create the secret rollover thread");
+		}
 	}
 
 #ifndef HAVE_ATOMIC
 	knotd_mod_log(mod, LOG_WARNING, "the module might work slightly wrong on this platform");
 	ctx->badcookie_slip = 1;
 #endif
+
+	knotd_mod_ctx_set(mod, ctx);
 
 	return knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, cookies_process);
 }
@@ -266,4 +285,4 @@ void cookies_unload(knotd_mod_t *mod)
 }
 
 KNOTD_MOD_API(cookies, KNOTD_MOD_FLAG_SCOPE_ANY | KNOTD_MOD_FLAG_OPT_CONF,
-              cookies_load, cookies_unload, cookies_conf, NULL);
+              cookies_load, cookies_unload, cookies_conf, cookies_conf_check);
