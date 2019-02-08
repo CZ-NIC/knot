@@ -52,7 +52,7 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 	}
 	if (node->nsec3_node != NULL) {
 		// Optimization: this node has been shallow-copied from older state. Try using already known NSEC3 name.
-		zone_node_t *candidate = zone_tree_get(zone->nsec3_nodes, node->nsec3_node->owner);
+		zone_node_t *candidate = zone_tree_get(zone->nsec3_nodes, node->nsec3_node->owner, zone->second_nodes);
 		if (candidate != NULL && (candidate->flags & NODE_FLAGS_IN_NSEC3_CHAIN)) {
 			node->nsec3_node = candidate;
 			return KNOT_EOK;
@@ -62,7 +62,7 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), node->owner,
 	                                  zone->apex->owner, &zone->nsec3_params);
 	if (ret == KNOT_EOK) {
-		node->nsec3_node = zone_tree_get(zone->nsec3_nodes, nsec3_name);
+		node->nsec3_node = zone_tree_get(zone->nsec3_nodes, nsec3_name, zone->second_nodes);
 	}
 	return ret;
 }
@@ -388,6 +388,7 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 	memcpy(&fake_conts, update->new_cont, sizeof(fake_conts));
 	fake_conts.nodes = update->a_ctx->node_ptrs;
 	fake_conts.nsec3_nodes = update->a_ctx->nsec3_ptrs;
+	fake_conts.second_nodes = fake_conts.binodes = false;
 
 	if (nsec3_cb != NULL) {
 		ret = zone_adjust_tree(&fake_conts, true, nsec3_cb, NULL, NULL, false, false);

@@ -794,6 +794,7 @@ static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
 	}
 
 	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = binode_node(it->cur_node, update->new_cont->second_nodes);
 
 	return KNOT_EOK;
 }
@@ -809,6 +810,7 @@ static int iter_get_next_node(zone_update_iter_t *it)
 	}
 
 	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = binode_node(it->cur_node, it->update->new_cont->second_nodes);
 
 	return KNOT_EOK;
 }
@@ -825,6 +827,8 @@ static int iter_init(zone_update_iter_t *it, zone_update_t *update, const bool n
 	}
 
 	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = binode_node(it->cur_node, update->new_cont->second_nodes);
+
 
 	return KNOT_EOK;
 }

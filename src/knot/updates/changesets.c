@@ -113,7 +113,7 @@ static void iter_next_node(changeset_iter_t *ch_it, trie_it_t *t_it)
 		return;
 	}
 
-	ch_it->node = (zone_node_t *)*trie_it_val(t_it);
+	ch_it->node = (zone_node_t *)*trie_it_val(t_it); // changeset has no bi-nodes :)
 	assert(ch_it->node);
 	while (ch_it->node && ch_it->node->rrset_count == 0) {
 		// Skip empty non-terminals.

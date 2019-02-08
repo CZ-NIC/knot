@@ -43,7 +43,7 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 	return KNOT_EOK;
 }
 
-zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
+zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner, bool second_nodes)
 {
 	if (owner == NULL) {
 		return NULL;
@@ -62,11 +62,12 @@ zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
 		return NULL;
 	}
 
-	return *val;
+	return binode_node(*val, second_nodes);
 }
 
 int zone_tree_get_less_or_equal(zone_tree_t *tree,
                                 const knot_dname_t *owner,
+				bool second_nodes,
                                 zone_node_t **found,
                                 zone_node_t **previous)
 {
@@ -109,6 +110,9 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 		*found = NULL;
 		trie_it_free(i);
 	}
+
+	*found = binode_node(*found, second_nodes);
+	*previous = binode_node(*previous, second_nodes);
 
 	return exact_match;
 }

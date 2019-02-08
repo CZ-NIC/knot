@@ -223,7 +223,7 @@ static int knot_zone_diff_node(zone_node_t *node, void *data)
 	 * First, we have to search the second tree to see if there's according
 	 * node, if not, the whole node has been removed.
 	 */
-	zone_node_t *node_in_second_tree = zone_tree_get(param->nodes, node->owner);
+	zone_node_t *node_in_second_tree = zone_tree_get(param->nodes, node->owner, param->second_nodes);
 	if (node_in_second_tree == NULL) {
 		return remove_node(node, param->changeset, param->ignore_dnssec);
 	}
@@ -315,7 +315,7 @@ static int add_new_nodes(zone_node_t *node, void *data)
 	* and has to be added to changeset. Differencies on the RRSet level are
 	* already handled.
 	*/
-	zone_node_t *new_node = zone_tree_get(param->nodes, node->owner);
+	zone_node_t *new_node = zone_tree_get(param->nodes, node->owner, param->second_nodes);
 	if (new_node == NULL) {
 		assert(node);
 		return add_node(node, param->changeset, param->ignore_dnssec);
@@ -332,6 +332,7 @@ static int load_trees(const zone_contents_t *zone1, const zone_contents_t *zone2
 	struct zone_diff_param param = {
 		.changeset = changeset,
 		.ignore_dnssec = ignore_dnssec,
+		.second_nodes = zone1->second_nodes,
 	};
 
 	// Traverse one tree, compare every node, each RRSet with its rdata.

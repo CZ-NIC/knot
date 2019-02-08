@@ -119,7 +119,7 @@ static int measure_max_ttl(zone_node_t *node, void *data){
  * \retval false if the domain name was not found. \a node may hold any (or none)
  *               node. \a previous is set properly.
  */
-static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
+static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name, bool second_nodes,
                          zone_node_t **node, zone_node_t **previous)
 {
 	assert(tree != NULL);
@@ -129,7 +129,7 @@ static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
 
 	zone_node_t *found = NULL, *prev = NULL;
 
-	int match = zone_tree_get_less_or_equal(tree, name, &found, &prev);
+	int match = zone_tree_get_less_or_equal(tree, name, second_nodes, &found, &prev);
 	if (match < 0) {
 		assert(0);
 		return false;
@@ -515,7 +515,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 	zone_node_t *node = NULL;
 	zone_node_t *prev = NULL;
 
-	int found = zone_tree_get_less_or_equal(zone->nodes, name, &node, &prev);
+	int found = zone_tree_get_less_or_equal(zone->nodes, name, zone->second_nodes, &node, &prev);
 	if (found < 0) {
 		// error
 		return found;
@@ -603,7 +603,7 @@ int zone_contents_find_nsec3(const zone_contents_t *zone,
                              const zone_node_t **nsec3_previous)
 {
 	zone_node_t *found = NULL, *prev = NULL;
-	bool match = find_in_tree(zone->nsec3_nodes, nsec3_name, &found, &prev);
+	bool match = find_in_tree(zone->nsec3_nodes, nsec3_name, zone->second_nodes, &found, &prev);
 
 	*nsec3_node = found;
 

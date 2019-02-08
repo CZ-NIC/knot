@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 	/* 3. check data test */
 	passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		zone_node_t *node = zone_tree_get(t, NAME[i]);
+		zone_node_t *node = zone_tree_get(t, NAME[i], false);
 		if (node == NULL || node != NODE + i) {
 			passed = 0;
 			break;
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 	zone_node_t *node = NULL;
 	zone_node_t *prev = NULL;
 	knot_dname_t *tmp_dn = knot_dname_from_str_alloc("z.ac.");
-	zone_tree_get_less_or_equal(t, tmp_dn, &node, &prev);
+	zone_tree_get_less_or_equal(t, tmp_dn, false, &node, &prev);
 	knot_dname_free(tmp_dn, NULL);
 	ok(prev == NODE + 1, "ztree: ordered lookup");
 

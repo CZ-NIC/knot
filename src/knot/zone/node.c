@@ -143,7 +143,7 @@ void binode_unify(zone_node_t *node, knot_mm_t *mm)
 
 zone_node_t *binode_node(zone_node_t *node, bool second)
 {
-	if ((node->flags & NODE_FLAGS_BINODE)) {
+	if (node != NULL && (node->flags & NODE_FLAGS_BINODE)) {
 		if (second && !(node->flags & NODE_FLAGS_SECOND)) {
 			return node + 1;
 		}

@@ -168,6 +168,7 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 	}
 
 	zone_node_t *first = (zone_node_t *)*trie_it_val(it);
+	first = binode_node(first, data->zone->second_nodes);
 	zone_node_t *previous = first;
 	zone_node_t *current = first;
 
@@ -176,6 +177,7 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 	int result = KNOT_EOK;
 	while (!trie_it_finished(it)) {
 		current = (zone_node_t *)*trie_it_val(it);
+		current = binode_node(current, data->zone->second_nodes);
 
 		result = callback(previous, current, data);
 		if (result == NSEC_NODE_SKIP) {
@@ -196,32 +198,32 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 	                 callback(current, first, data);
 }
 
-inline static zone_node_t *it_val(trie_it_t *it)
+inline static zone_node_t *it_val(trie_it_t *it, const zone_contents_t *z)
 {
-	return (zone_node_t *)*trie_it_val(it);
+	return binode_node((zone_node_t *)*trie_it_val(it), z->second_nodes);
 }
 
-inline static zone_node_t *it_next0(trie_it_t *it, zone_node_t *first)
+inline static zone_node_t *it_next0(trie_it_t *it, zone_node_t *first, const zone_contents_t *z)
 {
 	trie_it_next(it);
-	return (trie_it_finished(it) ? first : it_val(it));
+	return (trie_it_finished(it) ? first : it_val(it, z));
 }
 
-static zone_node_t *it_next1(trie_it_t *it, zone_node_t *first)
+static zone_node_t *it_next1(trie_it_t *it, zone_node_t *first, const zone_contents_t *z)
 {
 	zone_node_t *res;
 	do {
-		res = it_next0(it, first);
+		res = it_next0(it, first, z);
 	} while (knot_nsec_empty_nsec_and_rrsigs_in_node(res) || (res->flags & NODE_FLAGS_NONAUTH));
 	return res;
 }
 
-static zone_node_t *it_next2(trie_it_t *it, zone_node_t *first, changeset_t *ch)
+static zone_node_t *it_next2(trie_it_t *it, zone_node_t *first, changeset_t *ch, const zone_contents_t *z)
 {
-	zone_node_t *res = it_next0(it, first);
+	zone_node_t *res = it_next0(it, first, z);
 	while (knot_nsec_empty_nsec_and_rrsigs_in_node(res) || (res->flags & NODE_FLAGS_NONAUTH)) {
 		(void)knot_nsec_changeset_remove(res, ch);
-		res = it_next0(it, first);
+		res = it_next0(it, first, z);
 	}
 	return res;
 }
@@ -262,7 +264,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 		goto cleanup;
 	}
 
-	zone_node_t *old_first = it_val(old_it), *new_first = it_val(new_it);
+	zone_node_t *old_first = it_val(old_it, data->zone), *new_first = it_val(new_it, data->zone);
 
 	if (!knot_dname_is_equal(old_first->owner, new_first->owner)) {
 		// this may happen with NSEC3 (on NSEC, it will be apex)
@@ -280,8 +282,8 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 	}
 
 	zone_node_t *old_prev = old_first, *new_prev = new_first;
-	zone_node_t *old_curr = it_next1(old_it, old_first);
-	zone_node_t *new_curr = it_next2(new_it, new_first, data->changeset);
+	zone_node_t *old_curr = it_next1(old_it, old_first, data->zone);
+	zone_node_t *new_curr = it_next2(new_it, new_first, data->changeset, data->zone);
 
 	while (1) {
 		bool bitmap_change = !node_bitmap_equal(old_prev, new_prev);
@@ -305,7 +307,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 				ret = knot_nsec_changeset_remove(old_curr, data->changeset);
 				CHECK_RET;
 				old_prev = old_curr;
-				old_curr = it_next1(old_it, old_first);
+				old_curr = it_next1(old_it, old_first, data->zone);
 				ret = callback(new_prev, new_curr, data);
 				CHECK_RET;
 			} else {
@@ -315,7 +317,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 				ret = callback(new_prev, new_curr, data);
 				CHECK_RET;
 				new_prev = new_curr;
-				new_curr = it_next2(new_it, new_first, data->changeset);
+				new_curr = it_next2(new_it, new_first, data->changeset, data->zone);
 				ret = callback(new_prev, new_curr, data);
 				CHECK_RET;
 			}
@@ -328,8 +330,8 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 
 		old_prev = old_curr;
 		new_prev = new_curr;
-		old_curr = it_next1(old_it, old_first);
-		new_curr = it_next2(new_it, new_first, data->changeset);
+		old_curr = it_next1(old_it, old_first, data->zone);
+		new_curr = it_next2(new_it, new_first, data->changeset, data->zone);
 	}
 
 cleanup:

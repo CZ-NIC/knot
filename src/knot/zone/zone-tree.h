@@ -78,10 +78,11 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
  *
  * \param tree Zone tree to search in.
  * \param owner Owner of the node to find.
+ * \param second_nodes Read second nodes of bi-nodes.
  *
  * \retval Found node or NULL.
  */
-zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner);
+zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner, bool second_nodes);
 
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
@@ -89,6 +90,7 @@ zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner);
  *
  * \param tree Zone to search in.
  * \param owner Owner of the node to find.
+ * \param second_nodes Read second nodes of bi-nodes.
  * \param found Found node.
  * \param previous Previous node in canonical order (i.e. the one directly
  *                 preceding \a owner in canonical order, regardless if the name
@@ -104,6 +106,7 @@ zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner);
  */
 int zone_tree_get_less_or_equal(zone_tree_t *tree,
                                 const knot_dname_t *owner,
+                                bool second_nodes,
                                 zone_node_t **found,
                                 zone_node_t **previous);
 
