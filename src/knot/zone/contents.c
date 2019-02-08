@@ -55,8 +55,6 @@ static int check_node(const zone_contents_t *contents, const zone_node_t *node)
 /*!
  * \brief Destroys all RRSets in a node.
  *
- * This function is designed to be used in the tree-iterating functions.
- *
  * \param node Node to destroy RRSets from.
  * \param data Unused parameter.
  */
@@ -65,6 +63,7 @@ static int destroy_node_rrsets_from_tree(zone_node_t *node, void *data)
 	UNUSED(data);
 
 	if (node != NULL) {
+		binode_unify(node, true, NULL);
 		node_free_rrsets(node, NULL);
 		node_free(node, NULL);
 	}
@@ -122,7 +121,7 @@ static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
 	return match > 0;
 }
 
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes)
 {
 	if (apex_name == NULL) {
 		return NULL;
@@ -134,17 +133,17 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 	}
 
 	memset(contents, 0, sizeof(zone_contents_t));
-	contents->apex = node_new(apex_name, NULL);
+	contents->apex = node_new(apex_name, use_binodes, NULL);
 	if (contents->apex == NULL) {
 		goto cleanup;
 	}
 
-	contents->nodes = zone_tree_create();
+	contents->nodes = zone_tree_create(use_binodes);
 	if (contents->nodes == NULL) {
 		goto cleanup;
 	}
 
-	if (zone_tree_insert(contents->nodes, contents->apex) != KNOT_EOK) {
+	if (zone_tree_insert(contents->nodes, &contents->apex) != KNOT_EOK) {
 		goto cleanup;
 	}
 
@@ -157,6 +156,11 @@ cleanup:
 	return NULL;
 }
 
+bool zone_contents_use_binodes(const zone_contents_t *c)
+{
+	return (c->nodes->flags & ZONE_TREE_USE_BINODES);
+}
+
 static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *name)
 {
 	assert(zone);
@@ -165,18 +169,18 @@ static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *na
 	return zone_tree_get(zone->nodes, name);
 }
 
-static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parents)
+static int add_node(zone_contents_t *zone, zone_node_t **anode, bool create_parents)
 {
-	if (zone == NULL || node == NULL) {
+	if (zone == NULL || anode == NULL || *anode == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = check_node(zone, node);
+	int ret = check_node(zone, *anode);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = zone_tree_insert(zone->nodes, node);
+	ret = zone_tree_insert(zone->nodes, anode);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -184,6 +188,8 @@ static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parent
 	if (!create_parents) {
 		return KNOT_EOK;
 	}
+
+	zone_node_t *node = *anode;
 
 	/* No parents for root domain. */
 	if (*node->owner == '\0') {
@@ -204,13 +210,13 @@ static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parent
 		while (parent != NULL && !(next_node = get_node(zone, parent))) {
 
 			/* Create a new node. */
-			next_node = node_new(parent, NULL);
+			next_node = node_new(parent, zone_contents_use_binodes(zone), NULL);
 			if (next_node == NULL) {
 				return KNOT_ENOMEM;
 			}
 
 			/* Insert node to a tree. */
-			ret = zone_tree_insert(zone->nodes, next_node);
+			ret = zone_tree_insert(zone->nodes, &next_node);
 			if (ret != KNOT_EOK) {
 				node_free(next_node, NULL);
 				return ret;
@@ -235,20 +241,20 @@ static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parent
 	return KNOT_EOK;
 }
 
-static int add_nsec3_node(zone_contents_t *zone, zone_node_t *node)
+static int add_nsec3_node(zone_contents_t *zone, zone_node_t **node)
 {
-	if (zone == NULL || node == NULL) {
+	if (zone == NULL || node == NULL || *node == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = check_node(zone, node);
+	int ret = check_node(zone, *node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	/* Create NSEC3 tree if not exists. */
 	if (zone->nsec3_nodes == NULL) {
-		zone->nsec3_nodes = zone_tree_create();
+		zone->nsec3_nodes = zone_tree_create(zone_contents_use_binodes(zone));
 		if (zone->nsec3_nodes == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -262,7 +268,7 @@ static int add_nsec3_node(zone_contents_t *zone, zone_node_t *node)
 
 	// no parents to be created, the only parent is the zone apex
 	// set the apex as the parent of the node
-	node_set_parent(node, zone->apex);
+	node_set_parent(*node, zone->apex);
 
 	// cannot be wildcard child, so nothing to be done
 
@@ -294,11 +300,11 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		*n = nsec3 ? get_nsec3_node(z, rr->owner) : get_node(z, rr->owner);
 		if (*n == NULL) {
 			// Create new, insert
-			*n = node_new(rr->owner, NULL);
+			*n = node_new(rr->owner, zone_contents_use_binodes(z), NULL);
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
-			int ret = nsec3 ? add_nsec3_node(z, *n) : add_node(z, *n, true);
+			int ret = nsec3 ? add_nsec3_node(z, n) : add_node(z, n, true);
 			if (ret != KNOT_EOK) {
 				node_free(*n, NULL);
 				*n = NULL;
@@ -353,7 +359,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nodes = trie_dup(z->nodes, (trie_dup_cb)node_shallow_copy, NULL);
+	out->nodes = zone_tree_shallow_copy(z->nodes);
 	if (out->nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -384,7 +390,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nsec3_nodes = trie_dup(z->nsec3_nodes, (trie_dup_cb)node_shallow_copy, NULL);
+	out->nsec3_nodes = zone_tree_shallow_copy(z->nsec3_nodes);
 	if (out->nsec3_nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -434,13 +440,12 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 	zone_node_t *node = nsec3 ? get_nsec3_node(zone, rrset->owner) :
 	                            get_node(zone, rrset->owner);
 	if (node == NULL) {
-		node = node_new(rrset->owner, NULL);
-		int ret = nsec3 ? add_nsec3_node(zone, node) : add_node(zone, node, true);
+		node = node_new(rrset->owner, zone_contents_use_binodes(zone), NULL);
+		int ret = nsec3 ? add_nsec3_node(zone, &node) : add_node(zone, &node, true);
 		if (ret != KNOT_EOK) {
 			node_free(node, NULL);
 			return NULL;
 		}
-
 		return node;
 	} else {
 		return node;
@@ -682,6 +687,19 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 
 	*to = contents;
 	return KNOT_EOK;
+}
+
+static int binode_unify_cb(zone_node_t *node, void *ctx)
+{
+	UNUSED(ctx);
+	binode_unify(node, false, NULL);
+	return KNOT_EOK;
+}
+
+void zone_contents_unify_binodes(zone_contents_t *contents)
+{
+	(void)zone_contents_apply(contents, binode_unify_cb, NULL);
+	(void)zone_contents_nsec3_apply(contents, binode_unify_cb, NULL);
 }
 
 void zone_contents_free(zone_contents_t *contents)

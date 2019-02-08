@@ -38,7 +38,7 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 		node->flags |= NODE_FLAGS_DELEG;
 	} else {
 		// Default.
-		node->flags = NODE_FLAGS_AUTH;
+		node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_WILDCARD_CHILD);
 	}
 
 	return KNOT_EOK; // always returns this value :)
@@ -112,6 +112,7 @@ static bool nsec3_params_match(const knot_rdataset_t *rrs,
 int adjust_cb_nsec3_flags(zone_node_t *node, const zone_contents_t *zone)
 {
 	// check if this node belongs to correct chain
+	node->flags &= ~NODE_FLAGS_IN_NSEC3_CHAIN;
 	const knot_rdataset_t *nsec3_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC3);
 	for (uint16_t i = 0; nsec3_rrs != NULL && i < nsec3_rrs->count; i++) {
 		if (nsec3_params_match(nsec3_rrs, &zone->nsec3_params, i)) {

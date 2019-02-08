@@ -19,7 +19,15 @@
 #include "contrib/qp-trie/trie.h"
 #include "knot/zone/node.h"
 
-typedef trie_t zone_tree_t;
+enum {
+	ZONE_TREE_USE_BINODES = (1 << 0),
+	ZONE_TREE_BINO_SECOND = (1 << 1),
+};
+
+typedef struct {
+	trie_t *trie;
+	uint16_t flags;
+} zone_tree_t;
 
 /*!
  * \brief Signature of callback for zone apply functions.
@@ -39,7 +47,12 @@ typedef struct {
  *
  * \return created zone tree structure.
  */
-zone_tree_t *zone_tree_create(void);
+zone_tree_t *zone_tree_create(bool use_binodes);
+
+/*!
+ * \brief Return shallow copy of a zone tree.
+ */
+zone_tree_t *zone_tree_shallow_copy(zone_tree_t *from);
 
 /*!
  * \brief Return number of nodes in the zone tree.
@@ -54,7 +67,7 @@ inline static size_t zone_tree_count(const zone_tree_t *tree)
 		return 0;
 	}
 
-	return trie_weight(tree);
+	return trie_weight(tree->trie);
 }
 
 /*!
@@ -73,13 +86,13 @@ inline static bool zone_tree_is_empty(const zone_tree_t *tree)
  * \brief Inserts the given node into the zone tree.
  *
  * \param tree Zone tree to insert the node into.
- * \param node Node to insert.
+ * \param node Node to insert. If it's binode, the pointer will be adjusted to correct node.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
-int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
+int zone_tree_insert(zone_tree_t *tree, zone_node_t **node);
 
 /*!
  * \brief Finds node with the given owner in the zone tree.

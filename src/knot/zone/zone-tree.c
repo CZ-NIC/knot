@@ -22,34 +22,70 @@
 #include "libknot/errcode.h"
 #include "contrib/macros.h"
 
+static inline zone_node_t *fix_get(zone_node_t *node, const zone_tree_t *tree)
+{
+	return binode_node(node, (tree->flags & ZONE_TREE_USE_BINODES) && (tree->flags & ZONE_TREE_BINO_SECOND));
+}
+
 typedef struct {
 	zone_tree_apply_cb_t func;
 	void *data;
+	const zone_tree_t *tree;
 } zone_tree_func_t;
 
 static int tree_apply_cb(trie_val_t *node, void *data)
 {
 	zone_tree_func_t *f = (zone_tree_func_t *)data;
-	return f->func((zone_node_t *)*node, f->data);
+	zone_node_t *n = fix_get(*node, f->tree);
+	return f->func(n, f->data);
 }
 
-zone_tree_t *zone_tree_create(void)
+zone_tree_t *zone_tree_create(bool use_binodes)
 {
-	return trie_create(NULL);
+	zone_tree_t *t = calloc(1, sizeof(*t));
+	if (t != NULL) {
+		if (use_binodes) {
+			t->flags = ZONE_TREE_USE_BINODES;
+		}
+		t->trie = trie_create(NULL);
+		if (t->trie == NULL) {
+			free(t);
+			t = NULL;
+		}
+	}
+	return t;
 }
 
-int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
+zone_tree_t *zone_tree_shallow_copy(zone_tree_t *from)
 {
-	if (tree == NULL || node == NULL) {
+	zone_tree_t *to = calloc(1, sizeof(*to));
+	if (to == NULL) {
+		return to;
+	}
+	to->flags = from->flags ^ ZONE_TREE_BINO_SECOND;
+	to->trie = trie_dup(from->trie, (trie_dup_cb)node_shallow_copy, NULL);
+	if (to->trie == NULL) {
+		free(to);
+		to = NULL;
+	}
+	return to;
+}
+
+int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
+{
+	if (tree == NULL || node == NULL || *node == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	assert(node->owner);
+	assert((*node)->owner);
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(node->owner, lf_storage);
+	uint8_t *lf = knot_dname_lf((*node)->owner, lf_storage);
 	assert(lf);
 
-	*trie_get_ins(tree, lf + 1, *lf) = node;
+	assert((bool)((*node)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
+
+	*trie_get_ins(tree->trie, lf + 1, *lf) = binode_node(*node, false);
+	*node = binode_node(*node, (tree->flags & ZONE_TREE_USE_BINODES) && (tree->flags & ZONE_TREE_BINO_SECOND));
 
 	return KNOT_EOK;
 }
@@ -68,12 +104,13 @@ zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
 	uint8_t *lf = knot_dname_lf(owner, lf_storage);
 	assert(lf);
 
-	trie_val_t *val = trie_get_try(tree, lf + 1, *lf);
+	trie_val_t *val = trie_get_try(tree->trie, lf + 1, *lf);
 	if (val == NULL) {
 		return NULL;
 	}
+	assert((bool)(((zone_node_t *)*val)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
 
-	return *val;
+	return fix_get(*val, tree);
 }
 
 int zone_tree_get_less_or_equal(zone_tree_t *tree,
@@ -94,9 +131,10 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	assert(lf);
 
 	trie_val_t *fval = NULL;
-	int ret = trie_get_leq(tree, lf + 1, *lf, &fval);
+	int ret = trie_get_leq(tree->trie, lf + 1, *lf, &fval);
 	if (fval != NULL) {
-		*found = (zone_node_t *)(*fval);
+		assert((bool)(((zone_node_t *)*fval)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
+		*found = fix_get(*fval, tree);
 	}
 
 	int exact_match = 0;
@@ -139,9 +177,9 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 	uint8_t *lf = knot_dname_lf(owner, lf_storage);
 	assert(lf);
 
-	trie_val_t *rval = trie_get_try(tree, lf + 1, *lf);
+	trie_val_t *rval = trie_get_try(tree->trie, lf + 1, *lf);
 	if (rval != NULL) {
-		trie_del(tree, lf + 1, *lf, NULL);
+		trie_del(tree->trie, lf + 1, *lf, NULL);
 	}
 }
 
@@ -173,7 +211,7 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 
 		// Delete node
 		zone_tree_remove_node(tree, node->owner);
-		node_free(node, NULL);
+		node->flags |= NODE_FLAGS_DELETED;
 	}
 }
 
@@ -190,15 +228,16 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 	zone_tree_func_t f = {
 		.func = function,
 		.data = data,
+		.tree = tree,
 	};
 
-	return trie_apply(tree, tree_apply_cb, &f);
+	return trie_apply(tree->trie, tree_apply_cb, &f);
 }
 
 int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it)
 {
 	if (it->tree == NULL) {
-		it->it = trie_it_begin((trie_t *)tree);
+		it->it = trie_it_begin(tree->trie);
 		if (it->it == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -214,7 +253,7 @@ bool zone_tree_it_finished(zone_tree_it_t *it)
 
 zone_node_t *zone_tree_it_val(zone_tree_it_t *it)
 {
-	return (zone_node_t *)*trie_it_val(it->it);
+	return fix_get(*trie_it_val(it->it), it->tree);
 }
 
 void zone_tree_it_next(zone_tree_it_t *it)
@@ -234,7 +273,8 @@ void zone_tree_free(zone_tree_t **tree)
 		return;
 	}
 
-	trie_free(*tree);
+	trie_free((*tree)->trie);
+	free(*tree);
 	*tree = NULL;
 }
 

@@ -46,7 +46,7 @@ static int delete_nsec3_chain(const zone_contents_t *zone, changeset_t *changese
 		return KNOT_EOK;
 	}
 
-	zone_tree_t *empty_tree = zone_tree_create();
+	zone_tree_t *empty_tree = zone_tree_create(false);
 	if (!empty_tree) {
 		return KNOT_ENOMEM;
 	}

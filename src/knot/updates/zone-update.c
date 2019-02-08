@@ -71,7 +71,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 
 static int init_full(zone_update_t *update, zone_t *zone)
 {
-	update->new_cont = zone_contents_new(zone->name);
+	update->new_cont = zone_contents_new(zone->name, true);
 	if (update->new_cont == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -770,6 +770,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	callrcu_wrapper(update->a_ctx, update_cleanup, true);
 	update->a_ctx = NULL;
 	update->new_cont = NULL;
+
+	zone_contents_unify_binodes(update->zone->contents);
 
 	/* Sync zonefile immediately if configured. */
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, update->zone->name);

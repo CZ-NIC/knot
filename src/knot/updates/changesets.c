@@ -132,11 +132,11 @@ int changeset_init(changeset_t *ch, const knot_dname_t *apex)
 	memset(ch, 0, sizeof(changeset_t));
 
 	// Init local changes
-	ch->add = zone_contents_new(apex);
+	ch->add = zone_contents_new(apex, false);
 	if (ch->add == NULL) {
 		return KNOT_ENOMEM;
 	}
-	ch->remove = zone_contents_new(apex);
+	ch->remove = zone_contents_new(apex, false);
 	if (ch->remove == NULL) {
 		zone_contents_free(ch->add);
 		return KNOT_ENOMEM;

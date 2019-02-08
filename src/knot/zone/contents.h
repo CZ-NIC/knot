@@ -41,11 +41,17 @@ typedef struct zone_contents {
 /*!
  * \brief Allocate and create new zone contents.
  *
- * \param apex_name  Name of the root node.
+ * \param apex_name     Name of the root node.
+ * \param use_binodes   Zone trees shall consist of bi-nodes to enable zone updates.
  *
  * \return New contents or NULL on error.
  */
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes);
+
+/*!
+ * \brief Return true iff contents' zone-trees use bi-nodes.
+ */
+bool zone_contents_use_binodes(const zone_contents_t *c);
 
 /*!
  * \brief Add an RR to contents.
@@ -244,6 +250,11 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
  * \retval KNOT_ENOMEM
  */
 int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to);
+
+/*!
+ * \brief Unify all zone's nodes.
+ */
+void zone_contents_unify_binodes(zone_contents_t *contents);
 
 /*!
  * \brief Deallocate directly owned data of zone contents.
