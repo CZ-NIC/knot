@@ -41,11 +41,22 @@ typedef struct zone_contents {
 /*!
  * \brief Allocate and create new zone contents.
  *
- * \param apex_name  Name of the root node.
+ * \param apex_name     Name of the root node.
+ * \param use_binodes   Zone trees shall consist of bi-nodes to enable zone updates.
  *
  * \return New contents or NULL on error.
  */
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes);
+
+/*!
+ * \brief Create a node suitable for inserting into this contents.
+ */
+zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents);
+
+/*!
+ * \brief Returns zone tree for inserting given RR.
+ */
+zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrset_t *rr);
 
 /*!
  * \brief Add an RR to contents.
@@ -68,16 +79,6 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t
  * \return KNOT_E*
  */
 int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
-
-/*!
- * \brief Get the node with this RR (the RR's owner).
- *
- * \param zone   Contents to add to.
- * \param rrset  The RR to add.
- *
- * \return The searched node if it exists, a new added empty node or NULL on error.
- */
-zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.

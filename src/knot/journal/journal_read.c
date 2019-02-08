@@ -183,7 +183,7 @@ static int add_rr_to_contents(zone_contents_t *z, const knot_rrset_t *rrset)
 
 bool journal_read_changeset(journal_read_t *ctx, changeset_t *ch)
 {
-	zone_contents_t *tree = zone_contents_new(ctx->zone);
+	zone_contents_t *tree = zone_contents_new(ctx->zone, false);
 	knot_rrset_t *soa = calloc(1, sizeof(*soa)), rr = { 0 };
 	if (tree == NULL || soa == NULL) {
 		ctx->txn.ret = KNOT_ENOMEM;
@@ -203,7 +203,7 @@ bool journal_read_changeset(journal_read_t *ctx, changeset_t *ch)
 			ch->soa_from = soa;
 			ch->remove = tree;
 			soa = malloc(sizeof(*soa));
-			tree = zone_contents_new(ctx->zone);
+			tree = zone_contents_new(ctx->zone, false);
 			if (tree == NULL || soa == NULL) {
 				ctx->txn.ret = KNOT_ENOMEM;
 				goto fail;
