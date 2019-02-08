@@ -84,9 +84,9 @@ static bool ttl_changed(struct rr_data *node_data, const knot_rrset_t *rrset)
 	return rrset->ttl != node_data->ttl;
 }
 
-zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm)
+zone_node_t *node_new(const knot_dname_t *owner, bool binode, knot_mm_t *mm)
 {
-	zone_node_t *ret = mm_alloc(mm, sizeof(zone_node_t));
+	zone_node_t *ret = mm_alloc(mm, (binode ? 2 : 1) * sizeof(zone_node_t));
 	if (ret == NULL) {
 		return NULL;
 	}
@@ -101,9 +101,94 @@ zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm)
 	}
 
 	// Node is authoritative by default.
-	ret->flags = NODE_FLAGS_AUTH;
+	ret->flags = NODE_FLAGS_AUTH | NODE_FLAGS_DELETED;
+
+	if (binode) {
+		ret->flags |= NODE_FLAGS_BINODE;
+		memcpy(ret + 1, ret, sizeof(*ret));
+		(ret + 1)->flags ^= NODE_FLAGS_SECOND;
+	}
 
 	return ret;
+}
+
+zone_node_t *binode_counterpart(zone_node_t *node)
+{
+	zone_node_t *counterpart = NULL;
+
+	if ((node->flags & NODE_FLAGS_BINODE)) {
+		if ((node->flags & NODE_FLAGS_SECOND)) {
+			counterpart = node - 1;
+			assert(!(counterpart->flags & NODE_FLAGS_SECOND));
+		} else {
+			counterpart = node + 1;
+			assert((counterpart->flags & NODE_FLAGS_SECOND));
+		}
+		assert((counterpart->flags & NODE_FLAGS_BINODE));
+	}
+
+	return counterpart;
+}
+
+void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
+{
+	zone_node_t *counter = binode_counterpart(node);
+	if (counter != NULL) {
+		if (counter->rrs != node->rrs) {
+			for (uint16_t i = 0; i < counter->rrset_count; ++i) {
+				if (!binode_rdataset_shared(node, counter->rrs[i].type)) {
+					rr_data_clear(&counter->rrs[i], mm);
+				}
+			}
+			mm_free(mm, counter->rrs);
+		}
+		memcpy(counter, node, sizeof(*counter));
+		counter->flags ^= NODE_FLAGS_SECOND;
+
+		if (free_deleted && (node->flags & NODE_FLAGS_DELETED)) {
+			node_free(node, mm);
+		}
+	}
+}
+
+int binode_prepare_change(zone_node_t *node, knot_mm_t *mm)
+{
+	zone_node_t *counter = binode_counterpart(node);
+	if (counter != NULL && counter->rrs == node->rrs) {
+		size_t rrlen = sizeof(struct rr_data) * counter->rrset_count;
+		node->rrs = mm_alloc(mm, rrlen);
+		if (node->rrs == NULL) {
+			return KNOT_ENOMEM;
+		}
+		memcpy(node->rrs, counter->rrs, rrlen);
+	}
+	return KNOT_EOK;
+}
+
+zone_node_t *binode_node(zone_node_t *node, bool second)
+{
+	if (node != NULL && (node->flags & NODE_FLAGS_BINODE)) {
+		if (second && !(node->flags & NODE_FLAGS_SECOND)) {
+			return node + 1;
+		}
+		if (!second && (node->flags & NODE_FLAGS_SECOND)) {
+			return node - 1;
+		}
+	}
+	return node;
+}
+
+bool binode_rdataset_shared(zone_node_t *node, uint16_t type)
+{
+	if (node == NULL || !(node->flags & NODE_FLAGS_BINODE)) {
+		return false;
+	}
+	zone_node_t *counterpart = ((node->flags & NODE_FLAGS_SECOND) ? node - 1 : node + 1);
+	if (counterpart->rrs == node->rrs) {
+		return true;
+	}
+	knot_rdataset_t *r1 = node_rdataset(node, type), *r2 = node_rdataset(counterpart, type);
+	return (r1 != NULL && r2 != NULL && r1->rdata == r2->rdata);
 }
 
 void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
@@ -134,7 +219,7 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 		mm_free(mm, node->rrs);
 	}
 
-	mm_free(mm, node);
+	mm_free(mm, binode_node(node, false));
 }
 
 zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
@@ -143,27 +228,30 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 		return NULL;
 	}
 
-	zone_node_t *dst = node_new(src->owner, mm);
+	zone_node_t *dst = node_new(src->owner, (src->flags & NODE_FLAGS_BINODE), mm);
 	if (dst == NULL) {
 		return NULL;
 	}
 
-	dst->flags = src->flags;
+	dst->flags = src->flags & ~NODE_FLAGS_SECOND;
 	dst->rrset_count = src->rrset_count;
-	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
-	dst->rrs = mm_alloc(mm, rrlen);
+	//size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
+	//dst->rrs = mm_alloc(mm, rrlen);
+	dst->rrs = src->rrs;
 	dst->nsec3_wildcard_name = knot_dname_copy(src->nsec3_wildcard_name, NULL);
 	if (dst->rrs == NULL ||
 	    (src->nsec3_wildcard_name != NULL && dst->nsec3_wildcard_name == NULL)) {
 		node_free(dst, mm);
 		return NULL;
 	}
-	memcpy(dst->rrs, src->rrs, rrlen);
+	//memcpy(dst->rrs, src->rrs, rrlen);
 	dst->nsec3_node = src->nsec3_node;
 
 	for (uint16_t i = 0; i < src->rrset_count; ++i) {
 		dst->rrs[i].additional = NULL;
 	}
+
+	binode_unify(dst, false, mm);
 
 	return dst;
 }
