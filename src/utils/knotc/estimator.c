@@ -92,7 +92,7 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 	list_t *dummy_node = NULL;
 	if (insert_dname_into_table(est->node_table, scanner->r_owner, &dummy_node) == 0) {
 		// First time we see this name == new node
-		est->node_size += add_overhead(sizeof(zone_node_t));
+		est->node_size += 2 * add_overhead(sizeof(zone_node_t)); // 2 for bi-nodes
 		// Also, node has an owner.
 		est->dname_size += add_overhead(knot_dname_size(scanner->r_owner));
 		// Trie's nodes handled at the end of computation

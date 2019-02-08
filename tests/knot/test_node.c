@@ -51,13 +51,13 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *dummy_owner = knot_dname_from_str_alloc("test.");
 	// Test new
-	zone_node_t *node = node_new(dummy_owner, NULL);
+	zone_node_t *node = node_new(dummy_owner, false, false, NULL);
 	ok(node != NULL, "Node: new");
 	assert(node);
 	ok(knot_dname_is_equal(node->owner, dummy_owner), "Node: new - set fields");
 
 	// Test parent setting
-	zone_node_t *parent = node_new(dummy_owner, NULL);
+	zone_node_t *parent = node_new(dummy_owner, false, false, NULL);
 	assert(parent);
 	node_set_parent(node, parent);
 	ok(node_parent(node) == parent && parent->children == 1, "Node: set parent.");
@@ -69,20 +69,6 @@ int main(int argc, char *argv[])
 	int ret = node_add_rrset(node, dummy_rrset, NULL);
 	ok(ret == KNOT_EOK && node->rrset_count == 1 &&
 	   knot_rdataset_eq(&dummy_rrset->rrs, &node->rrs[0].rrs), "Node: add RRSet.");
-
-	// Test shallow copy
-	node->flags |= NODE_FLAGS_DELEG;
-	zone_node_t *copy = node_shallow_copy(node, NULL);
-	ok(copy != NULL, "Node: shallow copy.");
-	assert(copy);
-	const bool copy_ok = knot_dname_is_equal(copy->owner, node->owner) &&
-	                     copy->rrset_count == node->rrset_count &&
-	                     memcmp(copy->rrs, node->rrs,
-	                            copy->rrset_count * sizeof(struct rr_data)) == 0 &&
-	                     copy->flags == node->flags;
-	ok(copy_ok, "Node: shallow copy - set fields.");
-
-	node_free(copy, NULL);
 
 	// Test RRSet getters
 	knot_rrset_t *n_rrset = node_create_rrset(node, KNOT_RRTYPE_TXT);

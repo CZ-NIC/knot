@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK && changeset_size(ch) == 5, "changeset: merge");
 
 	// Test preapply fix.
-	zone_contents_t *z = zone_contents_new((const knot_dname_t *)"\x04""test");
+	zone_contents_t *z = zone_contents_new((const knot_dname_t *)"\x04""test", false);
 	knot_dname_free(apex_txt_rr->owner, NULL);
 	apex_txt_rr->owner = knot_dname_from_str_alloc("something.test.");
 	assert(apex_txt_rr->owner);
