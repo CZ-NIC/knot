@@ -5,7 +5,7 @@
 
 DNS Cookies (:rfc:`7873`) is a lightweight security mechanism against
 denial-of-service and amplification attacks. The server keeps a secret value
-(the server secret), which is used to generate a cookie, which is sent to
+(the Server Secret), which is used to generate a cookie, which is sent to
 the client in the OPT RR. The server then verifies the authenticity of the client
 by the presence of a correct cookie. Both the server and the client have to
 support DNS Cookies, otherwise they are not used.
@@ -21,13 +21,21 @@ support DNS Cookies, otherwise they are not used.
 Example
 -------
 
-It is recommended to enable DNS Cookies globally, not per zone.
+It is recommended to enable DNS Cookies globally, not per zone. The module may be used without any further configuration.
+
+::
+
+    template:
+        - id: default
+          global-module: mod-cookies # Enable DNS Cookies globally
+
+Module configuration may be supplied if necessary.
 
 ::
 
     mod-cookies:
       - id: default
-        secret-lifetime: 30h # The server secret is regenerated every 30 hours
+        secret-lifetime: 30h # The Server Secret is regenerated every 30 hours
         badcookie-slip: 3    # The server replies only to every third query with a wrong cookie
 
     template:
