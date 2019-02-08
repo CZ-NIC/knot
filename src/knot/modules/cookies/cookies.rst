@@ -43,6 +43,7 @@ Module reference
       - id: STR
         secret-lifetime: TIME
         badcookie-slip: INT
+        server-secret: HEXSTR
 
 .. _mod-cookies_id:
 
@@ -56,7 +57,7 @@ A module identifier.
 secret-lifetime
 ...............
 
-This option configures how often the server secret is regenerated.
+This option configures how often the Server Secret is regenerated.
 The maximum allowed value is 36 days (:rfc:`7873#section-7.1`).
 
 *Default:* 26 hours
@@ -76,3 +77,12 @@ an invalid cookie by sending them the correct cookie.
   query with an invalid cookie, the rest of the queries is dropped.
 
 *Default:* 1
+
+.. _mod-cookies_server-secret:
+
+server-secret
+.............
+
+Use this option to set the Server Secret manually. If this option is used, the
+Server Secret remains the same until changed manually and the :ref:`secret-lifetime` option is ignored.
+The size of the Server Secret currently MUST BE 128 bits, or 32 hexadecimal characters.
