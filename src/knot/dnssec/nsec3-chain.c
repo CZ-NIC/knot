@@ -291,7 +291,7 @@ static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
 	assert(apex_node);
 	assert(rr_types);
 
-	zone_node_t *new_node = node_new(owner, NULL);
+	zone_node_t *new_node = node_new(owner, false, NULL);
 	if (!new_node) {
 		return NULL;
 	}
@@ -521,7 +521,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 			break;
 		}
 
-		result = zone_tree_insert(nsec3_nodes, nsec3_node);
+		result = zone_tree_insert(nsec3_nodes, &nsec3_node);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -631,6 +631,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 				ret = changeset_add_addition(chgset, &nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 			}
 		}
+		binode_unify(new_nsec3_n, false, NULL);
 		node_free_rrsets(new_nsec3_n, NULL);
 		node_free(new_nsec3_n, NULL);
 	}
@@ -752,7 +753,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 
 	int result;
 
-	zone_tree_t *nsec3_nodes = zone_tree_create();
+	zone_tree_t *nsec3_nodes = zone_tree_create(false);
 	if (!nsec3_nodes) {
 		return KNOT_ENOMEM;
 	}

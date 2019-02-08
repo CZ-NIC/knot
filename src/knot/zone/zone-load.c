@@ -55,6 +55,8 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		return KNOT_ERROR;
 	}
 
+	zone_trees_unify_binodes((*contents)->nodes, (*contents)->nsec3_nodes);
+
 	return KNOT_EOK;
 }
 
@@ -114,7 +116,7 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 		return KNOT_EINVAL;
 	}
 
-	*contents = zone_contents_new(zone->name);
+	*contents = zone_contents_new(zone->name, true);
 	if (*contents == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -148,6 +150,7 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 	}
 
 	if (ret == KNOT_EOK) {
+		zone_trees_unify_binodes((*contents)->nodes, (*contents)->nsec3_nodes);
 		log_zone_info(zone->name, "zone loaded from journal, serial %u",
 		              zone_contents_serial(*contents));
 	} else {

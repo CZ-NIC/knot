@@ -37,7 +37,7 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 		node->flags |= NODE_FLAGS_DELEG;
 	} else {
 		// Default.
-		node->flags = NODE_FLAGS_AUTH | (node->flags & NODE_FLAGS_APEX);
+		node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_WILDCARD_CHILD);
 	}
 
 	return KNOT_EOK; // always returns this value :)
@@ -111,6 +111,7 @@ static bool nsec3_params_match(const knot_rdataset_t *rrs,
 int adjust_cb_nsec3_flags(zone_node_t *node, const zone_contents_t *zone)
 {
 	// check if this node belongs to correct chain
+	node->flags &= ~NODE_FLAGS_IN_NSEC3_CHAIN;
 	const knot_rdataset_t *nsec3_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC3);
 	for (uint16_t i = 0; nsec3_rrs != NULL && i < nsec3_rrs->count; i++) {
 		if (nsec3_params_match(nsec3_rrs, &zone->nsec3_params, i)) {
@@ -121,14 +122,11 @@ int adjust_cb_nsec3_flags(zone_node_t *node, const zone_contents_t *zone)
 }
 
 /*! \brief Link pointers to additional nodes for this RRSet. */
-static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_data,
+static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
                                 const zone_contents_t *zone)
 {
+	struct rr_data *rr_data = &adjn->rrs[rr_at];
 	assert(rr_data != NULL);
-
-	/* Drop possible previous additional nodes. */
-	additional_clear(rr_data->additional);
-	rr_data->additional = NULL;
 
 	const knot_rdataset_t *rrs = &rr_data->rrs;
 	uint16_t rdcount = rrs->count;
@@ -151,7 +149,7 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 		glue_t *glue;
 		if ((node->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH)) &&
 		    rr_data->type == KNOT_RRTYPE_NS &&
-		    knot_dname_in_bailiwick(node->owner, owner) >= 0) {
+		    knot_dname_in_bailiwick(node->owner, adjn->owner) >= 0) {
 			glue = &mandatory[mandatory_count++];
 			glue->optional = false;
 		} else {
@@ -164,24 +162,38 @@ static int discover_additionals(const knot_dname_t *owner, struct rr_data *rr_da
 
 	/* Store sorted additionals by the type, mandatory first. */
 	size_t total_count = mandatory_count + others_count;
+	additional_t *new_addit = NULL;
 	if (total_count > 0) {
-		rr_data->additional = malloc(sizeof(additional_t));
-		if (rr_data->additional == NULL) {
+		new_addit = malloc(sizeof(additional_t));
+		if (new_addit == NULL) {
 			return KNOT_ENOMEM;
 		}
-		rr_data->additional->count = total_count;
+		new_addit->count = total_count;
 
 		size_t size = total_count * sizeof(glue_t);
-		rr_data->additional->glues = malloc(size);
-		if (rr_data->additional->glues == NULL) {
-			free(rr_data->additional);
+		new_addit->glues = malloc(size);
+		if (new_addit->glues == NULL) {
+			free(new_addit);
 			return KNOT_ENOMEM;
 		}
 
 		size_t mandatory_size = mandatory_count * sizeof(glue_t);
-		memcpy(rr_data->additional->glues, mandatory, mandatory_size);
-		memcpy(rr_data->additional->glues + mandatory_count, others,
+		memcpy(new_addit->glues, mandatory, mandatory_size);
+		memcpy(new_addit->glues + mandatory_count, others,
 		       size - mandatory_size);
+	}
+
+	/* If the result differs, shallow copy node and store additionals. */
+	if (!additional_equal(rr_data->additional, new_addit)) {
+		int ret = binode_prepare_change(adjn, NULL);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		rr_data = &adjn->rrs[rr_at];
+
+		rr_data->additional = new_addit;
+	} else {
+		additional_clear(new_addit);
 	}
 
 	return KNOT_EOK;
@@ -193,7 +205,7 @@ int adjust_cb_additionals(zone_node_t *node, const zone_contents_t *zone)
 	for(uint16_t i = 0; i < node->rrset_count; ++i) {
 		struct rr_data *rr_data = &node->rrs[i];
 		if (knot_rrtype_additional_needed(rr_data->type)) {
-			int ret = discover_additionals(node->owner, rr_data, zone);
+			int ret = discover_additionals(node, i, zone);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}

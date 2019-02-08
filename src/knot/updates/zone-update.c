@@ -71,7 +71,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 
 static int init_full(zone_update_t *update, zone_t *zone)
 {
-	update->new_cont = zone_contents_new(zone->name);
+	update->new_cont = zone_contents_new(zone->name, true);
 	if (update->new_cont == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -658,6 +658,8 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 	if (!node_rrtype_exists(update->new_cont->apex, KNOT_RRTYPE_SOA)) {
 		return KNOT_ESEMCHECK;
 	}
+
+	zone_trees_unify_binodes(update->new_cont->nodes, update->new_cont->nsec3_nodes);
 
 	int ret = zone_adjust_full(update->new_cont);
 	if (ret != KNOT_EOK) {
