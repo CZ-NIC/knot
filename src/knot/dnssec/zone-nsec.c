@@ -51,7 +51,7 @@ static int delete_nsec3_chain(const zone_contents_t *zone, changeset_t *changese
 		return KNOT_ENOMEM;
 	}
 
-	int ret = zone_tree_add_diff(zone->nsec3_nodes, empty_tree, changeset);
+	int ret = zone_tree_add_diff((zone_contents_t *)zone, empty_tree, true, changeset);
 
 	zone_tree_free(&empty_tree);
 

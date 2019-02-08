@@ -232,6 +232,9 @@ int zone_contents_apply(zone_contents_t *contents,
 int zone_contents_nsec3_apply(zone_contents_t *contents,
                               zone_contents_apply_cb_t function, void *data);
 
+int zone_contents_tree_apply(zone_contents_t *contents, bool nsec3_tree,
+                             zone_contents_apply_cb_t function, void *data);
+
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).
  *

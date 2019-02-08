@@ -688,10 +688,8 @@ static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
  * It also lowers the children count for the parent of marked node. This must be
  * fixed before further operations on the zone.
  */
-static int nsec3_mark_empty(zone_node_t **node_p, void *data)
+static int nsec3_mark_empty(zone_node_t *node, void *data)
 {
-	zone_node_t *node = *node_p;
-
 	if (!(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node, (data != NULL))) {
 		/*!
 		 * Mark this node and all parent nodes that meet the same
@@ -706,7 +704,7 @@ static int nsec3_mark_empty(zone_node_t **node_p, void *data)
 			 */
 			node->parent->children--;
 			/* Recurse using the parent node */
-			return nsec3_mark_empty(&node->parent, data);
+			return nsec3_mark_empty(node->parent, data);
 		}
 	}
 
@@ -720,11 +718,9 @@ static int nsec3_mark_empty(zone_node_t **node_p, void *data)
  * The children count of node's parent is increased if this node was marked as
  * empty, as it was previously decreased in the \a nsec3_mark_empty() function.
  */
-static int nsec3_reset(zone_node_t **node_p, void *data)
+static int nsec3_reset(zone_node_t *node, void *data)
 {
 	UNUSED(data);
-	zone_node_t *node = *node_p;
-
 	if (node->flags & NODE_FLAGS_EMPTY) {
 		/* If node was marked as empty, increase its parent's children
 		 * count.
@@ -767,7 +763,8 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	 * The flag will be removed when the node is encountered during NSEC3
 	 * creation procedure.
 	 */
-	result = zone_tree_apply(zone->nodes, nsec3_mark_empty, (opt_out ? (void *)zone : NULL));
+	result = zone_contents_apply((zone_contents_t *)zone, nsec3_mark_empty,
+	                             (opt_out ? (void *)zone : NULL));
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
@@ -784,7 +781,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	 * so that flags and children count are back to normal before further
 	 * processing.
 	 */
-	result = zone_tree_apply(zone->nodes, nsec3_reset, NULL);
+	result = zone_contents_apply((zone_contents_t *)zone, nsec3_reset, NULL);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
@@ -799,7 +796,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 
 	copy_signatures(zone->nsec3_nodes, nsec3_nodes);
 
-	result = zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes, changeset);
+	result = zone_tree_add_diff((zone_contents_t *)zone, nsec3_nodes, true, changeset);
 
 	free_nsec3_tree(nsec3_nodes);
 

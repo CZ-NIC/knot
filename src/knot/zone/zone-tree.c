@@ -184,24 +184,3 @@ void zone_tree_free(zone_tree_t **tree)
 	trie_free(*tree);
 	*tree = NULL;
 }
-
-static int zone_tree_free_node(zone_node_t **node, void *data)
-{
-	UNUSED(data);
-
-	if (node) {
-		node_free(*node, NULL);
-	}
-
-	return KNOT_EOK;
-}
-
-void zone_tree_deep_free(zone_tree_t **tree)
-{
-	if (tree == NULL || *tree == NULL) {
-		return;
-	}
-
-	(void)zone_tree_apply(*tree, zone_tree_free_node, NULL);
-	zone_tree_free(tree);
-}

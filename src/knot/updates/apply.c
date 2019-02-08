@@ -41,12 +41,12 @@ static void rrs_list_clear(list_t *l, knot_mm_t *mm)
 }
 
 /*! \brief Frees additional data from single node */
-static int free_additional(zone_node_t **node, void *data)
+static int free_additional(zone_node_t *node, void *data)
 {
 	UNUSED(data);
 
-	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
-		struct rr_data *rrdata = &(*node)->rrs[i];
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		struct rr_data *rrdata = &node->rrs[i];
 		additional_clear(rrdata->additional);
 		rrdata->additional = NULL;
 	}
@@ -477,15 +477,28 @@ void update_rollback(apply_ctx_t *ctx)
 	init_list(&ctx->old_data);
 }
 
+static int zone_tree_free_node(zone_node_t *node, void *data)
+{
+	UNUSED(data);
+
+	if (node) {
+		node_free(node, NULL);
+	}
+
+	return KNOT_EOK;
+}
+
 void update_free_zone(zone_contents_t *contents)
 {
 	if (contents == NULL) {
 		return;
 	}
 
-	(void)zone_tree_apply(contents->nodes, free_additional, NULL);
-	zone_tree_deep_free(&contents->nodes);
-	zone_tree_deep_free(&contents->nsec3_nodes);
+	(void)zone_contents_apply(contents, free_additional, NULL);
+	zone_contents_apply(contents, zone_tree_free_node, NULL);
+	zone_contents_nsec3_apply(contents, zone_tree_free_node, NULL);
+	zone_tree_free(&contents->nodes);
+	zone_tree_free(&contents->nsec3_nodes);
 
 	dnssec_nsec3_params_free(&contents->nsec3_params);
 

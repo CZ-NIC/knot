@@ -28,4 +28,4 @@ int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone
 /*!
  * \brief Add diff between two zone trees into the changeset.
  */
-int zone_tree_add_diff(zone_tree_t *t1, zone_tree_t *t2, changeset_t *changeset);
+int zone_tree_add_diff(zone_contents_t *zone1, zone_tree_t *tree2, bool nsec3tree, changeset_t *changeset);

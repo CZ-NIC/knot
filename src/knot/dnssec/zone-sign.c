@@ -510,7 +510,8 @@ static int sign_node_rrsets(const zone_node_t *node,
  * \brief Struct to carry data for 'sign_data' callback function.
  */
 typedef struct {
-	zone_tree_t *tree;
+	zone_contents_t *contents;
+	bool nsec3_tree;
 	zone_sign_ctx_t *sign_ctx;
 	changeset_t changeset;
 	knot_time_t expires_at;
@@ -528,18 +529,18 @@ typedef struct {
  * \param node  Node to be signed.
  * \param data  Callback data, node_sign_args_t.
  */
-static int sign_node(zone_node_t **node, void *data)
+static int sign_node(zone_node_t *node, void *data)
 {
-	assert(node && *node);
+	assert(node);
 	assert(data);
 
 	node_sign_args_t *args = (node_sign_args_t *)data;
 
-	if ((*node)->rrset_count == 0) {
+	if (node->rrset_count == 0) {
 		return KNOT_EOK;
 	}
 
-	if ((*node)->flags & NODE_FLAGS_NONAUTH) {
+	if (node->flags & NODE_FLAGS_NONAUTH) {
 		return KNOT_EOK;
 	}
 
@@ -547,7 +548,7 @@ static int sign_node(zone_node_t **node, void *data)
 		return KNOT_EOK;
 	}
 
-	int result = sign_node_rrsets(*node, args->sign_ctx,
+	int result = sign_node_rrsets(node, args->sign_ctx,
 	                              &args->changeset, &args->expires_at);
 
 	return result;
@@ -556,14 +557,15 @@ static int sign_node(zone_node_t **node, void *data)
 static void *tree_sign_thread(void *_arg)
 {
 	node_sign_args_t *arg = _arg;
-	arg->errcode = zone_tree_apply(arg->tree, sign_node, _arg);
+	arg->errcode = zone_contents_tree_apply(arg->contents, arg->nsec3_tree, sign_node, _arg);
 	return NULL;
 }
 
 /*!
  * \brief Update RRSIGs in a given zone tree by updating changeset.
  *
- * \param tree        Zone tree to be signed.
+ * \param contents    Zone contents to be signed.
+ * \param nsec3_tree  Zone tree to be signed.
  * \param num_threads Number of threads to use for parallel signing.
  * \param zone_keys   Zone keys.
  * \param policy      DNSSEC policy.
@@ -572,7 +574,8 @@ static void *tree_sign_thread(void *_arg)
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int zone_tree_sign(zone_tree_t *tree,
+static int zone_tree_sign(zone_contents_t *contents,
+                          bool nsec3_tree,
                           size_t num_threads,
                           zone_keyset_t *zone_keys,
                           const kdnssec_ctx_t *dnssec_ctx,
@@ -590,7 +593,8 @@ static int zone_tree_sign(zone_tree_t *tree,
 
 	// init context structures
 	for (size_t i = 0; i < num_threads; i++) {
-		args[i].tree = tree;
+		args[i].contents = contents;
+		args[i].nsec3_tree = nsec3_tree;
 		args[i].sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
 		if (args[i].sign_ctx == NULL) {
 			ret = KNOT_ENOMEM;
@@ -772,14 +776,14 @@ int knot_zone_sign(zone_update_t *update,
 	int result;
 
 	knot_time_t normal_expire = 0;
-	result = zone_tree_sign(update->new_cont->nodes, dnssec_ctx->policy->signing_threads,
+	result = zone_tree_sign(update->new_cont, false, dnssec_ctx->policy->signing_threads,
 	                        zone_keys, dnssec_ctx, update, &normal_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
 	knot_time_t nsec3_expire = 0;
-	result = zone_tree_sign(update->new_cont->nsec3_nodes, dnssec_ctx->policy->signing_threads,
+	result = zone_tree_sign(update->new_cont, true, dnssec_ctx->policy->signing_threads,
 	                        zone_keys, dnssec_ctx, update, &nsec3_expire);
 	if (result != KNOT_EOK) {
 		return result;

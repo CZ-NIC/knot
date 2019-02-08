@@ -673,6 +673,16 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
 	return zone_tree_apply(contents->nsec3_nodes, tree_apply_cb, &f);
 }
 
+int zone_contents_tree_apply(zone_contents_t *contents, bool nsec3_tree,
+                             zone_contents_apply_cb_t function, void *data)
+{
+	if (nsec3_tree) {
+		return zone_contents_nsec3_apply(contents, function, data);
+	} else {
+		return zone_contents_apply(contents, function, data);
+	}
+}
+
 int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to)
 {
 	if (from == NULL || to == NULL) {

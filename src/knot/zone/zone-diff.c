@@ -208,13 +208,11 @@ static int diff_rrsets(const knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 }
 
 /*!< \todo this could be generic function for adding / removing. */
-static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
+static int knot_zone_diff_node(zone_node_t *node, void *data)
 {
-	if (node_ptr == NULL || *node_ptr == NULL || data == NULL) {
+	if (node == NULL || data == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	zone_node_t *node = *node_ptr;
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL) {
@@ -301,13 +299,11 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 }
 
 /*!< \todo possibly not needed! */
-static int add_new_nodes(zone_node_t **node_ptr, void *data)
+static int add_new_nodes(zone_node_t *node, void *data)
 {
-	if (node_ptr == NULL || *node_ptr == NULL || data == NULL) {
+	if (node == NULL || data == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	zone_node_t *node = *node_ptr;
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL) {
@@ -328,8 +324,8 @@ static int add_new_nodes(zone_node_t **node_ptr, void *data)
 	return KNOT_EOK;
 }
 
-static int load_trees(zone_tree_t *nodes1, zone_tree_t *nodes2,
-		      changeset_t *changeset, bool ignore_dnssec)
+static int load_trees(const zone_contents_t *zone1, const zone_contents_t *zone2,
+		      changeset_t *changeset, bool ignore_dnssec, bool nsec3trees)
 {
 	assert(changeset);
 
@@ -339,15 +335,15 @@ static int load_trees(zone_tree_t *nodes1, zone_tree_t *nodes2,
 	};
 
 	// Traverse one tree, compare every node, each RRSet with its rdata.
-	param.nodes = nodes2;
-	int ret = zone_tree_apply(nodes1, knot_zone_diff_node, &param);
+	param.nodes = nsec3trees ? zone2->nsec3_nodes : zone2->nodes;
+	int ret = zone_contents_tree_apply((zone_contents_t *)zone1, nsec3trees, knot_zone_diff_node, &param);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	// Some nodes may have been added. Add missing nodes to changeset.
-	param.nodes = nodes1;
-	return zone_tree_apply(nodes2, add_new_nodes, &param);
+	param.nodes = nsec3trees ? zone1->nsec3_nodes : zone1->nodes;
+	return zone_contents_tree_apply((zone_contents_t *)zone2, nsec3trees, add_new_nodes, &param);
 }
 
 int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone2,
@@ -362,12 +358,12 @@ int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone
 		return ret_soa;
 	}
 
-	int ret = load_trees(zone1->nodes, zone2->nodes, changeset, ignore_dnssec);
+	int ret = load_trees(zone1, zone2, changeset, ignore_dnssec, false);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = load_trees(zone1->nsec3_nodes, zone2->nsec3_nodes, changeset, ignore_dnssec);
+	ret = load_trees(zone1, zone2, changeset, ignore_dnssec, true);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -379,11 +375,14 @@ int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone
 	return ret_soa;
 }
 
-int zone_tree_add_diff(zone_tree_t *t1, zone_tree_t *t2, changeset_t *changeset)
+int zone_tree_add_diff(zone_contents_t *zone1, zone_tree_t *tree2, bool nsec3tree, changeset_t *changeset)
 {
 	if (changeset == NULL) {
 		return KNOT_EINVAL;
 	}
+	zone_contents_t fake_conts;
+	memcpy(&fake_conts, zone1, sizeof(fake_conts));
+	fake_conts.nodes = fake_conts.nsec3_nodes = tree2;
 
-	return load_trees(t1, t2, changeset, false);
+	return load_trees(zone1, &fake_conts, changeset, false, nsec3tree);
 }

@@ -141,10 +141,3 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
  * \param tree Zone tree to be destroyed.
  */
 void zone_tree_free(zone_tree_t **tree);
-
-/*!
- * \brief Destroys the zone tree, together with the saved data.
- *
- * \param tree Zone tree to be destroyed.
- */
-void zone_tree_deep_free(zone_tree_t **tree);

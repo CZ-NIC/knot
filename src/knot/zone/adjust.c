@@ -260,13 +260,12 @@ typedef struct {
 	bool measure_size;
 } zone_adjust_arg_t;
 
-static int adjust_single(zone_node_t **tnode, void *data)
+static int adjust_single(zone_node_t *node, void *data)
 {
-	assert(tnode != NULL);
+	assert(node != NULL);
 	assert(data != NULL);
 
 	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	zone_node_t *node = *tnode;
 
 	// remember first node
 	if (args->first_node == NULL) {
@@ -291,10 +290,10 @@ static int adjust_single(zone_node_t **tnode, void *data)
 	return args->adjust_cb(node, args->zone);
 }
 
-static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adjust_cb_t adjust_cb,
+static int zone_adjust_tree(const zone_contents_t *zone, bool nsec3_tree, adjust_cb_t adjust_cb,
                             size_t *tree_size, uint32_t *tree_max_ttl, bool adjust_prevs, bool measure_size)
 {
-	if (zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(nsec3_tree ? zone->nsec3_nodes : zone->nodes)) {
 		return KNOT_EOK;
 	}
 
@@ -305,7 +304,7 @@ static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adju
 		.measure_size = measure_size,
 	};
 
-	int ret = zone_tree_apply(tree, adjust_single, &arg);
+	int ret = zone_contents_tree_apply((zone_contents_t *)zone, nsec3_tree, adjust_single, &arg);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -370,10 +369,10 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 	uint32_t nodes_max_ttl = 0, nsec3_max_ttl = 0;
 
 	if (nsec3_cb != NULL) {
-		ret = zone_adjust_tree(zone->nsec3_nodes, zone, nsec3_cb, &nsec3_size, &nsec3_max_ttl, true, measure_size && (nodes_cb != NULL));
+		ret = zone_adjust_tree(zone, true, nsec3_cb, &nsec3_size, &nsec3_max_ttl, true, measure_size && (nodes_cb != NULL));
 	}
 	if (ret == KNOT_EOK && nodes_cb != NULL) {
-		ret = zone_adjust_tree(zone->nodes, zone, nodes_cb, &nodes_size, &nodes_max_ttl, true, measure_size);
+		ret = zone_adjust_tree(zone, false, nodes_cb, &nodes_size, &nodes_max_ttl, true, measure_size);
 	}
 	if (ret == KNOT_EOK && nodes_cb != NULL && nsec3_cb != NULL) {
 		zone->size = nodes_size + nsec3_size;
@@ -385,11 +384,16 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb)
 {
 	int ret = KNOT_EOK;
+	zone_contents_t fake_conts;
+	memcpy(&fake_conts, update->new_cont, sizeof(fake_conts));
+	fake_conts.nodes = update->a_ctx->node_ptrs;
+	fake_conts.nsec3_nodes = update->a_ctx->nsec3_ptrs;
+
 	if (nsec3_cb != NULL) {
-		ret = zone_adjust_tree(update->a_ctx->nsec3_ptrs, update->new_cont, nsec3_cb, NULL, NULL, false, false);
+		ret = zone_adjust_tree(&fake_conts, true, nsec3_cb, NULL, NULL, false, false);
 	}
 	if (ret == KNOT_EOK && nodes_cb != NULL) {
-		ret = zone_adjust_tree(update->a_ctx->node_ptrs, update->new_cont, nodes_cb, NULL, NULL, false, false);
+		ret = zone_adjust_tree(&fake_conts, true, nodes_cb, NULL, NULL, false, false);
 	}
 	return ret;
 }
