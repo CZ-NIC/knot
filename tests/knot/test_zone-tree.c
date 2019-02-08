@@ -75,13 +75,14 @@ int main(int argc, char *argv[])
 	ztree_init_data();
 
 	/* 1. create test */
-	zone_tree_t* t = zone_tree_create();
+	zone_tree_t* t = zone_tree_create(false);
 	ok(t != NULL, "ztree: created");
 
 	/* 2. insert test */
 	unsigned passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		if (zone_tree_insert(t, NODE + i) != KNOT_EOK) {
+		zone_node_t *node = NODE + i;
+		if (zone_tree_insert(t, &node) != KNOT_EOK) {
 			passed = 0;
 			break;
 		}
