@@ -34,6 +34,15 @@ It is recommended to enable DNS Cookies globally, not per zone.
       - id: default
         global-module: mod-cookies/default # Enable DNS Cookies globally
 
+The value of the Server Secret may also be managed manually using the :ref:`mod-cookies_secret` option. In this case
+the server does not automatically regenerate the Server Secret.
+
+::
+
+    mod-cookies:
+        - id: default
+          secret: 0xdeadbeefdeadbeefdeadbeefdeadbeef
+
 Module reference
 ----------------
 
@@ -43,6 +52,7 @@ Module reference
       - id: STR
         secret-lifetime: TIME
         badcookie-slip: INT
+        secret: STR|HEXSTR
 
 .. _mod-cookies_id:
 
@@ -56,7 +66,7 @@ A module identifier.
 secret-lifetime
 ...............
 
-This option configures how often the server secret is regenerated.
+This option configures how often the Server Secret is regenerated.
 The maximum allowed value is 36 days (:rfc:`7873#section-7.1`).
 
 *Default:* 26 hours
@@ -76,3 +86,14 @@ an invalid cookie by sending them the correct cookie.
   query with an invalid cookie, the rest of the queries is dropped.
 
 *Default:* 1
+
+.. _mod-cookies_secret:
+
+secret
+......
+
+Use this option to set the Server Secret manually. If this option is used, the
+Server Secret remains the same until changed manually and the :ref:`mod-cookies_secret-lifetime` option is ignored.
+The size of the Server Secret currently MUST BE 16 bytes, or 32 hexadecimal characters.
+
+*Default:* not set
