@@ -157,8 +157,7 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 		}
 
 		// Delete node
-		zone_tree_remove_node(tree, node->owner);
-		node_free(node, NULL);
+		node->flags |= NODE_FLAGS_DELETED;
 	}
 }
 

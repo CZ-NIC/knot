@@ -71,7 +71,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 
 static int init_full(zone_update_t *update, zone_t *zone)
 {
-	update->new_cont = zone_contents_new(zone->name);
+	update->new_cont = zone_contents_new(zone->name, true);
 	if (update->new_cont == NULL) {
 		return KNOT_ENOMEM;
 	}

@@ -84,9 +84,9 @@ static bool ttl_changed(struct rr_data *node_data, const knot_rrset_t *rrset)
 	return rrset->ttl != node_data->ttl;
 }
 
-zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm)
+zone_node_t *node_new(const knot_dname_t *owner, bool binode, knot_mm_t *mm)
 {
-	zone_node_t *ret = mm_alloc(mm, sizeof(zone_node_t));
+	zone_node_t *ret = mm_alloc(mm, (binode ? 2 : 1) * sizeof(zone_node_t));
 	if (ret == NULL) {
 		return NULL;
 	}
@@ -101,9 +101,57 @@ zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm)
 	}
 
 	// Node is authoritative by default.
-	ret->flags = NODE_FLAGS_AUTH;
+	ret->flags = NODE_FLAGS_AUTH | NODE_FLAGS_DELETED;
+
+	if (binode) {
+		memcpy(ret + 1, ret, sizeof(*ret));
+		(ret + 1)->flags ^= NODE_FLAGS_SECOND;
+	}
 
 	return ret;
+}
+
+static zone_node_t *binode_counterpart(zone_node_t *node)
+{
+	zone_node_t *counterpart = NULL;
+
+	if ((node->flags & NODE_FLAGS_BINODE)) {
+		if ((node->flags & NODE_FLAGS_SECOND)) {
+			counterpart = node - 1;
+			assert(!(counterpart->flags & NODE_FLAGS_SECOND));
+		} else {
+			counterpart = node + 1;
+			assert((counterpart->flags & NODE_FLAGS_SECOND));
+		}
+		assert((counterpart->flags & NODE_FLAGS_BINODE));
+	}
+
+	return counterpart;
+}
+
+void binode_unify(zone_node_t *node, knot_mm_t *mm)
+{
+	zone_node_t *counterpart = binode_counterpart(node);
+	if (counterpart != NULL) {
+		if (counterpart->rrs != node->rrs) {
+			node_free_rrsets(counterpart, mm);
+		}
+		memcpy(counterpart, node, sizeof(*counterpart));
+		counterpart->flags ^= NODE_FLAGS_SECOND;
+	}
+}
+
+zone_node_t *binode_node(zone_node_t *node, bool second)
+{
+	if ((node->flags & NODE_FLAGS_BINODE)) {
+		if (second && !(node->flags & NODE_FLAGS_SECOND)) {
+			return node + 1;
+		}
+		if (!second && (node->flags & NODE_FLAGS_SECOND)) {
+			return node - 1;
+		}
+	}
+	return node;
 }
 
 void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
@@ -134,7 +182,7 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 		mm_free(mm, node->rrs);
 	}
 
-	mm_free(mm, node);
+	mm_free(mm, binode_node(node, false));
 }
 
 zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
@@ -143,7 +191,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 		return NULL;
 	}
 
-	zone_node_t *dst = node_new(src->owner, mm);
+	zone_node_t *dst = node_new(src->owner, (src->flags & NODE_FLAGS_BINODE), mm);
 	if (dst == NULL) {
 		return NULL;
 	}

@@ -43,7 +43,7 @@ typedef struct zone_node {
 	knot_dname_t *nsec3_wildcard_name; /*! Name of NSEC3 node proving wildcard nonexistence. */
 	uint32_t children; /*!< Count of children nodes in DNS hierarchy. */
 	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */
-	uint8_t flags; /*!< \ref node_flags enum. */
+	uint16_t flags; /*!< \ref node_flags enum. */
 } zone_node_t;
 
 /*!< \brief Glue node context. */
@@ -81,6 +81,12 @@ enum node_flags {
 	NODE_FLAGS_WILDCARD_CHILD =  1 << 4,
 	/*! \brief Is this NSEC3 node compatible with zone's NSEC3PARAMS ? */
 	NODE_FLAGS_IN_NSEC3_CHAIN =  1 << 5,
+	/*! \brief Is this i bi-node? */
+	NODE_FLAGS_BINODE =          1 << 8,
+	/*! \brief Is this the second half of bi-node? */
+	NODE_FLAGS_SECOND =          1 << 9,
+	/*! \brief The node shall be deleted. It's just not because it's a bi-node and the counterpart still exists. */
+	NODE_FLAGS_DELETED =         1 << 10,
 };
 
 /*!
@@ -98,7 +104,11 @@ void additional_clear(additional_t *additional);
  *
  * \return Newly created node or NULL if an error occurred.
  */
-zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm);
+zone_node_t *node_new(const knot_dname_t *owner, bool binode, knot_mm_t *mm);
+
+void binode_unify(zone_node_t *node, knot_mm_t *mm);
+
+zone_node_t *binode_node(zone_node_t *node, bool second);
 
 /*!
  * \brief Destroys allocated data within the node

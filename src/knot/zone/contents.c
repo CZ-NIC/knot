@@ -28,6 +28,7 @@
 typedef struct {
 	zone_contents_apply_cb_t func;
 	void *data;
+	bool second_nodes;
 } zone_tree_func_t;
 
 static int tree_apply_cb(zone_node_t **node, void *data)
@@ -37,7 +38,8 @@ static int tree_apply_cb(zone_node_t **node, void *data)
 	}
 
 	zone_tree_func_t *f = (zone_tree_func_t *)data;
-	return f->func(*node, f->data);
+	zone_node_t *n = f->second_nodes ? *node + 1 : *node;
+	return f->func(n, f->data);
 }
 
 /*!
@@ -81,6 +83,7 @@ static int destroy_node_rrsets_from_tree(zone_node_t **node, void *data)
 	UNUSED(data);
 
 	if (*node != NULL) {
+		binode_unify(*node, NULL);
 		node_free_rrsets(*node, NULL);
 		node_free(*node, NULL);
 	}
@@ -138,7 +141,7 @@ static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
 	return match > 0;
 }
 
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool binodes)
 {
 	if (apex_name == NULL) {
 		return NULL;
@@ -150,7 +153,8 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 	}
 
 	memset(contents, 0, sizeof(zone_contents_t));
-	contents->apex = node_new(apex_name, NULL);
+	contents->binodes = binodes;
+	contents->apex = node_new(apex_name, binodes, NULL);
 	if (contents->apex == NULL) {
 		goto cleanup;
 	}
@@ -178,7 +182,7 @@ static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *na
 	assert(zone);
 	assert(name);
 
-	return zone_tree_get(zone->nodes, name);
+	return binode_node(zone_tree_get(zone->nodes, name), zone->second_nodes);
 }
 
 static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parents)
@@ -220,7 +224,7 @@ static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parent
 		while (parent != NULL && !(next_node = get_node(zone, parent))) {
 
 			/* Create a new node. */
-			next_node = node_new(parent, NULL);
+			next_node = node_new(parent, zone->binodes, NULL);
 			if (next_node == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -291,7 +295,7 @@ static zone_node_t *get_nsec3_node(const zone_contents_t *zone,
 	assert(zone);
 	assert(name);
 
-	return zone_tree_get(zone->nsec3_nodes, name);
+	return binode_node(zone_tree_get(zone->nsec3_nodes, name), zone->second_nodes);
 }
 
 static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
@@ -310,7 +314,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		*n = nsec3 ? get_nsec3_node(z, rr->owner) : get_node(z, rr->owner);
 		if (*n == NULL) {
 			// Create new, insert
-			*n = node_new(rr->owner, NULL);
+			*n = node_new(rr->owner, z->binodes, NULL);
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -318,6 +322,17 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 			if (ret != KNOT_EOK) {
 				node_free(*n, NULL);
 				*n = NULL;
+			}
+		}
+	}
+
+	for (zone_node_t *i = (*n), *p; i != NULL && (i->flags & NODE_FLAGS_DELETED); i = p) {
+		i->flags &= ~NODE_FLAGS_DELETED;
+		p = i->parent;
+		if (p != NULL) {
+			p->children++;
+			if (knot_dname_is_wildcard(i->owner)) {
+				p->flags |= NODE_FLAGS_WILDCARD_CHILD;
 			}
 		}
 	}
@@ -450,7 +465,7 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 	zone_node_t *node = nsec3 ? get_nsec3_node(zone, rrset->owner) :
 	                            get_node(zone, rrset->owner);
 	if (node == NULL) {
-		node = node_new(rrset->owner, NULL);
+		node = node_new(rrset->owner, zone->binodes, NULL);
 		int ret = nsec3 ? add_nsec3_node(zone, node) : add_node(zone, node, true);
 		if (ret != KNOT_EOK) {
 			node_free(node, NULL);
@@ -652,7 +667,8 @@ int zone_contents_apply(zone_contents_t *contents,
 
 	zone_tree_func_t f = {
 		.func = function,
-		.data = data
+		.data = data,
+		.second_nodes = contents->second_nodes,
 	};
 
 	return zone_tree_apply(contents->nodes, tree_apply_cb, &f);
@@ -667,7 +683,8 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
 
 	zone_tree_func_t f = {
 		.func = function,
-		.data = data
+		.data = data,
+		.second_nodes = contents->second_nodes,
 	};
 
 	return zone_tree_apply(contents->nsec3_nodes, tree_apply_cb, &f);

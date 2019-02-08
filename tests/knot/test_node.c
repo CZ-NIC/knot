@@ -51,13 +51,13 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *dummy_owner = knot_dname_from_str_alloc("test.");
 	// Test new
-	zone_node_t *node = node_new(dummy_owner, NULL);
+	zone_node_t *node = node_new(dummy_owner, false, NULL);
 	ok(node != NULL, "Node: new");
 	assert(node);
 	ok(knot_dname_is_equal(node->owner, dummy_owner), "Node: new - set fields");
 
 	// Test parent setting
-	zone_node_t *parent = node_new(dummy_owner, NULL);
+	zone_node_t *parent = node_new(dummy_owner, false, NULL);
 	assert(parent);
 	node_set_parent(node, parent);
 	ok(node->parent == parent && parent->children == 1, "Node: set parent.");

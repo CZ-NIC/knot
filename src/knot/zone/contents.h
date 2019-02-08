@@ -36,6 +36,9 @@ typedef struct zone_contents {
 	size_t size;
 	uint32_t max_ttl;
 	bool dnssec;
+
+	bool binodes;
+	bool second_nodes;
 } zone_contents_t;
 
 /*!
@@ -50,7 +53,7 @@ typedef int (*zone_contents_apply_cb_t)(zone_node_t *node, void *data);
  *
  * \return New contents or NULL on error.
  */
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool binodes);
 
 /*!
  * \brief Add an RR to contents.

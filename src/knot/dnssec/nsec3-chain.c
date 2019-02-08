@@ -292,7 +292,7 @@ static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
 	assert(apex_node);
 	assert(rr_types);
 
-	zone_node_t *new_node = node_new(owner, NULL);
+	zone_node_t *new_node = node_new(owner, true, NULL);
 	if (!new_node) {
 		return NULL;
 	}
@@ -632,6 +632,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 				ret = changeset_add_addition(chgset, &nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 			}
 		}
+		binode_unify(new_nsec3_n, NULL);
 		node_free_rrsets(new_nsec3_n, NULL);
 		node_free(new_nsec3_n, NULL);
 	}
