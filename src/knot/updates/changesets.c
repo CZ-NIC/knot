@@ -53,96 +53,28 @@ static int add_rr_to_contents(zone_contents_t *z, const knot_rrset_t *rrset)
 	return ret == KNOT_ETTL ? KNOT_EOK : ret;
 }
 
-/*! \brief Cleans up trie iterations. */
-static void cleanup_iter_list(list_t *l)
-{
-	ptrnode_t *n, *nxt;
-	WALK_LIST_DELSAFE(n, nxt, *l) {
-		trie_it_t *it = (trie_it_t *)n->d;
-		trie_it_free(it);
-		rem_node(&n->n);
-		free(n);
-	}
-	init_list(l);
-}
-
 /*! \brief Inits changeset iterator with given tries. */
 static int changeset_iter_init(changeset_iter_t *ch_it, size_t tries, ...)
 {
 	memset(ch_it, 0, sizeof(*ch_it));
-	init_list(&ch_it->iters);
 
 	va_list args;
 	va_start(args, tries);
 
+	assert(tries <= sizeof(ch_it->trees) / sizeof(*ch_it->trees));
 	for (size_t i = 0; i < tries; ++i) {
-		trie_t *t = va_arg(args, trie_t *);
+		zone_tree_t *t = va_arg(args, zone_tree_t *);
 		if (t == NULL) {
 			continue;
 		}
 
-		trie_it_t *it = trie_it_begin(t);
-		if (it == NULL) {
-			cleanup_iter_list(&ch_it->iters);
-			va_end(args);
-			return KNOT_ENOMEM;
-		}
-
-		if (ptrlist_add(&ch_it->iters, it, NULL) == NULL) {
-			cleanup_iter_list(&ch_it->iters);
-			va_end(args);
-			return KNOT_ENOMEM;
-		}
+		ch_it->trees[ch_it->n_trees++] = t;
 	}
 
 	va_end(args);
 
-	return KNOT_EOK;
-}
-
-/*! \brief Gets next node from trie iterators. */
-static void iter_next_node(changeset_iter_t *ch_it, trie_it_t *t_it)
-{
-	assert(!trie_it_finished(t_it));
-	// Get next node, but not for the very first call.
-	if (ch_it->node) {
-		trie_it_next(t_it);
-	}
-	if (trie_it_finished(t_it)) {
-		ch_it->node = NULL;
-		return;
-	}
-
-	ch_it->node = (zone_node_t *)*trie_it_val(t_it);
-	assert(ch_it->node);
-	while (ch_it->node && ch_it->node->rrset_count == 0) {
-		// Skip empty non-terminals.
-		trie_it_next(t_it);
-		if (trie_it_finished(t_it)) {
-			ch_it->node = NULL;
-		} else {
-			ch_it->node = (zone_node_t *)*trie_it_val(t_it);
-			assert(ch_it->node);
-		}
-	}
-
-	ch_it->node_pos = 0;
-}
-
-/*! \brief Gets next RRSet from trie iterators. */
-static knot_rrset_t get_next_rr(changeset_iter_t *ch_it, trie_it_t *t_it)
-{
-	if (ch_it->node == NULL || ch_it->node_pos == ch_it->node->rrset_count) {
-		iter_next_node(ch_it, t_it);
-		if (ch_it->node == NULL) {
-			assert(trie_it_finished(t_it));
-			knot_rrset_t rr;
-			knot_rrset_init_empty(&rr);
-			return rr;
-		}
-	}
-
-	return node_rrset_at(ch_it->node, ch_it->node_pos++);
+	assert(ch_it->n_trees);
+	return zone_tree_it_begin(ch_it->trees[0], &ch_it->it);
 }
 
 // removes from counterpart what is in rr.
@@ -735,29 +667,36 @@ int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch)
 knot_rrset_t changeset_iter_next(changeset_iter_t *it)
 {
 	assert(it);
-	ptrnode_t *n = NULL;
+
 	knot_rrset_t rr;
-	knot_rrset_init_empty(&rr);
-	WALK_LIST(n, it->iters) {
-		trie_it_t *t_it = (trie_it_t *)n->d;
-		if (trie_it_finished(t_it)) {
-			continue;
+	while (it->node == NULL || it->node_pos >= it->node->rrset_count) {
+		if (it->node != NULL) {
+			zone_tree_it_next(&it->it);
 		}
-
-		rr = get_next_rr(it, t_it);
-		if (!knot_rrset_empty(&rr)) {
-			// Got valid RRSet.
-			return rr;
+		while (zone_tree_it_finished(&it->it)) {
+			zone_tree_it_free(&it->it);
+			if (--it->n_trees > 0) {
+				for (size_t i = 0; i < it->n_trees; i++) {
+					it->trees[i] = it->trees[i + 1];
+				}
+				(void)zone_tree_it_begin(it->trees[0], &it->it);
+			} else {
+				knot_rrset_init_empty(&rr);
+				return rr;
+			}
 		}
+		it->node = zone_tree_it_val(&it->it);
+		it->node_pos = 0;
 	}
-
+	rr = node_rrset_at(it->node, it->node_pos++);
+	assert(!knot_rrset_empty(&rr));
 	return rr;
 }
 
 void changeset_iter_clear(changeset_iter_t *it)
 {
 	if (it) {
-		cleanup_iter_list(&it->iters);
+		zone_tree_it_free(&it->it);
 		it->node = NULL;
 		it->node_pos = 0;
 	}

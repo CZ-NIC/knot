@@ -788,27 +788,25 @@ static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
 
 	/* Begin iteration. We can safely assume _contents is a valid pointer. */
 	zone_tree_t *tree = nsec3 ? _contents->nsec3_nodes : _contents->nodes;
-	it->tree_it = trie_it_begin(tree);
-	if (it->tree_it == NULL) {
+	if (zone_tree_it_begin(tree, &it->tree_it) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
 
-	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = zone_tree_it_val(&it->tree_it);
 
 	return KNOT_EOK;
 }
 
 static int iter_get_next_node(zone_update_iter_t *it)
 {
-	trie_it_next(it->tree_it);
-	if (trie_it_finished(it->tree_it)) {
-		trie_it_free(it->tree_it);
-		it->tree_it = NULL;
+	zone_tree_it_next(&it->tree_it);
+	if (zone_tree_it_finished(&it->tree_it)) {
+		zone_tree_it_free(&it->tree_it);
 		it->cur_node = NULL;
 		return KNOT_ENOENT;
 	}
 
-	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = zone_tree_it_val(&it->tree_it);
 
 	return KNOT_EOK;
 }
@@ -824,7 +822,7 @@ static int iter_init(zone_update_iter_t *it, zone_update_t *update, const bool n
 		return ret;
 	}
 
-	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = zone_tree_it_val(&it->tree_it);
 
 	return KNOT_EOK;
 }
@@ -866,7 +864,7 @@ int zone_update_iter_next(zone_update_iter_t *it)
 		return KNOT_EINVAL;
 	}
 
-	if (it->tree_it != NULL) {
+	if (it->tree_it.it != NULL) {
 		int ret = iter_get_next_node(it);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			return ret;
@@ -891,7 +889,7 @@ void zone_update_iter_finish(zone_update_iter_t *it)
 		return;
 	}
 
-	trie_it_free(it->tree_it);
+	zone_tree_it_free(&it->tree_it);
 }
 
 bool zone_update_no_change(zone_update_t *update)

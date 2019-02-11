@@ -43,6 +43,9 @@ typedef struct {
 /*! \brief Changeset iteration structure. */
 typedef struct {
 	list_t iters;             /*!< List of pending zone iterators. */
+	zone_tree_t *trees[4];    /*!< Poiters to zone trees to iterate over. */
+	size_t n_trees;           /*!< Their count. */
+	zone_tree_it_t it;        /*!< Zone tree iterator. */
 	const zone_node_t *node;  /*!< Current zone node. */
 	uint16_t node_pos;        /*!< Position in node. */
 } changeset_iter_t;
