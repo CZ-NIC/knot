@@ -22,6 +22,17 @@
 #include "libknot/errcode.h"
 #include "contrib/macros.h"
 
+typedef struct {
+	zone_tree_apply_cb_t func;
+	void *data;
+} zone_tree_func_t;
+
+static int tree_apply_cb(trie_val_t *node, void *data)
+{
+	zone_tree_func_t *f = (zone_tree_func_t *)data;
+	return f->func((zone_node_t *)*node, f->data);
+}
+
 zone_tree_t *zone_tree_create(void)
 {
 	return trie_create(NULL);
@@ -176,7 +187,12 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 		return KNOT_EOK;
 	}
 
-	return trie_apply(tree, (int (*)(trie_val_t *, void *))function, data);
+	zone_tree_func_t f = {
+		.func = function,
+		.data = data,
+	};
+
+	return trie_apply(tree, tree_apply_cb, &f);
 }
 
 int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it)
@@ -222,13 +238,11 @@ void zone_tree_free(zone_tree_t **tree)
 	*tree = NULL;
 }
 
-static int zone_tree_free_node(zone_node_t **node, void *data)
+static int zone_tree_free_node(zone_node_t *node, void *data)
 {
 	UNUSED(data);
 
-	if (node) {
-		node_free(*node, NULL);
-	}
+	node_free(node, NULL);
 
 	return KNOT_EOK;
 }

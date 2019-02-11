@@ -41,12 +41,12 @@ static void rrs_list_clear(list_t *l, knot_mm_t *mm)
 }
 
 /*! \brief Frees additional data from single node */
-static int free_additional(zone_node_t **node, void *data)
+static int free_additional(zone_node_t *node, void *data)
 {
 	UNUSED(data);
 
-	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
-		struct rr_data *rrdata = &(*node)->rrs[i];
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		struct rr_data *rrdata = &node->rrs[i];
 		additional_clear(rrdata->additional);
 		rrdata->additional = NULL;
 	}
