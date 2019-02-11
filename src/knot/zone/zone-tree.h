@@ -27,6 +27,14 @@ typedef trie_t zone_tree_t;
 typedef int (*zone_tree_apply_cb_t)(zone_node_t **node, void *data);
 
 /*!
+ * \brief Zone tree iteration context.
+ */
+typedef struct {
+	zone_tree_t *tree;
+	trie_it_t *it;
+} zone_tree_it_t;
+
+/*!
  * \brief Creates the zone tree.
  *
  * \return created zone tree structure.
@@ -134,6 +142,40 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node);
  * \retval KNOT_EINVAL
  */
 int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data);
+
+/*!
+ * \brief Start zone tree iteration.
+ *
+ * \param tree   Zone tree to iterate over.
+ * \param it     Out: iteration context. It shall be zeroed before.
+ *
+ * \return KNOT_OK, KNOT_ENOMEM
+ */
+int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it);
+
+/*!
+ * \brief Return true iff iteration is finished.
+ *
+ * \note The iteration context needs to be freed afterwards nevertheless.
+ */
+bool zone_tree_it_finished(zone_tree_it_t *it);
+
+/*!
+ * \brief Return the node, zone iteration is currently pointing at.
+ *
+ * \note Don't call this when zone_tree_it_finished.
+ */
+zone_node_t *zone_tree_it_val(zone_tree_it_t *it);
+
+/*!
+ * \brief Move the iteration to next node.
+ */
+void zone_tree_it_next(zone_tree_it_t *it);
+
+/*!
+ * \brief Free zone iteration context.
+ */
+void zone_tree_it_free(zone_tree_it_t *it);
 
 /*!
  * \brief Destroys the zone tree, not touching the saved data.
