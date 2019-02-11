@@ -103,11 +103,15 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 		 * cases like NSEC3, there is no such sort of thing (name wise).
 		 */
 		/*! \todo We could store rightmost node in zonetree probably. */
-		trie_it_t *i = trie_it_begin(tree);
-		*previous = *(zone_node_t **)trie_it_val(i); /* leftmost */
+		zone_tree_it_t it = { 0 };
+		ret = zone_tree_it_begin(tree, &it);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		*previous = zone_tree_it_val(&it); /* leftmost */
 		*previous = (*previous)->prev; /* rightmost */
 		*found = NULL;
-		trie_it_free(i);
+		zone_tree_it_free(&it);
 	}
 
 	return exact_match;
@@ -173,6 +177,39 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 	}
 
 	return trie_apply(tree, (int (*)(trie_val_t *, void *))function, data);
+}
+
+int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it)
+{
+	if (it->tree == NULL) {
+		it->it = trie_it_begin((trie_t *)tree);
+		if (it->it == NULL) {
+			return KNOT_ENOMEM;
+		}
+		it->tree = tree;
+	}
+	return KNOT_EOK;
+}
+
+bool zone_tree_it_finished(zone_tree_it_t *it)
+{
+	return it->it == NULL || trie_it_finished(it->it);
+}
+
+zone_node_t *zone_tree_it_val(zone_tree_it_t *it)
+{
+	return (zone_node_t *)*trie_it_val(it->it);
+}
+
+void zone_tree_it_next(zone_tree_it_t *it)
+{
+	trie_it_next(it->it);
+}
+
+void zone_tree_it_free(zone_tree_it_t *it)
+{
+	trie_it_free(it->it);
+	memset(it, 0, sizeof(*it));
 }
 
 void zone_tree_free(zone_tree_t **tree)
