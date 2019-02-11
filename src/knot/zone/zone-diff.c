@@ -208,13 +208,11 @@ static int diff_rrsets(const knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 }
 
 /*!< \todo this could be generic function for adding / removing. */
-static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
+static int knot_zone_diff_node(zone_node_t *node, void *data)
 {
-	if (node_ptr == NULL || *node_ptr == NULL || data == NULL) {
+	if (node == NULL || data == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	zone_node_t *node = *node_ptr;
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL) {
@@ -301,13 +299,11 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 }
 
 /*!< \todo possibly not needed! */
-static int add_new_nodes(zone_node_t **node_ptr, void *data)
+static int add_new_nodes(zone_node_t *node, void *data)
 {
-	if (node_ptr == NULL || *node_ptr == NULL || data == NULL) {
+	if (node == NULL || data == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	zone_node_t *node = *node_ptr;
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL) {

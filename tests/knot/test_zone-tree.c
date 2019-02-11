@@ -51,10 +51,10 @@ static void ztree_free_data(void)
 	}
 }
 
-static int ztree_iter_data(zone_node_t **node, void *data)
+static int ztree_iter_data(zone_node_t *node, void *data)
 {
 	unsigned *i = (unsigned *)data;
-	knot_dname_t *owner = (*node)->owner;
+	knot_dname_t *owner = node->owner;
 	int result = KNOT_EOK;
 	if (owner != ORDER[*i]) {
 		result = KNOT_ERROR;
