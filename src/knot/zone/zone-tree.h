@@ -24,7 +24,7 @@ typedef trie_t zone_tree_t;
 /*!
  * \brief Signature of callback for zone apply functions.
  */
-typedef int (*zone_tree_apply_cb_t)(zone_node_t **node, void *data);
+typedef int (*zone_tree_apply_cb_t)(zone_node_t *node, void *data);
 
 /*!
  * \brief Zone tree iteration context.
