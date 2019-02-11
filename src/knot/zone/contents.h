@@ -252,11 +252,6 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
 int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to);
 
 /*!
- * \brief Unify all zone's nodes.
- */
-void zone_contents_unify_binodes(zone_contents_t *contents);
-
-/*!
  * \brief Deallocate directly owned data of zone contents.
  *
  * \param contents  Zone contents to free.

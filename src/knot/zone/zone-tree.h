@@ -191,6 +191,11 @@ void zone_tree_it_next(zone_tree_it_t *it);
 void zone_tree_it_free(zone_tree_it_t *it);
 
 /*!
+ * \brief Unify all bi-nodes in specified trees.
+ */
+void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes);
+
+/*!
  * \brief Destroys the zone tree, not touching the saved data.
  *
  * \param tree Zone tree to be destroyed.

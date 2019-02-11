@@ -659,6 +659,8 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 		return KNOT_ESEMCHECK;
 	}
 
+	zone_trees_unify_binodes(update->new_cont->nodes, update->new_cont->nsec3_nodes);
+
 	int ret = zone_adjust_full(update->new_cont);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
@@ -756,22 +758,25 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	old_contents = zone_switch_contents(update->zone, update->new_cont);
 
 	/* Sync RCU. */
+	synchronize_rcu();
 	if (update->flags & UPDATE_FULL) {
 		assert(update->new_cont_deep_copy);
-		callrcu_wrapper(old_contents, zone_contents_deep_free, false);
+		//callrcu_wrapper(old_contents, zone_contents_deep_free, false);
+		zone_contents_deep_free(old_contents);
 	} else if (update->flags & UPDATE_INCREMENTAL) {
 		if (update->new_cont_deep_copy) {
-			callrcu_wrapper(old_contents, zone_contents_deep_free, false);
+			//callrcu_wrapper(old_contents, zone_contents_deep_free, false);
+			zone_contents_deep_free(old_contents);
 		} else {
-			callrcu_wrapper(old_contents, update_free_zone, false);
+			//callrcu_wrapper(old_contents, update_free_zone, false);
+			update_free_zone(old_contents);
 		}
 		changeset_clear(&update->change);
 	}
-	callrcu_wrapper(update->a_ctx, update_cleanup, true);
+	//callrcu_wrapper(update->a_ctx, update_cleanup, true);
+	update_cleanup(update->a_ctx);
 	update->a_ctx = NULL;
 	update->new_cont = NULL;
-
-	zone_contents_unify_binodes(update->zone->contents);
 
 	/* Sync zonefile immediately if configured. */
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, update->zone->name);

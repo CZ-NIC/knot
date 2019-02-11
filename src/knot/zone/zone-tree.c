@@ -267,6 +267,25 @@ void zone_tree_it_free(zone_tree_it_t *it)
 	memset(it, 0, sizeof(*it));
 }
 
+#include <stdio.h>
+static int binode_unify_cb(zone_node_t *node, void *ctx)
+{
+	UNUSED(ctx);
+	binode_unify(node, true, NULL);
+	printf("unified node %s\n", node->owner);
+	return KNOT_EOK;
+}
+
+void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes)
+{
+	if (nodes != NULL) {
+		zone_tree_apply(nodes, binode_unify_cb, NULL);
+	}
+	if (nsec3_nodes != NULL) {
+		zone_tree_apply(nsec3_nodes, binode_unify_cb, NULL);
+	}
+}
+
 void zone_tree_free(zone_tree_t **tree)
 {
 	if (tree == NULL || *tree == NULL) {

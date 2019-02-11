@@ -65,6 +65,28 @@ static void process_rr(zs_scanner_t *scanner)
 	assert(ret == KNOT_EOK);
 }
 
+static int test_node_unified(zone_node_t *n1, void *v)
+{
+	UNUSED(v);
+	zone_node_t *n2 = binode_node(n1, false);
+	if (n2 == n1) {
+		n2 = binode_node(n1, true);
+	}
+	ok(n1->owner == n2->owner, "binode %s has equal %s owner", n1->owner, n2->owner);
+	ok(n1->rrs == n2->rrs, "binode %s has equal rrs", n1->owner);
+	ok(n1->rrset_count == n2->rrset_count, "binode %s has equal rrset_count", n1->owner);
+	if (n1->flags & NODE_FLAGS_BINODE) {
+		ok((n1->flags ^ n2->flags) == NODE_FLAGS_SECOND, "binode %s has correct flags", n1->owner);
+	}
+	ok(n1->children == n2->children, "binode %s has equal children count", n1->owner);
+	return KNOT_EOK;
+}
+
+static void test_zone_unified(zone_contents_t *z)
+{
+	zone_tree_apply(z->nodes, test_node_unified, NULL);
+}
+
 void test_full(zone_t *zone, zs_scanner_t *sc)
 {
 	zone_update_t update;
@@ -178,6 +200,8 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	rrset_present = node_contains_rr(node, &rrset);
 	ok(ret == KNOT_EOK && rrset_present, "full zone update: commit");
 
+	test_zone_unified(zone->contents);
+
 	knot_rdataset_clear(&rrset.rrs, NULL);
 }
 
@@ -277,6 +301,8 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	iter_node = zone_contents_find_node_for_rr(zone->contents, &rrset);
 	rrset_present = node_contains_rr(iter_node, &rrset);
 	ok(ret == KNOT_EOK && rrset_present, "incremental zone update: commit");
+
+	test_zone_unified(zone->contents);
 
 	knot_rdataset_clear(&rrset.rrs, NULL);
 }

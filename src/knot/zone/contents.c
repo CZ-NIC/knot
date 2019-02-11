@@ -689,19 +689,6 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 	return KNOT_EOK;
 }
 
-static int binode_unify_cb(zone_node_t *node, void *ctx)
-{
-	UNUSED(ctx);
-	binode_unify(node, false, NULL);
-	return KNOT_EOK;
-}
-
-void zone_contents_unify_binodes(zone_contents_t *contents)
-{
-	(void)zone_contents_apply(contents, binode_unify_cb, NULL);
-	(void)zone_contents_nsec3_apply(contents, binode_unify_cb, NULL);
-}
-
 void zone_contents_free(zone_contents_t *contents)
 {
 	if (contents == NULL) {
