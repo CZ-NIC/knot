@@ -25,21 +25,6 @@
 #include "contrib/qp-trie/trie.h"
 #include "contrib/macros.h"
 
-typedef struct {
-	zone_contents_apply_cb_t func;
-	void *data;
-} zone_tree_func_t;
-
-static int tree_apply_cb(zone_node_t **node, void *data)
-{
-	if (node == NULL || data == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	zone_tree_func_t *f = (zone_tree_func_t *)data;
-	return f->func(*node, f->data);
-}
-
 /*!
  * \brief Checks if the given node can be inserted into the given zone.
  *
@@ -75,14 +60,13 @@ static int check_node(const zone_contents_t *contents, const zone_node_t *node)
  * \param node Node to destroy RRSets from.
  * \param data Unused parameter.
  */
-static int destroy_node_rrsets_from_tree(zone_node_t **node, void *data)
+static int destroy_node_rrsets_from_tree(zone_node_t *node, void *data)
 {
-	assert(node);
 	UNUSED(data);
 
-	if (*node != NULL) {
-		node_free_rrsets(*node, NULL);
-		node_free(*node, NULL);
+	if (node != NULL) {
+		node_free_rrsets(node, NULL);
+		node_free(node, NULL);
 	}
 
 	return KNOT_EOK;
@@ -644,33 +628,21 @@ bool zone_contents_find_node_or_wildcard(const zone_contents_t *contents,
 }
 
 int zone_contents_apply(zone_contents_t *contents,
-                        zone_contents_apply_cb_t function, void *data)
+                        zone_tree_apply_cb_t function, void *data)
 {
 	if (contents == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	zone_tree_func_t f = {
-		.func = function,
-		.data = data
-	};
-
-	return zone_tree_apply(contents->nodes, tree_apply_cb, &f);
+	return zone_tree_apply(contents->nodes, function, data);
 }
 
 int zone_contents_nsec3_apply(zone_contents_t *contents,
-                              zone_contents_apply_cb_t function, void *data)
+                              zone_tree_apply_cb_t function, void *data)
 {
 	if (contents == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	zone_tree_func_t f = {
-		.func = function,
-		.data = data
-	};
-
-	return zone_tree_apply(contents->nsec3_nodes, tree_apply_cb, &f);
+	return zone_tree_apply(contents->nsec3_nodes, function, data);
 }
 
 int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to)
