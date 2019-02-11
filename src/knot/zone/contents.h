@@ -39,11 +39,6 @@ typedef struct zone_contents {
 } zone_contents_t;
 
 /*!
- * \brief Signature of callback for zone contents apply functions.
- */
-typedef int (*zone_contents_apply_cb_t)(zone_node_t *node, void *data);
-
-/*!
  * \brief Allocate and create new zone contents.
  *
  * \param apex_name  Name of the root node.
@@ -219,7 +214,7 @@ bool zone_contents_find_node_or_wildcard(const zone_contents_t *contents,
  * \param data Arbitrary data to be passed to the function.
  */
 int zone_contents_apply(zone_contents_t *contents,
-                        zone_contents_apply_cb_t function, void *data);
+                        zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.
@@ -230,7 +225,7 @@ int zone_contents_apply(zone_contents_t *contents,
  * \param data Arbitrary data to be passed to the function.
  */
 int zone_contents_nsec3_apply(zone_contents_t *contents,
-                              zone_contents_apply_cb_t function, void *data);
+                              zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).

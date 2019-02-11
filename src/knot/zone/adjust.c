@@ -260,13 +260,12 @@ typedef struct {
 	bool measure_size;
 } zone_adjust_arg_t;
 
-static int adjust_single(zone_node_t **tnode, void *data)
+static int adjust_single(zone_node_t *node, void *data)
 {
-	assert(tnode != NULL);
+	assert(node != NULL);
 	assert(data != NULL);
 
 	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	zone_node_t *node = *tnode;
 
 	// remember first node
 	if (args->first_node == NULL) {
