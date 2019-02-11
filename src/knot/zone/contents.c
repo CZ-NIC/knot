@@ -376,12 +376,12 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 	// everything done, now just update "parent" and "apex" pointers
 	out->apex = NULL;
-	trie_it_t *itt = trie_it_begin(out->nodes);
-	if (itt == NULL) {
+	zone_tree_it_t it = { 0 };
+	if (zone_tree_it_begin(out->nodes, &it) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
-	while (!trie_it_finished(itt)) {
-		zone_node_t *to_fix = (zone_node_t *)*trie_it_val(itt);
+	while (!zone_tree_it_finished(&it)) {
+		zone_node_t *to_fix = zone_tree_it_val(&it);
 		if (out->apex == NULL && knot_dname_cmp(to_fix->owner, z->apex->owner) == 0) {
 			out->apex = to_fix;
 		} else {
@@ -390,9 +390,9 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 			assert(parent != NULL);
 			node_set_parent(to_fix, parent);
 		}
-		trie_it_next(itt);
+		zone_tree_it_next(&it);
 	}
-	trie_it_free(itt);
+	zone_tree_it_free(&it);
 	assert(out->apex != NULL);
 
 	return KNOT_EOK;
@@ -405,16 +405,16 @@ static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 		return KNOT_ENOMEM;
 	}
 
-	trie_it_t *itt = trie_it_begin(z->nsec3_nodes);
-	if (itt == NULL) {
+	zone_tree_it_t it = { 0 };
+	if (zone_tree_it_begin(z->nsec3_nodes, &it) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
-	while (!trie_it_finished(itt)) {
-		zone_node_t *to_fix = (zone_node_t *)*trie_it_val(itt);
+	while (!zone_tree_it_finished(&it)) {
+		zone_node_t *to_fix = zone_tree_it_val(&it);
 		to_fix->parent = out->apex;
-		trie_it_next(itt);
+		zone_tree_it_next(&it);
 	}
-	trie_it_free(itt);
+	zone_tree_it_free(&it);
 	return KNOT_EOK;
 }
 
