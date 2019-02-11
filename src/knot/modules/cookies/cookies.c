@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -234,10 +234,7 @@ int cookies_load(knotd_mod_t *mod)
 	ctx->badcookie_ctr = BADCOOKIE_CTR_INIT;
 
 	// Set up configurable items.
-	knotd_conf_t conf = knotd_conf_mod(mod, MOD_SECRET_LIFETIME);
-	ctx->secret_lifetime = conf.single.integer;
-
-	conf = knotd_conf_mod(mod, MOD_BADCOOKIE_SLIP);
+	knotd_conf_t conf = knotd_conf_mod(mod, MOD_BADCOOKIE_SLIP);
 	ctx->badcookie_slip = conf.single.integer;
 
 	// Set up statistics counters.
@@ -252,6 +249,7 @@ int cookies_load(knotd_mod_t *mod)
 	if (conf.count == 1) {
 		assert(conf.single.data_len == KNOT_EDNS_COOKIE_SECRET_SIZE);
 		memcpy(&ctx->secret, conf.single.data, conf.single.data_len);
+		assert(ctx->secret_lifetime == 0);
 	} else {
 		ret = dnssec_random_buffer((uint8_t *)&ctx->secret, sizeof(ctx->secret));
 		if (ret != KNOT_EOK) {
@@ -259,9 +257,14 @@ int cookies_load(knotd_mod_t *mod)
 			return ret;
 		}
 
+		conf = knotd_conf_mod(mod, MOD_SECRET_LIFETIME);
+		ctx->secret_lifetime = conf.single.integer;
+
 		// Start the secret rollover thread.
 		if (pthread_create(&ctx->update_secret, NULL, update_secret, (void *)mod)) {
 			knotd_mod_log(mod, LOG_ERR, "failed to create the secret rollover thread");
+			free(ctx);
+			return KNOT_ERROR;
 		}
 	}
 
@@ -278,9 +281,11 @@ int cookies_load(knotd_mod_t *mod)
 void cookies_unload(knotd_mod_t *mod)
 {
 	cookies_ctx_t *ctx = knotd_mod_ctx(mod);
+	if (ctx->secret_lifetime > 0) {
+		(void)pthread_cancel(ctx->update_secret);
+		(void)pthread_join(ctx->update_secret, NULL);
+	}
 	memzero(&ctx->secret, sizeof(ctx->secret));
-	(void)pthread_cancel(ctx->update_secret);
-	(void)pthread_join(ctx->update_secret, NULL);
 	free(ctx);
 }
 
