@@ -178,7 +178,7 @@ struct check_function {
 static const struct check_function CHECK_FUNCTIONS[] = {
 	{ check_cname,          MANDATORY },
 	{ check_dname,          MANDATORY },
-	{ check_delegation,     OPTIONAL },
+	{ check_delegation,     MANDATORY }, // mandatory for apex, optional for others
 	{ check_submission,     OPTIONAL },
 	{ check_ds,             OPTIONAL },
 	{ check_rrsig,          NSEC | NSEC3 },
@@ -461,6 +461,11 @@ static int check_rrsig_in_rrset(sem_handler_t *handler,
 static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 {
 	if (!((node->flags & NODE_FLAGS_DELEG) || data->zone->apex == node)) {
+		return KNOT_EOK;
+	}
+
+	// always check zone apex
+	if (!(data->level & OPTIONAL) && data->zone->apex != node) {
 		return KNOT_EOK;
 	}
 
