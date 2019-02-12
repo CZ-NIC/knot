@@ -445,7 +445,7 @@ Second, we list the states of the key being rolled-out.
 
 Standard states:
 
-- ``post-active`` — The key is still used for signing and published in the zone, waiting for
+- ``retire-active`` — The key is still used for signing and published in the zone, waiting for
   the updated DS records in parent zone to be acked by resolvers (KSK case) or synchronizing
   with KSK during algorithm rollover (ZSK case).
 - ``retired`` — The key is no longer used for signing, but still published in the zone.
@@ -453,7 +453,7 @@ Standard states:
 
 Special states for algorithm rollover:
 
-- ``retire-active`` — The key is no longer published in the zone, but still used for signing.
+- ``post-active`` — The key is no longer published in the zone, but still used for signing.
 
 The states listed above are relevant for :doc:`keymgr <man_keymgr>` operations like generating
 a key, setting its timers and listing KASP database.
