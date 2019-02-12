@@ -63,7 +63,7 @@ static int destroy_node_rrsets_from_tree(zone_node_t *node, void *data)
 	UNUSED(data);
 
 	if (node != NULL) {
-		binode_unify(node, true, NULL);
+		binode_unify(node, true, false, false, NULL);
 		node_free_rrsets(node, NULL);
 		node_free(node, NULL);
 	}
@@ -349,7 +349,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != z->apex) {
-			zone_tree_delete_empty(nsec3 ? z->nsec3_nodes : z->nodes, node);
+			zone_tree_delete_empty(nsec3 ? z->nsec3_nodes : z->nodes, node, true);
 		}
 	}
 
@@ -359,6 +359,10 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 {
+	out->nodes = zone_tree_dup(z->nodes);
+	out->apex = binode_node(z->apex, (out->nodes->flags & ZONE_TREE_BINO_SECOND));
+	return KNOT_EOK;
+
 	out->nodes = zone_tree_shallow_copy(z->nodes);
 	if (out->nodes == NULL) {
 		return KNOT_ENOMEM;
@@ -390,6 +394,9 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 {
+	out->nsec3_nodes = zone_tree_dup(z->nsec3_nodes);
+	return KNOT_EOK;
+
 	out->nsec3_nodes = zone_tree_shallow_copy(z->nsec3_nodes);
 	if (out->nsec3_nodes == NULL) {
 		return KNOT_ENOMEM;

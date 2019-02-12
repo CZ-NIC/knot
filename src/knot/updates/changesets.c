@@ -120,7 +120,7 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 			// Remove empty node.
 			zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
 			                 counterpart->nsec3_nodes : counterpart->nodes;
-			zone_tree_delete_empty(t, node);
+			zone_tree_delete_empty(t, node, true);
 		}
 	}
 
@@ -545,7 +545,7 @@ void changeset_from_contents_free(changeset_t *ch)
 	assert(ch->soa_from == NULL);
 	assert(ch->remove == NULL);
 
-	update_free_zone(ch->add);
+	update_free_zone2(ch->add);
 
 	zone_contents_deep_free(ch->remove);
 	knot_rrset_free(ch->soa_from, NULL);

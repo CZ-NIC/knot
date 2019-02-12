@@ -71,6 +71,27 @@ zone_tree_t *zone_tree_shallow_copy(zone_tree_t *from)
 	return to;
 }
 
+static void *identity(void *x, knot_mm_t *mm)
+{
+	UNUSED(mm);
+	return x;
+}
+
+zone_tree_t *zone_tree_dup(zone_tree_t *from)
+{
+	zone_tree_t *to = calloc(1, sizeof(*to));
+	if (to == NULL) {
+		return to;
+	}
+	to->flags = from->flags ^ ZONE_TREE_BINO_SECOND;
+	to->trie = trie_dup(from->trie, identity, NULL);
+	if (to->trie == NULL) {
+		free(to);
+		to = NULL;
+	}
+	return to;
+}
+
 int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 {
 	if (tree == NULL || node == NULL || *node == NULL) {
@@ -192,7 +213,7 @@ static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
 	}
 }
 
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
+void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node, bool free_it)
 {
 	if (tree == NULL || node == NULL) {
 		return;
@@ -205,13 +226,16 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 			fix_wildcard_child(parent_node, node->owner);
 			if (parent_node->parent != NULL) { /* Is not apex */
 				// Recurse using the parent node, do not delete possibly empty parent.
-				zone_tree_delete_empty(tree, parent_node);
+				zone_tree_delete_empty(tree, parent_node, free_it);
 			}
 		}
 
 		// Delete node
 		zone_tree_remove_node(tree, node->owner);
 		node->flags |= NODE_FLAGS_DELETED;
+		if (free_it) {
+			node_free(node, NULL);
+		}
 	}
 }
 
@@ -256,6 +280,11 @@ zone_node_t *zone_tree_it_val(zone_tree_it_t *it)
 	return fix_get(*trie_it_val(it->it), it->tree);
 }
 
+void zone_tree_it_del(zone_tree_it_t *it)
+{
+	trie_it_del(it->it);
+}
+
 void zone_tree_it_next(zone_tree_it_t *it)
 {
 	trie_it_next(it->it);
@@ -267,12 +296,10 @@ void zone_tree_it_free(zone_tree_it_t *it)
 	memset(it, 0, sizeof(*it));
 }
 
-#include <stdio.h>
 static int binode_unify_cb(zone_node_t *node, void *ctx)
 {
 	UNUSED(ctx);
-	binode_unify(node, true, NULL);
-	printf("unified node %s\n", node->owner);
+	binode_unify(node, true, true, true, NULL);
 	return KNOT_EOK;
 }
 

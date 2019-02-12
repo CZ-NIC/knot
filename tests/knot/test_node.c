@@ -82,7 +82,8 @@ int main(int argc, char *argv[])
 	                     copy->flags == node->flags;
 	ok(copy_ok, "Node: shallow copy - set fields.");
 
-	node_free(copy, NULL);
+	free(copy->owner);
+	free(copy);
 
 	// Test RRSet getters
 	knot_rrset_t *n_rrset = node_create_rrset(node, KNOT_RRTYPE_TXT);

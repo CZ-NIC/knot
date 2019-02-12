@@ -631,7 +631,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 				ret = changeset_add_addition(chgset, &nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 			}
 		}
-		binode_unify(new_nsec3_n, true, NULL);
+		binode_unify(new_nsec3_n, true, false, false, NULL);
 		node_free_rrsets(new_nsec3_n, NULL);
 		node_free(new_nsec3_n, NULL);
 	}

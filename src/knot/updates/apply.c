@@ -247,7 +247,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	// re-inserting makes no harm
 
 	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
-	if (!knot_rrset_empty(&changed_rrset)) {
+	if (!knot_rrset_empty(&changed_rrset) && binode_rdataset_shared(node, rr->type)) {
 		// Modifying existing RRSet.
 		int ret = replace_rdataset_with_copy(node, rr->type);
 		if (ret != KNOT_EOK) {
@@ -292,9 +292,12 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	zone_tree_insert(nsec3 ? ctx->nsec3_ptrs : ctx->node_ptrs, &node);
 	zone_tree_t *tree = nsec3 ? contents->nsec3_nodes : contents->nodes;
 
-	int ret = replace_rdataset_with_copy(node, rr->type);
-	if (ret != KNOT_EOK) {
-		return ret;
+	int ret;
+	if (binode_rdataset_shared(node, rr->type)) {
+		ret = replace_rdataset_with_copy(node, rr->type);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	knot_rdataset_t *changed_rrs = node_rdataset(node, rr->type);
@@ -310,7 +313,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != contents->apex) {
-			zone_tree_delete_empty(tree, node);
+			zone_tree_delete_empty(tree, node, false);
 		}
 	}
 
@@ -390,7 +393,9 @@ void update_rollback(apply_ctx_t *ctx)
 	}
 
 	ctx->node_ptrs->flags ^= ZONE_TREE_BINO_SECOND;
-	ctx->nsec3_ptrs->flags ^= ZONE_TREE_BINO_SECOND;
+	if (ctx->nsec3_ptrs != NULL) {
+		ctx->nsec3_ptrs->flags ^= ZONE_TREE_BINO_SECOND;
+	}
 	zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs);
 
 	zone_tree_free(&ctx->node_ptrs);
@@ -398,6 +403,21 @@ void update_rollback(apply_ctx_t *ctx)
 }
 
 void update_free_zone(zone_contents_t *contents)
+{
+	if (contents == NULL) {
+		return;
+	}
+
+	zone_tree_free(&contents->nodes);
+	zone_tree_free(&contents->nsec3_nodes);
+
+	dnssec_nsec3_params_free(&contents->nsec3_params);
+
+	free(contents);
+}
+
+
+void update_free_zone2(zone_contents_t *contents)
 {
 	if (contents == NULL) {
 		return;

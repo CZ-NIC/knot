@@ -96,6 +96,8 @@ enum node_flags {
  */
 void additional_clear(additional_t *additional);
 
+int rr_data_cmp(struct rr_data *a, struct rr_data *b);
+
 /*!
  * \brief Creates and initializes new node structure.
  *
@@ -107,13 +109,18 @@ void additional_clear(additional_t *additional);
 zone_node_t *node_new(const knot_dname_t *owner, bool binode, knot_mm_t *mm);
 
 /*!
+ * \brief Return the other part of a bi-node.
+ */
+zone_node_t *binode_counterpart(zone_node_t *node);
+
+/*!
  * \brief Synchronize contents of both binode's nodes.
  *
  * \param node       Pointer to either of nodes in a binode.
  * \param free_old   Also free the rr_data of the other node being overwritten.
  * \param mm         Memory context.
  */
-void binode_unify(zone_node_t *node, bool free_old, knot_mm_t *mm);
+int binode_unify(zone_node_t *node, bool free_old, bool shallow_copy_rrs, bool free_deleted, knot_mm_t *mm);
 
 /*!
  * \brief Get the correct node of a binode.
@@ -124,6 +131,11 @@ void binode_unify(zone_node_t *node, bool free_old, knot_mm_t *mm);
  * \return Pointer to correct node.
  */
 zone_node_t *binode_node(zone_node_t *node, bool second);
+
+/*!
+ * \brief Return true if the rdataset of specified type is shared (shallow-copied) among both parts of bi-node.
+ */
+bool binode_rdataset_shared(zone_node_t *node, uint16_t type);
 
 /*!
  * \brief Destroys allocated data within the node

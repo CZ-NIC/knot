@@ -73,8 +73,10 @@ static int test_node_unified(zone_node_t *n1, void *v)
 		n2 = binode_node(n1, true);
 	}
 	ok(n1->owner == n2->owner, "binode %s has equal %s owner", n1->owner, n2->owner);
-	ok(n1->rrs == n2->rrs, "binode %s has equal rrs", n1->owner);
 	ok(n1->rrset_count == n2->rrset_count, "binode %s has equal rrset_count", n1->owner);
+	for (uint16_t i = 0; i < n1->rrset_count; i++) {
+		ok(rr_data_cmp(&n1->rrs[i], &n2->rrs[i]) == 0, "binode %s has equal rrs", n1->owner);
+	}
 	if (n1->flags & NODE_FLAGS_BINODE) {
 		ok((n1->flags ^ n2->flags) == NODE_FLAGS_SECOND, "binode %s has correct flags", n1->owner);
 	}

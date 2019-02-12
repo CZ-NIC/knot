@@ -54,6 +54,8 @@ zone_tree_t *zone_tree_create(bool use_binodes);
  */
 zone_tree_t *zone_tree_shallow_copy(zone_tree_t *from);
 
+zone_tree_t *zone_tree_dup(zone_tree_t *from);
+
 /*!
  * \brief Return number of nodes in the zone tree.
  *
@@ -141,8 +143,9 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner);
  *
  * \param tree  The tree to remove from.
  * \param node  The node to remove.
+ * \param free_it   Free the node after removing.
  */
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node);
+void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node, bool free_it);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.
@@ -179,6 +182,13 @@ bool zone_tree_it_finished(zone_tree_it_t *it);
  * \note Don't call this when zone_tree_it_finished.
  */
 zone_node_t *zone_tree_it_val(zone_tree_it_t *it);
+
+/*!
+ * \brief Remove from zone tree the node that iteration is pointing at.
+ *
+ * \note This doesn't free the node.
+ */
+void zone_tree_it_del(zone_tree_it_t *it);
 
 /*!
  * \brief Move the iteration to next node.
