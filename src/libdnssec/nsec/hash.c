@@ -38,6 +38,7 @@ static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 	assert(data);
 	assert(hash);
 
+	/*
 	int hash_size = gnutls_hash_get_len(algorithm);
 	if (hash_size <= 0) {
 		return DNSSEC_NSEC3_HASHING_ERROR;
@@ -47,9 +48,9 @@ static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
-
+	*/
 	_cleanup_hash_ gnutls_hash_hd_t digest = NULL;
-	result = gnutls_hash_init(&digest, algorithm);
+	int result = gnutls_hash_init(&digest, algorithm);
 	if (result < 0) {
 		return DNSSEC_NSEC3_HASHING_ERROR;
 	}

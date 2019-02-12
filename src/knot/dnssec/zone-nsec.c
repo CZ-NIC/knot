@@ -83,6 +83,9 @@ int knot_nsec3_hash_to_dname(uint8_t *out, size_t out_size, const uint8_t *hash,
 	return wire.error;
 }
 
+#include <gnutls/gnutls.h>
+#include <gnutls/crypto.h>
+#include "libdnssec/shared/shared.h"
 int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
                             const knot_dname_t *owner, const knot_dname_t *zone_apex,
                             const dnssec_nsec3_params_t *params)
@@ -96,18 +99,39 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
 		.size = knot_dname_size(owner)
 	};
 
-	dnssec_binary_t hash = { 0 };
+	uint8_t buf[20];
+	dnssec_binary_t hash = {
+		.data = buf,
+		.size = sizeof(buf)
+	};
 
-	int ret = dnssec_nsec3_hash(&data, params, &hash);
-	if (ret != DNSSEC_EOK) {
-		return knot_error_from_libdnssec(ret);
+	_cleanup_hash_ gnutls_hash_hd_t digest = NULL;
+	int result = gnutls_hash_init(&digest, GNUTLS_DIG_SHA1);
+	if (result < 0) {
+		return DNSSEC_NSEC3_HASHING_ERROR;
 	}
 
-	ret = knot_nsec3_hash_to_dname(out, out_size, hash.data, hash.size, zone_apex);
+	const uint8_t *in = data.data;
+	size_t in_size = data.size;
 
-	dnssec_binary_free(&hash);
+	for (int i = 0; i <= params->iterations; i++) {
+		result = gnutls_hash(digest, in, in_size);
+		if (result < 0) {
+			return DNSSEC_NSEC3_HASHING_ERROR;
+		}
 
-	return ret;
+		result = gnutls_hash(digest, params->salt.data, params->salt.size);
+		if (result < 0) {
+			return DNSSEC_NSEC3_HASHING_ERROR;
+		}
+
+		gnutls_hash_output(digest, hash.data);
+
+		in = hash.data;
+		in_size = hash.size;
+	}
+
+	return knot_nsec3_hash_to_dname(out, out_size, hash.data, hash.size, zone_apex);
 }
 
 static bool nsec3param_valid(const knot_rdataset_t *rrs,
