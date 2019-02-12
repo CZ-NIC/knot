@@ -25,10 +25,10 @@
 #include "libknot/dname.h"
 #include "contrib/qp-trie/trie.h"
 
-typedef struct knot_zonedb {
+struct knot_zonedb {
 	trie_t *trie;
 	knot_mm_t mm;
-} knot_zonedb_t;
+};
 
 /*
  * Mapping of iterators to internal data structure.
