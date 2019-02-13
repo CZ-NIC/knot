@@ -17,12 +17,16 @@
 #include <assert.h>
 
 #include "knot/journal/serialization.h"
+#include "knot/zone/zone-tree.h"
 #include "libknot/libknot.h"
 
 #define SERIALIZE_RRSET_INIT (-1)
 #define SERIALIZE_RRSET_DONE ((1L<<16)+1)
 
 typedef enum {
+	PHASE_ZONE_SOA,
+	PHASE_ZONE_NODES,
+	PHASE_ZONE_NSEC3,
 	PHASE_SOA_1,
 	PHASE_REM,
 	PHASE_SOA_2,
@@ -33,6 +37,11 @@ typedef enum {
 #define RRSET_BUF_MAXSIZE 256
 
 struct serialize_ctx {
+	const zone_contents_t *z;
+	zone_tree_it_t zit;
+	zone_node_t *n;
+	uint16_t node_pos;
+
 	const changeset_t *ch;
 	changeset_iter_t it;
 	serialize_phase_t changeset_phase;
@@ -56,11 +65,52 @@ serialize_ctx_t *serialize_init(const changeset_t *ch)
 	return ctx;
 }
 
+serialize_ctx_t *serialize_zone_init(const zone_contents_t *z)
+{
+	serialize_ctx_t *ctx = calloc(1, sizeof(*ctx));
+	if (ctx == NULL) {
+		return NULL;
+	}
+
+	ctx->z = z;
+	ctx->changeset_phase = PHASE_ZONE_SOA;
+	ctx->rrset_phase = SERIALIZE_RRSET_INIT;
+	ctx->rrset_buf_size = 0;
+
+	return ctx;
+}
+
 static knot_rrset_t get_next_rrset(serialize_ctx_t *ctx)
 {
 	knot_rrset_t res;
 	knot_rrset_init_empty(&res);
 	switch (ctx->changeset_phase) {
+	case PHASE_ZONE_SOA:
+		zone_tree_it_begin(ctx->z->nodes, &ctx->zit);
+		ctx->changeset_phase = PHASE_ZONE_NODES;
+		return node_rrset(ctx->z->apex, KNOT_RRTYPE_SOA);
+	case PHASE_ZONE_NODES:
+	case PHASE_ZONE_NSEC3:
+		while (ctx->n == NULL || ctx->node_pos >= ctx->n->rrset_count) {
+			if (zone_tree_it_finished(&ctx->zit)) {
+				zone_tree_it_free(&ctx->zit);
+				if (ctx->changeset_phase == PHASE_ZONE_NSEC3 || zone_tree_is_empty(ctx->z->nsec3_nodes)) {
+					ctx->changeset_phase = PHASE_END;
+					return res;
+				} else {
+					zone_tree_it_begin(ctx->z->nsec3_nodes, &ctx->zit);
+					ctx->changeset_phase = PHASE_ZONE_NSEC3;
+				}
+			}
+			ctx->n = zone_tree_it_val(&ctx->zit);
+			zone_tree_it_next(&ctx->zit);
+			ctx->node_pos = 0;
+		}
+		res = node_rrset_at(ctx->n, ctx->node_pos++);
+		if (ctx->n == ctx->z->apex && res.type == KNOT_RRTYPE_SOA) {
+			return get_next_rrset(ctx);
+		}
+		return res;
 	case PHASE_SOA_1:
 		changeset_iter_rem(&ctx->it, ctx->ch);
 		ctx->changeset_phase = PHASE_REM;
