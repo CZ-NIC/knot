@@ -218,6 +218,9 @@ class Server(object):
         mode = "w" if clean else "a"
 
         try:
+            if os.path.isfile(self.valgrind_log):
+                copyfile(self.valgrind_log, self.valgrind_log + str(int(time.time())))
+
             if self.compile_cmd:
                 self.ctl(self.compile_cmd)
 
