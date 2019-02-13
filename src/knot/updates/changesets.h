@@ -193,16 +193,6 @@ int changeset_cancelout(changeset_t *ch);
 bool changeset_differs_just_serial(const changeset_t *ch);
 
 /*!
- * \brief Loads zone contents from botstrap changeset.
- *
- * \param ch  Changeset to load from, will be freed!
- * \param out Zone contents.
- *
- * \return KNOT_E*
- */
-int changeset_to_contents(changeset_t *ch, zone_contents_t **out);
-
-/*!
  * \brief Creates a bootstrap changeset from zone.
  *
  * \param contents  Contents to include, will be freed!

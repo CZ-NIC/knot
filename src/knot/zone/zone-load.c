@@ -114,35 +114,47 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 		return KNOT_EINVAL;
 	}
 
+	*contents = zone_contents_new(zone->name);
+	if (*contents == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	journal_read_t *read = NULL;
 	int ret = journal_read_begin(zone_journal(zone), true, 0, &read);
-	if (ret != KNOT_EOK) {
+	if (ret == KNOT_ENOENT) {
+		node_free((*contents)->apex, NULL);
+		zone_contents_free(*contents);
 		return ret;
 	}
 
-	changeset_t zone_in_j;
-	apply_ctx_t a_ctx = { 0 };
-	ret = journal_read_changeset(read, &zone_in_j) ? KNOT_EOK : KNOT_ENOENT;
-	if (ret == KNOT_EOK) {
-		ret = changeset_to_contents(&zone_in_j, contents);
+	knot_rrset_t rr = { 0 };
+	while (ret == KNOT_EOK && journal_read_rrset(read, &rr, false)) {
+		zone_node_t *unused = NULL;
+		ret = zone_contents_add_rr(*contents, &rr, &unused);
+		journal_read_clear_rrset(&rr);
 	}
+
+	apply_ctx_t a_ctx = { 0 };
 	if (ret == KNOT_EOK) {
 		ret = apply_init_ctx(&a_ctx, *contents, 0);
 	}
-	if (ret != KNOT_EOK) {
+	if (ret == KNOT_EOK) {
+		ret = journal_read_rrsets(read, apply_one_cb, &a_ctx);
+	} else {
 		journal_read_end(read);
-		return ret;
+	}
+	if (a_ctx.contents != NULL) {
+		update_cleanup(&a_ctx);
 	}
 
-	ret = journal_read_rrsets(read, apply_one_cb, &a_ctx);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone loaded from journal, serial %u",
 		              zone_contents_serial(*contents));
 	} else {
 		log_zone_error(zone->name, "failed to load zone from journal (%s)",
 		               knot_strerror(ret));
+		zone_contents_deep_free(*contents);
 	}
-	update_cleanup(&a_ctx);
 
 	return ret;
 }
