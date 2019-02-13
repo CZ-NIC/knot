@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 	zone_node_t *parent = node_new(dummy_owner, NULL);
 	assert(parent);
 	node_set_parent(node, parent);
-	ok(node->parent == parent && parent->children == 1, "Node: set parent.");
+	ok(node_parent(node) == parent && parent->children == 1, "Node: set parent.");
 
 	node_free(parent, NULL);
 
