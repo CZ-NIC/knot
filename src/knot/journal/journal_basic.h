@@ -60,9 +60,9 @@ MDB_val journal_changeset_to_chunk_key(const changeset_t *ch, uint32_t chunk_id)
  * \brief Initialise chunk header.
  *
  * \param chunk   Pointer to the changeset chunk. It must be at least JOURNAL_HEADER_SIZE, perhaps more.
- * \param ch      Changeset to be serialized into the chunk.
+ * \param ch      Serial-to of the changeset being serialized.
  */
-void journal_make_header(void *chunk, const changeset_t *ch);
+void journal_make_header(void *chunk, uint32_t ch_serial_to);
 
 /*!
  * \brief Obtain serial-to of the serialized changeset.
