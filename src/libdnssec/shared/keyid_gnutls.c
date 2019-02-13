@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ static int keyid_bin(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, dnssec_b
 	// Flags can be used to enable SHA-2 since GnuTLS 3.4.7.
 
 	int flags = 0;
-	uint8_t *buffer = alloca(DNSSEC_KEYID_BINARY_SIZE);
+	uint8_t buffer[DNSSEC_KEYID_BINARY_SIZE];
 	size_t size = DNSSEC_KEYID_SIZE;
 
 	int r = key ? gnutls_x509_privkey_get_key_id(key, flags, buffer, &size)
