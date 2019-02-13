@@ -182,6 +182,26 @@ knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type);
 void node_set_parent(zone_node_t *node, zone_node_t *parent);
 
 /*!
+ * \brief Returns parent node (fixing bi-node issue) of given node.
+ */
+zone_node_t *node_parent(const zone_node_t *node);
+
+/*!
+ * \brief Returns previous (lexicographically in same zone tree) node (fixing bi-node issue) of given node.
+ */
+zone_node_t *node_prev(const zone_node_t *node);
+
+/*!
+ * \brief Return node referenced by a glue.
+ *
+ * \param glue                Glue in question.
+ * \param another_zone_node   Another node from the same zone.
+ *
+ * \return Glue node.
+ */
+const zone_node_t *glue_node(const glue_t *glue, const zone_node_t *another_zone_node);
+
+/*!
  * \brief Checks whether node contains any RRSIG for given type.
  *
  * \param node  Node to check in.
