@@ -309,12 +309,13 @@ static glue_t *find_glue_for(const knot_rrset_t *rr, const knot_pkt_t *pkt)
 	return NULL;
 }
 
-static bool shall_sign_rr(const knot_rrset_t *rr, const knot_pkt_t *pkt)
+static bool shall_sign_rr(const knot_rrset_t *rr, const knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	if (pkt->current == KNOT_ADDITIONAL) {
 		glue_t *g = find_glue_for(rr, pkt);
 		assert(g); // finds actually the node which is rr in
-		return !(g->node->flags & NODE_FLAGS_NONAUTH);
+		const zone_node_t *gn = glue_node(g, qdata->extra->node);
+		return !(gn->flags & NODE_FLAGS_NONAUTH);
 	} else {
 		return !is_deleg(pkt) || rr->type == KNOT_RRTYPE_NSEC;
 	}
@@ -338,7 +339,7 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 	uint16_t count_unsigned = section->count;
 	for (int i = 0; i < count_unsigned; i++) {
 		const knot_rrset_t *rr = knot_pkt_rr(section, i);
-		if (!shall_sign_rr(rr, pkt)) {
+		if (!shall_sign_rr(rr, pkt, qdata)) {
 			continue;
 		}
 

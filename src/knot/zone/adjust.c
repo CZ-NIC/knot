@@ -23,16 +23,15 @@
 
 int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 {
+	zone_node_t *parent = node_parent(node);
+
 	// check if this node is not a wildcard child of its parent
 	if (knot_dname_is_wildcard(node->owner)) {
-		assert(node->parent != NULL);
-		node->parent->flags |= NODE_FLAGS_WILDCARD_CHILD;
+		parent->flags |= NODE_FLAGS_WILDCARD_CHILD;
 	}
 
 	// set flags (delegation point, non-authoritative)
-	if (node->parent &&
-	    (node->parent->flags & NODE_FLAGS_DELEG ||
-	     node->parent->flags & NODE_FLAGS_NONAUTH)) {
+	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
 		node->flags |= NODE_FLAGS_NONAUTH;
 	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != zone->apex) {
 		node->flags |= NODE_FLAGS_DELEG;

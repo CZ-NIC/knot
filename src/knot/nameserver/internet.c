@@ -190,7 +190,7 @@ static int put_delegation(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	/* Find closest delegation point. */
 	while (!(qdata->extra->node->flags & NODE_FLAGS_DELEG)) {
-		qdata->extra->node = qdata->extra->node->parent;
+		qdata->extra->node = node_parent(qdata->extra->node);
 	}
 
 	/* Insert NS record. */
@@ -229,7 +229,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 		uint16_t hint = knot_compr_hint(info, KNOT_COMPR_HINT_RDATA +
 		                                glue->ns_pos);
-		knot_rrset_t rrsigs = node_rrset(glue->node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t rrsigs = node_rrset(glue_node(glue, qdata->extra->node), KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
 			knot_rrset_t rrset = node_rrset(glue->node, ar_type_list[k]);
 			if (knot_rrset_empty(&rrset)) {
@@ -385,7 +385,7 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Look up an authoritative encloser or its parent. */
 	const zone_node_t *node = qdata->extra->encloser;
 	while (node->rrset_count == 0 || node->flags & NODE_FLAGS_NONAUTH) {
-		node = node->parent;
+		node = node_parent(node);
 		assert(node);
 	}
 

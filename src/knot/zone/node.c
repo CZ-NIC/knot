@@ -260,6 +260,22 @@ void node_set_parent(zone_node_t *node, zone_node_t *parent)
 	}
 }
 
+zone_node_t *node_parent(const zone_node_t *node)
+{
+	return node->parent;
+}
+
+zone_node_t *node_prev(const zone_node_t *node)
+{
+	return node->prev;
+}
+
+const zone_node_t *glue_node(const glue_t *glue, const zone_node_t *another_zone_node)
+{
+	UNUSED(another_zone_node);
+	return glue->node;
+}
+
 bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type)
 {
 	if (node == NULL) {

@@ -102,7 +102,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	int exact_match = 0;
 	if (ret == KNOT_EOK) {
 		if (fval != NULL) {
-			*previous = (*found)->prev;
+			*previous = node_prev(*found);
 		}
 		exact_match = 1;
 	} else if (ret == 1) {
@@ -120,7 +120,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 			return ret;
 		}
 		*previous = zone_tree_it_val(&it); /* leftmost */
-		*previous = (*previous)->prev; /* rightmost */
+		*previous = node_prev(*previous); /* rightmost */
 		*found = NULL;
 		zone_tree_it_free(&it);
 	}
@@ -161,7 +161,7 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 	}
 
 	if (node->rrset_count == 0 && node->children == 0) {
-		zone_node_t *parent_node = node->parent;
+		zone_node_t *parent_node = node_parent(node);
 		if (parent_node != NULL) {
 			parent_node->children--;
 			fix_wildcard_child(parent_node, node->owner);

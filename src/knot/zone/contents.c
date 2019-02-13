@@ -229,7 +229,6 @@ static int add_node(zone_contents_t *zone, zone_node_t *node, bool create_parent
 
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
-		assert(node->parent == NULL);
 		node_set_parent(node, next_node);
 	}
 
@@ -515,7 +514,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		node = prev;
 		size_t matched_labels = knot_dname_matched_labels(node->owner, name);
 		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
-			node = node->parent;
+			node = node_parent(node);
 			assert(node);
 		}
 
@@ -583,7 +582,7 @@ int zone_contents_find_nsec3(const zone_contents_t *zone,
 		// set the previous node of the found node
 		assert(match);
 		assert(*nsec3_node != NULL);
-		*nsec3_previous = (*nsec3_node)->prev;
+		*nsec3_previous = node_prev(*nsec3_node);
 	} else {
 		*nsec3_previous = prev;
 	}
@@ -591,7 +590,7 @@ int zone_contents_find_nsec3(const zone_contents_t *zone,
 	// The previous may be from wrong NSEC3 chain. Search for previous from the right chain.
 	const zone_node_t *original_prev = *nsec3_previous;
 	while (!((*nsec3_previous)->flags & NODE_FLAGS_IN_NSEC3_CHAIN)) {
-		*nsec3_previous = (*nsec3_previous)->prev;
+		*nsec3_previous = node_prev(*nsec3_previous);
 		if (*nsec3_previous == original_prev || *nsec3_previous == NULL) {
 			// cycle
 			*nsec3_previous = NULL;

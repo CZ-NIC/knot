@@ -1002,7 +1002,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 
 	const zone_node_t *next_nsec3 = zone_contents_find_nsec3_node(data->zone,
 	                                                              next_dname);
-	if (next_nsec3 == NULL || next_nsec3->prev != node->nsec3_node) {
+	if (next_nsec3 == NULL || node_prev(next_nsec3) != node->nsec3_node) {
 		uint8_t *next = NULL;
 		int32_t next_len = base32hex_encode_alloc(next_dname_str,
 		                                          next_dname_str_size,

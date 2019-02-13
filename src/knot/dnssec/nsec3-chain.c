@@ -704,9 +704,9 @@ static int nsec3_mark_empty(zone_node_t *node, void *data)
 			 * but only temporarily! It must be set back right after
 			 * the operation
 			 */
-			node->parent->children--;
+			node_parent(node)->children--;
 			/* Recurse using the parent node */
-			return nsec3_mark_empty(node->parent, data);
+			return nsec3_mark_empty(node_parent(node), data);
 		}
 	}
 
@@ -727,7 +727,7 @@ static int nsec3_reset(zone_node_t *node, void *data)
 		/* If node was marked as empty, increase its parent's children
 		 * count.
 		 */
-		node->parent->children++;
+		node_parent(node)->children++;
 		/* Clear the 'empty' flag. */
 		node->flags &= ~NODE_FLAGS_EMPTY;
 	}
