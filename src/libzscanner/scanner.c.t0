@@ -5688,7 +5688,13 @@ int zs_set_input_file(
 		s->input.mmaped = true;
 
 		// Try to set the mapped memory advise to sequential.
-		(void)madvise(start, size, MADV_SEQUENTIAL);
+#if defined(MADV_SEQUENTIAL) && !defined(__sun)
+                (void)madvise(start, size, MADV_SEQUENTIAL);
+#else
+#ifdef POSIX_MADV_SEQUENTIAL
+                (void)posix_madvise(start, size, POSIX_MADV_SEQUENTIAL);
+#endif /* POSIX_MADV_SEQUENTIAL */
+#endif /* MADV_SEQUENTIAL && !__sun */
 	}
 
 	// Set the scanner input limits.
