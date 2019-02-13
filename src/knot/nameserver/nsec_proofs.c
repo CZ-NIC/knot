@@ -79,7 +79,7 @@ static const zone_node_t *nsec_previous(const zone_node_t *previous)
 	assert(previous);
 
 	while (!node_in_nsec(previous)) {
-		previous = previous->prev;
+		previous = node_prev(previous);
 		assert(previous);
 	}
 
@@ -94,7 +94,7 @@ static const zone_node_t *nsec3_encloser(const zone_node_t *closest)
 	assert(closest);
 
 	while (!node_in_nsec3(closest)) {
-		closest = closest->parent;
+		closest = node_parent(closest);
 		assert(closest);
 	}
 
@@ -322,7 +322,7 @@ static int put_nsec3_wildcard(const zone_node_t *wildcard,
                               knotd_qdata_t *qdata,
                               knot_pkt_t *resp)
 {
-	const zone_node_t *cpe = nsec3_encloser(wildcard->parent);
+	const zone_node_t *cpe = nsec3_encloser(node_parent(wildcard));
 
 	return put_nsec3_next_closer(cpe, qname, zone, qdata, resp);
 }
