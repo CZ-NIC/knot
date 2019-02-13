@@ -14,6 +14,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#ifdef __sun
+#include <alloca.h>
+#endif
 #include <assert.h>
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
