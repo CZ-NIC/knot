@@ -554,23 +554,15 @@ static int process_rem_node(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 
-	zone_node_t *node_copy = node_shallow_copy(node, NULL);
-	if (node_copy == NULL) {
-		return KNOT_ENOMEM;
-	}
-
 	// Remove all RRSets from node
-	size_t rrset_count = node_copy->rrset_count;
+	size_t rrset_count = node->rrset_count;
 	for (int i = 0; i < rrset_count; ++i) {
-		knot_rrset_t rrset = node_rrset_at(node_copy, rrset_count - i - 1);
-		int ret = process_rem_rrset(&rrset, node_copy, update);
+		knot_rrset_t rrset = node_rrset_at(node, rrset_count - i - 1);
+		int ret = process_rem_rrset(&rrset, node, update);
 		if (ret != KNOT_EOK) {
-			node_free(node_copy, NULL);
 			return ret;
 		}
 	}
-
-	node_free(node_copy, NULL);
 
 	return KNOT_EOK;
 }
