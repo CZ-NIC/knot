@@ -124,7 +124,13 @@ int yp_set_input_file(
 		}
 
 		// Try to set the mapped memory advise to sequential.
+#if defined(MADV_SEQUENTIAL) && !defined(__sun)
 		(void)madvise(start, file_stat.st_size, MADV_SEQUENTIAL);
+#else
+#ifdef POSIX_MADV_SEQUENTIAL
+		(void)posix_madvise(start, file_stat.st_size, POSIX_MADV_SEQUENTIAL);
+#endif /* POSIX_MADV_SEQUENTIAL */
+#endif /* MADV_SEQUENTIAL && !__sun */
 
 		parser->input.eof = false;
 	} else {
