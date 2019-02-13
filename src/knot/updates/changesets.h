@@ -193,22 +193,6 @@ int changeset_cancelout(changeset_t *ch);
 bool changeset_differs_just_serial(const changeset_t *ch);
 
 /*!
- * \brief Creates a bootstrap changeset from zone.
- *
- * \param contents  Contents to include, will be freed!
- *
- * \return Changeset, which shall be freed with changeset_from_contents_free()
- */
-changeset_t *changeset_from_contents(const zone_contents_t *contents);
-
-/*!
- * \brief Frees single changeset.
- *
- * \param ch  Changeset from changeset_from_contents() to free.
- */
-void changeset_from_contents_free(changeset_t *ch);
-
-/*!
  * \brief Clears changesets in list. Changesets are not free'd. Legacy.
  *
  * \param chgs  Changeset list to clear.

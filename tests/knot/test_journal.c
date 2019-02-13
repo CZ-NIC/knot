@@ -431,7 +431,10 @@ static void test_store_load(const knot_dname_t *apex)
 
 	changeset_init(&e_ch, apex);
 	init_random_changeset(&e_ch, 0, 1, 200, apex, true);
-	ret = journal_insert_zone(jj, &e_ch);
+	zone_node_t *n = NULL;
+	zone_contents_add_rr(e_ch.add, e_ch.soa_to, &n);
+	ret = journal_insert_zone(jj, e_ch.add);
+	zone_contents_remove_rr(e_ch.add, e_ch.soa_to, &n);
 	is_int(KNOT_EOK, ret, "journal: insert zone-in-journal (%s)", knot_strerror(ret));
 	changeset_init(&r_ch, apex);
 	init_random_changeset(&r_ch, 1, 2, 200, apex, false);

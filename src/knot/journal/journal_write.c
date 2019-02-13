@@ -22,13 +22,9 @@
 #include "knot/journal/serialization.h"
 #include "libknot/error.h"
 
-void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
+static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser, const changeset_t *ch, uint32_t ch_serial_to)
 {
 	MDB_val chunk;
-	serialize_ctx_t *ser = serialize_init(ch);
-	if (ser == NULL) {
-		txn->ret = KNOT_ENOMEM;
-	}
 	uint32_t i = 0;
 	while (serialize_unfinished(ser) && txn->ret == KNOT_EOK) {
 		serialize_prepare(ser, JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.mv_size);
@@ -39,7 +35,7 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 		chunk.mv_data = NULL;
 		MDB_val key = journal_changeset_to_chunk_key(ch, i);
 		if (knot_lmdb_insert(txn, &key, &chunk)) {
-			journal_make_header(chunk.mv_data, ch);
+			journal_make_header(chunk.mv_data, ch_serial_to);
 			serialize_chunk(ser, chunk.mv_data + JOURNAL_HEADER_SIZE, chunk.mv_size - JOURNAL_HEADER_SIZE);
 		}
 		free(key.mv_data);
@@ -47,6 +43,27 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 	}
 	serialize_deinit(ser);
 	// return value is in the txn
+}
+
+void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
+{
+	serialize_ctx_t *ser = serialize_init(ch);
+	if (ser == NULL) {
+		txn->ret = KNOT_ENOMEM;
+	}
+	journal_write_serialize(txn, ser, ch, changeset_to(ch));
+}
+
+void journal_write_zone(knot_lmdb_txn_t *txn, const zone_contents_t *z)
+{
+	serialize_ctx_t *ser = serialize_zone_init(z);
+	if (ser == NULL) {
+		txn->ret = KNOT_ENOMEM;
+	}
+	changeset_t fake_ch;
+	fake_ch.soa_from = NULL;
+	fake_ch.add = (zone_contents_t *)z;
+	journal_write_serialize(txn, ser, &fake_ch, zone_contents_serial(z));
 }
 
 static int merge_cb(bool remove, const knot_rrset_t *rr, void *ctx)
@@ -169,11 +186,8 @@ void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_meta
 	}
 }
 
-int journal_insert_zone(zone_journal_t j, const changeset_t *ch)
+int journal_insert_zone(zone_journal_t j, const zone_contents_t *z)
 {
-	if (ch->remove != NULL) {
-		return KNOT_EINVAL;
-	}
 	int ret = knot_lmdb_open(j.db);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -185,11 +199,11 @@ int journal_insert_zone(zone_journal_t j, const changeset_t *ch)
 	MDB_val prefix = { knot_dname_size(j.zone), (void *)j.zone };
 	knot_lmdb_del_prefix(&txn, &prefix);
 
-	journal_write_changeset(&txn, ch);
+	journal_write_zone(&txn, z);
 
 	journal_metadata_t md = { 0 };
 	md.flags = JOURNAL_SERIAL_TO_VALID;
-	md.serial_to = changeset_to(ch);
+	md.serial_to = zone_contents_serial(z);
 	md.first_serial = md.serial_to;
 	journal_store_metadata(&txn, j.zone, &md);
 

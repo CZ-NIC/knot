@@ -28,6 +28,14 @@
 void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch);
 
 /*!
+ * \brief Serialize zone contents aka "bootstrap" changeset into journal, no checks.
+ *
+ * \param txn   Journal DB transaction.
+ * \param z     Zone contents to be written.
+ */
+void journal_write_zone(knot_lmdb_txn_t *txn, const zone_contents_t *z);
+
+/*!
  * \brief Merge all following changeset into one of journal changeset.
  *
  * \param j                    Zone journal.
@@ -87,11 +95,11 @@ void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_meta
  * \brief Store zone-in-journal into the journal, update metadata.
  *
  * \param j    Zone journal.
- * \param ch   Changeset containing zone-in-journal.
+ * \param z    Zone contents to be stored.
  *
  * \return KNOT_E*
  */
-int journal_insert_zone(zone_journal_t j, const changeset_t *ch);
+int journal_insert_zone(zone_journal_t j, const zone_contents_t *z);
 
 /*!
  * \brief Store changeset into journal, fulfilling quotas and updating metadata.
