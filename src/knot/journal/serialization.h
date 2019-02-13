@@ -33,6 +33,15 @@ typedef struct serialize_ctx serialize_ctx_t;
 serialize_ctx_t *serialize_init(const changeset_t *ch);
 
 /*!
+ * \brief Init serialization context.
+ *
+ * \param z   Zone to be serialized like zone-in-journal changeset.
+ *
+ * \return Context.
+ */
+serialize_ctx_t *serialize_zone_init(const zone_contents_t *z);
+
+/*!
  * \brief Pre-check and space computation before serializing a chunk.
  *
  * \note This MUST be called before each serialize_chunk() !

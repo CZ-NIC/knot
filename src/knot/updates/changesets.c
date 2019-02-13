@@ -501,42 +501,6 @@ bool changeset_differs_just_serial(const changeset_t *ch)
 	return ret;
 }
 
-changeset_t *changeset_from_contents(const zone_contents_t *contents)
-{
-	zone_contents_t *copy = NULL;
-	if (zone_contents_shallow_copy(contents, &copy) != KNOT_EOK) {
-		return NULL;
-	}
-
-	changeset_t *res = changeset_new(copy->apex->owner);
-
-	knot_rrset_t soa_rr = node_rrset(copy->apex, KNOT_RRTYPE_SOA);;
-	res->soa_to = knot_rrset_copy(&soa_rr, NULL);
-
-	node_remove_rdataset(copy->apex, KNOT_RRTYPE_SOA);
-
-	zone_contents_deep_free(res->add);
-	res->add = copy;
-	zone_contents_deep_free(res->remove);
-	res->remove = NULL;
-	return res;
-}
-
-void changeset_from_contents_free(changeset_t *ch)
-{
-	assert(ch);
-	assert(ch->soa_from == NULL);
-	assert(ch->remove == NULL);
-
-	update_free_zone(ch->add);
-
-	zone_contents_deep_free(ch->remove);
-	knot_rrset_free(ch->soa_from, NULL);
-	knot_rrset_free(ch->soa_to, NULL);
-	free(ch->data);
-	free(ch);
-}
-
 void changesets_clear(list_t *chgs)
 {
 	if (chgs) {
