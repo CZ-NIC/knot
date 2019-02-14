@@ -337,6 +337,7 @@ int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
 	knot_lmdb_begin(db, &txn, false);
 	if (knot_lmdb_find(&txn, &k, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE) &&
 	    knot_lmdb_unmake_curval(&txn, "BNS", &kclass, lp_zone, lp_keyid)) {
+		assert(lp_zone != NULL && lp_keyid != NULL);
 		*lp_zone = knot_dname_copy(*lp_zone, NULL);
 		*lp_keyid = strdup(*lp_keyid);
 		if (kclass != KASPDBKEY_PARAMS) {
