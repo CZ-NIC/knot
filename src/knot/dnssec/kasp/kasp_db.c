@@ -63,7 +63,7 @@ static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const 
 static MDB_val make_key_time(keyclass_t kclass, const knot_dname_t *dname, knot_time_t time)
 {
 	char tmp[21];
-	snprintf(tmp, sizeof(tmp), "%0*"PRIu64, (int)(sizeof(tmp) - 1), time);
+	(void)snprintf(tmp, sizeof(tmp), "%0*"PRIu64, (int)(sizeof(tmp) - 1), time);
 	return make_key_str(kclass, dname, tmp);
 }
 
