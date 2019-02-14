@@ -271,6 +271,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 	}
 
 	if (knot_nsec_empty_nsec_and_rrsigs_in_node(new_first)) {
+		printf("empty nsec %hu %d %s\n", new_first->rrset_count, ((new_first->flags & NODE_FLAGS_DELETED) ? 1 : 0), new_first->owner);
 		ret = KNOT_EINVAL;
 		goto cleanup;
 	}
@@ -434,6 +435,8 @@ int knot_nsec_fix_chain(const zone_contents_t *old_zone, const zone_contents_t *
 	assert(changeset);
 
 	nsec_chain_iterate_data_t data = { ttl, changeset, new_zone };
+
+	zone_tree_check_del(new_zone->nodes, new_zone->nsec3_nodes);
 
 	return knot_nsec_chain_iterate_fix(old_zone->nodes, new_zone->nodes,
 					   connect_nsec_nodes, &data);

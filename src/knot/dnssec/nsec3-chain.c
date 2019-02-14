@@ -819,6 +819,8 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 
 	nsec_chain_iterate_data_t data = { ttl, changeset, update->new_cont };
 
+	zone_tree_check_del(update->new_cont->nodes, update->new_cont->nsec3_nodes);
+
 	ret = knot_nsec_chain_iterate_fix(update->zone->contents->nsec3_nodes,
 	                                  update->new_cont->nsec3_nodes,
 	                                  connect_nsec3_nodes2, &data);

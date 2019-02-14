@@ -188,6 +188,7 @@ static int add_node(zone_contents_t *zone, zone_node_t **anode, bool create_pare
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	assert(!((*anode)->flags & NODE_FLAGS_DELETED));
 	if (add_node_cb != NULL) {
 		add_node_cb(*anode, add_node_ctx);
 	}

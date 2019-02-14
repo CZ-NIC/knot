@@ -158,7 +158,7 @@ void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 				if (!binode_additional_shared(node, counter->rrs[i].type)) {
 					additional_clear(counter->rrs[i].additional);
 				}
-				if (!binode_rdataset_shared(node, counter->rrs[i].type)) {
+				if (!binode_rdata_shared(node, counter->rrs[i].type)) {
 					rr_data_clear(&counter->rrs[i], mm);
 				}
 			}
@@ -201,6 +201,20 @@ zone_node_t *binode_node(zone_node_t *node, bool second)
 }
 
 bool binode_rdataset_shared(zone_node_t *node, uint16_t type)
+{
+	if (node == NULL || !(node->flags & NODE_FLAGS_BINODE)) {
+		return false;
+	}
+	zone_node_t *counterpart = ((node->flags & NODE_FLAGS_SECOND) ? node - 1 : node + 1);
+	if (counterpart->rrs == node->rrs) {
+		return true;
+	}
+	knot_rdataset_t *r1 = node_rdataset(node, type), *r2 = node_rdataset(counterpart, type);
+	//return (r1 != NULL && r2 != NULL && r1->rdata == r2->rdata);
+	return (r1 == r2);
+}
+
+bool binode_rdata_shared(zone_node_t *node, uint16_t type)
 {
 	if (node == NULL || !(node->flags & NODE_FLAGS_BINODE)) {
 		return false;
@@ -337,8 +351,11 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
-			if (!binode_rdataset_shared(node, type)) {
+			if (!binode_additional_shared(node, type)) {
 				additional_clear(node->rrs[i].additional);
+			}
+			if (!binode_rdata_shared(node, type)) {
+				rr_data_clear(&node->rrs[i], NULL);
 			}
 			memmove(node->rrs + i, node->rrs + i + 1,
 			        (node->rrset_count - i - 1) * sizeof(struct rr_data));

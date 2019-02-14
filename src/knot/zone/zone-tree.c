@@ -233,6 +233,7 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node,
 		}
 
 		// Delete node
+		assert(!(node->flags & NODE_FLAGS_DELETED));
 		zone_tree_remove_node(tree, node->owner);
 		node->flags |= NODE_FLAGS_DELETED;
 		if (rem_node_cb != NULL) {
@@ -305,6 +306,17 @@ static int binode_unify_cb(zone_node_t *node, void *ctx)
 	return KNOT_EOK;
 }
 
+#include <stdio.h>
+static int check_deleted(zone_node_t *node, void *v)
+{
+	UNUSED(v);
+	if ((node->flags & NODE_FLAGS_DELETED)) {
+		bool cdel = (binode_counterpart(node)->flags & NODE_FLAGS_DELETED);
+		printf("DELETED %s (counter %d)\n", node->owner, cdel);
+	}
+	return 0;
+}
+
 void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes)
 {
 	if (nodes != NULL) {
@@ -312,6 +324,16 @@ void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes)
 	}
 	if (nsec3_nodes != NULL) {
 		zone_tree_apply(nsec3_nodes, binode_unify_cb, NULL);
+	}
+}
+
+void zone_tree_check_del(zone_tree_t *nodes, zone_tree_t *nsec3_nodes)
+{
+	if (nodes != NULL) {
+		zone_tree_apply(nodes, check_deleted, NULL);
+	}
+	if (nsec3_nodes != NULL) {
+		zone_tree_apply(nsec3_nodes, check_deleted, NULL);
 	}
 }
 

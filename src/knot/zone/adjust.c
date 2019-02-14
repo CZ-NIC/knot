@@ -276,6 +276,10 @@ static int adjust_single(zone_node_t *node, void *data)
 	assert(node != NULL);
 	assert(data != NULL);
 
+	if ((node->flags & NODE_FLAGS_DELETED)) {
+		return KNOT_EOK;
+	}
+
 	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
 
 	// remember first node

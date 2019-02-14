@@ -245,13 +245,15 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	}
 	zone_tree_insert(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, &node); // re-inserting makes no harm
 
-	if (binode_rdataset_shared(node, rr->type)) {
+	if (binode_rdata_shared(node, rr->type)) {
 		// Modifying existing RRSet.
 		int ret = replace_rdataset_with_copy(node, rr->type);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
+	node->flags &= ~NODE_FLAGS_DELETED;
+	zone_tree_insert(nsec3rel ? ctx->contents->nsec3_nodes : ctx->contents->nodes, &node); // in case it was already DELETED
 
 	// Insert new RR to RRSet, data will be copied.
 	int ret = node_add_rrset(node, rr, NULL);
@@ -290,7 +292,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	zone_tree_insert(nsec3 ? ctx->nsec3_ptrs : ctx->node_ptrs, &node);
 	zone_tree_t *tree = nsec3 ? contents->nsec3_nodes : contents->nodes;
 
-	if (binode_rdataset_shared(node, rr->type)) {
+	if (binode_rdata_shared(node, rr->type)) {
 		int ret = replace_rdataset_with_copy(node, rr->type);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -378,6 +380,8 @@ void update_cleanup(apply_ctx_t *ctx)
 	}
 
 	zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs);
+
+	zone_tree_check_del(ctx->contents->nodes, ctx->contents->nsec3_nodes);
 
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);

@@ -152,6 +152,8 @@ zone_node_t *binode_node(zone_node_t *node, bool second);
  */
 bool binode_rdataset_shared(zone_node_t *node, uint16_t type);
 
+bool binode_rdata_shared(zone_node_t *node, uint16_t type);
+
 /*!
  * \brief Return true if the additionals to rdataset of specified type are shared among both parts of bi-node.
  */
