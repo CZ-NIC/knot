@@ -85,7 +85,7 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
 static bool lmdb_stat(const char *lmdb_path, struct stat *st)
 {
 	char data_mdb[strlen(lmdb_path) + 10];
-	snprintf(data_mdb, sizeof(data_mdb), "%s/data.mdb", lmdb_path);
+	(void)snprintf(data_mdb, sizeof(data_mdb), "%s/data.mdb", lmdb_path);
 	return (stat(data_mdb, st) == 0 && st->st_size > 0);
 }
 
