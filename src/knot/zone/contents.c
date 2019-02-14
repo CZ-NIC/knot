@@ -228,8 +228,10 @@ static int add_node(zone_contents_t *zone, zone_node_t **anode, bool create_pare
 				node_free(next_node, NULL);
 				return ret;
 			}
+			assert(!(next_node->flags & NODE_FLAGS_DELETED));
+
 			if (add_node_cb != NULL) {
-				add_node_cb(*anode, add_node_ctx);
+				add_node_cb(next_node, add_node_ctx);
 			}
 
 			/* Update node pointers. */

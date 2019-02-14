@@ -49,7 +49,7 @@ bool additional_equal(additional_t *a, additional_t *b)
 static void rr_data_clear(struct rr_data *data, knot_mm_t *mm)
 {
 	knot_rdataset_clear(&data->rrs, mm);
-	additional_clear(data->additional);
+	memset(data, 0, sizeof(*data));
 }
 
 /*! \brief Clears allocated data in RRSet entry. */
@@ -155,10 +155,11 @@ void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 	if (counter != NULL) {
 		if (counter->rrs != node->rrs) {
 			for (uint16_t i = 0; i < counter->rrset_count; ++i) {
+				if (!binode_additional_shared(node, counter->rrs[i].type)) {
+					additional_clear(counter->rrs[i].additional);
+				}
 				if (!binode_rdataset_shared(node, counter->rrs[i].type)) {
 					rr_data_clear(&counter->rrs[i], mm);
-				} else if (counter->rrs[i].additional != node->rrs[i].additional) {
-					additional_clear(counter->rrs[i].additional);
 				}
 			}
 			mm_free(mm, counter->rrs);
@@ -212,6 +213,29 @@ bool binode_rdataset_shared(zone_node_t *node, uint16_t type)
 	return (r1 != NULL && r2 != NULL && r1->rdata == r2->rdata);
 }
 
+static additional_t *node_type2addit(zone_node_t *node, uint16_t type)
+{
+	for (uint16_t i = 0; i < node->rrset_count; i++) {
+		if (node->rrs[i].type == type) {
+			return node->rrs[i].additional;
+		}
+	}
+	return NULL;
+}
+
+bool binode_additional_shared(zone_node_t *node, uint16_t type)
+{
+	if (node == NULL || !(node->flags & NODE_FLAGS_BINODE)) {
+		return false;
+	}
+	zone_node_t *counter = ((node->flags & NODE_FLAGS_SECOND) ? node - 1 : node + 1);
+	if (counter->rrs == node->rrs) {
+		return true;
+	}
+	additional_t *a1 = node_type2addit(node, type), *a2 = node_type2addit(counter, type);
+	return (a1 == a2);
+}
+
 void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
 {
 	if (node == NULL) {
@@ -219,6 +243,7 @@ void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		additional_clear(node->rrs[i].additional);
 		rr_data_clear(&node->rrs[i], mm);
 	}
 
@@ -258,8 +283,6 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 
 	dst->flags = src->flags & ~NODE_FLAGS_SECOND;
 	dst->rrset_count = src->rrset_count;
-	//size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
-	//dst->rrs = mm_alloc(mm, rrlen);
 	dst->rrs = src->rrs;
 	dst->nsec3_wildcard_name = knot_dname_copy(src->nsec3_wildcard_name, NULL);
 	if (dst->rrs == NULL ||
@@ -267,7 +290,6 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 		node_free(dst, mm);
 		return NULL;
 	}
-	//memcpy(dst->rrs, src->rrs, rrlen);
 	dst->nsec3_node = src->nsec3_node;
 
 	for (uint16_t i = 0; i < src->rrset_count; ++i) {
@@ -315,8 +337,9 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
-			// We need to free additionals from this rr_data before it gets overwritten.
-			additional_clear(node->rrs[i].additional);
+			if (!binode_rdataset_shared(node, type)) {
+				additional_clear(node->rrs[i].additional);
+			}
 			memmove(node->rrs + i, node->rrs + i + 1,
 			        (node->rrset_count - i - 1) * sizeof(struct rr_data));
 			--node->rrset_count;
