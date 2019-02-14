@@ -17,7 +17,6 @@
 #include "knot/zone/node.h"
 #include "libknot/libknot.h"
 #include "contrib/macros.h"
-#include "contrib/mempattern.h"
 
 void additional_clear(additional_t *additional)
 {
@@ -101,7 +100,7 @@ static bool ttl_changed(struct rr_data *node_data, const knot_rrset_t *rrset)
 	return rrset->ttl != node_data->ttl;
 }
 
-zone_node_t *node_new(const knot_dname_t *owner, bool binode, knot_mm_t *mm)
+zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_mm_t *mm)
 {
 	zone_node_t *ret = mm_alloc(mm, (binode ? 2 : 1) * sizeof(zone_node_t));
 	if (ret == NULL) {
@@ -118,12 +117,15 @@ zone_node_t *node_new(const knot_dname_t *owner, bool binode, knot_mm_t *mm)
 	}
 
 	// Node is authoritative by default.
-	ret->flags = NODE_FLAGS_AUTH | NODE_FLAGS_DELETED;
+	ret->flags = NODE_FLAGS_AUTH;
+	if (second) {
+		ret->flags |= NODE_FLAGS_DELETED;
+	}
 
 	if (binode) {
 		ret->flags |= NODE_FLAGS_BINODE;
 		memcpy(ret + 1, ret, sizeof(*ret));
-		(ret + 1)->flags ^= NODE_FLAGS_SECOND;
+		(ret + 1)->flags ^= NODE_FLAGS_SECOND | NODE_FLAGS_DELETED;
 	}
 
 	return ret;
@@ -247,7 +249,9 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 		return NULL;
 	}
 
-	zone_node_t *dst = node_new(src->owner, (src->flags & NODE_FLAGS_BINODE), mm);
+	zone_node_t *dst = node_new(src->owner, (src->flags & NODE_FLAGS_BINODE),
+	                            (src->flags & NODE_FLAGS_BINODE) &&
+	                            (src->flags & NODE_FLAGS_SECOND), mm);
 	if (dst == NULL) {
 		return NULL;
 	}

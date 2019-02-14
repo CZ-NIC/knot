@@ -49,9 +49,9 @@ typedef struct zone_contents {
 zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes);
 
 /*!
- * \brief Return true iff contents' zone-trees use bi-nodes.
+ * \brief Create a node suitable for inserting into this contents.
  */
-bool zone_contents_use_binodes(const zone_contents_t *c);
+zone_node_t *node_new_for_contents(const zone_contents_t *c, const knot_dname_t *owner);
 
 /*!
  * \brief Add an RR to contents.
@@ -78,12 +78,15 @@ int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_nod
 /*!
  * \brief Get the node with this RR (the RR's owner).
  *
- * \param zone   Contents to add to.
- * \param rrset  The RR to add.
+ * \param zone           Contents to add to.
+ * \param rrset          The RR to add.
+ * \param add_node_cb    A function that will be called for every node aded to contents.
+ * \param add_node_ctx   Context to be passed to the callback.
  *
  * \return The searched node if it exists, a new added empty node or NULL on error.
  */
-zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
+zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset,
+                                           node_addrem_cb add_node_cb, void *add_node_ctx);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.

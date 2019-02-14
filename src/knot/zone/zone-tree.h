@@ -141,11 +141,13 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner);
 /*!
  * \brief Delete a node that has no RRSets and no children.
  *
- * \param tree  The tree to remove from.
- * \param node  The node to remove.
- * \param free_it   Free the node after removing.
+ * \param tree           The tree to remove from.
+ * \param node           The node to remove.
+ * \param rem_node_cb    A callback to be called for any node removed from the tree.
+ * \param rem_node_ctx   Context to be passed to the callback.
  */
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node, bool free_it);
+void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node,
+                            node_addrem_cb rem_node_cb, void *rem_node_ctx);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.

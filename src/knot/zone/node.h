@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "contrib/mempattern.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
@@ -91,6 +92,8 @@ enum node_flags {
 	NODE_FLAGS_DELETED =         1 << 10,
 };
 
+typedef void (*node_addrem_cb)(zone_node_t *, void *);
+
 /*!
  * \brief Clears additional structure.
  *
@@ -107,11 +110,13 @@ bool additional_equal(additional_t *a, additional_t *b);
  * \brief Creates and initializes new node structure.
  *
  * \param owner  Node's owner, will be duplicated.
+ * \param binode Create bi-node.
+ * \param second The second part of the bi-node shall be used now.
  * \param mm     Memory context to use.
  *
  * \return Newly created node or NULL if an error occurred.
  */
-zone_node_t *node_new(const knot_dname_t *owner, bool binode, knot_mm_t *mm);
+zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_mm_t *mm);
 
 /*!
  * \brief Return the other part of a bi-node.

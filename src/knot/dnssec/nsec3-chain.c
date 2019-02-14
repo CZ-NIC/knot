@@ -291,7 +291,7 @@ static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
 	assert(apex_node);
 	assert(rr_types);
 
-	zone_node_t *new_node = node_new(owner, false, NULL);
+	zone_node_t *new_node = node_new(owner, false, false, NULL);
 	if (!new_node) {
 		return NULL;
 	}

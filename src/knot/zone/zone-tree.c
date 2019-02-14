@@ -108,7 +108,6 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 	*trie_get_ins(tree->trie, lf + 1, *lf) = binode_node(*node, false);
 
 	*node = binode_node(*node, (tree->flags & ZONE_TREE_USE_BINODES) && (tree->flags & ZONE_TREE_BINO_SECOND));
-	(*node)->flags &= ~NODE_FLAGS_DELETED;
 
 	return KNOT_EOK;
 }
@@ -215,7 +214,8 @@ static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
 	}
 }
 
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node, bool free_it)
+void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node,
+                            node_addrem_cb rem_node_cb, void *rem_node_ctx)
 {
 	if (tree == NULL || node == NULL) {
 		return;
@@ -228,15 +228,15 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node, bool free_it)
 			fix_wildcard_child(parent_node, node->owner);
 			if (!(parent_node->flags & NODE_FLAGS_APEX)) { /* Is not apex */
 				// Recurse using the parent node, do not delete possibly empty parent.
-				zone_tree_delete_empty(tree, parent_node, free_it);
+				zone_tree_delete_empty(tree, parent_node, rem_node_cb, rem_node_ctx);
 			}
 		}
 
 		// Delete node
 		zone_tree_remove_node(tree, node->owner);
 		node->flags |= NODE_FLAGS_DELETED;
-		if (free_it) {
-			node_free(node, NULL);
+		if (rem_node_cb != NULL) {
+			rem_node_cb(node, rem_node_ctx);
 		}
 	}
 }
