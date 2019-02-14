@@ -114,7 +114,7 @@ static int fix_mapsize(knot_lmdb_db_t *db)
 	return KNOT_EOK;
 }
 
-static int _open(knot_lmdb_db_t *db)
+static int lmdb_open(knot_lmdb_db_t *db)
 {
 	MDB_txn *init_txn = NULL;
 
@@ -183,12 +183,12 @@ static int _open(knot_lmdb_db_t *db)
 int knot_lmdb_open(knot_lmdb_db_t *db)
 {
 	pthread_mutex_lock(&db->opening_mutex);
-	int ret = _open(db);
+	int ret = lmdb_open(db);
 	pthread_mutex_unlock(&db->opening_mutex);
 	return ret;
 }
 
-static void _close(knot_lmdb_db_t *db)
+static void lmdb_close(knot_lmdb_db_t *db)
 {
 	if (db->env != NULL) {
 		mdb_dbi_close(db->env, db->dbi);
@@ -200,11 +200,11 @@ static void _close(knot_lmdb_db_t *db)
 void knot_lmdb_close(knot_lmdb_db_t *db)
 {
 	pthread_mutex_lock(&db->opening_mutex);
-	_close(db);
+	lmdb_close(db);
 	pthread_mutex_unlock(&db->opening_mutex);
 }
 
-static int _reinit(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
+static int lmdb_reinit(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
 {
 #ifdef __OpenBSD__
 	env_flags |= MDB_WRITEMAP;
@@ -225,7 +225,7 @@ static int _reinit(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigne
 int knot_lmdb_reinit(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
 {
 	pthread_mutex_lock(&db->opening_mutex);
-	int ret = _reinit(db, path, mapsize, env_flags);
+	int ret = lmdb_reinit(db, path, mapsize, env_flags);
 	pthread_mutex_unlock(&db->opening_mutex);
 	return ret;
 }
@@ -233,12 +233,12 @@ int knot_lmdb_reinit(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsig
 int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags)
 {
 	pthread_mutex_lock(&db->opening_mutex);
-	int ret = _reinit(db, path, mapsize, env_flags);
+	int ret = lmdb_reinit(db, path, mapsize, env_flags);
 	if (ret != KNOT_EOK) {
-		_close(db);
-		ret = _reinit(db, path, mapsize, env_flags);
+		lmdb_close(db);
+		ret = lmdb_reinit(db, path, mapsize, env_flags);
 		if (ret == KNOT_EOK) {
-			ret = _open(db);
+			ret = lmdb_open(db);
 		}
 	}
 	pthread_mutex_unlock(&db->opening_mutex);
