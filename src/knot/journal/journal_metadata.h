@@ -141,7 +141,7 @@ int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial,
 /*! \brief Return true if this zone exists in journal DB. */
 inline static bool journal_is_existing(zone_journal_t j) {
 	bool ex = false;
-	journal_info(j, &ex, NULL, NULL, NULL, NULL, NULL, NULL);
+	(void)journal_info(j, &ex, NULL, NULL, NULL, NULL, NULL, NULL);
 	return ex;
 }
 
