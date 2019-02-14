@@ -548,7 +548,7 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 		}
 
 		bool match = false;
-		for (int j = 0; j < dnskeys->count; j++) {
+		for (int j = 0; dnskeys != NULL && j < dnskeys->count; j++) {
 			knot_rdata_t *dnskey = knot_rdataset_at(dnskeys, j);
 
 			if (knot_rdata_cmp(dnskey, cdnskey) == 0) {
