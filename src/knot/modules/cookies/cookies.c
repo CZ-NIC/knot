@@ -244,6 +244,9 @@ int cookies_load(knotd_mod_t *mod)
 		return ret;
 	}
 
+	// Store module context before rollover thread is created.
+	knotd_mod_ctx_set(mod, ctx);
+
 	// Initialize the server secret.
 	conf = knotd_conf_mod(mod, MOD_SECRET);
 	if (conf.count == 1) {
@@ -272,8 +275,6 @@ int cookies_load(knotd_mod_t *mod)
 	knotd_mod_log(mod, LOG_WARNING, "the module might work slightly wrong on this platform");
 	ctx->badcookie_slip = 1;
 #endif
-
-	knotd_mod_ctx_set(mod, ctx);
 
 	return knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, cookies_process);
 }
