@@ -28,6 +28,7 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 	serialize_ctx_t *ser = serialize_init(ch);
 	if (ser == NULL) {
 		txn->ret = KNOT_ENOMEM;
+		return;
 	}
 	uint32_t i = 0;
 	while (serialize_unfinished(ser) && txn->ret == KNOT_EOK) {
