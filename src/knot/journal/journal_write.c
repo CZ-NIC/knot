@@ -125,8 +125,9 @@ void journal_try_flush(zone_journal_t j, knot_lmdb_txn_t *txn, journal_metadata_
 	if (flush) {
 		// delete merged serial if (very unlikely) exists
 		if ((md->flags & JOURNAL_MERGED_SERIAL_VALID)) {
-			uint64_t unused;
-			(void)delete_one(txn, false, md->merged_serial, j.zone, &unused, (uint32_t *)&unused);
+			uint64_t unused64;
+			uint32_t unused32;
+			(void)delete_one(txn, false, md->merged_serial, j.zone, &unused64, &unused32);
 			md->flags &= ~JOURNAL_MERGED_SERIAL_VALID;
 		}
 
