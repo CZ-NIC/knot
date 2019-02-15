@@ -1,5 +1,5 @@
 Prerequisites:
-==============
+--------------
 
 Python >=3.3
 dnspython >=1.16.0
@@ -7,7 +7,7 @@ python3-psutil
 dnssec-signzone
 dnssec-keygen
 dnssec-verify
-Bind 9.9.x
+Bind >= 9.11
 lsof
 gawk
 objdump
@@ -36,22 +36,3 @@ Allow ptrace:
 or
 # vim /etc/sysctl.d/10-ptrace.conf
 # kernel.yama.ptrace_scope = 0
-
-Running in docker container:
-----------------------------
-
-There is a Dockerfile that can be used to build containers with the tests-extra,
-the main benefit is that each test runs in an isolated container and can be run in parallel.
-
-Run tests on the upstream branch:
----------------------------------
-
-$ docker pull cznic/knot:tests-extra # Or build with 'docker build -t tests-extra .'
-$ docker run -it -v cznic/knot:tests-extra basic
-
-Run tests on the local executables:
------------------------------------
-
-You can bind-mount the /src with the current working copy.
-
-$ docker run -it -v $(pwd)/..:/knot-src cznic/knot:tests-extra basic
