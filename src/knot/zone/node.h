@@ -93,6 +93,7 @@ enum node_flags {
 };
 
 typedef void (*node_addrem_cb)(zone_node_t *, void *);
+typedef zone_node_t *(*node_new_cb)(const knot_dname_t *, void *);
 
 /*!
  * \brief Clears additional structure.

@@ -173,7 +173,7 @@ static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *na
 }
 
 static int add_node(zone_contents_t *zone, zone_node_t **anode, bool create_parents,
-                    node_addrem_cb add_node_cb, void *add_node_ctx)
+                    node_addrem_cb add_node_cb, node_new_cb new_cb, void *add_node_ctx)
 {
 	if (zone == NULL || anode == NULL || *anode == NULL) {
 		return KNOT_EINVAL;
@@ -218,7 +218,13 @@ static int add_node(zone_contents_t *zone, zone_node_t **anode, bool create_pare
 		while (parent != NULL && !(next_node = get_node(zone, parent))) {
 
 			/* Create a new node. */
-			next_node = node_new_for_contents(zone, parent);
+			next_node = NULL;
+			if (new_cb != NULL) {
+				next_node = new_cb(parent, add_node_ctx);
+			}
+			if (next_node == NULL) {
+				next_node = node_new_for_contents(zone, parent);
+			}
 			if (next_node == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -321,7 +327,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
-			int ret = nsec3 ? add_nsec3_node(z, n, NULL, NULL) : add_node(z, n, true, NULL, NULL);
+			int ret = nsec3 ? add_nsec3_node(z, n, NULL, NULL) : add_node(z, n, true, NULL, NULL, NULL);
 			if (ret != KNOT_EOK) {
 				node_free(*n, NULL);
 				*n = NULL;
@@ -413,7 +419,7 @@ int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 }
 
 zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset,
-                                           node_addrem_cb add_node_cb, void *add_node_ctx)
+                                           node_addrem_cb add_node_cb, node_new_cb new_cb, void *add_node_ctx)
 {
 	if (zone == NULL || rrset == NULL) {
 		return NULL;
@@ -424,7 +430,7 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 	                            get_node(zone, rrset->owner);
 	if (node == NULL) {
 		node = node_new_for_contents(zone, rrset->owner);
-		int ret = nsec3 ? add_nsec3_node(zone, &node, add_node_cb, add_node_ctx) : add_node(zone, &node, true, add_node_cb, add_node_ctx);
+		int ret = nsec3 ? add_nsec3_node(zone, &node, add_node_cb, add_node_ctx) : add_node(zone, &node, true, add_node_cb, new_cb, add_node_ctx);
 		if (ret != KNOT_EOK) {
 			node_free(node, NULL);
 			return NULL;
@@ -502,6 +508,9 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		node = prev;
 		size_t matched_labels = knot_dname_matched_labels(node->owner, name);
 		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
+			if (node_parent(node) == NULL) {
+				printf("node WITHOUT parent %s %p\n", node->owner, binode_node(node, false));
+			}
 			node = node_parent(node);
 			assert(node);
 		}

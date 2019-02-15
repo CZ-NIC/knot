@@ -216,6 +216,7 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node,
 				zone_tree_delete_empty(tree, parent_node, rem_node_cb, rem_node_ctx);
 			}
 		}
+		node->parent = NULL;
 
 		// Delete node
 		assert(!(node->flags & NODE_FLAGS_DELETED));

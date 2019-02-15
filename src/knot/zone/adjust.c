@@ -49,6 +49,7 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 		node->nsec3_node = NULL;
 		return KNOT_EOK;
 	}
+	/* FIXME make this work again
 	if (node->nsec3_node != NULL) {
 		// Optimization: this node has been shallow-copied from older state. Try using already known NSEC3 name.
 		zone_node_t *candidate = zone_tree_get(zone->nsec3_nodes, node->nsec3_node->owner);
@@ -57,6 +58,7 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 			return KNOT_EOK;
 		}
 	}
+	*/ node->nsec3_node = NULL;
 	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), node->owner,
 	                                  zone->apex->owner, &zone->nsec3_params);
@@ -191,6 +193,11 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 
 	/* If the result differs, shallow copy node and store additionals. */
 	if (!additional_equal(rr_data->additional, new_addit)) {
+		if (!binode_additional_shared(adjn, adjn->rrs[rr_at].type)) {
+			// FIXME this should never happen, but it does
+			additional_clear(adjn->rrs[rr_at].additional);
+		}
+
 		int ret = binode_prepare_change(adjn, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;

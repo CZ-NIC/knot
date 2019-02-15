@@ -86,7 +86,7 @@ int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_nod
  * \return The searched node if it exists, a new added empty node or NULL on error.
  */
 zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset,
-                                           node_addrem_cb add_node_cb, void *add_node_ctx);
+                                           node_addrem_cb add_node_cb, node_new_cb new_cb, void *add_node_ctx);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
