@@ -626,6 +626,9 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 		}
 	}
 
+	printf("commit incr old %d new %hu applynodes %hu applynsec3nodes %hu\n", update->zone->contents ? (update->zone->contents->nodes ? update->zone->contents->nodes->flags : 10) : 20,
+	       update->new_cont->nodes->flags, update->a_ctx->node_ptrs->flags, update->a_ctx->nsec3_ptrs->flags);
+
 	if (zone_update_changed_nsec3param(update)) {
 		ret = zone_adjust_full(update->new_cont);
 	} else {

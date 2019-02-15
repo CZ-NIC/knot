@@ -385,6 +385,10 @@ void node_set_parent(zone_node_t *node, zone_node_t *parent)
 	assert(node != NULL);
 	assert(node->parent == NULL);
 
+	if ((node->flags & NODE_FLAGS_BINODE)) {
+		printf("set node %s %p parent %s %p\n", node->owner, node, parent->owner, parent);
+	}
+
 	// set the parent
 	node->parent = parent;
 

@@ -509,7 +509,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		size_t matched_labels = knot_dname_matched_labels(node->owner, name);
 		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
 			if (node_parent(node) == NULL) {
-				printf("node WITHOUT parent %s %p\n", node->owner, binode_node(node, false));
+				printf("node WITHOUT parent %s %p flags %hu tree %hu\n", node->owner, binode_node(node, false), node->flags, zone->nodes->flags);
 			}
 			node = node_parent(node);
 			assert(node);
