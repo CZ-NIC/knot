@@ -272,6 +272,7 @@ static int add_nsec3_node(zone_contents_t *zone, zone_node_t **node,
 			return KNOT_ENOMEM;
 		}
 		zone->nsec3_nodes->flags = zone->nodes->flags;
+		printf("new nsec3nodes %p %d\n", zone->nsec3_nodes, zone->nsec3_nodes->flags);
 	}
 
 	// how to know if this is successful??
@@ -422,6 +423,9 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
 	const bool nsec3 = knot_rrset_is_nsec3rel(rrset);
 	zone_node_t *node = nsec3 ? get_nsec3_node(zone, rrset->owner) :
 	                            get_node(zone, rrset->owner);
+	if (nsec3) {
+		printf("zcgnfr %s tree %p node %p bi %d deled %d\n", rrset->owner, zone->nsec3_nodes, node, (node && (node->flags & NODE_FLAGS_BINODE) ? 1 : 0), (node && (node->flags & NODE_FLAGS_DELETED) ? 1 : 0));
+	}
 	if (node == NULL) {
 		node = node_new_for_contents(zone, rrset->owner);
 		int ret = nsec3 ? add_nsec3_node(zone, &node, add_node_cb, add_node_ctx) : add_node(zone, &node, true, add_node_cb, add_node_ctx);

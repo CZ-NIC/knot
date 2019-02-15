@@ -149,9 +149,13 @@ zone_node_t *binode_counterpart(zone_node_t *node)
 	return counterpart;
 }
 
+#include <stdio.h>
 void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 {
 	zone_node_t *counter = binode_counterpart(node);
+	if (node->owner[0] > 18) {
+		printf("biu %p %s %d counter %p deled %d -> %d\n", node, node->owner, free_deleted, counter, ((node->flags & NODE_FLAGS_DELETED) ? 1 : 0), (counter && (counter->flags & NODE_FLAGS_DELETED) ? 1 : 0));
+	}
 	if (counter != NULL) {
 		if (counter->rrs != node->rrs) {
 			for (uint16_t i = 0; i < counter->rrset_count; ++i) {
@@ -163,6 +167,9 @@ void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 				}
 			}
 			mm_free(mm, counter->rrs);
+		}
+		if (counter->nsec3_wildcard_name != node->nsec3_wildcard_name) {
+			free(counter->nsec3_wildcard_name);
 		}
 		memcpy(counter, node, sizeof(*counter));
 		counter->flags ^= NODE_FLAGS_SECOND;

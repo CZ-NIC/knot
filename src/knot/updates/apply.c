@@ -185,14 +185,12 @@ int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
 	}
 	ctx->node_ptrs->flags = contents->nodes->flags;
 
-	if (contents->nsec3_nodes != NULL) {
-		ctx->nsec3_ptrs = zone_tree_create(true);
-		if (ctx->nsec3_ptrs == NULL) {
-			zone_tree_free(&ctx->node_ptrs);
-			return KNOT_ENOMEM;
-		}
-		ctx->nsec3_ptrs->flags = contents->nsec3_nodes->flags;
+	ctx->nsec3_ptrs = zone_tree_create(true);
+	if (ctx->nsec3_ptrs == NULL) {
+		zone_tree_free(&ctx->node_ptrs);
+		return KNOT_ENOMEM;
 	}
+	ctx->nsec3_ptrs->flags = contents->nodes->flags;
 
 	ctx->flags = flags;
 
@@ -237,6 +235,9 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 
 	// Get or create node with this owner, search changes first
 	zone_node_t *node = zone_tree_get(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, rr->owner);
+	if (nsec3rel) {
+		printf("apply_add_rr %s %hu found in changes %p\n", rr->owner, rr->type, node);
+	}
 	if (node == NULL) {
 		node = zone_contents_get_node_for_rr(contents, rr, add_to_changes_cb, nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs);
 		if (node == NULL) {
@@ -305,6 +306,12 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, rr->type);
 		return ret;
+	}
+
+	if (nsec3) {
+		printf("apply_remove_rr %s %hu (remain rrs %hu, rdatas %hu) node %d deled %d\n",
+		       rr->owner, rr->type, changed_rrs->count, node->rrset_count, ((node->flags & NODE_FLAGS_SECOND) ? 1 : 0),
+		       ((node->flags & NODE_FLAGS_DELETED) ? 1 : 0));
 	}
 
 	if (changed_rrs->count == 0) {

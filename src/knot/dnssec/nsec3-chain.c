@@ -508,7 +508,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 		if (result != KNOT_EOK) {
 			break;
 		}
-		if (node->flags & NODE_FLAGS_NONAUTH || node->flags & NODE_FLAGS_EMPTY) {
+		if (node->flags & NODE_FLAGS_NONAUTH || node->flags & NODE_FLAGS_EMPTY || node->flags & NODE_FLAGS_DELETED) {
 			zone_tree_it_next(&it);
 			continue;
 		}
