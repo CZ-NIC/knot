@@ -70,21 +70,6 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK && node->rrset_count == 1 &&
 	   knot_rdataset_eq(&dummy_rrset->rrs, &node->rrs[0].rrs), "Node: add RRSet.");
 
-	// Test shallow copy
-	node->flags |= NODE_FLAGS_DELEG;
-	zone_node_t *copy = node_shallow_copy(node, NULL);
-	ok(copy != NULL, "Node: shallow copy.");
-	assert(copy);
-	const bool copy_ok = knot_dname_is_equal(copy->owner, node->owner) &&
-	                     copy->rrset_count == node->rrset_count &&
-	                     memcmp(copy->rrs, node->rrs,
-	                            copy->rrset_count * sizeof(struct rr_data)) == 0 &&
-	                     copy->flags == node->flags;
-	ok(copy_ok, "Node: shallow copy - set fields.");
-
-	free(copy->owner);
-	free(copy);
-
 	// Test RRSet getters
 	knot_rrset_t *n_rrset = node_create_rrset(node, KNOT_RRTYPE_TXT);
 	ok(n_rrset && knot_rrset_equal(n_rrset, dummy_rrset, KNOT_RRSET_COMPARE_WHOLE),

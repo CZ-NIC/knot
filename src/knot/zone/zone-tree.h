@@ -49,11 +49,6 @@ typedef struct {
  */
 zone_tree_t *zone_tree_create(bool use_binodes);
 
-/*!
- * \brief Return shallow copy of a zone tree.
- */
-zone_tree_t *zone_tree_shallow_copy(zone_tree_t *from);
-
 zone_tree_t *zone_tree_dup(zone_tree_t *from);
 
 /*!
@@ -215,10 +210,3 @@ void zone_tree_check_del(zone_tree_t *nodes, zone_tree_t *nsec3_nodes);
  * \param tree Zone tree to be destroyed.
  */
 void zone_tree_free(zone_tree_t **tree);
-
-/*!
- * \brief Destroys the zone tree, together with the saved data.
- *
- * \param tree Zone tree to be destroyed.
- */
-void zone_tree_deep_free(zone_tree_t **tree);

@@ -56,21 +56,6 @@ zone_tree_t *zone_tree_create(bool use_binodes)
 	return t;
 }
 
-zone_tree_t *zone_tree_shallow_copy(zone_tree_t *from)
-{
-	zone_tree_t *to = calloc(1, sizeof(*to));
-	if (to == NULL) {
-		return to;
-	}
-	to->flags = from->flags ^ ZONE_TREE_BINO_SECOND;
-	to->trie = trie_dup(from->trie, (trie_dup_cb)node_shallow_copy, NULL);
-	if (to->trie == NULL) {
-		free(to);
-		to = NULL;
-	}
-	return to;
-}
-
 static void *identity(void *x, knot_mm_t *mm)
 {
 	UNUSED(mm);
@@ -346,23 +331,4 @@ void zone_tree_free(zone_tree_t **tree)
 	trie_free((*tree)->trie);
 	free(*tree);
 	*tree = NULL;
-}
-
-static int zone_tree_free_node(zone_node_t *node, void *data)
-{
-	UNUSED(data);
-
-	node_free(node, NULL);
-
-	return KNOT_EOK;
-}
-
-void zone_tree_deep_free(zone_tree_t **tree)
-{
-	if (tree == NULL || *tree == NULL) {
-		return;
-	}
-
-	(void)zone_tree_apply(*tree, zone_tree_free_node, NULL);
-	zone_tree_free(tree);
 }

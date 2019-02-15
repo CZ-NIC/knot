@@ -289,39 +289,6 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 	mm_free(mm, binode_node(node, false));
 }
 
-zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
-{
-	if (src == NULL) {
-		return NULL;
-	}
-
-	zone_node_t *dst = node_new(src->owner, (src->flags & NODE_FLAGS_BINODE),
-	                            (src->flags & NODE_FLAGS_BINODE) &&
-	                            (src->flags & NODE_FLAGS_SECOND), mm);
-	if (dst == NULL) {
-		return NULL;
-	}
-
-	dst->flags = src->flags & ~NODE_FLAGS_SECOND;
-	dst->rrset_count = src->rrset_count;
-	dst->rrs = src->rrs;
-	dst->nsec3_wildcard_name = knot_dname_copy(src->nsec3_wildcard_name, NULL);
-	if (dst->rrs == NULL ||
-	    (src->nsec3_wildcard_name != NULL && dst->nsec3_wildcard_name == NULL)) {
-		node_free(dst, mm);
-		return NULL;
-	}
-	dst->nsec3_node = src->nsec3_node;
-
-	for (uint16_t i = 0; i < src->rrset_count; ++i) {
-		dst->rrs[i].additional = NULL;
-	}
-
-	binode_unify(dst, false, mm);
-
-	return dst;
-}
-
 int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 {
 	if (node == NULL || rrset == NULL) {
