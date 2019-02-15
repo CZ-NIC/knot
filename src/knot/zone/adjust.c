@@ -68,7 +68,13 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 
 int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
-	//free(node->nsec3_wildcard_name);
+	zone_node_t *counter = binode_counterpart(node);
+	assert(counter != NULL);
+	if (counter->nsec3_wildcard_name != node->nsec3_wildcard_name) {
+		// FIXME this should never happen, but it does
+		free(node->nsec3_wildcard_name);
+	}
+
 	node->nsec3_wildcard_name = NULL;
 	if (!knot_is_nsec3_enabled(zone)) {
 		return KNOT_EOK;

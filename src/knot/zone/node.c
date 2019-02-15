@@ -280,6 +280,10 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 	}
 
 	knot_dname_free(node->owner, mm);
+
+	zone_node_t *counter = binode_counterpart(node);
+	assert(counter == NULL || counter->nsec3_wildcard_name == node->nsec3_wildcard_name);
+
 	free(node->nsec3_wildcard_name);
 
 	if (node->rrs != NULL) {

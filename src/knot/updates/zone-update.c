@@ -661,7 +661,6 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 
 	zone_tree_check_del(update->new_cont->nodes, update->new_cont->nsec3_nodes);
 
-	printf("ztub %p %p\n", update->new_cont->nodes, update->new_cont->nsec3_nodes);
 	zone_trees_unify_binodes(update->new_cont->nodes, update->new_cont->nsec3_nodes);
 
 	int ret = zone_adjust_full(update->new_cont);
