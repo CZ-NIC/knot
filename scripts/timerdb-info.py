@@ -1,10 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim: et ts=4 sw=4 sts=4
 #
 # Dump content of zone timers database in user readable format.
 #
-
-from __future__ import print_function
 
 import datetime
 import lmdb
@@ -50,8 +48,8 @@ class TimerDBInfo:
     @classmethod
     def parse_dname(cls, dname):
         labels = []
-        while ord(dname[0]) != 0:
-            llen = ord(dname[0])
+        while dname[0] != 0:
+            llen = dname[0]
             label = dname[1:llen+1].decode("utf-8")
             dname = dname[llen+1:]
             labels.append(label)
@@ -71,7 +69,7 @@ class TimerDBInfo:
     def format_line(cls, zone, timers):
         parts = [zone]
         for id, value in timers.items():
-            parts.append("%s %s" % cls.format_value(id, value))
+            parts.append("%s: %s" % cls.format_value(id, value))
         return " | ".join(parts)
 
     def run(self):
