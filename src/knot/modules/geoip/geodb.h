@@ -62,4 +62,5 @@ void geodb_close(geodb_t *geodb);
 int geodb_query(geodb_t *geodb, geodb_data_t *entries, struct sockaddr *remote,
                 geodb_path_t *paths, uint16_t path_cnt, uint16_t *netmask);
 
-bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, geodb_data_t *entries);
+void geodb_fill_geodata(geodb_data_t *entries, uint16_t path_cnt,
+                        void **geodata, uint32_t *geodata_len, uint8_t *geodepth);
