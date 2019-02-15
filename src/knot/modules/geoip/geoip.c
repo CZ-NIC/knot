@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+﻿/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "libknot/libknot.h"
 #include "contrib/qp-trie/trie.h"
 #include "contrib/ucw/lists.h"
+#include "contrib/macros.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
@@ -97,9 +98,13 @@ typedef struct {
 	struct sockaddr_storage *subnet;
 	uint8_t subnet_prefix;
 
-	void *geodata[GEODB_MAX_DEPTH];
+	void *geodata[GEODB_MAX_DEPTH]; // NULL if '*' is specified in config.
 	uint32_t geodata_len[GEODB_MAX_DEPTH];
 	uint8_t geodepth;
+
+	// Index of the "parent" in the sorted view list.
+	// Equal to its own index if there is no parent.
+	size_t prev;
 
 	size_t count, avail;
 	knot_rrset_t *rrsets;
@@ -110,6 +115,45 @@ typedef struct {
 	size_t count, avail;
 	geo_view_t *views;
 } geo_trie_val_t;
+
+int geodb_view_sort(const void *a, const void *b)
+{
+	geo_view_t *va = (geo_view_t *)a;
+	geo_view_t *vb = (geo_view_t *)b;
+
+	int i = 0;
+	while (i < va->geodepth && i < vb->geodepth) {
+		if (va->geodata[i] == NULL) {
+			if (vb->geodata[i] != NULL) {
+				return -1;
+			}
+		} else {
+			if (vb->geodata[i] == NULL) {
+				return 1;
+			}
+			int len = MIN(va->geodata_len[i], vb->geodata_len[i]);
+			int ret = memcmp(va->geodata[i], vb->geodata[i], len);
+			if (ret < 0 || (ret == 0 && vb->geodata_len[i] > len)) {
+				return -1;
+			} else if (ret > 0 || (ret == 0 && va->geodata_len[i] > len)) {
+				return 1;
+			}
+		}
+		i++;
+	}
+	if (i < va->geodepth) {
+		return 1;
+	}
+	if (i < vb->geodepth) {
+		return -1;
+	}
+	return 0;
+}
+
+int subnet_view_sort(const void *a, const void *b)
+{
+	return 0;
+}
 
 static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *ctx)
 {
@@ -520,6 +564,62 @@ static void free_geoip_ctx(geoip_ctx_t *ctx)
 	free(ctx);
 }
 
+static bool view_strictly_in_view(geo_view_t *view, geo_view_t *in)
+{
+	if (in->geodepth >= view->geodepth) {
+		return false;
+	}
+	for (int i = 0; i < in->geodepth; i++) {
+		if (in->geodata[i] != NULL) {
+			if (in->geodata_len[i] != view->geodata_len[i]) {
+				return false;
+			}
+			if (memcmp(in->geodata[i], view->geodata[i], in->geodata_len[i]) != 0) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+static void geo_sort_and_link(geoip_ctx_t *ctx)
+{
+	trie_it_t *it = trie_it_begin(ctx->geo_trie);
+	while (!trie_it_finished(it)) {
+		if (ctx->mode == MODE_GEODB) {
+			geo_trie_val_t *val = (geo_trie_val_t *) (*trie_it_val(it));
+			qsort(val->views, val->count, sizeof(geo_view_t), geodb_view_sort);
+
+			for (int i = 1; i < val->count; i++) {
+				geo_view_t *cur_view = &val->views[i];
+				geo_view_t *prev_view = &val->views[i - 1];
+				cur_view->prev = i;
+				int prev = i - 1;
+				do {
+					if (view_strictly_in_view(cur_view, prev_view)) {
+						cur_view->prev = prev;
+						break;
+					}
+					if (prev == prev_view->prev) {
+						break;
+					}
+					prev = prev_view->prev;
+					prev_view = &val->views[prev];
+				} while (1);
+			}
+			printf("Next view list:\n");
+			for (int i = 0; i < val->count; i++) {
+				printf("%d, geodepth %u, prev %zu\n", i, val->views[i].geodepth, val->views[i].prev);
+				for (int j = 0; j < val->views[i].geodepth; j++) {
+					printf("%.*s%s", val->views[i].geodata_len[j],
+					       val->views[i].geodata[j], (j < val->views[i].geodepth - 1) ? ";" : "\n");
+				}
+			}
+			trie_it_next(it);
+		}
+	}
+}
+
 static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
                                       knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
@@ -723,6 +823,9 @@ int geoip_load(knotd_mod_t *mod)
 		free_geoip_ctx(ctx);
 		return ret;
 	}
+
+	// Prepare geo views for faster search.
+	geo_sort_and_link(ctx);
 
 	knotd_mod_ctx_set(mod, ctx);
 
