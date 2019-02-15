@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+﻿/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "libknot/libknot.h"
 #include "contrib/qp-trie/trie.h"
 #include "contrib/ucw/lists.h"
+#include "contrib/macros.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
@@ -97,9 +98,13 @@ typedef struct {
 	struct sockaddr_storage *subnet;
 	uint8_t subnet_prefix;
 
-	void *geodata[GEODB_MAX_DEPTH];
+	void *geodata[GEODB_MAX_DEPTH]; // NULL if '*' is specified in config.
 	uint32_t geodata_len[GEODB_MAX_DEPTH];
 	uint8_t geodepth;
+
+	// Index of the "parent" in the sorted view list.
+	// Equal to its own index if there is no parent.
+	size_t prev;
 
 	size_t count, avail;
 	knot_rrset_t *rrsets;
@@ -110,6 +115,65 @@ typedef struct {
 	size_t count, avail;
 	geo_view_t *views;
 } geo_trie_val_t;
+
+int geodb_view_cmp(const void *a, const void *b)
+{
+	geo_view_t *va = (geo_view_t *)a;
+	geo_view_t *vb = (geo_view_t *)b;
+
+	int i = 0;
+	while (i < va->geodepth && i < vb->geodepth) {
+		if (va->geodata[i] == NULL) {
+			if (vb->geodata[i] != NULL) {
+				return -1;
+			}
+		} else {
+			if (vb->geodata[i] == NULL) {
+				return 1;
+			}
+			int len = MIN(va->geodata_len[i], vb->geodata_len[i]);
+			int ret = memcmp(va->geodata[i], vb->geodata[i], len);
+			if (ret < 0 || (ret == 0 && vb->geodata_len[i] > len)) {
+				return -1;
+			} else if (ret > 0 || (ret == 0 && va->geodata_len[i] > len)) {
+				return 1;
+			}
+		}
+		i++;
+	}
+	if (i < va->geodepth) {
+		return 1;
+	}
+	if (i < vb->geodepth) {
+		return -1;
+	}
+	return 0;
+}
+
+int subnet_view_cmp(const void *a, const void *b)
+{
+	geo_view_t *va = (geo_view_t *)a;
+	geo_view_t *vb = (geo_view_t *)b;
+	if (va->subnet->ss_family != vb->subnet->ss_family) {
+		return va->subnet->ss_family - vb->subnet->ss_family;
+	}
+	int ret = 0;
+	switch (va->subnet->ss_family) {
+	case AF_INET:
+		ret = memcmp(&((struct sockaddr_in *)va->subnet)->sin_addr,
+		             &((struct sockaddr_in *)vb->subnet)->sin_addr,
+		             sizeof(struct in_addr));
+		break;
+	case AF_INET6:
+		ret = memcmp(&((struct sockaddr_in6 *)va->subnet)->sin6_addr,
+		             &((struct sockaddr_in6 *)vb->subnet)->sin6_addr,
+		             sizeof(struct in6_addr));
+	}
+	if (ret == 0) {
+		return va->subnet_prefix - vb->subnet_prefix;
+	}
+	return ret;
+}
 
 static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *ctx)
 {
@@ -520,6 +584,82 @@ static void free_geoip_ctx(geoip_ctx_t *ctx)
 	free(ctx);
 }
 
+static bool view_strictly_in_view(geo_view_t *view, geo_view_t *in,
+                                  enum operation_mode mode)
+{
+	if (mode == MODE_GEODB) {
+		if (in->geodepth >= view->geodepth) {
+			return false;
+		}
+		for (int i = 0; i < in->geodepth; i++) {
+			if (in->geodata[i] != NULL) {
+				if (in->geodata_len[i] != view->geodata_len[i]) {
+					return false;
+				}
+				if (memcmp(in->geodata[i], view->geodata[i],
+				           in->geodata_len[i]) != 0) {
+					return false;
+				}
+			}
+		}
+		return true;
+	} else if (mode == MODE_SUBNET) {
+		if (in->subnet_prefix >= view->subnet_prefix) {
+			return false;
+		}
+		return sockaddr_net_match((struct sockaddr *)view->subnet,
+		                          (struct sockaddr *)in->subnet,
+		                          in->subnet_prefix);
+	}
+	return false;
+}
+
+static void geo_sort_and_link(geoip_ctx_t *ctx)
+{
+	trie_it_t *it = trie_it_begin(ctx->geo_trie);
+	while (!trie_it_finished(it)) {
+		geo_trie_val_t *val = (geo_trie_val_t *) (*trie_it_val(it));
+		qsort(val->views, val->count, sizeof(geo_view_t),
+			  (ctx->mode == MODE_GEODB) ? geodb_view_cmp : subnet_view_cmp);
+
+		for (int i = 1; i < val->count; i++) {
+			geo_view_t *cur_view = &val->views[i];
+			geo_view_t *prev_view = &val->views[i - 1];
+			cur_view->prev = i;
+			int prev = i - 1;
+			do {
+				if (view_strictly_in_view(cur_view, prev_view, ctx->mode)) {
+					cur_view->prev = prev;
+					break;
+				}
+				if (prev == prev_view->prev) {
+					break;
+				}
+				prev = prev_view->prev;
+				prev_view = &val->views[prev];
+			} while (1);
+		}
+		trie_it_next(it);
+	}
+	trie_it_free(it);
+}
+
+// Return the index of the last lower or equal element or -1 of not exists.
+static int geo_bin_search(geo_view_t *arr, int count, geo_view_t *x,
+                          int (* cmp)(const void *a, const void *b))
+{
+	int l = 0, r = count;
+	while (l < r) {
+		int m = (l + r) / 2;
+		if (cmp(&arr[m], x) <= 0) {
+			l = m + 1;
+		} else {
+			r = m;
+		}
+	}
+	return l - 1; // l is the index of first greater element or N if not exists.
+}
+
 static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
                                       knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
@@ -562,61 +702,53 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	knot_rrset_t *cname = NULL;
 	knot_rrset_t *cnamesig = NULL;
 	uint16_t netmask = 0;
-	if (ctx->mode == MODE_SUBNET) {
-		// Find the best subnet containing the remote and queried rrset.
-		uint8_t best_prefix = 0;
-		for (int i = 0; i < data->count; i++) {
-			geo_view_t *view = &data->views[i];
-			if ((rr == NULL || view->subnet_prefix > best_prefix) &&
-			    sockaddr_net_match((struct sockaddr *)remote, (struct sockaddr *)view->subnet, view->subnet_prefix)) {
-				for (int j = 0; j < view->count; j++) {
-					if (view->rrsets[j].type == qtype) {
-						best_prefix = view->subnet_prefix;
-						rr = &view->rrsets[j];
-						rrsig = (view->rrsigs) ? &view->rrsigs[j] : NULL;
-						break;
-					} else if (view->rrsets[j].type == KNOT_RRTYPE_CNAME) {
-						best_prefix = view->subnet_prefix;
-						cname = &view->rrsets[j];
-						cnamesig = (view->rrsigs) ? &view->rrsigs[j] : NULL;
-					}
-				}
-			}
-		}
-		netmask = best_prefix;
-	} else if (ctx->mode == MODE_GEODB) {
-		geodb_data_t entries[ctx->path_count];
+	geodb_data_t entries[ctx->path_count];
 
+	// Create dummy view and fill it with data about the current remote.
+	geo_view_t dummy = { 0 };
+	if (ctx->mode == MODE_SUBNET) {
+		dummy.subnet = (struct sockaddr_storage *)remote;
+		dummy.subnet_prefix = (remote->ss_family == AF_INET) ? 32 : 128;
+	} else if (ctx->mode == MODE_GEODB) {
 		int ret = geodb_query(ctx->geodb, entries, (struct sockaddr *)remote,
-		                      ctx->paths, ctx->path_count, &netmask);
+							  ctx->paths, ctx->path_count, &netmask);
+		if (ret != 0) {
+			return state;
+		}
 		// MMDB may supply IPv6 prefixes even for IPv4 address, see man libmaxminddb.
 		if (remote->ss_family == AF_INET && netmask > 32) {
 			netmask -= 96;
 		}
+		geodb_fill_geodata(entries, ctx->path_count,
+		                   dummy.geodata, dummy.geodata_len, &dummy.geodepth);
+	}
 
-		if (ret != 0) {
-			return state;
-		}
-
-		uint8_t best_depth = 0;
-		// Find the best geo view containing the remote and queried rrset.
-		for (int i = 0; i < data->count; i++) {
-			geo_view_t *view = &data->views[i];
-			if ((rr == NULL || view->geodepth > best_depth) &&
-			    remote_in_geo(view->geodata, view->geodata_len, view->geodepth, entries)) {
-				for (int j = 0; j < view->count; j++) {
-					if (view->rrsets[j].type == qtype) {
-						best_depth = view->geodepth;
-						rr = &view->rrsets[j];
-						rrsig = (view->rrsigs) ? &view->rrsigs[j] : NULL;
-						break;
-					} else if (view->rrsets[j].type == KNOT_RRTYPE_CNAME) {
-						best_depth = view->geodepth;
-						cname = &view->rrsets[j];
-						cnamesig = (view->rrsigs) ? &view->rrsigs[j] : NULL;
-					}
-				}
+	// Find last lower or equal view.
+	int (* cmp)(const void *, const void *) = (ctx->mode == MODE_GEODB) ?
+	                                          geodb_view_cmp : subnet_view_cmp;
+	int idx = geo_bin_search(data->views, data->count, &dummy, cmp);
+	if (cmp(&dummy, &data->views[idx]) != 0) {
+		idx = data->views[idx].prev;
+		while (!view_strictly_in_view(&dummy, &data->views[idx], ctx->mode)) {
+			if (idx == data->views[idx].prev) {
+				// We are at a root and we have found no suitable view.
+				return state;
 			}
+			idx = data->views[idx].prev;
+		}
+	}
+
+	geo_view_t *view = &data->views[idx];
+	if (ctx->mode == MODE_SUBNET) {
+		netmask = view->subnet_prefix;
+	}
+	for (int i = 0; i < view->count; i++) {
+		if (view->rrsets[i].type == qtype) {
+			rr = &view->rrsets[i];
+			rrsig = (view->rrsigs) ? &view->rrsigs[i] : NULL;
+		} else if (view->rrsets[i].type == KNOT_RRTYPE_CNAME) {
+			cname = &view->rrsets[i];
+			cnamesig = (view->rrsigs) ? &view->rrsigs[i] : NULL;
 		}
 	}
 
@@ -723,6 +855,9 @@ int geoip_load(knotd_mod_t *mod)
 		free_geoip_ctx(ctx);
 		return ret;
 	}
+
+	// Prepare geo views for faster search.
+	geo_sort_and_link(ctx);
 
 	knotd_mod_ctx_set(mod, ctx);
 
