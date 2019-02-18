@@ -116,7 +116,7 @@ typedef struct {
 	geo_view_t *views;
 } geo_trie_val_t;
 
-int geodb_view_sort(const void *a, const void *b)
+int geodb_view_cmp(const void *a, const void *b)
 {
 	geo_view_t *va = (geo_view_t *)a;
 	geo_view_t *vb = (geo_view_t *)b;
@@ -588,7 +588,7 @@ static void geo_sort_and_link(geoip_ctx_t *ctx)
 	while (!trie_it_finished(it)) {
 		if (ctx->mode == MODE_GEODB) {
 			geo_trie_val_t *val = (geo_trie_val_t *) (*trie_it_val(it));
-			qsort(val->views, val->count, sizeof(geo_view_t), geodb_view_sort);
+			qsort(val->views, val->count, sizeof(geo_view_t), geodb_view_cmp);
 
 			for (int i = 1; i < val->count; i++) {
 				geo_view_t *cur_view = &val->views[i];
@@ -618,6 +618,22 @@ static void geo_sort_and_link(geoip_ctx_t *ctx)
 			trie_it_next(it);
 		}
 	}
+}
+
+// Return the index of the last lower or equal element or -1 of not exists.
+static int geo_bin_search(geo_view_t *arr, int count, geo_view_t *x, int (* cmp)(const void *a, const void *b))
+{
+	printf("here\n");
+	int l = 0, r = count;
+	while (l < r) {
+		int m = (l + r) / 2;
+		if (cmp(&arr[m], x) <= 0) {
+			l = m + 1;
+		} else {
+			r = m;
+		}
+	}
+	return l - 1; // l is the index of first greater element or N if not exists.
 }
 
 static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
@@ -698,7 +714,36 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 			return state;
 		}
 
-		uint8_t best_depth = 0;
+		// Create dummy view from fetched entries.
+		geo_view_t found = { 0 };
+		for (int i = 0; i < ctx->path_count; i++) {
+			if (entries[i].has_data) {
+				found.geodata[i] = (char *)entries[i].utf8_string;
+				found.geodata_len[i] = entries[i].data_size;
+				found.geodepth = i + 1;
+			}
+		}
+
+		// Find last lower or equal view.
+		int idx = geo_bin_search(data->views, data->count, &found, geodb_view_cmp);
+		printf("%d\n", idx);
+		if (geodb_view_cmp(&found, &data->views[idx]) != 0) {
+			idx = data->views[idx].prev;
+			while (!view_strictly_in_view(&found, &data->views[idx])) {
+				if (idx == data->views[idx].prev) {
+					// We are at a root and we have found no suitable view.
+					return state;
+				}
+				idx = data->views[idx].prev;
+			}
+		}
+
+		geo_view_t *view = &data->views[idx];
+		for (int i = 0; i < view->count; i++) {
+
+		}
+
+		/*uint8_t best_depth = 0;
 		// Find the best geo view containing the remote and queried rrset.
 		for (int i = 0; i < data->count; i++) {
 			geo_view_t *view = &data->views[i];
@@ -717,7 +762,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 					}
 				}
 			}
-		}
+		}*/
 	}
 
 	// Return CNAME if only CNAME is found.
