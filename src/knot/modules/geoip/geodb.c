@@ -195,13 +195,13 @@ void geodb_fill_geodata(geodb_data_t *entries, uint16_t path_cnt,
 	for (int i = 0; i < path_cnt; i++) {
 		if (entries[i].has_data) {
 			*geodepth = i + 1;
-			switch (entries->type) {
+			switch (entries[i].type) {
 			case MMDB_DATA_TYPE_UTF8_STRING:
-				geodata[i] = (void *)entries->utf8_string;
-				geodata_len[i] = entries->data_size;
+				geodata[i] = (void *)entries[i].utf8_string;
+				geodata_len[i] = entries[i].data_size;
 				break;
 			case MMDB_DATA_TYPE_UINT32:
-				geodata[i] = (void *)&entries->uint32;
+				geodata[i] = (void *)&entries[i].uint32;
 				geodata_len[i] = sizeof(uint32_t);
 				break;
 			}
