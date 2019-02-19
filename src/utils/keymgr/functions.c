@@ -867,7 +867,6 @@ static int create_and_print_ds(const knot_dname_t *zone_name,
 int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key)
 {
 	static const dnssec_key_digest_t digests[] = {
-		DNSSEC_KEY_DIGEST_SHA1,
 		DNSSEC_KEY_DIGEST_SHA256,
 		DNSSEC_KEY_DIGEST_SHA384,
 		0
