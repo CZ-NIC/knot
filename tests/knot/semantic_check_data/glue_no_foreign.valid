@@ -7,9 +7,7 @@ $TTL 3600
 		1h		; retry
 		1w		; expire
 		1d )		; minimum
-	NS	dns1
 
-dns1	A	192.0.2.1
+	NS	foreign.
 
-deleg	NS	ns1.deleg
-; missing A record for ns1.deleg
+; glue for foreign. is not mandatory

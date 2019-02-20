@@ -9,6 +9,11 @@ $TTL 3600
 		1d )		; minimum
 
 	NS	dns1
-	NS	dns2
 
-; no A records for NS
+dns1	A	1.2.3.4
+
+abc	NS	a.ns.abc
+
+; wildcard glue
+
+*.ns.abc	AAAA	::1

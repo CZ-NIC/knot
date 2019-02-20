@@ -9,10 +9,8 @@ $TTL 3600
 		1d )		; minimum
 
 	NS	dns1
+	NS	dns2
 
-dns1	A	1.2.3.4
+dns1	A	192.0.2.1
 
-abc	NS	a.ns.abc
-0.ns.abc	A	1.2.3.4
-*.ns.abc	AAAA	::1
-
+; missing glue for dns2
