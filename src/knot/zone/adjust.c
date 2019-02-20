@@ -62,7 +62,11 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), node->owner,
 	                                  zone->apex->owner, &zone->nsec3_params);
 	if (ret == KNOT_EOK) {
-		node->nsec3_node = zone_tree_get(zone->nsec3_nodes, nsec3_name);
+		zone_node_t *candidate = zone_tree_get(zone->nsec3_nodes, nsec3_name);
+		if (candidate != NULL && !(candidate->flags & NODE_FLAGS_EMPTY) &&
+		    (candidate->flags & NODE_FLAGS_IN_NSEC3_CHAIN)) {
+			node->nsec3_node = candidate;
+		}
 	}
 	return ret;
 }
