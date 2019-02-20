@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1644,6 +1644,33 @@ static int dump_tlsa(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int dump_csync(DUMP_PARAMS)
+{
+	DUMP_NUM32; DUMP_SPACE;
+	DUMP_NUM16; DUMP_SPACE;
+	DUMP_BITMAP;
+
+	DUMP_END;
+}
+
+static int dump_zonemd(DUMP_PARAMS)
+{
+	if (p->style->wrap) {
+		DUMP_NUM32; DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE; WRAP_INIT;
+		DUMP_HEX;
+		WRAP_END;
+	} else {
+		DUMP_NUM32; DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_HEX;
+	}
+
+	DUMP_END;
+}
+
 static int dump_l64(DUMP_PARAMS)
 {
 	DUMP_NUM16; DUMP_SPACE;
@@ -1776,13 +1803,19 @@ static int txt_dump_data(rrset_dump_params_t *p, uint16_t type)
 		case KNOT_RRTYPE_NSEC:
 			return dump_nsec(p);
 		case KNOT_RRTYPE_DHCID:
+		case KNOT_RRTYPE_OPENPGPKEY:
 			return dump_dhcid(p);
 		case KNOT_RRTYPE_NSEC3:
 			return dump_nsec3(p);
 		case KNOT_RRTYPE_NSEC3PARAM:
 			return dump_nsec3param(p);
 		case KNOT_RRTYPE_TLSA:
+		case KNOT_RRTYPE_SMIMEA:
 			return dump_tlsa(p);
+		case KNOT_RRTYPE_CSYNC:
+			return dump_csync(p);
+		case KNOT_RRTYPE_ZONEMD:
+			return dump_zonemd(p);
 		case KNOT_RRTYPE_NID:
 		case KNOT_RRTYPE_L64:
 			return dump_l64(p);
