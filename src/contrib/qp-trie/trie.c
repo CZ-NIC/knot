@@ -370,7 +370,8 @@ void trie_clear(trie_t *tbl)
 	tbl->weight = 0;
 }
 
-static bool dup_trie(node_t *copy, const node_t *orig, trie_dup_cb dup_cb, knot_mm_t *mm)
+static bool dup_trie(node_t *copy, const node_t *orig, trie_dup_cb dup_cb, void *d,
+                     knot_mm_t *mm)
 {
 	if (isbranch(orig)) {
 		uint n = branch_weight(orig);
@@ -380,7 +381,7 @@ static bool dup_trie(node_t *copy, const node_t *orig, trie_dup_cb dup_cb, knot_
 		}
 		const node_t *ortw = twigs((node_t *)orig);
 		for (uint i = 0; i < n; ++i) {
-			if (!dup_trie(cotw + i, ortw + i, dup_cb, mm)) {
+			if (!dup_trie(cotw + i, ortw + i, dup_cb, d, mm)) {
 				while (i-- > 0) {
 					clear_trie(cotw + i, mm);
 				}
@@ -394,7 +395,7 @@ static bool dup_trie(node_t *copy, const node_t *orig, trie_dup_cb dup_cb, knot_
 		if (mkleaf(copy, key->chars, key->len, mm) != KNOT_EOK) {
 			return false;
 		}
-		if ((copy->p = dup_cb(orig->p, mm)) == NULL) {
+		if ((copy->p = dup_cb(orig->p, d, mm)) == NULL) {
 			mm_free(mm, tkey(copy));
 			return false;
 		}
@@ -402,7 +403,7 @@ static bool dup_trie(node_t *copy, const node_t *orig, trie_dup_cb dup_cb, knot_
 	return true;
 }
 
-trie_t* trie_dup(const trie_t *orig, trie_dup_cb dup_cb, knot_mm_t *mm)
+trie_t* trie_dup(const trie_t *orig, trie_dup_cb dup_cb, void *d, knot_mm_t *mm)
 {
 	if (orig == NULL) {
 		return NULL;
@@ -418,7 +419,7 @@ trie_t* trie_dup(const trie_t *orig, trie_dup_cb dup_cb, knot_mm_t *mm)
 		mm_ctx_init(&copy->mm);
 	}
 	if (copy->weight) {
-		if (!dup_trie(&copy->root, &orig->root, dup_cb, mm)) {
+		if (!dup_trie(&copy->root, &orig->root, dup_cb, d, mm)) {
 			mm_free(mm, copy);
 			return NULL;
 		}

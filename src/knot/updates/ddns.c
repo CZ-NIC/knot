@@ -554,7 +554,7 @@ static int process_rem_node(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 
-	zone_node_t *node_copy = node_shallow_copy(node, NULL);
+	zone_node_t *node_copy = node_shallow_copy(node, NULL, NULL);
 	if (node_copy == NULL) {
 		return KNOT_ENOMEM;
 	}

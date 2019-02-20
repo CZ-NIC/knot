@@ -122,12 +122,13 @@ void node_free(zone_node_t *node, knot_mm_t *mm);
 /*!
  * \brief Creates a shallow copy of node structure, RR data are shared.
  *
- * \param src  Source of the copy.
- * \param mm   Memory context to use.
+ * \param src          Source of the copy.
+ * \param reuse_nsec3  Indication if pointers to nsec3 nodes should be reused.
+ * \param mm           Memory context to use.
  *
  * \return Copied node if success, NULL otherwise.
  */
-zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm);
+zone_node_t *node_shallow_copy(const zone_node_t *src, bool *reuse_nsec3, knot_mm_t *mm);
 
 /*!
  * \brief Adds an RRSet to the node. All data are copied. Owner and class are
