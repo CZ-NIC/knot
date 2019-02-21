@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1328,8 +1328,12 @@
 	    | "NSEC3"i      %{ type_num(KNOT_RRTYPE_NSEC3, &rdata_tail); }
 	    | "NSEC3PARAM"i %{ type_num(KNOT_RRTYPE_NSEC3PARAM, &rdata_tail); }
 	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, &rdata_tail); }
+	    | "SMIMEA"i     %{ type_num(KNOT_RRTYPE_SMIMEA, &rdata_tail); }
 	    | "CDS"i        %{ type_num(KNOT_RRTYPE_CDS, &rdata_tail); }
 	    | "CDNSKEY"i    %{ type_num(KNOT_RRTYPE_CDNSKEY, &rdata_tail); }
+	    | "OPENPGPKEY"i %{ type_num(KNOT_RRTYPE_OPENPGPKEY, &rdata_tail); }
+	    | "CSYNC"i      %{ type_num(KNOT_RRTYPE_CSYNC, &rdata_tail); }
+	    | "ZONEMD"i     %{ type_num(KNOT_RRTYPE_ZONEMD, &rdata_tail); }
 	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, &rdata_tail); }
 	    | "NID"i        %{ type_num(KNOT_RRTYPE_NID, &rdata_tail); }
 	    | "L32"i        %{ type_num(KNOT_RRTYPE_L32, &rdata_tail); }
@@ -1388,8 +1392,12 @@
 	    | "NSEC3"i      %{ window_add_bit(KNOT_RRTYPE_NSEC3, s); }
 	    | "NSEC3PARAM"i %{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	    | "TLSA"i       %{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
+	    | "SMIMEA"i     %{ window_add_bit(KNOT_RRTYPE_SMIMEA, s); }
 	    | "CDS"i        %{ window_add_bit(KNOT_RRTYPE_CDS, s); }
 	    | "CDNSKEY"i    %{ window_add_bit(KNOT_RRTYPE_CDNSKEY, s); }
+	    | "OPENPGPKEY"i %{ window_add_bit(KNOT_RRTYPE_OPENPGPKEY, s); }
+	    | "CSYNC"i      %{ window_add_bit(KNOT_RRTYPE_CSYNC, s); }
+	    | "ZONEMD"i     %{ window_add_bit(KNOT_RRTYPE_ZONEMD, s); }
 	    | "SPF"i        %{ window_add_bit(KNOT_RRTYPE_SPF, s); }
 	    | "NID"i        %{ window_add_bit(KNOT_RRTYPE_NID, s); }
 	    | "L32"i        %{ window_add_bit(KNOT_RRTYPE_L32, s); }
@@ -1823,6 +1831,14 @@
 		(num8 . sep . num8 . sep . num8 . sep . hex_array)
 		$!_r_data_error %_ret . end_wchar;
 
+	r_data_csync :=
+		(num32 . sep . num16 . bitmap)
+		$!_r_data_error %_ret . all_wchar;
+
+	r_data_zonemd :=
+		(num32 . sep . num8 . sep . num8 . sep . hex_array)
+		$!_r_data_error %_ret . end_wchar;
+
 	r_data_l32 :=
 		(num16 . sep . l32)
 		$!_r_data_error %_ret . all_wchar;
@@ -1901,13 +1917,19 @@
 		case KNOT_RRTYPE_CDNSKEY:
 			fcall r_data_dnskey;
 		case KNOT_RRTYPE_DHCID:
+		case KNOT_RRTYPE_OPENPGPKEY:
 			fcall r_data_dhcid;
 		case KNOT_RRTYPE_NSEC3:
 			fcall r_data_nsec3;
 		case KNOT_RRTYPE_NSEC3PARAM:
 			fcall r_data_nsec3param;
 		case KNOT_RRTYPE_TLSA:
+		case KNOT_RRTYPE_SMIMEA:
 			fcall r_data_tlsa;
+		case KNOT_RRTYPE_CSYNC:
+			fcall r_data_csync;
+		case KNOT_RRTYPE_ZONEMD:
+			fcall r_data_zonemd;
 		case KNOT_RRTYPE_NID:
 		case KNOT_RRTYPE_L64:
 			fcall r_data_l64;
@@ -1960,8 +1982,12 @@
 		case KNOT_RRTYPE_NSEC3:
 		case KNOT_RRTYPE_NSEC3PARAM:
 		case KNOT_RRTYPE_TLSA:
+		case KNOT_RRTYPE_SMIMEA:
 		case KNOT_RRTYPE_CDS:
 		case KNOT_RRTYPE_CDNSKEY:
+		case KNOT_RRTYPE_OPENPGPKEY:
+		case KNOT_RRTYPE_CSYNC:
+		case KNOT_RRTYPE_ZONEMD:
 		case KNOT_RRTYPE_NID:
 		case KNOT_RRTYPE_L32:
 		case KNOT_RRTYPE_L64:
@@ -2037,8 +2063,12 @@
 		| "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
 		| "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
 		| "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
+		| "SMIMEA"i     %{ s->r_type = KNOT_RRTYPE_SMIMEA; }
 		| "CDS"i        %{ s->r_type = KNOT_RRTYPE_CDS; }
 		| "CDNSKEY"i    %{ s->r_type = KNOT_RRTYPE_CDNSKEY; }
+		| "OPENPGPKEY"i %{ s->r_type = KNOT_RRTYPE_OPENPGPKEY; }
+		| "CSYNC"i      %{ s->r_type = KNOT_RRTYPE_CSYNC; }
+		| "ZONEMD"i     %{ s->r_type = KNOT_RRTYPE_ZONEMD; }
 		| "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
 		| "NID"i        %{ s->r_type = KNOT_RRTYPE_NID; }
 		| "L32"i        %{ s->r_type = KNOT_RRTYPE_L32; }

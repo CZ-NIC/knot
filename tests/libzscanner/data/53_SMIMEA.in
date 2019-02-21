@@ -1,0 +1,13 @@
+$ORIGIN	.
+$TTL	1
+
+; SMIMEA is the same as TLSA, so there are differences and basics only.
+
+; OK
+@	SMIMEA	0	0	0	00		; The simplest variant
+@	TYPE53	\# 4 00000000				; TYPE + Hexadecimal rdata
+@	TYPE53	0       0       0       00		; TYPE
+@	smimea	0       0       0       00		; Type in lower-case
+
+; KO
+@	SMIMEA

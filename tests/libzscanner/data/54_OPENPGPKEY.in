@@ -1,0 +1,13 @@
+$ORIGIN	.
+$TTL	1
+
+; OPENPGPKEY is the same as DHCID, so there are differences and basics only.
+
+; OK
+@	OPENPGPKEY	AA==		; The simplest variant
+@	TYPE61		\# 1 00		; TYPE + Hexadecimal rdata
+@	TYPE61		AA==		; TYPE
+@	openpgpkey	AA==		; Type in lower-case
+
+; KO
+@	OPENPGPKEY
