@@ -249,7 +249,7 @@ fail:
 	return NULL;
 }
 
-int zonefile_exists(const char *path, time_t *mtime)
+int zonefile_exists(const char *path, struct timespec *mtime)
 {
 	if (path == NULL) {
 		return KNOT_EINVAL;
@@ -261,7 +261,7 @@ int zonefile_exists(const char *path, time_t *mtime)
 	}
 
 	if (mtime != NULL) {
-		*mtime = zonefile_st.st_mtime;
+		*mtime = zonefile_st.st_mtim;
 	}
 
 	return KNOT_EOK;

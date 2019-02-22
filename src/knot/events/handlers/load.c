@@ -74,10 +74,12 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// If configured, attempt to load zonefile.
 	if (zf_from != ZONEFILE_LOAD_NONE) {
-		time_t mtime;
+		struct timespec mtime;
 		char *filename = conf_zonefile(conf, zone->name);
 		ret = zonefile_exists(filename, &mtime);
-		bool zonefile_unchanged = (zone->zonefile.exists && zone->zonefile.mtime == mtime);
+		bool zonefile_unchanged = (zone->zonefile.exists &&
+					   zone->zonefile.mtime.tv_sec == mtime.tv_sec &&
+					   zone->zonefile.mtime.tv_nsec == mtime.tv_nsec);
 		free(filename);
 		if (ret == KNOT_EOK) {
 			ret = zone_load_contents(conf, zone->name, &zf_conts);

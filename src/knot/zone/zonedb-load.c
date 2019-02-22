@@ -35,12 +35,14 @@ static bool zone_file_updated(conf_t *conf, const zone_t *old_zone,
 	assert(zone_name);
 
 	char *zonefile = conf_zonefile(conf, zone_name);
-	time_t mtime;
+	struct timespec mtime;
 	int ret = zonefile_exists(zonefile, &mtime);
 	free(zonefile);
 
 	return (ret == KNOT_EOK && old_zone != NULL &&
-	        !(old_zone->zonefile.exists && old_zone->zonefile.mtime == mtime));
+	        !(old_zone->zonefile.exists &&
+		  old_zone->zonefile.mtime.tv_sec == mtime.tv_sec &&
+		  old_zone->zonefile.mtime.tv_nsec == mtime.tv_nsec));
 }
 
 static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)

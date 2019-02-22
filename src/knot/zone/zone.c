@@ -127,7 +127,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 
 	/* Update zone file attributes. */
 	zone->zonefile.exists = true;
-	zone->zonefile.mtime = st.st_mtime;
+	zone->zonefile.mtime = st.st_mtim;
 	zone->zonefile.serial = serial_to;
 	zone->zonefile.resigned = false;
 
