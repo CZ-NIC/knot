@@ -466,13 +466,16 @@ static knot_rrset_t * tm_rrset(knot_dname_t * owner, const uint8_t * rdata)
 	return rrs;
 }
 
-static knot_dname_t * tm_owner(const char * prefix, const knot_dname_t *apex)
+static knot_dname_t *tm_owner(const char *prefix, const knot_dname_t *apex)
 {
-	knot_dname_t * ret = malloc(strlen(prefix) + knot_dname_size(apex) + 2);
-	ret[0] = strlen(prefix);
-	strcpy((char *) (ret + 1), prefix);
-	memcpy(ret + ret[0] + 1, apex, knot_dname_size(apex));
-	return ret;
+	size_t prefix_len = strlen(prefix);
+	size_t apex_len = knot_dname_size(apex);
+
+	knot_dname_t *out = malloc(prefix_len + apex_len + 2);
+	out[0] = prefix_len;
+	memcpy(out + 1, prefix, prefix_len);
+	memcpy(out + 1 + prefix_len, apex, apex_len);
+	return out;
 }
 
 static knot_rrset_t * tm_rrs(const knot_dname_t * apex, int x)
