@@ -322,23 +322,19 @@ int bind_pubkey_parse(const char *filename, dnssec_key_t **key_ptr)
 	return KNOT_EOK;
 }
 
-static char *genname(const char *orig, const char *wantsuff, const char *altsuff)
+static char *gen_keyfilename(const char *orig, const char *wantsuff, const char *altsuff)
 {
-	char *res;
-	if (orig == NULL || wantsuff == NULL || altsuff == NULL ||
-	    (res = malloc(strlen(orig) + strlen(wantsuff) + 1)) == NULL) {
-		return NULL;
+	assert(orig && wantsuff && altsuff);
+
+	const char *dot = strrchr(orig, '.');
+
+	if (dot != NULL && strcmp(dot, wantsuff) == 0) { // Full match.
+		return strdup(orig);
+	} else if (dot != NULL && strcmp(dot, altsuff) == 0) { // Replace suffix.
+		return sprintf_alloc("%.*s%s", dot - orig, orig, wantsuff);
+	} else { // Add wanted suffix.
+		return sprintf_alloc("%s%s", orig, wantsuff);
 	}
-	strcpy(res, orig);
-	char *dot = strrchr(res, '.');
-	if (dot != NULL && strcmp(dot, wantsuff) == 0) {
-		;
-	} else if (dot != NULL && strcmp(dot, altsuff) == 0) {
-		strcpy(dot, wantsuff);
-	} else {
-		strcat(res, wantsuff);
-	}
-	return res;
 }
 
 int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_only)
@@ -351,7 +347,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 	dnssec_key_t *key = NULL;
 	char *keyid = NULL;
 
-	char *pubname = genname(import_file, ".key", ".private");
+	char *pubname = gen_keyfilename(import_file, ".key", ".private");
 	if (pubname == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -365,7 +361,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 	if (!pub_only) {
 		bind_privkey_t bpriv = { 0 };
 
-		char *privname = genname(import_file, ".private", ".key");
+		char *privname = gen_keyfilename(import_file, ".private", ".key");
 		if (privname == NULL) {
 			goto fail;
 		}
