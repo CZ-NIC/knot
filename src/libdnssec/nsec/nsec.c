@@ -114,3 +114,17 @@ bool dnssec_nsec_bitmap_contains(const uint8_t *bitmap, uint16_t size, uint16_t 
 
 	return false;
 }
+
+_public_
+bool dnssec_nsec3_params_match(const dnssec_nsec3_params_t *params1,
+			       const dnssec_nsec3_params_t *params2)
+{
+	if (params1 != NULL && params2 != NULL) {
+		return (params1->algorithm == params2->algorithm &&
+			params1->flags == params2->flags &&
+			params1->iterations == params2->iterations &&
+			dnssec_binary_cmp(&params1->salt, &params2->salt) == 0);
+	} else {
+		return (params1 == NULL && params2 == NULL);
+	}
+}

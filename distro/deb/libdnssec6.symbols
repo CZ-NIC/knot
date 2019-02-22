@@ -56,6 +56,7 @@ libdnssec.so.6 libdnssec6 #MINVER#
  dnssec_nsec3_hash_length@Base 2.3.0
  dnssec_nsec3_params_free@Base 2.3.0
  dnssec_nsec3_params_from_rdata@Base 2.3.0
+ dnssec_nsec3_params_match@Base 2.8.0
  dnssec_nsec_bitmap_add@Base 2.3.0
  dnssec_nsec_bitmap_clear@Base 2.3.0
  dnssec_nsec_bitmap_contains@Base 2.7.0

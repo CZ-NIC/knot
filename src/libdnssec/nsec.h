@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -138,6 +138,17 @@ void dnssec_nsec3_params_free(dnssec_nsec3_params_t *params);
  */
 int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 				   const dnssec_binary_t *rdata);
+
+/*!
+ * Check if NSEC3 parameters match.
+ *
+ * \param params1  NSEC3 parameters 1.
+ * \param params2  NSEC3 parameters 2.
+ *
+ * \return True if match or if both NULL.
+ */
+bool dnssec_nsec3_params_match(const dnssec_nsec3_params_t *params1,
+			       const dnssec_nsec3_params_t *params2);
 
 /*!
  * Check whether a given NSEC bitmap contains a given RR type.
