@@ -369,7 +369,8 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nodes = trie_dup(z->nodes, (trie_dup_cb)node_shallow_copy, NULL);
+	bool reuse_nsec3 = dnssec_nsec3_params_match(&z->nsec3_params, &out->nsec3_params);
+	out->nodes = trie_dup(z->nodes, (trie_dup_cb)node_shallow_copy, &reuse_nsec3, NULL);
 	if (out->nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -400,7 +401,8 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 
 static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 {
-	out->nsec3_nodes = trie_dup(z->nsec3_nodes, (trie_dup_cb)node_shallow_copy, NULL);
+	out->nsec3_nodes = trie_dup(z->nsec3_nodes, (trie_dup_cb)node_shallow_copy,
+	                            NULL, NULL);
 	if (out->nsec3_nodes == NULL) {
 		return KNOT_ENOMEM;
 	}

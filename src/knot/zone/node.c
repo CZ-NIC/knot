@@ -137,7 +137,7 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 	mm_free(mm, node);
 }
 
-zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
+zone_node_t *node_shallow_copy(const zone_node_t *src, bool *reuse_nsec3, knot_mm_t *mm)
 {
 	if (src == NULL) {
 		return NULL;
@@ -159,7 +159,9 @@ zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm)
 		return NULL;
 	}
 	memcpy(dst->rrs, src->rrs, rrlen);
-	dst->nsec3_node = src->nsec3_node;
+	if (reuse_nsec3 != NULL && *reuse_nsec3) {
+		dst->nsec3_node = src->nsec3_node;
+	}
 
 	for (uint16_t i = 0; i < src->rrset_count; ++i) {
 		dst->rrs[i].additional = NULL;

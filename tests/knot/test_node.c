@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
 	// Test shallow copy
 	node->flags |= NODE_FLAGS_DELEG;
-	zone_node_t *copy = node_shallow_copy(node, NULL);
+	zone_node_t *copy = node_shallow_copy(node, NULL, NULL);
 	ok(copy != NULL, "Node: shallow copy.");
 	assert(copy);
 	const bool copy_ok = knot_dname_is_equal(copy->owner, node->owner) &&
