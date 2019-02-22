@@ -355,6 +355,7 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 	r = key_open_write(handle->dir_name, id, &file);
 	if (r != DNSSEC_EOK) {
 		if (key_is_duplicate(r, handle, id, pem)) {
+			*id_ptr = id;
 			return DNSSEC_EOK;
 		}
 		return r;
@@ -364,6 +365,7 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 
 	ssize_t wrote_count = write(file, pem->data, pem->size);
 	if (wrote_count == -1) {
+		free(id);
 		return dnssec_errno_to_error(errno);
 	}
 
