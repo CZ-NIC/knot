@@ -84,7 +84,8 @@ int main(int argc, char *argv[])
 	ret = zone_timers_read(db, zone, &timers);
 	ok(ret == KNOT_EOK, "zone_timers_read()");
 	ok(timers_eq(&timers, &MOCK_TIMERS), "timers unmalformed (%u == %u, %ld == %ld etc.)",
-	   timers.soa_expire, MOCK_TIMERS.soa_expire, timers.last_refresh, MOCK_TIMERS.last_refresh);
+	   timers.soa_expire, MOCK_TIMERS.soa_expire, (long)timers.last_refresh,
+	   (long)MOCK_TIMERS.last_refresh);
 
 	// Sweep none
 	ret = zone_timers_sweep(db, keep_all, NULL);
