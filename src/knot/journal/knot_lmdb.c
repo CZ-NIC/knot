@@ -16,7 +16,6 @@
 
 #include "knot/journal/knot_lmdb.h"
 
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h> // snprintf
 #include <stdlib.h>

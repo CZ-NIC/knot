@@ -20,6 +20,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 typedef struct knot_lmdb_db {
 	MDB_dbi dbi;
