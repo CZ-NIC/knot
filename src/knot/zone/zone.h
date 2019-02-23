@@ -53,7 +53,7 @@ typedef struct zone
 
 	/*! \brief Zonefile parameters. */
 	struct {
-		time_t mtime;
+		struct timespec mtime;
 		uint32_t serial;
 		bool exists;
 		bool resigned;
