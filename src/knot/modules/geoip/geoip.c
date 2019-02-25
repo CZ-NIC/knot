@@ -732,6 +732,9 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	int (* cmp)(const void *, const void *) = (ctx->mode == MODE_GEODB) ?
 	                                          geodb_view_cmp : subnet_view_cmp;
 	int idx = geo_bin_search(data->views, data->count, &dummy, cmp);
+	if (idx == -1) { // There is no suitable view.
+		return state;
+	}
 	if (cmp(&dummy, &data->views[idx]) != 0) {
 		idx = data->views[idx].prev;
 		while (!view_strictly_in_view(&dummy, &data->views[idx], ctx->mode)) {
