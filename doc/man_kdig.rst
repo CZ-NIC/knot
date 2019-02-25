@@ -280,8 +280,10 @@ Options
   +ednsopt.
 
 **+noidn**
-  Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
-  on libidn availability during project building!
+  Disable the IDN transformation to ASCII and vice versa. IDN support depends
+  on libidn availability during project building! If used in *common-settings*,
+  all IDN transformations are disabled. If used in the individual query *settings*,
+  transformation from ASCII is disabled on output for the particular query.
 
 Notes
 -----
