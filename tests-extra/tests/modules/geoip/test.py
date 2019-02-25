@@ -77,13 +77,18 @@ for i in range(1, 1000):
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
 
-# Test subnet-dependent answers.
+# Restart with subnet module.
 knot.clear_modules(None)
 knot.add_module(zone, mod_subnet);
 knot.gen_confile()
 knot.reload()
 knot.zone_wait(zone)
 
+# Test default answer again.
+resp = knot.dig("foo.example.com", "A")
+resp.check(rcode="NOERROR", rdata="192.0.2.4")
+
+# Test subnet-dependent answers.
 for i in range(1, 1000):
     random_client = "127.255." + str(random.randint(1, dname_count)) + ".0"
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
