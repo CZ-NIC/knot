@@ -283,7 +283,8 @@ Options
   Disable the IDN transformation to ASCII and vice versa. IDN support depends
   on libidn availability during project building! If used in *common-settings*,
   all IDN transformations are disabled. If used in the individual query *settings*,
-  transformation from ASCII is disabled on output for the particular query.
+  transformation from ASCII is disabled on output for the particular query. Note
+  that IDN transformation does not preserve domain name letter case.
 
 Notes
 -----
