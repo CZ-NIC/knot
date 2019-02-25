@@ -154,9 +154,11 @@ int subnet_view_cmp(const void *a, const void *b)
 {
 	geo_view_t *va = (geo_view_t *)a;
 	geo_view_t *vb = (geo_view_t *)b;
+
 	if (va->subnet->ss_family != vb->subnet->ss_family) {
 		return va->subnet->ss_family - vb->subnet->ss_family;
 	}
+
 	int ret = 0;
 	switch (va->subnet->ss_family) {
 	case AF_INET:
@@ -587,7 +589,8 @@ static void free_geoip_ctx(geoip_ctx_t *ctx)
 static bool view_strictly_in_view(geo_view_t *view, geo_view_t *in,
                                   enum operation_mode mode)
 {
-	if (mode == MODE_GEODB) {
+	switch (mode) {
+	case MODE_GEODB:
 		if (in->geodepth >= view->geodepth) {
 			return false;
 		}
@@ -603,15 +606,17 @@ static bool view_strictly_in_view(geo_view_t *view, geo_view_t *in,
 			}
 		}
 		return true;
-	} else if (mode == MODE_SUBNET) {
+	case MODE_SUBNET:
 		if (in->subnet_prefix >= view->subnet_prefix) {
 			return false;
 		}
 		return sockaddr_net_match((struct sockaddr *)view->subnet,
 		                          (struct sockaddr *)in->subnet,
 		                          in->subnet_prefix);
+	default:
+		assert(0);
+		return false;
 	}
-	return false;
 }
 
 static void geo_sort_and_link(geoip_ctx_t *ctx)
@@ -620,7 +625,7 @@ static void geo_sort_and_link(geoip_ctx_t *ctx)
 	while (!trie_it_finished(it)) {
 		geo_trie_val_t *val = (geo_trie_val_t *) (*trie_it_val(it));
 		qsort(val->views, val->count, sizeof(geo_view_t),
-			  (ctx->mode == MODE_GEODB) ? geodb_view_cmp : subnet_view_cmp);
+		      (ctx->mode == MODE_GEODB) ? geodb_view_cmp : subnet_view_cmp);
 
 		for (int i = 1; i < val->count; i++) {
 			geo_view_t *cur_view = &val->views[i];
@@ -711,7 +716,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		dummy.subnet_prefix = (remote->ss_family == AF_INET) ? 32 : 128;
 	} else if (ctx->mode == MODE_GEODB) {
 		int ret = geodb_query(ctx->geodb, entries, (struct sockaddr *)remote,
-							  ctx->paths, ctx->path_count, &netmask);
+		                      ctx->paths, ctx->path_count, &netmask);
 		if (ret != 0) {
 			return state;
 		}

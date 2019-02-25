@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -203,6 +203,9 @@ void geodb_fill_geodata(geodb_data_t *entries, uint16_t path_cnt,
 			case MMDB_DATA_TYPE_UINT32:
 				geodata[i] = (void *)&entries[i].uint32;
 				geodata_len[i] = sizeof(uint32_t);
+				break;
+			default:
+				assert(0);
 				break;
 			}
 		}
