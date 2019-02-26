@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -112,9 +112,10 @@ __attribute__((format(printf, 3, 4)));
  *
  * \see log_fmt
  *
- * \param zone  Zone name in wire format.
  * \param priority  Message priority.
  * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
+ * \param zone      Zone name in wire format.
+ * \param param     Optional key-value parameter for structured logging.
  * \param fmt       Content of the logged message.
  */
 void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone,
