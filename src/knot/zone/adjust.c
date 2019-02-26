@@ -67,6 +67,13 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 	return ret;
 }
 
+int unadjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
+{
+	UNUSED(zone);
+	node->nsec3_node = NULL;
+	return KNOT_EOK;
+}
+
 int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
 	free(node->nsec3_wildcard_name);

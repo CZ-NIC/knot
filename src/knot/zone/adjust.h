@@ -36,6 +36,9 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone);
 // fix NORMAL node pointer to corresponding NSEC3 node
 int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone);
 
+// reset pointer to NSEC3 node
+int unadjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone);
+
 // fix NORMAL node pointer to NSEC3 node proving nonexistence of wildcard
 int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone);
 

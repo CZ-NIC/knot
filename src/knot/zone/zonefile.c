@@ -242,6 +242,9 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
+	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false); // the contents will now change possibly messing up NSEC3 tree, it will be adjusted again at zone_update_commit
+	assert(ret == KNOT_EOK);
+
 	return zc->z;
 
 fail:
