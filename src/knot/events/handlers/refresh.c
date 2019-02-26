@@ -65,16 +65,13 @@
  */
 
 #define REFRESH_LOG(priority, zone, remote, msg...) \
-	ns_log(priority, zone, LOG_OPERATION_REFRESH, LOG_DIRECTION_OUT, remote, msg)
-
-#define _XFRIN_LOG(priority, operation, zone, remote, msg...) \
-	ns_log(priority, zone, operation, LOG_DIRECTION_IN, remote, msg)
+	ns_log(priority, zone, LOG_OPERATION_REFRESH, LOG_DIRECTION_NONE, remote, msg)
 
 #define AXFRIN_LOG(priority, zone, remote, msg...) \
-	_XFRIN_LOG(priority, LOG_OPERATION_AXFR, zone, remote, msg)
+	ns_log(priority, zone, LOG_OPERATION_AXFR, LOG_DIRECTION_IN, remote, msg)
 
 #define IXFRIN_LOG(priority, zone, remote, msg...) \
-	_XFRIN_LOG(priority, LOG_OPERATION_IXFR, zone, remote, msg)
+	ns_log(priority, zone, LOG_OPERATION_IXFR, LOG_DIRECTION_IN, remote, msg)
 
 #define BOOTSTRAP_MAXTIME (24*60*60)
 #define BOOTSTRAP_JITTER (30)
