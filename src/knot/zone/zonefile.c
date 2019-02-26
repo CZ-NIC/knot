@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -239,6 +239,15 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to load zone, file '%s' (%s)",
 		      loader->source, knot_strerror(ret));
+		goto fail;
+	}
+
+	/* The contents will now change possibly messing up NSEC3 tree, it will
+	   be adjusted again at zone_update_commit. */
+	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false);
+	if (ret != KNOT_EOK) {
+		ERROR(zname, "failed to finalize zone contents (%s)",
+		      knot_strerror(ret));
 		goto fail;
 	}
 
