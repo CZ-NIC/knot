@@ -34,8 +34,6 @@ typedef enum {
 	LOG_DIRECTION_NONE,
 	LOG_DIRECTION_IN,
 	LOG_DIRECTION_OUT,
-	LOG_DIRECTION_RECV,
-	LOG_DIRECTION_SENT,
 } log_direction_t;
 
 static inline const char *log_operation_name(log_operation_t operation)
@@ -67,10 +65,6 @@ static inline const char *log_direction_name(log_direction_t direction)
 		return ", incoming";
 	case LOG_DIRECTION_OUT:
 		return ", outgoing";
-	case LOG_DIRECTION_RECV:
-		return ", received";
-	case LOG_DIRECTION_SENT:
-		return ", sent";
 	case LOG_DIRECTION_NONE:
 	default:
 		return "";
