@@ -116,6 +116,8 @@ typedef struct {
 	geo_view_t *views;
 } geo_trie_val_t;
 
+typedef int (*view_cmp_t)(const void *a, const void *b);
+
 int geodb_view_cmp(const void *a, const void *b)
 {
 	geo_view_t *va = (geo_view_t *)a;
@@ -650,8 +652,7 @@ static void geo_sort_and_link(geoip_ctx_t *ctx)
 }
 
 // Return the index of the last lower or equal element or -1 of not exists.
-static int geo_bin_search(geo_view_t *arr, int count, geo_view_t *x,
-                          int (* cmp)(const void *a, const void *b))
+static int geo_bin_search(geo_view_t *arr, int count, geo_view_t *x, view_cmp_t cmp)
 {
 	int l = 0, r = count;
 	while (l < r) {
@@ -663,6 +664,48 @@ static int geo_bin_search(geo_view_t *arr, int count, geo_view_t *x,
 		}
 	}
 	return l - 1; // l is the index of first greater element or N if not exists.
+}
+
+static geo_view_t *find_best_view(geo_view_t *dummy, geo_trie_val_t *data, geoip_ctx_t *ctx)
+{
+	view_cmp_t cmp = (ctx->mode == MODE_GEODB) ? geodb_view_cmp : subnet_view_cmp;
+	int idx = geo_bin_search(data->views, data->count, dummy, cmp);
+	if (idx == -1) { // There is no suitable view.
+		return NULL;
+	}
+	if (cmp(dummy, &data->views[idx]) != 0) {
+		idx = data->views[idx].prev;
+		while (!view_strictly_in_view(dummy, &data->views[idx], ctx->mode)) {
+			if (idx == data->views[idx].prev) {
+				// We are at a root and we have found no suitable view.
+				return NULL;
+			}
+			idx = data->views[idx].prev;
+		}
+	}
+	return &data->views[idx];
+}
+
+static void find_rr_in_view(uint16_t qtype, geo_view_t *view,
+                            knot_rrset_t **rr, knot_rrset_t **rrsig)
+{
+	knot_rrset_t *cname = NULL;
+	knot_rrset_t *cnamesig = NULL;
+	for (int i = 0; i < view->count; i++) {
+		if (view->rrsets[i].type == qtype) {
+			*rr = &view->rrsets[i];
+			*rrsig = (view->rrsigs) ? &view->rrsigs[i] : NULL;
+		} else if (view->rrsets[i].type == KNOT_RRTYPE_CNAME) {
+			cname = &view->rrsets[i];
+			cnamesig = (view->rrsigs) ? &view->rrsigs[i] : NULL;
+		}
+	}
+
+	// Return CNAME if only CNAME is found.
+	if (*rr == NULL && cname != NULL) {
+		*rr = cname;
+		*rrsig = cnamesig;
+	}
 }
 
 static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
@@ -702,22 +745,19 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		remote = &ecs_addr;
 	}
 
-	knot_rrset_t *rr = NULL;
-	knot_rrset_t *rrsig = NULL;
-	knot_rrset_t *cname = NULL;
-	knot_rrset_t *cnamesig = NULL;
 	uint16_t netmask = 0;
 	geodb_data_t entries[ctx->path_count];
 
 	// Create dummy view and fill it with data about the current remote.
 	geo_view_t dummy = { 0 };
-	if (ctx->mode == MODE_SUBNET) {
+	switch(ctx->mode) {
+	case MODE_SUBNET:
 		dummy.subnet = (struct sockaddr_storage *)remote;
 		dummy.subnet_prefix = (remote->ss_family == AF_INET) ? 32 : 128;
-	} else if (ctx->mode == MODE_GEODB) {
-		int ret = geodb_query(ctx->geodb, entries, (struct sockaddr *)remote,
-		                      ctx->paths, ctx->path_count, &netmask);
-		if (ret != 0) {
+		break;
+	case MODE_GEODB:
+		if (geodb_query(ctx->geodb, entries, (struct sockaddr *)remote,
+		                ctx->paths, ctx->path_count, &netmask) != 0) {
 			return state;
 		}
 		// MMDB may supply IPv6 prefixes even for IPv4 address, see man libmaxminddb.
@@ -726,45 +766,27 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 		geodb_fill_geodata(entries, ctx->path_count,
 		                   dummy.geodata, dummy.geodata_len, &dummy.geodepth);
+		break;
+	default:
+		assert(0);
+		break;
 	}
 
 	// Find last lower or equal view.
-	int (* cmp)(const void *, const void *) = (ctx->mode == MODE_GEODB) ?
-	                                          geodb_view_cmp : subnet_view_cmp;
-	int idx = geo_bin_search(data->views, data->count, &dummy, cmp);
-	if (idx == -1) { // There is no suitable view.
+	geo_view_t *view = find_best_view(&dummy, data, ctx);
+	if (view == NULL) { // No suitable view was found.
 		return state;
 	}
-	if (cmp(&dummy, &data->views[idx]) != 0) {
-		idx = data->views[idx].prev;
-		while (!view_strictly_in_view(&dummy, &data->views[idx], ctx->mode)) {
-			if (idx == data->views[idx].prev) {
-				// We are at a root and we have found no suitable view.
-				return state;
-			}
-			idx = data->views[idx].prev;
-		}
-	}
 
-	geo_view_t *view = &data->views[idx];
+	// Save netmask for ECS if in subnet mode.
 	if (ctx->mode == MODE_SUBNET) {
 		netmask = view->subnet_prefix;
 	}
-	for (int i = 0; i < view->count; i++) {
-		if (view->rrsets[i].type == qtype) {
-			rr = &view->rrsets[i];
-			rrsig = (view->rrsigs) ? &view->rrsigs[i] : NULL;
-		} else if (view->rrsets[i].type == KNOT_RRTYPE_CNAME) {
-			cname = &view->rrsets[i];
-			cnamesig = (view->rrsigs) ? &view->rrsigs[i] : NULL;
-		}
-	}
 
-	// Return CNAME if only CNAME is found.
-	if (rr == NULL && cname != NULL) {
-		rr = cname;
-		rrsig = cnamesig;
-	}
+	// Fetch the correct rrset from found view.
+	knot_rrset_t *rr = NULL;
+	knot_rrset_t *rrsig = NULL;
+	find_rr_in_view(qtype, view, &rr, &rrsig);
 
 	// Answer the query if possible.
 	if (rr != NULL) {
