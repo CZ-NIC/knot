@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,21 +20,25 @@
 #include "knot/common/log.h"
 #include "libknot/dname.h"
 
-enum log_operation {
+typedef enum {
 	LOG_OPERATION_AXFR,
 	LOG_OPERATION_IXFR,
 	LOG_OPERATION_NOTIFY,
 	LOG_OPERATION_REFRESH,
 	LOG_OPERATION_UPDATE,
-	LOG_OPERATION_PARENT,
-};
+	LOG_OPERATION_DS_CHECK,
+	LOG_OPERATION_DS_PUSH,
+} log_operation_t;
 
-enum log_direction {
+typedef enum {
+	LOG_DIRECTION_NONE,
 	LOG_DIRECTION_IN,
 	LOG_DIRECTION_OUT,
-};
+	LOG_DIRECTION_RECV,
+	LOG_DIRECTION_SENT,
+} log_direction_t;
 
-static inline const char *log_operation_name(enum log_operation operation)
+static inline const char *log_operation_name(log_operation_t operation)
 {
 	switch (operation) {
 	case LOG_OPERATION_AXFR:
@@ -47,44 +51,44 @@ static inline const char *log_operation_name(enum log_operation operation)
 		return "refresh";
 	case LOG_OPERATION_UPDATE:
 		return "DDNS";
-	case LOG_OPERATION_PARENT:
-		return "parent DS check";
+	case LOG_OPERATION_DS_CHECK:
+		return "DS check";
+	case LOG_OPERATION_DS_PUSH:
+		return "DS push";
 	default:
 		return "?";
 	}
 }
 
-static inline const char *log_direction_name(enum log_direction direction)
+static inline const char *log_direction_name(log_direction_t direction)
 {
 	switch (direction) {
 	case LOG_DIRECTION_IN:
-		return "incoming";
+		return ", incoming";
 	case LOG_DIRECTION_OUT:
-		return "outgoing";
+		return ", outgoing";
+	case LOG_DIRECTION_RECV:
+		return ", received";
+	case LOG_DIRECTION_SENT:
+		return ", sent";
+	case LOG_DIRECTION_NONE:
 	default:
-		return "?";
+		return "";
 	}
 }
 
 /*!
  * \brief Generate log message for server communication.
  *
- * If this macro was a function:
- *
- * void ns_log(int priority, const knot_dname_t *zone, enum log_operation op,
- *             enum log_direction dir, const struct sockaddr *remote,
- *             const char *fmt, ...);
- *
  * Example output:
  *
- * [example.com] NOTIFY, outgoing, 2001:db8::1@53: serial 123
- *
+ * [example.com] NOTIFY, outgoing, remote 2001:db8::1@53, serial 123
  */
 #define ns_log(priority, zone, op, dir, remote, fmt, ...) \
 	do { \
 		char address[SOCKADDR_STRLEN] = ""; \
 		sockaddr_tostr(address, sizeof(address), remote); \
-		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, NULL, "%s, %s, %s: " fmt, \
+		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, NULL, "%s%s, remote %s, " fmt, \
 		             log_operation_name(op), log_direction_name(dir), address, \
 		             ## __VA_ARGS__); \
 	} while (0)
