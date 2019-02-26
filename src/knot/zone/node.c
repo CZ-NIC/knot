@@ -172,6 +172,7 @@ void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 		if (counter->nsec3_wildcard_name != node->nsec3_wildcard_name) {
 			free(counter->nsec3_wildcard_name);
 		}
+		assert(((node->flags ^ counter->flags) & NODE_FLAGS_SECOND));
 		memcpy(counter, node, sizeof(*counter));
 		counter->flags ^= NODE_FLAGS_SECOND;
 

@@ -229,12 +229,20 @@ static void add_to_changes_cb(zone_node_t *node, void *ctx)
 	assert(ret == KNOT_EOK);
 }
 
+static void undelete_node(zone_node_t *node)
+{
+	if (node != NULL && (node->flags & NODE_FLAGS_DELETED)) {
+		node->flags &= ~NODE_FLAGS_DELETED;
+		if (node->parent != NULL) {
+			node->parent->children++;
+		}
+	}
+}
+
 static zone_node_t *find_node_in_changes(const knot_dname_t *owner, void *ctx)
 {
 	zone_node_t *node = zone_tree_get(ctx, owner);
-	if (node != NULL) {
-		node->flags &= ~NODE_FLAGS_DELETED;
-	}
+	undelete_node(node);
 	return node;
 }
 
@@ -256,6 +264,8 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		}
 	}
 
+	undelete_node(node);
+
 	if (binode_rdata_shared(node, rr->type)) {
 		// Modifying existing RRSet.
 		int ret = replace_rdataset_with_copy(node, rr->type);
@@ -263,7 +273,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 			return ret;
 		}
 	}
-	node->flags &= ~NODE_FLAGS_DELETED;
+
 	int ret = zone_tree_insert(nsec3rel ? ctx->contents->nsec3_nodes : ctx->contents->nodes, &node); // in case it was already DELETED then found in changes
 	if (ret != KNOT_EOK) {
 		return ret;
