@@ -6,17 +6,6 @@ m4_define([knot_VERSION_PATCH], )dnl Leave empty if the master branch!
 m4_include([m4/knot-version.m4])
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
-
-# Update library versions
-# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-KNOT_LIB_VERSION([libknot],     8, 0, 0)
-KNOT_LIB_VERSION([libdnssec],   6, 0, 0)
-KNOT_LIB_VERSION([libzscanner], 2, 0, 0)
-
-# Store ./configure parameters and CFLAGS
-AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$*"],[Params passed to configure])
-AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environment])
-
 AM_INIT_AUTOMAKE([foreign std-options subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot])
@@ -25,9 +14,19 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS
 AC_CANONICAL_HOST
 
+# Update library versions
+# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+KNOT_LIB_VERSION([libknot],     8, 0, 0)
+KNOT_LIB_VERSION([libdnssec],   6, 0, 0)
+KNOT_LIB_VERSION([libzscanner], 2, 0, 0)
+
 AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)
 AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
 AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
+
+# Store ./configure parameters and CFLAGS
+AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$*"],[Params passed to configure])
+AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environment])
 
 AC_CONFIG_FILES([src/libknot/version.h
                  src/libdnssec/version.h
