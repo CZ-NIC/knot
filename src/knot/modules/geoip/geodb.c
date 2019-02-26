@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -188,35 +188,29 @@ int geodb_query(geodb_t *geodb, geodb_data_t *entries, struct sockaddr *remote,
 #endif
 }
 
-bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, geodb_data_t *entries)
+void geodb_fill_geodata(geodb_data_t *entries, uint16_t path_cnt,
+                        void **geodata, uint32_t *geodata_len, uint8_t *geodepth)
 {
 #if HAVE_MAXMINDDB
-	for (int i = 0; i < geodepth; i++) {
-		// Nothing to do if current geodata do not specify this key.
-		if (geodata[i] == NULL) {
-			continue;
-		}
-		if (!entries[i].has_data) {
-			return false;
-		}
-		switch (entries[i].type) {
-		case MMDB_DATA_TYPE_UTF8_STRING:
-			if (geodata_len[i] != entries[i].data_size ||
-			    memcmp(geodata[i], entries[i].utf8_string, geodata_len[i]) != 0) {
-				return false;
+	for (int i = 0; i < path_cnt; i++) {
+		if (entries[i].has_data) {
+			*geodepth = i + 1;
+			switch (entries[i].type) {
+			case MMDB_DATA_TYPE_UTF8_STRING:
+				geodata[i] = (void *)entries[i].utf8_string;
+				geodata_len[i] = entries[i].data_size;
+				break;
+			case MMDB_DATA_TYPE_UINT32:
+				geodata[i] = (void *)&entries[i].uint32;
+				geodata_len[i] = sizeof(uint32_t);
+				break;
+			default:
+				assert(0);
+				break;
 			}
-			break;
-		case MMDB_DATA_TYPE_UINT32:
-			if (*((uint32_t *)geodata[i]) != entries[i].uint32) {
-				return false;
-			}
-			break;
-		default:
-			return false;
 		}
 	}
-	return true;
 #else
-	return false;
+	return;
 #endif
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,4 +62,5 @@ void geodb_close(geodb_t *geodb);
 int geodb_query(geodb_t *geodb, geodb_data_t *entries, struct sockaddr *remote,
                 geodb_path_t *paths, uint16_t path_cnt, uint16_t *netmask);
 
-bool remote_in_geo(void **geodata, uint32_t *geodata_len, uint16_t geodepth, geodb_data_t *entries);
+void geodb_fill_geodata(geodb_data_t *entries, uint16_t path_cnt,
+                        void **geodata, uint32_t *geodata_len, uint8_t *geodepth);
