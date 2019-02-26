@@ -810,13 +810,14 @@ static int soa_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	query_init_pkt(pkt);
 
-	int r = knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-	if (r != KNOT_EOK) {
+	int ret = knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN,
+	                                KNOT_RRTYPE_SOA);
+	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
 
-	r = query_put_edns(pkt, &data->edns);
-	if (r != KNOT_EOK) {
+	ret = query_put_edns(pkt, &data->edns);
+	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
 
@@ -870,17 +871,21 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
 
+	query_init_pkt(pkt);
+
 	bool ixfr = (data->xfr_type == XFR_TYPE_IXFR);
 
-	query_init_pkt(pkt);
-	knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN,
-	                      ixfr ? KNOT_RRTYPE_IXFR : KNOT_RRTYPE_AXFR);
+	int ret = knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN,
+	                                ixfr ? KNOT_RRTYPE_IXFR : KNOT_RRTYPE_AXFR);
+	if (ret != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
 
 	if (ixfr) {
 		assert(data->soa);
 		knot_rrset_t *sending_soa = knot_rrset_copy(data->soa, data->mm);
 		uint32_t master_serial;
-		int ret = zone_get_master_serial(data->zone, &master_serial);
+		ret = zone_get_master_serial(data->zone, &master_serial);
 		if (ret != KNOT_EOK) {
 			log_zone_error(data->zone->name, "Failed reading master's serial"
 			               "from KASP DB (%s)", knot_strerror(ret));
@@ -895,7 +900,10 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		knot_rrset_free(sending_soa, data->mm);
 	}
 
-	query_put_edns(pkt, &data->edns);
+	ret = query_put_edns(pkt, &data->edns);
+	if (ret != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
 
 	return KNOT_STATE_CONSUME;
 }
