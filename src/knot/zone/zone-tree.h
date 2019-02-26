@@ -34,6 +34,10 @@ typedef struct {
  */
 typedef int (*zone_tree_apply_cb_t)(zone_node_t *node, void *data);
 
+typedef zone_node_t *(*zone_tree_new_node_cb_t)(const knot_dname_t *dname, void *ctx);
+
+typedef int (*zone_tree_del_node_cb_t)(zone_node_t *node, void *ctx);
+
 /*!
  * \brief Zone tree iteration context.
  */
@@ -133,16 +137,12 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
  */
 void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner);
 
-/*!
- * \brief Delete a node that has no RRSets and no children.
- *
- * \param tree           The tree to remove from.
- * \param node           The node to remove.
- * \param rem_node_cb    A callback to be called for any node removed from the tree.
- * \param rem_node_ctx   Context to be passed to the callback.
- */
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node,
-                            node_addrem_cb rem_node_cb, void *rem_node_ctx);
+
+int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t *dname,
+                       zone_tree_new_node_cb_t new_cb, void *new_cb_ctx, zone_node_t **new_node);
+
+int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
+                       zone_tree_del_node_cb_t del_cb, void *del_cb_ctx);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.

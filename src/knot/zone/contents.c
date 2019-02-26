@@ -372,7 +372,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != z->apex) {
-			zone_tree_delete_empty(nsec3 ? z->nsec3_nodes : z->nodes, node, (node_addrem_cb)node_free, NULL);
+			zone_tree_del_node(nsec3 ? z->nsec3_nodes : z->nodes, node, (zone_tree_del_node_cb_t)node_free, NULL);
 		}
 	}
 
@@ -416,29 +416,6 @@ int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 	}
 
 	return remove_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
-}
-
-zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset,
-                                           node_addrem_cb add_node_cb, node_new_cb new_cb, void *add_node_ctx)
-{
-	if (zone == NULL || rrset == NULL) {
-		return NULL;
-	}
-
-	const bool nsec3 = knot_rrset_is_nsec3rel(rrset);
-	zone_node_t *node = nsec3 ? get_nsec3_node(zone, rrset->owner) :
-	                            get_node(zone, rrset->owner);
-	if (node == NULL) {
-		node = node_new_for_contents(zone, rrset->owner);
-		int ret = nsec3 ? add_nsec3_node(zone, &node, add_node_cb, add_node_ctx) : add_node(zone, &node, true, add_node_cb, new_cb, add_node_ctx);
-		if (ret != KNOT_EOK) {
-			node_free(node, NULL);
-			return NULL;
-		}
-		return node;
-	} else {
-		return node;
-	}
 }
 
 const zone_node_t *zone_contents_find_node(const zone_contents_t *zone, const knot_dname_t *name)

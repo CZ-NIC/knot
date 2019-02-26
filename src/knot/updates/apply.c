@@ -223,26 +223,25 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
 	return KNOT_EOK;
 }
 
-static void add_to_changes_cb(zone_node_t *node, void *ctx)
+static int add_to_changes_cb2(zone_node_t *node, void *ctx)
 {
+	node->flags |= NODE_FLAGS_DELETED;
 	int ret = zone_tree_insert(ctx, &node);
 	assert(ret == KNOT_EOK);
-}
-
-static void undelete_node(zone_node_t *node)
-{
-	if (node != NULL && (node->flags & NODE_FLAGS_DELETED)) {
-		node->flags &= ~NODE_FLAGS_DELETED;
-		if (node->parent != NULL) {
-			node->parent->children++;
-		}
-	}
+	return ret;
 }
 
 static zone_node_t *find_node_in_changes(const knot_dname_t *owner, void *ctx)
 {
-	zone_node_t *node = zone_tree_get(ctx, owner);
-	undelete_node(node);
+	zone_tree_t *tree = ctx;
+	zone_node_t *node = zone_tree_get(tree, owner);
+	if (node == NULL) {
+		node = node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES),
+		                (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
+		(void)zone_tree_insert(tree, &node);
+	} else {
+		node->flags &= ~NODE_FLAGS_DELETED;
+	}
 	return node;
 }
 
@@ -251,32 +250,39 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	zone_contents_t *contents = ctx->contents;
 	bool nsec3rel = knot_rrset_is_nsec3rel(rr);
 
-	// Get or create node with this owner, search changes first
-	zone_node_t *node = zone_tree_get(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, rr->owner);
-	if (node == NULL) {
-		node = zone_contents_get_node_for_rr(contents, rr, add_to_changes_cb, find_node_in_changes, nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs);
-		if (node == NULL) {
+	// Create NSEC3 tree if not exists.
+	if (nsec3rel && contents->nsec3_nodes == NULL) {
+		contents->nsec3_nodes = zone_tree_create((contents->nodes->flags & ZONE_TREE_USE_BINODES));
+		if (contents->nsec3_nodes == NULL) {
 			return KNOT_ENOMEM;
 		}
-		int ret = zone_tree_insert(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, &node);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+		contents->nsec3_nodes->flags = contents->nodes->flags;
 	}
 
-	undelete_node(node);
+	// Get or create node with this owner, search changes first
+	zone_node_t *node = NULL;
+	int ret = zone_tree_add_node(nsec3rel ? contents->nsec3_nodes : contents->nodes,
+	                             contents->apex, rr->owner, find_node_in_changes,
+	                             nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, &node);
+	printf("ztan (%s) %p\n", knot_strerror(ret), node);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	if (node == NULL) {
+		return KNOT_EOUTOFZONE;
+	}
+
+	ret = zone_tree_insert(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, &node);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	if (binode_rdata_shared(node, rr->type)) {
 		// Modifying existing RRSet.
-		int ret = replace_rdataset_with_copy(node, rr->type);
+		ret = replace_rdataset_with_copy(node, rr->type);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-	}
-
-	int ret = zone_tree_insert(nsec3rel ? ctx->contents->nsec3_nodes : ctx->contents->nodes, &node); // in case it was already DELETED then found in changes
-	if (ret != KNOT_EOK) {
-		return ret;
 	}
 
 	// Insert new RR to RRSet, data will be copied.
@@ -339,7 +345,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != contents->apex) {
-			zone_tree_delete_empty(tree, node, add_to_changes_cb, nsec3 ? ctx->nsec3_ptrs : ctx->node_ptrs);
+			zone_tree_del_node(tree, node, add_to_changes_cb2, nsec3 ? ctx->nsec3_ptrs : ctx->node_ptrs);
 		}
 	}
 

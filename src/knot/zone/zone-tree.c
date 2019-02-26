@@ -20,6 +20,7 @@
 #include "knot/zone/zone-tree.h"
 #include "libknot/consts.h"
 #include "libknot/errcode.h"
+#include "libknot/packet/wire.h"
 #include "contrib/macros.h"
 
 static inline zone_node_t *fix_get(zone_node_t *node, const zone_tree_t *tree)
@@ -191,41 +192,61 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 	}
 }
 
-/*! \brief Clears wildcard child if set in parent node. */
-static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
+int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t *dname,
+                       zone_tree_new_node_cb_t new_cb, void *new_cb_ctx, zone_node_t **new_node)
 {
-	if ((node->flags & NODE_FLAGS_WILDCARD_CHILD)
-	    && knot_dname_is_wildcard(owner)) {
-		node->flags &= ~NODE_FLAGS_WILDCARD_CHILD;
+	if (knot_dname_cmp(dname, apex->owner) == 0) {
+		*new_node = apex;
+		return KNOT_EOK;
 	}
-}
-
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node,
-                            node_addrem_cb rem_node_cb, void *rem_node_ctx)
-{
-	if (tree == NULL || node == NULL) {
-		return;
-	}
-
-	if (node->rrset_count == 0 && node->children == 0) {
-		zone_node_t *parent_node = node_parent(node);
-		if (parent_node != NULL) {
-			parent_node->children--;
-			fix_wildcard_child(parent_node, node->owner);
-			if (!(parent_node->flags & NODE_FLAGS_APEX)) { /* Is not apex */
-				// Recurse using the parent node, do not delete possibly empty parent.
-				zone_tree_delete_empty(tree, parent_node, rem_node_cb, rem_node_ctx);
+	*new_node = zone_tree_get(tree, dname);
+	if (*new_node == NULL && knot_dname_in_bailiwick(dname, apex->owner) > 0) {
+		*new_node = new_cb(dname, new_cb_ctx);
+		if (*new_node == NULL) {
+			return KNOT_ENOMEM;
+		}
+		int ret = zone_tree_insert(tree, new_node);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		zone_node_t *parent = NULL;
+		ret = zone_tree_add_node(tree, apex, knot_wire_next_label(dname, NULL), new_cb, new_cb_ctx, &parent);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		(*new_node)->parent = parent;
+		if (parent != NULL) {
+			parent->children++;
+			if (knot_dname_is_wildcard(dname)) {
+				parent->flags |= NODE_FLAGS_WILDCARD_CHILD;
 			}
 		}
+	}
+	return KNOT_EOK;
+}
 
-		// Delete node
-		assert(!(node->flags & NODE_FLAGS_DELETED));
-		zone_tree_remove_node(tree, node->owner);
-		node->flags |= NODE_FLAGS_DELETED;
-		if (rem_node_cb != NULL) {
-			rem_node_cb(node, rem_node_ctx);
+int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
+                       zone_tree_del_node_cb_t del_cb, void *del_cb_ctx)
+{
+	zone_node_t *parent = node_parent(node);
+	bool wildcard = knot_dname_is_wildcard(node->owner);
+
+	node->parent = NULL;
+	zone_tree_remove_node(tree, node->owner);
+
+	int ret = del_cb(node, del_cb_ctx);
+
+	if (ret == KNOT_EOK && parent != NULL) {
+		parent->children--;
+		if (wildcard) {
+			parent->flags &= ~NODE_FLAGS_WILDCARD_CHILD;
+		}
+		if (parent->children == 0 && parent->rrset_count == 0 &&
+		    !(parent->flags & NODE_FLAGS_APEX)) {
+			ret = zone_tree_del_node(tree, parent, del_cb, del_cb_ctx);
 		}
 	}
+	return ret;
 }
 
 int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data)
