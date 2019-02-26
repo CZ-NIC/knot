@@ -41,7 +41,8 @@ geodb_filename = knot.data_dir + "geo.conf"
 subnet_filename = knot.data_dir + "net.conf"
 geo_conf = open(geodb_filename, "w")
 net_conf = open(subnet_filename, "w")
-dname_count = len(iso_codes)
+dname_count = 10
+iso_count = len(iso_codes)
 for i in range(1, dname_count + 1):
     print("d" + str(i) + ".example.com:", file=geo_conf)
     print("d" + str(i) + ".example.com:", file=net_conf)
@@ -54,7 +55,7 @@ for i in range(1, dname_count + 1):
         geo_id += 1
 geo_conf.close()
 net_conf.close()
- 
+
 ModGeoip.check()
 
 mod_geoip = ModGeoip(geodb_filename, "geodb", t.data_dir + "db.mmdb",
@@ -73,7 +74,7 @@ resp.check(rcode="NOERROR", rdata="192.0.2.4")
 
 # Test geo-dependent answers.
 for i in range(1, 1000):
-    random_client = "127.255." + str(random.randint(1, dname_count)) + ".0"
+    random_client = "127.255." + str(random.randint(1, iso_count)) + ".0"
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
 
@@ -85,7 +86,7 @@ knot.reload()
 knot.zone_wait(zone)
 
 for i in range(1, 1000):
-    random_client = "127.255." + str(random.randint(1, dname_count)) + ".0"
+    random_client = "127.255." + str(random.randint(1, iso_count)) + ".0"
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
 
