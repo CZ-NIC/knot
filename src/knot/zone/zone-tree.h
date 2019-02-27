@@ -26,6 +26,7 @@ enum {
 
 typedef struct {
 	trie_t *trie;
+	trie_cow_t *cow; // non-NULL only during zone update
 	uint16_t flags;
 } zone_tree_t;
 
@@ -52,6 +53,8 @@ typedef struct {
  * \return created zone tree structure.
  */
 zone_tree_t *zone_tree_create(bool use_binodes);
+
+void trie_cb_noop(trie_val_t val, const unsigned char *key, size_t len, void *d);
 
 zone_tree_t *zone_tree_dup(zone_tree_t *from);
 

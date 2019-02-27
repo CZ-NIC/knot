@@ -57,10 +57,12 @@ zone_tree_t *zone_tree_create(bool use_binodes)
 	return t;
 }
 
-static void *identity(void *x, knot_mm_t *mm)
+void trie_cb_noop(trie_val_t val, const unsigned char *key, size_t len, void *d)
 {
-	UNUSED(mm);
-	return x;
+	(void)val;
+	(void)key;
+	(void)len;
+	(void)d;
 }
 
 zone_tree_t *zone_tree_dup(zone_tree_t *from)
@@ -70,7 +72,9 @@ zone_tree_t *zone_tree_dup(zone_tree_t *from)
 		return to;
 	}
 	to->flags = from->flags ^ ZONE_TREE_BINO_SECOND;
-	to->trie = trie_dup(from->trie, identity, NULL);
+	from->cow = trie_cow(from->trie, trie_cb_noop, NULL);
+	to->cow = from->cow;
+	to->trie = trie_cow_new(to->cow);
 	if (to->trie == NULL) {
 		free(to);
 		to = NULL;
@@ -91,7 +95,12 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 
 	assert((bool)((*node)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
 
-	*trie_get_ins(tree->trie, lf + 1, *lf) = binode_node(*node, false);
+
+	if (tree->cow != NULL) {
+		*trie_get_cow(tree->cow, lf + 1, *lf) = binode_node(*node, false);
+	} else {
+		*trie_get_ins(tree->trie, lf + 1, *lf) = binode_node(*node, false);
+	}
 
 	*node = binode_node(*node, (tree->flags & ZONE_TREE_USE_BINODES) && (tree->flags & ZONE_TREE_BINO_SECOND));
 
@@ -188,7 +197,11 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 
 	trie_val_t *rval = trie_get_try(tree->trie, lf + 1, *lf);
 	if (rval != NULL) {
-		trie_del(tree->trie, lf + 1, *lf, NULL);
+		if (tree->cow != NULL) {
+			trie_del_cow(tree->cow, lf + 1, *lf, NULL);
+		} else {
+			trie_del(tree->trie, lf + 1, *lf, NULL);
+		}
 	}
 }
 
