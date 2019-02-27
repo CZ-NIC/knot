@@ -26,33 +26,6 @@
 #include "contrib/macros.h"
 
 /*!
- * \brief Checks if the given node can be inserted into the given zone.
- *
- * Checks if both the arguments are non-NULL and if the owner of the node
- * belongs to the zone (i.e. is a subdomain of the zone apex).
- *
- * \param zone Zone to which the node is going to be inserted.
- * \param node Node to check.
- *
- * \retval KNOT_EOK if both arguments are non-NULL and the node belongs to the
- *         zone.
- * \retval KNOT_EINVAL if either of the arguments is NULL.
- * \retval KNOT_EOUTOFZONE if the node does not belong to the zone.
- */
-static int check_node(const zone_contents_t *contents, const zone_node_t *node)
-{
-	assert(contents);
-	assert(contents->apex != NULL);
-	assert(node);
-
-	if (knot_dname_in_bailiwick(node->owner, contents->apex->owner) <= 0) {
-		return KNOT_EOUTOFZONE;
-	}
-
-	return KNOT_EOK;
-}
-
-/*!
  * \brief Destroys all RRSets in a node.
  *
  * \param node Node to destroy RRSets from.
@@ -187,132 +160,6 @@ static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *na
 	return zone_tree_get(zone->nodes, name);
 }
 
-static int add_node(zone_contents_t *zone, zone_node_t **anode, bool create_parents,
-                    node_addrem_cb add_node_cb, node_new_cb new_cb, void *add_node_ctx)
-{
-	if (zone == NULL || anode == NULL || *anode == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = check_node(zone, *anode);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = zone_tree_insert(zone->nodes, anode);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	assert(!((*anode)->flags & NODE_FLAGS_DELETED));
-	if (add_node_cb != NULL) {
-		add_node_cb(*anode, add_node_ctx);
-	}
-
-	if (!create_parents) {
-		return KNOT_EOK;
-	}
-
-	zone_node_t *node = *anode;
-
-	/* No parents for root domain. */
-	if (*node->owner == '\0') {
-		return KNOT_EOK;
-	}
-
-	zone_node_t *next_node = NULL;
-	const uint8_t *parent = knot_wire_next_label(node->owner, NULL);
-
-	if (knot_dname_is_equal(zone->apex->owner, parent)) {
-		node_set_parent(node, zone->apex);
-
-		// check if the node is not wildcard child of the parent
-		if (knot_dname_is_wildcard(node->owner)) {
-			zone->apex->flags |= NODE_FLAGS_WILDCARD_CHILD;
-		}
-	} else {
-		while (parent != NULL && !(next_node = get_node(zone, parent))) {
-
-			/* Create a new node. */
-			next_node = NULL;
-			if (new_cb != NULL) {
-				next_node = new_cb(parent, add_node_ctx);
-			}
-			if (next_node == NULL) {
-				next_node = node_new_for_contents(parent, zone);
-			}
-			if (next_node == NULL) {
-				return KNOT_ENOMEM;
-			}
-
-			/* Insert node to a tree. */
-			ret = zone_tree_insert(zone->nodes, &next_node);
-			if (ret != KNOT_EOK) {
-				node_free(next_node, NULL);
-				return ret;
-			}
-			assert(!(next_node->flags & NODE_FLAGS_DELETED));
-
-			if (add_node_cb != NULL) {
-				add_node_cb(next_node, add_node_ctx);
-			}
-
-			/* Update node pointers. */
-			node_set_parent(node, next_node);
-			if (knot_dname_is_wildcard(node->owner)) {
-				next_node->flags |= NODE_FLAGS_WILDCARD_CHILD;
-			}
-
-			node = next_node;
-			parent = knot_wire_next_label(parent, NULL);
-		}
-
-		// set the found parent (in the zone) as the parent of the last
-		// inserted node
-		node_set_parent(node, next_node);
-	}
-
-	return KNOT_EOK;
-}
-
-static int add_nsec3_node(zone_contents_t *zone, zone_node_t **node,
-                          node_addrem_cb add_node_cb, void *add_node_ctx)
-{
-	if (zone == NULL || node == NULL || *node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = check_node(zone, *node);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	/* Create NSEC3 tree if not exists. */
-	if (zone->nsec3_nodes == NULL) {
-		zone->nsec3_nodes = zone_tree_create((zone->nodes->flags & ZONE_TREE_USE_BINODES));
-		if (zone->nsec3_nodes == NULL) {
-			return KNOT_ENOMEM;
-		}
-		zone->nsec3_nodes->flags = zone->nodes->flags;
-	}
-
-	// how to know if this is successful??
-	ret = zone_tree_insert(zone->nsec3_nodes, node);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	if (add_node_cb != NULL) {
-		add_node_cb(*node, add_node_ctx);
-	}
-
-	// no parents to be created, the only parent is the zone apex
-	// set the apex as the parent of the node
-	node_set_parent(*node, zone->apex);
-
-	// cannot be wildcard child, so nothing to be done
-
-	return KNOT_EOK;
-}
-
 static zone_node_t *get_nsec3_node(const zone_contents_t *zone,
                                    const knot_dname_t *name)
 {
@@ -335,18 +182,10 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 	}
 
 	if (*n == NULL) {
-		*n = nsec3 ? get_nsec3_node(z, rr->owner) : get_node(z, rr->owner);
-		if (*n == NULL) {
-			// Create new, insert
-			*n = node_new_for_contents(rr->owner, z);
-			if (*n == NULL) {
-				return KNOT_ENOMEM;
-			}
-			int ret = nsec3 ? add_nsec3_node(z, n, NULL, NULL) : add_node(z, n, true, NULL, NULL, NULL);
-			if (ret != KNOT_EOK) {
-				node_free(*n, NULL);
-				*n = NULL;
-			}
+		int ret = zone_tree_add_node(zone_contents_tree_for_rr(z, rr), z->apex, rr->owner,
+		                             (zone_tree_new_node_cb_t)node_new_for_contents, z, n);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 	}
 
