@@ -436,8 +436,6 @@ int knot_nsec_fix_chain(const zone_contents_t *old_zone, const zone_contents_t *
 
 	nsec_chain_iterate_data_t data = { ttl, changeset, new_zone };
 
-	zone_tree_check_del(new_zone->nodes, new_zone->nsec3_nodes);
-
 	return knot_nsec_chain_iterate_fix(old_zone->nodes, new_zone->nodes,
 					   connect_nsec_nodes, &data);
 }

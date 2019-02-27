@@ -51,7 +51,12 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binod
 /*!
  * \brief Create a node suitable for inserting into this contents.
  */
-zone_node_t *node_new_for_contents(const zone_contents_t *c, const knot_dname_t *owner);
+zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents);
+
+/*!
+ * \brief Returns zone tree for inserting given RR.
+ */
+zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrset_t *rr);
 
 /*!
  * \brief Add an RR to contents.

@@ -138,7 +138,7 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binod
 		goto cleanup;
 	}
 
-	contents->apex = node_new_for_contents(contents, apex_name);
+	contents->apex = node_new_for_contents(apex_name, contents);
 	if (contents->apex == NULL) {
 		goto cleanup;
 	}
@@ -157,11 +157,26 @@ cleanup:
 	return NULL;
 }
 
-zone_node_t *node_new_for_contents(const zone_contents_t *c, const knot_dname_t *owner)
+zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents)
 {
-	return node_new(owner, (c->nodes->flags & ZONE_TREE_USE_BINODES),
-	                (c->nodes->flags & ZONE_TREE_USE_BINODES) &&
-	                (c->nodes->flags & ZONE_TREE_BINO_SECOND), NULL);
+	return node_new(owner, (contents->nodes->flags & ZONE_TREE_USE_BINODES),
+	                (contents->nodes->flags & ZONE_TREE_USE_BINODES) &&
+	                (contents->nodes->flags & ZONE_TREE_BINO_SECOND), NULL);
+}
+
+zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrset_t *rr)
+{
+	bool nsec3rel = knot_rrset_is_nsec3rel(rr);
+
+	if (nsec3rel && contents->nsec3_nodes == NULL) {
+		contents->nsec3_nodes = zone_tree_create((contents->nodes->flags & ZONE_TREE_USE_BINODES));
+		if (contents->nsec3_nodes == NULL) {
+			return NULL;
+		}
+		contents->nsec3_nodes->flags = contents->nodes->flags;
+	}
+
+	return nsec3rel ? contents->nsec3_nodes : contents->nodes;
 }
 
 static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *name)
@@ -223,7 +238,7 @@ static int add_node(zone_contents_t *zone, zone_node_t **anode, bool create_pare
 				next_node = new_cb(parent, add_node_ctx);
 			}
 			if (next_node == NULL) {
-				next_node = node_new_for_contents(zone, parent);
+				next_node = node_new_for_contents(parent, zone);
 			}
 			if (next_node == NULL) {
 				return KNOT_ENOMEM;
@@ -323,7 +338,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		*n = nsec3 ? get_nsec3_node(z, rr->owner) : get_node(z, rr->owner);
 		if (*n == NULL) {
 			// Create new, insert
-			*n = node_new_for_contents(z, rr->owner);
+			*n = node_new_for_contents(rr->owner, z);
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
