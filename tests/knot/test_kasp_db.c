@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -82,7 +81,7 @@ int main(int argc, char *argv[])
 
 	char *test_dir_name = test_mkdtemp();
 	bool ignore = false;
-	
+
 	list_t l;
 	key_params_t *params;
 #define free_params free(params->id); free(params->public_key.data); params->id = NULL; params->public_key.data = NULL;
@@ -182,8 +181,10 @@ int main(int argc, char *argv[])
 	is_int(0, knot_dname_cmp(((ptrnode_t *)HEAD(l))->d, zone1) | knot_dname_cmp(((ptrnode_t *)TAIL(l))->d, zone2), "kasp_db: listed correct zones");
 	ptrlist_deep_free(&l, NULL);
 
-	assert(kasp_db_add_key(db, zone1, &params1) == KNOT_EOK);
-	assert(kasp_db_add_key(db, zone2, &params2) == KNOT_EOK);
+	ret = kasp_db_add_key(db, zone1, &params1);
+	ok(ret == KNOT_EOK, "kasp_db: add key1");
+	ret = kasp_db_add_key(db, zone2, &params2);
+	ok(ret == KNOT_EOK, "kasp_db: add key2");
 
 	ret = kasp_db_set_policy_last(db, "policy1", NULL, zone1, params1.id);
 	is_int(KNOT_EOK, ret, "kasp_db: set policylast");
