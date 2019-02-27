@@ -431,6 +431,18 @@ void update_rollback(apply_ctx_t *ctx)
 
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);
+
+	trie_cow_rollback(ctx->contents->nodes->cow, trie_cb_noop, NULL);
+	if (ctx->contents->nsec3_nodes != NULL) {
+		trie_cow_rollback(ctx->contents->nsec3_nodes->cow, trie_cb_noop, NULL);
+	}
+
+	free(ctx->contents->nodes);
+	free(ctx->contents->nsec3_nodes);
+
+	dnssec_nsec3_params_free(&ctx->contents->nsec3_params);
+
+	free(ctx->contents);
 }
 
 void update_free_zone(zone_contents_t *contents)
@@ -439,8 +451,13 @@ void update_free_zone(zone_contents_t *contents)
 		return;
 	}
 
-	zone_tree_free(&contents->nodes);
-	zone_tree_free(&contents->nsec3_nodes);
+	trie_cow_commit(contents->nodes->cow, trie_cb_noop, NULL);
+	if (contents->nsec3_nodes != NULL) {
+		trie_cow_commit(contents->nsec3_nodes->cow, trie_cb_noop, NULL);
+	}
+
+	free(contents->nodes);
+	free(contents->nsec3_nodes);
 
 	dnssec_nsec3_params_free(&contents->nsec3_params);
 
