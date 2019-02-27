@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,6 +106,7 @@ struct refresh_data {
 	enum xfr_type xfr_type;           //!< Transer type (mostly IXFR versus AXFR).
 	knot_rrset_t *initial_soa_copy;   //!< Copy of the received initial SOA.
 	struct xfr_stats stats;           //!< Transfer statistics.
+	struct timespec started;          //!< When refresh started.
 	size_t change_size;               //!< Size of added and removed RRs.
 
 	struct {
@@ -171,20 +172,22 @@ static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 	return KNOT_EOK;
 }
 
-static void xfr_log_publish(const knot_dname_t *zone_name,
-                            const struct sockaddr *remote,
+static void xfr_log_publish(const struct refresh_data *data,
                             const uint32_t old_serial,
                             const uint32_t new_serial,
                             bool axfr_bootstrap)
 {
+	struct timespec finished = time_now();
+	double duration = time_diff_ms(&data->started, &finished) / 1000.0;
+
 	if (!axfr_bootstrap) {
-		REFRESH_LOG(LOG_INFO, zone_name, remote,
-		            "zone updated, serial %u -> %u",
-		            old_serial, new_serial);
+		REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
+		            "zone updated, %0.2f seconds, serial %u -> %u",
+		            duration, old_serial, new_serial);
 	} else {
-		REFRESH_LOG(LOG_INFO, zone_name, remote,
-		            "zone updated, serial none -> %u",
-		            new_serial);
+		REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
+		            "zone updated, %0.2f seconds, serial none -> %u",
+		            duration, new_serial);
 	}
 }
 
@@ -264,8 +267,7 @@ static int axfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	xfr_log_publish(data->zone->name, data->remote, old_serial,
-	                zone_contents_serial(new_zone), bootstrap);
+	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone), bootstrap);
 
 	return KNOT_EOK;
 }
@@ -482,8 +484,7 @@ static int ixfr_finalize(struct refresh_data *data)
 				"unable to save master serial, future transfers might be broken");
 			}
 		}
-		xfr_log_publish(data->zone->name, data->remote, old_serial,
-		                zone_contents_serial(up.zone->contents), false);
+		xfr_log_publish(data, old_serial, zone_contents_serial(up.zone->contents), false);
 	} else {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to store changes (%s)", knot_strerror(ret));
@@ -969,6 +970,8 @@ static int refresh_begin(knot_layer_t *layer, void *_data)
 		data->xfr_type = XFR_TYPE_AXFR;
 		data->initial_soa_copy = NULL;
 	}
+
+	data->started = time_now();
 
 	return KNOT_STATE_PRODUCE;
 }
