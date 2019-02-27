@@ -264,7 +264,6 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	int ret = zone_tree_add_node(nsec3rel ? contents->nsec3_nodes : contents->nodes,
 	                             contents->apex, rr->owner, find_node_in_changes,
 	                             nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, &node);
-	printf("ztan (%s) %p\n", knot_strerror(ret), node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -344,7 +343,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		// RRSet is empty now, remove it from node, all data freed, except additionals.
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
-		if (node->rrset_count == 0 && node != contents->apex) {
+		if (node->rrset_count == 0 && node->children == 0 && node != contents->apex) {
 			zone_tree_del_node(tree, node, add_to_changes_cb2, nsec3 ? ctx->nsec3_ptrs : ctx->node_ptrs);
 		}
 	}

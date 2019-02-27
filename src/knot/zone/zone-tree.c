@@ -313,13 +313,13 @@ static int binode_unify_cb(zone_node_t *node, void *ctx)
 	return KNOT_EOK;
 }
 
-#include <stdio.h>
 static int check_deleted(zone_node_t *node, void *v)
 {
 	UNUSED(v);
 	if ((node->flags & NODE_FLAGS_DELETED)) {
 		bool cdel = (binode_counterpart(node)->flags & NODE_FLAGS_DELETED);
-		printf("DELETED %s (counter %d)\n", node->owner, cdel);
+		(void)cdel;
+		assert(!cdel);
 	}
 	return 0;
 }

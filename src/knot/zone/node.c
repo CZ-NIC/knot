@@ -100,7 +100,6 @@ static bool ttl_changed(struct rr_data *node_data, const knot_rrset_t *rrset)
 	return rrset->ttl != node_data->ttl;
 }
 
-#include <stdio.h>
 zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_mm_t *mm)
 {
 	zone_node_t *ret = mm_alloc(mm, (binode ? 2 : 1) * sizeof(zone_node_t));
@@ -124,7 +123,6 @@ zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_
 	}
 
 	if (binode) {
-		printf("new node %s %p\n", owner, ret);
 		ret->flags |= NODE_FLAGS_BINODE;
 		memcpy(ret + 1, ret, sizeof(*ret));
 		(ret + 1)->flags ^= NODE_FLAGS_SECOND | NODE_FLAGS_DELETED;
@@ -154,9 +152,6 @@ zone_node_t *binode_counterpart(zone_node_t *node)
 void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 {
 	zone_node_t *counter = binode_counterpart(node);
-	if (counter != NULL) {
-		printf("biu %p %s %d counter %p deled %d -> %d\n", node, node->owner, free_deleted, counter, ((node->flags & NODE_FLAGS_DELETED) ? 1 : 0), (counter && (counter->flags & NODE_FLAGS_DELETED) ? 1 : 0));
-	}
 	if (counter != NULL) {
 		if (counter->rrs != node->rrs) {
 			for (uint16_t i = 0; i < counter->rrset_count; ++i) {
@@ -281,10 +276,6 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 		return;
 	}
 
-	if ((node->flags & NODE_FLAGS_BINODE)) {
-		printf("node free %s %p\n", node->owner, binode_node(node, false));
-	}
-
 	knot_dname_free(node->owner, mm);
 
 	zone_node_t *counter = binode_counterpart(node);
@@ -385,10 +376,6 @@ void node_set_parent(zone_node_t *node, zone_node_t *parent)
 	// node must not have any parent previously
 	assert(node != NULL);
 	assert(node->parent == NULL);
-
-	if ((node->flags & NODE_FLAGS_BINODE)) {
-		printf("set node %s %p parent %s %p\n", node->owner, node, parent->owner, parent);
-	}
 
 	// set the parent
 	node->parent = parent;
