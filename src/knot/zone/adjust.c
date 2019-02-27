@@ -26,9 +26,9 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 	zone_node_t *parent = node_parent(node);
 
 	// check if this node is not a wildcard child of its parent
-	/*if (knot_dname_is_wildcard(node->owner)) {
-		parent->flags |= NODE_FLAGS_WILDCARD_CHILD;
-	}*/
+	if (knot_dname_is_wildcard(node->owner)) {
+		parent->flags |= NODE_FLAGS_WILDCARD_CHILD; // TODO remove this in favour of setting the flag on node addition (already attempted)
+	}
 
 	// set flags (delegation point, non-authoritative)
 	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
