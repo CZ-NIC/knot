@@ -328,7 +328,6 @@ void zone_update_clear(zone_update_t *update)
 			zone_contents_deep_free(update->new_cont);
 		} else {
 			update_rollback(update->a_ctx);
-			update_free_zone(update->new_cont);
 		}
 		changeset_clear(&update->change);
 	} else if (update->flags & UPDATE_FULL) {
