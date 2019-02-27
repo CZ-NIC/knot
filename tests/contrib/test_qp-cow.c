@@ -135,6 +135,7 @@ static void
 del_cow(trie_cow_t *x, struct cowleaf *leaf)
 {
 	trie_val_t val;
+	UNUSED(val);
 	assert(KNOT_EOK == trie_del_cow(x,
 					(uint8_t *)leaf->key,
 					(uint32_t)leaf->len,
