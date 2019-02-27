@@ -17,5 +17,7 @@
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #pragma clang diagnostic ignored "-Wunknown-warning-option"
 #pragma clang diagnostic ignored "-Wunused-variable"
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 #pragma GCC diagnostic ignored "-Wshadow"
