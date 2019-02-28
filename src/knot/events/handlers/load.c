@@ -223,6 +223,8 @@ int event_load(conf_t *conf, zone_t *zone)
 	zf_conts = NULL;
 	journal_conts = NULL;
 
+	uint32_t middle_serial = zone_contents_serial(up.new_cont);
+
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { 0 };
 	if (dnssec_enable) {
@@ -258,11 +260,15 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	bool incremental = ((up.flags & UPDATE_INCREMENTAL) && !zone_update_no_change(&up));
-	uint32_t old_serial = (!incremental ? 0 :
-		(up.zone->contents ? zone_contents_serial(up.zone->contents) : zone->zonefile.serial)
-	);
-	uint32_t new_serial = zone_contents_serial(up.new_cont);
+	uint32_t old_serial = 0, new_serial = zone_contents_serial(up.new_cont);
+	char old_serial_str[11] = "none", new_serial_str[15] = "";
+	if (old_contents_exist) {
+		old_serial = zone_contents_serial(zone->contents);
+		snprintf(old_serial_str, sizeof(old_serial_str), "%u", old_serial);
+	}
+	if (new_serial != middle_serial) {
+		snprintf(new_serial_str, sizeof(new_serial_str), " -> %u", new_serial);
+	}
 
 	// Commit zone_update back to zone (including journal update, rcu,...).
 	ret = zone_update_commit(conf, &up);
@@ -271,13 +277,8 @@ int event_load(conf_t *conf, zone_t *zone)
 		goto cleanup;
 	}
 
-	if (incremental) {
-		log_zone_info(zone->name, "loaded, serial %u -> %u, %zu bytes",
-		              old_serial, new_serial, zone->contents->size);
-	} else {
-		log_zone_info(zone->name, "loaded, serial %u, %zu bytes",
-		              new_serial, zone->contents->size);
-	}
+	log_zone_info(zone->name, "loaded, serial %s -> %u%s, %zu bytes",
+	              old_serial_str, middle_serial, new_serial_str, zone->contents->size);
 
 	if (zone->control_update != NULL) {
 		log_zone_warning(zone->name, "control transaction aborted");
@@ -294,7 +295,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	replan_from_timers(conf, zone);
 
-	if (old_serial != new_serial) {
+	if (!old_contents_exist || old_serial != new_serial) {
 		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 	}
 
