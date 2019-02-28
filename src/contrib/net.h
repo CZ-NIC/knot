@@ -136,7 +136,7 @@ ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
 /*!
  * \brief Send a message on a SOCK_DGRAM socket.
  *
- * \see net_send
+ * \see net_base_send
  */
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
                        const struct sockaddr *addr);
@@ -144,21 +144,21 @@ ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
 /*!
  * \brief Receive a message from a SOCK_DGRAM socket.
  *
- * \see net_recv
+ * \see net_base_recv
  */
 ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
 
 /*!
  * \brief Send a message on a SOCK_STREAM socket.
  *
- * \see net_send
+ * \see net_base_send
  */
 ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms);
 
 /*!
  * \brief Receive a message from a SOCK_STREAM socket.
  *
- * \see net_recv
+ * \see net_base_recv
  */
 ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
 
@@ -169,7 +169,7 @@ ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
  * message size according to the specification. These two bytes are not
  * reflected in the return value.
  *
- * \see net_send
+ * \see net_base_send
  */
 ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms);
 
@@ -180,6 +180,6 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeo
  * size according to the specification. These two bytes are not included in
  * the returned size. Only a complete DNS message is retrieved.
  *
- * \see net_recv
+ * \see net_base_recv
  */
 ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
