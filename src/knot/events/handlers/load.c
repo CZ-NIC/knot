@@ -264,10 +264,10 @@ int event_load(conf_t *conf, zone_t *zone)
 	char old_serial_str[11] = "none", new_serial_str[15] = "";
 	if (old_contents_exist) {
 		old_serial = zone_contents_serial(zone->contents);
-		snprintf(old_serial_str, sizeof(old_serial_str), "%u", old_serial);
+		(void)snprintf(old_serial_str, sizeof(old_serial_str), "%u", old_serial);
 	}
 	if (new_serial != middle_serial) {
-		snprintf(new_serial_str, sizeof(new_serial_str), " -> %u", new_serial);
+		(void)snprintf(new_serial_str, sizeof(new_serial_str), " -> %u", new_serial);
 	}
 
 	// Commit zone_update back to zone (including journal update, rcu,...).
