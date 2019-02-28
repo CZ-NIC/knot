@@ -57,7 +57,7 @@ static void replan_notify(zone_t *zone, const zone_t *old_zone)
 
 	time_t notify = zone_events_get_time(old_zone, ZONE_EVENT_NOTIFY);
 	if (notify > 0) {
-		zone_events_schedule_at(zone, notify);
+		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, notify);
 	}
 }
 
