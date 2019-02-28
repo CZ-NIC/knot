@@ -140,10 +140,31 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
  */
 void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner);
 
-
+/*!
+ * \brief Create a node in zone tree if not already exists, and also all parent nodes.
+ *
+ * \param tree         Zone tree to insert into.
+ * \param apex         Zone contents apex node.
+ * \param dname        Name of the node to be added.
+ * \param new_cb       Callback for allocating new node.
+ * \param new_cb_ctx   Context to be passed to allocating callback.
+ * \param new_node     Output: pointer on added (or existing) node with specified dname.
+ *
+ * \return KNOT_E*
+ */
 int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t *dname,
                        zone_tree_new_node_cb_t new_cb, void *new_cb_ctx, zone_node_t **new_node);
 
+/*!
+ * \brief Remove a node in zone tree, removin also empty parents.
+ *
+ * \param tree          Zone tree to remove from.
+ * \param node          Node to be removed.
+ * \param del_cb        Callback called on every removed node.
+ * \param del_cb_ctx    Context to be passed to the callback.
+ *
+ * \return KNOT_E*
+ */
 int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
                        zone_tree_del_node_cb_t del_cb, void *del_cb_ctx);
 

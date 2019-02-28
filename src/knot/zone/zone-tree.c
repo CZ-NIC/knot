@@ -219,6 +219,7 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
 			return KNOT_ENOMEM;
 		}
 		int ret = zone_tree_insert(tree, new_node);
+		assert(!((*new_node)->flags & NODE_FLAGS_DELETED));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

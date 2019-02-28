@@ -655,8 +655,6 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 		return KNOT_ESEMCHECK;
 	}
 
-	zone_trees_unify_binodes(update->new_cont->nodes, update->new_cont->nsec3_nodes);
-
 	int ret = zone_adjust_full(update->new_cont);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
@@ -673,6 +671,16 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 	}
 
 	return ret;
+}
+
+static int check_unified(zone_node_t *node, void *data)
+{
+	(void)data;
+	zone_node_t *counter = binode_counterpart(node);
+	assert((node->flags ^ counter->flags) == NODE_FLAGS_SECOND);
+	assert(node->rrset_count == counter->rrset_count);
+	assert(node->rrs == counter->rrs);
+	return KNOT_EOK;
 }
 
 int zone_update_commit(conf_t *conf, zone_update_t *update)
@@ -734,6 +742,9 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	free(update->a_ctx);
 	update->a_ctx = NULL;
 	update->new_cont = NULL;
+
+	zone_contents_apply(update->zone->contents, check_unified, NULL);
+	zone_contents_nsec3_apply(update->zone->contents, check_unified, NULL);
 
 	/* Sync zonefile immediately if configured. */
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, update->zone->name);

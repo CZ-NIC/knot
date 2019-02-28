@@ -25,10 +25,7 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 {
 	zone_node_t *parent = node_parent(node);
 
-	// check if this node is not a wildcard child of its parent
-	if (knot_dname_is_wildcard(node->owner)) {
-		parent->flags |= NODE_FLAGS_WILDCARD_CHILD; // TODO remove this in favour of setting the flag on node addition (already attempted)
-	}
+	assert(!(node->flags & NODE_FLAGS_DELETED));
 
 	// set flags (delegation point, non-authoritative)
 	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
@@ -37,7 +34,7 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 		node->flags |= NODE_FLAGS_DELEG;
 	} else {
 		// Default.
-		node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_WILDCARD_CHILD);
+		node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH);
 	}
 
 	return KNOT_EOK; // always returns this value :)
@@ -49,7 +46,6 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 		node->nsec3_node = NULL;
 		return KNOT_EOK;
 	}
-	/* FIXME make this work again
 	if (node->nsec3_node != NULL) {
 		// Optimization: this node has been shallow-copied from older state. Try using already known NSEC3 name.
 		zone_node_t *candidate = zone_tree_get(zone->nsec3_nodes, node->nsec3_node->owner);
@@ -58,7 +54,6 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 			return KNOT_EOK;
 		}
 	}
-	*/ node->nsec3_node = NULL;
 	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), node->owner,
 	                                  zone->apex->owner, &zone->nsec3_params);

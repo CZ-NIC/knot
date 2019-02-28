@@ -204,20 +204,6 @@ zone_node_t *binode_node(zone_node_t *node, bool second)
 	return node;
 }
 
-bool binode_rdataset_shared(zone_node_t *node, uint16_t type)
-{
-	if (node == NULL || !(node->flags & NODE_FLAGS_BINODE)) {
-		return false;
-	}
-	zone_node_t *counterpart = ((node->flags & NODE_FLAGS_SECOND) ? node - 1 : node + 1);
-	if (counterpart->rrs == node->rrs) {
-		return true;
-	}
-	knot_rdataset_t *r1 = node_rdataset(node, type), *r2 = node_rdataset(counterpart, type);
-	//return (r1 != NULL && r2 != NULL && r1->rdata == r2->rdata);
-	return (r1 == r2);
-}
-
 bool binode_rdata_shared(zone_node_t *node, uint16_t type)
 {
 	if (node == NULL || !(node->flags & NODE_FLAGS_BINODE)) {

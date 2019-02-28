@@ -413,6 +413,12 @@ void update_cleanup(apply_ctx_t *ctx)
 
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);
+
+	// this is important not only for full update
+	// but also for incremental because during adjusting
+	// also the nodes not being affected by the update itself
+	// might be affected
+	zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes);
 }
 
 void update_rollback(apply_ctx_t *ctx)

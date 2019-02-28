@@ -151,8 +151,6 @@ zone_node_t *binode_node(zone_node_t *node, bool second);
 /*!
  * \brief Return true if the rdataset of specified type is shared (shallow-copied) among both parts of bi-node.
  */
-bool binode_rdataset_shared(zone_node_t *node, uint16_t type);
-
 bool binode_rdata_shared(zone_node_t *node, uint16_t type);
 
 /*!
