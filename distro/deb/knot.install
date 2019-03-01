@@ -2,8 +2,8 @@ debian/ufw/knot etc/ufw/applications.d/
 etc/knot/knot.conf
 usr/bin/knsec3hash
 usr/bin/kzonecheck
-usr/sbin/kjournalprint
 usr/sbin/keymgr
+usr/sbin/kjournalprint
 usr/sbin/knotc
 usr/sbin/knotd
 usr/share/man/man1/knsec3hash.1
