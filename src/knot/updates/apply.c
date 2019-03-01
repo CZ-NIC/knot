@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <pthread.h>
 
 #include "knot/common/log.h"
 #include "knot/updates/apply.h"
@@ -418,6 +419,10 @@ void update_cleanup(apply_ctx_t *ctx)
 	// also the nodes not being affected by the update itself
 	// might be affected
 	zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes);
+
+	if (ctx->cow_mutex != NULL) {
+		pthread_mutex_unlock(ctx->cow_mutex);
+	}
 }
 
 void update_rollback(apply_ctx_t *ctx)
@@ -440,6 +445,10 @@ void update_rollback(apply_ctx_t *ctx)
 	trie_cow_rollback(ctx->contents->nodes->cow, trie_cb_noop, NULL);
 	if (ctx->contents->nsec3_nodes != NULL) {
 		trie_cow_rollback(ctx->contents->nsec3_nodes->cow, trie_cb_noop, NULL);
+	}
+
+	if (ctx->cow_mutex != NULL) {
+		pthread_mutex_unlock(ctx->cow_mutex);
 	}
 
 	free(ctx->contents->nodes);
