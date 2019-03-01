@@ -71,6 +71,9 @@ typedef struct zone
 	/*! \brief Control update context. */
 	struct zone_update *control_update;
 
+	/*! \brief Ensue one COW tramsaction on zone's trees at a time. */
+	pthread_mutex_t cow_lock;
+
 	/*! \brief Journal access lock. */
 	pthread_mutex_t journal_lock;
 

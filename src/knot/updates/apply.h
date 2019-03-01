@@ -29,6 +29,7 @@ struct apply_ctx {
 	zone_tree_t *node_ptrs;   /*!< Just pointers to the affected nodes in contents. */
 	zone_tree_t *nsec3_ptrs;  /*!< The same for NSEC3 nodes. */
 	uint32_t flags;
+	pthread_mutex_t *cow_mutex; // pointer to zone_t struct
 };
 
 typedef struct apply_ctx apply_ctx_t;
