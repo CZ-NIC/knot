@@ -219,6 +219,7 @@ void zone_free(zone_t **zone_ptr)
 	pthread_mutex_destroy(&zone->ddns_lock);
 	pthread_mutex_destroy(&zone->journal_lock);
 
+	pthread_mutex_lock(&zone->cow_lock);
 	pthread_mutex_destroy(&zone->cow_lock);
 
 	/* Control update. */
