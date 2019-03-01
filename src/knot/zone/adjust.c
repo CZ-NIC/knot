@@ -47,10 +47,10 @@ int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 		return KNOT_EOK;
 	}
 	if (node->nsec3_node != NULL) {
-		// Optimization: this node has been shallow-copied from older state. Try using already known NSEC3 name.
-		zone_node_t *candidate = zone_tree_get(zone->nsec3_nodes, node->nsec3_node->owner);
-		if (candidate != NULL && (candidate->flags & NODE_FLAGS_IN_NSEC3_CHAIN)) {
-			node->nsec3_node = candidate;
+		zone_node_t *real_nsec3 = binode_node(node->nsec3_node, node->flags & NODE_FLAGS_SECOND);
+		if ((real_nsec3->flags & NODE_FLAGS_IN_NSEC3_CHAIN) &&
+		    !(real_nsec3->flags & NODE_FLAGS_DELETED)) {
+			node->nsec3_node = real_nsec3;
 			return KNOT_EOK;
 		}
 	}
