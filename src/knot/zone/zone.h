@@ -71,6 +71,9 @@ typedef struct zone
 	/*! \brief Control update context. */
 	struct zone_update *control_update;
 
+	/*! \brief Ensue one COW tramsaction on zone's trees at a time. */
+	pthread_mutex_t cow_lock;
+
 	/*! \brief Ptr to journal DB (in struct server) */
 	knot_lmdb_db_t *journaldb;
 
