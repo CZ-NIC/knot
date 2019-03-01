@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <pthread.h>
 #include <tap/basic.h>
 #include <tap/files.h>
 #include <unistd.h>
@@ -105,9 +106,11 @@ static int test_node_unified(zone_node_t *n1, void *v)
 	return KNOT_EOK;
 }
 
-static void test_zone_unified(zone_contents_t *z)
+static void test_zone_unified(zone_t *z)
 {
-	zone_tree_apply(z->nodes, test_node_unified, NULL);
+	pthread_mutex_lock(&z->cow_lock);
+	zone_tree_apply(z->contents->nodes, test_node_unified, NULL);
+	pthread_mutex_unlock(&z->cow_lock);
 }
 
 void test_full(zone_t *zone, zs_scanner_t *sc)
@@ -223,7 +226,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	rrset_present = node_contains_rr(node, &rrset);
 	ok(ret == KNOT_EOK && rrset_present, "full zone update: commit");
 
-	test_zone_unified(zone->contents);
+	test_zone_unified(zone);
 
 	knot_rdataset_clear(&rrset.rrs, NULL);
 }
@@ -325,7 +328,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	rrset_present = node_contains_rr(iter_node, &rrset);
 	ok(ret == KNOT_EOK && rrset_present, "incremental zone update: commit");
 
-	test_zone_unified(zone->contents);
+	test_zone_unified(zone);
 
 	knot_rdataset_clear(&rrset.rrs, NULL);
 }
