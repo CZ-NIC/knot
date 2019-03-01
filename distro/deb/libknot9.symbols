@@ -1,4 +1,4 @@
-libknot.so.8 libknot8 #MINVER#
+libknot.so.9 libknot9 #MINVER#
  KNOT_DB_LMDB_DUPSORT@Base 2.5.0
  KNOT_DB_LMDB_INTEGERKEY@Base 2.4.0
  KNOT_DB_LMDB_MAPASYNC@Base 2.5.0

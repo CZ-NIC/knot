@@ -1,4 +1,4 @@
-libdnssec.so.6 libdnssec6 #MINVER#
+libdnssec.so.7 libdnssec7 #MINVER#
  dnssec_algorithm_digest_support@Base 2.6.0
  dnssec_algorithm_key_size_check@Base 2.3.0
  dnssec_algorithm_key_size_default@Base 2.3.0
