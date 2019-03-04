@@ -646,11 +646,14 @@ AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 
+filtered_cflags=$(echo -n "$CFLAGS" | sed 's/\W-f\S*-prefix-map=\S*\W/ /g')
+filtered_cppflags=$(echo -n "$CPPFLAGS" | sed 's/\W-f\S*-prefix-map=\S*\W/ /g')
+
 result_msg_base="  Knot DNS $VERSION
 
     Target:   $host_os $host_cpu
     Compiler: ${CC}
-    CFLAGS:   ${CFLAGS} ${CPPFLAGS}
+    CFLAGS:   ${filtered_cflags} ${filtered_cppflags}
     LIBS:     ${LIBS} ${LDFLAGS}
     LibURCU:  ${liburcu_LIBS} ${liburcu_CFLAGS}
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
