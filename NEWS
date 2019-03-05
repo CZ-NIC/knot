@@ -1,3 +1,165 @@
+Knot DNS 2.8.0 (2019-03-05)
+===========================
+
+Features:
+---------
+ - New offline-KSK mode of operation
+ - Configurable multithreaded DNSSEC signing for large zones
+ - Extended ACL configuration for dynamic updates
+ - New knotc trigger 'zone-key-rollover' for immediate DNSKEY rollover
+ - Added support for OPENPGPKEY, CSYNC, SMIMEA, and ZONEMD RR types
+ - New 'double-ds' option for CDS/CDNSKEY publication
+
+Improvements:
+-------------
+ - Significant speed-up of zone updates
+ - Knotc supports force option in the interactive mode
+ - Copy-on-write support for QP-trie (Thanks to Tony Finch)
+ - Unified and more efficient LMDB layer for journal, timer, and KASP databases
+ - DS check event is re-planned according to KASP even when purged timers
+ - Module DNS Cookies supports explicit Server Secret configuration
+ - Zone mtime is verified against full-precision timestamp (Thanks to Daniel Kahn Gillmor)
+ - Extended logging (loaded SOA serials, refresh duration, tiny cleanup)
+ - Relaxed fixed-length condition for DNSSEC key ID
+ - Extended semantic checks for DNAME and NS RR types
+ - Added support for FreeBSD's SO_REUSEPORT_LB
+ - Improved performance of geoip module
+ - Various improvements in the documentation
+
+Compatibility:
+--------------
+ - Changed configuration default for 'cds-cdnskey-publish' to 'rollover'
+ - Journal DB format changes are not downgrade-compatible
+ - Keymgr no longer prints DS for algorithm SHA-1
+
+Knot DNS 2.7.6 (2019-01-23)
+===========================
+
+Improvements:
+-------------
+ - Zone status also shows when the zone load is scheduled
+ - Server workers status also shows background workers utilization
+ - Default control timeout for knotc was increased to 10 seconds
+ - Pkg-config files contain auxiliary variable with library filename
+
+Bugfixes:
+---------
+ - Configuration commit or server reload can drop some pending zone events
+ - Nonempty zone journal is created even though it's disabled #635
+ - Zone is completely re-signed during empty dynamic update processing
+ - Server can crash when storing a big zone difference to the journal
+ - Failed to link on FreeBSD 12 with Clang
+
+Knot DNS 2.7.5 (2019-01-07)
+===========================
+
+Features:
+---------
+ - Keymgr supports NSEC3 salt handling
+
+Improvements:
+-------------
+ - Zone history in journal is dropped apon AXFR-like zone update
+ - Libdnssec is no longer linked against libm #628
+ - Libdnssec is explicitly linked against libpthread if PKCS #11 enabled #629
+ - Better support for libknot packaging in Python
+ - Manually generated KSK is 'ready' by default
+ - Kdig supports '+timeout' as an alias for '+time'
+ - Kdig supports '+nocomments' option
+ - Kdig no longer prints empty lines between retries
+ - Kdig returns failure if operations not successfully resolved #632
+ - Fixed repeating of the 'KSK submission, waiting for confirmation' log
+ - Various improvements in documentation, Dockerfile, and tests
+
+Bugfixes:
+---------
+ - Knotc fails to unset huge configuration section
+ - Kjournalprint sometimes fails to display zone journal content
+ - Improper timing of ZSK removal during ZSK rollover
+ - Missing UTC time zone indication in the 'iso' keymgr list output
+ - A race condition in the online signing module
+
+Knot DNS 2.7.4 (2018-11-13)
+===========================
+
+Features:
+---------
+ - Added SNI configuration for TLS in kdig (Thanks to Alexander Schultz)
+
+Improvements:
+-------------
+ - Added warning log when DNSSEC events not successfully scheduled
+ - New semantic check on timer values in keymgr
+ - DS query no longer asks other addresses if got a negative answer
+ - Reintroduced 'rollover' configuration option for CDS/CDNSKEY publication
+ - Extended logging for zone loading
+ - Various documentation improvements
+
+Bugfixes:
+---------
+ - Failed to import module configuration #613
+ - Improper Cflags value in libknot.pc if built with embedded LMDB #615
+ - IXFR doesn't fall back to AXFR if malformed reply
+ - DNSSEC events not correctly scheduled for empty zone updates
+ - During algorithm rollover old keys get removed before DS TTL expires #617
+ - Maximum zone's RRSIG TTL not considered during algorithm rollover #620
+
+Knot DNS 2.7.3 (2018-10-11)
+===========================
+
+Features:
+---------
+ - New queryacl module for query access control
+ - Configurable answer rrset rotation #612
+ - Configurable NSEC bitmap in online signing
+
+Improvements:
+-------------
+ - Better error logging for KASP DB operations #601
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - Keymgr "list" output doesn't show key size for ECDSA algorithms #602
+ - Failed to link statically with embedded LMDB
+ - Configuration commit causes zone reload for all zones
+ - The statistics module overlooks TSIG record in a request
+ - Improper processing of an AXFR-style-IXFR response consisting of one-record messages
+ - Race condition in online signing during key rollover #600
+ - Server can crash if geoip module is enabled in the geo mode
+
+Knot DNS 2.7.2 (2018-08-29)
+===========================
+
+Improvements:
+-------------
+ - Keymgr list command displays also key size
+ - Kjournalprint displays total occupied size in the debug mode
+ - Server doesn't stop if failed to load a shared module from the module directory
+ - Libraries libcap-ng, pthread, and dl are linked selectively if needed
+
+Bugfixes:
+---------
+ - Sometimes incorrect result from dnssec_nsec_bitmap_contains (libdnssec)
+ - Server can crash when loading zone file difference and zone-in-journal is set
+ - Incorrect treatment of specific queries in the module RRL
+ - Failed to link module Cookies as a shared library
+
+Knot DNS 2.7.1 (2018-08-14)
+===========================
+
+Improvements:
+-------------
+ - Added zone wire size information to zone loading log message
+ - Added debug log message for each unsuccessful remote address operation
+ - Various improvements for packaging
+
+Bugfixes:
+---------
+ - Incompatible handling of RRSIG TTL value when creating a DNS message
+ - Incorrect RRSIG TTL value in zone differences and knotc zone operation outputs
+ - Default configure prefix is ignored
+
 Knot DNS 2.7.0 (2018-08-03)
 ===========================
 
@@ -44,6 +206,20 @@ Compatibility:
  - Removed obsolete 'ixfr-from-differences' configuration option
  - Removed old journal migration
  - Removed module rosedb
+
+Knot DNS 2.6.9 (2018-08-14)
+===========================
+
+Improvements:
+-------------
+ - Added zone wire size to zone loading log message
+ - Added debug log message for each unsuccessful remote address operation
+
+Bugfixes:
+---------
+ - Zone not flushed after re-signing during zone load #594
+ - Server crashes when committing empty zone transaction
+ - Incoming IXFR with on-slave signing sometimes leads to memory corruption #595
 
 Knot DNS 2.6.8 (2018-07-10)
 ===========================
