@@ -85,9 +85,9 @@ enum node_flags {
 	/*! \brief Node is the zone Apex. */
 	NODE_FLAGS_APEX =            1 << 6,
 	/*! \brief Is this i bi-node? */
-	NODE_FLAGS_BINODE =          1 << 8,
+	NODE_FLAGS_BINODE =          1 << 8, // this value shall be fixed
 	/*! \brief Is this the second half of bi-node? */
-	NODE_FLAGS_SECOND =          1 << 9,
+	NODE_FLAGS_SECOND =          1 << 9, // this value shall be fixed
 	/*! \brief The node shall be deleted. It's just not because it's a bi-node and the counterpart still exists. */
 	NODE_FLAGS_DELETED =         1 << 10,
 };
