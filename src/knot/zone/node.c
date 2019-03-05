@@ -193,15 +193,10 @@ int binode_prepare_change(zone_node_t *node, knot_mm_t *mm)
 
 zone_node_t *binode_node(zone_node_t *node, bool second)
 {
-	if (node != NULL && (node->flags & NODE_FLAGS_BINODE)) {
-		if (second && !(node->flags & NODE_FLAGS_SECOND)) {
-			return node + 1;
-		}
-		if (!second && (node->flags & NODE_FLAGS_SECOND)) {
-			return node - 1;
-		}
+	if (unlikely(node == NULL || !(node->flags & NODE_FLAGS_BINODE))) {
+		return node;
 	}
-	return node;
+	return node + (second - (int)((node->flags & NODE_FLAGS_SECOND) >> 9));
 }
 
 bool binode_rdata_shared(zone_node_t *node, uint16_t type)
