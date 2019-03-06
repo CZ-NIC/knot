@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "contrib/lmdb/lmdb.h"
+#include <lmdb.h>
 
 #include <stdbool.h>
 #include <stdlib.h>
