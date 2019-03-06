@@ -72,15 +72,12 @@ int unadjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 
 int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
-	zone_node_t *counter = binode_counterpart(node);
-	assert(counter != NULL);
-	if (counter->nsec3_wildcard_name != node->nsec3_wildcard_name) {
-		// FIXME this should never happen, but it does
-		free(node->nsec3_wildcard_name);
+	if (!knot_is_nsec3_enabled(zone)) {
+		node->nsec3_wildcard_name = NULL;
+		return KNOT_EOK;
 	}
 
-	node->nsec3_wildcard_name = NULL;
-	if (!knot_is_nsec3_enabled(zone)) {
+	if (node->nsec3_wildcard_name != NULL) {
 		return KNOT_EOK;
 	}
 
@@ -196,7 +193,7 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 	/* If the result differs, shallow copy node and store additionals. */
 	if (!additional_equal(rr_data->additional, new_addit)) {
 		if (!binode_additional_shared(adjn, adjn->rrs[rr_at].type)) {
-			// FIXME this should never happen, but it does
+			// this happens when additionals are adjusted twice during one update, e.g. IXFR-from-diff
 			additional_clear(adjn->rrs[rr_at].additional);
 		}
 
