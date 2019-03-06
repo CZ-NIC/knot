@@ -95,6 +95,13 @@ Upgrade 2.6.x to 2.7.x
 Upgrading from Knot DNS version 2.6.x to 2.7.x is seamless if no obsolete
 configuration or module rosedb is used.
 
+.. _Upgrade 2.7.x to 2.8.x:
+
+Upgrade 2.7.x to 2.8.x
+======================
+
+Upgrading from Knot DNS version 2.7.x to 2.8.x is seamless.
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users
