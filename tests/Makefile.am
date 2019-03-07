@@ -3,7 +3,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src			\
 	-I$(top_srcdir)/src/libdnssec		\
 	-I$(top_srcdir)/src/libdnssec/shared	\
-	$(gnutls_CFLAGS)
+	$(gnutls_CFLAGS) $(lmdb_CFLAGS)
 
 LDADD = \
 	libtap.la				\
