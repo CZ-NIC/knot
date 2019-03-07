@@ -518,7 +518,7 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 	}
 	if (ret == KNOT_EOK) {
-		if (resch.plan_ds_query && mod->dnssec->policy->ksk_sbm_check_interval > 0) {
+		if (resch.plan_ds_check && mod->dnssec->policy->ksk_sbm_check_interval > 0) {
 			ctx->event_parent_ds_q = mod->dnssec->now + mod->dnssec->policy->ksk_sbm_check_interval;
 		} else {
 			ctx->event_parent_ds_q = 0;
@@ -646,7 +646,7 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 		return ret;
 	}
 
-	if (resch.plan_ds_query) {
+	if (resch.plan_ds_check) {
 		ctx->event_parent_ds_q = time(NULL);
 	}
 	ctx->event_rollover = resch.next_rollover;
