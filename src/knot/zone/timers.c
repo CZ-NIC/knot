@@ -54,7 +54,7 @@ enum timer_id {
 	TIMER_LAST_REFRESH,
 	TIMER_NEXT_REFRESH,
 	TIMER_LAST_RESALT,
-	TIMER_NEXT_PARENT_DS_Q
+	TIMER_NEXT_DS_CHECK
 };
 
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
@@ -78,12 +78,12 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		uint8_t id = wire_ctx_read_u8(&wire);
 		uint64_t value = wire_ctx_read_u64(&wire);
 		switch (id) {
-		case TIMER_SOA_EXPIRE:       timers.soa_expire = value; break;
-		case TIMER_LAST_FLUSH:       timers.last_flush = value; break;
-		case TIMER_LAST_REFRESH:     timers.last_refresh = value; break;
-		case TIMER_NEXT_REFRESH:     timers.next_refresh = value; break;
-		case TIMER_LAST_RESALT:      timers.last_resalt = value; break;
-		case TIMER_NEXT_PARENT_DS_Q: timers.next_parent_ds_q = value; break;
+		case TIMER_SOA_EXPIRE:    timers.soa_expire = value; break;
+		case TIMER_LAST_FLUSH:    timers.last_flush = value; break;
+		case TIMER_LAST_REFRESH:  timers.last_refresh = value; break;
+		case TIMER_NEXT_REFRESH:  timers.next_refresh = value; break;
+		case TIMER_LAST_RESALT:   timers.last_resalt = value; break;
+		case TIMER_NEXT_DS_CHECK: timers.next_ds_check = value; break;
 		default:                 break; // ignore
 		}
 	}
@@ -103,12 +103,12 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 {
 	MDB_val k = { knot_dname_size(zone), (void *)zone };
 	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBL",
-		TIMER_SOA_EXPIRE,       (uint64_t)timers->soa_expire,
-		TIMER_LAST_FLUSH,       (uint64_t)timers->last_flush,
-		TIMER_LAST_REFRESH,     (uint64_t)timers->last_refresh,
-		TIMER_NEXT_REFRESH,     (uint64_t)timers->next_refresh,
-		TIMER_LAST_RESALT,      (uint64_t)timers->last_resalt,
-		TIMER_NEXT_PARENT_DS_Q, (uint64_t)timers->next_parent_ds_q);
+		TIMER_SOA_EXPIRE,    (uint64_t)timers->soa_expire,
+		TIMER_LAST_FLUSH,    (uint64_t)timers->last_flush,
+		TIMER_LAST_REFRESH,  (uint64_t)timers->last_refresh,
+		TIMER_NEXT_REFRESH,  (uint64_t)timers->next_refresh,
+		TIMER_LAST_RESALT,   (uint64_t)timers->last_resalt,
+		TIMER_NEXT_DS_CHECK, (uint64_t)timers->next_ds_check);
 	knot_lmdb_insert(txn, &k, &v);
 	free(v.mv_data);
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ typedef struct {
 	knot_time_t next_nsec3resalt;
 	knot_time_t last_nsec3resalt;
 	bool keys_changed;
-	bool plan_ds_query;
+	bool plan_ds_check;
 } zone_sign_reschedule_t;
 
 /*!

@@ -17,7 +17,7 @@
 #include "knot/dnssec/ds_query.h"
 #include "knot/zone/zone.h"
 
-int event_parent_ds_q(conf_t *conf, zone_t *zone)
+int event_ds_check(conf_t *conf, zone_t *zone)
 {
 	kdnssec_ctx_t ctx = { 0 };
 
@@ -35,12 +35,12 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 
 	ret = knot_parent_ds_query(&ctx, &keyset, conf->cache.srv_tcp_reply_timeout * 1000);
 
-	zone->timers.next_parent_ds_q = 0;
+	zone->timers.next_ds_check = 0;
 	if (ret != KNOT_EOK) {
 		if (ctx.policy->ksk_sbm_check_interval > 0) {
 			time_t next_check = time(NULL) + ctx.policy->ksk_sbm_check_interval;
-			zone->timers.next_parent_ds_q = next_check;
-			zone_events_schedule_at(zone, ZONE_EVENT_PARENT_DS_Q, next_check);
+			zone->timers.next_ds_check = next_check;
+			zone_events_schedule_at(zone, ZONE_EVENT_DS_CHECK, next_check);
 		}
 	} else {
 		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
