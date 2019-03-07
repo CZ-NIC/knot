@@ -107,7 +107,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	int ret = knot_requestor_exec(&requestor, req, timeout);
 
-	if (ret == KNOT_EOK) {
+	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_LOG(LOG_INFO, zone->name, dst,
 			   "serial %u", knot_soa_serial(soa->rrs.rdata));
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
