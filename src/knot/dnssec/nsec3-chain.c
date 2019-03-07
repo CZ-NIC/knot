@@ -441,10 +441,6 @@ static int connect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
 
 	// check if the NSEC3 rrset has not been updated in changeset
 	knot_rrset_t aorig = node_rrset(a, KNOT_RRTYPE_NSEC3);
-	const zone_node_t *ch_a = zone_contents_find_nsec3_node(data->changeset->add, a->owner);
-	if (node_rrtype_exists(ch_a, KNOT_RRTYPE_NSEC3)) {
-		aorig = node_rrset(ch_a, KNOT_RRTYPE_NSEC3);
-	}
 
 	// prepare a copy of NSEC3 rrsets in question
 	knot_rrset_t *acopy = knot_rrset_copy(&aorig, NULL);
@@ -460,9 +456,7 @@ static int connect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
 	}
 
 	// add the removed original and the updated copy to changeset
-	if (node_rrtype_exists(ch_a, KNOT_RRTYPE_NSEC3)) {
-		ret = changeset_remove_addition(data->changeset, &aorig);
-	} else {
+	if (1) {
 		ret = changeset_add_removal(data->changeset, &aorig, 0);
 	}
 	if (ret == KNOT_EOK) {
@@ -553,7 +547,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
  * \return KNOT_EOK, KNOT_E* if any error.
  */
 static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t *params,
-                              uint32_t ttl, bool opt_out, changeset_t *chgset, const knot_dname_t *for_node)
+                              uint32_t ttl, bool opt_out, const knot_dname_t *for_node)
 {
 	// check if we need to do something
 	const zone_node_t *old_n = zone_contents_find_node(update->zone->contents, for_node);
@@ -588,15 +582,10 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		knot_rrset_t rem_nsec3 = node_rrset(old_nsec3_n, KNOT_RRTYPE_NSEC3);
 		if (!knot_rrset_empty(&rem_nsec3)) {
 			knot_rrset_t rem_rrsig = node_rrset(old_nsec3_n, KNOT_RRTYPE_RRSIG);
-			if (!add_nsec3) {
+			if (1) {
 				ret = zone_update_remove(update, &rem_nsec3);
 				if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
 					ret = zone_update_remove(update, &rem_rrsig);
-				}
-			} else {
-				ret = changeset_add_removal(chgset, &rem_nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
-				if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
-					ret = changeset_add_removal(chgset, &rem_rrsig, 0);
 				}
 			}
 			next_hash = (uint8_t *)knot_nsec3_next(rem_nsec3.rrs.rdata);
@@ -625,10 +614,8 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 			}
 		}
 		if (ret == KNOT_EOK) {
-			if (next_hash == NULL) {
+			if (1) {
 				ret = zone_update_add(update, &nsec3);
-			} else {
-				ret = changeset_add_addition(chgset, &nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 			}
 		}
 		binode_unify(new_nsec3_n, false, NULL);
@@ -640,7 +627,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 }
 
 static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *params,
-                           uint32_t ttl, bool opt_out, changeset_t *chgset)
+                           uint32_t ttl, bool opt_out)
 {
 	assert(update);
 
@@ -649,7 +636,7 @@ static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *p
 
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
 		zone_node_t *n = zone_tree_it_val(&it);
-		ret = fix_nsec3_for_node(update, params, ttl, opt_out, chgset, n->owner);
+		ret = fix_nsec3_for_node(update, params, ttl, opt_out, n->owner);
 		zone_tree_it_next(&it);
 	}
 
@@ -660,7 +647,7 @@ static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *p
 
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
 		zone_node_t *n = zone_tree_it_val(&it);
-		ret = fix_nsec3_for_node(update, params, ttl, opt_out, chgset, n->owner);
+		ret = fix_nsec3_for_node(update, params, ttl, opt_out, n->owner);
 		zone_tree_it_next(&it);
 	}
 	zone_tree_it_free(&it);
@@ -812,7 +799,7 @@ int knot_nsec3_fix_chain(zone_update_t *update,
                          changeset_t *changeset)
 {
 
-	int ret = fix_nsec3_nodes(update, params, ttl, opt_out, changeset);
+	int ret = fix_nsec3_nodes(update, params, ttl, opt_out);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
