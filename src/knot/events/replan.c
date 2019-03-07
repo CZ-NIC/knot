@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -130,7 +130,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	time_t ds = zone->timers.next_parent_ds_q;
+	time_t ds = zone->timers.next_ds_check;
 	if (ds == 0) {
 		ds = TIME_IGNORE;
 	}
@@ -141,7 +141,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	                        ZONE_EVENT_EXPIRE, expire,
 	                        ZONE_EVENT_FLUSH, flush,
 	                        ZONE_EVENT_NSEC3RESALT, resalt,
-	                        ZONE_EVENT_PARENT_DS_Q, ds);
+	                        ZONE_EVENT_DS_CHECK, ds);
 }
 
 void replan_load_new(zone_t *zone)

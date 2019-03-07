@@ -592,7 +592,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 				ret = generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
 			}
 			if (ret == KNOT_EOK) {
-				reschedule->plan_ds_query = true;
+				reschedule->plan_ds_check = true;
 				plan_ds_keytag = dnssec_key_get_keytag(ctx->zone->keys[0].key);
 			}
 		}
@@ -683,7 +683,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		case SUBMIT:
 			ret = submit_key(ctx, next.key);
 			if (ret == KNOT_EOK) {
-				reschedule->plan_ds_query = true;
+				reschedule->plan_ds_check = true;
 				plan_ds_keytag = dnssec_key_get_keytag(next.key->key);
 			}
 			break;
@@ -715,7 +715,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	if (ret == KNOT_EOK && next.type == REPLACE && next.ksk &&
 	    knot_time_cmp(reschedule->next_rollover, ctx->now) > 0) {
 		// just to make sure DS check is scheduled
-		reschedule->plan_ds_query = true;
+		reschedule->plan_ds_check = true;
 		plan_ds_keytag = dnssec_key_get_keytag(next.key->key);
 	}
 
@@ -727,7 +727,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		ret = kdnssec_ctx_commit(ctx);
 	}
 
-	if (ret == KNOT_EOK && reschedule->plan_ds_query) {
+	if (ret == KNOT_EOK && reschedule->plan_ds_check) {
 		char param[32];
 		(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu", plan_ds_keytag);
 		log_fmt_zone(LOG_NOTICE, LOG_SOURCE_ZONE, ctx->zone->dname, param,
