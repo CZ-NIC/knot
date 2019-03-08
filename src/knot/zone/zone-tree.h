@@ -47,6 +47,8 @@ typedef int (*zone_tree_del_node_cb_t)(zone_node_t *node, void *ctx);
 typedef struct {
 	zone_tree_t *tree;
 	trie_it_t *it;
+
+	zone_tree_t *next_tree;
 } zone_tree_it_t;
 
 /*!
@@ -189,6 +191,19 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
  * \return KNOT_OK, KNOT_ENOMEM
  */
 int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it);
+
+/*!
+ * \brief Start iteration of two zone trees.
+ *
+ * This is useful e.g. for iteration over normal and NSEC3 nodes.
+ *
+ * \param first    First tree to be iterated over.
+ * \param second   Second tree to be iterated over.
+ * \param it       Out: iteration context. It shall be zeroed before.
+ *
+ * \return KNOT_OK, KNOT_ENOMEM
+ */
+int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree_it_t *it);
 
 /*!
  * \brief Return true iff iteration is finished.

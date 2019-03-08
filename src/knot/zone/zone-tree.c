@@ -282,6 +282,20 @@ int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it)
 			return KNOT_ENOMEM;
 		}
 		it->tree = tree;
+		it->next_tree = NULL;
+	}
+	return KNOT_EOK;
+}
+
+int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree_it_t *it)
+{
+	if (it->tree == NULL) {
+		it->it = trie_it_begin(first->trie);
+		if (it->it == NULL) {
+			return KNOT_ENOMEM;
+		}
+		it->tree = first;
+		it->next_tree = second;
 	}
 	return KNOT_EOK;
 }
@@ -304,6 +318,12 @@ void zone_tree_it_del(zone_tree_it_t *it)
 void zone_tree_it_next(zone_tree_it_t *it)
 {
 	trie_it_next(it->it);
+	if (it->next_tree != NULL && trie_it_finished(it->it)) {
+		trie_it_free(it->it);
+		it->tree = it->next_tree;
+		it->next_tree = NULL;
+		it->it = trie_it_begin(it->tree->trie);
+	}
 }
 
 void zone_tree_it_free(zone_tree_it_t *it)

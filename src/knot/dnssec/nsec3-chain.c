@@ -632,18 +632,7 @@ static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *p
 	assert(update);
 
 	zone_tree_it_t it = { 0 };
-	int ret = zone_tree_it_begin(update->change.remove->nodes, &it);
-
-	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
-		zone_node_t *n = zone_tree_it_val(&it);
-		ret = fix_nsec3_for_node(update, params, ttl, opt_out, n->owner);
-		zone_tree_it_next(&it);
-	}
-
-	if (ret == KNOT_EOK) {
-		zone_tree_it_free(&it);
-		ret = zone_tree_it_begin(update->change.add->nodes, &it);
-	}
+	int ret = zone_tree_it_begin(update->a_ctx->node_ptrs, &it);
 
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
 		zone_node_t *n = zone_tree_it_val(&it);

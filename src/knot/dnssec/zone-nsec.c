@@ -385,15 +385,7 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 		update->a_ctx->flags |= APPLY_STRICT;
 	}
 	if (ret == KNOT_EOK) {
-		changeset_t ch2;
-		ret = changeset_init(&ch2, update->new_cont->apex->owner);
-		if (ret == KNOT_EOK) {
-			ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, &update->change, &ch2);
-		}
-		if (ret == KNOT_EOK) {
-			ret = zone_update_apply_changeset(update, &ch2);
-		}
-		changeset_clear(&ch2);
+		ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, update);
 	}
 
 cleanup:
