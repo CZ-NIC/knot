@@ -284,6 +284,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
  * \param rrsigs      RR set with RRSIGs.
  * \param sign_ctx    Local zone signing context.
  * \param changeset   Changeset to be updated.
+ * \param update      Zone update to be updated. Exactly one of "changeset" and "update" must be NULL!
  * \param expires_at  Earliest RRSIG expiration.
  *
  * \return Error code, KNOT_EOK if successful.
@@ -292,11 +293,12 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
                               const knot_rrset_t *rrsigs,
                               zone_sign_ctx_t *sign_ctx,
                               changeset_t *changeset,
+                              zone_update_t *update,
                               knot_time_t *expires_at)
 {
 	assert(!knot_rrset_empty(covered));
 	assert(sign_ctx);
-	assert(changeset);
+	assert((bool)changeset != (bool)update);
 
 	int result = KNOT_EOK;
 	knot_rrset_t to_add;
@@ -305,7 +307,11 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	if (covered->type == KNOT_RRTYPE_DNSKEY &&
 	    knot_dname_cmp(covered->owner, sign_ctx->dnssec_ctx->zone->dname) == 0 &&
 	    sign_ctx->dnssec_ctx->offline_rrsig != NULL) {
-		return changeset_add_addition(changeset, sign_ctx->dnssec_ctx->offline_rrsig, CHANGESET_CHECK);
+		if (changeset != NULL) {
+			return changeset_add_addition(changeset, sign_ctx->dnssec_ctx->offline_rrsig, CHANGESET_CHECK);
+		} else {
+			return zone_update_add(update, sign_ctx->dnssec_ctx->offline_rrsig);
+		}
 	}
 
 	for (size_t i = 0; i < sign_ctx->count; i++) {
@@ -331,7 +337,11 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	}
 
 	if (!knot_rrset_empty(&to_add) && result == KNOT_EOK) {
-		result = changeset_add_addition(changeset, &to_add, 0);
+		if (changeset != NULL) {
+			result = changeset_add_addition(changeset, &to_add, 0);
+		} else {
+			result = zone_update_add(update, &to_add);
+		}
 	}
 
 	knot_rdataset_clear(&to_add.rrs, NULL);
@@ -395,7 +405,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 		}
 	}
 
-	return add_missing_rrsigs(covered, NULL, sign_ctx, changeset, NULL);
+	return add_missing_rrsigs(covered, NULL, sign_ctx, changeset, NULL, NULL);
 }
 
 /*!
@@ -424,7 +434,7 @@ static int resign_rrset(const knot_rrset_t *covered,
 		return result;
 	}
 
-	return add_missing_rrsigs(covered, rrsigs, sign_ctx, changeset, expires_at);
+	return add_missing_rrsigs(covered, rrsigs, sign_ctx, changeset, NULL, expires_at);
 }
 
 static int remove_standalone_rrsigs(const zone_node_t *node,
@@ -1092,9 +1102,9 @@ static int sign_changeset(const zone_contents_t *zone,
 
 int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
                                       const kdnssec_ctx_t *dnssec_ctx,
-                                      changeset_t *changeset, changeset_t *ch_out)
+                                      zone_update_t *update)
 {
-	if (zone_keys == NULL || dnssec_ctx == NULL || changeset == NULL) {
+	if (zone_keys == NULL || dnssec_ctx == NULL || update == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1103,28 +1113,26 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 		return KNOT_ENOMEM;
 	}
 
-	changeset_iter_t itt;
-	changeset_iter_add(&itt, changeset);
+	zone_tree_it_t it = { 0 };
+	int ret = zone_tree_it_double_begin(update->a_ctx->node_ptrs, update->a_ctx->nsec3_ptrs, &it);
 
-	knot_rrset_t rr = changeset_iter_next(&itt);
-	while (!knot_rrset_empty(&rr)) {
-		if (rr.type == KNOT_RRTYPE_NSEC ||
-		    rr.type == KNOT_RRTYPE_NSEC3 ||
-		    rr.type == KNOT_RRTYPE_NSEC3PARAM) {
-			int ret =  add_missing_rrsigs(&rr, NULL, sign_ctx,
-			                              ch_out, NULL);
-			if (ret != KNOT_EOK) {
-				changeset_iter_clear(&itt);
-				return ret;
+	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
+		zone_node_t *n = zone_tree_it_val(&it);
+		knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
+		for (int i = 0; i < n->rrset_count; i++) {
+			knot_rrset_t rr = node_rrset_at(n, i);
+			if (rr.type == KNOT_RRTYPE_NSEC ||
+			    rr.type == KNOT_RRTYPE_NSEC3 ||
+			    rr.type == KNOT_RRTYPE_NSEC3PARAM) {
+				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, NULL, update, NULL);
 			}
 		}
-		rr = changeset_iter_next(&itt);
+		zone_tree_it_next(&it);
 	}
-
-	changeset_iter_clear(&itt);
+	zone_tree_it_free(&it);
 	zone_sign_ctx_free(sign_ctx);
 
-	return KNOT_EOK;
+	return ret;
 }
 
 bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
