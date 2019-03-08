@@ -17,6 +17,7 @@
 #pragma once
 
 #include "contrib/qp-trie/trie.h"
+#include "contrib/ucw/lists.h"
 #include "knot/zone/node.h"
 
 enum {
@@ -48,6 +49,12 @@ typedef struct {
 
 	zone_tree_t *next_tree;
 } zone_tree_it_t;
+
+typedef struct {
+	zone_node_t **nodes;
+	size_t total;
+	size_t current;
+} zone_tree_delsafe_it_t;
 
 /*!
  * \brief Creates the zone tree.
@@ -235,6 +242,18 @@ void zone_tree_it_next(zone_tree_it_t *it);
  * \brief Free zone iteration context.
  */
 void zone_tree_it_free(zone_tree_it_t *it);
+
+/*!
+ * \brief Zone tree iteration allowing tree changes.
+ *
+ * The semantics is the same like for normal iteration.
+ * The set of iterated nodes is according to zone tree state on the beginning.
+ */
+int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it);
+bool zone_tree_delsafe_it_finished(zone_tree_delsafe_it_t *it);
+zone_node_t *zone_tree_delsafe_it_val(zone_tree_delsafe_it_t *it);
+void zone_tree_delsafe_it_next(zone_tree_delsafe_it_t *it);
+void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it);
 
 /*!
  * \brief Unify all bi-nodes in specified trees.

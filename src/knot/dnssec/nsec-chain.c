@@ -95,7 +95,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 	 */
 	if (node_rrtype_exists(b, KNOT_RRTYPE_NSEC)
 	    && knot_nsec_empty_nsec_and_rrsigs_in_node(b)) {
-		ret = knot_nsec_changeset_remove(b, data->changeset);
+		ret = knot_nsec_changeset_remove(b, data->update);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -132,7 +132,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 			return KNOT_EOK;
 		}
 
-		ret = knot_nsec_changeset_remove(a, data->changeset);
+		ret = knot_nsec_changeset_remove(a, data->update);
 		if (ret != KNOT_EOK) {
 			knot_rdataset_clear(&new_nsec.rrs, NULL);
 			return ret;
@@ -140,7 +140,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 	}
 
 	// Add new NSEC to the changeset (no matter if old was removed)
-	ret = changeset_add_addition(data->changeset, &new_nsec, 0);
+	ret = zone_update_add(data->update, &new_nsec);
 	knot_rdataset_clear(&new_nsec.rrs, NULL);
 	return ret;
 }
@@ -157,25 +157,25 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 	assert(nodes);
 	assert(callback);
 
-	zone_tree_it_t it = { 0 };
-	int result = zone_tree_it_begin(nodes, &it);
+	zone_tree_delsafe_it_t it = { 0 };
+	int result = zone_tree_delsafe_it_begin(nodes, &it);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	if (zone_tree_it_finished(&it)) {
-		zone_tree_it_free(&it);
+	if (zone_tree_delsafe_it_finished(&it)) {
+		zone_tree_delsafe_it_free(&it);
 		return KNOT_EINVAL;
 	}
 
-	zone_node_t *first = zone_tree_it_val(&it);
+	zone_node_t *first = zone_tree_delsafe_it_val(&it);
 	zone_node_t *previous = first;
 	zone_node_t *current = first;
 
-	zone_tree_it_next(&it);
+	zone_tree_delsafe_it_next(&it);
 
-	while (!zone_tree_it_finished(&it)) {
-		current = zone_tree_it_val(&it);
+	while (!zone_tree_delsafe_it_finished(&it)) {
+		current = zone_tree_delsafe_it_val(&it);
 
 		result = callback(previous, current, data);
 		if (result == NSEC_NODE_SKIP) {
@@ -184,25 +184,25 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 		} else if (result == KNOT_EOK) {
 			previous = current;
 		} else {
-			zone_tree_it_free(&it);
+			zone_tree_delsafe_it_free(&it);
 			return result;
 		}
-		zone_tree_it_next(&it);
+		zone_tree_delsafe_it_next(&it);
 	}
 
-	zone_tree_it_free(&it);
+	zone_tree_delsafe_it_free(&it);
 
 	return result == NSEC_NODE_SKIP ? callback(previous, first, data) :
 	                 callback(current, first, data);
 }
 
-inline static zone_node_t *it_next0(zone_tree_it_t *it, zone_node_t *first)
+inline static zone_node_t *it_next0(zone_tree_delsafe_it_t *it, zone_node_t *first)
 {
-	zone_tree_it_next(it);
-	return (zone_tree_it_finished(it) ? first : zone_tree_it_val(it));
+	zone_tree_delsafe_it_next(it);
+	return (zone_tree_delsafe_it_finished(it) ? first : zone_tree_delsafe_it_val(it));
 }
 
-static zone_node_t *it_next1(zone_tree_it_t *it, zone_node_t *first)
+static zone_node_t *it_next1(zone_tree_delsafe_it_t *it, zone_node_t *first)
 {
 	zone_node_t *res;
 	do {
@@ -211,11 +211,11 @@ static zone_node_t *it_next1(zone_tree_it_t *it, zone_node_t *first)
 	return res;
 }
 
-static zone_node_t *it_next2(zone_tree_it_t *it, zone_node_t *first, changeset_t *ch)
+static zone_node_t *it_next2(zone_tree_delsafe_it_t *it, zone_node_t *first, zone_update_t *upd)
 {
 	zone_node_t *res = it_next0(it, first);
 	while (knot_nsec_empty_nsec_and_rrsigs_in_node(res) || (res->flags & NODE_FLAGS_NONAUTH)) {
-		(void)knot_nsec_changeset_remove(res, ch);
+		(void)knot_nsec_changeset_remove(res, upd);
 		res = it_next0(it, first);
 	}
 	return res;
@@ -240,25 +240,25 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 	assert(new_nodes);
 	assert(callback);
 
-	zone_tree_it_t old_it = { 0 }, new_it = { 0 };
-	int ret = zone_tree_it_begin(old_nodes, &old_it);
+	zone_tree_delsafe_it_t old_it = { 0 }, new_it = { 0 };
+	int ret = zone_tree_delsafe_it_begin(old_nodes, &old_it);
 	if (ret == KNOT_EOK) {
-		ret = zone_tree_it_begin(new_nodes, &new_it);
+		ret = zone_tree_delsafe_it_begin(new_nodes, &new_it);
 	}
 	if (ret != KNOT_EOK) {
 		goto cleanup;
 	}
 
-	if (zone_tree_it_finished(&new_it)) {
+	if (zone_tree_delsafe_it_finished(&new_it)) {
 		ret = KNOT_ENORECORD;
 		goto cleanup;
 	}
-	if (zone_tree_it_finished(&old_it)) {
+	if (zone_tree_delsafe_it_finished(&old_it)) {
 		ret = KNOT_ENORECORD;
 		goto cleanup;
 	}
 
-	zone_node_t *old_first = zone_tree_it_val(&old_it), *new_first = zone_tree_it_val(&new_it);
+	zone_node_t *old_first = zone_tree_delsafe_it_val(&old_it), *new_first = zone_tree_delsafe_it_val(&new_it);
 
 	if (!knot_dname_is_equal(old_first->owner, new_first->owner)) {
 		// this may happen with NSEC3 (on NSEC, it will be apex)
@@ -277,7 +277,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 
 	zone_node_t *old_prev = old_first, *new_prev = new_first;
 	zone_node_t *old_curr = it_next1(&old_it, old_first);
-	zone_node_t *new_curr = it_next2(&new_it, new_first, data->changeset);
+	zone_node_t *new_curr = it_next2(&new_it, new_first, data->update);
 
 	while (1) {
 		bool bitmap_change = !node_bitmap_equal(old_prev, new_prev);
@@ -287,7 +287,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 			// if cmp != 0, the nsec chain will be locally rebuilt anyway,
 			// so no need to update bitmap in such case
 			// overall, we now have dnames: old_prev == new_prev && old_curr == new_curr
-			ret = knot_nsec_changeset_remove(old_prev, data->changeset);
+			ret = knot_nsec_changeset_remove(old_prev, data->update);
 			CHECK_RET;
 			ret = callback(new_prev, new_curr, data);
 			CHECK_RET;
@@ -296,9 +296,9 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 		while (cmp != 0) {
 			if (cmp < 0) {
 				// a node was removed
-				ret = knot_nsec_changeset_remove(old_prev, data->changeset);
+				ret = knot_nsec_changeset_remove(old_prev, data->update);
 				CHECK_RET;
-				ret = knot_nsec_changeset_remove(old_curr, data->changeset);
+				ret = knot_nsec_changeset_remove(old_curr, data->update);
 				CHECK_RET;
 				old_prev = old_curr;
 				old_curr = it_next1(&old_it, old_first);
@@ -306,12 +306,12 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 				CHECK_RET;
 			} else {
 				// a node was added
-				ret = knot_nsec_changeset_remove(old_prev, data->changeset);
+				ret = knot_nsec_changeset_remove(old_prev, data->update);
 				CHECK_RET;
 				ret = callback(new_prev, new_curr, data);
 				CHECK_RET;
 				new_prev = new_curr;
-				new_curr = it_next2(&new_it, new_first, data->changeset);
+				new_curr = it_next2(&new_it, new_first, data->update);
 				ret = callback(new_prev, new_curr, data);
 				CHECK_RET;
 			}
@@ -325,12 +325,12 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 		old_prev = old_curr;
 		new_prev = new_curr;
 		old_curr = it_next1(&old_it, old_first);
-		new_curr = it_next2(&new_it, new_first, data->changeset);
+		new_curr = it_next2(&new_it, new_first, data->update);
 	}
 
 cleanup:
-	zone_tree_it_free(&old_it);
-	zone_tree_it_free(&new_it);
+	zone_tree_delsafe_it_free(&old_it);
+	zone_tree_delsafe_it_free(&new_it);
 	return ret;
 }
 
@@ -339,28 +339,25 @@ cleanup:
 /*!
  * \brief Add entry for removed NSEC to the changeset.
  */
-int knot_nsec_changeset_remove(const zone_node_t *n, changeset_t *changeset)
+int knot_nsec_changeset_remove(const zone_node_t *n, zone_update_t *update)
 {
-	if (changeset == NULL) {
+	if (update == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int result = KNOT_EOK;
-
-	knot_rrset_t nsec = node_rrset(n, KNOT_RRTYPE_NSEC);
-	if (knot_rrset_empty(&nsec)) {
-		nsec = node_rrset(n, KNOT_RRTYPE_NSEC3);
+	knot_rrset_t nsec_rem = node_rrset(n, KNOT_RRTYPE_NSEC);
+	if (!knot_rrset_empty(&nsec_rem)) {
+		result = zone_update_remove(update, &nsec_rem);
 	}
-	if (!knot_rrset_empty(&nsec)) {
-		// update changeset
-		result = changeset_add_removal(changeset, &nsec, 0);
-		if (result != KNOT_EOK) {
-			return result;
-		}
+	nsec_rem = node_rrset(n, KNOT_RRTYPE_NSEC3);
+	if (result == KNOT_EOK && !knot_rrset_empty(&nsec_rem)) {
+		result = zone_update_remove(update, &nsec_rem);
 	}
+	assert(result == KNOT_EOK); // TODO remove
 
 	knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
-	if (!knot_rrset_empty(&rrsigs)) {
+	if (!knot_rrset_empty(&rrsigs) && result == KNOT_EOK) {
 		knot_rrset_t synth_rrsigs;
 		knot_rrset_init(&synth_rrsigs, n->owner, KNOT_RRTYPE_RRSIG,
 		                KNOT_CLASS_IN, rrsigs.ttl);
@@ -381,7 +378,7 @@ int knot_nsec_changeset_remove(const zone_node_t *n, changeset_t *changeset)
 		}
 
 		// store RRSIG
-		result = changeset_add_removal(changeset, &synth_rrsigs, 0);
+		result = zone_update_remove(update, &synth_rrsigs);
 		knot_rdataset_clear(&synth_rrsigs.rrs, NULL);
 	}
 
@@ -411,30 +408,26 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n)
 /*!
  * \brief Create new NSEC chain, add differences from current into a changeset.
  */
-int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
-                           changeset_t *changeset)
+int knot_nsec_create_chain(zone_update_t *update, uint32_t ttl)
 {
-	assert(zone);
-	assert(zone->nodes);
-	assert(changeset);
+	assert(update);
+	assert(update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, changeset, zone };
+	nsec_chain_iterate_data_t data = { ttl, update };
 
-	return knot_nsec_chain_iterate_create(zone->nodes,
+	return knot_nsec_chain_iterate_create(update->new_cont->nodes,
 	                                      connect_nsec_nodes, &data);
 }
 
-int knot_nsec_fix_chain(const zone_contents_t *old_zone, const zone_contents_t *new_zone,
-			uint32_t ttl, changeset_t *changeset)
+int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 {
-	assert(old_zone);
-	assert(new_zone);
-	assert(old_zone->nodes);
-	assert(new_zone->nodes);
-	assert(changeset);
+	assert(update);
+	assert(update->zone->contents->nodes);
+	assert(update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, changeset, new_zone };
+	nsec_chain_iterate_data_t data = { ttl, update };
 
-	return knot_nsec_chain_iterate_fix(old_zone->nodes, new_zone->nodes,
+	return knot_nsec_chain_iterate_fix(update->zone->contents->nodes,
+	                                   update->new_cont->nodes,
 					   connect_nsec_nodes, &data);
 }
