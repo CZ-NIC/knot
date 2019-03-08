@@ -606,6 +606,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 
 	// add NSEC3 with correct bitmap
 	if (add_nsec3 && ret == KNOT_EOK) {
+		assert(!(new_n->flags & NODE_FLAGS_DELETED));
 		zone_node_t *new_nsec3_n = create_nsec3_node_for_node(new_n, update->new_cont->apex, params, ttl);
 		if (new_nsec3_n == NULL) {
 			return KNOT_ENOMEM;
@@ -693,7 +694,7 @@ static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
  */
 static int nsec3_mark_empty(zone_node_t *node, void *data)
 {
-	if (!(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node, (data != NULL))) {
+	if (!(node->flags & NODE_FLAGS_DELETED) && !(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node, (data != NULL))) {
 		/*!
 		 * Mark this node and all parent nodes that meet the same
 		 * criteria as empty.

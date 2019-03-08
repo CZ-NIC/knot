@@ -239,14 +239,16 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
 	return KNOT_EOK;
 }
 
-int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
+int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool do_remove,
                        zone_tree_del_node_cb_t del_cb, void *del_cb_ctx)
 {
 	zone_node_t *parent = node_parent(node);
 	bool wildcard = knot_dname_is_wildcard(node->owner);
 
 	node->parent = NULL;
-	zone_tree_remove_node(tree, node->owner);
+	if (do_remove) {
+		zone_tree_remove_node(tree, node->owner);
+	}
 
 	int ret = del_cb(node, del_cb_ctx);
 
@@ -257,7 +259,7 @@ int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
 		}
 		if (parent->children == 0 && parent->rrset_count == 0 &&
 		    !(parent->flags & NODE_FLAGS_APEX)) {
-			ret = zone_tree_del_node(tree, parent, del_cb, del_cb_ctx);
+			ret = zone_tree_del_node(tree, parent, do_remove, del_cb, del_cb_ctx);
 		}
 	}
 	return ret;

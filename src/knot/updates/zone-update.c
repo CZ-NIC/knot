@@ -618,6 +618,14 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
 	return set_new_soa(update, conf_opt(&val));
 }
 
+static int remove_deleted1(zone_node_t *node, void *tree)
+{
+	if ((node->flags & NODE_FLAGS_DELETED)) {
+		zone_tree_remove_node(tree, node->owner);
+	}
+	return KNOT_EOK;
+}
+
 static int commit_incremental(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
@@ -630,6 +638,15 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 			zone_update_clear(update);
 			return ret;
 		}
+	}
+
+	ret = zone_tree_apply(update->a_ctx->node_ptrs, remove_deleted1, update->new_cont->nodes);
+	if (ret == KNOT_EOK && update->new_cont->nsec3_nodes != NULL) {
+		ret = zone_tree_apply(update->a_ctx->nsec3_ptrs, remove_deleted1, update->new_cont->nsec3_nodes);
+	}
+	if (ret != KNOT_EOK) {
+		zone_update_clear(update);
+		return ret;
 	}
 
 	if (zone_update_changed_nsec3param(update)) {

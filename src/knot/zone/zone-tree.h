@@ -160,12 +160,13 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
  *
  * \param tree          Zone tree to remove from.
  * \param node          Node to be removed.
+ * \param do_remove     If false, dry run, keep deleted nodes in the tree.
  * \param del_cb        Callback called on every removed node.
  * \param del_cb_ctx    Context to be passed to the callback.
  *
  * \return KNOT_E*
  */
-int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
+int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool do_remove,
                        zone_tree_del_node_cb_t del_cb, void *del_cb_ctx);
 
 /*!

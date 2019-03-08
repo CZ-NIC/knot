@@ -226,7 +226,8 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != z->apex) {
-			zone_tree_del_node(nsec3 ? z->nsec3_nodes : z->nodes, node, (zone_tree_del_node_cb_t)node_free, NULL);
+			zone_tree_del_node(nsec3 ? z->nsec3_nodes : z->nodes, node,
+			                   true, (zone_tree_del_node_cb_t)node_free, NULL);
 		}
 	}
 
