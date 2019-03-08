@@ -456,11 +456,9 @@ static int connect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
 	}
 
 	// add the removed original and the updated copy to changeset
-	if (1) {
-		ret = changeset_add_removal(data->changeset, &aorig, 0);
-	}
+	ret = zone_update_remove(data->update, &aorig);
 	if (ret == KNOT_EOK) {
-		ret = changeset_add_addition(data->changeset, acopy, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+		ret = zone_update_add(data->update, acopy);
 	}
 	knot_rrset_free(acopy, NULL);
 	return ret;
@@ -474,7 +472,7 @@ static int connect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
  * \param ttl          TTL for the created NSEC records.
  * \param cds_in_apex  Hint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
  * \param nsec3_nodes  Tree whereto new NSEC3 nodes will be added.
- * \param chgset       Changeset used for possible NSEC removals
+ * \param update       Zone update for possible NSEC removals
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -482,11 +480,11 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
                               const dnssec_nsec3_params_t *params,
                               uint32_t ttl,
                               zone_tree_t *nsec3_nodes,
-                              changeset_t *chgset)
+                              zone_update_t *update)
 {
 	assert(zone);
 	assert(nsec3_nodes);
-	assert(chgset);
+	assert(update);
 
 	zone_tree_it_t it = { 0 };
 	int result = zone_tree_it_begin(zone->nodes, &it);
@@ -498,7 +496,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 		 * Remove possible NSEC from the node. (Do not allow both NSEC
 		 * and NSEC3 in the zone at once.)
 		 */
-		result = knot_nsec_changeset_remove(node, chgset);
+		result = knot_nsec_changeset_remove(node, update);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -721,7 +719,8 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
                             const dnssec_nsec3_params_t *params,
                             uint32_t ttl,
                             bool opt_out,
-                            changeset_t *changeset)
+                            changeset_t *changeset,
+                            zone_update_t *update)
 {
 	assert(zone);
 	assert(params);
@@ -748,7 +747,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 		return result;
 	}
 
-	result = create_nsec3_nodes(zone, params, ttl, nsec3_nodes, changeset);
+	result = create_nsec3_nodes(zone, params, ttl, nsec3_nodes, update);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
@@ -784,8 +783,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 int knot_nsec3_fix_chain(zone_update_t *update,
                          const dnssec_nsec3_params_t *params,
                          uint32_t ttl,
-                         bool opt_out,
-                         changeset_t *changeset)
+                         bool opt_out)
 {
 
 	int ret = fix_nsec3_nodes(update, params, ttl, opt_out);
@@ -793,7 +791,7 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
-	nsec_chain_iterate_data_t data = { ttl, changeset, update->new_cont };
+	nsec_chain_iterate_data_t data = { ttl, update };
 
 	ret = knot_nsec_chain_iterate_fix(update->zone->contents->nsec3_nodes,
 	                                  update->new_cont->nsec3_nodes,

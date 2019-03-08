@@ -82,6 +82,7 @@ zone_tree_t *zone_tree_dup(zone_tree_t *from)
 	return to;
 }
 
+#include <stdio.h>
 int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 {
 	if (tree == NULL || node == NULL || *node == NULL) {
@@ -95,6 +96,7 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 
 	assert((bool)((*node)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
 
+	printf("zone tree insert %p cow %d owner %s\n", tree, (tree->cow != NULL), (*node)->owner);
 
 	if (tree->cow != NULL) {
 		*trie_get_cow(tree->cow, lf + 1, *lf) = binode_node(*node, false);
@@ -197,6 +199,8 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 
 	trie_val_t *rval = trie_get_try(tree->trie, lf + 1, *lf);
 	if (rval != NULL) {
+		printf("zone tree remove %p cow %d owner %s\n", tree, (tree->cow != NULL), owner);
+
 		if (tree->cow != NULL) {
 			trie_del_cow(tree->cow, lf + 1, *lf, NULL);
 		} else {
