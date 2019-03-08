@@ -95,6 +95,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 	 */
 	if (node_rrtype_exists(b, KNOT_RRTYPE_NSEC)
 	    && knot_nsec_empty_nsec_and_rrsigs_in_node(b)) {
+		printf("remove empty\n");
 		ret = knot_nsec_changeset_remove(b, data->update);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -157,25 +158,25 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 	assert(nodes);
 	assert(callback);
 
-	zone_tree_it_t it = { 0 };
-	int result = zone_tree_it_begin(nodes, &it);
+	zone_tree_delsafe_it_t it = { 0 };
+	int result = zone_tree_delsafe_it_begin(nodes, &it);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	if (zone_tree_it_finished(&it)) {
-		zone_tree_it_free(&it);
+	if (zone_tree_delsafe_it_finished(&it)) {
+		zone_tree_delsafe_it_free(&it);
 		return KNOT_EINVAL;
 	}
 
-	zone_node_t *first = zone_tree_it_val(&it);
+	zone_node_t *first = zone_tree_delsafe_it_val(&it);
 	zone_node_t *previous = first;
 	zone_node_t *current = first;
 
-	zone_tree_it_next(&it);
+	zone_tree_delsafe_it_next(&it);
 
-	while (!zone_tree_it_finished(&it)) {
-		current = zone_tree_it_val(&it);
+	while (!zone_tree_delsafe_it_finished(&it)) {
+		current = zone_tree_delsafe_it_val(&it);
 
 		result = callback(previous, current, data);
 		if (result == NSEC_NODE_SKIP) {
@@ -184,25 +185,25 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 		} else if (result == KNOT_EOK) {
 			previous = current;
 		} else {
-			zone_tree_it_free(&it);
+			zone_tree_delsafe_it_free(&it);
 			return result;
 		}
-		zone_tree_it_next(&it);
+		zone_tree_delsafe_it_next(&it);
 	}
 
-	zone_tree_it_free(&it);
+	zone_tree_delsafe_it_free(&it);
 
 	return result == NSEC_NODE_SKIP ? callback(previous, first, data) :
 	                 callback(current, first, data);
 }
 
-inline static zone_node_t *it_next0(zone_tree_it_t *it, zone_node_t *first)
+inline static zone_node_t *it_next0(zone_tree_delsafe_it_t *it, zone_node_t *first)
 {
-	zone_tree_it_next(it);
-	return (zone_tree_it_finished(it) ? first : zone_tree_it_val(it));
+	zone_tree_delsafe_it_next(it);
+	return (zone_tree_delsafe_it_finished(it) ? first : zone_tree_delsafe_it_val(it));
 }
 
-static zone_node_t *it_next1(zone_tree_it_t *it, zone_node_t *first)
+static zone_node_t *it_next1(zone_tree_delsafe_it_t *it, zone_node_t *first)
 {
 	zone_node_t *res;
 	do {
@@ -211,7 +212,7 @@ static zone_node_t *it_next1(zone_tree_it_t *it, zone_node_t *first)
 	return res;
 }
 
-static zone_node_t *it_next2(zone_tree_it_t *it, zone_node_t *first, zone_update_t *upd)
+static zone_node_t *it_next2(zone_tree_delsafe_it_t *it, zone_node_t *first, zone_update_t *upd)
 {
 	zone_node_t *res = it_next0(it, first);
 	while (knot_nsec_empty_nsec_and_rrsigs_in_node(res) || (res->flags & NODE_FLAGS_NONAUTH)) {
@@ -240,10 +241,10 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 	assert(new_nodes);
 	assert(callback);
 
-	zone_tree_it_t old_it = { 0 }, new_it = { 0 };
-	int ret = zone_tree_it_begin(old_nodes, &old_it);
+	zone_tree_delsafe_it_t old_it = { 0 }, new_it = { 0 };
+	int ret = zone_tree_delsafe_it_begin(old_nodes, &old_it);
 	if (ret == KNOT_EOK) {
-		ret = zone_tree_it_begin(new_nodes, &new_it);
+		ret = zone_tree_delsafe_it_begin(new_nodes, &new_it);
 		printf("nsec: tree it begin updfl %u nodes %p nsec3n %p newnodes %p\n", data->update->flags,
 		       data->update->new_cont->nodes, data->update->new_cont->nsec3_nodes, new_nodes);
 	}
@@ -251,16 +252,16 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 		goto cleanup;
 	}
 
-	if (zone_tree_it_finished(&new_it)) {
+	if (zone_tree_delsafe_it_finished(&new_it)) {
 		ret = KNOT_ENORECORD;
 		goto cleanup;
 	}
-	if (zone_tree_it_finished(&old_it)) {
+	if (zone_tree_delsafe_it_finished(&old_it)) {
 		ret = KNOT_ENORECORD;
 		goto cleanup;
 	}
 
-	zone_node_t *old_first = zone_tree_it_val(&old_it), *new_first = zone_tree_it_val(&new_it);
+	zone_node_t *old_first = zone_tree_delsafe_it_val(&old_it), *new_first = zone_tree_delsafe_it_val(&new_it);
 
 	if (!knot_dname_is_equal(old_first->owner, new_first->owner)) {
 		// this may happen with NSEC3 (on NSEC, it will be apex)
@@ -331,8 +332,8 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 	}
 
 cleanup:
-	zone_tree_it_free(&old_it);
-	zone_tree_it_free(&new_it);
+	zone_tree_delsafe_it_free(&old_it);
+	zone_tree_delsafe_it_free(&new_it);
 	printf("nsec: done\n");
 	return ret;
 }

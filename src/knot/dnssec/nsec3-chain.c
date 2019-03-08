@@ -529,16 +529,9 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 /*!
  * \brief For given dname, check if anything changed in zone_update, and recreate (possibly unconnected) NSEC3 nodes appropriately.
  *
- * The removed/added/modified NSEC3 records are stored in two ways depending of their nature:
- *  a) Those NSEC3 records pre-created with (probably) empty "next dname", waiting to be connected with 2nd round, are put directly into the zone_update_t structure.
- *  b) Those with just recreated bitmap are just added into the changeset. We must note them in the changeset anyway when reconnecting!
- * The reason is, that the (a) type of records are not going to be signed, but they are needed for proper connecting the NSEC3 chain.
- * On the other hand, the (b) type of records need to be signed and they have no influence on the chain structure.
- *
  * \param update    Zone update structure holding zone contents changes.
  * \param params    NSEC3 params.
  * \param ttl       TTL for newly created NSEC3 records.
- * \param chgset    Changeset to hold the changes.
  * \param for_node  Domain name of the node in question.
  *
  * \retval KNOT_ENORECORD if the NSEC3 chain shall be rather recreated completely.

@@ -82,7 +82,6 @@ zone_tree_t *zone_tree_dup(zone_tree_t *from)
 	return to;
 }
 
-#include <stdio.h>
 int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 {
 	if (tree == NULL || node == NULL || *node == NULL) {
@@ -95,8 +94,6 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 	assert(lf);
 
 	assert((bool)((*node)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
-
-	printf("zone tree insert %p cow %d owner %s\n", tree, (tree->cow != NULL), (*node)->owner);
 
 	if (tree->cow != NULL) {
 		*trie_get_cow(tree->cow, lf + 1, *lf) = binode_node(*node, false);
@@ -199,8 +196,6 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 
 	trie_val_t *rval = trie_get_try(tree->trie, lf + 1, *lf);
 	if (rval != NULL) {
-		printf("zone tree remove %p cow %d owner %s\n", tree, (tree->cow != NULL), owner);
-
 		if (tree->cow != NULL) {
 			trie_del_cow(tree->cow, lf + 1, *lf, NULL);
 		} else {
@@ -341,6 +336,52 @@ void zone_tree_it_next(zone_tree_it_t *it)
 void zone_tree_it_free(zone_tree_it_t *it)
 {
 	trie_it_free(it->it);
+	memset(it, 0, sizeof(*it));
+}
+
+int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it)
+{
+	it->total = zone_tree_count(tree);
+	it->nodes = malloc(it->total * sizeof(*it->nodes));
+	if (it->nodes == NULL) {
+		return KNOT_ENOMEM;
+	}
+	it->current = 0;
+
+	zone_tree_it_t tmp = { 0 };
+	int ret = zone_tree_it_begin(tree, &tmp);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	while (!zone_tree_it_finished(&tmp)) {
+		it->nodes[it->current++] = zone_tree_it_val(&tmp);
+	}
+	zone_tree_it_free(&tmp);
+	it->current = 0;
+	return KNOT_EOK;
+}
+
+bool zone_tree_delsafe_it_finished(zone_tree_delsafe_it_t *it)
+{
+	return (it->current >= it->total);
+}
+
+zone_node_t *zone_tree_delsafe_it_val(zone_tree_delsafe_it_t *it)
+{
+	return it->nodes[it->current];
+}
+
+void zone_tree_delsafe_it_next(zone_tree_delsafe_it_t *it)
+{
+	do {
+		it->current++;
+	} while (!zone_tree_delsafe_it_finished(it) &&
+		 !(zone_tree_delsafe_it_val(it)->flags & NODE_FLAGS_DELETED));
+}
+
+void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it)
+{
+	free(it->nodes);
 	memset(it, 0, sizeof(*it));
 }
 
