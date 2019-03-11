@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -122,11 +122,8 @@ int main(int argc, char *argv[])
 	// Test remove RRset
 	node_remove_rdataset(node, KNOT_RRTYPE_AAAA);
 	ok(node->rrset_count == 2, "Node: remove non-existent rdataset.");
-	void *to_free = node_rdataset(node, KNOT_RRTYPE_TXT)->rdata;
 	node_remove_rdataset(node, KNOT_RRTYPE_TXT);
 	ok(node->rrset_count == 1, "Node: remove existing rdataset.");
-
-	free(to_free);
 
 	// "Test" freeing
 	node_free_rrsets(node, NULL);
