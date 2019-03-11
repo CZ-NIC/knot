@@ -166,11 +166,20 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	/* Address (in network byteorder, adjust masks). */
 	uint64_t netblk = 0;
 	if (remote->ss_family == AF_INET6) {
+		uint64_t netmask = 0; // Create endian-independent netmask from integer macro.
+		for (int i = 0; i < sizeof(uint64_t); i++) {
+			*((uint8_t *)&netmask + i) = (RRL_V6_PREFIX >> (8 * i)) & 0xff;
+		}
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
-		netblk = *((uint64_t *)(&ipv6->sin6_addr)) & RRL_V6_PREFIX;
+		netblk = *((uint64_t *)(&ipv6->sin6_addr)) & netmask;
 	} else {
+		uint32_t netmask = 0; // Create endian-independent netmask from integer macro.
+		for (int i = 0; i < sizeof(uint32_t); i++) {
+			*((uint8_t *)&netmask + i) = (RRL_V4_PREFIX >> (8 * i)) & 0xff;
+		}
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
-		netblk = ((uint32_t)ipv4->sin_addr.s_addr) & RRL_V4_PREFIX;
+		// Write to the left part of netblk, endian-independently.
+		*((uint32_t *)&netblk) = ((uint32_t)ipv4->sin_addr.s_addr) & netmask;
 	}
 	if (blklen + sizeof(netblk) > maxlen) {
 		return KNOT_ESPACE;
