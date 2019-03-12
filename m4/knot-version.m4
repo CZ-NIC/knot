@@ -11,9 +11,11 @@
 ################################################################################
 
 m4_define([knot_PATCH],     m4_ifblank(knot_VERSION_PATCH, [dev], knot_VERSION_PATCH))dnl
+
 m4_define([knot_GIT_HASH],  m4_esyscmd_s(git rev-parse --short HEAD 2>/dev/null))dnl
 m4_define([knot_GIT_TAG],   m4_esyscmd_s(git describe --exact-match 2>/dev/null))dnl
 m4_define([knot_TIMESTAMP], m4_esyscmd_s(date -u +'%s' 2>/dev/null))dnl
-m4_define([knot_GIT_INFO],  m4_ifblank(knot_GIT_TAG, m4_ifnblank(knot_GIT_HASH, .knot_TIMESTAMP.knot_GIT_HASH, []), []))dnl
+m4_define([knot_GIT_SHORT], m4_case(m4_esyscmd_s(echo $KNOT_VERSION_FORMAT 2>/dev/null), short, 1, []))dnl
+m4_define([knot_GIT_INFO],  m4_ifblank(knot_GIT_TAG, m4_ifblank(knot_GIT_SHORT, .knot_TIMESTAMP.knot_GIT_HASH, []), []))dnl
 
 m4_define([knot_PKG_VERSION], [knot_VERSION_MAJOR.knot_VERSION_MINOR.knot_PATCH]knot_GIT_INFO)dnl
