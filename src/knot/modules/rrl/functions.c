@@ -188,14 +188,11 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	blklen += sizeof(netblk);
 
 	/* Name */
-	uint16_t *len_pos = (uint16_t *)(dst + blklen);
-	blklen += sizeof(uint16_t);
 	int ret = rrl_clsname(dst + blklen, maxlen - blklen, cls, req, name);
 	if (ret < 0) {
 		return ret;
 	}
-	uint16_t len = ret;
-	memcpy(len_pos, &len, sizeof(len));
+	uint8_t len = ret;
 	blklen += len;
 
 	return blklen;
@@ -391,7 +388,7 @@ static rrl_item_t *rrl_hash(rrl_table_t *tbl, const struct sockaddr_storage *rem
 	pthread_mutex_lock(&tbl->ll);
 
 	/* Find an exact match in <id, id + HOP_LEN). */
-	uint8_t *qname = buf + sizeof(uint8_t) + sizeof(uint64_t);
+	knot_dname_t *qname = buf + sizeof(uint8_t) + sizeof(uint64_t);
 	uint64_t netblk;
 	memcpy(&netblk, buf + sizeof(uint8_t), sizeof(netblk));
 	rrl_item_t match = {
@@ -400,7 +397,6 @@ static rrl_item_t *rrl_hash(rrl_table_t *tbl, const struct sockaddr_storage *rem
 		.ntok = tbl->rate * RRL_CAPACITY,
 		.cls = buf[0],
 		.flags = RRL_BF_NULL,
-		.qname = SipHash24(&rrl->key, qname + 1, qname[0]),
 		.qname = SipHash24(&tbl->key, qname, knot_dname_size(qname)),
 		.time = stamp
 	};
