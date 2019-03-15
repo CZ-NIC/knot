@@ -188,13 +188,13 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	blklen += sizeof(netblk);
 
 	/* Name */
-	uint16_t *len_pos = (uint16_t *)(dst + blklen);
-	blklen += sizeof(uint16_t);
+	uint8_t *len_pos = (dst + blklen);
+	blklen += sizeof(uint8_t);
 	int ret = rrl_clsname(dst + blklen, maxlen - blklen, cls, req, name);
 	if (ret < 0) {
 		return ret;
 	}
-	uint16_t len = ret;
+	uint8_t len = ret;
 	memcpy(len_pos, &len, sizeof(len));
 	blklen += len;
 
