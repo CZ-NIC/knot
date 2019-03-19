@@ -63,7 +63,7 @@ support.
    * - `Trustway Proteccio NetHSM <http://www.bull.com/fr/cybers%C3%A9curit%C3%A9-trustway-proteccio-nethsm>`_
      - |yes|
      - ECDSA only
-     - |no|
+     - Via ECDSA import
      - |yes|
      - |yes|
      - |yes|
