@@ -166,14 +166,16 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
 	uint32_t rrs_ttl = node_rrset(node, rr->type).ttl;
 
-	if (fixed_rr != NULL && *fixed_rr != NULL && (*fixed_rr)->ttl == rrs_ttl) {
+	if (fixed_rr != NULL && *fixed_rr != NULL &&
+	    ((*fixed_rr)->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG)) {
 		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return;
 		}
 	}
 
-	if (rr->ttl == rrs_ttl) {
+	// TTL of RRSIGs is better determined by original_ttl field, which is compared as part of rdata anyway
+	if (rr->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG) {
 		int ret = knot_rdataset_subtract(rrs, &rr->rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return;

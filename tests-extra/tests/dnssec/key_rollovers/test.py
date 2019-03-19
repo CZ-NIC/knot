@@ -24,7 +24,7 @@ def pregenerate_key(server, zone, alg):
                    addtopolicy=zone[0].name)
 
 # check zone if keys are present and used for signing
-def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
+def check_zone(server, zone, slave, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
     qdnskeys = server.dig("example.com", "DNSKEY", bufsize=4096)
     found_dnskeys = qdnskeys.count("DNSKEY")
 
@@ -62,6 +62,8 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
 
     # Valgrind delay breaks the timing!
     if not server.valgrind:
+        t.xfr_diff(server, slave, zone)
+
         server.zone_backup(zone, flush=True)
         server.zone_verify(zone)
 
@@ -89,8 +91,8 @@ def wait_for_dnskey_count(t, server, dnskey_count, timeout):
         if rtime > timeout:
             break
 
-def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, set_stss, submission_cb):
-    check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
+def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, set_alg, set_stss, submission_cb):
+    check_zone(server, zone, slave, before_keys, 1, 1, 1, desc + ": initial keys")
 
     server.dnssec(zone).single_type_signing = set_stss
     server.dnssec(zone).alg = set_alg
@@ -98,10 +100,10 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
     server.reload()
 
     wait_for_rrsig_count(t, server, "SOA", 2, 20)
-    check_zone(server, zone, before_keys, 1 if after_keys > 1 else 2, 1, 2, desc + ": pre active")
+    check_zone(server, zone, slave, before_keys, 1 if after_keys > 1 else 2, 1, 2, desc + ": pre active")
 
     wait_for_dnskey_count(t, server, before_keys + after_keys, 20)
-    check_zone(server, zone, before_keys + after_keys, 2, 1, 2, desc + ": both algorithms active")
+    check_zone(server, zone, slave, before_keys + after_keys, 2, 1, 2, desc + ": both algorithms active")
 
     # wait for any change in CDS records
     CDS1 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
@@ -109,20 +111,20 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
     while CDS1 == str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
       t.sleep(1)
 
-    check_zone(server, zone, before_keys + after_keys, 2, 1, 2, desc + ": new KSK ready")
+    check_zone(server, zone, slave, before_keys + after_keys, 2, 1, 2, desc + ": new KSK ready")
 
     submission_cb()
     t.sleep(4)
-    check_zone(server, zone, before_keys + after_keys, 2, 1, 2, desc + ": both still active")
+    check_zone(server, zone, slave, before_keys + after_keys, 2, 1, 2, desc + ": both still active")
 
     wait_for_dnskey_count(t, server, after_keys, 20)
-    check_zone(server, zone, after_keys, 1 if before_keys > 1 else 2, 1, 2, desc + ": post active")
+    check_zone(server, zone, slave, after_keys, 1 if before_keys > 1 else 2, 1, 2, desc + ": post active")
 
     wait_for_rrsig_count(t, server, "SOA", 1, 20)
-    check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old alg removed")
+    check_zone(server, zone, slave, after_keys, 1, 1, 1, desc + ": old alg removed")
 
-def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, desc, set_stss, set_ksk_lifetime, submission_cb):
-    check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
+def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_keys, desc, set_stss, set_ksk_lifetime, submission_cb):
+    check_zone(server, zone, slave, before_keys, 1, 1, 1, desc + ": initial keys")
     orig_ksk_lifetime = server.dnssec(zone).ksk_lifetime
 
     server.dnssec(zone).single_type_signing = set_stss
@@ -133,10 +135,10 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     wait_for_dnskey_count(t, server, total_keys, 20)
 
     t.sleep(3)
-    check_zone(server, zone, total_keys, 1, 1, 1, desc + ": published new")
+    check_zone(server, zone, slave, total_keys, 1, 1, 1, desc + ": published new")
 
     wait_for_rrsig_count(t, server, "DNSKEY", 2, 20)
-    check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 and after_keys > 1 else 2, desc + ": new KSK ready")
+    check_zone(server, zone, slave, total_keys, 2, 1, 1 if before_keys > 1 and after_keys > 1 else 2, desc + ": new KSK ready")
 
     server.dnssec(zone).ksk_lifetime = orig_ksk_lifetime
     server.gen_confile()
@@ -146,16 +148,16 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     submission_cb()
     t.sleep(4)
     if before_keys < 2 or after_keys > 1:
-        check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both still active")
+        check_zone(server, zone, slave, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both still active")
     # else skip the test as we have no control on KSK and ZSK retiring asynchronously
 
     wait_for_rrsig_count(t, server, "DNSKEY", 1, 20)
     if before_keys < 2 or after_keys > 1:
-        check_zone(server, zone, total_keys, 1, 1, 1, desc + ": old key retired")
+        check_zone(server, zone, slave, total_keys, 1, 1, 1, desc + ": old key retired")
     # else skip the test as we have no control on KSK and ZSK retiring asynchronously
 
     wait_for_dnskey_count(t, server, after_keys, 20)
-    check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old key removed")
+    check_zone(server, zone, slave, after_keys, 1, 1, 1, desc + ": old key removed")
 
 t = Test()
 
@@ -166,8 +168,9 @@ t.link(parent_zone, parent)
 parent.dnssec(parent_zone).enable = True
 
 child = t.server("knot")
+slave = t.server("knot")
 child_zone = t.zone("example.com.", storage=".")
-t.link(child_zone, child)
+t.link(child_zone, child, slave, ixfr=True)
 
 def cds_submission():
     cds = child.dig(ZONE, "CDS")
@@ -199,27 +202,27 @@ cds_submission()
 t.sleep(5)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_alg_rollover(t, child, child_zone, 2, 1, "KZSK to CSK alg", "ECDSAP256SHA256", True, cds_submission)
+watch_alg_rollover(t, child, child_zone, slave, 2, 1, "KZSK to CSK alg", "ECDSAP256SHA256", True, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, 1, 1, 2, "CSK rollover", True, 27, cds_submission)
+watch_ksk_rollover(t, child, child_zone, slave, 1, 1, 2, "CSK rollover", True, 27, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, 1, 2, 3, "CSK to KZSK", False, 0, cds_submission)
+watch_ksk_rollover(t, child, child_zone, slave, 1, 2, 3, "CSK to KZSK", False, 0, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover", False, 27, cds_submission)
+watch_ksk_rollover(t, child, child_zone, slave, 2, 2, 3, "KSK rollover", False, 27, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, 2, 1, 3, "KZSK to CSK", True, 0, cds_submission)
+watch_ksk_rollover(t, child, child_zone, slave, 2, 1, 3, "KZSK to CSK", True, 0, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP384SHA384")
-watch_alg_rollover(t, child, child_zone, 1, 1, "CSK to CSK alg", "ECDSAP384SHA384", True, cds_submission)
+watch_alg_rollover(t, child, child_zone, slave, 1, 1, "CSK to CSK alg", "ECDSAP384SHA384", True, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_alg_rollover(t, child, child_zone, 1, 2, "CSK to KZSK alg", "ECDSAP256SHA256", False, cds_submission)
+watch_alg_rollover(t, child, child_zone, slave, 1, 2, "CSK to KZSK alg", "ECDSAP256SHA256", False, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP384SHA384")
-watch_alg_rollover(t, child, child_zone, 2, 2, "KZSK alg", "ECDSAP384SHA384", False, cds_submission)
+watch_alg_rollover(t, child, child_zone, slave, 2, 2, "KZSK alg", "ECDSAP384SHA384", False, cds_submission)
 
 t.end()
