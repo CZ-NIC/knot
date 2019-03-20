@@ -310,7 +310,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		if (changeset != NULL) {
 			return changeset_add_addition(changeset, sign_ctx->dnssec_ctx->offline_rrsig, CHANGESET_CHECK);
 		} else {
-			return zone_update_add(update, sign_ctx->dnssec_ctx->offline_rrsig);
+			return zone_update_add(update, sign_ctx->dnssec_ctx->offline_rrsig, true);
 		}
 	}
 
@@ -340,7 +340,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		if (changeset != NULL) {
 			result = changeset_add_addition(changeset, &to_add, 0);
 		} else {
-			result = zone_update_add(update, &to_add);
+			result = zone_update_add(update, &to_add, true);
 		}
 	}
 

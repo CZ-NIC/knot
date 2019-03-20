@@ -356,7 +356,7 @@ static int add_rr_to_chgset(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 
-	return zone_update_add(update, rr);
+	return zone_update_add(update, rr, false);
 }
 
 /* ------------------------ RR processing logic ----------------------------- */
@@ -375,7 +375,7 @@ static int process_add_cname(const zone_node_t *node,
 			return KNOT_EOK;
 		}
 
-		int ret = zone_update_remove(update, &cname);
+		int ret = zone_update_remove(update, &cname, false);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -512,7 +512,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 
-	return zone_update_remove(update, rr);
+	return zone_update_remove(update, rr, false);
 }
 
 /*!< \brief Removes RRSet from zone. */
@@ -543,7 +543,7 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 	}
 
 	knot_rrset_t to_remove = node_rrset(node, rrset->type);
-	return zone_update_remove(update, &to_remove);
+	return zone_update_remove(update, &to_remove, false);
 }
 
 /*!< \brief Removes node from zone. */

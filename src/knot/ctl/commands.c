@@ -971,7 +971,7 @@ static int zone_txn_set(zone_t *zone, ctl_args_t *args)
 		return ret;
 	}
 
-	ret = zone_update_add(zone->control_update, rrset);
+	ret = zone_update_add(zone->control_update, rrset, false);
 	knot_rrset_free(rrset, NULL);
 
 	return ret;
@@ -999,7 +999,7 @@ static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 			return ret;
 		}
 
-		ret = zone_update_remove(zone->control_update, rrset);
+		ret = zone_update_remove(zone->control_update, rrset, false);
 		knot_rrset_free(rrset, NULL);
 		return ret;
 	} else {

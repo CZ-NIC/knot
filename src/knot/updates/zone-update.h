@@ -163,7 +163,7 @@ void zone_update_clear(zone_update_t *update);
  *
  * \return KNOT_E*
  */
-int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset);
+int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset, bool changeset_cancelout);
 
 /*!
  * \brief Removes an RRSet from the zone.
@@ -177,7 +177,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset);
  *
  * \return KNOT_E*
  */
-int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset);
+int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset, bool changeset_cancelout);
 
 /*!
  * \brief Removes a whole RRSet of specified type from the zone.
