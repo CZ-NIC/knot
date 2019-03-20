@@ -31,33 +31,6 @@
 #include "contrib/base32hex.h"
 #include "contrib/wire_ctx.h"
 
-/*!
- * \brief Deletes NSEC3 chain if NSEC should be used.
- *
- * \param zone       Zone to fix.
- * \param changeset  Changeset to be used.
- */
-static int delete_nsec3_chain(const zone_contents_t *zone, changeset_t *changeset)
-{
-	assert(zone);
-	assert(changeset);
-
-	if (zone_tree_is_empty(zone->nsec3_nodes)) {
-		return KNOT_EOK;
-	}
-
-	zone_tree_t *empty_tree = zone_tree_create(false);
-	if (!empty_tree) {
-		return KNOT_ENOMEM;
-	}
-
-	int ret = zone_tree_add_diff(zone->nsec3_nodes, empty_tree, changeset);
-
-	zone_tree_free(&empty_tree);
-
-	return ret;
-}
-
 int knot_nsec3_hash_to_dname(uint8_t *out, size_t out_size, const uint8_t *hash,
                              size_t hash_size, const knot_dname_t *zone_apex)
 
@@ -147,13 +120,13 @@ static bool nsec3param_valid(const knot_rdataset_t *rrs,
 	return equal;
 }
 
-static int remove_nsec3param(const zone_contents_t *zone, changeset_t *changeset)
+static int remove_nsec3param(const zone_contents_t *zone, zone_update_t *update)
 {
 	assert(zone);
-	assert(changeset);
+	assert(update);
 
 	knot_rrset_t rrset = node_rrset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
-	int ret = changeset_add_removal(changeset, &rrset, 0);
+	int ret = zone_update_remove(update, &rrset, true);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -168,7 +141,7 @@ static int remove_nsec3param(const zone_contents_t *zone, changeset_t *changeset
 			return ret;
 		}
 
-		ret = changeset_add_removal(changeset, &rrsig, 0);
+		ret = zone_update_remove(update, &rrsig, true);
 		knot_rdataset_clear(&rrsig.rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -203,11 +176,11 @@ static int set_nsec3param(knot_rrset_t *rrset, const dnssec_nsec3_params_t *para
 	return knot_rrset_add_rdata(rrset, rdata, rdata_len, NULL);
 }
 
-static int add_nsec3param(const zone_contents_t *zone, changeset_t *changeset,
+static int add_nsec3param(const zone_contents_t *zone, zone_update_t *update,
                           const dnssec_nsec3_params_t *params)
 {
 	assert(zone);
-	assert(changeset);
+	assert(update);
 	assert(params);
 
 	knot_rrset_t *rrset = NULL;
@@ -223,31 +196,31 @@ static int add_nsec3param(const zone_contents_t *zone, changeset_t *changeset,
 		return r;
 	}
 
-	r = changeset_add_addition(changeset, rrset, 0);
+	r = zone_update_add(update, rrset, true);
 	knot_rrset_free(rrset, NULL);
 	return r;
 }
 
 static int update_nsec3param(const zone_contents_t *zone,
-                             changeset_t *changeset,
+                             zone_update_t *update,
                              const dnssec_nsec3_params_t *params)
 {
 	assert(zone);
-	assert(changeset);
+	assert(update);
 	assert(params);
 
 	knot_rdataset_t *nsec3param = node_rdataset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
 	bool valid = nsec3param && nsec3param_valid(nsec3param, params);
 
 	if (nsec3param && !valid) {
-		int r = remove_nsec3param(zone, changeset);
+		int r = remove_nsec3param(zone, update);
 		if (r != KNOT_EOK) {
 			return r;
 		}
 	}
 
 	if (params->algorithm != 0 && !valid) {
-		return add_nsec3param(zone, changeset, params);
+		return add_nsec3param(zone, update, params);
 	}
 
 	return KNOT_EOK;
@@ -291,33 +264,22 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
 	uint32_t nsec_ttl = knot_soa_minimum(soa->rdata);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
-	changeset_t ch;
-	int ret = changeset_init(&ch, update->new_cont->apex->owner);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = update_nsec3param(update->new_cont, &ch, &params);
+	int ret = update_nsec3param(update->new_cont, update, &params);
 	if (ret != KNOT_EOK) {
 		goto cleanup;
 	}
 
 	if (ctx->policy->nsec3_enabled) {
 		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl,
-					      ctx->policy->nsec3_opt_out, &ch, update);
+					      ctx->policy->nsec3_opt_out, update);
 	} else {
 		ret = knot_nsec_create_chain(update, nsec_ttl);
 		if (ret == KNOT_EOK) {
-			ret = delete_nsec3_chain(update->new_cont, &ch);
+			ret = knot_nsec3_delete_chain(update, false, false);
 		}
 	}
 
-	if (ret == KNOT_EOK) {
-		ret = zone_update_apply_changeset(update, &ch);
-	}
-
 cleanup:
-	changeset_clear(&ch);
 	return ret;
 }
 
@@ -340,12 +302,7 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 	uint32_t nsec_ttl_new = knot_soa_minimum(soa_new->rdata);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
-	changeset_t ch;
-	int ret = changeset_init(&ch, update->new_cont->apex->owner);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
+	int ret;
 	if (nsec_ttl_old != nsec_ttl_new) {
 		ret = KNOT_ENORECORD;
 	} else if (ctx->policy->nsec3_enabled) {
@@ -357,37 +314,18 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 	if (ret == KNOT_ENORECORD) {
 		log_zone_info(update->zone->name, "DNSSEC, re-creating whole NSEC%s chain",
 		              (ctx->policy->nsec3_enabled ? "3" : ""));
-		changeset_clear(&ch);
-		ret = changeset_init(&ch, update->new_cont->apex->owner);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+
 		if (ctx->policy->nsec3_enabled) {
 			ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl_new,
-			                              ctx->policy->nsec3_opt_out, &ch, update);
+			                              ctx->policy->nsec3_opt_out, update);
 		} else {
 			ret = knot_nsec_create_chain(update, nsec_ttl_new);
 		}
 	}
-	if (ret != KNOT_EOK) {
-		goto cleanup;
-	}
 
-	if (1) {
-		// Disable strict changeset application momentarily for the NSEC chain fix.
-		// This is important for NSEC3, since some nodes are removed from contents
-		// when fixing individual NSEC3 nodes and then the NSEC3 records from these nodes
-		// are removed again when the chain is fixed, resulting in double removal,
-		// forbidden in the strict changeset application.
-		update->a_ctx->flags &= ~APPLY_STRICT;
-		ret = zone_update_apply_changeset(update, &ch);
-		update->a_ctx->flags |= APPLY_STRICT;
-	}
 	if (ret == KNOT_EOK) {
 		ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, update);
 	}
 
-cleanup:
-	changeset_clear(&ch);
 	return ret;
 }

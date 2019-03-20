@@ -349,14 +349,15 @@ void zone_update_clear(zone_update_t *update)
 	memset(update, 0, sizeof(*update));
 }
 
-int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
+int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset, bool changeset_cancelout)
 {
 	if (update == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	if (update->flags & UPDATE_INCREMENTAL) {
-		int ret = changeset_add_addition(&update->change, rrset, CHANGESET_CHECK);
+		int ret = changeset_add_addition(&update->change, rrset,
+		    changeset_cancelout ? CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT : CHANGESET_CHECK);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -405,14 +406,15 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 	}
 }
 
-int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
+int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset, bool changeset_cancelout)
 {
 	if (update == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	if (update->flags & UPDATE_INCREMENTAL) {
-		int ret = changeset_add_removal(&update->change, rrset, CHANGESET_CHECK);
+		int ret = changeset_add_removal(&update->change, rrset,
+		    changeset_cancelout ? CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT : CHANGESET_CHECK);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -480,7 +482,7 @@ int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_
 		}
 
 		knot_rrset_t rrset = node_rrset(node, type);
-		int ret = zone_update_remove(update, &rrset);
+		int ret = zone_update_remove(update, &rrset, false);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -531,7 +533,7 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 		size_t rrset_count = node->rrset_count;
 		for (int i = 0; i < rrset_count; ++i) {
 			knot_rrset_t rrset = node_rrset_at(node, rrset_count - 1 - i);
-			int ret = zone_update_remove(update, &rrset);
+			int ret = zone_update_remove(update, &rrset, false);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -585,7 +587,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 		return KNOT_ENOMEM;
 	}
 
-	int ret = zone_update_remove(update, soa_cpy);
+	int ret = zone_update_remove(update, soa_cpy, true);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(soa_cpy, NULL);
 		return ret;
@@ -601,7 +603,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 	} else {
 		knot_soa_serial_set(soa_cpy->rrs.rdata, new_serial);
 
-		ret = zone_update_add(update, soa_cpy);
+		ret = zone_update_add(update, soa_cpy, true);
 	}
 	knot_rrset_free(soa_cpy, NULL);
 

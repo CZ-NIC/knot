@@ -126,7 +126,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	}
 
 	/* First addition */
-	ret = zone_update_add(&update, &rrset);
+	ret = zone_update_add(&update, &rrset, false);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 	is_int(KNOT_EOK, ret, "full zone update: first addition");
 
@@ -136,19 +136,19 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	}
 
 	/* Second addition */
-	ret = zone_update_add(&update, &rrset);
+	ret = zone_update_add(&update, &rrset, false);
 	zone_node_t *node = (zone_node_t *) zone_update_get_node(&update, rrset.owner);
 	bool rrset_present = node_contains_rr(node, &rrset);
 	ok(ret == KNOT_EOK && rrset_present, "full zone update: second addition");
 
 	/* Removal */
-	ret = zone_update_remove(&update, &rrset);
+	ret = zone_update_remove(&update, &rrset, false);
 	node = (zone_node_t *) zone_update_get_node(&update, rrset.owner);
 	rrset_present = node_contains_rr(node, &rrset);
 	ok(ret == KNOT_EOK && !rrset_present, "full zone update: removal");
 
 	/* Last addition */
-	ret = zone_update_add(&update, &rrset);
+	ret = zone_update_add(&update, &rrset, false);
 	node = (zone_node_t *) zone_update_get_node(&update, rrset.owner);
 	rrset_present = node_contains_rr(node, &rrset);
 	ok(ret == KNOT_EOK && rrset_present, "full zone update: last addition");
@@ -160,7 +160,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	    zs_parse_all(sc) != 0) {
 		assert(0);
 	}
-	ret = zone_update_add(&update, &rrset);
+	ret = zone_update_add(&update, &rrset, false);
 	assert(ret == KNOT_EOK);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 
@@ -168,7 +168,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	    zs_parse_all(sc) != 0) {
 		assert(0);
 	}
-	ret = zone_update_add(&update, &rrset);
+	ret = zone_update_add(&update, &rrset, false);
 	assert(ret == KNOT_EOK);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 	knot_dname_t *rem_node_name = knot_dname_from_str_alloc("node.test");
@@ -216,7 +216,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	    zs_parse_all(sc) != 0) {
 		assert(0);
 	}
-	ret = zone_update_add(&update, &rrset);
+	ret = zone_update_add(&update, &rrset, false);
 	assert(ret == KNOT_EOK);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 
@@ -247,7 +247,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	}
 
 	/* Addition */
-	ret = zone_update_add(&update, &rrset);
+	ret = zone_update_add(&update, &rrset, false);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 	is_int(KNOT_EOK, ret, "incremental zone update: addition");
 
@@ -260,7 +260,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 		assert(0);
 	}
 	/* Removal */
-	ret = zone_update_remove(&update, &rrset);
+	ret = zone_update_remove(&update, &rrset, false);
 	is_int(KNOT_EOK, ret, "incremental zone update: removal");
 	knot_rdataset_clear(&rrset.rrs, NULL);
 
@@ -273,7 +273,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	    zs_parse_all(sc) != 0) {
 		assert(0);
 	}
-	ret = zone_update_add(&update, &rrset);
+	ret = zone_update_add(&update, &rrset, false);
 	assert(ret == KNOT_EOK);
 	knot_rdataset_clear(&rrset.rrs, NULL);
 

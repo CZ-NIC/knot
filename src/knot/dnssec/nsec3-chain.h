@@ -23,13 +23,23 @@
 #include "knot/zone/contents.h"
 
 /*!
+ * \brief Walk NSEC3 chain and delete all.
+ *
+ * \param update                  Zone update to be updated.
+ * \param keep_rrsigs             Skip deleting RRSIGs.
+ * \param only_abandoned_rrsigs   Only delete nodes without NSEC3 record.
+ *
+ * \return KNOT_E*
+ */
+int knot_nsec3_delete_chain(zone_update_t *update, bool keep_rrsigs, bool only_abandoned_rrsigs);
+
+/*!
  * \brief Creates new NSEC3 chain, add differences from current into a changeset.
  *
  * \param zone       Zone to be checked.
  * \param params     NSEC3 parameters.
  * \param ttl        TTL for new records.
  * \param opt_out    NSEC3 opt-out enabled for insecure delegations.
- * \param changeset  Changeset to store changes into.
  * \param update     Zone update to stare immediate changes into.
  *
  * \return KNOT_E*
@@ -38,7 +48,6 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
                             const dnssec_nsec3_params_t *params,
                             uint32_t ttl,
                             bool opt_out,
-                            changeset_t *changeset,
                             zone_update_t *update);
 
 /*!

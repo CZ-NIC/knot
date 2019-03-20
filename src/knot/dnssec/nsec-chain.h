@@ -106,11 +106,12 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
  * \brief Add entry for removed NSEC(3) and its RRSIG to the changeset.
  *
  * \param n          Node to extract NSEC(3) from.
+ * \param keep_rrsig Do not remove corresponding RRSIG.
  * \param update     Update to add the old RR removal into.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_changeset_remove(const zone_node_t *n, zone_update_t *update);
+int knot_nsec_changeset_remove(const zone_node_t *n, bool keep_rrsig, zone_update_t *update);
 
 /*!
  * \brief Checks whether the node is empty or eventually contains only NSEC and
