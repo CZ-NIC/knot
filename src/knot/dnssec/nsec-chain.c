@@ -95,7 +95,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 	 */
 	if (node_rrtype_exists(b, KNOT_RRTYPE_NSEC)
 	    && knot_nsec_empty_nsec_and_rrsigs_in_node(b)) {
-		ret = knot_nsec_changeset_remove(b, data->update);
+		ret = knot_nsec_changeset_remove(b, false, data->update);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -132,7 +132,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 			return KNOT_EOK;
 		}
 
-		ret = knot_nsec_changeset_remove(a, data->update);
+		ret = knot_nsec_changeset_remove(a, false, data->update);
 		if (ret != KNOT_EOK) {
 			knot_rdataset_clear(&new_nsec.rrs, NULL);
 			return ret;
@@ -215,7 +215,7 @@ static zone_node_t *it_next2(zone_tree_delsafe_it_t *it, zone_node_t *first, zon
 {
 	zone_node_t *res = it_next0(it, first);
 	while (knot_nsec_empty_nsec_and_rrsigs_in_node(res) || (res->flags & NODE_FLAGS_NONAUTH)) {
-		(void)knot_nsec_changeset_remove(res, upd);
+		(void)knot_nsec_changeset_remove(res, false, upd);
 		res = it_next0(it, first);
 	}
 	return res;
@@ -294,7 +294,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 		while (cmp != 0) {
 			if (cmp < 0) {
 				// a node was removed
-				ret = knot_nsec_changeset_remove(old_curr, data->update);
+				ret = knot_nsec_changeset_remove(old_curr, false, data->update);
 				CHECK_RET;
 				old_prev = old_curr;
 				old_curr = it_next1(&old_it, old_first);
@@ -333,7 +333,7 @@ cleanup:
 /*!
  * \brief Add entry for removed NSEC to the changeset.
  */
-int knot_nsec_changeset_remove(const zone_node_t *n, zone_update_t *update)
+int knot_nsec_changeset_remove(const zone_node_t *n, bool keep_rrsig, zone_update_t *update)
 {
 	if (update == NULL) {
 		return KNOT_EINVAL;
@@ -348,10 +348,9 @@ int knot_nsec_changeset_remove(const zone_node_t *n, zone_update_t *update)
 	if (result == KNOT_EOK && !knot_rrset_empty(&nsec_rem)) {
 		result = zone_update_remove(update, &nsec_rem);
 	}
-	assert(result == KNOT_EOK); // TODO remove
 
 	knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
-	if (!knot_rrset_empty(&rrsigs) && result == KNOT_EOK) {
+	if (!knot_rrset_empty(&rrsigs) && result == KNOT_EOK && !keep_rrsig) {
 		knot_rrset_t synth_rrsigs;
 		knot_rrset_init(&synth_rrsigs, n->owner, KNOT_RRTYPE_RRSIG,
 		                KNOT_CLASS_IN, rrsigs.ttl);

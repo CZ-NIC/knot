@@ -26,46 +26,6 @@
 #include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
 
-/* - NSEC3 node comparison -------------------------------------------------- */
-
-/*!
- * \brief Perform some basic checks that the node is a valid NSEC3 node.
- */
-inline static bool valid_nsec3_node(const zone_node_t *node)
-{
-	assert(node);
-
-	if (node->rrset_count > 2) {
-		return false;
-	}
-
-	const knot_rdataset_t *nsec3 = node_rdataset(node, KNOT_RRTYPE_NSEC3);
-	if (nsec3 == NULL) {
-		return false;
-	}
-
-	if (nsec3->count != 1) {
-		return false;
-	}
-
-	return true;
-}
-
-/*!
- * \brief Check if two nodes are equal.
- */
-static bool are_nsec3_nodes_equal(const zone_node_t *a, const zone_node_t *b)
-{
-	if (!(valid_nsec3_node(a) && valid_nsec3_node(b))) {
-		return false;
-	}
-
-	knot_rrset_t a_rrset = node_rrset(a, KNOT_RRTYPE_NSEC3);
-	knot_rrset_t b_rrset = node_rrset(b, KNOT_RRTYPE_NSEC3);
-	return knot_rrset_equal(&a_rrset, &b_rrset, KNOT_RRSET_COMPARE_WHOLE) &&
-	       (a_rrset.ttl == b_rrset.ttl);
-}
-
 static bool nsec3_opt_out(const zone_node_t *node, bool opt_out_enabled)
 {
 	return (opt_out_enabled && (node->flags & NODE_FLAGS_DELEG) &&
@@ -96,84 +56,6 @@ static bool node_should_be_signed_nsec3(const zone_node_t *n)
 
 	return false;
 }
-
-/* - RRSIGs handling for NSEC3 ---------------------------------------------- */
-
-/*!
- * \brief Shallow copy NSEC3 signatures from the one node to the second one.
- *        Just sets the pointer, needed only for comparison.
- */
-static int shallow_copy_signature(const zone_node_t *from, zone_node_t *to)
-{
-	assert(valid_nsec3_node(from));
-	assert(valid_nsec3_node(to));
-
-	knot_rrset_t from_sig = node_rrset(from, KNOT_RRTYPE_RRSIG);
-	if (knot_rrset_empty(&from_sig)) {
-		return KNOT_EOK;
-	}
-	return node_add_rrset(to, &from_sig, NULL);
-}
-
-/*!
- * \brief Reuse signatatures by shallow copying them from one tree to another.
- */
-static int copy_signatures(zone_tree_t *from, zone_tree_t *to)
-{
-	if (zone_tree_is_empty(from)) {
-		return KNOT_EOK;
-	}
-
-	assert(to);
-
-	zone_tree_it_t it = { 0 };
-	for ((void)zone_tree_it_begin(from, &it); !zone_tree_it_finished(&it); zone_tree_it_next(&it)) {
-		zone_node_t *node_from = zone_tree_it_val(&it);
-
-		zone_node_t *node_to = zone_tree_get(to, node_from->owner);
-		if (node_to == NULL) {
-			continue;
-		}
-
-		if (!are_nsec3_nodes_equal(node_from, node_to)) {
-			continue;
-		}
-
-		int ret = shallow_copy_signature(node_from, node_to);
-		if (ret != KNOT_EOK) {
-			zone_tree_it_free(&it);
-			return ret;
-		}
-	}
-
-	zone_tree_it_free(&it);
-	return KNOT_EOK;
-}
-
-/*!
- * \brief Custom NSEC3 tree free function.
- *
- */
-static void free_nsec3_tree(zone_tree_t *nodes)
-{
-	assert(nodes);
-
-	zone_tree_it_t it = { 0 };
-	for ((void)zone_tree_it_begin(nodes, &it); !zone_tree_it_finished(&it); zone_tree_it_next(&it)) {
-		zone_node_t *node = zone_tree_it_val(&it);
-		// newly allocated NSEC3 nodes
-		knot_rdataset_t *nsec3 = node_rdataset(node, KNOT_RRTYPE_NSEC3);
-		knot_rdataset_t *rrsig = node_rdataset(node, KNOT_RRTYPE_RRSIG);
-		knot_rdataset_clear(nsec3, NULL);
-		knot_rdataset_clear(rrsig, NULL);
-		node_free(node, NULL);
-	}
-
-	zone_tree_it_free(&it);
-	zone_tree_free(&nodes);
-}
-
-/* - NSEC3 nodes construction ----------------------------------------------- */
 
 /*!
  * \brief Get NSEC3 RDATA size.
@@ -277,73 +159,22 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Create NSEC3 node.
- */
-static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
-                                      const dnssec_nsec3_params_t *nsec3_params,
-                                      zone_node_t *apex_node,
-                                      const dnssec_nsec_bitmap_t *rr_types,
-                                      uint32_t ttl)
+static int create_nsec3_rrset_for_node(knot_rrset_t *rrset,
+                                       const zone_node_t *node,
+				       zone_node_t *apex,
+				       const dnssec_nsec3_params_t *params,
+				       uint32_t ttl)
 {
-	assert(owner);
-	assert(nsec3_params);
-	assert(apex_node);
-	assert(rr_types);
-
-	zone_node_t *new_node = node_new(owner, false, false, NULL);
-	if (!new_node) {
-		return NULL;
-	}
-
-	knot_rrset_t nsec3_rrset;
-	int ret = create_nsec3_rrset(&nsec3_rrset, owner, nsec3_params,
-	                             rr_types, NULL, ttl);
-	if (ret != KNOT_EOK) {
-		node_free(new_node, NULL);
-		return NULL;
-	}
-
-	ret = node_add_rrset(new_node, &nsec3_rrset, NULL);
-	knot_rrset_clear(&nsec3_rrset, NULL);
-	if (ret != KNOT_EOK) {
-		node_free(new_node, NULL);
-		return NULL;
-	}
-
-	return new_node;
-}
-
-/*!
- * \brief Create new NSEC3 node for given regular node.
- *
- * \param node       Node for which the NSEC3 node is created.
- * \param apex       Zone apex node.
- * \param params     NSEC3 hash function parameters.
- * \param ttl        TTL of the new NSEC3 node.
- * \param apex_cds   Hint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
-                                               zone_node_t *apex,
-                                               const dnssec_nsec3_params_t *params,
-                                               uint32_t ttl)
-{
-	assert(node);
-	assert(apex);
-	assert(params);
-
 	uint8_t nsec3_owner[KNOT_DNAME_MAXLEN];
 	int ret = knot_create_nsec3_owner(nsec3_owner, sizeof(nsec3_owner),
 	                                  node->owner, apex->owner, params);
 	if (ret != KNOT_EOK) {
-		return NULL;
+		return ret;
 	}
 
 	dnssec_nsec_bitmap_t *rr_types = dnssec_nsec_bitmap_new();
 	if (!rr_types) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
 	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC3, node);
@@ -354,11 +185,11 @@ static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC3PARAM);
 	}
 
-	zone_node_t *nsec3_node = create_nsec3_node(nsec3_owner, params, apex,
-	                                            rr_types, ttl);
+	ret = create_nsec3_rrset(rrset, nsec3_owner, params, rr_types, NULL, ttl);
+
 	dnssec_nsec_bitmap_free(rr_types);
 
-	return nsec3_node;
+	return ret;
 }
 
 /* - NSEC3 chain creation --------------------------------------------------- */
@@ -405,27 +236,6 @@ static int connect_nsec3_base(knot_rdataset_t *a_rrs, const knot_dname_t *b_name
 }
 
 /*!
- * \brief Connect two nodes by filling 'hash' field of NSEC3 RDATA of the first node.
- *
- * \param a     First node. Gets modified in-place!
- * \param b     Second node (immediate follower of a).
- * \param data  Unused parameter.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
-                               nsec_chain_iterate_data_t *data)
-{
-	assert(a);
-	assert(b);
-	UNUSED(data);
-
-	assert(a->rrset_count == 1);
-
-	return connect_nsec3_base(node_rdataset(a, KNOT_RRTYPE_NSEC3), b->owner);
-}
-
-/*!
  * \brief Connect two nodes by updating the changeset.
  *
  * \param a     First node.
@@ -462,68 +272,6 @@ static int connect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
 	}
 	knot_rrset_free(acopy, NULL);
 	return ret;
-}
-
-/*!
- * \brief Create NSEC3 node for each regular node in the zone.
- *
- * \param zone         Zone.
- * \param params       NSEC3 params.
- * \param ttl          TTL for the created NSEC records.
- * \param cds_in_apex  Hint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
- * \param nsec3_nodes  Tree whereto new NSEC3 nodes will be added.
- * \param update       Zone update for possible NSEC removals
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static int create_nsec3_nodes(const zone_contents_t *zone,
-                              const dnssec_nsec3_params_t *params,
-                              uint32_t ttl,
-                              zone_tree_t *nsec3_nodes,
-                              zone_update_t *update)
-{
-	assert(zone);
-	assert(nsec3_nodes);
-	assert(update);
-
-	zone_tree_it_t it = { 0 };
-	int result = zone_tree_it_begin(zone->nodes, &it);
-
-	while (!zone_tree_it_finished(&it)) {
-		zone_node_t *node = zone_tree_it_val(&it);
-
-		/*!
-		 * Remove possible NSEC from the node. (Do not allow both NSEC
-		 * and NSEC3 in the zone at once.)
-		 */
-		result = knot_nsec_changeset_remove(node, update);
-		if (result != KNOT_EOK) {
-			break;
-		}
-		if (node->flags & NODE_FLAGS_NONAUTH || node->flags & NODE_FLAGS_EMPTY || node->flags & NODE_FLAGS_DELETED) {
-			zone_tree_it_next(&it);
-			continue;
-		}
-
-		zone_node_t *nsec3_node;
-		nsec3_node = create_nsec3_node_for_node(node, zone->apex,
-							params, ttl);
-		if (!nsec3_node) {
-			result = KNOT_ENOMEM;
-			break;
-		}
-
-		result = zone_tree_insert(nsec3_nodes, &nsec3_node);
-		if (result != KNOT_EOK) {
-			break;
-		}
-
-		zone_tree_it_next(&it);
-	}
-
-	zone_tree_it_free(&it);
-
-	return result;
 }
 
 /*!
@@ -586,15 +334,12 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 
 	// add NSEC3 with correct bitmap
 	if (add_nsec3 && ret == KNOT_EOK) {
-		zone_node_t *new_nsec3_n = create_nsec3_node_for_node(new_n, update->new_cont->apex, params, ttl);
-		if (new_nsec3_n == NULL) {
-			return KNOT_ENOMEM;
-		}
-		knot_rrset_t nsec3 = node_rrset(new_nsec3_n, KNOT_RRTYPE_NSEC3);
-		assert(!knot_rrset_empty(&nsec3));
+		knot_rrset_t nsec3 = { 0 };
+		ret = create_nsec3_rrset_for_node(&nsec3, new_n, update->new_cont->apex, params, ttl);
+		assert(ret != KNOT_EOK || !knot_rrset_empty(&nsec3));
 
 		// copy hash of next element from removed record
-		if (next_hash != NULL) {
+		if (ret == KNOT_EOK && next_hash != NULL) {
 			uint8_t *raw_hash = (uint8_t *)knot_nsec3_next(nsec3.rrs.rdata);
 			uint8_t raw_length = knot_nsec3_next_len(nsec3.rrs.rdata);
 			assert(raw_hash != NULL);
@@ -609,9 +354,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 				ret = zone_update_add(update, &nsec3);
 			}
 		}
-		binode_unify(new_nsec3_n, false, NULL);
-		node_free_rrsets(new_nsec3_n, NULL);
-		node_free(new_nsec3_n, NULL);
+		knot_rrset_clear(&nsec3, NULL);
 	}
 
 	return ret;
@@ -703,8 +446,6 @@ static int nsec3_reset(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-/* - Public API ------------------------------------------------------------- */
-
 /*!
  * \brief Create new NSEC3 chain, add differences from current into a changeset.
  */
@@ -719,11 +460,17 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	assert(params);
 	assert(changeset);
 
-	int result;
-
-	zone_tree_t *nsec3_nodes = zone_tree_create(false);
-	if (!nsec3_nodes) {
-		return KNOT_ENOMEM;
+	// remove all old NSEC3s
+	zone_tree_delsafe_it_t it = { 0 };
+	int result = update->new_cont->nsec3_nodes == NULL ? KNOT_ENOENT :
+	             zone_tree_delsafe_it_begin(update->new_cont->nsec3_nodes, &it);
+	while (result == KNOT_EOK && !zone_tree_delsafe_it_finished(&it)) {
+		result = knot_nsec_changeset_remove(zone_tree_delsafe_it_val(&it), true, update);
+		zone_tree_delsafe_it_next(&it);
+	}
+	zone_tree_delsafe_it_free(&it);
+	if (result != KNOT_EOK && result != KNOT_ENOENT) {
+		return result;
 	}
 
 	/* Before creating NSEC3 nodes, we must temporarily mark those nodes
@@ -736,13 +483,24 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	 */
 	result = zone_tree_apply(zone->nodes, nsec3_mark_empty, (opt_out ? (void *)zone : NULL));
 	if (result != KNOT_EOK) {
-		free_nsec3_tree(nsec3_nodes);
 		return result;
 	}
 
-	result = create_nsec3_nodes(zone, params, ttl, nsec3_nodes, update);
+	// generate NSEC3 nodes for existing zone nodes
+	zone_tree_it_t i = { 0 };
+	result = zone_tree_it_begin(update->new_cont->nodes, &i);
+	while (result == KNOT_EOK && !zone_tree_it_finished(&i)) {
+		knot_rrset_t nsec3rr = { 0 };
+		result = create_nsec3_rrset_for_node(&nsec3rr, zone_tree_it_val(&i),
+		                                     update->new_cont->apex, params, ttl);
+		if (result == KNOT_EOK) {
+			result = zone_update_add(update, &nsec3rr);
+		}
+		knot_rrset_clear(&nsec3rr, NULL);
+		zone_tree_it_next(&i);
+	}
+	zone_tree_it_free(&i);
 	if (result != KNOT_EOK) {
-		free_nsec3_tree(nsec3_nodes);
 		return result;
 	}
 
@@ -753,22 +511,26 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	 */
 	result = zone_tree_apply(zone->nodes, nsec3_reset, NULL);
 	if (result != KNOT_EOK) {
-		free_nsec3_tree(nsec3_nodes);
 		return result;
 	}
 
-	result = knot_nsec_chain_iterate_create(nsec3_nodes,
-	                                        connect_nsec3_nodes, NULL);
+	// remove standalone remaining RRSIGs
+	result = zone_tree_delsafe_it_begin(update->new_cont->nsec3_nodes, &it);
+	while (result == KNOT_EOK && !zone_tree_delsafe_it_finished(&it)) {
+		zone_node_t *n = zone_tree_delsafe_it_val(&it);
+		if (!node_rrtype_exists(n, KNOT_RRTYPE_NSEC3)) {
+			result = knot_nsec_changeset_remove(n, false, update);
+		}
+		zone_tree_delsafe_it_next(&it);
+	}
+	zone_tree_delsafe_it_free(&it);
 	if (result != KNOT_EOK) {
-		free_nsec3_tree(nsec3_nodes);
 		return result;
 	}
 
-	copy_signatures(zone->nsec3_nodes, nsec3_nodes);
-
-	result = zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes, changeset);
-
-	free_nsec3_tree(nsec3_nodes);
+	nsec_chain_iterate_data_t data = { ttl, update };
+	result = knot_nsec_chain_iterate_create(update->new_cont->nsec3_nodes,
+	                                        connect_nsec3_nodes2, &data);
 
 	return result;
 }
