@@ -288,8 +288,6 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 			// if cmp != 0, the nsec chain will be locally rebuilt anyway,
 			// so no need to update bitmap in such case
 			// overall, we now have dnames: old_prev == new_prev && old_curr == new_curr
-			ret = knot_nsec_changeset_remove(old_prev, data->update);
-			CHECK_RET;
 			ret = callback(new_prev, new_curr, data);
 			CHECK_RET;
 		}
@@ -297,8 +295,6 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 		while (cmp != 0) {
 			if (cmp < 0) {
 				// a node was removed
-				ret = knot_nsec_changeset_remove(old_prev, data->update);
-				CHECK_RET;
 				ret = knot_nsec_changeset_remove(old_curr, data->update);
 				CHECK_RET;
 				old_prev = old_curr;
@@ -307,8 +303,6 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 				CHECK_RET;
 			} else {
 				// a node was added
-				ret = knot_nsec_changeset_remove(old_prev, data->update);
-				CHECK_RET;
 				ret = callback(new_prev, new_curr, data);
 				CHECK_RET;
 				new_prev = new_curr;
