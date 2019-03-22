@@ -270,6 +270,17 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
 	return KNOT_EOK;
 }
 
+static int add_to_ptrs_incl_parents(apply_ctx_t *ctx, bool nsec3rel, zone_node_t *node)
+{
+	zone_tree_t *tree = nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs;
+	int ret = KNOT_EOK;
+	while (ret == KNOT_EOK && node != NULL && zone_tree_get(tree, node->owner) != node /*aka == NULL */) {
+		ret = zone_tree_insert(tree, node);
+		node = node->parent;
+	}
+	return ret;
+}
+
 int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 {
 	zone_contents_t *contents = ctx->contents;
@@ -279,8 +290,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	if (node == NULL) {
 		return KNOT_ENOMEM;
 	}
-	zone_tree_insert(knot_rrset_is_nsec3rel(rr) ? ctx->nsec3_ptrs : ctx->node_ptrs, node);
-	// re-inserting makes no harm
+	add_to_ptrs_incl_parents(ctx, knot_rrset_is_nsec3rel(rr), node);
 
 	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&changed_rrset)) {
@@ -344,7 +354,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	}
 
 	bool nsec3 = knot_rrset_is_nsec3rel(rr);
-	zone_tree_insert(nsec3 ? ctx->nsec3_ptrs : ctx->node_ptrs, node);
+	add_to_ptrs_incl_parents(ctx, nsec3, node);
 	zone_tree_t *tree = nsec3 ? contents->nsec3_nodes : contents->nodes;
 
 	knot_rrset_t removed_rrset = node_rrset(node, rr->type);
@@ -381,8 +391,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node != contents->apex) {
-			zone_tree_remove_node(nsec3 ? ctx->nsec3_ptrs: ctx->node_ptrs, node->owner);
-			zone_tree_delete_empty(tree, node);
+			zone_tree_delete_empty(tree, node, nsec3 ? ctx->nsec3_ptrs: ctx->node_ptrs);
 		}
 	}
 

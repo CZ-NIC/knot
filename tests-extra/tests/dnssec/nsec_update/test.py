@@ -49,7 +49,35 @@ slave.zones_wait(zones, after_update, equal=True, greater=False)
 
 # re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
-master.zones_wait(zones, after_update, equal=False, greater=True)
+after_update15 = master.zones_wait(zones, after_update, equal=False, greater=True)
+
+t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
+
+# sync slave with current master's state
+slave.ctl("zone-refresh")
+t.sleep(5)
+
+# update master by adding delegation with nontrivial NONAUTH nodes
+for zone in zones:
+    up = master.update(zone)
+    if random.random() < 0.5:
+        up.add("deleg390280", 3600, "NS", "a.ns.deleg390280")
+        up.add("a.ns.deleg390280", 3600, "A", "1.2.54.30")
+    else:
+        up.add("deleg390281", 3600, "NS", "ns.deleg390280")
+        up.add("ns.deleg390281", 3600, "A", "1.2.54.31")
+    up.send("NOERROR")
+after_update2 = master.zones_wait(zones, after_update15, equal=False, greater=True)
+
+# sync slave with current master's state
+slave.ctl("zone-refresh")
+t.sleep(5)
+
+slave.zones_wait(zones, after_update2, equal=True, greater=False)
+
+# re-sign master and check that the re-sign made nothing
+master.ctl("zone-sign")
+after_update25 = master.zones_wait(zones, after_update2, equal=False, greater=True)
 
 t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
 
