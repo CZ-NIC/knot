@@ -120,8 +120,9 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner);
  *
  * \param tree  The tree to remove from.
  * \param node  The node to remove.
+ * \param also_remove_from   Another tree that every deleted node shall be removed from.
  */
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node);
+void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node, zone_tree_t *also_remove_from);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.

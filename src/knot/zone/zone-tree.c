@@ -139,7 +139,7 @@ static void fix_wildcard_child(zone_node_t *node, const knot_dname_t *owner)
 	}
 }
 
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
+void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node, zone_tree_t *also_remove_from)
 {
 	if (tree == NULL || node == NULL) {
 		return;
@@ -152,11 +152,14 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node)
 			fix_wildcard_child(parent_node, node->owner);
 			if (parent_node->parent != NULL) { /* Is not apex */
 				// Recurse using the parent node, do not delete possibly empty parent.
-				zone_tree_delete_empty(tree, parent_node);
+				zone_tree_delete_empty(tree, parent_node, also_remove_from);
 			}
 		}
 
 		// Delete node
+		if (also_remove_from != NULL) {
+			zone_tree_remove_node(also_remove_from, node->owner);
+		}
 		zone_tree_remove_node(tree, node->owner);
 		node_free(node, NULL);
 	}
