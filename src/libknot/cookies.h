@@ -30,6 +30,8 @@
 #include "libknot/rrtype/opt.h"
 
 #define KNOT_EDNS_COOKIE_SECRET_SIZE 16
+#define KNOT_EDNS_COOKIE_VERSION 1
+#define KNOT_EDNS_COOKIE_ALGO_SIPHASH24 4
 
 /*!
  * \brief DNS Cookie parameters needed to compute the cookie value.

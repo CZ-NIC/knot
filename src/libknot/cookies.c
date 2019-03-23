@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "libknot/attribute.h"
 #include "libknot/cookies.h"
@@ -81,23 +82,28 @@ int knot_edns_cookie_server_generate(knot_edns_cookie_t *out,
                                      const knot_edns_cookie_params_t *params)
 {
 	if (out == NULL || cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_SIZE ||
-	    params == NULL || params->client_addr == NULL) {
+	    params == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	out->data[0] = KNOT_EDNS_COOKIE_VERSION;
+	out->data[1] = KNOT_EDNS_COOKIE_ALGO_SIPHASH24;
+	out->data[2] = 0; /* reserved */
+	out->data[3] = 0; /* reserved */
+	out->len = 4;
+
+	uint32_t now = htobe32((uint32_t)time(NULL));
+	memcpy(&out->data[out->len], &now, sizeof(uint32_t));
+	out->len += sizeof(uint32_t);
 
 	SIPHASH_CTX ctx;
 	assert(sizeof(params->secret) == sizeof(SIPHASH_KEY));
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)params->secret);
-
-	size_t addr_len = 0;
-	void *addr = sockaddr_raw(params->client_addr, &addr_len);
-	SipHash24_Update(&ctx, addr, addr_len);
-
 	SipHash24_Update(&ctx, cc->data, cc->len);
-
+	SipHash24_Update(&ctx, out->data, out->len);
 	uint64_t hash = SipHash24_End(&ctx);
-	memcpy(out->data, &hash, sizeof(hash));
-	out->len = sizeof(hash);
+	memcpy(out->data + out->len, &hash, sizeof(hash));
+	out->len += sizeof(hash);
 
 	return KNOT_EOK;
 }
@@ -107,22 +113,36 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
                                   const knot_edns_cookie_t *cc,
                                   const knot_edns_cookie_params_t *params)
 {
-	if (sc == NULL || cc == NULL || params == NULL) {
+
+	if (sc == NULL || sc->len != 16 || cc == NULL || params == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	knot_edns_cookie_t ref;
-	int ret = knot_edns_cookie_server_generate(&ref, cc, params);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	if (sc->len != ref.len) {
+	uint8_t version = sc->data[0];
+	uint8_t algo = sc->data[1];
+	if (version != KNOT_EDNS_COOKIE_VERSION ||
+	    algo != KNOT_EDNS_COOKIE_ALGO_SIPHASH24) {
 		return KNOT_EINVAL;
 	}
 
-	ret = const_time_memcmp(sc->data, ref.data, sc->len);
-	if (ret != 0) {
+	uint32_t cookie_now;
+	uint32_t now = time(NULL);
+	memcpy(&cookie_now, &sc->data[4], sizeof(uint32_t));
+	cookie_now = htobe32(cookie_now);
+	if (0) {
+		return KNOT_EINVAL;
+	}
+
+	uint64_t cookie_hash;
+	memcpy(&cookie_hash, &sc->data[8], sizeof(uint64_t));
+	SIPHASH_CTX ctx;
+	assert(sizeof(params->secret) == sizeof(SIPHASH_KEY));
+	SipHash24_Init(&ctx, (const SIPHASH_KEY *)params->secret);
+	SipHash24_Update(&ctx, cc->data, cc->len);
+	SipHash24_Update(&ctx, sc->data, sc->len - sizeof(uint64_t));
+	uint64_t hash = SipHash24_End(&ctx);
+
+	if (cookie_hash != hash) {
 		return KNOT_EINVAL;
 	}
 
