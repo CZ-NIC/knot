@@ -73,6 +73,11 @@ int conf_io_begin(
 		return KNOT_TXN_EEXISTS;
 	}
 
+	if (conf()->filename != NULL) {
+		log_ctl_notice("control, persistent configuration database "
+		               "not available");
+	}
+
 	// Start the writing transaction.
 	int ret = knot_db_lmdb_txn_begin(conf()->db, txn, parent, 0);
 	if (ret != KNOT_EOK) {
