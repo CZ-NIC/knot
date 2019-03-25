@@ -280,11 +280,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	log_zone_info(zone->name, "loaded, serial %s -> %u%s, %zu bytes",
 	              old_serial_str, middle_serial, new_serial_str, zone->contents->size);
 
-	if (zone->control_update != NULL) {
-		log_zone_warning(zone->name, "control transaction aborted");
-		zone_control_clear(zone);
-	}
-
 	// Schedule depedent events.
 	const knot_rdataset_t *soa = zone_soa(zone);
 	zone->timers.soa_expire = knot_soa_expire(soa->rdata);
