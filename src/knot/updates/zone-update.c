@@ -736,6 +736,13 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		update->zone->zonefile.resigned = true;
 	}
 
+	/* Abort control transaction if any. */
+	if (update->zone->control_update != NULL &&
+	    update->zone->control_update != update) {
+		log_zone_warning(update->zone->name, "control transaction aborted");
+		zone_control_clear(update->zone);
+	}
+
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, new_contents);
