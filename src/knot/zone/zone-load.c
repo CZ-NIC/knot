@@ -124,7 +124,6 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 	journal_read_t *read = NULL;
 	int ret = journal_read_begin(zone_journal(zone), true, 0, &read);
 	if (ret == KNOT_ENOENT) {
-		node_free((*contents)->apex, NULL);
 		zone_contents_free(*contents);
 		return ret;
 	}
