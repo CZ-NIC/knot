@@ -442,9 +442,7 @@ static void zone_txn_update_clear(zone_t *zone)
 {
 	assert(zone->control_update);
 
-	zone_update_clear(zone->control_update);
-	free(zone->control_update);
-	zone->control_update = NULL;
+	zone_control_clear(zone);
 }
 
 static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
