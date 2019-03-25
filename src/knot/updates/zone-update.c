@@ -750,7 +750,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	/* Abort control transaction if any. */
-	if (update->zone->control_update != NULL) {
+	if (update->zone->control_update != NULL &&
+	    update->zone->control_update != update) {
 		log_zone_warning(update->zone->name, "control transaction aborted");
 		zone_control_clear(update->zone);
 	}
