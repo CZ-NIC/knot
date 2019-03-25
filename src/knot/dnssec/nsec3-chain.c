@@ -676,11 +676,8 @@ static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *p
  */
 static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
 {
-	if (node->children > 0) {
-		return false;
-	}
-
-	return knot_nsec_empty_nsec_and_rrsigs_in_node(node) || nsec3_opt_out(node, opt_out);
+	return ((node->children == 0 && knot_nsec_empty_nsec_and_rrsigs_in_node(node)) ||
+		nsec3_opt_out(node, opt_out));
 }
 
 /*!
