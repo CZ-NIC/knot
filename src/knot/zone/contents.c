@@ -144,12 +144,11 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 		return NULL;
 	}
 
-	zone_contents_t *contents = malloc(sizeof(zone_contents_t));
+	zone_contents_t *contents = calloc(1, sizeof(*contents));
 	if (contents == NULL) {
 		return NULL;
 	}
 
-	memset(contents, 0, sizeof(zone_contents_t));
 	contents->apex = node_new(apex_name, NULL);
 	if (contents->apex == NULL) {
 		goto cleanup;
@@ -167,8 +166,8 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 	return contents;
 
 cleanup:
+	node_free(contents->apex, NULL);
 	free(contents->nodes);
-	free(contents->nsec3_nodes);
 	free(contents);
 	return NULL;
 }
