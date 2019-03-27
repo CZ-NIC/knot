@@ -26,7 +26,7 @@
 #include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
 
-int knot_nsec3_delete_chain(zone_update_t *update, bool keep_rrsigs, bool only_abandoned_rrsigs)
+int knot_nsec3_delete_chain(zone_update_t *update, bool keep_rrsigs, bool only_empty)
 {
 	if (update->new_cont->nsec3_nodes == NULL) {
 		return KNOT_EOK;
@@ -36,7 +36,10 @@ int knot_nsec3_delete_chain(zone_update_t *update, bool keep_rrsigs, bool only_a
 	int ret = zone_tree_delsafe_it_begin(update->new_cont->nsec3_nodes, &it);
 	while (ret == KNOT_EOK && !zone_tree_delsafe_it_finished(&it)) {
 		zone_node_t *node = zone_tree_delsafe_it_val(&it);
-		if (!only_abandoned_rrsigs || !node_rrtype_exists(node, KNOT_RRTYPE_NSEC3)) {
+		if (!only_empty || (node->flags & NODE_FLAGS_EMPTY)) {
+			if (only_empty) {
+				node->flags &= ~NODE_FLAGS_EMPTY;
+			}
 			ret = knot_nsec_changeset_remove(node, keep_rrsigs, update);
 		}
 		zone_tree_delsafe_it_next(&it);
@@ -178,6 +181,21 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
+static dnssec_nsec_bitmap_t *nsec3_bitmap_for_node(const zone_node_t *node)
+{
+	dnssec_nsec_bitmap_t *rr_types = dnssec_nsec_bitmap_new();
+	if (rr_types != NULL) {
+		bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC3, node);
+		if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
+			dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
+		}
+		if ((node->flags & NODE_FLAGS_APEX)) {
+			dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC3PARAM);
+		}
+	}
+	return rr_types;
+}
+
 static int create_nsec3_rrset_for_node(knot_rrset_t *rrset,
                                        const zone_node_t *node,
 				       zone_node_t *apex,
@@ -191,23 +209,64 @@ static int create_nsec3_rrset_for_node(knot_rrset_t *rrset,
 		return ret;
 	}
 
-	dnssec_nsec_bitmap_t *rr_types = dnssec_nsec_bitmap_new();
+	dnssec_nsec_bitmap_t *rr_types = nsec3_bitmap_for_node(node);
 	if (!rr_types) {
 		return KNOT_ENOMEM;
-	}
-
-	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC3, node);
-	if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
-		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
-	}
-	if (node == apex) {
-		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC3PARAM);
 	}
 
 	ret = create_nsec3_rrset(rrset, nsec3_owner, params, rr_types, NULL, ttl);
 
 	dnssec_nsec_bitmap_free(rr_types);
 
+	return ret;
+}
+
+static int create_fix_nsec3_node(const zone_node_t *for_node, zone_update_t *update,
+                                 const dnssec_nsec3_params_t *params, uint32_t ttl)
+{
+	uint8_t nsec3_owner[KNOT_DNAME_MAXLEN];
+	int ret = knot_create_nsec3_owner(nsec3_owner, sizeof(nsec3_owner),
+	                                  for_node->owner, update->new_cont->apex->owner, params);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	zone_node_t *ns3n = zone_tree_get(update->new_cont->nsec3_nodes, nsec3_owner);
+	if (ns3n != NULL) {
+		ns3n->flags &= ~NODE_FLAGS_EMPTY;
+	}
+	knot_rdataset_t *old_nsec3 = node_rdataset(ns3n, KNOT_RRTYPE_NSEC3);
+	if (old_nsec3 != NULL && old_nsec3->count > 1) {
+		ret = knot_nsec_changeset_remove(ns3n, false, update);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		return create_fix_nsec3_node(for_node, update, params, ttl);
+	}
+	dnssec_nsec_bitmap_t *rr_types = nsec3_bitmap_for_node(for_node);
+	if (!rr_types) {
+		return KNOT_ENOMEM;
+	}
+	const uint8_t *next_hashed = NULL;
+	if (old_nsec3 != NULL) {
+		assert(old_nsec3->count == 1);
+		next_hashed = knot_nsec3_next(old_nsec3->rdata);
+	}
+	knot_rrset_t new_nsec3 = { 0 };
+	ret = create_nsec3_rrset(&new_nsec3, nsec3_owner, params, rr_types, next_hashed, ttl);
+	dnssec_nsec_bitmap_free(rr_types);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	if (!knot_rdataset_eq(&new_nsec3.rrs, old_nsec3)) {
+		if (old_nsec3 != NULL) {
+			ret = knot_nsec_changeset_remove(ns3n, false, update);
+		}
+		if (ret == KNOT_EOK) {
+			ret = zone_update_add(update, &new_nsec3, false);
+		}
+	}
+	knot_rrset_clear(&new_nsec3, NULL);
 	return ret;
 }
 
@@ -463,6 +522,13 @@ static int nsec3_reset(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
+static int nsec3_set_empty(zone_node_t *node, void *data)
+{
+	UNUSED(data);
+	node->flags |= NODE_FLAGS_EMPTY;
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Create new NSEC3 chain, add differences from current into a changeset.
  */
@@ -476,13 +542,13 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	assert(params);
 
 	// remove all old NSEC3s
-	zone_tree_delsafe_it_t it = { 0 };
-	int result = knot_nsec3_delete_chain(update, true, false);
+	int result = zone_tree_apply(update->new_cont->nsec3_nodes, nsec3_set_empty, NULL);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
 	// remove NSECs in zone
+	zone_tree_delsafe_it_t it = { 0 };
 	result = zone_tree_delsafe_it_begin(update->new_cont->nodes, &it);
 	while (result == KNOT_EOK && !zone_tree_delsafe_it_finished(&it)) {
 		result = knot_nsec_changeset_remove(zone_tree_delsafe_it_val(&it), false, update);
@@ -512,12 +578,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	while (result == KNOT_EOK && !zone_tree_it_finished(&i)) {
 		zone_node_t *n = zone_tree_it_val(&i);
 		if (!(n->flags & (NODE_FLAGS_DELETED | NODE_FLAGS_EMPTY | NODE_FLAGS_NONAUTH))) {
-			knot_rrset_t nsec3rr = { 0 };
-			result = create_nsec3_rrset_for_node(&nsec3rr, n, update->new_cont->apex, params, ttl);
-			if (result == KNOT_EOK) {
-				result = zone_update_add(update, &nsec3rr, true);
-			}
-			knot_rrset_clear(&nsec3rr, NULL);
+			result = create_fix_nsec3_node(n, update, params, ttl);
 		}
 		zone_tree_it_next(&i);
 	}
@@ -536,7 +597,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 		return result;
 	}
 
-	// remove standalone remaining RRSIGs
+	// remove abandoned NSEC3s
 	result = knot_nsec3_delete_chain(update, false, true);
 	if (result != KNOT_EOK) {
 		return result;
