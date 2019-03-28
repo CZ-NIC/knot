@@ -90,7 +90,7 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 {
 	/* Check error code */
 	int ret = CLS_NULL;
-	switch (knot_wire_get_rcode(p->w)) {
+	switch (knot_wire_get_rcode(p->wire)) {
 	case KNOT_RCODE_NOERROR: ret = CLS_NORMAL; break;
 	case KNOT_RCODE_NXDOMAIN: return CLS_NXDOMAIN; break;
 	default: return CLS_ERROR; break;
@@ -123,7 +123,7 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	}
 
 	/* Check ancount */
-	if (knot_wire_get_ancount(p->w) == 0) {
+	if (knot_wire_get_ancount(p->wire) == 0) {
 		return CLS_EMPTY;
 	}
 
@@ -198,50 +198,47 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	return blklen;
 }
 
-static int bucket_free(rrl_item_t *b, uint32_t now)
+static int bucket_free(rrl_item_t *bucket, uint32_t now)
 {
-	return b->cls == CLS_NULL || (b->time + 1 < now);
+	return bucket->cls == CLS_NULL || (bucket->time + 1 < now);
 }
 
-static int bucket_match(rrl_item_t *b, rrl_item_t *m)
+static int bucket_match(rrl_item_t *bucket, rrl_item_t *match)
 {
-	return b->cls    == m->cls &&
-	       b->netblk == m->netblk &&
-	       b->qname  == m->qname;
+	return bucket->cls    == match->cls &&
+	       bucket->netblk == match->netblk &&
+	       bucket->qname  == match->qname;
 }
 
-static int find_free(rrl_table_t *tbl, unsigned i, uint32_t now)
+static int find_free(rrl_table_t *tbl, unsigned id, uint32_t now)
 {
-	rrl_item_t *np = tbl->arr + tbl->size;
-	rrl_item_t *b = NULL;
-	for (b = tbl->arr + i; b != np; ++b) {
-		if (bucket_free(b, now)) {
-			return b - (tbl->arr + i);
+	for (int i = id; i < tbl->size; i++) {
+		if (bucket_free(&tbl->arr[i], now)) {
+			return i - id;
 		}
 	}
-	np = tbl->arr + i;
-	for (b = tbl->arr; b != np; ++b) {
-		if (bucket_free(b, now)) {
-			return (b - tbl->arr) + (tbl->size - i);
+	for (int i = 0; i < id; i++) {
+		if (bucket_free(&tbl->arr[i], now)) {
+			return i + (tbl->size - id);
 		}
 	}
 
 	/* this happens if table is full... force vacate current elm */
-	return i;
+	return id;
 }
 
 static inline unsigned find_match(rrl_table_t *tbl, uint32_t id, rrl_item_t *m)
 {
-	unsigned f = 0;
-	unsigned d = 0;
-	unsigned match = tbl->arr[id].hop;
-	while (match != 0) {
-		d = __builtin_ctz(match);
-		f = (id + d) % tbl->size;
-		if (bucket_match(tbl->arr + f, m)) {
-			return d;
+	unsigned new_id = 0;
+	unsigned hop = 0;
+	unsigned match_bitmap = tbl->arr[id].hop;
+	while (match_bitmap != 0) {
+		hop = __builtin_ctz(match_bitmap); // Offset of next potential match.
+		new_id = (id + hop) % tbl->size;
+		if (bucket_match(&tbl->arr[new_id], m)) {
+			return hop;
 		} else {
-			match &= ~(1<<d); /* clear potential match */
+			match_bitmap &= ~(1 << hop); /* clear potential match */
 		}
 	}
 
@@ -261,8 +258,8 @@ static inline unsigned reduce_dist(rrl_table_t *tbl, unsigned id, unsigned d, un
 				memcpy(tbl->arr + *f, tbl->arr + e, sizeof(rrl_item_t));
 				tbl->arr[*f].hop = keep_hop;
 				tbl->arr[e].cls = CLS_NULL;
-				tbl->arr[s].hop &= ~(1<<o);
-				tbl->arr[s].hop |= 1<<rd;
+				tbl->arr[s].hop &= ~(1 << o);
+				tbl->arr[s].hop |= 1 << rd;
 				*f = e;
 				return d - (rd - o);
 			}
