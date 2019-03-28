@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -155,7 +155,7 @@ static int rrl_clsname(uint8_t *dst, size_t maxlen, uint8_t cls, rrl_req_t *req,
 	return knot_dname_to_wire(dst, name, maxlen);
 }
 
-static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_storage *a,
+static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_storage *remote,
                         rrl_req_t *req, const knot_dname_t *name)
 {
 	/* Class */
@@ -164,19 +164,19 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	int blklen = sizeof(cls);
 
 	/* Address (in network byteorder, adjust masks). */
-	uint64_t nb = 0;
-	if (a->ss_family == AF_INET6) {
-		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)a;
-		nb = *((uint64_t *)(&ipv6->sin6_addr)) & RRL_V6_PREFIX;
+	uint64_t netblk = 0;
+	if (remote->ss_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
+		netblk = *((uint64_t *)(&ipv6->sin6_addr)) & RRL_V6_PREFIX;
 	} else {
-		struct sockaddr_in *ipv4 = (struct sockaddr_in *)a;
-		nb = ((uint32_t)ipv4->sin_addr.s_addr) & RRL_V4_PREFIX;
+		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
+		netblk = ((uint32_t)ipv4->sin_addr.s_addr) & RRL_V4_PREFIX;
 	}
-	if (blklen + sizeof(nb) > maxlen) {
+	if (blklen + sizeof(netblk) > maxlen) {
 		return KNOT_ESPACE;
 	}
-	memcpy(dst + blklen, (void *)&nb, sizeof(nb));
-	blklen += sizeof(nb);
+	memcpy(dst + blklen, (void *)&netblk, sizeof(netblk));
+	blklen += sizeof(netblk);
 
 	/* Name */
 	uint16_t *len_pos = (uint16_t *)(dst + blklen);
@@ -204,19 +204,19 @@ static int bucket_match(rrl_item_t *b, rrl_item_t *m)
 	       b->qname  == m->qname;
 }
 
-static int find_free(rrl_table_t *t, unsigned i, uint32_t now)
+static int find_free(rrl_table_t *tbl, unsigned i, uint32_t now)
 {
-	rrl_item_t *np = t->arr + t->size;
+	rrl_item_t *np = tbl->arr + tbl->size;
 	rrl_item_t *b = NULL;
-	for (b = t->arr + i; b != np; ++b) {
+	for (b = tbl->arr + i; b != np; ++b) {
 		if (bucket_free(b, now)) {
-			return b - (t->arr + i);
+			return b - (tbl->arr + i);
 		}
 	}
-	np = t->arr + i;
-	for (b = t->arr; b != np; ++b) {
+	np = tbl->arr + i;
+	for (b = tbl->arr; b != np; ++b) {
 		if (bucket_free(b, now)) {
-			return (b - t->arr) + (t->size - i);
+			return (b - tbl->arr) + (tbl->size - i);
 		}
 	}
 
@@ -224,15 +224,15 @@ static int find_free(rrl_table_t *t, unsigned i, uint32_t now)
 	return i;
 }
 
-static inline unsigned find_match(rrl_table_t *t, uint32_t id, rrl_item_t *m)
+static inline unsigned find_match(rrl_table_t *tbl, uint32_t id, rrl_item_t *m)
 {
 	unsigned f = 0;
 	unsigned d = 0;
-	unsigned match = t->arr[id].hop;
+	unsigned match = tbl->arr[id].hop;
 	while (match != 0) {
 		d = __builtin_ctz(match);
-		f = (id + d) % t->size;
-		if (bucket_match(t->arr + f, m)) {
+		f = (id + d) % tbl->size;
+		if (bucket_match(tbl->arr + f, m)) {
 			return d;
 		} else {
 			match &= ~(1<<d); /* clear potential match */
@@ -242,21 +242,21 @@ static inline unsigned find_match(rrl_table_t *t, uint32_t id, rrl_item_t *m)
 	return HOP_LEN + 1;
 }
 
-static inline unsigned reduce_dist(rrl_table_t *t, unsigned id, unsigned d, unsigned *f)
+static inline unsigned reduce_dist(rrl_table_t *tbl, unsigned id, unsigned d, unsigned *f)
 {
 	unsigned rd = HOP_LEN - 1;
 	while (rd > 0) {
-		unsigned s = (t->size + *f - rd) % t->size; /* bucket to be vacated */
-		if (t->arr[s].hop != 0) {
-			unsigned o = __builtin_ctz(t->arr[s].hop);  /* offset of first valid bucket */
+		unsigned s = (tbl->size + *f - rd) % tbl->size; /* bucket to be vacated */
+		if (tbl->arr[s].hop != 0) {
+			unsigned o = __builtin_ctz(tbl->arr[s].hop);  /* offset of first valid bucket */
 			if (o < rd) {                               /* only offsets in <s, f> are interesting */
-				unsigned e = (s + o) % t->size;     /* this item will be displaced to [f] */
-				unsigned keep_hop = t->arr[*f].hop; /* unpredictable padding */
-				memcpy(t->arr + *f, t->arr + e, sizeof(rrl_item_t));
-				t->arr[*f].hop = keep_hop;
-				t->arr[e].cls = CLS_NULL;
-				t->arr[s].hop &= ~(1<<o);
-				t->arr[s].hop |= 1<<rd;
+				unsigned e = (s + o) % tbl->size;     /* this item will be displaced to [f] */
+				unsigned keep_hop = tbl->arr[*f].hop; /* unpredictable padding */
+				memcpy(tbl->arr + *f, tbl->arr + e, sizeof(rrl_item_t));
+				tbl->arr[*f].hop = keep_hop;
+				tbl->arr[e].cls = CLS_NULL;
+				tbl->arr[s].hop &= ~(1<<o);
+				tbl->arr[s].hop |= 1<<rd;
 				*f = e;
 				return d - (rd - o);
 			}
@@ -289,49 +289,49 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 	              addr_str, rrl_clsstr(cls), what);
 }
 
-static void rrl_lock(rrl_table_t *t, int lk_id)
+static void rrl_lock(rrl_table_t *tbl, int lk_id)
 {
 	assert(lk_id > -1);
-	pthread_mutex_lock(t->lk + lk_id);
+	pthread_mutex_lock(tbl->lk + lk_id);
 }
 
-static void rrl_unlock(rrl_table_t *t, int lk_id)
+static void rrl_unlock(rrl_table_t *tbl, int lk_id)
 {
 	assert(lk_id > -1);
-	pthread_mutex_unlock(t->lk + lk_id);
+	pthread_mutex_unlock(tbl->lk + lk_id);
 }
 
-static int rrl_setlocks(rrl_table_t *rrl, uint32_t granularity)
+static int rrl_setlocks(rrl_table_t *tbl, uint32_t granularity)
 {
-	assert(!rrl->lk); /* Cannot change while locks are used. */
-	assert(granularity <= rrl->size / 10); /* Due to int. division err. */
+	assert(!tbl->lk); /* Cannot change while locks are used. */
+	assert(granularity <= tbl->size / 10); /* Due to int. division err. */
 
-	if (pthread_mutex_init(&rrl->ll, NULL) < 0) {
+	if (pthread_mutex_init(&tbl->ll, NULL) < 0) {
 		return KNOT_ENOMEM;
 	}
 
 	/* Alloc new locks. */
-	rrl->lk = malloc(granularity * sizeof(pthread_mutex_t));
-	if (!rrl->lk) {
+	tbl->lk = malloc(granularity * sizeof(pthread_mutex_t));
+	if (!tbl->lk) {
 		return KNOT_ENOMEM;
 	}
-	memset(rrl->lk, 0, granularity * sizeof(pthread_mutex_t));
+	memset(tbl->lk, 0, granularity * sizeof(pthread_mutex_t));
 
 	/* Initialize. */
 	for (size_t i = 0; i < granularity; ++i) {
-		if (pthread_mutex_init(rrl->lk + i, NULL) < 0) {
+		if (pthread_mutex_init(tbl->lk + i, NULL) < 0) {
 			break;
 		}
-		++rrl->lk_count;
+		++tbl->lk_count;
 	}
 
 	/* Incomplete initialization */
-	if (rrl->lk_count != granularity) {
-		for (size_t i = 0; i < rrl->lk_count; ++i) {
-			pthread_mutex_destroy(rrl->lk + i);
+	if (tbl->lk_count != granularity) {
+		for (size_t i = 0; i < tbl->lk_count; ++i) {
+			pthread_mutex_destroy(tbl->lk + i);
 		}
-		free(rrl->lk);
-		rrl->lk_count = 0;
+		free(tbl->lk);
+		tbl->lk_count = 0;
 		return KNOT_ERROR;
 	}
 
@@ -345,41 +345,41 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 	}
 
 	const size_t tbl_len = sizeof(rrl_table_t) + size * sizeof(rrl_item_t);
-	rrl_table_t *t = calloc(1, tbl_len);
-	if (!t) {
+	rrl_table_t *tbl = calloc(1, tbl_len);
+	if (!tbl) {
 		return NULL;
 	}
-	t->size = size;
-	t->rate = rate;
+	tbl->size = size;
+	tbl->rate = rate;
 
-	if (dnssec_random_buffer((uint8_t *)&t->key, sizeof(t->key)) != DNSSEC_EOK) {
-		free(t);
-		return NULL;
-	}
-
-	if (rrl_setlocks(t, RRL_LOCK_GRANULARITY) != KNOT_EOK) {
-		free(t);
+	if (dnssec_random_buffer((uint8_t *)&tbl->key, sizeof(tbl->key)) != DNSSEC_EOK) {
+		free(tbl);
 		return NULL;
 	}
 
-	return t;
+	if (rrl_setlocks(tbl, RRL_LOCK_GRANULARITY) != KNOT_EOK) {
+		free(tbl);
+		return NULL;
+	}
+
+	return tbl;
 }
 
 /*! \brief Get bucket for current combination of parameters. */
-static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
+static rrl_item_t *rrl_hash(rrl_table_t *tbl, const struct sockaddr_storage *remote,
                             rrl_req_t *req, const knot_dname_t *zone, uint32_t stamp,
                             int *lock)
 {
 	uint8_t buf[RRL_CLSBLK_MAXLEN];
-	int len = rrl_classify(buf, sizeof(buf), a, req, zone);
+	int len = rrl_classify(buf, sizeof(buf), remote, req, zone);
 	if (len < 0) {
 		return NULL;
 	}
 
-	uint32_t id = SipHash24(&t->key, buf, len) % t->size;
+	uint32_t id = SipHash24(&tbl->key, buf, len) % tbl->size;
 
 	/* Lock for lookup. */
-	pthread_mutex_lock(&t->ll);
+	pthread_mutex_lock(&tbl->ll);
 
 	/* Find an exact match in <id, id + HOP_LEN). */
 	uint8_t *qname = buf + sizeof(uint8_t) + sizeof(uint64_t);
@@ -388,33 +388,33 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
 	rrl_item_t match = {
 		.hop = 0,
 		.netblk = netblk,
-		.ntok = t->rate * RRL_CAPACITY,
+		.ntok = tbl->rate * RRL_CAPACITY,
 		.cls = buf[0],
 		.flags = RRL_BF_NULL,
-		.qname = SipHash24(&t->key, qname + 1, qname[0]),
+		.qname = SipHash24(&tbl->key, qname + 1, qname[0]),
 		.time = stamp
 	};
 
-	unsigned d = find_match(t, id, &match);
+	unsigned d = find_match(tbl, id, &match);
 	if (d > HOP_LEN) { /* not an exact match, find free element [f] */
-		d = find_free(t, id, stamp);
+		d = find_free(tbl, id, stamp);
 	}
 
 	/* Reduce distance to fit <id, id + HOP_LEN) */
-	unsigned f = (id + d) % t->size;
+	unsigned f = (id + d) % tbl->size;
 	while (d >= HOP_LEN) {
-		d = reduce_dist(t, id, d, &f);
+		d = reduce_dist(tbl, id, d, &f);
 	}
 
 	/* Assign granular lock and unlock lookup. */
-	*lock = f % t->lk_count;
-	rrl_lock(t, *lock);
-	pthread_mutex_unlock(&t->ll);
+	*lock = f % tbl->lk_count;
+	rrl_lock(tbl, *lock);
+	pthread_mutex_unlock(&tbl->ll);
 
 	/* found free elm 'k' which is in <id, id + HOP_LEN) */
-	t->arr[id].hop |= (1 << d);
-	rrl_item_t *b = t->arr + f;
-	assert(f == (id+d) % t->size);
+	tbl->arr[id].hop |= (1 << d);
+	rrl_item_t *b = tbl->arr + f;
+	assert(f == (id+d) % tbl->size);
 
 	/* Inspect bucket state. */
 	unsigned hop = b->hop;
@@ -427,7 +427,7 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
 		if (!(b->flags & RRL_BF_SSTART)) {
 			memcpy(b, &match, sizeof(rrl_item_t));
 			b->hop = hop;
-			b->ntok = t->rate + t->rate / RRL_SSTART;
+			b->ntok = tbl->rate + tbl->rate / RRL_SSTART;
 			b->flags |= RRL_BF_SSTART;
 		}
 	}
@@ -435,10 +435,10 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
 	return b;
 }
 
-int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
-              const knot_dname_t *zone, knotd_mod_t *mod)
+int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
+              rrl_req_t *req, const knot_dname_t *zone, knotd_mod_t *mod)
 {
-	if (!rrl || !req || !a) {
+	if (!rrl || !req || !remote) {
 		return KNOT_EINVAL;
 	}
 
@@ -446,8 +446,8 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 	int ret = KNOT_EOK;
 	int lock = -1;
 	uint32_t now = time_now().tv_sec;
-	rrl_item_t *b = rrl_hash(rrl, a, req, zone, now, &lock);
-	if (!b) {
+	rrl_item_t *bucket = rrl_hash(rrl, remote, req, zone, now, &lock);
+	if (!bucket) {
 		if (lock > -1) {
 			rrl_unlock(rrl, lock);
 		}
@@ -455,41 +455,41 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req
 	}
 
 	/* Calculate rate for dT */
-	uint32_t dt = now - b->time;
+	uint32_t dt = now - bucket->time;
 	if (dt > RRL_CAPACITY) {
 		dt = RRL_CAPACITY;
 	}
 	/* Visit bucket. */
-	b->time = now;
+	bucket->time = now;
 	if (dt > 0) { /* Window moved. */
 
 		/* Check state change. */
-		if ((b->ntok > 0 || dt > 1) && (b->flags & RRL_BF_ELIMIT)) {
-			b->flags &= ~RRL_BF_ELIMIT;
-			rrl_log_state(mod, a, b->flags, b->cls);
+		if ((bucket->ntok > 0 || dt > 1) && (bucket->flags & RRL_BF_ELIMIT)) {
+			bucket->flags &= ~RRL_BF_ELIMIT;
+			rrl_log_state(mod, remote, bucket->flags, bucket->cls);
 		}
 
 		/* Add new tokens. */
 		uint32_t dn = rrl->rate * dt;
-		if (b->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
-			b->flags &= ~RRL_BF_SSTART;
+		if (bucket->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
+			bucket->flags &= ~RRL_BF_SSTART;
 		}
-		b->ntok += dn;
-		if (b->ntok > RRL_CAPACITY * rrl->rate) {
-			b->ntok = RRL_CAPACITY * rrl->rate;
+		bucket->ntok += dn;
+		if (bucket->ntok > RRL_CAPACITY * rrl->rate) {
+			bucket->ntok = RRL_CAPACITY * rrl->rate;
 		}
 	}
 
 	/* Last item taken. */
-	if (b->ntok == 1 && !(b->flags & RRL_BF_ELIMIT)) {
-		b->flags |= RRL_BF_ELIMIT;
-		rrl_log_state(mod, a, b->flags, b->cls);
+	if (bucket->ntok == 1 && !(bucket->flags & RRL_BF_ELIMIT)) {
+		bucket->flags |= RRL_BF_ELIMIT;
+		rrl_log_state(mod, remote, bucket->flags, bucket->cls);
 	}
 
 	/* Decay current bucket. */
-	if (b->ntok > 0) {
-		--b->ntok;
-	} else if (b->ntok == 0) {
+	if (bucket->ntok > 0) {
+		--bucket->ntok;
+	} else if (bucket->ntok == 0) {
 		ret = KNOT_ELIMIT;
 	}
 
