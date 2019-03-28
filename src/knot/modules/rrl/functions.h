@@ -72,7 +72,7 @@ typedef enum {
  * \brief RRL request descriptor.
  */
 typedef struct {
-	const uint8_t *w;
+	const uint8_t *wire;
 	uint16_t len;
 	rrl_req_flag_t flags;
 	knot_pkt_t *query;

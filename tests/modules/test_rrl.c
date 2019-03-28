@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	knot_wire_flags_set_qr(rbuf);
 
 	rrl_req_t rq;
-	rq.w = rbuf;
+	rq.wire = rbuf;
 	rq.len = rlen;
 	rq.query = query;
 	rq.flags = 0;

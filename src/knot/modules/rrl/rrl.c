@@ -97,7 +97,7 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	rrl_req_t req = {
-		.w = pkt->wire,
+		.wire = pkt->wire,
 		.query = qdata->query
 	};
 
