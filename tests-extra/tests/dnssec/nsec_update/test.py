@@ -25,9 +25,8 @@ for zone in zones:
     master.dnssec(zone).nsec3_opt_out = (random.random() < 0.5)
 
 t.start()
-t.sleep(4)
+master.zones_wait(zones)
 slave.ctl("zone-refresh")
-
 slave.zones_wait(zones)
 
 # initial convenience check
@@ -44,19 +43,22 @@ after_update = master.zones_wait(zones)
 
 # sync slave with current master's state
 slave.ctl("zone-refresh")
-t.sleep(5)
-
 slave.zones_wait(zones, after_update, equal=True, greater=False)
+
+# flush so that we can do zone_verify
+slave.flush()
 
 # re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
 after_update15 = master.zones_wait(zones, after_update, equal=False, greater=True)
 
 t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
+for zone in zones:
+    slave.zone_verify(zone)
 
 # sync slave with current master's state
 slave.ctl("zone-refresh")
-t.sleep(5)
+slave.zones_wait(zones, after_update15, equal=True, greater=False)
 
 # update master by adding delegation with nontrivial NONAUTH nodes
 for zone in zones:
@@ -72,14 +74,17 @@ after_update2 = master.zones_wait(zones, after_update15, equal=False, greater=Tr
 
 # sync slave with current master's state
 slave.ctl("zone-refresh")
-t.sleep(5)
-
 slave.zones_wait(zones, after_update2, equal=True, greater=False)
+
+# flush so that we can do zone_verify
+slave.flush()
 
 # re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
 after_update25 = master.zones_wait(zones, after_update2, equal=False, greater=True)
 
 t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
+for zone in zones:
+    slave.zone_verify(zone)
 
 t.end()
