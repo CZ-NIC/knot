@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for NSEC and NSEC3 fix after zone update'''
+'''Test for NSEC and NSEC3 fix after zone update (ddns, ixfr)'''
 
 from dnstest.utils import *
 from dnstest.test import Test
@@ -8,10 +8,14 @@ import random
 
 t = Test()
 
+master0 = t.server("knot")
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(5, dnssec=False, records=30) + t.zone("records.")
+zones1 = t.zone_rnd(5, dnssec=False, records=30) + t.zone("records.")
+zone0 = t.zone("dk.", storage=".")
+zones = zones1 + zone0
 
+t.link(zone0, master0, master)
 t.link(zones, master, slave)
 
 master.disable_notify = True
@@ -35,10 +39,20 @@ t.xfr_diff(master, slave, zones)
 # update master
 master.flush()
 t.sleep(2)
-for zone in zones:
+for zone in zones1:
     master.random_ddns(zone)
-t.sleep(4) # zones_wait fails if an empty update is generated
 
+up = master0.update(zone0)
+up.add("dk.", "86400", "SOA", "a.nic.dk. mail.dk. 1666666666 600 300 1814400 7200")
+up.delete("nextlevelinlife.dk.", "NS")
+up.delete("nextlevelinlife.dk.", "DS")
+up.add("nextlevelinlife.dk.", "86400", "NS", "test.com.")
+up.send("NOERROR")
+
+t.sleep(1)
+master.ctl("zone-refresh")
+
+t.sleep(4) # zones_wait fails if an empty update is generated
 after_update = master.zones_wait(zones)
 
 # sync slave with current master's state
@@ -70,6 +84,10 @@ for zone in zones:
         up.add("deleg390281", 3600, "NS", "ns.deleg390280")
         up.add("ns.deleg390281", 3600, "A", "1.2.54.31")
     up.send("NOERROR")
+
+t.sleep(1)
+master.ctl("zone-refresh")
+
 after_update2 = master.zones_wait(zones, after_update15, equal=False, greater=True)
 
 # sync slave with current master's state
