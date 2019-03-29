@@ -10,7 +10,9 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(5, dnssec=False, records=30) + t.zone("records.")
+zones1 = t.zone_rnd(5, dnssec=False, records=30) + t.zone("records.")
+zone2 = t.zone("dk.", storage=".")
+zones = zones1 + zone2
 
 t.link(zones, master, slave)
 
@@ -35,8 +37,16 @@ t.xfr_diff(master, slave, zones)
 # update master
 master.flush()
 t.sleep(2)
-for zone in zones:
+for zone in zones1:
     master.random_ddns(zone)
+
+up = master.update(zone2)
+up.add("dk.", "86400", "SOA", "a.nic.dk. mail.dk. 1666666666 600 300 1814400 7200")
+up.delete("nextlevelinlife.dk.", "NS")
+up.delete("nextlevelinlife.dk.", "DS")
+up.add("nextlevelinlife.dk.", "86400", "NS", "test.com.")
+up.send("NOERROR")
+
 t.sleep(4) # zones_wait fails if an empty update is generated
 
 after_update = master.zones_wait(zones)
