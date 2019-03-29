@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 
 	/* 3. Endian-independent hash input buffer. */
 	uint8_t buf[RRL_CLSBLK_MAXLEN];
-	// CLS_LARGE + remote + dname wire length + dname wire.
+	// CLS_LARGE + remote + dname wire.
 	uint8_t expectedv4[] = "\x10\x01\x02\x03\x00\x00\x00\x00\x00\x04""beef";
 	rrl_classify(buf, sizeof(buf), &addr, &rq, qname);
 	is_int(0, memcmp(buf, expectedv4, sizeof(expectedv4)), "rrl: IPv4 hash input buffer");

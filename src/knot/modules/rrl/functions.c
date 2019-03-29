@@ -25,11 +25,11 @@
 
 /* Hopscotch defines. */
 #define HOP_LEN (sizeof(unsigned)*8)
-/* Limits */
-#define RRL_CLSBLK_MAXLEN (4 + 8 + 1 + 256)
+/* Limits (class, ipv6 remote, dname) */
+#define RRL_CLSBLK_MAXLEN (1 + 8 + 255)
 /* CIDR block prefix lengths for v4/v6 */
-#define RRL_V4_PREFIX ((uint32_t)0x00ffffff)         /* /24 */
-#define RRL_V6_PREFIX ((uint64_t)0x00ffffffffffffff) /* /56 */
+#define RRL_V4_PREFIX_LEN 3 /* /24 */
+#define RRL_V6_PREFIX_LEN 7 /* /56 */
 /* Defaults */
 #define RRL_SSTART 2 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
@@ -166,25 +166,13 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	/* Address (in network byteorder, adjust masks). */
 	uint64_t netblk = 0;
 	if (remote->ss_family == AF_INET6) {
-		uint64_t netmask = 0; // Create endian-independent netmask from integer macro.
-		for (int i = 0; i < sizeof(uint64_t); i++) {
-			*((uint8_t *)&netmask + i) = (RRL_V6_PREFIX >> (8 * i)) & 0xff;
-		}
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
-		netblk = *((uint64_t *)(&ipv6->sin6_addr)) & netmask;
+		memcpy(&netblk, &ipv6->sin6_addr, RRL_V6_PREFIX_LEN);
 	} else {
-		uint32_t netmask = 0; // Create endian-independent netmask from integer macro.
-		for (int i = 0; i < sizeof(uint32_t); i++) {
-			*((uint8_t *)&netmask + i) = (RRL_V4_PREFIX >> (8 * i)) & 0xff;
-		}
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
-		// Write to the left part of netblk, endian-independently.
-		*((uint32_t *)&netblk) = ((uint32_t)ipv4->sin_addr.s_addr) & netmask;
+		memcpy(&netblk, &ipv4->sin_addr, RRL_V4_PREFIX_LEN);
 	}
-	if (blklen + sizeof(netblk) > maxlen) {
-		return KNOT_ESPACE;
-	}
-	memcpy(dst + blklen, (void *)&netblk, sizeof(netblk));
+	memcpy(dst + blklen, &netblk, sizeof(netblk));
 	blklen += sizeof(netblk);
 
 	/* Name */
