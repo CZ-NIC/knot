@@ -376,14 +376,7 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 
 	ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, &ch);
 	if (ret == KNOT_EOK) {
-		// Disable strict changeset application momentarily for the NSEC chain fix.
-		// This is important for NSEC3, since some nodes are removed from contents
-		// when fixing individual NSEC3 nodes and then the NSEC3 records from these nodes
-		// are removed again when the chain is fixed, resulting in double removal,
-		// forbidden in the strict changeset application.
-		update->a_ctx->flags &= ~APPLY_STRICT;
 		ret = zone_update_apply_changeset(update, &ch);
-		update->a_ctx->flags |= APPLY_STRICT;
 	}
 
 cleanup:

@@ -1,0 +1,7 @@
+$TTL	86400
+$ORIGIN	dk.
+@		SOA	a.nic mail 1666666665 600 300 1814400 7200
+		NS	a.nic
+a.nic		A	192.168.1.1
+nextlevelinlife	86400	NS	ns1
+nextlevelinlife	7200	DS	33990 13 4 b23fd72ff9083b104798238eae467dab738b27220b0b6f13f65e033e7e8c064b6b6acf8f55a2baa56ec82e20e8109bbe
