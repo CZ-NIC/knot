@@ -71,9 +71,6 @@ typedef struct zone
 	/*! \brief Control update context. */
 	struct zone_update *control_update;
 
-	/*! \brief Journal access lock. */
-	pthread_mutex_t journal_lock;
-
 	/*! \brief Ptr to journal DB (in struct server) */
 	knot_lmdb_db_t *journaldb;
 
