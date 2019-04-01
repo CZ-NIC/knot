@@ -420,7 +420,7 @@ void update_cleanup(apply_ctx_t *ctx)
 	zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes);
 
 	if (ctx->cow_mutex != NULL) {
-		pthread_mutex_unlock(ctx->cow_mutex);
+		sem_post(ctx->cow_mutex);
 	}
 }
 
@@ -449,7 +449,7 @@ void update_rollback(apply_ctx_t *ctx)
 	}
 
 	if (ctx->cow_mutex != NULL) {
-		pthread_mutex_unlock(ctx->cow_mutex);
+		sem_post(ctx->cow_mutex);
 	}
 
 	free(ctx->contents->nodes);

@@ -127,7 +127,7 @@ int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents
 		return KNOT_ENOMEM;
 	}
 
-	pthread_mutex_lock(&zone->cow_lock);
+	sem_wait(&zone->cow_lock);
 	update->a_ctx->cow_mutex = &zone->cow_lock;
 
 	int ret = KNOT_EINVAL;
@@ -137,7 +137,7 @@ int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents
 		ret = init_full(update, zone);
 	}
 	if (ret != KNOT_EOK) {
-		pthread_mutex_unlock(&zone->cow_lock);
+		sem_post(&zone->cow_lock);
 		free(update->a_ctx);
 	}
 
@@ -221,7 +221,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		return KNOT_ENOMEM;
 	}
 
-	pthread_mutex_lock(&update->zone->cow_lock);
+	sem_wait(&update->zone->cow_lock);
 	update->a_ctx->cow_mutex = &update->zone->cow_lock;
 
 	if (flags & UPDATE_INCREMENTAL) {
@@ -343,7 +343,7 @@ void zone_update_clear(zone_update_t *update)
 		zone_contents_deep_free(update->new_cont);
 	}
 	if (update->a_ctx != NULL && update->a_ctx->cow_mutex != NULL) {
-		pthread_mutex_unlock(update->a_ctx->cow_mutex);
+		sem_post(update->a_ctx->cow_mutex);
 	}
 	free(update->a_ctx);
 	mp_delete(update->mm.ctx);
