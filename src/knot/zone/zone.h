@@ -16,8 +16,7 @@
 
 #pragma once
 
-#include <semaphore.h>
-
+#include "contrib/semaphore.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
 #include "knot/journal/journal_basic.h"
@@ -74,7 +73,7 @@ typedef struct zone
 	struct zone_update *control_update;
 
 	/*! \brief Ensue one COW tramsaction on zone's trees at a time. */
-	sem_t cow_lock;
+	knot_sem_t cow_lock;
 
 	/*! \brief Journal access lock. */
 	pthread_mutex_t journal_lock;

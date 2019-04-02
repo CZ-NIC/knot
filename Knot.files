@@ -37,6 +37,8 @@ src/contrib/openbsd/strlcpy.c
 src/contrib/openbsd/strlcpy.h
 src/contrib/qp-trie/trie.c
 src/contrib/qp-trie/trie.h
+src/contrib/semaphore.c
+src/contrib/semaphore.h
 src/contrib/sockaddr.c
 src/contrib/sockaddr.h
 src/contrib/string.c

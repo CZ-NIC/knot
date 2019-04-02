@@ -175,7 +175,7 @@ zone_t* zone_new(const knot_dname_t *name)
 	zone->ddns_queue_size = 0;
 	init_list(&zone->ddns_queue);
 
-	sem_init(&zone->cow_lock, 1, 1);
+	knot_sem_init(&zone->cow_lock, 1);
 
 	// Journal lock
 	pthread_mutex_init(&zone->journal_lock, NULL);
@@ -219,8 +219,7 @@ void zone_free(zone_t **zone_ptr)
 	pthread_mutex_destroy(&zone->ddns_lock);
 	pthread_mutex_destroy(&zone->journal_lock);
 
-	sem_wait(&zone->cow_lock);
-	sem_destroy(&zone->cow_lock);
+	knot_sem_destroy(&zone->cow_lock);
 
 	/* Control update. */
 	zone_control_clear(zone);
