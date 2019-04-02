@@ -151,6 +151,7 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST), NULL);
 	int ret = knot_lmdb_open(&jdb);
 	if (ret != KNOT_EOK) {
+		knot_lmdb_deinit(&jdb);
 		return ret;
 	}
 
