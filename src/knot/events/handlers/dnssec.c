@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	zone_sign_reschedule_t resch = { 0 };
-	zone_sign_roll_flags_t r_flags = KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL;
+	zone_sign_roll_flags_t r_flags = KEY_ROLL_ALLOW_ALL;
 	int sign_flags = 0;
 
 	if (zone->flags & ZONE_FORCE_RESIGN) {
@@ -82,10 +82,6 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	} else {
 		log_zone_info(zone->name, "DNSSEC, signing zone");
 		sign_flags = 0;
-	}
-
-	if (zone_events_get_time(zone, ZONE_EVENT_NSEC3RESALT) <= time(NULL)) {
-		r_flags |= KEY_ROLL_DO_NSEC3RESALT;
 	}
 
 	if (zone->flags & ZONE_FORCE_KSK_ROLL) {
