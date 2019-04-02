@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -246,7 +246,7 @@ static int axfr_finalize(struct refresh_data *data)
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
-		zone_sign_reschedule_t resch = { .allow_rollover = true };
+		zone_sign_reschedule_t resch = { .allow_rollover = true, .allow_nsec3resalt = true };
 		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, &resch);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
