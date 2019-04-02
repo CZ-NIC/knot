@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,11 +25,11 @@
 
 /* Hopscotch defines. */
 #define HOP_LEN (sizeof(unsigned)*8)
-/* Limits */
-#define RRL_CLSBLK_MAXLEN (4 + 8 + 1 + 256)
+/* Limits (class, ipv6 remote, dname) */
+#define RRL_CLSBLK_MAXLEN (1 + 8 + 255)
 /* CIDR block prefix lengths for v4/v6 */
-#define RRL_V4_PREFIX ((uint32_t)0x00ffffff)         /* /24 */
-#define RRL_V6_PREFIX ((uint64_t)0x00ffffffffffffff) /* /56 */
+#define RRL_V4_PREFIX_LEN 3 /* /24 */
+#define RRL_V6_PREFIX_LEN 7 /* /56 */
 /* Defaults */
 #define RRL_SSTART 2 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
@@ -164,29 +164,26 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	int blklen = sizeof(cls);
 
 	/* Address (in network byteorder, adjust masks). */
-	uint64_t nb = 0;
+	uint64_t netblk = 0;
 	if (a->ss_family == AF_INET6) {
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)a;
-		nb = *((uint64_t *)(&ipv6->sin6_addr)) & RRL_V6_PREFIX;
+		memcpy(&netblk, &ipv6->sin6_addr, RRL_V6_PREFIX_LEN);
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)a;
-		nb = ((uint32_t)ipv4->sin_addr.s_addr) & RRL_V4_PREFIX;
+		memcpy(&netblk, &ipv4->sin_addr, RRL_V4_PREFIX_LEN);
 	}
-	if (blklen + sizeof(nb) > maxlen) {
+	if (blklen + sizeof(netblk) > maxlen) {
 		return KNOT_ESPACE;
 	}
-	memcpy(dst + blklen, (void *)&nb, sizeof(nb));
-	blklen += sizeof(nb);
+	memcpy(dst + blklen, &netblk, sizeof(netblk));
+	blklen += sizeof(netblk);
 
 	/* Name */
-	uint16_t *len_pos = (uint16_t *)(dst + blklen);
-	blklen += sizeof(uint16_t);
 	int ret = rrl_clsname(dst + blklen, maxlen - blklen, cls, req, name);
 	if (ret < 0) {
 		return ret;
 	}
-	uint16_t len = ret;
-	memcpy(len_pos, &len, sizeof(len));
+	uint8_t len = ret;
 	blklen += len;
 
 	return blklen;
@@ -391,7 +388,7 @@ static rrl_item_t *rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a,
 		.ntok = t->rate * RRL_CAPACITY,
 		.cls = buf[0],
 		.flags = RRL_BF_NULL,
-		.qname = SipHash24(&t->key, qname + 1, qname[0]),
+		.qname = SipHash24(&t->key, qname, knot_dname_size(qname)),
 		.time = stamp
 	};
 
