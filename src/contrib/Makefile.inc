@@ -36,6 +36,8 @@ libcontrib_la_SOURCES = \
 	contrib/net.h				\
 	contrib/qp-trie/trie.c			\
 	contrib/qp-trie/trie.h			\
+	contrib/semaphore.c			\
+	contrib/semaphore.h			\
 	contrib/sockaddr.c			\
 	contrib/sockaddr.h			\
 	contrib/string.c			\
