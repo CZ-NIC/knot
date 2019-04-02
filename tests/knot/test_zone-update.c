@@ -108,9 +108,9 @@ static int test_node_unified(zone_node_t *n1, void *v)
 
 static void test_zone_unified(zone_t *z)
 {
-	sem_wait(&z->cow_lock);
+	knot_sem_wait(&z->cow_lock);
 	zone_tree_apply(z->contents->nodes, test_node_unified, NULL);
-	sem_post(&z->cow_lock);
+	knot_sem_post(&z->cow_lock);
 }
 
 void test_full(zone_t *zone, zs_scanner_t *sc)
