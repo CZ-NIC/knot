@@ -468,9 +468,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		bool full = (zone->control_update->flags & UPDATE_FULL);
-		zone_sign_roll_flags_t rflags = KEY_ROLL_ALLOW_KSK_ROLL |
-		                                KEY_ROLL_ALLOW_ZSK_ROLL |
-		                                KEY_ROLL_DO_NSEC3RESALT;
+		zone_sign_roll_flags_t rflags = KEY_ROLL_ALLOW_ALL;
 		int ret = (full ? knot_dnssec_zone_sign(zone->control_update, 0, rflags, &resch) :
 		                  knot_dnssec_sign_update(zone->control_update, &resch));
 		if (ret != KNOT_EOK) {

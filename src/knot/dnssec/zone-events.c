@@ -44,7 +44,7 @@ static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_r
 
 	// perform nsec3resalt if pending
 
-	if (roll_flags & KEY_ROLL_DO_NSEC3RESALT) {
+	if (roll_flags & KEY_ROLL_ALLOW_NSEC3RESALT) {
 		r = knot_dnssec_nsec3resalt(ctx, &reschedule->last_nsec3resalt, &reschedule->next_nsec3resalt);
 		if (r != KNOT_EOK) {
 			return r;
@@ -102,8 +102,6 @@ static int generate_salt(dnssec_binary_t *salt, uint16_t length)
 
 	return KNOT_EOK;
 }
-
-// TODO preserve the resalt timeout in timers-db instead of kasp_db
 
 int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_time_t *when_resalt)
 {
