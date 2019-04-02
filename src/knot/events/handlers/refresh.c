@@ -242,7 +242,7 @@ static int axfr_finalize(struct refresh_data *data)
 	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
-		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
+		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_ALL, &resch);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			return ret;

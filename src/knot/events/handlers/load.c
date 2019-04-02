@@ -228,8 +228,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { 0 };
 	if (dnssec_enable) {
-		ret = knot_dnssec_zone_sign(&up, 0, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL | KEY_ROLL_DO_NSEC3RESALT,
-		                            &dnssec_refresh);
+		ret = knot_dnssec_zone_sign(&up, 0, KEY_ROLL_ALLOW_ALL, &dnssec_refresh);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			goto cleanup;
