@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,7 +72,7 @@ typedef enum {
  * \brief RRL request descriptor.
  */
 typedef struct {
-	const uint8_t *w;
+	const uint8_t *wire;
 	uint16_t len;
 	rrl_req_flag_t flags;
 	knot_pkt_t *query;
@@ -90,15 +90,15 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate);
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
  *
  * \param rrl RRL table.
- * \param a Source address.
+ * \param remote Source address.
  * \param req RRL request (containing resp., flags and question).
  * \param zone Zone name related to the response (or NULL).
  * \param mod Query module (needed for logging).
  * \retval KNOT_EOK if passed.
  * \retval KNOT_ELIMIT when the limit is reached.
  */
-int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
-              const knot_dname_t *zone, knotd_mod_t *mod);
+int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
+              rrl_req_t *req, const knot_dname_t *zone, knotd_mod_t *mod);
 
 /*!
  * \brief Roll a dice whether answer slips or not.

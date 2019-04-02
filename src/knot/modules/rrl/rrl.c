@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,7 +97,7 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	rrl_req_t req = {
-		.w = pkt->wire,
+		.wire = pkt->wire,
 		.query = qdata->query
 	};
 
@@ -164,17 +164,16 @@ int rrl_load(knotd_mod_t *mod)
 	}
 
 	// Create table.
-	knotd_conf_t rate = knotd_conf_mod(mod, MOD_RATE_LIMIT);
-	knotd_conf_t size = knotd_conf_mod(mod, MOD_TBL_SIZE);
-	ctx->rrl = rrl_create(size.single.integer, rate.single.integer);
+	uint32_t rate = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
+	size_t size = knotd_conf_mod(mod, MOD_TBL_SIZE).single.integer;
+	ctx->rrl = rrl_create(size, rate);
 	if (ctx->rrl == NULL) {
 		ctx_free(ctx);
 		return KNOT_ENOMEM;
 	}
 
 	// Get slip.
-	knotd_conf_t conf = knotd_conf_mod(mod, MOD_SLIP);
-	ctx->slip = conf.single.integer;
+	ctx->slip = knotd_conf_mod(mod, MOD_SLIP).single.integer;
 
 	// Get whitelist.
 	ctx->whitelist = knotd_conf_mod(mod, MOD_WHITELIST);

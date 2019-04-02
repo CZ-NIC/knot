@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
 #include "knot/modules/rrl/functions.c"
+#include "stdio.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
@@ -115,7 +116,7 @@ int main(int argc, char *argv[])
 	knot_wire_flags_set_qr(rbuf);
 
 	rrl_req_t rq;
-	rq.w = rbuf;
+	rq.wire = rbuf;
 	rq.len = rlen;
 	rq.query = query;
 	rq.flags = 0;
@@ -125,7 +126,7 @@ int main(int argc, char *argv[])
 	rrl_table_t *rrl = rrl_create(RRL_SIZE, rate);
 	ok(rrl != NULL, "rrl: create");
 
-	/* 4. N unlimited requests. */
+	/* 2. N unlimited requests. */
 	knot_dname_t *zone = knot_dname_from_str_alloc("rrl.");
 
 	struct sockaddr_storage addr;
@@ -141,6 +142,16 @@ int main(int argc, char *argv[])
 		}
 	}
 	is_int(0, ret, "rrl: unlimited IPv4/v6 requests");
+
+	/* 3. Endian-independent hash input buffer. */
+	uint8_t buf[RRL_CLSBLK_MAXLEN];
+	// CLS_LARGE + remote + dname wire.
+	uint8_t expectedv4[] = "\x10\x01\x02\x03\x00\x00\x00\x00\x00\x04""beef";
+	rrl_classify(buf, sizeof(buf), &addr, &rq, qname);
+	is_int(0, memcmp(buf, expectedv4, sizeof(expectedv4)), "rrl: IPv4 hash input buffer");
+	uint8_t expectedv6[] = "\x10\x11\x22\x33\x44\x55\x66\x77\x00\x04""beef";
+	rrl_classify(buf, sizeof(buf), &addr6, &rq, qname);
+	is_int(0, memcmp(buf, expectedv6, sizeof(expectedv6)), "rrl: IPv6 hash input buffer");
 
 #ifdef ENABLE_TIMED_TESTS
 	/* 5. limited request */
