@@ -590,6 +590,7 @@ int knotd_mod_dnssec_init(knotd_mod_t *mod)
 	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone, kaspdb,
 	                           conf_bool(&conf) ? NULL : mod->id);
 	if (ret != KNOT_EOK) {
+		knot_lmdb_deinit(kaspdb);
 		free(mod->dnssec);
 		return ret;
 	}
