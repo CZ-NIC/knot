@@ -18,6 +18,7 @@ master.zone_wait(zone)
 slave.zone_wait(zone)
 
 slave.ctl("zone-freeze")
+t.sleep(1)
 
 master.update_zonefile(zone, version=1)
 master.reload()
