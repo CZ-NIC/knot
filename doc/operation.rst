@@ -194,8 +194,10 @@ Knot DNS allows you to read or change zone contents online using server
 control interface.
 
 .. WARNING::
-   Avoid concurrent zone file modification, and/or dynamic updates, and/or
-   zone changing over control interface. Otherwise, the zone could be inconsistent.
+   Avoid concurrent zone access when a zone event (zone file load, refresh,
+   DNSSEC signing, dynamic update) is in progress or pending. In such a case
+   zone events must be frozen before. For more information how to freeze the
+   zone read :ref:`Editing zone file`.
 
 To get contents of all configured zones, or a specific zone contents, or zone
 records with a specific owner, or even with a specific record type::
