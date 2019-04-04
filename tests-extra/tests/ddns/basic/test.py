@@ -423,6 +423,18 @@ def do_normal_tests(master, zone, dnssec=False):
         resp.check_record(section="authority", rtype="RRSIG")
         verify(master, zone, dnssec)
 
+        # add AAAA to existing A glue
+        check_log("glue augmentation")
+        up = master.update(zone)
+        up.add("a.deleg.ddns.", 3600, "AAAA", "1::2")
+        up.send("NOERROR")
+        resp = master.dig("xy.deleg.ddns.", "A", dnssec=True)
+        resp.check_rr(section="authority", rname="deleg.ddns.", rtype="NS")
+        resp.check_rr(section="authority", rname="deleg.ddns.", rtype="RRSIG")
+        resp.check_rr(section="additional", rname="a.deleg.ddns.", rtype="AAAA")
+        resp.check_no_rr(section="additional", rname="a.deleg.ddns.", rtype="RRSIG")
+        verify(master, zone, dnssec)
+
 def do_refusal_tests(master, zone, dnssec=False):
 
     forbidden = [{'type':"RRSIG", 'data':"A 5 2 1800 20140331062706 20140317095503 132 nic.cz. rc7TwX4GnExDQBNDCdbgf0PS7zabtymSKQ0VhmbFJAcYZxN+yFF9PXAo SpsDVR5H0PIuUM4oqoe7gsKfqqpTdOuB9M6cN/Mni99u7XfKHkopDjYc qTJXKn3x2TER4WkGtG5uthuSEc9lseCr6XqAqkDnJlUa6pB2a3mEHwu/ Elk="},
