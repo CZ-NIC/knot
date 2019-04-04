@@ -464,13 +464,10 @@ static int sign_node_rrsets(const zone_node_t *node,
 	int result = KNOT_EOK;
 	knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
 
-	for (int i = 0; i < node->rrset_count; i++) {
+	for (int i = 0; result == KNOT_EOK && i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
-		if (rrset.type == KNOT_RRTYPE_RRSIG) {
-			continue;
-		}
-
 		if (!knot_zone_sign_rr_should_be_signed(node, &rrset)) {
+			result = remove_rrset_rrsigs(rrset.owner, rrset.type, &rrsigs, changeset);
 			continue;
 		}
 
@@ -481,13 +478,12 @@ static int sign_node_rrsets(const zone_node_t *node,
 			result = resign_rrset(&rrset, &rrsigs, sign_ctx,
 			                      changeset, expires_at);
 		}
-
-		if (result != KNOT_EOK) {
-			return result;
-		}
 	}
 
-	return remove_standalone_rrsigs(node, &rrsigs, changeset);
+	if (result == KNOT_EOK) {
+		result = remove_standalone_rrsigs(node, &rrsigs, changeset);
+	}
+	return result;
 }
 
 /*!
@@ -513,10 +509,6 @@ static int sign_node(zone_node_t **node, void *data)
 	node_sign_args_t *args = (node_sign_args_t *)data;
 
 	if ((*node)->rrset_count == 0) {
-		return KNOT_EOK;
-	}
-
-	if ((*node)->flags & NODE_FLAGS_NONAUTH) {
 		return KNOT_EOK;
 	}
 
@@ -1116,8 +1108,7 @@ bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
 		return false;
 	}
 
-	// We do not want to sign RRSIGs
-	if (rrset->type == KNOT_RRTYPE_RRSIG) {
+	if (rrset->type == KNOT_RRTYPE_RRSIG || (node->flags & NODE_FLAGS_NONAUTH)) {
 		return false;
 	}
 
