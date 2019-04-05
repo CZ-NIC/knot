@@ -279,7 +279,7 @@ static bool zone_update_changed_nsec3param(const zone_update_t *update)
 
 	dnssec_nsec3_params_t *orig = &update->zone->contents->nsec3_params;
 	dnssec_nsec3_params_t *upd = &update->new_cont->nsec3_params;
-	return dnssec_nsec3_params_match(orig, upd);
+	return !dnssec_nsec3_params_match(orig, upd);
 }
 
 const knot_rdataset_t *zone_update_from(zone_update_t *update)
