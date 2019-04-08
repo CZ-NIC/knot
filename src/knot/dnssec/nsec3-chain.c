@@ -700,6 +700,50 @@ static int nsec3_reset(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
+static int zone_update_nsec3_nodes(zone_update_t *up, zone_tree_t *nsec3n)
+{
+	int ret = KNOT_EOK;
+	zone_tree_delsafe_it_t dit = { 0 };
+	zone_tree_it_t it = { 0 };
+	if (up->new_cont->nsec3_nodes == NULL) {
+		goto add_nsec3n;
+	}
+	ret = zone_tree_delsafe_it_begin(up->new_cont->nsec3_nodes, &dit);
+	while (ret == KNOT_EOK && !zone_tree_delsafe_it_finished(&dit)) {
+		zone_node_t *nold = zone_tree_delsafe_it_val(&dit);
+		knot_rrset_t ns3old = node_rrset(nold, KNOT_RRTYPE_NSEC3);
+		zone_node_t *nnew = zone_tree_get(nsec3n, nold->owner);
+		if (!knot_rrset_empty(&ns3old)) {
+			knot_rrset_t ns3new = node_rrset(nnew, KNOT_RRTYPE_NSEC3);
+			if (knot_rrset_equal(&ns3old, &ns3new, KNOT_RRSET_COMPARE_WHOLE)) {
+				node_remove_rdataset(nnew, KNOT_RRTYPE_NSEC3);
+			} else {
+				ret = knot_nsec_changeset_remove(nold, up);
+			}
+		} else if (node_rrtype_exists(nold, KNOT_RRTYPE_RRSIG)) {
+			ret = knot_nsec_changeset_remove(nold, up);
+		}
+		zone_tree_delsafe_it_next(&dit);
+	}
+	zone_tree_delsafe_it_free(&dit);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+add_nsec3n:
+	ret = zone_tree_it_begin(nsec3n, &it);
+	while (ret == KNOT_EOK && !zone_tree_it_finished(&it)) {
+		zone_node_t *nnew = zone_tree_it_val(&it);
+		knot_rrset_t ns3new = node_rrset(nnew, KNOT_RRTYPE_NSEC3);
+		if (!knot_rrset_empty(&ns3new)) {
+			ret = zone_update_add(up, &ns3new);
+		}
+		zone_tree_it_next(&it);
+	}
+	zone_tree_it_free(&it);
+	return ret;
+}
+
 /* - Public API ------------------------------------------------------------- */
 
 /*!
@@ -709,12 +753,10 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
                             const dnssec_nsec3_params_t *params,
                             uint32_t ttl,
                             bool opt_out,
-                            changeset_t *changeset,
                             zone_update_t *update)
 {
 	assert(zone);
 	assert(params);
-	assert(changeset);
 
 	int result;
 
@@ -761,9 +803,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 		return result;
 	}
 
-	copy_signatures(zone->nsec3_nodes, nsec3_nodes);
-
-	result = zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes, changeset);
+	result = zone_update_nsec3_nodes(update, nsec3_nodes);
 
 	free_nsec3_tree(nsec3_nodes);
 
