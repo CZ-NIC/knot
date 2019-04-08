@@ -304,7 +304,7 @@ int knot_zone_create_nsec_chain(zone_update_t *update,
 
 	if (ctx->policy->nsec3_enabled) {
 		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl,
-					      ctx->policy->nsec3_opt_out, &ch, update);
+					      ctx->policy->nsec3_opt_out, update);
 	} else {
 		ret = knot_nsec_create_chain(update, nsec_ttl);
 		if (ret == KNOT_EOK) {
@@ -364,7 +364,7 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 		}
 		if (ctx->policy->nsec3_enabled) {
 			ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl_new,
-			                              ctx->policy->nsec3_opt_out, &ch, update);
+			                              ctx->policy->nsec3_opt_out, update);
 		} else {
 			ret = knot_nsec_create_chain(update, nsec_ttl_new);
 		}
