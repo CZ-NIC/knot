@@ -284,6 +284,11 @@ uint32_t zone_contents_serial(const zone_contents_t *zone);
 void zone_contents_set_soa_serial(zone_contents_t *zone, uint32_t new_serial);
 
 /*!
+ * \brief Load parameters from NSEC3PARAM record into contents->nsec3param structure.
+ */
+int zone_contents_load_nsec3param(zone_contents_t *contents);
+
+/*!
  * \brief Return true if zone is empty.
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);

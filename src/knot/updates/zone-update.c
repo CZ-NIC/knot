@@ -624,6 +624,12 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 		}
 	}
 
+	ret = zone_contents_load_nsec3param(update->new_cont);
+	if (ret != KNOT_EOK) {
+		zone_update_clear(update);
+		return ret;
+	}
+
 	if (zone_update_changed_nsec3param(update)) {
 		ret = zone_adjust_full(update->new_cont);
 	} else {
