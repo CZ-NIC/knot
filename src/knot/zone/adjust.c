@@ -330,41 +330,9 @@ static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adju
 	return KNOT_EOK;
 }
 
-static int load_nsec3param(zone_contents_t *contents)
-{
-	assert(contents);
-	assert(contents->apex);
-
-	const knot_rdataset_t *rrs = NULL;
-	rrs = node_rdataset(contents->apex, KNOT_RRTYPE_NSEC3PARAM);
-	if (rrs == NULL) {
-		dnssec_nsec3_params_free(&contents->nsec3_params);
-		return KNOT_EOK;
-	}
-
-	if (rrs->count < 1) {
-		return KNOT_EINVAL;
-	}
-
-	dnssec_binary_t rdata = {
-		.size = rrs->rdata->len,
-		.data = rrs->rdata->data,
-	};
-
-	dnssec_nsec3_params_t new_params = { 0 };
-	int r = dnssec_nsec3_params_from_rdata(&new_params, &rdata);
-	if (r != DNSSEC_EOK) {
-		return KNOT_EMALF;
-	}
-
-	dnssec_nsec3_params_free(&contents->nsec3_params);
-	contents->nsec3_params = new_params;
-	return KNOT_EOK;
-}
-
 int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb, bool measure_size)
 {
-	int ret = load_nsec3param(zone);
+	int ret = zone_contents_load_nsec3param(zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->apex->owner,
 		               "failed to load NSEC3 parameters (%s)",

@@ -768,6 +768,39 @@ void zone_contents_set_soa_serial(zone_contents_t *zone, uint32_t new_serial)
 	}
 }
 
+int zone_contents_load_nsec3param(zone_contents_t *contents)
+{
+	if (contents == NULL || contents->apex == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const knot_rdataset_t *rrs = NULL;
+	rrs = node_rdataset(contents->apex, KNOT_RRTYPE_NSEC3PARAM);
+	if (rrs == NULL) {
+		dnssec_nsec3_params_free(&contents->nsec3_params);
+		return KNOT_EOK;
+	}
+
+	if (rrs->count != 1) {
+		return KNOT_EINVAL;
+	}
+
+	dnssec_binary_t rdata = {
+		.size = rrs->rdata->len,
+		.data = rrs->rdata->data,
+	};
+
+	dnssec_nsec3_params_t new_params = { 0 };
+	int r = dnssec_nsec3_params_from_rdata(&new_params, &rdata);
+	if (r != DNSSEC_EOK) {
+		return KNOT_EMALF;
+	}
+
+	dnssec_nsec3_params_free(&contents->nsec3_params);
+	contents->nsec3_params = new_params;
+	return KNOT_EOK;
+}
+
 bool zone_contents_is_empty(const zone_contents_t *zone)
 {
 	if (zone == NULL) {
