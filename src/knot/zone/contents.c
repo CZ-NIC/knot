@@ -690,25 +690,31 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 
 	int ret = recreate_normal_tree(from, contents);
 	if (ret != KNOT_EOK) {
-		zone_tree_free(&contents->nodes);
-		free(contents);
-		return ret;
+		goto fail;
 	}
 
 	if (from->nsec3_nodes) {
 		ret = recreate_nsec3_tree(from, contents);
 		if (ret != KNOT_EOK) {
-			zone_tree_free(&contents->nodes);
-			zone_tree_free(&contents->nsec3_nodes);
-			free(contents);
-			return ret;
+			goto fail;
 		}
 	} else {
 		contents->nsec3_nodes = NULL;
 	}
 
+	if (!dnssec_nsec3_params_copy(&contents->nsec3_params, &from->nsec3_params)) {
+		ret = KNOT_ENOMEM;
+		goto fail;
+	}
+
 	*to = contents;
 	return KNOT_EOK;
+
+fail:
+	zone_tree_free(&contents->nodes);
+	zone_tree_free(&contents->nsec3_nodes);
+	free(contents);
+	return ret;
 }
 
 void zone_contents_free(zone_contents_t *contents)

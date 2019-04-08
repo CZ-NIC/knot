@@ -79,6 +79,18 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 }
 
 _public_
+bool dnssec_nsec3_params_copy(dnssec_nsec3_params_t *dst, const dnssec_nsec3_params_t *src)
+{
+	if (dnssec_binary_dup(&src->salt, &dst->salt) != DNSSEC_EOK) {
+		return false;
+	}
+	dst->algorithm = src->algorithm;
+	dst->flags = src->flags;
+	dst->iterations = src->iterations;
+	return true;
+}
+
+_public_
 bool dnssec_nsec_bitmap_contains(const uint8_t *bitmap, uint16_t size, uint16_t type)
 {
 	if (!bitmap || size == 0) {

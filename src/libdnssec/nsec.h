@@ -140,6 +140,17 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 				   const dnssec_binary_t *rdata);
 
 /*!
+ * \brief Copy NSEC3 parameters structure.
+ *
+ * \param dst
+ * \param src
+ *
+ * \return True if success, false if ENOMEM.
+ */
+bool dnssec_nsec3_params_copy(dnssec_nsec3_params_t *dst,
+                              const dnssec_nsec3_params_t *src);
+
+/*!
  * Check if NSEC3 parameters match.
  *
  * \param params1  NSEC3 parameters 1.
