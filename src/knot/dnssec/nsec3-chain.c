@@ -653,6 +653,17 @@ add_nsec3n:
 
 /* - Public API ------------------------------------------------------------- */
 
+int delete_nsec3_chain(zone_update_t *up)
+{
+	zone_tree_t *empty = zone_tree_create(false);
+	if (empty == NULL) {
+		return KNOT_ENOMEM;
+	}
+	int ret = zone_update_nsec3_nodes(up, empty);
+	zone_tree_free(&empty);
+	return ret;
+}
+
 /*!
  * \brief Create new NSEC3 chain, add differences from current into a changeset.
  */
