@@ -23,6 +23,11 @@
 #include "knot/zone/contents.h"
 
 /*!
+ * \brief delete_nsec3_chain   Delete all NSEC3 records and their RRSIGs.
+ */
+int delete_nsec3_chain(zone_update_t *up);
+
+/*!
  * \brief Creates new NSEC3 chain, add differences from current into a changeset.
  *
  * \param zone       Zone to be checked.
