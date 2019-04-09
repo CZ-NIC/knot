@@ -573,6 +573,25 @@ AC_SEARCH_LIBS([pthread_create], [pthread], [
 LIBS="$save_LIBS"
 
 save_LIBS="$LIBS"
+AC_SEARCH_LIBS([pthread_setaffinity_np], [pthread], [
+  pthread_LIBS="$ac_cv_search_pthread_setaffinity_np"
+  AC_SUBST([pthread_LIBS])	
+],[
+  AC_MSG_ERROR([pthreads not found])
+])
+LIBS="$save_LIBS"
+
+save_LIBS="$LIBS"
+AC_SEARCH_LIBS([pthread_sigmask], [pthread], [
+  pthread_LIBS="$ac_cv_search_pthread_sigmask"
+  AC_SUBST([pthread_LIBS])
+],[
+  AC_MSG_ERROR([pthreads not found])
+])
+LIBS="$save_LIBS"
+
+
+save_LIBS="$LIBS"
 AC_SEARCH_LIBS([dlopen], [dl], [
   dlopen_LIBS="$ac_cv_search_dlopen"
   AC_SUBST([dlopen_LIBS])
@@ -594,9 +613,17 @@ LIBS="$save_LIBS"
 AC_HEADER_RESOLV
 AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h])
 
-# Checks for optional library functions.
+save_LIBS="$LIBS"
+LIBS="$LIBS $pthread_LIBS"
+
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
-                pthread_setaffinity_np setgroups strlcat strlcpy sysctlbyname])
+                pthread_setaffinity_np pthread_sigmask setgroups strlcat strlcpy sysctlbyname])
+
+LIBS="$save_LIBS"
+
+# Checks for optional library functions.
+#AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
+#                pthread_setaffinity_np setgroups strlcat strlcpy sysctlbyname])
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
