@@ -594,9 +594,12 @@ LIBS="$save_LIBS"
 AC_HEADER_RESOLV
 AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h])
 
+save_LIBS="$LIBS"
+LIBS="$LIBS $pthread_LIBS"
 # Checks for optional library functions.
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
                 pthread_setaffinity_np setgroups strlcat strlcpy sysctlbyname])
+LIBS="$save_LIBS"
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
