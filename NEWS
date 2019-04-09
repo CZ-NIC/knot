@@ -1,3 +1,26 @@
+Knot DNS 2.8.1 (2019-04-09)
+===========================
+
+Improvements:
+-------------
+ - Possible zone transaction is aborted by zone events to avoid inconsistency
+ - Added log message if no persistent config DB is available during 'conf-begin'
+ - New environment setting 'KNOT_VERSION_FORMAT=release' for extended version suppression
+ - Various improvements in the documentation
+
+Bugfixes:
+---------
+ - Broken NSEC3-wildcard-nonexistence proof after NSEC3 re-salt
+ - Glue records under delegation are sometimes signed
+ - RRL doesn't work correctly on big-endian architectures
+ - NSEC3 not re-salted during AXFR refresh
+ - Failed to sign new zone contents if added dynamically #641
+ - NSEC3 opt-out signing doesn't work in some cases
+ - Broken NSEC3 chain after adding new sub-delegations
+ - Redundant SOA RRSIG on slave if RRSIG TTL changed on master
+ - Sometimes confusing log error message for NOTIFY event
+ - Improper include for LMDB #638
+
 Knot DNS 2.8.0 (2019-03-05)
 ===========================
 
