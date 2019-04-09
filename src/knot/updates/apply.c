@@ -448,10 +448,6 @@ void update_rollback(apply_ctx_t *ctx)
 		ctx->contents->nsec3_nodes->cow = NULL;
 	}
 
-	if (ctx->cow_mutex != NULL) {
-		knot_sem_post(ctx->cow_mutex);
-	}
-
 	free(ctx->contents->nodes);
 	free(ctx->contents->nsec3_nodes);
 
