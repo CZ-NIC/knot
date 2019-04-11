@@ -576,8 +576,6 @@ save_LIBS="$LIBS"
 AC_SEARCH_LIBS([pthread_setaffinity_np], [pthread], [
   pthread_LIBS="$ac_cv_search_pthread_setaffinity_np"
   AC_SUBST([pthread_LIBS])	
-],[
-  AC_MSG_ERROR([pthreads not found])
 ])
 LIBS="$save_LIBS"
 
@@ -585,8 +583,6 @@ save_LIBS="$LIBS"
 AC_SEARCH_LIBS([pthread_sigmask], [pthread], [
   pthread_LIBS="$ac_cv_search_pthread_sigmask"
   AC_SUBST([pthread_LIBS])
-],[
-  AC_MSG_ERROR([pthreads not found])
 ])
 LIBS="$save_LIBS"
 
