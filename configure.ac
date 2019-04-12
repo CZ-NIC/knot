@@ -590,16 +590,20 @@ AC_SEARCH_LIBS([pow], [m], [
 ])
 LIBS="$save_LIBS"
 
+save_LIBS="$LIBS"
+AC_SEARCH_LIBS([pthread_setaffinity_np], [pthread], [
+  AC_DEFINE([HAVE_PTHREAD_SETAFFINITY_NP], [1],
+  [Define to 1 if you have the pthread_setaffinity_np function.])
+])
+LIBS="$save_LIBS"
+
 # Checks for header files.
 AC_HEADER_RESOLV
 AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h])
 
-save_LIBS="$LIBS"
-LIBS="$LIBS $pthread_LIBS"
 # Checks for optional library functions.
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
-                pthread_setaffinity_np setgroups strlcat strlcpy sysctlbyname])
-LIBS="$save_LIBS"
+                setgroups strlcat strlcpy sysctlbyname])
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
