@@ -33,7 +33,9 @@ int event_expire(conf_t *conf, zone_t *zone)
 	log_zone_info(zone->name, "zone expired");
 
 	synchronize_rcu();
+	knot_sem_wait(&zone->cow_lock);
 	zone_contents_deep_free(expired);
+	knot_sem_post(&zone->cow_lock);
 
 	zone->zonefile.exists = false;
 	mem_trim();
