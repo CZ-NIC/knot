@@ -136,6 +136,31 @@ static bool enable_pktinfo(int sock, int family)
 	return setsockopt(sock, level, option, &on, sizeof(on)) == 0;
 }
 
+/*!
+ * Linux 3.15 has IP_PMTUDISC_OMIT which makes sockets
+ * ignore PMTU information and send packets with DF=0.
+ * Fragmentation is allowed if and only if the packet
+ * size exceeds the outgoing interface MTU or the packet
+ * encounters smaller MTU link in network.
+ * This mitigates DNS fragmentation attacks by preventing
+ * forged PMTU information.
+ * FreeBSD already has same semantics without setting
+ * the option.
+ */
+static int disable_pmtudisc(int sock, int family)
+{
+#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_OMIT)
+	if (family == AF_INET) {
+		int action_omit = IP_PMTUDISC_OMIT;
+		if (setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &action_omit,
+		    sizeof(action_omit)) != 0) {
+			return knot_map_errno();
+		}
+	}
+#endif
+	return KNOT_EOK;
+}
+
 /**
  * \brief Enable TCP Fast Open.
  */
@@ -225,6 +250,12 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 
 		if (sockaddr_is_any((struct sockaddr *)addr) && !enable_pktinfo(sock, addr->ss_family)) {
 			log_warning("failed to enable received packet information retrieval");
+		}
+
+		ret = disable_pmtudisc(sock, addr->ss_family);
+		if (ret != KNOT_EOK) {
+			log_warning("failed to disable Path MTU discovery for IPv4/UDP (%s)",
+			            knot_strerror(ret));
 		}
 
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
