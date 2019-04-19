@@ -296,7 +296,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 
 	/* TCP Fast Open. */
 	ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
-	if (ret < 0) {
+	if (ret != KNOT_EOK) {
 		log_warning("failed to enable TCP Fast Open on %s (%s)",
 		            addr_str, knot_strerror(ret));
 	}
