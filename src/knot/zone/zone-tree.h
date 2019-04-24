@@ -20,7 +20,9 @@
 #include "knot/zone/node.h"
 
 enum {
+	/*! Indication of a zone tree with bi-nodes (two zone_node_t structures allocated for one node). */
 	ZONE_TREE_USE_BINODES = (1 << 0),
+	/*! If set, from each bi-node in the zone tree, the second zone_node_t is valid. */
 	ZONE_TREE_BINO_SECOND = (1 << 1),
 };
 
