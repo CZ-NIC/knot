@@ -1071,7 +1071,8 @@ static int orphans_purge(ctl_args_t *args)
 
 		// Purge zone journals of unconfigured zones.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
-			(void)journals_walk(&args->server->journaldb, drop_journal_if_orphan, args->server);
+			(void)journals_walk(&args->server->journaldb,
+			                    drop_journal_if_orphan, args->server);
 		}
 
 		// Purge timers of unconfigured zones.
