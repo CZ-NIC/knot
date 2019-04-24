@@ -32,6 +32,7 @@ static const zone_timers_t MOCK_TIMERS = {
 	.last_flush = 1,
 	.last_resalt = 2,
 	.next_ds_check = 0,
+	.next_ds_push = 0,
 };
 
 static bool keep_all(const knot_dname_t *zone, void *data)
