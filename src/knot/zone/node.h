@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
@@ -120,11 +121,6 @@ bool additional_equal(additional_t *a, additional_t *b);
 zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_mm_t *mm);
 
 /*!
- * \brief Return the other part of a bi-node.
- */
-zone_node_t *binode_counterpart(zone_node_t *node);
-
-/*!
  * \brief Synchronize contents of both binode's nodes.
  *
  * \param node           Pointer to either of nodes in a binode.
@@ -146,7 +142,13 @@ int binode_prepare_change(zone_node_t *node, knot_mm_t *mm);
  *
  * \return Pointer to correct node.
  */
-zone_node_t *binode_node(zone_node_t *node, bool second);
+inline static zone_node_t *binode_node(zone_node_t *node, bool second)
+{
+	if (unlikely(node == NULL || !(node->flags & NODE_FLAGS_BINODE))) {
+		return node;
+	}
+	return node + (second - (int)((node->flags & NODE_FLAGS_SECOND) >> 9));
+}
 
 /*!
  * \brief Return true if the rdataset of specified type is shared (shallow-copied) among both parts of bi-node.
@@ -230,12 +232,18 @@ void node_set_parent(zone_node_t *node, zone_node_t *parent);
 /*!
  * \brief Returns parent node (fixing bi-node issue) of given node.
  */
-zone_node_t *node_parent(const zone_node_t *node);
+inline static zone_node_t *node_parent(const zone_node_t *node)
+{
+	return binode_node(node->parent, (node->flags & NODE_FLAGS_SECOND));
+}
 
 /*!
  * \brief Returns previous (lexicographically in same zone tree) node (fixing bi-node issue) of given node.
  */
-zone_node_t *node_prev(const zone_node_t *node);
+inline static zone_node_t *node_prev(const zone_node_t *node)
+{
+	return binode_node(node->prev, (node->flags & NODE_FLAGS_SECOND));
+}
 
 /*!
  * \brief Return node referenced by a glue.
@@ -245,7 +253,11 @@ zone_node_t *node_prev(const zone_node_t *node);
  *
  * \return Glue node.
  */
-const zone_node_t *glue_node(const glue_t *glue, const zone_node_t *another_zone_node);
+inline static const zone_node_t *glue_node(const glue_t *glue, const zone_node_t *another_zone_node)
+{
+	return binode_node((zone_node_t *)glue->node,
+	                   (another_zone_node->flags & NODE_FLAGS_SECOND));
+}
 
 /*!
  * \brief Checks whether node contains any RRSIG for given type.

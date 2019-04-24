@@ -16,7 +16,6 @@
 
 #include "knot/zone/node.h"
 #include "libknot/libknot.h"
-#include "contrib/macros.h"
 
 void additional_clear(additional_t *additional)
 {
@@ -131,7 +130,10 @@ zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_
 	return ret;
 }
 
-zone_node_t *binode_counterpart(zone_node_t *node)
+/*!
+ * \brief Return the other part of a bi-node.
+ */
+static zone_node_t *binode_counterpart(zone_node_t *node)
 {
 	zone_node_t *counterpart = NULL;
 
@@ -189,14 +191,6 @@ int binode_prepare_change(zone_node_t *node, knot_mm_t *mm)
 		memcpy(node->rrs, counter->rrs, rrlen);
 	}
 	return KNOT_EOK;
-}
-
-zone_node_t *binode_node(zone_node_t *node, bool second)
-{
-	if (unlikely(node == NULL || !(node->flags & NODE_FLAGS_BINODE))) {
-		return node;
-	}
-	return node + (second - (int)((node->flags & NODE_FLAGS_SECOND) >> 9));
 }
 
 bool binode_rdata_shared(zone_node_t *node, uint16_t type)
@@ -365,23 +359,6 @@ void node_set_parent(zone_node_t *node, zone_node_t *parent)
 	if (parent != NULL) {
 		++parent->children;
 	}
-}
-
-zone_node_t *node_parent(const zone_node_t *node)
-{
-	return binode_node(node->parent, (node->flags & NODE_FLAGS_SECOND));
-}
-
-zone_node_t *node_prev(const zone_node_t *node)
-{
-	return binode_node(node->prev, (node->flags & NODE_FLAGS_SECOND));
-}
-
-const zone_node_t *glue_node(const glue_t *glue, const zone_node_t *another_zone_node)
-{
-	UNUSED(another_zone_node);
-	return binode_node((zone_node_t *)glue->node,
-	                   (another_zone_node->flags & NODE_FLAGS_SECOND));
 }
 
 bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type)
