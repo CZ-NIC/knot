@@ -223,6 +223,29 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 	return txn.ret;
 }
 
+int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
+{
+	if (!knot_lmdb_exists(db)) {
+		return KNOT_EOK;
+	}
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	bool found = knot_lmdb_first(&txn);
+	while (found) {
+		if (*(const uint8_t *)txn.cur_key.mv_data != KASPDBKEY_POLICYLAST &&
+		    !keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data)) {
+			knot_lmdb_del_cur(&txn);
+		}
+		found = knot_lmdb_next(&txn);
+	}
+	knot_lmdb_commit(&txn);
+	return txn.ret;
+}
+
 int kasp_db_add_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const key_params_t *params)
 {
 	MDB_val v = params_serialize(params);

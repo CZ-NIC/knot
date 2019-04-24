@@ -19,6 +19,7 @@
 #include <lmdb.h>
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <pthread.h>
 
@@ -56,6 +57,14 @@ typedef enum {
 	KNOT_LMDB_GEQ = 2,     /*! \brief Search lexicographically greater or equal key. */
 	KNOT_LMDB_FORCE = 4,   /*! \brief If no matching key found, consider it a transaction failure (KNOT_ENOENT). */
 } knot_lmdb_find_t;
+
+/*!
+ * \brief Callback used in sweep functions.
+ *
+ * \retval true for zones to preserve.
+ * \retval false for zones to remove.
+ */
+typedef bool (*sweep_cb)(const uint8_t *zone, void *data);
 
 /*!
  * \brief Initialise the DB handling structure.
