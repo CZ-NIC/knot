@@ -581,7 +581,7 @@ int knotd_mod_dnssec_init(knotd_mod_t *mod)
 	}
 	kaspdb = (knot_lmdb_db_t *)(mod->dnssec + 1);
 
-	char *kasp_dir = conf_kaspdir(mod->config);
+	char *kasp_dir = conf_db(mod->config, C_KASP_DB);
 	conf_val_t kasp_size = conf_default_get(mod->config, C_MAX_KASP_DB_SIZE);
 	knot_lmdb_init(kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
 	free(kasp_dir);
