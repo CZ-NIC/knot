@@ -1052,43 +1052,18 @@ char* conf_zonefile_txn(
 	return get_filename(conf, txn, zone, file);
 }
 
-char* conf_journalfile_txn(
+char* conf_db_txn(
 	conf_t *conf,
-	knot_db_txn_t *txn)
+	knot_db_txn_t *txn,
+	const yp_name_t *db_type)
 {
 	conf_val_t val = conf_default_get_txn(conf, txn, C_STORAGE);
 	char *storage = conf_abs_path(&val, NULL);
-	val = conf_default_get_txn(conf, txn, C_JOURNAL_DB);
-	char *journaldir = conf_abs_path(&val, storage);
+	val = conf_default_get_txn(conf, txn, db_type);
+	char *dbdir = conf_abs_path(&val, storage);
 	free(storage);
 
-	return journaldir;
-}
-
-char* conf_kaspdir_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn)
-{
-	conf_val_t val = conf_default_get_txn(conf, txn, C_STORAGE);
-	char *storage = conf_abs_path(&val, NULL);
-	val = conf_default_get_txn(conf, txn, C_KASP_DB);
-	char *kaspdir = conf_abs_path(&val, storage);
-	free(storage);
-
-	return kaspdir;
-}
-
-char* conf_timerdb_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn)
-{
-	conf_val_t val = conf_default_get_txn(conf, txn, C_STORAGE);
-	char *storage = conf_abs_path(&val, NULL);
-	val = conf_default_get_txn(conf, txn, C_TIMER_DB);
-	char *timerdb = conf_abs_path(&val, storage);
-	free(storage);
-
-	return timerdb;
+	return dbdir;
 }
 
 size_t conf_udp_threads_txn(
