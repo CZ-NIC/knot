@@ -233,7 +233,9 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 		}
 
 		if (ret != KNOT_EOK) {
-			zone_events_schedule_at(zone, ZONE_EVENT_DS_PUSH, time(NULL) + DS_PUSH_RETRY);
+			time_t next_push = time(NULL) + DS_PUSH_RETRY;
+			zone_events_schedule_at(zone, ZONE_EVENT_DS_PUSH, next_push);
+			zone->timers.next_ds_push = next_push;
 		}
 
 		conf_val_next(&ds_push);

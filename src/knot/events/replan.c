@@ -134,6 +134,10 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	if (ds == 0) {
 		ds = TIME_IGNORE;
 	}
+	time_t ds_push = zone->timers.next_ds_push;
+	if (ds_push == 0) {
+		ds_push = TIME_IGNORE;
+	}
 
 	zone_events_schedule_at(zone,
 	                        ZONE_EVENT_REFRESH, refresh,
@@ -141,7 +145,8 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	                        ZONE_EVENT_EXPIRE, expire,
 	                        ZONE_EVENT_FLUSH, flush,
 	                        ZONE_EVENT_NSEC3RESALT, resalt,
-	                        ZONE_EVENT_DS_CHECK, ds);
+	                        ZONE_EVENT_DS_CHECK, ds,
+				ZONE_EVENT_DS_PUSH, ds_push);
 }
 
 void replan_load_new(zone_t *zone)
