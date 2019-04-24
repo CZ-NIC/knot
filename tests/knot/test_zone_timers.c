@@ -31,8 +31,20 @@ static const zone_timers_t MOCK_TIMERS = {
 	.next_refresh = 1474559960,
 	.last_flush = 1,
 	.last_resalt = 2,
-	.next_ds_check = 0,
+	.next_ds_check = 1474559961,
+	.next_ds_push = 1474559962,
 };
+
+static bool timers_eq(const zone_timers_t *a, const zone_timers_t *b)
+{
+	return a->soa_expire == b->soa_expire &&
+	       a->last_refresh == b->last_refresh &&
+	       a->next_refresh == b->next_refresh &&
+	       a->last_flush == b->last_flush &&
+	       a->last_resalt == b->last_resalt &&
+	       a->next_ds_check == b->next_ds_check &&
+	       a->next_ds_push == b->next_ds_push;
+}
 
 static bool keep_all(const knot_dname_t *zone, void *data)
 {
@@ -42,14 +54,6 @@ static bool keep_all(const knot_dname_t *zone, void *data)
 static bool remove_all(const knot_dname_t *zone, void *data)
 {
 	return false;
-}
-
-static bool timers_eq(const zone_timers_t *a, const zone_timers_t *b)
-{
-	return a->soa_expire == b->soa_expire &&
-	       a->last_refresh == b->last_refresh &&
-	       a->next_refresh == b->next_refresh &&
-	       a->last_flush == b->last_flush;
 }
 
 int main(int argc, char *argv[])
@@ -83,9 +87,7 @@ int main(int argc, char *argv[])
 	memset(&timers, 0, sizeof(timers));
 	ret = zone_timers_read(db, zone, &timers);
 	ok(ret == KNOT_EOK, "zone_timers_read()");
-	ok(timers_eq(&timers, &MOCK_TIMERS), "timers unmalformed (%u == %u, %ld == %ld etc.)",
-	   timers.soa_expire, MOCK_TIMERS.soa_expire, (long)timers.last_refresh,
-	   (long)MOCK_TIMERS.last_refresh);
+	ok(timers_eq(&timers, &MOCK_TIMERS), "inconsistent timers");
 
 	// Sweep none
 	ret = zone_timers_sweep(db, keep_all, NULL);
