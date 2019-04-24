@@ -919,6 +919,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 		if (node_rrtype_exists(ch.add->apex, KNOT_RRTYPE_CDS)) {
 			// there is indeed a change to CDS
+			update->zone->timers.next_ds_push = time(NULL);
 			zone_events_schedule_now(update->zone, ZONE_EVENT_DS_PUSH);
 		}
 		CHECK_RET;
