@@ -175,12 +175,6 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "kasp_db: load lastsigned_serial");
 	is_int(2, serial, "kasp_db: lastsigned_serial preserved");
 
-	ret = kasp_db_list_zones(db, &l);
-	is_int(KNOT_EOK, ret, "kasp_db: list_zones");
-	is_int(2, list_size(&l), "kasp_db: reports two zones");
-	is_int(0, knot_dname_cmp(((ptrnode_t *)HEAD(l))->d, zone1) | knot_dname_cmp(((ptrnode_t *)TAIL(l))->d, zone2), "kasp_db: listed correct zones");
-	ptrlist_deep_free(&l, NULL);
-
 	ret = kasp_db_add_key(db, zone1, &params1);
 	ok(ret == KNOT_EOK, "kasp_db: add key1");
 	ret = kasp_db_add_key(db, zone2, &params2);

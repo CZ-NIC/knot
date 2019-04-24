@@ -186,18 +186,6 @@ int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const
 			    const knot_dname_t *new_lp_zone, const char *new_lp_keyid);
 
 /*!
- * \brief List all zones that have anything stored in KASP db.
- *
- * It's quite slow, but we expect KASP db not to be so large.
- *
- * \param db   KASP db
- * \param dst  List of zone names
- *
- * \return KNOT_E*
- */
-int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *dst);
-
-/*!
  * \brief Store pre-generated records for offline KSK usage.
  *
  * \param db         KASP db.

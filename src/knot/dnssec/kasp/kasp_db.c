@@ -404,44 +404,6 @@ int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const
 	return txn.ret;
 }
 
-static void add_dname_to_list(list_t *dst, const knot_dname_t *dname, int *ret)
-{
-	ptrnode_t *n;
-	WALK_LIST(n, *dst) {
-		if (knot_dname_is_equal(n->d, dname)) {
-			return;
-		}
-	}
-	knot_dname_t *copy = knot_dname_copy(dname, NULL);
-	if (copy == NULL) {
-		*ret = KNOT_ENOMEM;
-	} else {
-		ptrlist_add(dst, copy, NULL);
-	}
-}
-
-int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *dst)
-{
-	knot_lmdb_txn_t txn = { 0 };
-	knot_lmdb_begin(db, &txn, false);
-	init_list(dst);
-	bool found = knot_lmdb_first(&txn);
-	while (found) {
-		const knot_dname_t *zone;
-		if (*(uint8_t *)txn.cur_key.mv_data != KASPDBKEY_POLICYLAST &&
-		    knot_dname_size((zone = txn.cur_key.mv_data + 1)) < txn.cur_key.mv_size) {
-			add_dname_to_list(dst, zone, &txn.ret);
-		}
-		found = knot_lmdb_next(&txn);
-	}
-	knot_lmdb_abort(&txn);
-	if (txn.ret != KNOT_EOK) {
-		ptrlist_deep_free(dst, NULL);
-		return txn.ret;
-	}
-	return (EMPTY_LIST(*dst) ? KNOT_ENOENT : KNOT_EOK);
-}
-
 int kasp_db_store_offline_records(knot_lmdb_db_t *db, knot_time_t for_time, const key_records_t *r)
 {
 	MDB_val k = make_key_time(KASPDBKEY_OFFLINE_RECORDS, r->rrsig.owner, for_time);
