@@ -376,7 +376,7 @@ Keep the zone file updated::
    journal-content: changes
 
 This is actually setting default values. The user can always check the current zone
-contents in the zonei file, and also modify it (recommended with server turned-off or
+contents in the zone file, and also modify it (recommended with server turned-off or
 taking the :ref:`safe way<Editing zone file>`). Journal serves here just as a source of
 history for slaves' IXFR. Some users dislike that the server overwrites their prettily
 prepared zone file.
