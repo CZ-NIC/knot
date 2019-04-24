@@ -77,14 +77,6 @@ int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
 int zone_timers_write_all(knot_lmdb_db_t *db, knot_zonedb_t *zonedb);
 
 /*!
- * \brief Callback used in \ref zone_timers_sweep.
- *
- * \retval true for zones to preserve.
- * \retval false for zones to remove.
- */
-typedef bool (*sweep_cb)(const knot_dname_t *zone, void *data);
-
-/*!
  * \brief Selectively delete zones from the database.
  *
  * \param db         Timer dababase.

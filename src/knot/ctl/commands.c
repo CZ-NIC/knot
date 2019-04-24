@@ -1065,19 +1065,8 @@ static int orphans_purge(ctl_args_t *args)
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
 		// Purge KASP DB.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-			list_t zones;
-			if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK &&
-			    kasp_db_list_zones(&args->server->kaspdb, &zones) == KNOT_EOK) {
-				ptrnode_t *zn;
-				WALK_LIST(zn, zones) {
-					knot_dname_t *zone_name = (knot_dname_t *)zn->d;
-					if (!zone_exists(zone_name, &args->server->zone_db)) {
-						(void)kasp_db_delete_all(&args->server->kaspdb, zone_name);
-					}
-					knot_dname_free(zone_name, NULL);
-				}
-				ptrlist_free(&zones, NULL);
-			}
+			(void)kasp_db_sweep(&args->server->kaspdb,
+			                    zone_exists, args->server->zone_db);
 		}
 
 		// Purge zone journals of unconfigured zones.
