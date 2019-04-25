@@ -223,6 +223,29 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 	return txn.ret;
 }
 
+int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
+{
+	if (!knot_lmdb_exists(db)) {
+		return KNOT_EOK;
+	}
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	bool found = knot_lmdb_first(&txn);
+	while (found) {
+		if (*(const uint8_t *)txn.cur_key.mv_data != KASPDBKEY_POLICYLAST &&
+		    !keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data)) {
+			knot_lmdb_del_cur(&txn);
+		}
+		found = knot_lmdb_next(&txn);
+	}
+	knot_lmdb_commit(&txn);
+	return txn.ret;
+}
+
 int kasp_db_add_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const key_params_t *params)
 {
 	MDB_val v = params_serialize(params);
@@ -379,44 +402,6 @@ int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const
 	free(v.mv_data);
 	knot_lmdb_commit(&txn);
 	return txn.ret;
-}
-
-static void add_dname_to_list(list_t *dst, const knot_dname_t *dname, int *ret)
-{
-	ptrnode_t *n;
-	WALK_LIST(n, *dst) {
-		if (knot_dname_is_equal(n->d, dname)) {
-			return;
-		}
-	}
-	knot_dname_t *copy = knot_dname_copy(dname, NULL);
-	if (copy == NULL) {
-		*ret = KNOT_ENOMEM;
-	} else {
-		ptrlist_add(dst, copy, NULL);
-	}
-}
-
-int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *dst)
-{
-	knot_lmdb_txn_t txn = { 0 };
-	knot_lmdb_begin(db, &txn, false);
-	init_list(dst);
-	bool found = knot_lmdb_first(&txn);
-	while (found) {
-		const knot_dname_t *zone;
-		if (*(uint8_t *)txn.cur_key.mv_data != KASPDBKEY_POLICYLAST &&
-		    knot_dname_size((zone = txn.cur_key.mv_data + 1)) < txn.cur_key.mv_size) {
-			add_dname_to_list(dst, zone, &txn.ret);
-		}
-		found = knot_lmdb_next(&txn);
-	}
-	knot_lmdb_abort(&txn);
-	if (txn.ret != KNOT_EOK) {
-		ptrlist_deep_free(dst, NULL);
-		return txn.ret;
-	}
-	return (EMPTY_LIST(*dst) ? KNOT_ENOENT : KNOT_EOK);
 }
 
 int kasp_db_store_offline_records(knot_lmdb_db_t *db, knot_time_t for_time, const key_records_t *r)

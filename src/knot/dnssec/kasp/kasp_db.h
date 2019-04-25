@@ -65,6 +65,17 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
 
 /*!
+ * \brief Selectively delete zones from the database.
+ *
+ * \param db         KASP dababase.
+ * \param keep_zone  Filtering callback.
+ * \param cb_data    Data passed to callback function.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
+
+/*!
  * \brief Add a key to the DB (possibly overwrite) and link it to a zone.
  *
  * Stores new key with given params into KASP db. If a key with the same ID had been present
@@ -173,18 +184,6 @@ int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
  */
 int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const char *last_lp_keyid,
 			    const knot_dname_t *new_lp_zone, const char *new_lp_keyid);
-
-/*!
- * \brief List all zones that have anything stored in KASP db.
- *
- * It's quite slow, but we expect KASP db not to be so large.
- *
- * \param db   KASP db
- * \param dst  List of zone names
- *
- * \return KNOT_E*
- */
-int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *dst);
 
 /*!
  * \brief Store pre-generated records for offline KSK usage.
