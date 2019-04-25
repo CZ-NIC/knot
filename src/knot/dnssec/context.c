@@ -153,7 +153,7 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		goto init_error;
 	}
 
-	ctx->kasp_zone_path = conf_kaspdir(conf);
+	ctx->kasp_zone_path = conf_db(conf, C_KASP_DB);
 	if (ctx->kasp_zone_path == NULL) {
 		ret = KNOT_ENOMEM;
 		goto init_error;

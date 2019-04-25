@@ -593,40 +593,25 @@ static inline char* conf_zonefile(
 }
 
 /*!
- * Gets the absolute journal file path.
+ * Gets the absolute directory path for a database.
+ *
+ * e.g. Journal, KASP db, Timers
  *
  * \note The result must be explicitly deallocated.
  *
  * \param[in] conf  Configuration.
  * \param[in] txn   Configuration DB transaction.
  *
- * \return Absolute journal file path string pointer.
+ * \return Absolute database path string pointer.
  */
-char* conf_journalfile_txn(
+char* conf_db_txn(conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *db_type);
+static inline char* conf_db(
 	conf_t *conf,
-	knot_db_txn_t *txn);
-static inline char* conf_journalfile(
-	conf_t *conf)
+	const yp_name_t *db_type)
 {
-	return conf_journalfile_txn(conf, &conf->read_txn);
-}
-
-char* conf_kaspdir_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn);
-static inline char* conf_kaspdir(
-	conf_t *conf)
-{
-	return conf_kaspdir_txn(conf, &conf->read_txn);
-}
-
-char* conf_timerdb_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn);
-static inline char* conf_timerdb(
-	conf_t *conf)
-{
-	return conf_timerdb_txn(conf, &conf->read_txn);
+	return conf_db_txn(conf, &conf->read_txn, db_type);
 }
 
 /*!
