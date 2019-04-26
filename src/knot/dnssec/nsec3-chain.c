@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,10 +126,9 @@ static int copy_signatures(zone_tree_t *from, zone_tree_t *to)
 
 	assert(to);
 
-	trie_it_t *it = trie_it_begin(from);
-
-	for (/* NOP */; !trie_it_finished(it); trie_it_next(it)) {
-		zone_node_t *node_from = (zone_node_t *)*trie_it_val(it);
+	zone_tree_it_t it = { 0 };
+	for ((void)zone_tree_it_begin(from, &it); !zone_tree_it_finished(&it); zone_tree_it_next(&it)) {
+		zone_node_t *node_from = zone_tree_it_val(&it);
 
 		zone_node_t *node_to = zone_tree_get(to, node_from->owner);
 		if (node_to == NULL) {
@@ -142,12 +141,12 @@ static int copy_signatures(zone_tree_t *from, zone_tree_t *to)
 
 		int ret = shallow_copy_signature(node_from, node_to);
 		if (ret != KNOT_EOK) {
-			trie_it_free(it);
+			zone_tree_it_free(&it);
 			return ret;
 		}
 	}
 
-	trie_it_free(it);
+	zone_tree_it_free(&it);
 	return KNOT_EOK;
 }
 
@@ -159,9 +158,9 @@ static void free_nsec3_tree(zone_tree_t *nodes)
 {
 	assert(nodes);
 
-	trie_it_t *it = trie_it_begin(nodes);
-	for (/* NOP */; !trie_it_finished(it); trie_it_next(it)) {
-		zone_node_t *node = (zone_node_t *)*trie_it_val(it);
+	zone_tree_it_t it = { 0 };
+	for ((void)zone_tree_it_begin(nodes, &it); !zone_tree_it_finished(&it); zone_tree_it_next(&it)) {
+		zone_node_t *node = zone_tree_it_val(&it);
 		// newly allocated NSEC3 nodes
 		knot_rdataset_t *nsec3 = node_rdataset(node, KNOT_RRTYPE_NSEC3);
 		knot_rdataset_t *rrsig = node_rdataset(node, KNOT_RRTYPE_RRSIG);
@@ -170,7 +169,7 @@ static void free_nsec3_tree(zone_tree_t *nodes)
 		node_free(node, NULL);
 	}
 
-	trie_it_free(it);
+	zone_tree_it_free(&it);
 	zone_tree_free(&nodes);
 }
 
@@ -292,12 +291,10 @@ static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
 	assert(apex_node);
 	assert(rr_types);
 
-	zone_node_t *new_node = node_new(owner, NULL);
+	zone_node_t *new_node = node_new(owner, false, false, NULL);
 	if (!new_node) {
 		return NULL;
 	}
-
-	node_set_parent(new_node, apex_node);
 
 	knot_rrset_t nsec3_rrset;
 	int ret = create_nsec3_rrset(&nsec3_rrset, owner, nsec3_params,
@@ -497,11 +494,11 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 	assert(nsec3_nodes);
 	assert(chgset);
 
-	int result = KNOT_EOK;
+	zone_tree_it_t it = { 0 };
+	int result = zone_tree_it_begin(zone->nodes, &it);
 
-	trie_it_t *it = trie_it_begin(zone->nodes);
-	while (!trie_it_finished(it)) {
-		zone_node_t *node = (zone_node_t *)*trie_it_val(it);
+	while (!zone_tree_it_finished(&it)) {
+		zone_node_t *node = zone_tree_it_val(&it);
 
 		/*!
 		 * Remove possible NSEC from the node. (Do not allow both NSEC
@@ -511,8 +508,8 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 		if (result != KNOT_EOK) {
 			break;
 		}
-		if (node->flags & NODE_FLAGS_NONAUTH || node->flags & NODE_FLAGS_EMPTY) {
-			trie_it_next(it);
+		if (node->flags & NODE_FLAGS_NONAUTH || node->flags & NODE_FLAGS_EMPTY || node->flags & NODE_FLAGS_DELETED) {
+			zone_tree_it_next(&it);
 			continue;
 		}
 
@@ -524,15 +521,15 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 			break;
 		}
 
-		result = zone_tree_insert(nsec3_nodes, nsec3_node);
+		result = zone_tree_insert(nsec3_nodes, &nsec3_node);
 		if (result != KNOT_EOK) {
 			break;
 		}
 
-		trie_it_next(it);
+		zone_tree_it_next(&it);
 	}
 
-	trie_it_free(it);
+	zone_tree_it_free(&it);
 
 	return result;
 }
@@ -634,6 +631,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 				ret = changeset_add_addition(chgset, &nsec3, CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
 			}
 		}
+		binode_unify(new_nsec3_n, false, NULL);
 		node_free_rrsets(new_nsec3_n, NULL);
 		node_free(new_nsec3_n, NULL);
 	}
@@ -646,23 +644,28 @@ static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *p
 {
 	assert(update);
 
-	int ret = KNOT_EOK;
+	zone_tree_it_t it = { 0 };
+	int ret = zone_tree_it_begin(update->change.remove->nodes, &it);
 
-	trie_it_t *rem_it = trie_it_begin(update->change.remove->nodes);
-	while (!trie_it_finished(rem_it) && ret == KNOT_EOK) {
-		zone_node_t *n = (zone_node_t *)*trie_it_val(rem_it);
+	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
+		zone_node_t *n = zone_tree_it_val(&it);
 		ret = fix_nsec3_for_node(update, params, ttl, opt_out, chgset, n->owner);
-		trie_it_next(rem_it);
+		zone_tree_it_next(&it);
 	}
-	trie_it_free(rem_it);
 
-	trie_it_t *add_it = trie_it_begin(update->change.add->nodes);
-	while (!trie_it_finished(add_it) && ret == KNOT_EOK) {
-		zone_node_t *n = (zone_node_t *)*trie_it_val(add_it);
-		ret = fix_nsec3_for_node(update, params, ttl, opt_out, chgset, n->owner);
-		trie_it_next(add_it);
+	if (ret == KNOT_EOK) {
+		zone_tree_it_free(&it);
+		ret = zone_tree_it_begin(update->change.add->nodes, &it);
 	}
-	trie_it_free(add_it);
+
+	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
+		zone_node_t *n = zone_tree_it_val(&it);
+		if (zone_tree_get(update->change.remove->nodes, n->owner) == NULL) {
+			ret = fix_nsec3_for_node(update, params, ttl, opt_out, chgset, n->owner);
+		}
+		zone_tree_it_next(&it);
+	}
+	zone_tree_it_free(&it);
 
 	return ret;
 }
@@ -687,10 +690,8 @@ static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
  * It also lowers the children count for the parent of marked node. This must be
  * fixed before further operations on the zone.
  */
-static int nsec3_mark_empty(zone_node_t **node_p, void *data)
+static int nsec3_mark_empty(zone_node_t *node, void *data)
 {
-	zone_node_t *node = *node_p;
-
 	if (!(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node, (data != NULL))) {
 		/*!
 		 * Mark this node and all parent nodes that meet the same
@@ -698,14 +699,14 @@ static int nsec3_mark_empty(zone_node_t **node_p, void *data)
 		 */
 		node->flags |= NODE_FLAGS_EMPTY;
 
-		if (node->parent) {
+		if (!(node->flags & NODE_FLAGS_APEX)) {
 			/* We must decrease the parent's children count,
 			 * but only temporarily! It must be set back right after
 			 * the operation
 			 */
-			node->parent->children--;
+			node_parent(node)->children--;
 			/* Recurse using the parent node */
-			return nsec3_mark_empty(&node->parent, data);
+			return nsec3_mark_empty(node_parent(node), data);
 		}
 	}
 
@@ -719,16 +720,14 @@ static int nsec3_mark_empty(zone_node_t **node_p, void *data)
  * The children count of node's parent is increased if this node was marked as
  * empty, as it was previously decreased in the \a nsec3_mark_empty() function.
  */
-static int nsec3_reset(zone_node_t **node_p, void *data)
+static int nsec3_reset(zone_node_t *node, void *data)
 {
 	UNUSED(data);
-	zone_node_t *node = *node_p;
-
 	if (node->flags & NODE_FLAGS_EMPTY) {
 		/* If node was marked as empty, increase its parent's children
 		 * count.
 		 */
-		node->parent->children++;
+		node_parent(node)->children++;
 		/* Clear the 'empty' flag. */
 		node->flags &= ~NODE_FLAGS_EMPTY;
 	}
@@ -753,7 +752,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 
 	int result;
 
-	zone_tree_t *nsec3_nodes = zone_tree_create();
+	zone_tree_t *nsec3_nodes = zone_tree_create(false);
 	if (!nsec3_nodes) {
 		return KNOT_ENOMEM;
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "contrib/semaphore.h"
 #include "knot/zone/contents.h"
 #include "knot/updates/changesets.h"
 #include "contrib/ucw/lists.h"
@@ -26,11 +27,10 @@ enum {
 
 struct apply_ctx {
 	zone_contents_t *contents;
-	list_t old_data;          /*!< Old data, to be freed after successful update. */
-	list_t new_data;          /*!< New data, to be freed after failed update. */
 	zone_tree_t *node_ptrs;   /*!< Just pointers to the affected nodes in contents. */
 	zone_tree_t *nsec3_ptrs;  /*!< The same for NSEC3 nodes. */
 	uint32_t flags;
+	knot_sem_t *cow_mutex;
 };
 
 typedef struct apply_ctx apply_ctx_t;

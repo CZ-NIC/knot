@@ -175,6 +175,8 @@ zone_t* zone_new(const knot_dname_t *name)
 	zone->ddns_queue_size = 0;
 	init_list(&zone->ddns_queue);
 
+	knot_sem_init(&zone->cow_lock, 1);
+
 	// Preferred master lock
 	pthread_mutex_init(&zone->preferred_lock, NULL);
 
@@ -212,6 +214,8 @@ void zone_free(zone_t **zone_ptr)
 
 	free_ddns_queue(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
+
+	knot_sem_destroy(&zone->cow_lock);
 
 	/* Control update. */
 	zone_control_clear(zone);
@@ -264,10 +268,7 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 		return KNOT_EINVAL;
 	}
 
-	changeset_t *co_ch = changeset_from_contents(new_contents);
-	int ret = co_ch ? journal_insert_zone(zone_journal(zone), co_ch) : KNOT_ENOMEM;
-	changeset_from_contents_free(co_ch);
-
+	int ret = journal_insert_zone(zone_journal(zone), new_contents);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone stored to journal, serial %u",
 		              zone_contents_serial(new_contents));

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
                                           const zone_node_t *node)
 {
 	bool deleg = node->flags & NODE_FLAGS_DELEG;
-	bool apex = node->parent == NULL;
+	bool apex = node->flags & NODE_FLAGS_APEX;
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rr = node_rrset_at(node, i);
 		if (deleg && (rr.type != KNOT_RRTYPE_NS && rr.type != KNOT_RRTYPE_DS)) {

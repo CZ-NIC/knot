@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,10 +51,10 @@ static void ztree_free_data(void)
 	}
 }
 
-static int ztree_iter_data(zone_node_t **node, void *data)
+static int ztree_iter_data(zone_node_t *node, void *data)
 {
 	unsigned *i = (unsigned *)data;
-	knot_dname_t *owner = (*node)->owner;
+	knot_dname_t *owner = node->owner;
 	int result = KNOT_EOK;
 	if (owner != ORDER[*i]) {
 		result = KNOT_ERROR;
@@ -75,13 +75,14 @@ int main(int argc, char *argv[])
 	ztree_init_data();
 
 	/* 1. create test */
-	zone_tree_t* t = zone_tree_create();
+	zone_tree_t* t = zone_tree_create(false);
 	ok(t != NULL, "ztree: created");
 
 	/* 2. insert test */
 	unsigned passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		if (zone_tree_insert(t, NODE + i) != KNOT_EOK) {
+		zone_node_t *node = NODE + i;
+		if (zone_tree_insert(t, &node) != KNOT_EOK) {
 			passed = 0;
 			break;
 		}

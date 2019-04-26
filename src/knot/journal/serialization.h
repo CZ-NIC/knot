@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,15 @@ typedef struct serialize_ctx serialize_ctx_t;
  * \return Context.
  */
 serialize_ctx_t *serialize_init(const changeset_t *ch);
+
+/*!
+ * \brief Init serialization context.
+ *
+ * \param z   Zone to be serialized like zone-in-journal changeset.
+ *
+ * \return Context.
+ */
+serialize_ctx_t *serialize_zone_init(const zone_contents_t *z);
 
 /*!
  * \brief Pre-check and space computation before serializing a chunk.

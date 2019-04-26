@@ -524,14 +524,14 @@ typedef struct {
  * \param node  Node to be signed.
  * \param data  Callback data, node_sign_args_t.
  */
-static int sign_node(zone_node_t **node, void *data)
+static int sign_node(zone_node_t *node, void *data)
 {
-	assert(node && *node);
+	assert(node);
 	assert(data);
 
 	node_sign_args_t *args = (node_sign_args_t *)data;
 
-	if ((*node)->rrset_count == 0) {
+	if (node->rrset_count == 0) {
 		return KNOT_EOK;
 	}
 
@@ -539,7 +539,7 @@ static int sign_node(zone_node_t **node, void *data)
 		return KNOT_EOK;
 	}
 
-	int result = sign_node_rrsets(*node, args->sign_ctx,
+	int result = sign_node_rrsets(node, args->sign_ctx,
 	                              &args->changeset, &args->expires_at);
 
 	return result;

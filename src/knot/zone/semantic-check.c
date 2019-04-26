@@ -1007,7 +1007,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 
 	const zone_node_t *next_nsec3 = zone_contents_find_nsec3_node(data->zone,
 	                                                              next_dname);
-	if (next_nsec3 == NULL || next_nsec3->prev != node->nsec3_node) {
+	if (next_nsec3 == NULL || node_prev(next_nsec3) != node->nsec3_node) {
 		uint8_t *next = NULL;
 		int32_t next_len = base32hex_encode_alloc(next_dname_str,
 		                                          next_dname_str_size,
@@ -1093,7 +1093,7 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 	}
 
 	/* RFC 6672 Section 2.3 Paragraph 3 */
-	bool is_apex = (node->parent == NULL);
+	bool is_apex = (node->flags & NODE_FLAGS_APEX);
 	if (!is_apex && node_rrtype_exists(node, KNOT_RRTYPE_NS)) {
 		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,

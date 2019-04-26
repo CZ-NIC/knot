@@ -14,35 +14,28 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
-#include <urcu.h>
+#include <pthread.h>
+#include <semaphore.h>
 
-#include "contrib/trim.h"
-#include "knot/common/log.h"
-#include "knot/conf/conf.h"
-#include "knot/events/handlers.h"
-#include "knot/events/replan.h"
-#include "knot/zone/contents.h"
-#include "knot/zone/zone.h"
+#pragma once
 
-int event_expire(conf_t *conf, zone_t *zone)
-{
-	assert(zone);
+typedef struct {
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+} knot_sem_mutex_t;
 
-	zone_contents_t *expired = zone_switch_contents(zone, NULL);
-	log_zone_info(zone->name, "zone expired");
+typedef struct {
+	int status;
+	union {
+		sem_t semaphore;
+		knot_sem_mutex_t *status_lock;
+	};
+} knot_sem_t;
 
-	synchronize_rcu();
-	knot_sem_wait(&zone->cow_lock);
-	zone_contents_deep_free(expired);
-	knot_sem_post(&zone->cow_lock);
+void knot_sem_init(knot_sem_t *sem, unsigned int value);
 
-	zone->zonefile.exists = false;
-	mem_trim();
+void knot_sem_wait(knot_sem_t *sem);
 
-	// NOTE: must preserve zone->timers.soa_expire
-	zone->timers.next_refresh = time(NULL);
-	replan_from_timers(conf, zone);
+void knot_sem_post(knot_sem_t *sem);
 
-	return KNOT_EOK;
-}
+void knot_sem_destroy(knot_sem_t *sem);

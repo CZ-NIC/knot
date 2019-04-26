@@ -38,9 +38,9 @@ MDB_val journal_changeset_to_chunk_key(const changeset_t *ch, uint32_t chunk_id)
 	}
 }
 
-void journal_make_header(void *chunk, const changeset_t *ch)
+void journal_make_header(void *chunk, uint32_t ch_serial_to)
 {
-	knot_lmdb_make_key_part(chunk, JOURNAL_HEADER_SIZE, "IILLL", changeset_to(ch),
+	knot_lmdb_make_key_part(chunk, JOURNAL_HEADER_SIZE, "IILLL", ch_serial_to,
 	                        (uint32_t)0 /* we no longer care for # of chunks */,
 	                        (uint64_t)0, (uint64_t)0, (uint64_t)0);
 }

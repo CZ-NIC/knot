@@ -71,7 +71,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 
 static int init_full(zone_update_t *update, zone_t *zone)
 {
-	update->new_cont = zone_contents_new(zone->name);
+	update->new_cont = zone_contents_new(zone->name, true);
 	if (update->new_cont == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -127,6 +127,9 @@ int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents
 		return KNOT_ENOMEM;
 	}
 
+	knot_sem_wait(&zone->cow_lock);
+	update->a_ctx->cow_mutex = &zone->cow_lock;
+
 	int ret = KNOT_EINVAL;
 	if (flags & UPDATE_INCREMENTAL) {
 		ret = init_incremental(update, zone, old_contents, flags & UPDATE_JOURNAL);
@@ -134,6 +137,7 @@ int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents
 		ret = init_full(update, zone);
 	}
 	if (ret != KNOT_EOK) {
+		knot_sem_post(&zone->cow_lock);
 		free(update->a_ctx);
 	}
 
@@ -216,6 +220,9 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	if (update->a_ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	knot_sem_wait(&update->zone->cow_lock);
+	update->a_ctx->cow_mutex = &update->zone->cow_lock;
 
 	if (flags & UPDATE_INCREMENTAL) {
 		int ret = changeset_init(&update->change, zone_without_contents->name);
@@ -328,13 +335,15 @@ void zone_update_clear(zone_update_t *update)
 			zone_contents_deep_free(update->new_cont);
 		} else {
 			update_rollback(update->a_ctx);
-			update_free_zone(update->new_cont);
 		}
 		changeset_clear(&update->change);
 	} else if (update->flags & UPDATE_FULL) {
 		assert(update->new_cont_deep_copy);
 		update_cleanup(update->a_ctx);
 		zone_contents_deep_free(update->new_cont);
+	}
+	if (update->a_ctx != NULL && update->a_ctx->cow_mutex != NULL) {
+		knot_sem_post(update->a_ctx->cow_mutex);
 	}
 	free(update->a_ctx);
 	mp_delete(update->mm.ctx);
@@ -799,27 +808,25 @@ static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
 
 	/* Begin iteration. We can safely assume _contents is a valid pointer. */
 	zone_tree_t *tree = nsec3 ? _contents->nsec3_nodes : _contents->nodes;
-	it->tree_it = trie_it_begin(tree);
-	if (it->tree_it == NULL) {
+	if (zone_tree_it_begin(tree, &it->tree_it) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
 
-	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = zone_tree_it_val(&it->tree_it);
 
 	return KNOT_EOK;
 }
 
 static int iter_get_next_node(zone_update_iter_t *it)
 {
-	trie_it_next(it->tree_it);
-	if (trie_it_finished(it->tree_it)) {
-		trie_it_free(it->tree_it);
-		it->tree_it = NULL;
+	zone_tree_it_next(&it->tree_it);
+	if (zone_tree_it_finished(&it->tree_it)) {
+		zone_tree_it_free(&it->tree_it);
 		it->cur_node = NULL;
 		return KNOT_ENOENT;
 	}
 
-	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = zone_tree_it_val(&it->tree_it);
 
 	return KNOT_EOK;
 }
@@ -835,7 +842,7 @@ static int iter_init(zone_update_iter_t *it, zone_update_t *update, const bool n
 		return ret;
 	}
 
-	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = zone_tree_it_val(&it->tree_it);
 
 	return KNOT_EOK;
 }
@@ -877,7 +884,7 @@ int zone_update_iter_next(zone_update_iter_t *it)
 		return KNOT_EINVAL;
 	}
 
-	if (it->tree_it != NULL) {
+	if (it->tree_it.it != NULL) {
 		int ret = iter_get_next_node(it);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			return ret;
@@ -902,7 +909,7 @@ void zone_update_iter_finish(zone_update_iter_t *it)
 		return;
 	}
 
-	trie_it_free(it->tree_it);
+	zone_tree_it_free(&it->tree_it);
 }
 
 bool zone_update_no_change(zone_update_t *update)

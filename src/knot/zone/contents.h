@@ -39,18 +39,19 @@ typedef struct zone_contents {
 } zone_contents_t;
 
 /*!
- * \brief Signature of callback for zone contents apply functions.
- */
-typedef int (*zone_contents_apply_cb_t)(zone_node_t *node, void *data);
-
-/*!
  * \brief Allocate and create new zone contents.
  *
- * \param apex_name  Name of the root node.
+ * \param apex_name     Name of the root node.
+ * \param use_binodes   Zone trees shall consist of bi-nodes to enable zone updates.
  *
  * \return New contents or NULL on error.
  */
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes);
+
+/*!
+ * \brief Returns zone tree for inserting given RR.
+ */
+zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrset_t *rr);
 
 /*!
  * \brief Add an RR to contents.
@@ -73,16 +74,6 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t
  * \return KNOT_E*
  */
 int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
-
-/*!
- * \brief Get the node with this RR (the RR's owner).
- *
- * \param zone   Contents to add to.
- * \param rrset  The RR to add.
- *
- * \return The searched node if it exists, a new added empty node or NULL on error.
- */
-zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
@@ -219,7 +210,7 @@ bool zone_contents_find_node_or_wildcard(const zone_contents_t *contents,
  * \param data Arbitrary data to be passed to the function.
  */
 int zone_contents_apply(zone_contents_t *contents,
-                        zone_contents_apply_cb_t function, void *data);
+                        zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.
@@ -230,7 +221,7 @@ int zone_contents_apply(zone_contents_t *contents,
  * \param data Arbitrary data to be passed to the function.
  */
 int zone_contents_nsec3_apply(zone_contents_t *contents,
-                              zone_contents_apply_cb_t function, void *data);
+                              zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).
@@ -292,22 +283,3 @@ int zone_contents_load_nsec3param(zone_contents_t *contents);
  * \brief Return true if zone is empty.
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
-
-/*!
- * \brief Measure zone contents size.
- *
- * Size is measured in uncompressed wire format. Measured size is saved into
- * zone contents structure.
- * \return Measured size
- */
-size_t zone_contents_measure_size(zone_contents_t *zone);
-
-/*!
- * \brief Obtain maximal TTL above all the records in zone.
- *
- * The value is also stored in zone_contents structure.
- *
- * \param zone   Zone in question.
- * \return Maximal TTL.
- */
-uint32_t zone_contents_max_ttl(zone_contents_t *zone);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ typedef struct zone_update {
 
 typedef struct {
 	zone_update_t *update;          /*!< The update we're iterating over. */
-	trie_it_t *tree_it;             /*!< Iterator for the new zone. */
+	zone_tree_it_t tree_it;         /*!< Iterator for the new zone. */
 	const zone_node_t *cur_node;    /*!< Current node in the new zone. */
 	bool nsec3;                     /*!< Set when we're using the NSEC3 node tree. */
 } zone_update_iter_t;

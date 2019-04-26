@@ -43,6 +43,9 @@ typedef struct {
 /*! \brief Changeset iteration structure. */
 typedef struct {
 	list_t iters;             /*!< List of pending zone iterators. */
+	zone_tree_t *trees[4];    /*!< Poiters to zone trees to iterate over. */
+	size_t n_trees;           /*!< Their count. */
+	zone_tree_it_t it;        /*!< Zone tree iterator. */
 	const zone_node_t *node;  /*!< Current zone node. */
 	uint16_t node_pos;        /*!< Position in node. */
 } changeset_iter_t;
@@ -188,32 +191,6 @@ int changeset_cancelout(changeset_t *ch);
  * \retval true   Otherwise.
  */
 bool changeset_differs_just_serial(const changeset_t *ch);
-
-/*!
- * \brief Loads zone contents from botstrap changeset.
- *
- * \param ch  Changeset to load from, will be freed!
- * \param out Zone contents.
- *
- * \return KNOT_E*
- */
-int changeset_to_contents(changeset_t *ch, zone_contents_t **out);
-
-/*!
- * \brief Creates a bootstrap changeset from zone.
- *
- * \param contents  Contents to include, will be freed!
- *
- * \return Changeset, which shall be freed with changeset_from_contents_free()
- */
-changeset_t *changeset_from_contents(const zone_contents_t *contents);
-
-/*!
- * \brief Frees single changeset.
- *
- * \param ch  Changeset from changeset_from_contents() to free.
- */
-void changeset_from_contents_free(changeset_t *ch);
 
 /*!
  * \brief Clears changesets in list. Changesets are not free'd. Legacy.

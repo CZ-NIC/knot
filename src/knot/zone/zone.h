@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "contrib/semaphore.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
 #include "knot/journal/journal_basic.h"
@@ -32,11 +33,11 @@ struct zone_update;
  * \brief Zone flags.
  */
 typedef enum zone_flag_t {
-	ZONE_FORCE_AXFR     = 1 << 0, /* Force AXFR as next transfer. */
-	ZONE_FORCE_RESIGN   = 1 << 1, /* Force zone re-sign. */
-	ZONE_FORCE_FLUSH    = 1 << 2, /* Force zone flush. */
-	ZONE_FORCE_KSK_ROLL = 1 << 3, /* Force KSK/CSK rollover. */
-	ZONE_FORCE_ZSK_ROLL = 1 << 4, /* Force ZSK rollover. */
+	ZONE_FORCE_AXFR     = 1 << 0, /*!< Force AXFR as next transfer. */
+	ZONE_FORCE_RESIGN   = 1 << 1, /*!< Force zone re-sign. */
+	ZONE_FORCE_FLUSH    = 1 << 2, /*!< Force zone flush. */
+	ZONE_FORCE_KSK_ROLL = 1 << 3, /*!< Force KSK/CSK rollover. */
+	ZONE_FORCE_ZSK_ROLL = 1 << 4, /*!< Force ZSK rollover. */
 } zone_flag_t;
 
 /*!
@@ -70,6 +71,9 @@ typedef struct zone
 
 	/*! \brief Control update context. */
 	struct zone_update *control_update;
+
+	/*! \brief Ensue one COW tramsaction on zone's trees at a time. */
+	knot_sem_t cow_lock;
 
 	/*! \brief Ptr to journal DB (in struct server) */
 	knot_lmdb_db_t *journaldb;

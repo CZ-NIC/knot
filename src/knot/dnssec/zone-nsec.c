@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ static int delete_nsec3_chain(const zone_contents_t *zone, changeset_t *changese
 		return KNOT_EOK;
 	}
 
-	zone_tree_t *empty_tree = zone_tree_create();
+	zone_tree_t *empty_tree = zone_tree_create(false);
 	if (!empty_tree) {
 		return KNOT_ENOMEM;
 	}

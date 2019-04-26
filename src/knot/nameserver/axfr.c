@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 struct axfr_proc {
 	struct xfr_proc proc;
 	trie_it_t *i;
+	zone_tree_it_t it;
 	unsigned cur_rrset;
 };
 
@@ -70,25 +71,20 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item,
 
 	struct axfr_proc *axfr = (struct axfr_proc*)state;
 
-	if (axfr->i == NULL) {
-		axfr->i = trie_it_begin((trie_t *)item);
-	}
+	int ret = zone_tree_it_begin((zone_tree_t *)item, &axfr->it); // does nothing if already itearating
 
 	/* Put responses. */
-	int ret = KNOT_EOK;
-	while (!trie_it_finished(axfr->i)) {
-		zone_node_t *node = (zone_node_t *)*trie_it_val(axfr->i);
+	while (ret == KNOT_EOK && !zone_tree_it_finished(&axfr->it)) {
+		zone_node_t *node = zone_tree_it_val(&axfr->it);
 		ret = axfr_put_rrsets(pkt, node, axfr);
-		if (ret != KNOT_EOK) {
-			break;
+		if (ret == KNOT_EOK) {
+			zone_tree_it_next(&axfr->it);
 		}
-		trie_it_next(axfr->i);
 	}
 
 	/* Finished all nodes. */
 	if (ret == KNOT_EOK) {
-		trie_it_free(axfr->i);
-		axfr->i = NULL;
+		zone_tree_it_free(&axfr->it);
 	}
 	return ret;
 }
@@ -97,7 +93,7 @@ static void axfr_query_cleanup(knotd_qdata_t *qdata)
 {
 	struct axfr_proc *axfr = (struct axfr_proc *)qdata->extra->ext;
 
-	trie_it_free(axfr->i);
+	zone_tree_it_free(&axfr->it);
 	ptrlist_free(&axfr->proc.nodes, qdata->mm);
 	mm_free(qdata->mm, axfr);
 
