@@ -44,18 +44,6 @@ static int destroy_node_rrsets_from_tree(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-static int measure_size(zone_node_t *node, void *data){
-
-	node_size(node, data);
-	return KNOT_EOK;
-}
-
-static int measure_max_ttl(zone_node_t *node, void *data){
-
-	node_max_ttl(node, data);
-	return KNOT_EOK;
-}
-
 /*!
  * \brief Tries to find the given domain name in the zone tree.
  *
@@ -94,61 +82,14 @@ static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
 	return match > 0;
 }
 
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes)
-{
-	if (apex_name == NULL) {
-		return NULL;
-	}
-
-	zone_contents_t *contents = calloc(1, sizeof(*contents));
-	if (contents == NULL) {
-		return NULL;
-	}
-
-	contents->nodes = zone_tree_create(use_binodes);
-	if (contents->nodes == NULL) {
-		goto cleanup;
-	}
-
-	contents->apex = node_new_for_contents(apex_name, contents);
-	if (contents->apex == NULL) {
-		goto cleanup;
-	}
-
-	if (zone_tree_insert(contents->nodes, &contents->apex) != KNOT_EOK) {
-		goto cleanup;
-	}
-	contents->apex->flags |= NODE_FLAGS_APEX;
-
-	return contents;
-
-cleanup:
-	node_free(contents->apex, NULL);
-	free(contents->nodes);
-	free(contents);
-	return NULL;
-}
-
-zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents)
+/*!
+ * \brief Create a node suitable for inserting into this contents.
+ */
+static zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents)
 {
 	return node_new(owner, (contents->nodes->flags & ZONE_TREE_USE_BINODES),
 	                (contents->nodes->flags & ZONE_TREE_USE_BINODES) &&
 	                (contents->nodes->flags & ZONE_TREE_BINO_SECOND), NULL);
-}
-
-zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrset_t *rr)
-{
-	bool nsec3rel = knot_rrset_is_nsec3rel(rr);
-
-	if (nsec3rel && contents->nsec3_nodes == NULL) {
-		contents->nsec3_nodes = zone_tree_create((contents->nodes->flags & ZONE_TREE_USE_BINODES));
-		if (contents->nsec3_nodes == NULL) {
-			return NULL;
-		}
-		contents->nsec3_nodes->flags = contents->nodes->flags;
-	}
-
-	return nsec3rel ? contents->nsec3_nodes : contents->nodes;
 }
 
 static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *name)
@@ -246,13 +187,65 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
 {
 	out->nsec3_nodes = zone_tree_dup(z->nsec3_nodes);
-	return out->nsec3_nodes == NULL ? KNOT_ENOMEM : KNOT_EOK;
+	if (out->nsec3_nodes == NULL) {
+		return KNOT_ENOMEM;
+	}
+	return KNOT_EOK;
 }
 
 // Public API
 
-int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
-                         zone_node_t **n)
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes)
+{
+	if (apex_name == NULL) {
+		return NULL;
+	}
+
+	zone_contents_t *contents = calloc(1, sizeof(*contents));
+	if (contents == NULL) {
+		return NULL;
+	}
+
+	contents->nodes = zone_tree_create(use_binodes);
+	if (contents->nodes == NULL) {
+		goto cleanup;
+	}
+
+	contents->apex = node_new_for_contents(apex_name, contents);
+	if (contents->apex == NULL) {
+		goto cleanup;
+	}
+
+	if (zone_tree_insert(contents->nodes, &contents->apex) != KNOT_EOK) {
+		goto cleanup;
+	}
+	contents->apex->flags |= NODE_FLAGS_APEX;
+
+	return contents;
+
+cleanup:
+	node_free(contents->apex, NULL);
+	free(contents->nodes);
+	free(contents);
+	return NULL;
+}
+
+zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrset_t *rr)
+{
+	bool nsec3rel = knot_rrset_is_nsec3rel(rr);
+
+	if (nsec3rel && contents->nsec3_nodes == NULL) {
+		contents->nsec3_nodes = zone_tree_create((contents->nodes->flags & ZONE_TREE_USE_BINODES));
+		if (contents->nsec3_nodes == NULL) {
+			return NULL;
+		}
+		contents->nsec3_nodes->flags = contents->nodes->flags;
+	}
+
+	return nsec3rel ? contents->nsec3_nodes : contents->nodes;
+}
+
+int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
 {
 	if (z == NULL || rr == NULL || n == NULL) {
 		return KNOT_EINVAL;
@@ -261,8 +254,7 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
 	return insert_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
 }
 
-int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
-                            zone_node_t **n)
+int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
 {
 	if (z == NULL || rr == NULL || n == NULL) {
 		return KNOT_EINVAL;
@@ -608,18 +600,4 @@ bool zone_contents_is_empty(const zone_contents_t *zone)
 	bool no_nsec3 = zone_tree_is_empty(zone->nsec3_nodes);
 
 	return (apex_empty && no_non_apex && no_nsec3);
-}
-
-size_t zone_contents_measure_size(zone_contents_t *zone)
-{
-	zone->size = 0;
-	zone_contents_apply(zone, measure_size, &zone->size);
-	return zone->size;
-}
-
-uint32_t zone_contents_max_ttl(zone_contents_t *zone)
-{
-	zone->max_ttl = 0;
-	zone_contents_apply(zone, measure_max_ttl, &zone->size);
-	return zone->max_ttl;
 }

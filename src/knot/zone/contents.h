@@ -49,11 +49,6 @@ typedef struct zone_contents {
 zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes);
 
 /*!
- * \brief Create a node suitable for inserting into this contents.
- */
-zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents);
-
-/*!
  * \brief Returns zone tree for inserting given RR.
  */
 zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrset_t *rr);
@@ -288,22 +283,3 @@ int zone_contents_load_nsec3param(zone_contents_t *contents);
  * \brief Return true if zone is empty.
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
-
-/*!
- * \brief Measure zone contents size.
- *
- * Size is measured in uncompressed wire format. Measured size is saved into
- * zone contents structure.
- * \return Measured size
- */
-size_t zone_contents_measure_size(zone_contents_t *zone);
-
-/*!
- * \brief Obtain maximal TTL above all the records in zone.
- *
- * The value is also stored in zone_contents structure.
- *
- * \param zone   Zone in question.
- * \return Maximal TTL.
- */
-uint32_t zone_contents_max_ttl(zone_contents_t *zone);
