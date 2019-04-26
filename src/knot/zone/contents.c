@@ -109,8 +109,7 @@ static zone_node_t *get_nsec3_node(const zone_contents_t *zone,
 	return zone_tree_get(zone->nsec3_nodes, name);
 }
 
-static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr,
-                     zone_node_t **n, bool nsec3)
+static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
 {
 	if (knot_rrset_empty(rr)) {
 		return KNOT_EINVAL;
@@ -251,7 +250,7 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t
 		return KNOT_EINVAL;
 	}
 
-	return insert_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
+	return insert_rr(z, rr, n);
 }
 
 int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
