@@ -56,14 +56,6 @@ int main(int argc, char *argv[])
 	assert(node);
 	ok(knot_dname_is_equal(node->owner, dummy_owner), "Node: new - set fields");
 
-	// Test parent setting
-	zone_node_t *parent = node_new(dummy_owner, false, false, NULL);
-	assert(parent);
-	node_set_parent(node, parent);
-	ok(node_parent(node) == parent && parent->children == 1, "Node: set parent.");
-
-	node_free(parent, NULL);
-
 	// Test RRSet addition
 	knot_rrset_t *dummy_rrset = create_dummy_rrset(dummy_owner, KNOT_RRTYPE_TXT);
 	int ret = node_add_rrset(node, dummy_rrset, NULL);

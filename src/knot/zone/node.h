@@ -222,14 +222,6 @@ knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type);
 knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type);
 
 /*!
- * \brief Sets the parent of the node. Also adjusts children count of parent.
- *
- * \param node Node to set the parent of.
- * \param parent Parent to set to the node.
- */
-void node_set_parent(zone_node_t *node, zone_node_t *parent);
-
-/*!
  * \brief Returns parent node (fixing bi-node issue) of given node.
  */
 inline static zone_node_t *node_parent(const zone_node_t *node)

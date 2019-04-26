@@ -346,21 +346,6 @@ knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type)
 	return NULL;
 }
 
-void node_set_parent(zone_node_t *node, zone_node_t *parent)
-{
-	// node must not have any parent previously
-	assert(node != NULL);
-	assert(node->parent == NULL);
-
-	// set the parent
-	node->parent = parent;
-
-	// increase the count of children of the new parent
-	if (parent != NULL) {
-		++parent->children;
-	}
-}
-
 bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
