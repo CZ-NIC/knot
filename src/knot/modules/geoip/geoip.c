@@ -28,6 +28,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
+#include "libdnssec/random.h"
 #include "libzscanner/scanner.h"
 
 #define MOD_CONFIG_FILE	"\x0B""config-file"
@@ -38,18 +39,21 @@
 
 enum operation_mode {
 	MODE_SUBNET,
-	MODE_GEODB
+	MODE_GEODB,
+	MODE_WEIGHTED
 };
 
 static const knot_lookup_t modes[] = {
-	{ MODE_SUBNET, "subnet" },
-	{ MODE_GEODB,  "geodb" },
+	{ MODE_SUBNET,   "subnet" },
+	{ MODE_GEODB,    "geodb" },
+	{ MODE_WEIGHTED, "weighted" },
 	{ 0, NULL }
 };
 
 static const char* mode_key[] = {
-	[MODE_SUBNET] = "net",
-	[MODE_GEODB]  = "geo"
+	[MODE_SUBNET]   = "net",
+	[MODE_GEODB]    = "geo",
+	[MODE_WEIGHTED] = "weight"
 };
 
 const yp_item_t geoip_conf[] = {
@@ -102,6 +106,8 @@ typedef struct {
 	uint32_t geodata_len[GEODB_MAX_DEPTH];
 	uint8_t geodepth;
 
+	uint16_t weight;
+
 	// Index of the "parent" in the sorted view list.
 	// Equal to its own index if there is no parent.
 	size_t prev;
@@ -114,6 +120,7 @@ typedef struct {
 typedef struct {
 	size_t count, avail;
 	geo_view_t *views;
+	uint16_t total_weight;
 } geo_trie_val_t;
 
 typedef int (*view_cmp_t)(const void *a, const void *b);
@@ -179,6 +186,20 @@ int subnet_view_cmp(const void *a, const void *b)
 	return ret;
 }
 
+int weighted_view_cmp(const void *a, const void *b)
+{
+	geo_view_t *va = (geo_view_t *)a;
+	geo_view_t *vb = (geo_view_t *)b;
+
+	return (int)va->weight - (int)vb->weight;
+}
+
+static view_cmp_t cmp_fct[] = {
+	[MODE_SUBNET]   = &subnet_view_cmp,
+	[MODE_GEODB]    = &geodb_view_cmp,
+	[MODE_WEIGHTED] = &weighted_view_cmp
+};
+
 static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *ctx)
 {
 	int ret = KNOT_EOK;
@@ -196,6 +217,10 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *
 		new_val->avail = 1;
 		new_val->count = 1;
 		new_val->views = malloc(sizeof(geo_view_t));
+		if (ctx->mode == MODE_WEIGHTED) {
+			new_val->total_weight = view->weight;
+			view->weight = 0; // because it is the first view
+		}
 		new_val->views[0] = *view;
 
 		// Add new value to trie.
@@ -213,6 +238,10 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *
 		}
 
 		// Insert new element.
+		if (ctx->mode == MODE_WEIGHTED) {
+			cur_val->total_weight += view->weight;
+			view->weight = cur_val->total_weight - view->weight;
+		}
 		cur_val->views[cur_val->count++] = *view;
 	}
 
@@ -382,6 +411,15 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 				              yp->line_count);
 			}
 		}
+	} else if (ctx->mode == MODE_WEIGHTED) {
+		uint8_t weight;
+		ret = str_to_u8(yp->data, &weight);
+		if (ret != KNOT_EOK) {
+			knotd_mod_log(mod, LOG_ERR, "invalid weight (%s) on line %zu",
+			              yp->data, yp->line_count);
+			return ret;
+		}
+		view->weight = weight;
 	}
 
 	return KNOT_EOK;
@@ -533,9 +571,13 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		if (yp->event == YP_EKEY1) {
 			// Check whether we really are in a view.
 			if (view->avail <= 0) {
+				const char *err_str[] = {
+					[MODE_SUBNET]   = "- net: SUBNET",
+					[MODE_GEODB]    = "- geo: LOCATION",
+					[MODE_WEIGHTED] = "- weight: WEIGHT"
+				};
 				knotd_mod_log(mod, LOG_ERR, "missing '%s' in config before line %zu",
-				              (ctx->mode == MODE_SUBNET) ? "- net: SUBNET" : "- geo: LOCATION",
-				              yp->line_count);
+				              err_str[ctx->mode], yp->line_count);
 				ret = KNOT_EINVAL;
 				goto cleanup;
 			}
@@ -615,6 +657,8 @@ static bool view_strictly_in_view(geo_view_t *view, geo_view_t *in,
 		return sockaddr_net_match((struct sockaddr *)view->subnet,
 		                          (struct sockaddr *)in->subnet,
 		                          in->subnet_prefix);
+	case MODE_WEIGHTED:
+		return true;
 	default:
 		assert(0);
 		return false;
@@ -626,8 +670,7 @@ static void geo_sort_and_link(geoip_ctx_t *ctx)
 	trie_it_t *it = trie_it_begin(ctx->geo_trie);
 	while (!trie_it_finished(it)) {
 		geo_trie_val_t *val = (geo_trie_val_t *) (*trie_it_val(it));
-		qsort(val->views, val->count, sizeof(geo_view_t),
-		      (ctx->mode == MODE_GEODB) ? geodb_view_cmp : subnet_view_cmp);
+		qsort(val->views, val->count, sizeof(geo_view_t), cmp_fct[ctx->mode]);
 
 		for (int i = 1; i < val->count; i++) {
 			geo_view_t *cur_view = &val->views[i];
@@ -668,7 +711,7 @@ static int geo_bin_search(geo_view_t *arr, int count, geo_view_t *x, view_cmp_t 
 
 static geo_view_t *find_best_view(geo_view_t *dummy, geo_trie_val_t *data, geoip_ctx_t *ctx)
 {
-	view_cmp_t cmp = (ctx->mode == MODE_GEODB) ? geodb_view_cmp : subnet_view_cmp;
+	view_cmp_t cmp = cmp_fct[ctx->mode];
 	int idx = geo_bin_search(data->views, data->count, dummy, cmp);
 	if (idx == -1) { // There is no suitable view.
 		return NULL;
@@ -767,6 +810,9 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 		geodb_fill_geodata(entries, ctx->path_count,
 		                   dummy.geodata, dummy.geodata_len, &dummy.geodepth);
+		break;
+	case MODE_WEIGHTED:
+		dummy.weight = dnssec_random_uint16_t() % data->total_weight;
 		break;
 	default:
 		assert(0);

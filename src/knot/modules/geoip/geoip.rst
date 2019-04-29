@@ -4,7 +4,7 @@
 =====================================
 
 This module offers response tailoring based on client's
-subnet or geographic location. It supports GeoIP databases
+subnet, geographic location, or a statistical weight. It supports GeoIP databases
 in the MaxMind DB format, such as `GeoIP2 <https://dev.maxmind.com/geoip/geoip2/downloadable/>`_
 or the free version `GeoLite2 <https://dev.maxmind.com/geoip/geoip2/geolite2/>`_.
 
@@ -67,11 +67,11 @@ This file has the following simple format:
 ::
 
    domain-name1:
-     - geo|net: location1
+     - geo|net|weight: value1
        RR-Type1: RDATA
        RR-Type2: RDATA
        ...
-     - geo|net: location2
+     - geo|net|weight: value2
        RR-Type1: RDATA
      ...
    domain-name2:
@@ -119,6 +119,19 @@ Example
        CNAME: us.foo.example.net
    ...
 
+* Example :ref:`mod-geoip_config-file` for weighted records
+
+::
+
+   foo.example.com:
+     - weight: 1
+       CNAME: canary.foo.example.com
+     - weight: 10
+       CNAME: prod1.foo.example.net
+     - weight: 10
+       CNAME: prod2.foo.example.net
+   ...
+
 
 Module reference
 ----------------
@@ -129,7 +142,7 @@ Module reference
    - id: STR
      config-file: STR
      ttl: TIME
-     mode: geodb | subnet
+     mode: geodb | subnet | weighted
      geodb-file: STR
      geodb-key: STR ...
 
@@ -170,6 +183,7 @@ Possible values:
 - ``subnet`` – Responses are tailored according to subnets.
 - ``geodb`` – Responses are tailored according to geographic data retrieved
   from the configured database.
+- ``weighted`` – Responses are tailored according to a statistical weight.
 
 *Default:* subnet
 
