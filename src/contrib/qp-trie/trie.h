@@ -212,7 +212,7 @@ void trie_it_del(trie_it_t *it);
  * There must be only one write transaction at a time.
  *
  * \param old		the old trie
- * \param mark_shared	callback to mark a leaf as shared
+ * \param mark_shared	callback to mark a leaf as shared (can be NULL)
  * \param d		extra data for the callback
  * \return		a pointer to a COW context,
  *			or NULL if there was a failure
@@ -253,6 +253,8 @@ int trie_del_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len, trie_val_
  * cleaning up; you must free any objects you have marked as old-only
  * and retain objects with shared reachability.
  *
+ * \note The callback can be NULL.
+ *
  * The cow object is free()d, and the new trie root is returned.
  */
 trie_t* trie_cow_commit(trie_cow_t *cow, trie_cb *cb, void *d);
@@ -262,6 +264,8 @@ trie_t* trie_cow_commit(trie_cow_t *cow, trie_cb *cb, void *d);
  * Your callback is invoked for any trie_val_t objects that might need
  * cleaning up; you must free any objects you have marked as new-only
  * and retain objects with shared reachability.
+ *
+ * \note The callback can be NULL.
  *
  * The cow object is free()d, and the old trie root is returned.
  */
