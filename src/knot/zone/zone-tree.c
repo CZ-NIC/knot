@@ -57,14 +57,6 @@ zone_tree_t *zone_tree_create(bool use_binodes)
 	return t;
 }
 
-void trie_cb_noop(trie_val_t val, const unsigned char *key, size_t len, void *d)
-{
-	(void)val;
-	(void)key;
-	(void)len;
-	(void)d;
-}
-
 zone_tree_t *zone_tree_dup(zone_tree_t *from)
 {
 	zone_tree_t *to = calloc(1, sizeof(*to));
@@ -72,7 +64,7 @@ zone_tree_t *zone_tree_dup(zone_tree_t *from)
 		return to;
 	}
 	to->flags = from->flags ^ ZONE_TREE_BINO_SECOND;
-	from->cow = trie_cow(from->trie, trie_cb_noop, NULL);
+	from->cow = trie_cow(from->trie, NULL, NULL);
 	to->cow = from->cow;
 	to->trie = trie_cow_new(to->cow);
 	if (to->trie == NULL) {
