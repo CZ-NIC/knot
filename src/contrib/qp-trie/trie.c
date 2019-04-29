@@ -1246,9 +1246,11 @@ static void mark_cow(trie_cow_t *cow, node_t *t)
 		object->i |= TFLAG_COW;
 	} else {
 		tkey_t *lkey = tkey(t);
-		trie_val_t *valp = tvalp(t);
 		lkey->cow = 1;
-		cow->mark_shared(*valp, lkey->chars, lkey->len, cow->d);
+		if (cow->mark_shared != NULL) {
+			trie_val_t *valp = tvalp(t);
+			cow->mark_shared(*valp, lkey->chars, lkey->len, cow->d);
+		}
 	}
 }
 
@@ -1376,8 +1378,10 @@ static void cow_cleanup(trie_cow_t *cow, node_t *t, trie_cb *cb, void *d)
 	} else {
 		// application must decide how to clean up its values
 		tkey_t *lkey = tkey(t);
-		trie_val_t *valp = tvalp(t);
-		cb(*valp, lkey->chars, lkey->len, d);
+		if (cb != NULL) {
+			trie_val_t *valp = tvalp(t);
+			cb(*valp, lkey->chars, lkey->len, d);
+		}
 		// clean up exclusively-owned keys
 		if (lkey->cow)
 			lkey->cow = 0;
