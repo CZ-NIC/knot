@@ -398,6 +398,7 @@ int zone_contents_find_nsec3(const zone_contents_t *zone,
 		assert(match);
 		assert(*nsec3_node != NULL);
 		*nsec3_previous = node_prev(*nsec3_node);
+		assert(*nsec3_previous != NULL);
 	} else {
 		*nsec3_previous = prev;
 	}
