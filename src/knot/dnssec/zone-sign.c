@@ -214,19 +214,11 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	knot_rrset_t to_remove;
 	knot_rrset_init_empty(&to_remove);
 	int result = KNOT_EOK;
-
-	knot_rrset_t synth_rrsig = rrset_init_from(rrsigs, KNOT_RRTYPE_RRSIG);
-	result = knot_synth_rrsig(covered->type, &rrsigs->rrs, &synth_rrsig.rrs, NULL);
-	if (result != KNOT_EOK) {
-		if (result != KNOT_ENOENT) {
-			return result;
+	for (uint16_t i = 0; i < rrsigs->rrs.count; i++) {
+		knot_rdata_t *rr = knot_rdataset_at(&rrsigs->rrs, i);
+		if (knot_rrsig_type_covered(rr) != covered->type) {
+			continue;
 		}
-		return KNOT_EOK;
-	}
-
-	uint16_t rrsig_rdata_count = synth_rrsig.rrs.count;
-	for (uint16_t i = 0; i < rrsig_rdata_count; i++) {
-		knot_rdata_t *rr = knot_rdataset_at(&synth_rrsig.rrs, i);
 		uint16_t keytag = knot_rrsig_key_tag(rr);
 		int endloop = 0; // 1 - continue; 2 - break
 
@@ -238,7 +230,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 				continue;
 			}
 
-			result = knot_check_signature(covered, &synth_rrsig, i, key->key,
+			result = knot_check_signature(covered, rrsigs, i, key->key,
 			                              sign_ctx->sign_ctxs[j], sign_ctx->dnssec_ctx);
 			if (result == KNOT_EOK) {
 				// valid signature
@@ -258,7 +250,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		}
 
 		if (knot_rrset_empty(&to_remove)) {
-			to_remove = create_empty_rrsigs_for(&synth_rrsig);
+			to_remove = create_empty_rrsigs_for(rrsigs);
 		}
 
 		result = knot_rdataset_add(&to_remove.rrs, rr, NULL);
@@ -271,7 +263,6 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		result = changeset_add_removal(changeset, &to_remove, 0);
 	}
 
-	knot_rdataset_clear(&synth_rrsig.rrs, NULL);
 	knot_rdataset_clear(&to_remove.rrs, NULL);
 
 	return result;
