@@ -295,8 +295,6 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
 		while (cmp != 0) {
 			if (cmp < 0) {
 				// a node was removed
-				ret = knot_nsec_changeset_remove(old_curr, data->update);
-				CHECK_RET;
 				old_prev = old_curr;
 				old_curr = it_next1(&old_it, old_first);
 				ret = callback(new_prev, new_curr, data);
