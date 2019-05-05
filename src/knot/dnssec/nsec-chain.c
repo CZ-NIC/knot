@@ -223,9 +223,10 @@ static zone_node_t *it_next2(zone_tree_it_t *it, zone_node_t *first, changeset_t
 
 static int node_cmp(zone_node_t *a, zone_node_t *b, zone_node_t *first_a, zone_node_t *first_b)
 {
-	assert(knot_dname_is_equal(first_a->owner, first_b->owner));
-	assert(knot_dname_cmp(first_a->owner, a->owner) <= 0);
-	assert(knot_dname_cmp(first_b->owner, b->owner) <= 0);
+	if (binode_node(a, false) == binode_node(b, false)) {
+		// optimization, there's always just one bi-node of given dname in the zone
+		return 0;
+	}
 	int rev = (a == first_a || b == first_b ? -1 : 1);
 	return rev * knot_dname_cmp(a->owner, b->owner);
 }
