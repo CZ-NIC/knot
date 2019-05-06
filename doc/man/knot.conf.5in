@@ -1336,7 +1336,7 @@ There are 6 logging severity levels:
 .IP \(bu 2
 \fBinfo\fP – Informational message.
 .IP \(bu 2
-\fBdebug\fP – Debug messages (must be turned on at compile time).
+\fBdebug\fP – Debug or detailed message.
 .UNINDENT
 .sp
 In the case of missing log section, \fBwarning\fP or more serious messages

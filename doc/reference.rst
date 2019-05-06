@@ -1491,7 +1491,7 @@ There are 6 logging severity levels:
 - ``warning`` – Warning that might require user action.
 - ``notice`` – Server notice or hint.
 - ``info`` – Informational message.
-- ``debug`` – Debug messages (must be turned on at compile time).
+- ``debug`` – Debug or detailed message.
 
 In the case of missing log section, ``warning`` or more serious messages
 will be logged to both standard error output and syslog. The ``info`` and
