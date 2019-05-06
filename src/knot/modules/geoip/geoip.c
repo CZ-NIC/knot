@@ -673,7 +673,8 @@ static geo_view_t *find_best_view(geo_view_t *dummy, geo_trie_val_t *data, geoip
 	if (idx == -1) { // There is no suitable view.
 		return NULL;
 	}
-	if (cmp(dummy, &data->views[idx]) != 0) {
+	if (cmp(dummy, &data->views[idx]) != 0 &&
+	    !view_strictly_in_view(dummy, &data->views[idx], ctx->mode)) {
 		idx = data->views[idx].prev;
 		while (!view_strictly_in_view(dummy, &data->views[idx], ctx->mode)) {
 			if (idx == data->views[idx].prev) {
