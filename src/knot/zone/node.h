@@ -151,6 +151,15 @@ inline static zone_node_t *binode_node(zone_node_t *node, bool second)
 }
 
 /*!
+ * \brief Return the other node from a bi-node.
+ *
+ * \param node   A node in a bi-node.
+ *
+ * \return The counterpart node in the smae bi-node.
+ */
+zone_node_t *binode_counterpart(zone_node_t *node);
+
+/*!
  * \brief Return true if the rdataset of specified type is shared (shallow-copied) among both parts of bi-node.
  */
 bool binode_rdata_shared(zone_node_t *node, uint16_t type);

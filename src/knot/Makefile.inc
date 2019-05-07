@@ -153,6 +153,8 @@ libknotd_la_SOURCES = \
 	knot/worker/pool.h			\
 	knot/worker/queue.c			\
 	knot/worker/queue.h			\
+	knot/zone/adds_tree.c			\
+	knot/zone/adds_tree.h			\
 	knot/zone/adjust.c			\
 	knot/zone/adjust.h			\
 	knot/zone/contents.c			\
