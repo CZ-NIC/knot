@@ -179,7 +179,9 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 static void note_earliest_expiration(const knot_rdata_t *rrsig, knot_time_t *expires_at)
 {
 	assert(rrsig);
-	assert(expires_at);
+	if (expires_at == NULL) {
+		return;
+	}
 
 	uint32_t curr_rdata = knot_rrsig_sig_expiration(rrsig);
 	knot_time_t current = knot_time_from_u32(curr_rdata);
