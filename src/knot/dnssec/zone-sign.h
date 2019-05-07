@@ -112,7 +112,7 @@ bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
  */
 int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
                                       const kdnssec_ctx_t *dnssec_ctx,
-                                      changeset_t *changeset);
+                                      zone_update_t *update);
 
 /*!
  * \brief Checks whether RRSet in a node has to be signed. Will not return

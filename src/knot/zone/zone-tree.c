@@ -87,7 +87,6 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 
 	assert((bool)((*node)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
 
-
 	if (tree->cow != NULL) {
 		*trie_get_cow(tree->cow, lf + 1, *lf) = binode_node(*node, false);
 	} else {
@@ -282,6 +281,20 @@ int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it)
 			return KNOT_ENOMEM;
 		}
 		it->tree = tree;
+		it->next_tree = NULL;
+	}
+	return KNOT_EOK;
+}
+
+int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree_it_t *it)
+{
+	if (it->tree == NULL) {
+		it->it = trie_it_begin(first->trie);
+		if (it->it == NULL) {
+			return KNOT_ENOMEM;
+		}
+		it->tree = first;
+		it->next_tree = second;
 	}
 	return KNOT_EOK;
 }
@@ -304,11 +317,71 @@ void zone_tree_it_del(zone_tree_it_t *it)
 void zone_tree_it_next(zone_tree_it_t *it)
 {
 	trie_it_next(it->it);
+	if (it->next_tree != NULL && trie_it_finished(it->it)) {
+		trie_it_free(it->it);
+		it->tree = it->next_tree;
+		it->next_tree = NULL;
+		it->it = trie_it_begin(it->tree->trie);
+	}
 }
 
 void zone_tree_it_free(zone_tree_it_t *it)
 {
 	trie_it_free(it->it);
+	memset(it, 0, sizeof(*it));
+}
+
+int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it)
+{
+	it->total = zone_tree_count(tree);
+	it->nodes = malloc(it->total * sizeof(*it->nodes));
+	if (it->nodes == NULL) {
+		return KNOT_ENOMEM;
+	}
+	it->current = 0;
+
+	zone_tree_it_t tmp = { 0 };
+	int ret = zone_tree_it_begin(tree, &tmp);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	while (!zone_tree_it_finished(&tmp)) {
+		it->nodes[it->current++] = zone_tree_it_val(&tmp);
+		zone_tree_it_next(&tmp);
+	}
+	zone_tree_it_free(&tmp);
+	assert(it->total == it->current);
+	it->current = 0;
+
+	while (!zone_tree_delsafe_it_finished(it) &&
+	       (zone_tree_delsafe_it_val(it)->flags & NODE_FLAGS_DELETED)) {
+		it->current++;
+	}
+
+	return KNOT_EOK;
+}
+
+bool zone_tree_delsafe_it_finished(zone_tree_delsafe_it_t *it)
+{
+	return (it->current >= it->total);
+}
+
+zone_node_t *zone_tree_delsafe_it_val(zone_tree_delsafe_it_t *it)
+{
+	return it->nodes[it->current];
+}
+
+void zone_tree_delsafe_it_next(zone_tree_delsafe_it_t *it)
+{
+	do {
+		it->current++;
+	} while (!zone_tree_delsafe_it_finished(it) &&
+		 (zone_tree_delsafe_it_val(it)->flags & NODE_FLAGS_DELETED));
+}
+
+void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it)
+{
+	free(it->nodes);
 	memset(it, 0, sizeof(*it));
 }
 
