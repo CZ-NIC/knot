@@ -32,6 +32,8 @@ typedef struct zone_contents {
 	zone_tree_t *nodes;
 	zone_tree_t *nsec3_nodes;
 
+	trie_t *adds_tree; // "additionals tree" for reverse lookup of nodes affected by additionals
+
 	dnssec_nsec3_params_t nsec3_params;
 	size_t size;
 	uint32_t max_ttl;

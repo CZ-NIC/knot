@@ -130,10 +130,7 @@ zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_
 	return ret;
 }
 
-/*!
- * \brief Return the other part of a bi-node.
- */
-static zone_node_t *binode_counterpart(zone_node_t *node)
+zone_node_t *binode_counterpart(zone_node_t *node)
 {
 	zone_node_t *counterpart = NULL;
 
