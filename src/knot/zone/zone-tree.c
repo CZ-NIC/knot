@@ -334,6 +334,11 @@ void zone_tree_it_free(zone_tree_it_t *it)
 int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it)
 {
 	it->total = zone_tree_count(tree);
+	if (it->total == 0) {
+		it->current = 0;
+		it->nodes = NULL;
+		return KNOT_EOK;
+	}
 	it->nodes = malloc(it->total * sizeof(*it->nodes));
 	if (it->nodes == NULL) {
 		return KNOT_ENOMEM;
