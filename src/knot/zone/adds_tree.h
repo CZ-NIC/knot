@@ -17,7 +17,6 @@
 #pragma once
 
 #include "contrib/qp-trie/trie.h"
-#include "contrib/ucw/lists.h"
 #include "knot/zone/contents.h"
 
 typedef trie_t additionals_tree_t;
