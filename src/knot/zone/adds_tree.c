@@ -19,19 +19,23 @@
 
 #include "knot/zone/adds_tree.h"
 
+#include "contrib/dynarray.h"
 #include "libknot/error.h"
 #include "libknot/rrtype/rdname.h"
 
-static bool same_node(const zone_node_t *a, const zone_node_t *b)
-{
-	return (a == b || binode_counterpart((zone_node_t *)a) == b);
-}
+dynarray_declare(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_STATIC, 2)
+dynarray_define(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_STATIC)
+
+typedef struct {
+	nodeptr_dynarray_t array;
+	bool deduplicated;
+} a_t_node_t;
 
 static int free_a_t_node(trie_val_t *val, void *null)
 {
 	assert(null == NULL);
-	list_t *nodes = *(list_t **)val;
-	ptrlist_free(nodes, NULL);
+	a_t_node_t *nodes = *(a_t_node_t **)val;
+	nodeptr_dynarray_free(&nodes->array);
 	free(nodes);
 	return 0;
 }
@@ -79,20 +83,17 @@ static int remove_node_from_a_t(const knot_dname_t *name, void *a_ctx)
 		return KNOT_EOK;
 	}
 
-	list_t *nodes = *(list_t **)val;
+	a_t_node_t *nodes = *(a_t_node_t **)val;
 	if (nodes == NULL) {
 		goto rem_empty;
 	}
 
-	ptrnode_t *node_in_list = NULL, *next = NULL;
-	WALK_LIST_DELSAFE(node_in_list, next, *nodes) {
-		if (same_node(node_in_list->d, ctx->node)) {
-			rem_node(&node_in_list->n);
-			free(node_in_list);
-		}
-	}
+	nodeptr_dynarray_remove(&nodes->array, &ctx->node);
+	zone_node_t *counter = binode_counterpart(ctx->node);
+	nodeptr_dynarray_remove(&nodes->array, &counter);
 
-	if (EMPTY_LIST(*nodes)) {
+	if (nodes->array.size == 0) {
+		nodeptr_dynarray_free(&nodes->array);
 		free(nodes);
 rem_empty:
 		trie_del(ctx->a_t, lf + 1, *lf, NULL);
@@ -110,24 +111,16 @@ static int add_node_to_a_t(const knot_dname_t *name, void *a_ctx)
 
 	trie_val_t *val = trie_get_ins(ctx->a_t, lf + 1, *lf);
 	if (*val == NULL) {
-		*val = malloc(sizeof(list_t));
+		*val = malloc(sizeof(a_t_node_t));
 		if (*val == NULL) {
 			return KNOT_ENOMEM;
 		}
-		init_list(*(list_t **)val);
+		memset(*val, 0, sizeof(a_t_node_t));
 	}
 
-	list_t *nodes = *(list_t **)val;
-
-	ptrnode_t *node_in_list = NULL;
-	// TODO optimize more
-	WALK_LIST(node_in_list, *nodes) {
-		if (node_in_list->d == ctx->node) { // optimization: yes a bi-node can be stored twice, but solving it is too slow
-			return KNOT_EOK;
-		}
-	}
-
-	ptrlist_add(nodes, ctx->node, NULL);
+	a_t_node_t *nodes = *(a_t_node_t **)val;
+	nodeptr_dynarray_add(&nodes->array, &ctx->node);
+	nodes->deduplicated = false;
 	return KNOT_EOK;
 }
 
@@ -202,14 +195,18 @@ int additionals_reverse_apply(additionals_tree_t *a_t, const knot_dname_t *name,
 		return KNOT_EOK;
 	}
 
-	list_t *nodes = *(list_t **)val;
+	a_t_node_t *nodes = *(a_t_node_t **)val;
 	if (nodes == NULL) {
 		return KNOT_EOK;
 	}
 
-	ptrnode_t *node_in_list = NULL;
-	WALK_LIST(node_in_list, *nodes) {
-		int ret = cb(node_in_list->d, ctx);
+	if (!nodes->deduplicated) {
+		nodeptr_dynarray_sort_dedup(&nodes->array);
+		nodes->deduplicated = true;
+	}
+
+	dynarray_foreach(nodeptr, zone_node_t *, node_in_arr, nodes->array) {
+		int ret = cb(*node_in_arr, ctx);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
