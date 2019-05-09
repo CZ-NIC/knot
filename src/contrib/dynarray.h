@@ -33,6 +33,13 @@
 
 #pragma once
 
+__attribute__((unused))
+static int size_t_cmp(const void *a, const void *b)
+{
+	size_t diff = *(const size_t *)b - *(const size_t *)a;
+	return (diff > 0) - (diff < 0);
+}
+
 #define DYNARRAY_VISIBILITY_STATIC static
 #define DYNARRAY_VISIBILITY_PUBLIC
 #define DYNARRAY_VISIBILITY_LIBRARY __public__
@@ -115,6 +122,49 @@
 		prefix ## _dynarray_arr(dynarray)[dynarray->size++] = *to_add; \
 	} \
 	\
+	__attribute__((unused)) \
+	visibility void prefix ## _dynarray_remove(struct prefix ## _dynarray *dynarray, \
+	                                           ntype const *to_remove) \
+	{ \
+		ntype *orig_arr = prefix ## _dynarray_arr(dynarray); \
+		dynarray_foreach(prefix, ntype, removable, *dynarray) { \
+			if (memcmp(removable, to_remove, sizeof(*to_remove)) == 0) { \
+				if (removable != orig_arr + --dynarray->size) { \
+					*removable = orig_arr[dynarray->size]; \
+				} \
+			} \
+		} /* TODO enable lowering capacity, take care of capacity going back to initial! */ \
+	} \
+	\
+	__attribute__((unused)) \
+	visibility void prefix ## _dynarray_sort(struct prefix ## _dynarray *dynarray) \
+	{ \
+		ntype *arr = prefix ## _dynarray_arr(dynarray); \
+		assert(sizeof(*arr) == sizeof(size_t)); \
+		qsort(arr, dynarray->size, sizeof(*arr), size_t_cmp); \
+	} \
+	\
+	__attribute__((unused)) \
+	visibility void prefix ## _dynarray_sort_dedup(struct prefix ## _dynarray *dynarray) \
+	{ \
+		if (dynarray->size > 1) { \
+			prefix ## _dynarray_sort(dynarray); \
+			ntype *arr = prefix ## _dynarray_arr(dynarray); \
+			ntype *rd = arr + 1; \
+			ntype *wr = arr + 1; \
+			ntype *end = arr + dynarray->size; \
+			while (rd != end) { \
+				if (memcmp(rd - 1, rd, sizeof(*rd)) == 0) { \
+					if (wr != rd) { \
+						*wr = *rd; \
+					} \
+					wr++; \
+				} \
+				rd++; \
+			} \
+			dynarray->size = wr - arr; \
+		} \
+	} \
 	__attribute__((unused)) \
 	visibility void prefix ## _dynarray_free(struct prefix ## _dynarray *dynarray) \
 	{ \
