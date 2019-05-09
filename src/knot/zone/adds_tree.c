@@ -118,15 +118,6 @@ static int add_node_to_a_t(const knot_dname_t *name, void *a_ctx)
 	}
 
 	list_t *nodes = *(list_t **)val;
-
-	ptrnode_t *node_in_list = NULL;
-	// TODO optimize more
-	WALK_LIST(node_in_list, *nodes) {
-		if (node_in_list->d == ctx->node) { // optimization: yes a bi-node can be stored twice, but solving it is too slow
-			return KNOT_EOK;
-		}
-	}
-
 	ptrlist_add(nodes, ctx->node, NULL);
 	return KNOT_EOK;
 }
