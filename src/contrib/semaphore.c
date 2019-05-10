@@ -18,6 +18,10 @@
 
 #include <stdlib.h>
 
+#if defined(__APPLE__)
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 void knot_sem_init(knot_sem_t *sem, unsigned int value)
 {
 	int ret = sem_init(&sem->semaphore, 1, value);
