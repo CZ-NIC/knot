@@ -495,6 +495,7 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 	} else {
 		contents->nsec3_nodes = NULL;
 	}
+	contents->size = from->size;
 
 	*to = contents;
 	return KNOT_EOK;

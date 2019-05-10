@@ -24,6 +24,7 @@
 #include "contrib/macros.h"
 #include "contrib/getline.h"
 #include "knot/updates/zone-update.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/node.h"
 #include "libzscanner/scanner.h"
 #include "knot/server/server.h"
@@ -331,6 +332,13 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	test_zone_unified(zone);
 
 	knot_rdataset_clear(&rrset.rrs, NULL);
+
+	size_t zone_size1 = zone->contents->size;
+	ret = zone_adjust_full(zone->contents);
+	ok(ret == KNOT_EOK, "zone adjust full shall work");
+	size_t zone_size2 = zone->contents->size;
+	ok(zone_size1 == zone_size2, "zone size measured the same by incremental and full way (%zu, %zu)", zone_size1, zone_size2);
+	// TODO test more things after re-adjust, search for non-unified bi-nodes
 }
 
 int main(int argc, char *argv[])

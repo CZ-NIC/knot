@@ -258,7 +258,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
-	result = zone_adjust_update(update, adjust_cb_flags, NULL);
+	result = zone_adjust_update(update, adjust_cb_flags, NULL, false);
 	if (result != KNOT_EOK) {
 		goto done;
 	}
