@@ -29,7 +29,7 @@ void key_records_clear_rdatasets(key_records_t *r);
 
 int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool verbose);
 
-int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx);
+int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx, knot_time_t *expires);
 
 size_t key_records_serialized_size(const key_records_t *r);
 
