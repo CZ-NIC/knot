@@ -266,6 +266,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	zone_keyset_t keyset = { 0 };
 	char *buf = NULL;
 	size_t buf_size = 4096;
+	knot_time_t rrsigs_expire = 0;
 
 	ctx->now = now;
 
@@ -289,7 +290,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 
 	// no check if the KSK used for signing (in keyset) is contained in DNSKEY record being signed (in KSR) !
 	for (int i = 0; i < keyset.count; i++) {
-		ret = key_records_sign(&keyset.keys[i], &r, ctx);
+		ret = key_records_sign(&keyset.keys[i], &r, ctx, &rrsigs_expire);
 		if (ret != KNOT_EOK) {
 			goto done;
 		}
@@ -297,7 +298,10 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	ret = key_records_dump(&buf, &buf_size, &r, true);
 	if (ret == KNOT_EOK) {
 		print_header("SignedKeyResponse "KSR_SKR_VER, ctx->now, buf);
-		*next_sign = knot_get_next_zone_key_event(&keyset);
+		*next_sign = knot_time_min(
+			knot_get_next_zone_key_event(&keyset),
+			knot_time_add(rrsigs_expire, -(knot_timediff_t)ctx->policy->rrsig_refresh_before)
+		);
 	}
 
 done:
