@@ -97,6 +97,8 @@ knot.dnssec(zone).ksk_lifetime = 300 # this can be possibly left also infinity
 knot.dnssec(zone).propagation_delay = TICK-2
 knot.dnssec(zone).offline_ksk = "on"
 knot.dnssec(zone).cds_publish = "rollover"
+knot.dnssec(zone).rrsig_lifetime = 30
+knot.dnssec(zone).rrsig_refresh = 10
 
 # needed for keymgr
 knot.gen_confile()
