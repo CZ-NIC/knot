@@ -301,7 +301,7 @@ int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree
 
 bool zone_tree_it_finished(zone_tree_it_t *it)
 {
-	return it->it == NULL || trie_it_finished(it->it);
+	return it->it == NULL || it->tree == NULL || trie_it_finished(it->it);
 }
 
 zone_node_t *zone_tree_it_val(zone_tree_it_t *it)
