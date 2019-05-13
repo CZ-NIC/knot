@@ -33,13 +33,6 @@
 
 #pragma once
 
-__attribute__((unused))
-static int size_t_cmp(const void *a, const void *b)
-{
-	size_t diff = *(const size_t *)b - *(const size_t *)a;
-	return (diff > 0) - (diff < 0);
-}
-
 #define DYNARRAY_VISIBILITY_STATIC static
 #define DYNARRAY_VISIBILITY_PUBLIC
 #define DYNARRAY_VISIBILITY_LIBRARY __public__
@@ -137,11 +130,15 @@ static int size_t_cmp(const void *a, const void *b)
 	} \
 	\
 	__attribute__((unused)) \
+	static int prefix ## _dynarray_memb_cmp(const void *a, const void *b) { \
+		return memcmp(a, b, sizeof(ntype)); \
+	} \
+	\
+	__attribute__((unused)) \
 	visibility void prefix ## _dynarray_sort(struct prefix ## _dynarray *dynarray) \
 	{ \
 		ntype *arr = prefix ## _dynarray_arr(dynarray); \
-		assert(sizeof(*arr) == sizeof(size_t)); \
-		qsort(arr, dynarray->size, sizeof(*arr), size_t_cmp); \
+		qsort(arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
 	} \
 	\
 	__attribute__((unused)) \
