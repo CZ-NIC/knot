@@ -121,6 +121,11 @@ inline static knot_time_t knot_time_add(knot_time_t since, knot_timediff_t howlo
 	return (since != 0 ? since + howlong : since);
 }
 
+inline static knot_time_t knot_time_plus(knot_time_t a, knot_time_t b)
+{
+	return ((a && b) ? a + b : 0);
+}
+
 /*!
  * \brief Convert uint32_t-encoded timestamp to knot_time_t.
  *
