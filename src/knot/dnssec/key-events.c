@@ -274,7 +274,7 @@ static knot_time_t zsk_rollover_time(knot_time_t active_time, const kdnssec_ctx_
 	if (active_time <= 0 || ctx->policy->zsk_lifetime == 0) {
 		return 0;
 	}
-	return knot_time_add(active_time, ctx->policy->zsk_lifetime);
+	return knot_time_plus(active_time, ctx->policy->zsk_lifetime);
 }
 
 static knot_time_t zsk_active_time(knot_time_t publish_time, const kdnssec_ctx_t *ctx)
@@ -298,7 +298,7 @@ static knot_time_t ksk_rollover_time(knot_time_t created_time, const kdnssec_ctx
 	if (created_time <= 0 || ctx->policy->ksk_lifetime == 0) {
 		return 0;
 	}
-	return knot_time_add(created_time, ctx->policy->ksk_lifetime);
+	return knot_time_plus(created_time, ctx->policy->ksk_lifetime);
 }
 
 static knot_time_t ksk_ready_time(knot_time_t publish_time, const kdnssec_ctx_t *ctx)
@@ -314,7 +314,7 @@ static knot_time_t ksk_sbm_max_time(knot_time_t ready_time, const kdnssec_ctx_t 
 	if (ready_time <= 0 || ctx->policy->ksk_sbm_timeout == 0) {
 		return 0;
 	}
-	return knot_time_add(ready_time, ctx->policy->ksk_sbm_timeout);
+	return knot_time_plus(ready_time, ctx->policy->ksk_sbm_timeout);
 }
 
 static knot_time_t ksk_retire_time(knot_time_t retire_active_time, const kdnssec_ctx_t *ctx)
