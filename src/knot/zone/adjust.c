@@ -137,6 +137,7 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 	assert(rr_data != NULL);
 
 	const knot_rdataset_t *rrs = &rr_data->rrs;
+	knot_rdata_t *rdata = knot_rdataset_at(rrs, 0);
 	uint16_t rdcount = rrs->count;
 
 	uint16_t mandatory_count = 0;
@@ -146,11 +147,11 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 
 	/* Scan new additional nodes. */
 	for (uint16_t i = 0; i < rdcount; i++) {
-		knot_rdata_t *rdata = knot_rdataset_at(rrs, i);
 		const knot_dname_t *dname = knot_rdata_name(rdata, rr_data->type);
 		const zone_node_t *node = NULL;
 
 		if (!zone_contents_find_node_or_wildcard(zone, dname, &node)) {
+			rdata = knot_rdataset_next(rdata);
 			continue;
 		}
 
@@ -166,6 +167,7 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 		}
 		glue->node = node;
 		glue->ns_pos = i;
+		rdata = knot_rdataset_next(rdata);
 	}
 
 	/* Store sorted additionals by the type, mandatory first. */
