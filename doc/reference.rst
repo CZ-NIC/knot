@@ -974,6 +974,8 @@ nsec3-salt-lifetime
 
 A validity period of newly issued salt field.
 
+Zero value means inifity.
+
 *Default:* 30 days
 
 .. _policy_ksk-submission-check:

@@ -120,7 +120,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 	} else if (knot_time_cmp(ctx->now, ctx->zone->nsec3_salt_created) < 0) {
 		return KNOT_EINVAL;
 	} else {
-		*when_resalt = ctx->zone->nsec3_salt_created + ctx->policy->nsec3_salt_lifetime;
+		*when_resalt = knot_time_plus(ctx->zone->nsec3_salt_created, ctx->policy->nsec3_salt_lifetime);
 	}
 
 	if (knot_time_cmp(*when_resalt, ctx->now) <= 0) {
@@ -131,7 +131,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 			*salt_changed = ctx->now;
 		}
 		// continue to planning next resalt even if NOK
-		*when_resalt = knot_time_add(ctx->now, ctx->policy->nsec3_salt_lifetime);
+		*when_resalt = knot_time_plus(ctx->now, ctx->policy->nsec3_salt_lifetime);
 	}
 
 	return ret;
