@@ -63,6 +63,8 @@ def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
         if not server.valgrind:
             server.zone_backup(zone, flush=True)
             server.zone_verify(zone)
+        else:
+            t.sleep(1)
 
         if rtime > timeout:
             break
@@ -78,6 +80,8 @@ def wait_for_dnskey_count(t, server, dnskey_count, timeout):
         if not server.valgrind:
             server.zone_backup(zone, flush=True)
             server.zone_verify(zone)
+        else:
+            t.sleep(1)
 
 def writef(filename, contents):
     with open(filename, "w") as f:

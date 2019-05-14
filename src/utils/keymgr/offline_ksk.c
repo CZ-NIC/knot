@@ -300,7 +300,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 		print_header("SignedKeyResponse "KSR_SKR_VER, ctx->now, buf);
 		*next_sign = knot_time_min(
 			knot_get_next_zone_key_event(&keyset),
-			rrsigs_expire - ctx->policy->rrsig_refresh_before
+			knot_time_add(rrsigs_expire, -(knot_timediff_t)ctx->policy->rrsig_refresh_before)
 		);
 	}
 
