@@ -89,8 +89,6 @@ static int remove_node_from_a_t(const knot_dname_t *name, void *a_ctx)
 	}
 
 	nodeptr_dynarray_remove(&nodes->array, &ctx->node);
-	zone_node_t *counter = binode_counterpart(ctx->node);
-	nodeptr_dynarray_remove(&nodes->array, &counter);
 
 	if (nodes->array.size == 0) {
 		nodeptr_dynarray_free(&nodes->array);
@@ -136,13 +134,13 @@ int additionals_tree_update_node(additionals_tree_t *a_t, const knot_dname_t *zo
 
 	// for every additional in old_node rrsets, remove mentioning of this node in tree
 	if (old_node != NULL && !(old_node->flags & NODE_FLAGS_DELETED)) {
-		ctx.node = old_node;
+		ctx.node = binode_node(old_node, false);
 		ret = zone_node_additionals_foreach(old_node, zone_apex, remove_node_from_a_t, &ctx);
 	}
 
 	// for every additional in new_node rrsets, add reverse link into the tree
 	if (new_node != NULL && !(new_node->flags & NODE_FLAGS_DELETED) && ret == KNOT_EOK) {
-		ctx.node = new_node;
+		ctx.node = binode_node(new_node, false);
 		ret = zone_node_additionals_foreach(new_node, zone_apex, add_node_to_a_t, &ctx);
 	}
 	return ret;
