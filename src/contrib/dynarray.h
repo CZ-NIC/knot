@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -151,7 +151,7 @@
 			ntype *wr = arr + 1; \
 			ntype *end = arr + dynarray->size; \
 			while (rd != end) { \
-				if (memcmp(rd - 1, rd, sizeof(*rd)) == 0) { \
+				if (memcmp(rd - 1, rd, sizeof(*rd)) != 0) { \
 					if (wr != rd) { \
 						*wr = *rd; \
 					} \
