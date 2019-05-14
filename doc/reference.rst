@@ -974,7 +974,7 @@ nsec3-salt-lifetime
 
 A validity period of newly issued salt field.
 
-Zero value means inifity.
+Zero value means infinity.
 
 *Default:* 30 days
 
