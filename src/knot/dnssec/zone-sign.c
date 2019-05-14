@@ -578,7 +578,7 @@ static int zone_tree_sign(zone_tree_t *tree,
 	int ret = KNOT_EOK;
 	node_sign_args_t args[num_threads];
 	memset(args, 0, sizeof(args));
-	*expires_at = knot_time_add(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime);
+	*expires_at = knot_time_plus(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime);
 
 	// init context structures
 	for (size_t i = 0; i < num_threads; i++) {
