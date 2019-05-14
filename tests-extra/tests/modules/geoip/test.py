@@ -37,8 +37,8 @@ zone = t.zone("example.com.", storage=".")
 t.link(zone, knot)
 
 # Generate configuration files for geoip module.
-geodb_filename = knot.data_dir + "geo.conf"
-subnet_filename = knot.data_dir + "net.conf"
+geodb_filename = knot.dir + "geo.conf"
+subnet_filename = knot.dir + "net.conf"
 geo_conf = open(geodb_filename, "w")
 net_conf = open(subnet_filename, "w")
 dname_count = 10
