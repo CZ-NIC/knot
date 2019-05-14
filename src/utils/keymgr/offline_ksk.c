@@ -356,8 +356,10 @@ static void ksr_sign_once(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
 
-	sc->error.code = knot_rrset_add_rdata(&ctx->r.dnskey, sc->r_data, sc->r_data_length, NULL);
-	ctx->r.dnskey.ttl = sc->r_ttl;
+	if (sc->error.code == KNOT_EOK) {
+		sc->error.code = knot_rrset_add_rdata(&ctx->r.dnskey, sc->r_data, sc->r_data_length, NULL);
+		ctx->r.dnskey.ttl = sc->r_ttl;
+	}
 }
 
 static void skr_import_header(zs_scanner_t *sc)
@@ -393,8 +395,10 @@ static void skr_import_header(zs_scanner_t *sc)
 static void skr_import_once(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
-	sc->error.code = key_records_add_rdata(&ctx->r, sc->r_type, sc->r_data,
-	                                       sc->r_data_length, sc->r_ttl);
+	if (sc->error.code == KNOT_EOK) {
+		sc->error.code = key_records_add_rdata(&ctx->r, sc->r_type, sc->r_data,
+		                                       sc->r_data_length, sc->r_ttl);
+	}
 }
 
 static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
