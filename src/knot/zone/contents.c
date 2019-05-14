@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "libdnssec/error.h"
+#include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/contents.h"
 #include "knot/common/log.h"
@@ -495,6 +496,7 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 	} else {
 		contents->nsec3_nodes = NULL;
 	}
+	contents->adds_tree = from->adds_tree;
 
 	*to = contents;
 	return KNOT_EOK;
@@ -511,6 +513,7 @@ void zone_contents_free(zone_contents_t *contents)
 	zone_tree_free(&contents->nsec3_nodes);
 
 	dnssec_nsec3_params_free(&contents->nsec3_params);
+	additionals_tree_free(contents->adds_tree);
 
 	free(contents);
 }

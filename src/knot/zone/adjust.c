@@ -20,6 +20,7 @@
 #include "contrib/macros.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
+#include "knot/zone/adds_tree.h"
 
 int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 {
@@ -136,6 +137,7 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 	assert(rr_data != NULL);
 
 	const knot_rdataset_t *rrs = &rr_data->rrs;
+	knot_rdata_t *rdata = knot_rdataset_at(rrs, 0);
 	uint16_t rdcount = rrs->count;
 
 	uint16_t mandatory_count = 0;
@@ -145,11 +147,11 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 
 	/* Scan new additional nodes. */
 	for (uint16_t i = 0; i < rdcount; i++) {
-		knot_rdata_t *rdata = knot_rdataset_at(rrs, i);
 		const knot_dname_t *dname = knot_rdata_name(rdata, rr_data->type);
 		const zone_node_t *node = NULL;
 
 		if (!zone_contents_find_node_or_wildcard(zone, dname, &node)) {
+			rdata = knot_rdataset_next(rdata);
 			continue;
 		}
 
@@ -165,6 +167,7 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 		}
 		glue->node = node;
 		glue->ns_pos = i;
+		rdata = knot_rdataset_next(rdata);
 	}
 
 	/* Store sorted additionals by the type, mandatory first. */
@@ -250,15 +253,6 @@ int adjust_cb_nsec3_and_additionals(zone_node_t *node, const zone_contents_t *zo
 	if (ret == KNOT_EOK) {
 		ret = adjust_cb_wildcard_nsec3(node, zone);
 	}
-	if (ret == KNOT_EOK) {
-		ret = adjust_cb_additionals(node, zone);
-	}
-	return ret;
-}
-
-static int adjust_cb_nsec3_and_additionals2(zone_node_t *node, const zone_contents_t *zone)
-{
-	int ret = adjust_cb_point_to_nsec3(node, zone);
 	if (ret == KNOT_EOK) {
 		ret = adjust_cb_additionals(node, zone);
 	}
@@ -394,17 +388,43 @@ int zone_adjust_full(zone_contents_t *zone)
 	if (ret == KNOT_EOK) {
 		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false);
 	}
+	if (ret == KNOT_EOK) {
+		additionals_tree_free(zone->adds_tree);
+		ret = additionals_tree_from_zone(&zone->adds_tree, zone);
+	}
 	return ret;
+}
+
+static int adjust_additionals_cb(zone_node_t *node, void *ctx)
+{
+	const zone_contents_t *zone = ctx;
+	zone_node_t *real_node = binode_node(node, (zone->nodes->flags & ZONE_TREE_BINO_SECOND));
+	return adjust_cb_additionals(real_node, zone);
 }
 
 int zone_adjust_incremental_update(zone_update_t *update)
 {
 	int ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, true);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_and_additionals2, NULL, false);
+		ret = zone_adjust_contents(update->new_cont, adjust_cb_point_to_nsec3, NULL, false);
 	}
 	if (ret == KNOT_EOK) {
 		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, NULL);
+	}
+	if (ret == KNOT_EOK) {
+		ret = additionals_tree_update_from_binodes(
+			update->new_cont->adds_tree,
+			update->a_ctx->node_ptrs,
+			update->new_cont->apex->owner
+		);
+	}
+	if (ret == KNOT_EOK) {
+		ret = additionals_reverse_apply_multi(
+			update->new_cont->adds_tree,
+			update->a_ctx->node_ptrs,
+			adjust_additionals_cb,
+			update->new_cont
+		);
 	}
 	return ret;
 }

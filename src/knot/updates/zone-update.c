@@ -639,7 +639,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 		return ret;
 	}
 
-	if (zone_update_changed_nsec3param(update)) {
+	if (update->new_cont_deep_copy || zone_update_changed_nsec3param(update)) {
 		ret = zone_adjust_full(update->new_cont);
 	} else {
 		ret = zone_adjust_incremental_update(update);
