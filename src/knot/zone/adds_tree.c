@@ -54,13 +54,13 @@ int zone_node_additionals_foreach(const zone_node_t *node, const knot_dname_t *z
 	int ret = KNOT_EOK;
 	for (int i = 0; ret == KNOT_EOK && i < node->rrset_count; i++) {
 		struct rr_data *rr_data = &node->rrs[i];
+		knot_rdata_t *rdata = knot_rdataset_at(&rr_data->rrs, 0);
 		for (int j = 0; ret == KNOT_EOK && j < rr_data->rrs.count; j++) {
-			knot_rdata_t *rdata = knot_rdataset_at(&rr_data->rrs, j);
 			const knot_dname_t *name = knot_rdata_name(rdata, rr_data->type);
-
 			if (knot_dname_in_bailiwick(name, zone_apex) > 0) {
 				ret = cb(name, ctx);
 			}
+			rdata = knot_rdataset_next(rdata);
 		}
 	}
 	return ret;
