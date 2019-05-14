@@ -94,26 +94,26 @@ typedef struct {
 	uint16_t ksk_size;
 	uint16_t zsk_size;
 	uint32_t dnskey_ttl;
-	uint32_t zsk_lifetime;
-	uint32_t ksk_lifetime;
+	uint32_t zsk_lifetime;              // like knot_time_t
+	uint32_t ksk_lifetime;              // like knot_time_t
 	bool ksk_shared;
 	bool singe_type_signing;
 	// RRSIG
-	uint32_t rrsig_lifetime;
-	uint32_t rrsig_refresh_before;
+	uint32_t rrsig_lifetime;            // like knot_time_t
+	uint32_t rrsig_refresh_before;      // like knot_timediff_t
 	// NSEC3
 	bool nsec3_enabled;
 	bool nsec3_opt_out;
-	uint32_t nsec3_salt_lifetime;
+	uint32_t nsec3_salt_lifetime;       // like knot_time_t
 	uint16_t nsec3_iterations;
 	uint8_t nsec3_salt_length;
 	// zone
-	uint32_t zone_maximal_ttl;
+	uint32_t zone_maximal_ttl;          // like knot_timediff_t
 	// data propagation delay
-	uint32_t propagation_delay;
+	uint32_t propagation_delay;         // like knot_timediff_t
 	// various
-	uint32_t ksk_sbm_timeout;
-	uint32_t ksk_sbm_check_interval;
+	uint32_t ksk_sbm_timeout;           // like knot_time_t
+	uint32_t ksk_sbm_check_interval;    // like knot_time_t
 	unsigned cds_cdnskey_publish;
 	parent_dynarray_t parents;
 	uint16_t signing_threads;
