@@ -25,7 +25,7 @@
 #include "utils/knotc/process.h"
 
 #define PROGRAM_NAME		"knotc"
-#define SPACE			"  "
+#define SPACE				"  "
 #define DEFAULT_CTL_TIMEOUT	10
 
 static void print_help(void)

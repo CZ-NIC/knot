@@ -534,7 +534,8 @@ static int zone_exec(cmd_args_t *args, int (*fcn)(const knot_dname_t *, void *),
 				continue;
 			}
 
-			if (fcn(id, data) != KNOT_EOK) {
+			int ret = fcn(id, data);
+			if (ret != KNOT_EOK && (ret == KNOT_EWARN && args->force)) {
 				failed = true;
 			}
 		}
@@ -545,7 +546,8 @@ static int zone_exec(cmd_args_t *args, int (*fcn)(const knot_dname_t *, void *),
 			conf_val_t val = conf_iter_id(conf(), &iter);
 			const knot_dname_t *id = conf_dname(&val);
 
-			if (fcn(id, data) != KNOT_EOK) {
+			int ret = fcn(id, data);
+			if (ret != KNOT_EOK && (ret == KNOT_EWARN && args->force)) {
 				failed = true;
 			}
 		}
@@ -560,7 +562,7 @@ static int zone_check(const knot_dname_t *dname, void *data)
 
 	zone_contents_t *contents;
 	int ret = zone_load_contents(conf(), dname, &contents);
-	if (ret == KNOT_EOK) {
+	if (ret == KNOT_EOK || ret == KNOT_EWARN) {
 		zone_contents_deep_free(contents);
 	}
 	return ret;
