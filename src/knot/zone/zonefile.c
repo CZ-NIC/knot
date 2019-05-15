@@ -333,6 +333,10 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 	assert(handler != NULL);
 	assert(zone != NULL);
 
+	if (!handler->fatal_error) {
+		handler->warning = true;
+	}
+
 	char buff[KNOT_DNAME_TXT_MAXLEN + 1] = "";
 	if (node != NULL) {
 		(void)knot_dname_to_str(buff, node->owner, sizeof(buff));
