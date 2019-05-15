@@ -255,6 +255,7 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 }
 
 typedef struct {
+	int ret;
 	key_records_t r;
 	knot_time_t timestamp;
 	kdnssec_ctx_t *kctx;
@@ -329,7 +330,7 @@ static void ksr_sign_header(zs_scanner_t *sc)
 	// parse header
 	float header_ver;
 	knot_time_t next_timestamp = 0;
-	if (sc->error.code != KNOT_EOK ||
+	if (sc->error.code != 0 || ctx->ret != KNOT_EOK ||
 	    sscanf((const char *)sc->buffer, "; KeySigningRequest %f %"PRIu64,
 	           &header_ver, &next_timestamp) < 1) {
 		return;
@@ -339,11 +340,11 @@ static void ksr_sign_header(zs_scanner_t *sc)
 	// sign previous KSR and inbetween KSK changes
 	if (ctx->timestamp > 0) {
 		knot_time_t inbetween_from;
-		sc->error.code = ksr_sign_dnskey(ctx->kctx, &ctx->r.dnskey, ctx->timestamp,
-		                                 &inbetween_from);
-		if (next_timestamp > 0 && sc->error.code == KNOT_EOK) {
-			sc->error.code = process_skr_between_ksrs(ctx, inbetween_from,
-			                                          next_timestamp);
+		ctx->ret = ksr_sign_dnskey(ctx->kctx, &ctx->r.dnskey, ctx->timestamp,
+		                           &inbetween_from);
+		if (next_timestamp > 0 && ctx->ret == KNOT_EOK) {
+			ctx->ret = process_skr_between_ksrs(ctx, inbetween_from,
+			                                    next_timestamp);
 		}
 		key_records_clear_rdatasets(&ctx->r);
 	}
@@ -355,9 +356,8 @@ static void ksr_sign_header(zs_scanner_t *sc)
 static void ksr_sign_once(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
-
-	if (sc->error.code == KNOT_EOK) {
-		sc->error.code = knot_rrset_add_rdata(&ctx->r.dnskey, sc->r_data, sc->r_data_length, NULL);
+	if (sc->error.code == 0 && ctx->ret == KNOT_EOK) {
+		ctx->ret = knot_rrset_add_rdata(&ctx->r.dnskey, sc->r_data, sc->r_data_length, NULL);
 		ctx->r.dnskey.ttl = sc->r_ttl;
 	}
 }
@@ -369,7 +369,7 @@ static void skr_import_header(zs_scanner_t *sc)
 	// parse header
 	float header_ver;
 	knot_time_t next_timestamp;
-	if (sc->error.code != KNOT_EOK ||
+	if (sc->error.code != 0 || ctx->ret != KNOT_EOK ||
 	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %"PRIu64,
 	           &header_ver, &next_timestamp) < 1) {
 		return;
@@ -377,14 +377,14 @@ static void skr_import_header(zs_scanner_t *sc)
 	(void)header_ver;
 
 	// delete possibly existing conflicting offline records
-	sc->error.code = kasp_db_delete_offline_records(
+	ctx->ret = kasp_db_delete_offline_records(
 		ctx->kctx->kasp_db, ctx->kctx->zone->dname, next_timestamp, 0
 	);
 
 	// store previous SKR
-	if (ctx->timestamp > 0 && sc->error.code == KNOT_EOK) {
-		sc->error.code = kasp_db_store_offline_records(ctx->kctx->kasp_db,
-		                                               ctx->timestamp, &ctx->r);
+	if (ctx->timestamp > 0 && ctx->ret == KNOT_EOK) {
+		ctx->ret = kasp_db_store_offline_records(ctx->kctx->kasp_db,
+		                                         ctx->timestamp, &ctx->r);
 		key_records_clear_rdatasets(&ctx->r);
 	}
 
@@ -395,9 +395,9 @@ static void skr_import_header(zs_scanner_t *sc)
 static void skr_import_once(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
-	if (sc->error.code == KNOT_EOK) {
-		sc->error.code = key_records_add_rdata(&ctx->r, sc->r_type, sc->r_data,
-		                                       sc->r_data_length, sc->r_ttl);
+	if (sc->error.code == 0 && ctx->ret == KNOT_EOK) {
+		ctx->ret = key_records_add_rdata(&ctx->r, sc->r_type, sc->r_data,
+		                                 sc->r_data_length, sc->r_ttl);
 	}
 }
 
@@ -416,10 +416,9 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
 		return KNOT_EFILE;
 	}
 
-	ksr_sign_ctx_t pctx;
+	ksr_sign_ctx_t pctx = { 0 };
 	key_records_init(ctx, &pctx.r);
 	pctx.kctx = ctx;
-	pctx.timestamp = 0;
 	ret = zs_set_processing(&sc, cb_record, NULL, &pctx);
 	if (ret < 0) {
 		zs_deinit(&sc);
@@ -429,8 +428,10 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
 
 	ret = zs_parse_all(&sc);
 
-	if (sc.error.code != KNOT_EOK) {
-		ret = sc.error.code;
+	if (sc.error.code != 0) {
+		ret = KNOT_EMALF;
+	} else if (pctx.ret != KNOT_EOK) {
+		ret = pctx.ret;
 	} else if (ret < 0 || pctx.r.dnskey.rrs.count > 0 || pctx.r.cdnskey.rrs.count > 0 ||
 		   pctx.r.cds.rrs.count > 0 || pctx.r.rrsig.rrs.count > 0) {
 		ret = KNOT_EMALF;
