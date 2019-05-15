@@ -26,7 +26,7 @@
 #include "libknot/libknot.h"
 
 int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
-                       zone_contents_t **contents)
+                       zone_contents_t **contents, bool fail_on_warning)
 {
 	if (conf == NULL || zone_name == NULL || contents == NULL) {
 		return KNOT_EINVAL;
@@ -53,6 +53,9 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	zonefile_close(&zl);
 	if (*contents == NULL) {
 		return KNOT_ERROR;
+	}
+	if (handler.warning && fail_on_warning) {
+		return KNOT_ESEMCHECK;
 	}
 
 	return KNOT_EOK;

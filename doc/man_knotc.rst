@@ -70,7 +70,8 @@ Actions
 
 **zone-check** [*zone*...]
   Test if the server can load the zone. Semantic checks are executed if enabled
-  in the configuration. (*)
+  in the configuration. When invoked with flag **-f**/**--force** an error is
+  returned when sematic check warning oppears. (*)
 
 **zone-memstats** [*zone*...]
   Estimate memory use for the zone. (*)
