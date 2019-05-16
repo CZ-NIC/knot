@@ -119,7 +119,10 @@ static time_t event_get_time(zone_events_t *events, zone_event_type_t type)
  *
  * \note Afer the UTHAW event, get_next_event() is also invoked. In that situation,
  *       all the events are suddenly allowed, and those which were planned into
- *       the ufrozen interval, start to be performed one-by-one sorted by their times.
+ *       the ufrozen interval, start to be performed one-by-one.
+ *
+ * \note In case of more events on the same time, or more events being in the past,
+ *       the event with lower "event number" takes precedence.
  *
  * \param events  Zone events.
  *
@@ -132,7 +135,7 @@ static zone_event_type_t get_next_event(zone_events_t *events)
 	}
 
 	zone_event_type_t next_type = ZONE_EVENT_INVALID;
-	time_t next = 0;
+	time_t next = 0, now = time(NULL);
 
 	for (int i = 0; i < ZONE_EVENT_COUNT; i++) {
 		time_t current = events->time[i];
@@ -141,6 +144,9 @@ static zone_event_type_t get_next_event(zone_events_t *events)
 		    (events->forced[i] || !events->ufrozen || !ufreeze_applies(i))) {
 			next = current;
 			next_type = i;
+			if (current <= now) {
+				break;
+			}
 		}
 	}
 
