@@ -36,17 +36,13 @@ typedef enum {
 	KEY_ROLL_FORCE_KSK_ROLL    = (1 << 1),
 	KEY_ROLL_ALLOW_ZSK_ROLL    = (1 << 2),
 	KEY_ROLL_FORCE_ZSK_ROLL    = (1 << 3),
-	KEY_ROLL_ALLOW_NSEC3RESALT = (1 << 4),
 	KEY_ROLL_ALLOW_ALL         = KEY_ROLL_ALLOW_KSK_ROLL |
-	                             KEY_ROLL_ALLOW_ZSK_ROLL |
-	                             KEY_ROLL_ALLOW_NSEC3RESALT
+	                             KEY_ROLL_ALLOW_ZSK_ROLL
 } zone_sign_roll_flags_t;
 
 typedef struct {
 	knot_time_t next_sign;
 	knot_time_t next_rollover;
-	knot_time_t next_nsec3resalt;
-	knot_time_t last_nsec3resalt;
 	bool keys_changed;
 	bool plan_ds_query;
 } zone_sign_reschedule_t;

@@ -42,15 +42,6 @@ static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_r
 		return r;
 	}
 
-	// perform nsec3resalt if pending
-
-	if (roll_flags & KEY_ROLL_ALLOW_NSEC3RESALT) {
-		r = knot_dnssec_nsec3resalt(ctx, &reschedule->last_nsec3resalt, &reschedule->next_nsec3resalt);
-		if (r != KNOT_EOK) {
-			return r;
-		}
-	}
-
 	// update policy based on the zone content
 	update_policy_from_zone(ctx->policy, zone);
 
