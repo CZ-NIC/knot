@@ -47,6 +47,7 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_UFREEZE,      event_ufreeze,     "update freeze" },
 	{ ZONE_EVENT_UTHAW,        event_uthaw,       "update thaw" },
 	{ ZONE_EVENT_NSEC3RESALT,  event_nsec3resalt, "NSEC3 resalt" },
+	{ ZONE_EVENT_KEY_ROLL,     event_key_roll,    "key rollvoer" },
 	{ ZONE_EVENT_PARENT_DS_Q,  event_parent_ds_q, "parent DS query" },
 	{ 0 }
 };
@@ -78,6 +79,7 @@ bool ufreeze_applies(zone_event_type_t type)
 	case ZONE_EVENT_FLUSH:
 	case ZONE_EVENT_DNSSEC:
 	case ZONE_EVENT_NSEC3RESALT:
+	case ZONE_EVENT_KEY_ROLL:
 	case ZONE_EVENT_PARENT_DS_Q:
 		return true;
 	default:

@@ -64,3 +64,14 @@ int kdnssec_ctx_commit(kdnssec_ctx_t *ctx);
  * \brief Cleanup DNSSEC signing context.
  */
 void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx);
+
+/*!
+ * \brief Closest future change of any of the keys.
+ *
+ * \param ctx                   DNSSEC signing context.
+ * \param only_keyset_change    Consider only those changes to keys, which result in change of DNSKEYs or RRSIGs.
+ * \param including_now         Consider ctx->now to be included in the "future".
+ *
+ * \return Closest future change, or 0 if none.
+ */
+knot_time_t kdnssec_next(kdnssec_ctx_t *ctx, bool only_keyset_change, bool including_now);

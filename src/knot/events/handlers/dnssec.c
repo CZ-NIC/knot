@@ -66,7 +66,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	zone_sign_reschedule_t resch = { 0 };
-	zone_sign_roll_flags_t r_flags = KEY_ROLL_ALLOW_ALL;
+	zone_sign_roll_flags_t r_flags = 0;
 	int sign_flags = 0;
 
 	if (zone->flags & ZONE_FORCE_RESIGN) {
@@ -77,15 +77,6 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	} else {
 		log_zone_info(zone->name, "DNSSEC, signing zone");
 		sign_flags = 0;
-	}
-
-	if (zone->flags & ZONE_FORCE_KSK_ROLL) {
-		zone->flags &= ~ZONE_FORCE_KSK_ROLL;
-		r_flags |= KEY_ROLL_FORCE_KSK_ROLL;
-	}
-	if (zone->flags & ZONE_FORCE_ZSK_ROLL) {
-		zone->flags &= ~ZONE_FORCE_ZSK_ROLL;
-		r_flags |= KEY_ROLL_FORCE_ZSK_ROLL;
 	}
 
 	zone_update_t up;
@@ -108,6 +99,8 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	}
 
 	// Schedule dependent events
+	assert(resch.next_rollover == 0);
+	assert(!resch.plan_ds_query);
 	event_dnssec_reschedule(conf, zone, &resch, zone_changed);
 
 done:

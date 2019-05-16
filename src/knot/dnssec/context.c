@@ -227,3 +227,45 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 
 	memset(ctx, 0, sizeof(*ctx));
 }
+
+static void timer_next(knot_time_t timer, knot_time_t now, knot_time_t *next)
+{
+	if (knot_time_cmp(timer, now) >= 0) {
+		*next = knot_time_min(*next, timer);
+	}
+}
+
+static knot_time_t key_next(knot_kasp_key_t *key, knot_time_t now,
+                            bool only_keyset_change, bool csks_only_rollover)
+{
+	knot_time_t res = 0;
+	timer_next(key->timing.pre_active, now, &res);
+	timer_next(key->timing.publish, now, &res);
+	timer_next(key->timing.retire, now, &res);
+	timer_next(key->timing.post_active, now, &res);
+	timer_next(key->timing.remove, now, &res);
+	if (!only_keyset_change) {
+		timer_next(key->timing.retire_active, now, &res);
+	}
+	if (!only_keyset_change || csks_only_rollover || key->timing.pre_active == 0) {
+		timer_next(key->timing.ready, now, &res);
+	}
+	if (!only_keyset_change || csks_only_rollover ||
+	    (key->timing.pre_active == 0 && key->timing.ready == 0)) {
+		timer_next(key->timing.active, now, &res);
+	}
+	return res;
+}
+
+knot_time_t kdnssec_next(kdnssec_ctx_t *ctx, bool only_keyset_change, bool including_now)
+{
+	knot_time_t res = 0;
+	knot_time_t now = including_now ? ctx->now : ctx->now + 1;
+	bool csks_only_roll = (ctx->policy->cds_cdnskey_publish == CDS_CDNSKEY_ROLLOVER ||
+	                       ctx->policy->cds_cdnskey_publish == CDS_CDNSKEY_DOUBLE_DS);
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		res = knot_time_min(res, key_next(key, now, only_keyset_change, csks_only_roll));
+	}
+	return res;
+}

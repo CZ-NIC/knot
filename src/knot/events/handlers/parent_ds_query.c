@@ -43,7 +43,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 			zone_events_schedule_at(zone, ZONE_EVENT_PARENT_DS_Q, next_check);
 		}
 	} else {
-		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+		zone_events_schedule_now(zone, ZONE_EVENT_KEY_ROLL);
 	}
 
 	free_zone_keys(&keyset);
