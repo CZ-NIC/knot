@@ -251,54 +251,63 @@ static int addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl, char *a
 	}
 }
 
+/**
+ * Copy IP address (in IPv4 or IPv6 format) from source to destination with possible compression during process
+ * 
+ * @return Length of address in destination
+ **/
+static size_t synth_addrcpy(char *dest, const char *src, const int addr_family, const bool shorten) {
+	const size_t addr_len = strlen(src);
+	
+	const char sep = str_separator(addr_family);
+	if(shorten) {
+		size_t i;
+		size_t idx = 0;
+		bool zero_segment_unused = (addr_family == AF_INET6);
+		bool begin = true;
+		unsigned int sep_seq = 0;
+		for(i = 0; i < addr_len; ++i) {
+			if(begin && src[i] == '0') { // Remove leading '0'
+				continue;
+			}
+			else if(src[i] == sep) {
+				if(zero_segment_unused && sep_seq++ < 2) { // Able to omit hextet
+					dest[idx++] = '-';
+				}
+				else if (!zero_segment_unused ) {  // Unable to omit hextet
+					if(begin) {
+						dest[idx++] = '0';
+						sep_seq = 0;
+					}
+					dest[idx++] = '-';
+				}
+				begin = true;
+			}
+			else { // Copy symbol
+				dest[idx++] = src[i];
+				zero_segment_unused &= sep_seq < 2;
+				begin = false;
+				sep_seq = 0;
+			}
+		}
+		dest[idx] = '\0';
+		return idx;
+	} else { // if (! shorten)
+		for(size_t i = 0; i < addr_len; ++i) {
+			dest[i] = (src[i] == sep) ? '-' : src[i];
+		}
+		return addr_len;
+	}
+}
+
 static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
                                    const synth_template_t *tpl, int addr_family, bool shortened)
 {
 	char ptrname[KNOT_DNAME_TXT_MAXLEN];
 	int addr_len = strlen(addr_str);
 	char addr_str_tmp[addr_len];
-	const char sep = str_separator(addr_family);
 
-	if(shortened) {
-		size_t idx = 0;
-		size_t i;
-		bool begin = true;
-		bool zero_segment_unused = true;
-		unsigned int sep_seq = 0;
-		for(i = 0; i < addr_len; ++i) {
-			if(begin && addr_str[i] == '0') {
-				continue;
-			}
-			else if(addr_str[i] == sep) {
-				begin = true;
-				if(zero_segment_unused) {
-					if(sep_seq < 2) {
-						addr_str_tmp[idx++] = '-';
-						sep_seq++;
-					}
-				}
-				else {
-					if(addr_str_tmp[idx-1] == '-') {
-						addr_str_tmp[idx++] = '0';
-					}
-					addr_str_tmp[idx++] = '-';
-					sep_seq = 0;
-				}
-			}
-			else {
-				addr_str_tmp[idx] = addr_str[i];
-				++idx;
-				begin = false;
-				zero_segment_unused &= sep_seq < 2;
-				sep_seq = 0;
-			}
-		}
-		addr_str_tmp[idx] = '\0';
-		addr_len = idx;
-	}
-	else {
-		*addr_str_tmp = addr_str;
-	}
+	addr_len = synth_addrcpy(addr_str_tmp, addr_str, addr_family, shortened);
 
 	// PTR right-hand value is [prefix][address][zone]
 	wire_ctx_t ctx = wire_ctx_init((uint8_t *)ptrname, sizeof(ptrname));
@@ -311,8 +320,6 @@ static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
 		return NULL;
 	}
 
-	// Substitute address separator by '-'.
-	str_subst(ptrname + tpl->prefix_len, addr_len, sep, '-');
 	// Convert to domain name.
 	return knot_dname_from_str(out, ptrname, KNOT_DNAME_MAXLEN);
 }
