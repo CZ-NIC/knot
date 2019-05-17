@@ -347,7 +347,7 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_RESIGN;
-	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
+	zone_events_schedule_user(zone, ZONE_EVENT_KEY_ROLL);
 
 	return KNOT_EOK;
 }
@@ -368,7 +368,7 @@ static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
+	zone_events_schedule_user(zone, ZONE_EVENT_KEY_ROLL);
 
 	return KNOT_EOK;
 }
@@ -390,7 +390,7 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (ret == KNOT_EOK && conf_bool(&val)) {
 		// NOT zone_events_schedule_user(), intentionally!
-		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+		zone_events_schedule_now(zone, ZONE_EVENT_KEY_ROLL);
 	}
 
 	return ret;
@@ -452,6 +452,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	if (zone->control_update == NULL) {
 		return KNOT_TXN_ENOTEXISTS;
 	}
+	int ret = KNOT_EOK;
 
 	// NOOP if empty changeset/contents.
 	if (((zone->control_update->flags & UPDATE_INCREMENTAL) &&
@@ -463,22 +464,25 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	}
 
 	// Sign update.
-	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
-	bool dnssec_enable = (zone->control_update->flags & UPDATE_SIGN) && conf_bool(&val);
-	if (dnssec_enable) {
-		zone_sign_reschedule_t resch = { 0 };
-		bool full = (zone->control_update->flags & UPDATE_FULL);
-		zone_sign_roll_flags_t rflags = KEY_ROLL_ALLOW_ALL;
-		int ret = (full ? knot_dnssec_zone_sign(zone->control_update, 0, rflags, &resch) :
-		                  knot_dnssec_sign_update(zone->control_update, &resch));
-		if (ret != KNOT_EOK) {
-			zone_txn_update_clear(zone);
-			return ret;
+	if ((zone->control_update->flags & UPDATE_SIGN)) {
+		if ((zone->control_update->flags & UPDATE_FULL)) {
+			ret = zone_update_sign_full(conf(), zone->control_update, 0);
+		} else {
+			conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+			bool dnssec_enable = (zone->control_update->flags & UPDATE_SIGN) && conf_bool(&val);
+			if (dnssec_enable) {
+				zone_sign_reschedule_t resch = { 0 };
+				ret = knot_dnssec_sign_update(zone->control_update, &resch);
+				event_dnssec_reschedule(conf(), zone, &resch, false);
+			}
 		}
-		event_dnssec_reschedule(conf(), zone, &resch, false);
+	}
+	if (ret != KNOT_EOK) {
+		zone_txn_update_clear(zone);
+		return ret;
 	}
 
-	int ret = zone_update_commit(conf(), zone->control_update);
+	ret = zone_update_commit(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
 		/* Invalidate the transaction if aborted. */
 		if (zone->control_update->zone == NULL) {

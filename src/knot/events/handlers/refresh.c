@@ -238,16 +238,10 @@ static int axfr_finalize(struct refresh_data *data)
 	// Seized by zone_update. Don't free the contents again in axfr_cleanup.
 	data->axfr.zone = NULL;
 
-	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
-	bool dnssec_enable = conf_bool(&val);
-	if (dnssec_enable) {
-		zone_sign_reschedule_t resch = { 0 };
-		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_ALL, &resch);
-		if (ret != KNOT_EOK) {
-			zone_update_clear(&up);
-			return ret;
-		}
-		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
+	ret = zone_update_sign_full(data->conf, &up, ZONE_SIGN_KEEP_SERIAL);
+	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
+		return ret;
 	}
 
 	ret = zone_update_commit(data->conf, &up);
@@ -256,7 +250,8 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
-	if (dnssec_enable) {
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	if (conf_bool(&val)) {
 		ret = zone_set_master_serial(data->zone, master_serial);
 		if (ret == KNOT_EOK) {
 			ret = zone_set_lastsigned_serial(data->zone, zone_contents_serial(new_zone));

@@ -49,6 +49,8 @@ typedef enum {
 	UPDATE_STRICT         = 1 << 4, /*!< Apply changes strictly, i.e. fail when removing nonexistent RR. */
 } zone_update_flags_t;
 
+typedef enum zone_sign_flags zone_sign_flags_t;
+
 /*!
  * \brief Inits given zone update structure, new memory context is created.
  *
@@ -257,6 +259,20 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf);
  * \return KNOT_E*
  */
 int zone_update_commit(conf_t *conf, zone_update_t *update);
+
+/*!
+ * \brief Perform a full sign of new contents regardless if update is incremental.
+ *
+ * \note First NSEC3 re-salt and key roll-overs are done.
+ * \note Scheduling of next DNSSEC-related events is done.
+ *
+ * \param conf      Configuration.
+ * \param update    Zone update.
+ * \param sflags    Zone signing flags.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_sign_full(conf_t *conf, zone_update_t *update, zone_sign_flags_t sflags);
 
 /*!
  * \brief Setup a zone_update iterator for both FULL and INCREMENTAL updates.

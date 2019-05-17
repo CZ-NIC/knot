@@ -226,19 +226,16 @@ int event_load(conf_t *conf, zone_t *zone)
 	uint32_t middle_serial = zone_contents_serial(up.new_cont);
 
 	// Sign zone using DNSSEC if configured.
-	zone_sign_reschedule_t dnssec_refresh = { 0 };
-	if (dnssec_enable) {
-		ret = knot_dnssec_zone_sign(&up, 0, KEY_ROLL_ALLOW_ALL, &dnssec_refresh);
-		if (ret != KNOT_EOK) {
-			zone_update_clear(&up);
-			goto cleanup;
-		}
-		if (zu_from_zf_conts && (up.flags & UPDATE_INCREMENTAL) && allowed_xfr(conf, zone)) {
-			log_zone_warning(zone->name,
-			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
-			                 "'zonefile-load: difference' should be set to avoid malformed "
-			                 "IXFR after manual zone file update");
-		}
+	ret = zone_update_sign_full(conf, &up, 0);
+	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
+		goto cleanup;
+	}
+	if (dnssec_enable && zu_from_zf_conts && (up.flags & UPDATE_INCREMENTAL) && allowed_xfr(conf, zone)) {
+		log_zone_warning(zone->name,
+		                 "with automatic DNSSEC signing and outgoing transfers enabled, "
+		                 "'zonefile-load: difference' should be set to avoid malformed "
+		                 "IXFR after manual zone file update");
 	}
 
 	// If the change is only automatically incremented SOA serial, make it no change.
@@ -282,10 +279,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	// Schedule depedent events.
 	const knot_rdataset_t *soa = zone_soa(zone);
 	zone->timers.soa_expire = knot_soa_expire(soa->rdata);
-
-	if (dnssec_enable) {
-		event_dnssec_reschedule(conf, zone, &dnssec_refresh, false); // false since we handle NOTIFY below
-	}
 
 	replan_from_timers(conf, zone);
 

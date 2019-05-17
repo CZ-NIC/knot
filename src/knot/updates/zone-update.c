@@ -16,6 +16,7 @@
 
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/events/handlers.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/serial.h"
@@ -798,6 +799,33 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	return KNOT_EOK;
+}
+
+int zone_update_sign_full(conf_t *conf, zone_update_t *update, zone_sign_flags_t sflags)
+{
+	if (conf == NULL || update == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	zone_sign_reschedule_t resch = { 0 };
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
+	if (!conf_bool(&val)) {
+		return KNOT_EOK;
+	}
+
+	int ret = event_nsec3resalt(conf, update->zone);
+	if (ret == KNOT_EOK) {
+		ret = event_key_roll(conf, update->zone);
+	}
+	if (ret == KNOT_EOK) {
+		ret = knot_dnssec_zone_sign(update, sflags, 0, &resch);
+	}
+	assert(resch.next_rollover == 0);
+	assert(!resch.plan_ds_query);
+	if (ret == KNOT_EOK) {
+		event_dnssec_reschedule(conf, update->zone, &resch, false);
+	}
+	return ret;
 }
 
 static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,

@@ -45,12 +45,6 @@ static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_r
 	// update policy based on the zone content
 	update_policy_from_zone(ctx->policy, zone);
 
-	// perform key rollover if needed
-	r = knot_dnssec_key_rollover(ctx, roll_flags, reschedule);
-	if (r != KNOT_EOK) {
-		return r;
-	}
-
 	// RRSIG handling
 
 	ctx->rrsig_drop_existing = flags & ZONE_SIGN_DROP_SIGNATURES;
