@@ -252,16 +252,58 @@ static int addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl, char *a
 }
 
 static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
-                                   const synth_template_t *tpl, int addr_family)
+                                   const synth_template_t *tpl, int addr_family, bool shortened)
 {
 	char ptrname[KNOT_DNAME_TXT_MAXLEN];
 	int addr_len = strlen(addr_str);
+	char addr_str_tmp[addr_len];
 	const char sep = str_separator(addr_family);
+
+	if(shortened) {
+		size_t idx = 0;
+		size_t i;
+		bool begin = true;
+		bool zero_segment_unused = true;
+		unsigned int sep_seq = 0;
+		for(i = 0; i < addr_len; ++i) {
+			if(begin && addr_str[i] == '0') {
+				continue;
+			}
+			else if(addr_str[i] == sep) {
+				begin = true;
+				if(zero_segment_unused) {
+					if(sep_seq < 2) {
+						addr_str_tmp[idx++] = '-';
+						sep_seq++;
+					}
+				}
+				else {
+					if(addr_str_tmp[idx-1] == '-') {
+						addr_str_tmp[idx++] = '0';
+					}
+					addr_str_tmp[idx++] = '-';
+					sep_seq = 0;
+				}
+			}
+			else {
+				addr_str_tmp[idx] = addr_str[i];
+				++idx;
+				begin = false;
+				zero_segment_unused &= sep_seq < 2;
+				sep_seq = 0;
+			}
+		}
+		addr_str_tmp[idx] = '\0';
+		addr_len = idx;
+	}
+	else {
+		*addr_str_tmp = addr_str;
+	}
 
 	// PTR right-hand value is [prefix][address][zone]
 	wire_ctx_t ctx = wire_ctx_init((uint8_t *)ptrname, sizeof(ptrname));
 	wire_ctx_write(&ctx, tpl->prefix, tpl->prefix_len);
-	wire_ctx_write(&ctx, addr_str, addr_len);
+	wire_ctx_write(&ctx, addr_str_tmp, addr_len);
 	wire_ctx_write_u8(&ctx, '.');
 	wire_ctx_write(&ctx, tpl->zone, tpl->zone_len);
 	wire_ctx_write_u8(&ctx, '\0');
@@ -271,7 +313,6 @@ static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
 
 	// Substitute address separator by '-'.
 	str_subst(ptrname + tpl->prefix_len, addr_len, sep, '-');
-
 	// Convert to domain name.
 	return knot_dname_from_str(out, ptrname, KNOT_DNAME_MAXLEN);
 }
@@ -281,7 +322,7 @@ static int reverse_rr(char *addr_str, const synth_template_t *tpl, knot_pkt_t *p
 {
 	// Synthetize PTR record data.
 	uint8_t ptrname[KNOT_DNAME_MAXLEN];
-	if (synth_ptrname(ptrname, addr_str, tpl, addr_family) == NULL) {
+	if (synth_ptrname(ptrname, addr_str, tpl, addr_family, true) == NULL) {
 		return KNOT_EINVAL;
 	}
 
