@@ -244,11 +244,9 @@ static knot_time_t key_next(knot_kasp_key_t *key, knot_time_t now,
 	timer_next(key->timing.retire, now, &res);
 	timer_next(key->timing.post_active, now, &res);
 	timer_next(key->timing.remove, now, &res);
+	timer_next(key->timing.ready, now, &res);
 	if (!only_keyset_change) {
 		timer_next(key->timing.retire_active, now, &res);
-	}
-	if (!only_keyset_change || csks_only_rollover || key->timing.pre_active == 0) {
-		timer_next(key->timing.ready, now, &res);
 	}
 	if (!only_keyset_change || csks_only_rollover ||
 	    (key->timing.pre_active == 0 && key->timing.ready == 0)) {

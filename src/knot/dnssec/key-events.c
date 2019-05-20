@@ -695,6 +695,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			break;
 		case REMOVE:
 			ret = exec_remove_old_key(ctx, next.key);
+			reschedule->next_sign = ctx->now; // TODO fix better
 			break;
 		default:
 			ret = KNOT_EINVAL;

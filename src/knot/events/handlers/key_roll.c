@@ -19,6 +19,7 @@
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/key-events.h"
+#include "knot/dnssec/policy.h"
 #include "knot/zone/zone.h"
 #include "libknot/errcode.h"
 
@@ -51,18 +52,28 @@ int event_key_roll(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
+	// TODO FIX SOMEHOW!!
+	if (zone->contents != NULL) {
+		update_policy_from_zone(kctx.policy, zone->contents);
+	} else {
+		kctx.policy->zone_maximal_ttl = 3600;
+		(void)kctx.policy->dnskey_ttl;
+	}
+
 	ret = knot_dnssec_key_rollover(&kctx, r_flags, &resch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	knot_time_t next_roll = resch.next_rollover;
-	knot_time_t next_sign = kdnssec_next(&kctx, true, true);
+	knot_time_t next_roll2 = kdnssec_next(&kctx, false, false);
+	knot_time_t next_sign = resch.next_sign;
+	knot_time_t next_sign2 = kdnssec_next(&kctx, true, true);
 	log_next(zone->name, next_roll, next_sign);
 
 	zone_events_schedule_at(zone,
-		ZONE_EVENT_KEY_ROLL, next_roll,
-		ZONE_EVENT_DNSSEC, next_sign,
+		ZONE_EVENT_KEY_ROLL, knot_time_min(next_roll, next_roll2),
+		ZONE_EVENT_DNSSEC, knot_time_min(next_sign, next_sign2),
 		ZONE_EVENT_PARENT_DS_Q, resch.plan_ds_query ? kctx.now : -1
 	);
 
