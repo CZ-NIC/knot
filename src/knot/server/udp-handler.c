@@ -319,10 +319,23 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 	return KNOT_EOK;
 }
 
+static int send_mmsg(int sock, struct sockaddr *addrs, struct mmsghdr *msgs, size_t count)
+{
+	int sent = 0;
+	for (unsigned i = 0; i < count; ++i) {
+		if (sendmsg(sock, &msgs[i].msg_hdr, 0) > 0) {
+			++sent;
+		}
+	}
+
+	return sent;
+}
+
 static int udp_recvmmsg_send(void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
-	int rc = sendmmsg(rq->fd, rq->msgs[TX], rq->rcvd, 0);
+	//int rc = sendmmsg(rq->fd, rq->msgs[TX], rq->rcvd, 0);
+	int rc = send_mmsg(rq->fd, (struct sockaddr *)rq->addrs, rq->msgs[TX], rq->rcvd);
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		/* Reset buffer size and address len. */
 		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
