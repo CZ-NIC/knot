@@ -14,17 +14,19 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "knot/include/module.h"
+
 #include "contrib/ctype.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 #include "contrib/wire_ctx.h"
-#include "knot/include/module.h"
 
 #define MOD_NET		"\x07""network"
 #define MOD_ORIGIN	"\x06""origin"
 #define MOD_PREFIX	"\x06""prefix"
 #define MOD_TTL		"\x03""ttl"
 #define MOD_TYPE	"\x04""type"
+#define MOD_SHORT	"\x05""short"
 
 /*! \brief Supported answer synthesis template types. */
 enum synth_template_type {
@@ -55,6 +57,7 @@ const yp_item_t synth_record_conf[] = {
 	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
 	{ MOD_NET,    YP_TNET,   YP_VNONE, YP_FMULTI },
+	{ MOD_SHORT,  YP_TBOOL,  YP_VBOOL = { false } },
 	{ NULL }
 };
 
@@ -111,6 +114,7 @@ typedef struct {
 	char *zone;
 	size_t zone_len;
 	uint32_t ttl;
+	bool short_flag;
 	size_t addr_count;
 	synth_templ_addr_t *addr;
 } synth_template_t;
@@ -230,9 +234,16 @@ static int forward_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 	addr_str[addr_len] = '\0';
 
 	// Determine query family: v6 if *-ABCD.zone.
-	const char *last_octet = addr_str + addr_len;
-	while (last_octet > addr_str && is_xdigit(*--last_octet));
-	*addr_family = (last_octet + 5 == addr_str + addr_len ? AF_INET6 : AF_INET);
+	int dashes = 0;
+	int dash_seq = 0;
+	char backup = '\0';
+	for(int idx = 0; idx < addr_len; ++idx) {
+		int tmp = (addr_str[idx] == '-');
+    	dashes += tmp;
+    	dash_seq += (tmp && backup == '-');
+    	backup = addr_str[idx];
+	}
+	*addr_family = (!dash_seq && dashes == 3) ? AF_INET : AF_INET6;
 
 	// Restore correct address format.
 	const char sep = str_separator(*addr_family);
@@ -256,12 +267,12 @@ static int addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl, char *a
  * 
  * @return Length of address in destination
  **/
-static size_t synth_addrcpy(char *dest, const char *src, const int addr_family, const bool shorten) {
+static size_t synth_addr_cpy(char *dest, const char *src, const int addr_family, const bool shorten) {
 	const size_t addr_len = strlen(src);
-	
 	const char sep = str_separator(addr_family);
+	size_t i;
+
 	if(shorten) {
-		size_t i;
 		size_t idx = 0;
 		bool zero_segment_unused = (addr_family == AF_INET6);
 		bool begin = true;
@@ -293,26 +304,23 @@ static size_t synth_addrcpy(char *dest, const char *src, const int addr_family, 
 		dest[idx] = '\0';
 		return idx;
 	} else { // if (! shorten)
-		for(size_t i = 0; i < addr_len; ++i) {
+		for(i = 0; i <= addr_len; ++i) {
 			dest[i] = (src[i] == sep) ? '-' : src[i];
 		}
-		return addr_len;
+		return i;
 	}
 }
 
 static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
-                                   const synth_template_t *tpl, int addr_family, bool shortened)
+                                   const synth_template_t *tpl, int addr_family)
 {
 	char ptrname[KNOT_DNAME_TXT_MAXLEN];
 	int addr_len = strlen(addr_str);
-	char addr_str_tmp[addr_len];
-
-	addr_len = synth_addrcpy(addr_str_tmp, addr_str, addr_family, shortened);
 
 	// PTR right-hand value is [prefix][address][zone]
 	wire_ctx_t ctx = wire_ctx_init((uint8_t *)ptrname, sizeof(ptrname));
 	wire_ctx_write(&ctx, tpl->prefix, tpl->prefix_len);
-	wire_ctx_write(&ctx, addr_str_tmp, addr_len);
+	wire_ctx_write(&ctx, addr_str, addr_len);
 	wire_ctx_write_u8(&ctx, '.');
 	wire_ctx_write(&ctx, tpl->zone, tpl->zone_len);
 	wire_ctx_write_u8(&ctx, '\0');
@@ -327,9 +335,12 @@ static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
 static int reverse_rr(char *addr_str, const synth_template_t *tpl, knot_pkt_t *pkt,
                       knot_rrset_t *rr, int addr_family)
 {
+	// Shorten address
+	char new_addr[strlen(addr_str)+1];
+	synth_addr_cpy(new_addr, addr_str, addr_family, tpl->short_flag);
 	// Synthetize PTR record data.
 	uint8_t ptrname[KNOT_DNAME_MAXLEN];
-	if (synth_ptrname(ptrname, addr_str, tpl, addr_family, true) == NULL) {
+	if (synth_ptrname(ptrname, new_addr, tpl, addr_family) == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -507,6 +518,10 @@ int synth_record_load(knotd_mod_t *mod)
 	// Set ttl.
 	conf = knotd_conf_mod(mod, MOD_TTL);
 	tpl->ttl = conf.single.integer;
+
+	// Set short flag
+	conf = knotd_conf_mod(mod, MOD_SHORT);
+	tpl->short_flag = conf.single.boolean;
 
 	// Set address.
 	conf = knotd_conf_mod(mod, MOD_NET);

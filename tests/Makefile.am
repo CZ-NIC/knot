@@ -169,6 +169,16 @@ check_PROGRAMS += \
 	modules/test_rrl
 endif
 endif
+
+if STATIC_MODULE_synthrecord
+check_PROGRAMS += \
+	modules/test_synthrecord
+else
+if SHARED_MODULE_synthrecord
+check_PROGRAMS += \
+	modules/test_synthrecord
+endif
+endif
 endif HAVE_DAEMON
 
 libdnssec_test_keystore_pkcs11_CPPFLAGS = \
