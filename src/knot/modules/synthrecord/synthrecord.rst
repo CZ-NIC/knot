@@ -67,6 +67,7 @@ Automatic reverse records
        origin: test
        ttl: 400
        network: 2620:0:b61::/52
+       short: off
 
    zone:
      - domain: 1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.
@@ -98,6 +99,7 @@ Module reference
      origin: DNAME
      ttl: INT
      network: ADDR[/INT] | ADDR-ADDR ...
+     short: on | off
 
 .. _mod-synthrecord_id:
 
@@ -159,3 +161,13 @@ network
 An IP address, a network subnet, or a network range the query must match.
 
 *Required*
+
+.. _mod-synthrecord_short:
+
+short
+.....
+
+Names of reverse pointer records will be shortened (affects only :ref:`reverse type<mod-synthrecord_type>`)
+
+*Default:* off
+

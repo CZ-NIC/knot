@@ -16,6 +16,8 @@
 
 #include "knot/include/module.h"
 
+#include "knot/modules/synthrecord/utils.h"
+
 #include "contrib/ctype.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
@@ -127,15 +129,6 @@ static void str_subst(char *str, size_t len, char from, char to)
 			str[i] = to;
 		}
 	}
-}
-
-/*! \brief Separator character for address family. */
-static char str_separator(int addr_family)
-{
-	if (addr_family == AF_INET6) {
-		return ':';
-	}
-	return '.';
 }
 
 /*! \brief Return true if query type is satisfied with provided address family. */
@@ -259,55 +252,6 @@ static int addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl, char *a
 	case SYNTH_REVERSE: return reverse_addr_parse(qdata, addr_str, addr_family);
 	case SYNTH_FORWARD: return forward_addr_parse(qdata, tpl, addr_str, addr_family);
 	default:            return KNOT_EINVAL;
-	}
-}
-
-/**
- * Copy IP address (in IPv4 or IPv6 format) from source to destination with possible compression during process
- * 
- * @return Length of address in destination
- **/
-static size_t synth_addr_cpy(char *dest, const char *src, const int addr_family, const bool shorten) {
-	const size_t addr_len = strlen(src);
-	const char sep = str_separator(addr_family);
-	size_t i;
-
-	if(shorten) {
-		size_t idx = 0;
-		bool zero_segment_unused = (addr_family == AF_INET6);
-		bool begin = true;
-		unsigned int sep_seq = 0;
-		for(i = 0; i < addr_len; ++i) {
-			if(begin && src[i] == '0') { // Remove leading '0'
-				continue;
-			}
-			else if(src[i] == sep) {
-				if(zero_segment_unused && sep_seq++ < 2) { // Able to omit hextet
-					dest[idx++] = '-';
-				}
-				else if (!zero_segment_unused ) {  // Unable to omit hextet
-					if(begin) {
-						dest[idx++] = '0';
-						sep_seq = 0;
-					}
-					dest[idx++] = '-';
-				}
-				begin = true;
-			}
-			else { // Copy symbol
-				dest[idx++] = src[i];
-				zero_segment_unused &= sep_seq < 2;
-				begin = false;
-				sep_seq = 0;
-			}
-		}
-		dest[idx] = '\0';
-		return idx;
-	} else { // if (! shorten)
-		for(i = 0; i <= addr_len; ++i) {
-			dest[i] = (src[i] == sep) ? '-' : src[i];
-		}
-		return i;
 	}
 }
 
