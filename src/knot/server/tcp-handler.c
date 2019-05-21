@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -168,34 +168,11 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	return ret;
 }
 
-static int tcp_accept(int fd)
-{
-	/* Accept incoming connection. */
-	int incoming = net_accept(fd, NULL);
-
-	/* Evaluate connection. */
-	if (incoming >= 0) {
-#ifdef SO_RCVTIMEO
-		struct timeval tv;
-		rcu_read_lock();
-		tv.tv_sec = conf()->cache.srv_tcp_idle_timeout;
-		rcu_read_unlock();
-		tv.tv_usec = 0;
-		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-			log_warning("TCP, failed to set up watchdog timer"
-			            ", fd %d", incoming);
-		}
-#endif
-	}
-
-	return incoming;
-}
-
 static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 {
 	/* Accept client. */
 	int fd = tcp->set.pfd[i].fd;
-	int client = tcp_accept(fd);
+	int client = net_accept(fd, NULL);
 	if (client >= 0) {
 		/* Assign to fdset. */
 		int next_id = fdset_add(&tcp->set, client, POLLIN, NULL);
