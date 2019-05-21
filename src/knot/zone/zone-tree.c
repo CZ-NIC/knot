@@ -331,8 +331,9 @@ void zone_tree_it_free(zone_tree_it_t *it)
 	memset(it, 0, sizeof(*it));
 }
 
-int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it)
+int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it, bool include_deleted)
 {
+	it->incl_del = include_deleted;
 	it->total = zone_tree_count(tree);
 	if (it->total == 0) {
 		it->current = 0;
@@ -358,7 +359,7 @@ int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it)
 	assert(it->total == it->current);
 	it->current = 0;
 
-	while (!zone_tree_delsafe_it_finished(it) &&
+	while (!it->incl_del && !zone_tree_delsafe_it_finished(it) &&
 	       (zone_tree_delsafe_it_val(it)->flags & NODE_FLAGS_DELETED)) {
 		it->current++;
 	}
@@ -380,7 +381,7 @@ void zone_tree_delsafe_it_next(zone_tree_delsafe_it_t *it)
 {
 	do {
 		it->current++;
-	} while (!zone_tree_delsafe_it_finished(it) &&
+	} while (!it->incl_del && !zone_tree_delsafe_it_finished(it) &&
 		 (zone_tree_delsafe_it_val(it)->flags & NODE_FLAGS_DELETED));
 }
 

@@ -90,16 +90,17 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 /*!
  * \brief Call the chain-connecting function for modified records and their neighbours.
  *
- * \param old_nodes  Old state of zone nodes.
- * \param new_nodes  New state of zone nodes.
+ * \param node_ptrs  Tre of those nodes that have ben changed by the update.
  * \param callback   Callback function.
+ * \param cb_reconn  Callback for re-connecting "next" link to another node.
  * \param data       Custom data supplied, incl. changeset to be updated.
  *
  * \retval KNOT_ENORECORD if the chain must be recreated from scratch.
  * \return KNOT_E*
  */
-int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
+int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
                                 chain_iterate_create_cb callback,
+                                chain_iterate_create_cb cb_reconn,
                                 nsec_chain_iterate_data_t *data);
 
 /*!
