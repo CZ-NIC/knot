@@ -66,6 +66,7 @@ int adjust_cb_void(zone_node_t *node, const zone_contents_t *zone);
  * \param zone       Zone to be adjusted.
  * \param nodes_cb   Callback for NORMAL nodes.
  * \param nsec3_cb   Callback for NSEC3 nodes.
+ * \param measure_size   While adjusting, count the size of the zone and store it to contents.
  *
  * \return KNOT_E*
  */
@@ -81,10 +82,11 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
  * \param update     Zone update being finalized.
  * \param nodes_cb   Callback for NORMAL nodes.
  * \param nsec3_cb   Callback for NSEC3 nodes.
+ * \param measure_size   While adjusting, count the size of the zone and store it to contents.
  *
  * \return KNOT_E*
  */
-int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb);
+int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb, bool measure_size);
 
 /*!
  * \brief Do a general-purpose full update.
