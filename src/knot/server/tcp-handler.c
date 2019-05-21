@@ -199,7 +199,7 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	return ret;
 }
 
-static int tcp_wait_for_events(tcp_context_t *tcp)
+static void tcp_wait_for_events(tcp_context_t *tcp)
 {
 	int nfds;
 	unsigned i;
@@ -254,8 +254,6 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 			++i;
 		}
 	}
-
-	return nfds;
 }
 
 int tcp_master(dthread_t *thread)
