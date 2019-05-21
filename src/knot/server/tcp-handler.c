@@ -52,6 +52,8 @@ typedef struct tcp_context {
 	struct timespec throttle_end;    /*!< End of accept() throttling. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
+	unsigned max_clients;            /*!< Max TCP clients configuration. */
+	int idle_timeout;                /*!< TCP idle timeout configuration. */
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
@@ -181,10 +183,7 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 		}
 
 		/* Update watchdog timer. */
-		rcu_read_lock();
-		int timeout = conf()->cache.srv_tcp_hshake_timeout;
-		fdset_set_watchdog(&tcp->set, next_id, timeout);
-		rcu_read_unlock();
+		fdset_set_watchdog(&tcp->set, next_id, tcp->idle_timeout);
 
 		return KNOT_EOK;
 	}
@@ -198,10 +197,7 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
-		rcu_read_lock();
-		int timeout = conf()->cache.srv_tcp_idle_timeout;
-		fdset_set_watchdog(&tcp->set, i, timeout);
-		rcu_read_unlock();
+		fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
 	}
 
 	return ret;
@@ -213,18 +209,17 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	fdset_t *set = &tcp->set;
 	int nfds = poll(set->pfd, set->n, TCP_SWEEP_INTERVAL * 1000);
 
+	rcu_read_lock();
+	unsigned clients = conf()->cache.srv_max_tcp_clients;
+	tcp->max_clients = MAX(clients / conf_tcp_threads(conf()), 1);
+	tcp->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
+	rcu_read_unlock();
+
 	/* Mark the time of last poll call. */
 	tcp->last_poll_time = time_now();
-	bool is_throttled = (tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec);
-	if (!is_throttled) {
-		/* Configuration limit, infer maximal pool size. */
-		rcu_read_lock();
-		int clients = conf()->cache.srv_max_tcp_clients;
-		unsigned max_per_set = MAX(clients / conf_tcp_threads(conf()), 1);
-		rcu_read_unlock();
-		/* Subtract master sockets check limits. */
-		is_throttled = (set->n - tcp->client_threshold) >= max_per_set;
-	}
+
+	bool is_throttled = tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec ||
+	                    (set->n - tcp->client_threshold) >= tcp->max_clients;
 
 	/* Process events. */
 	unsigned i = 0;
