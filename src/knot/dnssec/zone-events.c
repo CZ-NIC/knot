@@ -242,6 +242,8 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
 
+	update->flags |= UPDATE_CANCELOUT;
+
 	// signing pipeline
 
 	result = sign_init(update->new_cont, 0, 0, update->zone->kaspdb, &ctx, reschedule);
