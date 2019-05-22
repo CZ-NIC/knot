@@ -894,35 +894,3 @@ void server_update_zones(conf_t *conf, server_t *server)
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
 }
-
-ref_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id)
-{
-	if (server == NULL || server->ifaces == NULL || fds == NULL) {
-		return NULL;
-	}
-
-	rcu_read_lock();
-	fdset_clear(fds);
-
-	iface_t *i = NULL;
-	WALK_LIST(i, server->ifaces->l) {
-#ifdef ENABLE_REUSEPORT
-		int udp_id = thread_id % i->fd_udp_count;
-#else
-		int udp_id = 0;
-#endif
-		switch(index) {
-		case IO_TCP:
-			fdset_add(fds, i->fd_tcp, POLLIN, NULL);
-			break;
-		case IO_UDP:
-			fdset_add(fds, i->fd_udp[udp_id], POLLIN, NULL);
-			break;
-		default:
-			assert(0);
-		}
-	}
-	rcu_read_unlock();
-
-	return &server->ifaces->ref;
-}
