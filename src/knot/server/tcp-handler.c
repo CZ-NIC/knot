@@ -282,7 +282,7 @@ int tcp_master(dthread_t *thread)
 
 	/* Prepare structures for bound sockets. */
 	conf_val_t val = conf_get(conf(), C_SRV, C_LISTEN);
-	fdset_init(&tcp.set, conf_val_count(&val) + CONF_XFERS);
+	fdset_init(&tcp.set, conf_val_count(&val));
 
 	/* Create iovec abstraction. */
 	for (unsigned i = 0; i < 2; ++i) {
