@@ -247,6 +247,31 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	}
 }
 
+/*!
+ * \brief Update fdsets from current interfaces list.
+ *
+ * \param server    Server.
+ * \param fds       File descriptor set.
+ * \param thread_id Thread ID used for geting UDP ID.
+ *
+ * \return new interface list
+ */
+static ref_t *server_set_ifaces(const ifacelist_t *ifaces, fdset_t *fds)
+{
+	assert(ifaces && fds);
+
+	rcu_read_lock();
+	fdset_clear(fds);
+
+	iface_t *i = NULL;
+	WALK_LIST(i, ifaces->l) {
+		fdset_add(fds, i->fd_tcp, POLLIN, NULL);
+	}
+	rcu_read_unlock();
+
+	return &ifaces->ref;
+}
+
 int tcp_master(dthread_t *thread)
 {
 	if (thread == NULL || thread->data == NULL) {
@@ -300,7 +325,7 @@ int tcp_master(dthread_t *thread)
 			}
 
 			ref_release(ref);
-			ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
+			ref = server_set_ifaces(handler->server, &tcp.set);
 			if (tcp.set.n == 0) {
 				break; /* Terminate on zero interfaces. */
 			}
