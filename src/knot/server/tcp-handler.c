@@ -273,9 +273,8 @@ int tcp_master(dthread_t *thread)
 	};
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());
 
-	/* Prepare structures for bound sockets. */
-	conf_val_t val = conf_get(conf(), C_SRV, C_LISTEN);
-	fdset_init(&tcp.set, conf_val_count(&val) + CONF_XFERS);
+	/* Prepare initial buffer for listening and bound sockets. */
+	fdset_init(&tcp.set, FDSET_INIT_SIZE);
 
 	/* Create iovec abstraction. */
 	for (unsigned i = 0; i < 2; ++i) {
