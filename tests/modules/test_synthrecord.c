@@ -31,6 +31,7 @@ void str_replace(char *dst, size_t n, const char from, const char to) {
 
 void test_ip6_shortening(const char * const ips[], size_t n) {
     char buffer[INET6_ADDRSTRLEN];
+    unsigned long result_counter = 0;
 	for(size_t i = 0; i < n; ++i) {
 		if(!ips[i]) break;
 
@@ -53,8 +54,9 @@ void test_ip6_shortening(const char * const ips[], size_t n) {
             result &= (original.__in6_u.__u6_addr32[j] == converted.__in6_u.__u6_addr32[j]);
             
         }
-        ok(result, "'%s' -> '%s'", ips[i], buffer);   
+        result_counter += !result;
     }
+    ok(!result_counter, "IPv6 shotrening");   
 }
 
 
