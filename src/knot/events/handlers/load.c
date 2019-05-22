@@ -82,7 +82,7 @@ int event_load(conf_t *conf, zone_t *zone)
 					   zone->zonefile.mtime.tv_nsec == mtime.tv_nsec);
 		free(filename);
 		if (ret == KNOT_EOK) {
-			ret = zone_load_contents(conf, zone->name, &zf_conts);
+			ret = zone_load_contents(conf, zone->name, &zf_conts, false);
 		}
 		if (ret != KNOT_EOK) {
 			zf_conts = NULL;

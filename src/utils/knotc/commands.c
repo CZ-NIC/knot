@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -556,19 +556,17 @@ static int zone_exec(cmd_args_t *args, int (*fcn)(const knot_dname_t *, void *),
 
 static int zone_check(const knot_dname_t *dname, void *data)
 {
-	UNUSED(data);
+	cmd_args_t *args = data;
 
-	zone_contents_t *contents;
-	int ret = zone_load_contents(conf(), dname, &contents);
-	if (ret == KNOT_EOK) {
-		zone_contents_deep_free(contents);
-	}
+	zone_contents_t *contents = NULL;
+	int ret = zone_load_contents(conf(), dname, &contents, args->force);
+	zone_contents_deep_free(contents);
 	return ret;
 }
 
 static int cmd_zone_check(cmd_args_t *args)
 {
-	return zone_exec(args, zone_check, NULL);
+	return zone_exec(args, zone_check, args);
 }
 
 static int zone_memstats(const knot_dname_t *dname, void *data)
