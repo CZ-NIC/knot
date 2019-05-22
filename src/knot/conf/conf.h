@@ -21,8 +21,6 @@
 #include "knot/conf/base.h"
 #include "knot/conf/schema.h"
 
-#define CONF_XFERS	10
-
 /*! Configuration remote getter output. */
 typedef struct {
 	/*! Target socket address. */

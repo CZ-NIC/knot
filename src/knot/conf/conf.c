@@ -1086,7 +1086,7 @@ size_t conf_tcp_threads_txn(
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_WORKERS);
 	int64_t workers = conf_int(&val);
 	if (workers == YP_NIL) {
-		return MAX(conf_udp_threads_txn(conf, txn) * 2, CONF_XFERS);
+		return MAX(dt_optimal_size() * 2, 10);
 	}
 
 	return workers;
@@ -1099,7 +1099,7 @@ size_t conf_bg_threads_txn(
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_BG_WORKERS);
 	int64_t workers = conf_int(&val);
 	if (workers == YP_NIL) {
-		return MIN(dt_optimal_size(), CONF_XFERS);
+		return MIN(dt_optimal_size(), 10);
 	}
 
 	return workers;
