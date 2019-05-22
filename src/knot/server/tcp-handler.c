@@ -29,7 +29,6 @@
 #include <sys/uio.h>
 #endif // HAVE_SYS_UIO_H
 
-#include "libdnssec/random.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"
@@ -41,6 +40,8 @@
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
+
+#define TCP_SWEEP_INTERVAL 2 /*!< [secs] Granularity of connection sweeping. */
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
@@ -55,15 +56,6 @@ typedef struct tcp_context {
 	unsigned max_clients;            /*!< Max TCP clients configuration. */
 	int idle_timeout;                /*!< TCP idle timeout configuration. */
 } tcp_context_t;
-
-#define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
-#define TCP_THROTTLE_LO    0 /*!< Minimum recovery time on errors. */
-#define TCP_THROTTLE_HI    2 /*!< Maximum recovery time on errors. */
-
-/*! \brief Calculate TCP throttle time (random). */
-static inline int tcp_throttle(void) {
-	return TCP_THROTTLE_LO + (dnssec_random_uint16_t() % TCP_THROTTLE_HI);
-}
 
 /*! \brief Sweep TCP connection. */
 static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
@@ -234,7 +226,7 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 			if (i < tcp->client_threshold) {
 				if (!is_throttled && tcp_event_accept(tcp, i) == KNOT_EBUSY) {
 					tcp->throttle_end = time_now();
-					tcp->throttle_end.tv_sec += tcp_throttle();
+					tcp->throttle_end.tv_sec += nfds % 2;
 				}
 			/* Client sockets */
 			} else {
