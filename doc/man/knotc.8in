@@ -93,7 +93,8 @@ Show the zone status. Filters are \fB+role\fP, \fB+serial\fP, \fB+transaction\fP
 .TP
 \fBzone\-check\fP [\fIzone\fP\&...]
 Test if the server can load the zone. Semantic checks are executed if enabled
-in the configuration. (*)
+in the configuration. When invoked with flag \fB\-f\fP/\fB\-\-force\fP an error is
+returned when sematic check warning oppears. (*)
 .TP
 \fBzone\-memstats\fP [\fIzone\fP\&...]
 Estimate memory use for the zone. (*)
