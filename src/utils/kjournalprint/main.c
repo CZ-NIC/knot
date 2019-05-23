@@ -51,9 +51,17 @@ static void print_help(void)
 	       PROGRAM_NAME);
 }
 
-static void print_changeset(const changeset_t *chs, bool color)
+typedef struct {
+	bool debug;
+	bool color;
+	bool check;
+	int limit;
+	int counter;
+} print_params_t;
+
+static void print_changeset(const changeset_t *chs, print_params_t *params)
 {
-	printf(color ? YLW : "");
+	printf(params->color ? YLW : "");
 	if (chs->soa_from == NULL) {
 		printf(";; Zone-in-journal, serial: %u\n",
 		       knot_soa_serial(chs->soa_to->rrs.rdata));
@@ -62,7 +70,7 @@ static void print_changeset(const changeset_t *chs, bool color)
 		       knot_soa_serial(chs->soa_from->rrs.rdata),
 		       knot_soa_serial(chs->soa_to->rrs.rdata));
 	}
-	changeset_print(chs, stdout, color);
+	changeset_print(chs, stdout, params->color);
 }
 
 dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC, 100)
@@ -125,23 +133,34 @@ static void print_changeset_debugmode(const changeset_t *chs)
 	printf("\n");
 }
 
+static int count_changeset_cb(bool special, const changeset_t *ch, void *ctx)
+{
+	UNUSED(special);
+
+	print_params_t *params = ctx;
+	if (ch != NULL) {
+		params->counter++;
+	}
+	return KNOT_EOK;
+}
+
 static int print_changeset_cb(bool special, const changeset_t *ch, void *ctx)
 {
-	bool *parm = ctx;
-	if (ch != NULL) {
-		if (parm[0]) {
+	print_params_t *params = ctx;
+	if (ch != NULL && params->counter++ >= params->limit) {
+		if (params->debug) {
 			print_changeset_debugmode(ch);
 		} else {
-			print_changeset(ch, parm[1]);
+			print_changeset(ch, params);
 		}
-		if (special && parm[0]) {
+		if (special && params->debug) {
 			printf("---------------------------------------------\n");
 		}
 	}
 	return KNOT_EOK;
 }
 
-int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bool debugmode, bool do_check)
+int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 {
 	knot_lmdb_db_t jdb = { 0 };
 	zone_journal_t j = { &jdb, name };
@@ -162,19 +181,29 @@ int print_journal(char *path, knot_dname_t *name, uint32_t limit, bool color, bo
 		return ret == KNOT_EOK ? KNOT_ENOENT : ret;
 	}
 
-	if (do_check) {
+	if (params->check) {
 		ret = journal_sem_check(j);
 		if (ret > 0) {
 			fprintf(stderr, "Journal semantic check error: %d\n", ret);
 		} else if (ret != KNOT_EOK) {
-			fprintf(stderr, "Journal semnatic check failed (%s).\n", knot_strerror(ret));
+			fprintf(stderr, "Journal semantic check failed (%s).\n", knot_strerror(ret));
 		}
 	}
 
-	bool parm[2] = { debugmode, color };
-	ret = journal_walk(j, print_changeset_cb, (void *)parm);
+	if (params->limit >= 0 && ret == KNOT_EOK) {
+		ret = journal_walk(j, count_changeset_cb, params);
+	}
+	if (ret == KNOT_EOK) {
+		if (params->limit < 0 || params->counter <= params->limit) {
+			params->limit = 0;
+		} else {
+			params->limit = params->counter - params->limit;
+		}
+		params->counter = 0;
+		ret = journal_walk(j, print_changeset_cb, params);
+	}
 
-	if (debugmode && ret == KNOT_EOK) {
+	if (params->debug && ret == KNOT_EOK) {
 		printf("Occupied this zone (approx): %"PRIu64" KiB\n", occupied / 1024);
 		printf("Occupied all zones together: %"PRIu64" KiB\n", occupied_all / 1024);
 	}
@@ -203,8 +232,14 @@ int list_zones(char *path)
 
 int main(int argc, char *argv[])
 {
-	uint32_t limit = 0;
-	bool color = true, justlist = false, debugmode = false, docheck = false;
+	bool justlist = false;
+
+	print_params_t params = {
+		.debug = false,
+		.color = true,
+		.check = false,
+		.limit = -1,
+	};
 
 	struct option opts[] = {
 		{ "limit",     required_argument, NULL, 'l' },
@@ -220,22 +255,22 @@ int main(int argc, char *argv[])
 	while ((opt = getopt_long(argc, argv, "l:nzcdhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
-			if (str_to_u32(optarg, &limit) != KNOT_EOK) {
+			if (str_to_int(optarg, &params.limit, 0, INT_MAX) != KNOT_EOK) {
 				print_help();
 				return EXIT_FAILURE;
 			}
 			break;
 		case 'n':
-			color = false;
+			params.color = false;
 			break;
 		case 'z':
 			justlist = true;
 			break;
 		case 'c':
-			docheck = true;
+			params.check = true;
 			break;
 		case 'd':
-			debugmode = true;
+			params.debug = true;
 			break;
 		case 'h':
 			print_help();
@@ -292,7 +327,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	int ret = print_journal(db, name, limit, color, debugmode, docheck);
+	int ret = print_journal(db, name, &params);
 	free(name);
 
 	switch (ret) {
