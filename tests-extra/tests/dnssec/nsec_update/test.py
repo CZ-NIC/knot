@@ -105,4 +105,7 @@ t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
 for zone in zones:
     slave.zone_verify(zone)
 
+if slave.log_search("no such record in zone found") or slave.log_search("fallback to AXFR"):
+    set_err("IXFR ERROR")
+
 t.end()
