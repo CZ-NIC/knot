@@ -53,6 +53,9 @@ Removes changes coloring.
 Instead of reading jurnal, display the list of zones in the DB.
 (\fIzone_name\fP not needed)
 .TP
+\fB\-c\fP, \fB\-\-check\fP
+Enable additional journal semantic check.
+.TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP

@@ -30,6 +30,9 @@ Options
   Instead of reading jurnal, display the list of zones in the DB.
   (*zone_name* not needed)
 
+**-c**, **--check**
+  Enable additional journal semantic check.
+
 **-h**, **--help**
   Print the program help.
 

@@ -245,6 +245,7 @@ int main(int argc, char *argv[])
 		{ "limit",     required_argument, NULL, 'l' },
 		{ "no-color",  no_argument,       NULL, 'n' },
 		{ "zone-list", no_argument,       NULL, 'z' },
+		{ "check",     no_argument,       NULL, 'c' },
 		{ "debug",     no_argument,       NULL, 'd' },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
