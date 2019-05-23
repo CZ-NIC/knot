@@ -350,6 +350,15 @@ void zone_update_clear(zone_update_t *update)
 	memset(update, 0, sizeof(*update));
 }
 
+static changeset_flag_t changeset_flags(const zone_update_t *update)
+{
+	if ((update->flags & UPDATE_CANCELOUT)) {
+		return CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT;
+	} else {
+		return CHANGESET_CHECK;
+	}
+}
+
 int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 {
 	if (update == NULL || rrset == NULL) {
@@ -357,7 +366,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 	}
 
 	if (update->flags & UPDATE_INCREMENTAL) {
-		int ret = changeset_add_addition(&update->change, rrset, CHANGESET_CHECK);
+		int ret = changeset_add_addition(&update->change, rrset, changeset_flags(update));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -413,7 +422,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 	}
 
 	if (update->flags & UPDATE_INCREMENTAL) {
-		int ret = changeset_add_removal(&update->change, rrset, CHANGESET_CHECK);
+		int ret = changeset_add_removal(&update->change, rrset, changeset_flags(update));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -456,7 +465,7 @@ int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_
 				return KNOT_ENOENT;
 			}
 			int ret = changeset_add_removal(&update->change, &rrset,
-			                                CHANGESET_CHECK);
+			                                changeset_flags(update));
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -504,7 +513,7 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 			for (int i = 0; i < rrset_count; ++i) {
 				knot_rrset_t rrset = node_rrset_at(node, rrset_count - 1 - i);
 				int ret = changeset_add_removal(&update->change, &rrset,
-				                                CHANGESET_CHECK);
+				                                changeset_flags(update));
 				if (ret != KNOT_EOK) {
 					return ret;
 				}
@@ -546,7 +555,7 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 {
 	int ret = KNOT_EOK;
 	if (update->flags & UPDATE_INCREMENTAL) {
-		ret = changeset_merge(&update->change, changes, CHANGESET_CHECK_CANCELOUT);
+		ret = changeset_merge(&update->change, changes, changeset_flags(update));
 	}
 	if (ret == KNOT_EOK) {
 		ret = apply_changeset_directly(update->a_ctx, changes);
