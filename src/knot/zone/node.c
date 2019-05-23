@@ -390,22 +390,3 @@ bool node_bitmap_equal(const zone_node_t *a, const zone_node_t *b)
 	}
 	return true;
 }
-
-void node_size(const zone_node_t *node, size_t *size)
-{
-	if (node != NULL) {
-		int rrset_count = node->rrset_count;
-		for (int i = 0; i < rrset_count; i++) {
-			knot_rrset_t rrset = node_rrset_at(node, i);
-			*size += knot_rrset_size(&rrset);
-		}
-	}
-}
-
-void node_max_ttl(const zone_node_t *node, uint32_t *max)
-{
-	int rrset_count = node->rrset_count;
-	for (int i = 0; i < rrset_count; i++) {
-		*max = MAX(*max, node->rrs[i].ttl);
-	}
-}
