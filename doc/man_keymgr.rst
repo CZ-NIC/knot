@@ -212,6 +212,12 @@ Output timestamp formats
 **iso**
   The timestamps are printed in the ISO8601 format (e.g. 2016-12-31T23:59:00).
 
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
+
 Examples
 --------
 

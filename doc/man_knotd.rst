@@ -41,6 +41,12 @@ Parameters
 **-V**, **--version**
   Print the program version.
 
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
+
 See Also
 --------
 

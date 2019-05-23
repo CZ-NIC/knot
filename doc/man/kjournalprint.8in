@@ -68,6 +68,10 @@ A path to the journal database.
 \fIzone_name\fP
 A name of the zone to print the history for.
 .UNINDENT
+.SH EXIT VALUES
+.sp
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
 .SH EXAMPLES
 .sp
 Last (most recent) 5 changes without colors:

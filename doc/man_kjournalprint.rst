@@ -45,6 +45,12 @@ Parameters
 *zone_name*
   A name of the zone to print the history for.
 
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
+
 Examples
 --------
 
