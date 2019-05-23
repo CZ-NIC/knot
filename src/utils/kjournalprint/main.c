@@ -45,6 +45,7 @@ static void print_help(void)
 	       " -n, --no-color     Get output without terminal coloring.\n"
 	       " -z, --zone-list    Instead of reading jurnal, display the list\n"
 	       "                    of zones in the DB (<zone_name> not needed).\n"
+	       " -c, --check        Additional journal semantic checks.\n"
 	       " -d, --debug        Debug mode output.\n"
 	       " -h, --help         Print the program help.\n"
 	       " -V, --version      Print the program version.\n",
@@ -245,6 +246,7 @@ int main(int argc, char *argv[])
 		{ "limit",     required_argument, NULL, 'l' },
 		{ "no-color",  no_argument,       NULL, 'n' },
 		{ "zone-list", no_argument,       NULL, 'z' },
+		{ "check",     no_argument,       NULL, 'c' },
 		{ "debug",     no_argument,       NULL, 'd' },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
