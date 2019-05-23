@@ -222,6 +222,12 @@ Interactive mode behavior can be customized in `~/.editrc`. Refer to
 
 Command history is saved in `~/.knotc_history`.
 
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
+
 Examples
 --------
 

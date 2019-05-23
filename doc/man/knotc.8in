@@ -241,6 +241,10 @@ Interactive mode behavior can be customized in \fI~/.editrc\fP\&. Refer to
 \fBeditrc(5)\fP for details.
 .sp
 Command history is saved in \fI~/.knotc_history\fP\&.
+.SH EXIT VALUES
+.sp
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
 .SH EXAMPLES
 .SS Reload the whole server configuration
 .INDENT 0.0
