@@ -332,6 +332,12 @@ static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adju
 
 	zone_adjust_arg_t arg = { 0 };
 	arg.zone = zone;
+	if (tree_size != NULL) {
+		arg.zone_size = *tree_size;
+	}
+	if (tree_max_ttl != NULL) {
+		arg.zone_max_ttl = *tree_max_ttl;
+	}
 	arg.adjust_cb = adjust_cb;
 	arg.adjust_prevs = adjust_prevs;
 	arg.measure_size = measure_size;
@@ -365,21 +371,21 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 	}
 	zone->dnssec = node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
 
-	ssize_t nodes_size = 0, nsec3_size = 0;
-	uint32_t nodes_max_ttl = 0, nsec3_max_ttl = 0;
-	adjust_measure_size_t ms = (measure_size && nsec3_cb != NULL ? ADJUST_MEASURE_SIZE_NORM : ADJUST_MEASURE_SIZE_NONE);
+	ssize_t nodes_size = 0;
+	uint32_t nodes_max_ttl = 0;
+	adjust_measure_size_t ms = (measure_size && nodes_cb != NULL && nsec3_cb != NULL ? ADJUST_MEASURE_SIZE_NORM : ADJUST_MEASURE_SIZE_NONE);
 
 	if (nsec3_cb != NULL) {
-		ret = zone_adjust_tree(zone->nsec3_nodes, zone, nsec3_cb, &nsec3_size, &nsec3_max_ttl, true, ms);
+		ret = zone_adjust_tree(zone->nsec3_nodes, zone, nsec3_cb, &nodes_size, &nodes_max_ttl, true, ms);
 	}
 	if (ret == KNOT_EOK && nodes_cb != NULL) {
 		ret = zone_adjust_tree(zone->nodes, zone, nodes_cb, &nodes_size, &nodes_max_ttl, true, ms);
 	}
 	if (ret == KNOT_EOK && nodes_cb != NULL && nsec3_cb != NULL) {
 		if (measure_size) {
-			zone->size = nodes_size + nsec3_size;
+			zone->size = nodes_size;
 		}
-		zone->max_ttl = MAX(nodes_max_ttl, nsec3_max_ttl);
+		zone->max_ttl = nodes_max_ttl;
 	}
 	return ret;
 }
@@ -426,10 +432,10 @@ int zone_adjust_incremental_update(zone_update_t *update)
 {
 	int ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(update->new_cont, adjust_cb_point_to_nsec3, NULL, false);
+		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 	}
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
+		ret = zone_adjust_contents(update->new_cont, adjust_cb_point_to_nsec3, NULL, false);
 	}
 	if (ret == KNOT_EOK) {
 		ret = additionals_tree_update_from_binodes(
