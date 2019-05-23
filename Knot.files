@@ -227,6 +227,8 @@ src/knot/zone/adjust.c
 src/knot/zone/adjust.h
 src/knot/zone/contents.c
 src/knot/zone/contents.h
+src/knot/zone/measure.c
+src/knot/zone/measure.h
 src/knot/zone/node.c
 src/knot/zone/node.h
 src/knot/zone/semantic-check.c

@@ -159,6 +159,8 @@ libknotd_la_SOURCES = \
 	knot/zone/adjust.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
+	knot/zone/measure.h			\
+	knot/zone/measure.c			\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
