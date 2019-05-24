@@ -341,6 +341,15 @@ void _zone_events_schedule_at(zone_t *zone, ...)
 	va_end(args);
 }
 
+void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t  type) {
+
+	zone_events_schedule_now(zone, type);
+
+	while( zone->events.running || zone_events_get_time(zone, type) ) {
+		usleep(10000);
+	}
+}
+
 void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 {
 	if (!zone || !valid_event(type)) {
