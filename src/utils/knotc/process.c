@@ -225,7 +225,8 @@ int process_cmd(int argc, const char **argv, params_t *params)
 		.desc = desc,
 		.argc = argc - 1,
 		.argv = argv + 1,
-		.force = params->force
+		.force = params->force,
+		.blocking = params->blocking
 	};
 
 	/* Check for --force flag after command. */

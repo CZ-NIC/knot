@@ -18,6 +18,8 @@
 
 #include <pthread.h>
 #include <stdbool.h>
+#include <unistd.h>
+
 #include <sys/time.h>
 
 #include "knot/conf/conf.h"
@@ -128,6 +130,22 @@ void _zone_events_schedule_at(struct zone *zone, ...);
 
 #define zone_events_schedule_now(zone, type) \
 	zone_events_schedule_at(zone, type, time(NULL))
+
+/*!
+ * \brief Schedule new zone event as soon as possible and waits for it's 
+ * completion (end of task run).
+ *
+ *   t < 0: ignore change in the timer
+ *
+ * If the event is already scheduled, the new time will be set only if the
+ * new time is earlier than the currently scheduled one. To override the
+ * check, cancel and schedule the event in a single function call.
+ *
+ * \param zone  Zone to schedule new event for.
+ * \param ...   Sequence of zone_event_type_t and time_t terminated with
+ *              ZONE_EVENT_INVALID.
+ */
+void zone_events_schedule_blocking(struct zone *zone, int type);
 
 /*!
  * \brief Schedule zone event to now, with forced flag.

@@ -43,6 +43,7 @@ static void print_help(void)
 	       "                          "SPACE" (default %s)\n"
 	       " -t, --timeout <sec>      "SPACE"Use a control socket timeout (max 7200 seconds).\n"
 	       "                          "SPACE" (default %u seconds)\n"
+		   " -b, --blocking	          "SPACE"\n"
 	       " -f, --force              "SPACE"Forced operation. Overrides some checks.\n"
 	       " -v, --verbose            "SPACE"Enable debug output.\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
@@ -68,6 +69,7 @@ int main(int argc, char **argv)
 		{ "socket",        required_argument, NULL, 's' },
 		{ "timeout",       required_argument, NULL, 't' },
 		{ "force",         no_argument,       NULL, 'f' },
+		{ "blocking",      no_argument,       NULL, 'b' },
 		{ "verbose",       no_argument,       NULL, 'v' },
 		{ "help",          no_argument,       NULL, 'h' },
 		{ "version",       no_argument,       NULL, 'V' },
@@ -76,7 +78,7 @@ int main(int argc, char **argv)
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:fvhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:fbvhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			params.config = optarg;
@@ -105,6 +107,9 @@ int main(int argc, char **argv)
 			break;
 		case 'f':
 			params.force = true;
+			break;
+		case 'b':
+			params.blocking = true;
 			break;
 		case 'v':
 			params.verbose = true;
