@@ -30,11 +30,11 @@
 #include "knot/server/server.h"
 
 static const char *zone_str1 = "test. 600 IN SOA ns.test. m.test. 1 900 300 4800 900 \n";
-static const char *zone_str2 = "test. IN TXT \"test\"\n";
-static const char *add_str   = "test. IN TXT \"test2\"\n";
-static const char *del_str   = "test. IN TXT \"test\"\n";
-static const char *node_str1 = "node.test. IN TXT \"abc\"\n";
-static const char *node_str2 = "node.test. IN TXT \"def\"\n";
+static const char *zone_str2 = "test. 600 IN TXT \"test\"\n";
+static const char *add_str   = "test. 600 IN TXT \"test2\"\n";
+static const char *del_str   = "test. 600 IN TXT \"test\"\n";
+static const char *node_str1 = "node.test. 601 IN TXT \"abc\"\n";
+static const char *node_str2 = "node.test. 601 IN TXT \"def\"\n";
 
 knot_rrset_t rrset;
 
@@ -225,7 +225,7 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	ret = zone_update_commit(conf(), &update);
 	node = zone_contents_find_node_for_rr(zone->contents, &rrset);
 	rrset_present = node_contains_rr(node, &rrset);
-	ok(ret == KNOT_EOK && rrset_present, "full zone update: commit");
+	ok(ret == KNOT_EOK && rrset_present, "full zone update: commit (max TTL: %u)", zone->contents->max_ttl);
 
 	test_zone_unified(zone);
 
@@ -334,10 +334,13 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	knot_rdataset_clear(&rrset.rrs, NULL);
 
 	size_t zone_size1 = zone->contents->size;
+	uint32_t zone_max_ttl1 = zone->contents->max_ttl;
 	ret = zone_adjust_full(zone->contents);
 	ok(ret == KNOT_EOK, "zone adjust full shall work");
 	size_t zone_size2 = zone->contents->size;
+	uint32_t zone_max_ttl2 = zone->contents->max_ttl;
 	ok(zone_size1 == zone_size2, "zone size measured the same by incremental and full way (%zu, %zu)", zone_size1, zone_size2);
+	ok(zone_max_ttl1 == zone_max_ttl2, "zone max TTL measured the same increment and full (%u, %u)", zone_max_ttl1, zone_max_ttl2);
 	// TODO test more things after re-adjust, search for non-unified bi-nodes
 }
 

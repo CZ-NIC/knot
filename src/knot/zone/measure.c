@@ -80,7 +80,9 @@ static uint32_t re_measure_max_ttl(zone_contents_t *zone, uint32_t limit)
 		return limit;
 	}
 
-	while (!zone_tree_it_finished(&it) && knot_measure_node(zone_tree_it_val(&it), &m)) ;
+	while (!zone_tree_it_finished(&it) && knot_measure_node(zone_tree_it_val(&it), &m)) {
+		zone_tree_it_next(&it);
+	}
 	zone_tree_it_free(&it);
 
 	return m.max_ttl;
@@ -121,7 +123,7 @@ void knot_measure_finish_update(measure_t *m, zone_update_t *update)
 	case MEASURE_TTL_DIFF:
 		if (m->max_ttl >= update->zone->contents->max_ttl) {
 			update->new_cont->max_ttl = m->max_ttl;
-		} else if (update->zone->contents->max_ttl >= m->rem_max_ttl) {
+		} else if (update->zone->contents->max_ttl > m->rem_max_ttl) {
 			update->new_cont->max_ttl = update->zone->contents->max_ttl;
 		} else {
 			update->new_cont->max_ttl = re_measure_max_ttl(update->new_cont, update->zone->contents->max_ttl);
