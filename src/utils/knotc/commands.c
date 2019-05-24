@@ -442,7 +442,7 @@ static int cmd_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL,
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 		[KNOT_CTL_IDX_TYPE] = args->argc > 0 ? args->argv[0] : NULL
 	};
 
@@ -497,7 +497,7 @@ static int cmd_stats_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	int ret = set_stats_items(args, &data);
@@ -656,7 +656,7 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL,
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 		[KNOT_CTL_IDX_ZONE] = args->argv[0],
 		[KNOT_CTL_IDX_TYPE] = args->argv[1],
 	};
@@ -671,7 +671,7 @@ static int cmd_zone_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	// Check the number of arguments.
@@ -763,7 +763,7 @@ static int cmd_zone_filter_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	if (args->desc->cmd == CTL_ZONE_PURGE && !args->force) {
@@ -919,7 +919,7 @@ static int cmd_zone_node_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	char rdata[65536]; // Maximum item size in libknot control interface.
@@ -1040,7 +1040,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	// Send the command without parameters.
