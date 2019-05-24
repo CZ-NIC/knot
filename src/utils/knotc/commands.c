@@ -667,9 +667,13 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 
 static int cmd_zone_ctl(cmd_args_t *args)
 {
+	char flags[4];
+	if ( args->force ) strcat(flags, CTL_FLAG_FORCE);
+	if ( args->blocking ) strcat(flags, CTL_FLAG_BLOCKING);
+	
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = flags
 	};
 
 	// Check the number of arguments.

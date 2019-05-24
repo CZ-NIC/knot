@@ -44,6 +44,7 @@ typedef struct {
 	int argc;
 	const char **argv;
 	bool force;
+	bool blocking;
 } cmd_args_t;
 
 /*! \brief Command callback description. */
