@@ -19,9 +19,10 @@
 #include "libknot/libknot.h"
 #include "knot/server/server.h"
 
-#define CTL_FLAG_FORCE	"F"
-#define CTL_FLAG_ADD	"+"
-#define CTL_FLAG_REM	"-"
+#define CTL_FLAG_FORCE		"F"
+#define CTL_FLAG_BLOCKING	"B"
+#define CTL_FLAG_ADD		"+"
+#define CTL_FLAG_REM		"-"
 
 #define CTL_FILTER_FLUSH_OUTDIR		'd'
 

@@ -56,6 +56,9 @@ Use a control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 \fB\-t\fP, \fB\-\-timeout\fP \fIseconds\fP
 Use a control timeout in seconds. Set 0 for infinity (default is 10).
 .TP
+\fB\-b\fP, \fB\-\-blocking\fP
+Trigger commands will wait until the end of the triggered event.
+.TP
 \fB\-f\fP, \fB\-\-force\fP
 Forced operation. Overrides some checks.
 .TP
