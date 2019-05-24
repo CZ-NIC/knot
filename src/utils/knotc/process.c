@@ -47,6 +47,14 @@ static bool get_cmd_force_flag(const char *arg)
 	return false;
 }
 
+static bool get_cmd_blocking_flag(const char *arg)
+{
+	if (strcmp(arg, "-b") == 0 || strcmp(arg, "--blocking") == 0) {
+		return true;
+	}
+	return false;
+}
+
 int set_config(const cmd_desc_t *desc, params_t *params)
 {
 	if (params->config != NULL && params->confdb != NULL) {
@@ -225,16 +233,26 @@ int process_cmd(int argc, const char **argv, params_t *params)
 		.desc = desc,
 		.argc = argc - 1,
 		.argv = argv + 1,
-		.force = params->force
+		.force = params->force,
+		.blocking = params->blocking
 	};
 
 	/* Check for --force flag after command. */
-	if (args.argc > 0 && get_cmd_force_flag(args.argv[0])) {
-		args.force = true;
-		args.argc--;
-		args.argv++;
+	while (args.argc > 0) {
+		if (get_cmd_force_flag(args.argv[0])) {
+			args.force = true;
+			args.argc--;
+			args.argv++;
+		}
+		else if (get_cmd_blocking_flag(args.argv[0])) {
+			args.blocking = true;
+			args.argc--;
+			args.argv++;
+		}
+		else {
+			break;
+		}
 	}
-
 	/* Set control interface if necessary. */
 	ret = set_ctl(&args.ctl, desc, params);
 	if (ret != KNOT_EOK) {

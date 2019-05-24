@@ -400,7 +400,11 @@ static int zone_freeze(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	zone_events_schedule_now(zone, ZONE_EVENT_UFREEZE);
+	if(ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_BLOCKING)) {
+		zone_events_schedule_blocking(zone, ZONE_EVENT_UFREEZE);
+	} else {
+		zone_events_schedule_now(zone, ZONE_EVENT_UFREEZE);
+	}
 
 	return KNOT_EOK;
 }

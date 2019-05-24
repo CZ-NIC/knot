@@ -26,6 +26,7 @@ typedef struct {
 	const char *socket;
 	bool verbose;
 	bool force;
+	bool blocking;
 	int timeout;
 } params_t;
 
