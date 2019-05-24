@@ -21,12 +21,7 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/adds_tree.h"
-
-typedef enum {
-	ADJUST_MEASURE_SIZE_NONE = 0,
-	ADJUST_MEASURE_SIZE_NORM = 1,
-	ADJUST_MEASURE_SIZE_DIFF = -1,
-} adjust_measure_size_t;
+#include "knot/zone/measure.h"
 
 int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 {
@@ -276,12 +271,9 @@ typedef struct {
 	zone_node_t *first_node;
 	const zone_contents_t *zone;
 	zone_node_t *previous_node;
-	size_t zone_size;
-	size_t counter_size;
-	uint32_t zone_max_ttl;
 	adjust_cb_t adjust_cb;
 	bool adjust_prevs;
-	adjust_measure_size_t measure_size;
+	measure_t *m;
 } zone_adjust_arg_t;
 
 static int adjust_single(zone_node_t *node, void *data)
@@ -290,9 +282,8 @@ static int adjust_single(zone_node_t *node, void *data)
 	assert(data != NULL);
 
 	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
-	if (args->measure_size == ADJUST_MEASURE_SIZE_DIFF) {
-		node_size(binode_counterpart(node), &args->counter_size);
-	}
+
+	knot_measure_node(node, args->m);
 
 	if ((node->flags & NODE_FLAGS_DELETED)) {
 		return KNOT_EOK;
@@ -313,18 +304,11 @@ static int adjust_single(zone_node_t *node, void *data)
 		args->previous_node = node;
 	}
 
-	if (args->measure_size) {
-		node_size(node, &args->zone_size);
-	}
-
-	node_max_ttl(node, &args->zone_max_ttl);
-
 	return args->adjust_cb(node, args->zone);
 }
 
 static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adjust_cb_t adjust_cb,
-                            ssize_t *tree_size, uint32_t *tree_max_ttl, bool adjust_prevs,
-                            adjust_measure_size_t measure_size)
+                            bool adjust_prevs, measure_t *measure_ctx)
 {
 	if (zone_tree_is_empty(tree)) {
 		return KNOT_EOK;
@@ -334,7 +318,7 @@ static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adju
 	arg.zone = zone;
 	arg.adjust_cb = adjust_cb;
 	arg.adjust_prevs = adjust_prevs;
-	arg.measure_size = measure_size;
+	arg.m = measure_ctx;
 
 	int ret = zone_tree_apply(tree, adjust_single, &arg);
 	if (ret != KNOT_EOK) {
@@ -345,16 +329,10 @@ static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adju
 		arg.first_node->prev = arg.previous_node;
 	}
 
-	if (tree_size != NULL) {
-		*tree_size = arg.zone_size - arg.counter_size;
-	}
-	if (tree_max_ttl != NULL) {
-		*tree_max_ttl = arg.zone_max_ttl;
-	}
 	return KNOT_EOK;
 }
 
-int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb, bool measure_size)
+int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb, bool measure_zone)
 {
 	int ret = zone_contents_load_nsec3param(zone);
 	if (ret != KNOT_EOK) {
@@ -365,39 +343,33 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 	}
 	zone->dnssec = node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
 
-	ssize_t nodes_size = 0, nsec3_size = 0;
-	uint32_t nodes_max_ttl = 0, nsec3_max_ttl = 0;
-	adjust_measure_size_t ms = (measure_size && nsec3_cb != NULL ? ADJUST_MEASURE_SIZE_NORM : ADJUST_MEASURE_SIZE_NONE);
+	measure_t m = knot_measure_init(measure_zone, false);
 
 	if (nsec3_cb != NULL) {
-		ret = zone_adjust_tree(zone->nsec3_nodes, zone, nsec3_cb, &nsec3_size, &nsec3_max_ttl, true, ms);
+		ret = zone_adjust_tree(zone->nsec3_nodes, zone, nsec3_cb, true, &m);
 	}
 	if (ret == KNOT_EOK && nodes_cb != NULL) {
-		ret = zone_adjust_tree(zone->nodes, zone, nodes_cb, &nodes_size, &nodes_max_ttl, true, ms);
+		ret = zone_adjust_tree(zone->nodes, zone, nodes_cb, true, &m);
 	}
-	if (ret == KNOT_EOK && nodes_cb != NULL && nsec3_cb != NULL) {
-		if (measure_size) {
-			zone->size = nodes_size + nsec3_size;
-		}
-		zone->max_ttl = MAX(nodes_max_ttl, nsec3_max_ttl);
+	if (ret == KNOT_EOK && measure_zone && nodes_cb != NULL && nsec3_cb != NULL) {
+		knot_measure_finish_zone(&m, zone);
 	}
 	return ret;
 }
 
-int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb, bool measure_size)
+int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb, bool measure_diff)
 {
 	int ret = KNOT_EOK;
-	adjust_measure_size_t ms = (measure_size && nsec3_cb != NULL ? ADJUST_MEASURE_SIZE_DIFF : ADJUST_MEASURE_SIZE_NONE);
-	ssize_t nodes_size = 0, nsec3_size = 0;
+	measure_t m = knot_measure_init(false, measure_diff);
 
 	if (nsec3_cb != NULL) {
-		ret = zone_adjust_tree(update->a_ctx->nsec3_ptrs, update->new_cont, nsec3_cb, &nsec3_size, NULL, false, ms);
+		ret = zone_adjust_tree(update->a_ctx->nsec3_ptrs, update->new_cont, nsec3_cb, false, &m);
 	}
 	if (ret == KNOT_EOK && nodes_cb != NULL) {
-		ret = zone_adjust_tree(update->a_ctx->node_ptrs, update->new_cont, nodes_cb, &nodes_size, NULL, false, ms);
+		ret = zone_adjust_tree(update->a_ctx->node_ptrs, update->new_cont, nodes_cb, false, &m);
 	}
-	if (ret == KNOT_EOK && measure_size && nodes_cb != NULL && nsec3_cb != NULL) {
-		update->new_cont->size += nodes_size + nsec3_size;
+	if (ret == KNOT_EOK && measure_diff && nodes_cb != NULL && nsec3_cb != NULL) {
+		knot_measure_finish_update(&m, update);
 	}
 	return ret;
 }
@@ -426,10 +398,10 @@ int zone_adjust_incremental_update(zone_update_t *update)
 {
 	int ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(update->new_cont, adjust_cb_point_to_nsec3, NULL, false);
+		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 	}
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
+		ret = zone_adjust_contents(update->new_cont, adjust_cb_point_to_nsec3, NULL, false);
 	}
 	if (ret == KNOT_EOK) {
 		ret = additionals_tree_update_from_binodes(
