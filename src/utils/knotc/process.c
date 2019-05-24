@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,8 +14,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <stddef.h>
 #include <sys/stat.h>
 
+#include "contrib/openbsd/strlcat.h"
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
 #include "utils/knotc/commands.h"
@@ -42,6 +44,14 @@ static const cmd_desc_t *get_cmd_desc(const char *command)
 static bool get_cmd_force_flag(const char *arg)
 {
 	if (strcmp(arg, "-f") == 0 || strcmp(arg, "--force") == 0) {
+		return true;
+	}
+	return false;
+}
+
+static bool get_cmd_blocking_flag(const char *arg)
+{
+	if (strcmp(arg, "-b") == 0 || strcmp(arg, "--blocking") == 0) {
 		return true;
 	}
 	return false;
@@ -225,14 +235,31 @@ int process_cmd(int argc, const char **argv, params_t *params)
 		.desc = desc,
 		.argc = argc - 1,
 		.argv = argv + 1,
-		.force = params->force
+		.force = params->force,
+		.blocking = params->blocking
 	};
 
-	/* Check for --force flag after command. */
-	if (args.argc > 0 && get_cmd_force_flag(args.argv[0])) {
-		args.force = true;
-		args.argc--;
-		args.argv++;
+	/* Check for special flags after command. */
+	while (args.argc > 0) {
+		if (get_cmd_force_flag(args.argv[0])) {
+			args.force = true;
+			args.argc--;
+			args.argv++;
+		} else if (get_cmd_blocking_flag(args.argv[0])) {
+			args.blocking = true;
+			args.argc--;
+			args.argv++;
+		} else {
+			break;
+		}
+	}
+
+	/* Prepare flags parameter. */
+	if (args.force) {
+		strlcat(args.flags, CTL_FLAG_FORCE, sizeof(args.flags));
+	}
+	if (args.blocking) {
+		strlcat(args.flags, CTL_FLAG_BLOCKING, sizeof(args.flags));
 	}
 
 	/* Set control interface if necessary. */
