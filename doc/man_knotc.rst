@@ -33,6 +33,9 @@ Parameters
 **-t**, **--timeout** *seconds*
   Use a control timeout in seconds. Set 0 for infinity (default is 10).
 
+**-b**, **--blocking**
+  Trigger commands will wait until end of triggered event.
+
 **-f**, **--force**
   Forced operation. Overrides some checks.
 

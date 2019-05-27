@@ -43,6 +43,7 @@ static void print_help(void)
 	       "                          "SPACE" (default %s)\n"
 	       " -t, --timeout <sec>      "SPACE"Use a control socket timeout (max 7200 seconds).\n"
 	       "                          "SPACE" (default %u seconds)\n"
+		   " -b, --blocking	          "SPACE"\n"
 	       " -f, --force              "SPACE"Forced operation. Overrides some checks.\n"
 	       " -v, --verbose            "SPACE"Enable debug output.\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
