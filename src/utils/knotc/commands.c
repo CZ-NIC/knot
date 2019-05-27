@@ -667,9 +667,10 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 
 static int cmd_zone_ctl(cmd_args_t *args)
 {
-	char flags[4];
-	if ( args->force ) strcat(flags, CTL_FLAG_FORCE);
-	if ( args->blocking ) strcat(flags, CTL_FLAG_BLOCKING);
+	size_t flags_size = 4;
+	char flags[flags_size];
+	if ( args->force ) strlcat(flags, CTL_FLAG_FORCE, flags_size);
+	if ( args->blocking ) strlcat(flags, CTL_FLAG_BLOCKING, flags_size);
 	
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
