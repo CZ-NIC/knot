@@ -43,6 +43,7 @@ typedef struct {
 	knot_ctl_t *ctl;
 	int argc;
 	const char **argv;
+	char flags[4];
 	bool force;
 	bool blocking;
 } cmd_args_t;
