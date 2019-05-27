@@ -433,16 +433,25 @@ static int ctl_receive(cmd_args_t *args)
 	return KNOT_EOK;
 }
 
+static void cmd_flags_init(cmd_args_t *args)
+{
+	size_t flags_size = sizeof(args->flags);
+	if ( args->force ) strlcat(args->flags, CTL_FLAG_FORCE, flags_size);
+	if ( args->blocking ) strlcat(args->flags, CTL_FLAG_BLOCKING, flags_size);
+}
+
 static int cmd_ctl(cmd_args_t *args)
 {
 	int ret = check_args(args, 0, (args->desc->cmd == CTL_STATUS ? 1 : 0));
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	
+	cmd_flags_init(args);
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL,
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 		[KNOT_CTL_IDX_TYPE] = args->argc > 0 ? args->argv[0] : NULL
 	};
 
@@ -495,9 +504,11 @@ static int set_stats_items(cmd_args_t *args, knot_ctl_data_t *data)
 
 static int cmd_stats_ctl(cmd_args_t *args)
 {
+	cmd_flags_init(args);
+
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags
 	};
 
 	int ret = set_stats_items(args, &data);
@@ -652,9 +663,11 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 		return ret;
 	}
 
+	cmd_flags_init(args);
+
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL,
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 		[KNOT_CTL_IDX_ZONE] = args->argv[0],
 		[KNOT_CTL_IDX_TYPE] = args->argv[1],
 	};
@@ -667,14 +680,11 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 
 static int cmd_zone_ctl(cmd_args_t *args)
 {
-	size_t flags_size = 4;
-	char flags[flags_size];
-	if ( args->force ) strlcat(flags, CTL_FLAG_FORCE, flags_size);
-	if ( args->blocking ) strlcat(flags, CTL_FLAG_BLOCKING, flags_size);
-	
+	cmd_flags_init(args);
+
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = flags
+		[KNOT_CTL_IDX_FLAGS] = args->flags
 	};
 
 	// Check the number of arguments.
@@ -764,9 +774,11 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 
 static int cmd_zone_filter_ctl(cmd_args_t *args)
 {
+	cmd_flags_init(args);
+
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags
 	};
 
 	if (args->desc->cmd == CTL_ZONE_PURGE && !args->force) {
@@ -920,9 +932,11 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 
 static int cmd_zone_node_ctl(cmd_args_t *args)
 {
+	cmd_flags_init(args);
+
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags
 	};
 
 	char rdata[65536]; // Maximum item size in libknot control interface.
@@ -1041,9 +1055,11 @@ static int cmd_conf_ctl(cmd_args_t *args)
 		return ret;
 	}
 
+	cmd_flags_init(args);
+
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags
 	};
 
 	// Send the command without parameters.
