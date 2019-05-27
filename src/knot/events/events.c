@@ -345,8 +345,10 @@ void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t  type) {
 
 	zone_events_schedule_now(zone, type);
 
-	while( zone->events.running || zone_events_get_time(zone, type) ) {
+	time_t run_time = zone_events_get_time(zone, type);
+	while (zone->events.running == type || (run_time > 0 && run_time <= time(NULL))) {
 		usleep(10000);
+		run_time = zone_events_get_time(zone, type);
 	}
 }
 

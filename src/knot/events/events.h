@@ -30,9 +30,9 @@
 struct zone;
 
 typedef enum zone_event_type {
-	ZONE_EVENT_INVALID = -1,
+	ZONE_EVENT_INVALID = 0,
 	// supported event types
-	ZONE_EVENT_LOAD = 0,
+	ZONE_EVENT_LOAD,
 	ZONE_EVENT_REFRESH,
 	ZONE_EVENT_UPDATE,
 	ZONE_EVENT_EXPIRE,
@@ -50,7 +50,7 @@ typedef enum zone_event_type {
 typedef struct zone_events {
 	pthread_mutex_t mx;		//!< Mutex protecting the struct.
 	pthread_mutex_t reschedule_lock;//!< Prevent concurrent reschedule() making mess.
-	bool running;			//!< Some zone event is being run.
+	zone_event_type_t running;			//!< Some zone event is being run.
 	bool frozen;			//!< Terminated, don't schedule new events.
 	bool ufrozen;			//!< Updates to the zone temporarily frozen by user.
 
@@ -145,7 +145,7 @@ void _zone_events_schedule_at(struct zone *zone, ...);
  * \param ...   Sequence of zone_event_type_t and time_t terminated with
  *              ZONE_EVENT_INVALID.
  */
-void zone_events_schedule_blocking(struct zone *zone, int type);
+void zone_events_schedule_blocking(struct zone *zone, zone_event_type_t type);
 
 /*!
  * \brief Schedule zone event to now, with forced flag.
