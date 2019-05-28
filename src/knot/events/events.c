@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <time.h>
+#include <unistd.h>
 #include <urcu.h>
 
 #include "libknot/libknot.h"
@@ -211,6 +212,7 @@ static void event_wrap(task_t *task)
 		pthread_mutex_unlock(&events->mx);
 		return;
 	}
+	events->type = type;
 	event_set_time(events, type, 0);
 	events->forced[type] = false;
 	pthread_mutex_unlock(&events->mx);
@@ -235,6 +237,7 @@ static void event_wrap(task_t *task)
 
 	pthread_mutex_lock(&events->mx);
 	events->running = false;
+	events->type = ZONE_EVENT_INVALID;
 	pthread_mutex_unlock(&events->mx);
 	reschedule(events);
 }
@@ -358,6 +361,26 @@ void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 	reschedule(events);
 }
 
+void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool user)
+{
+	if (!zone || !valid_event(type)) {
+		return;
+	}
+
+	if (user) {
+		zone_events_schedule_user(zone, type);
+	} else {
+		zone_events_schedule_now(zone, type);
+	}
+
+	time_t run_time = zone_events_get_time(zone, type);
+	while ((zone->events.running && zone->events.type == type) ||
+	       (run_time > 0 && run_time <= time(NULL))) {
+		usleep(20000);
+		run_time = zone_events_get_time(zone, type);
+	}
+}
+
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 {
 	if (!zone || !valid_event(type)) {
@@ -372,6 +395,7 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 	if (!events->running && !events->frozen &&
 	    (!events->ufrozen || !ufreeze_applies(type))) {
 		events->running = true;
+		events->type = type;
 		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
 		worker_pool_assign(events->pool, &events->task);
 		pthread_mutex_unlock(&events->mx);
