@@ -48,7 +48,10 @@ typedef enum zone_event_type {
 typedef struct zone_events {
 	pthread_mutex_t mx;		//!< Mutex protecting the struct.
 	pthread_mutex_t reschedule_lock;//!< Prevent concurrent reschedule() making mess.
+
+	zone_event_type_t type;		//!< Type of running event.
 	bool running;			//!< Some zone event is being run.
+
 	bool frozen;			//!< Terminated, don't schedule new events.
 	bool ufrozen;			//!< Updates to the zone temporarily frozen by user.
 
@@ -128,6 +131,15 @@ void _zone_events_schedule_at(struct zone *zone, ...);
 
 #define zone_events_schedule_now(zone, type) \
 	zone_events_schedule_at(zone, type, time(NULL))
+
+/*!
+ * \brief Schedule new zone event as soon as possible and wait for it's
+ * completion (end of task run), with optional forced flag.
+ *
+ * \param zone  Zone to schedule new event for.
+ * \param type  Zone event type.
+ */
+void zone_events_schedule_blocking(struct zone *zone, zone_event_type_t type, bool user);
 
 /*!
  * \brief Schedule zone event to now, with forced flag.
