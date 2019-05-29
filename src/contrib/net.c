@@ -391,10 +391,14 @@ static void msg_iov_shift(struct msghdr *msg, size_t done)
  *
  */
 static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
-                       bool oneshot, int timeout_ms)
+                       bool oneshot, int *timeout_ms)
 {
 	size_t done = 0;
 	size_t total = msg_iov_len(msg);
+
+	int time_running_ms = 0;
+	struct timespec to_start, to_end; 
+	clock_gettime(CLOCK_MONOTONIC, &to_start);
 
 	for (;;) {
 		/* Perform I/O. */
@@ -413,7 +417,13 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 		/* Wait for data readiness. */
 		if (ret > 0 || (ret == -1 && io_should_wait(errno))) {
 			do {
-				ret = io->wait(fd, timeout_ms);
+				ret = io->wait(fd, *timeout_ms - time_running_ms);
+				
+				clock_gettime(CLOCK_MONOTONIC, &to_end);
+				time_running_ms = (to_end.tv_sec - to_start.tv_sec) * 1000 + (to_end.tv_nsec - to_start.tv_nsec) / 1000000;
+				if(time_running_ms >= *timeout_ms) {
+					return KNOT_ETIMEOUT;
+				}
 			} while (ret == -1 && errno == EINTR);
 			if (ret == 1) {
 				continue;
@@ -426,6 +436,11 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 		return KNOT_ECONN;
 	}
 
+	clock_gettime(CLOCK_MONOTONIC, &to_end);
+	*timeout_ms -= (to_end.tv_sec - to_start.tv_sec) * 1000 + (to_end.tv_nsec - to_start.tv_nsec) / 1000000;
+	if(*timeout_ms < 0) {
+		return KNOT_ETIMEOUT;
+	}
 	return done;
 }
 
@@ -439,14 +454,20 @@ static int recv_wait(int fd, int timeout_ms)
 	return poll_one(fd, POLLIN, timeout_ms);
 }
 
-static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, int timeout_ms)
+static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, int *timeout_ms)
 {
 	static const struct io RECV_IO = {
 		.process = recv_process,
 		.wait = recv_wait
 	};
 
-	return io_exec(&RECV_IO, sock, msg, oneshot, timeout_ms);
+	ssize_t ret = io_exec(&RECV_IO, sock, msg, oneshot, timeout_ms);
+
+	if(*timeout_ms < 0) {
+		return KNOT_ETIMEOUT;
+	}
+
+	return ret;
 }
 
 static ssize_t send_process(int fd, struct msghdr *msg)
@@ -459,7 +480,7 @@ static int send_wait(int fd, int timeout_ms)
 	return poll_one(fd, POLLOUT, timeout_ms);
 }
 
-static ssize_t send_data(int sock, struct msghdr *msg, int timeout_ms)
+static ssize_t send_data(int sock, struct msghdr *msg, int *timeout_ms)
 {
 	static const struct io SEND_IO = {
 		.process = send_process,
@@ -488,7 +509,7 @@ ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	int ret = send_data(sock, &msg, timeout_ms);
+	int ret = send_data(sock, &msg, &timeout_ms);
 	if (ret < 0) {
 		return ret;
 	} else if (ret != size) {
@@ -515,7 +536,7 @@ ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	return recv_data(sock, &msg, true, timeout_ms);
+	return recv_data(sock, &msg, true, &timeout_ms);
 }
 
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
@@ -558,7 +579,7 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeo
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 2;
 
-	ssize_t ret = send_data(sock, &msg, timeout_ms);
+	ssize_t ret = send_data(sock, &msg, &timeout_ms);
 	if (ret < 0) {
 		return ret;
 	}
@@ -581,11 +602,12 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	uint16_t pktsize = 0;
 	iov.iov_base = &pktsize;
 	iov.iov_len = sizeof(pktsize);
-	int ret = recv_data(sock, &msg, false, timeout_ms);
+
+	int ret = recv_data(sock, &msg, false, &timeout_ms);
 	if (ret != sizeof(pktsize)) {
 		return ret;
 	}
-
+	
 	pktsize = ntohs(pktsize);
 
 	/* Check packet size */
@@ -598,5 +620,6 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	msg.msg_iovlen = 1;
 	iov.iov_base = buffer;
 	iov.iov_len = pktsize;
-	return recv_data(sock, &msg, false, timeout_ms);
+
+	return recv_data(sock, &msg, false, &timeout_ms);
 }
