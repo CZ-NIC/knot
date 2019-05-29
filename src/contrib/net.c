@@ -25,8 +25,10 @@
 #include <unistd.h>
 
 #include "libknot/errcode.h"
+#include "contrib/macros.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+#include "contrib/time.h"
 
 /*
  * OS X doesn't support MSG_NOSIGNAL. Use SO_NOSIGPIPE socket option instead.
@@ -384,14 +386,26 @@ static void msg_iov_shift(struct msghdr *msg, size_t done)
 	assert(done == 0);
 }
 
+#define TIMEOUT_CTX_INIT \
+	struct timespec begin, end; \
+	if (*timeout_ptr > 0) { \
+		clock_gettime(CLOCK_MONOTONIC, &begin); \
+	}
+
+#define TIMEOUT_CTX_UPDATE \
+	if (*timeout_ptr > 0) { \
+		clock_gettime(CLOCK_MONOTONIC, &end); \
+		int running_ms = time_diff_ms(&end, &begin); \
+		*timeout_ptr = MAX(*timeout_ptr - running_ms, 0); \
+	}
+
 /*!
  * \brief Perform an I/O operation with a socket with waiting.
  *
  * \param oneshot  If set, doesn't wait until the buffer is fully processed.
- *
  */
 static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
-                       bool oneshot, int timeout_ms)
+                       bool oneshot, int *timeout_ptr)
 {
 	size_t done = 0;
 	size_t total = msg_iov_len(msg);
@@ -412,18 +426,31 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 
 		/* Wait for data readiness. */
 		if (ret > 0 || (ret == -1 && io_should_wait(errno))) {
-			do {
-				ret = io->wait(fd, timeout_ms);
-			} while (ret == -1 && errno == EINTR);
-			if (ret == 1) {
-				continue;
-			} else if (ret == 0) {
-				return KNOT_ETIMEOUT;
-			}
-		}
+			for (;;) {
+				TIMEOUT_CTX_INIT
 
-		/* Disconnected or error. */
-		return KNOT_ECONN;
+				ret = io->wait(fd, *timeout_ptr);
+
+				if (ret == 1) {
+					TIMEOUT_CTX_UPDATE
+					/* Ready, retry process. */
+					break;
+				} else if (ret == -1 && errno == EINTR) {
+					TIMEOUT_CTX_UPDATE
+					/* Interrupted, continue waiting. */
+					continue;
+				} else if (ret == 0) {
+					/* Timeouted, exit. */
+					return KNOT_ETIMEOUT;
+				} else {
+					/* Other error, exit. */
+					return KNOT_ECONN;
+				}
+			}
+		} else {
+			/* Disconnect or error. */
+			return KNOT_ECONN;
+		}
 	}
 
 	return done;
@@ -439,14 +466,14 @@ static int recv_wait(int fd, int timeout_ms)
 	return poll_one(fd, POLLIN, timeout_ms);
 }
 
-static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, int timeout_ms)
+static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, int *timeout_ptr)
 {
 	static const struct io RECV_IO = {
 		.process = recv_process,
 		.wait = recv_wait
 	};
 
-	return io_exec(&RECV_IO, sock, msg, oneshot, timeout_ms);
+	return io_exec(&RECV_IO, sock, msg, oneshot, timeout_ptr);
 }
 
 static ssize_t send_process(int fd, struct msghdr *msg)
@@ -459,14 +486,14 @@ static int send_wait(int fd, int timeout_ms)
 	return poll_one(fd, POLLOUT, timeout_ms);
 }
 
-static ssize_t send_data(int sock, struct msghdr *msg, int timeout_ms)
+static ssize_t send_data(int sock, struct msghdr *msg, int *timeout_ptr)
 {
 	static const struct io SEND_IO = {
 		.process = send_process,
 		.wait = send_wait
 	};
 
-	return io_exec(&SEND_IO, sock, msg, false, timeout_ms);
+	return io_exec(&SEND_IO, sock, msg, false, timeout_ptr);
 }
 
 /* -- generic stream and datagram I/O -------------------------------------- */
@@ -488,7 +515,7 @@ ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	int ret = send_data(sock, &msg, timeout_ms);
+	int ret = send_data(sock, &msg, &timeout_ms);
 	if (ret < 0) {
 		return ret;
 	} else if (ret != size) {
@@ -515,7 +542,7 @@ ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	return recv_data(sock, &msg, true, timeout_ms);
+	return recv_data(sock, &msg, true, &timeout_ms);
 }
 
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
@@ -558,7 +585,7 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeo
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 2;
 
-	ssize_t ret = send_data(sock, &msg, timeout_ms);
+	ssize_t ret = send_data(sock, &msg, &timeout_ms);
 	if (ret < 0) {
 		return ret;
 	}
@@ -581,11 +608,11 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	uint16_t pktsize = 0;
 	iov.iov_base = &pktsize;
 	iov.iov_len = sizeof(pktsize);
-	int ret = recv_data(sock, &msg, false, timeout_ms);
+
+	int ret = recv_data(sock, &msg, false, &timeout_ms);
 	if (ret != sizeof(pktsize)) {
 		return ret;
 	}
-
 	pktsize = ntohs(pktsize);
 
 	/* Check packet size */
@@ -598,5 +625,6 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	msg.msg_iovlen = 1;
 	iov.iov_base = buffer;
 	iov.iov_len = pktsize;
-	return recv_data(sock, &msg, false, timeout_ms);
+
+	return recv_data(sock, &msg, false, &timeout_ms);
 }
