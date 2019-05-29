@@ -1,21 +1,2 @@
-$TTL 24h
-$ORIGIN tul.cz.
-@                IN      SOA     bubo.tul.cz.  satrapa.bubo.tul.cz. (
-                                 201905290
-                                 3600
-                                 1800
-                                 2419200
-                                 86400
-                                 )
-
-                 IN      NS      bubo.tul.cz.
-                 IN      NS      tul.cesnet.cz.
-
-                 IN     MX      0       bubo.tul.cz.
-                 IN     MX      50      tul.cesnet.cz.
-
-$INCLUDE "./includes/adm.tul.cz.zone";
-$INCLUDE "./includes/is.tul.cz.zone";
-
-web              IN      A       147.230.16.27
-www              IN      CNAME   web.tul.cz.
+$INCLUDE "./includes/adm.tul.cz.zone"
+$INCLUDE "./includes/is.tul.cz.zone"
