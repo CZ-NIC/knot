@@ -18,6 +18,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 #include <sys/socket.h>
 
 /*!
