@@ -115,7 +115,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	rcu_read_unlock();
 
 	/* Receive data. */
-	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, timeout);
+	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, timeout);	
 	if (ret <= 0) {
 		if (ret == KNOT_EAGAIN) {
 			char addr_str[SOCKADDR_STRLEN] = {0};
