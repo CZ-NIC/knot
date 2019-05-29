@@ -386,15 +386,15 @@ int knot_nsec_changeset_remove(const zone_node_t *n, zone_update_t *update)
 
 	int result = KNOT_EOK;
 	knot_rrset_t nsec_rem = node_rrset(n, KNOT_RRTYPE_NSEC);
+	knot_rrset_t nsec3_rem = node_rrset(n, KNOT_RRTYPE_NSEC3);
+	knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
+
 	if (!knot_rrset_empty(&nsec_rem)) {
 		result = zone_update_remove(update, &nsec_rem);
 	}
-	nsec_rem = node_rrset(n, KNOT_RRTYPE_NSEC3);
-	if (result == KNOT_EOK && !knot_rrset_empty(&nsec_rem)) {
-		result = zone_update_remove(update, &nsec_rem);
+	if (result == KNOT_EOK && !knot_rrset_empty(&nsec3_rem)) {
+		result = zone_update_remove(update, &nsec3_rem);
 	}
-
-	knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
 	if (!knot_rrset_empty(&rrsigs) && result == KNOT_EOK) {
 		knot_rrset_t synth_rrsigs;
 		knot_rrset_init(&synth_rrsigs, n->owner, KNOT_RRTYPE_RRSIG,
