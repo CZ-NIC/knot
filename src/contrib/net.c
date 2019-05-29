@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include "libknot/errcode.h"
+#include "contrib/macros.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
@@ -392,7 +393,7 @@ static void msg_iov_shift(struct msghdr *msg, size_t done)
  *
  */
 static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
-                       bool oneshot, int *timeout_ms)
+                       bool oneshot, int *timeout_msp)
 {
 	size_t done = 0;
 	size_t total = msg_iov_len(msg);
@@ -414,20 +415,19 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 		/* Wait for data readiness. */
 		if (ret > 0 || (ret == -1 && io_should_wait(errno))) {
 			struct timespec begin, end;
-			if (*timeout_ms > 0) {
+			if (*timeout_msp > 0) {
 				clock_gettime(CLOCK_MONOTONIC, &begin);
 			}
 
 			do {
-				ret = io->wait(fd, *timeout_ms);
+				ret = io->wait(fd, *timeout_msp);
 			} while (ret == -1 && errno == EINTR);
 
 			if (ret == 1) {
-				if (*timeout_ms > 0) {
+				if (*timeout_msp > 0) {
 					clock_gettime(CLOCK_MONOTONIC, &end);
 					int running_ms = time_diff_ms(&end, &begin);
-					assert(running_ms <= *timeout_ms);
-					*timeout_ms -= running_ms;
+					*timeout_msp = MAX(*timeout_msp - running_ms, 0);
 				}
 				continue;
 			} else if (ret == 0) {
@@ -452,14 +452,14 @@ static int recv_wait(int fd, int timeout_ms)
 	return poll_one(fd, POLLIN, timeout_ms);
 }
 
-static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, int *timeout_ms)
+static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, int *timeout_msp)
 {
 	static const struct io RECV_IO = {
 		.process = recv_process,
 		.wait = recv_wait
 	};
 
-	return io_exec(&RECV_IO, sock, msg, oneshot, timeout_ms);
+	return io_exec(&RECV_IO, sock, msg, oneshot, timeout_msp);
 }
 
 static ssize_t send_process(int fd, struct msghdr *msg)
@@ -472,14 +472,14 @@ static int send_wait(int fd, int timeout_ms)
 	return poll_one(fd, POLLOUT, timeout_ms);
 }
 
-static ssize_t send_data(int sock, struct msghdr *msg, int *timeout_ms)
+static ssize_t send_data(int sock, struct msghdr *msg, int *timeout_msp)
 {
 	static const struct io SEND_IO = {
 		.process = send_process,
 		.wait = send_wait
 	};
 
-	return io_exec(&SEND_IO, sock, msg, false, timeout_ms);
+	return io_exec(&SEND_IO, sock, msg, false, timeout_msp);
 }
 
 /* -- generic stream and datagram I/O -------------------------------------- */
