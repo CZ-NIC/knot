@@ -1,30 +1,21 @@
-$ORIGIN .
-$TTL	1
+$TTL 24h
+$ORIGIN tul.cz.
+@                IN      SOA     bubo.tul.cz.  satrapa.bubo.tul.cz. (
+                                 201905290
+                                 3600
+                                 1800
+                                 2419200
+                                 86400
+                                 )
 
-; OK
-0.	NS	@
+                 IN      NS      bubo.tul.cz.
+                 IN      NS      tul.cesnet.cz.
 
-$INCLUDE ./includes/include1				; Relative path without origin
-$INCLUDE ./includes/include				; Relative path without origin
-1.	NS	@
+                 IN     MX      0       bubo.tul.cz.
+                 IN     MX      50      tul.cesnet.cz.
 
-$INCLUDE "./includes/include2"	.			; Quoted filename and the simplest origin
-2.	NS	@
+$INCLUDE "./includes/adm.tul.cz.zone";
+$INCLUDE "./includes/is.tul.cz.zone";
 
-$INCLUDE ./includes/include\050	tld.			; Simple origin
-3.	NS	@
-
-$INCLUDE \./includes/include2	_a_.-b-c-./d/.		; Slashed character in file name, allowed characters in origin
-4.	NS	@
-
-$INCLUDE ./includes/include2	\0320\ \\\"\.\@\*.tld.	; Origin with special chars
-5.	NS	@
-
-$INCLUDE @TMPDIR@/includes/include2		; Absolute path without origin
-6.	NS	@
-
-$INCLUDE @TMPDIR@/includes/include2	tld.	; Absolute path with origin
-7.	NS	@
-
-; KO (DISABLED - different results)
-;$INCLUDE						; Empty parameters
+web              IN      A       147.230.16.27
+www              IN      CNAME   web.tul.cz.
