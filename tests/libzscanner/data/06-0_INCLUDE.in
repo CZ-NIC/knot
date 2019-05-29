@@ -5,6 +5,7 @@ $TTL	1
 0.	NS	@
 
 $INCLUDE ./includes/include1				; Relative path without origin
+$INCLUDE ./includes/include				; Relative path without origin
 1.	NS	@
 
 $INCLUDE "./includes/include2"	.			; Quoted filename and the simplest origin
