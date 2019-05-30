@@ -136,6 +136,7 @@ General options related to the server.
      async-start: BOOL
      tcp-handshake-timeout: TIME
      tcp-idle-timeout: TIME
+     tcp-query-timeout: TIME
      tcp-reply-timeout: TIME
      max-tcp-clients: INT
      max-udp-payload: SIZE
@@ -265,6 +266,15 @@ Maximum idle time between requests on a TCP connection. This also limits
 receiving of a single query, each query must be received in this time limit.
 
 *Default:* 20
+
+.. _server_tcp-query-timeout:
+
+tcp-query-timeout
+-----------------
+
+Limits time (in milliseconds) for receiving a single query.
+
+*Default:* 200
 
 .. _server_tcp-reply-timeout:
 

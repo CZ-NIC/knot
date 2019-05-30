@@ -40,26 +40,26 @@ changes are colored for terminal.
 .SS Options
 .INDENT 0.0
 .TP
-\fB\-l\fP, \fB\-\-limit\fP \fIlimit\fP
+\fB\-l\fP, \fB–limit\fP \fIlimit\fP
 Limits the number of displayed changes.
 .TP
-\fB\-d\fP, \fB\-\-debug\fP
+\fB\-d\fP, \fB–debug\fP
 Debug mode brief output.
 .TP
-\fB\-n\fP, \fB\-\-no\-color\fP
+\fB\-n\fP, \fB–no\-color\fP
 Removes changes coloring.
 .TP
-\fB\-z\fP, \fB\-\-zone\-list\fP
+\fB\-z\fP, \fB–zone\-list\fP
 Instead of reading jurnal, display the list of zones in the DB.
 (\fIzone_name\fP not needed)
 .TP
-\fB\-c\fP, \fB\-\-check\fP
+\fB\-c\fP, \fB–check\fP
 Enable additional journal semantic checks during printing.
 .TP
-\fB\-h\fP, \fB\-\-help\fP
+\fB\-h\fP, \fB–help\fP
 Print the program help.
 .TP
-\fB\-V\fP, \fB\-\-version\fP
+\fB\-V\fP, \fB–version\fP
 Print the program version.
 .UNINDENT
 .SS Parameters
