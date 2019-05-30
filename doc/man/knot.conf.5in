@@ -184,6 +184,7 @@ server:
     background\-workers: INT
     async\-start: BOOL
     tcp\-idle\-timeout: TIME
+    tcp\-query\-timeout: TIME
     tcp\-reply\-timeout: TIME
     max\-tcp\-clients: INT
     max\-udp\-payload: SIZE
@@ -261,6 +262,11 @@ responding immediately with SERVFAIL answers until the zone loads.
 Maximum idle time between requests on an incoming TCP connection.
 .sp
 \fIDefault:\fP 20
+.SS tcp\-query\-timeout
+.sp
+Maximum time (in milliseconds) to receive a single query.
+.sp
+\fIDefault:\fP 200
 .SS tcp\-reply\-timeout
 .sp
 Maximum time to wait for an outgoing connection or for a reply to an issued
