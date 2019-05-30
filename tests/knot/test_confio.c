@@ -903,8 +903,8 @@ static void test_conf_io_list(void)
 	   KNOT_EOK, "list group");
 	ref = "server.version\n"
 	      "server.listen\n"
-	      "server.tcp-handshake-timeout\n"
 	      "server.tcp-idle-timeout\n"
+	      "server.tcp-query-timeout\n"
 	      "server.tcp-reply-timeout\n"
 	      "server.udp-workers\n"
 	      "server.tcp-workers\n"
@@ -922,8 +922,8 @@ static const yp_item_t desc_server[] = {
 	{ C_VERSION,              YP_TSTR,  YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VNONE, YP_FMULTI },
 	// Required config cache items - assert fix.
-	{ C_TCP_HSHAKE_TIMEOUT,   YP_TINT,  YP_VNONE },
 	{ C_TCP_IDLE_TIMEOUT,	  YP_TINT,  YP_VNONE },
+	{ C_TCP_QUERY_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_REPLY_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
