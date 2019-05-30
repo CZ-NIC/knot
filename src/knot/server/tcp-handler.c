@@ -111,7 +111,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	/* Timeout. */
 	rcu_read_lock();
-	int timeout = 1000 * conf()->cache.srv_tcp_reply_timeout;
+	int timeout = conf()->cache.srv_tcp_query_timeout;
 	rcu_read_unlock();
 
 	/* Receive data. */
