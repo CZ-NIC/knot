@@ -53,8 +53,9 @@ typedef struct tcp_context {
 	struct timespec throttle_end;    /*!< End of accept() throttling. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
-	unsigned max_clients;            /*!< Max TCP clients configuration. */
-	int idle_timeout;                /*!< TCP idle timeout configuration. */
+	unsigned max_clients;            /*!< Max TCP clients per worker configuration. */
+	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
+	int query_timeout;               /*!< [ms] TCP query timeout configuration. */
 } tcp_context_t;
 
 /*! \brief Sweep TCP connection. */
@@ -109,13 +110,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
-	/* Timeout. */
-	rcu_read_lock();
-	int timeout = 1000 * conf()->cache.srv_tcp_reply_timeout;
-	rcu_read_unlock();
-
 	/* Receive data. */
-	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, timeout);
+	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->query_timeout);
 	if (ret <= 0) {
 		if (ret == KNOT_EAGAIN) {
 			char addr_str[SOCKADDR_STRLEN] = {0};
@@ -145,7 +141,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
-			if (net_dns_tcp_send(fd, ans->wire, ans->size, timeout) != ans->size) {
+			if (net_dns_tcp_send(fd, ans->wire, ans->size, tcp->query_timeout) != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
 			}
@@ -205,6 +201,7 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	unsigned clients = conf()->cache.srv_max_tcp_clients;
 	tcp->max_clients = MAX(clients / conf_tcp_threads(conf()), 1);
 	tcp->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
+	tcp->query_timeout = conf()->cache.srv_tcp_query_timeout;
 	rcu_read_unlock();
 
 	/* Mark the time of last poll call. */

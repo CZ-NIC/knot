@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -904,8 +904,8 @@ static void test_conf_io_list(void)
 	ref = "server.version\n"
 	      "server.background-workers\n"
 	      "server.listen\n"
-	      "server.tcp-handshake-timeout\n"
 	      "server.tcp-idle-timeout\n"
+	      "server.tcp-query-timeout\n"
 	      "server.tcp-reply-timeout\n"
 	      "server.max-tcp-clients\n"
 	      "server.max-udp-payload\n"
@@ -921,8 +921,8 @@ static const yp_item_t desc_server[] = {
 	{ C_BG_WORKERS,           YP_TINT,  YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VNONE, YP_FMULTI },
 	// Required config cache items - assert fix.
-	{ C_TCP_HSHAKE_TIMEOUT,   YP_TINT,  YP_VNONE },
 	{ C_TCP_IDLE_TIMEOUT,	  YP_TINT,  YP_VNONE },
+	{ C_TCP_QUERY_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_REPLY_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_MAX_TCP_CLIENTS,	  YP_TINT,  YP_VNONE },
 	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VNONE },
