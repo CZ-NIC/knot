@@ -41947,11 +41947,11 @@ tr1120:
 		if (s->include_filename[0] != '/') {
 			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
 			                   "%s/%s", s->path, s->include_filename);
-			if (ret <= 0 || ret > sizeof(s->buffer)) {
+			if (ret <= 0 || ret >= sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st299;}
 			}
-			memcpy(s->include_filename, s->buffer, ret);
+			memcpy(s->include_filename, s->buffer, ret + 1);
 		}
 
 		// Origin conversion from wire to text form in \DDD notation.
@@ -42014,11 +42014,11 @@ tr1130:
 		if (s->include_filename[0] != '/') {
 			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
 			                   "%s/%s", s->path, s->include_filename);
-			if (ret <= 0 || ret > sizeof(s->buffer)) {
+			if (ret <= 0 || ret >= sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st299;}
 			}
-			memcpy(s->include_filename, s->buffer, ret);
+			memcpy(s->include_filename, s->buffer, ret + 1);
 		}
 
 		// Origin conversion from wire to text form in \DDD notation.
@@ -42092,11 +42092,11 @@ tr1142:
 		if (s->include_filename[0] != '/') {
 			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
 			                   "%s/%s", s->path, s->include_filename);
-			if (ret <= 0 || ret > sizeof(s->buffer)) {
+			if (ret <= 0 || ret >= sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st299;}
 			}
-			memcpy(s->include_filename, s->buffer, ret);
+			memcpy(s->include_filename, s->buffer, ret + 1);
 		}
 
 		// Origin conversion from wire to text form in \DDD notation.
@@ -42172,11 +42172,11 @@ tr1148:
 		if (s->include_filename[0] != '/') {
 			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
 			                   "%s/%s", s->path, s->include_filename);
-			if (ret <= 0 || ret > sizeof(s->buffer)) {
+			if (ret <= 0 || ret >= sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st299;}
 			}
-			memcpy(s->include_filename, s->buffer, ret);
+			memcpy(s->include_filename, s->buffer, ret + 1);
 		}
 
 		// Origin conversion from wire to text form in \DDD notation.
@@ -42512,11 +42512,11 @@ tr1157:
 		if (s->include_filename[0] != '/') {
 			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
 			                   "%s/%s", s->path, s->include_filename);
-			if (ret <= 0 || ret > sizeof(s->buffer)) {
+			if (ret <= 0 || ret >= sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				p--; {goto st299;}
 			}
-			memcpy(s->include_filename, s->buffer, ret);
+			memcpy(s->include_filename, s->buffer, ret + 1);
 		}
 
 		// Origin conversion from wire to text form in \DDD notation.
