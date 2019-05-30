@@ -723,11 +723,11 @@
 		if (s->include_filename[0] != '/') {
 			int ret = snprintf((char *)(s->buffer), sizeof(s->buffer),
 			                   "%s/%s", s->path, s->include_filename);
-			if (ret <= 0 || ret > sizeof(s->buffer)) {
+			if (ret <= 0 || ret >= sizeof(s->buffer)) {
 				ERR(ZS_BAD_INCLUDE_FILENAME);
 				fhold; fgoto err_line;
 			}
-			memcpy(s->include_filename, s->buffer, ret);
+			memcpy(s->include_filename, s->buffer, ret + 1);
 		}
 
 		// Origin conversion from wire to text form in \DDD notation.
