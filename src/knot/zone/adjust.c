@@ -375,20 +375,26 @@ static int adjust_additionals_cb(zone_node_t *node, void *ctx)
 	return adjust_cb_additionals(real_node, zone);
 }
 
+static int adjust_point_to_nsec3_cb(zone_node_t *node, void *ctx)
+{
+	const zone_contents_t *zone = ctx;
+	zone_node_t *real_node = binode_node(node, (zone->nodes->flags & ZONE_TREE_BINO_SECOND));
+	return binode_fix_nsec3_pointer(real_node, zone);
+}
+
 int zone_adjust_incremental_update(zone_update_t *update)
 {
 	int ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false);
 	if (ret == KNOT_EOK) {
 		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 	}
-	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(update->new_cont, binode_fix_nsec3_pointer, NULL, false);
-	}
+	dnssec_nsec3_params_t *params = knot_is_nsec3_enabled(update->new_cont) ? &update->new_cont->nsec3_params : NULL;
 	if (ret == KNOT_EOK) {
 		ret = additionals_tree_update_from_binodes(
 			update->new_cont->adds_tree,
 			update->a_ctx->node_ptrs,
-			update->new_cont->apex->owner
+			update->new_cont->apex->owner,
+			params
 		);
 	}
 	if (ret == KNOT_EOK) {
@@ -396,6 +402,14 @@ int zone_adjust_incremental_update(zone_update_t *update)
 			update->new_cont->adds_tree,
 			update->a_ctx->node_ptrs,
 			adjust_additionals_cb,
+			update->new_cont
+		);
+	}
+	if (ret == KNOT_EOK) {
+		ret = additionals_reverse_apply_multi(
+			update->new_cont->adds_tree,
+			update->a_ctx->nsec3_ptrs,
+			adjust_point_to_nsec3_cb,
 			update->new_cont
 		);
 	}
