@@ -263,24 +263,24 @@ A full example of setting up a completely new zone from scratch::
 Reading and editing the zone file safely
 ========================================
 
-It's always possible to read and edit the zone contents via zone file manipulation.
-However, it may lead to confusion if zone contents are continuously changing or
-in case of operator's mistake. This paragraph describes a safe way to modify zone
-by editing the zone file, taking advantage of zone freeze/thaw feature.::
+It's always possible to read and edit zone contents via zone file manipulation.
+However, it may lead to confusion if the zone contents are continuously being
+changed by DDNS, DNSSEC signing and the like. In such a case, the safe way to
+modify the zone file is to freeze zone events first::
 
-    $ knotc zone-freeze example.com.
-    $ while ! knotc zone-status example.com. +freeze | grep -q 'freeze: yes'; do sleep 1; done
-    $ knotc zone-flush example.com.
+    $ knotc -b zone-freeze example.com.
+    $ knotc -b zone-flush example.com.
 
 After calling freeze to the zone, there still may be running zone operations (e.g. signing),
-causing freeze pending. So we watch the zone status until frozen. Then we can flush the
-frozen zone contents.
+causing freeze pending. Because of it the blocking mode is used to ensure
+the operation was finished. Then the zone can be flushed to a file.
 
-Now we open a text editor and perform desired changes to the zone file. It's necessary
-to **increase SOA serial** in this step to keep consistency. Finally, we can load the
-modified zone file and if successful, thaw the zone.::
+Now the zone file can be safely modified (e.g. using a text editor).
+If "`zonefile-load: difference-no-serial`" is not set, it's also necessary to
+**increase SOA serial** in this step to keep consistency. Finally, we can load the
+modified zone file and if successful, thaw the zone::
 
-    $ knotc zone-reload example.com.
+    $ knotc -b zone-reload example.com.
     $ knotc zone-thaw example.com.
 
 .. _Zone loading:
