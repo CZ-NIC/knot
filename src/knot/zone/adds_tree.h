@@ -18,6 +18,7 @@
 
 #include "contrib/qp-trie/trie.h"
 #include "knot/zone/contents.h"
+#include "knot/dnssec/zone-nsec.h"
 
 typedef trie_t additionals_tree_t;
 
@@ -53,6 +54,11 @@ int zone_node_additionals_foreach(const zone_node_t *node, const knot_dname_t *z
 int additionals_tree_update_node(additionals_tree_t *a_t, const knot_dname_t *zone_apex,
                                  zone_node_t *old_node, zone_node_t *new_node);
 
+
+int additionals_tree_update_nsec3(additionals_tree_t *a_t, const knot_dname_t *zone_apex,
+                                  const dnssec_nsec3_params_t *params,
+                                  zone_node_t *old_node, zone_node_t *new_node);
+
 /*!
  * \brief Create additionals tree from a zone (by scanning all additionals in zone RRsets).
  *
@@ -73,7 +79,7 @@ int additionals_tree_from_zone(additionals_tree_t **a_t, const zone_contents_t *
  * \return KNOT_E*
  */
 int additionals_tree_update_from_binodes(additionals_tree_t *a_t, const zone_tree_t *tree,
-                                         const knot_dname_t *zone_apex);
+                                         const knot_dname_t *zone_apex, const dnssec_nsec3_params_t *params);
 
 /*!
  * \brief Foreach node that has specified name in its additionals, do sth.

@@ -145,6 +145,26 @@ int additionals_tree_update_node(additionals_tree_t *a_t, const knot_dname_t *zo
 	return ret;
 }
 
+int additionals_tree_update_nsec3(additionals_tree_t *a_t, const knot_dname_t *zone_apex,
+                                  const dnssec_nsec3_params_t *params,
+                                  zone_node_t *old_node, zone_node_t *new_node)
+{
+	bool oldex = (old_node != NULL && !(old_node->flags & NODE_FLAGS_DELETED));
+	bool newex = (new_node != NULL && !(new_node->flags & NODE_FLAGS_DELETED));
+	bool addn = (!oldex && newex), remn = (oldex && !newex);
+	if (!addn && !remn) {
+		return KNOT_EOK;
+	}
+	const knot_dname_t *owner = addn ? new_node->owner : old_node->owner;
+	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
+	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), owner, zone_apex, params);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	a_t_node_ctx_t ctx = { a_t, addn ? binode_node(new_node, false) : binode_node(old_node, false) };
+	return (addn ? add_node_to_a_t : remove_node_from_a_t)(nsec3_name, &ctx);
+}
+
 int additionals_tree_from_zone(additionals_tree_t **a_t, const zone_contents_t *zone)
 {
 	*a_t = additionals_tree_new();
@@ -152,10 +172,16 @@ int additionals_tree_from_zone(additionals_tree_t **a_t, const zone_contents_t *
 		return KNOT_ENOMEM;
 	}
 
+	bool do_nsec3 = knot_is_nsec3_enabled(zone);
+
 	zone_tree_it_t it = { 0 };
 	int ret = zone_tree_it_begin(zone->nodes, &it);
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
 		ret = additionals_tree_update_node(*a_t, zone->apex->owner, NULL, zone_tree_it_val(&it));
+		if (do_nsec3 && ret == KNOT_EOK) {
+			ret = additionals_tree_update_nsec3(*a_t, zone->apex->owner, &zone->nsec3_params,
+			                                    NULL, zone_tree_it_val(&it));
+		}
 		zone_tree_it_next(&it);
 	}
 	zone_tree_it_free(&it);
@@ -168,13 +194,16 @@ int additionals_tree_from_zone(additionals_tree_t **a_t, const zone_contents_t *
 }
 
 int additionals_tree_update_from_binodes(additionals_tree_t *a_t, const zone_tree_t *tree,
-                                         const knot_dname_t *zone_apex)
+                                         const knot_dname_t *zone_apex, const dnssec_nsec3_params_t *params)
 {
 	zone_tree_it_t it = { 0 };
 	int ret = zone_tree_it_begin((zone_tree_t *)tree, &it);
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
-		zone_node_t *node = zone_tree_it_val(&it);
-		ret = additionals_tree_update_node(a_t, zone_apex, binode_counterpart(node), node);
+		zone_node_t *node = zone_tree_it_val(&it), *counter = binode_counterpart(node);
+		ret = additionals_tree_update_node(a_t, zone_apex, counter, node);
+		if (params != NULL && ret == KNOT_EOK) {
+			ret = additionals_tree_update_nsec3(a_t, zone_apex, params, counter, node);
+		}
 		zone_tree_it_next(&it);
 	}
 	zone_tree_it_free(&it);
