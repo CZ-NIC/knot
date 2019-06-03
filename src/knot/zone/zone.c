@@ -502,12 +502,7 @@ int zone_set_master_serial(zone_t *zone, uint32_t serial)
 
 int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 {
-	int ret = kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
-	if (ret == KNOT_ENOENT) {
-		*serial = zone_contents_serial(zone->contents);
-		return KNOT_EOK;
-	}
-	return ret;
+	return kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
 int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
@@ -515,7 +510,20 @@ int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 	return kasp_db_store_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
 }
 
-bool zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
+int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 {
-	return kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial) == KNOT_EOK;
+	return kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+}
+
+int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial)
+{
+	int ret = KNOT_EOK;
+	*serial = zone_contents_serial(zone->contents);
+
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	if (conf_bool(&val)) {
+		ret = zone_get_master_serial(zone, serial);
+	}
+
+	return ret;
 }
