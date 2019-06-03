@@ -54,6 +54,8 @@ inline static bool serial_equal(uint32_t a, uint32_t b)
  */
 uint32_t serial_next(uint32_t current, int policy);
 
+bool serial_must_increment(uint32_t current, int policy);
+
 typedef struct {
 	uint32_t serial;
 	bool valid;

@@ -78,6 +78,23 @@ uint32_t serial_next(uint32_t current, int policy)
 	}
 }
 
+bool serial_must_increment(uint32_t current, int policy)
+{
+	switch (policy) {
+	case SERIAL_POLICY_INCREMENT:
+		return false;
+	case SERIAL_POLICY_UNIXTIME:
+		return true;
+	case SERIAL_POLICY_DATESERIAL:
+		current /= 100;
+		uint32_t candidate = serial_next_date(current) / 100;
+		return current < candidate;
+	default:
+		assert(0);
+		return false;
+	}
+}
+
 serial_cmp_result_t kserial_cmp(kserial_t a, kserial_t b)
 {
 	return ((a.valid && b.valid) ? serial_compare(a.serial, b.serial) : SERIAL_INCOMPARABLE);

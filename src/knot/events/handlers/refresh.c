@@ -217,15 +217,31 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	bool dnssec_enable = conf_bool(&val);
+
+	bool bootstrap = (data->zone->contents == NULL);
 	uint32_t master_serial = zone_contents_serial(new_zone);
-	uint32_t local_serial = zone_contents_serial(data->zone->contents);
-	bool have_lastsigned = zone_get_lastsigned_serial(data->zone, &local_serial);
-	uint32_t old_serial = local_serial;
-	bool bootstrap = (data->soa == NULL);
-	if ((!bootstrap || have_lastsigned) &&
-	    (serial_compare(master_serial, local_serial) != SERIAL_GREATER)) {
-		conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
-		local_serial = serial_next(local_serial, conf_opt(&val));
+	uint32_t old_serial = zone_contents_serial(data->zone->contents);
+	if (dnssec_enable) {
+		val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
+		unsigned serial_policy = conf_opt(&val);
+
+		uint32_t local_serial;
+		uint32_t lastsigned_serial;
+		if (!bootstrap) {
+			// Retransfer or AXFR-fallback using incremented current serial.
+			local_serial = serial_next(old_serial, serial_policy);
+		} else if (zone_get_lastsigned_serial(data->zone, &lastsigned_serial)) {
+			// Bootstrap using incremented lastly used serial.
+			local_serial = serial_next(lastsigned_serial, serial_policy);
+		} else if (serial_must_increment(master_serial, serial_policy)) {
+			// Bootstrap using incremented master serial.
+			local_serial = serial_next(master_serial, serial_policy);
+		} else {
+			// Bootstrap using master serial.
+			local_serial = master_serial;
+		}
 		zone_contents_set_soa_serial(new_zone, local_serial);
 	}
 
@@ -238,8 +254,6 @@ static int axfr_finalize(struct refresh_data *data)
 	// Seized by zone_update. Don't free the contents again in axfr_cleanup.
 	data->axfr.zone = NULL;
 
-	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
-	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_ALL, &resch);
