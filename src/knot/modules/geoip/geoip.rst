@@ -112,11 +112,11 @@ Example
 
    foo.example.com:
      - geo: "CZ;Prague"
-       CNAME: cz.foo.example.com
+       CNAME: cz.foo.example.com.
      - geo: "US;Las Vegas"
-       CNAME: vegas.foo.example.net
+       CNAME: vegas.foo.example.net.
      - geo: "US;*"
-       CNAME: us.foo.example.net
+       CNAME: us.foo.example.net.
    ...
 
 * Example :ref:`mod-geoip_config-file` for weighted records
@@ -125,11 +125,11 @@ Example
 
    foo.example.com:
      - weight: 1
-       CNAME: canary.foo.example.com
+       CNAME: canary.foo.example.com.
      - weight: 10
-       CNAME: prod1.foo.example.net
+       CNAME: prod1.foo.example.com.
      - weight: 10
-       CNAME: prod2.foo.example.net
+       CNAME: prod2.foo.example.com.
    ...
 
 
