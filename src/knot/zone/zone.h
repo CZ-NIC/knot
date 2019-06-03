@@ -169,4 +169,6 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial);
 
 int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial);
 
-bool zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial);
+int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial);
+
+int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial);

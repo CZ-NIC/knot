@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,6 +53,17 @@ inline static bool serial_equal(uint32_t a, uint32_t b)
  * \return New serial.
  */
 uint32_t serial_next(uint32_t current, int policy);
+
+/*!
+ * \brief Check if the current serial must be incremented to match local policy.
+ *
+ * \param current  Current SOA serial.
+ * \param policy   SERIAL_POLICY_INCREMENT, SERIAL_POLICY_UNIXTIME or
+ *                 SERIAL_POLICY_DATESERIAL.
+ *
+ * \return True if update is necessary.
+ */
+bool serial_must_increment(uint32_t current, int policy);
 
 typedef struct {
 	uint32_t serial;
