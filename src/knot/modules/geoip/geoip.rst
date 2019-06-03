@@ -220,6 +220,10 @@ case, the key has to be prefixed with **(id)**. Common choices of keys include:
 
 * ...
 
+The exact keys available depend on the database being used. To get the full list
+of keys available, you can e.g. do a sample lookup on your database with the
+`mmdblookup <https://maxmind.github.io/libmaxminddb/mmdblookup.html>`_ tool.
+
 In the zone's config file for the module the values of the keys are entered in the same order
 as the keys in the module's configuration, separated by a semicolon. Enter the value **"*"**
 if the key is allowed to have any value.
