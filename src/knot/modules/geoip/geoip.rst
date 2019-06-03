@@ -78,10 +78,13 @@ This file has the following simple format:
    ...
 
 
-Example
--------
+Module configuration examples
+-----------------------------
 
-* Example :ref:`mod-geoip_config-file` for subnets
+This section contains some examples for the module's :ref:`mod-geoip_config-file`.
+
+Using subnets
+.............
 
 ::
 
@@ -98,6 +101,9 @@ Example
        TXT: "subnet\ 2001:DB8::/32"
    ...
 
+Clients from the specified subnets will receive the responses defined in the
+module config. Others will receive the default records defined in the zone (if any).
+
 .. NOTE::
    If a space or a quotation mark is a part of record data, such a character
    must be prefixed with a backslash. The following notations are equivalent::
@@ -106,7 +112,8 @@ Example
      "Multi-word\ string"
      "\"Multi-word string\""
 
-* Example :ref:`mod-geoip_config-file` for geographic locations
+Using geographic locations
+..........................
 
 ::
 
@@ -119,7 +126,12 @@ Example
        CNAME: us.foo.example.net.
    ...
 
-* Example :ref:`mod-geoip_config-file` for weighted records
+Clients from the specified geographic locations will receive the responses defined in the
+module config. Others will receive the default records defined in the zone (if any). See
+:ref:`mod-geoip_geodb-key` for the syntax and semantics of the location definitions.
+
+Using weighted records
+......................
 
 ::
 
@@ -132,6 +144,18 @@ Example
        CNAME: prod2.foo.example.com.
    ...
 
+Each response is generated through a random pick where each defined record has a likelyhood
+of its weight over the sum of all weights for the requested name to. Records defined in the
+zone itself (if any) will never be served.
+
+Result:
+
+.. code-block:: console
+
+   $ for i in $(seq 1 100); do kdig @192.168.1.242 CNAME foo.example.com +short; done | sort | uniq -c
+      3 canary.foo.example.com.foo.example.com.
+     52 prod1.foo.example.net.foo.example.com.
+     45 prod2.foo.example.net.foo.example.com.
 
 Module reference
 ----------------
