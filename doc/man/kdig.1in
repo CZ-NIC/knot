@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkdig\fP [\fIcommon\-settings\fP] [\fIquery\fP [\fIsettings\fP]]…
+\fBkdig\fP [\fIcommon\-settings\fP] [\fIquery\fP [\fIsettings\fP]]...
 .sp
 \fBkdig\fP \fB\-h\fP
 .SH DESCRIPTION
@@ -47,7 +47,7 @@ which must precede \fIquery\fP specification.
 \fIname\fP | \fB\-q\fP \fIname\fP | \fB\-x\fP \fIaddress\fP | \fB\-G\fP \fItapfile\fP
 .TP
 \fIcommon\-settings\fP, \fIsettings\fP
-[\fIquery_class\fP] [\fIquery_type\fP] [\fB@\fP\fIserver\fP]… [\fIoptions\fP]
+[\fIquery_class\fP] [\fIquery_type\fP] [\fB@\fP\fIserver\fP]... [\fIoptions\fP]
 .TP
 \fIname\fP
 Is a domain name that is to be looked up.
@@ -110,7 +110,7 @@ An explicit \fIquery_class\fP specification. See possible values above.
 \fB\-d\fP
 Enable debug messages.
 .TP
-\fB\-h\fP, \fB–help\fP
+\fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
 \fB\-k\fP \fIkeyfile\fP
@@ -129,7 +129,7 @@ is provided, empty question section is set.
 \fB\-t\fP \fItype\fP
 An explicit \fIquery_type\fP specification. See possible values above.
 .TP
-\fB\-V\fP, \fB–version\fP
+\fB\-V\fP, \fB\-\-version\fP
 Print the program version.
 .TP
 \fB\-x\fP \fIaddress\fP
@@ -234,7 +234,7 @@ Use the TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
 Use TCP Fast Open (default with TCP).
 .TP
 \fB+\fP[\fBno\fP]\fBignore\fP
-Don’t use TCP automatically if a truncated reply is received.
+Don\(aqt use TCP automatically if a truncated reply is received.
 .TP
 \fB+\fP[\fBno\fP]\fBtls\fP
 Use TLS with the Opportunistic privacy profile (\fI\%RFC 7858#section\-4.1\fP).
@@ -285,7 +285,7 @@ Set the wait\-for\-reply interval in seconds (default is 5 seconds). This timeou
 applies to each query attempt.
 .TP
 \fB+\fP[\fBno\fP]\fBretry\fP=\fIN\fP
-Set the number (>=0) of UDP retries (default is 2). This doesn’t apply to
+Set the number (>=0) of UDP retries (default is 2). This doesn\(aqt apply to
 AXFR/IXFR.
 .TP
 \fB+\fP[\fBno\fP]\fBcookie\fP=\fIHEX\fP

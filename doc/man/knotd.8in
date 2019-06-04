@@ -37,31 +37,31 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .SS Parameters
 .INDENT 0.0
 .TP
-\fB\-c\fP, \fB–config\fP \fIfile\fP
+\fB\-c\fP, \fB\-\-config\fP \fIfile\fP
 Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
 .TP
-\fB\-C\fP, \fB–confdb\fP \fIdirectory\fP
+\fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
 Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
 The default configuration database, if exists, has a preference to the default
 configuration file.
 .TP
-\fB\-m\fP, \fB–max\-conf\-size\fP \fIMiB\fP
+\fB\-m\fP, \fB\-\-max\-conf\-size\fP \fIMiB\fP
 Set maximum configuration size (default is @conf_mapsize@ MiB, maximum 10000 MiB).
 .TP
-\fB\-s\fP, \fB–socket\fP \fIpath\fP
+\fB\-s\fP, \fB\-\-socket\fP \fIpath\fP
 Use a remote control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 .TP
-\fB\-d\fP, \fB–daemonize\fP [\fIdirectory\fP]
+\fB\-d\fP, \fB\-\-daemonize\fP [\fIdirectory\fP]
 Run the server as a daemon. New root directory may be specified
 (default is \fB/\fP).
 .TP
-\fB\-v\fP, \fB–verbose\fP
+\fB\-v\fP, \fB\-\-verbose\fP
 Enable debug output.
 .TP
-\fB\-h\fP, \fB–help\fP
+\fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
-\fB\-V\fP, \fB–version\fP
+\fB\-V\fP, \fB\-\-version\fP
 Print the program version.
 .UNINDENT
 .SH EXIT VALUES
