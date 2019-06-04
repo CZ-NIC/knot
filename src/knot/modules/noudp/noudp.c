@@ -19,12 +19,13 @@
 #define MOD_UDP_ALLOW_RATE	"\x0e""udp-allow-rate"
 
 const yp_item_t noudp_conf[] = {
-	{ MOD_UDP_ALLOW_RATE, YP_TINT, YP_VINT = { 0, UINT32_MAX, 0, YP_SNONE }, YP_FMULTI },
+	{ MOD_UDP_ALLOW_RATE, YP_TINT, YP_VINT = { 0, UINT32_MAX, 0, YP_SNONE }, YP_FNONE },
 	{ NULL }
 };
 
 typedef struct {
 	uint32_t udp_allow_rate;
+	uint32_t *udp_allow_counters;
 } noudp_ctx_t;
 
 static bool is_udp(knotd_qdata_t *qdata)
@@ -35,8 +36,12 @@ static bool is_udp(knotd_qdata_t *qdata)
 static knotd_state_t noudp_begin(knotd_state_t state, knot_pkt_t *pkt,
                                  knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	noudp_ctx_t *a = knotd_mod_ctx(mod);
 	if (is_udp(qdata)) {
+		noudp_ctx_t *ctx = knotd_mod_ctx(mod);
+		if(ctx->udp_allow_rate && ++ctx->udp_allow_counters[qdata->params->thread_id] >= ctx->udp_allow_rate) {
+			ctx->udp_allow_counters[qdata->params->thread_id] = 0;
+			return state;
+		}
 		knot_wire_set_tc(pkt->wire);
 		return KNOTD_STATE_DONE;
 	}
@@ -54,6 +59,13 @@ int noudp_load(knotd_mod_t *mod)
 	knotd_conf_t conf = knotd_conf_mod(mod, MOD_UDP_ALLOW_RATE);
     ctx->udp_allow_rate = conf.single.integer;
 
+	knotd_conf_t udp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_UDP);
+	size_t udp_workers = udp.single.integer;
+	ctx->udp_allow_counters = calloc(udp_workers, sizeof(uint32_t));
+	if(ctx->udp_allow_counters == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	knotd_mod_ctx_set(mod, ctx);
 
 	return knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, noudp_begin);
@@ -62,6 +74,9 @@ int noudp_load(knotd_mod_t *mod)
 void noudp_unload(knotd_mod_t *mod)
 {
 	noudp_ctx_t *ctx = knotd_mod_ctx(mod);
+	if (ctx->udp_allow_counters) {
+		free(ctx->udp_allow_counters);
+	}
 	free(ctx);
 }
 
