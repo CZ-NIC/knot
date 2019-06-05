@@ -29,6 +29,8 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 		node->parent->flags |= NODE_FLAGS_WILDCARD_CHILD;
 	}
 
+	node->flags &= ~(NODE_FLAGS_NONAUTH | NODE_FLAGS_DELEG);
+
 	// set flags (delegation point, non-authoritative)
 	if (node->parent &&
 	    (node->parent->flags & NODE_FLAGS_DELEG ||
