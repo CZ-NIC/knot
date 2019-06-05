@@ -1,3 +1,30 @@
+Knot DNS 2.8.2 (2019-06-05)
+===========================
+
+Features:
+---------
+ - New blocking mode for zone event triggers in knotc
+ - New weighted records mode in the module geoip (Thanks to Conrad Hoffmann)
+ - Module noudp allows UDP allow rate configuration
+
+Improvements:
+-------------
+ - NSEC3 salt lifetime can be set to infinity
+ - New 'running' zone event status in the knotc output
+ - Knotc in the forced mode returns failure also if zone check emits any warning
+ - Ignoring PMTU information for IPv4/UDP via IP_PMTUDISC_OMIT (Thanks to Daisuke Higashi)
+ - Various improvements in the documentation
+
+Bugfixes:
+---------
+ - Broken setting of CPU affinity for UDP workers
+ - Unexpected results with the geoip subnet mode
+ - Sometimes insufficient zone adjusting
+ - Incoherent DNSKEY RRSIG lifetimes in SKR
+ - Confusing output from keymgr if an error occurs during KSR generation
+ - Non-functional changeset history depth limitation in kjournalprint
+ - Wrong processing of multiple $INCLUDE directives #646
+
 Knot DNS 2.8.1 (2019-04-09)
 ===========================
 
