@@ -914,6 +914,10 @@ rrsig-lifetime
 
 A validity period of newly issued signatures.
 
+.. NOTE::
+   The RRSIG's signature inception time is set to 90 minutes in the past. This
+   time period is not counted to the signature lifetime.
+
 *Default:* 14 days
 
 .. _policy_rrsig-refresh:

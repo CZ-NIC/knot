@@ -21,6 +21,7 @@
 #include "knot/dnssec/nsec3-chain.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/zone-diff.h"
 #include "contrib/base32hex.h"
 #include "contrib/macros.h"
@@ -372,6 +373,50 @@ static int connect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
 }
 
 /*!
+ * \brief Replace the "next hash" field in b's NSEC3 by that in a's NSEC3, by updating the changeset.
+ *
+ * \param a      A node to take the "next hash" from.
+ * \param b      A node to put the "next hash" into.
+ * \param data   Contains the changeset to be updated.
+ *
+ * \return KNOT_E*
+ */
+static int reconnect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
+				  nsec_chain_iterate_data_t *data)
+{
+	assert(data);
+
+	knot_rrset_t an = node_rrset(a, KNOT_RRTYPE_NSEC3);
+	assert(!knot_rrset_empty(&an));
+
+	knot_rrset_t bnorig = node_rrset(b, KNOT_RRTYPE_NSEC3);
+	assert(!knot_rrset_empty(&bnorig));
+
+	// prepare a copy of NSEC3 rrsets in question
+	knot_rrset_t *bnnew = knot_rrset_copy(&bnorig, NULL);
+	if (bnnew == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	uint8_t raw_length = knot_nsec3_next_len(an.rrs.rdata);
+	uint8_t *a_hash = (uint8_t *)knot_nsec3_next(an.rrs.rdata);
+	uint8_t *bnew_hash = (uint8_t *)knot_nsec3_next(bnnew->rrs.rdata);
+	if (a_hash == NULL || bnew_hash == NULL ||
+	    raw_length != knot_nsec3_next_len(bnnew->rrs.rdata)) {
+		knot_rrset_free(bnnew, NULL);
+		return KNOT_ERROR;
+	}
+	memcpy(bnew_hash, a_hash, raw_length);
+
+	int ret = zone_update_remove(data->update, &bnorig);
+	if (ret == KNOT_EOK) {
+		ret = zone_update_add(data->update, bnnew);
+	}
+	knot_rrset_free(bnnew, NULL);
+	return ret;
+}
+
+/*!
  * \brief Create NSEC3 node for each regular node in the zone.
  *
  * \param zone         Zone.
@@ -615,7 +660,7 @@ static int zone_update_nsec3_nodes(zone_update_t *up, zone_tree_t *nsec3n)
 	if (up->new_cont->nsec3_nodes == NULL) {
 		goto add_nsec3n;
 	}
-	ret = zone_tree_delsafe_it_begin(up->new_cont->nsec3_nodes, &dit);
+	ret = zone_tree_delsafe_it_begin(up->new_cont->nsec3_nodes, &dit, false);
 	while (ret == KNOT_EOK && !zone_tree_delsafe_it_finished(&dit)) {
 		zone_node_t *nold = zone_tree_delsafe_it_val(&dit);
 		knot_rrset_t ns3old = node_rrset(nold, KNOT_RRTYPE_NSEC3);
@@ -739,11 +784,15 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
+	ret = zone_adjust_contents(update->new_cont, NULL, adjust_cb_void, false);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	nsec_chain_iterate_data_t data = { ttl, update };
 
-	ret = knot_nsec_chain_iterate_fix(update->zone->contents->nsec3_nodes,
-	                                  update->new_cont->nsec3_nodes,
-	                                  connect_nsec3_nodes2, &data);
+	ret = knot_nsec_chain_iterate_fix(update->a_ctx->nsec3_ptrs,
+	                                  connect_nsec3_nodes2, reconnect_nsec3_nodes2, &data);
 
 	return ret;
 }

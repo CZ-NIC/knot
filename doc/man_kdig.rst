@@ -293,6 +293,12 @@ Options **-k** and **-y** can not be used simultaneously.
 
 Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
 
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
+
 Examples
 --------
 

@@ -30,6 +30,9 @@ Options
   Instead of reading jurnal, display the list of zones in the DB.
   (*zone_name* not needed)
 
+**-c**, **--check**
+  Enable additional journal semantic checks during printing.
+
 **-h**, **--help**
   Print the program help.
 
@@ -44,6 +47,12 @@ Parameters
 
 *zone_name*
   A name of the zone to print the history for.
+
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
 
 Examples
 --------

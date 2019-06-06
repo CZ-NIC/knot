@@ -263,24 +263,24 @@ A full example of setting up a completely new zone from scratch::
 Reading and editing the zone file safely
 ========================================
 
-It's always possible to read and edit the zone contents via zone file manipulation.
-However, it may lead to confusion if zone contents are continuously changing or
-in case of operator's mistake. This paragraph describes a safe way to modify zone
-by editing the zone file, taking advantage of zone freeze/thaw feature.::
+It's always possible to read and edit zone contents via zone file manipulation.
+However, it may lead to confusion if the zone contents are continuously being
+changed by DDNS, DNSSEC signing and the like. In such a case, the safe way to
+modify the zone file is to freeze zone events first::
 
-    $ knotc zone-freeze example.com.
-    $ while ! knotc zone-status example.com. +freeze | grep -q 'freeze: yes'; do sleep 1; done
-    $ knotc zone-flush example.com.
+    $ knotc -b zone-freeze example.com.
+    $ knotc -b zone-flush example.com.
 
 After calling freeze to the zone, there still may be running zone operations (e.g. signing),
-causing freeze pending. So we watch the zone status until frozen. Then we can flush the
-frozen zone contents.
+causing freeze pending. Because of it the blocking mode is used to ensure
+the operation was finished. Then the zone can be flushed to a file.
 
-Now we open a text editor and perform desired changes to the zone file. It's necessary
-to **increase SOA serial** in this step to keep consistency. Finally, we can load the
-modified zone file and if successful, thaw the zone.::
+Now the zone file can be safely modified (e.g. using a text editor).
+If :ref:`zone_zonefile-load` is not set to `difference-no-serial`, it's also necessary to
+**increase SOA serial** in this step to keep consistency. Finally, we can load the
+modified zone file and if successful, thaw the zone::
 
-    $ knotc zone-reload example.com.
+    $ knotc -b zone-reload example.com.
     $ knotc zone-thaw example.com.
 
 .. _Zone loading:
@@ -298,7 +298,7 @@ are not taken into account here – they are planned after the zone is loaded
 
 If the zone file exists and is not excluded by the configuration, it is first loaded
 and according to its SOA serial number relevant journal changesets are applied.
-If this is a zone reload and we have "`zonefile-load: difference`", the difference
+If this is a zone reload and we have :ref:`zone_zonefile-load` set to `difference`, the difference
 between old and new contents is computed and stored into the journal like an update.
 The zone file should be either unchaged since last load or changed with incremented
 SOA serial. In the case of a decreased SOA serial, the load is interrupted with
@@ -307,7 +307,7 @@ an error; if unchanged, it is increased by the server.
 If the procedure described above succeeds without errors, the resulting zone contents are (after potential DNSSEC signing)
 used as the new zone.
 
-The option "`journal-content: all`" lets the server, beside better performance, to keep
+The option :ref:`zone_journal-content` set to `all` lets the server, beside better performance, to keep
 track of the zone contents also across server restarts. It makes the cold start
 effectively work like a zone reload with the old contents loaded from the journal
 (unless this is the very first start with the zone not yet saved into the journal).
@@ -392,7 +392,8 @@ Zonefileless setup::
 
 Zone contents are stored just in the journal. The zone is updated by DDNS,
 zone transfer, or via the control interface. The user might have filled the
-zone contents initially from a zone file by setting "zonefile-load: whole" temporarily.
+zone contents initially from a zone file by setting :ref:`zone_zonefile-load` to
+`whole` temporarily.
 It's also a good setup for slaves. Anyway, it's recommended to carefully tune
 the journal-size-related options to avoid surprises of journal getting full.
 
@@ -413,8 +414,8 @@ The zone file's SOA serial must be properly set to a number which is higher than
 current SOA serial in the zone (not in the zone file) if manually updated!
 
 .. NOTE::
-   In the case of "zonefile-load: difference-no-serial", the SOA serial is
-   handled by the server automatically during server reload.
+   In the case of :ref:`zone_zonefile-load` is set to `difference-no-serial`,
+   the SOA serial is handled by the server automatically during server reload.
 
 .. _DNSSEC Key states:
 

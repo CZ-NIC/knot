@@ -4,7 +4,7 @@
 =====================================
 
 This module offers response tailoring based on client's
-subnet or geographic location. It supports GeoIP databases
+subnet, geographic location, or a statistical weight. It supports GeoIP databases
 in the MaxMind DB format, such as `GeoIP2 <https://dev.maxmind.com/geoip/geoip2/downloadable/>`_
 or the free version `GeoLite2 <https://dev.maxmind.com/geoip/geoip2/geolite2/>`_.
 
@@ -67,21 +67,24 @@ This file has the following simple format:
 ::
 
    domain-name1:
-     - geo|net: location1
+     - geo|net|weight: value1
        RR-Type1: RDATA
        RR-Type2: RDATA
        ...
-     - geo|net: location2
+     - geo|net|weight: value2
        RR-Type1: RDATA
      ...
    domain-name2:
    ...
 
 
-Example
--------
+Module configuration examples
+-----------------------------
 
-* Example :ref:`mod-geoip_config-file` for subnets
+This section contains some examples for the module's :ref:`mod-geoip_config-file`.
+
+Using subnets
+.............
 
 ::
 
@@ -98,6 +101,9 @@ Example
        TXT: "subnet\ 2001:DB8::/32"
    ...
 
+Clients from the specified subnets will receive the responses defined in the
+module config. Others will receive the default records defined in the zone (if any).
+
 .. NOTE::
    If a space or a quotation mark is a part of record data, such a character
    must be prefixed with a backslash. The following notations are equivalent::
@@ -106,19 +112,50 @@ Example
      "Multi-word\ string"
      "\"Multi-word string\""
 
-* Example :ref:`mod-geoip_config-file` for geographic locations
+Using geographic locations
+..........................
 
 ::
 
    foo.example.com:
      - geo: "CZ;Prague"
-       CNAME: cz.foo.example.com
+       CNAME: cz.foo.example.com.
      - geo: "US;Las Vegas"
-       CNAME: vegas.foo.example.net
+       CNAME: vegas.foo.example.net.
      - geo: "US;*"
-       CNAME: us.foo.example.net
+       CNAME: us.foo.example.net.
    ...
 
+Clients from the specified geographic locations will receive the responses defined in the
+module config. Others will receive the default records defined in the zone (if any). See
+:ref:`mod-geoip_geodb-key` for the syntax and semantics of the location definitions.
+
+Using weighted records
+......................
+
+::
+
+   foo.example.com:
+     - weight: 1
+       CNAME: canary.foo.example.com.
+     - weight: 10
+       CNAME: prod1.foo.example.com.
+     - weight: 10
+       CNAME: prod2.foo.example.com.
+   ...
+
+Each response is generated through a random pick where each defined record has a likelyhood
+of its weight over the sum of all weights for the requested name to. Records defined in the
+zone itself (if any) will never be served.
+
+Result:
+
+.. code-block:: console
+
+   $ for i in $(seq 1 100); do kdig @192.168.1.242 CNAME foo.example.com +short; done | sort | uniq -c
+      3 canary.foo.example.com.foo.example.com.
+     52 prod1.foo.example.net.foo.example.com.
+     45 prod2.foo.example.net.foo.example.com.
 
 Module reference
 ----------------
@@ -129,7 +166,7 @@ Module reference
    - id: STR
      config-file: STR
      ttl: TIME
-     mode: geodb | subnet
+     mode: geodb | subnet | weighted
      geodb-file: STR
      geodb-key: STR ...
 
@@ -170,6 +207,7 @@ Possible values:
 - ``subnet`` – Responses are tailored according to subnets.
 - ``geodb`` – Responses are tailored according to geographic data retrieved
   from the configured database.
+- ``weighted`` – Responses are tailored according to a statistical weight.
 
 *Default:* subnet
 
@@ -205,6 +243,10 @@ case, the key has to be prefixed with **(id)**. Common choices of keys include:
 * **isp**
 
 * ...
+
+The exact keys available depend on the database being used. To get the full list
+of keys available, you can e.g. do a sample lookup on your database with the
+`mmdblookup <https://maxmind.github.io/libmaxminddb/mmdblookup.html>`_ tool.
 
 In the zone's config file for the module the values of the keys are entered in the same order
 as the keys in the module's configuration, separated by a semicolon. Enter the value **"*"**

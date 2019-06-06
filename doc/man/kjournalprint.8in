@@ -53,6 +53,9 @@ Removes changes coloring.
 Instead of reading jurnal, display the list of zones in the DB.
 (\fIzone_name\fP not needed)
 .TP
+\fB\-c\fP, \fB\-\-check\fP
+Enable additional journal semantic checks during printing.
+.TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
@@ -68,6 +71,10 @@ A path to the journal database.
 \fIzone_name\fP
 A name of the zone to print the history for.
 .UNINDENT
+.SH EXIT VALUES
+.sp
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
 .SH EXAMPLES
 .sp
 Last (most recent) 5 changes without colors:

@@ -45,6 +45,18 @@
 #define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] != NULL && \
                                       strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
 
+static void schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t event,
+                             bool user)
+{
+	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_BLOCKING)) {
+		zone_events_schedule_blocking(zone, event, user);
+	} else if (user) {
+		zone_events_schedule_user(zone, event);
+	} else {
+		zone_events_schedule_now(zone, event);
+	}
+}
+
 void ctl_log_data(knot_ctl_data_t *data)
 {
 	if (data == NULL) {
@@ -249,7 +261,9 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 			data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
 			time_t ev_time = zone_events_get_time(zone, i);
-			if (ev_time <= 0) {
+			if (zone->events.running && zone->events.type == i) {
+				ret = snprintf(buff, sizeof(buff), "running");
+			} else if (ev_time <= 0) {
 				ret = snprintf(buff, sizeof(buff), "not scheduled");
 			} else if (ev_time <= time(NULL)) {
 				ret = snprintf(buff, sizeof(buff), "pending");
@@ -281,7 +295,7 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone_events_schedule_user(zone, ZONE_EVENT_LOAD);
+	schedule_trigger(zone, args, ZONE_EVENT_LOAD, true);
 
 	return KNOT_EOK;
 }
@@ -294,7 +308,7 @@ static int zone_refresh(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone_events_schedule_user(zone, ZONE_EVENT_REFRESH);
+	schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 
 	return KNOT_EOK;
 }
@@ -308,7 +322,7 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_AXFR;
-	zone_events_schedule_user(zone, ZONE_EVENT_REFRESH);
+	schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 
 	return KNOT_EOK;
 }
@@ -317,7 +331,7 @@ static int zone_notify(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	zone_events_schedule_user(zone, ZONE_EVENT_NOTIFY);
+	schedule_trigger(zone, args, ZONE_EVENT_NOTIFY, true);
 
 	return KNOT_EOK;
 }
@@ -332,7 +346,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		zone->flags |= ZONE_FORCE_FLUSH;
 	}
 
-	zone_events_schedule_user(zone, ZONE_EVENT_FLUSH);
+	schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
 
 	return KNOT_EOK;
 }
@@ -347,7 +361,7 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_RESIGN;
-	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
+	schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 
 	return KNOT_EOK;
 }
@@ -368,7 +382,7 @@ static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
+	schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 
 	return KNOT_EOK;
 }
@@ -390,7 +404,7 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (ret == KNOT_EOK && conf_bool(&val)) {
 		// NOT zone_events_schedule_user(), intentionally!
-		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+		schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, false);
 	}
 
 	return ret;
@@ -400,7 +414,7 @@ static int zone_freeze(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	zone_events_schedule_now(zone, ZONE_EVENT_UFREEZE);
+	schedule_trigger(zone, args, ZONE_EVENT_UFREEZE, false);
 
 	return KNOT_EOK;
 }
@@ -409,7 +423,7 @@ static int zone_thaw(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	zone_events_schedule_now(zone, ZONE_EVENT_UTHAW);
+	schedule_trigger(zone, args, ZONE_EVENT_UTHAW, false);
 
 	return KNOT_EOK;
 }
@@ -1144,7 +1158,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 
 	// Expire the zone.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
-		zone_events_schedule_user(zone, ZONE_EVENT_EXPIRE);
+		schedule_trigger(zone, args, ZONE_EVENT_EXPIRE, true);
 	}
 
 	// Purge the zone file.

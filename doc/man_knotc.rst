@@ -33,6 +33,9 @@ Parameters
 **-t**, **--timeout** *seconds*
   Use a control timeout in seconds. Set 0 for infinity (default is 10).
 
+**-b**, **--blocking**
+  Zone event trigger commands wait until the event is finished.
+
 **-f**, **--force**
   Forced operation. Overrides some checks.
 
@@ -70,7 +73,8 @@ Actions
 
 **zone-check** [*zone*...]
   Test if the server can load the zone. Semantic checks are executed if enabled
-  in the configuration. (*)
+  in the configuration. When invoked with flag **-f**/**--force** an error is
+  returned when semantic check warning appears. (*)
 
 **zone-memstats** [*zone*...]
   Estimate memory use for the zone. (*)
@@ -79,46 +83,47 @@ Actions
   Trigger a zone reload from a disk without checking its modification time. For
   slave zone, the refresh from a master server is scheduled; for master zone,
   the notification of slave servers is scheduled. An open zone transaction
-  will be aborted!
+  will be aborted! (#)
 
 **zone-refresh** [*zone*...]
   Trigger a check for the zone serial on the zone's master. If the master has a
-  newer zone, a transfer is scheduled. This command is valid for slave zones.
+  newer zone, a transfer is scheduled. This command is valid for slave zones. (#)
 
 **zone-retransfer** [*zone*...]
   Trigger a zone transfer from the zone's master. The server doesn't check the
-  serial of the master's zone. This command is valid for slave zones.
+  serial of the master's zone. This command is valid for slave zones. (#)
 
 **zone-notify** [*zone*...]
   Trigger a NOTIFY message to all configured remotes. This can help in cases
-  when previous NOTIFY had been lost or the slaves offline.
+  when previous NOTIFY had been lost or the slaves offline. (#)
 
 **zone-flush** [*zone*...] [**+outdir** *directory*]
   Trigger a zone journal flush into the zone file. If output dir is specified,
   instead of flushing the zonefile, the zone is dumped to a file in the specified
-  directory.
+  directory. (#)
 
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
-  This command is valid for zones with DNSSEC signing enabled.
+  This command is valid for zones with DNSSEC signing enabled. (#)
 
 **zone-key-rollover** *zone* *key_type*
   Trigger immediate key rollover. Publish new key and start a key rollover,
   even when the key has a lifetime to go. Key type can be **ksk** (also for CSK)
   or **zsk**. This command is valid for zones with DNSSEC signing and automatic
-  key management enabled.
+  key management enabled. Note that complete key rollover consists of several steps
+  and the blocking mode relates to the initial one only! (#)
 
 **zone-ksk-submitted** *zone*...
   Use when the zone's KSK rollover is in submittion phase. By calling this command
   the user confirms manually that the parent zone contains DS record for the new
-  KSK in submission phase and the old KSK can be retired.
+  KSK in submission phase and the old KSK can be retired. (#)
 
 **zone-freeze** [*zone*...]
   Temporarily postpone zone-changing events (load, refresh, update, flush, and
-  DNSSEC signing).
+  DNSSEC signing). (#)
 
 **zone-thaw** [*zone*...]
-  Dismiss zone freeze.
+  Dismiss zone freeze. (#)
 
 **zone-read** *zone* [*owner* [*type*]]
   Get zone data that are currently being presented.
@@ -150,7 +155,7 @@ Actions
   Available filters are **+expire**, **+zonefile**, **+journal**, **+timers**,
   and **+kaspdb**. If no filter is specified, all filters are enabled.
   If the zone is no longer configured, add **+orphan** filter (zone file cannot
-  be purged in this case).
+  be purged in this case). (#)
 
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use
@@ -208,7 +213,9 @@ Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *n
 
 (*) indicates a local operation which requires a configuration.
 
-Use **--force** or **-f** as the first parameter of any command to force it.
+(\#) indicates an optionally blocking operation.
+
+The *-b* and *-f* options can be placed right after the command name.
 
 Interactive mode
 ................
@@ -220,6 +227,12 @@ Interactive mode behavior can be customized in `~/.editrc`. Refer to
 :manpage:`editrc(5)` for details.
 
 Command history is saved in `~/.knotc_history`.
+
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
 
 Examples
 --------
