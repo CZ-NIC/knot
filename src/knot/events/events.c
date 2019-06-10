@@ -381,8 +381,6 @@ void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 	reschedule(events);
 }
 
-<<<<<<< Updated upstream
-=======
 void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool user)
 {
 	if (!zone || !valid_event(type)) {
@@ -407,7 +405,6 @@ void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool us
 	pthread_cond_wait(&cv , &blocker); 
 }
 
->>>>>>> Stashed changes
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 {
 	if (!zone || !valid_event(type)) {
