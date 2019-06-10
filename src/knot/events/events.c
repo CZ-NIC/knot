@@ -226,6 +226,16 @@ static void event_wrap(task_t *task)
 	if (ret == KNOT_EOK) {
 		/* Execute the event callback. */
 		ret = info->callback(conf, zone);
+		
+		if (events->blocking_mutex) {
+			pthread_mutex_unlock(events->blocking_mutex);
+			events->blocking_mutex = NULL;
+		}
+		if (events->blocking_cv) {
+			pthread_cond_signal(events->blocking_cv);
+			events->blocking_cv = NULL;
+		}
+		
 		conf_free(conf);
 	}
 
@@ -371,6 +381,33 @@ void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 	reschedule(events);
 }
 
+<<<<<<< Updated upstream
+=======
+void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool user)
+{
+	if (!zone || !valid_event(type)) {
+		return;
+	}
+
+	pthread_mutex_t blocker = PTHREAD_MUTEX_INITIALIZER;
+	pthread_cond_t  cv = PTHREAD_COND_INITIALIZER;
+	pthread_mutex_lock(&blocker);
+
+	if(!zone->events.blocking_mutex || !zone->events.blocking_cv) { //TODO blokujici event bezi.. vymyslet, jak se zachovat...
+		zone->events.blocking_mutex = &blocker;
+		zone->events.blocking_cv = &cv;
+	}
+
+	if (user) {
+		zone_events_schedule_user(zone, type);
+	} else {
+		zone_events_schedule_now(zone, type);
+	}
+
+	pthread_cond_wait(&cv , &blocker); 
+}
+
+>>>>>>> Stashed changes
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 {
 	if (!zone || !valid_event(type)) {
