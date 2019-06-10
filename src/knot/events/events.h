@@ -64,6 +64,9 @@ typedef struct zone_events {
 	task_t task;			//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
 	bool forced[ZONE_EVENT_COUNT];  //!< Flag that the event was invoked by user ctl.
+
+	pthread_mutex_t *blocking_mutex;
+	pthread_cond_t *blocking_cv;
 } zone_events_t;
 
 /*!
