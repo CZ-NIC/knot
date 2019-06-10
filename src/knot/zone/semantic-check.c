@@ -750,10 +750,12 @@ static int check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
 	bool nsec = data->level & NSEC;
 	knot_rdataset_t *nsec_rrs = NULL;
 
+	zone_node_t *nsec3_node = node_nsec3_node(node, NULL);
+
 	if (nsec) {
 		nsec_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC);
-	} else if (node->nsec3_node != NULL) {
-		nsec_rrs = node_rdataset(node->nsec3_node, KNOT_RRTYPE_NSEC3);
+	} else if (nsec3_node != NULL) {
+		nsec_rrs = node_rdataset(nsec3_node, KNOT_RRTYPE_NSEC3);
 	}
 	if (nsec_rrs == NULL) {
 		return KNOT_EOK;
@@ -789,7 +791,7 @@ static int check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
 	if (node_wire_size != nsec_wire_size ||
 	    memcmp(node_wire, nsec_wire, node_wire_size) != 0) {
 		char buff[50 + KNOT_DNAME_TXT_MAXLEN];
-		char *info = nsec ? NULL : nsec3_info(node->nsec3_node->owner,
+		char *info = nsec ? NULL : nsec3_info(nsec3_node->owner,
 		                                      buff, sizeof(buff));
 		data->handler->cb(data->handler, data->zone, node,
 		                  (nsec ? SEM_ERR_NSEC_RDATA_BITMAP : SEM_ERR_NSEC3_RDATA_BITMAP),
@@ -866,7 +868,7 @@ static int check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data)
 	bool deleg = (node->flags & NODE_FLAGS_DELEG) != 0;
 
 	if ((deleg && node_rrtype_exists(node, KNOT_RRTYPE_DS)) || (auth && !deleg)) {
-		if (node->nsec3_node == NULL) {
+		if (node_nsec3_node(node, NULL) == NULL) {
 			data->handler->cb(data->handler, data->zone, node,
 			                  SEM_ERR_NSEC3_NONE, NULL);
 		}
@@ -883,7 +885,7 @@ static int check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data)
  */
 static int check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 {
-	if (!(node->nsec3_node == NULL && node->flags & NODE_FLAGS_DELEG)) {
+	if (!(node_nsec3_node(node, NULL) == NULL && node->flags & NODE_FLAGS_DELEG)) {
 		return KNOT_EOK;
 	}
 	/* Insecure delegation, check whether it is part of opt-out span. */
@@ -930,7 +932,9 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	if (!auth && !deleg) {
 		return KNOT_EOK;
 	}
-	if (node->nsec3_node == NULL) {
+
+	zone_node_t *nsec3_node = node_nsec3_node(node, NULL);
+	if (nsec3_node == NULL) {
 		return KNOT_EOK;
 	}
 
@@ -938,9 +942,9 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	int ret = KNOT_EOK;
 
 	char buff[50 + KNOT_DNAME_TXT_MAXLEN];
-	char *info = nsec3_info(node->nsec3_node->owner, buff, sizeof(buff));
+	char *info = nsec3_info(nsec3_node->owner, buff, sizeof(buff));
 
-	knot_rrset_t nsec3_rrs = node_rrset(node->nsec3_node, KNOT_RRTYPE_NSEC3);
+	knot_rrset_t nsec3_rrs = node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
 	if (knot_rrset_empty(&nsec3_rrs)) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_NSEC3_NONE, info);
@@ -1007,7 +1011,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 
 	const zone_node_t *next_nsec3 = zone_contents_find_nsec3_node(data->zone,
 	                                                              next_dname);
-	if (next_nsec3 == NULL || node_prev(next_nsec3) != node->nsec3_node) {
+	if (next_nsec3 == NULL || node_prev(next_nsec3) != nsec3_node) {
 		uint8_t *next = NULL;
 		int32_t next_len = base32hex_encode_alloc(next_dname_str,
 		                                          next_dname_str_size,
@@ -1022,17 +1026,17 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 		free(hash_info);
 	}
 
-	ret = check_rrsig(node->nsec3_node, data);
+	ret = check_rrsig(nsec3_node, data);
 	if (ret != KNOT_EOK) {
 		goto nsec3_cleanup;
 	}
 
 	// Check that the node only contains NSEC3 and RRSIG.
-	for (int i = 0; ret == KNOT_EOK && i < node->nsec3_node->rrset_count; i++) {
-		knot_rrset_t rrset = node_rrset_at(node->nsec3_node, i);
+	for (int i = 0; ret == KNOT_EOK && i < nsec3_node->rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(nsec3_node, i);
 		uint16_t type = rrset.type;
 		if (type != KNOT_RRTYPE_NSEC3 && type != KNOT_RRTYPE_RRSIG) {
-			data->handler->cb(data->handler, data->zone, node->nsec3_node,
+			data->handler->cb(data->handler, data->zone, nsec3_node,
 			                  SEM_ERR_NSEC3_EXTRA_RECORD, NULL);
 		}
 	}
@@ -1101,7 +1105,7 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 	}
 	/* RFC 6672 Section 2.4 Paragraph 1 */
 	/* If the NSEC3 node of the apex is present, it is counted as apex's child. */
-	unsigned allowed_children = (is_apex && node->nsec3_node != NULL) ? 1 : 0;
+	unsigned allowed_children = (is_apex && node_nsec3_node(node, NULL) != NULL) ? 1 : 0;
 	if (node->children > allowed_children) {
 		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,

@@ -42,33 +42,11 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 	return KNOT_EOK; // always returns this value :)
 }
 
-int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
-{
-	if (!knot_is_nsec3_enabled(zone)) {
-		node->nsec3_node = NULL;
-		return KNOT_EOK;
-	}
-	if (node->nsec3_node != NULL) {
-		zone_node_t *real_nsec3 = binode_node(node->nsec3_node, node->flags & NODE_FLAGS_SECOND);
-		if ((real_nsec3->flags & NODE_FLAGS_IN_NSEC3_CHAIN) &&
-		    !(real_nsec3->flags & NODE_FLAGS_DELETED)) {
-			node->nsec3_node = real_nsec3;
-			return KNOT_EOK;
-		}
-	}
-	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
-	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), node->owner,
-	                                  zone->apex->owner, &zone->nsec3_params);
-	if (ret == KNOT_EOK) {
-		node->nsec3_node = zone_tree_get(zone->nsec3_nodes, nsec3_name);
-	}
-	return ret;
-}
-
 int unadjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
 	UNUSED(zone);
 	node->nsec3_node = NULL;
+	node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 	return KNOT_EOK;
 }
 
@@ -243,14 +221,14 @@ int adjust_cb_flags_and_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
 	int ret = adjust_cb_flags(node, zone);
 	if (ret == KNOT_EOK) {
-		ret = adjust_cb_point_to_nsec3(node, zone);
+		ret = binode_fix_nsec3_pointer(node, zone);
 	}
 	return ret;
 }
 
 int adjust_cb_nsec3_and_additionals(zone_node_t *node, const zone_contents_t *zone)
 {
-	int ret = adjust_cb_point_to_nsec3(node, zone);
+	int ret = binode_fix_nsec3_pointer(node, zone);
 	if (ret == KNOT_EOK) {
 		ret = adjust_cb_wildcard_nsec3(node, zone);
 	}
@@ -401,7 +379,7 @@ int zone_adjust_incremental_update(zone_update_t *update)
 		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 	}
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(update->new_cont, adjust_cb_point_to_nsec3, NULL, false);
+		ret = zone_adjust_contents(update->new_cont, binode_fix_nsec3_pointer, NULL, false);
 	}
 	if (ret == KNOT_EOK) {
 		ret = additionals_tree_update_from_binodes(
