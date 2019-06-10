@@ -42,7 +42,7 @@ static bool wildcard_expanded(const zone_node_t *node, const knot_dname_t *qname
  */
 static bool ds_optout(const zone_node_t *node)
 {
-	return node->nsec3_node == NULL && node->flags & NODE_FLAGS_DELEG;
+	return node_nsec3_get(node) == NULL && node->flags & NODE_FLAGS_DELEG;
 }
 
 /*!
@@ -273,7 +273,7 @@ static int put_closest_encloser_proof(const knot_dname_t *qname,
 {
 	// An NSEC3 RR that matches the closest (provable) encloser.
 
-	int ret = put_nsec3_from_node(cpe->nsec3_node, qdata, resp);
+	int ret = put_nsec3_from_node(node_nsec3_get(cpe), qdata, resp);
 	if (ret !=  KNOT_EOK) {
 		return ret;
 	}
@@ -530,8 +530,9 @@ static int put_nsec3_nodata(const knot_dname_t *qname,
 
 	// NSEC3 matching QNAME is always included.
 
-	if (match->nsec3_node) {
-		ret = put_nsec3_from_node(match->nsec3_node, qdata, resp);
+	zone_node_t *nsec3_match = node_nsec3_get(match);
+	if (nsec3_match != NULL) {
+		ret = put_nsec3_from_node(nsec3_match, qdata, resp);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
