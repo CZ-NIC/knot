@@ -64,6 +64,8 @@ typedef struct zone_events {
 	task_t task;			//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
 	bool forced[ZONE_EVENT_COUNT];  //!< Flag that the event was invoked by user ctl.
+
+	pthread_cond_t *blocking_cv;
 } zone_events_t;
 
 /*!
@@ -149,7 +151,7 @@ void _zone_events_schedule_at(struct zone *zone, ...);
  * \param ...   Sequence of zone_event_type_t and time_t terminated with
  *              ZONE_EVENT_INVALID.
  */
-void zone_events_schedule_blocking(struct zone *zone, zone_event_type_t type);
+void zone_events_schedule_blocking(struct zone *zone, zone_event_type_t type, bool user);
 
 /*!
  * \brief Schedule zone event to now, with forced flag.
