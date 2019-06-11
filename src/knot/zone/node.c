@@ -166,7 +166,7 @@ void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 		if (counter->nsec3_wildcard_name != node->nsec3_wildcard_name) {
 			free(counter->nsec3_wildcard_name);
 		}
-		if (!(counter->flags & NODE_FLAGS_NSEC3_NODE) && (node->flags & NODE_FLAGS_NSEC3_NODE)) {
+		if (!(counter->flags & NODE_FLAGS_NSEC3_NODE) && node->nsec3_hash != counter->nsec3_hash) {
 			free(counter->nsec3_hash);
 		}
 		assert(((node->flags ^ counter->flags) & NODE_FLAGS_SECOND));
@@ -395,4 +395,14 @@ bool node_bitmap_equal(const zone_node_t *a, const zone_node_t *b)
 		}
 	}
 	return true;
+}
+
+zone_node_t *node_nsec3_get(const zone_node_t *node)
+{
+	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) || node->nsec3_node == NULL) {
+		return NULL;
+	} else {
+		assert((node->nsec3_node->flags & NODE_FLAGS_SECOND) == (node->flags & NODE_FLAGS_SECOND));
+		return node->nsec3_node;
+	}
 }

@@ -45,6 +45,9 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 int unadjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
 	UNUSED(zone);
+	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) && node->nsec3_hash != binode_counterpart(node)->nsec3_hash) {
+		free(node->nsec3_hash);
+	}
 	node->nsec3_node = NULL;
 	node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 	return KNOT_EOK;

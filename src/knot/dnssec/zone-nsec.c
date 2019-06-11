@@ -86,6 +86,7 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
 knot_dname_t *node_nsec3_hash(zone_node_t *node, const zone_contents_t *zone)
 {
 	if (node->nsec3_hash == NULL && knot_is_nsec3_enabled(zone)) {
+		assert(!(node->flags & NODE_FLAGS_NSEC3_NODE));
 		size_t hash_size = zone_nsec3_name_len(zone);
 		knot_dname_t *hash = malloc(hash_size);
 		if (hash == NULL) {
@@ -111,23 +112,24 @@ zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
 		knot_dname_t *hash = node_nsec3_hash(node, zone);
 		zone_node_t *nsec3 = zone_tree_get(zone->nsec3_nodes, hash);
 		if (nsec3 != NULL) {
-			free(node->nsec3_hash);
+			if (node->nsec3_hash != binode_counterpart(node)->nsec3_hash) {
+				free(node->nsec3_hash);
+			}
 			node->nsec3_node = nsec3;
 			node->flags |= NODE_FLAGS_NSEC3_NODE;
 		}
 	}
 
-	if ((node->flags & NODE_FLAGS_NSEC3_NODE)) {
-		assert((node->flags & NODE_FLAGS_SECOND) == (node->nsec3_node->flags & NODE_FLAGS_SECOND));
-		return node->nsec3_node;
-	} else {
-		return NULL;
-	}
+	return node_nsec3_get(node);
 }
 
 int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 {
 	zone_node_t *counter = binode_counterpart(node);
+	if (counter->nsec3_hash == NULL) {
+		(void)node_nsec3_node(node, zone);
+		return KNOT_EOK;
+	}
 	zone_node_t *nsec3_counter = (counter->flags & NODE_FLAGS_NSEC3_NODE) ?
 	                             binode_counterpart(counter->nsec3_node) : NULL;
 	if (nsec3_counter != NULL && !(nsec3_counter->flags & NODE_FLAGS_DELETED)) {
