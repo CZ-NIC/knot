@@ -657,10 +657,10 @@ class Server(object):
 
         self.zones[zone.name].zfile.backup()
 
-    def zone_verify(self, zone):
+    def zone_verify(self, zone, bind_check=None, ldns_check=None):
         zone = zone_arg_check(zone)
 
-        self.zones[zone.name].zfile.dnssec_verify()
+        self.zones[zone.name].zfile.dnssec_verify(bind_check, ldns_check)
 
     def check_nsec(self, zone, nsec3=False, nonsec=False):
         zone = zone_arg_check(zone)
