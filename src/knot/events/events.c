@@ -226,6 +226,17 @@ static void event_wrap(task_t *task)
 	if (ret == KNOT_EOK) {
 		/* Execute the event callback. */
 		ret = info->callback(conf, zone);
+		
+		pthread_mutex_lock(&events->mx);
+		if (events->blocking_cv[type]) {
+			pthread_cond_t *cv = events->blocking_cv[type];
+			events->blocking_cv[type] = NULL;
+			pthread_mutex_unlock(&events->mx);
+			
+			pthread_cond_broadcast(cv);
+		}
+		pthread_mutex_unlock(&events->mx);
+
 		conf_free(conf);
 	}
 
@@ -343,17 +354,6 @@ void _zone_events_schedule_at(zone_t *zone, ...)
 	va_end(args);
 }
 
-void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t  type) {
-
-	zone_events_schedule_now(zone, type);
-
-	time_t run_time = zone_events_get_time(zone, type);
-	while (zone->events.running || (run_time > 0 && run_time <= time(NULL))) {
-		usleep(10000);
-		run_time = zone_events_get_time(zone, type);
-	}
-}
-
 void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 {
 	if (!zone || !valid_event(type)) {
@@ -369,6 +369,49 @@ void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 
 	// reschedule because get_next_event result changed outside of _zone_events_schedule_at
 	reschedule(events);
+}
+
+void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool user)
+{
+	if (!zone || !valid_event(type)) {
+		return;
+	}
+
+	pthread_mutex_t mutex_blocker = PTHREAD_MUTEX_INITIALIZER;
+	pthread_cond_t  cv = PTHREAD_COND_INITIALIZER;
+	pthread_mutex_lock(&mutex_blocker);
+	
+	pthread_mutex_lock(&zone->events.mx);
+	while (zone->events.blocking_cv[type]) { //While event of type 'type' is already running
+		pthread_mutex_unlock(&zone->events.mx);
+
+		pthread_cond_wait(zone->events.blocking_cv[type], &mutex_blocker); //Wait till end of event run
+
+		pthread_mutex_lock(&zone->events.mx);
+	}
+	zone->events.blocking_cv[type] = &cv;
+	pthread_mutex_unlock(&zone->events.mx);
+
+	// Schedule event
+	if (user) {
+		zone_events_schedule_user(zone, type);
+	} else {
+		zone_events_schedule_now(zone, type);
+	}
+
+
+	pthread_mutex_lock(&zone->events.mx);
+	while (zone->events.blocking_cv[type] == &cv) { // 'spurious wakeup' condition
+		pthread_mutex_unlock(&zone->events.mx);
+
+		pthread_cond_wait(&cv , &mutex_blocker); // Wait till end of event run
+
+		pthread_mutex_lock(&zone->events.mx);
+	}
+	pthread_mutex_unlock(&zone->events.mx);
+
+	pthread_mutex_unlock(&mutex_blocker);
+	pthread_cond_destroy(&cv);
 }
 
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
