@@ -396,13 +396,3 @@ bool node_bitmap_equal(const zone_node_t *a, const zone_node_t *b)
 	}
 	return true;
 }
-
-zone_node_t *node_nsec3_get(const zone_node_t *node)
-{
-	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) || node->nsec3_node == NULL) {
-		return NULL;
-	} else {
-		assert((node->nsec3_node->flags & NODE_FLAGS_SECOND) == (node->flags & NODE_FLAGS_SECOND));
-		return node->nsec3_node;
-	}
-}

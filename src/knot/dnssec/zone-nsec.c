@@ -92,14 +92,15 @@ knot_dname_t *node_nsec3_hash(zone_node_t *node, const zone_contents_t *zone)
 		if (hash == NULL) {
 			return NULL;
 		}
-		if (knot_create_nsec3_owner(hash, hash_size, node->owner, zone->apex->owner, &zone->nsec3_params) != KNOT_EOK) {
+		if (knot_create_nsec3_owner(hash, hash_size, node->owner, zone->apex->owner,
+		                            &zone->nsec3_params) != KNOT_EOK) {
 			free(hash);
 			return NULL;
 		}
 		node->nsec3_hash = hash;
 	}
 
-	if ((node->flags & NODE_FLAGS_NSEC3_NODE)) {
+	if (node->flags & NODE_FLAGS_NSEC3_NODE) {
 		return node->nsec3_node->owner;
 	} else {
 		return node->nsec3_hash;
@@ -136,7 +137,7 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 		node->nsec3_node = nsec3_counter;
 	} else {
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
-		if ((counter->flags & NODE_FLAGS_NSEC3_NODE)) {
+		if (counter->flags & NODE_FLAGS_NSEC3_NODE) {
 			// downgrade the NSEC3 node pointer to NSEC3 name
 			node->nsec3_hash = knot_dname_copy(counter->nsec3_node->owner, NULL);
 		} else {

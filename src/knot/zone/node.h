@@ -364,4 +364,12 @@ static inline knot_rrset_t node_rrset_at(const zone_node_t *node, size_t pos)
 /*!
  * \brief Return the relevant NSEC3 node (if specified by adjusting), or NULL.
  */
-zone_node_t *node_nsec3_get(const zone_node_t *node);
+static inline zone_node_t *node_nsec3_get(const zone_node_t *node)
+{
+	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) || node->nsec3_node == NULL) {
+		return NULL;
+	} else {
+		assert((node->nsec3_node->flags & NODE_FLAGS_SECOND) == (node->flags & NODE_FLAGS_SECOND));
+		return node->nsec3_node;
+	}
+}

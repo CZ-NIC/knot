@@ -46,7 +46,7 @@ int unadjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
 	UNUSED(zone);
 	// downgrade the NSEC3 node pointer to NSEC3 name
-	if ((node->flags & NODE_FLAGS_NSEC3_NODE)) {
+	if (node->flags & NODE_FLAGS_NSEC3_NODE) {
 		node->nsec3_hash = knot_dname_copy(node->nsec3_node->owner, NULL);
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 	}
