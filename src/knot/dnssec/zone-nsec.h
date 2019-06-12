@@ -75,6 +75,40 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
                             const dnssec_nsec3_params_t *params);
 
 /*!
+ * \brief Return (and compute of needed) the corresponding NSEC3 node's name.
+ *
+ * \param node   Normal node.
+ * \param zone   Optional: zone contents with NSEC3 params.
+ *
+ * \return NSEC3 node owner.
+ *
+ * \note The result is also stored in (node), unless zone == NULL;
+ */
+knot_dname_t *node_nsec3_hash(zone_node_t *node, const zone_contents_t *zone);
+
+/*!
+ * \brief Return (and compute if needed) the corresponding NSEC3 node.
+ *
+ * \param node   Normal node.
+ * \param zone   Optional: zone contents with NSEC3 params and NSEC3 tree.
+ *
+ * \return NSEC3 node.
+ *
+ * \note The result is also stored in (node), unless zone == NULL;
+ */
+zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone);
+
+/*!
+ * \brief Update node's NSEC3 pointer (or hash), taking it from bi-node counterpart if possible.
+ *
+ * \param node   Bi-node with this node to be updated.
+ * \param zone   Zone contents the node is in.
+ *
+ * \return KNOT_EOK :)
+ */
+int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone);
+
+/*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  *
  * \param update          Zone Update with current zone contents and to be updated with NSEC chain.
