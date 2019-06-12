@@ -45,11 +45,11 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 int unadjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
 {
 	UNUSED(zone);
-	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) && node->nsec3_hash != binode_counterpart(node)->nsec3_hash) {
-		free(node->nsec3_hash);
+	// downgrade the NSEC3 node pointer to NSEC3 name
+	if ((node->flags & NODE_FLAGS_NSEC3_NODE)) {
+		node->nsec3_hash = knot_dname_copy(node->nsec3_node->owner, NULL);
+		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 	}
-	node->nsec3_node = NULL;
-	node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 	return KNOT_EOK;
 }
 

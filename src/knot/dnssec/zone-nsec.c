@@ -137,6 +137,7 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 	} else {
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 		if ((counter->flags & NODE_FLAGS_NSEC3_NODE)) {
+			// downgrade the NSEC3 node pointer to NSEC3 name
 			node->nsec3_hash = knot_dname_copy(counter->nsec3_node->owner, NULL);
 		} else {
 			node->nsec3_hash = counter->nsec3_hash;
