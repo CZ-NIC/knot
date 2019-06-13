@@ -45,18 +45,26 @@ int zone_node_additionals_foreach(const zone_node_t *node, const knot_dname_t *z
  * \brief Update additionals tree according to changed RRsets in a zone node.
  *
  * \param a_t         Additionals tree to be updated.
- * \param zone_apex   Name of the zone.
+ * \param zone_apex   Zone apex owner.
  * \param old_node    Old state of the node (additionals will be removed).
- * \param new_node    New state of the node (additionals will be added)d
+ * \param new_node    New state of the node (additionals will be added).
  *
  * \return KNOT_E*
  */
 int additionals_tree_update_node(additionals_tree_t *a_t, const knot_dname_t *zone_apex,
                                  zone_node_t *old_node, zone_node_t *new_node);
 
-
-int additionals_tree_update_nsec3(additionals_tree_t *a_t, const knot_dname_t *zone_apex,
-                                  const dnssec_nsec3_params_t *params,
+/*!
+ * \brief Update additionals tree with NSEC3 according to changed normal nodes.
+ *
+ * \param a_t         Additionals tree to be updated.
+ * \param zone        Zone contents with NSEC3PARAMS etc.
+ * \param old_node    Old state of the node.
+ * \param new_node    New state of the node.
+ *
+ * \return KNOT_E*
+ */
+int additionals_tree_update_nsec3(additionals_tree_t *a_t, const zone_contents_t *zone,
                                   zone_node_t *old_node, zone_node_t *new_node);
 
 /*!
@@ -74,12 +82,12 @@ int additionals_tree_from_zone(additionals_tree_t **a_t, const zone_contents_t *
  *
  * \param a_t          Additionals tree to be updated.
  * \param tree         Zone tree containing updated nodes as bi-nodes.
- * \param zone_apex    Name of the zone.
+ * \param zone         Whole zone with some additional info.
  *
  * \return KNOT_E*
  */
 int additionals_tree_update_from_binodes(additionals_tree_t *a_t, const zone_tree_t *tree,
-                                         const knot_dname_t *zone_apex, const dnssec_nsec3_params_t *params);
+                                         const zone_contents_t *zone);
 
 /*!
  * \brief Foreach node that has specified name in its additionals, do sth.

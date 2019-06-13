@@ -388,13 +388,11 @@ int zone_adjust_incremental_update(zone_update_t *update)
 	if (ret == KNOT_EOK) {
 		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 	}
-	dnssec_nsec3_params_t *params = knot_is_nsec3_enabled(update->new_cont) ? &update->new_cont->nsec3_params : NULL;
 	if (ret == KNOT_EOK) {
 		ret = additionals_tree_update_from_binodes(
 			update->new_cont->adds_tree,
 			update->a_ctx->node_ptrs,
-			update->new_cont->apex->owner,
-			params
+			update->new_cont
 		);
 	}
 	if (ret == KNOT_EOK) {
