@@ -18,64 +18,67 @@ size_t synth_addr_cpy(char *dest, const char *src, const int addr_family, const 
 	const char sep = str_separator(addr_family);
 	size_t i;
 
-	if(shorten) {
+	if (shorten) {
 		size_t idx = 0;
 		bool full_shortening = (addr_family == AF_INET6);
-        bool begin = true;
+		bool begin = true;
 		int zero_block = 0;
-        int separator_seq = 0;
-		for(i = 0; i < addr_len; ++i) {
-      		if(src[i] == '0') { // Remove leading '0'
-                if(begin) {      
-                    zero_block++;
-                }
-                else {
-                    dest[idx++] = '0';
-                    separator_seq = 0;
-                }
+		int separator_seq = 0;
+		for (i = 0; i < addr_len; ++i) {
+			if (src[i] == '0') { // Remove leading '0'
+				if (begin) {      
+					zero_block++;
+				}
+				else {
+					dest[idx++] = '0';
+					separator_seq = 0;
+				}
 			}
-			else if(src[i] == sep) { // Separators
-                if(zero_block) {
-                    if(full_shortening) {
-                        while (separator_seq < 2) {
-                            dest[idx++] = '-';
-                            separator_seq++;
-                        }
-                        zero_block = 0;
-                        begin = true;
-                        full_shortening = false;
-                    }
-                    else {
-                        if(separator_seq < 2) {
-                            dest[idx++] = '0';
-                            dest[idx++] = '-';
-                            separator_seq = 1;
-                        }
-                        zero_block = 0;
-                        begin = true;
-                    }
-                }
-                else {
-				    dest[idx++] = '-';
-                    separator_seq++;
-                    zero_block = 0;
-                    begin = true;
-                }
+			else if (src[i] == sep) { // Separators
+				if (zero_block) {
+					if (full_shortening) {
+						while (separator_seq < 2) {
+							dest[idx++] = '-';
+							separator_seq++;
+						}
+						zero_block = 0;
+						begin = true;
+						full_shortening = false;
+					}
+					else {
+						if (separator_seq < 2) {
+							dest[idx++] = '0';
+							dest[idx++] = '-';
+							separator_seq = 1;
+						}
+						zero_block = 0;
+						begin = true;
+					}
+				}
+				else {
+					dest[idx++] = '-';
+					separator_seq++;
+					zero_block = 0;
+					begin = true;
+				}
 			}
 			else { // Copy common symbol (symbol other than '0' or separator)
+				if(i == 2 && zero_block == 2) {
+					dest[idx++] = '0';
+				}
 				dest[idx++] = src[i];
-                separator_seq = 0;
-                zero_block = 0;
-                begin = false;
+				separator_seq = 0;
+				zero_block = 0;
+				begin = false;
 			}
 		}
-        // Ending of address string
-        if(separator_seq && full_shortening) {
-		    dest[idx++] = '-';
-        }
-        else if (separator_seq && !full_shortening) {
-            dest[idx++] = '0';
-        }
+		// Ending of address string
+		if(separator_seq && full_shortening) {
+			dest[idx++] = '-';
+		}
+		else if (separator_seq && !full_shortening) {
+			dest[idx++] = '0';
+		}
 		dest[idx++] = '\0';
 
 		return idx;
