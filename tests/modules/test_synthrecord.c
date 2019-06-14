@@ -13,52 +13,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 #include <tap/basic.h>
 
 #include <arpa/inet.h>
 
-#include "stdio.h"
+#include <stdio.h>
 
 #include "knot/modules/synthrecord/utils.h"
-
-void str_replace(char *dst, size_t n, const char from, const char to) {
-    for(size_t i = 0; i < n; ++i) {
-        if(dst[i] == from) {
-            dst[i] = to;
-        }
-    }
-}
-
-void test_ip6_shortening(const char * const ips[], size_t n) {
-    char buffer[INET6_ADDRSTRLEN];
-    unsigned long result_counter = 0;
-	for(size_t i = 0; i < n; ++i) {
-		if(!ips[i]) break;
-
-        size_t len = synth_addr_cpy(buffer, ips[i], AF_INET6, true);
-        str_replace(buffer, len, '-', ':');
-
-        struct in6_addr original, converted;
-
-		int ret = inet_pton(AF_INET6, ips[i], &original);
-        if(ret != 1) continue;
-
-        ret = inet_pton(AF_INET6, buffer, &converted);
-        if(ret != 1) {
-            ok(0, "'%s' -> '%s", ips[i], buffer);
-            continue;
-        }
-
-        int result = true;
-        for(int j = 0; j < 4; ++j) {
-            result &= (original.__in6_u.__u6_addr32[j] == converted.__in6_u.__u6_addr32[j]);
-            
-        }
-        result_counter += !result;
-    }
-    ok(!result_counter, "IPv6 shotrening");   
-}
-
 
 const char * const ipv6s[] = {
     // Generic addresses
@@ -94,7 +56,7 @@ const char * const ipv6s[] = {
     "0000:0000:0000:0000:0000:0000:0000:393C",
     "193A:0000:0000:0000:7BE2:0000:0000:0000",
     "0000:0000:DB87:0000:0000:0000:0000:0000",
-    
+
     // Special addresses
     "0000:0000:0000:0000:0000:0000:0000:0000",
 
@@ -102,17 +64,56 @@ const char * const ipv6s[] = {
     "0aaa:0000:00bb:0000:0000:0000:0000:0001",
     "000a:0000:00bb:0000:0000:0000:0000:0001",
 
+    "0000:000a:00bb:0000:0000:0000:0000:0001",
+    "0000:0000:00bb:0000:0000:0000:0000:0001",
+
     NULL
 };
 
+void str_replace(char *dst, size_t n, const char from, const char to)
+{
+    for(size_t i = 0; i < n; ++i) {
+        if(dst[i] == from) {
+            dst[i] = to;
+        }
+    }
+}
+
+void test_ip6_shortening(const char * const ips[], size_t n)
+{
+    char buffer[INET6_ADDRSTRLEN];
+    unsigned long result_counter = 0;
+    for(size_t i = 0; i < n; ++i) {
+        if(!ips[i]) break;
+
+        size_t len = synth_addr_cpy(buffer, ips[i], AF_INET6, true);
+        str_replace(buffer, len, '-', ':');
+
+        struct in6_addr original, converted;
+
+        int ret = inet_pton(AF_INET6, ips[i], &original);
+        if (ret != 1) continue;
+
+        ret = inet_pton(AF_INET6, buffer, &converted);
+        if (ret != 1) {
+            result_counter++;
+            continue;
+        }
+
+        int result = true;
+        for (int j = 0; j < 4; ++j) {
+            result &= (original.__in6_u.__u6_addr32[j] == converted.__in6_u.__u6_addr32[j]);
+        }
+        result_counter += !result;
+    }
+    ok(!result_counter, "IPv6 shotrening");
+}
 
 int main(int argc, char *argv[])
 {
-	plan_lazy();
+    plan_lazy();
 
-
-	
     test_ip6_shortening(ipv6s, sizeof(ipv6s)/sizeof(const char *));
 
-	return 0;
+    return 0;
 }
