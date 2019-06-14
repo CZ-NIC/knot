@@ -213,6 +213,8 @@ void zone_free(zone_t **zone_ptr)
 	knot_dname_free(zone->name, NULL);
 
 	free_ddns_queue(zone);
+	pthread_mutex_lock(&zone->ddns_lock);
+	synchronize_rcu();
 	pthread_mutex_destroy(&zone->ddns_lock);
 
 	knot_sem_destroy(&zone->cow_lock);
