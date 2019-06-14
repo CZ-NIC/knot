@@ -293,13 +293,26 @@ int net_connect(net_t *net)
 		return KNOT_NET_ESOCKET;
 	}
 
-	// Bind address to socket if specified.
+	// Bind address to socket if specified, set any when not
+	struct sockaddr src;
 	if (net->local_info != NULL) {
-		if (bind(sockfd, net->local_info->ai_addr,
-		         net->local_info->ai_addrlen) == -1) {
-			WARN("can't assign address %s\n", net->local->name);
-			return KNOT_NET_ESOCKET;
+		memcpy(&src, net->local_info->ai_addr, sizeof(struct sockaddr));
+	}
+	else {
+		memset(&src, 0, sizeof(src));
+		if (net->iptype == 0) {
+			((struct sockaddr_in *) &src)->sin_addr.s_addr = INADDR_ANY;
+			((struct sockaddr_in *) &src)->sin_port = 0;
 		}
+		else if (net->iptype == 10) {
+			((struct sockaddr_in6 *) &src)->sin6_addr = in6addr_any;
+			((struct sockaddr_in6 *) &src)->sin6_port = 0;
+		}
+	}
+
+	if (bind(sockfd, &src, sizeof(src)) == -1) {
+		WARN("can't assign address %s\n", net->local->name);
+		return KNOT_NET_ESOCKET;
 	}
 
 	if (net->socktype == SOCK_STREAM) {
