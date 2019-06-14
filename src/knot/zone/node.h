@@ -369,7 +369,6 @@ static inline zone_node_t *node_nsec3_get(const zone_node_t *node)
 	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) || node->nsec3_node == NULL) {
 		return NULL;
 	} else {
-		assert((node->nsec3_node->flags & NODE_FLAGS_SECOND) == (node->flags & NODE_FLAGS_SECOND));
-		return node->nsec3_node;
+		return binode_node(node->nsec3_node, (node->flags & NODE_FLAGS_SECOND));
 	}
 }
