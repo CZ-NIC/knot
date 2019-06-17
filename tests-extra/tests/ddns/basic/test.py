@@ -144,6 +144,30 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
     verify(master, zone, dnssec)
 
+    # make a delegation from NONAUTH node
+    check_log("NONAUTH to DELEG")
+    up = master.update(zone)
+    up.add("a.deleglue.ddns.", 3600, "NS", "a.deleglue.ddns.")
+    up.delete("deleglue.ddns.", "NS", "a.deleglue.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("x.a.deleglue.ddns.", "A")
+    resp.check(rcode="NOERROR")
+    resp.check_record(section="authority", rtype="NS", rdata="a.deleglue.ddns.")
+    resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
+    verify(master, zone, dnssec)
+
+    # reverse of previous
+    check_log("DELEG to NONAUTH")
+    up = master.update(zone)
+    up.delete("a.deleglue.ddns.", "NS", "a.deleglue.ddns.")
+    up.add("deleglue.ddns.", 3600, "NS", "a.deleglue.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("deleglue.ddns.", "NS")
+    resp.check(rcode="NOERROR")
+    resp.check_record(section="authority", rtype="NS", rdata="a.deleglue.ddns.")
+    resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
+    verify(master, zone, dnssec)
+
     # add CNAME to node with A records, should be ignored
     check_log("Add CNAME to A node")
     up = master.update(zone)
