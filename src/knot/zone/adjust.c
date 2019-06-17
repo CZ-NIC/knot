@@ -29,14 +29,12 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 
 	assert(!(node->flags & NODE_FLAGS_DELETED));
 
-	// set flags (delegation point, non-authoritative)
+	node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH);
+
 	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
 		node->flags |= NODE_FLAGS_NONAUTH;
 	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != zone->apex) {
 		node->flags |= NODE_FLAGS_DELEG;
-	} else {
-		// Default.
-		node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH);
 	}
 
 	return KNOT_EOK; // always returns this value :)
