@@ -1140,10 +1140,22 @@ int kdig_exec(const kdig_params_t *params)
 	}
 
 	bool success = true;
-
+	
 	// Loop over query list.
 	WALK_LIST(n, params->queries) {
 		query_t *query = (query_t *)n;
+		
+		if (!query->local) {
+			switch(query->ip) {
+				case IP_6:
+					query->local =  srv_info_create("::", "0");
+					break;
+				case IP_4:
+				case IP_ALL:
+					query->local =  srv_info_create("0.0.0.0", "0");
+					break;	
+			}
+		}
 
 		int ret = -1;
 		switch (query->operation) {
