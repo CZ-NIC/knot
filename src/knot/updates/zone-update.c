@@ -48,7 +48,8 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 		}
 	}
 
-	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
+	uint32_t apply_flags = (update->flags & UPDATE_STRICT) ? APPLY_STRICT : 0;
+	apply_flags |= ((update->flags & UPDATE_HYBRID) ? APPLY_UNIFY_FULL : 0);
 	ret = apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
 	if (ret != KNOT_EOK) {
 		changeset_clear(&update->change);
@@ -74,7 +75,7 @@ static int init_full(zone_update_t *update, zone_t *zone)
 		return KNOT_ENOMEM;
 	}
 
-	int ret = apply_init_ctx(update->a_ctx, update->new_cont, 0);
+	int ret = apply_init_ctx(update->a_ctx, update->new_cont, APPLY_UNIFY_FULL);
 	if (ret != KNOT_EOK) {
 		zone_contents_free(update->new_cont);
 		return ret;
@@ -235,7 +236,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	}
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
-	int ret = apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	int ret = apply_init_ctx(update->a_ctx, update->new_cont, apply_flags | APPLY_UNIFY_FULL);
 	if (ret != KNOT_EOK) {
 		changeset_clear(&update->change);
 		free(update->a_ctx);

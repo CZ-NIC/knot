@@ -134,7 +134,7 @@ zone_node_t *binode_counterpart(zone_node_t *node)
 {
 	zone_node_t *counterpart = NULL;
 
-	if ((node->flags & NODE_FLAGS_BINODE)) {
+	if (node != NULL && (node->flags & NODE_FLAGS_BINODE)) {
 		if ((node->flags & NODE_FLAGS_SECOND)) {
 			counterpart = node - 1;
 			assert(!(counterpart->flags & NODE_FLAGS_SECOND));
