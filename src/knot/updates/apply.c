@@ -416,13 +416,15 @@ void update_cleanup(apply_ctx_t *ctx)
 		return;
 	}
 
-	zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs);
+	if ((ctx->flags & APPLY_UNIFY_FULL)) {
+		zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes);
+	} else {
+		zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs);
+		zone_trees_unify_binodes(ctx->adjust_ptrs, NULL);
+	}
 
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);
-
-	zone_trees_unify_binodes(ctx->adjust_ptrs, NULL);
-
 	zone_tree_free(&ctx->adjust_ptrs);
 
 	if (ctx->cow_mutex != NULL) {

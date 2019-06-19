@@ -402,6 +402,11 @@ static int adjust_point_to_nsec3_cb(zone_node_t *node, void *ctx)
 	return binode_fix_nsec3_pointer(real_node, actx->zone);
 }
 
+static int adjust_cb_fix_nsec3_pointer(zone_node_t *node, adjust_ctx_t *ctx)
+{
+	return binode_fix_nsec3_pointer(node, ctx->zone);
+}
+
 int zone_adjust_incremental_update(zone_update_t *update)
 {
 	int ret = zone_contents_load_nsec3param(update->new_cont);
@@ -436,7 +441,7 @@ int zone_adjust_incremental_update(zone_update_t *update)
 	}
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, binode_fix_nsec3_pointer, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_fix_nsec3_pointer, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
 		} else {
 			ret = additionals_reverse_apply_multi(
 				update->new_cont->adds_tree,
