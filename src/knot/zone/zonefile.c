@@ -226,7 +226,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags, true);
+	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags, true, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
@@ -244,7 +244,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 
 	/* The contents will now change possibly messing up NSEC3 tree, it will
 	   be adjusted again at zone_update_commit. */
-	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false);
+	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
