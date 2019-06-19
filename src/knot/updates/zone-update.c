@@ -27,7 +27,7 @@
 
 #include <urcu.h>
 
-static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents, bool deep_copy)
+static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents)
 {
 	if (old_contents == NULL) {
 		return KNOT_EINVAL;
@@ -38,7 +38,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 		return ret;
 	}
 
-	if (deep_copy) {
+	if (update->flags & UPDATE_HYBRID) {
 		update->new_cont_deep_copy = true;
 		update->new_cont = old_contents;
 	} else {
@@ -112,7 +112,7 @@ static int replace_soa(zone_contents_t *contents, const knot_rrset_t *rr)
 int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents,
               zone_update_flags_t flags)
 {
-	if (update == NULL || zone == NULL || (old_contents == NULL && (flags & UPDATE_INCREMENTAL))) {
+	if (update == NULL || zone == NULL || (old_contents == NULL && (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)))) {
 		return KNOT_EINVAL;
 	}
 
@@ -131,8 +131,8 @@ int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents
 	update->a_ctx->cow_mutex = &zone->cow_lock;
 
 	int ret = KNOT_EINVAL;
-	if (flags & UPDATE_INCREMENTAL) {
-		ret = init_incremental(update, zone, old_contents, flags & UPDATE_JOURNAL);
+	if (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+		ret = init_incremental(update, zone, old_contents);
 	} else if (flags & UPDATE_FULL) {
 		ret = init_full(update, zone);
 	}
@@ -155,7 +155,7 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 				 zone_contents_t *new_cont, zone_update_flags_t flags, bool ignore_dnssec)
 {
 	if (update == NULL || zone == NULL || new_cont == NULL ||
-	    !(flags & UPDATE_INCREMENTAL) || (flags & UPDATE_FULL)) {
+	    !(flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) || (flags & UPDATE_FULL)) {
 		return KNOT_EINVAL;
 	}
 
@@ -224,7 +224,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	knot_sem_wait(&update->zone->cow_lock);
 	update->a_ctx->cow_mutex = &update->zone->cow_lock;
 
-	if (flags & UPDATE_INCREMENTAL) {
+	if (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		int ret = changeset_init(&update->change, zone_without_contents->name);
 		if (ret != KNOT_EOK) {
 			free(update->a_ctx);
@@ -278,7 +278,7 @@ uint32_t zone_update_current_serial(zone_update_t *update)
 	}
 }
 
-static bool zone_update_changed_nsec3param(const zone_update_t *update)
+bool zone_update_changed_nsec3param(const zone_update_t *update)
 {
 	if (update->zone->contents == NULL) {
 		return true;
@@ -295,7 +295,7 @@ const knot_rdataset_t *zone_update_from(zone_update_t *update)
 		return NULL;
 	}
 
-	if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		const zone_node_t *apex = update->zone->contents->apex;
 		return node_rdataset(apex, KNOT_RRTYPE_SOA);
 	}
@@ -309,17 +309,17 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 		return NULL;
 	}
 
-	if (update->flags & UPDATE_FULL) {
-		const zone_node_t *apex = update->new_cont->apex;
-		return node_rdataset(apex, KNOT_RRTYPE_SOA);
-	} else if (update->flags & UPDATE_INCREMENTAL) {
-		if (update->change.soa_to == NULL) {
-			return NULL;
-		}
-		return &update->change.soa_to->rrs;
-	}
+       if (update->flags & UPDATE_FULL) {
+               const zone_node_t *apex = update->new_cont->apex;
+               return node_rdataset(apex, KNOT_RRTYPE_SOA);
+       } else {
+               if (update->change.soa_to == NULL) {
+                       return NULL;
+               }
+               return &update->change.soa_to->rrs;
+       }
 
-	return NULL;
+       return NULL;
 }
 
 void zone_update_clear(zone_update_t *update)
@@ -328,20 +328,17 @@ void zone_update_clear(zone_update_t *update)
 		return;
 	}
 
-	if (update->flags & UPDATE_INCREMENTAL) {
-		/* Revert any changes on error, do nothing on success. */
-		if (update->new_cont_deep_copy) {
-			update_cleanup(update->a_ctx);
-			zone_contents_deep_free(update->new_cont);
-		} else {
-			update_rollback(update->a_ctx);
-		}
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);
-	} else if (update->flags & UPDATE_FULL) {
-		assert(update->new_cont_deep_copy);
+	}
+
+	if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		update_cleanup(update->a_ctx);
 		zone_contents_deep_free(update->new_cont);
+	} else {
+		update_rollback(update->a_ctx);
 	}
+
 	if (update->a_ctx != NULL && update->a_ctx->cow_mutex != NULL) {
 		knot_sem_post(update->a_ctx->cow_mutex);
 	}
@@ -365,29 +362,31 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EINVAL;
 	}
 
-	if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		int ret = changeset_add_addition(&update->change, rrset, changeset_flags(update));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+	}
 
+	if (update->flags & UPDATE_INCREMENTAL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* replace previous SOA */
-			ret = apply_replace_soa(update->a_ctx, &update->change);
+			int ret = apply_replace_soa(update->a_ctx, &update->change);
 			if (ret != KNOT_EOK) {
 				changeset_remove_addition(&update->change, rrset);
 			}
 			return ret;
 		}
 
-		ret = apply_add_rr(update->a_ctx, rrset);
+		int ret = apply_add_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
 			changeset_remove_addition(&update->change, rrset);
 			return ret;
 		}
 
 		return KNOT_EOK;
-	} else if (update->flags & UPDATE_FULL) {
+	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* replace previous SOA */
 			return replace_soa(update->new_cont, rrset);
@@ -421,25 +420,27 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EINVAL;
 	}
 
-	if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		int ret = changeset_add_removal(&update->change, rrset, changeset_flags(update));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+	}
 
+	if (update->flags & UPDATE_INCREMENTAL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* SOA is replaced with addition */
 			return KNOT_EOK;
 		}
 
-		ret = apply_remove_rr(update->a_ctx, rrset);
+		int ret = apply_remove_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
 			changeset_remove_removal(&update->change, rrset);
 			return ret;
 		}
 
 		return KNOT_EOK;
-	} else if (update->flags & UPDATE_FULL) {
+	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		zone_node_t *n = NULL;
 		knot_rrset_t *rrs_copy = knot_rrset_copy(rrset, &update->mm);
 		int ret = zone_contents_remove_rr(update->new_cont, rrs_copy, &n);
@@ -495,7 +496,7 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 int zone_update_apply_changeset(zone_update_t *update, const changeset_t *changes)
 {
 	int ret = KNOT_EOK;
-	if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		ret = changeset_merge(&update->change, changes, changeset_flags(update));
 	}
 	if (ret == KNOT_EOK) {
@@ -583,22 +584,6 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 		}
 	}
 
-	ret = zone_contents_load_nsec3param(update->new_cont);
-	if (ret != KNOT_EOK) {
-		zone_update_clear(update);
-		return ret;
-	}
-
-	if (update->new_cont_deep_copy || zone_update_changed_nsec3param(update)) {
-		ret = zone_adjust_full(update->new_cont);
-	} else {
-		ret = zone_adjust_incremental_update(update);
-	}
-	if (ret != KNOT_EOK) {
-		zone_update_clear(update);
-		return ret;
-	}
-
 	/* Write changes to journal if all went well. */
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
 	if (conf_opt(&val) != JOURNAL_CONTENT_NONE && !changeset_empty(&update->change)) {
@@ -622,22 +607,16 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 		return KNOT_ESEMCHECK;
 	}
 
-	int ret = zone_adjust_full(update->new_cont);
-	if (ret != KNOT_EOK) {
-		zone_update_clear(update);
-		return ret;
-	}
-
 	/* Store new zone contents in journal. */
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
 	unsigned content = conf_opt(&val);
 	if (content == JOURNAL_CONTENT_ALL) {
-		ret = zone_in_journal_store(conf, update->zone, update->new_cont);
+		return zone_in_journal_store(conf, update->zone, update->new_cont);
 	} else if (content != JOURNAL_CONTENT_NONE) { // zone_in_journal_store does this automatically
-		ret = zone_changes_clear(conf, update->zone);
+		return zone_changes_clear(conf, update->zone);
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 /*! \brief Routine for calling call_rcu() easier way.
@@ -683,7 +662,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	int ret = KNOT_EOK;
-	if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		if (changeset_empty(&update->change) &&
 		    update->zone->contents != NULL && !update->new_cont_deep_copy) {
 			changeset_clear(&update->change);
@@ -692,6 +671,15 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		ret = commit_incremental(conf, update);
 	} else {
 		ret = commit_full(conf, update);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if ((update->flags & (UPDATE_HYBRID | UPDATE_FULL))) {
+		ret = zone_adjust_full(update->new_cont);
+	} else {
+		ret = zone_adjust_incremental_update(update);
 	}
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -726,15 +714,12 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	old_contents = zone_switch_contents(update->zone, update->new_cont);
 
 	/* Sync RCU. */
-	if (update->flags & UPDATE_FULL) {
-		assert(update->new_cont_deep_copy);
+	if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		callrcu_wrapper(old_contents, zone_contents_deep_free, false);
-	} else if (update->flags & UPDATE_INCREMENTAL) {
-		if (update->new_cont_deep_copy) {
-			callrcu_wrapper(old_contents, zone_contents_deep_free, false);
-		} else {
-			callrcu_wrapper(old_contents, update_free_zone, false);
-		}
+	} else {
+		callrcu_wrapper(old_contents, update_free_zone, false);
+	}
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);
 	}
 	callrcu_wrapper(update->a_ctx, update_cleanup, true);
@@ -868,7 +853,7 @@ bool zone_update_no_change(zone_update_t *update)
 		return true;
 	}
 
-	if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		return changeset_empty(&update->change);
 	} else {
 		/* This branch does not make much sense and FULL update will most likely

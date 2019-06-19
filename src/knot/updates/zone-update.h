@@ -43,9 +43,9 @@ typedef struct {
 
 typedef enum {
 	UPDATE_FULL           = 1 << 0, /*!< Replace the old zone by a complete new one. */
-	UPDATE_INCREMENTAL    = 1 << 1, /*!< Apply changes to the old zone. */
-	UPDATE_SIGN           = 1 << 2, /*!< Sign the resulting zone. */
-	UPDATE_JOURNAL        = 1 << 3, /*!< Using zone-in-journal for a diff update. */
+	UPDATE_HYBRID         = 1 << 1, /*!< CHegeset like for incremental, adjusting like full. */
+	UPDATE_INCREMENTAL    = 1 << 2, /*!< Apply changes to the old zone. */
+	UPDATE_SIGN           = 1 << 3, /*!< Sign the resulting zone. */
 	UPDATE_STRICT         = 1 << 4, /*!< Apply changes strictly, i.e. fail when removing nonexistent RR. */
 	UPDATE_CANCELOUT      = 1 << 5, /*!< When adding to changeset, cancel-out what has been both added and removed. */
 } zone_update_flags_t;
@@ -126,6 +126,9 @@ const zone_node_t *zone_update_get_apex(zone_update_t *update);
  * \return   0 if no apex was found, its serial otherwise.
  */
 uint32_t zone_update_current_serial(zone_update_t *update);
+
+/*! \brief Return true if NSEC3PARAM has been changed in this update. */
+bool zone_update_changed_nsec3param(const zone_update_t *update);
 
 /*!
  * \brief Returns the SOA rdataset we're updating from.
