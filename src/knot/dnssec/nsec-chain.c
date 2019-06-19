@@ -470,7 +470,7 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 		return ret;
 	}
 
-	ret = zone_adjust_contents(update->new_cont, adjust_cb_void, NULL, false);
+	ret = zone_adjust_contents(update->new_cont, adjust_cb_void, NULL, false, update->a_ctx->node_ptrs);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
