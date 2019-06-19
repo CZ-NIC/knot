@@ -23,12 +23,14 @@
 
 enum {
 	APPLY_STRICT = 1 << 0,    /* Apply strictly, don't ignore removing non-existent RRs. */
+	APPLY_UNIFY_FULL = 1 << 1,   /* When cleaning up successful update, perform full trees nodes unify. */
 };
 
 struct apply_ctx {
 	zone_contents_t *contents;
 	zone_tree_t *node_ptrs;   /*!< Just pointers to the affected nodes in contents. */
 	zone_tree_t *nsec3_ptrs;  /*!< The same for NSEC3 nodes. */
+	zone_tree_t *adjust_ptrs; /*!< Pointers to nodes affected by adjusting. */
 	uint32_t flags;
 	knot_sem_t *cow_mutex;
 };
