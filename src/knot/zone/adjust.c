@@ -23,9 +23,10 @@
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/measure.h"
 
-int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	zone_node_t *parent = node_parent(node);
+	uint16_t flags_orig = node->flags;
 
 	assert(!(node->flags & NODE_FLAGS_DELETED));
 
@@ -33,27 +34,34 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 
 	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
 		node->flags |= NODE_FLAGS_NONAUTH;
-	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != zone->apex) {
+	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != ctx->zone->apex) {
 		node->flags |= NODE_FLAGS_DELEG;
 	}
 
-	return KNOT_EOK; // always returns this value :)
+	if (node->flags != flags_orig && ctx->changed_nodes != NULL) {
+		return zone_tree_insert(ctx->changed_nodes, &node);
+	}
+
+	return KNOT_EOK;
 }
 
-int unadjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone)
+int unadjust_cb_point_to_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 {
-	UNUSED(zone);
 	// downgrade the NSEC3 node pointer to NSEC3 name
 	if (node->flags & NODE_FLAGS_NSEC3_NODE) {
 		node->nsec3_hash = knot_dname_copy(node->nsec3_node->owner, NULL);
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 	}
+	assert(ctx->changed_nodes == NULL);
 	return KNOT_EOK;
 }
 
-int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_wildcard_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 {
-	if (!knot_is_nsec3_enabled(zone)) {
+	if (!knot_is_nsec3_enabled(ctx->zone)) {
+		if (node->nsec3_wildcard_name != NULL && ctx->changed_nodes != NULL) {
+			zone_tree_insert(ctx->changed_nodes, &node);
+		}
 		node->nsec3_wildcard_name = NULL;
 		return KNOT_EOK;
 	}
@@ -63,7 +71,7 @@ int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
 	}
 
 	size_t wildcard_size = knot_dname_size(node->owner) + 2;
-	size_t wildcard_nsec3 = zone_nsec3_name_len(zone);
+	size_t wildcard_nsec3 = zone_nsec3_name_len(ctx->zone);
 	if (wildcard_size > KNOT_DNAME_MAXLEN) {
 		return KNOT_EOK;
 	}
@@ -72,12 +80,17 @@ int adjust_cb_wildcard_nsec3(zone_node_t *node, const zone_contents_t *zone)
 	if (node->nsec3_wildcard_name == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	if (ctx->changed_nodes != NULL) {
+		zone_tree_insert(ctx->changed_nodes, &node);
+	}
+
 	assert(wildcard_size > 2);
 	knot_dname_t wildcard[wildcard_size];
 	memcpy(wildcard, "\x01""*", 2);
 	memcpy(wildcard + 2, node->owner, wildcard_size - 2);
 	return knot_create_nsec3_owner(node->nsec3_wildcard_name, wildcard_nsec3,
-	                               wildcard, zone->apex->owner, &zone->nsec3_params);
+	                               wildcard, ctx->zone->apex->owner, &ctx->zone->nsec3_params);
 }
 
 static bool nsec3_params_match(const knot_rdataset_t *rrs,
@@ -96,22 +109,41 @@ static bool nsec3_params_match(const knot_rdataset_t *rrs,
 	                  params->salt.size) == 0);
 }
 
-int adjust_cb_nsec3_flags(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_nsec3_flags(zone_node_t *node, adjust_ctx_t *ctx)
 {
+	uint16_t flags_orig = node->flags;
+
 	// check if this node belongs to correct chain
 	node->flags &= ~NODE_FLAGS_IN_NSEC3_CHAIN;
 	const knot_rdataset_t *nsec3_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC3);
 	for (uint16_t i = 0; nsec3_rrs != NULL && i < nsec3_rrs->count; i++) {
-		if (nsec3_params_match(nsec3_rrs, &zone->nsec3_params, i)) {
+		if (nsec3_params_match(nsec3_rrs, &ctx->zone->nsec3_params, i)) {
 			node->flags |= NODE_FLAGS_IN_NSEC3_CHAIN;
 		}
 	}
+
+	if (node->flags != flags_orig && ctx->changed_nodes != NULL) {
+		return zone_tree_insert(ctx->changed_nodes, &node);
+	}
+
 	return KNOT_EOK;
+}
+
+int adjust_cb_nsec3_pointer(zone_node_t *node, adjust_ctx_t *ctx)
+{
+	uint16_t flags_orig = node->flags;
+	zone_node_t *ptr_orig = node->nsec3_node;
+	int ret = binode_fix_nsec3_pointer(node, ctx->zone);
+	if (ret == KNOT_EOK && ctx->changed_nodes != NULL &&
+	    (flags_orig != node->flags || ptr_orig != node->nsec3_node)) {
+		ret = zone_tree_insert(ctx->changed_nodes, &node);
+	}
+	return ret;
 }
 
 /*! \brief Link pointers to additional nodes for this RRSet. */
 static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
-                                const zone_contents_t *zone)
+                                adjust_ctx_t *ctx)
 {
 	struct rr_data *rr_data = &adjn->rrs[rr_at];
 	assert(rr_data != NULL);
@@ -130,7 +162,7 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 		const knot_dname_t *dname = knot_rdata_name(rdata, rr_data->type);
 		const zone_node_t *node = NULL;
 
-		if (!zone_contents_find_node_or_wildcard(zone, dname, &node)) {
+		if (!zone_contents_find_node_or_wildcard(ctx->zone, dname, &node)) {
 			rdata = knot_rdataset_next(rdata);
 			continue;
 		}
@@ -175,6 +207,10 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 
 	/* If the result differs, shallow copy node and store additionals. */
 	if (!additional_equal(rr_data->additional, new_addit)) {
+		if (ctx->changed_nodes != NULL) {
+			zone_tree_insert(ctx->changed_nodes, &adjn);
+		}
+
 		if (!binode_additional_shared(adjn, adjn->rrs[rr_at].type)) {
 			// this happens when additionals are adjusted twice during one update, e.g. IXFR-from-diff
 			additional_clear(adjn->rrs[rr_at].additional);
@@ -194,13 +230,13 @@ static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
 	return KNOT_EOK;
 }
 
-int adjust_cb_additionals(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_additionals(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	/* Lookup additional records for specific nodes. */
 	for(uint16_t i = 0; i < node->rrset_count; ++i) {
 		struct rr_data *rr_data = &node->rrs[i];
 		if (knot_rrtype_additional_needed(rr_data->type)) {
-			int ret = discover_additionals(node, i, zone);
+			int ret = discover_additionals(node, i, ctx);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -209,46 +245,37 @@ int adjust_cb_additionals(zone_node_t *node, const zone_contents_t *zone)
 	return KNOT_EOK;
 }
 
-int adjust_cb_flags_and_additionals(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_flags_and_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 {
-	int ret = adjust_cb_flags(node, zone);
+	int ret = adjust_cb_flags(node, ctx);
 	if (ret == KNOT_EOK) {
-		ret = adjust_cb_additionals(node, zone);
+		ret = adjust_cb_nsec3_pointer(node, ctx);
 	}
 	return ret;
 }
 
-int adjust_cb_flags_and_nsec3(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_nsec3_and_additionals(zone_node_t *node, adjust_ctx_t *ctx)
 {
-	int ret = adjust_cb_flags(node, zone);
+	int ret = adjust_cb_nsec3_pointer(node, ctx);
 	if (ret == KNOT_EOK) {
-		ret = binode_fix_nsec3_pointer(node, zone);
+		ret = adjust_cb_wildcard_nsec3(node, ctx);
+	}
+	if (ret == KNOT_EOK) {
+		ret = adjust_cb_additionals(node, ctx);
 	}
 	return ret;
 }
 
-int adjust_cb_nsec3_and_additionals(zone_node_t *node, const zone_contents_t *zone)
-{
-	int ret = binode_fix_nsec3_pointer(node, zone);
-	if (ret == KNOT_EOK) {
-		ret = adjust_cb_wildcard_nsec3(node, zone);
-	}
-	if (ret == KNOT_EOK) {
-		ret = adjust_cb_additionals(node, zone);
-	}
-	return ret;
-}
-
-int adjust_cb_void(zone_node_t *node, const zone_contents_t *zone)
+int adjust_cb_void(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	UNUSED(node);
-	UNUSED(zone);
+	UNUSED(ctx);
 	return KNOT_EOK;
 }
 
 typedef struct {
 	zone_node_t *first_node;
-	const zone_contents_t *zone;
+	adjust_ctx_t *ctx;
 	zone_node_t *previous_node;
 	adjust_cb_t adjust_cb;
 	bool adjust_prevs;
@@ -274,7 +301,8 @@ static int adjust_single(zone_node_t *node, void *data)
 	}
 
 	// set pointer to previous node
-	if (args->adjust_prevs) {
+	if (args->adjust_prevs && node->prev != args->previous_node && binode_counterpart(node->prev) != args->previous_node) {
+		zone_tree_insert(args->ctx->changed_nodes, &node);
 		node->prev = args->previous_node;
 	}
 
@@ -283,10 +311,10 @@ static int adjust_single(zone_node_t *node, void *data)
 		args->previous_node = node;
 	}
 
-	return args->adjust_cb(node, args->zone);
+	return args->adjust_cb(node, args->ctx);
 }
 
-static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adjust_cb_t adjust_cb,
+static int zone_adjust_tree(zone_tree_t *tree, adjust_ctx_t *ctx, adjust_cb_t adjust_cb,
                             bool adjust_prevs, measure_t *measure_ctx)
 {
 	if (zone_tree_is_empty(tree)) {
@@ -294,7 +322,7 @@ static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adju
 	}
 
 	zone_adjust_arg_t arg = { 0 };
-	arg.zone = zone;
+	arg.ctx = ctx;
 	arg.adjust_cb = adjust_cb;
 	arg.adjust_prevs = adjust_prevs;
 	arg.m = measure_ctx;
@@ -305,13 +333,15 @@ static int zone_adjust_tree(zone_tree_t *tree, const zone_contents_t *zone, adju
 	}
 
 	if (adjust_prevs && arg.first_node != NULL) {
+		zone_tree_insert(ctx->changed_nodes, &arg.first_node);
 		arg.first_node->prev = arg.previous_node;
 	}
 
 	return KNOT_EOK;
 }
 
-int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb, bool measure_zone)
+int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb,
+                         bool measure_zone, zone_tree_t *add_changed)
 {
 	int ret = zone_contents_load_nsec3param(zone);
 	if (ret != KNOT_EOK) {
@@ -323,12 +353,13 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 	zone->dnssec = node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
 
 	measure_t m = knot_measure_init(measure_zone, false);
+	adjust_ctx_t ctx = { zone, add_changed };
 
 	if (nsec3_cb != NULL) {
-		ret = zone_adjust_tree(zone->nsec3_nodes, zone, nsec3_cb, true, &m);
+		ret = zone_adjust_tree(zone->nsec3_nodes, &ctx, nsec3_cb, true, &m);
 	}
 	if (ret == KNOT_EOK && nodes_cb != NULL) {
-		ret = zone_adjust_tree(zone->nodes, zone, nodes_cb, true, &m);
+		ret = zone_adjust_tree(zone->nodes, &ctx, nodes_cb, true, &m);
 	}
 	if (ret == KNOT_EOK && measure_zone && nodes_cb != NULL && nsec3_cb != NULL) {
 		knot_measure_finish_zone(&m, zone);
@@ -340,12 +371,13 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 {
 	int ret = KNOT_EOK;
 	measure_t m = knot_measure_init(false, measure_diff);
+	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs };
 
 	if (nsec3_cb != NULL) {
-		ret = zone_adjust_tree(update->a_ctx->nsec3_ptrs, update->new_cont, nsec3_cb, false, &m);
+		ret = zone_adjust_tree(update->a_ctx->nsec3_ptrs, &ctx, nsec3_cb, false, &m);
 	}
 	if (ret == KNOT_EOK && nodes_cb != NULL) {
-		ret = zone_adjust_tree(update->a_ctx->node_ptrs, update->new_cont, nodes_cb, false, &m);
+		ret = zone_adjust_tree(update->a_ctx->node_ptrs, &ctx, nodes_cb, false, &m);
 	}
 	if (ret == KNOT_EOK && measure_diff && nodes_cb != NULL && nsec3_cb != NULL) {
 		knot_measure_finish_update(&m, update);
@@ -355,9 +387,9 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 
 int zone_adjust_full(zone_contents_t *zone)
 {
-	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags, true);
+	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags, true, NULL);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false);
+		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false, NULL);
 	}
 	if (ret == KNOT_EOK) {
 		additionals_tree_free(zone->adds_tree);
@@ -368,16 +400,16 @@ int zone_adjust_full(zone_contents_t *zone)
 
 static int adjust_additionals_cb(zone_node_t *node, void *ctx)
 {
-	const zone_contents_t *zone = ctx;
-	zone_node_t *real_node = binode_node(node, (zone->nodes->flags & ZONE_TREE_BINO_SECOND));
-	return adjust_cb_additionals(real_node, zone);
+	adjust_ctx_t *actx = ctx;
+	zone_node_t *real_node = binode_node(node, (actx->zone->nodes->flags & ZONE_TREE_BINO_SECOND));
+	return adjust_cb_additionals(real_node, actx);
 }
 
 static int adjust_point_to_nsec3_cb(zone_node_t *node, void *ctx)
 {
-	const zone_contents_t *zone = ctx;
-	zone_node_t *real_node = binode_node(node, (zone->nodes->flags & ZONE_TREE_BINO_SECOND));
-	return binode_fix_nsec3_pointer(real_node, zone);
+	adjust_ctx_t *actx = ctx;
+	zone_node_t *real_node = binode_node(node, (actx->zone->nodes->flags & ZONE_TREE_BINO_SECOND));
+	return adjust_cb_nsec3_pointer(real_node, actx);
 }
 
 int zone_adjust_incremental_update(zone_update_t *update)
@@ -387,11 +419,12 @@ int zone_adjust_incremental_update(zone_update_t *update)
 		return ret;
 	}
 	bool nsec3change = zone_update_changed_nsec3param(update);
+	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs };
 
-	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false);
+	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, true, update->a_ctx->adjust_ptrs);
 		} else {
 			ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 		}
@@ -408,18 +441,18 @@ int zone_adjust_incremental_update(zone_update_t *update)
 			update->new_cont->adds_tree,
 			update->a_ctx->node_ptrs,
 			adjust_additionals_cb,
-			update->new_cont
+			&ctx
 		);
 	}
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, binode_fix_nsec3_pointer, adjust_cb_void, false);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_pointer, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
 		} else {
 			ret = additionals_reverse_apply_multi(
 				update->new_cont->adds_tree,
 				update->a_ctx->nsec3_ptrs,
 				adjust_point_to_nsec3_cb,
-				update->new_cont
+				&ctx
 			);
 		}
 	}
