@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	// generate key in the keystore
 
 	char *id = NULL;
-	int r = dnssec_keystore_generate_key(ctx->keystore, algorithm, size, &id);
+	int r = dnssec_keystore_generate(ctx->keystore, algorithm, size, &id);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -81,7 +81,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	dnssec_key_set_flags(dnskey, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
 	dnssec_key_set_algorithm(dnskey, algorithm);
 
-	r = dnssec_key_import_keystore(dnskey, ctx->keystore, id);
+	r = dnssec_keystore_export(ctx->keystore, id, dnskey);
 	if (r != KNOT_EOK) {
 		dnssec_key_free(dnskey);
 		free(id);
@@ -129,14 +129,14 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
 		return ret;
 	}
 
-	ret = kasp_db_share_key(*ctx->kasp_db, from_zone, ctx->zone->dname, key_id);
+	ret = kasp_db_share_key(ctx->kasp_db, from_zone, ctx->zone->dname, key_id);
 	if (ret != KNOT_EOK) {
 		free(to_zone);
 		return ret;
 	}
 
 	kasp_zone_clear(ctx->zone);
-	ret = kasp_zone_load(ctx->zone, to_zone, *ctx->kasp_db);
+	ret = kasp_zone_load(ctx->zone, to_zone, ctx->kasp_db);
 	free(to_zone);
 	return ret;
 }
@@ -155,13 +155,13 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	}
 
 	bool key_still_used_in_keystore = false;
-	int ret = kasp_db_delete_key(*ctx->kasp_db, ctx->zone->dname, key_ptr->id, &key_still_used_in_keystore);
+	int ret = kasp_db_delete_key(ctx->kasp_db, ctx->zone->dname, key_ptr->id, &key_still_used_in_keystore);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	if (!key_still_used_in_keystore && !key_ptr->is_pub_only) {
-		ret = dnssec_keystore_remove_key(ctx->keystore, key_ptr->id);
+		ret = dnssec_keystore_remove(ctx->keystore, key_ptr->id);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -177,24 +177,15 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 /*!
  * \brief Get key feature flags from key parameters.
  */
-static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_key)
+static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_key)
 {
 	assert(kasp_key);
 	assert(zone_key);
 
 	knot_kasp_key_timing_t *timing = &kasp_key->timing;
 
-	// cryptographic context
-
-	dnssec_sign_ctx_t *ctx = NULL;
-	int r = dnssec_sign_new(&ctx, kasp_key->key);
-	if (r != DNSSEC_EOK) {
-		return r;
-	}
-
 	zone_key->id = kasp_key->id;
 	zone_key->key = kasp_key->key;
-	zone_key->ctx = ctx;
 
 	// next event computation
 
@@ -226,20 +217,30 @@ static int set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_
 	                       knot_time_cmp(timing->post_active, now) > 0 &&
 	                       knot_time_cmp(timing->remove, now) > 0);
 
-	zone_key->is_active = (((zone_key->is_zsk && knot_time_cmp(timing->pre_active, now) <= 0) ||
-	                        (knot_time_cmp(timing->pre_active, now) <= 0 && knot_time_cmp(timing->publish, now) <= 0) ||
-	                        knot_time_cmp(timing->ready, now) <= 0 ||
+	zone_key->is_ready = (zone_key->is_ksk && knot_time_cmp(timing->ready, now) <= 0 &&
+	                      knot_time_cmp(timing->active, now) > 0);
+
+	zone_key->is_active = ((knot_time_cmp(timing->ready, now) <= 0 ||
 	                        knot_time_cmp(timing->active, now) <= 0) &&
 	                       knot_time_cmp(timing->retire, now) > 0 &&
-	                       (zone_key->is_zsk || knot_time_cmp(timing->post_active, now) > 0) &&
+	                       knot_time_cmp(timing->retire_active, now) > 0 &&
 	                       knot_time_cmp(timing->remove, now) > 0);
 
-	zone_key->cds_priority = (knot_time_cmp(timing->ready, now) <= 0 ? (
-	                          (knot_time_cmp(timing->active, now) <= 0) ? (
-	                           (knot_time_cmp(timing->retire_active, now) <= 0 ||
-	                            knot_time_cmp(timing->retire, now) <= 0) ? 0 : 1) : 2) : 0);
-
-	return KNOT_EOK;
+	zone_key->is_post_active = false;
+	if (knot_time_cmp(timing->pre_active, now) <= 0 &&
+	    knot_time_cmp(timing->ready, now) > 0 &&
+	    knot_time_cmp(timing->active, now) > 0) {
+		zone_key->is_post_active = (zone_key->is_zsk ||
+		                            knot_time_cmp(timing->publish, now) <= 0);
+	}
+	if (knot_time_cmp(timing->retire_active, now) <= 0 &&
+	    knot_time_cmp(timing->retire, now) > 0) {
+		zone_key->is_post_active = true;
+	} // not "else" !
+	if (knot_time_cmp(timing->post_active, now) <= 0 &&
+	    knot_time_cmp(timing->remove, now) > 0) {
+		zone_key->is_post_active = zone_key->is_zsk;
+	}
 }
 
 /*!
@@ -258,7 +259,7 @@ static bool is_nsec3_allowed(uint8_t algorithm)
 static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 {
 	uint8_t alg_usage[256] = { 0 };
-	bool keys_changed = false, have_active_alg = false;
+	bool have_active_alg = false;
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
@@ -270,14 +271,15 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 			                 dnssec_key_get_keytag(key->key));
 			key->is_public = false;
 			key->is_active = false;
-			key->cds_priority = 0;
+			key->is_ready = false;
+			key->is_post_active = false;
 			continue;
 		}
 
 		if (key->is_ksk && key->is_public) { alg_usage[alg] |= 1; }
 		if (key->is_zsk && key->is_public) { alg_usage[alg] |= 2; }
-		if (key->is_ksk && key->is_active) { alg_usage[alg] |= 4; }
-		if (key->is_zsk && key->is_active) { alg_usage[alg] |= 8; }
+		if (key->is_ksk && (key->is_active || key->is_post_active)) { alg_usage[alg] |= 4; }
+		if (key->is_zsk && (key->is_active || key->is_post_active)) { alg_usage[alg] |= 8; }
 	}
 
 	for (size_t i = 0; i < sizeof(alg_usage); i++) {
@@ -288,6 +290,13 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 		case 15: // all keys ready for signing
 			have_active_alg = true;
 			break;
+		case 5:
+		case 10:
+			if (ctx->policy->offline_ksk) {
+				have_active_alg = true;
+				break;
+			}
+			// else FALLTHROUGH
 		default:
 			return KNOT_DNSSEC_EMISSINGKEYTYPE;
 		}
@@ -295,10 +304,6 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 
 	if (!have_active_alg) {
 		return KNOT_DNSSEC_ENOKEY;
-	}
-
-	if (keys_changed) {
-		return kdnssec_ctx_commit(ctx);
 	}
 
 	return KNOT_EOK;
@@ -313,13 +318,16 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 	assert(keyset);
 
 	for (size_t i = 0; i < keyset->count; i++) {
-		if (!keyset->keys[i].is_active) {
+		zone_key_t *key = &keyset->keys[i];
+		if (!key->is_active && !key->is_post_active) {
 			continue;
 		}
-
-		zone_key_t *key = &keyset->keys[i];
-		int r = dnssec_key_import_keystore(key->key, keystore, key->id);
-		if (r != DNSSEC_EOK && r != DNSSEC_KEY_ALREADY_PRESENT) {
+		int r = dnssec_keystore_export(keystore, key->id, key->key);
+		switch (r) {
+		case DNSSEC_EOK:
+		case DNSSEC_KEY_ALREADY_PRESENT:
+			break;
+		default:
 			return r;
 		}
 	}
@@ -343,13 +351,14 @@ static void log_key_info(const zone_key_t *key, char *out, size_t out_len)
 		(void)snprintf(alg_code_str, sizeof(alg_code_str), "%d", alg_code);
 	}
 
-	(void)snprintf(out, out_len, "DNSSEC, key, tag %5d, algorithm %s%s%s%s%s",
+	(void)snprintf(out, out_len, "DNSSEC, key, tag %5d, algorithm %s%s%s%s%s%s",
 	               dnssec_key_get_keytag(key->key),
 	               (alg != NULL                ? alg->name  : alg_code_str),
 	               (key->is_ksk ? (key->is_zsk ? ", CSK" : ", KSK") : ""),
-	               (key->is_public             ? ", public" : ""),
-	               (key->cds_priority > 1      ? ", ready"  : ""),
-	               (key->is_active             ? ", active" : ""));
+	               (key->is_public             ? ", public"  : ""),
+	               (key->is_ready              ? ", ready"   : ""),
+	               (key->is_active             ? ", active"  : ""),
+	               (key->is_post_active        ? ", active+" : ""));
 }
 
 int log_key_sort(const void *a, const void *b)
@@ -433,30 +442,12 @@ void free_zone_keys(zone_keyset_t *keyset)
 	}
 
 	for (size_t i = 0; i < keyset->count; i++) {
-		dnssec_sign_free(keyset->keys[i].ctx);
 		dnssec_binary_free(&keyset->keys[i].precomputed_ds);
 	}
 
 	free(keyset->keys);
 
 	memset(keyset, '\0', sizeof(*keyset));
-}
-
-/*!
- * \brief Get zone keys by keytag.
- */
-struct keyptr_dynarray get_zone_keys(const zone_keyset_t *keyset, uint16_t search)
-{
-	struct keyptr_dynarray res = { 0 };
-
-	for (size_t i = 0; keyset && i < keyset->count; i++) {
-		zone_key_t *key = &keyset->keys[i];
-		if (key != NULL && dnssec_key_get_keytag(key->key) == search) {
-			keyptr_dynarray_add(&res, &key);
-		}
-	}
-
-	return res;
 }
 
 /*!
@@ -496,4 +487,36 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree)
 
 	*out_donotfree = for_key->precomputed_ds;
 	return ret;
+}
+
+zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx)
+{
+	zone_sign_ctx_t *ctx = calloc(1, sizeof(*ctx) + keyset->count * sizeof(*ctx->sign_ctxs));
+	if (ctx == NULL) {
+		return NULL;
+	}
+
+	ctx->sign_ctxs = (dnssec_sign_ctx_t **)(ctx + 1);
+	ctx->count = keyset->count;
+	ctx->keys = keyset->keys;
+	ctx->dnssec_ctx = dnssec_ctx;
+	for (size_t i = 0; i < ctx->count; i++) {
+		int ret = dnssec_sign_new(&ctx->sign_ctxs[i], ctx->keys[i].key);
+		if (ret != DNSSEC_EOK) {
+			zone_sign_ctx_free(ctx);
+			return NULL;
+		}
+	}
+
+	return ctx;
+}
+
+void zone_sign_ctx_free(zone_sign_ctx_t *ctx)
+{
+	if (ctx != NULL) {
+		for (size_t i = 0; i < ctx->count; i++) {
+			dnssec_sign_free(ctx->sign_ctxs[i]);
+		}
+		free(ctx);
+	}
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -136,12 +136,12 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 	get_addr_str(&ss, sock_type, &net->remote_str);
 }
 
-static void process_dnstap(const query_t *query)
+static int process_dnstap(const query_t *query)
 {
 	dt_reader_t *reader = query->dt_reader;
 
 	if (query->dt_reader == NULL) {
-		return;
+		return -1;
 	}
 
 	bool first_message = true;
@@ -238,6 +238,8 @@ static void process_dnstap(const query_t *query)
 		knot_pkt_free(pkt);
 		dt_reader_free_frame(reader, &frame);
 	}
+
+	return 0;
 }
 #endif // USE_DNSTAP
 
@@ -665,7 +667,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		if (reply == NULL) {
 			ERR("internal error (%s)\n", knot_strerror(KNOT_ENOMEM));
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Parse reply to the packet structure.
@@ -673,7 +675,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Compare reply header id.
@@ -742,8 +744,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 		const uint8_t *data = knot_edns_opt_get_data(opt);
 		uint16_t data_len = knot_edns_opt_get_length(opt);
-		int ret = knot_edns_cookie_parse(&new_ctx.cc, &new_ctx.sc,
-		                                 data, data_len);
+		ret = knot_edns_cookie_parse(&new_ctx.cc, &new_ctx.sc, data, data_len);
 		if (ret != KNOT_EOK) {
 			knot_pkt_free(reply);
 			ERR("bad cookie, missing EDNS cookie option\n");
@@ -768,23 +769,18 @@ static int process_query_packet(const knot_pkt_t      *query,
 	return 0;
 }
 
-static void process_query(const query_t *query)
+static int process_query(const query_t *query)
 {
 	node_t     *server = NULL;
 	knot_pkt_t *out_packet;
 	net_t      net;
 	int        ret;
 
-	if (query == NULL) {
-		DBG_NULL;
-		return;
-	}
-
 	// Create query packet.
 	out_packet = create_query_packet(query);
 	if (out_packet == NULL) {
 		ERR("can't create query packet\n");
-		return;
+		return -1;
 	}
 
 	// Sign the query.
@@ -792,7 +788,7 @@ static void process_query(const query_t *query)
 	ret = sign_query(out_packet, query, &sign_ctx);
 	if (ret != KNOT_EOK) {
 		ERR("can't sign the packet (%s)\n", knot_strerror(ret));
-		return;
+		return -1;
 	}
 
 	// Get connection parameters.
@@ -828,7 +824,7 @@ static void process_query(const query_t *query)
 				// If error try next resolved address.
 				if (ret != 0) {
 					net.srv = (net.srv)->ai_next;
-					if (net.srv != NULL) {
+					if (net.srv != NULL && query->style.show_query) {
 						printf("\n");
 					}
 
@@ -843,30 +839,35 @@ static void process_query(const query_t *query)
 				net_clean(&net);
 				sign_context_deinit(&sign_ctx);
 				knot_pkt_free(out_packet);
-				return;
+				return 0;
 			}
 
 			if (i < query->retries) {
-				printf("\n");
 				DBG("retrying server %s@%s(%s)\n",
 				    remote->name, remote->service,
 				    get_sockname(socktype));
+
+				if (query->style.show_query) {
+					printf("\n");
+				}
 			}
 
 			net_clean(&net);
 		}
 
-		WARN("failed to query server %s@%s(%s)\n",
-		     remote->name, remote->service, get_sockname(socktype));
+		ERR("failed to query server %s@%s(%s)\n",
+		    remote->name, remote->service, get_sockname(socktype));
 
 		// If not last server, print separation.
-		if (server->next->next) {
+		if (server->next->next && query->style.show_query) {
 			printf("\n");
 		}
 	}
 
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
+
+	return -1;
 }
 
 static int process_xfr_packet(const knot_pkt_t      *query,
@@ -959,7 +960,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		if (reply == NULL) {
 			ERR("internal error (%s)\n", knot_strerror(KNOT_ENOMEM));
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Parse reply to the packet structure.
@@ -967,7 +968,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Compare reply header id.
@@ -975,7 +976,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			ERR("reply ID mismatch from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// Print leading transfer information.
@@ -989,7 +990,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			    knot_pkt_ext_rcode_name(reply));
 			knot_pkt_free(reply);
 			net_close(net);
-			return 0;
+			return -1;
 		}
 
 		// The first message has a special treatment.
@@ -1009,7 +1010,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 					    net->remote_str, knot_strerror(ret));
 					knot_pkt_free(reply);
 					net_close(net);
-					return 0;
+					return -1;
 				}
 			}
 
@@ -1021,7 +1022,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 				    net->remote_str);
 				knot_pkt_free(reply);
 				net_close(net);
-				return 0;
+				return -1;
 			}
 
 			// Check for question sections equality.
@@ -1059,22 +1060,17 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	return 0;
 }
 
-static void process_xfr(const query_t *query)
+static int process_xfr(const query_t *query)
 {
 	knot_pkt_t *out_packet;
 	net_t      net;
 	int        ret;
 
-	if (query == NULL) {
-		DBG_NULL;
-		return;
-	}
-
 	// Create query packet.
 	out_packet = create_query_packet(query);
 	if (out_packet == NULL) {
 		ERR("can't create query packet\n");
-		return;
+		return -1;
 	}
 
 	// Sign the query.
@@ -1082,7 +1078,7 @@ static void process_xfr(const query_t *query)
 	ret = sign_query(out_packet, query, &sign_ctx);
 	if (ret != KNOT_EOK) {
 		ERR("can't sign the packet (%s)\n", knot_strerror(ret));
-		return;
+		return -1;
 	}
 
 	// Get connection parameters.
@@ -1104,7 +1100,7 @@ static void process_xfr(const query_t *query)
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(out_packet);
-		return;
+		return -1;
 	}
 
 	// Loop over all resolved addresses for remote.
@@ -1130,6 +1126,8 @@ static void process_xfr(const query_t *query)
 	net_clean(&net);
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
+
+	return ret;
 }
 
 int kdig_exec(const kdig_params_t *params)
@@ -1141,27 +1139,33 @@ int kdig_exec(const kdig_params_t *params)
 		return KNOT_EINVAL;
 	}
 
+	bool success = true;
+
 	// Loop over query list.
 	WALK_LIST(n, params->queries) {
 		query_t *query = (query_t *)n;
 
+		int ret = -1;
 		switch (query->operation) {
 		case OPERATION_QUERY:
-			process_query(query);
+			ret = process_query(query);
 			break;
 		case OPERATION_XFR:
-			process_xfr(query);
+			ret = process_xfr(query);
 			break;
 #if USE_DNSTAP
 		case OPERATION_LIST_DNSTAP:
-			process_dnstap(query);
+			ret = process_dnstap(query);
 			break;
 #endif // USE_DNSTAP
-		case OPERATION_LIST_SOA:
-			break;
 		default:
 			ERR("unsupported operation\n");
 			break;
+		}
+
+		// All operations must succeed.
+		if (ret != 0) {
+			success = false;
 		}
 
 		// If not last query, print separation.
@@ -1170,5 +1174,5 @@ int kdig_exec(const kdig_params_t *params)
 		}
 	}
 
-	return KNOT_EOK;
+	return success ? KNOT_EOK : KNOT_ERROR;
 }

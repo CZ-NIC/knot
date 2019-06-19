@@ -95,6 +95,27 @@ Upgrade 2.6.x to 2.7.x
 Upgrading from Knot DNS version 2.6.x to 2.7.x is seamless if no obsolete
 configuration or module rosedb is used.
 
+.. _Upgrade 2.7.x to 2.8.x:
+
+Upgrade 2.7.x to 2.8.x
+======================
+
+Upgrading from Knot DNS version 2.7.x to 2.8.x is seamless.
+
+However, if the previous version was migrated (possibly indirectly)
+from version 2.5.x, the format of the keys stored in
+:ref:`Keys And Signature Policy Database <DNSSEC Export Import  KASP DB>`
+is no longer compatible and needs to be updated.
+
+The easiest ways to update how keys are stored in KASP DB is to modify
+with Keymgr version 2.7.x
+some of each key's parameters in an undamaging way, e.g.::
+
+    $ keymgr example.com. list
+    $ keymgr example.com. set <keyTag> created=1
+    $ keymgr example.com. set <keyTag2> created=1
+    ...
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users

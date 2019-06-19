@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 #define C_ASYNC_START		"\x0B""async-start"
 #define C_BACKEND		"\x07""backend"
 #define C_BG_WORKERS		"\x12""background-workers"
-#define C_CHILD_RECORDS		"\x13""cds-cdnskey-publish"
+#define C_CDS_CDNSKEY		"\x13""cds-cdnskey-publish"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
 #define C_COMMENT		"\x07""comment"
 #define C_CONFIG		"\x06""config"
@@ -81,6 +81,7 @@
 #define C_NSEC3_SALT_LEN	"\x11""nsec3-salt-length"
 #define C_NSEC3_SALT_LIFETIME	"\x13""nsec3-salt-lifetime"
 #define C_NSID			"\x04""nsid"
+#define C_OFFLINE_KSK		"\x0B""offline-ksk"
 #define C_PARENT		"\x06""parent"
 #define C_PIDFILE		"\x07""pidfile"
 #define C_POLICY		"\x06""policy"
@@ -95,6 +96,7 @@
 #define C_SEM_CHECKS		"\x0F""semantic-checks"
 #define C_SERIAL_POLICY		"\x0D""serial-policy"
 #define C_SERVER		"\x06""server"
+#define C_SIGNING_THREADS	"\x0F""signing-threads"
 #define C_SINGLE_TYPE_SIGNING	"\x13""single-type-signing"
 #define C_SRV			"\x06""server"
 #define C_STATS			"\x0A""statistics"
@@ -109,12 +111,17 @@
 #define C_TIMER_DB		"\x08""timer-db"
 #define C_TPL			"\x08""template"
 #define C_UDP_WORKERS		"\x0B""udp-workers"
+#define C_UPDATE_OWNER		"\x0C""update-owner"
+#define C_UPDATE_OWNER_MATCH	"\x12""update-owner-match"
+#define C_UPDATE_OWNER_NAME	"\x11""update-owner-name"
+#define C_UPDATE_TYPE		"\x0B""update-type"
 #define C_USER			"\x04""user"
 #define C_VERSION		"\x07""version"
 #define C_VIA			"\x03""via"
 #define C_ZONE			"\x04""zone"
 #define C_ZONEFILE_LOAD		"\x0D""zonefile-load"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
+#define C_ZONE_MAX_TLL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
 
@@ -124,10 +131,11 @@ enum {
 };
 
 enum {
-	CHILD_RECORDS_NONE     = 0,
-	CHILD_RECORDS_EMPTY    = 1,
-	CHILD_RECORDS_ROLLOVER = 2,
-	CHILD_RECORDS_ALWAYS   = 3,
+	CDS_CDNSKEY_NONE      = 0,
+	CDS_CDNSKEY_EMPTY     = 1,
+	CDS_CDNSKEY_ROLLOVER  = 2,
+	CDS_CDNSKEY_ALWAYS    = 3,
+	CDS_CDNSKEY_DOUBLE_DS = 4,
 };
 
 enum {
@@ -140,6 +148,11 @@ enum {
 	JOURNAL_CONTENT_NONE    = 0,
 	JOURNAL_CONTENT_CHANGES = 1,
 	JOURNAL_CONTENT_ALL     = 2,
+};
+
+enum {
+	JOURNAL_MODE_ROBUST = 0, // Robust journal DB disk synchronization.
+	JOURNAL_MODE_ASYNC  = 1, // Asynchronous journal DB disk synchronization.
 };
 
 enum {

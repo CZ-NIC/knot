@@ -135,6 +135,8 @@ int conf_mod_load_common(
 	for (module_t *mod = STATIC_MODULES; mod->api != NULL; mod++) {
 		ret = mod_load(conf, mod);
 		if (ret != KNOT_EOK) {
+			log_error("module '%s', failed to load (%s)",
+			          mod->api->name, knot_strerror(ret));
 			break;
 		}
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 #include "knot/conf/confio.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
-#include "knot/journal/journal.h"
 #include "knot/updates/acl.h"
 #include "libknot/rrtype/opt.h"
 #include "libdnssec/tsig.h"
@@ -71,11 +70,12 @@ static const knot_lookup_t dnssec_key_algs[] = {
 	{ 0, NULL }
 };
 
-const knot_lookup_t child_record[] = {
-	{ CHILD_RECORDS_NONE,     "none" },
-	{ CHILD_RECORDS_EMPTY,    "delete-dnssec" },
-	{ CHILD_RECORDS_ROLLOVER, "rollover" },
-	{ CHILD_RECORDS_ALWAYS,   "always" },
+static const knot_lookup_t cds_cdnskey[] = {
+	{ CDS_CDNSKEY_NONE,      "none" },
+	{ CDS_CDNSKEY_EMPTY,     "delete-dnssec" },
+	{ CDS_CDNSKEY_ROLLOVER,  "rollover" },
+	{ CDS_CDNSKEY_ALWAYS,    "always" },
+	{ CDS_CDNSKEY_DOUBLE_DS, "double-ds" },
 	{ 0, NULL }
 };
 
@@ -83,6 +83,20 @@ const knot_lookup_t acl_actions[] = {
 	{ ACL_ACTION_NOTIFY,   "notify" },
 	{ ACL_ACTION_TRANSFER, "transfer" },
 	{ ACL_ACTION_UPDATE,   "update" },
+	{ 0, NULL }
+};
+
+static const knot_lookup_t acl_update_owner[] = {
+	{ ACL_UPDATE_OWNER_KEY,  "key" },
+	{ ACL_UPDATE_OWNER_ZONE, "zone" },
+	{ ACL_UPDATE_OWNER_NAME, "name" },
+	{ 0, NULL }
+};
+
+static const knot_lookup_t acl_update_owner_match[] = {
+	{ ACL_UPDATE_MATCH_SUBEQ, "sub-or-equal" },
+	{ ACL_UPDATE_MATCH_EQ,    "equal" },
+	{ ACL_UPDATE_MATCH_SUB,   "sub" },
 	{ 0, NULL }
 };
 
@@ -204,12 +218,17 @@ static const yp_item_t desc_key[] = {
 };
 
 static const yp_item_t desc_acl[] = {
-	{ C_ID,      YP_TSTR,  YP_VNONE, CONF_IO_FREF },
-	{ C_ADDR,    YP_TNET,  YP_VNONE, YP_FMULTI },
-	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
-	{ C_ACTION,  YP_TOPT,  YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
-	{ C_DENY,    YP_TBOOL, YP_VNONE },
-	{ C_COMMENT, YP_TSTR,  YP_VNONE },
+	{ C_ID,                 YP_TSTR,   YP_VNONE, CONF_IO_FREF },
+	{ C_ADDR,               YP_TNET,   YP_VNONE, YP_FMULTI },
+	{ C_KEY,                YP_TREF,   YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
+	{ C_ACTION,             YP_TOPT,   YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
+	{ C_DENY,               YP_TBOOL,  YP_VNONE },
+	{ C_UPDATE_OWNER,       YP_TOPT,   YP_VOPT = { acl_update_owner, ACL_UPDATE_OWNER_NONE } },
+	{ C_UPDATE_OWNER_MATCH, YP_TOPT,   YP_VOPT = { acl_update_owner_match, ACL_UPDATE_MATCH_SUBEQ } },
+	{ C_UPDATE_OWNER_NAME,  YP_TDNAME, YP_VNONE, YP_FMULTI },
+	{ C_UPDATE_TYPE,        YP_TDATA,  YP_VDATA = { 0, NULL, rrtype_to_bin, rrtype_to_txt },
+	                                   YP_FMULTI, },
+	{ C_COMMENT,            YP_TSTR,   YP_VNONE },
 	{ NULL }
 };
 
@@ -228,7 +247,7 @@ static const yp_item_t desc_submission[] = {
 	                           { check_ref } },
 	{ C_CHK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME },
 	                           CONF_IO_FRLD_ZONES },
-	{ C_TIMEOUT,      YP_TINT, YP_VINT = { 1, UINT32_MAX, 0, YP_STIME },
+	{ C_TIMEOUT,      YP_TINT, YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
 	                           CONF_IO_FRLD_ZONES },
 	{ NULL }
 };
@@ -247,7 +266,9 @@ static const yp_item_t desc_policy[] = {
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_ZSK_SIZE,            YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE },
 	                                   CONF_IO_FRLD_ZONES },
-	{ C_DNSKEY_TTL,          YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
+	{ C_DNSKEY_TTL,          YP_TINT,  YP_VINT = { 0, UINT32_MAX, YP_NIL, YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_ZONE_MAX_TLL,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, YP_NIL, YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_ZSK_LIFETIME,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(30), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
@@ -263,11 +284,13 @@ static const yp_item_t desc_policy[] = {
 	{ C_NSEC3_ITER,          YP_TINT,  YP_VINT = { 0, UINT16_MAX, 10 }, CONF_IO_FRLD_ZONES },
 	{ C_NSEC3_OPT_OUT,       YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_NSEC3_SALT_LEN,      YP_TINT,  YP_VINT = { 0, UINT8_MAX, 8 }, CONF_IO_FRLD_ZONES },
-	{ C_NSEC3_SALT_LIFETIME, YP_TINT,  YP_VINT = { 1, UINT32_MAX, DAYS(30), YP_STIME },
+	{ C_NSEC3_SALT_LIFETIME, YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(30), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_KSK_SBM,             YP_TREF,  YP_VREF = { C_SBM }, CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
-	{ C_CHILD_RECORDS,       YP_TOPT,  YP_VOPT = { child_record, CHILD_RECORDS_ALWAYS } },
+	{ C_SIGNING_THREADS,     YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } },
+	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ROLLOVER } },
+	{ C_OFFLINE_KSK,         YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
@@ -308,7 +331,7 @@ static const yp_item_t desc_template[] = {
 	{ C_JOURNAL_DB,          YP_TSTR,  YP_VSTR = { "journal" }, CONF_IO_FRLD_SRV },
 	{ C_JOURNAL_DB_MODE,     YP_TOPT,  YP_VOPT = { journal_modes, JOURNAL_MODE_ROBUST },
 	                                   CONF_IO_FRLD_SRV },
-	{ C_MAX_JOURNAL_DB_SIZE, YP_TINT,  YP_VINT = { JOURNAL_MIN_FSLIMIT, VIRT_MEM_LIMIT(TERA(100)),
+	{ C_MAX_JOURNAL_DB_SIZE, YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(TERA(100)),
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE },
 	                                               CONF_IO_FRLD_SRV },
 	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" }, CONF_IO_FRLD_SRV },

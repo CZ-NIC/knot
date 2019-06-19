@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,9 @@ int event_expire(conf_t *conf, zone_t *zone)
 	log_zone_info(zone->name, "zone expired");
 
 	synchronize_rcu();
+	knot_sem_wait(&zone->cow_lock);
 	zone_contents_deep_free(expired);
+	knot_sem_post(&zone->cow_lock);
 
 	zone->zonefile.exists = false;
 	mem_trim();

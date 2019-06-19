@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,4 +59,9 @@ task_t *worker_queue_dequeue(worker_queue_t *queue)
 	}
 
 	return task;
+}
+
+size_t worker_queue_length(worker_queue_t *queue)
+{
+	return queue ? list_size(&queue->list) : 0;
 }

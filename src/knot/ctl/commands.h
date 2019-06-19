@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,9 +19,10 @@
 #include "libknot/libknot.h"
 #include "knot/server/server.h"
 
-#define CTL_FLAG_FORCE	"F"
-#define CTL_FLAG_ADD	"+"
-#define CTL_FLAG_REM	"-"
+#define CTL_FLAG_FORCE		"F"
+#define CTL_FLAG_BLOCKING	"B"
+#define CTL_FLAG_ADD		"+"
+#define CTL_FLAG_REM		"-"
 
 #define CTL_FILTER_FLUSH_OUTDIR		'd'
 

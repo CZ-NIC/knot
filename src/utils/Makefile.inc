@@ -101,10 +101,12 @@ knotc_SOURCES = \
 knotd_SOURCES = \
 	utils/knotd/main.c
 
-knotc_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libedit_CFLAGS)
+knotc_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libedit_CFLAGS) \
+                         $(lmdb_CFLAGS)
 knotc_LDADD            = libcontrib.la libknotd.la libknotus.la $(libedit_LIBS)
 knotc_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
-knotd_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(liburcu_CFLAGS)
+knotd_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(liburcu_CFLAGS) \
+                         $(lmdb_CFLAGS)
 knotd_LDADD            = $(malloc_LIBS) libcontrib.la libknotd.la $(liburcu_LIBS) \
                          $(cap_ng_LIBS)
 knotd_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
@@ -123,17 +125,19 @@ keymgr_SOURCES = \
 	utils/keymgr/bind_privkey.h		\
 	utils/keymgr/functions.c		\
 	utils/keymgr/functions.h		\
+	utils/keymgr/offline_ksk.c		\
+	utils/keymgr/offline_ksk.h		\
 	utils/keymgr/main.c
 
 kjournalprint_SOURCES = \
 	utils/kjournalprint/main.c
 
-kzonecheck_CPPFLAGS    = $(AM_CPPFLAGS)
+kzonecheck_CPPFLAGS    = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 kzonecheck_LDADD       = libcontrib.la libknotd.la
-keymgr_CPPFLAGS        = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+keymgr_CPPFLAGS        = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(lmdb_CFLAGS)
 keymgr_LDADD           = libcontrib.la libknotd.la libknotus.la libdnssec.la \
-                         libshared.la libzscanner.la
-kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+                         libzscanner.la
+kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(lmdb_CFLAGS)
 kjournalprint_LDADD    = libcontrib.la libknotd.la
 endif HAVE_UTILS
 endif HAVE_DAEMON

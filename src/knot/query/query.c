@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,16 +24,14 @@
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/rrset.h"
 
-int query_init_pkt(knot_pkt_t *pkt)
+void query_init_pkt(knot_pkt_t *pkt)
 {
-	if (!pkt) {
-		return KNOT_EINVAL;
+	if (pkt == NULL) {
+		return;
 	}
 
 	knot_pkt_clear(pkt);
 	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
-
-	return KNOT_EOK;
 }
 
 int query_edns_data_init(struct query_edns_data *edns_ptr, conf_t *conf,
@@ -88,6 +86,10 @@ int query_put_edns(knot_pkt_t *pkt, const struct query_edns_data *edns)
 	int ret = knot_edns_init(&opt_rr, edns->max_payload, 0, KNOT_EDNS_VERSION, &pkt->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
+	}
+
+	if (edns->do_flag) {
+		knot_edns_set_do(&opt_rr);
 	}
 
 	if (edns->custom_code != 0) {

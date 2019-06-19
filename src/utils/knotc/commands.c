@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -442,7 +442,7 @@ static int cmd_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL,
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 		[KNOT_CTL_IDX_TYPE] = args->argc > 0 ? args->argv[0] : NULL
 	};
 
@@ -497,7 +497,7 @@ static int cmd_stats_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	int ret = set_stats_items(args, &data);
@@ -556,19 +556,17 @@ static int zone_exec(cmd_args_t *args, int (*fcn)(const knot_dname_t *, void *),
 
 static int zone_check(const knot_dname_t *dname, void *data)
 {
-	UNUSED(data);
+	cmd_args_t *args = data;
 
-	zone_contents_t *contents;
-	int ret = zone_load_contents(conf(), dname, &contents);
-	if (ret == KNOT_EOK) {
-		zone_contents_deep_free(contents);
-	}
+	zone_contents_t *contents = NULL;
+	int ret = zone_load_contents(conf(), dname, &contents, args->force);
+	zone_contents_deep_free(contents);
 	return ret;
 }
 
 static int cmd_zone_check(cmd_args_t *args)
 {
-	return zone_exec(args, zone_check, NULL);
+	return zone_exec(args, zone_check, args);
 }
 
 static int zone_memstats(const knot_dname_t *dname, void *data)
@@ -656,7 +654,7 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL,
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 		[KNOT_CTL_IDX_ZONE] = args->argv[0],
 		[KNOT_CTL_IDX_TYPE] = args->argv[1],
 	};
@@ -671,7 +669,7 @@ static int cmd_zone_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	// Check the number of arguments.
@@ -763,7 +761,7 @@ static int cmd_zone_filter_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	if (args->desc->cmd == CTL_ZONE_PURGE && !args->force) {
@@ -919,7 +917,7 @@ static int cmd_zone_node_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	char rdata[65536]; // Maximum item size in libknot control interface.
@@ -1040,7 +1038,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->force ? CTL_FLAG_FORCE : NULL
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
 	// Send the command without parameters.
@@ -1137,16 +1135,16 @@ static const cmd_help_t cmd_help_table[] = {
 	{ "",                  "",                                       "" },
 	{ CMD_ZONE_CHECK,      "[<zone>...]",                            "Check if the zone can be loaded. (*)" },
 	{ CMD_ZONE_MEMSTATS,   "[<zone>...]",                            "Estimate memory use for the zone. (*)" },
-	{ CMD_ZONE_RELOAD,     "[<zone>...]",                            "Reload a zone from a disk." },
-	{ CMD_ZONE_REFRESH,    "[<zone>...]",                            "Force slave zone refresh." },
-	{ CMD_ZONE_NOTIFY,     "[<zone>...]",                            "Send a NOTIFY message to all configured remotes." },
-	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check)." },
-	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",              "Flush zone journal into the zone file." },
-	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone." },
-	{ CMD_ZONE_KEY_ROLL,   " <zone> ksk|zsk",                        "Trigger immediate key rollover." },
-	{ CMD_ZONE_KSK_SBM,    " <zone>...",                             "When KSK submission, confirm parent's DS presence." },
-	{ CMD_ZONE_FREEZE,     "[<zone>...]",                            "Temporarily postpone automatic zone-changing events." },
-	{ CMD_ZONE_THAW,       "[<zone>...]",                            "Dismiss zone freeze." },
+	{ CMD_ZONE_RELOAD,     "[<zone>...]",                            "Reload a zone from a disk. (#)" },
+	{ CMD_ZONE_REFRESH,    "[<zone>...]",                            "Force slave zone refresh. (#)" },
+	{ CMD_ZONE_NOTIFY,     "[<zone>...]",                            "Send a NOTIFY message to all configured remotes. (#)" },
+	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check). (#)" },
+	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",              "Flush zone journal into the zone file. (#)" },
+	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone. (#)" },
+	{ CMD_ZONE_KEY_ROLL,   " <zone> ksk|zsk",                        "Trigger immediate key rollover. (#)" },
+	{ CMD_ZONE_KSK_SBM,    " <zone>...",                             "When KSK submission, confirm parent's DS presence. (#)" },
+	{ CMD_ZONE_FREEZE,     "[<zone>...]",                            "Temporarily postpone automatic zone-changing events. (#)" },
+	{ CMD_ZONE_THAW,       "[<zone>...]",                            "Dismiss zone freeze. (#)" },
 	{ "",                  "",                                       "" },
 	{ CMD_ZONE_READ,       "<zone> [<owner> [<type>]]",              "Get zone data that are currently being presented." },
 	{ CMD_ZONE_BEGIN,      "<zone>...",                              "Begin a zone transaction." },
@@ -1156,7 +1154,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_GET,        "<zone> [<owner> [<type>]]",              "Get zone data within the transaction." },
 	{ CMD_ZONE_SET,        "<zone>  <owner> [<ttl>] <type> <rdata>", "Add zone record within the transaction." },
 	{ CMD_ZONE_UNSET,      "<zone>  <owner> [<type> [<rdata>]]",     "Remove zone data within the transaction." },
-	{ CMD_ZONE_PURGE,      "<zone>... [<filter>...]",                "Purge zone data, zone file, journal, timers, and KASP data." },
+	{ CMD_ZONE_PURGE,      "<zone>... [<filter>...]",                "Purge zone data, zone file, journal, timers, and KASP data. (#)" },
 	{ CMD_ZONE_STATS,      "<zone> [<module>[.<counter>]]",          "Show zone statistics counter(s)."},
 	{ CMD_ZONE_STATUS,     "<zone> [<filter>...]",                   "Show the zone status." },
 	{ "",                  "",                                       "" },
@@ -1190,5 +1188,6 @@ void print_commands(void)
 	       " Empty or '--' <zone> parameter means all zones or all zones with a transaction.\n"
 	       " Type <item> parameter in the form of <section>[<identifier>].<name>.\n"
 	       " (*) indicates a local operation which requires a configuration.\n"
-	       " Use '--force' or '-f' as the first parameter of any command to force it.\n");
+	       " (#) indicates an optionally blocking operation.\n"
+	       " The '-b' and '-f' options can be placed right after the command name.\n");
 }

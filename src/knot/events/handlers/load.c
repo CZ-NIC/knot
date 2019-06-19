@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/events/handlers.h"
 #include "knot/events/replan.h"
+#include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
@@ -54,7 +55,6 @@ int event_load(conf_t *conf, zone_t *zone)
 {
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
 	bool old_contents_exist = (zone->contents != NULL);
-	uint32_t old_serial = (old_contents_exist ? zone_contents_serial(zone->contents) : 0);
 
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, zone->name);
 	unsigned load_from = conf_opt(&val);
@@ -70,18 +70,19 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (ret != KNOT_EOK) {
 			journal_conts = NULL;
 		}
-		old_serial = zone_contents_serial(journal_conts);
 	}
 
 	// If configured, attempt to load zonefile.
 	if (zf_from != ZONEFILE_LOAD_NONE) {
-		time_t mtime;
+		struct timespec mtime;
 		char *filename = conf_zonefile(conf, zone->name);
 		ret = zonefile_exists(filename, &mtime);
-		bool zonefile_unchanged = (zone->zonefile.exists && zone->zonefile.mtime == mtime);
+		bool zonefile_unchanged = (zone->zonefile.exists &&
+					   zone->zonefile.mtime.tv_sec == mtime.tv_sec &&
+					   zone->zonefile.mtime.tv_nsec == mtime.tv_nsec);
 		free(filename);
 		if (ret == KNOT_EOK) {
-			ret = zone_load_contents(conf, zone->name, &zf_conts);
+			ret = zone_load_contents(conf, zone->name, &zf_conts, false);
 		}
 		if (ret != KNOT_EOK) {
 			zf_conts = NULL;
@@ -101,13 +102,18 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone->zonefile.mtime = mtime;
 
 		// If configured and possible, fix the SOA serial of zonefile.
-		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE) {
-			zone_contents_t *relevant = (zone->contents != NULL ? zone->contents : journal_conts);
-			if (relevant != NULL) {
-				uint32_t serial = zone_contents_serial(relevant);
-				conf_val_t policy = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
-				zone_contents_set_soa_serial(zf_conts, serial_next(serial, conf_opt(&policy)));
-			}
+		zone_contents_t *relevant = (zone->contents != NULL ? zone->contents : journal_conts);
+		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE && relevant != NULL) {
+			uint32_t serial = zone_contents_serial(relevant);
+			conf_val_t policy = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
+			uint32_t set = serial_next(serial, conf_opt(&policy));
+			zone_contents_set_soa_serial(zf_conts, set);
+			log_zone_info(zone->name, "zone file parsed, serial corrected %u -> %u",
+			              zone->zonefile.serial, set);
+			zone->zonefile.serial = set;
+		} else {
+			log_zone_info(zone->name, "zone file parsed, serial %u",
+			              zone->zonefile.serial);
 		}
 
 		// If configured and appliable to zonefile, load journal changes.
@@ -128,7 +134,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// If configured contents=all, but not present, store zonefile.
 	if (load_from == JOURNAL_CONTENT_ALL &&
-	    journal_conts == NULL && zf_conts != NULL) {
+	    journal_conts == NULL && zf_conts != NULL && !old_contents_exist) {
 		ret = zone_in_journal_store(conf, zone, zf_conts);
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to write zone-in-journal (%s)",
@@ -217,11 +223,12 @@ int event_load(conf_t *conf, zone_t *zone)
 	zf_conts = NULL;
 	journal_conts = NULL;
 
+	uint32_t middle_serial = zone_contents_serial(up.new_cont);
+
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { 0 };
 	if (dnssec_enable) {
-		ret = knot_dnssec_zone_sign(&up, 0, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL | KEY_ROLL_DO_NSEC3RESALT,
-		                            &dnssec_refresh);
+		ret = knot_dnssec_zone_sign(&up, 0, KEY_ROLL_ALLOW_ALL, &dnssec_refresh);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			goto cleanup;
@@ -252,26 +259,25 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 	}
 
+	uint32_t old_serial = 0, new_serial = zone_contents_serial(up.new_cont);
+	char old_serial_str[11] = "none", new_serial_str[15] = "";
+	if (old_contents_exist) {
+		old_serial = zone_contents_serial(zone->contents);
+		(void)snprintf(old_serial_str, sizeof(old_serial_str), "%u", old_serial);
+	}
+	if (new_serial != middle_serial) {
+		(void)snprintf(new_serial_str, sizeof(new_serial_str), " -> %u", new_serial);
+	}
+
 	// Commit zone_update back to zone (including journal update, rcu,...).
 	ret = zone_update_commit(conf, &up);
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
 		goto cleanup;
 	}
-	uint32_t new_serial = zone_contents_serial(zone->contents);
 
-	if (old_contents_exist) {
-		log_zone_info(zone->name, "loaded, serial %u -> %u, %zu bytes",
-		              old_serial, new_serial, zone->contents->size);
-	} else {
-		log_zone_info(zone->name, "loaded, serial %u, %zu bytes",
-		              new_serial, zone->contents->size);
-	}
-
-	if (zone->control_update != NULL) {
-		log_zone_warning(zone->name, "control transaction aborted");
-		zone_control_clear(zone);
-	}
+	log_zone_info(zone->name, "loaded, serial %s -> %u%s, %zu bytes",
+	              old_serial_str, middle_serial, new_serial_str, zone->contents->size);
 
 	// Schedule depedent events.
 	const knot_rdataset_t *soa = zone_soa(zone);
@@ -283,7 +289,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	replan_from_timers(conf, zone);
 
-	if (old_serial != new_serial) {
+	if (!old_contents_exist || old_serial != new_serial) {
 		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 	}
 

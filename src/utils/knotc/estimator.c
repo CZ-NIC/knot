@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,13 +71,13 @@ static int insert_dname_into_table(trie_t *table, const knot_dname_t *d,
 {
 	size_t d_size = knot_dname_size(d);
 
-	trie_val_t *val = trie_get_try(table, (char *)d, d_size);
+	trie_val_t *val = trie_get_try(table, d, d_size);
 	if (val == NULL) {
 		// Create new dummy node to use for this dname
 		*dummy_node = malloc(sizeof(list_t));
 		assert(dummy_node != NULL);
 		init_list(*dummy_node);
-		*trie_get_ins(table, (char *)d, d_size) = *dummy_node;
+		*trie_get_ins(table, d, d_size) = *dummy_node;
 		return 0;
 	} else {
 		// Return previously found dummy node
@@ -92,7 +92,7 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 	list_t *dummy_node = NULL;
 	if (insert_dname_into_table(est->node_table, scanner->r_owner, &dummy_node) == 0) {
 		// First time we see this name == new node
-		est->node_size += add_overhead(sizeof(zone_node_t));
+		est->node_size += 2 * add_overhead(sizeof(zone_node_t)); // 2 for bi-nodes
 		// Also, node has an owner.
 		est->dname_size += add_overhead(knot_dname_size(scanner->r_owner));
 		// Trie's nodes handled at the end of computation

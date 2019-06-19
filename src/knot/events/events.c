@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <time.h>
+#include <unistd.h>
 #include <urcu.h>
 
 #include "libknot/libknot.h"
@@ -211,6 +212,7 @@ static void event_wrap(task_t *task)
 		pthread_mutex_unlock(&events->mx);
 		return;
 	}
+	events->type = type;
 	event_set_time(events, type, 0);
 	events->forced[type] = false;
 	pthread_mutex_unlock(&events->mx);
@@ -235,6 +237,7 @@ static void event_wrap(task_t *task)
 
 	pthread_mutex_lock(&events->mx);
 	events->running = false;
+	events->type = ZONE_EVENT_INVALID;
 	pthread_mutex_unlock(&events->mx);
 	reschedule(events);
 }
@@ -275,7 +278,7 @@ int zone_events_init(zone_t *zone)
 }
 
 int zone_events_setup(struct zone *zone, worker_pool_t *workers,
-                      evsched_t *scheduler, knot_db_t *timers_db)
+                      evsched_t *scheduler)
 {
 	if (!zone || !workers || !scheduler) {
 		return KNOT_EINVAL;
@@ -289,7 +292,6 @@ int zone_events_setup(struct zone *zone, worker_pool_t *workers,
 
 	zone->events.event = event;
 	zone->events.pool = workers;
-	zone->events.timers_db = timers_db;
 
 	return KNOT_EOK;
 }
@@ -359,6 +361,27 @@ void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 	reschedule(events);
 }
 
+void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool user)
+{
+	if (!zone || !valid_event(type)) {
+		return;
+	}
+
+	if (user) {
+		zone_events_schedule_user(zone, type);
+	} else {
+		zone_events_schedule_now(zone, type);
+	}
+
+	time_t now = time(NULL);
+	time_t sched_time = zone_events_get_time(zone, type);
+	while ((zone->events.running && zone->events.type == type) ||
+	       (sched_time > 0 && sched_time <= now)) {
+		usleep(20000);
+		sched_time = zone_events_get_time(zone, type);
+	}
+}
+
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 {
 	if (!zone || !valid_event(type)) {
@@ -373,6 +396,7 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 	if (!events->running && !events->frozen &&
 	    (!events->ufrozen || !ufreeze_applies(type))) {
 		events->running = true;
+		events->type = type;
 		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
 		worker_pool_assign(events->pool, &events->task);
 		pthread_mutex_unlock(&events->mx);

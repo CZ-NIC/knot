@@ -50,6 +50,9 @@ knot.zonefile_sync = "0"
 # install KASP db (one always enabled, one for testing)
 shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
 
+# needed for keymgr
+knot.gen_confile()
+
 # parameters
 ZONE = "example.com."
 KSK = "7a3500c7feac3fd99f09a208a83b97f7455fa3e0"

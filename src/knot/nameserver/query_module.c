@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -161,10 +161,14 @@ void query_module_close(knotd_mod_t *module)
 	knotd_mod_stats_free(module);
 	conf_free_mod_id(module->id);
 
+	zone_sign_ctx_free(module->sign_ctx);
 	free_zone_keys(module->keyset);
 	free(module->keyset);
-	kdnssec_ctx_deinit(module->dnssec);
-	free(module->dnssec);
+	if (module->dnssec != NULL) {
+		knot_lmdb_deinit(module->dnssec->kasp_db);
+		kdnssec_ctx_deinit(module->dnssec);
+		free(module->dnssec);
+	}
 
 	free(module);
 }
@@ -565,19 +569,28 @@ knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type)
 _public_
 int knotd_mod_dnssec_init(knotd_mod_t *mod)
 {
-	if (mod == NULL) {
+	if (mod == NULL || mod->dnssec != NULL) {
 		return KNOT_EINVAL;
 	}
 
-	mod->dnssec = calloc(1, sizeof(*(mod->dnssec)));
+	knot_lmdb_db_t *kaspdb;
+
+	mod->dnssec = calloc(1, sizeof(*(mod->dnssec)) + sizeof(*kaspdb));
 	if (mod->dnssec == NULL) {
 		return KNOT_ENOMEM;
 	}
+	kaspdb = (knot_lmdb_db_t *)(mod->dnssec + 1);
+
+	char *kasp_dir = conf_db(mod->config, C_KASP_DB);
+	conf_val_t kasp_size = conf_default_get(mod->config, C_MAX_KASP_DB_SIZE);
+	knot_lmdb_init(kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
+	free(kasp_dir);
 
 	conf_val_t conf = conf_zone_get(mod->config, C_DNSSEC_SIGNING, mod->zone);
-	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone,
+	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone, kaspdb,
 	                           conf_bool(&conf) ? NULL : mod->id);
 	if (ret != KNOT_EOK) {
+		knot_lmdb_deinit(kaspdb);
 		free(mod->dnssec);
 		return ret;
 	}
@@ -604,30 +617,37 @@ int knotd_mod_dnssec_load_keyset(knotd_mod_t *mod, bool verbose)
 		return ret;
 	}
 
+	mod->sign_ctx = zone_sign_ctx(mod->keyset, mod->dnssec);
+	if (mod->sign_ctx == NULL) {
+		free_zone_keys(mod->keyset);
+		free(mod->keyset);
+		mod->keyset = NULL;
+		return KNOT_ENOMEM;
+	}
+
 	return KNOT_EOK;
+}
+
+_public_
+void knotd_mod_dnssec_unload_keyset(knotd_mod_t *mod)
+{
+	if (mod != NULL && mod->keyset != NULL) {
+		zone_sign_ctx_free(mod->sign_ctx);
+		mod->sign_ctx = NULL;
+
+		free_zone_keys(mod->keyset);
+		free(mod->keyset);
+		mod->keyset = NULL;
+	}
 }
 
 _public_
 int knotd_mod_dnssec_sign_rrset(knotd_mod_t *mod, knot_rrset_t *rrsigs,
                                 const knot_rrset_t *rrset, knot_mm_t *mm)
 {
-	if (mod == NULL || mod->keyset == NULL || rrsigs == NULL || rrset == NULL) {
+	if (mod == NULL || rrsigs == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	for (size_t i = 0; i < mod->keyset->count; i++) {
-		zone_key_t *key = &mod->keyset->keys[i];
-
-		if (!knot_zone_sign_use_key(key, rrset)) {
-			continue;
-		}
-
-		int ret = knot_sign_rrset(rrsigs, rrset, key->key, key->ctx,
-		                          mod->dnssec, mm, NULL);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
+	return knot_sign_rrset2(rrsigs, rrset, mod->sign_ctx, mm);
 }

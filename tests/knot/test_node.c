@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,38 +51,16 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *dummy_owner = knot_dname_from_str_alloc("test.");
 	// Test new
-	zone_node_t *node = node_new(dummy_owner, NULL);
+	zone_node_t *node = node_new(dummy_owner, false, false, NULL);
 	ok(node != NULL, "Node: new");
 	assert(node);
 	ok(knot_dname_is_equal(node->owner, dummy_owner), "Node: new - set fields");
-
-	// Test parent setting
-	zone_node_t *parent = node_new(dummy_owner, NULL);
-	assert(parent);
-	node_set_parent(node, parent);
-	ok(node->parent == parent && parent->children == 1, "Node: set parent.");
-
-	node_free(parent, NULL);
 
 	// Test RRSet addition
 	knot_rrset_t *dummy_rrset = create_dummy_rrset(dummy_owner, KNOT_RRTYPE_TXT);
 	int ret = node_add_rrset(node, dummy_rrset, NULL);
 	ok(ret == KNOT_EOK && node->rrset_count == 1 &&
 	   knot_rdataset_eq(&dummy_rrset->rrs, &node->rrs[0].rrs), "Node: add RRSet.");
-
-	// Test shallow copy
-	node->flags |= NODE_FLAGS_DELEG;
-	zone_node_t *copy = node_shallow_copy(node, NULL);
-	ok(copy != NULL, "Node: shallow copy.");
-	assert(copy);
-	const bool copy_ok = knot_dname_is_equal(copy->owner, node->owner) &&
-	                     copy->rrset_count == node->rrset_count &&
-	                     memcmp(copy->rrs, node->rrs,
-	                            copy->rrset_count * sizeof(struct rr_data)) == 0 &&
-	                     copy->flags == node->flags;
-	ok(copy_ok, "Node: shallow copy - set fields.");
-
-	node_free(copy, NULL);
 
 	// Test RRSet getters
 	knot_rrset_t *n_rrset = node_create_rrset(node, KNOT_RRTYPE_TXT);
@@ -136,11 +114,8 @@ int main(int argc, char *argv[])
 	// Test remove RRset
 	node_remove_rdataset(node, KNOT_RRTYPE_AAAA);
 	ok(node->rrset_count == 2, "Node: remove non-existent rdataset.");
-	void *to_free = node_rdataset(node, KNOT_RRTYPE_TXT)->rdata;
 	node_remove_rdataset(node, KNOT_RRTYPE_TXT);
 	ok(node->rrset_count == 1, "Node: remove existing rdataset.");
-
-	free(to_free);
 
 	// "Test" freeing
 	node_free_rrsets(node, NULL);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,21 +17,56 @@
 #pragma once
 
 #include "contrib/qp-trie/trie.h"
+#include "contrib/ucw/lists.h"
 #include "knot/zone/node.h"
 
-typedef trie_t zone_tree_t;
+enum {
+	/*! Indication of a zone tree with bi-nodes (two zone_node_t structures allocated for one node). */
+	ZONE_TREE_USE_BINODES = (1 << 0),
+	/*! If set, from each bi-node in the zone tree, the second zone_node_t is valid. */
+	ZONE_TREE_BINO_SECOND = (1 << 1),
+};
+
+typedef struct {
+	trie_t *trie;
+	trie_cow_t *cow; // non-NULL only during zone update
+	uint16_t flags;
+} zone_tree_t;
 
 /*!
  * \brief Signature of callback for zone apply functions.
  */
-typedef int (*zone_tree_apply_cb_t)(zone_node_t **node, void *data);
+typedef int (*zone_tree_apply_cb_t)(zone_node_t *node, void *data);
+
+typedef zone_node_t *(*zone_tree_new_node_cb_t)(const knot_dname_t *dname, void *ctx);
+
+typedef int (*zone_tree_del_node_cb_t)(zone_node_t *node, void *ctx);
+
+/*!
+ * \brief Zone tree iteration context.
+ */
+typedef struct {
+	zone_tree_t *tree;
+	trie_it_t *it;
+
+	zone_tree_t *next_tree;
+} zone_tree_it_t;
+
+typedef struct {
+	zone_node_t **nodes;
+	size_t total;
+	size_t current;
+	bool incl_del;
+} zone_tree_delsafe_it_t;
 
 /*!
  * \brief Creates the zone tree.
  *
  * \return created zone tree structure.
  */
-zone_tree_t *zone_tree_create(void);
+zone_tree_t *zone_tree_create(bool use_binodes);
+
+zone_tree_t *zone_tree_dup(zone_tree_t *from);
 
 /*!
  * \brief Return number of nodes in the zone tree.
@@ -46,7 +81,7 @@ inline static size_t zone_tree_count(const zone_tree_t *tree)
 		return 0;
 	}
 
-	return trie_weight(tree);
+	return trie_weight(tree->trie);
 }
 
 /*!
@@ -65,13 +100,13 @@ inline static bool zone_tree_is_empty(const zone_tree_t *tree)
  * \brief Inserts the given node into the zone tree.
  *
  * \param tree Zone tree to insert the node into.
- * \param node Node to insert.
+ * \param node Node to insert. If it's binode, the pointer will be adjusted to correct node.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
-int zone_tree_insert(zone_tree_t *tree, zone_node_t *node);
+int zone_tree_insert(zone_tree_t *tree, zone_node_t **node);
 
 /*!
  * \brief Finds node with the given owner in the zone tree.
@@ -108,12 +143,40 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
                                 zone_node_t **previous);
 
 /*!
- * \brief Delete a node that has no RRSets and no children.
+ * \brief Remove a node from a tree with no checks.
  *
  * \param tree  The tree to remove from.
- * \param node  The node to remove.
+ * \param owner The node to remove.
  */
-void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node);
+void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner);
+
+/*!
+ * \brief Create a node in zone tree if not already exists, and also all parent nodes.
+ *
+ * \param tree         Zone tree to insert into.
+ * \param apex         Zone contents apex node.
+ * \param dname        Name of the node to be added.
+ * \param new_cb       Callback for allocating new node.
+ * \param new_cb_ctx   Context to be passed to allocating callback.
+ * \param new_node     Output: pointer on added (or existing) node with specified dname.
+ *
+ * \return KNOT_E*
+ */
+int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t *dname,
+                       zone_tree_new_node_cb_t new_cb, void *new_cb_ctx, zone_node_t **new_node);
+
+/*!
+ * \brief Remove a node in zone tree, removin also empty parents.
+ *
+ * \param tree          Zone tree to remove from.
+ * \param node          Node to be removed.
+ * \param del_cb        Callback called on every removed node.
+ * \param del_cb_ctx    Context to be passed to the callback.
+ *
+ * \return KNOT_E*
+ */
+int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
+                       zone_tree_del_node_cb_t del_cb, void *del_cb_ctx);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.
@@ -128,15 +191,79 @@ void zone_tree_delete_empty(zone_tree_t *tree, zone_node_t *node);
 int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data);
 
 /*!
+ * \brief Start zone tree iteration.
+ *
+ * \param tree   Zone tree to iterate over.
+ * \param it     Out: iteration context. It shall be zeroed before.
+ *
+ * \return KNOT_OK, KNOT_ENOMEM
+ */
+int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it);
+
+/*!
+ * \brief Start iteration of two zone trees.
+ *
+ * This is useful e.g. for iteration over normal and NSEC3 nodes.
+ *
+ * \param first    First tree to be iterated over.
+ * \param second   Second tree to be iterated over.
+ * \param it       Out: iteration context. It shall be zeroed before.
+ *
+ * \return KNOT_OK, KNOT_ENOMEM
+ */
+int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree_it_t *it);
+
+/*!
+ * \brief Return true iff iteration is finished.
+ *
+ * \note The iteration context needs to be freed afterwards nevertheless.
+ */
+bool zone_tree_it_finished(zone_tree_it_t *it);
+
+/*!
+ * \brief Return the node, zone iteration is currently pointing at.
+ *
+ * \note Don't call this when zone_tree_it_finished.
+ */
+zone_node_t *zone_tree_it_val(zone_tree_it_t *it);
+
+/*!
+ * \brief Remove from zone tree the node that iteration is pointing at.
+ *
+ * \note This doesn't free the node.
+ */
+void zone_tree_it_del(zone_tree_it_t *it);
+
+/*!
+ * \brief Move the iteration to next node.
+ */
+void zone_tree_it_next(zone_tree_it_t *it);
+
+/*!
+ * \brief Free zone iteration context.
+ */
+void zone_tree_it_free(zone_tree_it_t *it);
+
+/*!
+ * \brief Zone tree iteration allowing tree changes.
+ *
+ * The semantics is the same like for normal iteration.
+ * The set of iterated nodes is according to zone tree state on the beginning.
+ */
+int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it, bool include_deleted);
+bool zone_tree_delsafe_it_finished(zone_tree_delsafe_it_t *it);
+zone_node_t *zone_tree_delsafe_it_val(zone_tree_delsafe_it_t *it);
+void zone_tree_delsafe_it_next(zone_tree_delsafe_it_t *it);
+void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it);
+
+/*!
+ * \brief Unify all bi-nodes in specified trees.
+ */
+void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes);
+
+/*!
  * \brief Destroys the zone tree, not touching the saved data.
  *
  * \param tree Zone tree to be destroyed.
  */
 void zone_tree_free(zone_tree_t **tree);
-
-/*!
- * \brief Destroys the zone tree, together with the saved data.
- *
- * \param tree Zone tree to be destroyed.
- */
-void zone_tree_deep_free(zone_tree_t **tree);

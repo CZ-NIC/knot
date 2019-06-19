@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,6 +74,16 @@ typedef struct {
 dynarray_declare(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_PUBLIC, 3)
 
 /*!
+ * Set of DNSSEC key related records.
+ */
+typedef struct {
+	knot_rrset_t dnskey;
+	knot_rrset_t cdnskey;
+	knot_rrset_t cds;
+	knot_rrset_t rrsig;
+} key_records_t;
+
+/*!
  * Key and signature policy.
  */
 typedef struct {
@@ -84,29 +94,29 @@ typedef struct {
 	uint16_t ksk_size;
 	uint16_t zsk_size;
 	uint32_t dnskey_ttl;
-	uint32_t zsk_lifetime;
-	uint32_t ksk_lifetime;
+	uint32_t zsk_lifetime;              // like knot_time_t
+	uint32_t ksk_lifetime;              // like knot_time_t
 	bool ksk_shared;
 	bool singe_type_signing;
 	// RRSIG
-	uint32_t rrsig_lifetime;
-	uint32_t rrsig_refresh_before;
+	uint32_t rrsig_lifetime;            // like knot_time_t
+	uint32_t rrsig_refresh_before;      // like knot_timediff_t
 	// NSEC3
 	bool nsec3_enabled;
 	bool nsec3_opt_out;
-	uint32_t nsec3_salt_lifetime;
+	uint32_t nsec3_salt_lifetime;       // like knot_time_t
 	uint16_t nsec3_iterations;
 	uint8_t nsec3_salt_length;
-	// SOA
-	uint32_t soa_minimal_ttl;
 	// zone
-	uint32_t zone_maximal_ttl;
+	uint32_t zone_maximal_ttl;          // like knot_timediff_t
 	// data propagation delay
-	uint32_t propagation_delay;
+	uint32_t propagation_delay;         // like knot_timediff_t
 	// various
-	uint32_t ksk_sbm_timeout;
-	uint32_t ksk_sbm_check_interval;
-	unsigned child_records_publish;
+	uint32_t ksk_sbm_timeout;           // like knot_time_t
+	uint32_t ksk_sbm_check_interval;    // like knot_time_t
+	unsigned cds_cdnskey_publish;
 	parent_dynarray_t parents;
+	uint16_t signing_threads;
+	bool offline_ksk;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??

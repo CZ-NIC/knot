@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@ typedef enum {
 	SEM_ERR_CNAME_MULTIPLE,
 
 	SEM_ERR_DNAME_CHILDREN,
+	SEM_ERR_DNAME_MULTIPLE,
+	SEM_ERR_DNAME_EXTRA_NS,
 
 	// Optional checks.
 	SEM_ERR_NS_APEX,
@@ -73,12 +75,12 @@ typedef enum {
 	SEM_ERR_DNSKEY_RDATA_PROTOCOL,
 
 	SEM_ERR_CDS_NONE,
-	SEM_ERR_CDS_MULTIPLE,
 	SEM_ERR_CDS_NOT_MATCH,
 
 	SEM_ERR_CDNSKEY_NONE,
-	SEM_ERR_CDNSKEY_MULTIPLE,
 	SEM_ERR_CDNSKEY_NO_DNSKEY,
+	SEM_ERR_CDNSKEY_NO_CDS,
+	SEM_ERR_CDNSKEY_INVALID_DELETE,
 
 	// General error!
 	SEM_ERR_UNKNOWN
@@ -103,6 +105,7 @@ typedef void (*sem_callback) (sem_handler_t *ctx, const zone_contents_t *zone,
 struct sem_handler {
 	sem_callback cb;
 	bool fatal_error;
+	bool warning;
 };
 
 /*!

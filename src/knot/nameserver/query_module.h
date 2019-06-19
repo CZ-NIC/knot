@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,6 +89,7 @@ struct knotd_mod {
 	const knotd_mod_api_t *api;
 	kdnssec_ctx_t *dnssec;
 	zone_keyset_t *keyset;
+	zone_sign_ctx_t *sign_ctx;
 	mod_ctr_t *stats;
 	uint32_t stats_count;
 	void *ctx;

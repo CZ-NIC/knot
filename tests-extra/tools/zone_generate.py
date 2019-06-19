@@ -596,7 +596,7 @@ def main(args):
             nsec3_params = []
 
         subprocess.check_output(["dnssec-signzone", "-d", tmp_dir, "-P", "-p", "-u", \
-                                 "-k", k2, "-r", "/dev/urandom", "-o", ORIGIN, \
+                                 "-k", k2, "-x", "-r", "/dev/urandom", "-o", ORIGIN, \
                                  "-O", "full"] + nsec3_params + [in_fname, k1 + ".key"],
                                  stderr=subprocess.DEVNULL)
         shutil.copyfile(in_fname + '.signed', out_fname)

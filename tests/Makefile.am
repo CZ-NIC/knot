@@ -3,12 +3,11 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src			\
 	-I$(top_srcdir)/src/libdnssec		\
 	-I$(top_srcdir)/src/libdnssec/shared	\
-	$(gnutls_CFLAGS)
+	$(gnutls_CFLAGS) $(lmdb_CFLAGS)
 
 LDADD = \
 	libtap.la				\
 	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libshared.la	\
 	$(top_builddir)/src/libdnssec.la	\
 	$(top_builddir)/src/libcontrib.la	\
 	$(top_builddir)/src/libzscanner.la
@@ -65,9 +64,7 @@ check_PROGRAMS += \
 	libdnssec/test_keyid			\
 	libdnssec/test_keystore_pkcs11		\
 	libdnssec/test_keystore_pkcs8		\
-	libdnssec/test_keystore_pkcs8_dir 	\
 	libdnssec/test_keytag			\
-	libdnssec/test_list			\
 	libdnssec/test_nsec_bitmap		\
 	libdnssec/test_nsec_hash		\
 	libdnssec/test_random			\

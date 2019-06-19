@@ -138,7 +138,7 @@ Options
   and data.
 
 **+**\ [\ **no**\ ]\ **crypto**
-  Display the DNSSEC keys and signatures values in hexdump, instead of omitting them.
+  Display the DNSSEC keys and signatures values in base64, instead of omitting them.
 
 **+**\ [\ **no**\ ]\ **aaflag**
   Set the AA flag.
@@ -175,6 +175,9 @@ Options
 
 **+**\ [\ **no**\ ]\ **header**
   Show the packet header.
+
+**+**\ [\ **no**\ ]\ **comments**
+  Show commented section names.
 
 **+**\ [\ **no**\ ]\ **opt**
   Show the EDNS pseudosection.
@@ -230,6 +233,9 @@ Options
 **+**\ [\ **no**\ ]\ **tls-hostname**\ =\ *STR*
   Use TLS with a remote server hostname check.
 
+**+**\ [\ **no**\ ]\ **tls-sni**\ =\ *STR*
+  Use TLS with a Server Name Indication.
+
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
@@ -253,7 +259,7 @@ Options
 **+**\ [\ **no**\ ]\ **edns**\[\ =\ *N*\]
   Use EDNS version (default is 0).
 
-**+**\ [\ **no**\ ]\ **time**\ =\ *T*
+**+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
   applies to each query attempt.
 
@@ -274,8 +280,11 @@ Options
   +ednsopt.
 
 **+noidn**
-  Disable the IDN transformation to ASCII and vice versa. IDNA2003 support depends
-  on libidn availability during project building!
+  Disable the IDN transformation to ASCII and vice versa. IDN support depends
+  on libidn availability during project building! If used in *common-settings*,
+  all IDN transformations are disabled. If used in the individual query *settings*,
+  transformation from ASCII is disabled on output for the particular query. Note
+  that IDN transformation does not preserve domain name letter case.
 
 Notes
 -----
@@ -283,6 +292,12 @@ Notes
 Options **-k** and **-y** can not be used simultaneously.
 
 Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
+
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
 
 Examples
 --------

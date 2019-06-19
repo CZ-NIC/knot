@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
  */
 struct query_edns_data {
 	uint16_t max_payload;
+	bool do_flag;
 
 	// Custom EDNS option:
 	uint16_t custom_code;
@@ -37,10 +38,8 @@ struct query_edns_data {
  * Clear the packet and generate random transaction ID.
  *
  * \param pkt  Packet to initialize.
- *
- * \return Always KNOT_EOK if valid parameters supplied.
  */
-int query_init_pkt(knot_pkt_t *pkt);
+void query_init_pkt(knot_pkt_t *pkt);
 
 /*!
  * \brief Initialize EDNS parameters from server configuration.

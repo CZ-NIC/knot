@@ -124,6 +124,26 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check_record(section="additional", rtype="A", rdata="1.2.3.4")
     verify(master, zone, dnssec)
 
+    # add delegation w/o glue
+    check_log("Delegation w/o glue")
+    up = master.update(zone)
+    up.add("deleglue.ddns.", 3600, "NS", "a.deleglue.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("deleglue.ddns.", "NS")
+    resp.check_record(section="authority", rtype="NS", rdata="a.deleglue.ddns.")
+    resp.check_no_rr(section="additional", rname="a.deleglue.ddns.", rtype="A")
+    verify(master, zone, dnssec)
+
+    # add glue to delegation
+    check_log("Glue for existing delegation")
+    up = master.update(zone)
+    up.add("a.deleglue.ddns.", 3600, "A", "10.20.30.40")
+    up.send("NOERROR")
+    resp = master.dig("deleglue.ddns.", "NS")
+    resp.check_record(section="authority", rtype="NS", rdata="a.deleglue.ddns.")
+    resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
+    verify(master, zone, dnssec)
+
     # add CNAME to node with A records, should be ignored
     check_log("Add CNAME to A node")
     up = master.update(zone)
@@ -421,6 +441,18 @@ def do_normal_tests(master, zone, dnssec=False):
                           rdata="54576 10 2 397E50C85EDE9CDE33F363A9E66FD1B216D788F8DD438A57A423A386869C8F06")
         resp.check_record(section="authority", rtype="NS", rdata="a.deleg.ddns.")
         resp.check_record(section="authority", rtype="RRSIG")
+        verify(master, zone, dnssec)
+
+        # add AAAA to existing A glue
+        check_log("glue augmentation")
+        up = master.update(zone)
+        up.add("a.deleg.ddns.", 3600, "AAAA", "1::2")
+        up.send("NOERROR")
+        resp = master.dig("xy.deleg.ddns.", "A", dnssec=True)
+        resp.check_rr(section="authority", rname="deleg.ddns.", rtype="NS")
+        resp.check_rr(section="authority", rname="deleg.ddns.", rtype="RRSIG")
+        resp.check_rr(section="additional", rname="a.deleg.ddns.", rtype="AAAA")
+        resp.check_no_rr(section="additional", rname="a.deleg.ddns.", rtype="RRSIG")
         verify(master, zone, dnssec)
 
 def do_refusal_tests(master, zone, dnssec=False):

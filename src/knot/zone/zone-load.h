@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,10 +26,14 @@
  * \param conf
  * \param zone_name
  * \param contents
- * \return KNOT_EOK or an error
+ * \param fail_on_warning
+ *
+ * \retval KNOT_EOK        if success.
+ * \retval KNOT_ESEMCHECK  if any semantic check warning.
+ * \retval KNOT_E*         if error.
  */
 int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
-                       zone_contents_t **contents);
+                       zone_contents_t **contents, bool fail_on_warning);
 
 /*!
  * \brief Update zone contents from the journal.

@@ -1,0 +1,13 @@
+$ORIGIN example.com.
+$TTL 3600
+
+@	IN	SOA	dns1.example.com. hostmaster.example.com. (
+		2010111217	; serial
+		6h		; refresh
+		1h		; retry
+		1w		; expire
+		1d )		; minimum
+
+	NS	foreign.
+
+; glue for foreign. is not mandatory

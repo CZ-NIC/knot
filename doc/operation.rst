@@ -73,9 +73,12 @@ configuration will be temporary (until the server is stopped).
 
 Most of the commands get an item name and value parameters. The item name is
 in the form of ``section[identifier].name``. If the item is multivalued,
-more values can be specified as individual (command line) arguments. Beware of
-the possibility of pathname expansion by the shell. For this reason, slashed
-square brackets or quoted parameters is advisable.
+more values can be specified as individual (command line) arguments.
+
+.. CAUTION::
+   Beware of the possibility of pathname expansion by the shell. For this reason,
+   it is advisable to slash square brackets or to quote command parameters if
+   not executed in the interactive mode.
 
 To get the list of configuration sections or to get the list of section items::
 
@@ -191,8 +194,10 @@ Knot DNS allows you to read or change zone contents online using server
 control interface.
 
 .. WARNING::
-   Avoid concurrent zone file modification, and/or dynamic updates, and/or
-   zone changing over control interface. Otherwise, the zone could be inconsistent.
+   Avoid concurrent zone access when a zone event (zone file load, refresh,
+   DNSSEC signing, dynamic update) is in progress or pending. In such a case
+   zone events must be frozen before. For more information how to freeze the
+   zone read :ref:`Editing zone file`.
 
 To get contents of all configured zones, or a specific zone contents, or zone
 records with a specific owner, or even with a specific record type::
@@ -248,29 +253,34 @@ A full example of setting up a completely new zone from scratch::
     $ knotc zone-set example.com www 3600 A 192.168.0.100
     $ knotc zone-commit example.com
 
+.. NOTE::
+    If quotes are necessary for record data specification, don't forget to escape them::
+
+       $ knotc zone-set example.com @ 3600 TXT \"v=spf1 a:mail.example.com -all\"
+
 .. _Editing zone file:
 
 Reading and editing the zone file safely
 ========================================
 
-It's always possible to read and edit the zone contents via zone file manipulation.
-However, it may lead to confusion if zone contents are continuously changing or
-in case of operator's mistake. This paragraph describes a safe way to modify zone
-by editing the zone file, taking advantage of zone freeze/thaw feature.::
+It's always possible to read and edit zone contents via zone file manipulation.
+However, it may lead to confusion if the zone contents are continuously being
+changed by DDNS, DNSSEC signing and the like. In such a case, the safe way to
+modify the zone file is to freeze zone events first::
 
-    $ knotc zone-freeze example.com.
-    $ while ! knotc zone-status example.com. +freeze | grep -q 'freeze: yes'; do sleep 1; done
-    $ knotc zone-flush example.com.
+    $ knotc -b zone-freeze example.com.
+    $ knotc -b zone-flush example.com.
 
 After calling freeze to the zone, there still may be running zone operations (e.g. signing),
-causing freeze pending. So we watch the zone status until frozen. Then we can flush the
-frozen zone contents.
+causing freeze pending. Because of it the blocking mode is used to ensure
+the operation was finished. Then the zone can be flushed to a file.
 
-Now we open a text editor and perform desired changes to the zone file. It's necessary
-to **increase SOA serial** in this step to keep consistency. Finally, we can load the
-modified zone file and if successful, thaw the zone.::
+Now the zone file can be safely modified (e.g. using a text editor).
+If :ref:`zone_zonefile-load` is not set to `difference-no-serial`, it's also necessary to
+**increase SOA serial** in this step to keep consistency. Finally, we can load the
+modified zone file and if successful, thaw the zone::
 
-    $ knotc zone-reload example.com.
+    $ knotc -b zone-reload example.com.
     $ knotc zone-thaw example.com.
 
 .. _Zone loading:
@@ -288,7 +298,7 @@ are not taken into account here – they are planned after the zone is loaded
 
 If the zone file exists and is not excluded by the configuration, it is first loaded
 and according to its SOA serial number relevant journal changesets are applied.
-If this is a zone reload and we have "`zonefile-load: difference`", the difference
+If this is a zone reload and we have :ref:`zone_zonefile-load` set to `difference`, the difference
 between old and new contents is computed and stored into the journal like an update.
 The zone file should be either unchaged since last load or changed with incremented
 SOA serial. In the case of a decreased SOA serial, the load is interrupted with
@@ -297,7 +307,7 @@ an error; if unchanged, it is increased by the server.
 If the procedure described above succeeds without errors, the resulting zone contents are (after potential DNSSEC signing)
 used as the new zone.
 
-The option "`journal-content: all`" lets the server, beside better performance, to keep
+The option :ref:`zone_journal-content` set to `all` lets the server, beside better performance, to keep
 track of the zone contents also across server restarts. It makes the cold start
 effectively work like a zone reload with the old contents loaded from the journal
 (unless this is the very first start with the zone not yet saved into the journal).
@@ -363,10 +373,10 @@ Keep the zone file updated::
 
    zonefile-sync: 0
    zonefile-load: whole
-   journal-contents: changes
+   journal-content: changes
 
 This is actually setting default values. The user can always check the current zone
-contents in the zonei file, and also modify it (recommended with server turned-off or
+contents in the zone file, and also modify it (recommended with server turned-off or
 taking the :ref:`safe way<Editing zone file>`). Journal serves here just as a source of
 history for slaves' IXFR. Some users dislike that the server overwrites their prettily
 prepared zone file.
@@ -378,11 +388,12 @@ Zonefileless setup::
 
    zonefile-sync: -1
    zonefile-load: none
-   journal-contents: all
+   journal-content: all
 
 Zone contents are stored just in the journal. The zone is updated by DDNS,
 zone transfer, or via the control interface. The user might have filled the
-zone contents initially from a zone file by setting "zonefile-load: whole" temporarily.
+zone contents initially from a zone file by setting :ref:`zone_zonefile-load` to
+`whole` temporarily.
 It's also a good setup for slaves. Anyway, it's recommended to carefully tune
 the journal-size-related options to avoid surprises of journal getting full.
 
@@ -393,7 +404,7 @@ Input-only zone file::
 
    zonefile-sync: -1
    zonefile-load: difference
-   journal-contents: changes
+   journal-content: changes
 
 The user can make changes to the zone by editing the zone file, and his pretty zone file
 gets never overwritten and filled with DNSSEC-related autogenerated records – they are
@@ -403,8 +414,56 @@ The zone file's SOA serial must be properly set to a number which is higher than
 current SOA serial in the zone (not in the zone file) if manually updated!
 
 .. NOTE::
-   In the case of "zonefile-load: difference-no-serial", the SOA serial is
-   handled by the server automatically during server reload.
+   In the case of :ref:`zone_zonefile-load` is set to `difference-no-serial`,
+   the SOA serial is handled by the server automatically during server reload.
+
+.. _DNSSEC Key states:
+
+DNSSEC key states
+=================
+
+During its lifetime, DNSSEC key finds itself in different states. Most of the time it
+is usually used for signing the zone and published in the zone. In order to change
+this state, one type of a key rollover is necessary, and during this rollover,
+the key goes through various states, with respect to the rollover type and also the
+state of the other key being rolled-over.
+
+First, let's list the states of the key being rolled-in.
+
+Standard states:
+
+- ``active`` — The key is used for signing.
+- ``published`` — The key is published in the zone, but not used for signing.
+- ``ready`` (only for KSK) — The key is published in the zone and used for signing. The
+  old key is still active, since we are waiting for the DS records in the parent zone to be
+  updated (i.e. "KSK submission").
+
+Special states for algorithm rollover:
+
+- ``pre-active`` — The key is not yet published in the zone, but it's used for signing the zone.
+- ``published`` — The key is published in the zone, and it's still used for signing since the
+  pre-active state.
+
+Second, we list the states of the key being rolled-out.
+
+Standard states:
+
+- ``retire-active`` — The key is still used for signing and published in the zone, waiting for
+  the updated DS records in parent zone to be acked by resolvers (KSK case) or synchronizing
+  with KSK during algorithm rollover (ZSK case).
+- ``retired`` — The key is no longer used for signing, but still published in the zone.
+- ``removed`` — The key is not used in any way (in most cases such keys are deleted immediately).
+
+Special states for algorithm rollover:
+
+- ``post-active`` — The key is no longer published in the zone, but still used for signing.
+
+The states listed above are relevant for :doc:`keymgr <man_keymgr>` operations like generating
+a key, setting its timers and listing KASP database.
+
+On the other hand, the key "states" displayed in the server log lines while zone signing
+are not according to listed above, but just a hint what the key is currently used to
+(e.g. "public, active" = key is published in the zone and used for signing).
 
 .. _DNSSEC Key rollovers:
 
@@ -474,7 +533,8 @@ lines of :rfc:`6781#section-4.1.2`::
   2017-10-24T15:41:22 notice: [example.com.] DNSSEC, KSK submission, waiting for confirmation
 
 At this point new KSK has to be submitted to the parent zone. Knot detects the updated parent's DS
-record automatically if :ref:`parent DS check<Submission section>` is configured, otherwise the
+record automatically (and waits for additional period of the DS's TTL before retiring the old key)
+if :ref:`parent DS check<Submission section>` is configured, otherwise the
 operator must confirm it manually with ``knotc zone-ksk-submitted``::
 
   2017-10-24T15:41:23 notice: [example.com.] DNSSEC, KSK submission, confirmed
@@ -624,6 +684,122 @@ respectively, appeared in the zone.
 After the parent zone notices and reflects the change, we wait for TTL expire
 (so all resolvers' caches get updated), and finally we may do anything with the
 zone, e.g. turning off DNSSEC, removing all the keys and signatures as desired.
+
+.. _DNSSEC Offline KSK:
+
+DNSSEC Offline KSK
+==================
+
+Knot DNS allows a special mode of operation where the private part of the Key Signing Key is
+not available to the daemon, but it is rather stored securely in an offline storage. This requires
+that the KSK/ZSK signing scheme is used (i.e. :ref:`policy_single-type-signing` is off).
+The Zone Signing Key is always fully available to the daemon in order to sign common changes to the zone contents.
+
+The server (or the "ZSK side") only uses ZSK to sign zone contents and its changes. Before
+performing a ZSK rollover, the DNSKEY records will be pre-generated and signed by the
+signer (the "KSK side"). Both sides exchange keys in the form of human-readable messages with the help
+of :doc:`keymgr <man_keymgr>` utility.
+
+Pre-requisites
+--------------
+
+For the ZSK side (i.e. the operator of the DNS server), the pre-requisites are:
+
+- properly configured :ref:`DNSSEC policy <Policy section>` (e.g. :ref:`zsk-lifetime <policy_zsk-lifetime>`),
+- :ref:`manual <policy_manual>` set to `on`
+- :ref:`offline-ksk <policy_offline-ksk>` set to `on`
+- :ref:`dnskey-ttl <policy_dnskey-ttl>` and :ref:`zone-max-ttl <policy_zone-max-ttl>` set up explicitly
+- a complete KASP DB with just ZSK(s)
+
+For the KSK side (i.e. the operator of the KSK signer), the pre-requisites are:
+
+- Knot configuration equal to the ZSK side (at least relevant parts of corresponding
+  :ref:`policy <Policy section>`, :ref:`zone <Zone section>`, and :ref:`template <Template section>`
+  sections must be identical)
+- a KASP DB with the KSK(s)
+
+Generating and signing future ZSKs
+----------------------------------
+
+1.  Use the ``keymgr pregenerate`` command on the ZSK side to prepare the ZSKs for a specified period of time in the future. The following example
+    generates ZSKs for the *example.com* zone for 6 months ahead starting from now::
+
+     $ keymgr -c /path/to/ZSK/side.conf example.com. pregenerate +6mo
+
+    If the time period is selected as e.g. *2 x* :ref:`policy_zsk-lifetime` *+ 4 x* :ref:`policy_propagation-delay`, it will
+    prepare roughly two complete future key rollovers. The newly-generated
+    ZSKs remain in non-published state until their rollover starts, i.e. the time
+    they would be generated in case of automatic key management.
+
+2.  Use the ``keymgr generate-ksr`` command on the ZSK side to export the public parts of the future ZSKs in a form
+    similar to DNSKEY records. You might use the same time period as in the first step::
+
+     $ keymgr -c /path/to/ZSK/side.conf example.com. generate-ksr +0 +6mo > /path/to/ksr/file
+
+    Save the output of the command (called the Key Signing Request or KSR) to a file and transfer it to the KSK side e.g. via e-mail.
+
+3.  Use the ``keymgr sign-ksr`` command on the KSK side with the KSR file from the previous step as a parameter::
+
+     $ keymgr -c /path/to/KSK/side.conf example.com. sign-ksr /path/to/ksr/file > /path/to/skr/file
+
+    This creates all the future forms of the DNSKEY, CDNSKEY and CSK records and all the respective RRSIGs and prints them on output. Save
+    the output of the command (called the Signed Key Response or SKR) to a file and transfer it back to the ZSK side.
+
+4.  Use the ``keymgr import-skr`` command to import the records and signatures from the SKR file generated in the last step
+    into the KASP DB on the ZSK side::
+
+     $ keymgr -c /path/to/ZSK/side.conf example.com. import-skr /path/to/skr/file
+
+5. Use the ``knotc zone-sign`` command to trigger a zone re-sign on the ZSK-side and set up the future re-signing events correctly.::
+
+    $ knotc -c /path/to/ZSK/side.conf zone-sign example.com.
+
+6. Now the future ZSKs and DNSKEY records with signatures are ready in KASP DB for later usage.
+   Knot automatically uses them in correct time intervals.
+   The entire procedure must to be repeated before the time period selected at the beginning passes,
+   or whenever a configuration is changed significantly. Over-importing new SKR across some previously-imported
+   one leads to deleting the old offline records.
+
+.. _DNSSEC Export Import  KASP DB:
+
+Export/import  KASP DB
+======================
+
+If you would like make a backup of your KASP DB or transfer your cryptographic
+keys to a different server,
+you may utilize the ``mdb_dump`` and ``mdb_load`` tools provided by the
+`lmdb-utils <https://packages.ubuntu.com/bionic/lmdb-utils>`_
+package on Ubuntu and Debian or by the `lmdb <https://rpms.remirepo.net/rpmphp/zoom.php?rpm=lmdb>`_
+package on Fedora, CentOS and RHEL.
+These tools allow you to convert the contents of any LMDB database to a portable plain text format
+which can be imported to any other LMDB database. Note that the `keys` subdirectory of the
+:ref:`template_kasp-db` directory containing the \*.pem files has to be copied separately.
+
+.. NOTE::
+   Make sure to freeze DNSSEC events on a running server prior to applying the following
+   commands to its  KASP DB. Use the ``knotc zone-freeze`` and ``knotc zone-thaw`` commands
+   as described in :ref:`Editing zone file`.
+
+Use the ``mdb_dump -a`` command with the configured :ref:`template_kasp-db` directory
+as an argument to convert the contents of the LMDB database to a portable text format:
+
+.. code-block:: console
+
+   $ mdb_dump -a /path/to/keys
+
+Save the output of the command to a text file. You may then import the file
+into a different LMDB database using the ``mdb_load -f`` command, supplying the path
+to the file and the path to the database directory as arguments:
+
+.. code-block:: console
+
+    $ mdb_load -f /path/to/dump_file /path/to/keys
+
+.. NOTE::
+   Depending on your use case, it might be necessary to call ``knotc zone-sign``
+   (e.g. to immediately sign the zones with the new imported keys) or ``knotc zone-reload``
+   (e.g. to refresh DNSSEC signatures generated by the :ref:`geoip module<mod-geoip>`)
+   after importing new content into the KASP DB of a running server.
 
 .. _Controlling running daemon:
 

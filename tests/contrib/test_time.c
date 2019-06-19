@@ -171,7 +171,7 @@ static void test_time_print(void)
 
 	ret = knot_time_print(TIME_PRINT_ISO8601, t, buff, bufl);
 	buff[11] = '0', buff[12] = '0'; // zeroing 'hours' field to avoid locality issues
-	test_time_print_expect(ret, buff, bufl, "1970-01-01T00:13:20", "iso");
+	test_time_print_expect(ret, buff, bufl, "1970-01-01T00:13:20Z", "iso");
 
 	t2 = knot_time_add(knot_time(), -10000);
 	ret = knot_time_print(TIME_PRINT_HUMAN_MIXED, t2, buff, bufl);

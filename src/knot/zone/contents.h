@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,14 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-/*!
- * \file
- *
- * Zone contents structure and API for manipulating it.
- *
- * \addtogroup zone
- * @{
  */
 
 #pragma once
@@ -40,24 +32,28 @@ typedef struct zone_contents {
 	zone_tree_t *nodes;
 	zone_tree_t *nsec3_nodes;
 
+	trie_t *adds_tree; // "additionals tree" for reverse lookup of nodes affected by additionals
+
 	dnssec_nsec3_params_t nsec3_params;
 	size_t size;
+	uint32_t max_ttl;
 	bool dnssec;
 } zone_contents_t;
 
 /*!
- * \brief Signature of callback for zone contents apply functions.
- */
-typedef int (*zone_contents_apply_cb_t)(zone_node_t *node, void *data);
-
-/*!
  * \brief Allocate and create new zone contents.
  *
- * \param apex_name  Name of the root node.
+ * \param apex_name     Name of the root node.
+ * \param use_binodes   Zone trees shall consist of bi-nodes to enable zone updates.
  *
  * \return New contents or NULL on error.
  */
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes);
+
+/*!
+ * \brief Returns zone tree for inserting given RR.
+ */
+zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrset_t *rr);
 
 /*!
  * \brief Add an RR to contents.
@@ -82,16 +78,6 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t
 int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
 
 /*!
- * \brief Get the node with this RR (the RR's owner).
- *
- * \param zone   Contents to add to.
- * \param rrset  The RR to add.
- *
- * \return The searched node if it exists, a new added empty node or NULL on error.
- */
-zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrset_t *rrset);
-
-/*!
  * \brief Tries to find a node with the specified name in the zone.
  *
  * \param contents Zone where the name should be searched for.
@@ -101,6 +87,14 @@ zone_node_t *zone_contents_get_node_for_rr(zone_contents_t *zone, const knot_rrs
  */
 const zone_node_t *zone_contents_find_node(const zone_contents_t *contents, const knot_dname_t *name);
 
+/*!
+ * \brief Find a node in which the given rrset may be inserted,
+ *
+ * \param contents   Zone contents.
+ * \param rrset      RRSet to be inserted later.
+ *
+ * \return Existing node in zone which the RRSet may be inserted in; or NULL if none present.
+ */
 zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const knot_rrset_t *rrset);
 
 /*!
@@ -169,24 +163,46 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *contents,
                                       const zone_node_t **nsec3_node,
                                       const zone_node_t **nsec3_previous);
 
+/*!
+ * \brief Finds NSEC3 node and previous NSEC3 node to specified NSEC3 name.
+ *
+ * Like previous function, but the NSEC3 hashed-name is already known.
+ *
+ * \param zone             Zone contents to search in,
+ * \param nsec3_name       NSEC3 name to be searched for.
+ * \param nsec3_node       Out: NSEC3 node found.
+ * \param nsec3_previous   Out: previous NSEC3 node.
+ *
+ * \return ZONE_NAME_FOUND, ZONE_NAME_NOT_FOUND, KNOT_E*
+ */
+int zone_contents_find_nsec3(const zone_contents_t *zone,
+                             const knot_dname_t *nsec3_name,
+                             const zone_node_t **nsec3_node,
+                             const zone_node_t **nsec3_previous);
+
+/*!
+ * \brief For specified node, give a wildcard child if exists in zone.
+ *
+ * \param contents   Zone contents.
+ * \param parent     Given parent node.
+ *
+ * \return Node being a wildcard child; or NULL.
+ */
 const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *contents,
                                                      const zone_node_t *parent);
 
 /*!
- * \brief Sets parent and previous pointers and node flags. (cheap operation)
- *        For both normal and NSEC3 tree
+ * \brief For given name, find either exactly matching node in zone, or a matching wildcard node.
  *
- * \param contents Zone contents to be adjusted.
- */
-int zone_contents_adjust_pointers(zone_contents_t *contents);
-
-/*!
- * \brief Sets parent and previous pointers, sets node flags and NSEC3 links.
- *        This has to be called before the zone can be served.
+ * \param contents   Zone contents to be searched in.
+ * \param find       Name to be searched for.
+ * \param found      Out: a node that either has owner "find" or is matching wildcard node.
  *
- * \param contents Zone contents to be adjusted.
+ * \return true iff found something
  */
-int zone_contents_adjust_full(zone_contents_t *contents);
+bool zone_contents_find_node_or_wildcard(const zone_contents_t *contents,
+                                         const knot_dname_t *find,
+                                         const zone_node_t **found);
 
 /*!
  * \brief Applies the given function to each regular node in the zone.
@@ -196,7 +212,7 @@ int zone_contents_adjust_full(zone_contents_t *contents);
  * \param data Arbitrary data to be passed to the function.
  */
 int zone_contents_apply(zone_contents_t *contents,
-                        zone_contents_apply_cb_t function, void *data);
+                        zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.
@@ -207,7 +223,7 @@ int zone_contents_apply(zone_contents_t *contents,
  * \param data Arbitrary data to be passed to the function.
  */
 int zone_contents_nsec3_apply(zone_contents_t *contents,
-                              zone_contents_apply_cb_t function, void *data);
+                              zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).
@@ -261,17 +277,11 @@ uint32_t zone_contents_serial(const zone_contents_t *zone);
 void zone_contents_set_soa_serial(zone_contents_t *zone, uint32_t new_serial);
 
 /*!
+ * \brief Load parameters from NSEC3PARAM record into contents->nsec3param structure.
+ */
+int zone_contents_load_nsec3param(zone_contents_t *contents);
+
+/*!
  * \brief Return true if zone is empty.
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
-
-/*!
- * \brief Measure zone contents size.
- *
- * Size is measured in uncompressed wire format. Measured size is saved into
- * zone contents structure.
- * \return Measured size
- */
-size_t zone_contents_measure_size(zone_contents_t *zone);
-
-/*! @} */

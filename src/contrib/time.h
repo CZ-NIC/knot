@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,10 @@
 #include <stdint.h>
 #include <time.h>
 #include <inttypes.h>
+
+#ifdef __APPLE__
+ #define st_mtim st_mtimespec
+#endif
 
 /*!
  * \brief Specify output format for knot_time_print().
@@ -115,6 +119,11 @@ inline static knot_timediff_t knot_time_diff(knot_time_t to, knot_time_t from)
 inline static knot_time_t knot_time_add(knot_time_t since, knot_timediff_t howlong)
 {
 	return (since != 0 ? since + howlong : since);
+}
+
+inline static knot_time_t knot_time_plus(knot_time_t a, knot_time_t b)
+{
+	return ((a && b) ? a + b : 0);
 }
 
 /*!

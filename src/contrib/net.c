@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -145,7 +145,11 @@ static int enable_nonlocal(int sock, int family)
 static int enable_reuseport(int sock)
 {
 #ifdef ENABLE_REUSEPORT
+#  if defined(__FreeBSD__)
+	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT_LB);
+#  else
 	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT);
+#  endif
 #else
 	return KNOT_ENOTSUP;
 #endif
@@ -467,8 +471,8 @@ static ssize_t send_data(int sock, struct msghdr *msg, int timeout_ms)
 
 /* -- generic stream and datagram I/O -------------------------------------- */
 
-ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
-                 const struct sockaddr *addr, int timeout_ms)
+ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
+                      const struct sockaddr *addr, int timeout_ms)
 {
 	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
@@ -494,8 +498,8 @@ ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
 	return ret;
 }
 
-ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
-                 struct sockaddr_storage *addr, int timeout_ms)
+ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
+                      struct sockaddr_storage *addr, int timeout_ms)
 {
 	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
@@ -517,22 +521,22 @@ ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
                        const struct sockaddr *addr)
 {
-	return net_send(sock, buffer, size, addr, 0);
+	return net_base_send(sock, buffer, size, addr, 0);
 }
 
 ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 {
-	return net_recv(sock, buffer, size, NULL, timeout_ms);
+	return net_base_recv(sock, buffer, size, NULL, timeout_ms);
 }
 
 ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms)
 {
-	return net_send(sock, buffer, size, NULL, timeout_ms);
+	return net_base_send(sock, buffer, size, NULL, timeout_ms);
 }
 
 ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 {
-	return net_recv(sock, buffer, size, NULL, timeout_ms);
+	return net_base_recv(sock, buffer, size, NULL, timeout_ms);
 }
 
 /* -- DNS specific I/O ----------------------------------------------------- */

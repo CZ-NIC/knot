@@ -99,6 +99,9 @@ If there are multiple ACL rules for a single zone, they are applied in the order
 of appearance in the :ref:`zone_acl` configuration item of a zone or a template.
 The first one to match the given remote is applied, the rest is ignored.
 
+For dynamic updates, additional rules may be specified, which will allow or deny updates
+according to the type or owner of Resource Records in the update.
+
 See the following examples and :ref:`ACL section`.
 
 ::
@@ -136,6 +139,16 @@ See the following examples and :ref:`ACL section`.
     zone:
       - domain: acl2.example.com
         acl: [deny_all, key_rule]
+
+::
+
+    acl
+        - id: owner_type_rule
+          action: update
+          update-type: [A, AAAA, MX] # Updates are only allowed to update records of the specified types
+          update-owner: name         # The allowed owners are specified by the list on the next line
+          update-owner-name: [a.example.com, b.example.com, c.example.com]
+          update-owner-match: equal  # The owners of records in an update must be exactly equal to the names in the list
 
 .. NOTE::
    If more conditions (address ranges and/or a key)
@@ -487,6 +500,22 @@ the key replacement will not happen at once. First, a new key will be
 activated.  A few moments later, the old key will be deactivated and removed.
 You can use exact time specification to make these two actions happen in one
 go.
+
+.. WARNING::
+   If you ever decide to switch from manual key management to automatic key management,
+   note that the automatic key management uses
+   :ref:`policy_zsk-lifetime` and :ref:`policy_ksk-lifetime` policy configuration
+   options to schedule key rollovers and it internally uses timestamps of keys differently
+   than in the manual case. As a consequence it might break if the ``retire`` or ``remove`` timestamps
+   are set for the manually generated keys currently in use. Make sure to set these timestamps
+   to zero using :doc:`keymgr <man_keymgr>`:
+
+   .. code-block:: console
+
+       $ keymgr myzone.test. set <key_id> retire=0 remove=0
+
+   and configure your policy suitably according to :ref:`dnssec-automatic-zsk-management`
+   and :ref:`dnssec-automatic-ksk-management`.
 
 .. _dnssec-signing:
 

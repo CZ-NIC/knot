@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "knot/common/log.h"
 #include "knot/dnssec/ds_query.h"
 #include "knot/zone/zone.h"
 
@@ -22,7 +21,7 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 {
 	kdnssec_ctx_t ctx = { 0 };
 
-	int ret = kdnssec_ctx_init(conf, &ctx, zone->name, NULL);
+	int ret = kdnssec_ctx_init(conf, &ctx, zone->name, zone->kaspdb, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -32,18 +31,6 @@ int event_parent_ds_q(conf_t *conf, zone_t *zone)
 	if (ret != KNOT_EOK) {
 		kdnssec_ctx_deinit(&ctx);
 		return ret;
-	}
-
-	for (size_t i = 0; i < keyset.count; i++) {
-		zone_key_t *key = &keyset.keys[i];
-		if (key->is_ksk && key->cds_priority > 1) {
-			char param[32];
-			(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu",
-			               dnssec_key_get_keytag(key->key));
-
-			log_fmt_zone(LOG_NOTICE, LOG_SOURCE_ZONE, zone->name, param,
-			             "DNSSEC, KSK submission, waiting for confirmation");
-		}
 	}
 
 	ret = knot_parent_ds_query(&ctx, &keyset, conf->cache.srv_tcp_reply_timeout * 1000);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,18 +22,16 @@
 #include "libdnssec/binary.h"
 #include "libdnssec/key.h"
 #include "libdnssec/keystore.h"
-#include "libdnssec/list.h"
 
 typedef struct keystore_functions {
 	// construction of internal context
-	int (*ctx_new)(void **ctx_ptr, void *data);
-	int (*ctx_free)(void *ctx);
+	int (*ctx_new)(void **ctx_ptr);
+	void (*ctx_free)(void *ctx);
 	// keystore init/open/close
 	int (*init)(void *ctx, const char *config);
 	int (*open)(void *ctx, const char *config);
 	int (*close)(void *ctx);
 	// keystore access
-	int (*list_keys)(void *ctx, dnssec_list_t **list);
 	int (*generate_key)(void *ctx, gnutls_pk_algorithm_t algorithm,
 			    unsigned bits, char **id_ptr);
 	int (*import_key)(void *ctx, const dnssec_binary_t *pem, char **id_ptr);
@@ -48,5 +46,4 @@ struct dnssec_keystore {
 };
 
 int keystore_create(dnssec_keystore_t **store_ptr,
-		    const keystore_functions_t *functions,
-		    void *ctx_custom_data);
+		    const keystore_functions_t *functions);

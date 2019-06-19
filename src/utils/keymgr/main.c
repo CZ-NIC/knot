@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,11 +22,13 @@
 #include <unistd.h>
 
 #include "contrib/string.h"
+#include "contrib/strtonum.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
 #include "utils/common/params.h"
 #include "utils/keymgr/functions.h"
+#include "utils/keymgr/offline_ksk.h"
 
 #define PROGRAM_NAME	"keymgr"
 
@@ -59,6 +61,8 @@ static void print_help(void)
 	       "                 (syntax: import-pem <pem_file_path> <attribute_name>=<value>...)\n"
 	       "  import-pkcs11 Import key stored in PKCS11 storage. Specify its parameters manually.\n"
 	       "                 (syntax: import-pkcs11 <key_id> <attribute_name>=<value>...)\n"
+	       "  nsec3-salt    Print current NSEC3 salt. If parameter is specified, set new salt.\n"
+	       "                 (syntax: nsec3salt [<new_salt>])\n"
 	       "  ds            Generate DS record(s) for specified key.\n"
 	       "                 (syntax: ds <key_spec>)\n"
 	       "  dnskey        Generate DNSKEY record for specified key.\n"
@@ -70,8 +74,26 @@ static void print_help(void)
 	       "  set           Set existing key's timing attribute.\n"
 	       "                 (syntax: set <key_spec> <attribute_name>=<value>...)\n"
 	       "\n"
+	       "Commands related to Offline KSK feature:\n"
+	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
+	       "                 (syntax: pregenerate <timestamp>)\n"
+	       "  presign       Pre-generate RRSIG signatures for pregenerated ZSKs.\n"
+	       "                 (syntax: presign <timestamp>)\n"
+	       "  show-offline  Print pre-generated offline key-related records for specified time interval (possibly to infinity).\n"
+	       "                 (syntax: show-offline <from> [<to>])\n"
+	       "  del-offline   Delete pre-generated offline key-related records in specified time interval.\n"
+	       "                 (syntax: del-offline <from> <to>)\n"
+	       "  del-all-old   Delete old keys that are in state 'removed'.\n"
+	       "  generate-ksr  Print to stdout KeySigningRequest based on pre-generated ZSKS.\n"
+	       "                 (syntax: generate-ksr <from> <to>)\n"
+	       "  sign-ksr      Read KeySigningRequest from a file, sign it and print SignedKeyResponse to stdout.\n"
+	       "                 (syntax: sign-ksr <ksr_file>)\n"
+	       "  import-skr    Import DNSKEY record signatures from a SignedKeyResponse.\n"
+	       "                 (syntax: import-skr <skr_file>)\n"
+	       "\n"
 	       "Key specification:\n"
-	       "  either the key tag (number) or [a prefix of] key ID.\n"
+	       "  either the key tag (number) or [a prefix of] key ID, with an optional\n"
+	       "  [id=|keytag=] prefix.\n"
 	       "\n"
 	       "Key attributes:\n"
 	       "  algorithm  The key cryptographic algorithm: either name (e.g. RSASHA256) or\n"
@@ -83,15 +105,15 @@ static void print_help(void)
 	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
-static int key_command(int argc, char *argv[], int optind)
+static int key_command(int argc, char *argv[], int opt_ind)
 {
-	if (argc < optind + 2) {
+	if (argc < opt_ind + 2) {
 		printf("Zone name and/or command not specified\n");
 		print_help();
 		return KNOT_EINVAL;
 	}
-	argc -= optind;
-	argv += optind;
+	argc -= opt_ind;
+	argv += opt_ind;
 
 	knot_dname_t *zone_name = knot_dname_from_str_alloc(argv[0]);
 	if (zone_name == NULL) {
@@ -99,18 +121,15 @@ static int key_command(int argc, char *argv[], int optind)
 	}
 	knot_dname_to_lower(zone_name);
 
+	knot_lmdb_db_t kaspdb = { 0 };
 	kdnssec_ctx_t kctx = { 0 };
 
 	conf_val_t mapsize = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
-	char *kasp_dir = conf_kaspdir(conf());
-	int ret = kasp_db_init(kaspdb(), kasp_dir, conf_int(&mapsize));
+	char *kasp_dir = conf_db(conf(), C_KASP_DB);
+	knot_lmdb_init(&kaspdb, kasp_dir, conf_int(&mapsize), 0, "keys_db");
 	free(kasp_dir);
-	if (ret != KNOT_EOK) {
-		printf("Failed to initialize KASP db (%s)\n", knot_strerror(ret));
-		goto main_end;
-	}
 
-	ret = kdnssec_ctx_init(conf(), &kctx, zone_name, NULL);
+	int ret = kdnssec_ctx_init(conf(), &kctx, zone_name, &kaspdb, NULL);
 	if (ret != KNOT_EOK) {
 		printf("Failed to initialize KASP (%s)\n", knot_strerror(ret));
 		goto main_end;
@@ -118,6 +137,13 @@ static int key_command(int argc, char *argv[], int optind)
 
 #define CHECK_MISSING_ARG(msg) \
 	if (argc < 3) { \
+		printf("%s\n", (msg)); \
+		ret = KNOT_EINVAL; \
+		goto main_end; \
+	}
+
+#define CHECK_MISSING_ARG2(msg) \
+	if (argc < 4) { \
 		printf("%s\n", (msg)); \
 		ret = KNOT_EINVAL; \
 		goto main_end; \
@@ -139,6 +165,13 @@ static int key_command(int argc, char *argv[], int optind)
 	} else if (strcmp(argv[1], "import-pkcs11") == 0) {
 		CHECK_MISSING_ARG("Key ID to import not specified");
 		ret = keymgr_import_pkcs11(&kctx, argv[2], argc - 3, argv + 3);
+	} else if (strcmp(argv[1], "nsec3-salt") == 0) {
+		if (argc > 2) {
+			ret = keymgr_nsec3_salt_set(&kctx, argv[2]);
+		} else {
+			ret = keymgr_nsec3_salt_print(&kctx);
+			print_ok_on_succes = false;
+		}
 	} else if (strcmp(argv[1], "set") == 0) {
 		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2set;
@@ -181,9 +214,9 @@ static int key_command(int argc, char *argv[], int optind)
 		CHECK_MISSING_ARG("Key to be shared is not specified");
 		knot_dname_t *other_zone = NULL;
 		char *key_to_share = NULL;
-		ret = keymgr_foreign_key_id(argv, &other_zone, &key_to_share);
+		ret = keymgr_foreign_key_id(argv, &kaspdb, &other_zone, &key_to_share);
 		if (ret == KNOT_EOK) {
-			ret = kasp_db_share_key(*kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
+			ret = kasp_db_share_key(kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
 		}
 		free(other_zone);
 		free(key_to_share);
@@ -194,6 +227,28 @@ static int key_command(int argc, char *argv[], int optind)
 		if (ret == KNOT_EOK) {
 			ret = kdnssec_delete_key(&kctx, key2del);
 		}
+	} else if (strcmp(argv[1], "pregenerate") == 0) {
+		CHECK_MISSING_ARG("Period not specified");
+		ret = keymgr_pregenerate_zsks(&kctx, argv[2]);
+	} else if (strcmp(argv[1], "show-offline") == 0) {
+		CHECK_MISSING_ARG("Timestamp not specified");
+		ret = keymgr_print_offline_records(&kctx, argv[2], argc > 3 ? argv[3] : NULL);
+	} else if (strcmp(argv[1], "del-offline") == 0) {
+		CHECK_MISSING_ARG2("Timestamps from-to not specified");
+		ret = keymgr_delete_offline_records(&kctx, argv[2], argv[3]);
+	} else if (strcmp(argv[1], "del-all-old") == 0) {
+		ret = keymgr_del_all_old(&kctx);
+	} else if (strcmp(argv[1], "generate-ksr") == 0) {
+		CHECK_MISSING_ARG2("Timestamps from-to not specified");
+		ret = keymgr_print_ksr(&kctx, argv[2], argv[3]);
+		print_ok_on_succes = false;
+	} else if (strcmp(argv[1], "sign-ksr") == 0) {
+		CHECK_MISSING_ARG("Input file not specified");
+		ret = keymgr_sign_ksr(&kctx, argv[2]);
+		print_ok_on_succes = false;
+	} else if (strcmp(argv[1], "import-skr") == 0) {
+		CHECK_MISSING_ARG("Input file not specified");
+		ret = keymgr_import_skr(&kctx, argv[2]);
 	} else {
 		printf("Wrong zone-key command: %s\n", argv[1]);
 		goto main_end;
@@ -209,7 +264,7 @@ static int key_command(int argc, char *argv[], int optind)
 
 main_end:
 	kdnssec_ctx_deinit(&kctx);
-	kasp_db_close(kaspdb());
+	knot_lmdb_deinit(&kaspdb);
 	free(zone_name);
 
 	return ret;
@@ -301,7 +356,7 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
-	int opt = 0;
+	int opt = 0, parm = 0;
 	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
@@ -329,8 +384,10 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 't':
-			ret = keymgr_generate_tsig(optarg, (argc > optind ? argv[optind] : "hmac-sha256"),
-			                           (argc > optind + 1 ? atol(argv[optind + 1]) : 0));
+			if (argc > optind + 1) {
+				(void)str_to_int(argv[optind + 1], &parm, 0, 65536);
+			}
+			ret = keymgr_generate_tsig(optarg, (argc > optind ? argv[optind] : "hmac-sha256"), parm);
 			if (ret != KNOT_EOK) {
 				printf("Failed to generate TSIG (%s)\n", knot_strerror(ret));
 			}

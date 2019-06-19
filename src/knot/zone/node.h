@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "contrib/macros.h"
+#include "contrib/mempattern.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
@@ -39,11 +41,14 @@ typedef struct zone_node {
 	 *        nodes or delegation points are referenced by this.
 	 */
 	struct zone_node *prev;
-	struct zone_node *nsec3_node; /*! NSEC3 node corresponding to this node. */
-	struct zone_node *nsec3_wildcard_prev; /*! NSEC3 node for proof of wildcard non-existence. */
+	union {
+		knot_dname_t *nsec3_hash; /*! Name of the NSEC3 corresponding to this node. */
+		struct zone_node *nsec3_node; /*! NSEC3 node corresponding to this node. */
+	};
+	knot_dname_t *nsec3_wildcard_name; /*! Name of NSEC3 node proving wildcard nonexistence. */
 	uint32_t children; /*!< Count of children nodes in DNS hierarchy. */
 	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */
-	uint8_t flags; /*!< \ref node_flags enum. */
+	uint16_t flags; /*!< \ref node_flags enum. */
 } zone_node_t;
 
 /*!< \brief Glue node context. */
@@ -75,15 +80,26 @@ enum node_flags {
 	NODE_FLAGS_DELEG =           1 << 0,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	NODE_FLAGS_NONAUTH =         1 << 1,
-	/*! \brief NSEC/NSEC3 was removed from this node. */
-	NODE_FLAGS_REMOVED_NSEC =    1 << 2,
 	/*! \brief Node is empty and will be deleted after update. */
 	NODE_FLAGS_EMPTY =           1 << 3,
 	/*! \brief Node has a wildcard child. */
 	NODE_FLAGS_WILDCARD_CHILD =  1 << 4,
 	/*! \brief Is this NSEC3 node compatible with zone's NSEC3PARAMS ? */
 	NODE_FLAGS_IN_NSEC3_CHAIN =  1 << 5,
+	/*! \brief Node is the zone Apex. */
+	NODE_FLAGS_APEX =            1 << 6,
+	/*! \brief The nsec3_node pointer is valid and and nsec3_hash pointer invalid. */
+	NODE_FLAGS_NSEC3_NODE =      1 << 7,
+	/*! \brief Is this i bi-node? */
+	NODE_FLAGS_BINODE =          1 << 8, // this value shall be fixed
+	/*! \brief Is this the second half of bi-node? */
+	NODE_FLAGS_SECOND =          1 << 9, // this value shall be fixed
+	/*! \brief The node shall be deleted. It's just not because it's a bi-node and the counterpart still exists. */
+	NODE_FLAGS_DELETED =         1 << 10,
 };
+
+typedef void (*node_addrem_cb)(zone_node_t *, void *);
+typedef zone_node_t *(*node_new_cb)(const knot_dname_t *, void *);
 
 /*!
  * \brief Clears additional structure.
@@ -93,14 +109,70 @@ enum node_flags {
 void additional_clear(additional_t *additional);
 
 /*!
+ * \brief Compares additional structures on equivalency.
+ */
+bool additional_equal(additional_t *a, additional_t *b);
+
+/*!
  * \brief Creates and initializes new node structure.
  *
  * \param owner  Node's owner, will be duplicated.
+ * \param binode Create bi-node.
+ * \param second The second part of the bi-node shall be used now.
  * \param mm     Memory context to use.
  *
  * \return Newly created node or NULL if an error occurred.
  */
-zone_node_t *node_new(const knot_dname_t *owner, knot_mm_t *mm);
+zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_mm_t *mm);
+
+/*!
+ * \brief Synchronize contents of both binode's nodes.
+ *
+ * \param node           Pointer to either of nodes in a binode.
+ * \param free_deleted   When the unified node has DELETED flag, free it afterwards.
+ * \param mm             Memory context.
+ */
+void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm);
+
+/*!
+ * \brief This must be called before any change to either of the bi-node's node's rdatasets.
+ */
+int binode_prepare_change(zone_node_t *node, knot_mm_t *mm);
+
+/*!
+ * \brief Get the correct node of a binode.
+ *
+ * \param node     Pointer to either of nodes in a binode.
+ * \param second   Get the second node (first otherwise).
+ *
+ * \return Pointer to correct node.
+ */
+inline static zone_node_t *binode_node(zone_node_t *node, bool second)
+{
+	if (unlikely(node == NULL || !(node->flags & NODE_FLAGS_BINODE))) {
+		return node;
+	}
+	return node + (second - (int)((node->flags & NODE_FLAGS_SECOND) >> 9));
+}
+
+/*!
+ * \brief Return the other node from a bi-node.
+ *
+ * \param node   A node in a bi-node.
+ *
+ * \return The counterpart node in the smae bi-node.
+ */
+zone_node_t *binode_counterpart(zone_node_t *node);
+
+/*!
+ * \brief Return true if the rdataset of specified type is shared (shallow-copied) among both parts of bi-node.
+ */
+bool binode_rdata_shared(zone_node_t *node, uint16_t type);
+
+/*!
+ * \brief Return true if the additionals to rdataset of specified type are shared among both parts of bi-node.
+ */
+bool binode_additional_shared(zone_node_t *node, uint16_t type);
 
 /*!
  * \brief Destroys allocated data within the node
@@ -120,16 +192,6 @@ void node_free_rrsets(zone_node_t *node, knot_mm_t *mm);
  * \param mm    Memory context to use.
  */
 void node_free(zone_node_t *node, knot_mm_t *mm);
-
-/*!
- * \brief Creates a shallow copy of node structure, RR data are shared.
- *
- * \param src  Source of the copy.
- * \param mm   Memory context to use.
- *
- * \return Copied node if success, NULL otherwise.
- */
-zone_node_t *node_shallow_copy(const zone_node_t *src, knot_mm_t *mm);
 
 /*!
  * \brief Adds an RRSet to the node. All data are copied. Owner and class are
@@ -174,12 +236,34 @@ knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type);
 knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type);
 
 /*!
- * \brief Sets the parent of the node. Also adjusts children count of parent.
- *
- * \param node Node to set the parent of.
- * \param parent Parent to set to the node.
+ * \brief Returns parent node (fixing bi-node issue) of given node.
  */
-void node_set_parent(zone_node_t *node, zone_node_t *parent);
+inline static zone_node_t *node_parent(const zone_node_t *node)
+{
+	return binode_node(node->parent, (node->flags & NODE_FLAGS_SECOND));
+}
+
+/*!
+ * \brief Returns previous (lexicographically in same zone tree) node (fixing bi-node issue) of given node.
+ */
+inline static zone_node_t *node_prev(const zone_node_t *node)
+{
+	return binode_node(node->prev, (node->flags & NODE_FLAGS_SECOND));
+}
+
+/*!
+ * \brief Return node referenced by a glue.
+ *
+ * \param glue                Glue in question.
+ * \param another_zone_node   Another node from the same zone.
+ *
+ * \return Glue node.
+ */
+inline static const zone_node_t *glue_node(const glue_t *glue, const zone_node_t *another_zone_node)
+{
+	return binode_node((zone_node_t *)glue->node,
+	                   (another_zone_node->flags & NODE_FLAGS_SECOND));
+}
 
 /*!
  * \brief Checks whether node contains any RRSIG for given type.
@@ -275,4 +359,16 @@ static inline knot_rrset_t node_rrset_at(const zone_node_t *node, size_t pos)
 	rrset.rrs = rr_data->rrs;
 	rrset.additional = rr_data->additional;
 	return rrset;
+}
+
+/*!
+ * \brief Return the relevant NSEC3 node (if specified by adjusting), or NULL.
+ */
+static inline zone_node_t *node_nsec3_get(const zone_node_t *node)
+{
+	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) || node->nsec3_node == NULL) {
+		return NULL;
+	} else {
+		return binode_node(node->nsec3_node, (node->flags & NODE_FLAGS_SECOND));
+	}
 }

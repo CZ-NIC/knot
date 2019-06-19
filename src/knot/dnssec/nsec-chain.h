@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #include <stdint.h>
 
 #include "knot/zone/contents.h"
-#include "knot/updates/changesets.h"
+#include "knot/updates/zone-update.h"
 #include "libdnssec/nsec.h"
 
 /*!
@@ -29,8 +29,7 @@
  */
 typedef struct {
 	uint32_t ttl;			// TTL for NSEC(3) records
-	changeset_t *changeset;		// Changeset for NSEC(3) changes
-	const zone_contents_t *zone;	// Updated zone
+	zone_update_t *update;          // The zone update for NSECs
 } nsec_chain_iterate_data_t;
 
 /*!
@@ -54,7 +53,7 @@ inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
                                           const zone_node_t *node)
 {
 	bool deleg = node->flags & NODE_FLAGS_DELEG;
-	bool apex = node->parent == NULL;
+	bool apex = node->flags & NODE_FLAGS_APEX;
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rr = node_rrset_at(node, i);
 		if (deleg && (rr.type != KNOT_RRTYPE_NS && rr.type != KNOT_RRTYPE_DS)) {
@@ -91,27 +90,28 @@ int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
 /*!
  * \brief Call the chain-connecting function for modified records and their neighbours.
  *
- * \param old_nodes  Old state of zone nodes.
- * \param new_nodes  New state of zone nodes.
+ * \param node_ptrs  Tree of those nodes that have ben changed by the update.
  * \param callback   Callback function.
+ * \param cb_reconn  Callback for re-connecting "next" link to another node.
  * \param data       Custom data supplied, incl. changeset to be updated.
  *
  * \retval KNOT_ENORECORD if the chain must be recreated from scratch.
  * \return KNOT_E*
  */
-int knot_nsec_chain_iterate_fix(zone_tree_t *old_nodes, zone_tree_t *new_nodes,
+int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
                                 chain_iterate_create_cb callback,
+                                chain_iterate_create_cb cb_reconn,
                                 nsec_chain_iterate_data_t *data);
 
 /*!
  * \brief Add entry for removed NSEC(3) and its RRSIG to the changeset.
  *
  * \param n          Node to extract NSEC(3) from.
- * \param changeset  Changeset to add the old RR into.
+ * \param update     Update to add the old RR removal into.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_changeset_remove(const zone_node_t *n, changeset_t *changeset);
+int knot_nsec_changeset_remove(const zone_node_t *n, zone_update_t *update);
 
 /*!
  * \brief Checks whether the node is empty or eventually contains only NSEC and
@@ -125,27 +125,22 @@ int knot_nsec_changeset_remove(const zone_node_t *n, changeset_t *changeset);
 bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
 
 /*!
- * \brief Create new NSEC chain, add differences from current into a changeset.
+ * \brief Create new NSEC chain.
  *
- * \param zone       Zone.
+ * \param update     Zone update to create NSEC chain for.
  * \param ttl        TTL for created NSEC records.
- * \param changeset  Changeset the differences will be put into.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
-                           changeset_t *changeset);
+int knot_nsec_create_chain(zone_update_t *update, uint32_t ttl);
 
 /*!
  * \brief Fix existing NSEC chain to cover the changes in zone contents.
  *
- * \param old_zone  Old zone contents.
- * \param new_zone  New zone contents.
- * \param ttl       TTL for created NSEC records.
- * \param changeset Changeset the differences will be put into.
+ * \param update     Zone update to update NSEC chain for.
+ * \param ttl        TTL for created NSEC records.
  *
  * \retval KNOT_ENORECORD if the chain must be recreated from scratch.
  * \return KNOT_E*
  */
-int knot_nsec_fix_chain(const zone_contents_t *old_zone, const zone_contents_t *new_zone,
-                        uint32_t ttl, changeset_t *changeset);
+int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl);

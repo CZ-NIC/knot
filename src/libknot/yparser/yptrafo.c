@@ -502,7 +502,7 @@ int yp_addr_to_txt(
 
 			// Write port.
 			wire_ctx_skip(in, -sizeof(uint64_t));
-			int ret = yp_int_to_txt(in, out, YP_SNONE);
+			ret = yp_int_to_txt(in, out, YP_SNONE);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}

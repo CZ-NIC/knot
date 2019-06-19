@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include "knot/journal/journal_metadata.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/packet/wire.h"
 #include "contrib/mempattern.h"
@@ -27,16 +28,14 @@ static void discard_zone(zone_t *zone)
 {
 	// Don't flush if removed zone (no previous configuration available).
 	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name))) {
+		uint32_t journal_serial, zone_serial = zone_contents_serial(zone->contents);
+		bool exists;
+
 		// Flush if bootstrapped or if the journal doesn't exist.
-		if (!zone->zonefile.exists || !journal_exists(zone->journal_db, zone->name)) {
+		if (!zone->zonefile.exists || journal_info(
+			zone_journal(zone), &exists, NULL, &journal_serial, NULL, NULL, NULL, NULL
+		    ) != KNOT_EOK || !exists || journal_serial != zone_serial) {
 			zone_flush_journal(conf(), zone);
-		} else {
-			bool empty;
-			uint32_t journal_serial, zone_serial = zone_contents_serial(zone->contents);
-			int ret = zone_journal_serial(conf(), zone, &empty, &journal_serial);
-			if (ret != KNOT_EOK || empty || journal_serial != zone_serial) {
-				zone_flush_journal(conf(), zone);
-			}
 		}
 	}
 
@@ -73,7 +72,7 @@ int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 	uint8_t *lf = knot_dname_lf(zone->name, lf_storage);
 	assert(lf);
 
-	*trie_get_ins(db->trie, (char *)lf + 1, *lf) = zone;
+	*trie_get_ins(db->trie, lf + 1, *lf) = zone;
 
 	return KNOT_EOK;
 }
@@ -88,12 +87,12 @@ int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
 	uint8_t *lf = knot_dname_lf(zone_name, lf_storage);
 	assert(lf);
 
-	trie_val_t *rval = trie_get_try(db->trie, (char *)lf + 1, *lf);
+	trie_val_t *rval = trie_get_try(db->trie, lf + 1, *lf);
 	if (rval == NULL) {
 		return KNOT_ENOENT;
 	}
 
-	return trie_del(db->trie, (char *)lf + 1, *lf, NULL);
+	return trie_del(db->trie, lf + 1, *lf, NULL);
 }
 
 zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
@@ -106,7 +105,7 @@ zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 	uint8_t *lf = knot_dname_lf(zone_name, lf_storage);
 	assert(lf);
 
-	trie_val_t *val = trie_get_try(db->trie, (char *)lf + 1, *lf);
+	trie_val_t *val = trie_get_try(db->trie, lf + 1, *lf);
 	if (val == NULL) {
 		return NULL;
 	}
@@ -125,7 +124,7 @@ zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *zone_name
 		uint8_t *lf = knot_dname_lf(zone_name, lf_storage);
 		assert(lf);
 
-		trie_val_t *val = trie_get_try(db->trie, (char *)lf + 1, *lf);
+		trie_val_t *val = trie_get_try(db->trie, lf + 1, *lf);
 		if (val != NULL) {
 			return *val;
 		} else if (zone_name[0] == 0) {

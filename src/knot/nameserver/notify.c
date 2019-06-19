@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 #include <assert.h>
 
-#include "knot/common/log.h"
 #include "knot/nameserver/notify.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/log.h"
@@ -32,7 +31,7 @@
 static int notify_check_query(knotd_qdata_t *qdata)
 {
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_NOTIFY);
+	NS_NEED_AUTH(qdata, ACL_ACTION_NOTIFY);
 	/* RFC1996 requires SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 

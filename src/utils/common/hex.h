@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,15 +13,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
-/*!
- * \file
- *
- * \brief Coversion between HEX strings and bytes.
- *
- * \addtogroup knot_utils
- * @{
- */
 
 #pragma once
 
@@ -38,5 +29,3 @@
  * \return Error code, KNOT_EOK if successful.
  */
 int hex_decode(const char *input, uint8_t **output, size_t *output_size);
-
-/*! @} */

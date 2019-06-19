@@ -35,8 +35,8 @@ void xfr_stats_add(struct xfr_stats *stats, unsigned bytes);
 void xfr_stats_end(struct xfr_stats *stats);
 
 static inline
-void xfr_log_finished(const knot_dname_t *zone, enum log_operation op,
-                      enum log_direction dir, const struct sockaddr *remote,
+void xfr_log_finished(const knot_dname_t *zone, log_operation_t op,
+                      log_direction_t dir, const struct sockaddr *remote,
                       const struct xfr_stats *stats)
 {
 	ns_log(LOG_INFO, zone, op, dir, remote,

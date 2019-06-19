@@ -608,7 +608,7 @@ void print_packet(const knot_pkt_t *packet,
 
 	// Print EDNS section.
 	if (style->show_edns && knot_pkt_has_edns(packet)) {
-		printf("\n;; EDNS PSEUDOSECTION:\n;; ");
+		printf("%s", style->show_section ? "\n;; EDNS PSEUDOSECTION:\n;; " : ";;");
 		print_section_opt(packet);
 	}
 
@@ -628,7 +628,7 @@ void print_packet(const knot_pkt_t *packet,
 		break;
 	case FORMAT_NSUPDATE:
 		if (style->show_question && qdcount > 0) {
-			printf("\n;; ZONE SECTION:\n;; ");
+			printf("%s", style->show_section ? "\n;; ZONE SECTION:\n;; " : ";;");
 			print_section_question(knot_pkt_qname(packet),
 			                       knot_pkt_qclass(packet),
 			                       knot_pkt_qtype(packet),
@@ -636,23 +636,23 @@ void print_packet(const knot_pkt_t *packet,
 		}
 
 		if (style->show_answer && ancount > 0) {
-			printf("\n;; PREREQUISITE SECTION:\n");
+			printf("%s", style->show_section ? "\n;; PREREQUISITE SECTION:\n" : "");
 			print_section_full(knot_pkt_rr(answers, 0), ancount, style, true);
 		}
 
 		if (style->show_authority && nscount > 0) {
-			printf("\n;; UPDATE SECTION:\n");
+			printf("%s", style->show_section ? "\n;; UPDATE SECTION:\n" : "");
 			print_section_full(knot_pkt_rr(authority, 0), nscount, style, true);
 		}
 
 		if (style->show_additional && arcount > 0) {
-			printf("\n;; ADDITIONAL DATA:\n");
+			printf("%s", style->show_section ? "\n;; ADDITIONAL DATA:\n" : "");
 			print_section_full(knot_pkt_rr(additional, 0), arcount, style, true);
 		}
 		break;
 	case FORMAT_FULL:
 		if (style->show_question && qdcount > 0) {
-			printf("\n;; QUESTION SECTION:\n;; ");
+			printf("%s", style->show_section ? "\n;; QUESTION SECTION:\n;; " : ";;");
 			print_section_question(knot_pkt_qname(packet),
 			                       knot_pkt_qclass(packet),
 			                       knot_pkt_qtype(packet),
@@ -660,17 +660,17 @@ void print_packet(const knot_pkt_t *packet,
 		}
 
 		if (style->show_answer && ancount > 0) {
-			printf("\n;; ANSWER SECTION:\n");
+			printf("%s", style->show_section ? "\n;; ANSWER SECTION:\n" : "");
 			print_section_full(knot_pkt_rr(answers, 0), ancount, style, true);
 		}
 
 		if (style->show_authority && nscount > 0) {
-			printf("\n;; AUTHORITY SECTION:\n");
+			printf("%s", style->show_section ? "\n;; AUTHORITY SECTION:\n" : "");
 			print_section_full(knot_pkt_rr(authority, 0), nscount, style, true);
 		}
 
 		if (style->show_additional && arcount > 0) {
-			printf("\n;; ADDITIONAL SECTION:\n");
+			printf("%s", style->show_section ? "\n;; ADDITIONAL SECTION:\n" : "");
 			print_section_full(knot_pkt_rr(additional, 0), arcount, style, true);
 		}
 		break;
@@ -680,7 +680,7 @@ void print_packet(const knot_pkt_t *packet,
 
 	// Print TSIG section.
 	if (style->show_tsig && knot_pkt_has_tsig(packet)) {
-		printf("\n;; TSIG PSEUDOSECTION:\n");
+		printf("%s", style->show_section ? "\n;; TSIG PSEUDOSECTION:\n" : "");
 		print_section_full(packet->tsig_rr, 1, style, false);
 	}
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -404,15 +404,8 @@ void conf_val(
 		if (val->data != NULL && val->code != KNOT_EOF) {
 			return;
 		}
-
-		assert(val->blob != NULL);
-		wire_ctx_t ctx = wire_ctx_init_const(val->blob, val->blob_len);
-		uint16_t len = wire_ctx_read_u16(&ctx);
-		assert(ctx.error == KNOT_EOK);
-
-		val->data = ctx.position;
-		val->len = len;
-		val->code = KNOT_EOK;
+		// Otherwise set to the first value.
+		conf_val_reset(val);
 	} else {
 		// Check for empty data.
 		if (val->blob_len == 0) {
@@ -457,6 +450,22 @@ void conf_val_next(
 		val->len = 0;
 		val->code = KNOT_EOF;
 	}
+}
+
+void conf_val_reset(conf_val_t *val)
+{
+	assert(val != NULL);
+	assert(val->code == KNOT_EOK || val->code == KNOT_EOF);
+	assert(val->item->flags & YP_FMULTI);
+
+	assert(val->blob != NULL);
+	wire_ctx_t ctx = wire_ctx_init_const(val->blob, val->blob_len);
+	uint16_t len = wire_ctx_read_u16(&ctx);
+	assert(ctx.error == KNOT_EOK);
+
+	val->data = ctx.position;
+	val->len = len;
+	val->code = KNOT_EOK;
 }
 
 bool conf_val_equal(
@@ -1043,30 +1052,18 @@ char* conf_zonefile_txn(
 	return get_filename(conf, txn, zone, file);
 }
 
-char* conf_journalfile_txn(
+char* conf_db_txn(
 	conf_t *conf,
-	knot_db_txn_t *txn)
+	knot_db_txn_t *txn,
+	const yp_name_t *db_type)
 {
 	conf_val_t val = conf_default_get_txn(conf, txn, C_STORAGE);
 	char *storage = conf_abs_path(&val, NULL);
-	val = conf_default_get_txn(conf, txn, C_JOURNAL_DB);
-	char *journaldir = conf_abs_path(&val, storage);
+	val = conf_default_get_txn(conf, txn, db_type);
+	char *dbdir = conf_abs_path(&val, storage);
 	free(storage);
 
-	return journaldir;
-}
-
-char* conf_kaspdir_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn)
-{
-	conf_val_t val = conf_default_get_txn(conf, txn, C_STORAGE);
-	char *storage = conf_abs_path(&val, NULL);
-	val = conf_default_get_txn(conf, txn, C_KASP_DB);
-	char *kaspdir = conf_abs_path(&val, storage);
-	free(storage);
-
-	return kaspdir;
+	return dbdir;
 }
 
 size_t conf_udp_threads_txn(

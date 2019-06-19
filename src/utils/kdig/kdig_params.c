@@ -69,6 +69,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 	},
 	.show_query = false,
 	.show_header = true,
+	.show_section = true,
 	.show_edns = true,
 	.show_question = true,
 	.show_answer = true,
@@ -349,6 +350,24 @@ static int opt_noheader(const char *arg, void *query)
 	query_t *q = query;
 
 	q->style.show_header = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_comments(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_section = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nocomments(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_section = false;
 
 	return KNOT_EOK;
 }
@@ -698,6 +717,26 @@ static int opt_notls_hostname(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_tls_sni(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	free(q->tls.sni);
+	q->tls.sni = strdup(arg);
+
+	return opt_tls(arg, query);
+}
+
+static int opt_notls_sni(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	free(q->tls.sni);
+	q->tls.sni = NULL;
+
+	return KNOT_EOK;
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -973,19 +1012,19 @@ static int opt_noedns(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_time(const char *arg, void *query)
+static int opt_timeout(const char *arg, void *query)
 {
 	query_t *q = query;
 
 	if (params_parse_wait(arg, &q->wait) != KNOT_EOK) {
-		ERR("invalid +time=%s\n", arg);
+		ERR("invalid +timeout=%s\n", arg);
 		return KNOT_EINVAL;
 	}
 
 	return KNOT_EOK;
 }
 
-static int opt_notime(const char *arg, void *query)
+static int opt_notimeout(const char *arg, void *query)
 {
 	query_t *q = query;
 
@@ -1132,6 +1171,10 @@ static const param_t kdig_opts2[] = {
 	{ "header",         ARG_NONE,     opt_header },
 	{ "noheader",       ARG_NONE,     opt_noheader },
 
+	{ "comments",       ARG_NONE,     opt_comments },
+	{ "nocomments",     ARG_NONE,     opt_nocomments },
+
+	{ "opt",            ARG_NONE,     opt_opt },
 	{ "opt",            ARG_NONE,     opt_opt },
 	{ "noopt",          ARG_NONE,     opt_noopt },
 
@@ -1183,6 +1226,9 @@ static const param_t kdig_opts2[] = {
 	{ "tls-hostname",   ARG_REQUIRED, opt_tls_hostname },
 	{ "notls-hostname", ARG_NONE,     opt_notls_hostname },
 
+	{ "tls-sni",        ARG_REQUIRED, opt_tls_sni },
+	{ "notls-sni",      ARG_NONE,     opt_notls_sni },
+
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
 
@@ -1205,8 +1251,8 @@ static const param_t kdig_opts2[] = {
 	{ "edns",           ARG_OPTIONAL, opt_edns },
 	{ "noedns",         ARG_NONE,     opt_noedns },
 
-	{ "time",           ARG_REQUIRED, opt_time },
-	{ "notime",         ARG_NONE,     opt_notime },
+	{ "timeout",        ARG_REQUIRED, opt_timeout },
+	{ "notimeout",      ARG_NONE,     opt_notimeout },
 
 	{ "retry",          ARG_REQUIRED, opt_retry },
 	{ "noretry",        ARG_NONE,     opt_noretry },
@@ -1866,6 +1912,7 @@ static void print_help(void)
 	       "       +[no]all                  Show all packet sections.\n"
 	       "       +[no]qr                   Show query packet.\n"
 	       "       +[no]header               Show packet header.\n"
+	       "       +[no]comments             Show commented section names.\n"
 	       "       +[no]opt                  Show EDNS pseudosection.\n"
 	       "       +[no]question             Show question section.\n"
 	       "       +[no]answer               Show answer section.\n"
@@ -1883,13 +1930,14 @@ static void print_help(void)
 	       "       +[no]tls-ca[=FILE]        Use TLS with Out-Of-Band privacy profile.\n"
 	       "       +[no]tls-pin=BASE64       Use TLS with pinned certificate.\n"
 	       "       +[no]tls-hostname=STR     Use TLS with remote server hostname.\n"
+	       "       +[no]tls-sni=STR          Use TLS with Server Name Indication.\n"
 	       "       +[no]nsid                 Request NSID.\n"
 	       "       +[no]bufsize=B            Set EDNS buffer size.\n"
 	       "       +[no]padding[=N]          Pad with EDNS(0) (default or specify size).\n"
 	       "       +[no]alignment[=N]        Pad with EDNS(0) to blocksize (%u or specify size).\n"
 	       "       +[no]subnet=SUBN          Set EDNS(0) client subnet addr/prefix.\n"
 	       "       +[no]edns[=N]             Use EDNS(=version).\n"
-	       "       +[no]time=T               Set wait for reply interval in seconds.\n"
+	       "       +[no]timeout=T            Set wait for reply interval in seconds.\n"
 	       "       +[no]retry=N              Set number of retries.\n"
 	       "       +[no]cookie=HEX           Attach EDNS(0) cookie to the query.\n"
 	       "       +[no]badcookie            Repeat a query with the correct cookie.\n"

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ static bool wildcard_expanded(const zone_node_t *node, const knot_dname_t *qname
  */
 static bool ds_optout(const zone_node_t *node)
 {
-	return node->nsec3_node == NULL && node->flags & NODE_FLAGS_DELEG;
+	return node_nsec3_get(node) == NULL && node->flags & NODE_FLAGS_DELEG;
 }
 
 /*!
@@ -79,7 +79,7 @@ static const zone_node_t *nsec_previous(const zone_node_t *previous)
 	assert(previous);
 
 	while (!node_in_nsec(previous)) {
-		previous = previous->prev;
+		previous = node_prev(previous);
 		assert(previous);
 	}
 
@@ -94,7 +94,7 @@ static const zone_node_t *nsec3_encloser(const zone_node_t *closest)
 	assert(closest);
 
 	while (!node_in_nsec3(closest)) {
-		closest = closest->parent;
+		closest = node_parent(closest);
 		assert(closest);
 	}
 
@@ -273,7 +273,7 @@ static int put_closest_encloser_proof(const knot_dname_t *qname,
 {
 	// An NSEC3 RR that matches the closest (provable) encloser.
 
-	int ret = put_nsec3_from_node(cpe->nsec3_node, qdata, resp);
+	int ret = put_nsec3_from_node(node_nsec3_get(cpe), qdata, resp);
 	if (ret !=  KNOT_EOK) {
 		return ret;
 	}
@@ -322,7 +322,7 @@ static int put_nsec3_wildcard(const zone_node_t *wildcard,
                               knotd_qdata_t *qdata,
                               knot_pkt_t *resp)
 {
-	const zone_node_t *cpe = nsec3_encloser(wildcard->parent);
+	const zone_node_t *cpe = nsec3_encloser(node_parent(wildcard));
 
 	return put_nsec3_next_closer(cpe, qname, zone, qdata, resp);
 }
@@ -439,11 +439,13 @@ static int put_nsec3_nxdomain(const knot_dname_t *qname,
 
 	// NSEC3 covering the (nonexistent) wildcard at the closest encloser.
 
-	if (cpe->nsec3_wildcard_prev == NULL) {
+	const zone_node_t *nsec3_wildcard_prev, *ignored;
+	if (cpe->nsec3_wildcard_name == NULL ||
+	    zone_contents_find_nsec3(zone, cpe->nsec3_wildcard_name, &ignored, &nsec3_wildcard_prev) == ZONE_NAME_FOUND) {
 		return KNOT_ERROR;
 	}
 
-	return put_nsec3_from_node(cpe->nsec3_wildcard_prev, qdata, resp);
+	return put_nsec3_from_node(nsec3_wildcard_prev, qdata, resp);
 }
 
 /*!
@@ -528,8 +530,9 @@ static int put_nsec3_nodata(const knot_dname_t *qname,
 
 	// NSEC3 matching QNAME is always included.
 
-	if (match->nsec3_node) {
-		ret = put_nsec3_from_node(match->nsec3_node, qdata, resp);
+	zone_node_t *nsec3_match = node_nsec3_get(match);
+	if (nsec3_match != NULL) {
+		ret = put_nsec3_from_node(nsec3_match, qdata, resp);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

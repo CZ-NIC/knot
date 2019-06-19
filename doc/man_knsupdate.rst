@@ -140,6 +140,12 @@ Zone name/server guessing is not supported if the zone name/server is not specif
 
 Empty line doesn't send the update.
 
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
+
 Examples
 --------
 

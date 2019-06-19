@@ -161,22 +161,24 @@ ModOnlineSign.check()
 parent = t.server("knot")
 parent_zone = t.zone("com.", storage=".")
 t.link(parent_zone, parent)
+parent.dnssec(parent_zone).enable = True
 
 child = t.server("knot")
-child_zone = t.zone("example.com.")
+child_zone = t.zone("example.com.", storage=".")
 t.link(child_zone, child)
 
 def cds_submission():
     cds = child.dig(ZONE, "CDS")
     cds_rdata = cds.resp.answer[0].to_rdataset()[0].to_text()
     up = parent.update(parent_zone)
-    up.add(ZONE, 3600, "DS", cds_rdata)
+    up.add(ZONE, 7, "DS", cds_rdata)
     up.send("NOERROR")
 
 child.zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
-child.add_module(child_zone, ModOnlineSign("ECDSAP384SHA384", key_size="384", prop_delay=11, ksc = [ parent ], ksci = 2, ksk_shared=True))
+child.add_module(child_zone, ModOnlineSign("ECDSAP384SHA384", key_size="384", prop_delay=11, ksc = [ parent ],
+                                           ksci = 2, ksk_shared=True, cds_publish="always"))
 
 # parameters
 ZONE = "example.com."

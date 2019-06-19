@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-dump.h"
@@ -156,7 +157,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 	}
 	memset(zc, 0, sizeof(zcreator_t));
 
-	zc->z = zone_contents_new(origin);
+	zc->z = zone_contents_new(origin, true);
 	if (zc->z == NULL) {
 		free(zc);
 		return KNOT_ENOMEM;
@@ -225,7 +226,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	ret = zone_contents_adjust_full(zc->z);
+	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags, true);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
@@ -241,6 +242,15 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
+	/* The contents will now change possibly messing up NSEC3 tree, it will
+	   be adjusted again at zone_update_commit. */
+	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false);
+	if (ret != KNOT_EOK) {
+		ERROR(zname, "failed to finalize zone contents (%s)",
+		      knot_strerror(ret));
+		goto fail;
+	}
+
 	return zc->z;
 
 fail:
@@ -248,7 +258,7 @@ fail:
 	return NULL;
 }
 
-int zonefile_exists(const char *path, time_t *mtime)
+int zonefile_exists(const char *path, struct timespec *mtime)
 {
 	if (path == NULL) {
 		return KNOT_EINVAL;
@@ -260,7 +270,7 @@ int zonefile_exists(const char *path, time_t *mtime)
 	}
 
 	if (mtime != NULL) {
-		*mtime = zonefile_st.st_mtime;
+		*mtime = zonefile_st.st_mtim;
 	}
 
 	return KNOT_EOK;
@@ -322,6 +332,10 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 {
 	assert(handler != NULL);
 	assert(zone != NULL);
+
+	if (!handler->fatal_error) {
+		handler->warning = true;
+	}
 
 	char buff[KNOT_DNAME_TXT_MAXLEN + 1] = "";
 	if (node != NULL) {

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -140,7 +140,7 @@ static void kaspkey2params(knot_kasp_key_t *key, key_params_t *params)
 
 int kasp_zone_load(knot_kasp_zone_t *zone,
 		   const knot_dname_t *zone_name,
-		   kasp_db_t *kdb)
+		   knot_lmdb_db_t *kdb)
 {
 	if (zone == NULL || zone_name == NULL || kdb == NULL) {
 	return KNOT_EINVAL;
@@ -225,7 +225,7 @@ int kasp_zone_append(knot_kasp_zone_t *zone, const knot_kasp_key_t *appkey)
 
 int kasp_zone_save(const knot_kasp_zone_t *zone,
 		   const knot_dname_t *zone_name,
-		   kasp_db_t *kdb)
+		   knot_lmdb_db_t *kdb)
 {
 	if (zone == NULL || zone_name == NULL || kdb == NULL) {
 		return KNOT_EINVAL;

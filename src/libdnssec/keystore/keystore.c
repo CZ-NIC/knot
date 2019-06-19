@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,8 +31,7 @@
 /* -- internal API --------------------------------------------------------- */
 
 int keystore_create(dnssec_keystore_t **store_ptr,
-		    const keystore_functions_t *functions,
-		    void *ctx_custom_data)
+		    const keystore_functions_t *functions)
 {
 	assert(store_ptr);
 	assert(functions);
@@ -44,7 +43,7 @@ int keystore_create(dnssec_keystore_t **store_ptr,
 
 	store->functions = functions;
 
-	int result = functions->ctx_new(&store->ctx, ctx_custom_data);
+	int result = functions->ctx_new(&store->ctx);
 	if (result != DNSSEC_EOK) {
 		free(store);
 		return DNSSEC_ENOMEM;
@@ -102,19 +101,9 @@ int dnssec_keystore_close(dnssec_keystore_t *store)
 }
 
 _public_
-int dnssec_keystore_list_keys(dnssec_keystore_t *store, dnssec_list_t **list)
-{
-	if (!store || !list) {
-		return DNSSEC_EINVAL;
-	}
-
-	return store->functions->list_keys(store->ctx, list);
-}
-
-_public_
-int dnssec_keystore_generate_key(dnssec_keystore_t *store,
-				 dnssec_key_algorithm_t _algorithm,
-				 unsigned bits, char **id_ptr)
+int dnssec_keystore_generate(dnssec_keystore_t *store,
+			     dnssec_key_algorithm_t _algorithm,
+			     unsigned bits, char **id_ptr)
 {
 	if (!store || !_algorithm || !id_ptr) {
 		return DNSSEC_EINVAL;
@@ -146,20 +135,20 @@ int dnssec_keystore_import(dnssec_keystore_t *store, const dnssec_binary_t *pem,
 }
 
 _public_
-int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *key_id)
+int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id)
 {
-	if (!store || !key_id) {
+	if (!store || !id) {
 		return DNSSEC_EINVAL;
 	}
 
-	return store->functions->remove_key(store->ctx, key_id);
+	return store->functions->remove_key(store->ctx, id);
 }
 
 _public_
-int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *store,
-			       const char *id)
+int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
+			   dnssec_key_t *key)
 {
-	if (!key || !store || !id || dnssec_key_get_algorithm(key) == 0) {
+	if (!store || !id || dnssec_key_get_algorithm(key) == 0 || !key) {
 		return DNSSEC_EINVAL;
 	}
 

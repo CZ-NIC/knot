@@ -1,0 +1,3 @@
+"""Python libknot interface."""
+
+LIBKNOT_VERSION = "@libknot_SOVERSION@"

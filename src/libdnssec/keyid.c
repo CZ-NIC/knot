@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,11 +33,11 @@ bool dnssec_keyid_is_valid(const char *id)
 		return false;
 	}
 
-	if (strlen(id) != DNSSEC_KEYID_SIZE) {
+	if (strlen(id) % 2 != 0) {
 		return false;
 	}
 
-	for (int i = 0; i < DNSSEC_KEYID_SIZE; i++) {
+	for (int i = 0; id[i] != '\0'; i++) {
 		if (!is_xdigit(id[i])) {
 			return false;
 		}
@@ -53,7 +53,7 @@ void dnssec_keyid_normalize(char *id)
 		return;
 	}
 
-	for (size_t i = 0; i < DNSSEC_KEYID_SIZE; i++) {
+	for (size_t i = 0; id[i] != '\0'; i++) {
 		assert(id[i] != '\0' && is_xdigit(id[i]));
 		id[i] = knot_tolower(id[i]);
 	}

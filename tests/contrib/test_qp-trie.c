@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -69,13 +69,13 @@ static bool str_key_get_leq(trie_t *trie, char **keys, size_t i, size_t size)
 	/* Before current key. */
 	key_buf[key_len - 2] -= 1;
 	if (i < first_key_count) {
-		ret = trie_get_leq(trie, key_buf, key_len, &val);
+		ret = trie_get_leq(trie, (uint8_t *)key_buf, key_len, &val);
 		if (ret != KNOT_ENOENT) {
 			diag("%s: leq for key BEFORE %zu/'%s' ret = %d", __func__, i, keys[i], ret);
 			return false; /* No key before first. */
 		}
 	} else {
-		ret = trie_get_leq(trie, key_buf, key_len, &val);
+		ret = trie_get_leq(trie, (uint8_t *)key_buf, key_len, &val);
 		if (ret < KNOT_EOK || strcmp(*val, key_buf) > 0) {
 			diag("%s: '%s' is not before the key %zu/'%s'", __func__, (char*)*val, i, keys[i]);
 			return false; /* Found key must be LEQ than searched. */
@@ -84,7 +84,7 @@ static bool str_key_get_leq(trie_t *trie, char **keys, size_t i, size_t size)
 
 	/* Current key. */
 	key_buf[key_len - 2] += 1;
-	ret = trie_get_leq(trie, key_buf, key_len, &val);
+	ret = trie_get_leq(trie, (uint8_t *)key_buf, key_len, &val);
 	if (! (ret == KNOT_EOK && val && strcmp(*val, key_buf) == 0)) {
 		diag("%s: leq for key %zu/'%s' ret = %d", __func__, i, keys[i], ret);
 		return false; /* Must find equal match. */
@@ -92,7 +92,7 @@ static bool str_key_get_leq(trie_t *trie, char **keys, size_t i, size_t size)
 
 	/* After the current key. */
 	key_buf[key_len - 2] += 1;
-	ret = trie_get_leq(trie, key_buf, key_len, &val);
+	ret = trie_get_leq(trie, (uint8_t *)key_buf, key_len, &val);
 	if (! (ret >= KNOT_EOK && strcmp(*val, key_buf) <= 0)) {
 		diag("%s: leq for key AFTER %zu/'%s' ret = %d %s", __func__, i, keys[i], ret, (char*)*val);
 		return false; /* Every key must have its LEQ match. */
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 	bool passed = true;
 	size_t inserted = 0;
 	for (unsigned i = 0; i < key_count; ++i) {
-		val = trie_get_ins(trie, keys[i], strlen(keys[i]) + 1);
+		val = trie_get_ins(trie, (uint8_t *)keys[i], strlen(keys[i]) + 1);
 		if (!val) {
 			passed = false;
 			break;
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 	/* Lookup all keys */
 	passed = true;
 	for (unsigned i = 0; i < key_count; ++i) {
-		val = trie_get_try(trie, keys[i], strlen(keys[i]) + 1);
+		val = trie_get_try(trie, (uint8_t *)keys[i], strlen(keys[i]) + 1);
 		if (val && (*val == keys[i] || strcmp(*val, keys[i]) == 0)) {
 			continue;
 		} else {
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 	trie_it_t *it = trie_it_begin(trie);
 	while (!trie_it_finished(it)) {
 		size_t cur_key_len = 0;
-		const char *cur_key = trie_it_key(it, &cur_key_len);
+		const char *cur_key = (const char *)trie_it_key(it, &cur_key_len);
 		if (iterated > 0) { /* Only if previous exists. */
 			if (strcmp(key_buf, cur_key) > 0) {
 				diag("'%s' <= '%s' FAIL\n", key_buf, cur_key);

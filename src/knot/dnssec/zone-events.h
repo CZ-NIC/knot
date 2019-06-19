@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,11 +32,14 @@ enum zone_sign_flags {
 typedef enum zone_sign_flags zone_sign_flags_t;
 
 typedef enum {
-	KEY_ROLL_ALLOW_KSK_ROLL = (1 << 0),
-	KEY_ROLL_FORCE_KSK_ROLL = (1 << 1),
-	KEY_ROLL_ALLOW_ZSK_ROLL = (1 << 2),
-	KEY_ROLL_FORCE_ZSK_ROLL = (1 << 3),
-	KEY_ROLL_DO_NSEC3RESALT = (1 << 4),
+	KEY_ROLL_ALLOW_KSK_ROLL    = (1 << 0),
+	KEY_ROLL_FORCE_KSK_ROLL    = (1 << 1),
+	KEY_ROLL_ALLOW_ZSK_ROLL    = (1 << 2),
+	KEY_ROLL_FORCE_ZSK_ROLL    = (1 << 3),
+	KEY_ROLL_ALLOW_NSEC3RESALT = (1 << 4),
+	KEY_ROLL_ALLOW_ALL         = KEY_ROLL_ALLOW_KSK_ROLL |
+	                             KEY_ROLL_ALLOW_ZSK_ROLL |
+	                             KEY_ROLL_ALLOW_NSEC3RESALT
 } zone_sign_roll_flags_t;
 
 typedef struct {

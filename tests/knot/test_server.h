@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "test_conf.h"
 #include "knot/server/server.h"
+#include "knot/zone/adjust.h"
 #include "contrib/mempattern.h"
 
 /* Some domain names. */
@@ -42,8 +43,8 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 
 	/* Insert root zone. */
 	zone_t *root = zone_new(ROOT_DNAME);
-	root->journal_db = &server->journal_db;
-	root->contents = zone_contents_new(root->name);
+	root->journaldb = &server->journaldb;
+	root->contents = zone_contents_new(root->name, true);
 
 	knot_rrset_t *soa = knot_rrset_new(root->name, KNOT_RRTYPE_SOA, KNOT_CLASS_IN,
 	                                   7200, mm);
@@ -52,7 +53,7 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 	knot_rrset_free(soa, mm);
 
 	/* Bake the zone. */
-	zone_contents_adjust_full(root->contents);
+	(void)zone_adjust_full(root->contents);
 
 	/* Switch zone db. */
 	knot_zonedb_free(&server->zone_db);

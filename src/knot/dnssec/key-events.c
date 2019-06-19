@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -121,7 +121,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 		return KNOT_EINVAL;
 	} // for now not designed for rotating shared ZSK
 
-	int ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string,
+	int ret = kasp_db_get_policy_last(ctx->kasp_db, ctx->policy->string,
 	                                  &borrow_zone, &borrow_key);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		return ret;
@@ -146,7 +146,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 			return ret;
 		}
 
-		ret = kasp_db_set_policy_last(*ctx->kasp_db, ctx->policy->string,
+		ret = kasp_db_set_policy_last(ctx->kasp_db, ctx->policy->string,
 		                              borrow_key, ctx->zone->dname, key->id);
 		free(borrow_zone);
 		free(borrow_key);
@@ -165,7 +165,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 				return ret;
 			}
 
-			ret = kasp_db_get_policy_last(*ctx->kasp_db, ctx->policy->string,
+			ret = kasp_db_get_policy_last(ctx->kasp_db, ctx->policy->string,
 			                              &borrow_zone, &borrow_key);
 		}
 	}
@@ -274,7 +274,7 @@ static knot_time_t zsk_rollover_time(knot_time_t active_time, const kdnssec_ctx_
 	if (active_time <= 0 || ctx->policy->zsk_lifetime == 0) {
 		return 0;
 	}
-	return knot_time_add(active_time, ctx->policy->zsk_lifetime);
+	return knot_time_plus(active_time, ctx->policy->zsk_lifetime);
 }
 
 static knot_time_t zsk_active_time(knot_time_t publish_time, const kdnssec_ctx_t *ctx)
@@ -298,7 +298,7 @@ static knot_time_t ksk_rollover_time(knot_time_t created_time, const kdnssec_ctx
 	if (created_time <= 0 || ctx->policy->ksk_lifetime == 0) {
 		return 0;
 	}
-	return knot_time_add(created_time, ctx->policy->ksk_lifetime);
+	return knot_time_plus(created_time, ctx->policy->ksk_lifetime);
 }
 
 static knot_time_t ksk_ready_time(knot_time_t publish_time, const kdnssec_ctx_t *ctx)
@@ -314,7 +314,7 @@ static knot_time_t ksk_sbm_max_time(knot_time_t ready_time, const kdnssec_ctx_t 
 	if (ready_time <= 0 || ctx->policy->ksk_sbm_timeout == 0) {
 		return 0;
 	}
-	return knot_time_add(ready_time, ctx->policy->ksk_sbm_timeout);
+	return knot_time_plus(ready_time, ctx->policy->ksk_sbm_timeout);
 }
 
 static knot_time_t ksk_retire_time(knot_time_t retire_active_time, const kdnssec_ctx_t *ctx)
@@ -322,6 +322,7 @@ static knot_time_t ksk_retire_time(knot_time_t retire_active_time, const kdnssec
 	if (retire_active_time <= 0) {
 		return 0;
 	}
+	// this is not correct! It should be parent DS TTL.
 	return knot_time_add(retire_active_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
 }
 
@@ -388,8 +389,11 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				}
 				break;
 			case DNSSEC_KEY_STATE_RETIRE_ACTIVE:
-				keytime = ksk_retire_time(key->timing.retire_active, ctx);
-				restype = RETIRE;
+				if (key->timing.retire == 0 && key->timing.post_active == 0) { // this shouldn't normally happen
+					// when a KSK is retire_active, it has already retire or post_active timer set
+					keytime = ksk_retire_time(key->timing.retire_active, ctx);
+					restype = RETIRE;
+				}
 				break;
 			case DNSSEC_KEY_STATE_POST_ACTIVE:
 				keytime = alg_remove_time(key->timing.post_active, ctx);
@@ -431,13 +435,16 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				keytime = alg_remove_time(key->timing.post_active, ctx);
 				restype = REMOVE;
 				break;
-			case DNSSEC_KEY_STATE_RETIRED:
 			case DNSSEC_KEY_STATE_REMOVED:
 				// ad REMOVED state: normally this wouldn't happen
 				// (key in removed state is instantly deleted)
 				// but if imported keys, they can be in this state
+				if (ctx->keep_deleted_keys) {
+					break;
+				} // else FALLTHROUGH
+			case DNSSEC_KEY_STATE_RETIRED:
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
-				keytime = ksk_remove_time(keytime, ctx);;
+				keytime = zsk_remove_time(keytime, ctx);
 				restype = REMOVE;
 				break;
 			case DNSSEC_KEY_STATE_READY:
@@ -473,7 +480,7 @@ static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 	return KNOT_EOK;
 }
 
-static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
+static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint32_t active_retire_delay)
 {
 	if (newkey->is_ksk) {
 		log_zone_notice(ctx->zone->dname, "DNSSEC, KSK submission, confirmed");
@@ -489,6 +496,14 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 				key->timing.retire_active = ctx->now;
 			} else {
 				key->timing.retire = ctx->now;
+			}
+		}
+		if (newkey->is_ksk && (keystate == DNSSEC_KEY_STATE_ACTIVE ||
+		                       keystate == DNSSEC_KEY_STATE_RETIRE_ACTIVE)) {
+			if (keyalg != dnssec_key_get_algorithm(newkey->key)) {
+				key->timing.post_active = ctx->now + active_retire_delay;
+			} else if (key->is_ksk) {
+				key->timing.retire = ctx->now + active_retire_delay;
 			}
 		}
 	}
@@ -545,7 +560,11 @@ static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
 	key->timing.remove = ctx->now;
 
-	return kdnssec_delete_key(ctx, key);
+	if (ctx->keep_deleted_keys) {
+		return KNOT_EOK;
+	} else {
+		return kdnssec_delete_key(ctx, key);
+	}
 }
 
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
@@ -555,19 +574,29 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		return KNOT_EINVAL;
 	}
 	if (ctx->policy->manual) {
+		if ((flags & (KEY_ROLL_FORCE_KSK_ROLL | KEY_ROLL_FORCE_ZSK_ROLL))) {
+			log_zone_notice(ctx->zone->dname, "DNSSEC, ignoring forced key rollover "
+							  "due to manual policy");
+		}
 		return KNOT_EOK;
 	}
 	int ret = KNOT_EOK;
+	uint16_t plan_ds_keytag = 0;
 	bool allowed_general_roll = ((flags & KEY_ROLL_ALLOW_KSK_ROLL) && (flags & KEY_ROLL_ALLOW_ZSK_ROLL));
 	// generate initial keys if missing
 	if (!key_present(ctx, true, false) && !key_present(ctx, true, true)) {
-		if (ctx->policy->ksk_shared) {
-			ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
-		} else {
-			ret = generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
+		if ((flags & KEY_ROLL_ALLOW_KSK_ROLL)) {
+			if (ctx->policy->ksk_shared) {
+				ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
+			} else {
+				ret = generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
+			}
+			if (ret == KNOT_EOK) {
+				reschedule->plan_ds_query = true;
+				plan_ds_keytag = dnssec_key_get_keytag(ctx->zone->keys[0].key);
+			}
 		}
-		reschedule->plan_ds_query = true;
-		if (ret == KNOT_EOK) {
+		if (ret == KNOT_EOK && (flags & KEY_ROLL_ALLOW_ZSK_ROLL)) {
 			reschedule->keys_changed = true;
 			if (!ctx->policy->singe_type_signing &&
 			    !key_present(ctx, false, true)) {
@@ -576,7 +605,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 	// forced KSK rollover
-	if ((flags & KEY_ROLL_FORCE_KSK_ROLL) && ret == KNOT_EOK) {
+	if ((flags & KEY_ROLL_FORCE_KSK_ROLL) && ret == KNOT_EOK && (flags & KEY_ROLL_ALLOW_KSK_ROLL)) {
 		flags &= ~KEY_ROLL_FORCE_KSK_ROLL;
 		if (running_rollover(ctx)) {
 			log_zone_warning(ctx->zone->dname, "DNSSEC, ignoring forced KSK rollover "
@@ -590,7 +619,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 	// forced ZSK rollover
-	if ((flags & KEY_ROLL_FORCE_ZSK_ROLL) && ret == KNOT_EOK) {
+	if ((flags & KEY_ROLL_FORCE_ZSK_ROLL) && ret == KNOT_EOK && (flags & KEY_ROLL_ALLOW_ZSK_ROLL)) {
 		flags &= ~KEY_ROLL_FORCE_ZSK_ROLL;
 		if (running_rollover(ctx)) {
 			log_zone_warning(ctx->zone->dname, "DNSSEC, ignoring forced ZSK rollover "
@@ -653,10 +682,13 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			break;
 		case SUBMIT:
 			ret = submit_key(ctx, next.key);
-			reschedule->plan_ds_query = true;
+			if (ret == KNOT_EOK) {
+				reschedule->plan_ds_query = true;
+				plan_ds_keytag = dnssec_key_get_keytag(next.key->key);
+			}
 			break;
 		case REPLACE:
-			ret = exec_new_signatures(ctx, next.key);
+			ret = exec_new_signatures(ctx, next.key, 0);
 			break;
 		case RETIRE:
 			ret = exec_ksk_retire(ctx, next.key);
@@ -680,22 +712,37 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 
-	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
-		return knot_dnssec_key_rollover(ctx, flags, reschedule);
+	if (ret == KNOT_EOK && next.type == REPLACE && next.ksk &&
+	    knot_time_cmp(reschedule->next_rollover, ctx->now) > 0) {
+		// just to make sure DS check is scheduled
+		reschedule->plan_ds_query = true;
+		plan_ds_keytag = dnssec_key_get_keytag(next.key->key);
 	}
 
-	if (reschedule->keys_changed) {
+	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
+		ret = knot_dnssec_key_rollover(ctx, flags, reschedule);
+	}
+
+	if (ret == KNOT_EOK && reschedule->keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
 	}
+
+	if (ret == KNOT_EOK && reschedule->plan_ds_query) {
+		char param[32];
+		(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu", plan_ds_keytag);
+		log_fmt_zone(LOG_NOTICE, LOG_SOURCE_ZONE, ctx->zone->dname, param,
+			     "DNSSEC, KSK submission, waiting for confirmation");
+	}
+
 	return ret;
 }
 
-int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx)
+int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (key->is_ksk && get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
-			int ret = exec_new_signatures(ctx, key);
+			int ret = exec_new_signatures(ctx, key, retire_delay);
 			if (ret == KNOT_EOK) {
 				ret = kdnssec_ctx_commit(ctx);
 			}

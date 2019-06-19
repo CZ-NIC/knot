@@ -57,6 +57,14 @@ int tls_params_copy(tls_params_t *dst, const tls_params_t *src)
 		}
 	}
 
+	if (src->sni != NULL) {
+		dst->sni = strdup(src->sni);
+		if (dst->sni == NULL) {
+			tls_params_clean(dst);
+			return KNOT_ENOMEM;
+		}
+	}
+
 	ptrnode_t *n = NULL;
 	WALK_LIST(n, src->ca_files) {
 		char *src_file = (char *)n->d;
@@ -97,6 +105,7 @@ void tls_params_clean(tls_params_t *params)
 	ptrlist_free(&params->pins, NULL);
 
 	free(params->hostname);
+	free(params->sni);
 
 	memset(params, 0, sizeof(*params));
 }

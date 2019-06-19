@@ -76,6 +76,12 @@ Options
   The time to wait for a reply in seconds. This timeout applies to each query
   try. The default is 2 seconds.
 
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
+
 Examples
 --------
 

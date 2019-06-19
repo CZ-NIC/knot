@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -190,7 +190,7 @@ static int put_delegation(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	/* Find closest delegation point. */
 	while (!(qdata->extra->node->flags & NODE_FLAGS_DELEG)) {
-		qdata->extra->node = qdata->extra->node->parent;
+		qdata->extra->node = node_parent(qdata->extra->node);
 	}
 
 	/* Insert NS record. */
@@ -229,7 +229,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 		uint16_t hint = knot_compr_hint(info, KNOT_COMPR_HINT_RDATA +
 		                                glue->ns_pos);
-		knot_rrset_t rrsigs = node_rrset(glue->node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t rrsigs = node_rrset(glue_node(glue, qdata->extra->node), KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
 			knot_rrset_t rrset = node_rrset(glue->node, ar_type_list[k]);
 			if (knot_rrset_empty(&rrset)) {
@@ -278,8 +278,8 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 			qdata->rcode = KNOT_RCODE_YXDOMAIN;
 		} else {
 			knot_rrset_t dname_rr = cname_rr;
-			int ret = dname_cname_synth(&dname_rr, qdata->name,
-			                            &cname_rr, &pkt->mm);
+			ret = dname_cname_synth(&dname_rr, qdata->name,
+			                        &cname_rr, &pkt->mm);
 			if (ret != KNOT_EOK) {
 				qdata->rcode = KNOT_RCODE_SERVFAIL;
 				return KNOTD_IN_STATE_ERROR;
@@ -385,7 +385,7 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Look up an authoritative encloser or its parent. */
 	const zone_node_t *node = qdata->extra->encloser;
 	while (node->rrset_count == 0 || node->flags & NODE_FLAGS_NONAUTH) {
-		node = node->parent;
+		node = node_parent(node);
 		assert(node);
 	}
 
@@ -646,7 +646,7 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_has_tsig(qdata->query)) {
 		/* We have been challenged... */
-		NS_NEED_AUTH(qdata, qdata->extra->zone->name, ACL_ACTION_NONE);
+		NS_NEED_AUTH(qdata, ACL_ACTION_NONE);
 
 		/* Reserve space for TSIG. */
 		int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));

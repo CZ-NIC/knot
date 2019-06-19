@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,14 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-/*!
- * \file
- *
- * \brief Dynamic updates processing.
- *
- * \addtogroup ddns
- * @{
  */
 
 #pragma once
@@ -53,5 +45,3 @@ int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
  */
 int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
                         zone_update_t *update, uint16_t *rcode);
-
-/*! @} */

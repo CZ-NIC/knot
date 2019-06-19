@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@ int lookup_insert(lookup_t *lookup, const char *str, void *data)
 		return KNOT_EINVAL;
 	}
 
-	trie_val_t *val = trie_get_ins(lookup->trie, str, str_len);
+	trie_val_t *val = trie_get_ins(lookup->trie, (const trie_key_t *)str, str_len);
 	if (val == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -121,7 +121,7 @@ int lookup_search(lookup_t *lookup, const char *str, size_t str_len)
 	trie_it_t *it = trie_it_begin(lookup->trie);
 	for (; !trie_it_finished(it); trie_it_next(it)) {
 		size_t len;
-		const char *key = trie_it_key(it, &len);
+		const char *key = (const char *)trie_it_key(it, &len);
 
 		// Compare with a shorter key.
 		if (len < str_len) {
@@ -196,7 +196,7 @@ void lookup_list(lookup_t *lookup)
 		trie_it_next(lookup->iter.it);
 
 		size_t len;
-		const char *key = trie_it_key(lookup->iter.it, &len);
+		const char *key = (const char *)trie_it_key(lookup->iter.it, &len);
 
 		int ret = set_key(lookup, &lookup->found.key, key, len);
 		if (ret == KNOT_EOK) {
@@ -208,7 +208,7 @@ void lookup_list(lookup_t *lookup)
 	lookup->iter.it = trie_it_begin(lookup->trie);
 	while (!trie_it_finished(lookup->iter.it)) {
 		size_t len;
-		const char *key = trie_it_key(lookup->iter.it, &len);
+		const char *key = (const char *)trie_it_key(lookup->iter.it, &len);
 
 		if (strncmp(key, lookup->iter.first_key, len) == 0) {
 			int ret = set_key(lookup, &lookup->found.key, key, len);

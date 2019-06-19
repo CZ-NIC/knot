@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -525,6 +525,13 @@ int knotd_mod_dnssec_init(knotd_mod_t *mod);
  * \return Error code, KNOT_EOK if success.
  */
 int knotd_mod_dnssec_load_keyset(knotd_mod_t *mod, bool verbose);
+
+/*!
+ * Frees up resources before re-loading DNSSEC signing keys.
+ *
+ * \param[in] mod  Module context.
+ */
+void knotd_mod_dnssec_unload_keyset(knotd_mod_t *mod);
 
 /*!
  * Generates RRSIGs for given RRSet.

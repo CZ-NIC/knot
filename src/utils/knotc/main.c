@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 #define PROGRAM_NAME		"knotc"
 #define SPACE			"  "
-#define DEFAULT_CTL_TIMEOUT	5
+#define DEFAULT_CTL_TIMEOUT	10
 
 static void print_help(void)
 {
@@ -43,6 +43,7 @@ static void print_help(void)
 	       "                          "SPACE" (default %s)\n"
 	       " -t, --timeout <sec>      "SPACE"Use a control socket timeout (max 7200 seconds).\n"
 	       "                          "SPACE" (default %u seconds)\n"
+	       " -b, --blocking	          "SPACE"Zone event trigger commands wait until the event is finished.\n"
 	       " -f, --force              "SPACE"Forced operation. Overrides some checks.\n"
 	       " -v, --verbose            "SPACE"Enable debug output.\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
@@ -67,6 +68,7 @@ int main(int argc, char **argv)
 		{ "max-conf-size", required_argument, NULL, 'm' },
 		{ "socket",        required_argument, NULL, 's' },
 		{ "timeout",       required_argument, NULL, 't' },
+		{ "blocking",      no_argument,       NULL, 'b' },
 		{ "force",         no_argument,       NULL, 'f' },
 		{ "verbose",       no_argument,       NULL, 'v' },
 		{ "help",          no_argument,       NULL, 'h' },
@@ -76,7 +78,7 @@ int main(int argc, char **argv)
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:fvhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:bfvhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			params.config = optarg;
@@ -102,6 +104,9 @@ int main(int argc, char **argv)
 			}
 			/* Convert to milliseconds. */
 			params.timeout *= 1000;
+			break;
+		case 'b':
+			params.blocking = true;
 			break;
 		case 'f':
 			params.force = true;

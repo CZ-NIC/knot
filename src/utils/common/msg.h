@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,16 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-/*!
- * \file msg.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
- *
- * \brief Simple output formatting framework.
- *
- * \addtogroup knot_utils
- * @{
  */
 
 #pragma once
@@ -46,5 +36,3 @@ int msg_debug(const char *fmt, ...);
 
 /*! \brief Debug message for null input. */
 #define DBG_NULL	DBG("%s: null parameter\n", __func__)
-
-/*! @} */

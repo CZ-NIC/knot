@@ -107,12 +107,12 @@ file
 
 A path to a shared library file with the module implementation.
 
-*Default:* ``${libdir}/knot/modules-${version}``/module_name.so
-(or ``${path}``/module_name.so if configured with ``--with-moduledir=path``)
-
 .. WARNING::
    If the path is not absolute, the library is searched in the set of
    system directories. See ``man dlopen`` for more details.
+
+*Default:* ``${libdir}/knot/modules-${version}``/module_name.so
+(or ``${path}``/module_name.so if configured with ``--with-moduledir=path``)
 
 .. _Server section:
 
@@ -342,7 +342,8 @@ listen
 One or more IP addresses where the server listens for incoming queries.
 Optional port specification (default is 53) can be appended to each address
 using ``@`` separator. Use ``0.0.0.0`` for all configured IPv4 addresses or
-``::`` for all configured IPv6 addresses.
+``::`` for all configured IPv6 addresses. Non-local address binding is
+automatically enabled if supported by the operating system.
 
 *Default:* not set
 
@@ -416,6 +417,10 @@ update, etc.).
      key: key_id ...
      action: notify | transfer | update ...
      deny: BOOL
+     update-type: STR ...
+     update-owner: key | zone | name
+     update-owner-match: sub-or-equal | equal | sub
+     update-owner-name: STR ...
 
 .. _acl_id:
 
@@ -469,6 +474,64 @@ If enabled, instead of allowing, deny the specified :ref:`action<acl_action>`,
 items. If no action is specified, deny all actions.
 
 *Default:* off
+
+.. _acl_update_type:
+
+update-type
+-----------
+
+A list of allowed types of Resource Records in a zone update. Every record in an update
+must match one of the specified types.
+
+*Default:* not set
+
+.. _acl_update_owner:
+
+update-owner
+------------
+
+This option restricts possible owners of Resource Records in a zone update by comparing
+them to either the :ref:`TSIG key<acl_key>` identity, the current zone name, or to a list of
+domain names given by the :ref:`update-owner-name<acl_update_owner_name>` option.
+The comparison method is given by the :ref:`update-owner-match<acl_update_owner_match>` option.
+
+Possible values:
+
+- ``key`` — The owner of each updated RR must match the identity of the TSIG key if used.
+- ``name`` — The owner of each updated RR must match at least one name in the
+  :ref:`update-owner-name<acl_update_owner_name>` list.
+- ``zone`` — The owner of each updated RR must match the current zone name.
+
+*Default:* not set
+
+.. _acl_update_owner_match:
+
+update-owner-match
+------------------
+
+This option defines how the owners of Resource Records in an update are matched to the domain name(s)
+set by the :ref:`update-owner<acl_update_owner>` option.
+
+Possible values:
+
+- ``sub-or-equal`` — The owner of each Resource Record in an update must either be equal to
+  or be a subdomain of at least one domain set by :ref:`update-owner<acl_update_owner>`.
+- ``equal`` — The owner of each updated RR must be equal to at least one domain set by
+  :ref:`update-owner<acl_update_owner>`.
+- ``sub`` — The owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
+  one domain set by :ref:`update-owner<acl_update_owner>`.
+
+*Default:* sub-or-equal
+
+.. _acl_update_owner_name:
+
+update-owner-name
+-----------------
+
+A list of allowed owners of RRs in a zone update used with :ref:`update-owner<acl_update_owner>`
+set to ``name``.
+
+*Default:* not set
 
 .. _Control section:
 
@@ -587,7 +650,7 @@ config
 
 A backend specific configuration. A directory with PEM files (the path can
 be specified as a relative path to :ref:`kasp-db<template_kasp-db>`) or
-a configuration string for PKCS #11 storage.
+a configuration string for PKCS #11 storage (`<pkcs11-url> <module-path>`).
 
 .. NOTE::
    Example configuration string for PKCS #11::
@@ -672,6 +735,7 @@ DNSSEC policy configuration.
      zsk-size: SIZE
      ksk-shared: BOOL
      dnskey-ttl: TIME
+     zone-max-ttl: TIME
      zsk-lifetime: TIME
      ksk-lifetime: TIME
      propagation-delay: TIME
@@ -682,8 +746,10 @@ DNSSEC policy configuration.
      nsec3-opt-out: BOOL
      nsec3-salt-length: INT
      nsec3-salt-lifetime: TIME
+     signing-threads: INT
      ksk-submission: submission_id
-     cds-cdnskey-publish: none | delete-dnssec | always
+     cds-cdnskey-publish: none | delete-dnssec | rollover | always | double-ds
+     offline-ksk: BOOL
 
 .. _policy_id:
 
@@ -739,17 +805,17 @@ Possible values:
 - ``ecdsap384sha384``
 - ``ed25519``
 
-*Default:* ecdsap256sha256
-
 .. NOTE::
    Ed25519 algorithm is only available when compiled with GnuTLS 3.6.0+.
+
+*Default:* ecdsap256sha256
 
 .. _policy_ksk-size:
 
 ksk-size
 --------
 
-A length of newly generated :abbr:`KSK (Key Signing Key)` or 
+A length of newly generated :abbr:`KSK (Key Signing Key)` or
 :abbr:`CSK (Combined Signing Key)` keys.
 
 *Default:* 2048 (rsa*), 256 (ecdsap256), 384 (ecdsap384), 256 (ed25519)
@@ -772,15 +838,30 @@ If enabled, all zones with this policy assigned will share one KSK.
 
 *Default:* off
 
+.. _policy_dnskey-ttl:
+
 dnskey-ttl
 ----------
 
 A TTL value for DNSKEY records added into zone apex.
 
-*Default:* zone SOA TTL
-
 .. NOTE::
    Has infuence over ZSK key lifetime.
+
+*Default:* zone SOA TTL
+
+.. _policy_zone-max-ttl:
+
+zone-max-ttl
+------------
+
+Maximal TTL value among all the records in zone.
+
+.. NOTE::
+   It's generally recommended to override the maximal TTL computation by setting this
+   explicitly whenever possible. It's required for :ref:`DNSSEC Offline KSK`.
+
+*Default:* computed after zone is loaded
 
 .. _policy_zsk-lifetime:
 
@@ -789,12 +870,12 @@ zsk-lifetime
 
 A period between ZSK publication and the next rollover initiation.
 
-*Default:* 30 days
-
 .. NOTE::
    ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
 
    Zero (aka infinity) value causes no ZSK rollover as a result.
+
+*Default:* 30 days
 
 .. _policy_ksk-lifetime:
 
@@ -802,8 +883,6 @@ ksk-lifetime
 ------------
 
 A period between KSK publication and the next rollover initiation.
-
-*Default:* 0
 
 .. NOTE::
    KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
@@ -813,6 +892,8 @@ A period between KSK publication and the next rollover initiation.
 
    This applies for CSK lifetime if single-type-signing is enabled.
 
+*Default:* 0
+
 .. _policy_propagation-delay:
 
 propagation-delay
@@ -821,10 +902,10 @@ propagation-delay
 An extra delay added for each key rollover step. This value should be high
 enough to cover propagation of data from the master server to all slaves.
 
-*Default:* 1 hour
-
 .. NOTE::
    Has infuence over ZSK key lifetime.
+
+*Default:* 1 hour
 
 .. _policy_rrsig-lifetime:
 
@@ -832,6 +913,10 @@ rrsig-lifetime
 --------------
 
 A validity period of newly issued signatures.
+
+.. NOTE::
+   The RRSIG's signature inception time is set to 90 minutes in the past. This
+   time period is not counted to the signature lifetime.
 
 *Default:* 14 days
 
@@ -893,6 +978,8 @@ nsec3-salt-lifetime
 
 A validity period of newly issued salt field.
 
+Zero value means infinity.
+
 *Default:* 30 days
 
 .. _policy_ksk-submission-check:
@@ -905,6 +992,20 @@ KSK submittion checks.
 
 *Default:* not set
 
+.. _policy_signing-threads:
+
+signing-threads
+---------------
+
+When signing zone or update, use this number of threads for parallel signing.
+
+Those are extra threads independent of :ref:`Background workers<server_background-workers>`.
+
+.. NOTE::
+   Some steps of the DNSSEC signing operation are not parallelized.
+
+*Default:* 1 (no extra threads)
+
 .. _policy_cds-cdnskey-publish:
 
 cds-cdnskey-publish
@@ -912,16 +1013,28 @@ cds-cdnskey-publish
 
 Controls if and how shall the CDS and CDNSKEY be published in the zone.
 
-.. NOTE::
-   This only applies if the zone keys are automatically managed by the server.
-
 Possible values:
 
-- ``none`` - Never publish any CDS or CDNSKEY records in the zone.
-- ``delete-dnssec`` - Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
-- ``always`` - Always publish CDS and CDNSKEY records for the current KSK.
+- ``none`` – Never publish any CDS or CDNSKEY records in the zone.
+- ``delete-dnssec`` – Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
+- ``rollover`` – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
+- ``always`` – Always publish one CDS and one CDNSKEY records for the current KSK.
+- ``double-ds`` – Always publish up to two CDS and two CDNSKEY records for ready and/or active KSKs.
 
-*Default:* always
+.. NOTE::
+   If the zone keys are managed manually, the CDS and CDNSKEY rrsets may contain
+   more records depending on the keys available.
+
+*Default:* rollover
+
+.. _policy_offline-ksk:
+
+offline-ksk
+-----------
+
+Specifies if :ref:`Offline KSK <DNSSEC Offline KSK>` feature is enabled.
+
+*Default:* off
 
 .. _Remote section:
 
@@ -1099,10 +1212,10 @@ kasp-db
 A KASP database path. Non-absolute path is relative to
 :ref:`storage<zone_storage>`.
 
-*Default:* :ref:`storage<zone_storage>`/keys
-
 .. NOTE::
    This option is only available in the *default* template.
+
+*Default:* :ref:`storage<zone_storage>`/keys
 
 .. _template_max-kasp-db-size:
 
@@ -1360,11 +1473,11 @@ max-journal-usage
 
 Policy how much space in journal DB will the zone's journal occupy.
 
-*Default:* 100 MiB
-
 .. NOTE::
    Journal DB may grow far above the sum of max-journal-usage across
    all zones, because of DB free space fragmentation.
+
+*Default:* 100 MiB
 
 .. _zone_max_journal_depth:
 
@@ -1490,7 +1603,7 @@ There are 6 logging severity levels:
 - ``warning`` – Warning that might require user action.
 - ``notice`` – Server notice or hint.
 - ``info`` – Informational message.
-- ``debug`` – Debug messages (must be turned on at compile time).
+- ``debug`` – Debug or detailed message.
 
 In the case of missing log section, ``warning`` or more serious messages
 will be logged to both standard error output and syslog. The ``info`` and

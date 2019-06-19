@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,14 +12,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-/*!
- * \file
- *
- * \brief Common executives for utils.
- *
- * \addtogroup knot_utils
- * @{
  */
 
 #pragma once
@@ -93,5 +85,3 @@ void print_packet(const knot_pkt_t *packet,
                   const time_t     exec_time,
                   const bool       incoming,
                   const style_t    *style);
-
-/*! @} */

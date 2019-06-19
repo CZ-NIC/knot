@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,6 +71,11 @@ int conf_io_begin(
 	knot_db_txn_t *txn = (parent == NULL) ? conf()->io.txn_stack : parent + 1;
 	if (txn >= conf()->io.txn_stack + CONF_MAX_TXN_DEPTH) {
 		return KNOT_TXN_EEXISTS;
+	}
+
+	if (conf()->filename != NULL) {
+		log_ctl_notice("control, persistent configuration database "
+		               "not available");
 	}
 
 	// Start the writing transaction.
@@ -832,7 +837,7 @@ static void upd_changes(
 	}
 
 	// Get zone status or create new.
-	trie_val_t *val = trie_get_ins(zones, (const char *)io->id, io->id_len);
+	trie_val_t *val = trie_get_ins(zones, io->id, io->id_len);
 	conf_io_type_t *current = (conf_io_type_t *)val;
 
 	switch (type) {
@@ -850,7 +855,7 @@ static void upd_changes(
 	case CONF_IO_TUNSET:
 		if (*current & CONF_IO_TSET) {
 			// Remove inserted zone -> no change.
-			trie_del(zones, (const char *)io->id, io->id_len, NULL);
+			trie_del(zones, io->id, io->id_len, NULL);
 		} else {
 			// Remove existing zone.
 			*current |= type;
@@ -995,13 +1000,17 @@ int conf_io_set(
 			goto set_error;
 		}
 
+		uint8_t copied_id[YP_MAX_ID_LEN];
+		io.id = copied_id;
 		while (ret == KNOT_EOK) {
-			// Get the identifier.
-			ret = conf_db_iter_id(conf(), &iter, &io.id, &io.id_len);
+			// Get the identifier and copy it because of next DB update.
+			const uint8_t *tmp_id;
+			ret = conf_db_iter_id(conf(), &iter, &tmp_id, &io.id_len);
 			if (ret != KNOT_EOK) {
 				conf_db_iter_finish(conf(), &iter);
 				goto set_error;
 			}
+			memcpy(copied_id, tmp_id, io.id_len);
 
 			// Set the data.
 			ret = set_item(&io);
@@ -1187,13 +1196,17 @@ int conf_io_unset(
 			goto unset_error;
 		}
 
+		uint8_t copied_id[YP_MAX_ID_LEN];
+		io.id = copied_id;
 		while (ret == KNOT_EOK) {
-			// Get the identifier.
-			ret = conf_db_iter_id(conf(), &iter, &io.id, &io.id_len);
+			// Get the identifier and copy it because of next DB update.
+			const uint8_t *tmp_id;
+			ret = conf_db_iter_id(conf(), &iter, &tmp_id, &io.id_len);
 			if (ret != KNOT_EOK) {
 				conf_db_iter_finish(conf(), &iter);
 				goto unset_error;
 			}
+			memcpy(copied_id, tmp_id, io.id_len);
 
 			// Unset the section data.
 			ret = unset_section_data(&io);

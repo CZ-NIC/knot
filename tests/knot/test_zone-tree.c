@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 #define NCOUNT 4
 static knot_dname_t* NAME[NCOUNT];
-static zone_node_t NODE[NCOUNT];
+static zone_node_t NODEE[NCOUNT];
 static knot_dname_t* ORDER[NCOUNT];
 static void ztree_init_data(void)
 {
@@ -37,10 +37,10 @@ static void ztree_init_data(void)
 	memcpy(ORDER, order, NCOUNT * sizeof(knot_dname_t*));
 
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		memset(NODE + i, 0, sizeof(zone_node_t));
-		NODE[i].owner = NAME[i];
-		NODE[i].prev = NODE + ((NCOUNT + i - 1) % NCOUNT);
-		NODE[i].rrset_count = 1; /* required for ordered search */
+		memset(NODEE + i, 0, sizeof(zone_node_t));
+		NODEE[i].owner = NAME[i];
+		NODEE[i].prev = NODEE + ((NCOUNT + i - 1) % NCOUNT);
+		NODEE[i].rrset_count = 1; /* required for ordered search */
 	}
 }
 
@@ -51,10 +51,10 @@ static void ztree_free_data(void)
 	}
 }
 
-static int ztree_iter_data(zone_node_t **node, void *data)
+static int ztree_iter_data(zone_node_t *node, void *data)
 {
 	unsigned *i = (unsigned *)data;
-	knot_dname_t *owner = (*node)->owner;
+	knot_dname_t *owner = node->owner;
 	int result = KNOT_EOK;
 	if (owner != ORDER[*i]) {
 		result = KNOT_ERROR;
@@ -75,13 +75,14 @@ int main(int argc, char *argv[])
 	ztree_init_data();
 
 	/* 1. create test */
-	zone_tree_t* t = zone_tree_create();
+	zone_tree_t* t = zone_tree_create(false);
 	ok(t != NULL, "ztree: created");
 
 	/* 2. insert test */
 	unsigned passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		if (zone_tree_insert(t, NODE + i) != KNOT_EOK) {
+		zone_node_t *node = NODEE + i;
+		if (zone_tree_insert(t, &node) != KNOT_EOK) {
 			passed = 0;
 			break;
 		}
@@ -92,7 +93,7 @@ int main(int argc, char *argv[])
 	passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
 		zone_node_t *node = zone_tree_get(t, NAME[i]);
-		if (node == NULL || node != NODE + i) {
+		if (node == NULL || node != NODEE + i) {
 			passed = 0;
 			break;
 		}
@@ -105,7 +106,7 @@ int main(int argc, char *argv[])
 	knot_dname_t *tmp_dn = knot_dname_from_str_alloc("z.ac.");
 	zone_tree_get_less_or_equal(t, tmp_dn, &node, &prev);
 	knot_dname_free(tmp_dn, NULL);
-	ok(prev == NODE + 1, "ztree: ordered lookup");
+	ok(prev == NODEE + 1, "ztree: ordered lookup");
 
 	/* 5. ordered traversal */
 	unsigned i = 0;

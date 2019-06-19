@@ -1,8 +1,8 @@
 libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(systemd_CFLAGS) \
-                       $(liburcu_CFLAGS) -DKNOTD_MOD_STATIC
+                       $(liburcu_CFLAGS) $(lmdb_CFLAGS) -DKNOTD_MOD_STATIC
 libknotd_la_LDFLAGS  = $(AM_LDFLAGS) -export-symbols-regex '^knotd_'
 libknotd_la_LIBADD   = libcontrib.la libknot.la libzscanner.la $(systemd_LIBS) \
-                       $(liburcu_LIBS) $(pthread_LIBS) $(dlopen_LIBS)
+                       $(liburcu_LIBS) $(lmdb_LIBS) $(pthread_LIBS) $(dlopen_LIBS)
 
 include_libknotddir = $(includedir)/knot
 include_libknotd_HEADERS = \
@@ -44,6 +44,8 @@ libknotd_la_SOURCES = \
 	knot/dnssec/kasp/policy.h		\
 	knot/dnssec/key-events.c		\
 	knot/dnssec/key-events.h		\
+	knot/dnssec/key_records.c		\
+	knot/dnssec/key_records.h		\
 	knot/dnssec/nsec-chain.c		\
 	knot/dnssec/nsec-chain.h		\
 	knot/dnssec/nsec3-chain.c		\
@@ -119,10 +121,16 @@ libknotd_la_SOURCES = \
 	knot/common/stats.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
-	knot/journal/chgset_ctx.c		\
-	knot/journal/chgset_ctx.h		\
-	knot/journal/journal.c			\
-	knot/journal/journal.h			\
+	knot/journal/journal_basic.c		\
+	knot/journal/journal_basic.h		\
+	knot/journal/journal_metadata.c		\
+	knot/journal/journal_metadata.h		\
+	knot/journal/journal_read.c		\
+	knot/journal/journal_read.h		\
+	knot/journal/journal_write.c		\
+	knot/journal/journal_write.h		\
+	knot/journal/knot_lmdb.c		\
+	knot/journal/knot_lmdb.h		\
 	knot/journal/serialization.c		\
 	knot/journal/serialization.h		\
 	knot/server/server.c			\
@@ -145,8 +153,14 @@ libknotd_la_SOURCES = \
 	knot/worker/pool.h			\
 	knot/worker/queue.c			\
 	knot/worker/queue.h			\
+	knot/zone/adds_tree.c			\
+	knot/zone/adds_tree.h			\
+	knot/zone/adjust.c			\
+	knot/zone/adjust.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
+	knot/zone/measure.h			\
+	knot/zone/measure.c			\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\

@@ -34,8 +34,9 @@ DNS features:
 * Name server identification using NSID or Chaos TXT records
 * Resource record types A, NS, CNAME, SOA, PTR, HINFO, MINFO, MX,
   TXT, RP, AFSDB, RT, KEY, AAAA, LOC, SRV, NAPTR, KX, CERT, DNAME, APL, DS,
-  SSHFP, IPSECKEY, RRSIG, NSEC, DNSKEY, DHCID, NSEC3, NSEC3PARAM, TLSA, CDS,
-  CDNSKEY, SPF, NID, L32, L64, LP, EUI48, EUI64, URI, CAA, and Unknown
+  SSHFP, IPSECKEY, RRSIG, NSEC, DNSKEY, DHCID, NSEC3, NSEC3PARAM, TLSA, SMIMEA,
+  CDS, CDNSKEY, OPENPGPKEY, CSYNC, ZONEMD, SPF, NID, L32, L64, LP, EUI48, EUI64,
+  URI, CAA, and Unknown
 
 Server features:
 
@@ -47,7 +48,10 @@ Server features:
 * YAML-based or database-based configuration
 * Query processing modules with dynamic loading
 * On-the-fly zone management and server reconfiguration
-* Automatic DNSSEC signing with automatic key maganement and PKCS #11 interface
+* Multithreaded DNSSEC signing
+* Automatic DNSSEC key maganement
+* Offline KSK operation
+* PKCS #11 interface
 
 Remarkable module extensions:
 
@@ -56,7 +60,7 @@ Remarkable module extensions:
 * DNS request traffic statistics
 * Dnstap traffic logging
 * Online DNSSEC signing
-* GeoIP response tailoring supporting ECS and DNSSEC 
+* GeoIP response tailoring supporting ECS and DNSSEC
 
 License
 =======

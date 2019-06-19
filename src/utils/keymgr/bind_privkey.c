@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 #include "contrib/strtonum.h"
 #include "libdnssec/binary.h"
 #include "libdnssec/error.h"
-#include "libdnssec/shared/pem.h"
+#include "libdnssec/pem.h"
 #include "libdnssec/shared/shared.h"
 #include "utils/keymgr/bind_privkey.h"
 
@@ -267,7 +267,7 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	return pem_from_x509(key, pem);
+	return dnssec_pem_from_x509(key, pem);
 }
 
 /*!
@@ -320,7 +320,7 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 
 	gnutls_x509_privkey_fix(key);
 
-	return pem_from_x509(key, pem);
+	return dnssec_pem_from_x509(key, pem);
 }
 
 int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary_t *pem)

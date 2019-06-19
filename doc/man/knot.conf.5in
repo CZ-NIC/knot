@@ -154,9 +154,6 @@ A module identifier in the form of the \fBmod\-\fP prefix and module name suffix
 .sp
 A path to a shared library file with the module implementation.
 .sp
-\fIDefault:\fP \fB${libdir}/knot/modules\-${version}\fP/module_name.so
-(or \fB${path}\fP/module_name.so if configured with \fB\-\-with\-moduledir=path\fP)
-.sp
 \fBWARNING:\fP
 .INDENT 0.0
 .INDENT 3.5
@@ -164,6 +161,9 @@ If the path is not absolute, the library is searched in the set of
 system directories. See \fBman dlopen\fP for more details.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP \fB${libdir}/knot/modules\-${version}\fP/module_name.so
+(or \fB${path}\fP/module_name.so if configured with \fB\-\-with\-moduledir=path\fP)
 .SH SERVER SECTION
 .sp
 General options related to the server.
@@ -315,7 +315,8 @@ The rotation shift is simply determined by a query ID.
 One or more IP addresses where the server listens for incoming queries.
 Optional port specification (default is 53) can be appended to each address
 using \fB@\fP separator. Use \fB0.0.0.0\fP for all configured IPv4 addresses or
-\fB::\fP for all configured IPv6 addresses.
+\fB::\fP for all configured IPv6 addresses. Non\-local address binding is
+automatically enabled if supported by the operating system.
 .sp
 \fIDefault:\fP not set
 .SH KEY SECTION
@@ -388,6 +389,10 @@ acl:
     key: key_id ...
     action: notify | transfer | update ...
     deny: BOOL
+    update\-type: STR ...
+    update\-owner: key | zone | name
+    update\-owner\-match: sub\-or\-equal | equal | sub
+    update\-owner\-name: STR ...
 .ft P
 .fi
 .UNINDENT
@@ -429,6 +434,56 @@ If enabled, instead of allowing, deny the specified \fI\%action\fP,
 items. If no action is specified, deny all actions.
 .sp
 \fIDefault:\fP off
+.SS update\-type
+.sp
+A list of allowed types of Resource Records in a zone update. Every record in an update
+must match one of the specified types.
+.sp
+\fIDefault:\fP not set
+.SS update\-owner
+.sp
+This option restricts possible owners of Resource Records in a zone update by comparing
+them to either the \fI\%TSIG key\fP identity, the current zone name, or to a list of
+domain names given by the \fI\%update\-owner\-name\fP option.
+The comparison method is given by the \fI\%update\-owner\-match\fP option.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBkey\fP — The owner of each updated RR must match the identity of the TSIG key if used.
+.IP \(bu 2
+\fBname\fP — The owner of each updated RR must match at least one name in the
+\fI\%update\-owner\-name\fP list.
+.IP \(bu 2
+\fBzone\fP — The owner of each updated RR must match the current zone name.
+.UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS update\-owner\-match
+.sp
+This option defines how the owners of Resource Records in an update are matched to the domain name(s)
+set by the \fI\%update\-owner\fP option.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBsub\-or\-equal\fP — The owner of each Resource Record in an update must either be equal to
+or be a subdomain of at least one domain set by \fI\%update\-owner\fP\&.
+.IP \(bu 2
+\fBequal\fP — The owner of each updated RR must be equal to at least one domain set by
+\fI\%update\-owner\fP\&.
+.IP \(bu 2
+\fBsub\fP — The owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
+one domain set by \fI\%update\-owner\fP\&.
+.UNINDENT
+.sp
+\fIDefault:\fP sub\-or\-equal
+.SS update\-owner\-name
+.sp
+A list of allowed owners of RRs in a zone update used with \fI\%update\-owner\fP
+set to \fBname\fP\&.
+.sp
+\fIDefault:\fP not set
 .SH CONTROL SECTION
 .sp
 Configuration of the server control interface.
@@ -523,7 +578,7 @@ Possible values:
 .sp
 A backend specific configuration. A directory with PEM files (the path can
 be specified as a relative path to \fI\%kasp\-db\fP) or
-a configuration string for PKCS #11 storage.
+a configuration string for PKCS #11 storage (\fI<pkcs11\-url> <module\-path>\fP).
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -608,6 +663,7 @@ policy:
     zsk\-size: SIZE
     ksk\-shared: BOOL
     dnskey\-ttl: TIME
+    zone\-max\-ttl: TIME
     zsk\-lifetime: TIME
     ksk\-lifetime: TIME
     propagation\-delay: TIME
@@ -618,8 +674,10 @@ policy:
     nsec3\-opt\-out: BOOL
     nsec3\-salt\-length: INT
     nsec3\-salt\-lifetime: TIME
+    signing\-threads: INT
     ksk\-submission: submission_id
-    cds\-cdnskey\-publish: none | delete\-dnssec | always
+    cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always | double\-ds
+    offline\-ksk: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -667,14 +725,14 @@ Possible values:
 \fBed25519\fP
 .UNINDENT
 .sp
-\fIDefault:\fP ecdsap256sha256
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
 Ed25519 algorithm is only available when compiled with GnuTLS 3.6.0+.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP ecdsap256sha256
 .SS ksk\-size
 .sp
 A length of newly generated KSK or
@@ -695,19 +753,30 @@ If enabled, all zones with this policy assigned will share one KSK.
 .sp
 A TTL value for DNSKEY records added into zone apex.
 .sp
-\fIDefault:\fP zone SOA TTL
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
 Has infuence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP zone SOA TTL
+.SS zone\-max\-ttl
+.sp
+Maximal TTL value among all the records in zone.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+It\(aqs generally recommended to override the maximal TTL computation by setting this
+explicitly whenever possible. It\(aqs required for DNSSEC Offline KSK\&.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP computed after zone is loaded
 .SS zsk\-lifetime
 .sp
 A period between ZSK publication and the next rollover initiation.
-.sp
-\fIDefault:\fP 30 days
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -717,11 +786,11 @@ ZSK key lifetime is also infuenced by propagation\-delay and dnskey\-ttl
 Zero (aka infinity) value causes no ZSK rollover as a result.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP 30 days
 .SS ksk\-lifetime
 .sp
 A period between KSK publication and the next rollover initiation.
-.sp
-\fIDefault:\fP 0
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -734,12 +803,12 @@ Zero (aka infinity) value causes no KSK rollover as a result.
 This applies for CSK lifetime if single\-type\-signing is enabled.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP 0
 .SS propagation\-delay
 .sp
 An extra delay added for each key rollover step. This value should be high
 enough to cover propagation of data from the master server to all slaves.
-.sp
-\fIDefault:\fP 1 hour
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -747,9 +816,19 @@ enough to cover propagation of data from the master server to all slaves.
 Has infuence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP 1 hour
 .SS rrsig\-lifetime
 .sp
 A validity period of newly issued signatures.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+The RRSIG\(aqs signature inception time is set to 90 minutes in the past. This
+time period is not counted to the signature lifetime.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP 14 days
 .SS rrsig\-refresh
@@ -791,6 +870,8 @@ name before hashing.
 .sp
 A validity period of newly issued salt field.
 .sp
+Zero value means infinity.
+.sp
 \fIDefault:\fP 30 days
 .SS ksk\-submission
 .sp
@@ -798,28 +879,52 @@ A reference to \fI\%submission\fP section holding parameters of
 KSK submittion checks.
 .sp
 \fIDefault:\fP not set
-.SS cds\-cdnskey\-publish
+.SS signing\-threads
 .sp
-Controls if and how shall the CDS and CDNSKEY be published in the zone.
+When signing zone or update, use this number of threads for parallel signing.
+.sp
+Those are extra threads independent of \fI\%Background workers\fP\&.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-This only applies if the zone keys are automatically managed by the server.
+Some steps of the DNSSEC signing operation are not parallelized.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP 1 (no extra threads)
+.SS cds\-cdnskey\-publish
+.sp
+Controls if and how shall the CDS and CDNSKEY be published in the zone.
 .sp
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBnone\fP \- Never publish any CDS or CDNSKEY records in the zone.
+\fBnone\fP – Never publish any CDS or CDNSKEY records in the zone.
 .IP \(bu 2
-\fBdelete\-dnssec\fP \- Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
+\fBdelete\-dnssec\fP – Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
 .IP \(bu 2
-\fBalways\fP \- Always publish CDS and CDNSKEY records for the current KSK.
+\fBrollover\fP – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
+.IP \(bu 2
+\fBalways\fP – Always publish one CDS and one CDNSKEY records for the current KSK.
+.IP \(bu 2
+\fBdouble\-ds\fP – Always publish up to two CDS and two CDNSKEY records for ready and/or active KSKs.
 .UNINDENT
 .sp
-\fIDefault:\fP always
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+If the zone keys are managed manually, the CDS and CDNSKEY rrsets may contain
+more records depending on the keys available.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP rollover
+.SS offline\-ksk
+.sp
+Specifies if Offline KSK feature is enabled.
+.sp
+\fIDefault:\fP off
 .SH REMOTE SECTION
 .sp
 Definitions of remote servers for outgoing connections (source of a zone
@@ -980,14 +1085,14 @@ This option is only available in the \fIdefault\fP template.
 A KASP database path. Non\-absolute path is relative to
 \fI\%storage\fP\&.
 .sp
-\fIDefault:\fP \fI\%storage\fP/keys
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
 This option is only available in the \fIdefault\fP template.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP \fI\%storage\fP/keys
 .SS max\-kasp\-db\-size
 .sp
 Hard limit for the KASP database maximum size.
@@ -1226,8 +1331,6 @@ Possible values:
 .sp
 Policy how much space in journal DB will the zone\(aqs journal occupy.
 .sp
-\fIDefault:\fP 100 MiB
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
@@ -1235,6 +1338,8 @@ Journal DB may grow far above the sum of max\-journal\-usage across
 all zones, because of DB free space fragmentation.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP 100 MiB
 .SS max\-journal\-depth
 .sp
 Maximum history length of journal.
@@ -1334,7 +1439,7 @@ There are 6 logging severity levels:
 .IP \(bu 2
 \fBinfo\fP – Informational message.
 .IP \(bu 2
-\fBdebug\fP – Debug messages (must be turned on at compile time).
+\fBdebug\fP – Debug or detailed message.
 .UNINDENT
 .sp
 In the case of missing log section, \fBwarning\fP or more serious messages
@@ -1394,6 +1499,6 @@ Minimum severity level for all message types that are logged.
 .SH AUTHOR
 CZ.NIC Labs <https://www.knot-dns.cz>
 .SH COPYRIGHT
-Copyright 2010–2018, CZ.NIC, z.s.p.o.
+Copyright 2010–2019, CZ.NIC, z.s.p.o.
 .\" Generated by docutils manpage writer.
 .

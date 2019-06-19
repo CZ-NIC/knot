@@ -47,6 +47,9 @@ knot.dnssec(zone).manual = True
 ZONE = "example.com."
 WAIT_SIGN = 2
 
+# needed for keymgr
+knot.gen_confile()
+
 # generate initial keys (one always enabled, one for testing)
 knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0", retire="+1d", remove="+1d")
 knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", ready="+0", active="+0", retire="+1d", remove="+1d")
@@ -88,7 +91,7 @@ t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "deleted, inactive")
 
 # key not published, active (algorithm rotation)
-knot.key_set(ZONE, KEYID, publish="+10y", ready="-10y", active="-10y", retire="0", remove="0")
+knot.key_set(ZONE, KEYID, publish="+10y", ready="+10y", active="+10y", pre_active="-10y", retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, True, "not published, active")
@@ -101,7 +104,7 @@ check_log("Planned events")
 
 # key about to be published
 event_in = 7
-knot.key_set(ZONE, KEYID, publish=("+%d" % event_in), ready="+10y", active="+10y", retire="0", remove="0")
+knot.key_set(ZONE, KEYID, publish=("+%d" % event_in), ready="+10y", active="+10y", pre_active="0", retire="0", remove="0")
 knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "to be published - pre")

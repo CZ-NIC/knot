@@ -2,6 +2,7 @@ prefix=@prefix@
 exec_prefix=@prefix@
 libdir=@libdir@
 includedir=@includedir@
+soname=@libknot_SONAME@
 
 Name: libknot
 Description: Knot DNS library

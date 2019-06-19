@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,15 @@ typedef struct serialize_ctx serialize_ctx_t;
  * \return Context.
  */
 serialize_ctx_t *serialize_init(const changeset_t *ch);
+
+/*!
+ * \brief Init serialization context.
+ *
+ * \param z   Zone to be serialized like zone-in-journal changeset.
+ *
+ * \return Context.
+ */
+serialize_ctx_t *serialize_zone_init(const zone_contents_t *z);
 
 /*!
  * \brief Pre-check and space computation before serializing a chunk.
@@ -69,30 +78,30 @@ void serialize_deinit(serialize_ctx_t *ctx);
 size_t changeset_serialized_size(const changeset_t *ch);
 
 /*!
- * \brief Deserializes chunked area into ch
+ * \brief Simply serialize RRset w/o any chunking.
  *
- * \param[out] ch            The changeset.
- * \param[in]  src_chunks    The chunks to deserialize.
- * \param[in]  chunks_sizes  The size of each chunk.
- * \param[in]  chunks_count  The number of chunks.
- *
- * \retval KNOT_E*
- */
-int changeset_deserialize(changeset_t *ch, uint8_t *src_chunks[],
-                          const size_t *chunks_sizes, size_t chunks_count);
-
-/*!
- * \brief Deserializes single RRSet being part of a changeset serialized in chunks.
- *
- * \param wire[in]           Current chunk ready to be parsed.
- * \param rrset[out]         RRSet to be deserialized (empty before).
- * \param src_chunks[in]     All chunks of the serialized changeset.
- * \param chunk_sizes[in]    Their sizes.
- * \param chunks_count[in]   Their count.
- * \param cur_chunk[in+out]  Index of current chunk.
+ * \param wire
+ * \param rrset
  *
  * \return KNOT_E*
  */
-int deserialize_rrset_chunks(wire_ctx_t *wire, knot_rrset_t *rrset,
-                             uint8_t *src_chunks[], const size_t *chunk_sizes,
-                             size_t chunks_count, size_t *cur_chunk);
+int serialize_rrset(wire_ctx_t *wire, const knot_rrset_t *rrset);
+
+/*!
+ * \brief Simply deserialize RRset w/o any chunking.
+ *
+ * \param wire
+ * \param rrset
+ *
+ * \return KNOT_E*
+ */
+int deserialize_rrset(wire_ctx_t *wire, knot_rrset_t *rrset);
+
+/*!
+ * \brief Space needed to serialize RRset.
+ *
+ * \param rrset RRset.
+ *
+ * \return RRset binary size.
+ */
+size_t rrset_serialized_size(const knot_rrset_t *rrset);

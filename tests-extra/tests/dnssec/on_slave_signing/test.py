@@ -11,6 +11,7 @@ addr = "192.0.0.42"
 def test_update(master, slave, zone):
     #Slave zone diverges from master by re-signing
     for i in range(2):
+        t.sleep(2)
         slave.ctl("zone-sign example.com.")
 
     #Master zone receives an update

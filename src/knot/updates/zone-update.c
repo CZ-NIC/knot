@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "contrib/mempattern.h"
@@ -50,7 +51,11 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 	}
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
-	apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	ret = apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&update->change);
+		return ret;
+	}
 
 	/* Copy base SOA RR. */
 	update->change.soa_from =
@@ -66,14 +71,18 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 
 static int init_full(zone_update_t *update, zone_t *zone)
 {
-	update->new_cont = zone_contents_new(zone->name);
+	update->new_cont = zone_contents_new(zone->name, true);
 	if (update->new_cont == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	update->new_cont_deep_copy = true;
 
-	apply_init_ctx(update->a_ctx, update->new_cont, 0);
+	int ret = apply_init_ctx(update->a_ctx, update->new_cont, 0);
+	if (ret != KNOT_EOK) {
+		zone_contents_free(update->new_cont);
+		return ret;
+	}
 
 	return KNOT_EOK;
 }
@@ -118,6 +127,9 @@ int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents
 		return KNOT_ENOMEM;
 	}
 
+	knot_sem_wait(&zone->cow_lock);
+	update->a_ctx->cow_mutex = &zone->cow_lock;
+
 	int ret = KNOT_EINVAL;
 	if (flags & UPDATE_INCREMENTAL) {
 		ret = init_incremental(update, zone, old_contents, flags & UPDATE_JOURNAL);
@@ -125,6 +137,7 @@ int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents
 		ret = init_full(update, zone);
 	}
 	if (ret != KNOT_EOK) {
+		knot_sem_post(&zone->cow_lock);
 		free(update->a_ctx);
 	}
 
@@ -208,6 +221,9 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		return KNOT_ENOMEM;
 	}
 
+	knot_sem_wait(&update->zone->cow_lock);
+	update->a_ctx->cow_mutex = &update->zone->cow_lock;
+
 	if (flags & UPDATE_INCREMENTAL) {
 		int ret = changeset_init(&update->change, zone_without_contents->name);
 		if (ret != KNOT_EOK) {
@@ -224,7 +240,12 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	}
 
 	uint32_t apply_flags = update->flags & UPDATE_STRICT ? APPLY_STRICT : 0;
-	apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	int ret = apply_init_ctx(update->a_ctx, update->new_cont, apply_flags);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&update->change);
+		free(update->a_ctx);
+		return ret;
+	}
 
 	return KNOT_EOK;
 }
@@ -255,6 +276,17 @@ uint32_t zone_update_current_serial(zone_update_t *update)
 	} else {
 		return 0;
 	}
+}
+
+static bool zone_update_changed_nsec3param(const zone_update_t *update)
+{
+	if (update->zone->contents == NULL) {
+		return true;
+	}
+
+	dnssec_nsec3_params_t *orig = &update->zone->contents->nsec3_params;
+	dnssec_nsec3_params_t *upd = &update->new_cont->nsec3_params;
+	return !dnssec_nsec3_params_match(orig, upd);
 }
 
 const knot_rdataset_t *zone_update_from(zone_update_t *update)
@@ -303,16 +335,28 @@ void zone_update_clear(zone_update_t *update)
 			zone_contents_deep_free(update->new_cont);
 		} else {
 			update_rollback(update->a_ctx);
-			update_free_zone(update->new_cont);
 		}
 		changeset_clear(&update->change);
 	} else if (update->flags & UPDATE_FULL) {
 		assert(update->new_cont_deep_copy);
+		update_cleanup(update->a_ctx);
 		zone_contents_deep_free(update->new_cont);
+	}
+	if (update->a_ctx != NULL && update->a_ctx->cow_mutex != NULL) {
+		knot_sem_post(update->a_ctx->cow_mutex);
 	}
 	free(update->a_ctx);
 	mp_delete(update->mm.ctx);
 	memset(update, 0, sizeof(*update));
+}
+
+static changeset_flag_t changeset_flags(const zone_update_t *update)
+{
+	if ((update->flags & UPDATE_CANCELOUT)) {
+		return CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT;
+	} else {
+		return CHANGESET_CHECK;
+	}
 }
 
 int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
@@ -322,7 +366,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 	}
 
 	if (update->flags & UPDATE_INCREMENTAL) {
-		int ret = changeset_add_addition(&update->change, rrset, CHANGESET_CHECK);
+		int ret = changeset_add_addition(&update->change, rrset, changeset_flags(update));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -378,7 +422,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 	}
 
 	if (update->flags & UPDATE_INCREMENTAL) {
-		int ret = changeset_add_removal(&update->change, rrset, CHANGESET_CHECK);
+		int ret = changeset_add_removal(&update->change, rrset, changeset_flags(update));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -421,7 +465,7 @@ int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_
 				return KNOT_ENOENT;
 			}
 			int ret = changeset_add_removal(&update->change, &rrset,
-			                                CHANGESET_CHECK);
+			                                changeset_flags(update));
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -469,7 +513,7 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 			for (int i = 0; i < rrset_count; ++i) {
 				knot_rrset_t rrset = node_rrset_at(node, rrset_count - 1 - i);
 				int ret = changeset_add_removal(&update->change, &rrset,
-				                                CHANGESET_CHECK);
+				                                changeset_flags(update));
 				if (ret != KNOT_EOK) {
 					return ret;
 				}
@@ -511,7 +555,7 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 {
 	int ret = KNOT_EOK;
 	if (update->flags & UPDATE_INCREMENTAL) {
-		ret = changeset_merge(&update->change, changes, CHANGESET_CHECK_CANCELOUT);
+		ret = changeset_merge(&update->change, changes, changeset_flags(update));
 	}
 	if (ret == KNOT_EOK) {
 		ret = apply_changeset_directly(update->a_ctx, changes);
@@ -584,23 +628,12 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
 	return set_new_soa(update, conf_opt(&val));
 }
 
-static int commit_incremental(conf_t *conf, zone_update_t *update,
-                              zone_contents_t **contents_out)
+static int commit_incremental(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
-	assert(contents_out);
 
-	if (changeset_empty(&update->change)) {
-		changeset_clear(&update->change);
-		if (update->zone->contents == NULL || update->new_cont_deep_copy) {
-			*contents_out = update->new_cont;
-		}
-		return KNOT_EOK;
-	}
-
-	zone_contents_t *new_contents = update->new_cont;
 	int ret = KNOT_EOK;
-	if (zone_update_to(update) == NULL) {
+	if (zone_update_to(update) == NULL && !changeset_empty(&update->change)) {
 		/* No SOA in the update, create one according to the current policy */
 		ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
@@ -609,7 +642,17 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 		}
 	}
 
-	ret = apply_finalize(update->a_ctx);
+	ret = zone_contents_load_nsec3param(update->new_cont);
+	if (ret != KNOT_EOK) {
+		zone_update_clear(update);
+		return ret;
+	}
+
+	if (update->new_cont_deep_copy || zone_update_changed_nsec3param(update)) {
+		ret = zone_adjust_full(update->new_cont);
+	} else {
+		ret = zone_adjust_incremental_update(update);
+	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
 		return ret;
@@ -617,22 +660,19 @@ static int commit_incremental(conf_t *conf, zone_update_t *update,
 
 	/* Write changes to journal if all went well. */
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
-	if (conf_opt(&val) != JOURNAL_CONTENT_NONE) {
+	if (conf_opt(&val) != JOURNAL_CONTENT_NONE && !changeset_empty(&update->change)) {
 		ret = zone_change_store(conf, update->zone, &update->change);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
 
-	*contents_out = new_contents;
-
 	return KNOT_EOK;
 }
 
-static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **contents_out)
+static int commit_full(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
-	assert(contents_out);
 
 	/* Check if we have SOA. We might consider adding full semantic check here.
 	 * But if we wanted full sem-check I'd consider being it controlled by a flag
@@ -641,7 +681,7 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 		return KNOT_ESEMCHECK;
 	}
 
-	int ret = zone_contents_adjust_full(update->new_cont);
+	int ret = zone_adjust_full(update->new_cont);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
 		return ret;
@@ -649,16 +689,14 @@ static int commit_full(conf_t *conf, zone_update_t *update, zone_contents_t **co
 
 	/* Store new zone contents in journal. */
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
-	if (conf_opt(&val) == JOURNAL_CONTENT_ALL) {
+	unsigned content = conf_opt(&val);
+	if (content == JOURNAL_CONTENT_ALL) {
 		ret = zone_in_journal_store(conf, update->zone, update->new_cont);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+	} else if (content != JOURNAL_CONTENT_NONE) { // zone_in_journal_store does this automatically
+		ret = zone_changes_clear(conf, update->zone);
 	}
 
-	*contents_out = update->new_cont;
-
-	return KNOT_EOK;
+	return ret;
 }
 
 /*! \brief Routine for calling call_rcu() easier way.
@@ -704,26 +742,25 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	int ret = KNOT_EOK;
-	zone_contents_t *new_contents = NULL;
 	if (update->flags & UPDATE_INCREMENTAL) {
-		ret = commit_incremental(conf, update, &new_contents);
+		if (changeset_empty(&update->change) &&
+		    update->zone->contents != NULL && !update->new_cont_deep_copy) {
+			changeset_clear(&update->change);
+			return KNOT_EOK;
+		}
+		ret = commit_incremental(conf, update);
 	} else {
-		ret = commit_full(conf, update, &new_contents);
+		ret = commit_full(conf, update);
 	}
 	if (ret != KNOT_EOK) {
 		return ret;
-	}
-
-	/* If there is anything to change. */
-	if (new_contents == NULL) {
-		return KNOT_EOK;
 	}
 
 	/* Check the zone size. */
 	conf_val_t val = conf_zone_get(conf, C_MAX_ZONE_SIZE, update->zone->name);
 	size_t size_limit = conf_int(&val);
 
-	if (new_contents->size > size_limit) {
+	if (update->new_cont->size > size_limit) {
 		/* Recoverable error. */
 		return KNOT_EZONESIZE;
 	}
@@ -736,9 +773,16 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		update->zone->zonefile.resigned = true;
 	}
 
+	/* Abort control transaction if any. */
+	if (update->zone->control_update != NULL &&
+	    update->zone->control_update != update) {
+		log_zone_warning(update->zone->name, "control transaction aborted");
+		zone_control_clear(update->zone);
+	}
+
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
-	old_contents = zone_switch_contents(update->zone, new_contents);
+	old_contents = zone_switch_contents(update->zone, update->new_cont);
 
 	/* Sync RCU. */
 	if (update->flags & UPDATE_FULL) {
@@ -773,27 +817,25 @@ static int iter_init_tree_iters(zone_update_iter_t *it, zone_update_t *update,
 
 	/* Begin iteration. We can safely assume _contents is a valid pointer. */
 	zone_tree_t *tree = nsec3 ? _contents->nsec3_nodes : _contents->nodes;
-	it->tree_it = trie_it_begin(tree);
-	if (it->tree_it == NULL) {
+	if (zone_tree_it_begin(tree, &it->tree_it) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
 
-	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = zone_tree_it_val(&it->tree_it);
 
 	return KNOT_EOK;
 }
 
 static int iter_get_next_node(zone_update_iter_t *it)
 {
-	trie_it_next(it->tree_it);
-	if (trie_it_finished(it->tree_it)) {
-		trie_it_free(it->tree_it);
-		it->tree_it = NULL;
+	zone_tree_it_next(&it->tree_it);
+	if (zone_tree_it_finished(&it->tree_it)) {
+		zone_tree_it_free(&it->tree_it);
 		it->cur_node = NULL;
 		return KNOT_ENOENT;
 	}
 
-	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = zone_tree_it_val(&it->tree_it);
 
 	return KNOT_EOK;
 }
@@ -809,7 +851,7 @@ static int iter_init(zone_update_iter_t *it, zone_update_t *update, const bool n
 		return ret;
 	}
 
-	it->cur_node = (zone_node_t *)(*trie_it_val(it->tree_it));
+	it->cur_node = zone_tree_it_val(&it->tree_it);
 
 	return KNOT_EOK;
 }
@@ -851,7 +893,7 @@ int zone_update_iter_next(zone_update_iter_t *it)
 		return KNOT_EINVAL;
 	}
 
-	if (it->tree_it != NULL) {
+	if (it->tree_it.it != NULL) {
 		int ret = iter_get_next_node(it);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			return ret;
@@ -876,7 +918,7 @@ void zone_update_iter_finish(zone_update_iter_t *it)
 		return;
 	}
 
-	trie_it_free(it->tree_it);
+	zone_tree_it_free(&it->tree_it);
 }
 
 bool zone_update_no_change(zone_update_t *update)

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -326,7 +326,13 @@ int zs_set_input_file(
 		s->input.mmaped = true;
 
 		// Try to set the mapped memory advise to sequential.
+#if defined(MADV_SEQUENTIAL) && !defined(__sun)
 		(void)madvise(start, size, MADV_SEQUENTIAL);
+#else
+#ifdef POSIX_MADV_SEQUENTIAL
+		(void)posix_madvise(start, size, POSIX_MADV_SEQUENTIAL);
+#endif /* POSIX_MADV_SEQUENTIAL */
+#endif /* MADV_SEQUENTIAL && !__sun */
 	}
 
 	// Set the scanner input limits.
@@ -373,6 +379,20 @@ int zs_set_processing(
 	s->process.record = process_record;
 	s->process.error = process_error;
 	s->process.data = data;
+
+	return 0;
+}
+
+__attribute__((visibility("default")))
+int zs_set_processing_comment(
+	zs_scanner_t *s,
+	void (*process_comment)(zs_scanner_t *))
+{
+	if (s == NULL) {
+		return -1;
+	}
+
+	s->process.comment = process_comment;
 
 	return 0;
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,34 +15,36 @@
  */
 
 #include <assert.h>
+#include <pthread.h>
 #include <tap/basic.h>
 #include <tap/files.h>
+#include <unistd.h>
 
 #include "test_conf.h"
 #include "contrib/macros.h"
 #include "contrib/getline.h"
 #include "knot/updates/zone-update.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/node.h"
 #include "libzscanner/scanner.h"
 #include "knot/server/server.h"
 
 static const char *zone_str1 = "test. 600 IN SOA ns.test. m.test. 1 900 300 4800 900 \n";
-static const char *zone_str2 = "test. IN TXT \"test\"\n";
-static const char *add_str   = "test. IN TXT \"test2\"\n";
-static const char *del_str   = "test. IN TXT \"test\"\n";
-static const char *node_str1 = "node.test. IN TXT \"abc\"\n";
-static const char *node_str2 = "node.test. IN TXT \"def\"\n";
+static const char *zone_str2 = "test. 600 IN TXT \"test\"\n";
+static const char *add_str   = "test. 600 IN TXT \"test2\"\n";
+static const char *del_str   = "test. 600 IN TXT \"test\"\n";
+static const char *node_str1 = "node.test. 601 IN TXT \"abc\"\n";
+static const char *node_str2 = "node.test. 601 IN TXT \"def\"\n";
 
 knot_rrset_t rrset;
 
 /*!< \brief Returns true if node contains given RR in its RRSets. */
-static bool node_contains_rr(const zone_node_t *node,
-                             const knot_rrset_t *rrset)
+static bool node_contains_rr(const zone_node_t *node, const knot_rrset_t *data)
 {
-	const knot_rdataset_t *zone_rrs = node_rdataset(node, rrset->type);
+	const knot_rdataset_t *zone_rrs = node_rdataset(node, data->type);
 	if (zone_rrs != NULL) {
-		knot_rdata_t *rr = rrset->rrs.rdata;
-		for (size_t i = 0; i < rrset->rrs.count; ++i) {
+		knot_rdata_t *rr = data->rrs.rdata;
+		for (size_t i = 0; i < data->rrs.count; ++i) {
 			if (!knot_rdataset_member(zone_rrs, rr)) {
 				return false;
 			}
@@ -64,6 +66,52 @@ static void process_rr(zs_scanner_t *scanner)
 	                               scanner->r_data_length, NULL);
 	(void)ret;
 	assert(ret == KNOT_EOK);
+}
+
+static int rr_data_cmp(struct rr_data *a, struct rr_data *b)
+{
+	if (a->type != b->type) {
+		return 1;
+	}
+	if (a->ttl != b->ttl) {
+		return 1;
+	}
+	if (a->rrs.count != b->rrs.count) {
+		return 1;
+	}
+	if (a->rrs.rdata != b->rrs.rdata) {
+		return 1;
+	}
+	if (a->additional != b->additional) {
+		return 1;
+	}
+	return 0;
+}
+
+static int test_node_unified(zone_node_t *n1, void *v)
+{
+	UNUSED(v);
+	zone_node_t *n2 = binode_node(n1, false);
+	if (n2 == n1) {
+		n2 = binode_node(n1, true);
+	}
+	ok(n1->owner == n2->owner, "binode %s has equal %s owner", n1->owner, n2->owner);
+	ok(n1->rrset_count == n2->rrset_count, "binode %s has equal rrset_count", n1->owner);
+	for (uint16_t i = 0; i < n1->rrset_count; i++) {
+		ok(rr_data_cmp(&n1->rrs[i], &n2->rrs[i]) == 0, "binode %s has equal rrs", n1->owner);
+	}
+	if (n1->flags & NODE_FLAGS_BINODE) {
+		ok((n1->flags ^ n2->flags) == NODE_FLAGS_SECOND, "binode %s has correct flags", n1->owner);
+	}
+	ok(n1->children == n2->children, "binode %s has equal children count", n1->owner);
+	return KNOT_EOK;
+}
+
+static void test_zone_unified(zone_t *z)
+{
+	knot_sem_wait(&z->cow_lock);
+	zone_tree_apply(z->contents->nodes, test_node_unified, NULL);
+	knot_sem_post(&z->cow_lock);
 }
 
 void test_full(zone_t *zone, zs_scanner_t *sc)
@@ -177,7 +225,9 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	ret = zone_update_commit(conf(), &update);
 	node = zone_contents_find_node_for_rr(zone->contents, &rrset);
 	rrset_present = node_contains_rr(node, &rrset);
-	ok(ret == KNOT_EOK && rrset_present, "full zone update: commit");
+	ok(ret == KNOT_EOK && rrset_present, "full zone update: commit (max TTL: %u)", zone->contents->max_ttl);
+
+	test_zone_unified(zone);
 
 	knot_rdataset_clear(&rrset.rrs, NULL);
 }
@@ -279,7 +329,19 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	rrset_present = node_contains_rr(iter_node, &rrset);
 	ok(ret == KNOT_EOK && rrset_present, "incremental zone update: commit");
 
+	test_zone_unified(zone);
+
 	knot_rdataset_clear(&rrset.rrs, NULL);
+
+	size_t zone_size1 = zone->contents->size;
+	uint32_t zone_max_ttl1 = zone->contents->max_ttl;
+	ret = zone_adjust_full(zone->contents);
+	ok(ret == KNOT_EOK, "zone adjust full shall work");
+	size_t zone_size2 = zone->contents->size;
+	uint32_t zone_max_ttl2 = zone->contents->max_ttl;
+	ok(zone_size1 == zone_size2, "zone size measured the same incremental vs full (%zu, %zu)", zone_size1, zone_size2);
+	ok(zone_max_ttl1 == zone_max_ttl2, "zone max TTL measured the same incremental vs full (%u, %u)", zone_max_ttl1, zone_max_ttl2);
+	// TODO test more things after re-adjust, search for non-unified bi-nodes
 }
 
 int main(int argc, char *argv[])
@@ -311,7 +373,7 @@ int main(int argc, char *argv[])
 	knot_dname_t *apex = knot_dname_from_str_alloc("test");
 	assert(apex);
 	zone_t *zone = zone_new(apex);
-	zone->journal_db = &server.journal_db;
+	zone->journaldb = &server.journaldb;
 
 	/* Setup zscanner */
 	zs_scanner_t sc;

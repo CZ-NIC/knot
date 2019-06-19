@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,38 +27,38 @@
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
+#include "knot/zone/adjust.h"
 
-static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
-		     kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
+static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
+		     knot_lmdb_db_t *kaspdb, kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
 {
 	assert(zone);
 	assert(ctx);
 
 	const knot_dname_t *zone_name = zone->apex->owner;
 
-	int r = kdnssec_ctx_init(conf(), ctx, zone_name, NULL);
+	int r = kdnssec_ctx_init(conf(), ctx, zone_name, kaspdb, NULL);
 	if (r != KNOT_EOK) {
 		return r;
 	}
 
 	// perform nsec3resalt if pending
 
-	if (roll_flags & KEY_ROLL_DO_NSEC3RESALT) {
+	if (roll_flags & KEY_ROLL_ALLOW_NSEC3RESALT) {
 		r = knot_dnssec_nsec3resalt(ctx, &reschedule->last_nsec3resalt, &reschedule->next_nsec3resalt);
 		if (r != KNOT_EOK) {
 			return r;
 		}
 	}
 
+	// update policy based on the zone content
+	update_policy_from_zone(ctx->policy, zone);
+
 	// perform key rollover if needed
 	r = knot_dnssec_key_rollover(ctx, roll_flags, reschedule);
 	if (r != KNOT_EOK) {
 		return r;
 	}
-
-	// update policy based on the zone content
-
-	update_policy_from_zone(ctx->policy, zone);
 
 	// RRSIG handling
 
@@ -68,9 +68,10 @@ static int sign_init(const zone_contents_t *zone, zone_sign_flags_t flags, zone_
 }
 
 static knot_time_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
-				 knot_time_t zone_expire)
+				 knot_time_t keys_expire, knot_time_t rrsigs_expire)
 {
-	knot_time_t zone_refresh = knot_time_add(zone_expire, -(knot_timediff_t)kctx->policy->rrsig_refresh_before);
+	knot_time_t rrsigs_refresh = knot_time_add(rrsigs_expire, -(knot_timediff_t)kctx->policy->rrsig_refresh_before);
+	knot_time_t zone_refresh = knot_time_min(keys_expire, rrsigs_refresh);
 
 	knot_time_t dnskey_update = knot_get_next_zone_key_event(keyset);
 	knot_time_t next = knot_time_min(zone_refresh, dnskey_update);
@@ -102,8 +103,6 @@ static int generate_salt(dnssec_binary_t *salt, uint16_t length)
 	return KNOT_EOK;
 }
 
-// TODO preserve the resalt timeout in timers-db instead of kasp_db
-
 int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_time_t *when_resalt)
 {
 	int ret = KNOT_EOK;
@@ -121,7 +120,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 	} else if (knot_time_cmp(ctx->now, ctx->zone->nsec3_salt_created) < 0) {
 		return KNOT_EINVAL;
 	} else {
-		*when_resalt = ctx->zone->nsec3_salt_created + ctx->policy->nsec3_salt_lifetime;
+		*when_resalt = knot_time_plus(ctx->zone->nsec3_salt_created, ctx->policy->nsec3_salt_lifetime);
 	}
 
 	if (knot_time_cmp(*when_resalt, ctx->now) <= 0) {
@@ -132,7 +131,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 			*salt_changed = ctx->now;
 		}
 		// continue to planning next resalt even if NOK
-		*when_resalt = knot_time_add(ctx->now, ctx->policy->nsec3_salt_lifetime);
+		*when_resalt = knot_time_plus(ctx->now, ctx->policy->nsec3_salt_lifetime);
 	}
 
 	return ret;
@@ -154,7 +153,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	// signing pipeline
 
-	result = sign_init(update->new_cont, flags, roll_flags, &ctx, reschedule);
+	result = sign_init(update->new_cont, flags, roll_flags, update->zone->kaspdb, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -170,14 +169,20 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	log_zone_info(zone_name, "DNSSEC, signing started");
 
-	result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx);
+	knot_time_t next_resign = 0;
+	result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &next_resign);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
 			       knot_strerror(result));
 		goto done;
 	}
 
-	result = knot_zone_create_nsec_chain(update, &keyset, &ctx, false);
+	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false);
+	if (result != KNOT_EOK) {
+		return result;
+	};
+
+	result = knot_zone_create_nsec_chain(update, &keyset, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to create NSEC%s chain (%s)",
 		               ctx.policy->nsec3_enabled ? "3" : "",
@@ -217,7 +222,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 done:
 	if (result == KNOT_EOK) {
-		reschedule->next_sign = schedule_next(&ctx, &keyset, zone_expire);
+		reschedule->next_sign = schedule_next(&ctx, &keyset, next_resign, zone_expire);
 	}
 
 	free_zone_keys(&keyset);
@@ -237,9 +242,11 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
 
+	update->flags |= UPDATE_CANCELOUT;
+
 	// signing pipeline
 
-	result = sign_init(update->new_cont, 0, 0, &ctx, reschedule);
+	result = sign_init(update->new_cont, 0, 0, update->zone->kaspdb, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -253,6 +260,11 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
+	result = zone_adjust_update(update, adjust_cb_flags, NULL, false);
+	if (result != KNOT_EOK) {
+		goto done;
+	}
+
 	knot_time_t expire_at = 0;
 	result = knot_zone_sign_update(update, &keyset, &ctx, &expire_at);
 	if (result != KNOT_EOK) {
@@ -261,7 +273,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
-	result = knot_zone_fix_nsec_chain(update, &keyset, &ctx, true);
+	result = knot_zone_fix_nsec_chain(update, &keyset, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to fix NSEC%s chain (%s)",
 		               ctx.policy->nsec3_enabled ? "3" : "",
@@ -295,7 +307,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 
 done:
 	if (result == KNOT_EOK) {
-		reschedule->next_sign = schedule_next(&ctx, &keyset, expire_at);
+		reschedule->next_sign = schedule_next(&ctx, &keyset, 0, expire_at);
 	}
 
 	free_zone_keys(&keyset);

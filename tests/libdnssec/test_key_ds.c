@@ -83,7 +83,7 @@ static void test_errors(const struct key_parameters *params)
 	r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, NULL);
 	is_int(DNSSEC_EINVAL, r, "dnssec_key_create_ds() no RDATA buffer");
 
-	r = dnssec_key_create_ds(key, 13, &ds);
+	r = dnssec_key_create_ds(key, 3, &ds);
 	is_int(DNSSEC_INVALID_DS_ALGORITHM, r, "dnssec_key_create_ds() unsupported algorithm");
 
 	r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, &ds);

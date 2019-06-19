@@ -1,0 +1,22 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	CSYNC	0	0			; The simplest variant - without bitmap
+@	CSYNC	4294967295 65535		; Maximal numbers
+@	CSYNC	0	0	TYPE0		; Minimal type number
+@	CSYNC	0	0	TYPE65535	; Maximal type number
+@	CSYNC	0	0	TYPE0 A NS	; First bitmap window
+@	CSYNC	0	0	TYPE0 TYPE256 TYPE512 TYPE32768	; First, second, third and 128. bitmap window
+@	TYPE62	\# 6 000000000000		; TYPE + Hexadecimal rdata
+@	TYPE62	0	0			; TYPE
+@	csync	0	0			; Type in lower-case
+
+; KO
+@	CSYNC
+@	CSYNC					; Empty rdata
+@	CSYNC	\# 0				; Hex empty rdata
+@	CSYNC	4294967296 0			; Serial overflow
+@	CSYNC	0	65536			; Flags overflow
+@	CSYNC	0	0	TYPE65536	; Type number overflow
+@	CSYNC	0	0	X		; Unknown type

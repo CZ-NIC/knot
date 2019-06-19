@@ -22,6 +22,8 @@ void debug_process_error(zs_scanner_t *scanner);
 
 void debug_process_record(zs_scanner_t *scanner);
 
+void debug_process_comment(zs_scanner_t *scanner);
+
 void test_process_error(zs_scanner_t *scanner);
 
 void test_process_record(zs_scanner_t *scanner);

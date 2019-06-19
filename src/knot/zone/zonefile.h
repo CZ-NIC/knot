@@ -79,7 +79,7 @@ zone_contents_t *zonefile_load(zloader_t *loader);
  *
  * \return KNOT_E*
  */
-int zonefile_exists(const char *path, time_t *mtime);
+int zonefile_exists(const char *path, struct timespec *mtime);
 
 /*!
  * \brief Write zone contents to zone file.

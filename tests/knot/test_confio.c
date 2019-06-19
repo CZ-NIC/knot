@@ -209,11 +209,12 @@ static void test_conf_io_abort(void)
 	SKIP_OPENBSD
 #else
 	// Test child persistence after subchild abort.
-
-	ok(conf_io_begin(false) == KNOT_EOK, "begin parent txn");
-	char idx[2] = { '0' };
-	ok(conf_io_set("server", "version", NULL, idx) ==
-	   KNOT_EOK, "set single value '%s'", idx);
+	{
+		char idx[2] = { '0' };
+		ok(conf_io_begin(false) == KNOT_EOK, "begin parent txn");
+		ok(conf_io_set("server", "version", NULL, idx) ==
+		   KNOT_EOK, "set single value '%s'", idx);
+	}
 
 	for (int i = 1; i < CONF_MAX_TXN_DEPTH; i++) {
 		char idx[2] = { '0' + i };
@@ -265,11 +266,12 @@ static void test_conf_io_commit(void)
 	SKIP_OPENBSD
 #else
 	// Test subchild persistence after commit.
-
-	ok(conf_io_begin(false) == KNOT_EOK, "begin parent txn");
-	char idx[2] = { '0' };
-	ok(conf_io_set("server", "version", NULL, idx) ==
-	   KNOT_EOK, "set single value '%s'", idx);
+	{
+		char idx[2] = { '0' };
+		ok(conf_io_begin(false) == KNOT_EOK, "begin parent txn");
+		ok(conf_io_set("server", "version", NULL, idx) ==
+		   KNOT_EOK, "set single value '%s'", idx);
+	}
 
 	for (int i = 1; i < CONF_MAX_TXN_DEPTH; i++) {
 		char idx[2] = { '0' + i };
@@ -294,7 +296,7 @@ static void test_conf_io_commit(void)
 	ok(conf_io_begin(false) == KNOT_EOK, "begin new parent txn");
 	conf_val_t val = conf_get_txn(conf(), conf()->io.txn, C_SERVER, C_VERSION);
 	ok(val.code == KNOT_EOK, "check entry");
-	idx[0] = '0' + CONF_MAX_TXN_DEPTH - 1;
+	char idx[2] = { '0' + CONF_MAX_TXN_DEPTH - 1 };
 	const char *data = conf_str(&val);
 	ok(strcmp(data, idx) == 0, "compare final data '%s'", data);
 	conf_io_abort(false);

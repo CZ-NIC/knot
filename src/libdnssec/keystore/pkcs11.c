@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include "libdnssec/keystore.h"
 #include "libdnssec/keystore/internal.h"
 #include "libdnssec/p11/p11.h"
-#include "libdnssec/shared/pem.h"
+#include "libdnssec/pem.h"
 #include "libdnssec/shared/shared.h"
 
 #ifdef ENABLE_PKCS11
@@ -147,7 +147,7 @@ static void disable_pkcs11_callbacks(void)
 	gnutls_pkcs11_set_token_function(NULL, NULL);
 }
 
-static int pkcs11_ctx_new(void **ctx_ptr, _unused_ void *data)
+static int pkcs11_ctx_new(void **ctx_ptr)
 {
 	static pthread_once_t once = PTHREAD_ONCE_INIT;
 	pthread_once(&once, disable_pkcs11_callbacks);
@@ -162,13 +162,9 @@ static int pkcs11_ctx_new(void **ctx_ptr, _unused_ void *data)
 	return DNSSEC_EOK;
 }
 
-static int pkcs11_ctx_free(void *ctx)
+static void pkcs11_ctx_free(void *ctx)
 {
-	if (ctx) {
-		free(ctx);
-	}
-
-	return DNSSEC_EOK;
+	free(ctx);
 }
 
 static int pkcs11_init(void *ctx, const char *config)
@@ -198,62 +194,6 @@ static int pkcs11_close(void *_ctx)
 	free(ctx->url);
 	clear_struct(ctx);
 
-	return DNSSEC_EOK;
-}
-
-static char *get_object_id(gnutls_pkcs11_obj_t object)
-{
-	assert(object);
-
-	uint8_t buffer[DNSSEC_KEYID_BINARY_SIZE] = { 0 };
-	size_t size = sizeof(buffer);
-
-	int r = gnutls_pkcs11_obj_get_info(object, GNUTLS_PKCS11_OBJ_ID, buffer, &size);
-	if (r != GNUTLS_E_SUCCESS || size != sizeof(buffer)) {
-		return NULL;
-	}
-
-	char *id = bin_to_hex(buffer, sizeof(buffer));
-	if (id == NULL) {
-		return NULL;
-	}
-
-	assert(strlen(id) == DNSSEC_KEYID_SIZE);
-
-	return id;
-}
-
-static int pkcs11_list_keys(void *_ctx, dnssec_list_t **list)
-{
-	pkcs11_ctx_t *ctx = _ctx;
-
-	dnssec_list_t *ids = dnssec_list_new();
-	if (!ids) {
-		return DNSSEC_ENOMEM;
-	}
-
-	gnutls_pkcs11_obj_t *objects = NULL;
-	unsigned count = 0;
-
-	int flags = GNUTLS_PKCS11_OBJ_FLAG_PRIVKEY |
-		    GNUTLS_PKCS11_OBJ_FLAG_LOGIN;
-
-	int r = gnutls_pkcs11_obj_list_import_url4(&objects, &count, ctx->url, flags);
-	if (r != GNUTLS_E_SUCCESS) {
-		dnssec_list_free(ids);
-		return DNSSEC_P11_TOKEN_NOT_AVAILABLE;
-	}
-
-	for (unsigned i = 0; i < count; i++) {
-		gnutls_pkcs11_obj_t object = objects[i];
-		char *id = get_object_id(object);
-		dnssec_list_append(ids, id);
-		gnutls_pkcs11_obj_deinit(object);
-	}
-
-	gnutls_free(objects);
-
-	*list = ids;
 	return DNSSEC_EOK;
 }
 
@@ -291,7 +231,7 @@ static int import_pem(const dnssec_binary_t *pem,
 	gnutls_privkey_t key = NULL;
 	gnutls_pubkey_t pubkey = NULL;
 
-	int r = pem_x509(pem, &x509_key);
+	int r = dnssec_pem_to_x509(pem, &x509_key);
 	if (r != DNSSEC_EOK) {
 		goto fail;
 	}
@@ -422,14 +362,13 @@ int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store_ptr)
 		.init         = pkcs11_init,
 		.open         = pkcs11_open,
 		.close        = pkcs11_close,
-		.list_keys    = pkcs11_list_keys,
 		.generate_key = pkcs11_generate_key,
 		.import_key   = pkcs11_import_key,
 		.remove_key   = pkcs11_remove_key,
 		.get_private  = pkcs11_get_private,
 	};
 
-	return keystore_create(store_ptr, &IMPLEMENTATION, NULL);
+	return keystore_create(store_ptr, &IMPLEMENTATION);
 }
 
 #else // !ENABLE_PKCS11

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -65,16 +65,13 @@
  */
 
 #define REFRESH_LOG(priority, zone, remote, msg...) \
-	ns_log(priority, zone, LOG_OPERATION_REFRESH, LOG_DIRECTION_OUT, remote, msg)
-
-#define _XFRIN_LOG(priority, operation, zone, remote, msg...) \
-	ns_log(priority, zone, operation, LOG_DIRECTION_IN, remote, msg)
+	ns_log(priority, zone, LOG_OPERATION_REFRESH, LOG_DIRECTION_NONE, remote, msg)
 
 #define AXFRIN_LOG(priority, zone, remote, msg...) \
-	_XFRIN_LOG(priority, LOG_OPERATION_AXFR, zone, remote, msg)
+	ns_log(priority, zone, LOG_OPERATION_AXFR, LOG_DIRECTION_IN, remote, msg)
 
 #define IXFRIN_LOG(priority, zone, remote, msg...) \
-	_XFRIN_LOG(priority, LOG_OPERATION_IXFR, zone, remote, msg)
+	ns_log(priority, zone, LOG_OPERATION_IXFR, LOG_DIRECTION_IN, remote, msg)
 
 #define BOOTSTRAP_MAXTIME (24*60*60)
 #define BOOTSTRAP_JITTER (30)
@@ -109,6 +106,7 @@ struct refresh_data {
 	enum xfr_type xfr_type;           //!< Transer type (mostly IXFR versus AXFR).
 	knot_rrset_t *initial_soa_copy;   //!< Copy of the received initial SOA.
 	struct xfr_stats stats;           //!< Transfer statistics.
+	struct timespec started;          //!< When refresh started.
 	size_t change_size;               //!< Size of added and removed RRs.
 
 	struct {
@@ -174,26 +172,28 @@ static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 	return KNOT_EOK;
 }
 
-static void xfr_log_publish(const knot_dname_t *zone_name,
-                            const struct sockaddr *remote,
+static void xfr_log_publish(const struct refresh_data *data,
                             const uint32_t old_serial,
                             const uint32_t new_serial,
                             bool axfr_bootstrap)
 {
+	struct timespec finished = time_now();
+	double duration = time_diff_ms(&data->started, &finished) / 1000.0;
+
 	if (!axfr_bootstrap) {
-		REFRESH_LOG(LOG_INFO, zone_name, remote,
-		            "zone updated, serial %u -> %u",
-		            old_serial, new_serial);
+		REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
+		            "zone updated, %0.2f seconds, serial %u -> %u",
+		            duration, old_serial, new_serial);
 	} else {
-		REFRESH_LOG(LOG_INFO, zone_name, remote,
-		            "zone updated, serial none -> %u",
-		            new_serial);
+		REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
+		            "zone updated, %0.2f seconds, serial none -> %u",
+		            duration, new_serial);
 	}
 }
 
 static int axfr_init(struct refresh_data *data)
 {
-	zone_contents_t *new_zone = zone_contents_new(data->zone->name);
+	zone_contents_t *new_zone = zone_contents_new(data->zone->name, true);
 	if (new_zone == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -212,12 +212,7 @@ static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
 
-	int ret = zone_contents_adjust_full(new_zone);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = xfr_validate(new_zone, data);
+	int ret = xfr_validate(new_zone, data);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -247,7 +242,7 @@ static int axfr_finalize(struct refresh_data *data)
 	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
-		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
+		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_ALL, &resch);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			return ret;
@@ -272,8 +267,7 @@ static int axfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	xfr_log_publish(data->zone->name, data->remote, old_serial,
-	                zone_contents_serial(new_zone), bootstrap);
+	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone), bootstrap);
 
 	return KNOT_EOK;
 }
@@ -490,8 +484,7 @@ static int ixfr_finalize(struct refresh_data *data)
 				"unable to save master serial, future transfers might be broken");
 			}
 		}
-		xfr_log_publish(data->zone->name, data->remote, old_serial,
-		                zone_contents_serial(up.zone->contents), false);
+		xfr_log_publish(data, old_serial, zone_contents_serial(up.zone->contents), false);
 	} else {
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to store changes (%s)", knot_strerror(ret));
@@ -818,13 +811,14 @@ static int soa_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	query_init_pkt(pkt);
 
-	int r = knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-	if (r != KNOT_EOK) {
+	int ret = knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN,
+	                                KNOT_RRTYPE_SOA);
+	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
 
-	r = query_put_edns(pkt, &data->edns);
-	if (r != KNOT_EOK) {
+	ret = query_put_edns(pkt, &data->edns);
+	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
 
@@ -878,17 +872,21 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
 
+	query_init_pkt(pkt);
+
 	bool ixfr = (data->xfr_type == XFR_TYPE_IXFR);
 
-	query_init_pkt(pkt);
-	knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN,
-	                      ixfr ? KNOT_RRTYPE_IXFR : KNOT_RRTYPE_AXFR);
+	int ret = knot_pkt_put_question(pkt, data->zone->name, KNOT_CLASS_IN,
+	                                ixfr ? KNOT_RRTYPE_IXFR : KNOT_RRTYPE_AXFR);
+	if (ret != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
 
 	if (ixfr) {
 		assert(data->soa);
 		knot_rrset_t *sending_soa = knot_rrset_copy(data->soa, data->mm);
 		uint32_t master_serial;
-		int ret = zone_get_master_serial(data->zone, &master_serial);
+		ret = zone_get_master_serial(data->zone, &master_serial);
 		if (ret != KNOT_EOK) {
 			log_zone_error(data->zone->name, "Failed reading master's serial"
 			               "from KASP DB (%s)", knot_strerror(ret));
@@ -903,7 +901,10 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		knot_rrset_free(sending_soa, data->mm);
 	}
 
-	query_put_edns(pkt, &data->edns);
+	ret = query_put_edns(pkt, &data->edns);
+	if (ret != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
 
 	return KNOT_STATE_CONSUME;
 }
@@ -969,6 +970,8 @@ static int refresh_begin(knot_layer_t *layer, void *_data)
 		data->xfr_type = XFR_TYPE_AXFR;
 		data->initial_soa_copy = NULL;
 	}
+
+	data->started = time_now();
 
 	return KNOT_STATE_PRODUCE;
 }

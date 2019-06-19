@@ -36,6 +36,9 @@ master.dnssec(nsec_zone).alg = "rsasha1"
 master.dnssec(nsec3_zone).alg = "rsasha1"
 master.dnssec(nsec3_zone).nsec3 = True
 master.dnssec(static_zone).alg = "rsasha1"
+master.dnssec(nsec_zone).cds_publish = "rollover"
+master.dnssec(nsec3_zone).cds_publish = "rollover"
+master.dnssec(static_zone).cds_publish = "rollover"
 
 # install KASP db
 shutil.copytree(os.path.join(t.data_dir, "keys"), master.keydir)

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -115,6 +115,53 @@
 		prefix ## _dynarray_arr(dynarray)[dynarray->size++] = *to_add; \
 	} \
 	\
+	__attribute__((unused)) \
+	visibility void prefix ## _dynarray_remove(struct prefix ## _dynarray *dynarray, \
+	                                           ntype const *to_remove) \
+	{ \
+		ntype *orig_arr = prefix ## _dynarray_arr(dynarray); \
+		dynarray_foreach(prefix, ntype, removable, *dynarray) { \
+			if (memcmp(removable, to_remove, sizeof(*to_remove)) == 0) { \
+				if (removable != orig_arr + --dynarray->size) { \
+					*removable = orig_arr[dynarray->size]; \
+				} \
+			} \
+		} /* TODO enable lowering capacity, take care of capacity going back to initial! */ \
+	} \
+	\
+	__attribute__((unused)) \
+	static int prefix ## _dynarray_memb_cmp(const void *a, const void *b) { \
+		return memcmp(a, b, sizeof(ntype)); \
+	} \
+	\
+	__attribute__((unused)) \
+	visibility void prefix ## _dynarray_sort(struct prefix ## _dynarray *dynarray) \
+	{ \
+		ntype *arr = prefix ## _dynarray_arr(dynarray); \
+		qsort(arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
+	} \
+	\
+	__attribute__((unused)) \
+	visibility void prefix ## _dynarray_sort_dedup(struct prefix ## _dynarray *dynarray) \
+	{ \
+		if (dynarray->size > 1) { \
+			prefix ## _dynarray_sort(dynarray); \
+			ntype *arr = prefix ## _dynarray_arr(dynarray); \
+			ntype *rd = arr + 1; \
+			ntype *wr = arr + 1; \
+			ntype *end = arr + dynarray->size; \
+			while (rd != end) { \
+				if (memcmp(rd - 1, rd, sizeof(*rd)) != 0) { \
+					if (wr != rd) { \
+						*wr = *rd; \
+					} \
+					wr++; \
+				} \
+				rd++; \
+			} \
+			dynarray->size = wr - arr; \
+		} \
+	} \
 	__attribute__((unused)) \
 	visibility void prefix ## _dynarray_free(struct prefix ## _dynarray *dynarray) \
 	{ \

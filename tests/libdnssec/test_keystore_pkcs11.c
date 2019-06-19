@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -234,7 +234,7 @@ static void create_dnskeys(dnssec_keystore_t *keystore,
 	r = dnssec_key_set_algorithm(p11_key, algorithm);
 	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_set_key_algorithm()");
 
-	r = dnssec_key_import_keystore(p11_key, keystore, id);
+	r = dnssec_keystore_export(keystore, id, p11_key);
 	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_key_import_keystore()");
 
 	// construct software public key
@@ -336,8 +336,8 @@ static void test_algorithm(dnssec_keystore_t *store,
 
 	diag("algorithm %d, generated key", params->algorithm);
 
-	r = dnssec_keystore_generate_key(store, params->algorithm, params->bit_size, &id_generate);
-	ok(r == DNSSEC_EOK && id_generate != NULL, "dnssec_keystore_generate_key()");
+	r = dnssec_keystore_generate(store, params->algorithm, params->bit_size, &id_generate);
+	ok(r == DNSSEC_EOK && id_generate != NULL, "dnssec_keystore_generate()");
 	test_key_use(store, params->algorithm, id_generate);
 
 	diag("algorithm %d, imported key", params->algorithm);
@@ -348,64 +348,6 @@ static void test_algorithm(dnssec_keystore_t *store,
 
 	free(id_generate);
 	free(id_import);
-}
-
-static void test_key_listing(dnssec_keystore_t *store,
-			     const key_parameters_t **key_params, int count)
-{
-	dnssec_list_t *keys = NULL;
-	int r = dnssec_keystore_list_keys(store, &keys);
-	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == count * 2,
-	   "dnssec_keystore_list_keys(), two keys per algorithm");
-
-	bool imported_found[count];
-	for (int i = 0; i < count; i++) {
-		imported_found[i] = false;
-	}
-
-	dnssec_list_foreach(item, keys) {
-		const char *id = dnssec_item_get(item);
-		for (int i = 0; i < count; i++) {
-			if (strcmp(id, key_params[i]->key_id) == 0) {
-				imported_found[i] = true;
-				break;
-			}
-		}
-	}
-
-	int imported_count = 0;
-	for (int i = 0; i < count; i++) {
-		imported_count += imported_found[i] ? 1 : 0;
-	}
-
-	ok(imported_count == count, "list contains key for all algorithms");
-	dnssec_list_free_full(keys, NULL, NULL);
-
-	// key removal
-
-	assert(count > 0);
-	const key_parameters_t *key_remove = key_params[0];
-
-	r = dnssec_keystore_remove_key(store, key_remove->key_id);
-	ok(r == DNSSEC_EOK, "dnssec_keystore_remove_key");
-
-	keys = NULL;
-	r = dnssec_keystore_list_keys(store, &keys);
-	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == count * 2 - 1,
-	   "dnssec_keystore_list_keys(), one less key than before");
-
-	bool removed_found = false;
-	dnssec_list_foreach(item, keys) {
-		const char *id = dnssec_item_get(item);
-		if (strcmp(id, key_remove->key_id) == 0) {
-			removed_found = true;
-			break;
-		}
-	}
-
-	ok(!removed_found, "dnssec_keystore_list_keys(), removed key not found");
-
-	dnssec_list_free_full(keys, NULL, NULL);
 }
 
 int main(int argc, char *argv[])
@@ -453,11 +395,6 @@ int main(int argc, char *argv[])
 	r = dnssec_keystore_open(store, config);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_open()");
 
-	dnssec_list_t *keys = NULL;
-	r = dnssec_keystore_list_keys(store, &keys);
-	ok(r == DNSSEC_EOK && dnssec_list_size(keys) == 0, "dnssec_keystore_list_keys(), empty");
-	dnssec_list_free_full(keys, NULL, NULL);
-
 	// key manipulation
 
 	static const int KEYS_COUNT = 2;
@@ -470,8 +407,6 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < KEYS_COUNT; i++) {
 		test_algorithm(store, KEYS[i]);
 	}
-
-	test_key_listing(store, KEYS, KEYS_COUNT);
 
 	r = dnssec_keystore_close(store);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_close()");

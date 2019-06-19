@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,96 +53,28 @@ static int add_rr_to_contents(zone_contents_t *z, const knot_rrset_t *rrset)
 	return ret == KNOT_ETTL ? KNOT_EOK : ret;
 }
 
-/*! \brief Cleans up trie iterations. */
-static void cleanup_iter_list(list_t *l)
-{
-	ptrnode_t *n, *nxt;
-	WALK_LIST_DELSAFE(n, nxt, *l) {
-		trie_it_t *it = (trie_it_t *)n->d;
-		trie_it_free(it);
-		rem_node(&n->n);
-		free(n);
-	}
-	init_list(l);
-}
-
 /*! \brief Inits changeset iterator with given tries. */
 static int changeset_iter_init(changeset_iter_t *ch_it, size_t tries, ...)
 {
 	memset(ch_it, 0, sizeof(*ch_it));
-	init_list(&ch_it->iters);
 
 	va_list args;
 	va_start(args, tries);
 
+	assert(tries <= sizeof(ch_it->trees) / sizeof(*ch_it->trees));
 	for (size_t i = 0; i < tries; ++i) {
-		trie_t *t = va_arg(args, trie_t *);
+		zone_tree_t *t = va_arg(args, zone_tree_t *);
 		if (t == NULL) {
 			continue;
 		}
 
-		trie_it_t *it = trie_it_begin(t);
-		if (it == NULL) {
-			cleanup_iter_list(&ch_it->iters);
-			va_end(args);
-			return KNOT_ENOMEM;
-		}
-
-		if (ptrlist_add(&ch_it->iters, it, NULL) == NULL) {
-			cleanup_iter_list(&ch_it->iters);
-			va_end(args);
-			return KNOT_ENOMEM;
-		}
+		ch_it->trees[ch_it->n_trees++] = t;
 	}
 
 	va_end(args);
 
-	return KNOT_EOK;
-}
-
-/*! \brief Gets next node from trie iterators. */
-static void iter_next_node(changeset_iter_t *ch_it, trie_it_t *t_it)
-{
-	assert(!trie_it_finished(t_it));
-	// Get next node, but not for the very first call.
-	if (ch_it->node) {
-		trie_it_next(t_it);
-	}
-	if (trie_it_finished(t_it)) {
-		ch_it->node = NULL;
-		return;
-	}
-
-	ch_it->node = (zone_node_t *)*trie_it_val(t_it);
-	assert(ch_it->node);
-	while (ch_it->node && ch_it->node->rrset_count == 0) {
-		// Skip empty non-terminals.
-		trie_it_next(t_it);
-		if (trie_it_finished(t_it)) {
-			ch_it->node = NULL;
-		} else {
-			ch_it->node = (zone_node_t *)*trie_it_val(t_it);
-			assert(ch_it->node);
-		}
-	}
-
-	ch_it->node_pos = 0;
-}
-
-/*! \brief Gets next RRSet from trie iterators. */
-static knot_rrset_t get_next_rr(changeset_iter_t *ch_it, trie_it_t *t_it)
-{
-	if (ch_it->node == NULL || ch_it->node_pos == ch_it->node->rrset_count) {
-		iter_next_node(ch_it, t_it);
-		if (ch_it->node == NULL) {
-			assert(trie_it_finished(t_it));
-			knot_rrset_t rr;
-			knot_rrset_init_empty(&rr);
-			return rr;
-		}
-	}
-
-	return node_rrset_at(ch_it->node, ch_it->node_pos++);
+	assert(ch_it->n_trees);
+	return zone_tree_it_begin(ch_it->trees[0], &ch_it->it);
 }
 
 // removes from counterpart what is in rr.
@@ -166,14 +98,16 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
 	uint32_t rrs_ttl = node_rrset(node, rr->type).ttl;
 
-	if (fixed_rr != NULL && *fixed_rr != NULL && (*fixed_rr)->ttl == rrs_ttl) {
+	if (fixed_rr != NULL && *fixed_rr != NULL &&
+	    ((*fixed_rr)->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG)) {
 		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return;
 		}
 	}
 
-	if (rr->ttl == rrs_ttl) {
+	// TTL of RRSIGs is better determined by original_ttl field, which is compared as part of rdata anyway
+	if (rr->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG) {
 		int ret = knot_rdataset_subtract(rrs, &rr->rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return;
@@ -188,7 +122,7 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 			// Remove empty node.
 			zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
 			                 counterpart->nsec3_nodes : counterpart->nodes;
-			zone_tree_delete_empty(t, node);
+			zone_tree_del_node(t, node, (zone_tree_del_node_cb_t)node_free, NULL);
 		}
 	}
 
@@ -200,11 +134,11 @@ int changeset_init(changeset_t *ch, const knot_dname_t *apex)
 	memset(ch, 0, sizeof(changeset_t));
 
 	// Init local changes
-	ch->add = zone_contents_new(apex);
+	ch->add = zone_contents_new(apex, false);
 	if (ch->add == NULL) {
 		return KNOT_ENOMEM;
 	}
-	ch->remove = zone_contents_new(apex);
+	ch->remove = zone_contents_new(apex, false);
 	if (ch->remove == NULL) {
 		zone_contents_free(ch->add);
 		return KNOT_ENOMEM;
@@ -338,7 +272,7 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 	}
 
 	const knot_rrset_t *to_remove = (rrset_cancelout == NULL ? rrset : rrset_cancelout);
-	int ret = knot_rrset_empty(to_remove) ? KNOT_EOK : add_rr_to_contents(ch->remove, to_remove);
+	int ret = (knot_rrset_empty(to_remove) || ch->remove == NULL) ? KNOT_EOK : add_rr_to_contents(ch->remove, to_remove);
 
 	if (flags & CHANGESET_CHECK) {
 		knot_rrset_free((knot_rrset_t *)rrset, NULL);
@@ -421,6 +355,16 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags)
 	ch1->soa_to = soa_copy;
 
 	return KNOT_EOK;
+}
+
+uint32_t changeset_from(const changeset_t *ch)
+{
+	return ch->soa_from == NULL ? 0 : knot_soa_serial(ch->soa_from->rrs.rdata);
+}
+
+uint32_t changeset_to(const changeset_t *ch)
+{
+	return ch->soa_to == NULL ? 0 : knot_soa_serial(ch->soa_to->rrs.rdata);
 }
 
 typedef struct {
@@ -559,59 +503,6 @@ bool changeset_differs_just_serial(const changeset_t *ch)
 	return ret;
 }
 
-int changeset_to_contents(changeset_t *ch, zone_contents_t **out)
-{
-	assert(ch->soa_from == NULL);
-	assert(zone_contents_is_empty(ch->remove));
-	assert(out != NULL);
-
-	*out = ch->add;
-	int ret = add_rr_to_contents(*out, ch->soa_to);
-	knot_rrset_free(ch->soa_to, NULL);
-	if (ret != KNOT_EOK) {
-		zone_contents_deep_free(*out);
-	}
-
-	zone_contents_deep_free(ch->remove);
-	free(ch->data);
-	free(ch);
-	return ret;
-}
-
-changeset_t *changeset_from_contents(const zone_contents_t *contents)
-{
-	zone_contents_t *copy = NULL;
-	if (zone_contents_shallow_copy(contents, &copy) != KNOT_EOK) {
-		return NULL;
-	}
-
-	changeset_t *res = changeset_new(copy->apex->owner);
-
-	knot_rrset_t soa_rr = node_rrset(copy->apex, KNOT_RRTYPE_SOA);;
-	res->soa_to = knot_rrset_copy(&soa_rr, NULL);
-
-	node_remove_rdataset(copy->apex, KNOT_RRTYPE_SOA);
-
-	zone_contents_deep_free(res->add);
-	res->add = copy;
-	return res;
-}
-
-void changeset_from_contents_free(changeset_t *ch)
-{
-	assert(ch);
-	assert(ch->soa_from == NULL);
-	assert(zone_contents_is_empty(ch->remove));
-
-	update_free_zone(ch->add);
-
-	zone_contents_deep_free(ch->remove);
-	knot_rrset_free(ch->soa_from, NULL);
-	knot_rrset_free(ch->soa_to, NULL);
-	free(ch->data);
-	free(ch);
-}
-
 void changesets_clear(list_t *chgs)
 {
 	if (chgs) {
@@ -725,29 +616,36 @@ int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch)
 knot_rrset_t changeset_iter_next(changeset_iter_t *it)
 {
 	assert(it);
-	ptrnode_t *n = NULL;
+
 	knot_rrset_t rr;
-	knot_rrset_init_empty(&rr);
-	WALK_LIST(n, it->iters) {
-		trie_it_t *t_it = (trie_it_t *)n->d;
-		if (trie_it_finished(t_it)) {
-			continue;
+	while (it->node == NULL || it->node_pos >= it->node->rrset_count) {
+		if (it->node != NULL) {
+			zone_tree_it_next(&it->it);
 		}
-
-		rr = get_next_rr(it, t_it);
-		if (!knot_rrset_empty(&rr)) {
-			// Got valid RRSet.
-			return rr;
+		while (zone_tree_it_finished(&it->it)) {
+			zone_tree_it_free(&it->it);
+			if (--it->n_trees > 0) {
+				for (size_t i = 0; i < it->n_trees; i++) {
+					it->trees[i] = it->trees[i + 1];
+				}
+				(void)zone_tree_it_begin(it->trees[0], &it->it);
+			} else {
+				knot_rrset_init_empty(&rr);
+				return rr;
+			}
 		}
+		it->node = zone_tree_it_val(&it->it);
+		it->node_pos = 0;
 	}
-
+	rr = node_rrset_at(it->node, it->node_pos++);
+	assert(!knot_rrset_empty(&rr));
 	return rr;
 }
 
 void changeset_iter_clear(changeset_iter_t *it)
 {
 	if (it) {
-		cleanup_iter_list(&it->iters);
+		zone_tree_it_free(&it->it);
 		it->node = NULL;
 		it->node_pos = 0;
 	}

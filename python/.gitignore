@@ -1,0 +1,4 @@
+/dist/
+/libknot.egg-info/
+/libknot/__init__.py
+/setup.py

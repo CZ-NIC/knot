@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -116,8 +116,8 @@ int net_accept(int sock, struct sockaddr_storage *addr);
  *
  * \return Number of bytes sent or negative error code.
  */
-ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
-                 const struct sockaddr *addr, int timeout_ms);
+ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
+                      const struct sockaddr *addr, int timeout_ms);
 
 /*!
  * \brief Receive a message from a socket.
@@ -130,13 +130,13 @@ ssize_t net_send(int sock, const uint8_t *buffer, size_t size,
  *
  * \return Number of bytes read or negative error code.
  */
-ssize_t net_recv(int sock, uint8_t *buffer, size_t size,
-                 struct sockaddr_storage *addr, int timeout_ms);
+ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
+                      struct sockaddr_storage *addr, int timeout_ms);
 
 /*!
  * \brief Send a message on a SOCK_DGRAM socket.
  *
- * \see net_send
+ * \see net_base_send
  */
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
                        const struct sockaddr *addr);
@@ -144,21 +144,21 @@ ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
 /*!
  * \brief Receive a message from a SOCK_DGRAM socket.
  *
- * \see net_recv
+ * \see net_base_recv
  */
 ssize_t net_dgram_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
 
 /*!
  * \brief Send a message on a SOCK_STREAM socket.
  *
- * \see net_send
+ * \see net_base_send
  */
 ssize_t net_stream_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms);
 
 /*!
  * \brief Receive a message from a SOCK_STREAM socket.
  *
- * \see net_recv
+ * \see net_base_recv
  */
 ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
 
@@ -169,7 +169,7 @@ ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
  * message size according to the specification. These two bytes are not
  * reflected in the return value.
  *
- * \see net_send
+ * \see net_base_send
  */
 ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms);
 
@@ -180,6 +180,6 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeo
  * size according to the specification. These two bytes are not included in
  * the returned size. Only a complete DNS message is retrieved.
  *
- * \see net_recv
+ * \see net_base_recv
  */
 ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);

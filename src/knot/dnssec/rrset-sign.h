@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include "libdnssec/key.h"
 #include "libdnssec/sign.h"
 #include "knot/dnssec/context.h"
+#include "knot/dnssec/zone-keys.h"
 #include "libknot/rrset.h"
 
 /*!
@@ -41,6 +42,21 @@ int knot_sign_rrset(knot_rrset_t *rrsigs,
                     const kdnssec_ctx_t *dnssec_ctx,
                     knot_mm_t *mm,
                     knot_time_t *expires);
+
+/*!
+ * \brief Create RRSIG RR for given RR set, choose which key to use.
+ *
+ * \param rrsigs      RR set with RRSIGs into which the result will be added.
+ * \param rrset       RR set to create a new signature for.
+ * \param sign_ctx    Zone signing context.
+ * \param mm          Memory context.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_sign_rrset2(knot_rrset_t *rrsigs,
+                     const knot_rrset_t *rrset,
+                     zone_sign_ctx_t *sign_ctx,
+                     knot_mm_t *mm);
 
 /*!
  * \brief Add all data covered by signature into signing context.

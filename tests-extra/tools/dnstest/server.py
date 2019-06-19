@@ -44,6 +44,7 @@ class ZoneDnssec(object):
         self.ksk_size = None
         self.zsk_size = None
         self.dnskey_ttl = None
+        self.zone_max_ttl = None
         self.ksk_lifetime = None
         self.zsk_lifetime = None
         self.propagation_delay = None
@@ -57,6 +58,8 @@ class ZoneDnssec(object):
         self.ksk_sbm_check = []
         self.ksk_sbm_check_interval = None
         self.ksk_shared = None
+        self.cds_publish = None
+        self.offline_ksk = None
 
 class Zone(object):
     '''DNS zone description'''
@@ -117,7 +120,7 @@ class Server(object):
         self.version = None
 
         self.addr = None
-        self.port = None
+        self.port = 0 # Needed for keymgr when port not yet generated
         self.fixed_port = False
         self.ctlport = None
         self.external = False
@@ -136,6 +139,7 @@ class Server(object):
         self.disable_notify = None
         self.zonefile_sync = "1d"
         self.journal_db_size = 20 * 1024 * 1024
+        self.max_journal_usage = 5 * 1024 * 1024
         self.timer_db_size = 1 * 1024 * 1024
         self.kasp_db_size = 10 * 1024 * 1024
         self.zone_size_limit = None
@@ -214,6 +218,9 @@ class Server(object):
         mode = "w" if clean else "a"
 
         try:
+            if os.path.isfile(self.valgrind_log):
+                copyfile(self.valgrind_log, self.valgrind_log + str(int(time.time())))
+
             if self.compile_cmd:
                 self.ctl(self.compile_cmd)
 
@@ -650,10 +657,10 @@ class Server(object):
 
         self.zones[zone.name].zfile.backup()
 
-    def zone_verify(self, zone):
+    def zone_verify(self, zone, bind_check=None, ldns_check=None):
         zone = zone_arg_check(zone)
 
-        self.zones[zone.name].zfile.dnssec_verify()
+        self.zones[zone.name].zfile.dnssec_verify(bind_check, ldns_check)
 
     def check_nsec(self, zone, nsec3=False, nonsec=False):
         zone = zone_arg_check(zone)
@@ -672,7 +679,7 @@ class Server(object):
     def gen_key(self, zone, **args):
         zone = zone_arg_check(zone)
 
-        key = dnstest.keys.Key(self.keydir, zone.name, **args)
+        key = dnstest.keys.Key(self.confile, zone.name, **args)
         key.generate()
 
         return key
@@ -713,11 +720,16 @@ class Server(object):
         else:
             self.zones[zone.name].zfile.upd_file(storage=storage, version=version)
 
-    def random_ddns(self, zone):
+    def random_ddns(self, zone, allow_empty=True):
         zone = zone_arg_check(zone)
 
         up = self.update(zone)
-        self.zones[zone.name].zfile.gen_rnd_ddns(up)
+
+        while True:
+            changes = self.zones[zone.name].zfile.gen_rnd_ddns(up)
+            if allow_empty or changes > 0:
+                break
+
         up.send("NOERROR")
 
     def add_module(self, zone, module):
@@ -813,8 +825,8 @@ class Bind(Server):
         s.item("additional-from-auth", "false")
         s.item("additional-from-cache", "false")
         s.item("notify-delay", "0")
-        #s.item("notify-rate", "1000")
-        #s.item("startup-notify-rate", "1000")
+        s.item("notify-rate", "1000")
+        s.item("startup-notify-rate", "1000")
         s.item("serial-query-rate", "1000")
         s.end()
 
@@ -961,13 +973,13 @@ class Knot(Server):
 
     def key_gen(self, zone_name, **new_params):
         set_params = [ option + "=" + value for option, value in new_params.items() ]
-        res = dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "generate", *set_params)
+        res = dnstest.keys.Keymgr.run_check(self.confile, zone_name, "generate", *set_params)
         errcode, stdo, stde = res
         return stdo.split()[-1]
 
     def key_set(self, zone_name, key_id, **new_values):
         set_params = [ option + "=" + value for option, value in new_values.items() ]
-        dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "set", key_id, *set_params)
+        dnstest.keys.Keymgr.run_check(self.confile, zone_name, "set", key_id, *set_params)
 
     def key_import_bind(self, zone_name):
         if zone_name not in self.zones:
@@ -978,7 +990,7 @@ class Knot(Server):
             pkey = os.path.basename(pkey_path)
             m = re.match(r'K(?P<name>[^+]+)\+(?P<algo>\d+)\+(?P<tag>\d+)\.private', pkey)
             if m and m.group("name") == zone_name.lower():
-                dnstest.keys.Keymgr.run_check(self.keydir, zone_name, "import-bind", pkey_path)
+                dnstest.keys.Keymgr.run_check(self.confile, zone_name, "import-bind", pkey_path)
 
     def _on_str_hex(self, conf, name, value):
         if value == True:
@@ -1184,6 +1196,7 @@ class Knot(Server):
             self._str(s, "ksk_size", z.dnssec.ksk_size)
             self._str(s, "zsk_size", z.dnssec.zsk_size)
             self._str(s, "dnskey-ttl", z.dnssec.dnskey_ttl)
+            self._str(s, "zone-max-ttl", z.dnssec.zone_max_ttl)
             self._str(s, "ksk-lifetime", z.dnssec.ksk_lifetime)
             self._str(s, "zsk-lifetime", z.dnssec.zsk_lifetime)
             self._str(s, "propagation-delay", z.dnssec.propagation_delay)
@@ -1197,6 +1210,8 @@ class Knot(Server):
             if len(z.dnssec.ksk_sbm_check) > 0:
                 s.item("ksk-submission", z.name)
             self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
+            self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
+            self._str(s, "offline-ksk", z.dnssec.offline_ksk)
         if have_policy:
             s.end()
 
@@ -1207,6 +1222,7 @@ class Knot(Server):
         s.item_str("kasp-db", self.keydir)
         s.item_str("max-kasp-db-size", self.kasp_db_size)
         s.item_str("max-journal-db-size", self.journal_db_size)
+        s.item_str("max-journal-usage", self.max_journal_usage)
         s.item_str("max-timer-db-size", self.timer_db_size)
         s.item_str("semantic-checks", "on")
         if self.disable_any:

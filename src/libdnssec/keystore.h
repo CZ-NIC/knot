@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * The module provides abstraction for private key store. Basically, PKCS #8
  * and PKCS #11 interfaces are supported.
  *
- * PKCS #8 uses unencrypted PEM, and allows implementation of custom stores.
+ * PKCS #8 uses unencrypted PEM.
  *
  * PKCS #11 provides access Hardware Security Modules.
  *
@@ -35,7 +35,7 @@
  * dnssec_keystore_t *store = NULL;
  *
  * // create key store access context
- * dnssec_keystore_init_pkcs8_dir(&store);
+ * dnssec_keystore_init_pkcs8(&store);
  *
  * // open the key store
  * result = dnssec_keystore_open(&store, "/path/to/keydb");
@@ -47,7 +47,7 @@
  * int algorithm = DNSSEC_KEY_ALGORITHM_RSA_SHA256;
  * unsigned bits = 2048;
  * char *id = NULL;
- * int dnssec_keystore_generate_key(store, algorithm, bits, &key_id);
+ * int dnssec_keystore_generate(store, algorithm, bits, &key_id);
  * if (result != DNSSEC_EOK) {
  *     dnssec_keystore_close(store);
  *     return result;
@@ -63,8 +63,10 @@
  *     return result;
  * }
  *
+ * dnssec_key_set_algorithm(key, algorithm);
+ *
  * // import the key from the key store
- * result = dnssec_key_import_keystore(key, store, key_id, algorithm);
+ * result = dnssec_keystore_export(store, key_id, key);
  * if (result != DNSSEC_EOK) {
  *     free(key_id);
  *     dnssec_key_free(key);
@@ -88,7 +90,6 @@
 
 #include <libdnssec/binary.h>
 #include <libdnssec/key.h>
-#include <libdnssec/list.h>
 
 struct dnssec_keystore;
 
@@ -96,82 +97,6 @@ struct dnssec_keystore;
  * DNSSEC private keys store.
  */
 typedef struct dnssec_keystore dnssec_keystore_t;
-
-/*!
- * PKCS #8 key store callback functions for custom providers.
- */
-typedef struct dnssec_keystore_pkcs8_functions {
-	/*!
-	 * Callback to allocate key store handle.
-	 *
-	 * \param[out]  handle_ptr  Allocated key store handle.
-	 */
-	int (*handle_new)(void **handle_ptr);
-
-	/*!
-	 * Callback to deallocate key store handle.
-	 *
-	 * \param handle  Key store handle.
-	 */
-	int (*handle_free)(void *handle);
-
-	/*!
-	 * Callback to initialize the key store.
-	 *
-	 * \param handle  Key store handle.
-	 * \param config  Configuration string.
-	 */
-	int (*init)(void *handle, const char *config);
-
-	/*!
-	 * Callback to open the key store.
-	 *
-	 * \param[out] handle  Key store handle.
-	 * \param[in]  config  Configuration string.
-	 */
-	int (*open)(void *handle, const char *config);
-
-	/*!
-	 * Callback to close the key store.
-	 *
-	 * \param handle  Key store handle.
-	 */
-	int (*close)(void *handle);
-
-	/*!
-	 * Callback to read a PEM key.
-	 *
-	 * \param[in]  handle  Key store handle.
-	 * \param[in]  id      Key ID of the key to be retrieved (ASCII form).
-	 * \param[out] pem     Key material in uncencrypted PEM format.
-	 */
-	int (*read)(void *handle, const char *id, dnssec_binary_t *pem);
-
-	/*!
-	 * Callback to write a PEM key.
-	 *
-	 * \param handle  Key store handle.
-	 * \param id      Key ID of the key to be saved (ASCII form).
-	 * \param pem     Key material in unencrypted PEM format.
-	 */
-	int (*write)(void *handle, const char *id, const dnssec_binary_t *pem);
-
-	/*!
-	 * Callback to get a list of all PEM key IDs.
-	 *
-	 * \param[in]  handle  Key store handle.
-	 * \param[out] list    Allocated list of key IDs.
-	 */
-	int (*list)(void *handle, dnssec_list_t **list);
-
-	/*!
-	 * Callback to remove a PEM key.
-	 *
-	 * \param handle  Key store handle.
-	 * \param id      Key ID of the key to be removed (ASCII form).
-	 */
-	int (*remove)(void *handle, const char *id);
-} dnssec_keystore_pkcs8_functions_t;
 
 /*!
  * Create default PKCS #8 private key store context.
@@ -184,18 +109,7 @@ typedef struct dnssec_keystore_pkcs8_functions {
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_keystore_init_pkcs8_dir(dnssec_keystore_t **store);
-
-/*!
- * Create custom PKCS #8 private key store context.
- *
- * \param[out] store   Opened key store.
- * \param[in]  impl    Implementation of the key store provider.
- *
- * \return Error code, DNSSEC_EOK if successful.
- */
-int dnssec_keystore_init_pkcs8_custom(dnssec_keystore_t **store,
-				      const dnssec_keystore_pkcs8_functions_t *impl);
+int dnssec_keystore_init_pkcs8(dnssec_keystore_t **store);
 
 /*!
  * Crate new PKCS #11 private key store context.
@@ -233,18 +147,6 @@ int dnssec_keystore_open(dnssec_keystore_t *store, const char *config);
 int dnssec_keystore_close(dnssec_keystore_t *store);
 
 /*!
- * Get a list of key IDs stored in the key store.
- *
- * \todo Not implemented.
- *
- * \param[in]  store  Key store.
- * \param[out] list   Resulting list of key IDs.
- *
- * \return Error code, DNSSEC_EOK if successful.
- */
-int dnssec_keystore_list_keys(dnssec_keystore_t *store, dnssec_list_t **list);
-
-/*!
  * Generate a new key in the key store.
  *
  * \param[in]  store      Key store.
@@ -254,9 +156,9 @@ int dnssec_keystore_list_keys(dnssec_keystore_t *store, dnssec_list_t **list);
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_keystore_generate_key(dnssec_keystore_t *store,
-				 dnssec_key_algorithm_t algorithm,
-				 unsigned bits, char **id_ptr);
+int dnssec_keystore_generate(dnssec_keystore_t *store,
+			     dnssec_key_algorithm_t algorithm,
+			     unsigned bits, char **id_ptr);
 
 /*!
  * Import an existing key into the key store.
@@ -278,20 +180,20 @@ int dnssec_keystore_import(dnssec_keystore_t *store, const dnssec_binary_t *pem,
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_keystore_remove_key(dnssec_keystore_t *store, const char *id);
+int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id);
 
 /*!
- * Import public and/or private key from the key store into a DNSSEC key.
+ * Export public and/or private key from the key store into a DNSSEC key.
  *
  * The key algorithm has to be set before calling this function.
  *
- * \param key       DNSSEC key to be initialized.
- * \param keystore  Private key store.
- * \param id        ID of the key.
+ * \param store  Private key store.
+ * \param id     ID of the key.
+ * \param key    DNSSEC key to be initialized.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
-			       const char *id);
+int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
+			   dnssec_key_t *key);
 
 /*! @} */

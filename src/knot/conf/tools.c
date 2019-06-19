@@ -182,6 +182,35 @@ int edns_opt_to_txt(
 	YP_CHECK_RET;
 }
 
+int rrtype_to_bin(
+	YP_TXT_BIN_PARAMS)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	uint16_t type;
+	int ret = knot_rrtype_from_string((char *)in->position, &type);
+	if (ret != 0) {
+		return KNOT_EINVAL;
+	}
+	wire_ctx_write_u64(out, type);
+
+	YP_CHECK_RET;
+}
+
+int rrtype_to_txt(
+	YP_BIN_TXT_PARAMS)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	uint16_t type = (uint16_t)wire_ctx_read_u64(in);
+	int ret = knot_rrtype_to_string(type, (char *)out->position, out->size);
+	if (ret != 0) {
+		return KNOT_EINVAL;
+	}
+
+	YP_CHECK_RET;
+}
+
 int check_ref(
 	knotd_conf_check_args_t *args)
 {
@@ -330,6 +359,9 @@ int check_policy(
 	int64_t zsk_life_val = conf_int(&zsk_life);
 	int64_t ksk_life_val = conf_int(&ksk_life);
 	int64_t dnskey_ttl_val = conf_int(&dnskey_ttl);
+	if (dnskey_ttl_val == YP_NIL) {
+		dnskey_ttl_val = 0;
+	}
 
 	if (zsk_life_val != 0 && zsk_life_val < 2 * prop_del_val + dnskey_ttl_val) {
 		args->err_str = "ZSK lifetime too low according to propagation delay and DNSKEY TTL";

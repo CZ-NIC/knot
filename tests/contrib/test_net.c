@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,9 +28,6 @@
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 
-#undef ENABLE_NET_UNREACHABLE_TEST
-//#define ENABLE_NET_UNREACHABLE_TEST
-
 const int TIMEOUT = 5000;
 const int TIMEOUT_SHORT = 500;
 
@@ -47,21 +44,6 @@ static struct sockaddr_storage addr_local(void)
 
 	return addr;
 }
-
-#ifdef ENABLE_NET_UNREACHABLE_TEST
-/*!
- * \brief Get unreachable IPv6 address.
- *
- * Allocated from 100::/64 (Discard-Only Address Block).
- */
-static struct sockaddr_storage addr_unreachable(void)
-{
-	struct sockaddr_storage addr = { 0 };
-	sockaddr_set(&addr, AF_INET6, "100::b1ac:h01e", 42);
-
-	return addr;
-}
-#endif
 
 /*!
  * \brief Get address of a socket.
@@ -215,12 +197,12 @@ static void handler_echo(int sock, void *_server)
 		addr = &remote;
 	}
 
-	int in = net_recv(sock, buffer, sizeof(buffer), addr, TIMEOUT);
+	int in = net_base_recv(sock, buffer, sizeof(buffer), addr, TIMEOUT);
 	if (in <= 0) {
 		return;
 	}
 
-	net_send(sock, buffer, in, (struct sockaddr *)addr, TIMEOUT);
+	net_base_send(sock, buffer, in, (struct sockaddr *)addr, TIMEOUT);
 }
 
 static void test_connected_one(const struct sockaddr_storage *server_addr,
@@ -371,30 +353,6 @@ static void test_refused(void)
 	struct sockaddr_storage addr = { 0 };
 	uint8_t buffer[1] = { 0 };
 	int server, client;
-
-	// unreachable remote
-
-#ifdef ENABLE_NET_UNREACHABLE_TEST
-	addr = addr_unreachable();
-
-	client = net_connected_socket(SOCK_STREAM, &addr, NULL);
-	ok(client >= 0, "client, connected");
-
-	tv = TIMEOUT_SHORT;
-	r = net_stream_send(client, (uint8_t *)"", 1, &tv);
-	ok(r == KNOT_ETIMEOUT, "client, timeout on write");
-	close(client);
-
-	client = net_connected_socket(SOCK_STREAM, &addr, NULL);
-	ok(client >= 0, "client, connected");
-
-	tv = TIMEOUT_SHORT;
-	r = net_stream_recv(client, buffer, sizeof(buffer), &tv);
-	ok(r == KNOT_ETIMEOUT, "client, timeout on read");
-	close(client);
-#else
-	skip("unreachable tests disabled");
-#endif
 
 	// listening, not accepting
 

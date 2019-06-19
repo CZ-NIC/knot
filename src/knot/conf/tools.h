@@ -50,6 +50,14 @@ int edns_opt_to_txt(
 	YP_BIN_TXT_PARAMS
 );
 
+int rrtype_to_bin(
+	YP_TXT_BIN_PARAMS
+);
+
+int rrtype_to_txt(
+	YP_BIN_TXT_PARAMS
+);
+
 int check_ref(
 	knotd_conf_check_args_t *args
 );

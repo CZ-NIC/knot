@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,7 +55,12 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	                   dnssec_algorithm_key_size_default(policy->algorithm);
 
 	val = conf_id_get(conf(), C_POLICY, C_DNSKEY_TTL, id);
-	policy->dnskey_ttl = conf_int(&val);
+	int64_t ttl = conf_int(&val);
+	policy->dnskey_ttl = (ttl != YP_NIL) ? ttl : UINT32_MAX;
+
+	val = conf_id_get(conf(), C_POLICY, C_ZONE_MAX_TLL, id);
+	ttl = conf_int(&val);
+	policy->zone_maximal_ttl = (ttl != YP_NIL) ? ttl : UINT32_MAX;
 
 	val = conf_id_get(conf(), C_POLICY, C_ZSK_LIFETIME, id);
 	policy->zsk_lifetime = conf_int(&val);
@@ -87,8 +92,8 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	val = conf_id_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id);
 	policy->nsec3_salt_lifetime = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_CHILD_RECORDS, id);
-	policy->child_records_publish = conf_opt(&val);
+	val = conf_id_get(conf(), C_POLICY, C_CDS_CDNSKEY, id);
+	policy->cds_cdnskey_publish = conf_opt(&val);
 
 	conf_val_t ksk_sbm = conf_id_get(conf(), C_POLICY, C_KSK_SBM, id);
 	if (ksk_sbm.code == KNOT_EOK) {
@@ -112,10 +117,16 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 			conf_val_next(&val);
 		}
 	}
+
+	val = conf_id_get(conf(), C_POLICY, C_SIGNING_THREADS, id);
+	policy->signing_threads = conf_int(&val);
+
+	val = conf_id_get(conf(), C_POLICY, C_OFFLINE_KSK, id);
+	policy->offline_ksk = conf_bool(&val);
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
-		     const conf_mod_id_t *from_module)
+		     knot_lmdb_db_t *kaspdb, const conf_mod_id_t *from_module)
 {
 	if (ctx == NULL || zone_name == NULL) {
 		return KNOT_EINVAL;
@@ -130,19 +141,19 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		ret = KNOT_ENOMEM;
 		goto init_error;
 	}
-	ctx->kasp_db = kaspdb();
 
-	ret = kasp_db_open(*ctx->kasp_db);
+	ctx->kasp_db = kaspdb;
+	ret = knot_lmdb_open(ctx->kasp_db);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}
 
-	ret = kasp_zone_load(ctx->zone, zone_name, *ctx->kasp_db);
+	ret = kasp_zone_load(ctx->zone, zone_name, ctx->kasp_db);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}
 
-	ctx->kasp_zone_path = conf_kaspdir(conf);
+	ctx->kasp_zone_path = conf_db(conf, C_KASP_DB);
 	if (ctx->kasp_zone_path == NULL) {
 		ret = KNOT_ENOMEM;
 		goto init_error;
@@ -193,7 +204,7 @@ int kdnssec_ctx_commit(kdnssec_ctx_t *ctx)
 
 	// do something with keytore? Probably not..
 
-	return kasp_zone_save(ctx->zone, ctx->zone->dname, *ctx->kasp_db);
+	return kasp_zone_save(ctx->zone, ctx->zone->dname, ctx->kasp_db);
 }
 
 void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
@@ -209,6 +220,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		}
 		free(ctx->policy);
 	}
+	knot_rrset_free(ctx->offline_rrsig, NULL);
 	dnssec_keystore_deinit(ctx->keystore);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);

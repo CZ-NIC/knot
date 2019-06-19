@@ -179,6 +179,8 @@ struct zs_scanner {
 		void (*record)(zs_scanner_t *);
 		/*! Callback function for wrong situations. */
 		void (*error)(zs_scanner_t *);
+		/*! Callback function for pure comment line. */
+		void (*comment)(zs_scanner_t *);
 		/*! Arbitrary data useful inside callback functions. */
 		void *data;
 	} process;
@@ -299,7 +301,7 @@ int zs_set_input_string(
 );
 
 /*!
- * \brief Sets the scanner to parse a zone file..
+ * \brief Sets the scanner to parse a zone file.
  *
  * \note Error code is stored in the scanner context.
  *
@@ -332,6 +334,24 @@ int zs_set_processing(
 	void (*process_record)(zs_scanner_t *),
 	void (*process_error)(zs_scanner_t *),
 	void *data
+);
+
+/*!
+ * \brief Sets the scanner comment processing callback for automatic processing.
+ *
+ * \note If the comment is after a valid resource record, the callback is
+ *       executed before a record processing callback!
+ * \note Optional data must be set via zs_set_processing.
+ *
+ * \param scanner          Scanner context.
+ * \param process_comment  Processing callback function (may be NULL).
+ *
+ * \retval  0  if success.
+ * \retval -1  if error.
+ */
+int zs_set_processing_comment(
+	zs_scanner_t *scanner,
+	void (*process_comment)(zs_scanner_t *)
 );
 
 /*!

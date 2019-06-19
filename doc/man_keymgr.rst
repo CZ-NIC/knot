@@ -50,6 +50,11 @@ Config options
 **-d**, **--dir** *path*
   Use specified KASP database path and default configuration.
 
+.. NOTE::
+   Keymgr runs with the same user privileges as configured for knotd. For example,
+   if keymgr is run as root, but the configured :ref:`user<server_user>` is knot,
+   it won't be able to read files (PEM files, KASP db, ...) readable only by root.
+
 Commands
 ........
 
@@ -78,9 +83,14 @@ Commands
   specified (mainly algorithm, timers...) because they are not available. In fact, no key
   data is imported, only KASP database metadata is created.
 
+**nsec3-salt** [*new_salt*]
+  Prints the current NSEC3 salt used for signing. If *new_salt* is specified, the salt is overwritten.
+  The salt is printed and expected in hexadecimal, or dash if empty.
+
 **set** *key_spec* [*arguments*...]
   Changes a timing argument (or ksk/zsk) of an existing key to a new value. *Key_spec* is either the
-  key tag or a prefix of the key ID; *arguments* are like for **generate**, but just the related ones.
+  key tag or a prefix of the key ID, with an optional *[id=|keytag=]* prefix; *arguments* 
+  are like for **generate**, but just the related ones.
 
 **ds** [*key_spec*]
   Generate DS record (all digest algorithms together) for specified key. *Key_spec*
@@ -96,6 +106,34 @@ Commands
 **share** *key_ID*
   Import a key (specified by full key ID) from another zone as shared. After this, the key is
   owned by both zones equally.
+
+Commands related to Offline KSK feature
+.......................................
+
+**pregenerate** *timestamp*
+  Pre-generate ZSKs for use with offline KSK, for the specified period starting from now.
+
+**show-offline** *timestamp-from* [*timestamp-to*]
+  Print pre-generated offline key-related records for specified time interval. If *timestamp_to*
+  is omitted, it will be to infinity.
+
+**del-offline** *timestamp-from* *timestamp-to*
+  Delete pre-generated offline key-related records in specified time interval.
+
+**del-all-old**
+  Delete old keys that are in state 'removed'.
+
+**generate-ksr** *timestamp-from* *timestamp-to*
+  Print to stdout KeySigningRequest based on pre-generated ZSKs for specified period.
+
+**sign-ksr** *ksr_file*
+  Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
+
+**import-skr** *skr_file*
+  Read SignedKeyResponse from a text file and import the signatures for later use in zone. (The signatures
+  are not checked at import time, but they will be ignored at signing time if invalid.) If some
+  signatures have already been imported, they will be deleted for the period from beginning of the SKR
+  to infinity.
 
 Generate arguments
 ..................
@@ -119,10 +157,7 @@ Arguments are separated by space, each of them is in format 'name=value'.
 **sep**
   Overrides the standard setting of the Secure Entry Point flag for the generated key.
 
-The following arguments are timestamps of key lifetime:
-
-**created**
-  Key created.
+The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key states`):
 
 **pre_active**
   Key started to be used for signing, not published (only for algorithm rollover).
@@ -176,6 +211,12 @@ Output timestamp formats
 
 **iso**
   The timestamps are printed in the ISO8601 format (e.g. 2016-12-31T23:59:00).
+
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
 
 Examples
 --------

@@ -1,16 +1,11 @@
 AC_PREREQ([2.60])
 
 m4_define([knot_VERSION_MAJOR], 2)dnl
-m4_define([knot_VERSION_MINOR], 8)dnl
+m4_define([knot_VERSION_MINOR], 9)dnl
 m4_define([knot_VERSION_PATCH], )dnl Leave empty if the master branch!
 m4_include([m4/knot-version.m4])
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
-
-# Store ./configure parameters and CFLAGS
-AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$*"],[Params passed to configure])
-AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environment])
-
 AM_INIT_AUTOMAKE([foreign std-options subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot])
@@ -21,13 +16,17 @@ AC_CANONICAL_HOST
 
 # Update library versions
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST([libknot_VERSION_INFO],["-version-info 8:0:0"])
-AC_SUBST([libdnssec_VERSION_INFO],["-version-info 6:0:0"])
-AC_SUBST([libzscanner_VERSION_INFO],["-version-info 2:0:0"])
+KNOT_LIB_VERSION([libknot],     9, 0, 0)
+KNOT_LIB_VERSION([libdnssec],   7, 0, 0)
+KNOT_LIB_VERSION([libzscanner], 3, 0, 0)
 
 AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)
 AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
 AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
+
+# Store ./configure parameters and CFLAGS
+AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$*"],[Params passed to configure])
+AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environment])
 
 AC_CONFIG_FILES([src/libknot/version.h
                  src/libdnssec/version.h
@@ -44,7 +43,7 @@ AM_PROG_CC_C_O
 AC_PROG_CPP_WERROR
 
 # Set default CFLAGS
-CFLAGS="$CFLAGS -Wall -Werror=format-security -Werror=implicit -Wstrict-prototypes"
+CFLAGS="$CFLAGS -Wall -Wshadow -Werror=format-security -Werror=implicit -Wstrict-prototypes"
 
 AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
 AX_CHECK_LINK_FLAG(["-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs="-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs=""], "")
@@ -163,18 +162,13 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
         [enable_ed25519=no],
         [#include <gnutls/gnutls.h>])
 
-    AC_CHECK_DECL([GNUTLS_PK_GOST_01],
-        [AC_DEFINE([HAVE_GOST], [1], [GnuTLS GOST support available])
-         enable_gost=yes],
-        [enable_gost=no],
-        [#include <gnutls/gnutls.h>])
-
     AC_CHECK_FUNC([gnutls_privkey_sign_data2],
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
 
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
 ])
+AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 
 AC_ARG_ENABLE([recvmmsg],
    AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
@@ -192,37 +186,38 @@ AS_CASE([$enable_recvmmsg],
 AS_IF([test "$enable_recvmmsg" = yes],[
    AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
 
+# Reuseport support
+AS_CASE([$host_os],
+  [freebsd*], [reuseport_opt=SO_REUSEPORT_LB],
+  [*], [reuseport_opt=SO_REUSEPORT],
+)
+
 AC_ARG_ENABLE([reuseport],
-    AS_HELP_STRING([--enable-reuseport=auto|yes|no], [enable Linux SO_REUSEPORT support [default=auto]]),
-    [enable_reuseport="$enableval"], [enable_reuseport=auto])
+  AS_HELP_STRING([--enable-reuseport=auto|yes|no],
+                 [enable SO_REUSEPORT(_LB) support [default=auto]]),
+  [], [enable_reuseport=auto]
+)
 
-AC_DEFUN([CHECK_REUSEPORT], [
-  AC_CHECK_DECL(
-    [SO_REUSEPORT],
-    [$1],
-    [$2],
-    [
-    #include <sys/socket.h>
-    ]
-  )])
-
-AS_IF([test "$enable_reuseport" != no], [
-  AS_CASE([$enable_reuseport],
-    [auto],[
-      AS_CASE([$host_os],
-        [linux*], [CHECK_REUSEPORT([enable_reuseport=yes], [enable_reuseport=no])],
-        [*], [enable_reuseport=no]
-      )],
-    [yes],[
-      AS_CASE([$host_os],
-        [linux*], [CHECK_REUSEPORT([enable_reuseport=yes], [AC_MSG_ERROR([SO_REUSEPORT support not detected.])])],
-        [*], [AC_MSG_ERROR(["SO_REUSEPORT not supported on $host_os."])]
-      )],
-    [*], [AC_MSG_ERROR([Invalid value of --enable-reuseport.])]
-  )])
+AS_CASE([$enable_reuseport],
+  [auto], [
+    AS_CASE([$host_os],
+      [freebsd*|linux*], [AC_CHECK_DECL([$reuseport_opt],
+                                        [enable_reuseport=yes],
+                                        [enable_reuseport=no],
+                                        [#include <sys/socket.h>
+                                        ])],
+      [*], [enable_reuseport=no]
+    )],
+  [yes], [AC_CHECK_DECL([$reuseport_opt], [],
+                        [AC_MSG_ERROR([SO_REUSEPORT(_LB) not supported.])],
+                        [#include <sys/socket.h>
+                        ])],
+  [no], [],
+  [*], [AC_MSG_ERROR([Invalid value of --enable-reuseport.])]
+)
 
 AS_IF([test "$enable_reuseport" = yes],[
-   AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT.])])
+   AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])])
 
 #########################################
 # Dependencies needed for Knot DNS daemon
@@ -530,12 +525,12 @@ AC_ARG_WITH(libidn,
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
-      with_libidn=yes
+      with_libidn=libidn2
       AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
       AC_DEFINE([LIBIDN_HEADER], [<idn2.h>], [Define to proper libidn header])
     ], [
       PKG_CHECK_MODULES([libidn], [libidn >= 0.0.0], [
-        with_libidn=yes
+        with_libidn=libidn
         AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
         AC_DEFINE([LIBIDN_HEADER], [<idna.h>], [Define to proper libidn header])
       ], [
@@ -586,8 +581,21 @@ AC_SEARCH_LIBS([dlopen], [dl], [
 ])
 LIBS="$save_LIBS"
 
-AC_SEARCH_LIBS([pow], [m], [], [AC_MSG_ERROR([math not found])])
-AC_SEARCH_LIBS([clock_gettime], [rt])
+save_LIBS="$LIBS"
+AC_SEARCH_LIBS([pow], [m], [
+  math_LIBS="$ac_cv_search_pow"
+  AC_SUBST([math_LIBS])
+],[
+  AC_MSG_ERROR([math not found])
+])
+LIBS="$save_LIBS"
+
+save_LIBS="$LIBS"
+AC_SEARCH_LIBS([pthread_setaffinity_np], [pthread], [
+  AC_DEFINE([HAVE_PTHREAD_SETAFFINITY_NP], [1],
+  [Define to 1 if you have the pthread_setaffinity_np function.])
+])
+LIBS="$save_LIBS"
 
 # Checks for header files.
 AC_HEADER_RESOLV
@@ -595,7 +603,7 @@ AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h])
 
 # Checks for optional library functions.
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
-                pthread_setaffinity_np setgroups strlcat strlcpy sysctlbyname])
+                setgroups strlcat strlcpy sysctlbyname])
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
@@ -645,11 +653,14 @@ AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 
+filtered_cflags=$(echo -n "$CFLAGS" | sed 's/\W-f\S*-prefix-map=\S*\W/ /g')
+filtered_cppflags=$(echo -n "$CPPFLAGS" | sed 's/\W-f\S*-prefix-map=\S*\W/ /g')
+
 result_msg_base="  Knot DNS $VERSION
 
     Target:   $host_os $host_cpu
     Compiler: ${CC}
-    CFLAGS:   ${CFLAGS} ${CPPFLAGS}
+    CFLAGS:   ${filtered_cflags} ${filtered_cppflags}
     LIBS:     ${LIBS} ${LDFLAGS}
     LibURCU:  ${liburcu_LIBS} ${liburcu_CFLAGS}
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
@@ -672,17 +683,16 @@ result_msg_base="  Knot DNS $VERSION
     Knot DNS documentation: ${enable_documentation}
 
     Use recvmmsg:           ${enable_recvmmsg}
-    Use SO_REUSEPORT:       ${enable_reuseport}
+    Use SO_REUSEPORT(_LB):  ${enable_reuseport}
     Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
     Utilities with Dnstap:  ${enable_dnstap}
     MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}
-    POSIX capabilities      ${enable_cap_ng}
+    POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
     Ed25519 support:        ${enable_ed25519}
-    GOST support:           ${enable_gost}
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
     LibFuzzer:              ${with_fuzzer}
@@ -700,6 +710,8 @@ AC_CONFIG_FILES([Makefile
                  samples/Makefile
                  distro/Makefile
                  python/Makefile
+                 python/setup.py
+                 python/libknot/__init__.py
                  src/Makefile
                  src/knot/modules/static_modules.h
                  ])

@@ -28,6 +28,12 @@ Parameters
 *name*
   Specifies the domain name to be hashed.
 
+Exit values
+-----------
+
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
+
 Examples
 --------
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "knot/dnssec/key-events.h"
 #include "knot/events/events.h"
 #include "knot/events/handlers.h"
+#include "knot/journal/journal_metadata.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/timers.h"
@@ -43,6 +44,18 @@
 
 #define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] != NULL && \
                                       strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
+
+static void schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t event,
+                             bool user)
+{
+	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_BLOCKING)) {
+		zone_events_schedule_blocking(zone, event, user);
+	} else if (user) {
+		zone_events_schedule_user(zone, event);
+	} else {
+		zone_events_schedule_now(zone, event);
+	}
+}
 
 void ctl_log_data(knot_ctl_data_t *data)
 {
@@ -237,8 +250,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_EVENTS)) {
 		for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; i++) {
 			// Events not worth showing or used elsewhere.
-			if (i == ZONE_EVENT_LOAD || i == ZONE_EVENT_UFREEZE ||
-			    i == ZONE_EVENT_UTHAW) {
+			if (i == ZONE_EVENT_UFREEZE || i == ZONE_EVENT_UTHAW) {
 				continue;
 			}
 
@@ -249,7 +261,9 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 			data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
 			time_t ev_time = zone_events_get_time(zone, i);
-			if (ev_time <= 0) {
+			if (zone->events.running && zone->events.type == i) {
+				ret = snprintf(buff, sizeof(buff), "running");
+			} else if (ev_time <= 0) {
 				ret = snprintf(buff, sizeof(buff), "not scheduled");
 			} else if (ev_time <= time(NULL)) {
 				ret = snprintf(buff, sizeof(buff), "pending");
@@ -281,7 +295,7 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone_events_schedule_user(zone, ZONE_EVENT_LOAD);
+	schedule_trigger(zone, args, ZONE_EVENT_LOAD, true);
 
 	return KNOT_EOK;
 }
@@ -294,7 +308,7 @@ static int zone_refresh(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone_events_schedule_user(zone, ZONE_EVENT_REFRESH);
+	schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 
 	return KNOT_EOK;
 }
@@ -308,7 +322,7 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_AXFR;
-	zone_events_schedule_user(zone, ZONE_EVENT_REFRESH);
+	schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 
 	return KNOT_EOK;
 }
@@ -317,7 +331,7 @@ static int zone_notify(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	zone_events_schedule_user(zone, ZONE_EVENT_NOTIFY);
+	schedule_trigger(zone, args, ZONE_EVENT_NOTIFY, true);
 
 	return KNOT_EOK;
 }
@@ -332,7 +346,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		zone->flags |= ZONE_FORCE_FLUSH;
 	}
 
-	zone_events_schedule_user(zone, ZONE_EVENT_FLUSH);
+	schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
 
 	return KNOT_EOK;
 }
@@ -347,7 +361,7 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	}
 
 	zone->flags |= ZONE_FORCE_RESIGN;
-	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
+	schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 
 	return KNOT_EOK;
 }
@@ -368,7 +382,7 @@ static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	zone_events_schedule_user(zone, ZONE_EVENT_DNSSEC);
+	schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 
 	return KNOT_EOK;
 }
@@ -379,18 +393,18 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 
 	kdnssec_ctx_t ctx = { 0 };
 
-	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, NULL);
+	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, zone->kaspdb, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = knot_dnssec_ksk_sbm_confirm(&ctx);
+	ret = knot_dnssec_ksk_sbm_confirm(&ctx, 0);
 	kdnssec_ctx_deinit(&ctx);
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (ret == KNOT_EOK && conf_bool(&val)) {
 		// NOT zone_events_schedule_user(), intentionally!
-		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+		schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, false);
 	}
 
 	return ret;
@@ -400,7 +414,7 @@ static int zone_freeze(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	zone_events_schedule_now(zone, ZONE_EVENT_UFREEZE);
+	schedule_trigger(zone, args, ZONE_EVENT_UFREEZE, false);
 
 	return KNOT_EOK;
 }
@@ -409,7 +423,7 @@ static int zone_thaw(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	zone_events_schedule_now(zone, ZONE_EVENT_UTHAW);
+	schedule_trigger(zone, args, ZONE_EVENT_UTHAW, false);
 
 	return KNOT_EOK;
 }
@@ -442,9 +456,7 @@ static void zone_txn_update_clear(zone_t *zone)
 {
 	assert(zone->control_update);
 
-	zone_update_clear(zone->control_update);
-	free(zone->control_update);
-	zone->control_update = NULL;
+	zone_control_clear(zone);
 }
 
 static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
@@ -469,7 +481,10 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	bool dnssec_enable = (zone->control_update->flags & UPDATE_SIGN) && conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
-		int ret = knot_dnssec_sign_update(zone->control_update, &resch);
+		bool full = (zone->control_update->flags & UPDATE_FULL);
+		zone_sign_roll_flags_t rflags = KEY_ROLL_ALLOW_ALL;
+		int ret = (full ? knot_dnssec_zone_sign(zone->control_update, 0, rflags, &resch) :
+		                  knot_dnssec_sign_update(zone->control_update, &resch));
 		if (ret != KNOT_EOK) {
 			zone_txn_update_clear(zone);
 			return ret;
@@ -1046,6 +1061,16 @@ static bool zone_names_distinct(const knot_dname_t *zone, void *data)
 	return !knot_dname_is_equal(zone, zone_to_purge);
 }
 
+static int drop_journal_if_orphan(const knot_dname_t *for_zone, void *ctx)
+{
+	server_t *server = ctx;
+	zone_journal_t j = { &server->journaldb, for_zone };
+	if (!zone_exists(for_zone, server->zone_db)) {
+		(void)journal_scrape_with_md(j);
+	}
+	return KNOT_EOK;
+}
+
 static int orphans_purge(ctl_args_t *args)
 {
 	assert(args->data[KNOT_CTL_IDX_FILTER] != NULL);
@@ -1054,46 +1079,19 @@ static int orphans_purge(ctl_args_t *args)
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
 		// Purge KASP DB.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-			list_t zones;
-			init_list(&zones);
-			if (kasp_db_open(*kaspdb()) == KNOT_EOK &&
-			    kasp_db_list_zones(*kaspdb(), &zones) == KNOT_EOK) {
-				ptrnode_t *zn;
-				WALK_LIST(zn, zones) {
-					knot_dname_t *zone_name = (knot_dname_t *)zn->d;
-					if (!zone_exists(zone_name, args->server->zone_db)) {
-						(void)kasp_db_delete_all(*kaspdb(), zone_name);
-					}
-					knot_dname_free(zone_name, NULL);
-				}
-				ptrlist_free(&zones, NULL);
-			}
+			(void)kasp_db_sweep(&args->server->kaspdb,
+			                    zone_exists, args->server->zone_db);
 		}
 
 		// Purge zone journals of unconfigured zones.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
-			list_t zones;
-			init_list(&zones);
-			if (journal_db_list_zones(&args->server->journal_db, &zones) == KNOT_EOK) {
-				ptrnode_t *zn;
-				WALK_LIST(zn, zones) {
-					journal_t journal = { 0 };
-					knot_dname_t *zone_name = (knot_dname_t *)zn->d;
-					if (!zone_exists(zone_name, args->server->zone_db) &&
-					    journal_open(&journal, &args->server->journal_db,
-					                 zone_name) == KNOT_EOK) {
-						journal_scrape(&journal);
-						journal_close(&journal);
-					}
-					knot_dname_free(zone_name, NULL);
-				}
-				ptrlist_free(&zones, NULL);
-			}
+			(void)journals_walk(&args->server->journaldb,
+			                    drop_journal_if_orphan, args->server);
 		}
 
 		// Purge timers of unconfigured zones.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
-			(void)zone_timers_sweep(args->server->timers_db,
+			(void)zone_timers_sweep(&args->server->timerdb,
 			                        zone_exists, args->server->zone_db);
 		}
 	} else {
@@ -1114,24 +1112,20 @@ static int orphans_purge(ctl_args_t *args)
 			if (!zone_exists(zone_name, args->server->zone_db)) {
 				// Purge KASP DB.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-					if (kasp_db_open(*kaspdb()) == KNOT_EOK) {
-						(void) kasp_db_delete_all(*kaspdb(), zone_name);
+					if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK) {
+						(void)kasp_db_delete_all(&args->server->kaspdb, zone_name);
 					}
 				}
 
 				// Purge zone journal.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
-					journal_t journal = { 0 };
-					if (journal_open(&journal, &args->server->journal_db,
-					                 zone_name) == KNOT_EOK) {
-						(void)journal_scrape(&journal);
-						journal_close(&journal);
-					}
+					zone_journal_t j = { &args->server->journaldb, zone_name };
+					(void)journal_scrape_with_md(j);
 				}
 
 				// Purge zone timers.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
-					(void)zone_timers_sweep(args->server->timers_db,
+					(void)zone_timers_sweep(&args->server->timerdb,
 					                        zone_names_distinct, zone_name);
 				}
 			}
@@ -1158,13 +1152,13 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	// Purge the zone timers.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
 		memset(&zone->timers, 0, sizeof(zone->timers));
-		(void)zone_timers_sweep(args->server->timers_db,
+		(void)zone_timers_sweep(&args->server->timerdb,
 		                        zone_names_distinct, zone->name);
 	}
 
 	// Expire the zone.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
-		zone_events_schedule_user(zone, ZONE_EVENT_EXPIRE);
+		schedule_trigger(zone, args, ZONE_EVENT_EXPIRE, true);
 	}
 
 	// Purge the zone file.
@@ -1176,15 +1170,13 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 
 	// Purge the zone journal.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
-		if (journal_open(zone->journal, zone->journal_db, zone->name) == KNOT_EOK) {
-			(void)journal_scrape(zone->journal);
-		}
+		(void)journal_scrape_with_md(zone_journal(zone));
 	}
 
 	// Purge KASP DB.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-		if (kasp_db_open(*kaspdb()) == KNOT_EOK) {
-			(void)kasp_db_delete_all(*kaspdb(), zone->name);
+		if (knot_lmdb_open(zone->kaspdb) == KNOT_EOK) {
+			(void)kasp_db_delete_all(zone->kaspdb, zone->name);
 		}
 	}
 
@@ -1406,9 +1398,12 @@ static int server_status(ctl_args_t *args)
 	if (strcasecmp(type, "version") == 0) {
 		ret = snprintf(buff, sizeof(buff), "Version: %s", PACKAGE_VERSION);
 	} else if (strcasecmp(type, "workers") == 0) {
+		int running_bkg_wrk, wrk_queue;
+		worker_pool_status(args->server->workers, &running_bkg_wrk, &wrk_queue);
 		ret = snprintf(buff, sizeof(buff), "UDP workers: %zu, TCP workers %zu, "
-		               "background workers: %zu", conf_udp_threads(conf()),
-		               conf_tcp_threads(conf()), conf_bg_threads(conf()));
+		               "background workers: %zu (running: %d, pending: %d)",
+		               conf_udp_threads(conf()), conf_tcp_threads(conf()),
+		               conf_bg_threads(conf()), running_bkg_wrk, wrk_queue);
 	} else if (strcasecmp(type, "configure") == 0) {
 		ret = snprintf(buff, sizeof(buff), "%s", CONFIGURE_SUMMARY);
 	} else {

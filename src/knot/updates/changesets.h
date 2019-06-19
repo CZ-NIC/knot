@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,9 @@ typedef struct {
 /*! \brief Changeset iteration structure. */
 typedef struct {
 	list_t iters;             /*!< List of pending zone iterators. */
+	zone_tree_t *trees[4];    /*!< Poiters to zone trees to iterate over. */
+	size_t n_trees;           /*!< Their count. */
+	zone_tree_it_t it;        /*!< Zone tree iterator. */
 	const zone_node_t *node;  /*!< Current zone node. */
 	uint16_t node_pos;        /*!< Position in node. */
 } changeset_iter_t;
@@ -140,6 +143,24 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags);
 
 /*!
+ * \brief Get serial "from" of the changeset.
+ *
+ * \param ch   Changeset in question.
+ *
+ * \return Its serial "from", or 0 if none.
+ */
+uint32_t changeset_from(const changeset_t *ch);
+
+/*!
+ * \brief Get serial "to" of the changeset.
+ *
+ * \param ch   Changeset in question.
+ *
+ * \return Its serial "to", or 0 if none.
+ */
+uint32_t changeset_to(const changeset_t *ch);
+
+/*!
  * \brief Remove from changeset those rdata which won't be added/removed from zone.
  *
  * \param zone  The zone the changeset is going to be applied on.
@@ -170,32 +191,6 @@ int changeset_cancelout(changeset_t *ch);
  * \retval true   Otherwise.
  */
 bool changeset_differs_just_serial(const changeset_t *ch);
-
-/*!
- * \brief Loads zone contents from botstrap changeset.
- *
- * \param ch  Changeset to load from, will be freed!
- * \param out Zone contents.
- *
- * \return KNOT_E*
- */
-int changeset_to_contents(changeset_t *ch, zone_contents_t **out);
-
-/*!
- * \brief Creates a bootstrap changeset from zone.
- *
- * \param contents  Contents to include, will be freed!
- *
- * \return Changeset, which shall be freed with changeset_from_contents_free()
- */
-changeset_t *changeset_from_contents(const zone_contents_t *contents);
-
-/*!
- * \brief Frees single changeset.
- *
- * \param ch  Changeset from changeset_from_contents() to free.
- */
-void changeset_from_contents_free(changeset_t *ch);
 
 /*!
  * \brief Clears changesets in list. Changesets are not free'd. Legacy.

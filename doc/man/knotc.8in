@@ -54,7 +54,10 @@ Set maximum configuration size (default is @conf_mapsize@ MiB, maximum 10000 MiB
 Use a control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 .TP
 \fB\-t\fP, \fB\-\-timeout\fP \fIseconds\fP
-Use a control timeout in seconds. Set 0 for infinity (default is 5).
+Use a control timeout in seconds. Set 0 for infinity (default is 10).
+.TP
+\fB\-b\fP, \fB\-\-blocking\fP
+Zone event trigger commands wait until the event is finished.
 .TP
 \fB\-f\fP, \fB\-\-force\fP
 Forced operation. Overrides some checks.
@@ -93,7 +96,8 @@ Show the zone status. Filters are \fB+role\fP, \fB+serial\fP, \fB+transaction\fP
 .TP
 \fBzone\-check\fP [\fIzone\fP\&...]
 Test if the server can load the zone. Semantic checks are executed if enabled
-in the configuration. (*)
+in the configuration. When invoked with flag \fB\-f\fP/\fB\-\-force\fP an error is
+returned when semantic check warning appears. (*)
 .TP
 \fBzone\-memstats\fP [\fIzone\fP\&...]
 Estimate memory use for the zone. (*)
@@ -102,46 +106,47 @@ Estimate memory use for the zone. (*)
 Trigger a zone reload from a disk without checking its modification time. For
 slave zone, the refresh from a master server is scheduled; for master zone,
 the notification of slave servers is scheduled. An open zone transaction
-will be aborted!
+will be aborted! (#)
 .TP
 \fBzone\-refresh\fP [\fIzone\fP\&...]
 Trigger a check for the zone serial on the zone\(aqs master. If the master has a
-newer zone, a transfer is scheduled. This command is valid for slave zones.
+newer zone, a transfer is scheduled. This command is valid for slave zones. (#)
 .TP
 \fBzone\-retransfer\fP [\fIzone\fP\&...]
 Trigger a zone transfer from the zone\(aqs master. The server doesn\(aqt check the
-serial of the master\(aqs zone. This command is valid for slave zones.
+serial of the master\(aqs zone. This command is valid for slave zones. (#)
 .TP
 \fBzone\-notify\fP [\fIzone\fP\&...]
 Trigger a NOTIFY message to all configured remotes. This can help in cases
-when previous NOTIFY had been lost or the slaves offline.
+when previous NOTIFY had been lost or the slaves offline. (#)
 .TP
 \fBzone\-flush\fP [\fIzone\fP\&...] [\fB+outdir\fP \fIdirectory\fP]
 Trigger a zone journal flush into the zone file. If output dir is specified,
 instead of flushing the zonefile, the zone is dumped to a file in the specified
-directory.
+directory. (#)
 .TP
 \fBzone\-sign\fP [\fIzone\fP\&...]
 Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.
-This command is valid for zones with DNSSEC signing enabled.
+This command is valid for zones with DNSSEC signing enabled. (#)
 .TP
 \fBzone\-key\-rollover\fP \fIzone\fP \fIkey_type\fP
 Trigger immediate key rollover. Publish new key and start a key rollover,
 even when the key has a lifetime to go. Key type can be \fBksk\fP (also for CSK)
 or \fBzsk\fP\&. This command is valid for zones with DNSSEC signing and automatic
-key management enabled.
+key management enabled. Note that complete key rollover consists of several steps
+and the blocking mode relates to the initial one only! (#)
 .TP
 \fBzone\-ksk\-submitted\fP \fIzone\fP\&...
 Use when the zone\(aqs KSK rollover is in submittion phase. By calling this command
 the user confirms manually that the parent zone contains DS record for the new
-KSK in submission phase and the old KSK can be retired.
+KSK in submission phase and the old KSK can be retired. (#)
 .TP
 \fBzone\-freeze\fP [\fIzone\fP\&...]
 Temporarily postpone zone\-changing events (load, refresh, update, flush, and
-DNSSEC signing).
+DNSSEC signing). (#)
 .TP
 \fBzone\-thaw\fP [\fIzone\fP\&...]
-Dismiss zone freeze.
+Dismiss zone freeze. (#)
 .TP
 \fBzone\-read\fP \fIzone\fP [\fIowner\fP [\fItype\fP]]
 Get zone data that are currently being presented.
@@ -173,7 +178,7 @@ Purge zone data, zone file, journal, timers, and/or KASP data of specified zones
 Available filters are \fB+expire\fP, \fB+zonefile\fP, \fB+journal\fP, \fB+timers\fP,
 and \fB+kaspdb\fP\&. If no filter is specified, all filters are enabled.
 If the zone is no longer configured, add \fB+orphan\fP filter (zone file cannot
-be purged in this case).
+be purged in this case). (#)
 .TP
 \fBzone\-stats\fP \fIzone\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
 Show zone statistics counter(s). To print also counters with value 0, use
@@ -230,7 +235,9 @@ Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\
 .sp
 (*) indicates a local operation which requires a configuration.
 .sp
-Use \fB\-\-force\fP or \fB\-f\fP as the first parameter of any command to force it.
+(#) indicates an optionally blocking operation.
+.sp
+The \fI\-b\fP and \fI\-f\fP options can be placed right after the command name.
 .SS Interactive mode
 .sp
 The utility provides interactive mode with basic line editing functionality,
@@ -240,6 +247,10 @@ Interactive mode behavior can be customized in \fI~/.editrc\fP\&. Refer to
 \fBeditrc(5)\fP for details.
 .sp
 Command history is saved in \fI~/.knotc_history\fP\&.
+.SH EXIT VALUES
+.sp
+Exit status of 0 means successful operation. Any other exit status indicates
+an error.
 .SH EXAMPLES
 .SS Reload the whole server configuration
 .INDENT 0.0
@@ -327,6 +338,6 @@ $ knotc zone\-read \-\- @ SOA
 .SH AUTHOR
 CZ.NIC Labs <https://www.knot-dns.cz>
 .SH COPYRIGHT
-Copyright 2010–2018, CZ.NIC, z.s.p.o.
+Copyright 2010–2019, CZ.NIC, z.s.p.o.
 .\" Generated by docutils manpage writer.
 .

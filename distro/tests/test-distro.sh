@@ -18,15 +18,19 @@ case "$repo" in
 		echo -e 'repos:\n  - knot-dns-latest' > repos.yaml
 		;;
 	*)
-		echo "Unknown repo, choose devel|latest"
+		echo "Unknown repo, choose devel|latest|testing"
 		exit 1
 		;;
 esac
 
 cd "$distro"
-vagrant destroy &>/dev/null
+vagrant destroy -f &>/dev/null
 vagrant up
 ret=$?
-vagrant destroy &>/dev/null
+if [ $ret -ne 0 ]; then
+    # workaround for weird behaviour with fedora/29-cloud-base boxes
+    vagrant provision
+    ret=$?
+fi
+vagrant destroy -f &>/dev/null
 exit $ret
-

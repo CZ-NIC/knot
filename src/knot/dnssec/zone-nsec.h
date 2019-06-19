@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,6 +35,16 @@ inline static bool knot_is_nsec3_enabled(const zone_contents_t *zone)
 	return zone != NULL && zone->nsec3_params.algorithm != 0;
 }
 
+inline static size_t zone_nsec3_hash_len(const zone_contents_t *zone)
+{
+	return knot_is_nsec3_enabled(zone) ? dnssec_nsec3_hash_length(zone->nsec3_params.algorithm) : 0;
+}
+
+inline static size_t zone_nsec3_name_len(const zone_contents_t *zone)
+{
+	return 1 + ((zone_nsec3_hash_len(zone) + 4) / 5) * 8 + knot_dname_size(zone->apex->owner);
+}
+
 /*!
  * \brief Create NSEC3 owner name from hash and zone apex.
  *
@@ -65,31 +75,61 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
                             const dnssec_nsec3_params_t *params);
 
 /*!
+ * \brief Return (and compute of needed) the corresponding NSEC3 node's name.
+ *
+ * \param node   Normal node.
+ * \param zone   Optional: zone contents with NSEC3 params.
+ *
+ * \return NSEC3 node owner.
+ *
+ * \note The result is also stored in (node), unless zone == NULL;
+ */
+knot_dname_t *node_nsec3_hash(zone_node_t *node, const zone_contents_t *zone);
+
+/*!
+ * \brief Return (and compute if needed) the corresponding NSEC3 node.
+ *
+ * \param node   Normal node.
+ * \param zone   Optional: zone contents with NSEC3 params and NSEC3 tree.
+ *
+ * \return NSEC3 node.
+ *
+ * \note The result is also stored in (node), unless zone == NULL;
+ */
+zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone);
+
+/*!
+ * \brief Update node's NSEC3 pointer (or hash), taking it from bi-node counterpart if possible.
+ *
+ * \param node   Bi-node with this node to be updated.
+ * \param zone   Zone contents the node is in.
+ *
+ * \return KNOT_EOK :)
+ */
+int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone);
+
+/*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  *
  * \param update          Zone Update with current zone contents and to be updated with NSEC chain.
  * \param zone_keys       Zone keys used for NSEC(3) creation.
  * \param ctx             Signing context.
- * \param sign_nsec_chain If true, the created NSEC(3) chain is signed at the end.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_create_nsec_chain(zone_update_t *update,
                                 const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *ctx,
-                                bool sign_nsec_chain);
+                                const kdnssec_ctx_t *ctx);
 
 /*!
- * \brief Fix NSEC or NSEC3 chain after zone was updated.
+ * \brief Fix NSEC or NSEC3 chain after zone was updated, and sign the changed NSECs.
  *
  * \param update           Zone Update with the update and to be update with NSEC chain.
  * \param zone_keys        Zone keys used for NSEC(3) creation.
  * \param ctx              Signing context.
- * \param sign_nsec_chain  If true, the created NSEC(3) chain is signed at the end.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_fix_nsec_chain(zone_update_t *update,
                              const zone_keyset_t *zone_keys,
-                             const kdnssec_ctx_t *ctx,
-                             bool sign_nsec_chain);
+                             const kdnssec_ctx_t *ctx);

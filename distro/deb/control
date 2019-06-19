@@ -16,21 +16,21 @@ Build-Depends-Indep:
 Build-Depends:
  debhelper (>= 9),
  latexmk,
- libcap-ng-dev,
+ libcap-ng-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386],
  libedit-dev,
  libfstrm-dev,
  libgnutls28-dev,
  libidn2-0-dev,
  libjemalloc-dev,
  liblmdb-dev,
- libmaxminddb-dev,
+ libmaxminddb-dev [!powerpcspe !sh4 !x32],
  libprotobuf-c-dev,
  libsystemd-dev [linux-any] | libsystemd-daemon-dev [linux-any],
  libsystemd-dev [linux-any] | libsystemd-journal-dev [linux-any],
  liburcu-dev (>= 0.4),
  pkg-config,
  protobuf-c-compiler,
-Standards-Version: 4.2.0
+Standards-Version: 4.3.0
 Homepage: https://www.knot-dns.cz/
 Vcs-Browser: https://gitlab.labs.nic.cz/knot/knot-dns
 Vcs-Git: https://gitlab.labs.nic.cz/knot/knot-dns.git
@@ -40,9 +40,9 @@ Package: knot
 Architecture: any
 Depends:
  adduser,
- libdnssec6 (= ${binary:Version}),
- libknot8 (= ${binary:Version}),
- libzscanner2 (= ${binary:Version}),
+ libdnssec7 (= ${binary:Version}),
+ libknot9 (= ${binary:Version}),
+ libzscanner3 (= ${binary:Version}),
  lsb-base (>= 3.0-6),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -56,7 +56,7 @@ Description: Authoritative domain name server
  registry and hence is well suited to run anything from the root
  zone, the top-level domain, to many smaller standard domain names.
 
-Package: libknot8
+Package: libknot9
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -80,7 +80,7 @@ Description: Authoritative domain name server (shared library)
  This package provides libknot shared library used by Knot DNS and
  Knot Resolver.
 
-Package: libzscanner2
+Package: libzscanner3
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -104,7 +104,7 @@ Description: DNS zone-parsing library from Knot
  This package provides a fast zone parser shared library used by Knot
  DNS and Knot Resolver.
 
-Package: libdnssec6
+Package: libdnssec7
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -132,10 +132,10 @@ Package: libknot-dev
 Architecture: any
 Multi-Arch: same
 Depends:
- libdnssec6 (= ${binary:Version}),
+ libdnssec7 (= ${binary:Version}),
  libgnutls28-dev,
- libknot8 (= ${binary:Version}),
- libzscanner2 (= ${binary:Version}),
+ libknot9 (= ${binary:Version}),
+ libzscanner3 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libdevel
@@ -157,9 +157,9 @@ Description: Knot DNS shared library development files
 Package: knot-dnsutils
 Architecture: any
 Depends:
- libdnssec6 (= ${binary:Version}),
- libknot8 (= ${binary:Version}),
- libzscanner2 (= ${binary:Version}),
+ libdnssec7 (= ${binary:Version}),
+ libknot9 (= ${binary:Version}),
+ libzscanner3 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Description: Clients provided with Knot DNS (kdig, knslookup, knsupdate)
@@ -185,9 +185,9 @@ Description: Clients provided with Knot DNS (kdig, knslookup, knsupdate)
 Package: knot-host
 Architecture: any
 Depends:
- libdnssec6 (= ${binary:Version}),
- libknot8 (= ${binary:Version}),
- libzscanner2 (= ${binary:Version}),
+ libdnssec7 (= ${binary:Version}),
+ libknot9 (= ${binary:Version}),
+ libzscanner3 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Description: Version of 'host' bundled with Knot DNS

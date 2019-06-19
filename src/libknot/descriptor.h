@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,9 +96,13 @@ enum knot_rr_type {
 	KNOT_RRTYPE_NSEC3      =  50, /*!< NSEC version 3. */
 	KNOT_RRTYPE_NSEC3PARAM =  51, /*!< NSEC3 parameters. */
 	KNOT_RRTYPE_TLSA       =  52, /*!< DANE record. */
+	KNOT_RRTYPE_SMIMEA     =  53, /*!< S/MIME cert association. */
 
 	KNOT_RRTYPE_CDS        =  59, /*!< Child delegation signer. */
 	KNOT_RRTYPE_CDNSKEY    =  60, /*!< Child DNS key. */
+	KNOT_RRTYPE_OPENPGPKEY =  61, /*!< OpenPGP Key. */
+	KNOT_RRTYPE_CSYNC      =  62, /*!< Child-To-Parent synchronization. */
+	KNOT_RRTYPE_ZONEMD     =  63, /*!< Message digest for DNS zone. */
 
 	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
 
