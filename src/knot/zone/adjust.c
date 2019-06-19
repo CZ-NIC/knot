@@ -382,9 +382,19 @@ static int adjust_point_to_nsec3_cb(zone_node_t *node, void *ctx)
 
 int zone_adjust_incremental_update(zone_update_t *update)
 {
-	int ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false);
+	int ret = zone_contents_load_nsec3param(update->new_cont);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	bool nsec3change = zone_update_changed_nsec3param(update);
+
+	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
+		if (nsec3change) {
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
+		} else {
+			ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
+		}
 	}
 	if (ret == KNOT_EOK) {
 		ret = additionals_tree_update_from_binodes(
@@ -402,12 +412,16 @@ int zone_adjust_incremental_update(zone_update_t *update)
 		);
 	}
 	if (ret == KNOT_EOK) {
-		ret = additionals_reverse_apply_multi(
-			update->new_cont->adds_tree,
-			update->a_ctx->nsec3_ptrs,
-			adjust_point_to_nsec3_cb,
-			update->new_cont
-		);
+		if (nsec3change) {
+			ret = zone_adjust_contents(update->new_cont, binode_fix_nsec3_pointer, adjust_cb_void, false);
+		} else {
+			ret = additionals_reverse_apply_multi(
+				update->new_cont->adds_tree,
+				update->a_ctx->nsec3_ptrs,
+				adjust_point_to_nsec3_cb,
+				update->new_cont
+			);
+		}
 	}
 	return ret;
 }
