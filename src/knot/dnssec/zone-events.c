@@ -177,7 +177,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false);
+	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, NULL);
 	if (result != KNOT_EOK) {
 		return result;
 	};
