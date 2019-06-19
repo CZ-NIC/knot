@@ -33,9 +33,6 @@ typedef int (*adjust_cb_t)(zone_node_t *, const zone_contents_t *);
 // fix NORMAL node flags, like NODE_FLAGS_NONAUTH, NODE_FLAGS_DELEG etc.
 int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone);
 
-// fix NORMAL node pointer to corresponding NSEC3 node
-int adjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone);
-
 // reset pointer to NSEC3 node
 int unadjust_cb_point_to_nsec3(zone_node_t *node, const zone_contents_t *zone);
 

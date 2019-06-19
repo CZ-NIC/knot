@@ -158,7 +158,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			// throw old zone contents and load new from ZF
 			ret = zone_update_from_contents(&up, zone, zf_conts,
 			                                (load_from == JOURNAL_CONTENT_NONE ?
-			                                 UPDATE_FULL : UPDATE_INCREMENTAL));
+			                                 UPDATE_FULL : UPDATE_HYBRID));
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
@@ -170,11 +170,11 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
 			if (zf_conts == NULL) {
 				// load zone-in-journal
-				ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
+				ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
 			} else {
 				// load zone-in-journal, compute ZF diff and if success, apply it
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts,
-				                                   UPDATE_INCREMENTAL | UPDATE_JOURNAL, ignore_dnssec);
+				                                   UPDATE_HYBRID, ignore_dnssec);
 				zone_contents_deep_free(zf_conts);
 				zf_conts = NULL;
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
@@ -182,7 +182,7 @@ int event_load(conf_t *conf, zone_t *zone)
 					                 "zone file changed with SOA serial %s, "
 					                 "ignoring zone file and loading from journal",
 					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
-					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_INCREMENTAL);
+					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
 				}
 			}
 		} else {
@@ -193,7 +193,7 @@ int event_load(conf_t *conf, zone_t *zone)
 				// load from ZF
 				ret = zone_update_from_contents(&up, zone, zf_conts,
 				                                (load_from == JOURNAL_CONTENT_NONE ?
-				                                 UPDATE_FULL : UPDATE_INCREMENTAL));
+				                                 UPDATE_FULL : UPDATE_HYBRID));
 				if (zf_from == ZONEFILE_LOAD_WHOLE) {
 					zu_from_zf_conts = true;
 				}
@@ -233,7 +233,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			zone_update_clear(&up);
 			goto cleanup;
 		}
-		if (zu_from_zf_conts && (up.flags & UPDATE_INCREMENTAL) && allowed_xfr(conf, zone)) {
+		if (zu_from_zf_conts && (up.flags & UPDATE_HYBRID) && allowed_xfr(conf, zone)) {
 			log_zone_warning(zone->name,
 			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
 			                 "'zonefile-load: difference' should be set to avoid malformed "
@@ -242,7 +242,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	// If the change is only automatically incremented SOA serial, make it no change.
-	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & UPDATE_INCREMENTAL) &&
+	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
 	    changeset_differs_just_serial(&up.change)) {
 		changeset_t *cpy = changeset_clone(&up.change);
 		if (cpy == NULL) {
