@@ -23,6 +23,7 @@
 
 enum {
 	APPLY_STRICT = 1 << 0,    /* Apply strictly, don't ignore removing non-existent RRs. */
+	APPLY_UNIFY_FULL = 1 << 1,   /* When cleaning up successful update, perform full trees nodes unify. */
 };
 
 struct apply_ctx {
