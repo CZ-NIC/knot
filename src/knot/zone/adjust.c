@@ -288,10 +288,8 @@ static int adjust_single(zone_node_t *node, void *data)
 	}
 
 	// set pointer to previous node
-	if (args->adjust_prevs) {
-		if (node->prev != args->previous_node) {
-			zone_tree_insert(args->ctx->changed_nodes, &node);
-		}
+	if (args->adjust_prevs && node->prev != args->previous_node && binode_counterpart(node->prev) != args->previous_node) {
+		zone_tree_insert(args->ctx->changed_nodes, &node);
 		node->prev = args->previous_node;
 	}
 
@@ -322,9 +320,7 @@ static int zone_adjust_tree(zone_tree_t *tree, adjust_ctx_t *ctx, adjust_cb_t ad
 	}
 
 	if (adjust_prevs && arg.first_node != NULL) {
-		if (arg.first_node->prev != arg.previous_node) {
-			zone_tree_insert(ctx->changed_nodes, &arg.first_node);
-		}
+		zone_tree_insert(ctx->changed_nodes, &arg.first_node);
 		arg.first_node->prev = arg.previous_node;
 	}
 
