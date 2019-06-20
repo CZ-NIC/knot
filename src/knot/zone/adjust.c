@@ -415,7 +415,7 @@ int zone_adjust_incremental_update(zone_update_t *update)
 	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, true, update->a_ctx->adjust_ptrs);
 		} else {
 			ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 		}
