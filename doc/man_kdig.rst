@@ -236,6 +236,12 @@ Options
 **+**\ [\ **no**\ ]\ **tls-sni**\ =\ *STR*
   Use TLS with a Server Name Indication.
 
+**+**\ [\ **no**\ ]\ **tls-keyfile**\ =\ *FILE*
+  Use TLS with a client keyfile.
+
+**+**\ [\ **no**\ ]\ **tls-certfile**\ =\ *FILE*
+  Use TLS with a client certfile.
+
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
