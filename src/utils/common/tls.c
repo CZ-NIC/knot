@@ -65,6 +65,22 @@ int tls_params_copy(tls_params_t *dst, const tls_params_t *src)
 		}
 	}
 
+	if (src->keyfile != NULL) {
+		dst->keyfile = strdup(src->keyfile);
+		if (dst->keyfile == NULL) {
+			tls_params_clean(dst);
+			return KNOT_ENOMEM;
+		}
+	}
+
+	if (src->certfile != NULL) {
+		dst->certfile = strdup(src->certfile);
+		if (dst->certfile == NULL) {
+			tls_params_clean(dst);
+			return KNOT_ENOMEM;
+		}
+	}
+
 	ptrnode_t *n = NULL;
 	WALK_LIST(n, src->ca_files) {
 		char *src_file = (char *)n->d;
@@ -106,6 +122,8 @@ void tls_params_clean(tls_params_t *params)
 
 	free(params->hostname);
 	free(params->sni);
+	free(params->keyfile);
+	free(params->certfile);
 
 	memset(params, 0, sizeof(*params));
 }
@@ -300,6 +318,33 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 	}
 
 	gnutls_certificate_set_verify_function(ctx->credentials, verify_certificate);
+
+	// Setup client keypair if specified. Both key and cert files must be provided.
+	if (params->keyfile != NULL && params->certfile != NULL) {
+		// First, try PEM.
+		ret = gnutls_certificate_set_x509_key_file(ctx->credentials,
+			params->certfile, params->keyfile, GNUTLS_X509_FMT_PEM);
+		if (ret != GNUTLS_E_SUCCESS) {
+			// If PEM didn't work, try DER.
+			ret = gnutls_certificate_set_x509_key_file(ctx->credentials,
+				params->certfile, params->keyfile, GNUTLS_X509_FMT_DER);
+		}
+
+		if (ret != GNUTLS_E_SUCCESS) {
+			WARN("TLS, failed to add client certfile '%s' and keyfile '%s'\n",
+			     params->certfile, params->keyfile);
+			return KNOT_ERROR;
+		} else {
+			DBG("TLS, added client certfile '%s' and keyfile '%s'\n",
+			    params->certfile, params->keyfile);
+		}
+	} else if (params->keyfile != NULL) {
+		WARN("TLS, cannot use client keyfile without a certfile\n");
+		return KNOT_ERROR;
+	} else if (params->certfile != NULL) {
+		WARN("TLS, cannot use client certfile without a keyfile\n");
+		return KNOT_ERROR;
+	}
 
 	return KNOT_EOK;
 }

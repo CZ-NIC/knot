@@ -35,6 +35,10 @@ typedef struct {
 	char *hostname;
 	/*! Optional server name indicator. */
 	char *sni;
+	/*! Optional client keyfile name. */
+	char *keyfile;
+	/*! Optional client certfile name. */
+	char *certfile;
 } tls_params_t;
 
 /*! \brief TLS context. */

@@ -737,6 +737,46 @@ static int opt_notls_sni(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_tls_keyfile(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	free(q->tls.keyfile);
+	q->tls.keyfile = strdup(arg);
+
+	return opt_tls(arg, query);
+}
+
+static int opt_notls_keyfile(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	free(q->tls.keyfile);
+	q->tls.keyfile = NULL;
+
+	return KNOT_EOK;
+}
+
+static int opt_tls_certfile(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	free(q->tls.certfile);
+	q->tls.certfile = strdup(arg);
+
+	return opt_tls(arg, query);
+}
+
+static int opt_notls_certfile(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	free(q->tls.certfile);
+	q->tls.certfile = NULL;
+
+	return KNOT_EOK;
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1228,6 +1268,12 @@ static const param_t kdig_opts2[] = {
 
 	{ "tls-sni",        ARG_REQUIRED, opt_tls_sni },
 	{ "notls-sni",      ARG_NONE,     opt_notls_sni },
+
+	{ "tls-keyfile",    ARG_REQUIRED, opt_tls_keyfile },
+	{ "notls-keyfile",  ARG_NONE,     opt_notls_keyfile },
+
+	{ "tls-certfile",   ARG_REQUIRED, opt_tls_certfile },
+	{ "notls-certfile", ARG_NONE,     opt_notls_certfile },
 
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
@@ -1931,6 +1977,8 @@ static void print_help(void)
 	       "       +[no]tls-pin=BASE64       Use TLS with pinned certificate.\n"
 	       "       +[no]tls-hostname=STR     Use TLS with remote server hostname.\n"
 	       "       +[no]tls-sni=STR          Use TLS with Server Name Indication.\n"
+	       "       +[no]tls-keyfile=FILE     Use TLS with a client keyfile.\n"
+	       "       +[no]tls-certfile=FILE    Use TLS with a client certfile.\n"
 	       "       +[no]nsid                 Request NSID.\n"
 	       "       +[no]bufsize=B            Set EDNS buffer size.\n"
 	       "       +[no]padding[=N]          Pad with EDNS(0) (default or specify size).\n"
