@@ -29,6 +29,8 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 		node->parent->flags |= NODE_FLAGS_WILDCARD_CHILD;
 	}
 
+	node->flags = NODE_FLAGS_AUTH;
+
 	// set flags (delegation point, non-authoritative)
 	if (node->parent &&
 	    (node->parent->flags & NODE_FLAGS_DELEG ||
@@ -36,9 +38,6 @@ int adjust_cb_flags(zone_node_t *node, const zone_contents_t *zone)
 		node->flags |= NODE_FLAGS_NONAUTH;
 	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != zone->apex) {
 		node->flags |= NODE_FLAGS_DELEG;
-	} else {
-		// Default.
-		node->flags = NODE_FLAGS_AUTH;
 	}
 
 	return KNOT_EOK; // always returns this value :)
