@@ -204,6 +204,8 @@ static int adjust_pointers(zone_node_t **tnode, void *data)
 		node->parent->flags |= NODE_FLAGS_WILDCARD_CHILD;
 	}
 
+	node->flags &= ~(NODE_FLAGS_NONAUTH | NODE_FLAGS_DELEG);
+
 	// set flags (delegation point, non-authoritative)
 	if (node->parent &&
 	    (node->parent->flags & NODE_FLAGS_DELEG ||
