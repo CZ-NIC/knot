@@ -244,7 +244,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 			// don't remove what shall be added
 			result = knot_rdataset_subtract(&to_remove.rrs, &to_add.rrs, NULL);
 		}
-		if (result == KNOT_EOK) {
+		if (result == KNOT_EOK && !knot_rrset_empty(rrsigs)) {
 			// don't add what's already present
 			result = knot_rdataset_subtract(&to_add.rrs, &rrsigs->rrs, NULL);
 		}
