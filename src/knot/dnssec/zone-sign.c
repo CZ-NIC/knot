@@ -844,7 +844,8 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	if (dnssec_ctx->policy->offline_ksk) {
 		ret = kasp_db_load_offline_records(dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, next_resign, &add_r);
 		if (ret == KNOT_EOK) {
-			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");
+			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG (%hu, %hu, %hu, %hu)",
+			              add_r.dnskey.rrs.count, add_r.cdnskey.rrs.count, add_r.cds.rrs.count, add_r.rrsig.rrs.count);
 		} else {
 			log_zone_warning(dnssec_ctx->zone->dname, "DNSSEC, failed to load offline DNSKEY RRSIG (%s)",
 					 knot_strerror(ret));
