@@ -297,7 +297,7 @@ int kasp_db_load_nsec3salt(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	knot_lmdb_begin(db, &txn, false);
 	if (knot_lmdb_find(&txn, &key, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
 		nsec3salt->size = txn.cur_val.mv_size;
-		nsec3salt->data = malloc(txn.cur_val.mv_size);
+		nsec3salt->data = malloc(txn.cur_val.mv_size + 1); // +1 because it can be zero
 		if (nsec3salt->data == NULL) {
 			txn.ret = KNOT_ENOMEM;
 		} else {

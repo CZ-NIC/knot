@@ -242,15 +242,9 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 		}
 	}
 
-	if (zone->nsec3_salt.size > 0) {
-		int ret = kasp_db_store_nsec3salt(kdb, zone_name, &zone->nsec3_salt,
-		                                  zone->nsec3_salt_created);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
 
-	return KNOT_EOK;
+	return kasp_db_store_nsec3salt(kdb, zone_name, &zone->nsec3_salt,
+	                               zone->nsec3_salt_created);
 }
 
 int kasp_zone_init(knot_kasp_zone_t **zone)
