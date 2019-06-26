@@ -1,36 +1,33 @@
 #!/usr/bin/env python3
 
-'''Test for IXFR from Knot to Knot'''
-
 from dnstest.test import Test
 
 t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(5, records=50) + t.zone("records.")
+zone = t.zone("example.com.", storage=".")
 
-t.link(zones, master, slave, ixfr=True)
+master.zonefile_sync = "-1"
+slave.zonefile_sync = "0"
+
+t.link(zone, master, slave, ixfr=True)
+
+master.dnssec(zone).enable = True
+master.dnssec(zone).nsec3 = True
 
 t.start()
 
-# Wait for AXFR to slave server.
-serials_init = master.zones_wait(zones)
-slave.zones_wait(zones)
+slave.zone_wait(zone)
 
-serials_prev = serials_init
-for i in range(4):
-    # Update zone files on master.
-    for zone in zones:
-        master.update_zonefile(zone, random=True)
-    master.reload()
+master.update_zonefile(zone, version=1)
+master.reload()
 
-    # Wait for IXFR to slave.
-    serials = master.zones_wait(zones, serials_prev)
-    slave.zones_wait(zones, serials_prev)
-    serials_prev = serials
+master.stop()
+master.start()
 
-    # Compare IXFR between servers.
-    t.xfr_diff(master, slave, zones, serials_init)
+t.sleep(2)
+
+slave.zone_verify(zone, ldns_check=True)
 
 t.end()
