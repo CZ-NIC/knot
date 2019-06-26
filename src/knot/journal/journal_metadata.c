@@ -320,6 +320,7 @@ int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial,
 		*merged_serial = md.merged_serial;
 	}
 	if (occupied != NULL) {
+		*occupied = 0;
 		get_metadata64(&txn, j.zone, "occupied", occupied);
 	}
 	if (occupied_total != NULL) {
