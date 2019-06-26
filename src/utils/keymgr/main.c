@@ -77,8 +77,6 @@ static void print_help(void)
 	       "Commands related to Offline KSK feature:\n"
 	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
 	       "                 (syntax: pregenerate <timestamp>)\n"
-	       "  presign       Pre-generate RRSIG signatures for pregenerated ZSKs.\n"
-	       "                 (syntax: presign <timestamp>)\n"
 	       "  show-offline  Print pre-generated offline key-related records for specified time interval (possibly to infinity).\n"
 	       "                 (syntax: show-offline <from> [<to>])\n"
 	       "  del-offline   Delete pre-generated offline key-related records in specified time interval.\n"
