@@ -61,8 +61,11 @@ int main(int argc, char *argv[])
 	/* Wait for server to finish. */
 	server_wait(&server);
 
-	/* Wait for server to finish. */
+	/* Destroy the server structure. */
 	server_deinit(&server);
+
+	/* Remove the configuration. */
+        conf_free(conf());
 
 	return 0;
 }
