@@ -155,7 +155,7 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 				 zone_contents_t *new_cont, zone_update_flags_t flags, bool ignore_dnssec)
 {
 	if (update == NULL || zone == NULL || new_cont == NULL ||
-	    !(flags & UPDATE_INCREMENTAL) || (flags & UPDATE_FULL)) {
+	    !(flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) || (flags & UPDATE_FULL)) {
 		return KNOT_EINVAL;
 	}
 
@@ -224,7 +224,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	knot_sem_wait(&update->zone->cow_lock);
 	update->a_ctx->cow_mutex = &update->zone->cow_lock;
 
-	if (flags & UPDATE_INCREMENTAL) {
+	if (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		int ret = changeset_init(&update->change, zone_without_contents->name);
 		if (ret != KNOT_EOK) {
 			free(update->a_ctx);
@@ -658,7 +658,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	int ret = KNOT_EOK;
-	if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		if (changeset_empty(&update->change) &&
 		    update->zone->contents != NULL && !update->new_cont_deep_copy) {
 			changeset_clear(&update->change);
