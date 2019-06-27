@@ -196,21 +196,21 @@ test:debian:amd64:
 pkg:debian:symbols:libknot:
   variables:
     LIB_NAME: libknot
-    LIB_ABI: 8
+    LIB_ABI: 9
   <<: *debian_stable
   <<: *pkg_symbols
 
 pkg:debian:symbols:libdnssec:
   variables:
     LIB_NAME: libdnssec
-    LIB_ABI: 6
+    LIB_ABI: 7
   <<: *debian_stable
   <<: *pkg_symbols
 
 pkg:debian:symbols:libzscanner:
   variables:
     LIB_NAME: libzscanner
-    LIB_ABI: 2
+    LIB_ABI: 3
   <<: *debian_stable
   <<: *pkg_symbols
 
