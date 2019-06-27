@@ -129,8 +129,10 @@ class ZoneFile(object):
 
             if cmd.returncode != 0:
                 set_err("DNSSEC VERIFY")
-                detail_log("dnssec-verify:\n" + err.strip())
+                detail_log(" <dnssec-verify>\n" + err.strip())
                 self.backup()
+            else:
+                detail_log(" <dnssec-verify>\n" + err.strip())
 
         if ldns_check:
             cmd = Popen(["ldns-verify-zone", self.path],
@@ -139,8 +141,10 @@ class ZoneFile(object):
 
             if cmd.returncode != 0:
                 set_err("LDNS VERIFY")
-                detail_log("ldns-verify-zone:\n" + err.strip())
+                detail_log(" <ldns-verify-zone>\n" + err.strip())
                 self.backup()
+            else:
+                detail_log(" <ldns-verify-zone>\n" + out.strip())
 
         detail_log(SEP)
 
