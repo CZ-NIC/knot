@@ -1,0 +1,5 @@
+---
+- name: tcp_test resolve dns1.example.com
+  shell: kdig +tcp @127.0.0.1 dns1.example.com A
+  register: res
+  failed_when: '"192.0.2.1" not in res.stdout'

@@ -1,0 +1,12 @@
+---
+- hosts: all
+
+  remote_user: root
+  become: true
+
+  vars_files:
+    - repos.yaml
+
+  roles:
+    - obs_repos
+    - knot_dns

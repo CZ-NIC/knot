@@ -1,0 +1,5 @@
+---
+show_package_version: rpm -qi knot | grep '^Version'
+packages:
+  - knot
+  - knot-utils
