@@ -1,0 +1,15 @@
+---
+- block:
+    - name: Restart knot.service
+      service:
+        name: knot.service
+        state: restarted
+  rescue:
+    - name: Get knot.service journal
+      shell: journalctl -u knot --since -20s
+      register: journal
+    - name: Print journal
+      debug:
+        var: journal
+    - name: Restart knot.service failed, see log above
+      shell: /bin/false
