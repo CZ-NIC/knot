@@ -368,24 +368,26 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+	}
 
+	if (update->flags & UPDATE_INCREMENTAL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* replace previous SOA */
-			ret = apply_replace_soa(update->a_ctx, &update->change);
+			int ret = apply_replace_soa(update->a_ctx, &update->change);
 			if (ret != KNOT_EOK) {
 				changeset_remove_addition(&update->change, rrset);
 			}
 			return ret;
 		}
 
-		ret = apply_add_rr(update->a_ctx, rrset);
+		int ret = apply_add_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
 			changeset_remove_addition(&update->change, rrset);
 			return ret;
 		}
 
 		return KNOT_EOK;
-	} else if (update->flags & UPDATE_FULL) {
+	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* replace previous SOA */
 			return replace_soa(update->new_cont, rrset);
@@ -424,20 +426,22 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+	}
 
+	if (update->flags & UPDATE_INCREMENTAL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* SOA is replaced with addition */
 			return KNOT_EOK;
 		}
 
-		ret = apply_remove_rr(update->a_ctx, rrset);
+		int ret = apply_remove_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
 			changeset_remove_removal(&update->change, rrset);
 			return ret;
 		}
 
 		return KNOT_EOK;
-	} else if (update->flags & UPDATE_FULL) {
+	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		zone_node_t *n = NULL;
 		knot_rrset_t *rrs_copy = knot_rrset_copy(rrset, &update->mm);
 		int ret = zone_contents_remove_rr(update->new_cont, rrs_copy, &n);
