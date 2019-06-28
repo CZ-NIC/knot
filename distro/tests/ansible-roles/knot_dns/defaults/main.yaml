@@ -1,0 +1,5 @@
+---
+repos:
+  - knot-dns-latest
+update_packages: false
+distro: "{{ ansible_distribution | replace(' ', '_') }}"
