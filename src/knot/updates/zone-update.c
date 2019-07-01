@@ -39,10 +39,8 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 	}
 
 	if (update->flags & UPDATE_HYBRID) {
-		update->new_cont_deep_copy = true;
 		update->new_cont = old_contents;
 	} else {
-		update->new_cont_deep_copy = false;
 		ret = apply_prepare_zone_copy(old_contents, &update->new_cont);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&update->change);
@@ -76,8 +74,6 @@ static int init_full(zone_update_t *update, zone_t *zone)
 	if (update->new_cont == NULL) {
 		return KNOT_ENOMEM;
 	}
-
-	update->new_cont_deep_copy = true;
 
 	int ret = apply_init_ctx(update->a_ctx, update->new_cont, APPLY_UNIFY_FULL);
 	if (ret != KNOT_EOK) {
@@ -215,7 +211,6 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	update->flags = flags;
 
 	update->new_cont = new_cont;
-	update->new_cont_deep_copy = true;
 
 	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
 	if (update->a_ctx == NULL) {
@@ -310,17 +305,17 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 		return NULL;
 	}
 
-       if (update->flags & UPDATE_FULL) {
-               const zone_node_t *apex = update->new_cont->apex;
-               return node_rdataset(apex, KNOT_RRTYPE_SOA);
-       } else {
-               if (update->change.soa_to == NULL) {
-                       return NULL;
-               }
-               return &update->change.soa_to->rrs;
-       }
+	if (update->flags & UPDATE_FULL) {
+		const zone_node_t *apex = update->new_cont->apex;
+		return node_rdataset(apex, KNOT_RRTYPE_SOA);
+	} else {
+		if (update->change.soa_to == NULL) {
+			return NULL;
+		}
+		return &update->change.soa_to->rrs;
+	}
 
-       return NULL;
+	return NULL;
 }
 
 void zone_update_clear(zone_update_t *update)
@@ -663,9 +658,9 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	int ret = KNOT_EOK;
-	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+	if (update->flags & UPDATE_INCREMENTAL) {
 		if (changeset_empty(&update->change) &&
-		    update->zone->contents != NULL && !update->new_cont_deep_copy) {
+		    update->zone->contents != NULL) {
 			changeset_clear(&update->change);
 			return KNOT_EOK;
 		}
