@@ -121,9 +121,6 @@ static void init_cache(
 	}
 	conf->cache.srv_max_ipv6_udp_payload = conf_int(&val);
 
-	val = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
-	conf->cache.srv_tcp_hshake_timeout = conf_int(&val);
-
 	val = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
 	conf->cache.srv_tcp_idle_timeout = conf_int(&val);
 
