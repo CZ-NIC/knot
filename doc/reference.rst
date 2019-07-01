@@ -1085,9 +1085,10 @@ across all zones. Decreasing this value has no effect if lower than actual
 DB file size.
 
 It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
-per-zone instead of max-journal-size in most cases. Please keep this value
-larger than the sum of all zones' journal usage limits. See more details
-regarding :ref:`journal behaviour<Journal behaviour>`.
+per-zone instead of :ref:`max-journal-db-size<template_max-journal-db-size>`
+in most cases. Please keep this value larger than the sum of all zones'
+journal usage limits. See more details regarding
+:ref:`journal behaviour<Journal behaviour>`.
 
 This value also influences server's usage of virtual memory.
 
