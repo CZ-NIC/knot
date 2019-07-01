@@ -25,7 +25,7 @@ The server scales with processing power and also with the number of
 available cores/CPUs. Enabling Hyper-threading is convenient if supported.
 
 There is no lower bound on the CPU requirements, but it should support
-memory barriers and CAS (i586 and newer).
+memory barriers and atomic instructions (i586 and newer).
 
 Network card
 ------------
