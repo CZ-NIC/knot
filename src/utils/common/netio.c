@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -212,7 +212,7 @@ int net_init(const srv_info_t    *local,
 	return KNOT_EOK;
 }
 
-/**
+/*!
  * Connect with TCP Fast Open.
  */
 static int fastopen_connect(int sockfd, const struct addrinfo *srv)
@@ -234,7 +234,7 @@ static int fastopen_connect(int sockfd, const struct addrinfo *srv)
 #endif
 }
 
-/**
+/*!
  * Sends data with TCP Fast Open.
  */
 static int fastopen_send(int sockfd, const struct msghdr *msg, int timeout)

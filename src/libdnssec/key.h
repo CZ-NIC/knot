@@ -12,7 +12,8 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
+
 /*!
  * \file
  *
@@ -315,4 +316,4 @@ bool dnssec_algorithm_digest_support(dnssec_key_digest_t algo);
 int dnssec_key_create_ds(const dnssec_key_t *key, dnssec_key_digest_t digest,
 			 dnssec_binary_t *rdata);
 
-/** @} */
+/*! @} */

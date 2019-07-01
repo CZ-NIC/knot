@@ -42,7 +42,7 @@
  *     last_refresh = 1474554273
  */
 
-/**
+/*!
  * \brief Timer database fields identifiers.
  *
  * Valid ID starts with '1' in MSB to avoid conflicts with "old timers".

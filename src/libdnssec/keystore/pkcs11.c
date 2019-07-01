@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <gnutls/gnutls.h>
 #include <pthread.h>
@@ -82,7 +82,7 @@ static int key_url(const char *token_uri, const char *key_id, char **url_ptr)
 	return DNSSEC_EOK;
 }
 
-/**
+/*!
  * Parse configuration string. Accepted format: "<pkcs11-url> <module-path>"
  */
 static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
