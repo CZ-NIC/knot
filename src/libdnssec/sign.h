@@ -12,7 +12,8 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
+
 /*!
  * \file
  *
@@ -134,4 +135,4 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature);
  */
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature);
 
-/** @} */
+/*! @} */

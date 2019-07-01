@@ -161,7 +161,7 @@ static int disable_pmtudisc(int sock, int family)
 	return KNOT_EOK;
 }
 
-/**
+/*!
  * \brief Enable TCP Fast Open.
  */
 static int enable_fastopen(int sock, int backlog)

@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #pragma once
 
@@ -35,7 +35,7 @@
 
 #define _unused_ __attribute__((unused))
 
-/**
+/*!
  * Macro to clear a structure of known size.
  *
  * \param pointer Pointer to the structure.

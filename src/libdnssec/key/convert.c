@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <gnutls/abstract.h>
@@ -233,7 +233,7 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 	return DNSSEC_EOK;
 }
 
-/**
+/*!
  * Get ECDSA curve based on DNSKEY RDATA size.
  */
 static gnutls_ecc_curve_t ecdsa_curve_from_rdata_size(size_t rdata_size)
@@ -245,7 +245,7 @@ static gnutls_ecc_curve_t ecdsa_curve_from_rdata_size(size_t rdata_size)
 	}
 }
 
-/**
+/*!
  * Get EDDSA curve based on DNSKEY RDATA size.
  */
 #if defined(HAVE_ED25519) || defined(HAVE_ED448)

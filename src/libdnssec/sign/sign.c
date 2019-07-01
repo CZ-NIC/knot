@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -203,7 +203,7 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 }
 
 #ifndef HAVE_SIGN_DATA2
-/**
+/*!
  * Get digest algorithm used with a given key.
  */
 static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
