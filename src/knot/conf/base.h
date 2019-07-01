@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -108,7 +108,6 @@ typedef struct {
 	struct {
 		int16_t srv_max_ipv4_udp_payload;
 		int16_t srv_max_ipv6_udp_payload;
-		int32_t srv_tcp_hshake_timeout;
 		int32_t srv_tcp_idle_timeout;
 		int32_t srv_tcp_reply_timeout;
 		int32_t srv_max_tcp_clients;

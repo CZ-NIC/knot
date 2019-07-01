@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -288,6 +288,13 @@ int check_module_id(
 int check_server(
 	knotd_conf_check_args_t *args)
 {
+	conf_val_t hshake = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
+	                                 C_TCP_HSHAKE_TIMEOUT);
+
+	if (hshake.code == KNOT_EOK) {
+		CONF_LOG(LOG_NOTICE, "TCP handshake timeout no longer supported");
+	}
+
 	return KNOT_EOK;
 }
 
