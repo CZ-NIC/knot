@@ -399,7 +399,7 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 
 	int time_running_ms = 0;
 	struct timespec to_start, to_end;
-	bool has_timeout = (*timeout_ms <= 0) ? false : true;
+	bool has_timeout = (*timeout_ms >= 0);
 	if (has_timeout) {
 		clock_gettime(CLOCK_MONOTONIC, &to_start);
 	}
@@ -426,7 +426,7 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 				if (has_timeout) {
 					clock_gettime(CLOCK_MONOTONIC, &to_end);
 					time_running_ms = time_diff_ms(&to_end, &to_start);
-					if (time_running_ms >= *timeout_ms) {
+					if (time_running_ms > *timeout_ms) {
 						return KNOT_ETIMEOUT;
 					}
 				}
@@ -443,9 +443,10 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 	}
 
 	if (has_timeout) {
-		assert(time_running_ms < *timeout_ms);
+		assert(time_running_ms <= *timeout_ms);
 		*timeout_ms -= time_running_ms;
 	}
+
 	return done;
 }
 
