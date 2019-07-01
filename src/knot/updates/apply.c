@@ -417,10 +417,11 @@ void update_cleanup(apply_ctx_t *ctx)
 	}
 
 	if ((ctx->flags & APPLY_UNIFY_FULL)) {
-		zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes);
+		zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes, true);
 	} else {
-		zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs);
-		zone_trees_unify_binodes(ctx->adjust_ptrs, NULL);
+		zone_trees_unify_binodes(ctx->adjust_ptrs, NULL, false); // beware there might be duplicities in ctx->adjust_ptrs and ctx->node_ptrs, so we don't free here
+		zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs, true);
+
 	}
 
 	zone_tree_free(&ctx->node_ptrs);
@@ -444,7 +445,7 @@ void update_rollback(apply_ctx_t *ctx)
 	if (ctx->nsec3_ptrs != NULL) {
 		ctx->nsec3_ptrs->flags ^= ZONE_TREE_BINO_SECOND;
 	}
-	zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs);
+	zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs, true);
 
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);

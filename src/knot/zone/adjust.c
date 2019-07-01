@@ -128,6 +128,19 @@ int adjust_cb_nsec3_flags(zone_node_t *node, adjust_ctx_t *ctx)
 	return KNOT_EOK;
 }
 
+int adjust_cb_nsec3_pointer(zone_node_t *node, adjust_ctx_t *ctx)
+{
+	uint16_t flags_orig = node->flags;
+	zone_node_t *ptr_orig = node->nsec3_node;
+	int ret = binode_fix_nsec3_pointer(node, ctx->zone);
+	if (ret == KNOT_EOK && ctx->changed_nodes != NULL &&
+	    (flags_orig != node->flags || ptr_orig != node->nsec3_node)) {
+		ret = zone_tree_insert(ctx->changed_nodes, &node);
+	}
+	return ret;
+}
+
+
 /*! \brief Link pointers to additional nodes for this RRSet. */
 static int discover_additionals(zone_node_t *adjn, uint16_t rr_at,
                                 adjust_ctx_t *ctx)
@@ -236,14 +249,14 @@ int adjust_cb_flags_and_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	int ret = adjust_cb_flags(node, ctx);
 	if (ret == KNOT_EOK) {
-		ret = binode_fix_nsec3_pointer(node, ctx->zone);
+		ret = adjust_cb_nsec3_pointer(node, ctx);
 	}
 	return ret;
 }
 
 int adjust_cb_nsec3_and_additionals(zone_node_t *node, adjust_ctx_t *ctx)
 {
-	int ret = binode_fix_nsec3_pointer(node, ctx->zone);
+	int ret = adjust_cb_nsec3_pointer(node, ctx);
 	if (ret == KNOT_EOK) {
 		ret = adjust_cb_wildcard_nsec3(node, ctx);
 	}
@@ -395,12 +408,7 @@ static int adjust_point_to_nsec3_cb(zone_node_t *node, void *ctx)
 {
 	adjust_ctx_t *actx = ctx;
 	zone_node_t *real_node = binode_node(node, (actx->zone->nodes->flags & ZONE_TREE_BINO_SECOND));
-	return binode_fix_nsec3_pointer(real_node, actx->zone);
-}
-
-static int adjust_cb_fix_nsec3_pointer(zone_node_t *node, adjust_ctx_t *ctx)
-{
-	return binode_fix_nsec3_pointer(node, ctx->zone);
+	return adjust_cb_nsec3_pointer(real_node, actx);
 }
 
 int zone_adjust_incremental_update(zone_update_t *update)
@@ -437,7 +445,7 @@ int zone_adjust_incremental_update(zone_update_t *update)
 	}
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_fix_nsec3_pointer, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_pointer, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
 		} else {
 			ret = additionals_reverse_apply_multi(
 				update->new_cont->adds_tree,

@@ -46,6 +46,9 @@ int adjust_cb_wildcard_nsec3(zone_node_t *node, adjust_ctx_t *ctx);
 // fix NSEC3 node flags: NODE_FLAGS_IN_NSEC3_CHAIN
 int adjust_cb_nsec3_flags(zone_node_t *node, adjust_ctx_t *ctx);
 
+// fix pointer at corresponding NSEC3 node
+int adjust_cb_nsec3_pointer(zone_node_t *node, adjust_ctx_t *ctx);
+
 // fix NORMAL node flags to additionals, like NS records and glue...
 int adjust_cb_additionals(zone_node_t *node, adjust_ctx_t *ctx);
 
