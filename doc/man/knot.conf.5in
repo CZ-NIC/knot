@@ -183,7 +183,6 @@ server:
     tcp\-workers: INT
     background\-workers: INT
     async\-start: BOOL
-    tcp\-handshake\-timeout: TIME
     tcp\-idle\-timeout: TIME
     tcp\-reply\-timeout: TIME
     max\-tcp\-clients: INT
@@ -257,17 +256,9 @@ If enabled, server doesn\(aqt wait for the zones to be loaded and starts
 responding immediately with SERVFAIL answers until the zone loads.
 .sp
 \fIDefault:\fP off
-.SS tcp\-handshake\-timeout
-.sp
-Maximum time between newly accepted TCP connection and the first query.
-This is useful to disconnect inactive connections faster than connections
-that already made at least 1 meaningful query.
-.sp
-\fIDefault:\fP 5
 .SS tcp\-idle\-timeout
 .sp
-Maximum idle time between requests on a TCP connection. This also limits
-receiving of a single query, each query must be received in this time limit.
+Maximum idle time between requests on an incoming TCP connection.
 .sp
 \fIDefault:\fP 20
 .SS tcp\-reply\-timeout
