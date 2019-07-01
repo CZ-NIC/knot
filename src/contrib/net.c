@@ -22,12 +22,12 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "libknot/errcode.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+#include "contrib/time.h"
 
 /*
  * OS X doesn't support MSG_NOSIGNAL. Use SO_NOSIGPIPE socket option instead.
@@ -425,7 +425,7 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 
 				if (has_timeout) {
 					clock_gettime(CLOCK_MONOTONIC, &to_end);
-					time_running_ms = (to_end.tv_sec - to_start.tv_sec) * 1000 + (to_end.tv_nsec - to_start.tv_nsec) / 1000000;
+					time_running_ms = time_diff_ms(&to_end, &to_start);
 					if (time_running_ms >= *timeout_ms) {
 						return KNOT_ETIMEOUT;
 					}
@@ -443,6 +443,7 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 	}
 
 	if (has_timeout) {
+		assert(time_running_ms < *timeout_ms);
 		*timeout_ms -= time_running_ms;
 	}
 	return done;
@@ -601,8 +602,6 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	iov.iov_base = &pktsize;
 	iov.iov_len = sizeof(pktsize);
 
-	bool has_timeout = (timeout_ms <= 0) ? false : true;
-
 	int ret = recv_data(sock, &msg, false, &timeout_ms);
 	if (ret != sizeof(pktsize)) {
 		return ret;
@@ -612,9 +611,6 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	/* Check packet size */
 	if (size < pktsize) {
 		return KNOT_ESPACE;
-	}
-	if (has_timeout && timeout_ms <= 0) {
-		return KNOT_ETIMEOUT;
 	}
 
 	/* Receive payload. */
