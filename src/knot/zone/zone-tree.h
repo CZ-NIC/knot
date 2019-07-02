@@ -259,7 +259,8 @@ void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it);
 /*!
  * \brief Unify all bi-nodes in specified trees.
  */
-void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool free_deleted);
+void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes,
+                              bool free_deleted, bool also_parents);
 
 /*!
  * \brief Destroys the zone tree, not touching the saved data.
