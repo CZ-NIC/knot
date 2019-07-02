@@ -61,6 +61,9 @@ int unadjust_cb_point_to_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 int adjust_cb_wildcard_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	if (!knot_is_nsec3_enabled(ctx->zone)) {
+		if (node->nsec3_wildcard_name != NULL && ctx->changed_nodes != NULL) {
+			zone_tree_insert(ctx->changed_nodes, &node);
+		}
 		node->nsec3_wildcard_name = NULL;
 		return KNOT_EOK;
 	}
