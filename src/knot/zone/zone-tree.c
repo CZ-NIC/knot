@@ -391,30 +391,19 @@ void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it)
 	memset(it, 0, sizeof(*it));
 }
 
-typedef enum {
-	UNIFY_FREE_DELETED = (1 << 0),
-	UNIFY_ALSO_PARENT = (1 << 1),
-} unify_how;
-
 static int binode_unify_cb(zone_node_t *node, void *ctx)
 {
-	unify_how *how = ctx;
-	if ((*how & UNIFY_ALSO_PARENT) && node->parent != NULL) {
-		binode_unify(node->parent, false, NULL);
-	}
-	binode_unify(node, (*how & UNIFY_FREE_DELETED), NULL);
+	binode_unify(node, *(bool *)ctx, NULL);
 	return KNOT_EOK;
 }
 
-void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool free_deleted, bool also_parents)
+void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool free_deleted)
 {
-	unify_how how = ((free_deleted ? UNIFY_FREE_DELETED : 0) |
-	                 (also_parents ? UNIFY_ALSO_PARENT : 0));
 	if (nodes != NULL) {
-		zone_tree_apply(nodes, binode_unify_cb, &how);
+		zone_tree_apply(nodes, binode_unify_cb, &free_deleted);
 	}
 	if (nsec3_nodes != NULL) {
-		zone_tree_apply(nsec3_nodes, binode_unify_cb, &how);
+		zone_tree_apply(nsec3_nodes, binode_unify_cb, &free_deleted);
 	}
 }
 
