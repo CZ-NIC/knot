@@ -106,6 +106,8 @@ static int replace_soa(zone_contents_t *contents, const knot_rrset_t *rr)
 	return ret;
 }
 
+int check_unified(zone_node_t *a, void *nic);
+
 int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents,
               zone_update_flags_t flags)
 {
@@ -125,7 +127,11 @@ int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents
 	}
 
 	knot_sem_wait(&zone->cow_lock);
+	printf("sem get %s hybr %d\n", zone->name, (bool)(flags & UPDATE_HYBRID));
 	update->a_ctx->cow_mutex = &zone->cow_lock;
+
+	zone_tree_apply(zone->contents->nodes, check_unified, zone->contents);
+	zone_tree_apply(zone->contents->nsec3_nodes, check_unified, zone->contents);
 
 	int ret = KNOT_EINVAL;
 	if (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {

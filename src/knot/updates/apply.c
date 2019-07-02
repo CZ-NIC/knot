@@ -410,6 +410,35 @@ int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch)
 	return KNOT_EOK;
 }
 
+int check_unified(zone_node_t *a, void *nic)
+{
+	zone_node_t *b = binode_counterpart(a);
+	zone_contents_t *c = nic;
+	if (a == c->apex || b == c->apex) {
+		printf("checking node %s %p\n", a->owner, binode_node(a, false));
+	}
+	assert(a->owner == b->owner);
+	assert(a->nsec3_wildcard_name == b->nsec3_wildcard_name);
+	if (a->rrs != b->rrs || (a->rrs != NULL && a->rrs->rrs.rdata != b->rrs->rrs.rdata)) {
+		printf("node %s %p not unified (rrs)\n", a->owner, binode_node(a, false));
+	} else {
+		assert(a->rrset_count == b->rrset_count);
+	}
+	if (a->flags != (b->flags ^ NODE_FLAGS_SECOND)) {
+		printf("node %s %p not unified (flags)\n", a->owner, binode_node(a, false));
+	}
+	if (a->parent != b->parent || a->prev != b->prev) {
+		printf("node %s %p not unified (pointers)\n", a->owner, binode_node(a, false));
+	}
+	if (a->nsec3_node != b->nsec3_node) {
+		printf("node %s %p not unified (nsec3)\n", a->owner, binode_node(a, false));
+	}
+	if (a->children != b->children) {
+		printf("node %s %p not unified (children count)\n", a->owner, binode_node(a, false));
+	}
+	return KNOT_EOK;
+}
+
 void update_cleanup(apply_ctx_t *ctx)
 {
 	if (ctx == NULL) {
@@ -424,12 +453,16 @@ void update_cleanup(apply_ctx_t *ctx)
 
 	}
 
+	zone_tree_apply(ctx->contents->nodes, check_unified, ctx->contents);
+	zone_tree_apply(ctx->contents->nsec3_nodes, check_unified, ctx->contents);
+
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);
 	zone_tree_free(&ctx->adjust_ptrs);
 
 	if (ctx->cow_mutex != NULL) {
 		knot_sem_post(ctx->cow_mutex);
+		printf("sem post %s\n", ctx->contents->apex->owner);
 	}
 }
 
