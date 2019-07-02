@@ -105,14 +105,20 @@ static bool tcp_send_state(int state)
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
 }
 
-static int tcp_handle(tcp_context_t *tcp, int fd,
-                      struct iovec *rx, struct iovec *tx)
+static void tcp_log_failed(struct sockaddr_storage ss, int ret)
+{
+	char addr_str[SOCKADDR_STRLEN] = { 0 };
+	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
+	log_debug("TCP, failed, address %s (%s)", addr_str, knot_strerror(ret));
+}
+
+static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec *tx)
 {
 	/* Get peer name. */
 	struct sockaddr_storage ss;
 	socklen_t addrlen = sizeof(struct sockaddr_storage);
 	if (getpeername(fd, (struct sockaddr *)&ss, &addrlen) != 0) {
-		return KNOT_EINVAL;
+		return KNOT_EADDRNOTAVAIL;
 	}
 
 	/* Create query processing parameter. */
@@ -127,17 +133,13 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Receive data. */
-	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->query_timeout);
-	if (ret <= 0) {
-		if (ret == KNOT_EAGAIN) {
-			char addr_str[SOCKADDR_STRLEN] = {0};
-			sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
-			log_warning("TCP, connection timed out, address %s",
-			            addr_str);
-		}
-		return KNOT_ECONNREFUSED;
+	int recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->query_timeout);
+	if (recv > 0) {
+		rx->iov_len = recv;
 	} else {
-		rx->iov_len = ret;
+		int ret = (recv == 0) ? KNOT_ECONN : recv;
+		tcp_log_failed(ss, ret);
+		return ret;
 	}
 
 	/* Initialize processing layer. */
@@ -151,14 +153,17 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	(void) knot_pkt_parse(query, 0);
 	knot_layer_consume(&tcp->layer, query);
 
+	int ret = KNOT_EOK;
+
 	/* Resolve until NOOP or finished. */
-	ret = KNOT_EOK;
 	while (tcp_active_state(tcp->layer.state)) {
 		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
-			if (net_dns_tcp_send(fd, ans->wire, ans->size, tcp->query_timeout) != ans->size) {
-				ret = KNOT_ECONNREFUSED;
+			int sent = net_dns_tcp_send(fd, ans->wire, ans->size, tcp->query_timeout);
+			if (sent != ans->size) {
+				ret = (sent >= 0) ? KNOT_ECONN : sent;
+				tcp_log_failed(ss, ret);
 				break;
 			}
 		}
