@@ -105,14 +105,20 @@ static bool tcp_send_state(int state)
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
 }
 
-static int tcp_handle(tcp_context_t *tcp, int fd,
-                      struct iovec *rx, struct iovec *tx)
+static void tcp_log_failed(struct sockaddr_storage ss, int ret)
+{
+	char addr_str[SOCKADDR_STRLEN] = { 0 };
+	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
+	log_debug("TCP, failed, address %s (%s)", addr_str, knot_strerror(ret));
+}
+
+static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec *tx)
 {
 	/* Get peer name. */
 	struct sockaddr_storage ss;
 	socklen_t addrlen = sizeof(struct sockaddr_storage);
 	if (getpeername(fd, (struct sockaddr *)&ss, &addrlen) != 0) {
-		return KNOT_EINVAL;
+		return KNOT_EADDRNOTAVAIL;
 	}
 
 	/* Create query processing parameter. */
@@ -128,16 +134,15 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 
 	/* Receive data. */
 	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->query_timeout);
-	if (ret <= 0) {
-		if (ret == KNOT_EAGAIN) {
-			char addr_str[SOCKADDR_STRLEN] = {0};
-			sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
-			log_warning("TCP, connection timed out, address %s",
-			            addr_str);
-		}
-		return KNOT_ECONNREFUSED;
-	} else {
+	if (ret > 0) {
 		rx->iov_len = ret;
+	} else {
+		if (ret == 0) {
+			/* Client closed connection or nothing received. */
+			ret = KNOT_ECONN;
+		}
+		tcp_log_failed(ss, ret);
+		return ret;
 	}
 
 	/* Initialize processing layer. */
@@ -157,8 +162,13 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
-			if (net_dns_tcp_send(fd, ans->wire, ans->size, tcp->query_timeout) != ans->size) {
-				ret = KNOT_ECONNREFUSED;
+			ret = net_dns_tcp_send(fd, ans->wire, ans->size, tcp->query_timeout);
+			if (ret != ans->size) {
+				if (ret >= 0) {
+					/* Not completely sent. */
+					ret = KNOT_ECONN;
+				}
+				tcp_log_failed(ss, ret);
 				break;
 			}
 		}
