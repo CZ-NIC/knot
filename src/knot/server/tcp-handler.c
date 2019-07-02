@@ -113,13 +113,12 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	/* Receive data. */
 	int ret = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->query_timeout);
 	if (ret <= 0) {
-		if (ret == KNOT_EAGAIN) {
-			char addr_str[SOCKADDR_STRLEN] = {0};
+		if (ret == KNOT_ETIMEOUT) {
+			char addr_str[SOCKADDR_STRLEN] = { 0 };
 			sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
-			log_warning("TCP, connection timed out, address %s",
-			            addr_str);
+			log_debug("TCP, receive timeout, address %s", addr_str);
 		}
-		return KNOT_ECONNREFUSED;
+		return ret;
 	} else {
 		rx->iov_len = ret;
 	}
@@ -141,7 +140,13 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
-			if (net_dns_tcp_send(fd, ans->wire, ans->size, tcp->query_timeout) != ans->size) {
+			ret = net_dns_tcp_send(fd, ans->wire, ans->size, tcp->query_timeout);
+			if (ret == KNOT_ETIMEOUT) {
+				char addr_str[SOCKADDR_STRLEN] = { 0 };
+				sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
+				log_debug("TCP, send timeout, address %s", addr_str);
+				break;
+			} else if (ret != ans->size) {
 				ret = KNOT_ECONNREFUSED;
 				break;
 			}
