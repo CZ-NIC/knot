@@ -98,6 +98,16 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 	return KNOT_EOK;
 }
 
+int zone_tree_insert_with_parents(zone_tree_t *tree, zone_node_t *node)
+{
+	int ret = KNOT_EOK;
+	while (node != NULL && ret == KNOT_EOK) {
+		ret = zone_tree_insert(tree, &node);
+		node = node->parent;
+	}
+	return ret;
+}
+
 zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
 {
 	if (owner == NULL) {
