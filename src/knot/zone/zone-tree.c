@@ -31,13 +31,13 @@ static inline zone_node_t *fix_get(zone_node_t *node, const zone_tree_t *tree)
 typedef struct {
 	zone_tree_apply_cb_t func;
 	void *data;
-	const zone_tree_t *tree;
+	int binode_second;
 } zone_tree_func_t;
 
 static int tree_apply_cb(trie_val_t *node, void *data)
 {
 	zone_tree_func_t *f = (zone_tree_func_t *)data;
-	zone_node_t *n = fix_get(*node, f->tree);
+	zone_node_t *n = (zone_node_t *)(*node) + f->binode_second;
 	return f->func(n, f->data);
 }
 
@@ -267,7 +267,7 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 	zone_tree_func_t f = {
 		.func = function,
 		.data = data,
-		.tree = tree,
+		.binode_second = ((tree->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0),
 	};
 
 	return trie_apply(tree->trie, tree_apply_cb, &f);
