@@ -110,6 +110,16 @@ inline static bool zone_tree_is_empty(const zone_tree_t *tree)
 int zone_tree_insert(zone_tree_t *tree, zone_node_t **node);
 
 /*!
+ * \brief Insert a node together with its parents (iteratively node->parent).
+ *
+ * \param tree   Zone tree to insert into.
+ * \param node   Node to be inserted with parents.
+ *
+ * \return KNOT_E*
+ */
+int zone_tree_insert_with_parents(zone_tree_t *tree, zone_node_t *node);
+
+/*!
  * \brief Finds node with the given owner in the zone tree.
  *
  * \param tree Zone tree to search in.

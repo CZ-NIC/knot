@@ -234,7 +234,7 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
 static int add_to_changes_cb2(zone_node_t *node, void *ctx)
 {
 	node->flags |= NODE_FLAGS_DELETED;
-	int ret = zone_tree_insert(ctx, &node);
+	int ret = zone_tree_insert_with_parents(ctx, node);
 	assert(ret == KNOT_EOK);
 	return ret;
 }
@@ -246,7 +246,7 @@ static zone_node_t *find_node_in_changes(const knot_dname_t *owner, void *ctx)
 	if (node == NULL) {
 		node = node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES),
 		                (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
-		(void)zone_tree_insert(tree, &node);
+		(void)zone_tree_insert_with_parents(tree, node);
 	} else {
 		node->flags &= ~NODE_FLAGS_DELETED;
 	}
@@ -273,7 +273,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		return KNOT_EOUTOFZONE;
 	}
 
-	ret = zone_tree_insert(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, &node);
+	ret = zone_tree_insert_with_parents(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -325,7 +325,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		return KNOT_EOK;
 	}
 
-	int ret = zone_tree_insert(ptrs, &node);
+	int ret = zone_tree_insert_with_parents(ptrs, node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
