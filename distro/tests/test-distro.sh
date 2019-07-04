@@ -1,36 +1,21 @@
 #!/bin/bash -x
 
-# ./test-distro.sh {devel|latest} {distro}
-# Example usage: ./test-distro.sh devel debian9
+# ./test-distro.sh {obs_repo} {distro}
+# Example usage: ./test-distro.sh knot-dns-devel debian9
 
-distro=$2
+pkgtestdir="$(dirname ${0})"
+repofile="$pkgtestdir/repos.yaml"
+
 repo=$1
+distro=$2
 
 # Select repos
-case "$repo" in
-	devel)
-		echo -e 'repos:\n  - knot-dns-devel' > repos.yaml
-		;;
-	testing)
-		echo -e 'repos:\n  - knot-dns-testing' > repos.yaml
-        ;;
-	latest)
-		echo -e 'repos:\n  - knot-dns-latest' > repos.yaml
-		;;
-	*)
-		echo "Unknown repo, choose devel|latest|testing"
-		exit 1
-		;;
-esac
+echo -e "repos:\n  - $repo" > $repofile
 
-cd "$distro"
+pushd "$pkgtestdir/$distro"
 vagrant destroy -f &>/dev/null
 vagrant up
 ret=$?
-if [ $ret -ne 0 ]; then
-    # workaround for weird behaviour with fedora/29-cloud-base boxes
-    vagrant provision
-    ret=$?
-fi
 vagrant destroy -f &>/dev/null
+popd
 exit $ret

@@ -31,13 +31,13 @@ static inline zone_node_t *fix_get(zone_node_t *node, const zone_tree_t *tree)
 typedef struct {
 	zone_tree_apply_cb_t func;
 	void *data;
-	const zone_tree_t *tree;
+	int binode_second;
 } zone_tree_func_t;
 
 static int tree_apply_cb(trie_val_t *node, void *data)
 {
 	zone_tree_func_t *f = (zone_tree_func_t *)data;
-	zone_node_t *n = fix_get(*node, f->tree);
+	zone_node_t *n = (zone_node_t *)(*node) + f->binode_second;
 	return f->func(n, f->data);
 }
 
@@ -267,7 +267,7 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 	zone_tree_func_t f = {
 		.func = function,
 		.data = data,
-		.tree = tree,
+		.binode_second = ((tree->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0),
 	};
 
 	return trie_apply(tree->trie, tree_apply_cb, &f);
@@ -281,6 +281,7 @@ int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it)
 			return KNOT_ENOMEM;
 		}
 		it->tree = tree;
+		it->binode_second = ((tree->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0);
 		it->next_tree = NULL;
 	}
 	return KNOT_EOK;
@@ -294,6 +295,7 @@ int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree
 			return KNOT_ENOMEM;
 		}
 		it->tree = first;
+		it->binode_second = ((first->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0);
 		it->next_tree = second;
 	}
 	return KNOT_EOK;
@@ -306,7 +308,7 @@ bool zone_tree_it_finished(zone_tree_it_t *it)
 
 zone_node_t *zone_tree_it_val(zone_tree_it_t *it)
 {
-	return fix_get(*trie_it_val(it->it), it->tree);
+	return (zone_node_t *)(*trie_it_val(it->it)) + it->binode_second;
 }
 
 void zone_tree_it_del(zone_tree_it_t *it)
@@ -320,6 +322,7 @@ void zone_tree_it_next(zone_tree_it_t *it)
 	if (it->next_tree != NULL && trie_it_finished(it->it)) {
 		trie_it_free(it->it);
 		it->tree = it->next_tree;
+		it->binode_second = ((it->tree->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0);
 		it->next_tree = NULL;
 		it->it = trie_it_begin(it->tree->trie);
 	}

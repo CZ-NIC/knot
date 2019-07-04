@@ -48,6 +48,7 @@ typedef int (*zone_tree_del_node_cb_t)(zone_node_t *node, void *ctx);
 typedef struct {
 	zone_tree_t *tree;
 	trie_it_t *it;
+	int binode_second;
 
 	zone_tree_t *next_tree;
 } zone_tree_it_t;

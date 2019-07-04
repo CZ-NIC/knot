@@ -107,11 +107,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 {
 	int ret = KNOT_EOK;
 
-	if (!ctx->policy->nsec3_enabled || ctx->policy->nsec3_salt_length == 0) {
-		return KNOT_EOK;
-	}
-
-	if (ctx->policy->manual) {
+	if (!ctx->policy->nsec3_enabled) {
 		return KNOT_EOK;
 	}
 
@@ -124,6 +120,14 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 	}
 
 	if (knot_time_cmp(*when_resalt, ctx->now) <= 0) {
+		if (ctx->policy->nsec3_salt_length == 0) {
+			ctx->zone->nsec3_salt.size = 0;
+			ctx->zone->nsec3_salt_created = ctx->now;
+			*salt_changed = ctx->now;
+			*when_resalt = 0;
+			return kdnssec_ctx_commit(ctx);
+		}
+
 		ret = generate_salt(&ctx->zone->nsec3_salt, ctx->policy->nsec3_salt_length);
 		if (ret == KNOT_EOK) {
 			ctx->zone->nsec3_salt_created = ctx->now;

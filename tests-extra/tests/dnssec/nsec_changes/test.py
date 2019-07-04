@@ -7,6 +7,20 @@
 from dnstest.utils import *
 from dnstest.test import Test
 
+def check_salt(server, zone):
+  expect_salt_len = server.dnssec(zone).nsec3_salt_len * 2 # *2 because we get hex string
+  if expect_salt_len == 0:
+      expect_salt_len = 1 # there will be a dash
+
+  resp = server.dig("dijewdjjdljewdew." + zone[0].name, "A", dnssec=True)
+  resp.check(rcode="NXDOMAIN")
+  nsec3 = resp.resp.authority[1].to_rdataset()
+  fields = nsec3.to_text().split()
+  if fields[2] != "NSEC3":
+      set_err("NO NSEC3")
+  elif len(fields[6]) != expect_salt_len:
+      set_err("Wrong NSEC3 salt_length: %d not %d" % (len(fields[6]), expect_salt_len))
+
 t = Test()
 
 master = t.server("knot")
@@ -61,6 +75,8 @@ compare(resp.count(), 2, "DNSKEY count")
 master.check_nsec(zone1)
 master.check_nsec(zone2, nsec3=True)
 
+check_salt(master, zone2)
+
 # Verify signed zone files.
 master.zone_verify(zone1)
 master.zone_verify(zone2)
@@ -102,6 +118,9 @@ compare(resp.count(), 2, "DNSKEY count")
 master.check_nsec(zone1, nsec3=True)
 master.check_nsec(zone2, nsec3=True)
 
+check_salt(master, zone1)
+check_salt(master, zone2)
+
 # Verify signed zone files.
 master.zone_verify(zone1)
 master.zone_verify(zone2)
@@ -138,6 +157,8 @@ compare(resp.count(), 2, "DNSKEY count")
 # Check NSEC.
 master.check_nsec(zone1, nsec3=True)
 master.check_nsec(zone2)
+
+check_salt(master, zone1)
 
 # Verify signed zone files.
 master.zone_verify(zone1)

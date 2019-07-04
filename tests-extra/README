@@ -7,6 +7,7 @@ python3-psutil
 dnssec-signzone
 dnssec-keygen
 dnssec-verify
+ldnsutils
 Bind >= 9.11
 lsof
 gawk

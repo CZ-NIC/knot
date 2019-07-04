@@ -166,6 +166,9 @@ void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 		if (counter->nsec3_wildcard_name != node->nsec3_wildcard_name) {
 			free(counter->nsec3_wildcard_name);
 		}
+		if (!(counter->flags & NODE_FLAGS_NSEC3_NODE) && node->nsec3_hash != counter->nsec3_hash) {
+			free(counter->nsec3_hash);
+		}
 		assert(((node->flags ^ counter->flags) & NODE_FLAGS_SECOND));
 		memcpy(counter, node, sizeof(*counter));
 		counter->flags ^= NODE_FLAGS_SECOND;
@@ -254,6 +257,9 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 	       binode_counterpart(node)->nsec3_wildcard_name == node->nsec3_wildcard_name);
 
 	free(node->nsec3_wildcard_name);
+	if (!(node->flags & NODE_FLAGS_NSEC3_NODE)) {
+		free(node->nsec3_hash);
+	}
 
 	if (node->rrs != NULL) {
 		mm_free(mm, node->rrs);

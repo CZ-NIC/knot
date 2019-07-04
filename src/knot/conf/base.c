@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -409,7 +409,7 @@ void conf_free(
 }
 
 #define CONF_LOG_LINE(file, line, msg, ...) do { \
-	CONF_LOG(LOG_ERR, "%s%s%sline %zu, " msg, \
+	CONF_LOG(LOG_ERR, "%s%s%sline %zu" msg, \
 	         (file != NULL ? "file '" : ""), (file != NULL ? file : ""), \
 	         (file != NULL ? "', " : ""), line, ##__VA_ARGS__); \
 	} while (0)
@@ -418,13 +418,18 @@ static void log_parser_err(
 	yp_parser_t *parser,
 	int ret)
 {
-	CONF_LOG_LINE(parser->file.name, parser->line_count,
-	              "item '%s'%s%s%s (%s)",
-	              parser->key,
-	              (parser->data_len > 0) ? ", value '"  : "",
-	              (parser->data_len > 0) ? parser->data : "",
-	              (parser->data_len > 0) ? "'"          : "",
-	              knot_strerror(ret));
+	if (parser->event == YP_ENULL) {
+		CONF_LOG_LINE(parser->file.name, parser->line_count,
+		              " (%s)", knot_strerror(ret));
+	} else {
+		CONF_LOG_LINE(parser->file.name, parser->line_count,
+		              ", item '%s'%s%.*s%s (%s)", parser->key,
+		              (parser->data_len > 0) ? ", value '"  : "",
+		              (int)parser->data_len,
+		              (parser->data_len > 0) ? parser->data : "",
+		              (parser->data_len > 0) ? "'"          : "",
+		              knot_strerror(ret));
+	}
 }
 
 static void log_parser_schema_err(
@@ -435,7 +440,7 @@ static void log_parser_schema_err(
 	if (ret == KNOT_YP_EINVAL_ITEM && parser->event == YP_EKEY0 &&
 	    strncmp(parser->key, KNOTD_MOD_NAME_PREFIX, strlen(KNOTD_MOD_NAME_PREFIX)) == 0) {
 		CONF_LOG_LINE(parser->file.name, parser->line_count,
-		              "unknown module '%s'", parser->key);
+		              ", unknown module '%s'", parser->key);
 	} else {
 		log_parser_err(parser, ret);
 	}
@@ -447,7 +452,7 @@ static void log_call_err(
 	int ret)
 {
 	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
-	              "item '%s'%s%s%s (%s)", args->item->name + 1,
+	              ", item '%s'%s%s%s (%s)", args->item->name + 1,
 	              (parser->data_len > 0) ? ", value '"  : "",
 	              (parser->data_len > 0) ? parser->data : "",
 	              (parser->data_len > 0) ? "'"          : "",
@@ -470,7 +475,7 @@ static void log_prev_err(
 	}
 
 	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
-	              "%s '%s' (%s)", args->item->name + 1, buff,
+	              ", %s '%s' (%s)", args->item->name + 1, buff,
 	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
 }
 
