@@ -275,7 +275,7 @@ static int rrl_subnet_tostr(char *buf, size_t maxlen, const struct sockaddr *sa)
 		struct in6_addr addr = (struct in6_addr){0};
 		memcpy(addr.s6_addr, s->sin6_addr.__in6_u.__u6_addr8, 7);
 		out = inet_ntop(sa->sa_family, &addr, buf, maxlen);
-		strlcat(buf, "/56", maxlen);
+		strncat(buf, "/56", maxlen);
 	} else if (sa->sa_family == AF_INET) {
 		const struct sockaddr_in *s = (const struct sockaddr_in *)sa;
 		struct in_addr addr = (struct in_addr){
@@ -283,7 +283,7 @@ static int rrl_subnet_tostr(char *buf, size_t maxlen, const struct sockaddr *sa)
 		};
 		addr.s_addr ^= addr.s_addr & 0xffffff00;
 		out = inet_ntop(sa->sa_family, &addr, buf, maxlen);
-		strlcat(buf, "/24", maxlen);
+		strncat(buf, "/24", maxlen);
 	} else {
 		return KNOT_EINVAL;
 	}
