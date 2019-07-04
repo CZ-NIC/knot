@@ -352,7 +352,7 @@ static bool singleton_replaced(changeset_t *changeset,
 static int add_rr_to_chgset(const knot_rrset_t *rr,
                             zone_update_t *update)
 {
-	if (singleton_replaced(&update->change, rr)) {
+	if (singleton_replaced(&update->change[0], rr)) {
 		return KNOT_EOK;
 	}
 

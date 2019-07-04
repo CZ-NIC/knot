@@ -28,7 +28,8 @@ typedef struct zone_update {
 	zone_t *zone;                /*!< Zone being updated. */
 	zone_contents_t *new_cont;   /*!< New zone contents for full updates. */
 	bool new_cont_deep_copy;     /*!< On update_clear, perform deep free instead of shallow. */
-	changeset_t change;          /*!< Changes we want to apply. */
+	changeset_t change[2];       /*!< Changes we want to apply. */
+	size_t changes;              /*!< Number of changesets resulting from this update minus 1 (0 or 1). */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
 	knot_mm_t mm;                /*!< Memory context used for intermediate nodes. */

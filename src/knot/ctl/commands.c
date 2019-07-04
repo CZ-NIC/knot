@@ -469,7 +469,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 
 	// NOOP if empty changeset/contents.
 	if (((zone->control_update->flags & UPDATE_INCREMENTAL) &&
-	     changeset_empty(&zone->control_update->change)) ||
+	     changeset_empty(&zone->control_update->change[0])) ||
 	    ((zone->control_update->flags & UPDATE_FULL) &&
 	     zone_contents_is_empty(zone->control_update->new_cont))) {
 		zone_txn_update_clear(zone);
@@ -861,7 +861,8 @@ static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOMEM;
 	}
 
-	int ret = send_changeset(&zone->control_update->change, ctx);
+	assert(zone->control_update->changes == 0);
+	int ret = send_changeset(&zone->control_update->change[0], ctx);
 	mm_free(&args->mm, ctx);
 	return ret;
 }

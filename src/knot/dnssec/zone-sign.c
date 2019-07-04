@@ -957,7 +957,7 @@ static int sign_changeset(const zone_contents_t *zone,
 	// init context structures
 	for (size_t i = 0; i < num_threads; i++) {
 		args[i].zone = update->new_cont;
-		ret = changeset_iter_all(&args[i].itt, &update->change);
+		ret = changeset_iter_all(&args[i].itt, &update->change[0]);
 		if (ret != KNOT_EOK) {
 			break;
 		}

@@ -243,8 +243,9 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// If the change is only automatically incremented SOA serial, make it no change.
 	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & UPDATE_INCREMENTAL) &&
-	    changeset_differs_just_serial(&up.change)) {
-		changeset_t *cpy = changeset_clone(&up.change);
+	    changeset_differs_just_serial(&up.change[0])) {
+		assert(up.changes == 0);
+		changeset_t *cpy = changeset_clone(&up.change[0]);
 		if (cpy == NULL) {
 			ret = KNOT_ENOMEM;
 			goto cleanup;
@@ -252,7 +253,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		ret = zone_update_apply_changeset_reverse(&up, cpy);
 		changeset_free(cpy);
 		if (ret == KNOT_EOK) {
-			ret = changeset_remove_addition(&up.change, up.change.soa_to);
+			ret = changeset_remove_addition(&up.change[0], up.change[0].soa_to);
 		}
 		if (ret != KNOT_EOK) {
 			goto cleanup;
