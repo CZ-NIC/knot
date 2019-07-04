@@ -239,14 +239,14 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
 		return KNOT_EINVAL;
 	}
 
-	int ret = journal_insert(zone_journal(zone), change);
+	int ret = journal_insert(zone_journal(zone), change, 1);
 	if (ret == KNOT_EBUSY) {
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = flush_journal(conf, zone, true);
 		if (ret == KNOT_EOK) {
-			ret = journal_insert(zone_journal(zone), change);
+			ret = journal_insert(zone_journal(zone), change, 1);
 		}
 	}
 

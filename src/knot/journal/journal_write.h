@@ -104,9 +104,10 @@ int journal_insert_zone(zone_journal_t j, const zone_contents_t *z);
 /*!
  * \brief Store changeset into journal, fulfilling quotas and updating metadata.
  *
- * \param j    Zone journal.
- * \param ch   Changeset to be stored.
+ * \param j       Zone journal.
+ * \param ch      Changesets to be stored.
+ * \param count   Number of changesets in ch[].
  *
  * \return KNOT_E*
  */
-int journal_insert(zone_journal_t j, const changeset_t *ch);
+int journal_insert(zone_journal_t j, const changeset_t *ch, size_t count);
