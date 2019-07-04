@@ -261,6 +261,36 @@ static inline unsigned reduce_dist(rrl_table_t *tbl, unsigned id, unsigned dist,
 	return dist;
 }
 
+static int rrl_subnet_tostr(char *buf, size_t maxlen, const struct sockaddr *sa)
+{
+	if (sa == NULL || buf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const char *out = NULL;
+
+	/* Convert network address string. */
+	if (sa->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)sa;
+		struct in6_addr addr = (struct in6_addr){0};
+		memcpy(addr.s6_addr, s->sin6_addr.__in6_u.__u6_addr8, 7);
+		out = inet_ntop(sa->sa_family, &addr, buf, maxlen);
+		strlcat(buf, "/56", maxlen);
+	} else if (sa->sa_family == AF_INET) {
+		const struct sockaddr_in *s = (const struct sockaddr_in *)sa;
+		struct in_addr addr = (struct in_addr){
+			.s_addr = s->sin_addr.s_addr
+		};
+		addr.s_addr ^= addr.s_addr & 0xffffff00;
+		out = inet_ntop(sa->sa_family, &addr, buf, maxlen);
+		strlcat(buf, "/24", maxlen);
+	} else {
+		return KNOT_EINVAL;
+	}
+
+	return strlen(buf);
+}
+
 static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
                           uint16_t flags, uint8_t cls)
 {
@@ -269,7 +299,7 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 	}
 
 	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)ss);
+	rrl_subnet_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)ss);
 
 	const char *what = "leaves";
 	if (flags & RRL_BF_ELIMIT) {
