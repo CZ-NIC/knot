@@ -49,6 +49,7 @@ typedef struct tcp_context {
 	struct iovec iov[2];             /*!< TX/RX buffers. */
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
+	bool is_throttled;               /*!< TCP connections throttling switch. */
 	struct timespec throttle_end;    /*!< End of accept() throttling. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
@@ -232,25 +233,29 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 
 static int tcp_wait_for_events(tcp_context_t *tcp)
 {
-	/* Wait for events. */
 	fdset_t *set = &tcp->set;
-	int nfds = poll(set->pfd, set->n, TCP_SWEEP_INTERVAL * 1000);
+
+	/* Configuration limit, infer maximal pool size. */
+	rcu_read_lock();
+	int clients = conf()->cache.srv_max_tcp_clients;
+	unsigned max_per_set = MAX(clients / conf_tcp_threads(conf()), 1);
+	rcu_read_unlock();
+	/* Subtract master sockets check limits. */
+	tcp->is_throttled = (set->n - tcp->client_threshold) >= max_per_set;
+
+	/* If throttled, temporarily ignore new TCP connections. */
+	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
+
+	/* Wait for events. */
+	int nfds = poll(&(set->pfd[i]), set->n - i, TCP_SWEEP_INTERVAL * 1000);
 
 	/* Mark the time of last poll call. */
 	tcp->last_poll_time = time_now();
-	bool is_throttled = (tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec);
-	if (!is_throttled) {
-		/* Configuration limit, infer maximal pool size. */
-		rcu_read_lock();
-		int clients = conf()->cache.srv_max_tcp_clients;
-		unsigned max_per_set = MAX(clients / conf_tcp_threads(conf()), 1);
-		rcu_read_unlock();
-		/* Subtract master sockets check limits. */
-		is_throttled = (set->n - tcp->client_threshold) >= max_per_set;
+	if (!tcp->is_throttled) {
+		tcp->is_throttled = (tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec);
 	}
 
 	/* Process events. */
-	unsigned i = 0;
 	while (nfds > 0 && i < set->n) {
 		bool should_close = false;
 		int fd = set->pfd[i].fd;
@@ -260,7 +265,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 		} else if (set->pfd[i].revents & (POLLIN)) {
 			/* Master sockets */
 			if (i < tcp->client_threshold) {
-				if (!is_throttled && tcp_event_accept(tcp, i) == KNOT_EBUSY) {
+				if (!tcp->is_throttled && tcp_event_accept(tcp, i) == KNOT_EBUSY) {
 					tcp->throttle_end = time_now();
 					tcp->throttle_end.tv_sec += tcp_throttle();
 				}
@@ -304,6 +309,7 @@ int tcp_master(dthread_t *thread)
 	/* Create TCP answering context. */
 	tcp_context_t tcp = {
 		.server = handler->server,
+		.is_throttled = false,
 		.thread_id = handler->thread_id[dt_get_id(thread)]
 	};
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());
