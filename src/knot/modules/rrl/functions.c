@@ -269,14 +269,14 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 	}
 
 	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)ss);
+	sockaddr_subnet_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)ss);
 
 	const char *what = "leaves";
 	if (flags & RRL_BF_ELIMIT) {
 		what = "enters";
 	}
 
-	knotd_mod_log(mod, LOG_NOTICE, "address %s, class %s, %s limiting",
+	knotd_mod_log(mod, LOG_NOTICE, "subnet %s, class %s, %s limiting",
 	              addr_str, rrl_clsstr(cls), what);
 }
 

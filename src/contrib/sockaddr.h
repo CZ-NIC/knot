@@ -103,6 +103,19 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
 int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr *sa);
 
 /*!
+ * \brief Return string representation of socket subnet address.
+ *
+ * \note String format: \address/prefix, f.e. '127.0.0.0/24'
+ *
+ * \param buf     Destination for string representation.
+ * \param maxlen  Maximum number of written bytes.
+ * \param sa      Socket subnet address.
+ *
+ * \return Number of bytes written on success, error code on failure.
+ */
+int sockaddr_subnet_tostr(char *buf, size_t maxlen, const struct sockaddr *sa);
+
+/*!
  * \brief Return port number from address.
  *
  * \param sa  Socket address.

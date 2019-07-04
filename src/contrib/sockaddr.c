@@ -218,6 +218,36 @@ int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr *sa)
 	return written;
 }
 
+int sockaddr_subnet_tostr(char *buf, size_t maxlen, const struct sockaddr *sa)
+{
+	if (sa == NULL || buf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const char *out = NULL;
+
+	/* Convert network address string. */
+	if (sa->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)sa;
+		struct in6_addr addr = (struct in6_addr){0};
+		memcpy(addr.s6_addr, s->sin6_addr.__in6_u.__u6_addr8, 7);
+		out = inet_ntop(sa->sa_family, &addr, buf, maxlen);
+		strcat(buf, "/56");
+	} else if (sa->sa_family == AF_INET) {
+		const struct sockaddr_in *s = (const struct sockaddr_in *)sa;
+		struct in_addr addr = (struct in_addr){
+			.s_addr = s->sin_addr.s_addr
+		};
+		addr.s_addr ^= addr.s_addr & 0xffffff00;
+		out = inet_ntop(sa->sa_family, &addr, buf, maxlen);
+		strcat(buf, "/24");
+	} else {
+		return KNOT_EINVAL;
+	}
+
+	return strlen(buf);
+}
+
 int sockaddr_port(const struct sockaddr *sa)
 {
 	if (sa == NULL) {
