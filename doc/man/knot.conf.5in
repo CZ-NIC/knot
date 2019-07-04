@@ -1471,29 +1471,33 @@ Possible values:
 .IP \(bu 2
 \fBstderr\fP – Standard error output.
 .IP \(bu 2
-\fBsyslog\fP – Syslog.
+\fBsyslog\fP – Syslog or systemd journal.
 .IP \(bu 2
 \fIfile_name\fP – A specific file.
 .UNINDENT
+.sp
+With \fBsyslog\fP target, syslog service is used. However, if Knot DNS has been compiled
+with systemd support and operating system has been booted with systemd, systemd journal
+is used for logging instead of syslog.
 .SS server
 .sp
-Minimum severity level for messages related to general operation of the server
-that are logged.
+Minimum severity level for messages related to general operation of the server to be
+logged.
 .sp
 \fIDefault:\fP not set
 .SS control
 .sp
-Minimum severity level for messages related to server control that are logged.
+Minimum severity level for messages related to server control to be logged.
 .sp
 \fIDefault:\fP not set
 .SS zone
 .sp
-Minimum severity level for messages related to zones that are logged.
+Minimum severity level for messages related to zones to be logged.
 .sp
 \fIDefault:\fP not set
 .SS any
 .sp
-Minimum severity level for all message types that are logged.
+Minimum severity level for all message types to be logged.
 .sp
 \fIDefault:\fP not set
 .SH AUTHOR

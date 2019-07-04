@@ -1629,16 +1629,20 @@ Possible values:
 
 - ``stdout`` – Standard output.
 - ``stderr`` – Standard error output.
-- ``syslog`` – Syslog.
+- ``syslog`` – Syslog or systemd journal.
 - *file\_name* – A specific file.
+
+With ``syslog`` target, syslog service is used. However, if Knot DNS has been compiled
+with systemd support and operating system has been booted with systemd, systemd journal
+is used for logging instead of syslog.
 
 .. _log_server:
 
 server
 ------
 
-Minimum severity level for messages related to general operation of the server
-that are logged.
+Minimum severity level for messages related to general operation of the server to be
+logged.
 
 *Default:* not set
 
@@ -1647,7 +1651,7 @@ that are logged.
 control
 -------
 
-Minimum severity level for messages related to server control that are logged.
+Minimum severity level for messages related to server control to be logged.
 
 *Default:* not set
 
@@ -1656,7 +1660,7 @@ Minimum severity level for messages related to server control that are logged.
 zone
 ----
 
-Minimum severity level for messages related to zones that are logged.
+Minimum severity level for messages related to zones to be logged.
 
 *Default:* not set
 
@@ -1665,6 +1669,6 @@ Minimum severity level for messages related to zones that are logged.
 any
 ---
 
-Minimum severity level for all message types that are logged.
+Minimum severity level for all message types to be logged.
 
 *Default:* not set
