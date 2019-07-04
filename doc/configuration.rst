@@ -37,7 +37,7 @@ Now let's walk through this configuration step by step:
   in the zone file :file:`/var/lib/knot/zones/example.com.zone`.
 - The :ref:`log section<Logging section>` defines the log facilities for
   the server. In this example, we told Knot DNS to send its log messages with
-  the severity ``info`` or more serious to the syslog.
+  the severity ``info`` or more serious to the syslog (or systemd journal).
 
 For detailed description of all configuration items see
 :ref:`Configuration Reference`.
