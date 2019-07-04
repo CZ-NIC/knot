@@ -213,8 +213,8 @@ static bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
  * \param covered     RR set with covered records.
  * \param rrsigs      RR set with RRSIGs.
  * \param sign_ctx    Local zone signing context.
- * \param changeset   Changeset to be updated.
- * \param update      Zone update to be updated. Exactly one of "changeset" and "update" must be NULL!
+ * \param update      Zone update to be updated.
+ * \param up_mutex    Mutex for writing into update.
  * \param expires_at  Earliest RRSIG expiration.
  *
  * \return Error code, KNOT_EOK if successful.
@@ -222,13 +222,12 @@ static bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
 static int add_missing_rrsigs(const knot_rrset_t *covered,
                               const knot_rrset_t *rrsigs,
                               zone_sign_ctx_t *sign_ctx,
-                              changeset_t *changeset,
                               zone_update_t *update,
+                              pthread_mutex_t *up_mutex,
                               knot_time_t *expires_at)
 {
 	assert(!knot_rrset_empty(covered));
 	assert(sign_ctx);
-	assert((bool)changeset != (bool)update);
 
 	knot_rrset_t to_add = create_empty_rrsigs_for(covered);
 	knot_rrset_t to_remove = create_empty_rrsigs_for(covered);
@@ -271,18 +270,22 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	}
 
 	if (!knot_rrset_empty(&to_remove) && result == KNOT_EOK) {
-		if (changeset != NULL) {
-			result = changeset_add_removal(changeset, &to_remove, 0);
-		} else {
-			result = zone_update_remove(update, &to_remove);
+		if (up_mutex != NULL) {
+			pthread_mutex_lock(up_mutex);
+		}
+		result = zone_update_remove(update, &to_remove);
+		if (up_mutex != NULL) {
+			pthread_mutex_unlock(up_mutex);
 		}
 	}
 
 	if (!knot_rrset_empty(&to_add) && result == KNOT_EOK) {
-		if (changeset != NULL) {
-			result = changeset_add_addition(changeset, &to_add, 0);
-		} else {
-			result = zone_update_add(update, &to_add);
+		if (up_mutex != NULL) {
+			pthread_mutex_lock(up_mutex);
+		}
+		result = zone_update_add(update, &to_add);
+		if (up_mutex != NULL) {
+			pthread_mutex_unlock(up_mutex);
 		}
 	}
 
@@ -294,18 +297,14 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 /*!
  * \brief Add all RRSIGs into the changeset for removal.
- *
- * \param covered    RR set with covered records.
- * \param changeset  Changeset to be updated.
- *
- * \return Error code, KNOT_EOK if successful.
  */
 static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
                                const knot_rrset_t *rrsigs,
-                               changeset_t *changeset)
+                               zone_update_t *update,
+                               pthread_mutex_t *up_mutex)
 {
 	assert(owner);
-	assert(changeset);
+	assert(update);
 	knot_rrset_t synth_rrsig;
 	knot_rrset_init(&synth_rrsig, (knot_dname_t *)owner,
 	                KNOT_RRTYPE_RRSIG, rrsigs->rclass, rrsigs->ttl);
@@ -317,7 +316,13 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
 		return KNOT_EOK;
 	}
 
-	ret = changeset_add_removal(changeset, &synth_rrsig, 0);
+	if (up_mutex != NULL) {
+		pthread_mutex_lock(up_mutex);
+	}
+	ret = zone_update_remove(update, &synth_rrsig);
+	if (up_mutex != NULL) {
+		pthread_mutex_unlock(up_mutex);
+	}
 	knot_rdataset_clear(&synth_rrsig.rrs, NULL);
 
 	return ret;
@@ -329,26 +334,28 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
  * \param covered    RR set with covered records.
  * \param rrsigs     Existing RRSIGs for covered RR set.
  * \param sign_ctx   Local zone signing context.
- * \param changeset  Changeset to be updated.
+ * \param update      Zone update to be updated.
+ * \param up_mutex    Mutex for writing into update.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int force_resign_rrset(const knot_rrset_t *covered,
                               const knot_rrset_t *rrsigs,
                               zone_sign_ctx_t *sign_ctx,
-                              changeset_t *changeset)
+			      zone_update_t *update,
+                              pthread_mutex_t *up_mutex)
 {
 	assert(!knot_rrset_empty(covered));
 
 	if (!knot_rrset_empty(rrsigs)) {
 		int result = remove_rrset_rrsigs(covered->owner, covered->type,
-		                                 rrsigs, changeset);
+		                                 rrsigs, update, up_mutex);
 		if (result != KNOT_EOK) {
 			return result;
 		}
 	}
 
-	return add_missing_rrsigs(covered, NULL, sign_ctx, changeset, NULL, NULL);
+	return add_missing_rrsigs(covered, NULL, sign_ctx, update, up_mutex, NULL);
 }
 
 /*!
@@ -357,7 +364,8 @@ static int force_resign_rrset(const knot_rrset_t *covered,
  * \param covered     RR set with covered records.
  * \param rrsigs      Existing RRSIGs for covered RR set.
  * \param sign_ctx    Local zone signing context.
- * \param changeset   Changeset to be updated.
+ * \param update      Zone update to be updated.
+ * \param up_mutex    Mutex for writing into update.
  * \param expires_at  Current earliest expiration, will be updated.
  *
  * \return Error code, KNOT_EOK if successful.
@@ -365,35 +373,48 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 static int resign_rrset(const knot_rrset_t *covered,
                         const knot_rrset_t *rrsigs,
                         zone_sign_ctx_t *sign_ctx,
-                        changeset_t *changeset,
+			zone_update_t *update,
+                        pthread_mutex_t *up_mutex,
                         knot_time_t *expires_at)
 {
 	assert(!knot_rrset_empty(covered));
 
-	return add_missing_rrsigs(covered, rrsigs, sign_ctx, changeset, NULL, expires_at);
+	return add_missing_rrsigs(covered, rrsigs, sign_ctx, update, up_mutex, expires_at);
 }
 
 static int remove_standalone_rrsigs(const zone_node_t *node,
                                     const knot_rrset_t *rrsigs,
-                                    changeset_t *changeset)
+				    zone_update_t *update,
+                                    pthread_mutex_t *up_mutex)
 {
 	if (rrsigs == NULL) {
 		return KNOT_EOK;
 	}
 
-	uint16_t rrsigs_rdata_count = rrsigs->rrs.count;
-	knot_rdata_t *rdata = rrsigs->rrs.rdata;
+	knot_rrset_t *rrsigs_copy = knot_rrset_copy(rrsigs, NULL);
+	if (rrsigs_copy == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	uint16_t rrsigs_rdata_count = rrsigs_copy->rrs.count;
+	knot_rdata_t *rdata = rrsigs_copy->rrs.rdata;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		uint16_t type_covered = knot_rrsig_type_covered(rdata);
 		if (!node_rrtype_exists(node, type_covered)) {
 			knot_rrset_t to_remove;
-			knot_rrset_init(&to_remove, rrsigs->owner, rrsigs->type,
-			                rrsigs->rclass, rrsigs->ttl);
+			knot_rrset_init(&to_remove, rrsigs_copy->owner, rrsigs_copy->type,
+			                rrsigs_copy->rclass, rrsigs_copy->ttl);
 			int ret = knot_rdataset_add(&to_remove.rrs, rdata, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-			ret = changeset_add_removal(changeset, &to_remove, 0);
+			if (up_mutex != NULL) {
+				pthread_mutex_lock(up_mutex);
+			}
+			ret = zone_update_remove(update, &to_remove);
+			if (up_mutex != NULL) {
+				pthread_mutex_unlock(up_mutex);
+			}
 			knot_rdataset_clear(&to_remove.rrs, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -401,6 +422,7 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
 		}
 		rdata = knot_rdataset_next(rdata);
 	}
+	knot_rrset_free(rrsigs_copy, NULL);
 
 	return KNOT_EOK;
 }
@@ -417,33 +439,36 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
  */
 static int sign_node_rrsets(const zone_node_t *node,
                             zone_sign_ctx_t *sign_ctx,
-                            changeset_t *changeset,
+			    zone_update_t *update,
+                            pthread_mutex_t *up_mutex,
                             knot_time_t *expires_at)
 {
 	assert(node);
 	assert(sign_ctx);
 
 	int result = KNOT_EOK;
-	knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
-
 	for (int i = 0; result == KNOT_EOK && i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
+		knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
+		// beware how this works. The set of node rrsets is being changed by signing.
+
 		if (!knot_zone_sign_rr_should_be_signed(node, &rrset)) {
-			result = remove_rrset_rrsigs(rrset.owner, rrset.type, &rrsigs, changeset);
+			result = remove_rrset_rrsigs(rrset.owner, rrset.type, &rrsigs, update, up_mutex);
 			continue;
 		}
 
 		if (sign_ctx->dnssec_ctx->rrsig_drop_existing) {
 			result = force_resign_rrset(&rrset, &rrsigs,
-			                            sign_ctx, changeset);
+			                            sign_ctx, update, up_mutex);
 		} else {
 			result = resign_rrset(&rrset, &rrsigs, sign_ctx,
-			                      changeset, expires_at);
+			                      update, up_mutex, expires_at);
 		}
 	}
 
 	if (result == KNOT_EOK) {
-		result = remove_standalone_rrsigs(node, &rrsigs, changeset);
+		knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
+		result = remove_standalone_rrsigs(node, &rrsigs, update, up_mutex);
 	}
 	return result;
 }
@@ -454,7 +479,8 @@ static int sign_node_rrsets(const zone_node_t *node,
 typedef struct {
 	zone_tree_t *tree;
 	zone_sign_ctx_t *sign_ctx;
-	changeset_t changeset;
+	zone_update_t *update;
+	pthread_mutex_t *up_mutex;
 	knot_time_t expires_at;
 	size_t num_threads;
 	size_t thread_index;
@@ -485,8 +511,8 @@ static int sign_node(zone_node_t *node, void *data)
 		return KNOT_EOK;
 	}
 
-	int result = sign_node_rrsets(node, args->sign_ctx,
-	                              &args->changeset, &args->expires_at);
+	int result = sign_node_rrsets(node, args->sign_ctx, args->update,
+	                              args->up_mutex, &args->expires_at);
 
 	return result;
 }
@@ -526,6 +552,9 @@ static int zone_tree_sign(zone_tree_t *tree,
 	memset(args, 0, sizeof(args));
 	*expires_at = knot_time_plus(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime);
 
+	pthread_mutex_t up_mutex;
+	pthread_mutex_init(&up_mutex, NULL);
+
 	// init context structures
 	for (size_t i = 0; i < num_threads; i++) {
 		args[i].tree = tree;
@@ -534,10 +563,8 @@ static int zone_tree_sign(zone_tree_t *tree,
 			ret = KNOT_ENOMEM;
 			break;
 		}
-		ret = changeset_init(&args[i].changeset, update->zone->name);
-		if (ret != KNOT_EOK) {
-			break;
-		}
+		args[i].update = update;
+		args[i].up_mutex = &up_mutex; // TODO: (num_threads > 1 ? &up_mutex : NULL);
 		args[i].expires_at = 0;
 		args[i].num_threads = num_threads;
 		args[i].thread_index = i;
@@ -547,9 +574,9 @@ static int zone_tree_sign(zone_tree_t *tree,
 	}
 	if (ret != KNOT_EOK) {
 		for (size_t i = 0; i < num_threads; i++) {
-			changeset_clear(&args[i].changeset);
 			zone_sign_ctx_free(args[i].sign_ctx);
 		}
+		pthread_mutex_destroy(&up_mutex);
 		return ret;
 	}
 
@@ -577,15 +604,12 @@ static int zone_tree_sign(zone_tree_t *tree,
 			ret = knot_map_errno_code(args[i].thread_init_errcode);
 		} else {
 			ret = args[i].errcode;
-			if (ret == KNOT_EOK) {
-				ret = zone_update_apply_changeset(update, &args[i].changeset); // _fix not needed
-				*expires_at = knot_time_min(*expires_at, args[i].expires_at);
-			}
+			*expires_at = knot_time_min(*expires_at, args[i].expires_at);
 		}
-		changeset_clear(&args[i].changeset);
 		zone_sign_ctx_free(args[i].sign_ctx);
 	}
 
+	pthread_mutex_destroy(&up_mutex);
 	return ret;
 }
 
@@ -598,7 +622,8 @@ typedef struct {
 	const zone_contents_t *zone;
 	changeset_iter_t itt;
 	zone_sign_ctx_t *sign_ctx;
-	changeset_t changeset;
+	zone_update_t *update;
+	pthread_mutex_t *up_mutex;
 	knot_time_t expires_at;
 	size_t num_threads;
 	size_t thread_index;
@@ -659,7 +684,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset,
 
 		if (should_sign) {
 			return resign_rrset(&zone_rrset, &rrsigs, args->sign_ctx,
-			                    &args->changeset, expire_at);
+			                    args->update, args->up_mutex, expire_at);
 		} else {
 			/*
 			 * If RRSet in zone DOES have RRSIGs although we
@@ -673,7 +698,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset,
 			 */
 			return remove_rrset_rrsigs(chg_rrset->owner,
 			                           chg_rrset->type, &rrsigs,
-			                           &args->changeset);
+			                           args->update, args->up_mutex);
 		}
 	}
 
@@ -950,6 +975,9 @@ static int sign_changeset(const zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
+	pthread_mutex_t up_mutex;
+	pthread_mutex_init(&up_mutex, NULL);
+
 	int ret = KNOT_EOK;
 	changeset_signing_data_t args[num_threads];
 	memset(args, 0, sizeof(args));
@@ -966,10 +994,8 @@ static int sign_changeset(const zone_contents_t *zone,
 			ret = KNOT_ENOMEM;
 			break;
 		}
-		ret = changeset_init(&args[i].changeset, update->zone->name);
-		if (ret != KNOT_EOK) {
-			break;
-		}
+		args[i].update = update;
+		args[i].up_mutex = &up_mutex; // TODO (num_threads > 1 ? &up_mutex : NULL);
 		args[i].expires_at = 0;
 		args[i].num_threads = num_threads;
 		args[i].thread_index = i;
@@ -980,9 +1006,9 @@ static int sign_changeset(const zone_contents_t *zone,
 	if (ret != KNOT_EOK) {
 		for (size_t i = 0; i < num_threads; i++) {
 			changeset_iter_clear(&args[i].itt);
-			changeset_clear(&args[i].changeset);
 			zone_sign_ctx_free(args[i].sign_ctx);
 		}
+		pthread_mutex_destroy(&up_mutex);
 		return ret;
 	}
 
@@ -1017,16 +1043,13 @@ static int sign_changeset(const zone_contents_t *zone,
 			ret = knot_map_errno_code(args[i].thread_init_errcode);
 		} else {
 			ret = args[i].errcode;
-			if (ret == KNOT_EOK) {
-				ret = zone_update_apply_changeset_fix(update, &args[i].changeset);
-				*expire_at = knot_time_min(*expire_at, args[i].expires_at);
-			}
+			*expire_at = knot_time_min(*expire_at, args[i].expires_at);
 		}
 		changeset_iter_clear(&args[i].itt);
-		changeset_clear(&args[i].changeset);
 		zone_sign_ctx_free(args[i].sign_ctx);
 	}
 
+	pthread_mutex_destroy(&up_mutex);
 	return ret;
 }
 
@@ -1054,7 +1077,7 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 			if (rr.type == KNOT_RRTYPE_NSEC ||
 			    rr.type == KNOT_RRTYPE_NSEC3 ||
 			    rr.type == KNOT_RRTYPE_NSEC3PARAM) {
-				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, NULL, update, NULL);
+				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, update, NULL, NULL);
 			}
 		}
 		zone_tree_it_next(&it);
@@ -1118,20 +1141,11 @@ int knot_zone_sign_soa(zone_update_t *update,
 {
 	knot_rrset_t soa_to = node_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
 	knot_rrset_t soa_rrsig = node_rrset(update->new_cont->apex, KNOT_RRTYPE_RRSIG);
-	changeset_t ch;
-	int ret = changeset_init(&ch, update->zone->name);
-	if (ret == KNOT_EOK) {
-		zone_sign_ctx_t *sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
-		if (sign_ctx == NULL) {
-			changeset_clear(&ch);
-			return KNOT_ENOMEM;
-		}
-		ret = force_resign_rrset(&soa_to, &soa_rrsig, sign_ctx, &ch);
-		if (ret == KNOT_EOK) {
-			ret = zone_update_apply_changeset_fix(update, &ch);
-		}
-		zone_sign_ctx_free(sign_ctx);
+	zone_sign_ctx_t *sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
+	if (sign_ctx == NULL) {
+		return KNOT_ENOMEM;
 	}
-	changeset_clear(&ch);
+	int ret = force_resign_rrset(&soa_to, &soa_rrsig, sign_ctx, update, NULL);
+	zone_sign_ctx_free(sign_ctx);
 	return ret;
 }
