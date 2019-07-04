@@ -252,6 +252,7 @@ typedef struct {
 	bool ksk;
 	knot_time_t time;
 	knot_kasp_key_t *key;
+	int ready_key;
 } roll_action_t;
 
 static const char *roll_action_name(roll_action_type_t type)
@@ -356,7 +357,7 @@ static knot_time_t alg_remove_time(knot_time_t post_active_time, const kdnssec_c
 static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags)
 {
 	roll_action_t res = { 0 };
-	res.time = 0;
+	res.ready_key = -1;
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
@@ -380,6 +381,7 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 			case DNSSEC_KEY_STATE_READY:
 				keytime = ksk_sbm_max_time(key->timing.ready, ctx);
 				restype = REPLACE;
+				res.ready_key = dnssec_key_get_keytag(key->key);
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
 				if (!running_rollover(ctx) &&
@@ -712,11 +714,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 
-	if (ret == KNOT_EOK && next.type == REPLACE && next.ksk &&
-	    knot_time_cmp(reschedule->next_rollover, ctx->now) > 0) {
+	if (ret == KNOT_EOK && next.ready_key >= 0) {
 		// just to make sure DS check is scheduled
 		reschedule->plan_ds_query = true;
-		plan_ds_keytag = dnssec_key_get_keytag(next.key->key);
+		plan_ds_keytag = next.ready_key;
 	}
 
 	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
