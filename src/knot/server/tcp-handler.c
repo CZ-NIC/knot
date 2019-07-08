@@ -52,6 +52,7 @@ typedef struct tcp_context {
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_clients;            /*!< Max TCP clients per worker configuration. */
+	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
@@ -61,6 +62,7 @@ static void update_tcp_conf(tcp_context_t *tcp)
 	rcu_read_lock();
 	unsigned clients = conf()->cache.srv_max_tcp_clients;
 	tcp->max_clients = MAX(clients / conf_tcp_threads(conf()), 1);
+	tcp->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
 	rcu_read_unlock();
 }
 
@@ -199,10 +201,7 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
-		rcu_read_lock();
-		int timeout = conf()->cache.srv_tcp_idle_timeout;
-		fdset_set_watchdog(&tcp->set, i, timeout);
-		rcu_read_unlock();
+		fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
 	}
 
 	return ret;
