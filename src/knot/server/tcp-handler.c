@@ -29,7 +29,6 @@
 #include <sys/uio.h>
 #endif // HAVE_SYS_UIO_H
 
-#include "libdnssec/random.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"
@@ -50,19 +49,11 @@ typedef struct tcp_context {
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
-	struct timespec throttle_end;    /*!< End of accept() throttling. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
-#define TCP_THROTTLE_LO    0 /*!< Minimum recovery time on errors. */
-#define TCP_THROTTLE_HI    2 /*!< Maximum recovery time on errors. */
-
-/*! \brief Calculate TCP throttle time (random). */
-static inline int tcp_throttle(void) {
-	return TCP_THROTTLE_LO + (dnssec_random_uint16_t() % TCP_THROTTLE_HI);
-}
 
 /*! \brief Sweep TCP connection. */
 static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
@@ -258,12 +249,6 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 		    TCP_SWEEP_INTERVAL * 1000);
 	}
 
-	/* Mark the time of last poll call. */
-	tcp->last_poll_time = time_now();
-	if (!tcp->is_throttled) {
-		tcp->is_throttled = (tcp->last_poll_time.tv_sec < tcp->throttle_end.tv_sec);
-	}
-
 	/* Process events. */
 	while (nfds > 0 && i < set->n) {
 		bool should_close = false;
@@ -274,10 +259,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 		} else if (set->pfd[i].revents & (POLLIN)) {
 			/* Master sockets */
 			if (i < tcp->client_threshold) {
-				if (!tcp->is_throttled && tcp_event_accept(tcp, i) == KNOT_EBUSY) {
-					tcp->throttle_end = time_now();
-					tcp->throttle_end.tv_sec += tcp_throttle();
-				}
+				tcp_event_accept(tcp, i);
 			/* Client sockets */
 			} else {
 				if (tcp_event_serve(tcp, i) != KNOT_EOK) {
