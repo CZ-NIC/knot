@@ -387,7 +387,7 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
 				    zone_update_t *update,
                                     pthread_mutex_t *up_mutex)
 {
-	if (rrsigs == NULL) {
+	if (knot_rrset_empty(rrsigs)) {
 		return KNOT_EOK;
 	}
 
