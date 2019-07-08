@@ -206,25 +206,16 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 
 static void tcp_wait_for_events(tcp_context_t *tcp)
 {
-	int nfds;
-	unsigned i;
-
 	fdset_t *set = &tcp->set;
 
-	/* Subtract master sockets check limits. */
+	/* Check if throttled with many open TCP connections. */
 	tcp->is_throttled = (set->n - tcp->client_threshold) >= tcp->max_clients;
 
+	/* If throttled, temporarily ignore new TCP connections. */
+	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
+
 	/* Wait for events. */
-	if (!tcp->is_throttled) {
-		/* Polling for both existing client sockets and new TCP connections. */
-		i = 0;
-		nfds = poll(set->pfd, set->n, TCP_SWEEP_INTERVAL * 1000);
-	} else {
-		/* Client sockets only, Knot doesn't care about new TCP connections now. */
-		i = tcp->client_threshold;
-		nfds = poll(&(set->pfd[tcp->client_threshold]), set->n - tcp->client_threshold,
-		    TCP_SWEEP_INTERVAL * 1000);
-	}
+	int nfds = poll(&(set->pfd[i]), set->n - i, TCP_SWEEP_INTERVAL * 1000);
 
 	/* Process events. */
 	while (nfds > 0 && i < set->n) {
@@ -234,19 +225,17 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 			should_close = (i >= tcp->client_threshold);
 			--nfds;
 		} else if (set->pfd[i].revents & (POLLIN)) {
-			/* Master sockets */
+			/* Master sockets - new connections to accept. */
 			if (i < tcp->client_threshold) {
 				tcp_event_accept(tcp, i);
-			/* Client sockets */
-			} else {
-				if (tcp_event_serve(tcp, i) != KNOT_EOK) {
-					should_close = true;
-				}
+			/* Client sockets - already accepted connections. */
+			} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {
+				should_close = true;
 			}
 			--nfds;
 		}
 
-		/* Evaluate */
+		/* Evaluate. */
 		if (should_close) {
 			fdset_remove(set, i);
 			close(fd);
