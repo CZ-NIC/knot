@@ -175,7 +175,7 @@ STARTUP = 1
 signer.key_set(ZONE, key_ksk2, retire=tickf(3), remove=tickf(4))
 key_ksk3 = signer.key_gen(ZONE, ksk="true", created="+0", publish=tickf(1), ready=tickf(2), active=tickf(3), retire="+4h", remove="+5h")
 
-knot.dnssec(zone).zsk_lifetime = 7*TICK
+knot.dnssec(zone).zsk_lifetime = 8*TICK
 knot.gen_confile()
 
 KSR = KSR + "2"
