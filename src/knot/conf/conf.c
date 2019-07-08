@@ -33,6 +33,9 @@
 
 #define DBG_LOG(err) CONF_LOG(LOG_DEBUG, "%s (%s)", __func__, knot_strerror((err)));
 
+#define DFLT_TCP_WORKERS_MIN	10
+#define DFLT_BG_WORKERS_MAX	10
+
 conf_val_t conf_get_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
@@ -1086,7 +1089,7 @@ size_t conf_tcp_threads_txn(
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_WORKERS);
 	int64_t workers = conf_int(&val);
 	if (workers == YP_NIL) {
-		return MAX(dt_optimal_size() * 2, 10);
+		return MAX(dt_optimal_size() * 2, DFLT_TCP_WORKERS_MIN);
 	}
 
 	return workers;
@@ -1099,7 +1102,7 @@ size_t conf_bg_threads_txn(
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_BG_WORKERS);
 	int64_t workers = conf_int(&val);
 	if (workers == YP_NIL) {
-		return MIN(dt_optimal_size(), 10);
+		return MIN(dt_optimal_size(), DFLT_BG_WORKERS_MAX);
 	}
 
 	return workers;
