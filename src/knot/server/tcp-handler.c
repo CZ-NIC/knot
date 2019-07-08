@@ -184,10 +184,7 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 		}
 
 		/* Update watchdog timer. */
-		rcu_read_lock();
-		int timeout = conf()->cache.srv_tcp_hshake_timeout;
-		fdset_set_watchdog(&tcp->set, next_id, timeout);
-		rcu_read_unlock();
+		fdset_set_watchdog(&tcp->set, next_id, tcp->idle_timeout);
 
 		return KNOT_EOK;
 	}
