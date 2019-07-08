@@ -1212,6 +1212,7 @@ class Knot(Server):
             self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
             self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
             self._str(s, "offline-ksk", z.dnssec.offline_ksk)
+            self._str(s, "signing-threads", "4")
         if have_policy:
             s.end()
 
