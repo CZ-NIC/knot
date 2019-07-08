@@ -170,7 +170,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	return ret;
 }
 
-static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
+static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
 {
 	/* Accept client. */
 	int fd = tcp->set.pfd[i].fd;
@@ -180,16 +180,12 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 		int next_id = fdset_add(&tcp->set, client, POLLIN, NULL);
 		if (next_id < 0) {
 			close(client);
-			return next_id; /* Contains errno. */
+			return;
 		}
 
 		/* Update watchdog timer. */
 		fdset_set_watchdog(&tcp->set, next_id, tcp->idle_timeout);
-
-		return KNOT_EOK;
 	}
-
-	return client;
 }
 
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
