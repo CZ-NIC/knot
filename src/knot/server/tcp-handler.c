@@ -252,19 +252,17 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 			should_close = (i >= tcp->client_threshold);
 			--nfds;
 		} else if (set->pfd[i].revents & (POLLIN)) {
-			/* Master sockets */
+			/* Master sockets - new connections to accept. */
 			if (i < tcp->client_threshold) {
 				tcp_event_accept(tcp, i);
-			/* Client sockets */
-			} else {
-				if (tcp_event_serve(tcp, i) != KNOT_EOK) {
-					should_close = true;
-				}
+			/* Client sockets - already accepted connections. */
+			} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {
+				should_close = true;
 			}
 			--nfds;
 		}
 
-		/* Evaluate */
+		/* Evaluate. */
 		if (should_close) {
 			fdset_remove(set, i);
 			close(fd);
