@@ -515,12 +515,14 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 
 bool rrl_slip_roll(int n_slip)
 {
-	/* Now n_slip means every Nth answer slips.
-	 * That represents a chance of 1/N that answer slips.
-	 * Therefore, on average, from 100 answers 100/N will slip. */
-	int threshold = RRL_SLIP_MAX / n_slip;
-	int roll = dnssec_random_uint16_t() % RRL_SLIP_MAX;
-	return (roll < threshold);
+	switch (n_slip) {
+	case 0:
+		return false;
+	case 1:
+		return true;
+	default:
+		return (dnssec_random_uint16_t() % n_slip == 0);
+	}
 }
 
 void rrl_destroy(rrl_table_t *rrl)
