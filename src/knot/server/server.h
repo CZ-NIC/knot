@@ -57,7 +57,8 @@ typedef struct iface {
 	struct node n;
 	int *fd_udp;
 	int fd_udp_count;
-	int fd_tcp;
+	int *fd_tcp;
+	int fd_tcp_count;
 	struct sockaddr_storage addr;
 } iface_t;
 
