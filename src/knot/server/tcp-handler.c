@@ -57,6 +57,12 @@ typedef struct tcp_context {
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
 
+static void update_sweep_timer(struct timespec *timer)
+{
+	*timer = time_now();
+	timer->tv_sec += TCP_SWEEP_INTERVAL;
+}
+
 static void update_tcp_conf(tcp_context_t *tcp)
 {
 	rcu_read_lock();
@@ -279,8 +285,8 @@ int tcp_master(dthread_t *thread)
 	}
 
 	/* Initialize sweep interval and TCP configuration. */
-	struct timespec next_sweep = time_now();
-	next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
+	struct timespec next_sweep;
+	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
 
 	for(;;) {
@@ -314,8 +320,7 @@ int tcp_master(dthread_t *thread)
 		/* Sweep inactive clients and refresh TCP configuration. */
 		if (tcp.last_poll_time.tv_sec >= next_sweep.tv_sec) {
 			fdset_sweep(&tcp.set, &tcp_sweep, NULL);
-			next_sweep = time_now();
-			next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
+			update_sweep_timer(&next_sweep);
 			update_tcp_conf(&tcp);
 		}
 	}
