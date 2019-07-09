@@ -51,9 +51,18 @@ typedef struct tcp_context {
 	bool is_throttled;               /*!< TCP connections throttling switch. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
+	unsigned max_clients;            /*!< Max TCP clients per worker configuration. */
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
+
+static void update_tcp_conf(tcp_context_t *tcp)
+{
+	rcu_read_lock();
+	unsigned clients = conf()->cache.srv_max_tcp_clients;
+	tcp->max_clients = MAX(clients / conf_tcp_threads(conf()), 1);
+	rcu_read_unlock();
+}
 
 /*! \brief Sweep TCP connection. */
 static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
@@ -226,13 +235,8 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 {
 	fdset_t *set = &tcp->set;
 
-	/* Configuration limit, infer maximal pool size. */
-	rcu_read_lock();
-	int clients = conf()->cache.srv_max_tcp_clients;
-	unsigned max_per_set = MAX(clients / conf_tcp_threads(conf()), 1);
-	rcu_read_unlock();
-	/* Subtract master sockets check limits. */
-	tcp->is_throttled = (set->n - tcp->client_threshold) >= max_per_set;
+	/* Check if throttled with many open TCP connections. */
+	tcp->is_throttled = (set->n - tcp->client_threshold) >= tcp->max_clients;
 
 	/* If throttled, temporarily ignore new TCP connections. */
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
@@ -310,9 +314,10 @@ int tcp_master(dthread_t *thread)
 		}
 	}
 
-	/* Initialize sweep interval. */
+	/* Initialize sweep interval and TCP configuration. */
 	struct timespec next_sweep = time_now();
 	next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
+	update_tcp_conf(&tcp);
 
 	for(;;) {
 
@@ -342,11 +347,12 @@ int tcp_master(dthread_t *thread)
 		/* Serve client requests. */
 		tcp_wait_for_events(&tcp);
 
-		/* Sweep inactive clients. */
+		/* Sweep inactive clients and refresh TCP configuration. */
 		if (tcp.last_poll_time.tv_sec >= next_sweep.tv_sec) {
 			fdset_sweep(&tcp.set, &tcp_sweep, NULL);
 			next_sweep = time_now();
 			next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
+			update_tcp_conf(&tcp);
 		}
 	}
 
