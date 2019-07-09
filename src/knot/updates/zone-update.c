@@ -665,6 +665,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			return KNOT_EOK;
 		}
 		ret = commit_incremental(conf, update);
+	} else if ((update->flags & UPDATE_HYBRID)) {
+		ret = commit_incremental(conf, update);
 	} else {
 		ret = commit_full(conf, update);
 	}
