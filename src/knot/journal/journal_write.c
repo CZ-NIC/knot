@@ -109,6 +109,18 @@ static bool delete_one(knot_lmdb_txn_t *txn, bool del_zij, uint32_t del_serial,
 	return (*freed > 0);
 }
 
+static void delete_merged(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
+                          journal_metadata_t *md, uint64_t *freed)
+{
+	if (!(md->flags & JOURNAL_MERGED_SERIAL_VALID)) {
+		return;
+	}
+	uint32_t unused = 0;
+	delete_one(txn, false, md->merged_serial, zone, freed, &unused);
+	md->merged_serial = 0;
+	md->flags &= ~JOURNAL_MERGED_SERIAL_VALID;
+}
+
 bool journal_delete(knot_lmdb_txn_t *txn, uint32_t from, const knot_dname_t *zone,
                     uint64_t tofree_size, size_t tofree_count, uint32_t stop_at_serial,
                     uint64_t *freed_size, size_t *freed_count, uint32_t *stopped_at)
@@ -214,12 +226,19 @@ int journal_insert_zone(zone_journal_t j, const zone_contents_t *z)
 	return txn.ret;
 }
 
-int journal_insert(zone_journal_t j, const changeset_t *ch)
+int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *extra)
 {
 	size_t ch_size = changeset_serialized_size(ch);
 	size_t max_usage = journal_conf_max_usage(j);
 	if (ch_size >= max_usage) {
 		return KNOT_ESPACE;
+	}
+	if (extra != NULL) {
+		printf("ch: %u -> %u, ex: %u -> %u\n", changeset_from(ch), changeset_to(ch), changeset_from(extra), changeset_to(extra));
+	}
+	if (extra != NULL && (changeset_to(extra) != changeset_to(ch) ||
+	     changeset_from(extra) == changeset_from(ch))) {
+		return KNOT_EINVAL;
 	}
 	int ret = knot_lmdb_open(j.db);
 	if (ret != KNOT_EOK) {
@@ -231,6 +250,19 @@ int journal_insert(zone_journal_t j, const changeset_t *ch)
 	journal_load_metadata(&txn, j.zone, &md);
 
 	update_last_inserter(&txn, j.zone);
+
+	if (extra != NULL) {
+		if (journal_contains(&txn, true, 0, j.zone)) {
+			txn.ret = KNOT_ESEMCHECK;
+		}
+		uint64_t merged_freed = 0;
+		delete_merged(&txn, j.zone, &md, &merged_freed);
+		ch_size += changeset_serialized_size(extra);
+		ch_size -= merged_freed;
+		md.flushed_upto = md.serial_to; // set temporarily
+		md.flags |= JOURNAL_LAST_FLUSHED_VALID;
+	}
+
 	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, journal_conf_max_changesets(j) - 1);
 
 	// avoid discontinuity
@@ -251,6 +283,11 @@ int journal_insert(zone_journal_t j, const changeset_t *ch)
 
 	journal_write_changeset(&txn, ch);
 	journal_metadata_after_insert(&md, changeset_from(ch), changeset_to(ch));
+
+	if (extra != NULL) {
+		journal_write_changeset(&txn, extra);
+		journal_metadata_after_extra(&md, changeset_from(extra), changeset_to(extra));
+	}
 
 	journal_store_metadata(&txn, j.zone, &md);
 	knot_lmdb_commit(&txn);

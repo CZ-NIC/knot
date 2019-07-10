@@ -178,12 +178,16 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 		return ret;
 	}
 
+	printf("ufd sf %u diff %u->%u", changeset_from(&update->change), changeset_from(&diff), changeset_to(&diff));
+
 	ret = zone_update_apply_changeset(update, &diff);
 	changeset_clear(&diff);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
 		return ret;
 	}
+
+	printf(" ... up %u->%u, diff_schk %d\n", changeset_from(&update->change), changeset_to(&update->change), diff_semcheck);
 
 	if (diff_semcheck) {
 		ret = zone_update_increment_soa(update, conf());
@@ -243,6 +247,32 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		return ret;
 	}
 
+	return KNOT_EOK;
+}
+
+int zone_update_start_extra(zone_update_t *update)
+{
+	int ret = changeset_init(&update->extra_ch, update->new_cont->apex->owner);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	update->extra_ch.soa_from = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+	if (update->extra_ch.soa_from == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	ret = zone_update_increment_soa(update, conf());
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	update->extra_ch.soa_to = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+	if (update->extra_ch.soa_to == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	update->flags |= UPDATE_EXTRA_CHSET;
 	return KNOT_EOK;
 }
 
@@ -326,6 +356,7 @@ void zone_update_clear(zone_update_t *update)
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);
+		changeset_clear(&update->extra_ch);
 	}
 
 	if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
@@ -360,6 +391,9 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		int ret = changeset_add_addition(&update->change, rrset, changeset_flags(update));
+		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+			ret = changeset_add_addition(&update->extra_ch, rrset, changeset_flags(update));
+		}
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -418,6 +452,9 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 
 	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && rrset->type != KNOT_RRTYPE_SOA) {
 		int ret = changeset_add_removal(&update->change, rrset, changeset_flags(update));
+		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+			ret = changeset_add_removal(&update->extra_ch, rrset, changeset_flags(update));
+		}
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -494,6 +531,9 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 	int ret = KNOT_EOK;
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		ret = changeset_merge(&update->change, changes, changeset_flags(update));
+		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+			ret = changeset_merge(&update->extra_ch, changes, changeset_flags(update));
+		}
 	}
 	if (ret == KNOT_EOK) {
 		ret = apply_changeset_directly(update->a_ctx, changes);
@@ -583,7 +623,8 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 	/* Write changes to journal if all went well. */
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
 	if (conf_opt(&val) != JOURNAL_CONTENT_NONE && !changeset_empty(&update->change)) {
-		ret = zone_change_store(conf, update->zone, &update->change);
+		ret = zone_change_store(conf, update->zone, &update->change,
+		                        (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -662,6 +703,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		if (changeset_empty(&update->change) &&
 		    update->zone->contents != NULL) {
 			changeset_clear(&update->change);
+			changeset_clear(&update->extra_ch);
 			return KNOT_EOK;
 		}
 		ret = commit_incremental(conf, update);
@@ -719,6 +761,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);
+		changeset_clear(&update->extra_ch);
 	}
 	callrcu_wrapper(update->a_ctx, update_cleanup, true);
 	update->a_ctx = NULL;

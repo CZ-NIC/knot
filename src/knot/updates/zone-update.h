@@ -28,6 +28,7 @@ typedef struct zone_update {
 	zone_t *zone;                /*!< Zone being updated. */
 	zone_contents_t *new_cont;   /*!< New zone contents for full updates. */
 	changeset_t change;          /*!< Changes we want to apply. */
+	changeset_t extra_ch;        /*!< Extra changeset to store just diff btwn zonefile and result. */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
 	knot_mm_t mm;                /*!< Memory context used for intermediate nodes. */
@@ -47,6 +48,7 @@ typedef enum {
 	UPDATE_SIGN           = 1 << 3, /*!< Sign the resulting zone. */
 	UPDATE_STRICT         = 1 << 4, /*!< Apply changes strictly, i.e. fail when removing nonexistent RR. */
 	UPDATE_CANCELOUT      = 1 << 5, /*!< When adding to changeset, cancel-out what has been both added and removed. */
+	UPDATE_EXTRA_CHSET    = 1 << 6, /*!< Extra changeset in use, to store diff btwn zonefile and final contents. */
 } zone_update_flags_t;
 
 /*!
@@ -90,6 +92,17 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
  */
 int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_contents,
                               zone_contents_t *new_cont, zone_update_flags_t flags);
+
+/*!
+ * \brief Inits using extra changeset, increments SOA serial.
+ *
+ * This shall be used after from_differences, to start tracking changes that are against the loaded zonefile.
+ *
+ * \param update   Zone update.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_start_extra(zone_update_t *update);
 
 /*!
  * \brief Returns node that would be in the zone after updating it.
