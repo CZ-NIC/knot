@@ -137,6 +137,7 @@ class Server(object):
         self.max_udp6_payload = None
         self.disable_any = None
         self.disable_notify = None
+        self.semantic_check = True
         self.zonefile_sync = "1d"
         self.journal_db_size = 20 * 1024 * 1024
         self.max_journal_usage = 5 * 1024 * 1024
@@ -638,8 +639,15 @@ class Server(object):
 
         return _serial
 
-    def zones_wait(self, zone_list, serials=None, equal=False, greater=True):
+    def zones_wait(self, zone_list, serials=None, serials_zfile=False, equal=False, greater=True):
         new_serials = dict()
+
+        if serials_zfile:
+            if serials is not None:
+                raise Exception('serials_zfile incompatible with serials')
+            serials = dict()
+            for zone in zone_list:
+                serials[zone.name] = self.zones[zone.name].zfile.get_soa_serial()
 
         for zone in zone_list:
             old_serial = serials[zone.name] if serials else None
@@ -965,10 +973,11 @@ class Knot(Server):
         return (tcp and udp)
 
     def flush(self, zone=None):
+        force = "-f " if str(self.zonefile_sync)[0] == '-' else ""
         if zone:
-            self.ctl("zone-flush %s" % zone.name)
+            self.ctl("%szone-flush %s" % (force, zone.name))
         else:
-            self.ctl("zone-flush")
+            self.ctl("%szone-flush" % force)
         time.sleep(Server.START_WAIT)
 
     def key_gen(self, zone_name, **new_params):
@@ -1225,7 +1234,7 @@ class Knot(Server):
         s.item_str("max-journal-db-size", self.journal_db_size)
         s.item_str("max-journal-usage", self.max_journal_usage)
         s.item_str("max-timer-db-size", self.timer_db_size)
-        s.item_str("semantic-checks", "on")
+        s.item_str("semantic-checks", "on" if self.semantic_check else "off")
         if self.disable_any:
             s.item_str("disable-any", "on")
         if len(self.modules) > 0:
