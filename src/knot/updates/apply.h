@@ -82,12 +82,12 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
 /*!
  * \brief Adds a single RR into zone contents.
  *
- * \param ctx  Apply context.
- * \param ch   Changeset to be applied to the zone.
+ * \param ctx     Apply context.
+ * \param rrset   New SOA.
  *
  * \return KNOT_E*
  */
-int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *ch);
+int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rrset);
 
 /*!
  * \brief Applies changesets directly to the zone, without copying it.
