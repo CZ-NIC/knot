@@ -272,7 +272,15 @@ request (SOA, NOTIFY, AXFR...).
 A maximum number of TCP clients connected in parallel, set this below the file
 descriptor limit to avoid resource exhaustion.
 .sp
-\fIDefault:\fP 100
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+It is advisable to adjust the maximum number of open files per process in your
+operating system configuration.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP one half of the file descriptor limit for the server process
 .SS max\-udp\-payload
 .sp
 Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.

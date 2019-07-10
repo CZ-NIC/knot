@@ -271,7 +271,11 @@ max-tcp-clients
 A maximum number of TCP clients connected in parallel, set this below the file
 descriptor limit to avoid resource exhaustion.
 
-*Default:* 100
+.. NOTE::
+   It is advisable to adjust the maximum number of open files per process in your
+   operating system configuration.
+
+*Default:* one half of the file descriptor limit for the server process
 
 .. _server_max-udp-payload:
 

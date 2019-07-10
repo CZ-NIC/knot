@@ -18,6 +18,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include <stdio.h>
+#include <sys/resource.h>
 
 #include "knot/conf/base.h"
 #include "knot/conf/confdb.h"
@@ -33,8 +34,9 @@
 
 #define DBG_LOG(err) CONF_LOG(LOG_DEBUG, "%s (%s)", __func__, knot_strerror((err)));
 
-#define DFLT_TCP_WORKERS_MIN	10
-#define DFLT_BG_WORKERS_MAX	10
+#define DFLT_TCP_WORKERS_MIN		10
+#define DFLT_BG_WORKERS_MAX		10
+#define FALLBACK_MAX_TCP_CLIENTS	100
 
 conf_val_t conf_get_txn(
 	conf_t *conf,
@@ -1106,6 +1108,28 @@ size_t conf_bg_threads_txn(
 	}
 
 	return workers;
+}
+
+size_t conf_max_tcp_clients_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_MAX_TCP_CLIENTS);
+	int64_t clients = conf_int(&val);
+	if (clients == YP_NIL) {
+		static size_t permval = 0;
+		if (permval == 0) {
+			struct rlimit numfiles;
+			if (getrlimit(RLIMIT_NOFILE, &numfiles) == 0) {
+				permval = (size_t)numfiles.rlim_cur / 2;
+			} else {
+				permval = FALLBACK_MAX_TCP_CLIENTS;
+			}
+		}
+		return permval;
+	}
+
+	return clients;
 }
 
 int conf_user_txn(
