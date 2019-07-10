@@ -233,20 +233,20 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
-int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
+int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset_t *extra)
 {
 	if (conf == NULL || zone == NULL || change == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = journal_insert(zone_journal(zone), change);
+	int ret = journal_insert(zone_journal(zone), change, extra);
 	if (ret == KNOT_EBUSY) {
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = flush_journal(conf, zone, true);
 		if (ret == KNOT_EOK) {
-			ret = journal_insert(zone_journal(zone), change);
+			ret = journal_insert(zone_journal(zone), change, extra);
 		}
 	}
 

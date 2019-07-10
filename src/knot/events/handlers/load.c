@@ -219,11 +219,20 @@ int event_load(conf_t *conf, zone_t *zone)
 		goto cleanup;
 	}
 
+	uint32_t middle_serial = zone_contents_serial(up.new_cont);
+
+	if ((zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE) &&
+	    old_contents_exist && journal_conts == NULL) {
+		ret = zone_update_start_extra(&up);
+		printf("start extra %d %u\n", ret, up.flags);
+		if (ret != KNOT_EOK) {
+			goto cleanup;
+		}
+	}
+
 	// The contents are already part of zone_update.
 	zf_conts = NULL;
 	journal_conts = NULL;
-
-	uint32_t middle_serial = zone_contents_serial(up.new_cont);
 
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { 0 };
