@@ -291,8 +291,15 @@ int tcp_master(dthread_t *thread)
 		return KNOT_EINVAL;
 	}
 
+	unsigned cpu = dt_online_cpus();
+	if (cpu > 1) {
+		unsigned cpu_mask = (dt_get_id(thread) % cpu);
+		dt_setaffinity(thread, &cpu_mask, 1);
+	}
+
+	unsigned thr_id = dt_get_id(thread);
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	unsigned *iostate = &handler->thread_state[dt_get_id(thread)];
+	unsigned *iostate = &handler->thread_state[thr_id];
 
 	int ret = KNOT_EOK;
 	ref_t *ref = NULL;
@@ -304,7 +311,7 @@ int tcp_master(dthread_t *thread)
 	/* Create TCP answering context. */
 	tcp_context_t tcp = {
 		.server = handler->server,
-		.thread_id = handler->thread_id[dt_get_id(thread)]
+		.thread_id = handler->thread_id[thr_id]
 	};
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());
 
