@@ -260,6 +260,14 @@ void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint
 	md->changeset_count++;
 }
 
+void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint32_t serial_to)
+{
+	assert(!(md->flags & JOURNAL_MERGED_SERIAL_VALID));
+	md->merged_serial = serial;
+	md->flushed_upto = serial_to;
+	md->flags |= (JOURNAL_MERGED_SERIAL_VALID | JOURNAL_LAST_FLUSHED_VALID);
+}
+
 int journal_scrape_with_md(zone_journal_t j)
 {
 	if (!journal_is_existing(j)) {

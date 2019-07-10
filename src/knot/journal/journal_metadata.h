@@ -103,6 +103,15 @@ void journal_metadata_after_merge(journal_metadata_t *md, bool merged_zij, uint3
 void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint32_t serial_to);
 
 /*!
+ * \brief Update metadata according to inserted extra changeset.
+ *
+ * \param md          Metadata structure to be updated.
+ * \param serial      Serial-from of the inserted changeset.
+ * \param serial_to   Serial-to of the inserted changeset.
+ */
+void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint32_t serial_to);
+
+/*!
  * \brief Completely delete all journal records belonging to this zone, including metadata.
  *
  * \param j   Journal to be scraped.
