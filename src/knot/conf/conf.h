@@ -667,6 +667,24 @@ static inline size_t conf_bg_threads(
 }
 
 /*!
+ * Gets the configured maximum number of TCP clients.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return Maximum number of TCP clients.
+ */
+size_t conf_max_tcp_clients_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline size_t conf_max_tcp_clients(
+	conf_t *conf)
+{
+	return conf_max_tcp_clients_txn(conf, &conf->read_txn);
+}
+
+/*!
  * Gets the configured user and group identifiers.
  *
  * \param[in] conf  Configuration.

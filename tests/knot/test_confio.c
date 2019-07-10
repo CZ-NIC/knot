@@ -907,7 +907,6 @@ static void test_conf_io_list(void)
 	      "server.tcp-handshake-timeout\n"
 	      "server.tcp-idle-timeout\n"
 	      "server.tcp-reply-timeout\n"
-	      "server.max-tcp-clients\n"
 	      "server.max-udp-payload\n"
 	      "server.max-ipv4-udp-payload\n"
 	      "server.max-ipv6-udp-payload\n"
@@ -924,7 +923,6 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_HSHAKE_TIMEOUT,   YP_TINT,  YP_VNONE },
 	{ C_TCP_IDLE_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_REPLY_TIMEOUT,	  YP_TINT,  YP_VNONE },
-	{ C_MAX_TCP_CLIENTS,	  YP_TINT,  YP_VNONE },
 	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VNONE },
 	{ C_MAX_IPV4_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
 	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VNONE },

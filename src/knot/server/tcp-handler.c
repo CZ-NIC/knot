@@ -66,7 +66,7 @@ static void update_sweep_timer(struct timespec *timer)
 static void update_tcp_conf(tcp_context_t *tcp)
 {
 	rcu_read_lock();
-	unsigned clients = conf()->cache.srv_max_tcp_clients;
+	unsigned clients = conf_max_tcp_clients(conf());
 	tcp->max_clients = MAX(clients / conf_tcp_threads(conf()), 1);
 	tcp->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
 	rcu_read_unlock();

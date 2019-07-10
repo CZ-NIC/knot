@@ -127,9 +127,6 @@ static void init_cache(
 	val = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
 	conf->cache.srv_tcp_reply_timeout = conf_int(&val);
 
-	val = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
-	conf->cache.srv_max_tcp_clients = conf_int(&val);
-
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
 
