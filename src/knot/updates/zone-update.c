@@ -407,7 +407,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EINVAL;
 	}
 
-	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && rrset->type != KNOT_RRTYPE_SOA) {
 		int ret = changeset_add_removal(&update->change, rrset, CHANGESET_CHECK);
 		if (ret != KNOT_EOK) {
 			return ret;
