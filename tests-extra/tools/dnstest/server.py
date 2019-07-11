@@ -717,14 +717,14 @@ class Server(object):
 
         self.zones[zone.name].zfile.backup()
 
-    def update_zonefile(self, zone, version=None, random=False, storage=None):
+    def update_zonefile(self, zone, version=None, random=False, storage=None, dnssec=None):
         zone = zone_arg_check(zone)
 
         if not storage:
             storage = self.data_dir
 
         if random:
-            self.zones[zone.name].zfile.update_rnd()
+            self.zones[zone.name].zfile.update_rnd(dnssec=dnssec, nsec3=dnssec)
         else:
             self.zones[zone.name].zfile.upd_file(storage=storage, version=version)
 
