@@ -238,7 +238,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	}
 
 	/* Initialize OPT record. */
-	int16_t max_payload;
+	uint16_t max_payload;
 	switch (qdata->params->remote->ss_family) {
 	case AF_INET:
 		max_payload = conf()->cache.srv_max_ipv4_udp_payload;
