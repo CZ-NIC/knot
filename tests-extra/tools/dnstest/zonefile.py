@@ -230,11 +230,8 @@ class ZoneFile(object):
 
         os.remove(old_name)
 
-    def update_rnd(self):
+    def update_rnd(self, dnssec=None, nsec3=None):
         '''Add random records or re-sign zone.'''
-
-        dnssec = False
-        nsec3 = False
 
         self.update_soa()
 
@@ -243,9 +240,9 @@ class ZoneFile(object):
 
         with open(old_name, 'r') as old_file:
             for line in old_file:
-                if "RRSIG" in line:
+                if "RRSIG" in line and dnssec is None:
                     dnssec = True
-                if "NSEC3PARAM" in line:
+                if "NSEC3PARAM" in line and nsec3 is None:
                     nsec3 = True
 
         try:
