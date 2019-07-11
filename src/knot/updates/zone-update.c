@@ -194,6 +194,7 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 		log_zone_info(zone->name, "automatic SOA serial increment");
 	}
 
+	update->init_cont = new_cont;
 	return KNOT_EOK;
 }
 
@@ -255,19 +256,31 @@ int zone_update_start_extra(zone_update_t *update)
 		return ret;
 	}
 
-	update->extra_ch.soa_from = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
-	if (update->extra_ch.soa_from == NULL) {
-		return KNOT_ENOMEM;
-	}
+	if (update->init_cont != NULL) {
+		ret = zone_update_increment_soa(update, conf());
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 
-	ret = zone_update_increment_soa(update, conf());
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+		ret = zone_contents_diff(update->init_cont, update->new_cont, &update->extra_ch, false);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
+		update->extra_ch.soa_from = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+		if (update->extra_ch.soa_from == NULL) {
+			return KNOT_ENOMEM;
+		}
 
-	update->extra_ch.soa_to = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
-	if (update->extra_ch.soa_to == NULL) {
-		return KNOT_ENOMEM;
+		ret = zone_update_increment_soa(update, conf());
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		update->extra_ch.soa_to = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+		if (update->extra_ch.soa_to == NULL) {
+			return KNOT_ENOMEM;
+		}
 	}
 
 	update->flags |= UPDATE_EXTRA_CHSET;
@@ -356,6 +369,8 @@ void zone_update_clear(zone_update_t *update)
 		changeset_clear(&update->change);
 		changeset_clear(&update->extra_ch);
 	}
+
+	zone_contents_deep_free(update->init_cont);
 
 	if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		update_cleanup(update->a_ctx);
