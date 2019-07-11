@@ -185,6 +185,12 @@ class ZoneFile(object):
         except:
             raise Exception("Can't make a copy of zone file '%s'" % self.path)
 
+    def get_soa_serial(self):
+        with open(self.path, 'r') as f:
+            for line in f:
+                if "SOA" in line:
+                    return int(line.split()[-5])
+
     def update_soa(self, serial=None, refresh=None, retry=None, expire=None,
                    minimum=None):
         '''Update SOA rdata numbers (serial, timers). The serial is just

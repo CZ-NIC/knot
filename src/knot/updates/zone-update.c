@@ -178,16 +178,12 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 		return ret;
 	}
 
-	printf("ufd sf %u diff %u->%u", changeset_from(&update->change), changeset_from(&diff), changeset_to(&diff));
-
 	ret = zone_update_apply_changeset(update, &diff);
 	changeset_clear(&diff);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
 		return ret;
 	}
-
-	printf(" ... up %u->%u, diff_schk %d\n", changeset_from(&update->change), changeset_to(&update->change), diff_semcheck);
 
 	if (diff_semcheck) {
 		ret = zone_update_increment_soa(update, conf());
@@ -699,6 +695,20 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	int ret = KNOT_EOK;
+
+	if ((update->flags & UPDATE_EXTRA_CHSET) && changeset_differs_just_serial(&update->extra_ch)) {
+		changeset_t *extra_cpy = changeset_clone(&update->extra_ch);
+		if (extra_cpy == NULL) {
+			return KNOT_ENOMEM;
+		}
+		ret = zone_update_apply_changeset_reverse(update, extra_cpy);
+		changeset_free(extra_cpy);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		update->flags &= ~UPDATE_EXTRA_CHSET;
+	}
+
 	if (update->flags & UPDATE_INCREMENTAL) {
 		if (changeset_empty(&update->change) &&
 		    update->zone->contents != NULL) {

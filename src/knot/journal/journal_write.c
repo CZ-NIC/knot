@@ -233,9 +233,6 @@ int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *e
 	if (ch_size >= max_usage) {
 		return KNOT_ESPACE;
 	}
-	if (extra != NULL) {
-		printf("ch: %u -> %u, ex: %u -> %u\n", changeset_from(ch), changeset_to(ch), changeset_from(extra), changeset_to(extra));
-	}
 	if (extra != NULL && (changeset_to(extra) != changeset_to(ch) ||
 	     changeset_from(extra) == changeset_from(ch))) {
 		return KNOT_EINVAL;
