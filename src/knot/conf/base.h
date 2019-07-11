@@ -110,6 +110,9 @@ typedef struct {
 		int16_t srv_max_ipv6_udp_payload;
 		int32_t srv_tcp_idle_timeout;
 		int32_t srv_tcp_reply_timeout;
+		size_t srv_udp_threads;
+		size_t srv_tcp_threads;
+		size_t srv_bg_threads;
 		int32_t srv_max_tcp_clients;
 		int32_t ctl_timeout;
 		conf_val_t srv_nsid;

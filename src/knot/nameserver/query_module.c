@@ -343,10 +343,10 @@ knotd_conf_t knotd_conf_env(knotd_mod_t *mod, knotd_conf_env_t env)
 		out.single.string = config->hostname;
 		break;
 	case KNOTD_CONF_ENV_WORKERS_UDP:
-		out.single.integer = conf_udp_threads(config);
+		out.single.integer = config->cache.srv_udp_threads;
 		break;
 	case KNOTD_CONF_ENV_WORKERS_TCP:
-		out.single.integer = conf_tcp_threads(config);
+		out.single.integer = config->cache.srv_tcp_threads;
 		break;
 	default:
 		return out;

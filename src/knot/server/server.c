@@ -779,12 +779,12 @@ static int reset_handler(server_t *server, int index, unsigned size, runnable_t 
 /*! \brief Reconfigure UDP and TCP query processing threads. */
 static int reconfigure_threads(conf_t *conf, server_t *server)
 {
-	int ret = reset_handler(server, IO_UDP, conf_udp_threads(conf), udp_master);
+	int ret = reset_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return reset_handler(server, IO_TCP, conf_tcp_threads(conf), tcp_master);
+	return reset_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
 }
 
 static int reconfigure_journal_db(conf_t *conf, server_t *server)

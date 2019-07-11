@@ -477,7 +477,7 @@ int main(int argc, char **argv)
 
 	/* Initialize server. */
 	server_t server;
-	ret = server_init(&server, conf_bg_threads(conf()));
+	ret = server_init(&server, conf()->cache.srv_bg_threads);
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to initialize server (%s)", knot_strerror(ret));
 		conf_free(conf());

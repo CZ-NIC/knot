@@ -902,11 +902,13 @@ static void test_conf_io_list(void)
 	ok(conf_io_list("server", &io) ==
 	   KNOT_EOK, "list group");
 	ref = "server.version\n"
-	      "server.background-workers\n"
 	      "server.listen\n"
 	      "server.tcp-handshake-timeout\n"
 	      "server.tcp-idle-timeout\n"
 	      "server.tcp-reply-timeout\n"
+	      "server.udp-workers\n"
+	      "server.tcp-workers\n"
+	      "server.background-workers\n"
 	      "server.max-tcp-clients\n"
 	      "server.max-udp-payload\n"
 	      "server.max-ipv4-udp-payload\n"
@@ -918,12 +920,14 @@ static void test_conf_io_list(void)
 
 static const yp_item_t desc_server[] = {
 	{ C_VERSION,              YP_TSTR,  YP_VNONE },
-	{ C_BG_WORKERS,           YP_TINT,  YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VNONE, YP_FMULTI },
 	// Required config cache items - assert fix.
 	{ C_TCP_HSHAKE_TIMEOUT,   YP_TINT,  YP_VNONE },
 	{ C_TCP_IDLE_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_REPLY_TIMEOUT,	  YP_TINT,  YP_VNONE },
+	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
+	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
+	{ C_BG_WORKERS,		  YP_TINT,  YP_VNONE },
 	{ C_MAX_TCP_CLIENTS,	  YP_TINT,  YP_VNONE },
 	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VNONE },
 	{ C_MAX_IPV4_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
