@@ -110,6 +110,16 @@ inline static bool zone_tree_is_empty(const zone_tree_t *tree)
 int zone_tree_insert(zone_tree_t *tree, zone_node_t **node);
 
 /*!
+ * \brief Insert a node together with its parents (iteratively node->parent).
+ *
+ * \param tree   Zone tree to insert into.
+ * \param node   Node to be inserted with parents.
+ *
+ * \return KNOT_E*
+ */
+int zone_tree_insert_with_parents(zone_tree_t *tree, zone_node_t *node);
+
+/*!
  * \brief Finds node with the given owner in the zone tree.
  *
  * \param tree Zone tree to search in.
@@ -260,7 +270,7 @@ void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it);
 /*!
  * \brief Unify all bi-nodes in specified trees.
  */
-void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes);
+void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool free_deleted);
 
 /*!
  * \brief Destroys the zone tree, not touching the saved data.

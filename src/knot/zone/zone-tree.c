@@ -98,6 +98,16 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 	return KNOT_EOK;
 }
 
+int zone_tree_insert_with_parents(zone_tree_t *tree, zone_node_t *node)
+{
+	int ret = KNOT_EOK;
+	while (node != NULL && ret == KNOT_EOK) {
+		ret = zone_tree_insert(tree, &node);
+		node = node->parent;
+	}
+	return ret;
+}
+
 zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
 {
 	if (owner == NULL) {
@@ -396,18 +406,17 @@ void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it)
 
 static int binode_unify_cb(zone_node_t *node, void *ctx)
 {
-	UNUSED(ctx);
-	binode_unify(node, true, NULL);
+	binode_unify(node, *(bool *)ctx, NULL);
 	return KNOT_EOK;
 }
 
-void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes)
+void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool free_deleted)
 {
 	if (nodes != NULL) {
-		zone_tree_apply(nodes, binode_unify_cb, NULL);
+		zone_tree_apply(nodes, binode_unify_cb, &free_deleted);
 	}
 	if (nsec3_nodes != NULL) {
-		zone_tree_apply(nsec3_nodes, binode_unify_cb, NULL);
+		zone_tree_apply(nsec3_nodes, binode_unify_cb, &free_deleted);
 	}
 }
 

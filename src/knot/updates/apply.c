@@ -192,6 +192,14 @@ int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
 	}
 	ctx->nsec3_ptrs->flags = contents->nodes->flags;
 
+	ctx->adjust_ptrs = zone_tree_create(true);
+	if (ctx->adjust_ptrs == NULL) {
+		zone_tree_free(&ctx->nsec3_ptrs);
+		zone_tree_free(&ctx->node_ptrs);
+		return KNOT_ENOMEM;
+	}
+	ctx->adjust_ptrs->flags = contents->nodes->flags;
+
 	ctx->flags = flags;
 
 	return KNOT_EOK;
@@ -226,7 +234,7 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
 static int add_to_changes_cb2(zone_node_t *node, void *ctx)
 {
 	node->flags |= NODE_FLAGS_DELETED;
-	int ret = zone_tree_insert(ctx, &node);
+	int ret = zone_tree_insert_with_parents(ctx, node);
 	assert(ret == KNOT_EOK);
 	return ret;
 }
@@ -238,7 +246,7 @@ static zone_node_t *find_node_in_changes(const knot_dname_t *owner, void *ctx)
 	if (node == NULL) {
 		node = node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES),
 		                (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
-		(void)zone_tree_insert(tree, &node);
+		(void)zone_tree_insert_with_parents(tree, node);
 	} else {
 		node->flags &= ~NODE_FLAGS_DELETED;
 	}
@@ -265,7 +273,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		return KNOT_EOUTOFZONE;
 	}
 
-	ret = zone_tree_insert(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, &node);
+	ret = zone_tree_insert_with_parents(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -317,7 +325,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		return KNOT_EOK;
 	}
 
-	int ret = zone_tree_insert(ptrs, &node);
+	int ret = zone_tree_insert_with_parents(ptrs, node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -408,16 +416,16 @@ void update_cleanup(apply_ctx_t *ctx)
 		return;
 	}
 
-	zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs);
+	if (ctx->flags & APPLY_UNIFY_FULL) {
+		zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes, true);
+	} else {
+		zone_trees_unify_binodes(ctx->adjust_ptrs, NULL, false); // beware there might be duplicities in ctx->adjust_ptrs and ctx->node_ptrs, so we don't free here
+		zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs, true);
+	}
 
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);
-
-	// this is important not only for full update
-	// but also for incremental because during adjusting
-	// also the nodes not being affected by the update itself
-	// might be affected
-	zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes);
+	zone_tree_free(&ctx->adjust_ptrs);
 
 	if (ctx->cow_mutex != NULL) {
 		knot_sem_post(ctx->cow_mutex);
@@ -436,10 +444,11 @@ void update_rollback(apply_ctx_t *ctx)
 	if (ctx->nsec3_ptrs != NULL) {
 		ctx->nsec3_ptrs->flags ^= ZONE_TREE_BINO_SECOND;
 	}
-	zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs);
+	zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs, true);
 
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);
+	zone_tree_free(&ctx->adjust_ptrs);
 
 	trie_cow_rollback(ctx->contents->nodes->cow, NULL, NULL);
 	ctx->contents->nodes->cow = NULL;
