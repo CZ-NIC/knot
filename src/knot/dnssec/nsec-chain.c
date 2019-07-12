@@ -266,15 +266,21 @@ static zone_node_t *nsec_prev(zone_node_t *node)
 	return res;
 }
 
-/*! \brief Return the one from those nodes which has "bigger" owner name (lexicographically). */
-static zone_node_t *node_max(zone_node_t *a, zone_node_t *b)
+/*! \brief Return the one from those nodes which has
+ * closest lower (lexicographically) owner name to ref. */
+static zone_node_t *node_nearer(zone_node_t *a, zone_node_t *b, zone_node_t *ref)
 {
 	if (a == NULL || a == b) {
 		return b;
 	} else if (b == NULL) {
 		return a;
 	} else {
+		int abigger = knot_dname_cmp(a->owner, ref->owner) >= 0 ? 1 : 0;
+		int bbigger = knot_dname_cmp(b->owner, ref->owner) >= 0 ? 1 : 0;
 		int cmp = knot_dname_cmp(a->owner, b->owner);
+		if (abigger != bbigger) {
+			cmp = -cmp;
+		}
 		return cmp < 0 ? b : a;
 	}
 }
@@ -355,7 +361,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
 				prev_new = binode_counterpart(prev_old);
 			} while (node_no_nsec(prev_new));
 
-			zone_node_t *prev_near = node_max(prev_new, prev_it);
+			zone_node_t *prev_near = node_nearer(prev_new, prev_it, curr_old);
 			ret = cb_reconn(curr_old, prev_near, data);
 		}
 		if (del_old && !del_new) {
