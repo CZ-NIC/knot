@@ -237,19 +237,19 @@ A PID file location.
 A number of UDP workers (threads) used to process incoming queries
 over UDP.
 .sp
-\fIDefault:\fP auto\-estimated optimal value based on the number of online CPUs
+\fIDefault:\fP equal to the number of online CPUs
 .SS tcp\-workers
 .sp
 A number of TCP workers (threads) used to process incoming queries
 over TCP.
 .sp
-\fIDefault:\fP auto\-estimated optimal value based on the number of online CPUs
+\fIDefault:\fP equal to the number of online CPUs, default value is at least 10
 .SS background\-workers
 .sp
 A number of workers (threads) used to execute background operations (zone
 loading, zone updates, etc.).
 .sp
-\fIDefault:\fP auto\-estimated optimal value based on the number of online CPUs
+\fIDefault:\fP equal to the number of online CPUs, default value is at most 10
 .SS async\-start
 .sp
 If enabled, server doesn\(aqt wait for the zones to be loaded and starts

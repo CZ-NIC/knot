@@ -212,7 +212,7 @@ udp-workers
 A number of UDP workers (threads) used to process incoming queries
 over UDP.
 
-*Default:* auto-estimated optimal value based on the number of online CPUs
+*Default:* equal to the number of online CPUs
 
 .. _server_tcp-workers:
 
@@ -222,7 +222,7 @@ tcp-workers
 A number of TCP workers (threads) used to process incoming queries
 over TCP.
 
-*Default:* auto-estimated optimal value based on the number of online CPUs
+*Default:* equal to the number of online CPUs, default value is at least 10
 
 .. _server_background-workers:
 
@@ -232,7 +232,7 @@ background-workers
 A number of workers (threads) used to execute background operations (zone
 loading, zone updates, etc.).
 
-*Default:* auto-estimated optimal value based on the number of online CPUs
+*Default:* equal to the number of online CPUs, default value is at most 10
 
 .. _server_async-start:
 
