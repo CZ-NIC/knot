@@ -161,15 +161,15 @@ def main(args):
 
         for case in cases:
           loaded_module = None
-          for repeat in range(params.repeat):
+          for repeat in range(1, params.repeat + 1):
             # Skip excluded cases.
             if test in excluded and case in excluded[test]:
                 continue
 
-            case_n = case if params.repeat == 1 else case + str(repeat)
+            case_n = case if params.repeat == 1 else case + "#" + str(repeat)
 
-            case_str_err = (" * case \'%s\':" % case).ljust(33)
-            case_str_fail = ("%s/%s" % (test, case)).ljust(30)
+            case_str_err = (" * case \'%s\':" % case_n).ljust(33)
+            case_str_fail = ("%s/%s" % (test, case_n)).ljust(30)
             case_cnt += 1
 
             case_dir = os.path.join(test_dir, case)
