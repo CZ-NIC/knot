@@ -776,11 +776,15 @@ explicitly whenever possible. It\(aqs required for DNSSEC Offline KSK\&.
 \fIDefault:\fP computed after zone is loaded
 .SS zsk\-lifetime
 .sp
-A period between ZSK publication and the next rollover initiation.
+A period between ZSK activation and the next rollover initiation.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
+More exactly, this period is measured since a ZSK is activated,
+and after this, a new ZSK is generated to replace it within
+following roll\-over.
+.sp
 ZSK key lifetime is also infuenced by propagation\-delay and dnskey\-ttl
 .sp
 Zero (aka infinity) value causes no ZSK rollover as a result.
@@ -790,7 +794,7 @@ Zero (aka infinity) value causes no ZSK rollover as a result.
 \fIDefault:\fP 30 days
 .SS ksk\-lifetime
 .sp
-A period between KSK publication and the next rollover initiation.
+A period between KSK activation and the next rollover initiation.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
