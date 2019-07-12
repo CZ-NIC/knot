@@ -348,13 +348,28 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
 	}
 
 	zone_node_t *prev_it = NULL;
-	while (!zone_tree_delsafe_it_finished(&it) && ret == KNOT_EOK) {
+	zone_node_t *started_with = NULL;
+	while (ret == KNOT_EOK) {
+		if (zone_tree_delsafe_it_finished(&it)) {
+			assert(started_with != NULL);
+			zone_tree_delsafe_it_restart(&it);
+		}
+
 		zone_node_t *curr_new = zone_tree_delsafe_it_val(&it);
 		zone_node_t *curr_old = binode_counterpart(curr_new);
 		bool del_new = node_no_nsec(curr_new);
 		bool del_old = node_no_nsec(curr_old);
 
-		if (!del_old && del_new) {
+		if (started_with == curr_new) {
+			assert(started_with != NULL);
+			break;
+		}
+		if (!del_old && !del_new && started_with == NULL) {
+			// Once this must happen since the NSEC node belonging to zone apex is always present
+			started_with = curr_new;
+		}
+
+		if (!del_old && del_new && started_with != NULL) {
 			zone_node_t *prev_old = curr_old, *prev_new;
 			do {
 				prev_old = nsec_prev(prev_old);
@@ -364,7 +379,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
 			zone_node_t *prev_near = node_nearer(prev_new, prev_it, curr_old);
 			ret = cb_reconn(curr_old, prev_near, data);
 		}
-		if (del_old && !del_new) {
+		if (del_old && !del_new && started_with != NULL) {
 			zone_node_t *prev_new = nsec_prev(curr_new);
 			ret = cb_reconn(prev_new, curr_new, data);
 			if (ret == KNOT_EOK) {
@@ -477,6 +492,12 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 	}
 
 	ret = zone_adjust_contents(update->new_cont, adjust_cb_void, NULL, false, update->a_ctx->node_ptrs);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// ensure that zone root is in list of changed nodes
+	ret = zone_tree_insert(update->a_ctx->node_ptrs, &update->new_cont->apex);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

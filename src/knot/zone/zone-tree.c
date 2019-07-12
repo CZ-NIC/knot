@@ -370,12 +370,8 @@ int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it, bo
 	}
 	zone_tree_it_free(&tmp);
 	assert(it->total == it->current);
-	it->current = 0;
 
-	while (!it->incl_del && !zone_tree_delsafe_it_finished(it) &&
-	       (zone_tree_delsafe_it_val(it)->flags & NODE_FLAGS_DELETED)) {
-		it->current++;
-	}
+	zone_tree_delsafe_it_restart(it);
 
 	return KNOT_EOK;
 }
@@ -383,6 +379,16 @@ int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it, bo
 bool zone_tree_delsafe_it_finished(zone_tree_delsafe_it_t *it)
 {
 	return (it->current >= it->total);
+}
+
+void zone_tree_delsafe_it_restart(zone_tree_delsafe_it_t *it)
+{
+	it->current = 0;
+
+	while (!it->incl_del && !zone_tree_delsafe_it_finished(it) &&
+	       (zone_tree_delsafe_it_val(it)->flags & NODE_FLAGS_DELETED)) {
+		it->current++;
+	}
 }
 
 zone_node_t *zone_tree_delsafe_it_val(zone_tree_delsafe_it_t *it)
