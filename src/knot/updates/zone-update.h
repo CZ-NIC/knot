@@ -28,6 +28,7 @@ typedef struct zone_update {
 	zone_t *zone;                /*!< Zone being updated. */
 	zone_contents_t *new_cont;   /*!< New zone contents for full updates. */
 	changeset_t change;          /*!< Changes we want to apply. */
+	zone_contents_t *init_cont;  /*!< Exact contents of the zonefile. */
 	changeset_t extra_ch;        /*!< Extra changeset to store just diff btwn zonefile and result. */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */

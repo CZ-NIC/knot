@@ -147,7 +147,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	zone_update_t up = { 0 };
 	bool ignore_dnssec = ((zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE)
 	                      && dnssec_enable);
-	ignore_dnssec = false;
 
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
@@ -164,7 +163,6 @@ int event_load(conf_t *conf, zone_t *zone)
 		} else {
 			// compute ZF diff and if success, apply it
 			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
-			zone_contents_deep_free(zf_conts);
 			zf_conts = NULL;
 		}
 	} else {
@@ -176,7 +174,6 @@ int event_load(conf_t *conf, zone_t *zone)
 				// load zone-in-journal, compute ZF diff and if success, apply it
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts,
 				                                   UPDATE_HYBRID, ignore_dnssec);
-				zone_contents_deep_free(zf_conts);
 				zf_conts = NULL;
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name,
