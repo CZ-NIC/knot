@@ -145,9 +145,8 @@ int event_load(conf_t *conf, zone_t *zone)
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val), zu_from_zf_conts = false;
 	zone_update_t up = { 0 };
-	bool ignore_dnssec = ((zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE)
-	                      && dnssec_enable);
-	ignore_dnssec = false;
+	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE);
+	bool ignore_dnssec = (do_diff && dnssec_enable);
 
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
@@ -164,8 +163,6 @@ int event_load(conf_t *conf, zone_t *zone)
 		} else {
 			// compute ZF diff and if success, apply it
 			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
-			zone_contents_deep_free(zf_conts);
-			zf_conts = NULL;
 		}
 	} else {
 		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
@@ -176,8 +173,6 @@ int event_load(conf_t *conf, zone_t *zone)
 				// load zone-in-journal, compute ZF diff and if success, apply it
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts,
 				                                   UPDATE_HYBRID, ignore_dnssec);
-				zone_contents_deep_free(zf_conts);
-				zf_conts = NULL;
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name,
 					                 "zone file changed with SOA serial %s, "
@@ -222,10 +217,8 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	uint32_t middle_serial = zone_contents_serial(up.new_cont);
 
-	if ((zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE) &&
-	    old_contents_exist && journal_conts == NULL) {
+	if (do_diff && old_contents_exist && journal_conts == NULL && dnssec_enable) {
 		ret = zone_update_start_extra(&up);
-		printf("start extra %d %u\n", ret, up.flags);
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}
