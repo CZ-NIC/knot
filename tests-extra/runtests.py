@@ -160,103 +160,103 @@ def main(args):
             cases = included[test]
 
         for case in cases:
-          loaded_module = None
-          for repeat in range(1, params.repeat + 1):
-            # Skip excluded cases.
-            if test in excluded and case in excluded[test]:
-                continue
+            loaded_module = None
+            for repeat in range(1, params.repeat + 1):
+                # Skip excluded cases.
+                if test in excluded and case in excluded[test]:
+                    continue
 
-            case_n = case if params.repeat == 1 else case + "#" + str(repeat)
+                case_n = case if params.repeat == 1 else case + "#" + str(repeat)
 
-            case_str_err = (" * case \'%s\':" % case_n).ljust(33)
-            case_str_fail = ("%s/%s" % (test, case_n)).ljust(30)
-            case_cnt += 1
+                case_str_err = (" * case \'%s\':" % case_n).ljust(33)
+                case_str_fail = ("%s/%s" % (test, case_n)).ljust(30)
+                case_cnt += 1
 
-            case_dir = os.path.join(test_dir, case)
-            test_file = os.path.join(case_dir, "test.py")
-            if not os.path.isfile(test_file):
-                log.error(case_str_err + "MISSING")
-                skip_cnt += 1
-                continue
+                case_dir = os.path.join(test_dir, case)
+                test_file = os.path.join(case_dir, "test.py")
+                if not os.path.isfile(test_file):
+                    log.error(case_str_err + "MISSING")
+                    skip_cnt += 1
+                    continue
 
-            try:
-                out_dir = os.path.join(outs_dir, test, case_n)
-                log_file = os.path.join(out_dir, "case.log")
+                try:
+                    out_dir = os.path.join(outs_dir, test, case_n)
+                    log_file = os.path.join(out_dir, "case.log")
 
-                os.makedirs(out_dir, exist_ok=True)
-                params.module = "%s.%s.%s" % (TESTS_DIR, test, case)
-                params.test_dir = case_dir
-                params.out_dir = out_dir
-                params.case_log = open(log_file, mode="a")
-                params.test = None
-                params.err = False
-                params.err_msg = ""
-            except OsError:
-                msg = "EXCEPTION (no dir \'%s\')" % out_dir
-                log.error(case_str_err + msg)
-                log_failed(outs_dir, case_str_fail + msg)
-                fail_cnt += 1
-                continue
+                    os.makedirs(out_dir, exist_ok=True)
+                    params.module = "%s.%s.%s" % (TESTS_DIR, test, case)
+                    params.test_dir = case_dir
+                    params.out_dir = out_dir
+                    params.case_log = open(log_file, mode="a")
+                    params.test = None
+                    params.err = False
+                    params.err_msg = ""
+                except OsError:
+                    msg = "EXCEPTION (no dir \'%s\')" % out_dir
+                    log.error(case_str_err + msg)
+                    log_failed(outs_dir, case_str_fail + msg)
+                    fail_cnt += 1
+                    continue
 
-            try:
-                if loaded_module:
-                    importlib.reload(loaded_module)
+                try:
+                    if loaded_module:
+                        importlib.reload(loaded_module)
+                    else:
+                        loaded_module = importlib.import_module("%s.%s.%s.test" % (TESTS_DIR, test, case))
+                except dnstest.utils.Skip as exc:
+                    log.error(case_str_err + "SKIPPED (%s)" % format(exc))
+                    skip_cnt += 1
+                except dnstest.utils.Failed as exc:
+                    save_traceback(params.out_dir)
+
+                    desc = format(exc)
+                    msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
+                    if params.err and params.err_msg:
+                        msg += " AND (" + params.err_msg + ")"
+                    log.error(case_str_err + msg)
+                    log_failed(outs_dir, case_str_fail + msg)
+
+                    if params.debug:
+                        traceback.print_exc()
+
+                    fail_cnt += 1
+                except Exception as exc:
+                    save_traceback(params.out_dir)
+
+                    desc = format(exc)
+                    msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
+                    log.error(case_str_err + msg)
+                    log_failed(outs_dir, case_str_fail + msg)
+
+                    if params.debug:
+                        traceback.print_exc()
+
+                    fail_cnt += 1
+                except BaseException as exc:
+                    save_traceback(params.out_dir)
+                    if params.debug:
+                        traceback.print_exc()
+                    else:
+                        log.info("INTERRUPTED")
+                    # Stop servers if still running.
+                    if params.test:
+                        params.test.end()
+                    sys.exit(1)
                 else:
-                    loaded_module = importlib.import_module("%s.%s.%s.test" % (TESTS_DIR, test, case))
-            except dnstest.utils.Skip as exc:
-                log.error(case_str_err + "SKIPPED (%s)" % format(exc))
-                skip_cnt += 1
-            except dnstest.utils.Failed as exc:
-                save_traceback(params.out_dir)
+                    if params.err:
+                        msg = "FAILED" + \
+                              ((" (" + params.err_msg + ")") if params.err_msg else "")
+                        log.info(case_str_err + msg)
+                        log_failed(outs_dir, case_str_fail + msg)
+                        fail_cnt += 1
+                    else:
+                        log.info(case_str_err + "OK")
 
-                desc = format(exc)
-                msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
-                if params.err and params.err_msg:
-                    msg += " AND (" + params.err_msg + ")"
-                log.error(case_str_err + msg)
-                log_failed(outs_dir, case_str_fail + msg)
-
-                if params.debug:
-                    traceback.print_exc()
-
-                fail_cnt += 1
-            except Exception as exc:
-                save_traceback(params.out_dir)
-
-                desc = format(exc)
-                msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
-                log.error(case_str_err + msg)
-                log_failed(outs_dir, case_str_fail + msg)
-
-                if params.debug:
-                    traceback.print_exc()
-
-                fail_cnt += 1
-            except BaseException as exc:
-                save_traceback(params.out_dir)
-                if params.debug:
-                    traceback.print_exc()
-                else:
-                    log.info("INTERRUPTED")
                 # Stop servers if still running.
                 if params.test:
                     params.test.end()
-                sys.exit(1)
-            else:
-                if params.err:
-                    msg = "FAILED" + \
-                          ((" (" + params.err_msg + ")") if params.err_msg else "")
-                    log.info(case_str_err + msg)
-                    log_failed(outs_dir, case_str_fail + msg)
-                    fail_cnt += 1
-                else:
-                    log.info(case_str_err + "OK")
 
-            # Stop servers if still running.
-            if params.test:
-                params.test.end()
-
-            params.case_log.close()
+                params.case_log.close()
 
     time_diff = datetime.datetime.now().replace(microsecond=0) - ref_time
     msg_time = "TOTAL TIME: %s, " % time_diff
