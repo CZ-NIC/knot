@@ -787,11 +787,15 @@ A TTL value for DNSKEY records added into zone apex.
 zsk-lifetime
 ------------
 
-A period between ZSK publication and the next rollover initiation.
+A period between ZSK activation and the next rollover initiation.
 
 *Default:* 30 days
 
 .. NOTE::
+   More exactly, this period is measured since a ZSK is activated,
+   and after this, a new ZSK is generated to replace it within
+   following roll-over.
+
    ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
 
    Zero (aka infinity) value causes no ZSK rollover as a result.
@@ -801,7 +805,7 @@ A period between ZSK publication and the next rollover initiation.
 ksk-lifetime
 ------------
 
-A period between KSK publication and the next rollover initiation.
+A period between KSK activation and the next rollover initiation.
 
 *Default:* 0
 
