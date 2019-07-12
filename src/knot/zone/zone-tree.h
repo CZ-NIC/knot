@@ -253,6 +253,7 @@ void zone_tree_it_free(zone_tree_it_t *it);
  */
 int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it, bool include_deleted);
 bool zone_tree_delsafe_it_finished(zone_tree_delsafe_it_t *it);
+void zone_tree_delsafe_it_restart(zone_tree_delsafe_it_t *it);
 zone_node_t *zone_tree_delsafe_it_val(zone_tree_delsafe_it_t *it);
 void zone_tree_delsafe_it_next(zone_tree_delsafe_it_t *it);
 void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it);

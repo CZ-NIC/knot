@@ -789,6 +789,18 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
+	// ensure that nsec3 node for zone root is in list of changed nodes
+	const zone_node_t *nsec3_for_root = NULL, *unused;
+	ret = zone_contents_find_nsec3_for_name(update->new_cont, update->zone->name, &nsec3_for_root, &unused);
+	if (ret >= 0) {
+		assert(!(nsec3_for_root->flags & NODE_FLAGS_DELETED));
+		assert(!(binode_counterpart((zone_node_t *)nsec3_for_root)->flags & NODE_FLAGS_DELETED));
+		ret = zone_tree_insert(update->a_ctx->nsec3_ptrs, (zone_node_t **)&nsec3_for_root);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	nsec_chain_iterate_data_t data = { ttl, update };
 
 	ret = knot_nsec_chain_iterate_fix(update->a_ctx->nsec3_ptrs,
