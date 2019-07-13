@@ -395,6 +395,18 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 	return KNOT_ENOENT;
 }
 
+static void log_try_addr_error(const zone_t *zone, const char *remote_name,
+                               const struct sockaddr_storage *remote_addr,
+                               const char *err_str, int ret)
+{
+	char addr_str[SOCKADDR_STRLEN] = { 0 };
+	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)remote_addr);
+	log_zone_debug(zone->name, "%s%s%s, address %s, failed (%s)", err_str,
+	               (remote_name != NULL ? ", remote " : ""),
+	               (remote_name != NULL ? remote_name : ""),
+	               addr_str, knot_strerror(ret));
+}
+
 int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
                     void *callback_data, const char *err_str)
 {
@@ -410,6 +422,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		if (ret == KNOT_EOK) {
 			return ret;
 		}
+
+		log_try_addr_error(zone, NULL, &preferred.addr, err_str, ret);
 	}
 
 	/* Try all the other servers. */
@@ -437,12 +451,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 				break;
 			}
 
-			char addr_str[SOCKADDR_STRLEN] = { 0 };
-			sockaddr_tostr(addr_str, sizeof(addr_str),
-			               (struct sockaddr *)&master.addr);
-			log_zone_debug(zone->name, "%s, remote %s, address %s, failed (%s)",
-			               err_str, conf_str(&masters), addr_str,
-			               knot_strerror(ret));
+			log_try_addr_error(zone, conf_str(&masters), &master.addr,
+			                   err_str, ret);
 		}
 
 		if (!success) {
