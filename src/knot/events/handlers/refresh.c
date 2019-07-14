@@ -1131,6 +1131,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	}
 
 	int ret = zone_master_try(conf, zone, try_refresh, &trctx, "refresh");
+	zone_clear_preferred_master(zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "refresh, failed (%s)", knot_strerror(ret));
 	}
