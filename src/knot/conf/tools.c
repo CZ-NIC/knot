@@ -317,6 +317,8 @@ int check_keystore(
 int check_policy(
 	knotd_conf_check_args_t *args)
 {
+	conf_val_t sts = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                    C_SINGLE_TYPE_SIGNING, args->id, args->id_len);
 	conf_val_t alg = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_ALG, args->id, args->id_len);
 	conf_val_t ksk = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
@@ -336,6 +338,8 @@ int check_policy(
 						 C_KSK_LIFETIME, args->id, args->id_len);
 	conf_val_t dnskey_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 						   C_DNSKEY_TTL, args->id, args->id_len);
+	conf_val_t zone_max_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+						     C_ZONE_MAX_TLL, args->id, args->id_len);
 
 	unsigned algorithm = conf_opt(&alg);
 	if (algorithm == 3 || algorithm == 6) {
@@ -362,6 +366,7 @@ int check_policy(
 		return KNOT_EINVAL;
 	}
 
+	bool sts_val = conf_bool(&sts);
 	int64_t prop_del_val = conf_int(&prop_del);
 	int64_t zsk_life_val = conf_int(&zsk_life);
 	int64_t ksk_life_val = conf_int(&ksk_life);
@@ -369,14 +374,27 @@ int check_policy(
 	if (dnskey_ttl_val == YP_NIL) {
 		dnskey_ttl_val = 0;
 	}
-
-	if (zsk_life_val != 0 && zsk_life_val < 2 * prop_del_val + dnskey_ttl_val) {
-		args->err_str = "ZSK lifetime too low according to propagation delay and DNSKEY TTL";
-		return KNOT_EINVAL;
+	int64_t zone_max_ttl_val = conf_int(&zone_max_ttl);
+	if (zone_max_ttl_val == YP_NIL) {
+		zone_max_ttl_val = dnskey_ttl_val;
 	}
-	if (ksk_life_val != 0 && ksk_life_val < 2 * prop_del_val + 2 * dnskey_ttl_val) {
-		args->err_str = "KSK lifetime too low according to propagation delay and DNSKEY TTL";
-		return KNOT_EINVAL;
+
+	if (sts_val) {
+		if (ksk_life_val != 0 && ksk_life_val < 2 * prop_del_val + dnskey_ttl_val + zone_max_ttl_val) {
+			args->err_str = "CSK lifetime too low according to propagation delay, DNSKEY TTL, "
+			                "and maximum zone TTL";
+			return KNOT_EINVAL;
+		}
+	} else {
+		if (ksk_life_val != 0 && ksk_life_val < 2 * prop_del_val + 2 * dnskey_ttl_val) {
+			args->err_str = "KSK lifetime too low according to propagation delay and DNSKEY TTL";
+			return KNOT_EINVAL;
+		}
+		if (zsk_life_val != 0 && zsk_life_val < 2 * prop_del_val + dnskey_ttl_val + zone_max_ttl_val) {
+			args->err_str = "CSK lifetime too low according to propagation delay, DNSKEY TTL, "
+			                "and maximum zone TTL";
+			return KNOT_EINVAL;
+		}
 	}
 
 	return KNOT_EOK;
