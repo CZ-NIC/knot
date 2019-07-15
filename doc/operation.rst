@@ -497,69 +497,159 @@ either in the log or via ``knotc zone-status``. There is no special log for fini
 The ZSK rollover is performed with Pre-publish method, KSK rollover uses Double-Signature
 scheme, as described in :rfc:`6781`.
 
-.. _DNSSEC KSK rollover example:
+.. _Automatic KSK and ZSK rollovers example:
 
-KSK rollover example
---------------------
+Automatic KSK and ZSK rollovers example
+---------------------------------------
 
 Let's start with the following set of keys::
 
-  2017-10-24T15:40:48 info: [example.com.] DNSSEC, key, tag  4700, algorithm RSASHA256, KSK, public, active
-  2017-10-24T15:40:48 info: [example.com.] DNSSEC, key, tag 30936, algorithm RSASHA256, public, active
+  2019-07-15T20:57:58 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T20:57:58 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
 
 The last fields hint the key state: ``public`` denotes a key that will be presented
 as the DNSKEY record, ``ready`` means that CDS/CDNSKEY records were created,
 ``active`` tells us if the key is used for signing.
 
+For demonstration purposes, the following configuration is used::
+
+  submission:
+   - id: test_submission
+     check-interval: 2s
+     parent: dnssec_validating_resolver
+
+  policy:
+   - id: test_policy
+     ksk-lifetime: 5m
+     zsk-lifetime: 2m
+     propagation-delay: 2s
+     dnskey-ttl: 10s
+     zone-max-ttl: 15s
+     ksk-submission: test_submission
+
 Upon the zone's KSK lifetime expiration, the rollover continues along the
 lines of :rfc:`6781#section-4.1.2`::
 
-  2017-10-24T15:41:17 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T15:41:18 info: [example.com.] DNSSEC, KSK rollover started
-  2017-10-24T15:41:18 info: [example.com.] DNSSEC, key, tag  6674, algorithm RSASHA256, KSK, public
-  2017-10-24T15:41:18 info: [example.com.] DNSSEC, key, tag  4700, algorithm RSASHA256, KSK, public, active
-  2017-10-24T15:41:18 info: [example.com.] DNSSEC, key, tag 30936, algorithm RSASHA256, public, active
-  2017-10-24T15:41:18 info: [example.com.] DNSSEC, signing started
-  2017-10-24T15:41:18 info: [example.com.] DNSSEC, successfully signed
-  2017-10-24T15:41:18 info: [example.com.] DNSSEC, next signing at 2017-10-24T15:41:22
-  ...
-  2017-10-24T15:41:22 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T15:41:22 info: [example.com.] DNSSEC, key, tag  4700, algorithm RSASHA256, KSK, public, active
-  2017-10-24T15:41:22 info: [example.com.] DNSSEC, key, tag  6674, algorithm RSASHA256, KSK, public, ready, active
-  2017-10-24T15:41:22 info: [example.com.] DNSSEC, key, tag 30936, algorithm RSASHA256, public, active
-  2017-10-24T15:41:22 info: [example.com.] DNSSEC, signing started
-  2017-10-24T15:41:22 info: [example.com.] DNSSEC, successfully signed
-  2017-10-24T15:41:22 info: [example.com.] DNSSEC, next signing at 2017-10-24T15:41:23
-  2017-10-24T15:41:22 notice: [example.com.] DNSSEC, KSK submission, waiting for confirmation
+  # KSK Rollover
 
-At this point new KSK has to be submitted to the parent zone. Knot detects the updated parent's DS
+  2019-07-15T20:58:00 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T20:58:00 info: [example.com.] DNSSEC, KSK rollover started
+  2019-07-15T20:58:00 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public
+  2019-07-15T20:58:00 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T20:58:00 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T20:58:00 info: [example.com.] DNSSEC, signing started
+  2019-07-15T20:58:00 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T20:58:00 info: [example.com.] DNSSEC, next signing at 2019-07-15T20:58:12
+
+  ... (propagation-delay + dnskey-ttl) ...
+
+  2019-07-15T20:58:12 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T20:58:12 notice: [example.com.] DNSSEC, KSK submission, waiting for confirmation
+  2019-07-15T20:58:12 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T20:58:12 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, ready, active
+  2019-07-15T20:58:12 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T20:58:12 info: [example.com.] DNSSEC, signing started
+  2019-07-15T20:58:12 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T20:58:12 info: [example.com.] DNSSEC, next signing at 2019-07-22T20:57:54
+
+At this point the new KSK has to be submitted to the parent zone. Knot detects the updated parent's DS
 record automatically (and waits for additional period of the DS's TTL before retiring the old key)
 if :ref:`parent DS check<Submission section>` is configured, otherwise the
-operator must confirm it manually with ``knotc zone-ksk-submitted``::
+operator must confirm it manually (using ``knotc zone-ksk-submitted``)::
 
-  2017-10-24T15:41:23 notice: [example.com.] DNSSEC, KSK submission, confirmed
-  2017-10-24T15:41:23 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T15:41:23 info: [example.com.] DNSSEC, key, tag  6674, algorithm RSASHA256, KSK, public, active
-  2017-10-24T15:41:23 info: [example.com.] DNSSEC, key, tag  4700, algorithm RSASHA256, KSK, public, active
-  2017-10-24T15:41:23 info: [example.com.] DNSSEC, key, tag 30936, algorithm RSASHA256, public, active
-  2017-10-24T15:41:23 info: [example.com.] DNSSEC, signing started
-  2017-10-24T15:41:23 info: [example.com.] DNSSEC, zone is up-to-date
-  2017-10-24T15:41:23 info: [example.com.] DNSSEC, next signing at 2017-10-24T15:41:28
+  2019-07-15T20:58:12 info: [example.com.] DS check, outgoing, remote ::1@27455, KSK submission attempt: negative
+  2019-07-15T20:58:14 info: [example.com.] DS check, outgoing, remote ::1@27455, KSK submission attempt: negative
+  2019-07-15T20:58:16 info: [example.com.] DS check, outgoing, remote ::1@27455, KSK submission attempt: positive
+  2019-07-15T20:58:16 notice: [example.com.] DNSSEC, KSK submission, confirmed
+  2019-07-15T20:58:16 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T20:58:16 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T20:58:16 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public, active+
+  2019-07-15T20:58:16 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T20:58:16 info: [example.com.] DNSSEC, signing started
+  2019-07-15T20:58:16 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T20:58:16 info: [example.com.] DNSSEC, next signing at 2019-07-15T20:58:23
+
+  ... (parent's DS TTL is 7 seconds) ...
+
+  2019-07-15T20:58:23 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public
+  2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T20:58:23 info: [example.com.] DNSSEC, signing started
+  2019-07-15T20:58:23 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T20:58:23 info: [example.com.] DNSSEC, next signing at 2019-07-15T20:58:35
+
+  ... (propagation-delay + dnskey-ttl) ...
+
+  2019-07-15T20:58:35 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T20:58:35 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T20:58:35 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T20:58:35 info: [example.com.] DNSSEC, signing started
+  2019-07-15T20:58:35 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T20:58:35 info: [example.com.] DNSSEC, next signing at 2019-07-15T20:59:54
+
+Upon the zone's ZSK lifetime expiration, the rollover continues along the
+lines of :rfc:`6781#section-4.1.1`::
+
+  # ZSK Rollover
+
+  2019-07-15T20:59:54 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T20:59:54 info: [example.com.] DNSSEC, ZSK rollover started
+  2019-07-15T20:59:54 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T20:59:54 info: [example.com.] DNSSEC, key, tag  3608, algorithm ECDSAP256SHA256, public
+  2019-07-15T20:59:54 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T20:59:54 info: [example.com.] DNSSEC, signing started
+  2019-07-15T20:59:54 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T20:59:54 info: [example.com.] DNSSEC, next signing at 2019-07-15T21:00:06
+
+  ... (propagation-delay + dnskey-ttl) ...
+
+  2019-07-15T21:00:06 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T21:00:06 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T21:00:06 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public
+  2019-07-15T21:00:06 info: [example.com.] DNSSEC, key, tag  3608, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T21:00:06 info: [example.com.] DNSSEC, signing started
+  2019-07-15T21:00:06 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T21:00:06 info: [example.com.] DNSSEC, next signing at 2019-07-15T21:00:23
+
+  ... (propagation-delay + zone-max-ttl) ...
+
+  2019-07-15T21:00:23 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T21:00:23 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T21:00:23 info: [example.com.] DNSSEC, key, tag  3608, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T21:00:23 info: [example.com.] DNSSEC, signing started
+  2019-07-15T21:00:23 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T21:00:23 info: [example.com.] DNSSEC, next signing at 2019-07-15T21:02:06
+
+Further rollovers::
+
+  ... (zsk-lifetime - propagation-delay - zone-max-ttl) ...
+
+  # Another ZSK Rollover
+
+  2019-07-15T21:02:06 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T21:02:06 info: [example.com.] DNSSEC, ZSK rollover started
+  2019-07-15T21:02:06 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T21:02:06 info: [example.com.] DNSSEC, key, tag 32841, algorithm ECDSAP256SHA256, public
+  2019-07-15T21:02:06 info: [example.com.] DNSSEC, key, tag  3608, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T21:02:06 info: [example.com.] DNSSEC, signing started
+  2019-07-15T21:02:06 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T21:02:06 info: [example.com.] DNSSEC, next signing at 2019-07-15T21:02:18
+
   ...
-  2017-10-24T15:41:28 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T15:41:28 info: [example.com.] DNSSEC, key, tag  4700, algorithm RSASHA256, KSK, public
-  2017-10-24T15:41:28 info: [example.com.] DNSSEC, key, tag  6674, algorithm RSASHA256, KSK, public, active
-  2017-10-24T15:41:28 info: [example.com.] DNSSEC, key, tag 30936, algorithm RSASHA256, public, active
-  2017-10-24T15:41:28 info: [example.com.] DNSSEC, signing started
-  2017-10-24T15:41:28 info: [example.com.] DNSSEC, successfully signed
-  2017-10-24T15:41:28 info: [example.com.] DNSSEC, next signing at 2017-10-24T15:41:33
+
+  # Another KSK Rollover
+
+  2019-07-15T21:03:00 info: [example.com.] DNSSEC, signing zone
+  2019-07-15T21:03:00 info: [example.com.] DNSSEC, KSK rollover started
+  2019-07-15T21:03:00 info: [example.com.] DNSSEC, key, tag 27452, algorithm ECDSAP256SHA256, KSK, public
+  2019-07-15T21:03:00 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
+  2019-07-15T21:03:00 info: [example.com.] DNSSEC, key, tag 32841, algorithm ECDSAP256SHA256, public, active
+  2019-07-15T21:03:00 info: [example.com.] DNSSEC, signing started
+  2019-07-15T21:03:00 info: [example.com.] DNSSEC, successfully signed
+  2019-07-15T21:03:00 info: [example.com.] DNSSEC, next signing at 2019-07-15T21:03:12
+
   ...
-  2017-10-24T15:41:33 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T15:41:33 info: [example.com.] DNSSEC, key, tag  6674, algorithm RSASHA256, KSK, public, active
-  2017-10-24T15:41:33 info: [example.com.] DNSSEC, key, tag 30936, algorithm RSASHA256, public, active
-  2017-10-24T15:41:33 info: [example.com.] DNSSEC, signing started
-  2017-10-24T15:41:33 info: [example.com.] DNSSEC, successfully signed
-  2017-10-24T15:41:33 info: [example.com.] DNSSEC, next signing at 2017-10-24T15:41:47
 
 .. TIP::
    If systemd is available, the KSK submission event is logged into journald
@@ -573,73 +663,6 @@ operator must confirm it manually with ``knotc zone-ksk-submitted``::
        if "KEY_SUBMISSION" in k:
          print("%s, zone=%s, keytag=%s" % (k["__REALTIME_TIMESTAMP"], k["ZONE"], k["KEY_SUBMISSION"]))
      '
-
-Algorithm rollover example
---------------------------
-
-Let's start with the following set of keys::
-
-  2017-10-24T14:53:06 info: [example.com.] DNSSEC, key, tag 65225, algorithm RSASHA256, KSK, public, active
-  2017-10-24T14:53:06 info: [example.com.] DNSSEC, key, tag 47014, algorithm RSASHA256, public, active
-
-When the zone's DNSSEC policy algorithm is changed to ``ECDSAP256SHA256`` and the
-server is reloaded, the rollover continues along the lines of :rfc:`6781#section-4.1.4`::
-
-  2017-10-24T14:53:26 info: [example.com.] DNSSEC, algorithm rollover started
-  2017-10-24T14:53:26 info: [example.com.] DNSSEC, key, tag 34608, algorithm ECDSAP256SHA256, KSK
-  2017-10-24T14:53:26 info: [example.com.] DNSSEC, key, tag 13674, algorithm ECDSAP256SHA256, active
-  2017-10-24T14:53:26 info: [example.com.] DNSSEC, key, tag 65225, algorithm RSASHA256, KSK, public, active
-  2017-10-24T14:53:26 info: [example.com.] DNSSEC, key, tag 47014, algorithm RSASHA256, public, active
-  2017-10-24T14:53:26 info: [example.com.] DNSSEC, signing started
-  2017-10-24T14:53:26 info: [example.com.] DNSSEC, successfully signed
-  2017-10-24T14:53:26 info: [example.com.] DNSSEC, next signing at 2017-10-24T14:53:34
-  ...
-  2017-10-24T14:53:34 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T14:53:34 info: [example.com.] DNSSEC, key, tag 34608, algorithm ECDSAP256SHA256, KSK, public, active
-  2017-10-24T14:53:34 info: [example.com.] DNSSEC, key, tag 13674, algorithm ECDSAP256SHA256, public, active
-  2017-10-24T14:53:34 info: [example.com.] DNSSEC, key, tag 65225, algorithm RSASHA256, KSK, public, active
-  2017-10-24T14:53:34 info: [example.com.] DNSSEC, key, tag 47014, algorithm RSASHA256, public, active
-  2017-10-24T14:53:34 info: [example.com.] DNSSEC, signing started
-  2017-10-24T14:53:34 info: [example.com.] DNSSEC, successfully signed
-  2017-10-24T14:53:34 info: [example.com.] DNSSEC, next signing at 2017-10-24T14:53:44
-  ...
-  2017-10-24T14:53:44 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T14:53:44 info: [example.com.] DNSSEC, key, tag 34608, algorithm ECDSAP256SHA256, KSK, public, ready, active
-  2017-10-24T14:53:44 info: [example.com.] DNSSEC, key, tag 13674, algorithm ECDSAP256SHA256, public, active
-  2017-10-24T14:53:44 info: [example.com.] DNSSEC, key, tag 65225, algorithm RSASHA256, KSK, public, active
-  2017-10-24T14:53:44 info: [example.com.] DNSSEC, key, tag 47014, algorithm RSASHA256, public, active
-  2017-10-24T14:53:44 info: [example.com.] DNSSEC, signing started
-  2017-10-24T14:53:44 info: [example.com.] DNSSEC, successfully signed
-  2017-10-24T14:53:44 info: [example.com.] DNSSEC, next signing at 2017-10-31T13:52:37
-  2017-10-24T14:53:44 notice: [example.com.] DNSSEC, KSK submission, waiting for confirmation
-
-Again, KSK submission follows as in :ref:`KSK rollover example<DNSSEC ksk rollover example>`::
-
-  2017-10-24T14:54:20 notice: [example.com.] DNSSEC, KSK submission, confirmed
-  2017-10-24T14:54:20 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T14:54:20 info: [example.com.] DNSSEC, key, tag 34608, algorithm ECDSAP256SHA256, KSK, public, active
-  2017-10-24T14:54:20 info: [example.com.] DNSSEC, key, tag 13674, algorithm ECDSAP256SHA256, public, active
-  2017-10-24T14:54:20 info: [example.com.] DNSSEC, key, tag 65225, algorithm RSASHA256, KSK, public, active
-  2017-10-24T14:54:20 info: [example.com.] DNSSEC, key, tag 47014, algorithm RSASHA256, public, active
-  2017-10-24T14:54:20 info: [example.com.] DNSSEC, signing started
-  2017-10-24T14:54:21 info: [example.com.] DNSSEC, zone is up-to-date
-  2017-10-24T14:54:21 info: [example.com.] DNSSEC, next signing at 2017-10-24T14:54:30
-  ...
-  2017-10-24T14:54:30 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T14:54:30 info: [example.com.] DNSSEC, key, tag 34608, algorithm ECDSAP256SHA256, KSK, public, active
-  2017-10-24T14:54:30 info: [example.com.] DNSSEC, key, tag 13674, algorithm ECDSAP256SHA256, public, active
-  2017-10-24T14:54:30 info: [example.com.] DNSSEC, key, tag 65225, algorithm RSASHA256, KSK
-  2017-10-24T14:54:30 info: [example.com.] DNSSEC, key, tag 47014, algorithm RSASHA256, active
-  2017-10-24T14:54:30 info: [example.com.] DNSSEC, signing started
-  2017-10-24T14:54:30 info: [example.com.] DNSSEC, successfully signed
-  2017-10-24T14:54:30 info: [example.com.] DNSSEC, next signing at 2017-10-24T14:54:40
-  ...
-  2017-10-24T14:54:40 info: [example.com.] DNSSEC, signing zone
-  2017-10-24T14:54:40 info: [example.com.] DNSSEC, key, tag 34608, algorithm ECDSAP256SHA256, KSK, public, active
-  2017-10-24T14:54:40 info: [example.com.] DNSSEC, key, tag 13674, algorithm ECDSAP256SHA256, public, active
-  2017-10-24T14:54:40 info: [example.com.] DNSSEC, signing started
-  2017-10-24T14:54:40 info: [example.com.] DNSSEC, successfully signed
-  2017-10-24T14:54:40 info: [example.com.] DNSSEC, next signing at 2017-10-31T13:53:26
 
 .. _DNSSEC Shared KSK:
 
