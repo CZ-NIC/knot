@@ -20,7 +20,7 @@
 
 #include <stdio.h>
 
-#include "knot/modules/synthrecord/utils.h"
+#include "knot/modules/synthrecord/utils_rl.h"
 
 const char * const ipv6s[] = {
     // Generic addresses

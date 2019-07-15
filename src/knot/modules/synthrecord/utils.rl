@@ -1,5 +1,5 @@
 
-#include "knot/modules/synthrecord/utils.h"
+#include "knot/modules/synthrecord/utils_rl.h"
 
 %%{
 	machine shorten_ipv6;
