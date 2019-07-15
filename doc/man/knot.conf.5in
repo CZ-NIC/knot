@@ -759,6 +759,14 @@ Has infuence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
 .sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Ensure all DNSKEYs with updated TTL are propagated before any subsequent
+DNSKEY rollover starts.
+.UNINDENT
+.UNINDENT
+.sp
 \fIDefault:\fP zone SOA TTL
 .SS zone\-max\-ttl
 .sp

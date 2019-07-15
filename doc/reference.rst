@@ -839,6 +839,10 @@ A TTL value for DNSKEY records added into zone apex.
 .. NOTE::
    Has infuence over ZSK key lifetime.
 
+.. WARNING::
+   Ensure all DNSKEYs with updated TTL are propagated before any subsequent
+   DNSKEY rollover starts.
+
 *Default:* zone SOA TTL
 
 .. _policy_zone-max-ttl:
