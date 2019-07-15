@@ -16,7 +16,7 @@
 
 #include "knot/include/module.h"
 
-#include "knot/modules/synthrecord/utils.h"
+#include "knot/modules/synthrecord/utils_rl.h"
 
 #include "contrib/ctype.h"
 #include "contrib/net.h"
@@ -210,6 +210,10 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 	}
 }
 
+static char str_separator(const int addr_family) {
+	return (addr_family == AF_INET6) ? ':' : '.';
+}
+
 static int forward_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
                               char *addr_str, int *addr_family)
 {
@@ -275,6 +279,27 @@ static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
 	// Convert to domain name.
 	return knot_dname_from_str(out, ptrname, KNOT_DNAME_MAXLEN);
 }
+
+/**
+ * Copy IP address (in IPv4 or IPv6 format) from source to destination with possible compression during process
+ * 
+ * @return Length of address in destination
+ **/
+static size_t synth_addr_cpy(char *dest, const char *src, const int addr_family, const bool shorten) {
+	const size_t addr_len = strlen(src);
+	const char sep = str_separator(addr_family);
+
+	if (addr_family == AF_INET6 && shorten) {
+		return shorten_ipv6(dest, src);
+	} else {
+		size_t i;
+		for(i = 0; i <= addr_len; ++i) {
+			dest[i] = (src[i] == sep) ? '-' : src[i];
+		}
+		return i;
+	}
+}
+
 
 static int reverse_rr(char *addr_str, const synth_template_t *tpl, knot_pkt_t *pkt,
                       knot_rrset_t *rr, int addr_family)

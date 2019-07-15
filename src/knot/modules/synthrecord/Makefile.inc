@@ -1,5 +1,10 @@
-knot_modules_synthrecord_la_SOURCES =   knot/modules/synthrecord/utils.c \
-                                        knot/modules/synthrecord/utils.h \
+
+knot/modules/synthrecord/utils_rl.c: knot/modules/synthrecord/utils.rl
+    ragel -G2 knot/modules/synthrecord/utils.rl -o knot/modules/synthrecord/utils_rl.c
+
+
+knot_modules_synthrecord_la_SOURCES =   knot/modules/synthrecord/utils_rl.c \
+                                        knot/modules/synthrecord/utils_rl.h \
                                         knot/modules/synthrecord/synthrecord.c
 EXTRA_DIST +=                         knot/modules/synthrecord/synthrecord.rst
 

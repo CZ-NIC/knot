@@ -17,17 +17,10 @@
 #pragma once
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/socket.h>
 
 
-/*! \brief Separator character for address family. */
-char str_separator(int addr_family);
-
-/**
- * Copy IP address (in IPv4 or IPv6 format) from source to destination with possible compression during process
- * 
- * @return Length of address in destination
- **/
-size_t synth_addr_cpy(char *dest, const char *src, const int addr_family, const bool shorten);
+size_t shorten_ipv6(char *dst, const char *src);
