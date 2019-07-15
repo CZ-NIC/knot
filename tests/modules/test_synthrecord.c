@@ -20,7 +20,7 @@
 
 #include <stdio.h>
 
-#include "knot/modules/synthrecord/utils.h"
+#include "knot/modules/synthrecord/utils_rl.h"
 
 const char * const ipv6s[] = {
     // Generic addresses
@@ -86,7 +86,7 @@ void test_ip6_shortening(const char * const ips[], size_t n)
     for(size_t i = 0; i < n; ++i) {
         if(!ips[i]) break;
 
-        size_t len = synth_addr_cpy(buffer, ips[i], AF_INET6, true);
+        size_t len = shorten_ipv6(buffer, ips[i]);
         str_replace(buffer, len, '-', ':');
 
         struct in6_addr original, converted;

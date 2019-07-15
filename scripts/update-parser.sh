@@ -48,3 +48,15 @@ sed -i '/static\ const\ int\ yparser_/d' $OUT_Y
 sed -i 's/\s*$//g' $OUT_Y
 
 popd
+
+
+### MODULE SYNTHRECORD ###
+
+IN_S="./utils.rl"
+OUT_S="./utils_rl.c"
+
+pushd ../src/knot/modules/synthrecord/
+
+ragel -G2 -s -o $OUT_S $IN_S
+
+popd
