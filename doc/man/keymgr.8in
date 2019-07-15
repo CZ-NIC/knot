@@ -165,14 +165,14 @@ Key used for signing and submitted to the parent zone (only for KSK).
 \fBactive\fP
 Key used for signing.
 .TP
-\fBpost_active\fP
-Key still used for singing, but another key is active (only for KSK).
-.TP
 \fBretire_active\fP
-Key no longer published, but still used for signing (only for algorithm rollover).
+Key still used for singing, but another key is active (only for KSK or algorithm rollover).
 .TP
 \fBretire\fP
 Key still published, but no longer used for signing.
+.TP
+\fBpost_active\fP
+Key no longer published, but still used for signing (only for algorithm rollover).
 .TP
 \fBremove\fP
 Key deleted.

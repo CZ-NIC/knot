@@ -140,14 +140,14 @@ The following arguments are timestamps of key lifetime:
 **active**
   Key used for signing.
 
-**post_active**
-  Key still used for singing, but another key is active (only for KSK).
-
 **retire_active**
-  Key no longer published, but still used for signing (only for algorithm rollover).
+  Key still used for singing, but another key is active (only for KSK or algorithm rollover).
 
 **retire**
   Key still published, but no longer used for signing.
+
+**post_active**
+  Key no longer published, but still used for signing (only for algorithm rollover).
 
 **remove**
   Key deleted.
