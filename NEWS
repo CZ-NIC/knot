@@ -1,3 +1,29 @@
+Knot DNS 2.8.3 (2019-07-16)
+===========================
+
+Features:
+---------
+ - Added cert/key file configuration for TLS in kdig (Thanks to Alexander Schultz)
+
+Improvements:
+-------------
+ - More verbose log message for offline-KSK signing
+ - Module RRL logs affected source address subnet instead of only one source address
+ - Extended DNSSEC policy configuration checks
+ - Various improvements in the documentation
+
+Bugfixes:
+---------
+ - Excessive server load when maximum TCP clients limit is reached
+ - Incorrect reply after zone update with a node changed from non-authoritative to delegation
+ - Wrong error line number in a config file if it contains leading tab character
+ - Config file error message contains unrelated parsing context
+ - NSEC3 salt not updated when reconfigured to zero length
+ - Kjournalprint sometimes prints a random value for per-zone occupation
+ - Missing debug log for failed zone refresh triggered by zone notification
+ - DS check not scheduled when reconfigured
+ - Broken unit test on NetBSD 8.x
+
 Knot DNS 2.8.2 (2019-06-05)
 ===========================
 
@@ -81,6 +107,41 @@ Compatibility:
  - Changed configuration default for 'cds-cdnskey-publish' to 'rollover'
  - Journal DB format changes are not downgrade-compatible
  - Keymgr no longer prints DS for algorithm SHA-1
+
+Knot DNS 2.7.8 (2019-07-16)
+===========================
+
+Improvements:
+-------------
+ - Various improvements in the documentation
+
+Bugfixes:
+---------
+ - Excessive server load when maximum TCP clients limit is reached
+ - Incorrect reply after zone update with a node changed from non-authoritative to delegation
+ - Missing debug log for failed zone refresh triggered by zone notification
+ - Wrong processing of multiple $INCLUDE directives #646
+ - Broken unit test on NetBSD 8.x
+
+Knot DNS 2.7.7 (2019-04-15)
+===========================
+
+Improvements:
+-------------
+ - Possible zone transaction is aborted by zone events to avoid inconsistency
+ - Added log message if no persistent config DB is available during 'conf-begin'
+ - Tiny building improvements
+
+Bugfixes:
+---------
+ - Glue records under delegation are sometimes signed
+ - NSEC3 not re-salted during AXFR refresh
+ - Broken NSEC3 chain after adding new sub-delegations
+ - Failed to sign new zone contents if added dynamically #641
+ - NSEC3 opt-out signing doesn't work in some cases
+ - Redundant SOA RRSIG on slave if RRSIG TTL changed on master
+ - Sometimes confusing log error message for NOTIFY event
+ - Failed to explicit set value 0 for submission timeout
 
 Knot DNS 2.7.6 (2019-01-23)
 ===========================
