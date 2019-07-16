@@ -1,3 +1,18 @@
+Knot DNS 2.7.8 (2019-07-16)
+===========================
+
+Improvements:
+-------------
+ - Various improvements in the documentation
+
+Bugfixes:
+---------
+ - Excessive server load when maximum TCP clients limit is reached
+ - Incorrect reply after zone update with a node changed from non-authoritative to delegation
+ - Missing debug log for failed zone refresh triggered by zone notification
+ - Wrong processing of multiple $INCLUDE directives #646
+ - Broken unit test on NetBSD 8.x
+
 Knot DNS 2.7.7 (2019-04-15)
 ===========================
 
