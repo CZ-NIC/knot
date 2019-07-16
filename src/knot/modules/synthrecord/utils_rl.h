@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <sys/socket.h>
 
 
 size_t shorten_ipv6(char *dst, const char *src);

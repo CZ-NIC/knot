@@ -49,8 +49,12 @@ size_t shorten_ipv6(char *dst, const char *src)
 		hextet = hextet_nonzero
 			| ( '0' ){3} ( '0'$printable )	
 			;
+		tail = ( ':'$double_separator  hextet > 1 ) 
+			|  ( ':'$double_separator hextet_nonzero > 2 ) ( ':'$separator hextet )+
+			;
 
-		main := hextet_first ( ':'$separator  hextet_nonzero )* ( ( ':' hextet_zero )+ ( ( ':'$double_separator hextet_nonzero ) ( ':'$separator hextet )* )? )? ;
+		main := hextet_first ( ':'$separator  hextet_nonzero )*  ( ':'  hextet_zero )+ tail
+			;
 
 		# Initialize and execute.
 		write init;
@@ -59,12 +63,12 @@ size_t shorten_ipv6(char *dst, const char *src)
 
 
 	*dst_ptr = '\0';
-	if ( cs < shorten_ipv6_first_final ) {
+	/**if ( cs < shorten_ipv6_first_final ) {
 		return 0;
 	}
 	if (separator_cnt != 7) {
 		return -1;
-	}
+	}**/
 	
 	return strlen(dst);
 };
