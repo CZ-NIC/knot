@@ -13,6 +13,7 @@ RUN apt-get -y install \
 	curl \
 	ghostscript \
 	git \
+	latexmk \
 	libedit-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
