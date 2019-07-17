@@ -6,7 +6,7 @@
 
 #line 8 "./utils_rl.c"
 static const int shorten_ipv6_start = 1;
-static const int shorten_ipv6_first_final = 25;
+static const int shorten_ipv6_first_final = 70;
 static const int shorten_ipv6_error = 0;
 
 static const int shorten_ipv6_en_main = 1;
@@ -37,31 +37,10 @@ size_t shorten_ipv6(char *dst, const char *src)
 	switch ( cs )
 	{
 case 1:
+	if ( (*p) == 48 )
+		goto st2;
 	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr0;
-	} else if ( (*p) > 70 ) {
-		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr0;
-	} else
-		goto tr0;
-	goto st0;
-st0:
-cs = 0;
-	goto _out;
-tr0:
-#line 23 "./utils.rl"
-	{
-			*(dst_ptr++) = (*p);
-		}
-	goto st2;
-st2:
-	if ( ++p == pe )
-		goto _test_eof2;
-case 2:
-#line 63 "./utils_rl.c"
-	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
+		if ( 49 <= (*p) && (*p) <= 57 )
 			goto tr2;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
@@ -69,17 +48,23 @@ case 2:
 	} else
 		goto tr2;
 	goto st0;
+st0:
+cs = 0;
+	goto _out;
 tr2:
-#line 23 "./utils.rl"
+#line 22 "./utils.rl"
 	{
 			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
 		}
-	goto st3;
-st3:
+	goto st2;
+st2:
 	if ( ++p == pe )
-		goto _test_eof3;
-case 3:
-#line 83 "./utils_rl.c"
+		goto _test_eof2;
+case 2:
+#line 68 "./utils_rl.c"
 	if ( (*p) < 65 ) {
 		if ( 48 <= (*p) && (*p) <= 57 )
 			goto tr3;
@@ -90,16 +75,19 @@ case 3:
 		goto tr3;
 	goto st0;
 tr3:
-#line 23 "./utils.rl"
+#line 22 "./utils.rl"
 	{
 			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
 		}
-	goto st4;
-st4:
+	goto st3;
+st3:
 	if ( ++p == pe )
-		goto _test_eof4;
-case 4:
-#line 103 "./utils_rl.c"
+		goto _test_eof3;
+case 3:
+#line 91 "./utils_rl.c"
 	if ( (*p) < 65 ) {
 		if ( 48 <= (*p) && (*p) <= 57 )
 			goto tr4;
@@ -110,41 +98,66 @@ case 4:
 		goto tr4;
 	goto st0;
 tr4:
-#line 23 "./utils.rl"
+#line 22 "./utils.rl"
 	{
 			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st4;
+st4:
+	if ( ++p == pe )
+		goto _test_eof4;
+case 4:
+#line 114 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr5;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr5;
+	} else
+		goto tr5;
+	goto st0;
+tr5:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
 		}
 	goto st5;
 st5:
 	if ( ++p == pe )
 		goto _test_eof5;
 case 5:
-#line 123 "./utils_rl.c"
+#line 137 "./utils_rl.c"
 	if ( (*p) == 58 )
-		goto tr5;
+		goto tr6;
 	goto st0;
-tr5:
-#line 28 "./utils.rl"
+tr6:
+#line 44 "./utils.rl"
 	{
 			*(dst_ptr++) = '-';
-			separator_cnt++;
 		}
 	goto st6;
 st6:
 	if ( ++p == pe )
 		goto _test_eof6;
 case 6:
-#line 138 "./utils_rl.c"
+#line 151 "./utils_rl.c"
 	if ( (*p) == 48 )
 		goto st7;
 	if ( (*p) < 65 ) {
 		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr0;
+			goto tr8;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr0;
+			goto tr8;
 	} else
-		goto tr0;
+		goto tr8;
 	goto st0;
 st7:
 	if ( ++p == pe )
@@ -154,12 +167,12 @@ case 7:
 		goto st8;
 	if ( (*p) < 65 ) {
 		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr2;
+			goto tr10;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr2;
+			goto tr10;
 	} else
-		goto tr2;
+		goto tr10;
 	goto st0;
 st8:
 	if ( ++p == pe )
@@ -169,12 +182,12 @@ case 8:
 		goto st9;
 	if ( (*p) < 65 ) {
 		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr3;
+			goto tr12;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr3;
+			goto tr12;
 	} else
-		goto tr3;
+		goto tr12;
 	goto st0;
 st9:
 	if ( ++p == pe )
@@ -184,60 +197,65 @@ case 9:
 		goto st10;
 	if ( (*p) < 65 ) {
 		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr4;
-	} else if ( (*p) > 70 ) {
-		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr4;
-	} else
-		goto tr4;
-	goto st0;
-st10:
-	if ( ++p == pe )
-		goto _test_eof10;
-case 10:
-	if ( (*p) == 58 )
-		goto tr10;
-	goto st0;
-tr10:
-#line 34 "./utils.rl"
-	{
-			separator_cnt++;
-			if (!block_cut) {
-				block_cut = true;
-				*(dst_ptr++) = '-';
-			}
-		}
-	goto st11;
-st11:
-	if ( ++p == pe )
-		goto _test_eof11;
-case 11:
-#line 216 "./utils_rl.c"
-	if ( (*p) == 48 )
-		goto st12;
-	if ( (*p) < 65 ) {
-		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr12;
-	} else if ( (*p) > 70 ) {
-		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr12;
-	} else
-		goto tr12;
-	goto st0;
-st12:
-	if ( ++p == pe )
-		goto _test_eof12;
-case 12:
-	if ( (*p) == 48 )
-		goto st13;
-	if ( (*p) < 65 ) {
-		if ( 49 <= (*p) && (*p) <= 57 )
 			goto tr14;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
 			goto tr14;
 	} else
 		goto tr14;
+	goto st0;
+st10:
+	if ( ++p == pe )
+		goto _test_eof10;
+case 10:
+	if ( (*p) == 58 )
+		goto st11;
+	goto st0;
+st11:
+	if ( ++p == pe )
+		goto _test_eof11;
+case 11:
+	if ( (*p) == 48 )
+		goto tr16;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr17;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr17;
+	} else
+		goto tr17;
+	goto st0;
+tr16:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+	goto st12;
+st12:
+	if ( ++p == pe )
+		goto _test_eof12;
+case 12:
+#line 249 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st13;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr19;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr19;
+	} else
+		goto tr19;
 	goto st0;
 st13:
 	if ( ++p == pe )
@@ -247,79 +265,80 @@ case 13:
 		goto st14;
 	if ( (*p) < 65 ) {
 		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr16;
+			goto tr21;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr16;
+			goto tr21;
 	} else
-		goto tr16;
+		goto tr21;
 	goto st0;
 st14:
 	if ( ++p == pe )
 		goto _test_eof14;
 case 14:
 	if ( (*p) == 48 )
-		goto st10;
+		goto st15;
 	if ( (*p) < 65 ) {
 		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr17;
+			goto tr23;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr17;
+			goto tr23;
 	} else
-		goto tr17;
+		goto tr23;
 	goto st0;
-tr17:
-#line 23 "./utils.rl"
-	{
-			*(dst_ptr++) = (*p);
-		}
-	goto st15;
 st15:
 	if ( ++p == pe )
 		goto _test_eof15;
 case 15:
-#line 283 "./utils_rl.c"
 	if ( (*p) == 58 )
-		goto tr18;
+		goto st16;
 	goto st0;
-tr18:
-#line 28 "./utils.rl"
-	{
-			*(dst_ptr++) = '-';
-			separator_cnt++;
-		}
-	goto st16;
 st16:
 	if ( ++p == pe )
 		goto _test_eof16;
 case 16:
-#line 298 "./utils_rl.c"
 	if ( (*p) == 48 )
-		goto st17;
+		goto tr25;
 	if ( (*p) < 65 ) {
 		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr20;
+			goto tr26;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr20;
+			goto tr26;
 	} else
-		goto tr20;
+		goto tr26;
 	goto st0;
+tr25:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+	goto st17;
 st17:
 	if ( ++p == pe )
 		goto _test_eof17;
 case 17:
+#line 332 "./utils_rl.c"
 	if ( (*p) == 48 )
 		goto st18;
 	if ( (*p) < 65 ) {
 		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr22;
+			goto tr28;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr22;
+			goto tr28;
 	} else
-		goto tr22;
+		goto tr28;
 	goto st0;
 st18:
 	if ( ++p == pe )
@@ -329,138 +348,1127 @@ case 18:
 		goto st19;
 	if ( (*p) < 65 ) {
 		if ( 49 <= (*p) && (*p) <= 57 )
-			goto tr24;
+			goto tr30;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr24;
+			goto tr30;
 	} else
-		goto tr24;
+		goto tr30;
 	goto st0;
-tr24:
-#line 23 "./utils.rl"
-	{
-			*(dst_ptr++) = (*p);
-		}
-	goto st19;
 st19:
 	if ( ++p == pe )
 		goto _test_eof19;
 case 19:
-#line 350 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st20;
 	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr25;
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr32;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr25;
+			goto tr32;
 	} else
-		goto tr25;
+		goto tr32;
 	goto st0;
-tr25:
-#line 23 "./utils.rl"
-	{
-			*(dst_ptr++) = (*p);
-		}
-	goto st25;
-st25:
-	if ( ++p == pe )
-		goto _test_eof25;
-case 25:
-#line 370 "./utils_rl.c"
-	if ( (*p) == 58 )
-		goto tr18;
-	goto st0;
-tr22:
-#line 23 "./utils.rl"
-	{
-			*(dst_ptr++) = (*p);
-		}
-	goto st20;
 st20:
 	if ( ++p == pe )
 		goto _test_eof20;
 case 20:
-#line 384 "./utils_rl.c"
-	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr24;
-	} else if ( (*p) > 70 ) {
-		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr24;
-	} else
-		goto tr24;
+	if ( (*p) == 58 )
+		goto st21;
 	goto st0;
-tr20:
-#line 23 "./utils.rl"
-	{
-			*(dst_ptr++) = (*p);
-		}
-	goto st21;
 st21:
 	if ( ++p == pe )
 		goto _test_eof21;
 case 21:
-#line 404 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto tr34;
 	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr22;
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr35;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr22;
+			goto tr35;
 	} else
-		goto tr22;
+		goto tr35;
 	goto st0;
-tr16:
-#line 23 "./utils.rl"
+tr34:
+#line 30 "./utils.rl"
 	{
-			*(dst_ptr++) = (*p);
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
 		}
 	goto st22;
 st22:
 	if ( ++p == pe )
 		goto _test_eof22;
 case 22:
-#line 424 "./utils_rl.c"
+#line 415 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st23;
 	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr17;
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr37;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr17;
+			goto tr37;
 	} else
-		goto tr17;
+		goto tr37;
 	goto st0;
-tr14:
-#line 23 "./utils.rl"
-	{
-			*(dst_ptr++) = (*p);
-		}
-	goto st23;
 st23:
 	if ( ++p == pe )
 		goto _test_eof23;
 case 23:
-#line 444 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st24;
 	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr16;
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr39;
 	} else if ( (*p) > 70 ) {
 		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr16;
+			goto tr39;
 	} else
-		goto tr16;
+		goto tr39;
 	goto st0;
-tr12:
-#line 23 "./utils.rl"
-	{
-			*(dst_ptr++) = (*p);
-		}
-	goto st24;
 st24:
 	if ( ++p == pe )
 		goto _test_eof24;
 case 24:
-#line 464 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st25;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr41;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr41;
+	} else
+		goto tr41;
+	goto st0;
+st25:
+	if ( ++p == pe )
+		goto _test_eof25;
+case 25:
+	if ( (*p) == 58 )
+		goto st26;
+	goto st0;
+st26:
+	if ( ++p == pe )
+		goto _test_eof26;
+case 26:
+	if ( (*p) == 48 )
+		goto tr43;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr44;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr44;
+	} else
+		goto tr44;
+	goto st0;
+tr43:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+	goto st27;
+st27:
+	if ( ++p == pe )
+		goto _test_eof27;
+case 27:
+#line 498 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st28;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr46;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr46;
+	} else
+		goto tr46;
+	goto st0;
+st28:
+	if ( ++p == pe )
+		goto _test_eof28;
+case 28:
+	if ( (*p) == 48 )
+		goto st29;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr48;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr48;
+	} else
+		goto tr48;
+	goto st0;
+st29:
+	if ( ++p == pe )
+		goto _test_eof29;
+case 29:
+	if ( (*p) == 48 )
+		goto st30;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr50;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr50;
+	} else
+		goto tr50;
+	goto st0;
+st30:
+	if ( ++p == pe )
+		goto _test_eof30;
+case 30:
+	if ( (*p) == 58 )
+		goto st31;
+	goto st0;
+st31:
+	if ( ++p == pe )
+		goto _test_eof31;
+case 31:
+	if ( (*p) == 48 )
+		goto tr52;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr53;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr53;
+	} else
+		goto tr53;
+	goto st0;
+tr52:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+	goto st32;
+st32:
+	if ( ++p == pe )
+		goto _test_eof32;
+case 32:
+#line 581 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st33;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr55;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr55;
+	} else
+		goto tr55;
+	goto st0;
+st33:
+	if ( ++p == pe )
+		goto _test_eof33;
+case 33:
+	if ( (*p) == 48 )
+		goto st34;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr57;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr57;
+	} else
+		goto tr57;
+	goto st0;
+st34:
+	if ( ++p == pe )
+		goto _test_eof34;
+case 34:
+	if ( (*p) == 48 )
+		goto st35;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr59;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr59;
+	} else
+		goto tr59;
+	goto st0;
+st35:
+	if ( ++p == pe )
+		goto _test_eof35;
+case 35:
+	if ( (*p) == 58 )
+		goto st36;
+	goto st0;
+st36:
+	if ( ++p == pe )
+		goto _test_eof36;
+case 36:
+	if ( (*p) == 48 )
+		goto tr61;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr62;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr62;
+	} else
+		goto tr62;
+	goto st0;
+tr70:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st37;
+tr61:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+	goto st37;
+tr62:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st37;
+st37:
+	if ( ++p == pe )
+		goto _test_eof37;
+case 37:
+#line 695 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st38;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr64;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr64;
+	} else
+		goto tr64;
+	goto st0;
+tr64:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st38;
+st38:
+	if ( ++p == pe )
+		goto _test_eof38;
+case 38:
+#line 720 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st39;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr66;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr66;
+	} else
+		goto tr66;
+	goto st0;
+tr66:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st39;
+st39:
+	if ( ++p == pe )
+		goto _test_eof39;
+case 39:
+#line 745 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr67;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr67;
+	} else
+		goto tr67;
+	goto st0;
+tr67:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st70;
+st70:
+	if ( ++p == pe )
+		goto _test_eof70;
+case 70:
+#line 768 "./utils_rl.c"
+	goto st0;
+tr59:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st40;
+st40:
+	if ( ++p == pe )
+		goto _test_eof40;
+case 40:
+#line 783 "./utils_rl.c"
+	if ( (*p) == 58 )
+		goto tr68;
+	goto st0;
+tr68:
+#line 44 "./utils.rl"
+	{
+			*(dst_ptr++) = '-';
+		}
+	goto st41;
+st41:
+	if ( ++p == pe )
+		goto _test_eof41;
+case 41:
+#line 797 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st37;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr70;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr70;
+	} else
+		goto tr70;
+	goto st0;
+tr57:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st42;
+st42:
+	if ( ++p == pe )
+		goto _test_eof42;
+case 42:
+#line 822 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr59;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr59;
+	} else
+		goto tr59;
+	goto st0;
+tr55:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st43;
+st43:
+	if ( ++p == pe )
+		goto _test_eof43;
+case 43:
+#line 845 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr57;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr57;
+	} else
+		goto tr57;
+	goto st0;
+tr73:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st44;
+tr53:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st44;
+st44:
+	if ( ++p == pe )
+		goto _test_eof44;
+case 44:
+#line 890 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr55;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr55;
+	} else
+		goto tr55;
+	goto st0;
+tr50:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st45;
+st45:
+	if ( ++p == pe )
+		goto _test_eof45;
+case 45:
+#line 913 "./utils_rl.c"
+	if ( (*p) == 58 )
+		goto tr71;
+	goto st0;
+tr71:
+#line 44 "./utils.rl"
+	{
+			*(dst_ptr++) = '-';
+		}
+	goto st46;
+st46:
+	if ( ++p == pe )
+		goto _test_eof46;
+case 46:
+#line 927 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st32;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr73;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr73;
+	} else
+		goto tr73;
+	goto st0;
+tr48:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st47;
+st47:
+	if ( ++p == pe )
+		goto _test_eof47;
+case 47:
+#line 952 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr50;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr50;
+	} else
+		goto tr50;
+	goto st0;
+tr46:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st48;
+st48:
+	if ( ++p == pe )
+		goto _test_eof48;
+case 48:
+#line 975 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr48;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr48;
+	} else
+		goto tr48;
+	goto st0;
+tr76:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st49;
+tr44:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st49;
+st49:
+	if ( ++p == pe )
+		goto _test_eof49;
+case 49:
+#line 1020 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr46;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr46;
+	} else
+		goto tr46;
+	goto st0;
+tr41:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st50;
+st50:
+	if ( ++p == pe )
+		goto _test_eof50;
+case 50:
+#line 1043 "./utils_rl.c"
+	if ( (*p) == 58 )
+		goto tr74;
+	goto st0;
+tr74:
+#line 44 "./utils.rl"
+	{
+			*(dst_ptr++) = '-';
+		}
+	goto st51;
+st51:
+	if ( ++p == pe )
+		goto _test_eof51;
+case 51:
+#line 1057 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st27;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr76;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr76;
+	} else
+		goto tr76;
+	goto st0;
+tr39:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st52;
+st52:
+	if ( ++p == pe )
+		goto _test_eof52;
+case 52:
+#line 1082 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr41;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr41;
+	} else
+		goto tr41;
+	goto st0;
+tr37:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st53;
+st53:
+	if ( ++p == pe )
+		goto _test_eof53;
+case 53:
+#line 1105 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr39;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr39;
+	} else
+		goto tr39;
+	goto st0;
+tr79:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st54;
+tr35:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st54;
+st54:
+	if ( ++p == pe )
+		goto _test_eof54;
+case 54:
+#line 1150 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr37;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr37;
+	} else
+		goto tr37;
+	goto st0;
+tr32:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st55;
+st55:
+	if ( ++p == pe )
+		goto _test_eof55;
+case 55:
+#line 1173 "./utils_rl.c"
+	if ( (*p) == 58 )
+		goto tr77;
+	goto st0;
+tr77:
+#line 44 "./utils.rl"
+	{
+			*(dst_ptr++) = '-';
+		}
+	goto st56;
+st56:
+	if ( ++p == pe )
+		goto _test_eof56;
+case 56:
+#line 1187 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st22;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr79;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr79;
+	} else
+		goto tr79;
+	goto st0;
+tr30:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st57;
+st57:
+	if ( ++p == pe )
+		goto _test_eof57;
+case 57:
+#line 1212 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr32;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr32;
+	} else
+		goto tr32;
+	goto st0;
+tr28:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st58;
+st58:
+	if ( ++p == pe )
+		goto _test_eof58;
+case 58:
+#line 1235 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr30;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr30;
+	} else
+		goto tr30;
+	goto st0;
+tr82:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st59;
+tr26:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st59;
+st59:
+	if ( ++p == pe )
+		goto _test_eof59;
+case 59:
+#line 1280 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr28;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr28;
+	} else
+		goto tr28;
+	goto st0;
+tr23:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st60;
+st60:
+	if ( ++p == pe )
+		goto _test_eof60;
+case 60:
+#line 1303 "./utils_rl.c"
+	if ( (*p) == 58 )
+		goto tr80;
+	goto st0;
+tr80:
+#line 44 "./utils.rl"
+	{
+			*(dst_ptr++) = '-';
+		}
+	goto st61;
+st61:
+	if ( ++p == pe )
+		goto _test_eof61;
+case 61:
+#line 1317 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st17;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr82;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr82;
+	} else
+		goto tr82;
+	goto st0;
+tr21:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st62;
+st62:
+	if ( ++p == pe )
+		goto _test_eof62;
+case 62:
+#line 1342 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr23;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr23;
+	} else
+		goto tr23;
+	goto st0;
+tr19:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st63;
+st63:
+	if ( ++p == pe )
+		goto _test_eof63;
+case 63:
+#line 1365 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr21;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr21;
+	} else
+		goto tr21;
+	goto st0;
+tr85:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st64;
+tr17:
+#line 30 "./utils.rl"
+	{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
+		}
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st64;
+st64:
+	if ( ++p == pe )
+		goto _test_eof64;
+case 64:
+#line 1410 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr19;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr19;
+	} else
+		goto tr19;
+	goto st0;
+tr14:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st65;
+st65:
+	if ( ++p == pe )
+		goto _test_eof65;
+case 65:
+#line 1433 "./utils_rl.c"
+	if ( (*p) == 58 )
+		goto tr83;
+	goto st0;
+tr83:
+#line 44 "./utils.rl"
+	{
+			*(dst_ptr++) = '-';
+		}
+	goto st66;
+st66:
+	if ( ++p == pe )
+		goto _test_eof66;
+case 66:
+#line 1447 "./utils_rl.c"
+	if ( (*p) == 48 )
+		goto st12;
+	if ( (*p) < 65 ) {
+		if ( 49 <= (*p) && (*p) <= 57 )
+			goto tr85;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr85;
+	} else
+		goto tr85;
+	goto st0;
+tr12:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st67;
+st67:
+	if ( ++p == pe )
+		goto _test_eof67;
+case 67:
+#line 1472 "./utils_rl.c"
 	if ( (*p) < 65 ) {
 		if ( 48 <= (*p) && (*p) <= 57 )
 			goto tr14;
@@ -469,6 +1477,52 @@ case 24:
 			goto tr14;
 	} else
 		goto tr14;
+	goto st0;
+tr10:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st68;
+st68:
+	if ( ++p == pe )
+		goto _test_eof68;
+case 68:
+#line 1495 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr12;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr12;
+	} else
+		goto tr12;
+	goto st0;
+tr8:
+#line 22 "./utils.rl"
+	{
+			*(dst_ptr++) = (*p);
+			
+			if(block == 1)
+				block = 0;
+		}
+	goto st69;
+st69:
+	if ( ++p == pe )
+		goto _test_eof69;
+case 69:
+#line 1518 "./utils_rl.c"
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr10;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr10;
+	} else
+		goto tr10;
 	goto st0;
 	}
 	_test_eof2: cs = 2; goto _test_eof; 
@@ -489,29 +1543,74 @@ case 24:
 	_test_eof17: cs = 17; goto _test_eof; 
 	_test_eof18: cs = 18; goto _test_eof; 
 	_test_eof19: cs = 19; goto _test_eof; 
-	_test_eof25: cs = 25; goto _test_eof; 
 	_test_eof20: cs = 20; goto _test_eof; 
 	_test_eof21: cs = 21; goto _test_eof; 
 	_test_eof22: cs = 22; goto _test_eof; 
 	_test_eof23: cs = 23; goto _test_eof; 
 	_test_eof24: cs = 24; goto _test_eof; 
+	_test_eof25: cs = 25; goto _test_eof; 
+	_test_eof26: cs = 26; goto _test_eof; 
+	_test_eof27: cs = 27; goto _test_eof; 
+	_test_eof28: cs = 28; goto _test_eof; 
+	_test_eof29: cs = 29; goto _test_eof; 
+	_test_eof30: cs = 30; goto _test_eof; 
+	_test_eof31: cs = 31; goto _test_eof; 
+	_test_eof32: cs = 32; goto _test_eof; 
+	_test_eof33: cs = 33; goto _test_eof; 
+	_test_eof34: cs = 34; goto _test_eof; 
+	_test_eof35: cs = 35; goto _test_eof; 
+	_test_eof36: cs = 36; goto _test_eof; 
+	_test_eof37: cs = 37; goto _test_eof; 
+	_test_eof38: cs = 38; goto _test_eof; 
+	_test_eof39: cs = 39; goto _test_eof; 
+	_test_eof70: cs = 70; goto _test_eof; 
+	_test_eof40: cs = 40; goto _test_eof; 
+	_test_eof41: cs = 41; goto _test_eof; 
+	_test_eof42: cs = 42; goto _test_eof; 
+	_test_eof43: cs = 43; goto _test_eof; 
+	_test_eof44: cs = 44; goto _test_eof; 
+	_test_eof45: cs = 45; goto _test_eof; 
+	_test_eof46: cs = 46; goto _test_eof; 
+	_test_eof47: cs = 47; goto _test_eof; 
+	_test_eof48: cs = 48; goto _test_eof; 
+	_test_eof49: cs = 49; goto _test_eof; 
+	_test_eof50: cs = 50; goto _test_eof; 
+	_test_eof51: cs = 51; goto _test_eof; 
+	_test_eof52: cs = 52; goto _test_eof; 
+	_test_eof53: cs = 53; goto _test_eof; 
+	_test_eof54: cs = 54; goto _test_eof; 
+	_test_eof55: cs = 55; goto _test_eof; 
+	_test_eof56: cs = 56; goto _test_eof; 
+	_test_eof57: cs = 57; goto _test_eof; 
+	_test_eof58: cs = 58; goto _test_eof; 
+	_test_eof59: cs = 59; goto _test_eof; 
+	_test_eof60: cs = 60; goto _test_eof; 
+	_test_eof61: cs = 61; goto _test_eof; 
+	_test_eof62: cs = 62; goto _test_eof; 
+	_test_eof63: cs = 63; goto _test_eof; 
+	_test_eof64: cs = 64; goto _test_eof; 
+	_test_eof65: cs = 65; goto _test_eof; 
+	_test_eof66: cs = 66; goto _test_eof; 
+	_test_eof67: cs = 67; goto _test_eof; 
+	_test_eof68: cs = 68; goto _test_eof; 
+	_test_eof69: cs = 69; goto _test_eof; 
 
 	_test_eof: {}
 	_out: {}
 	}
 
-#line 62 "./utils.rl"
+#line 68 "./utils.rl"
 
 
 
 	*dst_ptr = '\0';
-	/**if ( cs < shorten_ipv6_first_final ) {
+	if ( cs < shorten_ipv6_first_final ) {
 		return 0;
 	}
-	if (separator_cnt != 7) {
+	/**if (separator_cnt != 7) {
 		return -1;
 	}**/
 	
-	return strlen(dst);
+	return dst_ptr - dst;
 };
 
