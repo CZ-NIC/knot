@@ -52,7 +52,7 @@ ENV RUNTIME_PKGS \
     liblmdb0 \
     libmaxminddb0 \
     libprotobuf-c1 \
-    liburcu4
+    liburcu6
 
 # Copy artifacts
 COPY --from=0 /tmp/knot-install/ /
