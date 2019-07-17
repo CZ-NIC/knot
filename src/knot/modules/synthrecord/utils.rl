@@ -12,64 +12,67 @@ size_t shorten_ipv6(char *dst, const char *src)
 	int cs;
 
 	char *dst_ptr = dst;
-	bool block_cut = false;
-	unsigned separator_cnt = 0;
+	int block = 2;
 
 	%%{
-
 		machine shorten_ipv6;
 		
 		action printable
 		{
 			*(dst_ptr++) = fc;
+			
+			if(block == 1)
+				block = 0;
+		}
+
+		action printable_zero
+		{
+			switch(block) {
+			case 2:
+				*(dst_ptr++) = '-';
+				block--;
+				break;
+			case 0:	
+				*(dst_ptr++) = '0';
+				*(dst_ptr++) = '-';
+				break;
+			}
 		}
 
 		action separator
 		{
 			*(dst_ptr++) = '-';
-			separator_cnt++;
 		}
 
-		action double_separator
-		{
-			separator_cnt++;
-			if (!block_cut) {
-				block_cut = true;
-				*(dst_ptr++) = '-';
-			}
-		}
-
-		hextet_first = ( xdigit$printable ){4};
-		hextet_nonzero = ( [1-9a-fA-F]$printable ) ( xdigit$printable ){3}
-			| '0' ( [1-9a-fA-F]$printable ) ( xdigit$printable ){2}
-			| ( '0' ){2} ( [1-9a-fA-F]$printable ) xdigit$printable
-			| ( '0' ){3} ( [1-9a-fA-F]$printable )	
+		begin = ( '0' | (xdigit-'0')$printable ) ( xdigit$printable ){3} ':'$separator
 			;
-		hextet_zero = ( '0' ){4};
-		hextet = hextet_nonzero
-			| ( '0' ){3} ( '0'$printable )	
+		center_nonzero = ( (xdigit-'0')$printable ) ( xdigit$printable ){3}
+			| '0' ( (xdigit-'0')$printable ) ( xdigit$printable ){2}
+			| ( '0' ){2} ( (xdigit-'0')$printable ) ( xdigit$printable )
+			| ( '0' ){3} ( (xdigit-'0')$printable )
 			;
-		tail = ( ':'$double_separator  hextet > 1 ) 
-			|  ( ':'$double_separator hextet_nonzero > 2 ) ( ':'$separator hextet )+
+		center_skipable = '0' {4}
+			;
+		center = ( center_nonzero ':'$separator )
+			| ( center_skipable ':')%printable_zero
+			;
+		end = center_nonzero
+			| ( '0' ){3} ( '0'$printable )
+			;
+		main := begin center{6} end
 			;
 
-		main := hextet_first ( ':'$separator  hextet_nonzero )*  ( ':'  hextet_zero )+ tail
-			;
-
-		# Initialize and execute.
 		write init;
 		write exec;
+
 	}%%
 
 
 	*dst_ptr = '\0';
-	/**if ( cs < shorten_ipv6_first_final ) {
+	if ( cs < shorten_ipv6_first_final ) {
 		return 0;
 	}
-	if (separator_cnt != 7) {
-		return -1;
-	}**/
 	
-	return strlen(dst);
+	return dst_ptr - dst;
 };
 
