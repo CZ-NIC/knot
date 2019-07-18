@@ -390,7 +390,6 @@ static void msg_iov_shift(struct msghdr *msg, size_t done)
  * \brief Perform an I/O operation with a socket with waiting.
  *
  * \param oneshot  If set, doesn't wait until the buffer is fully processed.
- *
  */
 static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
                        bool oneshot, int *timeout_ptr)
@@ -414,29 +413,32 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 
 		/* Wait for data readiness. */
 		if (ret > 0 || (ret == -1 && io_should_wait(errno))) {
-			struct timespec begin, end;
-			if (*timeout_ptr > 0) {
-				clock_gettime(CLOCK_MONOTONIC, &begin);
-			}
-
-			do {
-				ret = io->wait(fd, *timeout_ptr);
-			} while (ret == -1 && errno == EINTR);
-
-			if (ret == 1) {
+			for (;;) {
+				struct timespec begin, end;
 				if (*timeout_ptr > 0) {
-					clock_gettime(CLOCK_MONOTONIC, &end);
-					int running_ms = time_diff_ms(&end, &begin);
-					*timeout_ptr = MAX(*timeout_ptr - running_ms, 0);
+					clock_gettime(CLOCK_MONOTONIC, &begin);
 				}
-				continue;
-			} else if (ret == 0) {
-				return KNOT_ETIMEOUT;
-			}
-		}
 
-		/* Disconnected or error. */
-		return KNOT_ECONN;
+				ret = io->wait(fd, *timeout_ptr);
+
+				if (ret == 1 || (ret == -1 && errno == EINTR)) {
+					if (*timeout_ptr > 0) {
+						clock_gettime(CLOCK_MONOTONIC, &end);
+						int running_ms = time_diff_ms(&end, &begin);
+						*timeout_ptr = MAX(*timeout_ptr - running_ms, 0);
+					}
+					break;
+				} else if (ret == 0) {
+					return KNOT_ETIMEOUT;
+				} else {
+					/* Disconnect or error. */
+					return KNOT_ECONN;
+				}
+			}
+		} else {
+			/* Disconnect or error. */
+			return KNOT_ECONN;
+		}
 	}
 
 	return done;
