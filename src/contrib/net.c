@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "libknot/errcode.h"
 #include "contrib/macros.h"
@@ -431,6 +432,7 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 
 				ret = io->wait(fd, *timeout_ptr);
 
+	printf("poll <%i>\n", ret);
 				if (ret == 1) {
 					TIMEOUT_CTX_UPDATE
 					/* Ready, retry process. */
@@ -609,6 +611,7 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	iov.iov_base = &pktsize;
 	iov.iov_len = sizeof(pktsize);
 
+	printf("recv <%zu>\n", iov.iov_len);
 	int ret = recv_data(sock, &msg, false, &timeout_ms);
 	if (ret != sizeof(pktsize)) {
 		return ret;
@@ -626,5 +629,6 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	iov.iov_base = buffer;
 	iov.iov_len = pktsize;
 
+	printf("recv <%zu>\n", iov.iov_len);
 	return recv_data(sock, &msg, false, &timeout_ms);
 }
