@@ -111,6 +111,8 @@ libknotd_la_SOURCES = \
 	knot/common/evsched.h			\
 	knot/common/fdset.c			\
 	knot/common/fdset.h			\
+	knot/common/json.c			\
+	knot/common/json.h			\
 	knot/common/log.c			\
 	knot/common/log.h			\
 	knot/common/process.c			\
@@ -119,6 +121,12 @@ libknotd_la_SOURCES = \
 	knot/common/ref.h			\
 	knot/common/stats.c			\
 	knot/common/stats.h			\
+	knot/common/stats_common.c			\
+	knot/common/stats_common.h			\
+	knot/common/stats_yaml.c			\
+	knot/common/stats_yaml.h			\
+	knot/common/stats_json.c			\
+	knot/common/stats_json.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
 	knot/journal/journal_basic.c		\

@@ -138,6 +138,12 @@ static const knot_lookup_t journal_modes[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t statistics_format[] = {
+	{ STATS_FORMAT_YAML, "yaml" },
+	{ STATS_FORMAT_JSON, "json" },
+	{ 0, NULL }
+};
+
 static const yp_item_t desc_module[] = {
 	{ C_ID,      YP_TSTR, YP_VNONE, YP_FNONE, { check_module_id } },
 	{ C_FILE,    YP_TSTR, YP_VNONE },
@@ -197,6 +203,7 @@ static const yp_item_t desc_stats[] = {
 	{ C_TIMER,  YP_TINT,  YP_VINT = { 1, UINT32_MAX, 0, YP_STIME } },
 	{ C_FILE,   YP_TSTR,  YP_VSTR = { "stats.yaml" } },
 	{ C_APPEND, YP_TBOOL, YP_VNONE },
+	{ C_FORMAT, YP_TOPT, YP_VOPT = { statistics_format, STATS_FORMAT_YAML } },
 	{ NULL }
 };
 

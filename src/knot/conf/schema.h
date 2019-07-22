@@ -43,6 +43,7 @@
 #define C_DOMAIN		"\x06""domain"
 #define C_ECS			"\x12""edns-client-subnet"
 #define C_FILE			"\x04""file"
+#define C_FORMAT		"\x06""format"
 #define C_GLOBAL_MODULE		"\x0D""global-module"
 #define C_ID			"\x02""id"
 #define C_IDENT			"\x08""identity"
@@ -160,6 +161,11 @@ enum {
 	ZONEFILE_LOAD_DIFF  = 1,
 	ZONEFILE_LOAD_WHOLE = 2,
 	ZONEFILE_LOAD_DIFSE = 3,
+};
+
+enum {
+	STATS_FORMAT_YAML = 0,
+	STATS_FORMAT_JSON = 1,
 };
 
 extern const knot_lookup_t acl_actions[];
