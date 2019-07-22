@@ -888,14 +888,14 @@ int geoip_load(knotd_mod_t *mod)
 
 		// Load configured geodb keys.
 		conf = knotd_conf_mod(mod, MOD_GEODB_KEY);
-		ctx->path_count = conf.count;
-		if (ctx->path_count > GEODB_MAX_DEPTH) {
+		if (conf.count > GEODB_MAX_DEPTH) {
 			knotd_mod_log(mod, LOG_ERR, "maximal number of geodb-key items (%d) exceeded",
 			              GEODB_MAX_DEPTH);
 			knotd_conf_free(&conf);
 			free_geoip_ctx(ctx);
 			return KNOT_EINVAL;
 		}
+		ctx->path_count = conf.count;
 		for (size_t i = 0; i < conf.count; i++) {
 			if (parse_geodb_path(&ctx->paths[i], (char *)conf.multi[i].string) != 0) {
 				knotd_mod_log(mod, LOG_ERR, "unrecognized geodb-key format");
