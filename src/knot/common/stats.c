@@ -209,12 +209,17 @@ static void dump_stats(server_t *server)
 	FILE *fd = NULL;
 	char *tmp_name = NULL;
 	if (append) {
-		fd = fopen(file_name, "a");
-		if (fd == NULL) {
-			log_error("stats, failed to append file '%s' (%s)",
-			          file_name, knot_strerror(knot_map_errno()));
-			free(file_name);
-			return;
+		fd = fopen(file_name, "r+");
+		if (fd) {
+			fseek(fd, 0, SEEK_END);
+		} else { // file not exists
+			fd = fopen(file_name, "w");
+			if (fd == NULL) {
+				log_error("stats, failed to append file '%s' (%s)",
+			        	file_name, knot_strerror(knot_map_errno()));
+				free(file_name);
+				return;
+			}
 		}
 	} else {
 		int ret = open_tmp_file(file_name, &tmp_name, &fd,
