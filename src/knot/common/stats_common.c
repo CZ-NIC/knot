@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,29 +13,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+#include "knot/common/stats_common.h"
 
-/*!
- * \brief Server statistics general API.
- */
+typedef uint64_t (*stats_val_f)(server_t *server);
 
-#pragma once
+const stats_item_t server_stats[] = {
+	{ "zone-count", server_zone_count },
+	{ 0 }
+};
 
-#include "knot/server/server.h"
+uint64_t server_zone_count(server_t *server)
+{
+	return knot_zonedb_size(server->zone_db);
+}
 
-#include "knot/common/stats_yaml.h"
-#include "knot/common/stats_json.h"
 
-/*!
- * \brief Read out value of single counter summed across threads.
- */
-uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads);
-
-/*!
- * \brief Reconfigures the statistics facility.
- */
-void stats_reconfigure(conf_t *conf, server_t *server);
-
-/*!
- * \brief Deinitializes the statistics facility.
- */
-void stats_deinit(void);

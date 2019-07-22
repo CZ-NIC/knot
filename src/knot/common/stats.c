@@ -14,6 +14,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+
+#include "knot/common/stats.h"
+
 #include <inttypes.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -21,7 +24,6 @@
 #include <urcu.h>
 
 #include "contrib/files.h"
-#include "knot/common/stats.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
 
@@ -32,175 +34,23 @@ struct {
 	server_t *server;
 } stats = { 0 };
 
-typedef struct {
-	FILE *fd;
-	const list_t *query_modules;
-	const knot_dname_t *zone;
-	bool zone_emitted;
-} dump_ctx_t;
-
-#define DUMP_STR(fd, level, name, ...) do { \
-	fprintf(fd, "%-.*s"name": %s\n", level, "    ", ##__VA_ARGS__); \
-	} while (0)
-#define DUMP_CTR(fd, level, name, ...) do { \
-	fprintf(fd, "%-.*s"name": %"PRIu64"\n", level, "    ", ##__VA_ARGS__); \
-	} while (0)
-
-uint64_t server_zone_count(server_t *server)
-{
-	return knot_zonedb_size(server->zone_db);
-}
-
-const stats_item_t server_stats[] = {
-	{ "zone-count", server_zone_count },
-	{ 0 }
+static const void (*generators[])(FILE *, server_t *) = {
+    &dump_to_yaml,
+    &dump_to_json
 };
-
-uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads)
-{
-	uint64_t res = 0;
-	for (unsigned i = 0; i < threads; i++) {
-		res += ATOMIC_GET(stats_vals[i][offset]);
-	}
-	return res;
-}
-
-static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr, uint64_t **stats_vals, unsigned threads)
-{
-	for (uint32_t j = 0; j < ctr->count; j++) {
-		uint64_t counter = stats_get_counter(stats_vals, ctr->offset + j, threads);
-
-		// Skip empty counters.
-		if (counter == 0) {
-			continue;
-		}
-
-		if (ctr->idx_to_str != NULL) {
-			char *str = ctr->idx_to_str(j, ctr->count);
-			if (str != NULL) {
-				DUMP_CTR(fd, level, "%s", str, counter);
-				free(str);
-			}
-		} else {
-			DUMP_CTR(fd, level, "%u", j, counter);
-		}
-	}
-}
-
-static void dump_modules(dump_ctx_t *ctx)
-{
-	int level = 0;
-	knotd_mod_t *mod;
-	WALK_LIST(mod, *ctx->query_modules) {
-		// Skip modules without statistics.
-		if (mod->stats_count == 0) {
-			continue;
-		}
-
-		// Dump zone name.
-		if (ctx->zone != NULL) {
-			// Prevent from zone section override.
-			if (!ctx->zone_emitted) {
-				DUMP_STR(ctx->fd, 0, "zone", "");
-				ctx->zone_emitted = true;
-			}
-			level = 1;
-
-			knot_dname_txt_storage_t name;
-			if (knot_dname_to_str(name, ctx->zone, sizeof(name)) == NULL) {
-				return;
-			}
-			DUMP_STR(ctx->fd, level++, "\"%s\"", name, "");
-		} else {
-			level = 0;
-		}
-
-		unsigned threads = knotd_mod_threads(mod);
-
-		// Dump module counters.
-		DUMP_STR(ctx->fd, level, "%s", mod->id->name + 1, "");
-		for (int i = 0; i < mod->stats_count; i++) {
-			mod_ctr_t *ctr = mod->stats_info + i;
-			if (ctr->name == NULL) {
-				// Empty counter.
-				continue;
-			}
-			if (ctr->count == 1) {
-				// Simple counter.
-				uint64_t counter = stats_get_counter(mod->stats_vals,
-				                                     ctr->offset, threads);
-				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name, counter);
-			} else {
-				// Array of counters.
-				DUMP_STR(ctx->fd, level + 1, "%s", ctr->name, "");
-				dump_counters(ctx->fd, level + 2, ctr, mod->stats_vals, threads);
-			}
-		}
-	}
-}
-
-static void zone_stats_dump(zone_t *zone, dump_ctx_t *ctx)
-{
-	if (EMPTY_LIST(zone->query_modules)) {
-		return;
-	}
-
-	ctx->query_modules = &zone->query_modules;
-	ctx->zone = zone->name;
-
-	dump_modules(ctx);
-}
-
-static void dump_to_file(FILE *fd, server_t *server)
-{
-	char date[64] = "";
-
-	// Get formatted current time string.
-	struct tm tm;
-	time_t now = time(NULL);
-	localtime_r(&now, &tm);
-	strftime(date, sizeof(date), KNOT_LOG_TIME_FORMAT, &tm);
-
-	// Get the server identity.
-	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
-	const char *ident = conf_str(&val);
-	if (ident == NULL || ident[0] == '\0') {
-		ident = conf()->hostname;
-	}
-
-	// Dump record header.
-	fprintf(fd,
-	        "---\n"
-	        "time: %s\n"
-	        "identity: %s\n",
-	        date, ident);
-
-	// Dump server statistics.
-	DUMP_STR(fd, 0, "server", "");
-	for (const stats_item_t *item = server_stats; item->name != NULL; item++) {
-		DUMP_CTR(fd, 1, "%s", item->name, item->val(server));
-	}
-
-	dump_ctx_t ctx = {
-		.fd = fd,
-		.query_modules = conf()->query_modules,
-	};
-
-	// Dump global statistics.
-	dump_modules(&ctx);
-
-	// Dump zone statistics.
-	knot_zonedb_foreach(server->zone_db, zone_stats_dump, &ctx);
-}
 
 static void dump_stats(server_t *server)
 {
 	conf_t *pconf = conf();
 	conf_val_t val = conf_get(pconf, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&val, NULL);
-	val = conf_get(pconf, C_STATS, C_FILE);
+	
+	val = conf_get(conf(), C_STATS, C_FILE);
 	char *file_name = conf_abs_path(&val, rundir);
 	free(rundir);
+	
+	val = conf_get(conf(), C_STATS, C_FORMAT);
+	unsigned format = conf_opt(&val);
 
 	val = conf_get(pconf, C_STATS, C_APPEND);
 	bool append = conf_bool(&val);
@@ -212,7 +62,7 @@ static void dump_stats(server_t *server)
 		fd = fopen(file_name, "r+");
 		if (fd) {
 			fseek(fd, 0, SEEK_END);
-		} else { // file not exists
+		} else { // when file not exists
 			fd = fopen(file_name, "w");
 			if (fd == NULL) {
 				log_error("stats, failed to append file '%s' (%s)",
@@ -234,7 +84,7 @@ static void dump_stats(server_t *server)
 	assert(fd);
 
 	// Dump stats into the file.
-	dump_to_file(fd, server);
+	(*generators[format])(fd, server);
 
 	fflush(fd);
 	fclose(fd);

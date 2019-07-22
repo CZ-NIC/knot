@@ -16,14 +16,44 @@
 
 #pragma once
 
+
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
 
+#define MAX_DEPTH 8
 /*!
  * Simple pretty JSON writer.
  */
-struct jsonw;
-typedef struct jsonw jsonw_t;
+
+enum {
+	BLOCK_INVALID = 0,
+	BLOCK_OBJECT,
+	BLOCK_LIST,
+};
+
+/*! One indented block of JSON. */
+struct block {
+	//! Block type.
+	int type;
+
+	//! Number of elements written.
+	int count;
+};
+
+typedef struct jsonw {
+	//! Output file stream.
+	FILE *out;
+	//! Indentaiton string.
+	const char *indent;
+
+	//! List to be used as a stack of blocks in progress.
+	struct block stack[MAX_DEPTH];
+	//! Index pointing to the top of the stack.
+	int top;
+} jsonw_t;
 
 /*!
  * Create new JSON writer.
@@ -69,6 +99,11 @@ void jsonw_str(jsonw_t *w, const char *value);
  * Write integer as JSON.
  */
 void jsonw_int(jsonw_t *w, int value);
+
+/*!
+ * Write integer as JSON.
+ */
+void jsonw_ulong(jsonw_t *w, unsigned long value);
 
 /*!
  * Write boolean value as JSON.

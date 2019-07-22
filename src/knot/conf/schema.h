@@ -59,6 +59,7 @@
 #define C_EXPIRE_MAX_INTERVAL	"\x13""expire-max-interval"
 #define C_EXPIRE_MIN_INTERVAL	"\x13""expire-min-interval"
 #define C_FILE			"\x04""file"
+#define C_FORMAT		"\x06""format"
 #define C_GLOBAL_MODULE		"\x0D""global-module"
 #define C_ID			"\x02""id"
 #define C_IDENT			"\x08""identity"
@@ -260,6 +261,11 @@ enum {
 	DBUS_EVENT_ZONE_UPDATED    = (1 << 1),
 	DBUS_EVENT_ZONE_SUBMISSION = (1 << 2),
 	DBUS_EVENT_ZONE_INVALID    = (1 << 3),
+};
+
+enum {
+	STATS_FORMAT_YAML = 0,
+	STATS_FORMAT_JSON = 1,
 };
 
 extern const knot_lookup_t acl_actions[];

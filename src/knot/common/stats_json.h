@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,28 +14,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/*!
- * \brief Server statistics general API.
- */
-
 #pragma once
 
 #include "knot/server/server.h"
 
-#include "knot/common/stats_yaml.h"
-#include "knot/common/stats_json.h"
+#include "knot/common/stats_common.h"
+#include "knot/common/json.h"
 
-/*!
- * \brief Read out value of single counter summed across threads.
- */
-uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads);
 
-/*!
- * \brief Reconfigures the statistics facility.
- */
-void stats_reconfigure(conf_t *conf, server_t *server);
-
-/*!
- * \brief Deinitializes the statistics facility.
- */
-void stats_deinit(void);
+void dump_to_json(FILE *fd, server_t *server);

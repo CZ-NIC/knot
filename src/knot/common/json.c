@@ -14,47 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "utils/common/json.h"
-
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define MAX_DEPTH 8
-
-enum {
-	BLOCK_INVALID = 0,
-	BLOCK_OBJECT,
-	BLOCK_LIST,
-};
-
-/*! One indented block of JSON. */
-struct block {
-	//! Block type.
-	int type;
-
-	//! Number of elements written.
-	int count;
-};
-
-struct jsonw {
-	//! Output file stream.
-	FILE *out;
-	//! Indentaiton string.
-	const char *indent;
-
-	//! List to be used as a stack of blocks in progress.
-	struct block stack[MAX_DEPTH];
-	//! Index pointing to the top of the stack.
-	int top;
-};
-
+#include "knot/common/json.h"
 
 jsonw_t *jsonw_new(FILE *out, const char *indent)
 {
+	if(!out) {
+		return NULL;
+	}
+
 	jsonw_t *w = calloc(1, sizeof(*w));
 	if (w == NULL) {
-		return w;
+		return NULL;
 	}
 
 	w->out = out;
@@ -202,6 +172,14 @@ void jsonw_int(jsonw_t *w, int value)
 	align(w);
 
 	fprintf(w->out, "%d", value);
+}
+
+
+void jsonw_ulong(jsonw_t *w, unsigned long value)
+{
+	align(w);
+
+	fprintf(w->out, "%lu", value);
 }
 
 void jsonw_bool(jsonw_t *w, bool value)
