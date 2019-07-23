@@ -63,49 +63,39 @@ typedef struct jsonw {
  *
  * @return JSON writer or NULL for allocation error.
  */
-jsonw_t *jsonw_new(FILE *out, const char *indent);
+jsonw_t *jsonw2_new(FILE *out, const char *indent);
 
 /*!
  * Free JSON writer created with jsonw_new.
  */
-void jsonw_free(jsonw_t *w);
-
-/*!
- * Start writing a new object.
- *
- * The following writes will represent key and value pairs respectively until
- * jsonw_end is called.
- */
-void jsonw_object(jsonw_t *w);
-
-/*!
- * Start writing a new list.
- *
- * The following writes will represent values until jsonw_end is called.
- */
-void jsonw_list(jsonw_t *w);
-
-/*!
- * Terminate in-progress object or list.
- */
-void jsonw_end(jsonw_t *w);
+void jsonw2_free(jsonw_t *w);
 
 /*!
  * Write string as JSON. The string will be escaped properly.
  */
-void jsonw_str(jsonw_t *w, const char *value);
+void jsonw2_str(jsonw_t *w, const char *name, const char *value);
 
 /*!
  * Write integer as JSON.
  */
-void jsonw_int(jsonw_t *w, int value);
+void jsonw2_ulong(jsonw_t *w, const char *name, unsigned long value);
 
 /*!
- * Write integer as JSON.
+ * Start writing a new object. Version 2
+ *
+ * The following writes will represent key and value pairs respectively until
+ * jsonw_end is called.
  */
-void jsonw_ulong(jsonw_t *w, unsigned long value);
+void jsonw2_object(jsonw_t *w, const char *name);
 
 /*!
- * Write boolean value as JSON.
+ * Start writing a new list. Version 2
+ *
+ * The following writes will represent values until jsonw_end is called.
  */
-void jsonw_bool(jsonw_t *w, bool value);
+void jsonw2_list(jsonw_t *w, const char *name);
+
+/*!
+ * Terminate in-progress object or list. Version 2
+ */
+void jsonw2_end(jsonw_t *w);
