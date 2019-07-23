@@ -11,7 +11,10 @@ t = Test()
 master0 = t.server("knot")
 master = t.server("knot")
 slave = t.server("knot")
-zones1 = t.zone_rnd(5, dnssec=False, records=30) + t.zone("records.")
+zones1 = t.zone_rnd(20, dnssec=False, records=1) + \
+         t.zone_rnd(20, dnssec=False, records=10) + \
+         t.zone_rnd(5, dnssec=False, records=100) + \
+         t.zone("records.")
 zone0 = t.zone("dk.", storage=".")
 zones = zones1 + zone0
 
