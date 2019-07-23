@@ -109,3 +109,35 @@ void jsonw_ulong(jsonw_t *w, unsigned long value);
  * Write boolean value as JSON.
  */
 void jsonw_bool(jsonw_t *w, bool value);
+
+// VERSION 2
+
+/*!
+ * Write string as JSON. The string will be escaped properly.
+ */
+void jsonw2_str(jsonw_t *w, const char *name, const char *value);
+
+/*!
+ * Write integer as JSON.
+ */
+void jsonw2_ulong(jsonw_t *w, const char *name, unsigned long value);
+
+/*!
+ * Start writing a new object. Version 2
+ *
+ * The following writes will represent key and value pairs respectively until
+ * jsonw_end is called.
+ */
+void jsonw2_object(jsonw_t *w, const char *name);
+
+/*!
+ * Start writing a new list. Version 2
+ *
+ * The following writes will represent values until jsonw_end is called.
+ */
+void jsonw2_list(jsonw_t *w, const char *name);
+
+/*!
+ * Terminate in-progress object or list. Version 2
+ */
+void jsonw2_end(jsonw_t *w);

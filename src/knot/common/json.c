@@ -18,12 +18,12 @@
 
 jsonw_t *jsonw_new(FILE *out, const char *indent)
 {
-	if(!out) {
+	if (!out) {
 		return NULL;
 	}
 
 	jsonw_t *w = calloc(1, sizeof(*w));
-	if (w == NULL) {
+	if (!w) {
 		return NULL;
 	}
 
@@ -37,11 +37,12 @@ jsonw_t *jsonw_new(FILE *out, const char *indent)
 
 void jsonw_free(jsonw_t *w)
 {
-	if (w == NULL) {
+	if (!w) {
 		return;
 	}
 
 	free(w);
+	w = NULL;
 }
 
 static void start_block(jsonw_t *w, int type)
@@ -66,6 +67,13 @@ static void end_block(jsonw_t *w)
 
 static struct block *cur_block(jsonw_t *w)
 {
+	if (!w) {
+		return NULL;
+	}
+	if (w->top >= MAX_DEPTH) {
+		return NULL;
+	}
+
 	assert(w->top < MAX_DEPTH);
 
 	return &w->stack[w->top];
@@ -187,4 +195,147 @@ void jsonw_bool(jsonw_t *w, bool value)
 	align(w);
 
 	fprintf(w->out, "%s", value ? "true" : "false");
+}
+
+static void jsonw2_wrap(jsonw_t *w)
+{	
+	fputc('\n', w->out);
+
+	int level = MAX_DEPTH - w->top;
+	for (int i = 0; i < level; i++) {
+		fprintf(w->out, "%s", w->indent);
+	}
+}
+
+static void jsonw2_end_block(jsonw_t *w)
+{
+	if (!w) {
+		return;
+	}
+
+	assert(w->top < MAX_DEPTH);
+
+	w->top += 1;
+}
+
+void jsonw2_str(jsonw_t *w, const char *name, const char *value)
+{
+	if (!w) {
+		return;
+	}
+
+	struct block *top = cur_block(w);
+	if (top) {
+		if (top->count) {
+			fputc(',', w->out);
+		}
+		top->count++;
+	}
+	
+	jsonw2_wrap(w);
+
+	if (name && strlen(name)) {
+		fprintf(w->out, "\"%s\": \"%s\"", name, value);
+	} else {
+		fprintf(w->out, "\"%s\"", value);
+	}
+}
+
+
+void jsonw2_ulong(jsonw_t *w, const char *name, unsigned long value)
+{
+	if (!w) {
+		return;
+	}
+
+	struct block *top = cur_block(w);
+	if (top) {
+		if (top->count) {
+			fputc(',', w->out);
+		}
+		top->count++;
+	}
+	
+	jsonw2_wrap(w);
+
+	if (name && strlen(name)) {
+		fprintf(w->out, "\"%s\": %lu", name, value);
+	} else {
+		fprintf(w->out, "%lu", value);
+	}
+}
+
+
+void jsonw2_object(jsonw_t *w, const char *name)
+{
+	if (!w) {
+		return;
+	}
+
+	struct block *top = cur_block(w);
+	if (top) {
+		if (top->count) {
+			fputc(',', w->out);
+		}
+		top->count++;
+	}
+	
+	jsonw2_wrap(w);
+
+	if (name && strlen(name)) {
+		fprintf(w->out, "\"%s\": {", name);
+	} else {
+		fprintf(w->out, "{");
+	}
+	
+	start_block(w, BLOCK_OBJECT);
+}
+
+void jsonw2_list(jsonw_t *w, const char *name)
+{
+	if (!w) {
+		return;
+	}
+
+	struct block *top = cur_block(w);
+	if (top->count) {
+		fputc(',', w->out);
+	}
+	top->count++;
+	
+	jsonw2_wrap(w);
+
+	if (name && strlen(name)) {
+		fprintf(w->out, "\"%s\": [", name);
+	} else {
+		fprintf(w->out, "[");
+	}
+	
+	start_block(w, BLOCK_LIST);
+}
+
+
+void jsonw2_end(jsonw_t *w)
+{
+	if (!w) {
+		return;
+	}
+
+	struct block *top = cur_block(w);
+	if (!top) {
+		return;
+	}
+
+	jsonw2_end_block(w);
+	jsonw2_wrap(w);
+
+	switch (top->type) {
+	case BLOCK_OBJECT:
+		fprintf(w->out, "}");
+		break;
+	case BLOCK_LIST:
+		fprintf(w->out, "]");
+		break;
+	}
+
 }
