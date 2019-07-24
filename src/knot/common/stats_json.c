@@ -20,12 +20,18 @@ static const size_t ULONG_MAX_SIZE = 21UL; /* constexpr (size_t)ceil(log10(ULONG
 
 static void dump_counters_json(FILE *fd, mod_ctr_t *ctr, jsonw_t *w)
 {
-	jsonw_list(w, NULL);
+	bool print_list = false;
+	
 	for (uint32_t j = 0; j < ctr->count; j++) {
 		uint64_t counter = ATOMIC_GET(ctr->counters[j]);
 		// Skip empty counters.
 		if (counter == 0) {
 			continue;
+		}
+
+		if(!print_list) {
+			jsonw_list(w, NULL);
+			print_list = true; 
 		}
 
 		if (ctr->idx_to_str != NULL) {
@@ -40,7 +46,9 @@ static void dump_counters_json(FILE *fd, mod_ctr_t *ctr, jsonw_t *w)
 			jsonw_ulong(w, buf, counter);
 		}
 	}
-	jsonw_end(w);
+	if(print_list) {
+		jsonw_end(w);
+	}
 }
 
 static void dump_modules_json(dump_ctx_t *ctx, jsonw_t *w)
@@ -90,9 +98,6 @@ static void dump_modules_json(dump_ctx_t *ctx, jsonw_t *w)
 				dump_counters_json(ctx->fd, ctr, w);
 			}
 		}
-		jsonw_end(w);
-		jsonw_end(w);
-		jsonw_end(w);
 		jsonw_end(w);
 		jsonw_end(w);
 	}
@@ -152,6 +157,7 @@ void dump_to_json(FILE *fd, server_t *server)
 	}
 
 	jsonw_object(w, NULL);
+	jsonw_object(w, "global");
 
 	// Dump record header.
 	jsonw_str(w, "time", date);
@@ -170,11 +176,19 @@ void dump_to_json(FILE *fd, server_t *server)
 	};
 
 	//Dump global statistics.
+	jsonw_list(w, "modules");
+	
 	dump_modules_json(&ctx, w);
+	
+	jsonw_end(w);
+	jsonw_end(w);
 
 	// Dump zone statistics.
 	knot_zonedb_foreach(server->zone_db, zone_stats_dump_json, &ctx, w);
 
+	jsonw_end(w);
+	jsonw_end(w);
+	jsonw_end(w);
 	jsonw_end(w);
 
 	jsonw_free(w);
