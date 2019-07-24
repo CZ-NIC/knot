@@ -145,6 +145,11 @@ General options related to the server.
      answer-rotation: BOOL
      listen: ADDR[@INT] ...
 
+.. CAUTION::
+   When you change configuration parameters dynamically or via configuration file
+   reload, some parameters in the Server section require restarting the Knot server
+   so as the change take effect. See below for the details.
+
 .. _server_identity:
 
 identity
@@ -183,6 +188,9 @@ rundir
 
 A path for storing run-time data (PID file, unix sockets, etc.).
 
+Depending on the usage of this parameter, its change may require restart of the Knot
+server to take effect.
+
 *Default:* ``${localstatedir}/run/knot`` (configured with ``--with-rundir=path``)
 
 .. _server_user:
@@ -194,6 +202,8 @@ A system user with an optional system group (``user:group``) under which the
 server is run after starting and binding to interfaces. Linux capabilities
 are employed if supported.
 
+Change of this parameter requires restart of the Knot server to take effect.
+
 *Default:* root:root
 
 .. _server_pidfile:
@@ -202,6 +212,8 @@ pidfile
 -------
 
 A PID file location.
+
+Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* :ref:`rundir<server_rundir>`/knot.pid
 
@@ -213,6 +225,8 @@ udp-workers
 A number of UDP workers (threads) used to process incoming queries
 over UDP.
 
+Change of this parameter requires restart of the Knot server to take effect.
+
 *Default:* equal to the number of online CPUs
 
 .. _server_tcp-workers:
@@ -222,6 +236,8 @@ tcp-workers
 
 A number of TCP workers (threads) used to process incoming queries
 over TCP.
+
+Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* equal to the number of online CPUs, default value is at least 10
 
@@ -346,6 +362,8 @@ Optional port specification (default is 53) can be appended to each address
 using ``@`` separator. Use ``0.0.0.0`` for all configured IPv4 addresses or
 ``::`` for all configured IPv6 addresses. Non-local address binding is
 automatically enabled if supported by the operating system.
+
+Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
