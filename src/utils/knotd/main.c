@@ -113,6 +113,7 @@ static int make_daemon(int nochdir, int noclose)
 		}
 	}
 
+	close(fd);
 	return 0;
 }
 
