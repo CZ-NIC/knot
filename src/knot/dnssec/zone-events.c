@@ -111,7 +111,8 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 		return KNOT_EOK;
 	}
 
-	if (ctx->zone->nsec3_salt.size != ctx->policy->nsec3_salt_length) {
+	if (ctx->zone->nsec3_salt.size != ctx->policy->nsec3_salt_length ||
+	    ctx->zone->nsec3_salt.size == 0) {
 		*when_resalt = ctx->now;
 	} else if (knot_time_cmp(ctx->now, ctx->zone->nsec3_salt_created) < 0) {
 		return KNOT_EINVAL;
