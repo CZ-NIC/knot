@@ -661,6 +661,33 @@ static int reload_conf(conf_t *new_conf)
 	return KNOT_EOK;
 }
 
+/*! \brief Log warnings if config change requires a restart. */
+static void warn_server_reconfigure(conf_t *conf, server_t *server)
+{
+	if (conf == NULL || server == NULL) {
+		return;
+	}
+
+	static bool udp_warn = true;
+	static bool tcp_warn = true;
+	static bool bg_warn = true;
+
+	if (udp_warn && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {
+		log_warning("changes of udp-workers require restart to take effect");
+		udp_warn = false;
+	}
+
+	if (tcp_warn && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
+		log_warning("changes of tcp-workers require restart to take effect");
+		tcp_warn = false;
+	}
+
+	if (bg_warn && conf->cache.srv_bg_threads != conf_bg_threads(conf)) {
+		log_warning("changes of background-workers require restart to take effect");
+		bg_warn = false;
+	}
+}
+
 int server_reload(server_t *server)
 {
 	if (server == NULL) {
@@ -714,6 +741,7 @@ int server_reload(server_t *server)
 	}
 	if (full || (flags & CONF_IO_FRLD_SRV)) {
 		server_reconfigure(conf(), server);
+		warn_server_reconfigure(conf(), server);
 		stats_reconfigure(conf(), server);
 	}
 	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
@@ -751,7 +779,7 @@ void server_stop(server_t *server)
 
 static int reset_handler(server_t *server, int index, unsigned size, runnable_t run)
 {
-	if (server->handlers[index].size != size) {
+	if (server->handlers[index].size != size && !(server->state & ServerRunning)) {
 		/* Free old handlers */
 		if (server->handlers[index].size > 0) {
 			server_free_handler(&server->handlers[index].handler);
@@ -779,12 +807,12 @@ static int reset_handler(server_t *server, int index, unsigned size, runnable_t 
 /*! \brief Reconfigure UDP and TCP query processing threads. */
 static int reconfigure_threads(conf_t *conf, server_t *server)
 {
-	int ret = reset_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
+	int ret = reset_handler(server, IO_UDP, conf_udp_threads(conf), udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return reset_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
+	return reset_handler(server, IO_TCP, conf_tcp_threads(conf), tcp_master);
 }
 
 static int reconfigure_journal_db(conf_t *conf, server_t *server)
