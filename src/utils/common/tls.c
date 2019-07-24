@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -460,7 +460,8 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 
 	// Receive message header.
 	while (total < sizeof(msg_len)) {
-		ssize_t ret = gnutls_record_recv(ctx->session, &msg_len + total,
+		ssize_t ret = gnutls_record_recv(ctx->session,
+		                                 (uint8_t *)&msg_len + total,
 		                                 sizeof(msg_len) - total);
 		if (ret > 0) {
 			total += ret;
