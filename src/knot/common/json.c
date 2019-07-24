@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,9 @@
 
 #include "knot/common/json.h"
 
-jsonw_t *jsonw2_new(FILE *out, const char *indent)
+static const char *DEFAULT_INDENT = "\t";
+
+jsonw_t *jsonw_new(FILE *out, const char *indent)
 {
 	if (!out) {
 		return NULL;
@@ -28,28 +30,23 @@ jsonw_t *jsonw2_new(FILE *out, const char *indent)
 	}
 
 	w->out = out;
-	w->indent = indent;
-
+	w->indent = indent ? indent : DEFAULT_INDENT;
 	w->top = MAX_DEPTH;
 
 	return w;
 }
 
-void jsonw2_free(jsonw_t *w)
+void jsonw_free(jsonw_t *w)
 {
-	if (!w) {
-		return;
-	}
-
 	free(w);
 	w = NULL;
 }
 
-static void jsonw2_start(jsonw_t *w, int type)
+static void jsonw_start(jsonw_t *w, int type)
 {
 	assert(w->top > 0);
 
-	struct block b = {
+	jsonw_block_t b = {
 		.type = type,
 		.count = 0,
 	};
@@ -58,31 +55,28 @@ static void jsonw2_start(jsonw_t *w, int type)
 	w->stack[w->top] = b;
 }
 
-static struct block *cur_block(jsonw_t *w)
+static jsonw_block_t *jsonw_cur_block(jsonw_t *w)
 {
-	if (!w) {
-		return NULL;
-	}
-	if (w->top >= MAX_DEPTH) {
-		return NULL;
+	if (w && w->top < MAX_DEPTH) {
+		return &w->stack[w->top];
 	}
 
-	assert(w->top < MAX_DEPTH);
-
-	return &w->stack[w->top];
+	return NULL;
 }
 
-static void jsonw2_wrap(jsonw_t *w)
+static size_t jsonw_wrap(jsonw_t *w)
 {	
 	fputc('\n', w->out);
+	size_t written = 1;
 
-	int level = MAX_DEPTH - w->top;
+	const int level = MAX_DEPTH - w->top;
 	for (int i = 0; i < level; i++) {
-		fprintf(w->out, "%s", w->indent);
+		written += fprintf(w->out, "%s", w->indent);
 	}
+	return written;
 }
 
-static void jsonw2_end_block(jsonw_t *w)
+static void jsonw_end_block(jsonw_t *w)
 {
 	if (!w) {
 		return;
@@ -93,118 +87,78 @@ static void jsonw2_end_block(jsonw_t *w)
 	w->top += 1;
 }
 
-void jsonw2_str(jsonw_t *w, const char *name, const char *value)
+static int jsonw_any_prep(jsonw_t *w, const char *name)
 {
 	if (!w) {
-		return;
+		return 0;
 	}
 
-	struct block *top = cur_block(w);
+	int written = 0;
+
+	jsonw_block_t *top = jsonw_cur_block(w);
 	if (top) {
 		if (top->count) {
 			fputc(',', w->out);
+			written++;
 		}
 		top->count++;
 	}
 	
-	jsonw2_wrap(w);
+	written += jsonw_wrap(w);
 
 	if (name && strlen(name)) {
-		fprintf(w->out, "\"%s\": \"%s\"", name, value);
-	} else {
+		written += fprintf(w->out, "\"%s\": ", name);
+	}
+	
+	return written;
+}
+
+void jsonw_str(jsonw_t *w, const char *name, const char *value)
+{
+	if(jsonw_any_prep(w, name)) {
 		fprintf(w->out, "\"%s\"", value);
 	}
 }
 
 
-void jsonw2_ulong(jsonw_t *w, const char *name, unsigned long value)
+void jsonw_ulong(jsonw_t *w, const char *name, unsigned long value)
 {
-	if (!w) {
-		return;
-	}
-
-	struct block *top = cur_block(w);
-	if (top) {
-		if (top->count) {
-			fputc(',', w->out);
-		}
-		top->count++;
-	}
-	
-	jsonw2_wrap(w);
-
-	if (name && strlen(name)) {
-		fprintf(w->out, "\"%s\": %lu", name, value);
-	} else {
+	if(jsonw_any_prep(w, name)) {
 		fprintf(w->out, "%lu", value);
 	}
 }
 
 
-void jsonw2_object(jsonw_t *w, const char *name)
+void jsonw_object(jsonw_t *w, const char *name)
 {
-	if (!w) {
-		return;
-	}
-
-	struct block *top = cur_block(w);
-	if (top) {
-		if (top->count) {
-			fputc(',', w->out);
-		}
-		top->count++;
-	}
-	
-	jsonw2_wrap(w);
-
-	if (name && strlen(name)) {
-		fprintf(w->out, "\"%s\": {", name);
-	} else {
+	if(jsonw_any_prep(w, name)) {
 		fprintf(w->out, "{");
+		jsonw_start(w, BLOCK_OBJECT);
 	}
-	
-	jsonw2_start(w, BLOCK_OBJECT);
 }
 
-void jsonw2_list(jsonw_t *w, const char *name)
+void jsonw_list(jsonw_t *w, const char *name)
 {
-	if (!w) {
-		return;
-	}
-
-	struct block *top = cur_block(w);
-	if(top) {
-		if (top->count) {
-			fputc(',', w->out);
-		}
-		top->count++;
-	}
-
-	jsonw2_wrap(w);
-
-	if (name && strlen(name)) {
-		fprintf(w->out, "\"%s\": [", name);
-	} else {
+	if(jsonw_any_prep(w, name)) {
 		fprintf(w->out, "[");
+		jsonw_start(w, BLOCK_LIST);
 	}
-	
-	jsonw2_start(w, BLOCK_LIST);
 }
 
 
-void jsonw2_end(jsonw_t *w)
+void jsonw_end(jsonw_t *w)
 {
 	if (!w) {
 		return;
 	}
 
-	struct block *top = cur_block(w);
+	jsonw_block_t *top = jsonw_cur_block(w);
 	if (!top) {
 		return;
 	}
 
-	jsonw2_end_block(w);
-	jsonw2_wrap(w);
+	jsonw_end_block(w);
+	jsonw_wrap(w);
 
 	switch (top->type) {
 	case BLOCK_OBJECT:

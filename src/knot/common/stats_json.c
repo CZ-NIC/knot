@@ -16,9 +16,11 @@
 
 #include "knot/common/stats_json.h"
 
+static const size_t ULONG_MAX_SIZE = 21UL; /* constexpr (size_t)ceil(log10(ULONG_MAX)) + 1UL */
+
 static void dump_counters_json(FILE *fd, mod_ctr_t *ctr, jsonw_t *w)
 {
-	jsonw2_list(w, NULL);
+	jsonw_list(w, NULL);
 	for (uint32_t j = 0; j < ctr->count; j++) {
 		uint64_t counter = ATOMIC_GET(ctr->counters[j]);
 		// Skip empty counters.
@@ -29,16 +31,16 @@ static void dump_counters_json(FILE *fd, mod_ctr_t *ctr, jsonw_t *w)
 		if (ctr->idx_to_str != NULL) {
 			char *str = ctr->idx_to_str(j, ctr->count);
 			if (str != NULL) {
-				jsonw2_ulong(w, str, counter);
+				jsonw_ulong(w, str, counter);
 				free(str);
 			}
 		} else {
-			char buf[21];
-			snprintf(buf, 21, "%u", j);
-			jsonw2_ulong(w, buf, counter);
+			char buf[ULONG_MAX_SIZE]; 
+			snprintf(buf, ULONG_MAX_SIZE, "%u", j);
+			jsonw_ulong(w, buf, counter);
 		}
 	}
-	jsonw2_end(w);
+	jsonw_end(w);
 }
 
 static void dump_modules_json(dump_ctx_t *ctx, jsonw_t *w)
@@ -54,7 +56,7 @@ static void dump_modules_json(dump_ctx_t *ctx, jsonw_t *w)
 		if (ctx->zone != NULL) {
 			// Prevent from zone section override.
 			if (!ctx->zone_emitted) {
-				jsonw2_list(w, "zones"); // Level 2 - Start
+				jsonw_list(w, "zones");
 				ctx->zone_emitted = true;
 			}
 
@@ -63,16 +65,16 @@ static void dump_modules_json(dump_ctx_t *ctx, jsonw_t *w)
 				return;
 			}
 
-			jsonw2_object(w, NULL); // Level 3 - Start
-			jsonw2_str(w, "name", name);
+			jsonw_object(w, NULL);
+			jsonw_str(w, "name", name);
 
-			jsonw2_list(w, "modules"); // Level 4 - Start
+			jsonw_list(w, "modules");
 		}
 
 		// Dump module counters.
-		jsonw2_object(w, NULL); // Level 5 - Start
-		jsonw2_str(w, "name", mod->id->name + 1);
-		jsonw2_object(w, "statistics"); // Level 6 - Start
+		jsonw_object(w, NULL);
+		jsonw_str(w, "name", mod->id->name + 1);
+		jsonw_object(w, "statistics");
 		for (int i = 0; i < mod->stats_count; i++) {
 			mod_ctr_t *ctr = mod->stats + i;
 			if (ctr->name == NULL) {
@@ -82,17 +84,17 @@ static void dump_modules_json(dump_ctx_t *ctx, jsonw_t *w)
 			if (ctr->count == 1) {
 				// Simple counter.
 				uint64_t counter = ATOMIC_GET(ctr->counter);
-				jsonw2_ulong(w, ctr->name, counter);
+				jsonw_ulong(w, ctr->name, counter);
 			} else {
 				// Array of counters.
 				dump_counters_json(ctx->fd, ctr, w);
 			}
 		}
-		jsonw2_end(w); // Level 6 - End
-		jsonw2_end(w); // Level 5 - End
-		jsonw2_end(w); // Level 4 - End
-		jsonw2_end(w); // Level 3 - End
-		jsonw2_end(w); // Level 2 - End
+		jsonw_end(w);
+		jsonw_end(w);
+		jsonw_end(w);
+		jsonw_end(w);
+		jsonw_end(w);
 	}
 }
 
@@ -113,7 +115,7 @@ void dump_to_json(FILE *fd, server_t *server)
 {
     char date[64] = "";
 
-	jsonw_t *w = jsonw2_new(fd, "  ");
+	jsonw_t *w = jsonw_new(fd, "  ");
 	if(!w) {
 		return;
 	}
@@ -149,18 +151,18 @@ void dump_to_json(FILE *fd, server_t *server)
 		ident = conf()->hostname;
 	}
 
-	jsonw2_object(w, NULL); // Level 1 - Start
+	jsonw_object(w, NULL);
 
 	// Dump record header.
-	jsonw2_str(w, "time", date);
-	jsonw2_str(w, "identity", ident);
+	jsonw_str(w, "time", date);
+	jsonw_str(w, "identity", ident);
 
 	// Dump server statistics.
-	jsonw2_object(w, "server"); // Level 2 - Start
+	jsonw_object(w, "server");
     for (const stats_item_t *item = server_stats; item->name != NULL; item++) {
-		jsonw2_ulong(w, item->name, item->val(server));
+		jsonw_ulong(w, item->name, item->val(server));
 	}
-	jsonw2_end(w); // Level 2 - End
+	jsonw_end(w);
 
 	dump_ctx_t ctx = {
 		.fd = fd,
@@ -173,8 +175,8 @@ void dump_to_json(FILE *fd, server_t *server)
 	// Dump zone statistics.
 	knot_zonedb_foreach(server->zone_db, zone_stats_dump_json, &ctx, w);
 
-	jsonw2_end(w); // Level 1 - End
+	jsonw_end(w);
 
+	jsonw_free(w);
 	fprintf(fd, "\n]\n");
-	jsonw2_free(w);
 }

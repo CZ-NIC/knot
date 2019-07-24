@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include <stdbool.h>
 
 #define MAX_DEPTH 8
+
 /*!
  * Simple pretty JSON writer.
  */
@@ -35,13 +36,13 @@ enum {
 };
 
 /*! One indented block of JSON. */
-struct block {
+typedef struct {
 	//! Block type.
 	int type;
 
 	//! Number of elements written.
 	int count;
-};
+} jsonw_block_t;
 
 typedef struct jsonw {
 	//! Output file stream.
@@ -50,7 +51,7 @@ typedef struct jsonw {
 	const char *indent;
 
 	//! List to be used as a stack of blocks in progress.
-	struct block stack[MAX_DEPTH];
+	jsonw_block_t stack[MAX_DEPTH];
 	//! Index pointing to the top of the stack.
 	int top;
 } jsonw_t;
@@ -63,39 +64,39 @@ typedef struct jsonw {
  *
  * @return JSON writer or NULL for allocation error.
  */
-jsonw_t *jsonw2_new(FILE *out, const char *indent);
+jsonw_t *jsonw_new(FILE *out, const char *indent);
 
 /*!
  * Free JSON writer created with jsonw_new.
  */
-void jsonw2_free(jsonw_t *w);
+void jsonw_free(jsonw_t *w);
 
 /*!
  * Write string as JSON. The string will be escaped properly.
  */
-void jsonw2_str(jsonw_t *w, const char *name, const char *value);
+void jsonw_str(jsonw_t *w, const char *name, const char *value);
 
 /*!
  * Write integer as JSON.
  */
-void jsonw2_ulong(jsonw_t *w, const char *name, unsigned long value);
+void jsonw_ulong(jsonw_t *w, const char *name, unsigned long value);
 
 /*!
- * Start writing a new object. Version 2
+ * Start writing a new object.
  *
  * The following writes will represent key and value pairs respectively until
  * jsonw_end is called.
  */
-void jsonw2_object(jsonw_t *w, const char *name);
+void jsonw_object(jsonw_t *w, const char *name);
 
 /*!
- * Start writing a new list. Version 2
+ * Start writing a new list.
  *
  * The following writes will represent values until jsonw_end is called.
  */
-void jsonw2_list(jsonw_t *w, const char *name);
+void jsonw_list(jsonw_t *w, const char *name);
 
 /*!
- * Terminate in-progress object or list. Version 2
+ * Terminate in-progress object or list.
  */
-void jsonw2_end(jsonw_t *w);
+void jsonw_end(jsonw_t *w);
