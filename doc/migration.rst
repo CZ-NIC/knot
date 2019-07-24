@@ -131,7 +131,7 @@ up-to-date zone files from BIND, importing existing private keys, and updating
 server configuration:
 
 1. To obtain current content of the zone which is being migrated,
-   request BIND to flush the zone into the zone file: ``rndc flush
+   request BIND to flush the zone into the zone file: ``rndc sync
    example.com``.
 
    .. NOTE::
