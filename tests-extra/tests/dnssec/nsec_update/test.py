@@ -28,7 +28,7 @@ for zone in zones:
     master.dnssec(zone).enable = True
     master.dnssec(zone).nsec3 = random.choice([True, False])
     master.dnssec(zone).nsec3_iters = 2
-    master.dnssec(zone).nsec3_salt_len = 8
+    master.dnssec(zone).nsec3_salt_len = random.choice([0, 8])
     master.dnssec(zone).nsec3_opt_out = (random.random() < 0.5)
 
 t.start()
