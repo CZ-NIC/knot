@@ -576,6 +576,7 @@ Periodic server statistics dumping.
   statistics:
       timer: TIME
       file: STR
+      format: yaml | json
       append: BOOL
 
 .. _statistics_timer:
@@ -596,6 +597,15 @@ file
 A file path of statistics output in the YAML format.
 
 *Default:* :ref:`rundir<server_rundir>`/stats.yaml
+
+.. _statistics_format:
+
+format
+------
+
+Format of data printed in output file.
+
+*Default:* yaml
 
 .. _statistics_append:
 
