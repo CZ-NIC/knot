@@ -62,7 +62,7 @@ static void init_signal_started(void)
 
 static int make_daemon(int nochdir, int noclose)
 {
-	int fd, ret;
+	int ret;
 
 	switch (fork()) {
 	case -1:
@@ -94,7 +94,7 @@ static int make_daemon(int nochdir, int noclose)
 			return errno;
 		}
 
-		fd = open("/dev/null", O_RDWR);
+		int fd = open("/dev/null", O_RDWR);
 		if (fd == -1) {
 			return errno;
 		}
@@ -111,9 +111,9 @@ static int make_daemon(int nochdir, int noclose)
 			close(fd);
 			return errno;
 		}
+		close(fd);
 	}
 
-	close(fd);
 	return 0;
 }
 
