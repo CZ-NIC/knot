@@ -233,8 +233,9 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
 
 static int add_to_changes_cb2(zone_node_t *node, void *ctx)
 {
+	zone_tree_t *tree = ctx;
 	node->flags |= NODE_FLAGS_DELETED;
-	int ret = zone_tree_insert_with_parents(ctx, node);
+	int ret = zone_tree_insert_with_parents(tree, node);
 	assert(ret == KNOT_EOK);
 	return ret;
 }

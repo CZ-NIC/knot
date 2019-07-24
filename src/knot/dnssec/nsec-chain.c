@@ -359,7 +359,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
 		zone_node_t *curr_old = binode_counterpart(curr_new);
 		bool del_new = node_no_nsec(curr_new);
 		bool del_old = node_no_nsec(curr_old);
-
+printf("curr <%s>\n", knot_dname_to_str_alloc(curr_new->owner));
 		if (started_with == curr_new) {
 			assert(started_with != NULL);
 			break;
