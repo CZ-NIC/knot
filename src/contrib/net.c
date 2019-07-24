@@ -395,7 +395,7 @@ static void msg_iov_shift(struct msghdr *msg, size_t done)
 #define TIMEOUT_CTX_UPDATE \
 	if (*timeout_ptr > 0) { \
 		clock_gettime(CLOCK_MONOTONIC, &end); \
-		int running_ms = time_diff_ms(&end, &begin); \
+		int running_ms = time_diff_ms(&begin, &end); \
 		*timeout_ptr = MAX(*timeout_ptr - running_ms, 0); \
 	}
 
