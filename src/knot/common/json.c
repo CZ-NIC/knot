@@ -115,7 +115,7 @@ static int jsonw_any_prep(jsonw_t *w, const char *name)
 
 void jsonw_str(jsonw_t *w, const char *name, const char *value)
 {
-	if(jsonw_any_prep(w, name)) {
+	if (jsonw_any_prep(w, name)) {
 		fprintf(w->out, "\"%s\"", value);
 	}
 }
@@ -123,7 +123,7 @@ void jsonw_str(jsonw_t *w, const char *name, const char *value)
 
 void jsonw_ulong(jsonw_t *w, const char *name, unsigned long value)
 {
-	if(jsonw_any_prep(w, name)) {
+	if (jsonw_any_prep(w, name)) {
 		fprintf(w->out, "%lu", value);
 	}
 }
@@ -131,7 +131,7 @@ void jsonw_ulong(jsonw_t *w, const char *name, unsigned long value)
 
 void jsonw_object(jsonw_t *w, const char *name)
 {
-	if(jsonw_any_prep(w, name)) {
+	if (jsonw_any_prep(w, name)) {
 		fprintf(w->out, "{");
 		jsonw_start(w, BLOCK_OBJECT);
 	}
@@ -139,7 +139,7 @@ void jsonw_object(jsonw_t *w, const char *name)
 
 void jsonw_list(jsonw_t *w, const char *name)
 {
-	if(jsonw_any_prep(w, name)) {
+	if (jsonw_any_prep(w, name)) {
 		fprintf(w->out, "[");
 		jsonw_start(w, BLOCK_LIST);
 	}
