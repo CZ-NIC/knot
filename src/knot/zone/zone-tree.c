@@ -249,6 +249,7 @@ int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
 	bool wildcard = knot_dname_is_wildcard(node->owner);
 
 	node->parent = NULL;
+	node->flags |= NODE_FLAGS_DELETED;
 	zone_tree_remove_node(tree, node->owner);
 
 	int ret = del_cb(node, del_cb_ctx);
