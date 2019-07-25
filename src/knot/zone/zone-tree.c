@@ -236,6 +236,8 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
 				parent->flags |= NODE_FLAGS_WILDCARD_CHILD;
 			}
 		}
+	} else {
+		(*new_node)->flags &= ~NODE_FLAGS_DELETED;
 	}
 	return KNOT_EOK;
 }

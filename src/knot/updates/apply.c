@@ -243,14 +243,9 @@ static int del_node_cb(zone_node_t *node, void *ctx)
 static zone_node_t *add_node_cb(const knot_dname_t *owner, void *ctx)
 {
 	zone_tree_t *tree = ctx;
-	zone_node_t *node = zone_tree_get(tree, owner);
-	if (node == NULL) {
-		node = node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES),
-		                (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
-		(void)zone_tree_insert_with_parents(tree, node);
-	} else {
-		node->flags &= ~NODE_FLAGS_DELETED;
-	}
+	zone_node_t *node = node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES),
+	                             (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
+	(void)zone_tree_insert_with_parents(tree, node);
 	return node;
 }
 
