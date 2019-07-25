@@ -109,6 +109,20 @@ void conf_refresh_hostname(
 static void init_cache(
 	conf_t *conf)
 {
+	/* For UDP and TCP workers, cache the numbers of running workers.
+	 * These numbers can't change in runtime, while config data can.
+	 */
+
+	static bool first_init = true;
+	static size_t running_udp_threads;
+	static size_t running_tcp_threads;
+
+	if (first_init) {
+		running_udp_threads = conf_udp_threads(conf);
+		running_tcp_threads = conf_tcp_threads(conf);
+		first_init = false;
+	}
+
 	conf_val_t val = conf_get(conf, C_SRV, C_MAX_IPV4_UDP_PAYLOAD);
 	if (val.code != KNOT_EOK) {
 		val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
@@ -129,19 +143,6 @@ static void init_cache(
 
 	val = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
 	conf->cache.srv_tcp_reply_timeout = conf_int(&val);
-
-	/* For UDP and TCP workers, cache the numbers of running workers.
-	 * These numbers can't change in runtime, while config data can.
-	 */
-
-	static bool first_init = true;
-	static size_t running_udp_threads, running_tcp_threads;
-
-	if (first_init) {
-		running_udp_threads = conf_udp_threads(conf);
-		running_tcp_threads = conf_tcp_threads(conf);
-		first_init = false;
-	}
 
 	conf->cache.srv_udp_threads = running_udp_threads;
 
