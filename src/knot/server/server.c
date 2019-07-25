@@ -752,25 +752,30 @@ void server_stop(server_t *server)
 static int reset_handler(server_t *server, int index, unsigned size, runnable_t run)
 {
 	if (server->handlers[index].size != size) {
-		/* Free old handlers */
-		if (server->handlers[index].size > 0) {
-			server_free_handler(&server->handlers[index].handler);
-		}
+		if (!(server->state & ServerRunning)) {
+			/* Free old handlers */
+			if (server->handlers[index].size > 0) {
+				server_free_handler(&server->handlers[index].handler);
+			}
 
-		/* Initialize I/O handlers. */
-		int ret = server_init_handler(server, index, size, run, NULL);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
-		/* Start if server is running. */
-		if (server->state & ServerRunning) {
-			ret = dt_start(server->handlers[index].handler.unit);
+			/* Initialize I/O handlers. */
+			int ret = server_init_handler(server, index, size, run, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
+
+			/* Start if server is running. */
+			if (server->state & ServerRunning) {
+				ret = dt_start(server->handlers[index].handler.unit);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
+			}
+			server->handlers[index].size = size;
+		} else {
+			log_warning("new value of %s-workers will take effect after a restart", \
+				index ? "tcp" : "udp");
 		}
-		server->handlers[index].size = size;
 	}
 
 	return KNOT_EOK;
@@ -779,12 +784,12 @@ static int reset_handler(server_t *server, int index, unsigned size, runnable_t 
 /*! \brief Reconfigure UDP and TCP query processing threads. */
 static int reconfigure_threads(conf_t *conf, server_t *server)
 {
-	int ret = reset_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
+	int ret = reset_handler(server, IO_UDP, conf_udp_threads(conf), udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return reset_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
+	return reset_handler(server, IO_TCP, conf_tcp_threads(conf), tcp_master);
 }
 
 static int reconfigure_journal_db(conf_t *conf, server_t *server)

@@ -130,9 +130,22 @@ static void init_cache(
 	val = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
 	conf->cache.srv_tcp_reply_timeout = conf_int(&val);
 
-	conf->cache.srv_udp_threads = conf_udp_threads(conf);
+	/* For UDP and TCP workers, cache the numbers of running workers.
+	 * These numbers can't change in runtime, while config data can.
+	 */
 
-	conf->cache.srv_tcp_threads = conf_tcp_threads(conf);
+	static bool first_init = true;
+	static size_t running_udp_threads, running_tcp_threads;
+
+	if (first_init) {
+		running_udp_threads = conf_udp_threads(conf);
+		running_tcp_threads = conf_tcp_threads(conf);
+		first_init = false;
+	}
+
+	conf->cache.srv_udp_threads = running_udp_threads;
+
+	conf->cache.srv_tcp_threads = running_tcp_threads;
 
 	conf->cache.srv_bg_threads = conf_bg_threads(conf);
 
