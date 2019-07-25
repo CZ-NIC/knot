@@ -231,15 +231,16 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
 	return KNOT_EOK;
 }
 
-static int add_to_changes_cb2(zone_node_t *node, void *ctx)
+static int del_node_cb(zone_node_t *node, void *ctx)
 {
+	zone_tree_t *tree = ctx;
 	node->flags |= NODE_FLAGS_DELETED;
-	int ret = zone_tree_insert_with_parents(ctx, node);
+	int ret = zone_tree_insert_with_parents(tree, node);
 	assert(ret == KNOT_EOK);
 	return ret;
 }
 
-static zone_node_t *find_node_in_changes(const knot_dname_t *owner, void *ctx)
+static zone_node_t *add_node_cb(const knot_dname_t *owner, void *ctx)
 {
 	zone_tree_t *tree = ctx;
 	zone_node_t *node = zone_tree_get(tree, owner);
@@ -265,7 +266,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 
 	// Get or create node with this owner, search changes first
 	zone_node_t *node = NULL;
-	int ret = zone_tree_add_node(tree, contents->apex, rr->owner, find_node_in_changes, ptrs, &node);
+	int ret = zone_tree_add_node(tree, contents->apex, rr->owner, add_node_cb, ptrs, &node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -273,7 +274,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		return KNOT_EOUTOFZONE;
 	}
 
-	ret = zone_tree_insert_with_parents(nsec3rel ? ctx->nsec3_ptrs : ctx->node_ptrs, node);
+	ret = zone_tree_insert_with_parents(ptrs, node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -350,7 +351,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node->children == 0 && node != contents->apex) {
-			zone_tree_del_node(tree, node, add_to_changes_cb2, ptrs);
+			zone_tree_del_node(tree, node, del_node_cb, ptrs);
 		}
 	}
 
