@@ -802,7 +802,7 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
-	nsec_chain_iterate_data_t data = { ttl, update };
+	nsec_chain_iterate_data_t data = { true, ttl, update };
 
 	ret = knot_nsec_chain_iterate_fix(update->a_ctx->nsec3_ptrs,
 	                                  connect_nsec3_nodes2, reconnect_nsec3_nodes2, &data);
