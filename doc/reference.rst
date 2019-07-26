@@ -249,6 +249,8 @@ background-workers
 A number of workers (threads) used to execute background operations (zone
 loading, zone updates, etc.).
 
+Change of this parameter requires restart of the Knot server to take effect.
+
 *Default:* equal to the number of online CPUs, default value is at most 10
 
 .. _server_async-start:

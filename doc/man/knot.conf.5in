@@ -270,6 +270,8 @@ Change of this parameter requires restart of the Knot server to take effect.
 A number of workers (threads) used to execute background operations (zone
 loading, zone updates, etc.).
 .sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
 \fIDefault:\fP equal to the number of online CPUs, default value is at most 10
 .SS async\-start
 .sp
