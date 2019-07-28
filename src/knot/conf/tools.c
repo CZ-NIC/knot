@@ -204,9 +204,10 @@ int rrtype_to_txt(
 
 	uint16_t type = (uint16_t)wire_ctx_read_u64(in);
 	int ret = knot_rrtype_to_string(type, (char *)out->position, out->size);
-	if (ret != 0) {
+	if (ret < 0) {
 		return KNOT_EINVAL;
 	}
+	wire_ctx_skip(out, ret);
 
 	YP_CHECK_RET;
 }
