@@ -774,7 +774,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	if (lf == NULL) {
 		return state;
 	}
-	trie_val_t *val = trie_get_try(ctx->geo_trie, lf + 1, *lf);
+	trie_val_t *val = trie_get_try_wildcard(ctx->geo_trie, lf + 1, *lf);
 	if (val == NULL) {
 		// Nothing to do in this module.
 		return state;

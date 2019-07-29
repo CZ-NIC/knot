@@ -77,6 +77,9 @@ size_t trie_weight(const trie_t *tbl);
 /*! \brief Search the trie, returning NULL on failure. */
 trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len);
 
+/*! \brief Search the trie for longest possible, returning NULL on failure. */
+trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t len);
+
 /*! \brief Search the trie, inserting NULL trie_val_t on failure. */
 trie_val_t* trie_get_ins(trie_t *tbl, const trie_key_t *key, uint32_t len);
 

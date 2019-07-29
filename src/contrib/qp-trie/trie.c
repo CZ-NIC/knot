@@ -451,6 +451,50 @@ trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 	return tvalp(t);
 }
 
+trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t len)
+{
+	assert(tbl);
+	if (!tbl->weight) {
+		return NULL;
+	}
+
+	//Working copy for append of wildcard
+	trie_key_t work_key[len + 1];
+	memcpy(work_key, key, len);
+	trie_key_t *key_end = work_key + len - 1;
+
+	trie_val_t *ret = NULL;
+	do {
+		//Find match
+		node_t *t = &tbl->root;
+		while (isbranch(t)) {
+			__builtin_prefetch(twigs(t));
+			bitmap_t b = twigbit(t, work_key, len);
+			if (!hastwig(t, b)) {
+				goto shift;
+			}
+			t = twig(t, twigoff(t, b));
+		}
+		tkey_t *lkey = tkey(t);
+
+		// Key found
+		if (key_cmp(work_key, len, lkey->chars, lkey->len) == 0) {
+			return tvalp(t);
+		}
+
+		// Domain level up
+		shift: for(key_end--; key_end > work_key && *key_end; --key_end) {}
+
+		// Append wildchar
+		strncpy((char *)key_end + 1, "*", 2);
+		// Set new length
+		len = key_end - work_key + 3;
+
+	} while (key_end > work_key);
+	
+	return ret;
+}
+
 /*! \brief Delete leaf t with parent p; b is the bit for t under p.
  * Optionally return the deleted value via val.  The function can't fail. */
 static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)

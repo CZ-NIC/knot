@@ -141,7 +141,7 @@
 		}
 		parser->indent = 0;
 	}
-	key_name = ((alnum | [\\.]) . (alnum | [\\.\-])*) >_key_init $_key;
+	key_name = ((alnum | [\\.] | "*." ) . (alnum | [\\.\-])*) >_key_init $_key;
 	key0 =                                                  key_name %_key0_exit;
 	key1 =   sep                                 $_indent . key_name %_key1_exit;
 	id   = ((sep $_id)? . '-' >_dash_init . sep) $_indent . key_name %_id_exit;
