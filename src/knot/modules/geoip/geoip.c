@@ -204,6 +204,11 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *
 {
 	int ret = KNOT_EOK;
 
+	// Is wildcard
+	while (strlen(owner) >= 2 && strncmp(owner, "\001*", 2) == 0) {
+		owner += 2;
+	}
+
 	// Find the node belonging to the owner.
 	knot_dname_storage_t lf_storage;
 	uint8_t *lf = knot_dname_lf(owner, lf_storage);
@@ -774,7 +779,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	if (lf == NULL) {
 		return state;
 	}
-	trie_val_t *val = trie_get_try(ctx->geo_trie, lf + 1, *lf);
+	trie_val_t *val = trie_get_lp(ctx->geo_trie, lf + 1, *lf);
 	if (val == NULL) {
 		// Nothing to do in this module.
 		return state;

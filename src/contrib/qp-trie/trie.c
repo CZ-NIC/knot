@@ -451,6 +451,24 @@ trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 	return tvalp(t);
 }
 
+trie_val_t* trie_get_lp(trie_t *tbl, const trie_key_t *key, uint32_t len)
+{
+	assert(tbl);
+	if (!tbl->weight) {
+		return NULL;
+	}
+    trie_val_t *ret = NULL;
+	while (!ret) {
+		ret = trie_get_try(tbl, key, len);
+		--len;
+		if(len == 0) {
+			break;
+		}
+	}
+	
+	return ret;
+}
+
 /*! \brief Delete leaf t with parent p; b is the bit for t under p.
  * Optionally return the deleted value via val.  The function can't fail. */
 static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
