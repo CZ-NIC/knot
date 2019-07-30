@@ -142,7 +142,7 @@
 		parser->indent = 0;
 	}
 	key_name = ((alnum | [\\.]) . (alnum | [\\.\-])*) >_key_init $_key;
-	key_name_wildchar = ((alnum | [\\.*] ) . (alnum | [\\.\-*])*) >_key_init $_key;
+	key_name_wildchar = ((alnum | [\\.*] ) . (alnum | [\\.\-])*) >_key_init $_key;
 	# key0 =                                                  key_name %_key0_exit;
 	key0 =                                                  key_name_wildchar %_key0_exit;
 	key1 =   sep                                 $_indent . key_name %_key1_exit;

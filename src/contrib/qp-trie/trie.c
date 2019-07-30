@@ -457,14 +457,29 @@ trie_val_t* trie_get_lp(trie_t *tbl, const trie_key_t *key, uint32_t len)
 	if (!tbl->weight) {
 		return NULL;
 	}
+
+	//node_t *t = &tbl->root;
+
+	trie_key_t work_key[len];
+	memcpy(work_key, key, len);
+	trie_key_t *key_end = work_key + len - 1;
+
     trie_val_t *ret = NULL;
-	while (!ret) {
-		ret = trie_get_try(tbl, key, len);
-		--len;
-		if(len == 0) {
-			break;
+	do {
+		ret = trie_get_try(tbl, work_key, len);
+		if(ret) {
+			return ret;
 		}
-	}
+
+		// Domain level up
+		for(key_end--; key_end > work_key && *key_end; --key_end) {}
+
+		// Append wildchar
+		strncpy((char *)key_end + 1, "*", 2);
+		// Set new length
+		len = key_end - work_key + 3;
+
+	} while (key_end > work_key);
 	
 	return ret;
 }

@@ -204,11 +204,6 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *
 {
 	int ret = KNOT_EOK;
 
-	// Is wildcard
-	while (strlen(owner) >= 2 && strncmp(owner, "\001*", 2) == 0) {
-		owner += 2;
-	}
-
 	// Find the node belonging to the owner.
 	knot_dname_storage_t lf_storage;
 	uint8_t *lf = knot_dname_lf(owner, lf_storage);
