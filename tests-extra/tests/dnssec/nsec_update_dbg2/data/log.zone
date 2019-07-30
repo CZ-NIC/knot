@@ -1,0 +1,9 @@
+$TTL 12593
+$ORIGIN log.
+@ IN SOA ns.log. username.log. 1225066560 3600 10800 4w 1h
+@ NS ns
+@ NS ns2
+ns A 171.81.84.11
+ns2 A 18.158.23.238
+; END OF SOA
+armstrong A 221.162.180.20

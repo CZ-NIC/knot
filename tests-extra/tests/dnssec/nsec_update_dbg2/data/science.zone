@@ -1,0 +1,9 @@
+$TTL 4338
+$ORIGIN science.
+@ IN SOA ns.science. username.science. 2450575936 3600 10800 4w 1h
+@ NS ns
+@ NS ns2
+ns A 228.232.129.211
+ns2 A 24.26.31.168
+; END OF SOA
+intranet A 133.16.238.21
