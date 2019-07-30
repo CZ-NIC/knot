@@ -135,6 +135,8 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 	                             binode_counterpart(counter->nsec3_node) : NULL;
 	if (nsec3_counter != NULL && !(nsec3_counter->flags & NODE_FLAGS_DELETED)) {
 		node->nsec3_node = nsec3_counter;
+		assert((node->flags & NODE_FLAGS_NSEC3_NODE));
+		node->flags |= NODE_FLAGS_NSEC3_NODE;
 	} else {
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 		if (counter->flags & NODE_FLAGS_NSEC3_NODE) {
