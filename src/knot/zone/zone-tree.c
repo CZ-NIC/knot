@@ -209,12 +209,16 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t *dname,
                        zone_tree_new_node_cb_t new_cb, void *new_cb_ctx, zone_node_t **new_node)
 {
-	if (knot_dname_cmp(dname, apex->owner) == 0) {
+	int in_bailiwick = knot_dname_in_bailiwick(dname, apex->owner);
+	if (in_bailiwick == 0) {
 		*new_node = apex;
 		return KNOT_EOK;
+	} else if (in_bailiwick < 0) {
+		return KNOT_EOUTOFZONE;
 	}
+
 	*new_node = zone_tree_get(tree, dname);
-	if (*new_node == NULL && knot_dname_in_bailiwick(dname, apex->owner) > 0) {
+	if (*new_node == NULL) {
 		*new_node = new_cb(dname, new_cb_ctx);
 		if (*new_node == NULL) {
 			return KNOT_ENOMEM;

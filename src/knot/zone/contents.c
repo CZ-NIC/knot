@@ -116,11 +116,6 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n
 		return KNOT_EINVAL;
 	}
 
-	// check if the RRSet belongs to the zone
-	if (knot_dname_in_bailiwick(rr->owner, z->apex->owner) < 0) {
-		return KNOT_EOUTOFZONE;
-	}
-
 	if (*n == NULL) {
 		int ret = zone_tree_add_node(zone_contents_tree_for_rr(z, rr), z->apex, rr->owner,
 		                             (zone_tree_new_node_cb_t)node_new_for_contents, z, n);

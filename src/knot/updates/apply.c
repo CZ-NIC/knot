@@ -267,9 +267,6 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	if (node == NULL) {
-		return KNOT_EOUTOFZONE;
-	}
 
 	ret = zone_tree_insert_with_parents(ptrs, node, nsec3rel);
 	if (ret != KNOT_EOK) {
