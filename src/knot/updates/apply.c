@@ -231,13 +231,6 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
 	return KNOT_EOK;
 }
 
-static zone_node_t *add_node_cb(const knot_dname_t *owner, void *ctx)
-{
-	zone_tree_t *tree = ctx;
-	return node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES),
-	                (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
-}
-
 int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 {
 	zone_contents_t *contents = ctx->contents;
@@ -250,7 +243,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 
 	// Get or create node with this owner, search changes first
 	zone_node_t *node = NULL;
-	int ret = zone_tree_add_node(tree, contents->apex, rr->owner, add_node_cb, ptrs, &node);
+	int ret = zone_tree_add_node(tree, contents->apex, rr->owner, &node);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -207,7 +207,7 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 }
 
 int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t *dname,
-                       zone_tree_new_node_cb_t new_cb, void *new_cb_ctx, zone_node_t **new_node)
+                       zone_node_t **new_node)
 {
 	int in_bailiwick = knot_dname_in_bailiwick(dname, apex->owner);
 	if (in_bailiwick == 0) {
@@ -219,7 +219,9 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
 
 	*new_node = zone_tree_get(tree, dname);
 	if (*new_node == NULL) {
-		*new_node = new_cb(dname, new_cb_ctx);
+		*new_node = node_new(dname, (tree->flags & ZONE_TREE_USE_BINODES),
+		                     (tree->flags & ZONE_TREE_USE_BINODES) &&
+		                     (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
 		if (*new_node == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -229,7 +231,7 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
 			return ret;
 		}
 		zone_node_t *parent = NULL;
-		ret = zone_tree_add_node(tree, apex, knot_wire_next_label(dname, NULL), new_cb, new_cb_ctx, &parent);
+		ret = zone_tree_add_node(tree, apex, knot_wire_next_label(dname, NULL), &parent);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

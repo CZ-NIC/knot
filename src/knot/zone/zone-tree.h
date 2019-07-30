@@ -38,8 +38,6 @@ typedef struct {
  */
 typedef int (*zone_tree_apply_cb_t)(zone_node_t *node, void *data);
 
-typedef zone_node_t *(*zone_tree_new_node_cb_t)(const knot_dname_t *dname, void *ctx);
-
 /*!
  * \brief Zone tree iteration context.
  */
@@ -166,14 +164,12 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner);
  * \param tree         Zone tree to insert into.
  * \param apex         Zone contents apex node.
  * \param dname        Name of the node to be added.
- * \param new_cb       Callback for allocating new node.
- * \param new_cb_ctx   Context to be passed to allocating callback.
  * \param new_node     Output: pointer on added (or existing) node with specified dname.
  *
  * \return KNOT_E*
  */
 int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t *dname,
-                       zone_tree_new_node_cb_t new_cb, void *new_cb_ctx, zone_node_t **new_node);
+                       zone_node_t **new_node);
 
 /*!
  * \brief Remove a node in zone tree, removin also empty parents.

@@ -117,8 +117,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n
 	}
 
 	if (*n == NULL) {
-		int ret = zone_tree_add_node(zone_contents_tree_for_rr(z, rr), z->apex, rr->owner,
-		                             (zone_tree_new_node_cb_t)node_new_for_contents, z, n);
+		int ret = zone_tree_add_node(zone_contents_tree_for_rr(z, rr), z->apex, rr->owner, n);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
