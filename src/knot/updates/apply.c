@@ -231,13 +231,6 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
 	return KNOT_EOK;
 }
 
-static int del_node_cb(zone_node_t *node, void *ctx)
-{
-	UNUSED(ctx);
-	node->flags |= NODE_FLAGS_DELETED;
-	return KNOT_EOK;
-}
-
 static zone_node_t *add_node_cb(const knot_dname_t *owner, void *ctx)
 {
 	zone_tree_t *tree = ctx;
@@ -345,7 +338,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		node_remove_rdataset(node, rr->type);
 		// If node is empty now, delete it from zone tree.
 		if (node->rrset_count == 0 && node->children == 0 && node != contents->apex) {
-			zone_tree_del_node(tree, node, del_node_cb, ptrs);
+			zone_tree_del_node(tree, node, false);
 		}
 	}
 

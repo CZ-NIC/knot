@@ -40,8 +40,6 @@ typedef int (*zone_tree_apply_cb_t)(zone_node_t *node, void *data);
 
 typedef zone_node_t *(*zone_tree_new_node_cb_t)(const knot_dname_t *dname, void *ctx);
 
-typedef int (*zone_tree_del_node_cb_t)(zone_node_t *node, void *ctx);
-
 /*!
  * \brief Zone tree iteration context.
  */
@@ -182,13 +180,11 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
  *
  * \param tree          Zone tree to remove from.
  * \param node          Node to be removed.
- * \param del_cb        Callback called on every removed node.
- * \param del_cb_ctx    Context to be passed to the callback.
+ * \param free_deleted  Indication to free node.
  *
  * \return KNOT_E*
  */
-int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
-                       zone_tree_del_node_cb_t del_cb, void *del_cb_ctx);
+int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool free_deleted);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.
