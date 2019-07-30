@@ -114,10 +114,11 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node);
  *
  * \param tree   Zone tree to insert into.
  * \param node   Node to be inserted with parents.
+ * \param without_parents   Actually, insert it without parents.
  *
  * \return KNOT_E*
  */
-int zone_tree_insert_with_parents(zone_tree_t *tree, zone_node_t *node);
+int zone_tree_insert_with_parents(zone_tree_t *tree, zone_node_t *node, bool without_parents);
 
 /*!
  * \brief Finds node with the given owner in the zone tree.
