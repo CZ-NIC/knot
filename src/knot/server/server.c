@@ -48,6 +48,12 @@ enum {
 	TCP_MIN_SNDSIZE = sizeof(uint16_t) + UINT16_MAX
 };
 
+/*! \brief Timer and its lock for TCP throttle warnings. */
+locked_timeout_t tcp_throttle_log = {
+	.timer_end.tv_sec = 0,
+	.timer_end.tv_nsec = 0
+};
+
 /*! \brief Unbind interface and clear the structure. */
 static void server_deinit_iface(iface_t *iface)
 {
@@ -496,6 +502,9 @@ void server_deinit(server_t *server)
 	/* Free threads and event handlers. */
 	worker_pool_destroy(server->workers);
 
+	/* Destroy the TCP throttle log timer spinlock. */
+	knot_spin_destroy(&tcp_throttle_log.lock);
+
 	/* Free zone database. */
 	knot_zonedb_deep_free(&server->zone_db);
 
@@ -783,6 +792,9 @@ static int reconfigure_threads(conf_t *conf, server_t *server)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+
+	/* Initialize the spinlock for TCP threshold logging. */
+	knot_spin_init(&tcp_throttle_log.lock);
 
 	return reset_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
 }

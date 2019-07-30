@@ -26,6 +26,7 @@
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/zonedb.h"
+#include "contrib/spinlock.h"
 #include "contrib/ucw/lists.h"
 
 /* Forwad declarations. */
@@ -104,6 +105,25 @@ typedef struct server {
 	ifacelist_t *ifaces;
 
 } server_t;
+
+/*! \brief Shared timer and its lock. */
+typedef struct {
+
+	/*!< When the timer times out. */
+	struct timespec timer_end;
+
+	/*!< Spinlock lock for the timer above. */
+	knot_spinlock_t lock;
+
+} locked_timeout_t;
+
+/*!
+ * \brief Timer and its lock for TCP throttle warnings.
+ *
+ * Keeps the time from when TCP throttle warning can be issued (again).
+ * A singleton accessed by all TCP threads.
+ */
+extern locked_timeout_t tcp_throttle_log;
 
 /*!
  * \brief Initializes the server structure.
