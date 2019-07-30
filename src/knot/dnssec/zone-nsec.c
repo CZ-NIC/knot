@@ -107,10 +107,38 @@ knot_dname_t *node_nsec3_hash(zone_node_t *node, const zone_contents_t *zone)
 	}
 }
 
+static bool malf_dname(const knot_dname_t *src)
+{
+	knot_dname_storage_t storage;
+	storage[KNOT_DNAME_MAXLEN - 1] = '\0';
+	size_t idx = KNOT_DNAME_MAXLEN - 1;
+
+	while (*src != 0) {
+		size_t len = *src + 1;
+
+		//assert(idx >= len);
+		if (idx < len) {
+			return true;
+		}
+		idx -= len;
+		memcpy(&storage[idx], src, len);
+		storage[idx] = '\0';
+
+		src += len;
+	}
+
+	return false;
+}
+
 zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
 {
 	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) && knot_is_nsec3_enabled(zone)) {
 		knot_dname_t *hash = node_nsec3_hash(node, zone);
+		if (malf_dname(hash)) {
+			char name[KNOT_DNAME_TXT_MAXLEN + 1];
+			knot_dname_to_str(name, node->owner, sizeof(name));
+			log_debug("node <%s>, flags <%u>", name, node->flags);
+		}
 		zone_node_t *nsec3 = zone_tree_get(zone->nsec3_nodes, hash);
 		if (nsec3 != NULL) {
 			if (node->nsec3_hash != binode_counterpart(node)->nsec3_hash) {
