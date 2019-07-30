@@ -55,6 +55,6 @@ bool pid_running(pid_t pid);
  * \param gid New group ID.
  *
  * \retval KNOT_EOK on success.
- * \retval KNOT_EACCESS if storage is not writeable.
+ * \retval KNOT_ERROR if UID or GID change failed.
  */
 int proc_update_privileges(int uid, int gid);
