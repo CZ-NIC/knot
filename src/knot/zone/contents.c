@@ -89,7 +89,6 @@ static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
 static zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents)
 {
 	return node_new(owner, (contents->nodes->flags & ZONE_TREE_USE_BINODES),
-	                (contents->nodes->flags & ZONE_TREE_USE_BINODES) &&
 	                (contents->nodes->flags & ZONE_TREE_BINO_SECOND), NULL);
 }
 

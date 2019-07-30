@@ -220,7 +220,6 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
 	*new_node = zone_tree_get(tree, dname);
 	if (*new_node == NULL) {
 		*new_node = node_new(dname, (tree->flags & ZONE_TREE_USE_BINODES),
-		                     (tree->flags & ZONE_TREE_USE_BINODES) &&
 		                     (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
 		if (*new_node == NULL) {
 			return KNOT_ENOMEM;

@@ -117,12 +117,12 @@ zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_
 
 	// Node is authoritative by default.
 	ret->flags = NODE_FLAGS_AUTH;
-	if (second) {
-		ret->flags |= NODE_FLAGS_DELETED;
-	}
 
 	if (binode) {
 		ret->flags |= NODE_FLAGS_BINODE;
+		if (second) {
+			ret->flags |= NODE_FLAGS_DELETED;
+		}
 		memcpy(ret + 1, ret, sizeof(*ret));
 		(ret + 1)->flags ^= NODE_FLAGS_SECOND | NODE_FLAGS_DELETED;
 	}
