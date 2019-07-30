@@ -234,14 +234,8 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
 static zone_node_t *add_node_cb(const knot_dname_t *owner, void *ctx)
 {
 	zone_tree_t *tree = ctx;
-	zone_node_t *node = zone_tree_get(tree, owner);
-	if (node == NULL) {
-		node = node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES),
-		                (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
-	} else {
-		node->flags &= ~NODE_FLAGS_DELETED;
-	}
-	return node;
+	return node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES),
+	                (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
 }
 
 int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
