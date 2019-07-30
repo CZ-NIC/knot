@@ -38,6 +38,7 @@
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+#include "contrib/spinlock.h"
 #include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
 
@@ -49,6 +50,7 @@ typedef struct tcp_context {
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
+	unsigned was_throttled;          /*!< Throttling occured during sweep period. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_clients;            /*!< Max TCP clients per worker configuration. */
@@ -56,7 +58,21 @@ typedef struct tcp_context {
 	int query_timeout;               /*!< [ms] TCP query timeout configuration. */
 } tcp_context_t;
 
-#define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
+#define TCP_SWEEP_INTERVAL         2     /*!< [secs] granularity of connection sweeping. */
+#define THROTTLE_LOG_INTERVAL    300     /*!< [secs] maximum frequency of throttled TCP warnings. */
+#define ADD_THROTTLE_LOG_INTERVAL     (THROTTLE_LOG_INTERVAL - TCP_SWEEP_INTERVAL)
+
+/*! \brief Timer and its lock for TCP throttle (max-tcp-clients) warnings. */
+typedef struct {
+	struct timespec timer_end;       /*!< When blocking of TCP throttle warnings ends. */
+	knot_spinlock_t lock;            /*!< Spinlock lock for the above. */
+} tcp_throttle_t;
+
+/*! \brief Timer and its lock for TCP throttle warnings - a singleton shared by all TCP threads. */
+tcp_throttle_t tcp_throttle = {
+		.timer_end.tv_sec = 0,
+		.timer_end.tv_nsec = 0,
+};
 
 static void update_sweep_timer(struct timespec *timer)
 {
@@ -72,6 +88,27 @@ static void update_tcp_conf(tcp_context_t *tcp)
 	tcp->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
 	tcp->query_timeout = conf()->cache.srv_tcp_query_timeout;
 	rcu_read_unlock();
+}
+
+/*! \brief If TCP was throttled recently, log a warning. */
+static void log_if_throttled(tcp_context_t *tcp, struct timespec *timer)
+{
+	if (tcp->was_throttled != 0) {
+
+		/* LOCK tcp_throttle.lock */
+		knot_spin_lock(&tcp_throttle.lock);
+
+		/* Check if warning is allowed, then log the warning and update the timer. */
+		if (tcp->last_poll_time.tv_sec > tcp_throttle.timer_end.tv_sec) {
+			log_warning("TCP connection throttling has occured recently");
+			/* Save one time_now() call. */
+			tcp_throttle.timer_end.tv_sec = timer->tv_sec + ADD_THROTTLE_LOG_INTERVAL;
+		}
+
+		/* UNLOCK tcp_throttle.lock */
+		knot_spin_unlock(&tcp_throttle.lock);
+	}
+	tcp->was_throttled = 0;
 }
 
 /*! \brief Sweep TCP connection. */
@@ -220,6 +257,9 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	/* If throttled, temporarily ignore new TCP connections. */
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
 
+	/* Record if throttling has occured since previous sweep or since start. */
+	tcp->was_throttled |= i;
+
 	/* Wait for events. */
 	int nfds = poll(&(set->pfd[i]), set->n - i, TCP_SWEEP_INTERVAL * 1000);
 
@@ -275,6 +315,7 @@ int tcp_master(dthread_t *thread)
 	tcp_context_t tcp = {
 		.server = handler->server,
 		.is_throttled = false,
+		.was_throttled = 0,
 		.thread_id = handler->thread_id[dt_get_id(thread)]
 	};
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());
@@ -296,6 +337,9 @@ int tcp_master(dthread_t *thread)
 	struct timespec next_sweep;
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
+
+	/* Define and initialize the spinlock. */
+	knot_spin_init(&tcp_throttle.lock);
 
 	for(;;) {
 
@@ -330,8 +374,12 @@ int tcp_master(dthread_t *thread)
 			fdset_sweep(&tcp.set, &tcp_sweep, NULL);
 			update_sweep_timer(&next_sweep);
 			update_tcp_conf(&tcp);
+			log_if_throttled(&tcp, &next_sweep);
 		}
 	}
+
+	/* Destroy the spinlock where necessary. */
+	knot_spin_destroy(&tcp_throttle.lock);
 
 finish:
 	free(tcp.iov[0].iov_base);
