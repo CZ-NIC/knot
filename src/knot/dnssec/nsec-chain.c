@@ -347,7 +347,6 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
 		return ret;
 	}
 
-	zone_node_t *apex = data->update->new_cont->apex;
 	zone_node_t *prev_it = NULL;
 	zone_node_t *started_with = NULL;
 	while (ret == KNOT_EOK) {
@@ -365,10 +364,9 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
 			assert(started_with != NULL);
 			break;
 		}
-		if (!del_old && !del_new && started_with == NULL &&
-		    (!data->nsec3 || curr_new != apex)) { // Ignore apex if NSEC3 chain.
-			// Once this must happen since the NSEC or NSEC3 node
-			// belonging to zone apex is always present.
+		if (!del_old && !del_new && started_with == NULL) {
+			// Once this must happen since the NSEC(3) node belonging
+			// to zone apex is always present.
 			started_with = curr_new;
 		}
 
@@ -475,7 +473,7 @@ int knot_nsec_create_chain(zone_update_t *update, uint32_t ttl)
 	assert(update);
 	assert(update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { false, ttl, update };
+	nsec_chain_iterate_data_t data = { ttl, update };
 
 	return knot_nsec_chain_iterate_create(update->new_cont->nodes,
 	                                      connect_nsec_nodes, &data);
@@ -487,7 +485,7 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 	assert(update->zone->contents->nodes);
 	assert(update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { false, ttl, update };
+	nsec_chain_iterate_data_t data = { ttl, update };
 
 	int ret = nsec_update_bitmaps(update->a_ctx->node_ptrs, &data);
 	if (ret != KNOT_EOK) {
