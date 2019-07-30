@@ -49,6 +49,8 @@ typedef struct tcp_context {
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
+	unsigned throttle_flag;          /*!< Throttling occured during sweep period. */
+	struct timespec throttle_end;    /*!< End of accept() throttling. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_clients;            /*!< Max TCP clients per worker configuration. */
@@ -220,6 +222,9 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	/* If throttled, temporarily ignore new TCP connections. */
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
 
+	/* Record if throttling occured during recent sweep period. */
+	tcp->throttle_flag |= i;
+
 	/* Wait for events. */
 	int nfds = poll(&(set->pfd[i]), set->n - i, TCP_SWEEP_INTERVAL * 1000);
 
@@ -330,6 +335,15 @@ int tcp_master(dthread_t *thread)
 			fdset_sweep(&tcp.set, &tcp_sweep, NULL);
 			update_sweep_timer(&next_sweep);
 			update_tcp_conf(&tcp);
+			/* Log throttling, if suitable . */
+
+			/* check flag */
+			/* lock */
+			/* check time */
+			/* log */
+			/* update timer */
+			/* unlock */
+			/* reset flag */
 		}
 	}
 
