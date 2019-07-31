@@ -459,7 +459,7 @@ trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t l
 	}
 
 	//Working copy for append of wildcard
-	trie_key_t work_key[len];
+	trie_key_t work_key[len + 1];
 	memcpy(work_key, key, len);
 	trie_key_t *key_end = work_key + len - 1;
 

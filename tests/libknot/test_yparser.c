@@ -64,7 +64,7 @@ const char *syntax_ok =
 	"  - domain: example.\n"
 	"    master: bind\n"
 	"zone2:\n"
-	"    - a: b # different indentation";
+	"  - a: b # different indentation";
 
 const char *syntax_error1 =
 	"f:\n"
@@ -96,7 +96,8 @@ const char *tab_error3 =
 const char *dname_ok =
 	".:\n"
 	"dom-ain:\n"
-	"\\070-\\071.\\072.:";
+	"\\070-\\071.\\072.:\n"
+	"*.wildchar.com:\n";
 
 const char *quotes_ok =
 	"g: \"\"\n"
@@ -262,7 +263,8 @@ static void test_dname(yp_parser_t *yp)
 	CHECK_DNAME(".");
 	CHECK_DNAME("dom-ain");
 	CHECK_DNAME("\\070-\\071.\\072.");
-
+	CHECK_DNAME("*.wildchar.com");
+	
 }
 
 static void test_quotes(yp_parser_t *yp)
@@ -286,6 +288,23 @@ static void test_quotes(yp_parser_t *yp)
 	CHECK_QUOTE("\\@ \\[ \\# \\, \\]");
 }
 
+static void test_wildcard(yp_parser_t *yp)
+{
+	int ret = 0;
+
+#define CHECK_WILDCARD(str) \
+	ret = yp_set_input_string(yp, str, strlen(str)); \
+	is_int(KNOT_EOK, ret, "set input string");\
+	ret = yp_parse(yp); \
+	is_int(KNOT_EPARSEFAIL, ret, str " is not wildcard"); \
+	ok(yp->key_len != strlen(str) || strcmp(yp->key, str) != 0 || \
+	   yp->event != YP_EKEY0, "compare " str); 
+
+	CHECK_WILDCARD("a.*.example.com");
+	CHECK_WILDCARD("**.example.com");
+	CHECK_WILDCARD("*example.com");
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -302,6 +321,7 @@ int main(int argc, char *argv[])
 	test_tab_error(&yp, tab_error3);
 	test_dname(&yp);
 	test_quotes(&yp);
+	test_wildcard(&yp);
 
 	yp_deinit(&yp);
 
