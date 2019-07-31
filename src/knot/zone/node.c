@@ -134,6 +134,7 @@ zone_node_t *binode_counterpart(zone_node_t *node)
 {
 	zone_node_t *counterpart = NULL;
 
+	assert(node == NULL || (node->flags & NODE_FLAGS_BINODE) || !(node->flags & NODE_FLAGS_SECOND));
 	if (node != NULL && (node->flags & NODE_FLAGS_BINODE)) {
 		if ((node->flags & NODE_FLAGS_SECOND)) {
 			counterpart = node - 1;
@@ -253,6 +254,7 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 
 	knot_dname_free(node->owner, mm);
 
+	assert((node->flags & NODE_FLAGS_BINODE) || !(node->flags & NODE_FLAGS_SECOND));
 	assert(binode_counterpart(node) == NULL ||
 	       binode_counterpart(node)->nsec3_wildcard_name == node->nsec3_wildcard_name);
 

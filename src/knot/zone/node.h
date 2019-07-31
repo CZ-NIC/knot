@@ -150,6 +150,7 @@ int binode_prepare_change(zone_node_t *node, knot_mm_t *mm);
 inline static zone_node_t *binode_node(zone_node_t *node, bool second)
 {
 	if (unlikely(node == NULL || !(node->flags & NODE_FLAGS_BINODE))) {
+		assert(node == NULL || !(node->flags & NODE_FLAGS_SECOND));
 		return node;
 	}
 	return node + (second - (int)((node->flags & NODE_FLAGS_SECOND) >> 9));
