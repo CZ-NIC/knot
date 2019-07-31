@@ -223,6 +223,9 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	/* Wait for events. */
 	int nfds = poll(&(set->pfd[i]), set->n - i, TCP_SWEEP_INTERVAL * 1000);
 
+	/* Mark the time of last poll call. */
+	tcp->last_poll_time = time_now();
+
 	/* Process events. */
 	while (nfds > 0 && i < set->n) {
 		bool should_close = false;
