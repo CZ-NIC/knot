@@ -38,6 +38,7 @@ static int tree_apply_cb(trie_val_t *node, void *data)
 {
 	zone_tree_func_t *f = (zone_tree_func_t *)data;
 	zone_node_t *n = (zone_node_t *)(*node) + f->binode_second;
+	assert(!f->binode_second || (n->flags & NODE_FLAGS_SECOND));
 	return f->func(n, f->data);
 }
 
@@ -325,7 +326,9 @@ bool zone_tree_it_finished(zone_tree_it_t *it)
 
 zone_node_t *zone_tree_it_val(zone_tree_it_t *it)
 {
-	return (zone_node_t *)(*trie_it_val(it->it)) + it->binode_second;
+	zone_node_t *node = (zone_node_t *)(*trie_it_val(it->it)) + it->binode_second;
+	assert(!it->binode_second || (node->flags & NODE_FLAGS_SECOND));
+	return node;
 }
 
 void zone_tree_it_del(zone_tree_it_t *it)
