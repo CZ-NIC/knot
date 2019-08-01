@@ -81,15 +81,14 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset)
 
 	knot_rdata_t *rr_cmp = rrset->rrs.rdata;
 	for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
-		if (knot_rdataset_member(node_rrs, rr_cmp)) {
-			// At least one RR matches.
-			return true;
+		if (!knot_rdataset_member(node_rrs, rr_cmp)) {
+			// At least one RR doesnt' match.
+			return false;
 		}
 		rr_cmp = knot_rdataset_next(rr_cmp);
 	}
 
-	// Node does have the type, but no RRs match.
-	return false;
+	return true;
 }
 
 /*! \brief Removes all RRs from changeset from zone contents. */
