@@ -330,7 +330,8 @@ int check_policy(
 	                                    C_RRSIG_LIFETIME, args->id, args->id_len);
 	conf_val_t refresh = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_RRSIG_REFRESH, args->id, args->id_len);
-
+	conf_val_t prerefresh = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                    C_RRSIG_PREREFRESH, args->id, args->id_len);
 	conf_val_t prop_del = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 						 C_PROPAG_DELAY, args->id, args->id_len);
 	conf_val_t zsk_life = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
@@ -362,8 +363,9 @@ int check_policy(
 
 	int64_t lifetime_val = conf_int(&lifetime);
 	int64_t refresh_val = conf_int(&refresh);
-	if (lifetime_val <= refresh_val) {
-		args->err_str = "RRSIG refresh has to be lower than RRSIG lifetime";
+	int64_t preref_val = conf_int(&prerefresh);
+	if (lifetime_val <= refresh_val + preref_val) {
+		args->err_str = "RRSIG refresh + pre-refresh has to be lower than RRSIG lifetime";
 		return KNOT_EINVAL;
 	}
 

@@ -851,9 +851,17 @@ time period is not counted to the signature lifetime.
 \fIDefault:\fP 14 days
 .SS rrsig\-refresh
 .sp
-A period how long before a signature expiration the signature will be refreshed.
+A period how long at least before a signature expiration the signature will be refreshed,
+in order to prevent expired RRSIGs on slaves or resolvers\(aq caches.
 .sp
 \fIDefault:\fP 7 days
+.SS rrsig\-pre\-refresh
+.sp
+A period how long at most before a signature refresh time the signature might be refreshed,
+in order to refresh RRSIGs in bigger batches on a frequently updated zone
+(avoid re\-sign event too often).
+.sp
+\fIDefault:\fP 1 hour
 .SS nsec3
 .sp
 Specifies if NSEC3 will be used instead of NSEC.
