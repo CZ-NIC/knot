@@ -101,6 +101,7 @@ typedef struct {
 	// RRSIG
 	uint32_t rrsig_lifetime;            // like knot_time_t
 	uint32_t rrsig_refresh_before;      // like knot_timediff_t
+	uint32_t rrsig_prerefresh;
 	// NSEC3
 	bool nsec3_enabled;
 	bool nsec3_opt_out;

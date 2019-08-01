@@ -935,9 +935,21 @@ A validity period of newly issued signatures.
 rrsig-refresh
 -------------
 
-A period how long before a signature expiration the signature will be refreshed.
+A period how long at least before a signature expiration the signature will be refreshed,
+in order to prevent expired RRSIGs on slaves or resolvers' caches.
 
 *Default:* 7 days
+
+.. _policy_rrsig-pre-refresh:
+
+rrsig-pre-refresh
+-----------------
+
+A period how long at most before a signature refresh time the signature might be refreshed,
+in order to refresh RRSIGs in bigger batches on a frequently updated zone
+(avoid re-sign event too often).
+
+*Default:* 0
 
 .. _policy_nsec:
 

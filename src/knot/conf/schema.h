@@ -90,6 +90,7 @@
 #define C_RMT			"\x06""remote"
 #define C_RRSIG_LIFETIME	"\x0E""rrsig-lifetime"
 #define C_RRSIG_REFRESH		"\x0D""rrsig-refresh"
+#define C_RRSIG_PREREFR		"\x11""rrsig-pre-refresh"
 #define C_RUNDIR		"\x06""rundir"
 #define C_SBM			"\x0A""submission"
 #define C_SECRET		"\x06""secret"
