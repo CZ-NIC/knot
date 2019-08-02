@@ -163,7 +163,7 @@ inline static zone_node_t *binode_first(zone_node_t *node)
 
 inline static zone_node_t *binode_node_as(zone_node_t *node, const zone_node_t *as)
 {
-	assert((as->flags & NODE_FLAGS_BINODE) == (node->flags & NODE_FLAGS_BINODE));
+	assert(node == NULL || (as->flags & NODE_FLAGS_BINODE) == (node->flags & NODE_FLAGS_BINODE));
 	return binode_node(node, (as->flags & NODE_FLAGS_SECOND));
 }
 
