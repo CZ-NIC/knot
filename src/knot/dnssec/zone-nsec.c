@@ -116,7 +116,7 @@ zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
 			if (node->nsec3_hash != binode_counterpart(node)->nsec3_hash) {
 				free(node->nsec3_hash);
 			}
-			node->nsec3_node = nsec3;
+			node->nsec3_node = binode_first(nsec3);
 			node->flags |= NODE_FLAGS_NSEC3_NODE;
 		}
 	}
@@ -132,10 +132,11 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 		return KNOT_EOK;
 	}
 	zone_node_t *nsec3_counter = (counter->flags & NODE_FLAGS_NSEC3_NODE) ?
-	                             binode_counterpart(counter->nsec3_node) : NULL;
-	if (nsec3_counter != NULL && !(nsec3_counter->flags & NODE_FLAGS_DELETED)) {
+	                             counter->nsec3_node : NULL;
+	if (nsec3_counter != NULL && !(binode_node_as(nsec3_counter, node)->flags & NODE_FLAGS_DELETED)) {
 		assert(node->flags & NODE_FLAGS_NSEC3_NODE);
 		node->flags |= NODE_FLAGS_NSEC3_NODE;
+		assert(!(nsec3_counter->flags & NODE_FLAGS_SECOND));
 		node->nsec3_node = nsec3_counter;
 	} else {
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
