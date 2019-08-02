@@ -156,6 +156,17 @@ inline static zone_node_t *binode_node(zone_node_t *node, bool second)
 	return node + (second - (int)((node->flags & NODE_FLAGS_SECOND) >> 9));
 }
 
+inline static zone_node_t *binode_first(zone_node_t *node)
+{
+	return binode_node(node, false);
+}
+
+inline static zone_node_t *binode_node_as(zone_node_t *node, const zone_node_t *as)
+{
+	assert((as->flags & NODE_FLAGS_BINODE) == (node->flags & NODE_FLAGS_BINODE));
+	return binode_node(node, (as->flags & NODE_FLAGS_SECOND));
+}
+
 /*!
  * \brief Return the other node from a bi-node.
  *
@@ -241,7 +252,7 @@ knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type);
  */
 inline static zone_node_t *node_parent(const zone_node_t *node)
 {
-	return binode_node(node->parent, (node->flags & NODE_FLAGS_SECOND));
+	return binode_node_as(node->parent, node);
 }
 
 /*!
@@ -249,7 +260,7 @@ inline static zone_node_t *node_parent(const zone_node_t *node)
  */
 inline static zone_node_t *node_prev(const zone_node_t *node)
 {
-	return binode_node(node->prev, (node->flags & NODE_FLAGS_SECOND));
+	return binode_node_as(node->prev, node);
 }
 
 /*!
@@ -262,8 +273,7 @@ inline static zone_node_t *node_prev(const zone_node_t *node)
  */
 inline static const zone_node_t *glue_node(const glue_t *glue, const zone_node_t *another_zone_node)
 {
-	return binode_node((zone_node_t *)glue->node,
-	                   (another_zone_node->flags & NODE_FLAGS_SECOND));
+	return binode_node_as((zone_node_t *)glue->node, another_zone_node);
 }
 
 /*!
@@ -370,6 +380,6 @@ static inline zone_node_t *node_nsec3_get(const zone_node_t *node)
 	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) || node->nsec3_node == NULL) {
 		return NULL;
 	} else {
-		return binode_node(node->nsec3_node, (node->flags & NODE_FLAGS_SECOND));
+		return binode_node_as(node->nsec3_node, node);
 	}
 }
