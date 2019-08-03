@@ -489,16 +489,19 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 	return KNOT_EOK;
 }
 
+static int update_chset_step(const knot_rrset_t *rrset, bool addition, void *ctx)
+{
+	zone_update_t *update = ctx;
+	if (addition) {
+		return zone_update_add(update, rrset);
+	} else {
+		return zone_update_remove(update, rrset);
+	}
+}
+
 int zone_update_apply_changeset(zone_update_t *update, const changeset_t *changes)
 {
-	int ret = KNOT_EOK;
-	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
-		ret = changeset_merge(&update->change, changes, changeset_flags(update));
-	}
-	if (ret == KNOT_EOK) {
-		ret = apply_changeset_directly(update->a_ctx, changes);
-	}
-	return ret;
+	return changeset_walk(changes, update_chset_step, update);
 }
 
 int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes)
