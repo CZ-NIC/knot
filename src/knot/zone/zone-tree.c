@@ -89,9 +89,9 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 	assert((bool)((*node)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
 
 	if (tree->cow != NULL) {
-		*trie_get_cow(tree->cow, lf + 1, *lf) = binode_node(*node, false);
+		*trie_get_cow(tree->cow, lf + 1, *lf) = binode_first(*node);
 	} else {
-		*trie_get_ins(tree->trie, lf + 1, *lf) = binode_node(*node, false);
+		*trie_get_ins(tree->trie, lf + 1, *lf) = binode_first(*node);
 	}
 
 	*node = binode_node(*node, (tree->flags & ZONE_TREE_USE_BINODES) && (tree->flags & ZONE_TREE_BINO_SECOND));

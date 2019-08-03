@@ -34,10 +34,8 @@ bool additional_equal(additional_t *a, additional_t *b)
 	}
 	for (int i = 0; i < a->count; i++) {
 		glue_t *ag = &a->glues[i], *bg = &b->glues[i];
-		if (ag->ns_pos != bg->ns_pos ||
-		    ag->optional != bg->optional ||
-		      binode_node((zone_node_t *)ag->node, false) !=
-		      binode_node((zone_node_t *)bg->node, false)) {
+		if (ag->ns_pos != bg->ns_pos || ag->optional != bg->optional ||
+		    binode_first((zone_node_t *)ag->node) != binode_first((zone_node_t *)bg->node)) {
 			return false;
 		}
 	}
