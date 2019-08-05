@@ -109,7 +109,7 @@ static zone_node_t *get_nsec3_node(const zone_contents_t *zone,
 	return zone_tree_get(zone->nsec3_nodes, name);
 }
 
-static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
+static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n, knot_rrset_t **real)
 {
 	if (knot_rrset_empty(rr)) {
 		return KNOT_EINVAL;
@@ -123,11 +123,11 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n
 		}
 	}
 
-	return node_add_rrset(*n, rr, NULL);
+	return node_add_rrset(*n, rr, NULL, real);
 }
 
 static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
-                     zone_node_t **n, bool nsec3)
+                     zone_node_t **n, bool nsec3, knot_rrset_t **real)
 {
 	if (knot_rrset_empty(rr)) {
 		return KNOT_EINVAL;
@@ -148,20 +148,13 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		node = *n;
 	}
 
-	knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
-	// Subtract changeset RRS from node RRS.
-	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, NULL);
+	int ret = node_remove_rrset(node, rr, NULL, real);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	if (node_rrs->count == 0) {
-		// RRSet is empty now, remove it from node, all data freed.
-		node_remove_rdataset(node, rr->type);
-		// If node is empty now, delete it from zone tree.
-		if (node->rrset_count == 0 && node != z->apex) {
-			zone_tree_del_node(nsec3 ? z->nsec3_nodes : z->nodes, node, true);
-		}
+	if (node->rrset_count == 0 && node != z->apex) {
+		zone_tree_del_node(nsec3 ? z->nsec3_nodes : z->nodes, node, true);
 	}
 
 	*n = node;
@@ -239,22 +232,22 @@ zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrs
 	return nsec3rel ? contents->nsec3_nodes : contents->nodes;
 }
 
-int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
+int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n, knot_rrset_t **really_added)
 {
 	if (z == NULL || rr == NULL || n == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return insert_rr(z, rr, n);
+	return insert_rr(z, rr, n, really_added);
 }
 
-int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
+int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n, knot_rrset_t **really_removed)
 {
 	if (z == NULL || rr == NULL || n == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return remove_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
+	return remove_rr(z, rr, n, knot_rrset_is_nsec3rel(rr), really_removed);
 }
 
 const zone_node_t *zone_contents_find_node(const zone_contents_t *zone, const knot_dname_t *name)

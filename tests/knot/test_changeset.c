@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 	apex_txt_rr->owner = knot_dname_from_str_alloc("something.test.");
 	assert(apex_txt_rr->owner);
 	zone_node_t *znode = NULL;
-	ret = zone_contents_add_rr(z, apex_txt_rr, &znode);
+	ret = zone_contents_add_rr(z, apex_txt_rr, &znode, NULL);
 	assert(ret == KNOT_EOK);
 	ret = changeset_preapply_fix(z, ch2);
 	ok(ret == KNOT_EOK, "changeset: preapply fix ok (%s)", knot_strerror(ret));

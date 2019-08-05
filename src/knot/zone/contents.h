@@ -61,10 +61,13 @@ zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrs
  * \param z   Contents to add to.
  * \param rr  The RR to add.
  * \param n   Node to which the RR has been added to on success, unchanged otherwise.
+ * \param really_added  Optional: Out: the mm-copy of 'rrset' diminished by what is already in node.
+ *
+ * \note Please mm-free *really_added even if returned error.
  *
  * \return KNOT_E*
  */
-int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
+int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n, knot_rrset_t **really_added);
 
 /*!
  * \brief Remove an RR from contents.
@@ -72,10 +75,13 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t
  * \param z   Contents to remove from.
  * \param rr  The RR to remove.
  * \param n   Node from which the RR to be removed from on success, unchanged otherwise.
+ * \param really_removed    Optional: Out: mm-copy 'rrset' intersected with what had been in node.
+ *
+ * \note Please mm-free *really_removed even if returned error.
  *
  * \return KNOT_E*
  */
-int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
+int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n, knot_rrset_t **really_removed);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.

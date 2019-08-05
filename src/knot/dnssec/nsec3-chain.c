@@ -212,7 +212,7 @@ static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
 		return NULL;
 	}
 
-	ret = node_add_rrset(new_node, &nsec3_rrset, NULL);
+	ret = node_add_rrset(new_node, &nsec3_rrset, NULL, NULL);
 	knot_rrset_clear(&nsec3_rrset, NULL);
 	if (ret != KNOT_EOK) {
 		node_free(new_node, NULL);
