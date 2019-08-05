@@ -265,16 +265,17 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	return KNOT_EOK;
 }
 
-int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *chset)
+int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr)
 {
 	zone_contents_t *contents = ctx->contents;
 
-	if (!knot_dname_is_equal(chset->soa_to->owner, contents->apex->owner)) {
+	if (!knot_dname_is_equal(rr->owner, contents->apex->owner)) {
 		return KNOT_EDENIED;
 	}
 
-	assert(chset->soa_from && chset->soa_to);
-	int ret = apply_remove_rr(ctx, chset->soa_from);
+	knot_rrset_t old_soa = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+
+	int ret = apply_remove_rr(ctx, &old_soa);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -284,7 +285,7 @@ int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *chset)
 		return KNOT_ESOAINVAL;
 	}
 
-	return apply_add_rr(ctx, chset->soa_to);
+	return apply_add_rr(ctx, rr);
 }
 
 void update_cleanup(apply_ctx_t *ctx)

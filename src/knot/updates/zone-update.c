@@ -368,7 +368,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 	if (update->flags & UPDATE_INCREMENTAL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* replace previous SOA */
-			int ret = apply_replace_soa(update->a_ctx, &update->change);
+			int ret = apply_replace_soa(update->a_ctx, rrset);
 			if (ret != KNOT_EOK) {
 				changeset_remove_addition(&update->change, rrset);
 			}

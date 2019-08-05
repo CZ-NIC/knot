@@ -80,14 +80,14 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
 int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
 
 /*!
- * \brief Adds a single RR into zone contents.
+ * \brief Remove SOA and add a new SOA.
  *
  * \param ctx  Apply context.
- * \param ch   Changeset to be applied to the zone.
+ * \param rr   New SOA to be added.
  *
  * \return KNOT_E*
  */
-int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *ch);
+int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr);
 
 /*!
  * \brief Cleanups successful zone update.
