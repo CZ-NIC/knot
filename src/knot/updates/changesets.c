@@ -670,6 +670,13 @@ int changeset_walk(const changeset_t *changeset, changeset_walk_callback callbac
 	}
 	changeset_iter_clear(&it);
 
+	if (changeset->soa_from != NULL) {
+		ret = callback(changeset->soa_from, false, ctx);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	ret = changeset_iter_add(&it, changeset);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -685,6 +692,13 @@ int changeset_walk(const changeset_t *changeset, changeset_walk_callback callbac
 		rrset = changeset_iter_next(&it);
 	}
 	changeset_iter_clear(&it);
+
+	if (changeset->soa_to != NULL) {
+		ret = callback(changeset->soa_to, true, ctx);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
 
 	return KNOT_EOK;
 }
