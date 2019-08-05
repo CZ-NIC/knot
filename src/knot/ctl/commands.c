@@ -534,11 +534,12 @@ typedef struct {
 	char rdata[2 * 65536];
 } send_ctx_t;
 
-static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *args)
+static int create_send_ctx(send_ctx_t **out, const knot_dname_t *zone_name,
+                           ctl_args_t *args)
 {
 	send_ctx_t *ctx = mm_calloc(&args->mm, 1, sizeof(*ctx));
 	if (ctx == NULL) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
 	ctx->args = args;
@@ -558,7 +559,7 @@ static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *ar
 	// Set the ZONE.
 	if (knot_dname_to_str(ctx->zone, zone_name, sizeof(ctx->zone)) == NULL) {
 		mm_free(&args->mm, ctx);
-		return NULL;
+		return KNOT_EINVAL;
 	}
 
 	// Set the TYPE filter.
@@ -566,14 +567,16 @@ static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *ar
 		uint16_t type;
 		if (knot_rrtype_from_string(args->data[KNOT_CTL_IDX_TYPE], &type) != 0) {
 			mm_free(&args->mm, ctx);
-			return NULL;
+			return KNOT_EINVAL;
 		}
 		ctx->type_filter = type;
 	} else {
 		ctx->type_filter = -1;
 	}
 
-	return ctx;
+	*out = ctx;
+
+	return KNOT_EOK;
 }
 
 static int send_rrset(knot_rrset_t *rrset, send_ctx_t *ctx)
@@ -682,12 +685,11 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 
 static int zone_read(zone_t *zone, ctl_args_t *args)
 {
-	send_ctx_t *ctx = create_send_ctx(zone->name, args);
-	if (ctx == NULL) {
-		return KNOT_ENOMEM;
+	send_ctx_t *ctx;
+	int ret = create_send_ctx(&ctx, zone->name, args);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
-
-	int ret = KNOT_EOK;
 
 	if (args->data[KNOT_CTL_IDX_OWNER] != NULL) {
 		uint8_t owner[KNOT_DNAME_MAXLEN];
@@ -720,13 +722,12 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	send_ctx_t *ctx = create_send_ctx(zone->name, args);
-	if (ctx == NULL) {
-		return KNOT_ENOMEM;
+	send_ctx_t *ctx;
+	int ret = create_send_ctx(&ctx, zone->name, args);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 	ctx->data[KNOT_CTL_IDX_FLAGS] = flag;
-
-	int ret = KNOT_EOK;
 
 	if (args->data[KNOT_CTL_IDX_OWNER] != NULL) {
 		uint8_t owner[KNOT_DNAME_MAXLEN];
@@ -856,12 +857,13 @@ static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
 		return zone_flag_txn_get(zone, args, CTL_FLAG_ADD);
 	}
 
-	send_ctx_t *ctx = create_send_ctx(zone->name, args);
-	if (ctx == NULL) {
-		return KNOT_ENOMEM;
+	send_ctx_t *ctx;
+	int ret = create_send_ctx(&ctx, zone->name, args);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	int ret = send_changeset(&zone->control_update->change, ctx);
+	ret = send_changeset(&zone->control_update->change, ctx);
 	mm_free(&args->mm, ctx);
 	return ret;
 }
