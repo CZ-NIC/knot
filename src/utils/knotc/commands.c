@@ -27,6 +27,7 @@
 #include "knot/zone/zone-load.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
+#include "contrib/strtonum.h"
 #include "contrib/openbsd/strlcat.h"
 #include "utils/knotc/commands.h"
 #include "utils/knotc/estimator.h"
@@ -881,8 +882,10 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 
 	// Set TTL only with an editing operation.
 	if (args->argc > idx) {
+		uint32_t num;
 		uint16_t type;
-		if (knot_rrtype_from_string(args->argv[idx], &type) != 0) {
+		if (knot_rrtype_from_string(args->argv[idx], &type) != 0 &&
+		    str_to_u32(args->argv[idx], &num) == KNOT_EOK) {
 			switch (args->desc->cmd) {
 			case CTL_ZONE_SET:
 			case CTL_ZONE_UNSET:
@@ -890,7 +893,7 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 				idx++;
 				break;
 			default:
-				return KNOT_EINVAL;
+				break;
 			}
 		}
 	}
