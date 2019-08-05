@@ -268,10 +268,17 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 	mm_free(mm, binode_node(node, false));
 }
 
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm, knot_rrset_t **really_added)
 {
 	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (really_added != NULL) {
+		*really_added = knot_rrset_copy(rrset, mm);
+		if (*really_added == NULL) {
+			return KNOT_ENOMEM;
+		}
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
@@ -280,6 +287,13 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 			const bool ttl_change = ttl_changed(node_data, rrset);
 			if (ttl_change) {
 				node_data->ttl = rrset->ttl;
+			}
+
+			if (really_added != NULL) {
+				int ret = knot_rdataset_subtract(&(*really_added)->rrs, &node_data->rrs, mm);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
 			}
 
 			int ret = knot_rdataset_merge(&node_data->rrs,
@@ -294,6 +308,38 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 
 	// New RRSet (with one RR)
 	return add_rrset_no_merge(node, rrset, mm);
+}
+
+int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm, knot_rrset_t **really_removed)
+{
+	if (node == NULL || rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
+
+	if (really_removed != NULL) {
+		*really_removed = knot_rrset_new(rrset->owner, rrset->type, rrset->rclass, rrset->ttl, mm);
+		if (*really_removed == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		int ret = knot_rdataset_intersect(node_rrs, &rrset->rrs, &(*really_removed)->rrs, mm);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	int ret = knot_rdataset_subtract(node_rrs, &rrset->rrs, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (node_rrs->count == 0) {
+		node_remove_rdataset(node, rrset->type);
+	}
+
+	return KNOT_EOK;
 }
 
 void node_remove_rdataset(zone_node_t *node, uint16_t type)
