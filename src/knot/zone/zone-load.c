@@ -63,7 +63,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 
 static int apply_one_cb(bool remove, const knot_rrset_t *rr, void *ctx)
 {
-	return remove ? apply_remove_rr(ctx, rr, NULL) : apply_add_rr(ctx, rr, NULL);
+	return remove ? apply_remove_rr(ctx, rr) : apply_add_rr(ctx, rr);
 }
 
 int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
@@ -132,7 +132,7 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 	knot_rrset_t rr = { 0 };
 	while (ret == KNOT_EOK && journal_read_rrset(read, &rr, false)) {
 		zone_node_t *unused = NULL;
-		ret = zone_contents_add_rr(*contents, &rr, &unused, NULL);
+		ret = zone_contents_add_rr(*contents, &rr, &unused);
 		journal_read_clear_rrset(&rr);
 	}
 

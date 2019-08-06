@@ -185,7 +185,7 @@ static zone_node_t *add_node_cb(const knot_dname_t *owner, void *ctx)
 	return node;
 }
 
-int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr, knot_rrset_t **really_added)
+int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 {
 	zone_contents_t *contents = ctx->contents;
 	bool nsec3rel = knot_rrset_is_nsec3rel(rr);
@@ -223,7 +223,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr, knot_rrset_t **really
 	}
 
 	// Insert new RR to RRSet, data will be copied.
-	ret = node_add_rrset(node, rr, NULL, really_added);
+	ret = node_add_rrset(node, rr, NULL);
 	if (ret == KNOT_ETTL) {
 		char buff[KNOT_DNAME_TXT_MAXLEN + 1];
 		char *owner = knot_dname_to_str(buff, rr->owner, sizeof(buff));
@@ -240,7 +240,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr, knot_rrset_t **really
 	return ret;
 }
 
-int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr, knot_rrset_t **really_removed)
+int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 {
 	zone_contents_t *contents = ctx->contents;
 	bool nsec3rel = knot_rrset_is_nsec3rel(rr);
@@ -273,14 +273,21 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr, knot_rrset_t **rea
 		}
 	}
 
-	ret = node_remove_rrset(node, rr, NULL, really_removed);
+	knot_rdataset_t *changed_rrs = node_rdataset(node, rr->type);
+	// Subtract changeset RRS from node RRS.
+	ret = knot_rdataset_subtract(changed_rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, rr->type);
 		return ret;
 	}
 
-	if (node->rrset_count == 0 && node->children == 0 && node != contents->apex) {
-		zone_tree_del_node(tree, node, false);
+	if (changed_rrs->count == 0) {
+		// RRSet is empty now, remove it from node, all data freed, except additionals.
+		node_remove_rdataset(node, rr->type);
+		// If node is empty now, delete it from zone tree.
+		if (node->rrset_count == 0 && node->children == 0 && node != contents->apex) {
+			zone_tree_del_node(tree, node, false);
+		}
 	}
 
 	return KNOT_EOK;
@@ -296,7 +303,7 @@ int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr)
 
 	knot_rrset_t old_soa = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
 
-	int ret = apply_remove_rr(ctx, &old_soa, NULL);
+	int ret = apply_remove_rr(ctx, &old_soa);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -306,7 +313,7 @@ int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		return KNOT_ESOAINVAL;
 	}
 
-	return apply_add_rr(ctx, rr, NULL);
+	return apply_add_rr(ctx, rr);
 }
 
 void update_cleanup(apply_ctx_t *ctx)

@@ -177,7 +177,7 @@ int journal_read_rrsets(journal_read_t *read, journal_read_cb_t cb, void *ctx)
 static int add_rr_to_contents(zone_contents_t *z, const knot_rrset_t *rrset)
 {
 	zone_node_t *n = NULL;
-	return zone_contents_add_rr(z, rrset, &n, NULL);
+	return zone_contents_add_rr(z, rrset, &n);
 	// Shall we ignore ETTL ?
 }
 
