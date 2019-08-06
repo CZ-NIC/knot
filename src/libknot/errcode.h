@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -139,6 +139,9 @@ enum knot_error {
 	KNOT_INVALID_KEY_NAME,
 	KNOT_NO_PUBLIC_KEY,
 	KNOT_NO_PRIVATE_KEY,
+
+	/* New general errors. */
+	KNOT_EISRECORD,
 
 	KNOT_ERROR_MAX = -501
 };

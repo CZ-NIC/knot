@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -138,6 +138,9 @@ static const struct error errors[] = {
 	{ KNOT_INVALID_KEY_NAME,      "invalid key name" },
 	{ KNOT_NO_PUBLIC_KEY,         "no public key" },
 	{ KNOT_NO_PRIVATE_KEY,        "no private key" },
+
+	/* New general errors. */
+	{ KNOT_EISRECORD, "such record already exists in zone" },
 
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
