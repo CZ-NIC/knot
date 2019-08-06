@@ -343,7 +343,7 @@ static bool singleton_replaced(changeset_t *changeset,
 	// Replace singleton RR.
 	knot_rdataset_clear(rrs, NULL);
 	node_remove_rdataset(n, rr->type);
-	node_add_rrset(n, rr, NULL, NULL);
+	node_add_rrset(n, rr, NULL);
 
 	return true;
 }

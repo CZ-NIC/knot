@@ -201,28 +201,11 @@ void node_free(zone_node_t *node, knot_mm_t *mm);
  * \param node     Node to add the RRSet to.
  * \param rrset    RRSet to add.
  * \param mm       Memory context to use.
- * \param really_added  Optional: Out: the mm-copy of 'rrset' diminished by what is already in node.
- *
- * \note Please mm-free *really_added even if returned error.
  *
  * \return KNOT_E*
  * \retval KNOT_ETTL  RRSet TTL was updated.
  */
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm, knot_rrset_t **really_added);
-
-/*!
- * \brief Remove RRs, which are specified by the rrset, from the node.
- *
- * \param node              Node to remove from.
- * \param rrset             RRs to be removed.
- * \param mm                Memory context.
- * \param really_removed    Optional: Out: mm-copy 'rrset' intersected with what had been in node.
- *
- * \note Please mm-free *really_removed even if returned error.
- *
- * \return KNOT_E*
- */
-int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm, knot_rrset_t **really_removed);
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm);
 
 /*!
  * \brief Removes data for given RR type from node.

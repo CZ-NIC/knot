@@ -46,7 +46,7 @@ static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset)
 static int add_rr_to_contents(zone_contents_t *z, const knot_rrset_t *rrset)
 {
 	zone_node_t *n = NULL;
-	int ret = zone_contents_add_rr(z, rrset, &n, NULL);
+	int ret = zone_contents_add_rr(z, rrset, &n);
 	UNUSED(n);
 
 	// We don't care of TTLs.
@@ -294,7 +294,7 @@ int changeset_remove_addition(changeset_t *ch, const knot_rrset_t *rrset)
 	}
 
 	zone_node_t *n = NULL;
-	return zone_contents_remove_rr(ch->add, rrset, &n, NULL);
+	return zone_contents_remove_rr(ch->add, rrset, &n);
 }
 
 int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset)
@@ -309,7 +309,7 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset)
 	}
 
 	zone_node_t *n = NULL;
-	return zone_contents_remove_rr(ch->remove, rrset, &n, NULL);
+	return zone_contents_remove_rr(ch->remove, rrset, &n);
 }
 
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags)

@@ -88,7 +88,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	}
 
 	zone_node_t *node = NULL;
-	int ret = zone_contents_add_rr(zc->z, rr, &node, NULL);
+	int ret = zone_contents_add_rr(zc->z, rr, &node);
 	if (ret != KNOT_EOK) {
 		if (!handle_err(zc, rr, ret, zc->master)) {
 			// Fatal error

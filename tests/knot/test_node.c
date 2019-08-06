@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 
 	// Test RRSet addition
 	knot_rrset_t *dummy_rrset = create_dummy_rrset(dummy_owner, KNOT_RRTYPE_TXT);
-	int ret = node_add_rrset(node, dummy_rrset, NULL, NULL);
+	int ret = node_add_rrset(node, dummy_rrset, NULL);
 	ok(ret == KNOT_EOK && node->rrset_count == 1 &&
 	   knot_rdataset_eq(&dummy_rrset->rrs, &node->rrs[0].rrs), "Node: add RRSet.");
 
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 
 	// Test TTL mismatch
 	dummy_rrset->ttl = 1800;
-	ret = node_add_rrset(node, dummy_rrset, NULL, NULL);
+	ret = node_add_rrset(node, dummy_rrset, NULL);
 	ok(ret == KNOT_ETTL && node->rrset_count == 1,
 	   "Node: add RRSet, TTL mismatch.");
 
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 	ok(!node_rrtype_is_signed(node, KNOT_RRTYPE_TXT), "Node: type is not signed.");
 
 	dummy_rrset = create_dummy_rrsig(dummy_owner, KNOT_RRTYPE_TXT);
-	ret = node_add_rrset(node, dummy_rrset, NULL, NULL);
+	ret = node_add_rrset(node, dummy_rrset, NULL);
 	assert(ret == KNOT_EOK);
 
 	ok(node_rrtype_is_signed(node, KNOT_RRTYPE_TXT), "Node: type is signed.");

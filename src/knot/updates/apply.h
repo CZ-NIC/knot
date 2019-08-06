@@ -64,28 +64,20 @@ int apply_prepare_zone_copy(zone_contents_t *old_contents,
  *
  * \param ctx  Apply context.
  * \param rr   RRSet to add.
- * \param really_added  Optional: Out: the mm-copy of 'rrset' diminished by what is already in node.
- *
- * \note Please mm-free *really_added even if returned error.
  *
  * \return KNOT_E*
  */
-int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr,
-                 knot_rrset_t **really_added);
+int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
 
 /*!
  * \brief Removes single RR from zone contents.
  *
  * \param ctx  Apply context.
  * \param rr   RRSet to remove.
- * \param really_removed    Optional: Out: mm-copy 'rrset' intersected with what had been in node.
- *
- * \note Please mm-free *really_removed even if returned error.
  *
  * \return KNOT_E*
  */
-int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr,
-                    knot_rrset_t **really_removed);
+int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
 
 /*!
  * \brief Remove SOA and add a new SOA.
