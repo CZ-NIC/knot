@@ -91,6 +91,27 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset)
 	return true;
 }
 
+static bool can_add(const zone_node_t *node, const knot_rrset_t *rrset)
+{
+	if (node == NULL) {
+		return true;
+	}
+	const knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
+	if (node_rrs == NULL) {
+		return true;
+	}
+
+	knot_rdata_t *rr_cmp = rrset->rrs.rdata;
+	for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
+		if (knot_rdataset_member(node_rrs, rr_cmp)) {
+			return false;
+		}
+		rr_cmp = knot_rdataset_next(rr_cmp);
+	}
+
+	return true;
+}
+
 /*! \brief Removes all RRs from changeset from zone contents. */
 static int apply_remove(apply_ctx_t *ctx, const changeset_t *chset)
 {
@@ -258,6 +279,13 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	int ret = zone_tree_add_node(tree, contents->apex, rr->owner, add_node_cb, ptrs, &node);
 	if (ret != KNOT_EOK) {
 		return ret;
+	}
+
+	if (!can_add(node, rr)) {
+		if (ctx->flags & APPLY_STRICT) {
+			return KNOT_ENORECORD;
+		}
+		return KNOT_EOK;
 	}
 
 	ret = zone_tree_insert_with_parents(ptrs, node, nsec3rel);
