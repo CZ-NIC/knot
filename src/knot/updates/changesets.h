@@ -26,7 +26,6 @@
 typedef enum {
 	CHANGESET_NONE = 0,
 	CHANGESET_CHECK = 1 << 0, /*! Perform redundancy check on additions/removals */
-	CHANGESET_CHECK_CANCELOUT = 1 << 1, /*! Do the complete cancelout on addition/removal/merge (depends on CHANGESET_CHECK */
 } changeset_flag_t;
 
 /*! \brief One zone change, from 'soa_from' to 'soa_to'. */

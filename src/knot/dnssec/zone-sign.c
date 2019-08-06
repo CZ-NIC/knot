@@ -857,20 +857,17 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	CHECK_RET;
 
 	if (!knot_rrset_empty(&add_r.cdnskey)) {
-		ret = changeset_add_addition(&ch, &add_r.cdnskey,
-			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+		ret = changeset_add_addition(&ch, &add_r.cdnskey, CHANGESET_CHECK);
 		CHECK_RET;
 	}
 
 	if (!knot_rrset_empty(&add_r.cds)) {
-		ret = changeset_add_addition(&ch, &add_r.cds,
-			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+		ret = changeset_add_addition(&ch, &add_r.cds, CHANGESET_CHECK);
 		CHECK_RET;
 	}
 
 	if (!knot_rrset_empty(&add_r.dnskey)) {
-		ret = changeset_add_addition(&ch, &add_r.dnskey,
-			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+		ret = changeset_add_addition(&ch, &add_r.dnskey, CHANGESET_CHECK);
 		CHECK_RET;
 	}
 

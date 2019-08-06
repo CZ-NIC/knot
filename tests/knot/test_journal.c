@@ -595,7 +595,7 @@ static void test_merge(const knot_dname_t *apex)
 	ok(list_size(&l) == 2, "journal: read the merged and one following");
 	changeset_t * mch = (changeset_t *)HEAD(l);
 	ok(list_size(&l) >= 1 && tm_rrcnt(mch, 1) == 2, "journal: merged additions # = 2");
-	ok(list_size(&l) >= 1 && tm_rrcnt(mch, -1) == 1, "journal: merged removals # = 1");
+	ok(list_size(&l) >= 1 && tm_rrcnt(mch, -1) == 0, "journal: merged removals # = 0");
 	changesets_free(&l);
 	journal_read_end(read);
 

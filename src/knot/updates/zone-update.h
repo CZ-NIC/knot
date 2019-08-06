@@ -48,7 +48,6 @@ typedef enum {
 	// Additional flags
 	UPDATE_SIGN           = 1 << 3, /*!< Sign the resulting zone. */
 	UPDATE_STRICT         = 1 << 4, /*!< Apply changes strictly, i.e. fail when removing nonexistent RR. */
-	UPDATE_CANCELOUT      = 1 << 5, /*!< When adding to changeset, cancel-out what has been both added and removed. */
 } zone_update_flags_t;
 
 /*!
