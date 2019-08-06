@@ -229,9 +229,10 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 		uint16_t hint = knot_compr_hint(info, KNOT_COMPR_HINT_RDATA +
 		                                glue->ns_pos);
-		knot_rrset_t rrsigs = node_rrset(glue_node(glue, qdata->extra->node), KNOT_RRTYPE_RRSIG);
+		const zone_node_t *gluenode = glue_node(glue, qdata->extra->node);
+		knot_rrset_t rrsigs = node_rrset(gluenode, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
-			knot_rrset_t rrset = node_rrset(glue->node, ar_type_list[k]);
+			knot_rrset_t rrset = node_rrset(gluenode, ar_type_list[k]);
 			if (knot_rrset_empty(&rrset)) {
 				continue;
 			}
