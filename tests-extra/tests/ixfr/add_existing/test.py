@@ -27,7 +27,7 @@ slave.zone_wait(zone)
 master.update_zonefile(zone, version=1)
 master.reload()
 
-if not slave.log_search("no such record in zone found") or not slave.log_search("fallback to AXFR"):
+if not slave.log_search("such record already exists in zone") or not slave.log_search("fallback to AXFR"):
     detail_log("IXFR ignored an addition of existent RR and did not fall back to AXFR")
     set_err("IXFR ERROR")
 
