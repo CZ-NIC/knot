@@ -177,6 +177,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 			return ret;
 		}
 		*previous = zone_tree_it_val(&it); /* leftmost */
+		assert(*previous != NULL); // cppcheck
 		*previous = fix_get(*previous, tree);
 		*previous = node_prev(*previous); /* rightmost */
 		*found = NULL;

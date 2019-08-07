@@ -131,6 +131,8 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 		(void)node_nsec3_node(node, zone);
 		return KNOT_EOK;
 	}
+	assert(counter->nsec3_node != NULL); // shut up cppcheck
+
 	zone_node_t *nsec3_counter = (counter->flags & NODE_FLAGS_NSEC3_NODE) ?
 	                             counter->nsec3_node : NULL;
 	if (nsec3_counter != NULL && !(binode_node_as(nsec3_counter, node)->flags & NODE_FLAGS_DELETED)) {
