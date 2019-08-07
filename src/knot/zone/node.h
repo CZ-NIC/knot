@@ -80,6 +80,8 @@ enum node_flags {
 	NODE_FLAGS_DELEG =           1 << 0,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	NODE_FLAGS_NONAUTH =         1 << 1,
+	/*! \brief RRSIGs in node have been cryptographically validated by Knot. */
+	NODE_FLAGS_RRSIGS_VALID =    1 << 2,
 	/*! \brief Node is empty and will be deleted after update. */
 	NODE_FLAGS_EMPTY =           1 << 3,
 	/*! \brief Node has a wildcard child. */
