@@ -230,8 +230,7 @@ int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset
 			return KNOT_ENOMEM;
 		}
 
-		check_redundancy(ch->remove, rrset,
-				 ((flags & CHANGESET_CHECK_CANCELOUT) ? &rrset_cancelout : NULL));
+		check_redundancy(ch->remove, rrset, &rrset_cancelout);
 	}
 
 	const knot_rrset_t *to_add = (rrset_cancelout == NULL ? rrset : rrset_cancelout);
@@ -267,8 +266,7 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 			return KNOT_ENOMEM;
 		}
 
-		check_redundancy(ch->add, rrset,
-				 ((flags & CHANGESET_CHECK_CANCELOUT) ? &rrset_cancelout : NULL));
+		check_redundancy(ch->add, rrset, &rrset_cancelout);
 	}
 
 	const knot_rrset_t *to_remove = (rrset_cancelout == NULL ? rrset : rrset_cancelout);

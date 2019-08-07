@@ -94,7 +94,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	}
 
 	zone_update_t up;
-	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_CANCELOUT);
+	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

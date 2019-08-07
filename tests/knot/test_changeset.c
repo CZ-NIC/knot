@@ -58,8 +58,8 @@ int main(int argc, char *argv[])
 	ok(changeset_size(ch) == 1, "changeset: size add");
 	ret = changeset_add_removal(ch, apex_txt_rr, CHANGESET_CHECK);
 	is_int(KNOT_EOK, ret, "changeset: rem RRSet");
-	ok(changeset_size(ch) == 1, "changeset: size remove");
-	ok(!changeset_empty(ch), "changeset: empty");
+	ok(changeset_size(ch) == 0, "changeset: size remove");
+	ok(changeset_empty(ch), "changeset: empty");
 	changeset_add_addition(ch, apex_txt_rr, CHANGESET_CHECK);
 
 	// Add another RR to node.
