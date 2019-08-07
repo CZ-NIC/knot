@@ -620,8 +620,6 @@ int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
 	return knot_rrset_add_rdata(rrset, dnskey_rdata.data, dnskey_rdata.size, NULL);
 }
 
-/*- private API - DNSKEY handling --------------------------------------------*/
-
 static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
 	assert(rrset);
@@ -632,70 +630,6 @@ static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
 
 	return knot_rrset_add_rdata(rrset, cds_rdata.data, cds_rdata.size, NULL);
 }
-
-/*!
- * \brief Wrapper function for changeset signing - to be used with changeset
- *        apply functions.
- *
- * \param chg_rrset  RRSet to be signed (potentially)
- * \param data       Signing data
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static int sign_changeset_wrap(knot_rrset_t *chg_rrset,
-                               changeset_signing_data_t *args,
-                               knot_time_t *expire_at)
-{
-	// Find RR's node in zone, find out if we need to sign this RR
-	const zone_node_t *node =
-		zone_contents_find_node(args->zone, chg_rrset->owner);
-
-	// If node is not in zone, all its RRSIGs were dropped - no-op
-	if (node) {
-		knot_rrset_t zone_rrset = node_rrset(node, chg_rrset->type);
-		knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
-
-		bool should_sign = knot_zone_sign_rr_should_be_signed(node, &zone_rrset);
-
-		if (should_sign) {
-			return resign_rrset(&zone_rrset, &rrsigs, args->sign_ctx,
-			                    &args->changeset, expire_at);
-		} else {
-			/*
-			 * If RRSet in zone DOES have RRSIGs although we
-			 * should not sign it, DDNS-caused change to node/rr
-			 * occurred and we have to drop all RRSIGs.
-			 *
-			 * OR
-			 *
-			 * The whole RRSet was removed, but RRSIGs remained in
-			 * the zone. We need to drop them as well.
-			 */
-			return remove_rrset_rrsigs(chg_rrset->owner,
-			                           chg_rrset->type, &rrsigs,
-			                           &args->changeset);
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-static void *sign_changeset_thread(void *_arg)
-{
-	changeset_signing_data_t *arg = _arg;
-
-	knot_rrset_t rr = changeset_iter_next(&arg->itt);
-	while (!knot_rrset_empty(&rr) && arg->errcode == KNOT_EOK) {
-		if (arg->rrset_index++ % arg->num_threads == arg->thread_index) {
-			arg->errcode = sign_changeset_wrap(&rr, arg, &arg->expires_at);
-		}
-		rr = changeset_iter_next(&arg->itt);
-	}
-
-	return NULL;
-}
-
-/*- public API ---------------------------------------------------------------*/
 
 int knot_zone_sign(zone_update_t *update,
                    zone_keyset_t *zone_keys,
@@ -936,97 +870,6 @@ bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
 	return !exist;
 }
 
-static int sign_changeset(const zone_contents_t *zone,
-                          size_t num_threads,
-                          zone_update_t *update,
-                          zone_keyset_t *zone_keys,
-                          const kdnssec_ctx_t *dnssec_ctx,
-                          knot_time_t *expire_at)
-{
-	if (zone == NULL || update == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_EOK;
-	changeset_signing_data_t args[num_threads];
-	memset(args, 0, sizeof(args));
-
-	// init context structures
-	for (size_t i = 0; i < num_threads; i++) {
-		args[i].zone = update->new_cont;
-		ret = changeset_iter_all(&args[i].itt, &update->change);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-		args[i].sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
-		if (args[i].sign_ctx == NULL) {
-			ret = KNOT_ENOMEM;
-			break;
-		}
-		ret = changeset_init(&args[i].changeset, update->zone->name);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-		args[i].expires_at = 0;
-		args[i].num_threads = num_threads;
-		args[i].thread_index = i;
-		args[i].rrset_index = 0;
-		args[i].errcode = KNOT_EOK;
-		args[i].thread_init_errcode = -1;
-	}
-	if (ret != KNOT_EOK) {
-		for (size_t i = 0; i < num_threads; i++) {
-			changeset_iter_clear(&args[i].itt);
-			changeset_clear(&args[i].changeset);
-			zone_sign_ctx_free(args[i].sign_ctx);
-		}
-		return ret;
-	}
-
-	if (num_threads == 1) {
-		args[0].thread_init_errcode = 0;
-		sign_changeset_thread(&args[0]);
-	} else {
-		// start working threads
-		for (size_t i = 0; i < num_threads; i++) {
-			args[i].thread_init_errcode =
-				pthread_create(&args[i].thread, NULL, sign_changeset_thread, &args[i]);
-		}
-
-		// join those threads that have been really started
-		for (size_t i = 0; i < num_threads; i++) {
-			if (args[i].thread_init_errcode == 0) {
-				args[i].thread_init_errcode = pthread_join(args[i].thread, NULL);
-			}
-		}
-	}
-
-	if (!knot_rrset_empty(update->change.soa_from)) {
-		ret = sign_changeset_wrap(update->change.soa_from, &args[0], expire_at);
-	}
-	if (ret == KNOT_EOK && !knot_rrset_empty(update->change.soa_to)) {
-		ret = sign_changeset_wrap(update->change.soa_to, &args[0], expire_at);
-	}
-
-	// collect return code and results
-	for (size_t i = 0; i < num_threads && ret == KNOT_EOK; i++) {
-		if (args[i].thread_init_errcode != 0) {
-			ret = knot_map_errno_code(args[i].thread_init_errcode);
-		} else {
-			ret = args[i].errcode;
-			if (ret == KNOT_EOK) {
-				ret = zone_update_apply_changeset_fix(update, &args[i].changeset);
-				*expire_at = knot_time_min(*expire_at, args[i].expires_at);
-			}
-		}
-		changeset_iter_clear(&args[i].itt);
-		changeset_clear(&args[i].changeset);
-		zone_sign_ctx_free(args[i].sign_ctx);
-	}
-
-	return ret;
-}
-
 int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
                                       const kdnssec_ctx_t *dnssec_ctx,
                                       zone_update_t *update)
@@ -1102,8 +945,8 @@ int knot_zone_sign_update(zone_update_t *update,
 	if (full_sign) {
 		ret = knot_zone_sign(update, zone_keys, dnssec_ctx, expire_at);
 	} else {
-		ret = sign_changeset(update->new_cont, dnssec_ctx->policy->signing_threads,
-				     update, zone_keys, dnssec_ctx, expire_at);
+		ret = zone_tree_sign(update->a_ctx->node_ptrs, dnssec_ctx->policy->signing_threads,
+				     zone_keys, dnssec_ctx, update, expire_at);
 	}
 
 	return ret;
