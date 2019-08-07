@@ -112,85 +112,6 @@ static bool can_add(const zone_node_t *node, const knot_rrset_t *rrset)
 	return true;
 }
 
-/*! \brief Removes all RRs from changeset from zone contents. */
-static int apply_remove(apply_ctx_t *ctx, const changeset_t *chset)
-{
-	changeset_iter_t itt;
-	changeset_iter_rem(&itt, chset);
-
-	knot_rrset_t rr = changeset_iter_next(&itt);
-	while (!knot_rrset_empty(&rr)) {
-		int ret = apply_remove_rr(ctx, &rr);
-		if (ret != KNOT_EOK) {
-			changeset_iter_clear(&itt);
-			return ret;
-		}
-
-		rr = changeset_iter_next(&itt);
-	}
-	changeset_iter_clear(&itt);
-
-	return KNOT_EOK;
-}
-
-/*! \brief Adds all RRs from changeset into zone contents. */
-static int apply_add(apply_ctx_t *ctx, const changeset_t *chset)
-{
-	changeset_iter_t itt;
-	changeset_iter_add(&itt, chset);
-
-	knot_rrset_t rr = changeset_iter_next(&itt);
-	while(!knot_rrset_empty(&rr)) {
-		int ret = apply_add_rr(ctx, &rr);
-		if (ret != KNOT_EOK) {
-			changeset_iter_clear(&itt);
-			return ret;
-		}
-		rr = changeset_iter_next(&itt);
-	}
-	changeset_iter_clear(&itt);
-
-	return KNOT_EOK;
-}
-
-/*! \brief Apply single change to zone contents structure. */
-static int apply_single(apply_ctx_t *ctx, const changeset_t *chset)
-{
-	/*
-	 * Applies one changeset to the zone. Checks if the changeset may be
-	 * applied (i.e. the origin SOA (soa_from) has the same serial as
-	 * SOA in the zone apex.
-	 */
-
-	zone_contents_t *contents = ctx->contents;
-
-	// check if serial matches
-	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
-
-	// either we are in the mode of ignoring SOA (both NULL), or we shall be strict and apply SOA later
-	bool ignore_soa = (chset->soa_from == NULL && chset->soa_to == NULL);
-	bool soa_mismatch = (chset->soa_from == NULL || chset->soa_to == NULL || soa == NULL ||
-			     knot_soa_serial(soa->rdata) != knot_soa_serial(chset->soa_from->rrs.rdata));
-
-	if (soa == NULL || (!ignore_soa && soa_mismatch)) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = apply_remove(ctx, chset);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = apply_add(ctx, chset);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return (ignore_soa ? KNOT_EOK : apply_replace_soa(ctx, chset));
-}
-
-/* ------------------------------- API -------------------------------------- */
-
 int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
 {
 	if (ctx == NULL) {
@@ -372,16 +293,17 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	return KNOT_EOK;
 }
 
-int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *chset)
+int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr)
 {
 	zone_contents_t *contents = ctx->contents;
 
-	if (!knot_dname_is_equal(chset->soa_to->owner, contents->apex->owner)) {
+	if (!knot_dname_is_equal(rr->owner, contents->apex->owner)) {
 		return KNOT_EDENIED;
 	}
 
-	assert(chset->soa_from && chset->soa_to);
-	int ret = apply_remove_rr(ctx, chset->soa_from);
+	knot_rrset_t old_soa = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+
+	int ret = apply_remove_rr(ctx, &old_soa);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -391,38 +313,7 @@ int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *chset)
 		return KNOT_ESOAINVAL;
 	}
 
-	return apply_add_rr(ctx, chset->soa_to);
-}
-
-int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets)
-{
-	if (ctx == NULL || ctx->contents == NULL || chsets == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	changeset_t *set = NULL;
-	WALK_LIST(set, *chsets) {
-		int ret = apply_single(ctx, set);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch)
-{
-	if (ctx == NULL || ctx->contents == NULL || ch == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = apply_single(ctx, ch);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return apply_add_rr(ctx, rr);
 }
 
 void update_cleanup(apply_ctx_t *ctx)
