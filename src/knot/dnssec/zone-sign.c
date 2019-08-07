@@ -98,6 +98,7 @@ static bool apex_dnssec_changed(zone_update_t *update)
  * \param key      Signing key.
  * \param ctx      Signing context.
  * \param policy   DNSSEC policy.
+ * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  * \param at       RRSIG position.
  *
  * \return The signature exists and is valid.
@@ -107,6 +108,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   const dnssec_key_t *key,
 				   dnssec_sign_ctx_t *ctx,
 				   const kdnssec_ctx_t *dnssec_ctx,
+                                   bool skip_crypto,
 				   uint16_t *at)
 {
 	assert(key);
@@ -128,7 +130,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 		}
 
 		if (knot_check_signature(covered, rrsigs, i, key, ctx,
-		                         dnssec_ctx) == KNOT_EOK) {
+		                         dnssec_ctx, skip_crypto) == KNOT_EOK) {
 			if (at != NULL) {
 				*at = i;
 			}
@@ -162,7 +164,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 
 		if (!valid_signature_exists(covered, rrsigs, key->key,
 		                            sign_ctx->sign_ctxs[i],
-		                            sign_ctx->dnssec_ctx, NULL)) {
+		                            sign_ctx->dnssec_ctx, false, NULL)) {
 			return false;
 		}
 	}
@@ -213,6 +215,7 @@ static bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
  * \param covered     RR set with covered records.
  * \param rrsigs      RR set with RRSIGs.
  * \param sign_ctx    Local zone signing context.
+ * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  * \param changeset   Changeset to be updated.
  * \param update      Zone update to be updated. Exactly one of "changeset" and "update" must be NULL!
  * \param expires_at  Earliest RRSIG expiration.
@@ -222,6 +225,7 @@ static bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
 static int add_missing_rrsigs(const knot_rrset_t *covered,
                               const knot_rrset_t *rrsigs,
                               zone_sign_ctx_t *sign_ctx,
+                              bool skip_crypto,
                               changeset_t *changeset,
                               zone_update_t *update,
                               knot_time_t *expires_at)
@@ -258,7 +262,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 		uint16_t valid_at;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
-		                           sign_ctx->dnssec_ctx, &valid_at)) {
+		                           sign_ctx->dnssec_ctx, skip_crypto, &valid_at)) {
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
 			knot_rdataset_t rrsig_keep = { 1, valid_rr };
 			result = knot_rdataset_subtract(&to_remove.rrs, &rrsig_keep, NULL);
@@ -348,7 +352,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 		}
 	}
 
-	return add_missing_rrsigs(covered, NULL, sign_ctx, changeset, NULL, NULL);
+	return add_missing_rrsigs(covered, NULL, sign_ctx, false, changeset, NULL, NULL);
 }
 
 /*!
@@ -357,6 +361,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
  * \param covered     RR set with covered records.
  * \param rrsigs      Existing RRSIGs for covered RR set.
  * \param sign_ctx    Local zone signing context.
+ * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  * \param changeset   Changeset to be updated.
  * \param expires_at  Current earliest expiration, will be updated.
  *
@@ -365,12 +370,13 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 static int resign_rrset(const knot_rrset_t *covered,
                         const knot_rrset_t *rrsigs,
                         zone_sign_ctx_t *sign_ctx,
+                        bool skip_crypto,
                         changeset_t *changeset,
                         knot_time_t *expires_at)
 {
 	assert(!knot_rrset_empty(covered));
 
-	return add_missing_rrsigs(covered, rrsigs, sign_ctx, changeset, NULL, expires_at);
+	return add_missing_rrsigs(covered, rrsigs, sign_ctx, skip_crypto, changeset, NULL, expires_at);
 }
 
 static int remove_standalone_rrsigs(const zone_node_t *node,
@@ -437,7 +443,7 @@ static int sign_node_rrsets(const zone_node_t *node,
 			result = force_resign_rrset(&rrset, &rrsigs,
 			                            sign_ctx, changeset);
 		} else {
-			result = resign_rrset(&rrset, &rrsigs, sign_ctx,
+			result = resign_rrset(&rrset, &rrsigs, sign_ctx, node->flags & NODE_FLAGS_RRSIGS_VALID,
 			                      changeset, expires_at);
 		}
 	}
@@ -496,6 +502,13 @@ static void *tree_sign_thread(void *_arg)
 	node_sign_args_t *arg = _arg;
 	arg->errcode = zone_tree_apply(arg->tree, sign_node, _arg);
 	return NULL;
+}
+
+static int set_signed(zone_node_t *node, void *data)
+{
+	UNUSED(data);
+	node->flags |= NODE_FLAGS_RRSIGS_VALID;
+	return KNOT_EOK;
 }
 
 /*!
@@ -584,6 +597,10 @@ static int zone_tree_sign(zone_tree_t *tree,
 		}
 		changeset_clear(&args[i].changeset);
 		zone_sign_ctx_free(args[i].sign_ctx);
+	}
+
+	if (ret == KNOT_EOK) {
+		ret = zone_tree_apply(tree, set_signed, NULL);
 	}
 
 	return ret;
@@ -888,15 +905,21 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
 		zone_node_t *n = zone_tree_it_val(&it);
+
 		knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
 		for (int i = 0; i < n->rrset_count; i++) {
 			knot_rrset_t rr = node_rrset_at(n, i);
 			if (rr.type == KNOT_RRTYPE_NSEC ||
 			    rr.type == KNOT_RRTYPE_NSEC3 ||
 			    rr.type == KNOT_RRTYPE_NSEC3PARAM) {
-				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, NULL, update, NULL);
+				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, n->flags & NODE_FLAGS_RRSIGS_VALID, NULL, update, NULL);
 			}
 		}
+
+		if (ret == KNOT_EOK) {
+			n->flags |= NODE_FLAGS_RRSIGS_VALID; // non-NSEC RRSIGs had been validated in knot_dnssec_sign_update()
+		}
+
 		zone_tree_it_next(&it);
 	}
 	zone_tree_it_free(&it);

@@ -273,6 +273,8 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		}
 	}
 
+	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
+
 	knot_rdataset_t *changed_rrs = node_rdataset(node, rr->type);
 	// Subtract changeset RRS from node RRS.
 	ret = knot_rdataset_subtract(changed_rrs, &rr->rrs, NULL);

@@ -148,6 +148,8 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		node = *n;
 	}
 
+	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
+
 	knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
 	// Subtract changeset RRS from node RRS.
 	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, NULL);
