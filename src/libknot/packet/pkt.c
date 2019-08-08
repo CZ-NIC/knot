@@ -70,7 +70,7 @@ static void pkt_free_data(knot_pkt_t *pkt)
 	pkt->edns_opts = 0;
 }
 
-/*! \brief Allocate new wireformat of given length. */
+/*! \brief Allocate new wireformat of given length, assuming *pkt is zeroed. */
 static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 {
 	assert(pkt);
@@ -87,7 +87,9 @@ static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 	pkt->flags |= KNOT_PF_FREE;
 	pkt->max_size = len;
 
-	knot_pkt_clear(pkt);
+	/* Reset to header size. */
+	pkt->size = KNOT_WIRE_HEADER_SIZE;
+	memset(pkt->wire, 0, pkt->size);
 
 	return KNOT_EOK;
 }
