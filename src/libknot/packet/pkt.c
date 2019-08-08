@@ -176,12 +176,6 @@ static void compr_clear(knot_compr_t *compr)
 	compr->suffix.labels = 0;
 }
 
-static void compr_init(knot_compr_t *compr, uint8_t *wire)
-{
-	compr_clear(compr);
-	compr->wire = wire;
-}
-
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
 static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 {
@@ -200,8 +194,8 @@ static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 		pkt_wire_set(pkt, wire, len);
 	}
 
-	/* Initialize compression context. */
-	compr_init(&pkt->compr, pkt->wire);
+	/* Initialize compression context (zeroed above). */
+	pkt->compr.wire = pkt->wire;
 
 	return ret;
 }
