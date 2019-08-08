@@ -39,6 +39,7 @@ typedef struct {
 
 	bool rrsig_drop_existing;
 	bool keep_deleted_keys;
+	bool keytag_conflict;
 
 	knot_rrset_t *offline_rrsig;
 } kdnssec_ctx_t;

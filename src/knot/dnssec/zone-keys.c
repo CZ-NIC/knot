@@ -136,7 +136,8 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
 	}
 
 	kasp_zone_clear(ctx->zone);
-	ret = kasp_zone_load(ctx->zone, to_zone, ctx->kasp_db);
+	ret = kasp_zone_load(ctx->zone, to_zone, ctx->kasp_db,
+	                     &ctx->keytag_conflict);
 	free(to_zone);
 	return ret;
 }

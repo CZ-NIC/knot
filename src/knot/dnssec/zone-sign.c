@@ -431,6 +431,8 @@ static int sign_node_rrsets(const zone_node_t *node,
 
 	int result = KNOT_EOK;
 	knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
+	bool skip_crypto = (node->flags & NODE_FLAGS_RRSIGS_VALID) &&
+	                   !sign_ctx->dnssec_ctx->keytag_conflict;
 
 	for (int i = 0; result == KNOT_EOK && i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
@@ -443,7 +445,7 @@ static int sign_node_rrsets(const zone_node_t *node,
 			result = force_resign_rrset(&rrset, &rrsigs,
 			                            sign_ctx, changeset);
 		} else {
-			result = resign_rrset(&rrset, &rrsigs, sign_ctx, node->flags & NODE_FLAGS_RRSIGS_VALID,
+			result = resign_rrset(&rrset, &rrsigs, sign_ctx, skip_crypto,
 			                      changeset, expires_at);
 		}
 	}
@@ -905,6 +907,7 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
 		zone_node_t *n = zone_tree_it_val(&it);
+		bool skip_crypto = (n->flags & NODE_FLAGS_RRSIGS_VALID) && !dnssec_ctx->keytag_conflict;
 
 		knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
 		for (int i = 0; i < n->rrset_count; i++) {
@@ -912,7 +915,7 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 			if (rr.type == KNOT_RRTYPE_NSEC ||
 			    rr.type == KNOT_RRTYPE_NSEC3 ||
 			    rr.type == KNOT_RRTYPE_NSEC3PARAM) {
-				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, n->flags & NODE_FLAGS_RRSIGS_VALID, NULL, update, NULL);
+				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, skip_crypto, NULL, update, NULL);
 			}
 		}
 

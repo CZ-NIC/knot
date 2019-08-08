@@ -148,7 +148,8 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		goto init_error;
 	}
 
-	ret = kasp_zone_load(ctx->zone, zone_name, ctx->kasp_db);
+	ret = kasp_zone_load(ctx->zone, zone_name, ctx->kasp_db,
+	                     &ctx->keytag_conflict);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}

@@ -138,9 +138,25 @@ static void kaspkey2params(knot_kasp_key_t *key, key_params_t *params)
 	params->is_pub_only = key->is_pub_only;
 }
 
+static void detect_keytag_conflict(knot_kasp_zone_t *zone, bool *kt_cfl)
+{
+	*kt_cfl = false;
+	uint16_t keytags[zone->num_keys];
+	for (size_t i = 0; i < zone->num_keys; i++) {
+		keytags[i] = dnssec_key_get_keytag(zone->keys[i].key);
+		for (size_t j = 0; j < i; j++) {
+			if (keytags[j] == keytags[i]) {
+				*kt_cfl = true;
+				return;
+			}
+		}
+	}
+}
+
 int kasp_zone_load(knot_kasp_zone_t *zone,
-		   const knot_dname_t *zone_name,
-		   knot_lmdb_db_t *kdb)
+                   const knot_dname_t *zone_name,
+                   knot_lmdb_db_t *kdb,
+                   bool *kt_cfl)
 {
 	if (zone == NULL || zone_name == NULL || kdb == NULL) {
 	return KNOT_EINVAL;
@@ -193,6 +209,8 @@ kzl_salt:
 	zone->num_keys = num_dkeys;
 	zone->nsec3_salt = salt;
 	zone->nsec3_salt_created = sc;
+
+	detect_keytag_conflict(zone, kt_cfl);
 
 kzl_end:
 	ptrlist_deep_free(&key_params, NULL);
