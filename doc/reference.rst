@@ -327,7 +327,10 @@ descriptor limit to avoid resource exhaustion.
 
 .. NOTE::
    It is advisable to adjust the maximum number of open files per process in your
-   operating system configuration.
+   operating system configuration according to expected TCP traffic.
+
+   In order not to clog the logs, warnings about the number of concurrent
+   TCP clients being limited are issued not more often than once in 5 minutes.
 
 *Default:* one half of the file descriptor limit for the server process
 
