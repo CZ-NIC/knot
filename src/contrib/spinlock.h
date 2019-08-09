@@ -20,76 +20,71 @@
 
 #pragma once
 
-#include <pthread.h>
-#ifdef __APPLE__
-#include <libkern/OSAtomic.h>
-#endif /* __APPLE__ */
+/*************/
+/* Simple & fast atomic spinlock. Preferred. */
+/* This version uses the older '__sync' builtins. */
 
-/*! \brief Portable spinlock lock type. */
-typedef
-#if defined(HAVE_ATOMIC) || defined(HAVE_SYNC_ATOMIC)
-	bool			/*!< Spinlock lock - a simple & fast atomic version. */
-#elif defined(__APPLE__)
-	OSSpinLock		/*!< Spinlock lock - a macOS version. */
-#else
-	pthread_spinlock_t	/*!< Spinlock lock - a pthread version. */
-#endif
-	knot_spinlock_t;
+#if defined(HAVE_SYNC_ATOMIC)
+
+/*! \brief Spinlock lock type. */
+#define KNOT_SPIN_T		bool
 
 /*! \brief Initialize the spinlock. */
-void inline knot_spin_init(knot_spinlock_t *lock)
-{
-#if defined(HAVE_ATOMIC) || defined(HAVE_SYNC_ATOMIC)
-	*lock = false;
-#elif defined(__APPLE__)
-	*lock = 0;
-#else	/* POSIX pthread spinlock. */
-	pthread_spin_init(lock, PTHREAD_PROCESS_PRIVATE);
-#endif
-}
+#define KNOT_SPIN_INIT(lock)	*lock = false
 
 /*! \brief Destroy the spinlock. */
-void inline knot_spin_destroy(knot_spinlock_t *lock)
-{
-#if defined(HAVE_ATOMIC) || defined(HAVE_SYNC_ATOMIC)
-	/* Nothing needed here. */
-#elif defined(__APPLE__)
-	/* Nothing needed here. */
-#else   /* POSIX pthread spinlock. */
-	pthread_spin_destroy(lock);
-#endif
-}
+#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
 
 /*! \brief Lock the spinlock. */
-void inline knot_spin_lock(knot_spinlock_t *lock)
-{
-#if defined(HAVE_SYNC_ATOMIC)
-	while (__sync_lock_test_and_set(lock, 1)) {
-	}
-#elif defined(HAVE_ATOMIC)
-	/* This version uses the newer '__atomic' builtins and it is expensive and ugly. */
-	int expected = 0;
-	while (!__atomic_compare_exchange_n(lock, &expected, 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
-		expected = 0;
-	}
-#elif defined(__APPLE__)
-	OSSpinLockLock(lock);
-#else	/* POSIX pthread spinlock. */
-	pthread_spin_lock(lock);
-#endif
-}
+#define KNOT_SPIN_LOCK(lock)	while (__sync_lock_test_and_set(lock, 1)) {}
 
 /*! \brief Unlock the spinlock. */
-void inline knot_spin_unlock(knot_spinlock_t *lock)
-{
-#if defined(HAVE_SYNC_ATOMIC)
-	__sync_lock_release(lock);
+#define KNOT_SPIN_UNLOCK(lock)	(__sync_lock_release(lock))
+
+
+/*************/
+/* Simple & fast atomic spinlock by newer specs. */
+/* This version uses the newer '__atomic' builtins. It is more expensive and ugly. */
+
 #elif defined(HAVE_ATOMIC)
-	__atomic_clear(lock, __ATOMIC_RELAXED);
+
+#define KNOT_SPIN_T		bool
+#define KNOT_SPIN_INIT(lock)	*lock = false
+#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
+#define KNOT_SPIN_LOCK(lock)	\
+	int expected = 0; \
+	while (!__atomic_compare_exchange_n(lock, &expected, 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) { \
+		expected = 0; \
+	}
+#define KNOT_SPIN_UNLOCK(lock)	(__atomic_clear(lock, __ATOMIC_RELAXED))
+
+
+/*************/
+/* A macOS spinlock, as a fallback. */
+
 #elif defined(__APPLE__)
-	OSSpinLockUnlock(lock);
-#else	/* POSIX pthread spinlock. */
-	pthread_spin_unlock(lock);
+
+#include <libkern/OSAtomic.h>
+
+#define KNOT_SPIN_T		OSSpinLock
+#define KNOT_SPIN_INIT(lock)	*lock = 0
+#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
+#define KNOT_SPIN_LOCK(lock)	(OSSpinLockLock(lock))
+#define KNOT_SPIN_UNLOCK(lock)	(OSSpinLockUnlock(lock))
+
+
+/*************/
+/* A POSIX pthread spinlock, as a fallback. */
+
+#else
+
+#include <pthread.h>
+
+#define KNOT_SPIN_T		pthread_spinlock_t
+#define KNOT_SPIN_INIT(lock)	(pthread_spin_init(lock, PTHREAD_PROCESS_PRIVATE))
+#define KNOT_SPIN_DESTROY(lock)	(pthread_spin_destroy(lock))
+#define KNOT_SPIN_LOCK(lock)	(pthread_spin_lock(lock))
+#define KNOT_SPIN_UNLOCK(lock)	(pthread_spin_unlock(lock))
+
 #endif
-}
 
