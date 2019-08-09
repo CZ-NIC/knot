@@ -45,6 +45,7 @@ libcontrib_la_SOURCES = \
 	contrib/semaphore.h			\
 	contrib/sockaddr.c			\
 	contrib/sockaddr.h			\
+	contrib/spinlock.h			\
 	contrib/string.c			\
 	contrib/string.h			\
 	contrib/strtonum.h			\
