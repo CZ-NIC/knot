@@ -333,7 +333,10 @@ descriptor limit to avoid resource exhaustion.
 .INDENT 0.0
 .INDENT 3.5
 It is advisable to adjust the maximum number of open files per process in your
-operating system configuration.
+operating system configuration according to expected TCP traffic.
+.sp
+In order not to clog the logs, warnings about the number of concurrent
+TCP clients being limited are issued not more often than once in 5 minutes.
 .UNINDENT
 .UNINDENT
 .sp
