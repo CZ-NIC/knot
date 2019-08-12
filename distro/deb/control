@@ -128,6 +128,18 @@ Description: DNSSEC shared library from Knot
  This package provides common DNSSEC shared library used by Knot DNS
  and Knot Resolver.
 
+Package: knot-dbg
+Architecture: any
+Depends:
+ knot (= ${binary:Version}),
+ libknot9 (= ${binary:Version}),
+ libzscanner3 (= ${binary:Version}),
+ libdnssec7 (= ${binary:Version}),
+ ${misc:Depends}
+Section: debug
+Priority: extra
+Description: Debug symbols for Knot DNS and its libraries
+
 Package: libknot-dev
 Architecture: any
 Multi-Arch: same
