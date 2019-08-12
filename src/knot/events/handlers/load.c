@@ -251,9 +251,6 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 		ret = zone_update_apply_changeset_reverse(&up, cpy);
 		changeset_free(cpy);
-		if (ret == KNOT_EOK) {
-			ret = changeset_remove_addition(&up.change, up.change.soa_to);
-		}
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}
