@@ -74,6 +74,22 @@
 
 
 /*************/
+/* A new macOS (version 10.12+) spinlock, as a fallback. */
+
+/* XXX The exact macOS version needs to be autodetected. */
+/* XXX Not used so far. */
+#elif defined(__APPLE__) && !defined(__APPLE__)
+
+#include <os/lock.h>
+
+#define KNOT_SPIN_T		os_unfair_lock
+#define KNOT_SPIN_INIT(lock)	*lock = 0
+#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
+#define KNOT_SPIN_LOCK(lock)	(os_unfair_lock_lock(lock))
+#define KNOT_SPIN_UNLOCK(lock)	(os_unfair_lock_unlock(lock))
+
+
+/*************/
 /* A POSIX pthread spinlock, as a fallback. */
 
 #else
