@@ -8,8 +8,7 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-#zones = t.zone_rnd(5, records=150)
-zones = t.zone("example.com.")
+zones = t.zone_rnd(5)
 
 t.link(zones, master, slave, ixfr=True)
 
@@ -23,7 +22,8 @@ t.start()
 ser1 = master.zones_wait(zones, serials_zfile=True, greater=True, equal=False)
 slave.zones_wait(zones, ser1, greater=False, equal=True)
 
-slave.zone_backup(zones, flush=True)
+for zone in zones:
+  slave.zone_backup(zone, flush=True)
 
 master.flush()
 t.sleep(3)
