@@ -20,49 +20,11 @@
 
 #pragma once
 
-/*************/
-/* Simple & fast atomic spinlock. Preferred. */
-/* This version uses the older '__sync' builtins. */
-
-#if defined(HAVE_SYNC_ATOMIC)
-
-/*! \brief Spinlock lock type. */
-#define KNOT_SPIN_T		bool
-
-/*! \brief Initialize the spinlock. */
-#define KNOT_SPIN_INIT(lock)	*lock = false
-
-/*! \brief Destroy the spinlock. */
-#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
-
-/*! \brief Lock the spinlock. */
-#define KNOT_SPIN_LOCK(lock)	while (__sync_lock_test_and_set(lock, 1)) {}
-
-/*! \brief Unlock the spinlock. */
-#define KNOT_SPIN_UNLOCK(lock)	(__sync_lock_release(lock))
-
-
-/*************/
-/* Simple & fast atomic spinlock by newer specs. */
-/* This version uses the newer '__atomic' builtins. It is more expensive and ugly. */
-
-#elif defined(HAVE_ATOMIC)
-
-#define KNOT_SPIN_T		bool
-#define KNOT_SPIN_INIT(lock)	*lock = false
-#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
-#define KNOT_SPIN_LOCK(lock)	\
-	int expected = 0; \
-	while (!__atomic_compare_exchange_n(lock, &expected, 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) { \
-		expected = 0; \
-	}
-#define KNOT_SPIN_UNLOCK(lock)	(__atomic_clear(lock, __ATOMIC_RELAXED))
-
 
 /*************/
 /* A macOS spinlock, as a fallback. */
 
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
 
 #include <libkern/OSAtomic.h>
 
