@@ -67,7 +67,7 @@
 #include <libkern/OSAtomic.h>
 
 #define KNOT_SPIN_T		OSSpinLock
-#define KNOT_SPIN_INIT(lock)	*lock = 0
+#define KNOT_SPIN_INIT(lock)	*lock = OS_SPINLOCK_INIT
 #define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
 #define KNOT_SPIN_LOCK(lock)	(OSSpinLockLock(lock))
 #define KNOT_SPIN_UNLOCK(lock)	(OSSpinLockUnlock(lock))
