@@ -891,9 +891,8 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 		return false;
 	}
 
-	if (!key->is_active && !key->is_post_active) {
-		return false;
-	}
+	bool active_ksk = ((key->is_active || key->is_ksk_active_plus) && key->is_ksk);
+	bool active_zsk = ((key->is_active || key->is_zsk_active_plus) && key->is_zsk);;
 
 	// this may be a problem with offline KSK
 	bool cds_sign_by_ksk = true;
@@ -902,17 +901,17 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 	bool is_apex = knot_dname_is_equal(covered->owner,
 	                                   dnssec_key_get_dname(key->key));
 	if (!is_apex) {
-		return key->is_zsk;
+		return active_zsk;
 	}
 
 	switch (covered->type) {
 	case KNOT_RRTYPE_DNSKEY:
-		return key->is_ksk;
+		return active_ksk;
 	case KNOT_RRTYPE_CDS:
 	case KNOT_RRTYPE_CDNSKEY:
-		return (cds_sign_by_ksk ? key->is_ksk : key->is_zsk);
+		return (cds_sign_by_ksk ? active_ksk : active_zsk);
 	default:
-		return key->is_zsk;
+		return active_zsk;
 	}
 }
 

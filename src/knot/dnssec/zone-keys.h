@@ -39,7 +39,8 @@ typedef struct {
 	bool is_active;
 	bool is_public;
 	bool is_ready;
-	bool is_post_active; // also for retire_active, pre_active
+	bool is_zsk_active_plus;
+	bool is_ksk_active_plus;
 } zone_key_t;
 
 dynarray_declare(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC, 1)

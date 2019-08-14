@@ -174,10 +174,44 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	return KNOT_EOK;
 }
 
+static bool is_published(knot_kasp_key_timing_t *timing, knot_time_t now)
+{
+	return (knot_time_cmp(timing->publish, now) <= 0 &&
+	        knot_time_cmp(timing->post_active, now) > 0 &&
+	        knot_time_cmp(timing->remove, now) > 0);
+}
+
+static bool is_ready(knot_kasp_key_timing_t *timing, knot_time_t now)
+{
+	return (knot_time_cmp(timing->ready, now) <= 0 &&
+	        knot_time_cmp(timing->active, now) > 0);
+}
+
+static bool is_active(knot_kasp_key_timing_t *timing, knot_time_t now)
+{
+	return (knot_time_cmp(timing->active, now) <= 0 &&
+	        knot_time_cmp(timing->retire, now) > 0 &&
+	        knot_time_cmp(timing->retire_active, now) > 0 &&
+	        knot_time_cmp(timing->remove, now) > 0);
+}
+
+static bool alg_has_active_zsk(kdnssec_ctx_t *ctx, uint8_t alg)
+{
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *k = &ctx->zone->keys[i];
+		if (dnssec_key_get_algorithm(k->key) == alg &&
+		    k->is_zsk && is_active(&k->timing, ctx->now)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /*!
  * \brief Get key feature flags from key parameters.
  */
-static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone_key)
+static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now,
+                    zone_key_t *zone_key, bool same_alg_act_zsk)
 {
 	assert(kasp_key);
 	assert(zone_key);
@@ -213,33 +247,27 @@ static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now, zone_key_t *zone
 	zone_key->is_ksk = kasp_key->is_ksk;
 	zone_key->is_zsk = kasp_key->is_zsk;
 
-	zone_key->is_public = (knot_time_cmp(timing->publish, now) <= 0 &&
-	                       knot_time_cmp(timing->post_active, now) > 0 &&
-	                       knot_time_cmp(timing->remove, now) > 0);
+	zone_key->is_public = is_published(timing, now);
+	zone_key->is_ready = (zone_key->is_ksk && is_ready(timing, now));
+	zone_key->is_active = is_active(timing, now);
 
-	zone_key->is_ready = (zone_key->is_ksk && knot_time_cmp(timing->ready, now) <= 0 &&
-	                      knot_time_cmp(timing->active, now) > 0);
-
-	zone_key->is_active = ((knot_time_cmp(timing->ready, now) <= 0 ||
-	                        knot_time_cmp(timing->active, now) <= 0) &&
-	                       knot_time_cmp(timing->retire, now) > 0 &&
-	                       knot_time_cmp(timing->retire_active, now) > 0 &&
-	                       knot_time_cmp(timing->remove, now) > 0);
-
-	zone_key->is_post_active = false;
+	zone_key->is_ksk_active_plus = zone_key->is_ready;
+	zone_key->is_zsk_active_plus = zone_key->is_ready && !same_alg_act_zsk;
 	if (knot_time_cmp(timing->pre_active, now) <= 0 &&
 	    knot_time_cmp(timing->ready, now) > 0 &&
 	    knot_time_cmp(timing->active, now) > 0) {
-		zone_key->is_post_active = (zone_key->is_zsk ||
-		                            knot_time_cmp(timing->publish, now) <= 0);
+		zone_key->is_zsk_active_plus = zone_key->is_zsk;
+		zone_key->is_ksk_active_plus = (knot_time_cmp(timing->publish, now) <= 0 && zone_key->is_ksk);
 	}
 	if (knot_time_cmp(timing->retire_active, now) <= 0 &&
 	    knot_time_cmp(timing->retire, now) > 0) {
-		zone_key->is_post_active = true;
+		zone_key->is_ksk_active_plus = zone_key->is_ksk;
+		zone_key->is_zsk_active_plus = !same_alg_act_zsk;
 	} // not "else" !
 	if (knot_time_cmp(timing->post_active, now) <= 0 &&
 	    knot_time_cmp(timing->remove, now) > 0) {
-		zone_key->is_post_active = zone_key->is_zsk;
+		zone_key->is_ksk_active_plus = false;
+		zone_key->is_zsk_active_plus = zone_key->is_zsk;
 	}
 }
 
@@ -272,14 +300,15 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 			key->is_public = false;
 			key->is_active = false;
 			key->is_ready = false;
-			key->is_post_active = false;
+			key->is_ksk_active_plus = false;
+			key->is_zsk_active_plus = false;
 			continue;
 		}
 
 		if (key->is_ksk && key->is_public) { alg_usage[alg] |= 1; }
 		if (key->is_zsk && key->is_public) { alg_usage[alg] |= 2; }
-		if (key->is_ksk && (key->is_active || key->is_post_active)) { alg_usage[alg] |= 4; }
-		if (key->is_zsk && (key->is_active || key->is_post_active)) { alg_usage[alg] |= 8; }
+		if (key->is_ksk && (key->is_active || key->is_ksk_active_plus)) { alg_usage[alg] |= 4; }
+		if (key->is_zsk && (key->is_active || key->is_zsk_active_plus)) { alg_usage[alg] |= 8; }
 	}
 
 	for (size_t i = 0; i < sizeof(alg_usage); i++) {
@@ -319,7 +348,7 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
-		if (!key->is_active && !key->is_post_active) {
+		if (!key->is_active && !key->is_ksk_active_plus && !key->is_zsk_active_plus) {
 			continue;
 		}
 		int r = dnssec_keystore_export(keystore, key->id, key->key);
@@ -358,7 +387,7 @@ static void log_key_info(const zone_key_t *key, char *out, size_t out_len)
 	               (key->is_public             ? ", public"  : ""),
 	               (key->is_ready              ? ", ready"   : ""),
 	               (key->is_active             ? ", active"  : ""),
-	               (key->is_post_active        ? ", active+" : ""));
+	               (key->is_ksk_active_plus || key->is_zsk_active_plus ? ", active+" : ""));
 }
 
 int log_key_sort(const void *a, const void *b)
@@ -396,7 +425,9 @@ int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
 	char key_info[ctx->zone->num_keys][MAX_KEY_INFO];
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
-		set_key(kasp_key, ctx->now, &keyset.keys[i]);
+		uint8_t kk_alg = dnssec_key_get_algorithm(kasp_key->key);
+		bool same_alg_zsk = alg_has_active_zsk(ctx, kk_alg);
+		set_key(kasp_key, ctx->now, &keyset.keys[i], same_alg_zsk);
 		if (verbose) {
 			log_key_info(&keyset.keys[i], key_info[i], MAX_KEY_INFO);
 		}
