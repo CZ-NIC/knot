@@ -204,6 +204,9 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 
 	if (!can_add(node, rr)) {
 		if (ctx->flags & APPLY_STRICT) {
+			char *rrowner = knot_dname_to_str_alloc(rr->owner);
+			log_zone_debug(ctx->contents->apex->owner, "cannot add existing RR for %s type %hu", rrowner, rr->type);
+			free(rrowner);
 			return KNOT_EISRECORD;
 		}
 		return KNOT_EOK;
@@ -255,7 +258,9 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	if (!can_remove(node, rr)) {
 		// Cannot be removed, either no node or nonexistent RR
 		if (ctx->flags & APPLY_STRICT) {
-			// Don't ignore missing RR if strict. Required for IXFR.
+			char *rrowner = knot_dname_to_str_alloc(rr->owner);
+			log_zone_debug(ctx->contents->apex->owner, "cannot remove nonexisting RR for %s type %hu", rrowner, rr->type);
+			free(rrowner);
 			return KNOT_ENORECORD;
 		}
 		return KNOT_EOK;
