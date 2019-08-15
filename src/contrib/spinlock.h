@@ -46,11 +46,7 @@
 
 /*! \brief Spinlock lock variable type. */
 typedef
-#if defined(HAVE_SYNC_ATOMIC) || defined(HAVE_ATOMIC)
-	bool			/*!< Spinlock lock - a simple & fast atomic version. */
-#elif defined(STDATOMIC_LIB)
-	atomic_bool		/*!< Spinlock lock - a simple & fast atomic version, C11 */
-#elif defined(APPLE_NEW)
+#if defined(APPLE_NEW)
 	os_unfair_lock		/*!< Spinlock lock - a newer macOS version (macOS >= 10.12). */
 #elif defined(APPLE_OLD)
 	OSSpinLock		/*!< Spinlock lock - an older macOS version (macOS < 10.12). */
@@ -62,11 +58,7 @@ typedef
 /*! \brief Initialize the spinlock pointed to by the parameter "lock". */
 void static inline knot_spin_init(knot_spin_t *lock)
 {
-#if defined(HAVE_SYNC_ATOMIC) || defined(HAVE_ATOMIC)
-	*lock = false;
-#elif defined(STDATOMIC_LIB)
-	atomic_init(lock, false);
-#elif defined(APPLE_NEW)
+#if defined(APPLE_NEW)
 	*lock = OS_UNFAIR_LOCK_INIT;
 #elif defined(APPLE_OLD)
 	*lock = OS_SPINLOCK_INIT;
@@ -89,20 +81,7 @@ void static inline knot_spin_destroy(knot_spin_t *lock)
 /*! \brief Lock the spinlock pointed to by the parameter "lock". */
 void static inline knot_spin_lock(knot_spin_t *lock)
 {
-#if defined(HAVE_SYNC_ATOMIC)
-	while (__sync_lock_test_and_set(lock, 1)) {
-	}
-#elif defined(HAVE_ATOMIC)
-	int expected = 0;
-        while (!__atomic_compare_exchange_n(lock, &expected, 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
-		expected = 0;
-	}
-#elif defined(STDATOMIC_LIB)
-	int expected = 0;
-	while (!atomic_compare_exchange_strong(lock, &expected, false)) {
-		expected = 0;
-	}
-#elif defined(APPLE_NEW)
+#if defined(APPLE_NEW)
 	os_unfair_lock_lock(lock);
 #elif defined(APPLE_OLD)
 	OSSpinLockLock(lock);
@@ -114,13 +93,7 @@ void static inline knot_spin_lock(knot_spin_t *lock)
 /*! \brief Unlock the spinlock pointed to by the parameter "lock". */
 void static inline knot_spin_unlock(knot_spin_t *lock)
 {
-#if defined(HAVE_SYNC_ATOMIC)
-	__sync_lock_release(lock);
-#elif defined(HAVE_ATOMIC)
-	__atomic_clear(lock, __ATOMIC_RELAXED);
-#elif defined(STDATOMIC_LIB)
-	atomic_store(lock, false);
-#elif defined(APPLE_NEW)
+#if defined(APPLE_NEW)
 	os_unfair_lock_unlock(lock);
 #elif defined(APPLE_OLD)
 	OSSpinLockUnlock(lock);
