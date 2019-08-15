@@ -122,7 +122,7 @@ inline static zone_journal_t zone_journal(zone_t *zone)
 	return j;
 }
 
-int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
+int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset_t *extra);
 int zone_changes_clear(conf_t *conf, zone_t *zone);
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents);
 
