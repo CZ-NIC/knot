@@ -444,10 +444,12 @@ static int ixfr_finalize(struct refresh_data *data)
 	WALK_LIST(set, data->ixfr.changesets) {
 		ret = zone_update_apply_changeset(&up, set);
 		if (ret != KNOT_EOK) {
+			uint32_t serial_from = knot_soa_serial(set->soa_from->rrs.rdata);
+			uint32_t serial_to = knot_soa_serial(set->soa_to->rrs.rdata);
 			zone_update_clear(&up);
 			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			           "failed to apply changes to zone (%s)",
-			           knot_strerror(ret));
+			           "serial %u -> %u, failed to apply changes to zone (%s)",
+			           serial_from, serial_to, knot_strerror(ret));
 			return ret;
 		}
 	}
