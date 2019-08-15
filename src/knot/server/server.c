@@ -464,7 +464,7 @@ void server_deinit(server_t *server)
 	worker_pool_destroy(server->workers);
 
 	/* Destroy the TCP throttle log timer spinlock. */
-	KNOT_SPIN_DESTROY(&tcp_throttle_log.lock);
+	knot_spin_destroy(&tcp_throttle_log.lock);
 
 	/* Free zone database. */
 	knot_zonedb_deep_free(&server->zone_db);
@@ -820,7 +820,7 @@ static int configure_threads(conf_t *conf, server_t *server)
 	}
 
 	/* Initialize the spinlock for TCP threshold logging. */
-	KNOT_SPIN_INIT(&tcp_throttle_log.lock);
+	knot_spin_init(&tcp_throttle_log.lock);
 
 	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
 }
