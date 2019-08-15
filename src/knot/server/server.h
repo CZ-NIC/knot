@@ -113,7 +113,7 @@ typedef struct {
 	struct timespec timer_end;
 
 	/*!< Spinlock lock for the timer above. */
-	KNOT_SPIN_T lock;
+	knot_spin_t lock;
 
 } locked_timeout_t;
 

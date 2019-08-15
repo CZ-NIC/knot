@@ -20,115 +20,112 @@
 
 #pragma once
 
-
-/*
- * This spinlock set contains the following macros:
- *
- *  KNOT_SPIN_T                  Spinlock lock variable type.
- *  KNOT_SPIN_INIT(lock)         Initialize the spinlock pointed to by the parameter "lock".
- *  KNOT_SPIN_DESTROY(lock)      Destroy the spinlock pointed to by the parameter "lock".
- *  KNOT_SPIN_LOCK(lock)         Lock the spinlock pointed to by the parameter "lock".
- *  KNOT_SPIN_UNLOCK(lock)       Unlock the spinlock pointed to by the parameter "lock".
- *
- */
-
-
-#if defined(HAVE_SYNC_ATOMIC)
-
-/*******************/
-/* Simple & fast atomic spinlock. Preferred. */
-/* This version uses the older '__sync' builtins. */
-
-#define KNOT_SPIN_T		bool
-#define KNOT_SPIN_INIT(lock)	*lock = false
-#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
-#define KNOT_SPIN_LOCK(lock)	while (__sync_lock_test_and_set(lock, 1)) {}
-#define KNOT_SPIN_UNLOCK(lock)	(__sync_lock_release(lock))
-
-
-#elif defined(HAVE_ATOMIC)
-
-/*******************/
-/* Simple & fast atomic spinlock by newer specs. */
-/* This version uses the newer '__atomic' builtins. It is more expensive and ugly. */
-
-#define KNOT_SPIN_T		bool
-#define KNOT_SPIN_INIT(lock)	*lock = false
-#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
-#define KNOT_SPIN_LOCK(lock)	\
-	int expected = 0; \
-	while (!__atomic_compare_exchange_n(lock, &expected, 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) { \
-		expected = 0; \
-	}
-#define KNOT_SPIN_UNLOCK(lock)	(__atomic_clear(lock, __ATOMIC_RELAXED))
-
-
-#elif 0  /* if (__STDC_VERSION__ >= 201112L) && !defined(__STDC_NO_ATOMICS__) */
-
-/*******************/
-/* Simple & fast atomic spinlock by newer specs. */
-/* This version uses the newer C11 <stdatomic.h> builtins. It is more expensive and ugly too. */
-
-/* XXX Not supported yet, not tested yet. */
-
-#include <stdatomic.h>
-
-#define KNOT_SPIN_T		atomic_bool
-#define KNOT_SPIN_INIT(lock)	atomic_init(lock, false)
-#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
-#define KNOT_SPIN_LOCK(lock)	\
-	int expected = 0; \
-	while (!atomic_compare_exchange_strong(lock, &expected, false)) { \
-		expected = 0; \
-	}
-#define KNOT_SPIN_UNLOCK(lock)	(atomic_store(lock, false))
-
-
-#elif defined(__APPLE__) && (defined(MAC_OS_X_VERSION_10_12) || \
-	MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_12)
-
-/*******************/
-/* A new macOS (version 10.12+) spinlock, as a fallback. */
-
-/* XXX The macOS version autodetection not tested yet. */
-/* XXX It is needed to detect the run OS platform, not the compile platform! */
-
-#include <os/lock.h>
-
-#define KNOT_SPIN_T		os_unfair_lock
-#define KNOT_SPIN_INIT(lock)	*lock = OS_UNFAIR_LOCK_INIT
-#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
-#define KNOT_SPIN_LOCK(lock)	(os_unfair_lock_lock(lock))
-#define KNOT_SPIN_UNLOCK(lock)	(os_unfair_lock_unlock(lock))
-
-
-#elif defined(__APPLE__)
-
-/*******************/
-/* An older macOS spinlock, as a fallback. */
-
-#include <libkern/OSAtomic.h>
-
-#define KNOT_SPIN_T		OSSpinLock
-#define KNOT_SPIN_INIT(lock)	*lock = OS_SPINLOCK_INIT
-#define KNOT_SPIN_DESTROY(lock)	/* Nothing. */
-#define KNOT_SPIN_LOCK(lock)	(OSSpinLockLock(lock))
-#define KNOT_SPIN_UNLOCK(lock)	(OSSpinLockUnlock(lock))
-
-
-#else
-
-/*******************/
-/* A POSIX pthread spinlock, as a fallback. */
-
-#include <pthread.h>
-
-#define KNOT_SPIN_T		pthread_spinlock_t
-#define KNOT_SPIN_INIT(lock)	(pthread_spin_init(lock, PTHREAD_PROCESS_PRIVATE))
-#define KNOT_SPIN_DESTROY(lock)	(pthread_spin_destroy(lock))
-#define KNOT_SPIN_LOCK(lock)	(pthread_spin_lock(lock))
-#define KNOT_SPIN_UNLOCK(lock)	(pthread_spin_unlock(lock))
-
-
+#if (__STDC_VERSION__ >= 201112L) && !defined(__STDC_NO_ATOMICS__)
+/* XXX Not tested and activated yet. */
+/* #define STDATOMIC_LIB */
 #endif
+
+#if defined(__APPLE__)
+#if defined(MAC_OS_X_VERSION_10_12) || \
+    MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_12
+#define APPLE_NEW
+#else
+#define APPLE_OLD
+#endif	/* MAC_OS_X_VERSION_10_12 ... */
+#endif	/* __APPLE__ */
+
+#if defined(STDATOMIC_LIB)
+#include <stdatomic.h>
+#elif defined(APPLE_NEW)
+#include <os/lock.h>
+#elif defined(APPLE_OLD)
+#include <libkern/OSAtomic.h>
+#else	/* POSIX pthread spinlock. */
+#include <pthread.h>
+#endif
+
+/*! \brief Spinlock lock variable type. */
+typedef
+#if defined(HAVE_SYNC_ATOMIC) || defined(HAVE_ATOMIC)
+	bool			/*!< Spinlock lock - a simple & fast atomic version. */
+#elif defined(STDATOMIC_LIB)
+	atomic_bool		/*!< Spinlock lock - a simple & fast atomic version, C11 */
+#elif defined(APPLE_NEW)
+	os_unfair_lock		/*!< Spinlock lock - a newer macOS version (macOS >= 10.12). */
+#elif defined(APPLE_OLD)
+	OSSpinLock		/*!< Spinlock lock - an older macOS version (macOS < 10.12). */
+#else	/* POSIX */
+	pthread_spinlock_t	/*!< Spinlock lock - a POSIX pthread version. */
+#endif
+	knot_spin_t;
+
+/*! \brief Initialize the spinlock pointed to by the parameter "lock". */
+void static inline knot_spin_init(knot_spin_t *lock)
+{
+#if defined(HAVE_SYNC_ATOMIC) || defined(HAVE_ATOMIC)
+	*lock = false;
+#elif defined(STDATOMIC_LIB)
+	atomic_init(lock, false);
+#elif defined(APPLE_NEW)
+	*lock = OS_UNFAIR_LOCK_INIT;
+#elif defined(APPLE_OLD)
+	*lock = OS_SPINLOCK_INIT;
+#else	/* POSIX */
+	pthread_spin_init(lock, PTHREAD_PROCESS_PRIVATE);
+#endif
+}
+
+/*! \brief Destroy the spinlock pointed to by the parameter "lock". */
+void static inline knot_spin_destroy(knot_spin_t *lock)
+{
+#if defined(HAVE_SYNC_ATOMIC) || defined(HAVE_ATOMIC) || defined(STDATOMIC_LIB) || \
+    defined(APPLE_NEW) || defined(APPLE_OLD)
+	/* Nothing needed here. */
+#else	/* POSIX */
+	pthread_spin_destroy(lock);
+#endif
+}
+
+/*! \brief Lock the spinlock pointed to by the parameter "lock". */
+void static inline knot_spin_lock(knot_spin_t *lock)
+{
+#if defined(HAVE_SYNC_ATOMIC)
+	while (__sync_lock_test_and_set(lock, 1)) {
+	}
+#elif defined(HAVE_ATOMIC)
+	int expected = 0;
+        while (!__atomic_compare_exchange_n(lock, &expected, 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+		expected = 0;
+	}
+#elif defined(STDATOMIC_LIB)
+	int expected = 0;
+	while (!atomic_compare_exchange_strong(lock, &expected, false)) {
+		expected = 0;
+	}
+#elif defined(APPLE_NEW)
+	os_unfair_lock_lock(lock);
+#elif defined(APPLE_OLD)
+	OSSpinLockLock(lock);
+#else	/* POSIX */
+	pthread_spin_lock(lock);
+#endif
+}
+
+/*! \brief Unlock the spinlock pointed to by the parameter "lock". */
+void static inline knot_spin_unlock(knot_spin_t *lock)
+{
+#if defined(HAVE_SYNC_ATOMIC)
+	__sync_lock_release(lock);
+#elif defined(HAVE_ATOMIC)
+	__atomic_clear(lock, __ATOMIC_RELAXED);
+#elif defined(STDATOMIC_LIB)
+	atomic_store(lock, false);
+#elif defined(APPLE_NEW)
+	os_unfair_lock_unlock(lock);
+#elif defined(APPLE_OLD)
+	OSSpinLockUnlock(lock);
+#else	/* POSIX */
+	pthread_spin_unlock(lock);
+#endif
+}
 
