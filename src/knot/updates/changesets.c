@@ -118,7 +118,7 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 		// Remove empty type.
 		node_remove_rdataset(node, rr->type);
 
-		if (node->rrset_count == 0 && node != counterpart->apex) {
+		if (node->rrset_count == 0 && node->children == 0 && node != counterpart->apex) {
 			// Remove empty node.
 			zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
 			                 counterpart->nsec3_nodes : counterpart->nodes;
