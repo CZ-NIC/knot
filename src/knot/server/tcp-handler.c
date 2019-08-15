@@ -84,7 +84,7 @@ static void log_if_throttled(tcp_context_t *tcp, struct timespec *timer)
 	if (tcp->was_throttled != 0) {
 
 		/* LOCK tcp_throttle_log.lock */
-		KNOT_SPIN_LOCK(&tcp_throttle_log.lock);
+		knot_spin_lock(&tcp_throttle_log.lock);
 
 		/* Check if warning is allowed now, then log the warning and update the timer. */
 		if (tcp->last_poll_time.tv_sec > tcp_throttle_log.timer_end.tv_sec) {
@@ -94,7 +94,7 @@ static void log_if_throttled(tcp_context_t *tcp, struct timespec *timer)
 		}
 
 		/* UNLOCK tcp_throttle_log.lock */
-		KNOT_SPIN_UNLOCK(&tcp_throttle_log.lock);
+		knot_spin_unlock(&tcp_throttle_log.lock);
 	}
 	tcp->was_throttled = 0;
 }
