@@ -322,6 +322,28 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 	}
 }
 
+int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
+{
+	if (node == NULL || rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
+
+	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
+
+	int ret = knot_rdataset_subtract(node_rrs, &rrset->rrs, mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (node_rrs->count == 0) {
+		node_remove_rdataset(node, rrset->type);
+	}
+
+	return KNOT_EOK;
+}
+
 knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type)
 {
 	if (node == NULL) {

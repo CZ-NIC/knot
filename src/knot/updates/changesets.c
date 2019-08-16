@@ -94,13 +94,11 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 		return;
 	}
 
-	// Subtract the data from node's RRSet.
-	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
 	uint32_t rrs_ttl = node_rrset(node, rr->type).ttl;
 
 	if (fixed_rr != NULL && *fixed_rr != NULL &&
 	    ((*fixed_rr)->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG)) {
-		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, rrs, NULL);
+		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, node_rdataset(node, rr->type), NULL);
 		if (ret != KNOT_EOK) {
 			return;
 		}
@@ -108,22 +106,16 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 
 	// TTL of RRSIGs is better determined by original_ttl field, which is compared as part of rdata anyway
 	if (rr->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG) {
-		int ret = knot_rdataset_subtract(rrs, &rr->rrs, NULL);
+		int ret = node_remove_rrset(node, rr, NULL);
 		if (ret != KNOT_EOK) {
 			return;
 		}
 	}
 
-	if (knot_rdataset_size(rrs) == 0) {
-		// Remove empty type.
-		node_remove_rdataset(node, rr->type);
-
-		if (node->rrset_count == 0 && node->children == 0 && node != counterpart->apex) {
-			// Remove empty node.
-			zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
-			                 counterpart->nsec3_nodes : counterpart->nodes;
-			zone_tree_del_node(t, node, true);
-		}
+	if (node->rrset_count == 0 && node->children == 0 && node != counterpart->apex) {
+		zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
+				 counterpart->nsec3_nodes : counterpart->nodes;
+		zone_tree_del_node(t, node, true);
 	}
 
 	return;

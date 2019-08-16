@@ -229,6 +229,17 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm);
 void node_remove_rdataset(zone_node_t *node, uint16_t type);
 
 /*!
+ * \brief Remove all RRs from RRSet from the node.
+ *
+ * \param node    Node to remove from.
+ * \param rrset   RRSet with RRs to be removed.
+ * \param mm      Memory context.
+ *
+ * \return KNOT_E*
+ */
+int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm);
+
+/*!
  * \brief Returns the RRSet of the given type from the node. RRSet is allocated.
  *
  * \param node  Node to get the RRSet from.
