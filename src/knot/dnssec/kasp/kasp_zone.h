@@ -29,8 +29,9 @@ typedef struct {
 } knot_kasp_zone_t;
 
 int kasp_zone_load(knot_kasp_zone_t *zone,
-		   const knot_dname_t *zone_name,
-		   knot_lmdb_db_t *kdb);
+                   const knot_dname_t *zone_name,
+                   knot_lmdb_db_t *kdb,
+                   bool *kt_cfl);
 
 int kasp_zone_save(const knot_kasp_zone_t *zone,
 		   const knot_dname_t *zone_name,

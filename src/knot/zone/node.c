@@ -274,6 +274,8 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 		return KNOT_EINVAL;
 	}
 
+	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
+
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
@@ -301,6 +303,8 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 	if (node == NULL) {
 		return;
 	}
+
+	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
 
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {

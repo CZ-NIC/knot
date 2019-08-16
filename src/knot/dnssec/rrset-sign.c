@@ -354,7 +354,8 @@ int knot_check_signature(const knot_rrset_t *covered,
                     const knot_rrset_t *rrsigs, size_t pos,
                     const dnssec_key_t *key,
                     dnssec_sign_ctx_t *sign_ctx,
-                    const kdnssec_ctx_t *dnssec_ctx)
+                    const kdnssec_ctx_t *dnssec_ctx,
+                    bool skip_crypto)
 {
 	if (knot_rrset_empty(covered) || knot_rrset_empty(rrsigs) || !key ||
 	    !sign_ctx || !dnssec_ctx) {
@@ -367,6 +368,10 @@ int knot_check_signature(const knot_rrset_t *covered,
 	if (is_expired_signature(rrsig, dnssec_ctx->now,
 	                         dnssec_ctx->policy->rrsig_refresh_before)) {
 		return DNSSEC_INVALID_SIGNATURE;
+	}
+
+	if (skip_crypto) {
+		return KNOT_EOK;
 	}
 
 	// identify fields in the signature being validated

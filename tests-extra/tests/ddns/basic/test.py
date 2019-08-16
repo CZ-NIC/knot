@@ -105,6 +105,16 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check(rcode="NOERROR", rdata="1.2.3.4")
     verify(master, zone, dnssec)
 
+    # replace with different TTL
+    check_log("Replace with other TTL")
+    up = master.update(zone)
+    up.delete("rrtest.ddns.", "ANY")
+    up.add("rrtest.ddns.", 7, "A", "1.2.3.8")
+    up.send("NOERROR")
+    resp = master.dig("rrtest.ddns.", "A")
+    resp.check(rcode="NOERROR", rdata="1.2.3.8")
+    verify(master, zone, dnssec)
+
     # remove node
     check_log("Node removal")
     up = master.update(zone)
