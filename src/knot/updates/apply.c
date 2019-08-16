@@ -66,16 +66,49 @@ static void clear_new_rrs(zone_node_t *node, uint16_t type)
 	}
 }
 
+/*! \brief Logs redundant rrset operation. */
+static void can_log_rrset(const knot_rrset_t *rrset, int pos, apply_ctx_t *ctx, bool remove)
+{
+	if (!(ctx->flags & APPLY_STRICT)) {
+		return;
+	}
+
+	char type[16] = { '\0' };
+	knot_rrtype_to_string(rrset->type, type, sizeof(type));
+
+	const char *msg = remove ? "cannot remove nonexisting RR" :
+	                           "cannot add existing RR";
+
+	char *owner = knot_dname_to_str_alloc(rrset->owner);
+
+	if (pos < 0) {
+		log_zone_debug(ctx->contents->apex->owner,
+		               "node %s, type %s, %s", owner, type, msg);
+	} else {
+		char data[1024] = { '\0' };
+		knot_rrset_txt_dump_data(rrset, pos, data, sizeof(data),
+		                         &KNOT_DUMP_STYLE_DEFAULT);
+		log_zone_debug(ctx->contents->apex->owner,
+		               "node %s, type %s, data '%s', %s",
+		               owner, type, data, msg);
+	}
+
+	free(owner);
+}
+
 /*! \brief Returns true if given RR is present in node and can be removed. */
 static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset, apply_ctx_t *ctx)
 {
 	if (node == NULL) {
 		// Node does not exist, cannot remove anything.
+		can_log_rrset(rrset, -1, ctx, true);
 		return false;
 	}
+
 	const knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
 	if (node_rrs == NULL) {
 		// Node does not have this type at all.
+		can_log_rrset(rrset, -1, ctx, true);
 		return false;
 	}
 
@@ -83,18 +116,7 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset, apply
 	for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
 		if (!knot_rdataset_member(node_rrs, rr_cmp)) {
 			// At least one RR doesnt' match.
-			if (ctx->flags & APPLY_STRICT) {
-				char type[16] = { '\0' };
-				char data[8192] = { '\0' };
-				knot_rrtype_to_string(rrset->type, type, sizeof(type));
-				knot_rrset_txt_dump_data(rrset, i, data, sizeof(data),
-				                         &KNOT_DUMP_STYLE_DEFAULT);
-				char *owner = knot_dname_to_str_alloc(rrset->owner);
-				log_zone_debug(ctx->contents->apex->owner,
-				               "node %s, type %s, data '%s', cannot remove nonexisting RR",
-				               owner, type, data);
-				free(owner);
-			}
+			can_log_rrset(rrset, i, ctx, true);
 			return false;
 		}
 		rr_cmp = knot_rdataset_next(rr_cmp);
@@ -107,10 +129,12 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset, apply
 static bool can_add(const zone_node_t *node, const knot_rrset_t *rrset, apply_ctx_t *ctx)
 {
 	if (node == NULL) {
+		// Node does not exist, can add anything.
 		return true;
 	}
 	const knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
 	if (node_rrs == NULL) {
+		// Node does not have this type at all.
 		return true;
 	}
 
@@ -118,18 +142,7 @@ static bool can_add(const zone_node_t *node, const knot_rrset_t *rrset, apply_ct
 	for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
 		if (knot_rdataset_member(node_rrs, rr_cmp)) {
 			// No RR must match.
-			if (ctx->flags & APPLY_STRICT) {
-				char type[16] = { '\0' };
-				char data[8192] = { '\0' };
-				knot_rrtype_to_string(rrset->type, type, sizeof(type));
-				knot_rrset_txt_dump_data(rrset, i, data, sizeof(data),
-				                         &KNOT_DUMP_STYLE_DEFAULT);
-				char *owner = knot_dname_to_str_alloc(rrset->owner);
-				log_zone_debug(ctx->contents->apex->owner,
-				               "node %s, type %s, data '%s', cannot add existing RR",
-				               owner, type, data);
-				free(owner);
-			}
+			can_log_rrset(rrset, i, ctx, false);
 			return false;
 		}
 		rr_cmp = knot_rdataset_next(rr_cmp);
