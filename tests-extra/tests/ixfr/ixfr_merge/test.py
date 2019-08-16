@@ -10,7 +10,7 @@ t = Test()
 s1 = t.server("knot")
 s2 = t.server("knot")
 s3 = t.server("knot")
-zones = t.zone("example.com.") #t.zone_rnd(5)
+zones = t.zone_rnd(5)
 
 t.link(zones, s1, s2, ixfr=True)
 t.link(zones, s2, s3, ixfr=True)
