@@ -9,30 +9,33 @@ t = Test()
 
 s1 = t.server("knot")
 s2 = t.server("knot")
-s3 = t.server("knot")
-zones = t.zone_rnd(5)
+s3 = t.server("bind")
+zone = t.zone("dk.", storage=".")
 
-t.link(zones, s1, s2, ixfr=True)
-t.link(zones, s2, s3, ixfr=True)
+t.link(zone, s1, s2)
+t.link(zone, s2, s3)
 
-for zone in zones:
-    s1.dnssec(zone).enable = True
+s1.dnssec(zone).enable = True
+s1.dnssec(zone).nsec3 = True
+s1.dnssec(zone).nsec3_opt_out = True
 
 t.start()
 
-serials_init = s3.zones_wait(zones)
+serials_init = s3.zone_wait(zone)
 
-s2.ctl("zone-freeze")
+#s2.ctl("zone-freeze -b")
+
+ts = 1
+for i in range(3):
+    up = s1.update(zone)
+    up.delete("timestamp._zoneage.dk.", "TXT")
+    up.add("timestamp._zoneage.dk.", "86400", "TXT", str(ts))
+    up.send("NOERROR")
+    ts = ts + 1
+
+#s2.ctl("zone-thaw")
+
 t.sleep(1)
-
-s1.ctl("zone-sign")
-t.sleep(2)
-s1.ctl("zone-sign")
-t.sleep(2)
-
-s2.ctl("zone-thaw")
-
-s3.zones_wait(zones, serials_init)
 
 if s2.log_search("incomplete history") or s2.log_search("fallback to AXFR"):
     set_err("IXFR merge error")
