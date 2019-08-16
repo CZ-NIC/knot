@@ -304,23 +304,14 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		}
 	}
 
-	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
-
-	knot_rdataset_t *changed_rrs = node_rdataset(node, rr->type);
-	// Subtract changeset RRS from node RRS.
-	ret = knot_rdataset_subtract(changed_rrs, &rr->rrs, NULL);
+	ret = node_remove_rrset(node, rr, NULL);
 	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, rr->type);
 		return ret;
 	}
 
-	if (changed_rrs->count == 0) {
-		// RRSet is empty now, remove it from node, all data freed, except additionals.
-		node_remove_rdataset(node, rr->type);
-		// If node is empty now, delete it from zone tree.
-		if (node->rrset_count == 0 && node->children == 0 && node != contents->apex) {
-			zone_tree_del_node(tree, node, false);
-		}
+	if (node->rrset_count == 0 && node->children == 0 && node != contents->apex) {
+		zone_tree_del_node(tree, node, false);
 	}
 
 	return KNOT_EOK;
