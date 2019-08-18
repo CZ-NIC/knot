@@ -253,6 +253,8 @@ static int axfr_finalize(struct refresh_data *data)
 	ret = zone_update_commit(data->conf, &up);
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
+		AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+		           "failed to store changes (%s)", knot_strerror(ret));
 		return ret;
 	}
 
