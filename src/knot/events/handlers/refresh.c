@@ -426,30 +426,54 @@ static void ixfr_cleanup(struct refresh_data *data)
 
 static int ixfr_finalize(struct refresh_data *data)
 {
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	bool dnssec_enable = conf_bool(&val);
+
 	uint32_t master_serial;
-	int ret = zone_get_master_serial(data->zone, &master_serial);
-	if (ret != KNOT_EOK) {
-		log_zone_error(data->zone->name, "Failed reading master's serial"
-			       "from KASP DB (%s)", knot_strerror(ret));
-		return ret;
-	}
-	uint32_t local_serial = zone_contents_serial(data->zone->contents);
-	uint32_t lastsigned_serial = local_serial;
-	bool have_lastsigned = zone_get_lastsigned_serial(data->zone, &lastsigned_serial);
-	uint32_t old_serial = local_serial;
-	changeset_t *chs = NULL;
-	WALK_LIST(chs, data->ixfr.changesets) {
-		master_serial = knot_soa_serial(chs->soa_to->rrs.rdata);
-		knot_soa_serial_set(chs->soa_from->rrs.rdata, local_serial);
-		if (have_lastsigned && (serial_compare(lastsigned_serial, local_serial) & SERIAL_MASK_GEQ)) {
-			local_serial = lastsigned_serial;
+	if (dnssec_enable) {
+		val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
+		unsigned serial_policy = conf_opt(&val);
+
+		// Initialize master serial to last known.
+		int ret = zone_get_master_serial(data->zone, &master_serial);
+		if (ret != KNOT_EOK) {
+			log_zone_error(data->zone->name, "failed to read master serial"
+			               "from KASP DB (%s)", knot_strerror(ret));
+			return ret;
 		}
-		if (serial_compare(master_serial, local_serial) != SERIAL_GREATER) {
-			conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
-			local_serial = serial_next(local_serial, conf_opt(&val));
-			knot_soa_serial_set(chs->soa_to->rrs.rdata, local_serial);
-		} else {
-			local_serial = master_serial;
+
+		uint32_t local_serial = zone_contents_serial(data->zone->contents);
+		uint32_t lastsigned_serial = local_serial;
+		bool have_lastsigned = zone_get_lastsigned_serial(data->zone, &lastsigned_serial);
+		uint32_t old_serial = local_serial;
+
+		// Check if IXFR starts with proper SOA serial.
+		if (!EMPTY_LIST(data->ixfr.changesets)) {
+			changeset_t *first = HEAD(data->ixfr.changesets);
+			if (knot_soa_serial(first->soa_from->rrs.rdata) != master_serial) {
+				return KNOT_EINVAL;
+			}
+		}
+
+		changeset_t *chs = NULL;
+		WALK_LIST(chs, data->ixfr.changesets) {
+			master_serial = knot_soa_serial(chs->soa_to->rrs.rdata);
+			knot_soa_serial_set(chs->soa_from->rrs.rdata, local_serial);
+			if (have_lastsigned && (serial_compare(lastsigned_serial, local_serial) & SERIAL_MASK_GEQ)) {
+				local_serial = lastsigned_serial;
+			}
+			if (serial_compare(master_serial, local_serial) != SERIAL_GREATER) {
+				local_serial = serial_next(local_serial, serila_policy);
+				knot_soa_serial_set(chs->soa_to->rrs.rdata, local_serial);
+			} else {
+				local_serial = master_serial;
+			}
+		}
+
+		// Update last known master serial.
+		if (!EMPTY_LIST(data->ixfr.changesets)) {
+			changeset_t *last = TAIL(data->ixfr.changesets);
+			master_serial = knot_soa_serial(last->soa_to->rrs.rdata);
 		}
 	}
 
@@ -479,8 +503,6 @@ static int ixfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
-	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
-	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_sign_update(&up, &resch);
