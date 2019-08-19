@@ -500,9 +500,14 @@ int zone_set_master_serial(zone_t *zone, uint32_t serial)
 	return kasp_db_store_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
-bool zone_get_master_serial(zone_t *zone, uint32_t *serial)
+int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 {
-	return (kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial) == KNOT_EOK);
+	int ret = kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
+	if (ret == KNOT_ENOENT) {
+		*serial = zone_contents_serial(zone->contents);
+		return KNOT_EOK;
+	}
+	return ret;
 }
 
 int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
