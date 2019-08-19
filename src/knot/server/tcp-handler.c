@@ -51,7 +51,7 @@ typedef struct tcp_context {
 	bool is_throttled;               /*!< TCP connections throttling switch. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
-	unsigned max_clients;            /*!< Max TCP clients per worker configuration. */
+	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
 } tcp_context_t;
@@ -67,7 +67,7 @@ static void update_sweep_timer(struct timespec *timer)
 static void update_tcp_conf(tcp_context_t *tcp)
 {
 	rcu_read_lock();
-	tcp->max_clients = \
+	tcp->max_worker_fds = tcp->client_threshold + \
 		MAX(conf()->cache.srv_max_tcp_clients / conf()->cache.srv_tcp_threads, 1);
 	tcp->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
 	tcp->io_timeout = conf()->cache.srv_tcp_io_timeout;
@@ -247,7 +247,7 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	fdset_t *set = &tcp->set;
 
 	/* Check if throttled with many open TCP connections. */
-	tcp->is_throttled = (set->n - tcp->client_threshold) >= tcp->max_clients;
+	tcp->is_throttled = set->n > tcp->max_worker_fds;
 
 	/* If throttled, temporarily ignore new TCP connections. */
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
