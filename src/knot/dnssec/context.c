@@ -77,6 +77,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	val = conf_id_get(conf(), C_POLICY, C_RRSIG_REFRESH, id);
 	policy->rrsig_refresh_before = conf_int(&val);
 
+	val = conf_id_get(conf(), C_POLICY, C_RRSIG_PREREFRESH, id);
+	policy->rrsig_prerefresh = conf_int(&val);
+
 	val = conf_id_get(conf(), C_POLICY, C_NSEC3, id);
 	policy->nsec3_enabled = conf_bool(&val);
 
