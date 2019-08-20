@@ -115,6 +115,7 @@ knot.dnssec(zone).offline_ksk = "on"
 knot.dnssec(zone).cds_publish = "rollover"
 knot.dnssec(zone).rrsig_lifetime = 15
 knot.dnssec(zone).rrsig_refresh = 5
+knot.dnssec(zone).rrsig_prerefresh = 1
 
 # needed for keymgr
 knot.gen_confile()

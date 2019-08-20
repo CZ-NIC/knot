@@ -49,6 +49,7 @@ knot.dnssec(zone).enable = True
 knot.dnssec(zone).manual = True
 knot.dnssec(zone).rrsig_lifetime = 50
 knot.dnssec(zone).rrsig_refresh = 2
+knot.dnssec(zone).rrsig_prerefresh = 1
 knot.zonefile_sync = "0"
 
 # install KASP db (one always enabled, one for testing)
