@@ -241,7 +241,7 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	return ret;
 }
 
-static void tcp_wait_for_events(tcp_context_t *tcp)
+static void tcp_wait_for_events(tcp_context_t *tcp, unsigned *COUNTER)
 {
 	fdset_t *set = &tcp->set;
 
@@ -273,7 +273,7 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 				tcp_event_accept(tcp, i);
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
-			} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {
+			} else if ((*COUNTER)++, tcp_event_serve(tcp, i) != KNOT_EOK) {
 				should_close = true;
 			}
 			--nfds;
@@ -332,7 +332,11 @@ int tcp_master(dthread_t *thread)
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
 
+	unsigned COUNTER = 0;
+
 	for(;;) {
+
+//		unsigned COUNTER = 0;
 
 		/* Check handler state. */
 		if (unlikely(*iostate & ServerReload)) {
@@ -358,10 +362,13 @@ int tcp_master(dthread_t *thread)
 		}
 
 		/* Serve client requests. */
-		tcp_wait_for_events(&tcp);
+		tcp_wait_for_events(&tcp,&COUNTER);
 
 		/* Sweep inactive clients and refresh TCP configuration. */
 		if (tcp.last_poll_time.tv_sec >= next_sweep.tv_sec) {
+printf("thread_id: %u	#of clients: %u		processed: %u\n", \
+	tcp.thread_id, tcp.set.n - tcp.client_threshold, COUNTER);
+//COUNTER = 0;
 			fdset_sweep(&tcp.set, &tcp_sweep, NULL);
 			update_sweep_timer(&next_sweep);
 			update_tcp_conf(&tcp);
