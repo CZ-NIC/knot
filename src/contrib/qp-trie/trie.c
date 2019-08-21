@@ -451,50 +451,6 @@ trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 	return tvalp(t);
 }
 
-trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t len)
-{
-	assert(tbl);
-	if (!tbl->weight) {
-		return NULL;
-	}
-
-	//Working copy for append of wildcard
-	trie_key_t work_key[len + 1];
-	memcpy(work_key, key, len);
-	trie_key_t *key_end = work_key + len - 1;
-
-	trie_val_t *ret = NULL;
-	do {
-		//Find match
-		node_t *t = &tbl->root;
-		while (isbranch(t)) {
-			__builtin_prefetch(twigs(t));
-			bitmap_t b = twigbit(t, work_key, len);
-			if (!hastwig(t, b)) {
-				goto shift;
-			}
-			t = twig(t, twigoff(t, b));
-		}
-		tkey_t *lkey = tkey(t);
-
-		// Key found
-		if (key_cmp(work_key, len, lkey->chars, lkey->len) == 0) {
-			return tvalp(t);
-		}
-
-		// Domain level up
-		shift: for(key_end--; key_end > work_key && *key_end; --key_end) {}
-
-		// Append wildchar
-		strncpy((char *)key_end + 1, "*", 2);
-		// Set new length
-		len = key_end - work_key + 3;
-
-	} while (key_end > work_key);
-	
-	return ret;
-}
-
 /*! \brief Delete leaf t with parent p; b is the bit for t under p.
  * Optionally return the deleted value via val.  The function can't fail. */
 static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
@@ -921,6 +877,70 @@ int trie_it_get_leq(trie_it_t *it, const trie_key_t *key, uint32_t len)
 	}
 	return ret;
 }
+
+trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t len)
+{
+	assert(tbl);
+	if (!tbl->weight)
+		return NULL;
+
+	// Discover the longest common prefix.
+	__attribute__((cleanup(ns_cleanup)))
+		nstack_t ns_local;
+	ns_init(&ns_local, tbl);
+	nstack_t *ns = &ns_local;
+	index_t idiff;
+	bitmap_t tbit, kbit;
+	if (unlikely(ns_find_branch(ns, key, len, &idiff, &tbit, &kbit)))
+		return NULL; // ENOMEM
+	if (idiff == TMAX_INDEX) // found exact match
+		return tvalp(ns->stack[ns->len - 1]);
+
+	// The found prefix might not end on a label boundary,
+	// so first find zbytei: the position of the last matched zero (or -1);
+	int zbytei = MIN(idiff/2 - 1, len - 2);
+	while (zbytei >= 0 && key[zbytei] != '\0')
+		--zbytei;
+	// now climb to the lowest node that tests a nibble beyond this zero.
+	if (!isbranch(ns->stack[ns->len - 1]))
+		--(ns->len);
+	while (ns->len > 0 && branch_index(ns->stack[ns->len - 1]) >= 2 * (zbytei + 1))
+		--(ns->len);
+	++(ns->len);
+
+	// Go down to a leaf as if the key was extended by "*" after the zero.
+	node_t *t = ns->stack[ns->len - 1];
+	while (isbranch(t)) {
+		// Getting the usual bitmap is a bit cumbersome
+		// because of avoiding to construct this whole key.  See keybit()
+		bitmap_t b;
+		const int nipz = branch_index(t) - 2 * (zbytei + 1);
+		if (nipz == 0 || nipz == 1) { // the first byte past this zero
+			const uint8_t ki = '*';
+			const uint nibble = nipz ? (ki & 0xf) : (ki >> 4);
+			b = BIG1 << (nibble + 1 + TSHIFT_BMP);
+		} else if (nipz == 2) {
+			b = BMP_NOBYTE;
+		} else {
+			assert(nipz > 0);
+			return NULL; // too deep already, so can't find anything
+		}
+
+		if (!hastwig(t, b))
+			return NULL;
+		t = twig(t, twigoff(t, b));
+		__builtin_prefetch(twigs(t));
+	}
+	// The only possibly correct leaf was found, now check its key.
+	// Note: if zero labels matched, (zbytei == -1)
+	const tkey_t *lkey = tkey(t);
+	const bool ok = lkey->len == zbytei + 2
+		&& (zbytei < 0 || memcmp(lkey->chars, key, zbytei - 1) == 0)
+		&& (zbytei < 0 || lkey->chars[zbytei] == '\0')
+		&& lkey->chars[zbytei + 1] == '*';
+	return ok ? tvalp(t) : NULL;
+}
+
 
 /* see below */
 static int cow_pushdown(trie_cow_t *cow, nstack_t *ns);
