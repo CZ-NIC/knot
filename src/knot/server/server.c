@@ -324,12 +324,12 @@ static void remove_ifacelist(struct ref *p)
 }
 
 /*!
- * \brief Update bound sockets according to configuration.
+ * \brief Initialize bound sockets according to configuration.
  *
  * \param server Server instance.
  * \return number of added sockets.
  */
-static int reconfigure_sockets(conf_t *conf, server_t *s)
+static int configure_sockets(conf_t *conf, server_t *s)
 {
 	if (s->state & ServerRunning) {
 		return KNOT_EOK;
@@ -337,83 +337,42 @@ static int reconfigure_sockets(conf_t *conf, server_t *s)
 
 	/* Prepare helper lists. */
 	int bound = 0;
-	ifacelist_t *oldlist = s->ifaces;
 	ifacelist_t *newlist = malloc(sizeof(ifacelist_t));
 	ref_init(&newlist->ref, &remove_ifacelist);
 	ref_retain(&newlist->ref);
 	init_list(&newlist->u);
 	init_list(&newlist->l);
 
-	/* Duplicate current list. */
-	/*! \note Pointers to addr, handlers etc. will be shared. */
-	if (s->ifaces) {
-		list_dup(&s->ifaces->u, &s->ifaces->l, sizeof(iface_t));
-	}
-
 	/* Update bound interfaces. */
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	while (listen_val.code == KNOT_EOK) {
-		iface_t *m = NULL;
 
-		/* Find already matching interface. */
-		int found_match = 0;
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
-		if (s->ifaces) {
-			WALK_LIST(m, s->ifaces->u) {
-				/* Matching port and address. */
-				if (sockaddr_cmp((struct sockaddr *)&addr,
-				                 (struct sockaddr *)&m->addr) == 0) {
-					found_match = 1;
-					break;
-				}
-			}
-		}
+		char addr_str[SOCKADDR_STRLEN] = { 0 };
+		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
+		log_info("binding to interface %s", addr_str);
 
-		/* Found already bound interface. */
-		if (found_match) {
-			rem_node((node_t *)m);
-		} else {
-			char addr_str[SOCKADDR_STRLEN] = { 0 };
-			sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
-			log_info("binding to interface %s", addr_str);
-
-			/* Create new interface. */
-			m = malloc(sizeof(iface_t));
-			unsigned size = s->handlers[IO_UDP].handler.unit->size;
-			if (server_init_iface(m, &addr, size) < 0) {
-				free(m);
-				m = 0;
-			}
-		}
-
-		/* Move to new list. */
-		if (m) {
+		/* Create new interface. */
+		iface_t *m = malloc(sizeof(iface_t));
+		unsigned size = s->handlers[IO_UDP].handler.unit->size;
+		if (server_init_iface(m, &addr, size) >= 0) {
+			/* Move to new list. */
 			add_tail(&newlist->l, (node_t *)m);
 			++bound;
+		} else {
+			free(m);
 		}
 
 		conf_val_next(&listen_val);
 	}
 	free(rundir);
 
-	/* Wait for readers that are reconfiguring right now. */
-	/*! \note This subsystem will be reworked in #239 */
-	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
-		dt_unit_t *tu = s->handlers[proto].handler.unit;
-		iohandler_t *ioh = &s->handlers[proto].handler;
-		for (unsigned i = 0; i < tu->size; ++i) {
-			while (ioh->thread_state[i] & ServerReload) {
-				sleep(1);
-			}
-		}
-	}
-
 	/* Publish new list. */
 	s->ifaces = newlist;
 
-	/* Update TCP+UDP ifacelist (reload all threads). */
+	/* Set the ID's (thread_id) of both the TCP and UDP threads. */
 	unsigned thread_count = 0;
 	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;
@@ -421,14 +380,8 @@ static int reconfigure_sockets(conf_t *conf, server_t *s)
 			ref_retain((ref_t *)newlist);
 			s->handlers[proto].handler.thread_state[i] |= ServerReload;
 			s->handlers[proto].handler.thread_id[i] = thread_count++;
-			if (s->state & ServerRunning) {
-				dt_activate(tu->threads[i]);
-				dt_signalize(tu->threads[i], SIGALRM);
-			}
 		}
 	}
-
-	ref_release(&oldlist->ref);
 
 	return bound;
 }
@@ -915,7 +868,7 @@ void server_reconfigure(conf_t *conf, server_t *server)
 		}
 
 		/* Configure sockets. */
-		if ((ret = reconfigure_sockets(conf, server)) < 0) {
+		if ((ret = configure_sockets(conf, server)) < 0) {
 			log_error("failed to reconfigure server sockets (%s)",
 			          knot_strerror(ret));
 		}
