@@ -843,27 +843,13 @@ void server_stop(server_t *server)
 
 static int set_handler(server_t *server, int index, unsigned size, runnable_t run)
 {
-	if (server->handlers[index].size != size && !(server->state & ServerRunning)) {
-		/* Free old handlers */
-		if (server->handlers[index].size > 0) {
-			server_free_handler(&server->handlers[index].handler);
-		}
-
-		/* Initialize I/O handlers. */
-		int ret = server_init_handler(server, index, size, run, NULL);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
-		/* Start if server is running. */
-		if (server->state & ServerRunning) {
-			ret = dt_start(server->handlers[index].handler.unit);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-		server->handlers[index].size = size;
+	/* Initialize I/O handlers. */
+	int ret = server_init_handler(server, index, size, run, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
+
+	server->handlers[index].size = size;
 
 	return KNOT_EOK;
 }
