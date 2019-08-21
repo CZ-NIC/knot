@@ -342,6 +342,22 @@ class Response(object):
 
         return cnt
 
+    def soa_serial(self, section="answer"):
+        if self.count("SOA", section) != 1:
+            set_err("CHECK SOA PRESENCE")
+            detail_log("SOA not present in response section " + section)
+            return 0
+
+        if not section or section == "answer":
+            sect = self.resp.answer
+        elif section == "additional":
+            sect = self.resp.additional
+        elif section == "authority":
+            sect = self.resp.authority
+
+        soa = str(sect[0].to_rdataset())
+        return int(soa.split()[5])
+
     def check_nsec(self, nsec3=False, nonsec=False):
         '''Checks if the response contains NSEC(3) records.'''
 

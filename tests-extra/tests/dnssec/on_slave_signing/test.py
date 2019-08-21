@@ -4,54 +4,68 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
+import shutil
 
 serial = 2010111213
 addr = "192.0.0.42"
 
-def test_update(master, slave, zone):
-    #Slave zone diverges from master by re-signing
-    for i in range(2):
-        t.sleep(2)
-        slave.ctl("zone-sign example.com.")
+def check_soa_diff(master, slave, zone, expect_diff):
+    resp_m = master.dig(zone.name, "SOA", dnssec=True)
+    resp_s = slave.dig(zone.name, "SOA", dnssec=True)
+    resp_m.check_count(0, "RRSIG")
+    resp_s.check_count(1, "RRSIG")
 
-    #Master zone receives an update
-    update = master.update(zone)
-    update.add("new.example.com.", 3600, "A", addr)
-    update.send("NOERROR")
+    real_diff = resp_s.soa_serial() - resp_m.soa_serial()
+    if real_diff != expect_diff:
+        set_err("SOA serial difference")
+        detail_log("Unexpected difference of SOA serials: master %d slave %d expected diff %d" %
+                   (resp_m.soa_serial(), resp_s.soa_serial(), expect_diff))
 
-    #Wait until slave receives update and sets correct SOA
-    slave.zone_wait(zone, serial+3, equal=True)
-
-    #Check that slave was updated and the new entry is signed
-    response = slave.dig("new.example.com.", "A");
-    response.check(rcode="NOERROR", rdata=addr);
-    response = slave.dig("new.example.com.", "RRSIG");
-    #Should get a RRSIG for the new A record and the new NSEC record
-    response.check_count(2)
-
-    slave.zone_backup(zone, flush=True)
-    slave.zone_verify(zone)
+def server_purge(server, zones):
+    shutil.rmtree(os.path.join(server.dir, "journal"))
+    shutil.rmtree(os.path.join(server.dir, "timers"))
+    for z in zones:
+        os.remove(server.zones[z.name].zfile.path)
 
 t = Test()
 
-# Create master and slave servers
-bind_master = t.server("bind")
-knot_master = t.server("knot")
-knot_slave1 = t.server("knot")
-knot_slave2 = t.server("knot")
+master = t.server("knot")
+slave  = t.server("knot")
 
 zone = t.zone("example.com.", storage=".")
 
-t.link(zone, bind_master, knot_slave1, ddns=True)
-t.link(zone, knot_master, knot_slave2, ddns=True)
+t.link(zone, master, slave, ddns=True)
 
-# Enable autosigning on slave
-knot_slave1.dnssec(zone).enable = True
-knot_slave2.dnssec(zone).enable = True
+slave.dnssec(zone).enable = True
 
 t.start()
 
-test_update(bind_master, knot_slave1, zone)
-test_update(knot_master, knot_slave2, zone)
+# initial test: after AXFR
+slave.zone_wait(zone)
+check_soa_diff(master, slave, zone[0], 0)
+
+# sign twice on slave to make difference
+slave.ctl("zone-sign example.com.")
+t.sleep(1)
+slave.ctl("zone-sign example.com.")
+t.sleep(3)
+check_soa_diff(master, slave, zone[0], 2)
+
+# test IXFR with shifted serial
+update = master.update(zone)
+update.add("new.example.com.", 3600, "A", addr)
+update.send("NOERROR")
+t.sleep(2)
+check_soa_diff(master, slave, zone[0], 2)
+
+# test AXFR bootstrap with shifted serial
+slave.stop()
+server_purge(slave, zone)
+update = master.update(zone)
+update.add("new2.example.com.", 3600, "A", addr)
+update.send("NOERROR")
+slave.start()
+slave.zone_wait(zone)
+check_soa_diff(master, slave, zone[0], 2)
 
 t.end()
