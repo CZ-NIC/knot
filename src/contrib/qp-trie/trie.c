@@ -937,10 +937,11 @@ trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t l
 		__builtin_prefetch(twigs(t));
 	}
 	// The only possible leaf is found, now check its key.
+	// Note: if zero labels matched, (bytei == -1)
 	const tkey_t *lkey = tkey(t);
 	bool ok = lkey->len == bytei + 2
-		&& memcmp(lkey->chars, key, bytei - 1) == 0
-		&& lkey->chars[bytei] == '\0'
+		&& (bytei < 0 || memcmp(lkey->chars, key, bytei - 1) == 0)
+		&& (bytei < 0 || lkey->chars[bytei] == '\0')
 		&& lkey->chars[bytei + 1] == '*';
 	return ok ? tvalp(t) : NULL;
 }
