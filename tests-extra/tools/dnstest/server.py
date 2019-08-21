@@ -144,6 +144,7 @@ class Server(object):
         self.timer_db_size = 1 * 1024 * 1024
         self.kasp_db_size = 10 * 1024 * 1024
         self.zone_size_limit = None
+        self.serial_policy = None
 
         self.inquirer = None
 
@@ -1280,6 +1281,9 @@ class Knot(Server):
                 acl += ", "
             acl += "acl_local, acl_test"
             s.item("acl", "[%s]" % acl)
+
+            if self.serial_policy is not None:
+                s.item_str("serial-policy", self.serial_policy)
 
             s.item_str("journal-content", z.journal_content)
 
