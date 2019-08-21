@@ -122,7 +122,7 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
                                   const knot_edns_cookie_params_t *params)
 {
 
-	if (sc == NULL || sc->len < KNOT_EDNS_COOKIE_SRVR_MIN_SIZE || sc->len > KNOT_EDNS_COOKIE_SRVR_MAX_SIZE
+	if (sc == NULL || sc->len < KNOT_EDNS_COOKIE_CLNT_MIN_SIZE + KNOT_EDNS_COOKIE_SRVR_MIN_SIZE || sc->len > KNOT_EDNS_COOKIE_CLNT_MIN_SIZE + KNOT_EDNS_COOKIE_SRVR_MAX_SIZE
 			|| cc == NULL || cc->len < KNOT_EDNS_COOKIE_CLNT_MIN_SIZE
 			|| params == NULL) {
 		return KNOT_EINVAL;

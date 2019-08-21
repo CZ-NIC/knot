@@ -64,7 +64,7 @@ enum {
 	/*! \brief EDNS client cookie size. */
 	KNOT_EDNS_COOKIE_CLNT_MIN_SIZE = 8,
 	/*! \brief EDNS minimum server cookie size. */
-	KNOT_EDNS_COOKIE_SRVR_MIN_SIZE = 8 + KNOT_EDNS_COOKIE_CLNT_MIN_SIZE,
+	KNOT_EDNS_COOKIE_SRVR_MIN_SIZE = 8,
 	/*! \brief EDNS maximum server cookie size. */
 	KNOT_EDNS_COOKIE_SRVR_MAX_SIZE = 32,
 
