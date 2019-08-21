@@ -445,24 +445,25 @@ int udp_master(dthread_t *thread)
 	struct pollfd *fds = NULL;
 	nfds_t nfds = 0;
 
+/* XXX This should likely be removed. */
+/* XXX Investigate the purpose of ref. */
+	/* Check handler state. */
+	if (*iostate & ServerReload) {
+		*iostate &= ~ServerReload;
+	}
+/* XXX */
+
+	udp.thread_id = handler->thread_id[thr_id];
+	rcu_read_lock();
+	ref = handler->server->ifaces;
+	nfds = track_ifaces(ref, udp.thread_id, &fds);
+	rcu_read_unlock();
+	if (nfds == 0) {
+		goto finish;
+	}
+
 	/* Loop until all data is read. */
 	for (;;) {
-
-		/* Check handler state. */
-		if (unlikely(*iostate & ServerReload)) {
-			*iostate &= ~ServerReload;
-			udp.thread_id = handler->thread_id[thr_id];
-
-			rcu_read_lock();
-			forget_ifaces(ref, &fds);
-			ref = handler->server->ifaces;
-			nfds = track_ifaces(ref, udp.thread_id, &fds);
-			rcu_read_unlock();
-			if (nfds == 0) {
-				break;
-			}
-		}
-
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
 			break;
@@ -488,6 +489,7 @@ int udp_master(dthread_t *thread)
 		}
 	}
 
+finish:
 	_udp_deinit(rq);
 	forget_ifaces(ref, &fds);
 	mp_delete(mm.ctx);
