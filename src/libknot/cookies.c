@@ -96,11 +96,19 @@ int knot_edns_cookie_server_generate(knot_edns_cookie_t *out,
 	memcpy(&out->data[out->len], &now, sizeof(uint32_t));
 	out->len += sizeof(uint32_t);
 
+	size_t addr_len = 0;
+	void *addr = sockaddr_raw(params->client_addr, &addr_len);
+
 	SIPHASH_CTX ctx;
 	assert(sizeof(params->secret) == sizeof(SIPHASH_KEY));
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)params->secret);
+	// Client Cookie
 	SipHash24_Update(&ctx, cc->data, cc->len);
+	// Version | Reserved | Timestamp
 	SipHash24_Update(&ctx, out->data, out->len);
+	// Client-IP
+	SipHash24_Update(&ctx, addr, addr_len);
+
 	uint64_t hash = SipHash24_End(&ctx);
 	memcpy(out->data + out->len, &hash, sizeof(hash));
 	out->len += sizeof(hash);
@@ -128,12 +136,11 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
 	}
 
 	uint32_t cookie_now;
-	uint32_t now = time(NULL);
 	memcpy(&cookie_now, &sc->data[4], sizeof(uint32_t));
 	cookie_now = htobe32(cookie_now);
-	if (0) {
-		return KNOT_EINVAL;
-	}
+
+	size_t addr_len = 0;
+	void *addr = sockaddr_raw(params->client_addr, &addr_len);
 
 	uint64_t cookie_hash;
 	memcpy(&cookie_hash, &sc->data[8], sizeof(uint64_t));
@@ -142,6 +149,7 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)params->secret);
 	SipHash24_Update(&ctx, cc->data, cc->len);
 	SipHash24_Update(&ctx, sc->data, sc->len - sizeof(uint64_t));
+	SipHash24_Update(&ctx, addr, addr_len);
 	uint64_t hash = SipHash24_End(&ctx);
 
 	if (cookie_hash != hash) {
