@@ -451,48 +451,43 @@ trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 	return tvalp(t);
 }
 
+/* Optimization: the approach isn't ideal, as e.g. walking through the prefix
+ * is duplicated and we explicitly construct the wildcard key.  Still, it's close
+ * to optimum which would be significantly more complicated and error-prone to write. */
 trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t len)
 {
 	assert(tbl);
-	if (!tbl->weight) {
+	if (!tbl->weight)
 		return NULL;
+	// Find leaf sharing the longest common prefix; see ns_find_branch() for explanation.
+	node_t *t = &tbl->root;
+	while (isbranch(t)) {
+		__builtin_prefetch(twigs(t));
+		bitmap_t b = twigbit(t, key, len);
+		uint i = hastwig(t, b) ? twigoff(t, b) : 0;
+		t = twig(t, i);
 	}
+	const tkey_t * const lcp_key = tkey(t);
 
-	//Working copy for append of wildcard
-	trie_key_t work_key[len + 1];
-	memcpy(work_key, key, len);
-	trie_key_t *key_end = work_key + len - 1;
-
-	trie_val_t *ret = NULL;
-	do {
-		//Find match
-		node_t *t = &tbl->root;
-		while (isbranch(t)) {
-			__builtin_prefetch(twigs(t));
-			bitmap_t b = twigbit(t, work_key, len);
-			if (!hastwig(t, b)) {
-				goto shift;
-			}
-			t = twig(t, twigoff(t, b));
-		}
-		tkey_t *lkey = tkey(t);
-
-		// Key found
-		if (key_cmp(work_key, len, lkey->chars, lkey->len) == 0) {
+	// Find the last matching zero byte or -1 (source of synthesis)
+	int i_lmz = -1;
+	for (int i = 0; i < len && i < lcp_key->len && key[i] == lcp_key->chars[i]; ++i) {
+		if (key[i] == '\0' && i < len - 1) // do not count the terminating zero
+			i_lmz = i;
+		// Shortcut: we may have found an exact match.
+		if (i == len - 1 && len == lcp_key->len)
 			return tvalp(t);
-		}
+	}
+	if (len == 0) // The empty name needs separate handling.
+		return lcp_key->len == 0 ? tvalp(t) : NULL;
 
-		// Domain level up
-		shift: for(key_end--; key_end > work_key && *key_end; --key_end) {}
-
-		// Append wildchar
-		strncpy((char *)key_end + 1, "*", 2);
-		// Set new length
-		len = key_end - work_key + 3;
-
-	} while (key_end > work_key);
-	
-	return ret;
+	// Construct the key of the wildcard we need and look it up.
+	const int wild_len = i_lmz + 3;
+	uint8_t wild_key[wild_len];
+	memcpy(wild_key, key, wild_len - 2);
+	wild_key[wild_len - 2] = '*';
+	wild_key[wild_len - 1] = '\0'; // LF is always 0-terminated ATM
+	return trie_get_try(tbl, wild_key, wild_len);
 }
 
 /*! \brief Delete leaf t with parent p; b is the bit for t under p.

@@ -77,7 +77,12 @@ size_t trie_weight(const trie_t *tbl);
 /*! \brief Search the trie, returning NULL on failure. */
 trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len);
 
-/*! \brief Search the trie for longest possible, returning NULL on failure. */
+/*! \brief Search the trie including DNS wildcard semantics, returning NULL on failure.
+ *
+ * \note We assume the key is in knot_dname_lf() format, i.e. labels are ordered
+ *   from root to leaf and separated by zero bytes (and no other zeros are allowed).
+ * \note Beware that DNS wildcard matching is not exactly what normal people would expect.
+ */
 trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t len);
 
 /*! \brief Search the trie, inserting NULL trie_val_t on failure. */
