@@ -43,8 +43,7 @@ static void client_generate(struct sockaddr_storage *c_addr, struct sockaddr_sto
 }
 
 static void server_generate(struct sockaddr_storage *c_addr, const uint8_t *secret,
-                            const knot_edns_cookie_t *cc, const char *msg, int code,
-                            uint64_t le_sc)
+                            const knot_edns_cookie_t *cc, const char *msg, int code)
 {
 	knot_edns_cookie_params_t params = {
 		.client_addr = (struct sockaddr *)c_addr,
@@ -54,11 +53,6 @@ static void server_generate(struct sockaddr_storage *c_addr, const uint8_t *secr
 	knot_edns_cookie_t sc;
 	int ret = knot_edns_cookie_server_generate(&sc, cc, &params);
 	is_int(ret, code, "server_generate ret: %s", msg);
-	if (ret == KNOT_EOK) {
-		uint64_t ref = le64toh(le_sc);
-		ok(sc.len == sizeof(ref) && memcmp(sc.data, &ref, sc.len) == 0,
-		   "server_generate value: %s", msg);
-	}
 }
 
 static void client_check(struct sockaddr_storage *c_addr, struct sockaddr_storage *s_addr,
@@ -85,7 +79,7 @@ static void client_check(struct sockaddr_storage *c_addr, struct sockaddr_storag
 
 static void server_check(struct sockaddr_storage *c_addr, const uint8_t *secret,
                          const char *msg, uint16_t le_cc_len, uint64_t le_cc,
-                         uint16_t le_sc_len, uint64_t le_sc, int code)
+                         uint16_t le_sc_len, uint8_t *le_sc, int code)
 {
 	knot_edns_cookie_params_t params = {
 		.client_addr = (struct sockaddr *)c_addr,
@@ -100,11 +94,12 @@ static void server_check(struct sockaddr_storage *c_addr, const uint8_t *secret,
 	};
 	memcpy(cc.data, &ref, le_cc_len);
 
-	ref = le64toh(le_sc);
 	knot_edns_cookie_t sc = {
 		.len = le_sc_len
 	};
-	memcpy(sc.data, &ref, le_sc_len);
+
+	//	ref = le64toh(le_sc);
+	memcpy(sc.data, le_sc, le_sc_len);
 
 	int ret = knot_edns_cookie_server_check(&sc, &cc, &params);
 	is_int(ret, code, "server_check ret: %s", msg);
@@ -151,27 +146,27 @@ int main(int argc, char *argv[])
 
 	/* Server cookie generate. */
 	knot_edns_cookie_t cc_part = cc; cc_part.len--;
-	server_generate(NULL,       secret, &cc,      "NULL",        KNOT_EINVAL, 0);
-	server_generate(&c4_sa,     secret, &cc_part, "cookie part", KNOT_EINVAL, 0);
-	server_generate(&c4_sa,     secret, &cc,      "IPv4",        KNOT_EOK, 0x52f86bfcc98ded6);
-	server_generate(&c6_sa,     secret, &cc,      "IPv6",        KNOT_EOK, 0x33ac6c9005acf469);
-	server_generate(&unspec_sa, secret, &cc,      "unspec",      KNOT_EOK, 0x96df9dbf28f0f59e);
+	server_generate(NULL,       secret, &cc,      "NULL",        KNOT_EINVAL);
+	server_generate(&c4_sa,     secret, &cc_part, "cookie part", KNOT_EINVAL);
+	server_generate(&c4_sa,     secret, &cc,      "IPv4",        KNOT_EOK);
+	server_generate(&c6_sa,     secret, &cc,      "IPv6",        KNOT_EOK);
+	server_generate(&unspec_sa, secret, &cc,      "unspec",      KNOT_EOK);
 
 	/* Server cookie check. */
-	server_check(NULL,   secret, "no addr",           8, 0x0706050403020100,
-	                                                  8, 0x33ac6c9005acf469, KNOT_EINVAL);
-	server_check(&c6_sa, NULL,   "no secret",         8, 0x0706050403020100,
-	                                                  8, 0x33ac6c9005acf469, KNOT_EINVAL);
+	server_check(NULL,   secret, "no addr",           8, 0xde3832f4f59bf5ab,
+	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5C\xF2\xDB\xD6\xB1\xBF\xC0\x28\x65\x0C\x3D", KNOT_EINVAL);
+	server_check(&c6_sa, NULL,   "no secret",         8, 0xde3832f4f59bf5ab,
+	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5C\xF2\xDB\xD6\xB1\xBF\xC0\x28\x65\x0C\x3D", KNOT_EINVAL);
 	server_check(&c6_sa, secret, "no client cookie",  0, 0,
-	                                                  8, 0x33ac6c9005acf469, KNOT_EINVAL);
-	server_check(&c6_sa, secret, "no server cookie",  8, 0x0706050403020100,
-	                                                  0, 0,                  KNOT_EINVAL);
+	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5C\xF2\xDB\xD6\xB1\xBF\xC0\x28\x65\x0C\x3D", KNOT_EINVAL);
+	server_check(&c6_sa, secret, "no server cookie",  8, 0xde3832f4f59bf5ab,
+	                                                  0, 0,                  												  			KNOT_EINVAL);
 	server_check(&c6_sa, secret, "bad client cookie", 8, 0,
-	                                                  8, 0x33ac6c9005acf469, KNOT_EINVAL);
-	server_check(&c6_sa, secret, "bad server cookie", 8, 0x0706050403020100,
-	                                                  8, 0,                  KNOT_EINVAL);
-	server_check(&c6_sa, secret, "good cookie 1",     8, 0x0706050403020100,
-	                                                  8, 0x33ac6c9005acf469, KNOT_EOK);
+	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5C\xF2\xDB\xD6\xB1\xBF\xC0\x28\x65\x0C\x3D", KNOT_EINVAL);
+	server_check(&c6_sa, secret, "bad server cookie", 8, 0xde3832f4f59bf5ab,
+	                                                  16, (uint8_t*)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", KNOT_EINVAL);
+	server_check(&c4_sa, secret, "good cookie 1",     8, 0xde3832f4f59bf5ab,
+	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5C\xF2\xDB\xD6\xB1\xBF\xC0\x28\x65\x0C\x3D", KNOT_EOK);
 
 	return 0;
 }
