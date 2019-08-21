@@ -66,7 +66,7 @@ int knot_edns_cookie_client_check(const knot_edns_cookie_t *cc,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	assert(ref.len == KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
+	assert(ref.len >= KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
 
 	ret = const_time_memcmp(cc->data, ref.data, KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
 	if (ret != 0) {
@@ -96,11 +96,16 @@ int knot_edns_cookie_server_generate(knot_edns_cookie_t *out,
 	memcpy(&out->data[out->len], &now, sizeof(uint32_t));
 	out->len += sizeof(uint32_t);
 
+	size_t addr_len = 0;
+	void *addr = sockaddr_raw(params->client_addr, &addr_len);
+
 	SIPHASH_CTX ctx;
 	assert(sizeof(params->secret) == sizeof(SIPHASH_KEY));
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)params->secret);
-	SipHash24_Update(&ctx, cc->data, cc->len);
-	SipHash24_Update(&ctx, out->data, out->len);
+	SipHash24_Update(&ctx, cc->data, cc->len);   // Client Cookie
+	SipHash24_Update(&ctx, out->data, out->len); // Version | Reserved | Timestamp
+	SipHash24_Update(&ctx, addr, addr_len);      // Client-IP
+
 	uint64_t hash = SipHash24_End(&ctx);
 	memcpy(out->data + out->len, &hash, sizeof(hash));
 	out->len += sizeof(hash);
@@ -114,7 +119,7 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
                                   const knot_edns_cookie_params_t *params)
 {
 
-	if (sc == NULL || sc->len < KNOT_EDNS_COOKIE_SRVR_MIN_SIZE || sc->len > KNOT_EDNS_COOKIE_SRVR_MAX_SIZE
+	if (sc == NULL || sc->len < KNOT_EDNS_COOKIE_CLNT_MIN_SIZE + KNOT_EDNS_COOKIE_SRVR_MIN_SIZE || sc->len > KNOT_EDNS_COOKIE_CLNT_MIN_SIZE + KNOT_EDNS_COOKIE_SRVR_MAX_SIZE
 			|| cc == NULL || cc->len < KNOT_EDNS_COOKIE_CLNT_MIN_SIZE
 			|| params == NULL) {
 		return KNOT_EINVAL;
@@ -127,21 +132,18 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t cookie_now;
-	uint32_t now = time(NULL);
-	memcpy(&cookie_now, &sc->data[4], sizeof(uint32_t));
-	cookie_now = htobe32(cookie_now);
-	if (0) {
-		return KNOT_EINVAL;
-	}
+	size_t addr_len = 0;
+	void *addr = sockaddr_raw(params->client_addr, &addr_len);
 
 	uint64_t cookie_hash;
 	memcpy(&cookie_hash, &sc->data[8], sizeof(uint64_t));
+	
 	SIPHASH_CTX ctx;
 	assert(sizeof(params->secret) == sizeof(SIPHASH_KEY));
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)params->secret);
 	SipHash24_Update(&ctx, cc->data, cc->len);
 	SipHash24_Update(&ctx, sc->data, sc->len - sizeof(uint64_t));
+	SipHash24_Update(&ctx, addr, addr_len);
 	uint64_t hash = SipHash24_End(&ctx);
 
 	if (cookie_hash != hash) {
