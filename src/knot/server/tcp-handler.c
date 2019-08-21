@@ -297,26 +297,23 @@ int tcp_master(dthread_t *thread)
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
 
+/* XXX This should likely be removed. */
+/* XXX Investigate the purpose of ref. */
+	/* Check handler state. */
+	if (*iostate & ServerReload) {
+		*iostate &= ~ServerReload;
+		ref_release(ref);
+	}
+/* XXX */
+
+	ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
+	if (tcp.set.n == 0) {
+		goto finish; /* Terminate on zero interfaces. */
+	}
+
+	tcp.client_threshold = tcp.set.n;
+
 	for(;;) {
-
-		/* Check handler state. */
-		if (unlikely(*iostate & ServerReload)) {
-			*iostate &= ~ServerReload;
-
-			/* Cancel client connections. */
-			for (unsigned i = tcp.client_threshold; i < tcp.set.n; ++i) {
-				close(tcp.set.pfd[i].fd);
-			}
-
-			ref_release(ref);
-			ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
-			if (tcp.set.n == 0) {
-				break; /* Terminate on zero interfaces. */
-			}
-
-			tcp.client_threshold = tcp.set.n;
-		}
-
 		/* Check for cancellation. */
 		if (dt_is_cancelled(thread)) {
 			break;
