@@ -835,7 +835,7 @@ void server_stop(server_t *server)
 	server->state &= ~ServerRunning;
 }
 
-static int reset_handler(server_t *server, int index, unsigned size, runnable_t run)
+static int set_handler(server_t *server, int index, unsigned size, runnable_t run)
 {
 	if (server->handlers[index].size != size && !(server->state & ServerRunning)) {
 		/* Free old handlers */
@@ -863,14 +863,14 @@ static int reset_handler(server_t *server, int index, unsigned size, runnable_t 
 }
 
 /*! \brief Reconfigure UDP and TCP query processing threads. */
-static int reconfigure_threads(conf_t *conf, server_t *server)
+static int configure_threads(conf_t *conf, server_t *server)
 {
-	int ret = reset_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
+	int ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return reset_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
+	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
 }
 
 static int reconfigure_journal_db(conf_t *conf, server_t *server)
@@ -916,16 +916,23 @@ void server_reconfigure(conf_t *conf, server_t *server)
 		return;
 	}
 
+	int ret;
+
 	/* First reconfiguration. */
 	if (!(server->state & ServerRunning)) {
 		log_info("Knot DNS %s starting", PACKAGE_VERSION);
-	}
 
-	/* Reconfigure server threads. */
-	int ret;
-	if ((ret = reconfigure_threads(conf, server)) < 0) {
-		log_error("failed to reconfigure server threads (%s)",
-		          knot_strerror(ret));
+		/* Configure server threads. */
+		if ((ret = configure_threads(conf, server)) < 0) {
+			log_error("failed to reconfigure server threads (%s)",
+			          knot_strerror(ret));
+		}
+
+		/* Configure sockets. */
+		if ((ret = reconfigure_sockets(conf, server)) < 0) {
+			log_error("failed to reconfigure server sockets (%s)",
+			          knot_strerror(ret));
+		}
 	}
 
 	/* Reconfigure journal DB. */
@@ -943,12 +950,6 @@ void server_reconfigure(conf_t *conf, server_t *server)
 	/* Reconfiure Timer DB. */
 	if ((ret = reconfigure_timer_db(conf, server)) < 0) {
 		log_error("failed to reconfigure Timer DB (%s)",
-		          knot_strerror(ret));
-	}
-
-	/* Update bound sockets. */
-	if ((ret = reconfigure_sockets(conf, server)) < 0) {
-		log_error("failed to reconfigure server sockets (%s)",
 		          knot_strerror(ret));
 	}
 }
