@@ -62,9 +62,9 @@ enum {
 	KNOT_EDNS_ALIGNMENT_RESPONSE_DEFAULT = 468,
 
 	/*! \brief EDNS client cookie size. */
-	KNOT_EDNS_COOKIE_CLNT_SIZE     = 8,
+	KNOT_EDNS_COOKIE_CLNT_MIN_SIZE = 8,
 	/*! \brief EDNS minimum server cookie size. */
-	KNOT_EDNS_COOKIE_SRVR_MIN_SIZE = 8,
+	KNOT_EDNS_COOKIE_SRVR_MIN_SIZE = 8 + KNOT_EDNS_COOKIE_CLNT_MIN_SIZE,
 	/*! \brief EDNS maximum server cookie size. */
 	KNOT_EDNS_COOKIE_SRVR_MAX_SIZE = 32,
 

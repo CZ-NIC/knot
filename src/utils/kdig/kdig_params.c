@@ -800,12 +800,12 @@ static int opt_cookie(const char *arg, void *query)
 			return KNOT_EINVAL;
 		}
 
-		if (input_len < KNOT_EDNS_COOKIE_CLNT_SIZE) {
+		if (input_len < KNOT_EDNS_COOKIE_CLNT_MIN_SIZE) {
 			ERR("too short client +cookie=%s\n", arg);
 			free(input);
 			return KNOT_EINVAL;
 		}
-		q->cc.len = KNOT_EDNS_COOKIE_CLNT_SIZE;
+		q->cc.len = KNOT_EDNS_COOKIE_CLNT_MIN_SIZE;
 		memcpy(q->cc.data, input, q->cc.len);
 
 		input_len -= q->cc.len;
@@ -826,7 +826,7 @@ static int opt_cookie(const char *arg, void *query)
 
 		free(input);
 	} else {
-		q->cc.len = KNOT_EDNS_COOKIE_CLNT_SIZE;
+		q->cc.len = KNOT_EDNS_COOKIE_CLNT_MIN_SIZE;
 
 		int ret = dnssec_random_buffer(q->cc.data, q->cc.len);
 		if (ret != DNSSEC_EOK) {

@@ -57,7 +57,7 @@ _public_
 int knot_edns_cookie_client_check(const knot_edns_cookie_t *cc,
                                   const knot_edns_cookie_params_t *params)
 {
-	if (cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_SIZE) {
+	if (cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_MIN_SIZE) {
 		return KNOT_EINVAL;
 	}
 
@@ -66,9 +66,9 @@ int knot_edns_cookie_client_check(const knot_edns_cookie_t *cc,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	assert(ref.len == KNOT_EDNS_COOKIE_CLNT_SIZE);
+	assert(ref.len == KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
 
-	ret = const_time_memcmp(cc->data, ref.data, KNOT_EDNS_COOKIE_CLNT_SIZE);
+	ret = const_time_memcmp(cc->data, ref.data, KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
 	if (ret != 0) {
 		return KNOT_EINVAL;
 	}
@@ -81,8 +81,8 @@ int knot_edns_cookie_server_generate(knot_edns_cookie_t *out,
                                      const knot_edns_cookie_t *cc,
                                      const knot_edns_cookie_params_t *params)
 {
-	if (out == NULL || cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_SIZE ||
-	    params == NULL) {
+	if (out == NULL || cc == NULL || cc->len < KNOT_EDNS_COOKIE_CLNT_MIN_SIZE ||
+	    params == NULL || params->client_addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -114,7 +114,9 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
                                   const knot_edns_cookie_params_t *params)
 {
 
-	if (sc == NULL || sc->len != 16 || cc == NULL || params == NULL) {
+	if (sc == NULL || sc->len < KNOT_EDNS_COOKIE_SRVR_MIN_SIZE || sc->len > KNOT_EDNS_COOKIE_SRVR_MAX_SIZE
+			|| cc == NULL || cc->len < KNOT_EDNS_COOKIE_CLNT_MIN_SIZE
+			|| params == NULL) {
 		return KNOT_EINVAL;
 	}
 

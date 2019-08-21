@@ -610,10 +610,10 @@ _public_
 uint16_t knot_edns_cookie_size(const knot_edns_cookie_t *cc,
                                const knot_edns_cookie_t *sc)
 {
-	if (cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_SIZE) {
+	if (cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_MIN_SIZE) {
 		return 0;
 	} else if (sc == NULL || sc->len == 0) {
-		return KNOT_EDNS_COOKIE_CLNT_SIZE;
+		return KNOT_EDNS_COOKIE_CLNT_MIN_SIZE;
 	} else if (sc->len < KNOT_EDNS_COOKIE_SRVR_MIN_SIZE ||
 	           sc->len > KNOT_EDNS_COOKIE_SRVR_MAX_SIZE) {
 		return 0;
@@ -627,7 +627,7 @@ int knot_edns_cookie_write(uint8_t *option, uint16_t option_len,
                            const knot_edns_cookie_t *cc,
                            const knot_edns_cookie_t *sc)
 {
-	if (option == NULL || cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_SIZE) {
+	if (option == NULL || cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_MIN_SIZE) {
 		return KNOT_EINVAL;
 	}
 
@@ -653,21 +653,21 @@ int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
 		return KNOT_EINVAL;
 	}
 
-	if (option_len != KNOT_EDNS_COOKIE_CLNT_SIZE &&
-	    (option_len < KNOT_EDNS_COOKIE_CLNT_SIZE + KNOT_EDNS_COOKIE_SRVR_MIN_SIZE ||
-	     option_len > KNOT_EDNS_COOKIE_CLNT_SIZE + KNOT_EDNS_COOKIE_SRVR_MAX_SIZE)) {
+	if (option_len != KNOT_EDNS_COOKIE_CLNT_MIN_SIZE &&
+	    (option_len < KNOT_EDNS_COOKIE_CLNT_MIN_SIZE + KNOT_EDNS_COOKIE_SRVR_MIN_SIZE ||
+	     option_len > KNOT_EDNS_COOKIE_CLNT_MIN_SIZE + KNOT_EDNS_COOKIE_SRVR_MAX_SIZE)) {
 		return KNOT_EMALF;
 	}
-	assert(option_len >= KNOT_EDNS_COOKIE_CLNT_SIZE);
+	assert(option_len >= KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
 
-	memcpy(cc->data, option, KNOT_EDNS_COOKIE_CLNT_SIZE);
-	cc->len = KNOT_EDNS_COOKIE_CLNT_SIZE;
+	memcpy(cc->data, option, KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
+	cc->len = KNOT_EDNS_COOKIE_CLNT_MIN_SIZE;
 
-	size_t sc_len = option_len - KNOT_EDNS_COOKIE_CLNT_SIZE;
+	size_t sc_len = option_len - KNOT_EDNS_COOKIE_CLNT_MIN_SIZE;
 	if (sc_len == 0) {
 		sc->len = 0;
 	} else {
-		memcpy(sc->data, option + KNOT_EDNS_COOKIE_CLNT_SIZE, sc_len);
+		memcpy(sc->data, option + KNOT_EDNS_COOKIE_CLNT_MIN_SIZE, sc_len);
 		sc->len = sc_len;
 	}
 
