@@ -304,25 +304,6 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	return KNOT_EOK;
 }
 
-static void remove_ifacelist(struct ref *p)
-{
-	ifacelist_t *ifaces = (ifacelist_t *)p;
-
-	/* Remove deprecated interfaces. */
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	iface_t *n = NULL, *m = NULL;
-	WALK_LIST_DELSAFE(n, m, ifaces->u) {
-		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&n->addr);
-		log_info("removing interface %s", addr_str);
-		server_remove_iface(n);
-	}
-	WALK_LIST_DELSAFE(n, m, ifaces->l) {
-		free(n);
-	}
-
-	free(ifaces);
-}
-
 /*!
  * \brief Initialize bound sockets according to configuration.
  *
