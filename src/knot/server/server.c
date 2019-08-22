@@ -803,7 +803,6 @@ int server_reload(server_t *server)
 	}
 	if (full || (flags & CONF_IO_FRLD_SRV)) {
 		server_reconfigure(conf(), server);
-		warn_server_reconfigure(conf(), server);
 		stats_reconfigure(conf(), server);
 	}
 	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
@@ -955,6 +954,9 @@ void server_reconfigure(conf_t *conf, server_t *server)
 		log_error("failed to reconfigure server sockets (%s)",
 		          knot_strerror(ret));
 	}
+
+	/* Check for non-applicable changes. */
+	warn_server_reconfigure(conf, server);
 }
 
 void server_update_zones(conf_t *conf, server_t *server)
