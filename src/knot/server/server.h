@@ -67,7 +67,6 @@ enum {
 };
 
 typedef struct ifacelist {
-	ref_t ref;
 	list_t l;
 	list_t u;
 } ifacelist_t;
@@ -180,4 +179,4 @@ void server_update_zones(conf_t *conf, server_t *server);
  *
  * \return new interface list
  */
-ref_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id);
+ifacelist_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id);
