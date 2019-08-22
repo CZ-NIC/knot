@@ -418,7 +418,6 @@ int udp_master(dthread_t *thread)
 	/* Prepare structures for bound sockets. */
 	unsigned thr_id = dt_get_id(thread);
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	unsigned *iostate = &handler->thread_state[thr_id];
 	void *rq = _udp_init();
 	ifacelist_t *ifaces = NULL;
 
@@ -437,13 +436,7 @@ int udp_master(dthread_t *thread)
 	struct pollfd *fds = NULL;
 	nfds_t nfds = 0;
 
-/* XXX This should likely be removed. */
-	/* Check handler state. */
-	if (*iostate & ServerReload) {
-		*iostate &= ~ServerReload;
-	}
 /* XXX */
-
 	udp.thread_id = handler->thread_id[thr_id];
 	rcu_read_lock();
 	ifaces = handler->server->ifaces;

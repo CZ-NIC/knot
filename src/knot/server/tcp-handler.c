@@ -262,7 +262,6 @@ int tcp_master(dthread_t *thread)
 	}
 
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	unsigned *iostate = &handler->thread_state[dt_get_id(thread)];
 
 	int ret = KNOT_EOK;
 
@@ -295,14 +294,6 @@ int tcp_master(dthread_t *thread)
 	struct timespec next_sweep;
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
-
-/* XXX This should likely be removed. */
-	/* Check handler state. */
-	if (*iostate & ServerReload) {
-		*iostate &= ~ServerReload;
-		ref_release(ref);
-	}
-/* XXX */
 
 /* XXX The return value isn't checked. */
 	server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
