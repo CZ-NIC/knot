@@ -70,7 +70,7 @@ static void pkt_free_data(knot_pkt_t *pkt)
 	pkt->edns_opts = 0;
 }
 
-/*! \brief Allocate new wireformat of given length. */
+/*! \brief Allocate new wireformat of given length, assuming *pkt is zeroed. */
 static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 {
 	assert(pkt);
@@ -87,7 +87,9 @@ static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 	pkt->flags |= KNOT_PF_FREE;
 	pkt->max_size = len;
 
-	knot_pkt_clear(pkt);
+	/* Reset to header size. */
+	pkt->size = KNOT_WIRE_HEADER_SIZE;
+	memset(pkt->wire, 0, pkt->size);
 
 	return KNOT_EOK;
 }
@@ -176,12 +178,6 @@ static void compr_clear(knot_compr_t *compr)
 	compr->suffix.labels = 0;
 }
 
-static void compr_init(knot_compr_t *compr, uint8_t *wire)
-{
-	compr_clear(compr);
-	compr->wire = wire;
-}
-
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
 static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 {
@@ -200,8 +196,8 @@ static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 		pkt_wire_set(pkt, wire, len);
 	}
 
-	/* Initialize compression context. */
-	compr_init(&pkt->compr, pkt->wire);
+	/* Initialize compression context (zeroed above). */
+	pkt->compr.wire = pkt->wire;
 
 	return ret;
 }

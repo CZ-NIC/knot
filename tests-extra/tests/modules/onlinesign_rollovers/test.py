@@ -96,7 +96,7 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
     server.reload()
 
     wait_for_rrsig_count(t, server, "SOA", 2, 20)
-    check_zone(server, zone, before_keys, 1 if after_keys > 1 else 2, 1, 2, desc + ": pre active")
+    check_zone(server, zone, before_keys, 1, 1, 2, desc + ": pre active")
 
     wait_for_dnskey_count(t, server, before_keys + after_keys, 20)
     check_zone(server, zone, before_keys + after_keys, 2, 1, 2, desc + ": both algorithms active")
@@ -114,7 +114,7 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
     check_zone(server, zone, before_keys + after_keys, 2, 1, 2, desc + ": both still active")
 
     wait_for_dnskey_count(t, server, after_keys, 20)
-    check_zone(server, zone, after_keys, 1 if before_keys > 1 else 2, 1, 2, desc + ": post active")
+    check_zone(server, zone, after_keys, 1, 1, 2, desc + ": post active")
 
     wait_for_rrsig_count(t, server, "SOA", 1, 20)
     check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old alg removed")
@@ -138,12 +138,13 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     server.reload()
 
     wait_for_rrsig_count(t, server, "DNSKEY", 2, 20)
-    check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 and after_keys > 1 else 2, desc + ": new KSK ready")
+    expect_zone_rrsigs = (2 if before_keys == 1 and after_keys > 1 else 1) # there is an exception for CSK->KZSK rollover that we have double signatures for the zone. Sorry, we don't care...
+    check_zone(server, zone, total_keys, 2, 1, expect_zone_rrsigs, desc + ": new KSK ready")
 
     submission_cb()
     t.sleep(4)
     if before_keys < 2 or after_keys > 1:
-        check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both still active")
+        check_zone(server, zone, total_keys, 2, 1, 1, desc + ": both still active")
     # else skip the test as we have no control on KSK and ZSK retiring asynchronously
 
     wait_for_rrsig_count(t, server, "DNSKEY", 1, 20)
