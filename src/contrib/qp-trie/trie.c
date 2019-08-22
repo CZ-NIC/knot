@@ -929,15 +929,16 @@ trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t l
 		if (!hastwig(t, b))
 			return NULL;
 		t = twig(t, twigoff(t, b));
-		__builtin_prefetch(twigs(t));
+		__builtin_prefetch(t);
 	}
 	// The only possibly correct leaf was found, now check its key.
 	// Note: if zero labels matched, (zbytei == -1)
 	const tkey_t *lkey = tkey(t);
-	const bool ok = lkey->len == zbytei + 2
-		&& (zbytei < 0 || memcmp(lkey->chars, key, zbytei - 1) == 0)
+	const bool ok = lkey->len == zbytei + 3
+		&& (zbytei < 0 || memcmp(lkey->chars, key, zbytei) == 0)
 		&& (zbytei < 0 || lkey->chars[zbytei] == '\0')
 		&& lkey->chars[zbytei + 1] == '*';
+	if (ok) assert(lkey->chars[zbytei + 2] == '\0'); // LF is zero-terminated ATM
 	return ok ? tvalp(t) : NULL;
 }
 
