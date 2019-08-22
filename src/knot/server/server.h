@@ -21,7 +21,6 @@
 #include "knot/conf/conf.h"
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
-#include "knot/common/ref.h"
 #include "knot/journal/knot_lmdb.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
@@ -67,7 +66,6 @@ enum {
 };
 
 typedef struct ifacelist {
-	ref_t ref;
 	list_t l;
 	list_t u;
 } ifacelist_t;
@@ -180,4 +178,4 @@ void server_update_zones(conf_t *conf, server_t *server);
  *
  * \return new interface list
  */
-ref_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id);
+ifacelist_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id);
