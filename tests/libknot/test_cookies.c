@@ -173,5 +173,27 @@ int main(int argc, char *argv[])
 	server_check(&c4_sa, secret, "good cookie 1",     8, 0xc2b39ab602bd9df9,
 	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5E\x76\x25\x1B\xD5\xDD\xDD\xC4\x0E\x22\xC0", KNOT_EOK);
 
+	/* Test vectors example */	
+	// `./client-cookie 198.51.100.100 198.0.2.53 cefaefbeadde0000efbeaddecefa0000`
+	// `./server-cookie 515310e03b3ba052 198.51.100.100 e5e973e5a6b2a43f48e7dc849e37bfcf 1559731985 040000`
+
+	struct sockaddr_storage client_sockaddr = { 0 };
+	struct sockaddr_storage server_sockaddr = { 0 };
+	sockaddr_set(&client_sockaddr, AF_INET, "198.51.100.100", 0);
+	sockaddr_set(&server_sockaddr, AF_INET, "198.0.2.53", 0);	
+	
+	knot_edns_cookie_params_t params = {
+		.client_addr = (struct sockaddr *)&client_sockaddr,
+		.server_addr = (struct sockaddr *)&server_sockaddr,
+	};
+	memcpy(params.secret, secret, sizeof(params.secret));
+
+	knot_edns_cookie_t client_cookie;
+	knot_edns_cookie_client_generate(&client_cookie, &params);
+
+	const uint8_t secret1[] = "\xE5\xE9\x73\xE5\xA6\xB2\xA4\x3F\x48\xE7\xDC\x84\x9E\x37\xBF\xCF";
+	server_check(&client_sockaddr, secret1, "Learning a new Server Cookie", 8, 0x515310e03b3ba052,
+	                                                						16, (uint8_t*)"\x01\x04\x00\x00\x5C\xF7\x9F\x11\x5C\x6E\xE6\xDE\xAA\x85\x2E\xCD", KNOT_EOK);
+
 	return 0;
 }
