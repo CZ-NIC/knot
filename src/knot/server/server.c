@@ -338,8 +338,6 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	/* Prepare helper lists. */
 	int bound = 0;
 	ifacelist_t *newlist = malloc(sizeof(ifacelist_t));
-	ref_init(&newlist->ref, &remove_ifacelist);
-	ref_retain(&newlist->ref);
 	init_list(&newlist->u);
 	init_list(&newlist->l);
 
@@ -377,7 +375,6 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;
 		for (unsigned i = 0; i < tu->size; ++i) {
-			ref_retain((ref_t *)newlist);
 			s->handlers[proto].handler.thread_state[i] |= ServerReload;
 			s->handlers[proto].handler.thread_id[i] = thread_count++;
 		}
@@ -921,7 +918,7 @@ void server_update_zones(conf_t *conf, server_t *server)
 	}
 }
 
-ref_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id)
+ifacelist_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id)
 {
 	if (server == NULL || server->ifaces == NULL || fds == NULL) {
 		return NULL;
@@ -950,5 +947,5 @@ ref_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_i
 	}
 	rcu_read_unlock();
 
-	return &server->ifaces->ref;
+	return server->ifaces;
 }
