@@ -718,9 +718,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 /*! \brief Log warnings if config change requires a restart. */
 static void warn_server_reconfigure(conf_t *conf, server_t *server)
 {
-	if (conf == NULL || server == NULL) {
-		return;
-	}
+	const char *msg = "changes of %s require restart to take effect";
 
 	static bool udp_warn = true;
 	static bool tcp_warn = true;
@@ -728,22 +726,22 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool listen_warn = true;
 
 	if (udp_warn && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {
-		log_warning("changes of udp-workers require restart to take effect");
+		log_warning(msg, "udp-workers");
 		udp_warn = false;
 	}
 
 	if (tcp_warn && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
-		log_warning("changes of tcp-workers require restart to take effect");
+		log_warning(msg, "tcp-workers");
 		tcp_warn = false;
 	}
 
 	if (bg_warn && conf->cache.srv_bg_threads != conf_bg_threads(conf)) {
-		log_warning("changes of background-workers require restart to take effect");
+		log_warning(msg, "background-workers");
 		bg_warn = false;
 	}
 
 	if (listen_warn && listen_changed(conf, server)) {
-		log_warning("changes of the listen parameter require restart to take effect");
+		log_warning(msg, "listen");
 		listen_warn = false;
 	}
 }
