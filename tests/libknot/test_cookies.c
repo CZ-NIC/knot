@@ -24,7 +24,7 @@
 #include "contrib/sockaddr.h"
 
 static void client_generate(struct sockaddr_storage *c_addr, struct sockaddr_storage *s_addr,
-                            const uint8_t *secret, const char *msg, int code, uint64_t le_cc)
+                            const uint8_t *secret, const char *msg, int code, uint64_t test_cc)
 {
 	knot_edns_cookie_params_t params = {
 		.client_addr = (struct sockaddr *)c_addr,
@@ -36,7 +36,7 @@ static void client_generate(struct sockaddr_storage *c_addr, struct sockaddr_sto
 	int ret = knot_edns_cookie_client_generate(&cc, &params);
 	is_int(ret, code, "client_generate ret: %s", msg);
 	if (ret == KNOT_EOK) {
-		uint64_t ref = le64toh(le_cc);
+		uint64_t ref = htobe64(test_cc);
 		ok(cc.len == sizeof(ref) && memcmp(cc.data, &ref, cc.len) == 0,
 		   "client_generate value: %s", msg);
 	}
@@ -56,8 +56,8 @@ static void server_generate(struct sockaddr_storage *c_addr, const uint8_t *secr
 }
 
 static void client_check(struct sockaddr_storage *c_addr, struct sockaddr_storage *s_addr,
-                         const uint8_t *secret, const char *msg, uint16_t le_cc_len,
-                         uint64_t le_cc, int code)
+                         const uint8_t *secret, const char *msg, uint16_t test_cc_len,
+                         uint64_t test_cc, int code)
 {
 	knot_edns_cookie_params_t params = {
 		.client_addr = (struct sockaddr *)c_addr,
@@ -67,19 +67,19 @@ static void client_check(struct sockaddr_storage *c_addr, struct sockaddr_storag
 		memcpy(params.secret, secret, sizeof(params.secret));
 	}
 
-	uint64_t ref = le64toh(le_cc);
+	uint64_t ref = htobe64(test_cc);
 	knot_edns_cookie_t cc = {
-		.len = le_cc_len
+		.len = test_cc_len
 	};
-	memcpy(cc.data, &ref, le_cc_len);
+	memcpy(cc.data, &ref, test_cc_len);
 
 	int ret = knot_edns_cookie_client_check(&cc, &params);
 	is_int(ret, code, "client_check ret: %s", msg);
 }
 
 static void server_check(struct sockaddr_storage *c_addr, const uint8_t *secret,
-                         const char *msg, uint16_t le_cc_len, uint64_t le_cc,
-                         uint16_t le_sc_len, uint8_t *le_sc, int code)
+                         const char *msg, uint16_t test_cc_len, uint64_t test_cc,
+                         uint16_t test_sc_len, uint8_t *test_sc, int code)
 {
 	knot_edns_cookie_params_t params = {
 		.client_addr = (struct sockaddr *)c_addr,
@@ -88,18 +88,17 @@ static void server_check(struct sockaddr_storage *c_addr, const uint8_t *secret,
 		memcpy(params.secret, secret, sizeof(params.secret));
 	}
 
-	uint64_t ref = le64toh(le_cc);
+	uint64_t ref = htobe64(test_cc);
 	knot_edns_cookie_t cc = {
-		.len = le_cc_len
+		.len = test_cc_len
 	};
-	memcpy(cc.data, &ref, le_cc_len);
+	memcpy(cc.data, &ref, test_cc_len);
 
 	knot_edns_cookie_t sc = {
-		.len = le_sc_len
+		.len = test_sc_len
 	};
 
-	//	ref = le64toh(le_sc);
-	memcpy(sc.data, le_sc, le_sc_len);
+	memcpy(sc.data, test_sc, test_sc_len);
 
 	int ret = knot_edns_cookie_server_check(&sc, &cc, &params);
 	is_int(ret, code, "server_check ret: %s", msg);
@@ -126,18 +125,19 @@ int main(int argc, char *argv[])
 	/* Client cookie generate. */
 	client_generate(NULL,       &s4_sa,     secret, "NULL, IPv4",   KNOT_EINVAL, 0);
 	client_generate(&c4_sa,     NULL,       secret, "IPv4, NULL",   KNOT_EINVAL, 0);
-	client_generate(&c4_sa,     &s4_sa,     secret, "IPv4, IPv4",   KNOT_EOK, 0xde3832f4f59bf5ab);
-	client_generate(&unspec_sa, &s4_sa,     secret, "unspec, IPv4", KNOT_EOK, 0x6b636ff225a1b340);
-	client_generate(&c4_sa,     &unspec_sa, secret, "IPv4, unspec", KNOT_EOK, 0xd713ab1a81179bb3);
+	client_generate(&c4_sa,     &s4_sa,     secret, "IPv4, IPv4",   KNOT_EOK, 0xabf59bf5f43238de);
+	client_generate(&c4_sa,     &s6_sa,     secret, "IPv4, IPv6",   KNOT_EOK, 0xf8bc2f9c958eba2a);
+	client_generate(&c6_sa,     &s4_sa,     secret, "IPv6, IPv4",   KNOT_EOK, 0xda108cd457427233);
+	client_generate(&c6_sa,     &s6_sa,     secret, "IPv6, IPv6",   KNOT_EOK, 0xc2b39ab602bd9df9);
 
 	/* Client cookie check. */
-	client_check(NULL,   &s6_sa, secret, "no client addr",    8, 0xf99dbd02b69ab3c2, KNOT_EINVAL);
-	client_check(&c6_sa, NULL,   secret, "no server addr",    8, 0xf99dbd02b69ab3c2, KNOT_EINVAL);
-	client_check(&c6_sa, &s6_sa, NULL,   "no secret",         8, 0xf99dbd02b69ab3c2, KNOT_EINVAL);
+	client_check(NULL,   &s6_sa, secret, "no client addr",    8, 0xc2b39ab602bd9df9, KNOT_EINVAL);
+	client_check(&c6_sa, NULL,   secret, "no server addr",    8, 0xc2b39ab602bd9df9, KNOT_EINVAL);
+	client_check(&c6_sa, &s6_sa, NULL,   "no secret",         8, 0xc2b39ab602bd9df9, KNOT_EINVAL);
 	client_check(&c6_sa, &s6_sa, secret, "no cookie",         0, 0,                  KNOT_EINVAL);
-	client_check(&c6_sa, &s6_sa, secret, "bad cookie length", 7, 0xf99dbd02b69ab3c2, KNOT_EINVAL);
+	client_check(&c6_sa, &s6_sa, secret, "bad cookie length", 7, 0xc2b39ab602bd9df9, KNOT_EINVAL);
 	client_check(&c6_sa, &s6_sa, secret, "invalid cookie",    8, 0,                  KNOT_EINVAL);
-	client_check(&c6_sa, &s6_sa, secret, "good cookie",       8, 0xf99dbd02b69ab3c2, KNOT_EOK);
+	client_check(&c6_sa, &s6_sa, secret, "good cookie",       8, 0xc2b39ab602bd9df9, KNOT_EOK);
 
 	const knot_edns_cookie_t cc = {
 		.data = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 },
@@ -165,8 +165,32 @@ int main(int argc, char *argv[])
 	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5C\xF2\xDB\xD6\xB1\xBF\xC0\x28\x65\x0C\x3D", KNOT_EINVAL);
 	server_check(&c6_sa, secret, "bad server cookie", 8, 0xde3832f4f59bf5ab,
 	                                                  16, (uint8_t*)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", KNOT_EINVAL);
-	server_check(&c4_sa, secret, "good cookie 1",     8, 0xde3832f4f59bf5ab,
-	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5C\xF2\xDB\xD6\xB1\xBF\xC0\x28\x65\x0C\x3D", KNOT_EOK);
+	server_check(&c4_sa, secret, "good cookie 1",     8, 0xc2b39ab602bd9df9,
+	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5E\x76\x25\x1B\xD5\xDD\xDD\xC4\x0E\x22\xC0", KNOT_EOK);
+	server_check(&c6_sa, secret, "good cookie 2",     8, 0xc2b39ab602bd9df9,
+	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5E\x99\xD9\x63\xD8\x35\x4D\xF2\xDC\x31\x38", KNOT_EOK);
+
+	/* Test vectors example */	
+	// `./client-cookie 198.51.100.100 198.0.2.53 cefaefbeadde0000efbeaddecefa0000`
+	// `./server-cookie 515310e03b3ba052 198.51.100.100 e5e973e5a6b2a43f48e7dc849e37bfcf 1559731985 040000`
+
+	struct sockaddr_storage client_sockaddr = { 0 };
+	struct sockaddr_storage server_sockaddr = { 0 };
+	sockaddr_set(&client_sockaddr, AF_INET, "198.51.100.100", 0);
+	sockaddr_set(&server_sockaddr, AF_INET, "198.0.2.53", 0);	
+	
+	knot_edns_cookie_params_t params = {
+		.client_addr = (struct sockaddr *)&client_sockaddr,
+		.server_addr = (struct sockaddr *)&server_sockaddr,
+	};
+	memcpy(params.secret, secret, sizeof(params.secret));
+
+	knot_edns_cookie_t client_cookie;
+	knot_edns_cookie_client_generate(&client_cookie, &params);
+
+	const uint8_t secret1[] = "\xE5\xE9\x73\xE5\xA6\xB2\xA4\x3F\x48\xE7\xDC\x84\x9E\x37\xBF\xCF";
+	server_check(&client_sockaddr, secret1, "Learning a new Server Cookie", 8, 0x515310e03b3ba052,
+	                                                						16, (uint8_t*)"\x01\x04\x00\x00\x5C\xF7\x9F\x11\x5C\x6E\xE6\xDE\xAA\x85\x2E\xCD", KNOT_EOK);
 
 	return 0;
 }

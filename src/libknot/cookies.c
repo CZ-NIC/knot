@@ -66,7 +66,7 @@ int knot_edns_cookie_client_check(const knot_edns_cookie_t *cc,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	assert(ref.len == KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
+	assert(ref.len >= KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
 
 	ret = const_time_memcmp(cc->data, ref.data, KNOT_EDNS_COOKIE_CLNT_MIN_SIZE);
 	if (ret != 0) {
@@ -135,15 +135,12 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t cookie_now;
-	memcpy(&cookie_now, &sc->data[4], sizeof(uint32_t));
-	cookie_now = htobe32(cookie_now);
-
 	size_t addr_len = 0;
 	void *addr = sockaddr_raw(params->client_addr, &addr_len);
 
 	uint64_t cookie_hash;
 	memcpy(&cookie_hash, &sc->data[8], sizeof(uint64_t));
+	
 	SIPHASH_CTX ctx;
 	assert(sizeof(params->secret) == sizeof(SIPHASH_KEY));
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)params->secret);
