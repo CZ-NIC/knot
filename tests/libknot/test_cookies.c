@@ -172,6 +172,8 @@ int main(int argc, char *argv[])
 	                                                  16, (uint8_t*)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", KNOT_EINVAL);
 	server_check(&c4_sa, secret, "good cookie 1",     8, 0xc2b39ab602bd9df9,
 	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5E\x76\x25\x1B\xD5\xDD\xDD\xC4\x0E\x22\xC0", KNOT_EOK);
+	server_check(&c6_sa, secret, "good cookie 2",     8, 0xc2b39ab602bd9df9,
+	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5E\x99\xD9\x63\xD8\x35\x4D\xF2\xDC\x31\x38", KNOT_EOK);
 
 	/* Test vectors example */	
 	// `./client-cookie 198.51.100.100 198.0.2.53 cefaefbeadde0000efbeaddecefa0000`
