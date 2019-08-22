@@ -22,6 +22,7 @@
 #include "contrib/qp-trie/trie.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
+#include "libknot/dname.h"
 #include "libknot/errcode.h"
 
 /* UCW array sorting defines. */
@@ -33,7 +34,7 @@
 /* Constants. */
 #define KEY_MAXLEN 64
 
-/*! \brief Generate random key. */
+/** \brief Generate random key. */
 static const char *alphabet = "abcdefghijklmn0123456789";
 static char *str_key_rand(size_t len)
 {
@@ -45,7 +46,7 @@ static char *str_key_rand(size_t len)
 	return s;
 }
 
-/* \brief Check lesser or equal result. */
+/** \brief Check lesser or equal result. */
 static bool str_key_get_leq(trie_t *trie, char **keys, size_t i, size_t size)
 {
 	static char key_buf[KEY_MAXLEN];
@@ -101,6 +102,9 @@ static bool str_key_get_leq(trie_t *trie, char **keys, size_t i, size_t size)
 	return true;
 
 }
+
+/** \brief Test trie_get_try_wildcard() */
+static void test_wildcards(void);
 
 int main(int argc, char *argv[])
 {
@@ -200,5 +204,83 @@ int main(int argc, char *argv[])
 	}
 	free(keys);
 	trie_free(trie);
+
+	test_wildcards();
 	return 0;
 }
+
+static void test_wildcards(void)
+{
+	/** Test zone. */
+	const char *names[] = {
+		"*",
+		"example.cz",
+		"*.example.cz",
+		"+.example.cz",
+
+		"*.exampld.cz",
+		"www.exampld.cz",
+	};
+	/** Query-answer pairs for wildcard search. */
+	const char *qa_pairs[][2] = {
+		{ ".", NULL },
+		{ "*", "*" },
+		{ "bar", "*" },
+		{ "foo.test.", "*" },
+		{ "example.cz", "example.cz" },
+		{ "*.example.cz", "*.example.cz" },
+		{ "a.example.cz", "*.example.cz" },
+		{ "ab.cd.example.cz", "*.example.cz" },
+		{ "a+.example.cz", "*.example.cz" },
+		{ "+.example.cz", "+.example.cz" },
+		{ "exampld.cz", NULL },
+		{ ":.exampld.cz", "*.exampld.cz" },
+		{ "ww.exampld.cz", "*.exampld.cz" },
+	};
+
+	trie_t *trie = trie_create(NULL);
+	if (!trie) ok(false, "trie: create");
+
+	/* Insert the whole zone. */
+	for (int i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
+		knot_dname_storage_t dname_st, lf_st;
+		const knot_dname_t
+			*dname = knot_dname_from_str(dname_st, names[i], sizeof(dname_st)),
+			*lf = knot_dname_lf(dname, lf_st);
+		if (!dname || !lf) {
+			ok(false, "trie: converting '%s'", names[i]);
+			return;
+		}
+
+		trie_val_t *val = trie_get_ins(trie, lf + 1 , lf[0]);
+		if (!val || *val != NULL) {
+			ok(false, "trie: inserting '%s' (as dname_lf)", names[i]);
+			return;
+		}
+		*val = (void *)names[i];
+	}
+
+	/* Perform each test query. */
+	for (int i = 0; i < sizeof(qa_pairs) / sizeof(qa_pairs[0]); ++i) {
+		knot_dname_storage_t q_dname_st, q_lf_st;
+		const knot_dname_t *q_dname =
+			knot_dname_from_str(q_dname_st, qa_pairs[i][0], sizeof(q_dname_st));
+		const knot_dname_t *q_lf = knot_dname_lf(q_dname, q_lf_st);
+		if (!q_dname || !q_lf) {
+			ok(false, "trie: converting '%s'", qa_pairs[i][0]);
+			return;
+		}
+
+		const char **ans = (const char **)trie_get_try_wildcard(trie, q_lf + 1, q_lf[0]);
+		bool is_ok = !!ans == !!qa_pairs[i][1] && (!ans || !strcmp(*ans, qa_pairs[i][1]));
+		if (!is_ok) {
+			ok(false, "trie: wildcard test for '%s' -> '%s'",
+				qa_pairs[i][0], ans ? *ans : "<null>");
+			return;
+		}
+	}
+
+	trie_free(trie);
+	ok(true, "trie: wildcard searches");
+}
+
