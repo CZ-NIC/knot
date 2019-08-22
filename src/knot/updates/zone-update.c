@@ -767,6 +767,26 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		zone_control_clear(update->zone);
 	}
 
+	const zone_node_t *apex = update->new_cont->apex;
+	log_zone_debug(apex->owner, "----- APEX DUMP BEGIN (zone_update_commit) -----");
+	for (uint16_t i = 0; i < apex->rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(apex, i);
+
+		char type[16];
+		char data[1024];
+
+		char *owner = knot_dname_to_str_alloc(rrset.owner);
+		if (owner != NULL && knot_rrtype_to_string(rrset.type, type, sizeof(type)) > 0) {
+			for (uint16_t j = 0; j < rrset.rrs.count; ++j) {
+				knot_rrset_txt_dump_data(&rrset, j, data, sizeof(data), &KNOT_DUMP_STYLE_DEFAULT);
+				log_zone_debug(apex->owner, "APEX: %s %u %s %s",
+				               owner, rrset.ttl, type, data);
+			}
+		}
+		free(owner);
+	}
+	log_zone_debug(apex->owner, "----- APEX DUMP END -----");
+
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, update->new_cont);

@@ -444,6 +444,26 @@ static int ixfr_finalize(struct refresh_data *data)
 
 	changeset_t *set = NULL;
 	WALK_LIST(set, data->ixfr.changesets) {
+		const zone_node_t *apex = up.new_cont->apex;
+		log_zone_debug(apex->owner, "----- APEX DUMP BEGIN (ixfr_finalize) -----");
+		for (uint16_t i = 0; i < apex->rrset_count; i++) {
+			knot_rrset_t rrset = node_rrset_at(apex, i);
+
+			char type[16];
+			char rdata[1024];
+
+			char *owner = knot_dname_to_str_alloc(rrset.owner);
+			if (owner != NULL && knot_rrtype_to_string(rrset.type, type, sizeof(type)) > 0) {
+				for (uint16_t j = 0; j < rrset.rrs.count; ++j) {
+					knot_rrset_txt_dump_data(&rrset, j, rdata, sizeof(rdata), &KNOT_DUMP_STYLE_DEFAULT);
+					log_zone_debug(apex->owner, "APEX: %s %u %s %s",
+						       owner, rrset.ttl, type, rdata);
+				}
+			}
+			free(owner);
+		}
+		log_zone_debug(apex->owner, "----- APEX DUMP END -----");
+
 		ret = zone_update_apply_changeset(&up, set);
 		if (ret != KNOT_EOK) {
 			uint32_t serial_from = knot_soa_serial(set->soa_from->rrs.rdata);
