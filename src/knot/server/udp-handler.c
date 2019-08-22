@@ -472,7 +472,9 @@ int udp_master(dthread_t *thread)
 		/* Wait for events. */
 		int events = poll(fds, nfds, -1);
 		if (events <= 0) {
-			if (errno == EINTR) continue;
+			if (errno == EINTR || errno == EAGAIN) {
+				continue;
+			}
 			break;
 		}
 
