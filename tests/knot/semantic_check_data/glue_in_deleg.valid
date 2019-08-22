@@ -1,0 +1,16 @@
+$ORIGIN example.com.
+$TTL 3600
+
+@	IN	SOA	dns1.example.com. hostmaster.example.com. (
+		2010111217	; serial
+		6h		; refresh
+		1h		; retry
+		1w		; expire
+		1d )		; minimum
+
+	NS	ns2.d
+
+d	NS	ns1.d
+ns1.d	A	1.2.3.4
+
+; glue below another delegation is not mandatory

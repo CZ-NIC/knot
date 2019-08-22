@@ -481,12 +481,15 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 	for (int i = 0; i < ns_rrs->count; ++i) {
 		knot_rdata_t *ns_rr = knot_rdataset_at(ns_rrs, i);
 		const knot_dname_t *ns_dname = knot_ns_name(ns_rr);
-		if (knot_dname_in_bailiwick(ns_dname, data->zone->apex->owner) < 0) {
-			continue;
+		const zone_node_t *glue_node = NULL, *glue_encloser = NULL;
+		int res = zone_contents_find_dname(data->zone, ns_dname, &glue_node, &glue_encloser, NULL);
+		if (res == KNOT_EOUTOFZONE) {
+			continue; // NS is out of bailiwick
 		}
-
-		const zone_node_t *glue_node =
-			zone_contents_find_node(data->zone, ns_dname);
+		if (glue_encloser != NULL && glue_encloser != node &&
+		    (glue_encloser->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH))) {
+			continue; // NS is below another delegation
+		}
 
 		if (glue_node == NULL) {
 			/* Try wildcard ([1]* + suffix). */
