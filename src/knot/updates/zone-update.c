@@ -756,8 +756,16 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	 * even if the SOA serial wasn't incremented by re-signing. */
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
 	bool dnssec = conf_bool(&val);
-	if (!changeset_empty(&update->change) && dnssec) {
+
+	if (dnssec) {
 		update->zone->zonefile.resigned = true;
+
+		if (zone_is_slave(conf, update->zone)) {
+			ret = zone_set_lastsigned_serial(update->zone, zone_contents_serial(update->new_cont));
+			if (ret != KNOT_EOK) {
+				log_zone_warning(update->zone->name, "unable to save lastsigned serial, future transfers might be broken");
+			}
+		}
 	}
 
 	/* Abort control transaction if any. */

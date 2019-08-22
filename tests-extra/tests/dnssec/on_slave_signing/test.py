@@ -107,4 +107,7 @@ rnd_master = random.choice(["dateserial", "increment"])
 rnd_slave  = random.choice(["dateserial", "increment"])
 test_one(master, slave, zone, rnd_master, rnd_slave, time.strftime("%Y%m%d01"), 0, 0, 2, 2)
 
+if slave.log_search("fallback to AXFR"):
+    set_err("fallback to AXFR")
+
 t.end()
