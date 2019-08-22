@@ -265,7 +265,6 @@ int tcp_master(dthread_t *thread)
 	unsigned *iostate = &handler->thread_state[dt_get_id(thread)];
 
 	int ret = KNOT_EOK;
-	ref_t *ref = NULL;
 
 	/* Create big enough memory cushion. */
 	knot_mm_t mm;
@@ -298,7 +297,6 @@ int tcp_master(dthread_t *thread)
 	update_tcp_conf(&tcp);
 
 /* XXX This should likely be removed. */
-/* XXX Investigate the purpose of ref. */
 	/* Check handler state. */
 	if (*iostate & ServerReload) {
 		*iostate &= ~ServerReload;
@@ -306,7 +304,8 @@ int tcp_master(dthread_t *thread)
 	}
 /* XXX */
 
-	ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
+/* XXX The return value isn't checked. */
+	server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
 	if (tcp.set.n == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
@@ -335,7 +334,6 @@ finish:
 	free(tcp.iov[1].iov_base);
 	mp_delete(mm.ctx);
 	fdset_clear(&tcp.set);
-	ref_release(ref);
 
 	return ret;
 }

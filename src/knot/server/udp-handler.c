@@ -368,14 +368,6 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
 #endif
 }
 
-/*! \brief Release the interface list reference and free watched descriptor set. */
-static void forget_ifaces(ifacelist_t *ifaces, struct pollfd **fds_ptr)
-{
-	ref_release((ref_t *)ifaces);
-	free(*fds_ptr);
-	*fds_ptr = NULL;
-}
-
 /*!
  * \brief Make a set of watched descriptors based on the interface list.
  *
@@ -428,7 +420,7 @@ int udp_master(dthread_t *thread)
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	unsigned *iostate = &handler->thread_state[thr_id];
 	void *rq = _udp_init();
-	ifacelist_t *ref = NULL;
+	ifacelist_t *ifaces = NULL;
 
 	/* Create big enough memory cushion. */
 	knot_mm_t mm;
@@ -446,7 +438,6 @@ int udp_master(dthread_t *thread)
 	nfds_t nfds = 0;
 
 /* XXX This should likely be removed. */
-/* XXX Investigate the purpose of ref. */
 	/* Check handler state. */
 	if (*iostate & ServerReload) {
 		*iostate &= ~ServerReload;
@@ -455,8 +446,8 @@ int udp_master(dthread_t *thread)
 
 	udp.thread_id = handler->thread_id[thr_id];
 	rcu_read_lock();
-	ref = handler->server->ifaces;
-	nfds = track_ifaces(ref, udp.thread_id, &fds);
+	ifaces = handler->server->ifaces;
+	nfds = track_ifaces(ifaces, udp.thread_id, &fds);
 	rcu_read_unlock();
 	if (nfds == 0) {
 		goto finish;
@@ -493,7 +484,8 @@ int udp_master(dthread_t *thread)
 
 finish:
 	_udp_deinit(rq);
-	forget_ifaces(ref, &fds);
+	free(fds);
 	mp_delete(mm.ctx);
+
 	return KNOT_EOK;
 }
