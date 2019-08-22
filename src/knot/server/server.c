@@ -375,7 +375,6 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;
 		for (unsigned i = 0; i < tu->size; ++i) {
-			s->handlers[proto].handler.thread_state[i] |= ServerReload;
 			s->handlers[proto].handler.thread_id[i] = thread_count++;
 		}
 	}
