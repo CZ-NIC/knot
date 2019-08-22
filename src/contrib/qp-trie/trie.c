@@ -26,6 +26,7 @@
 #include "contrib/qp-trie/trie.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
+#include "libknot/dname.h"
 #include "libknot/errcode.h"
 
 typedef unsigned int uint;
@@ -449,6 +450,45 @@ trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 	if (key_cmp(key, len, lkey->chars, lkey->len) != 0)
 		return NULL;
 	return tvalp(t);
+}
+
+/* Optimization: the approach isn't ideal, as e.g. walking through the prefix
+ * is duplicated and we explicitly construct the wildcard key.  Still, it's close
+ * to optimum which would be significantly more complicated and error-prone to write. */
+trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t len)
+{
+	assert(tbl);
+	if (!tbl->weight)
+		return NULL;
+	// Find leaf sharing the longest common prefix; see ns_find_branch() for explanation.
+	node_t *t = &tbl->root;
+	while (isbranch(t)) {
+		__builtin_prefetch(twigs(t));
+		bitmap_t b = twigbit(t, key, len);
+		uint i = hastwig(t, b) ? twigoff(t, b) : 0;
+		t = twig(t, i);
+	}
+	const tkey_t * const lcp_key = tkey(t);
+
+	// Find the last matching zero byte or -1 (source of synthesis)
+	int i_lmz = -1;
+	for (int i = 0; i < len && i < lcp_key->len && key[i] == lcp_key->chars[i]; ++i) {
+		if (key[i] == '\0' && i < len - 1) // do not count the terminating zero
+			i_lmz = i;
+		// Shortcut: we may have found an exact match.
+		if (i == len - 1 && len == lcp_key->len)
+			return tvalp(t);
+	}
+	if (len == 0) // The empty name needs separate handling.
+		return lcp_key->len == 0 ? tvalp(t) : NULL;
+
+	// Construct the key of the wildcard we need and look it up.
+	const int wild_len = i_lmz + 3;
+	knot_dname_t wild_key[wild_len];
+	memcpy(wild_key, key, wild_len - 2);
+	wild_key[wild_len - 2] = '*';
+	wild_key[wild_len - 1] = '\0'; // LF is always 0-terminated ATM
+	return trie_get_try(tbl, wild_key, wild_len);
 }
 
 /*! \brief Delete leaf t with parent p; b is the bit for t under p.
@@ -877,70 +917,6 @@ int trie_it_get_leq(trie_it_t *it, const trie_key_t *key, uint32_t len)
 	}
 	return ret;
 }
-
-trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t len)
-{
-	assert(tbl);
-	if (!tbl->weight)
-		return NULL;
-
-	// Discover the longest common prefix.
-	__attribute__((cleanup(ns_cleanup)))
-		nstack_t ns_local;
-	ns_init(&ns_local, tbl);
-	nstack_t *ns = &ns_local;
-	index_t idiff;
-	bitmap_t tbit, kbit;
-	if (unlikely(ns_find_branch(ns, key, len, &idiff, &tbit, &kbit)))
-		return NULL; // ENOMEM
-	if (idiff == TMAX_INDEX) // found exact match
-		return tvalp(ns->stack[ns->len - 1]);
-
-	// The found prefix might not end on a label boundary,
-	// so first find zbytei: the position of the last matched zero (or -1);
-	int zbytei = MIN(idiff/2 - 1, len - 2);
-	while (zbytei >= 0 && key[zbytei] != '\0')
-		--zbytei;
-	// now climb to the lowest node that tests a nibble beyond this zero.
-	if (!isbranch(ns->stack[ns->len - 1]))
-		--(ns->len);
-	while (ns->len > 0 && branch_index(ns->stack[ns->len - 1]) >= 2 * (zbytei + 1))
-		--(ns->len);
-	++(ns->len);
-
-	// Go down to a leaf as if the key was extended by "*" after the zero.
-	node_t *t = ns->stack[ns->len - 1];
-	while (isbranch(t)) {
-		// Getting the usual bitmap is a bit cumbersome
-		// because of avoiding to construct this whole key.  See keybit()
-		bitmap_t b;
-		const int nipz = branch_index(t) - 2 * (zbytei + 1);
-		if (nipz == 0 || nipz == 1) { // the first byte past this zero
-			const uint8_t ki = '*';
-			const uint nibble = nipz ? (ki & 0xf) : (ki >> 4);
-			b = BIG1 << (nibble + 1 + TSHIFT_BMP);
-		} else if (nipz == 2) {
-			b = BMP_NOBYTE;
-		} else {
-			assert(nipz > 0);
-			return NULL; // too deep already, so can't find anything
-		}
-
-		if (!hastwig(t, b))
-			return NULL;
-		t = twig(t, twigoff(t, b));
-		__builtin_prefetch(twigs(t));
-	}
-	// The only possibly correct leaf was found, now check its key.
-	// Note: if zero labels matched, (zbytei == -1)
-	const tkey_t *lkey = tkey(t);
-	const bool ok = lkey->len == zbytei + 2
-		&& (zbytei < 0 || memcmp(lkey->chars, key, zbytei - 1) == 0)
-		&& (zbytei < 0 || lkey->chars[zbytei] == '\0')
-		&& lkey->chars[zbytei + 1] == '*';
-	return ok ? tvalp(t) : NULL;
-}
-
 
 /* see below */
 static int cow_pushdown(trie_cow_t *cow, nstack_t *ns);
