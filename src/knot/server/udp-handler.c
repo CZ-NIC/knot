@@ -419,7 +419,6 @@ int udp_master(dthread_t *thread)
 	unsigned thr_id = dt_get_id(thread);
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	void *rq = _udp_init();
-	ifacelist_t *ifaces = NULL;
 
 	/* Create big enough memory cushion. */
 	knot_mm_t mm;
@@ -436,11 +435,9 @@ int udp_master(dthread_t *thread)
 	struct pollfd *fds = NULL;
 	nfds_t nfds = 0;
 
-/* XXX */
-	udp.thread_id = handler->thread_id[thr_id];
+	/* Allocate descriptors for the configured interfaces. */
 	rcu_read_lock();
-	ifaces = handler->server->ifaces;
-	nfds = track_ifaces(ifaces, udp.thread_id, &fds);
+	nfds = track_ifaces(handler->server->ifaces, udp.thread_id, &fds);
 	rcu_read_unlock();
 	if (nfds == 0) {
 		goto finish;
