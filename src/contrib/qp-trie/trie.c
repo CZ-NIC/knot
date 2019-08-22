@@ -897,52 +897,47 @@ trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t l
 		return tvalp(ns->stack[ns->len - 1]);
 
 	// The found prefix might not end on a label boundary,
-	// so first find bytei: the position of the last matched zero (or -1),
-	// and climb to the highest node that tests a nibble that's beyond this zero.
-	int bytei = MIN(idiff/2, len - 1);
-	while (bytei >= 0 && key[bytei] != '\0')
-		--bytei;
+	// so first find zbytei: the position of the last matched zero (or -1);
+	int zbytei = MIN(idiff/2 - 1, len - 2);
+	while (zbytei >= 0 && key[zbytei] != '\0')
+		--zbytei;
+	// now climb to the lowest node that tests a nibble beyond this zero.
 	if (!isbranch(ns->stack[ns->len - 1]))
 		--(ns->len);
-	while (ns->len > 0 && branch_index(ns->stack[ns->len - 1]) >= 2 * (bytei + 1))
+	while (ns->len > 0 && branch_index(ns->stack[ns->len - 1]) >= 2 * (zbytei + 1))
 		--(ns->len);
 	++(ns->len);
 
 	// Go down to a leaf as if the key was extended by "*" after the zero.
-	// This is a bit cumbersome because of avoiding to construct this whole key.
 	node_t *t = ns->stack[ns->len - 1];
 	while (isbranch(t)) {
-		bitmap_t b = 0;
-		uint nibble;
-		switch (branch_index(t) - 2 * (bytei + 1)) {
-			case 0:
-				nibble = ((uint8_t)'*') >> 4;
-				break;
-			case 1:
-				nibble = ((uint8_t)'*') & 0xf;
-				break;
-			case 2:
-				b = BMP_NOBYTE;
-				break;
-			default:
-				assert(false);
-				return NULL;
-		}
-		if (b == 0)
+		// Getting the usual bitmap is a bit cumbersome
+		// because of avoiding to construct this whole key.  See keybit()
+		bitmap_t b;
+		const int nipz = branch_index(t) - 2 * (zbytei + 1);
+		if (nipz == 0 || nipz == 1) { // the first byte past this zero
+			const uint8_t ki = '*';
+			const uint nibble = nipz ? (ki & 0xf) : (ki >> 4);
 			b = BIG1 << (nibble + 1 + TSHIFT_BMP);
+		} else if (nipz == 2) {
+			b = BMP_NOBYTE;
+		} else {
+			assert(nipz > 0);
+			return NULL; // too deep already, so can't find anything
+		}
 
 		if (!hastwig(t, b))
 			return NULL;
 		t = twig(t, twigoff(t, b));
 		__builtin_prefetch(twigs(t));
 	}
-	// The only possible leaf is found, now check its key.
-	// Note: if zero labels matched, (bytei == -1)
+	// The only possibly correct leaf was found, now check its key.
+	// Note: if zero labels matched, (zbytei == -1)
 	const tkey_t *lkey = tkey(t);
-	bool ok = lkey->len == bytei + 2
-		&& (bytei < 0 || memcmp(lkey->chars, key, bytei - 1) == 0)
-		&& (bytei < 0 || lkey->chars[bytei] == '\0')
-		&& lkey->chars[bytei + 1] == '*';
+	const bool ok = lkey->len == zbytei + 2
+		&& (zbytei < 0 || memcmp(lkey->chars, key, zbytei - 1) == 0)
+		&& (zbytei < 0 || lkey->chars[zbytei] == '\0')
+		&& lkey->chars[zbytei + 1] == '*';
 	return ok ? tvalp(t) : NULL;
 }
 
