@@ -45,7 +45,6 @@ typedef struct iohandler {
 typedef enum {
 	ServerIdle    = 0 << 0, /*!< Server is idle. */
 	ServerRunning = 1 << 0, /*!< Server is running. */
-	ServerReload  = 1 << 1  /*!< Server reload requested. */
 } server_state;
 
 /*!
