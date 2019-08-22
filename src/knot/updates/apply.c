@@ -82,7 +82,7 @@ static void can_log_rrset(const knot_rrset_t *rrset, int pos, apply_ctx_t *ctx, 
 	if (owner != NULL && knot_rrtype_to_string(rrset->type, type, sizeof(type)) > 0 &&
 	    knot_rrset_txt_dump_data(rrset, pos, data, sizeof(data), &KNOT_DUMP_STYLE_DEFAULT) > 0) {
 		log_zone_debug(ctx->contents->apex->owner,
-		               "node %s, type %s, data '%s', %s", owner, type, data, msg);
+		               "%s %u %s %s, %s", owner, rrset->ttl, type, data, msg);
 	}
 	free(owner);
 }
@@ -92,28 +92,33 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset, apply
 {
 	if (node == NULL) {
 		// Node does not exist, cannot remove anything.
-		can_log_rrset(rrset, 0, ctx, true);
+		for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
+			can_log_rrset(rrset, i, ctx, true);
+		}
 		return false;
 	}
 
 	const knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
 	if (node_rrs == NULL) {
 		// Node does not have this type at all.
-		can_log_rrset(rrset, 0, ctx, true);
+		for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
+			can_log_rrset(rrset, i, ctx, true);
+		}
 		return false;
 	}
 
+	bool res = true;
 	knot_rdata_t *rr_cmp = rrset->rrs.rdata;
 	for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
 		if (!knot_rdataset_member(node_rrs, rr_cmp)) {
 			// At least one RR doesnt' match.
 			can_log_rrset(rrset, i, ctx, true);
-			return false;
+			res = false;
 		}
 		rr_cmp = knot_rdataset_next(rr_cmp);
 	}
 
-	return true;
+	return res;
 }
 
 /*! \brief Returns true if given RR is not present in node and can be added. */
@@ -129,17 +134,18 @@ static bool can_add(const zone_node_t *node, const knot_rrset_t *rrset, apply_ct
 		return true;
 	}
 
+	bool res = true;
 	knot_rdata_t *rr_cmp = rrset->rrs.rdata;
 	for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
 		if (knot_rdataset_member(node_rrs, rr_cmp)) {
 			// No RR must match.
 			can_log_rrset(rrset, i, ctx, false);
-			return false;
+			res = false;
 		}
 		rr_cmp = knot_rdataset_next(rr_cmp);
 	}
 
-	return true;
+	return res;
 }
 
 int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
