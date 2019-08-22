@@ -23,6 +23,9 @@
 #include "libknot/errcode.h"
 #include "contrib/sockaddr.h"
 
+#define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+#define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+
 static void client_generate(struct sockaddr_storage *c_addr, struct sockaddr_storage *s_addr,
                             const uint8_t *secret, const char *msg, int code, uint64_t le_cc)
 {
@@ -37,6 +40,7 @@ static void client_generate(struct sockaddr_storage *c_addr, struct sockaddr_sto
 	is_int(ret, code, "client_generate ret: %s", msg);
 	if (ret == KNOT_EOK) {
 		uint64_t ref = le64toh(le_cc);
+		//uint64_t ref = le_cc;
 		ok(cc.len == sizeof(ref) && memcmp(cc.data, &ref, cc.len) == 0,
 		   "client_generate value: %s", msg);
 	}
@@ -88,7 +92,7 @@ static void server_check(struct sockaddr_storage *c_addr, const uint8_t *secret,
 		memcpy(params.secret, secret, sizeof(params.secret));
 	}
 
-	uint64_t ref = le64toh(le_cc);
+	uint64_t ref = htonll(le_cc);
 	knot_edns_cookie_t cc = {
 		.len = le_cc_len
 	};
@@ -126,18 +130,19 @@ int main(int argc, char *argv[])
 	/* Client cookie generate. */
 	client_generate(NULL,       &s4_sa,     secret, "NULL, IPv4",   KNOT_EINVAL, 0);
 	client_generate(&c4_sa,     NULL,       secret, "IPv4, NULL",   KNOT_EINVAL, 0);
-	client_generate(&c4_sa,     &s4_sa,     secret, "IPv4, IPv4",   KNOT_EOK, 0xde3832f4f59bf5ab);
-	client_generate(&unspec_sa, &s4_sa,     secret, "unspec, IPv4", KNOT_EOK, 0x6b636ff225a1b340);
-	client_generate(&c4_sa,     &unspec_sa, secret, "IPv4, unspec", KNOT_EOK, 0xd713ab1a81179bb3);
+	client_generate(&c4_sa,     &s4_sa,     secret, "IPv4, IPv4",   KNOT_EOK, 0xabf59bf5f43238de);
+	client_generate(&c4_sa,     &s6_sa,     secret, "IPv4, IPv6",   KNOT_EOK, 0xf8bc2f9c958eba2a);
+	client_generate(&c6_sa,     &s4_sa,     secret, "IPv6, IPv4",   KNOT_EOK, 0xda108cd457427233);
+	client_generate(&c6_sa,     &s6_sa,     secret, "IPv6, IPv6",   KNOT_EOK, 0xc2b39ab602bd9df9);
 
 	/* Client cookie check. */
-	client_check(NULL,   &s6_sa, secret, "no client addr",    8, 0xf99dbd02b69ab3c2, KNOT_EINVAL);
-	client_check(&c6_sa, NULL,   secret, "no server addr",    8, 0xf99dbd02b69ab3c2, KNOT_EINVAL);
-	client_check(&c6_sa, &s6_sa, NULL,   "no secret",         8, 0xf99dbd02b69ab3c2, KNOT_EINVAL);
+	client_check(NULL,   &s6_sa, secret, "no client addr",    8, 0xc2b39ab602bd9df9, KNOT_EINVAL);
+	client_check(&c6_sa, NULL,   secret, "no server addr",    8, 0xc2b39ab602bd9df9, KNOT_EINVAL);
+	client_check(&c6_sa, &s6_sa, NULL,   "no secret",         8, 0xc2b39ab602bd9df9, KNOT_EINVAL);
 	client_check(&c6_sa, &s6_sa, secret, "no cookie",         0, 0,                  KNOT_EINVAL);
-	client_check(&c6_sa, &s6_sa, secret, "bad cookie length", 7, 0xf99dbd02b69ab3c2, KNOT_EINVAL);
+	client_check(&c6_sa, &s6_sa, secret, "bad cookie length", 7, 0xc2b39ab602bd9df9, KNOT_EINVAL);
 	client_check(&c6_sa, &s6_sa, secret, "invalid cookie",    8, 0,                  KNOT_EINVAL);
-	client_check(&c6_sa, &s6_sa, secret, "good cookie",       8, 0xf99dbd02b69ab3c2, KNOT_EOK);
+	client_check(&c6_sa, &s6_sa, secret, "good cookie",       8, 0xc2b39ab602bd9df9, KNOT_EOK);
 
 	const knot_edns_cookie_t cc = {
 		.data = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 },
@@ -165,8 +170,8 @@ int main(int argc, char *argv[])
 	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5C\xF2\xDB\xD6\xB1\xBF\xC0\x28\x65\x0C\x3D", KNOT_EINVAL);
 	server_check(&c6_sa, secret, "bad server cookie", 8, 0xde3832f4f59bf5ab,
 	                                                  16, (uint8_t*)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", KNOT_EINVAL);
-	server_check(&c4_sa, secret, "good cookie 1",     8, 0xde3832f4f59bf5ab,
-	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5C\xF2\xDB\xD6\xB1\xBF\xC0\x28\x65\x0C\x3D", KNOT_EOK);
+	server_check(&c4_sa, secret, "good cookie 1",     8, 0xc2b39ab602bd9df9,
+	                                                  16, (uint8_t*)"\x01\x04\x00\x00\x5D\x5E\x76\x25\x1B\xD5\xDD\xDD\xC4\x0E\x22\xC0", KNOT_EOK);
 
 	return 0;
 }
