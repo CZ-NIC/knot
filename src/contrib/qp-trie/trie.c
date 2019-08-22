@@ -479,6 +479,8 @@ trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t l
 		if (i == len - 1 && len == lcp_key->len)
 			return tvalp(t);
 	}
+	if (len == 0) // The empty name needs separate handling.
+		return lcp_key->len == 0 ? tvalp(t) : NULL;
 
 	// Construct the key of the wildcard we need and look it up.
 	const int wild_len = i_lmz + 3;
