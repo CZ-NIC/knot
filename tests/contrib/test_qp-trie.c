@@ -34,7 +34,7 @@
 /* Constants. */
 #define KEY_MAXLEN 64
 
-/*! \brief Generate random key. */
+/** \brief Generate random key. */
 static const char *alphabet = "abcdefghijklmn0123456789";
 static char *str_key_rand(size_t len)
 {
@@ -46,7 +46,7 @@ static char *str_key_rand(size_t len)
 	return s;
 }
 
-/* \brief Check lesser or equal result. */
+/** \brief Check lesser or equal result. */
 static bool str_key_get_leq(trie_t *trie, char **keys, size_t i, size_t size)
 {
 	static char key_buf[KEY_MAXLEN];
@@ -103,6 +103,7 @@ static bool str_key_get_leq(trie_t *trie, char **keys, size_t i, size_t size)
 
 }
 
+/** \brief Test trie_get_try_wildcard() */
 static void test_wildcards(void);
 
 int main(int argc, char *argv[])
@@ -208,9 +209,6 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-
-
-
 static void test_wildcards(void)
 {
 	/** Test zone. */
@@ -221,11 +219,13 @@ static void test_wildcards(void)
 		"+.example.cz",
 
 		"*.exampld.cz",
+		"www.exampld.cz",
 	};
+	/** Query-answer pairs for wildcard search. */
 	const char *qa_pairs[][2] = {
-		{ "foo.test.", "*" },
-
+		{ ".", NULL },
 		{ "*", "*" },
+		{ "bar", "*" },
 		{ "foo.test.", "*" },
 		{ "example.cz", "example.cz" },
 		{ "*.example.cz", "*.example.cz" },
@@ -235,11 +235,11 @@ static void test_wildcards(void)
 		{ "+.example.cz", "+.example.cz" },
 		{ "exampld.cz", NULL },
 		{ ":.exampld.cz", "*.exampld.cz" },
+		{ "ww.exampld.cz", "*.exampld.cz" },
 	};
 
-
 	trie_t *trie = trie_create(NULL);
-	ok(trie != NULL, "trie: create");
+	if (!trie) ok(false, "trie: create");
 
 	/* Insert the whole zone. */
 	for (int i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
@@ -281,5 +281,6 @@ static void test_wildcards(void)
 	}
 
 	trie_free(trie);
+	ok(true, "trie: wildcard searches");
 }
 
