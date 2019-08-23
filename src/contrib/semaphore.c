@@ -24,7 +24,7 @@
 
 void knot_sem_init(knot_sem_t *sem, unsigned int value)
 {
-	int ret = sem_init(&sem->semaphore, 1, value);
+	int ret = -1;
 	if (ret == 0) {
 		sem->status = -1;
 	} else {
