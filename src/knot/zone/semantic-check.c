@@ -482,23 +482,27 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 		knot_rdata_t *ns_rr = knot_rdataset_at(ns_rrs, i);
 		const knot_dname_t *ns_dname = knot_ns_name(ns_rr);
 		const zone_node_t *glue_node = NULL, *glue_encloser = NULL;
-		int res = zone_contents_find_dname(data->zone, ns_dname, &glue_node, &glue_encloser, NULL);
-		if (res == KNOT_EOUTOFZONE) {
+		int ret = zone_contents_find_dname(data->zone, ns_dname, &glue_node,
+		                                   &glue_encloser, NULL);
+		switch (ret) {
+		case KNOT_EOUTOFZONE:
 			continue; // NS is out of bailiwick
-		}
-		if (glue_encloser != NULL && glue_encloser != node &&
-		    (glue_encloser->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH))) {
-			continue; // NS is below another delegation
-		}
+		case ZONE_NAME_NOT_FOUND:
+			if (glue_encloser != node &&
+			    glue_encloser->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH)) {
+				continue; // NS is below another delegation
+			}
 
-		if (glue_node == NULL) {
-			/* Try wildcard ([1]* + suffix). */
-			knot_dname_t wildcard[KNOT_DNAME_MAXLEN];
-			memcpy(wildcard, "\x1""*", 2);
-			knot_dname_to_wire(wildcard + 2,
-			                   knot_wire_next_label(ns_dname, NULL),
+			// check if covered by wildcard
+			knot_dname_t wildcard[KNOT_DNAME_MAXLEN] = "\x1""*";
+			knot_dname_to_wire(wildcard + 2, glue_encloser->owner,
 			                   sizeof(wildcard) - 2);
 			glue_node = zone_contents_find_node(data->zone, wildcard);
+			break; // continue in checking glue existence
+		case ZONE_NAME_FOUND:
+			break; // continue in checking glue existence
+		default:
+			return ret;
 		}
 		if (!node_rrtype_exists(glue_node, KNOT_RRTYPE_A) &&
 		    !node_rrtype_exists(glue_node, KNOT_RRTYPE_AAAA)) {
