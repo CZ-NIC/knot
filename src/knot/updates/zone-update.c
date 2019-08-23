@@ -722,6 +722,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		    update->zone->contents != NULL) {
 			changeset_clear(&update->change);
 			changeset_clear(&update->extra_ch);
+			zone_update_clear(update);
 			return KNOT_EOK;
 		}
 		ret = commit_incremental(conf, update);
