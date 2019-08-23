@@ -67,8 +67,6 @@ src/knot/common/log.c
 src/knot/common/log.h
 src/knot/common/process.c
 src/knot/common/process.h
-src/knot/common/ref.c
-src/knot/common/ref.h
 src/knot/common/stats.c
 src/knot/common/stats.h
 src/knot/conf/base.c
