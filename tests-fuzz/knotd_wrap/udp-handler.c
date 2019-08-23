@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -98,7 +98,7 @@ void udp_master_init_stdio(server_t *server) {
 	ifc->fd_udp[0] = STDIN_FILENO;
 	ifc->fd_udp_count = 1;
 
-	add_tail(&server->ifaces->l, (node_t *)ifc);
+	add_tail(server->ifaces, (node_t *)ifc);
 
 	_udp_init = udp_stdin_init;
 	_udp_recv = udp_stdin_recv;
