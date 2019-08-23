@@ -254,16 +254,18 @@ int conf_parse(
 /*!
  * Imports textual configuration.
  *
- * \param[in] conf     Configuration.
- * \param[in] input    Configuration string or input filename.
- * \param[in] is_file  Specifies if the input is string or filename.
+ * \param[in] conf          Configuration.
+ * \param[in] input         Configuration string or input filename.
+ * \param[in] is_file       Specifies if the input is string or filename.
+ * \param[in] reinit_cache  Indication if cache reinitialization needed.
  *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_import(
 	conf_t *conf,
 	const char *input,
-	bool is_file
+	bool is_file,
+	bool reinit_cache
 );
 
 /*!

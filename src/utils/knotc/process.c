@@ -120,7 +120,7 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 
 	/* Import the config file. */
 	if (import) {
-		ret = conf_import(new_conf, params->config, true);
+		ret = conf_import(new_conf, params->config, true, false);
 		if (ret != KNOT_EOK) {
 			log_error("failed to load configuration file '%s' (%s)",
 			          params->config, knot_strerror(ret));

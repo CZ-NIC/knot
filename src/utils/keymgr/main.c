@@ -290,7 +290,7 @@ static bool init_conf(const char *confdb)
 
 static bool init_confile(const char *confile)
 {
-	int ret = conf_import(conf(), confile, true);
+	int ret = conf_import(conf(), confile, true, false);
 	if (ret != KNOT_EOK) {
 		printf("Failed opening configuration file %s (%s)\n",
 		       confile, knot_strerror(ret));
@@ -305,7 +305,7 @@ static bool init_conf_blank(const char *kasp_dir)
 	                              "  - id: default\n"
 	                              "    storage: .\n"
 	                              "    kasp-db: %s\n", kasp_dir);
-	int ret = conf_import(conf(), confstr, false);
+	int ret = conf_import(conf(), confstr, false, false);
 	free(confstr);
 	if (ret != KNOT_EOK) {
 		printf("Failed creating fake configuration (%s)\n",
