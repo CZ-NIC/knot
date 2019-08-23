@@ -24,7 +24,7 @@
 #include "contrib/sockaddr.h"
 
 static void client_generate(struct sockaddr_storage *c_addr, struct sockaddr_storage *s_addr,
-                            const uint8_t *secret, const char *msg, int code, uint64_t le_cc)
+                            const uint8_t *secret, const char *msg, int code, uint64_t test_cc)
 {
 	knot_edns_cookie_params_t params = {
 		.client_addr = (struct sockaddr *)c_addr,
@@ -36,8 +36,7 @@ static void client_generate(struct sockaddr_storage *c_addr, struct sockaddr_sto
 	int ret = knot_edns_cookie_client_generate(&cc, &params);
 	is_int(ret, code, "client_generate ret: %s", msg);
 	if (ret == KNOT_EOK) {
-		uint64_t ref = le64toh(le_cc);
-		//uint64_t ref = le_cc;
+		uint64_t ref = htobe64(test_cc);
 		ok(cc.len == sizeof(ref) && memcmp(cc.data, &ref, cc.len) == 0,
 		   "client_generate value: %s", msg);
 	}
@@ -57,8 +56,8 @@ static void server_generate(struct sockaddr_storage *c_addr, const uint8_t *secr
 }
 
 static void client_check(struct sockaddr_storage *c_addr, struct sockaddr_storage *s_addr,
-                         const uint8_t *secret, const char *msg, uint16_t le_cc_len,
-                         uint64_t le_cc, int code)
+                         const uint8_t *secret, const char *msg, uint16_t test_cc_len,
+                         uint64_t test_cc, int code)
 {
 	knot_edns_cookie_params_t params = {
 		.client_addr = (struct sockaddr *)c_addr,
@@ -68,11 +67,11 @@ static void client_check(struct sockaddr_storage *c_addr, struct sockaddr_storag
 		memcpy(params.secret, secret, sizeof(params.secret));
 	}
 
-	uint64_t ref = le64toh(le_cc);
+	uint64_t ref = htobe64(test_cc);
 	knot_edns_cookie_t cc = {
-		.len = le_cc_len
+		.len = test_cc_len
 	};
-	memcpy(cc.data, &ref, le_cc_len);
+	memcpy(cc.data, &ref, test_cc_len);
 
 	int ret = knot_edns_cookie_client_check(&cc, &params);
 	is_int(ret, code, "client_check ret: %s", msg);
@@ -89,7 +88,7 @@ static void server_check(struct sockaddr_storage *c_addr, const uint8_t *secret,
 		memcpy(params.secret, secret, sizeof(params.secret));
 	}
 
-	uint64_t ref = be64toh(le_cc);
+	uint64_t ref = htobe64(le_cc);
 	knot_edns_cookie_t cc = {
 		.len = le_cc_len
 	};
@@ -99,7 +98,6 @@ static void server_check(struct sockaddr_storage *c_addr, const uint8_t *secret,
 		.len = le_sc_len
 	};
 
-	//	ref = le64toh(le_sc);
 	memcpy(sc.data, le_sc, le_sc_len);
 
 	int ret = knot_edns_cookie_server_check(&sc, &cc, &params);
