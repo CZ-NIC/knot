@@ -197,6 +197,15 @@ server:
 .fi
 .UNINDENT
 .UNINDENT
+.sp
+\fBCAUTION:\fP
+.INDENT 0.0
+.INDENT 3.5
+When you change configuration parameters dynamically or via configuration file
+reload, some parameters in the Server section require restarting the Knot server
+so as the change take effect. See below for the details.
+.UNINDENT
+.UNINDENT
 .SS identity
 .sp
 An identity of the server returned in the response to the query for TXT
@@ -220,6 +229,9 @@ A DNS name server identifier (\fI\%RFC 5001\fP). Set empty value to disable.
 .sp
 A path for storing run\-time data (PID file, unix sockets, etc.).
 .sp
+Depending on the usage of this parameter, its change may require restart of the Knot
+server to take effect.
+.sp
 \fIDefault:\fP \fB${localstatedir}/run/knot\fP (configured with \fB\-\-with\-rundir=path\fP)
 .SS user
 .sp
@@ -227,10 +239,14 @@ A system user with an optional system group (\fBuser:group\fP) under which the
 server is run after starting and binding to interfaces. Linux capabilities
 are employed if supported.
 .sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
 \fIDefault:\fP root:root
 .SS pidfile
 .sp
 A PID file location.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fIDefault:\fP \fI\%rundir\fP/knot.pid
 .SS udp\-workers
@@ -238,17 +254,23 @@ A PID file location.
 A number of UDP workers (threads) used to process incoming queries
 over UDP.
 .sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
 \fIDefault:\fP equal to the number of online CPUs
 .SS tcp\-workers
 .sp
 A number of TCP workers (threads) used to process incoming queries
 over TCP.
 .sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
 \fIDefault:\fP equal to the number of online CPUs, default value is at least 10
 .SS background\-workers
 .sp
 A number of workers (threads) used to execute background operations (zone
 loading, zone updates, etc.).
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fIDefault:\fP equal to the number of online CPUs, default value is at most 10
 .SS async\-start
@@ -323,6 +345,8 @@ Optional port specification (default is 53) can be appended to each address
 using \fB@\fP separator. Use \fB0.0.0.0\fP for all configured IPv4 addresses or
 \fB::\fP for all configured IPv6 addresses. Non\-local address binding is
 automatically enabled if supported by the operating system.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fIDefault:\fP not set
 .SH KEY SECTION

@@ -141,6 +141,19 @@ identified section or for a specific item::
     $ knotc conf-diff 'zone[example.com]'
     $ knotc conf-diff 'zone[example.com].master'
 
+.. CAUTION::
+   While it is possible to change most of the configuration parameters
+   dynamically or via configuration file reload, a few of the parameters
+   in the section ``server`` require restarting the server, so as the changes
+   take effect. These parameters are:
+   :ref:`rundir<server_rundir>`,
+   :ref:`user<server_user>`,
+   :ref:`pidfile<server_pidfile>`,
+   :ref:`udp-workers<server_udp-workers>`,
+   :ref:`tcp-workers<server_tcp-workers>`,
+   :ref:`background-workers<server_background-workers>` and
+   :ref:`listen<server_listen>`.
+
 An example of possible configuration initialization::
 
     $ knotc conf-begin

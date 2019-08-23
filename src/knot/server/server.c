@@ -331,6 +331,10 @@ static void remove_ifacelist(struct ref *p)
  */
 static int reconfigure_sockets(conf_t *conf, server_t *s)
 {
+	if (s->state & ServerRunning) {
+		return KNOT_EOK;
+	}
+
 	/* Prepare helper lists. */
 	int bound = 0;
 	ifacelist_t *oldlist = s->ifaces;
@@ -661,6 +665,87 @@ static int reload_conf(conf_t *new_conf)
 	return KNOT_EOK;
 }
 
+/*! \brief Check if parameter listen has been changed since knotd started. */
+static bool listen_changed(conf_t *conf, server_t *server)
+{
+	assert (server->ifaces);
+
+	bool found_match = true;	/* Beware of an empty list. */
+	list_t iface_list;
+	init_list(&iface_list);
+
+	/* Duplicate current list. */
+	/*! \note Pointers to addr, handlers etc. will be shared. */
+	list_dup(&iface_list, &server->ifaces->l, sizeof(iface_t));
+
+	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
+	char *rundir = conf_abs_path(&rundir_val, NULL);
+	/* Walk the new listen parameters. */
+	while (listen_val.code == KNOT_EOK) {
+		iface_t *m;
+
+		/* Find already matching interface. */
+		found_match = false;
+		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
+		WALK_LIST(m, iface_list) {
+			/* Matching port and address. */
+			if (sockaddr_cmp((struct sockaddr *)&addr,
+			                 (struct sockaddr *)&m->addr) == 0) {
+				found_match = true;
+				rem_node((node_t *)m);
+				free(m);
+				break;
+			}
+		}
+
+		if (!found_match) {
+			break;
+		}
+		conf_val_next(&listen_val);
+	}
+
+	free(rundir);
+	/* If there are some bound interfaces left, then 'listen' must have changed. */
+	if (found_match && EMPTY_LIST(iface_list)) {
+		return false;
+	} else {
+		ptrlist_free(&iface_list, NULL);
+		return true;
+	}
+}
+
+/*! \brief Log warnings if config change requires a restart. */
+static void warn_server_reconfigure(conf_t *conf, server_t *server)
+{
+	const char *msg = "changes of %s require restart to take effect";
+
+	static bool udp_warn = true;
+	static bool tcp_warn = true;
+	static bool bg_warn = true;
+	static bool listen_warn = true;
+
+	if (udp_warn && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {
+		log_warning(msg, "udp-workers");
+		udp_warn = false;
+	}
+
+	if (tcp_warn && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
+		log_warning(msg, "tcp-workers");
+		tcp_warn = false;
+	}
+
+	if (bg_warn && conf->cache.srv_bg_threads != conf_bg_threads(conf)) {
+		log_warning(msg, "background-workers");
+		bg_warn = false;
+	}
+
+	if (listen_warn && listen_changed(conf, server)) {
+		log_warning(msg, "listen");
+		listen_warn = false;
+	}
+}
+
 int server_reload(server_t *server)
 {
 	if (server == NULL) {
@@ -714,6 +799,7 @@ int server_reload(server_t *server)
 	}
 	if (full || (flags & CONF_IO_FRLD_SRV)) {
 		server_reconfigure(conf(), server);
+		warn_server_reconfigure(conf(), server);
 		stats_reconfigure(conf(), server);
 	}
 	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
@@ -751,7 +837,7 @@ void server_stop(server_t *server)
 
 static int reset_handler(server_t *server, int index, unsigned size, runnable_t run)
 {
-	if (server->handlers[index].size != size) {
+	if (server->handlers[index].size != size && !(server->state & ServerRunning)) {
 		/* Free old handlers */
 		if (server->handlers[index].size > 0) {
 			server_free_handler(&server->handlers[index].handler);
