@@ -107,7 +107,8 @@ void conf_refresh_hostname(
 }
 
 static void init_cache(
-	conf_t *conf)
+	conf_t *conf,
+	bool reinit_cache)
 {
 	/* For UDP, TCP and background workers, cache the numbers of running
 	 * workers. These numbers can't change in runtime, while config data can.
@@ -118,7 +119,7 @@ static void init_cache(
 	static size_t running_tcp_threads;
 	static size_t running_bg_threads;
 
-	if (first_init) {
+	if (first_init || reinit_cache) {
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_bg_threads = conf_bg_threads(conf);
@@ -256,7 +257,7 @@ int conf_new(
 	}
 
 	// Initialize cached values.
-	init_cache(out);
+	init_cache(out, false);
 
 	// Load module schemas.
 	if (flags & (CONF_FREQMODULES | CONF_FOPTMODULES)) {
@@ -341,7 +342,7 @@ int conf_clone(
 	}
 
 	// Initialize cached values.
-	init_cache(out);
+	init_cache(out, false);
 
 	out->is_clone = true;
 
@@ -670,7 +671,8 @@ parse_error:
 int conf_import(
 	conf_t *conf,
 	const char *input,
-	bool is_file)
+	bool is_file,
+	bool reinit_cache)
 {
 	if (conf == NULL || input == NULL) {
 		return KNOT_EINVAL;
@@ -713,7 +715,7 @@ int conf_import(
 	}
 
 	// Update cached values.
-	init_cache(conf);
+	init_cache(conf, reinit_cache);
 
 	// Reset the filename.
 	free(conf->filename);

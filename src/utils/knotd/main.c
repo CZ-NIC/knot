@@ -347,7 +347,7 @@ static int set_config(const char *confdb, const char *config, size_t max_conf_si
 
 	/* Import the config file. */
 	if (import) {
-		ret = conf_import(new_conf, config, true);
+		ret = conf_import(new_conf, config, true, true);
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to load configuration file '%s' (%s)",
 			          config, knot_strerror(ret));

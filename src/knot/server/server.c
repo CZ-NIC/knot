@@ -629,7 +629,7 @@ static int reload_conf(conf_t *new_conf)
 		log_info("reloading configuration file '%s'", filename);
 
 		/* Import the configuration file. */
-		ret = conf_import(new_conf, filename, true);
+		ret = conf_import(new_conf, filename, true, false);
 		if (ret != KNOT_EOK) {
 			log_error("failed to load configuration file (%s)",
 			          knot_strerror(ret));

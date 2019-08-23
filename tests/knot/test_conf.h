@@ -33,7 +33,7 @@ static inline int test_conf(const char *conf_str, const yp_item_t *schema)
 		return ret;
 	}
 
-	ret = conf_import(new_conf, conf_str, false);
+	ret = conf_import(new_conf, conf_str, false, false);
 	if (ret != KNOT_EOK) {
 		conf_free(new_conf);
 		return ret;
