@@ -272,8 +272,8 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// Commit zone_update back to zone (including journal update, rcu,...).
 	ret = zone_update_commit(conf, &up);
-	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
 		goto cleanup;
 	}
 
