@@ -318,9 +318,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 	/* Prepare helper lists. */
 	int bound = 0;
-	ifacelist_t *newlist = malloc(sizeof(ifacelist_t));
-	init_list(&newlist->u);
-	init_list(&newlist->l);
+	list_t *newlist = malloc(sizeof(list_t));
+	init_list(newlist);
 
 	/* Update bound interfaces. */
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
@@ -338,7 +337,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		unsigned size = s->handlers[IO_UDP].handler.unit->size;
 		if (server_init_iface(m, &addr, size) >= 0) {
 			/* Move to new list. */
-			add_tail(&newlist->l, (node_t *)m);
+			add_tail(newlist, (node_t *)m);
 			++bound;
 		} else {
 			free(m);
@@ -422,7 +421,7 @@ void server_deinit(server_t *server)
 	/* Free remaining interfaces. */
 	if (server->ifaces) {
 		iface_t *n = NULL, *m = NULL;
-		WALK_LIST_DELSAFE(n, m, server->ifaces->l) {
+		WALK_LIST_DELSAFE(n, m, *server->ifaces) {
 			server_remove_iface(n);
 		}
 		free(server->ifaces);
@@ -607,7 +606,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 
 	/* Duplicate current list. */
 	/*! \note Pointers to addr, handlers etc. will be shared. */
-	list_dup(&iface_list, &server->ifaces->l, sizeof(iface_t));
+	list_dup(&iface_list, server->ifaces, sizeof(iface_t));
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
@@ -899,7 +898,7 @@ void server_update_zones(conf_t *conf, server_t *server)
 	}
 }
 
-ifacelist_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id)
+list_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id)
 {
 	if (server == NULL || server->ifaces == NULL || fds == NULL) {
 		return NULL;
@@ -909,7 +908,7 @@ ifacelist_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int th
 	fdset_clear(fds);
 
 	iface_t *i = NULL;
-	WALK_LIST(i, server->ifaces->l) {
+	WALK_LIST(i, *server->ifaces) {
 #ifdef ENABLE_REUSEPORT
 		int udp_id = thread_id % i->fd_udp_count;
 #else

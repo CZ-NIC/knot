@@ -98,7 +98,7 @@ void udp_master_init_stdio(server_t *server) {
 	ifc->fd_udp[0] = STDIN_FILENO;
 	ifc->fd_udp_count = 1;
 
-	add_tail(&server->ifaces->l, (node_t *)ifc);
+	add_tail(server->ifaces, (node_t *)ifc);
 
 	_udp_init = udp_stdin_init;
 	_udp_recv = udp_stdin_recv;
