@@ -251,8 +251,8 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	ret = zone_update_commit(data->conf, &up);
-	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
 		AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to store changes (%s)", knot_strerror(ret));
 		return ret;
@@ -490,11 +490,11 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 		xfr_log_publish(data, old_serial, zone_contents_serial(up.zone->contents), false);
 	} else {
+		zone_update_clear(&up);
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to store changes (%s)", knot_strerror(ret));
 	}
 
-	zone_update_clear(&up);
 	return ret;
 }
 
