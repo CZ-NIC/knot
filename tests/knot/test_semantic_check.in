@@ -88,6 +88,7 @@ expect_error "glue_apex_one.missing" 0 1 "$NS_GLUE"
 expect_error "glue_besides.missing" 0 1 "$NS_GLUE"
 expect_error "glue_deleg.missing" 0 1 "$NS_GLUE"
 expect_error "glue_in_apex.missing" 0 1 "$NS_GLUE"
+expect_error "glue_wildcard.missing" 0 2 "$NS_GLUE" # Not exhaustive check - should find 3 errors
 expect_error "different_signer_name.signed" 0 1 "$RRSIG_RDATA_DNSKEY_OWNER \(record type NSEC\)"
 expect_error "different_signer_name.signed" 0 1 "$RRSIG_UNVERIFIABLE \(record type NSEC\)"
 expect_error "no_rrsig.signed" 0 1 "$RRSIG_NO_RRSIG \(record type A\)"
