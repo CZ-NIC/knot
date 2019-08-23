@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <unistd.h>
 
 #include "knot/common/log.h"
 #include "knot/updates/apply.h"
@@ -342,6 +343,8 @@ void update_cleanup(apply_ctx_t *ctx)
 	if (ctx == NULL) {
 		return;
 	}
+
+	usleep(250000);
 
 	if (ctx->flags & APPLY_UNIFY_FULL) {
 		zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes, true);

@@ -251,7 +251,7 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	ret = zone_update_commit(data->conf, &up);
-	zone_update_clear(&up);
+	zone_update_clear(&up); //
 	if (ret != KNOT_EOK) {
 		AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to store changes (%s)", knot_strerror(ret));
@@ -270,6 +270,7 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone), bootstrap);
+	binode_check_unified(data->zone->contents->apex);
 
 	return KNOT_EOK;
 }
@@ -445,7 +446,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	changeset_t *set = NULL;
 	WALK_LIST(set, data->ixfr.changesets) {
 		const zone_node_t *apex = up.new_cont->apex;
-		log_zone_debug(apex->owner, "----- APEX DUMP BEGIN (ixfr_finalize) -----");
+		log_zone_debug(apex->owner, "----- APEX %p DUMP BEGIN (ixfr_finalize) -----", apex);
 		for (uint16_t i = 0; i < apex->rrset_count; i++) {
 			knot_rrset_t rrset = node_rrset_at(apex, i);
 
@@ -514,7 +515,8 @@ static int ixfr_finalize(struct refresh_data *data)
 		           "failed to store changes (%s)", knot_strerror(ret));
 	}
 
-	zone_update_clear(&up);
+	zone_update_clear(&up); //
+	binode_check_unified(data->zone->contents->apex);
 	return ret;
 }
 

@@ -116,6 +116,6 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	event_dnssec_reschedule(conf, zone, &resch, zone_changed);
 
 done:
-	zone_update_clear(&up);
+	zone_update_clear(&up); //
 	return ret;
 }

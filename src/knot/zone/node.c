@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "knot/common/log.h"
 #include "knot/zone/node.h"
 #include "libknot/libknot.h"
 
@@ -150,6 +151,9 @@ zone_node_t *binode_counterpart(zone_node_t *node)
 void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 {
 	zone_node_t *counter = binode_counterpart(node);
+	if (knot_dname_labels(node->owner, NULL) == 1) {
+		log_zone_info(node->owner, "binode unify %p->%p", node, counter);
+	}
 	if (counter != NULL) {
 		if (counter->rrs != node->rrs) {
 			for (uint16_t i = 0; i < counter->rrset_count; ++i) {
@@ -175,6 +179,30 @@ void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 		if (free_deleted && (node->flags & NODE_FLAGS_DELETED)) {
 			node_free(node, mm);
 		}
+	}
+}
+
+void binode_check_unified(zone_node_t *node)
+{
+	if (!(node->flags & NODE_FLAGS_BINODE)) {
+		log_zone_warning(node->owner, "node %p is not a bi-node", node);
+		return;
+	}
+	zone_node_t *ctrp = binode_counterpart(node);
+	if (ctrp->owner != node->owner) {
+		log_zone_warning(node->owner, "binode (%p/%p) has different owner", node, ctrp);
+	}
+	if (ctrp->rrset_count != node->rrset_count) {
+		log_zone_warning(node->owner, "binode (%p/%p) has different rrset count (%hu/%hu)", node, ctrp, node->rrset_count, ctrp->rrset_count);
+	}
+	if (ctrp->rrs != node->rrs) {
+		log_zone_warning(node->owner, "binode (%p/%p) has different rrset pointer (%p/%p)", node, ctrp, node->rrs, ctrp->rrs);
+	}
+	if ((ctrp->flags ^ node->flags) != NODE_FLAGS_SECOND) {
+		log_zone_warning(node->owner, "binode (%p/%p) has different flags (%hu/%hu)", node, ctrp, node->flags, ctrp->flags);
+	}
+	if (ctrp->children != node->children) {
+		log_zone_warning(node->owner, "binode (%p/%p) has different children count (%u/%u)", node, ctrp, node->children, ctrp->children);
 	}
 }
 

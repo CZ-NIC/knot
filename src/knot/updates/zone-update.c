@@ -38,6 +38,8 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 		return ret;
 	}
 
+	binode_check_unified(old_contents->apex);
+
 	if (update->flags & UPDATE_HYBRID) {
 		update->new_cont = old_contents;
 	} else {
@@ -768,7 +770,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	const zone_node_t *apex = update->new_cont->apex;
-	log_zone_debug(apex->owner, "----- APEX DUMP BEGIN (zone_update_commit) -----");
+	log_zone_debug(apex->owner, "----- APEX %p DUMP BEGIN (zone_update_commit) -----", apex);
 	for (uint16_t i = 0; i < apex->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(apex, i);
 

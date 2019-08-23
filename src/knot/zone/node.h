@@ -128,6 +128,11 @@ bool additional_equal(additional_t *a, additional_t *b);
 zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_mm_t *mm);
 
 /*!
+ * \brief Log warnings if given bi-node is not unified.
+ */
+void binode_check_unified(zone_node_t *node);
+
+/*!
  * \brief Synchronize contents of both binode's nodes.
  *
  * \param node           Pointer to either of nodes in a binode.
