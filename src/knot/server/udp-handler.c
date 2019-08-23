@@ -377,12 +377,12 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
  *
  * \return Number of watched descriptors, zero on error.
  */
-static nfds_t track_ifaces(const ifacelist_t *ifaces, int thrid,
+static nfds_t track_ifaces(const list_t *ifaces, int thrid,
                            struct pollfd **fds_ptr)
 {
 	assert(ifaces && fds_ptr);
 
-	nfds_t nfds = list_size(&ifaces->l);
+	nfds_t nfds = list_size(ifaces);
 	struct pollfd *fds = malloc(nfds * sizeof(*fds));
 	if (!fds) {
 		*fds_ptr = NULL;
@@ -391,7 +391,7 @@ static nfds_t track_ifaces(const ifacelist_t *ifaces, int thrid,
 
 	iface_t *iface = NULL;
 	int i = 0;
-	WALK_LIST(iface, ifaces->l) {
+	WALK_LIST(iface, *ifaces) {
 		fds[i].fd = iface_udp_fd(iface, thrid);
 		fds[i].events = POLLIN;
 		fds[i].revents = 0;

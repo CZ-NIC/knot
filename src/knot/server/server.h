@@ -65,11 +65,6 @@ enum {
 	IO_TCP = 1
 };
 
-typedef struct ifacelist {
-	list_t l;
-	list_t u;
-} ifacelist_t;
-
 /*!
  * \brief Main server structure.
  *
@@ -99,7 +94,7 @@ typedef struct server {
 	evsched_t sched;
 
 	/*! \brief List of interfaces. */
-	ifacelist_t *ifaces;
+	list_t *ifaces;
 
 } server_t;
 
@@ -178,4 +173,4 @@ void server_update_zones(conf_t *conf, server_t *server);
  *
  * \return new interface list
  */
-ifacelist_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id);
+list_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id);
