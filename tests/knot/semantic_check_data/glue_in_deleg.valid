@@ -8,15 +8,9 @@ $TTL 3600
 		1w		; expire
 		1d )		; minimum
 
-	NS	dns1
+	NS	ns2.d
 
-dns1	A	1.2.3.4
+d	NS	ns1.d
+ns1.d	A	1.2.3.4
 
-abc	NS	a.ns.abc
-deleg1	NS	a.ns.abc
-deleg2	NS	a.ns.ns.ns.ns.xyz
-
-; wildcard glue
-
-*.ns.abc	AAAA	::1
-*.ns.xyz	AAAA	::2
+; glue below another delegation is not mandatory

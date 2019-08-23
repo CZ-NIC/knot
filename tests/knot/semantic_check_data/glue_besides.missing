@@ -10,13 +10,8 @@ $TTL 3600
 
 	NS	dns1
 
-dns1	A	1.2.3.4
+dns1	A	192.0.2.1
 
-abc	NS	a.ns.abc
-deleg1	NS	a.ns.abc
-deleg2	NS	a.ns.ns.ns.ns.xyz
+deleg	NS	dns2	
 
-; wildcard glue
-
-*.ns.abc	AAAA	::1
-*.ns.xyz	AAAA	::2
+; missing glue for dns2
