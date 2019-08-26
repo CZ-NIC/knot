@@ -121,6 +121,7 @@ class Server(object):
         self.version = None
 
         self.addr = None
+        self.addr_extra = list()
         self.port = 0 # Needed for keymgr when port not yet generated
         self.fixed_port = False
         self.ctlport = None
@@ -1057,6 +1058,8 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         s.item_str("rundir", self.dir)
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
+        for addr in self.addr_extra:
+            s.item_str("listen", "%s@%s" % (addr, self.port))
         self._str(s, "tcp-reply-timeout", self.tcp_reply_timeout)
         self._str(s, "max-udp-payload", self.max_udp_payload)
         self._str(s, "max-ipv4-udp-payload", self.max_udp4_payload)
