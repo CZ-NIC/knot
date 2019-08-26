@@ -110,6 +110,8 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		if (ret != KNOT_EOK) {
 			goto done;
 		}
+	} else {
+		zone_update_clear(&up);
 	}
 
 	// Schedule dependent events

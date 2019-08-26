@@ -331,7 +331,7 @@ int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	return apply_add_rr(ctx, rr);
 }
 
-void update_cleanup(apply_ctx_t *ctx)
+void apply_cleanup(apply_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		return;
@@ -353,7 +353,7 @@ void update_cleanup(apply_ctx_t *ctx)
 	}
 }
 
-void update_rollback(apply_ctx_t *ctx)
+void apply_rollback(apply_ctx_t *ctx)
 {
 	if (ctx == NULL) {
 		return;
@@ -384,6 +384,10 @@ void update_rollback(apply_ctx_t *ctx)
 	dnssec_nsec3_params_free(&ctx->contents->nsec3_params);
 
 	free(ctx->contents);
+
+	if (ctx->cow_mutex != NULL) {
+		knot_sem_post(ctx->cow_mutex);
+	}
 }
 
 void update_free_zone(zone_contents_t *contents)

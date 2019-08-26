@@ -94,14 +94,14 @@ int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr);
  *
  * \param ctx  Context used to create the update.
  */
-void update_cleanup(apply_ctx_t *ctx);
+void apply_cleanup(apply_ctx_t *ctx);
 
 /*!
  * \brief Rollbacks failed zone update.
  *
  * \param ctx  Context used to create the update.
  */
-void update_rollback(apply_ctx_t *ctx);
+void apply_rollback(apply_ctx_t *ctx);
 
 /*!
  * \brief Shallow frees zone contents - either shallow copy after failed update

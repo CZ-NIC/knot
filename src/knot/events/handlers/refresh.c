@@ -481,14 +481,14 @@ static int ixfr_finalize(struct refresh_data *data)
 			ret = zone_set_master_serial(data->zone, master_serial);
 			if (ret == KNOT_EOK) {
 				ret = zone_set_lastsigned_serial(data->zone,
-				                                 zone_contents_serial(up.zone->contents));
+				                                 zone_contents_serial(data->zone->contents));
 			}
 			if (ret != KNOT_EOK) {
 				log_zone_warning(data->zone->name,
 				"unable to save master serial, future transfers might be broken");
 			}
 		}
-		xfr_log_publish(data, old_serial, zone_contents_serial(up.zone->contents), false);
+		xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents), false);
 	} else {
 		zone_update_clear(&up);
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
