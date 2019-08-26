@@ -537,7 +537,7 @@ static int ixfr_finalize(struct refresh_data *data)
 				"unable to save master serial, future transfers might be broken");
 			}
 		}
-		xfr_log_publish(data, old_serial, zone_contents_serial(up.zone->contents), false);
+		xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents), false);
 	} else {
 		zone_update_clear(&up);
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
