@@ -73,7 +73,7 @@ int conf_io_begin(
 		return KNOT_TXN_EEXISTS;
 	}
 
-	if (conf()->filename != NULL) {
+	if (conf()->filename != NULL && !child) {
 		log_ctl_notice("control, persistent configuration database "
 		               "not available");
 	}
