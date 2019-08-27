@@ -475,27 +475,28 @@ static int ixfr_finalize(struct refresh_data *data)
 	}
 
 	ret = zone_update_commit(data->conf, &up);
-
-	if (ret == KNOT_EOK) {
-		if (dnssec_enable && !EMPTY_LIST(data->ixfr.changesets)) {
-			ret = zone_set_master_serial(data->zone, master_serial);
-			if (ret == KNOT_EOK) {
-				ret = zone_set_lastsigned_serial(data->zone,
-				                                 zone_contents_serial(data->zone->contents));
-			}
-			if (ret != KNOT_EOK) {
-				log_zone_warning(data->zone->name,
-				"unable to save master serial, future transfers might be broken");
-			}
-		}
-		xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents), false);
-	} else {
+	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to store changes (%s)", knot_strerror(ret));
+		return ret;
 	}
 
-	return ret;
+	if (dnssec_enable && !EMPTY_LIST(data->ixfr.changesets)) {
+		ret = zone_set_master_serial(data->zone, master_serial);
+		if (ret == KNOT_EOK) {
+			ret = zone_set_lastsigned_serial(data->zone,
+			                                 zone_contents_serial(data->zone->contents));
+		}
+		if (ret != KNOT_EOK) {
+			log_zone_warning(data->zone->name,
+			"unable to save master serial, future transfers might be broken");
+		}
+	}
+
+	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents), false);
+
+	return KNOT_EOK;
 }
 
 /*! \brief Stores starting SOA into changesets structure. */
