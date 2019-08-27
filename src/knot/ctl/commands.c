@@ -502,7 +502,8 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		return ret;
 	}
 
-	zone_txn_update_clear(zone);
+	free(zone->control_update);
+	zone->control_update = NULL;
 
 	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 

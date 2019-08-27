@@ -212,6 +212,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			log_zone_warning(zone->name, "zone file changed, but SOA serial decreased");
 			break;
 		}
+		zone_update_clear(&up);
 		goto cleanup;
 	}
 
@@ -251,11 +252,13 @@ int event_load(conf_t *conf, zone_t *zone)
 		changeset_t *cpy = changeset_clone(&up.change);
 		if (cpy == NULL) {
 			ret = KNOT_ENOMEM;
+			zone_update_clear(&up);
 			goto cleanup;
 		}
 		ret = zone_update_apply_changeset_reverse(&up, cpy);
 		changeset_free(cpy);
 		if (ret != KNOT_EOK) {
+			zone_update_clear(&up);
 			goto cleanup;
 		}
 	}

@@ -225,6 +225,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		int ret = changeset_init(&update->change, zone_without_contents->name);
 		if (ret != KNOT_EOK) {
 			free(update->a_ctx);
+			knot_sem_post(&update->zone->cow_lock);
 			return ret;
 		}
 
@@ -232,6 +233,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		if (update->change.soa_from == NULL) {
 			changeset_clear(&update->change);
 			free(update->a_ctx);
+			knot_sem_post(&update->zone->cow_lock);
 			return KNOT_ENOMEM;
 		}
 	}
@@ -241,6 +243,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	if (ret != KNOT_EOK) {
 		changeset_clear(&update->change);
 		free(update->a_ctx);
+		knot_sem_post(&update->zone->cow_lock);
 		return ret;
 	}
 
