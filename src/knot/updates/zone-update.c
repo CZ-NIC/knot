@@ -619,7 +619,6 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 		/* No SOA in the update, create one according to the current policy */
 		ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
-			zone_update_clear(update);
 			return ret;
 		}
 	}
