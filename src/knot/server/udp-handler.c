@@ -435,8 +435,7 @@ int udp_master(dthread_t *thread)
 	struct pollfd *fds = NULL;
 	nfds_t nfds = 0;
 
-/* XXX */
-	udp.thread_id = handler->thread_id[thr_id];
+	/* Allocate descriptors for the configured interfaces. */
 	rcu_read_lock();
 	nfds = track_ifaces(handler->server->ifaces, udp.thread_id, &fds);
 	rcu_read_unlock();
