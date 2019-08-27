@@ -164,13 +164,12 @@ void server_reconfigure(conf_t *conf, server_t *server);
 void server_update_zones(conf_t *conf, server_t *server);
 
 /*!
- * \brief Update fdsets from current interfaces list.
+ * \brief Update TCP fdsets from current interfaces list.
  *
  * \param server    Server.
  * \param fds       File descriptor set.
- * \param index     I/O index (UDP/TCP).
  * \param thread_id Thread ID used for geting UDP ID.
  *
  * \return new interface list
  */
-list_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id);
+list_t *server_set_ifaces(server_t *server, fdset_t *fds, int thread_id);
