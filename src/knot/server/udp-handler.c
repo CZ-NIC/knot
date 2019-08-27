@@ -477,5 +477,6 @@ finish:
 	free(fds);
 	fds = NULL;
 	mp_delete(mm.ctx);
+
 	return KNOT_EOK;
 }
