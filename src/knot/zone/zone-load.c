@@ -106,7 +106,7 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 		               knot_strerror(ret));
 	}
 
-	update_cleanup(&a_ctx);
+	apply_cleanup(&a_ctx);
 
 	return ret;
 }
@@ -146,7 +146,7 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 		journal_read_end(read);
 	}
 	if (a_ctx.contents != NULL) {
-		update_cleanup(&a_ctx);
+		apply_cleanup(&a_ctx);
 	}
 
 	if (ret == KNOT_EOK) {

@@ -225,6 +225,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		int ret = changeset_init(&update->change, zone_without_contents->name);
 		if (ret != KNOT_EOK) {
 			free(update->a_ctx);
+			knot_sem_post(&update->zone->cow_lock);
 			return ret;
 		}
 
@@ -232,6 +233,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		if (update->change.soa_from == NULL) {
 			changeset_clear(&update->change);
 			free(update->a_ctx);
+			knot_sem_post(&update->zone->cow_lock);
 			return KNOT_ENOMEM;
 		}
 	}
@@ -241,6 +243,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	if (ret != KNOT_EOK) {
 		changeset_clear(&update->change);
 		free(update->a_ctx);
+		knot_sem_post(&update->zone->cow_lock);
 		return ret;
 	}
 
@@ -361,7 +364,7 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 
 void zone_update_clear(zone_update_t *update)
 {
-	if (update == NULL) {
+	if (update == NULL || update->zone == NULL) {
 		return;
 	}
 
@@ -373,15 +376,12 @@ void zone_update_clear(zone_update_t *update)
 	zone_contents_deep_free(update->init_cont);
 
 	if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
-		update_cleanup(update->a_ctx);
+		apply_cleanup(update->a_ctx);
 		zone_contents_deep_free(update->new_cont);
 	} else {
-		update_rollback(update->a_ctx);
+		apply_rollback(update->a_ctx);
 	}
 
-	if (update->a_ctx != NULL && update->a_ctx->cow_mutex != NULL) {
-		knot_sem_post(update->a_ctx->cow_mutex);
-	}
 	free(update->a_ctx);
 	mp_delete(update->mm.ctx);
 	memset(update, 0, sizeof(*update));
@@ -619,7 +619,6 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 		/* No SOA in the update, create one according to the current policy */
 		ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
-			zone_update_clear(update);
 			return ret;
 		}
 	}
@@ -722,6 +721,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		    update->zone->contents != NULL) {
 			changeset_clear(&update->change);
 			changeset_clear(&update->extra_ch);
+			zone_update_clear(update);
 			return KNOT_EOK;
 		}
 		ret = commit_incremental(conf, update);
@@ -777,19 +777,22 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	} else {
 		callrcu_wrapper(old_contents, update_free_zone, false);
 	}
+
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);
 		changeset_clear(&update->extra_ch);
 	}
-	callrcu_wrapper(update->a_ctx, update_cleanup, true);
-	update->a_ctx = NULL;
-	update->new_cont = NULL;
+	callrcu_wrapper(update->a_ctx, apply_cleanup, true);
+	zone_contents_deep_free(update->init_cont);
 
 	/* Sync zonefile immediately if configured. */
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, update->zone->name);
 	if (conf_int(&val) == 0) {
 		zone_events_schedule_now(update->zone, ZONE_EVENT_FLUSH);
 	}
+
+	mp_delete(update->mm.ctx);
+	memset(update, 0, sizeof(*update));
 
 	return KNOT_EOK;
 }
