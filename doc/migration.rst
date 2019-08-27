@@ -154,14 +154,7 @@ server configuration:
 
    .. NOTE::
       If the server configuration file or database is not at the default location,
-      add a configuration parameter (-c or -C).
-
-   .. NOTE::
-      The server can be run under a dedicated user account, usually ``knot``.
-      As the server requires read-write access to the KASP database, the
-      permissions must be set correctly. This can be achieved for instance by
-      executing all KASP database management commands under sudo::
-
-      $ sudo -u knot keymgr ...
+      add a configuration parameter (-c or -C). See :doc:`keymgr <man_keymgr>`
+      for more info about required access rights to the key files.
 
 4. Follow :ref:`Automatic DNSSEC signing` steps to configure DNSSEC signing.
