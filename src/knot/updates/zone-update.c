@@ -364,7 +364,7 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 
 void zone_update_clear(zone_update_t *update)
 {
-	if (update == NULL) {
+	if (update == NULL || update->zone == NULL) {
 		return;
 	}
 

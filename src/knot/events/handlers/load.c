@@ -53,6 +53,7 @@ static bool allowed_xfr(conf_t *conf, const zone_t *zone)
 
 int event_load(conf_t *conf, zone_t *zone)
 {
+	zone_update_t up = { 0 };
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
 	bool old_contents_exist = (zone->contents != NULL);
 
@@ -144,7 +145,6 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val), zu_from_zf_conts = false;
-	zone_update_t up = { 0 };
 	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE);
 	bool ignore_dnssec = (do_diff && dnssec_enable);
 
@@ -212,7 +212,6 @@ int event_load(conf_t *conf, zone_t *zone)
 			log_zone_warning(zone->name, "zone file changed, but SOA serial decreased");
 			break;
 		}
-		zone_update_clear(&up);
 		goto cleanup;
 	}
 
@@ -221,7 +220,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	if (do_diff && old_contents_exist && journal_conts == NULL && dnssec_enable) {
 		ret = zone_update_start_extra(&up);
 		if (ret != KNOT_EOK) {
-			zone_update_clear(&up);
 			goto cleanup;
 		}
 	}
@@ -235,7 +233,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	if (dnssec_enable) {
 		ret = knot_dnssec_zone_sign(&up, 0, KEY_ROLL_ALLOW_ALL, &dnssec_refresh);
 		if (ret != KNOT_EOK) {
-			zone_update_clear(&up);
 			goto cleanup;
 		}
 		if (zu_from_zf_conts && (up.flags & UPDATE_HYBRID) && allowed_xfr(conf, zone)) {
@@ -252,13 +249,11 @@ int event_load(conf_t *conf, zone_t *zone)
 		changeset_t *cpy = changeset_clone(&up.change);
 		if (cpy == NULL) {
 			ret = KNOT_ENOMEM;
-			zone_update_clear(&up);
 			goto cleanup;
 		}
 		ret = zone_update_apply_changeset_reverse(&up, cpy);
 		changeset_free(cpy);
 		if (ret != KNOT_EOK) {
-			zone_update_clear(&up);
 			goto cleanup;
 		}
 	}
@@ -276,7 +271,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	// Commit zone_update back to zone (including journal update, rcu,...).
 	ret = zone_update_commit(conf, &up);
 	if (ret != KNOT_EOK) {
-		zone_update_clear(&up);
 		goto cleanup;
 	}
 
@@ -303,6 +297,7 @@ cleanup:
 	// Try to bootstrap the zone if local error.
 	replan_from_timers(conf, zone);
 
+	zone_update_clear(&up);
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
 
