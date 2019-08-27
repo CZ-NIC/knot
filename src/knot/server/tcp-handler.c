@@ -298,7 +298,7 @@ int tcp_master(dthread_t *thread)
         /* Set descriptors for the configured interfaces. */
 /* XXX The return value isn't used. */
 /* XXX Server_set_ifaces() needs to be cleaned and moved to this file. */
-	server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
+	server_set_ifaces(handler->server, &tcp.set, tcp.thread_id);
 	if (tcp.set.n == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
