@@ -124,10 +124,10 @@ static void tcp_log_error(struct sockaddr_storage ss, const char *operation, int
  *
  * \return new interface list
  */
-static list_t *tcp_set_ifaces(server_t *server, fdset_t *fds, int thread_id)
+static void tcp_set_ifaces(server_t *server, fdset_t *fds, int thread_id)
 {
-	if (server == NULL || server->ifaces == NULL || fds == NULL) {
-		return NULL;
+	if (server->ifaces == NULL || fds == NULL) {
+		return;
 	}
 
 	rcu_read_lock();
@@ -137,8 +137,6 @@ static list_t *tcp_set_ifaces(server_t *server, fdset_t *fds, int thread_id)
 		fdset_add(fds, i->fd_tcp, POLLIN, NULL);
 	}
 	rcu_read_unlock();
-
-	return server->ifaces;
 }
 
 static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec *tx)
@@ -322,7 +320,6 @@ int tcp_master(dthread_t *thread)
 	update_tcp_conf(&tcp);
 
         /* Set descriptors for the configured interfaces. */
-/* XXX The return value isn't used. */
 	tcp_set_ifaces(handler->server, &tcp.set, tcp.thread_id);
 	if (tcp.set.n == 0) {
 		goto finish; /* Terminate on zero interfaces. */
