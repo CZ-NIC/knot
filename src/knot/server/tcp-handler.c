@@ -124,9 +124,9 @@ static void tcp_log_error(struct sockaddr_storage ss, const char *operation, int
  *
  * \return new interface list
  */
-static list_t *tcp_set_ifaces(server_t *server, fdset_t *fds, int thread_id)
+static void tcp_set_ifaces(server_t *server, fdset_t *fds, int thread_id)
 {
-	if (server == NULL || server->ifaces == NULL || fds == NULL) {
+	if (server->ifaces == NULL || fds == NULL) {
 		return NULL;
 	}
 
@@ -322,7 +322,6 @@ int tcp_master(dthread_t *thread)
 	update_tcp_conf(&tcp);
 
         /* Set descriptors for the configured interfaces. */
-/* XXX The return value isn't used. */
 	tcp_set_ifaces(handler->server, &tcp.set, tcp.thread_id);
 	if (tcp.set.n == 0) {
 		goto finish; /* Terminate on zero interfaces. */
