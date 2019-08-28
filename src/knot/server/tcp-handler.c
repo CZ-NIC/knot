@@ -115,6 +115,32 @@ static void tcp_log_error(struct sockaddr_storage ss, const char *operation, int
 	}
 }
 
+/*!
+ * \brief Update TCP fdsets from current interfaces list.
+ *
+ * \param server    Server.
+ * \param fds       File descriptor set.
+ * \param thread_id Thread ID used for geting UDP ID.
+ *
+ * \return new interface list
+ */
+static list_t *tcp_set_ifaces(server_t *server, fdset_t *fds, int thread_id)
+{
+	if (server == NULL || server->ifaces == NULL || fds == NULL) {
+		return NULL;
+	}
+
+	rcu_read_lock();
+	fdset_clear(fds);
+	iface_t *i = NULL;
+	WALK_LIST(i, *server->ifaces) {
+		fdset_add(fds, i->fd_tcp, POLLIN, NULL);
+	}
+	rcu_read_unlock();
+
+	return server->ifaces;
+}
+
 static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec *tx)
 {
 	/* Get peer name. */
@@ -297,8 +323,7 @@ int tcp_master(dthread_t *thread)
 
         /* Set descriptors for the configured interfaces. */
 /* XXX The return value isn't used. */
-/* XXX Server_set_ifaces() needs to be cleaned and moved to this file. */
-	server_set_ifaces(handler->server, &tcp.set, tcp.thread_id);
+	tcp_set_ifaces(handler->server, &tcp.set, tcp.thread_id);
 	if (tcp.set.n == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}

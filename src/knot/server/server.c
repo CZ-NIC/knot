@@ -896,20 +896,3 @@ void server_update_zones(conf_t *conf, server_t *server)
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
 }
-
-list_t *server_set_ifaces(server_t *server, fdset_t *fds, int thread_id)
-{
-	if (server == NULL || server->ifaces == NULL || fds == NULL) {
-		return NULL;
-	}
-
-	rcu_read_lock();
-	fdset_clear(fds);
-	iface_t *i = NULL;
-	WALK_LIST(i, *server->ifaces) {
-			fdset_add(fds, i->fd_tcp, POLLIN, NULL);
-	}
-	rcu_read_unlock();
-
-	return server->ifaces;
-}
