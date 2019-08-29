@@ -419,8 +419,6 @@ src/utils/khost/khost_params.h
 src/utils/kjournalprint/main.c
 src/utils/knotc/commands.c
 src/utils/knotc/commands.h
-src/utils/knotc/estimator.c
-src/utils/knotc/estimator.h
 src/utils/knotc/interactive.c
 src/utils/knotc/interactive.h
 src/utils/knotc/main.c
