@@ -100,9 +100,6 @@ Test if the server can load the zone. Semantic checks are executed if enabled
 in the configuration. When invoked with flag \fB\-f\fP/\fB\-\-force\fP an error is
 returned when semantic check warning appears. (*)
 .TP
-\fBzone\-memstats\fP [\fIzone\fP\&...]
-Estimate memory use for the zone. (*)
-.TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
 Trigger a zone reload from a disk without checking its modification time. For
 slave zone, the refresh from a master server is scheduled; for master zone,

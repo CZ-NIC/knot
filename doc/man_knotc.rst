@@ -77,9 +77,6 @@ Actions
   in the configuration. When invoked with flag **-f**/**--force** an error is
   returned when semantic check warning appears. (*)
 
-**zone-memstats** [*zone*...]
-  Estimate memory use for the zone. (*)
-
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For
   slave zone, the refresh from a master server is scheduled; for master zone,
