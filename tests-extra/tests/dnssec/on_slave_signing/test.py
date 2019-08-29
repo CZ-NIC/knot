@@ -80,6 +80,7 @@ def test_one(master, slave, zone, master_policy, slave_policy, initial_serial, m
     update = master.update(zone)
     update.add("new2.example.com.", 3600, "A", addr)
     update.send("NOERROR")
+    t.sleep(1)
     slave.start()
     slave.zone_wait(zone)
     check_new_rr(slave, new2)
@@ -98,14 +99,14 @@ slave.dnssec(zone).enable = True
 
 t.start()
 
-test_one(master, slave, zone, "increment", "increment", 1000, 0, 0, 2, 2)
-test_one(master, slave, zone, "unixtime", "unixtime", int(time.time()), 1, 8, 1, 2)
-test_one(master, slave, zone, "increment", "unixtime", int(time.time()), 1, 8, 8, None)
+test_one(master, slave, zone, "increment", "increment", 1000, 0, 0, 2, 3)
+test_one(master, slave, zone, "unixtime", "unixtime", int(time.time()), 1, 8, 1, 3)
+test_one(master, slave, zone, "increment", "unixtime", int(time.time()), 1, 8, 5, None)
 test_one(master, slave, zone, "unixtime", "increment", int(time.time()), 0, 0, None, -1)
 
 rnd_master = random.choice(["dateserial", "increment"])
 rnd_slave  = random.choice(["dateserial", "increment"])
-test_one(master, slave, zone, rnd_master, rnd_slave, time.strftime("%Y%m%d01"), 0, 0, 2, 2)
+test_one(master, slave, zone, rnd_master, rnd_slave, time.strftime("%Y%m%d01"), 0, 0, 2, 3)
 
 if slave.log_search("fallback to AXFR"):
     set_err("fallback to AXFR")
