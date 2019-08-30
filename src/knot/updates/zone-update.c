@@ -391,30 +391,31 @@ static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *ad
 {
 	const zone_node_t *exist_node = zone_contents_find_node(update->new_cont, add->owner);
 	const knot_rrset_t exist_rr = node_rrset(exist_node, add->type);
-	if (!knot_rrset_empty(&exist_rr) && exist_rr.ttl != add->ttl) {
-		char buff[KNOT_DNAME_TXT_MAXLEN + 1];
-		char *owner = knot_dname_to_str(buff, add->owner, sizeof(buff));
-		if (owner == NULL) {
-			return KNOT_ENOMEM;
-		}
-		char type[16] = { '\0' };
-		knot_rrtype_to_string(add->type, type, sizeof(type));
-		log_zone_notice(update->zone->name, "TTL mismatch, owner %s, type %s, "
-				"TTL set to %u", owner, type, add->ttl);
-
-		knot_rrset_t *exist_copy = knot_rrset_copy(&exist_rr, NULL);
-		if (exist_copy == NULL) {
-			return KNOT_ENOMEM;
-		}
-		int ret = zone_update_remove(update, exist_copy);
-		if (ret == KNOT_EOK) {
-			exist_copy->ttl = add->ttl;
-			ret = zone_update_add(update, exist_copy);
-		}
-		knot_rrset_free(exist_copy, NULL);
-		return ret;
+	if (knot_rrset_empty(&exist_rr) || exist_rr.ttl == add->ttl) {
+		return KNOT_EOK;
 	}
-	return KNOT_EOK;
+
+	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	char *owner = knot_dname_to_str(buff, add->owner, sizeof(buff));
+	if (owner == NULL) {
+		owner = "";
+	}
+	char type[16] = { '\0' };
+	knot_rrtype_to_string(add->type, type, sizeof(type));
+	log_zone_notice(update->zone->name, "TTL mismatch, owner %s, type %s, "
+	                "TTL set to %u", owner, type, add->ttl);
+
+	knot_rrset_t *exist_copy = knot_rrset_copy(&exist_rr, NULL);
+	if (exist_copy == NULL) {
+		return KNOT_ENOMEM;
+	}
+	int ret = zone_update_remove(update, exist_copy);
+	if (ret == KNOT_EOK) {
+		exist_copy->ttl = add->ttl;
+		ret = zone_update_add(update, exist_copy);
+	}
+	knot_rrset_free(exist_copy, NULL);
+	return ret;
 }
 
 int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
