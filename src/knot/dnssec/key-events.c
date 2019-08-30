@@ -68,7 +68,7 @@ static unsigned algorithm_present(const kdnssec_ctx_t *ctx, uint8_t alg)
 
 static bool signing_scheme_present(const kdnssec_ctx_t *ctx)
 {
-	if (ctx->policy->singe_type_signing) {
+	if (ctx->policy->single_type_signing) {
 		return (!key_present(ctx, true, false) || !key_present(ctx, false, true) || key_present(ctx, true, true));
 	} else {
 		return (key_present(ctx, true, false) && key_present(ctx, false, true));
@@ -190,7 +190,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 	return ret;
 }
 
-#define GEN_KSK_FLAGS (DNSKEY_GENERATE_KSK | (ctx->policy->singe_type_signing ? DNSKEY_GENERATE_ZSK : 0))
+#define GEN_KSK_FLAGS (DNSKEY_GENERATE_KSK | (ctx->policy->single_type_signing ? DNSKEY_GENERATE_ZSK : 0))
 
 static int generate_ksk(kdnssec_ctx_t *ctx, knot_time_t when_active, bool pre_active)
 {
@@ -333,7 +333,7 @@ static knot_time_t ksk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t 
 		return 0;
 	}
 	knot_timediff_t use_ttl = ctx->policy->dnskey_ttl;
-	if (ctx->policy->singe_type_signing && ctx->policy->zone_maximal_ttl > use_ttl) {
+	if (ctx->policy->single_type_signing && ctx->policy->zone_maximal_ttl > use_ttl) {
 		use_ttl = ctx->policy->zone_maximal_ttl;
 	}
 	return knot_time_add(retire_time, ctx->policy->propagation_delay + use_ttl);
@@ -600,7 +600,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 		if (ret == KNOT_EOK && (flags & KEY_ROLL_ALLOW_ZSK_ROLL)) {
 			reschedule->keys_changed = true;
-			if (!ctx->policy->singe_type_signing &&
+			if (!ctx->policy->single_type_signing &&
 			    !key_present(ctx, false, true)) {
 				ret = generate_key(ctx, DNSKEY_GENERATE_ZSK, ctx->now, false);
 			}
@@ -638,7 +638,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	if (algorithm_present(ctx, ctx->policy->algorithm) == 0 &&
 	    !running_rollover(ctx) && allowed_general_roll && ret == KNOT_EOK) {
 		ret = generate_ksk(ctx, 0, true);
-		if (!ctx->policy->singe_type_signing && ret == KNOT_EOK) {
+		if (!ctx->policy->single_type_signing && ret == KNOT_EOK) {
 			ret = generate_key(ctx, DNSKEY_GENERATE_ZSK, 0, true);
 		}
 		log_zone_info(ctx->zone->dname, "DNSSEC, algorithm rollover started");
@@ -650,7 +650,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	if (!signing_scheme_present(ctx) && allowed_general_roll &&
 	    !running_rollover(ctx) && ret == KNOT_EOK) {
 		ret = generate_ksk(ctx, 0, false);
-		if (!ctx->policy->singe_type_signing && ret == KNOT_EOK) {
+		if (!ctx->policy->single_type_signing && ret == KNOT_EOK) {
 			ret = generate_key(ctx, DNSKEY_GENERATE_ZSK, 0, false);
 		}
 		log_zone_info(ctx->zone->dname, "DNSSEC, signing scheme rollover started");
