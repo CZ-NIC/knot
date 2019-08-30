@@ -36,7 +36,7 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	policy->manual = conf_bool(&val);
 
 	val = conf_id_get(conf(), C_POLICY, C_SINGLE_TYPE_SIGNING, id);
-	policy->singe_type_signing = conf_bool(&val);
+	policy->single_type_signing = conf_bool(&val);
 
 	val = conf_id_get(conf(), C_POLICY, C_ALG, id);
 	policy->algorithm = conf_opt(&val);
