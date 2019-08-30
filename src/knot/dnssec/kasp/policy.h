@@ -97,7 +97,7 @@ typedef struct {
 	uint32_t zsk_lifetime;              // like knot_time_t
 	uint32_t ksk_lifetime;              // like knot_time_t
 	bool ksk_shared;
-	bool singe_type_signing;
+	bool single_type_signing;
 	// RRSIG
 	uint32_t rrsig_lifetime;            // like knot_time_t
 	uint32_t rrsig_refresh_before;      // like knot_timediff_t
