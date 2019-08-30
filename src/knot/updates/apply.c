@@ -252,16 +252,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	// Insert new RR to RRSet, data will be copied.
 	ret = node_add_rrset(node, rr, NULL);
 	if (ret == KNOT_ETTL) {
-		char buff[KNOT_DNAME_TXT_MAXLEN + 1];
-		char *owner = knot_dname_to_str(buff, rr->owner, sizeof(buff));
-		if (owner == NULL) {
-			owner = "";
-		}
-		char type[16] = { '\0' };
-		knot_rrtype_to_string(rr->type, type, sizeof(type));
-		log_zone_notice(contents->apex->owner,
-		                "TTL mismatch, owner %s, type %s, "
-		                "TTL set to %u", owner, type, rr->ttl);
+		// this shall not happen except applying journal created before this bugfix
 		return KNOT_EOK;
 	}
 	return ret;
