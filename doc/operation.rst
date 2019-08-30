@@ -494,7 +494,7 @@ to the settings (see :ref:`KSK<policy_ksk-lifetime>` and :ref:`ZSK<policy_zsk-li
 The algorithm rollover happens when the policy :ref:`algorithm<policy_algorithm>`
 field is updated to a different value.
 
-The signing scheme rollover happens when the policy :ref:`singing scheme<policy_single-type-signing>`
+The signing scheme rollover happens when the policy :ref:`signing scheme<policy_single-type-signing>`
 field is changed.
 
 It's also possible to change the algorithm and signing scheme in one rollover.
