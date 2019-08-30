@@ -201,7 +201,7 @@ Key used for signing and submitted to the parent zone (only for KSK).
 Key used for signing.
 .TP
 \fBretire_active\fP
-Key still used for singing, but another key is active (only for KSK or algorithm rollover).
+Key still used for signing, but another key is active (only for KSK or algorithm rollover).
 .TP
 \fBretire\fP
 Key still published, but no longer used for signing.
