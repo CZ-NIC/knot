@@ -68,6 +68,9 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	bool force = zone->flags & ZONE_FORCE_FLUSH;
 	zone->flags &= ~ZONE_FORCE_FLUSH;
 
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	int64_t sync_timeout = conf_int(&val);
+
 	if (zone_contents_is_empty(zone->contents)) {
 		if (allow_empty_zone && journal_is_existing(j)) {
 			ret = journal_set_flushed(j);
@@ -78,8 +81,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	}
 
 	/* Check for disabled zonefile synchronization. */
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	if (conf_int(&val) < 0 && !force) {
+	if (sync_timeout < 0 && !force) {
 		log_zone_warning(zone->name, "zonefile synchronization disabled, "
 		                             "use force command to override it");
 		return KNOT_EOK;
@@ -145,8 +147,6 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 flush_journal_replan:
 	/* Plan next journal flush after proper period. */
 	zone->timers.last_flush = time(NULL);
-	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
 	if (sync_timeout > 0) {
 		time_t next_flush = zone->timers.last_flush + sync_timeout;
 		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, 0,
