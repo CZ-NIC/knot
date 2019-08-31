@@ -1180,6 +1180,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	if (zone->flags & ZONE_FORCE_AXFR) {
 		zone->flags &= ~ZONE_FORCE_AXFR;
 		trctx.force_axfr = true;
+		zone->zonefile.retransfer = true;
 	}
 
 	int ret = zone_master_try(conf, zone, try_refresh, &trctx, "refresh");

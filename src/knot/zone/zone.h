@@ -58,6 +58,7 @@ typedef struct zone
 		uint32_t serial;
 		bool exists;
 		bool resigned;
+		bool retransfer;
 	} zonefile;
 
 	/*! \brief Zone events. */
