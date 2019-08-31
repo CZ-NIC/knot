@@ -572,12 +572,6 @@ master's SOA serial in a special variable inside KASP DB and appropriately
 modifiying AXFR/IXFR queries/answers to keep the communication with
 master consistent while applying the changes with a different serial.
 
-.. NOTE::
-   It is recommended to use UNIX time serial policy on master and incremental
-   serial policy on slave so that their SOA serials are equal most of the time.
-
-   The opposite configuration is not supported yet.
-
 .. _query-modules:
 
 Query modules
