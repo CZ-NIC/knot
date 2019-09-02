@@ -175,20 +175,27 @@ static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 static void xfr_log_publish(const struct refresh_data *data,
                             const uint32_t old_serial,
                             const uint32_t new_serial,
+                            const uint32_t master_serial,
+                            bool has_master_serial,
                             bool axfr_bootstrap)
 {
 	struct timespec finished = time_now();
 	double duration = time_diff_ms(&data->started, &finished) / 1000.0;
 
+	char old_info[32] = "none";
 	if (!axfr_bootstrap) {
-		REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
-		            "zone updated, %0.2f seconds, serial %u -> %u",
-		            duration, old_serial, new_serial);
-	} else {
-		REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
-		            "zone updated, %0.2f seconds, serial none -> %u",
-		            duration, new_serial);
+		(void)snprintf(old_info, sizeof(old_info), "%u", old_serial);
 	}
+
+	char master_info[32] = "";
+	if (has_master_serial) {
+		(void)snprintf(master_info, sizeof(master_info),
+		               ", remote serial %u", master_serial);
+	}
+
+	REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
+	            "zone updated, %0.2f seconds, serial %s -> %u%s",
+	            duration, old_info, new_serial, master_info);
 }
 
 static int axfr_init(struct refresh_data *data)
@@ -287,7 +294,8 @@ static int axfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone), (data->zone->contents == NULL));
+	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
+	                master_serial, dnssec_enable, (data->zone->contents == NULL));
 
 	return KNOT_EOK;
 }
@@ -541,7 +549,8 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents), false);
+	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
+	                master_serial, dnssec_enable, false);
 
 	return KNOT_EOK;
 }
