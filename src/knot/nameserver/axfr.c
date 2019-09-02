@@ -138,7 +138,7 @@ static int axfr_query_init(knotd_qdata_t *qdata)
 
 	/* Put data to process. */
 	xfr_stats_begin(&axfr->proc.stats);
-	zone_contents_t *contents = qdata->extra->zone->contents;
+	const zone_contents_t *contents = qdata->extra->contents;
 	/* Must be non-NULL for the first message. */
 	assert(contents);
 	ptrlist_add(&axfr->proc.nodes, contents->nodes, mm);
@@ -177,7 +177,7 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		switch (ret) {
 		case KNOT_EOK:      /* OK */
 			AXFROUT_LOG(LOG_INFO, qdata, "started, serial %u",
-			            zone_contents_serial(qdata->extra->zone->contents));
+			            zone_contents_serial(qdata->extra->contents));
 			break;
 		case KNOT_EDENIED:  /* Not authorized, already logged. */
 			return KNOT_STATE_FAIL;

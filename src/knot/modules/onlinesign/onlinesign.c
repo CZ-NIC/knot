@@ -177,9 +177,8 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *
 	}
 
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
-	bool is_apex = qdata->extra->zone
-	               && qdata->extra->zone->contents
-	               && qdata->extra->node == qdata->extra->zone->contents->apex;
+	bool is_apex = (qdata->extra->contents != NULL &&
+	                qdata->extra->node == qdata->extra->contents->apex);
 
 	bitmap_add_synth(map, is_apex);
 
@@ -514,7 +513,7 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 	}
 	if (ret == KNOT_EOK || knot_time_cmp(ctx->event_rollover, mod->dnssec->now) <= 0) {
-		update_policy_from_zone(mod->dnssec->policy, qdata->extra->zone->contents);
+		update_policy_from_zone(mod->dnssec->policy, qdata->extra->contents);
 		ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 	}
 	if (ret == KNOT_EOK) {
