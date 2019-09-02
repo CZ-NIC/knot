@@ -84,13 +84,13 @@ static int ixfr_process_journal(knot_pkt_t *pkt, const void *item,
 #undef IXFR_SAFE_PUT
 
 static int ixfr_load_chsets(journal_read_t **journal_read, zone_t *zone,
-                            const knot_rrset_t *their_soa)
+                            const zone_contents_t *contents, const knot_rrset_t *their_soa)
 {
 	assert(journal_read);
 	assert(zone);
 
 	/* Compare serials. */
-	uint32_t serial_to = zone_contents_serial(zone->contents), j_serial_to;
+	uint32_t serial_to = zone_contents_serial(contents), j_serial_to;
 	uint32_t serial_from = knot_soa_serial(their_soa->rrs.rdata);
 	if (serial_compare(serial_to, serial_from) & SERIAL_MASK_LEQ) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
@@ -165,7 +165,8 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 	}
 	memset(xfer, 0, sizeof(struct ixfr_proc));
 
-	int ret = ixfr_load_chsets(&xfer->journal_ctx, (zone_t *)qdata->extra->zone, their_soa);
+	int ret = ixfr_load_chsets(&xfer->journal_ctx, (zone_t *)qdata->extra->zone,
+	                           qdata->extra->contents, their_soa);
 	if (ret != KNOT_EOK) {
 		mm_free(mm, xfer);
 		return ret;
@@ -180,7 +181,7 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 	ptrlist_add(&xfer->proc.nodes, xfer->journal_ctx, mm);
 
 	xfer->soa_from = knot_soa_serial(their_soa->rrs.rdata);
-	xfer->soa_to = zone_contents_serial(qdata->extra->zone->contents);
+	xfer->soa_to = zone_contents_serial(qdata->extra->contents);
 
 	qdata->extra->ext = xfer;
 	qdata->extra->ext_cleanup = &ixfr_answer_cleanup;
@@ -209,7 +210,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Guaranteed to have zone contents. */
-	const zone_node_t *apex = qdata->extra->zone->contents->apex;
+	const zone_node_t *apex = qdata->extra->contents->apex;
 	knot_rrset_t soa_rr = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa_rr)) {
 		return KNOT_STATE_FAIL;

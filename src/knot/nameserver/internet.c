@@ -116,7 +116,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 static bool have_dnssec(knotd_qdata_t *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query) &&
-	       qdata->extra->zone->contents->dnssec;
+	       qdata->extra->contents->dnssec;
 }
 
 /*! \brief This is a wildcard-covered or any other terminal node for QNAME.
@@ -360,7 +360,7 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		/* Find wildcard child in the zone. */
 		const zone_node_t *wildcard_node =
 			zone_contents_find_wildcard_child(
-				qdata->extra->zone->contents, qdata->extra->encloser);
+				qdata->extra->contents, qdata->extra->encloser);
 
 		qdata->extra->node = wildcard_node;
 		assert(qdata->extra->node != NULL);
@@ -401,7 +401,7 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 static int solve_name(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	int ret = zone_contents_find_dname(qdata->extra->zone->contents, qdata->name,
+	int ret = zone_contents_find_dname(qdata->extra->contents, qdata->name,
 	                                   &qdata->extra->node, &qdata->extra->encloser,
 	                                   &qdata->extra->previous);
 
@@ -456,7 +456,7 @@ static int solve_answer_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
 static int solve_authority(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
 {
 	int ret = KNOT_ERROR;
-	const zone_contents_t *zone_contents = qdata->extra->zone->contents;
+	const zone_contents_t *zone_contents = qdata->extra->contents;
 
 	switch (state) {
 	case KNOTD_IN_STATE_HIT:    /* Positive response. */
