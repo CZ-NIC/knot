@@ -793,8 +793,8 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		uint32_t master_serial;
 		int ret = slave_zone_serial(data->zone, data->conf, &master_serial);
 		if (ret != KNOT_EOK) {
-			log_zone_error(data->zone->name, "Failed reading master's serial"
-				       "from KASP DB (%s)", knot_strerror(ret));
+			log_zone_error(data->zone->name, "failed reading master's serial"
+			               "from KASP DB (%s)", knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		}
 		data->xfr_type = determine_xfr_type(answer, master_serial,
@@ -907,8 +907,8 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	uint32_t local_serial;
 	int ret = slave_zone_serial(data->zone, data->conf, &local_serial);
 	if (ret != KNOT_EOK) {
-		log_zone_error(data->zone->name, "Failed reading master's serial"
-			       "from KASP DB (%s)", knot_strerror(ret));
+		log_zone_error(data->zone->name, "failed reading master's serial"
+		               "from KASP DB (%s)", knot_strerror(ret));
 		return KNOT_STATE_FAIL;
 	}
 	uint32_t remote_serial = knot_soa_serial(rr->rrs.rdata);
@@ -948,7 +948,7 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		uint32_t master_serial;
 		ret = slave_zone_serial(data->zone, data->conf, &master_serial);
 		if (ret != KNOT_EOK) {
-			log_zone_error(data->zone->name, "Failed reading master's serial"
+			log_zone_error(data->zone->name, "failed reading master's serial"
 			               "from KASP DB (%s)", knot_strerror(ret));
 		}
 		if (sending_soa == NULL || ret != KNOT_EOK) {
