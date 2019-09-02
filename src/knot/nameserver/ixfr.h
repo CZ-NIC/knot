@@ -37,6 +37,7 @@ struct ixfr_proc {
 	/* Processing state. */
 	struct xfr_proc proc;
 	enum ixfr_state state;
+	bool in_remove_section;
 
 	/* Changes to be sent. */
 	journal_read_t *journal_ctx;

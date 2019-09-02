@@ -55,7 +55,15 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
 	}
 
 	while (journal_read_rrset(read, &ixfr->cur_rr, true)) {
+		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA &&
+		    !ixfr->in_remove_section &&
+		    knot_soa_serial(ixfr->cur_rr.rrs.rdata) == ixfr->soa_to) {
+			break;
+		}
 		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
+		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA) {
+			ixfr->in_remove_section = !ixfr->in_remove_section;
+		}
 		knot_rrset_clear(&ixfr->cur_rr, NULL);
 	}
 
