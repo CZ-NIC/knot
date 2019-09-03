@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 	// Test init
 	knot_rdataset_t rdataset;
 	knot_rdataset_init(&rdataset);
-	ok(rdataset.rdata == NULL && rdataset.count == 0, "rdataset: init.");
+	ok(rdataset.rdata == NULL && rdataset.count == 0 && rdataset.size == 0, "rdataset: init.");
 
 	// Test rdata addition
 	uint8_t buf_gt[knot_rdata_size(4)];
@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
 
 	ok(knot_rdataset_size(&rdataset) == knot_rdata_size(4) * 2,
 	   "rdataset: size.");
+	ok(rdataset.size == knot_rdataset_size(&rdataset), "rdataset: size precomputed (%u %zu).", rdataset.size, knot_rdataset_size(&rdataset));
 
 	// Test copy
 	ok(knot_rdataset_copy(NULL, NULL, NULL) == KNOT_EINVAL,
@@ -74,6 +75,7 @@ int main(int argc, char *argv[])
 	                     memcmp(rdataset.rdata, copy.rdata,
 	                            knot_rdataset_size(&rdataset)) == 0;
 	ok(copy_ok, "rdataset: copy");
+	ok(copy.size == knot_rdataset_size(&copy), "copy: size precomputed.");
 
 	// Test eq
 	ok(knot_rdataset_eq(&rdataset, &copy), "rdataset: equal");
@@ -190,6 +192,7 @@ int main(int argc, char *argv[])
 	size_t new_rrs_size = knot_rdataset_size(&rdataset);
 	bool reserve_ok = ret == KNOT_EOK && new_rrs_size == (old_rrs_size + knot_rdata_size(rr_size));
 	ok(reserve_ok, "rdataset: reserve normal");
+	ok(rdataset.size == knot_rdataset_size(&rdataset), "rdataset: reserve precomputed.");
 
 	RDATASET_INIT_WITH(copy, rdata_lo);
 	knot_rdataset_add(&copy, rdata_gt, NULL);

@@ -36,6 +36,7 @@
 /*!< \brief Set of RRs. */
 typedef struct {
 	uint16_t count;      /*!< \brief Count of RRs stored in the structure. */
+	uint32_t size;       /*!< \brief Pre-computed knot_rdataset_size(). */
 	knot_rdata_t *rdata; /*!< \brief Serialized rdata, canonically sorted. */
 } knot_rdataset_t;
 
@@ -48,6 +49,7 @@ inline static void knot_rdataset_init(knot_rdataset_t *rrs)
 {
 	if (rrs != NULL) {
 		rrs->count = 0;
+		rrs->size = 0;
 		rrs->rdata = NULL;
 	}
 }
