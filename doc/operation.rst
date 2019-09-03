@@ -522,7 +522,8 @@ Let's start with the following set of keys::
 
 The last fields hint the key state: ``public`` denotes a key that will be presented
 as the DNSKEY record, ``ready`` means that CDS/CDNSKEY records were created,
-``active`` tells us if the key is used for signing.
+``active`` tells us that the key is used for signing, while ``active+`` is an
+active key undergoing a roll-over or roll-in.
 
 For demonstration purposes, the following configuration is used::
 
