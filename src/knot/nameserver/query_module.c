@@ -558,12 +558,11 @@ const knot_dname_t *knotd_qdata_zone_name(knotd_qdata_t *qdata)
 _public_
 knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type)
 {
-	if (qdata == NULL || qdata->extra->zone == NULL ||
-	    qdata->extra->zone->contents == NULL) {
+	if (qdata == NULL || qdata->extra->contents == NULL) {
 		return node_rrset(NULL, type);
 	}
 
-	return node_rrset(qdata->extra->zone->contents->apex, type);
+	return node_rrset(qdata->extra->contents->apex, type);
 }
 
 _public_

@@ -28,7 +28,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata)
 	struct xfr_proc *xfer = qdata->extra->ext;
 
 	/* Check if the zone wasn't expired during multi-message transfer. */
-	zone_contents_t *contents = qdata->extra->zone->contents;
+	const zone_contents_t *contents = qdata->extra->contents;
 	if (contents == NULL) {
 		return KNOT_ENOZONE;
 	}

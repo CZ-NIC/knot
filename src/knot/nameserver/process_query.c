@@ -419,6 +419,9 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 
 	/* Find zone for QNAME. */
 	qdata->extra->zone = answer_zone_find(query, server->zone_db);
+	if (qdata->extra->zone != NULL && qdata->extra->contents == NULL) {
+		qdata->extra->contents = qdata->extra->zone->contents;
+	}
 
 	return KNOT_EOK;
 }
