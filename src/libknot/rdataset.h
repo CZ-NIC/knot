@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,12 +30,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "libknot/errcode.h"
 #include "libknot/mm_ctx.h"
 #include "libknot/rdata.h"
 
 /*!< \brief Set of RRs. */
 typedef struct {
 	uint16_t count;      /*!< \brief Count of RRs stored in the structure. */
+	uint32_t size;       /*!< \brief Size of the rdata array. */
 	knot_rdata_t *rdata; /*!< \brief Serialized rdata, canonically sorted. */
 } knot_rdataset_t;
 
@@ -48,6 +50,7 @@ inline static void knot_rdataset_init(knot_rdataset_t *rrs)
 {
 	if (rrs != NULL) {
 		rrs->count = 0;
+		rrs->size = 0;
 		rrs->rdata = NULL;
 	}
 }
@@ -97,15 +100,6 @@ int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, knot_mm
  * \return Pointer to RR at \a pos position.
  */
 knot_rdata_t *knot_rdataset_at(const knot_rdataset_t *rrs, uint16_t pos);
-
-/*!
- * \brief Returns size of the structures holding the RR set.
- *
- * \param rrs  RR array.
- *
- * \return Array size.
- */
-size_t knot_rdataset_size(const knot_rdataset_t *rrs);
 
 /*!
  * \brief Adds single RR into RRS structure. All data are copied.
@@ -198,5 +192,25 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
  */
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
                            knot_mm_t *mm);
+
+/*!
+ * \brief Removes single RR from RRS structure.
+ *
+ * \param rrs  RRS structure to remove RR from.
+ * \param rr   RR to remove.
+ * \param mm   Memory context.
+ *
+ * \return KNOT_E*
+ */
+inline static int knot_rdataset_remove(knot_rdataset_t *rrs, const knot_rdata_t *rr,
+                                       knot_mm_t *mm)
+{
+	if (rr == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rdataset_t rrs_rm = { 1, knot_rdata_size(rr->len), (knot_rdata_t *)rr };
+	return knot_rdataset_subtract(rrs, &rrs_rm, mm);
+}
 
 /*! @} */

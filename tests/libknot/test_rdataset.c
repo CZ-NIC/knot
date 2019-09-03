@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #include <tap/basic.h>
 #include <string.h>
 
-#include "libknot/rdataset.h"
+#include "libknot/rdataset.c"
 #include "libknot/libknot.h"
 
 // Inits rdataset with given rdata.
@@ -27,6 +27,16 @@
 	ret = knot_rdataset_add(&set, rdata, NULL); \
 	assert(ret == KNOT_EOK);
 
+static size_t rdataset_size(const knot_rdataset_t *rrs)
+{
+	if (rrs == NULL || rrs->count == 0) {
+		return 0;
+	}
+
+	const knot_rdata_t *last = rr_seek(rrs, rrs->count - 1);
+	return (uint8_t *)last + knot_rdata_size(last->len) - (uint8_t *)rrs->rdata;
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -34,7 +44,7 @@ int main(int argc, char *argv[])
 	// Test init
 	knot_rdataset_t rdataset;
 	knot_rdataset_init(&rdataset);
-	ok(rdataset.rdata == NULL && rdataset.count == 0, "rdataset: init.");
+	ok(rdataset.rdata == NULL && rdataset.count == 0 && rdataset.size == 0, "rdataset: init.");
 
 	// Test rdata addition
 	uint8_t buf_gt[knot_rdata_size(4)];
@@ -61,8 +71,10 @@ int main(int argc, char *argv[])
 	   knot_rdata_cmp(knot_rdataset_at(&rdataset, 1), rdata_gt) == 0,
 	   "rdataset: at.");
 
-	ok(knot_rdataset_size(&rdataset) == knot_rdata_size(4) * 2,
+	ok(rdataset_size(&rdataset) == knot_rdata_size(4) * 2,
 	   "rdataset: size.");
+	ok(rdataset.size == rdataset_size(&rdataset), "rdataset: size precomputed (%u %zu).",
+	   rdataset.size, rdataset_size(&rdataset));
 
 	// Test copy
 	ok(knot_rdataset_copy(NULL, NULL, NULL) == KNOT_EINVAL,
@@ -70,10 +82,11 @@ int main(int argc, char *argv[])
 	knot_rdataset_t copy;
 	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
 	const bool copy_ok = ret == KNOT_EOK && copy.count == rdataset.count &&
-	                     knot_rdataset_size(&copy) == knot_rdataset_size(&rdataset) &&
+	                     rdataset_size(&copy) == rdataset_size(&rdataset) &&
 	                     memcmp(rdataset.rdata, copy.rdata,
-	                            knot_rdataset_size(&rdataset)) == 0;
+	                            rdataset_size(&rdataset)) == 0;
 	ok(copy_ok, "rdataset: copy");
+	ok(copy.size == rdataset_size(&copy), "copy: size precomputed.");
 
 	// Test eq
 	ok(knot_rdataset_eq(&rdataset, &copy), "rdataset: equal");
@@ -184,12 +197,13 @@ int main(int argc, char *argv[])
 
 	RDATASET_INIT_WITH(rdataset, rdata_gt);
 
-	size_t old_rrs_size = knot_rdataset_size(&rdataset);
+	size_t old_rrs_size = rdataset_size(&rdataset);
 	size_t rr_size = rdata_lo->len;
 	ret = knot_rdataset_reserve(&rdataset, rr_size, NULL);
-	size_t new_rrs_size = knot_rdataset_size(&rdataset);
+	size_t new_rrs_size = rdataset_size(&rdataset);
 	bool reserve_ok = ret == KNOT_EOK && new_rrs_size == (old_rrs_size + knot_rdata_size(rr_size));
 	ok(reserve_ok, "rdataset: reserve normal");
+	ok(rdataset.size == rdataset_size(&rdataset), "rdataset: reserve precomputed.");
 
 	RDATASET_INIT_WITH(copy, rdata_lo);
 	knot_rdataset_add(&copy, rdata_gt, NULL);
