@@ -56,6 +56,8 @@ inline static void knot_rdata_init(knot_rdata_t *rdata, uint16_t len, const uint
 	if (rdata->len > 0) {
 		assert(data);
 		memcpy(rdata->data, data, len);
+		if (len & 1)  /* TODO: knot_rdata_size pads knot_rdata_t struct to even sizes, initialize last zero so dump memcpy(knot_rdata_t) does not cause Valgrid to cry */
+			rdata->data[len] = 0;
 	}
 }
 
