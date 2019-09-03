@@ -175,7 +175,8 @@ static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 static void xfr_log_publish(const struct refresh_data *data,
                             const uint32_t old_serial,
                             const uint32_t new_serial,
-                            const uint32_t *master_serial,
+                            const uint32_t master_serial,
+                            bool has_master_serial,
                             bool axfr_bootstrap)
 {
 	struct timespec finished = time_now();
@@ -187,9 +188,9 @@ static void xfr_log_publish(const struct refresh_data *data,
 	}
 
 	char master_info[32] = "";
-	if (master_serial != NULL) {
+	if (has_master_serial) {
 		(void)snprintf(master_info, sizeof(master_info),
-		               ", remote serial %u", *master_serial);
+		               ", remote serial %u", master_serial);
 	}
 
 	REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
@@ -299,7 +300,7 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
-	                (dnssec_enable ? &master_serial : NULL), (data->zone->contents == NULL));
+	                master_serial, dnssec_enable, (data->zone->contents == NULL));
 
 	return KNOT_EOK;
 }
@@ -554,7 +555,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	}
 
 	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
-	                (dnssec_enable ? &master_serial : NULL), false);
+	                master_serial, dnssec_enable, false);
 
 	return KNOT_EOK;
 }
