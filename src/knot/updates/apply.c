@@ -44,12 +44,12 @@ static int replace_rdataset_with_copy(zone_node_t *node, uint16_t type)
 
 	// Create new data.
 	knot_rdataset_t *rrs = &data->rrs;
-	void *copy = malloc(knot_rdataset_size(rrs));
+	void *copy = malloc(rrs->size);
 	if (copy == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(copy, rrs->rdata, knot_rdataset_size(rrs));
+	memcpy(copy, rrs->rdata, rrs->size);
 
 	// Store new data into node RRS.
 	rrs->rdata = copy;

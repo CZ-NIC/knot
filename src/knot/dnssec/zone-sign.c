@@ -264,7 +264,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
 		                           sign_ctx->dnssec_ctx, skip_crypto, &valid_at)) {
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
-			knot_rdataset_t rrsig_keep = { 1, valid_rr };
+			knot_rdataset_t rrsig_keep = { 1, knot_rdata_size(valid_rr->len), valid_rr };
 			result = knot_rdataset_subtract(&to_remove.rrs, &rrsig_keep, NULL);
 			note_earliest_expiration(valid_rr, expires_at);
 			continue;
