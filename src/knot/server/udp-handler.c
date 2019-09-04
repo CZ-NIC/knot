@@ -371,18 +371,19 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
 /*!
  * \brief Make a set of watched descriptors based on the interface list.
  *
- * \param[in]   ifaces  New interface list.
- * \param[in]   thrid   Thread ID.
- * \param[out]  fds_ptr Allocated set of descriptors.
+ * \param[in]   ifaces     Interface list.
+ * \param[out]  fds_ptr    Allocated set of descriptors (a pointer to it).
+ * \param[in]   thread_id  Thread ID.
  *
  * \return Number of watched descriptors, zero on error.
  */
-static nfds_t track_ifaces(const list_t *ifaces, int thrid,
-                           struct pollfd **fds_ptr)
+static nfds_t track_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
+                           int thread_id)
 {
 	assert(ifaces && fds_ptr);
 
 	nfds_t nfds = list_size(ifaces);
+	rcu_read_lock();
 	struct pollfd *fds = malloc(nfds * sizeof(*fds));
 	if (!fds) {
 		*fds_ptr = NULL;
@@ -392,7 +393,7 @@ static nfds_t track_ifaces(const list_t *ifaces, int thrid,
 	iface_t *iface = NULL;
 	int i = 0;
 	WALK_LIST(iface, *ifaces) {
-		fds[i].fd = iface_udp_fd(iface, thrid);
+		fds[i].fd = iface_udp_fd(iface, thread_id);
 		fds[i].events = POLLIN;
 		fds[i].revents = 0;
 		i += 1;
@@ -400,6 +401,8 @@ static nfds_t track_ifaces(const list_t *ifaces, int thrid,
 	assert(i == nfds);
 
 	*fds_ptr = fds;
+	rcu_read_unlock();
+
 	return nfds;
 }
 
@@ -436,9 +439,7 @@ int udp_master(dthread_t *thread)
 	nfds_t nfds = 0;
 
 	/* Allocate descriptors for the configured interfaces. */
-	rcu_read_lock();
-	nfds = track_ifaces(handler->server->ifaces, udp.thread_id, &fds);
-	rcu_read_unlock();
+	nfds = track_ifaces(handler->server->ifaces, &fds, udp.thread_id);
 	if (nfds == 0) {
 		goto finish;
 	}
