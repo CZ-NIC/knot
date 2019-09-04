@@ -66,6 +66,8 @@ libknotd_la_SOURCES = \
 	knot/events/events.h			\
 	knot/events/handlers.h			\
 	knot/events/handlers/dnssec.c		\
+	knot/events/handlers/ds_check.c		\
+	knot/events/handlers/ds_push.c		\
 	knot/events/handlers/expire.c		\
 	knot/events/handlers/flush.c		\
 	knot/events/handlers/freeze_thaw.c	\
@@ -74,7 +76,6 @@ libknotd_la_SOURCES = \
 	knot/events/handlers/nsec3resalt.c	\
 	knot/events/handlers/refresh.c		\
 	knot/events/handlers/update.c		\
-	knot/events/handlers/parent_ds_query.c	\
 	knot/events/replan.c			\
 	knot/events/replan.h			\
 	knot/nameserver/axfr.c			\

@@ -30,8 +30,9 @@ struct zone_timers {
 	time_t last_flush;       //!< Last zone file synchronization.
 	time_t last_refresh;     //!< Last successful zone refresh attempt.
 	time_t next_refresh;     //!< Next zone refresh attempt.
-	time_t last_resalt;      //!< Last NSEC3 resalt
-	time_t next_parent_ds_q; //!< Next parent ds query
+	time_t last_resalt;      //!< Last NSEC3 resalt.
+	time_t next_ds_check;    //!< Next parent DS check.
+	time_t next_ds_push;     //!< Next DDNS to parent zone with updated DS record.
 };
 
 typedef struct zone_timers zone_timers_t;
