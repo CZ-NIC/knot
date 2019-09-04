@@ -37,8 +37,10 @@ class TimerDBInfo:
                 0x82: ("last_refresh", cls.format_timestamp),
                 0x83: ("next_refresh", cls.format_timestamp),
                 # knot >= 2.6
-                0x84: ("last_resalt",      cls.format_timestamp),
-                0x85: ("next_parent_ds_q", cls.format_timestamp),
+                0x84: ("last_resalt",   cls.format_timestamp),
+                0x85: ("next_ds_check", cls.format_timestamp),
+                # knot >= 2.8
+                0x86: ("next_ds_push",  cls.format_timestamp),
         }
         if id in timers:
             return (timers[id][0], timers[id][1](value))
