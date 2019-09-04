@@ -71,7 +71,7 @@ def test_one(master, slave, zone, master_policy, slave_policy, initial_serial,
     update = master.update(zone)
     update.add(new1, 3600, "A", addr)
     update.send("NOERROR")
-    t.sleep(2)
+    t.sleep(3)
     check_new_rr(slave, new1)
     check_soa_diff(master, slave, zone[0], min_diff, max_diff)
 
