@@ -118,23 +118,25 @@ static void tcp_log_error(struct sockaddr_storage ss, const char *operation, int
 /*!
  * \brief Update TCP fdsets from current interfaces list.
  *
- * \param server    Server.
- * \param fds       File descriptor set.
- * \param thread_id Thread ID used for geting UDP ID.
+ * \param  ifaces    Interface list.
+ * \param  fds       File descriptor set.
+ * \param  thread_id Thread ID used for geting an ID.	TODO: currently unused.
+ *
+ * \return Number of watched descriptors.
  */
-static void tcp_set_ifaces(server_t *server, fdset_t *fds, int thread_id)
+static unsigned tcp_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id)
 {
-	if (server->ifaces == NULL || fds == NULL) {
-		return;
-	}
+	assert(ifaces != NULL && fds != NULL);
 
 	rcu_read_lock();
 	fdset_clear(fds);
 	iface_t *i = NULL;
-	WALK_LIST(i, *server->ifaces) {
+	WALK_LIST(i, *ifaces) {
 		fdset_add(fds, i->fd_tcp, POLLIN, NULL);
 	}
 	rcu_read_unlock();
+
+	return fds->n;
 }
 
 static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec *tx)
@@ -317,15 +319,13 @@ int tcp_master(dthread_t *thread)
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
 
-        /* Set descriptors for the configured interfaces. */
-	tcp_set_ifaces(handler->server, &tcp.set, tcp.thread_id);
-	if (tcp.set.n == 0) {
+	/* Set descriptors for the configured interfaces. */
+	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces, &tcp.set, tcp.thread_id);
+	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
 
-	tcp.client_threshold = tcp.set.n;
-
-	for(;;) {
+	for (;;) {
 		/* Check for cancellation. */
 		if (dt_is_cancelled(thread)) {
 			break;
