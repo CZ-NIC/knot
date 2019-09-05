@@ -560,7 +560,7 @@ lines of :rfc:`6781#section-4.1.2`::
   2019-07-15T20:58:12 info: [example.com.] DNSSEC, signing zone
   2019-07-15T20:58:12 notice: [example.com.] DNSSEC, KSK submission, waiting for confirmation
   2019-07-15T20:58:12 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public, active
-  2019-07-15T20:58:12 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, ready, active
+  2019-07-15T20:58:12 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, ready, active+
   2019-07-15T20:58:12 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
   2019-07-15T20:58:12 info: [example.com.] DNSSEC, signing started
   2019-07-15T20:58:12 info: [example.com.] DNSSEC, successfully signed
