@@ -207,44 +207,6 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *m
 }
 
 _public_
-int knot_rdataset_reserve(knot_rdataset_t *rrs, uint16_t size, knot_mm_t *mm)
-{
-	if (rrs == NULL) {
-		return KNOT_EINVAL;
-	} else if (rrs->count == UINT16_MAX) {
-		return KNOT_ESPACE;
-	}
-
-	size_t new_size = rrs->size + knot_rdata_size(size);
-	if (rrs->size > UINT32_MAX - knot_rdata_size(UINT16_MAX)) {
-		return KNOT_ESPACE;
-	}
-
-	knot_rdata_t *tmp = mm_realloc(mm, rrs->rdata, new_size, rrs->size);
-	if (tmp == NULL) {
-		return KNOT_ENOMEM;
-	}
-	rrs->rdata = tmp;
-	rrs->count++;
-	rrs->size = new_size;
-
-	// We have to initialise the 'size' field in the reserved space.
-	rr_seek(rrs, rrs->count - 1)->len = size;
-
-	return KNOT_EOK;
-}
-
-_public_
-int knot_rdataset_unreserve(knot_rdataset_t *rrs, knot_mm_t *mm)
-{
-	if (rrs == NULL || rrs->count == 0) {
-		return KNOT_EINVAL;
-	}
-
-	return remove_rr_at(rrs, rrs->count - 1, mm);
-}
-
-_public_
 bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2)
 {
 	if (rrs1 == NULL || rrs2 == NULL || rrs1->count != rrs2->count) {

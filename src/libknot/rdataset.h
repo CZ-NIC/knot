@@ -113,27 +113,6 @@ knot_rdata_t *knot_rdataset_at(const knot_rdataset_t *rrs, uint16_t pos);
 int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *mm);
 
 /*!
- * \brief Reserves space at the end of the RRS structure.
- *
- * \param rrs   RRS structure to reserve space at.
- * \param size  How much space to reserve.
- * \param mm    Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rdataset_reserve(knot_rdataset_t *rrs, uint16_t size, knot_mm_t *mm);
-
-/*!
- * \brief Removes the last RR from RRS structure, i.e. does the opposite of _reserve.
- *
- * \param rrs  RRS structure to remove RR from.
- * \param mm   Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rdataset_unreserve(knot_rdataset_t *rrs, knot_mm_t *mm);
-
-/*!
  * \brief RRS equality check.
  *
  * \param rrs1  First RRS to be compared.

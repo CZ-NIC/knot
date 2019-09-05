@@ -195,21 +195,6 @@ int main(int argc, char *argv[])
 	              rdataset.rdata == NULL;
 	ok(subtract_ok, "rdataset: subtract last.");
 
-	RDATASET_INIT_WITH(rdataset, rdata_gt);
-
-	size_t old_rrs_size = rdataset_size(&rdataset);
-	size_t rr_size = rdata_lo->len;
-	ret = knot_rdataset_reserve(&rdataset, rr_size, NULL);
-	size_t new_rrs_size = rdataset_size(&rdataset);
-	bool reserve_ok = ret == KNOT_EOK && new_rrs_size == (old_rrs_size + knot_rdata_size(rr_size));
-	ok(reserve_ok, "rdataset: reserve normal");
-	ok(rdataset.size == rdataset_size(&rdataset), "rdataset: reserve precomputed.");
-
-	RDATASET_INIT_WITH(copy, rdata_lo);
-	knot_rdataset_add(&copy, rdata_gt, NULL);
-
-	knot_rdata_init(knot_rdataset_at(&rdataset, 1), 4, (uint8_t *)"abcd");
-
 	knot_rdataset_clear(&copy, NULL);
 	knot_rdataset_clear(&rdataset, NULL);
 	knot_rdataset_clear(&rdataset_lo, NULL);
