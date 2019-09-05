@@ -50,8 +50,8 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 
 	log_dnssec_next(zone->name, (time_t)refresh_at);
 
-	if (refresh->plan_ds_check) {
-		zone->timers.next_ds_check = now;
+	if (refresh->plan_ds_query) {
+		zone->timers.next_parent_ds_q = now;
 	}
 
 	if (refresh->last_nsec3resalt) {
@@ -60,7 +60,7 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 
 	zone_events_schedule_at(zone,
 		ZONE_EVENT_DNSSEC, refresh_at ? (time_t)refresh_at : ignore,
-		ZONE_EVENT_DS_CHECK, refresh->plan_ds_check ? now : ignore,
+		ZONE_EVENT_PARENT_DS_Q, refresh->plan_ds_query ? now : ignore,
 		ZONE_EVENT_NSEC3RESALT, refresh->next_nsec3resalt ? refresh->next_nsec3resalt : ignore,
 		ZONE_EVENT_NOTIFY, zone_changed ? now : ignore
 	);

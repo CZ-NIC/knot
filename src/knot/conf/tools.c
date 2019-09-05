@@ -400,16 +400,6 @@ int check_policy(
 		}
 	}
 
-	conf_val_t cds_cdnskey = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
-	                                            C_CDS_CDNSKEY, args->id, args->id_len);
-	conf_val_t ds_push = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
-	                                        C_DS_PUSH, args->id, args->id_len);
-
-	if (conf_val_count(&ds_push) > 0 && conf_opt(&cds_cdnskey) == CDS_CDNSKEY_NONE) {
-		args->err_str = "DS push requires enabled CDS/CDNSKEY publication";
-		return KNOT_EINVAL;
-	}
-
 	return KNOT_EOK;
 }
 
