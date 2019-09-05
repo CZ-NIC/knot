@@ -763,6 +763,7 @@ DNSSEC policy configuration.
      propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
+     rrsig-pre-refresh: TIME
      nsec3: BOOL
      nsec3-iterations: INT
      nsec3-opt-out: BOOL
