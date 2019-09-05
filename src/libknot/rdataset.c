@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 
 #include "libknot/attribute.h"
 #include "libknot/rdataset.h"
-#include "libknot/errcode.h"
 #include "contrib/mempattern.h"
 
 static knot_rdata_t *rr_seek(const knot_rdataset_t *rrs, uint16_t pos)
@@ -58,6 +57,8 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, uint16_t pos,
 	assert(pos <= rrs->count);
 
 	if (rrs->count == UINT16_MAX) {
+		return KNOT_ESPACE;
+	} else if (rrs->size > UINT32_MAX - knot_rdata_size(UINT16_MAX)) {
 		return KNOT_ESPACE;
 	}
 
@@ -178,17 +179,6 @@ knot_rdata_t *knot_rdataset_at(const knot_rdataset_t *rrs, uint16_t pos)
 }
 
 _public_
-size_t knot_rdataset_size(const knot_rdataset_t *rrs)
-{
-	if (rrs == NULL || rrs->count == 0) {
-		return 0;
-	}
-
-	const knot_rdata_t *last = rr_seek(rrs, rrs->count - 1);
-	return (uint8_t *)last + knot_rdata_size(last->len) - (uint8_t *)rrs->rdata;
-}
-
-_public_
 int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *mm)
 {
 	if (rrs == NULL || rr == NULL) {
@@ -226,6 +216,9 @@ int knot_rdataset_reserve(knot_rdataset_t *rrs, uint16_t size, knot_mm_t *mm)
 	}
 
 	size_t new_size = rrs->size + knot_rdata_size(size);
+	if (rrs->size > UINT32_MAX - knot_rdata_size(UINT16_MAX)) {
+		return KNOT_ESPACE;
+	}
 
 	knot_rdata_t *tmp = mm_realloc(mm, rrs->rdata, new_size, rrs->size);
 	if (tmp == NULL) {
