@@ -277,61 +277,6 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf);
 int zone_update_commit(conf_t *conf, zone_update_t *update);
 
 /*!
- * \brief Setup a zone_update iterator for both FULL and INCREMENTAL updates.
- *
- * \warning Do not init or use iterators when the zone is edited. Any
- *          zone_update modifications will invalidate the trie iterators
- *          in the zone_update iterator.
- *
- * \param it       Iterator.
- * \param update   Zone update.
- *
- * \return KNOT_E*
- */
-int zone_update_iter(zone_update_iter_t *it, zone_update_t *update);
-
-/*!
- * \brief Setup a zone_update iterator for both FULL and INCREMENTAL updates.
- *        Version for iterating over nsec3 nodes.
- *
- * \warning Do not init or use iterators when the zone is edited. Any
- *          zone_update modifications will invalidate the trie iterators
- *          in the zone_update iterator.
- *
- *
- * \param it       Iterator.
- * \param update   Zone update.
- *
- * \return KNOT_E*
- */
-int zone_update_iter_nsec3(zone_update_iter_t *it, zone_update_t *update);
-
-/*!
- * \brief Move the iterator to the next item.
- *
- * \param it  Iterator.
- *
- * \return KNOT_E*
- */
-int zone_update_iter_next(zone_update_iter_t *it);
-
-/*!
- * \brief Get the value of the iterator.
- *
- * \param it  Iterator.
- *
- * \return A (synthesized or added) node with all its current data.
- */
-const zone_node_t *zone_update_iter_val(zone_update_iter_t *it);
-
-/*!
- * \brief Finish the iterator and clean it up.
- *
- * \param it  Iterator.
- */
-void zone_update_iter_finish(zone_update_iter_t *it);
-
-/*!
  * \brief Returns bool whether there are any changes at all.
  *
  * \param update  Zone update.

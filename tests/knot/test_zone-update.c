@@ -181,37 +181,6 @@ void test_full(zone_t *zone, zs_scanner_t *sc)
 	ok(ret == KNOT_EOK && !node, "full zone update: node removal");
 	knot_dname_free(rem_node_name, NULL);
 
-	/* Test iteration */
-	zone_update_iter_t it;
-	ret = zone_update_iter(&it, &update);
-	is_int(KNOT_EOK, ret, "full zone update: init iter");
-
-	const zone_node_t *iter_node = zone_update_iter_val(&it);
-	assert(iter_node);
-	if (zs_set_input_string(sc, zone_str1, strlen(zone_str1)) != 0 ||
-	    zs_parse_all(sc) != 0) {
-		assert(0);
-	}
-	rrset_present = node_contains_rr(iter_node, &rrset);
-	ok(rrset_present, "full zone update: first iter value check");
-	knot_rdataset_clear(&rrset.rrs, NULL);
-
-	if (zs_set_input_string(sc, zone_str2, strlen(zone_str2)) != 0 ||
-	    zs_parse_all(sc) != 0) {
-		assert(0);
-	}
-	rrset_present = node_contains_rr(iter_node, &rrset);
-	ok(rrset_present, "full zone update: second iter value check");
-	knot_rdataset_clear(&rrset.rrs, NULL);
-
-	ret = zone_update_iter_next(&it);
-	is_int(KNOT_EOK, ret, "full zone update: iter next");
-
-	iter_node = zone_update_iter_val(&it);
-	ok(iter_node == NULL, "full zone update: iter val past end");
-
-	zone_update_iter_finish(&it);
-
 	/* Re-add a node for later incremental functionality test */
 	if (zs_set_input_string(sc, node_str1, strlen(node_str1)) != 0 ||
 	    zs_parse_all(sc) != 0) {
@@ -288,45 +257,19 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	   "incremental zone update: node removal");
 	knot_dname_free(rem_node_name, NULL);
 
-	/* Test iteration */
-	zone_update_iter_t it;
-	ret = zone_update_iter(&it, &update);
-	is_int(KNOT_EOK, ret, "incremental zone update: init iter");
-
-	if (zs_set_input_string(sc, del_str, strlen(del_str)) != 0 ||
+	/* Re-add a node for later incremental functionality test */
+	if (zs_set_input_string(sc, node_str1, strlen(node_str1)) != 0 ||
 	    zs_parse_all(sc) != 0) {
 		assert(0);
 	}
-	const zone_node_t *iter_node = zone_update_iter_val(&it);
-	assert(iter_node);
-
-	bool rrset_present = node_contains_rr(iter_node, &rrset);
-	ok(!rrset_present, "incremental zone update: first iter value check");
-
+	ret = zone_update_add(&update, &rrset);
+	assert(ret == KNOT_EOK);
 	knot_rdataset_clear(&rrset.rrs, NULL);
-
-	if (zs_set_input_string(sc, add_str, strlen(add_str)) != 0 ||
-	    zs_parse_all(sc) != 0) {
-		assert(0);
-	}
-	rrset_present = node_contains_rr(iter_node, &rrset);
-	ok(rrset_present, "incremental zone update: second iter value check");
-	knot_rdataset_clear(&rrset.rrs, NULL);
-
-	ret = zone_update_iter_next(&it);
-	is_int(KNOT_EOK, ret, "incremental zone update: iter next");
-	ret = zone_update_iter_next(&it);
-	is_int(KNOT_EOK, ret, "incremental zone update: iter next");
-
-	iter_node = zone_update_iter_val(&it);
-	ok(iter_node == NULL, "incremental zone update: iter val past end");
-
-	zone_update_iter_finish(&it);
 
 	/* Commit */
 	ret = zone_update_commit(conf(), &update);
-	iter_node = zone_contents_find_node_for_rr(zone->contents, &rrset);
-	rrset_present = node_contains_rr(iter_node, &rrset);
+	const zone_node_t *iter_node = zone_contents_find_node_for_rr(zone->contents, &rrset);
+	bool rrset_present = node_contains_rr(iter_node, &rrset);
 	ok(ret == KNOT_EOK && rrset_present, "incremental zone update: commit");
 
 	test_zone_unified(zone);

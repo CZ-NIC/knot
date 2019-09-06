@@ -259,6 +259,19 @@ const zone_node_t *zone_contents_find_node(const zone_contents_t *zone, const kn
 	return get_node(zone, name);
 }
 
+const zone_node_t *zone_contents_node_or_nsec3(const zone_contents_t *zone, const knot_dname_t *name)
+{
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
+	const zone_node_t *node = get_node(zone, name);
+	if (node == NULL) {
+		node = get_nsec3_node(zone, name);
+	}
+	return node;
+}
+
 zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const knot_rrset_t *rrset)
 {
 	if (contents == NULL || rrset == NULL) {
