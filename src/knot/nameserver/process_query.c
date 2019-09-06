@@ -331,7 +331,7 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 	/* Add ECS if present. */
 	int ret = KNOT_EOK;
 	if (qdata->ecs != NULL) {
-		uint8_t *ecs_opt = knot_edns_get_option(&qdata->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET);
+		uint8_t *ecs_opt = knot_edns_get_option(&qdata->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET, NULL);
 		if (ecs_opt != NULL) {
 			uint8_t *ecs_data = knot_edns_opt_get_data(ecs_opt);
 			uint16_t ecs_len = knot_edns_opt_get_length(ecs_opt);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -304,13 +304,16 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 /*!
  * \brief Searches the OPT RR for option with the specified code.
  *
- * \param opt_rr  OPT RR structure to search in.
- * \param code    Option code to search for.
+ * \param opt_rr    OPT RR structure to search in.
+ * \param code      Option code to search for.
+ * \param previous  (Optional) Previously returned option to start searching from,
+ *                  to be able to return another option with the same code.
  *
  * \retval pointer to option if found
  * \retval NULL otherwise.
  */
-uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code);
+uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code,
+                              const uint8_t *previous);
 
 /*!
  * \brief Pointers to every option in the OPT RR wire.

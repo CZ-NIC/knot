@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -213,7 +213,8 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 }
 
 _public_
-uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code)
+uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code,
+                              const uint8_t *previous)
 {
 	if (opt_rr == NULL) {
 		return NULL;
@@ -225,6 +226,14 @@ uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code)
 	}
 
 	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
+	if (previous != NULL) {
+		if (previous < wire.wire) {
+			return NULL;
+		}
+		wire_ctx_set_offset(&wire, previous - wire.wire + 2);
+		uint16_t opt_len = wire_ctx_read_u16(&wire);
+		wire_ctx_skip(&wire, opt_len);
+	}
 
 	while (wire_ctx_available(&wire) > 0 && wire.error == KNOT_EOK) {
 		uint8_t *pos = wire.position;
