@@ -87,7 +87,6 @@
 #define C_PIDFILE		"\x07""pidfile"
 #define C_POLICY		"\x06""policy"
 #define C_PROPAG_DELAY		"\x11""propagation-delay"
-#define C_REQUEST_EDNS_OPTION	"\x13""request-edns-option"
 #define C_RMT			"\x06""remote"
 #define C_RRSIG_LIFETIME	"\x0E""rrsig-lifetime"
 #define C_RRSIG_REFRESH		"\x0D""rrsig-refresh"

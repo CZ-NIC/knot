@@ -25,11 +25,6 @@
 struct query_edns_data {
 	uint16_t max_payload;
 	bool do_flag;
-
-	// Custom EDNS option:
-	uint16_t custom_code;
-	const uint8_t *custom_data;
-	uint16_t custom_len;
 };
 
 /*!

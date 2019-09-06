@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,45 +59,6 @@ static void mod_id_bad_test(const char *txt, int code)
 	ok(ret == code, "invalid txt to bin");
 }
 
-static void edns_opt_test(const char *txt, uint16_t code, const char *val)
-{
-	int ret;
-	uint8_t b[64];
-	size_t b_len = sizeof(b);
-	char t[64];
-	size_t t_len = sizeof(t);
-	yp_item_t i = { NULL, YP_TDATA, YP_VDATA = { 0, NULL,
-	                                             edns_opt_to_bin,
-	                                             edns_opt_to_txt } };
-
-	diag("edns option \"%s\":", txt);
-	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	is_int(KNOT_EOK, ret, "txt to bin");
-	uint64_t c = knot_wire_read_u64(b);
-	ok(c == code, "compare code");
-	ok(memcmp(yp_bin(b + sizeof(uint64_t)), val,
-	          yp_bin_len(b + sizeof(uint64_t))) == 0, "compare");
-	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
-	is_int(KNOT_EOK, ret, "bin to txt");
-	ok(strlen(t) == t_len, "txt ret length");
-	ok(strlen(txt) == t_len, "txt length");
-	ok(memcmp(txt, t, t_len) == 0, "compare");
-}
-
-static void edns_opt_bad_test(const char *txt, int code)
-{
-	int ret;
-	uint8_t b[64];
-	size_t b_len = sizeof(b);
-	yp_item_t i = { NULL, YP_TDATA, YP_VDATA = { 0, NULL,
-	                                             edns_opt_to_bin,
-	                                             edns_opt_to_txt } };
-
-	diag("edns option \"%s\":", txt);
-	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
-	ok(ret == code, "invalid txt to bin");
-}
-
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -108,16 +69,6 @@ int main(int argc, char *argv[])
 	mod_id_bad_test("module/", KNOT_EINVAL);
 	mod_id_bad_test("/", KNOT_EINVAL);
 	mod_id_bad_test("/id", KNOT_EINVAL);
-
-	/* EDNS option tests. */
-	edns_opt_test("0:", 0, "");
-	edns_opt_test("65535:", 65535, "");
-	edns_opt_test("1:abc", 1, "abc");
-	edns_opt_test("1:0x0102", 1, "\x01\x02");
-	edns_opt_bad_test("0", KNOT_EINVAL);
-	edns_opt_bad_test("-1:a", KNOT_ERANGE);
-	edns_opt_bad_test("65536:a", KNOT_ERANGE);
-	edns_opt_bad_test("0:0xa", KNOT_EINVAL);
 
 	return 0;
 }

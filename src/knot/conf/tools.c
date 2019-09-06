@@ -130,58 +130,6 @@ int mod_id_to_txt(
 	YP_CHECK_RET;
 }
 
-int edns_opt_to_bin(
-	YP_TXT_BIN_PARAMS)
-{
-	YP_CHECK_PARAMS_BIN;
-
-	// Check for "code:[value]" format.
-	const uint8_t *pos = (uint8_t *)strchr((char *)in->position, ':');
-	if (pos == NULL || pos >= stop) {
-		return KNOT_EINVAL;
-	}
-
-	// Write option code.
-	int ret = yp_int_to_bin(in, out, pos, 0, UINT16_MAX, YP_SNONE);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Skip the separator.
-	wire_ctx_skip(in, sizeof(uint8_t));
-
-	// Write option data.
-	ret = yp_hex_to_bin(in, out, stop);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	YP_CHECK_RET;
-}
-
-int edns_opt_to_txt(
-	YP_BIN_TXT_PARAMS)
-{
-	YP_CHECK_PARAMS_TXT;
-
-	// Write option code.
-	int ret = yp_int_to_txt(in, out, YP_SNONE);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Write the separator.
-	wire_ctx_write_u8(out, ':');
-
-	// Write option data.
-	ret = yp_hex_to_txt(in, out);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	YP_CHECK_RET;
-}
-
 int rrtype_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
