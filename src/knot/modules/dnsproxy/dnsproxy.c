@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,9 +88,8 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	bool is_tcp = net_is_stream(qdata->params->socket);
-	const struct sockaddr *dst = (const struct sockaddr *)&proxy->remote;
-	const struct sockaddr *src = (const struct sockaddr *)&proxy->via;
-	knot_request_t *req = knot_request_make(re.mm, dst, src, qdata->query, NULL,
+	knot_request_t *req = knot_request_make(re.mm, &proxy->remote, &proxy->via,
+	                                        qdata->query, NULL,
 	                                        is_tcp ? 0 : KNOT_REQUEST_UDP);
 	if (req == NULL) {
 		knot_requestor_clear(&re);

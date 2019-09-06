@@ -168,9 +168,8 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr *dst = (struct sockaddr *)&parent->addr;
-	const struct sockaddr *src = (struct sockaddr *)&parent->via;
-	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
+	knot_request_t *req = knot_request_make(NULL, &parent->addr, &parent->via,
+	                                        pkt, &parent->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);

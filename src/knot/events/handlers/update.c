@@ -239,9 +239,8 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 	}
 
 	/* Create a request. */
-	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
-	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
-	knot_request_t *req = knot_request_make(re.mm, dst, src, query, NULL, 0);
+	knot_request_t *req = knot_request_make(NULL, &remote->addr, &remote->via,
+	                                        pkt, &remote->key, 0);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
 		knot_pkt_free(query);
