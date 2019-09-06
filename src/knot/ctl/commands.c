@@ -689,7 +689,7 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 			goto zone_read_failed;
 		}
 
-		const zone_node_t *node = zone_contents_find_node(zone->contents, owner);
+		const zone_node_t *node = zone_contents_node_or_nsec3(zone->contents, owner);
 		if (node == NULL) {
 			ret = KNOT_ENONODE;
 			goto zone_read_failed;
@@ -698,6 +698,9 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 		ret = send_node((zone_node_t *)node, ctx);
 	} else if (zone->contents != NULL) {
 		ret = zone_contents_apply(zone->contents, send_node, ctx);
+		if (ret == KNOT_EOK) {
+			ret = zone_contents_nsec3_apply(zone->contents, send_node, ctx);
+		}
 	}
 
 zone_read_failed:
@@ -727,7 +730,7 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 			goto zone_txn_get_failed;
 		}
 
-		const zone_node_t *node = zone_update_get_node(zone->control_update, owner);
+		const zone_node_t *node = zone_contents_node_or_nsec3(zone->control_update->new_cont, owner);
 		if (node == NULL) {
 			ret = KNOT_ENONODE;
 			goto zone_txn_get_failed;
@@ -735,29 +738,15 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 
 		ret = send_node((zone_node_t *)node, ctx);
 	} else {
-		zone_update_iter_t it;
-		ret = zone_update_iter(&it, zone->control_update);
-		if (ret != KNOT_EOK) {
-			goto zone_txn_get_failed;
+		zone_tree_it_t it = { 0 };
+		ret = zone_tree_it_double_begin(zone->control_update->new_cont->nodes,
+						zone->control_update->new_cont->nsec3_nodes,
+						&it);
+		while (ret == KNOT_EOK && !zone_tree_it_finished(&it)) {
+			ret = send_node(zone_tree_it_val(&it), ctx);
+			zone_tree_it_next(&it);
 		}
-
-		const zone_node_t *iter_node = zone_update_iter_val(&it);
-		while (iter_node != NULL) {
-			ret = send_node((zone_node_t *)iter_node, ctx);
-			if (ret != KNOT_EOK) {
-				zone_update_iter_finish(&it);
-				goto zone_txn_get_failed;
-			}
-
-			ret = zone_update_iter_next(&it);
-			if (ret != KNOT_EOK) {
-				zone_update_iter_finish(&it);
-				goto zone_txn_get_failed;
-			}
-
-			iter_node = zone_update_iter_val(&it);
-		}
-		zone_update_iter_finish(&it);
+		zone_tree_it_free(&it);
 	}
 
 zone_txn_get_failed:
@@ -867,7 +856,7 @@ static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 		return ret;
 	}
 
-	const zone_node_t *node = zone_update_get_node(zone->control_update, owner);
+	const zone_node_t *node = zone_contents_node_or_nsec3(zone->control_update->new_cont, owner);
 	if (node == NULL) {
 		return KNOT_EINVAL;
 	}
