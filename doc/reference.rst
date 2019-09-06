@@ -1333,7 +1333,6 @@ Definition of zones served by the server.
      max-zone-size : SIZE
      dnssec-signing: BOOL
      dnssec-policy: STR
-     request-edns-option: INT:[HEXSTR]
      serial-policy: increment | unixtime | dateserial
      min-refresh-interval: TIME
      max-refresh-interval: TIME
@@ -1586,16 +1585,6 @@ A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
 value can be used for the default policy settings.
 
 *Required*
-
-.. _zone_request_edns_option:
-
-request-edns-option
--------------------
-
-An arbitrary EDNS0 option which is included into a server request (AXFR, IXFR,
-SOA, or NOTIFY). The value is in the option_code:option_data format.
-
-*Default:* not set
 
 .. _zone_serial-policy:
 

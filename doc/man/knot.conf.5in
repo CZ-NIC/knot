@@ -1220,7 +1220,6 @@ zone:
     max\-zone\-size : SIZE
     dnssec\-signing: BOOL
     dnssec\-policy: STR
-    request\-edns\-option: INT:[HEXSTR]
     serial\-policy: increment | unixtime | dateserial
     min\-refresh\-interval: TIME
     max\-refresh\-interval: TIME
@@ -1444,12 +1443,6 @@ A \fI\%reference\fP to DNSSEC signing policy. A special \fIdefault\fP
 value can be used for the default policy settings.
 .sp
 \fIRequired\fP
-.SS request\-edns\-option
-.sp
-An arbitrary EDNS0 option which is included into a server request (AXFR, IXFR,
-SOA, or NOTIFY). The value is in the option_code:option_data format.
-.sp
-\fIDefault:\fP not set
 .SS serial\-policy
 .sp
 Specifies how the zone serial is updated after a dynamic update or

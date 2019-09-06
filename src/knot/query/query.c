@@ -56,20 +56,6 @@ int query_edns_data_init(struct query_edns_data *edns_ptr, conf_t *conf,
 		return KNOT_EINVAL;
 	}
 
-	// Determine custom option
-
-	conf_val_t val = conf_zone_get(conf, C_REQUEST_EDNS_OPTION, zone);
-	size_t opt_len = 0;
-	const uint8_t *opt_data = conf_data(&val, &opt_len);
-	if (opt_data != NULL) {
-		wire_ctx_t ctx = wire_ctx_init_const(opt_data, opt_len);
-		edns.custom_code = wire_ctx_read_u64(&ctx);
-		edns.custom_len  = wire_ctx_read_u16(&ctx);
-		edns.custom_data = ctx.position;
-		assert(ctx.error == KNOT_EOK);
-		assert(wire_ctx_available(&ctx) == edns.custom_len);
-	}
-
 	*edns_ptr = edns;
 	return KNOT_EOK;
 }
