@@ -258,7 +258,7 @@ static int axfr_finalize(struct refresh_data *data)
 
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
-	uint32_t old_serial = zone_contents_serial(data->zone->contents), master_serial;
+	uint32_t old_serial = zone_contents_serial(data->zone->contents), master_serial = 0;
 
 	if (dnssec_enable) {
 		axfr_slave_sign_serial(new_zone, data->zone, data->conf, &master_serial);
@@ -490,7 +490,7 @@ static int ixfr_finalize(struct refresh_data *data)
 {
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
-	uint32_t master_serial, old_serial = zone_contents_serial(data->zone->contents);
+	uint32_t master_serial = 0, old_serial = zone_contents_serial(data->zone->contents);
 
 	if (dnssec_enable) {
 		int ret = ixfr_slave_sign_serial(&data->ixfr.changesets, data->zone, data->conf, &master_serial);
