@@ -451,6 +451,45 @@ trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 	return tvalp(t);
 }
 
+/* Optimization: the approach isn't ideal, as e.g. walking through the prefix
+ * is duplicated and we explicitly construct the wildcard key.  Still, it's close
+ * to optimum which would be significantly more complicated and error-prone to write. */
+trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t len)
+{
+	assert(tbl);
+	if (!tbl->weight)
+		return NULL;
+	// Find leaf sharing the longest common prefix; see ns_find_branch() for explanation.
+	node_t *t = &tbl->root;
+	while (isbranch(t)) {
+		__builtin_prefetch(twigs(t));
+		bitmap_t b = twigbit(t, key, len);
+		uint i = hastwig(t, b) ? twigoff(t, b) : 0;
+		t = twig(t, i);
+	}
+	const tkey_t * const lcp_key = tkey(t);
+
+	// Find the last matching zero byte or -1 (source of synthesis)
+	int i_lmz = -1;
+	for (int i = 0; i < len && i < lcp_key->len && key[i] == lcp_key->chars[i]; ++i) {
+		if (key[i] == '\0' && i < len - 1) // do not count the terminating zero
+			i_lmz = i;
+		// Shortcut: we may have found an exact match.
+		if (i == len - 1 && len == lcp_key->len)
+			return tvalp(t);
+	}
+	if (len == 0) // The empty name needs separate handling.
+		return lcp_key->len == 0 ? tvalp(t) : NULL;
+
+	// Construct the key of the wildcard we need and look it up.
+	const int wild_len = i_lmz + 3;
+	uint8_t wild_key[wild_len];
+	memcpy(wild_key, key, wild_len - 2);
+	wild_key[wild_len - 2] = '*';
+	wild_key[wild_len - 1] = '\0'; // LF is always 0-terminated ATM
+	return trie_get_try(tbl, wild_key, wild_len);
+}
+
 /*! \brief Delete leaf t with parent p; b is the bit for t under p.
  * Optionally return the deleted value via val.  The function can't fail. */
 static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
