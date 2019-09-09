@@ -159,6 +159,8 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		.ttl = 0,
 	};
 
+	query_edns_data_init(&data.edns, conf, zone_name, parent->addr.ss_family);
+
 	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &ds_query_api, &data, NULL);
 
