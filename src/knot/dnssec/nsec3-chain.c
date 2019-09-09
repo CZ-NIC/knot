@@ -281,30 +281,16 @@ static int connect_nsec3_base(knot_rdataset_t *a_rrs, const knot_dname_t *b_name
 	}
 
 	uint8_t raw_length = knot_nsec3_next_len(a_rrs->rdata);
+	assert(raw_length == dnssec_nsec3_hash_length(algorithm));
 	uint8_t *raw_hash = (uint8_t *)knot_nsec3_next(a_rrs->rdata);
 	if (raw_hash == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	assert(raw_length == dnssec_nsec3_hash_length(algorithm));
-
-	char *b32_hash = knot_dname_to_str_alloc(b_name);
-	if (!b32_hash) {
-		return KNOT_ENOMEM;
-	}
-
-	char *b32_end = strchr(b32_hash, '.');
-	if (!b32_end) {
-		free(b32_hash);
-		return KNOT_EINVAL;
-	}
-
-	size_t b32_length = b32_end - b32_hash;
-	int32_t written = base32hex_decode((uint8_t *)b32_hash, b32_length,
-					   raw_hash, raw_length);
-
-	free(b32_hash);
-
+	assert(b_name);
+	uint8_t b32_length = b_name[0];
+	const uint8_t *b32_hash = &(b_name[1]);
+	int32_t written = base32hex_decode(b32_hash, b32_length, raw_hash, raw_length);
 	if (written != raw_length) {
 		return KNOT_EINVAL;
 	}
