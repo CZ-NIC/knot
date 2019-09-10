@@ -97,7 +97,8 @@ const char *dname_ok =
 	".:\n"
 	"dom-ain:\n"
 	"\\070-\\071.\\072.:\n"
-	"*.wildchar.com:\n";
+	"*.wildchar.com:\n"
+	"_ldap._tcp.example.com:\n";
 
 const char *quotes_ok =
 	"g: \"\"\n"
@@ -264,6 +265,7 @@ static void test_dname(yp_parser_t *yp)
 	CHECK_DNAME("dom-ain");
 	CHECK_DNAME("\\070-\\071.\\072.");
 	CHECK_DNAME("*.wildchar.com");
+	CHECK_DNAME("_ldap._tcp.example.com");
 }
 
 static void test_quotes(yp_parser_t *yp)
