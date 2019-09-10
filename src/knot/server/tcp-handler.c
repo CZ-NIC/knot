@@ -128,13 +128,11 @@ static unsigned tcp_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id
 {
 	assert(ifaces && fds);
 
-	rcu_read_lock();
 	fdset_clear(fds);
 	iface_t *i = NULL;
 	WALK_LIST(i, *ifaces) {
 		fdset_add(fds, i->fd_tcp, POLLIN, NULL);
 	}
-	rcu_read_unlock();
 
 	return fds->n;
 }

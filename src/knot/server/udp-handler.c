@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@
 #include <string.h>
 #include <assert.h>
 #include <sys/param.h>
-#include <urcu.h>
 #ifdef HAVE_SYS_UIO_H	// struct iovec (OpenBSD)
 #include <sys/uio.h>
 #endif /* HAVE_SYS_UIO_H */
@@ -383,7 +382,6 @@ static nfds_t track_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
 	assert(ifaces && fds_ptr);
 
 	nfds_t nfds = list_size(ifaces);
-	rcu_read_lock();
 	struct pollfd *fds = malloc(nfds * sizeof(*fds));
 	if (!fds) {
 		*fds_ptr = NULL;
@@ -401,7 +399,6 @@ static nfds_t track_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
 	assert(i == nfds);
 
 	*fds_ptr = fds;
-	rcu_read_unlock();
 
 	return nfds;
 }
