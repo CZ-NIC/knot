@@ -88,8 +88,8 @@ static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
  */
 static zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents)
 {
-	return node_new(owner, (contents->nodes->flags & ZONE_TREE_USE_BINODES),
-	                (contents->nodes->flags & ZONE_TREE_BINO_SECOND), NULL);
+	assert(contents->nsec3_nodes == NULL || contents->nsec3_nodes->flags == contents->nodes->flags);
+	return node_new_for_tree(owner, contents->nodes, NULL);
 }
 
 static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *name)
@@ -167,7 +167,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	if (out->nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
-	out->apex = binode_node(z->apex, (out->nodes->flags & ZONE_TREE_BINO_SECOND));
+	out->apex = zone_tree_fix_get(z->apex, out->nodes);
 	return KNOT_EOK;
 }
 

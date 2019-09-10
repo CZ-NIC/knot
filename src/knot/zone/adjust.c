@@ -403,14 +403,14 @@ int zone_adjust_full(zone_contents_t *zone)
 static int adjust_additionals_cb(zone_node_t *node, void *ctx)
 {
 	adjust_ctx_t *actx = ctx;
-	zone_node_t *real_node = binode_node(node, (actx->zone->nodes->flags & ZONE_TREE_BINO_SECOND));
+	zone_node_t *real_node = zone_tree_fix_get(node, actx->zone->nodes);
 	return adjust_cb_additionals(real_node, actx);
 }
 
 static int adjust_point_to_nsec3_cb(zone_node_t *node, void *ctx)
 {
 	adjust_ctx_t *actx = ctx;
-	zone_node_t *real_node = binode_node(node, (actx->zone->nodes->flags & ZONE_TREE_BINO_SECOND));
+	zone_node_t *real_node = zone_tree_fix_get(node, actx->zone->nodes);
 	return adjust_cb_nsec3_pointer(real_node, actx);
 }
 

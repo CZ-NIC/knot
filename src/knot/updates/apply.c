@@ -207,8 +207,7 @@ static zone_node_t *add_node_cb(const knot_dname_t *owner, void *ctx)
 	zone_tree_t *tree = ctx;
 	zone_node_t *node = zone_tree_get(tree, owner);
 	if (node == NULL) {
-		node = node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES),
-		                (tree->flags & ZONE_TREE_BINO_SECOND), NULL);
+		node = node_new_for_tree(owner, tree, NULL);
 	} else {
 		node->flags &= ~NODE_FLAGS_DELETED;
 	}
