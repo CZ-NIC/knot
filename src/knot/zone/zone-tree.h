@@ -95,6 +95,19 @@ inline static bool zone_tree_is_empty(const zone_tree_t *tree)
 	return zone_tree_count(tree) == 0;
 }
 
+inline static zone_node_t *zone_tree_fix_get(zone_node_t *node, const zone_tree_t *tree)
+{
+	assert(((node->flags & NODE_FLAGS_BINODE) ? 1 : 0) == ((tree->flags & ZONE_TREE_USE_BINODES) ? 1 : 0));
+	assert((tree->flags & ZONE_TREE_USE_BINODES) || !(tree->flags & ZONE_TREE_BINO_SECOND));
+	return binode_node(node, (tree->flags & ZONE_TREE_BINO_SECOND));
+}
+
+inline static zone_node_t *node_new_for_tree(const knot_dname_t *owner, const zone_tree_t *tree, knot_mm_t *mm)
+{
+	assert((tree->flags & ZONE_TREE_USE_BINODES) || !(tree->flags & ZONE_TREE_BINO_SECOND));
+	return node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES), (tree->flags & ZONE_TREE_BINO_SECOND), mm);
+}
+
 /*!
  * \brief Inserts the given node into the zone tree.
  *
