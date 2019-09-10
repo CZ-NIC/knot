@@ -74,7 +74,7 @@ static bool apex_rr_changed(const zone_node_t *old_apex,
 	knot_rrset_t old_rr = node_rrset(old_apex, type);
 	knot_rrset_t new_rr = node_rrset(new_apex, type);
 
-	return !knot_rrset_equal(&old_rr, &new_rr, KNOT_RRSET_COMPARE_WHOLE);
+	return !knot_rrset_equal(&old_rr, &new_rr, false);
 }
 
 static bool apex_dnssec_changed(zone_update_t *update)

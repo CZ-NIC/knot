@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -68,32 +68,36 @@ int main(int argc, char *argv[])
 	ok(knot_rrset_copy(NULL, NULL) == NULL, "rrset: copy NULL.");
 	assert(copy);
 
-	// Test equal - pointers
-	ok(knot_rrset_equal((knot_rrset_t *)0xdeadbeef, (knot_rrset_t *)0xdeadbeef,
-	                    KNOT_RRSET_COMPARE_PTR), "rrset: cmp equal pointers");
-	ok(!knot_rrset_equal((knot_rrset_t *)0xcafebabe, (knot_rrset_t *)0xdeadbeef,
-	                    KNOT_RRSET_COMPARE_PTR), "rrset: cmp different pointers");
+	// Test equal - same TTL
+	ok(knot_rrset_equal(rrset, copy, true), "rrset: cmp same TTL");
 
-	// Test equal - header
-	ok(knot_rrset_equal(rrset, copy, KNOT_RRSET_COMPARE_HEADER),
-	   "rrset: cmp equal headers");
+	// Test equal - different TTL
+	copy->ttl++;
+	ok(!knot_rrset_equal(rrset, copy, true), "rrset: cmp different TTL");
 
-	copy->type = KNOT_RRTYPE_AAAA;
-	ok(!knot_rrset_equal(rrset, copy, KNOT_RRSET_COMPARE_HEADER),
-	   "rrset: cmp headers - different type");
+	// Test equal - ignore TTL
+	ok(knot_rrset_equal(rrset, copy, false), "rrset: cmp ignore TTL");
 
-	// Test equal - full, rdata empty
+	copy->ttl = rrset->ttl;
+
+	// Test equal - different type
+	copy->type++;
+	ok(!knot_rrset_equal(rrset, copy, true), "rrset: cmp different type");
+
 	copy->type = rrset->type;
-	ok(knot_rrset_equal(rrset, copy, KNOT_RRSET_COMPARE_WHOLE),
-	   "rrset: cmp headers - rdata");
 
+	// Test equal - owners
 	knot_dname_free(rrset->owner, NULL);
 	rrset->owner = NULL;
-	ok(!knot_rrset_equal(rrset, copy, KNOT_RRSET_COMPARE_HEADER),
-	   "rrset: cmp NULL owner");
+	ok(!knot_rrset_equal(rrset, copy, true), "rrset: cmp NULL owner");
 
-	ok(knot_rrset_equal(rrset, rrset, KNOT_RRSET_COMPARE_HEADER),
-	   "rrset: cmp NULL owners");
+	knot_dname_free(copy->owner, NULL);
+	copy->owner = NULL;
+	ok(knot_rrset_equal(rrset, copy, true), "rrset: cmp NULL owners");
+
+	// Test equal - different rdata
+	knot_rrset_add_rdata(copy, (const uint8_t *)"abc", 3, NULL);
+	ok(!knot_rrset_equal(rrset, copy, true), "rrset: cmp different rdata");
 
 	// Test clear
 	knot_rrset_clear(rrset, NULL);

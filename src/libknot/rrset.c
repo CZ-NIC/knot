@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -108,29 +108,19 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *data, uint16_t len,
 _public_
 bool knot_rrset_equal(const knot_rrset_t *r1,
                       const knot_rrset_t *r2,
-                      knot_rrset_compare_type_t cmp)
+                      bool incl_ttl)
 {
-	if (cmp == KNOT_RRSET_COMPARE_PTR) {
-		return r1 == r2;
-	}
-
-	if (r1->type != r2->type) {
+	if (r1->type != r2->type ||
+	    (incl_ttl && r1->ttl != r2->ttl)) {
 		return false;
 	}
 
-	if (r1->owner && r2->owner) {
-		if (!knot_dname_is_equal(r1->owner, r2->owner)) {
-			return false;
-		}
-	} else if (r1->owner != r2->owner) { // At least one is NULL.
+	if ((r1->owner != NULL || r2->owner != NULL) &&
+	    !knot_dname_is_equal(r1->owner, r2->owner)) {
 		return false;
 	}
 
-	if (cmp == KNOT_RRSET_COMPARE_WHOLE) {
-		return knot_rdataset_eq(&r1->rrs, &r2->rrs);
-	}
-
-	return true;
+	return knot_rdataset_eq(&r1->rrs, &r2->rrs);
 }
 
 _public_
