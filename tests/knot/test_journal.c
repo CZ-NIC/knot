@@ -200,7 +200,7 @@ static bool changesets_eq(const changeset_t *ch1, changeset_t *ch2)
 	knot_rrset_t rr2 = changeset_iter_next(&it2);
 	bool ret = true;
 	while (!knot_rrset_empty(&rr1)) {
-		if (!knot_rrset_equal(&rr1, &rr2, KNOT_RRSET_COMPARE_WHOLE)) {
+		if (!knot_rrset_equal(&rr1, &rr2, true)) {
 			ret = false;
 			break;
 		}

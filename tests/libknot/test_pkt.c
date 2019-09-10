@@ -57,7 +57,7 @@ static void packet_match(knot_pkt_t *in, knot_pkt_t *out)
 	/* Check RRs */
 	int rr_matched = 0;
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {
-		if (knot_rrset_equal(&out->rr[i], &in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
+		if (knot_rrset_equal(&out->rr[i], &in->rr[i], true) > 0) {
 			++rr_matched;
 		}
 	}
