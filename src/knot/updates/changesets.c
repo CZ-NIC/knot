@@ -474,7 +474,7 @@ bool changeset_differs_just_serial(const changeset_t *ch)
 	knot_rrset_t *soa_to_cpy = knot_rrset_copy(ch->soa_to, NULL);
 	knot_soa_serial_set(soa_to_cpy->rrs.rdata, knot_soa_serial(ch->soa_from->rrs.rdata));
 
-	bool ret = knot_rrset_equal(ch->soa_from, soa_to_cpy, KNOT_RRSET_COMPARE_WHOLE);
+	bool ret = knot_rrset_equal(ch->soa_from, soa_to_cpy, true);
 	knot_rrset_free(soa_to_cpy, NULL);
 
 	changeset_iter_t itt;

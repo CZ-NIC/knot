@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 
 	// Test RRSet getters
 	knot_rrset_t *n_rrset = node_create_rrset(node, KNOT_RRTYPE_TXT);
-	ok(n_rrset && knot_rrset_equal(n_rrset, dummy_rrset, KNOT_RRSET_COMPARE_WHOLE),
+	ok(n_rrset && knot_rrset_equal(n_rrset, dummy_rrset, true),
 	   "Node: create existing RRSet.");
 
 	knot_rrset_free(n_rrset, NULL);
@@ -73,8 +73,7 @@ int main(int argc, char *argv[])
 	ok(n_rrset == NULL, "Node: create non-existing RRSet.");
 
 	knot_rrset_t stack_rrset = node_rrset(node, KNOT_RRTYPE_TXT);
-	ok(knot_rrset_equal(&stack_rrset, dummy_rrset,
-	                    KNOT_RRSET_COMPARE_WHOLE), "Node: get existing RRSet.");
+	ok(knot_rrset_equal(&stack_rrset, dummy_rrset, true), "Node: get existing RRSet.");
 	stack_rrset = node_rrset(node, KNOT_RRTYPE_SOA);
 	ok(knot_rrset_empty(&stack_rrset), "Node: get non-existent RRSet.");
 
@@ -85,7 +84,7 @@ int main(int argc, char *argv[])
 	ok(n_rdataset == NULL, "Node: get non-existing rdataset.");
 
 	stack_rrset = node_rrset_at(node, 0);
-	ok(knot_rrset_equal(&stack_rrset, dummy_rrset, KNOT_RRSET_COMPARE_WHOLE),
+	ok(knot_rrset_equal(&stack_rrset, dummy_rrset, true),
 	   "Node: get existing position.");
 	stack_rrset = node_rrset_at(node, 1);
 	ok(knot_rrset_empty(&stack_rrset), "Node: get non-existent position.");

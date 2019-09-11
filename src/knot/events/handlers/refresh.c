@@ -640,7 +640,7 @@ static int ixfr_next_state(struct refresh_data *data, const knot_rrset_t *rr)
 	enum ixfr_state state = data->ixfr.proc->state;
 
 	if ((state == IXFR_SOA_ADD || state == IXFR_ADD) &&
-	    knot_rrset_equal(rr, data->ixfr.final_soa, KNOT_RRSET_COMPARE_WHOLE)) {
+	    knot_rrset_equal(rr, data->ixfr.final_soa, true)) {
 		return IXFR_DONE;
 	}
 
@@ -755,7 +755,7 @@ static enum xfr_type determine_xfr_type(const knot_pktsection_t *answer,
 	const knot_rrset_t *rr_one = knot_pkt_rr(answer, 0);
 	if (initial_soa != NULL) {
 		if (rr_one->type == KNOT_RRTYPE_SOA) {
-		        return knot_rrset_equal(initial_soa, rr_one, KNOT_RRSET_COMPARE_WHOLE) ?
+		        return knot_rrset_equal(initial_soa, rr_one, true) ?
 		               XFR_TYPE_AXFR : XFR_TYPE_IXFR;
 		}
 		return XFR_TYPE_AXFR;
@@ -771,7 +771,7 @@ static enum xfr_type determine_xfr_type(const knot_pktsection_t *answer,
 
 	const knot_rrset_t *rr_two = knot_pkt_rr(answer, 1);
 	if (answer->count == 2 && rr_one->type == KNOT_RRTYPE_SOA &&
-	    knot_rrset_equal(rr_one, rr_two, KNOT_RRSET_COMPARE_WHOLE)) {
+	    knot_rrset_equal(rr_one, rr_two, true)) {
 		return XFR_TYPE_AXFR;
 	}
 

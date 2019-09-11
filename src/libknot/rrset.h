@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,13 +47,6 @@ typedef struct {
 	/* Optional fields. */
 	void *additional;     /*!< Additional records. */
 } knot_rrset_t;
-
-/*! \todo Documentation */
-typedef enum {
-	KNOT_RRSET_COMPARE_PTR,
-	KNOT_RRSET_COMPARE_HEADER,
-	KNOT_RRSET_COMPARE_WHOLE
-} knot_rrset_compare_type_t;
 
 /*!
  * \brief Creates a new RRSet with the given properties.
@@ -148,13 +141,13 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *data, uint16_t len,
  *
  * \param r1   First RRSet.
  * \param r2   Second RRSet.
- * \param cmp  Type of comparison to perform.
+ * \param incl_ttl  Compare also TTLs for equality.
  *
  * \retval True   if RRSets are equal.
  * \retval False  if RRSets are not equal.
  */
 bool knot_rrset_equal(const knot_rrset_t *r1, const knot_rrset_t *r2,
-                      knot_rrset_compare_type_t cmp);
+                      bool incl_ttl);
 
 /*!
  * \brief Checks whether RRSet is empty.

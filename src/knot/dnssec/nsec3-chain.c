@@ -344,7 +344,7 @@ static int connect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
 
 	// connect the copied rrset
 	int ret = connect_nsec3_base(&acopy->rrs, b->owner);
-	if (ret != KNOT_EOK || knot_rrset_equal(&aorig, acopy, KNOT_RRSET_COMPARE_WHOLE)) {
+	if (ret != KNOT_EOK || knot_rrset_equal(&aorig, acopy, true)) {
 		knot_rrset_free(acopy, NULL);
 		return ret;
 	}
@@ -653,7 +653,7 @@ static int zone_update_nsec3_nodes(zone_update_t *up, zone_tree_t *nsec3n)
 		zone_node_t *nnew = zone_tree_get(nsec3n, nold->owner);
 		if (!knot_rrset_empty(&ns3old)) {
 			knot_rrset_t ns3new = node_rrset(nnew, KNOT_RRTYPE_NSEC3);
-			if (knot_rrset_equal(&ns3old, &ns3new, KNOT_RRSET_COMPARE_WHOLE)) {
+			if (knot_rrset_equal(&ns3old, &ns3new, true)) {
 				node_remove_rdataset(nnew, KNOT_RRTYPE_NSEC3);
 			} else {
 				ret = knot_nsec_changeset_remove(nold, up);

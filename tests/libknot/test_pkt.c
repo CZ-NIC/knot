@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ static void packet_match(knot_pkt_t *in, knot_pkt_t *out)
 	/* Check RRs */
 	int rr_matched = 0;
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {
-		if (knot_rrset_equal(&out->rr[i], &in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
+		if (knot_rrset_equal(&out->rr[i], &in->rr[i], true) > 0) {
 			++rr_matched;
 		}
 	}
