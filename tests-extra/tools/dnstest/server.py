@@ -799,7 +799,7 @@ class Bind(Server):
         return (tcp and udp and ctltcp)
 
     def flush(self):
-        self.ctl("flush")
+        self.ctl("sync")
         time.sleep(Server.START_WAIT)
 
     def _str(self, conf, name, value):
