@@ -4,7 +4,6 @@
 
 from dnstest.test import Test
 from dnstest.utils import *
-import threading
 
 t = Test(tsig=False)
 
@@ -45,31 +44,5 @@ if rrsig3 == rrsig2:
     set_err("Not freezed before re-query.")
 
 master.ctl("zone-thaw")
-
-# final challenge: two queued blocking events
-
-def blocking_resign(server):
-    server.ctl("-b zone-sign", availability=False)
-
-event1 = threading.Thread(target=blocking_resign, args=(master, ), kwargs={})
-event1.start()
-event2 = threading.Thread(target=blocking_resign, args=(master, ), kwargs={})
-event2.start()
-
-rrsig4 = soa_rrsig(master, zone)
-if rrsig4 != rrsig3:
-    set_err("Test thread failure.")
-
-event1.join()
-
-rrsig5 = soa_rrsig(master, zone)
-if rrsig5 == rrsig4:
-    set_err("Not re-signed before join1.")
-
-event2.join()
-
-rrsig6 = soa_rrsig(master, zone)
-if rrsig6 == rrsig5:
-    set_err("Not re-signed before join2.")
 
 t.stop()
