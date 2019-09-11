@@ -838,13 +838,13 @@ void server_reconfigure(conf_t *conf, server_t *server)
 
 		/* Configure server threads. */
 		if ((ret = configure_threads(conf, server)) < 0) {
-			log_error("failed to reconfigure server threads (%s)",
+			log_error("failed to configure server threads (%s)",
 			          knot_strerror(ret));
 		}
 
 		/* Configure sockets. */
 		if ((ret = configure_sockets(conf, server)) < 0) {
-			log_error("failed to reconfigure server sockets (%s)",
+			log_error("failed to configure server sockets (%s)",
 			          knot_strerror(ret));
 		}
 	}
