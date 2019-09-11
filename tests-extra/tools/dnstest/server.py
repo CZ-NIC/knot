@@ -1063,6 +1063,7 @@ class Knot(Server):
         for addr in self.addr_extra:
             s.item_str("listen", "%s@%s" % (addr, self.port))
         self._str(s, "tcp-reply-timeout", self.tcp_reply_timeout)
+        self._str(s, "tcp-query-timeout", "500")
         self._str(s, "max-udp-payload", self.max_udp_payload)
         self._str(s, "max-ipv4-udp-payload", self.max_udp4_payload)
         self._str(s, "max-ipv6-udp-payload", self.max_udp6_payload)
