@@ -142,6 +142,7 @@ static void ixfr_answer_cleanup(knotd_qdata_t *qdata)
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->extra->ext;
 	knot_mm_t *mm = qdata->mm;
 
+	knot_rrset_clear(&ixfr->cur_rr, NULL);
 	ptrlist_free(&ixfr->proc.nodes, mm);
 	journal_read_end(ixfr->journal_ctx);
 	mm_free(mm, qdata->extra->ext);
