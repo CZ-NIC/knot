@@ -59,7 +59,6 @@ class Test(object):
 
         dnstest.server.Knot.count = 0
         dnstest.server.Bind.count = 0
-        dnstest.server.Nsd.count = 0
         dnstest.server.Dummy.count = 0
 
         params.test = self
@@ -110,8 +109,6 @@ class Test(object):
             srv = dnstest.server.Knot()
         elif server == "bind":
             srv = dnstest.server.Bind()
-        elif server == "nsd":
-            srv = dnstest.server.Nsd()
         elif server == "dummy":
             srv = dnstest.server.Dummy()
         else:

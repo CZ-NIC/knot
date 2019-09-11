@@ -113,7 +113,6 @@ class Server(object):
         self.valgrind = []
         self.start_params = None
         self.ctl_params = None
-        self.compile_cmd = None
 
         self.data_dir = None
 
@@ -225,9 +224,6 @@ class Server(object):
         try:
             if os.path.isfile(self.valgrind_log):
                 copyfile(self.valgrind_log, self.valgrind_log + str(int(time.time())))
-
-            if self.compile_cmd:
-                self.ctl(self.compile_cmd)
 
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
@@ -1126,7 +1122,7 @@ class Knot(Server):
                     s.id_item("id", parent.name)
                     s.item_str("address", "%s@%s" % (parent.addr, parent.port))
                     servers.add(parent.name)
-                    
+
         if have_remote:
             s.end()
 
@@ -1323,23 +1319,6 @@ class Knot(Server):
         self.ctl_params = ["-c", self.confile, "-t", "15"]
 
         return s.conf
-
-class Nsd(Server):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if not params.nsd_bin:
-            raise Skip("No NSD")
-        self.daemon_bin = params.nsd_bin
-        self.control_bin = params.nsd_ctl
-
-    def get_config(self):
-        self.start_params = ["-c", self.confile, "-d"]
-        self.ctl_params = ["-c", self.confile]
-        self.compile_cmd = "rebuild"
-
-    def flush(self):
-        return False # Not supported
 
 class Dummy(Server):
     ''' Dummy name server. '''
