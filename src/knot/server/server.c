@@ -18,7 +18,6 @@
 
 #include <stdlib.h>
 #include <assert.h>
-#include <urcu.h>
 #include <netinet/tcp.h>
 
 #include "libknot/errcode.h"
@@ -304,32 +303,13 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 	return KNOT_EOK;
 }
 
-static void remove_ifacelist(struct ref *p)
-{
-	ifacelist_t *ifaces = (ifacelist_t *)p;
-
-	/* Remove deprecated interfaces. */
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	iface_t *n = NULL, *m = NULL;
-	WALK_LIST_DELSAFE(n, m, ifaces->u) {
-		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&n->addr);
-		log_info("removing interface %s", addr_str);
-		server_remove_iface(n);
-	}
-	WALK_LIST_DELSAFE(n, m, ifaces->l) {
-		free(n);
-	}
-
-	free(ifaces);
-}
-
 /*!
- * \brief Update bound sockets according to configuration.
+ * \brief Initialize bound sockets according to configuration.
  *
  * \param server Server instance.
  * \return number of added sockets.
  */
-static int reconfigure_sockets(conf_t *conf, server_t *s)
+static int configure_sockets(conf_t *conf, server_t *s)
 {
 	if (s->state & ServerRunning) {
 		return KNOT_EOK;
@@ -337,98 +317,46 @@ static int reconfigure_sockets(conf_t *conf, server_t *s)
 
 	/* Prepare helper lists. */
 	int bound = 0;
-	ifacelist_t *oldlist = s->ifaces;
-	ifacelist_t *newlist = malloc(sizeof(ifacelist_t));
-	ref_init(&newlist->ref, &remove_ifacelist);
-	ref_retain(&newlist->ref);
-	init_list(&newlist->u);
-	init_list(&newlist->l);
-
-	/* Duplicate current list. */
-	/*! \note Pointers to addr, handlers etc. will be shared. */
-	if (s->ifaces) {
-		list_dup(&s->ifaces->u, &s->ifaces->l, sizeof(iface_t));
-	}
+	list_t *newlist = malloc(sizeof(list_t));
+	init_list(newlist);
 
 	/* Update bound interfaces. */
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	while (listen_val.code == KNOT_EOK) {
-		iface_t *m = NULL;
 
-		/* Find already matching interface. */
-		int found_match = 0;
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
-		if (s->ifaces) {
-			WALK_LIST(m, s->ifaces->u) {
-				/* Matching port and address. */
-				if (sockaddr_cmp((struct sockaddr *)&addr,
-				                 (struct sockaddr *)&m->addr) == 0) {
-					found_match = 1;
-					break;
-				}
-			}
-		}
+		char addr_str[SOCKADDR_STRLEN] = { 0 };
+		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
+		log_info("binding to interface %s", addr_str);
 
-		/* Found already bound interface. */
-		if (found_match) {
-			rem_node((node_t *)m);
-		} else {
-			char addr_str[SOCKADDR_STRLEN] = { 0 };
-			sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
-			log_info("binding to interface %s", addr_str);
-
-			/* Create new interface. */
-			m = malloc(sizeof(iface_t));
-			unsigned size = s->handlers[IO_UDP].handler.unit->size;
-			if (server_init_iface(m, &addr, size) < 0) {
-				free(m);
-				m = 0;
-			}
-		}
-
-		/* Move to new list. */
-		if (m) {
-			add_tail(&newlist->l, (node_t *)m);
+		/* Create new interface. */
+		iface_t *m = malloc(sizeof(iface_t));
+		unsigned size = s->handlers[IO_UDP].handler.unit->size;
+		if (server_init_iface(m, &addr, size) >= 0) {
+			/* Move to new list. */
+			add_tail(newlist, (node_t *)m);
 			++bound;
+		} else {
+			free(m);
 		}
 
 		conf_val_next(&listen_val);
 	}
 	free(rundir);
 
-	/* Wait for readers that are reconfiguring right now. */
-	/*! \note This subsystem will be reworked in #239 */
-	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
-		dt_unit_t *tu = s->handlers[proto].handler.unit;
-		iohandler_t *ioh = &s->handlers[proto].handler;
-		for (unsigned i = 0; i < tu->size; ++i) {
-			while (ioh->thread_state[i] & ServerReload) {
-				sleep(1);
-			}
-		}
-	}
-
 	/* Publish new list. */
 	s->ifaces = newlist;
 
-	/* Update TCP+UDP ifacelist (reload all threads). */
+	/* Set the ID's (thread_id) of both the TCP and UDP threads. */
 	unsigned thread_count = 0;
 	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;
 		for (unsigned i = 0; i < tu->size; ++i) {
-			ref_retain((ref_t *)newlist);
-			s->handlers[proto].handler.thread_state[i] |= ServerReload;
 			s->handlers[proto].handler.thread_id[i] = thread_count++;
-			if (s->state & ServerRunning) {
-				dt_activate(tu->threads[i]);
-				dt_signalize(tu->threads[i], SIGALRM);
-			}
 		}
 	}
-
-	ref_release(&oldlist->ref);
 
 	return bound;
 }
@@ -491,7 +419,7 @@ void server_deinit(server_t *server)
 	/* Free remaining interfaces. */
 	if (server->ifaces) {
 		iface_t *n = NULL, *m = NULL;
-		WALK_LIST_DELSAFE(n, m, server->ifaces->l) {
+		WALK_LIST_DELSAFE(n, m, *server->ifaces) {
 			server_remove_iface(n);
 		}
 		free(server->ifaces);
@@ -676,7 +604,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 
 	/* Duplicate current list. */
 	/*! \note Pointers to addr, handlers etc. will be shared. */
-	list_dup(&iface_list, &server->ifaces->l, sizeof(iface_t));
+	list_dup(&iface_list, server->ifaces, sizeof(iface_t));
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
@@ -835,42 +763,28 @@ void server_stop(server_t *server)
 	server->state &= ~ServerRunning;
 }
 
-static int reset_handler(server_t *server, int index, unsigned size, runnable_t run)
+static int set_handler(server_t *server, int index, unsigned size, runnable_t run)
 {
-	if (server->handlers[index].size != size && !(server->state & ServerRunning)) {
-		/* Free old handlers */
-		if (server->handlers[index].size > 0) {
-			server_free_handler(&server->handlers[index].handler);
-		}
-
-		/* Initialize I/O handlers. */
-		int ret = server_init_handler(server, index, size, run, NULL);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
-		/* Start if server is running. */
-		if (server->state & ServerRunning) {
-			ret = dt_start(server->handlers[index].handler.unit);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-		server->handlers[index].size = size;
+	/* Initialize I/O handlers. */
+	int ret = server_init_handler(server, index, size, run, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
+
+	server->handlers[index].size = size;
 
 	return KNOT_EOK;
 }
 
 /*! \brief Reconfigure UDP and TCP query processing threads. */
-static int reconfigure_threads(conf_t *conf, server_t *server)
+static int configure_threads(conf_t *conf, server_t *server)
 {
-	int ret = reset_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
+	int ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return reset_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
+	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
 }
 
 static int reconfigure_journal_db(conf_t *conf, server_t *server)
@@ -916,16 +830,23 @@ void server_reconfigure(conf_t *conf, server_t *server)
 		return;
 	}
 
+	int ret;
+
 	/* First reconfiguration. */
 	if (!(server->state & ServerRunning)) {
 		log_info("Knot DNS %s starting", PACKAGE_VERSION);
-	}
 
-	/* Reconfigure server threads. */
-	int ret;
-	if ((ret = reconfigure_threads(conf, server)) < 0) {
-		log_error("failed to reconfigure server threads (%s)",
-		          knot_strerror(ret));
+		/* Configure server threads. */
+		if ((ret = configure_threads(conf, server)) < 0) {
+			log_error("failed to configure server threads (%s)",
+			          knot_strerror(ret));
+		}
+
+		/* Configure sockets. */
+		if ((ret = configure_sockets(conf, server)) < 0) {
+			log_error("failed to configure server sockets (%s)",
+			          knot_strerror(ret));
+		}
 	}
 
 	/* Reconfigure journal DB. */
@@ -943,12 +864,6 @@ void server_reconfigure(conf_t *conf, server_t *server)
 	/* Reconfiure Timer DB. */
 	if ((ret = reconfigure_timer_db(conf, server)) < 0) {
 		log_error("failed to reconfigure Timer DB (%s)",
-		          knot_strerror(ret));
-	}
-
-	/* Update bound sockets. */
-	if ((ret = reconfigure_sockets(conf, server)) < 0) {
-		log_error("failed to reconfigure server sockets (%s)",
 		          knot_strerror(ret));
 	}
 }
@@ -979,36 +894,4 @@ void server_update_zones(conf_t *conf, server_t *server)
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
-}
-
-ref_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id)
-{
-	if (server == NULL || server->ifaces == NULL || fds == NULL) {
-		return NULL;
-	}
-
-	rcu_read_lock();
-	fdset_clear(fds);
-
-	iface_t *i = NULL;
-	WALK_LIST(i, server->ifaces->l) {
-#ifdef ENABLE_REUSEPORT
-		int udp_id = thread_id % i->fd_udp_count;
-#else
-		int udp_id = 0;
-#endif
-		switch(index) {
-		case IO_TCP:
-			fdset_add(fds, i->fd_tcp, POLLIN, NULL);
-			break;
-		case IO_UDP:
-			fdset_add(fds, i->fd_udp[udp_id], POLLIN, NULL);
-			break;
-		default:
-			assert(0);
-		}
-	}
-	rcu_read_unlock();
-
-	return &server->ifaces->ref;
 }

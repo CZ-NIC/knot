@@ -115,6 +115,28 @@ static void tcp_log_error(struct sockaddr_storage ss, const char *operation, int
 	}
 }
 
+/*!
+ * \brief Update TCP fdsets from current interfaces list.
+ *
+ * \param  ifaces    Interface list.
+ * \param  fds       File descriptor set.
+ * \param  thread_id Thread ID used for geting an ID.	TODO: currently unused.
+ *
+ * \return Number of watched descriptors.
+ */
+static unsigned tcp_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id)
+{
+	assert(ifaces && fds);
+
+	fdset_clear(fds);
+	iface_t *i = NULL;
+	WALK_LIST(i, *ifaces) {
+		fdset_add(fds, i->fd_tcp, POLLIN, NULL);
+	}
+
+	return fds->n;
+}
+
 static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec *tx)
 {
 	/* Get peer name. */
@@ -262,10 +284,8 @@ int tcp_master(dthread_t *thread)
 	}
 
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	unsigned *iostate = &handler->thread_state[dt_get_id(thread)];
 
 	int ret = KNOT_EOK;
-	ref_t *ref = NULL;
 
 	/* Create big enough memory cushion. */
 	knot_mm_t mm;
@@ -297,26 +317,13 @@ int tcp_master(dthread_t *thread)
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
 
-	for(;;) {
+	/* Set descriptors for the configured interfaces. */
+	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces, &tcp.set, tcp.thread_id);
+	if (tcp.client_threshold == 0) {
+		goto finish; /* Terminate on zero interfaces. */
+	}
 
-		/* Check handler state. */
-		if (unlikely(*iostate & ServerReload)) {
-			*iostate &= ~ServerReload;
-
-			/* Cancel client connections. */
-			for (unsigned i = tcp.client_threshold; i < tcp.set.n; ++i) {
-				close(tcp.set.pfd[i].fd);
-			}
-
-			ref_release(ref);
-			ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP, tcp.thread_id);
-			if (tcp.set.n == 0) {
-				break; /* Terminate on zero interfaces. */
-			}
-
-			tcp.client_threshold = tcp.set.n;
-		}
-
+	for (;;) {
 		/* Check for cancellation. */
 		if (dt_is_cancelled(thread)) {
 			break;
@@ -338,7 +345,6 @@ finish:
 	free(tcp.iov[1].iov_base);
 	mp_delete(mm.ctx);
 	fdset_clear(&tcp.set);
-	ref_release(ref);
 
 	return ret;
 }
