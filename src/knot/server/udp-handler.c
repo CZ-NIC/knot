@@ -473,7 +473,6 @@ int udp_master(dthread_t *thread)
 finish:
 	_udp_deinit(rq);
 	free(fds);
-	fds = NULL;
 	mp_delete(mm.ctx);
 
 	return KNOT_EOK;
