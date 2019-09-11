@@ -30,7 +30,7 @@ rrsig1 = soa_rrsig(master, zone)
 if rrsig1 != rrsig0:
     set_err("Test failure.")
 
-master.ctl("-b zone-sign") # blocking re-sign
+master.ctl("-t 20 -b zone-sign") # blocking re-sign
 
 rrsig2 = soa_rrsig(master, zone)
 if rrsig2 == rrsig1:
