@@ -376,14 +376,14 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
  *
  * \return Number of watched descriptors, zero on error.
  */
-static nfds_t track_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
-                           int thread_id)
+static unsigned udp_set_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
+                               int thread_id)
 {
 	assert(ifaces && fds_ptr);
 
-	nfds_t nfds = list_size(ifaces);
-	struct pollfd *fds = malloc(nfds * sizeof(*fds));
-	if (!fds) {
+	unsigned nfds = list_size(ifaces);
+	struct pollfd *fds = calloc(nfds, sizeof(*fds));
+	if (fds == NULL) {
 		*fds_ptr = NULL;
 		return 0;
 	}
@@ -396,7 +396,6 @@ static nfds_t track_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
 		fds[i].revents = 0;
 		i += 1;
 	}
-	assert(i == nfds);
 
 	*fds_ptr = fds;
 
@@ -433,10 +432,9 @@ int udp_master(dthread_t *thread)
 
 	/* Event source. */
 	struct pollfd *fds = NULL;
-	nfds_t nfds = 0;
 
 	/* Allocate descriptors for the configured interfaces. */
-	nfds = track_ifaces(handler->server->ifaces, &fds, udp.thread_id);
+	unsigned nfds = udp_set_ifaces(handler->server->ifaces, &fds, udp.thread_id);
 	if (nfds == 0) {
 		goto finish;
 	}
@@ -458,7 +456,7 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Process the events. */
-		for (nfds_t i = 0; i < nfds && events > 0; i++) {
+		for (unsigned i = 0; i < nfds && events > 0; i++) {
 			if (fds[i].revents == 0) {
 				continue;
 			}
