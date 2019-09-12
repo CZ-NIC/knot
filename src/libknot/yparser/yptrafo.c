@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -681,7 +681,7 @@ int yp_dname_to_bin(
 	YP_CHECK_PARAMS_BIN;
 
 	// Copy dname string to the buffer to limit dname_from_str overread.
-	char buf[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t buf;
 	wire_ctx_t buf_ctx = copy_in(in, YP_LEN, buf, sizeof(buf));
 	if (buf_ctx.error != KNOT_EOK) {
 		return buf_ctx.error;
