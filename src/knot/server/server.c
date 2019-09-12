@@ -611,18 +611,17 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	/* Walk the new listen parameters. */
 	while (listen_val.code == KNOT_EOK) {
-		iface_t *m;
-
 		/* Find already matching interface. */
 		found_match = false;
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
-		WALK_LIST(m, iface_list) {
+		iface_t *iface = NULL, *next = NULL;
+		WALK_LIST_DELSAFE(iface, next, iface_list) {
 			/* Matching port and address. */
 			if (sockaddr_cmp((struct sockaddr *)&addr,
-			                 (struct sockaddr *)&m->addr) == 0) {
+			                 (struct sockaddr *)&iface->addr) == 0) {
 				found_match = true;
-				rem_node((node_t *)m);
-				free(m);
+				rem_node((node_t *)iface);
+				free(iface);
 				break;
 			}
 		}
