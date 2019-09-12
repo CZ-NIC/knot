@@ -381,7 +381,7 @@ static void ecs_write_address(wire_ctx_t *dst, wire_ctx_t *src, int8_t prefix)
 	}
 
 	size_t blank = wire_ctx_available(dst);
-	wire_ctx_memset(dst, 0, blank);
+	wire_ctx_clear(dst, blank);
 }
 
 /*!
