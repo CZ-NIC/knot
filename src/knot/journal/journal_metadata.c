@@ -349,7 +349,7 @@ int journals_walk(knot_lmdb_db_t *db, journals_walk_cb_t cb, void *ctx)
 	}
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, false);
-	uint8_t search_data[KNOT_DNAME_MAXLEN] = { 0 };
+	knot_dname_storage_t search_data = { 0 };
 	MDB_val search = { 1, search_data };
 	while (knot_lmdb_find(&txn, &search, KNOT_LMDB_GEQ)) {
 		knot_dname_t *found = txn.cur_key.mv_data;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tap/basic.h>
@@ -27,8 +28,9 @@ static int test_fw(size_t l, const char *w) {
 }
 
 /* Test dname to/from string operations */
-static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
-	uint8_t      d1[KNOT_DNAME_MAXLEN] = "";
+static void test_str(const char *in_str, const char *in_bin, size_t bin_len)
+{
+	knot_dname_storage_t d1;
 	knot_dname_txt_storage_t s1;
 	knot_dname_t *d2 = NULL, *aux_d = NULL;
 	char         *s2 = NULL, *aux_s = NULL;
@@ -128,6 +130,7 @@ static void test_dname_lf(void)
 		"ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg""\x00"
 		"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh""\x00"
 		"iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii""\x00";
+	assert(strlen((const char *)in) == KNOT_DNAME_MAXLEN - 1);
 	uint8_t *out = knot_dname_lf(in, storage);
 	ok(out != NULL && memcmp(ref, out, KNOT_DNAME_MAXLEN) == 0,
 	   "knot_dname_lf: max-length DNAME converted");
