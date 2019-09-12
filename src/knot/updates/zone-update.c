@@ -395,7 +395,7 @@ static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *ad
 		return KNOT_EOK;
 	}
 
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t buff;
 	char *owner = knot_dname_to_str(buff, add->owner, sizeof(buff));
 	if (owner == NULL) {
 		owner = "";
@@ -466,7 +466,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 		zone_node_t *n = NULL;
 		int ret = zone_contents_add_rr(update->new_cont, rrset, &n);
 		if (ret == KNOT_ETTL) {
-			char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+			knot_dname_txt_storage_t buff;
 			char *owner = knot_dname_to_str(buff, rrset->owner, sizeof(buff));
 			if (owner == NULL) {
 				owner = "";

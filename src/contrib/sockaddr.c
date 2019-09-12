@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 #include <string.h>
 #include <netdb.h>
 
-#include "libknot/consts.h"
 #include "libknot/errcode.h"
 #include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcpy.h"
@@ -249,7 +248,7 @@ void sockaddr_port_set(struct sockaddr *sa, uint16_t port)
 char *sockaddr_hostname(void)
 {
 	/* Fetch hostname. */
-	char host[KNOT_DNAME_MAXLEN + 1] = { '\0' };
+	char host[256] = "";
 	if (gethostname(host, sizeof(host)) != 0) {
 		return NULL;
 	}

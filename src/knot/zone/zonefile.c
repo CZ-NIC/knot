@@ -54,7 +54,7 @@ static bool handle_err(zcreator_t *zc, const knot_rrset_t *rr, int ret, bool mas
 {
 	const knot_dname_t *zname = zc->z->apex->owner;
 
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t buff;
 	char *owner = knot_dname_to_str(buff, rr->owner, sizeof(buff));
 	if (owner == NULL) {
 		owner = "";
@@ -337,16 +337,18 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 		handler->warning = true;
 	}
 
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1] = "";
+	knot_dname_txt_storage_t owner;
 	if (node != NULL) {
-		(void)knot_dname_to_str(buff, node->owner, sizeof(buff));
+		if (knot_dname_to_str(owner, node->owner, sizeof(owner)) == NULL) {
+			owner[0] = '\0';
+		}
 	}
 
 	log_fmt_zone(handler->fatal_error ? LOG_ERR : LOG_WARNING,
 	             LOG_SOURCE_ZONE, zone->apex->owner, NULL,
 	             "check%s%s, %s%s%s",
 	             (node != NULL ? ", node " : ""),
-	             (node != NULL ? buff      : ""),
+	             (node != NULL ? owner     : ""),
 	             sem_error_msg(error),
 	             (data != NULL ? " "  : ""),
 	             (data != NULL ? data : ""));

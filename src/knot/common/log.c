@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -349,7 +349,7 @@ void log_fmt(int priority, log_source_t src, const char *fmt, ...)
 void log_fmt_zone(int priority, log_source_t src, const knot_dname_t *zone,
                   const char *param, const char *fmt, ...)
 {
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t buff;
 	char *zone_str = knot_dname_to_str(buff, zone, sizeof(buff));
 	if (zone_str == NULL) {
 		zone_str = NULL_ZONE_STR;

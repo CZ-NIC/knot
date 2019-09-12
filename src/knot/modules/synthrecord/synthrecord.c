@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -254,7 +254,7 @@ static int addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl, char *a
 static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
                                    const synth_template_t *tpl, int addr_family)
 {
-	char ptrname[KNOT_DNAME_TXT_MAXLEN];
+	knot_dname_txt_storage_t ptrname;
 	int addr_len = strlen(addr_str);
 	const char sep = str_separator(addr_family);
 
