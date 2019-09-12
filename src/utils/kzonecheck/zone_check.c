@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,12 +35,15 @@ static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
 	assert(zone != NULL);
 	err_handler_stats_t *stats = (err_handler_stats_t *)handler;
 
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1] = "";
-	(void)knot_dname_to_str(buff, (node != NULL ? node->owner : zone->apex->owner),
-	                        sizeof(buff));
+	knot_dname_txt_storage_t buff;
+	char *owner = knot_dname_to_str(buff, (node != NULL ? node->owner : zone->apex->owner),
+	                                sizeof(buff));
+	if (owner == NULL) {
+		owner = "";
+	}
 
 	fprintf(stats->outfile, "[%s] %s%s%s\n",
-	        buff, sem_error_msg(error),
+	        owner, sem_error_msg(error),
 	        (data != NULL ? " "  : ""),
 	        (data != NULL ? data : ""));
 

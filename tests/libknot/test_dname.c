@@ -29,7 +29,7 @@ static int test_fw(size_t l, const char *w) {
 /* Test dname to/from string operations */
 static void test_str(const char *in_str, const char *in_bin, size_t bin_len) {
 	uint8_t      d1[KNOT_DNAME_MAXLEN] = "";
-	char         s1[4 * KNOT_DNAME_MAXLEN] = "";
+	knot_dname_txt_storage_t s1;
 	knot_dname_t *d2 = NULL, *aux_d = NULL;
 	char         *s2 = NULL, *aux_s = NULL;
 	int          ret = 0;

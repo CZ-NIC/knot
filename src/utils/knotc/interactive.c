@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ static void local_zones_lookup(EditLine *el, const char *str, size_t str_len)
 		return;
 	}
 
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t buff;
 
 	// Fill the lookup with local zone names.
 	for (conf_iter_t iter = conf_iter(conf(), C_ZONE);
