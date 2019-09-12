@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -525,7 +525,7 @@ static int parse_header(const uint8_t *wire, size_t *pos, size_t pkt_size,
 		return KNOT_EMALF;
 	}
 
-	uint8_t buff[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t buff;
 	int decompr_size = knot_dname_unpack(buff, src.position, sizeof(buff), wire);
 	if (decompr_size <= 0) {
 		return KNOT_EMALF;

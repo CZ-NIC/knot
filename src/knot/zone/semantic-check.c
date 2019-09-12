@@ -494,7 +494,7 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 			}
 
 			// check if covered by wildcard
-			knot_dname_t wildcard[KNOT_DNAME_MAXLEN] = "\x1""*";
+			knot_dname_storage_t wildcard = "\x01""*";
 			knot_dname_to_wire(wildcard + 2, glue_encloser->owner,
 			                   sizeof(wildcard) - 2);
 			glue_node = zone_contents_find_node(data->zone, wildcard);
@@ -1008,7 +1008,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	const zone_node_t *apex = data->zone->apex;
 	const uint8_t *next_dname_str = knot_nsec3_next(nsec3_rrs.rrs.rdata);
 	uint8_t next_dname_str_size = knot_nsec3_next_len(nsec3_rrs.rrs.rdata);
-	uint8_t next_dname[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t next_dname;
 	ret = knot_nsec3_hash_to_dname(next_dname, sizeof(next_dname),
 	                               next_dname_str, next_dname_str_size,
 	                               apex->owner);

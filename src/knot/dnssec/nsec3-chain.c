@@ -242,7 +242,7 @@ static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
 	assert(apex);
 	assert(params);
 
-	uint8_t nsec3_owner[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t nsec3_owner;
 	int ret = knot_create_nsec3_owner(nsec3_owner, sizeof(nsec3_owner),
 	                                  node->owner, apex->owner, params);
 	if (ret != KNOT_EOK) {
@@ -491,7 +491,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		return KNOT_ENORECORD;
 	}
 
-	uint8_t for_node_hashed[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t for_node_hashed;
 	int ret = knot_create_nsec3_owner(for_node_hashed, sizeof(for_node_hashed),
 	                                  for_node, update->new_cont->apex->owner, params);
 	if (ret != KNOT_EOK) {

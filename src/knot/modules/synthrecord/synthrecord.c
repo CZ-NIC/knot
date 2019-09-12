@@ -280,7 +280,7 @@ static int reverse_rr(char *addr_str, const synth_template_t *tpl, knot_pkt_t *p
                       knot_rrset_t *rr, int addr_family)
 {
 	// Synthetize PTR record data.
-	uint8_t ptrname[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t ptrname;
 	if (synth_ptrname(ptrname, addr_str, tpl, addr_family) == NULL) {
 		return KNOT_EINVAL;
 	}
