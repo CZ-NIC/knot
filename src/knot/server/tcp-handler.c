@@ -120,7 +120,7 @@ static void tcp_log_error(struct sockaddr_storage ss, const char *operation, int
  *
  * \param  ifaces    Interface list.
  * \param  fds       File descriptor set.
- * \param  thread_id Thread ID used for geting an ID.	TODO: currently unused.
+ * \param  thread_id Thread ID used for geting an ID.
  *
  * \return Number of watched descriptors.
  */
@@ -131,7 +131,12 @@ static unsigned tcp_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id
 	fdset_clear(fds);
 	iface_t *i = NULL;
 	WALK_LIST(i, *ifaces) {
-		fdset_add(fds, i->fd_tcp, POLLIN, NULL);
+#ifdef ENABLE_REUSEPORT
+		int tcp_id = thread_id % i->fd_tcp_count;
+#else
+		int tcp_id = 0;
+#endif
+		fdset_add(fds, i->fd_tcp[tcp_id], POLLIN, NULL);
 	}
 
 	return fds->n;
