@@ -372,7 +372,7 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 		return KNOT_ENSEC3PAR;
 	}
 
-	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t nsec3_name;
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name),
 	                                  name, zone->apex->owner, &zone->nsec3_params);
 	if (ret != KNOT_EOK) {
@@ -425,8 +425,8 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
 		return NULL;
 	}
 
-	knot_dname_t wildcard[KNOT_DNAME_MAXLEN] = { 0x01, '*' };
-	knot_dname_to_wire(wildcard + 2, parent->owner, KNOT_DNAME_MAXLEN - 2);
+	knot_dname_storage_t wildcard = "\x01""*";
+	knot_dname_to_wire(wildcard + 2, parent->owner, sizeof(wildcard) - 2);
 
 	return zone_contents_find_node(contents, wildcard);
 }
