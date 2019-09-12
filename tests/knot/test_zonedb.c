@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	/* Create database. */
-	char buf[KNOT_DNAME_MAXLEN];
+	knot_dname_txt_storage_t buf;
 	const char *prefix = "zzz.";
 	size_t nr_passed = 0;
 	knot_dname_t *dname = NULL;

@@ -159,7 +159,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 
 static int zone_status(zone_t *zone, ctl_args_t *args)
 {
-	char name[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t name;
 	if (knot_dname_to_str(name, zone->name, sizeof(name)) == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -517,8 +517,8 @@ typedef struct {
 	int type_filter; // -1: no specific type, [0, 2^16]: specific type.
 	knot_dump_style_t style;
 	knot_ctl_data_t data;
-	char zone[KNOT_DNAME_TXT_MAXLEN + 1];
-	char owner[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t zone;
+	knot_dname_txt_storage_t owner;
 	char ttl[16];
 	char type[32];
 	char rdata[2 * 65536];
@@ -874,7 +874,7 @@ static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
                         bool need_ttl)
 {
-	char origin_buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t origin_buff;
 	char *origin = knot_dname_to_str(origin_buff, zone->name, sizeof(origin_buff));
 	if (origin == NULL) {
 		return KNOT_EINVAL;
@@ -1239,7 +1239,7 @@ static int modules_stats(list_t *query_modules, ctl_args_t *args, knot_dname_t *
 	const char *section = args->data[KNOT_CTL_IDX_SECTION];
 	const char *item = args->data[KNOT_CTL_IDX_ITEM];
 
-	char name[KNOT_DNAME_TXT_MAXLEN + 1] = { 0 };
+	knot_dname_txt_storage_t name = "";
 	knot_ctl_data_t data = { 0 };
 
 	bool section_found = (section == NULL) ? true : false;
@@ -1575,7 +1575,7 @@ static int send_block(conf_io_t *io)
 	default: break;
 	}
 
-	char id[KNOT_DNAME_TXT_MAXLEN + 1] = "\0";
+	knot_dname_txt_storage_t id;
 
 	// Get the textual item id.
 	if (io->id_len > 0 && io->key0 != NULL) {

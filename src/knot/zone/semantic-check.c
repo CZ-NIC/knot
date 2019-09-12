@@ -727,7 +727,7 @@ static void bitmap_add_all_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
 
 static char *nsec3_info(const knot_dname_t *owner, char *out, size_t out_len)
 {
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t buff;
 	char *str = knot_dname_to_str(buff, owner, sizeof(buff));
 	if (str == NULL) {
 		return NULL;

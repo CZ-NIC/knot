@@ -31,7 +31,7 @@
 
 char *format_key(conf_io_t *io)
 {
-	char id[KNOT_DNAME_TXT_MAXLEN + 1] = "\0";
+	knot_dname_txt_storage_t id;
 	size_t id_len = sizeof(id);
 
 	// Get the textual item id.

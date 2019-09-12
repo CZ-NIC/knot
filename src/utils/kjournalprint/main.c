@@ -215,9 +215,12 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 
 static int list_zone(const knot_dname_t *zone, void *ctx)
 {
-	char zone_str[KNOT_DNAME_TXT_MAXLEN + 1];
 	(void)ctx;
-	printf("%s\n", knot_dname_to_str(zone_str, zone, sizeof(zone_str)));
+	knot_dname_txt_storage_t zone_str;
+	if (knot_dname_to_str(zone_str, zone, sizeof(zone_str)) == NULL) {
+		return KNOT_EINVAL;
+	}
+	printf("%s\n", zone_str);
 	return KNOT_EOK;
 }
 
