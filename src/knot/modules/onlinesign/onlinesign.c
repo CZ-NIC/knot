@@ -344,7 +344,7 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 
 		uint16_t rr_pos = knot_pkt_rr_offset(section, i);
 
-		uint8_t owner[KNOT_DNAME_MAXLEN] = { 0 };
+		knot_dname_storage_t owner;
 		knot_dname_unpack(owner, pkt->wire + rr_pos, sizeof(owner), pkt->wire);
 		knot_dname_to_lower(owner);
 

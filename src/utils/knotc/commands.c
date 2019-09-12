@@ -517,7 +517,7 @@ static int zone_exec(cmd_args_t *args, int (*fcn)(const knot_dname_t *, void *),
 
 	// Process specified zones.
 	if (args->argc > 0) {
-		uint8_t id[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t id;
 
 		for (int i = 0; i < args->argc; i++) {
 			if (knot_dname_from_str(id, args->argv[i], sizeof(id)) == NULL) {

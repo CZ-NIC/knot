@@ -108,8 +108,7 @@ static int get_zone(ctl_args_t *args, zone_t **zone)
 	const char *name = args->data[KNOT_CTL_IDX_ZONE];
 	assert(name != NULL);
 
-	uint8_t buff[KNOT_DNAME_MAXLEN];
-
+	knot_dname_storage_t buff;
 	knot_dname_t *dname = knot_dname_from_str(buff, name, sizeof(buff));
 	if (dname == NULL) {
 		return KNOT_EINVAL;
@@ -682,7 +681,7 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 	}
 
 	if (args->data[KNOT_CTL_IDX_OWNER] != NULL) {
-		uint8_t owner[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t owner;
 
 		ret = get_owner(owner, sizeof(owner), zone->name, args);
 		if (ret != KNOT_EOK) {
@@ -723,7 +722,7 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 	ctx->data[KNOT_CTL_IDX_FLAGS] = flag;
 
 	if (args->data[KNOT_CTL_IDX_OWNER] != NULL) {
-		uint8_t owner[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t owner;
 
 		ret = get_owner(owner, sizeof(owner), zone->name, args);
 		if (ret != KNOT_EOK) {
@@ -849,7 +848,7 @@ static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
 
 static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 {
-	uint8_t owner[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t owner;
 
 	int ret = get_owner(owner, sizeof(owner), zone->name, args);
 	if (ret != KNOT_EOK) {
@@ -999,7 +998,7 @@ static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 		knot_rrset_free(rrset, NULL);
 		return ret;
 	} else {
-		uint8_t owner[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t owner;
 
 		int ret = get_owner(owner, sizeof(owner), zone->name, args);
 		if (ret != KNOT_EOK) {
@@ -1076,7 +1075,7 @@ static int orphans_purge(ctl_args_t *args)
 			                        zone_exists, args->server->zone_db);
 		}
 	} else {
-		uint8_t buff[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t buff;
 		while (true) {
 			knot_dname_t *zone_name =
 				knot_dname_from_str(buff, args->data[KNOT_CTL_IDX_ZONE],

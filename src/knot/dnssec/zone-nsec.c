@@ -40,7 +40,7 @@ int knot_nsec3_hash_to_dname(uint8_t *out, size_t out_size, const uint8_t *hash,
 	}
 
 	// Encode raw hash to the first label.
-	uint8_t label[KNOT_DNAME_MAXLEN];
+	uint8_t label[KNOT_DNAME_MAXLABELLEN];
 	int32_t label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
 	if (label_size <= 0) {
 		return label_size;

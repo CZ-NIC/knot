@@ -490,7 +490,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 	int ret = KNOT_EOK;
 	yp_parser_t *yp = NULL;
 	zs_scanner_t *scanner = NULL;
-	knot_dname_t owner_buff[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t owner_buff;
 	knot_dname_t *owner = NULL;
 	geo_view_t *view = calloc(1, sizeof(geo_view_t));
 	if (view == NULL) {
