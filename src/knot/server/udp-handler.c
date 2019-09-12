@@ -361,9 +361,11 @@ void __attribute__ ((constructor)) udp_master_init(void)
 static int iface_udp_fd(const iface_t *iface, int thread_id)
 {
 #ifdef ENABLE_REUSEPORT
-		return iface->fd_udp[thread_id % iface->fd_udp_count];
+	assert(thread_id < iface->fd_udp_count);
+
+	return iface->fd_udp[thread_id];
 #else
-		return iface->fd_udp[0];
+	return iface->fd_udp[0];
 #endif
 }
 
