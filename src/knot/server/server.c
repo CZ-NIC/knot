@@ -59,9 +59,12 @@ static void server_deinit_iface(iface_t *iface)
 	free(iface->fd_udp);
 
 	/* Free TCP handler. */
-	if (iface->fd_tcp > -1) {
-		close(iface->fd_tcp);
+	for(int i = 0; i < iface->fd_tcp_count; i++) {
+		if (iface->fd_tcp[i] > -1) {
+			close(iface->fd_tcp[i]);
+		}
 	}
+	free(iface->fd_tcp);
 
 	memset(iface, 0, sizeof(*iface));
 }
@@ -183,13 +186,16 @@ static int enable_fastopen(int sock, int backlog)
  *
  * Both TCP and UDP sockets will be created for the interface.
  *
- * \param new_if Allocated memory for the interface.
- * \param cfg_if Interface template from config.
+ * \param new_if            Allocated memory for the interface.
+ * \param addr              Socket address.
+ * \param udp_thread_count  Number of created UDP workers.
+ * \param tcp_thread_count  Number of created TCP workers.
  *
  * \retval 0 if successful (EOK).
  * \retval <0 on errors (EACCES, EINVAL, ENOMEM, EADDRINUSE).
  */
-static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int udp_thread_count)
+static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
+                             int udp_thread_count, int tcp_thread_count)
 {
 	/* Initialize interface. */
 	int ret = 0;
@@ -202,10 +208,14 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 
 	int udp_socket_count = 1;
 	int udp_bind_flags = 0;
+	int tcp_socket_count = 1;
+	int tcp_bind_flags = 0;
 
 #ifdef ENABLE_REUSEPORT
 	udp_socket_count = udp_thread_count;
 	udp_bind_flags |= NET_BIND_MULTIPLE;
+	tcp_socket_count = tcp_thread_count;
+	tcp_bind_flags |= NET_BIND_MULTIPLE;
 #endif
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
@@ -213,17 +223,24 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 		return KNOT_ENOMEM;
 	}
 
+	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
+	if (!new_if->fd_tcp) {
+		return KNOT_ENOMEM;
+	}
+
 	/* Initialize the sockets to ensure safe early deinitialization. */
 	for (int i = 0; i < udp_socket_count; i++) {
 		new_if->fd_udp[i] = -1;
 	}
-	new_if->fd_tcp = -1;
+	for (int i = 0; i < tcp_socket_count; i++) {
+		new_if->fd_tcp[i] = -1;
+	}
 
 	bool warn_bind = false;
 	bool warn_bufsize = false;
 
 	/* Create bound UDP sockets. */
-	for (int i = 0; i < udp_socket_count; i++ ) {
+	for (int i = 0; i < udp_socket_count; i++) {
 		int sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, udp_bind_flags);
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			udp_bind_flags |= NET_BIND_NONLOCAL;
@@ -261,43 +278,45 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr, int
 		new_if->fd_udp_count += 1;
 	}
 
-	/* Create bound TCP socket. */
-	int tcp_bind_flags = 0;
-	int sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
-	if (sock == KNOT_EADDRNOTAVAIL) {
-		tcp_bind_flags |= NET_BIND_NONLOCAL;
-		sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
-		if (sock >= 0) {
-			log_warning("address %s TCP bound, but required nonlocal bind", addr_str);
+	/* Create bound TCP sockets. */
+	for (int i = 0; i < tcp_socket_count; i++) {
+		int sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
+		if (sock == KNOT_EADDRNOTAVAIL) {
+			tcp_bind_flags |= NET_BIND_NONLOCAL;
+			sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
+			if (sock >= 0) {
+				log_warning("address %s TCP bound, but required nonlocal bind", addr_str);
+			}
 		}
-	}
 
-	if (sock < 0) {
-		log_error("cannot bind address %s (%s)", addr_str,
-		          knot_strerror(sock));
-		server_deinit_iface(new_if);
-		return sock;
-	}
+		if (sock < 0) {
+			log_error("cannot bind address %s (%s)", addr_str,
+				  knot_strerror(sock));
+			server_deinit_iface(new_if);
+			return sock;
+		}
 
-	if (!enlarge_net_buffers(sock, TCP_MIN_RCVSIZE, TCP_MIN_SNDSIZE)) {
-		log_warning("failed to set network buffer sizes for TCP");
-	}
+		if (!enlarge_net_buffers(sock, TCP_MIN_RCVSIZE, TCP_MIN_SNDSIZE)) {
+			log_warning("failed to set network buffer sizes for TCP");
+		}
 
-	new_if->fd_tcp = sock;
+		new_if->fd_tcp[new_if->fd_tcp_count] = sock;
+		new_if->fd_tcp_count += 1;
 
-	/* Listen for incoming connections. */
-	ret = listen(sock, TCP_BACKLOG_SIZE);
-	if (ret < 0) {
-		log_error("failed to listen on TCP interface %s", addr_str);
-		server_deinit_iface(new_if);
-		return KNOT_ERROR;
-	}
+		/* Listen for incoming connections. */
+		ret = listen(sock, TCP_BACKLOG_SIZE);
+		if (ret < 0) {
+			log_error("failed to listen on TCP interface %s", addr_str);
+			server_deinit_iface(new_if);
+			return KNOT_ERROR;
+		}
 
-	/* TCP Fast Open. */
-	ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
-	if (ret < 0) {
-		log_warning("failed to enable TCP Fast Open on %s (%s)",
-		            addr_str, knot_strerror(ret));
+		/* TCP Fast Open. */
+		ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
+		if (ret < 0) {
+			log_warning("failed to enable TCP Fast Open on %s (%s)",
+			            addr_str, knot_strerror(ret));
+		}
 	}
 
 	return KNOT_EOK;
@@ -333,8 +352,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 		/* Create new interface. */
 		iface_t *m = malloc(sizeof(iface_t));
-		unsigned size = s->handlers[IO_UDP].handler.unit->size;
-		if (server_init_iface(m, &addr, size) >= 0) {
+		unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
+		unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
+		if (server_init_iface(m, &addr, size_udp, size_tcp) >= 0) {
 			/* Move to new list. */
 			add_tail(newlist, (node_t *)m);
 			++bound;
