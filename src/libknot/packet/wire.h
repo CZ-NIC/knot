@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -349,6 +349,7 @@ static inline uint8_t knot_wire_get_tc(const uint8_t *packet)
  */
 static inline void knot_wire_set_tc(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) |= KNOT_WIRE_TC_MASK;
 }
 
