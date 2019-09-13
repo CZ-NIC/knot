@@ -187,21 +187,24 @@ int main(int argc, char *argv[])
 	char *keyidX;
 	ret = kasp_db_get_policy_last(db, "policy1", &zoneX, &keyidX);
 	is_int(KNOT_EOK, ret, "kasp_db: get policylast");
-	is_int(0, knot_dname_cmp(zoneX, zone1) | strcmp(keyidX, params1.id), "kasp_db: policy last preserved");
+	ok(knot_dname_cmp(zoneX, zone1) == 0 && keyidX != NULL &&
+	   strcmp(keyidX, params1.id) == 0, "kasp_db: policy last preserved");
 	free(zoneX);
 	free(keyidX);
 	ret = kasp_db_set_policy_last(db, "policy1", params1.id, zone2, params2.id);
 	is_int(KNOT_EOK, ret, "kasp_db: reset policylast");
 	ret = kasp_db_get_policy_last(db, "policy1", &zoneX, &keyidX);
 	is_int(KNOT_EOK, ret, "kasp_db: reget policylast");
-	is_int(0, knot_dname_cmp(zoneX, zone2) | strcmp(keyidX, params2.id), "kasp_db: policy last represerved");
+	ok(knot_dname_cmp(zoneX, zone2) == 0 && keyidX != NULL &&
+	   strcmp(keyidX, params2.id) == 0, "kasp_db: policy last represerved");
 	free(zoneX);
 	free(keyidX);
 	ret = kasp_db_set_policy_last(db, "policy1", params1.id, zone1, params1.id);
 	is_int(KNOT_ESEMCHECK, ret, "kasp_db: refused policylast with wrong keyid");
 	ret = kasp_db_get_policy_last(db, "policy1", &zoneX, &keyidX);
 	is_int(KNOT_EOK, ret, "kasp_db: reget policylast2");
-	is_int(0, knot_dname_cmp(zoneX, zone2) | strcmp(keyidX, params2.id), "kasp_db: policy last represerved2");
+	ok(knot_dname_cmp(zoneX, zone2) == 0 && keyidX != NULL &&
+	   strcmp(keyidX, params2.id) == 0, "kasp_db: policy last represerved2");
 	free(zoneX);
 	free(keyidX);
 
