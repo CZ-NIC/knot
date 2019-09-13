@@ -332,14 +332,14 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		log_info("binding to interface %s", addr_str);
 
 		/* Create new interface. */
-		iface_t *m = malloc(sizeof(iface_t));
+		iface_t *iface = malloc(sizeof(iface_t));
 		unsigned size = s->handlers[IO_UDP].handler.unit->size;
-		if (server_init_iface(m, &addr, size) >= 0) {
+		if (server_init_iface(iface, &addr, size) >= 0) {
 			/* Move to new list. */
-			add_tail(newlist, (node_t *)m);
+			add_tail(newlist, (node_t *)iface);
 			++bound;
 		} else {
-			free(m);
+			free(iface);
 		}
 
 		conf_val_next(&listen_val);
@@ -596,51 +596,42 @@ static int reload_conf(conf_t *new_conf)
 /*! \brief Check if parameter listen has been changed since knotd started. */
 static bool listen_changed(conf_t *conf, server_t *server)
 {
-	assert (server->ifaces);
-
-	bool found_match = true;	/* Beware of an empty list. */
-	list_t iface_list;
-	init_list(&iface_list);
-
-	/* Duplicate current list. */
-	/*! \note Pointers to addr, handlers etc. will be shared. */
-	list_dup(&iface_list, server->ifaces, sizeof(iface_t));
+	assert(server->ifaces);
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	size_t new_count = conf_val_count(&listen_val);
+	size_t old_count = list_size(server->ifaces);
+	if (new_count != old_count) {
+		return true;
+	}
+
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
-	/* Walk the new listen parameters. */
-	while (listen_val.code == KNOT_EOK) {
-		iface_t *m;
+	size_t matches = 0;
 
-		/* Find already matching interface. */
-		found_match = false;
+	/* Find matching interfaces. */
+	while (listen_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
-		WALK_LIST(m, iface_list) {
-			/* Matching port and address. */
+		bool found = false;
+		iface_t *iface = NULL;
+		WALK_LIST(iface, *server->ifaces) {
 			if (sockaddr_cmp((struct sockaddr *)&addr,
-			                 (struct sockaddr *)&m->addr) == 0) {
-				found_match = true;
-				rem_node((node_t *)m);
-				free(m);
+			                 (struct sockaddr *)&iface->addr) == 0) {
+				matches++;
+				found = true;
 				break;
 			}
 		}
 
-		if (!found_match) {
+		if (!found) {
 			break;
 		}
 		conf_val_next(&listen_val);
 	}
 
 	free(rundir);
-	/* If there are some bound interfaces left, then 'listen' must have changed. */
-	if (found_match && EMPTY_LIST(iface_list)) {
-		return false;
-	} else {
-		ptrlist_free(&iface_list, NULL);
-		return true;
-	}
+
+	return matches != old_count;
 }
 
 /*! \brief Log warnings if config change requires a restart. */
