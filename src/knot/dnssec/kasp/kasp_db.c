@@ -376,7 +376,9 @@ int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
 	free(k.mv_data);
 	if (txn.ret != KNOT_EOK) {
 		free(*lp_zone);
+		*lp_zone = NULL;
 		free(*lp_keyid);
+		*lp_keyid = NULL;
 	}
 	return txn.ret;
 }
@@ -392,7 +394,7 @@ int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const
 		uint8_t unuse1, *unuse2;
 		const char *real_last_keyid;
 		if (knot_lmdb_unmake_curval(&txn, "BNS", &unuse1, &unuse2, &real_last_keyid) &&
-		    strcmp(last_lp_keyid, real_last_keyid) != 0) {
+		    last_lp_keyid != NULL && strcmp(last_lp_keyid, real_last_keyid) != 0) {
 			txn.ret = KNOT_ESEMCHECK;
 		}
 	}

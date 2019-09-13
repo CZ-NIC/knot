@@ -141,6 +141,9 @@ static void kaspkey2params(knot_kasp_key_t *key, key_params_t *params)
 static void detect_keytag_conflict(knot_kasp_zone_t *zone, bool *kt_cfl)
 {
 	*kt_cfl = false;
+	if (zone->num_keys == 0) {
+		return;
+	}
 	uint16_t keytags[zone->num_keys];
 	for (size_t i = 0; i < zone->num_keys; i++) {
 		keytags[i] = dnssec_key_get_keytag(zone->keys[i].key);
@@ -159,7 +162,7 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
                    bool *kt_cfl)
 {
 	if (zone == NULL || zone_name == NULL || kdb == NULL) {
-	return KNOT_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	knot_kasp_key_t *dkeys = NULL;

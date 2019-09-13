@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 	ptrlist_deep_free(&l, NULL);
 
 	dnssec_binary_t salt1 = { 500, (uint8_t *)CHARS500_1 }, salt2 = { 0 };
-	knot_time_t time;
+	knot_time_t time = 0;
 	ret = kasp_db_store_nsec3salt(db, zone1, &salt1, 1234);
 	is_int(KNOT_EOK, ret, "kasp_db: store nsec3salt");
 	ret = kasp_db_load_nsec3salt(db, zone1, &salt2, &time);
@@ -162,6 +162,7 @@ int main(int argc, char *argv[])
 	is_int(KNOT_ENOENT, ret, "kasp_db: delete all deleted keys");
 	ret = kasp_db_load_nsec3salt(db, zone2, &salt2, &time);
 	is_int(KNOT_ENOENT, ret, "kasp_db: delete all removed nsec3salt");
+	dnssec_binary_free(&salt2);
 
 	ret = kasp_db_store_serial(db, zone2, KASPDB_SERIAL_MASTER, 1);
 	is_int(KNOT_EOK, ret, "kasp_db: store master_serial");
@@ -186,21 +187,24 @@ int main(int argc, char *argv[])
 	char *keyidX;
 	ret = kasp_db_get_policy_last(db, "policy1", &zoneX, &keyidX);
 	is_int(KNOT_EOK, ret, "kasp_db: get policylast");
-	is_int(0, knot_dname_cmp(zoneX, zone1) | strcmp(keyidX, params1.id), "kasp_db: policy last preserved");
+	ok(knot_dname_cmp(zoneX, zone1) == 0 && keyidX != NULL &&
+	   strcmp(keyidX, params1.id) == 0, "kasp_db: policy last preserved");
 	free(zoneX);
 	free(keyidX);
 	ret = kasp_db_set_policy_last(db, "policy1", params1.id, zone2, params2.id);
 	is_int(KNOT_EOK, ret, "kasp_db: reset policylast");
 	ret = kasp_db_get_policy_last(db, "policy1", &zoneX, &keyidX);
 	is_int(KNOT_EOK, ret, "kasp_db: reget policylast");
-	is_int(0, knot_dname_cmp(zoneX, zone2) | strcmp(keyidX, params2.id), "kasp_db: policy last represerved");
+	ok(knot_dname_cmp(zoneX, zone2) == 0 && keyidX != NULL &&
+	   strcmp(keyidX, params2.id) == 0, "kasp_db: policy last represerved");
 	free(zoneX);
 	free(keyidX);
 	ret = kasp_db_set_policy_last(db, "policy1", params1.id, zone1, params1.id);
 	is_int(KNOT_ESEMCHECK, ret, "kasp_db: refused policylast with wrong keyid");
 	ret = kasp_db_get_policy_last(db, "policy1", &zoneX, &keyidX);
 	is_int(KNOT_EOK, ret, "kasp_db: reget policylast2");
-	is_int(0, knot_dname_cmp(zoneX, zone2) | strcmp(keyidX, params2.id), "kasp_db: policy last represerved2");
+	ok(knot_dname_cmp(zoneX, zone2) == 0 && keyidX != NULL &&
+	   strcmp(keyidX, params2.id) == 0, "kasp_db: policy last represerved2");
 	free(zoneX);
 	free(keyidX);
 
@@ -226,4 +230,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-

@@ -256,8 +256,6 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 		stats += mod->stats_count;
 	}
 
-	mod->stats_count++;
-
 	if (idx_count == 1) {
 		stats->counter = 0;
 	} else {
@@ -271,6 +269,8 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 	}
 	stats->name = ctr_name;
 	stats->count = idx_count;
+
+	mod->stats_count++;
 
 	return KNOT_EOK;
 }
