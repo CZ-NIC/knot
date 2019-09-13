@@ -90,9 +90,6 @@ int main(int argc, char *argv[])
 	int ret = knot_lmdb_open(db);
 	is_int(KNOT_EOK, ret, "kasp_db: open eok");
 	ok(db->env != NULL, "kasp_db: lmdb env notnull");
-	if (db->env == NULL) {
-		goto fatal;
-	}
 
 	ret = kasp_db_add_key(db, zone1, &params1);
 	is_int(KNOT_EOK, ret, "kasp_db: add key 1 eok");
@@ -142,7 +139,7 @@ int main(int argc, char *argv[])
 	ptrlist_deep_free(&l, NULL);
 
 	dnssec_binary_t salt1 = { 500, (uint8_t *)CHARS500_1 }, salt2 = { 0 };
-	knot_time_t time;
+	knot_time_t time = 0;
 	ret = kasp_db_store_nsec3salt(db, zone1, &salt1, 1234);
 	is_int(KNOT_EOK, ret, "kasp_db: store nsec3salt");
 	ret = kasp_db_load_nsec3salt(db, zone1, &salt2, &time);
@@ -165,6 +162,7 @@ int main(int argc, char *argv[])
 	is_int(KNOT_ENOENT, ret, "kasp_db: delete all deleted keys");
 	ret = kasp_db_load_nsec3salt(db, zone2, &salt2, &time);
 	is_int(KNOT_ENOENT, ret, "kasp_db: delete all removed nsec3salt");
+	dnssec_binary_free(&salt2);
 
 	ret = kasp_db_store_serial(db, zone2, KASPDB_SERIAL_MASTER, 1);
 	is_int(KNOT_EOK, ret, "kasp_db: store master_serial");
@@ -224,7 +222,6 @@ int main(int argc, char *argv[])
 
 	knot_lmdb_deinit(db);
 
-fatal:
 	test_rm_rf(test_dir_name);
 	free(test_dir_name);
 
