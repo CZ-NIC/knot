@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -282,7 +282,7 @@ static uint8_t *find_data(
 
 		// Check for the same data.
 		if (len == value->len &&
-		    memcmp(ctx.position, value->data, value->len) == 0) {
+		    (len == 0 || memcmp(ctx.position, value->data, value->len) == 0)) {
 			wire_ctx_skip(&ctx, -sizeof(uint16_t));
 			assert(ctx.error == KNOT_EOK);
 			return ctx.position;
