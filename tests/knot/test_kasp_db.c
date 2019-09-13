@@ -90,6 +90,9 @@ int main(int argc, char *argv[])
 	int ret = knot_lmdb_open(db);
 	is_int(KNOT_EOK, ret, "kasp_db: open eok");
 	ok(db->env != NULL, "kasp_db: lmdb env notnull");
+	if (db->env == NULL) {
+		goto fatal;
+	}
 
 	ret = kasp_db_add_key(db, zone1, &params1);
 	is_int(KNOT_EOK, ret, "kasp_db: add key 1 eok");
@@ -221,9 +224,9 @@ int main(int argc, char *argv[])
 
 	knot_lmdb_deinit(db);
 
+fatal:
 	test_rm_rf(test_dir_name);
 	free(test_dir_name);
 
 	return 0;
 }
-

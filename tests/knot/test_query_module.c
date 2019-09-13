@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,9 @@ int main(int argc, char *argv[])
 	/* Prepare query plan. */
 	struct query_plan *plan = query_plan_create();
 	ok(plan != NULL, "query_plan: create");
+	if (plan == NULL) {
+		goto fatal;
+	}
 
 	/* Register all stage visits. */
 	int ret = KNOT_EOK;
@@ -76,6 +79,7 @@ int main(int argc, char *argv[])
 	}
 	ok(state == KNOTD_STAGES, "query_plan: executed all callbacks");
 
+fatal:
 	/* Free the query plan. */
 	query_plan_free(plan);
 
