@@ -645,11 +645,10 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 			fqdn = true;
 		}
 
-		knot_dname_t *dname = knot_dname_from_str(out, owner, out_len);
-		if (dname == NULL) {
+		if (knot_dname_from_str(out, owner, out_len) == NULL) {
 			return KNOT_EINVAL;
 		}
-		knot_dname_to_lower(dname);
+		knot_dname_to_lower(out);
 
 		prefix_len = knot_dname_size(out);
 		if (prefix_len == 0) {

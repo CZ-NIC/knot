@@ -859,6 +859,8 @@ static int str_char(
 	unsigned index1,
 	unsigned index2)
 {
+	assert(buff);
+
 	if (knot_dname_to_str(buff, zone, buff_len) == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -894,6 +896,8 @@ static int str_zone(
 	char *buff,
 	size_t buff_len)
 {
+	assert(buff);
+
 	if (knot_dname_to_str(buff, zone, buff_len) == NULL) {
 		return KNOT_EINVAL;
 	}

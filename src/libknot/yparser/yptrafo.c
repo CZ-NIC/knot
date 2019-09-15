@@ -688,9 +688,7 @@ int yp_dname_to_bin(
 	}
 
 	// Convert the dname.
-	knot_dname_t *dname = knot_dname_from_str(out->position, buf,
-	                                          wire_ctx_available(out));
-	if (dname == NULL) {
+	if (knot_dname_from_str(out->position, buf, wire_ctx_available(out)) == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -716,9 +714,8 @@ int yp_dname_to_txt(
 {
 	YP_CHECK_PARAMS_TXT;
 
-	char *name = knot_dname_to_str((char *)out->position, in->position,
-	                               wire_ctx_available(out));
-	if (name == NULL) {
+	if (knot_dname_to_str((char *)out->position, in->position,
+	                      wire_ctx_available(out)) == NULL) {
 		return KNOT_EINVAL;
 	}
 
