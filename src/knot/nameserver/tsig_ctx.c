@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "knot/nameserver/tsig_ctx.h"
+#include "contrib/string.h"
 #include "libknot/libknot.h"
 
 /*!
@@ -30,7 +31,7 @@ void tsig_init(tsig_ctx_t *ctx, const knot_tsig_key_t *key)
 		return;
 	}
 
-	memset(ctx, 0, sizeof(*ctx));
+	memzero(ctx, sizeof(*ctx));
 	ctx->key = key;
 }
 
@@ -41,7 +42,7 @@ void tsig_cleanup(tsig_ctx_t *ctx)
 	}
 
 	free(ctx->buffer);
-	memset(ctx, 0, sizeof(*ctx));
+	memzero(ctx, sizeof(*ctx));
 }
 
 void tsig_reset(tsig_ctx_t *ctx)
