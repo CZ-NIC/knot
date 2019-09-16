@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+#include "contrib/string.h"
 #include "contrib/ucw/mempool.h"
 #include "contrib/wire_ctx.h"
 
@@ -127,7 +128,7 @@ static void reset_buffers(knot_ctl_t *ctx)
 static void clean_data(knot_ctl_t *ctx)
 {
 	mp_flush(ctx->mm.ctx);
-	memset(ctx->data, 0, sizeof(ctx->data));
+	memzero(ctx->data, sizeof(ctx->data));
 }
 
 static void close_sock(int *sock)
@@ -143,11 +144,10 @@ static void close_sock(int *sock)
 _public_
 knot_ctl_t* knot_ctl_alloc(void)
 {
-	knot_ctl_t *ctx = malloc(sizeof(*ctx));
+	knot_ctl_t *ctx = calloc(1, sizeof(*ctx));
 	if (ctx == NULL) {
 		return NULL;
 	}
-	memset(ctx, 0, sizeof(*ctx));
 
 	mm_ctx_mempool(&ctx->mm, MM_DEFAULT_BLKSIZE);
 	ctx->timeout = DEFAULT_TIMEOUT;
@@ -173,7 +173,7 @@ void knot_ctl_free(knot_ctl_t *ctx)
 
 	mp_delete(ctx->mm.ctx);
 
-	memset(ctx, 0, sizeof(*ctx));
+	memzero(ctx, sizeof(*ctx));
 	free(ctx);
 }
 
