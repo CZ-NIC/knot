@@ -16,7 +16,6 @@
 
 #include <assert.h>
 #include <stdbool.h>
-#include <time.h>
 
 #include "libknot/attribute.h"
 #include "libknot/cookies.h"
@@ -30,7 +29,8 @@ _public_
 int knot_edns_cookie_client_generate(knot_edns_cookie_t *out,
                                      const knot_edns_cookie_params_t *params)
 {
-	if (out == NULL || params == NULL || params->server_addr == NULL) {
+	if (out == NULL || params == NULL || params->version != KNOT_EDNS_COOKIE_VERSION ||
+	    params->server_addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -39,7 +39,8 @@ int knot_edns_cookie_client_generate(knot_edns_cookie_t *out,
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)params->secret);
 
 	size_t addr_len = 0;
-	void *addr = sockaddr_raw(params->server_addr, &addr_len);
+	void *addr = sockaddr_raw((const struct sockaddr *)params->server_addr, &addr_len);
+	assert(addr);
 	SipHash24_Update(&ctx, addr, addr_len);
 
 	uint64_t hash = SipHash24_End(&ctx);
@@ -78,17 +79,18 @@ int knot_edns_cookie_server_generate(knot_edns_cookie_t *out,
                                      const knot_edns_cookie_params_t *params)
 {
 	if (out == NULL || cc == NULL || cc->len != KNOT_EDNS_COOKIE_CLNT_SIZE ||
-	    params == NULL || params->client_addr == NULL) {
+	    params == NULL || params->version != KNOT_EDNS_COOKIE_VERSION ||
+	    params->client_addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	out->data[0] = KNOT_EDNS_COOKIE_VERSION;
+	out->data[0] = params->version;
 	out->data[1] = 0; /* reserved */
 	out->data[2] = 0; /* reserved */
 	out->data[3] = 0; /* reserved */
 	out->len = 4;
 
-	uint32_t now = htobe32((uint32_t)time(NULL));
+	uint32_t now = htobe32(params->timestamp);
 	memcpy(&out->data[out->len], &now, sizeof(now));
 	out->len += sizeof(now);
 
@@ -100,7 +102,8 @@ int knot_edns_cookie_server_generate(knot_edns_cookie_t *out,
 	SipHash24_Update(&ctx, out->data, out->len);
 
 	size_t addr_len = 0;
-	void *addr = sockaddr_raw(params->client_addr, &addr_len);
+	void *addr = sockaddr_raw((const struct sockaddr *)params->client_addr, &addr_len);
+	assert(addr);
 	SipHash24_Update(&ctx, addr, addr_len);
 
 	uint64_t hash = SipHash24_End(&ctx);
@@ -124,9 +127,8 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
 	memcpy(&cookie_time, &sc->data[4], sizeof(cookie_time));
 	cookie_time = be32toh(cookie_time);
 
-	uint32_t now = time(NULL);
-	uint32_t min_time = now - 3600;
-	uint32_t max_time = now + 5;
+	uint32_t min_time = params->timestamp - 3600;
+	uint32_t max_time = params->timestamp + 5;
 	if (cookie_time < min_time || cookie_time > max_time) {
 		return KNOT_EINVAL;
 	}
