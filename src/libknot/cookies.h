@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,8 +38,8 @@
  * \note Server address is not used for the server cookie check.
  */
 typedef struct {
-	const struct sockaddr *client_addr; /*!< Client socket address. */
-	const struct sockaddr *server_addr; /*!< Server socket address. */
+	const struct sockaddr_storage *client_addr; /*!< Client socket address. */
+	const struct sockaddr_storage *server_addr; /*!< Server socket address. */
 	uint8_t secret[KNOT_EDNS_COOKIE_SECRET_SIZE]; /*!< Cookie secret data. */
 } knot_edns_cookie_params_t;
 
