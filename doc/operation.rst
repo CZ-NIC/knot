@@ -360,7 +360,7 @@ If the journal is used to store both zone history and contents, a special change
 is present with zone contents. When the journal gets full, the changes are merged into this
 special changeset.
 
-There is also a :ref:`safety hard limit <template_max-journal-db-size>` for overall
+There is also a :ref:`safety hard limit <database_journal-db-max-size>` for overall
 journal database size, but it's strongly recommended to set the per-zone limits in
 a way to prevent hitting this one. For LMDB, it's hard to recover from the
 database-full state. For wiping one zone's journal, see *knotc zone-purge +journal*
@@ -810,14 +810,14 @@ package on Ubuntu and Debian or by the `lmdb <https://rpms.remirepo.net/rpmphp/z
 package on Fedora, CentOS and RHEL.
 These tools allow you to convert the contents of any LMDB database to a portable plain text format
 which can be imported to any other LMDB database. Note that the `keys` subdirectory of the
-:ref:`template_kasp-db` directory containing the \*.pem files has to be copied separately.
+:ref:`database_kasp-db` directory containing the \*.pem files has to be copied separately.
 
 .. NOTE::
    Make sure to freeze DNSSEC events on a running server prior to applying the following
    commands to its  KASP DB. Use the ``knotc zone-freeze`` and ``knotc zone-thaw`` commands
    as described in :ref:`Editing zone file`.
 
-Use the ``mdb_dump -a`` command with the configured :ref:`template_kasp-db` directory
+Use the ``mdb_dump -a`` command with the configured :ref:`database_kasp-db` directory
 as an argument to convert the contents of the LMDB database to a portable text format:
 
 .. code-block:: console

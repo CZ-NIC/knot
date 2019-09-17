@@ -31,13 +31,11 @@ the following symbols:
 - [ ] – Optional value
 - \| – Choice
 
-There are 12 main sections (``module``, ``server``, ``control``, ``log``,
-``statistics``, ``keystore``, ``policy``, ``key``, ``acl``, ``remote``,
-``template``, and ``zone``) and module sections with the ``mod-`` prefix.
-Most of the sections (excluding ``server``, ``control``, and ``statistics``)
-are sequences of settings blocks. Each settings block begins with a unique identifier,
-which can be used as a reference from other sections (such identifier
-must be defined in advance).
+The configuration consists of several fixed sections (e.g. ``server``) and
+optional module sections, which are prefixed with ``mod-`` (e.g. ``mod-stats``).
+Most of the sections (e.g. ``zone``) are sequences of settings blocks. Each
+settings block begins with a unique identifier, which can be used as a reference
+from other sections (such an identifier must be defined in advance).
 
 A multi-valued item can be specified either as a YAML sequence::
 
@@ -629,6 +627,127 @@ instead of file replacement.
 
 *Default:* off
 
+.. _Database section:
+
+Database section
+================
+
+Configuration of databases for zone contents, DNSSEC metadata, or event timers.
+
+::
+
+ database:
+     storage: STR
+     journal-db: STR
+     journal-db-mode: robust | asynchronous
+     journal-db-max-size: SIZE
+     kasp-db: STR
+     kasp-db-max-size: SIZE
+     timer-db: STR
+     timer-db-max-size: SIZE
+
+.. _database_storage:
+
+storage
+-------
+
+A data directory for storing journal, KASP, and timer databases.
+
+*Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
+
+.. _database_journal-db:
+
+journal-db
+----------
+
+An explicit specification of the persistent journal database directory.
+Non-absolute path is relative to :ref:`storage<database_storage>`.
+
+*Default:* :ref:`storage<database_storage>`/journal
+
+.. _database_journal-db-mode:
+
+journal-db-mode
+---------------
+
+Specifies journal LMDB backend configuration, which influences performance
+and durability.
+
+Possible values:
+
+- ``robust`` – The journal database disk sychronization ensures database
+  durability but is generally slower.
+- ``asynchronous`` – The journal database disk synchronization is optimized for
+  better performance at the expense of lower database durability. This mode is
+  recommended only on slave nodes with many zones.
+
+*Default:* robust
+
+.. _database_journal-db-max-size:
+
+journal-db-max-size
+-------------------
+
+Hard limit for the journal database. There is no cleanup logic in journal
+to recover from reaching this limit. Journal simply starts refusing changes
+across all zones. Decreasing this value has no effect if it is lower than
+the actual database file size.
+
+It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
+per-zone instead of :ref:`journal-db-max-size<database_journal-db-max-size>`
+in most cases. Please keep this value larger than the sum of all zones'
+journal usage limits. See more details regarding
+:ref:`journal behaviour<Journal behaviour>`.
+
+.. NOTE::
+   This value also influences server's usage of virtual memory.
+
+*Default:* 20 GiB (1 GiB for 32-bit)
+
+.. _database_kasp-db:
+
+kasp-db
+-------
+
+An explicit specification of the KASP database directory.
+Non-absolute path is relative to :ref:`storage<database_storage>`.
+
+*Default:* :ref:`storage<database_storage>`/keys
+
+.. _database_kasp-db-max-size:
+
+kasp-db-max-size
+----------------
+
+Hard limit for the KASP database maximum size.
+
+.. NOTE::
+   This value also influences server's usage of virtual memory.
+
+*Default:* 500 MiB
+
+.. _database_timer-db:
+
+timer-db
+--------
+
+An explicit specification of the persistent timer database directory.
+Non-absolute path is relative to :ref:`storage<database_storage>`.
+
+*Default:* :ref:`storage<database_storage>`/timers
+
+.. _database_timer-db-max-size:
+
+timer-db-max-size
+-----------------
+
+Hard limit for the timer database maximum size.
+
+.. NOTE::
+   This value also influences server's usage of virtual memory.
+
+*Default:* 100 MiB
+
 .. _Keystore section:
 
 Keystore section
@@ -671,7 +790,7 @@ config
 ------
 
 A backend specific configuration. A directory with PEM files (the path can
-be specified as a relative path to :ref:`kasp-db<template_kasp-db>`) or
+be specified as a relative path to :ref:`kasp-db<database_kasp-db>`) or
 a configuration string for PKCS #11 storage (`<pkcs11-url> <module-path>`).
 
 .. NOTE::
@@ -679,7 +798,7 @@ a configuration string for PKCS #11 storage (`<pkcs11-url> <module-path>`).
 
      "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
 
-*Default:* :ref:`kasp-db<template_kasp-db>`/keys
+*Default:* :ref:`kasp-db<database_kasp-db>`/keys
 
 .. _Submission section:
 
@@ -1163,22 +1282,15 @@ the communication with the remote server.
 Template section
 ================
 
-A template is a shareable zone setting which can be used for configuration of
-many zones in one place. A special default template (with the *default* identifier)
-can be used for global querying configuration or as an implicit configuration
+A template is shareable zone settings, which can simplify configuration by
+reducing duplicates. A special default template (with the *default* identifier)
+can be used for global zone configuration or as an implicit configuration
 if a zone doesn't have another template specified.
 
 ::
 
  template:
    - id: STR
-     timer-db: STR
-     max-timer-db-size: SIZE
-     journal-db: STR
-     journal-db-mode: robust | asynchronous
-     max-journal-db-size: SIZE
-     kasp-db: STR
-     max-kasp-db-size: SIZE
      global-module: STR/STR ...
      # All zone options (excluding 'template' item)
 
@@ -1188,113 +1300,6 @@ id
 --
 
 A template identifier.
-
-.. _template_timer-db:
-
-timer-db
---------
-
-Specifies a path of the persistent timer database. The path can be specified
-as a relative path to the *default* template :ref:`storage<zone_storage>`.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* :ref:`storage<zone_storage>`/timers
-
-.. _template_max-timer-db-size:
-
-max-timer-db-size
------------------
-
-Hard limit for the timer database maximum size.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* 100 MiB
-
-.. _template_journal-db:
-
-journal-db
-----------
-
-Specifies a path of the persistent journal database. The path can be specified
-as a relative path to the *default* template :ref:`storage<zone_storage>`.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* :ref:`storage<zone_storage>`/journal
-
-.. _template_journal-db-mode:
-
-journal-db-mode
----------------
-
-Specifies journal LMDB backend configuration, which influences performance
-and durability.
-
-Possible values:
-
-- ``robust`` – The journal DB disk sychronization ensures DB durability but is
-  generally slower.
-- ``asynchronous`` – The journal DB disk synchronization is optimized for
-  better performance at the expense of lower DB durability; this mode is
-  recommended only on slave nodes with many zones.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* robust
-
-.. _template_max-journal-db-size:
-
-max-journal-db-size
--------------------
-
-Hard limit for the common journal DB. There is no cleanup logic in journal
-to recover from reaching this limit: journal simply starts refusing changes
-across all zones. Decreasing this value has no effect if lower than actual
-DB file size.
-
-It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
-per-zone instead of :ref:`max-journal-db-size<template_max-journal-db-size>`
-in most cases. Please keep this value larger than the sum of all zones'
-journal usage limits. See more details regarding
-:ref:`journal behaviour<Journal behaviour>`.
-
-This value also influences server's usage of virtual memory.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* 20 GiB (1 GiB for 32-bit)
-
-.. _template_kasp-db:
-
-kasp-db
--------
-
-A KASP database path. Non-absolute path is relative to
-:ref:`storage<zone_storage>`.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* :ref:`storage<zone_storage>`/keys
-
-.. _template_max-kasp-db-size:
-
-max-kasp-db-size
-----------------
-
-Hard limit for the KASP database maximum size.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* 500 MiB
 
 .. _template_global-module:
 
@@ -1363,7 +1368,7 @@ A :ref:`reference<template_id>` to a configuration template.
 storage
 -------
 
-A data directory for storing zone files, journal database, and timers database.
+A data directory for storing zone files.
 
 *Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 

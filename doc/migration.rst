@@ -30,7 +30,7 @@ Since Knot DNS version 2.5.0 each query module can be configured to be:
   ``dnsproxy`` and ``onlinesign``)
 
 The ``--with-timer-mapsize`` configure option was replaced with the runtime
-:ref:`template_max-timer-db-size` configuration option.
+``template.max-timer-db-size`` configuration option.
 
 .. _KASP DB migration:
 

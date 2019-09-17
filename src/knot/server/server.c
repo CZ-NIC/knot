@@ -382,18 +382,18 @@ int server_init(server_t *server, int bg_workers)
 	}
 
 	char *journal_dir = conf_db(conf(), C_JOURNAL_DB);
-	conf_val_t journal_size = conf_default_get(conf(), C_MAX_JOURNAL_DB_SIZE);
-	conf_val_t journal_mode = conf_default_get(conf(), C_JOURNAL_DB_MODE);
+	conf_val_t journal_size = conf_db_param(conf(), C_JOURNAL_DB_MAX_SIZE, C_MAX_JOURNAL_DB_SIZE);
+	conf_val_t journal_mode = conf_db_param(conf(), C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
 	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode)), NULL);
 	free(journal_dir);
 
 	char *kasp_dir = conf_db(conf(), C_KASP_DB);
-	conf_val_t kasp_size = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
+	conf_val_t kasp_size = conf_db_param(conf(), C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
 	knot_lmdb_init(&server->kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
 	free(kasp_dir);
 
 	char *timer_dir = conf_db(conf(), C_TIMER_DB);
-	conf_val_t timer_size = conf_default_get(conf(), C_MAX_TIMER_DB_SIZE);
+	conf_val_t timer_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE, C_MAX_TIMER_DB_SIZE);
 	knot_lmdb_init(&server->timerdb, timer_dir, conf_int(&timer_size), 0, NULL);
 	free(timer_dir);
 
@@ -781,8 +781,8 @@ static int configure_threads(conf_t *conf, server_t *server)
 static int reconfigure_journal_db(conf_t *conf, server_t *server)
 {
 	char *journal_dir = conf_db(conf, C_JOURNAL_DB);
-	conf_val_t journal_size = conf_default_get(conf, C_MAX_JOURNAL_DB_SIZE);
-	conf_val_t journal_mode = conf_default_get(conf, C_JOURNAL_DB_MODE);
+	conf_val_t journal_size = conf_db_param(conf, C_JOURNAL_DB_MAX_SIZE, C_MAX_JOURNAL_DB_SIZE);
+	conf_val_t journal_mode = conf_db_param(conf, C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
 	int ret = knot_lmdb_reinit(&server->journaldb, journal_dir, conf_int(&journal_size),
 	                           journal_env_flags(conf_opt(&journal_mode)));
 	if (ret != KNOT_EOK) {
@@ -796,7 +796,7 @@ static int reconfigure_journal_db(conf_t *conf, server_t *server)
 static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 {
 	char *kasp_dir = conf_db(conf, C_KASP_DB);
-	conf_val_t kasp_size = conf_default_get(conf, C_MAX_KASP_DB_SIZE);
+	conf_val_t kasp_size = conf_db_param(conf, C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
 	int ret = knot_lmdb_reinit(&server->kaspdb, kasp_dir, conf_int(&kasp_size), 0);
 	if (ret != KNOT_EOK) {
 		log_warning("ignored reconfiguration of KASP DB (%s)", knot_strerror(ret));
@@ -809,7 +809,7 @@ static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 static int reconfigure_timer_db(conf_t *conf, server_t *server)
 {
 	char *timer_dir = conf_db(conf, C_TIMER_DB);
-	conf_val_t timer_size = conf_default_get(conf, C_MAX_TIMER_DB_SIZE);
+	conf_val_t timer_size = conf_db_param(conf, C_TIMER_DB_MAX_SIZE, C_MAX_TIMER_DB_SIZE);
 	int ret = knot_lmdb_reconfigure(&server->timerdb, timer_dir, conf_int(&timer_size), 0);
 	free(timer_dir);
 	return ret;
