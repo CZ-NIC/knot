@@ -597,19 +597,46 @@ static inline char* conf_zonefile(
  *
  * \note The result must be explicitly deallocated.
  *
- * \param[in] conf  Configuration.
- * \param[in] txn   Configuration DB transaction.
+ * \param[in] conf     Configuration.
+ * \param[in] txn      Configuration DB transaction.
+ * \param[in] db_type  Database name.
  *
  * \return Absolute database path string pointer.
  */
-char* conf_db_txn(conf_t *conf,
+char* conf_db_txn(
+	conf_t *conf,
 	knot_db_txn_t *txn,
-	const yp_name_t *db_type);
+	const yp_name_t *db_type
+);
 static inline char* conf_db(
 	conf_t *conf,
 	const yp_name_t *db_type)
 {
 	return conf_db_txn(conf, &conf->read_txn, db_type);
+}
+
+/*!
+ * Gets database-specific parameter.
+ *
+ * \param[in] conf          Configuration.
+ * \param[in] txn           Configuration DB transaction.
+ * \param[in] param         Parameter name.
+ * \param[in] legacy_param  Legacy parameter name.
+ *
+ * \return Item value.
+ */
+conf_val_t conf_db_param_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *param,
+	const yp_name_t *legacy_param
+);
+static inline conf_val_t conf_db_param(
+	conf_t *conf,
+	const yp_name_t *param,
+	const yp_name_t *legacy_param)
+{
+	return conf_db_param_txn(conf, &conf->read_txn, param, legacy_param);
 }
 
 /*!

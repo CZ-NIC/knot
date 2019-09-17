@@ -1231,15 +1231,19 @@ class Knot(Server):
         if have_policy:
             s.end()
 
+        s.begin("database")
+        s.item_str("storage", self.dir)
+        s.item_str("kasp-db", self.keydir)
+        s.item_str("kasp-db-max-size", self.kasp_db_size)
+        s.item_str("journal-db-max-size", self.journal_db_size)
+        s.item_str("timer-db-max-size", self.timer_db_size)
+        s.end()
+
         s.begin("template")
         s.id_item("id", "default")
         s.item_str("storage", self.dir)
         s.item_str("zonefile-sync", self.zonefile_sync)
-        s.item_str("kasp-db", self.keydir)
-        s.item_str("max-kasp-db-size", self.kasp_db_size)
-        s.item_str("max-journal-db-size", self.journal_db_size)
         s.item_str("max-journal-usage", self.max_journal_usage)
-        s.item_str("max-timer-db-size", self.timer_db_size)
         s.item_str("semantic-checks", "on" if self.semantic_check else "off")
         if self.disable_any:
             s.item_str("disable-any", "on")

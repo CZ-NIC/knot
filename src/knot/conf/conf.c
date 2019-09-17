@@ -1066,13 +1066,35 @@ char* conf_db_txn(
 	knot_db_txn_t *txn,
 	const yp_name_t *db_type)
 {
-	conf_val_t val = conf_default_get_txn(conf, txn, C_STORAGE);
-	char *storage = conf_abs_path(&val, NULL);
-	val = conf_default_get_txn(conf, txn, db_type);
-	char *dbdir = conf_abs_path(&val, storage);
+	conf_val_t storage_val = conf_get_txn(conf, txn, C_DB, C_STORAGE);
+	if (storage_val.code != KNOT_EOK) {
+		storage_val = conf_default_get_txn(conf, txn, C_STORAGE);
+	}
+
+	conf_val_t db_val = conf_get_txn(conf, txn, C_DB, db_type);
+	if (db_val.code != KNOT_EOK) {
+		db_val = conf_default_get_txn(conf, txn, db_type);
+	}
+
+	char *storage = conf_abs_path(&storage_val, NULL);
+	char *dbdir = conf_abs_path(&db_val, storage);
 	free(storage);
 
 	return dbdir;
+}
+
+conf_val_t conf_db_param_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *param,
+	const yp_name_t *legacy_param)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_DB, param);
+	if (val.code != KNOT_EOK) {
+		val = conf_default_get_txn(conf, txn, legacy_param);
+	}
+
+	return val;
 }
 
 size_t conf_udp_threads_txn(
