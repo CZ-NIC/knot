@@ -412,12 +412,31 @@ int check_remote(
 int check_template(
 	knotd_conf_check_args_t *args)
 {
+	conf_val_t val;
+
+	#define CHECK_LEGACY(old_item, new_item) \
+		val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_TPL, \
+		                         old_item, args->id, args->id_len); \
+		if (val.code == KNOT_EOK) { \
+			CONF_LOG(LOG_NOTICE, "'template' option '%s' is obsolete, " \
+			                     "use 'database' option '%s' instead", \
+			                     old_item + 1, new_item + 1); \
+		}
+
+
+	CHECK_LEGACY(C_TIMER_DB, C_TIMER_DB);
+	CHECK_LEGACY(C_MAX_TIMER_DB_SIZE, C_TIMER_DB_MAX_SIZE);
+	CHECK_LEGACY(C_JOURNAL_DB, C_JOURNAL_DB);
+	CHECK_LEGACY(C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
+	CHECK_LEGACY(C_MAX_JOURNAL_DB_SIZE, C_JOURNAL_DB_MAX_SIZE);
+	CHECK_LEGACY(C_KASP_DB, C_KASP_DB);
+	CHECK_LEGACY(C_MAX_KASP_DB_SIZE, C_KASP_DB_MAX_SIZE);
+
 	// Stop if the default template.
 	if (is_default_id(args->id, args->id_len)) {
 		return KNOT_EOK;
 	}
 
-	conf_val_t val;
 	#define CHECK_DFLT(item, name) \
 		val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_TPL, \
 		                         item, args->id, args->id_len); \
@@ -427,13 +446,6 @@ int check_template(
 		}
 
 	CHECK_DFLT(C_GLOBAL_MODULE, "global module");
-	CHECK_DFLT(C_TIMER_DB, "timer database path");
-	CHECK_DFLT(C_MAX_TIMER_DB_SIZE, "timer database maximum size");
-	CHECK_DFLT(C_JOURNAL_DB, "journal database path");
-	CHECK_DFLT(C_JOURNAL_DB_MODE, "journal database mode");
-	CHECK_DFLT(C_MAX_JOURNAL_DB_SIZE, "journal database maximum size");
-	CHECK_DFLT(C_KASP_DB, "KASP database path");
-	CHECK_DFLT(C_MAX_KASP_DB_SIZE, "KASP database maximum size");
 
 	return KNOT_EOK;
 }
