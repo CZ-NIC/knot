@@ -329,9 +329,9 @@ static const yp_item_t desc_template[] = {
 	ZONE_ITEMS(CONF_IO_FRLD_ZONES)
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
-	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" }, CONF_IO_FRLD_ZONES },
+	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" }, CONF_IO_FRLD_SRV },
 	{ C_MAX_TIMER_DB_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(GIGA(100)),
-	                                               MEGA(100), YP_SSIZE }, CONF_IO_FRLD_ZONES },
+	                                               MEGA(100), YP_SSIZE }, CONF_IO_FRLD_SRV },
 	{ C_JOURNAL_DB,          YP_TSTR,  YP_VSTR = { "journal" }, CONF_IO_FRLD_SRV },
 	{ C_JOURNAL_DB_MODE,     YP_TOPT,  YP_VOPT = { journal_modes, JOURNAL_MODE_ROBUST },
 	                                   CONF_IO_FRLD_SRV },
