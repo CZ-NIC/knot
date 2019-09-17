@@ -202,6 +202,21 @@ static const yp_item_t desc_stats[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_database[] = {
+	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR } },
+	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" } },
+	{ C_TIMER_DB_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(GIGA(100)),
+	                                               MEGA(100), YP_SSIZE } },
+	{ C_JOURNAL_DB,          YP_TSTR,  YP_VSTR = { "journal" } },
+	{ C_JOURNAL_DB_MODE,     YP_TOPT,  YP_VOPT = { journal_modes, JOURNAL_MODE_ROBUST } },
+	{ C_JOURNAL_DB_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(TERA(100)),
+	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
+	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" } },
+	{ C_KASP_DB_MAX_SIZE,    YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
+	                                               MEGA(500), YP_SSIZE } },
+	{ NULL }
+};
+
 static const yp_item_t desc_keystore[] = {
 	{ C_ID,      YP_TSTR, YP_VNONE },
 	{ C_BACKEND, YP_TOPT, YP_VOPT = { keystore_backends, KEYSTORE_BACKEND_PEM },
@@ -328,9 +343,10 @@ static const yp_item_t desc_policy[] = {
 
 static const yp_item_t desc_template[] = {
 	{ C_ID, YP_TSTR, YP_VNONE, CONF_IO_FREF },
-	ZONE_ITEMS(CONF_IO_FRLD_ZONES)
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
+	ZONE_ITEMS(CONF_IO_FRLD_ZONES)
+	// Legacy items.
 	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" }, CONF_IO_FRLD_SRV },
 	{ C_MAX_TIMER_DB_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(GIGA(100)),
 	                                               MEGA(100), YP_SSIZE }, CONF_IO_FRLD_SRV },
@@ -360,6 +376,7 @@ const yp_item_t conf_schema[] = {
 	{ C_CTL,      YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_LOG,      YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI | CONF_IO_FRLD_LOG },
 	{ C_STATS,    YP_TGRP, YP_VGRP = { desc_stats }, CONF_IO_FRLD_SRV },
+	{ C_DB,       YP_TGRP, YP_VGRP = { desc_database }, CONF_IO_FRLD_SRV } },
 	{ C_KEYSTORE, YP_TGRP, YP_VGRP = { desc_keystore }, YP_FMULTI, { check_keystore } },
 	{ C_KEY,      YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
