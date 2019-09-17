@@ -15,6 +15,7 @@
  */
 
 #include <pthread.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "knot/include/module.h"
@@ -176,8 +177,13 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Prepare data for server cookie computation.
-	knot_edns_cookie_params_t params;
-	params.client_addr = (struct sockaddr *)qdata->params->remote;
+	knot_edns_cookie_params_t params = {
+		.version = KNOT_EDNS_COOKIE_VERSION,
+		.timestamp = (uint32_t)time(NULL),
+		.lifetime_before = 3600,
+		.lifetime_after = 300,
+		.client_addr = qdata->params->remote
+	};
 	uint64_t current_secret = ATOMIC_GET(ctx->secret.variable);
 	memcpy(params.secret, &current_secret, sizeof(current_secret));
 	memcpy(params.secret + sizeof(current_secret), &ctx->secret.constant,

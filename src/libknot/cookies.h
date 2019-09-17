@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,13 +33,18 @@
 #define KNOT_EDNS_COOKIE_SECRET_SIZE 16
 
 /*!
- * \brief DNS Cookie parameters needed to compute the cookie value.
+ * \brief DNS Cookie parameters needed to generate/check the cookie value.
  *
- * \note Server address is not used for the server cookie check.
+ * \note Client address is not used for the client cookie generation/check.
+ * \note Server address is not used for the server cookie generation/check.
  */
 typedef struct {
-	const struct sockaddr *client_addr; /*!< Client socket address. */
-	const struct sockaddr *server_addr; /*!< Server socket address. */
+	uint8_t version;          /*!< Server cookie version to generate. */
+	uint32_t timestamp;       /*!< [s] Server cookie generate or check time. */
+	uint32_t lifetime_before; /*!< [s] Server cookie lifetime in the past. */
+	uint32_t lifetime_after;  /*!< [s] Server cookie lifetime in the future. */
+	const struct sockaddr_storage *client_addr;   /*!< Client socket address. */
+	const struct sockaddr_storage *server_addr;   /*!< Server socket address. */
 	uint8_t secret[KNOT_EDNS_COOKIE_SECRET_SIZE]; /*!< Cookie secret data. */
 } knot_edns_cookie_params_t;
 
