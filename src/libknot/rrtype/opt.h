@@ -62,6 +62,8 @@ enum {
 	/*! \brief Default EDNS alignment size for a response. */
 	KNOT_EDNS_ALIGNMENT_RESPONSE_DEFAULT = 468,
 
+	/*! \brief Current EDNS cookie version. */
+	KNOT_EDNS_COOKIE_VERSION       = 1,
 	/*! \brief EDNS client cookie size. */
 	KNOT_EDNS_COOKIE_CLNT_SIZE     = 8,
 	/*! \brief EDNS minimum server cookie size. */
