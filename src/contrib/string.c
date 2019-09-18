@@ -20,6 +20,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+ * Libraries needed for memzero().
+ */
+#if defined(HAVE_EXPLICIT_BZERO)
+  #include <bsd/string.h>
+#elif defined(HAVE_EXPLICIT_MEMSET)
+  /* #include <string.h> is needed. */
+#elif defined(HAVE_MEMSET_S)
+  /* #include <string.h> is needed. */
+#elif defined(HAVE_GNUTLS_MEMSET)
+  #include <gnutls/gnutls.h>
+#endif
+
 #include "contrib/string.h"
 #include "contrib/ctype.h"
 
@@ -109,7 +122,26 @@ static volatile memset_t volatile_memset = memset;
 
 void *memzero(void *s, size_t n)
 {
+#if defined(HAVE_EXPLICIT_BZERO)	/* OpenBSD since 5.5 */
+					/* FreeBSD since 11.0 */
+					/* glibc since 2.25 */
+					/* DragonFly BSD since 5.5 */
+	explicit_bzero(s, n);
+	return s;
+#elif defined(HAVE_EXPLICIT_MEMSET)	/* NetBSD since 7.0 */
+	return explicit_memset(s, 0, n);
+#elif defined(HAVE_MEMSET_S)		/* optional in C11 */
+	(void)memset_s(s, (rsize_t)n, 0, (rsize_t)n);
+	return s;
+#elif defined(HAVE_GNUTLS_MEMSET)	/* GnuTLS since 3.4.0 */
+	gnutls_memset(s, 0, n);
+	return s;
+#else					/* Knot custom solution as a fallback. */
+	/* Warning: the use of the return value is *probably* needed
+	 * so as to avoid the volatile_memset() to be optimized out.
+	 */
 	return volatile_memset(s, 0, n);
+#endif
 }
 
 static const char BIN_TO_HEX[] = {

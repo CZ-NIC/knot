@@ -605,6 +605,10 @@ AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h])
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
                 setgroups strlcat strlcpy sysctlbyname])
 
+# TODO: Check properly for a compiler resistant memset() / bzero().
+AC_CHECK_HEADERS([bsd/string.h string.h gnutls/gnutls.h])
+AC_CHECK_FUNCS([explicit_bzero explicit_memset memset_s gnutls_memset])
+
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
   AC_MSG_ERROR([vasprintf support in the libc is required])])
