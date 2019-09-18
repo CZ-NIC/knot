@@ -984,11 +984,19 @@ A remote identifier.
 .SS address
 .sp
 An ordered list of destination IP addresses which are used for communication
-with the remote server. The addresses are tried in sequence unless the
-operation is successful. Optional destination port (default is 53)
+with the remote server. The addresses are tried in sequence until the
+remote is reached. Optional destination port (default is 53)
 can be appended to the address using \fB@\fP separator.
 .sp
 \fIDefault:\fP not set
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+If the remote is contacted and it refuses to perform requested action,
+no more addresses will be tried for this remote.
+.UNINDENT
+.UNINDENT
 .SS via
 .sp
 An ordered list of source IP addresses. The first address with the same family

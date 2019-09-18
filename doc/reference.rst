@@ -1092,11 +1092,15 @@ address
 -------
 
 An ordered list of destination IP addresses which are used for communication
-with the remote server. The addresses are tried in sequence unless the
-operation is successful. Optional destination port (default is 53)
+with the remote server. The addresses are tried in sequence until the
+remote is reached. Optional destination port (default is 53)
 can be appended to the address using ``@`` separator.
 
 *Default:* not set
+
+.. NOTE::
+   If the remote is contacted and it refuses to perform requested action,
+   no more addresses will be tried for this remote.
 
 .. _remote_via:
 
