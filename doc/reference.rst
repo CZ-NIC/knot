@@ -313,7 +313,7 @@ max-udp-payload
 
 Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
 
-*Default:* 4096
+*Default:* 1232
 
 .. _server_max-ipv4-udp-payload:
 
@@ -322,7 +322,7 @@ max-ipv4-udp-payload
 
 Maximum EDNS0 UDP payload size for IPv4.
 
-*Default:* 4096
+*Default:* 1232
 
 .. _server_max-ipv6-udp-payload:
 
@@ -331,7 +331,7 @@ max-ipv6-udp-payload
 
 Maximum EDNS0 UDP payload size for IPv6.
 
-*Default:* 4096
+*Default:* 1232
 
 .. _server_edns-client-subnet:
 
