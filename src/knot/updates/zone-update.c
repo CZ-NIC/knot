@@ -700,6 +700,36 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 	return KNOT_EOK;
 }
 
+typedef struct {
+	pthread_mutex_t lock;
+	size_t counter;
+} counter_reach_t;
+
+static bool counter_reach(counter_reach_t *counter, size_t increment, size_t limit)
+{
+	bool reach = false;
+	pthread_mutex_lock(&counter->lock);
+	counter->counter += increment;
+	if (counter->counter >= limit) {
+		counter->counter = 0;
+		reach = true;
+	}
+	pthread_mutex_unlock(&counter->lock);
+	return reach;
+}
+
+// call mem_trim() whenever accumuled size of updated zones reaches 100 MiB
+#define UPDATE_MEMTRIM_AT (100 * 1024 * 1024)
+
+static void update_memtrim(size_t updated_size)
+{
+	static counter_reach_t counter = { PTHREAD_MUTEX_INITIALIZER, 0 };
+
+	if (counter_reach(&counter, updated_size, UPDATE_MEMTRIM_AT)) {
+		mem_trim();
+	}
+}
+
 /*! \brief Routine for calling call_rcu() easier way.
  *
  * Consider moving elsewhere, as it has no direct relation to zone-update.
@@ -719,9 +749,6 @@ static void callrcu_wrapper_cb(struct rcu_head *param)
 		free(wrap->ctx);
 	}
 	free(wrap);
-
-	// Trim extra heap.
-	mem_trim();
 }
 
 /* NOTE: Does nothing if not enough memory. */
@@ -734,6 +761,27 @@ static void callrcu_wrapper(void *ctx, void *callback, bool free_ctx)
 		wrap->free_ctx = free_ctx;
 		call_rcu((struct rcu_head *)wrap, callrcu_wrapper_cb);
 	}
+}
+
+/*! \brief Struct for what needs to be cleared after RCU.
+ *
+ * This can't be zone_update_t structure as this might be already freed at that time.
+ */
+typedef struct {
+	zone_contents_t *free_contents;
+	void (*free_method)(zone_contents_t *);
+
+	apply_ctx_t *cleanup_apply;
+
+	size_t new_cont_size;
+} update_clear_ctx_t;
+
+static void update_clear(update_clear_ctx_t *ctx)
+{
+	ctx->free_method(ctx->free_contents);
+	apply_cleanup(ctx->cleanup_apply);
+	free(ctx->cleanup_apply);
+	update_memtrim(ctx->new_cont_size);
 }
 
 int zone_update_commit(conf_t *conf, zone_update_t *update)
@@ -823,19 +871,24 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, update->new_cont);
 
-	/* Sync RCU. */
-	if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
-		callrcu_wrapper(old_contents, zone_contents_deep_free, false);
-	} else {
-		callrcu_wrapper(old_contents, update_free_zone, false);
-	}
-
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);
 		changeset_clear(&update->extra_ch);
 	}
-	callrcu_wrapper(update->a_ctx, apply_cleanup, true);
 	zone_contents_deep_free(update->init_cont);
+
+	update_clear_ctx_t *clear_ctx = malloc(sizeof(*clear_ctx));
+	if (clear_ctx != NULL) {
+		clear_ctx->free_contents = old_contents;
+		clear_ctx->free_method = (
+			(update->flags & (UPDATE_FULL | UPDATE_HYBRID)) ?
+			zone_contents_deep_free : update_free_zone
+		);
+		clear_ctx->cleanup_apply = update->a_ctx;
+		clear_ctx->new_cont_size = update->new_cont->size;
+
+		callrcu_wrapper(clear_ctx, update_clear, true);
+	}
 
 	/* Sync zonefile immediately if configured. */
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, update->zone->name);
