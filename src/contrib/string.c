@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -122,13 +122,13 @@ static volatile memset_t volatile_memset = memset;
 
 void *memzero(void *s, size_t n)
 {
-#if defined(HAVE_MEMSET_S)		/* optional in C11 */
+#if defined(HAVE_MEMSET_S)		/* Optional in C11. */
 	(void)memset_s(s, (rsize_t)n, 0, (rsize_t)n);
 	return s;
-#elif defined(HAVE_EXPLICIT_BZERO)	/* OpenBSD since 5.5 */
-					/* FreeBSD since 11.0 */
-					/* glibc since 2.25 */
-					/* DragonFly BSD since 5.5 */
+#elif defined(HAVE_EXPLICIT_BZERO)	/* OpenBSD since 5.5. */
+					/* FreeBSD since 11.0. */
+					/* Glibc since 2.25. */
+					/* DragonFly BSD since 5.5. */
 	explicit_bzero(s, n);
 	return s;
 #elif defined(HAVE_EXPLICIT_MEMSET)	/* NetBSD since 7.0 */
