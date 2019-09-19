@@ -111,18 +111,22 @@ static void init_cache(
 	bool reinit_cache)
 {
 	/* For UDP, TCP and background workers, cache the numbers of running
-	 * workers. These numbers can't change in runtime, while config data can.
+	 * workers. Cache the setting of TCP reuseport too. These values
+	 * can't change in runtime, while config data can.
 	 */
 
-	static bool first_init = true;
+	static bool   first_init = true;
+	static bool   running_tcp_reuseport;
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
 	static size_t running_bg_threads;
 
 	if (first_init || reinit_cache) {
+		running_tcp_reuseport = conf_tcp_reuseport(conf);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_bg_threads = conf_bg_threads(conf);
+
 		first_init = false;
 	}
 
@@ -146,6 +150,8 @@ static void init_cache(
 
 	val = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
 	conf->cache.srv_tcp_reply_timeout = conf_int(&val);
+
+	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
 
 	conf->cache.srv_udp_threads = running_udp_threads;
 

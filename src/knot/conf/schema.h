@@ -107,6 +107,7 @@
 #define C_TCP_IDLE_TIMEOUT	"\x10""tcp-idle-timeout"
 #define C_TCP_QUERY_TIMEOUT	"\x11""tcp-query-timeout"
 #define C_TCP_REPLY_TIMEOUT	"\x11""tcp-reply-timeout"
+#define C_TCP_REUSEPORT		"\x0D""tcp-reuseport"
 #define C_TCP_WORKERS		"\x0B""tcp-workers"
 #define C_TIMEOUT		"\x07""timeout"
 #define C_TIMER			"\x05""timer"

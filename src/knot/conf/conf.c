@@ -1075,6 +1075,14 @@ char* conf_db_txn(
 	return dbdir;
 }
 
+bool conf_tcp_reuseport_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_REUSEPORT);
+	return conf_bool(&val);
+}
+
 size_t conf_udp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
