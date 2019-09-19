@@ -1037,6 +1037,20 @@ typedef struct {
 	bool send_notify;
 } try_refresh_ctx_t;
 
+/*! \brief Which errors from IXFR are relevant reason to try AXFR. */
+static bool ixfr_error_failover(int ret)
+{
+	switch (ret) {
+	case KNOT_EOK:
+		return false; // don't failover if IXFR is OK
+	case KNOT_ECONN:
+	case KNOT_ETIMEOUT:   // network issues
+		return false;
+	default:
+		return true;
+	}
+}
+
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx)
 {
 	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
@@ -1085,10 +1099,10 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	int ret;
 
 	// while loop runs 0x or 1x; IXFR to AXFR failover
-	while ((ret = knot_requestor_exec(&requestor, req, timeout)) != KNOT_EOK &&
-	       data.xfr_type == XFR_TYPE_IXFR) {
+	while (ret = knot_requestor_exec(&requestor, req, timeout),
+	       ixfr_error_failover(ret) && data.xfr_type == XFR_TYPE_IXFR) {
 		REFRESH_LOG(LOG_WARNING, data.zone->name, data.remote,
-		            "fallback to AXFR");
+		            "fallback to AXFR (%s)", knot_strerror(ret));
 		ixfr_cleanup(&data);
 		data.xfr_type = XFR_TYPE_AXFR;
 		requestor.layer.state = KNOT_STATE_RESET;
