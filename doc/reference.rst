@@ -139,6 +139,7 @@ General options related to the server.
      tcp-idle-timeout: TIME
      tcp-query-timeout: TIME
      tcp-reply-timeout: TIME
+     tcp-reuseport: BOOL
      max-tcp-clients: INT
      max-udp-payload: SIZE
      max-ipv4-udp-payload: SIZE
@@ -293,6 +294,18 @@ Maximum time to wait for an outgoing connection or for a reply to an issued
 request (SOA, NOTIFY, AXFR...).
 
 *Default:* 10
+
+.. _server_tcp-reuseport:
+
+tcp-reuseport
+-------------
+
+If enabled, each TCP socket uses its own packet queue and the OS kernel
+socket load balancing is emloyed. SO_REUSEPORT (SO_REUSEPORT_LB on FreeBSD).
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* on
 
 .. _server_max-tcp-clients:
 
