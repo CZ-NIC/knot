@@ -149,6 +149,7 @@ identified section or for a specific item::
    :ref:`rundir<server_rundir>`,
    :ref:`user<server_user>`,
    :ref:`pidfile<server_pidfile>`,
+   :ref:`tcp-reuseport<server_tcp-reuseport>`,
    :ref:`udp-workers<server_udp-workers>`,
    :ref:`tcp-workers<server_tcp-workers>`,
    :ref:`background-workers<server_background-workers>`, and
