@@ -131,14 +131,15 @@ static unsigned tcp_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id
 	fdset_clear(fds);
 	iface_t *i = NULL;
 	WALK_LIST(i, *ifaces) {
-#ifdef ENABLE_REUSEPORT
-		/* Note: thread_id's starts with UDP threads, TCP threads follow. */
-		assert((i->fd_udp_count <= thread_id) &&
-		       (thread_id < i->fd_tcp_count + i->fd_udp_count));
-
-		int tcp_id = thread_id - i->fd_udp_count;
-#else
 		int tcp_id = 0;
+#ifdef ENABLE_REUSEPORT
+		if (conf()->cache.srv_tcp_reuseport) {
+			/* Note: thread_ids start with UDP threads, TCP threads follow. */
+			assert((i->fd_udp_count <= thread_id) &&
+			       (thread_id < i->fd_tcp_count + i->fd_udp_count));
+
+			tcp_id = thread_id - i->fd_udp_count;
+		}
 #endif
 		fdset_add(fds, i->fd_tcp[tcp_id], POLLIN, NULL);
 	}
