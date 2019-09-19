@@ -165,6 +165,9 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
     AC_CHECK_FUNC([gnutls_privkey_sign_data2],
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
 
+    AC_CHECK_FUNC([gnutls_memset],
+        [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset])])
+
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
 ])
@@ -607,7 +610,7 @@ AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
 
 # TODO: Check properly for a compiler resistant memset() / bzero().
 AC_CHECK_HEADERS([bsd/string.h string.h gnutls/gnutls.h])
-AC_CHECK_FUNCS([explicit_bzero explicit_memset memset_s gnutls_memset])
+AC_CHECK_FUNCS([explicit_bzero explicit_memset memset_s])
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
