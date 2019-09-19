@@ -166,12 +166,15 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
 
     AC_CHECK_FUNC([gnutls_memset],
-        [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset])])
+        [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset])
+         gnutls_memset=yes],
+        [gnutls_memset=no])
 
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
 ])
 AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
+AM_CONDITIONAL([GNUTLS_MEMSET], [test "$gnutls_memset" = "yes"])
 
 AC_ARG_ENABLE([recvmmsg],
    AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
@@ -602,15 +605,16 @@ LIBS="$save_LIBS"
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h])
+AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h bsd/string.h])
 
 # Checks for optional library functions.
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
                 setgroups strlcat strlcpy sysctlbyname])
 
-# TODO: Check properly for a compiler resistant memset() / bzero().
-AC_CHECK_HEADERS([bsd/string.h string.h gnutls/gnutls.h])
-AC_CHECK_FUNCS([explicit_bzero explicit_memset memset_s])
+AC_CHECK_FUNCS([explicit_bzero], [explicit_bzero=yes], [explicit_bzero=no])
+AM_CONDITIONAL([EXPLICIT_BZERO], [test "$explicit_bzero" = "yes"])
+AC_CHECK_FUNCS([explicit_memset], [explicit_memset=yes], [explicit_memset=no])
+AM_CONDITIONAL([EXPLICIT_MEMSET], [test "$explicit_memset" = "yes"])
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [

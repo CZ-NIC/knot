@@ -19,15 +19,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/*
- * Libraries needed for memzero().
- */
 #if defined(HAVE_EXPLICIT_BZERO)
-  #include <bsd/string.h>
-#elif defined(HAVE_EXPLICIT_MEMSET)
+  #if defined(HAVE_BSD_STRING_H)
+    #include <bsd/string.h>
+  #endif
   /* #include <string.h> is needed. */
-#elif defined(HAVE_MEMSET_S)
+#elif defined(HAVE_EXPLICIT_MEMSET)
   /* #include <string.h> is needed. */
 #elif defined(HAVE_GNUTLS_MEMSET)
   #include <gnutls/gnutls.h>
@@ -117,15 +114,16 @@ int const_time_memcmp(const void *s1, const void *s2, size_t n)
 	return equal;
 }
 
+#if !defined(HAVE_EXPLICIT_BZERO) && \
+    !defined(HAVE_EXPLICIT_MEMSET) && \
+    !defined(HAVE_GNUTLS_MEMSET)
 typedef void *(*memset_t)(void *, int, size_t);
 static volatile memset_t volatile_memset = memset;
+#endif
 
 void *memzero(void *s, size_t n)
 {
-#if defined(HAVE_MEMSET_S)		/* Optional in C11. */
-	(void)memset_s(s, (rsize_t)n, 0, (rsize_t)n);
-	return s;
-#elif defined(HAVE_EXPLICIT_BZERO)	/* OpenBSD since 5.5. */
+#if defined(HAVE_EXPLICIT_BZERO)	/* OpenBSD since 5.5. */
 					/* FreeBSD since 11.0. */
 					/* Glibc since 2.25. */
 					/* DragonFly BSD since 5.5. */
