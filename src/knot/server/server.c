@@ -662,10 +662,16 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 {
 	const char *msg = "changes of %s require restart to take effect";
 
+	static bool tcp_reuseport_warn = true;
 	static bool udp_warn = true;
 	static bool tcp_warn = true;
 	static bool bg_warn = true;
 	static bool listen_warn = true;
+
+	if (tcp_reuseport_warn && conf->cache.srv_tcp_reuseport != conf_tcp_reuseport(conf)) {
+		log_warning(msg, "tcp-reuseport");
+		tcp_reuseport_warn = false;
+	}
 
 	if (udp_warn && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {
 		log_warning(msg, "udp-workers");

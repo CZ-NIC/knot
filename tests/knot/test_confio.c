@@ -906,6 +906,7 @@ static void test_conf_io_list(void)
 	      "server.tcp-idle-timeout\n"
 	      "server.tcp-io-timeout\n"
 	      "server.tcp-remote-io-timeout\n"
+	      "server.tcp-reuseport\n"
 	      "server.udp-workers\n"
 	      "server.tcp-workers\n"
 	      "server.background-workers\n"
@@ -925,6 +926,7 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_IDLE_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_IO_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_RMT_IO_TIMEOUT,	  YP_TINT,  YP_VNONE },
+	{ C_TCP_REUSEPORT,	  YP_TBOOL, YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_BG_WORKERS,		  YP_TINT,  YP_VNONE },

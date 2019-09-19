@@ -640,6 +640,24 @@ static inline conf_val_t conf_db_param(
 }
 
 /*!
+ * Gets the configured setting of the TCP reuseport switch.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return True if enabled, false otherwise.
+ */
+bool conf_tcp_reuseport_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline bool conf_tcp_reuseport(
+	conf_t *conf)
+{
+	return conf_tcp_reuseport_txn(conf, &conf->read_txn);
+}
+
+/*!
  * Gets the configured number of UDP threads.
  *
  * \param[in] conf  Configuration.
