@@ -134,6 +134,10 @@ int additionals_tree_update_node(additionals_tree_t *a_t, const knot_dname_t *zo
 		return KNOT_EINVAL;
 	}
 
+	if (binode_additionals_unchanged(old_node, new_node)) {
+		return KNOT_EOK;
+	}
+
 	// for every additional in old_node rrsets, remove mentioning of this node in tree
 	if (old_node != NULL && !(old_node->flags & NODE_FLAGS_DELETED)) {
 		ctx.node = binode_first(old_node);
