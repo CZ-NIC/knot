@@ -53,7 +53,7 @@ typedef struct tcp_context {
 	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_clients;            /*!< Max TCP clients per worker configuration. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
-	int query_timeout;               /*!< [ms] TCP query timeout configuration. */
+	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
@@ -70,7 +70,7 @@ static void update_tcp_conf(tcp_context_t *tcp)
 	tcp->max_clients = \
 		MAX(conf()->cache.srv_max_tcp_clients / conf()->cache.srv_tcp_threads, 1);
 	tcp->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
-	tcp->query_timeout = conf()->cache.srv_tcp_query_timeout;
+	tcp->io_timeout = conf()->cache.srv_tcp_io_timeout;
 	rcu_read_unlock();
 }
 
@@ -158,7 +158,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Receive data. */
-	int recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->query_timeout);
+	int recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout);
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {
@@ -184,7 +184,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
-			int sent = net_dns_tcp_send(fd, ans->wire, ans->size, tcp->query_timeout);
+			int sent = net_dns_tcp_send(fd, ans->wire, ans->size, tcp->io_timeout);
 			if (sent != ans->size) {
 				tcp_log_error(ss, "send", sent);
 				ret = KNOT_EOF;
