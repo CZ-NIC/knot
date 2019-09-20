@@ -79,6 +79,7 @@ enum knot_error {
 	KNOT_EFILE,
 	KNOT_ESOAINVAL,
 	KNOT_ETRAIL,
+	KNOT_EPROCESSING,
 
 	/* Control states. */
 	KNOT_CTL_ESTOP,
@@ -126,9 +127,6 @@ enum knot_error {
 	/* Transaction errors. */
 	KNOT_TXN_EEXISTS,
 	KNOT_TXN_ENOTEXISTS,
-
-	/* Processing error. */
-	KNOT_LAYER_ERROR,
 
 	/* DNSSEC errors. */
 	KNOT_INVALID_PUBLIC_KEY,
