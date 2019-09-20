@@ -141,11 +141,20 @@ static void init_cache(
 	val = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
 	conf->cache.srv_tcp_idle_timeout = conf_int(&val);
 
-	val = conf_get(conf, C_SRV, C_TCP_QUERY_TIMEOUT);
-	conf->cache.srv_tcp_query_timeout = conf_int(&val);
+	val = conf_get(conf, C_SRV, C_TCP_IO_TIMEOUT);
+	conf->cache.srv_tcp_io_timeout = conf_int(&val);
 
-	val = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
-	conf->cache.srv_tcp_reply_timeout = conf_int(&val);
+	val = conf_get(conf, C_SRV, C_TCP_RMT_IO_TIMEOUT);
+	if (val.code == KNOT_EOK) {
+		conf->cache.srv_tcp_remote_io_timeout = conf_int(&val);
+	} else {
+		int timeout = conf_int(&val); // New default value.
+		conf_val_t legacy = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
+		if (legacy.code == KNOT_EOK) {
+			timeout = 1000 * conf_int(&legacy); // Explicit legacy value.
+		}
+		conf->cache.srv_tcp_remote_io_timeout = timeout;
+	}
 
 	conf->cache.srv_udp_threads = running_udp_threads;
 

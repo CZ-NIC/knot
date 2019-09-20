@@ -133,7 +133,7 @@ class Server(object):
 
         self.zones = dict()
 
-        self.tcp_reply_timeout = None
+        self.tcp_remote_io_timeout = None
         self.max_udp_payload = None
         self.max_udp4_payload = None
         self.max_udp6_payload = None
@@ -1058,8 +1058,8 @@ class Knot(Server):
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
         for addr in self.addr_extra:
             s.item_str("listen", "%s@%s" % (addr, self.port))
-        self._str(s, "tcp-reply-timeout", self.tcp_reply_timeout)
-        self._str(s, "tcp-query-timeout", "500")
+        self._str(s, "tcp-remote-io-timeout", self.tcp_remote_io_timeout)
+        self._str(s, "tcp-io-timeout", "500")
         self._str(s, "max-udp-payload", self.max_udp_payload)
         self._str(s, "max-ipv4-udp-payload", self.max_udp4_payload)
         self._str(s, "max-ipv6-udp-payload", self.max_udp6_payload)
