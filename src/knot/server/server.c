@@ -331,7 +331,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
  * \param server Server instance.
  * \return number of added sockets.
  */
-static int configure_sockets(conf_t *conf, server_t *s)
+static int configure_sockets(conf_t *config, server_t *s)
 {
 	if (s->state & ServerRunning) {
 		return KNOT_EOK;
@@ -342,9 +342,14 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	list_t *newlist = malloc(sizeof(list_t));
 	init_list(newlist);
 
+#ifdef ENABLE_REUSEPORT
+	/* Log info if reuseport is used and for what protocols. */
+	log_info("using reuseport for UDP%s", conf()->cache.srv_tcp_reuseport ? " and TCP" : "");
+#endif
+
 	/* Update bound interfaces. */
-	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
-	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
+	conf_val_t listen_val = conf_get(config, C_SRV, C_LISTEN);
+	conf_val_t rundir_val = conf_get(config, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	while (listen_val.code == KNOT_EOK) {
 
