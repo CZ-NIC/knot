@@ -33,7 +33,7 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	ret = knot_parent_ds_query(&ctx, &keyset, conf->cache.srv_tcp_reply_timeout * 1000);
+	ret = knot_parent_ds_query(&ctx, &keyset, conf->cache.srv_tcp_remote_io_timeout);
 
 	zone->timers.next_ds_check = 0;
 	if (ret != KNOT_EOK) {

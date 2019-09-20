@@ -24,7 +24,7 @@ EXPIRE_SLEEP = 15
 
 master = t.server("knot")
 slave = t.server("knot")
-slave.tcp_reply_timeout = "1s"
+slave.tcp_remote_io_timeout = "1000"
 
 t.link(zone, master, slave)
 

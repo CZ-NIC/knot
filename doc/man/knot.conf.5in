@@ -186,8 +186,8 @@ server:
     background\-workers: INT
     async\-start: BOOL
     tcp\-idle\-timeout: TIME
-    tcp\-query\-timeout: TIME
-    tcp\-reply\-timeout: TIME
+    tcp\-io\-timeout: INT
+    tcp\-remote\-io\-timeout: INT
     max\-tcp\-clients: INT
     max\-udp\-payload: SIZE
     max\-ipv4\-udp\-payload: SIZE
@@ -283,21 +283,29 @@ responding immediately with SERVFAIL answers until the zone loads.
 \fIDefault:\fP off
 .SS tcp\-idle\-timeout
 .sp
-Maximum idle time between requests on an incoming TCP connection.
+Maximum idle time (in seconds) between requests on an inbound TCP connection.
+It means if there is no activity on an inbound TCP connection during this limit,
+the connection is closed by the server.
+Set 0 for infinity.
 .sp
-\fIDefault:\fP 20
-.SS tcp\-query\-timeout
+\fIDefault:\fP 10 s
+.SS tcp\-io\-timeout
 .sp
-Maximum time (in milliseconds) to receive a query over TCP. The timeout
-also applies to individual response messages.
+Maximum time (in milliseconds) to receive or send one DNS message over an inbound
+TCP connection. It means this limit applies to normal DNS queries and replies,
+incoming DDNS, and outgoing zone transfers.
+Set 0 for infinity.
 .sp
-\fIDefault:\fP 200
-.SS tcp\-reply\-timeout
+\fIDefault:\fP 200 ms
+.SS tcp\-remote\-io\-timeout
 .sp
-Maximum time to wait for an outgoing connection or for a reply to an issued
-request (SOA, NOTIFY, AXFR...).
+Maximum time (in milliseconds) to receive or send one DNS message over an outbound
+TCP connection, which was established to a configured remote server. It means
+this limit applies to incoming zone transfers, sending NOTIFY, DDNS forwarding,
+and DS check or push.
+Set 0 for infinity.
 .sp
-\fIDefault:\fP 10
+\fIDefault:\fP 1000 ms
 .SS max\-tcp\-clients
 .sp
 A maximum number of TCP clients connected in parallel, set this below the file
@@ -538,7 +546,8 @@ A UNIX socket path where the server listens for control commands.
 \fIDefault:\fP \fI\%rundir\fP/knot.sock
 .SS timeout
 .sp
-Maximum time the control socket operations can take. Set 0 for infinity.
+Maximum time (in seconds) the control socket operations can take.
+Set 0 for infinity.
 .sp
 \fIDefault:\fP 5
 .SH STATISTICS SECTION
@@ -782,8 +791,9 @@ case of the KSK submission.
 \fIDefault:\fP 1 hour
 .SS timeout
 .sp
-After this period, the KSK submission is automatically considered successful, even
-if all the checks were negative or no parents are configured. Set 0 for infinity.
+After this time period (in seconds) the KSK submission is automatically considered
+successful, even if all the checks were negative or no parents are configured.
+Set 0 for infinity.
 .sp
 \fIDefault:\fP 0
 .SH POLICY SECTION

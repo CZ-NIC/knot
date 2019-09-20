@@ -249,7 +249,7 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 	}
 
 	/* Execute the request. */
-	int timeout = 1000 * conf->cache.srv_tcp_reply_timeout;
+	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 	ret = knot_requestor_exec(&re, req, timeout);
 
 	knot_request_free(req, re.mm);
@@ -322,9 +322,8 @@ static void send_update_response(conf_t *conf, const zone_t *zone, knot_request_
 		}
 
 		if (net_is_stream(req->fd)) {
-			int timeout = 1000 * conf->cache.srv_tcp_reply_timeout;
 			net_dns_tcp_send(req->fd, req->resp->wire, req->resp->size,
-			                 timeout);
+			                 conf->cache.srv_tcp_remote_io_timeout);
 		} else {
 			net_dgram_send(req->fd, req->resp->wire, req->resp->size,
 			               (struct sockaddr *)&req->remote);

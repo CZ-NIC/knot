@@ -32,7 +32,7 @@ def create_servers(t, count, zone):
         master.disable_notify = True
 
         slave = t.server("knot")
-        slave.tcp_reply_timeout = "1"
+        slave.tcp_remote_io_timeout = "1000"
 
         t.link(zone, master, slave)
 

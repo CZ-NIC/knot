@@ -137,8 +137,8 @@ General options related to the server.
      background-workers: INT
      async-start: BOOL
      tcp-idle-timeout: TIME
-     tcp-query-timeout: TIME
-     tcp-reply-timeout: TIME
+     tcp-io-timeout: INT
+     tcp-remote-io-timeout: INT
      max-tcp-clients: INT
      max-udp-payload: SIZE
      max-ipv4-udp-payload: SIZE
@@ -270,29 +270,37 @@ responding immediately with SERVFAIL answers until the zone loads.
 tcp-idle-timeout
 ----------------
 
-Maximum idle time between requests on an incoming TCP connection.
+Maximum idle time (in seconds) between requests on an inbound TCP connection.
+It means if there is no activity on an inbound TCP connection during this limit,
+the connection is closed by the server.
+Set 0 for infinity.
 
-*Default:* 20
+*Default:* 10 s
 
-.. _server_tcp-query-timeout:
+.. _server_tcp-io-timeout:
 
-tcp-query-timeout
------------------
+tcp-io-timeout
+--------------
 
-Maximum time (in milliseconds) to receive a query over TCP. The timeout
-also applies to individual response messages.
+Maximum time (in milliseconds) to receive or send one DNS message over an inbound
+TCP connection. It means this limit applies to normal DNS queries and replies,
+incoming DDNS, and outgoing zone transfers.
+Set 0 for infinity.
 
-*Default:* 200
+*Default:* 200 ms
 
-.. _server_tcp-reply-timeout:
+.. _server_tcp-remote-io-timeout:
 
-tcp-reply-timeout
------------------
+tcp-remote-io-timeout
+---------------------
 
-Maximum time to wait for an outgoing connection or for a reply to an issued
-request (SOA, NOTIFY, AXFR...).
+Maximum time (in milliseconds) to receive or send one DNS message over an outbound
+TCP connection, which was established to a configured remote server. It means
+this limit applies to incoming zone transfers, sending NOTIFY, DDNS forwarding,
+and DS check or push.
+Set 0 for infinity.
 
-*Default:* 10
+*Default:* 1000 ms
 
 .. _server_max-tcp-clients:
 
@@ -584,7 +592,8 @@ A UNIX socket path where the server listens for control commands.
 timeout
 -------
 
-Maximum time the control socket operations can take. Set 0 for infinity.
+Maximum time (in seconds) the control socket operations can take.
+Set 0 for infinity.
 
 *Default:* 5
 
@@ -859,8 +868,9 @@ case of the KSK submission.
 timeout
 -------
 
-After this period, the KSK submission is automatically considered successful, even
-if all the checks were negative or no parents are configured. Set 0 for infinity.
+After this time period (in seconds) the KSK submission is automatically considered
+successful, even if all the checks were negative or no parents are configured.
+Set 0 for infinity.
 
 *Default:* 0
 

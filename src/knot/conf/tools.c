@@ -239,11 +239,16 @@ int check_server(
 {
 	conf_val_t hshake = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
 	                                 C_TCP_HSHAKE_TIMEOUT);
-
 	if (hshake.code == KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "TCP handshake timeout no longer supported");
+		CONF_LOG(LOG_NOTICE, "option 'tcp-handshake-timeout' is no longer supported");
 	}
 
+	conf_val_t reply_timeout = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                        C_SRV, C_TCP_REPLY_TIMEOUT);
+	if (reply_timeout.code == KNOT_EOK) {
+		CONF_LOG(LOG_NOTICE, "option 'tcp-reply-timeout' is obsolete, "
+		                     "use option 'tcp-remote-io-timeout' instead");
+	}
 	return KNOT_EOK;
 }
 
