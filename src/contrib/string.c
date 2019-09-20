@@ -123,15 +123,15 @@ static volatile memset_t volatile_memset = memset;
 
 void *memzero(void *s, size_t n)
 {
-#if defined(HAVE_EXPLICIT_BZERO)	/* OpenBSD since 5.5. */
-					/* FreeBSD since 11.0. */
-					/* Glibc since 2.25. */
-					/* DragonFly BSD since 5.5. */
+#if defined(HAVE_EXPLICIT_BZERO)	/* In OpenBSD since 5.5. */
+					/* In FreeBSD since 11.0. */
+					/* In glibc since 2.25. */
+					/* In DragonFly BSD since 5.5. */
 	explicit_bzero(s, n);
 	return s;
-#elif defined(HAVE_EXPLICIT_MEMSET)	/* NetBSD since 7.0 */
+#elif defined(HAVE_EXPLICIT_MEMSET)	/* In NetBSD since 7.0. */
 	return explicit_memset(s, 0, n);
-#elif defined(HAVE_GNUTLS_MEMSET)	/* GnuTLS since 3.4.0 */
+#elif defined(HAVE_GNUTLS_MEMSET)	/* In GnuTLS since 3.4.0. */
 	gnutls_memset(s, 0, n);
 	return s;
 #elif defined(USE_CUSTOM_MEMSET)	/* Knot custom solution as a fallback. */
