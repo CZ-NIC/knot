@@ -22,7 +22,6 @@
 #include "knot/zone/zonefile.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/updates/apply.h"
 #include "libknot/libknot.h"
 
 int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
@@ -63,7 +62,10 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 
 static int apply_one_cb(bool remove, const knot_rrset_t *rr, void *ctx)
 {
-	return remove ? apply_remove_rr(ctx, rr) : apply_add_rr(ctx, rr);
+	zone_node_t *unused = NULL;
+	zone_contents_t *contents = ctx;
+	return remove ? zone_contents_remove_rr(contents, rr, &unused)
+	              : zone_contents_add_rr(contents, rr, &unused);
 }
 
 int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
@@ -89,14 +91,7 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 		return ret;
 	}
 
-	apply_ctx_t a_ctx = { 0 };
-	ret = apply_init_ctx(&a_ctx, contents, 0);
-	if (ret != KNOT_EOK) {
-		journal_read_end(read);
-		return ret;
-	}
-
-	ret = journal_read_rrsets(read, apply_one_cb, &a_ctx);
+	ret = journal_read_rrsets(read, apply_one_cb, contents);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "changes from journal applied %u -> %u",
 		              serial, zone_contents_serial(contents));
@@ -105,8 +100,6 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 		               serial, zone_contents_serial(contents),
 		               knot_strerror(ret));
 	}
-
-	apply_cleanup(&a_ctx);
 
 	return ret;
 }
@@ -136,17 +129,10 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 		journal_read_clear_rrset(&rr);
 	}
 
-	apply_ctx_t a_ctx = { 0 };
 	if (ret == KNOT_EOK) {
-		ret = apply_init_ctx(&a_ctx, *contents, 0);
-	}
-	if (ret == KNOT_EOK) {
-		ret = journal_read_rrsets(read, apply_one_cb, &a_ctx);
+		ret = journal_read_rrsets(read, apply_one_cb, *contents);
 	} else {
 		journal_read_end(read);
-	}
-	if (a_ctx.contents != NULL) {
-		apply_cleanup(&a_ctx);
 	}
 
 	if (ret == KNOT_EOK) {
