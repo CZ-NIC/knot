@@ -120,6 +120,15 @@ static int add_node_to_a_t(const knot_dname_t *name, void *a_ctx)
 	nodes->deduplicated = false;
 	return KNOT_EOK;
 }
+static additional_t *node_type2addit(zone_node_t *node, uint16_t type)
+{
+	for (uint16_t i = 0; i < node->rrset_count; i++) {
+		if (node->rrs[i].type == type) {
+			return node->rrs[i].additional;
+		}
+	}
+	return NULL;
+}
 
 int additionals_tree_update_node(additionals_tree_t *a_t, const knot_dname_t *zone_apex,
                                  zone_node_t *old_node, zone_node_t *new_node)
@@ -129,6 +138,11 @@ int additionals_tree_update_node(additionals_tree_t *a_t, const knot_dname_t *zo
 
 	if (a_t == NULL || zone_apex == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (binode_additionals_unchanged(old_node, new_node)) {
+		printf("additionals unchanged %s %s %p %p %hu %hu %p %p\n", old_node->owner, new_node->owner, old_node->rrs, new_node->rrs, old_node->rrset_count, new_node->rrset_count, node_type2addit(old_node, KNOT_RRTYPE_NS), node_type2addit(new_node, KNOT_RRTYPE_NS));
+		return KNOT_EOK;
 	}
 
 	// for every additional in old_node rrsets, remove mentioning of this node in tree
