@@ -343,6 +343,11 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	list_t *newlist = malloc(sizeof(list_t));
 	init_list(newlist);
 
+#ifdef ENABLE_REUSEPORT
+	/* Log info if reuseport is used and for what protocols. */
+	log_info("using reuseport for UDP%s", conf->cache.srv_tcp_reuseport ? " and TCP" : "");
+#endif
+
 	/* Update bound interfaces. */
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
