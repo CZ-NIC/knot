@@ -31,8 +31,12 @@ the following symbols:
 - [ ] – Optional value
 - \| – Choice
 
-The configuration consists of several fixed sections (e.g. ``server``) and
-optional module sections, which are prefixed with ``mod-`` (e.g. ``mod-stats``).
+The configuration consists of several fixed sections and optional module
+sections. There are 14 fixed sections (``module``, ``server``, ``key``, ``acl``,
+``control``, ``statistics``, ``database``, ``keystore``, ``sumbission``,
+``policy``, ``remote``, ``template``, ``zone``, ``log``).
+Module sections are prefixed with the ``mod-`` prefix (e.g. ``mod-stats``).
+
 Most of the sections (e.g. ``zone``) are sequences of settings blocks. Each
 settings block begins with a unique identifier, which can be used as a reference
 from other sections (such an identifier must be defined in advance).
@@ -688,10 +692,10 @@ Possible values:
 journal-db-max-size
 -------------------
 
-Hard limit for the journal database. There is no cleanup logic in journal
-to recover from reaching this limit. Journal simply starts refusing changes
-across all zones. Decreasing this value has no effect if it is lower than
-the actual database file size.
+The hard size limit for the journal database. There is no cleanup logic in
+journal to recover from reaching this limit. Journal simply starts refusing
+changes across all zones. Decreasing this value has no effect if it is lower
+than the actual database file size.
 
 It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
 per-zone instead of :ref:`journal-db-max-size<database_journal-db-max-size>`
