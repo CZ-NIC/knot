@@ -103,10 +103,9 @@
 #define C_STATS			"\x0A""statistics"
 #define C_STORAGE		"\x07""storage"
 #define C_TARGET		"\x06""target"
-#define C_TCP_HSHAKE_TIMEOUT	"\x15""tcp-handshake-timeout"
 #define C_TCP_IDLE_TIMEOUT	"\x10""tcp-idle-timeout"
-#define C_TCP_QUERY_TIMEOUT	"\x11""tcp-query-timeout"
-#define C_TCP_REPLY_TIMEOUT	"\x11""tcp-reply-timeout"
+#define C_TCP_IO_TIMEOUT	"\x0E""tcp-io-timeout"
+#define C_TCP_RMT_IO_TIMEOUT	"\x15""tcp-remote-io-timeout"
 #define C_TCP_WORKERS		"\x0B""tcp-workers"
 #define C_TIMEOUT		"\x07""timeout"
 #define C_TIMER			"\x05""timer"
@@ -132,6 +131,8 @@
 #define C_MAX_TIMER_DB_SIZE	"\x11""max-timer-db-size"
 #define C_MAX_JOURNAL_DB_SIZE	"\x13""max-journal-db-size"
 #define C_MAX_KASP_DB_SIZE	"\x10""max-kasp-db-size"
+#define C_TCP_HSHAKE_TIMEOUT	"\x15""tcp-handshake-timeout"
+#define C_TCP_REPLY_TIMEOUT	"\x11""tcp-reply-timeout"
 
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,

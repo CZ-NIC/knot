@@ -214,7 +214,7 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	int timeout = conf->cache.srv_tcp_reply_timeout * 1000;
+	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 
 	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
 	conf_val_t ds_push = conf_id_get(conf, C_POLICY, C_DS_PUSH, &policy_id);
