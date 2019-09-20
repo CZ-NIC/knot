@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -204,7 +204,7 @@ static int request_reset(knot_requestor_t *req, knot_request_t *last)
 	}
 
 	if (req->layer.state == KNOT_STATE_RESET) {
-		return KNOT_LAYER_ERROR;
+		return KNOT_EPROCESSING;
 	}
 
 	return KNOT_EOK;
@@ -308,7 +308,7 @@ int knot_requestor_exec(knot_requestor_t *requestor, knot_request_t *request,
 
 	/* Expect complete request. */
 	if (requestor->layer.state != KNOT_STATE_DONE) {
-		ret = KNOT_LAYER_ERROR;
+		ret = KNOT_EPROCESSING;
 	}
 
 	/* Verify last TSIG */

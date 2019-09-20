@@ -78,6 +78,7 @@ static const struct error errors[] = {
 	{ KNOT_EFILE,        "file error" },
 	{ KNOT_ESOAINVAL,    "SOA mismatch" },
 	{ KNOT_ETRAIL,       "trailing data" },
+	{ KNOT_EPROCESSING,  "processing error" },
 
 	/* Control states. */
 	{ KNOT_CTL_ESTOP,     "stopping server" },
@@ -125,9 +126,6 @@ static const struct error errors[] = {
 	/* Transaction errors. */
 	{ KNOT_TXN_EEXISTS,    "too many transactions" },
 	{ KNOT_TXN_ENOTEXISTS, "no active transaction" },
-
-	/* Processing errors. */
-	{ KNOT_LAYER_ERROR, "processing layer error" },
 
 	/* DNSSEC errors. */
 	{ KNOT_INVALID_PUBLIC_KEY,    "invalid public key" },
