@@ -62,6 +62,7 @@ static const struct error errors[] = {
 	{ KNOT_ENOZONE,      "no such zone found" },
 	{ KNOT_ENONODE,      "no such node in zone found" },
 	{ KNOT_ENORECORD,    "no such record in zone found" },
+	{ KNOT_EISRECORD,    "such record already exists in zone" },
 	{ KNOT_ENOMASTER,    "no usable master" },
 	{ KNOT_EPREREQ,      "UPDATE prerequisity not met" },
 	{ KNOT_ETTL,         "TTL mismatch" },
@@ -136,9 +137,6 @@ static const struct error errors[] = {
 	{ KNOT_INVALID_KEY_NAME,      "invalid key name" },
 	{ KNOT_NO_PUBLIC_KEY,         "no public key" },
 	{ KNOT_NO_PRIVATE_KEY,        "no private key" },
-
-	/* New general errors. */
-	{ KNOT_EISRECORD, "such record already exists in zone" },
 
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
