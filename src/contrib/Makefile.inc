@@ -7,15 +7,10 @@ if !HAVE_LMDB
 libcontrib_la_CPPFLAGS += -include contrib/lmdb/mute_warnings.h
 libcontrib_la_LIBADD   += $(pthread_LIBS)
 endif !HAVE_LMDB
-
-if !EXPLICIT_BZERO
-if !EXPLICIT_MEMSET
-if GNUTLS_MEMSET
+if LINK_GNUTLS_MEMSET
 libcontrib_la_CPPFLAGS += $(gnutls_CFLAGS)
 libcontrib_la_LIBADD   += $(gnutls_LIBS)
-endif
-endif
-endif
+endif LINK_GNUTLS_MEMSET
 
 EXTRA_DIST += \
 	contrib/licenses/0BSD			\
