@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <urcu.h>
 
-#include "contrib/trim.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/events/handlers.h"
@@ -38,7 +37,6 @@ int event_expire(conf_t *conf, zone_t *zone)
 	knot_sem_post(&zone->cow_lock);
 
 	zone->zonefile.exists = false;
-	mem_trim();
 
 	// NOTE: must preserve zone->timers.soa_expire
 	zone->timers.next_refresh = time(NULL);
