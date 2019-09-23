@@ -1046,22 +1046,25 @@ KSK submittion checks.
 \fIDefault:\fP not set
 .SS ds\-push
 .sp
-A \fI\%reference\fP to parent\(aqs DNS server. Whenever the CDS record in
-this zone is changed, corresponding DS record is sent as an update (DDNS) to
-parent DNS server.
+An optional \fI\%reference\fP to authoritative DNS server of the
+parent\(aqs zone. The remote server must be configured to accept DS record
+updates via DDNS. Whenever a CDS record in the local zone is changed, the
+corresponding DS record is sent as a dynamic update (DDNS) to the parent
+DNS server. It\(aqs possible to manage both child and parent zones by the same
+Knot DNS server.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-For proper operation ref:\fIcds\-cdnskey\-publish<policy_cds\-cdnskey\-publish>\fP
-must not be disabled.
+This feature requires \fI\%cds\-cdnskey\-publish\fP
+not to be set to \fBnone\fP\&.
 .UNINDENT
 .UNINDENT
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-This feature does not work with Onlinesign module.
+Module Onlinesign doesn\(aqt support DS push.
 .UNINDENT
 .UNINDENT
 .sp
