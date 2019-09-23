@@ -159,7 +159,7 @@ identity
 
 An identity of the server returned in the response to the query for TXT
 record ``id.server.`` or ``hostname.bind.`` in the CHAOS class (:rfc:`4892`).
-Set empty value to disable.
+Set to an empty value to disable.
 
 *Default:* FQDN hostname
 
@@ -170,7 +170,7 @@ version
 
 A version of the server software returned in the response to the query
 for TXT record ``version.server.`` or ``version.bind.`` in the CHAOS
-class (:rfc:`4892`). Set empty value to disable.
+class (:rfc:`4892`). Set to an empty value to disable.
 
 *Default:* server version
 
@@ -179,7 +179,7 @@ class (:rfc:`4892`). Set empty value to disable.
 nsid
 ----
 
-A DNS name server identifier (:rfc:`5001`). Set empty value to disable.
+A DNS name server identifier (:rfc:`5001`). Set to an empty value to disable.
 
 *Default:* FQDN hostname
 
@@ -286,7 +286,7 @@ tcp-io-timeout
 Maximum time (in milliseconds) to receive or send one DNS message over an inbound
 TCP connection. It means this limit applies to normal DNS queries and replies,
 incoming DDNS, and outgoing zone transfers.
-Set 0 for infinity.
+Set to 0 for infinity.
 
 *Default:* 200 ms
 
@@ -299,7 +299,7 @@ Maximum time (in milliseconds) to receive or send one DNS message over an outbou
 TCP connection, which was established to a configured remote server. It means
 this limit applies to incoming zone transfers, sending NOTIFY, DDNS forwarding,
 and DS check or push.
-Set 0 for infinity.
+Set to 0 for infinity.
 
 *Default:* 1000 ms
 
@@ -594,7 +594,7 @@ timeout
 -------
 
 Maximum time (in seconds) the control socket operations can take.
-Set 0 for infinity.
+Set to 0 for infinity.
 
 *Default:* 5
 
@@ -871,7 +871,7 @@ timeout
 
 After this time period (in seconds) the KSK submission is automatically considered
 successful, even if all the checks were negative or no parents are configured.
-Set 0 for infinity.
+Set to 0 for infinity.
 
 *Default:* 0
 
