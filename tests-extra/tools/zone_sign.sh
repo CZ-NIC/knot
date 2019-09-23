@@ -3,12 +3,13 @@ export SIGNKEY=""
 export KSK=""
 export STYPE="-3"
 export ENDTIME="20500101000000"
+export KEYALG="ECDSAP256SHA256"
 _keygen() {
         keygenlog=${BASEDIR}/keygen.log
         echo -n > $keygenlog
-        key=$(dnssec-keygen -r /dev/urandom $STYPE -n ZONE -K $BASEDIR $ZONE 2>>$keygenlog)
+        key=$(dnssec-keygen -r /dev/urandom $STYPE -n ZONE -K $BASEDIR -a $KEYALG $ZONE 2>>$keygenlog)
         export SIGNKEY=$BASEDIR/${key}
-        key=$(dnssec-keygen $STYPE -f KSK -r /dev/urandom -n ZONE -K $BASEDIR $ZONE 2>>$keygenlog)
+        key=$(dnssec-keygen $STYPE -f KSK -r /dev/urandom -n ZONE -K $BASEDIR -a $KEYALG $ZONE 2>>$keygenlog)
         export KSK=$BASEDIR/${key}
         #echo "\$include $SIGNKEY.key ; ZSK" >> $ZFILE
         #echo "\$include $KSK.key ; KSK" >> $ZFILE
