@@ -32,7 +32,9 @@ Parameters
   Use a control UNIX socket path (default is :file:`@run_dir@/knot.sock`).
 
 **-t**, **--timeout** *seconds*
-  Use a control timeout in seconds. Set 0 for infinity (default is 10).
+  Use a control timeout in seconds. Set to 0 for infinity (default is 10).
+  The control socket operations are also subject to the :ref:`timeout<control_timeout>`
+  parameter set on the server side in server's Control configuration section.
 
 **-b**, **--blocking**
   Zone event trigger commands wait until the event is finished.
