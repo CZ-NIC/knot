@@ -54,6 +54,9 @@ int zone_node_additionals_foreach(const zone_node_t *node, const knot_dname_t *z
 	int ret = KNOT_EOK;
 	for (int i = 0; ret == KNOT_EOK && i < node->rrset_count; i++) {
 		struct rr_data *rr_data = &node->rrs[i];
+		if (!knot_rrtype_additional_needed(rr_data->type)) {
+			continue;
+		}
 		knot_rdata_t *rdata = knot_rdataset_at(&rr_data->rrs, 0);
 		for (int j = 0; ret == KNOT_EOK && j < rr_data->rrs.count; j++) {
 			const knot_dname_t *name = knot_rdata_name(rdata, rr_data->type);
@@ -129,6 +132,10 @@ int additionals_tree_update_node(additionals_tree_t *a_t, const knot_dname_t *zo
 
 	if (a_t == NULL || zone_apex == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (binode_additionals_unchanged(old_node, new_node)) {
+		return KNOT_EOK;
 	}
 
 	// for every additional in old_node rrsets, remove mentioning of this node in tree

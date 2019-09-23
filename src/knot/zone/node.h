@@ -189,6 +189,11 @@ bool binode_rdata_shared(zone_node_t *node, uint16_t type);
 bool binode_additional_shared(zone_node_t *node, uint16_t type);
 
 /*!
+ * \brief Return true if the additionals are unchanged between two nodes (usually a bi-node).
+ */
+bool binode_additionals_unchanged(zone_node_t *node, zone_node_t *counterpart);
+
+/*!
  * \brief Destroys allocated data within the node
  *        structure, but not the node itself.
  *

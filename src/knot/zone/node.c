@@ -228,6 +228,35 @@ bool binode_additional_shared(zone_node_t *node, uint16_t type)
 	return (a1 == a2);
 }
 
+bool binode_additionals_unchanged(zone_node_t *node, zone_node_t *counterpart)
+{
+	if (node == NULL || counterpart == NULL) {
+		return false;
+	}
+	if (counterpart->rrs == node->rrs) {
+		return true;
+	}
+	for (int i = 0; i < node->rrset_count; i++) {
+		struct rr_data *rr = &node->rrs[i];
+		if (knot_rrtype_additional_needed(rr->type)) {
+			knot_rdataset_t *counterr = node_rdataset(counterpart, rr->type);
+			if (counterr == NULL || counterr->rdata != rr->rrs.rdata) {
+				return false;
+			}
+		}
+	}
+	for (int i = 0; i < counterpart->rrset_count; i++) {
+		struct rr_data *rr = &counterpart->rrs[i];
+		if (knot_rrtype_additional_needed(rr->type)) {
+			knot_rdataset_t *counterr = node_rdataset(node, rr->type);
+			if (counterr == NULL || counterr->rdata != rr->rrs.rdata) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
 {
 	if (node == NULL) {
