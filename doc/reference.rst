@@ -1008,16 +1008,19 @@ KSK submittion checks.
 ds-push
 -------
 
-A :ref:`reference<remote_id>` to parent's DNS server. Whenever the CDS record in
-this zone is changed, corresponding DS record is sent as an update (DDNS) to
-parent DNS server.
+An optional :ref:`reference<remote_id>` to authoritative DNS server of the
+parent's zone. The remote server must be configured to accept DS record
+updates via DDNS. Whenever a CDS record in the local zone is changed, the
+corresponding DS record is sent as a dynamic update (DDNS) to the parent
+DNS server. It's possible to manage both child and parent zones by the same
+Knot DNS server.
 
 .. NOTE::
-   For proper operation ref:`cds-cdnskey-publish<policy_cds-cdnskey-publish>`
-   must not be disabled.
+   This feature requires :ref:`cds-cdnskey-publish<policy_cds-cdnskey-publish>`
+   not to be set to ``none``.
 
 .. NOTE::
-   This feature does not work with :ref:`Onlinesign<mod-onlinesign>` module.
+   Module :ref:`Onlinesign<mod-onlinesign>` doesn't support DS push.
 
 *Default:* not set
 
