@@ -772,13 +772,15 @@ DNSKEY rollover starts.
 \fIDefault:\fP zone SOA TTL
 .SS zone\-max\-ttl
 .sp
-Maximal TTL value among all the records in zone.
+Declare (override) maximal TTL value among all the records in zone.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
 It\(aqs generally recommended to override the maximal TTL computation by setting this
-explicitly whenever possible. It\(aqs required for DNSSEC Offline KSK\&.
+explicitly whenever possible. It\(aqs required for DNSSEC Offline KSK and
+really reasonable when records are generated dynamically
+(e.g. by a module).
 .UNINDENT
 .UNINDENT
 .sp
