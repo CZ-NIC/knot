@@ -1009,11 +1009,13 @@ A TTL value for DNSKEY records added into zone apex.
 zone-max-ttl
 ------------
 
-Maximal TTL value among all the records in zone.
+Declare (override) maximal TTL value among all the records in zone.
 
 .. NOTE::
    It's generally recommended to override the maximal TTL computation by setting this
-   explicitly whenever possible. It's required for :ref:`DNSSEC Offline KSK`.
+   explicitly whenever possible. It's required for :ref:`DNSSEC Offline KSK` and
+   really reasonable when records are generated dynamically
+   (e.g. by a :ref:`module<mod-synthrecord>`).
 
 *Default:* computed after zone is loaded
 
