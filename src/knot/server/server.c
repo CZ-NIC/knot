@@ -47,11 +47,43 @@ enum {
 	TCP_MIN_SNDSIZE = sizeof(uint16_t) + UINT16_MAX
 };
 
-/*! \brief Timer and its lock for TCP throttle warnings. */
-locked_timeout_t tcp_throttle_log = {
+/*! \brief Throttle records, a timer and its lock for TCP throttle warnings. */
+/* Warning: the inititailization here is neccesaary because of macOS compiler! */
+throttle_log_t tcp_throttle_log; = {
 	.timer_end.tv_sec = 0,
 	.timer_end.tv_nsec = 0
 };
+
+/* XXX */
+/*! \brief Initialize TCP throttle logger. */
+static int throttle_log_init(conf_t *conf)
+{
+	/* XXX */
+	tcp_throttle_log.timer_end.tv_sec = 0;
+	tcp_throttle_log.timer_end.tv_nsec = 0;
+	tcp_throttle_log.threads = conf->cache.srv_tcp_threads;
+
+	tcp_throttle_log.was_throttled =
+		calloc(tcp_throttle_log.threads, sizeof(unsigned));
+	if (tcp_throttle_log.was_throttled == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Initialize the spinlock for TCP threshold logging. */
+	knot_spin_init(&tcp_throttle_log.lock);
+
+	return KNOT_EOK;
+}
+
+/*! \brief Destroy and free TCP throttle logger. */
+static void throttle_log_deinit(void)
+{
+	/* Destroy the TCP throttle log timer spinlock. */
+	knot_spin_destroy(&tcp_throttle_log.lock);
+
+	free(tcp_throttle_log.was_throttled);
+}
+/* !XXX */
 
 /*! \brief Unbind interface and clear the structure. */
 static void server_deinit_iface(iface_t *iface)
@@ -463,8 +495,9 @@ void server_deinit(server_t *server)
 	/* Free threads and event handlers. */
 	worker_pool_destroy(server->workers);
 
-	/* Destroy the TCP throttle log timer spinlock. */
-	knot_spin_destroy(&tcp_throttle_log.lock);
+	/* XXX */
+	/* Destroy and free TCP throttle logger. */
+	throttle_log_deinit();
 
 	/* Free zone database. */
 	knot_zonedb_deep_free(&server->zone_db);
@@ -819,8 +852,12 @@ static int configure_threads(conf_t *conf, server_t *server)
 		return ret;
 	}
 
-	/* Initialize the spinlock for TCP threshold logging. */
-	knot_spin_init(&tcp_throttle_log.lock);
+	/* XXX */
+	/* Initialize TCP throttle logger. */
+	ret = throttle_log_init(conf);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
 }
