@@ -50,12 +50,15 @@ typedef struct tcp_context {
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
-	unsigned was_throttled;          /*!< Throttling occured during sweep period. */
+	unsigned *my_throttle_mark;      /*!< Throttle checkmark field for this thread. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int query_timeout;               /*!< [ms] TCP query timeout configuration. */
+#ifdef ENABLE_REUSEPORT
+	bool reuseport;                  /*!< True if tcp-reuseport is set. */
+#endif
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL         2     /*!< [secs] granularity of connection sweeping. */
@@ -78,10 +81,29 @@ static void update_tcp_conf(tcp_context_t *tcp)
 	rcu_read_unlock();
 }
 
+/*! \brief Report if all TCP workers have been throttled. */
+static bool all_threads_throttled(void)
+{
+	/* Warning: there is no locking of was_throttled[] values here! */
+	for (int i = 0; i < tcp_throttle_log.threads; i++) {
+		if (tcp_throttle_log.was_throttled[i] == 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
 /*! \brief If TCP was throttled recently, log a warning. */
 static void log_if_throttled(tcp_context_t *tcp, struct timespec *timer)
 {
-	if (tcp->was_throttled != 0) {
+/* This solution has been chosen because of speed. */
+#ifdef ENABLE_REUSEPORT
+	if (*tcp->my_throttle_mark != 0 &&
+	    (tcp->reuseport || all_threads_throttled())) {
+#else
+	if (*tcp->my_throttle_mark != 0 && all_threads_throttled()) {
+#endif /* ENABLE_REUSEPORT */
+
 		bool log_flag = false;
 
 		/* LOCK tcp_throttle_log.lock */
@@ -100,9 +122,8 @@ static void log_if_throttled(tcp_context_t *tcp, struct timespec *timer)
 		if (log_flag) {
 			log_warning("TCP connection limiting has occured recently");
 		}
-
 	}
-	tcp->was_throttled = 0;
+	*tcp->my_throttle_mark = 0;
 }
 
 /*! \brief Sweep TCP connection. */
@@ -284,7 +305,7 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
 
 	/* Record if throttling has occured since previous sweep or since start. */
-	tcp->was_throttled |= i;
+	*tcp->my_throttle_mark |= i;
 
 	/* Wait for events. */
 	int nfds = poll(&(set->pfd[i]), set->n - i, TCP_SWEEP_INTERVAL * 1000);
@@ -335,12 +356,14 @@ int tcp_master(dthread_t *thread)
 	knot_mm_t mm;
 	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
 
+	int thrd_id = dt_get_id(thread);
+
 	/* Create TCP answering context. */
 	tcp_context_t tcp = {
 		.server = handler->server,
 		.is_throttled = false,
-		.was_throttled = 0,
-		.thread_id = handler->thread_id[dt_get_id(thread)]
+		.my_throttle_mark = &tcp_throttle_log.was_throttled[thrd_id],
+		.thread_id = handler->thread_id[thrd_id]
 	};
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());
 
@@ -356,6 +379,13 @@ int tcp_master(dthread_t *thread)
 			goto finish;
 		}
 	}
+
+#ifdef ENABLE_REUSEPORT
+	/* TCP throttle logging depends on TCP reuseport setting. */
+	rcu_read_lock();
+	tcp.reuseport = conf()->cache.srv_tcp_reuseport;
+	rcu_read_unlock();
+#endif
 
 	/* Initialize sweep interval and TCP configuration. */
 	struct timespec next_sweep;
