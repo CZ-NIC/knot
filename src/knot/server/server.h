@@ -99,24 +99,23 @@ typedef struct server {
 
 } server_t;
 
-/*! \brief Shared timer and its lock. */
+/*! \brief Shared throttling state, its log timer and a lock. */
 typedef struct {
-
-	/*!< When the timer times out. */
-	struct timespec timer_end;
-
-	/*!< Spinlock lock for the timer above. */
-	knot_spin_t lock;
-
-} locked_timeout_t;
+	unsigned *was_throttled;	/*!< Throttling occured during the sweep period
+					 *   in each worker. */
+	int threads;			/*!< Number of watched TCP workers. */
+	struct timespec timer_end;	/*!< When the timer times out. */
+	knot_spin_t lock;		/*!< Spinlock lock for the timer above. */
+} throttle_log_t;
 
 /*!
- * \brief Timer and its lock for TCP throttle warnings.
+ * \brief Throttle records, a timer and its lock for TCP throttle warnings.
  *
- * Keeps the time from when TCP throttle warning can be issued (again).
+ * Collects the info wheter throttling has occured in each thread,
+ * keeps the time from when TCP throttle warning can be issued (again).
  * A singleton accessed by all TCP threads.
  */
-extern locked_timeout_t tcp_throttle_log;
+extern throttle_log_t tcp_throttle_log;
 
 /*!
  * \brief Initializes the server structure.
