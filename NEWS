@@ -1,3 +1,28 @@
+Knot DNS 2.8.4 (2019-09-24)
+===========================
+
+Features:
+---------
+ - Automatic uploading of DS records to parent zone using DDNS,
+   see 'policy.ds-push' configuration option
+
+Improvements:
+-------------
+ - Incoming IXFR no longer falls back to AXFR if connection error #642
+ - More accurate semantic checks for missing glue records
+ - Various code and documentation improvements
+
+Bugfixes:
+---------
+ - Failed to read/export configuration if 'acl.update-type' is set #651
+ - Failed to generate initial zero-length salt
+ - Missing error log for invalid rrtype input to dynamic configuration #652
+ - Missing error log when AXFR processing fails to store zone data
+ - Redundant notice log about unavailable persistent configuration DB
+ - Zone not flushed after retransfer if SOA serial not changed
+ - Zone contents not properly fixed during zone transfers
+ - No changeset created for updated rrset's TTL if changed by RR addition
+
 Knot DNS 2.8.3 (2019-07-16)
 ===========================
 
