@@ -605,11 +605,19 @@ AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h bsd/string.h])
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
                 setgroups strlcat strlcpy sysctlbyname])
 
-AC_CHECK_FUNC([explicit_bzero], [explicit_bzero=yes], [explicit_bzero=no])
-AM_CONDITIONAL([EXPLICIT_BZERO], [test "$explicit_bzero" = "yes"])
-AC_CHECK_FUNC([explicit_memset], [explicit_memset=yes], [explicit_memset=no])
-AM_CONDITIONAL([EXPLICIT_MEMSET], [test "$explicit_memset" = "yes"])
-AC_CHECK_DECL([gnutls_memset], [gnutls_memset=yes], [gnutls_memset=no], [#include <gnutls/gnutls.h>])
+# Check for robust memory cleanup implementations.
+AC_CHECK_FUNC([explicit_bzero], [
+  AC_DEFINE([HAVE_EXPLICIT_BZERO], [1], [explicit_bzero available])
+  explicit_bzero=yes], [explicit_bzero=no]
+)
+AC_CHECK_FUNC([explicit_memset], [
+  AC_DEFINE([HAVE_EXPLICIT_MEMSET], [1], [explicit_memset available])
+  explicit_memset=yes], [explicit_memset=no]
+)
+AC_CHECK_DECL([gnutls_memset], [
+  AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset available])
+  gnutls_memset=yes], [gnutls_memset=no], [#include <gnutls/gnutls.h>]
+)
 AM_CONDITIONAL([USE_GNUTLS_MEMSET], [test "$explicit_bzero" = "no" -a "$explicit_memset" = "no" -a "$gnutls_memset" = "yes"])
 
 # Check for mandatory library functions.

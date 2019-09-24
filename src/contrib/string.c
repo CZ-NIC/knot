@@ -134,13 +134,11 @@ void *memzero(void *s, size_t n)
 #elif defined(HAVE_GNUTLS_MEMSET)	/* In GnuTLS since 3.4.0. */
 	gnutls_memset(s, 0, n);
 	return s;
-#elif defined(USE_CUSTOM_MEMSET)	/* Knot custom solution as a fallback. */
+#else					/* Knot custom solution as a fallback. */
 	/* Warning: the use of the return value is *probably* needed
 	 * so as to avoid the volatile_memset() to be optimized out.
 	 */
 	return volatile_memset(s, 0, n);
-#else
-  #error Build of memzero() failed!
 #endif
 }
 
