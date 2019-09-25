@@ -29,6 +29,7 @@
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
 #include "knot/updates/changesets.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -251,7 +252,10 @@ static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
 
-	int ret = xfr_validate(new_zone, data);
+	int ret = zone_adjust_contents(new_zone, adjust_cb_flags, NULL, false, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
+	if (ret == KNOT_EOK) {
+		ret = xfr_validate(new_zone, data);
+	}
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
