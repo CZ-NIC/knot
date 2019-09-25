@@ -38,10 +38,12 @@
  * \note Server address is not used for the server cookie check.
  */
 typedef struct {
-	uint8_t version;
-	uint32_t timestamp;
-	const struct sockaddr_storage *client_addr; /*!< Client socket address. */
-	const struct sockaddr_storage *server_addr; /*!< Server socket address. */
+	uint8_t version;          /*!< Cookie version. */
+	uint32_t timestamp;       /*!< [s] Cookie generate or check time. */
+	uint32_t lifetime_before; /*!< [s] Server Cookie lifetime in the past. */
+	uint32_t lifetime_after;  /*!< [s] Server Cookie lifetime in the future. */
+	const struct sockaddr_storage *client_addr;   /*!< Client socket address. */
+	const struct sockaddr_storage *server_addr;   /*!< Server socket address. */
 	uint8_t secret[KNOT_EDNS_COOKIE_SECRET_SIZE]; /*!< Cookie secret data. */
 } knot_edns_cookie_params_t;
 
