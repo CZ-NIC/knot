@@ -526,7 +526,10 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	ret = xfr_validate(up.new_cont, data);
+	ret = zone_adjust_contents(up.new_cont, adjust_cb_flags, NULL, false, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
+	if (ret == KNOT_EOK) {
+		ret = xfr_validate(up.new_cont, data);
+	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		return ret;
