@@ -29,8 +29,7 @@ _public_
 int knot_edns_cookie_client_generate(knot_edns_cookie_t *out,
                                      const knot_edns_cookie_params_t *params)
 {
-	if (out == NULL || params == NULL || params->version != KNOT_EDNS_COOKIE_VERSION ||
-	    params->server_addr == NULL) {
+	if (out == NULL || params == NULL || params->server_addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -127,8 +126,8 @@ int knot_edns_cookie_server_check(const knot_edns_cookie_t *sc,
 	memcpy(&cookie_time, &sc->data[4], sizeof(cookie_time));
 	cookie_time = be32toh(cookie_time);
 
-	uint32_t min_time = params->timestamp - 3600;
-	uint32_t max_time = params->timestamp + 5;
+	uint32_t min_time = params->timestamp - params->lifetime_before;
+	uint32_t max_time = params->timestamp + params->lifetime_after;
 	if (cookie_time < min_time || cookie_time > max_time) {
 		return KNOT_EINVAL;
 	}
