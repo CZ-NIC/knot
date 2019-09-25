@@ -389,6 +389,10 @@ void zone_update_clear(zone_update_t *update)
 
 static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *add)
 {
+	if (add->type == KNOT_RRTYPE_RRSIG) {
+		return KNOT_EOK;
+	}
+
 	const zone_node_t *exist_node = zone_contents_find_node(update->new_cont, add->owner);
 	const knot_rrset_t exist_rr = node_rrset(exist_node, add->type);
 	if (knot_rrset_empty(&exist_rr) || exist_rr.ttl == add->ttl) {
