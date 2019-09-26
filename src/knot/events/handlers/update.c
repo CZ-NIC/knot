@@ -250,7 +250,8 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 
 	/* Execute the request. */
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
-	ret = knot_requestor_exec(&re, req, timeout);
+	int timeout2 = conf->cache.srv_tcp_remote_reply_timeout;
+	ret = knot_requestor_exec(&re, req, timeout, timeout2);
 
 	knot_request_free(req, re.mm);
 	knot_requestor_clear(&re);

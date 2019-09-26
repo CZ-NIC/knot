@@ -107,9 +107,10 @@ void knot_requestor_clear(knot_requestor_t *requestor);
  * \param requestor  Requestor instance.
  * \param request    Request instance.
  * \param timeout_ms Timeout of each operation in miliseconds (-1 for infinity).
+ * \param consume_init_to   Additinal time for first CONSUME data receive (in seconds!).
  *
  * \return KNOT_EOK or error
  */
 int knot_requestor_exec(knot_requestor_t *requestor,
                         knot_request_t *request,
-                        int timeout_ms);
+                        int timeout_ms, int consume_init_to);

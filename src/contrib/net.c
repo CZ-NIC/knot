@@ -593,7 +593,7 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeo
 	return size; /* Do not count the size prefix. */
 }
 
-ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
+ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms, int timeout_ms_init)
 {
 	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
@@ -609,7 +609,7 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 	iov.iov_base = &pktsize;
 	iov.iov_len = sizeof(pktsize);
 
-	int ret = recv_data(sock, &msg, false, &timeout_ms);
+	int ret = recv_data(sock, &msg, false, &timeout_ms_init);
 	if (ret != sizeof(pktsize)) {
 		return ret;
 	}

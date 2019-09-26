@@ -181,5 +181,7 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeo
  * the returned size. Only a complete DNS message is retrieved.
  *
  * \see net_base_recv
+ *
+ * \param timeout_ms_init   Additional time to be waited for first data to come.
  */
-ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
+ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms, int timeout_ms_init);

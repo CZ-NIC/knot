@@ -432,7 +432,7 @@ static void handler_dns(int sock, void *_ctx)
 	if (ctx->raw) {
 		in_len = net_stream_recv(sock, in, sizeof(in), TIMEOUT);
 	} else {
-		in_len = net_dns_tcp_recv(sock, in, sizeof(in), TIMEOUT);
+		in_len = net_dns_tcp_recv(sock, in, sizeof(in), TIMEOUT, 0);
 	}
 
 	ctx->success = in_len == ctx->len &&

@@ -303,6 +303,18 @@ Set to 0 for infinity.
 
 *Default:* 1000 ms
 
+. _server_tcp-remote-reply-timeout:
+
+tcp-remote-reply-timeout
+------------------------
+
+Maximum time (in seconds) to receive first DNS message after sending an outbound
+request over TCP.
+
+*Minimum:* 1 s
+
+*Default:* 10 s
+
 .. _server_max-tcp-clients:
 
 max-tcp-clients

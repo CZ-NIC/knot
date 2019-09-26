@@ -106,6 +106,7 @@
 #define C_TCP_IDLE_TIMEOUT	"\x10""tcp-idle-timeout"
 #define C_TCP_IO_TIMEOUT	"\x0E""tcp-io-timeout"
 #define C_TCP_RMT_IO_TIMEOUT	"\x15""tcp-remote-io-timeout"
+#define C_TCP_RMT_REPLY_TIMEOUT "\x18""tcp-remote-reply-timeout"
 #define C_TCP_WORKERS		"\x0B""tcp-workers"
 #define C_TIMEOUT		"\x07""timeout"
 #define C_TIMER			"\x05""timer"

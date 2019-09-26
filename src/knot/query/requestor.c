@@ -77,7 +77,7 @@ static int request_send(knot_request_t *request, int timeout_ms)
 	return KNOT_EOK;
 }
 
-static int request_recv(knot_request_t *request, int timeout_ms)
+static int request_recv(knot_request_t *request, int timeout_ms, int timeout_ms_init)
 {
 	knot_pkt_t *resp = request->resp;
 	knot_pkt_clear(resp);
@@ -90,9 +90,9 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 
 	/* Receive it */
 	if (use_tcp(request)) {
-		ret = net_dns_tcp_recv(request->fd, resp->wire, resp->max_size, timeout_ms);
+		ret = net_dns_tcp_recv(request->fd, resp->wire, resp->max_size, timeout_ms, timeout_ms_init);
 	} else {
-		ret = net_dgram_recv(request->fd, resp->wire, resp->max_size, timeout_ms);
+		ret = net_dgram_recv(request->fd, resp->wire, resp->max_size, timeout_ms + timeout_ms_init);
 	}
 	if (ret <= 0) {
 		resp->size = 0;
@@ -229,9 +229,9 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 }
 
 static int request_consume(knot_requestor_t *req, knot_request_t *last,
-                           int timeout_ms)
+                           int timeout_ms, int timeout_init_ms)
 {
-	int ret = request_recv(last, timeout_ms);
+	int ret = request_recv(last, timeout_ms, timeout_init_ms);
 	if (ret < 0) {
 		return ret;
 	}
@@ -272,11 +272,11 @@ static bool layer_active(knot_layer_state_t state)
 }
 
 static int request_io(knot_requestor_t *req, knot_request_t *last,
-                      int timeout_ms)
+                      int timeout_ms, int consume_init_to)
 {
 	switch (req->layer.state) {
 	case KNOT_STATE_CONSUME:
-		return request_consume(req, last, timeout_ms);
+		return request_consume(req, last, timeout_ms, consume_init_to);
 	case KNOT_STATE_PRODUCE:
 		return request_produce(req, last, timeout_ms);
 	case KNOT_STATE_RESET:
@@ -287,7 +287,7 @@ static int request_io(knot_requestor_t *req, knot_request_t *last,
 }
 
 int knot_requestor_exec(knot_requestor_t *requestor, knot_request_t *request,
-                        int timeout_ms)
+                        int timeout_ms, int consume_init_to)
 {
 	if (requestor == NULL || request == NULL) {
 		return KNOT_EINVAL;
@@ -299,7 +299,7 @@ int knot_requestor_exec(knot_requestor_t *requestor, knot_request_t *request,
 
 	/* Do I/O until the processing is satisifed or fails. */
 	while (layer_active(requestor->layer.state)) {
-		ret = request_io(requestor, request, timeout_ms);
+		ret = request_io(requestor, request, timeout_ms, consume_init_to * 1000);
 		if (ret != KNOT_EOK) {
 			knot_layer_finish(&requestor->layer);
 			return ret;

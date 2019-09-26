@@ -63,7 +63,7 @@ static void *responder_thread(void *arg)
 		if (client < 0) {
 			break;
 		}
-		int len = net_dns_tcp_recv(client, buf, sizeof(buf), -1);
+		int len = net_dns_tcp_recv(client, buf, sizeof(buf), -1, 0);
 		if (len < KNOT_WIRE_HEADER_SIZE) {
 			close(client);
 			break;
@@ -96,7 +96,7 @@ static void test_disconnected(knot_requestor_t *requestor,
                               const struct sockaddr_storage *src)
 {
 	knot_request_t *req = make_query(requestor, dst, src);
-	int ret = knot_requestor_exec(requestor, req, TIMEOUT);
+	int ret = knot_requestor_exec(requestor, req, TIMEOUT, 0);
 	is_int(KNOT_ECONN, ret, "requestor: disconnected/exec");
 	knot_request_free(req, requestor->mm);
 
@@ -108,7 +108,7 @@ static void test_connected(knot_requestor_t *requestor,
 {
 	/* Enqueue packet. */
 	knot_request_t *req = make_query(requestor, dst, src);
-	int ret = knot_requestor_exec(requestor, req, TIMEOUT);
+	int ret = knot_requestor_exec(requestor, req, TIMEOUT, 0);
 	is_int(KNOT_EOK, ret, "requestor: connected/exec");
 	knot_request_free(req, requestor->mm);
 }

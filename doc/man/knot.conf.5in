@@ -307,6 +307,16 @@ and DS check or push.
 Set to 0 for infinity.
 .sp
 \fIDefault:\fP 1000 ms
+.sp
+\&. _server_tcp\-remote\-reply\-timeout:
+.SS tcp\-remote\-reply\-timeout
+.sp
+Maximum time (in seconds) to receive first DNS message after sending an outbound
+request over TCP.
+.sp
+\fIMinimum:\fP 1 s
+.sp
+\fIDefault:\fP 10 s
 .SS max\-tcp\-clients
 .sp
 A maximum number of TCP clients connected in parallel, set this below the file

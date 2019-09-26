@@ -98,7 +98,7 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	/* Forward request. */
-	ret = knot_requestor_exec(&re, req, proxy->timeout);
+	ret = knot_requestor_exec(&re, req, proxy->timeout, 0);
 
 	knot_request_free(req, re.mm);
 	knot_requestor_clear(&re);

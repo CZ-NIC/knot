@@ -1163,11 +1163,12 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	}
 
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
+	int timeout2 = conf->cache.srv_tcp_remote_reply_timeout;
 
 	int ret;
 
 	// while loop runs 0x or 1x; IXFR to AXFR failover
-	while (ret = knot_requestor_exec(&requestor, req, timeout),
+	while (ret = knot_requestor_exec(&requestor, req, timeout, timeout2),
 	       ixfr_error_failover(ret) && data.xfr_type == XFR_TYPE_IXFR) {
 		REFRESH_LOG(LOG_WARNING, data.zone->name, data.remote,
 		            "fallback to AXFR (%s)", knot_strerror(ret));

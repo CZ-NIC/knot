@@ -69,7 +69,7 @@ static void *thr_receive(void *data)
 		return NULL;
 	}
 
-	d->result = net_dns_tcp_recv(client, d->buffer, d->size, TIMEOUT);
+	d->result = net_dns_tcp_recv(client, d->buffer, d->size, TIMEOUT, 0);
 
 	close(client);
 

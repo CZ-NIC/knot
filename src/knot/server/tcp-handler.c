@@ -158,7 +158,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Receive data. */
-	int recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout);
+	int recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout, 0);
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {

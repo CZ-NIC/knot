@@ -160,7 +160,7 @@ static const knot_layer_api_t DS_PUSH_API = {
 };
 
 static int send_ds_push(conf_t *conf, zone_t *zone,
-                        const conf_remote_t *parent, int timeout)
+                        const conf_remote_t *parent, int timeout, int timeout2)
 {
 	knot_rrset_t zone_cds = node_rrset(zone->contents->apex, KNOT_RRTYPE_CDS);
 	if (knot_rrset_empty(&zone_cds)) {
@@ -195,7 +195,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = knot_requestor_exec(&requestor, req, timeout);
+	int ret = knot_requestor_exec(&requestor, req, timeout, timeout2);
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
 		DS_PUSH_LOG(LOG_INFO, zone->name, dst, "success");
@@ -223,6 +223,7 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 	}
 
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
+	int timeout2 = conf->cache.srv_tcp_remote_reply_timeout;
 
 	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
 	conf_val_t ds_push = conf_id_get(conf, C_POLICY, C_DS_PUSH, &policy_id);
@@ -233,7 +234,7 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 		int ret = KNOT_EOK;
 		for (int i = 0; i < addr_count; i++) {
 			conf_remote_t parent = conf_remote(conf, &ds_push, i);
-			ret = send_ds_push(conf, zone, &parent, timeout);
+			ret = send_ds_push(conf, zone, &parent, timeout, timeout2);
 			if (ret == KNOT_EOK) {
 				break;
 			}

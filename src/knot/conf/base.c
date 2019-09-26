@@ -156,6 +156,9 @@ static void init_cache(
 		conf->cache.srv_tcp_remote_io_timeout = timeout;
 	}
 
+	val = conf_get(conf, C_SRV, C_TCP_RMT_REPLY_TIMEOUT);
+	conf->cache.srv_tcp_remote_reply_timeout = conf_int(&val);
+
 	conf->cache.srv_udp_threads = running_udp_threads;
 
 	conf->cache.srv_tcp_threads = running_tcp_threads;

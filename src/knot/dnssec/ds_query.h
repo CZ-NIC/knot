@@ -19,4 +19,4 @@
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/context.h"
 
-int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t timeout);
+int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t timeout, size_t timeout_init);
