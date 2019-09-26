@@ -52,9 +52,8 @@ throttle_log_t tcp_throttle_log;
 
 /* XXX */
 /*! \brief Initialize TCP throttle logger. */
-
 /*! \brief Destroy and free TCP throttle logger. */
-/* !XXX */
+/* XXX */
 
 /*! \brief Unbind interface and clear the structure. */
 static void server_deinit_iface(iface_t *iface)
