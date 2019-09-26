@@ -4,7 +4,7 @@
 
 from dnstest.test import Test
 
-t = Test()
+t = Test(stress=False)
 
 master = t.server("knot")
 slave = t.server("knot")
@@ -17,6 +17,8 @@ master.zonefile_sync = "-1"
 for zone in zones:
   master.dnssec(zone).enable = True
 
+slave.tcp_remote_io_timeout = 2000
+
 t.start()
 
 ser1 = master.zones_wait(zones, serials_zfile=True, greater=True, equal=False)
@@ -27,6 +29,7 @@ for zone in zones:
 
 master.flush()
 t.sleep(3)
+
 for zone in zones:
   master.update_zonefile(zone, random=True)
   master.ctl("zone-reload %s" % zone.name)
