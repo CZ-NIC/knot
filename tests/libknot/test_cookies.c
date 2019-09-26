@@ -103,31 +103,35 @@ int main(int argc, char *argv[])
 	knot_edns_cookie_t sc;
 
 	const uint8_t c_secret1[] = "\x3F\x66\x51\xC9\x81\xC1\xD7\x3E\x58\x79\x25\xD2\xF9\x98\x5F\x08";
+	const uint8_t c_secret2[] = "\x4C\x31\x15\x17\xFA\xB6\xBF\xE2\xE1\x49\xAB\x74\xEC\x1B\xC9\xA0";
 	const uint8_t s_secret1[] = "\xE5\xE9\x73\xE5\xA6\xB2\xA4\x3F\x48\xE7\xDC\x84\x9E\x37\xBF\xCF";
 
-	struct sockaddr_storage c4_sa = { 0 };
+	struct sockaddr_storage c4_sa1 = { 0 };
+	struct sockaddr_storage c4_sa2 = { 0 };
 	struct sockaddr_storage s4_sa = { 0 };
-	sockaddr_set(&c4_sa, AF_INET, "198.51.100.100", 0);
-	sockaddr_set(&s4_sa, AF_INET, "192.0.2.53", 0);
+	sockaddr_set(&c4_sa1,  AF_INET, "198.51.100.100", 0);
+	sockaddr_set(&c4_sa2, AF_INET, "203.0.113.203", 0);
+	sockaddr_set(&s4_sa,  AF_INET, "192.0.2.53", 0);
 
 	cc = client_generate(&s4_sa, c_secret1, "IPv4", KNOT_EOK,
 	                     "\x24\x64\xC4\xAB\xCF\x10\xC9\x57");
-	client_check(&s4_sa, c_secret1, &cc, "IPv4", KNOT_EOK);
-	sc = server_generate(&c4_sa, s_secret1, 1559731985, &cc, "IPv4", KNOT_EOK,
+	sc = server_generate(&c4_sa1, s_secret1, 1559731985, &cc, "IPv4", KNOT_EOK,
 	                     "\x01\x00\x00\x00\x5C\xF7\x9F\x11\x1F\x81\x30\xC3\xEE\xE2\x94\x80");
-	server_check(&c4_sa, s_secret1, &sc, &cc, 1559731985, "IPv4", KNOT_EOK);
-	server_generate(&c4_sa, s_secret1, 1559734385, &cc, "IPv4", KNOT_EOK,
+	server_generate(&c4_sa1, s_secret1, 1559734385, &cc, "IPv4", KNOT_EOK,
 	                "\x01\x00\x00\x00\x5C\xF7\xA8\x71\xD4\xA5\x64\xA1\x44\x2A\xCA\x77");
 
-	/*
-	sockaddr_set(&c4_sa, AF_INET, "203.0.113.203", 0);
+	client_check(&s4_sa, c_secret1, &cc, "IPv4", KNOT_EOK);
 
-	cc = client_generate(&s4_sa, c_secret, "IPv4", KNOT_EOK,
+	server_check(&c4_sa1, s_secret1, &sc, &cc, 1559731985, "IPv4", KNOT_EOK);
+
+	cc = client_generate(&s4_sa, c_secret2, "IPv4", KNOT_EOK,
 	                     "\xFC\x93\xFC\x62\x80\x7D\xDB\x86");
-//	server_generate(&c4_sa, s_secret, 1559731985, &cc, "IPv4", KNOT_EOK,
-//	                "\x01\x00\x00\x00\x5C\xF7\x9F\x11\x1F\x81\x30\xC3\xEE\xE2\x94\x80");
-*/
+	char *sc_reserverd = "\x01\xAB\xCD\xEF\x5C\xF7\x8F\x71\xA3\x14\x22\x7B\x66\x79\xEB\xF5";
+	memcpy(sc.data, sc_reserverd, strlen(sc_reserverd));
+	server_check(&c4_sa2, s_secret1, &sc, &cc, 1559727985, "IPv4", KNOT_EOK);
 
+	sc.data[0] = 10;
+	server_check(&c4_sa2, s_secret1, &sc, &cc, 1559727985, "IPv4", KNOT_ENOTSUP);
 
 	struct sockaddr_storage c6_sa = { 0 };
 	struct sockaddr_storage s6_sa = { 0 };
@@ -140,12 +144,14 @@ int main(int argc, char *argv[])
 
 	cc = client_generate(&s6_sa, c_secret6, "IPv6", KNOT_EOK,
 	                     "\x22\x68\x1A\xB9\x7D\x52\xC2\x98");
-	client_check(&s6_sa, c_secret6, &cc, "IPv6", KNOT_EOK);
 	sc = server_generate(&c6_sa, s_secret6, 1559741817, &cc, "IPv6", KNOT_EOK,
 	                     "\x01\x00\x00\x00\x5C\xF7\xC5\x79\x26\x55\x6B\xD0\x93\x4C\x72\xF8");
-	server_check(&c6_sa, s_secret6, &sc, &cc, 1559741961, "IPv6", KNOT_EOK);
 	server_generate(&c6_sa, s_secret7, 1559741961, &cc, "IPv6", KNOT_EOK,
 	                "\x01\x00\x00\x00\x5C\xF7\xC6\x09\xA6\xBB\x79\xD1\x66\x25\x50\x7A");
+
+	client_check(&s6_sa, c_secret6, &cc, "IPv6", KNOT_EOK);
+
+	server_check(&c6_sa, s_secret6, &sc, &cc, 1559741961, "IPv6", KNOT_EOK);
 
 	return 0;
 }
