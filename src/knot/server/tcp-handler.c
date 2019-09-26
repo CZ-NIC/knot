@@ -86,11 +86,11 @@ static void update_tcp_conf(tcp_context_t *tcp)
 static bool all_threads_throttled(void)
 {
 	/* Warning: there is no locking of was_throttled[] values here! */
-	for (int i = 0; i < tcp_throttle_log.threads; i++) {
-		if (tcp_throttle_log.was_throttled[i] == 0) {
-			return false;
-		}
-	}
+//	for (int i = 0; i < tcp_throttle_log.threads; i++) {
+//		if (tcp_throttle_log.was_throttled[i] == 0) {
+//			return false;
+//		}
+//	}
 	return true;
 }
 
@@ -100,10 +100,12 @@ static void log_if_throttled(tcp_context_t *tcp, struct timespec *timer)
 /* XXX */
 /* This solution has been chosen because of speed. */
 #ifdef ENABLE_REUSEPORT
-	if (*tcp->my_throttle_mark != 0 &&
-	    (tcp->reuseport || all_threads_throttled())) {
+//	if (*tcp->my_throttle_mark != 0 &&
+//	    (tcp->reuseport || all_threads_throttled())) {
+	if (tcp->reuseport || all_threads_throttled()) {
 #else
-	if (*tcp->my_throttle_mark != 0 && all_threads_throttled()) {
+//	if (*tcp->my_throttle_mark != 0 && all_threads_throttled()) {
+	if (all_threads_throttled()) {
 #endif /* ENABLE_REUSEPORT */
 
 		bool log_flag = false;
@@ -125,7 +127,7 @@ static void log_if_throttled(tcp_context_t *tcp, struct timespec *timer)
 			log_warning("TCP connection limiting has occured recently");
 		}
 	}
-	*tcp->my_throttle_mark = 0;
+//	*tcp->my_throttle_mark = 0;
 }
 
 /*! \brief Sweep TCP connection. */
@@ -307,7 +309,7 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
 
 	/* Record if throttling has occured since previous sweep or since start. */
-	*tcp->my_throttle_mark |= i;
+//	*tcp->my_throttle_mark |= i;
 
 	/* Wait for events. */
 	int nfds = poll(&(set->pfd[i]), set->n - i, TCP_SWEEP_INTERVAL * 1000);
@@ -364,7 +366,7 @@ int tcp_master(dthread_t *thread)
 	tcp_context_t tcp = {
 		.server = handler->server,
 		.is_throttled = false,
-		.my_throttle_mark = &tcp_throttle_log.was_throttled[thrd_id],
+//		.my_throttle_mark = &tcp_throttle_log.was_throttled[thrd_id],
 		.thread_id = handler->thread_id[thrd_id]
 	};
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());

@@ -50,11 +50,6 @@ enum {
 /*! \brief Throttle records, a timer and its lock for TCP throttle warnings. */
 throttle_log_t tcp_throttle_log;
 
-/* XXX */
-/*! \brief Initialize TCP throttle logger. */
-/*! \brief Destroy and free TCP throttle logger. */
-/* XXX */
-
 /*! \brief Unbind interface and clear the structure. */
 static void server_deinit_iface(iface_t *iface)
 {
