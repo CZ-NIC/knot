@@ -52,7 +52,7 @@ throttle_log_t tcp_throttle_log;
 
 /* XXX */
 /*! \brief Initialize TCP throttle logger. */
-static int throttle_log_init(conf_t *conf)
+static inline int throttle_log_init(conf_t *conf)
 {
 	/* XXX */
 	tcp_throttle_log.timer_end.tv_sec = 0;
@@ -72,7 +72,7 @@ static int throttle_log_init(conf_t *conf)
 }
 
 /*! \brief Destroy and free TCP throttle logger. */
-static void throttle_log_deinit(void)
+static inline void throttle_log_deinit(void)
 {
 	/* Destroy the TCP throttle log timer spinlock. */
 	knot_spin_destroy(&tcp_throttle_log.lock);
