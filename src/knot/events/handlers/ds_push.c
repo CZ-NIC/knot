@@ -119,7 +119,6 @@ static int ds_push_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	if (data->parent_soa != NULL) {
 		// DS push has already been sent, just finish the action.
-		free(data->parent_soa);
 		return KNOT_STATE_DONE;
 	}
 
@@ -144,11 +143,20 @@ static int ds_push_reset(knot_layer_t *layer)
 	return KNOT_STATE_PRODUCE;
 }
 
+static int ds_push_finish(knot_layer_t *layer)
+{
+	struct ds_push_data *data = layer->data;
+	free(data->parent_soa);
+	data->parent_soa = NULL;
+	return layer->state;
+}
+
 static const knot_layer_api_t DS_PUSH_API = {
 	.begin = ds_push_begin,
 	.produce = ds_push_produce,
 	.reset = ds_push_reset,
 	.consume = ds_push_consume,
+	.finish = ds_push_finish,
 };
 
 static int send_ds_push(conf_t *conf, zone_t *zone,
