@@ -17,8 +17,6 @@ master.zonefile_sync = "-1"
 for zone in zones:
   master.dnssec(zone).enable = True
 
-slave.tcp_remote_io_timeout = 2000
-
 t.start()
 
 ser1 = master.zones_wait(zones, serials_zfile=True, greater=True, equal=False)
