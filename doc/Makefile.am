@@ -40,8 +40,8 @@ EXTRA_DIST = \
 	$(MANPAGES_IN)		\
 	$(MANPAGES_RST)		\
 	\
-	logo.eps		\
-	logo.png		\
+	logo.pdf		\
+	logo.svg		\
 	\
 	theme_html
 
