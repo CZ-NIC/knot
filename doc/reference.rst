@@ -1171,7 +1171,7 @@ ksk-submission
 --------------
 
 A reference to :ref:`submission<submission_id>` section holding parameters of
-KSK submittion checks.
+KSK submission checks.
 
 *Default:* not set
 
