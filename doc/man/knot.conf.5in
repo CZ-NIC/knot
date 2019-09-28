@@ -891,7 +891,7 @@ Zero value means infinity.
 .SS ksk\-submission
 .sp
 A reference to \fI\%submission\fP section holding parameters of
-KSK submittion checks.
+KSK submission checks.
 .sp
 \fIDefault:\fP not set
 .SS ds\-push
