@@ -4,7 +4,74 @@ Upstream-Contact: knot-dns@labs.nic.cz
 Source: https://secure.nic.cz/files/knot-dns/
 
 Files: *
-Copyright: 2011-2019 CZ.NIC, z.s.p.o.
+Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+License: GPL-3+
+
+Files: m4/*
+Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+           1996-2001, 2003-2015 Free Software Foundation, Inc.
+License: GPL-3+
+
+Files: install-sh
+Copyright: 1994 X Consortium
+License: MIT
+
+Files: debian/* distro/deb/*
+Copyright: 2011 Ondřej Surý <ondrej@debian.org>
+           2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+License: GPL-3+
+
+Files: tests/tap/*
+Copyright: 2000-2001, 2004, 2006-2012 Russ Allbery <rra@stanford.edu>
+           2006, 2007, 2008, 2013 The Board of Trustees of the Leland Stanford Junior University
+License: MIT
+
+Files: tests/tap/files.*
+Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+License: GPL-3+
+
+Files: src/contrib/dnstap/*
+Copyright: 2014, Farsight Security, Inc. <software@farsightsecurity.com>
+           2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+License: GPL-3+
+
+Files: src/contrib/lmdb/lmdb.h src/contrib/lmdb/mdb.c src/contrib/lmdb/midl.*
+Copyright: 2000-2018 The OpenLDAP Foundation
+           2001-2018 Howard Chu, Symas Corp.
+License: OLDAP-2.8
+
+Files: src/contrib/openbsd/siphash.*
+Copyright: 2013 Andre Oppermann <andre@FreeBSD.org>
+License: BSD-3-Clause
+
+Files: src/contrib/openbsd/strl*
+Copyright: 1998 Todd C. Miller <Todd.Miller@courtesan.com>
+License: 0BSD
+
+Files: src/contrib/qp-trie/*
+Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+           2018 Tony Finch <dot@dotat.at>
+License: GPL-3+
+
+Files: src/contrib/ucw/*
+Copyright: 1997-2017 Martin Mares <mj@ucw.cz>
+           2007 Pavel Charvat <pchar@ucw.cz>
+           2012 Ondrej Filip <feela@network.cz>
+License: GPL-2+
+
+Files: src/contrib/ucw/heap.h
+Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+License: GPL-3+
+
+Files: src/contrib/vpool/*
+Copyright: 2006, 2008 Alexey Vatchenko <av@bsdua.org>
+License: 0BSD
+
+Files: tests-fuzz/main.c
+Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+           2017 Tim Ruehsen
+License: MIT
+
 License: GPL-3+
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -22,19 +89,105 @@ License: GPL-3+
  On Debian systems, the full text of the GNU General Public License
  version 3 can be found in the file `/usr/share/common-licenses/GPL-3'.
 
-Files: tests/tap/*
-Copyright: 2000-2001, 2004, 2006-2011 Russ Allbery <rra@stanford.edu>
-License: Expat
+License: LGPG-2.0
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Library General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Library General Public License for more details.
+ .
+ You should have received a copy of the GNU Library General Public
+ License along with this library; if not, write to the
+ Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ Boston, MA  02110-1301, USA.
 
-Files: src/contrib/ucw/*
-Copyright: 1998 Martin Mares <mj@ucw.cz>
-License: GPL-3+
+License: OLDAP-2.8
+ Redistribution and use of this software and associated documenta-
+ tion ("Software"), with or without  modification,  are  permitted
+ provided that the following conditions are met:
+ .
+ 1.  Redistributions  in  source form must retain copyright statements
+    and notices,
+ .
+ 2. Redistributions in binary form must reproduce applicable copyright
+    statements  and notices, this list of conditions, and the following
+    disclaimer in the documentation and/or other materials provided
+   with the distribution, and
+ .
+ 3. Redistributions must contain a verbatim copy of this document.
+ .
+ The  OpenLDAP  Foundation  may  revise  this license from time to
+ time.  Each revision is distinguished by a version  number.   You
+ may use this Software under terms of this license revision or un-
+ der the terms of any subsequent revision of the license.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE OPENLDAP FOUNDATION AND ITS CON-
+ TRIBUTORS  ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES, IN-
+ CLUDING, BUT NOT LIMITED  TO,  THE  IMPLIED  WARRANTIES  OF  MER-
+ CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE OPENLDAP FOUNDATION, ITS  CONTRIBUTORS,  OR
+ THE  AUTHOR(S)  OR OWNER(S) OF THE SOFTWARE BE LIABLE FOR ANY DI-
+ RECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR  CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS IN-
+ TERRUPTION)  HOWEVER  CAUSED  AND  ON  ANY  THEORY  OF LIABILITY,
+ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING  NEGLI-
+ GENCE  OR  OTHERWISE)  ARISING  IN ANY WAY OUT OF THE USE OF THIS
+ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ .
+ The names of the authors and copyright holders must not  be  used
+ in  advertising  or  otherwise  to promote the sale, use or other
+ dealing in this Software without specific, written prior  permis-
+ sion.  Title to copyright in this Software shall at all times re-
+ main with copyright holders.
+ .
+ OpenLDAP is a registered trademark of the OpenLDAP Foundation.
+ .
+ Copyright 1999-2003 The OpenLDAP Foundation, Redwood City,  Cali-
+ fornia,  USA.   All Rights Reserved.  Permission to copy and dis-
+ tribute verbatim copies of this document is granted.
 
-Files: debian/*
-Copyright: 2011 Ondřej Surý <ondrej@debian.org>
-License: GPL-3+
+License: 0BSD
+ Permission to use, copy, modify, and distribute this software for any
+ purpose with or without fee is hereby granted, provided that the above
+ copyright notice and this permission notice appear in all copies.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-License: Expat
+License: BSD-3-Clause
+ Redistribution and use in source and binary forms, with or without modification,
+ are permitted provided that the following conditions are met:
+ 1. Redistributions of source code must retain the above copyright notice, this
+    list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+ 3. Neither the name of the copyright holder nor the names of its contributors
+    may be used to endorse or promote products derived from this software without
+    specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ OF THE POSSIBILITY OF SUCH DAMAGE.
+
+License: MIT
  Permission is hereby granted, free of charge, to any person obtaining
  a copy of this software and associated documentation files (the
  "Software"), to deal in the Software without restriction, including
