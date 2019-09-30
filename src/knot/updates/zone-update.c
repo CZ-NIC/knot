@@ -27,6 +27,9 @@
 
 #include <urcu.h>
 
+// Call mem_trim() whenever accumuled size of updated zones reaches this size.
+#define UPDATE_MEMTRIM_AT (10 * 1024 * 1024)
+
 static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents)
 {
 	if (old_contents == NULL) {
@@ -718,18 +721,6 @@ static bool counter_reach(counter_reach_t *counter, size_t increment, size_t lim
 	return reach;
 }
 
-// call mem_trim() whenever accumuled size of updated zones reaches 10 MiB
-#define UPDATE_MEMTRIM_AT (10 * 1024 * 1024)
-
-static void update_memtrim(size_t updated_size)
-{
-	static counter_reach_t counter = { PTHREAD_MUTEX_INITIALIZER, 0 };
-
-	if (counter_reach(&counter, updated_size, UPDATE_MEMTRIM_AT)) {
-		mem_trim();
-	}
-}
-
 /*! \brief Struct for what needs to be cleared after RCU.
  *
  * This can't be zone_update_t structure as this might be already freed at that time.
@@ -747,11 +738,18 @@ typedef struct {
 
 static void update_clear(struct rcu_head *param)
 {
+	static counter_reach_t counter = { PTHREAD_MUTEX_INITIALIZER, 0 };
+
 	update_clear_ctx_t *ctx = (update_clear_ctx_t *)param;
+
 	ctx->free_method(ctx->free_contents);
 	apply_cleanup(ctx->cleanup_apply);
 	free(ctx->cleanup_apply);
-	update_memtrim(ctx->new_cont_size);
+
+	if (counter_reach(&counter, ctx->new_cont_size, UPDATE_MEMTRIM_AT)) {
+		mem_trim();
+	}
+
 	free(ctx);
 }
 
