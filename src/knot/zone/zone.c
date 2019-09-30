@@ -33,7 +33,6 @@
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
-#include "contrib/trim.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/ucw/mempool.h"
@@ -141,9 +140,6 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 			goto flush_journal_replan;
 		}
 	}
-
-	/* Trim extra heap. */
-	mem_trim();
 
 flush_journal_replan:
 	/* Plan next journal flush after proper period. */
