@@ -1,9 +1,9 @@
 srpm: tar spec-gen
-	rpmbuild -bs ~/rpmbuild/SPECS/${spec}
-	cp -r ~/rpmbuild/SRPMS/* ${outdir}/
+	rpmbuild -bs ~/rpmbuild/SPECS/knot.spec
+	cp -r ~/rpmbuild/SRPMS/* ${outdir}
 
 spec-gen: tar
-	./scripts/copr-spec.sh ${spec}
+	./scripts/copr-spec.sh
 
 tar:
 	./autogen.sh
