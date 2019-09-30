@@ -1,7 +1,8 @@
-srpm: tar spec
-	echo "rpkg srpm -bs ${spec}"
+srpm: tar spec-gen
+	rpmbuild -bs ~/rpmbuild/SPECS/${spec}
+	cp -r ~/rpmbuild/SRPMS/* ${outdir}/
 
-spec: tar
+spec-gen: tar
 	./scripts/copr-spec.sh ${spec}
 
 tar:
