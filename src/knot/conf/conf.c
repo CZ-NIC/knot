@@ -175,7 +175,7 @@ conf_val_t conf_zone_get_txn(
 		return val;
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
-		              C_ZONE + 1, key1_name + 1, knot_strerror(val.code));
+		              &C_ZONE[1], &key1_name[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 		break;
@@ -191,7 +191,7 @@ conf_val_t conf_zone_get_txn(
 		break;
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
-		              C_ZONE + 1, C_TPL + 1, knot_strerror(val.code));
+		              &C_ZONE[1], &C_TPL[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 	case KNOT_YP_EINVAL_ID:
@@ -203,7 +203,7 @@ conf_val_t conf_zone_get_txn(
 	switch (val.code) {
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
-		              C_TPL + 1, key1_name + 1, knot_strerror(val.code));
+		              &C_TPL[1], &key1_name[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
@@ -232,7 +232,7 @@ conf_val_t conf_default_get_txn(
 	switch (val.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read default '%s/%s' (%s)",
-		         C_TPL + 1, key1_name + 1, knot_strerror(val.code));
+		         &C_TPL[1], &key1_name[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
