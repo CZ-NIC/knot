@@ -928,7 +928,7 @@ int conf_export(
 		}
 
 		// Export module sections before the template section.
-		if (strcmp(item->name + 1, C_TPL + 1) == 0) {
+		if (strcmp(&item->name[1], &C_TPL[1]) == 0) {
 			for (yp_item_t *mod = item + 1; mod->name != NULL; mod++) {
 				// Skip non-module sections.
 				if (strncmp(mod->name + 1, mod_prefix, mod_prefix_len) != 0) {

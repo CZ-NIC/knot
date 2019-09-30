@@ -425,7 +425,7 @@ int check_template(
 		if (val.code == KNOT_EOK) { \
 			CONF_LOG(LOG_NOTICE, "option 'template.%s' is obsolete, " \
 			                     "use option 'database.%s' instead", \
-			                     old_item + 1, new_item + 1); \
+			                     &old_item[1], &new_item[1]); \
 		}
 
 
