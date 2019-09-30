@@ -6,6 +6,7 @@ spec-gen: tar
 	./scripts/copr-spec.sh
 
 tar:
+	dnf install -y automake
 	./autogen.sh
 	./configure
 	make dist
