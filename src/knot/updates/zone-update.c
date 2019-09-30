@@ -27,6 +27,9 @@
 
 #include <urcu.h>
 
+// Call mem_trim() whenever accumuled size of updated zones reaches this size.
+#define UPDATE_MEMTRIM_AT (10 * 1024 * 1024)
+
 static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents)
 {
 	if (old_contents == NULL) {
@@ -718,56 +721,13 @@ static bool counter_reach(counter_reach_t *counter, size_t increment, size_t lim
 	return reach;
 }
 
-// call mem_trim() whenever accumuled size of updated zones reaches 100 MiB
-#define UPDATE_MEMTRIM_AT (100 * 1024 * 1024)
-
-static void update_memtrim(size_t updated_size)
-{
-	static counter_reach_t counter = { PTHREAD_MUTEX_INITIALIZER, 0 };
-
-	if (counter_reach(&counter, updated_size, UPDATE_MEMTRIM_AT)) {
-		mem_trim();
-	}
-}
-
-/*! \brief Routine for calling call_rcu() easier way.
- *
- * Consider moving elsewhere, as it has no direct relation to zone-update.
- */
-typedef struct {
-	struct rcu_head rcuhead;
-	void (*callback)(void *);
-	void *ctx;
-	bool free_ctx;
-} callrcu_wrapper_t;
-
-static void callrcu_wrapper_cb(struct rcu_head *param)
-{
-	callrcu_wrapper_t *wrap = (callrcu_wrapper_t *)param;
-	wrap->callback(wrap->ctx);
-	if (wrap->free_ctx) {
-		free(wrap->ctx);
-	}
-	free(wrap);
-}
-
-/* NOTE: Does nothing if not enough memory. */
-static void callrcu_wrapper(void *ctx, void *callback, bool free_ctx)
-{
-	callrcu_wrapper_t *wrap = calloc(1, sizeof(callrcu_wrapper_t));
-	if (wrap != NULL) {
-		wrap->callback = callback;
-		wrap->ctx = ctx;
-		wrap->free_ctx = free_ctx;
-		call_rcu((struct rcu_head *)wrap, callrcu_wrapper_cb);
-	}
-}
-
 /*! \brief Struct for what needs to be cleared after RCU.
  *
  * This can't be zone_update_t structure as this might be already freed at that time.
  */
 typedef struct {
+	struct rcu_head rcuhead;
+
 	zone_contents_t *free_contents;
 	void (*free_method)(zone_contents_t *);
 
@@ -776,12 +736,21 @@ typedef struct {
 	size_t new_cont_size;
 } update_clear_ctx_t;
 
-static void update_clear(update_clear_ctx_t *ctx)
+static void update_clear(struct rcu_head *param)
 {
+	static counter_reach_t counter = { PTHREAD_MUTEX_INITIALIZER, 0 };
+
+	update_clear_ctx_t *ctx = (update_clear_ctx_t *)param;
+
 	ctx->free_method(ctx->free_contents);
 	apply_cleanup(ctx->cleanup_apply);
 	free(ctx->cleanup_apply);
-	update_memtrim(ctx->new_cont_size);
+
+	if (counter_reach(&counter, ctx->new_cont_size, UPDATE_MEMTRIM_AT)) {
+		mem_trim();
+	}
+
+	free(ctx);
 }
 
 int zone_update_commit(conf_t *conf, zone_update_t *update)
@@ -877,7 +846,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 	zone_contents_deep_free(update->init_cont);
 
-	update_clear_ctx_t *clear_ctx = malloc(sizeof(*clear_ctx));
+	update_clear_ctx_t *clear_ctx = calloc(1, sizeof(*clear_ctx));
 	if (clear_ctx != NULL) {
 		clear_ctx->free_contents = old_contents;
 		clear_ctx->free_method = (
@@ -887,7 +856,9 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		clear_ctx->cleanup_apply = update->a_ctx;
 		clear_ctx->new_cont_size = update->new_cont->size;
 
-		callrcu_wrapper(clear_ctx, update_clear, true);
+		call_rcu((struct rcu_head *)clear_ctx, update_clear);
+	} else {
+		log_zone_error(update->zone->name, "failed to deallocate unused memory");
 	}
 
 	/* Sync zonefile immediately if configured. */
