@@ -359,12 +359,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Initialize bound sockets according to configuration.
- *
- * \param server Server instance.
- * \return number of added sockets.
- */
+/*! \brief Initialize bound sockets according to configuration. */
 static int configure_sockets(conf_t *conf, server_t *s)
 {
 	if (s->state & ServerRunning) {
@@ -372,7 +367,6 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 	/* Prepare helper lists. */
-	int bound = 0;
 	list_t *newlist = malloc(sizeof(list_t));
 	init_list(newlist);
 
@@ -400,7 +394,6 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 			/* Move to new list. */
 			add_tail(newlist, (node_t *)iface);
-			++bound;
 		} else {
 			free(iface);
 		}
@@ -421,7 +414,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		}
 	}
 
-	return bound;
+	return KNOT_EOK;
 }
 
 int server_init(server_t *server, int bg_workers)
@@ -911,32 +904,32 @@ void server_reconfigure(conf_t *conf, server_t *server)
 		}
 
 		/* Configure server threads. */
-		if ((ret = configure_threads(conf, server)) < 0) {
+		if ((ret = configure_threads(conf, server)) != KNOT_EOK) {
 			log_error("failed to configure server threads (%s)",
 			          knot_strerror(ret));
 		}
 
 		/* Configure sockets. */
-		if ((ret = configure_sockets(conf, server)) < 0) {
+		if ((ret = configure_sockets(conf, server)) != KNOT_EOK) {
 			log_error("failed to configure server sockets (%s)",
 			          knot_strerror(ret));
 		}
 	}
 
 	/* Reconfigure journal DB. */
-	if ((ret = reconfigure_journal_db(conf, server)) < 0) {
+	if ((ret = reconfigure_journal_db(conf, server)) != KNOT_EOK) {
 		log_error("failed to reconfigure journal DB (%s)",
 		          knot_strerror(ret));
 	}
 
 	/* Reconfigure KASP DB. */
-	if ((ret = reconfigure_kasp_db(conf, server)) < 0) {
+	if ((ret = reconfigure_kasp_db(conf, server)) != KNOT_EOK) {
 		log_error("failed to reconfigure KASP DB (%s)",
 		          knot_strerror(ret));
 	}
 
 	/* Reconfiure Timer DB. */
-	if ((ret = reconfigure_timer_db(conf, server)) < 0) {
+	if ((ret = reconfigure_timer_db(conf, server)) != KNOT_EOK) {
 		log_error("failed to reconfigure Timer DB (%s)",
 		          knot_strerror(ret));
 	}
