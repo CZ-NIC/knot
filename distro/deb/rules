@@ -49,7 +49,7 @@ override_dh_auto_configure:
 	  --disable-static
 
 override_dh_auto_build-indep:
-	dh_auto_build -- info html
+	dh_auto_build -- html
 
 override_dh_auto_install-arch:
 	dh_auto_install -- install
@@ -57,7 +57,7 @@ override_dh_auto_install-arch:
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
 
 override_dh_auto_install-indep:
-	dh_auto_install -- install-info install-html
+	dh_auto_install -- install-html
 	# rename knot.sample.conf to knot.conf
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
 

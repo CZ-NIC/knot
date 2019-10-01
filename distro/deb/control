@@ -7,7 +7,6 @@ Uploaders:
  Daniel Salzman <daniel.salzman@nic.cz>,
 Build-Depends-Indep:
  python3-sphinx,
- texinfo,
 Build-Depends:
  debhelper (>= 9),
  libcap-ng-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386],
