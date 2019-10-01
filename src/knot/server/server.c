@@ -102,15 +102,17 @@ static void server_deinit_iface(iface_t *iface)
 	free(iface->fd_tcp);
 }
 
-/*! \brief Unbind and dispose given interface. */
-static void server_remove_iface(iface_t *iface)
+/*! \brief Deinit server interface list. */
+static void server_deinit_iface_list(list_t *ifaces)
 {
-	if (!iface) {
-		return;
+	if (ifaces != NULL) {
+		iface_t *iface = NULL, *next = NULL;
+		WALK_LIST_DELSAFE(iface, next, *ifaces) {
+			server_deinit_iface(iface);
+			free(iface);
+		}
+		free(ifaces);
 	}
-
-	server_deinit_iface(iface);
-	free(iface);
 }
 
 /*! \brief Set lower bound for socket option. */
@@ -215,25 +217,27 @@ static int enable_fastopen(int sock, int backlog)
 }
 
 /*!
- * \brief Initialize new interface from config value.
+ * \brief Create and initialize new interface.
  *
  * Both TCP and UDP sockets will be created for the interface.
  *
- * \param new_if            Allocated memory for the interface.
  * \param addr              Socket address.
  * \param udp_thread_count  Number of created UDP workers.
  * \param tcp_thread_count  Number of created TCP workers.
+ * \param tcp_reuseport     Indication if reuseport on TCP is enabled.
  *
- * \retval 0 if successful (EOK).
- * \retval <0 on errors (EACCES, EINVAL, ENOMEM, EADDRINUSE).
+ * \retval Pointer to a new initialized inteface.
+ * \retval NULL if error.
  */
-static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
-                             int udp_thread_count, int tcp_thread_count)
+static iface_t *server_init_iface(struct sockaddr_storage *addr,
+                                  int udp_thread_count, int tcp_thread_count,
+                                  bool tcp_reuseport)
 {
-	/* Initialize interface. */
-	int ret = 0;
-	memset(new_if, 0, sizeof(iface_t));
-	memcpy(&new_if->addr, addr, sizeof(struct sockaddr_storage));
+	iface_t *new_if = calloc(1, sizeof(*new_if));
+	if (new_if == NULL) {
+		return NULL;
+	}
+	memcpy(&new_if->addr, addr, sizeof(*addr));
 
 	/* Convert to string address format. */
 	char addr_str[SOCKADDR_STRLEN] = { 0 };
@@ -248,21 +252,21 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
 	udp_socket_count = udp_thread_count;
 	udp_bind_flags |= NET_BIND_MULTIPLE;
 
-	if (conf()->cache.srv_tcp_reuseport) {
+	if (tcp_reuseport) {
 		tcp_socket_count = tcp_thread_count;
 		tcp_bind_flags |= NET_BIND_MULTIPLE;
 	}
 #endif
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
-	if (!new_if->fd_udp) {
-		return KNOT_ENOMEM;
+	if (new_if->fd_udp == NULL) {
+		return NULL;
 	}
 
 	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
-	if (!new_if->fd_tcp) {
+	if (new_if->fd_tcp == NULL) {
 		free(new_if->fd_udp);
-		return KNOT_ENOMEM;
+		return NULL;
 	}
 
 	/* Initialize the sockets to ensure safe early deinitialization. */
@@ -292,7 +296,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
 			log_error("cannot bind address %s (%s)", addr_str,
 			          knot_strerror(sock));
 			server_deinit_iface(new_if);
-			return sock;
+			return NULL;
 		}
 
 		if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE) &&
@@ -305,7 +309,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
 			log_warning("failed to enable received packet information retrieval");
 		}
 
-		ret = disable_pmtudisc(sock, addr->ss_family);
+		int ret = disable_pmtudisc(sock, addr->ss_family);
 		if (ret != KNOT_EOK) {
 			log_warning("failed to disable Path MTU discovery for IPv4/UDP (%s)",
 			            knot_strerror(ret));
@@ -330,7 +334,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
 			log_error("cannot bind address %s (%s)", addr_str,
 			          knot_strerror(sock));
 			server_deinit_iface(new_if);
-			return sock;
+			return NULL;
 		}
 
 		if (!enlarge_net_buffers(sock, TCP_MIN_RCVSIZE, TCP_MIN_SNDSIZE)) {
@@ -341,11 +345,11 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
 		new_if->fd_tcp_count += 1;
 
 		/* Listen for incoming connections. */
-		ret = listen(sock, TCP_BACKLOG_SIZE);
+		int ret = listen(sock, TCP_BACKLOG_SIZE);
 		if (ret < 0) {
 			log_error("failed to listen on TCP interface %s", addr_str);
 			server_deinit_iface(new_if);
-			return KNOT_ERROR;
+			return NULL;
 		}
 
 		/* TCP Fast Open. */
@@ -356,7 +360,7 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
 		}
 	}
 
-	return KNOT_EOK;
+	return new_if;
 }
 
 /*! \brief Initialize bound sockets according to configuration. */
@@ -368,6 +372,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 	/* Prepare helper lists. */
 	list_t *newlist = malloc(sizeof(list_t));
+	if (newlist == NULL) {
+		return KNOT_ENOMEM;
+	}
 	init_list(newlist);
 
 #ifdef ENABLE_REUSEPORT
@@ -380,23 +387,22 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	while (listen_val.code == KNOT_EOK) {
-
+		/* Log interface binding. */
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
 		log_info("binding to interface %s", addr_str);
 
 		/* Create new interface. */
-		iface_t *iface = malloc(sizeof(iface_t));
 		unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
 		unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
-		if (server_init_iface(iface, &addr, size_udp, size_tcp) >= 0) {
-
-			/* Move to new list. */
-			add_tail(newlist, (node_t *)iface);
-		} else {
-			free(iface);
+		bool tcp_reuseport = conf->cache.srv_tcp_reuseport;
+		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp, tcp_reuseport);
+		if (new_if == NULL) {
+			server_deinit_iface_list(newlist);
+			return KNOT_ENOMEM;
 		}
+		add_tail(newlist, &new_if->n);
 
 		conf_val_next(&listen_val);
 	}
@@ -473,13 +479,7 @@ void server_deinit(server_t *server)
 	}
 
 	/* Free remaining interfaces. */
-	if (server->ifaces) {
-		iface_t *n = NULL, *m = NULL;
-		WALK_LIST_DELSAFE(n, m, *server->ifaces) {
-			server_remove_iface(n);
-		}
-		free(server->ifaces);
-	}
+	server_deinit_iface_list(server->ifaces);
 
 	/* Free threads and event handlers. */
 	worker_pool_destroy(server->workers);
