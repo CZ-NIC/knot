@@ -100,8 +100,6 @@ static void server_deinit_iface(iface_t *iface)
 		}
 	}
 	free(iface->fd_tcp);
-
-	memset(iface, 0, sizeof(*iface));
 }
 
 /*! \brief Unbind and dispose given interface. */
@@ -510,9 +508,6 @@ void server_deinit(server_t *server)
 
 	/* Close journal database if open. */
 	knot_lmdb_deinit(&server->journaldb);
-
-	/* Clear the structure. */
-	memset(server, 0, sizeof(server_t));
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
@@ -559,7 +554,6 @@ static void server_free_handler(iohandler_t *h)
 	dt_delete(&h->unit);
 	free(h->thread_state);
 	free(h->thread_id);
-	memset(h, 0, sizeof(iohandler_t));
 }
 
 int server_start(server_t *server, bool async)
