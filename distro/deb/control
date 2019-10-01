@@ -6,16 +6,10 @@ Uploaders:
  Tomas Krizek <tomas.krizek@nic.cz>,
  Daniel Salzman <daniel.salzman@nic.cz>,
 Build-Depends-Indep:
- ghostscript,
  python3-sphinx,
  texinfo,
- texlive,
- texlive-font-utils,
- texlive-generic-extra,
- texlive-latex-extra,
 Build-Depends:
  debhelper (>= 9),
- latexmk,
  libcap-ng-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386],
  libedit-dev,
  libfstrm-dev,
