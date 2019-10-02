@@ -15,6 +15,9 @@ zones = t.zone_rnd(5)
 t.link(zones, s1, s2, ixfr=True)
 t.link(zones, s2, s3, ixfr=True)
 
+s2.tcp_remote_io_timeout = 8000
+s3.tcp_remote_io_timeout = 8000
+
 for zone in zones:
     s1.dnssec(zone).enable = True
 
