@@ -260,12 +260,14 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
 	if (new_if->fd_udp == NULL) {
+		free(new_if);
 		return NULL;
 	}
 
 	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
 	if (new_if->fd_tcp == NULL) {
 		free(new_if->fd_udp);
+		free(new_if);
 		return NULL;
 	}
 
