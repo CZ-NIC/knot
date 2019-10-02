@@ -151,7 +151,7 @@ identified section or for a specific item::
    :ref:`pidfile<server_pidfile>`,
    :ref:`udp-workers<server_udp-workers>`,
    :ref:`tcp-workers<server_tcp-workers>`,
-   :ref:`background-workers<server_background-workers>` and
+   :ref:`background-workers<server_background-workers>`, and
    :ref:`listen<server_listen>`.
 
 An example of possible configuration initialization::
