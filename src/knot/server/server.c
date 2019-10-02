@@ -82,21 +82,29 @@ static void throttle_log_deinit(void)
 /*! \brief Unbind interface and clear the structure. */
 static void server_deinit_iface(iface_t *iface)
 {
+	assert(iface);
+
 	/* Free UDP handler. */
-	for (int i = 0; i < iface->fd_udp_count; i++) {
-		if (iface->fd_udp[i] > -1) {
-			close(iface->fd_udp[i]);
+	if (iface->fd_udp != NULL) {
+		for (int i = 0; i < iface->fd_udp_count; i++) {
+			if (iface->fd_udp[i] > -1) {
+				close(iface->fd_udp[i]);
+			}
 		}
+		free(iface->fd_udp);
 	}
-	free(iface->fd_udp);
 
 	/* Free TCP handler. */
-	for(int i = 0; i < iface->fd_tcp_count; i++) {
-		if (iface->fd_tcp[i] > -1) {
-			close(iface->fd_tcp[i]);
+	if (iface->fd_tcp != NULL) {
+		for (int i = 0; i < iface->fd_tcp_count; i++) {
+			if (iface->fd_tcp[i] > -1) {
+				close(iface->fd_tcp[i]);
+			}
 		}
+		free(iface->fd_tcp);
 	}
-	free(iface->fd_tcp);
+
+	free(iface);
 }
 
 /*! \brief Deinit server interface list. */
@@ -106,7 +114,6 @@ static void server_deinit_iface_list(list_t *ifaces)
 		iface_t *iface = NULL, *next = NULL;
 		WALK_LIST_DELSAFE(iface, next, *ifaces) {
 			server_deinit_iface(iface);
-			free(iface);
 		}
 		free(ifaces);
 	}
@@ -256,13 +263,9 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 #endif
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
-	if (new_if->fd_udp == NULL) {
-		return NULL;
-	}
-
 	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
-	if (new_if->fd_tcp == NULL) {
-		free(new_if->fd_udp);
+	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL) {
+		server_deinit_iface(new_if);
 		return NULL;
 	}
 
