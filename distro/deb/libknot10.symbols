@@ -1,4 +1,4 @@
-libknot.so.9 libknot9 #MINVER#
+libknot.so.10 libknot10 #MINVER#
  KNOT_DB_LMDB_DUPSORT@Base 2.5.0
  KNOT_DB_LMDB_INTEGERKEY@Base 2.4.0
  KNOT_DB_LMDB_MAPASYNC@Base 2.5.0
@@ -62,7 +62,7 @@ libknot.so.9 libknot9 #MINVER#
  knot_edns_cookie_size@Base 2.7.0
  knot_edns_cookie_write@Base 2.7.0
  knot_edns_get_ext_rcode@Base 2.3.0
- knot_edns_get_option@Base 2.3.0
+ knot_edns_get_option@Base 2.9.0
  knot_edns_get_options@Base 2.7.0
  knot_edns_get_version@Base 2.3.0
  knot_edns_init@Base 2.3.0
@@ -93,24 +93,21 @@ libknot.so.9 libknot9 #MINVER#
  knot_pkt_reclaim@Base 2.3.0
  knot_pkt_reserve@Base 2.3.0
  knot_rcode_names@Base 2.3.0
- knot_rdataset_add@Base 2.3.0
- knot_rdataset_at@Base 2.3.0
- knot_rdataset_clear@Base 2.3.0
- knot_rdataset_copy@Base 2.3.0
- knot_rdataset_eq@Base 2.3.0
- knot_rdataset_intersect@Base 2.3.0
- knot_rdataset_member@Base 2.3.0
- knot_rdataset_merge@Base 2.3.0
- knot_rdataset_reserve@Base 2.3.0
- knot_rdataset_size@Base 2.3.0
- knot_rdataset_subtract@Base 2.7.0
- knot_rdataset_unreserve@Base 2.3.0
+ knot_rdataset_add@Base 2.9.0
+ knot_rdataset_at@Base 2.9.0
+ knot_rdataset_clear@Base 2.9.0
+ knot_rdataset_copy@Base 2.9.0
+ knot_rdataset_eq@Base 2.9.0
+ knot_rdataset_intersect@Base 2.9.0
+ knot_rdataset_member@Base 2.9.0
+ knot_rdataset_merge@Base 2.9.0
+ knot_rdataset_subtract@Base 2.9.0
  knot_rrclass_from_string@Base 2.3.0
  knot_rrclass_to_string@Base 2.3.0
  knot_rrset_add_rdata@Base 2.7.0
  knot_rrset_clear@Base 2.3.0
  knot_rrset_copy@Base 2.3.0
- knot_rrset_equal@Base 2.3.0
+ knot_rrset_equal@Base 2.9.0
  knot_rrset_free@Base 2.3.0
  knot_rrset_is_nsec3rel@Base 2.3.0
  knot_rrset_new@Base 2.7.0
