@@ -198,7 +198,7 @@ test:debian:amd64:
 pkg:debian:symbols:libknot:
   variables:
     LIB_NAME: libknot
-    LIB_ABI: 9
+    LIB_ABI: 10
   <<: *debian_stable
   <<: *pkg_symbols
 
