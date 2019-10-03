@@ -120,7 +120,7 @@ static void log_if_throttled(tcp_context_t *tcp, struct timespec *timer)
 		knot_spin_unlock(&tcp_throttle_log.lock);
 
 		if (log_flag) {
-			log_warning("TCP connection limiting has occured recently");
+			log_warning("limiting of concurrent TCP clients has occured recently");
 		}
 	}
 	*tcp->my_throttle_mark = 0;
