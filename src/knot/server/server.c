@@ -564,7 +564,8 @@ static int reload_conf(conf_t *new_conf)
 			return ret;
 		}
 	} else {
-		log_info("reloading configuration database");
+		log_info("reloading configuration database '%s'",
+		         knot_db_lmdb_get_path(new_conf->db));
 
 		/* Re-load extra modules. */
 		for (conf_iter_t iter = conf_iter(new_conf, C_MODULE);
@@ -826,6 +827,14 @@ void server_reconfigure(conf_t *conf, server_t *server)
 	/* First reconfiguration. */
 	if (!(server->state & ServerRunning)) {
 		log_info("Knot DNS %s starting", PACKAGE_VERSION);
+
+		if (conf->filename != NULL) {
+			log_info("loaded configuration file '%s'",
+			         conf->filename);
+		} else {
+			log_info("loaded configuration database '%s'",
+			         knot_db_lmdb_get_path(conf->db));
+		}
 
 		/* Configure server threads. */
 		if ((ret = configure_threads(conf, server)) < 0) {

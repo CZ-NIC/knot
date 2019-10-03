@@ -20,6 +20,7 @@ libknot.so.10 libknot10 #MINVER#
  knot_db_lmdb_api@Base 2.3.0
  knot_db_lmdb_del_exact@Base 2.5.0
  knot_db_lmdb_get_mapsize@Base 2.4.0
+ knot_db_lmdb_get_path@Base 2.9.0
  knot_db_lmdb_get_usage@Base 2.4.0
  knot_db_lmdb_iter_del@Base 2.3.0
  knot_db_lmdb_txn_begin@Base 2.3.0

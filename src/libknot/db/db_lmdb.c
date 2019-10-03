@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -551,6 +551,19 @@ size_t knot_db_lmdb_get_usage(knot_db_t *db)
 	size_t pgs_used = st.ms_branch_pages + st.ms_leaf_pages + st.ms_overflow_pages;
 
 	return (pgs_used * st.ms_psize);
+}
+
+_public_
+const char *knot_db_lmdb_get_path(knot_db_t *db)
+{
+	struct lmdb_env *env = db;
+
+	static const char *path;
+	if (mdb_env_get_path(env->env, &path) == 0) {
+		return path;
+	} else {
+		return "";
+	}
 }
 
 _public_
