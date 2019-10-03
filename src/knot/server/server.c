@@ -237,8 +237,10 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		return NULL;
 	}
 
-	bool warn_bind = false;
-	bool warn_bufsize = false;
+	bool warn_bind = true;
+	bool warn_bufsize = true;
+	bool warn_pktinfo = true;
+	bool warn_flag_misc = true;
 
 	/* Create bound UDP sockets. */
 	for (int i = 0; i < udp_socket_count; i++) {
@@ -246,9 +248,9 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			udp_bind_flags |= NET_BIND_NONLOCAL;
 			sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, udp_bind_flags);
-			if (sock >= 0 && !warn_bind) {
+			if (sock >= 0 && warn_bind) {
 				log_warning("address %s UDP bound, but required nonlocal bind", addr_str);
-				warn_bind = true;
+				warn_bind = false;
 			}
 		}
 
@@ -260,24 +262,31 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 
 		if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE) &&
-		    !warn_bufsize) {
+		    warn_bufsize) {
 			log_warning("failed to set network buffer sizes for UDP");
-			warn_bufsize = true;
+			warn_bufsize = false;
 		}
 
-		if (sockaddr_is_any((struct sockaddr *)addr) && !enable_pktinfo(sock, addr->ss_family)) {
+		if (sockaddr_is_any((struct sockaddr *)addr) && !enable_pktinfo(sock, addr->ss_family) &&
+		    warn_pktinfo) {
 			log_warning("failed to enable received packet information retrieval");
+			warn_pktinfo = false;
 		}
 
 		int ret = disable_pmtudisc(sock, addr->ss_family);
-		if (ret != KNOT_EOK) {
+		if (ret != KNOT_EOK && warn_flag_misc) {
 			log_warning("failed to disable Path MTU discovery for IPv4/UDP (%s)",
 			            knot_strerror(ret));
+			warn_flag_misc = false;
 		}
 
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
 		new_if->fd_udp_count += 1;
 	}
+
+	warn_bind = true;
+	warn_bufsize = true;
+	warn_flag_misc = true;
 
 	/* Create bound TCP sockets. */
 	for (int i = 0; i < tcp_socket_count; i++) {
@@ -285,8 +294,9 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			tcp_bind_flags |= NET_BIND_NONLOCAL;
 			sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
-			if (sock >= 0) {
+			if (sock >= 0 && warn_bind) {
 				log_warning("address %s TCP bound, but required nonlocal bind", addr_str);
+				warn_bind = false;
 			}
 		}
 
@@ -297,8 +307,10 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
-		if (!enlarge_net_buffers(sock, TCP_MIN_RCVSIZE, TCP_MIN_SNDSIZE)) {
+		if (!enlarge_net_buffers(sock, TCP_MIN_RCVSIZE, TCP_MIN_SNDSIZE) &&
+		    warn_bufsize) {
 			log_warning("failed to set network buffer sizes for TCP");
+			warn_bufsize = false;
 		}
 
 		new_if->fd_tcp[new_if->fd_tcp_count] = sock;
@@ -314,9 +326,10 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 		/* TCP Fast Open. */
 		ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
-		if (ret < 0) {
+		if (ret < 0 && warn_flag_misc) {
 			log_warning("failed to enable TCP Fast Open on %s (%s)",
 			            addr_str, knot_strerror(ret));
+			warn_flag_misc = false;
 		}
 	}
 
@@ -652,35 +665,35 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 {
 	const char *msg = "changes of %s require restart to take effect";
 
-	static bool tcp_reuseport_warn = true;
-	static bool udp_warn = true;
-	static bool tcp_warn = true;
-	static bool bg_warn = true;
-	static bool listen_warn = true;
+	static bool warn_tcp_reuseport = true;
+	static bool warn_udp = true;
+	static bool warn_tcp = true;
+	static bool warn_bg = true;
+	static bool warn_listen = true;
 
-	if (tcp_reuseport_warn && conf->cache.srv_tcp_reuseport != conf_tcp_reuseport(conf)) {
+	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_tcp_reuseport(conf)) {
 		log_warning(msg, "tcp-reuseport");
-		tcp_reuseport_warn = false;
+		warn_tcp_reuseport = false;
 	}
 
-	if (udp_warn && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {
+	if (warn_udp && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {
 		log_warning(msg, "udp-workers");
-		udp_warn = false;
+		warn_udp = false;
 	}
 
-	if (tcp_warn && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
+	if (warn_tcp && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
 		log_warning(msg, "tcp-workers");
-		tcp_warn = false;
+		warn_tcp = false;
 	}
 
-	if (bg_warn && conf->cache.srv_bg_threads != conf_bg_threads(conf)) {
+	if (warn_bg && conf->cache.srv_bg_threads != conf_bg_threads(conf)) {
 		log_warning(msg, "background-workers");
-		bg_warn = false;
+		warn_bg = false;
 	}
 
-	if (listen_warn && listen_changed(conf, server)) {
+	if (warn_listen && listen_changed(conf, server)) {
 		log_warning(msg, "listen");
-		listen_warn = false;
+		warn_listen = false;
 	}
 }
 
