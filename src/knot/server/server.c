@@ -214,8 +214,11 @@ static int server_init_iface(iface_t *new_if, struct sockaddr_storage *addr,
 #ifdef ENABLE_REUSEPORT
 	udp_socket_count = udp_thread_count;
 	udp_bind_flags |= NET_BIND_MULTIPLE;
-	tcp_socket_count = tcp_thread_count;
-	tcp_bind_flags |= NET_BIND_MULTIPLE;
+
+	if (conf()->cache.srv_tcp_reuseport) {
+		tcp_socket_count = tcp_thread_count;
+		tcp_bind_flags |= NET_BIND_MULTIPLE;
+	}
 #endif
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
