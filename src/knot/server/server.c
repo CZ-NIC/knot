@@ -47,8 +47,8 @@ enum {
 	TCP_MIN_SNDSIZE = sizeof(uint16_t) + UINT16_MAX
 };
 
-/*! \brief Throttle records, a timer and its lock for TCP throttle warnings. */
-/* Warning: the initialization here is neccesaary because of macOS compiler! */
+/*! \brief Throttle records, a timer, and its lock for TCP throttle warnings. */
+/* Warning: the initialization here is neccessary because of macOS compiler! */
 throttle_log_t tcp_throttle_log = {
 	.timer_end.tv_sec = 0,
 	.timer_end.tv_nsec = 0
