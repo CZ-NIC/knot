@@ -926,9 +926,12 @@ keystore
 --------
 
 A :ref:`reference<keystore_id>` to a keystore holding private key material
-for zones. A special *default* value can be used for the default keystore settings.
+for zones.
 
-*Default:* default
+*Default:* an imaginary keystore with all default values
+
+.. NOTE::
+   A configured keystore called "default" won't be used unless explicitly referenced.
 
 .. _policy_manual:
 
@@ -1615,10 +1618,12 @@ If enabled, automatic DNSSEC signing for the zone is turned on.
 dnssec-policy
 -------------
 
-A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
-value can be used for the default policy settings.
+A :ref:`reference<policy_id>` to DNSSEC signing policy.
 
-*Required*
+*Default:* an imaginary policy with all default values
+
+.. NOTE::
+   A configured policy called "default" won't be used unless explicitly referenced.
 
 .. _zone_serial-policy:
 
