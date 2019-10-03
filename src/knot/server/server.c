@@ -269,14 +269,6 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		return NULL;
 	}
 
-	/* Initialize the sockets to ensure safe early deinitialization. */
-	for (int i = 0; i < udp_socket_count; i++) {
-		new_if->fd_udp[i] = -1;
-	}
-	for (int i = 0; i < tcp_socket_count; i++) {
-		new_if->fd_tcp[i] = -1;
-	}
-
 	bool warn_bind = false;
 	bool warn_bufsize = false;
 
