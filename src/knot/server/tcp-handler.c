@@ -62,8 +62,8 @@ typedef struct tcp_context {
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL         2     /*!< [secs] granularity of connection sweeping. */
-#define THROTTLE_LOG_INTERVAL    300     /*!< [secs] maximum frequency of throttled TCP warnings. */
-#define ADD_THROTTLE_LOG_INTERVAL     (THROTTLE_LOG_INTERVAL - TCP_SWEEP_INTERVAL)
+#define THROTTLE_LOG_INTERVAL     20     /*!< [secs] maximum frequency of throttled TCP warnings. */
+#define ADD_THROTTLE_LOG_INTERVAL     (THROTTLE_LOG_INTERVAL - 2*TCP_SWEEP_INTERVAL)
 
 static void update_sweep_timer(struct timespec *timer)
 {
@@ -294,13 +294,17 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	return ret;
 }
 
-static void tcp_wait_for_events(tcp_context_t *tcp)
+static void tcp_wait_for_events(tcp_context_t *tcp, unsigned *COUNTER, unsigned *MAX_CLIENTS)
 {
 	fdset_t *set = &tcp->set;
 
 	/* Check if throttled with many open TCP connections. */
 	assert(set->n <= tcp->max_worker_fds);
 	tcp->is_throttled = set->n == tcp->max_worker_fds;
+
+	if (set->n > *MAX_CLIENTS) {
+		*MAX_CLIENTS = set->n;
+	}
 
 	/* If throttled, temporarily ignore new TCP connections. */
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
@@ -331,8 +335,11 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
-			} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {
-				should_close = true;
+			} else {
+				(*COUNTER)++;
+				if (tcp_event_serve(tcp, i) != KNOT_EOK) {
+					should_close = true;
+				}
 			}
 			--nfds;
 		}
@@ -397,6 +404,10 @@ int tcp_master(dthread_t *thread)
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
 
+	unsigned COUNTER = 0;
+	unsigned COUNTER_TOTAL = 0;
+	unsigned MAX_CLIENTS = 0;
+
 	/* Set descriptors for the configured interfaces. */
 	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces, &tcp.set, tcp.thread_id);
 	if (tcp.client_threshold == 0) {
@@ -410,10 +421,16 @@ int tcp_master(dthread_t *thread)
 		}
 
 		/* Serve client requests. */
-		tcp_wait_for_events(&tcp);
+		tcp_wait_for_events(&tcp, &COUNTER, &MAX_CLIENTS);
 
 		/* Sweep inactive clients and refresh TCP configuration. */
 		if (tcp.last_poll_time.tv_sec >= next_sweep.tv_sec) {
+			COUNTER_TOTAL += COUNTER;
+			log_warning("thread_id: %u	#of clients: %u / %u		processed: %u	in sweep: %u",
+			            tcp.thread_id, tcp.set.n - tcp.client_threshold,
+				    MAX_CLIENTS - tcp.client_threshold, COUNTER_TOTAL, COUNTER);
+			COUNTER = 0;
+			MAX_CLIENTS = 0;
 			fdset_sweep(&tcp.set, &tcp_sweep, NULL);
 			update_sweep_timer(&next_sweep);
 			update_tcp_conf(&tcp);
