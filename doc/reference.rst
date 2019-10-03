@@ -310,7 +310,12 @@ tcp-reuseport
 -------------
 
 If enabled, each TCP socket uses its own packet queue and the OS kernel
-socket load balancing is emloyed. SO_REUSEPORT (SO_REUSEPORT_LB on FreeBSD).
+socket load balancing is emloyed using SO_REUSEPORT or SO_REUSEPORT_LB
+on FreeBSD). Set it to on, except in such use cases where Knot DNS serves
+long-period incoming TCP transfers, such as in master DNS servers. In such
+situations it is usually better to set tcp-reuseport to off. Failing to
+set this parameter to off where neccessary may exhibit by some incoming
+TCP connection not being respended to.
 
 Change of this parameter requires restart of the Knot server to take effect.
 

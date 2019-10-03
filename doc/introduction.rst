@@ -65,7 +65,7 @@ Remarkable module extensions:
 Remarkable supported networking features:
 
 * TCP Fast Open
-* SO_REUSEPORT (on Linux) or SO_REUSEPORT_LB (on FreeBSD 12.0+)
+* SO_REUSEPORT (on Linux) or SO_REUSEPORT_LB (on FreeBSD 12.0+) on UDP and by choice on TCP
 * Binding to non-local addresses (IP_FREEBIND on Linux, IP_BINDANY/IPV6_BINDANY on FreeBSD)
 * Ignoring PMTU information for IPv4/UDP via IP_PMTUDISC_OMIT
 
