@@ -49,10 +49,7 @@ enum {
 
 /*! \brief Throttle records, a timer, and its lock for TCP throttle warnings. */
 /* Warning: the initialization here is neccessary because of macOS compiler! */
-throttle_log_t tcp_throttle_log = {
-	.timer_end.tv_sec = 0,
-	.timer_end.tv_nsec = 0
-};
+throttle_log_t tcp_throttle_log = { 0 };
 
 /*! \brief Initialize TCP throttle logger. */
 static int throttle_log_init(conf_t *conf)

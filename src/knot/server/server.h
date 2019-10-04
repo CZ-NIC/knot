@@ -102,8 +102,7 @@ typedef struct server {
 /*! \brief Shared throttling state, its log timer and a lock. */
 typedef struct {
 	unsigned *was_throttled;	/*!< Throttling occured during the sweep period
-					 *   in each worker.
-					 */
+					 *   in each worker. */
 	int threads;			/*!< Number of watched TCP workers. */
 	struct timespec timer_end;	/*!< When the timer times out. */
 	knot_spin_t lock;		/*!< Spinlock lock for the timer above. */
