@@ -299,7 +299,8 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	fdset_t *set = &tcp->set;
 
 	/* Check if throttled with many open TCP connections. */
-	tcp->is_throttled = set->n > tcp->max_worker_fds;
+	assert(set->n <= tcp->max_worker_fds);
+	tcp->is_throttled = set->n == tcp->max_worker_fds;
 
 	/* If throttled, temporarily ignore new TCP connections. */
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
@@ -324,7 +325,10 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 		} else if (set->pfd[i].revents & (POLLIN)) {
 			/* Master sockets - new connection to accept. */
 			if (i < tcp->client_threshold) {
-				tcp_event_accept(tcp, i);
+				/* Don't accept more clients than configured. */
+				if (set->n < tcp->max_worker_fds) {
+					tcp_event_accept(tcp, i);
+				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
 			} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {
