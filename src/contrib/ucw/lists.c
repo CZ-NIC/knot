@@ -151,7 +151,7 @@ add_tail_list(list_t *to, list_t *l)
  */
 void list_dup(list_t *dst, list_t *src, size_t itemsz)
 {
-	node_t *n = 0;
+	node_t *n;
 	WALK_LIST(n, *src) {
 		node_t *i = malloc(itemsz);
 		memcpy(i, n, itemsz);
@@ -169,7 +169,7 @@ size_t list_size(const list_t *l)
 {
 	size_t count = 0;
 
-	node_t *n = 0;
+	node_t *n;
 	WALK_LIST(n, *l) {
 		count++;
 	}
@@ -202,7 +202,7 @@ ptrnode_t *ptrlist_add(list_t *to, void *val, knot_mm_t *mm)
  */
 void ptrlist_free(list_t *list, knot_mm_t *mm)
 {
-	node_t *n = NULL, *nxt = NULL;
+	node_t *n, *nxt;
 	WALK_LIST_DELSAFE(n, nxt, *list) {
 		mm_free(mm, n);
 	}

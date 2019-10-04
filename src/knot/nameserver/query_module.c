@@ -68,7 +68,7 @@ void query_plan_free(struct query_plan *plan)
 	}
 
 	for (unsigned i = 0; i < KNOTD_STAGES; ++i) {
-		struct query_step *step = NULL, *next = NULL;
+		struct query_step *step, *next;
 		WALK_LIST_DELSAFE(step, next, plan->stage[i]) {
 			free(step);
 		}

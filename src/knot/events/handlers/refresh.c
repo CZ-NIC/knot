@@ -480,7 +480,7 @@ static int ixfr_slave_sign_serial(list_t *changesets, zone_t *zone,
 		                           "from KASP DB (%s)", knot_strerror(ret));
 		return ret;
 	}
-	changeset_t *chs = NULL;
+	changeset_t *chs;
 	WALK_LIST(chs, *changesets) {
 		if (!ixfr_serial_once(chs, serial_policy, master_serial, &local_serial)) {
 			return KNOT_EINVAL;
@@ -512,7 +512,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
-	changeset_t *set = NULL;
+	changeset_t *set;
 	WALK_LIST(set, data->ixfr.changesets) {
 		ret = zone_update_apply_changeset(&up, set);
 		if (ret != KNOT_EOK) {

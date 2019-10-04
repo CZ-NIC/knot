@@ -43,7 +43,7 @@
 
 static void free_ddns_queue(zone_t *zone)
 {
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, zone->ddns_queue) {
 		knot_request_free(node->d, NULL);
 	}

@@ -646,7 +646,7 @@ static int opt_notls_ca(const char *arg, void *query)
 
 	q->tls.system_ca = false;
 
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, q->tls.ca_files) {
 		free(node->d);
 	}
@@ -688,7 +688,7 @@ static int opt_notls_pin(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, q->tls.pins) {
 		free(node->d);
 	}
@@ -1421,7 +1421,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 
 void query_free(query_t *query)
 {
-	node_t *n = NULL, *nxt = NULL;
+	node_t *n, *nxt;
 
 	if (query == NULL) {
 		DBG_NULL;
@@ -1527,7 +1527,7 @@ int ednsopt_list_dup(list_t *dest, const list_t *src)
 	list_t backup = *dest;
 	init_list(dest);
 
-	node_t *n = NULL;
+	node_t *n;
 	WALK_LIST(n, *src) {
 		ednsopt_t *opt = (ednsopt_t *)n;
 		ednsopt_t *dup = ednsopt_dup(opt);
@@ -1572,7 +1572,7 @@ int kdig_init(kdig_params_t *params)
 
 void kdig_clean(kdig_params_t *params)
 {
-	node_t *n = NULL, *nxt = NULL;
+	node_t *n, *nxt;
 
 	if (params == NULL) {
 		DBG_NULL;
@@ -1811,7 +1811,7 @@ static int parse_dnstap_input(const char *value, query_t *query)
 
 static void complete_servers(query_t *query, const query_t *conf)
 {
-	node_t *n = NULL;
+	node_t *n;
 	char *def_port;
 
 	// Decide which default port use.
@@ -1879,7 +1879,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 
 void complete_queries(list_t *queries, const query_t *conf)
 {
-	node_t  *n = NULL;
+	node_t  *n;
 
 	if (queries == NULL || conf == NULL) {
 		DBG_NULL;

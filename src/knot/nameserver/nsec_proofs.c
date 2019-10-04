@@ -577,7 +577,7 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	int ret = KNOT_EOK;
-	struct wildcard_hit *item = NULL;
+	struct wildcard_hit *item;
 
 	WALK_LIST(item, qdata->extra->wildcards) {
 		if (item->node == NULL) {
@@ -645,7 +645,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)
 	flags |= KNOT_PF_ORIGTTL;
 
 	/* Append RRSIGs for section. */
-	struct rrsig_info *info = NULL;
+	struct rrsig_info *info;
 	WALK_LIST(info, qdata->extra->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
 		uint16_t compr_hint = info->rrinfo->compress_ptr[KNOT_COMPR_HINT_OWNER];
@@ -669,7 +669,7 @@ void nsec_clear_rrsigs(knotd_qdata_t *qdata)
 		return;
 	}
 
-	struct rrsig_info *info = NULL;
+	struct rrsig_info *info;
 	WALK_LIST(info, qdata->extra->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
 		knot_rrset_clear(rrsig, qdata->mm);

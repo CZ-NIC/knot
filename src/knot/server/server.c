@@ -114,7 +114,7 @@ static void server_deinit_iface(iface_t *iface)
 static void server_deinit_iface_list(list_t *ifaces)
 {
 	if (ifaces != NULL) {
-		iface_t *iface = NULL, *next = NULL;
+		iface_t *iface, *next;
 		WALK_LIST_DELSAFE(iface, next, *ifaces) {
 			server_deinit_iface(iface);
 		}
@@ -676,7 +676,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	while (listen_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
 		bool found = false;
-		iface_t *iface = NULL;
+		iface_t *iface;
 		WALK_LIST(iface, *server->ifaces) {
 			if (sockaddr_cmp((struct sockaddr *)&addr,
 			                 (struct sockaddr *)&iface->addr) == 0) {

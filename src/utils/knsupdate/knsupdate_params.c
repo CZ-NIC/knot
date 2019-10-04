@@ -161,7 +161,7 @@ static void rr_list_free(list_t *list, knot_mm_t *mm)
 	assert(list != NULL);
 	assert(mm != NULL);
 
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, *list) {
 		knot_rrset_t *rrset = (knot_rrset_t *)node->d;
 		knot_rrset_free(rrset, NULL);
