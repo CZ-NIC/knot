@@ -63,6 +63,7 @@ typedef struct {
 	uint16_t compress_ptr[KNOT_COMPR_HINT_COUNT]; /* Array of compr. ptr hints. */
 } knot_rrinfo_t;
 
+struct trie;
 /*!
  * \brief Name compression context.
  */
@@ -73,6 +74,12 @@ typedef struct knot_compr {
 		uint16_t pos;   /* Position of current suffix. */
 		uint8_t labels; /* Label count of the suffix. */
 	} suffix;
+
+	/*!
+	 * - key: uint16_t ptr + unprefixed label
+	 * - value: resulting ptr, cast to void *
+	 */
+	struct trie *ptr_map;
 } knot_compr_t;
 
 /*!
@@ -97,5 +104,10 @@ static inline void knot_compr_hint_set(knot_rrinfo_t *info, uint16_t hint_id,
 		info->compress_ptr[hint_id] = val;
 	}
 }
+
+
+struct knot_pkt;
+/*! Init *and* put QNAME; return the number of bytes written or error < 0. */
+int knot_compr_init(struct knot_pkt *pkt, const knot_dname_t *qname, uint16_t max);
 
 /*! @} */

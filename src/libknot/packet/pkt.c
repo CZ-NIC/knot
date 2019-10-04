@@ -29,6 +29,7 @@
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/wire.h"
 #include "contrib/mempattern.h"
+#include "contrib/qp-trie/trie.h"
 #include "contrib/wire_ctx.h"
 
 /*! \brief Packet RR array growth step. */
@@ -176,6 +177,9 @@ static void compr_clear(knot_compr_t *compr)
 	compr->rrinfo = NULL;
 	compr->suffix.pos = 0;
 	compr->suffix.labels = 0;
+
+	trie_free(compr->ptr_map);
+	compr->ptr_map = NULL;
 }
 
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
@@ -385,6 +389,8 @@ void knot_pkt_free(knot_pkt_t *pkt)
 	/* Free temporary RRSets. */
 	pkt_free_data(pkt);
 
+	trie_free(pkt->compr.ptr_map);
+
 	/* Free RR/RR info arrays. */
 	mm_free(&pkt->mm, pkt->rr);
 	mm_free(&pkt->mm, pkt->rr_info);
@@ -460,8 +466,8 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	wire_ctx_t wire = wire_ctx_init(pkt->wire, pkt->max_size);
 	wire_ctx_set_offset(&wire, KNOT_WIRE_HEADER_SIZE);
 
-	int qname_len = knot_dname_to_wire(wire.position,
-	                                   qname, wire_ctx_available(&wire));
+	compr_clear(&pkt->compr);
+	int qname_len = knot_compr_init(pkt, qname, wire_ctx_available(&wire));
 	if (qname_len < 0) {
 		return qname_len;
 	}
@@ -514,7 +520,7 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 	/* Disable compression if no QNAME is available. */
 	knot_compr_t *compr = NULL;
 	if (knot_pkt_qname(pkt) != NULL) {
-		/* Initialize compression context if it did not happen yet. */
+		/* Initialize compression context if it did not happen yet.  FIXME */
 		pkt->compr.rrinfo = rrinfo;
 		if (pkt->compr.suffix.pos == 0) {
 			pkt->compr.suffix.pos = KNOT_WIRE_HEADER_SIZE;

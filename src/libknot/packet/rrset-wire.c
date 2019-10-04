@@ -25,6 +25,7 @@
 #include "libknot/rrtype/rrsig.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
+#include "contrib/qp-trie/trie.h"
 #include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
 
@@ -156,159 +157,159 @@ static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
 	return write_rdata_fixed(src, src_avail, dst, dst_avail, ret);
 }
 
-/*! \brief Helper for \ref compr_put_dname, writes label(s) with size checks. */
-#define WRITE_LABEL(dst, written, label, max, len) \
-	if ((written) + (len) > (max)) { \
-		return KNOT_ESPACE; \
-	} else { \
-		memcpy((dst) + (written), (label), (len)); \
-		written += (len); \
-	}
-
 /*!
  * \brief Write compressed domain name to the destination wire.
  *
- * \param dname  Name to be written.
+ * \param dname  Name to be written (assumed lower-cased if is_compressible).
  * \param dst    Destination wire.
  * \param max    Maximum number of bytes available.
  * \param compr  Compression context (NULL for no compression)
  * \return Number of written bytes or an error.
  */
-static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
-                           knot_compr_t *compr)
+static int compr_put_dname(const knot_dname_t *dname, uint8_t * const dst, uint16_t max,
+                           knot_compr_t *compr, bool is_compressible)
 {
-	assert(dname && dst);
-
-	// Write uncompressible names directly (zero label dname).
-	if (compr == NULL || *dname == '\0') {
+	if (*dname == '\0' || !compr) { // FIXME: !compr
 		return knot_dname_to_wire(dst, dname, max);
 	}
-
-	// Get number of labels (should not be a zero label dname).
-	size_t name_labels = knot_dname_labels(dname, NULL);
-	assert(name_labels > 0);
-
-	// Suffix must not be longer than whole name.
-	const knot_dname_t *suffix = compr->wire + compr->suffix.pos;
-	int suffix_labels = compr->suffix.labels;
-	while (suffix_labels > name_labels) {
-		suffix = knot_wire_next_label(suffix, compr->wire);
-		--suffix_labels;
+	assert(dname && dst && compr);
+	compr->suffix.labels = 0; // FIXME: really do use hints?
+	if (!compr->ptr_map) { // FIXME: remove and fix causes
+		//fprintf(stderr, "XXX: rescued compression map; probably incomplete\n");
+		compr->ptr_map = trie_create(NULL);
 	}
 
-	// Suffix is shorter than name, write labels until aligned.
-	uint8_t orig_labels = name_labels;
-	uint16_t written = 0;
-	while (name_labels > suffix_labels) {
-		WRITE_LABEL(dst, written, dname, max, (*dname + 1));
-		dname = knot_wire_next_label(dname, NULL);
-		--name_labels;
+
+	/* Get offsets of all labels within the name. */
+	uint8_t label_offs[128];
+	int i = 0;
+	for (int off = 0; dname[off]; ++i) {
+		label_offs[i] = off;
+		off += 1 + dname[off];
 	}
+	const int name_labels = i;
 
-	// Label count is now equal.
-	assert(name_labels == suffix_labels);
-	const knot_dname_t *match_begin = dname;
-	const knot_dname_t *compr_ptr = suffix;
-	while (dname[0] != '\0') {
-		// Next labels.
-		const knot_dname_t *next_dname = knot_wire_next_label(dname, NULL);
-		const knot_dname_t *next_suffix = knot_wire_next_label(suffix, compr->wire);
+	/* Get *wire* offsets of all labels in the hint. */
+	const int hint_labels = is_compressible ? compr->suffix.labels : 0;
+	uint16_t hint_offs[hint_labels + 1 /*zero isn't allowed*/];
+	i = 0;
+	for (const knot_dname_t *suffix = compr->wire + compr->suffix.pos;
+			i < hint_labels;
+			++i, suffix = knot_wire_next_label(suffix, compr->wire)) {
+		hint_offs[i] = suffix - compr->wire;
+	}
+	assert(hint_labels == 0
+		|| knot_wire_next_label(compr->wire + hint_offs[i - 1], NULL)[0] == 0);
 
-		// Two labels match, extend suffix length.
-		if (!label_is_equal(dname, suffix)) {
-			// If they don't match, write unmatched labels.
-			uint16_t mismatch_len = (dname - match_begin) + (*dname + 1);
-			WRITE_LABEL(dst, written, match_begin, max, mismatch_len);
-			// Start new potential match.
-			match_begin = next_dname;
-			compr_ptr = next_suffix;
+	// Match hint and name from root as long as possible.
+	for (i = 1; i <= hint_labels && i <= name_labels; ++i) {
+		if (!label_is_equal(dname + label_offs[name_labels - i],
+					compr->wire + hint_offs[hint_labels - i])) {
+			break;
 		}
-
-		// Jump to next labels.
-		dname = next_dname;
-		suffix = next_suffix;
 	}
 
-	// If match begins at the end of the name, write '\0' label.
-	if (match_begin == dname) {
-		WRITE_LABEL(dst, written, dname, max, 1);
-	} else {
-		// Match covers >0 labels, write out compression pointer.
+	uint16_t ptr_last = i == 1 ? 0 : hint_offs[hint_labels - (i - 1)];
+	int compr_i = name_labels;
+	uint16_t compr_ptr = 0;
+	// We've used hint as much as possible; now continue with the DB.
+	for (i = name_labels - i; i >= 0; --i) {
+		/* Find dname from this label in the DB. */
+		uint8_t key[2 + 63];
+		memcpy(key, &ptr_last, 2);
+		const int label_len = dname[label_offs[i]];
+		if (is_compressible) { // we can avoid tolower
+			memcpy(key + 2, dname + label_offs[i] + 1, label_len);
+			#ifndef NDEBUG
+			for (int j = 0; j < label_len; ++j) {
+				assert(key[2 + j] == knot_tolower(key[2 + j]));
+			}
+			#endif
+		} else {
+			for (int j = 0; j < label_len; ++j) {
+				key[2 + j] = knot_tolower(dname[label_offs[i] + 1 + j]);
+			}
+		}
+		uintptr_t *pval = (uintptr_t *)
+			trie_get_ins(compr->ptr_map, key, 2 + label_len);
+		if (unlikely(!pval)) {
+			return KNOT_ENOMEM;
+		}
+		/* Update the DB, preferring the old value. */
+		const bool found = *pval;
+		if (!found) {
+			*pval = dst - compr->wire + label_offs[i];
+			// In case we've overshoot with the pointer value,
+			// we roll back this iteration - can't improve compression anymore.
+			if (unlikely(*pval & KNOT_WIRE_PTR)) {
+				trie_del(compr->ptr_map, key, 2 + label_len, NULL);
+				break;
+			}
+		}
+		ptr_last = *pval;
+		assert(!(ptr_last & KNOT_WIRE_PTR));
+		if (found) {
+			compr_i = i;
+			compr_ptr = ptr_last;
+		}
+	}
+	assert((compr_i == name_labels) == (compr_ptr == 0));
+
+	// Put the uncompressed parts to the wire.
+	uint16_t written = 0;
+	for (i = 0; i < compr_i; ++i) {
+		const knot_dname_t *label = dname + label_offs[i];
+		const int len = *label + 1;
+		if (unlikely(written + len > max)) {
+			return KNOT_ESPACE;
+		} else {
+			memcpy(dst + written, label, len);
+			written += len;
+		}
+	}
+	// Put the final step: either pointer or root label.
+	if (is_compressible && compr_ptr) {
 		if (written + sizeof(uint16_t) > max) {
 			return KNOT_ESPACE;
 		}
-		knot_wire_put_pointer(dst + written, compr_ptr - compr->wire);
+		knot_wire_put_pointer(dst + written, compr_ptr);
 		written += sizeof(uint16_t);
-	}
-
-	assert(dst >= compr->wire);
-	size_t wire_pos = dst - compr->wire;
-	assert(wire_pos < KNOT_WIRE_MAX_PKTSIZE);
-
-	// Heuristics - expect similar names are grouped together.
-	if (written > sizeof(uint16_t) && wire_pos + written < KNOT_WIRE_PTR_MAX) {
-		compr->suffix.pos = wire_pos;
-		compr->suffix.labels = orig_labels;
+	} else {
+		if (written + 1 > max) {
+			return KNOT_ESPACE;
+		}
+		dst[written++] = 0;
 	}
 
 	return written;
 }
 
-#define WRITE_OWNER_CHECK(size, dst_avail) \
-	if ((size) > *(dst_avail)) { \
-		return KNOT_ESPACE; \
+int knot_compr_init(struct knot_pkt *pkt, const knot_dname_t *qname, uint16_t max)
+{
+	pkt->compr.wire = pkt->wire;
+	if (pkt->compr.ptr_map) {
+		trie_clear(pkt->compr.ptr_map);
+	} else {
+		pkt->compr.ptr_map = trie_create(&pkt->mm);
+		if (!pkt->compr.ptr_map) {
+			return KNOT_ENOMEM;
+		}
 	}
-
-#define WRITE_OWNER_INCR(dst, dst_avail, size) \
-	*(dst) += (size); \
-	*(dst_avail) -= (size);
+	return compr_put_dname(qname, pkt->wire + KNOT_WIRE_HEADER_SIZE, max,
+				&pkt->compr, false);
+}
 
 static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_avail,
                        knot_compr_t *compr)
 {
-	assert(rrset);
-	assert(dst && *dst);
-	assert(dst_avail);
+	assert(rrset && dst && *dst && dst_avail);
 
-	// Check for zero label owner (don't compress).
-	uint16_t owner_pointer = 0;
-	if (*rrset->owner != '\0') {
-		owner_pointer = compr_get_ptr(compr, KNOT_COMPR_HINT_OWNER);
+	int ret = compr_put_dname(rrset->owner, *dst, *dst_avail, compr, true);
+	if (ret < 0) {
+		return ret;
 	}
-
-	// Write result.
-	if (owner_pointer > 0) {
-		WRITE_OWNER_CHECK(sizeof(uint16_t), dst_avail);
-		knot_wire_put_pointer(*dst, owner_pointer);
-		WRITE_OWNER_INCR(dst, dst_avail, sizeof(uint16_t));
-	// Check for coincidence with previous RR set.
-	} else if (compr != NULL && compr->suffix.pos != 0 && *rrset->owner != '\0' &&
-	           dname_equal_wire(rrset->owner, compr->wire + compr->suffix.pos,
-	                            compr->wire)) {
-		WRITE_OWNER_CHECK(sizeof(uint16_t), dst_avail);
-		knot_wire_put_pointer(*dst, compr->suffix.pos);
-		compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER,
-		              compr->wire + compr->suffix.pos,
-		              knot_dname_size(rrset->owner));
-		WRITE_OWNER_INCR(dst, dst_avail, sizeof(uint16_t));
-	} else {
-		if (compr != NULL) {
-			compr->suffix.pos = KNOT_WIRE_HEADER_SIZE;
-			compr->suffix.labels =
-				knot_dname_labels(compr->wire + compr->suffix.pos,
-				                  compr->wire);
-		}
-		// WRITE_OWNER_CHECK not needed, compr_put_dname has a check.
-		int written = compr_put_dname(rrset->owner, *dst,
-		                              dname_max(*dst_avail), compr);
-		if (written < 0) {
-			return written;
-		}
-
-		compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER, *dst, written);
-		WRITE_OWNER_INCR(dst, dst_avail, written);
-	}
-
+	*dst_avail -= ret;
+	*dst += ret;
 	return KNOT_EOK;
 }
 
@@ -345,6 +346,7 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 	return KNOT_EOK;
 }
 
+// TODO: put_compr -> bool is_compressible
 static int compress_rdata_dname(const uint8_t **src, size_t *src_avail,
                                 uint8_t **dst, size_t *dst_avail,
                                 knot_compr_t *put_compr, knot_compr_t *compr,
@@ -360,14 +362,9 @@ static int compress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	size_t dname_size = knot_dname_size(dname);
 
 	// Output domain name.
-	int written = compr_put_dname(dname, *dst, dname_max(*dst_avail), put_compr);
+	int written = compr_put_dname(dname, *dst, dname_max(*dst_avail), compr, !!put_compr);
 	if (written < 0) {
 		return written;
-	}
-
-	// Update compression hints.
-	if (compr_get_ptr(compr, hint) == 0) {
-		compr_set_ptr(compr, hint, *dst, written);
 	}
 
 	// Update buffers.
