@@ -83,7 +83,7 @@ static int process_single_update(knot_request_t *request,
 
 static void set_rcodes(list_t *requests, const uint16_t rcode)
 {
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, *requests) {
 		knot_request_t *req = node->d;
 		if (knot_wire_get_rcode(req->resp->wire) == KNOT_RCODE_NOERROR) {
@@ -100,7 +100,7 @@ static void store_original_qname(knotd_qdata_t *qdata, const knot_pkt_t *pkt)
 static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 {
 	// Walk all the requests and process.
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, *requests) {
 		knot_request_t *req = node->d;
 		// Init qdata structure for logging (unique per-request).
@@ -302,7 +302,7 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	assert(zone);
 	assert(requests);
 
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, *requests) {
 		knot_request_t *req = node->d;
 		forward_request(conf, zone, req);
@@ -342,7 +342,7 @@ static void free_request(knot_request_t *req)
 
 static void send_update_responses(conf_t *conf, const zone_t *zone, list_t *updates)
 {
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
 		knot_request_t *req = node->d;
 		send_update_response(conf, zone, req);
@@ -353,7 +353,7 @@ static void send_update_responses(conf_t *conf, const zone_t *zone, list_t *upda
 
 static int init_update_responses(list_t *updates)
 {
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
 		knot_request_t *req = node->d;
 		req->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);

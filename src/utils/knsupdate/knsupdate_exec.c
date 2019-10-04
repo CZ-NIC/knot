@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -371,7 +371,7 @@ static int rr_list_to_packet(knot_pkt_t *dst, list_t *list)
 	assert(dst != NULL);
 	assert(list != NULL);
 
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, *list) {
 		int ret = knot_pkt_put(dst, KNOT_COMPR_HINT_NONE,
 		                       (knot_rrset_t *)node->d, 0);
@@ -570,7 +570,7 @@ int knsupdate_exec(knsupdate_params_t *params)
 	}
 
 	/* Read from each specified file. */
-	ptrnode_t *n = NULL;
+	ptrnode_t *n;
 	WALK_LIST(n, params->qfiles) {
 		const char *filename = (const char*)n->d;
 		if (strcmp(filename, "-") == 0) {
