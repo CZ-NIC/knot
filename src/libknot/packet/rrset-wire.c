@@ -254,6 +254,10 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t * const dst, uint1
 		}
 	}
 	assert((compr_i == name_labels) == (compr_ptr == 0));
+	if (!is_compressible) {
+		compr_i = name_labels;
+		compr_ptr = 0;
+	}
 
 	// Put the uncompressed parts to the wire.
 	uint16_t written = 0;
@@ -268,7 +272,7 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t * const dst, uint1
 		}
 	}
 	// Put the final step: either pointer or root label.
-	if (is_compressible && compr_ptr) {
+	if (compr_ptr) {
 		if (written + sizeof(uint16_t) > max) {
 			return KNOT_ESPACE;
 		}
