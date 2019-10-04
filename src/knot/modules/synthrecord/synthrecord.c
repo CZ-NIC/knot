@@ -359,15 +359,13 @@ static knotd_in_state_t template_match(knotd_in_state_t state, const synth_templ
 	int i;
 	for (i = 0; i < tpl->addr_count; i++) {
 		if (tpl->addr[i].addr_max.ss_family == AF_UNSPEC) {
-			if (sockaddr_net_match((struct sockaddr *)&query_addr,
-			                       (struct sockaddr *)&tpl->addr[i].addr,
+			if (sockaddr_net_match(&query_addr, &tpl->addr[i].addr,
 			                       tpl->addr[i].addr_mask)) {
 				break;
 			}
 		} else {
-			if (sockaddr_range_match((struct sockaddr *)&query_addr,
-			                         (struct sockaddr *)&tpl->addr[i].addr,
-			                         (struct sockaddr *)&tpl->addr[i].addr_max)) {
+			if (sockaddr_range_match(&query_addr, &tpl->addr[i].addr,
+			                         &tpl->addr[i].addr_max)) {
 				break;
 			}
 		}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,18 +41,18 @@
 /*!
  * \brief Calculate current structure length based on address family.
  *
- * \param sa  Socket address.
+ * \param ss  Socket address.
  *
  * \return Number of bytes or error code.
  */
-int sockaddr_len(const struct sockaddr *sa);
+int sockaddr_len(const struct sockaddr_storage *ss);
 
 /*!
  * \brief Compare addresses.
  *
  * \return like memcmp(3)
  */
-int sockaddr_cmp(const struct sockaddr *k1, const struct sockaddr *k2);
+int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storage *k2);
 
 /*!
  * \brief Set address and port.
@@ -69,12 +69,12 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 /*!
  * \brief Return raw network address in network byte order.
  *
- * \param[in]  sa        Socket address.
+ * \param[in]  ss        Socket address.
  * \param[out] addr_size Address length.
  *
  * \return Pointer to binary buffer of size addr_size.
  */
-void *sockaddr_raw(const struct sockaddr *sa, size_t *addr_size);
+void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size);
 
 /*!
  * \brief Set raw address.
@@ -96,28 +96,28 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
  *
  * \param buf     Destination for string representation.
  * \param maxlen  Maximum number of written bytes.
- * \param sa      Socket address.
+ * \param ss      Socket address.
  *
  * \return Number of bytes written on success, error code on failure.
  */
-int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr *sa);
+int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss);
 
 /*!
  * \brief Return port number from address.
  *
- * \param sa  Socket address.
+ * \param ss  Socket address.
  *
  * \return Port number or error code.
  */
-int sockaddr_port(const struct sockaddr *sa);
+int sockaddr_port(const struct sockaddr_storage *ss);
 
 /*!
  * \brief Set port number.
  *
- * \param sa    Socket address.
+ * \param ss    Socket address.
  * \param port  Port to set.
  */
-void sockaddr_port_set(struct sockaddr *sa, uint16_t port);
+void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port);
 
 /*!
  * \brief Get host FQDN address.
@@ -129,32 +129,32 @@ char *sockaddr_hostname(void);
 /*!
  * \brief Check if address is ANY address.
  *
- * \param sa  Socket address.
+ * \param ss  Socket address.
  */
-bool sockaddr_is_any(const struct sockaddr *sa);
+bool sockaddr_is_any(const struct sockaddr_storage *ss);
 
 /*!
  * \brief Check if two addresses match the given network prefix.
  *
- * \param sa1     First address.
- * \param sa2     Second address.
+ * \param ss1     First address.
+ * \param ss2     Second address.
  * \param prefix  Prefix length.
  *
  * \return True on match.
  */
-bool sockaddr_net_match(const struct sockaddr *sa1,
-                        const struct sockaddr *sa2,
+bool sockaddr_net_match(const struct sockaddr_storage *ss1,
+                        const struct sockaddr_storage *ss2,
                         unsigned prefix);
 
 /*!
  * \brief Check if the address is within the given address range (inclusive).
  *
- * \param sa      Address to check.
- * \param sa_min  Minimum address.
- * \param sa_max  Maximum address.
+ * \param ss      Address to check.
+ * \param ss_min  Minimum address.
+ * \param ss_max  Maximum address.
  *
  * \return True on match.
  */
-bool sockaddr_range_match(const struct sockaddr *sa,
-                          const struct sockaddr *sa_min,
-                          const struct sockaddr *sa_max);
+bool sockaddr_range_match(const struct sockaddr_storage *ss,
+                          const struct sockaddr_storage *ss_min,
+                          const struct sockaddr_storage *ss_max);

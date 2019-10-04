@@ -1153,8 +1153,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr *dst = (struct sockaddr *)&master->addr;
-	const struct sockaddr *src = (struct sockaddr *)&master->via;
+	const struct sockaddr_storage *dst = &master->addr;
+	const struct sockaddr_storage *src = &master->via;
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &master->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);

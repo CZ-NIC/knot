@@ -86,7 +86,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	socklen_t len = sizeof(struct sockaddr_storage);
 	if (getpeername(fd, (struct sockaddr*)&ss, &len) == 0) {
 		char addr_str[SOCKADDR_STRLEN] = {0};
-		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
+		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
 		log_notice("TCP, terminated inactive client, address %s", addr_str);
 	}
 
@@ -110,7 +110,7 @@ static void tcp_log_error(struct sockaddr_storage ss, const char *operation, int
 	/* Don't log ECONN as it usually means client closed the connection. */
 	if (ret == KNOT_ETIMEOUT) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
+		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
 		log_debug("TCP, %s, address %s (%s)", operation, addr_str, knot_strerror(ret));
 	}
 }

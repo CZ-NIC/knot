@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -141,7 +141,7 @@ void get_addr_str(const struct sockaddr_storage *ss,
 	char addr_str[SOCKADDR_STRLEN] = {0};
 
 	// Get network address string and port number.
-	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)ss);
+	sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 
 	// Calculate needed buffer size
 	const char *sock_name = get_sockname(socktype);

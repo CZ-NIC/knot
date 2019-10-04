@@ -632,7 +632,7 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
 	if (!acl_allowed(conf, &acl, action, query_source, &tsig, zone_name, query)) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)query_source);
+		sockaddr_tostr(addr_str, sizeof(addr_str), query_source);
 		const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions,
 		                                             action);
 		char *key_name = knot_dname_to_str_alloc(tsig.name);

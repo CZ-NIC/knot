@@ -85,14 +85,14 @@ static int socket_create(int family, int type, int proto)
 	return sock;
 }
 
-int net_unbound_socket(int type, const struct sockaddr *sa)
+int net_unbound_socket(int type, const struct sockaddr_storage *ss)
 {
-	if (sa == NULL) {
+	if (ss == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	/* Create socket. */
-	return socket_create(sa->sa_family, type, 0);
+	return socket_create(ss->ss_family, type, 0);
 }
 
 struct option {
@@ -157,24 +157,24 @@ static int enable_reuseport(int sock)
 #endif
 }
 
-static void unlink_unix_socket(const struct sockaddr *addr)
+static void unlink_unix_socket(const struct sockaddr_storage *addr)
 {
 	char path[SOCKADDR_STRLEN] = { 0 };
 	sockaddr_tostr(path, sizeof(path), addr);
 	unlink(path);
 }
 
-int net_bound_socket(int type, const struct sockaddr *sa, enum net_flags flags)
+int net_bound_socket(int type, const struct sockaddr_storage *ss, enum net_flags flags)
 {
 	/* Create socket. */
-	int sock = net_unbound_socket(type, sa);
+	int sock = net_unbound_socket(type, ss);
 	if (sock < 0) {
 		return sock;
 	}
 
 	/* Unlink UNIX sock if exists. */
-	if (sa->sa_family == AF_UNIX) {
-		unlink_unix_socket(sa);
+	if (ss->ss_family == AF_UNIX) {
+		unlink_unix_socket(ss);
 	}
 
 	/* Reuse old address if taken. */
@@ -185,7 +185,7 @@ int net_bound_socket(int type, const struct sockaddr *sa, enum net_flags flags)
 	}
 
 	/* Don't bind IPv4 for IPv6 any address. */
-	if (sa->sa_family == AF_INET6) {
+	if (ss->ss_family == AF_INET6) {
 		ret = sockopt_enable(sock, IPPROTO_IPV6, IPV6_V6ONLY);
 		if (ret != KNOT_EOK) {
 			close(sock);
@@ -195,7 +195,7 @@ int net_bound_socket(int type, const struct sockaddr *sa, enum net_flags flags)
 
 	/* Allow bind to non-local address. */
 	if (flags & NET_BIND_NONLOCAL) {
-		ret = enable_nonlocal(sock, sa->sa_family);
+		ret = enable_nonlocal(sock, ss->ss_family);
 		if (ret != KNOT_EOK) {
 			close(sock);
 			return ret;
@@ -212,7 +212,7 @@ int net_bound_socket(int type, const struct sockaddr *sa, enum net_flags flags)
 	}
 
 	/* Bind to specified address. */
-	ret = bind(sock, sa, sockaddr_len(sa));
+	ret = bind(sock, (const struct sockaddr *)ss, sockaddr_len(ss));
 	if (ret < 0) {
 		ret = knot_map_errno();
 		close(sock);
@@ -222,8 +222,8 @@ int net_bound_socket(int type, const struct sockaddr *sa, enum net_flags flags)
 	return sock;
 }
 
-int net_connected_socket(int type, const struct sockaddr *dst_addr,
-                         const struct sockaddr *src_addr)
+int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
+                         const struct sockaddr_storage *src_addr)
 {
 	if (dst_addr == NULL) {
 		return KNOT_EINVAL;
@@ -236,7 +236,7 @@ int net_connected_socket(int type, const struct sockaddr *dst_addr,
 
 	/* Bind to specific source address - if set. */
 	int sock = -1;
-	if (src_addr && src_addr->sa_family != AF_UNSPEC) {
+	if (src_addr && src_addr->ss_family != AF_UNSPEC) {
 		sock = net_bound_socket(type, src_addr, 0);
 	} else {
 		sock = net_unbound_socket(type, dst_addr);
@@ -246,8 +246,7 @@ int net_connected_socket(int type, const struct sockaddr *dst_addr,
 	}
 
 	/* Connect to destination. */
-	const struct sockaddr *sa = (const struct sockaddr *)dst_addr;
-	int ret = connect(sock, sa, sockaddr_len(sa));
+	int ret = connect(sock, (const struct sockaddr *)dst_addr, sockaddr_len(dst_addr));
 	if (ret != 0 && errno != EINPROGRESS) {
 		ret = knot_map_errno();
 		close(sock);
@@ -283,17 +282,18 @@ bool net_is_stream(int sock)
 
 int net_accept(int sock, struct sockaddr_storage *addr)
 {
-	socklen_t sa_len = sizeof(*addr);
+	socklen_t len = sizeof(*addr);
+	socklen_t *ss_len = (addr != NULL) ? &len : NULL;
 
 	int remote = -1;
 
 #if defined(HAVE_ACCEPT4) && defined(SOCK_NONBLOCK)
-	remote = accept4(sock, (struct sockaddr *)addr, &sa_len, SOCK_NONBLOCK);
+	remote = accept4(sock, (struct sockaddr *)addr, ss_len, SOCK_NONBLOCK);
 	if (remote < 0) {
 		return knot_map_errno();
 	}
 #else
-	remote = accept(sock, (struct sockaddr *)addr, &sa_len);
+	remote = accept(sock, (struct sockaddr *)addr, ss_len);
 	if (fcntl(remote, F_SETFL, O_NONBLOCK) != 0) {
 		int error = knot_map_errno();
 		close(remote);
@@ -499,7 +499,7 @@ static ssize_t send_data(int sock, struct msghdr *msg, int *timeout_ptr)
 /* -- generic stream and datagram I/O -------------------------------------- */
 
 ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
-                      const struct sockaddr *addr, int timeout_ms)
+                      const struct sockaddr_storage *addr, int timeout_ms)
 {
 	if (sock < 0 || buffer == NULL) {
 		return KNOT_EINVAL;
@@ -546,7 +546,7 @@ ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
 }
 
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
-                       const struct sockaddr *addr)
+                       const struct sockaddr_storage *addr)
 {
 	return net_base_send(sock, buffer, size, addr, 0);
 }

@@ -654,9 +654,7 @@ static bool view_strictly_in_view(geo_view_t *view, geo_view_t *in,
 		if (in->subnet_prefix >= view->subnet_prefix) {
 			return false;
 		}
-		return sockaddr_net_match((struct sockaddr *)view->subnet,
-		                          (struct sockaddr *)in->subnet,
-		                          in->subnet_prefix);
+		return sockaddr_net_match(view->subnet, in->subnet, in->subnet_prefix);
 	case MODE_WEIGHTED:
 		return true;
 	default:

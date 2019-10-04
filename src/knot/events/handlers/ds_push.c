@@ -186,8 +186,8 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr *dst = (struct sockaddr *)&parent->addr;
-	const struct sockaddr *src = (struct sockaddr *)&parent->via;
+	const struct sockaddr_storage *dst = &parent->addr;
+	const struct sockaddr_storage *src = &parent->via;
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
 	if (req == NULL) {
 		knot_request_free(req, NULL);

@@ -42,8 +42,8 @@ static int request_ensure_connected(knot_request_t *request)
 
 	int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
 	request->fd = net_connected_socket(sock_type,
-	                                  (struct sockaddr *)&request->remote,
-	                                  (struct sockaddr *)&request->source);
+	                                   &request->remote,
+	                                   &request->source);
 	if (request->fd < 0) {
 		return KNOT_ECONN;
 	}
@@ -107,8 +107,8 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 }
 
 knot_request_t *knot_request_make(knot_mm_t *mm,
-                                  const struct sockaddr *remote,
-                                  const struct sockaddr *source,
+                                  const struct sockaddr_storage *remote,
+                                  const struct sockaddr_storage *source,
                                   knot_pkt_t *query,
                                   const knot_tsig_key_t *tsig_key,
                                   knot_request_flag_t flags)

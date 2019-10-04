@@ -26,7 +26,7 @@
 
 #define NOTIFY_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_NOTIFY, \
-	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->params->remote, fmt)
+	       LOG_DIRECTION_IN, qdata->params->remote, fmt)
 
 static int notify_check_query(knotd_qdata_t *qdata)
 {
