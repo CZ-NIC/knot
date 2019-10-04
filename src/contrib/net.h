@@ -34,11 +34,11 @@ enum net_flags {
  * \note The socket is set to non-blocking mode.
  *
  * \param type  Socket transport type (SOCK_STREAM, SOCK_DGRAM).
- * \param sa    Socket address.
+ * \param addr  Socket address.
  *
  * \return socket or error code
  */
-int net_unbound_socket(int type, const struct sockaddr *sa);
+int net_unbound_socket(int type, const struct sockaddr_storage *addr);
 
 /*!
  * \brief Create socket bound to given address.
@@ -46,12 +46,12 @@ int net_unbound_socket(int type, const struct sockaddr *sa);
  * The socket is set to non-blocking mode.
  *
  * \param type   Socket transport type (SOCK_STREAM, SOCK_DGRAM).
- * \param sa     Socket address.
+ * \param addr   Socket address.
  * \param flags  Socket binding options.
  *
  * \return socket or error code
  */
-int net_bound_socket(int type, const struct sockaddr *sa, enum net_flags flags);
+int net_bound_socket(int type, const struct sockaddr_storage *addr, enum net_flags flags);
 
 /*!
  * \brief Create socket connected (asynchronously) to destination address.
@@ -64,8 +64,8 @@ int net_bound_socket(int type, const struct sockaddr *sa, enum net_flags flags);
  *
  * \return socket or error code
  */
-int net_connected_socket(int type, const struct sockaddr *dst_addr,
-                         const struct sockaddr *src_addr);
+int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
+                         const struct sockaddr_storage *src_addr);
 
 /*!
  * \brief Return true if the socket is fully connected.
@@ -117,7 +117,7 @@ int net_accept(int sock, struct sockaddr_storage *addr);
  * \return Number of bytes sent or negative error code.
  */
 ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
-                      const struct sockaddr *addr, int timeout_ms);
+                      const struct sockaddr_storage *addr, int timeout_ms);
 
 /*!
  * \brief Receive a message from a socket.
@@ -139,7 +139,7 @@ ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
  * \see net_base_send
  */
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,
-                       const struct sockaddr *addr);
+                       const struct sockaddr_storage *addr);
 
 /*!
  * \brief Receive a message from a SOCK_DGRAM socket.

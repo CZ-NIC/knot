@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -87,8 +87,7 @@ static knot_request_t *make_query(knot_requestor_t *requestor,
 	static const knot_dname_t *root = (uint8_t *)"";
 	knot_pkt_put_question(pkt, root, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
-	return knot_request_make(requestor->mm, (struct sockaddr *)dst,
-	                         (struct sockaddr *)src, pkt, NULL, 0);
+	return knot_request_make(requestor->mm, dst, src, pkt, NULL, 0);
 }
 
 static void test_disconnected(knot_requestor_t *requestor,
@@ -131,9 +130,9 @@ int main(int argc, char *argv[])
 	sockaddr_set(&server, AF_INET, "127.0.0.1", 0);
 
 	/* Bind to random port. */
-	int responder_fd = net_bound_socket(SOCK_STREAM, (struct sockaddr *)&server, 0);
+	int responder_fd = net_bound_socket(SOCK_STREAM, &server, 0);
 	assert(responder_fd >= 0);
-	socklen_t addr_len = sockaddr_len((struct sockaddr *)&server);
+	socklen_t addr_len = sockaddr_len(&server);
 	getsockname(responder_fd, (struct sockaddr *)&server, &addr_len);
 
 	/* Test requestor in disconnected environment. */
@@ -150,7 +149,7 @@ int main(int argc, char *argv[])
 	test_connected(&requestor, &server, &client);
 
 	/* Terminate responder. */
-	int conn = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&server, NULL);
+	int conn = net_connected_socket(SOCK_STREAM, &server, NULL);
 	assert(conn > 0);
 	conn = net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT);
 	assert(conn > 0);

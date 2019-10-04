@@ -630,8 +630,7 @@ struct sockaddr_storage conf_addr(
 				free(tmp);
 			}
 		} else if (no_port) {
-			sockaddr_port_set((struct sockaddr *)&out,
-			                  val->item->var.a.dflt_port);
+			sockaddr_port_set(&out, val->item->var.a.dflt_port);
 		}
 	} else {
 		const char *dflt_socket = val->item->var.a.dflt_socket;
@@ -709,14 +708,11 @@ bool conf_addr_range_match(
 
 		min = conf_addr_range(range, &max, &mask);
 		if (max.ss_family == AF_UNSPEC) {
-			if (sockaddr_net_match((struct sockaddr *)addr,
-			                       (struct sockaddr *)&min, mask)) {
+			if (sockaddr_net_match(addr, &min, mask)) {
 				return true;
 			}
 		} else {
-			if (sockaddr_range_match((struct sockaddr *)addr,
-			                         (struct sockaddr *)&min,
-			                         (struct sockaddr *)&max)) {
+			if (sockaddr_range_match(addr, &min, &max)) {
 				return true;
 			}
 		}

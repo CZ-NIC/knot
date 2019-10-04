@@ -96,8 +96,8 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr *dst = (struct sockaddr *)&slave->addr;
-	const struct sockaddr *src = (struct sockaddr *)&slave->via;
+	const struct sockaddr_storage *dst = &slave->addr;
+	const struct sockaddr_storage *src = &slave->via;
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &slave->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);

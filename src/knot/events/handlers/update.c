@@ -239,8 +239,8 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 	}
 
 	/* Create a request. */
-	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
-	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
+	const struct sockaddr_storage *dst = &remote->addr;
+	const struct sockaddr_storage *src = &remote->via;
 	knot_request_t *req = knot_request_make(re.mm, dst, src, query, NULL, 0);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
@@ -326,7 +326,7 @@ static void send_update_response(conf_t *conf, const zone_t *zone, knot_request_
 			                 conf->cache.srv_tcp_remote_io_timeout);
 		} else {
 			net_dgram_send(req->fd, req->resp->wire, req->resp->size,
-			               (struct sockaddr *)&req->remote);
+			               &req->remote);
 		}
 	}
 }

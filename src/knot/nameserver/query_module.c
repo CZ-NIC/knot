@@ -514,15 +514,11 @@ bool knotd_conf_addr_range_match(const knotd_conf_t *range,
 	for (size_t i = 0; i < range->count; i++) {
 		knotd_conf_val_t *val = &range->multi[i];
 		if (val->addr_max.ss_family == AF_UNSPEC) {
-			if (sockaddr_net_match((struct sockaddr *)addr,
-			                       (struct sockaddr *)&val->addr,
-			                       val->addr_mask)) {
+			if (sockaddr_net_match(addr, &val->addr, val->addr_mask)) {
 				return true;
 			}
 		} else {
-			if (sockaddr_range_match((struct sockaddr *)addr,
-			                         (struct sockaddr *)&val->addr,
-			                         (struct sockaddr *)&val->addr_max)) {
+			if (sockaddr_range_match(addr, &val->addr, &val->addr_max)) {
 				return true;
 			}
 		}

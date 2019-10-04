@@ -213,7 +213,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 	/* Convert to string address format. */
 	char addr_str[SOCKADDR_STRLEN] = { 0 };
-	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)addr);
+	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
 
 	int udp_socket_count = 1;
 	int udp_bind_flags = 0;
@@ -244,10 +244,10 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 	/* Create bound UDP sockets. */
 	for (int i = 0; i < udp_socket_count; i++) {
-		int sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, udp_bind_flags);
+		int sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags);
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			udp_bind_flags |= NET_BIND_NONLOCAL;
-			sock = net_bound_socket(SOCK_DGRAM, (struct sockaddr *)addr, udp_bind_flags);
+			sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags);
 			if (sock >= 0 && warn_bind) {
 				log_warning("address %s UDP bound, but required nonlocal bind", addr_str);
 				warn_bind = false;
@@ -267,7 +267,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			warn_bufsize = false;
 		}
 
-		if (sockaddr_is_any((struct sockaddr *)addr) && !enable_pktinfo(sock, addr->ss_family) &&
+		if (sockaddr_is_any(addr) && !enable_pktinfo(sock, addr->ss_family) &&
 		    warn_pktinfo) {
 			log_warning("failed to enable received packet information retrieval");
 			warn_pktinfo = false;
@@ -290,10 +290,10 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 	/* Create bound TCP sockets. */
 	for (int i = 0; i < tcp_socket_count; i++) {
-		int sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
+		int sock = net_bound_socket(SOCK_STREAM, addr, tcp_bind_flags);
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			tcp_bind_flags |= NET_BIND_NONLOCAL;
-			sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)addr, tcp_bind_flags);
+			sock = net_bound_socket(SOCK_STREAM, addr, tcp_bind_flags);
 			if (sock >= 0 && warn_bind) {
 				log_warning("address %s TCP bound, but required nonlocal bind", addr_str);
 				warn_bind = false;
@@ -363,7 +363,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		/* Log interface binding. */
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr);
+		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 		log_info("binding to interface %s", addr_str);
 
 		/* Create new interface. */
@@ -641,8 +641,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 		bool found = false;
 		iface_t *iface;
 		WALK_LIST(iface, *server->ifaces) {
-			if (sockaddr_cmp((struct sockaddr *)&addr,
-			                 (struct sockaddr *)&iface->addr) == 0) {
+			if (sockaddr_cmp(&addr, &iface->addr) == 0) {
 				matches++;
 				found = true;
 				break;
