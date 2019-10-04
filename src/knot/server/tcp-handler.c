@@ -336,9 +336,10 @@ static void tcp_wait_for_events(tcp_context_t *tcp, unsigned *COUNTER, unsigned 
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
 			} else {
-				(*COUNTER)++;
 				if (tcp_event_serve(tcp, i) != KNOT_EOK) {
 					should_close = true;
+				} else {
+					(*COUNTER)++;
 				}
 			}
 			--nfds;
