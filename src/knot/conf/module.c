@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -451,7 +451,7 @@ void conf_deactivate_modules(
 	*query_plan = NULL;
 
 	// Free query modules list.
-	knotd_mod_t *mod = NULL, *next = NULL;
+	knotd_mod_t *mod, *next;
 	WALK_LIST_DELSAFE(mod, next, *query_modules) {
 		if (mod->api->unload != NULL) {
 			mod->api->unload(mod);
