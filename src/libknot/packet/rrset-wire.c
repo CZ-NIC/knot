@@ -157,6 +157,8 @@ static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
 	return write_rdata_fixed(src, src_avail, dst, dst_avail, ret);
 }
 
+#include <stdio.h> // FIXME: debug
+
 /*!
  * \brief Write compressed domain name to the destination wire.
  *
@@ -170,12 +172,14 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t * const dst, uint1
                            knot_compr_t *compr, bool is_compressible)
 {
 	if (*dname == '\0' || !compr) { // FIXME: !compr
+		if (!compr)
+			fprintf(stderr, "XXX: missing compr\n");
 		return knot_dname_to_wire(dst, dname, max);
 	}
 	assert(dname && dst && compr);
 	compr->suffix.labels = 0; // FIXME: really do use hints?
 	if (!compr->ptr_map) { // FIXME: remove and fix causes
-		//fprintf(stderr, "XXX: rescued compression map; probably incomplete\n");
+		fprintf(stderr, "XXX: rescued compression map; probably incomplete\n");
 		compr->ptr_map = trie_create(NULL);
 	}
 
@@ -298,6 +302,7 @@ int knot_compr_init(struct knot_pkt *pkt, const knot_dname_t *qname, uint16_t ma
 		if (!pkt->compr.ptr_map) {
 			return KNOT_ENOMEM;
 		}
+		fprintf(stderr, "XXX: compr.ptr_map initialized\n");
 	}
 	return compr_put_dname(qname, pkt->wire + KNOT_WIRE_HEADER_SIZE, max,
 				&pkt->compr, false);
