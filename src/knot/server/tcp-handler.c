@@ -181,7 +181,7 @@ static unsigned tcp_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id
 	assert(ifaces && fds);
 
 	fdset_clear(fds);
-	iface_t *i = NULL;
+	iface_t *i;
 	WALK_LIST(i, *ifaces) {
 		int tcp_id = 0;
 #ifdef ENABLE_REUSEPORT
