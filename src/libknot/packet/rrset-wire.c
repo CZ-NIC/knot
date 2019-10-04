@@ -64,29 +64,6 @@ static bool label_is_equal(const uint8_t *label1, const uint8_t *label2)
 	return true;
 }
 
-/*!
- * Case insensitive comparison of two dnames in wire format.
- * The second name may be compressed in a supplied wire.
- */
-static bool dname_equal_wire(const knot_dname_t *d1, const knot_dname_t *d2,
-                             const uint8_t *wire)
-{
-	assert(d1);
-	assert(d2);
-
-	d2 = knot_wire_seek_label(d2, wire);
-
-	while (*d1 != '\0' || *d2 != '\0') {
-		if (!label_is_equal(d1, d2)) {
-			return false;
-		}
-		d1 = knot_wire_next_label(d1, NULL);
-		d2 = knot_wire_next_label(d2, wire);
-	}
-
-	return true;
-}
-
 static uint16_t compr_get_ptr(knot_compr_t *compr, uint16_t hint)
 {
 	if (compr == NULL) {
