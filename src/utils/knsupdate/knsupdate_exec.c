@@ -166,7 +166,7 @@ static int parse_full_rr(zs_scanner_t *s, const char* lp)
 
 	/* Class must not differ from specified. */
 	if (s->r_class != s->default_class) {
-		char cls_s[16] = {0};
+		char cls_s[16] = "";
 		knot_rrclass_to_string(s->default_class, cls_s, sizeof(cls_s));
 		ERR("class mismatch '%s'\n", cls_s);
 		return KNOT_EPARSEFAIL;
