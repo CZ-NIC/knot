@@ -390,7 +390,7 @@ static unsigned udp_set_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
 		return 0;
 	}
 
-	iface_t *iface = NULL;
+	iface_t *iface;
 	int i = 0;
 	WALK_LIST(iface, *ifaces) {
 		fds[i].fd = iface_udp_fd(iface, thread_id);

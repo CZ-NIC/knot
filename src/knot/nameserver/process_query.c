@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -517,7 +517,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 	struct query_plan *plan = conf()->query_plan;
 	struct query_plan *zone_plan = NULL;
-	struct query_step *step = NULL;
+	struct query_step *step;
 
 	int next_state = KNOT_STATE_PRODUCE;
 

@@ -36,7 +36,7 @@ static void replan_ddns(zone_t *zone, zone_t *old_zone)
 		return;
 	}
 
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, old_zone->ddns_queue) {
 		ptrlist_add(&zone->ddns_queue, node->d, NULL);
 	}

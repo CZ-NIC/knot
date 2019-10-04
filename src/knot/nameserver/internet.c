@@ -24,7 +24,7 @@
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(knotd_qdata_t *qdata, const zone_node_t *node)
 {
-	struct wildcard_hit *item = NULL;
+	struct wildcard_hit *item;
 	WALK_LIST(item, qdata->extra->wildcards) {
 		if (item->node == node) {
 			return true;
@@ -582,7 +582,7 @@ static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	int state = KNOTD_IN_STATE_BEGIN;
 	struct query_plan *plan = qdata->extra->zone->query_plan;
-	struct query_step *step = NULL;
+	struct query_step *step;
 
 	bool with_dnssec = have_dnssec(qdata);
 

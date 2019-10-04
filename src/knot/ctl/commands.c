@@ -1243,7 +1243,7 @@ static int modules_stats(list_t *query_modules, ctl_args_t *args, knot_dname_t *
 	bool section_found = (section == NULL) ? true : false;
 	bool item_found = (item == NULL) ? true : false;
 
-	knotd_mod_t *mod = NULL;
+	knotd_mod_t *mod;
 	WALK_LIST(mod, *query_modules) {
 		// Skip modules without statistics.
 		if (mod->stats_count == 0) {
