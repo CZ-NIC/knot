@@ -517,7 +517,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 	struct query_plan *plan = conf()->query_plan;
 	struct query_plan *zone_plan = NULL;
-	struct query_step *step = NULL;
+	struct query_step *step;
 
 	int next_state = KNOT_STATE_PRODUCE;
 
