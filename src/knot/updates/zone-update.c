@@ -407,7 +407,7 @@ static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *ad
 	if (owner == NULL) {
 		owner = "";
 	}
-	char type[16] = { '\0' };
+	char type[16] = "";
 	knot_rrtype_to_string(add->type, type, sizeof(type));
 	log_zone_notice(update->zone->name, "TTL mismatch, owner %s, type %s, "
 	                "TTL set to %u", owner, type, add->ttl);
@@ -478,7 +478,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 			if (owner == NULL) {
 				owner = "";
 			}
-			char type[16] = { '\0' };
+			char type[16] = "";
 			knot_rrtype_to_string(rrset->type, type, sizeof(type));
 			log_zone_notice(update->new_cont->apex->owner,
 			                "TTL mismatch, owner %s, type %s, "

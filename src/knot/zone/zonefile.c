@@ -64,7 +64,7 @@ static bool handle_err(zcreator_t *zc, const knot_rrset_t *rr, int ret, bool mas
 		WARNING(zname, "ignoring out-of-zone data, owner %s", owner);
 		return true;
 	} else if (ret == KNOT_ETTL) {
-		char type[16] = { '\0' };
+		char type[16] = "";
 		knot_rrtype_to_string(rr->type, type, sizeof(type));
 		NOTICE(zname, "TTL mismatch, owner %s, type %s, TTL set to %u",
 		       owner, type, rr->ttl);

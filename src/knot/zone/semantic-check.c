@@ -291,8 +291,8 @@ static int check_rrsig_rdata(sem_handler_t *handler,
                              bool *verified)
 {
 	/* Prepare additional info string. */
-	char info_str[50] = { '\0' };
-	char type_str[16] = { '\0' };
+	char info_str[50] = "";
+	char type_str[16] = "";
 	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
 	int ret = snprintf(info_str, sizeof(info_str), "(record type %s)", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
@@ -413,8 +413,8 @@ static int check_rrsig_in_rrset(sem_handler_t *handler,
 		return KNOT_EINVAL;
 	}
 	/* Prepare additional info string. */
-	char info_str[50] = { '\0' };
-	char type_str[16] = { '\0' };
+	char info_str[50] = "";
+	char type_str[16] = "";
 	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
 	int ret = snprintf(info_str, sizeof(info_str), "(record type %s)", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
