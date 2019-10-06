@@ -310,19 +310,17 @@ Set to 0 for infinity.
 tcp-reuseport
 -------------
 
-If enabled, each TCP socket uses its own packet queue and the OS kernel
+If enabled, each TCP worker listens on its own socket and the OS kernel
 socket load balancing is emloyed using SO_REUSEPORT (or SO_REUSEPORT_LB
-on FreeBSD). Set it to ``on``, except in use cases where Knot DNS serves
-long-period incoming TCP transfers, such as in master DNS servers. In such
-situations it is usually better to set ``tcp-reuseport`` to ``off``.
-Failing to set this parameter to ``off`` where neccessary may, under high or
-atypical TCP load together with low value of
-:ref:`max-tcp-clients<server_max-tcp-clients>`, result in some incoming
-TCP connection being delayed or not being responded to at all.
+on FreeBSD). Due to the lack of one shared socket, the server can offer
+higher response rate processing over TCP. However, in the case of
+time-consuming requests (e.g. zone transfers of a TLD zone), enabled reuseport
+may result in delayed or not being responded client requests. So it is
+advisable to use this option on slave servers.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
-*Default:* on
+*Default:* off
 
 .. _server_max-tcp-clients:
 
