@@ -40,7 +40,7 @@ int parse_geodb_path(geodb_path_t *path, const char *input)
 			return -1;
 		}
 		input++;
-		char *type = sprintf_alloc("%.*s", delim - input, input);
+		char *type = sprintf_alloc("%.*s", (int)(delim - input), input);
 		const knot_lookup_t *table = knot_lookup_by_name(geodb_key_types, type);
 		free(type);
 		if (table == NULL) {
