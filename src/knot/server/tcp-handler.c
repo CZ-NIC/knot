@@ -105,12 +105,12 @@ static bool tcp_send_state(int state)
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
 }
 
-static void tcp_log_error(struct sockaddr_storage ss, const char *operation, int ret)
+static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, int ret)
 {
 	/* Don't log ECONN as it usually means client closed the connection. */
 	if (ret == KNOT_ETIMEOUT) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
+		sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 		log_debug("TCP, %s, address %s (%s)", operation, addr_str, knot_strerror(ret));
 	}
 }
@@ -172,7 +172,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {
-		tcp_log_error(ss, "receive", recv);
+		tcp_log_error(&ss, "receive", recv);
 		return KNOT_EOF;
 	}
 
@@ -196,7 +196,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
 			int sent = net_dns_tcp_send(fd, ans->wire, ans->size, tcp->io_timeout);
 			if (sent != ans->size) {
-				tcp_log_error(ss, "send", sent);
+				tcp_log_error(&ss, "send", sent);
 				ret = KNOT_EOF;
 				break;
 			}
