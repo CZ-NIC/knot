@@ -8,6 +8,7 @@ from dnstest.test import Test
 t = Test()
 knot = t.server("knot")
 knot.DIG_TIMEOUT = 2
+knot.tcp_reuseport = True
 
 bind = t.server("bind")
 zone = t.zone("flags.")
