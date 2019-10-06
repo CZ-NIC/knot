@@ -52,7 +52,8 @@ static struct sockaddr_storage addr_from_socket(int sock)
 {
 	struct sockaddr_storage addr = { 0 };
 	socklen_t len = sizeof(addr);
-	getsockname(sock, (struct sockaddr *)&addr, &len);
+	int ret = getsockname(sock, (struct sockaddr *)&addr, &len);
+	ok(ret == 0, "check getsockname return");
 
 	return addr;
 }

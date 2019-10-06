@@ -133,15 +133,16 @@ int main(int argc, char *argv[])
 	int responder_fd = net_bound_socket(SOCK_STREAM, &server, 0);
 	assert(responder_fd >= 0);
 	socklen_t addr_len = sockaddr_len(&server);
-	getsockname(responder_fd, (struct sockaddr *)&server, &addr_len);
+	int ret = getsockname(responder_fd, (struct sockaddr *)&server, &addr_len);
+	ok(ret == 0, "check getsockname return");
 
 	/* Test requestor in disconnected environment. */
 	test_disconnected(&requestor, &server, &client);
 
 	/* Start responder. */
-	int ret = listen(responder_fd, 10);
-	(void)ret;
-	assert(ret == 0);
+	ret = listen(responder_fd, 10);
+	ok(ret == 0, "check listen return");
+
 	pthread_t thread;
 	pthread_create(&thread, 0, responder_thread, &responder_fd);
 
