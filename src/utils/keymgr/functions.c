@@ -331,7 +331,7 @@ static char *gen_keyfilename(const char *orig, const char *wantsuff, const char 
 	if (dot != NULL && strcmp(dot, wantsuff) == 0) { // Full match.
 		return strdup(orig);
 	} else if (dot != NULL && strcmp(dot, altsuff) == 0) { // Replace suffix.
-		return sprintf_alloc("%.*s%s", dot - orig, orig, wantsuff);
+		return sprintf_alloc("%.*s%s", (int)(dot - orig), orig, wantsuff);
 	} else { // Add wanted suffix.
 		return sprintf_alloc("%s%s", orig, wantsuff);
 	}
