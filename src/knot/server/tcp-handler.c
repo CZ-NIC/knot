@@ -266,12 +266,11 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 			should_close = (i >= tcp->client_threshold);
 			--nfds;
 		} else if (set->pfd[i].revents & (POLLIN)) {
-			/* Master sockets - new connection to accept. */
-			if (i < tcp->client_threshold) {
-				/* Don't accept more clients than configured. */
-				if (set->n < tcp->max_worker_fds) {
-					tcp_event_accept(tcp, i);
-				}
+			/* Master sockets - new connection to accept.
+			 * Don't accept more clients than configured.
+			 */
+			if (i < tcp->client_threshold && set->n < tcp->max_worker_fds) {
+				tcp_event_accept(tcp, i);
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
 			} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {
