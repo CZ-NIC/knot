@@ -264,7 +264,6 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	/* Process events. */
 	while (nfds > 0 && i < set->n) {
 		bool should_close = false;
-		int fd = set->pfd[i].fd;
 		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
 			should_close = (i >= tcp->client_threshold);
 			--nfds;
@@ -285,8 +284,8 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
+			close(set->pfd[i].fd);
 			fdset_remove(set, i);
-			close(fd);
 		} else {
 			++i;
 		}
