@@ -260,21 +260,23 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	tcp->last_poll_time = time_now();
 
 	/* Process events. */
-	while (nfds > 0 && i < set->n) {
+	while (nfds > 0) {
+		assert(i < set->n);
 		bool should_close = false;
-		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
-			should_close = (i >= tcp->client_threshold);
-			--nfds;
-		} else if (set->pfd[i].revents & (POLLIN)) {
-			/* Master sockets - new connection to accept.
-			 * Don't accept more clients than configured.
-			 */
-			if (i < tcp->client_threshold && set->n < tcp->max_worker_fds) {
-				tcp_event_accept(tcp, i);
-			/* Client sockets - already accepted connection or
-			   closed connection :-( */
-			} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {
-				should_close = true;
+		if (set->pfd[i].revents) {
+			if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+				should_close = (i >= tcp->client_threshold);
+			} else if (set->pfd[i].revents & (POLLIN)) {
+				/* Master sockets - new connection to accept.
+				 * Don't accept more clients than configured.
+				 */
+				if (i < tcp->client_threshold && set->n < tcp->max_worker_fds) {
+					tcp_event_accept(tcp, i);
+				/* Client sockets - already accepted connection or
+				   closed connection :-( */
+				} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {
+					should_close = true;
+				}
 			}
 			--nfds;
 		}
