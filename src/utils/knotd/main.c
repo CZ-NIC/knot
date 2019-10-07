@@ -307,7 +307,7 @@ static void print_help(void)
 
 static void print_version(void)
 {
-	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
+	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, "2.9.0");
 }
 
 static int set_config(const char *confdb, const char *config, size_t max_conf_size)
