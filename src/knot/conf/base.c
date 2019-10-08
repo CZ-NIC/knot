@@ -168,7 +168,7 @@ static void init_cache(
 
 	conf->cache.srv_bg_threads = running_bg_threads;
 
-	conf->cache.srv_max_tcp_clients = conf_max_tcp_clients(conf);
+	conf->cache.srv_tcp_max_clients = conf_tcp_max_clients(conf);
 
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;

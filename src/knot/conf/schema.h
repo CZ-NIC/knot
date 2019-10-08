@@ -70,7 +70,6 @@
 #define C_MAX_JOURNAL_DEPTH	"\x11""max-journal-depth"
 #define C_MAX_JOURNAL_USAGE	"\x11""max-journal-usage"
 #define C_MAX_REFRESH_INTERVAL	"\x14""max-refresh-interval"
-#define C_MAX_TCP_CLIENTS	"\x0F""max-tcp-clients"
 #define C_MAX_UDP_PAYLOAD	"\x0F""max-udp-payload"
 #define C_MAX_ZONE_SIZE		"\x0D""max-zone-size"
 #define C_MIN_REFRESH_INTERVAL	"\x14""min-refresh-interval"
@@ -105,6 +104,7 @@
 #define C_TARGET		"\x06""target"
 #define C_TCP_IDLE_TIMEOUT	"\x10""tcp-idle-timeout"
 #define C_TCP_IO_TIMEOUT	"\x0E""tcp-io-timeout"
+#define C_TCP_MAX_CLIENTS	"\x0F""tcp-max-clients"
 #define C_TCP_RMT_IO_TIMEOUT	"\x15""tcp-remote-io-timeout"
 #define C_TCP_REUSEPORT		"\x0D""tcp-reuseport"
 #define C_TCP_WORKERS		"\x0B""tcp-workers"
@@ -134,6 +134,7 @@
 #define C_MAX_KASP_DB_SIZE	"\x10""max-kasp-db-size"
 #define C_TCP_HSHAKE_TIMEOUT	"\x15""tcp-handshake-timeout"
 #define C_TCP_REPLY_TIMEOUT	"\x11""tcp-reply-timeout"
+#define C_MAX_TCP_CLIENTS	"\x0F""max-tcp-clients"
 
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,

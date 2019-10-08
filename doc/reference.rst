@@ -139,8 +139,8 @@ General options related to the server.
      tcp-idle-timeout: TIME
      tcp-io-timeout: INT
      tcp-remote-io-timeout: INT
+     tcp-max-clients: INT
      tcp-reuseport: BOOL
-     max-tcp-clients: INT
      max-udp-payload: SIZE
      max-ipv4-udp-payload: SIZE
      max-ipv6-udp-payload: SIZE
@@ -322,9 +322,9 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* off
 
-.. _server_max-tcp-clients:
+.. _server_tcp-max-clients:
 
-max-tcp-clients
+tcp-max-clients
 ---------------
 
 A maximum number of TCP clients connected in parallel, set this below the file

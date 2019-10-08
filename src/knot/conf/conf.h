@@ -719,14 +719,14 @@ static inline size_t conf_bg_threads(
  *
  * \return Maximum number of TCP clients.
  */
-size_t conf_max_tcp_clients_txn(
+size_t conf_tcp_max_clients_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn
 );
-static inline size_t conf_max_tcp_clients(
+static inline size_t conf_tcp_max_clients(
 	conf_t *conf)
 {
-	return conf_max_tcp_clients_txn(conf, &conf->read_txn);
+	return conf_tcp_max_clients_txn(conf, &conf->read_txn);
 }
 
 /*!

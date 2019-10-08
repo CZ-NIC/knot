@@ -188,8 +188,8 @@ server:
     tcp\-idle\-timeout: TIME
     tcp\-io\-timeout: INT
     tcp\-remote\-io\-timeout: INT
+    tcp\-max\-clients: INT
     tcp\-reuseport: BOOL
-    max\-tcp\-clients: INT
     max\-udp\-payload: SIZE
     max\-ipv4\-udp\-payload: SIZE
     max\-ipv6\-udp\-payload: SIZE
@@ -322,7 +322,7 @@ advisable to use this option on slave servers.
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fIDefault:\fP off
-.SS max\-tcp\-clients
+.SS tcp\-max\-clients
 .sp
 A maximum number of TCP clients connected in parallel, set this below the file
 descriptor limit to avoid resource exhaustion.

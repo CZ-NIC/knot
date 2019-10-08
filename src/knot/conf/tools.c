@@ -237,18 +237,26 @@ int check_module_id(
 int check_server(
 	knotd_conf_check_args_t *args)
 {
-	conf_val_t hshake = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
-	                                 C_TCP_HSHAKE_TIMEOUT);
-	if (hshake.code == KNOT_EOK) {
+	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
+	                              C_TCP_HSHAKE_TIMEOUT);
+	if (val.code == KNOT_EOK) {
 		CONF_LOG(LOG_NOTICE, "option 'tcp-handshake-timeout' is no longer supported");
 	}
 
-	conf_val_t reply_timeout = conf_get_txn(args->extra->conf, args->extra->txn,
-	                                        C_SRV, C_TCP_REPLY_TIMEOUT);
-	if (reply_timeout.code == KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "option 'tcp-reply-timeout' is obsolete, "
-		                     "use option 'tcp-remote-io-timeout' instead");
-	}
+	#define CHECK_LEGACY(old_item, new_item) \
+		val = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV, \
+		                   old_item); \
+		if (val.code == KNOT_EOK) { \
+			CONF_LOG(LOG_NOTICE, "option '%s' is obsolete, " \
+			                     "use option '%s' instead", \
+			                     &old_item[1], &new_item[1]); \
+		}
+
+	CHECK_LEGACY(C_TCP_REPLY_TIMEOUT, C_TCP_RMT_IO_TIMEOUT);
+	CHECK_LEGACY(C_MAX_TCP_CLIENTS, C_TCP_MAX_CLIENTS);
+
+	#undef CHECK_LEGACY
+
 	return KNOT_EOK;
 }
 

@@ -1140,11 +1140,14 @@ size_t conf_bg_threads_txn(
 	return workers;
 }
 
-size_t conf_max_tcp_clients_txn(
+size_t conf_tcp_max_clients_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
 {
-	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_MAX_TCP_CLIENTS);
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_MAX_CLIENTS);
+	if (val.code != KNOT_EOK) {
+		val = conf_get_txn(conf, txn, C_SRV, C_MAX_TCP_CLIENTS);
+	}
 	int64_t clients = conf_int(&val);
 	if (clients == YP_NIL) {
 		static size_t permval = 0;
