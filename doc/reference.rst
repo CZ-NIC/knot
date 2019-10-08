@@ -727,7 +727,7 @@ in journal to recover from reaching this limit. Journal simply starts refusing
 changes across all zones. Decreasing this value has no effect if it is lower
 than the actual database file size.
 
-It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
+It is recommended to limit :ref:`journal-max-usage<zone_journal-max-usage>`
 per-zone instead of :ref:`journal-db-max-size<database_journal-db-max-size>`
 in most cases. Please keep this value larger than the sum of all zones'
 journal usage limits. See more details regarding
@@ -1382,14 +1382,14 @@ Definition of zones served by the server.
      zonefile-sync: TIME
      zonefile-load: none | difference | difference-no-serial | whole
      journal-content: none | changes | all
-     max-journal-usage: SIZE
-     max-journal-depth: INT
-     max-zone-size : SIZE
+     journal-max-usage: SIZE
+     journal-max-depth: INT
+     zone-max-size : SIZE
      dnssec-signing: BOOL
      dnssec-policy: STR
      serial-policy: increment | unixtime | dateserial
-     min-refresh-interval: TIME
-     max-refresh-interval: TIME
+     refresh-min-interval: TIME
+     refresh-max-interval: TIME
      module: STR/STR ...
 
 .. _zone_domain:
@@ -1583,22 +1583,22 @@ Possible values:
 
 *Default:* changes
 
-.. _zone_max-journal-usage:
+.. _zone_journal-max-usage:
 
-max-journal-usage
+journal-max-usage
 -----------------
 
 Policy how much space in journal DB will the zone's journal occupy.
 
 .. NOTE::
-   Journal DB may grow far above the sum of max-journal-usage across
+   Journal DB may grow far above the sum of journal-max-usage across
    all zones, because of DB free space fragmentation.
 
 *Default:* 100 MiB
 
-.. _zone_max_journal_depth:
+.. _zone_journal-max-depth:
 
-max-journal-depth
+journal-max-depth
 -----------------
 
 Maximum history length of journal.
@@ -1607,9 +1607,9 @@ Maximum history length of journal.
 
 *Default:* 2^64
 
-.. _zone_max_zone_size:
+.. _zone_zone-max-size:
 
-max-zone-size
+zone-max-size
 -------------
 
 Maximum size of the zone. The size is measured as size of the zone records
@@ -1668,18 +1668,18 @@ Possible values:
 
 *Default:* increment
 
-.. _zone_min-refresh-interval:
+.. _zone_refresh-min-interval:
 
-min-refresh-interval
+refresh-min-interval
 --------------------
 
 Forced minimum zone refresh interval to avoid flooding master.
 
 *Default:* 2
 
-.. _zone_max-refresh-interval:
+.. _zone_refresh-max-interval:
 
-max-refresh-interval
+refresh-max-interval
 --------------------
 
 Forced maximum zone refresh interval.

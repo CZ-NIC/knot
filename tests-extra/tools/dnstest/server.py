@@ -143,7 +143,7 @@ class Server(object):
         self.semantic_check = True
         self.zonefile_sync = "1d"
         self.journal_db_size = 20 * 1024 * 1024
-        self.max_journal_usage = 5 * 1024 * 1024
+        self.journal_max_usage = 5 * 1024 * 1024
         self.timer_db_size = 1 * 1024 * 1024
         self.kasp_db_size = 10 * 1024 * 1024
         self.zone_size_limit = None
@@ -1245,7 +1245,7 @@ class Knot(Server):
         s.id_item("id", "default")
         s.item_str("storage", self.dir)
         s.item_str("zonefile-sync", self.zonefile_sync)
-        s.item_str("max-journal-usage", self.max_journal_usage)
+        s.item_str("journal-max-usage", self.journal_max_usage)
         s.item_str("semantic-checks", "on" if self.semantic_check else "off")
         if self.disable_any:
             s.item_str("disable-any", "on")
@@ -1257,7 +1257,7 @@ class Knot(Server):
                 modules += module.get_conf_ref()
             s.item("global-module", "[%s]" % modules)
         if self.zone_size_limit:
-            s.item("max-zone-size", self.zone_size_limit)
+            s.item("zone-max-size", self.zone_size_limit)
         s.end()
 
         s.begin("zone")

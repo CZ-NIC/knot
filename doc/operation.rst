@@ -343,7 +343,7 @@ Journal does each operation in one transaction to keep consistency of the DB and
 The exception is when store transaction exceeds 5 % of the whole DB mapsize, it is split into multiple ones
 and some dirty-chunks-management involves.
 
-Each zone journal has own :ref:`usage limit <zone_max-journal-usage>`
+Each zone journal has own :ref:`usage limit <zone_journal-max-usage>`
 on how much DB space it may occupy. Before hitting the limit,
 changesets are stored one-by-one and whole history is linear. While hitting the limit,
 the zone is flushed into the zone file, and oldest changesets are deleted as needed to free
