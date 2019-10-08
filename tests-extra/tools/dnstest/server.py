@@ -135,9 +135,9 @@ class Server(object):
 
         self.tcp_reuseport = None
         self.tcp_remote_io_timeout = None
-        self.max_udp_payload = None
-        self.max_udp4_payload = None
-        self.max_udp6_payload = None
+        self.udp_max_payload = None
+        self.udp_max_payload_ipv4 = None
+        self.udp_max_payload_ipv6 = None
         self.disable_any = None
         self.disable_notify = None
         self.semantic_check = True
@@ -485,7 +485,7 @@ class Server(object):
             if bufsize:
                 payload = int(bufsize)
             else:
-                payload = 1280
+                payload = 1232
             dig_flags += " +bufsize=%i" % payload
 
             if nsid:
@@ -1062,9 +1062,9 @@ class Knot(Server):
         self._str(s, "tcp-remote-io-timeout", self.tcp_remote_io_timeout)
         self._str(s, "tcp-io-timeout", "500")
         self._bool(s, "tcp-reuseport", self.tcp_reuseport)
-        self._str(s, "max-udp-payload", self.max_udp_payload)
-        self._str(s, "max-ipv4-udp-payload", self.max_udp4_payload)
-        self._str(s, "max-ipv6-udp-payload", self.max_udp6_payload)
+        self._str(s, "udp-max-payload", self.udp_max_payload)
+        self._str(s, "udp-max-payload-ipv4", self.udp_max_payload_ipv4)
+        self._str(s, "udp-max-payload-ipv6", self.udp_max_payload_ipv6)
         s.end()
 
         s.begin("control")

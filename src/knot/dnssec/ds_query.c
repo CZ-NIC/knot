@@ -178,8 +178,8 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 	}
 
 	data.edns_max_payload = dst->ss_family == AF_INET6 ?
-	                        conf()->cache.srv_max_ipv6_udp_payload :
-	                        conf()->cache.srv_max_ipv4_udp_payload;
+	                        conf()->cache.srv_udp_max_payload_ipv6 :
+	                        conf()->cache.srv_udp_max_payload_ipv4;
 
 	int ret = knot_requestor_exec(&requestor, req, timeout);
 	knot_request_free(req, NULL);

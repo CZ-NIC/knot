@@ -190,9 +190,9 @@ server:
     tcp\-remote\-io\-timeout: INT
     tcp\-max\-clients: INT
     tcp\-reuseport: BOOL
-    max\-udp\-payload: SIZE
-    max\-ipv4\-udp\-payload: SIZE
-    max\-ipv6\-udp\-payload: SIZE
+    udp\-max\-payload: SIZE
+    udp\-max\-payload\-ipv4: SIZE
+    udp\-max\-payload\-ipv6: SIZE
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
     listen: ADDR[@INT] ...
@@ -336,17 +336,17 @@ operating system configuration.
 .UNINDENT
 .sp
 \fIDefault:\fP one half of the file descriptor limit for the server process
-.SS max\-udp\-payload
+.SS udp\-max\-payload
 .sp
 Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
 .sp
 \fIDefault:\fP 1232
-.SS max\-ipv4\-udp\-payload
+.SS udp\-max\-payload\-ipv4
 .sp
 Maximum EDNS0 UDP payload size for IPv4.
 .sp
 \fIDefault:\fP 1232
-.SS max\-ipv6\-udp\-payload
+.SS udp\-max\-payload\-ipv6
 .sp
 Maximum EDNS0 UDP payload size for IPv6.
 .sp

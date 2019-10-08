@@ -11,8 +11,8 @@ server6 = t.server("knot", address=6)
 zone = t.zone("flags.")
 
 # Set common payload limit.
-server4.max_udp_payload = 1220
-server6.max_udp_payload = 1220
+server4.udp_max_payload = 1220
+server6.udp_max_payload = 1220
 
 t.link(zone, server4)
 t.link(zone, server6)
@@ -33,13 +33,13 @@ resp = server6.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
 resp.check(flags="TC")
 
 # Set IP family specific limit.
-server4.max_udp4_payload = 1220
-server4.max_udp6_payload = 1221 # Shoud not affect IPv4
-server4.max_udp_payload  = 1221 # Shoud not override IPv4 specific
+server4.udp_max_payload_ipv4 = 1220
+server4.udp_max_payload_ipv6 = 1221 # Shoud not affect IPv4
+server4.udp_max_payload      = 1221 # Shoud not override IPv4 specific
 
-server6.max_udp6_payload = 1220
-server6.max_udp4_payload = 1221 # Shoul not affect IPv6
-server6.max_udp_payload  = 1221 # Shoud not override IPv6 specific
+server6.udp_max_payload_ipv6 = 1220
+server6.udp_max_payload_ipv4 = 1221 # Shoul not affect IPv6
+server6.udp_max_payload      = 1221 # Shoud not override IPv6 specific
 
 server4.gen_confile()
 server4.reload()

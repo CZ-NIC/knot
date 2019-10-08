@@ -241,10 +241,10 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	uint16_t max_payload;
 	switch (qdata->params->remote->ss_family) {
 	case AF_INET:
-		max_payload = conf()->cache.srv_max_ipv4_udp_payload;
+		max_payload = conf()->cache.srv_udp_max_payload_ipv4;
 		break;
 	case AF_INET6:
-		max_payload = conf()->cache.srv_max_ipv6_udp_payload;
+		max_payload = conf()->cache.srv_udp_max_payload_ipv6;
 		break;
 	default:
 		return KNOT_ERROR;
@@ -388,10 +388,10 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 			uint16_t server_size;
 			switch (qdata->params->remote->ss_family) {
 			case AF_INET:
-				server_size = conf()->cache.srv_max_ipv4_udp_payload;
+				server_size = conf()->cache.srv_udp_max_payload_ipv4;
 				break;
 			case AF_INET6:
-				server_size = conf()->cache.srv_max_ipv6_udp_payload;
+				server_size = conf()->cache.srv_udp_max_payload_ipv6;
 				break;
 			default:
 				return KNOT_ERROR;

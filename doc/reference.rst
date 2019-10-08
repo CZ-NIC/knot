@@ -141,9 +141,9 @@ General options related to the server.
      tcp-remote-io-timeout: INT
      tcp-max-clients: INT
      tcp-reuseport: BOOL
-     max-udp-payload: SIZE
-     max-ipv4-udp-payload: SIZE
-     max-ipv6-udp-payload: SIZE
+     udp-max-payload: SIZE
+     udp-max-payload-ipv4: SIZE
+     udp-max-payload-ipv6: SIZE
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      listen: ADDR[@INT] ...
@@ -336,27 +336,27 @@ descriptor limit to avoid resource exhaustion.
 
 *Default:* one half of the file descriptor limit for the server process
 
-.. _server_max-udp-payload:
+.. _server_udp-max-payload:
 
-max-udp-payload
+udp-max-payload
 ---------------
 
 Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
 
 *Default:* 1232
 
-.. _server_max-ipv4-udp-payload:
+.. _server_udp-max-payload-ipv4:
 
-max-ipv4-udp-payload
+udp-max-payload-ipv4
 --------------------
 
 Maximum EDNS0 UDP payload size for IPv4.
 
 *Default:* 1232
 
-.. _server_max-ipv6-udp-payload:
+.. _server_udp-max-payload-ipv6:
 
-max-ipv6-udp-payload
+udp-max-payload-ipv6
 --------------------
 
 Maximum EDNS0 UDP payload size for IPv6.
