@@ -207,6 +207,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 {
 	iface_t *new_if = calloc(1, sizeof(*new_if));
 	if (new_if == NULL) {
+		log_error("failed to initialize interface");
 		return NULL;
 	}
 	memcpy(&new_if->addr, addr, sizeof(*addr));
@@ -233,6 +234,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
 	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
 	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL) {
+		log_error("failed to initialize interface");
 		server_deinit_iface(new_if);
 		return NULL;
 	}
@@ -371,11 +373,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
 		bool tcp_reuseport = conf->cache.srv_tcp_reuseport;
 		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp, tcp_reuseport);
-		if (new_if == NULL) {
-			server_deinit_iface_list(newlist);
-			return KNOT_ENOMEM;
+		if (new_if != NULL) {
+			add_tail(newlist, &new_if->n);
 		}
-		add_tail(newlist, &new_if->n);
 
 		conf_val_next(&listen_val);
 	}
