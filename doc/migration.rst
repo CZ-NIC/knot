@@ -116,6 +116,12 @@ some of each key's parameters in an undamaging way, e.g.::
     $ keymgr example.com. set <keyTag2> created=1
     ...
 
+.. _Upgrade 2.8.x to 2.9.x:
+
+Upgrade 2.8.x to 2.9.x
+======================
+
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users
