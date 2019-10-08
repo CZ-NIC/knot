@@ -31,6 +31,7 @@ static const uint8_t E_RCODE = 0;
 static const uint8_t E_RCODE2 = 200;
 
 static const char *E_NSID_STR = "FooBar";
+static const char *E_NSID_STR2 = "BarFoo";
 static const uint16_t E_NSID_LEN = 6;
 
 #define E_NSID_SIZE (4 + E_NSID_LEN)
@@ -165,6 +166,7 @@ static void test_getters(knot_rrset_t *opt_rr)
 	 * OPTIONs:         1) KNOT_EDNS_OPTION_NSID, E_NSID_LEN, E_NSID_STR
 	 *                  2) E_OPT3_CODE, 0, 0
 	 *                  3) E_OPT4_CODE, 0, 0
+	 *                  4) KNOT_EDNS_OPTION_NSID, E_NSID_LEN, E_NSID_STR2
 	 */
 
 	/* Payload */
@@ -185,21 +187,31 @@ static void test_getters(knot_rrset_t *opt_rr)
 
 	/* Wire size */
 	size_t total_size = KNOT_EDNS_MIN_SIZE
-	                    + E_NSID_SIZE + E_OPT3_SIZE + E_OPT4_SIZE;
+	                    + 2 * E_NSID_SIZE + E_OPT3_SIZE + E_OPT4_SIZE;
 	size_t actual_size = knot_edns_wire_size(opt_rr);
 	check = actual_size == total_size;
 	ok(check, "OPT RR getters: wire size (expected: %zu, actual: %zu)",
 	   total_size, actual_size);
 
 	/* NSID */
-	check = knot_edns_get_option(opt_rr, KNOT_EDNS_OPTION_NSID) != NULL;
+	uint8_t *nsid1 = knot_edns_get_option(opt_rr, KNOT_EDNS_OPTION_NSID, NULL);
+	check = nsid1 != NULL;
 	ok(check, "OPT RR getters: NSID check");
+	check = memcmp(knot_edns_opt_get_data(nsid1), E_NSID_STR, knot_edns_opt_get_length(nsid1)) == 0;
+	ok(check, "OPT RR getters: NSID value check");
+
+	/* Another NSID */
+	uint8_t *nsid2 = knot_edns_get_option(opt_rr, KNOT_EDNS_OPTION_NSID, nsid1);
+	check = nsid2 != NULL;
+	ok(check, "OPT RR getters: another NSID check");
+	check = memcmp(knot_edns_opt_get_data(nsid2), E_NSID_STR2, knot_edns_opt_get_length(nsid2)) == 0;
+	ok(check, "OPT RR getters: another NSID value check");
 
 	/* Other OPTIONs */
-	check = knot_edns_get_option(opt_rr, E_OPT3_CODE) != NULL;
+	check = knot_edns_get_option(opt_rr, E_OPT3_CODE, NULL) != NULL;
 	ok(check, "OPT RR getters: empty option 1");
 
-	check = knot_edns_get_option(opt_rr, E_OPT4_CODE) != NULL;
+	check = knot_edns_get_option(opt_rr, E_OPT4_CODE, NULL) != NULL;
 	ok(check, "OPT RR getters: empty option 2");
 
 	uint16_t code = knot_edns_opt_get_code((const uint8_t *)"\x00\x0a" "\x00\x00");
@@ -221,9 +233,9 @@ static void test_setters(knot_rrset_t *opt_rr)
 
 	/* OPTION(RDATA)-related setters. */
 
-	/* Proper option. */
+	/* Proper option NSID. */
 	int ret = knot_edns_add_option(opt_rr, KNOT_EDNS_OPTION_NSID,
-	                           E_NSID_LEN, (uint8_t *)E_NSID_STR, NULL);
+	                               E_NSID_LEN, (uint8_t *)E_NSID_STR, NULL);
 	is_int(KNOT_EOK, ret, "OPT RR setters: add option with data (ret = %s)",
 	   knot_strerror(ret));
 
@@ -251,10 +263,16 @@ static void test_setters(knot_rrset_t *opt_rr)
 	is_int(KNOT_EOK, ret, "OPT RR setters: add empty option 2 (ret = %s)",
 	   knot_strerror(ret));
 
+	/* Another option NSID. */
+	ret = knot_edns_add_option(opt_rr, KNOT_EDNS_OPTION_NSID,
+	                           E_NSID_LEN, (uint8_t *)E_NSID_STR2, NULL);
+	is_int(KNOT_EOK, ret, "OPT RR setters: add option with data (ret = %s)",
+	   knot_strerror(ret));
+
 	knot_rdata_t *rdata = opt_rr->rrs.rdata;
 	ok(rdata != NULL, "OPT RR setters: non-empty RDATA");
 
-	/* Check proper option */
+	/* Check proper option NSID */
 	check_option(rdata, KNOT_EDNS_OPTION_NSID, E_NSID_LEN,
 	             (uint8_t *)E_NSID_STR, "OPT RR setters (proper option)");
 

@@ -29,6 +29,7 @@
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
 #include "knot/updates/changesets.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -175,20 +176,32 @@ static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 static void xfr_log_publish(const struct refresh_data *data,
                             const uint32_t old_serial,
                             const uint32_t new_serial,
+                            const uint32_t master_serial,
+                            bool has_master_serial,
                             bool axfr_bootstrap)
 {
 	struct timespec finished = time_now();
 	double duration = time_diff_ms(&data->started, &finished) / 1000.0;
 
+	char old_info[32] = "none";
 	if (!axfr_bootstrap) {
-		REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
-		            "zone updated, %0.2f seconds, serial %u -> %u",
-		            duration, old_serial, new_serial);
-	} else {
-		REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
-		            "zone updated, %0.2f seconds, serial none -> %u",
-		            duration, new_serial);
+		(void)snprintf(old_info, sizeof(old_info), "%u", old_serial);
 	}
+
+	char master_info[32] = "";
+	if (has_master_serial) {
+		(void)snprintf(master_info, sizeof(master_info),
+		               ", remote serial %u", master_serial);
+	}
+
+	REFRESH_LOG(LOG_INFO, data->zone->name, data->remote,
+	            "zone updated, %0.2f seconds, serial %s -> %u%s",
+	            duration, old_info, new_serial, master_info);
+}
+
+static void xfr_log_read_ms(const knot_dname_t *zone, int ret)
+{
+	log_zone_error(zone, "failed reading master's serial from KASP DB (%s)", knot_strerror(ret));
 }
 
 static int axfr_init(struct refresh_data *data)
@@ -208,25 +221,51 @@ static void axfr_cleanup(struct refresh_data *data)
 	data->axfr.zone = NULL;
 }
 
+static void axfr_slave_sign_serial(zone_contents_t *new_contents, zone_t *zone,
+                                   conf_t *conf, uint32_t *master_serial)
+{
+	// Update slave's serial to ensure it's growing and consistent with
+	// its serial policy.
+	conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
+	unsigned serial_policy = conf_opt(&val);
+
+	*master_serial = zone_contents_serial(new_contents);
+
+	uint32_t new_serial, lastsigned_serial;
+	if (zone->contents != NULL) {
+		// Retransfer or AXFR-fallback - increment current serial.
+		new_serial = serial_next(zone_contents_serial(zone->contents), serial_policy);
+	} else if (zone_get_lastsigned_serial(zone, &lastsigned_serial) == KNOT_EOK) {
+		// Bootstrap - increment stored serial.
+		new_serial = serial_next(lastsigned_serial, serial_policy);
+	} else if (serial_must_increment(*master_serial, serial_policy)) {
+		// Bootstrap - increment master's serial, consider policy.
+		new_serial = serial_next(*master_serial, serial_policy);
+	} else {
+		// Bootstrap - simply use master's serial.
+		new_serial = *master_serial;
+	}
+	zone_contents_set_soa_serial(new_contents, new_serial);
+}
+
 static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
 
-	int ret = xfr_validate(new_zone, data);
+	int ret = zone_adjust_contents(new_zone, adjust_cb_flags, NULL, false, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
+	if (ret == KNOT_EOK) {
+		ret = xfr_validate(new_zone, data);
+	}
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	uint32_t master_serial = zone_contents_serial(new_zone);
-	uint32_t local_serial = zone_contents_serial(data->zone->contents);
-	bool have_lastsigned = zone_get_lastsigned_serial(data->zone, &local_serial);
-	uint32_t old_serial = local_serial;
-	bool bootstrap = (data->soa == NULL);
-	if ((!bootstrap || have_lastsigned) &&
-	    (serial_compare(master_serial, local_serial) != SERIAL_GREATER)) {
-		conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
-		local_serial = serial_next(local_serial, conf_opt(&val));
-		zone_contents_set_soa_serial(new_zone, local_serial);
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	bool dnssec_enable = conf_bool(&val);
+	uint32_t old_serial = zone_contents_serial(data->zone->contents), master_serial = 0;
+
+	if (dnssec_enable) {
+		axfr_slave_sign_serial(new_zone, data->zone, data->conf, &master_serial);
 	}
 
 	zone_update_t up = { 0 };
@@ -238,8 +277,6 @@ static int axfr_finalize(struct refresh_data *data)
 	// Seized by zone_update. Don't free the contents again in axfr_cleanup.
 	data->axfr.zone = NULL;
 
-	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
-	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_zone_sign(&up, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_ALL, &resch);
@@ -251,23 +288,23 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	ret = zone_update_commit(data->conf, &up);
-	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
+		AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+		           "failed to store changes (%s)", knot_strerror(ret));
 		return ret;
 	}
 
 	if (dnssec_enable) {
 		ret = zone_set_master_serial(data->zone, master_serial);
-		if (ret == KNOT_EOK) {
-			ret = zone_set_lastsigned_serial(data->zone, zone_contents_serial(new_zone));
-		}
 		if (ret != KNOT_EOK) {
 			log_zone_warning(data->zone->name,
 			"unable to save master serial, future transfers might be broken");
 		}
 	}
 
-	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone), bootstrap);
+	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
+	                master_serial, dnssec_enable, (data->zone->contents == NULL));
 
 	return KNOT_EOK;
 }
@@ -405,61 +442,99 @@ static void ixfr_cleanup(struct refresh_data *data)
 	changesets_free(&data->ixfr.changesets);
 }
 
+static bool ixfr_serial_once(changeset_t *ch, int policy, uint32_t *master_serial, uint32_t *local_serial)
+{
+	uint32_t ch_from = changeset_from(ch), ch_to = changeset_to(ch);
+
+	if (ch_from != *master_serial || (serial_compare(ch_from, ch_to) & SERIAL_MASK_GEQ)) {
+		return false;
+	}
+
+	uint32_t new_from = *local_serial;
+	uint32_t new_to = serial_next(new_from, policy);
+	knot_soa_serial_set(ch->soa_from->rrs.rdata, new_from);
+	knot_soa_serial_set(ch->soa_to->rrs.rdata, new_to);
+
+	*master_serial = ch_to;
+	*local_serial = new_to;
+
+	return true;
+}
+
+static int ixfr_slave_sign_serial(list_t *changesets, zone_t *zone,
+                                  conf_t *conf, uint32_t *master_serial)
+{
+	uint32_t local_serial = zone_contents_serial(zone->contents), lastsigned;
+
+	if (zone_get_lastsigned_serial(zone, &lastsigned) != KNOT_EOK || lastsigned != local_serial) {
+		// this is kind of assert
+		return KNOT_ERROR;
+	}
+
+	conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
+	unsigned serial_policy = conf_opt(&val);
+
+	int ret = zone_get_master_serial(zone, master_serial);
+	if (ret != KNOT_EOK) {
+		log_zone_error(zone->name, "failed to read master serial"
+		                           "from KASP DB (%s)", knot_strerror(ret));
+		return ret;
+	}
+	changeset_t *chs;
+	WALK_LIST(chs, *changesets) {
+		if (!ixfr_serial_once(chs, serial_policy, master_serial, &local_serial)) {
+			return KNOT_EINVAL;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 static int ixfr_finalize(struct refresh_data *data)
 {
-	uint32_t master_serial;
-	int ret = zone_get_master_serial(data->zone, &master_serial);
-	if (ret != KNOT_EOK) {
-		log_zone_error(data->zone->name, "Failed reading master's serial"
-			       "from KASP DB (%s)", knot_strerror(ret));
-		return ret;
-	}
-	uint32_t local_serial = zone_contents_serial(data->zone->contents);
-	uint32_t lastsigned_serial = local_serial;
-	bool have_lastsigned = zone_get_lastsigned_serial(data->zone, &lastsigned_serial);
-	uint32_t old_serial = local_serial;
-	changeset_t *chs = NULL;
-	WALK_LIST(chs, data->ixfr.changesets) {
-		master_serial = knot_soa_serial(chs->soa_to->rrs.rdata);
-		knot_soa_serial_set(chs->soa_from->rrs.rdata, local_serial);
-		if (have_lastsigned && (serial_compare(lastsigned_serial, local_serial) & SERIAL_MASK_GEQ)) {
-			local_serial = lastsigned_serial;
-		}
-		if (serial_compare(master_serial, local_serial) != SERIAL_GREATER) {
-			conf_val_t val = conf_zone_get(data->conf, C_SERIAL_POLICY, data->zone->name);
-			local_serial = serial_next(local_serial, conf_opt(&val));
-			knot_soa_serial_set(chs->soa_to->rrs.rdata, local_serial);
-		} else {
-			local_serial = master_serial;
-		}
-	}
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	bool dnssec_enable = conf_bool(&val);
+	uint32_t master_serial = 0, old_serial = zone_contents_serial(data->zone->contents);
 
-	zone_update_t up = { 0 };
-	ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	changeset_t *set = NULL;
-	WALK_LIST(set, data->ixfr.changesets) {
-		ret = zone_update_apply_changeset(&up, set);
+	if (dnssec_enable) {
+		int ret = ixfr_slave_sign_serial(&data->ixfr.changesets, data->zone, data->conf, &master_serial);
 		if (ret != KNOT_EOK) {
-			zone_update_clear(&up);
 			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
-			           "failed to apply changes to zone (%s)",
+			           "failed to adjust SOA serials from unsigned master (%s)",
 			           knot_strerror(ret));
 			return ret;
 		}
 	}
 
-	ret = xfr_validate(up.new_cont, data);
+	zone_update_t up = { 0 };
+	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	changeset_t *set;
+	WALK_LIST(set, data->ixfr.changesets) {
+		ret = zone_update_apply_changeset(&up, set);
+		if (ret != KNOT_EOK) {
+			uint32_t serial_from = knot_soa_serial(set->soa_from->rrs.rdata);
+			uint32_t serial_to = knot_soa_serial(set->soa_to->rrs.rdata);
+			zone_update_clear(&up);
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			           "serial %u -> %u, failed to apply changes to zone (%s)",
+			           serial_from, serial_to, knot_strerror(ret));
+			return ret;
+		}
+	}
+
+	ret = zone_adjust_contents(up.new_cont, adjust_cb_flags, NULL, false, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
+	if (ret == KNOT_EOK) {
+		ret = xfr_validate(up.new_cont, data);
+	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		return ret;
 	}
 
-	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
-	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_sign_update(&up, &resch);
@@ -471,27 +546,25 @@ static int ixfr_finalize(struct refresh_data *data)
 	}
 
 	ret = zone_update_commit(data->conf, &up);
-
-	if (ret == KNOT_EOK) {
-		if (dnssec_enable && !EMPTY_LIST(data->ixfr.changesets)) {
-			ret = zone_set_master_serial(data->zone, master_serial);
-			if (ret == KNOT_EOK) {
-				ret = zone_set_lastsigned_serial(data->zone,
-				                                 zone_contents_serial(up.zone->contents));
-			}
-			if (ret != KNOT_EOK) {
-				log_zone_warning(data->zone->name,
-				"unable to save master serial, future transfers might be broken");
-			}
-		}
-		xfr_log_publish(data, old_serial, zone_contents_serial(up.zone->contents), false);
-	} else {
+	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to store changes (%s)", knot_strerror(ret));
+		return ret;
 	}
 
-	zone_update_clear(&up);
-	return ret;
+	if (dnssec_enable && !EMPTY_LIST(data->ixfr.changesets)) {
+		ret = zone_set_master_serial(data->zone, master_serial);
+		if (ret != KNOT_EOK) {
+			log_zone_warning(data->zone->name,
+			"unable to save master serial, future transfers might be broken");
+		}
+	}
+
+	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
+	                master_serial, dnssec_enable, false);
+
+	return KNOT_EOK;
 }
 
 /*! \brief Stores starting SOA into changesets structure. */
@@ -574,7 +647,7 @@ static int ixfr_next_state(struct refresh_data *data, const knot_rrset_t *rr)
 	enum ixfr_state state = data->ixfr.proc->state;
 
 	if ((state == IXFR_SOA_ADD || state == IXFR_ADD) &&
-	    knot_rrset_equal(rr, data->ixfr.final_soa, KNOT_RRSET_COMPARE_WHOLE)) {
+	    knot_rrset_equal(rr, data->ixfr.final_soa, true)) {
 		return IXFR_DONE;
 	}
 
@@ -689,7 +762,7 @@ static enum xfr_type determine_xfr_type(const knot_pktsection_t *answer,
 	const knot_rrset_t *rr_one = knot_pkt_rr(answer, 0);
 	if (initial_soa != NULL) {
 		if (rr_one->type == KNOT_RRTYPE_SOA) {
-		        return knot_rrset_equal(initial_soa, rr_one, KNOT_RRSET_COMPARE_WHOLE) ?
+		        return knot_rrset_equal(initial_soa, rr_one, true) ?
 		               XFR_TYPE_AXFR : XFR_TYPE_IXFR;
 		}
 		return XFR_TYPE_AXFR;
@@ -705,7 +778,7 @@ static enum xfr_type determine_xfr_type(const knot_pktsection_t *answer,
 
 	const knot_rrset_t *rr_two = knot_pkt_rr(answer, 1);
 	if (answer->count == 2 && rr_one->type == KNOT_RRTYPE_SOA &&
-	    knot_rrset_equal(rr_one, rr_two, KNOT_RRSET_COMPARE_WHOLE)) {
+	    knot_rrset_equal(rr_one, rr_two, true)) {
 		return XFR_TYPE_AXFR;
 	}
 
@@ -731,10 +804,9 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
 		uint32_t master_serial;
-		int ret = zone_get_master_serial(data->zone, &master_serial);
+		int ret = slave_zone_serial(data->zone, data->conf, &master_serial);
 		if (ret != KNOT_EOK) {
-			log_zone_error(data->zone->name, "Failed reading master's serial"
-				       "from KASP DB (%s)", knot_strerror(ret));
+			xfr_log_read_ms(data->zone->name, ret);
 			return KNOT_STATE_FAIL;
 		}
 		data->xfr_type = determine_xfr_type(answer, master_serial,
@@ -845,10 +917,9 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	}
 
 	uint32_t local_serial;
-	int ret = zone_get_master_serial(data->zone, &local_serial);
+	int ret = slave_zone_serial(data->zone, data->conf, &local_serial);
 	if (ret != KNOT_EOK) {
-		log_zone_error(data->zone->name, "Failed reading master's serial"
-			       "from KASP DB (%s)", knot_strerror(ret));
+		xfr_log_read_ms(data->zone->name, ret);
 		return KNOT_STATE_FAIL;
 	}
 	uint32_t remote_serial = knot_soa_serial(rr->rrs.rdata);
@@ -886,10 +957,9 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		assert(data->soa);
 		knot_rrset_t *sending_soa = knot_rrset_copy(data->soa, data->mm);
 		uint32_t master_serial;
-		ret = zone_get_master_serial(data->zone, &master_serial);
+		ret = slave_zone_serial(data->zone, data->conf, &master_serial);
 		if (ret != KNOT_EOK) {
-			log_zone_error(data->zone->name, "Failed reading master's serial"
-			               "from KASP DB (%s)", knot_strerror(ret));
+			xfr_log_read_ms(data->zone->name, ret);
 		}
 		if (sending_soa == NULL || ret != KNOT_EOK) {
 			knot_rrset_free(sending_soa, data->mm);
@@ -1026,7 +1096,10 @@ static const knot_layer_api_t REFRESH_API = {
 
 static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf, C_MAX_ZONE_SIZE, zone);
+	conf_val_t val = conf_zone_get(conf, C_ZONE_MAX_SIZE, zone);
+	if (val.code != KNOT_EOK) {
+		val = conf_zone_get(conf, C_MAX_ZONE_SIZE, zone);
+	}
 	return conf_int(&val);
 }
 
@@ -1034,6 +1107,20 @@ typedef struct {
 	bool force_axfr;
 	bool send_notify;
 } try_refresh_ctx_t;
+
+/*! \brief Which errors from IXFR are relevant reason to try AXFR. */
+static bool ixfr_error_failover(int ret)
+{
+	switch (ret) {
+	case KNOT_EOK:
+		return false; // don't failover if IXFR is OK
+	case KNOT_ECONN:
+	case KNOT_ETIMEOUT:   // network issues
+		return false;
+	default:
+		return true;
+	}
+}
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx)
 {
@@ -1069,8 +1156,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr *dst = (struct sockaddr *)&master->addr;
-	const struct sockaddr *src = (struct sockaddr *)&master->via;
+	const struct sockaddr_storage *dst = &master->addr;
+	const struct sockaddr_storage *src = &master->via;
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &master->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);
@@ -1078,15 +1165,15 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		return KNOT_ENOMEM;
 	}
 
-	int timeout = conf->cache.srv_tcp_reply_timeout * 1000;
+	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 
 	int ret;
 
 	// while loop runs 0x or 1x; IXFR to AXFR failover
-	while ((ret = knot_requestor_exec(&requestor, req, timeout)) != KNOT_EOK &&
-	       data.xfr_type == XFR_TYPE_IXFR) {
+	while (ret = knot_requestor_exec(&requestor, req, timeout),
+	       ixfr_error_failover(ret) && data.xfr_type == XFR_TYPE_IXFR) {
 		REFRESH_LOG(LOG_WARNING, data.zone->name, data.remote,
-		            "fallback to AXFR");
+		            "fallback to AXFR (%s)", knot_strerror(ret));
 		ixfr_cleanup(&data);
 		data.xfr_type = XFR_TYPE_AXFR;
 		requestor.layer.state = KNOT_STATE_RESET;
@@ -1104,13 +1191,19 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 static int64_t min_refresh_interval(conf_t *conf, const knot_dname_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf, C_MIN_REFRESH_INTERVAL, zone);
+	conf_val_t val = conf_zone_get(conf, C_REFRESH_MIN_INTERVAL, zone);
+	if (val.code != KNOT_EOK) {
+		val = conf_zone_get(conf, C_MIN_REFRESH_INTERVAL, zone);
+	}
 	return conf_int(&val);
 }
 
 static int64_t max_refresh_interval(conf_t *conf, const knot_dname_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf, C_MAX_REFRESH_INTERVAL, zone);
+	conf_val_t val = conf_zone_get(conf, C_REFRESH_MAX_INTERVAL, zone);
+	if (val.code != KNOT_EOK) {
+		val = conf_zone_get(conf, C_MAX_REFRESH_INTERVAL, zone);
+	}
 	return conf_int(&val);
 }
 
@@ -1128,9 +1221,11 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	if (zone->flags & ZONE_FORCE_AXFR) {
 		zone->flags &= ~ZONE_FORCE_AXFR;
 		trctx.force_axfr = true;
+		zone->zonefile.retransfer = true;
 	}
 
 	int ret = zone_master_try(conf, zone, try_refresh, &trctx, "refresh");
+	zone_clear_preferred_master(zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "refresh, failed (%s)", knot_strerror(ret));
 	}

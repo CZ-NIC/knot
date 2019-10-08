@@ -25,13 +25,16 @@ Parameters
   configuration file.
 
 **-m**, **--max-conf-size** *MiB*
-  Set maximum configuration size (default is @conf_mapsize@ MiB, maximum 10000 MiB).
+  Set maximum size of the configuration database
+  (default is @conf_mapsize@ MiB, maximum 10000 MiB).
 
 **-s**, **--socket** *path*
   Use a control UNIX socket path (default is :file:`@run_dir@/knot.sock`).
 
 **-t**, **--timeout** *seconds*
-  Use a control timeout in seconds. Set 0 for infinity (default is 10).
+  Use a control timeout in seconds. Set to 0 for infinity (default is 10).
+  The control socket operations are also subject to the :ref:`timeout<control_timeout>`
+  parameter set on the server side in server's Control configuration section.
 
 **-b**, **--blocking**
   Zone event trigger commands wait until the event is finished.
@@ -76,9 +79,6 @@ Actions
   in the configuration. When invoked with flag **-f**/**--force** an error is
   returned when semantic check warning appears. (*)
 
-**zone-memstats** [*zone*...]
-  Estimate memory use for the zone. (*)
-
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For
   slave zone, the refresh from a master server is scheduled; for master zone,
@@ -114,7 +114,7 @@ Actions
   and the blocking mode relates to the initial one only! (#)
 
 **zone-ksk-submitted** *zone*...
-  Use when the zone's KSK rollover is in submittion phase. By calling this command
+  Use when the zone's KSK rollover is in submission phase. By calling this command
   the user confirms manually that the parent zone contains DS record for the new
   KSK in submission phase and the old KSK can be retired. (#)
 

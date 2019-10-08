@@ -90,8 +90,6 @@ sbin_PROGRAMS = knotc knotd
 knotc_SOURCES = \
 	utils/knotc/commands.c			\
 	utils/knotc/commands.h			\
-	utils/knotc/estimator.c			\
-	utils/knotc/estimator.h			\
 	utils/knotc/interactive.c		\
 	utils/knotc/interactive.h		\
 	utils/knotc/process.c			\

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ int tls_params_copy(tls_params_t *dst, const tls_params_t *src)
 		}
 	}
 
-	ptrnode_t *n = NULL;
+	ptrnode_t *n;
 	WALK_LIST(n, src->ca_files) {
 		char *src_file = (char *)n->d;
 		char *file = strdup(src_file);
@@ -109,7 +109,7 @@ void tls_params_clean(tls_params_t *params)
 		return;
 	}
 
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, params->ca_files) {
 		free(node->d);
 	}
@@ -134,7 +134,7 @@ static bool check_pin(const uint8_t *cert_pin, size_t cert_pin_len, const list_t
 		return false;
 	}
 
-	ptrnode_t *n = NULL;
+	ptrnode_t *n;
 	WALK_LIST(n, *pins) {
 		uint8_t *pin = (uint8_t *)n->d;
 		if (pin[0] == cert_pin_len &&
@@ -303,7 +303,7 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 	}
 
 	// Import provided certificate files.
-	ptrnode_t *n = NULL;
+	ptrnode_t *n;
 	WALK_LIST(n, ctx->params->ca_files) {
 		const char *file = (char *)n->d;
 		ret = gnutls_certificate_set_x509_trust_file(ctx->credentials, file,
@@ -319,31 +319,29 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 
 	gnutls_certificate_set_verify_function(ctx->credentials, verify_certificate);
 
-	// Setup client keypair, if specified. Both key and cert file must be provided.
-	if (params->keyfile && params->certfile) {
-		// first, try PEM.
+	// Setup client keypair if specified. Both key and cert files must be provided.
+	if (params->keyfile != NULL && params->certfile != NULL) {
+		// First, try PEM.
 		ret = gnutls_certificate_set_x509_key_file(ctx->credentials,
 			params->certfile, params->keyfile, GNUTLS_X509_FMT_PEM);
-
 		if (ret != GNUTLS_E_SUCCESS) {
-			// if PEM didn't work, try DER.
+			// If PEM didn't work, try DER.
 			ret = gnutls_certificate_set_x509_key_file(ctx->credentials,
 				params->certfile, params->keyfile, GNUTLS_X509_FMT_DER);
 		}
 
 		if (ret != GNUTLS_E_SUCCESS) {
 			WARN("TLS, failed to add client certfile '%s' and keyfile '%s'\n",
-				params->certfile, params->keyfile);
+			     params->certfile, params->keyfile);
 			return KNOT_ERROR;
 		} else {
 			DBG("TLS, added client certfile '%s' and keyfile '%s'\n",
-				params->certfile, params->keyfile);
+			    params->certfile, params->keyfile);
 		}
-
-	} else if (params->keyfile) {
+	} else if (params->keyfile != NULL) {
 		WARN("TLS, cannot use client keyfile without a certfile\n");
 		return KNOT_ERROR;
-	} else if (params->certfile) {
+	} else if (params->certfile != NULL) {
 		WARN("TLS, cannot use client certfile without a keyfile\n");
 		return KNOT_ERROR;
 	}
@@ -462,7 +460,8 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 
 	// Receive message header.
 	while (total < sizeof(msg_len)) {
-		ssize_t ret = gnutls_record_recv(ctx->session, &msg_len + total,
+		ssize_t ret = gnutls_record_recv(ctx->session,
+		                                 (uint8_t *)&msg_len + total,
 		                                 sizeof(msg_len) - total);
 		if (ret > 0) {
 			total += ret;

@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <stdarg.h>
@@ -48,7 +48,8 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_UFREEZE,      event_ufreeze,     "update freeze" },
 	{ ZONE_EVENT_UTHAW,        event_uthaw,       "update thaw" },
 	{ ZONE_EVENT_NSEC3RESALT,  event_nsec3resalt, "NSEC3 resalt" },
-	{ ZONE_EVENT_PARENT_DS_Q,  event_parent_ds_q, "parent DS query" },
+	{ ZONE_EVENT_DS_CHECK,     event_ds_check,    "DS check" },
+	{ ZONE_EVENT_DS_PUSH,      event_ds_push,     "DS push" },
 	{ 0 }
 };
 
@@ -79,7 +80,7 @@ bool ufreeze_applies(zone_event_type_t type)
 	case ZONE_EVENT_FLUSH:
 	case ZONE_EVENT_DNSSEC:
 	case ZONE_EVENT_NSEC3RESALT:
-	case ZONE_EVENT_PARENT_DS_Q:
+	case ZONE_EVENT_DS_CHECK:
 		return true;
 	default:
 		return false;
@@ -207,6 +208,7 @@ static void event_wrap(task_t *task)
 
 	pthread_mutex_lock(&events->mx);
 	zone_event_type_t type = get_next_event(events);
+	pthread_cond_t *blocking = events->blocking[type];
 	if (!valid_event(type)) {
 		events->running = false;
 		pthread_mutex_unlock(&events->mx);
@@ -238,6 +240,12 @@ static void event_wrap(task_t *task)
 	pthread_mutex_lock(&events->mx);
 	events->running = false;
 	events->type = ZONE_EVENT_INVALID;
+
+	if (blocking != NULL) {
+		events->blocking[type] = NULL;
+		pthread_cond_broadcast(blocking);
+	}
+
 	pthread_mutex_unlock(&events->mx);
 	reschedule(events);
 }
@@ -367,19 +375,29 @@ void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool us
 		return;
 	}
 
+	zone_events_t *events = &zone->events;
+	pthread_cond_t local_cond;
+	pthread_cond_init(&local_cond, NULL);
+
+	pthread_mutex_lock(&events->mx);
+	while (events->blocking[type] != NULL) {
+		pthread_cond_wait(events->blocking[type], &events->mx);
+	}
+	events->blocking[type] = &local_cond;
+	pthread_mutex_unlock(&events->mx);
+
 	if (user) {
 		zone_events_schedule_user(zone, type);
 	} else {
 		zone_events_schedule_now(zone, type);
 	}
 
-	time_t now = time(NULL);
-	time_t sched_time = zone_events_get_time(zone, type);
-	while ((zone->events.running && zone->events.type == type) ||
-	       (sched_time > 0 && sched_time <= now)) {
-		usleep(20000);
-		sched_time = zone_events_get_time(zone, type);
+	pthread_mutex_lock(&events->mx);
+	while (events->blocking[type] == &local_cond) {
+		pthread_cond_wait(&local_cond, &events->mx);
 	}
+	pthread_mutex_unlock(&events->mx);
+	pthread_cond_destroy(&local_cond);
 }
 
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)

@@ -94,13 +94,11 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 		return;
 	}
 
-	// Subtract the data from node's RRSet.
-	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
 	uint32_t rrs_ttl = node_rrset(node, rr->type).ttl;
 
 	if (fixed_rr != NULL && *fixed_rr != NULL &&
 	    ((*fixed_rr)->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG)) {
-		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, rrs, NULL);
+		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, node_rdataset(node, rr->type), NULL);
 		if (ret != KNOT_EOK) {
 			return;
 		}
@@ -108,22 +106,16 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 
 	// TTL of RRSIGs is better determined by original_ttl field, which is compared as part of rdata anyway
 	if (rr->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG) {
-		int ret = knot_rdataset_subtract(rrs, &rr->rrs, NULL);
+		int ret = node_remove_rrset(node, rr, NULL);
 		if (ret != KNOT_EOK) {
 			return;
 		}
 	}
 
-	if (knot_rdataset_size(rrs) == 0) {
-		// Remove empty type.
-		node_remove_rdataset(node, rr->type);
-
-		if (node->rrset_count == 0 && node != counterpart->apex) {
-			// Remove empty node.
-			zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
-			                 counterpart->nsec3_nodes : counterpart->nodes;
-			zone_tree_del_node(t, node, (zone_tree_del_node_cb_t)node_free, NULL);
-		}
+	if (node->rrset_count == 0 && node->children == 0 && node != counterpart->apex) {
+		zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
+				 counterpart->nsec3_nodes : counterpart->nodes;
+		zone_tree_del_node(t, node, true);
 	}
 
 	return;
@@ -230,8 +222,7 @@ int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset
 			return KNOT_ENOMEM;
 		}
 
-		check_redundancy(ch->remove, rrset,
-				 ((flags & CHANGESET_CHECK_CANCELOUT) ? &rrset_cancelout : NULL));
+		check_redundancy(ch->remove, rrset, &rrset_cancelout);
 	}
 
 	const knot_rrset_t *to_add = (rrset_cancelout == NULL ? rrset : rrset_cancelout);
@@ -267,8 +258,7 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 			return KNOT_ENOMEM;
 		}
 
-		check_redundancy(ch->add, rrset,
-				 ((flags & CHANGESET_CHECK_CANCELOUT) ? &rrset_cancelout : NULL));
+		check_redundancy(ch->add, rrset, &rrset_cancelout);
 	}
 
 	const knot_rrset_t *to_remove = (rrset_cancelout == NULL ? rrset : rrset_cancelout);
@@ -484,7 +474,7 @@ bool changeset_differs_just_serial(const changeset_t *ch)
 	knot_rrset_t *soa_to_cpy = knot_rrset_copy(ch->soa_to, NULL);
 	knot_soa_serial_set(soa_to_cpy->rrs.rdata, knot_soa_serial(ch->soa_from->rrs.rdata));
 
-	bool ret = knot_rrset_equal(ch->soa_from, soa_to_cpy, KNOT_RRSET_COMPARE_WHOLE);
+	bool ret = knot_rrset_equal(ch->soa_from, soa_to_cpy, true);
 	knot_rrset_free(soa_to_cpy, NULL);
 
 	changeset_iter_t itt;
@@ -670,6 +660,13 @@ int changeset_walk(const changeset_t *changeset, changeset_walk_callback callbac
 	}
 	changeset_iter_clear(&it);
 
+	if (changeset->soa_from != NULL) {
+		ret = callback(changeset->soa_from, false, ctx);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	ret = changeset_iter_add(&it, changeset);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -685,6 +682,13 @@ int changeset_walk(const changeset_t *changeset, changeset_walk_callback callbac
 		rrset = changeset_iter_next(&it);
 	}
 	changeset_iter_clear(&it);
+
+	if (changeset->soa_to != NULL) {
+		ret = callback(changeset->soa_to, true, ctx);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
 
 	return KNOT_EOK;
 }

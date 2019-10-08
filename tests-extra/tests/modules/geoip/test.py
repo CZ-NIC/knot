@@ -94,6 +94,3 @@ for i in range(1, 1000):
     random_client = "127.255." + str(random.randint(1, iso_count)) + ".0"
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
-
-os.remove(geodb_filename)
-os.remove(subnet_filename)

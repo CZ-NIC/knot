@@ -58,6 +58,7 @@ typedef struct zone
 		uint32_t serial;
 		bool exists;
 		bool resigned;
+		bool retransfer;
 	} zonefile;
 
 	/*! \brief Zone events. */
@@ -122,7 +123,7 @@ inline static zone_journal_t zone_journal(zone_t *zone)
 	return j;
 }
 
-int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change);
+int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset_t *extra);
 int zone_changes_clear(conf_t *conf, zone_t *zone);
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents);
 
@@ -173,4 +174,6 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial);
 
 int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial);
 
-bool zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial);
+int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial);
+
+int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial);

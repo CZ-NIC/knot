@@ -30,7 +30,7 @@ You can enable RRL by setting the module globally or per zone.
     mod-rrl:
       - id: default
         rate-limit: 200   # Allow 200 resp/s for each flow
-        slip: 2           # Every other response slips
+        slip: 2           # Approximately every other response slips
 
     template:
       - id: default
@@ -108,7 +108,7 @@ noting, that some responses can't be truncated (e.g. SERVFAIL).
   but the outbound data bandwidth won't be lower than the incoming bandwidth.
   Also the outbound packet rate will be the same as without RRL.
 
-- Setting the value to **2** will cause that half of the rate-limited responses
+- Setting the value to **2** will cause that approximately half of the rate-limited responses
   will be dropped, the other half will be sent as truncated. With this
   configuration, both outbound bandwidth and packet rate will be lower than the
   inbound. On the other hand, the dropped responses enlarge the time window

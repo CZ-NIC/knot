@@ -242,7 +242,7 @@ static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
 	assert(apex);
 	assert(params);
 
-	uint8_t nsec3_owner[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t nsec3_owner;
 	int ret = knot_create_nsec3_owner(nsec3_owner, sizeof(nsec3_owner),
 	                                  node->owner, apex->owner, params);
 	if (ret != KNOT_EOK) {
@@ -281,30 +281,16 @@ static int connect_nsec3_base(knot_rdataset_t *a_rrs, const knot_dname_t *b_name
 	}
 
 	uint8_t raw_length = knot_nsec3_next_len(a_rrs->rdata);
+	assert(raw_length == dnssec_nsec3_hash_length(algorithm));
 	uint8_t *raw_hash = (uint8_t *)knot_nsec3_next(a_rrs->rdata);
 	if (raw_hash == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	assert(raw_length == dnssec_nsec3_hash_length(algorithm));
-
-	char *b32_hash = knot_dname_to_str_alloc(b_name);
-	if (!b32_hash) {
-		return KNOT_ENOMEM;
-	}
-
-	char *b32_end = strchr(b32_hash, '.');
-	if (!b32_end) {
-		free(b32_hash);
-		return KNOT_EINVAL;
-	}
-
-	size_t b32_length = b32_end - b32_hash;
-	int32_t written = base32hex_decode((uint8_t *)b32_hash, b32_length,
-					   raw_hash, raw_length);
-
-	free(b32_hash);
-
+	assert(b_name);
+	uint8_t b32_length = b_name[0];
+	const uint8_t *b32_hash = &(b_name[1]);
+	int32_t written = base32hex_decode(b32_hash, b32_length, raw_hash, raw_length);
 	if (written != raw_length) {
 		return KNOT_EINVAL;
 	}
@@ -358,7 +344,7 @@ static int connect_nsec3_nodes2(zone_node_t *a, zone_node_t *b,
 
 	// connect the copied rrset
 	int ret = connect_nsec3_base(&acopy->rrs, b->owner);
-	if (ret != KNOT_EOK || knot_rrset_equal(&aorig, acopy, KNOT_RRSET_COMPARE_WHOLE)) {
+	if (ret != KNOT_EOK || knot_rrset_equal(&aorig, acopy, true)) {
 		knot_rrset_free(acopy, NULL);
 		return ret;
 	}
@@ -505,7 +491,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		return KNOT_ENORECORD;
 	}
 
-	uint8_t for_node_hashed[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t for_node_hashed;
 	int ret = knot_create_nsec3_owner(for_node_hashed, sizeof(for_node_hashed),
 	                                  for_node, update->new_cont->apex->owner, params);
 	if (ret != KNOT_EOK) {
@@ -667,7 +653,7 @@ static int zone_update_nsec3_nodes(zone_update_t *up, zone_tree_t *nsec3n)
 		zone_node_t *nnew = zone_tree_get(nsec3n, nold->owner);
 		if (!knot_rrset_empty(&ns3old)) {
 			knot_rrset_t ns3new = node_rrset(nnew, KNOT_RRTYPE_NSEC3);
-			if (knot_rrset_equal(&ns3old, &ns3new, KNOT_RRSET_COMPARE_WHOLE)) {
+			if (knot_rrset_equal(&ns3old, &ns3new, true)) {
 				node_remove_rdataset(nnew, KNOT_RRTYPE_NSEC3);
 			} else {
 				ret = knot_nsec_changeset_remove(nold, up);
@@ -784,7 +770,20 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
-	ret = zone_adjust_contents(update->new_cont, NULL, adjust_cb_void, false);
+	ret = zone_adjust_contents(update->new_cont, NULL, adjust_cb_void, false, update->a_ctx->node_ptrs);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// ensure that nsec3 node for zone root is in list of changed nodes
+	const zone_node_t *nsec3_for_root = NULL, *unused;
+	ret = zone_contents_find_nsec3_for_name(update->new_cont, update->zone->name, &nsec3_for_root, &unused);
+	if (ret >= 0) {
+		assert(ret == ZONE_NAME_FOUND);
+		assert(!(nsec3_for_root->flags & NODE_FLAGS_DELETED));
+		assert(!(binode_counterpart((zone_node_t *)nsec3_for_root)->flags & NODE_FLAGS_DELETED));
+		ret = zone_tree_insert(update->a_ctx->nsec3_ptrs, (zone_node_t **)&nsec3_for_root);
+	}
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

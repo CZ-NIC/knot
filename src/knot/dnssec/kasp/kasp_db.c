@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include "knot/dnssec/kasp/kasp_db.h"
 
@@ -297,7 +297,7 @@ int kasp_db_load_nsec3salt(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	knot_lmdb_begin(db, &txn, false);
 	if (knot_lmdb_find(&txn, &key, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
 		nsec3salt->size = txn.cur_val.mv_size;
-		nsec3salt->data = malloc(txn.cur_val.mv_size);
+		nsec3salt->data = malloc(txn.cur_val.mv_size + 1); // +1 because it can be zero
 		if (nsec3salt->data == NULL) {
 			txn.ret = KNOT_ENOMEM;
 		} else {
@@ -360,7 +360,7 @@ int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
 	knot_lmdb_begin(db, &txn, false);
 	if (knot_lmdb_find(&txn, &k, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE) &&
 	    knot_lmdb_unmake_curval(&txn, "BNS", &kclass, lp_zone, lp_keyid)) {
-		assert(lp_zone != NULL && lp_keyid != NULL);
+		assert(*lp_zone != NULL && *lp_keyid != NULL);
 		*lp_zone = knot_dname_copy(*lp_zone, NULL);
 		*lp_keyid = strdup(*lp_keyid);
 		if (kclass != KASPDBKEY_PARAMS) {
@@ -376,7 +376,9 @@ int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
 	free(k.mv_data);
 	if (txn.ret != KNOT_EOK) {
 		free(*lp_zone);
+		*lp_zone = NULL;
 		free(*lp_keyid);
+		*lp_keyid = NULL;
 	}
 	return txn.ret;
 }
@@ -392,7 +394,7 @@ int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const
 		uint8_t unuse1, *unuse2;
 		const char *real_last_keyid;
 		if (knot_lmdb_unmake_curval(&txn, "BNS", &unuse1, &unuse2, &real_last_keyid) &&
-		    strcmp(last_lp_keyid, real_last_keyid) != 0) {
+		    last_lp_keyid != NULL && strcmp(last_lp_keyid, real_last_keyid) != 0) {
 			txn.ret = KNOT_ESEMCHECK;
 		}
 	}

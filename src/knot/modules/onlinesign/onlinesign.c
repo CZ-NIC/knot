@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <stddef.h>
@@ -177,9 +177,8 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *
 	}
 
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
-	bool is_apex = qdata->extra->zone
-	               && qdata->extra->zone->contents
-	               && qdata->extra->node == qdata->extra->zone->contents->apex;
+	bool is_apex = (qdata->extra->contents != NULL &&
+	                qdata->extra->node == qdata->extra->contents->apex);
 
 	bitmap_add_synth(map, is_apex);
 
@@ -345,7 +344,7 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 
 		uint16_t rr_pos = knot_pkt_rr_offset(section, i);
 
-		uint8_t owner[KNOT_DNAME_MAXLEN] = { 0 };
+		knot_dname_storage_t owner;
 		knot_dname_unpack(owner, pkt->wire + rr_pos, sizeof(owner), pkt->wire);
 		knot_dname_to_lower(owner);
 
@@ -515,11 +514,11 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 	}
 	if (ret == KNOT_EOK || knot_time_cmp(ctx->event_rollover, mod->dnssec->now) <= 0) {
-		update_policy_from_zone(mod->dnssec->policy, qdata->extra->zone->contents);
+		update_policy_from_zone(mod->dnssec->policy, qdata->extra->contents);
 		ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 	}
 	if (ret == KNOT_EOK) {
-		if (resch.plan_ds_query && mod->dnssec->policy->ksk_sbm_check_interval > 0) {
+		if (resch.plan_ds_check && mod->dnssec->policy->ksk_sbm_check_interval > 0) {
 			ctx->event_parent_ds_q = mod->dnssec->now + mod->dnssec->policy->ksk_sbm_check_interval;
 		} else {
 			ctx->event_parent_ds_q = 0;
@@ -637,8 +636,8 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 		return ret;
 	}
 
-	// Force Singe-Type signing scheme. This is only important for compatibility with older versions.
-	mod->dnssec->policy->singe_type_signing = true;
+	// Force Single-Type signing scheme. This is only important for compatibility with older versions.
+	mod->dnssec->policy->single_type_signing = true;
 
 	zone_sign_reschedule_t resch = { 0 };
 	ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
@@ -647,7 +646,7 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 		return ret;
 	}
 
-	if (resch.plan_ds_query) {
+	if (resch.plan_ds_check) {
 		ctx->event_parent_ds_q = time(NULL);
 	}
 	ctx->event_rollover = resch.next_rollover;

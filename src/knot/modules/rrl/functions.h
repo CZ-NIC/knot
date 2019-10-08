@@ -24,9 +24,6 @@
 #include "knot/include/module.h"
 #include "contrib/openbsd/siphash.h"
 
-/* Defaults */
-#define RRL_SLIP_MAX 100
-
 /*!
  * \brief RRL hash bucket.
  */

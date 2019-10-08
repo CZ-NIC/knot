@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,6 +13,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 /*!
  * \file
  *
@@ -66,6 +67,7 @@ enum knot_wire_sizes {
  */
 static inline uint16_t knot_wire_get_id(const uint8_t *packet)
 {
+	assert(packet);
 	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ID);
 }
 
@@ -77,6 +79,7 @@ static inline uint16_t knot_wire_get_id(const uint8_t *packet)
  */
 static inline void knot_wire_set_id(uint8_t *packet, uint16_t id)
 {
+	assert(packet);
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ID, id);
 }
 
@@ -89,6 +92,7 @@ static inline void knot_wire_set_id(uint8_t *packet, uint16_t id)
  */
 static inline uint8_t knot_wire_get_flags1(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS1);
 }
 
@@ -100,6 +104,7 @@ static inline uint8_t knot_wire_get_flags1(const uint8_t *packet)
  */
 static inline uint8_t knot_wire_set_flags1(uint8_t *packet, uint8_t flags1)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) = flags1;
 }
 
@@ -112,6 +117,7 @@ static inline uint8_t knot_wire_set_flags1(uint8_t *packet, uint8_t flags1)
  */
 static inline uint8_t knot_wire_get_flags2(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS2);
 }
 
@@ -123,6 +129,7 @@ static inline uint8_t knot_wire_get_flags2(const uint8_t *packet)
  */
 static inline uint8_t knot_wire_set_flags2(uint8_t *packet, uint8_t flags2)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) = flags2;
 }
 
@@ -136,6 +143,7 @@ static inline uint8_t knot_wire_set_flags2(uint8_t *packet, uint8_t flags2)
  */
 static inline uint16_t knot_wire_get_qdcount(const uint8_t *packet)
 {
+	assert(packet);
 	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT);
 }
 
@@ -148,6 +156,7 @@ static inline uint16_t knot_wire_get_qdcount(const uint8_t *packet)
  */
 static inline void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
 {
+	assert(packet);
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT, qdcount);
 }
 
@@ -156,6 +165,7 @@ static inline void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
  */
 static inline void knot_wire_add_qdcount(uint8_t *packet, int16_t n)
 {
+	assert(packet);
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT,
 	                    knot_wire_get_qdcount(packet) + n);
 }
@@ -170,6 +180,7 @@ static inline void knot_wire_add_qdcount(uint8_t *packet, int16_t n)
  */
 static inline uint16_t knot_wire_get_ancount(const uint8_t *packet)
 {
+	assert(packet);
 	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT);
 }
 
@@ -182,6 +193,7 @@ static inline uint16_t knot_wire_get_ancount(const uint8_t *packet)
  */
 static inline void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
 {
+	assert(packet);
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT, ancount);
 }
 
@@ -190,6 +202,7 @@ static inline void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
  */
 static inline void knot_wire_add_ancount(uint8_t *packet, int16_t n)
 {
+	assert(packet);
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT,
 	                    knot_wire_get_ancount(packet) + n);
 }
@@ -204,6 +217,7 @@ static inline void knot_wire_add_ancount(uint8_t *packet, int16_t n)
  */
 static inline uint16_t knot_wire_get_nscount(const uint8_t *packet)
 {
+	assert(packet);
 	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT);
 }
 
@@ -216,6 +230,7 @@ static inline uint16_t knot_wire_get_nscount(const uint8_t *packet)
  */
 static inline void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
 {
+	assert(packet);
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT, nscount);
 }
 
@@ -224,6 +239,7 @@ static inline void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
  */
 static inline void knot_wire_add_nscount(uint8_t *packet, int16_t n)
 {
+	assert(packet);
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT,
 	                    knot_wire_get_nscount(packet) + n);
 }
@@ -238,6 +254,7 @@ static inline void knot_wire_add_nscount(uint8_t *packet, int16_t n)
  */
 static inline uint16_t knot_wire_get_arcount(const uint8_t *packet)
 {
+	assert(packet);
 	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT);
 }
 
@@ -250,6 +267,7 @@ static inline uint16_t knot_wire_get_arcount(const uint8_t *packet)
  */
 static inline void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
 {
+	assert(packet);
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT, arcount);
 }
 
@@ -258,6 +276,7 @@ static inline void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
  */
 static inline void knot_wire_add_arcount(uint8_t *packet, int16_t n)
 {
+	assert(packet);
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT,
 	                    knot_wire_get_arcount(packet) + n);
 }
@@ -306,6 +325,7 @@ enum knot_wire_flags2_consts {
  */
 static inline uint8_t knot_wire_get_rd(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) & KNOT_WIRE_RD_MASK;
 }
 
@@ -316,6 +336,7 @@ static inline uint8_t knot_wire_get_rd(const uint8_t *packet)
  */
 static inline void knot_wire_set_rd(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) |= KNOT_WIRE_RD_MASK;
 }
 
@@ -326,6 +347,7 @@ static inline void knot_wire_set_rd(uint8_t *packet)
  */
 static inline void knot_wire_clear_rd(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) &= ~KNOT_WIRE_RD_MASK;
 }
 
@@ -338,6 +360,7 @@ static inline void knot_wire_clear_rd(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_tc(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) & KNOT_WIRE_TC_MASK;
 }
 
@@ -348,6 +371,7 @@ static inline uint8_t knot_wire_get_tc(const uint8_t *packet)
  */
 static inline void knot_wire_set_tc(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) |= KNOT_WIRE_TC_MASK;
 }
 
@@ -358,6 +382,7 @@ static inline void knot_wire_set_tc(uint8_t *packet)
  */
 static inline void knot_wire_clear_tc(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) &= ~KNOT_WIRE_TC_MASK;
 }
 
@@ -370,6 +395,7 @@ static inline void knot_wire_clear_tc(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_aa(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) & KNOT_WIRE_AA_MASK;
 }
 
@@ -380,6 +406,7 @@ static inline uint8_t knot_wire_get_aa(const uint8_t *packet)
  */
 static inline void knot_wire_set_aa(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) |= KNOT_WIRE_AA_MASK;
 }
 
@@ -390,6 +417,7 @@ static inline void knot_wire_set_aa(uint8_t *packet)
  */
 static inline void knot_wire_clear_aa(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) &= ~KNOT_WIRE_AA_MASK;
 }
 
@@ -402,6 +430,7 @@ static inline void knot_wire_clear_aa(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_opcode(const uint8_t *packet)
 {
+	assert(packet);
 	return (*(packet + KNOT_WIRE_OFFSET_FLAGS1)
 	        & KNOT_WIRE_OPCODE_MASK) >> KNOT_WIRE_OPCODE_SHIFT;
 }
@@ -414,6 +443,7 @@ static inline uint8_t knot_wire_get_opcode(const uint8_t *packet)
  */
 static inline void knot_wire_set_opcode(uint8_t *packet, short opcode)
 {
+	assert(packet);
 	uint8_t *flags1 = packet + KNOT_WIRE_OFFSET_FLAGS1;
 	*flags1 = (*flags1 & ~KNOT_WIRE_OPCODE_MASK)
 	          | ((opcode) << KNOT_WIRE_OPCODE_SHIFT);
@@ -428,6 +458,7 @@ static inline void knot_wire_set_opcode(uint8_t *packet, short opcode)
  */
 static inline uint8_t knot_wire_get_qr(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) & KNOT_WIRE_QR_MASK;
 }
 
@@ -438,6 +469,7 @@ static inline uint8_t knot_wire_get_qr(const uint8_t *packet)
  */
 static inline void knot_wire_set_qr(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) |= KNOT_WIRE_QR_MASK;
 }
 
@@ -448,6 +480,7 @@ static inline void knot_wire_set_qr(uint8_t *packet)
  */
 static inline void knot_wire_clear_qr(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS1) &= ~KNOT_WIRE_QR_MASK;
 }
 
@@ -460,6 +493,7 @@ static inline void knot_wire_clear_qr(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_rcode(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS2)
 	       & KNOT_WIRE_RCODE_MASK;
 }
@@ -472,6 +506,7 @@ static inline uint8_t knot_wire_get_rcode(const uint8_t *packet)
  */
 static inline void knot_wire_set_rcode(uint8_t *packet, short rcode)
 {
+	assert(packet);
 	uint8_t *flags2 = packet + KNOT_WIRE_OFFSET_FLAGS2;
 	*flags2 = (*flags2 & ~KNOT_WIRE_RCODE_MASK) | (rcode);
 }
@@ -485,6 +520,7 @@ static inline void knot_wire_set_rcode(uint8_t *packet, short rcode)
  */
 static inline uint8_t knot_wire_get_cd(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) & KNOT_WIRE_CD_MASK;
 }
 
@@ -495,6 +531,7 @@ static inline uint8_t knot_wire_get_cd(const uint8_t *packet)
  */
 static inline void knot_wire_set_cd(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS2) |= KNOT_WIRE_CD_MASK;
 }
 
@@ -505,6 +542,7 @@ static inline void knot_wire_set_cd(uint8_t *packet)
  */
 static inline void knot_wire_clear_cd(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS2) &= ~KNOT_WIRE_CD_MASK;
 }
 
@@ -517,6 +555,7 @@ static inline void knot_wire_clear_cd(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_ad(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) & KNOT_WIRE_AD_MASK;
 }
 
@@ -527,6 +566,7 @@ static inline uint8_t knot_wire_get_ad(const uint8_t *packet)
  */
 static inline void knot_wire_set_ad(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS2) |= KNOT_WIRE_AD_MASK;
 }
 
@@ -537,6 +577,7 @@ static inline void knot_wire_set_ad(uint8_t *packet)
  */
 static inline void knot_wire_clear_ad(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS2) &= ~KNOT_WIRE_AD_MASK;
 }
 
@@ -549,6 +590,7 @@ static inline void knot_wire_clear_ad(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_z(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) & KNOT_WIRE_Z_MASK;
 }
 
@@ -559,6 +601,7 @@ static inline uint8_t knot_wire_get_z(const uint8_t *packet)
  */
 static inline void knot_wire_set_z(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS2) |= KNOT_WIRE_Z_MASK;
 }
 
@@ -569,6 +612,7 @@ static inline void knot_wire_set_z(uint8_t *packet)
  */
 static inline void knot_wire_clear_z(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS2) &= ~KNOT_WIRE_Z_MASK;
 }
 
@@ -581,6 +625,7 @@ static inline void knot_wire_clear_z(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_ra(const uint8_t *packet)
 {
+	assert(packet);
 	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) & KNOT_WIRE_RA_MASK;
 }
 
@@ -591,6 +636,7 @@ static inline uint8_t knot_wire_get_ra(const uint8_t *packet)
  */
 static inline void knot_wire_set_ra(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS2) |= KNOT_WIRE_RA_MASK;
 }
 
@@ -601,6 +647,7 @@ static inline void knot_wire_set_ra(uint8_t *packet)
  */
 static inline void knot_wire_clear_ra(uint8_t *packet)
 {
+	assert(packet);
 	*(packet + KNOT_WIRE_OFFSET_FLAGS2) &= ~KNOT_WIRE_RA_MASK;
 }
 
@@ -628,6 +675,7 @@ static inline uint8_t knot_wire_flags_get_rd(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_rd(uint8_t *flags1)
 {
+	assert(flags1);
 	*flags1 |= KNOT_WIRE_RD_MASK;
 }
 
@@ -638,6 +686,7 @@ static inline void knot_wire_flags_set_rd(uint8_t *flags1)
  */
 static inline void knot_wire_flags_clear_rd(uint8_t *flags1)
 {
+	assert(flags1);
 	*flags1 &= ~KNOT_WIRE_RD_MASK;
 }
 
@@ -661,6 +710,7 @@ static inline uint8_t knot_wire_flags_get_tc(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_tc(uint8_t *flags1)
 {
+	assert(flags1);
 	*flags1 |= KNOT_WIRE_TC_MASK;
 }
 
@@ -671,6 +721,7 @@ static inline void knot_wire_flags_set_tc(uint8_t *flags1)
  */
 static inline void knot_wire_flags_clear_tc(uint8_t *flags1)
 {
+	assert(flags1);
 	*flags1 &= ~KNOT_WIRE_TC_MASK;
 }
 
@@ -694,6 +745,7 @@ static inline uint8_t knot_wire_flags_get_aa(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_aa(uint8_t *flags1)
 {
+	assert(flags1);
 	*flags1 |= KNOT_WIRE_AA_MASK;
 }
 
@@ -704,6 +756,7 @@ static inline void knot_wire_flags_set_aa(uint8_t *flags1)
  */
 static inline void knot_wire_flags_clear_aa(uint8_t *flags1)
 {
+	assert(flags1);
 	*flags1 &= ~KNOT_WIRE_AA_MASK;
 }
 
@@ -728,6 +781,7 @@ static inline uint8_t knot_wire_flags_get_opcode(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_opcode(uint8_t *flags1, short opcode)
 {
+	assert(flags1);
 	*flags1 = (*flags1 & ~KNOT_WIRE_OPCODE_MASK)
 	          | ((opcode) << KNOT_WIRE_OPCODE_SHIFT);
 }
@@ -752,6 +806,7 @@ static inline uint8_t knot_wire_flags_get_qr(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_qr(uint8_t *flags1)
 {
+	assert(flags1);
 	*flags1 |= KNOT_WIRE_QR_MASK;
 }
 
@@ -762,6 +817,7 @@ static inline void knot_wire_flags_set_qr(uint8_t *flags1)
  */
 static inline void knot_wire_flags_clear_qr(uint8_t *flags1)
 {
+	assert(flags1);
 	*flags1 &= ~KNOT_WIRE_QR_MASK;
 }
 
@@ -785,6 +841,7 @@ static inline uint8_t knot_wire_flags_get_rcode(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_rcode(uint8_t *flags2, short rcode)
 {
+	assert(flags2);
 	*flags2 = (*flags2 & ~KNOT_WIRE_RCODE_MASK) | (rcode);
 }
 
@@ -808,6 +865,7 @@ static inline uint8_t knot_wire_flags_get_cd(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_cd(uint8_t *flags2)
 {
+	assert(flags2);
 	*flags2 |= KNOT_WIRE_CD_MASK;
 }
 
@@ -818,6 +876,7 @@ static inline void knot_wire_flags_set_cd(uint8_t *flags2)
  */
 static inline void knot_wire_flags_clear_cd(uint8_t *flags2)
 {
+	assert(flags2);
 	*flags2 &= ~KNOT_WIRE_CD_MASK;
 }
 
@@ -841,6 +900,7 @@ static inline uint8_t knot_wire_flags_get_ad(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_ad(uint8_t *flags2)
 {
+	assert(flags2);
 	*flags2 |= KNOT_WIRE_AD_MASK;
 }
 
@@ -851,6 +911,7 @@ static inline void knot_wire_flags_set_ad(uint8_t *flags2)
  */
 static inline void knot_wire_flags_clear_ad(uint8_t *flags2)
 {
+	assert(flags2);
 	*flags2 &= ~KNOT_WIRE_AD_MASK;
 }
 
@@ -874,6 +935,7 @@ static inline uint8_t knot_wire_flags_get_z(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_z(uint8_t *flags2)
 {
+	assert(flags2);
 	*flags2 |= KNOT_WIRE_Z_MASK;
 }
 
@@ -884,6 +946,7 @@ static inline void knot_wire_flags_set_z(uint8_t *flags2)
  */
 static inline void knot_wire_flags_clear_z(uint8_t *flags2)
 {
+	assert(flags2);
 	*flags2 &= ~KNOT_WIRE_Z_MASK;
 }
 
@@ -907,6 +970,7 @@ static inline uint8_t knot_wire_flags_get_ra(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_ra(uint8_t *flags2)
 {
+	assert(flags2);
 	*flags2 |= KNOT_WIRE_RA_MASK;
 }
 
@@ -917,6 +981,7 @@ static inline void knot_wire_flags_set_ra(uint8_t *flags2)
  */
 static inline void knot_wire_flags_clear_ra(uint8_t *flags2)
 {
+	assert(flags2);
 	*flags2 &= ~KNOT_WIRE_RA_MASK;
 }
 

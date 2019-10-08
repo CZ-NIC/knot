@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,15 +12,16 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
+
 /*!
-* \file
-*
-* \brief Knot error codes.
-*
-* \addtogroup libknot
-* @{
-*/
+ * \file
+ *
+ * \brief Knot error codes.
+ *
+ * \addtogroup libknot
+ * @{
+ */
 
 #pragma once
 
@@ -62,6 +63,7 @@ enum knot_error {
 	KNOT_ENOZONE,
 	KNOT_ENONODE,
 	KNOT_ENORECORD,
+	KNOT_EISRECORD,
 	KNOT_ENOMASTER,
 	KNOT_EPREREQ,
 	KNOT_ETTL,
@@ -78,6 +80,7 @@ enum knot_error {
 	KNOT_EFILE,
 	KNOT_ESOAINVAL,
 	KNOT_ETRAIL,
+	KNOT_EPROCESSING,
 
 	/* Control states. */
 	KNOT_CTL_ESTOP,
@@ -125,9 +128,6 @@ enum knot_error {
 	/* Transaction errors. */
 	KNOT_TXN_EEXISTS,
 	KNOT_TXN_ENOTEXISTS,
-
-	/* Processing error. */
-	KNOT_LAYER_ERROR,
 
 	/* DNSSEC errors. */
 	KNOT_INVALID_PUBLIC_KEY,

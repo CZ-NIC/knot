@@ -13,6 +13,8 @@
 .dirstamp
 /tmp
 /Knot.creator.user*
+/Knot.cflags
+/Knot.cxxflags
 /Doxyfile
 /aclocal.m4
 /ar-lib

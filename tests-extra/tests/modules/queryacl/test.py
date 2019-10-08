@@ -4,7 +4,6 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
-from dnstest.libknot import libknot
 from dnstest.module import ModQueryacl
 
 import random
@@ -15,32 +14,16 @@ knot = t.server("knot")
 zones = t.zone_rnd(3)
 t.link(zones, knot)
 
+knot.addr_extra = ["127.0.0.2", "127.0.0.3"]
+
 knot.add_module(zones[0], ModQueryacl(address=["127.0.0.1/32", "127.0.0.2/32"]))
 knot.add_module(zones[1], ModQueryacl(interface=["127.0.0.1/32", "127.0.0.2/32"]))
 knot.add_module(zones[2], ModQueryacl(address=["127.0.0.1/32", "127.0.0.2/32"],
                                       interface=["127.0.0.1/32", "127.0.0.2/32"]))
 
-ctl = libknot.control.KnotCtl()
-
 t.start()
 
 knot.zones_wait(zones)
-
-# Wait for server to start listening on the control socket.
-t.sleep(3)
-
-ctl.connect(os.path.join(knot.dir, "knot.sock"))
-ctl.send_block(cmd="conf-begin")
-ctl.receive_block()
-port = str(knot.port)
-ctl.send_block(cmd="conf-set", section="server", item="listen", data="127.0.0.1@"+port)
-ctl.receive_block()
-ctl.send_block(cmd="conf-set", section="server", item="listen", data="127.0.0.2@"+port)
-ctl.receive_block()
-ctl.send_block(cmd="conf-set", section="server", item="listen", data="127.0.0.3@"+port)
-ctl.receive_block()
-ctl.send_block(cmd="conf-commit")
-ctl.receive_block()
 
 # Test just address ACL.
 resp = knot.dig(zones[0].name, "SOA", addr="127.0.0.3", source="127.0.0.3")

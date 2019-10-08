@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,8 +42,8 @@ static int request_ensure_connected(knot_request_t *request)
 
 	int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
 	request->fd = net_connected_socket(sock_type,
-	                                  (struct sockaddr *)&request->remote,
-	                                  (struct sockaddr *)&request->source);
+	                                   &request->remote,
+	                                   &request->source);
 	if (request->fd < 0) {
 		return KNOT_ECONN;
 	}
@@ -107,8 +107,8 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 }
 
 knot_request_t *knot_request_make(knot_mm_t *mm,
-                                  const struct sockaddr *remote,
-                                  const struct sockaddr *source,
+                                  const struct sockaddr_storage *remote,
+                                  const struct sockaddr_storage *source,
                                   knot_pkt_t *query,
                                   const knot_tsig_key_t *tsig_key,
                                   knot_request_flag_t flags)
@@ -204,7 +204,7 @@ static int request_reset(knot_requestor_t *req, knot_request_t *last)
 	}
 
 	if (req->layer.state == KNOT_STATE_RESET) {
-		return KNOT_LAYER_ERROR;
+		return KNOT_EPROCESSING;
 	}
 
 	return KNOT_EOK;
@@ -308,7 +308,7 @@ int knot_requestor_exec(knot_requestor_t *requestor, knot_request_t *request,
 
 	/* Expect complete request. */
 	if (requestor->layer.state != KNOT_STATE_DONE) {
-		ret = KNOT_LAYER_ERROR;
+		ret = KNOT_EPROCESSING;
 	}
 
 	/* Verify last TSIG */

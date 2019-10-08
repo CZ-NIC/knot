@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #pragma once
 
@@ -106,13 +106,17 @@ typedef struct {
 
 	/*! Cached critical confdb items. */
 	struct {
-		int16_t srv_max_ipv4_udp_payload;
-		int16_t srv_max_ipv6_udp_payload;
-		int32_t srv_tcp_hshake_timeout;
-		int32_t srv_tcp_idle_timeout;
-		int32_t srv_tcp_reply_timeout;
-		int32_t srv_max_tcp_clients;
-		int32_t ctl_timeout;
+		uint16_t srv_udp_max_payload_ipv4;
+		uint16_t srv_udp_max_payload_ipv6;
+		int srv_tcp_idle_timeout;
+		int srv_tcp_io_timeout;
+		int srv_tcp_remote_io_timeout;
+		bool srv_tcp_reuseport;
+		size_t srv_udp_threads;
+		size_t srv_tcp_threads;
+		size_t srv_bg_threads;
+		size_t srv_tcp_max_clients;
+		int ctl_timeout;
 		conf_val_t srv_nsid;
 		bool srv_ecs;
 		bool srv_ans_rotate;
@@ -251,16 +255,18 @@ int conf_parse(
 /*!
  * Imports textual configuration.
  *
- * \param[in] conf     Configuration.
- * \param[in] input    Configuration string or input filename.
- * \param[in] is_file  Specifies if the input is string or filename.
+ * \param[in] conf          Configuration.
+ * \param[in] input         Configuration string or input filename.
+ * \param[in] is_file       Specifies if the input is string or filename.
+ * \param[in] reinit_cache  Indication if cache reinitialization needed.
  *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_import(
 	conf_t *conf,
 	const char *input,
-	bool is_file
+	bool is_file,
+	bool reinit_cache
 );
 
 /*!

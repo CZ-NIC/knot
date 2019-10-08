@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	const    knot_rdata_descriptor_t *descr;
-	char     name[BUF_LEN] = { 0 };
+	char     name[BUF_LEN] = "";
 	int      ret;
 	uint16_t num;
 

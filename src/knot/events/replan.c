@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 
@@ -36,7 +36,7 @@ static void replan_ddns(zone_t *zone, zone_t *old_zone)
 		return;
 	}
 
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, old_zone->ddns_queue) {
 		ptrlist_add(&zone->ddns_queue, node->d, NULL);
 	}
@@ -115,6 +115,8 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	}
 
 	time_t resalt = TIME_CANCEL;
+	time_t ds_check = TIME_CANCEL;
+	time_t ds_push = TIME_CANCEL;
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	if (conf_bool(&val)) {
 		conf_val_t policy = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
@@ -128,12 +130,18 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 				resalt = zone->timers.last_resalt + conf_int(&val);
 			}
 		}
+
+		ds_check = zone->timers.next_ds_check;
+		if (ds_check == 0) {
+			ds_check = TIME_IGNORE;
+		}
+		ds_push = zone->timers.next_ds_push;
+		if (ds_push == 0) {
+			ds_push = TIME_IGNORE;
+		}
 	}
 
-	time_t ds = zone->timers.next_parent_ds_q;
-	if (ds == 0) {
-		ds = TIME_IGNORE;
-	}
+
 
 	zone_events_schedule_at(zone,
 	                        ZONE_EVENT_REFRESH, refresh,
@@ -141,7 +149,8 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	                        ZONE_EVENT_EXPIRE, expire,
 	                        ZONE_EVENT_FLUSH, flush,
 	                        ZONE_EVENT_NSEC3RESALT, resalt,
-	                        ZONE_EVENT_PARENT_DS_Q, ds);
+	                        ZONE_EVENT_DS_CHECK, ds_check,
+				ZONE_EVENT_DS_PUSH, ds_push);
 }
 
 void replan_load_new(zone_t *zone)

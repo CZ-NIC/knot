@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 
 char *format_key(conf_io_t *io)
 {
-	char id[KNOT_DNAME_TXT_MAXLEN + 1] = "\0";
+	knot_dname_txt_storage_t id;
 	size_t id_len = sizeof(id);
 
 	// Get the textual item id.
@@ -902,34 +902,45 @@ static void test_conf_io_list(void)
 	ok(conf_io_list("server", &io) ==
 	   KNOT_EOK, "list group");
 	ref = "server.version\n"
-	      "server.background-workers\n"
 	      "server.listen\n"
-	      "server.tcp-handshake-timeout\n"
 	      "server.tcp-idle-timeout\n"
-	      "server.tcp-reply-timeout\n"
-	      "server.max-tcp-clients\n"
-	      "server.max-udp-payload\n"
-	      "server.max-ipv4-udp-payload\n"
-	      "server.max-ipv6-udp-payload\n"
+	      "server.tcp-io-timeout\n"
+	      "server.tcp-remote-io-timeout\n"
+	      "server.tcp-max-clients\n"
+	      "server.tcp-reuseport\n"
+	      "server.udp-workers\n"
+	      "server.tcp-workers\n"
+	      "server.background-workers\n"
+	      "server.udp-max-payload\n"
+	      "server.udp-max-payload-ipv4\n"
+	      "server.udp-max-payload-ipv6\n"
 	      "server.edns-client-subnet\n"
-	      "server.answer-rotation";
+	      "server.answer-rotation\n"
+	      "server.max-tcp-clients\n"
+	      "server.max-udp-payload";
 	ok(strcmp(ref, out) == 0, "compare result");
 }
 
 static const yp_item_t desc_server[] = {
 	{ C_VERSION,              YP_TSTR,  YP_VNONE },
-	{ C_BG_WORKERS,           YP_TINT,  YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VNONE, YP_FMULTI },
 	// Required config cache items - assert fix.
-	{ C_TCP_HSHAKE_TIMEOUT,   YP_TINT,  YP_VNONE },
 	{ C_TCP_IDLE_TIMEOUT,	  YP_TINT,  YP_VNONE },
-	{ C_TCP_REPLY_TIMEOUT,	  YP_TINT,  YP_VNONE },
-	{ C_MAX_TCP_CLIENTS,	  YP_TINT,  YP_VNONE },
-	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VNONE },
-	{ C_MAX_IPV4_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
-	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VNONE },
+	{ C_TCP_IO_TIMEOUT,	  YP_TINT,  YP_VNONE },
+	{ C_TCP_RMT_IO_TIMEOUT,	  YP_TINT,  YP_VNONE },
+	{ C_TCP_MAX_CLIENTS,	  YP_TINT,  YP_VNONE },
+	{ C_TCP_REUSEPORT,	  YP_TBOOL, YP_VNONE },
+	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
+	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
+	{ C_BG_WORKERS,		  YP_TINT,  YP_VNONE },
+	{ C_UDP_MAX_PAYLOAD,      YP_TINT,  YP_VNONE },
+	{ C_UDP_MAX_PAYLOAD_IPV4, YP_TINT,  YP_VNONE },
+	{ C_UDP_MAX_PAYLOAD_IPV6, YP_TINT,  YP_VNONE },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
+	// Legacy items.
+	{ C_MAX_TCP_CLIENTS,      YP_TINT,  YP_VNONE },
+	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VNONE },
 	{ NULL }
 };
 

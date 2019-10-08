@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ const knot_layer_api_t *process_query_layer(void);
 /*! \brief Query processing intermediate data. */
 typedef struct knotd_qdata_extra {
 	const zone_t *zone;  /*!< Zone from which is answered. */
+	const zone_contents_t *contents; /*!< Zone contents from which is answered. */
 	list_t wildcards;    /*!< Visited wildcards. */
 	list_t rrsigs;       /*!< Section RRSIGs. */
 	uint8_t *opt_rr_pos; /*!< Place of the OPT RR in wire. */
@@ -35,7 +36,7 @@ typedef struct knotd_qdata_extra {
 	const zone_node_t *node, *encloser, *previous;
 
 	/* Original QNAME case. */
-	uint8_t orig_qname[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t orig_qname;
 
 	/* Extensions. */
 	void *ext;

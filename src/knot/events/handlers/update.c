@@ -83,7 +83,7 @@ static int process_single_update(knot_request_t *request,
 
 static void set_rcodes(list_t *requests, const uint16_t rcode)
 {
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, *requests) {
 		knot_request_t *req = node->d;
 		if (knot_wire_get_rcode(req->resp->wire) == KNOT_RCODE_NOERROR) {
@@ -100,7 +100,7 @@ static void store_original_qname(knotd_qdata_t *qdata, const knot_pkt_t *pkt)
 static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 {
 	// Walk all the requests and process.
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, *requests) {
 		knot_request_t *req = node->d;
 		// Init qdata structure for logging (unique per-request).
@@ -167,8 +167,8 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 
 	// Apply changes.
 	ret = zone_update_commit(conf, &up);
-	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
 		if (ret == KNOT_EZONESIZE) {
 			set_rcodes(requests, KNOT_RCODE_REFUSED);
 		} else {
@@ -239,8 +239,8 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 	}
 
 	/* Create a request. */
-	const struct sockaddr *dst = (const struct sockaddr *)&remote->addr;
-	const struct sockaddr *src = (const struct sockaddr *)&remote->via;
+	const struct sockaddr_storage *dst = &remote->addr;
+	const struct sockaddr_storage *src = &remote->via;
 	knot_request_t *req = knot_request_make(re.mm, dst, src, query, NULL, 0);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
@@ -249,7 +249,7 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 	}
 
 	/* Execute the request. */
-	int timeout = 1000 * conf->cache.srv_tcp_reply_timeout;
+	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 	ret = knot_requestor_exec(&re, req, timeout);
 
 	knot_request_free(req, re.mm);
@@ -302,7 +302,7 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	assert(zone);
 	assert(requests);
 
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, *requests) {
 		knot_request_t *req = node->d;
 		forward_request(conf, zone, req);
@@ -322,12 +322,11 @@ static void send_update_response(conf_t *conf, const zone_t *zone, knot_request_
 		}
 
 		if (net_is_stream(req->fd)) {
-			int timeout = 1000 * conf->cache.srv_tcp_reply_timeout;
 			net_dns_tcp_send(req->fd, req->resp->wire, req->resp->size,
-			                 timeout);
+			                 conf->cache.srv_tcp_remote_io_timeout);
 		} else {
 			net_dgram_send(req->fd, req->resp->wire, req->resp->size,
-			               (struct sockaddr *)&req->remote);
+			               &req->remote);
 		}
 	}
 }
@@ -343,7 +342,7 @@ static void free_request(knot_request_t *req)
 
 static void send_update_responses(conf_t *conf, const zone_t *zone, list_t *updates)
 {
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
 		knot_request_t *req = node->d;
 		send_update_response(conf, zone, req);
@@ -354,7 +353,7 @@ static void send_update_responses(conf_t *conf, const zone_t *zone, list_t *upda
 
 static int init_update_responses(list_t *updates)
 {
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
 		knot_request_t *req = node->d;
 		req->resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);

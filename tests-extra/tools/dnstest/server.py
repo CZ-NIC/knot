@@ -50,6 +50,7 @@ class ZoneDnssec(object):
         self.propagation_delay = None
         self.rrsig_lifetime = None
         self.rrsig_refresh = None
+        self.rrsig_prerefresh = None
         self.nsec3 = None
         self.nsec3_iters = None
         self.nsec3_opt_out = None
@@ -57,6 +58,7 @@ class ZoneDnssec(object):
         self.nsec3_salt_len = None
         self.ksk_sbm_check = []
         self.ksk_sbm_check_interval = None
+        self.ds_push = None
         self.ksk_shared = None
         self.cds_publish = None
         self.offline_ksk = None
@@ -111,7 +113,6 @@ class Server(object):
         self.valgrind = []
         self.start_params = None
         self.ctl_params = None
-        self.compile_cmd = None
 
         self.data_dir = None
 
@@ -120,6 +121,7 @@ class Server(object):
         self.version = None
 
         self.addr = None
+        self.addr_extra = list()
         self.port = 0 # Needed for keymgr when port not yet generated
         self.fixed_port = False
         self.ctlport = None
@@ -131,18 +133,21 @@ class Server(object):
 
         self.zones = dict()
 
-        self.tcp_reply_timeout = None
-        self.max_udp_payload = None
-        self.max_udp4_payload = None
-        self.max_udp6_payload = None
+        self.tcp_reuseport = None
+        self.tcp_remote_io_timeout = None
+        self.udp_max_payload = None
+        self.udp_max_payload_ipv4 = None
+        self.udp_max_payload_ipv6 = None
         self.disable_any = None
         self.disable_notify = None
+        self.semantic_check = True
         self.zonefile_sync = "1d"
         self.journal_db_size = 20 * 1024 * 1024
-        self.max_journal_usage = 5 * 1024 * 1024
+        self.journal_max_usage = 5 * 1024 * 1024
         self.timer_db_size = 1 * 1024 * 1024
         self.kasp_db_size = 10 * 1024 * 1024
         self.zone_size_limit = None
+        self.serial_policy = None
 
         self.inquirer = None
 
@@ -220,9 +225,6 @@ class Server(object):
         try:
             if os.path.isfile(self.valgrind_log):
                 copyfile(self.valgrind_log, self.valgrind_log + str(int(time.time())))
-
-            if self.compile_cmd:
-                self.ctl(self.compile_cmd)
 
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
@@ -483,7 +485,7 @@ class Server(object):
             if bufsize:
                 payload = int(bufsize)
             else:
-                payload = 1280
+                payload = 1232
             dig_flags += " +bufsize=%i" % payload
 
             if nsid:
@@ -638,8 +640,15 @@ class Server(object):
 
         return _serial
 
-    def zones_wait(self, zone_list, serials=None, equal=False, greater=True):
+    def zones_wait(self, zone_list, serials=None, serials_zfile=False, equal=False, greater=True):
         new_serials = dict()
+
+        if serials_zfile:
+            if serials is not None:
+                raise Exception('serials_zfile incompatible with serials')
+            serials = dict()
+            for zone in zone_list:
+                serials[zone.name] = self.zones[zone.name].zfile.get_soa_serial()
 
         for zone in zone_list:
             old_serial = serials[zone.name] if serials else None
@@ -657,7 +666,7 @@ class Server(object):
 
         self.zones[zone.name].zfile.backup()
 
-    def zone_verify(self, zone, bind_check=None, ldns_check=None):
+    def zone_verify(self, zone, bind_check=True, ldns_check=True):
         zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.dnssec_verify(bind_check, ldns_check)
@@ -791,7 +800,7 @@ class Bind(Server):
         return (tcp and udp and ctltcp)
 
     def flush(self):
-        self.ctl("flush")
+        self.ctl("sync")
         time.sleep(Server.START_WAIT)
 
     def _str(self, conf, name, value):
@@ -965,10 +974,11 @@ class Knot(Server):
         return (tcp and udp)
 
     def flush(self, zone=None):
+        force = "-f " if str(self.zonefile_sync)[0] == '-' else ""
         if zone:
-            self.ctl("zone-flush %s" % zone.name)
+            self.ctl("%szone-flush %s" % (force, zone.name))
         else:
-            self.ctl("zone-flush")
+            self.ctl("%szone-flush" % force)
         time.sleep(Server.START_WAIT)
 
     def key_gen(self, zone_name, **new_params):
@@ -1047,10 +1057,14 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         s.item_str("rundir", self.dir)
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
-        self._str(s, "tcp-reply-timeout", self.tcp_reply_timeout)
-        self._str(s, "max-udp-payload", self.max_udp_payload)
-        self._str(s, "max-ipv4-udp-payload", self.max_udp4_payload)
-        self._str(s, "max-ipv6-udp-payload", self.max_udp6_payload)
+        for addr in self.addr_extra:
+            s.item_str("listen", "%s@%s" % (addr, self.port))
+        self._str(s, "tcp-remote-io-timeout", self.tcp_remote_io_timeout)
+        self._str(s, "tcp-io-timeout", "500")
+        self._bool(s, "tcp-reuseport", self.tcp_reuseport)
+        self._str(s, "udp-max-payload", self.udp_max_payload)
+        self._str(s, "udp-max-payload-ipv4", self.udp_max_payload_ipv4)
+        self._str(s, "udp-max-payload-ipv6", self.udp_max_payload_ipv6)
         s.end()
 
         s.begin("control")
@@ -1102,7 +1116,7 @@ class Knot(Server):
                     if slave.tsig:
                         s.item_str("key", slave.tsig.name)
                     servers.add(slave.name)
-            for parent in z.dnssec.ksk_sbm_check:
+            for parent in z.dnssec.ksk_sbm_check + [ z.dnssec.ds_push ] if z.dnssec.ds_push else z.dnssec.ksk_sbm_check:
                 if parent.name not in servers:
                     if not have_remote:
                         s.begin("remote")
@@ -1110,7 +1124,7 @@ class Knot(Server):
                     s.id_item("id", parent.name)
                     s.item_str("address", "%s@%s" % (parent.addr, parent.port))
                     servers.add(parent.name)
-                    
+
         if have_remote:
             s.end()
 
@@ -1202,6 +1216,7 @@ class Knot(Server):
             self._str(s, "propagation-delay", z.dnssec.propagation_delay)
             self._str(s, "rrsig-lifetime", z.dnssec.rrsig_lifetime)
             self._str(s, "rrsig-refresh", z.dnssec.rrsig_refresh)
+            self._str(s, "rrsig-pre-refresh", z.dnssec.rrsig_prerefresh)
             self._bool(s, "nsec3", z.dnssec.nsec3)
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
             self._bool(s, "nsec3-opt-out", z.dnssec.nsec3_opt_out)
@@ -1209,22 +1224,29 @@ class Knot(Server):
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
             if len(z.dnssec.ksk_sbm_check) > 0:
                 s.item("ksk-submission", z.name)
+            if z.dnssec.ds_push:
+                self._str(s, "ds-push", z.dnssec.ds_push.name)
             self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
             self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
             self._str(s, "offline-ksk", z.dnssec.offline_ksk)
+            self._str(s, "signing-threads", "4")
         if have_policy:
             s.end()
+
+        s.begin("database")
+        s.item_str("storage", self.dir)
+        s.item_str("kasp-db", self.keydir)
+        s.item_str("kasp-db-max-size", self.kasp_db_size)
+        s.item_str("journal-db-max-size", self.journal_db_size)
+        s.item_str("timer-db-max-size", self.timer_db_size)
+        s.end()
 
         s.begin("template")
         s.id_item("id", "default")
         s.item_str("storage", self.dir)
         s.item_str("zonefile-sync", self.zonefile_sync)
-        s.item_str("kasp-db", self.keydir)
-        s.item_str("max-kasp-db-size", self.kasp_db_size)
-        s.item_str("max-journal-db-size", self.journal_db_size)
-        s.item_str("max-journal-usage", self.max_journal_usage)
-        s.item_str("max-timer-db-size", self.timer_db_size)
-        s.item_str("semantic-checks", "on")
+        s.item_str("journal-max-usage", self.journal_max_usage)
+        s.item_str("semantic-checks", "on" if self.semantic_check else "off")
         if self.disable_any:
             s.item_str("disable-any", "on")
         if len(self.modules) > 0:
@@ -1235,7 +1257,7 @@ class Knot(Server):
                 modules += module.get_conf_ref()
             s.item("global-module", "[%s]" % modules)
         if self.zone_size_limit:
-            s.item("max-zone-size", self.zone_size_limit)
+            s.item("zone-max-size", self.zone_size_limit)
         s.end()
 
         s.begin("zone")
@@ -1271,6 +1293,9 @@ class Knot(Server):
             acl += "acl_local, acl_test"
             s.item("acl", "[%s]" % acl)
 
+            if self.serial_policy is not None:
+                s.item_str("serial-policy", self.serial_policy)
+
             s.item_str("journal-content", z.journal_content)
 
             if z.journal_content == "all" and z.masters:
@@ -1300,23 +1325,6 @@ class Knot(Server):
         self.ctl_params = ["-c", self.confile, "-t", "15"]
 
         return s.conf
-
-class Nsd(Server):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if not params.nsd_bin:
-            raise Skip("No NSD")
-        self.daemon_bin = params.nsd_bin
-        self.control_bin = params.nsd_ctl
-
-    def get_config(self):
-        self.start_params = ["-c", self.confile, "-d"]
-        self.ctl_params = ["-c", self.confile]
-        self.compile_cmd = "rebuild"
-
-    def flush(self):
-        return False # Not supported
 
 class Dummy(Server):
     ''' Dummy name server. '''

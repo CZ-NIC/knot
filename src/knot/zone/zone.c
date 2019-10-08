@@ -33,7 +33,6 @@
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
-#include "contrib/trim.h"
 #include "contrib/mempattern.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/ucw/mempool.h"
@@ -44,7 +43,7 @@
 
 static void free_ddns_queue(zone_t *zone)
 {
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, zone->ddns_queue) {
 		knot_request_free(node->d, NULL);
 	}
@@ -68,6 +67,9 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	bool force = zone->flags & ZONE_FORCE_FLUSH;
 	zone->flags &= ~ZONE_FORCE_FLUSH;
 
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	int64_t sync_timeout = conf_int(&val);
+
 	if (zone_contents_is_empty(zone->contents)) {
 		if (allow_empty_zone && journal_is_existing(j)) {
 			ret = journal_set_flushed(j);
@@ -78,8 +80,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	}
 
 	/* Check for disabled zonefile synchronization. */
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	if (conf_int(&val) < 0 && !force) {
+	if (sync_timeout < 0 && !force) {
 		log_zone_warning(zone->name, "zonefile synchronization disabled, "
 		                             "use force command to override it");
 		return KNOT_EOK;
@@ -89,7 +90,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);
 	if (!force && zone->zonefile.exists && zone->zonefile.serial == serial_to &&
-	    !zone->zonefile.resigned) {
+	    !zone->zonefile.retransfer && !zone->zonefile.resigned) {
 		ret = KNOT_EOK; /* No differences. */
 		goto flush_journal_replan;
 	}
@@ -130,6 +131,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 	zone->zonefile.mtime = st.st_mtim;
 	zone->zonefile.serial = serial_to;
 	zone->zonefile.resigned = false;
+	zone->zonefile.retransfer = false;
 
 	/* Flush journal. */
 	if (journal_is_existing(j)) {
@@ -139,14 +141,9 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 		}
 	}
 
-	/* Trim extra heap. */
-	mem_trim();
-
 flush_journal_replan:
 	/* Plan next journal flush after proper period. */
 	zone->timers.last_flush = time(NULL);
-	val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
 	if (sync_timeout > 0) {
 		time_t next_flush = zone->timers.last_flush + sync_timeout;
 		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, 0,
@@ -233,20 +230,20 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
-int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change)
+int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset_t *extra)
 {
 	if (conf == NULL || zone == NULL || change == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = journal_insert(zone_journal(zone), change);
+	int ret = journal_insert(zone_journal(zone), change, extra);
 	if (ret == KNOT_EBUSY) {
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = flush_journal(conf, zone, true);
 		if (ret == KNOT_EOK) {
-			ret = journal_insert(zone_journal(zone), change);
+			ret = journal_insert(zone_journal(zone), change, extra);
 		}
 	}
 
@@ -378,9 +375,7 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t remote = conf_remote(conf, &masters, i);
-			if (sockaddr_net_match((struct sockaddr *)&remote.addr,
-			                       (struct sockaddr *)zone->preferred_master,
-			                       -1)) {
+			if (sockaddr_net_match(&remote.addr, zone->preferred_master, -1)) {
 				*master = remote;
 				pthread_mutex_unlock(&zone->preferred_lock);
 				return KNOT_EOK;
@@ -393,6 +388,18 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 	pthread_mutex_unlock(&zone->preferred_lock);
 
 	return KNOT_ENOENT;
+}
+
+static void log_try_addr_error(const zone_t *zone, const char *remote_name,
+                               const struct sockaddr_storage *remote_addr,
+                               const char *err_str, int ret)
+{
+	char addr_str[SOCKADDR_STRLEN] = { 0 };
+	sockaddr_tostr(addr_str, sizeof(addr_str), remote_addr);
+	log_zone_debug(zone->name, "%s%s%s, address %s, failed (%s)", err_str,
+	               (remote_name != NULL ? ", remote " : ""),
+	               (remote_name != NULL ? remote_name : ""),
+	               addr_str, knot_strerror(ret));
 }
 
 int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
@@ -410,6 +417,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		if (ret == KNOT_EOK) {
 			return ret;
 		}
+
+		log_try_addr_error(zone, NULL, &preferred.addr, err_str, ret);
 	}
 
 	/* Try all the other servers. */
@@ -424,9 +433,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t master = conf_remote(conf, &masters, i);
 			if (preferred.addr.ss_family != AF_UNSPEC &&
-			    sockaddr_net_match((struct sockaddr *)&master.addr,
-			                       (struct sockaddr *)&preferred.addr,
-			                       -1)) {
+			    sockaddr_net_match(&master.addr, &preferred.addr, -1)) {
 				preferred.addr.ss_family = AF_UNSPEC;
 				continue;
 			}
@@ -437,12 +444,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 				break;
 			}
 
-			char addr_str[SOCKADDR_STRLEN] = { 0 };
-			sockaddr_tostr(addr_str, sizeof(addr_str),
-			               (struct sockaddr *)&master.addr);
-			log_zone_debug(zone->name, "%s, remote %s, address %s, failed (%s)",
-			               err_str, conf_str(&masters), addr_str,
-			               knot_strerror(ret));
+			log_try_addr_error(zone, conf_str(&masters), &master.addr,
+			                   err_str, ret);
 		}
 
 		if (!success) {
@@ -492,12 +495,7 @@ int zone_set_master_serial(zone_t *zone, uint32_t serial)
 
 int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 {
-	int ret = kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
-	if (ret == KNOT_ENOENT) {
-		*serial = zone_contents_serial(zone->contents);
-		return KNOT_EOK;
-	}
-	return ret;
+	return kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
 int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
@@ -505,7 +503,20 @@ int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 	return kasp_db_store_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
 }
 
-bool zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
+int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 {
-	return kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial) == KNOT_EOK;
+	return kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+}
+
+int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial)
+{
+	int ret = KNOT_EOK;
+	*serial = zone_contents_serial(zone->contents);
+
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	if (conf_bool(&val)) {
+		ret = zone_get_master_serial(zone, serial);
+	}
+
+	return ret;
 }

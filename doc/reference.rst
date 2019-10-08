@@ -31,13 +31,15 @@ the following symbols:
 - [ ] – Optional value
 - \| – Choice
 
-There are 12 main sections (``module``, ``server``, ``control``, ``log``,
-``statistics``, ``keystore``, ``policy``, ``key``, ``acl``, ``remote``,
-``template``, and ``zone``) and module sections with the ``mod-`` prefix.
-Most of the sections (excluding ``server``, ``control``, and ``statistics``)
-are sequences of settings blocks. Each settings block begins with a unique identifier,
-which can be used as a reference from other sections (such identifier
-must be defined in advance).
+The configuration consists of several fixed sections and optional module
+sections. There are 14 fixed sections (``module``, ``server``, ``key``, ``acl``,
+``control``, ``statistics``, ``database``, ``keystore``, ``submission``,
+``policy``, ``remote``, ``template``, ``zone``, ``log``).
+Module sections are prefixed with the ``mod-`` prefix (e.g. ``mod-stats``).
+
+Most of the sections (e.g. ``zone``) are sequences of settings blocks. Each
+settings block begins with a unique identifier, which can be used as a reference
+from other sections (such an identifier must be defined in advance).
 
 A multi-valued item can be specified either as a YAML sequence::
 
@@ -134,16 +136,22 @@ General options related to the server.
      tcp-workers: INT
      background-workers: INT
      async-start: BOOL
-     tcp-handshake-timeout: TIME
      tcp-idle-timeout: TIME
-     tcp-reply-timeout: TIME
-     max-tcp-clients: INT
-     max-udp-payload: SIZE
-     max-ipv4-udp-payload: SIZE
-     max-ipv6-udp-payload: SIZE
+     tcp-io-timeout: INT
+     tcp-remote-io-timeout: INT
+     tcp-max-clients: INT
+     tcp-reuseport: BOOL
+     udp-max-payload: SIZE
+     udp-max-payload-ipv4: SIZE
+     udp-max-payload-ipv6: SIZE
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      listen: ADDR[@INT] ...
+
+.. CAUTION::
+   When you change configuration parameters dynamically or via configuration file
+   reload, some parameters in the Server section require restarting the Knot server
+   so as the change take effect. See below for the details.
 
 .. _server_identity:
 
@@ -152,7 +160,7 @@ identity
 
 An identity of the server returned in the response to the query for TXT
 record ``id.server.`` or ``hostname.bind.`` in the CHAOS class (:rfc:`4892`).
-Set empty value to disable.
+Set to an empty value to disable.
 
 *Default:* FQDN hostname
 
@@ -163,7 +171,7 @@ version
 
 A version of the server software returned in the response to the query
 for TXT record ``version.server.`` or ``version.bind.`` in the CHAOS
-class (:rfc:`4892`). Set empty value to disable.
+class (:rfc:`4892`). Set to an empty value to disable.
 
 *Default:* server version
 
@@ -172,7 +180,7 @@ class (:rfc:`4892`). Set empty value to disable.
 nsid
 ----
 
-A DNS name server identifier (:rfc:`5001`). Set empty value to disable.
+A DNS name server identifier (:rfc:`5001`). Set to an empty value to disable.
 
 *Default:* FQDN hostname
 
@@ -182,6 +190,9 @@ rundir
 ------
 
 A path for storing run-time data (PID file, unix sockets, etc.).
+
+Depending on the usage of this parameter, its change may require restart of the Knot
+server to take effect.
 
 *Default:* ``${localstatedir}/run/knot`` (configured with ``--with-rundir=path``)
 
@@ -194,6 +205,8 @@ A system user with an optional system group (``user:group``) under which the
 server is run after starting and binding to interfaces. Linux capabilities
 are employed if supported.
 
+Change of this parameter requires restart of the Knot server to take effect.
+
 *Default:* root:root
 
 .. _server_pidfile:
@@ -202,6 +215,8 @@ pidfile
 -------
 
 A PID file location.
+
+Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* :ref:`rundir<server_rundir>`/knot.pid
 
@@ -213,7 +228,9 @@ udp-workers
 A number of UDP workers (threads) used to process incoming queries
 over UDP.
 
-*Default:* auto-estimated optimal value based on the number of online CPUs
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* equal to the number of online CPUs
 
 .. _server_tcp-workers:
 
@@ -223,7 +240,9 @@ tcp-workers
 A number of TCP workers (threads) used to process incoming queries
 over TCP.
 
-*Default:* auto-estimated optimal value based on the number of online CPUs
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* equal to the number of online CPUs, default value is at least 10
 
 .. _server_background-workers:
 
@@ -233,7 +252,9 @@ background-workers
 A number of workers (threads) used to execute background operations (zone
 loading, zone updates, etc.).
 
-*Default:* auto-estimated optimal value based on the number of online CPUs
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* equal to the number of online CPUs, default value is at most 10
 
 .. _server_async-start:
 
@@ -245,73 +266,102 @@ responding immediately with SERVFAIL answers until the zone loads.
 
 *Default:* off
 
-.. _server_tcp-handshake-timeout:
-
-tcp-handshake-timeout
----------------------
-
-Maximum time between newly accepted TCP connection and the first query.
-This is useful to disconnect inactive connections faster than connections
-that already made at least 1 meaningful query.
-
-*Default:* 5
-
 .. _server_tcp-idle-timeout:
 
 tcp-idle-timeout
 ----------------
 
-Maximum idle time between requests on a TCP connection. This also limits
-receiving of a single query, each query must be received in this time limit.
+Maximum idle time (in seconds) between requests on an inbound TCP connection.
+It means if there is no activity on an inbound TCP connection during this limit,
+the connection is closed by the server.
 
-*Default:* 20
+*Minimum:* 1 s
 
-.. _server_tcp-reply-timeout:
+*Default:* 10 s
 
-tcp-reply-timeout
------------------
+.. _server_tcp-io-timeout:
 
-Maximum time to wait for an outgoing connection or for a reply to an issued
-request (SOA, NOTIFY, AXFR...).
+tcp-io-timeout
+--------------
 
-*Default:* 10
+Maximum time (in milliseconds) to receive or send one DNS message over an inbound
+TCP connection. It means this limit applies to normal DNS queries and replies,
+incoming DDNS, and outgoing zone transfers.
+Set to 0 for infinity.
 
-.. _server_max-tcp-clients:
+*Default:* 200 ms
 
-max-tcp-clients
+.. _server_tcp-remote-io-timeout:
+
+tcp-remote-io-timeout
+---------------------
+
+Maximum time (in milliseconds) to receive or send one DNS message over an outbound
+TCP connection which has already been established to a configured remote server.
+It means this limit applies to incoming zone transfers, sending NOTIFY,
+DDNS forwarding, and DS check or push. This timeout includes the time needed
+for a network round-trip and for a query processing by the remote.
+Set to 0 for infinity.
+
+*Default:* 5000 ms
+
+.. _server_tcp-reuseport:
+
+tcp-reuseport
+-------------
+
+If enabled, each TCP worker listens on its own socket and the OS kernel
+socket load balancing is emloyed using SO_REUSEPORT (or SO_REUSEPORT_LB
+on FreeBSD). Due to the lack of one shared socket, the server can offer
+higher response rate processing over TCP. However, in the case of
+time-consuming requests (e.g. zone transfers of a TLD zone), enabled reuseport
+may result in delayed or not being responded client requests. So it is
+advisable to use this option on slave servers.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* off
+
+.. _server_tcp-max-clients:
+
+tcp-max-clients
 ---------------
 
 A maximum number of TCP clients connected in parallel, set this below the file
 descriptor limit to avoid resource exhaustion.
 
-*Default:* 100
+.. NOTE::
+   It is advisable to adjust the maximum number of open files per process in your
+   operating system configuration.
 
-.. _server_max-udp-payload:
+*Default:* one half of the file descriptor limit for the server process
 
-max-udp-payload
+.. _server_udp-max-payload:
+
+udp-max-payload
 ---------------
 
 Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
 
-*Default:* 4096
+*Default:* 1232
 
-.. _server_max-ipv4-udp-payload:
+.. _server_udp-max-payload-ipv4:
 
-max-ipv4-udp-payload
+udp-max-payload-ipv4
 --------------------
 
 Maximum EDNS0 UDP payload size for IPv4.
 
-*Default:* 4096
+*Default:* 1232
 
-.. _server_max-ipv6-udp-payload:
+.. _server_udp-max-payload-ipv6:
 
-max-ipv6-udp-payload
+udp-max-payload-ipv6
 --------------------
 
 Maximum EDNS0 UDP payload size for IPv6.
 
-*Default:* 4096
+*Default:* 1232
 
 .. _server_edns-client-subnet:
 
@@ -344,6 +394,8 @@ Optional port specification (default is 53) can be appended to each address
 using ``@`` separator. Use ``0.0.0.0`` for all configured IPv4 addresses or
 ``::`` for all configured IPv6 addresses. Non-local address binding is
 automatically enabled if supported by the operating system.
+
+Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
@@ -560,7 +612,8 @@ A UNIX socket path where the server listens for control commands.
 timeout
 -------
 
-Maximum time the control socket operations can take. Set 0 for infinity.
+Maximum time (in seconds) the control socket operations can take.
+Set to 0 for infinity.
 
 *Default:* 5
 
@@ -607,6 +660,130 @@ instead of file replacement.
 
 *Default:* off
 
+.. _Database section:
+
+Database section
+================
+
+Configuration of databases for zone contents, DNSSEC metadata, or event timers.
+
+::
+
+ database:
+     storage: STR
+     journal-db: STR
+     journal-db-mode: robust | asynchronous
+     journal-db-max-size: SIZE
+     kasp-db: STR
+     kasp-db-max-size: SIZE
+     timer-db: STR
+     timer-db-max-size: SIZE
+
+.. _database_storage:
+
+storage
+-------
+
+A data directory for storing journal, KASP, and timer databases.
+
+*Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
+
+.. _database_journal-db:
+
+journal-db
+----------
+
+An explicit specification of the persistent journal database directory.
+Non-absolute path (i.e. not starting with ``/``) is relative to
+:ref:`storage<database_storage>`.
+
+*Default:* :ref:`storage<database_storage>`/journal
+
+.. _database_journal-db-mode:
+
+journal-db-mode
+---------------
+
+Specifies journal LMDB backend configuration, which influences performance
+and durability.
+
+Possible values:
+
+- ``robust`` – The journal database disk sychronization ensures database
+  durability but is generally slower.
+- ``asynchronous`` – The journal database disk synchronization is optimized for
+  better performance at the expense of lower database durability in the case of
+  a crash. This mode is recommended on slave nodes with many zones.
+
+*Default:* robust
+
+.. _database_journal-db-max-size:
+
+journal-db-max-size
+-------------------
+
+The hard limit for the journal database maximum size. There is no cleanup logic
+in journal to recover from reaching this limit. Journal simply starts refusing
+changes across all zones. Decreasing this value has no effect if it is lower
+than the actual database file size.
+
+It is recommended to limit :ref:`journal-max-usage<zone_journal-max-usage>`
+per-zone instead of :ref:`journal-db-max-size<database_journal-db-max-size>`
+in most cases. Please keep this value larger than the sum of all zones'
+journal usage limits. See more details regarding
+:ref:`journal behaviour<Journal behaviour>`.
+
+.. NOTE::
+   This value also influences server's usage of virtual memory.
+
+*Default:* 20 GiB (1 GiB for 32-bit)
+
+.. _database_kasp-db:
+
+kasp-db
+-------
+
+An explicit specification of the KASP database directory.
+Non-absolute path (i.e. not starting with ``/``) is relative to
+:ref:`storage<database_storage>`.
+
+*Default:* :ref:`storage<database_storage>`/keys
+
+.. _database_kasp-db-max-size:
+
+kasp-db-max-size
+----------------
+
+The hard limit for the KASP database maximum size.
+
+.. NOTE::
+   This value also influences server's usage of virtual memory.
+
+*Default:* 500 MiB
+
+.. _database_timer-db:
+
+timer-db
+--------
+
+An explicit specification of the persistent timer database directory.
+Non-absolute path (i.e. not starting with ``/``) is relative to
+:ref:`storage<database_storage>`.
+
+*Default:* :ref:`storage<database_storage>`/timers
+
+.. _database_timer-db-max-size:
+
+timer-db-max-size
+-----------------
+
+The hard limit for the timer database maximum size.
+
+.. NOTE::
+   This value also influences server's usage of virtual memory.
+
+*Default:* 100 MiB
+
 .. _Keystore section:
 
 Keystore section
@@ -649,7 +826,7 @@ config
 ------
 
 A backend specific configuration. A directory with PEM files (the path can
-be specified as a relative path to :ref:`kasp-db<template_kasp-db>`) or
+be specified as a relative path to :ref:`kasp-db<database_kasp-db>`) or
 a configuration string for PKCS #11 storage (`<pkcs11-url> <module-path>`).
 
 .. NOTE::
@@ -657,7 +834,7 @@ a configuration string for PKCS #11 storage (`<pkcs11-url> <module-path>`).
 
      "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
 
-*Default:* :ref:`kasp-db<template_kasp-db>`/keys
+*Default:* :ref:`kasp-db<database_kasp-db>`/keys
 
 .. _Submission section:
 
@@ -711,8 +888,9 @@ case of the KSK submission.
 timeout
 -------
 
-After this period, the KSK submission is automatically considered successful, even
-if all the checks were negative or no parents are configured. Set 0 for infinity.
+After this time period (in seconds) the KSK submission is automatically considered
+successful, even if all the checks were negative or no parents are configured.
+Set to 0 for infinity.
 
 *Default:* 0
 
@@ -741,6 +919,7 @@ DNSSEC policy configuration.
      propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
+     rrsig-pre-refresh: TIME
      nsec3: BOOL
      nsec3-iterations: INT
      nsec3-opt-out: BOOL
@@ -748,6 +927,7 @@ DNSSEC policy configuration.
      nsec3-salt-lifetime: TIME
      signing-threads: INT
      ksk-submission: submission_id
+     ds-push: remote_id
      cds-cdnskey-publish: none | delete-dnssec | rollover | always | double-ds
      offline-ksk: BOOL
 
@@ -764,9 +944,12 @@ keystore
 --------
 
 A :ref:`reference<keystore_id>` to a keystore holding private key material
-for zones. A special *default* value can be used for the default keystore settings.
+for zones.
 
-*Default:* default
+*Default:* an imaginary keystore with all default values
+
+.. NOTE::
+   A configured keystore called "default" won't be used unless explicitly referenced.
 
 .. _policy_manual:
 
@@ -848,6 +1031,10 @@ A TTL value for DNSKEY records added into zone apex.
 .. NOTE::
    Has infuence over ZSK key lifetime.
 
+.. WARNING::
+   Ensure all DNSKEYs with updated TTL are propagated before any subsequent
+   DNSKEY rollover starts.
+
 *Default:* zone SOA TTL
 
 .. _policy_zone-max-ttl:
@@ -855,11 +1042,13 @@ A TTL value for DNSKEY records added into zone apex.
 zone-max-ttl
 ------------
 
-Maximal TTL value among all the records in zone.
+Declare (override) maximal TTL value among all the records in zone.
 
 .. NOTE::
    It's generally recommended to override the maximal TTL computation by setting this
-   explicitly whenever possible. It's required for :ref:`DNSSEC Offline KSK`.
+   explicitly whenever possible. It's required for :ref:`DNSSEC Offline KSK` and
+   really reasonable when records are generated dynamically
+   (e.g. by a :ref:`module<mod-synthrecord>`).
 
 *Default:* computed after zone is loaded
 
@@ -868,9 +1057,13 @@ Maximal TTL value among all the records in zone.
 zsk-lifetime
 ------------
 
-A period between ZSK publication and the next rollover initiation.
+A period between ZSK activation and the next rollover initiation.
 
 .. NOTE::
+   More exactly, this period is measured since a ZSK is activated,
+   and after this, a new ZSK is generated to replace it within
+   following roll-over.
+
    ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
 
    Zero (aka infinity) value causes no ZSK rollover as a result.
@@ -882,7 +1075,7 @@ A period between ZSK publication and the next rollover initiation.
 ksk-lifetime
 ------------
 
-A period between KSK publication and the next rollover initiation.
+A period between KSK activation and the next rollover initiation.
 
 .. NOTE::
    KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
@@ -925,9 +1118,21 @@ A validity period of newly issued signatures.
 rrsig-refresh
 -------------
 
-A period how long before a signature expiration the signature will be refreshed.
+A period how long at least before a signature expiration the signature will be refreshed,
+in order to prevent expired RRSIGs on slaves or resolvers' caches.
 
 *Default:* 7 days
+
+.. _policy_rrsig-pre-refresh:
+
+rrsig-pre-refresh
+-----------------
+
+A period how long at most before a signature refresh time the signature might be refreshed,
+in order to refresh RRSIGs in bigger batches on a frequently updated zone
+(avoid re-sign event too often).
+
+*Default:* 1 hour
 
 .. _policy_nsec:
 
@@ -988,7 +1193,28 @@ ksk-submission
 --------------
 
 A reference to :ref:`submission<submission_id>` section holding parameters of
-KSK submittion checks.
+KSK submission checks.
+
+*Default:* not set
+
+.. _policy_ds-push:
+
+ds-push
+-------
+
+An optional :ref:`reference<remote_id>` to authoritative DNS server of the
+parent's zone. The remote server must be configured to accept DS record
+updates via DDNS. Whenever a CDS record in the local zone is changed, the
+corresponding DS record is sent as a dynamic update (DDNS) to the parent
+DNS server. It's possible to manage both child and parent zones by the same
+Knot DNS server.
+
+.. NOTE::
+   This feature requires :ref:`cds-cdnskey-publish<policy_cds-cdnskey-publish>`
+   not to be set to ``none``.
+
+.. NOTE::
+   Module :ref:`Onlinesign<mod-onlinesign>` doesn't support DS push.
 
 *Default:* not set
 
@@ -1065,11 +1291,15 @@ address
 -------
 
 An ordered list of destination IP addresses which are used for communication
-with the remote server. The addresses are tried in sequence unless the
-operation is successful. Optional destination port (default is 53)
+with the remote server. The addresses are tried in sequence until the
+remote is reached. Optional destination port (default is 53)
 can be appended to the address using ``@`` separator.
 
 *Default:* not set
+
+.. NOTE::
+   If the remote is contacted and it refuses to perform requested action,
+   no more addresses will be tried for this remote.
 
 .. _remote_via:
 
@@ -1097,22 +1327,15 @@ the communication with the remote server.
 Template section
 ================
 
-A template is a shareable zone setting which can be used for configuration of
-many zones in one place. A special default template (with the *default* identifier)
-can be used for global querying configuration or as an implicit configuration
+A template is shareable zone settings, which can simplify configuration by
+reducing duplicates. A special default template (with the *default* identifier)
+can be used for global zone configuration or as an implicit configuration
 if a zone doesn't have another template specified.
 
 ::
 
  template:
    - id: STR
-     timer-db: STR
-     max-timer-db-size: SIZE
-     journal-db: STR
-     journal-db-mode: robust | asynchronous
-     max-journal-db-size: SIZE
-     kasp-db: STR
-     max-kasp-db-size: SIZE
      global-module: STR/STR ...
      # All zone options (excluding 'template' item)
 
@@ -1122,112 +1345,6 @@ id
 --
 
 A template identifier.
-
-.. _template_timer-db:
-
-timer-db
---------
-
-Specifies a path of the persistent timer database. The path can be specified
-as a relative path to the *default* template :ref:`storage<zone_storage>`.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* :ref:`storage<zone_storage>`/timers
-
-.. _template_max-timer-db-size:
-
-max-timer-db-size
------------------
-
-Hard limit for the timer database maximum size.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* 100 MiB
-
-.. _template_journal-db:
-
-journal-db
-----------
-
-Specifies a path of the persistent journal database. The path can be specified
-as a relative path to the *default* template :ref:`storage<zone_storage>`.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* :ref:`storage<zone_storage>`/journal
-
-.. _template_journal-db-mode:
-
-journal-db-mode
----------------
-
-Specifies journal LMDB backend configuration, which influences performance
-and durability.
-
-Possible values:
-
-- ``robust`` – The journal DB disk sychronization ensures DB durability but is
-  generally slower.
-- ``asynchronous`` – The journal DB disk synchronization is optimized for
-  better performance at the expense of lower DB durability; this mode is
-  recommended only on slave nodes with many zones.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* robust
-
-.. _template_max-journal-db-size:
-
-max-journal-db-size
--------------------
-
-Hard limit for the common journal DB. There is no cleanup logic in journal
-to recover from reaching this limit: journal simply starts refusing changes
-across all zones. Decreasing this value has no effect if lower than actual
-DB file size.
-
-It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
-per-zone instead of max-journal-size in most cases. Please keep this value
-larger than the sum of all zones' journal usage limits. See more details
-regarding :ref:`journal behaviour<Journal behaviour>`.
-
-This value also influences server's usage of virtual memory.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* 20 GiB (1 GiB for 32-bit)
-
-.. _template_kasp-db:
-
-kasp-db
--------
-
-A KASP database path. Non-absolute path is relative to
-:ref:`storage<zone_storage>`.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* :ref:`storage<zone_storage>`/keys
-
-.. _template_max-kasp-db-size:
-
-max-kasp-db-size
-----------------
-
-Hard limit for the KASP database maximum size.
-
-.. NOTE::
-   This option is only available in the *default* template.
-
-*Default:* 500 MiB
 
 .. _template_global-module:
 
@@ -1265,15 +1382,14 @@ Definition of zones served by the server.
      zonefile-sync: TIME
      zonefile-load: none | difference | difference-no-serial | whole
      journal-content: none | changes | all
-     max-journal-usage: SIZE
-     max-journal-depth: INT
-     max-zone-size : SIZE
+     journal-max-usage: SIZE
+     journal-max-depth: INT
+     zone-max-size : SIZE
      dnssec-signing: BOOL
      dnssec-policy: STR
-     request-edns-option: INT:[HEXSTR]
      serial-policy: increment | unixtime | dateserial
-     min-refresh-interval: TIME
-     max-refresh-interval: TIME
+     refresh-min-interval: TIME
+     refresh-max-interval: TIME
      module: STR/STR ...
 
 .. _zone_domain:
@@ -1297,7 +1413,7 @@ A :ref:`reference<template_id>` to a configuration template.
 storage
 -------
 
-A data directory for storing zone files, journal database, and timers database.
+A data directory for storing zone files.
 
 *Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 
@@ -1306,8 +1422,9 @@ A data directory for storing zone files, journal database, and timers database.
 file
 ----
 
-A path to the zone file. Non-absolute path is relative to
-:ref:`storage<zone_storage>`. It is also possible to use the following formatters:
+A path to the zone file. Non-absolute path (i.e. not starting with ``/``) is
+relative to :ref:`storage<zone_storage>`.
+It is also possible to use the following formatters:
 
 - ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – Means the *N*\ th
   character or a sequence of characters beginning from the *N*\ th and ending
@@ -1466,22 +1583,22 @@ Possible values:
 
 *Default:* changes
 
-.. _zone_max-journal-usage:
+.. _zone_journal-max-usage:
 
-max-journal-usage
+journal-max-usage
 -----------------
 
 Policy how much space in journal DB will the zone's journal occupy.
 
 .. NOTE::
-   Journal DB may grow far above the sum of max-journal-usage across
+   Journal DB may grow far above the sum of journal-max-usage across
    all zones, because of DB free space fragmentation.
 
 *Default:* 100 MiB
 
-.. _zone_max_journal_depth:
+.. _zone_journal-max-depth:
 
-max-journal-depth
+journal-max-depth
 -----------------
 
 Maximum history length of journal.
@@ -1490,9 +1607,9 @@ Maximum history length of journal.
 
 *Default:* 2^64
 
-.. _zone_max_zone_size:
+.. _zone_zone-max-size:
 
-max-zone-size
+zone-max-size
 -------------
 
 Maximum size of the zone. The size is measured as size of the zone records
@@ -1519,20 +1636,12 @@ If enabled, automatic DNSSEC signing for the zone is turned on.
 dnssec-policy
 -------------
 
-A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
-value can be used for the default policy settings.
+A :ref:`reference<policy_id>` to DNSSEC signing policy.
 
-*Required*
+*Default:* an imaginary policy with all default values
 
-.. _zone_request_edns_option:
-
-request-edns-option
--------------------
-
-An arbitrary EDNS0 option which is included into a server request (AXFR, IXFR,
-SOA, or NOTIFY). The value is in the option_code:option_data format.
-
-*Default:* not set
+.. NOTE::
+   A configured policy called "default" won't be used unless explicitly referenced.
 
 .. _zone_serial-policy:
 
@@ -1559,18 +1668,18 @@ Possible values:
 
 *Default:* increment
 
-.. _zone_min-refresh-interval:
+.. _zone_refresh-min-interval:
 
-min-refresh-interval
+refresh-min-interval
 --------------------
 
 Forced minimum zone refresh interval to avoid flooding master.
 
 *Default:* 2
 
-.. _zone_max-refresh-interval:
+.. _zone_refresh-max-interval:
 
-max-refresh-interval
+refresh-max-interval
 --------------------
 
 Forced maximum zone refresh interval.
@@ -1629,16 +1738,20 @@ Possible values:
 
 - ``stdout`` – Standard output.
 - ``stderr`` – Standard error output.
-- ``syslog`` – Syslog.
+- ``syslog`` – Syslog or systemd journal.
 - *file\_name* – A specific file.
+
+With ``syslog`` target, syslog service is used. However, if Knot DNS has been compiled
+with systemd support and operating system has been booted with systemd, systemd journal
+is used for logging instead of syslog.
 
 .. _log_server:
 
 server
 ------
 
-Minimum severity level for messages related to general operation of the server
-that are logged.
+Minimum severity level for messages related to general operation of the server to be
+logged.
 
 *Default:* not set
 
@@ -1647,7 +1760,7 @@ that are logged.
 control
 -------
 
-Minimum severity level for messages related to server control that are logged.
+Minimum severity level for messages related to server control to be logged.
 
 *Default:* not set
 
@@ -1656,7 +1769,7 @@ Minimum severity level for messages related to server control that are logged.
 zone
 ----
 
-Minimum severity level for messages related to zones that are logged.
+Minimum severity level for messages related to zones to be logged.
 
 *Default:* not set
 
@@ -1665,6 +1778,6 @@ Minimum severity level for messages related to zones that are logged.
 any
 ---
 
-Minimum severity level for all message types that are logged.
+Minimum severity level for all message types to be logged.
 
 *Default:* not set

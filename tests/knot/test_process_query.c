@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,6 +92,9 @@ int main(int argc, char *argv[])
 	server_t server;
 	int ret = create_fake_server(&server, proc.mm);
 	is_int(KNOT_EOK, ret, "ns: fake server initialization");
+	if (ret != KNOT_EOK) {
+		goto fatal;
+	}
 
 	zone_t *zone = knot_zonedb_find(server.zone_db, ROOT_DNAME);
 
@@ -178,6 +181,7 @@ int main(int argc, char *argv[])
 	knot_layer_finish(&proc);
 	ok(proc.state == KNOT_STATE_NOOP, "ns: processing end" );
 
+fatal:
 	/* Cleanup. */
 	mp_delete((struct mempool *)mm.ctx);
 	server_deinit(&server);

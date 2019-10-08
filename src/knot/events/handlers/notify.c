@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,8 +96,8 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr *dst = (struct sockaddr *)&slave->addr;
-	const struct sockaddr *src = (struct sockaddr *)&slave->via;
+	const struct sockaddr_storage *dst = &slave->addr;
+	const struct sockaddr_storage *src = &slave->via;
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &slave->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);
@@ -134,7 +134,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 	}
 
 	// NOTIFY content
-	int timeout = conf->cache.srv_tcp_reply_timeout * 1000;
+	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 
 	// send NOTIFY to each remote, use working address

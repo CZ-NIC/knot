@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <time.h>
@@ -75,6 +75,22 @@ uint32_t serial_next(uint32_t current, int policy)
 	default:
 		assert(0);
 		return 0;
+	}
+}
+
+bool serial_must_increment(uint32_t current, int policy)
+{
+	switch (policy) {
+	case SERIAL_POLICY_INCREMENT:
+		return false;
+	case SERIAL_POLICY_UNIXTIME:
+		return true;
+	case SERIAL_POLICY_DATESERIAL:
+		// Trim off the serial parts from YYYYMMDDnn.
+		return (current / 100) < (serial_next_date(current) / 100);
+	default:
+		assert(0);
+		return false;
 	}
 }
 

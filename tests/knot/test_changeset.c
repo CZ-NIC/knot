@@ -58,8 +58,8 @@ int main(int argc, char *argv[])
 	ok(changeset_size(ch) == 1, "changeset: size add");
 	ret = changeset_add_removal(ch, apex_txt_rr, CHANGESET_CHECK);
 	is_int(KNOT_EOK, ret, "changeset: rem RRSet");
-	ok(changeset_size(ch) == 1, "changeset: size remove");
-	ok(!changeset_empty(ch), "changeset: empty");
+	ok(changeset_size(ch) == 0, "changeset: size remove");
+	ok(changeset_empty(ch), "changeset: empty");
 	changeset_add_addition(ch, apex_txt_rr, CHANGESET_CHECK);
 
 	// Add another RR to node.
@@ -85,11 +85,11 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "changeset: create iter add");
 	// Order: non.terminals.test. TXT, SPF, here.come.more.non.terminals.test. TXT.
 	knot_rrset_t iter = changeset_iter_next(&it);
-	bool trav_ok = knot_rrset_equal(&iter, apex_txt_rr, KNOT_RRSET_COMPARE_WHOLE);
+	bool trav_ok = knot_rrset_equal(&iter, apex_txt_rr, true);
 	iter = changeset_iter_next(&it);
-	trav_ok = trav_ok && knot_rrset_equal(&iter, apex_spf_rr, KNOT_RRSET_COMPARE_WHOLE);
+	trav_ok = trav_ok && knot_rrset_equal(&iter, apex_spf_rr, true);
 	iter = changeset_iter_next(&it);
-	trav_ok = trav_ok && knot_rrset_equal(&iter, other_rr, KNOT_RRSET_COMPARE_WHOLE);
+	trav_ok = trav_ok && knot_rrset_equal(&iter, other_rr, true);
 
 	ok(trav_ok, "changeset: add traversal");
 
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 	ret = changeset_iter_rem(&it, ch);
 	is_int(KNOT_EOK, ret, "changeset: create iter rem");
 	iter = changeset_iter_next(&it);
-	ok(knot_rrset_equal(&iter, apex_txt_rr, KNOT_RRSET_COMPARE_WHOLE),
+	ok(knot_rrset_equal(&iter, apex_txt_rr, true),
 	   "changeset: rem traversal");
 	changeset_iter_clear(&it);
 

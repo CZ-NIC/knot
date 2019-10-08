@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,9 @@ static void check_name_err(const char *zone, const char *name)
 {
 	knot_dname_t *z = knot_dname_from_str_alloc(zone);
 
-	ok(get_filename(NULL, NULL, z, name) == NULL, "Invalid name %s", name);
+	char *filename = get_filename(NULL, NULL, z, name);
+	ok(filename == NULL, "Invalid name %s", name);
+	free(filename);
 
 	knot_dname_free(z, NULL);
 }

@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -291,8 +291,8 @@ static int check_rrsig_rdata(sem_handler_t *handler,
                              bool *verified)
 {
 	/* Prepare additional info string. */
-	char info_str[50] = { '\0' };
-	char type_str[16] = { '\0' };
+	char info_str[50] = "";
+	char type_str[16] = "";
 	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
 	int ret = snprintf(info_str, sizeof(info_str), "(record type %s)", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
@@ -413,8 +413,8 @@ static int check_rrsig_in_rrset(sem_handler_t *handler,
 		return KNOT_EINVAL;
 	}
 	/* Prepare additional info string. */
-	char info_str[50] = { '\0' };
-	char type_str[16] = { '\0' };
+	char info_str[50] = "";
+	char type_str[16] = "";
 	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
 	int ret = snprintf(info_str, sizeof(info_str), "(record type %s)", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
@@ -481,21 +481,28 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 	for (int i = 0; i < ns_rrs->count; ++i) {
 		knot_rdata_t *ns_rr = knot_rdataset_at(ns_rrs, i);
 		const knot_dname_t *ns_dname = knot_ns_name(ns_rr);
-		if (knot_dname_in_bailiwick(ns_dname, node->owner) < 0) {
-			continue;
-		}
+		const zone_node_t *glue_node = NULL, *glue_encloser = NULL;
+		int ret = zone_contents_find_dname(data->zone, ns_dname, &glue_node,
+		                                   &glue_encloser, NULL);
+		switch (ret) {
+		case KNOT_EOUTOFZONE:
+			continue; // NS is out of bailiwick
+		case ZONE_NAME_NOT_FOUND:
+			if (glue_encloser != node &&
+			    glue_encloser->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH)) {
+				continue; // NS is below another delegation
+			}
 
-		const zone_node_t *glue_node =
-			zone_contents_find_node(data->zone, ns_dname);
-
-		if (glue_node == NULL) {
-			/* Try wildcard ([1]* + suffix). */
-			knot_dname_t wildcard[KNOT_DNAME_MAXLEN];
-			memcpy(wildcard, "\x1""*", 2);
-			knot_dname_to_wire(wildcard + 2,
-			                   knot_wire_next_label(ns_dname, NULL),
+			// check if covered by wildcard
+			knot_dname_storage_t wildcard = "\x01""*";
+			knot_dname_to_wire(wildcard + 2, glue_encloser->owner,
 			                   sizeof(wildcard) - 2);
 			glue_node = zone_contents_find_node(data->zone, wildcard);
+			break; // continue in checking glue existence
+		case ZONE_NAME_FOUND:
+			break; // continue in checking glue existence
+		default:
+			return ret;
 		}
 		if (!node_rrtype_exists(glue_node, KNOT_RRTYPE_A) &&
 		    !node_rrtype_exists(glue_node, KNOT_RRTYPE_AAAA)) {
@@ -720,7 +727,7 @@ static void bitmap_add_all_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
 
 static char *nsec3_info(const knot_dname_t *owner, char *out, size_t out_len)
 {
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t buff;
 	char *str = knot_dname_to_str(buff, owner, sizeof(buff));
 	if (str == NULL) {
 		return NULL;
@@ -1001,7 +1008,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	const zone_node_t *apex = data->zone->apex;
 	const uint8_t *next_dname_str = knot_nsec3_next(nsec3_rrs.rrs.rdata);
 	uint8_t next_dname_str_size = knot_nsec3_next_len(nsec3_rrs.rrs.rdata);
-	uint8_t next_dname[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t next_dname;
 	ret = knot_nsec3_hash_to_dname(next_dname, sizeof(next_dname),
 	                               next_dname_str, next_dname_str_size,
 	                               apex->owner);

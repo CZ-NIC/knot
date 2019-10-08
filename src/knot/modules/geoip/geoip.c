@@ -490,7 +490,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 	int ret = KNOT_EOK;
 	yp_parser_t *yp = NULL;
 	zs_scanner_t *scanner = NULL;
-	knot_dname_t owner_buff[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t owner_buff;
 	knot_dname_t *owner = NULL;
 	geo_view_t *view = calloc(1, sizeof(geo_view_t));
 	if (view == NULL) {
@@ -654,9 +654,7 @@ static bool view_strictly_in_view(geo_view_t *view, geo_view_t *in,
 		if (in->subnet_prefix >= view->subnet_prefix) {
 			return false;
 		}
-		return sockaddr_net_match((struct sockaddr *)view->subnet,
-		                          (struct sockaddr *)in->subnet,
-		                          in->subnet_prefix);
+		return sockaddr_net_match(view->subnet, in->subnet, in->subnet_prefix);
 	case MODE_WEIGHTED:
 		return true;
 	default:
@@ -774,7 +772,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	if (lf == NULL) {
 		return state;
 	}
-	trie_val_t *val = trie_get_try(ctx->geo_trie, lf + 1, *lf);
+	trie_val_t *val = trie_get_try_wildcard(ctx->geo_trie, lf + 1, *lf);
 	if (val == NULL) {
 		// Nothing to do in this module.
 		return state;
@@ -888,14 +886,14 @@ int geoip_load(knotd_mod_t *mod)
 
 		// Load configured geodb keys.
 		conf = knotd_conf_mod(mod, MOD_GEODB_KEY);
-		ctx->path_count = conf.count;
-		if (ctx->path_count > GEODB_MAX_DEPTH) {
+		if (conf.count > GEODB_MAX_DEPTH) {
 			knotd_mod_log(mod, LOG_ERR, "maximal number of geodb-key items (%d) exceeded",
 			              GEODB_MAX_DEPTH);
 			knotd_conf_free(&conf);
 			free_geoip_ctx(ctx);
 			return KNOT_EINVAL;
 		}
+		ctx->path_count = conf.count;
 		for (size_t i = 0; i < conf.count; i++) {
 			if (parse_geodb_path(&ctx->paths[i], (char *)conf.multi[i].string) != 0) {
 				knotd_mod_log(mod, LOG_ERR, "unrecognized geodb-key format");

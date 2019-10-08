@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "contrib/string.h"
 #include "libknot/endian.h"
 #include "libknot/errcode.h"
 
@@ -195,14 +196,14 @@ static inline void wire_ctx_read(wire_ctx_t *ctx, void *data, size_t size)
 
 	if (ctx->error != KNOT_EOK) {
 		/* Avoid leaving data uninitialized. */
-		memset(data, 0, size);
+		memzero(data, size);
 		return;
 	}
 
 	int ret = wire_ctx_can_read(ctx, size);
 	if (ret != KNOT_EOK) {
 		ctx->error = ret;
-		memset(data, 0, size);
+		memzero(data, size);
 		return;
 	}
 
@@ -306,12 +307,11 @@ static inline void wire_ctx_write_u64(wire_ctx_t *ctx, uint64_t value)
 	wire_ctx_write(ctx, &beval, sizeof(beval));
 }
 
-
-static inline void wire_ctx_memset(wire_ctx_t *dst, int value, size_t size)
+static inline void wire_ctx_clear(wire_ctx_t *ctx, size_t size)
 {
-	assert(dst);
+	assert(ctx);
 
-	if (dst->error != KNOT_EOK) {
+	if (ctx->error != KNOT_EOK) {
 		return;
 	}
 
@@ -319,19 +319,14 @@ static inline void wire_ctx_memset(wire_ctx_t *dst, int value, size_t size)
 		return;
 	}
 
-	int ret = wire_ctx_can_write(dst, size);
+	int ret = wire_ctx_can_write(ctx, size);
 	if (ret != KNOT_EOK) {
-		dst->error = ret;
+		ctx->error = ret;
 		return;
 	}
 
-	memset(dst->position, value, size);
-	dst->position += size;
-}
-
-static inline void wire_ctx_clear(wire_ctx_t *ctx, size_t size)
-{
-	wire_ctx_memset(ctx, 0, size);
+	memzero(ctx->position, size);
+	ctx->position += size;
 }
 
 static inline void wire_ctx_copy(wire_ctx_t *dst, wire_ctx_t *src, size_t size)
@@ -358,4 +353,3 @@ static inline void wire_ctx_copy(wire_ctx_t *dst, wire_ctx_t *src, size_t size)
 	dst->position += size;
 	src->position += size;
 }
-

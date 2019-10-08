@@ -54,6 +54,9 @@ int zone_node_additionals_foreach(const zone_node_t *node, const knot_dname_t *z
 	int ret = KNOT_EOK;
 	for (int i = 0; ret == KNOT_EOK && i < node->rrset_count; i++) {
 		struct rr_data *rr_data = &node->rrs[i];
+		if (!knot_rrtype_additional_needed(rr_data->type)) {
+			continue;
+		}
 		knot_rdata_t *rdata = knot_rdataset_at(&rr_data->rrs, 0);
 		for (int j = 0; ret == KNOT_EOK && j < rr_data->rrs.count; j++) {
 			const knot_dname_t *name = knot_rdata_name(rdata, rr_data->type);
@@ -131,15 +134,19 @@ int additionals_tree_update_node(additionals_tree_t *a_t, const knot_dname_t *zo
 		return KNOT_EINVAL;
 	}
 
+	if (binode_additionals_unchanged(old_node, new_node)) {
+		return KNOT_EOK;
+	}
+
 	// for every additional in old_node rrsets, remove mentioning of this node in tree
 	if (old_node != NULL && !(old_node->flags & NODE_FLAGS_DELETED)) {
-		ctx.node = binode_node(old_node, false);
+		ctx.node = binode_first(old_node);
 		ret = zone_node_additionals_foreach(old_node, zone_apex, remove_node_from_a_t, &ctx);
 	}
 
 	// for every additional in new_node rrsets, add reverse link into the tree
 	if (new_node != NULL && !(new_node->flags & NODE_FLAGS_DELETED) && ret == KNOT_EOK) {
-		ctx.node = binode_node(new_node, false);
+		ctx.node = binode_first(new_node);
 		ret = zone_node_additionals_foreach(new_node, zone_apex, add_node_to_a_t, &ctx);
 	}
 	return ret;
@@ -161,7 +168,7 @@ int additionals_tree_update_nsec3(additionals_tree_t *a_t, const zone_contents_t
 	if (nsec3_name == NULL) {
 		return KNOT_ENOMEM;
 	}
-	a_t_node_ctx_t ctx = { a_t, addn ? binode_node(new_node, false) : binode_node(old_node, false) };
+	a_t_node_ctx_t ctx = { a_t, addn ? binode_first(new_node) : binode_first(old_node) };
 	return (addn ? add_node_to_a_t : remove_node_from_a_t)(nsec3_name, &ctx);
 }
 

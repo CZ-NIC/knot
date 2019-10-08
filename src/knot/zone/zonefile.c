@@ -54,7 +54,7 @@ static bool handle_err(zcreator_t *zc, const knot_rrset_t *rr, int ret, bool mas
 {
 	const knot_dname_t *zname = zc->z->apex->owner;
 
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t buff;
 	char *owner = knot_dname_to_str(buff, rr->owner, sizeof(buff));
 	if (owner == NULL) {
 		owner = "";
@@ -64,7 +64,7 @@ static bool handle_err(zcreator_t *zc, const knot_rrset_t *rr, int ret, bool mas
 		WARNING(zname, "ignoring out-of-zone data, owner %s", owner);
 		return true;
 	} else if (ret == KNOT_ETTL) {
-		char type[16] = { '\0' };
+		char type[16] = "";
 		knot_rrtype_to_string(rr->type, type, sizeof(type));
 		NOTICE(zname, "TTL mismatch, owner %s, type %s, TTL set to %u",
 		       owner, type, rr->ttl);
@@ -226,7 +226,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags, true);
+	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags, true, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
@@ -244,7 +244,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 
 	/* The contents will now change possibly messing up NSEC3 tree, it will
 	   be adjusted again at zone_update_commit. */
-	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false);
+	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
@@ -337,16 +337,18 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 		handler->warning = true;
 	}
 
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1] = "";
+	knot_dname_txt_storage_t owner;
 	if (node != NULL) {
-		(void)knot_dname_to_str(buff, node->owner, sizeof(buff));
+		if (knot_dname_to_str(owner, node->owner, sizeof(owner)) == NULL) {
+			owner[0] = '\0';
+		}
 	}
 
 	log_fmt_zone(handler->fatal_error ? LOG_ERR : LOG_WARNING,
 	             LOG_SOURCE_ZONE, zone->apex->owner, NULL,
 	             "check%s%s, %s%s%s",
 	             (node != NULL ? ", node " : ""),
-	             (node != NULL ? buff      : ""),
+	             (node != NULL ? owner     : ""),
 	             sem_error_msg(error),
 	             (data != NULL ? " "  : ""),
 	             (data != NULL ? data : ""));

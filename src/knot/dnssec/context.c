@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <stdio.h>
 #include <string.h>
@@ -36,7 +36,7 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 	policy->manual = conf_bool(&val);
 
 	val = conf_id_get(conf(), C_POLICY, C_SINGLE_TYPE_SIGNING, id);
-	policy->singe_type_signing = conf_bool(&val);
+	policy->single_type_signing = conf_bool(&val);
 
 	val = conf_id_get(conf(), C_POLICY, C_ALG, id);
 	policy->algorithm = conf_opt(&val);
@@ -76,6 +76,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 
 	val = conf_id_get(conf(), C_POLICY, C_RRSIG_REFRESH, id);
 	policy->rrsig_refresh_before = conf_int(&val);
+
+	val = conf_id_get(conf(), C_POLICY, C_RRSIG_PREREFRESH, id);
+	policy->rrsig_prerefresh = conf_int(&val);
 
 	val = conf_id_get(conf(), C_POLICY, C_NSEC3, id);
 	policy->nsec3_enabled = conf_bool(&val);
@@ -148,7 +151,8 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		goto init_error;
 	}
 
-	ret = kasp_zone_load(ctx->zone, zone_name, ctx->kasp_db);
+	ret = kasp_zone_load(ctx->zone, zone_name, ctx->kasp_db,
+	                     &ctx->keytag_conflict);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}

@@ -27,8 +27,9 @@
 typedef struct zone_update {
 	zone_t *zone;                /*!< Zone being updated. */
 	zone_contents_t *new_cont;   /*!< New zone contents for full updates. */
-	bool new_cont_deep_copy;     /*!< On update_clear, perform deep free instead of shallow. */
 	changeset_t change;          /*!< Changes we want to apply. */
+	zone_contents_t *init_cont;  /*!< Exact contents of the zonefile. */
+	changeset_t extra_ch;        /*!< Extra changeset to store just diff btwn zonefile and result. */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
 	knot_mm_t mm;                /*!< Memory context used for intermediate nodes. */
@@ -42,12 +43,14 @@ typedef struct {
 } zone_update_iter_t;
 
 typedef enum {
+	// Mutually exclusive flags
 	UPDATE_FULL           = 1 << 0, /*!< Replace the old zone by a complete new one. */
-	UPDATE_INCREMENTAL    = 1 << 1, /*!< Apply changes to the old zone. */
-	UPDATE_SIGN           = 1 << 2, /*!< Sign the resulting zone. */
-	UPDATE_JOURNAL        = 1 << 3, /*!< Using zone-in-journal for a diff update. */
+	UPDATE_HYBRID         = 1 << 1, /*!< Changeset like for incremental, adjusting like full. */
+	UPDATE_INCREMENTAL    = 1 << 2, /*!< Apply changes to the old zone. */
+	// Additional flags
+	UPDATE_SIGN           = 1 << 3, /*!< Sign the resulting zone. */
 	UPDATE_STRICT         = 1 << 4, /*!< Apply changes strictly, i.e. fail when removing nonexistent RR. */
-	UPDATE_CANCELOUT      = 1 << 5, /*!< When adding to changeset, cancel-out what has been both added and removed. */
+	UPDATE_EXTRA_CHSET    = 1 << 6, /*!< Extra changeset in use, to store diff btwn zonefile and final contents. */
 } zone_update_flags_t;
 
 /*!
@@ -93,6 +96,17 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
                               zone_contents_t *new_cont, zone_update_flags_t flags);
 
 /*!
+ * \brief Inits using extra changeset, increments SOA serial.
+ *
+ * This shall be used after from_differences, to start tracking changes that are against the loaded zonefile.
+ *
+ * \param update   Zone update.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_start_extra(zone_update_t *update);
+
+/*!
  * \brief Returns node that would be in the zone after updating it.
  *
  * \note Returned node is either zone original or synthesized, do *not* free
@@ -126,6 +140,9 @@ const zone_node_t *zone_update_get_apex(zone_update_t *update);
  * \return   0 if no apex was found, its serial otherwise.
  */
 uint32_t zone_update_current_serial(zone_update_t *update);
+
+/*! \brief Return true if NSEC3PARAM has been changed in this update. */
+bool zone_update_changed_nsec3param(const zone_update_t *update);
 
 /*!
  * \brief Returns the SOA rdataset we're updating from.
@@ -258,61 +275,6 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf);
  * \return KNOT_E*
  */
 int zone_update_commit(conf_t *conf, zone_update_t *update);
-
-/*!
- * \brief Setup a zone_update iterator for both FULL and INCREMENTAL updates.
- *
- * \warning Do not init or use iterators when the zone is edited. Any
- *          zone_update modifications will invalidate the trie iterators
- *          in the zone_update iterator.
- *
- * \param it       Iterator.
- * \param update   Zone update.
- *
- * \return KNOT_E*
- */
-int zone_update_iter(zone_update_iter_t *it, zone_update_t *update);
-
-/*!
- * \brief Setup a zone_update iterator for both FULL and INCREMENTAL updates.
- *        Version for iterating over nsec3 nodes.
- *
- * \warning Do not init or use iterators when the zone is edited. Any
- *          zone_update modifications will invalidate the trie iterators
- *          in the zone_update iterator.
- *
- *
- * \param it       Iterator.
- * \param update   Zone update.
- *
- * \return KNOT_E*
- */
-int zone_update_iter_nsec3(zone_update_iter_t *it, zone_update_t *update);
-
-/*!
- * \brief Move the iterator to the next item.
- *
- * \param it  Iterator.
- *
- * \return KNOT_E*
- */
-int zone_update_iter_next(zone_update_iter_t *it);
-
-/*!
- * \brief Get the value of the iterator.
- *
- * \param it  Iterator.
- *
- * \return A (synthesized or added) node with all its current data.
- */
-const zone_node_t *zone_update_iter_val(zone_update_iter_t *it);
-
-/*!
- * \brief Finish the iterator and clean it up.
- *
- * \param it  Iterator.
- */
-void zone_update_iter_finish(zone_update_iter_t *it);
 
 /*!
  * \brief Returns bool whether there are any changes at all.

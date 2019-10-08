@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ static void ctl_client(const char *socket, size_t argc, knot_ctl_data_t *argv)
 
 	size_t count = 0;
 	knot_ctl_data_t data;
-	knot_ctl_type_t type;
+	knot_ctl_type_t type = KNOT_CTL_TYPE_DATA;
 	while ((ret = knot_ctl_receive(ctl, &type, &data)) == KNOT_EOK) {
 		if (type == KNOT_CTL_TYPE_END) {
 			break;
@@ -119,7 +119,7 @@ static void ctl_server(const char *socket, size_t argc, knot_ctl_data_t *argv)
 
 	size_t count = 0;
 	knot_ctl_data_t data;
-	knot_ctl_type_t type;
+	knot_ctl_type_t type = KNOT_CTL_TYPE_DATA;
 	while ((ret = knot_ctl_receive(ctl, &type, &data)) == KNOT_EOK) {
 		if (type == KNOT_CTL_TYPE_END) {
 			break;

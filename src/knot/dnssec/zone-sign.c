@@ -74,7 +74,7 @@ static bool apex_rr_changed(const zone_node_t *old_apex,
 	knot_rrset_t old_rr = node_rrset(old_apex, type);
 	knot_rrset_t new_rr = node_rrset(new_apex, type);
 
-	return !knot_rrset_equal(&old_rr, &new_rr, KNOT_RRSET_COMPARE_WHOLE);
+	return !knot_rrset_equal(&old_rr, &new_rr, false);
 }
 
 static bool apex_dnssec_changed(zone_update_t *update)
@@ -98,6 +98,7 @@ static bool apex_dnssec_changed(zone_update_t *update)
  * \param key      Signing key.
  * \param ctx      Signing context.
  * \param policy   DNSSEC policy.
+ * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  * \param at       RRSIG position.
  *
  * \return The signature exists and is valid.
@@ -107,6 +108,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   const dnssec_key_t *key,
 				   dnssec_sign_ctx_t *ctx,
 				   const kdnssec_ctx_t *dnssec_ctx,
+                                   bool skip_crypto,
 				   uint16_t *at)
 {
 	assert(key);
@@ -128,7 +130,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 		}
 
 		if (knot_check_signature(covered, rrsigs, i, key, ctx,
-		                         dnssec_ctx) == KNOT_EOK) {
+		                         dnssec_ctx, skip_crypto) == KNOT_EOK) {
 			if (at != NULL) {
 				*at = i;
 			}
@@ -162,7 +164,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 
 		if (!valid_signature_exists(covered, rrsigs, key->key,
 		                            sign_ctx->sign_ctxs[i],
-		                            sign_ctx->dnssec_ctx, NULL)) {
+		                            sign_ctx->dnssec_ctx, false, NULL)) {
 			return false;
 		}
 	}
@@ -213,6 +215,7 @@ static bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
  * \param covered     RR set with covered records.
  * \param rrsigs      RR set with RRSIGs.
  * \param sign_ctx    Local zone signing context.
+ * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  * \param changeset   Changeset to be updated.
  * \param update      Zone update to be updated. Exactly one of "changeset" and "update" must be NULL!
  * \param expires_at  Earliest RRSIG expiration.
@@ -222,6 +225,7 @@ static bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
 static int add_missing_rrsigs(const knot_rrset_t *covered,
                               const knot_rrset_t *rrsigs,
                               zone_sign_ctx_t *sign_ctx,
+                              bool skip_crypto,
                               changeset_t *changeset,
                               zone_update_t *update,
                               knot_time_t *expires_at)
@@ -244,7 +248,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 			// don't remove what shall be added
 			result = knot_rdataset_subtract(&to_remove.rrs, &to_add.rrs, NULL);
 		}
-		if (result == KNOT_EOK) {
+		if (result == KNOT_EOK && !knot_rrset_empty(rrsigs)) {
 			// don't add what's already present
 			result = knot_rdataset_subtract(&to_add.rrs, &rrsigs->rrs, NULL);
 		}
@@ -258,10 +262,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 		uint16_t valid_at;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
-		                           sign_ctx->dnssec_ctx, &valid_at)) {
+		                           sign_ctx->dnssec_ctx, skip_crypto, &valid_at)) {
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
-			knot_rdataset_t rrsig_keep = { 1, valid_rr };
-			result = knot_rdataset_subtract(&to_remove.rrs, &rrsig_keep, NULL);
+			result = knot_rdataset_remove(&to_remove.rrs, valid_rr, NULL);
 			note_earliest_expiration(valid_rr, expires_at);
 			continue;
 		}
@@ -348,7 +351,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 		}
 	}
 
-	return add_missing_rrsigs(covered, NULL, sign_ctx, changeset, NULL, NULL);
+	return add_missing_rrsigs(covered, NULL, sign_ctx, false, changeset, NULL, NULL);
 }
 
 /*!
@@ -357,6 +360,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
  * \param covered     RR set with covered records.
  * \param rrsigs      Existing RRSIGs for covered RR set.
  * \param sign_ctx    Local zone signing context.
+ * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  * \param changeset   Changeset to be updated.
  * \param expires_at  Current earliest expiration, will be updated.
  *
@@ -365,12 +369,13 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 static int resign_rrset(const knot_rrset_t *covered,
                         const knot_rrset_t *rrsigs,
                         zone_sign_ctx_t *sign_ctx,
+                        bool skip_crypto,
                         changeset_t *changeset,
                         knot_time_t *expires_at)
 {
 	assert(!knot_rrset_empty(covered));
 
-	return add_missing_rrsigs(covered, rrsigs, sign_ctx, changeset, NULL, expires_at);
+	return add_missing_rrsigs(covered, rrsigs, sign_ctx, skip_crypto, changeset, NULL, expires_at);
 }
 
 static int remove_standalone_rrsigs(const zone_node_t *node,
@@ -425,6 +430,8 @@ static int sign_node_rrsets(const zone_node_t *node,
 
 	int result = KNOT_EOK;
 	knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
+	bool skip_crypto = (node->flags & NODE_FLAGS_RRSIGS_VALID) &&
+	                   !sign_ctx->dnssec_ctx->keytag_conflict;
 
 	for (int i = 0; result == KNOT_EOK && i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
@@ -437,7 +444,7 @@ static int sign_node_rrsets(const zone_node_t *node,
 			result = force_resign_rrset(&rrset, &rrsigs,
 			                            sign_ctx, changeset);
 		} else {
-			result = resign_rrset(&rrset, &rrsigs, sign_ctx,
+			result = resign_rrset(&rrset, &rrsigs, sign_ctx, skip_crypto,
 			                      changeset, expires_at);
 		}
 	}
@@ -496,6 +503,13 @@ static void *tree_sign_thread(void *_arg)
 	node_sign_args_t *arg = _arg;
 	arg->errcode = zone_tree_apply(arg->tree, sign_node, _arg);
 	return NULL;
+}
+
+static int set_signed(zone_node_t *node, void *data)
+{
+	UNUSED(data);
+	node->flags |= NODE_FLAGS_RRSIGS_VALID;
+	return KNOT_EOK;
 }
 
 /*!
@@ -586,6 +600,10 @@ static int zone_tree_sign(zone_tree_t *tree,
 		zone_sign_ctx_free(args[i].sign_ctx);
 	}
 
+	if (ret == KNOT_EOK) {
+		ret = zone_tree_apply(tree, set_signed, NULL);
+	}
+
 	return ret;
 }
 
@@ -620,8 +638,6 @@ int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
 	return knot_rrset_add_rdata(rrset, dnskey_rdata.data, dnskey_rdata.size, NULL);
 }
 
-/*- private API - DNSKEY handling --------------------------------------------*/
-
 static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
 	assert(rrset);
@@ -632,70 +648,6 @@ static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
 
 	return knot_rrset_add_rdata(rrset, cds_rdata.data, cds_rdata.size, NULL);
 }
-
-/*!
- * \brief Wrapper function for changeset signing - to be used with changeset
- *        apply functions.
- *
- * \param chg_rrset  RRSet to be signed (potentially)
- * \param data       Signing data
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static int sign_changeset_wrap(knot_rrset_t *chg_rrset,
-                               changeset_signing_data_t *args,
-                               knot_time_t *expire_at)
-{
-	// Find RR's node in zone, find out if we need to sign this RR
-	const zone_node_t *node =
-		zone_contents_find_node(args->zone, chg_rrset->owner);
-
-	// If node is not in zone, all its RRSIGs were dropped - no-op
-	if (node) {
-		knot_rrset_t zone_rrset = node_rrset(node, chg_rrset->type);
-		knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
-
-		bool should_sign = knot_zone_sign_rr_should_be_signed(node, &zone_rrset);
-
-		if (should_sign) {
-			return resign_rrset(&zone_rrset, &rrsigs, args->sign_ctx,
-			                    &args->changeset, expire_at);
-		} else {
-			/*
-			 * If RRSet in zone DOES have RRSIGs although we
-			 * should not sign it, DDNS-caused change to node/rr
-			 * occurred and we have to drop all RRSIGs.
-			 *
-			 * OR
-			 *
-			 * The whole RRSet was removed, but RRSIGs remained in
-			 * the zone. We need to drop them as well.
-			 */
-			return remove_rrset_rrsigs(chg_rrset->owner,
-			                           chg_rrset->type, &rrsigs,
-			                           &args->changeset);
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-static void *sign_changeset_thread(void *_arg)
-{
-	changeset_signing_data_t *arg = _arg;
-
-	knot_rrset_t rr = changeset_iter_next(&arg->itt);
-	while (!knot_rrset_empty(&rr) && arg->errcode == KNOT_EOK) {
-		if (arg->rrset_index++ % arg->num_threads == arg->thread_index) {
-			arg->errcode = sign_changeset_wrap(&rr, arg, &arg->expires_at);
-		}
-		rr = changeset_iter_next(&arg->itt);
-	}
-
-	return NULL;
-}
-
-/*- public API ---------------------------------------------------------------*/
 
 int knot_zone_sign(zone_update_t *update,
                    zone_keyset_t *zone_keys,
@@ -844,10 +796,12 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	if (dnssec_ctx->policy->offline_ksk) {
 		ret = kasp_db_load_offline_records(dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, next_resign, &add_r);
 		if (ret == KNOT_EOK) {
-			log_zone_info(dnssec_ctx->zone->dname, "DNSSEC, using offline DNSKEY RRSIG");
+			log_zone_info(dnssec_ctx->zone->dname,
+			              "DNSSEC, using offline records, DNSKEYs %hu, CDNSKEYs %hu, CDs %hu, RRSIGs %hu",
+			              add_r.dnskey.rrs.count, add_r.cdnskey.rrs.count, add_r.cds.rrs.count, add_r.rrsig.rrs.count);
 		} else {
-			log_zone_warning(dnssec_ctx->zone->dname, "DNSSEC, failed to load offline DNSKEY RRSIG (%s)",
-					 knot_strerror(ret));
+			log_zone_warning(dnssec_ctx->zone->dname, "DNSSEC, failed to load offline records (%s)",
+			                 knot_strerror(ret));
 		}
 	} else {
 		ret = knot_zone_sign_add_dnskeys(zone_keys, dnssec_ctx, &add_r);
@@ -855,20 +809,22 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	CHECK_RET;
 
 	if (!knot_rrset_empty(&add_r.cdnskey)) {
-		ret = changeset_add_addition(&ch, &add_r.cdnskey,
-			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+		ret = changeset_add_addition(&ch, &add_r.cdnskey, CHANGESET_CHECK);
 		CHECK_RET;
 	}
 
 	if (!knot_rrset_empty(&add_r.cds)) {
-		ret = changeset_add_addition(&ch, &add_r.cds,
-			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+		ret = changeset_add_addition(&ch, &add_r.cds, CHANGESET_CHECK);
+		if (node_rrtype_exists(ch.add->apex, KNOT_RRTYPE_CDS)) {
+			// there is indeed a change to CDS
+			update->zone->timers.next_ds_push = time(NULL);
+			zone_events_schedule_now(update->zone, ZONE_EVENT_DS_PUSH);
+		}
 		CHECK_RET;
 	}
 
 	if (!knot_rrset_empty(&add_r.dnskey)) {
-		ret = changeset_add_addition(&ch, &add_r.dnskey,
-			CHANGESET_CHECK | CHANGESET_CHECK_CANCELOUT);
+		ret = changeset_add_addition(&ch, &add_r.dnskey, CHANGESET_CHECK);
 		CHECK_RET;
 	}
 
@@ -892,9 +848,8 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 		return false;
 	}
 
-	if (!key->is_active && !key->is_post_active) {
-		return false;
-	}
+	bool active_ksk = ((key->is_active || key->is_ksk_active_plus) && key->is_ksk);
+	bool active_zsk = ((key->is_active || key->is_zsk_active_plus) && key->is_zsk);;
 
 	// this may be a problem with offline KSK
 	bool cds_sign_by_ksk = true;
@@ -903,17 +858,17 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 	bool is_apex = knot_dname_is_equal(covered->owner,
 	                                   dnssec_key_get_dname(key->key));
 	if (!is_apex) {
-		return key->is_zsk;
+		return active_zsk;
 	}
 
 	switch (covered->type) {
 	case KNOT_RRTYPE_DNSKEY:
-		return key->is_ksk;
+		return active_ksk;
 	case KNOT_RRTYPE_CDS:
 	case KNOT_RRTYPE_CDNSKEY:
-		return (cds_sign_by_ksk ? key->is_ksk : key->is_zsk);
+		return (cds_sign_by_ksk ? active_ksk : active_zsk);
 	default:
-		return key->is_zsk;
+		return active_zsk;
 	}
 }
 
@@ -937,97 +892,6 @@ bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
 	return !exist;
 }
 
-static int sign_changeset(const zone_contents_t *zone,
-                          size_t num_threads,
-                          zone_update_t *update,
-                          zone_keyset_t *zone_keys,
-                          const kdnssec_ctx_t *dnssec_ctx,
-                          knot_time_t *expire_at)
-{
-	if (zone == NULL || update == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_EOK;
-	changeset_signing_data_t args[num_threads];
-	memset(args, 0, sizeof(args));
-
-	// init context structures
-	for (size_t i = 0; i < num_threads; i++) {
-		args[i].zone = update->new_cont;
-		ret = changeset_iter_all(&args[i].itt, &update->change);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-		args[i].sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
-		if (args[i].sign_ctx == NULL) {
-			ret = KNOT_ENOMEM;
-			break;
-		}
-		ret = changeset_init(&args[i].changeset, update->zone->name);
-		if (ret != KNOT_EOK) {
-			break;
-		}
-		args[i].expires_at = 0;
-		args[i].num_threads = num_threads;
-		args[i].thread_index = i;
-		args[i].rrset_index = 0;
-		args[i].errcode = KNOT_EOK;
-		args[i].thread_init_errcode = -1;
-	}
-	if (ret != KNOT_EOK) {
-		for (size_t i = 0; i < num_threads; i++) {
-			changeset_iter_clear(&args[i].itt);
-			changeset_clear(&args[i].changeset);
-			zone_sign_ctx_free(args[i].sign_ctx);
-		}
-		return ret;
-	}
-
-	if (num_threads == 1) {
-		args[0].thread_init_errcode = 0;
-		sign_changeset_thread(&args[0]);
-	} else {
-		// start working threads
-		for (size_t i = 0; i < num_threads; i++) {
-			args[i].thread_init_errcode =
-				pthread_create(&args[i].thread, NULL, sign_changeset_thread, &args[i]);
-		}
-
-		// join those threads that have been really started
-		for (size_t i = 0; i < num_threads; i++) {
-			if (args[i].thread_init_errcode == 0) {
-				args[i].thread_init_errcode = pthread_join(args[i].thread, NULL);
-			}
-		}
-	}
-
-	if (!knot_rrset_empty(update->change.soa_from)) {
-		ret = sign_changeset_wrap(update->change.soa_from, &args[0], expire_at);
-	}
-	if (ret == KNOT_EOK && !knot_rrset_empty(update->change.soa_to)) {
-		ret = sign_changeset_wrap(update->change.soa_to, &args[0], expire_at);
-	}
-
-	// collect return code and results
-	for (size_t i = 0; i < num_threads && ret == KNOT_EOK; i++) {
-		if (args[i].thread_init_errcode != 0) {
-			ret = knot_map_errno_code(args[i].thread_init_errcode);
-		} else {
-			ret = args[i].errcode;
-			if (ret == KNOT_EOK) {
-				ret = zone_update_apply_changeset_fix(update, &args[i].changeset);
-				*expire_at = knot_time_min(*expire_at, args[i].expires_at);
-			}
-		}
-		changeset_iter_clear(&args[i].itt);
-		changeset_clear(&args[i].changeset);
-		zone_sign_ctx_free(args[i].sign_ctx);
-	}
-
-	return ret;
-}
-
 int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
                                       const kdnssec_ctx_t *dnssec_ctx,
                                       zone_update_t *update)
@@ -1046,15 +910,22 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
 		zone_node_t *n = zone_tree_it_val(&it);
+		bool skip_crypto = (n->flags & NODE_FLAGS_RRSIGS_VALID) && !dnssec_ctx->keytag_conflict;
+
 		knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
 		for (int i = 0; i < n->rrset_count; i++) {
 			knot_rrset_t rr = node_rrset_at(n, i);
 			if (rr.type == KNOT_RRTYPE_NSEC ||
 			    rr.type == KNOT_RRTYPE_NSEC3 ||
 			    rr.type == KNOT_RRTYPE_NSEC3PARAM) {
-				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, NULL, update, NULL);
+				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, skip_crypto, NULL, update, NULL);
 			}
 		}
+
+		if (ret == KNOT_EOK) {
+			n->flags |= NODE_FLAGS_RRSIGS_VALID; // non-NSEC RRSIGs had been validated in knot_dnssec_sign_update()
+		}
+
 		zone_tree_it_next(&it);
 	}
 	zone_tree_it_free(&it);
@@ -1103,8 +974,8 @@ int knot_zone_sign_update(zone_update_t *update,
 	if (full_sign) {
 		ret = knot_zone_sign(update, zone_keys, dnssec_ctx, expire_at);
 	} else {
-		ret = sign_changeset(update->new_cont, dnssec_ctx->policy->signing_threads,
-				     update, zone_keys, dnssec_ctx, expire_at);
+		ret = zone_tree_sign(update->a_ctx->node_ptrs, dnssec_ctx->policy->signing_threads,
+				     zone_keys, dnssec_ctx, update, expire_at);
 	}
 
 	return ret;

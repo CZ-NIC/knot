@@ -80,6 +80,8 @@ enum node_flags {
 	NODE_FLAGS_DELEG =           1 << 0,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	NODE_FLAGS_NONAUTH =         1 << 1,
+	/*! \brief RRSIGs in node have been cryptographically validated by Knot. */
+	NODE_FLAGS_RRSIGS_VALID =    1 << 2,
 	/*! \brief Node is empty and will be deleted after update. */
 	NODE_FLAGS_EMPTY =           1 << 3,
 	/*! \brief Node has a wildcard child. */
@@ -150,9 +152,21 @@ int binode_prepare_change(zone_node_t *node, knot_mm_t *mm);
 inline static zone_node_t *binode_node(zone_node_t *node, bool second)
 {
 	if (unlikely(node == NULL || !(node->flags & NODE_FLAGS_BINODE))) {
+		assert(node == NULL || !(node->flags & NODE_FLAGS_SECOND));
 		return node;
 	}
 	return node + (second - (int)((node->flags & NODE_FLAGS_SECOND) >> 9));
+}
+
+inline static zone_node_t *binode_first(zone_node_t *node)
+{
+	return binode_node(node, false);
+}
+
+inline static zone_node_t *binode_node_as(zone_node_t *node, const zone_node_t *as)
+{
+	assert(node == NULL || (as->flags & NODE_FLAGS_BINODE) == (node->flags & NODE_FLAGS_BINODE));
+	return binode_node(node, (as->flags & NODE_FLAGS_SECOND));
 }
 
 /*!
@@ -173,6 +187,11 @@ bool binode_rdata_shared(zone_node_t *node, uint16_t type);
  * \brief Return true if the additionals to rdataset of specified type are shared among both parts of bi-node.
  */
 bool binode_additional_shared(zone_node_t *node, uint16_t type);
+
+/*!
+ * \brief Return true if the additionals are unchanged between two nodes (usually a bi-node).
+ */
+bool binode_additionals_unchanged(zone_node_t *node, zone_node_t *counterpart);
 
 /*!
  * \brief Destroys allocated data within the node
@@ -215,6 +234,17 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm);
 void node_remove_rdataset(zone_node_t *node, uint16_t type);
 
 /*!
+ * \brief Remove all RRs from RRSet from the node.
+ *
+ * \param node    Node to remove from.
+ * \param rrset   RRSet with RRs to be removed.
+ * \param mm      Memory context.
+ *
+ * \return KNOT_E*
+ */
+int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm);
+
+/*!
  * \brief Returns the RRSet of the given type from the node. RRSet is allocated.
  *
  * \param node  Node to get the RRSet from.
@@ -240,7 +270,7 @@ knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type);
  */
 inline static zone_node_t *node_parent(const zone_node_t *node)
 {
-	return binode_node(node->parent, (node->flags & NODE_FLAGS_SECOND));
+	return binode_node_as(node->parent, node);
 }
 
 /*!
@@ -248,7 +278,7 @@ inline static zone_node_t *node_parent(const zone_node_t *node)
  */
 inline static zone_node_t *node_prev(const zone_node_t *node)
 {
-	return binode_node(node->prev, (node->flags & NODE_FLAGS_SECOND));
+	return binode_node_as(node->prev, node);
 }
 
 /*!
@@ -261,8 +291,7 @@ inline static zone_node_t *node_prev(const zone_node_t *node)
  */
 inline static const zone_node_t *glue_node(const glue_t *glue, const zone_node_t *another_zone_node)
 {
-	return binode_node((zone_node_t *)glue->node,
-	                   (another_zone_node->flags & NODE_FLAGS_SECOND));
+	return binode_node_as((zone_node_t *)glue->node, another_zone_node);
 }
 
 /*!
@@ -369,6 +398,6 @@ static inline zone_node_t *node_nsec3_get(const zone_node_t *node)
 	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) || node->nsec3_node == NULL) {
 		return NULL;
 	} else {
-		return binode_node(node->nsec3_node, (node->flags & NODE_FLAGS_SECOND));
+		return binode_node_as(node->nsec3_node, node);
 	}
 }

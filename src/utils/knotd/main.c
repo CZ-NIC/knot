@@ -62,7 +62,7 @@ static void init_signal_started(void)
 
 static int make_daemon(int nochdir, int noclose)
 {
-	int fd, ret;
+	int ret;
 
 	switch (fork()) {
 	case -1:
@@ -94,7 +94,7 @@ static int make_daemon(int nochdir, int noclose)
 			return errno;
 		}
 
-		fd = open("/dev/null", O_RDWR);
+		int fd = open("/dev/null", O_RDWR);
 		if (fd == -1) {
 			return errno;
 		}
@@ -111,6 +111,7 @@ static int make_daemon(int nochdir, int noclose)
 			close(fd);
 			return errno;
 		}
+		close(fd);
 	}
 
 	return 0;
@@ -292,7 +293,7 @@ static void print_help(void)
 	       "                             (default %s)\n"
 	       " -C, --confdb <dir>         Use a binary configuration database directory.\n"
 	       "                             (default %s)\n"
-	       " -m, --max-conf-size <MiB>  Set maximum configuration size (max 10000 MiB).\n"
+	       " -m, --max-conf-size <MiB>  Set maximum size of the configuration database (max 10000 MiB).\n"
 	       "                             (default %d MiB)\n"
 	       " -s, --socket <path>        Use a remote control UNIX socket path.\n"
 	       "                             (default %s)\n"
@@ -331,10 +332,6 @@ static int set_config(const char *confdb, const char *config, size_t max_conf_si
 		config = CONF_DEFAULT_FILE;
 	}
 
-	const char *src = import ? config : confdb;
-	log_debug("%s '%s'", import ? "config" : "confdb",
-	          (src != NULL) ? src : "empty");
-
 	/* Open confdb. */
 	conf_t *new_conf = NULL;
 	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, CONF_FREQMODULES);
@@ -346,7 +343,7 @@ static int set_config(const char *confdb, const char *config, size_t max_conf_si
 
 	/* Import the config file. */
 	if (import) {
-		ret = conf_import(new_conf, config, true);
+		ret = conf_import(new_conf, config, true, true);
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to load configuration file '%s' (%s)",
 			          config, knot_strerror(ret));
@@ -477,7 +474,7 @@ int main(int argc, char **argv)
 
 	/* Initialize server. */
 	server_t server;
-	ret = server_init(&server, conf_bg_threads(conf()));
+	ret = server_init(&server, conf()->cache.srv_bg_threads);
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to initialize server (%s)", knot_strerror(ret));
 		conf_free(conf());

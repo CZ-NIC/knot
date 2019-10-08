@@ -88,9 +88,8 @@ static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
  */
 static zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents)
 {
-	return node_new(owner, (contents->nodes->flags & ZONE_TREE_USE_BINODES),
-	                (contents->nodes->flags & ZONE_TREE_USE_BINODES) &&
-	                (contents->nodes->flags & ZONE_TREE_BINO_SECOND), NULL);
+	assert(contents->nsec3_nodes == NULL || contents->nsec3_nodes->flags == contents->nodes->flags);
+	return node_new_for_tree(owner, contents->nodes, NULL);
 }
 
 static zone_node_t *get_node(const zone_contents_t *zone, const knot_dname_t *name)
@@ -114,11 +113,6 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n
 {
 	if (knot_rrset_empty(rr)) {
 		return KNOT_EINVAL;
-	}
-
-	// check if the RRSet belongs to the zone
-	if (knot_dname_in_bailiwick(rr->owner, z->apex->owner) < 0) {
-		return KNOT_EOUTOFZONE;
 	}
 
 	if (*n == NULL) {
@@ -154,20 +148,13 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		node = *n;
 	}
 
-	knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
-	// Subtract changeset RRS from node RRS.
-	int ret = knot_rdataset_subtract(node_rrs, &rr->rrs, NULL);
+	int ret = node_remove_rrset(node, rr, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	if (node_rrs->count == 0) {
-		// RRSet is empty now, remove it from node, all data freed.
-		node_remove_rdataset(node, rr->type);
-		// If node is empty now, delete it from zone tree.
-		if (node->rrset_count == 0 && node != z->apex) {
-			zone_tree_del_node(nsec3 ? z->nsec3_nodes : z->nodes, node, (zone_tree_del_node_cb_t)node_free, NULL);
-		}
+	if (node->rrset_count == 0 && node->children == 0 && node != z->apex) {
+		zone_tree_del_node(nsec3 ? z->nsec3_nodes : z->nodes, node, true);
 	}
 
 	*n = node;
@@ -180,7 +167,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	if (out->nodes == NULL) {
 		return KNOT_ENOMEM;
 	}
-	out->apex = binode_node(z->apex, (out->nodes->flags & ZONE_TREE_BINO_SECOND));
+	out->apex = zone_tree_fix_get(z->apex, out->nodes);
 	return KNOT_EOK;
 }
 
@@ -270,6 +257,19 @@ const zone_node_t *zone_contents_find_node(const zone_contents_t *zone, const kn
 	}
 
 	return get_node(zone, name);
+}
+
+const zone_node_t *zone_contents_node_or_nsec3(const zone_contents_t *zone, const knot_dname_t *name)
+{
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
+	const zone_node_t *node = get_node(zone, name);
+	if (node == NULL) {
+		node = get_nsec3_node(zone, name);
+	}
+	return node;
 }
 
 zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const knot_rrset_t *rrset)
@@ -372,7 +372,7 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 		return KNOT_ENSEC3PAR;
 	}
 
-	uint8_t nsec3_name[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t nsec3_name;
 	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name),
 	                                  name, zone->apex->owner, &zone->nsec3_params);
 	if (ret != KNOT_EOK) {
@@ -425,8 +425,8 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
 		return NULL;
 	}
 
-	knot_dname_t wildcard[KNOT_DNAME_MAXLEN] = { 0x01, '*' };
-	knot_dname_to_wire(wildcard + 2, parent->owner, KNOT_DNAME_MAXLEN - 2);
+	knot_dname_storage_t wildcard = "\x01""*";
+	knot_dname_to_wire(wildcard + 2, parent->owner, sizeof(wildcard) - 2);
 
 	return zone_contents_find_node(contents, wildcard);
 }

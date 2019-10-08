@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,9 +27,9 @@
 #include "knot/zone/zone-load.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
+#include "contrib/strtonum.h"
 #include "contrib/openbsd/strlcat.h"
 #include "utils/knotc/commands.h"
-#include "utils/knotc/estimator.h"
 
 #define CMD_EXIT		"exit"
 
@@ -39,7 +39,6 @@
 #define CMD_STATS		"stats"
 
 #define CMD_ZONE_CHECK		"zone-check"
-#define CMD_ZONE_MEMSTATS	"zone-memstats"
 #define CMD_ZONE_STATUS		"zone-status"
 #define CMD_ZONE_RELOAD		"zone-reload"
 #define CMD_ZONE_REFRESH	"zone-refresh"
@@ -518,7 +517,7 @@ static int zone_exec(cmd_args_t *args, int (*fcn)(const knot_dname_t *, void *),
 
 	// Process specified zones.
 	if (args->argc > 0) {
-		uint8_t id[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t id;
 
 		for (int i = 0; i < args->argc; i++) {
 			if (knot_dname_from_str(id, args->argv[i], sizeof(id)) == NULL) {
@@ -567,82 +566,6 @@ static int zone_check(const knot_dname_t *dname, void *data)
 static int cmd_zone_check(cmd_args_t *args)
 {
 	return zone_exec(args, zone_check, args);
-}
-
-static int zone_memstats(const knot_dname_t *dname, void *data)
-{
-	// Init malloc wrapper for trie size estimation.
-	size_t malloc_size = 0;
-	knot_mm_t mem_ctx = {
-		.ctx = &malloc_size,
-		.alloc = estimator_malloc,
-		.free = estimator_free
-	};
-
-	// Init memory estimation context.
-	zone_estim_t est = {
-		.node_table = trie_create(&mem_ctx),
-	};
-
-	char buff[KNOT_DNAME_TXT_MAXLEN + 1];
-	char *zone_name = knot_dname_to_str(buff, dname, sizeof(buff));
-	char *zone_file = conf_zonefile(conf(), dname);
-	zs_scanner_t *zs = malloc(sizeof(zs_scanner_t));
-
-	if (est.node_table == NULL || zone_name == NULL || zone_file == NULL ||
-	    zs == NULL) {
-		log_zone_error(dname, "%s", knot_strerror(KNOT_ENOMEM));
-		trie_free(est.node_table);
-		free(zone_file);
-		free(zs);
-		return KNOT_ENOMEM;
-	}
-
-	// Do a parser run, but do not actually create the zone.
-	if (zs_init(zs, zone_name, KNOT_CLASS_IN, 3600) != 0 ||
-	    zs_set_processing(zs, estimator_rrset_memsize_wrap, NULL, &est) != 0 ||
-	    zs_set_input_file(zs, zone_file) != 0 ||
-	    zs_parse_all(zs) != 0) {
-		log_zone_error(dname, "failed to parse zone file '%s' (%s)",
-		               zone_file, zs_errorname(zs->error.code));
-		trie_apply(est.node_table, estimator_free_trie_node, NULL);
-		trie_free(est.node_table);
-		free(zone_file);
-		zs_deinit(zs);
-		free(zs);
-		return KNOT_EPARSEFAIL;
-	}
-	free(zone_file);
-	zs_deinit(zs);
-	free(zs);
-
-	// Cleanup.
-	trie_apply(est.node_table, estimator_free_trie_node, NULL);
-	trie_free(est.node_table);
-
-	double zone_size = (est.rdata_size + est.node_size + est.dname_size +
-	                    malloc_size) / (1024.0 * 1024.0);
-
-	log_zone_info(dname, "%zu records, %.1f MiB memory",
-	              est.record_count, zone_size);
-
-	double *total_size = (double *)data;
-	*total_size += zone_size;
-
-	return KNOT_EOK;
-}
-
-static int cmd_zone_memstats(cmd_args_t *args)
-{
-	double total_size = 0;
-
-	int ret = zone_exec(args, zone_memstats, &total_size);
-
-	if (args->argc != 1) {
-		log_info("Total %.1f MiB memory", total_size);
-	}
-
-	return ret;
 }
 
 static int cmd_zone_key_roll_ctl(cmd_args_t *args)
@@ -881,8 +804,10 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 
 	// Set TTL only with an editing operation.
 	if (args->argc > idx) {
+		uint32_t num;
 		uint16_t type;
-		if (knot_rrtype_from_string(args->argv[idx], &type) != 0) {
+		if (knot_rrtype_from_string(args->argv[idx], &type) != 0 &&
+		    str_to_u32(args->argv[idx], &num) == KNOT_EOK) {
 			switch (args->desc->cmd) {
 			case CTL_ZONE_SET:
 			case CTL_ZONE_UNSET:
@@ -890,7 +815,7 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 				idx++;
 				break;
 			default:
-				return KNOT_EINVAL;
+				break;
 			}
 		}
 	}
@@ -948,7 +873,7 @@ static int cmd_conf_init(cmd_args_t *args)
 			return KNOT_EDENIED;
 		}
 
-		ret = conf_import(conf(), "", false);
+		ret = conf_import(conf(), "", false, false);
 	}
 
 	if (ret == KNOT_EOK) {
@@ -989,7 +914,7 @@ static int cmd_conf_import(cmd_args_t *args)
 
 		log_debug("importing confdb from file '%s'", args->argv[0]);
 
-		ret = conf_import(conf(), args->argv[0], true);
+		ret = conf_import(conf(), args->argv[0], true, false);
 	}
 
 	if (ret == KNOT_EOK) {
@@ -1085,7 +1010,6 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_STATS,           cmd_stats_ctl,     CTL_STATS },
 
 	{ CMD_ZONE_CHECK,      cmd_zone_check,        CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
-	{ CMD_ZONE_MEMSTATS,   cmd_zone_memstats,     CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
 	{ CMD_ZONE_STATUS,     cmd_zone_filter_ctl,   CTL_ZONE_STATUS,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,          CTL_ZONE_RELOAD,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,          CTL_ZONE_REFRESH,    CMD_FOPT_ZONE },
@@ -1134,7 +1058,6 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_STATS,           "[<module>[.<counter>]]",                 "Show global statistics counter(s)." },
 	{ "",                  "",                                       "" },
 	{ CMD_ZONE_CHECK,      "[<zone>...]",                            "Check if the zone can be loaded. (*)" },
-	{ CMD_ZONE_MEMSTATS,   "[<zone>...]",                            "Estimate memory use for the zone. (*)" },
 	{ CMD_ZONE_RELOAD,     "[<zone>...]",                            "Reload a zone from a disk. (#)" },
 	{ CMD_ZONE_REFRESH,    "[<zone>...]",                            "Force slave zone refresh. (#)" },
 	{ CMD_ZONE_NOTIFY,     "[<zone>...]",                            "Send a NOTIFY message to all configured remotes. (#)" },

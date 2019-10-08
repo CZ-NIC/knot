@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <arpa/inet.h>
 #include <inttypes.h>
@@ -681,16 +681,14 @@ int yp_dname_to_bin(
 	YP_CHECK_PARAMS_BIN;
 
 	// Copy dname string to the buffer to limit dname_from_str overread.
-	char buf[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t buf;
 	wire_ctx_t buf_ctx = copy_in(in, YP_LEN, buf, sizeof(buf));
 	if (buf_ctx.error != KNOT_EOK) {
 		return buf_ctx.error;
 	}
 
 	// Convert the dname.
-	knot_dname_t *dname = knot_dname_from_str(out->position, buf,
-	                                          wire_ctx_available(out));
-	if (dname == NULL) {
+	if (knot_dname_from_str(out->position, buf, wire_ctx_available(out)) == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -716,9 +714,8 @@ int yp_dname_to_txt(
 {
 	YP_CHECK_PARAMS_TXT;
 
-	char *name = knot_dname_to_str((char *)out->position, in->position,
-	                               wire_ctx_available(out));
-	if (name == NULL) {
+	if (knot_dname_to_str((char *)out->position, in->position,
+	                      wire_ctx_available(out)) == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1083,7 +1080,7 @@ struct sockaddr_storage yp_addr(
 	if (addr_len > 0) {
 		int64_t port = knot_wire_read_u64(data + sizeof(uint8_t) + addr_len);
 		if (port >= 0) {
-			sockaddr_port_set((struct sockaddr *)&ss, port);
+			sockaddr_port_set(&ss, port);
 			*no_port = false;
 		} else {
 			*no_port = true;

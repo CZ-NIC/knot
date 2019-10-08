@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #pragma once
 
@@ -20,8 +20,6 @@
 
 #include "knot/conf/base.h"
 #include "knot/conf/schema.h"
-
-#define CONF_XFERS	10
 
 /*! Configuration remote getter output. */
 typedef struct {
@@ -599,19 +597,64 @@ static inline char* conf_zonefile(
  *
  * \note The result must be explicitly deallocated.
  *
- * \param[in] conf  Configuration.
- * \param[in] txn   Configuration DB transaction.
+ * \param[in] conf     Configuration.
+ * \param[in] txn      Configuration DB transaction.
+ * \param[in] db_type  Database name.
  *
  * \return Absolute database path string pointer.
  */
-char* conf_db_txn(conf_t *conf,
+char* conf_db_txn(
+	conf_t *conf,
 	knot_db_txn_t *txn,
-	const yp_name_t *db_type);
+	const yp_name_t *db_type
+);
 static inline char* conf_db(
 	conf_t *conf,
 	const yp_name_t *db_type)
 {
 	return conf_db_txn(conf, &conf->read_txn, db_type);
+}
+
+/*!
+ * Gets database-specific parameter.
+ *
+ * \param[in] conf          Configuration.
+ * \param[in] txn           Configuration DB transaction.
+ * \param[in] param         Parameter name.
+ * \param[in] legacy_param  Legacy parameter name.
+ *
+ * \return Item value.
+ */
+conf_val_t conf_db_param_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *param,
+	const yp_name_t *legacy_param
+);
+static inline conf_val_t conf_db_param(
+	conf_t *conf,
+	const yp_name_t *param,
+	const yp_name_t *legacy_param)
+{
+	return conf_db_param_txn(conf, &conf->read_txn, param, legacy_param);
+}
+
+/*!
+ * Gets the configured setting of the TCP reuseport switch.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return True if enabled, false otherwise.
+ */
+bool conf_tcp_reuseport_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline bool conf_tcp_reuseport(
+	conf_t *conf)
+{
+	return conf_tcp_reuseport_txn(conf, &conf->read_txn);
 }
 
 /*!
@@ -666,6 +709,24 @@ static inline size_t conf_bg_threads(
 	conf_t *conf)
 {
 	return conf_bg_threads_txn(conf, &conf->read_txn);
+}
+
+/*!
+ * Gets the configured maximum number of TCP clients.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return Maximum number of TCP clients.
+ */
+size_t conf_tcp_max_clients_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline size_t conf_tcp_max_clients(
+	conf_t *conf)
+{
+	return conf_tcp_max_clients_txn(conf, &conf->read_txn);
 }
 
 /*!

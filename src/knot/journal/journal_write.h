@@ -106,7 +106,13 @@ int journal_insert_zone(zone_journal_t j, const zone_contents_t *z);
  *
  * \param j    Zone journal.
  * \param ch   Changeset to be stored.
+ * \param extra   Extra changeset to be stored in the role of merged changeset.
+ *
+ * \note The extra changesetis being stored on zone load, it is basically the diff
+ *       between zonefile and loaded zone contents. Afterwards, it will be treated
+ *       the same like merged changeset. Inserting it requires no zone-in-journal
+ *       present and leads to deleting any previous merged changeset.
  *
  * \return KNOT_E*
  */
-int journal_insert(zone_journal_t j, const changeset_t *ch);
+int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *extra);

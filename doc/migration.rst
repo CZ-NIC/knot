@@ -30,7 +30,7 @@ Since Knot DNS version 2.5.0 each query module can be configured to be:
   ``dnsproxy`` and ``onlinesign``)
 
 The ``--with-timer-mapsize`` configure option was replaced with the runtime
-:ref:`template_max-timer-db-size` configuration option.
+``template.max-timer-db-size`` configuration option.
 
 .. _KASP DB migration:
 
@@ -131,7 +131,7 @@ up-to-date zone files from BIND, importing existing private keys, and updating
 server configuration:
 
 1. To obtain current content of the zone which is being migrated,
-   request BIND to flush the zone into the zone file: ``rndc flush
+   request BIND to flush the zone into the zone file: ``rndc sync
    example.com``.
 
    .. NOTE::
@@ -154,14 +154,7 @@ server configuration:
 
    .. NOTE::
       If the server configuration file or database is not at the default location,
-      add a configuration parameter (-c or -C).
-
-   .. NOTE::
-      The server can be run under a dedicated user account, usually ``knot``.
-      As the server requires read-write access to the KASP database, the
-      permissions must be set correctly. This can be achieved for instance by
-      executing all KASP database management commands under sudo::
-
-      $ sudo -u knot keymgr ...
+      add a configuration parameter (-c or -C). See :doc:`keymgr <man_keymgr>`
+      for more info about required access rights to the key files.
 
 4. Follow :ref:`Automatic DNSSEC signing` steps to configure DNSSEC signing.

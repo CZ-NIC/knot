@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@
 #include <string.h>
 #include <assert.h>
 #include <sys/param.h>
-#include <urcu.h>
 #ifdef HAVE_SYS_UIO_H	// struct iovec (OpenBSD)
 #include <sys/uio.h>
 #endif /* HAVE_SYS_UIO_H */
@@ -362,52 +361,46 @@ void __attribute__ ((constructor)) udp_master_init(void)
 static int iface_udp_fd(const iface_t *iface, int thread_id)
 {
 #ifdef ENABLE_REUSEPORT
-		return iface->fd_udp[thread_id % iface->fd_udp_count];
-#else
-		return iface->fd_udp[0];
-#endif
-}
+	assert(thread_id < iface->fd_udp_count);
 
-/*! \brief Release the interface list reference and free watched descriptor set. */
-static void forget_ifaces(ifacelist_t *ifaces, struct pollfd **fds_ptr)
-{
-	ref_release((ref_t *)ifaces);
-	free(*fds_ptr);
-	*fds_ptr = NULL;
+	return iface->fd_udp[thread_id];
+#else
+	return iface->fd_udp[0];
+#endif
 }
 
 /*!
  * \brief Make a set of watched descriptors based on the interface list.
  *
- * \param[in]   ifaces  New interface list.
- * \param[in]   thrid   Thread ID.
- * \param[out]  fds_ptr Allocated set of descriptors.
+ * \param[in]   ifaces     Interface list.
+ * \param[out]  fds_ptr    Allocated set of descriptors (a pointer to it).
+ * \param[in]   thread_id  Thread ID.
  *
  * \return Number of watched descriptors, zero on error.
  */
-static nfds_t track_ifaces(const ifacelist_t *ifaces, int thrid,
-                           struct pollfd **fds_ptr)
+static unsigned udp_set_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
+                               int thread_id)
 {
 	assert(ifaces && fds_ptr);
 
-	nfds_t nfds = list_size(&ifaces->l);
-	struct pollfd *fds = malloc(nfds * sizeof(*fds));
-	if (!fds) {
+	unsigned nfds = list_size(ifaces);
+	struct pollfd *fds = calloc(nfds, sizeof(*fds));
+	if (fds == NULL) {
 		*fds_ptr = NULL;
 		return 0;
 	}
 
-	iface_t *iface = NULL;
+	iface_t *iface;
 	int i = 0;
-	WALK_LIST(iface, ifaces->l) {
-		fds[i].fd = iface_udp_fd(iface, thrid);
+	WALK_LIST(iface, *ifaces) {
+		fds[i].fd = iface_udp_fd(iface, thread_id);
 		fds[i].events = POLLIN;
 		fds[i].revents = 0;
 		i += 1;
 	}
-	assert(i == nfds);
 
 	*fds_ptr = fds;
+
 	return nfds;
 }
 
@@ -426,9 +419,7 @@ int udp_master(dthread_t *thread)
 	/* Prepare structures for bound sockets. */
 	unsigned thr_id = dt_get_id(thread);
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	unsigned *iostate = &handler->thread_state[thr_id];
 	void *rq = _udp_init();
-	ifacelist_t *ref = NULL;
 
 	/* Create big enough memory cushion. */
 	knot_mm_t mm;
@@ -443,26 +434,15 @@ int udp_master(dthread_t *thread)
 
 	/* Event source. */
 	struct pollfd *fds = NULL;
-	nfds_t nfds = 0;
+
+	/* Allocate descriptors for the configured interfaces. */
+	unsigned nfds = udp_set_ifaces(handler->server->ifaces, &fds, udp.thread_id);
+	if (nfds == 0) {
+		goto finish;
+	}
 
 	/* Loop until all data is read. */
 	for (;;) {
-
-		/* Check handler state. */
-		if (unlikely(*iostate & ServerReload)) {
-			*iostate &= ~ServerReload;
-			udp.thread_id = handler->thread_id[thr_id];
-
-			rcu_read_lock();
-			forget_ifaces(ref, &fds);
-			ref = handler->server->ifaces;
-			nfds = track_ifaces(ref, udp.thread_id, &fds);
-			rcu_read_unlock();
-			if (nfds == 0) {
-				break;
-			}
-		}
-
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
 			break;
@@ -471,12 +451,14 @@ int udp_master(dthread_t *thread)
 		/* Wait for events. */
 		int events = poll(fds, nfds, -1);
 		if (events <= 0) {
-			if (errno == EINTR) continue;
+			if (errno == EINTR || errno == EAGAIN) {
+				continue;
+			}
 			break;
 		}
 
 		/* Process the events. */
-		for (nfds_t i = 0; i < nfds && events > 0; i++) {
+		for (unsigned i = 0; i < nfds && events > 0; i++) {
 			if (fds[i].revents == 0) {
 				continue;
 			}
@@ -488,8 +470,10 @@ int udp_master(dthread_t *thread)
 		}
 	}
 
+finish:
 	_udp_deinit(rq);
-	forget_ifaces(ref, &fds);
+	free(fds);
 	mp_delete(mm.ctx);
+
 	return KNOT_EOK;
 }

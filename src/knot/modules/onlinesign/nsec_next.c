@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <stdbool.h>
@@ -81,7 +81,7 @@ knot_dname_t *online_nsec_next(const knot_dname_t *dname, const knot_dname_t *ap
 	assert(apex);
 
 	// right aligned copy of the domain name
-	uint8_t copy[KNOT_DNAME_MAXLEN] = { 0 };
+	knot_dname_storage_t copy = { 0 };
 	size_t dname_len = knot_dname_size(dname);
 	size_t empty_len = sizeof(copy) - dname_len;
 	uint8_t *pos = copy + empty_len;

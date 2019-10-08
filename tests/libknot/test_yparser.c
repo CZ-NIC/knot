@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -81,10 +81,24 @@ const char *syntax_error3 =
 	"   a: b\n"
 	"  c: d\n";
 
+const char *tab_error1 =
+	"a:\n"
+	"b:\t\n";
+
+const char *tab_error2 =
+	"a:\n"
+	"b: c\t\n";
+
+const char *tab_error3 =
+	"a:\n"
+	"\t\n";
+
 const char *dname_ok =
 	".:\n"
 	"dom-ain:\n"
-	"\\070-\\071.\\072.:";
+	"\\070-\\071.\\072.:\n"
+	"*.wildchar.com:\n"
+	"_ldap._tcp.example.com:\n";
 
 const char *quotes_ok =
 	"g: \"\"\n"
@@ -211,13 +225,27 @@ static void test_syntax_error(yp_parser_t *yp, const char *input)
 	static int count = 1;
 
 	int ret = yp_set_input_string(yp, input, strlen(input));
-	is_int(KNOT_EOK, ret, "set error input string %i", count++);
+	is_int(KNOT_EOK, ret, "set syntax error input string %i", count++);
 	ret = yp_parse(yp);
 	is_int(KNOT_EOK, ret, "parse key0");
 	ret = yp_parse(yp);
 	is_int(KNOT_EOK, ret, "parse key1");
 	ret = yp_parse(yp);
 	is_int(KNOT_YP_EINVAL_INDENT, ret, "parse key1 - invalid indentation");
+	is_int(yp->line_count, 3, "invalid indentation line");
+}
+
+static void test_tab_error(yp_parser_t *yp, const char *input)
+{
+	static int count = 1;
+
+	int ret = yp_set_input_string(yp, input, strlen(input));
+	is_int(KNOT_EOK, ret, "set tab error input string %i", count++);
+	ret = yp_parse(yp);
+	is_int(KNOT_EOK, ret, "parse key0");
+	ret = yp_parse(yp);
+	is_int(KNOT_YP_ECHAR_TAB, ret, "invalid tabulator");
+	is_int(yp->line_count, 2, "invalid tabulator line");
 }
 
 static void test_dname(yp_parser_t *yp)
@@ -236,7 +264,8 @@ static void test_dname(yp_parser_t *yp)
 	CHECK_DNAME(".");
 	CHECK_DNAME("dom-ain");
 	CHECK_DNAME("\\070-\\071.\\072.");
-
+	CHECK_DNAME("*.wildchar.com");
+	CHECK_DNAME("_ldap._tcp.example.com");
 }
 
 static void test_quotes(yp_parser_t *yp)
@@ -260,6 +289,23 @@ static void test_quotes(yp_parser_t *yp)
 	CHECK_QUOTE("\\@ \\[ \\# \\, \\]");
 }
 
+// Check that wrong wildcard dname is NOT parsed as valid dname.
+static void test_wildcard(yp_parser_t *yp)
+{
+#define CHECK_NOT_WILDCARD(str) \
+	ret = yp_set_input_string(yp, str, strlen(str)); \
+	is_int(KNOT_EOK, ret, "set input string");\
+	ret = yp_parse(yp); \
+	is_int(KNOT_EPARSEFAIL, ret, str " is not wildcard"); \
+	ok(yp->key_len != strlen(str) || strcmp(yp->key, str) != 0 || \
+	   yp->event != YP_EKEY0, "compare " str);
+
+	int ret;
+	CHECK_NOT_WILDCARD("a.*.example.com.");
+	CHECK_NOT_WILDCARD("**.example.com.");
+	CHECK_NOT_WILDCARD("*example.com.");
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -271,8 +317,12 @@ int main(int argc, char *argv[])
 	test_syntax_error(&yp, syntax_error1);
 	test_syntax_error(&yp, syntax_error2);
 	test_syntax_error(&yp, syntax_error3);
+	test_tab_error(&yp, tab_error1);
+	test_tab_error(&yp, tab_error2);
+	test_tab_error(&yp, tab_error3);
 	test_dname(&yp);
 	test_quotes(&yp);
+	test_wildcard(&yp);
 
 	yp_deinit(&yp);
 

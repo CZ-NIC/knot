@@ -26,7 +26,7 @@
 
 #define NOTIFY_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_NOTIFY, \
-	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->params->remote, fmt)
+	       LOG_DIRECTION_IN, qdata->params->remote, fmt)
 
 static int notify_check_query(knotd_qdata_t *qdata)
 {
@@ -69,9 +69,8 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	if (answer->count > 0) {
 		const knot_rrset_t *soa = knot_pkt_rr(answer, 0);
 		if (soa->type == KNOT_RRTYPE_SOA) {
-			uint32_t serial = knot_soa_serial(soa->rrs.rdata);
-			uint32_t zone_serial = zone_contents_serial(zone->contents);
-			(void)zone_get_master_serial(zone, &zone_serial);
+			uint32_t zone_serial, serial = knot_soa_serial(soa->rrs.rdata);
+			(void)slave_zone_serial(zone, conf(), &zone_serial);
 			NOTIFY_LOG(LOG_INFO, qdata, "received, serial %u", serial);
 			if (serial_equal(serial, zone_serial)) {
 				// NOTIFY serial == zone serial => ignore, keep timers

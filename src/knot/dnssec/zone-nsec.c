@@ -40,7 +40,7 @@ int knot_nsec3_hash_to_dname(uint8_t *out, size_t out_size, const uint8_t *hash,
 	}
 
 	// Encode raw hash to the first label.
-	uint8_t label[KNOT_DNAME_MAXLEN];
+	uint8_t label[KNOT_DNAME_MAXLABELLEN];
 	int32_t label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
 	if (label_size <= 0) {
 		return label_size;
@@ -116,7 +116,7 @@ zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
 			if (node->nsec3_hash != binode_counterpart(node)->nsec3_hash) {
 				free(node->nsec3_hash);
 			}
-			node->nsec3_node = nsec3;
+			node->nsec3_node = binode_first(nsec3);
 			node->flags |= NODE_FLAGS_NSEC3_NODE;
 		}
 	}
@@ -131,9 +131,14 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 		(void)node_nsec3_node(node, zone);
 		return KNOT_EOK;
 	}
+	assert(counter->nsec3_node != NULL); // shut up cppcheck
+
 	zone_node_t *nsec3_counter = (counter->flags & NODE_FLAGS_NSEC3_NODE) ?
-	                             binode_counterpart(counter->nsec3_node) : NULL;
-	if (nsec3_counter != NULL && !(nsec3_counter->flags & NODE_FLAGS_DELETED)) {
+	                             counter->nsec3_node : NULL;
+	if (nsec3_counter != NULL && !(binode_node_as(nsec3_counter, node)->flags & NODE_FLAGS_DELETED)) {
+		assert(node->flags & NODE_FLAGS_NSEC3_NODE);
+		node->flags |= NODE_FLAGS_NSEC3_NODE;
+		assert(!(nsec3_counter->flags & NODE_FLAGS_SECOND));
 		node->nsec3_node = nsec3_counter;
 	} else {
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;

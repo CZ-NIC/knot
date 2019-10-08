@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <getopt.h>
@@ -161,7 +161,7 @@ static void rr_list_free(list_t *list, knot_mm_t *mm)
 	assert(list != NULL);
 	assert(mm != NULL);
 
-	ptrnode_t *node = NULL;
+	ptrnode_t *node;
 	WALK_LIST(node, *list) {
 		knot_rrset_t *rrset = (knot_rrset_t *)node->d;
 		knot_rrset_free(rrset, NULL);

@@ -22,13 +22,15 @@
 #include "contrib/ucw/lists.h"
 
 enum {
-	APPLY_STRICT = 1 << 0,    /* Apply strictly, don't ignore removing non-existent RRs. */
+	APPLY_STRICT     = 1 << 0, /*!< Apply strictly, don't ignore removing non-existent RRs. */
+	APPLY_UNIFY_FULL = 1 << 1, /*!< When cleaning up successful update, perform full trees nodes unify. */
 };
 
 struct apply_ctx {
 	zone_contents_t *contents;
 	zone_tree_t *node_ptrs;   /*!< Just pointers to the affected nodes in contents. */
 	zone_tree_t *nsec3_ptrs;  /*!< The same for NSEC3 nodes. */
+	zone_tree_t *adjust_ptrs; /*!< Pointers to nodes affected by adjusting. */
 	uint32_t flags;
 	knot_sem_t *cow_mutex;
 };
@@ -78,50 +80,28 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
 int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
 
 /*!
- * \brief Adds a single RR into zone contents.
+ * \brief Remove SOA and add a new SOA.
  *
  * \param ctx  Apply context.
- * \param ch   Changeset to be applied to the zone.
+ * \param rr   New SOA to be added.
  *
  * \return KNOT_E*
  */
-int apply_replace_soa(apply_ctx_t *ctx, const changeset_t *ch);
-
-/*!
- * \brief Applies changesets directly to the zone, without copying it.
- *
- * \warning Modified zone is in inconsistent state after error and should be freed.
- *
- * \param ctx     Apply context.
- * \param chsets  List of changesets to be applied to the zone.
- *
- * \return KNOT_E*
- */
-int apply_changesets_directly(apply_ctx_t *ctx, list_t *chsets);
-
-/*!
- * \brief Applies changeset directly to the zone, without copying it.
- *
- * \param ctx  Apply context.
- * \param ch   Changeset to be applied to the zone.
- *
- * \return KNOT_E*
- */
-int apply_changeset_directly(apply_ctx_t *ctx, const changeset_t *ch);
+int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr);
 
 /*!
  * \brief Cleanups successful zone update.
  *
  * \param ctx  Context used to create the update.
  */
-void update_cleanup(apply_ctx_t *ctx);
+void apply_cleanup(apply_ctx_t *ctx);
 
 /*!
  * \brief Rollbacks failed zone update.
  *
  * \param ctx  Context used to create the update.
  */
-void update_rollback(apply_ctx_t *ctx);
+void apply_rollback(apply_ctx_t *ctx);
 
 /*!
  * \brief Shallow frees zone contents - either shallow copy after failed update

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <string.h>
 #include <urcu.h>
@@ -107,31 +107,80 @@ void conf_refresh_hostname(
 }
 
 static void init_cache(
-	conf_t *conf)
+	conf_t *conf,
+	bool reinit_cache)
 {
-	conf_val_t val = conf_get(conf, C_SRV, C_MAX_IPV4_UDP_PAYLOAD);
+	/* For UDP, TCP and background workers, cache the numbers of running
+	 * workers. Cache the setting of TCP reuseport too. These values
+	 * can't change in runtime, while config data can.
+	 */
+
+	static bool   first_init = true;
+	static bool   running_tcp_reuseport;
+	static size_t running_udp_threads;
+	static size_t running_tcp_threads;
+	static size_t running_bg_threads;
+
+	if (first_init || reinit_cache) {
+		running_tcp_reuseport = conf_tcp_reuseport(conf);
+		running_udp_threads = conf_udp_threads(conf);
+		running_tcp_threads = conf_tcp_threads(conf);
+		running_bg_threads = conf_bg_threads(conf);
+
+		first_init = false;
+	}
+
+	conf_val_t val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD_IPV4);
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_MAX_IPV4_UDP_PAYLOAD);
+	}
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD);
+	}
 	if (val.code != KNOT_EOK) {
 		val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
 	}
-	conf->cache.srv_max_ipv4_udp_payload = conf_int(&val);
+	conf->cache.srv_udp_max_payload_ipv4 = conf_int(&val);
 
-	val = conf_get(conf, C_SRV, C_MAX_IPV6_UDP_PAYLOAD);
+	val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD_IPV6);
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_MAX_IPV6_UDP_PAYLOAD);
+	}
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD);
+	}
 	if (val.code != KNOT_EOK) {
 		val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
 	}
-	conf->cache.srv_max_ipv6_udp_payload = conf_int(&val);
-
-	val = conf_get(conf, C_SRV, C_TCP_HSHAKE_TIMEOUT);
-	conf->cache.srv_tcp_hshake_timeout = conf_int(&val);
+	conf->cache.srv_udp_max_payload_ipv6 = conf_int(&val);
 
 	val = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
 	conf->cache.srv_tcp_idle_timeout = conf_int(&val);
 
-	val = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
-	conf->cache.srv_tcp_reply_timeout = conf_int(&val);
+	val = conf_get(conf, C_SRV, C_TCP_IO_TIMEOUT);
+	conf->cache.srv_tcp_io_timeout = conf_int(&val);
 
-	val = conf_get(conf, C_SRV, C_MAX_TCP_CLIENTS);
-	conf->cache.srv_max_tcp_clients = conf_int(&val);
+	val = conf_get(conf, C_SRV, C_TCP_RMT_IO_TIMEOUT);
+	if (val.code == KNOT_EOK) {
+		conf->cache.srv_tcp_remote_io_timeout = conf_int(&val);
+	} else {
+		int timeout = conf_int(&val); // New default value.
+		conf_val_t legacy = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
+		if (legacy.code == KNOT_EOK) {
+			timeout = 1000 * conf_int(&legacy); // Explicit legacy value.
+		}
+		conf->cache.srv_tcp_remote_io_timeout = timeout;
+	}
+
+	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
+
+	conf->cache.srv_udp_threads = running_udp_threads;
+
+	conf->cache.srv_tcp_threads = running_tcp_threads;
+
+	conf->cache.srv_bg_threads = running_bg_threads;
+
+	conf->cache.srv_tcp_max_clients = conf_tcp_max_clients(conf);
 
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
@@ -235,7 +284,7 @@ int conf_new(
 	}
 
 	// Initialize cached values.
-	init_cache(out);
+	init_cache(out, false);
 
 	// Load module schemas.
 	if (flags & (CONF_FREQMODULES | CONF_FOPTMODULES)) {
@@ -320,7 +369,7 @@ int conf_clone(
 	}
 
 	// Initialize cached values.
-	init_cache(out);
+	init_cache(out, false);
 
 	out->is_clone = true;
 
@@ -409,7 +458,7 @@ void conf_free(
 }
 
 #define CONF_LOG_LINE(file, line, msg, ...) do { \
-	CONF_LOG(LOG_ERR, "%s%s%sline %zu, " msg, \
+	CONF_LOG(LOG_ERR, "%s%s%sline %zu" msg, \
 	         (file != NULL ? "file '" : ""), (file != NULL ? file : ""), \
 	         (file != NULL ? "', " : ""), line, ##__VA_ARGS__); \
 	} while (0)
@@ -418,13 +467,18 @@ static void log_parser_err(
 	yp_parser_t *parser,
 	int ret)
 {
-	CONF_LOG_LINE(parser->file.name, parser->line_count,
-	              "item '%s'%s%s%s (%s)",
-	              parser->key,
-	              (parser->data_len > 0) ? ", value '"  : "",
-	              (parser->data_len > 0) ? parser->data : "",
-	              (parser->data_len > 0) ? "'"          : "",
-	              knot_strerror(ret));
+	if (parser->event == YP_ENULL) {
+		CONF_LOG_LINE(parser->file.name, parser->line_count,
+		              " (%s)", knot_strerror(ret));
+	} else {
+		CONF_LOG_LINE(parser->file.name, parser->line_count,
+		              ", item '%s'%s%.*s%s (%s)", parser->key,
+		              (parser->data_len > 0) ? ", value '"  : "",
+		              (int)parser->data_len,
+		              (parser->data_len > 0) ? parser->data : "",
+		              (parser->data_len > 0) ? "'"          : "",
+		              knot_strerror(ret));
+	}
 }
 
 static void log_parser_schema_err(
@@ -435,7 +489,7 @@ static void log_parser_schema_err(
 	if (ret == KNOT_YP_EINVAL_ITEM && parser->event == YP_EKEY0 &&
 	    strncmp(parser->key, KNOTD_MOD_NAME_PREFIX, strlen(KNOTD_MOD_NAME_PREFIX)) == 0) {
 		CONF_LOG_LINE(parser->file.name, parser->line_count,
-		              "unknown module '%s'", parser->key);
+		              ", unknown module '%s'", parser->key);
 	} else {
 		log_parser_err(parser, ret);
 	}
@@ -447,7 +501,7 @@ static void log_call_err(
 	int ret)
 {
 	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
-	              "item '%s'%s%s%s (%s)", args->item->name + 1,
+	              ", item '%s'%s%s%s (%s)", args->item->name + 1,
 	              (parser->data_len > 0) ? ", value '"  : "",
 	              (parser->data_len > 0) ? parser->data : "",
 	              (parser->data_len > 0) ? "'"          : "",
@@ -470,7 +524,7 @@ static void log_prev_err(
 	}
 
 	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
-	              "%s '%s' (%s)", args->item->name + 1, buff,
+	              ", %s '%s' (%s)", args->item->name + 1, buff,
 	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
 }
 
@@ -644,7 +698,8 @@ parse_error:
 int conf_import(
 	conf_t *conf,
 	const char *input,
-	bool is_file)
+	bool is_file,
+	bool reinit_cache)
 {
 	if (conf == NULL || input == NULL) {
 		return KNOT_EINVAL;
@@ -687,7 +742,7 @@ int conf_import(
 	}
 
 	// Update cached values.
-	init_cache(conf);
+	init_cache(conf, reinit_cache);
 
 	// Reset the filename.
 	free(conf->filename);
@@ -891,7 +946,7 @@ int conf_export(
 		}
 
 		// Export module sections before the template section.
-		if (strcmp(item->name + 1, C_TPL + 1) == 0) {
+		if (strcmp(&item->name[1], &C_TPL[1]) == 0) {
 			for (yp_item_t *mod = item + 1; mod->name != NULL; mod++) {
 				// Skip non-module sections.
 				if (strncmp(mod->name + 1, mod_prefix, mod_prefix_len) != 0) {

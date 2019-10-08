@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,6 +62,7 @@ static const struct error errors[] = {
 	{ KNOT_ENOZONE,      "no such zone found" },
 	{ KNOT_ENONODE,      "no such node in zone found" },
 	{ KNOT_ENORECORD,    "no such record in zone found" },
+	{ KNOT_EISRECORD,    "such record already exists in zone" },
 	{ KNOT_ENOMASTER,    "no usable master" },
 	{ KNOT_EPREREQ,      "UPDATE prerequisity not met" },
 	{ KNOT_ETTL,         "TTL mismatch" },
@@ -78,6 +79,7 @@ static const struct error errors[] = {
 	{ KNOT_EFILE,        "file error" },
 	{ KNOT_ESOAINVAL,    "SOA mismatch" },
 	{ KNOT_ETRAIL,       "trailing data" },
+	{ KNOT_EPROCESSING,  "processing error" },
 
 	/* Control states. */
 	{ KNOT_CTL_ESTOP,     "stopping server" },
@@ -125,9 +127,6 @@ static const struct error errors[] = {
 	/* Transaction errors. */
 	{ KNOT_TXN_EEXISTS,    "too many transactions" },
 	{ KNOT_TXN_ENOTEXISTS, "no active transaction" },
-
-	/* Processing errors. */
-	{ KNOT_LAYER_ERROR, "processing layer error" },
 
 	/* DNSSEC errors. */
 	{ KNOT_INVALID_PUBLIC_KEY,    "invalid public key" },

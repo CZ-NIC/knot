@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <urcu.h>
 
@@ -55,7 +55,15 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
 	}
 
 	while (journal_read_rrset(read, &ixfr->cur_rr, true)) {
+		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA &&
+		    !ixfr->in_remove_section &&
+		    knot_soa_serial(ixfr->cur_rr.rrs.rdata) == ixfr->soa_to) {
+			break;
+		}
 		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
+		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA) {
+			ixfr->in_remove_section = !ixfr->in_remove_section;
+		}
 		knot_rrset_clear(&ixfr->cur_rr, NULL);
 	}
 
@@ -84,13 +92,13 @@ static int ixfr_process_journal(knot_pkt_t *pkt, const void *item,
 #undef IXFR_SAFE_PUT
 
 static int ixfr_load_chsets(journal_read_t **journal_read, zone_t *zone,
-                            const knot_rrset_t *their_soa)
+                            const zone_contents_t *contents, const knot_rrset_t *their_soa)
 {
 	assert(journal_read);
 	assert(zone);
 
 	/* Compare serials. */
-	uint32_t serial_to = zone_contents_serial(zone->contents), j_serial_to;
+	uint32_t serial_to = zone_contents_serial(contents), j_serial_to;
 	uint32_t serial_from = knot_soa_serial(their_soa->rrs.rdata);
 	if (serial_compare(serial_to, serial_from) & SERIAL_MASK_LEQ) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
@@ -103,10 +111,10 @@ static int ixfr_load_chsets(journal_read_t **journal_read, zone_t *zone,
 		return ret;
 	} else if (!j_exists) {
 		return KNOT_ENOENT;
-	} else if (j_serial_to != serial_to) {
-		return KNOT_ERROR;
 	}
 
+	// please note that the journal serial_to might differ from zone SOA serial
+	// it is beacuse RCU lock is made at different moment than LMDB txn begin
 	return journal_read_begin(zone_journal(zone), false, serial_from, journal_read);
 }
 
@@ -134,6 +142,7 @@ static void ixfr_answer_cleanup(knotd_qdata_t *qdata)
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->extra->ext;
 	knot_mm_t *mm = qdata->mm;
 
+	knot_rrset_clear(&ixfr->cur_rr, NULL);
 	ptrlist_free(&ixfr->proc.nodes, mm);
 	journal_read_end(ixfr->journal_ctx);
 	mm_free(mm, qdata->extra->ext);
@@ -142,7 +151,7 @@ static void ixfr_answer_cleanup(knotd_qdata_t *qdata)
 	rcu_read_unlock();
 }
 
-static int ixfr_answer_init(knotd_qdata_t *qdata)
+static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 {
 	assert(qdata);
 
@@ -156,6 +165,7 @@ static int ixfr_answer_init(knotd_qdata_t *qdata)
 
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
 	const knot_rrset_t *their_soa = knot_pkt_rr(authority, 0);
+	*serial_from = knot_soa_serial(their_soa->rrs.rdata);
 
 	knot_mm_t *mm = qdata->mm;
 	struct ixfr_proc *xfer = mm_alloc(mm, sizeof(struct ixfr_proc));
@@ -164,7 +174,8 @@ static int ixfr_answer_init(knotd_qdata_t *qdata)
 	}
 	memset(xfer, 0, sizeof(struct ixfr_proc));
 
-	int ret = ixfr_load_chsets(&xfer->journal_ctx, (zone_t *)qdata->extra->zone, their_soa);
+	int ret = ixfr_load_chsets(&xfer->journal_ctx, (zone_t *)qdata->extra->zone,
+	                           qdata->extra->contents, their_soa);
 	if (ret != KNOT_EOK) {
 		mm_free(mm, xfer);
 		return ret;
@@ -179,7 +190,7 @@ static int ixfr_answer_init(knotd_qdata_t *qdata)
 	ptrlist_add(&xfer->proc.nodes, xfer->journal_ctx, mm);
 
 	xfer->soa_from = knot_soa_serial(their_soa->rrs.rdata);
-	xfer->soa_to = zone_contents_serial(qdata->extra->zone->contents);
+	xfer->soa_to = zone_contents_serial(qdata->extra->contents);
 
 	qdata->extra->ext = xfer;
 	qdata->extra->ext_cleanup = &ixfr_answer_cleanup;
@@ -208,7 +219,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Guaranteed to have zone contents. */
-	const zone_node_t *apex = qdata->extra->zone->contents->apex;
+	const zone_node_t *apex = qdata->extra->contents->apex;
 	knot_rrset_t soa_rr = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa_rr)) {
 		return KNOT_STATE_FAIL;
@@ -236,7 +247,8 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Initialize on first call. */
 	struct ixfr_proc *ixfr = qdata->extra->ext;
 	if (ixfr == NULL) {
-		int ret = ixfr_answer_init(qdata);
+		uint32_t soa_from = 0;
+		int ret = ixfr_answer_init(qdata, &soa_from);
 		ixfr = qdata->extra->ext;
 		switch (ret) {
 		case KNOT_EOK:       /* OK */
@@ -244,11 +256,11 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 				    ixfr->soa_from, ixfr->soa_to);
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
-			IXFROUT_LOG(LOG_INFO, qdata, "zone is up-to-date");
+			IXFROUT_LOG(LOG_INFO, qdata, "zone is up-to-date, serial %u", soa_from);
 			return ixfr_answer_soa(pkt, qdata);
 		case KNOT_ERANGE:    /* No history -> AXFR. */
 		case KNOT_ENOENT:
-			IXFROUT_LOG(LOG_INFO, qdata, "incomplete history, fallback to AXFR");
+			IXFROUT_LOG(LOG_INFO, qdata, "incomplete history, serial %u, fallback to AXFR", soa_from);
 			qdata->type = KNOTD_QUERY_TYPE_AXFR; /* Solve as AXFR. */
 			return axfr_process_query(pkt, qdata);
 		case KNOT_EDENIED:  /* Not authorized, already logged. */

@@ -37,7 +37,7 @@ Now let's walk through this configuration step by step:
   in the zone file :file:`/var/lib/knot/zones/example.com.zone`.
 - The :ref:`log section<Logging section>` defines the log facilities for
   the server. In this example, we told Knot DNS to send its log messages with
-  the severity ``info`` or more serious to the syslog.
+  the severity ``info`` or more serious to the syslog (or systemd journal).
 
 For detailed description of all configuration items see
 :ref:`Configuration Reference`.
@@ -571,9 +571,6 @@ between master and slave. The slave server handles this by saving the
 master's SOA serial in a special variable inside KASP DB and appropriately
 modifiying AXFR/IXFR queries/answers to keep the communication with
 master consistent while applying the changes with a different serial.
-
-It is recommended to use UNIX time serial policy on master and incremental
-serial policy on slave so that their SOA serials are equal most of the time.
 
 .. _query-modules:
 

@@ -35,6 +35,7 @@ t.link(static_zone, master)
 master.dnssec(nsec_zone).alg = "rsasha1"
 master.dnssec(nsec3_zone).alg = "rsasha1"
 master.dnssec(nsec3_zone).nsec3 = True
+master.dnssec(nsec3_zone).nsec3_salt_len = 0
 master.dnssec(static_zone).alg = "rsasha1"
 master.dnssec(nsec_zone).cds_publish = "rollover"
 master.dnssec(nsec3_zone).cds_publish = "rollover"

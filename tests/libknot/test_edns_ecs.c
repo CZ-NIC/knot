@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <tap/basic.h>
@@ -208,7 +208,7 @@ static void test_set_address(void)
 
 static bool sockaddr_eq(const struct sockaddr_storage *a, const struct sockaddr_storage *b)
 {
-	return sockaddr_cmp((struct sockaddr *)a, (struct sockaddr *)b) == 0;
+	return sockaddr_cmp(a, b) == 0;
 }
 
 static void test_get_address(void)

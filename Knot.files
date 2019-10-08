@@ -41,6 +41,7 @@ src/contrib/semaphore.c
 src/contrib/semaphore.h
 src/contrib/sockaddr.c
 src/contrib/sockaddr.h
+src/contrib/spinlock.h
 src/contrib/string.c
 src/contrib/string.h
 src/contrib/strtonum.h
@@ -67,8 +68,6 @@ src/knot/common/log.c
 src/knot/common/log.h
 src/knot/common/process.c
 src/knot/common/process.h
-src/knot/common/ref.c
-src/knot/common/ref.h
 src/knot/common/stats.c
 src/knot/common/stats.h
 src/knot/conf/base.c
@@ -128,13 +127,14 @@ src/knot/events/events.c
 src/knot/events/events.h
 src/knot/events/handlers.h
 src/knot/events/handlers/dnssec.c
+src/knot/events/handlers/ds_check.c
+src/knot/events/handlers/ds_push.c
 src/knot/events/handlers/expire.c
 src/knot/events/handlers/flush.c
 src/knot/events/handlers/freeze_thaw.c
 src/knot/events/handlers/load.c
 src/knot/events/handlers/notify.c
 src/knot/events/handlers/nsec3resalt.c
-src/knot/events/handlers/parent_ds_query.c
 src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
 src/knot/events/replan.c
@@ -419,8 +419,6 @@ src/utils/khost/khost_params.h
 src/utils/kjournalprint/main.c
 src/utils/knotc/commands.c
 src/utils/knotc/commands.h
-src/utils/knotc/estimator.c
-src/utils/knotc/estimator.h
 src/utils/knotc/interactive.c
 src/utils/knotc/interactive.h
 src/utils/knotc/main.c

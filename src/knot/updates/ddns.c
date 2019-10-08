@@ -45,7 +45,7 @@ static int add_rr_to_list(list_t *l, const knot_rrset_t *rr)
 	WALK_LIST(n, *l) {
 		ptrnode_t *ptr_n = (ptrnode_t *)n;
 		knot_rrset_t *rrset = (knot_rrset_t *)ptr_n->d;
-		if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_HEADER)) {
+		if (rrset->type == rr->type && knot_dname_is_equal(rrset->owner, rr->owner)) {
 			return knot_rdataset_merge(&rrset->rrs, &rr->rrs, NULL);
 		}
 	};
@@ -70,7 +70,7 @@ static int check_rrset_exists(zone_update_t *update, const knot_rrset_t *rrset,
 	} else {
 		knot_rrset_t found = node_rrset(node, rrset->type);
 		assert(!knot_rrset_empty(&found));
-		if (knot_rrset_equal(&found, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
+		if (knot_rrset_equal(&found, rrset, false)) {
 			return KNOT_EOK;
 		} else {
 			*rcode = KNOT_RCODE_NXRRSET;
@@ -371,7 +371,7 @@ static int process_add_cname(const zone_node_t *node,
 	knot_rrset_t cname = node_rrset(node, KNOT_RRTYPE_CNAME);
 	if (!knot_rrset_empty(&cname)) {
 		// If they are identical, ignore.
-		if (knot_rrset_equal(&cname, rr, KNOT_RRSET_COMPARE_WHOLE)) {
+		if (knot_rrset_equal(&cname, rr, true)) {
 			return KNOT_EOK;
 		}
 
@@ -430,7 +430,7 @@ static int process_add_soa(const zone_node_t *node,
 
 	// Get current SOA RR.
 	knot_rrset_t removed = node_rrset(node, KNOT_RRTYPE_SOA);
-	if (knot_rrset_equal(&removed, rr, KNOT_RRSET_COMPARE_WHOLE)) {
+	if (knot_rrset_equal(&removed, rr, true)) {
 		// If they are identical, ignore.
 		return KNOT_EOK;
 	}

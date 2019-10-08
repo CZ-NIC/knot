@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <stdlib.h>
 #include <netinet/in.h>
@@ -327,7 +327,7 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 	}
 
 	/* Append custom EDNS options. */
-	node_t *node = NULL;
+	node_t *node;
 	WALK_LIST(node, query->edns_opts) {
 		ednsopt_t *opt = (ednsopt_t *)node;
 		ret = knot_edns_add_option(&opt_rr, opt->code, opt->length,
@@ -771,7 +771,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 static int process_query(const query_t *query)
 {
-	node_t     *server = NULL;
+	node_t     *server;
 	knot_pkt_t *out_packet;
 	net_t      net;
 	int        ret;
@@ -1132,7 +1132,7 @@ static int process_xfr(const query_t *query)
 
 int kdig_exec(const kdig_params_t *params)
 {
-	node_t *n = NULL;
+	node_t *n;
 
 	if (params == NULL) {
 		DBG_NULL;

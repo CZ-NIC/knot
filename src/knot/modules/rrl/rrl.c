@@ -25,7 +25,7 @@
 
 const yp_item_t rrl_conf[] = {
 	{ MOD_RATE_LIMIT, YP_TINT, YP_VINT = { 1, INT32_MAX } },
-	{ MOD_SLIP,       YP_TINT, YP_VINT = { 0, RRL_SLIP_MAX, 1 } },
+	{ MOD_SLIP,       YP_TINT, YP_VINT = { 0, 100, 1 } },
 	{ MOD_TBL_SIZE,   YP_TINT, YP_VINT = { 1, INT32_MAX, 393241 } },
 	{ MOD_WHITELIST,  YP_TNET, YP_VNONE, YP_FMULTI },
 	{ NULL }
@@ -135,7 +135,7 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
-	if (ctx->slip > 0 && rrl_slip_roll(ctx->slip)) {
+	if (rrl_slip_roll(ctx->slip)) {
 		// Slip the answer.
 		knotd_mod_stats_incr(mod, 0, 0, 1);
 		qdata->err_truncated = true;

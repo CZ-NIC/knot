@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <string.h>
@@ -33,10 +33,10 @@ void knot_tsig_key_deinit(knot_tsig_key_t *key)
 
 	knot_dname_free(key->name, NULL);
 
-	memset(key->secret.data, 0, key->secret.size);
+	memzero(key->secret.data, key->secret.size);
 	dnssec_binary_free(&key->secret);
 
-	memset(key, '\0', sizeof(*key));
+	memzero(key, sizeof(*key));
 }
 
 _public_
@@ -106,7 +106,7 @@ int knot_tsig_key_init_str(knot_tsig_key_t *key, const char *params)
 		*pos = '\0';
 		secret = pos + 1;
 	} else {
-		memset(copy, 0, copy_size);
+		memzero(copy, copy_size);
 		free(copy);
 		return KNOT_EMALF;
 	}
@@ -124,7 +124,7 @@ int knot_tsig_key_init_str(knot_tsig_key_t *key, const char *params)
 
 	int result = knot_tsig_key_init(key, algorithm, name, secret);
 
-	memset(copy, 0, copy_size);
+	memzero(copy, copy_size);
 	free(copy);
 
 	return result;
@@ -154,7 +154,7 @@ int knot_tsig_key_init_file(knot_tsig_key_t *key, const char *filename)
 
 	int result = knot_tsig_key_init_str(key, line);
 
-	memset(line, 0, line_size);
+	memzero(line, line_size);
 	free(line);
 
 	return result;

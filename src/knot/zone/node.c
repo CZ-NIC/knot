@@ -34,10 +34,8 @@ bool additional_equal(additional_t *a, additional_t *b)
 	}
 	for (int i = 0; i < a->count; i++) {
 		glue_t *ag = &a->glues[i], *bg = &b->glues[i];
-		if (ag->ns_pos != bg->ns_pos ||
-		    ag->optional != bg->optional ||
-		      binode_node((zone_node_t *)ag->node, false) !=
-		      binode_node((zone_node_t *)bg->node, false)) {
+		if (ag->ns_pos != bg->ns_pos || ag->optional != bg->optional ||
+		    binode_first((zone_node_t *)ag->node) != binode_first((zone_node_t *)bg->node)) {
 			return false;
 		}
 	}
@@ -117,12 +115,12 @@ zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_
 
 	// Node is authoritative by default.
 	ret->flags = NODE_FLAGS_AUTH;
-	if (second) {
-		ret->flags |= NODE_FLAGS_DELETED;
-	}
 
 	if (binode) {
 		ret->flags |= NODE_FLAGS_BINODE;
+		if (second) {
+			ret->flags |= NODE_FLAGS_DELETED;
+		}
 		memcpy(ret + 1, ret, sizeof(*ret));
 		(ret + 1)->flags ^= NODE_FLAGS_SECOND | NODE_FLAGS_DELETED;
 	}
@@ -134,7 +132,8 @@ zone_node_t *binode_counterpart(zone_node_t *node)
 {
 	zone_node_t *counterpart = NULL;
 
-	if ((node->flags & NODE_FLAGS_BINODE)) {
+	assert(node == NULL || (node->flags & NODE_FLAGS_BINODE) || !(node->flags & NODE_FLAGS_SECOND));
+	if (node != NULL && (node->flags & NODE_FLAGS_BINODE)) {
 		if ((node->flags & NODE_FLAGS_SECOND)) {
 			counterpart = node - 1;
 			assert(!(counterpart->flags & NODE_FLAGS_SECOND));
@@ -229,6 +228,35 @@ bool binode_additional_shared(zone_node_t *node, uint16_t type)
 	return (a1 == a2);
 }
 
+bool binode_additionals_unchanged(zone_node_t *node, zone_node_t *counterpart)
+{
+	if (node == NULL || counterpart == NULL) {
+		return false;
+	}
+	if (counterpart->rrs == node->rrs) {
+		return true;
+	}
+	for (int i = 0; i < node->rrset_count; i++) {
+		struct rr_data *rr = &node->rrs[i];
+		if (knot_rrtype_additional_needed(rr->type)) {
+			knot_rdataset_t *counterr = node_rdataset(counterpart, rr->type);
+			if (counterr == NULL || counterr->rdata != rr->rrs.rdata) {
+				return false;
+			}
+		}
+	}
+	for (int i = 0; i < counterpart->rrset_count; i++) {
+		struct rr_data *rr = &counterpart->rrs[i];
+		if (knot_rrtype_additional_needed(rr->type)) {
+			knot_rdataset_t *counterr = node_rdataset(node, rr->type);
+			if (counterr == NULL || counterr->rdata != rr->rrs.rdata) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
 {
 	if (node == NULL) {
@@ -253,6 +281,7 @@ void node_free(zone_node_t *node, knot_mm_t *mm)
 
 	knot_dname_free(node->owner, mm);
 
+	assert((node->flags & NODE_FLAGS_BINODE) || !(node->flags & NODE_FLAGS_SECOND));
 	assert(binode_counterpart(node) == NULL ||
 	       binode_counterpart(node)->nsec3_wildcard_name == node->nsec3_wildcard_name);
 
@@ -273,6 +302,8 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == rrset->type) {
@@ -302,6 +333,8 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 		return;
 	}
 
+	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
+
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
 			if (!binode_additional_shared(node, type)) {
@@ -316,6 +349,28 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 			return;
 		}
 	}
+}
+
+int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
+{
+	if (node == NULL || rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
+
+	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
+
+	int ret = knot_rdataset_subtract(node_rrs, &rrset->rrs, mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (node_rrs->count == 0) {
+		node_remove_rdataset(node, rrset->type);
+	}
+
+	return KNOT_EOK;
 }
 
 knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type)

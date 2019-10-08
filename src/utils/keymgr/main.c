@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <getopt.h>
 #include <stdlib.h>
@@ -77,8 +77,6 @@ static void print_help(void)
 	       "Commands related to Offline KSK feature:\n"
 	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
 	       "                 (syntax: pregenerate <timestamp>)\n"
-	       "  presign       Pre-generate RRSIG signatures for pregenerated ZSKs.\n"
-	       "                 (syntax: presign <timestamp>)\n"
 	       "  show-offline  Print pre-generated offline key-related records for specified time interval (possibly to infinity).\n"
 	       "                 (syntax: show-offline <from> [<to>])\n"
 	       "  del-offline   Delete pre-generated offline key-related records in specified time interval.\n"
@@ -124,7 +122,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 	knot_lmdb_db_t kaspdb = { 0 };
 	kdnssec_ctx_t kctx = { 0 };
 
-	conf_val_t mapsize = conf_default_get(conf(), C_MAX_KASP_DB_SIZE);
+	conf_val_t mapsize = conf_db_param(conf(), C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
 	char *kasp_dir = conf_db(conf(), C_KASP_DB);
 	knot_lmdb_init(&kaspdb, kasp_dir, conf_int(&mapsize), 0, "keys_db");
 	free(kasp_dir);
@@ -292,7 +290,7 @@ static bool init_conf(const char *confdb)
 
 static bool init_confile(const char *confile)
 {
-	int ret = conf_import(conf(), confile, true);
+	int ret = conf_import(conf(), confile, true, false);
 	if (ret != KNOT_EOK) {
 		printf("Failed opening configuration file %s (%s)\n",
 		       confile, knot_strerror(ret));
@@ -307,7 +305,7 @@ static bool init_conf_blank(const char *kasp_dir)
 	                              "  - id: default\n"
 	                              "    storage: .\n"
 	                              "    kasp-db: %s\n", kasp_dir);
-	int ret = conf_import(conf(), confstr, false);
+	int ret = conf_import(conf(), confstr, false, false);
 	free(confstr);
 	if (ret != KNOT_EOK) {
 		printf("Failed creating fake configuration (%s)\n",

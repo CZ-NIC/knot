@@ -40,14 +40,13 @@ typedef int (*zone_tree_apply_cb_t)(zone_node_t *node, void *data);
 
 typedef zone_node_t *(*zone_tree_new_node_cb_t)(const knot_dname_t *dname, void *ctx);
 
-typedef int (*zone_tree_del_node_cb_t)(zone_node_t *node, void *ctx);
-
 /*!
  * \brief Zone tree iteration context.
  */
 typedef struct {
 	zone_tree_t *tree;
 	trie_it_t *it;
+	int binode_second;
 
 	zone_tree_t *next_tree;
 } zone_tree_it_t;
@@ -96,6 +95,19 @@ inline static bool zone_tree_is_empty(const zone_tree_t *tree)
 	return zone_tree_count(tree) == 0;
 }
 
+inline static zone_node_t *zone_tree_fix_get(zone_node_t *node, const zone_tree_t *tree)
+{
+	assert(((node->flags & NODE_FLAGS_BINODE) ? 1 : 0) == ((tree->flags & ZONE_TREE_USE_BINODES) ? 1 : 0));
+	assert((tree->flags & ZONE_TREE_USE_BINODES) || !(tree->flags & ZONE_TREE_BINO_SECOND));
+	return binode_node(node, (tree->flags & ZONE_TREE_BINO_SECOND));
+}
+
+inline static zone_node_t *node_new_for_tree(const knot_dname_t *owner, const zone_tree_t *tree, knot_mm_t *mm)
+{
+	assert((tree->flags & ZONE_TREE_USE_BINODES) || !(tree->flags & ZONE_TREE_BINO_SECOND));
+	return node_new(owner, (tree->flags & ZONE_TREE_USE_BINODES), (tree->flags & ZONE_TREE_BINO_SECOND), mm);
+}
+
 /*!
  * \brief Inserts the given node into the zone tree.
  *
@@ -107,6 +119,17 @@ inline static bool zone_tree_is_empty(const zone_tree_t *tree)
  * \retval KNOT_ENOMEM
  */
 int zone_tree_insert(zone_tree_t *tree, zone_node_t **node);
+
+/*!
+ * \brief Insert a node together with its parents (iteratively node->parent).
+ *
+ * \param tree   Zone tree to insert into.
+ * \param node   Node to be inserted with parents.
+ * \param without_parents   Actually, insert it without parents.
+ *
+ * \return KNOT_E*
+ */
+int zone_tree_insert_with_parents(zone_tree_t *tree, zone_node_t *node, bool without_parents);
 
 /*!
  * \brief Finds node with the given owner in the zone tree.
@@ -170,13 +193,11 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
  *
  * \param tree          Zone tree to remove from.
  * \param node          Node to be removed.
- * \param del_cb        Callback called on every removed node.
- * \param del_cb_ctx    Context to be passed to the callback.
+ * \param free_deleted  Indication to free node.
  *
  * \return KNOT_E*
  */
-int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
-                       zone_tree_del_node_cb_t del_cb, void *del_cb_ctx);
+int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool free_deleted);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.
@@ -252,6 +273,7 @@ void zone_tree_it_free(zone_tree_it_t *it);
  */
 int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it, bool include_deleted);
 bool zone_tree_delsafe_it_finished(zone_tree_delsafe_it_t *it);
+void zone_tree_delsafe_it_restart(zone_tree_delsafe_it_t *it);
 zone_node_t *zone_tree_delsafe_it_val(zone_tree_delsafe_it_t *it);
 void zone_tree_delsafe_it_next(zone_tree_delsafe_it_t *it);
 void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it);
@@ -259,7 +281,7 @@ void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it);
 /*!
  * \brief Unify all bi-nodes in specified trees.
  */
-void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes);
+void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool free_deleted);
 
 /*!
  * \brief Destroys the zone tree, not touching the saved data.

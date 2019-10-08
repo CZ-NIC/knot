@@ -236,6 +236,12 @@ Options
 **+**\ [\ **no**\ ]\ **tls-sni**\ =\ *STR*
   Use TLS with a Server Name Indication.
 
+**+**\ [\ **no**\ ]\ **tls-keyfile**\ =\ *FILE*
+  Use TLS with a client keyfile.
+
+**+**\ [\ **no**\ ]\ **tls-certfile**\ =\ *FILE*
+  Use TLS with a client certfile.
+
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
@@ -261,7 +267,8 @@ Options
 
 **+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
-  applies to each query attempt.
+  applies to each query attempt. An attempt to set T to less than 1 will result
+  in a query timeout of 1 second being applied.
 
 **+**\ [\ **no**\ ]\ **retry**\ =\ *N*
   Set the number (>=0) of UDP retries (default is 2). This doesn't apply to

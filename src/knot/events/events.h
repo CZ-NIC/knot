@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #pragma once
 
@@ -40,7 +40,8 @@ typedef enum zone_event_type {
 	ZONE_EVENT_UFREEZE,
 	ZONE_EVENT_UTHAW,
 	ZONE_EVENT_NSEC3RESALT,
-	ZONE_EVENT_PARENT_DS_Q,
+	ZONE_EVENT_DS_CHECK,
+	ZONE_EVENT_DS_PUSH,
 	// terminator
 	ZONE_EVENT_COUNT,
 } zone_event_type_t;
@@ -61,6 +62,7 @@ typedef struct zone_events {
 	task_t task;			//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
 	bool forced[ZONE_EVENT_COUNT];  //!< Flag that the event was invoked by user ctl.
+	pthread_cond_t *blocking[ZONE_EVENT_COUNT];       //!< For blocking events: dispatching cond.
 } zone_events_t;
 
 /*!

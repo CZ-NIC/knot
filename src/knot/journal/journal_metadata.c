@@ -260,6 +260,14 @@ void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint
 	md->changeset_count++;
 }
 
+void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint32_t serial_to)
+{
+	assert(!(md->flags & JOURNAL_MERGED_SERIAL_VALID));
+	md->merged_serial = serial;
+	md->flushed_upto = serial_to;
+	md->flags |= (JOURNAL_MERGED_SERIAL_VALID | JOURNAL_LAST_FLUSHED_VALID);
+}
+
 int journal_scrape_with_md(zone_journal_t j)
 {
 	if (!journal_is_existing(j)) {
@@ -320,6 +328,7 @@ int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial,
 		*merged_serial = md.merged_serial;
 	}
 	if (occupied != NULL) {
+		*occupied = 0;
 		get_metadata64(&txn, j.zone, "occupied", occupied);
 	}
 	if (occupied_total != NULL) {
@@ -340,7 +349,7 @@ int journals_walk(knot_lmdb_db_t *db, journals_walk_cb_t cb, void *ctx)
 	}
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, false);
-	uint8_t search_data[KNOT_DNAME_MAXLEN] = { 0 };
+	knot_dname_storage_t search_data = { 0 };
 	MDB_val search = { 1, search_data };
 	while (knot_lmdb_find(&txn, &search, KNOT_LMDB_GEQ)) {
 		knot_dname_t *found = txn.cur_key.mv_data;

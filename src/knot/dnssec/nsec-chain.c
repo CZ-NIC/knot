@@ -136,9 +136,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 			return ret;
 		}
 
-		bool equal = knot_rrset_equal(&new_nsec, old_nsec_lc,
-		                              KNOT_RRSET_COMPARE_WHOLE);
-		equal = (equal && (old_nsec_lc->ttl == new_nsec.ttl));
+		bool equal = knot_rrset_equal(&new_nsec, old_nsec_lc, true);
 		knot_rrset_free(old_nsec_lc, NULL);
 
 		if (equal) {
@@ -266,15 +264,21 @@ static zone_node_t *nsec_prev(zone_node_t *node)
 	return res;
 }
 
-/*! \brief Return the one from those nodes which has "bigger" owner name (lexicographically). */
-static zone_node_t *node_max(zone_node_t *a, zone_node_t *b)
+/*! \brief Return the one from those nodes which has
+ * closest lower (lexicographically) owner name to ref. */
+static zone_node_t *node_nearer(zone_node_t *a, zone_node_t *b, zone_node_t *ref)
 {
 	if (a == NULL || a == b) {
 		return b;
 	} else if (b == NULL) {
 		return a;
 	} else {
+		int abigger = knot_dname_cmp(a->owner, ref->owner) >= 0 ? 1 : 0;
+		int bbigger = knot_dname_cmp(b->owner, ref->owner) >= 0 ? 1 : 0;
 		int cmp = knot_dname_cmp(a->owner, b->owner);
+		if (abigger != bbigger) {
+			cmp = -cmp;
+		}
 		return cmp < 0 ? b : a;
 	}
 }
@@ -342,23 +346,39 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
 	}
 
 	zone_node_t *prev_it = NULL;
-	while (!zone_tree_delsafe_it_finished(&it) && ret == KNOT_EOK) {
+	zone_node_t *started_with = NULL;
+	while (ret == KNOT_EOK) {
+		if (zone_tree_delsafe_it_finished(&it)) {
+			assert(started_with != NULL);
+			zone_tree_delsafe_it_restart(&it);
+		}
+
 		zone_node_t *curr_new = zone_tree_delsafe_it_val(&it);
 		zone_node_t *curr_old = binode_counterpart(curr_new);
 		bool del_new = node_no_nsec(curr_new);
 		bool del_old = node_no_nsec(curr_old);
 
-		if (!del_old && del_new) {
+		if (started_with == curr_new) {
+			assert(started_with != NULL);
+			break;
+		}
+		if (!del_old && !del_new && started_with == NULL) {
+			// Once this must happen since the NSEC(3) node belonging
+			// to zone apex is always present.
+			started_with = curr_new;
+		}
+
+		if (!del_old && del_new && started_with != NULL) {
 			zone_node_t *prev_old = curr_old, *prev_new;
 			do {
 				prev_old = nsec_prev(prev_old);
 				prev_new = binode_counterpart(prev_old);
 			} while (node_no_nsec(prev_new));
 
-			zone_node_t *prev_near = node_max(prev_new, prev_it);
+			zone_node_t *prev_near = node_nearer(prev_new, prev_it, curr_old);
 			ret = cb_reconn(curr_old, prev_near, data);
 		}
-		if (del_old && !del_new) {
+		if (del_old && !del_new && started_with != NULL) {
 			zone_node_t *prev_new = nsec_prev(curr_new);
 			ret = cb_reconn(prev_new, curr_new, data);
 			if (ret == KNOT_EOK) {
@@ -470,7 +490,13 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 		return ret;
 	}
 
-	ret = zone_adjust_contents(update->new_cont, adjust_cb_void, NULL, false);
+	ret = zone_adjust_contents(update->new_cont, adjust_cb_void, NULL, false, update->a_ctx->node_ptrs);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// ensure that zone root is in list of changed nodes
+	ret = zone_tree_insert(update->a_ctx->node_ptrs, &update->new_cont->apex);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

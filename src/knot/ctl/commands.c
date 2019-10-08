@@ -108,8 +108,7 @@ static int get_zone(ctl_args_t *args, zone_t **zone)
 	const char *name = args->data[KNOT_CTL_IDX_ZONE];
 	assert(name != NULL);
 
-	uint8_t buff[KNOT_DNAME_MAXLEN];
-
+	knot_dname_storage_t buff;
 	knot_dname_t *dname = knot_dname_from_str(buff, name, sizeof(buff));
 	if (dname == NULL) {
 		return KNOT_EINVAL;
@@ -159,7 +158,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 
 static int zone_status(zone_t *zone, ctl_args_t *args)
 {
-	char name[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t name;
 	if (knot_dname_to_str(name, zone->name, sizeof(name)) == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -452,13 +451,6 @@ static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-static void zone_txn_update_clear(zone_t *zone)
-{
-	assert(zone->control_update);
-
-	zone_control_clear(zone);
-}
-
 static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
@@ -472,7 +464,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	     changeset_empty(&zone->control_update->change)) ||
 	    ((zone->control_update->flags & UPDATE_FULL) &&
 	     zone_contents_is_empty(zone->control_update->new_cont))) {
-		zone_txn_update_clear(zone);
+		zone_control_clear(zone);
 		return KNOT_EOK;
 	}
 
@@ -486,7 +478,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		int ret = (full ? knot_dnssec_zone_sign(zone->control_update, 0, rflags, &resch) :
 		                  knot_dnssec_sign_update(zone->control_update, &resch));
 		if (ret != KNOT_EOK) {
-			zone_txn_update_clear(zone);
+			zone_control_clear(zone);
 			return ret;
 		}
 		event_dnssec_reschedule(conf(), zone, &resch, false);
@@ -494,15 +486,12 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 
 	int ret = zone_update_commit(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
-		/* Invalidate the transaction if aborted. */
-		if (zone->control_update->zone == NULL) {
-			free(zone->control_update);
-			zone->control_update = NULL;
-		}
+		zone_control_clear(zone);
 		return ret;
 	}
 
-	zone_txn_update_clear(zone);
+	free(zone->control_update);
+	zone->control_update = NULL;
 
 	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 
@@ -517,7 +506,7 @@ static int zone_txn_abort(zone_t *zone, ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	zone_txn_update_clear(zone);
+	zone_control_clear(zone);
 
 	return KNOT_EOK;
 }
@@ -527,18 +516,19 @@ typedef struct {
 	int type_filter; // -1: no specific type, [0, 2^16]: specific type.
 	knot_dump_style_t style;
 	knot_ctl_data_t data;
-	char zone[KNOT_DNAME_TXT_MAXLEN + 1];
-	char owner[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t zone;
+	knot_dname_txt_storage_t owner;
 	char ttl[16];
 	char type[32];
 	char rdata[2 * 65536];
 } send_ctx_t;
 
-static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *args)
+static int create_send_ctx(send_ctx_t **out, const knot_dname_t *zone_name,
+                           ctl_args_t *args)
 {
 	send_ctx_t *ctx = mm_calloc(&args->mm, 1, sizeof(*ctx));
 	if (ctx == NULL) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
 	ctx->args = args;
@@ -558,7 +548,7 @@ static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *ar
 	// Set the ZONE.
 	if (knot_dname_to_str(ctx->zone, zone_name, sizeof(ctx->zone)) == NULL) {
 		mm_free(&args->mm, ctx);
-		return NULL;
+		return KNOT_EINVAL;
 	}
 
 	// Set the TYPE filter.
@@ -566,14 +556,16 @@ static send_ctx_t *create_send_ctx(const knot_dname_t *zone_name, ctl_args_t *ar
 		uint16_t type;
 		if (knot_rrtype_from_string(args->data[KNOT_CTL_IDX_TYPE], &type) != 0) {
 			mm_free(&args->mm, ctx);
-			return NULL;
+			return KNOT_EINVAL;
 		}
 		ctx->type_filter = type;
 	} else {
 		ctx->type_filter = -1;
 	}
 
-	return ctx;
+	*out = ctx;
+
+	return KNOT_EOK;
 }
 
 static int send_rrset(knot_rrset_t *rrset, send_ctx_t *ctx)
@@ -653,11 +645,10 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 			fqdn = true;
 		}
 
-		knot_dname_t *dname = knot_dname_from_str(out, owner, out_len);
-		if (dname == NULL) {
+		if (knot_dname_from_str(out, owner, out_len) == NULL) {
 			return KNOT_EINVAL;
 		}
-		knot_dname_to_lower(dname);
+		knot_dname_to_lower(out);
 
 		prefix_len = knot_dname_size(out);
 		if (prefix_len == 0) {
@@ -682,22 +673,21 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 
 static int zone_read(zone_t *zone, ctl_args_t *args)
 {
-	send_ctx_t *ctx = create_send_ctx(zone->name, args);
-	if (ctx == NULL) {
-		return KNOT_ENOMEM;
+	send_ctx_t *ctx;
+	int ret = create_send_ctx(&ctx, zone->name, args);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	int ret = KNOT_EOK;
-
 	if (args->data[KNOT_CTL_IDX_OWNER] != NULL) {
-		uint8_t owner[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t owner;
 
 		ret = get_owner(owner, sizeof(owner), zone->name, args);
 		if (ret != KNOT_EOK) {
 			goto zone_read_failed;
 		}
 
-		const zone_node_t *node = zone_contents_find_node(zone->contents, owner);
+		const zone_node_t *node = zone_contents_node_or_nsec3(zone->contents, owner);
 		if (node == NULL) {
 			ret = KNOT_ENONODE;
 			goto zone_read_failed;
@@ -706,6 +696,9 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 		ret = send_node((zone_node_t *)node, ctx);
 	} else if (zone->contents != NULL) {
 		ret = zone_contents_apply(zone->contents, send_node, ctx);
+		if (ret == KNOT_EOK) {
+			ret = zone_contents_nsec3_apply(zone->contents, send_node, ctx);
+		}
 	}
 
 zone_read_failed:
@@ -720,23 +713,22 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	send_ctx_t *ctx = create_send_ctx(zone->name, args);
-	if (ctx == NULL) {
-		return KNOT_ENOMEM;
+	send_ctx_t *ctx;
+	int ret = create_send_ctx(&ctx, zone->name, args);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 	ctx->data[KNOT_CTL_IDX_FLAGS] = flag;
 
-	int ret = KNOT_EOK;
-
 	if (args->data[KNOT_CTL_IDX_OWNER] != NULL) {
-		uint8_t owner[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t owner;
 
 		ret = get_owner(owner, sizeof(owner), zone->name, args);
 		if (ret != KNOT_EOK) {
 			goto zone_txn_get_failed;
 		}
 
-		const zone_node_t *node = zone_update_get_node(zone->control_update, owner);
+		const zone_node_t *node = zone_contents_node_or_nsec3(zone->control_update->new_cont, owner);
 		if (node == NULL) {
 			ret = KNOT_ENONODE;
 			goto zone_txn_get_failed;
@@ -744,29 +736,15 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 
 		ret = send_node((zone_node_t *)node, ctx);
 	} else {
-		zone_update_iter_t it;
-		ret = zone_update_iter(&it, zone->control_update);
-		if (ret != KNOT_EOK) {
-			goto zone_txn_get_failed;
+		zone_tree_it_t it = { 0 };
+		ret = zone_tree_it_double_begin(zone->control_update->new_cont->nodes,
+						zone->control_update->new_cont->nsec3_nodes,
+						&it);
+		while (ret == KNOT_EOK && !zone_tree_it_finished(&it)) {
+			ret = send_node(zone_tree_it_val(&it), ctx);
+			zone_tree_it_next(&it);
 		}
-
-		const zone_node_t *iter_node = zone_update_iter_val(&it);
-		while (iter_node != NULL) {
-			ret = send_node((zone_node_t *)iter_node, ctx);
-			if (ret != KNOT_EOK) {
-				zone_update_iter_finish(&it);
-				goto zone_txn_get_failed;
-			}
-
-			ret = zone_update_iter_next(&it);
-			if (ret != KNOT_EOK) {
-				zone_update_iter_finish(&it);
-				goto zone_txn_get_failed;
-			}
-
-			iter_node = zone_update_iter_val(&it);
-		}
-		zone_update_iter_finish(&it);
+		zone_tree_it_free(&it);
 	}
 
 zone_txn_get_failed:
@@ -856,26 +834,27 @@ static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
 		return zone_flag_txn_get(zone, args, CTL_FLAG_ADD);
 	}
 
-	send_ctx_t *ctx = create_send_ctx(zone->name, args);
-	if (ctx == NULL) {
-		return KNOT_ENOMEM;
+	send_ctx_t *ctx;
+	int ret = create_send_ctx(&ctx, zone->name, args);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	int ret = send_changeset(&zone->control_update->change, ctx);
+	ret = send_changeset(&zone->control_update->change, ctx);
 	mm_free(&args->mm, ctx);
 	return ret;
 }
 
 static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 {
-	uint8_t owner[KNOT_DNAME_MAXLEN];
+	knot_dname_storage_t owner;
 
 	int ret = get_owner(owner, sizeof(owner), zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	const zone_node_t *node = zone_update_get_node(zone->control_update, owner);
+	const zone_node_t *node = zone_contents_node_or_nsec3(zone->control_update->new_cont, owner);
 	if (node == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -893,7 +872,7 @@ static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
                         bool need_ttl)
 {
-	char origin_buff[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t origin_buff;
 	char *origin = knot_dname_to_str(origin_buff, zone->name, sizeof(origin_buff));
 	if (origin == NULL) {
 		return KNOT_EINVAL;
@@ -1018,7 +997,7 @@ static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 		knot_rrset_free(rrset, NULL);
 		return ret;
 	} else {
-		uint8_t owner[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t owner;
 
 		int ret = get_owner(owner, sizeof(owner), zone->name, args);
 		if (ret != KNOT_EOK) {
@@ -1095,7 +1074,7 @@ static int orphans_purge(ctl_args_t *args)
 			                        zone_exists, args->server->zone_db);
 		}
 	} else {
-		uint8_t buff[KNOT_DNAME_MAXLEN];
+		knot_dname_storage_t buff;
 		while (true) {
 			knot_dname_t *zone_name =
 				knot_dname_from_str(buff, args->data[KNOT_CTL_IDX_ZONE],
@@ -1258,13 +1237,13 @@ static int modules_stats(list_t *query_modules, ctl_args_t *args, knot_dname_t *
 	const char *section = args->data[KNOT_CTL_IDX_SECTION];
 	const char *item = args->data[KNOT_CTL_IDX_ITEM];
 
-	char name[KNOT_DNAME_TXT_MAXLEN + 1] = { 0 };
+	knot_dname_txt_storage_t name = "";
 	knot_ctl_data_t data = { 0 };
 
 	bool section_found = (section == NULL) ? true : false;
 	bool item_found = (item == NULL) ? true : false;
 
-	knotd_mod_t *mod = NULL;
+	knotd_mod_t *mod;
 	WALK_LIST(mod, *query_modules) {
 		// Skip modules without statistics.
 		if (mod->stats_count == 0) {
@@ -1402,8 +1381,8 @@ static int server_status(ctl_args_t *args)
 		worker_pool_status(args->server->workers, &running_bkg_wrk, &wrk_queue);
 		ret = snprintf(buff, sizeof(buff), "UDP workers: %zu, TCP workers %zu, "
 		               "background workers: %zu (running: %d, pending: %d)",
-		               conf_udp_threads(conf()), conf_tcp_threads(conf()),
-		               conf_bg_threads(conf()), running_bkg_wrk, wrk_queue);
+		               conf()->cache.srv_udp_threads, conf()->cache.srv_tcp_threads,
+		               conf()->cache.srv_bg_threads, running_bkg_wrk, wrk_queue);
 	} else if (strcasecmp(type, "configure") == 0) {
 		ret = snprintf(buff, sizeof(buff), "%s", CONFIGURE_SUMMARY);
 	} else {
@@ -1594,7 +1573,7 @@ static int send_block(conf_io_t *io)
 	default: break;
 	}
 
-	char id[KNOT_DNAME_TXT_MAXLEN + 1] = "\0";
+	knot_dname_txt_storage_t id;
 
 	// Get the textual item id.
 	if (io->id_len > 0 && io->key0 != NULL) {

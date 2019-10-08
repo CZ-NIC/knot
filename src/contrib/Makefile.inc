@@ -2,10 +2,15 @@ noinst_LTLIBRARIES += libcontrib.la
 
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
+libcontrib_la_LIBADD   =
 if !HAVE_LMDB
 libcontrib_la_CPPFLAGS += -include contrib/lmdb/mute_warnings.h
-libcontrib_la_LIBADD    = $(pthread_LIBS)
+libcontrib_la_LIBADD   += $(pthread_LIBS)
 endif !HAVE_LMDB
+if USE_GNUTLS_MEMSET
+libcontrib_la_CPPFLAGS += $(gnutls_CFLAGS)
+libcontrib_la_LIBADD   += $(gnutls_LIBS)
+endif USE_GNUTLS_MEMSET
 
 EXTRA_DIST += \
 	contrib/licenses/0BSD			\
@@ -40,6 +45,7 @@ libcontrib_la_SOURCES = \
 	contrib/semaphore.h			\
 	contrib/sockaddr.c			\
 	contrib/sockaddr.h			\
+	contrib/spinlock.h			\
 	contrib/string.c			\
 	contrib/string.h			\
 	contrib/strtonum.h			\

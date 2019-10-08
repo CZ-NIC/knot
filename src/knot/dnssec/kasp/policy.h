@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #pragma once
 
@@ -97,10 +97,11 @@ typedef struct {
 	uint32_t zsk_lifetime;              // like knot_time_t
 	uint32_t ksk_lifetime;              // like knot_time_t
 	bool ksk_shared;
-	bool singe_type_signing;
+	bool single_type_signing;
 	// RRSIG
 	uint32_t rrsig_lifetime;            // like knot_time_t
 	uint32_t rrsig_refresh_before;      // like knot_timediff_t
+	uint32_t rrsig_prerefresh;          // like knot_timediff_t
 	// NSEC3
 	bool nsec3_enabled;
 	bool nsec3_opt_out;

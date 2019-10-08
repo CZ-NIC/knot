@@ -15,6 +15,8 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
+t = Test()
+
 # check zone if keys are present and used for signing
 def check_zone4(server, min_dnskeys, min_rrsigs, msg):
     dnskeys = server.dig("example.com", "DNSKEY")
@@ -34,17 +36,20 @@ def check_zone4(server, min_dnskeys, min_rrsigs, msg):
         set_err("BAD DNSKEY COUNT: " + msg)
         detail_log("!DNSKEYs not published and activated as expected: " + msg)
 
-    detail_log(SEP)
+    server.flush()
+    t.sleep(2)
+    server.zone_verify(server.zones["example.com."])
 
-t = Test()
+    detail_log(SEP)
 
 knot = t.server("knot")
 zone = t.zone("example.com.")
 t.link(zone, knot)
 knot.dnssec(zone).enable = True
 knot.dnssec(zone).manual = True
-knot.dnssec(zone).rrsig_lifetime = 5
+knot.dnssec(zone).rrsig_lifetime = 50
 knot.dnssec(zone).rrsig_refresh = 2
+knot.dnssec(zone).rrsig_prerefresh = 1
 knot.zonefile_sync = "0"
 
 # install KASP db (one always enabled, one for testing)

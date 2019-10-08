@@ -47,27 +47,13 @@ int query_edns_data_init(struct query_edns_data *edns_ptr, conf_t *conf,
 
 	switch (remote_family) {
 	case AF_INET:
-		edns.max_payload = conf->cache.srv_max_ipv4_udp_payload;
+		edns.max_payload = conf->cache.srv_udp_max_payload_ipv4;
 		break;
 	case AF_INET6:
-		edns.max_payload = conf->cache.srv_max_ipv6_udp_payload;
+		edns.max_payload = conf->cache.srv_udp_max_payload_ipv6;
 		break;
 	default:
 		return KNOT_EINVAL;
-	}
-
-	// Determine custom option
-
-	conf_val_t val = conf_zone_get(conf, C_REQUEST_EDNS_OPTION, zone);
-	size_t opt_len = 0;
-	const uint8_t *opt_data = conf_data(&val, &opt_len);
-	if (opt_data != NULL) {
-		wire_ctx_t ctx = wire_ctx_init_const(opt_data, opt_len);
-		edns.custom_code = wire_ctx_read_u64(&ctx);
-		edns.custom_len  = wire_ctx_read_u16(&ctx);
-		edns.custom_data = ctx.position;
-		assert(ctx.error == KNOT_EOK);
-		assert(wire_ctx_available(&ctx) == edns.custom_len);
 	}
 
 	*edns_ptr = edns;
@@ -90,16 +76,6 @@ int query_put_edns(knot_pkt_t *pkt, const struct query_edns_data *edns)
 
 	if (edns->do_flag) {
 		knot_edns_set_do(&opt_rr);
-	}
-
-	if (edns->custom_code != 0) {
-		ret = knot_edns_add_option(&opt_rr, edns->custom_code,
-		                           edns->custom_len, edns->custom_data,
-		                           &pkt->mm);
-		if (ret != KNOT_EOK) {
-			knot_rrset_clear(&opt_rr, &pkt->mm);
-			return ret;
-		}
 	}
 
 	// Add result into the packet

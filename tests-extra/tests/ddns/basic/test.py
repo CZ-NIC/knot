@@ -4,6 +4,7 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
+import random
 
 t = Test()
 
@@ -104,6 +105,16 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check(rcode="NOERROR", rdata="1.2.3.4")
     verify(master, zone, dnssec)
 
+    # replace with different TTL
+    check_log("Replace with other TTL")
+    up = master.update(zone)
+    up.delete("rrtest.ddns.", "ANY")
+    up.add("rrtest.ddns.", 7, "A", "1.2.3.8")
+    up.send("NOERROR")
+    resp = master.dig("rrtest.ddns.", "A")
+    resp.check(rcode="NOERROR", rdata="1.2.3.8")
+    verify(master, zone, dnssec)
+
     # remove node
     check_log("Node removal")
     up = master.update(zone)
@@ -140,6 +151,30 @@ def do_normal_tests(master, zone, dnssec=False):
     up.add("a.deleglue.ddns.", 3600, "A", "10.20.30.40")
     up.send("NOERROR")
     resp = master.dig("deleglue.ddns.", "NS")
+    resp.check_record(section="authority", rtype="NS", rdata="a.deleglue.ddns.")
+    resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
+    verify(master, zone, dnssec)
+
+    # make a delegation from NONAUTH node
+    check_log("NONAUTH to DELEG")
+    up = master.update(zone)
+    up.add("a.deleglue.ddns.", 3600, "NS", "a.deleglue.ddns.")
+    up.delete("deleglue.ddns.", "NS", "a.deleglue.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("x.a.deleglue.ddns.", "A")
+    resp.check(rcode="NOERROR")
+    resp.check_record(section="authority", rtype="NS", rdata="a.deleglue.ddns.")
+    resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
+    verify(master, zone, dnssec)
+
+    # reverse of previous
+    check_log("DELEG to NONAUTH")
+    up = master.update(zone)
+    up.delete("a.deleglue.ddns.", "NS", "a.deleglue.ddns.")
+    up.add("deleglue.ddns.", 3600, "NS", "a.deleglue.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("deleglue.ddns.", "NS")
+    resp.check(rcode="NOERROR")
     resp.check_record(section="authority", rtype="NS", rdata="a.deleglue.ddns.")
     resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
     verify(master, zone, dnssec)
@@ -570,6 +605,7 @@ master_nsec3 = t.server("knot")
 t.link(zone, master_nsec3, ddns=True)
 master_nsec3.dnssec(zone).enable = True
 master_nsec3.dnssec(zone).nsec3 = True
+master_nsec3.dnssec(zone).nsec3_opt_out = (random.random() < 0.5)
 
 t.start()
 

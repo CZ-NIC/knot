@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
+#include "contrib/string.h"
 #include "contrib/ucw/mempool.h"
 #include "contrib/wire_ctx.h"
 
@@ -127,7 +128,7 @@ static void reset_buffers(knot_ctl_t *ctx)
 static void clean_data(knot_ctl_t *ctx)
 {
 	mp_flush(ctx->mm.ctx);
-	memset(ctx->data, 0, sizeof(ctx->data));
+	memzero(ctx->data, sizeof(ctx->data));
 }
 
 static void close_sock(int *sock)
@@ -143,11 +144,10 @@ static void close_sock(int *sock)
 _public_
 knot_ctl_t* knot_ctl_alloc(void)
 {
-	knot_ctl_t *ctx = malloc(sizeof(*ctx));
+	knot_ctl_t *ctx = calloc(1, sizeof(*ctx));
 	if (ctx == NULL) {
 		return NULL;
 	}
-	memset(ctx, 0, sizeof(*ctx));
 
 	mm_ctx_mempool(&ctx->mm, MM_DEFAULT_BLKSIZE);
 	ctx->timeout = DEFAULT_TIMEOUT;
@@ -173,7 +173,7 @@ void knot_ctl_free(knot_ctl_t *ctx)
 
 	mp_delete(ctx->mm.ctx);
 
-	memset(ctx, 0, sizeof(*ctx));
+	memzero(ctx, sizeof(*ctx));
 	free(ctx);
 }
 
@@ -202,7 +202,7 @@ int knot_ctl_bind(knot_ctl_t *ctx, const char *path)
 	}
 
 	// Bind the socket.
-	ctx->listen_sock = net_bound_socket(SOCK_STREAM, (struct sockaddr *)&addr, 0);
+	ctx->listen_sock = net_bound_socket(SOCK_STREAM, &addr, 0);
 	if (ctx->listen_sock < 0) {
 		return ctx->listen_sock;
 	}
@@ -228,7 +228,7 @@ void knot_ctl_unbind(knot_ctl_t *ctx)
 	socklen_t addr_len = sizeof(addr);
 	if (getsockname(ctx->listen_sock, (struct sockaddr *)&addr, &addr_len) == 0) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		if (sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&addr) > 0) {
+		if (sockaddr_tostr(addr_str, sizeof(addr_str), &addr) > 0) {
 			(void)unlink(addr_str);
 		}
 	}
@@ -280,7 +280,7 @@ int knot_ctl_connect(knot_ctl_t *ctx, const char *path)
 	}
 
 	// Connect to socket.
-	ctx->sock = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&addr, NULL);
+	ctx->sock = net_connected_socket(SOCK_STREAM, &addr, NULL);
 	if (ctx->sock < 0) {
 		return ctx->sock;
 	}

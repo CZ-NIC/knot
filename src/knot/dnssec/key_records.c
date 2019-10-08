@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include "knot/dnssec/key_records.h"
 
@@ -132,10 +132,6 @@ int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool 
 
 int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx, knot_time_t *expires)
 {
-	if (!key->is_active && !key->is_post_active) {
-		return KNOT_EOK;
-	}
-
 	dnssec_sign_ctx_t *sign_ctx;
 	int ret = dnssec_sign_new(&sign_ctx, key->key);
 	if (ret != DNSSEC_EOK) {

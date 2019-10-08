@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	}
 
 	// Transform the input.
-	char txt[KNOT_DNAME_TXT_MAXLEN + 1];
+	knot_dname_txt_storage_t txt;
 	(void)knot_dname_to_str(txt, (const knot_dname_t *)data, sizeof(txt));
 
 	return 0;

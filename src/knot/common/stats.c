@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr)
 static void dump_modules(dump_ctx_t *ctx)
 {
 	int level = 0;
-	knotd_mod_t *mod = NULL;
+	knotd_mod_t *mod;
 	WALK_LIST(mod, *ctx->query_modules) {
 		// Skip modules without statistics.
 		if (mod->stats_count == 0) {
@@ -97,7 +97,7 @@ static void dump_modules(dump_ctx_t *ctx)
 			}
 			level = 1;
 
-			char name[KNOT_DNAME_TXT_MAXLEN + 1];
+			knot_dname_txt_storage_t name;
 			if (knot_dname_to_str(name, ctx->zone, sizeof(name)) == NULL) {
 				return;
 			}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <glob.h>
 #include <inttypes.h>
@@ -130,58 +130,6 @@ int mod_id_to_txt(
 	YP_CHECK_RET;
 }
 
-int edns_opt_to_bin(
-	YP_TXT_BIN_PARAMS)
-{
-	YP_CHECK_PARAMS_BIN;
-
-	// Check for "code:[value]" format.
-	const uint8_t *pos = (uint8_t *)strchr((char *)in->position, ':');
-	if (pos == NULL || pos >= stop) {
-		return KNOT_EINVAL;
-	}
-
-	// Write option code.
-	int ret = yp_int_to_bin(in, out, pos, 0, UINT16_MAX, YP_SNONE);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Skip the separator.
-	wire_ctx_skip(in, sizeof(uint8_t));
-
-	// Write option data.
-	ret = yp_hex_to_bin(in, out, stop);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	YP_CHECK_RET;
-}
-
-int edns_opt_to_txt(
-	YP_BIN_TXT_PARAMS)
-{
-	YP_CHECK_PARAMS_TXT;
-
-	// Write option code.
-	int ret = yp_int_to_txt(in, out, YP_SNONE);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Write the separator.
-	wire_ctx_write_u8(out, ':');
-
-	// Write option data.
-	ret = yp_hex_to_txt(in, out);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	YP_CHECK_RET;
-}
-
 int rrtype_to_bin(
 	YP_TXT_BIN_PARAMS)
 {
@@ -204,9 +152,10 @@ int rrtype_to_txt(
 
 	uint16_t type = (uint16_t)wire_ctx_read_u64(in);
 	int ret = knot_rrtype_to_string(type, (char *)out->position, out->size);
-	if (ret != 0) {
+	if (ret < 0) {
 		return KNOT_EINVAL;
 	}
+	wire_ctx_skip(out, ret);
 
 	YP_CHECK_RET;
 }
@@ -285,9 +234,43 @@ int check_module_id(
 	return KNOT_EOK;
 }
 
+#define CHECK_LEGACY_NAME(section, old_item, new_item) { \
+	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn, \
+	                              section, old_item); \
+	if (val.code == KNOT_EOK) { \
+		CONF_LOG(LOG_NOTICE, "option '%s.%s' is obsolete, " \
+		                     "use option '%s.%s' instead", \
+		                     &section[1], &old_item[1], \
+		                     &section[1], &new_item[1]); \
+	} \
+}
+
+#define CHECK_LEGACY_NAME_ID(section, old_item, new_item) { \
+	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
+	                                    section, old_item, args->id, args->id_len); \
+	if (val.code == KNOT_EOK) { \
+		CONF_LOG(LOG_NOTICE, "option '%s.%s' is obsolete, " \
+		                     "use option '%s.%s' instead", \
+		                     &section[1], &old_item[1], \
+		                     &section[1], &new_item[1]); \
+	} \
+}
+
 int check_server(
 	knotd_conf_check_args_t *args)
 {
+	conf_val_t hshake = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
+	                                 C_TCP_HSHAKE_TIMEOUT);
+	if (hshake.code == KNOT_EOK) {
+		CONF_LOG(LOG_NOTICE, "option 'tcp-handshake-timeout' is no longer supported");
+	}
+
+	CHECK_LEGACY_NAME(C_SRV, C_TCP_REPLY_TIMEOUT, C_TCP_RMT_IO_TIMEOUT);
+	CHECK_LEGACY_NAME(C_SRV, C_MAX_TCP_CLIENTS, C_TCP_MAX_CLIENTS);
+	CHECK_LEGACY_NAME(C_SRV, C_MAX_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD);
+	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV4_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV4);
+	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV6_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV6);
+
 	return KNOT_EOK;
 }
 
@@ -310,6 +293,8 @@ int check_keystore(
 int check_policy(
 	knotd_conf_check_args_t *args)
 {
+	conf_val_t sts = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                    C_SINGLE_TYPE_SIGNING, args->id, args->id_len);
 	conf_val_t alg = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_ALG, args->id, args->id_len);
 	conf_val_t ksk = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
@@ -320,7 +305,8 @@ int check_policy(
 	                                    C_RRSIG_LIFETIME, args->id, args->id_len);
 	conf_val_t refresh = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_RRSIG_REFRESH, args->id, args->id_len);
-
+	conf_val_t prerefresh = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                    C_RRSIG_PREREFRESH, args->id, args->id_len);
 	conf_val_t prop_del = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 						 C_PROPAG_DELAY, args->id, args->id_len);
 	conf_val_t zsk_life = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
@@ -329,6 +315,8 @@ int check_policy(
 						 C_KSK_LIFETIME, args->id, args->id_len);
 	conf_val_t dnskey_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 						   C_DNSKEY_TTL, args->id, args->id_len);
+	conf_val_t zone_max_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+						     C_ZONE_MAX_TLL, args->id, args->id_len);
 
 	unsigned algorithm = conf_opt(&alg);
 	if (algorithm == 3 || algorithm == 6) {
@@ -350,11 +338,13 @@ int check_policy(
 
 	int64_t lifetime_val = conf_int(&lifetime);
 	int64_t refresh_val = conf_int(&refresh);
-	if (lifetime_val <= refresh_val) {
-		args->err_str = "RRSIG refresh has to be lower than RRSIG lifetime";
+	int64_t preref_val = conf_int(&prerefresh);
+	if (lifetime_val <= refresh_val + preref_val) {
+		args->err_str = "RRSIG refresh + pre-refresh has to be lower than RRSIG lifetime";
 		return KNOT_EINVAL;
 	}
 
+	bool sts_val = conf_bool(&sts);
 	int64_t prop_del_val = conf_int(&prop_del);
 	int64_t zsk_life_val = conf_int(&zsk_life);
 	int64_t ksk_life_val = conf_int(&ksk_life);
@@ -362,13 +352,36 @@ int check_policy(
 	if (dnskey_ttl_val == YP_NIL) {
 		dnskey_ttl_val = 0;
 	}
-
-	if (zsk_life_val != 0 && zsk_life_val < 2 * prop_del_val + dnskey_ttl_val) {
-		args->err_str = "ZSK lifetime too low according to propagation delay and DNSKEY TTL";
-		return KNOT_EINVAL;
+	int64_t zone_max_ttl_val = conf_int(&zone_max_ttl);
+	if (zone_max_ttl_val == YP_NIL) {
+		zone_max_ttl_val = dnskey_ttl_val; // Better than 0.
 	}
-	if (ksk_life_val != 0 && ksk_life_val < 2 * prop_del_val + 2 * dnskey_ttl_val) {
-		args->err_str = "KSK lifetime too low according to propagation delay and DNSKEY TTL";
+
+	if (sts_val) {
+		if (ksk_life_val != 0 && ksk_life_val < 2 * prop_del_val + dnskey_ttl_val + zone_max_ttl_val) {
+			args->err_str = "CSK lifetime too low according to propagation delay, DNSKEY TTL, "
+			                "and maximum zone TTL";
+			return KNOT_EINVAL;
+		}
+	} else {
+		if (ksk_life_val != 0 && ksk_life_val < 2 * prop_del_val + 2 * dnskey_ttl_val) {
+			args->err_str = "KSK lifetime too low according to propagation delay and DNSKEY TTL";
+			return KNOT_EINVAL;
+		}
+		if (zsk_life_val != 0 && zsk_life_val < 2 * prop_del_val + dnskey_ttl_val + zone_max_ttl_val) {
+			args->err_str = "ZSK lifetime too low according to propagation delay, DNSKEY TTL, "
+			                "and maximum zone TTL";
+			return KNOT_EINVAL;
+		}
+	}
+
+	conf_val_t cds_cdnskey = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                            C_CDS_CDNSKEY, args->id, args->id_len);
+	conf_val_t ds_push = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                        C_DS_PUSH, args->id, args->id_len);
+
+	if (conf_val_count(&ds_push) > 0 && conf_opt(&cds_cdnskey) == CDS_CDNSKEY_NONE) {
+		args->err_str = "DS push requires enabled CDS/CDNSKEY publication";
 		return KNOT_EINVAL;
 	}
 
@@ -423,31 +436,48 @@ int check_remote(
 	return KNOT_EOK;
 }
 
+#define CHECK_LEGACY_MOVED(old_item, new_item) { \
+	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
+	                                    C_TPL, old_item, args->id, args->id_len); \
+	if (val.code == KNOT_EOK) { \
+		CONF_LOG(LOG_NOTICE, "option 'template.%s' is obsolete, " \
+		                     "use option 'database.%s' instead", \
+		                     &old_item[1], &new_item[1]); \
+	} \
+}
+
+#define CHECK_DFLT(item, name) { \
+	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
+	                                    C_TPL, item, args->id, args->id_len); \
+	if (val.code == KNOT_EOK) { \
+		args->err_str = name " in non-default template"; \
+		return KNOT_EINVAL; \
+	} \
+}
+
 int check_template(
 	knotd_conf_check_args_t *args)
 {
+	CHECK_LEGACY_MOVED(C_TIMER_DB, C_TIMER_DB);
+	CHECK_LEGACY_MOVED(C_MAX_TIMER_DB_SIZE, C_TIMER_DB_MAX_SIZE);
+	CHECK_LEGACY_MOVED(C_JOURNAL_DB, C_JOURNAL_DB);
+	CHECK_LEGACY_MOVED(C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
+	CHECK_LEGACY_MOVED(C_MAX_JOURNAL_DB_SIZE, C_JOURNAL_DB_MAX_SIZE);
+	CHECK_LEGACY_MOVED(C_KASP_DB, C_KASP_DB);
+	CHECK_LEGACY_MOVED(C_MAX_KASP_DB_SIZE, C_KASP_DB_MAX_SIZE);
+
+	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_ZONE_SIZE, C_ZONE_MAX_SIZE);
+	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_REFRESH_INTERVAL, C_REFRESH_MAX_INTERVAL);
+	CHECK_LEGACY_NAME_ID(C_TPL, C_MIN_REFRESH_INTERVAL, C_REFRESH_MIN_INTERVAL);
+	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
+	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
+
 	// Stop if the default template.
 	if (is_default_id(args->id, args->id_len)) {
 		return KNOT_EOK;
 	}
 
-	conf_val_t val;
-	#define CHECK_DFLT(item, name) \
-		val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_TPL, \
-		                         item, args->id, args->id_len); \
-		if (val.code == KNOT_EOK) { \
-			args->err_str = name " in non-default template"; \
-			return KNOT_EINVAL; \
-		}
-
 	CHECK_DFLT(C_GLOBAL_MODULE, "global module");
-	CHECK_DFLT(C_TIMER_DB, "timer database path");
-	CHECK_DFLT(C_MAX_TIMER_DB_SIZE, "timer database maximum size");
-	CHECK_DFLT(C_JOURNAL_DB, "journal database path");
-	CHECK_DFLT(C_JOURNAL_DB_MODE, "journal database mode");
-	CHECK_DFLT(C_MAX_JOURNAL_DB_SIZE, "journal database maximum size");
-	CHECK_DFLT(C_KASP_DB, "KASP database path");
-	CHECK_DFLT(C_MAX_KASP_DB_SIZE, "KASP database maximum size");
 
 	return KNOT_EOK;
 }
@@ -455,6 +485,12 @@ int check_template(
 int check_zone(
 	knotd_conf_check_args_t *args)
 {
+	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_ZONE_SIZE, C_ZONE_MAX_SIZE);
+	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_REFRESH_INTERVAL, C_REFRESH_MAX_INTERVAL);
+	CHECK_LEGACY_NAME_ID(C_ZONE, C_MIN_REFRESH_INTERVAL, C_REFRESH_MIN_INTERVAL);
+	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
+	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
+
 	return KNOT_EOK;
 }
 

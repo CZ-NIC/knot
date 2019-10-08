@@ -12,12 +12,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <assert.h>
 #include <grp.h>
 #include <pwd.h>
 #include <stdio.h>
+#include <sys/resource.h>
 
 #include "knot/conf/base.h"
 #include "knot/conf/confdb.h"
@@ -32,6 +33,10 @@
 #include "contrib/openbsd/strlcat.h"
 
 #define DBG_LOG(err) CONF_LOG(LOG_DEBUG, "%s (%s)", __func__, knot_strerror((err)));
+
+#define DFLT_TCP_WORKERS_MIN		10
+#define DFLT_BG_WORKERS_MAX		10
+#define FALLBACK_MAX_TCP_CLIENTS	100
 
 conf_val_t conf_get_txn(
 	conf_t *conf,
@@ -170,7 +175,7 @@ conf_val_t conf_zone_get_txn(
 		return val;
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
-		              C_ZONE + 1, key1_name + 1, knot_strerror(val.code));
+		              &C_ZONE[1], &key1_name[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 		break;
@@ -186,7 +191,7 @@ conf_val_t conf_zone_get_txn(
 		break;
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
-		              C_ZONE + 1, C_TPL + 1, knot_strerror(val.code));
+		              &C_ZONE[1], &C_TPL[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 	case KNOT_YP_EINVAL_ID:
@@ -198,7 +203,7 @@ conf_val_t conf_zone_get_txn(
 	switch (val.code) {
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
-		              C_TPL + 1, key1_name + 1, knot_strerror(val.code));
+		              &C_TPL[1], &key1_name[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
@@ -227,7 +232,7 @@ conf_val_t conf_default_get_txn(
 	switch (val.code) {
 	default:
 		CONF_LOG(LOG_ERR, "failed to read default '%s/%s' (%s)",
-		         C_TPL + 1, key1_name + 1, knot_strerror(val.code));
+		         &C_TPL[1], &key1_name[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_EOK:
 	case KNOT_ENOENT:
@@ -625,8 +630,7 @@ struct sockaddr_storage conf_addr(
 				free(tmp);
 			}
 		} else if (no_port) {
-			sockaddr_port_set((struct sockaddr *)&out,
-			                  val->item->var.a.dflt_port);
+			sockaddr_port_set(&out, val->item->var.a.dflt_port);
 		}
 	} else {
 		const char *dflt_socket = val->item->var.a.dflt_socket;
@@ -704,14 +708,11 @@ bool conf_addr_range_match(
 
 		min = conf_addr_range(range, &max, &mask);
 		if (max.ss_family == AF_UNSPEC) {
-			if (sockaddr_net_match((struct sockaddr *)addr,
-			                       (struct sockaddr *)&min, mask)) {
+			if (sockaddr_net_match(addr, &min, mask)) {
 				return true;
 			}
 		} else {
-			if (sockaddr_range_match((struct sockaddr *)addr,
-			                         (struct sockaddr *)&min,
-			                         (struct sockaddr *)&max)) {
+			if (sockaddr_range_match(addr, &min, &max)) {
 				return true;
 			}
 		}
@@ -854,6 +855,8 @@ static int str_char(
 	unsigned index1,
 	unsigned index2)
 {
+	assert(buff);
+
 	if (knot_dname_to_str(buff, zone, buff_len) == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -889,6 +892,8 @@ static int str_zone(
 	char *buff,
 	size_t buff_len)
 {
+	assert(buff);
+
 	if (knot_dname_to_str(buff, zone, buff_len) == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -1057,13 +1062,43 @@ char* conf_db_txn(
 	knot_db_txn_t *txn,
 	const yp_name_t *db_type)
 {
-	conf_val_t val = conf_default_get_txn(conf, txn, C_STORAGE);
-	char *storage = conf_abs_path(&val, NULL);
-	val = conf_default_get_txn(conf, txn, db_type);
-	char *dbdir = conf_abs_path(&val, storage);
+	conf_val_t storage_val = conf_get_txn(conf, txn, C_DB, C_STORAGE);
+	if (storage_val.code != KNOT_EOK) {
+		storage_val = conf_default_get_txn(conf, txn, C_STORAGE);
+	}
+
+	conf_val_t db_val = conf_get_txn(conf, txn, C_DB, db_type);
+	if (db_val.code != KNOT_EOK) {
+		db_val = conf_default_get_txn(conf, txn, db_type);
+	}
+
+	char *storage = conf_abs_path(&storage_val, NULL);
+	char *dbdir = conf_abs_path(&db_val, storage);
 	free(storage);
 
 	return dbdir;
+}
+
+conf_val_t conf_db_param_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *param,
+	const yp_name_t *legacy_param)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_DB, param);
+	if (val.code != KNOT_EOK) {
+		val = conf_default_get_txn(conf, txn, legacy_param);
+	}
+
+	return val;
+}
+
+bool conf_tcp_reuseport_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_REUSEPORT);
+	return conf_bool(&val);
 }
 
 size_t conf_udp_threads_txn(
@@ -1086,7 +1121,7 @@ size_t conf_tcp_threads_txn(
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_WORKERS);
 	int64_t workers = conf_int(&val);
 	if (workers == YP_NIL) {
-		return MAX(conf_udp_threads_txn(conf, txn) * 2, CONF_XFERS);
+		return MAX(dt_optimal_size(), DFLT_TCP_WORKERS_MIN);
 	}
 
 	return workers;
@@ -1099,10 +1134,35 @@ size_t conf_bg_threads_txn(
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_BG_WORKERS);
 	int64_t workers = conf_int(&val);
 	if (workers == YP_NIL) {
-		return MIN(dt_optimal_size(), CONF_XFERS);
+		return MIN(dt_optimal_size(), DFLT_BG_WORKERS_MAX);
 	}
 
 	return workers;
+}
+
+size_t conf_tcp_max_clients_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_MAX_CLIENTS);
+	if (val.code != KNOT_EOK) {
+		val = conf_get_txn(conf, txn, C_SRV, C_MAX_TCP_CLIENTS);
+	}
+	int64_t clients = conf_int(&val);
+	if (clients == YP_NIL) {
+		static size_t permval = 0;
+		if (permval == 0) {
+			struct rlimit numfiles;
+			if (getrlimit(RLIMIT_NOFILE, &numfiles) == 0) {
+				permval = (size_t)numfiles.rlim_cur / 2;
+			} else {
+				permval = FALLBACK_MAX_TCP_CLIENTS;
+			}
+		}
+		return permval;
+	}
+
+	return clients;
 }
 
 int conf_user_txn(

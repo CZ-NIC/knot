@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/zone-keys.h"
@@ -138,12 +138,31 @@ static void kaspkey2params(knot_kasp_key_t *key, key_params_t *params)
 	params->is_pub_only = key->is_pub_only;
 }
 
+static void detect_keytag_conflict(knot_kasp_zone_t *zone, bool *kt_cfl)
+{
+	*kt_cfl = false;
+	if (zone->num_keys == 0) {
+		return;
+	}
+	uint16_t keytags[zone->num_keys];
+	for (size_t i = 0; i < zone->num_keys; i++) {
+		keytags[i] = dnssec_key_get_keytag(zone->keys[i].key);
+		for (size_t j = 0; j < i; j++) {
+			if (keytags[j] == keytags[i]) {
+				*kt_cfl = true;
+				return;
+			}
+		}
+	}
+}
+
 int kasp_zone_load(knot_kasp_zone_t *zone,
-		   const knot_dname_t *zone_name,
-		   knot_lmdb_db_t *kdb)
+                   const knot_dname_t *zone_name,
+                   knot_lmdb_db_t *kdb,
+                   bool *kt_cfl)
 {
 	if (zone == NULL || zone_name == NULL || kdb == NULL) {
-	return KNOT_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	knot_kasp_key_t *dkeys = NULL;
@@ -194,6 +213,8 @@ kzl_salt:
 	zone->nsec3_salt = salt;
 	zone->nsec3_salt_created = sc;
 
+	detect_keytag_conflict(zone, kt_cfl);
+
 kzl_end:
 	ptrlist_deep_free(&key_params, NULL);
 	if (ret != KNOT_EOK) {
@@ -242,15 +263,9 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 		}
 	}
 
-	if (zone->nsec3_salt.size > 0) {
-		int ret = kasp_db_store_nsec3salt(kdb, zone_name, &zone->nsec3_salt,
-		                                  zone->nsec3_salt_created);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
 
-	return KNOT_EOK;
+	return kasp_db_store_nsec3salt(kdb, zone_name, &zone->nsec3_salt,
+	                               zone->nsec3_salt_created);
 }
 
 int kasp_zone_init(knot_kasp_zone_t **zone)

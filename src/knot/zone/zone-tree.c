@@ -23,21 +23,17 @@
 #include "libknot/packet/wire.h"
 #include "contrib/macros.h"
 
-static inline zone_node_t *fix_get(zone_node_t *node, const zone_tree_t *tree)
-{
-	return binode_node(node, (tree->flags & ZONE_TREE_USE_BINODES) && (tree->flags & ZONE_TREE_BINO_SECOND));
-}
-
 typedef struct {
 	zone_tree_apply_cb_t func;
 	void *data;
-	const zone_tree_t *tree;
+	int binode_second;
 } zone_tree_func_t;
 
 static int tree_apply_cb(trie_val_t *node, void *data)
 {
 	zone_tree_func_t *f = (zone_tree_func_t *)data;
-	zone_node_t *n = fix_get(*node, f->tree);
+	zone_node_t *n = (zone_node_t *)(*node) + f->binode_second;
+	assert(!f->binode_second || (n->flags & NODE_FLAGS_SECOND));
 	return f->func(n, f->data);
 }
 
@@ -85,17 +81,25 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 	uint8_t *lf = knot_dname_lf((*node)->owner, lf_storage);
 	assert(lf);
 
-	assert((bool)((*node)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
-
 	if (tree->cow != NULL) {
-		*trie_get_cow(tree->cow, lf + 1, *lf) = binode_node(*node, false);
+		*trie_get_cow(tree->cow, lf + 1, *lf) = binode_first(*node);
 	} else {
-		*trie_get_ins(tree->trie, lf + 1, *lf) = binode_node(*node, false);
+		*trie_get_ins(tree->trie, lf + 1, *lf) = binode_first(*node);
 	}
 
-	*node = binode_node(*node, (tree->flags & ZONE_TREE_USE_BINODES) && (tree->flags & ZONE_TREE_BINO_SECOND));
+	*node = zone_tree_fix_get(*node, tree);
 
 	return KNOT_EOK;
+}
+
+int zone_tree_insert_with_parents(zone_tree_t *tree, zone_node_t *node, bool without_parents)
+{
+	int ret = KNOT_EOK;
+	do {
+		ret = zone_tree_insert(tree, &node);
+		node = node->parent;
+	} while (node != NULL && ret == KNOT_EOK && !without_parents);
+	return ret;
 }
 
 zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
@@ -116,9 +120,8 @@ zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner)
 	if (val == NULL) {
 		return NULL;
 	}
-	assert((bool)(((zone_node_t *)*val)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
 
-	return fix_get(*val, tree);
+	return zone_tree_fix_get(*val, tree);
 }
 
 int zone_tree_get_less_or_equal(zone_tree_t *tree,
@@ -141,8 +144,7 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 	trie_val_t *fval = NULL;
 	int ret = trie_get_leq(tree->trie, lf + 1, *lf, &fval);
 	if (fval != NULL) {
-		assert((bool)(((zone_node_t *)*fval)->flags & NODE_FLAGS_BINODE) == (bool)(tree->flags & ZONE_TREE_USE_BINODES));
-		*found = fix_get(*fval, tree);
+		*found = zone_tree_fix_get(*fval, tree);
 	}
 
 	int exact_match = 0;
@@ -166,7 +168,8 @@ int zone_tree_get_less_or_equal(zone_tree_t *tree,
 			return ret;
 		}
 		*previous = zone_tree_it_val(&it); /* leftmost */
-		*previous = fix_get(*previous, tree);
+		assert(*previous != NULL); // cppcheck
+		*previous = zone_tree_fix_get(*previous, tree);
 		*previous = node_prev(*previous); /* rightmost */
 		*found = NULL;
 		zone_tree_it_free(&it);
@@ -199,12 +202,16 @@ void zone_tree_remove_node(zone_tree_t *tree, const knot_dname_t *owner)
 int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t *dname,
                        zone_tree_new_node_cb_t new_cb, void *new_cb_ctx, zone_node_t **new_node)
 {
-	if (knot_dname_cmp(dname, apex->owner) == 0) {
+	int in_bailiwick = knot_dname_in_bailiwick(dname, apex->owner);
+	if (in_bailiwick == 0) {
 		*new_node = apex;
 		return KNOT_EOK;
+	} else if (in_bailiwick < 0) {
+		return KNOT_EOUTOFZONE;
 	}
+
 	*new_node = zone_tree_get(tree, dname);
-	if (*new_node == NULL && knot_dname_in_bailiwick(dname, apex->owner) > 0) {
+	if (*new_node == NULL) {
 		*new_node = new_cb(dname, new_cb_ctx);
 		if (*new_node == NULL) {
 			return KNOT_ENOMEM;
@@ -230,17 +237,20 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
 	return KNOT_EOK;
 }
 
-int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
-                       zone_tree_del_node_cb_t del_cb, void *del_cb_ctx)
+int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool free_deleted)
 {
 	zone_node_t *parent = node_parent(node);
 	bool wildcard = knot_dname_is_wildcard(node->owner);
 
 	node->parent = NULL;
+	node->flags |= NODE_FLAGS_DELETED;
 	zone_tree_remove_node(tree, node->owner);
 
-	int ret = del_cb(node, del_cb_ctx);
+	if (free_deleted) {
+		node_free(node, NULL);
+	}
 
+	int ret = KNOT_EOK;
 	if (ret == KNOT_EOK && parent != NULL) {
 		parent->children--;
 		if (wildcard) {
@@ -248,7 +258,7 @@ int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node,
 		}
 		if (parent->children == 0 && parent->rrset_count == 0 &&
 		    !(parent->flags & NODE_FLAGS_APEX)) {
-			ret = zone_tree_del_node(tree, parent, del_cb, del_cb_ctx);
+			ret = zone_tree_del_node(tree, parent, free_deleted);
 		}
 	}
 	return ret;
@@ -267,7 +277,7 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 	zone_tree_func_t f = {
 		.func = function,
 		.data = data,
-		.tree = tree,
+		.binode_second = ((tree->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0),
 	};
 
 	return trie_apply(tree->trie, tree_apply_cb, &f);
@@ -275,15 +285,7 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 
 int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it)
 {
-	if (it->tree == NULL) {
-		it->it = trie_it_begin(tree->trie);
-		if (it->it == NULL) {
-			return KNOT_ENOMEM;
-		}
-		it->tree = tree;
-		it->next_tree = NULL;
-	}
-	return KNOT_EOK;
+	return zone_tree_it_double_begin(tree, NULL, it);
 }
 
 int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree_it_t *it)
@@ -294,6 +296,7 @@ int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree
 			return KNOT_ENOMEM;
 		}
 		it->tree = first;
+		it->binode_second = ((first->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0);
 		it->next_tree = second;
 	}
 	return KNOT_EOK;
@@ -306,7 +309,9 @@ bool zone_tree_it_finished(zone_tree_it_t *it)
 
 zone_node_t *zone_tree_it_val(zone_tree_it_t *it)
 {
-	return fix_get(*trie_it_val(it->it), it->tree);
+	zone_node_t *node = (zone_node_t *)(*trie_it_val(it->it)) + it->binode_second;
+	assert(!it->binode_second || (node->flags & NODE_FLAGS_SECOND));
+	return node;
 }
 
 void zone_tree_it_del(zone_tree_it_t *it)
@@ -320,6 +325,7 @@ void zone_tree_it_next(zone_tree_it_t *it)
 	if (it->next_tree != NULL && trie_it_finished(it->it)) {
 		trie_it_free(it->it);
 		it->tree = it->next_tree;
+		it->binode_second = ((it->tree->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0);
 		it->next_tree = NULL;
 		it->it = trie_it_begin(it->tree->trie);
 	}
@@ -357,12 +363,8 @@ int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it, bo
 	}
 	zone_tree_it_free(&tmp);
 	assert(it->total == it->current);
-	it->current = 0;
 
-	while (!it->incl_del && !zone_tree_delsafe_it_finished(it) &&
-	       (zone_tree_delsafe_it_val(it)->flags & NODE_FLAGS_DELETED)) {
-		it->current++;
-	}
+	zone_tree_delsafe_it_restart(it);
 
 	return KNOT_EOK;
 }
@@ -370,6 +372,16 @@ int zone_tree_delsafe_it_begin(zone_tree_t *tree, zone_tree_delsafe_it_t *it, bo
 bool zone_tree_delsafe_it_finished(zone_tree_delsafe_it_t *it)
 {
 	return (it->current >= it->total);
+}
+
+void zone_tree_delsafe_it_restart(zone_tree_delsafe_it_t *it)
+{
+	it->current = 0;
+
+	while (!it->incl_del && !zone_tree_delsafe_it_finished(it) &&
+	       (zone_tree_delsafe_it_val(it)->flags & NODE_FLAGS_DELETED)) {
+		it->current++;
+	}
 }
 
 zone_node_t *zone_tree_delsafe_it_val(zone_tree_delsafe_it_t *it)
@@ -393,18 +405,17 @@ void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it)
 
 static int binode_unify_cb(zone_node_t *node, void *ctx)
 {
-	UNUSED(ctx);
-	binode_unify(node, true, NULL);
+	binode_unify(node, *(bool *)ctx, NULL);
 	return KNOT_EOK;
 }
 
-void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes)
+void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool free_deleted)
 {
 	if (nodes != NULL) {
-		zone_tree_apply(nodes, binode_unify_cb, NULL);
+		zone_tree_apply(nodes, binode_unify_cb, &free_deleted);
 	}
 	if (nsec3_nodes != NULL) {
-		zone_tree_apply(nsec3_nodes, binode_unify_cb, NULL);
+		zone_tree_apply(nsec3_nodes, binode_unify_cb, &free_deleted);
 	}
 }
 

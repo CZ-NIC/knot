@@ -13,6 +13,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 /*!
  * \brief Functions for POSIX process handling.
  */
@@ -54,6 +55,6 @@ bool pid_running(pid_t pid);
  * \param gid New group ID.
  *
  * \retval KNOT_EOK on success.
- * \retval KNOT_EACCESS if storage is not writeable.
+ * \retval KNOT_ERROR if UID or GID change failed.
  */
 int proc_update_privileges(int uid, int gid);

@@ -21,7 +21,6 @@
 #include "knot/conf/conf.h"
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
-#include "knot/common/ref.h"
 #include "knot/journal/knot_lmdb.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
@@ -46,7 +45,6 @@ typedef struct iohandler {
 typedef enum {
 	ServerIdle    = 0 << 0, /*!< Server is idle. */
 	ServerRunning = 1 << 0, /*!< Server is running. */
-	ServerReload  = 1 << 1  /*!< Server reload requested. */
 } server_state;
 
 /*!
@@ -56,7 +54,8 @@ typedef struct iface {
 	struct node n;
 	int *fd_udp;
 	int fd_udp_count;
-	int fd_tcp;
+	int *fd_tcp;
+	int fd_tcp_count;
 	struct sockaddr_storage addr;
 } iface_t;
 
@@ -65,12 +64,6 @@ enum {
 	IO_UDP = 0,
 	IO_TCP = 1
 };
-
-typedef struct ifacelist {
-	ref_t ref;
-	list_t l;
-	list_t u;
-} ifacelist_t;
 
 /*!
  * \brief Main server structure.
@@ -101,7 +94,7 @@ typedef struct server {
 	evsched_t sched;
 
 	/*! \brief List of interfaces. */
-	ifacelist_t *ifaces;
+	list_t *ifaces;
 
 } server_t;
 
@@ -169,15 +162,3 @@ void server_reconfigure(conf_t *conf, server_t *server);
  * Routine for dynamic server zones reconfiguration.
  */
 void server_update_zones(conf_t *conf, server_t *server);
-
-/*!
- * \brief Update fdsets from current interfaces list.
- *
- * \param server    Server.
- * \param fds       File descriptor set.
- * \param index     I/O index (UDP/TCP).
- * \param thread_id Thread ID used for geting UDP ID.
- *
- * \return new interface list
- */
-ref_t *server_set_ifaces(server_t *server, fdset_t *fds, int index, int thread_id);

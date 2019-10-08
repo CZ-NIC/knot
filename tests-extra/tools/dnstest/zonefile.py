@@ -129,8 +129,10 @@ class ZoneFile(object):
 
             if cmd.returncode != 0:
                 set_err("DNSSEC VERIFY")
-                detail_log("dnssec-verify:\n" + err.strip())
+                detail_log(" <dnssec-verify>\n" + err.strip())
                 self.backup()
+            else:
+                detail_log(" <dnssec-verify>\n" + err.strip())
 
         if ldns_check:
             cmd = Popen(["ldns-verify-zone", self.path],
@@ -139,8 +141,10 @@ class ZoneFile(object):
 
             if cmd.returncode != 0:
                 set_err("LDNS VERIFY")
-                detail_log("ldns-verify-zone:\n" + err.strip())
+                detail_log(" <ldns-verify-zone>\n" + err.strip())
                 self.backup()
+            else:
+                detail_log(" <ldns-verify-zone>\n" + out.strip())
 
         detail_log(SEP)
 
@@ -184,6 +188,12 @@ class ZoneFile(object):
             self.backup_num += 1
         except:
             raise Exception("Can't make a copy of zone file '%s'" % self.path)
+
+    def get_soa_serial(self):
+        with open(self.path, 'r') as f:
+            for line in f:
+                if "SOA" in line:
+                    return int(line.split()[-5])
 
     def update_soa(self, serial=None, refresh=None, retry=None, expire=None,
                    minimum=None):

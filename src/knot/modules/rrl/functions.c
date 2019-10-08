@@ -18,6 +18,7 @@
 #include <time.h>
 
 #include "knot/modules/rrl/functions.h"
+#include "contrib/openbsd/strlcat.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "libdnssec/error.h"
@@ -261,22 +262,44 @@ static inline unsigned reduce_dist(rrl_table_t *tbl, unsigned id, unsigned dist,
 	return dist;
 }
 
+static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss)
+{
+	const char *suffix;
+	uint8_t addr[16] = { 0 };
+
+	if (ss->ss_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
+		memcpy(addr, &ipv6->sin6_addr, RRL_V6_PREFIX_LEN);
+		suffix = "/56";
+	} else {
+		struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
+		memcpy(addr, &ipv4->sin_addr, RRL_V4_PREFIX_LEN);
+		suffix = "/24";
+	}
+
+	if (inet_ntop(ss->ss_family, &addr, dst, maxlen) != NULL) {
+		strlcat(dst, suffix, maxlen);
+	} else {
+		dst[0] = '\0';
+	}
+}
+
 static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
                           uint16_t flags, uint8_t cls)
 {
-	if (mod == NULL) {
+	if (mod == NULL || ss == NULL) {
 		return;
 	}
 
-	char addr_str[SOCKADDR_STRLEN] = {0};
-	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)ss);
+	char addr_str[SOCKADDR_STRLEN];
+	subnet_tostr(addr_str, sizeof(addr_str), ss);
 
 	const char *what = "leaves";
 	if (flags & RRL_BF_ELIMIT) {
 		what = "enters";
 	}
 
-	knotd_mod_log(mod, LOG_NOTICE, "address %s, class %s, %s limiting",
+	knotd_mod_log(mod, LOG_NOTICE, "subnet %s, class %s, %s limiting",
 	              addr_str, rrl_clsstr(cls), what);
 }
 
@@ -492,12 +515,14 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 
 bool rrl_slip_roll(int n_slip)
 {
-	/* Now n_slip means every Nth answer slips.
-	 * That represents a chance of 1/N that answer slips.
-	 * Therefore, on average, from 100 answers 100/N will slip. */
-	int threshold = RRL_SLIP_MAX / n_slip;
-	int roll = dnssec_random_uint16_t() % RRL_SLIP_MAX;
-	return (roll < threshold);
+	switch (n_slip) {
+	case 0:
+		return false;
+	case 1:
+		return true;
+	default:
+		return (dnssec_random_uint16_t() % n_slip == 0);
+	}
 }
 
 void rrl_destroy(rrl_table_t *rrl)

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -238,13 +238,13 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	}
 
 	/* Initialize OPT record. */
-	int16_t max_payload;
+	uint16_t max_payload;
 	switch (qdata->params->remote->ss_family) {
 	case AF_INET:
-		max_payload = conf()->cache.srv_max_ipv4_udp_payload;
+		max_payload = conf()->cache.srv_udp_max_payload_ipv4;
 		break;
 	case AF_INET6:
-		max_payload = conf()->cache.srv_max_ipv6_udp_payload;
+		max_payload = conf()->cache.srv_udp_max_payload_ipv6;
 		break;
 	default:
 		return KNOT_ERROR;
@@ -331,7 +331,7 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 	/* Add ECS if present. */
 	int ret = KNOT_EOK;
 	if (qdata->ecs != NULL) {
-		uint8_t *ecs_opt = knot_edns_get_option(&qdata->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET);
+		uint8_t *ecs_opt = knot_edns_get_option(&qdata->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET, NULL);
 		if (ecs_opt != NULL) {
 			uint8_t *ecs_data = knot_edns_opt_get_data(ecs_opt);
 			uint16_t ecs_len = knot_edns_opt_get_length(ecs_opt);
@@ -388,10 +388,10 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 			uint16_t server_size;
 			switch (qdata->params->remote->ss_family) {
 			case AF_INET:
-				server_size = conf()->cache.srv_max_ipv4_udp_payload;
+				server_size = conf()->cache.srv_udp_max_payload_ipv4;
 				break;
 			case AF_INET6:
-				server_size = conf()->cache.srv_max_ipv6_udp_payload;
+				server_size = conf()->cache.srv_udp_max_payload_ipv6;
 				break;
 			default:
 				return KNOT_ERROR;
@@ -419,6 +419,9 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 
 	/* Find zone for QNAME. */
 	qdata->extra->zone = answer_zone_find(query, server->zone_db);
+	if (qdata->extra->zone != NULL && qdata->extra->contents == NULL) {
+		qdata->extra->contents = qdata->extra->zone->contents;
+	}
 
 	return KNOT_EOK;
 }
@@ -514,7 +517,7 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 	struct query_plan *plan = conf()->query_plan;
 	struct query_plan *zone_plan = NULL;
-	struct query_step *step = NULL;
+	struct query_step *step;
 
 	int next_state = KNOT_STATE_PRODUCE;
 
@@ -629,7 +632,7 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
 	if (!acl_allowed(conf, &acl, action, query_source, &tsig, zone_name, query)) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)query_source);
+		sockaddr_tostr(addr_str, sizeof(addr_str), query_source);
 		const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions,
 		                                             action);
 		char *key_name = knot_dname_to_str_alloc(tsig.name);

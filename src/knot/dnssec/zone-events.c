@@ -107,15 +107,11 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 {
 	int ret = KNOT_EOK;
 
-	if (!ctx->policy->nsec3_enabled || ctx->policy->nsec3_salt_length == 0) {
+	if (!ctx->policy->nsec3_enabled) {
 		return KNOT_EOK;
 	}
 
-	if (ctx->policy->manual) {
-		return KNOT_EOK;
-	}
-
-	if (ctx->zone->nsec3_salt.size != ctx->policy->nsec3_salt_length) {
+	if (ctx->zone->nsec3_salt.size != ctx->policy->nsec3_salt_length || ctx->zone->nsec3_salt_created == 0) {
 		*when_resalt = ctx->now;
 	} else if (knot_time_cmp(ctx->now, ctx->zone->nsec3_salt_created) < 0) {
 		return KNOT_EINVAL;
@@ -124,6 +120,14 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 	}
 
 	if (knot_time_cmp(*when_resalt, ctx->now) <= 0) {
+		if (ctx->policy->nsec3_salt_length == 0) {
+			ctx->zone->nsec3_salt.size = 0;
+			ctx->zone->nsec3_salt_created = ctx->now;
+			*salt_changed = ctx->now;
+			*when_resalt = 0;
+			return kdnssec_ctx_commit(ctx);
+		}
+
 		ret = generate_salt(&ctx->zone->nsec3_salt, ctx->policy->nsec3_salt_length);
 		if (ret == KNOT_EOK) {
 			ctx->zone->nsec3_salt_created = ctx->now;
@@ -177,7 +181,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false);
+	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, update->a_ctx->node_ptrs);
 	if (result != KNOT_EOK) {
 		return result;
 	};
@@ -242,10 +246,6 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
 
-	update->flags |= UPDATE_CANCELOUT;
-
-	// signing pipeline
-
 	result = sign_init(update->new_cont, 0, 0, update->zone->kaspdb, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
@@ -260,7 +260,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
-	result = zone_adjust_update(update, adjust_cb_flags, NULL, false);
+	result = zone_adjust_update(update, adjust_cb_flags, NULL, update->a_ctx->node_ptrs);
 	if (result != KNOT_EOK) {
 		goto done;
 	}

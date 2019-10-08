@@ -16,7 +16,7 @@ AC_CANONICAL_HOST
 
 # Update library versions
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-KNOT_LIB_VERSION([libknot],     9, 0, 0)
+KNOT_LIB_VERSION([libknot],    10, 0, 0)
 KNOT_LIB_VERSION([libdnssec],   7, 0, 0)
 KNOT_LIB_VERSION([libzscanner], 3, 0, 0)
 
@@ -164,6 +164,10 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
 
     AC_CHECK_FUNC([gnutls_privkey_sign_data2],
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
+
+    AC_CHECK_FUNC([gnutls_memset],
+        [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset available])
+         gnutls_memset=yes], [gnutls_memset=no])
 
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
@@ -599,11 +603,22 @@ LIBS="$save_LIBS"
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h])
+AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h bsd/string.h])
 
 # Checks for optional library functions.
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
                 setgroups strlcat strlcpy sysctlbyname])
+
+# Check for robust memory cleanup implementations.
+AC_CHECK_FUNC([explicit_bzero], [
+  AC_DEFINE([HAVE_EXPLICIT_BZERO], [1], [explicit_bzero available])
+  explicit_bzero=yes], [explicit_bzero=no]
+)
+AC_CHECK_FUNC([explicit_memset], [
+  AC_DEFINE([HAVE_EXPLICIT_MEMSET], [1], [explicit_memset available])
+  explicit_memset=yes], [explicit_memset=no]
+)
+AM_CONDITIONAL([USE_GNUTLS_MEMSET], [test "$explicit_bzero" = "no" -a "$explicit_memset" = "no" -a "$gnutls_memset" = "yes"])
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
@@ -617,10 +632,18 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread_np.h>]], [[cpuset_t set; CPU
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset_create(); cpuset_destroy(set);]])],
 [AC_DEFINE(HAVE_CPUSET_NETBSD, 1, [Define if cpuset_t and cpuset(3) exists.])])
 
+# Check for '__atomic' compiler builtin atomic functions.
 AC_LINK_IFELSE(
   [AC_LANG_PROGRAM([[#include <stdint.h>]],
                    [[uint64_t val = 0; __atomic_add_fetch(&val, 1, __ATOMIC_RELAXED);]])],
   [AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])]
+)
+
+# Check for '__sync' compiler builtin atomic functions.
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM([[#include <stdint.h>]],
+                   [[int val = 0; __sync_add_and_fetch(&val, 1);]])],
+  [AC_DEFINE(HAVE_SYNC_ATOMIC, 1, [Define to 1 if you have '__sync' functions.])]
 )
 
 # Prepare CFLAG_VISIBILITY to be used where needed

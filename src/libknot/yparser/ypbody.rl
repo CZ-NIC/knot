@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <string.h>
 
@@ -38,7 +38,7 @@
 		parser->event = YP_ENULL;
 		parser->processed = false;
 	}
-	newline_char = '\n' >_newline_init %_newline | '\r';
+	newline_char = '\n' >_newline_init %_newline %!_newline | '\r';
 
 	# Comment processing.
 	comment_char = '#';
@@ -141,7 +141,8 @@
 		}
 		parser->indent = 0;
 	}
-	key_name = ((alnum | [\\.]) . (alnum | [\\.\-])*) >_key_init $_key;
+	key_name_char = (alnum | [\\/._*\-]);
+	key_name = ((key_name_char - [\-]) . key_name_char*) >_key_init $_key;
 	key0 =                                                  key_name %_key0_exit;
 	key1 =   sep                                 $_indent . key_name %_key1_exit;
 	id   = ((sep $_id)? . '-' >_dash_init . sep) $_indent . key_name %_id_exit;

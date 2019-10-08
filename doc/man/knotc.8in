@@ -48,13 +48,16 @@ The default configuration database, if exists, has a preference to the default
 configuration file.
 .TP
 \fB\-m\fP, \fB\-\-max\-conf\-size\fP \fIMiB\fP
-Set maximum configuration size (default is @conf_mapsize@ MiB, maximum 10000 MiB).
+Set maximum size of the configuration database
+(default is @conf_mapsize@ MiB, maximum 10000 MiB).
 .TP
 \fB\-s\fP, \fB\-\-socket\fP \fIpath\fP
 Use a control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 .TP
 \fB\-t\fP, \fB\-\-timeout\fP \fIseconds\fP
-Use a control timeout in seconds. Set 0 for infinity (default is 10).
+Use a control timeout in seconds. Set to 0 for infinity (default is 10).
+The control socket operations are also subject to the timeout
+parameter set on the server side in server\(aqs Control configuration section.
 .TP
 \fB\-b\fP, \fB\-\-blocking\fP
 Zone event trigger commands wait until the event is finished.
@@ -99,9 +102,6 @@ Test if the server can load the zone. Semantic checks are executed if enabled
 in the configuration. When invoked with flag \fB\-f\fP/\fB\-\-force\fP an error is
 returned when semantic check warning appears. (*)
 .TP
-\fBzone\-memstats\fP [\fIzone\fP\&...]
-Estimate memory use for the zone. (*)
-.TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
 Trigger a zone reload from a disk without checking its modification time. For
 slave zone, the refresh from a master server is scheduled; for master zone,
@@ -137,7 +137,7 @@ key management enabled. Note that complete key rollover consists of several step
 and the blocking mode relates to the initial one only! (#)
 .TP
 \fBzone\-ksk\-submitted\fP \fIzone\fP\&...
-Use when the zone\(aqs KSK rollover is in submittion phase. By calling this command
+Use when the zone\(aqs KSK rollover is in submission phase. By calling this command
 the user confirms manually that the parent zone contains DS record for the new
 KSK in submission phase and the old KSK can be retired. (#)
 .TP

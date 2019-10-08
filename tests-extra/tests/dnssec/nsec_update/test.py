@@ -11,7 +11,10 @@ t = Test()
 master0 = t.server("knot")
 master = t.server("knot")
 slave = t.server("knot")
-zones1 = t.zone_rnd(5, dnssec=False, records=30) + t.zone("records.")
+zones1 = t.zone_rnd(20, dnssec=False, records=1) + \
+         t.zone_rnd(20, dnssec=False, records=10) + \
+         t.zone_rnd(5, dnssec=False, records=100) + \
+         t.zone("records.")
 zone0 = t.zone("dk.", storage=".")
 zones = zones1 + zone0
 
@@ -25,7 +28,7 @@ for zone in zones:
     master.dnssec(zone).enable = True
     master.dnssec(zone).nsec3 = random.choice([True, False])
     master.dnssec(zone).nsec3_iters = 2
-    master.dnssec(zone).nsec3_salt_len = 8
+    master.dnssec(zone).nsec3_salt_len = random.choice([0, 1, 9, 64, 128, 255])
     master.dnssec(zone).nsec3_opt_out = (random.random() < 0.5)
 
 t.start()

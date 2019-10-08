@@ -572,19 +572,19 @@ static int put_nodata(const zone_node_t *node,
 
 int nsec_prove_wildcards(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	if (qdata->extra->zone->contents == NULL) {
+	if (qdata->extra->contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = KNOT_EOK;
-	struct wildcard_hit *item = NULL;
+	struct wildcard_hit *item;
 
 	WALK_LIST(item, qdata->extra->wildcards) {
 		if (item->node == NULL) {
 			return KNOT_EINVAL;
 		}
 		ret = put_wildcard_answer(item->node, item->prev,
-		                          qdata->extra->zone->contents,
+		                          qdata->extra->contents,
 		                          item->sname, qdata, pkt);
 		if (ret != KNOT_EOK) {
 			break;
@@ -596,21 +596,21 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 int nsec_prove_nodata(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	if (qdata->extra->zone->contents == NULL || qdata->extra->node == NULL) {
+	if (qdata->extra->contents == NULL || qdata->extra->node == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	return put_nodata(qdata->extra->node, qdata->extra->encloser, qdata->extra->previous,
-	                  qdata->extra->zone->contents, qdata->name, qdata, pkt);
+	                  qdata->extra->contents, qdata->name, qdata, pkt);
 }
 
 int nsec_prove_nxdomain(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	if (qdata->extra->zone->contents == NULL) {
+	if (qdata->extra->contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return put_nxdomain(qdata->extra->zone->contents,
+	return put_nxdomain(qdata->extra->contents,
 	                    qdata->extra->previous, qdata->extra->encloser,
 	                    qdata->name, qdata, pkt);
 }
@@ -618,7 +618,7 @@ int nsec_prove_nxdomain(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 int nsec_prove_dp_security(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	if (qdata->extra->node == NULL || qdata->extra->encloser == NULL ||
-	    qdata->extra->zone->contents == NULL) {
+	    qdata->extra->contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -634,7 +634,7 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	// Alternatively prove that DS doesn't exist.
 
 	return put_nodata(qdata->extra->node, qdata->extra->encloser, qdata->extra->previous,
-	                  qdata->extra->zone->contents, qdata->name, qdata, pkt);
+	                  qdata->extra->contents, qdata->name, qdata, pkt);
 }
 
 int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)
@@ -645,7 +645,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)
 	flags |= KNOT_PF_ORIGTTL;
 
 	/* Append RRSIGs for section. */
-	struct rrsig_info *info = NULL;
+	struct rrsig_info *info;
 	WALK_LIST(info, qdata->extra->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
 		uint16_t compr_hint = info->rrinfo->compress_ptr[KNOT_COMPR_HINT_OWNER];
@@ -669,7 +669,7 @@ void nsec_clear_rrsigs(knotd_qdata_t *qdata)
 		return;
 	}
 
-	struct rrsig_info *info = NULL;
+	struct rrsig_info *info;
 	WALK_LIST(info, qdata->extra->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
 		knot_rrset_clear(rrsig, qdata->mm);

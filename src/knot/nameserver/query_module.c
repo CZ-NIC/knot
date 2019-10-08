@@ -68,7 +68,7 @@ void query_plan_free(struct query_plan *plan)
 	}
 
 	for (unsigned i = 0; i < KNOTD_STAGES; ++i) {
-		struct query_step *step = NULL, *next = NULL;
+		struct query_step *step, *next;
 		WALK_LIST_DELSAFE(step, next, plan->stage[i]) {
 			free(step);
 		}
@@ -256,8 +256,6 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 		stats += mod->stats_count;
 	}
 
-	mod->stats_count++;
-
 	if (idx_count == 1) {
 		stats->counter = 0;
 	} else {
@@ -271,6 +269,8 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 	}
 	stats->name = ctr_name;
 	stats->count = idx_count;
+
+	mod->stats_count++;
 
 	return KNOT_EOK;
 }
@@ -343,10 +343,10 @@ knotd_conf_t knotd_conf_env(knotd_mod_t *mod, knotd_conf_env_t env)
 		out.single.string = config->hostname;
 		break;
 	case KNOTD_CONF_ENV_WORKERS_UDP:
-		out.single.integer = conf_udp_threads(config);
+		out.single.integer = config->cache.srv_udp_threads;
 		break;
 	case KNOTD_CONF_ENV_WORKERS_TCP:
-		out.single.integer = conf_tcp_threads(config);
+		out.single.integer = config->cache.srv_tcp_threads;
 		break;
 	default:
 		return out;
@@ -514,15 +514,11 @@ bool knotd_conf_addr_range_match(const knotd_conf_t *range,
 	for (size_t i = 0; i < range->count; i++) {
 		knotd_conf_val_t *val = &range->multi[i];
 		if (val->addr_max.ss_family == AF_UNSPEC) {
-			if (sockaddr_net_match((struct sockaddr *)addr,
-			                       (struct sockaddr *)&val->addr,
-			                       val->addr_mask)) {
+			if (sockaddr_net_match(addr, &val->addr, val->addr_mask)) {
 				return true;
 			}
 		} else {
-			if (sockaddr_range_match((struct sockaddr *)addr,
-			                         (struct sockaddr *)&val->addr,
-			                         (struct sockaddr *)&val->addr_max)) {
+			if (sockaddr_range_match(addr, &val->addr, &val->addr_max)) {
 				return true;
 			}
 		}
@@ -558,12 +554,11 @@ const knot_dname_t *knotd_qdata_zone_name(knotd_qdata_t *qdata)
 _public_
 knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type)
 {
-	if (qdata == NULL || qdata->extra->zone == NULL ||
-	    qdata->extra->zone->contents == NULL) {
+	if (qdata == NULL || qdata->extra->contents == NULL) {
 		return node_rrset(NULL, type);
 	}
 
-	return node_rrset(qdata->extra->zone->contents->apex, type);
+	return node_rrset(qdata->extra->contents->apex, type);
 }
 
 _public_
@@ -582,7 +577,7 @@ int knotd_mod_dnssec_init(knotd_mod_t *mod)
 	kaspdb = (knot_lmdb_db_t *)(mod->dnssec + 1);
 
 	char *kasp_dir = conf_db(mod->config, C_KASP_DB);
-	conf_val_t kasp_size = conf_default_get(mod->config, C_MAX_KASP_DB_SIZE);
+	conf_val_t kasp_size = conf_db_param(mod->config, C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
 	knot_lmdb_init(kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
 	free(kasp_dir);
 

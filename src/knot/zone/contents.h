@@ -88,6 +88,16 @@ int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_nod
 const zone_node_t *zone_contents_find_node(const zone_contents_t *contents, const knot_dname_t *name);
 
 /*!
+ * \brief Tries to find a node in the zone, also searching in NSEC3 tree.
+ *
+ * \param zone   Zone where the name should be searched for.
+ * \param name   Name to find.
+ *
+ * \return Normal or NSEC3 node, or NULL.
+ */
+const zone_node_t *zone_contents_node_or_nsec3(const zone_contents_t *zone, const knot_dname_t *name);
+
+/*!
  * \brief Find a node in which the given rrset may be inserted,
  *
  * \param contents   Zone contents.

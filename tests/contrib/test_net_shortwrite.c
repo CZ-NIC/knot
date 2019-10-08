@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 #include <tap/basic.h>
 
@@ -85,20 +85,20 @@ int main(int argc, char *argv[])
 	// create TCP server
 
 	struct sockaddr_storage addr = localhost();
-	int server = net_bound_socket(SOCK_STREAM, (struct sockaddr *)&addr, 0);
+	int server = net_bound_socket(SOCK_STREAM, &addr, 0);
 	ok(server >= 0, "server: bind socket");
 
 	r = listen(server, 0);
 	ok(r == 0, "server: start listening");
 
 	struct sockaddr *sa = (struct sockaddr *)&addr;
-	socklen_t salen = sockaddr_len(sa);
+	socklen_t salen = sockaddr_len(&addr);
 	r = getsockname(server, sa, &salen);
 	ok(r == 0, "server: get bound address");
 
 	// create TCP client
 
-	int client = net_connected_socket(SOCK_STREAM, (struct sockaddr *)&addr, NULL);
+	int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
 	ok(client >= 0, "client: connect to server");
 
 	int optval = 8192;
