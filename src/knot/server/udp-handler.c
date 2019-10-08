@@ -381,12 +381,13 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
 static unsigned udp_set_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
                                int thread_id)
 {
-	assert(ifaces && fds_ptr);
+	if (ifaces == NULL) {
+		return 0;
+	}
 
 	unsigned nfds = list_size(ifaces);
 	struct pollfd *fds = calloc(nfds, sizeof(*fds));
 	if (fds == NULL) {
-		*fds_ptr = NULL;
 		return 0;
 	}
 

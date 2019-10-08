@@ -126,7 +126,9 @@ static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, in
  */
 static unsigned tcp_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id)
 {
-	assert(ifaces && fds);
+	if (ifaces == NULL) {
+		return 0;
+	}
 
 	fdset_clear(fds);
 	iface_t *i;
