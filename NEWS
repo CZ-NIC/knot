@@ -1,3 +1,175 @@
+Knot DNS 2.9.0 (2019-10-10)
+===========================
+
+Features:
+---------
+ - Full support for different master/slave serial arithmetics when on-slave signing
+ - Module geoip newly supports wildcard records #650
+ - New DNSSEC policy configuration option 'rrsig-pre-refresh' for reducing
+   frequency of the zone signing event
+ - New server configuration option 'tcp-reuseport' for setting SO_REUSEPORT(_LB)
+   mode on TCP sockets
+ - New server configuration option 'tcp-io-timeout' [ms] for restricting inbound
+   IO operations over TCP #474
+
+Improvements:
+-------------
+ - Significant speed-up of zone contents modifications
+ - Avoided double zone signing during CSK rollovers
+ - Self-created RRSIGs are not cryptographically verified if not necessary
+ - Zone journal can store two changesets if zone file difference computing
+   and DNSSEC signing are enabled. The first one containing the difference of
+   zone history needed by slave servers, the second one containing the difference
+   between zone file and zone needed for server restart
+ - Universal and more robust memory clearing
+ - More precise socket timeout handling
+ - New notice log message for configuration changes requiring server restart
+ - Module RRL logs both trigger source address and affected subnet
+ - Various code (especially zone and TCP processing) and documentation improvements
+
+Bugfixes:
+---------
+ - RRSIGs are wrongly checked for inconsistent RRSet TTLs during zone update
+ - DS check/push warnings after disabled DNSSEC signing
+ - NSEC3 records not accessible through control interface
+ - Module geoip doesn't accept underscore character in dname specification #655
+
+Compatibility:
+--------------
+ - Removed runtime reconfiguration of network workers and interfaces since
+   it was imperfect and also couldn't work after dropped process privileges
+ - Removed inaccurate and misleading knotc command 'zone-memstats' because
+   memory consumption varies during zone modifications or transfers
+ - Removed useless 'server.request-edns-option' configuration option
+ - Reimplemented DNS Cookies to be interoperable (based on draft-ietf-dnsop-server-cookies
+   and work by Witold Kręcicki)
+ - Default limit on TCP clients is auto-configured to one half of the file
+   descriptor limit for the server process
+ - Number of open files limit is set to 1048576 in upstream packages
+ - Default number of TCP workers is equal to the number of online CPUs or at least 10
+ - Default EDNS buffer size is 1232 for both IPv4 and IPv6
+ - Removed 'tcp-handshake-timeout' server configuration option
+ - Some configuration options were renamed and possibly moved. Old names will
+   be supported at least until next major release:
+    - 'server.tcp-reply-timeout' [s] to 'server.tcp-remote-io-timeout' [ms]
+    - 'server.max-tcp-clients'       to 'server.tcp-max-clients'
+    - 'server.max-udp-payload'       to 'server.udp-max-payload'
+    - 'server.max-ipv4-udp-payload'  to 'server.udp-max-payload-ipv4'
+    - 'server.max-ipv6-udp-payload'  to 'server.udp-max-payload-ipv6'
+    - 'template.journal-db'          to 'database.journal-db'
+    - 'template.journal-db-mode'     to 'database.journal-db-mode'
+    - 'template.max-journal-db-size' to 'database.journal-db-max-size'
+    - 'template.kasp-db'             to 'database.kasp-db'
+    - 'template.max-kasp-db-size'    to 'database.kasp-db-max-size'
+    - 'template.timer-db'            to 'database.timer-db'
+    - 'template.max-timer-db-size'   to 'database.timer-db-max-size'
+    - 'zone.max-journal-usage'       to 'zone.journal-max-usage'
+    - 'zone.max-journal-depth'       to 'zone.journal-max-depth'
+    - 'zone.max-zone-size'           to 'zone.zone-max-size'
+    - 'zone.max-refresh-interval'    to 'zone.refresh-max-interval'
+    - 'zone.min-refresh-interval'    to 'zone.refresh-min-interval'
+
+Knot DNS 2.8.4 (2019-09-24)
+===========================
+
+Features:
+---------
+ - Automatic uploading of DS records to parent zone using DDNS,
+   see 'policy.ds-push' configuration option
+
+Improvements:
+-------------
+ - Incoming IXFR no longer falls back to AXFR if connection error #642
+ - More accurate semantic checks for missing glue records
+ - Various code and documentation improvements
+
+Bugfixes:
+---------
+ - Failed to read/export configuration if 'acl.update-type' is set #651
+ - Failed to generate initial zero-length salt
+ - Missing error log for invalid rrtype input to dynamic configuration #652
+ - Missing error log when AXFR processing fails to store zone data
+ - Redundant notice log about unavailable persistent configuration DB
+ - Zone not flushed after retransfer if SOA serial not changed
+ - Zone contents not properly fixed during zone transfers
+ - No changeset created for updated rrset's TTL if changed by RR addition
+
+Knot DNS 2.8.3 (2019-07-16)
+===========================
+
+Features:
+---------
+ - Added cert/key file configuration for TLS in kdig (Thanks to Alexander Schultz)
+
+Improvements:
+-------------
+ - More verbose log message for offline-KSK signing
+ - Module RRL logs affected source address subnet instead of only one source address
+ - Extended DNSSEC policy configuration checks
+ - Various improvements in the documentation
+
+Bugfixes:
+---------
+ - Excessive server load when maximum TCP clients limit is reached
+ - Incorrect reply after zone update with a node changed from non-authoritative to delegation
+ - Wrong error line number in a config file if it contains leading tab character
+ - Config file error message contains unrelated parsing context
+ - NSEC3 salt not updated when reconfigured to zero length
+ - Kjournalprint sometimes prints a random value for per-zone occupation
+ - Missing debug log for failed zone refresh triggered by zone notification
+ - DS check not scheduled when reconfigured
+ - Broken unit test on NetBSD 8.x
+
+Knot DNS 2.8.2 (2019-06-05)
+===========================
+
+Features:
+---------
+ - New blocking mode for zone event triggers in knotc
+ - New weighted records mode in the module geoip (Thanks to Conrad Hoffmann)
+ - Module noudp allows UDP allow rate configuration
+
+Improvements:
+-------------
+ - NSEC3 salt lifetime can be set to infinity
+ - New 'running' zone event status in the knotc output
+ - Knotc in the forced mode returns failure also if zone check emits any warning
+ - Ignoring PMTU information for IPv4/UDP via IP_PMTUDISC_OMIT (Thanks to Daisuke Higashi)
+ - Various improvements in the documentation
+
+Bugfixes:
+---------
+ - Broken setting of CPU affinity for UDP workers
+ - Unexpected results with the geoip subnet mode
+ - Sometimes insufficient zone adjusting
+ - Incoherent DNSKEY RRSIG lifetimes in SKR
+ - Confusing output from keymgr if an error occurs during KSR generation
+ - Non-functional changeset history depth limitation in kjournalprint
+ - Wrong processing of multiple $INCLUDE directives #646
+
+Knot DNS 2.8.1 (2019-04-09)
+===========================
+
+Improvements:
+-------------
+ - Possible zone transaction is aborted by zone events to avoid inconsistency
+ - Added log message if no persistent config DB is available during 'conf-begin'
+ - New environment setting 'KNOT_VERSION_FORMAT=release' for extended version suppression
+ - Various improvements in the documentation
+
+Bugfixes:
+---------
+ - Broken NSEC3-wildcard-nonexistence proof after NSEC3 re-salt
+ - Glue records under delegation are sometimes signed
+ - RRL doesn't work correctly on big-endian architectures
+ - NSEC3 not re-salted during AXFR refresh
+ - Failed to sign new zone contents if added dynamically #641
+ - NSEC3 opt-out signing doesn't work in some cases
+ - Broken NSEC3 chain after adding new sub-delegations
+ - Redundant SOA RRSIG on slave if RRSIG TTL changed on master
+ - Sometimes confusing log error message for NOTIFY event
+ - Improper include for LMDB #638
+
 Knot DNS 2.8.0 (2019-03-05)
 ===========================
 
@@ -31,6 +203,41 @@ Compatibility:
  - Changed configuration default for 'cds-cdnskey-publish' to 'rollover'
  - Journal DB format changes are not downgrade-compatible
  - Keymgr no longer prints DS for algorithm SHA-1
+
+Knot DNS 2.7.8 (2019-07-16)
+===========================
+
+Improvements:
+-------------
+ - Various improvements in the documentation
+
+Bugfixes:
+---------
+ - Excessive server load when maximum TCP clients limit is reached
+ - Incorrect reply after zone update with a node changed from non-authoritative to delegation
+ - Missing debug log for failed zone refresh triggered by zone notification
+ - Wrong processing of multiple $INCLUDE directives #646
+ - Broken unit test on NetBSD 8.x
+
+Knot DNS 2.7.7 (2019-04-15)
+===========================
+
+Improvements:
+-------------
+ - Possible zone transaction is aborted by zone events to avoid inconsistency
+ - Added log message if no persistent config DB is available during 'conf-begin'
+ - Tiny building improvements
+
+Bugfixes:
+---------
+ - Glue records under delegation are sometimes signed
+ - NSEC3 not re-salted during AXFR refresh
+ - Broken NSEC3 chain after adding new sub-delegations
+ - Failed to sign new zone contents if added dynamically #641
+ - NSEC3 opt-out signing doesn't work in some cases
+ - Redundant SOA RRSIG on slave if RRSIG TTL changed on master
+ - Sometimes confusing log error message for NOTIFY event
+ - Failed to explicit set value 0 for submission timeout
 
 Knot DNS 2.7.6 (2019-01-23)
 ===========================
