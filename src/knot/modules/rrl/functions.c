@@ -264,20 +264,18 @@ static inline unsigned reduce_dist(rrl_table_t *tbl, unsigned id, unsigned dist,
 
 static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss)
 {
+	const void *addr;
 	const char *suffix;
-	uint8_t addr[16] = { 0 };
 
 	if (ss->ss_family == AF_INET6) {
-		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
-		memcpy(addr, &ipv6->sin6_addr, RRL_V6_PREFIX_LEN);
+		addr = &((struct sockaddr_in6 *)ss)->sin6_addr;
 		suffix = "/56";
 	} else {
-		struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
-		memcpy(addr, &ipv4->sin_addr, RRL_V4_PREFIX_LEN);
+		addr = &((struct sockaddr_in *)ss)->sin_addr;
 		suffix = "/24";
 	}
 
-	if (inet_ntop(ss->ss_family, &addr, dst, maxlen) != NULL) {
+	if (inet_ntop(ss->ss_family, addr, dst, maxlen) != NULL) {
 		strlcat(dst, suffix, maxlen);
 	} else {
 		dst[0] = '\0';
@@ -299,7 +297,7 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 		what = "enters";
 	}
 
-	knotd_mod_log(mod, LOG_NOTICE, "subnet %s, class %s, %s limiting",
+	knotd_mod_log(mod, LOG_NOTICE, "address/subnet %s, class %s, %s limiting",
 	              addr_str, rrl_clsstr(cls), what);
 }
 
