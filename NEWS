@@ -40,7 +40,7 @@ Compatibility:
    it was imperfect and also couldn't work after dropped process privileges
  - Removed inaccurate and misleading knotc command 'zone-memstats' because
    memory consumption varies during zone modifications or transfers
- - Removed useless 'server.request-edns-option' configuration option
+ - Removed useless 'zone.request-edns-option' configuration option
  - Reimplemented DNS Cookies to be interoperable (based on draft-ietf-dnsop-server-cookies
    and work by Witold Kręcicki)
  - Default limit on TCP clients is auto-configured to one half of the file
