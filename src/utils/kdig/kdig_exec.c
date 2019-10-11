@@ -131,7 +131,7 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 	}
 
 	sockaddr_set_raw(&ss, family, addr->data, addr->len);
-	sockaddr_port_set((struct sockaddr *)&ss, port);
+	sockaddr_port_set(&ss, port);
 
 	get_addr_str(&ss, sock_type, &net->remote_str);
 }
