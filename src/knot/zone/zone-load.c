@@ -138,6 +138,10 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone loaded from journal, serial %u",
 		              zone_contents_serial(*contents));
+	} else if (ret == KNOT_EPROCESSING) {
+		log_zone_warning(zone->name, "zone journal broken (serial loop): %u",
+		                 zone_contents_serial(*contents));
+		ret = KNOT_EOK;
 	} else {
 		log_zone_error(zone->name, "failed to load zone from journal (%s)",
 		               knot_strerror(ret));
