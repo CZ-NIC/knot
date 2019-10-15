@@ -53,7 +53,7 @@ static bool go_next_changeset(journal_read_t *ctx, bool go_zone, const knot_dnam
 		return false;
 	}
 	if (ctx->next == journal_next_serial(&ctx->txn.cur_val)) {
-		ctx->txn.ret = KNOT_EPROCESSING;
+		ctx->txn.ret = KNOT_ELOOP;
 		return false;
 	}
 	ctx->next = journal_next_serial(&ctx->txn.cur_val);

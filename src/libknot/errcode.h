@@ -139,6 +139,9 @@ enum knot_error {
 	KNOT_NO_PUBLIC_KEY,
 	KNOT_NO_PRIVATE_KEY,
 
+	/* Another general errors. */
+	KNOT_ELOOP,
+
 	KNOT_ERROR_MAX = -501
 };
 
