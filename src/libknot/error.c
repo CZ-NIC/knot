@@ -138,6 +138,9 @@ static const struct error errors[] = {
 	{ KNOT_NO_PUBLIC_KEY,         "no public key" },
 	{ KNOT_NO_PRIVATE_KEY,        "no private key" },
 
+	/* Another general errors. */
+	{ KNOT_ELOOP,                 "loop detected" },
+
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
 
