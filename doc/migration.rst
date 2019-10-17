@@ -19,8 +19,8 @@ Building changes
 ----------------
 
 The ``--enable-dnstap`` configure option now enables the dnstap support in
-kdig only! To build the dnstap query module, ``--with-module-dnstap`` have
-to be used.
+:doc:`kdig<man_kdig>` only! To build the dnstap query module, ``--with-module-dnstap``
+have to be used.
 
 Since Knot DNS version 2.5.0 each query module can be configured to be:
 
@@ -217,7 +217,7 @@ server configuration:
 
    .. NOTE::
       If the server configuration file or database is not at the default location,
-      add a configuration parameter (-c or -C). See :doc:`keymgr <man_keymgr>`
+      add a configuration parameter (-c or -C). See :doc:`keymgr<man_keymgr>`
       for more info about required access rights to the key files.
 
 4. Follow :ref:`Automatic DNSSEC signing` steps to configure DNSSEC signing.

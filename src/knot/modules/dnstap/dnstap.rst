@@ -24,12 +24,10 @@ which can be either a file or a UNIX socket::
 .. NOTE::
    To be able to use a Unix socket you need an external program to create it.
    Knot DNS connects to it as a client using the libfstrm library. It operates
-   exactly like syslog. See `here
-   <https://www.nlnetlabs.nl/bugs-script/show_bug.cgi?id=741#c10>`_ for
-   more details.
+   exactly like syslog.
 
 .. NOTE::
-   Dnstap log files can also be created or read using ``kdig``.
+   Dnstap log files can also be created or read using :doc:`kdig<man_kdig>`.
 
 .. _dnstap: http://dnstap.info/
 
