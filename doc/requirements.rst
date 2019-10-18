@@ -72,7 +72,7 @@ Knot DNS requires a few libraries to be available:
 Optional libraries
 ==================
 
-International Domain Names support (IDNA2008 or IDNA2003) in **kdig**:
+International Domain Names support (IDNA2008 or IDNA2003) in :doc:`kdig<man_kdig>`:
 
 * libidn2 (or libidn)
 
@@ -80,7 +80,7 @@ Systemd's startup notification mechanism and journald logging:
 
 * libsystemd
 
-Dnstap support in **kdig** or module :ref:`dnstap<mod-dnstap>`:
+Dnstap support in :doc:`kdig<man_kdig>` or module :ref:`dnstap<mod-dnstap>`:
 
 * fstrm (and protobuf-c if building from source code)
 
