@@ -358,6 +358,9 @@ int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *m
 	}
 
 	knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
+	if (node_rrs == NULL) {
+		return KNOT_ENOENT;
+	}
 
 	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
 
