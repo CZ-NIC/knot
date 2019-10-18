@@ -29,7 +29,7 @@ which can be either a file or a UNIX socket::
    more details.
 
 .. NOTE::
-   Dnstap log files can also be created or read using ``kdig``.
+   Dnstap log files can also be created or read using :doc:`kdig<man_kdig>`.
 
 .. _dnstap: http://dnstap.info/
 
