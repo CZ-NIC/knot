@@ -78,8 +78,8 @@ Use specified KASP database path and default configuration.
 .INDENT 0.0
 .INDENT 3.5
 Keymgr runs with the same user privileges as configured for knotd\&.
-For example, if keymgr is run as root, but the configured user
-is knot, it won\(aqt be able to read files (PEM files, KASP db, ...) readable only by root.
+For example, if keymgr is run as \fBroot\fP, but the configured user
+is \fBknot\fP, it won\(aqt be able to read files (PEM files, KASP db, ...) readable only by \fBroot\fP\&.
 .UNINDENT
 .UNINDENT
 .SS Commands
