@@ -64,8 +64,17 @@ static int apply_one_cb(bool remove, const knot_rrset_t *rr, void *ctx)
 {
 	zone_node_t *unused = NULL;
 	zone_contents_t *contents = ctx;
-	return remove ? zone_contents_remove_rr(contents, rr, &unused)
-	              : zone_contents_add_rr(contents, rr, &unused);
+	int ret = remove ? zone_contents_remove_rr(contents, rr, &unused)
+	                 : zone_contents_add_rr(contents, rr, &unused);
+	if (ret == KNOT_ENOENT && remove && knot_rrtype_is_dnssec(rr->type)) {
+		// Compatibility with imperfect journal contents (versions < 2.9) if
+		// 'zonefile-load: difference' and 'dnssec-signing: on`.
+		// Journal history can contain a changeset with removed DNSSEC records
+		// which are not present in the zonefile.
+		return KNOT_EOK;
+	} else {
+		return ret;
+	}
 }
 
 int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
