@@ -51,9 +51,9 @@ Config options
   Use specified KASP database path and default configuration.
 
 .. NOTE::
-   Keymgr runs with the same user privileges as configured for knotd. For example,
-   if keymgr is run as root, but the configured :ref:`user<server_user>` is knot,
-   it won't be able to read files (PEM files, KASP db, ...) readable only by root.
+   Keymgr runs with the same user privileges as configured for :doc:`knotd<man_knotd>`.
+   For example, if keymgr is run as ``root``, but the configured :ref:`user<server_user>`
+   is ``knot``, it won't be able to read files (PEM files, KASP db, ...) readable only by ``root``.
 
 Commands
 ........
