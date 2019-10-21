@@ -518,7 +518,7 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 
 	/* Disable compression if no QNAME is available. */
 	knot_compr_t *compr = NULL;
-	if (false && knot_pkt_qname(pkt) != NULL) {
+	if (knot_pkt_qname(pkt) != NULL) {
 		/* Initialize compression context if it did not happen yet.  FIXME */
 		pkt->compr.rrinfo = rrinfo;
 		if (pkt->compr.suffix.pos == 0) {
