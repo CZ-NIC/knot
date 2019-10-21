@@ -127,6 +127,7 @@ knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, knot_mm_t *mm);
  * \param src Source packet.
  *
  * \return new packet or NULL
+ * TODO: meaning for compression?
  */
 int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src);
 

@@ -64,6 +64,8 @@ static bool label_is_equal(const uint8_t *label1, const uint8_t *label2)
 	return true;
 }
 
+// FIXME: cleanup
+#if 0
 static uint16_t compr_get_ptr(knot_compr_t *compr, uint16_t hint)
 {
 	if (compr == NULL) {
@@ -86,6 +88,7 @@ static void compr_set_ptr(knot_compr_t *compr, uint16_t hint,
 
 	knot_compr_hint_set(compr->rrinfo, hint, offset, written_size);
 }
+#endif
 
 static int write_rdata_fixed(const uint8_t **src, size_t *src_avail,
                              uint8_t **dst, size_t *dst_avail, size_t size)
@@ -143,21 +146,33 @@ static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
  * \param dst    Destination wire.
  * \param max    Maximum number of bytes available.
  * \param compr  Compression context (NULL for no compression)
+ * FIXME: docs
  * \return Number of written bytes or an error.
  */
 static int compr_put_dname(const knot_dname_t *dname, uint8_t * const dst, uint16_t max,
-                           knot_compr_t *compr, bool is_compressible)
+                           knot_compr_t *compr, bool is_compressible, bool do_write)
 {
-	if (*dname == '\0' || !compr) { // FIXME: !compr
-		if (!compr)
+	if (*dname == '\0' || !compr || !compr->wire) { // FIXME: !compr
+		if (!compr) {
 			fprintf(stderr, "XXX: missing compr\n");
+		} else if (!compr->wire) {
+			fprintf(stderr, "XXX: missing compr->wire\n");
+		}
 		return knot_dname_to_wire(dst, dname, max);
 	}
 	assert(dname && dst && compr);
 	compr->suffix.labels = 0; // FIXME: really do use hints?
-	if (!compr->ptr_map) { // FIXME: remove and fix causes
-		fprintf(stderr, "XXX: rescued compression map; probably incomplete\n");
+
+	// Initialize ptr_map if required - with just the QNAME.
+	if (!compr->ptr_map) {
+		fprintf(stderr, "XXX: rescuing compression map\n");
 		compr->ptr_map = trie_create(NULL);
+		if (knot_wire_get_qdcount(compr->wire)) {
+			knot_dname_t *qname = compr->wire + KNOT_WIRE_HEADER_SIZE;
+			int ret = compr_put_dname(qname, qname, KNOT_DNAME_MAXLEN,
+						  compr, false, false);
+			if (ret) return ret;
+		}
 	}
 
 
@@ -240,6 +255,9 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t * const dst, uint1
 		compr_ptr = 0;
 	}
 
+	if (!do_write) {
+		return 0;
+	}
 	// Put the uncompressed parts to the wire.
 	uint16_t written = 0;
 	for (i = 0; i < compr_i; ++i) {
@@ -282,7 +300,7 @@ int knot_compr_init(struct knot_pkt *pkt, const knot_dname_t *qname, uint16_t ma
 		fprintf(stderr, "XXX: compr.ptr_map initialized\n");
 	}
 	return compr_put_dname(qname, pkt->wire + KNOT_WIRE_HEADER_SIZE, max,
-				&pkt->compr, false);
+				&pkt->compr, false, true);
 }
 
 static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_avail,
@@ -290,7 +308,7 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 {
 	assert(rrset && dst && *dst && dst_avail);
 
-	int ret = compr_put_dname(rrset->owner, *dst, *dst_avail, compr, true);
+	int ret = compr_put_dname(rrset->owner, *dst, *dst_avail, compr, true, true);
 	if (ret < 0) {
 		return ret;
 	}
@@ -348,7 +366,7 @@ static int compress_rdata_dname(const uint8_t **src, size_t *src_avail,
 	size_t dname_size = knot_dname_size(dname);
 
 	// Output domain name.
-	int written = compr_put_dname(dname, *dst, dname_max(*dst_avail), compr, !!put_compr);
+	int written = compr_put_dname(dname, *dst, dname_max(*dst_avail), compr, !!put_compr, true);
 	if (written < 0) {
 		return written;
 	}

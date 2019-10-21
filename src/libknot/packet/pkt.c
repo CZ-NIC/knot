@@ -469,7 +469,6 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	wire_ctx_t wire = wire_ctx_init(pkt->wire, pkt->max_size);
 	wire_ctx_set_offset(&wire, KNOT_WIRE_HEADER_SIZE);
 
-	compr_clear(&pkt->compr);
 	int qname_len = knot_compr_init(pkt, qname, wire_ctx_available(&wire));
 	if (qname_len < 0) {
 		return qname_len;
@@ -522,7 +521,7 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 
 	/* Disable compression if no QNAME is available. */
 	knot_compr_t *compr = NULL;
-	if (knot_pkt_qname(pkt) != NULL) {
+	if (false && knot_pkt_qname(pkt) != NULL) {
 		/* Initialize compression context if it did not happen yet.  FIXME */
 		pkt->compr.rrinfo = rrinfo;
 		if (pkt->compr.suffix.pos == 0) {
