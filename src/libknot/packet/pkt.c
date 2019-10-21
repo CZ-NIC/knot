@@ -520,6 +520,7 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 	knot_compr_t *compr = NULL;
 	if (knot_pkt_qname(pkt) != NULL) {
 		/* Initialize compression context if it did not happen yet.  FIXME */
+	    if (false) {
 		pkt->compr.rrinfo = rrinfo;
 		if (pkt->compr.suffix.pos == 0) {
 			pkt->compr.suffix.pos = KNOT_WIRE_HEADER_SIZE;
@@ -527,6 +528,7 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 				knot_dname_labels(pkt->compr.wire + pkt->compr.suffix.pos,
 				                  pkt->compr.wire);
 		}
+	    }
 
 		compr = &pkt->compr;
 	}
