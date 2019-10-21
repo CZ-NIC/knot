@@ -604,7 +604,7 @@ an identifier must be created and then referenced in the form of
    Query modules are processed in the order they are specified in the
    zone/template configuration. In most cases, the recommended order is::
 
-      mod-synthrecord, mod-onlinesign, mod-rrl, mod-dnstap, mod-stats
+      mod-synthrecord, mod-onlinesign, mod-cookies, mod-rrl, mod-dnstap, mod-stats
 
 Performance Tuning
 ==================
