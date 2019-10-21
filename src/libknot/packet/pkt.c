@@ -361,8 +361,6 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	return KNOT_EOK;
 }
 
-#include <stdio.h> // FIXME: debug
-
 _public_
 void knot_pkt_clear(knot_pkt_t *pkt)
 {
@@ -379,7 +377,6 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 
 	/* Clear compression context. */
 	compr_clear(&pkt->compr);
-	fprintf(stderr, "XXX: knot_pkt_clear\n");
 }
 
 _public_

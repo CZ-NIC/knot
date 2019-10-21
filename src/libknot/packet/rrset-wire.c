@@ -153,11 +153,6 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t * const dst, uint1
                            knot_compr_t *compr, bool is_compressible, bool do_write)
 {
 	if (*dname == '\0' || !compr || !compr->wire) { // FIXME: !compr
-		if (!compr) {
-			fprintf(stderr, "XXX: missing compr\n");
-		} else if (!compr->wire) {
-			fprintf(stderr, "XXX: missing compr->wire\n");
-		}
 		return knot_dname_to_wire(dst, dname, max);
 	}
 	assert(dname && dst && compr);
@@ -165,7 +160,6 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t * const dst, uint1
 
 	// Initialize ptr_map if required - with just the QNAME.
 	if (!compr->ptr_map) {
-		fprintf(stderr, "XXX: rescuing compression map\n");
 		compr->ptr_map = trie_create(NULL);
 		if (knot_wire_get_qdcount(compr->wire)) {
 			knot_dname_t *qname = compr->wire + KNOT_WIRE_HEADER_SIZE;
@@ -297,7 +291,6 @@ int knot_compr_init(struct knot_pkt *pkt, const knot_dname_t *qname, uint16_t ma
 		if (!pkt->compr.ptr_map) {
 			return KNOT_ENOMEM;
 		}
-		fprintf(stderr, "XXX: compr.ptr_map initialized\n");
 	}
 	return compr_put_dname(qname, pkt->wire + KNOT_WIRE_HEADER_SIZE, max,
 				&pkt->compr, false, true);
