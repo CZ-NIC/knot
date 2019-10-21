@@ -16,7 +16,8 @@ support DNS Cookies, otherwise they are not used.
 
 .. WARNING::
    For effective module operation the :ref:`RRL<mod-rrl>` module must also
-   be enabled.
+   be enabled and configured after :ref:`Cookies<mod-cookies>`. See
+   :ref:`query-modules` how to configure modules.
 
 Example
 -------
