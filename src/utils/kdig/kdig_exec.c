@@ -131,7 +131,7 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 	}
 
 	sockaddr_set_raw(&ss, family, addr->data, addr->len);
-	sockaddr_port_set((struct sockaddr *)&ss, port);
+	sockaddr_port_set(&ss, port);
 
 	get_addr_str(&ss, sock_type, &net->remote_str);
 }
@@ -327,7 +327,7 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 	}
 
 	/* Append custom EDNS options. */
-	node_t *node = NULL;
+	node_t *node;
 	WALK_LIST(node, query->edns_opts) {
 		ednsopt_t *opt = (ednsopt_t *)node;
 		ret = knot_edns_add_option(&opt_rr, opt->code, opt->length,
@@ -771,7 +771,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 static int process_query(const query_t *query)
 {
-	node_t     *server = NULL;
+	node_t     *server;
 	knot_pkt_t *out_packet;
 	net_t      net;
 	int        ret;
@@ -1132,7 +1132,7 @@ static int process_xfr(const query_t *query)
 
 int kdig_exec(const kdig_params_t *params)
 {
-	node_t *n = NULL;
+	node_t *n;
 
 	if (params == NULL) {
 		DBG_NULL;

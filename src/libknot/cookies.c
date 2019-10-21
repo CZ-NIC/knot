@@ -38,7 +38,7 @@ int knot_edns_cookie_client_generate(knot_edns_cookie_t *out,
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)params->secret);
 
 	size_t addr_len = 0;
-	void *addr = sockaddr_raw((const struct sockaddr *)params->server_addr, &addr_len);
+	void *addr = sockaddr_raw(params->server_addr, &addr_len);
 	assert(addr);
 	SipHash24_Update(&ctx, addr, addr_len);
 
@@ -93,7 +93,7 @@ static int cookie_server_generate(knot_edns_cookie_t *out,
 	SipHash24_Update(&ctx, out->data, out->len);
 
 	size_t addr_len = 0;
-	void *addr = sockaddr_raw((const struct sockaddr *)params->client_addr, &addr_len);
+	void *addr = sockaddr_raw(params->client_addr, &addr_len);
 	assert(addr);
 	SipHash24_Update(&ctx, addr, addr_len);
 

@@ -12,7 +12,7 @@ Description
 -----------
 
 This utility sends a DNS query for the *name* to the *server* and prints a reply
-in more user-readable form. For more advanced DNS queries use :program:`kdig`
+in more user-readable form. For more advanced DNS queries use :doc:`kdig<man_kdig>`
 instead.
 
 Parameters

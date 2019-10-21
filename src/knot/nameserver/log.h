@@ -81,7 +81,7 @@ static inline const char *log_direction_name(log_direction_t direction)
 #define ns_log(priority, zone, op, dir, remote, fmt, ...) \
 	do { \
 		char address[SOCKADDR_STRLEN] = ""; \
-		sockaddr_tostr(address, sizeof(address), remote); \
+		sockaddr_tostr(address, sizeof(address), (const struct sockaddr_storage *)remote); \
 		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, NULL, "%s%s, remote %s, " fmt, \
 		             log_operation_name(op), log_direction_name(dir), address, \
 		             ## __VA_ARGS__); \

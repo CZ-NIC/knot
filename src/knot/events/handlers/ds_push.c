@@ -186,8 +186,8 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr *dst = (struct sockaddr *)&parent->addr;
-	const struct sockaddr *src = (struct sockaddr *)&parent->via;
+	const struct sockaddr_storage *dst = &parent->addr;
+	const struct sockaddr_storage *src = &parent->via;
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
 	if (req == NULL) {
 		knot_request_free(req, NULL);
@@ -225,6 +225,7 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 
 	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
+	conf_id_fix_default(&policy_id);
 	conf_val_t ds_push = conf_id_get(conf, C_POLICY, C_DS_PUSH, &policy_id);
 	while (ds_push.code == KNOT_EOK) {
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &ds_push);

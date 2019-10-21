@@ -361,9 +361,11 @@ void __attribute__ ((constructor)) udp_master_init(void)
 static int iface_udp_fd(const iface_t *iface, int thread_id)
 {
 #ifdef ENABLE_REUSEPORT
-		return iface->fd_udp[thread_id % iface->fd_udp_count];
+	assert(thread_id < iface->fd_udp_count);
+
+	return iface->fd_udp[thread_id];
 #else
-		return iface->fd_udp[0];
+	return iface->fd_udp[0];
 #endif
 }
 
@@ -379,16 +381,17 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
 static unsigned udp_set_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
                                int thread_id)
 {
-	assert(ifaces && fds_ptr);
+	if (ifaces == NULL) {
+		return 0;
+	}
 
 	unsigned nfds = list_size(ifaces);
 	struct pollfd *fds = calloc(nfds, sizeof(*fds));
 	if (fds == NULL) {
-		*fds_ptr = NULL;
 		return 0;
 	}
 
-	iface_t *iface = NULL;
+	iface_t *iface;
 	int i = 0;
 	WALK_LIST(iface, *ifaces) {
 		fds[i].fd = iface_udp_fd(iface, thread_id);

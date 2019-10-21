@@ -168,8 +168,8 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr *dst = (struct sockaddr *)&parent->addr;
-	const struct sockaddr *src = (struct sockaddr *)&parent->via;
+	const struct sockaddr_storage *dst = &parent->addr;
+	const struct sockaddr_storage *src = &parent->via;
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);
@@ -177,9 +177,9 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		return KNOT_ENOMEM;
 	}
 
-	data.edns_max_payload = dst->sa_family == AF_INET6 ?
-	                        conf()->cache.srv_max_ipv6_udp_payload :
-	                        conf()->cache.srv_max_ipv4_udp_payload;
+	data.edns_max_payload = dst->ss_family == AF_INET6 ?
+	                        conf()->cache.srv_udp_max_payload_ipv6 :
+	                        conf()->cache.srv_udp_max_payload_ipv4;
 
 	int ret = knot_requestor_exec(&requestor, req, timeout);
 	knot_request_free(req, NULL);

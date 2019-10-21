@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,20 +56,20 @@ typedef struct {
 /*!
  * \brief Make request out of endpoints and query.
  *
- * \param mm     Memory context.
- * \param dst    Remote endpoint address.
- * \param src    Source address (or NULL).
- * \param query  Query message.
- * \param key    TSIG key for authentication.
- * \param flags  Request flags.
+ * \param mm        Memory context.
+ * \param remote    Remote endpoint address.
+ * \param source    Source address (or NULL).
+ * \param query     Query message.
+ * \param tsig_key  TSIG key for authentication.
+ * \param flags     Request flags.
  *
  * \return Prepared request or NULL in case of error.
  */
 knot_request_t *knot_request_make(knot_mm_t *mm,
-                                  const struct sockaddr *dst,
-                                  const struct sockaddr *src,
+                                  const struct sockaddr_storage *remote,
+                                  const struct sockaddr_storage *source,
                                   knot_pkt_t *query,
-                                  const knot_tsig_key_t *key,
+                                  const knot_tsig_key_t *tsig_key,
                                   knot_request_flag_t flags);
 
 /*!

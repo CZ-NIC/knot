@@ -11,15 +11,15 @@ Date:   2019-02-28 14:26:56 +0100
     Fixes https://bugzilla.redhat.com/show_bug.cgi?id=1675235
 
 diff --git a/tests/contrib/test_net.c b/tests/contrib/test_net.c
-index 006b9b9d6..140659b3e 100644
+index 99a9e3ee3..c8e5e0a25 100644
 --- a/tests/contrib/test_net.c
 +++ b/tests/contrib/test_net.c
-@@ -309,10 +309,6 @@ static void test_unconnected(void)
+@@ -310,10 +310,6 @@ static void test_unconnected(void)
  	r = net_dgram_recv(sock, buffer, buffer_len, TIMEOUT_SHORT);
  	ok(r == KNOT_ETIMEOUT, "UDP, receive timeout on unconnected socket");
  
 -	struct sockaddr_storage server_addr = addr_from_socket(server);
--	r = net_dgram_send(sock, buffer, buffer_len, (struct sockaddr *)&server_addr);
+-	r = net_dgram_send(sock, buffer, buffer_len, &server_addr);
 -	ok(r == buffer_len, "UDP, send on defined address");
 -
  	close(sock);

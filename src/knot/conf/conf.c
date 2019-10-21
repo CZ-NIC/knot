@@ -630,8 +630,7 @@ struct sockaddr_storage conf_addr(
 				free(tmp);
 			}
 		} else if (no_port) {
-			sockaddr_port_set((struct sockaddr *)&out,
-			                  val->item->var.a.dflt_port);
+			sockaddr_port_set(&out, val->item->var.a.dflt_port);
 		}
 	} else {
 		const char *dflt_socket = val->item->var.a.dflt_socket;
@@ -709,14 +708,11 @@ bool conf_addr_range_match(
 
 		min = conf_addr_range(range, &max, &mask);
 		if (max.ss_family == AF_UNSPEC) {
-			if (sockaddr_net_match((struct sockaddr *)addr,
-			                       (struct sockaddr *)&min, mask)) {
+			if (sockaddr_net_match(addr, &min, mask)) {
 				return true;
 			}
 		} else {
-			if (sockaddr_range_match((struct sockaddr *)addr,
-			                         (struct sockaddr *)&min,
-			                         (struct sockaddr *)&max)) {
+			if (sockaddr_range_match(addr, &min, &max)) {
 				return true;
 			}
 		}
@@ -1097,6 +1093,14 @@ conf_val_t conf_db_param_txn(
 	return val;
 }
 
+bool conf_tcp_reuseport_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_REUSEPORT);
+	return conf_bool(&val);
+}
+
 size_t conf_udp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
@@ -1136,11 +1140,14 @@ size_t conf_bg_threads_txn(
 	return workers;
 }
 
-size_t conf_max_tcp_clients_txn(
+size_t conf_tcp_max_clients_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
 {
-	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_MAX_TCP_CLIENTS);
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_MAX_CLIENTS);
+	if (val.code != KNOT_EOK) {
+		val = conf_get_txn(conf, txn, C_SRV, C_MAX_TCP_CLIENTS);
+	}
 	int64_t clients = conf_int(&val);
 	if (clients == YP_NIL) {
 		static size_t permval = 0;

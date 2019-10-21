@@ -480,7 +480,7 @@ static int ixfr_slave_sign_serial(list_t *changesets, zone_t *zone,
 		                           "from KASP DB (%s)", knot_strerror(ret));
 		return ret;
 	}
-	changeset_t *chs = NULL;
+	changeset_t *chs;
 	WALK_LIST(chs, *changesets) {
 		if (!ixfr_serial_once(chs, serial_policy, master_serial, &local_serial)) {
 			return KNOT_EINVAL;
@@ -512,7 +512,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
-	changeset_t *set = NULL;
+	changeset_t *set;
 	WALK_LIST(set, data->ixfr.changesets) {
 		ret = zone_update_apply_changeset(&up, set);
 		if (ret != KNOT_EOK) {
@@ -1096,7 +1096,10 @@ static const knot_layer_api_t REFRESH_API = {
 
 static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf, C_MAX_ZONE_SIZE, zone);
+	conf_val_t val = conf_zone_get(conf, C_ZONE_MAX_SIZE, zone);
+	if (val.code != KNOT_EOK) {
+		val = conf_zone_get(conf, C_MAX_ZONE_SIZE, zone);
+	}
 	return conf_int(&val);
 }
 
@@ -1153,8 +1156,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr *dst = (struct sockaddr *)&master->addr;
-	const struct sockaddr *src = (struct sockaddr *)&master->via;
+	const struct sockaddr_storage *dst = &master->addr;
+	const struct sockaddr_storage *src = &master->via;
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &master->key, 0);
 	if (!req) {
 		knot_request_free(req, NULL);
@@ -1188,13 +1191,19 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 static int64_t min_refresh_interval(conf_t *conf, const knot_dname_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf, C_MIN_REFRESH_INTERVAL, zone);
+	conf_val_t val = conf_zone_get(conf, C_REFRESH_MIN_INTERVAL, zone);
+	if (val.code != KNOT_EOK) {
+		val = conf_zone_get(conf, C_MIN_REFRESH_INTERVAL, zone);
+	}
 	return conf_int(&val);
 }
 
 static int64_t max_refresh_interval(conf_t *conf, const knot_dname_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf, C_MAX_REFRESH_INTERVAL, zone);
+	conf_val_t val = conf_zone_get(conf, C_REFRESH_MAX_INTERVAL, zone);
+	if (val.code != KNOT_EOK) {
+		val = conf_zone_get(conf, C_MAX_REFRESH_INTERVAL, zone);
+	}
 	return conf_int(&val);
 }
 

@@ -19,8 +19,8 @@ Building changes
 ----------------
 
 The ``--enable-dnstap`` configure option now enables the dnstap support in
-kdig only! To build the dnstap query module, ``--with-module-dnstap`` have
-to be used.
+:doc:`kdig<man_kdig>` only! To build the dnstap query module, ``--with-module-dnstap``
+have to be used.
 
 Since Knot DNS version 2.5.0 each query module can be configured to be:
 
@@ -116,6 +116,69 @@ some of each key's parameters in an undamaging way, e.g.::
     $ keymgr example.com. set <keyTag2> created=1
     ...
 
+.. _Upgrade 2.8.x to 2.9.x:
+
+Upgrade 2.8.x to 2.9.x
+======================
+
+Upgrading from Knot DNS version 2.8.x to 2.9.x is almost seamless but check
+the following changes first.
+
+Configuration changes
+---------------------
+
+- Imperfect runtime reconfiguration of :ref:`server_udp-workers`,
+  :ref:`server_tcp-workers`, and :ref:`server_listen`
+  is no longer supported.
+
+- Replaced options (with backward compatibility):
+
+   .. csv-table::
+      :header: Old section, Old item name, New section, New item name
+      :widths: 35, 60, 35, 60
+
+      :ref:`server<Server section>`     , ``tcp-reply-timeout`` [s] , :ref:`server<Server section>`     , :ref:`server_tcp-remote-io-timeout` [ms]
+      :ref:`server<Server section>`     , ``max-tcp-clients``       , :ref:`server<Server section>`     , :ref:`server_tcp-max-clients`
+      :ref:`server<Server section>`     , ``max-udp-payload``       , :ref:`server<Server section>`     , :ref:`server_udp-max-payload`
+      :ref:`server<Server section>`     , ``max-ipv4-udp-payload``  , :ref:`server<Server section>`     , :ref:`server_udp-max-payload-ipv4`
+      :ref:`server<Server section>`     , ``max-ipv6-udp-payload``  , :ref:`server<Server section>`     , :ref:`server_udp-max-payload-ipv6`
+      :ref:`template<Template section>` , ``journal-db``            , :ref:`database<Database section>` , :ref:`database_journal-db`
+      :ref:`template<Template section>` , ``journal-db-mode``       , :ref:`database<Database section>` , :ref:`database_journal-db-mode`
+      :ref:`template<Template section>` , ``max-journal-db-size``   , :ref:`database<Database section>` , :ref:`database_journal-db-max-size`
+      :ref:`template<Template section>` , ``kasp-db``               , :ref:`database<Database section>` , :ref:`database_kasp-db`
+      :ref:`template<Template section>` , ``max-kasp-db-size``      , :ref:`database<Database section>` , :ref:`database_kasp-db-max-size`
+      :ref:`template<Template section>` , ``timer-db``              , :ref:`database<Database section>` , :ref:`database_timer-db`
+      :ref:`template<Template section>` , ``max-timer-db-size``     , :ref:`database<Database section>` , :ref:`database_timer-db-max-size`
+      :ref:`zone<Zone section>`         , ``max-journal-usage``     , :ref:`zone<Zone section>`         , :ref:`zone_journal-max-usage`
+      :ref:`zone<Zone section>`         , ``max-journal-depth``     , :ref:`zone<Zone section>`         , :ref:`zone_journal-max-depth`
+      :ref:`zone<Zone section>`         , ``max-zone-size``         , :ref:`zone<Zone section>`         , :ref:`zone_zone-max-size`
+      :ref:`zone<Zone section>`         , ``max-refresh-interval``  , :ref:`zone<Zone section>`         , :ref:`zone_refresh-max-interval`
+      :ref:`zone<Zone section>`         , ``min-refresh-interval``  , :ref:`zone<Zone section>`         , :ref:`zone_refresh-min-interval`
+
+- Removed options (no backward compatibility):
+
+  - ``server.tcp-handshake-timeout``
+  - ``zone.request-edns-option``
+
+- New default values for:
+
+  - :ref:`server_tcp-workers`
+  - :ref:`server_tcp-max-clients`
+  - :ref:`server_udp-max-payload`
+  - :ref:`server_udp-max-payload-ipv4`
+  - :ref:`server_udp-max-payload-ipv6`
+
+- New DNSSEC policy option :ref:`policy_rrsig-pre-refresh` may affect
+  configuration validity, which is ``rrsig-refresh + rrsig-pre-refresh < rrsig-lifetime``
+
+Miscellaneous changes
+---------------------
+
+- Memory use estimation via ``knotc zone-memstats`` was removed
+- Based on `<https://tools.ietf.org/html/draft-ietf-dnsop-server-cookies>`_
+  the module :ref:`DNS Cookies<mod-cookies>` was updated to be interoperable
+- Number of open files limit is set to 1048576 in upstream packages
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users
@@ -154,7 +217,7 @@ server configuration:
 
    .. NOTE::
       If the server configuration file or database is not at the default location,
-      add a configuration parameter (-c or -C). See :doc:`keymgr <man_keymgr>`
+      add a configuration parameter (-c or -C). See :doc:`keymgr<man_keymgr>`
       for more info about required access rights to the key files.
 
 4. Follow :ref:`Automatic DNSSEC signing` steps to configure DNSSEC signing.

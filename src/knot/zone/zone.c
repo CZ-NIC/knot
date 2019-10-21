@@ -43,7 +43,7 @@
 
 static void free_ddns_queue(zone_t *zone)
 {
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, zone->ddns_queue) {
 		knot_request_free(node->d, NULL);
 	}
@@ -375,9 +375,7 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t remote = conf_remote(conf, &masters, i);
-			if (sockaddr_net_match((struct sockaddr *)&remote.addr,
-			                       (struct sockaddr *)zone->preferred_master,
-			                       -1)) {
+			if (sockaddr_net_match(&remote.addr, zone->preferred_master, -1)) {
 				*master = remote;
 				pthread_mutex_unlock(&zone->preferred_lock);
 				return KNOT_EOK;
@@ -397,7 +395,7 @@ static void log_try_addr_error(const zone_t *zone, const char *remote_name,
                                const char *err_str, int ret)
 {
 	char addr_str[SOCKADDR_STRLEN] = { 0 };
-	sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)remote_addr);
+	sockaddr_tostr(addr_str, sizeof(addr_str), remote_addr);
 	log_zone_debug(zone->name, "%s%s%s, address %s, failed (%s)", err_str,
 	               (remote_name != NULL ? ", remote " : ""),
 	               (remote_name != NULL ? remote_name : ""),
@@ -435,9 +433,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t master = conf_remote(conf, &masters, i);
 			if (preferred.addr.ss_family != AF_UNSPEC &&
-			    sockaddr_net_match((struct sockaddr *)&master.addr,
-			                       (struct sockaddr *)&preferred.addr,
-			                       -1)) {
+			    sockaddr_net_match(&master.addr, &preferred.addr, -1)) {
 				preferred.addr.ss_family = AF_UNSPEC;
 				continue;
 			}

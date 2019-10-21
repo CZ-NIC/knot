@@ -139,10 +139,11 @@ General options related to the server.
      tcp-idle-timeout: TIME
      tcp-io-timeout: INT
      tcp-remote-io-timeout: INT
-     max-tcp-clients: INT
-     max-udp-payload: SIZE
-     max-ipv4-udp-payload: SIZE
-     max-ipv6-udp-payload: SIZE
+     tcp-max-clients: INT
+     tcp-reuseport: BOOL
+     udp-max-payload: SIZE
+     udp-max-payload-ipv4: SIZE
+     udp-max-payload-ipv6: SIZE
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      listen: ADDR[@INT] ...
@@ -304,9 +305,26 @@ Set to 0 for infinity.
 
 *Default:* 5000 ms
 
-.. _server_max-tcp-clients:
+.. _server_tcp-reuseport:
 
-max-tcp-clients
+tcp-reuseport
+-------------
+
+If enabled, each TCP worker listens on its own socket and the OS kernel
+socket load balancing is emloyed using SO_REUSEPORT (or SO_REUSEPORT_LB
+on FreeBSD). Due to the lack of one shared socket, the server can offer
+higher response rate processing over TCP. However, in the case of
+time-consuming requests (e.g. zone transfers of a TLD zone), enabled reuseport
+may result in delayed or not being responded client requests. So it is
+advisable to use this option on slave servers.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* off
+
+.. _server_tcp-max-clients:
+
+tcp-max-clients
 ---------------
 
 A maximum number of TCP clients connected in parallel, set this below the file
@@ -318,27 +336,27 @@ descriptor limit to avoid resource exhaustion.
 
 *Default:* one half of the file descriptor limit for the server process
 
-.. _server_max-udp-payload:
+.. _server_udp-max-payload:
 
-max-udp-payload
+udp-max-payload
 ---------------
 
 Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
 
 *Default:* 1232
 
-.. _server_max-ipv4-udp-payload:
+.. _server_udp-max-payload-ipv4:
 
-max-ipv4-udp-payload
+udp-max-payload-ipv4
 --------------------
 
 Maximum EDNS0 UDP payload size for IPv4.
 
 *Default:* 1232
 
-.. _server_max-ipv6-udp-payload:
+.. _server_udp-max-payload-ipv6:
 
-max-ipv6-udp-payload
+udp-max-payload-ipv6
 --------------------
 
 Maximum EDNS0 UDP payload size for IPv6.
@@ -709,7 +727,7 @@ in journal to recover from reaching this limit. Journal simply starts refusing
 changes across all zones. Decreasing this value has no effect if it is lower
 than the actual database file size.
 
-It is recommended to limit :ref:`max-journal-usage<zone_max-journal-usage>`
+It is recommended to limit :ref:`journal-max-usage<zone_journal-max-usage>`
 per-zone instead of :ref:`journal-db-max-size<database_journal-db-max-size>`
 in most cases. Please keep this value larger than the sum of all zones'
 journal usage limits. See more details regarding
@@ -926,9 +944,12 @@ keystore
 --------
 
 A :ref:`reference<keystore_id>` to a keystore holding private key material
-for zones. A special *default* value can be used for the default keystore settings.
+for zones.
 
-*Default:* default
+*Default:* an imaginary keystore with all default values
+
+.. NOTE::
+   A configured keystore called "default" won't be used unless explicitly referenced.
 
 .. _policy_manual:
 
@@ -1361,14 +1382,14 @@ Definition of zones served by the server.
      zonefile-sync: TIME
      zonefile-load: none | difference | difference-no-serial | whole
      journal-content: none | changes | all
-     max-journal-usage: SIZE
-     max-journal-depth: INT
-     max-zone-size : SIZE
+     journal-max-usage: SIZE
+     journal-max-depth: INT
+     zone-max-size : SIZE
      dnssec-signing: BOOL
      dnssec-policy: STR
      serial-policy: increment | unixtime | dateserial
-     min-refresh-interval: TIME
-     max-refresh-interval: TIME
+     refresh-min-interval: TIME
+     refresh-max-interval: TIME
      module: STR/STR ...
 
 .. _zone_domain:
@@ -1562,22 +1583,22 @@ Possible values:
 
 *Default:* changes
 
-.. _zone_max-journal-usage:
+.. _zone_journal-max-usage:
 
-max-journal-usage
+journal-max-usage
 -----------------
 
 Policy how much space in journal DB will the zone's journal occupy.
 
 .. NOTE::
-   Journal DB may grow far above the sum of max-journal-usage across
+   Journal DB may grow far above the sum of journal-max-usage across
    all zones, because of DB free space fragmentation.
 
 *Default:* 100 MiB
 
-.. _zone_max_journal_depth:
+.. _zone_journal-max-depth:
 
-max-journal-depth
+journal-max-depth
 -----------------
 
 Maximum history length of journal.
@@ -1586,9 +1607,9 @@ Maximum history length of journal.
 
 *Default:* 2^64
 
-.. _zone_max_zone_size:
+.. _zone_zone-max-size:
 
-max-zone-size
+zone-max-size
 -------------
 
 Maximum size of the zone. The size is measured as size of the zone records
@@ -1615,10 +1636,12 @@ If enabled, automatic DNSSEC signing for the zone is turned on.
 dnssec-policy
 -------------
 
-A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
-value can be used for the default policy settings.
+A :ref:`reference<policy_id>` to DNSSEC signing policy.
 
-*Required*
+*Default:* an imaginary policy with all default values
+
+.. NOTE::
+   A configured policy called "default" won't be used unless explicitly referenced.
 
 .. _zone_serial-policy:
 
@@ -1645,18 +1668,18 @@ Possible values:
 
 *Default:* increment
 
-.. _zone_min-refresh-interval:
+.. _zone_refresh-min-interval:
 
-min-refresh-interval
+refresh-min-interval
 --------------------
 
 Forced minimum zone refresh interval to avoid flooding master.
 
 *Default:* 2
 
-.. _zone_max-refresh-interval:
+.. _zone_refresh-max-interval:
 
-max-refresh-interval
+refresh-max-interval
 --------------------
 
 Forced maximum zone refresh interval.

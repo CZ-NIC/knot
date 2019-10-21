@@ -1,7 +1,7 @@
 AC_PREREQ([2.60])
 
-m4_define([knot_VERSION_MAJOR], 2)dnl
-m4_define([knot_VERSION_MINOR], 9)dnl
+m4_define([knot_VERSION_MAJOR], 3)dnl
+m4_define([knot_VERSION_MINOR], 0)dnl
 m4_define([knot_VERSION_PATCH], )dnl Leave empty if the master branch!
 m4_include([m4/knot-version.m4])
 
@@ -632,10 +632,18 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread_np.h>]], [[cpuset_t set; CPU
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset_create(); cpuset_destroy(set);]])],
 [AC_DEFINE(HAVE_CPUSET_NETBSD, 1, [Define if cpuset_t and cpuset(3) exists.])])
 
+# Check for '__atomic' compiler builtin atomic functions.
 AC_LINK_IFELSE(
   [AC_LANG_PROGRAM([[#include <stdint.h>]],
                    [[uint64_t val = 0; __atomic_add_fetch(&val, 1, __ATOMIC_RELAXED);]])],
   [AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])]
+)
+
+# Check for '__sync' compiler builtin atomic functions.
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM([[#include <stdint.h>]],
+                   [[int val = 0; __sync_add_and_fetch(&val, 1);]])],
+  [AC_DEFINE(HAVE_SYNC_ATOMIC, 1, [Define to 1 if you have '__sync' functions.])]
 )
 
 # Prepare CFLAG_VISIBILITY to be used where needed

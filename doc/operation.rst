@@ -5,13 +5,14 @@
 Operation
 *********
 
-The Knot DNS server part ``knotd`` can run either in the foreground, or in the background
-using the ``-d`` option. When run in the foreground, it doesn't create a PID file.
-Other than that, there are no differences and you can control both the same way.
+The Knot DNS server part :doc:`knotd<man_knotd>` can run either in the foreground,
+or in the background using the ``-d`` option. When run in the foreground, it
+doesn't create a PID file.  Other than that, there are no differences and you
+can control both the same way.
 
-The tool ``knotc`` is designed as a user front-end, making it easier to control running
-server daemon. If you want to control the daemon directly, use ``SIGINT`` to quit
-the process or ``SIGHUP`` to reload the configuration.
+The tool :doc:`knotc<man_knotc>` is designed as a user front-end, making it easier
+to control running server daemon. If you want to control the daemon directly,
+use ``SIGINT`` to quit the process or ``SIGHUP`` to reload the configuration.
 
 If you pass neither configuration file (``-c`` parameter) nor configuration
 database (``-C`` parameter), the server will first attempt to use the default
@@ -149,6 +150,7 @@ identified section or for a specific item::
    :ref:`rundir<server_rundir>`,
    :ref:`user<server_user>`,
    :ref:`pidfile<server_pidfile>`,
+   :ref:`tcp-reuseport<server_tcp-reuseport>`,
    :ref:`udp-workers<server_udp-workers>`,
    :ref:`tcp-workers<server_tcp-workers>`,
    :ref:`background-workers<server_background-workers>`, and
@@ -305,9 +307,9 @@ The process how the server loads a zone is influenced by the configuration of th
 :ref:`zonefile-load <zone_zonefile-load>` and :ref:`journal-content <zone_journal-content>`
 parameters (also DNSSEC signing applies), the existence of a zone file and journal
 (and their relative out-of-dateness), and whether it is a cold start of the server
-or a zone reload (e.g. invoked by the knotc interface). Please note that zone transfers
-are not taken into account here – they are planned after the zone is loaded
-(including AXFR bootstrap).
+or a zone reload (e.g. invoked by the :doc:`knotc<man_knotc>` interface). Please note
+that zone transfers are not taken into account here – they are planned after the zone
+is loaded (including AXFR bootstrap).
 
 If the zone file exists and is not excluded by the configuration, it is first loaded
 and according to its SOA serial number relevant journal changesets are applied.
@@ -342,7 +344,7 @@ Journal does each operation in one transaction to keep consistency of the DB and
 The exception is when store transaction exceeds 5 % of the whole DB mapsize, it is split into multiple ones
 and some dirty-chunks-management involves.
 
-Each zone journal has own :ref:`usage limit <zone_max-journal-usage>`
+Each zone journal has own :ref:`usage limit <zone_journal-max-usage>`
 on how much DB space it may occupy. Before hitting the limit,
 changesets are stored one-by-one and whole history is linear. While hitting the limit,
 the zone is flushed into the zone file, and oldest changesets are deleted as needed to free
@@ -471,7 +473,7 @@ Special states for algorithm rollover:
 
 - ``post-active`` — The key is no longer published in the zone, but still used for signing.
 
-The states listed above are relevant for :doc:`keymgr <man_keymgr>` operations like generating
+The states listed above are relevant for :doc:`keymgr<man_keymgr>` operations like generating
 a key, setting its timers and listing KASP database.
 
 On the other hand, the key "states" displayed in the server log lines while zone signing
@@ -735,7 +737,7 @@ The Zone Signing Key is always fully available to the daemon in order to sign co
 The server (or the "ZSK side") only uses ZSK to sign zone contents and its changes. Before
 performing a ZSK rollover, the DNSKEY records will be pre-generated and signed by the
 signer (the "KSK side"). Both sides exchange keys in the form of human-readable messages with the help
-of :doc:`keymgr <man_keymgr>` utility.
+of :doc:`keymgr<man_keymgr>` utility.
 
 Pre-requisites
 --------------

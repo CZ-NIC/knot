@@ -332,10 +332,6 @@ static int set_config(const char *confdb, const char *config, size_t max_conf_si
 		config = CONF_DEFAULT_FILE;
 	}
 
-	const char *src = import ? config : confdb;
-	log_debug("%s '%s'", import ? "config" : "confdb",
-	          (src != NULL) ? src : "empty");
-
 	/* Open confdb. */
 	conf_t *new_conf = NULL;
 	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, CONF_FREQMODULES);

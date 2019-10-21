@@ -81,7 +81,7 @@ int tls_params_copy(tls_params_t *dst, const tls_params_t *src)
 		}
 	}
 
-	ptrnode_t *n = NULL;
+	ptrnode_t *n;
 	WALK_LIST(n, src->ca_files) {
 		char *src_file = (char *)n->d;
 		char *file = strdup(src_file);
@@ -109,7 +109,7 @@ void tls_params_clean(tls_params_t *params)
 		return;
 	}
 
-	ptrnode_t *node = NULL, *nxt = NULL;
+	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, params->ca_files) {
 		free(node->d);
 	}
@@ -134,7 +134,7 @@ static bool check_pin(const uint8_t *cert_pin, size_t cert_pin_len, const list_t
 		return false;
 	}
 
-	ptrnode_t *n = NULL;
+	ptrnode_t *n;
 	WALK_LIST(n, *pins) {
 		uint8_t *pin = (uint8_t *)n->d;
 		if (pin[0] == cert_pin_len &&
@@ -303,7 +303,7 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 	}
 
 	// Import provided certificate files.
-	ptrnode_t *n = NULL;
+	ptrnode_t *n;
 	WALK_LIST(n, ctx->params->ca_files) {
 		const char *file = (char *)n->d;
 		ret = gnutls_certificate_set_x509_trust_file(ctx->credentials, file,

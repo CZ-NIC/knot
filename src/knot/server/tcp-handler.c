@@ -51,7 +51,7 @@ typedef struct tcp_context {
 	bool is_throttled;               /*!< TCP connections throttling switch. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
-	unsigned max_clients;            /*!< Max TCP clients per worker configuration. */
+	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
 } tcp_context_t;
@@ -67,8 +67,8 @@ static void update_sweep_timer(struct timespec *timer)
 static void update_tcp_conf(tcp_context_t *tcp)
 {
 	rcu_read_lock();
-	tcp->max_clients = \
-		MAX(conf()->cache.srv_max_tcp_clients / conf()->cache.srv_tcp_threads, 1);
+	tcp->max_worker_fds = tcp->client_threshold + \
+		MAX(conf()->cache.srv_tcp_max_clients / conf()->cache.srv_tcp_threads, 1);
 	tcp->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
 	tcp->io_timeout = conf()->cache.srv_tcp_io_timeout;
 	rcu_read_unlock();
@@ -86,7 +86,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	socklen_t len = sizeof(struct sockaddr_storage);
 	if (getpeername(fd, (struct sockaddr*)&ss, &len) == 0) {
 		char addr_str[SOCKADDR_STRLEN] = {0};
-		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
+		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
 		log_notice("TCP, terminated inactive client, address %s", addr_str);
 	}
 
@@ -105,33 +105,45 @@ static bool tcp_send_state(int state)
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
 }
 
-static void tcp_log_error(struct sockaddr_storage ss, const char *operation, int ret)
+static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, int ret)
 {
 	/* Don't log ECONN as it usually means client closed the connection. */
 	if (ret == KNOT_ETIMEOUT) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), (struct sockaddr *)&ss);
+		sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 		log_debug("TCP, %s, address %s (%s)", operation, addr_str, knot_strerror(ret));
 	}
 }
 
 /*!
- * \brief Update TCP fdsets from current interfaces list.
+ * \brief Make a TCP fdset from current interfaces list.
  *
  * \param  ifaces    Interface list.
  * \param  fds       File descriptor set.
- * \param  thread_id Thread ID used for geting an ID.	TODO: currently unused.
+ * \param  thread_id Thread ID used for geting an ID.
  *
  * \return Number of watched descriptors.
  */
 static unsigned tcp_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id)
 {
-	assert(ifaces && fds);
+	if (ifaces == NULL) {
+		return 0;
+	}
 
 	fdset_clear(fds);
-	iface_t *i = NULL;
+	iface_t *i;
 	WALK_LIST(i, *ifaces) {
-		fdset_add(fds, i->fd_tcp, POLLIN, NULL);
+		int tcp_id = 0;
+#ifdef ENABLE_REUSEPORT
+		if (conf()->cache.srv_tcp_reuseport) {
+			/* Note: thread_ids start with UDP threads, TCP threads follow. */
+			assert((i->fd_udp_count <= thread_id) &&
+			       (thread_id < i->fd_tcp_count + i->fd_udp_count));
+
+			tcp_id = thread_id - i->fd_udp_count;
+		}
+#endif
+		fdset_add(fds, i->fd_tcp[tcp_id], POLLIN, NULL);
 	}
 
 	return fds->n;
@@ -162,7 +174,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {
-		tcp_log_error(ss, "receive", recv);
+		tcp_log_error(&ss, "receive", recv);
 		return KNOT_EOF;
 	}
 
@@ -186,7 +198,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
 			int sent = net_dns_tcp_send(fd, ans->wire, ans->size, tcp->io_timeout);
 			if (sent != ans->size) {
-				tcp_log_error(ss, "send", sent);
+				tcp_log_error(&ss, "send", sent);
 				ret = KNOT_EOF;
 				break;
 			}
@@ -237,7 +249,8 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	fdset_t *set = &tcp->set;
 
 	/* Check if throttled with many open TCP connections. */
-	tcp->is_throttled = (set->n - tcp->client_threshold) >= tcp->max_clients;
+	assert(set->n <= tcp->max_worker_fds);
+	tcp->is_throttled = set->n == tcp->max_worker_fds;
 
 	/* If throttled, temporarily ignore new TCP connections. */
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
@@ -258,7 +271,10 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 		} else if (set->pfd[i].revents & (POLLIN)) {
 			/* Master sockets - new connection to accept. */
 			if (i < tcp->client_threshold) {
-				tcp_event_accept(tcp, i);
+				/* Don't accept more clients than configured. */
+				if (set->n < tcp->max_worker_fds) {
+					tcp_event_accept(tcp, i);
+				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
 			} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {

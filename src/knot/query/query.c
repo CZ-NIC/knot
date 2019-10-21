@@ -47,10 +47,10 @@ int query_edns_data_init(struct query_edns_data *edns_ptr, conf_t *conf,
 
 	switch (remote_family) {
 	case AF_INET:
-		edns.max_payload = conf->cache.srv_max_ipv4_udp_payload;
+		edns.max_payload = conf->cache.srv_udp_max_payload_ipv4;
 		break;
 	case AF_INET6:
-		edns.max_payload = conf->cache.srv_max_ipv6_udp_payload;
+		edns.max_payload = conf->cache.srv_udp_max_payload_ipv6;
 		break;
 	default:
 		return KNOT_EINVAL;

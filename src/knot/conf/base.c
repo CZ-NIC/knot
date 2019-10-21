@@ -111,32 +111,48 @@ static void init_cache(
 	bool reinit_cache)
 {
 	/* For UDP, TCP and background workers, cache the numbers of running
-	 * workers. These numbers can't change in runtime, while config data can.
+	 * workers. Cache the setting of TCP reuseport too. These values
+	 * can't change in runtime, while config data can.
 	 */
 
-	static bool first_init = true;
+	static bool   first_init = true;
+	static bool   running_tcp_reuseport;
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
 	static size_t running_bg_threads;
 
 	if (first_init || reinit_cache) {
+		running_tcp_reuseport = conf_tcp_reuseport(conf);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_bg_threads = conf_bg_threads(conf);
+
 		first_init = false;
 	}
 
-	conf_val_t val = conf_get(conf, C_SRV, C_MAX_IPV4_UDP_PAYLOAD);
+	conf_val_t val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD_IPV4);
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_MAX_IPV4_UDP_PAYLOAD);
+	}
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD);
+	}
 	if (val.code != KNOT_EOK) {
 		val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
 	}
-	conf->cache.srv_max_ipv4_udp_payload = conf_int(&val);
+	conf->cache.srv_udp_max_payload_ipv4 = conf_int(&val);
 
-	val = conf_get(conf, C_SRV, C_MAX_IPV6_UDP_PAYLOAD);
+	val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD_IPV6);
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_MAX_IPV6_UDP_PAYLOAD);
+	}
+	if (val.code != KNOT_EOK) {
+		val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD);
+	}
 	if (val.code != KNOT_EOK) {
 		val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
 	}
-	conf->cache.srv_max_ipv6_udp_payload = conf_int(&val);
+	conf->cache.srv_udp_max_payload_ipv6 = conf_int(&val);
 
 	val = conf_get(conf, C_SRV, C_TCP_IDLE_TIMEOUT);
 	conf->cache.srv_tcp_idle_timeout = conf_int(&val);
@@ -156,13 +172,15 @@ static void init_cache(
 		conf->cache.srv_tcp_remote_io_timeout = timeout;
 	}
 
+	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
+
 	conf->cache.srv_udp_threads = running_udp_threads;
 
 	conf->cache.srv_tcp_threads = running_tcp_threads;
 
 	conf->cache.srv_bg_threads = running_bg_threads;
 
-	conf->cache.srv_max_tcp_clients = conf_max_tcp_clients(conf);
+	conf->cache.srv_tcp_max_clients = conf_tcp_max_clients(conf);
 
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
