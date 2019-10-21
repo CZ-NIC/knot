@@ -47,11 +47,11 @@ BuildRequires:	lmdb-devel
 BuildRequires:	protobuf-c
 Requires(pre):  pwdutils
 %endif
-%if 0%{?rhel}
+%if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:	python-sphinx
 BuildRequires:	lmdb-devel
 %endif
-%if 0%{?fedora}
+%if 0%{?fedora} || 0%{?rhel} > 7
 BuildRequires:	python3-sphinx
 BuildRequires:	pkgconfig(lmdb)
 %endif
@@ -194,7 +194,7 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %systemd_postun_with_restart knot.service
 %endif
 
-%if 0%{?fedora}
+%if 0%{?fedora} || 0%{?rhel} > 7
 # https://fedoraproject.org/wiki/Changes/Removing_ldconfig_scriptlets
 %else
 %post libs -p /sbin/ldconfig
