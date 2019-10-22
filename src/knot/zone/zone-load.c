@@ -102,10 +102,10 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 
 	ret = journal_read_rrsets(read, apply_one_cb, contents);
 	if (ret == KNOT_EOK) {
-		log_zone_info(zone->name, "changes from journal applied %u -> %u",
+		log_zone_info(zone->name, "changes from journal applied, serial %u -> %u",
 		              serial, zone_contents_serial(contents));
 	} else {
-		log_zone_error(zone->name, "failed to apply journal changes %u -> %u (%s)",
+		log_zone_error(zone->name, "failed to apply journal changes, serial %u -> %u (%s)",
 		               serial, zone_contents_serial(contents),
 		               knot_strerror(ret));
 	}
@@ -128,6 +128,7 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 	int ret = journal_read_begin(zone_journal(zone), true, 0, &read);
 	if (ret == KNOT_ENOENT) {
 		zone_contents_deep_free(*contents);
+		*contents = NULL;
 		return ret;
 	}
 
@@ -148,9 +149,10 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 		log_zone_info(zone->name, "zone loaded from journal, serial %u",
 		              zone_contents_serial(*contents));
 	} else {
-		log_zone_error(zone->name, "failed to load zone from journal (%s)",
-		               knot_strerror(ret));
+		log_zone_error(zone->name, "failed to load zone from journal, serial %u (%s)",
+		               zone_contents_serial(*contents), knot_strerror(ret));
 		zone_contents_deep_free(*contents);
+		*contents = NULL;
 	}
 
 	return ret;
