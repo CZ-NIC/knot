@@ -18,6 +18,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adjust.h"
+#include "knot/zone/check.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "contrib/mempattern.h"
@@ -800,6 +801,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+
+	(void)zone_contents_check(update->new_cont, false);
 
 	/* Check the zone size. */
 	conf_val_t val = conf_zone_get(conf, C_ZONE_MAX_SIZE, update->zone->name);
