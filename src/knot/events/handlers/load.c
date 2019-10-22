@@ -68,10 +68,8 @@ int event_load(conf_t *conf, zone_t *zone)
 	// If configured, load journal contents.
 	if (load_from == JOURNAL_CONTENT_ALL && !old_contents_exist && zf_from != ZONEFILE_LOAD_WHOLE) {
 		ret = zone_load_from_journal(conf, zone, &journal_conts);
-		if (ret == KNOT_ENOENT) {
-			journal_conts = NULL;
-		} else if (ret != KNOT_EOK) {
-			return ret;
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			goto cleanup;
 		}
 	}
 
