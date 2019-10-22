@@ -106,6 +106,12 @@ void conf_refresh_hostname(
 	}
 }
 
+static int infinite_adjust(
+	int timeout)
+{
+	return (timeout > 0) ? timeout : -1;
+}
+
 static void init_cache(
 	conf_t *conf,
 	bool reinit_cache)
@@ -158,18 +164,18 @@ static void init_cache(
 	conf->cache.srv_tcp_idle_timeout = conf_int(&val);
 
 	val = conf_get(conf, C_SRV, C_TCP_IO_TIMEOUT);
-	conf->cache.srv_tcp_io_timeout = conf_int(&val);
+	conf->cache.srv_tcp_io_timeout = infinite_adjust(conf_int(&val));
 
 	val = conf_get(conf, C_SRV, C_TCP_RMT_IO_TIMEOUT);
 	if (val.code == KNOT_EOK) {
-		conf->cache.srv_tcp_remote_io_timeout = conf_int(&val);
+		conf->cache.srv_tcp_remote_io_timeout = infinite_adjust(conf_int(&val));
 	} else {
 		int timeout = conf_int(&val); // New default value.
 		conf_val_t legacy = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
 		if (legacy.code == KNOT_EOK) {
 			timeout = 1000 * conf_int(&legacy); // Explicit legacy value.
 		}
-		conf->cache.srv_tcp_remote_io_timeout = timeout;
+		conf->cache.srv_tcp_remote_io_timeout = infinite_adjust(timeout);
 	}
 
 	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
@@ -184,6 +190,7 @@ static void init_cache(
 
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
+	/* infinite_adjust() call isn't needed, 0 is adjusted later anyway. */
 
 	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
 
