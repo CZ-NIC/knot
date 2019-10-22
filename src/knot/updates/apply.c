@@ -18,6 +18,7 @@
 
 #include "knot/common/log.h"
 #include "knot/updates/apply.h"
+#include "knot/zone/check.h"
 #include "libknot/libknot.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
@@ -333,6 +334,8 @@ void apply_cleanup(apply_ctx_t *ctx)
 		zone_trees_unify_binodes(ctx->adjust_ptrs, NULL, false); // beware there might be duplicities in ctx->adjust_ptrs and ctx->node_ptrs, so we don't free here
 		zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs, true);
 	}
+
+	(void)zone_contents_check(ctx->contents, true);
 
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);

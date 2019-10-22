@@ -156,6 +156,8 @@ libknotd_la_SOURCES = \
 	knot/zone/adds_tree.h			\
 	knot/zone/adjust.c			\
 	knot/zone/adjust.h			\
+	knot/zone/check.c			\
+	knot/zone/check.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
 	knot/zone/measure.h			\
