@@ -300,6 +300,10 @@ int net_connect(net_t *net)
 			WARN("can't assign address %s\n", net->local->name);
 			return KNOT_NET_ESOCKET;
 		}
+	} else {
+		// Ensure source port is always randomized (even for TCP).
+		struct sockaddr_storage local = { .ss_family = net->srv->ai_family };
+		(void)bind(sockfd, (struct sockaddr *)&local, sockaddr_len(&local));
 	}
 
 	if (net->socktype == SOCK_STREAM) {
