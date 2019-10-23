@@ -112,7 +112,7 @@ static int replace_soa(zone_contents_t *contents, const knot_rrset_t *rr)
 static int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents,
                      zone_update_flags_t flags)
 {
-	if (update == NULL || zone == NULL || (old_contents == NULL && (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)))) {
+	if (update == NULL || zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -129,6 +129,10 @@ static int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_c
 
 	knot_sem_wait(&zone->cow_lock);
 	update->a_ctx->cow_mutex = &zone->cow_lock;
+
+	if (old_contents == NULL) {
+		old_contents = zone->contents; // don't obtain this pointer before any other zone_update ceased to exist!
+	}
 
 	int ret = KNOT_EINVAL;
 	if (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
@@ -148,7 +152,7 @@ static int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_c
 
 int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t flags)
 {
-	return init_base(update, zone, zone->contents, flags);
+	return init_base(update, zone, NULL, flags);
 }
 
 int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_contents_t *old_cont,
@@ -165,21 +169,26 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 		return ret;
 	}
 
+	ret = init_base(update, zone, old_cont, flags);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&diff);
+		return ret;
+	}
+
+	if (old_cont == NULL) {
+		old_cont = zone->contents;
+	}
+
 	ret = zone_contents_diff(old_cont, new_cont, &diff, ignore_dnssec);
 	if (ret != KNOT_EOK && ret != KNOT_ENODIFF && ret != KNOT_ESEMCHECK) {
 		changeset_clear(&diff);
+		zone_update_clear(update);
 		return ret;
 	}
 
 	// True if nonempty changes were made but the serial
 	// remained the same and has to be incremented.
 	bool diff_semcheck = (ret == KNOT_ESEMCHECK);
-
-	ret = init_base(update, zone, old_cont, flags);
-	if (ret != KNOT_EOK) {
-		changeset_clear(&diff);
-		return ret;
-	}
 
 	ret = zone_update_apply_changeset(update, &diff);
 	changeset_clear(&diff);

@@ -162,7 +162,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
-			ret = zone_update_from_differences(&up, zone, zone->contents, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
+			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
 		}
 	} else {
 		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
