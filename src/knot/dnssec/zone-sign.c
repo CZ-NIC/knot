@@ -600,10 +600,6 @@ static int zone_tree_sign(zone_tree_t *tree,
 		zone_sign_ctx_free(args[i].sign_ctx);
 	}
 
-	if (ret == KNOT_EOK) {
-		ret = zone_tree_apply(tree, set_signed, NULL);
-	}
-
 	return ret;
 }
 
@@ -673,6 +669,11 @@ int knot_zone_sign(zone_update_t *update,
 	                        zone_keys, dnssec_ctx, update, &nsec3_expire);
 	if (result != KNOT_EOK) {
 		return result;
+	}
+
+	result = zone_tree_apply(update->a_ctx->node_ptrs, set_signed, NULL);
+	if (result == KNOT_EOK) {
+		result = zone_tree_apply(update->a_ctx->nsec3_ptrs, set_signed, NULL);
 	}
 
 	*expire_at = knot_time_min(normal_expire, nsec3_expire);
@@ -976,6 +977,9 @@ int knot_zone_sign_update(zone_update_t *update,
 	} else {
 		ret = zone_tree_sign(update->a_ctx->node_ptrs, dnssec_ctx->policy->signing_threads,
 				     zone_keys, dnssec_ctx, update, expire_at);
+		if (ret == KNOT_EOK) {
+			ret = zone_tree_apply(update->a_ctx->node_ptrs, set_signed, NULL);
+		}
 	}
 
 	return ret;
