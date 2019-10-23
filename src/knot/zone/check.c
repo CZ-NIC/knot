@@ -21,7 +21,11 @@
 #include "knot/zone/check.h"
 #include "knot/zone/adds_tree.h"
 
-#define nassert(node, cond) if (!(cond)) printf("assert node %s '%s'\n", (node)->owner, #cond); assert(cond)
+#define nassert(node, cond) if (!(cond)) { \
+	printf("assert node %s '%s'\n", (node)->owner, #cond); \
+	fflush(stdout); \
+	assert(cond); \
+}
 
 int node_check_basic(const zone_node_t *node)
 {
@@ -99,7 +103,8 @@ static int check_one(const zone_node_t *node, void *ctx)
 	return KNOT_EOK;
 }
 
-static void *check_all(void *ctx) {
+static void *check_all(void *ctx)
+{
 	check_ctx_t *check = ctx;
 	check->ret = zone_tree_apply(check->contents->nodes, (zone_tree_apply_cb_t)check_one, ctx);
 	if (check->ret == KNOT_EOK && check->contents->nsec3_nodes != NULL) {
@@ -119,8 +124,8 @@ int zone_contents_check(const zone_contents_t *contents, bool shall_unified)
 	for_threads {
 		ctxs[i].contents = contents;
 		ctxs[i].node_index = 0;
-		ctxs[i].threads = threads;
 		ctxs[i].thread_id = i;
+		ctxs[i].threads = threads;
 		ctxs[i].shall_unified = shall_unified;
 		(void)pthread_create(&ctxs[i].thread, NULL, check_all, &ctxs[i]);
 	}
