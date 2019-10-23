@@ -24,7 +24,7 @@
 #include "libdnssec/random.h"
 #include "libknot/libknot.h"
 
-#define NOTIFY_LOG(priority, qdata, fmt...) \
+#define NOTIFY_IN_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_NOTIFY, \
 	       LOG_DIRECTION_IN, qdata->params->remote, fmt)
 
@@ -51,7 +51,7 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		case KNOT_RCODE_NOTAUTH: /* Not authorized, already logged. */
 			break;
 		default:                 /* Other errors. */
-			NOTIFY_LOG(LOG_DEBUG, qdata, "invalid query");
+			NOTIFY_IN_LOG(LOG_DEBUG, qdata, "invalid query");
 			break;
 		}
 		return state;
@@ -71,16 +71,16 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		if (soa->type == KNOT_RRTYPE_SOA) {
 			uint32_t zone_serial, serial = knot_soa_serial(soa->rrs.rdata);
 			(void)slave_zone_serial(zone, conf(), &zone_serial);
-			NOTIFY_LOG(LOG_INFO, qdata, "received, serial %u", serial);
+			NOTIFY_IN_LOG(LOG_INFO, qdata, "serial %u", serial);
 			if (serial_equal(serial, zone_serial)) {
 				// NOTIFY serial == zone serial => ignore, keep timers
 				return KNOT_STATE_DONE;
 			}
 		} else { /* Complain, but accept N/A record. */
-			NOTIFY_LOG(LOG_NOTICE, qdata, "received, bad record in answer section");
+			NOTIFY_IN_LOG(LOG_NOTICE, qdata, "bad record in answer section");
 		}
 	} else {
-		NOTIFY_LOG(LOG_INFO, qdata, "received, serial none");
+		NOTIFY_IN_LOG(LOG_INFO, qdata, "serial none");
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */

@@ -72,7 +72,7 @@ static const knot_layer_api_t NOTIFY_API = {
 	.consume = notify_consume,
 };
 
-#define NOTIFY_LOG(priority, zone, remote, fmt, ...) \
+#define NOTIFY_OUT_LOG(priority, zone, remote, fmt, ...) \
 	ns_log(priority, zone, LOG_OPERATION_NOTIFY, LOG_DIRECTION_OUT, remote, \
 	       fmt, ## __VA_ARGS__)
 
@@ -108,15 +108,15 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 	int ret = knot_requestor_exec(&requestor, req, timeout);
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
-		NOTIFY_LOG(LOG_INFO, zone->name, dst,
-			   "serial %u", knot_soa_serial(soa->rrs.rdata));
+		NOTIFY_OUT_LOG(LOG_INFO, zone->name, dst,
+		               "serial %u", knot_soa_serial(soa->rrs.rdata));
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
-		NOTIFY_LOG(LOG_WARNING, zone->name, dst,
-		           "failed (%s)", knot_strerror(ret));
+		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, dst,
+		               "failed (%s)", knot_strerror(ret));
 	} else {
-		NOTIFY_LOG(LOG_WARNING, zone->name, dst,
-		           "server responded with error '%s'",
-		           knot_pkt_ext_rcode_name(req->resp));
+		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, dst,
+		               "server responded with error '%s'",
+		               knot_pkt_ext_rcode_name(req->resp));
 	}
 
 	knot_request_free(req, NULL);

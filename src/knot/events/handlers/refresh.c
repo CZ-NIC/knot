@@ -380,7 +380,7 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			return KNOT_STATE_FAIL;
 		}
 
-		AXFRIN_LOG(LOG_INFO, data->zone->name, data->remote, "starting");
+		AXFRIN_LOG(LOG_INFO, data->zone->name, data->remote, "started");
 		xfr_stats_begin(&data->stats);
 		data->change_size = 0;
 	}
@@ -850,7 +850,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			return KNOT_STATE_FAIL;
 		}
 
-		IXFRIN_LOG(LOG_INFO, data->zone->name, data->remote, "starting");
+		IXFRIN_LOG(LOG_INFO, data->zone->name, data->remote, "started");
 		xfr_stats_begin(&data->stats);
 		data->change_size = 0;
 	}
