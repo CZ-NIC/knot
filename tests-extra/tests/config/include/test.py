@@ -53,8 +53,8 @@ resp = ctl.receive_block()
 ctl.send_block(cmd="conf-read", section="server")
 resp = ctl.receive_block()
 
-isset('max-tcp-clients' in resp['server'], "server section item not set")
-isset('5' in resp['server']['max-tcp-clients'], "server section item value not set")
+isset('tcp-max-clients' in resp['server'], "server section item not set")
+isset('5' in resp['server']['tcp-max-clients'], "server section item value not set")
 
 ctl.send(libknot.control.KnotCtlType.END)
 ctl.close()
