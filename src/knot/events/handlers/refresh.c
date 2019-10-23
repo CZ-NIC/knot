@@ -263,6 +263,7 @@ static int axfr_finalize(struct refresh_data *data)
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	uint32_t old_serial = zone_contents_serial(data->zone->contents), master_serial = 0;
+	bool bootstrap = (data->zone->contents == NULL);
 
 	if (dnssec_enable) {
 		axfr_slave_sign_serial(new_zone, data->zone, data->conf, &master_serial);
@@ -304,7 +305,7 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
-	                master_serial, dnssec_enable, (data->zone->contents == NULL));
+	                master_serial, dnssec_enable, bootstrap);
 
 	return KNOT_EOK;
 }
