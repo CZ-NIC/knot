@@ -184,9 +184,9 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, update->a_ctx->node_ptrs);
 	if (result != KNOT_EOK) {
 		return result;
-	};
+	}
 
-	result = knot_zone_create_nsec_chain(update, &keyset, &ctx);
+	result = knot_zone_create_nsec_chain(update, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to create NSEC%s chain (%s)",
 		               ctx.policy->nsec3_enabled ? "3" : "",

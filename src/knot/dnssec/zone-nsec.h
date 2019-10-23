@@ -112,14 +112,11 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone);
  * \brief Create NSEC or NSEC3 chain in the zone.
  *
  * \param update          Zone Update with current zone contents and to be updated with NSEC chain.
- * \param zone_keys       Zone keys used for NSEC(3) creation.
  * \param ctx             Signing context.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_create_nsec_chain(zone_update_t *update,
-                                const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *ctx);
+int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx);
 
 /*!
  * \brief Fix NSEC or NSEC3 chain after zone was updated, and sign the changed NSECs.
