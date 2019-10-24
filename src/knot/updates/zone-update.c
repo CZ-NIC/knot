@@ -20,10 +20,8 @@
 #include "knot/zone/adjust.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
-#include "contrib/mempattern.h"
 #include "contrib/trim.h"
 #include "contrib/ucw/lists.h"
-#include "contrib/ucw/mempool.h"
 
 #include <urcu.h>
 
@@ -118,8 +116,6 @@ static int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_c
 
 	memset(update, 0, sizeof(*update));
 	update->zone = zone;
-
-	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
 	update->flags = flags;
 
 	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
@@ -219,10 +215,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 
 	memset(update, 0, sizeof(*update));
 	update->zone = zone_without_contents;
-
-	mm_ctx_mempool(&update->mm, MM_DEFAULT_BLKSIZE);
 	update->flags = flags;
-
 	update->new_cont = new_cont;
 
 	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
@@ -395,7 +388,6 @@ void zone_update_clear(zone_update_t *update)
 	}
 
 	free(update->a_ctx);
-	mp_delete(update->mm.ctx);
 	memset(update, 0, sizeof(*update));
 }
 
@@ -532,10 +524,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EOK;
 	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		zone_node_t *n = NULL;
-		knot_rrset_t *rrs_copy = knot_rrset_copy(rrset, &update->mm);
-		int ret = zone_contents_remove_rr(update->new_cont, rrs_copy, &n);
-		knot_rrset_free(rrs_copy, &update->mm);
-		return ret;
+		return zone_contents_remove_rr(update->new_cont, rrset, &n);
 	} else {
 		return KNOT_EINVAL;
 	}
@@ -879,7 +868,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		zone_events_schedule_now(update->zone, ZONE_EVENT_FLUSH);
 	}
 
-	mp_delete(update->mm.ctx);
 	memset(update, 0, sizeof(*update));
 
 	return KNOT_EOK;

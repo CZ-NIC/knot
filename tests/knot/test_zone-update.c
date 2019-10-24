@@ -208,7 +208,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	/* Init update */
 	zone_update_t update;
 	zone_update_init(&update, zone, UPDATE_INCREMENTAL);
-	ok(update.zone == zone && changeset_empty(&update.change) && update.mm.alloc,
+	ok(update.zone == zone && changeset_empty(&update.change),
 	   "incremental zone update: init");
 
 	if (zs_set_input_string(sc, add_str, strlen(add_str)) != 0 ||
