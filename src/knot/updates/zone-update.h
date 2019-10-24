@@ -21,7 +21,6 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zone.h"
-#include "libknot/mm_ctx.h"
 
 /*! \brief Structure for zone contents updating / querying. */
 typedef struct zone_update {
@@ -32,7 +31,6 @@ typedef struct zone_update {
 	changeset_t extra_ch;        /*!< Extra changeset to store just diff btwn zonefile and result. */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
-	knot_mm_t mm;                /*!< Memory context used for intermediate nodes. */
 } zone_update_t;
 
 typedef struct {
