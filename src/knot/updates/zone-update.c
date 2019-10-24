@@ -127,6 +127,10 @@ static int init_base(zone_update_t *update, zone_t *zone, zone_contents_t *old_c
 		return KNOT_ENOMEM;
 	}
 
+	if (zone->control_update != NULL && zone->control_update != update) {
+		log_zone_warning(zone->name, "blocked zone update due to open control transaction");
+	}
+
 	knot_sem_wait(&zone->cow_lock);
 	update->a_ctx->cow_mutex = &zone->cow_lock;
 
@@ -228,6 +232,11 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
 	if (update->a_ctx == NULL) {
 		return KNOT_ENOMEM;
+	}
+
+	if (zone_without_contents->control_update != NULL) {
+		log_zone_warning(zone_without_contents->name,
+		                 "blocked zone update due to open control transaction");
 	}
 
 	knot_sem_wait(&update->zone->cow_lock);
