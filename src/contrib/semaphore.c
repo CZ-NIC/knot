@@ -16,6 +16,7 @@
 
 #include "semaphore.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 #if defined(__APPLE__)
@@ -38,7 +39,10 @@ void knot_sem_init(knot_sem_t *sem, unsigned int value)
 void knot_sem_wait(knot_sem_t *sem)
 {
 	if (sem->status < 0) {
-		sem_wait(&sem->semaphore);
+		int semret;
+		do {
+			semret = sem_wait(&sem->semaphore);
+		} while (semret != 0); // repeat wait as it might be interrupted by a signal
 	} else {
 		pthread_mutex_lock(&sem->status_lock->mutex);
 		while (sem->status == 0) {
@@ -52,7 +56,9 @@ void knot_sem_wait(knot_sem_t *sem)
 void knot_sem_post(knot_sem_t *sem)
 {
 	if (sem->status < 0) {
-		sem_post(&sem->semaphore);
+		int semret = sem_post(&sem->semaphore);
+		(void)semret;
+		assert(semret == 0);
 	} else {
 		pthread_mutex_lock(&sem->status_lock->mutex);
 		sem->status++;
