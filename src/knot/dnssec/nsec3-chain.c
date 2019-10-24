@@ -514,6 +514,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 			if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
 				ret = zone_update_remove(update, &rem_rrsig);
 			}
+			// REVIEW: probably invalid if zone_contents_remove_rr called in zone_update_remove
 			next_hash = (uint8_t *)knot_nsec3_next(rem_nsec3.rrs.rdata);
 			next_length = knot_nsec3_next_len(rem_nsec3.rrs.rdata);
 		}
