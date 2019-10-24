@@ -72,6 +72,7 @@ typedef struct zone
 
 	/*! \brief Control update context. */
 	struct zone_update *control_update;
+	pthread_mutex_t ctl_upd_lock;
 
 	/*! \brief Ensue one COW tramsaction on zone's trees at a time. */
 	knot_sem_t cow_lock;
@@ -114,8 +115,9 @@ void zone_free(zone_t **zone_ptr);
  * \brief Clears possible control update transaction.
  *
  * \param zone Zone to be cleared.
+ * \param lock_safe   True if the caller has the related mutex already locked.
  */
-void zone_control_clear(zone_t *zone);
+void zone_control_clear(zone_t *zone, bool lock_safe);
 
 inline static zone_journal_t zone_journal(zone_t *zone)
 {

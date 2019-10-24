@@ -172,6 +172,8 @@ zone_t* zone_new(const knot_dname_t *name)
 	zone->ddns_queue_size = 0;
 	init_list(&zone->ddns_queue);
 
+	pthread_mutex_init(&zone->ctl_upd_lock, NULL);
+
 	knot_sem_init(&zone->cow_lock, 1);
 
 	// Preferred master lock
@@ -186,15 +188,23 @@ zone_t* zone_new(const knot_dname_t *name)
 	return zone;
 }
 
-void zone_control_clear(zone_t *zone)
+void zone_control_clear(zone_t *zone, bool lock_safe)
 {
 	if (zone == NULL) {
 		return;
 	}
 
+	if (!lock_safe) {
+		pthread_mutex_lock(&zone->ctl_upd_lock);
+	}
+
 	zone_update_clear(zone->control_update);
 	free(zone->control_update);
 	zone->control_update = NULL;
+
+	if (!lock_safe) {
+		pthread_mutex_unlock(&zone->ctl_upd_lock);
+	}
 }
 
 void zone_free(zone_t **zone_ptr)
@@ -215,7 +225,9 @@ void zone_free(zone_t **zone_ptr)
 	knot_sem_destroy(&zone->cow_lock);
 
 	/* Control update. */
-	zone_control_clear(zone);
+	zone_control_clear(zone, false);
+
+	pthread_mutex_destroy(&zone->ctl_upd_lock);
 
 	/* Free preferred master. */
 	pthread_mutex_destroy(&zone->preferred_lock);
