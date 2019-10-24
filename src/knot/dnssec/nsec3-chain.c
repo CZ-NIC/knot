@@ -511,11 +511,9 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		knot_rrset_t rem_nsec3 = node_rrset(old_nsec3_n, KNOT_RRTYPE_NSEC3);
 		if (!knot_rrset_empty(&rem_nsec3)) {
 			knot_rrset_t rem_rrsig = node_rrset(old_nsec3_n, KNOT_RRTYPE_RRSIG);
-			if (1) {
-				ret = zone_update_remove(update, &rem_nsec3);
-				if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
-					ret = zone_update_remove(update, &rem_rrsig);
-				}
+			ret = zone_update_remove(update, &rem_nsec3);
+			if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
+				ret = zone_update_remove(update, &rem_rrsig);
 			}
 			next_hash = (uint8_t *)knot_nsec3_next(rem_nsec3.rrs.rdata);
 			next_length = knot_nsec3_next_len(rem_nsec3.rrs.rdata);
@@ -543,9 +541,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 			}
 		}
 		if (ret == KNOT_EOK) {
-			if (1) {
-				ret = zone_update_add(update, &nsec3);
-			}
+			ret = zone_update_add(update, &nsec3);
 		}
 		binode_unify(new_nsec3_n, false, NULL);
 		node_free_rrsets(new_nsec3_n, NULL);
