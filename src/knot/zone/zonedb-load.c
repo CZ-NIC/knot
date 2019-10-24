@@ -128,7 +128,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 
 	if (old_zone->control_update != NULL) {
 		log_zone_warning(old_zone->name, "control transaction aborted");
-		zone_control_clear(old_zone, false);
+		zone_control_clear(old_zone);
 	}
 
 	return zone;

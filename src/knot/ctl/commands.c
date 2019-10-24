@@ -431,16 +431,12 @@ static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	pthread_mutex_lock(&zone->ctl_upd_lock);
-
 	if (zone->control_update != NULL) {
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
 		return KNOT_TXN_EEXISTS;
 	}
 
 	zone->control_update = malloc(sizeof(zone_update_t));
 	if (zone->control_update == NULL) {
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
 		return KNOT_ENOMEM;
 	}
 
@@ -449,21 +445,17 @@ static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
 	if (ret != KNOT_EOK) {
 		free(zone->control_update);
 		zone->control_update = NULL;
+		return ret;
 	}
 
-	pthread_mutex_unlock(&zone->ctl_upd_lock);
-
-	return ret;
+	return KNOT_EOK;
 }
 
 static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	pthread_mutex_lock(&zone->ctl_upd_lock);
-
 	if (zone->control_update == NULL) {
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
@@ -472,8 +464,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	     changeset_empty(&zone->control_update->change)) ||
 	    ((zone->control_update->flags & UPDATE_FULL) &&
 	     zone_contents_is_empty(zone->control_update->new_cont))) {
-		zone_control_clear(zone, true);
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
+		zone_control_clear(zone);
 		return KNOT_EOK;
 	}
 
@@ -487,8 +478,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		int ret = (full ? knot_dnssec_zone_sign(zone->control_update, 0, rflags, &resch) :
 		                  knot_dnssec_sign_update(zone->control_update, &resch));
 		if (ret != KNOT_EOK) {
-			zone_control_clear(zone, true);
-			pthread_mutex_unlock(&zone->ctl_upd_lock);
+			zone_control_clear(zone);
 			return ret;
 		}
 		event_dnssec_reschedule(conf(), zone, &resch, false);
@@ -496,15 +486,12 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 
 	int ret = zone_update_commit(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
-		zone_control_clear(zone, true);
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
+		zone_control_clear(zone);
 		return ret;
 	}
 
 	free(zone->control_update);
 	zone->control_update = NULL;
-
-	pthread_mutex_unlock(&zone->ctl_upd_lock);
 
 	zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 
@@ -519,7 +506,7 @@ static int zone_txn_abort(zone_t *zone, ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	zone_control_clear(zone, false);
+	zone_control_clear(zone);
 
 	return KNOT_EOK;
 }
@@ -722,17 +709,14 @@ zone_read_failed:
 
 static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 {
-	pthread_mutex_lock(&zone->ctl_upd_lock);
-
 	if (zone->control_update == NULL) {
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	send_ctx_t *ctx = NULL;
+	send_ctx_t *ctx;
 	int ret = create_send_ctx(&ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
-		goto zone_txn_get_failed;
+		return ret;
 	}
 	ctx->data[KNOT_CTL_IDX_FLAGS] = flag;
 
@@ -765,8 +749,6 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 
 zone_txn_get_failed:
 	mm_free(&args->mm, ctx);
-
-	pthread_mutex_unlock(&zone->ctl_upd_lock);
 
 	return ret;
 }
@@ -843,28 +825,23 @@ static int send_changeset(changeset_t *ch, send_ctx_t *ctx)
 
 static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
 {
-	pthread_mutex_lock(&zone->ctl_upd_lock);
-
 	if (zone->control_update == NULL) {
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	// FULL update has no changeset to print, do a 'get' instead.
 	if (zone->control_update->flags & UPDATE_FULL) {
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
 		return zone_flag_txn_get(zone, args, CTL_FLAG_ADD);
 	}
 
 	send_ctx_t *ctx;
 	int ret = create_send_ctx(&ctx, zone->name, args);
-	if (ret == KNOT_EOK) {
-		ret = send_changeset(&zone->control_update->change, ctx);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
+	ret = send_changeset(&zone->control_update->change, ctx);
 	mm_free(&args->mm, ctx);
-	pthread_mutex_unlock(&zone->ctl_upd_lock);
-
 	return ret;
 }
 
@@ -973,34 +950,28 @@ parser_failed:
 
 static int zone_txn_set(zone_t *zone, ctl_args_t *args)
 {
-	pthread_mutex_lock(&zone->ctl_upd_lock);
-
 	if (zone->control_update == NULL) {
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	if (args->data[KNOT_CTL_IDX_OWNER] == NULL ||
 	    args->data[KNOT_CTL_IDX_TYPE]  == NULL) {
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
 		return KNOT_EINVAL;
 	}
 
 	knot_rrset_t *rrset;
 	int ret = create_rrset(&rrset, zone, args, true);
 	if (ret != KNOT_EOK) {
-		pthread_mutex_unlock(&zone->ctl_upd_lock);
 		return ret;
 	}
 
 	ret = zone_update_add(zone->control_update, rrset);
 	knot_rrset_free(rrset, NULL);
-	pthread_mutex_unlock(&zone->ctl_upd_lock);
 
 	return ret;
 }
 
-static int _zone_txn_unset(zone_t *zone, ctl_args_t *args)
+static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 {
 	if (zone->control_update == NULL) {
 		return KNOT_TXN_ENOTEXISTS;
@@ -1047,14 +1018,6 @@ static int _zone_txn_unset(zone_t *zone, ctl_args_t *args)
 			return zone_update_remove_node(zone->control_update, owner);
 		}
 	}
-}
-
-static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
-{
-	pthread_mutex_lock(&zone->ctl_upd_lock);
-	int ret = _zone_txn_unset(zone, args);
-	pthread_mutex_unlock(&zone->ctl_upd_lock);
-	return ret;
 }
 
 static bool zone_exists(const knot_dname_t *zone, void *data)
