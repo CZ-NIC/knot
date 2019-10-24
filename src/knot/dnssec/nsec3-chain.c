@@ -229,7 +229,6 @@ static zone_node_t *create_nsec3_node(const knot_dname_t *owner,
  * \param apex       Zone apex node.
  * \param params     NSEC3 hash function parameters.
  * \param ttl        TTL of the new NSEC3 node.
- * \param apex_cds   Hint to guess apex node type bitmap: false=just DNSKEY, true=DNSKEY,CDS,CDNSKEY.
  *
  * \return Error code, KNOT_EOK if successful.
  */
