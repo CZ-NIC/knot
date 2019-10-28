@@ -39,6 +39,8 @@ typedef struct {
 	char *keyfile;
 	/*! Optional client certfile name. */
 	char *certfile;
+	/*! Do we require a stapled OCSP response for the server cert? */
+	bool require_stapled;
 } tls_params_t;
 
 /*! \brief TLS context. */
