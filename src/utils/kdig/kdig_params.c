@@ -777,6 +777,24 @@ static int opt_notls_certfile(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_require_stapled(const char *arg, void *query)
+{
+    query_t *q = query;
+
+    q->tls.require_stapled = true;
+
+    return KNOT_EOK;
+}
+
+static int opt_norequire_stapled(const char *arg, void *query)
+{
+    query_t *q = query;
+
+    q->tls.require_stapled = false;
+
+    return KNOT_EOK;
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1274,6 +1292,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "tls-certfile",   ARG_REQUIRED, opt_tls_certfile },
 	{ "notls-certfile", ARG_NONE,     opt_notls_certfile },
+
+	{ "require-stapled",   ARG_NONE,  opt_require_stapled },
+	{ "norequire-stapled", ARG_NONE,  opt_norequire_stapled },
 
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
@@ -1979,6 +2000,7 @@ static void print_help(void)
 	       "       +[no]tls-sni=STR          Use TLS with Server Name Indication.\n"
 	       "       +[no]tls-keyfile=FILE     Use TLS with a client keyfile.\n"
 	       "       +[no]tls-certfile=FILE    Use TLS with a client certfile.\n"
+	       "       +[no]require-stapled      Require a valid stapled OCSP response for the server certificate when using TLS.\n"
 	       "       +[no]nsid                 Request NSID.\n"
 	       "       +[no]bufsize=B            Set EDNS buffer size.\n"
 	       "       +[no]padding[=N]          Pad with EDNS(0) (default or specify size).\n"
