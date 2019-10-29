@@ -779,20 +779,20 @@ static int opt_notls_certfile(const char *arg, void *query)
 
 static int opt_require_stapled(const char *arg, void *query)
 {
-    query_t *q = query;
+	query_t *q = query;
 
-    q->tls.require_stapled = true;
+	q->tls.require_stapled = true;
 
-    return KNOT_EOK;
+	return KNOT_EOK;
 }
 
 static int opt_norequire_stapled(const char *arg, void *query)
 {
-    query_t *q = query;
+	query_t *q = query;
 
-    q->tls.require_stapled = false;
+	q->tls.require_stapled = false;
 
-    return KNOT_EOK;
+	return KNOT_EOK;
 }
 
 static int opt_nsid(const char *arg, void *query)
