@@ -174,6 +174,9 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
 ])
 AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 
+# HTTP support (TODO enhance - I have no experience with automake)
+PKG_CHECK_MODULES([libnghttp2], [libnghttp2 >= 1.30.0])
+
 AC_ARG_ENABLE([recvmmsg],
    AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
    [], [enable_recvmmsg=auto])

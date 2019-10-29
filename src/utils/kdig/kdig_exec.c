@@ -19,6 +19,8 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include <nghttp2/nghttp2.h>
+
 #include "utils/kdig/kdig_exec.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
