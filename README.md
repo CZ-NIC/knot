@@ -25,7 +25,7 @@ sudo apt-get install \
 #### Install optional packages:
 ```bash
 sudo apt-get install \
-  libcap-ng-dev libsystemd-dev libidn2-0-dev protobuf-c-compiler libfstrm-dev libmaxminddb-dev
+  libcap-ng-dev libsystemd-dev libidn2-0-dev protobuf-c-compiler libfstrm-dev libmaxminddb-dev libnghttp2-dev
 ```
 
 ### Fedora like distributions
@@ -49,7 +49,7 @@ dnf install \
 #### Install optional packages:
 ```bash
 dnf install \
-  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel
+  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel libnghttp2-devel
 ```
 
 When compiling on RHEL based system, the Fedora EPEL repository has to be
