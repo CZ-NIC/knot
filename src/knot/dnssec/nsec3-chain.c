@@ -514,6 +514,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 			if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
 				ret = zone_update_remove(update, &rem_rrsig);
 			}
+			assert(update->flags & UPDATE_INCREMENTAL); // to make sure the following pointer remains valid
 			next_hash = (uint8_t *)knot_nsec3_next(rem_nsec3.rrs.rdata);
 			next_length = knot_nsec3_next_len(rem_nsec3.rrs.rdata);
 		}
@@ -759,6 +760,17 @@ int knot_nsec3_fix_chain(zone_update_t *update,
                          uint32_t ttl,
                          bool opt_out)
 {
+	assert(update);
+	assert(params);
+
+	// ensure that the salt has not changed
+	if (!knot_nsec3param_uptodate(update->zone->contents, params)) {
+		int ret = knot_nsec3param_update(update, params);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		return knot_nsec3_create_chain(update->new_cont, params, ttl, opt_out, update);
+	}
 
 	int ret = fix_nsec3_nodes(update, params, ttl, opt_out);
 	if (ret != KNOT_EOK) {
