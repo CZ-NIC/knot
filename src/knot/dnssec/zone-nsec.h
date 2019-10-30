@@ -109,6 +109,23 @@ zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone);
 int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone);
 
 /*!
+ * \brief Check if NSEC3 record in zone is consistent with configured params.
+ */
+bool knot_nsec3param_uptodate(const zone_contents_t *zone,
+                              const dnssec_nsec3_params_t *params);
+
+/*!
+ * \brief Update NSEC3PARAM in zone to be consistent with configured params.
+ *
+ * \param update  Zone to be updated.
+ * \param params  NSEC3 params.
+ *
+ * \return KNOT_E*
+ */
+int knot_nsec3param_update(zone_update_t *update,
+                           const dnssec_nsec3_params_t *params);
+
+/*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  *
  * \param update          Zone Update with current zone contents and to be updated with NSEC chain.
