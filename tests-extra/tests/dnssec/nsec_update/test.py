@@ -4,6 +4,7 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
+from dnstest.keys import Keymgr
 import random
 
 t = Test()
@@ -110,5 +111,21 @@ for zone in zones:
 
 if slave.log_search("no such record in zone found") or slave.log_search("fallback to AXFR"):
     set_err("IXFR ERROR")
+
+# update salt with keymgr and see if zone correctly re-NSEC3-d after update
+for z in zones1:
+    salt = "-" if master.dnssec(z).nsec3_salt_len == 0 else "fe" * master.dnssec(z).nsec3_salt_len
+    Keymgr.run_check(master.confile, z.name, "nsec3-salt", salt)
+    up = master.update(z)
+    up.add("abc." + z.name, 3600, "A", "1.2.3.4")
+    up.send("NOERROR")
+
+t.sleep(1)
+slave.ctl("zone-refresh")
+t.sleep(3)
+slave.flush()
+for z in zones1:
+    slave.zone_wait(z, after_update25[z.name], equal=False, greater=True)
+    slave.zone_verify(z)
 
 t.end()
