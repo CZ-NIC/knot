@@ -55,7 +55,7 @@ static void free_ddns_queue(zone_t *zone)
  * ...in this case we actually don't have to do anything because the zonefile is current,
  * but we must mark the journal as flushed
  */
-static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
+static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool verbose)
 {
 	/*! @note Function expects nobody will change zone contents meanwile. */
 
@@ -81,8 +81,10 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 
 	/* Check for disabled zonefile synchronization. */
 	if (sync_timeout < 0 && !force) {
-		log_zone_warning(zone->name, "zonefile synchronization disabled, "
-		                             "use force command to override it");
+		if (verbose) {
+			log_zone_warning(zone->name, "zonefile synchronization disabled, "
+			                             "use force command to override it");
+		}
 		return KNOT_EOK;
 	}
 
@@ -241,7 +243,7 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
-		ret = flush_journal(conf, zone, true);
+		ret = flush_journal(conf, zone, true, false);
 		if (ret == KNOT_EOK) {
 			ret = journal_insert(zone_journal(zone), change, extra);
 		}
@@ -274,17 +276,13 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 	return ret;
 }
 
-int zone_flush_journal(conf_t *conf, zone_t *zone)
+int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose)
 {
 	if (conf == NULL || zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	// NO open_journal() here.
-
-	int ret = flush_journal(conf, zone, false);
-
-	return ret;
+	return flush_journal(conf, zone, false, verbose);
 }
 
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)
