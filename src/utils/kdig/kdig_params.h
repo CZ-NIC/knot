@@ -20,6 +20,7 @@
 
 #include "utils/common/params.h"
 #include "utils/common/exec.h"
+#include "utils/common/https.h"
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
@@ -120,8 +121,10 @@ struct query {
 	uint16_t	alignment;
 	/*!< TLS parameters. */
 	tls_params_t	tls;
+	/*!< HTTPS parameters. */
+	https_params_t	https;
 	/*!< Transaction signature. */
-	knot_tsig_key_t tsig_key;
+	knot_tsig_key_t	tsig_key;
 	/*!< EDNS client subnet. */
 	knot_edns_client_subnet_t subnet;
 	/*!< Lits of custom EDNS options. */
