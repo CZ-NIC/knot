@@ -174,9 +174,6 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
 ])
 AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 
-# HTTP support (TODO enhance - I have no experience with automake)
-PKG_CHECK_MODULES([libnghttp2], [libnghttp2 >= 1.30.0])
-
 AC_ARG_ENABLE([recvmmsg],
    AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
    [], [enable_recvmmsg=auto])
@@ -529,6 +526,13 @@ AC_ARG_WITH(libidn,
   with_libidn=yes
 )
 
+dnl Check for libnghttp2.
+AC_ARG_WITH(libnghttp2,
+  AC_HELP_STRING([--with-libnghttp2=[DIR]], [Support DoH (needs libnghttp2)]),
+  with_libnghttp2=$withval,
+  with_libnghttp2=yes
+)
+
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
@@ -544,6 +548,13 @@ AS_IF([test "$enable_utilities" = "yes"], [
         with_libidn=no
         AC_MSG_WARN([libidn2 or libidn not found])
       ])
+    ])
+  ])
+
+  AS_IF([test "$with_libnghttp2" != "no"], [
+    PKG_CHECK_MODULES([libnghttp2], [libnghttp2 >= 1.30.0], [
+      with_libnghttp2=libnghttp2
+      AC_DEFINE([LIBNGHTTP2], [1], [Define to 1 to enable DoH support])
     ])
   ])
 ]) # Knot DNS utilities dependencies
@@ -713,6 +724,7 @@ result_msg_base="  Knot DNS $VERSION
     Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
+    Utilities with DoH:     ${with_libnghttp2}
     Utilities with Dnstap:  ${enable_dnstap}
     MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}
