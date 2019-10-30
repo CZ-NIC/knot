@@ -63,6 +63,8 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 
 	int ret = KNOT_EOK;
 	zone_journal_t j = zone_journal(zone);
+	zone_contents_t *contents = zone->contents;
+	uint32_t serial_to = zone_contents_serial(contents);
 
 	bool force = zone->flags & ZONE_FORCE_FLUSH;
 	zone->flags &= ~ZONE_FORCE_FLUSH;
@@ -70,7 +72,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
 
-	if (zone_contents_is_empty(zone->contents)) {
+	if (zone_contents_is_empty(contents)) {
 		if (allow_empty_zone && journal_is_existing(j)) {
 			ret = journal_set_flushed(j);
 		} else {
@@ -79,9 +81,15 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		goto flush_journal_replan;
 	}
 
+	bool outdated = zone->zonefile.exists && zone->zonefile.serial != serial_to ||
+	                zone->zonefile.retransfer || zone->zonefile.resigned;
+
 	/* Check for disabled zonefile synchronization. */
 	if (sync_timeout < 0 && !force) {
-		if (verbose) {
+		if (verbose && !zone_is_slave(conf, zone)) {
+			log_zone_warning(zone->name, "zonefile synchronization disabled, "
+			                             "use force command to override it");
+		} else {
 			log_zone_warning(zone->name, "zonefile synchronization disabled, "
 			                             "use force command to override it");
 		}
@@ -89,8 +97,6 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	}
 
 	/* Check for updated zone. */
-	zone_contents_t *contents = zone->contents;
-	uint32_t serial_to = zone_contents_serial(contents);
 	if (!force && zone->zonefile.exists && zone->zonefile.serial == serial_to &&
 	    !zone->zonefile.retransfer && !zone->zonefile.resigned) {
 		ret = KNOT_EOK; /* No differences. */
