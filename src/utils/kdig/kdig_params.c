@@ -824,6 +824,24 @@ static int opt_notls_ocsp_stapling(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_https(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->https.enable = true;
+
+	return opt_tls(arg, query);
+}
+
+static int opt_nohttps(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->https.enable = false;
+
+	return KNOT_EOK;
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1341,6 +1359,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "subnet",         ARG_REQUIRED, opt_subnet },
 	{ "nosubnet",       ARG_NONE,     opt_nosubnet },
+
+	{ "https",          ARG_NONE,     opt_https },
+	{ "nohttps",        ARG_NONE,     opt_nohttps },
 
 	// Obsolete aliases.
 	{ "client",         ARG_REQUIRED, opt_subnet },
@@ -1871,6 +1892,8 @@ static void complete_servers(query_t *query, const query_t *conf)
 		def_port = query->port;
 	} else if (strlen(conf->port) > 0) {
 		def_port = conf->port;
+	} else if (query->https.enable) {
+		def_port = DEFAULT_DNS_HTTPS_PORT;
 	} else if (query->tls.enable) {
 		def_port = DEFAULT_DNS_TLS_PORT;
 	} else {

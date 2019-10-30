@@ -433,6 +433,8 @@ src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/hex.c
 src/utils/common/hex.h
+src/utils/common/https.c
+src/utils/common/https.h
 src/utils/common/lookup.c
 src/utils/common/lookup.h
 src/utils/common/msg.c
