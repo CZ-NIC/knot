@@ -17,6 +17,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
+
 #include <gnutls/gnutls.h>
 
 #include "contrib/ucw/lists.h"

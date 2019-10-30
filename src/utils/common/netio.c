@@ -22,6 +22,8 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include <nghttp2/nghttp2.h>
+
 #ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h>
 #endif
@@ -158,14 +160,15 @@ void get_addr_str(const struct sockaddr_storage *ss,
 	}
 }
 
-int net_init(const srv_info_t    *local,
-             const srv_info_t    *remote,
-             const int           iptype,
-             const int           socktype,
-             const int           wait,
-             const net_flags_t   flags,
-             const tls_params_t  *tls_params,
-             net_t               *net)
+int net_init(const srv_info_t    	*local,
+             const srv_info_t    	*remote,
+             const int           	iptype,
+             const int           	socktype,
+             const int           	wait,
+             const net_flags_t   	flags,
+             const tls_params_t  	*tls_params,
+			 const https_params_t 	*https_params,
+             net_t               	*net)
 {
 	if (remote == NULL || net == NULL) {
 		DBG_NULL;
@@ -207,6 +210,16 @@ int net_init(const srv_info_t    *local,
 			net_clean(net);
 			return ret;
 		}
+
+		if (https_params != NULL && https_params->enable) {
+			ret = https_ctx_init(&net->https, https_params);
+			if (ret != KNOT_EOK) {
+				net_clean(net);
+				return ret;
+			}
+		}
+		//nghttp2_session *http_session;
+		//nghttp2_session_client_new(&http_session, NULL, NULL);
 	}
 
 	return KNOT_EOK;
@@ -594,4 +607,5 @@ void net_clean(net_t *net)
 	}
 
 	tls_ctx_deinit(&net->tls);
+	https_ctx_deinit(&net->https);
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,10 +13,23 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 #pragma once
 
-#include "utils/kdig/kdig_params.h"
+#include <stdbool.h>
+
+#include <nghttp2/nghttp2.h>
+
+#include "libknot/errcode.h"
+#include "utils/common/tls.h"
+
+typedef struct  {
+    bool enable;
+} https_params_t;
 
 
-int kdig_exec(const kdig_params_t *params);
+typedef struct {
+    nghttp2_session *session;
+} https_ctx_t;
+
+int https_ctx_init(https_ctx_t *ctx, const https_params_t *params);
+void https_ctx_deinit(https_ctx_t *ctx);
