@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -433,7 +433,8 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	               get_iptype(params->ip),
 	               get_socktype(params->protocol, KNOT_RRTYPE_SOA),
 	               params->wait,
-		       NET_FLAGS_NONE,
+	               NET_FLAGS_NONE,
+	               NULL,
 	               NULL,
 	               &net);
 	if (ret != KNOT_EOK) {
