@@ -169,14 +169,15 @@ void get_addr_str(const struct sockaddr_storage *ss,
 	}
 }
 
-int net_init(const srv_info_t    *local,
-             const srv_info_t    *remote,
-             const int           iptype,
-             const int           socktype,
-             const int           wait,
-             const net_flags_t   flags,
-             const tls_params_t  *tls_params,
-             net_t               *net)
+int net_init(const srv_info_t     *local,
+             const srv_info_t     *remote,
+             const int            iptype,
+             const int            socktype,
+             const int            wait,
+             const net_flags_t    flags,
+             const tls_params_t   *tls_params,
+             const https_params_t *https_params,
+             net_t                *net)
 {
 	if (remote == NULL || net == NULL) {
 		DBG_NULL;
@@ -218,6 +219,17 @@ int net_init(const srv_info_t    *local,
 			net_clean(net);
 			return ret;
 		}
+
+#ifdef LIBNGHTTP2
+		// Prepare for HTTPS.
+		if (https_params != NULL && https_params->enable) {
+			ret = https_ctx_init(&net->https, &net->tls, https_params);
+			if (ret != KNOT_EOK) {
+				net_clean(net);
+				return ret;
+			}
+		}
+#endif //LIBNGHTTP2
 	}
 
 	return KNOT_EOK;
@@ -349,9 +361,18 @@ int net_connect(net_t *net)
 			return KNOT_NET_ECONNECT;
 		}
 
-		// Establish TLS connection.
 		if (net->tls.params != NULL) {
+#ifdef LIBNGHTTP2
+			if (net->https.params.enable) {
+				//Establish HTTPS connection
+				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, net->tls.params->sni);
+			} else {
+				// Establish TLS connection.
+				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
+			}
+#else
 			ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
+#endif //LIBNGHTTP2
 			if (ret != KNOT_EOK) {
 				close(sockfd);
 				return ret;
@@ -414,6 +435,15 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 			WARN("can't send query to %s\n", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
+#ifdef LIBNGHTTP2
+	// Send data over HTTPS
+	} else if (net->https.params.enable) {
+		int ret = https_send_dns_query((https_ctx_t *)&net->https, buf, buf_len);
+		if (ret != KNOT_EOK) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+#endif //LIBNGHTTP2
 	// Send data over TLS.
 	} else if (net->tls.params != NULL) {
 		int ret = tls_ctx_send((tls_ctx_t *)&net->tls, buf, buf_len);
@@ -509,6 +539,11 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 			return ret;
 		}
+#ifdef LIBNGHTTP2
+	// Receive data over HTTPS.
+	} else if (net->https.params.enable) {
+		return https_recv_dns_response((https_ctx_t *)&net->https, buf, buf_len);
+#endif //LIBNGHTTP2
 	// Receive data over TLS.
 	} else if (net->tls.params != NULL) {
 		int ret = tls_ctx_receive((tls_ctx_t *)&net->tls, buf, buf_len);
@@ -604,5 +639,8 @@ void net_clean(net_t *net)
 		freeaddrinfo(net->remote_info);
 	}
 
+#ifdef LIBNGHTTP2
+	https_ctx_deinit(&net->https);
+#endif
 	tls_ctx_deinit(&net->tls);
 }
