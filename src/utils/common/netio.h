@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
+#include "utils/common/https.h"
 #include "utils/common/params.h"
 #include "utils/common/tls.h"
 
@@ -75,6 +76,10 @@ typedef struct {
 
 	/*! TLS context. */
 	tls_ctx_t tls;
+#ifdef LIBNGHTTP2
+	/*! HTTPS context. */
+	https_ctx_t https;
+#endif
 } net_t;
 
 /*!
@@ -144,20 +149,22 @@ void get_addr_str(const struct sockaddr_storage *ss,
  * \param socktype	Socket type.
  * \param wait		Network timeout interval.
  * \param tls_params	TLS parameters.
+ * \param https_params	HTTPS parameters.
  * \param flags		Connection flags.
  * \param net		Network structure to initialize.
  *
  * \retval KNOT_EOK	if success.
  * \retval errcode	if error.
  */
-int net_init(const srv_info_t    *local,
-             const srv_info_t    *remote,
-             const int           iptype,
-             const int           socktype,
-             const int           wait,
-             const net_flags_t   flags,
-             const tls_params_t  *tls_params,
-             net_t               *net);
+int net_init(const srv_info_t     *local,
+             const srv_info_t     *remote,
+             const int            iptype,
+             const int            socktype,
+             const int            wait,
+             const net_flags_t    flags,
+             const tls_params_t   *tls_params,
+             const https_params_t *https_params,
+             net_t                *net);
 
 /*!
  * \brief Creates socket and connects (if TCP) to remote address specified

@@ -824,6 +824,76 @@ static int opt_notls_ocsp_stapling(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_https(const char *arg, void *query)
+{
+#ifdef LIBNGHTTP2
+	query_t *q = query;
+
+	q->https.enable = true;
+
+	if (arg != NULL) {
+		char *tmp_path = strchr(arg, '/');
+		if (tmp_path) {
+			free(q->https.path);
+			q->https.path = strdup(tmp_path);
+
+			if (tmp_path != arg) {
+				free(q->tls.hostname);
+				q->tls.hostname = strndup(arg, (size_t)(tmp_path - arg));
+			}
+			return opt_tls(NULL, query);
+		} else {
+			return opt_tls_hostname(arg, q);
+		}
+
+	}
+
+	return opt_tls(NULL, query);
+
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGHTTP2
+}
+
+static int opt_nohttps(const char *arg, void *query)
+{
+#ifdef LIBNGHTTP2
+	query_t *q = query;
+
+	https_params_clean(&q->https);
+
+	return opt_notls(arg, query);
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGHTTP2
+}
+
+static int opt_https_get(const char *arg, void *query)
+{
+#ifdef LIBNGHTTP2
+	query_t *q = query;
+
+	q->https.method = GET;
+
+	return opt_https(arg, q);
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGHTTP2
+}
+
+static int opt_nohttps_get(const char *arg, void *query)
+{
+#ifdef LIBNGHTTP2
+	query_t *q = query;
+
+	q->https.method = POST;
+
+	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1327,6 +1397,12 @@ static const param_t kdig_opts2[] = {
 	{ "tls-ocsp-stapling",   ARG_OPTIONAL, opt_tls_ocsp_stapling },
 	{ "notls-ocsp-stapling", ARG_NONE,     opt_notls_ocsp_stapling },
 
+	{ "https",          ARG_OPTIONAL, opt_https },
+	{ "nohttps",        ARG_NONE,     opt_nohttps },
+
+	{ "https-get",      ARG_NONE,     opt_https_get },
+	{ "nohttps-get",    ARG_NONE,     opt_nohttps_get },
+
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
 
@@ -1430,6 +1506,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		}
 		query->port = strdup(conf->port);
 		tls_params_copy(&query->tls, &conf->tls);
+		https_params_copy(&query->https, &conf->https);
 		if (conf->tsig_key.name != NULL) {
 			int ret = knot_tsig_key_copy(&query->tsig_key,
 			                             &conf->tsig_key);
@@ -1491,6 +1568,7 @@ void query_free(query_t *query)
 	}
 
 	tls_params_clean(&query->tls);
+	https_params_clean(&query->https);
 
 	// Cleanup signing key.
 	knot_tsig_key_deinit(&query->tsig_key);
@@ -1871,6 +1949,8 @@ static void complete_servers(query_t *query, const query_t *conf)
 		def_port = query->port;
 	} else if (strlen(conf->port) > 0) {
 		def_port = conf->port;
+	} else if (query->https.enable) {
+		def_port = DEFAULT_DNS_HTTPS_PORT;
 	} else if (query->tls.enable) {
 		def_port = DEFAULT_DNS_TLS_PORT;
 	} else {
@@ -2034,6 +2114,11 @@ static void print_help(void)
 	       "       +[no]tls-certfile=FILE     Use TLS with a client certfile.\n"
 	       "       +[no]tls-ocsp-stapling[=H] Use TLS with a valid stapled OCSP response for the\n"
 	       "                                  server certificate (%u or specify hours).\n"
+#ifdef LIBNGHTTP2
+	       "       +[no]https[=URL]           Use HTTPS protocol. It's also possible to specify\n"
+	       "                                  URL where query will be sent.\n"
+	       "       +[no]https-get             Use HTTPS protocol with GET method instead of POST.\n"
+#endif
 	       "       +[no]nsid                  Request NSID.\n"
 	       "       +[no]bufsize=B             Set EDNS buffer size.\n"
 	       "       +[no]padding[=N]           Pad with EDNS(0) (default or specify size).\n"
