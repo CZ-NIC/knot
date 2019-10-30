@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ int event_flush(conf_t *conf, zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	int ret = zone_flush_journal(conf, zone);
+	int ret = zone_flush_journal(conf, zone, true);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

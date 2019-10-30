@@ -128,7 +128,7 @@ int zone_changes_clear(conf_t *conf, zone_t *zone);
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents);
 
 /*! \brief Synchronize zone file with journal. */
-int zone_flush_journal(conf_t *conf, zone_t *zone);
+int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose);
 
 /*!
  * \brief Atomically switch the content of the zone.
