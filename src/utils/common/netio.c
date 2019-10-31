@@ -212,14 +212,12 @@ int net_init(const srv_info_t    	*local,
 		}
 
 		if (https_params != NULL && https_params->enable) {
-			ret = https_ctx_init(&net->https, https_params);
+			ret = https_ctx_init(&net->https, &net->tls, https_params);
 			if (ret != KNOT_EOK) {
 				net_clean(net);
 				return ret;
 			}
 		}
-		//nghttp2_session *http_session;
-		//nghttp2_session_client_new(&http_session, NULL, NULL);
 	}
 
 	return KNOT_EOK;
@@ -358,6 +356,15 @@ int net_connect(net_t *net)
 				close(sockfd);
 				return ret;
 			}
+			//Establish HTTPS connection
+			if (net->https.params != NULL && net->https.params->enable) {
+				ret = https_ctx_connect(&net->https);
+				if (ret != KNOT_EOK) {
+					tls_ctx_close(&net->tls);
+					close(sockfd);
+					return ret;
+				}
+			}
 		}
 	}
 
@@ -413,6 +420,13 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	if (net->socktype == SOCK_DGRAM) {
 		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
 		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+	// Send data over HTTPS
+	} else if (net->https.params != NULL) {
+		int ret = https_send_dns_query((https_ctx_t *)&net->https, buf, buf_len);
+		if (ret != KNOT_EOK) {
 			WARN("can't send query to %s\n", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
@@ -511,6 +525,10 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 			return ret;
 		}
+	// Receive data over HTTPS.
+	} else if (net->https.params != NULL && net->https.params->enable) {
+		//int ret = tls_ctx_receive((tls_ctx_t *)&net->tls, buf, buf_len);
+		https_recv_dns_response((https_ctx_t *)&net->https);
 	// Receive data over TLS.
 	} else if (net->tls.params != NULL) {
 		int ret = tls_ctx_receive((tls_ctx_t *)&net->tls, buf, buf_len);
