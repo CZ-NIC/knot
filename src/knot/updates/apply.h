@@ -101,7 +101,7 @@ void apply_cleanup(apply_ctx_t *ctx);
  *
  * \param ctx  Context used to create the update.
  */
-void apply_rollback(apply_ctx_t *ctx);
+void apply_rollback(apply_ctx_t *ctx, const zone_contents_t *zone);
 
 /*!
  * \brief Shallow frees zone contents - either shallow copy after failed update

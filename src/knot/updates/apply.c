@@ -346,7 +346,7 @@ void apply_cleanup(apply_ctx_t *ctx)
 	}
 }
 
-void apply_rollback(apply_ctx_t *ctx)
+void apply_rollback(apply_ctx_t *ctx, const zone_contents_t *zone)
 {
 	if (ctx == NULL) {
 		return;
@@ -377,6 +377,10 @@ void apply_rollback(apply_ctx_t *ctx)
 	dnssec_nsec3_params_free(&ctx->contents->nsec3_params);
 
 	free(ctx->contents);
+
+	if (zone_contents_check(zone, true) != KNOT_EOK) {
+		abort();
+	}
 
 	if (ctx->cow_mutex != NULL) {
 		knot_sem_post(ctx->cow_mutex);

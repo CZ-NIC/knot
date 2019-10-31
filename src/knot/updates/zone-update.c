@@ -394,7 +394,7 @@ void zone_update_clear(zone_update_t *update)
 		apply_cleanup(update->a_ctx);
 		zone_contents_deep_free(update->new_cont);
 	} else {
-		apply_rollback(update->a_ctx);
+		apply_rollback(update->a_ctx, update->zone->contents);
 	}
 
 	free(update->a_ctx);
