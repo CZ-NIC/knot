@@ -395,6 +395,7 @@ void zone_update_clear(zone_update_t *update)
 		zone_contents_deep_free(update->new_cont);
 	} else {
 		apply_rollback(update->a_ctx);
+		(void)zone_contents_check(update->zone->contents, true);
 	}
 
 	free(update->a_ctx);
