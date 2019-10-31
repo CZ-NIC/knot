@@ -181,7 +181,7 @@ static bool nsec3param_valid(const knot_rdataset_t *rrs,
 	}
 
 	bool equal = parsed.algorithm == params->algorithm &&
-	             parsed.flags == params->flags &&
+	             parsed.flags == 0 && // opt-out flag is always 0 in NSEC3PARAM
 	             parsed.iterations == params->iterations &&
 	             dnssec_binary_cmp(&parsed.salt, &params->salt) == 0;
 
