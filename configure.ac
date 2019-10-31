@@ -552,7 +552,7 @@ AS_IF([test "$enable_utilities" = "yes"], [
   ])
 
   AS_IF([test "$with_libnghttp2" != "no"], [
-    PKG_CHECK_MODULES([libnghttp2], [libnghttp2 >= 1.30.0], [
+    PKG_CHECK_MODULES([libnghttp2], [libnghttp2], [
       with_libnghttp2=libnghttp2
       AC_DEFINE([LIBNGHTTP2], [1], [Define to 1 to enable DoH support])
     ])
