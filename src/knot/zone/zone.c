@@ -50,9 +50,58 @@ static void free_ddns_queue(zone_t *zone)
 	ptrlist_free(&zone->ddns_queue, NULL);
 }
 
-static bool flush_needed(conf_t *conf, zone_t *zone, bool verbose)
+static int update_zonefile(conf_t *conf, zone_t *zone)
 {
+	assert(zone);
 
+	zone_contents_t *contents = zone->contents;
+	uint32_t serial_to = zone_contents_serial(contents);
+
+	char *zonefile = conf_zonefile(conf, zone->name);
+
+	/* Synchronize current zone contents with the zone file. */
+	int ret = zonefile_write(zonefile, contents);
+	if (ret != KNOT_EOK) {
+		log_zone_warning(zone->name, "failed to update zone file (%s)",
+		                 knot_strerror(ret));
+		free(zonefile);
+		return ret;
+	}
+
+	if (zone->zonefile.exists) {
+		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
+		              zone->zonefile.serial, serial_to);
+	} else {
+		log_zone_info(zone->name, "zone file updated, serial %u",
+		              serial_to);
+	}
+
+	/* Get zone file status. */
+	struct stat st;
+	if (stat(zonefile, &st) < 0) {
+		log_zone_warning(zone->name, "failed to access zone file (%s)",
+		                 knot_strerror(knot_map_errno()));
+		free(zonefile);
+		return KNOT_EACCES;
+	}
+
+	free(zonefile);
+
+	/* Update zone file attributes. */
+	zone->zonefile.exists = true;
+	zone->zonefile.mtime = st.st_mtim;
+	zone->zonefile.serial = serial_to;
+
+	/* Update journal status. */
+	zone_journal_t journal = zone_journal(zone);
+	if (journal_is_existing(journal)) {
+		ret = journal_set_flushed(journal);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 static int flush_journal(conf_t *conf, zone_t *zone, bool verbose)
@@ -61,10 +110,12 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool verbose)
 
 	assert(zone);
 
-	int ret = KNOT_EOK;
-	zone_journal_t j = zone_journal(zone);
+	zone_journal_t journal = zone_journal(zone);
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);
+
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	int64_t sync_timeout = conf_int(&val);
 
 	bool force = zone->flags & ZONE_FORCE_FLUSH;
 	zone->flags &= ~ZONE_FORCE_FLUSH;
@@ -74,25 +125,23 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool verbose)
 	zone->zonefile.resigned = false;
 	zone->zonefile.retransfer = false;
 
+	int ret = KNOT_EOK;
+
+	/* */
 	if (zone_contents_is_empty(contents)) {
-		if (journal_is_existing(j)) {
-			ret = journal_set_flushed(j);
-		} else {
-			ret = KNOT_EOK;
+		if (journal_is_existing(journal)) {
+			ret = journal_set_flushed(journal);
 		}
 		goto flush_journal_replan;
 	}
-
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
 
 	/* Check for disabled zonefile synchronization. */
 	if (sync_timeout < 0 && !force) {
 		uint32_t journal_serial;
 		bool exists;
 
-		ret = journal_info(zone_journal(zone), &exists, NULL, &journal_serial,
-				   NULL, NULL, NULL, NULL);
+		ret = journal_info(journal, &exists, NULL, &journal_serial,
+		                   NULL, NULL, NULL, NULL);
 		if (verbose && !zone_is_slave(conf, zone)) {
 			log_zone_warning(zone->name, "zonefile synchronization disabled, "
 			                             "use force command to override it");
@@ -104,53 +153,8 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool verbose)
 	}
 
 	/* Check if the flush is necessary. */
-	if (!outdated && !force) {
-		ret = KNOT_EOK;
-		goto flush_journal_replan;
-	}
-
-	char *zonefile = conf_zonefile(conf, zone->name);
-
-	/* Synchronize journal. */
-	ret = zonefile_write(zonefile, contents);
-	if (ret != KNOT_EOK) {
-		log_zone_warning(zone->name, "failed to update zone file (%s)",
-		                 knot_strerror(ret));
-		free(zonefile);
-		goto flush_journal_replan;
-	}
-
-	if (zone->zonefile.exists) {
-		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
-		              zone->zonefile.serial, serial_to);
-	} else {
-		log_zone_info(zone->name, "zone file updated, serial %u",
-		              serial_to);
-	}
-
-	/* Update zone version. */
-	struct stat st;
-	if (stat(zonefile, &st) < 0) {
-		log_zone_warning(zone->name, "failed to update zone file (%s)",
-		                 knot_strerror(knot_map_errno()));
-		free(zonefile);
-		ret = KNOT_EACCES;
-		goto flush_journal_replan;
-	}
-
-	free(zonefile);
-
-	/* Update zone file attributes. */
-	zone->zonefile.exists = true;
-	zone->zonefile.mtime = st.st_mtim;
-	zone->zonefile.serial = serial_to;
-
-	/* Flush journal. */
-	if (journal_is_existing(j)) {
-		ret = journal_set_flushed(j);
-		if (ret != KNOT_EOK) {
-			goto flush_journal_replan;
-		}
+	if (outdated || force) {
+		ret = update_zonefile(conf, zone);
 	}
 
 flush_journal_replan:
