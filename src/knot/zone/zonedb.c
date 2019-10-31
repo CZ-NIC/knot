@@ -35,7 +35,7 @@ static void discard_zone(zone_t *zone)
 		if (!zone->zonefile.exists || journal_info(
 			zone_journal(zone), &exists, NULL, &journal_serial, NULL, NULL, NULL, NULL
 		    ) != KNOT_EOK || !exists || journal_serial != zone_serial) {
-			zone_flush_journal(conf(), zone);
+			zone_flush_journal(conf(), zone, false);
 		}
 	}
 
