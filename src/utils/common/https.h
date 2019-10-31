@@ -17,19 +17,35 @@
 
 #include <stdbool.h>
 
-#include <nghttp2/nghttp2.h>
-
-#include "libknot/errcode.h"
-#include "utils/common/tls.h"
-
 typedef struct  {
     bool enable;
 } https_params_t;
 
+#ifdef LIBNGHTTP2
+#include <nghttp2/nghttp2.h>
+#include <poll.h>
+
+#include "contrib/base64.h"
+#include "libknot/errcode.h"
+#include "utils/common/tls.h"
+#include "utils/common/msg.h"
+
+#define MAKE_STATIC_NV(K, V) \
+    { (uint8_t *)K, (uint8_t *)V, sizeof(K) - 1, sizeof(V) - 1, NGHTTP2_NV_FLAG_NONE }
+
+#define MAKE_NV(K, KS, V, VS) \
+    { (uint8_t *)K, (uint8_t *)V, KS, VS, NGHTTP2_NV_FLAG_NONE }
 
 typedef struct {
     nghttp2_session *session;
+    tls_ctx_t *tls;
+    const https_params_t *params;
 } https_ctx_t;
 
-int https_ctx_init(https_ctx_t *ctx, const https_params_t *params);
+int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *params);
+int https_ctx_connect(https_ctx_t *ctx);
+int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len);
+int https_recv_dns_response(https_ctx_t *ctx);
 void https_ctx_deinit(https_ctx_t *ctx);
+
+#endif //LIBNGHTTP2
