@@ -92,22 +92,11 @@ static int update_zonefile(conf_t *conf, zone_t *zone)
 	zone->zonefile.mtime = st.st_mtim;
 	zone->zonefile.serial = serial_to;
 
-	/* Update journal status. */
-	zone_journal_t journal = zone_journal(zone);
-	if (journal_is_existing(journal)) {
-		ret = journal_set_flushed(journal);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
 	return KNOT_EOK;
 }
 
-static int flush_journal(conf_t *conf, zone_t *zone, bool verbose)
+static int flush_journal(conf_t *conf, zone_t *zone, bool user)
 {
-	/*! @note Function expects nobody will change zone contents meanwile. */
-
 	assert(zone);
 
 	zone_journal_t journal = zone_journal(zone);
@@ -125,39 +114,40 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool verbose)
 	zone->zonefile.resigned = false;
 	zone->zonefile.retransfer = false;
 
-	int ret = KNOT_EOK;
+	if (!zone_contents_is_empty(contents)) {
+		/* Check for disabled zonefile synchronization. */
+		if (sync_timeout < 0 && !force) {
+			if (user) {
+				log_zone_warning(zone->name,
+				                 "zone file synchronization disabled, "
+				                 "use force command to override it");
+			} else {
+				/*
+				uint32_t journal_serial;
+				bool exists;
 
-	/* */
-	if (zone_contents_is_empty(contents)) {
-		if (journal_is_existing(journal)) {
-			ret = journal_set_flushed(journal);
+				int ret = journal_info(journal, &exists, NULL, &journal_serial,
+						       NULL, NULL, NULL, NULL);
+				bool x = (ret == KNOT_EOK && exists && journal_serial == serial_to);
+
+				if (verbose && !zone_is_slave(conf, zone)) {
+					log_zone_warning(zone->name, "zonefile synchronization disabled, "
+								     "use force command to override it");
+				}
+				*/
+			}
+			return KNOT_EOK;
 		}
-		goto flush_journal_replan;
-	}
 
-	/* Check for disabled zonefile synchronization. */
-	if (sync_timeout < 0 && !force) {
-		uint32_t journal_serial;
-		bool exists;
-
-		ret = journal_info(journal, &exists, NULL, &journal_serial,
-		                   NULL, NULL, NULL, NULL);
-		if (verbose && !zone_is_slave(conf, zone)) {
-			log_zone_warning(zone->name, "zonefile synchronization disabled, "
-			                             "use force command to override it");
-		} else {
-			log_zone_warning(zone->name, "zonefile synchronization disabled, "
-			                             "use force command to override it");
+		/* Check if the flush is necessary. */
+		if (outdated || force) {
+			int ret = update_zonefile(conf, zone);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
-		return KNOT_EOK;
 	}
 
-	/* Check if the flush is necessary. */
-	if (outdated || force) {
-		ret = update_zonefile(conf, zone);
-	}
-
-flush_journal_replan:
 	/* Plan next journal flush after proper period. */
 	zone->timers.last_flush = time(NULL);
 	if (sync_timeout > 0) {
@@ -166,7 +156,11 @@ flush_journal_replan:
 		                              ZONE_EVENT_FLUSH, next_flush);
 	}
 
-	return ret;
+	if (journal_is_existing(journal)) {
+		return journal_set_flushed(journal);
+	} else {
+		return KNOT_EOK;
+	}
 }
 
 zone_t* zone_new(const knot_dname_t *name)
@@ -290,13 +284,13 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 	return ret;
 }
 
-int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose)
+int zone_flush_journal(conf_t *conf, zone_t *zone, bool user)
 {
 	if (conf == NULL || zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return flush_journal(conf, zone, verbose);
+	return flush_journal(conf, zone, user);
 }
 
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)
