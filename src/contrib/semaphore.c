@@ -27,8 +27,13 @@ void knot_sem_init(knot_sem_t *sem, unsigned int value)
 {
 	int ret = sem_init(&sem->semaphore, 1, value);
 	if (ret == 0) {
-		sem->status = -1;
+		sem->use_posix = true;
+		sem->status = value;
+
+		sem->status_lock = malloc(sizeof(*sem->status_lock));
+		pthread_mutex_init(&sem->status_lock->mutex, NULL);
 	} else {
+		sem->use_posix = false;
 		sem->status = value;
 		sem->status_lock = malloc(sizeof(*sem->status_lock));
 		pthread_mutex_init(&sem->status_lock->mutex, NULL);
@@ -38,11 +43,16 @@ void knot_sem_init(knot_sem_t *sem, unsigned int value)
 
 void knot_sem_wait(knot_sem_t *sem)
 {
-	if (sem->status < 0) {
+	if (sem->use_posix) {
 		int semret;
 		do {
 			semret = sem_wait(&sem->semaphore);
 		} while (semret != 0); // repeat wait as it might be interrupted by a signal
+
+		pthread_mutex_lock(&sem->status_lock->mutex);
+		assert(sem->status > 0);
+		sem->status--;
+		pthread_mutex_unlock(&sem->status_lock->mutex);
 	} else {
 		pthread_mutex_lock(&sem->status_lock->mutex);
 		while (sem->status == 0) {
@@ -55,7 +65,11 @@ void knot_sem_wait(knot_sem_t *sem)
 
 void knot_sem_post(knot_sem_t *sem)
 {
-	if (sem->status < 0) {
+	if (sem->use_posix) {
+		pthread_mutex_lock(&sem->status_lock->mutex);
+		sem->status++;
+		pthread_mutex_unlock(&sem->status_lock->mutex);
+
 		int semret = sem_post(&sem->semaphore);
 		(void)semret;
 		assert(semret == 0);
@@ -70,8 +84,11 @@ void knot_sem_post(knot_sem_t *sem)
 void knot_sem_destroy(knot_sem_t *sem)
 {
 	knot_sem_wait(sem);
-	if (sem->status < 0) {
+	if (sem->use_posix) {
 		sem_destroy(&sem->semaphore);
+
+		pthread_mutex_destroy(&sem->status_lock->mutex);
+		free(sem->status_lock);
 	} else {
 		pthread_cond_destroy(&sem->status_lock->cond);
 		pthread_mutex_destroy(&sem->status_lock->mutex);
