@@ -121,8 +121,10 @@ struct query {
 	uint16_t	alignment;
 	/*!< TLS parameters. */
 	tls_params_t	tls;
+#ifdef LIBNGHTTP2
 	/*!< HTTPS parameters. */
 	https_params_t https;
+#endif //LIBNGHTTP2
 	/*!< Transaction signature. */
 	knot_tsig_key_t tsig_key;
 	/*!< EDNS client subnet. */
