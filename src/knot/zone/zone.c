@@ -50,12 +50,12 @@ static void free_ddns_queue(zone_t *zone)
 	ptrlist_free(&zone->ddns_queue, NULL);
 }
 
-/*!
- * \param allow_empty_zone useful when need to flush journal but zone is not yet loaded
- * ...in this case we actually don't have to do anything because the zonefile is current,
- * but we must mark the journal as flushed
- */
-static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool verbose)
+static bool flush_needed(conf_t *conf, zone_t *zone, bool verbose)
+{
+
+}
+
+static int flush_journal(conf_t *conf, zone_t *zone, bool verbose)
 {
 	/*! @note Function expects nobody will change zone contents meanwile. */
 
@@ -69,23 +69,30 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	bool force = zone->flags & ZONE_FORCE_FLUSH;
 	zone->flags &= ~ZONE_FORCE_FLUSH;
 
-	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	int64_t sync_timeout = conf_int(&val);
+	bool outdated = zone->zonefile.resigned || zone->zonefile.retransfer ||
+	                !zone->zonefile.exists || zone->zonefile.serial != serial_to;
+	zone->zonefile.resigned = false;
+	zone->zonefile.retransfer = false;
 
 	if (zone_contents_is_empty(contents)) {
-		if (allow_empty_zone && journal_is_existing(j)) {
+		if (journal_is_existing(j)) {
 			ret = journal_set_flushed(j);
 		} else {
-			ret = KNOT_EINVAL;
+			ret = KNOT_EOK;
 		}
 		goto flush_journal_replan;
 	}
 
-	bool outdated = zone->zonefile.exists && zone->zonefile.serial != serial_to ||
-	                zone->zonefile.retransfer || zone->zonefile.resigned;
+	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	int64_t sync_timeout = conf_int(&val);
 
 	/* Check for disabled zonefile synchronization. */
 	if (sync_timeout < 0 && !force) {
+		uint32_t journal_serial;
+		bool exists;
+
+		ret = journal_info(zone_journal(zone), &exists, NULL, &journal_serial,
+				   NULL, NULL, NULL, NULL);
 		if (verbose && !zone_is_slave(conf, zone)) {
 			log_zone_warning(zone->name, "zonefile synchronization disabled, "
 			                             "use force command to override it");
@@ -96,10 +103,9 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		return KNOT_EOK;
 	}
 
-	/* Check for updated zone. */
-	if (!force && zone->zonefile.exists && zone->zonefile.serial == serial_to &&
-	    !zone->zonefile.retransfer && !zone->zonefile.resigned) {
-		ret = KNOT_EOK; /* No differences. */
+	/* Check if the flush is necessary. */
+	if (!outdated && !force) {
+		ret = KNOT_EOK;
 		goto flush_journal_replan;
 	}
 
@@ -138,8 +144,6 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	zone->zonefile.exists = true;
 	zone->zonefile.mtime = st.st_mtim;
 	zone->zonefile.serial = serial_to;
-	zone->zonefile.resigned = false;
-	zone->zonefile.retransfer = false;
 
 	/* Flush journal. */
 	if (journal_is_existing(j)) {
@@ -249,7 +253,7 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
-		ret = flush_journal(conf, zone, true, false);
+		ret = flush_journal(conf, zone, false);
 		if (ret == KNOT_EOK) {
 			ret = journal_insert(zone_journal(zone), change, extra);
 		}
@@ -288,7 +292,7 @@ int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose)
 		return KNOT_EINVAL;
 	}
 
-	return flush_journal(conf, zone, false, verbose);
+	return flush_journal(conf, zone, verbose);
 }
 
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)

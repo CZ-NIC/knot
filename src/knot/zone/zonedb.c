@@ -28,15 +28,7 @@ static void discard_zone(zone_t *zone)
 {
 	// Don't flush if removed zone (no previous configuration available).
 	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name))) {
-		uint32_t journal_serial, zone_serial = zone_contents_serial(zone->contents);
-		bool exists;
-
-		// Flush if bootstrapped or if the journal doesn't exist.
-		if (!zone->zonefile.exists || journal_info(
-			zone_journal(zone), &exists, NULL, &journal_serial, NULL, NULL, NULL, NULL
-		    ) != KNOT_EOK || !exists || journal_serial != zone_serial) {
-			zone_flush_journal(conf(), zone, false);
-		}
+		(void)zone_flush_journal(conf(), zone, false);
 	}
 
 	zone_free(&zone);
