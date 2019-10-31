@@ -16,6 +16,7 @@
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdbool.h>
 
 #pragma once
 
@@ -26,10 +27,11 @@ typedef struct {
 
 typedef struct {
 	int status;
-	union {
+	struct {
 		sem_t semaphore;
 		knot_sem_mutex_t *status_lock;
 	};
+	bool use_posix;
 } knot_sem_t;
 
 void knot_sem_init(knot_sem_t *sem, unsigned int value);
