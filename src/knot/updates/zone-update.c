@@ -749,9 +749,14 @@ static void update_clear(struct rcu_head *param)
 
 	update_clear_ctx_t *ctx = (update_clear_ctx_t *)param;
 
+	const knot_dname_t *zname = ctx->cleanup_apply->contents->apex->owner;
+	log_zone_info(zname, "post-update cleanup started");
+
 	ctx->free_method(ctx->free_contents);
 	apply_cleanup(ctx->cleanup_apply);
 	free(ctx->cleanup_apply);
+
+	log_zone_info(zname, "post-update cleanup finished");
 
 	if (counter_reach(&counter, ctx->new_cont_size, UPDATE_MEMTRIM_AT)) {
 		mem_trim();
