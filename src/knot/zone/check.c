@@ -24,11 +24,12 @@
 #define nassert(node, cond) if (!(cond)) { \
 	printf("assert node %s '%s'\n", (node)->owner, #cond); \
 	fflush(stdout); \
-	assert(cond); \
+	ret = KNOT_ERROR; \
 }
 
 int node_check_basic(const zone_node_t *node)
 {
+	int ret = KNOT_EOK;
 	assert(node->owner != NULL);
 	if (node->rrset_count > 0) {
 		nassert(node, node->rrs != NULL);
@@ -43,7 +44,7 @@ int node_check_basic(const zone_node_t *node)
 			nassert(node, counter->rrs != node->rrs);
 		}
 	}
-	return KNOT_EOK;
+	return ret;
 }
 
 int node_check_links(const zone_node_t *node, const knot_dname_t *zone_apex)
@@ -54,7 +55,9 @@ int node_check_links(const zone_node_t *node, const knot_dname_t *zone_apex)
 	}
 	if (ret == KNOT_EOK && knot_dname_cmp(node->owner, zone_apex) != 0) {
 		nassert(node, node->parent != NULL);
-		ret = node_check_basic(node->parent);
+		if (ret == KNOT_EOK) {
+			ret = node_check_basic(node->parent);
+		}
 	}
 
 	for (int i = 0; ret == KNOT_EOK && i < node->rrset_count; i++) {
@@ -70,14 +73,17 @@ int node_check_links(const zone_node_t *node, const knot_dname_t *zone_apex)
 int node_check_unified(const zone_node_t *node)
 {
 	const zone_node_t *counter = binode_counterpart((zone_node_t *)node);
+	int ret = KNOT_EOK;
 	nassert(node, counter != NULL);
 	nassert(node, counter->children == node->children);
-	nassert(node, (counter->flags ^ node->flags) == NODE_FLAGS_SECOND);
+	if ((counter->flags ^ node->flags) != NODE_FLAGS_SECOND) {
+		printf("node flags %hu, counter flags %hu\n", node->flags, counter->flags);
+	}
 	nassert(node, counter->nsec3_hash == node->nsec3_hash);
 	nassert(node, counter->nsec3_wildcard_name == node->nsec3_wildcard_name);
 	nassert(node, counter->rrs == node->rrs);
 	nassert(node, counter->rrset_count == node->rrset_count);
-	return KNOT_EOK;
+	return ret;
 }
 
 typedef struct {

@@ -814,7 +814,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return ret;
 	}
 
-	(void)zone_contents_check(update->new_cont, false);
+	if (zone_contents_check(update->new_cont, false) != KNOT_EOK) {
+		changeset_print(&update->change, stdout, false);
+		fflush(stdout);
+		abort();
+	}
 
 	/* Check the zone size. */
 	conf_val_t val = conf_zone_get(conf, C_ZONE_MAX_SIZE, update->zone->name);
