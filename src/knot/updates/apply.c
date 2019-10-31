@@ -335,7 +335,9 @@ void apply_cleanup(apply_ctx_t *ctx)
 		zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs, true);
 	}
 
-	(void)zone_contents_check(ctx->contents, true);
+	if (zone_contents_check(ctx->contents, true) != KNOT_EOK) {
+		abort();
+	}
 
 	zone_tree_free(&ctx->node_ptrs);
 	zone_tree_free(&ctx->nsec3_ptrs);
