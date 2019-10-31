@@ -95,6 +95,8 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone)
 		goto flush_journal_replan;
 	}
 
+	log_zone_info(zone->name, "zonefile flush started");
+
 	char *zonefile = conf_zonefile(conf, zone->name);
 
 	/* Synchronize journal. */
