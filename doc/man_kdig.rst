@@ -242,8 +242,10 @@ Options
 **+**\ [\ **no**\ ]\ **tls-certfile**\ =\ *FILE*
   Use TLS with a client certfile.
 
-**+**\ [\ **no**\ ]\ **require-stapled**
-  Require a valid stapled OCSP response for the server certificate when using TLS.
+**+**\ [\ **no**\ ]\ **tls-ocsp-stapling**\[\ =\ *H*\]
+  Use TLS with a valid stapled OCSP response for the server certificate
+  (%u or specify hours). OCSP responses older than the specified period are
+  considered invalid.
 
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).

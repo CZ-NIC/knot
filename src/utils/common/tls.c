@@ -82,7 +82,7 @@ int tls_params_copy(tls_params_t *dst, const tls_params_t *src)
 		}
 	}
 
-	dst->require_stapled = src->require_stapled;
+	dst->ocsp_stapling = src->ocsp_stapling;
 
 	ptrnode_t *n;
 	WALK_LIST(n, src->ca_files) {
@@ -149,8 +149,6 @@ static bool check_pin(const uint8_t *cert_pin, size_t cert_pin_len, const list_t
 	return false;
 }
 
-// trust stapled OCSP data for 7 days.
-#define OCSP_VALID_PERIOD (7 * 24 * 60 * 60)
 static bool verify_ocsp(gnutls_session_t *session)
 {
 	bool ret = false;
@@ -240,7 +238,8 @@ static bool verify_ocsp(gnutls_session_t *session)
 		goto cleanup;
 	}
 	if (ntime == -1) {
-		if (now - vtime > OCSP_VALID_PERIOD) {
+		tls_ctx_t *ctx = gnutls_session_get_ptr(*session);
+		if (now - vtime > ctx->params->ocsp_stapling) {
 			WARN("TLS, OCSP response is out of date.\n");
 			goto cleanup;
 		}
@@ -349,7 +348,7 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 static bool do_verification(const tls_params_t *params)
 {
 	return params->hostname != NULL || params->system_ca ||
-	       !EMPTY_LIST(params->ca_files) || params->require_stapled;
+	       !EMPTY_LIST(params->ca_files) || params->ocsp_stapling > 0;
 }
 
 static int verify_certificate(gnutls_session_t session)
@@ -398,7 +397,7 @@ static int verify_certificate(gnutls_session_t session)
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 
-	if (ctx->params->require_stapled && !verify_ocsp(&session)) {
+	if (ctx->params->ocsp_stapling > 0 && !verify_ocsp(&session)) {
 		WARN("TLS, failed to validate required OCSP data\n");
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
