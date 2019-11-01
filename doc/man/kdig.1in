@@ -263,8 +263,10 @@ Use TLS with a client keyfile.
 \fB+\fP[\fBno\fP]\fBtls\-certfile\fP=\fIFILE\fP
 Use TLS with a client certfile.
 .TP
-\fB+\fP[\fBno\fP]\fBrequire-stapled\fP
-Require a valid stapled OCSP response for the server certificate when using TLS.
+\fB+\fP[\fBno\fP]\fBtls\-ocsp\-stapling\fP[=\fIH\fP]
+Use TLS with a valid stapled OCSP response for the server certificate
+(%u or specify hours). OCSP responses older than the specified time are
+considered invalid.
 .TP
 \fB+\fP[\fBno\fP]\fBnsid\fP
 Request the nameserver identifier (NSID).
