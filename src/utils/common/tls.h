@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,8 +39,8 @@ typedef struct {
 	char *keyfile;
 	/*! Optional client certfile name. */
 	char *certfile;
-	/*! Do we require a stapled OCSP response for the server cert? */
-	bool require_stapled;
+	/*! Optional validity of stapled OCSP response for the server cert. */
+	uint32_t ocsp_stapling;
 } tls_params_t;
 
 /*! \brief TLS context. */

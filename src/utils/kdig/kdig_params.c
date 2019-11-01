@@ -38,9 +38,10 @@
 
 #define PROGRAM_NAME "kdig"
 
-#define DEFAULT_RETRIES_DIG	2
-#define DEFAULT_TIMEOUT_DIG	5
-#define DEFAULT_ALIGNMENT_SIZE	128
+#define DEFAULT_RETRIES_DIG		2
+#define DEFAULT_TIMEOUT_DIG		5
+#define DEFAULT_ALIGNMENT_SIZE		128
+#define DEFAULT_TLS_OCSP_STAPLING	(7 * 24 * 3600)
 
 static const flags_t DEFAULT_FLAGS_DIG = {
 	.aa_flag = false,
@@ -777,20 +778,30 @@ static int opt_notls_certfile(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_require_stapled(const char *arg, void *query)
+static int opt_tls_ocsp_stapling(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	q->tls.require_stapled = true;
+	if (arg == NULL) {
+		q->tls.ocsp_stapling = DEFAULT_TLS_OCSP_STAPLING;
+		return opt_tls(arg, query);
+	} else {
+		uint32_t num = 0;
+		if (str_to_u32(arg, &num) != KNOT_EOK || num == 0) {
+			ERR("invalid +tls-ocsp-stapling=%s\n", arg);
+			return KNOT_EINVAL;
+		}
 
-	return KNOT_EOK;
+		q->tls.ocsp_stapling = 3600 * num;
+		return opt_tls(arg, query);
+	}
 }
 
-static int opt_norequire_stapled(const char *arg, void *query)
+static int opt_notls_ocsp_stapling(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	q->tls.require_stapled = false;
+	q->tls.ocsp_stapling = 0;
 
 	return KNOT_EOK;
 }
@@ -1293,8 +1304,8 @@ static const param_t kdig_opts2[] = {
 	{ "tls-certfile",   ARG_REQUIRED, opt_tls_certfile },
 	{ "notls-certfile", ARG_NONE,     opt_notls_certfile },
 
-	{ "require-stapled",   ARG_NONE,  opt_require_stapled },
-	{ "norequire-stapled", ARG_NONE,  opt_norequire_stapled },
+	{ "tls-ocsp-stapling",   ARG_OPTIONAL, opt_tls_ocsp_stapling },
+	{ "notls-ocsp-stapling", ARG_NONE,     opt_notls_ocsp_stapling },
 
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
@@ -1964,59 +1975,59 @@ static void print_help(void)
 	       "            [-y [algo:]keyname:key] [-E tapfile] [-G tapfile]\n"
 	       "            name [type] [class] [@server]\n"
 	       "\n"
-	       "       +[no]multiline            Wrap long records to more lines.\n"
-	       "       +[no]short                Show record data only.\n"
-	       "       +[no]generic              Use generic representation format.\n"
-	       "       +[no]aaflag               Set AA flag.\n"
-	       "       +[no]tcflag               Set TC flag.\n"
-	       "       +[no]rdflag               Set RD flag.\n"
-	       "       +[no]recurse              Same as +[no]rdflag\n"
-	       "       +[no]raflag               Set RA flag.\n"
-	       "       +[no]zflag                Set zero flag bit.\n"
-	       "       +[no]adflag               Set AD flag.\n"
-	       "       +[no]cdflag               Set CD flag.\n"
-	       "       +[no]dnssec               Set DO flag.\n"
-	       "       +[no]all                  Show all packet sections.\n"
-	       "       +[no]qr                   Show query packet.\n"
-	       "       +[no]header               Show packet header.\n"
-	       "       +[no]comments             Show commented section names.\n"
-	       "       +[no]opt                  Show EDNS pseudosection.\n"
-	       "       +[no]question             Show question section.\n"
-	       "       +[no]answer               Show answer section.\n"
-	       "       +[no]authority            Show authority section.\n"
-	       "       +[no]additional           Show additional section.\n"
-	       "       +[no]tsig                 Show TSIG pseudosection.\n"
-	       "       +[no]stats                Show trailing packet statistics.\n"
-	       "       +[no]class                Show DNS class.\n"
-	       "       +[no]ttl                  Show TTL value.\n"
-	       "       +[no]crypto               Show binary parts of RRSIGs and DNSKEYs.\n"
-	       "       +[no]tcp                  Use TCP protocol.\n"
-	       "       +[no]fastopen             Use TCP Fast Open.\n"
-	       "       +[no]ignore               Don't use TCP automatically if truncated.\n"
-	       "       +[no]tls                  Use TLS with Opportunistic privacy profile.\n"
-	       "       +[no]tls-ca[=FILE]        Use TLS with Out-Of-Band privacy profile.\n"
-	       "       +[no]tls-pin=BASE64       Use TLS with pinned certificate.\n"
-	       "       +[no]tls-hostname=STR     Use TLS with remote server hostname.\n"
-	       "       +[no]tls-sni=STR          Use TLS with Server Name Indication.\n"
-	       "       +[no]tls-keyfile=FILE     Use TLS with a client keyfile.\n"
-	       "       +[no]tls-certfile=FILE    Use TLS with a client certfile.\n"
-	       "       +[no]require-stapled      Require a valid stapled OCSP response for the server certificate when using TLS.\n"
-	       "       +[no]nsid                 Request NSID.\n"
-	       "       +[no]bufsize=B            Set EDNS buffer size.\n"
-	       "       +[no]padding[=N]          Pad with EDNS(0) (default or specify size).\n"
-	       "       +[no]alignment[=N]        Pad with EDNS(0) to blocksize (%u or specify size).\n"
-	       "       +[no]subnet=SUBN          Set EDNS(0) client subnet addr/prefix.\n"
-	       "       +[no]edns[=N]             Use EDNS(=version).\n"
-	       "       +[no]timeout=T            Set wait for reply interval in seconds.\n"
-	       "       +[no]retry=N              Set number of retries.\n"
-	       "       +[no]cookie=HEX           Attach EDNS(0) cookie to the query.\n"
-	       "       +[no]badcookie            Repeat a query with the correct cookie.\n"
-	       "       +[no]ednsopt=CODE[:HEX]   Set custom EDNS option.\n"
-	       "       +noidn                    Disable IDN transformation.\n"
+	       "       +[no]multiline             Wrap long records to more lines.\n"
+	       "       +[no]short                 Show record data only.\n"
+	       "       +[no]generic               Use generic representation format.\n"
+	       "       +[no]aaflag                Set AA flag.\n"
+	       "       +[no]tcflag                Set TC flag.\n"
+	       "       +[no]rdflag                Set RD flag.\n"
+	       "       +[no]recurse               Same as +[no]rdflag\n"
+	       "       +[no]raflag                Set RA flag.\n"
+	       "       +[no]zflag                 Set zero flag bit.\n"
+	       "       +[no]adflag                Set AD flag.\n"
+	       "       +[no]cdflag                Set CD flag.\n"
+	       "       +[no]dnssec                Set DO flag.\n"
+	       "       +[no]all                   Show all packet sections.\n"
+	       "       +[no]qr                    Show query packet.\n"
+	       "       +[no]header                Show packet header.\n"
+	       "       +[no]comments              Show commented section names.\n"
+	       "       +[no]opt                   Show EDNS pseudosection.\n"
+	       "       +[no]question              Show question section.\n"
+	       "       +[no]answer                Show answer section.\n"
+	       "       +[no]authority             Show authority section.\n"
+	       "       +[no]additional            Show additional section.\n"
+	       "       +[no]tsig                  Show TSIG pseudosection.\n"
+	       "       +[no]stats                 Show trailing packet statistics.\n"
+	       "       +[no]class                 Show DNS class.\n"
+	       "       +[no]ttl                   Show TTL value.\n"
+	       "       +[no]crypto                Show binary parts of RRSIGs and DNSKEYs.\n"
+	       "       +[no]tcp                   Use TCP protocol.\n"
+	       "       +[no]fastopen              Use TCP Fast Open.\n"
+	       "       +[no]ignore                Don't use TCP automatically if truncated.\n"
+	       "       +[no]tls                   Use TLS with Opportunistic privacy profile.\n"
+	       "       +[no]tls-ca[=FILE]         Use TLS with Out-Of-Band privacy profile.\n"
+	       "       +[no]tls-pin=BASE64        Use TLS with pinned certificate.\n"
+	       "       +[no]tls-hostname=STR      Use TLS with remote server hostname.\n"
+	       "       +[no]tls-sni=STR           Use TLS with Server Name Indication.\n"
+	       "       +[no]tls-keyfile=FILE      Use TLS with a client keyfile.\n"
+	       "       +[no]tls-certfile=FILE     Use TLS with a client certfile.\n"
+	       "       +[no]tls-ocsp-stapling[=H] Use TLS with a valid and actual server certificate (%u or specify hours).\n"
+	       "       +[no]nsid                  Request NSID.\n"
+	       "       +[no]bufsize=B             Set EDNS buffer size.\n"
+	       "       +[no]padding[=N]           Pad with EDNS(0) (default or specify size).\n"
+	       "       +[no]alignment[=N]         Pad with EDNS(0) to blocksize (%u or specify size).\n"
+	       "       +[no]subnet=SUBN           Set EDNS(0) client subnet addr/prefix.\n"
+	       "       +[no]edns[=N]              Use EDNS(=version).\n"
+	       "       +[no]timeout=T             Set wait for reply interval in seconds.\n"
+	       "       +[no]retry=N               Set number of retries.\n"
+	       "       +[no]cookie=HEX            Attach EDNS(0) cookie to the query.\n"
+	       "       +[no]badcookie             Repeat a query with the correct cookie.\n"
+	       "       +[no]ednsopt=CODE[:HEX]    Set custom EDNS option.\n"
+	       "       +noidn                     Disable IDN transformation.\n"
 	       "\n"
-	       "       -h, --help                Print the program help.\n"
-	       "       -V, --version             Print the program version.\n",
-	       PROGRAM_NAME, DEFAULT_ALIGNMENT_SIZE);
+	       "       -h, --help                 Print the program help.\n"
+	       "       -V, --version              Print the program version.\n",
+	       PROGRAM_NAME, DEFAULT_TLS_OCSP_STAPLING / 3600, DEFAULT_ALIGNMENT_SIZE);
 }
 
 static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
