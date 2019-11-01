@@ -17,6 +17,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
@@ -339,7 +340,10 @@ static int zone_notify(zone_t *zone, ctl_args_t *args)
 static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
 	if (MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
-		return zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
+		rcu_read_lock();
+		int ret = zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
+		rcu_read_unlock();
+		return ret;
 	}
 
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
