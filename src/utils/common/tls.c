@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <string.h>
@@ -152,43 +153,46 @@ static bool check_pin(const uint8_t *cert_pin, size_t cert_pin_len, const list_t
 static bool verify_ocsp(gnutls_session_t *session)
 {
 	bool ret = false;
-	gnutls_datum_t ocsp_resp_raw;
-	gnutls_ocsp_resp_t ocsp_resp;
-	gnutls_x509_crt_t issuer_cert, server_cert;
-	const gnutls_datum_t *cert_list;
-	unsigned int cert_list_size = 0;
-	bool deinit_issuer = false, deinit_server = false;
-	bool deinit_ocsp = false, deinit_creds = false;
-	gnutls_certificate_credentials_t xcred;
-	unsigned int status;
-	time_t rtime, vtime, ntime, now = time(0);
 
-	if (gnutls_ocsp_status_request_get(*session, &ocsp_resp_raw) != 0) {
+	gnutls_ocsp_resp_t ocsp_resp;
+	bool deinit_ocsp_resp = false;
+
+	gnutls_x509_crt_t server_cert;
+	bool deinit_server_cert = false;
+
+	gnutls_certificate_credentials_t xcred;
+	bool deinit_xcreds = false;
+
+	gnutls_x509_crt_t issuer_cert;
+	bool deinit_issuer_cert = false;
+
+	gnutls_datum_t ocsp_resp_raw;
+	if (gnutls_ocsp_status_request_get(*session, &ocsp_resp_raw) != GNUTLS_E_SUCCESS) {
 		WARN("TLS, unable to retrieve stapled OCSP data\n");
 		goto cleanup;
 	}
-	if (gnutls_ocsp_resp_init(&ocsp_resp) < 0) {
+	if (gnutls_ocsp_resp_init(&ocsp_resp) != GNUTLS_E_SUCCESS) {
 		WARN("TLS, unable to init OCSP data\n");
 		goto cleanup;
 	}
-	deinit_ocsp = true;
-	if (gnutls_ocsp_resp_import(ocsp_resp, &ocsp_resp_raw) < 0) {
+	deinit_ocsp_resp = true;
+	if (gnutls_ocsp_resp_import(ocsp_resp, &ocsp_resp_raw) != GNUTLS_E_SUCCESS) {
 		WARN("TLS, unable to import OCSP response\n");
 		goto cleanup;
 	}
 
-	cert_list = gnutls_certificate_get_peers(*session, &cert_list_size);
+	unsigned int cert_list_size = 0;
+	const gnutls_datum_t *cert_list = gnutls_certificate_get_peers(*session, &cert_list_size);
 	if (cert_list_size == 0) {
 		WARN("TLS, unable to retrieve peer certs when verifying OCSP\n");
 		goto cleanup;
 	}
-	if (gnutls_x509_crt_init(&server_cert) < 0) {
+	if (gnutls_x509_crt_init(&server_cert) != GNUTLS_E_SUCCESS) {
 		WARN("TLS, unable to init server cert when verifying OCSP\n");
 		goto cleanup;
 	}
-	deinit_server = true;
-
-	if (gnutls_x509_crt_import(server_cert, &cert_list[0], GNUTLS_X509_FMT_DER) < 0) {
+	deinit_server_cert = true;
+	if (gnutls_x509_crt_import(server_cert, &cert_list[0], GNUTLS_X509_FMT_DER) != GNUTLS_E_SUCCESS) {
 		WARN("TLS, unable to import server cert when verifying OCSP\n");
 		goto cleanup;
 	}
@@ -197,30 +201,31 @@ static bool verify_ocsp(gnutls_session_t *session)
 		WARN("TLS, unable to allocate credentials when verifying OCSP\n");
 		goto cleanup;
 	}
-	deinit_creds = true;
+	deinit_xcreds = true;
 
-	if (gnutls_certificate_get_issuer(xcred, server_cert, &issuer_cert, 0) < 0) {
+	if (gnutls_certificate_get_issuer(xcred, server_cert, &issuer_cert, 0) != GNUTLS_E_SUCCESS) {
 		if (cert_list_size < 2) {
 			WARN("TLS, unable to get issuer (CA) cert when verifying OCSP\n");
 			goto cleanup;
 		}
-		if (gnutls_x509_crt_init(&issuer_cert) < 0) {
-			WARN("TLS, unable to init issuer cert structure when verifying OCSP\n");
+		if (gnutls_x509_crt_init(&issuer_cert) != GNUTLS_E_SUCCESS) {
+			WARN("TLS, unable to init issuer cert when verifying OCSP\n");
 			goto cleanup;
 		}
-		deinit_issuer = true;
-		if (gnutls_x509_crt_import(issuer_cert, &cert_list[1], GNUTLS_X509_FMT_DER) < 0) {
+		deinit_issuer_cert = true;
+		if (gnutls_x509_crt_import(issuer_cert, &cert_list[1], GNUTLS_X509_FMT_DER) != GNUTLS_E_SUCCESS) {
 			WARN("TLS, unable to import issuer cert when verifying OCSP\n");
 			goto cleanup;
 		}
 	}
-	deinit_issuer = true;
 
-	if (gnutls_ocsp_resp_check_crt(ocsp_resp, 0, server_cert) < 0) {
-		WARN("TLS, OCSP response either empty or not for provided server certificate\n");
+	unsigned int status;
+	time_t this_upd, next_upd, now = time(0);
+	if (gnutls_ocsp_resp_check_crt(ocsp_resp, 0, server_cert) != GNUTLS_E_SUCCESS) {
+		WARN("TLS, OCSP response either empty or not for provided server cert\n");
 		goto cleanup;
 	}
-	if (gnutls_ocsp_resp_verify_direct(ocsp_resp, issuer_cert, &status, 0) < 0) {
+	if (gnutls_ocsp_resp_verify_direct(ocsp_resp, issuer_cert, &status, 0) != GNUTLS_E_SUCCESS) {
 		WARN("TLS, unable to verify OCSP response against issuer cert\n");
 		goto cleanup;
 	}
@@ -229,7 +234,7 @@ static bool verify_ocsp(gnutls_session_t *session)
 		goto cleanup;
 	}
 	if (gnutls_ocsp_resp_get_single(ocsp_resp, 0, NULL, NULL, NULL, NULL, &status,
-	                                &vtime, &ntime, &rtime, NULL) < 0) {
+	                                &this_upd, &next_upd, NULL, NULL) != GNUTLS_E_SUCCESS) {
 		WARN("TLS, error reading OCSP response\n");
 		goto cleanup;
 	}
@@ -237,33 +242,36 @@ static bool verify_ocsp(gnutls_session_t *session)
 		WARN("TLS, OCSP data shows that cert was revoked\n");
 		goto cleanup;
 	}
-	if (ntime == -1) {
+	if (next_upd == -1) {
 		tls_ctx_t *ctx = gnutls_session_get_ptr(*session);
-		if (now - vtime > ctx->params->ocsp_stapling) {
+		assert(now >= this_upd);
+		assert(ctx->params->ocsp_stapling > 0);
+		if (now - this_upd > ctx->params->ocsp_stapling) {
 			WARN("TLS, OCSP response is out of date.\n");
 			goto cleanup;
 		}
 	} else {
-		if (ntime < now) {
+		if (next_upd < now) {
 			WARN("TLS, a newer OCSP response is available but was not sent\n");
 			goto cleanup;
 		}
 	}
 
-	ret = true; // only if we get here is the ocsp result completely valid
+	// Only if we get here is the ocsp result completely valid.
+	ret = true;
 
 cleanup:
-	if (deinit_server) {
-		gnutls_x509_crt_deinit(server_cert);
-	}
-	if (deinit_issuer) {
+	if (deinit_issuer_cert) {
 		gnutls_x509_crt_deinit(issuer_cert);
 	}
-	if (deinit_ocsp) {
-		gnutls_ocsp_resp_deinit(ocsp_resp);
-	}
-	if (deinit_creds) {
+	if (deinit_xcreds) {
 		gnutls_certificate_free_credentials(xcred);
+	}
+	if (deinit_server_cert) {
+		gnutls_x509_crt_deinit(server_cert);
+	}
+	if (deinit_ocsp_resp) {
+		gnutls_ocsp_resp_deinit(ocsp_resp);
 	}
 
 	return ret;
