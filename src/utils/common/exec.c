@@ -20,6 +20,7 @@
 
 #include "libdnssec/random.h"
 #include "utils/common/exec.h"
+#include "utils/common/json.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
@@ -472,22 +473,7 @@ static void print_error_host(const knot_pkt_t *packet, const style_t *style)
 	free(owner);
 }
 
-knot_pkt_t *create_empty_packet(const uint16_t max_size)
-{
-	// Create packet skeleton.
-	knot_pkt_t *packet = knot_pkt_new(NULL, max_size, NULL);
-	if (packet == NULL) {
-		DBG_NULL;
-		return NULL;
-	}
-
-	// Set random sequence id.
-	knot_wire_set_id(packet->wire, dnssec_random_uint16_t());
-
-	return packet;
-}
-
-void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
+static void plain_print_header_xfr(const knot_pkt_t *packet, const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -518,8 +504,8 @@ void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
 	}
 }
 
-void print_data_xfr(const knot_pkt_t *packet,
-                    const style_t    *style)
+static void plain_print_data_xfr(const knot_pkt_t *packet,
+                                 const style_t    *style)
 {
 	if (packet == NULL || style == NULL) {
 		DBG_NULL;
@@ -548,13 +534,13 @@ void print_data_xfr(const knot_pkt_t *packet,
 	}
 }
 
-void print_footer_xfr(const size_t  total_len,
-                      const size_t  msg_count,
-                      const size_t  rr_count,
-                      const net_t   *net,
-                      const float   elapsed,
-                      const time_t  exec_time,
-                      const style_t *style)
+static void plain_print_footer_xfr(const size_t  total_len,
+                                   const size_t  msg_count,
+                                   const size_t  rr_count,
+                                   const net_t   *net,
+                                   const float   elapsed,
+                                   const time_t  exec_time,
+                                   const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -567,13 +553,13 @@ void print_footer_xfr(const size_t  total_len,
 	}
 }
 
-void print_packet(const knot_pkt_t *packet,
-                  const net_t      *net,
-                  const size_t     size,
-                  const float      elapsed,
-                  const time_t     exec_time,
-                  const bool       incoming,
-                  const style_t    *style)
+static void plain_print_packet(const knot_pkt_t *packet,
+                               const net_t      *net,
+                               const size_t     size,
+                               const float      elapsed,
+                               const time_t     exec_time,
+                               const bool       incoming,
+                               const style_t    *style)
 {
 	if (packet == NULL || style == NULL) {
 		DBG_NULL;
@@ -688,5 +674,340 @@ void print_packet(const knot_pkt_t *packet,
 	if (style->show_footer) {
 		printf("\n");
 		print_footer(size, 0, 0, net, elapsed, exec_time, incoming);
+	}
+}
+
+/*! Indentation used in JSON output. */
+static const char *JSON_INDENT = "  ";
+
+/*! Write domain name in presentation form as JSON string. */
+static void jsonw_dname(jsonw_t *w, const knot_dname_t *dname)
+{
+	char *name = knot_dname_to_str_alloc(dname);
+	if (!name) {
+		abort();
+	}
+
+	jsonw_str(w, name);
+
+	free(name);
+}
+
+/*! Write RDATA in presentation form as JSON string. */
+static void jsonw_rdata(jsonw_t *w, const knot_rrset_t *rrset, size_t pos)
+{
+	static const size_t size = 8096;
+	char *buf = calloc(size, sizeof(char));
+	if (!buf) {
+		abort();
+	}
+
+	const knot_dump_style_t *style = &KNOT_DUMP_STYLE_DEFAULT;
+	if (knot_rrset_txt_dump_data(rrset, pos, buf, size, style) < 0) {
+		buf[0] = '\0';
+//		free(buf);
+//		abort();
+	}
+
+	jsonw_str(w, buf);
+	free(buf);
+}
+
+static void json_print_section_google(jsonw_t *w, const char *name,
+                                      const knot_pktsection_t *section)
+{
+	if (section->count == 0) {
+		return;
+	}
+
+	jsonw_str(w, name);
+	jsonw_list(w);
+
+	for (int i = 0; i < section->count; i++) {
+		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		jsonw_object(w);
+		jsonw_str(w, "name");
+		jsonw_dname(w, rr->owner);
+		jsonw_str(w, "type");
+		jsonw_int(w, rr->type);
+		jsonw_str(w, "TTL");
+		jsonw_int(w, rr->ttl);
+		jsonw_str(w, "data");
+		jsonw_rdata(w, rr, i);
+		jsonw_end(w); // object
+	}
+
+	jsonw_end(w); // list
+}
+
+static void json_print_packet_google(const knot_pkt_t *pkt, const net_t *net)
+{
+	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
+
+	jsonw_object(w);
+
+	jsonw_str(w, "Status");
+	jsonw_int(w, knot_pkt_ext_rcode(pkt));
+
+	jsonw_str(w, "TC");
+	jsonw_bool(w, knot_wire_get_tc(pkt->wire));
+	jsonw_str(w, "RD");
+	jsonw_bool(w, knot_wire_get_rd(pkt->wire));
+	jsonw_str(w, "RA");
+	jsonw_bool(w, knot_wire_get_ra(pkt->wire));
+	jsonw_str(w, "AD");
+	jsonw_bool(w, knot_wire_get_ad(pkt->wire));
+	jsonw_str(w, "CD");
+	jsonw_bool(w, knot_wire_get_cd(pkt->wire));
+
+	jsonw_str(w, "Question");
+	jsonw_list(w);
+	jsonw_object(w);
+	jsonw_str(w, "name");
+	jsonw_dname(w, knot_pkt_qname(pkt));
+	jsonw_str(w, "type");
+	jsonw_int(w, knot_pkt_qtype(pkt));
+	jsonw_end(w); // list
+	jsonw_end(w); // object
+
+	json_print_section_google(w, "Answer", knot_pkt_section(pkt, KNOT_ANSWER));
+	json_print_section_google(w, "Authority", knot_pkt_section(pkt, KNOT_AUTHORITY));
+	json_print_section_google(w, "Additional", knot_pkt_section(pkt, KNOT_ADDITIONAL));
+
+	jsonw_str(w, "Comment");
+	char comment[256] = {0};
+	snprintf(comment, sizeof(comment), "Response from %s.", net->remote_str);
+	jsonw_str(w, comment);
+
+	jsonw_end(w); // object
+
+	jsonw_free(w);
+}
+
+static void json_print_section(jsonw_t *w, const char *name,
+                               const knot_pktsection_t *section)
+{
+	if (section->count == 0) {
+		return;
+	}
+
+	jsonw_str(w, name);
+	jsonw_list(w);
+
+	for (int i = 0; i < section->count; i++) {
+		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		jsonw_object(w);
+		jsonw_str(w, "name");
+		jsonw_dname(w, rr->owner);
+		jsonw_str(w, "type");
+		jsonw_int(w, rr->type);
+		jsonw_str(w, "class");
+		jsonw_int(w, rr->rclass);
+		jsonw_str(w, "ttl");
+		jsonw_int(w, rr->ttl);
+		jsonw_str(w, "rdata");
+		jsonw_rdata(w, rr, i);
+		jsonw_end(w); // object
+	}
+
+	jsonw_end(w); // list
+}
+
+static void json_print_edns(jsonw_t *w, const knot_rrset_t *edns)
+{
+	if (!edns) {
+		return;
+	}
+
+	jsonw_str(w, "edns");
+	jsonw_object(w);
+
+	jsonw_str(w, "version");
+	jsonw_int(w, knot_edns_get_version(edns));
+	jsonw_str(w, "udp_size");
+	jsonw_int(w, knot_edns_get_payload(edns));
+
+	knot_rdata_t *rdata = knot_rdataset_at(&edns->rrs, 0);
+	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
+
+	while (wire_ctx_available(&wire) >= KNOT_EDNS_OPTION_HDRLEN) {
+		uint16_t opt_code = wire_ctx_read_u16(&wire);
+		uint16_t opt_len = wire_ctx_read_u16(&wire);
+		uint8_t *opt_data = wire.position;
+		if (wire.error != KNOT_EOK) {
+			break;
+		}
+
+		switch (opt_code) {
+		case KNOT_EDNS_OPTION_NSID:
+			jsonw_str(w, "nsid");
+			jsonw_str(w, "todo");
+			//print_nsid(opt_data, opt_len);
+			break;
+		case KNOT_EDNS_OPTION_CLIENT_SUBNET:
+			jsonw_str(w, "subnet");
+			jsonw_str(w, "todo");
+			break;
+		case KNOT_EDNS_OPTION_PADDING:
+			jsonw_str(w, "padding");
+			jsonw_int(w, opt_len);
+			break;
+		case KNOT_EDNS_OPTION_COOKIE:
+			jsonw_str(w, "cookie");
+			jsonw_str(w, "todo");
+			break;
+		default:
+			// ignore
+			break;
+		}
+
+		wire_ctx_skip(&wire, opt_len);
+	}
+
+	jsonw_end(w); // dict
+}
+
+static void json_print_packet(const knot_pkt_t *pkt, const net_t *net)
+{
+	const knot_rrset_t *edns = NULL;
+	if (knot_pkt_has_edns(pkt)) {
+		edns = pkt->opt_rr;
+	}
+
+	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
+
+	jsonw_object(w);
+
+	jsonw_str(w, "header");
+	jsonw_object(w);
+	jsonw_str(w, "id");
+	jsonw_int(w, knot_wire_get_id(pkt->wire));
+	jsonw_str(w, "rcode");
+	jsonw_int(w, knot_pkt_ext_rcode(pkt));
+	jsonw_str(w, "opcode");
+	jsonw_int(w, knot_wire_get_opcode(pkt->wire));
+	jsonw_str(w, "qr");
+	jsonw_bool(w, knot_wire_get_qr(pkt->wire));
+	jsonw_str(w, "aa");
+	jsonw_bool(w, knot_wire_get_aa(pkt->wire));
+	jsonw_str(w, "tc");
+	jsonw_bool(w, knot_wire_get_tc(pkt->wire));
+	jsonw_str(w, "rd");
+	jsonw_bool(w, knot_wire_get_rd(pkt->wire));
+	jsonw_str(w, "ra");
+	jsonw_bool(w, knot_wire_get_ra(pkt->wire));
+	jsonw_str(w, "ad");
+	jsonw_bool(w, knot_wire_get_ad(pkt->wire));
+	jsonw_str(w, "cd");
+	jsonw_bool(w, knot_wire_get_cd(pkt->wire));
+	jsonw_str(w, "do");
+	jsonw_bool(w, edns && knot_edns_do(edns));
+	jsonw_end(w); // header object
+
+	jsonw_str(w, "question");
+	jsonw_list(w);
+	jsonw_object(w);
+	jsonw_str(w, "name");
+	jsonw_dname(w, knot_pkt_qname(pkt));
+	jsonw_str(w, "type");
+	jsonw_int(w, knot_pkt_qtype(pkt));
+	jsonw_str(w, "class");
+	jsonw_int(w, knot_pkt_qclass(pkt));
+	jsonw_end(w); // list
+	jsonw_end(w); // dict
+
+	json_print_section(w, "answer", knot_pkt_section(pkt, KNOT_ANSWER));
+	json_print_section(w, "authority", knot_pkt_section(pkt, KNOT_AUTHORITY));
+	json_print_section(w, "additional", knot_pkt_section(pkt, KNOT_ADDITIONAL));
+
+	json_print_edns(w, edns);
+
+	jsonw_str(w, "stats");
+	jsonw_object(w);
+	jsonw_str(w, "time");
+	jsonw_str(w, "");
+	jsonw_str(w, "remote_ip");
+	jsonw_str(w, "");
+	jsonw_str(w, "remote_port");
+	jsonw_int(w, 0);
+	jsonw_str(w, "messages");
+	jsonw_int(w, 0);
+	jsonw_str(w, "records");
+	jsonw_int(w, 0);
+	jsonw_str(w, "received_bytes");
+	jsonw_int(w, 0);
+	jsonw_str(w, "sent_bytes");
+	jsonw_int(w, 0);
+	jsonw_str(w, "duration_ms");
+	jsonw_int(w, 0);
+	jsonw_end(w); // dict
+
+	// TODO: TSIG information
+	// TODO: TLS information
+
+	jsonw_end(w); // object
+
+	jsonw_free(w);
+}
+
+
+knot_pkt_t *create_empty_packet(const uint16_t max_size)
+{
+	// Create packet skeleton.
+	knot_pkt_t *packet = knot_pkt_new(NULL, max_size, NULL);
+	if (packet == NULL) {
+		DBG_NULL;
+		return NULL;
+	}
+
+	// Set random sequence id.
+	knot_wire_set_id(packet->wire, dnssec_random_uint16_t());
+
+	return packet;
+}
+
+void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
+{
+	return plain_print_header_xfr(packet, style);
+}
+
+void print_data_xfr(const knot_pkt_t *packet, const style_t *style)
+{
+	return plain_print_data_xfr(packet, style);
+}
+
+void print_footer_xfr(const size_t  total_len,
+                      const size_t  msg_count,
+                      const size_t  rr_count,
+                      const net_t   *net,
+                      const float   elapsed,
+                      const time_t  exec_time,
+                      const style_t *style)
+{
+	return plain_print_footer_xfr(total_len, msg_count, rr_count, net,
+	                              elapsed, exec_time, style);
+}
+
+void print_packet(const knot_pkt_t *packet,
+                  const net_t      *net,
+                  const size_t     size,
+                  const float      elapsed,
+                  const time_t     exec_time,
+                  const bool       incoming,
+                  const style_t    *style)
+{
+	switch (style->print) {
+	case PRINT_PLAIN:
+		return plain_print_packet(packet, net, size, elapsed, exec_time, incoming, style);
+	case PRINT_JSON:
+		if (style->json_format == JSON_FORMAT_GOOGLE) {
+			return json_print_packet_google(packet, net);
+		} else if (style->json_format == JSON_FORMAT_DEFAULT) {
+			return json_print_packet(packet, net);
+		} else {
+			abort();
+		}
+	default:
+		abort();
 	}
 }
