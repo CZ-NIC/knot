@@ -98,9 +98,9 @@ Actions
   when previous NOTIFY had been lost or the slaves offline. (#)
 
 **zone-flush** [*zone*...] [**+outdir** *directory*]
-  Trigger a zone journal flush into the zone file. If output dir is specified,
-  instead of flushing the zonefile, the zone is dumped to a file in the specified
-  directory. (#)
+  Trigger a zone journal flush to the configured zone file. If an output
+  directory is specified, the current zone is immediately dumped (in the
+  blocking mode) to a zone file in the specified directory. (#)
 
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
