@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -79,14 +79,14 @@ static void schema_find_test(void)
 	if (i == NULL) {
 		goto error_schema;
 	}
-	ok(strcmp(i->name + 1, C_OPT + 1) == 0, "name check");
+	ok(strcmp(&i->name[1], &C_OPT[1]) == 0, "name check");
 
 	i = yp_schema_find(C_STR, C_GRP, schema);
 	ok(i != NULL, "schema find with parent");
 	if (i == NULL) {
 		goto error_schema;
 	}
-	ok(strcmp(i->name + 1, C_STR + 1) == 0, "name check");
+	ok(strcmp(&i->name[1], &C_STR[1]) == 0, "name check");
 
 	i = yp_schema_find(C_ADDR, NULL, schema);
 	ok(i == NULL, "schema not find");
