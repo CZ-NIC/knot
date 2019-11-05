@@ -66,6 +66,10 @@ int adjust_cb_wildcard_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 		return KNOT_EOK;
 	}
 
+	if (ctx->nsec3_param_changed) {
+		node->nsec3_wildcard_name = NULL;
+	}
+
 	if (node->nsec3_wildcard_name != NULL) {
 		return KNOT_EOK;
 	}
@@ -133,7 +137,14 @@ int adjust_cb_nsec3_pointer(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	uint16_t flags_orig = node->flags;
 	zone_node_t *ptr_orig = node->nsec3_node;
-	int ret = binode_fix_nsec3_pointer(node, ctx->zone);
+	int ret = KNOT_EOK;
+	if (ctx->nsec3_param_changed) {
+		node->nsec3_hash = NULL;
+		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
+		(void)node_nsec3_node(node, ctx->zone);
+	} else {
+		ret = binode_fix_nsec3_pointer(node, ctx->zone);
+	}
 	if (ret == KNOT_EOK && ctx->changed_nodes != NULL &&
 	    (flags_orig != node->flags || ptr_orig != node->nsec3_node)) {
 		ret = zone_tree_insert(ctx->changed_nodes, &node);
@@ -355,7 +366,7 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 	zone->dnssec = node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
 
 	measure_t m = knot_measure_init(measure_zone, false);
-	adjust_ctx_t ctx = { zone, add_changed };
+	adjust_ctx_t ctx = { zone, add_changed, true };
 
 	if (nsec3_cb != NULL) {
 		ret = zone_adjust_tree(zone->nsec3_nodes, &ctx, nsec3_cb, true, &m);
@@ -373,7 +384,7 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 {
 	int ret = KNOT_EOK;
 	measure_t m = knot_measure_init(false, measure_diff);
-	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs };
+	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs, zone_update_changed_nsec3param(update) };
 
 	if (nsec3_cb != NULL) {
 		ret = zone_adjust_tree(update->a_ctx->nsec3_ptrs, &ctx, nsec3_cb, false, &m);
@@ -421,7 +432,7 @@ int zone_adjust_incremental_update(zone_update_t *update)
 		return ret;
 	}
 	bool nsec3change = zone_update_changed_nsec3param(update);
-	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs };
+	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs, nsec3change };
 
 	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {

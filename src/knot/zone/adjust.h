@@ -22,6 +22,7 @@
 typedef struct {
 	const zone_contents_t *zone;
 	zone_tree_t *changed_nodes;
+	bool nsec3_param_changed;
 } adjust_ctx_t;
 
 typedef int (*adjust_cb_t)(zone_node_t *, adjust_ctx_t *);
