@@ -49,12 +49,13 @@ static int find_rr_pos(const knot_rdataset_t *rrs, const knot_rdata_t *rr)
 	return KNOT_ENOENT;
 }
 
-static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, uint16_t pos,
+static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_rdata_t *ins_pos,
                      knot_mm_t *mm)
 {
 	assert(rrs);
 	assert(rr);
-	assert(pos <= rrs->count);
+	const size_t ins_offset = (uint8_t *)ins_pos - (uint8_t *)rrs->rdata;
+	assert(ins_offset <= rrs->size);
 
 	if (rrs->count == UINT16_MAX) {
 		return KNOT_ESPACE;
@@ -62,10 +63,10 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, uint16_t pos,
 		return KNOT_ESPACE;
 	}
 
-	size_t new_size = knot_rdata_size(rr->len);
+	const size_t rr_size = knot_rdata_size(rr->len);
 
 	// Realloc RDATA.
-	knot_rdata_t *tmp = mm_realloc(mm, rrs->rdata, rrs->size + new_size,
+	knot_rdata_t *tmp = mm_realloc(mm, rrs->rdata, rrs->size + rr_size,
 	                               rrs->size);
 	if (tmp == NULL) {
 		return KNOT_ENOMEM;
@@ -73,30 +74,14 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, uint16_t pos,
 		rrs->rdata = tmp;
 	}
 
-	if (rrs->count == 0 || pos == rrs->count) {
-		// No need to rearange RDATA.
-		rrs->count++;
-		rrs->size += new_size;
-		knot_rdata_t *new_rr = rr_seek(rrs, pos);
-		knot_rdata_init(new_rr, rr->len, rr->data);
-		return KNOT_EOK;
-	}
-
-	// RDATA have to be rearanged.
-	knot_rdata_t *old_rr = rr_seek(rrs, pos);
-	knot_rdata_t *last_rr = rr_seek(rrs, rrs->count - 1);
-
-	// Make space for new RDATA by moving the array.
-	uint8_t *dst = (uint8_t *)old_rr + new_size;
-	assert(old_rr <= last_rr);
-	size_t len = ((uint8_t *)last_rr - (uint8_t *)old_rr) +
-	             knot_rdata_size(last_rr->len);
-	memmove(dst, old_rr, len);
+	uint8_t *ins_pos_raw = (uint8_t *)rrs->rdata + ins_offset;
+	// RDATA may have to be rearanged.  Moving zero-length region is OK.
+	memmove(ins_pos_raw + rr_size, ins_pos_raw, rrs->size - ins_offset);
 
 	// Set new RDATA.
-	knot_rdata_init(old_rr, rr->len, rr->data);
+	knot_rdata_init((knot_rdata_t *)ins_pos_raw, rr->len, rr->data);
 	rrs->count++;
-	rrs->size += new_size;
+	rrs->size += rr_size;
 
 	return KNOT_EOK;
 }
@@ -189,7 +174,7 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *m
 	if (rrs->count > 4) {
 		knot_rdata_t *last = rr_seek(rrs, rrs->count - 1);
 		if (knot_rdata_cmp(last, rr) < 0) {
-			return add_rr_at(rrs, rr, rrs->count, mm);
+			return add_rr_at(rrs, rr, knot_rdataset_next(last), mm);
 		}
 	}
 
@@ -202,13 +187,14 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *m
 			return KNOT_EOK;
 		} else if (cmp > 0) {
 			// Found position to insert.
-			return add_rr_at(rrs, rr, i, mm);
+			return add_rr_at(rrs, rr, ins_pos, mm);
 		}
 	}
+
 	assert((uint8_t *)rrs->rdata + rrs->size == (uint8_t *)ins_pos);
 
-	// If flow gets here, it means that we should append.
-	return add_rr_at(rrs, rr, rrs->count, mm);
+	// If flow gets here, it means that we should insert at the current position (append).
+	return add_rr_at(rrs, rr, ins_pos, mm);
 }
 
 _public_
