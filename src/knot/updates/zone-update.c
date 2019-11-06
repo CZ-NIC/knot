@@ -817,7 +817,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	if (zone_contents_check(update->new_cont, false) != KNOT_EOK) {
 		changeset_print(&update->change, stdout, false);
 		fflush(stdout);
-		abort();
+		log_zone_info(update->new_cont->apex->owner, "DBG, ^ commit check failed");
 	}
 
 	/* Check the zone size. */

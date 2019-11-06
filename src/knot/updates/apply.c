@@ -336,7 +336,7 @@ void apply_cleanup(apply_ctx_t *ctx)
 	}
 
 	if (zone_contents_check(ctx->contents, true) != KNOT_EOK) {
-		abort();
+		log_zone_info(ctx->contents->apex->owner, "DBG, ^ cleanup check failed");
 	}
 
 	zone_tree_free(&ctx->node_ptrs);
@@ -381,7 +381,7 @@ void apply_rollback(apply_ctx_t *ctx, const zone_contents_t *zone)
 	free(ctx->contents);
 
 	if (zone_contents_check(zone, true) != KNOT_EOK) {
-		abort();
+		log_zone_info(zone->apex->owner, "DBG, ^ rollback check failed");
 	}
 
 	if (ctx->cow_mutex != NULL) {
