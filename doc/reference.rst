@@ -1429,6 +1429,7 @@ Definition of zones served by the server.
      journal-max-usage: SIZE
      journal-max-depth: INT
      zone-max-size : SIZE
+     adjust-threads: INT
      dnssec-signing: BOOL
      dnssec-policy: STR
      serial-policy: increment | unixtime | dateserial
@@ -1654,6 +1655,17 @@ the records in the transfer is twice the configured value. However the final
 size of the zone must satisfy the configured value.
 
 *Default:* 2^64
+
+.. _zone_adjust-threads:
+
+adjust-threads
+--------------
+
+Parallelize internal zone adjusting procedures. This is useful with huge
+zones with NSEC3. Speedup observable at server startup and while processing
+NSEC3 re-salt.
+
+*Default:* 1
 
 .. _zone_dnssec-signing:
 

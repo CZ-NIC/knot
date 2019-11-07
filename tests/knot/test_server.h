@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 	knot_rrset_free(soa, mm);
 
 	/* Bake the zone. */
-	(void)zone_adjust_full(root->contents);
+	(void)zone_adjust_full(root->contents, 1);
 
 	/* Switch zone db. */
 	knot_zonedb_free(&server->zone_db);

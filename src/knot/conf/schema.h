@@ -22,6 +22,7 @@
 #define C_ACL			"\x03""acl"
 #define C_ACTION		"\x06""action"
 #define C_ADDR			"\x07""address"
+#define C_ADJUST_THR		"\x0E""adjust-threads"
 #define C_ALG			"\x09""algorithm"
 #define C_ANS_ROTATION		"\x0F""answer-rotation"
 #define C_ANY			"\x03""any"
