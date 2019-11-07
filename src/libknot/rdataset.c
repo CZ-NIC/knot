@@ -274,7 +274,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 	const knot_rdata_t *const fr_end = rdataset_end(from),
 			   *const wh_end = rdataset_end(what);
 
-	while (fr != fr_end && wh != wh_end) {
+	while (fr < fr_end && wh < wh_end) {
 		const int cmp = knot_rdata_cmp(fr, wh);
 		if (cmp > 0) { // nothing happens
 			wh = knot_rdataset_next(wh);
@@ -291,6 +291,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 			fr = knot_rdataset_next(fr);
 		}
 	}
+	assert(fr <= fr_end && wh <= wh_end);
 
 	// Done; just clean up.
 	if (from->count == 0) {
