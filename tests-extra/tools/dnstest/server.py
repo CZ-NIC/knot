@@ -1252,6 +1252,7 @@ class Knot(Server):
         s.item_str("storage", self.dir)
         s.item_str("zonefile-sync", self.zonefile_sync)
         s.item_str("journal-max-usage", self.journal_max_usage)
+        s.item_str("adjust-threads", "4")
         s.item_str("semantic-checks", "on" if self.semantic_check else "off")
         if self.disable_any:
             s.item_str("disable-any", "on")

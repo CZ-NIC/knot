@@ -53,7 +53,7 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 	knot_rrset_free(soa, mm);
 
 	/* Bake the zone. */
-	(void)zone_adjust_full(root->contents);
+	(void)zone_adjust_full(root->contents, 2);
 
 	/* Switch zone db. */
 	knot_zonedb_free(&server->zone_db);

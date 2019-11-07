@@ -1282,6 +1282,7 @@ zone:
     journal\-max\-usage: SIZE
     journal\-max\-depth: INT
     zone\-max\-size : SIZE
+    adjust\-threads: INT
     dnssec\-signing: BOOL
     dnssec\-policy: STR
     serial\-policy: increment | unixtime | dateserial
@@ -1497,6 +1498,13 @@ the records in the transfer is twice the configured value. However the final
 size of the zone must satisfy the configured value.
 .sp
 \fIDefault:\fP 2^64
+.SS adjust\-threads
+.sp
+Parallelize internal zone adjusting procedures. This is useful with huge
+zones with NSEC3. Speedup observable at server startup and while processing
+NSEC3 re\-salt.
+.sp
+\fIDefault:\fP 1
 .SS dnssec\-signing
 .sp
 If enabled, automatic DNSSEC signing for the zone is turned on.

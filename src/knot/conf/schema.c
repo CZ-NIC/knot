@@ -354,6 +354,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
 	{ C_REFRESH_MAX_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_REFRESH_MIN_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, 2, YP_STIME } }, \
+	{ C_ADJUST_THR,          YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } }, \
 	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI | FLAGS, { check_modref } }, \
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE }, \
