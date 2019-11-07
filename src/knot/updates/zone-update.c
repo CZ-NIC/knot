@@ -851,7 +851,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		}
 	}
 
-	(void)zone_adjust_contents(update->new_cont, adjust_cb_no_del_pointer, adjust_cb_no_del_pointer, false, NULL);
+	(void)zone_adjust_contents(update->new_cont, adjust_cb_no_del_pointer, adjust_cb_no_del_pointer, false, false, 16, NULL);
 
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
