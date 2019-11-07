@@ -233,7 +233,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
 	const knot_rdata_t *const rr1_end = rdataset_end(rrs1),
 			   *const rr2_end = rdataset_end(rrs2);
 
-	while (rr1 != rr1_end && rr2 != rr2_end) {
+	while (rr1 < rr1_end && rr2 < rr2_end) {
 		const int cmp = knot_rdata_cmp(rr1, rr2);
 		if (cmp < 0) {
 			rr1 = knot_rdataset_next(rr1);
@@ -250,6 +250,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
 			// TODO: better re-allocation strategy; important for mempools.
 		}
 	}
+	assert(rr1 <= rr1_end && rr2 <= rr2_end);
 
 	return KNOT_EOK;
 }
