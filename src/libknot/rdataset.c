@@ -163,6 +163,11 @@ knot_rdata_t *knot_rdataset_at(const knot_rdataset_t *rrs, uint16_t pos)
 	return rr_seek(rrs, pos);
 }
 
+static inline knot_rdata_t * rdataset_end(const knot_rdataset_t *rrs)
+{
+	return (knot_rdata_t *)((uint8_t *)rrs->rdata + rrs->size);
+}
+
 _public_
 int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *mm)
 {
@@ -191,7 +196,7 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *m
 		}
 	}
 
-	assert((uint8_t *)rrs->rdata + rrs->size == (uint8_t *)ins_pos);
+	assert(rdataset_end(rrs) == ins_pos);
 
 	// If flow gets here, it means that we should insert at the current position (append).
 	return add_rr_at(rrs, rr, ins_pos, mm);
@@ -269,17 +274,26 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
 	}
 
 	knot_rdataset_init(out);
-	knot_rdata_t *rr1 = rrs1->rdata;
-	for (uint16_t i = 0; i < rrs1->count; ++i) {
-		if (knot_rdataset_member(rrs2, rr1)) {
-			// Add RR into output intersection RRSet.
-			int ret = knot_rdataset_add(out, rr1, mm);
+	knot_rdata_t *rr1 = rrs1->rdata, *rr2 = rrs2->rdata;
+	const knot_rdata_t *const rr1_end = rdataset_end(rrs1),
+			   *const rr2_end = rdataset_end(rrs2);
+
+	while (rr1 != rr1_end && rr2 != rr2_end) {
+		const int cmp = knot_rdata_cmp(rr1, rr2);
+		if (cmp < 0) {
+			rr1 = knot_rdataset_next(rr1);
+		} else if (cmp > 0) {
+			rr2 = knot_rdataset_next(rr2);
+		} else {
+			int ret = add_rr_at(out, rr1, rdataset_end(out), mm);
 			if (ret != KNOT_EOK) {
 				knot_rdataset_clear(out, mm);
 				return ret;
 			}
+			rr1 = knot_rdataset_next(rr1);
+			rr2 = knot_rdataset_next(rr2);
+			// TODO: better re-allocation strategy; important for mempools.
 		}
-		rr1 = knot_rdataset_next(rr1);
 	}
 
 	return KNOT_EOK;

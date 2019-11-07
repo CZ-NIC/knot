@@ -148,7 +148,7 @@ int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2,
                         knot_mm_t *mm);
 
 /*!
- * \brief RRS set-like intersection. Full compare is done.
+ * \brief RRS set-like intersection.  Canonical order is assumed (and preserved).
  *
  * \param rrs1  First RRS to intersect.
  * \param rrs2  Second RRS to intersect.
