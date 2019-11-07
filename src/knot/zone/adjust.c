@@ -295,6 +295,14 @@ typedef struct {
 	adjust_cb_t adjust_cb;
 	bool adjust_prevs;
 	measure_t *m;
+
+	// just for parallel:
+	unsigned threads;
+	unsigned thr_id;
+	size_t i;
+	pthread_t thread;
+	int ret;
+	zone_tree_t *tree;
 } zone_adjust_arg_t;
 
 static int adjust_single(zone_node_t *node, void *data)
@@ -304,7 +312,16 @@ static int adjust_single(zone_node_t *node, void *data)
 
 	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
 
-	knot_measure_node(node, args->m);
+	// parallel adjust support
+	if (args->threads > 1) {
+		if (args->i++ % args->threads != args->thr_id) {
+			return KNOT_EOK;
+		}
+	}
+
+	if (args->m != NULL) {
+		knot_measure_node(node, args->m);
+	}
 
 	if ((node->flags & NODE_FLAGS_DELETED)) {
 		return KNOT_EOK;
@@ -357,8 +374,53 @@ static int zone_adjust_tree(zone_tree_t *tree, adjust_ctx_t *ctx, adjust_cb_t ad
 	return KNOT_EOK;
 }
 
+static void *adjust_tree_thread(void *vctx)
+{
+	zone_adjust_arg_t *ctx = vctx;
+
+	ctx->ret = zone_tree_apply(ctx->tree, adjust_single, vctx);
+
+	return NULL;
+}
+
+static int zone_adjust_tree_parallel(zone_tree_t *tree, adjust_ctx_t *ctx,
+                                     adjust_cb_t adjust_cb, unsigned threads)
+{
+	if (zone_tree_is_empty(tree)) {
+		return KNOT_EOK;
+	}
+
+	zone_adjust_arg_t arg[threads];
+	int ret = KNOT_EOK;
+
+	for (unsigned i = 0; i < threads; i++) {
+		arg[i].ctx = ctx;
+		arg[i].adjust_cb = adjust_cb;
+		arg[i].adjust_prevs = false;
+		arg[i].first_node = NULL;
+		arg[i].m = NULL;
+		arg[i].tree = tree;
+		arg[i].threads = threads;
+		arg[i].i = 0;
+		arg[i].thr_id = i;
+		arg[i].ret = pthread_create(&arg[i].thread, NULL, adjust_tree_thread, &arg[i]);
+	}
+
+	for (unsigned i = 0; i < threads; i++) {
+		if (arg[i].ret != -KNOT_EAGAIN) {
+			pthread_join(arg[i].thread, NULL);
+		}
+		if (ret == KNOT_EOK) {
+			ret = arg[i].ret;
+		}
+	}
+
+	return ret;
+}
+
 int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb,
-                         bool measure_zone, zone_tree_t *add_changed)
+                         bool measure_zone, bool adjust_prevs, unsigned threads,
+                         zone_tree_t *add_changed)
 {
 	int ret = zone_contents_load_nsec3param(zone);
 	if (ret != KNOT_EOK) {
@@ -372,12 +434,25 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 	measure_t m = knot_measure_init(measure_zone, false);
 	adjust_ctx_t ctx = { zone, add_changed, true };
 
-	if (nsec3_cb != NULL) {
-		ret = zone_adjust_tree(zone->nsec3_nodes, &ctx, nsec3_cb, true, &m);
+	if (threads > 1) {
+		assert(!measure_zone);
+		assert(!adjust_prevs);
+		assert(add_changed == NULL);
+		if (nsec3_cb != NULL) {
+			ret = zone_adjust_tree_parallel(zone->nsec3_nodes, &ctx, nsec3_cb, threads);
+		}
+		if (ret == KNOT_EOK && nodes_cb != NULL) {
+			ret = zone_adjust_tree_parallel(zone->nodes, &ctx, nodes_cb, threads);
+		}
+	} else {
+		if (nsec3_cb != NULL) {
+			ret = zone_adjust_tree(zone->nsec3_nodes, &ctx, nsec3_cb, adjust_prevs, &m);
+		}
+		if (ret == KNOT_EOK && nodes_cb != NULL) {
+			ret = zone_adjust_tree(zone->nodes, &ctx, nodes_cb, adjust_prevs, &m);
+		}
 	}
-	if (ret == KNOT_EOK && nodes_cb != NULL) {
-		ret = zone_adjust_tree(zone->nodes, &ctx, nodes_cb, true, &m);
-	}
+
 	if (ret == KNOT_EOK && measure_zone && nodes_cb != NULL && nsec3_cb != NULL) {
 		knot_measure_finish_zone(&m, zone);
 	}
@@ -404,9 +479,9 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 
 int zone_adjust_full(zone_contents_t *zone)
 {
-	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags, true, NULL);
+	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags, true, true, 1, NULL);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false, NULL);
+		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false, true, 1, NULL);
 	}
 	if (ret == KNOT_EOK) {
 		additionals_tree_free(zone->adds_tree);
@@ -438,10 +513,10 @@ int zone_adjust_incremental_update(zone_update_t *update)
 	bool nsec3change = zone_update_changed_nsec3param(update);
 	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs, nsec3change };
 
-	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false, update->a_ctx->adjust_ptrs);
+	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false, true, 1, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, true, update->a_ctx->adjust_ptrs);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, true, false, 1, update->a_ctx->adjust_ptrs);
 		} else {
 			ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 		}
@@ -470,7 +545,7 @@ int zone_adjust_incremental_update(zone_update_t *update)
 	}
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_pointer, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_pointer, adjust_cb_void, false, false, 1, update->a_ctx->adjust_ptrs);
 		} else {
 			ret = additionals_reverse_apply_multi(
 				update->new_cont->adds_tree,

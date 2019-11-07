@@ -252,7 +252,7 @@ static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
 
-	int ret = zone_adjust_contents(new_zone, adjust_cb_flags, NULL, false, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
+	int ret = zone_adjust_contents(new_zone, adjust_cb_flags, NULL, false, true, 1, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
 	if (ret == KNOT_EOK) {
 		ret = xfr_validate(new_zone, data);
 	}
@@ -527,7 +527,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	ret = zone_adjust_contents(up.new_cont, adjust_cb_flags, NULL, false, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
+	ret = zone_adjust_contents(up.new_cont, adjust_cb_flags, NULL, false, true, 1, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
 	if (ret == KNOT_EOK) {
 		ret = xfr_validate(up.new_cont, data);
 	}
