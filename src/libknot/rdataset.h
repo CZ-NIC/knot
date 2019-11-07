@@ -163,9 +163,11 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
 /*!
  * \brief Does set-like RRS subtraction. \a from RRS is changed.
  *
+ * Canonical order is assumed for both intputs (and preserved).
+ *
  * \param from  RRS to subtract from.
  * \param what  RRS to subtract.
- * \param mm    Memory context use to reallocated \a from data.
+ * \param mm    Memory context to use (for from->rdata size reduction).
  *
  * \return KNOT_E*
  */
