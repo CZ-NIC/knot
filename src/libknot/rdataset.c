@@ -185,25 +185,30 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *m
 		return KNOT_EINVAL;
 	}
 
-	// First insert to empty rdataset.
-	if (rrs->count == 0) {
-		return add_rr_at(rrs, rr, 0, mm);
-	}
-
-	for (int i = rrs->count - 1; i >= 0; --i) {
-		const knot_rdata_t *rrset_rr = rr_seek(rrs, i);
-		int cmp = knot_rdata_cmp(rrset_rr, rr);
-		if (cmp == 0) {
-			// Duplicate - no need to add this RR.
-			return KNOT_EOK;
-		} else if (cmp < 0) {
-			// Found position to insert.
-			return add_rr_at(rrs, rr, i + 1, mm);
+	// Optimize a little for insertion at the end, for larger RRsets.
+	if (rrs->count > 4) {
+		knot_rdata_t *last = knot_rdataset_at(rrs, rrs->count - 1);
+		if (knot_rdata_cmp(last, rr) < 0) {
+			return add_rr_at(rrs, rr, rrs->count, mm);
 		}
 	}
 
-	// If flow gets here, it means that we should insert at the first position.
-	return add_rr_at(rrs, rr, 0, mm);
+	// Look for the right place to insert.
+	knot_rdata_t *ins_pos = rrs->rdata;
+	for (int i = 0; i < rrs->count; ++i, ins_pos = knot_rdataset_next(ins_pos)) {
+		int cmp = knot_rdata_cmp(ins_pos, rr);
+		if (cmp == 0) {
+			// Duplicate - no need to add this RR.
+			return KNOT_EOK;
+		} else if (cmp > 0) {
+			// Found position to insert.
+			return add_rr_at(rrs, rr, i, mm);
+		}
+	}
+
+	assert((uint8_t *)rrs->rdata + rrs->size == (uint8_t *)ins_pos);
+	// If flow gets here, it means that we should append.
+	return add_rr_at(rrs, rr, rrs->count, mm);
 }
 
 _public_
