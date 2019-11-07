@@ -36,19 +36,6 @@ static knot_rdata_t *rr_seek(const knot_rdataset_t *rrs, uint16_t pos)
 	return (knot_rdata_t *)raw;
 }
 
-static int find_rr_pos(const knot_rdataset_t *rrs, const knot_rdata_t *rr)
-{
-	knot_rdata_t *search_rr = rrs->rdata;
-	for (uint16_t i = 0; i < rrs->count; ++i) {
-		if (knot_rdata_cmp(rr, search_rr) == 0) {
-			return i;
-		}
-		search_rr = knot_rdataset_next(search_rr);
-	}
-
-	return KNOT_ENOENT;
-}
-
 static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_rdata_t *ins_pos,
                      knot_mm_t *mm)
 {
@@ -82,43 +69,6 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_rdata_t 
 	knot_rdata_init((knot_rdata_t *)ins_pos_raw, rr->len, rr->data);
 	rrs->count++;
 	rrs->size += rr_size;
-
-	return KNOT_EOK;
-}
-
-static int remove_rr_at(knot_rdataset_t *rrs, uint16_t pos, knot_mm_t *mm)
-{
-	assert(rrs);
-	assert(0 < rrs->count);
-	assert(pos < rrs->count);
-
-	knot_rdata_t *old_rr = rr_seek(rrs, pos);
-	knot_rdata_t *last_rr = rr_seek(rrs, rrs->count - 1);
-
-	size_t old_size = knot_rdata_size(old_rr->len);
-
-	// Move RDATA.
-	uint8_t *old_threshold = (uint8_t *)old_rr + old_size;
-	uint8_t *last_threshold = (uint8_t *)last_rr + knot_rdata_size(last_rr->len);
-	assert(old_threshold <= last_threshold);
-	memmove(old_rr, old_threshold, last_threshold - old_threshold);
-
-	if (rrs->count > 1) {
-		// Realloc RDATA.
-		knot_rdata_t *tmp = mm_realloc(mm, rrs->rdata, rrs->size - old_size,
-		                               rrs->size);
-		if (tmp == NULL) {
-			return KNOT_ENOMEM;
-		} else {
-			rrs->rdata = tmp;
-		}
-	} else {
-		// Free RDATA.
-		mm_free(mm, rrs->rdata);
-		rrs->rdata = NULL;
-	}
-	rrs->count--;
-	rrs->size -= old_size;
 
 	return KNOT_EOK;
 }
@@ -314,17 +264,38 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 		return KNOT_EOK;
 	}
 
-	knot_rdata_t *to_remove = what->rdata;
-	for (uint16_t i = 0; i < what->count; ++i) {
-		int pos_to_remove = find_rr_pos(from, to_remove);
-		if (pos_to_remove >= 0) {
-			int ret = remove_rr_at(from, pos_to_remove, mm);
-			if (ret != KNOT_EOK) {
-				return ret;
+	// Prepare for simultaneous "ordered merging" of both sequences.
+	knot_rdata_t *fr = from->rdata, *wh = what->rdata;
+	uint8_t *out = (uint8_t *)fr;
+	const knot_rdata_t *const fr_end = rdataset_end(from),
+			   *const wh_end = rdataset_end(what);
+
+	while (fr != fr_end && wh != wh_end) {
+		const int cmp = knot_rdata_cmp(fr, wh);
+		if (cmp > 0) { // nothing happens
+			wh = knot_rdataset_next(wh);
+		} else if (cmp == 0) { // this RR drops out
+			--from->count;
+			from->size -= knot_rdata_size(fr->len);
+			fr = knot_rdataset_next(fr);
+		} else { // the RR is kept
+			if (out != (uint8_t *)fr) { // but we need to move it
+				uint16_t size = knot_rdata_size(fr->len);
+				memmove(out, fr, size); // move even padding
+				out += size;
 			}
+			fr = knot_rdataset_next(fr);
 		}
-		to_remove = knot_rdataset_next(to_remove);
 	}
+
+	// Done; just clean up.
+	if (from->count == 0) {
+		assert(from->size == 0);
+		mm_free(mm, from->rdata);
+		from->rdata = NULL;
+	}
+	// TODO: mm_realloc if the size decreased a lot?
+	// Note that in mempools that would *worsen* memory usage.
 
 	return KNOT_EOK;
 }
