@@ -137,7 +137,8 @@ static void process_data(zs_scanner_t *scanner)
 }
 
 int zonefile_open(zloader_t *loader, const char *source,
-		  const knot_dname_t *origin, bool semantic_checks, time_t time)
+                  const knot_dname_t *origin, bool semantic_checks,
+                  unsigned adjusting_threads, time_t time)
 {
 	if (!loader) {
 		return KNOT_EINVAL;
@@ -185,6 +186,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 	loader->source = strdup(source);
 	loader->creator = zc;
 	loader->semantic_checks = semantic_checks;
+	loader->adjust_threads = adjusting_threads;
 	loader->time = time;
 
 	return KNOT_EOK;
@@ -226,7 +228,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags, true, NULL);
+	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags, true, true, 1, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
@@ -244,7 +246,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 
 	/* The contents will now change possibly messing up NSEC3 tree, it will
 	   be adjusted again at zone_update_commit. */
-	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false, NULL);
+	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false, false, loader->adjust_threads, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -277,7 +277,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 
 	size_t zone_size1 = zone->contents->size;
 	uint32_t zone_max_ttl1 = zone->contents->max_ttl;
-	ret = zone_adjust_full(zone->contents);
+	ret = zone_adjust_full(zone->contents, 2);
 	ok(ret == KNOT_EOK, "zone adjust full shall work");
 	size_t zone_size2 = zone->contents->size;
 	uint32_t zone_max_ttl2 = zone->contents->max_ttl;

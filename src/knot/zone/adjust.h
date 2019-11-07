@@ -70,12 +70,15 @@ int adjust_cb_void(zone_node_t *node, adjust_ctx_t *ctx);
  * \param nodes_cb      Callback for NORMAL nodes.
  * \param nsec3_cb      Callback for NSEC3 nodes.
  * \param measure_zone  While adjusting, count the size and max TTL of the zone.
+ * \param adjust_prevs  Also (re-)generate node->prev pointers.
+ * \param threads       Operate in parallel using specified threads.
  * \param add_changed   Special tree to add any changed node (by adjusting) into.
  *
  * \return KNOT_E*
  */
 int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb,
-                         bool measure_zone, zone_tree_t *add_changed);
+                         bool measure_zone, bool adjust_prevs, unsigned threads,
+                         zone_tree_t *add_changed);
 
 /*!
  * \brief Apply callback to nodes affected by the zone update.
@@ -99,11 +102,12 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
  * This operates in two phases, first fix basic node flags and prev pointers,
  * than nsec3-related pointers and additionals.
  *
- * \param zone   Zone to be adjusted.
+ * \param zone     Zone to be adjusted.
+ * \param threads  Parallelize some adjusting using specified threads.
  *
  * \return KNOT_E*
  */
-int zone_adjust_full(zone_contents_t *zone);
+int zone_adjust_full(zone_contents_t *zone, unsigned threads);
 
 /*!
  * \brief Do a generally approved adjust after incremental update.

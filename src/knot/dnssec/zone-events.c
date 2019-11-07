@@ -181,7 +181,8 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, update->a_ctx->node_ptrs);
+	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL,
+	                              false, false, 1, update->a_ctx->node_ptrs);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -262,7 +263,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
-	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, update->a_ctx->node_ptrs);
+	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, false, 1, update->a_ctx->node_ptrs);
 	if (result != KNOT_EOK) {
 		goto done;
 	}
