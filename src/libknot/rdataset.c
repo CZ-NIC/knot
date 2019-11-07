@@ -273,6 +273,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
 		return KNOT_EINVAL;
 	}
 
+	// Prepare for simultaneous "ordered merging" of both sequences.
 	knot_rdataset_init(out);
 	knot_rdata_t *rr1 = rrs1->rdata, *rr2 = rrs2->rdata;
 	const knot_rdata_t *const rr1_end = rdataset_end(rrs1),
