@@ -211,6 +211,10 @@ int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2,
 		}
 		rr2 = knot_rdataset_next(rr2);
 	}
+	// TODO: this won't be efficient if the second set is large,
+	// especially if using mempools (quadratic work).
+	// A merging pass alike to _subtract() would be linear,
+	// if extended with a sane re-allocation strategy.
 
 	return KNOT_EOK;
 }
