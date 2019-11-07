@@ -263,7 +263,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 		return KNOT_EINVAL;
 	}
 
-	if (from->rdata == what->rdata) {
+	if (from->rdata == what->rdata) { // optimization
 		knot_rdataset_clear(from, mm);
 		return KNOT_EOK;
 	}
