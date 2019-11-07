@@ -257,6 +257,20 @@ bool binode_additionals_unchanged(zone_node_t *node, zone_node_t *counterpart)
 	return true;
 }
 
+int node_additionals_apply(const zone_node_t *node, int (*cb)(const zone_node_t *, void *), void *ctx)
+{
+	int ret = KNOT_EOK;
+	for (int i = 0; i < node->rrset_count && ret == KNOT_EOK; i++) {
+		struct rr_data *rr = &node->rrs[i];
+		if (knot_rrtype_additional_needed(rr->type) && rr->additional != NULL) {
+			for (int j = 0; j < rr->additional->count && ret == KNOT_EOK; j++) {
+				ret = cb(rr->additional->glues[j].node, ctx);
+			}
+		}
+	}
+	return ret;
+}
+
 void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
 {
 	if (node == NULL) {

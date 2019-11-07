@@ -194,6 +194,11 @@ bool binode_additional_shared(zone_node_t *node, uint16_t type);
 bool binode_additionals_unchanged(zone_node_t *node, zone_node_t *counterpart);
 
 /*!
+ * \brief Apply a callback on every Glue pointer in the node's RRsets.
+ */
+int node_additionals_apply(const zone_node_t *node, int (*cb)(const zone_node_t *, void *), void *ctx);
+
+/*!
  * \brief Destroys allocated data within the node
  *        structure, but not the node itself.
  *

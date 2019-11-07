@@ -281,6 +281,30 @@ int adjust_cb_nsec3_and_additionals(zone_node_t *node, adjust_ctx_t *ctx)
 	return ret;
 }
 
+static int no_del_node(const zone_node_t *node, void *ctx)
+{
+	UNUSED(ctx);
+	const zone_node_t *real = binode_node_as((zone_node_t *)node, ctx);
+	if (real->flags & NODE_FLAGS_DELETED) {
+		printf("node %p %hu %s deleted\n", node, real->flags, real->owner);
+		assert(0);
+	}
+	return KNOT_EOK;
+}
+
+int adjust_cb_no_del_pointer(zone_node_t *node, adjust_ctx_t *ctx)
+{
+	no_del_node(node, node);
+	no_del_node(node->prev, node);
+	if (node->parent != NULL) {
+		no_del_node(node->parent, node);
+	}
+	if (node->flags & NODE_FLAGS_NSEC3_NODE) {
+		no_del_node(node->nsec3_node, node);
+	}
+	return node_additionals_apply(node, no_del_node, node);
+}
+
 int adjust_cb_void(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	UNUSED(node);
