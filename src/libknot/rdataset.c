@@ -137,18 +137,24 @@ void knot_rdataset_clear(knot_rdataset_t *rrs, knot_mm_t *mm)
 _public_
 int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, knot_mm_t *mm)
 {
-	if (dst == NULL || src == NULL || src->rdata == NULL) {
+	if (dst == NULL || src == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	dst->count = src->count;
 	dst->size = src->size;
-	dst->rdata = mm_alloc(mm, src->size);
-	if (dst->rdata == NULL) {
-		return KNOT_ENOMEM;
-	}
 
-	memcpy(dst->rdata, src->rdata, src->size);
+	if (src->count > 0) {
+		assert(src->rdata != NULL);
+		dst->rdata = mm_alloc(mm, src->size);
+		if (dst->rdata == NULL) {
+			return KNOT_ENOMEM;
+		}
+		memcpy(dst->rdata, src->rdata, src->size);
+	} else {
+		assert(src->size == 0);
+		dst->rdata = NULL;
+	}
 
 	return KNOT_EOK;
 }
