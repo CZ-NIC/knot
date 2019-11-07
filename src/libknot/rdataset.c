@@ -287,6 +287,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 				uint16_t size = knot_rdata_size(fr->len);
 				memmove(out, fr, size); // move even padding
 				out += size;
+				// TODO: it would be possible to coalesce (some) moves
 			}
 			fr = knot_rdataset_next(fr);
 		}
