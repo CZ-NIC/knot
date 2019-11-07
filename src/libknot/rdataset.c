@@ -137,7 +137,7 @@ void knot_rdataset_clear(knot_rdataset_t *rrs, knot_mm_t *mm)
 _public_
 int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, knot_mm_t *mm)
 {
-	if (dst == NULL || src == NULL) {
+	if (dst == NULL || src == NULL || src->rdata == NULL) {
 		return KNOT_EINVAL;
 	}
 
