@@ -33,9 +33,10 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 
 	char *zonefile = conf_zonefile(conf, zone_name);
 	conf_val_t val = conf_zone_get(conf, C_SEM_CHECKS, zone_name);
+	conf_val_t thr = conf_zone_get(conf, C_ADJUST_THR, zone_name);
 
 	zloader_t zl;
-	int ret = zonefile_open(&zl, zonefile, zone_name, conf_bool(&val), time(NULL));
+	int ret = zonefile_open(&zl, zonefile, zone_name, conf_bool(&val), conf_int(&thr), time(NULL));
 	free(zonefile);
 	if (ret != KNOT_EOK) {
 		return ret;
