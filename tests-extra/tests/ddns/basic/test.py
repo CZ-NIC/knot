@@ -155,6 +155,30 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
     verify(master, zone, dnssec)
 
+    # remove delegation, keep glue
+    check_log("Remove delegation, keep glue")
+    up = master.update(zone)
+    up.delete("deleglue.ddns.", "NS")
+    up.send("NOERROR")
+    resp = master.dig("deleglue.ddns.", "NS")
+    resp.check(rcode="NOERROR")
+    resp.check_record(section="authority", rtype="SOA")
+    resp.check_no_rr(section="additional", rname="a.deleglue.ddns.", rtype="A")
+    resp = master.dig("a.deleglue.ddns.", "A")
+    resp.check(rcode="NOERROR")
+    resp.check_record(section="answer", rtype="A", rdata="10.20.30.40")
+    verify(master, zone, dnssec)
+
+    # add delegation to existing glue
+    check_log("Add delegation to existing glue")
+    up = master.update(zone)
+    up.add("deleglue.ddns.", 3600, "NS", "a.deleglue.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("deleglue.ddns.", "NS")
+    resp.check_record(section="authority", rtype="NS", rdata="a.deleglue.ddns.")
+    resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
+    verify(master, zone, dnssec)
+
     # make a delegation from NONAUTH node
     check_log("NONAUTH to DELEG")
     up = master.update(zone)

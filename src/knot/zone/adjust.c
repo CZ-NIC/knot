@@ -462,6 +462,9 @@ int zone_adjust_incremental_update(zone_update_t *update)
 		);
 	}
 	if (ret == KNOT_EOK) {
+		ret = zone_adjust_update(update, adjust_cb_additionals, adjust_cb_void, false);
+	}
+	if (ret == KNOT_EOK) {
 		if (nsec3change) {
 			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_pointer, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
 		} else {
