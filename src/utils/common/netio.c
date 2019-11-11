@@ -165,6 +165,7 @@ int net_init(const srv_info_t    *local,
              const int           wait,
              const net_flags_t   flags,
              const tls_params_t  *tls_params,
+			 const bool			 use_https,
              net_t               *net)
 {
 	if (remote == NULL || net == NULL) {
@@ -208,6 +209,9 @@ int net_init(const srv_info_t    *local,
 			return ret;
 		}
 	}
+
+	// Prepare HTTPS
+	net->https = use_https;
 
 	return KNOT_EOK;
 }
@@ -396,8 +400,11 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
+	// Send data over HTTPS (DoH)
+	if (net->https) {
+		https_send_doh_request(buf, buf_len);
 	// Send data over UDP.
-	if (net->socktype == SOCK_DGRAM) {
+	} else if (net->socktype == SOCK_DGRAM) {
 		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
 		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
 			WARN("can't send query to %s\n", net->remote_str);

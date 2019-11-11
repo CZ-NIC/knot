@@ -16,4 +16,71 @@
 
 #include "utils/common/https.h"
 
+int https_send_doh_request(const uint8_t *buf, const size_t buf_len)
+{
+    /** Connect **/
+    wget_iri_t *uri = (wget_iri_t*)calloc(1, sizeof(wget_iri_t));
+  	wget_http_connection_t *conn = NULL;
+    wget_http_request_t *req = NULL;
 
+
+    uri->scheme = WGET_IRI_SCHEME_HTTPS;
+    uri->host = "1.1.1.1";
+    uri->is_ip_address = true;
+    uri->port = (uint16_t)443;
+    uri->port_given = true;
+
+    wget_http_open(&conn, uri);
+
+    /** Send **/
+
+    static const char HTTPS_DOH_QUERY_KEY[] = "dns=";
+    const size_t query_size = sizeof(HTTPS_DOH_QUERY_KEY) + 2 + buf_len * 4 / 3;
+    uint8_t *query = (uint8_t *)calloc(query_size, sizeof(*buf));
+    strcpy(query, HTTPS_DOH_QUERY_KEY);
+    base64_encode(buf, buf_len, query + 4, query_size - 4);
+
+    uri->path = "dns-query";
+    uri->query = query;
+    uri->query_allocated = true;
+
+    req = wget_http_create_request(uri, "GET");
+    
+
+	wget_http_add_header(req, "User-Agent", "kdig/"PACKAGE_VERSION);
+	wget_http_add_header(req, "Accept", "application/dns-message");
+
+	wget_http_request_set_int(req, WGET_HTTP_RESPONSE_KEEPHEADER, 1);
+
+	if (conn) {
+		wget_http_response_t *resp;
+
+		if (wget_http_send_request(conn, req) == 0) {
+			resp = wget_http_get_response(conn);
+
+            /** Receive **/
+
+			if (!resp) {
+				goto out;
+            }
+
+			// server doesn't support or want keep-alive
+			if (!resp->keep_alive) {
+				wget_http_close(&conn);
+            }
+
+            /** Print **/
+            for(size_t i = 0; i < resp->content_length; i++) {
+                printf("%u %c\n", resp->body->data[i], resp->body->data[i]);
+            }
+			wget_http_free_response(&resp);
+		}
+	}
+
+out:
+	wget_http_close(&conn);
+	wget_http_free_request(&req);
+	wget_iri_free(&uri);
+    
+    return KNOT_EOK;
+}

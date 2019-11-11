@@ -16,4 +16,13 @@
 
 #pragma once
 
+#include <wget.h>
+#include <string.h>
 
+#include "config.h"
+
+#include "contrib/base64.h"
+
+#include "libknot/errcode.h"
+
+int https_send_doh_request(const uint8_t *buf, const size_t buf_len);
