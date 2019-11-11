@@ -201,17 +201,18 @@ int net_init(const srv_info_t    *local,
 	net->remote = remote;
 	net->flags = flags;
 
+	// Prepare for HTTPS.
+	if (use_https) {
+		int ret = https_ctx_init(&net->https);
+		return ret;
 	// Prepare for TLS.
-	if (tls_params != NULL && tls_params->enable) {
+	} else if (tls_params != NULL && tls_params->enable) {
 		int ret = tls_ctx_init(&net->tls, tls_params, net->wait);
 		if (ret != KNOT_EOK) {
 			net_clean(net);
 			return ret;
 		}
 	}
-
-	// Prepare HTTPS
-	net->https = use_https;
 
 	return KNOT_EOK;
 }
@@ -401,7 +402,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	}
 
 	// Send data over HTTPS (DoH)
-	if (net->https) {
+	if (net->https.use) {
 		https_send_doh_request(buf, buf_len);
 	// Send data over UDP.
 	} else if (net->socktype == SOCK_DGRAM) {

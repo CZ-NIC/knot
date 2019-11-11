@@ -25,4 +25,11 @@
 
 #include "libknot/errcode.h"
 
+typedef struct {
+    bool use;
+    wget_iri_t server;
+} https_ctx_t;
+
+int https_ctx_init(https_ctx_t *ctx);
+
 int https_send_doh_request(const uint8_t *buf, const size_t buf_len);

@@ -77,7 +77,7 @@ typedef struct {
 	/*! TLS context. */
 	tls_ctx_t tls;
 	/*! Use DoH. */
-	bool https;
+	https_ctx_t https;
 } net_t;
 
 /*!

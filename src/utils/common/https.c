@@ -16,13 +16,25 @@
 
 #include "utils/common/https.h"
 
+
+int https_ctx_init(https_ctx_t *ctx)
+{
+    ctx->server.scheme = WGET_IRI_SCHEME_HTTPS;
+    ctx->server.host = "1.1.1.1";
+    ctx->server.is_ip_address = true;
+    ctx->server.port = (uint16_t)443;
+    ctx->server.port_given = true;
+
+    ctx->use = true;
+    return KNOT_EOK;
+}
+
 int https_send_doh_request(const uint8_t *buf, const size_t buf_len)
 {
     /** Connect **/
     wget_iri_t *uri = (wget_iri_t*)calloc(1, sizeof(wget_iri_t));
   	wget_http_connection_t *conn = NULL;
     wget_http_request_t *req = NULL;
-
 
     uri->scheme = WGET_IRI_SCHEME_HTTPS;
     uri->host = "1.1.1.1";
