@@ -158,15 +158,15 @@ void get_addr_str(const struct sockaddr_storage *ss,
 	}
 }
 
-int net_init(const srv_info_t    *local,
-             const srv_info_t    *remote,
-             const int           iptype,
-             const int           socktype,
-             const int           wait,
-             const net_flags_t   flags,
-             const tls_params_t  *tls_params,
-			 const bool			 use_https,
-             net_t               *net)
+int net_init(const srv_info_t    	*local,
+             const srv_info_t    	*remote,
+             const int           	iptype,
+             const int           	socktype,
+             const int           	wait,
+             const net_flags_t   	flags,
+             const tls_params_t  	*tls_params,
+			 const https_params_t	*https_params,
+             net_t               	*net)
 {
 	if (remote == NULL || net == NULL) {
 		DBG_NULL;
@@ -201,17 +201,27 @@ int net_init(const srv_info_t    *local,
 	net->remote = remote;
 	net->flags = flags;
 
+	// Prepare for HTTPS.
+	if (https_params != NULL && https_params->enable) {
+		char *end_p = NULL;
+		uint16_t port = strtol(remote->service, &end_p, 10) & 0xFFFF;
+		if (port == 0) {
+			net_clean(net);
+			return KNOT_NET_EADDR;
+		}
+		int ret = https_ctx_init(&net->https, https_params, remote->name, port);
+		if (ret != KNOT_EOK) {
+			net_clean(net);
+			return ret;
+		}
 	// Prepare for TLS.
-	if (tls_params != NULL && tls_params->enable) {
+	} else if (tls_params != NULL && tls_params->enable) {
 		int ret = tls_ctx_init(&net->tls, tls_params, net->wait);
 		if (ret != KNOT_EOK) {
 			net_clean(net);
 			return ret;
 		}
 	}
-
-	// Prepare HTTPS
-	net->https = use_https;
 
 	return KNOT_EOK;
 }
@@ -349,7 +359,9 @@ int net_connect(net_t *net)
 				close(sockfd);
 				return ret;
 			}
-		}
+		} 
+	} else if (net->https.params != NULL && net->https.params->enable) {
+		https_ctx_connect(&net->https);
 	}
 
 	// Store socket descriptor.
@@ -401,8 +413,8 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	}
 
 	// Send data over HTTPS (DoH)
-	if (net->https) {
-		https_send_doh_request(buf, buf_len);
+	if (net->https.params != NULL && net->https.params->enable) {
+		https_send_doh_request(&net->https, buf, buf_len);
 	// Send data over UDP.
 	} else if (net->socktype == SOCK_DGRAM) {
 		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
@@ -468,8 +480,17 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		.revents = 0,
 	};
 
+	// Receive data over HTTPS.
+	if (net->https.params != NULL && net->https.params->enable) {
+		int ret = https_receive_doh_response((https_ctx_t *)&net->https, buf, buf_len);
+		if (ret < 0) {
+			WARN("can't receive reply from %s\n", net->remote_str);
+			return KNOT_NET_ERECV;
+		}
+
+		return ret;
 	// Receive data over UDP.
-	if (net->socktype == SOCK_DGRAM) {
+	} else if (net->socktype == SOCK_DGRAM) {
 		struct sockaddr_storage from;
 		memset(&from, '\0', sizeof(from));
 

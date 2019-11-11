@@ -25,4 +25,17 @@
 
 #include "libknot/errcode.h"
 
-int https_send_doh_request(const uint8_t *buf, const size_t buf_len);
+typedef struct {
+    bool enable;
+} https_params_t;
+
+typedef struct {
+    https_params_t *params;
+    wget_iri_t server;
+    wget_http_connection_t *connection;
+} https_ctx_t;
+
+int https_ctx_init(https_ctx_t *ctx, const https_params_t *params, const char *server, const uint16_t port);
+int https_ctx_connect(https_ctx_t *ctx);
+int https_send_doh_request(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len);
+int https_receive_doh_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len);

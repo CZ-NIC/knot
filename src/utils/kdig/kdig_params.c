@@ -786,7 +786,7 @@ static int opt_https(const char *arg, void *query)
 
 	query_t *q = query;
 
-	q->https = true;
+	q->https.enable = true;
 
 	return KNOT_EOK;
 }
@@ -795,7 +795,7 @@ static int opt_nohttps(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	q->https = false;
+	q->https.enable = false;
 
 	return KNOT_EOK;
 }
@@ -1847,6 +1847,8 @@ static void complete_servers(query_t *query, const query_t *conf)
 		def_port = conf->port;
 	} else if (query->tls.enable) {
 		def_port = DEFAULT_DNS_TLS_PORT;
+	} else if (query->https.enable) {
+		def_port = DEFAULT_DNS_HTTPS_PORT;
 	} else {
 		def_port = DEFAULT_DNS_PORT;
 	}

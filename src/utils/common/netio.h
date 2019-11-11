@@ -17,6 +17,7 @@
 #pragma once
 
 #include <netdb.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <sys/socket.h>
 
@@ -77,7 +78,7 @@ typedef struct {
 	/*! TLS context. */
 	tls_ctx_t tls;
 	/*! Use DoH. */
-	bool https;
+	https_ctx_t https;
 } net_t;
 
 /*!
@@ -153,15 +154,15 @@ void get_addr_str(const struct sockaddr_storage *ss,
  * \retval KNOT_EOK	if success.
  * \retval errcode	if error.
  */
-int net_init(const srv_info_t    *local,
-             const srv_info_t    *remote,
-             const int           iptype,
-             const int           socktype,
-             const int           wait,
-             const net_flags_t   flags,
-             const tls_params_t  *tls_params,
-			 const bool			 use_https,
-             net_t               *net);
+int net_init(const srv_info_t    	*local,
+             const srv_info_t    	*remote,
+             const int           	iptype,
+             const int           	socktype,
+             const int           	wait,
+             const net_flags_t   	flags,
+             const tls_params_t  	*tls_params,
+			 const https_params_t	*use_https,
+             net_t               	*net);
 
 /*!
  * \brief Creates socket and connects (if TCP) to remote address specified

@@ -809,7 +809,7 @@ static int process_query(const query_t *query)
 		for (size_t i = 0; i <= query->retries; i++) {
 			// Initialize network structure for current server.
 			ret = net_init(query->local, remote, iptype, socktype,
-				       query->wait, flags, &query->tls, query->https, &net);
+				       query->wait, flags, &query->tls, &query->https, &net);
 			if (ret != KNOT_EOK) {
 				continue;
 			}
@@ -1096,7 +1096,7 @@ static int process_xfr(const query_t *query)
 
 	// Initialize network structure.
 	ret = net_init(query->local, remote, iptype, socktype, query->wait,
-	               flags, &query->tls, query->https, &net);
+	               flags, &query->tls, &query->https, &net);
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(out_packet);
