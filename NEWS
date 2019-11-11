@@ -1,3 +1,29 @@
+Knot DNS 2.9.1 (2019-11-11)
+===========================
+
+Features:
+---------
+ - New option for OCSP stapling '+[no]tls-ocsp-stapling[=H]' in kdig (Thanks to Alexander Schultz)
+
+Improvements:
+-------------
+ - Kdig always randomizes source TCP port on recent Linux #575
+ - Server no longer warns about disabled zone file synchronization during shutdown
+ - Zone loading stops if failed to load zone from the journal
+ - Speed-up of insertion to big RRSets
+ - Various code and documentation improvements
+
+Bugfixes:
+---------
+ - Failed to apply journal changes after upgrade #659
+ - Failed to finish zone loading if journal changeset serials from and to are equal
+ - Incorrect handling of 0 value for 'tcp-io-timeout' and 'tcp-remote-io-timeout' configuration
+ - Server can crash if zone transaction is open during zone update
+ - NSEC3 chain not fully updated if NSEC3 salt changes during zone update
+ - Server can crash when flushing zone to a specified directory
+ - Server can respond incorrect NSEC3 records after NSEC3 salt change
+ - Delegation glue records not updated after specific zone change
+
 Knot DNS 2.9.0 (2019-10-10)
 ===========================
 
