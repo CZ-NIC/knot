@@ -667,6 +667,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	reschedule->next_rollover = next.time;
 
 	if (knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
+		bool log_keytag = true;
 		switch (next.type) {
 		case GENERATE:
 			if (next.ksk) {
@@ -678,6 +679,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 				log_zone_info(ctx->zone->dname, "DNSSEC, %cSK rollover started",
 				              (next.ksk ? 'K' : 'Z'));
 			}
+			log_keytag = false;
 			break;
 		case PUBLISH:
 			ret = exec_publish(ctx, next.key);
@@ -707,8 +709,14 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			next = next_action(ctx, flags);
 			reschedule->next_rollover = next.time;
 		} else {
-			log_zone_warning(ctx->zone->dname, "DNSSEC, key rollover, action %s (%s)",
-			                 roll_action_name(next.type), knot_strerror(ret));
+			if (log_keytag) {
+				log_zone_warning(ctx->zone->dname, "DNSSEC, key rollover, tag %5d, action %s (%s)",
+				                 dnssec_key_get_keytag(next.key->key),
+				                 roll_action_name(next.type), knot_strerror(ret));
+			} else {
+				log_zone_warning(ctx->zone->dname, "DNSSEC, key rollover, action %s (%s)",
+				                 roll_action_name(next.type), knot_strerror(ret));
+			}
 			// fail => try in 10 seconds #TODO better?
 			reschedule->next_rollover = knot_time_add(knot_time(), 10);
 		}
