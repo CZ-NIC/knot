@@ -122,6 +122,8 @@ struct query {
 	tls_params_t	tls;
 	/*!< Transaction signature. */
 	knot_tsig_key_t tsig_key;
+	/*!< HTTPS parameters. */
+	bool		https;
 	/*!< EDNS client subnet. */
 	knot_edns_client_subnet_t subnet;
 	/*!< Lits of custom EDNS options. */

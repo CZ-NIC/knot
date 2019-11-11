@@ -552,7 +552,7 @@ AS_IF([test "$enable_utilities" = "yes"], [
   ])
 
   AS_IF([test "$with_libwget" != "no"], [
-    PKG_CHECK_MODULES([libwget], [libwget >= 1.0.0], [
+    PKG_CHECK_MODULES([libwget], [libwget >= 0.0.1], [
       with_libwget=libwget
       AC_DEFINE([LIBWGET], [1], [Define to 1 to enable DoH support])
     ])

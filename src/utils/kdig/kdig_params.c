@@ -777,6 +777,29 @@ static int opt_notls_certfile(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_https(const char *arg, void *query)
+{
+#ifndef LIBWGET
+	ERR("not supported, compile with DoH support");
+	return KNOT_ENOTSUP;
+#endif
+
+	query_t *q = query;
+
+	q->https = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nohttps(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->https = false;
+
+	return KNOT_EOK;
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1274,6 +1297,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "tls-certfile",   ARG_REQUIRED, opt_tls_certfile },
 	{ "notls-certfile", ARG_NONE,     opt_notls_certfile },
+
+	{ "https",   		ARG_NONE,	  opt_https },
+	{ "nohttps", 		ARG_NONE,     opt_nohttps },
 
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
