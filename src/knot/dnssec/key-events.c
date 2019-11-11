@@ -701,6 +701,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			ret = exec_remove_old_key(ctx, next.key);
 			break;
 		default:
+			log_keytag = false;
 			ret = KNOT_EINVAL;
 		}
 
