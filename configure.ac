@@ -526,6 +526,13 @@ AC_ARG_WITH(libidn,
   with_libidn=yes
 )
 
+dnl Check for libwget.
+AC_ARG_WITH(libwget,
+  AC_HELP_STRING([--with-libwget=[DIR]], [Support DoH (needs libwget)]),
+  with_lwget=$withval,
+  with_lwget=yes
+)
+
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
@@ -541,6 +548,13 @@ AS_IF([test "$enable_utilities" = "yes"], [
         with_libidn=no
         AC_MSG_WARN([libidn2 or libidn not found])
       ])
+    ])
+  ])
+
+  AS_IF([test "$with_libwget" != "no"], [
+    PKG_CHECK_MODULES([libwget], [libwget >= 1.0.0], [
+      with_libwget=libwget
+      AC_DEFINE([LIBWGET], [1], [Define to 1 to enable DoH support])
     ])
   ])
 ]) # Knot DNS utilities dependencies
@@ -710,6 +724,7 @@ result_msg_base="  Knot DNS $VERSION
     Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
+    Utilities with DoH:     ${with_lwget}
     Utilities with Dnstap:  ${enable_dnstap}
     MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}
