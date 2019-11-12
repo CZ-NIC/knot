@@ -175,6 +175,10 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	};
 
 	knot_rrset_init(&data.del_old_ds, zone->name, KNOT_RRTYPE_DS, KNOT_CLASS_ANY, 0);
+	int ret = knot_rrset_add_rdata(&data.del_old_ds, NULL, 0, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	query_edns_data_init(&data.edns, conf, zone->name, parent->addr.ss_family);
 
 	knot_requestor_t requestor;
@@ -182,6 +186,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	if (pkt == NULL) {
+		knot_rdataset_clear(&data.del_old_ds.rrs, NULL);
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
 	}
@@ -190,12 +195,13 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	const struct sockaddr *src = (struct sockaddr *)&parent->via;
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
 	if (req == NULL) {
+		knot_rdataset_clear(&data.del_old_ds.rrs, NULL);
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
 	}
 
-	int ret = knot_requestor_exec(&requestor, req, timeout);
+	ret = knot_requestor_exec(&requestor, req, timeout);
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
 		DS_PUSH_LOG(LOG_INFO, zone->name, dst, "success");
@@ -208,6 +214,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		            knot_pkt_ext_rcode_name(req->resp));
 	}
 
+	knot_rdataset_clear(&data.del_old_ds.rrs, NULL);
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
 
