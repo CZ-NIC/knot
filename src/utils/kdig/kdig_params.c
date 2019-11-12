@@ -2007,6 +2007,7 @@ static void print_help(void)
 	       "       +[no]tls-sni=STR          Use TLS with Server Name Indication.\n"
 	       "       +[no]tls-keyfile=FILE     Use TLS with a client keyfile.\n"
 	       "       +[no]tls-certfile=FILE    Use TLS with a client certfile.\n"
+		   "       +[no]https    			 Use DoH (DNS-over-HTTPS).\n"
 	       "       +[no]nsid                 Request NSID.\n"
 	       "       +[no]bufsize=B            Set EDNS buffer size.\n"
 	       "       +[no]padding[=N]          Pad with EDNS(0) (default or specify size).\n"
