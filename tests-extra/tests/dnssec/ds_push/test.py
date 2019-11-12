@@ -157,4 +157,7 @@ t.sleep(5)
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover", 27)
 
+resp = parent.dig("example.com.", "DS")
+resp.check_count(1, rtype="DS")
+
 t.end()
