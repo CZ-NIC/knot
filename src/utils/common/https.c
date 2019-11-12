@@ -76,7 +76,7 @@ int https_send_doh_request(https_ctx_t *ctx, const uint8_t *buf, const size_t bu
     const size_t query_size = sizeof(HTTPS_DOH_QUERY_KEY) + 2 + buf_len * 4 / 3;
     uint8_t *query = (uint8_t *)calloc(query_size, sizeof(*buf));
     strcpy((char *)query, HTTPS_DOH_QUERY_KEY);
-    base64_encode(buf, buf_len, query + 4, query_size - 4);
+    base64url_encode(buf, buf_len, query + 4, query_size - 4);
 
     iri->path = "dns-query";
     iri->query = query;

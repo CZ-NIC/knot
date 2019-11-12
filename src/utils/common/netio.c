@@ -414,7 +414,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 
 	// Send data over HTTPS (DoH)
 	if (net->https.params != NULL && net->https.params->enable) {
-		https_send_doh_request(&net->https, buf, buf_len);
+		https_send_doh_request((https_ctx_t *)&net->https, buf, buf_len);
 	// Send data over UDP.
 	} else if (net->socktype == SOCK_DGRAM) {
 		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,

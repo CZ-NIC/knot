@@ -61,6 +61,44 @@ int32_t base64_encode_alloc(const uint8_t  *in,
                             uint8_t        **out);
 
 /*!
+ * \brief Encodes binary data using Base64url.
+ *
+ * \note Output data buffer contains Base64url text string which isn't
+ *       terminated with '\0'!
+ *
+ * \param in		Input binary data.
+ * \param in_len	Length of input data.
+ * \param out		Output data buffer.
+ * \param out_len	Size of output buffer.
+ *
+ * \retval >=0		length of output string.
+ * \retval KNOT_E*	if error.
+ */
+int32_t base64url_encode(const uint8_t  *in,
+                      const uint32_t in_len,
+                      uint8_t        *out,
+                      const uint32_t out_len);
+
+/*!
+ * \brief Encodes binary data using Base64url and output stores to own buffer.
+ *
+ * \note Output data buffer contains Base64url text string which isn't
+ *       terminated with '\0'!
+ *
+ * \note Output buffer should be deallocated after use.
+ *
+ * \param in		Input binary data.
+ * \param in_len	Length of input data.
+ * \param out		Output data buffer.
+ *
+ * \retval >=0		length of output string.
+ * \retval KNOT_E*	if error.
+ */
+int32_t base64url_encode_alloc(const uint8_t  *in,
+                            const uint32_t in_len,
+                            uint8_t        **out);
+
+/*!
  * \brief Decodes text data using Base64.
  *
  * \note Input data needn't be terminated with '\0'.
@@ -97,6 +135,47 @@ int32_t base64_decode(const uint8_t  *in,
  * \retval KNOT_E*	if error.
  */
 int32_t base64_decode_alloc(const uint8_t  *in,
+                            const uint32_t in_len,
+                            uint8_t        **out);
+
+
+/*!
+ * \brief Decodes text data using Base64url.
+ *
+ * \note Input data needn't be terminated with '\0'.
+ *
+ * \note Input data must be continuous Base64url string!
+ *
+ * \param in		Input text data.
+ * \param in_len	Length of input string.
+ * \param out		Output data buffer.
+ * \param out_len	Size of output buffer.
+ *
+ * \retval >=0		length of output data.
+ * \retval KNOT_E*	if error.
+ */
+int32_t base64url_decode(const uint8_t  *in,
+                      const uint32_t in_len,
+                      uint8_t        *out,
+                      const uint32_t out_len);
+
+/*!
+ * \brief Decodes text data using Base64 and output stores to own buffer.
+ *
+ * \note Input data needn't be terminated with '\0'.
+ *
+ * \note Input data must be continuous Base64 string!
+ *
+ * \note Output buffer should be deallocated after use.
+ *
+ * \param in		Input text data.
+ * \param in_len	Length of input string.
+ * \param out		Output data buffer.
+ *
+ * \retval >=0		length of output data.
+ * \retval KNOT_E*	if error.
+ */
+int32_t base64url_decode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out);
 
