@@ -125,7 +125,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	}
 
 	ns_log(LOG_INFO, data->zone_name, LOG_OPERATION_DS_CHECK,
-	       LOG_DIRECTION_OUT, data->remote, "KSK submission attempt: %s",
+	       LOG_DIRECTION_OUT, data->remote, "KSK submission check: %s",
 	       (match ? "positive" : "negative"));
 
 	if (match) {
