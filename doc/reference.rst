@@ -1206,8 +1206,8 @@ An optional :ref:`reference<remote_id>` to authoritative DNS server of the
 parent's zone. The remote server must be configured to accept DS record
 updates via DDNS. Whenever a CDS record in the local zone is changed, the
 corresponding DS record is sent as a dynamic update (DDNS) to the parent
-DNS server. It's possible to manage both child and parent zones by the same
-Knot DNS server.
+DNS server. All previous DS records are deleted within the DDNS message.
+It's possible to manage both child and parent zones by the same Knot DNS server.
 
 .. NOTE::
    This feature requires :ref:`cds-cdnskey-publish<policy_cds-cdnskey-publish>`
