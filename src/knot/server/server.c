@@ -257,7 +257,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 
 		if (sock < 0) {
-			log_error("cannot bind address %s (%s)", addr_str,
+			log_error("cannot bind address %s UDP (%s)", addr_str,
 			          knot_strerror(sock));
 			server_deinit_iface(new_if);
 			return NULL;
@@ -303,7 +303,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 
 		if (sock < 0) {
-			log_error("cannot bind address %s (%s)", addr_str,
+			log_error("cannot bind address %s TCP (%s)", addr_str,
 			          knot_strerror(sock));
 			server_deinit_iface(new_if);
 			return NULL;
