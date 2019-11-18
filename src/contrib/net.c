@@ -177,13 +177,6 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr, enum net_fla
 		unlink_unix_socket(addr);
 	}
 
-	/* Reuse old address if taken. */
-	int ret = sockopt_enable(sock, SOL_SOCKET, SO_REUSEADDR);
-	if (ret != KNOT_EOK) {
-		close(sock);
-		return ret;
-	}
-
 	/* Don't bind IPv4 for IPv6 any address. */
 	if (addr->ss_family == AF_INET6) {
 		ret = sockopt_enable(sock, IPPROTO_IPV6, IPV6_V6ONLY);
