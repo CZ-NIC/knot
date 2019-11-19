@@ -320,6 +320,17 @@ def do_normal_tests(master, zone, dnssec=False):
                rdata="dns1.ddns. hostmaster.ddns. 2013111213 10800 3600 1209600 7200")
     verify(master, zone, dnssec)
 
+    # add SOA with different TTL
+    check_log("SOA different TTL")
+    up = master.update(zone)
+    up.add("ddns.", 1800, "SOA",
+           "dns1.ddns. hostmaster.ddns. 2014111213 10800 1800 1209600 7200")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "SOA")
+    resp.check(rcode="NOERROR",
+               rdata="dns1.ddns. hostmaster.ddns. 2014111213 10800 1800 1209600 7200")
+    verify(master, zone, dnssec)
+
     # add and remove the same record
     check_log("Add and remove same record")
     up = master.update(zone)

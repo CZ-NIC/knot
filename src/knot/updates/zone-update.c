@@ -402,7 +402,7 @@ void zone_update_clear(zone_update_t *update)
 
 static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *add)
 {
-	if (add->type == KNOT_RRTYPE_RRSIG) {
+	if (add->type == KNOT_RRTYPE_RRSIG || add->type == KNOT_RRTYPE_SOA) {
 		return KNOT_EOK;
 	}
 
