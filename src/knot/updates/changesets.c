@@ -156,21 +156,22 @@ changeset_t *changeset_new(const knot_dname_t *apex)
 
 bool changeset_empty(const changeset_t *ch)
 {
-	if (ch == NULL || ch->add == NULL || ch->remove == NULL) {
+	if (ch == NULL) {
 		return true;
 	}
 
-	if (ch->soa_to) {
-		return false;
+	if (zone_contents_is_empty(ch->remove) &&
+	    zone_contents_is_empty(ch->add)) {
+		if (ch->soa_from == NULL && ch->soa_to == NULL) {
+			return true;
+		}
+		if (ch->soa_from != NULL && ch->soa_to != NULL &&
+		    knot_rrset_equal(ch->soa_from, ch->soa_to, false)) {
+			return true;
+		}
 	}
 
-	changeset_iter_t itt;
-	changeset_iter_all(&itt, ch);
-
-	knot_rrset_t rr = changeset_iter_next(&itt);
-	changeset_iter_clear(&itt);
-
-	return knot_rrset_empty(&rr);
+	return false;
 }
 
 size_t changeset_size(const changeset_t *ch)
