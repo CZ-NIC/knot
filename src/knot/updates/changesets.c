@@ -695,12 +695,12 @@ int changeset_walk(const changeset_t *changeset, changeset_walk_callback callbac
 
 void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 {
-	const char * RED = "\x1B[31m", * GRN = "\x1B[32m", * RESET = "\x1B[0m";
+	const char *RED = "\x1B[31m", *GRN = "\x1B[32m", *RESET = "\x1B[0m";
 	size_t buflen = 1024;
 	char *buff = malloc(buflen);
 
 	if (changeset->soa_from != NULL || !zone_contents_is_empty(changeset->remove)) {
-		fprintf(outfile, "%s;;Removed\n", color ? RED : "");
+		fprintf(outfile, "%s;; Removed\n", color ? RED : "");
 	}
 	if (changeset->soa_from != NULL && buff != NULL) {
 		(void)knot_rrset_txt_dump(changeset->soa_from, &buff, &buflen, &KNOT_DUMP_STYLE_DEFAULT);
@@ -709,7 +709,7 @@ void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 	(void)zone_dump_text(changeset->remove, outfile, false);
 
 	if (changeset->soa_to != NULL || !zone_contents_is_empty(changeset->add)) {
-		fprintf(outfile, "%s;;Added\n", color ? GRN : "");
+		fprintf(outfile, "%s;; Added\n", color ? GRN : "");
 	}
 	if (changeset->soa_to != NULL && buff != NULL) {
 		(void)knot_rrset_txt_dump(changeset->soa_to, &buff, &buflen, &KNOT_DUMP_STYLE_DEFAULT);

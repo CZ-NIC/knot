@@ -31,11 +31,6 @@
 
 #define PROGRAM_NAME	"kjournalprint"
 
-#define RED		"\x1B[31m"
-#define GRN		"\x1B[32m"
-#define YLW		"\x1B[93m"
-#define RESET		"\x1B[0m"
-
 static void print_help(void)
 {
 	printf("Usage: %s [parameter] <journal_db> <zone_name>\n"
@@ -62,7 +57,9 @@ typedef struct {
 
 static void print_changeset(const changeset_t *chs, print_params_t *params)
 {
-	printf(params->color ? YLW : "");
+	const char *YLW = "\x1B[93m";
+	printf("%s", params->color ? YLW : "");
+
 	if (chs->soa_from == NULL) {
 		printf(";; Zone-in-journal, serial: %u\n",
 		       knot_soa_serial(chs->soa_to->rrs.rdata));
