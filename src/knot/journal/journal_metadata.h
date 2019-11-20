@@ -135,6 +135,7 @@ int journal_set_flushed(zone_journal_t j);
  * \param j                Zone journal.
  * \param exists           Output: bool if the zone exists in the journal.
  * \param first_serial     Optional output: serial-from of the first changeset in journal.
+ * \param has_zij          Optional output: bool if there is zone-in-journal.
  * \param serial_to        Optional output: serial.to of the last changeset in journal.
  * \param has_merged       Optional output: bool if there is a special (non zone-in-journal) merged changeset.
  * \param merged_serial    Optional output: serial-from of the merged changeset.
@@ -143,14 +144,14 @@ int journal_set_flushed(zone_journal_t j);
  *
  * \return KNOT_E*
  */
-int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial,
+int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial, bool *has_zij,
                  uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial,
                  uint64_t *occupied, uint64_t *occupied_total);
 
 /*! \brief Return true if this zone exists in journal DB. */
 inline static bool journal_is_existing(zone_journal_t j) {
 	bool ex = false;
-	(void)journal_info(j, &ex, NULL, NULL, NULL, NULL, NULL, NULL);
+	(void)journal_info(j, &ex, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	return ex;
 }
 
