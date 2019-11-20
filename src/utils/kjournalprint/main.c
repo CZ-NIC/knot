@@ -172,7 +172,7 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 		return ret;
 	}
 
-	ret = journal_info(j, &exists, NULL, NULL, NULL, NULL, &occupied, &occupied_all);
+	ret = journal_info(j, &exists, NULL, NULL, NULL, NULL, NULL, &occupied, &occupied_all);
 	if (ret != KNOT_EOK || !exists) {
 		fprintf(stderr, "This zone does not exist in DB %s\n", path);
 		knot_lmdb_deinit(&jdb);

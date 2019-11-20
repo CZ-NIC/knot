@@ -285,6 +285,13 @@ int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose)
 	return flush_journal(conf, zone, false, verbose);
 }
 
+bool zone_journal_has_zij(zone_t *zone)
+{
+	bool exists = false, zij = false;
+	journal_info(zone_journal(zone), &exists, NULL, &zij, NULL, NULL, NULL, NULL, NULL);
+	return exists && zij;
+}
+
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)
 {
 	if (zone == NULL) {
