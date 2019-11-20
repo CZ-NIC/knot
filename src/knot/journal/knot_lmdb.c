@@ -267,7 +267,7 @@ void knot_lmdb_abort(knot_lmdb_txn_t *txn)
 	if (txn->opened) {
 		if (txn->cursor != NULL) {
 			mdb_cursor_close(txn->cursor);
-			txn->cursor = false;
+			txn->cursor = NULL;
 		}
 		mdb_txn_abort(txn->txn);
 		txn->opened = false;
@@ -293,15 +293,11 @@ void knot_lmdb_commit(knot_lmdb_txn_t *txn)
 	}
 	if (txn->cursor != NULL) {
 		mdb_cursor_close(txn->cursor);
-		txn->cursor = false;
+		txn->cursor = NULL;
 	}
 	txn->ret = mdb_txn_commit(txn->txn);
 	err_to_knot(&txn->ret);
-	if (txn->ret == KNOT_EOK) {
-		txn->opened = false;
-	} else {
-		knot_lmdb_abort(txn);
-	}
+	txn->opened = false;
 }
 
 // save the programmer's frequent checking for ENOMEM when creating search keys
