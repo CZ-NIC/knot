@@ -298,7 +298,7 @@ int journal_set_flushed(zone_journal_t j)
 	return txn.ret;
 }
 
-int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial,
+int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial, bool *has_zij,
                  uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial,
                  uint64_t *occupied, uint64_t *occupied_total)
 {
@@ -317,6 +317,9 @@ int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial,
 	*exists = (md.flags & JOURNAL_SERIAL_TO_VALID);
 	if (first_serial != NULL) {
 		*first_serial = md.first_serial;
+	}
+	if (has_zij != NULL) {
+		*has_zij = journal_contains(&txn, true, 0, j.zone);
 	}
 	if (serial_to != NULL) {
 		*serial_to = md.serial_to;

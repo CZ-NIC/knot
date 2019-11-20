@@ -130,6 +130,8 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 /*! \brief Synchronize zone file with journal. */
 int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose);
 
+bool zone_journal_has_zij(zone_t *zone);
+
 /*!
  * \brief Atomically switch the content of the zone.
  */

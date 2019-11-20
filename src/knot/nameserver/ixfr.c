@@ -106,7 +106,7 @@ static int ixfr_load_chsets(journal_read_t **journal_read, zone_t *zone,
 
 	zone_journal_t j = zone_journal(zone);
 	bool j_exists = false;
-	int ret = journal_info(j, &j_exists, NULL, &j_serial_to, NULL, NULL, NULL, NULL);
+	int ret = journal_info(j, &j_exists, NULL, NULL, &j_serial_to, NULL, NULL, NULL, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	} else if (!j_exists) {
