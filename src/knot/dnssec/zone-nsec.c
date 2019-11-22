@@ -190,13 +190,13 @@ static bool nsec3param_valid(const knot_rdataset_t *rrs,
 	return equal;
 }
 
-static int remove_nsec3param(zone_update_t *update)
+static int remove_nsec3param(zone_update_t *update, bool also_rrsig)
 {
 	knot_rrset_t rrset = node_rrset(update->new_cont->apex, KNOT_RRTYPE_NSEC3PARAM);
 	int ret = zone_update_remove(update, &rrset);
 
 	rrset = node_rrset(update->new_cont->apex, KNOT_RRTYPE_RRSIG);
-	if (!knot_rrset_empty(&rrset) && ret == KNOT_EOK) {
+	if (!knot_rrset_empty(&rrset) && ret == KNOT_EOK && also_rrsig) {
 		knot_rrset_t rrsig;
 		knot_rrset_init(&rrsig, update->new_cont->apex->owner,
 		                KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, 0);
@@ -277,7 +277,7 @@ int knot_nsec3param_update(zone_update_t *update,
 	bool valid = nsec3param && nsec3param_valid(nsec3param, params);
 
 	if (nsec3param && !valid) {
-		int r = remove_nsec3param(update);
+		int r = remove_nsec3param(update, params->algorithm == 0);
 		if (r != KNOT_EOK) {
 			return r;
 		}
