@@ -288,7 +288,7 @@ int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose)
 bool zone_journal_has_zij(zone_t *zone)
 {
 	bool exists = false, zij = false;
-	journal_info(zone_journal(zone), &exists, NULL, &zij, NULL, NULL, NULL, NULL, NULL);
+	(void)journal_info(zone_journal(zone), &exists, NULL, &zij, NULL, NULL, NULL, NULL, NULL);
 	return exists && zij;
 }
 
