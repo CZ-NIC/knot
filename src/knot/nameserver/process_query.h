@@ -37,6 +37,7 @@ typedef struct knotd_qdata_extra {
 
 	/* Original QNAME case. */
 	knot_dname_storage_t orig_qname;
+	uint8_t cname_chain; /*!< Length of the CNAME chain so far. */
 
 	/* Extensions. */
 	void *ext;

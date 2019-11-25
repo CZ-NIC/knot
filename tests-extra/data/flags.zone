@@ -200,9 +200,5 @@ op      CNAME   pq
 pq      CNAME   qr
 qr      CNAME   rs
 rs      CNAME   st
-st      CNAME   tu
-tu      CNAME   uv
-uv      CNAME   vw
-vw      CNAME   wx
-wx      CNAME   ab
+st      CNAME   ab
 
