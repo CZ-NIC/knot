@@ -249,6 +249,12 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 {
+	/* CNAME chain processing limit */
+	if (++qdata->extra->cname_chain > CNAME_CHAIN_MAX) {
+		qdata->extra->node = NULL;
+		return KNOTD_IN_STATE_HIT;
+	}
+
 	const zone_node_t *cname_node = qdata->extra->node;
 	knot_rrset_t cname_rr = node_rrset(qdata->extra->node, rrtype);
 	knot_rrset_t rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);

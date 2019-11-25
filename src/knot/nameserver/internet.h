@@ -20,6 +20,9 @@
 #include "knot/include/module.h"
 #include "knot/nameserver/process_query.h"
 
+/*! \brief Don't follow CNAME/DNAME chain beyond this depth. */
+#define CNAME_CHAIN_MAX 20
+
 /*!
  * \brief Answer query from an IN class zone.
  *

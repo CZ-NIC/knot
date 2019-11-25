@@ -143,7 +143,7 @@ resp.cmp(bind)
 # Long CNAME loop (Bind truncates the loop at 17 records)
 resp = knot.dig("ab.flags", "A", udp=True)
 resp.check(rcode="NOERROR")
-compare(resp.count(rtype="CNAME", section="answer"), 23, "Count of CNAME records in loop.")
+compare(resp.count(rtype="CNAME", section="answer"), 19, "Count of CNAME records in loop.")
 
 ''' CNAME in MX EXCHANGE. '''
 
