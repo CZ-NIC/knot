@@ -973,12 +973,14 @@ class Knot(Server):
         udp = super()._check_socket("udp", self.port)
         return (tcp and udp)
 
-    def flush(self, zone=None):
+    def flush(self, zone=None, wait=False):
         force = "-f " if str(self.zonefile_sync)[0] == '-' else ""
+        blocking = "-b " if wait else ""
+        params = force + blocking
         if zone:
-            self.ctl("%szone-flush %s" % (force, zone.name))
+            self.ctl("%szone-flush %s" % (params, zone.name))
         else:
-            self.ctl("%szone-flush" % force)
+            self.ctl("%szone-flush" % params)
         time.sleep(Server.START_WAIT)
 
     def key_gen(self, zone_name, **new_params):
