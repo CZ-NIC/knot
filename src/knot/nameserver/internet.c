@@ -436,7 +436,12 @@ static int solve_answer(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *
 
 	/* Additional resolving for CNAME/DNAME chain. */
 	while (state == KNOTD_IN_STATE_FOLLOW) {
-		state = solve_name(state, pkt, qdata);
+		if (++qdata->extra->cname_chain > CNAME_CHAIN_MAX) {
+			qdata->extra->node = NULL;
+			state = KNOTD_IN_STATE_HIT;
+		} else {
+			state = solve_name(state, pkt, qdata);
+		}
 	}
 
 	return state;
