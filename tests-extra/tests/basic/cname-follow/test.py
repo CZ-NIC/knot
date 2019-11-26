@@ -44,6 +44,19 @@ resp.check_rr("answer", "test.follow", "CNAME")
 resp.check_no_rr("answer", "test")
 resp.check_empty("authority")
 
+# CNAME loop
+
+resp = knot.dig("loop.follow", "AAAA", udp=False)
+resp.check(rcode="NOERROR")
+resp.check_count(3, rtype="CNAME")
+
+# CNAME chain too long
+
+resp = knot.dig("chain.follow", "AAAA", udp=False)
+resp.check(rcode="NOERROR")
+resp.check_count(20, rtype="CNAME")
+resp.check_count(0, rtype="AAAA")
+
 # query for RRSIG
 
 resp = knot.dig("test.follow", "RRSIG")
