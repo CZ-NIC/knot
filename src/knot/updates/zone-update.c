@@ -768,19 +768,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	int ret = KNOT_EOK;
 
-	if ((update->flags & UPDATE_EXTRA_CHSET) && changeset_differs_just_serial(&update->extra_ch)) {
-		changeset_t *extra_cpy = changeset_clone(&update->extra_ch);
-		if (extra_cpy == NULL) {
-			return KNOT_ENOMEM;
-		}
-		ret = zone_update_apply_changeset_reverse(update, extra_cpy);
-		changeset_free(extra_cpy);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		update->flags &= ~UPDATE_EXTRA_CHSET;
-	}
-
 	if (update->flags & UPDATE_INCREMENTAL) {
 		if (changeset_empty(&update->change) &&
 		    update->zone->contents != NULL) {
