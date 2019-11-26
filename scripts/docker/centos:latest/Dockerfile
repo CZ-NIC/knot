@@ -1,14 +1,14 @@
 FROM centos:latest
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 ENV DEBIAN_FRONTEND noninteractive
-RUN yum -y upgrade
-RUN yum -y install epel-release
-RUN yum -y install \
+RUN dnf -y upgrade
+RUN dnf -y install epel-release
+RUN dnf -y --enablerepo PowerTools install \
 	'autoconf' \
 	'automake' \
 	'libtool' \
-	'lmdb-devel' \
 	'pkgconfig' \
+	'pkgconfig(lmdb)' \
 	'pkgconfig(gnutls)' \
 	'pkgconfig(libcap-ng)' \
 	'pkgconfig(libedit)' \
@@ -18,5 +18,5 @@ RUN yum -y install \
 	'pkgconfig(libprotobuf-c)' \
 	'pkgconfig(libsystemd)' \
 	'pkgconfig(liburcu)' \
-	'python-sphinx' \
+	'python3-sphinx' \
 	'systemd'
