@@ -18,5 +18,4 @@
 
 #include "utils/kdig/kdig_params.h"
 
-
 int kdig_exec(const kdig_params_t *params);

@@ -681,10 +681,12 @@ static int process_query_packet(const knot_pkt_t      *query,
 		}
 
 		// Compare reply header id.
-		if (check_reply_id(reply, query)) {
+		//TODO check should be there
+		//if (check_reply_id(reply, query)) {
 			break;
 		// Check for timeout.
-		} else if (time_diff_ms(&t_query, &t_end) > 1000 * net->wait) {
+		//} else
+		if (time_diff_ms(&t_query, &t_end) > 1000 * net->wait) {
 			knot_pkt_free(reply);
 			net_close(net);
 			return -1;

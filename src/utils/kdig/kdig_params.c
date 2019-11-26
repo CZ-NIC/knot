@@ -777,23 +777,25 @@ static int opt_notls_certfile(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-#ifdef LIBNGHTTP2
-
 static int opt_https(const char *arg, void *query)
 {
 	query_t *q = query;
 
 	q->https.enable = true;
+
 	return opt_tls(arg, query);
 }
 
 static int opt_nohttps(const char *arg, void *query)
 {
-	//TODO
+
+	query_t *q = query;
+
+	q->https.enable = false;
+
 	return KNOT_EOK;
 }
 
-#endif //LIBNGHTTP2
 
 static int opt_nsid(const char *arg, void *query)
 {
@@ -1308,12 +1310,8 @@ static const param_t kdig_opts2[] = {
 	{ "subnet",         ARG_REQUIRED, opt_subnet },
 	{ "nosubnet",       ARG_NONE,     opt_nosubnet },
 
-#ifdef LIBNGHTTP2
-
-	{ "https",			ARG_NONE,	  opt_https },
+	{ "https",          ARG_NONE,     opt_https },
 	{ "nohttps",        ARG_NONE,     opt_nohttps },
-
-#endif //LIBNGHTTP2
 
 	// Obsolete aliases.
 	{ "client",         ARG_REQUIRED, opt_subnet },

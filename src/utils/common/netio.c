@@ -167,7 +167,7 @@ int net_init(const srv_info_t    	*local,
              const int           	wait,
              const net_flags_t   	flags,
              const tls_params_t  	*tls_params,
-			 const https_params_t 	*https_params,
+             const https_params_t 	*https_params,
              net_t               	*net)
 {
 	if (remote == NULL || net == NULL) {
@@ -212,6 +212,7 @@ int net_init(const srv_info_t    	*local,
 		}
 
 #ifdef LIBNGHTTP2
+        // Prepare for HTTPS.
 		if (https_params != NULL && https_params->enable) {
 			ret = https_ctx_init(&net->https, &net->tls, https_params);
 			if (ret != KNOT_EOK) {
@@ -220,7 +221,6 @@ int net_init(const srv_info_t    	*local,
 			}
 		}
 #endif //LIBNGHTTP2
-
 	}
 
 	return KNOT_EOK;
@@ -352,24 +352,19 @@ int net_connect(net_t *net)
 			return KNOT_NET_ECONNECT;
 		}
 
-		// Establish TLS connection.
 		if (net->tls.params != NULL) {
-			ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
+			if (net->https.params != NULL && net->https.params->enable) {
+				//Establish HTTPS connection
+				ret = https_ctx_connect(&net->https, sockfd, net->tls.params->sni);
+			} else {
+				// Establish TLS connection.
+				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
+			}
+
 			if (ret != KNOT_EOK) {
 				close(sockfd);
 				return ret;
 			}
-#ifdef LIBNGHTTP2
-			//Establish HTTPS connection
-			if (net->https.params != NULL && net->https.params->enable) {
-				ret = https_ctx_connect(&net->https);
-				if (ret != KNOT_EOK) {
-					tls_ctx_close(&net->tls);
-					close(sockfd);
-					return ret;
-				}
-			}
-#endif //LIBNGHTTP2
 		}
 	}
 
@@ -430,7 +425,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		}
 #ifdef LIBNGHTTP2
 	// Send data over HTTPS
-	} else if (net->https.params != NULL) {
+	} else if (net->https.params != NULL && net->https.params->enable) {
 		int ret = https_send_dns_query((https_ctx_t *)&net->https, buf, buf_len);
 		if (ret != KNOT_EOK) {
 			WARN("can't send query to %s\n", net->remote_str);
@@ -535,8 +530,8 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 #ifdef LIBNGHTTP2
 	// Receive data over HTTPS.
 	} else if (net->https.params != NULL && net->https.params->enable) {
-		//int ret = tls_ctx_receive((tls_ctx_t *)&net->tls, buf, buf_len);
-		https_recv_dns_response((https_ctx_t *)&net->https);
+		int ret = https_recv_dns_response((https_ctx_t *)&net->https, buf, buf_len);
+		return ret;
 #endif //LIBNGHTTP2
 	// Receive data over TLS.
 	} else if (net->tls.params != NULL) {
