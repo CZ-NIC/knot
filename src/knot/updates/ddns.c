@@ -589,16 +589,17 @@ static int process_remove(const knot_rrset_t *rr,
 static bool sem_check(const knot_rrset_t *rr, const zone_node_t *zone_node,
                       zone_update_t *update)
 {
-	// Check that we have not added DNAME child
-	const knot_dname_t *parent_dname = knot_wire_next_label(rr->owner, NULL);
-	const zone_node_t *parent = zone_update_get_node(update, parent_dname);
-	if (parent == NULL) {
-		return true;
-	}
+	const zone_node_t *added_node = zone_contents_find_node(update->new_cont, rr->owner);
 
-	if (node_rrtype_exists(parent, KNOT_RRTYPE_DNAME)) {
-		// Parent has DNAME RRSet, refuse update
-		return false;
+	// we do this sem check AFTER adding the RR, so the node must exist
+	assert(added_node != NULL);
+
+	for (const zone_node_t *parent = added_node->parent;
+	     parent != NULL; parent = parent->parent) {
+		if (node_rrtype_exists(parent, KNOT_RRTYPE_DNAME)) {
+			// Parent has DNAME RRSet, refuse update
+			return false;
+		}
 	}
 
 	if (rr->type != KNOT_RRTYPE_DNAME || zone_node == NULL) {
