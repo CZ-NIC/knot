@@ -303,6 +303,14 @@ int tcp_master(dthread_t *thread)
 
 	int ret = KNOT_EOK;
 
+
+	unsigned thr_id = dt_get_id(thread);
+	unsigned cpu = dt_online_cpus();
+	if (cpu > 1) {
+		unsigned cpu_mask = (thr_id % cpu);
+		dt_setaffinity(thread, &cpu_mask, 1);
+	}
+
 	/* Create big enough memory cushion. */
 	knot_mm_t mm;
 	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
@@ -311,7 +319,7 @@ int tcp_master(dthread_t *thread)
 	tcp_context_t tcp = {
 		.server = handler->server,
 		.is_throttled = false,
-		.thread_id = handler->thread_id[dt_get_id(thread)]
+		.thread_id = handler->thread_id[thr_id]
 	};
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());
 
