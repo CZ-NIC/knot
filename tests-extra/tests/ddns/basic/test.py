@@ -575,6 +575,16 @@ def do_refusal_tests(master, zone, dnssec=False):
     resp.check(rcode="NXDOMAIN")
     check_soa(master, prev_soa)
 
+    # Add DNAME grand-children
+    check_log("Add DNAME grand-children rollback")
+    up = master.update(zone)
+    up.add("rollback.ddns.", 3600, "TXT", "do not add me")
+    up.add("deep.under.dname.ddns.", 3600, "DNAME", "ddns.")
+    up.send("REFUSED")
+    resp = master.dig("rollback.ddns", "ANY")
+    resp.check(rcode="NXDOMAIN")
+    check_soa(master, prev_soa)
+
     # Out-of-zone data
     check_log("Out-of-zone data")
     up = master.update(zone)
