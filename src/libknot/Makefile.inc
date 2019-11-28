@@ -45,6 +45,8 @@ nobase_include_libknot_HEADERS = \
 	libknot/tsig-op.h			\
 	libknot/tsig.h				\
 	libknot/wire.h				\
+	libknot/xdp/af_xdp.h			\
+	libknot/xdp/bpf-user.h			\
 	libknot/yparser/yparser.h		\
 	libknot/yparser/ypformat.h		\
 	libknot/yparser/ypschema.h		\
@@ -70,6 +72,9 @@ libknot_la_SOURCES = \
 	libknot/rrtype/tsig.c			\
 	libknot/tsig-op.c			\
 	libknot/tsig.c				\
+	libknot/xdp/af_xdp.c			\
+	libknot/xdp/bpf-kernel.c		\
+	libknot/xdp/bpf-user.c			\
 	libknot/yparser/yparser.c		\
 	libknot/yparser/ypbody.c		\
 	libknot/yparser/ypformat.c		\
