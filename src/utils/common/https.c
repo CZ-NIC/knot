@@ -201,7 +201,7 @@ int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote)
     return KNOT_EOK;
 }
 
-int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
+int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len) //TODO make short (without edns)
 {
     static const char tmp_uri[] = "/dns-query?dns=";
 
@@ -209,18 +209,18 @@ int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_
     uint8_t *dns_query = (uint8_t *)calloc(dns_query_len, sizeof(uint8_t));
     memcpy(dns_query, tmp_uri, sizeof(tmp_uri));
     
-    int32_t ret = base64_encode(buf, buf_len,
+    int32_t ret = base64url_encode(buf, buf_len,
             dns_query + sizeof(tmp_uri) - 1, dns_query_len - (sizeof(tmp_uri) - 2)
     );
 
     nghttp2_nv hdrs[] = {
         MAKE_STATIC_NV(":method", "GET"),
         MAKE_STATIC_NV(":scheme", "https"),
-        MAKE_STATIC_NV(":authority", "1.1.1.1"), //TODO make reverse lookup
-        //MAKE_NV(":path", 5, dns_query, sizeof(tmp_uri) + ret - 2),
-        MAKE_STATIC_NV(":path", "/dns-query?dns=AAABAAABAAAAAAAAA3d3dwZnb29nbGUDY29tAAABAAE"),
+        MAKE_STATIC_NV(":authority", "1.1.1.1"),
+        MAKE_NV(":path", 5, dns_query, sizeof(tmp_uri) + ret - 2),
         MAKE_STATIC_NV("accept", "application/dns-message")
     };
+
     int id = nghttp2_submit_request(ctx->session, NULL, hdrs, sizeof(hdrs) / sizeof(nghttp2_nv), NULL, ctx->tls);
     if (id < 0) {
         return KNOT_NET_ESEND;
@@ -251,10 +251,9 @@ int https_ctx_close(https_ctx_t *ctx)
 
 void https_ctx_deinit(https_ctx_t *ctx)
 {
-	if (ctx == NULL) {
+	if (!ctx || !ctx->tls) {
 		return;
 	}
-	tls_ctx_deinit(ctx->tls);
 }
 
 #endif //LIBNGHTTP2

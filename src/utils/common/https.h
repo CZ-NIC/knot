@@ -27,7 +27,7 @@ typedef struct  {
 #include <gnutls/gnutls.h>
 #include <nghttp2/nghttp2.h>
 
-#include "contrib/base64.h"
+#include "contrib/base64url.h"
 #include "libknot/errcode.h"
 #include "utils/common/tls.h"
 #include "utils/common/msg.h"
