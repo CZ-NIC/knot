@@ -3,6 +3,8 @@ src/contrib/base32hex.c
 src/contrib/base32hex.h
 src/contrib/base64.c
 src/contrib/base64.h
+src/contrib/base64url.c
+src/contrib/base64url.h
 src/contrib/ctype.h
 src/contrib/dnstap/convert.c
 src/contrib/dnstap/convert.h
@@ -494,6 +496,7 @@ tests-fuzz/knotd_wrap/udp-handler.c
 tests-fuzz/main.c
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
+tests/contrib/test_base64url.c
 tests/contrib/test_dynarray.c
 tests/contrib/test_heap.c
 tests/contrib/test_net.c
