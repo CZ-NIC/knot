@@ -42,6 +42,7 @@ EXTRA_PROGRAMS = tap/runtests
 check_PROGRAMS = \
 	contrib/test_base32hex			\
 	contrib/test_base64			\
+	contrib/test_base64url			\
 	contrib/test_dynarray			\
 	contrib/test_heap			\
 	contrib/test_net			\
