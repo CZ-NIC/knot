@@ -45,6 +45,7 @@ def test_one(master, slave, zone, master_policy, slave_policy, initial_serial,
              min_diff1, max_diff1, min_diff, max_diff):
 
     # configure serial policies and cleanup slave completely
+    slave.zone_wait(zone)
     master.stop()
     slave.stop()
     server_purge(slave, zone)
@@ -57,21 +58,21 @@ def test_one(master, slave, zone, master_policy, slave_policy, initial_serial,
     slave.start()
 
     # initial test: after AXFR
-    slave.zone_wait(zone)
+    serial = slave.zone_wait(zone)
     check_soa_diff(master, slave, zone[0], min_diff1, max_diff1)
 
     # sign twice on slave to make difference
     slave.ctl("zone-sign example.com.")
-    t.sleep(1)
+    serial = slave.zone_wait(zone, serial)
     slave.ctl("zone-sign example.com.")
-    t.sleep(3)
+    serial = slave.zone_wait(zone, serial)
     check_soa_diff(master, slave, zone[0], min_diff, None)
 
     # test IXFR with shifted serial
     update = master.update(zone)
     update.add(new1, 3600, "A", addr)
     update.send("NOERROR")
-    t.sleep(3)
+    serial = slave.zone_wait(zone, serial)
     check_new_rr(slave, new1)
     check_soa_diff(master, slave, zone[0], min_diff, max_diff)
 
