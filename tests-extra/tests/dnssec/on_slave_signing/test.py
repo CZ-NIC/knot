@@ -102,8 +102,12 @@ slave.dnssec(zone).enable = True
 t.start()
 
 test_one(master, slave, zone, "increment", "increment", 1000, 0, 0, 2, 3)
-test_one(master, slave, zone, "unixtime", "unixtime", int(time.time()), 1, 8, 1, 3)
-test_one(master, slave, zone, "increment", "unixtime", int(time.time()), 1, 8, 5, None)
+if not master.valgrind:
+    test_one(master, slave, zone, "unixtime", "unixtime", int(time.time()), 1, 3, 1, 2)
+    test_one(master, slave, zone, "increment", "unixtime", int(time.time()), 1, 3, 5, None)
+else:
+    test_one(master, slave, zone, "unixtime", "unixtime", int(time.time()), 1, 11, 1, 6)
+    test_one(master, slave, zone, "increment", "unixtime", int(time.time()), 1, 11, 5, None)
 test_one(master, slave, zone, "unixtime", "increment", int(time.time()), 0, 0, None, -1)
 
 rnd_master = random.choice(["dateserial", "increment"])
