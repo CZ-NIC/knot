@@ -39,6 +39,8 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 
+#include "libknot/xdp/af_xdp.h"
+
 /* Buffer identifiers. */
 enum {
 	RX = 0,
@@ -102,12 +104,13 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	mp_flush(udp->layer.mm->ctx);
 }
 
-/*! \brief Pointer to selected UDP master implementation. */
-static void* (*_udp_init)(void) = 0;
-static void (*_udp_deinit)(void *) = 0;
-static int (*_udp_recv)(int, void *) = 0;
-static int (*_udp_handle)(udp_context_t *, void *) = 0;
-static int (*_udp_send)(void *) = 0;
+typedef struct {
+	void* (*udp_init)(void);
+	void (*udp_deinit)(void *);
+	int (*udp_recv)(int, void *);
+	int (*udp_handle)(udp_context_t *, void *);
+	int (*udp_send)(void *);
+} udp_api_t;
 
 /*! \brief Control message to fit IP_PKTINFO or IPv6_RECVPKTINFO. */
 typedef union {
@@ -230,6 +233,15 @@ static int udp_recvfrom_send(void *d)
 	return 0;
 }
 
+__attribute__ ((unused))
+static udp_api_t udp_recvfrom_api = {
+	udp_recvfrom_init,
+	udp_recvfrom_deinit,
+	udp_recvfrom_recv,
+	udp_recvfrom_handle,
+	udp_recvfrom_send
+};
+
 #ifdef ENABLE_RECVMMSG
 
 /* UDP recvmmsg() request struct. */
@@ -336,30 +348,111 @@ static int udp_recvmmsg_send(void *d)
 	}
 	return rc;
 }
+
+static udp_api_t udp_recvmmsg_api = {
+	udp_recvmmsg_init,
+	udp_recvmmsg_deinit,
+	udp_recvmmsg_recv,
+	udp_recvmmsg_handle,
+	udp_recvmmsg_send
+};
 #endif /* ENABLE_RECVMMSG */
 
-/*! \brief Initialize UDP master routine on run-time. */
-void __attribute__ ((constructor)) udp_master_init(void)
+struct xdp_recvmmsg {
+	knot_xsk_msg_t msgs_rx[XDP_BATCHLEN];
+	knot_xsk_msg_t msgs_tx[XDP_BATCHLEN];
+	uint32_t rcvd;
+};
+
+static void *xdp_recvmmsg_init(void)
 {
-	/* Initialize defaults. */
-	_udp_init =   udp_recvfrom_init;
-	_udp_deinit = udp_recvfrom_deinit;
-	_udp_recv =   udp_recvfrom_recv;
-	_udp_handle = udp_recvfrom_handle;
-	_udp_send =   udp_recvfrom_send;
-
-#ifdef ENABLE_RECVMMSG
-	_udp_init =   udp_recvmmsg_init;
-	_udp_deinit = udp_recvmmsg_deinit;
-	_udp_recv =   udp_recvmmsg_recv;
-	_udp_handle = udp_recvmmsg_handle;
-	_udp_send =   udp_recvmmsg_send;
-#endif /* ENABLE_RECVMMSG */
+	struct xdp_recvmmsg *rq = malloc(sizeof(*rq));
+	if (rq != NULL) {
+		memset(rq, 0, sizeof(*rq));
+	}
+	return rq;
 }
 
-/*! \brief Get interface UDP descriptor for a given thread. */
-static int iface_udp_fd(const iface_t *iface, int thread_id)
+static void xdp_recvmmsg_deinit(void *d)
 {
+	free(d);
+}
+
+static int xdp_recvmmsg_recv(int fd, void *d)
+{
+	UNUSED(fd);
+
+	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
+
+	int ret = knot_xsk_recvmmsg(rq->msgs_rx, XDP_BATCHLEN, &rq->rcvd);
+
+	return ret == KNOT_EOK ? rq->rcvd : ret;
+}
+
+static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d)
+{
+	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
+
+	for (unsigned i = 0; i < rq->rcvd; ++i) {
+		struct iovec *rx = &rq->msgs_rx[i].payload;
+		struct iovec *tx = &rq->msgs_tx[i].payload;
+
+		*tx = knot_xsk_alloc_frame();
+		if (tx->iov_base == NULL) {
+			return KNOT_ERROR;
+		}
+
+		udp_handle(ctx, 0 /* TODO ? */, &rq->msgs_rx[i].ip_from, rx, tx);
+
+		memcpy(rq->msgs_tx[i].eth_from, rq->msgs_rx[i].eth_to, sizeof(rq->msgs_tx[i].eth_from));
+		memcpy(rq->msgs_tx[i].eth_to, rq->msgs_rx[i].eth_from, sizeof(rq->msgs_tx[i].eth_to));
+		memcpy(&rq->msgs_tx[i].ip_from, &rq->msgs_rx[i].ip_to, sizeof(rq->msgs_tx[i].ip_from));
+		memcpy(&rq->msgs_tx[i].ip_to, &rq->msgs_rx[i].ip_from, sizeof(rq->msgs_tx[i].ip_to));
+
+		knot_xsk_free_recvd(&rq->msgs_rx[i]);
+
+		// FIXME!! :
+		/*
+		rq->msgs[TX][i].msg_len = tx->iov_len;
+		rq->msgs[TX][i].msg_hdr.msg_namelen = 0;
+		if (tx->iov_len > 0) {
+			rq->msgs[TX][i].msg_hdr.msg_namelen = rq->msgs[RX][i].msg_hdr.msg_namelen;
+		} */
+	}
+
+	return KNOT_EOK;
+}
+
+static int xdp_recvmmsg_send(void *d)
+{
+	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
+	uint32_t sent = rq->rcvd;
+
+	int ret = knot_xsk_sendmmsg(rq->msgs_tx, sent);
+
+	memset(rq, 0, sizeof(*rq));
+
+	knot_xsk_check();
+
+	return ret == KNOT_EOK ? sent : ret;
+}
+
+static udp_api_t xdp_recvmmsg_api = {
+	xdp_recvmmsg_init,
+	xdp_recvmmsg_deinit,
+	xdp_recvmmsg_recv,
+	xdp_recvmmsg_handle,
+	xdp_recvmmsg_send
+};
+
+/*! \brief Get interface UDP descriptor for a given thread. */
+static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp)
+{
+	if (use_xdp) {
+		assert(iface->fd_xdp > -1);
+		return iface->fd_xdp;
+	}
+
 #ifdef ENABLE_REUSEPORT
 	assert(thread_id < iface->fd_udp_count);
 
@@ -379,7 +472,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id)
  * \return Number of watched descriptors, zero on error.
  */
 static unsigned udp_set_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
-                               int thread_id)
+                               int thread_id, bool use_xdp)
 {
 	if (ifaces == NULL) {
 		return 0;
@@ -394,7 +487,7 @@ static unsigned udp_set_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
 	iface_t *iface;
 	int i = 0;
 	WALK_LIST(iface, *ifaces) {
-		fds[i].fd = iface_udp_fd(iface, thread_id);
+		fds[i].fd = iface_udp_fd(iface, thread_id, use_xdp);
 		fds[i].events = POLLIN;
 		fds[i].revents = 0;
 		i += 1;
@@ -420,7 +513,17 @@ int udp_master(dthread_t *thread)
 	/* Prepare structures for bound sockets. */
 	unsigned thr_id = dt_get_id(thread);
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	void *rq = _udp_init();
+	udp_api_t *api = NULL;
+	if (handler->use_xdp) {
+		api = &xdp_recvmmsg_api;
+	} else {
+#ifdef ENABLE_RECVMMSG
+		api = &udp_recvmmsg_api;
+#else
+		api = &udp_recvfrom_api;
+#endif
+	}
+	void *rq = api->udp_init();
 
 	/* Create big enough memory cushion. */
 	knot_mm_t mm;
@@ -437,7 +540,8 @@ int udp_master(dthread_t *thread)
 	struct pollfd *fds = NULL;
 
 	/* Allocate descriptors for the configured interfaces. */
-	unsigned nfds = udp_set_ifaces(handler->server->ifaces, &fds, udp.thread_id);
+	unsigned nfds = udp_set_ifaces(handler->server->ifaces, &fds,
+	                               udp.thread_id, handler->use_xdp);
 	if (nfds == 0) {
 		goto finish;
 	}
@@ -464,15 +568,15 @@ int udp_master(dthread_t *thread)
 				continue;
 			}
 			events -= 1;
-			if (_udp_recv(fds[i].fd, rq) > 0) {
-				_udp_handle(&udp, rq);
-				_udp_send(rq);
+			if (api->udp_recv(fds[i].fd, rq) > 0) {
+				api->udp_handle(&udp, rq);
+				api->udp_send(rq);
 			}
 		}
 	}
 
 finish:
-	_udp_deinit(rq);
+	api->udp_deinit(rq);
 	free(fds);
 	mp_delete(mm.ctx);
 
