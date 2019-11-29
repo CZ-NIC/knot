@@ -1,5 +1,6 @@
-
 #pragma once
+
+#include  <stdint.h>
 
 #include <bpf/xsk.h>
 
@@ -8,7 +9,7 @@
 #include <linux/ipv6.h>
 #include <linux/udp.h>
 
-#include <uv.h> // LATER: split kresd-specific stuff
+//#include <uv.h> // LATER: split kresd-specific stuff
 
 struct udpv4 {
 	union { uint8_t bytes[1]; struct {
@@ -33,7 +34,7 @@ struct kxsk_iface {
 };
 
 
-struct config {
+struct kxsk_config {
 	int xsk_if_queue;
 
 	struct xsk_umem_config umem; /**< For xsk_umem__create() from libbpf. */

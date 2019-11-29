@@ -4,8 +4,9 @@
 
 
 
-#include "daemon/af_xdp.h"
+#include "libknot/xdp/af_xdp.h"
 
+#include "libknot/error.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -29,18 +30,19 @@
 #include <linux/filter.h>
 //#include <linux/icmpv6.h>
 
-#include "contrib/ucw/lib.h"
+//#include "contrib/ucw/lib.h"
 #include "contrib/ucw/mempool.h"
+#include "contrib/macros.h"
 
-#include "lib/resolve.h"
-#include "daemon/session.h"
-#include "daemon/worker.h"
+//#include "lib/resolve.h"
+//#include "daemon/session.h"
+//#include "daemon/worker.h"
 
 
-#include "daemon/kxsk/impl.h"
+#include "libknot/xdp/bpf-user.h"
 
 // placate libclang :-/
-typedef uint64_t size_t;
+//typedef uint64_t size_t;
 
 #define FRAME_SIZE 4096
 #define RX_BATCH_SIZE 64
@@ -107,12 +109,11 @@ static struct umem_frame *xsk_alloc_umem_frame(struct xsk_umem_info *umem) // TO
 	#endif
 	return umem->frames + index;
 }
-void *kr_xsk_alloc_wire(uint16_t *maxlen)
+void *knot_xsk_alloc_wire(uint16_t *maxlen)
 {
 	struct umem_frame *uframe = xsk_alloc_umem_frame(the_socket->umem);
 	if (!uframe) return NULL;
-	*maxlen = MIN(UINT16_MAX, FRAME_SIZE - offsetof(struct umem_frame, udpv4.data)
-				- 4/*eth CRC*/);
+	*maxlen = MIN(UINT16_MAX, FRAME_SIZE - offsetof(struct umem_frame, udpv4.data) - 4/*eth CRC*/);
 	return uframe->udpv4.data;
 }
 
@@ -126,7 +127,7 @@ static void xsk_dealloc_umem_frame(struct xsk_umem_info *umem, uint8_t *uframe_p
 	umem->free_indices[umem->free_count++] = index;
 }
 
-void kr_xsk_deinit_global(void)
+void knot_xsk_deinit_global(void)
 {
 	if (!the_socket)
 		return;
@@ -375,8 +376,8 @@ void kr_xsk_push(const struct sockaddr *src, const struct sockaddr *dst,
 	pkt_send(the_socket, h->bytes - umem_mem_start, eth_len);
 }
 
-/** Periodical callback . */
-static void xsk_check(uv_check_t *handle)
+/** Periodical callback. Just using 'the_socket' global. */
+static int xsk_check()
 {
 	/* Trigger sending queued packets.
 	 * LATER(opt.): the periodical epoll due to the uv_poll* stuff
@@ -384,20 +385,14 @@ static void xsk_check(uv_check_t *handle)
 	 * (though AFAIK it might be specific to driver and/or kernel version). */
 	if (the_socket->kernel_needs_wakeup) {
 		bool is_ok = sendto(xsk_socket__fd(the_socket->xsk), NULL, 0,
-				 MSG_DONTWAIT, NULL, 0) != -1;
+		                                   MSG_DONTWAIT, NULL, 0) != -1;
 		const bool is_again = !is_ok && (errno == EWOULDBLOCK || errno == EAGAIN);
 		if (is_ok || is_again) {
 			the_socket->kernel_needs_wakeup = false;
 			// EAGAIN is unclear; we'll retry the syscall later, to be sure
 		}
 		if (!is_ok && !is_again) {
-			const uint64_t stamp_now = kr_now();
-			static uint64_t stamp_last = 0;
-			if (stamp_now > stamp_last + 10*1000) {
-				kr_log_info("WARNING: sendto error (reported at most once per 10s)\n\t%s\n",
-						strerror(errno));
-				stamp_last = stamp_now;
-			}
+			return KNOT_EAGAIN;
 		}
 	}
 
@@ -405,7 +400,6 @@ static void xsk_check(uv_check_t *handle)
 	struct xsk_ring_cons *cq = &the_socket->umem->cq;
 	uint32_t idx_cq;
 	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx_cq);
-	kr_log_verbose(".");
 	if (!completed) return;
 	for (int i = 0; i < completed; ++i, ++idx_cq) {
 		uint8_t *uframe_p = (uint8_t *)the_socket->umem->frames
@@ -416,15 +410,17 @@ static void xsk_check(uv_check_t *handle)
 		xsk_dealloc_umem_frame(the_socket->umem, uframe_p);
 	}
 	xsk_ring_cons__release(cq, completed);
-	kr_log_verbose("[uxsk] completed %d frames; busy frames: %d\n", (int)completed,
-			the_socket->umem->frame_count - the_socket->umem->free_count);
+	//kr_log_verbose("[uxsk] completed %d frames; busy frames: %d\n", (int)completed,
+	//               the_socket->umem->frame_count - the_socket->umem->free_count);
 	//TODO: one uncompleted packet/batch is left until the next I/O :-/
 	/* And feed frames into RX fill queue. */
 	kxsk_umem_refill(the_config, the_socket->umem);
+	return KNOT_EOK;
 }
 
 
-static void rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc)
+static int rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc,
+		   struct iovec *out, /* TODO adresses, eth_adresses... */)
 {
 	uint8_t *uframe_p = xsi->umem->frames->bytes + desc->addr;
 	const struct ethhdr *eth = (struct ethhdr *)uframe_p;
@@ -432,31 +428,31 @@ static void rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc)
 	const struct ipv6hdr *ipv6 = NULL;
 	const struct udphdr *udp;
 
+	int ret = KNOT_EOK;
 
 	// FIXME: length checks on multiple places
 	if (eth->h_proto == BS16(ETH_P_IP)) {
 		ipv4 = (struct iphdr *)(uframe_p + sizeof(struct ethhdr));
-		kr_log_verbose("[kxsk] frame len %d, ipv4 len %d\n",
-				(int)desc->len, (int)BS16(ipv4->tot_len));
+		//kr_log_verbose("[kxsk] frame len %d, ipv4 len %d\n",
+		//               (int)desc->len, (int)BS16(ipv4->tot_len));
 		// Any fragmentation stuff is bad for use, except for the DF flag
 		if (ipv4->version != 4 || (ipv4->frag_off & ~(1 << 14))) {
-			kr_log_info("[kxsk] weird IPv4 received: "
-					"version %d, frag_off %d\n",
-					(int)ipv4->version, (int)ipv4->frag_off);
+			ret = KNOT_EMALF;
 			goto free_frame;
 		}
-		if (ipv4->protocol != 0x11) // UDP
+		if (ipv4->protocol != 0x11) { // UDP
+			ret = KNOT_EMALF;
 			goto free_frame;
+		}
 		// FIXME ipv4->check (sensitive to ipv4->ihl), ipv4->tot_len, udp->len
 		udp = (struct udphdr *)(uframe_p + sizeof(struct ethhdr) + ipv4->ihl * 4);
 
 	} else if (eth->h_proto == BS16(ETH_P_IPV6)) {
 		(void)ipv6;
-		goto free_frame; // TODO
-
+		ret = KNOT_ENOTSUP; // FIXME later
+		goto free_frame;
 	} else {
-		kr_log_verbose("[kxsk] frame with unknown h_proto %d (ignored)\n",
-				(int)BS16(eth->h_proto));
+		ret = KNOT_EMALF;
 		goto free_frame;
 	}
 
@@ -480,17 +476,14 @@ static void rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc)
 		//sin6_flowinfo: probably completely useless here
 	}
 
-	knot_pkt_t *kpkt = knot_pkt_new(udp_data, udp_data_len, &the_worker->pkt_pool);
-	int ret = kpkt == NULL ? kr_error(ENOMEM) :
-		worker_submit(xsi->session, &sa_peer.ip, (const uint8_t (*)[6])eth, kpkt);
-	if (ret)
-		kr_log_verbose("[kxsk] worker_submit() == %d: %s\n", ret, kr_strerror(ret));
-	mp_flush(the_worker->pkt_pool.ctx);
+	out->iov_base = udp_data;
+	out->iov_len = udp_data_len;
 
-	return;
+	return KNOT_EOK;
 
 free_frame:
 	xsk_dealloc_umem_frame(xsi->umem, uframe_p);
+	return ret;
 }
 // TODO: probably split up into generic part and kresd+UV part.
 void kxsk_rx(uv_poll_t* handle, int status, int events)

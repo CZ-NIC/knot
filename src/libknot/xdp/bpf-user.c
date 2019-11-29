@@ -1,5 +1,5 @@
 
-#include "daemon/kxsk/impl.h"
+#include "libknot/xdp/bpf-user.h"
 
 #include <stdlib.h>
 #include <string.h>
