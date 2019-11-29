@@ -231,6 +231,7 @@ struct bpf_map_def {
 	__attribute__ ((section(".maps." #name), used))		\
 		____btf_map_##name = { }
 
+/*
 static int (*bpf_skb_load_bytes)(void *ctx, int off, void *to, int len) =
 	(void *) BPF_FUNC_skb_load_bytes;
 static int (*bpf_skb_load_bytes_relative)(void *ctx, int off, void *to, int len, __u32 start_header) =
@@ -279,6 +280,7 @@ static unsigned int (*bpf_set_hash)(void *ctx, __u32 hash) =
 static int (*bpf_skb_adjust_room)(void *ctx, __s32 len_diff, __u32 mode,
 				  unsigned long long flags) =
 	(void *) BPF_FUNC_skb_adjust_room;
+*/
 
 /* Scan the ARCH passed in from ARCH env variable (see Makefile) */
 #if defined(__TARGET_ARCH_x86)

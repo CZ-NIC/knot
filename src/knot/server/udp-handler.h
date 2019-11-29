@@ -27,6 +27,7 @@
 #include "knot/server/dthreads.h"
 
 #define RECVMMSG_BATCHLEN 10 /*!< Default recvmmsg() batch size. */
+#define XDP_BATCHLEN RECVMMSG_BATCHLEN
 
 /*!
  * \brief UDP handler thread runnable.

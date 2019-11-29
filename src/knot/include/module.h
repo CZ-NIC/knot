@@ -277,6 +277,7 @@ typedef enum {
 	KNOTD_CONF_ENV_HOSTNAME    = 1, /*!< Current hostname. */
 	KNOTD_CONF_ENV_WORKERS_UDP = 2, /*!< Current number of UDP workers. */
 	KNOTD_CONF_ENV_WORKERS_TCP = 3, /*!< Current number of TCP workers. */
+	KNOTD_CONF_ENV_WORKERS_XDP = 4, /*!< Current number of UDP-over-XDP workers. */
 } knotd_conf_env_t;
 
 /*!
