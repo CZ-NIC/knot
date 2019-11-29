@@ -353,14 +353,17 @@ int net_connect(net_t *net)
 		}
 
 		if (net->tls.params != NULL) {
+#ifdef LIBNGHTTP2
 			if (net->https.params != NULL && net->https.params->enable) {
 				//Establish HTTPS connection
-				ret = https_ctx_connect(&net->https, sockfd, net->tls.params->sni);
+				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, net->tls.params->sni);
 			} else {
 				// Establish TLS connection.
+#endif //LIBNGHTTP2
 				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
+#ifdef LIBNGHTTP2
 			}
-
+#endif //LIBNGHTTP2
 			if (ret != KNOT_EOK) {
 				close(sockfd);
 				return ret;
@@ -629,5 +632,4 @@ void net_clean(net_t *net)
 	}
 
 	tls_ctx_deinit(&net->tls);
-	https_ctx_deinit(&net->https);
 }
