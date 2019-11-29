@@ -182,6 +182,8 @@ static void init_cache(
 
 	conf->cache.srv_udp_threads = running_udp_threads;
 
+	conf->cache.srv_xdp_threads = 1; // FIXME
+
 	conf->cache.srv_tcp_threads = running_tcp_threads;
 
 	conf->cache.srv_bg_threads = running_bg_threads;

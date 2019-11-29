@@ -86,6 +86,14 @@ static int udp_stdin_send(void *d)
 	return 0;
 }
 
+static udp_api_t stdin_api = {
+	udp_stdin_init,
+	udp_stdin_deinit,
+	udp_stdin_recv,
+	udp_stdin_handle,
+	udp_stdin_send
+};
+
 void udp_master_init_stdio(server_t *server) {
 
 	log_info("AFL, UDP handler listening on stdin");
@@ -100,9 +108,8 @@ void udp_master_init_stdio(server_t *server) {
 
 	add_tail(server->ifaces, (node_t *)ifc);
 
-	_udp_init = udp_stdin_init;
-	_udp_recv = udp_stdin_recv;
-	_udp_handle = udp_stdin_handle;
-	_udp_send = udp_stdin_send;
-	_udp_deinit = udp_stdin_deinit;
+	udp_recvfrom_api = stdin_api;
+#ifdef ENABLE_RECVMMSG
+	udp_recvmmsg_api = stdin_api;
+#endif
 }
