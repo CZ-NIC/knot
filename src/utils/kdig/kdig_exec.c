@@ -19,8 +19,6 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-#include <nghttp2/nghttp2.h>
-
 #include "utils/kdig/kdig_exec.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
@@ -681,11 +679,10 @@ static int process_query_packet(const knot_pkt_t      *query,
 		}
 
 		// Compare reply header id.
-		//TODO check should be there
-		//if (check_reply_id(reply, query)) {
+		if (check_reply_id(reply, query)) {
 			break;
 		// Check for timeout.
-		//} else
+		} else
 		if (time_diff_ms(&t_query, &t_end) > 1000 * net->wait) {
 			knot_pkt_free(reply);
 			net_close(net);
@@ -786,6 +783,14 @@ static int process_query(const query_t *query)
 		ERR("can't create query packet\n");
 		return -1;
 	}
+
+	// Set ID = 0 for packet send over HTTPS
+	// Due HTTP cache it is convenient to set the query ID to 0 - GET messages has same header then
+#ifdef LIBNGHTTP2
+	if (query->https.enable) {
+		knot_wire_set_id(out_packet->wire, 0);
+	}
+#endif
 
 	// Sign the query.
 	sign_context_t sign_ctx = { 0 };

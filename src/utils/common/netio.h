@@ -76,8 +76,10 @@ typedef struct {
 
 	/*! TLS context. */
 	tls_ctx_t tls;
+#ifdef LIBNGHTTP2
 	/*! HTTPS context. */
 	https_ctx_t https;
+#endif
 } net_t;
 
 /*!
