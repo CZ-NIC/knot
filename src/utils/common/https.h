@@ -24,11 +24,14 @@ typedef struct  {
 #ifdef LIBNGHTTP2
 
 #include <poll.h>
+#include <arpa/inet.h>
 #include <gnutls/gnutls.h>
 #include <nghttp2/nghttp2.h>
+#include <sys/socket.h>
 
 #include "contrib/base64url.h"
 #include "libknot/errcode.h"
+
 #include "utils/common/tls.h"
 #include "utils/common/msg.h"
 
@@ -39,18 +42,21 @@ typedef struct  {
     { (uint8_t *)K, (uint8_t *)V, KS, VS, NGHTTP2_NV_FLAG_NONE }
 
 #define HTTPS_MAX_STREAMS 16
+#define HTTPS_AUTHORITY_LEN (INET6_ADDRSTRLEN + 2)
 
+/** TODO POST
 typedef struct {
     uint8_t *buf;
     size_t buf_len;
-} https_stream_ctx_t;
+} https_data_provider_t;
+**/
 
 typedef struct {
     const https_params_t *params;
 
     nghttp2_session *session;
     tls_ctx_t *tls;
-
+    char authority[HTTPS_AUTHORITY_LEN];
 
     int32_t stream_id;
     uint8_t *buf;
@@ -58,10 +64,8 @@ typedef struct {
 } https_ctx_t;
 
 int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *params);
-int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote);
+int https_ctx_connect(https_ctx_t *ctx, int sockfd, struct sockaddr_storage *server, const char *hostname);
 int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len);
 int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len);
-int https_ctx_close(https_ctx_t *ctx);
-void https_ctx_deinit(https_ctx_t *ctx);
 
 #endif //LIBNGHTTP2

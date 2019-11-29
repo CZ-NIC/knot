@@ -9,7 +9,7 @@ static ssize_t https_send_callback(nghttp2_session *session, const uint8_t *data
 	gnutls_record_cork(tls_ctx->session);
 
     ssize_t len = 0;
-	if (len = gnutls_record_send(tls_ctx->session, data, length) <= 0) {
+	if ( (len = gnutls_record_send(tls_ctx->session, data, length)) <= 0) {
 		WARN("TLS, failed to send\n");
 		return KNOT_NET_ESEND;
 	}
@@ -17,7 +17,7 @@ static ssize_t https_send_callback(nghttp2_session *session, const uint8_t *data
     return (ssize_t)length;
 }
 
-static ssize_t https_on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
+static int https_on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
     tls_ctx_t *tls_ctx = ((https_ctx_t *)user_data)->tls;
 
@@ -44,7 +44,7 @@ static ssize_t https_recv_callback(nghttp2_session *session, uint8_t *data, size
 
     ssize_t ret = 0;
     while ( (ret = gnutls_record_recv(ctx->tls->session, data, length)) <= 0) {
-		if (!ctx->stream_id) {
+		if (!ctx->stream_id) { //TODO Receive end has to be done better way 
 			return NGHTTP2_ERR_WOULDBLOCK;
 		}
 
@@ -64,7 +64,7 @@ static ssize_t https_recv_callback(nghttp2_session *session, uint8_t *data, size
     return ret;
 }
 
-static ssize_t https_on_stream_close_callback(nghttp2_session *session, int32_t stream_id, uint32_t error_code, void *user_data)
+static int https_on_stream_close_callback(nghttp2_session *session, int32_t stream_id, uint32_t error_code, void *user_data)
 {
 	https_ctx_t *ctx = (https_ctx_t *)user_data;
 
@@ -73,26 +73,16 @@ static ssize_t https_on_stream_close_callback(nghttp2_session *session, int32_t 
     return  KNOT_EOK;
 }
 
-static ssize_t https_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags, int32_t stream_id, const uint8_t *data, size_t len, void *user_data)
+static int https_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags, int32_t stream_id, const uint8_t *data, size_t len, void *user_data)
 {
     https_ctx_t *ctx = (https_ctx_t *)user_data;
 
 	if (ctx->stream_id == stream_id) {
-    	int ret = memcpy(ctx->buf, data, len);
+    	memcpy(ctx->buf, data, len);
     	ctx->buflen = len;
 	}
 
 	return KNOT_EOK;
-}
-
-int https_on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
-
-    https_ctx_t *ctx = (https_ctx_t *)user_data;
-	//ctx->stream_id = 0;
-
-    return KNOT_EOK;
-
 }
 
 int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *params)
@@ -111,7 +101,6 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
         nghttp2_session_callbacks_set_recv_callback(callbacks, https_recv_callback);
         nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, https_on_stream_close_callback);
 	    nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, https_on_data_chunk_recv_callback);
-        nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, https_on_frame_recv_callback);
 
         nghttp2_session_client_new(&(ctx->session), callbacks, ctx);
 
@@ -123,7 +112,37 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
     return KNOT_EINVAL;
 }
 
-int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote)
+static int sockaddr_to_authority(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
+{
+	if (ss == NULL || buf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const char *out = NULL;
+
+	/* Convert network address string. */
+	if (ss->ss_family == AF_INET6) {
+		const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)ss;
+		buf[0] = '[';
+		out = inet_ntop(ss->ss_family, &s->sin6_addr, buf + 1, INET6_ADDRSTRLEN);
+		if (!out) 
+			return KNOT_EINVAL;
+		size_t actual_size = strlen(buf);
+		buf[actual_size] = ']';
+		buf[actual_size + 1] = '\0';
+	} else if (ss->ss_family == AF_INET) {
+		const struct sockaddr_in *s = (const struct sockaddr_in *)ss;
+		out = inet_ntop(ss->ss_family, &s->sin_addr, buf, INET6_ADDRSTRLEN);
+		if (!out) 
+			return KNOT_EINVAL;
+	} else {
+		return KNOT_EINVAL;
+	}
+
+	return strlen(buf);
+}
+
+int https_ctx_connect(https_ctx_t *ctx, int sockfd, struct sockaddr_storage *server, const char *hostname)
 {
     if (ctx == NULL) {
 		return KNOT_EINVAL;
@@ -145,9 +164,9 @@ int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote)
 		return KNOT_NET_ECONNECT;
 	}
 
-	if (remote != NULL) {
-		ret = gnutls_server_name_set(ctx->tls->session, GNUTLS_NAME_DNS, remote,
-		                             strlen(remote));
+	if (hostname != NULL) {
+		ret = gnutls_server_name_set(ctx->tls->session, GNUTLS_NAME_DNS, hostname,
+		                             strlen(hostname));
 		if (ret != GNUTLS_E_SUCCESS) {
 			return KNOT_NET_ECONNECT;
 		}
@@ -157,10 +176,10 @@ int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote)
 	gnutls_transport_set_int(ctx->tls->session, sockfd);
 	gnutls_handshake_set_timeout(ctx->tls->session, 1000 * ctx->tls->wait);
 
-
     static const gnutls_datum_t protos[] = {
-        {"h2", 2}
+        { (unsigned char *)"h2", 2 }
     };
+
 	ret = gnutls_alpn_set_protocols(ctx->tls->session, protos, sizeof(protos)/sizeof(*protos), 0);
 	if(ret != GNUTLS_E_SUCCESS) {
 		return KNOT_NET_ECONNECT;
@@ -196,12 +215,42 @@ int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote)
     static const nghttp2_settings_entry settings[] = {
         {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, HTTPS_MAX_STREAMS}
     };
+
     int rv = nghttp2_submit_settings(ctx->session, NGHTTP2_FLAG_NONE, settings, sizeof(settings) / sizeof(*settings));
+	if(rv != 0) {
+		return KNOT_NET_ESOCKET;
+	}
     nghttp2_session_send(ctx->session);
+
+	ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, server);
+	if (ret <= 0) {
+		return KNOT_EINVAL;
+	}
+
+
     return KNOT_EOK;
 }
 
-int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len) //TODO make short (without edns)
+/** TODO POST
+static ssize_t https_send_data_callback(nghttp2_session *session,
+                                  int32_t stream_id, uint8_t *buf,
+                                  size_t length, uint32_t *data_flags,
+                                  nghttp2_data_source *source,
+                                  void *user_data) {
+	https_data_provider_t *buffer = source->ptr;
+	ssize_t r = buffer->buf_len;
+	memcpy(buf, buffer->buf, buffer->buf_len);
+  //if (r == -1) {
+  //  return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  //}
+	//if (r == 0) {
+		*data_flags |= NGHTTP2_DATA_FLAG_EOF;
+	//}
+	return r;
+}
+**/
+
+int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
 {
     static const char tmp_uri[] = "/dns-query?dns=";
 
@@ -215,13 +264,27 @@ int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_
 
     nghttp2_nv hdrs[] = {
         MAKE_STATIC_NV(":method", "GET"),
+		//MAKE_STATIC_NV(":method", "POST"), //TODO POST
         MAKE_STATIC_NV(":scheme", "https"),
-        MAKE_STATIC_NV(":authority", "1.1.1.1"),
-        MAKE_NV(":path", 5, dns_query, sizeof(tmp_uri) + ret - 2),
+		MAKE_NV(":authority", 10, ctx->authority, strlen(ctx->authority)),
+		MAKE_NV(":path", 5, dns_query, sizeof(tmp_uri) + ret - 2),
+        //MAKE_STATIC_NV(":path", "/dns-query"), //TODO POST
         MAKE_STATIC_NV("accept", "application/dns-message")
     };
 
+	/** TODO POST
+	https_data_provider_t data = {
+		.buf = buf,
+		.buf_len = buf_len
+	};
+
+	nghttp2_data_provider data_prd;
+	data_prd.source.ptr = &data;
+	data_prd.read_callback = https_send_data_callback;
+	**/
+
     int id = nghttp2_submit_request(ctx->session, NULL, hdrs, sizeof(hdrs) / sizeof(nghttp2_nv), NULL, ctx->tls);
+	//int id = nghttp2_submit_request(ctx->session, NULL, hdrs, sizeof(hdrs) / sizeof(nghttp2_nv), &data_prd, ctx->tls); //TODO POST
     if (id < 0) {
         return KNOT_NET_ESEND;
     }
@@ -238,22 +301,6 @@ int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len
     ctx->buflen = buf_len;
     nghttp2_session_recv(ctx->session);
     return ctx->buflen;
-}
-
-int https_ctx_close(https_ctx_t *ctx)
-{
-	if (ctx == NULL) {
-		return;
-	}
-    tls_ctx_close(ctx->tls);
-    
-}
-
-void https_ctx_deinit(https_ctx_t *ctx)
-{
-	if (!ctx || !ctx->tls) {
-		return;
-	}
 }
 
 #endif //LIBNGHTTP2
