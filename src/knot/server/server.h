@@ -38,6 +38,7 @@ typedef struct iohandler {
 	dt_unit_t          *unit;   /*!< Threading unit */
 	unsigned           *thread_state; /*!< Thread state */
 	unsigned           *thread_id; /*!< Thread identifier. */
+	bool               use_xdp; /*!< Using XDP. */
 } iohandler_t;
 
 /*! \brief Server state flags.
@@ -56,13 +57,15 @@ typedef struct iface {
 	int fd_udp_count;
 	int *fd_tcp;
 	int fd_tcp_count;
+	int fd_xdp;
 	struct sockaddr_storage addr;
 } iface_t;
 
 /* Handler indexes. */
 enum {
 	IO_UDP = 0,
-	IO_TCP = 1
+	IO_TCP = 1,
+	IO_XDP = 2,
 };
 
 /*!
@@ -85,7 +88,7 @@ typedef struct server {
 	struct {
 		unsigned size;
 		iohandler_t handler;
-	} handlers[2];
+	} handlers[3];
 
 	/*! \brief Background jobs. */
 	worker_pool_t *workers;
