@@ -555,6 +555,9 @@ AS_IF([test "$enable_utilities" = "yes"], [
     PKG_CHECK_MODULES([libnghttp2], [libnghttp2], [
       with_libnghttp2=libnghttp2
       AC_DEFINE([LIBNGHTTP2], [1], [Define to 1 to enable DoH support])
+    ], [
+      with_libnghttp2=no
+      AC_MSG_WARN([libnghttp2 not found])
     ])
   ])
 ]) # Knot DNS utilities dependencies
