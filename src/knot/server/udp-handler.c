@@ -39,6 +39,8 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 
+#include "libknot/xdp/af_xdp.h"
+
 /* Buffer identifiers. */
 enum {
 	RX = 0,
@@ -337,6 +339,78 @@ static int udp_recvmmsg_send(void *d)
 	return rc;
 }
 #endif /* ENABLE_RECVMMSG */
+
+struct xdp_recvmmsg {
+	knot_xsk_msg_t (msgs[RECVMMSG_BATCHLEN])[NBUFS];
+	uint32_t rcvd;
+};
+
+static void *xdp_recvmmsg_init(void)
+{
+	struct xdp_recvmmsg *rq = malloc(sizeof(*rq));
+	if (rq != NULL) {
+		memset(rq, 0, sizeof(*rq));
+	}
+	return rq;
+}
+
+static void xdp_recvmmsg_deinit(void *d)
+{
+	free(d);
+}
+
+static int xdp_recvmmsg_recv(int fd, void *d)
+{
+	UNUSED(fd);
+
+	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
+
+	return knot_xsk_recvmmsg(&rq->msgs[RX], RECVMMSG_BATCHLEN, &rq->rcvd);
+}
+
+static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d)
+{
+	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
+
+	for (unsigned i = 0; i < rq->rcvd; ++i) {
+		struct iovec *rx = &rq->msgs[RX][i].payload;
+		struct iovec *tx = &rq->msgs[TX][i].payload;
+
+		*tx = knot_xsk_alloc_frame();
+		if (tx->iov_base == NULL) {
+			return KNOT_ERROR;
+		}
+
+		udp_handle(ctx, 0 /* TODO ? */, &rq->msgs[RX][i].ip_from, rx, tx);
+
+		memcpy(rq->msgs[TX][i].eth_from, rq->msgs[RX][i].eth_to, sizeof(rq->msgs[TX][i].eth_from));
+		memcpy(rq->msgs[TX][i].eth_to, rq->msgs[RX][i].eth_from, sizeof(rq->msgs[TX][i].eth_to));
+		memcpy(&rq->msgs[TX][i].ip_from, &rq->msgs[RX][i].ip_to, sizeof(rq->msgs[TX][i].ip_from));
+		memcpy(&rq->msgs[TX][i].ip_to, &rq->msgs[RX][i].ip_from, sizeof(rq->msgs[TX][i].ip_to));
+
+		// FIXME!! :
+		/*
+		rq->msgs[TX][i].msg_len = tx->iov_len;
+		rq->msgs[TX][i].msg_hdr.msg_namelen = 0;
+		if (tx->iov_len > 0) {
+			rq->msgs[TX][i].msg_hdr.msg_namelen = rq->msgs[RX][i].msg_hdr.msg_namelen;
+		} */
+	}
+
+	return KNOT_EOK;
+}
+
+static int xdp_recvmmsg_send(void *d)
+{
+	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
+	uint32_t sent = rq->rcvd;
+
+	int ret = knot_xsk_sendmmsg(&rq->msgs[TX], sent);
+
+	memset(rq, 0, sizeof(*rq));
+
+	return ret == KNOT_EOK ? sent : ret;
+}
 
 /*! \brief Initialize UDP master routine on run-time. */
 void __attribute__ ((constructor)) udp_master_init(void)
