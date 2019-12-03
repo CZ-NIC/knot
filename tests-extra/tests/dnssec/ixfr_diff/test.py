@@ -8,7 +8,11 @@ t = Test(stress=False)
 
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(5)
+
+if not master.valgrind:
+  zones = t.zone_rnd(12)
+else:
+  zones = t.zone_rnd(4, records=100)
 
 t.link(zones, master, slave, ixfr=True)
 
