@@ -28,7 +28,8 @@ typedef struct {
 	struct iovec payload;
 } knot_xsk_msg_t;
 
-int knot_xsk_init(uv_loop_t *loop, char *cmdarg);
+int knot_xsk_init(const char *ifname, const char *prog_fname,
+                  ssize_t *out_busy_frames);
 
 void knot_xsk_deinit(void);
 
@@ -36,9 +37,10 @@ struct iovec knot_xsk_alloc_frame(void);
 
 int knot_xsk_sendmsg(const knot_xsk_msg_t *msg); // msg->payload MUST have been allocated by knot_xsk_alloc_frame()
 
-int knot_xsk_sendmmsg(const knot_xsk_msg_t *msgs[], uint32_t count); // skip messages with payload length == 0
+int knot_xsk_sendmmsg(const knot_xsk_msg_t msgs[], uint32_t count); // skip messages with payload length == 0
 
-int knot_xsk_recvmmsg(knot_xsk_msg_t *msgs[], uint32_t max_count, uint32_t *count);
+int knot_xsk_recvmmsg(knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count);
 
 int knot_xsk_check(void);
 
+int knot_xsk_get_poll_fd(void);

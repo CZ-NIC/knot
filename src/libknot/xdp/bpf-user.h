@@ -71,11 +71,6 @@ struct xsk_socket_info {
 	bool kernel_needs_wakeup;
 
 	const struct kxsk_iface *iface;
-
-	/* kresd-specific stuff */
-	uv_check_t check_handle;
-	uv_poll_t poll_handle;
-	struct session *session; /**< mock session, to minimize kresd changes for now */
 };
 
 

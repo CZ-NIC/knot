@@ -21,6 +21,7 @@
 #include <netinet/tcp.h>
 
 #include "libknot/errcode.h"
+#include "libknot/xdp/af_xdp.h"
 #include "libknot/yparser/ypschema.h"
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
@@ -60,6 +61,10 @@ static void server_deinit_iface(iface_t *iface)
 			}
 		}
 		free(iface->fd_udp);
+	}
+
+	if (iface->fd_xdp > -1) {
+		knot_xsk_deinit();
 	}
 
 	/* Free TCP handler. */
@@ -203,7 +208,7 @@ static int enable_fastopen(int sock, int backlog)
  */
 static iface_t *server_init_iface(struct sockaddr_storage *addr,
                                   int udp_thread_count, int tcp_thread_count,
-                                  bool tcp_reuseport)
+                                  bool tcp_reuseport, bool use_xdp)
 {
 	iface_t *new_if = calloc(1, sizeof(*new_if));
 	if (new_if == NULL) {
@@ -285,6 +290,17 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
 		new_if->fd_udp_count += 1;
 	}
+
+	new_if->fd_xdp = -1;
+	if (use_xdp) {
+		int ret = knot_xsk_init("enp0s8", "/bpf-kernel.o", NULL); // FIXME
+		if (ret != KNOT_EOK) {
+			log_warning("failed to init XDP (%s)", knot_strerror(ret));
+		} else {
+			new_if->fd_xdp = knot_xsk_get_poll_fd();
+		}
+	}
+
 
 	warn_bind = true;
 	warn_bufsize = true;
@@ -372,7 +388,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
 		unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
 		bool tcp_reuseport = conf->cache.srv_tcp_reuseport;
-		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp, tcp_reuseport);
+		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp, tcp_reuseport,
+		                                    conf->cache.srv_xdp_threads > 0);
 		if (new_if != NULL) {
 			add_tail(newlist, &new_if->n);
 		}
@@ -386,7 +403,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 	/* Set the ID's (thread_id) of both the TCP and UDP threads. */
 	unsigned thread_count = 0;
-	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
+	for (unsigned proto = IO_UDP; proto <= IO_XDP; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;
 		for (unsigned i = 0; i < tu->size; ++i) {
 			s->handlers[proto].handler.thread_id[i] = thread_count++;
@@ -785,7 +802,7 @@ void server_stop(server_t *server)
 	server->state &= ~ServerRunning;
 }
 
-static int set_handler(server_t *server, int index, unsigned size, runnable_t run)
+static int set_handler(server_t *server, int index, unsigned size, bool use_xdp, runnable_t run)
 {
 	/* Initialize I/O handlers. */
 	int ret = server_init_handler(server, index, size, run, NULL);
@@ -794,6 +811,7 @@ static int set_handler(server_t *server, int index, unsigned size, runnable_t ru
 	}
 
 	server->handlers[index].size = size;
+	server->handlers[index].handler.use_xdp = use_xdp;
 
 	return KNOT_EOK;
 }
@@ -801,12 +819,17 @@ static int set_handler(server_t *server, int index, unsigned size, runnable_t ru
 /*! \brief Reconfigure UDP and TCP query processing threads. */
 static int configure_threads(conf_t *conf, server_t *server)
 {
-	int ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
+	int ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, false, udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
+	ret = set_handler(server, IO_XDP, conf->cache.srv_xdp_threads, true, udp_master);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, false, tcp_master);
 }
 
 static int reconfigure_journal_db(conf_t *conf, server_t *server)

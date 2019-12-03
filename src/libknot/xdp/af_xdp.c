@@ -78,7 +78,7 @@ static const size_t FRAME_PAYLOAD_OFFSET = offsetof(struct udpv4, data);
 
 // FIXME later: get rid of those singletons!
 struct xsk_socket_info *the_socket = NULL;
-struct config *the_config = NULL;
+struct kxsk_config *the_config = NULL;
 
 /** Swap two bytes as a *constant* expression.  ATM we assume we're LE, i.e. we do need to swap. */
 #define BS16(n) (((n) >> 8) + (((n) & 0xff) << 8))
@@ -115,22 +115,28 @@ failed:
 	return NULL;
 }
 
-_public_
-struct iovec knot_xsk_alloc_frame()
+static struct umem_frame *xsk_alloc_umem_frame(void)
 {
 	struct xsk_umem_info *umem = the_socket->umem;
 
-	struct iovec res = { 0 };
-
 	if (unlikely(umem->free_count == 0)) {
-		return res;
+		return NULL;
 	}
 
 	uint32_t index = umem->free_indices[--umem->free_count];
-	struct umem_frame *uframe = umem->frames + index;
+	return umem->frames + index;
+}
 
-	res.iov_len = MIN(UINT16_MAX, FRAME_SIZE - FRAME_PAYLOAD_OFFSET - 4/*eth CRC*/);
-	res.iov_base = uframe->udpv4.data;
+_public_
+struct iovec knot_xsk_alloc_frame()
+{
+	struct iovec res = { 0 };
+
+	struct umem_frame *uframe = xsk_alloc_umem_frame();
+	if (uframe != NULL) {
+		res.iov_len = MIN(UINT16_MAX, FRAME_SIZE - FRAME_PAYLOAD_OFFSET - 4/*eth CRC*/);
+		res.iov_base = uframe->udpv4.data;
+	}
 	return res;
 }
 
@@ -158,7 +164,7 @@ void knot_xsk_deinit()
 }
 
 /** Add some free frames into the RX fill queue (possibly zero, etc.) */
-static int kxsk_umem_refill(const struct config *cfg, struct xsk_umem_info *umem)
+static int kxsk_umem_refill(const struct kxsk_config *cfg, struct xsk_umem_info *umem)
 {
 	/* First find to_reserve: how many frames to move to the RX fill queue.
 	 * Let's keep about as many frames ready for TX (free_count) as for RX (fq_ready),
@@ -171,8 +177,8 @@ static int kxsk_umem_refill(const struct config *cfg, struct xsk_umem_info *umem
 	const int balance = (fq_ready + umem->free_count) / 2;
 	const int fq_want = MIN(balance, fq_target); // don't overshoot the target
 	const int to_reserve = fq_want - fq_ready;
-	kr_log_verbose("[uxsk] refilling %d frames TX->RX; TX = %d, RX = %d\n",
-			to_reserve, (int)umem->free_count, (int)fq_ready);
+	//kr_log_verbose("[uxsk] refilling %d frames TX->RX; TX = %d, RX = %d\n",
+	//               to_reserve, (int)umem->free_count, (int)fq_ready);
 	if (to_reserve <= 0)
 		return 0;
 
@@ -184,7 +190,7 @@ static int kxsk_umem_refill(const struct config *cfg, struct xsk_umem_info *umem
 		return ENOSPC;
 	}
 	for (int i = 0; i < to_reserve; ++i, ++idx) {
-		struct umem_frame *uframe = xsk_alloc_umem_frame(umem);
+		struct umem_frame *uframe = xsk_alloc_umem_frame();
 		if (!uframe) {
 			assert(false);
 			return ENOSPC;
@@ -196,8 +202,9 @@ static int kxsk_umem_refill(const struct config *cfg, struct xsk_umem_info *umem
 	return 0;
 }
 
-static struct xsk_socket_info * xsk_configure_socket(struct config *cfg,
-				struct xsk_umem_info *umem, const struct kxsk_iface *iface)
+static struct xsk_socket_info *xsk_configure_socket(struct kxsk_config *cfg,
+                                                    struct xsk_umem_info *umem,
+                                                    const struct kxsk_iface *iface)
 {
 	/* Put a couple RX buffers into the fill queue.
 	 * Even if we don't need them, it silences a dmesg line,
@@ -215,13 +222,14 @@ static struct xsk_socket_info * xsk_configure_socket(struct config *cfg,
 
 	assert(cfg->xsk.libbpf_flags & XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD);
 	errno = xsk_socket__create(&xsk_info->xsk, iface->ifname,
-				 cfg->xsk_if_queue, umem->umem, &xsk_info->rx,
-				 &xsk_info->tx, &cfg->xsk);
+	                           cfg->xsk_if_queue, umem->umem,
+	                           &xsk_info->rx, &xsk_info->tx, &cfg->xsk);
 
 	return xsk_info;
 }
 
 /* Two helper functions taken from Linux kernel 5.2, slightly modified. */
+__attribute__ ((unused))
 static inline uint32_t from64to32(uint64_t x)
 {
 	/* add up 32-bit and 32-bit for 32+c bit */
@@ -268,7 +276,7 @@ static int pkt_send(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len)
 _public_
 int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
 {
-	uint8_t *uframe_p = msg->payload - FRAME_PAYLOAD_OFFSET;
+	uint8_t *uframe_p = msg->payload.iov_base - FRAME_PAYLOAD_OFFSET;
 	const uint8_t *umem_mem_start = the_socket->umem->frames->bytes;
 	if (((uframe_p - (uint8_t *)NULL) % FRAME_SIZE != 0) ||
 	    ((uframe_p - umem_mem_start) / FRAME_SIZE >= the_socket->umem->frame_count)) {
@@ -279,8 +287,8 @@ int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
 	struct udpv4 *h = &uframe->udpv4;
 
 	// sockaddr* contents is already in network byte order
-	const struct sockaddr_in *src_v4 = (const struct sockaddr_in *)msg->ip_from;
-	const struct sockaddr_in *dst_v4 = (const struct sockaddr_in *)msg->ip_to;
+	const struct sockaddr_in *src_v4 = (const struct sockaddr_in *)&msg->ip_from;
+	const struct sockaddr_in *dst_v4 = (const struct sockaddr_in *)&msg->ip_to;
 
 	const uint16_t udp_len = sizeof(h->udp) + msg->payload.iov_len;
 	h->udp.len = BS16(udp_len);
@@ -293,13 +301,17 @@ int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
 	h->ipv4.tos      = 0; // default: best-effort DSCP + no ECN support
 	h->ipv4.tot_len  = BS16(20 + udp_len);
 	h->ipv4.id       = BS16(0); // probably anything; details: RFC 6864
-	h->ipv4.frag_off = TODO;
+	h->ipv4.frag_off = 0; // TODO ?
 	h->ipv4.ttl      = IPDEFTTL;
 	h->ipv4.protocol = 0x11; // UDP
 
 	memcpy(&h->ipv4.saddr, &src_v4->sin_addr, sizeof(src_v4->sin_addr));
 	memcpy(&h->ipv4.daddr, &dst_v4->sin_addr, sizeof(dst_v4->sin_addr));
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 	h->ipv4.check = pkt_ipv4_checksum_2(&h->ipv4);
+#pragma GCC diagnostic pop
 
 	memcpy(h->eth.h_dest, msg->eth_to, sizeof(msg->eth_to));
 	memcpy(h->eth.h_source, msg->eth_from, sizeof(msg->eth_from));
@@ -311,12 +323,12 @@ int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
 }
 
 _public_
-int knot_xsk_sendmmsg(const knot_xsk_msg_t *msgs[], uint32_t count)
+int knot_xsk_sendmmsg(const knot_xsk_msg_t msgs[], uint32_t count)
 {
 	int ret = KNOT_EOK;
-	for (int i = 0; i < count && ret = KNOT_EOK; i++) {
-		if (msgs[i]->payload.iov_len > 0) {
-			ret = knot_xsk_sendmsg(msgs[i]);
+	for (int i = 0; i < count && ret == KNOT_EOK; i++) {
+		if (msgs[i].payload.iov_len > 0) {
+			ret = knot_xsk_sendmsg(&msgs[i]);
 		}
 	}
 	return ret;
@@ -401,8 +413,8 @@ static int rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc,
 	// LATER: filter the address-port combinations that we listen on?
 
 	assert(ipv4);
-	struct sockaddr_in *src_v4 = (struct sockaddr_in *)msg->ip_from;
-	struct sockaddr_in *dst_v4 = (struct sockaddr_in *)msg->ip_to;
+	struct sockaddr_in *src_v4 = (struct sockaddr_in *)&msg->ip_from;
+	struct sockaddr_in *dst_v4 = (struct sockaddr_in *)&msg->ip_to;
 	memcpy(&src_v4->sin_addr, &ipv4->saddr, sizeof(src_v4->sin_addr));
 	memcpy(&dst_v4->sin_addr, &ipv4->daddr, sizeof(dst_v4->sin_addr));
 
@@ -414,7 +426,7 @@ free_frame:
 }
 
 _public_
-int knot_xsk_recvmmsg(knot_xsk_msg_t *msgs[], uint32_t max_count, uint32_t *count)
+int knot_xsk_recvmmsg(knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count)
 {
 	uint32_t idx_rx;
 	int ret = KNOT_EOK;
@@ -422,7 +434,7 @@ int knot_xsk_recvmmsg(knot_xsk_msg_t *msgs[], uint32_t max_count, uint32_t *coun
 	assert(*count <= max_count);
 
 	for (size_t i = 0; i < *count && ret == KNOT_EOK; ++i, ++idx_rx) {
-		ret = rx_desc(the_socket, xsk_ring_cons__rx_desc(&the_socket->rx, idx_rx), msgs[i]);
+		ret = rx_desc(the_socket, xsk_ring_cons__rx_desc(&the_socket->rx, idx_rx), &msgs[i]);
 	}
 
 	if (ret == KNOT_EOK && *count > 0) {
@@ -432,7 +444,7 @@ int knot_xsk_recvmmsg(knot_xsk_msg_t *msgs[], uint32_t max_count, uint32_t *coun
 }
 
 
-static struct config the_config_storage = { // static to get zeroed by default
+static struct kxsk_config the_config_storage = { // static to get zeroed by default
 	.xsk_if_queue = 0, // defaults overridable by command-line -x eth3:0
 	.umem_frame_count = 8192,
 	.umem = {
@@ -451,7 +463,7 @@ static struct config the_config_storage = { // static to get zeroed by default
 
 _public_
 int knot_xsk_init(const char *ifname, const char *prog_fname,
-                  int *out_poll_handle, ssize_t *out_busy_frames)
+                  ssize_t *out_busy_frames)
 {
 	the_config = &the_config_storage;
 
@@ -491,4 +503,10 @@ int knot_xsk_init(const char *ifname, const char *prog_fname,
 	}
 
 	return ret;
+}
+
+_public_
+int knot_xsk_get_poll_fd()
+{
+	return xsk_socket__fd(the_socket->xsk);
 }
