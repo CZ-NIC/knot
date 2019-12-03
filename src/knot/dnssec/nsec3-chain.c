@@ -505,7 +505,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 			  !nsec3_opt_out(new_n, opt_out));
 
 	// remove (all) existing NSEC3
-	const zone_node_t *old_nsec3_n = zone_contents_find_nsec3_node(update->zone->contents, for_node_hashed);
+	const zone_node_t *old_nsec3_n = zone_contents_find_nsec3_node(update->new_cont, for_node_hashed);
 	if (old_nsec3_n != NULL) {
 		knot_rrset_t rem_nsec3 = node_rrset(old_nsec3_n, KNOT_RRTYPE_NSEC3);
 		if (!knot_rrset_empty(&rem_nsec3)) {
