@@ -405,7 +405,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	unsigned thread_count = 0;
 	for (unsigned proto = IO_UDP; proto <= IO_XDP; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;
-		for (unsigned i = 0; i < tu->size; ++i) {
+		for (unsigned i = 0; tu != NULL && i < tu->size; ++i) {
 			s->handlers[proto].handler.thread_id[i] = thread_count++;
 		}
 	}
@@ -555,7 +555,7 @@ int server_start(server_t *server, bool async)
 
 	/* Start I/O handlers. */
 	server->state |= ServerRunning;
-	for (int proto = IO_UDP; proto <= IO_TCP; ++proto) {
+	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
 		if (server->handlers[proto].size > 0) {
 			int ret = dt_start(server->handlers[proto].handler.unit);
 			if (ret != KNOT_EOK) {
@@ -576,7 +576,7 @@ void server_wait(server_t *server)
 	evsched_join(&server->sched);
 	worker_pool_join(server->workers);
 
-	for (int proto = IO_UDP; proto <= IO_TCP; ++proto) {
+	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
 		if (server->handlers[proto].size > 0) {
 			server_free_handler(&server->handlers[proto].handler);
 		}
@@ -824,9 +824,11 @@ static int configure_threads(conf_t *conf, server_t *server)
 		return ret;
 	}
 
-	ret = set_handler(server, IO_XDP, conf->cache.srv_xdp_threads, true, udp_master);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (conf->cache.srv_xdp_threads > 0) {
+		ret = set_handler(server, IO_XDP, conf->cache.srv_xdp_threads, true, udp_master);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, false, tcp_master);

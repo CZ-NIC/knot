@@ -115,10 +115,8 @@ failed:
 	return NULL;
 }
 
-static struct umem_frame *xsk_alloc_umem_frame(void)
+static struct umem_frame *xsk_alloc_umem_frame(struct xsk_umem_info *umem)
 {
-	struct xsk_umem_info *umem = the_socket->umem;
-
 	if (unlikely(umem->free_count == 0)) {
 		return NULL;
 	}
@@ -132,7 +130,7 @@ struct iovec knot_xsk_alloc_frame()
 {
 	struct iovec res = { 0 };
 
-	struct umem_frame *uframe = xsk_alloc_umem_frame();
+	struct umem_frame *uframe = xsk_alloc_umem_frame(the_socket->umem);
 	if (uframe != NULL) {
 		res.iov_len = MIN(UINT16_MAX, FRAME_SIZE - FRAME_PAYLOAD_OFFSET - 4/*eth CRC*/);
 		res.iov_base = uframe->udpv4.data;
@@ -190,7 +188,7 @@ static int kxsk_umem_refill(const struct kxsk_config *cfg, struct xsk_umem_info 
 		return ENOSPC;
 	}
 	for (int i = 0; i < to_reserve; ++i, ++idx) {
-		struct umem_frame *uframe = xsk_alloc_umem_frame();
+		struct umem_frame *uframe = xsk_alloc_umem_frame(umem);
 		if (!uframe) {
 			assert(false);
 			return ENOSPC;
