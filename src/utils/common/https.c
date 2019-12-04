@@ -282,67 +282,30 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
     return KNOT_EOK;
 }
 
-/** TODO POST
-static ssize_t https_send_data_callback(nghttp2_session *session,
-                                  int32_t stream_id, uint8_t *buf,
-                                  size_t length, uint32_t *data_flags,
-                                  nghttp2_data_source *source,
-                                  void *user_data) {
-	https_data_provider_t *buffer = source->ptr;
-	ssize_t r = buffer->buf_len;
-	memcpy(buf, buffer->buf, buffer->buf_len);
-  //if (r == -1) {
-  //  return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  //}
-	//if (r == 0) {
-		*data_flags |= NGHTTP2_DATA_FLAG_EOF;
-	//}
-	return r;
-}
-**/
-
-int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
+static int https_send_dns_query_get(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
 {
-	if (ctx->stream_id > 0) { //TODO concurrency of send/receive
-		return KNOT_NET_ESEND;
-	}
-	
-    const size_t dns_query_len = sizeof(https_tmp_uri) + 1 + (buf_len * 4) / 3;
+   	const size_t dns_query_len = sizeof(https_tmp_uri) + 1 + (buf_len * 4) / 3;
     uint8_t * dns_query = (uint8_t *)calloc(dns_query_len, sizeof(uint8_t));
     memcpy(dns_query, https_tmp_uri, sizeof(https_tmp_uri));
     
     int32_t ret = base64url_encode(buf, buf_len,
-            dns_query + sizeof(https_tmp_uri) - 1, dns_query_len - (sizeof(https_tmp_uri) - 2)
+    	dns_query + sizeof(https_tmp_uri) - 1, dns_query_len - (sizeof(https_tmp_uri) - 2)
     );
 	if (ret < 0) {
 		free(dns_query);
 		return KNOT_EINVAL;
 	}
-
+	
     nghttp2_nv hdrs[] = {
         MAKE_STATIC_NV(":method", "GET"),
-		//MAKE_STATIC_NV(":method", "POST"), //TODO POST
-        MAKE_STATIC_NV(":scheme", "https"),
+		MAKE_STATIC_NV(":scheme", "https"),
 		MAKE_NV(":authority", 10, ctx->authority, strlen(ctx->authority)),
 		MAKE_NV(":path", 5, dns_query, sizeof(https_tmp_uri) + ret - 2),
-        //MAKE_STATIC_NV(":path", "/dns-query"), //TODO POST
-        MAKE_STATIC_NV("accept", "application/dns-message")
-    };
-
-	/** TODO POST
-	https_data_provider_t data = {
-		.buf = buf,
-		.buf_len = buf_len
+        MAKE_STATIC_NV("accept", "application/dns-message"),
 	};
-
-	nghttp2_data_provider data_prd;
-	data_prd.source.ptr = &data;
-	data_prd.read_callback = https_send_data_callback;
-	**/
-
+	
     const int id = nghttp2_submit_request(ctx->session, NULL, hdrs, sizeof(hdrs)/sizeof(*hdrs), NULL, NULL);
-	//int id = nghttp2_submit_request(ctx->session, NULL, hdrs, sizeof(hdrs) / sizeof(nghttp2_nv), &data_prd, ctx->tls); //TODO POST
-    if (id < 0) {
+	if (id < 0) {
 		free(dns_query);
         return KNOT_NET_ESEND;
     }
@@ -356,6 +319,72 @@ int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_
     
 	free(dns_query);
 	return KNOT_EOK;
+}
+
+static ssize_t https_send_data_callback(nghttp2_session *session, int32_t stream_id,
+		uint8_t *buf, size_t length, uint32_t *data_flags, nghttp2_data_source *source,
+		void *user_data)
+{
+	https_data_provider_t *buffer = source->ptr;
+	ssize_t sent = (length < buffer->buf_len) ? length : buffer->buf_len;
+	memcpy(buf, buffer->buf, sent);
+
+	if(sent == buffer->buf_len) {
+		*data_flags |= NGHTTP2_DATA_FLAG_EOF;
+	}
+	
+	return sent;
+}
+
+static int https_send_dns_query_post(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
+{
+	char content_length[sizeof(size_t)*8 + 1];
+	int content_length_len = sprintf(content_length, "%d", buf_len);
+
+    nghttp2_nv hdrs[] = {
+		MAKE_STATIC_NV(":method", "POST"),
+        MAKE_STATIC_NV(":scheme", "https"),
+		MAKE_NV(":authority", 10, ctx->authority, strlen(ctx->authority)),
+        MAKE_STATIC_NV(":path", "/dns-query"),
+        MAKE_STATIC_NV("accept", "application/dns-message"),
+		MAKE_STATIC_NV("content-type", "application/dns-message"),
+		MAKE_NV("content-length", 14, content_length, content_length_len)
+    };
+
+	https_data_provider_t data = {
+		.buf = buf,
+		.buf_len = buf_len
+	};
+
+	nghttp2_data_provider data_prd;
+	data_prd.source.ptr = &data;
+	data_prd.read_callback = https_send_data_callback;
+
+	const int id = nghttp2_submit_request(ctx->session, NULL, hdrs, sizeof(hdrs) / sizeof(nghttp2_nv), &data_prd, NULL); //TODO POST
+    if (id < 0) {
+        return KNOT_NET_ESEND;
+    }
+	ctx->stream_id = id;
+
+    int ret = nghttp2_session_send(ctx->session);
+	if (ret != 0) {
+		return KNOT_NET_ESEND;
+	}
+
+	return KNOT_EOK;
+}
+
+int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
+{
+	if (ctx->stream_id > 0) { //TODO concurrency of send/receive
+		return KNOT_NET_ESEND;
+	}
+
+	if (HTTPS_USE_POST(buf_len)) {
+		return https_send_dns_query_post(ctx, buf, buf_len);
+	} else {
+		return https_send_dns_query_get(ctx, buf, buf_len);
+	}
 }
 
 int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
