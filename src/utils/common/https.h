@@ -48,12 +48,14 @@ typedef struct {
 #define HTTPS_MAX_STREAMS 16
 #define HTTPS_AUTHORITY_LEN (INET6_ADDRSTRLEN + 2)
 
-/** TODO POST
+#define HTTPS_POST_THRESHOLD 1024UL
+#define HTTPS_USE_POST(S) (S >= HTTPS_POST_THRESHOLD)
+
 typedef struct {
     uint8_t *buf;
     size_t buf_len;
 } https_data_provider_t;
-**/
+
 
 /*! \brief HTTPS context. */
 typedef struct {
