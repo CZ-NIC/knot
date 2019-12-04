@@ -68,13 +68,13 @@
 struct umem_frame {
 	union { uint8_t bytes[FRAME_SIZE]; struct {
 
-	struct qr_task *task;
 	struct udpv4 udpv4;
 
 	}; };
 };
 
-static const size_t FRAME_PAYLOAD_OFFSET = offsetof(struct udpv4, data);
+static const size_t UDPV4_PAYLOAD_OFFSET = offsetof(struct udpv4, data);
+static const size_t FRAME_PAYLOAD_OFFSET = UDPV4_PAYLOAD_OFFSET + offsetof(struct umem_frame, udpv4);
 
 // FIXME later: get rid of those singletons!
 struct xsk_socket_info *the_socket = NULL;
@@ -379,12 +379,13 @@ static int rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc,
 	if (eth->h_proto == BS16(ETH_P_IP)) {
 		ipv4 = (struct iphdr *)(uframe_p + sizeof(struct ethhdr));
 		// Any fragmentation stuff is bad for use, except for the DF flag
-		if (ipv4->version != 4 || (ipv4->frag_off & ~(1 << 14))) {
-			ret = KNOT_EMALF;
+		uint16_t frag_off = BS16(ipv4->frag_off);
+		if (ipv4->version != 4 || (frag_off & ~(1 << 14))) {
+			ret = KNOT_EFEWDATA;
 			goto free_frame;
 		}
 		if (ipv4->protocol != 0x11) { // UDP
-			ret = KNOT_EMALF;
+			ret = KNOT_ESEMCHECK;
 			goto free_frame;
 		}
 		// FIXME ipv4->check (sensitive to ipv4->ihl), ipv4->tot_len, udp->len
@@ -395,7 +396,7 @@ static int rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc,
 		ret = KNOT_ENOTSUP; // FIXME later
 		goto free_frame;
 	} else {
-		ret = KNOT_EMALF;
+		ret = KNOT_ENOTSUP;
 		goto free_frame;
 	}
 
@@ -426,10 +427,14 @@ free_frame:
 _public_
 int knot_xsk_recvmmsg(knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count)
 {
-	uint32_t idx_rx;
+	uint32_t idx_rx = 0;
 	int ret = KNOT_EOK;
 	*count = xsk_ring_cons__peek(&the_socket->rx, max_count, &idx_rx);
 	assert(*count <= max_count);
+
+	if (*count == 0) {
+		*count = 1;
+	}
 
 	for (size_t i = 0; i < *count && ret == KNOT_EOK; ++i, ++idx_rx) {
 		ret = rx_desc(the_socket, xsk_ring_cons__rx_desc(&the_socket->rx, idx_rx), &msgs[i]);

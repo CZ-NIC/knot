@@ -383,7 +383,9 @@ static int xdp_recvmmsg_recv(int fd, void *d)
 
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 
-	return knot_xsk_recvmmsg(rq->msgs[RX], RECVMMSG_BATCHLEN, &rq->rcvd);
+	int ret = knot_xsk_recvmmsg(rq->msgs[RX], RECVMMSG_BATCHLEN, &rq->rcvd);
+
+	return ret == KNOT_EOK ? rq->rcvd : ret;
 }
 
 static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d)
