@@ -39,21 +39,23 @@ typedef struct {
 #include "utils/common/tls.h"
 #include "utils/common/msg.h"
 
-#define MAKE_STATIC_NV(K, V) \
-    { (uint8_t *)K, (uint8_t *)V, sizeof(K) - 1, sizeof(V) - 1, NGHTTP2_NV_FLAG_NONE }
-
 #define MAKE_NV(K, KS, V, VS) \
     { (uint8_t *)K, (uint8_t *)V, KS, VS, NGHTTP2_NV_FLAG_NONE }
+
+#define MAKE_STATIC_NV(K, V) \
+    MAKE_NV(K, sizeof(K) - 1, V, sizeof(V) - 1)
 
 #define HTTPS_MAX_STREAMS 16
 #define HTTPS_AUTHORITY_LEN (INET6_ADDRSTRLEN + 2)
 
-/** TODO POST
+#define HTTPS_POST_THRESHOLD 1024UL
+#define HTTPS_USE_POST(S) (S >= HTTPS_POST_THRESHOLD)
+
+/*! \brief Structure that stores data source for DATA frames. */
 typedef struct {
-    uint8_t *buf;
+    const uint8_t *buf;
     size_t buf_len;
 } https_data_provider_t;
-**/
 
 /*! \brief HTTPS context. */
 typedef struct {

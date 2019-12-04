@@ -125,7 +125,6 @@ int32_t base64url_encode(const uint8_t  *in,
 		text += 4;
 		break;
 	}
-	text[0] = '\0';
 	return (text - out);
 }
 
