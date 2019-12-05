@@ -458,7 +458,7 @@ void server_deinit(server_t *server)
 	worker_pool_destroy(server->workers);
 
 	/* Free zone database. */
-	knot_zonedb_deep_free(&server->zone_db);
+	knot_zonedb_deep_free(&server->zone_db, true);
 
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
