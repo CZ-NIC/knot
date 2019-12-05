@@ -89,6 +89,23 @@ isset("192.168.0.1" in resp[ZONE_NAME][ZONE_NAME]["A"]["data"], "zone A rdata")
 isset("NSEC3" in resp[ZONE_NAME]["utqvuhu2blk3dhmrr5t1hd9vteohqt0a."+ZONE_NAME], "zone NSEC3 presence")
 isset("1 0 10 - dks9i43rb5utfau23saq45qmv6stlthu A RRSIG" in resp[ZONE_NAME]["utqvuhu2blk3dhmrr5t1hd9vteohqt0a."+ZONE_NAME]["NSEC3"]["data"], "zone NSEC3 rdata")
 
+# Remove NSEC3 node.
+
+ctl.send_block(cmd="zone-begin")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-unset", zone=ZONE_NAME, owner="utqvuhu2blk3dhmrr5t1hd9vteohqt0a")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-commit")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-read", zone=ZONE_NAME)
+resp = ctl.receive_block()
+
+if "utqvuhu2blk3dhmrr5t1hd9vteohqt0a."+ZONE_NAME in resp[ZONE_NAME]:
+    set_err("zone NSEC3 removal")
+
 ctl.send(libknot.control.KnotCtlType.END)
 ctl.close()
 
