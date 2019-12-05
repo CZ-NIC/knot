@@ -545,7 +545,7 @@ int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_
 		return KNOT_EINVAL;
 	}
 
-	const zone_node_t *node = zone_contents_find_node(update->new_cont, owner);
+	const zone_node_t *node = zone_contents_node_or_nsec3(update->new_cont, owner);
 	if (node == NULL) {
 		return KNOT_ENONODE;
 	}
@@ -564,7 +564,7 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner)
 		return KNOT_EINVAL;
 	}
 
-	const zone_node_t *node = zone_contents_find_node(update->new_cont, owner);
+	const zone_node_t *node = zone_contents_node_or_nsec3(update->new_cont, owner);
 	if (node == NULL) {
 		return KNOT_ENONODE;
 	}
