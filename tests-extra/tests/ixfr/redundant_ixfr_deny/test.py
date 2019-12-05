@@ -38,6 +38,7 @@ t.xfr_diff(master, slave, zone)
 slave.stop()
 slave.update_zonefile(zone, version="slave1")
 slave.start()
+slave.zone_wait(zone)
 
 master.update_zonefile(zone, version=2)
 master.reload()
