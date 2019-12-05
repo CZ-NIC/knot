@@ -24,7 +24,7 @@
 #include "contrib/ucw/mempool.h"
 
 /*! \brief Discard zone in zone database. */
-static void discard_zone(zone_t *zone)
+static void discard_zone(zone_t *zone, bool force)
 {
 	// Don't flush if removed zone (no previous configuration available).
 	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name))) {
@@ -39,6 +39,9 @@ static void discard_zone(zone_t *zone)
 		}
 	}
 
+	if (force) {
+		zone_control_clear(zone);
+	}
 	zone_free(&zone);
 }
 
@@ -155,12 +158,12 @@ void knot_zonedb_free(knot_zonedb_t **db)
 	*db = NULL;
 }
 
-void knot_zonedb_deep_free(knot_zonedb_t **db)
+void knot_zonedb_deep_free(knot_zonedb_t **db, bool force)
 {
 	if (db == NULL || *db == NULL) {
 		return;
 	}
 
-	knot_zonedb_foreach(*db, discard_zone);
+	knot_zonedb_foreach(*db, discard_zone, force);
 	knot_zonedb_free(db);
 }
