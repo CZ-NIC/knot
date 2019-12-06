@@ -596,18 +596,6 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 	return changeset_walk(changes, update_chset_step, update);
 }
 
-int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes)
-{
-	int ret = changeset_cancelout(changes);
-	if (ret == KNOT_EOK) {
-		ret = changeset_preapply_fix(update->new_cont, changes);
-	}
-	if (ret == KNOT_EOK) {
-		ret = zone_update_apply_changeset(update, changes);
-	}
-	return ret;
-}
-
 int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t *changes)
 {
 	changeset_t reverse;

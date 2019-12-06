@@ -1001,7 +1001,7 @@ int knot_zone_sign_soa(zone_update_t *update,
 		}
 		ret = force_resign_rrset(&soa_to, &soa_rrsig, sign_ctx, &ch);
 		if (ret == KNOT_EOK) {
-			ret = zone_update_apply_changeset_fix(update, &ch);
+			ret = zone_update_apply_changeset(update, &ch);
 		}
 		zone_sign_ctx_free(sign_ctx);
 	}
