@@ -119,18 +119,6 @@ const zone_node_t *zone_update_get_node(zone_update_t *update,
                                         const knot_dname_t *dname);
 
 /*!
- * \brief Returns updated zone apex.
- *
- * \note Returned node is either zone original or synthesized, do *not* free
- *       or modify.
- *
- * \param update  Zone update.
- *
- * \return   Returns apex after update.
- */
-const zone_node_t *zone_update_get_apex(zone_update_t *update);
-
-/*!
  * \brief Returns the serial from the current apex.
  *
  * \param update  Zone update.

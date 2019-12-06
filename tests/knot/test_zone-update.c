@@ -221,7 +221,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	knot_rdataset_clear(&rrset.rrs, NULL);
 	is_int(KNOT_EOK, ret, "incremental zone update: addition");
 
-	const zone_node_t *synth_node = zone_update_get_apex(&update);
+	const zone_node_t *synth_node = update.new_cont->apex;
 	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->count == 2,
 	   "incremental zone update: add change");
 
@@ -234,8 +234,7 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	is_int(KNOT_EOK, ret, "incremental zone update: removal");
 	knot_rdataset_clear(&rrset.rrs, NULL);
 
-	synth_node = zone_update_get_apex(&update);
-	ok(synth_node && node_rdataset(synth_node, KNOT_RRTYPE_TXT)->count == 1,
+	ok(node_rdataset(synth_node, KNOT_RRTYPE_TXT)->count == 1,
 	   "incremental zone update: del change");
 
 	/* Prepare node removal */

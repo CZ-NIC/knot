@@ -313,18 +313,9 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 	return zone_contents_find_node(update->new_cont, dname);
 }
 
-const zone_node_t *zone_update_get_apex(zone_update_t *update)
-{
-	if (update == NULL) {
-		return NULL;
-	}
-
-	return zone_update_get_node(update, update->zone->name);
-}
-
 uint32_t zone_update_current_serial(zone_update_t *update)
 {
-	const zone_node_t *apex = zone_update_get_apex(update);
+	const zone_node_t *apex = update->new_cont->apex;
 	if (apex != NULL) {
 		return knot_soa_serial(node_rdataset(apex, KNOT_RRTYPE_SOA)->rdata);
 	} else {
@@ -610,7 +601,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 {
 	assert(update);
 
-	knot_rrset_t *soa_cpy = node_create_rrset(zone_update_get_apex(update),
+	knot_rrset_t *soa_cpy = node_create_rrset(update->new_cont->apex,
 	                                          KNOT_RRTYPE_SOA);
 	if (soa_cpy == NULL) {
 		return KNOT_ENOMEM;
