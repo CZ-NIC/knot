@@ -310,7 +310,7 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 		return NULL;
 	}
 
-	return zone_contents_find_node(update->new_cont, dname);
+	return zone_contents_node_or_nsec3(update->new_cont, dname);
 }
 
 uint32_t zone_update_current_serial(zone_update_t *update)
