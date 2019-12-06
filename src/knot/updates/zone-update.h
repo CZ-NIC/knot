@@ -119,18 +119,6 @@ const zone_node_t *zone_update_get_node(zone_update_t *update,
                                         const knot_dname_t *dname);
 
 /*!
- * \brief Returns updated zone apex.
- *
- * \note Returned node is either zone original or synthesized, do *not* free
- *       or modify.
- *
- * \param update  Zone update.
- *
- * \return   Returns apex after update.
- */
-const zone_node_t *zone_update_get_apex(zone_update_t *update);
-
-/*!
  * \brief Returns the serial from the current apex.
  *
  * \param update  Zone update.
@@ -233,16 +221,6 @@ int zone_update_remove_node(zone_update_t *update, const knot_dname_t *owner);
  * \return KNOT_E*
  */
 int zone_update_apply_changeset(zone_update_t *update, const changeset_t *changes);
-
-/*!
- * \brief Applies a changeset to zone, the changeset is modified to contain only really added/removed rdata.
- *
- * \param update  Zone update.
- * \param changes In: changes to be made in zone; out: changes really made in zone.
- *
- * \return KNOT_E*
- */
-int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes);
 
 /*!
  * \brief Applies the changeset in reverse, rsets from REM section are added and from ADD section removed.

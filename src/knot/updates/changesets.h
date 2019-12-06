@@ -160,25 +160,6 @@ uint32_t changeset_from(const changeset_t *ch);
 uint32_t changeset_to(const changeset_t *ch);
 
 /*!
- * \brief Remove from changeset those rdata which won't be added/removed from zone.
- *
- * \param zone  The zone the changeset is going to be applied on.
- * \param ch    The cheangeset to be fixed.
- *
- * \return KNOT_E*
- */
-int changeset_preapply_fix(const zone_contents_t *zone, changeset_t *ch);
-
-/*!
- * \brief Remove from changeset records which are removed and added the same.
- *
- * \param ch  Changeset to be fixed.
- *
- * \return KNOT_E*
- */
-int changeset_cancelout(changeset_t *ch);
-
-/*!
  * \brief Check the changes and SOA, ignoring possibly updated SOA serial.
  *
  * \note Also tolerates changed RRSIG of SOA.
