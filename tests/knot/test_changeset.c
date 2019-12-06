@@ -146,28 +146,6 @@ int main(int argc, char *argv[])
 	ret = changeset_merge(ch, ch2, 0);
 	ok(ret == KNOT_EOK && changeset_size(ch) == 5, "changeset: merge");
 
-	// Test preapply fix.
-	zone_contents_t *z = zone_contents_new((const knot_dname_t *)"\x04""test", false);
-	knot_dname_free(apex_txt_rr->owner, NULL);
-	apex_txt_rr->owner = knot_dname_from_str_alloc("something.test.");
-	assert(apex_txt_rr->owner);
-	zone_node_t *znode = NULL;
-	ret = zone_contents_add_rr(z, apex_txt_rr, &znode);
-	assert(ret == KNOT_EOK);
-	ret = changeset_preapply_fix(z, ch2);
-	ok(ret == KNOT_EOK, "changeset: preapply fix ok (%s)", knot_strerror(ret));
-	ok(changeset_empty(ch2), "changeset: preapply fix works");
-	zone_contents_deep_free(z);
-
-	// Test cancelout.
-	ret = changeset_add_removal(ch2, apex_txt_rr, 0);
-	assert(ret == KNOT_EOK);
-	ret = changeset_add_addition(ch2, apex_txt_rr, 0);
-	assert(ret == KNOT_EOK);
-	ret = changeset_cancelout(ch2);
-	ok(ret == KNOT_EOK, "changeset: cancelout ok (%s)", knot_strerror(ret));
-	ok(changeset_empty(ch2), "changeset: cancelout works");
-
 	// Test cleanup.
 	changeset_clear(ch);
 	ok(changeset_empty(ch), "changeset: clear");

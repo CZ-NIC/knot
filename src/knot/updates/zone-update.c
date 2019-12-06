@@ -310,21 +310,12 @@ const zone_node_t *zone_update_get_node(zone_update_t *update, const knot_dname_
 		return NULL;
 	}
 
-	return zone_contents_find_node(update->new_cont, dname);
-}
-
-const zone_node_t *zone_update_get_apex(zone_update_t *update)
-{
-	if (update == NULL) {
-		return NULL;
-	}
-
-	return zone_update_get_node(update, update->zone->name);
+	return zone_contents_node_or_nsec3(update->new_cont, dname);
 }
 
 uint32_t zone_update_current_serial(zone_update_t *update)
 {
-	const zone_node_t *apex = zone_update_get_apex(update);
+	const zone_node_t *apex = update->new_cont->apex;
 	if (apex != NULL) {
 		return knot_soa_serial(node_rdataset(apex, KNOT_RRTYPE_SOA)->rdata);
 	} else {
@@ -596,18 +587,6 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 	return changeset_walk(changes, update_chset_step, update);
 }
 
-int zone_update_apply_changeset_fix(zone_update_t *update, changeset_t *changes)
-{
-	int ret = changeset_cancelout(changes);
-	if (ret == KNOT_EOK) {
-		ret = changeset_preapply_fix(update->new_cont, changes);
-	}
-	if (ret == KNOT_EOK) {
-		ret = zone_update_apply_changeset(update, changes);
-	}
-	return ret;
-}
-
 int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t *changes)
 {
 	changeset_t reverse;
@@ -622,7 +601,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 {
 	assert(update);
 
-	knot_rrset_t *soa_cpy = node_create_rrset(zone_update_get_apex(update),
+	knot_rrset_t *soa_cpy = node_create_rrset(update->new_cont->apex,
 	                                          KNOT_RRTYPE_SOA);
 	if (soa_cpy == NULL) {
 		return KNOT_ENOMEM;
