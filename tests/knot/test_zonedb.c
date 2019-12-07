@@ -110,6 +110,6 @@ int main(int argc, char *argv[])
 	ok(nr_passed == ZONE_COUNT, "zonedb: removed all zones");
 
 cleanup:
-	knot_zonedb_deep_free(&db);
+	knot_zonedb_deep_free(&db, false);
 	return 0;
 }
