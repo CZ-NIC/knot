@@ -120,5 +120,6 @@ void knot_zonedb_free(knot_zonedb_t **db);
  * \brief Destroys and deallocates the whole zone database including the zones.
  *
  * \param db Zone database to be destroyed.
+ * \param abort_txn Indication that possible zone transactions are aborted.
  */
-void knot_zonedb_deep_free(knot_zonedb_t **db);
+void knot_zonedb_deep_free(knot_zonedb_t **db, bool abort_txn);

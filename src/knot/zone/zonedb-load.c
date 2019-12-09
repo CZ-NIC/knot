@@ -317,7 +317,7 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 	knot_zonedb_iter_free(it);
 
 	if (full) {
-		knot_zonedb_deep_free(&db_old);
+		knot_zonedb_deep_free(&db_old, false);
 	} else {
 		knot_zonedb_free(&db_old);
 	}
