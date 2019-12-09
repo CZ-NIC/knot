@@ -101,13 +101,29 @@ slave.dnssec(zone).enable = True
 
 t.start()
 
-test_one(master, slave, zone, "increment", "increment", 1000, 0, 0, 2, 3)
 if not master.valgrind:
+    check_log("Test criteria has been set for: no Valgrind")
+    tuning = 0
+elif "--with-conf-mapsize=3" in os.environ.get("CONFIGURE_FLAGS", "Nothing"):
+    check_log("Test criteria has been set for: Valgrind and reduced conf-mapsize")
+    tuning = 3
+else:
+    check_log("Test criteria has been set for: Valgrind and default conf-mapsize")
+    tuning = 500
+
+test_one(master, slave, zone, "increment", "increment", 1000, 0, 0, 2, 3)
+if tuning == 0:
+    # No Valgrind
     test_one(master, slave, zone, "unixtime", "unixtime", int(time.time()), 1, 3, 1, 2)
     test_one(master, slave, zone, "increment", "unixtime", int(time.time()), 1, 3, 5, None)
-else:
+elif tuning == 3:
+    # Valgrind and reduced conf-mapsize value (nightly tests only)
     test_one(master, slave, zone, "unixtime", "unixtime", int(time.time()), 1, 11, 1, 6)
     test_one(master, slave, zone, "increment", "unixtime", int(time.time()), 1, 11, 5, None)
+else:
+    # Valgrind and default conf-mapsize value
+    test_one(master, slave, zone, "unixtime", "unixtime", int(time.time()), 1, 17, 1, 8)
+    test_one(master, slave, zone, "increment", "unixtime", int(time.time()), 1, 17, 5, None)
 test_one(master, slave, zone, "unixtime", "increment", int(time.time()), 0, 0, None, -1)
 
 rnd_master = random.choice(["dateserial", "increment"])
