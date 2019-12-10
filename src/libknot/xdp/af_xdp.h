@@ -41,6 +41,8 @@ int knot_xsk_sendmmsg(const knot_xsk_msg_t msgs[], uint32_t count); // skip mess
 
 int knot_xsk_recvmmsg(knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count);
 
+void knot_xsk_free_recvd(const knot_xsk_msg_t *msg);
+
 int knot_xsk_check(void);
 
 int knot_xsk_get_poll_fd(void);

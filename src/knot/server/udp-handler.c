@@ -408,6 +408,8 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d)
 		memcpy(&rq->msgs[TX][i].ip_from, &rq->msgs[RX][i].ip_to, sizeof(rq->msgs[TX][i].ip_from));
 		memcpy(&rq->msgs[TX][i].ip_to, &rq->msgs[RX][i].ip_from, sizeof(rq->msgs[TX][i].ip_to));
 
+		knot_xsk_free_recvd(&rq->msgs[RX][i]);
+
 		// FIXME!! :
 		/*
 		rq->msgs[TX][i].msg_len = tx->iov_len;
@@ -428,6 +430,8 @@ static int xdp_recvmmsg_send(void *d)
 	int ret = knot_xsk_sendmmsg(rq->msgs[TX], sent);
 
 	memset(rq, 0, sizeof(*rq));
+
+	knot_xsk_check();
 
 	return ret == KNOT_EOK ? sent : ret;
 }

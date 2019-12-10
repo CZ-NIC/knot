@@ -271,16 +271,27 @@ static int pkt_send(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len)
 	return KNOT_EOK;
 }
 
-_public_
-int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
+static uint8_t *msg_uframe_p(const knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = msg->payload.iov_base - FRAME_PAYLOAD_OFFSET;
 	const uint8_t *umem_mem_start = the_socket->umem->frames->bytes;
 	if (((uframe_p - (uint8_t *)NULL) % FRAME_SIZE != 0) ||
 	    ((uframe_p - umem_mem_start) / FRAME_SIZE >= the_socket->umem->frame_count)) {
 		// not allocated msg->payload correctly
+		return NULL;
+	}
+
+	return uframe_p;
+}
+
+_public_
+int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
+{
+	uint8_t *uframe_p = msg_uframe_p(msg);
+	if (uframe_p == NULL) {
 		return KNOT_EINVAL;
 	}
+
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
 	struct udpv4 *h = &uframe->udpv4;
 
@@ -317,7 +328,7 @@ int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
 
 	uint32_t eth_len = FRAME_PAYLOAD_OFFSET + msg->payload.iov_len + 4/*CRC*/;
 
-	return pkt_send(the_socket, h->bytes - umem_mem_start, eth_len);
+	return pkt_send(the_socket, h->bytes - the_socket->umem->frames->bytes, eth_len);
 }
 
 _public_
@@ -341,8 +352,8 @@ int knot_xsk_check()
 	 * is probably enough to wake the kernel even for sending
 	 * (though AFAIK it might be specific to driver and/or kernel version). */
 	if (the_socket->kernel_needs_wakeup) {
-		bool is_ok = sendto(xsk_socket__fd(the_socket->xsk), NULL, 0,
-		                                   MSG_DONTWAIT, NULL, 0) != -1;
+		int sendret = sendto(xsk_socket__fd(the_socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
+		bool is_ok = (sendret != -1);
 		const bool is_again = !is_ok && (errno == EWOULDBLOCK || errno == EAGAIN);
 		if (is_ok || is_again) {
 			the_socket->kernel_needs_wakeup = false;
@@ -358,6 +369,13 @@ int knot_xsk_check()
 	uint32_t idx_cq;
 	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx_cq);
 	if (!completed) return KNOT_EOK; // ?
+
+	/* Free shared memory. */
+	for (int i = 0; i < completed; ++i, ++idx_cq) {
+		uint8_t *uframe_p = (uint8_t *)the_socket->umem->frames	+ *xsk_ring_cons__comp_addr(cq, idx_cq) - offsetof(struct umem_frame, udpv4);
+		xsk_dealloc_umem_frame(the_socket->umem, uframe_p);
+	}
+
 	xsk_ring_cons__release(cq, completed);
 	//TODO: one uncompleted packet/batch is left until the next I/O :-/
 	/* And feed frames into RX fill queue. */
@@ -416,6 +434,8 @@ static int rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc,
 	struct sockaddr_in *dst_v4 = (struct sockaddr_in *)&msg->ip_to;
 	memcpy(&src_v4->sin_addr, &ipv4->saddr, sizeof(src_v4->sin_addr));
 	memcpy(&dst_v4->sin_addr, &ipv4->daddr, sizeof(dst_v4->sin_addr));
+	src_v4->sin_port = udp->source;
+	dst_v4->sin_port = udp->dest;
 
 	return KNOT_EOK;
 
@@ -446,6 +466,14 @@ int knot_xsk_recvmmsg(knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count
 	return ret;
 }
 
+_public_
+void knot_xsk_free_recvd(const knot_xsk_msg_t *msg)
+{
+	uint8_t *uframe_p = msg_uframe_p(msg);
+	if (uframe_p != NULL) {
+		xsk_dealloc_umem_frame(the_socket->umem, uframe_p);
+	}
+}
 
 static struct kxsk_config the_config_storage = { // static to get zeroed by default
 	.xsk_if_queue = 0, // defaults overridable by command-line -x eth3:0
