@@ -973,6 +973,16 @@ class Knot(Server):
         udp = super()._check_socket("udp", self.port)
         return (tcp and udp)
 
+    def flush(self, zone=None, wait=False):
+        force = "-f " if str(self.zonefile_sync)[0] == '-' else ""
+        blocking = "-b " if wait else ""
+        params = force + blocking
+        if zone:
+            self.ctl("%szone-flush %s" % (params, zone.name))
+        else:
+            self.ctl("%szone-flush" % params)
+        time.sleep(Server.START_WAIT)
+    '''
     def flush(self, zone=None):
         force = "-f " if str(self.zonefile_sync)[0] == '-' else ""
         if zone:
@@ -980,7 +990,7 @@ class Knot(Server):
         else:
             self.ctl("%szone-flush" % force)
         time.sleep(Server.START_WAIT)
-
+    '''
     def key_gen(self, zone_name, **new_params):
         set_params = [ option + "=" + value for option, value in new_params.items() ]
         res = dnstest.keys.Keymgr.run_check(self.confile, zone_name, "generate", *set_params)
