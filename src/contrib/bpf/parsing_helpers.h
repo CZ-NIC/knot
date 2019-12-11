@@ -93,6 +93,8 @@ static __always_inline int parse_ethhdr(struct hdr_cursor *nh, void *data_end,
         /* Use loop unrolling to avoid the verifier restriction on loops;
          * support up to VLAN_MAX_DEPTH layers of VLAN encapsulation.
          */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
         #pragma unroll
         for (i = 0; i < VLAN_MAX_DEPTH; i++) {
                 if (!proto_is_vlan(h_proto))
@@ -104,6 +106,7 @@ static __always_inline int parse_ethhdr(struct hdr_cursor *nh, void *data_end,
                 h_proto = vlh->h_vlan_encapsulated_proto;
                 vlh++;
         }
+#pragma GCC diagnostic pop
 
         nh->pos = vlh;
 	return bpf_ntohs(h_proto);
