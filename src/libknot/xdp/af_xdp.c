@@ -169,6 +169,7 @@ static int kxsk_umem_refill(const struct kxsk_config *cfg, struct xsk_umem_info 
 	 * and don't fill the queue to more than a half. */
 	const int fq_target = cfg->umem.fill_size / 2;
 	uint32_t fq_free = xsk_prod_nb_free(&umem->fq, fq_target);
+	printf("refill target %d free %u\n", fq_target, fq_free);
 	if (fq_free <= fq_target)
 		return 0;
 	const int fq_ready = cfg->umem.fill_size - fq_free;
@@ -177,6 +178,7 @@ static int kxsk_umem_refill(const struct kxsk_config *cfg, struct xsk_umem_info 
 	const int to_reserve = fq_want - fq_ready;
 	//kr_log_verbose("[uxsk] refilling %d frames TX->RX; TX = %d, RX = %d\n",
 	//               to_reserve, (int)umem->free_count, (int)fq_ready);
+	printf("refill ready=%d balance=%d want=%d reserve=%d\n", fq_ready, balance, fq_want, to_reserve);
 	if (to_reserve <= 0)
 		return 0;
 
@@ -368,6 +370,7 @@ int knot_xsk_check()
 	struct xsk_ring_cons *cq = &the_socket->umem->cq;
 	uint32_t idx_cq;
 	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx_cq);
+	printf("completed %u\n", completed);
 	if (!completed) return KNOT_EOK; // ?
 
 	/* Free shared memory. */
@@ -390,6 +393,8 @@ static int rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc,
 	const struct iphdr *ipv4 = NULL;
 	const struct ipv6hdr *ipv6 = NULL;
 	const struct udphdr *udp;
+
+	printf("recv %p\n", uframe_p);
 
 	int ret = KNOT_EOK;
 
