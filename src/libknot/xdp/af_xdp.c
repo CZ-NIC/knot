@@ -457,10 +457,6 @@ int knot_xsk_recvmmsg(knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count
 	*count = xsk_ring_cons__peek(&the_socket->rx, max_count, &idx_rx);
 	assert(*count <= max_count);
 
-	if (*count == 0) {
-		*count = 1;
-	}
-
 	for (size_t i = 0; i < *count && ret == KNOT_EOK; ++i, ++idx_rx) {
 		ret = rx_desc(the_socket, xsk_ring_cons__rx_desc(&the_socket->rx, idx_rx), &msgs[i]);
 	}
