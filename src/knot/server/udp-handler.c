@@ -359,7 +359,8 @@ static udp_api_t udp_recvmmsg_api = {
 #endif /* ENABLE_RECVMMSG */
 
 struct xdp_recvmmsg {
-	knot_xsk_msg_t (msgs[RECVMMSG_BATCHLEN])[NBUFS];
+	knot_xsk_msg_t msgs_rx[XDP_BATCHLEN];
+	knot_xsk_msg_t msgs_tx[XDP_BATCHLEN];
 	uint32_t rcvd;
 };
 
@@ -383,7 +384,7 @@ static int xdp_recvmmsg_recv(int fd, void *d)
 
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 
-	int ret = knot_xsk_recvmmsg(rq->msgs[RX], RECVMMSG_BATCHLEN, &rq->rcvd);
+	int ret = knot_xsk_recvmmsg(rq->msgs_rx, XDP_BATCHLEN, &rq->rcvd);
 
 	return ret == KNOT_EOK ? rq->rcvd : ret;
 }
@@ -393,22 +394,22 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d)
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
-		struct iovec *rx = &rq->msgs[RX][i].payload;
-		struct iovec *tx = &rq->msgs[TX][i].payload;
+		struct iovec *rx = &rq->msgs_rx[i].payload;
+		struct iovec *tx = &rq->msgs_tx[i].payload;
 
 		*tx = knot_xsk_alloc_frame();
 		if (tx->iov_base == NULL) {
 			return KNOT_ERROR;
 		}
 
-		udp_handle(ctx, 0 /* TODO ? */, &rq->msgs[RX][i].ip_from, rx, tx);
+		udp_handle(ctx, 0 /* TODO ? */, &rq->msgs_rx[i].ip_from, rx, tx);
 
-		memcpy(rq->msgs[TX][i].eth_from, rq->msgs[RX][i].eth_to, sizeof(rq->msgs[TX][i].eth_from));
-		memcpy(rq->msgs[TX][i].eth_to, rq->msgs[RX][i].eth_from, sizeof(rq->msgs[TX][i].eth_to));
-		memcpy(&rq->msgs[TX][i].ip_from, &rq->msgs[RX][i].ip_to, sizeof(rq->msgs[TX][i].ip_from));
-		memcpy(&rq->msgs[TX][i].ip_to, &rq->msgs[RX][i].ip_from, sizeof(rq->msgs[TX][i].ip_to));
+		memcpy(rq->msgs_tx[i].eth_from, rq->msgs_rx[i].eth_to, sizeof(rq->msgs_tx[i].eth_from));
+		memcpy(rq->msgs_tx[i].eth_to, rq->msgs_rx[i].eth_from, sizeof(rq->msgs_tx[i].eth_to));
+		memcpy(&rq->msgs_tx[i].ip_from, &rq->msgs_rx[i].ip_to, sizeof(rq->msgs_tx[i].ip_from));
+		memcpy(&rq->msgs_tx[i].ip_to, &rq->msgs_rx[i].ip_from, sizeof(rq->msgs_tx[i].ip_to));
 
-		knot_xsk_free_recvd(&rq->msgs[RX][i]);
+		knot_xsk_free_recvd(&rq->msgs_rx[i]);
 
 		// FIXME!! :
 		/*
@@ -427,7 +428,7 @@ static int xdp_recvmmsg_send(void *d)
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 	uint32_t sent = rq->rcvd;
 
-	int ret = knot_xsk_sendmmsg(rq->msgs[TX], sent);
+	int ret = knot_xsk_sendmmsg(rq->msgs_tx, sent);
 
 	memset(rq, 0, sizeof(*rq));
 
