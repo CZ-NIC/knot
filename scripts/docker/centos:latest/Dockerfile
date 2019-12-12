@@ -7,6 +7,7 @@ RUN dnf -y --enablerepo PowerTools install \
 	'autoconf' \
 	'automake' \
 	'libtool' \
+	'make' \
 	'pkgconfig' \
 	'pkgconfig(lmdb)' \
 	'pkgconfig(gnutls)' \
