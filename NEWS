@@ -1,3 +1,23 @@
+Knot DNS 2.9.2 (2019-12-12)
+===========================
+
+Improvements:
+-------------
+ - Tiny ds-check log message rewording
+ - Some unnecessary code cleanup
+
+Bugfixes:
+---------
+ - ds-push doesn't replace the DS RRset on the parent #661
+ - Server gets stuck in a never-ending logging loop when changing SOA TTL
+ - Server can crash when the journal database size limit is reached
+ - Server can create a bogus changeset with equal serials from and to
+ - Unreasonable re-signing of the NSEC3PARAM record when reloading the zone
+   and 'zonefile-load: difference-no-serial' is configured
+ - SOA RRSIG not updated if the only changed record is SOA
+ - Failed to remove NSEC3 records through the control interface #666
+ - Failed to stop the server if a zone transaction is active
+
 Knot DNS 2.9.1 (2019-11-11)
 ===========================
 
