@@ -10,10 +10,7 @@ RUN apt-get -y install \
 	automake \
 	autotools-dev \
 	build-essential \
-	clang-6.0 \
-	curl \
-	ghostscript \
-	git \
+	clang-9 \
 	libedit-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
@@ -26,10 +23,4 @@ RUN apt-get -y install \
 	liburcu-dev \
 	locales-all \
 	pkg-config \
-	protobuf-c-compiler \
-	python-sphinx \
-	texinfo texlive \
-	texlive-font-utils \
-	texlive-generic-extra \
-	texlive-latex-extra \
-	unzip
+	protobuf-c-compiler
