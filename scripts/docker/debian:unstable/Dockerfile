@@ -10,9 +10,8 @@ RUN apt-get -y install \
 	automake \
 	autotools-dev \
 	build-essential \
-	clang-6.0 \
+	clang-9 \
 	curl \
-	ghostscript \
 	git \
 	libedit-dev \
 	libfstrm-dev \
@@ -28,8 +27,4 @@ RUN apt-get -y install \
 	pkg-config \
 	protobuf-c-compiler \
 	python-sphinx \
-	texinfo texlive \
-	texlive-font-utils \
-	texlive-generic-extra \
-	texlive-latex-extra \
 	unzip
