@@ -573,9 +573,9 @@ record automatically (and waits for additional period of the DS's TTL before ret
 if :ref:`parent DS check<Submission section>` is configured, otherwise the
 operator must confirm it manually (using ``knotc zone-ksk-submitted``)::
 
-  2019-07-15T20:58:12 info: [example.com.] DS check, outgoing, remote ::1@27455, KSK submission attempt: negative
-  2019-07-15T20:58:14 info: [example.com.] DS check, outgoing, remote ::1@27455, KSK submission attempt: negative
-  2019-07-15T20:58:16 info: [example.com.] DS check, outgoing, remote ::1@27455, KSK submission attempt: positive
+  2019-07-15T20:58:12 info: [example.com.] DS check, outgoing, remote ::1@27455, KSK submission check: negative
+  2019-07-15T20:58:14 info: [example.com.] DS check, outgoing, remote ::1@27455, KSK submission check: negative
+  2019-07-15T20:58:16 info: [example.com.] DS check, outgoing, remote ::1@27455, KSK submission check: positive
   2019-07-15T20:58:16 notice: [example.com.] DNSSEC, KSK submission, confirmed
   2019-07-15T20:58:16 info: [example.com.] DNSSEC, signing zone
   2019-07-15T20:58:16 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
