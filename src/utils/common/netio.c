@@ -629,5 +629,8 @@ void net_clean(net_t *net)
 		freeaddrinfo(net->remote_info);
 	}
 
+#ifdef LIBNGHTTP2
+	https_ctx_deinit(&net->https);
+#endif
 	tls_ctx_deinit(&net->tls);
 }
