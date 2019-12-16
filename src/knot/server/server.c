@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <netinet/tcp.h>
+#include <sys/resource.h>
 
 #include "libknot/errcode.h"
 #include "libknot/xdp/af_xdp.h"
@@ -372,6 +373,14 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	/* Log info if reuseport is used and for what protocols. */
 	log_info("using reuseport for UDP%s", conf->cache.srv_tcp_reuseport ? " and TCP" : "");
 #endif
+
+	if (conf->cache.srv_xdp_threads > 0) {
+		struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY };
+		int ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
+		if (ret) {
+			return -errno;
+		}
+	}
 
 	/* Update bound interfaces. */
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
