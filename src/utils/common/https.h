@@ -27,6 +27,7 @@ typedef struct {
 
 #include <poll.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -59,13 +60,19 @@ typedef struct {
 
 /*! \brief HTTPS context. */
 typedef struct {
+    //Parameters
     const https_params_t *params;
 
+    //Contexts
     nghttp2_session *session;
     tls_ctx_t *tls;
     char authority[HTTPS_AUTHORITY_LEN];
 
-    int32_t stream_id;
+    //Read locks
+    pthread_mutex_t recv_mx;
+    bool read;
+
+    //Read destination
     uint8_t *buf;
     size_t buflen;
 } https_ctx_t;
@@ -122,5 +129,13 @@ int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_
  * \retval KNOT_NET_ERECV   when error while receive.
  */
 int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len);
+
+/*!
+ * \brief   Deinitialize HTTPS context.
+ * 
+ * \param ctx		HTTPS context.
+ */
+void https_ctx_deinit(https_ctx_t *ctx);
+
 
 #endif //LIBNGHTTP2
