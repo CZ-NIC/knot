@@ -38,8 +38,9 @@
 #include "knot/query/layer.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
-
+#ifdef ENABLE_XDP
 #include "libknot/xdp/af_xdp.h"
+#endif /* ENABLE_XDP */
 
 /* Buffer identifiers. */
 enum {
@@ -358,6 +359,8 @@ static udp_api_t udp_recvmmsg_api = {
 };
 #endif /* ENABLE_RECVMMSG */
 
+#ifdef ENABLE_XDP
+
 struct xdp_recvmmsg {
 	knot_xsk_msg_t msgs_rx[XDP_BATCHLEN];
 	knot_xsk_msg_t msgs_tx[XDP_BATCHLEN];
@@ -444,6 +447,7 @@ static udp_api_t xdp_recvmmsg_api = {
 	xdp_recvmmsg_handle,
 	xdp_recvmmsg_send
 };
+#endif /* ENABLE_XDP */
 
 /*! \brief Get interface UDP descriptor for a given thread. */
 static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp)
@@ -515,7 +519,11 @@ int udp_master(dthread_t *thread)
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	udp_api_t *api = NULL;
 	if (handler->use_xdp) {
+#ifndef ENABLE_XDP
+		assert(0);
+#else
 		api = &xdp_recvmmsg_api;
+#endif
 	} else {
 #ifdef ENABLE_RECVMMSG
 		api = &udp_recvmmsg_api;
