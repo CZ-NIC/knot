@@ -153,6 +153,7 @@ static const yp_item_t desc_server[] = {
 	{ C_USER,                 YP_TSTR,  YP_VNONE },
 	{ C_PIDFILE,              YP_TSTR,  YP_VSTR = { "knot.pid" } },
 	{ C_UDP_WORKERS,          YP_TINT,  YP_VINT = { 1, 255, YP_NIL } },
+	{ C_XDP_WORKERS,          YP_TINT,  YP_VINT = { 0, 255, YP_NIL } },
 	{ C_TCP_WORKERS,          YP_TINT,  YP_VINT = { 1, 255, YP_NIL } },
 	{ C_BG_WORKERS,           YP_TINT,  YP_VINT = { 1, 255, YP_NIL } },
 	{ C_ASYNC_START,          YP_TBOOL, YP_VNONE },
