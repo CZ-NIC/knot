@@ -683,6 +683,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 
 	static bool warn_tcp_reuseport = true;
 	static bool warn_udp = true;
+	static bool warn_xdp = true;
 	static bool warn_tcp = true;
 	static bool warn_bg = true;
 	static bool warn_listen = true;
@@ -695,6 +696,11 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_udp && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {
 		log_warning(msg, "udp-workers");
 		warn_udp = false;
+	}
+
+	if (warn_xdp && server->handlers[IO_XDP].size != conf_xdp_threads(conf)) {
+		log_warning(msg, "xdp-workers");
+		warn_xdp = false;
 	}
 
 	if (warn_tcp && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
