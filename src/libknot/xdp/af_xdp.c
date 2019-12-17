@@ -73,8 +73,7 @@ struct umem_frame {
 	}; };
 };
 
-static const size_t UDPV4_PAYLOAD_OFFSET = offsetof(struct udpv4, data);
-static const size_t FRAME_PAYLOAD_OFFSET = UDPV4_PAYLOAD_OFFSET + offsetof(struct umem_frame, udpv4);
+static const size_t FRAME_PAYLOAD_OFFSET = offsetof(struct udpv4, data) + offsetof(struct umem_frame, udpv4);
 
 // FIXME later: get rid of those singletons!
 struct xsk_socket_info *the_socket = NULL;
@@ -323,6 +322,7 @@ int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
 	memcpy(&h->ipv4.daddr, &dst_v4->sin_addr, sizeof(dst_v4->sin_addr));
 
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 	h->ipv4.check = pkt_ipv4_checksum_2(&h->ipv4);
 #pragma GCC diagnostic pop
