@@ -190,6 +190,34 @@ AS_CASE([$enable_recvmmsg],
 AS_IF([test "$enable_recvmmsg" = yes],[
    AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
 
+AC_ARG_ENABLE([xdp],
+   AS_HELP_STRING([--enable-xdp=auto|yes|no], [enable eXpress Data Path, requires libBPF [default=auto]]),
+   [], [enable_xdp=auto])
+
+AS_CASE([$enable_xdp],
+   [auto],[PKG_CHECK_MODULES([libbpf],[libbpf >= 0.0.2],[enable_xdp=yes],[enable_xdp=no])],
+   [yes],[PKG_CHECK_MODULES([libbpf],[libbpf >= 0.0.2],[enable_xdp=yes])],
+   [no],[],
+   [*],[AC_MSG_ERROR([Invalid value of --enable-xdp.])]
+)
+
+AS_IF([test "$enable_xdp" = "yes"],[
+   save_CFLAGS=$CFLAGS
+   save_LIBS=$LIBS
+   CFLAGS="$CFLAGS $libbpf_CFLAGS"
+   LIBS="$LIBS $libbpf_LIBS"
+
+   AC_CHECK_FUNC([bpf_prog_load],[],[AC_MSG_ERROR([bpf_prog_load not available])])
+   AC_CHECK_FUNC([bpf_set_link_xdp_fd],[],[AC_MSG_ERROR([bpf_set_link_xdp_fd not available])])
+
+   CFLAGS=$save_CFLAGS
+   LIBS=$save_LIBS
+
+   AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])
+])
+
+AM_CONDITIONAL([ENABLE_XDP], [test "$enable_xdp" = "yes"])
+
 # Reuseport support
 AS_CASE([$host_os],
   [freebsd*], [reuseport_opt=SO_REUSEPORT_LB],
@@ -707,6 +735,7 @@ result_msg_base="  Knot DNS $VERSION
 
     Use recvmmsg:           ${enable_recvmmsg}
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
+    Use XDP:                ${enable_xdp}
     Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}

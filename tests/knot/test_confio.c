@@ -909,6 +909,7 @@ static void test_conf_io_list(void)
 	      "server.tcp-max-clients\n"
 	      "server.tcp-reuseport\n"
 	      "server.udp-workers\n"
+	      "server.xdp-workers\n"
 	      "server.tcp-workers\n"
 	      "server.background-workers\n"
 	      "server.udp-max-payload\n"
