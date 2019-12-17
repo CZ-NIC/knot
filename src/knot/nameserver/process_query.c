@@ -404,11 +404,11 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 		resp->max_size = KNOT_WIRE_MAX_PKTSIZE;
 	}
 
-	/* Query MUST carry a question. */
+	/* All supported OPCODEs require a question. */
 	const knot_dname_t *qname = knot_pkt_qname(query);
 	if (qname == NULL) {
-		qdata->rcode = KNOT_RCODE_FORMERR;
-		return KNOT_EMALF;
+		qdata->rcode = KNOT_RCODE_NOTIMPL;
+		return KNOT_ENOTSUP;
 	}
 
 	/* Convert query QNAME to lowercase, but keep original QNAME case.
