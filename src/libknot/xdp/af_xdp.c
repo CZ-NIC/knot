@@ -275,9 +275,12 @@ static int pkt_send(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len)
 
 static uint8_t *msg_uframe_p(const knot_xsk_msg_t *msg)
 {
-	uint8_t *uframe_p = msg->payload.iov_base - FRAME_PAYLOAD_OFFSET;
+	// FIXME: for some reason the message alignment isn't what we expect
+	//uint8_t *uframe_p = msg->payload.iov_base - FRAME_PAYLOAD_OFFSET;
+	uint8_t *uNULL = NULL;
+	uint8_t *uframe_p = uNULL + ((msg->payload.iov_base - NULL) & ~(FRAME_SIZE - 1));
 	const uint8_t *umem_mem_start = the_socket->umem->frames->bytes;
-	if (((uframe_p - (uint8_t *)NULL) % FRAME_SIZE != 0) ||
+	if (//((uframe_p - uNULL) % FRAME_SIZE != 0) ||
 	    ((uframe_p - umem_mem_start) / FRAME_SIZE >= the_socket->umem->frame_count)) {
 		// not allocated msg->payload correctly
 		return NULL;
@@ -458,9 +461,10 @@ int knot_xsk_recvmmsg(knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count
 		ret = rx_desc(the_socket, xsk_ring_cons__rx_desc(&the_socket->rx, idx_rx), &msgs[i]);
 	}
 
-	if (ret == KNOT_EOK && *count > 0) {
-		xsk_ring_cons__release(&the_socket->rx, *count);
-	}
+	if (ret != KNOT_EOK)
+		printf("rx_desc() == %d\n", ret);
+	//FIXME: overall design of errors here ("bad packets")
+	xsk_ring_cons__release(&the_socket->rx, *count);
 	return ret;
 }
 
@@ -468,6 +472,7 @@ _public_
 void knot_xsk_free_recvd(const knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = msg_uframe_p(msg);
+	assert(uframe_p);
 	if (uframe_p != NULL) {
 		xsk_dealloc_umem_frame(the_socket->umem, uframe_p);
 	}
