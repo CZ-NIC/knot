@@ -21,7 +21,9 @@
 #include <netinet/tcp.h>
 
 #include "libknot/errcode.h"
+#ifdef ENABLE_XDP
 #include "libknot/xdp/af_xdp.h"
+#endif
 #include "libknot/yparser/ypschema.h"
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
@@ -64,7 +66,9 @@ static void server_deinit_iface(iface_t *iface)
 	}
 
 	if (iface->fd_xdp > -1) {
+#ifdef ENABLE_XDP
 		knot_xsk_deinit();
+#endif
 	}
 
 	/* Free TCP handler. */
@@ -293,12 +297,16 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 	new_if->fd_xdp = -1;
 	if (use_xdp) {
-		int ret = knot_xsk_init("enp0s8", "/bpf-kernel.o", NULL); // FIXME
+#ifndef ENABLE_XDP
+		assert(0);
+#else
+		int ret = knot_xsk_init("enp1s0f1", "/bpf-kernel.o", NULL); // FIXME
 		if (ret != KNOT_EOK) {
 			log_warning("failed to init XDP (%s)", knot_strerror(ret));
 		} else {
 			new_if->fd_xdp = knot_xsk_get_poll_fd();
 		}
+#endif
 	}
 
 
