@@ -931,6 +931,7 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_MAX_CLIENTS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_REUSEPORT,	  YP_TBOOL, YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
+	{ C_XDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_BG_WORKERS,		  YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD,      YP_TINT,  YP_VNONE },
