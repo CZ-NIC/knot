@@ -60,8 +60,9 @@ static void udp_stdin_deinit(void *d)
 	free(d);
 }
 
-static int udp_stdin_recv(int fd, void *d)
+static int udp_stdin_recv(int fd, void *d, void *unused)
 {
+	UNUSED(unused);
 	udp_stdin_t *rq = (udp_stdin_t *)d;
 	rq->iov[RX].iov_len = fread(rq->iov[RX].iov_base, 1,
 	                            KNOT_WIRE_MAX_PKTSIZE, stdin);
@@ -72,15 +73,17 @@ static int udp_stdin_recv(int fd, void *d)
 	return rq->iov[RX].iov_len;
 }
 
-static int udp_stdin_handle(udp_context_t *ctx, void *d)
+static int udp_stdin_handle(udp_context_t *ctx, void *d, void *unused)
 {
+	UNUSED(unused);
 	udp_stdin_t *rq = (udp_stdin_t *)d;
 	udp_handle(ctx, STDIN_FILENO, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
 	return 0;
 }
 
-static int udp_stdin_send(void *d)
+static int udp_stdin_send(void *d, void *unused)
 {
+	UNUSED(unused);
 	udp_stdin_t *rq = (udp_stdin_t *)d;
 	next(rq);
 	return 0;
