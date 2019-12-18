@@ -52,7 +52,6 @@ typedef enum {
  * \brief Server interface structure.
  */
 typedef struct iface {
-	struct node n;
 	int *fd_udp;
 	int fd_udp_count;
 	int *fd_tcp;
@@ -97,8 +96,8 @@ typedef struct server {
 	evsched_t sched;
 
 	/*! \brief List of interfaces. */
-	list_t *ifaces;
-
+	iface_t *ifaces;
+	size_t n_ifaces;
 } server_t;
 
 /*!

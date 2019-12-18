@@ -124,15 +124,14 @@ static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, in
  *
  * \return Number of watched descriptors.
  */
-static unsigned tcp_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id)
+static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *fds, int thread_id)
 {
 	if (ifaces == NULL) {
 		return 0;
 	}
 
 	fdset_clear(fds);
-	iface_t *i;
-	WALK_LIST(i, *ifaces) {
+	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
 		int tcp_id = 0;
 #ifdef ENABLE_REUSEPORT
 		if (conf()->cache.srv_tcp_reuseport) {
@@ -333,7 +332,7 @@ int tcp_master(dthread_t *thread)
 	update_tcp_conf(&tcp);
 
 	/* Set descriptors for the configured interfaces. */
-	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces, &tcp.set, tcp.thread_id);
+	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces, handler->server->n_ifaces, &tcp.set, tcp.thread_id);
 	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
