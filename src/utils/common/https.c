@@ -415,6 +415,7 @@ void https_ctx_deinit(https_ctx_t *ctx)
 		return;
 	}
 
+	nghttp2_session_del(ctx->session);
 	pthread_mutex_destroy(&ctx->recv_mx);
 }
 
