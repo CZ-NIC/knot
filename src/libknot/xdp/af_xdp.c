@@ -34,7 +34,6 @@
 #include <string.h>
 #include <unistd.h>
 
-
 #ifdef KR_XDP_ETH_CRC
 #include <zlib.h>
 #endif
@@ -75,9 +74,13 @@ struct umem_frame {
 
 static const size_t FRAME_PAYLOAD_OFFSET = offsetof(struct udpv4, data) + offsetof(struct umem_frame, udpv4);
 
-// FIXME later: get rid of those singletons!
-struct xsk_socket_info *the_socket = NULL;
-struct kxsk_config *the_config = NULL;
+static const struct xsk_umem_config global_umem_config = {
+	.fill_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
+	.comp_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
+	.frame_size = FRAME_SIZE, // we need to know this value explicitly
+	.frame_headroom = XSK_UMEM__DEFAULT_FRAME_HEADROOM,
+};
+#define UMEM_FRAME_COUNT 8192
 
 /** Swap two bytes as a *constant* expression.  ATM we assume we're LE, i.e. we do need to swap. */
 #define BS16(n) (((n) >> 8) + (((n) & 0xff) << 8))
@@ -125,11 +128,11 @@ static struct umem_frame *xsk_alloc_umem_frame(struct xsk_umem_info *umem)
 }
 
 _public_
-struct iovec knot_xsk_alloc_frame()
+struct iovec knot_xsk_alloc_frame(struct knot_xsk_socket *socket)
 {
 	struct iovec res = { 0 };
 
-	struct umem_frame *uframe = xsk_alloc_umem_frame(the_socket->umem);
+	struct umem_frame *uframe = xsk_alloc_umem_frame(socket->umem);
 	if (uframe != NULL) {
 		res.iov_len = MIN(UINT16_MAX, FRAME_SIZE - FRAME_PAYLOAD_OFFSET - 4/*eth CRC*/);
 		res.iov_base = uframe->udpv4.data;
@@ -148,31 +151,33 @@ static void xsk_dealloc_umem_frame(struct xsk_umem_info *umem, uint8_t *uframe_p
 }
 
 _public_
-void knot_xsk_deinit()
+void knot_xsk_deinit(struct knot_xsk_socket *socket)
 {
-	if (!the_socket)
+	if (socket == NULL) {
 		return;
-	kxsk_socket_stop(the_socket->iface, the_config->xsk_if_queue);
-	xsk_socket__delete(the_socket->xsk);
-	xsk_umem__delete(the_socket->umem->umem);
+	}
 
-	kxsk_iface_free((struct kxsk_iface *)/*const-cast*/the_socket->iface, false);
-	//TODO: more memory
+	kxsk_socket_stop(socket->iface, socket->if_queue);
+	xsk_socket__delete(socket->xsk);
+	xsk_umem__delete(socket->umem->umem);
+
+	kxsk_iface_free((struct kxsk_iface *)/*const-cast*/socket->iface, false);
+	free(socket);
 }
 
 /** Add some free frames into the RX fill queue (possibly zero, etc.) */
-static int kxsk_umem_refill(const struct kxsk_config *cfg, struct xsk_umem_info *umem)
+static int kxsk_umem_refill(struct xsk_umem_info *umem)
 {
 	/* First find to_reserve: how many frames to move to the RX fill queue.
 	 * Let's keep about as many frames ready for TX (free_count) as for RX (fq_ready),
 	 * and don't fill the queue to more than a half. */
-	const int fq_target = cfg->umem.fill_size / 2;
+	const int fq_target = global_umem_config.fill_size / 2;
 	uint32_t fq_free = xsk_prod_nb_free(&umem->fq, 65536*256);
 		/* TODO: not nice - ^^ the caching logic inside is the other way,
 		 * so we disable it clumsily by passing a high value. */
 	if (fq_free <= fq_target)
 		return 0;
-	const int fq_ready = cfg->umem.fill_size - fq_free;
+	const int fq_ready = global_umem_config.fill_size - fq_free;
 	const int balance = (fq_ready + umem->free_count) / 2;
 	const int fq_want = MIN(balance, fq_target); // don't overshoot the target
 	const int to_reserve = fq_want - fq_ready;
@@ -201,28 +206,35 @@ static int kxsk_umem_refill(const struct kxsk_config *cfg, struct xsk_umem_info 
 	return 0;
 }
 
-static struct xsk_socket_info *xsk_configure_socket(struct kxsk_config *cfg,
-                                                    struct xsk_umem_info *umem,
-                                                    const struct kxsk_iface *iface)
+static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
+                                                    const struct kxsk_iface *iface,
+                                                    int if_queue)
 {
 	/* Put a couple RX buffers into the fill queue.
 	 * Even if we don't need them, it silences a dmesg line,
 	 * and it avoids 100% CPU usage of ksoftirqd/i for each queue i!
 	 */
-	errno = kxsk_umem_refill(cfg, umem);
+	errno = kxsk_umem_refill(umem);
 	if (errno)
 		return NULL;
 
-	struct xsk_socket_info *xsk_info = calloc(1, sizeof(*xsk_info));
+	struct knot_xsk_socket *xsk_info = calloc(1, sizeof(*xsk_info));
 	if (!xsk_info)
 		return NULL;
 	xsk_info->iface = iface;
+	xsk_info->if_queue = if_queue;
 	xsk_info->umem = umem;
 
-	assert(cfg->xsk.libbpf_flags & XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD);
+	const struct xsk_socket_config sock_conf = {
+		.tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
+		.rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
+		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
+		.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST,
+	};
+
 	errno = xsk_socket__create(&xsk_info->xsk, iface->ifname,
-	                           cfg->xsk_if_queue, umem->umem,
-	                           &xsk_info->rx, &xsk_info->tx, &cfg->xsk);
+	                           xsk_info->if_queue, umem->umem,
+	                           &xsk_info->rx, &xsk_info->tx, &sock_conf);
 
 	return xsk_info;
 }
@@ -255,7 +267,7 @@ static __be16 pkt_ipv4_checksum_2(const struct iphdr *h)
 	return ~BS16(from32to16(sum32));
 }
 
-static int pkt_send(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len)
+static int pkt_send(struct knot_xsk_socket *xsk, uint64_t addr, uint32_t len)
 {
 	uint32_t tx_idx;
 	int ret = xsk_ring_prod__reserve(&xsk->tx, 1, &tx_idx);
@@ -272,15 +284,15 @@ static int pkt_send(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len)
 	return KNOT_EOK;
 }
 
-static uint8_t *msg_uframe_p(const knot_xsk_msg_t *msg)
+static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
 	// FIXME: for some reason the message alignment isn't what we expect
 	//uint8_t *uframe_p = msg->payload.iov_base - FRAME_PAYLOAD_OFFSET;
 	uint8_t *uNULL = NULL;
 	uint8_t *uframe_p = uNULL + ((msg->payload.iov_base - NULL) & ~(FRAME_SIZE - 1));
-	const uint8_t *umem_mem_start = the_socket->umem->frames->bytes;
+	const uint8_t *umem_mem_start = socket->umem->frames->bytes;
 	if (//((uframe_p - uNULL) % FRAME_SIZE != 0) ||
-	    ((uframe_p - umem_mem_start) / FRAME_SIZE >= the_socket->umem->frame_count)) {
+	    ((uframe_p - umem_mem_start) / FRAME_SIZE >= socket->umem->frame_count)) {
 		// not allocated msg->payload correctly
 		return NULL;
 	}
@@ -289,9 +301,9 @@ static uint8_t *msg_uframe_p(const knot_xsk_msg_t *msg)
 }
 
 _public_
-int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
+int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
-	uint8_t *uframe_p = msg_uframe_p(msg);
+	uint8_t *uframe_p = msg_uframe_p(socket, msg);
 	if (uframe_p == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -333,16 +345,16 @@ int knot_xsk_sendmsg(const knot_xsk_msg_t *msg)
 
 	uint32_t eth_len = FRAME_PAYLOAD_OFFSET + msg->payload.iov_len + 4/*CRC*/;
 
-	return pkt_send(the_socket, h->bytes - the_socket->umem->frames->bytes, eth_len);
+	return pkt_send(socket, h->bytes - socket->umem->frames->bytes, eth_len);
 }
 
 _public_
-int knot_xsk_sendmmsg(const knot_xsk_msg_t msgs[], uint32_t count)
+int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count)
 {
 	int ret = KNOT_EOK;
 	for (int i = 0; i < count && ret == KNOT_EOK; i++) {
 		if (msgs[i].payload.iov_len > 0) {
-			ret = knot_xsk_sendmsg(&msgs[i]);
+			ret = knot_xsk_sendmsg(socket, &msgs[i]);
 		}
 	}
 	return ret;
@@ -350,18 +362,18 @@ int knot_xsk_sendmmsg(const knot_xsk_msg_t msgs[], uint32_t count)
 
 /** Periodical callback. Just using 'the_socket' global. */
 _public_
-int knot_xsk_check()
+int knot_xsk_check(struct knot_xsk_socket *socket)
 {
 	/* Trigger sending queued packets.
 	 * LATER(opt.): the periodical epoll due to the uv_poll* stuff
 	 * is probably enough to wake the kernel even for sending
 	 * (though AFAIK it might be specific to driver and/or kernel version). */
-	if (the_socket->kernel_needs_wakeup) {
-		int sendret = sendto(xsk_socket__fd(the_socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
+	if (socket->kernel_needs_wakeup) {
+		int sendret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
 		bool is_ok = (sendret != -1);
 		const bool is_again = !is_ok && (errno == EWOULDBLOCK || errno == EAGAIN);
 		if (is_ok || is_again) {
-			the_socket->kernel_needs_wakeup = false;
+			socket->kernel_needs_wakeup = false;
 			// EAGAIN is unclear; we'll retry the syscall later, to be sure
 		}
 		if (!is_ok && !is_again) {
@@ -370,24 +382,24 @@ int knot_xsk_check()
 	}
 
 	/* Collect completed packets. */
-	struct xsk_ring_cons *cq = &the_socket->umem->cq;
+	struct xsk_ring_cons *cq = &socket->umem->cq;
 	uint32_t idx_cq;
 	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx_cq);
 	if (!completed) return KNOT_EOK; // ?
 
 	/* Free shared memory. */
 	for (int i = 0; i < completed; ++i, ++idx_cq) {
-		uint8_t *uframe_p = (uint8_t *)the_socket->umem->frames	+ *xsk_ring_cons__comp_addr(cq, idx_cq) - offsetof(struct umem_frame, udpv4);
-		xsk_dealloc_umem_frame(the_socket->umem, uframe_p);
+		uint8_t *uframe_p = (uint8_t *)socket->umem->frames	+ *xsk_ring_cons__comp_addr(cq, idx_cq) - offsetof(struct umem_frame, udpv4);
+		xsk_dealloc_umem_frame(socket->umem, uframe_p);
 	}
 
 	xsk_ring_cons__release(cq, completed);
 	//TODO: one uncompleted packet/batch is left until the next I/O :-/
 	/* And feed frames into RX fill queue. */
-	return kxsk_umem_refill(the_config, the_socket->umem);
+	return kxsk_umem_refill(socket->umem);
 }
 
-static int rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc,
+static int rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,
 		   knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = xsi->umem->frames->bytes + desc->addr;
@@ -450,56 +462,40 @@ free_frame:
 }
 
 _public_
-int knot_xsk_recvmmsg(knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count)
+int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count)
 {
 	uint32_t idx_rx = 0;
 	int ret = KNOT_EOK;
-	*count = xsk_ring_cons__peek(&the_socket->rx, max_count, &idx_rx);
+	*count = xsk_ring_cons__peek(&socket->rx, max_count, &idx_rx);
 	assert(*count <= max_count);
 
 	for (size_t i = 0; i < *count && ret == KNOT_EOK; ++i, ++idx_rx) {
-		ret = rx_desc(the_socket, xsk_ring_cons__rx_desc(&the_socket->rx, idx_rx), &msgs[i]);
+		ret = rx_desc(socket, xsk_ring_cons__rx_desc(&socket->rx, idx_rx), &msgs[i]);
 	}
 
 	if (ret != KNOT_EOK)
 		printf("rx_desc() == %d\n", ret);
 	//FIXME: overall design of errors here ("bad packets")
-	xsk_ring_cons__release(&the_socket->rx, *count);
+	xsk_ring_cons__release(&socket->rx, *count);
 	return ret;
 }
 
 _public_
-void knot_xsk_free_recvd(const knot_xsk_msg_t *msg)
+void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
-	uint8_t *uframe_p = msg_uframe_p(msg);
+	uint8_t *uframe_p = msg_uframe_p(socket, msg);
 	assert(uframe_p);
 	if (uframe_p != NULL) {
-		xsk_dealloc_umem_frame(the_socket->umem, uframe_p);
+		xsk_dealloc_umem_frame(socket->umem, uframe_p);
 	}
 }
 
-static struct kxsk_config the_config_storage = { // static to get zeroed by default
-	.xsk_if_queue = 0, // defaults overridable by command-line -x eth3:0
-	.umem_frame_count = 8192,
-	.umem = {
-		.fill_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
-		.comp_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
-		.frame_size = FRAME_SIZE, // we need to know this value explicitly
-		.frame_headroom = XSK_UMEM__DEFAULT_FRAME_HEADROOM,
-	},
-	.xsk = {
-		.tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
-		.rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
-		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
-		.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST,
-	},
-};
-
 _public_
-int knot_xsk_init(const char *ifname, const char *prog_fname,
-                  ssize_t *out_busy_frames)
+int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue, const char *prog_fname)
 {
-	the_config = &the_config_storage;
+	if (socket == NULL || *socket != NULL) {
+		return KNOT_EINVAL;
+	}
 
 	struct kxsk_iface *iface = kxsk_iface_new(ifname, prog_fname);
 	if (!iface) {
@@ -508,39 +504,34 @@ int knot_xsk_init(const char *ifname, const char *prog_fname,
 
 	/* Initialize shared packet_buffer for umem usage */
 	struct xsk_umem_info *umem =
-		configure_xsk_umem(&the_config->umem, the_config->umem_frame_count);
+		configure_xsk_umem(&global_umem_config, UMEM_FRAME_COUNT);
 	if (umem == NULL) {
 		kxsk_iface_free(iface, false);
 		return KNOT_ENOMEM;
 	}
 
-	/* Open and configure the AF_XDP (xsk) socket */
-	assert(!the_socket);
-
-	the_socket = xsk_configure_socket(the_config, umem, iface);
-	if (!the_socket) {
+	*socket = xsk_configure_socket(umem, iface, if_queue);
+	if (!*socket) {
 		xsk_umem__delete(umem->umem);
 		kxsk_iface_free(iface, false);
 		return KNOT_NET_ESOCKET;
 	}
 
-	int ret = kxsk_socket_start(iface, the_config->xsk_if_queue, the_socket->xsk);
+	int ret = kxsk_socket_start(iface, (*socket)->if_queue, (*socket)->xsk);
 	if (ret != KNOT_EOK) {
-		xsk_socket__delete(the_socket->xsk);
-		xsk_umem__delete(the_socket->umem->umem);
+		xsk_socket__delete((*socket)->xsk);
+		xsk_umem__delete((*socket)->umem->umem);
 		kxsk_iface_free(iface, false);
+		free(*socket);
+		*socket = NULL;
 		return ret;
-	}
-
-	if (out_busy_frames != NULL) {
-		*out_busy_frames = the_socket->umem->frame_count - the_socket->umem->free_count;
 	}
 
 	return ret;
 }
 
 _public_
-int knot_xsk_get_poll_fd()
+int knot_xsk_get_poll_fd(struct knot_xsk_socket *socket)
 {
-	return xsk_socket__fd(the_socket->xsk);
+	return xsk_socket__fd(socket->xsk);
 }
