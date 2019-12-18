@@ -153,6 +153,10 @@ static void xsk_dealloc_umem_frame(struct xsk_umem_info *umem, uint8_t *uframe_p
 _public_
 void knot_xsk_deinit(struct knot_xsk_socket *socket)
 {
+	if (socket == NULL) {
+		return;
+	}
+
 	kxsk_socket_stop(socket->iface, socket->if_queue);
 	xsk_socket__delete(socket->xsk);
 	xsk_umem__delete(socket->umem->umem);
@@ -202,9 +206,9 @@ static int kxsk_umem_refill(struct xsk_umem_info *umem)
 	return 0;
 }
 
-static struct knot_xsk_socket_t *xsk_configure_socket(struct xsk_umem_info *umem,
-                                                      const struct kxsk_iface *iface,
-                                                      int if_queue)
+static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
+                                                    const struct kxsk_iface *iface,
+                                                    int if_queue)
 {
 	/* Put a couple RX buffers into the fill queue.
 	 * Even if we don't need them, it silences a dmesg line,
@@ -214,7 +218,7 @@ static struct knot_xsk_socket_t *xsk_configure_socket(struct xsk_umem_info *umem
 	if (errno)
 		return NULL;
 
-	struct knot_xsk_socket_t *xsk_info = calloc(1, sizeof(*xsk_info));
+	struct knot_xsk_socket *xsk_info = calloc(1, sizeof(*xsk_info));
 	if (!xsk_info)
 		return NULL;
 	xsk_info->iface = iface;
@@ -229,7 +233,7 @@ static struct knot_xsk_socket_t *xsk_configure_socket(struct xsk_umem_info *umem
 	};
 
 	errno = xsk_socket__create(&xsk_info->xsk, iface->ifname,
-	                           &xsk_info->if_queue, umem->umem,
+	                           xsk_info->if_queue, umem->umem,
 	                           &xsk_info->rx, &xsk_info->tx, &sock_conf);
 
 	return xsk_info;
@@ -263,7 +267,7 @@ static __be16 pkt_ipv4_checksum_2(const struct iphdr *h)
 	return ~BS16(from32to16(sum32));
 }
 
-static int pkt_send(struct knot_xsk_socket_t *xsk, uint64_t addr, uint32_t len)
+static int pkt_send(struct knot_xsk_socket *xsk, uint64_t addr, uint32_t len)
 {
 	uint32_t tx_idx;
 	int ret = xsk_ring_prod__reserve(&xsk->tx, 1, &tx_idx);
@@ -280,7 +284,7 @@ static int pkt_send(struct knot_xsk_socket_t *xsk, uint64_t addr, uint32_t len)
 	return KNOT_EOK;
 }
 
-static uint8_t *msg_uframe_p(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t *msg)
+static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
 	// FIXME: for some reason the message alignment isn't what we expect
 	//uint8_t *uframe_p = msg->payload.iov_base - FRAME_PAYLOAD_OFFSET;
@@ -297,7 +301,7 @@ static uint8_t *msg_uframe_p(struct knot_xsk_socket_t *socket, const knot_xsk_ms
 }
 
 _public_
-int knot_xsk_sendmsg(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t *msg)
+int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = msg_uframe_p(socket, msg);
 	if (uframe_p == NULL) {
@@ -345,7 +349,7 @@ int knot_xsk_sendmsg(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t *msg
 }
 
 _public_
-int knot_xsk_sendmmsg(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t msgs[], uint32_t count)
+int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count)
 {
 	int ret = KNOT_EOK;
 	for (int i = 0; i < count && ret == KNOT_EOK; i++) {
@@ -358,7 +362,7 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t msg
 
 /** Periodical callback. Just using 'the_socket' global. */
 _public_
-int knot_xsk_check(struct knot_xsk_socket_t *socket)
+int knot_xsk_check(struct knot_xsk_socket *socket)
 {
 	/* Trigger sending queued packets.
 	 * LATER(opt.): the periodical epoll due to the uv_poll* stuff
@@ -395,7 +399,7 @@ int knot_xsk_check(struct knot_xsk_socket_t *socket)
 	return kxsk_umem_refill(socket->umem);
 }
 
-static int rx_desc(struct knot_xsk_socket_t *xsi, const struct xdp_desc *desc,
+static int rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,
 		   knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = xsi->umem->frames->bytes + desc->addr;
@@ -458,7 +462,7 @@ free_frame:
 }
 
 _public_
-int knot_xsk_recvmmsg(struct knot_xsk_socket_t *socket, knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count)
+int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count)
 {
 	uint32_t idx_rx = 0;
 	int ret = KNOT_EOK;
@@ -477,7 +481,7 @@ int knot_xsk_recvmmsg(struct knot_xsk_socket_t *socket, knot_xsk_msg_t msgs[], u
 }
 
 _public_
-void knot_xsk_free_recvd(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t *msg)
+void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = msg_uframe_p(socket, msg);
 	assert(uframe_p);
@@ -487,7 +491,7 @@ void knot_xsk_free_recvd(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t 
 }
 
 _public_
-int knot_xsk_init(struct knot_xsk_socket_t **socket, const char *ifname, int if_queue, const char *prog_fname)
+int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue, const char *prog_fname)
 {
 	if (socket == NULL || *socket != NULL) {
 		return KNOT_EINVAL;
@@ -513,10 +517,10 @@ int knot_xsk_init(struct knot_xsk_socket_t **socket, const char *ifname, int if_
 		return KNOT_NET_ESOCKET;
 	}
 
-	int ret = kxsk_socket_start(iface, *socket->if_queue, *socket->xsk);
+	int ret = kxsk_socket_start(iface, (*socket)->if_queue, (*socket)->xsk);
 	if (ret != KNOT_EOK) {
-		xsk_socket__delete(*socket->xsk);
-		xsk_umem__delete(*socket->umem->umem);
+		xsk_socket__delete((*socket)->xsk);
+		xsk_umem__delete((*socket)->umem->umem);
 		kxsk_iface_free(iface, false);
 		free(*socket);
 		*socket = NULL;
@@ -527,7 +531,7 @@ int knot_xsk_init(struct knot_xsk_socket_t **socket, const char *ifname, int if_
 }
 
 _public_
-int knot_xsk_get_poll_fd(struct knot_xsk_socket_t *socket)
+int knot_xsk_get_poll_fd(struct knot_xsk_socket *socket)
 {
 	return xsk_socket__fd(socket->xsk);
 }

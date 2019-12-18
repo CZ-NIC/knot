@@ -30,20 +30,20 @@ typedef struct {
 
 struct knot_xsk_socket;
 
-int knot_xsk_init(struct knot_xsk_socket_t **socket, const char *ifname, int if_queue, const char *prog_fname);
+int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue, const char *prog_fname);
 
 void knot_xsk_deinit(struct knot_xsk_socket *socket);
 
 struct iovec knot_xsk_alloc_frame(struct knot_xsk_socket *socket);
 
-int knot_xsk_sendmsg(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t *msg); // msg->payload MUST have been allocated by knot_xsk_alloc_frame()
+int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg); // msg->payload MUST have been allocated by knot_xsk_alloc_frame()
 
-int knot_xsk_sendmmsg(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t msgs[], uint32_t count); // skip messages with payload length == 0
+int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count); // skip messages with payload length == 0
 
-int knot_xsk_recvmmsg(struct knot_xsk_socket_t *socket, knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count);
+int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count);
 
-void knot_xsk_free_recvd(struct knot_xsk_socket_t *socket, const knot_xsk_msg_t *msg);
+void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg);
 
-int knot_xsk_check(struct knot_xsk_socket_t *socket);
+int knot_xsk_check(struct knot_xsk_socket *socket);
 
-int knot_xsk_get_poll_fd(struct knot_xsk_socket_t *socket);
+int knot_xsk_get_poll_fd(struct knot_xsk_socket *socket);
