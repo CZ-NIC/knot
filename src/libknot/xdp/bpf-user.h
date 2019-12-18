@@ -45,7 +45,7 @@ struct xsk_umem_info {
 	uint32_t free_count; /**< The number of free frames. */
 	uint32_t *free_indices; /**< Stack of indices of the free frames. */
 };
-struct xsk_socket_info {
+typedef struct knot_xsk_socket {
 	/** Receive queue: passing arrived packets from kernel. */
 	struct xsk_ring_cons rx;
 	/** Transmit queue: passing packets to kernel for sending. */
@@ -59,7 +59,7 @@ struct xsk_socket_info {
 
 	const struct kxsk_iface *iface;
 	int if_queue;
-};
+} knot_xsk_socket_t;
 
 
 /* eBPF stuff (user-space part), implemented in ./bpf-user.c */
