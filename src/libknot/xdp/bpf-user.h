@@ -22,7 +22,6 @@ struct udpv4 {
 	} __attribute__((packed)); };
 };
 
-
 /** Data around one network interface. */
 struct kxsk_iface {
 	const char *ifname;
@@ -31,18 +30,6 @@ struct kxsk_iface {
 	/* File-descriptors to BPF maps for the program running on the interface. */
 	int qidconf_map_fd;
 	int xsks_map_fd;
-};
-
-
-struct kxsk_config {
-	int xsk_if_queue;
-
-	struct xsk_umem_config umem; /**< For xsk_umem__create() from libbpf. */
-	uint32_t umem_frame_count;
-
-	struct xsk_socket_config xsk; /**< For xsk_socket__create() from libbpf. */
-
-	struct udpv4 pkt_template;
 };
 
 struct xsk_umem_info {
@@ -58,7 +45,7 @@ struct xsk_umem_info {
 	uint32_t free_count; /**< The number of free frames. */
 	uint32_t *free_indices; /**< Stack of indices of the free frames. */
 };
-struct xsk_socket_info {
+typedef struct knot_xsk_socket {
 	/** Receive queue: passing arrived packets from kernel. */
 	struct xsk_ring_cons rx;
 	/** Transmit queue: passing packets to kernel for sending. */
@@ -71,7 +58,8 @@ struct xsk_socket_info {
 	bool kernel_needs_wakeup;
 
 	const struct kxsk_iface *iface;
-};
+	int if_queue;
+} knot_xsk_socket_t;
 
 
 /* eBPF stuff (user-space part), implemented in ./bpf-user.c */
