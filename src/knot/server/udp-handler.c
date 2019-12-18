@@ -475,31 +475,27 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp)
  *
  * \return Number of watched descriptors, zero on error.
  */
-static unsigned udp_set_ifaces(const list_t *ifaces, struct pollfd **fds_ptr,
+static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, struct pollfd **fds_ptr,
                                int thread_id, bool use_xdp)
 {
 	if (ifaces == NULL) {
 		return 0;
 	}
 
-	unsigned nfds = list_size(ifaces);
-	struct pollfd *fds = calloc(nfds, sizeof(*fds));
+	struct pollfd *fds = calloc(n_ifaces, sizeof(*fds));
 	if (fds == NULL) {
 		return 0;
 	}
 
-	iface_t *iface;
-	int i = 0;
-	WALK_LIST(iface, *ifaces) {
-		fds[i].fd = iface_udp_fd(iface, thread_id, use_xdp);
+	for (size_t i = 0; i < n_ifaces; i++) {
+		fds[i].fd = iface_udp_fd(&ifaces[i], thread_id, use_xdp);
 		fds[i].events = POLLIN;
 		fds[i].revents = 0;
-		i += 1;
 	}
 
 	*fds_ptr = fds;
 
-	return nfds;
+	return n_ifaces;
 }
 
 int udp_master(dthread_t *thread)
@@ -548,7 +544,7 @@ int udp_master(dthread_t *thread)
 	struct pollfd *fds = NULL;
 
 	/* Allocate descriptors for the configured interfaces. */
-	unsigned nfds = udp_set_ifaces(handler->server->ifaces, &fds,
+	unsigned nfds = udp_set_ifaces(handler->server->ifaces, handler->server->n_ifaces, &fds,
 	                               udp.thread_id, handler->use_xdp);
 	if (nfds == 0) {
 		goto finish;
