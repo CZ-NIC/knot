@@ -106,7 +106,8 @@ void udp_master_init_stdio(server_t *server) {
 	ifc->fd_udp[0] = STDIN_FILENO;
 	ifc->fd_udp_count = 1;
 
-	add_tail(server->ifaces, (node_t *)ifc);
+	server->n_ifaces = 1;
+	server->ifaces = ifc;
 
 	udp_recvfrom_api = stdin_api;
 #ifdef ENABLE_RECVMMSG
