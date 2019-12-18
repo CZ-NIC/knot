@@ -81,17 +81,14 @@ static void server_deinit_iface(iface_t *iface)
 		}
 		free(iface->fd_tcp);
 	}
-
-	free(iface);
 }
 
 /*! \brief Deinit server interface list. */
-static void server_deinit_iface_list(list_t *ifaces)
+static void server_deinit_iface_list(iface_t *ifaces, size_t n)
 {
 	if (ifaces != NULL) {
-		iface_t *iface, *next;
-		WALK_LIST_DELSAFE(iface, next, *ifaces) {
-			server_deinit_iface(iface);
+		for (size_t i = 0; i < n; i++) {
+			server_deinit_iface(ifaces + i);
 		}
 		free(ifaces);
 	}
@@ -370,13 +367,6 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		return KNOT_EOK;
 	}
 
-	/* Prepare helper lists. */
-	list_t *newlist = malloc(sizeof(list_t));
-	if (newlist == NULL) {
-		return KNOT_ENOMEM;
-	}
-	init_list(newlist);
-
 #ifdef ENABLE_REUSEPORT
 	/* Log info if reuseport is used and for what protocols. */
 	log_info("using reuseport for UDP%s", conf->cache.srv_tcp_reuseport ? " and TCP" : "");
@@ -393,6 +383,13 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	/* Update bound interfaces. */
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
+
+	size_t nifs = conf_val_count(&listen_val), real_n = 0;
+	iface_t *newlist = calloc(nifs, sizeof(*newlist));
+	if (newlist == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	while (listen_val.code == KNOT_EOK) {
 		/* Log interface binding. */
@@ -408,15 +405,19 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp, tcp_reuseport,
 		                                    conf->cache.srv_xdp_threads > 0);
 		if (new_if != NULL) {
-			add_tail(newlist, &new_if->n);
+			memcpy(&newlist[real_n++], new_if, sizeof(*newlist));
+			free(new_if);
 		}
 
 		conf_val_next(&listen_val);
 	}
+	assert(real_n <= nifs);
+	nifs = real_n;
 	free(rundir);
 
 	/* Publish new list. */
 	s->ifaces = newlist;
+	s->n_ifaces = nifs;
 
 	/* Set the ID's (thread_id) of both the TCP and UDP threads. */
 	unsigned thread_count = 0;
@@ -486,7 +487,7 @@ void server_deinit(server_t *server)
 	}
 
 	/* Free remaining interfaces. */
-	server_deinit_iface_list(server->ifaces);
+	server_deinit_iface_list(server->ifaces, server->n_ifaces);
 
 	/* Free threads and event handlers. */
 	worker_pool_destroy(server->workers);
@@ -660,7 +661,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
 	size_t new_count = conf_val_count(&listen_val);
-	size_t old_count = list_size(server->ifaces);
+	size_t old_count = server->n_ifaces;
 	if (new_count != old_count) {
 		return true;
 	}
@@ -673,9 +674,8 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	while (listen_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
 		bool found = false;
-		iface_t *iface;
-		WALK_LIST(iface, *server->ifaces) {
-			if (sockaddr_cmp(&addr, &iface->addr, false) == 0) {
+		for (size_t i = 0; i < server->n_ifaces; i++) {
+			if (sockaddr_cmp(&addr, &server->ifaces[i].addr, false) == 0) {
 				matches++;
 				found = true;
 				break;
