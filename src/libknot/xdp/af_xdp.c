@@ -75,9 +75,16 @@ struct umem_frame {
 
 static const size_t FRAME_PAYLOAD_OFFSET = offsetof(struct udpv4, data) + offsetof(struct umem_frame, udpv4);
 
+static const struct xsk_umem_config global_umem_config = {
+	.fill_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
+	.comp_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
+	.frame_size = FRAME_SIZE, // we need to know this value explicitly
+	.frame_headroom = XSK_UMEM__DEFAULT_FRAME_HEADROOM,
+};
+#define UMEM_FRAME_COUNT 8192
+
 // FIXME later: get rid of those singletons!
 struct xsk_socket_info *the_socket = NULL;
-struct kxsk_config *the_config = NULL;
 
 /** Swap two bytes as a *constant* expression.  ATM we assume we're LE, i.e. we do need to swap. */
 #define BS16(n) (((n) >> 8) + (((n) & 0xff) << 8))
@@ -152,7 +159,7 @@ void knot_xsk_deinit()
 {
 	if (!the_socket)
 		return;
-	kxsk_socket_stop(the_socket->iface, the_config->xsk_if_queue);
+	kxsk_socket_stop(the_socket->iface, the_socket->if_queue);
 	xsk_socket__delete(the_socket->xsk);
 	xsk_umem__delete(the_socket->umem->umem);
 
@@ -161,18 +168,18 @@ void knot_xsk_deinit()
 }
 
 /** Add some free frames into the RX fill queue (possibly zero, etc.) */
-static int kxsk_umem_refill(const struct kxsk_config *cfg, struct xsk_umem_info *umem)
+static int kxsk_umem_refill(struct xsk_umem_info *umem)
 {
 	/* First find to_reserve: how many frames to move to the RX fill queue.
 	 * Let's keep about as many frames ready for TX (free_count) as for RX (fq_ready),
 	 * and don't fill the queue to more than a half. */
-	const int fq_target = cfg->umem.fill_size / 2;
+	const int fq_target = global_umem_config.fill_size / 2;
 	uint32_t fq_free = xsk_prod_nb_free(&umem->fq, 65536*256);
 		/* TODO: not nice - ^^ the caching logic inside is the other way,
 		 * so we disable it clumsily by passing a high value. */
 	if (fq_free <= fq_target)
 		return 0;
-	const int fq_ready = cfg->umem.fill_size - fq_free;
+	const int fq_ready = global_umem_config.fill_size - fq_free;
 	const int balance = (fq_ready + umem->free_count) / 2;
 	const int fq_want = MIN(balance, fq_target); // don't overshoot the target
 	const int to_reserve = fq_want - fq_ready;
@@ -201,15 +208,15 @@ static int kxsk_umem_refill(const struct kxsk_config *cfg, struct xsk_umem_info 
 	return 0;
 }
 
-static struct xsk_socket_info *xsk_configure_socket(struct kxsk_config *cfg,
-                                                    struct xsk_umem_info *umem,
-                                                    const struct kxsk_iface *iface)
+static struct xsk_socket_info *xsk_configure_socket(struct xsk_umem_info *umem,
+                                                    const struct kxsk_iface *iface,
+                                                    int if_queue)
 {
 	/* Put a couple RX buffers into the fill queue.
 	 * Even if we don't need them, it silences a dmesg line,
 	 * and it avoids 100% CPU usage of ksoftirqd/i for each queue i!
 	 */
-	errno = kxsk_umem_refill(cfg, umem);
+	errno = kxsk_umem_refill(umem);
 	if (errno)
 		return NULL;
 
@@ -217,12 +224,19 @@ static struct xsk_socket_info *xsk_configure_socket(struct kxsk_config *cfg,
 	if (!xsk_info)
 		return NULL;
 	xsk_info->iface = iface;
+	xsk_info->if_queue = if_queue;
 	xsk_info->umem = umem;
 
-	assert(cfg->xsk.libbpf_flags & XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD);
+	const struct xsk_socket_config sock_conf = {
+		.tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
+		.rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
+		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
+		.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST,
+	};
+
 	errno = xsk_socket__create(&xsk_info->xsk, iface->ifname,
-	                           cfg->xsk_if_queue, umem->umem,
-	                           &xsk_info->rx, &xsk_info->tx, &cfg->xsk);
+	                           &xsk_info->if_queue, umem->umem,
+	                           &xsk_info->rx, &xsk_info->tx, &sock_conf);
 
 	return xsk_info;
 }
@@ -384,7 +398,7 @@ int knot_xsk_check()
 	xsk_ring_cons__release(cq, completed);
 	//TODO: one uncompleted packet/batch is left until the next I/O :-/
 	/* And feed frames into RX fill queue. */
-	return kxsk_umem_refill(the_config, the_socket->umem);
+	return kxsk_umem_refill(the_socket->umem);
 }
 
 static int rx_desc(struct xsk_socket_info *xsi, const struct xdp_desc *desc,
@@ -478,29 +492,9 @@ void knot_xsk_free_recvd(const knot_xsk_msg_t *msg)
 	}
 }
 
-static struct kxsk_config the_config_storage = { // static to get zeroed by default
-	.xsk_if_queue = 0, // defaults overridable by command-line -x eth3:0
-	.umem_frame_count = 8192,
-	.umem = {
-		.fill_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
-		.comp_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
-		.frame_size = FRAME_SIZE, // we need to know this value explicitly
-		.frame_headroom = XSK_UMEM__DEFAULT_FRAME_HEADROOM,
-	},
-	.xsk = {
-		.tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
-		.rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
-		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
-		.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST,
-	},
-};
-
 _public_
-int knot_xsk_init(const char *ifname, const char *prog_fname,
-                  ssize_t *out_busy_frames)
+int knot_xsk_init(const char *ifname, int if_queue, const char *prog_fname)
 {
-	the_config = &the_config_storage;
-
 	struct kxsk_iface *iface = kxsk_iface_new(ifname, prog_fname);
 	if (!iface) {
 		return KNOT_EINVAL;
@@ -508,7 +502,7 @@ int knot_xsk_init(const char *ifname, const char *prog_fname,
 
 	/* Initialize shared packet_buffer for umem usage */
 	struct xsk_umem_info *umem =
-		configure_xsk_umem(&the_config->umem, the_config->umem_frame_count);
+		configure_xsk_umem(&global_umem_config, UMEM_FRAME_COUNT);
 	if (umem == NULL) {
 		kxsk_iface_free(iface, false);
 		return KNOT_ENOMEM;
@@ -517,23 +511,19 @@ int knot_xsk_init(const char *ifname, const char *prog_fname,
 	/* Open and configure the AF_XDP (xsk) socket */
 	assert(!the_socket);
 
-	the_socket = xsk_configure_socket(the_config, umem, iface);
+	the_socket = xsk_configure_socket(umem, iface, if_queue);
 	if (!the_socket) {
 		xsk_umem__delete(umem->umem);
 		kxsk_iface_free(iface, false);
 		return KNOT_NET_ESOCKET;
 	}
 
-	int ret = kxsk_socket_start(iface, the_config->xsk_if_queue, the_socket->xsk);
+	int ret = kxsk_socket_start(iface, the_socket->if_queue, the_socket->xsk);
 	if (ret != KNOT_EOK) {
 		xsk_socket__delete(the_socket->xsk);
 		xsk_umem__delete(the_socket->umem->umem);
 		kxsk_iface_free(iface, false);
 		return ret;
-	}
-
-	if (out_busy_frames != NULL) {
-		*out_busy_frames = the_socket->umem->frame_count - the_socket->umem->free_count;
 	}
 
 	return ret;

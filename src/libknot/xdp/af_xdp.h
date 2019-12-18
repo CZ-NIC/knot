@@ -28,8 +28,7 @@ typedef struct {
 	struct iovec payload;
 } knot_xsk_msg_t;
 
-int knot_xsk_init(const char *ifname, const char *prog_fname,
-                  ssize_t *out_busy_frames);
+int knot_xsk_init(const char *ifname, int if_queue, const char *prog_fname);
 
 void knot_xsk_deinit(void);
 

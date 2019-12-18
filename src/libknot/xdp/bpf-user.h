@@ -22,7 +22,6 @@ struct udpv4 {
 	} __attribute__((packed)); };
 };
 
-
 /** Data around one network interface. */
 struct kxsk_iface {
 	const char *ifname;
@@ -31,18 +30,6 @@ struct kxsk_iface {
 	/* File-descriptors to BPF maps for the program running on the interface. */
 	int qidconf_map_fd;
 	int xsks_map_fd;
-};
-
-
-struct kxsk_config {
-	int xsk_if_queue;
-
-	struct xsk_umem_config umem; /**< For xsk_umem__create() from libbpf. */
-	uint32_t umem_frame_count;
-
-	struct xsk_socket_config xsk; /**< For xsk_socket__create() from libbpf. */
-
-	struct udpv4 pkt_template;
 };
 
 struct xsk_umem_info {
@@ -71,6 +58,7 @@ struct xsk_socket_info {
 	bool kernel_needs_wakeup;
 
 	const struct kxsk_iface *iface;
+	int if_queue;
 };
 
 
