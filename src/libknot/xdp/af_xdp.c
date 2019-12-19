@@ -235,8 +235,12 @@ static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
 	errno = xsk_socket__create(&xsk_info->xsk, iface->ifname,
 	                           xsk_info->if_queue, umem->umem,
 	                           &xsk_info->rx, &xsk_info->tx, &sock_conf);
-
-	return xsk_info;
+	if (errno) {
+		free(xsk_info);
+		return NULL;
+	} else {
+		return xsk_info;
+	}
 }
 
 /* Two helper functions taken from Linux kernel 5.2, slightly modified. */
