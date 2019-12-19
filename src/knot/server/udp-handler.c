@@ -513,7 +513,6 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, struct po
 		fds[i].fd = iface_udp_fd(&ifaces[i], thread_id, use_xdp, &socket_ctxs[i]);
 		fds[i].events = POLLIN;
 		fds[i].revents = 0;
-		i += 1;
 	}
 
 	*fds_ptr = fds;
