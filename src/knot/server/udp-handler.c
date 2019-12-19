@@ -470,7 +470,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp, void 
 		size_t xdp_wrk_id = thread_id - udp_wrk - tcp_wrk;
 
 		*socket_ctx = iface->sock_xdp[xdp_wrk_id];
-		printf("xdp_wrk_id %zu iface %p socket %p\n", xdp_wrk_id, iface, *socket_ctx);
+		printf("xdp_wrk_id %zu iface %p socket %p fd %d\n", xdp_wrk_id, iface, *socket_ctx, iface->fd_xdp[xdp_wrk_id]);
 		return iface->fd_xdp[xdp_wrk_id];
 #else
 		assert(0);
@@ -576,6 +576,8 @@ int udp_master(dthread_t *thread)
 	}
 	assert(nfds == nifs);
 
+	static int printed = 0;
+
 	/* Loop until all data is read. */
 	for (;;) {
 		/* Cancellation point. */
@@ -600,7 +602,10 @@ int udp_master(dthread_t *thread)
 			events -= 1;
 			void *sock_ctx = socket_ctxs[i];
 			if (api->udp_recv(fds[i].fd, rq, sock_ctx) > 0) {
-				printf("handle thr %u xdp %d\n", i, handler->use_xdp);
+				if (!printed) {
+					printf("handle thr %u xdp %d\n", i, handler->use_xdp);
+					printed = 1;
+				}
 				api->udp_handle(&udp, rq, sock_ctx);
 				api->udp_send(rq, sock_ctx);
 			}
