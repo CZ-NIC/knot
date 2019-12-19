@@ -575,7 +575,7 @@ int udp_master(dthread_t *thread)
 	}
 	assert(nfds == nifs);
 
-	static int printed = 0;
+	int printed = 0;
 
 	/* Loop until all data is read. */
 	for (;;) {
@@ -602,7 +602,8 @@ int udp_master(dthread_t *thread)
 			void *sock_ctx = socket_ctxs[i];
 			if (api->udp_recv(fds[i].fd, rq, sock_ctx) > 0) {
 				if (!printed) {
-					printf("handle thr %u xdp %d\n", i, handler->use_xdp);
+					printf("handle thr %u fd %d xdp %d\n",
+							udp.thread_id, i, handler->use_xdp);
 					printed = 1;
 				}
 				api->udp_handle(&udp, rq, sock_ctx);
