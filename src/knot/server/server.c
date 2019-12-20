@@ -18,6 +18,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <ifaddrs.h>
 #include <netinet/tcp.h>
 #include <sys/resource.h>
 
@@ -199,6 +200,41 @@ static int enable_fastopen(int sock, int backlog)
 	return KNOT_EOK;
 }
 
+static int iface_addr2name(const struct sockaddr_storage *add, char **out)
+{
+	struct ifaddrs *ifas = NULL, *orig = NULL;
+	if (getifaddrs(&orig)) {
+		return -errno;
+	}
+
+	size_t matches = 0;
+	char *match_name = NULL;
+
+	for (ifas = orig; ifas != NULL; ifas = ifas->ifa_next) {
+		const struct sockaddr_storage *ifss = (struct sockaddr_storage *)ifas->ifa_addr; // ??
+
+		if ((ifss->ss_family == add->ss_family && sockaddr_is_any(add)) ||
+		    sockaddr_net_match(ifss, add, 64)) { // sockaddr_cmp() compares also port numbers
+			matches++;
+			match_name = ifas->ifa_name;
+		}
+	}
+
+	if (matches == 1) {
+		*out = strdup(match_name);
+		freeifaddrs(orig);
+		return *out == NULL ? KNOT_ENOMEM : KNOT_EOK;
+	}
+
+	freeifaddrs(orig);
+	*out = malloc(64);
+	if (*out == NULL) {
+		return KNOT_ENOMEM;
+	}
+	sockaddr_tostr(*out, 64, add);
+	return matches == 0 ? KNOT_EADDRNOTAVAIL : KNOT_ELIMIT;
+}
+
 /*!
  * \brief Create and initialize new interface.
  *
@@ -309,7 +345,20 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 #ifndef ENABLE_XDP
 		assert(0);
 #else
-		int ret = knot_xsk_init(new_if->sock_xdp + i, "enp1s0f1", i, "/bpf-kernel.o"); // FIXME
+		char *dev = NULL;
+		int ret = iface_addr2name(addr, &dev);
+		if (ret != KNOT_EOK) {
+			if (dev != NULL) {
+				log_warning("XDP failed: address %s corresponds to %s net devices", dev, ret == KNOT_EADDRNOTAVAIL ? "none" : "more");
+				free(dev);
+			} else {
+				log_warning("failed to find dev for address (%s)", knot_strerror(ret));
+			}
+			continue;
+		}
+
+		ret = knot_xsk_init(new_if->sock_xdp + i, dev, i, "/bpf-kernel.o"); // FIXME
+		free(dev);
 		if (ret != KNOT_EOK) {
 			log_warning("failed to init XDP (%s)", knot_strerror(ret));
 		} else {
