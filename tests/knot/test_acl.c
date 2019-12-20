@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,9 +25,9 @@
 #include "contrib/sockaddr.h"
 
 #define ZONE	"example.zone"
-#define KEY1	"key1_md5"
-#define KEY2	"key2_md5"
-#define KEY3	"key3_sha256"
+#define KEY1	"key1_md5."
+#define KEY2	"key2_md5."
+#define KEY3	"key3_sha256."
 
 static void check_sockaddr_set(struct sockaddr_storage *ss, int family,
                                const char *straddr, int port)
