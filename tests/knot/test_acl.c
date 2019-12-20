@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -122,7 +122,7 @@ static void test_acl_allowed(void)
 		"  - id: acl_update_name\n"
 		"    key: "KEY2"\n"
 		"    update-owner: name\n"
-		"    update-owner-name: [ a."KEY2", b."KEY2" ]\n"
+		"    update-owner-name: [ a, b."KEY2". ]\n"
 		"    update-owner-match: equal\n"
 		"    action: [ update ]\n"
 		"\n"
@@ -237,12 +237,21 @@ static void test_acl_allowed(void)
 	check_update(conf(), &MX, &key1, key1_name, false, "Update, tsig, bad type");
 	knot_rdataset_clear(&MX.rrs, NULL);
 
+	knot_rrset_t aA;
+	knot_dname_t *a_key2_name = knot_dname_from_str_alloc("a."KEY2".");
+	ok(a_key2_name != NULL, "create a."KEY2".");
+	knot_rrset_init(&aA, a_key2_name, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600);
+	knot_rrset_add_rdata(&aA, (uint8_t *)"\x00\x00\x00\x00", 4, NULL);
+	check_update(conf(), &aA, &key2, key2_name, true, "Update, tsig, relative name");
+	knot_dname_free(a_key2_name, NULL);
+	knot_rdataset_clear(&aA.rrs, NULL);
+
 	knot_rrset_t bA;
-	knot_dname_t *b_key2_name = knot_dname_from_str_alloc("b."KEY2);
-	ok(b_key2_name != NULL, "create b."KEY2);
+	knot_dname_t *b_key2_name = knot_dname_from_str_alloc("b."KEY2".");
+	ok(b_key2_name != NULL, "create b."KEY2".");
 	knot_rrset_init(&bA, b_key2_name, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600);
 	knot_rrset_add_rdata(&bA, (uint8_t *)"\x00\x00\x00\x00", 4, NULL);
-	check_update(conf(), &bA, &key2, key2_name, true, "Update, tsig, name");
+	check_update(conf(), &bA, &key2, key2_name, true, "Update, tsig, absolute name");
 	knot_dname_free(b_key2_name, NULL);
 	knot_rdataset_clear(&bA.rrs, NULL);
 

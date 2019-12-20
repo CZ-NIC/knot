@@ -15,6 +15,7 @@
  */
 
 #include "knot/updates/acl.h"
+#include "contrib/wire_ctx.h"
 
 static bool match_type(uint16_t type, conf_val_t *types)
 {
@@ -53,8 +54,8 @@ static bool match_name(const knot_dname_t *rr_owner, const knot_dname_t *name,
 	}
 }
 
-static bool match_names(const knot_dname_t *rr_owner, conf_val_t *names,
-                        acl_update_owner_match_t match)
+static bool match_names(const knot_dname_t *rr_owner, const knot_dname_t *zone_name,
+                        conf_val_t *names, acl_update_owner_match_t match)
 {
 	if (names == NULL) {
 		return true;
@@ -62,7 +63,20 @@ static bool match_names(const knot_dname_t *rr_owner, conf_val_t *names,
 
 	conf_val_reset(names);
 	while (names->code == KNOT_EOK) {
-		if (match_name(rr_owner, conf_dname(names), match)) {
+		knot_dname_storage_t full_name;
+		size_t len;
+		const uint8_t *name = conf_data(names, &len);
+		if (name[len - 1] != '\0') {
+			// Append zone name if non-FQDN.
+			wire_ctx_t ctx = wire_ctx_init(full_name, sizeof(full_name));
+			wire_ctx_write(&ctx, name, len);
+			wire_ctx_write(&ctx, zone_name, knot_dname_size(zone_name));
+			if (ctx.error != KNOT_EOK) {
+				return false;
+			}
+			name = full_name;
+		}
+		if (match_name(rr_owner, name, match)) {
 			return true;
 		}
 		conf_val_next(names);
@@ -118,7 +132,7 @@ static bool update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
 
 		switch (owner) {
 		case ACL_UPDATE_OWNER_NAME:
-			if (!match_names(rr->owner, names, match)) {
+			if (!match_names(rr->owner, zone_name, names, match)) {
 				return false;
 			}
 			break;
