@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -156,6 +156,47 @@ int rrtype_to_txt(
 		return KNOT_EINVAL;
 	}
 	wire_ctx_skip(out, ret);
+
+	YP_CHECK_RET;
+}
+
+int rdname_to_bin(
+	YP_TXT_BIN_PARAMS)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	int ret = yp_dname_to_bin(in, out, stop);
+	if (ret == KNOT_EOK && in->wire[in->size - 1] != '.') {
+		// If non-FQDN, trim off the zero label.
+		wire_ctx_skip(out, -1);
+	}
+
+	YP_CHECK_RET;
+}
+
+int rdname_to_txt(
+	YP_BIN_TXT_PARAMS)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	// Temporarily normalize the input.
+	if (in->wire[in->size - 1] == '\0') {
+		return yp_dname_to_txt(in, out);
+	}
+
+	knot_dname_storage_t full_name;
+	wire_ctx_t ctx = wire_ctx_init(full_name, sizeof(full_name));
+	wire_ctx_write(&ctx, in->wire, in->size);
+	wire_ctx_write(&ctx, "\0", 1);
+	wire_ctx_set_offset(&ctx, 0);
+
+	int ret = yp_dname_to_txt(&ctx, out);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Trim off the trailing dot.
+	wire_ctx_skip(out, -1);
 
 	YP_CHECK_RET;
 }

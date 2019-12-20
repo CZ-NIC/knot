@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,6 +47,14 @@ int rrtype_to_bin(
 );
 
 int rrtype_to_txt(
+	YP_BIN_TXT_PARAMS
+);
+
+int rdname_to_bin(
+	YP_TXT_BIN_PARAMS
+);
+
+int rdname_to_txt(
 	YP_BIN_TXT_PARAMS
 );
 

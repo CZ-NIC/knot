@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -255,7 +255,8 @@ static const yp_item_t desc_acl[] = {
 	{ C_DENY,               YP_TBOOL,  YP_VNONE },
 	{ C_UPDATE_OWNER,       YP_TOPT,   YP_VOPT = { acl_update_owner, ACL_UPDATE_OWNER_NONE } },
 	{ C_UPDATE_OWNER_MATCH, YP_TOPT,   YP_VOPT = { acl_update_owner_match, ACL_UPDATE_MATCH_SUBEQ } },
-	{ C_UPDATE_OWNER_NAME,  YP_TDNAME, YP_VNONE, YP_FMULTI },
+	{ C_UPDATE_OWNER_NAME,  YP_TDATA,  YP_VDATA = { 0, NULL, rdname_to_bin, rdname_to_txt },
+	                                   YP_FMULTI, },
 	{ C_UPDATE_TYPE,        YP_TDATA,  YP_VDATA = { 0, NULL, rrtype_to_bin, rrtype_to_txt },
 	                                   YP_FMULTI, },
 	{ C_COMMENT,            YP_TSTR,   YP_VNONE },
