@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <sys/socket.h>
@@ -35,7 +36,7 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 
 void knot_xsk_deinit(struct knot_xsk_socket *socket);
 
-struct iovec knot_xsk_alloc_frame(struct knot_xsk_socket *socket);
+struct iovec knot_xsk_alloc_frame(struct knot_xsk_socket *socket, bool ipv6);
 
 int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg); // msg->payload MUST have been allocated by knot_xsk_alloc_frame()
 

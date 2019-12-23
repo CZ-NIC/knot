@@ -406,7 +406,7 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 		struct iovec *rx = &rq->msgs_rx[i].payload;
 		struct iovec *tx = &rq->msgs_tx[i].payload;
 
-		*tx = knot_xsk_alloc_frame(xdp_sock);
+		*tx = knot_xsk_alloc_frame(xdp_sock, rq->msgs_rx[i].ip_to.ss_family == AF_INET6);
 		if (tx->iov_base == NULL) {
 			return KNOT_ERROR;
 		}
