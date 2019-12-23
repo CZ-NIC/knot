@@ -25,13 +25,22 @@
 #include <linux/ipv6.h>
 #include <linux/udp.h>
 
-//#include <uv.h> // LATER: split kresd-specific stuff
-
 struct udpv4 {
 	union { uint8_t bytes[1]; struct {
 
 	struct ethhdr eth; // no VLAN support; CRC at the "end" of .data!
 	struct iphdr ipv4;
+	struct udphdr udp;
+	uint8_t data[];
+
+	} __attribute__((packed)); };
+};
+
+struct udpv6 {
+	union { uint8_t bytes[1]; struct {
+
+	struct ethhdr eth; // no VLAN support; CRC at the "end" of .data!
+	struct ipv6hdr ipv6;
 	struct udphdr udp;
 	uint8_t data[];
 
