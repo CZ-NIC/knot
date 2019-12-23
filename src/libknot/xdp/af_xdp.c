@@ -65,9 +65,10 @@
 
 /** The memory layout of each umem frame. */
 struct umem_frame {
-	union { uint8_t bytes[FRAME_SIZE]; struct {
+	union { uint8_t bytes[FRAME_SIZE]; union {
 
 	struct udpv4 udpv4;
+	struct udpv6 udpv6;
 
 	}; };
 };
@@ -304,8 +305,7 @@ static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_
 	return uframe_p;
 }
 
-_public_
-int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = msg_uframe_p(socket, msg);
 	if (uframe_p == NULL) {
@@ -350,6 +350,58 @@ int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 	uint32_t eth_len = FRAME_PAYLOAD_OFFSET + msg->payload.iov_len + 4/*CRC*/;
 
 	return pkt_send(socket, h->bytes - socket->umem->frames->bytes, eth_len);
+}
+
+int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+{
+	uint8_t *uframe_p = msg_uframe_p(socket, msg);
+	if (uframe_p == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
+	struct udpv6 *h = &uframe->udpv6;
+
+	// sockaddr* contents is already in network byte order
+	const struct sockaddr_in6 *src_v6 = (const struct sockaddr_in6 *)&msg->ip_from;
+	const struct sockaddr_in6 *dst_v6 = (const struct sockaddr_in6 *)&msg->ip_to;
+
+	const uint16_t udp_len = sizeof(h->udp) + msg->payload.iov_len;
+	h->udp.len = BS16(udp_len);
+	h->udp.source = src_v6->sin6_port;
+	h->udp.dest   = dst_v6->sin6_port;
+	h->udp.check  = 0;
+
+	h->ipv6.version = 6;
+	h->ipv6.payload_len = BS16(udp_len);
+	h->ipv6.flow_lbl;
+	h->ipv6.hop_limit = IPDEFTTL;
+	h->ipv6.nexthdr;
+	h->ipv6.priority; // TODO fill in all !
+
+	memcpy(&h->ipv6.saddr, &src_v6->sin6_addr, sizeof(src_v6->sin6_addr));
+	memcpy(&h->ipv6.daddr, &dst_v6->sin6_addr, sizeof(dst_v6->sin6_addr));
+
+	memcpy(h->eth.h_dest, msg->eth_to, sizeof(msg->eth_to));
+	memcpy(h->eth.h_source, msg->eth_from, sizeof(msg->eth_from));
+	h->eth.h_proto = BS16(ETH_P_IP);
+
+	uint32_t eth_len = FRAME_PAYLOAD_OFFSET + msg->payload.iov_len + 4/*CRC*/;
+
+	return pkt_send(socket, h->bytes - socket->umem->frames->bytes, eth_len);
+}
+
+_public_
+int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+{
+	switch (msg->ip_from.ss_family) {
+	case AF_INET:
+		return xsk_sendmsg_ipv4(socket, msg);
+	case AF_INET6:
+		return xsk_sendmsg_ipv6(socket, msg);
+	default:
+		return KNOT_EINVAL;
+	}
 }
 
 _public_
@@ -431,9 +483,12 @@ static int rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,
 		udp = (struct udphdr *)(uframe_p + sizeof(struct ethhdr) + ipv4->ihl * 4);
 
 	} else if (eth->h_proto == BS16(ETH_P_IPV6)) {
-		(void)ipv6;
-		ret = KNOT_ENOTSUP; // FIXME later
-		goto free_frame;
+		ipv6 = (struct ipv6hdr *)(uframe_p + sizeof(struct ethhdr));
+		if (ipv6->version != 6) {
+			ret = KNOT_EFEWDATA;
+			goto free_frame;
+		}
+		udp = (struct udphdr *)(uframe_p + sizeof(struct ethhdr) + sizeof(struct ipv6hdr)); // TODO ???
 	} else {
 		ret = KNOT_ENOTSUP;
 		goto free_frame;
@@ -450,13 +505,22 @@ static int rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,
 	// process the packet; ownership is passed on, but beware of holding frames
 	// LATER: filter the address-port combinations that we listen on?
 
-	assert(ipv4);
-	struct sockaddr_in *src_v4 = (struct sockaddr_in *)&msg->ip_from;
-	struct sockaddr_in *dst_v4 = (struct sockaddr_in *)&msg->ip_to;
-	memcpy(&src_v4->sin_addr, &ipv4->saddr, sizeof(src_v4->sin_addr));
-	memcpy(&dst_v4->sin_addr, &ipv4->daddr, sizeof(dst_v4->sin_addr));
-	src_v4->sin_port = udp->source;
-	dst_v4->sin_port = udp->dest;
+	if (ipv4) {
+		struct sockaddr_in *src_v4 = (struct sockaddr_in *)&msg->ip_from;
+		struct sockaddr_in *dst_v4 = (struct sockaddr_in *)&msg->ip_to;
+		memcpy(&src_v4->sin_addr, &ipv4->saddr, sizeof(src_v4->sin_addr));
+		memcpy(&dst_v4->sin_addr, &ipv4->daddr, sizeof(dst_v4->sin_addr));
+		src_v4->sin_port = udp->source;
+		dst_v4->sin_port = udp->dest;
+	} else {
+		assert(ipv6);
+		struct sockaddr_in6 *src_v6 = (struct sockaddr_in6 *)&msg->ip_from;
+		struct sockaddr_in6 *dst_v6 = (struct sockaddr_in6 *)&msg->ip_to;
+		memcpy(&src_v6->sin6_addr, &ipv6->saddr, sizeof(src_v6->sin6_addr));
+		memcpy(&dst_v6->sin6_addr, &ipv6->daddr, sizeof(dst_v6->sin6_addr));
+		src_v6->sin6_port = udp->source;
+		dst_v6->sin6_port = udp->dest;
+	}
 
 	return KNOT_EOK;
 
