@@ -32,7 +32,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	struct ethhdr *eth;
 	struct iphdr *iphdr;
 	//struct ipv6hdr *ipv6hdr;
-	//struct udphdr *udphdr;
+	struct udphdr *udphdr;
 
 	void *data_end = (void *)(long)ctx->data_end;
 	struct hdr_cursor nh = { .pos = (void *)(long)ctx->data };
@@ -51,15 +51,23 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 			return XDP_PASS;
 	}
 
-	if (ip_type != IPPROTO_UDP)
+	if (ip_type != IPPROTO_UDP) {
 		return XDP_PASS;
+	}
+
+	if (parse_udphdr(&nh, data_end, &udphdr) < 1) {
+		return XDP_PASS;
+	}
 
 	int index = ctx->rx_queue_index;
 	int *qidconf = bpf_map_lookup_elem(&qidconf_map, &index);
-	if (!qidconf)
+	if (!qidconf) {
 		return XDP_ABORTED;
-	if (*qidconf)
-		return bpf_redirect_map(&xsks_map, index, 0);
-	return XDP_PASS;
-}
+	}
 
+	if (udphdr->dest != *qidconf) {
+		return XDP_PASS;
+	}
+
+	return bpf_redirect_map(&xsks_map, index, 0);
+}
