@@ -1,3 +1,21 @@
+Knot DNS 2.8.5 (2020-01-01)
+===========================
+
+Improvements:
+-------------
+ - Tiny ds-check log message rewording
+ - Various code and documentation improvements
+
+Bugfixes:
+---------
+ - RRSIGs are wrongly checked for inconsistent RRSet TTLs during zone update
+ - Server can crash when flushing zone to a specified directory
+ - ds-push doesn't replace the DS RRset on the parent #661
+ - Server gets stuck in a never-ending logging loop when changing SOA TTL
+ - Server can crash when the journal database size limit is reached
+ - Server can create a bogus changeset with equal serials from and to
+ - Server returns FORMERR instead of NOTIMP if empty QUESTION and unknown OPCODE
+
 Knot DNS 2.8.4 (2019-09-24)
 ===========================
 
