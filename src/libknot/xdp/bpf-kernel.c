@@ -31,7 +31,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 {
 	struct ethhdr *eth;
 	struct iphdr *iphdr;
-	//struct ipv6hdr *ipv6hdr;
+	struct ipv6hdr *ipv6hdr;
 	struct udphdr *udphdr;
 
 	void *data_end = (void *)(long)ctx->data_end;
@@ -42,11 +42,9 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		case ETH_P_IP:
 			ip_type = parse_iphdr(&nh, data_end, &iphdr);
 			break;
-		/*
 		case ETH_P_IPV6:
 			ip_type = parse_ip6hdr(&nh, data_end, &ipv6hdr);
 			break;
-		*/
 		default:
 			return XDP_PASS;
 	}
