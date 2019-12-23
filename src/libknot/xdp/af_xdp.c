@@ -495,7 +495,8 @@ void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t *m
 }
 
 _public_
-int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue, const char *prog_fname)
+int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue,
+                  int listen_port, const char *prog_fname)
 {
 	if (socket == NULL || *socket != NULL) {
 		return KNOT_EINVAL;
@@ -521,7 +522,7 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 		return KNOT_NET_ESOCKET;
 	}
 
-	int ret = kxsk_socket_start(iface, (*socket)->if_queue, (*socket)->xsk);
+	int ret = kxsk_socket_start(iface, (*socket)->if_queue, listen_port, (*socket)->xsk);
 	if (ret != KNOT_EOK) {
 		xsk_socket__delete((*socket)->xsk);
 		xsk_umem__delete((*socket)->umem->umem);
