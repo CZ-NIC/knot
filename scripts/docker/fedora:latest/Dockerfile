@@ -10,6 +10,7 @@ RUN dnf -y install \
 	'make' \
 	'pkgconfig' \
 	'pkgconfig(gnutls)' \
+	'pkgconfig(libbpf)' \
 	'pkgconfig(libcap-ng)' \
 	'pkgconfig(libedit)' \
 	'pkgconfig(libfstrm)' \
