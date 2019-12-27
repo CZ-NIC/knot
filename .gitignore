@@ -59,6 +59,10 @@ version.h
 # zscanner
 /src/libzscanner/scanner.c
 
+# xdp
+/src/libknot/xdp/bpf-kernel.ll
+!/src/libknot/xdp/Makefile
+
 # Binaries
 /src/kdig
 /src/khost
