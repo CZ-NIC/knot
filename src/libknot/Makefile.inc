@@ -81,6 +81,5 @@ libknot_la_SOURCES = \
 if ENABLE_XDP
 libknot_la_SOURCES += \
 	libknot/xdp/af_xdp.c                    \
-        libknot/xdp/bpf-kernel.c                \
         libknot/xdp/bpf-user.c
 endif ENABLE_XDP

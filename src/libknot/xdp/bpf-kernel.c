@@ -3,9 +3,10 @@
 #include <linux/if_ether.h>
 #include <linux/ipv6.h>
 #include <linux/udp.h>
-#include "contrib/bpf/bpf_helpers.h"
-#include "contrib/bpf/bpf_endian.h"
-#include "contrib/bpf/parsing_helpers.h"
+
+#include "bpf/bpf_helpers.h"
+#include "bpf/bpf_endian.h"
+#include "bpf/parsing_helpers.h"
 
 /** Assume netdev has no more than 64 queues
  * LATER: it might be better to detect this on startup time (per-device). */

@@ -3,9 +3,6 @@ src/contrib/base32hex.c
 src/contrib/base32hex.h
 src/contrib/base64.c
 src/contrib/base64.h
-src/contrib/bpf/bpf_endian.h
-src/contrib/bpf/bpf_helpers.h
-src/contrib/bpf/parsing_helpers.h
 src/contrib/ctype.h
 src/contrib/dnstap/convert.c
 src/contrib/dnstap/convert.h
@@ -370,6 +367,9 @@ src/libknot/xdp/af_xdp.h
 src/libknot/xdp/bpf-kernel.c
 src/libknot/xdp/bpf-user.c
 src/libknot/xdp/bpf-user.h
+src/libknot/xdp/bpf/bpf_endian.h
+src/libknot/xdp/bpf/bpf_helpers.h
+src/libknot/xdp/bpf/parsing_helpers.h
 src/libknot/yparser/yparser.c
 src/libknot/yparser/yparser.h
 src/libknot/yparser/ypbody.c
