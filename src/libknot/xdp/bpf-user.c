@@ -14,8 +14,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "contrib/bpf/bpf_endian.h"
 #include "libknot/xdp/bpf-user.h"
+
+#include "libknot/endian.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -146,7 +147,7 @@ int kxsk_socket_start(const struct kxsk_iface *iface, int queue_id,
 	if (err)
 		return err;
 
-	int qid = bpf_htons(listen_port);
+	int qid = htobe16(listen_port);
 	err = bpf_map_update_elem(iface->qidconf_map_fd, &queue_id, &qid, 0);
 	if (err)
 		bpf_map_delete_elem(iface->xsks_map_fd, &queue_id);
