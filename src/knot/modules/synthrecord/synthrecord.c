@@ -225,14 +225,25 @@ static int forward_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 	}
 
 	// Copy address part.
-	int addr_len = label[0] - tpl->prefix_len;
+	unsigned addr_len = label[0] - tpl->prefix_len;
 	memcpy(addr_str, label + 1 + tpl->prefix_len, addr_len);
 	addr_str[addr_len] = '\0';
 
-	// Determine query family: v6 if *-ABCD.zone.
-	const char *last_octet = addr_str + addr_len;
-	while (last_octet > addr_str && is_xdigit(*--last_octet));
-	*addr_family = (last_octet + 5 == addr_str + addr_len ? AF_INET6 : AF_INET);
+	// Determine address family.
+	unsigned hyphen_cnt = 0;
+	const char *ch = addr_str;
+	while (hyphen_cnt < 4 && ch < addr_str + addr_len) {
+		if (*ch == '-') {
+			hyphen_cnt++;
+			if (*++ch == '-') { // Check for shortened IPv6 notation.
+				hyphen_cnt = 4;
+				break;
+			}
+		}
+		ch++;
+	}
+	// Valid IPv4 address looks like A-B-C-D.
+	*addr_family = (hyphen_cnt != 3 ? AF_INET6 : AF_INET);
 
 	// Restore correct address format.
 	const char sep = str_separator(*addr_family);
