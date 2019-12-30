@@ -186,6 +186,8 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 		*addr_family = AF_INET6;
 
 		// 32 1-char labels.
+		int compressed = 0;
+		unsigned out_len = 0;
 		const uint8_t *l = label;
 		for (int i = 0; i < 8; i++) {
 			// Check for 1-char labels.
@@ -195,12 +197,56 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 			union {
 				uint32_t b32;
 				uint8_t b4[4];
-			} block = {
-				.b4 = { l[1], l[3], l[5], l[7] }
-			};
+			} block = { .b4 = { l[1], l[3], l[5], l[7] } };
 			l += 8;
-		}
 
+			if (block.b32 == 0 && i > 1) {
+				switch (compressed) {
+				case 0: // Start compression.
+					addr_str[out_len++] = ':';
+					compressed = 1;
+					continue;
+				case 1: // Continue compression.
+					if (i < 7) {
+						break;
+					}
+					// Don't compress last block.
+					// FALLTHROUGH
+				case 2:
+					addr_str[out_len++] = ':';
+					addr_str[out_len++] = '0';
+					continue;
+				default:
+					assert(0);
+					return KNOT_EINVAL;
+				}
+			} else {
+				if (compressed == 1) { // Finish compression.
+					compressed = 2;
+				}
+				addr_str[out_len++] = ':';
+				bool zero = true;
+				if (block.b4[0] != 0) {
+					addr_str[out_len++] = block.b4[0];
+					zero = false;
+				}
+				if (!zero || block.b4[1] != 0) {
+					addr_str[out_len++] = block.b4[1];
+					zero = false;
+				}
+				if (!zero || block.b4[2] != 0) {
+					addr_str[out_len++] = block.b4[2];
+					zero = false;
+				}
+				if (!zero || block.b4[3] != 0) {
+					addr_str[out_len++] = block.b4[3];
+				}
+			}
+		}
+		addr_str[out_len] = '\0';
+		label += 8;
+
+		/*
 		// 1-char labels + separators.
 		const int addr_len = IPV6_ADDR_LABELS + 7;
 		for (int i = 1; i <= addr_len; i++) {
@@ -215,6 +261,7 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 			}
 		}
 		addr_str[addr_len] = '\0';
+		*/
 
 		if (!knot_dname_is_equal(label, IPV6_ARPA_DNAME)) {
 			return KNOT_EINVAL;
