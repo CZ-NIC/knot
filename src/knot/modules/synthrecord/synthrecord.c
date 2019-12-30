@@ -226,6 +226,7 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 		*addr_family = AF_INET6;
 
 		addr_block_t blocks[8];
+		int compr_start = -1, compr_end = -1;
 
 		// Process 32 1-char labels.
 		const uint8_t *l = label;
@@ -236,13 +237,50 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 				return ret;
 			}
 			l += 8;
+
+			/* The Unicode string MUST NOT contain "--" in the third and fourth
+			   character positions and MUST NOT start or end with a "-".
+			   So we will not compress first, second, and last address blocks
+			   for simplicity. And we will not compress a single block.
+
+			   i:             0 1 2 3 4 5 6 7
+			   label block:   H:G:F:E:D:C:B:A
+			   address block: A B C D E F G H
+			   compressibles:     0 0 0 0 0
+			                      0 0 0 0
+			                      0 0 0
+			                      0 0
+			 */
+			if (i < 2 || i > 5) {
+				continue;
+			}
+			const uint64_t *bi_block = (const uint64_t *)block;
+			// Check for trailing zero dual-blocks.
+			if (*bi_block == 0x3030303030303030ULL) {
+				if (compr_end == -1) { // Set compression end.
+					compr_end = 8 - i;
+				} else if (i == 5 && compr_start == -1) { // Set max compression start.
+					compr_start = 7 - i;
+				}
+			} else {
+				// Set compression start.
+				if (compr_end != -1 && compr_start == -1) {
+					compr_start = 8 - i;
+				}
+			}
 		}
 
 		// Write address blocks.
 		unsigned addr_len = 0;
 		for (int i = 0; i < 8; i++) {
-			addr_len += block_write(&blocks[i], addr_str + addr_len);
-			if (i < 7) {
+			if (compr_start == -1 || i < compr_start || i > compr_end) {
+				// Write regular address block.
+				addr_len += block_write(&blocks[i], addr_str + addr_len);
+				if (i < 7) {
+					addr_str[addr_len++] = ':';
+				}
+			} else if (compr_start != -1 && compr_end == i) {
+				// Write compression double colon.
 				addr_str[addr_len++] = ':';
 			}
 		}
