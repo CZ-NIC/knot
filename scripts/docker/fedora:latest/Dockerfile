@@ -5,7 +5,9 @@ RUN dnf -y upgrade
 RUN dnf -y install \
 	'autoconf' \
 	'automake' \
+	'clang' \
 	'libtool' \
+	'llvm' \
 	'lmdb-devel' \
 	'make' \
 	'pkgconfig' \
