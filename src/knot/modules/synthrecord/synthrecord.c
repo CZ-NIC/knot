@@ -115,6 +115,44 @@ typedef struct {
 	synth_templ_addr_t *addr;
 } synth_template_t;
 
+typedef union {
+	uint32_t b32;
+	uint8_t b4[4];
+} addr_block_t;
+
+static int block_fill(addr_block_t *block, const uint8_t *label)
+{
+	// Check for 1-char labels.
+	if (label[0] != 1 || label[2] != 1 || label[4] != 1 || label[6] != 1) {
+		return KNOT_EINVAL;
+	}
+
+	block->b4[0] = label[7];
+	block->b4[1] = label[5];
+	block->b4[2] = label[3];
+	block->b4[3] = label[1];
+
+	return KNOT_EOK;
+}
+
+static unsigned block_write(addr_block_t *block, char *addr_str)
+{
+	unsigned len = 0;
+
+	if (block->b4[0] != '0') {
+		addr_str[len++] = block->b4[0];
+	}
+	if (len > 0 || block->b4[1] != '0') {
+		addr_str[len++] = block->b4[1];
+	}
+	if (len > 0 || block->b4[2] != '0') {
+		addr_str[len++] = block->b4[2];
+	}
+	addr_str[len++] = block->b4[3];
+
+	return len;
+}
+
 /*! \brief Substitute all occurrences of given character. */
 static void str_subst(char *str, size_t len, char from, char to)
 {
@@ -185,20 +223,29 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 	case IPV6_ADDR_LABELS + ARPA_ZONE_LABELS:
 		*addr_family = AF_INET6;
 
-		// 1-char labels + separators.
-		const int addr_len = IPV6_ADDR_LABELS + 7;
-		for (int i = 1; i <= addr_len; i++) {
-			if (i % 5 == 0) {
-				addr_str[addr_len - i] = ':';
-			} else if (label[0] == 1) {
-				addr_str[addr_len - i] = label[1];
-				label = knot_wire_next_label(label, wire);
-				assert(label);
-			} else {
-				return KNOT_EINVAL;
+		addr_block_t blocks[8];
+
+		// Process 32 1-char labels.
+		const uint8_t *l = label;
+		for (int i = 0; i < 8; i++) {
+			addr_block_t *block = &blocks[7 - i];
+			int ret = block_fill(block, l);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			l += 8;
+		}
+
+		// Write address blocks.
+		unsigned addr_len = 0;
+		for (int i = 0; i < 8; i++) {
+			addr_len += block_write(&blocks[i], addr_str + addr_len);
+			if (i < 7) {
+				addr_str[addr_len++] = ':';
 			}
 		}
 		addr_str[addr_len] = '\0';
+		label += 8 * 8;
 
 		if (!knot_dname_is_equal(label, IPV6_ARPA_DNAME)) {
 			return KNOT_EINVAL;
