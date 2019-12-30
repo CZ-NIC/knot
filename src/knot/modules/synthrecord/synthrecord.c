@@ -128,10 +128,7 @@ static void str_subst(char *str, size_t len, char from, char to)
 /*! \brief Separator character for address family. */
 static char str_separator(int addr_family)
 {
-	if (addr_family == AF_INET6) {
-		return ':';
-	}
-	return '.';
+	return (addr_family == AF_INET6) ? ':' : '.';
 }
 
 /*! \brief Return true if query type is satisfied with provided address family. */
@@ -290,7 +287,7 @@ static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
 static int reverse_rr(char *addr_str, const synth_template_t *tpl, knot_pkt_t *pkt,
                       knot_rrset_t *rr, int addr_family)
 {
-	// Synthetize PTR record data.
+	// Synthesize PTR record data.
 	knot_dname_storage_t ptrname;
 	if (synth_ptrname(ptrname, addr_str, tpl, addr_family) == NULL) {
 		return KNOT_EINVAL;
@@ -404,7 +401,7 @@ static knotd_in_state_t template_match(knotd_in_state_t state, const synth_templ
 		return state;
 	}
 
-	// Synthetise record from template.
+	// Synthesize record from template.
 	knot_rrset_t *rr = synth_rr(addr_str, tpl, pkt, qdata, provided_af);
 	if (rr == NULL) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
