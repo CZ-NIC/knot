@@ -185,6 +185,22 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 	case IPV6_ADDR_LABELS + ARPA_ZONE_LABELS:
 		*addr_family = AF_INET6;
 
+		// 32 1-char labels.
+		const uint8_t *l = label;
+		for (int i = 0; i < 8; i++) {
+			// Check for 1-char labels.
+			if (l[0] != 1 || l[2] != 1 || l[4] != 1 || l[6] != 1) {
+				return KNOT_EINVAL;
+			}
+			union {
+				uint32_t b32;
+				uint8_t b4[4];
+			} block = {
+				.b4 = { l[1], l[3], l[5], l[7] }
+			};
+			l += 8;
+		}
+
 		// 1-char labels + separators.
 		const int addr_len = IPV6_ADDR_LABELS + 7;
 		for (int i = 1; i <= addr_len; i++) {
