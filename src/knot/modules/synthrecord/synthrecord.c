@@ -224,6 +224,7 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 		*addr_family = AF_INET6;
 
 		addr_block_t blocks[8];
+		int compr_start = -1, compr_end = -1;
 
 		// Process 32 1-char labels.
 		const uint8_t *l = label;
@@ -234,13 +235,33 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 				return ret;
 			}
 			l += 8;
+
+			// The Unicode string MUST NOT contain "--" in the third and fourth
+			// character positions and MUST NOT start or end with a "-".
+			if (i < 2 || i > 5) {
+				continue;
+			}
+			const uint64_t *bi_block = (const uint64_t *)block;
+			if (*bi_block == 0x3030303030303030LLU) {
+				if (compr_end == -1) {
+					compr_end = 8 - i;
+				}
+			} else {
+				if (compr_end != -1 && compr_start == -1) {
+					compr_start = 8 - i;
+				}
+			}
 		}
 
 		// Write address blocks.
 		unsigned addr_len = 0;
 		for (int i = 0; i < 8; i++) {
-			addr_len += block_write(&blocks[i], addr_str + addr_len);
-			if (i < 7) {
+			if (compr_start == -1 || i < compr_start || compr_end < i) {
+				addr_len += block_write(&blocks[i], addr_str + addr_len);
+				if (i < 7) {
+					addr_str[addr_len++] = ':';
+				}
+			} else if (compr_start != -1 && compr_end == i) {
 				addr_str[addr_len++] = ':';
 			}
 		}
