@@ -51,7 +51,7 @@ for (addr, reverse, forward) in static_map:
 # Check positive dynamic reverse records
 dynamic_map = [ ("192.168.1.1", "1." + zone[REV4].name, "dynamic-192-168-1-1." + zone[FWD].name),
                 ("2620:0:b61::1", "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV6].name,
-                 "dynamic-2620-0000-0b61-0000-0000-0000-0000-0001." + zone[FWD].name) ]
+                 "dynamic-2620-0-b61--1." + zone[FWD].name) ]
 for (_, reverse, forward) in dynamic_map:
     resp = knot.dig(reverse, "PTR", dnssec=True)
     resp.check(forward, rcode="NOERROR", flags="QR AA", ttl=900)
