@@ -74,7 +74,13 @@ resp = knot.dig("192-168-0-1.forward", "A", dnssec=True)
 resp.check("192.168.0.1", rcode="NOERROR", ttl=3600)
 
 # Check positive dynamic forward records
-for (addr, reverse, forward) in dynamic_map:
+forward_extra = [ ("2620:0:b61::", "", "dynamic-2620-0-b61--." + zone[FWD].name),
+                  ("2620:0:b61::1", "", "dynamic-2620-0-b61--1." + zone[FWD].name),
+                  ("2620:0:b61::10", "", "dynamic-2620-0-b61--10." + zone[FWD].name),
+                  ("2620:0:b61::100", "", "dynamic-2620-0-b61--100." + zone[FWD].name),
+                  ("2620:0:b61::1000", "", "dynamic-2620-0-b61--1000." + zone[FWD].name),
+                  ("2620:0:b61::", "", "dynamic-2620-0-b61-0-0-0-0-0." + zone[FWD].name) ]
+for (addr, reverse, forward) in dynamic_map + forward_extra:
     rrtype = "AAAA" if ":" in addr else "A"
     resp = knot.dig(forward, rrtype, dnssec=True)
     resp.check(addr, rcode="NOERROR", flags="QR AA", ttl=900)
