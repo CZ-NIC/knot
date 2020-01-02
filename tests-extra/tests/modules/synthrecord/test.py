@@ -13,12 +13,14 @@ ModSynthRecord.check()
 FWD  = 0
 REV4 = 1
 REV6 = 2
+REV  = 3
 
 # Initialize server configuration
 knot = t.server("knot")
 zone = t.zone("forward.", storage=".") + \
        t.zone("1.168.192.in-addr.arpa.", storage=".") + \
-       t.zone("1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.", storage=".")
+       t.zone("1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.", storage=".") + \
+       t.zone("ip6.arpa.", storage=".")
 t.link(zone, knot)
 
 # Enable DNSSEC
@@ -30,6 +32,7 @@ knot.add_module(zone[FWD],  ModSynthRecord("forward", None,        None, "192.16
 knot.add_module(zone[FWD],  ModSynthRecord("forward", "dynamic-", "900", "[ 192.168.1.0-192.168.1.127, 2620:0:b61::/52 ]"))
 knot.add_module(zone[REV4], ModSynthRecord("reverse", "dynamic-", "900", "[ 192.168.3.0/25, 192.168.1.0/25, 192.168.2.0/25 ]", "forward."))
 knot.add_module(zone[REV6], ModSynthRecord("reverse", "dynamic-", "900", "2620:0000:0b61::-2620:0000:0b61:0fff:ffff:ffff:ffff:ffff", "forward."))
+knot.add_module(zone[REV],  ModSynthRecord("reverse", "",         "900", "::0/0", "forward."))
 
 t.start()
 
@@ -51,7 +54,18 @@ for (addr, reverse, forward) in static_map:
 # Check positive dynamic reverse records
 dynamic_map = [ ("192.168.1.1", "1." + zone[REV4].name, "dynamic-192-168-1-1." + zone[FWD].name),
                 ("2620:0:b61::1", "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV6].name, "dynamic-2620-0-b61--1." + zone[FWD].name) ]
-for (_, reverse, forward) in dynamic_map:
+#                       <     > <     > <     > <     > <     > <     > <     > <     >
+reverse_extra = [ ("", "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV].name, "0-0--0." + zone[FWD].name),
+                  ("", "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV].name, "0-0--1." + zone[FWD].name),
+                  ("", "0.0.0.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV].name, "0-0--1-0." + zone[FWD].name),
+                  ("", "0.0.0.0.0.0.0.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV].name, "0-0--1-0-0." + zone[FWD].name),
+                  ("", "0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV].name, "0-0-0-0-1--0." + zone[FWD].name),
+                  ("", "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0." + zone[REV].name, "0-0-0-1--0." + zone[FWD].name),
+                  ("", "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.0.0.0.0.0.0.0.0." + zone[REV].name, "0-0-1--0." + zone[FWD].name),
+                  ("", "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.0.0.0.0." + zone[REV].name, "0-1--0." + zone[FWD].name),
+                  ("", "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0." + zone[REV].name, "1-0--0." + zone[FWD].name),
+                  ("", "0.0.0.1.0.0.2.0.0.3.0.0.4.0.0.0.a.b.c.d.0.e.f.0.a.a.0.0.0.0.b.b." + zone[REV].name, "bb00-aa-fe0-dcba-4-30-200-1000." + zone[FWD].name) ]
+for (_, reverse, forward) in dynamic_map + reverse_extra:
     resp = knot.dig(reverse, "PTR", dnssec=True)
     resp.check(forward, rcode="NOERROR", flags="QR AA", ttl=900)
 
