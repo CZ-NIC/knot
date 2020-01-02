@@ -1,0 +1,10 @@
+$ORIGIN ip6.arpa.
+$TTL 172800     ; 2 days
+@                   IN SOA  localhost root. (
+                                43         ; serial
+                                7200       ; refresh (2 hours)
+                                300        ; retry (5 minutes)
+                                2419200    ; expire (4 weeks)
+                                10800      ; minimum (3 hours)
+                                )
+                        NS      localhost
