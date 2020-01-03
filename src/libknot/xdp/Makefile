@@ -9,6 +9,5 @@ bpf-kernel.o: bpf-kernel.ll
 	xxd -i bpf-kernel.o > bpf-kernel-obj.c
 
 clean:
-	rm -f bpf-kernel.ll bpf-kernel.o
-	cat bpf-kernel-obj.c.default > bpf-kernel-obj.c
+	rm -f bpf-kernel.ll bpf-kernel.o bpf-kernel-obj.c
 
