@@ -599,13 +599,13 @@ void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t *m
 
 _public_
 int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue,
-                  int listen_port, const char *prog_fname)
+                  int listen_port)
 {
 	if (socket == NULL || *socket != NULL) {
 		return KNOT_EINVAL;
 	}
 
-	struct kxsk_iface *iface = kxsk_iface_new(ifname, prog_fname);
+	struct kxsk_iface *iface = kxsk_iface_new(ifname);
 	if (!iface) {
 		return KNOT_EINVAL;
 	}
