@@ -32,7 +32,7 @@ typedef struct {
 struct knot_xsk_socket;
 
 int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue,
-                  int listen_port, const char *prog_fname);
+                  int listen_port);
 
 void knot_xsk_deinit(struct knot_xsk_socket *socket);
 
