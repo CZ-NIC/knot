@@ -94,7 +94,7 @@ typedef struct knot_xsk_socket {
  * Note: if one is loaded on the interface already, we assume it's ours.
  * LATER: it might be possible to check, e.g. by naming our maps unusually.
  */
-struct kxsk_iface * kxsk_iface_new(const char *ifname, const char *prog_fname);
+struct kxsk_iface * kxsk_iface_new(const char *ifname);
 
 /** Undo kxsk_iface_new().  It's always freed, even if some problems happen.
  *

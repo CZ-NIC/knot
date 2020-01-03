@@ -14,9 +14,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "libknot/xdp/bpf-kernel-obj.h"
 #include "libknot/xdp/bpf-user.h"
 
 #include "libknot/endian.h"
+#include "libknot/error.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -25,7 +27,6 @@
 
 #include <bpf/bpf.h>
 #include <net/if.h>
-
 
 static int ensure_udp_prog(const struct kxsk_iface *iface, const char *prog_fname)
 {
@@ -58,6 +59,43 @@ static int ensure_udp_prog(const struct kxsk_iface *iface, const char *prog_fnam
 	}
 
 	return prog_fd;
+}
+
+static int array2file(char *filename, const uint8_t *array, unsigned len)
+{
+	int fd = mkstemp(filename);
+	if (fd < 0) {
+		return -errno;
+	}
+
+	int ret = write(fd, array, len);
+	if (ret < len) {
+		return -errno;
+	}
+
+	ret = close(fd);
+	if (ret < 0) {
+		return -errno;
+	}
+
+	return KNOT_EOK;
+}
+
+static int ensure_udp_prog_builtin(const struct kxsk_iface *iface)
+{
+	if (bpf_kernel_o_len < 2) {
+		return KNOT_ENOTSUP;
+	}
+
+	char filename[] = "/tmp/knotd_bpf_prog_obj_XXXXXX";
+	int ret = array2file(filename, bpf_kernel_o, bpf_kernel_o_len);
+	if (ret) {
+		return ret;
+	}
+
+	ret = ensure_udp_prog(iface, filename);
+	unlink(filename);
+	return ret;
 }
 
 /** Get FDs for the two maps and assign them into xsk_info-> fields.
@@ -162,7 +200,7 @@ int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id)
 	return err;
 }
 
-struct kxsk_iface * kxsk_iface_new(const char *ifname, const char *prog_fname)
+struct kxsk_iface * kxsk_iface_new(const char *ifname)
 {
 	struct kxsk_iface *iface = malloc(sizeof(*iface));
 	if (!iface) {
@@ -177,7 +215,7 @@ struct kxsk_iface * kxsk_iface_new(const char *ifname, const char *prog_fname)
 	}
 	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
 
-	int ret = ensure_udp_prog(iface, prog_fname);
+	int ret = ensure_udp_prog_builtin(iface);
 	if (ret >= 0)
 		ret = get_bpf_maps(ret, iface);
 
