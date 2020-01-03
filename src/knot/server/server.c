@@ -358,7 +358,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 
 		ret = knot_xsk_init(new_if->sock_xdp + i, dev, i,
-		                    sockaddr_port(addr), "/bpf-kernel.o"); // FIXME
+		                    sockaddr_port(addr));
 		free(dev);
 		if (ret != KNOT_EOK) {
 			log_warning("failed to init XDP (%s)", knot_strerror(ret));
