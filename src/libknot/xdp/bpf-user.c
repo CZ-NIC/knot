@@ -28,7 +28,7 @@
 #include <bpf/bpf.h>
 #include <net/if.h>
 
-static int ensure_udp_prog(const struct kxsk_iface *iface, const char *prog_fname)
+static int ensure_udp_prog(struct kxsk_iface *iface, const char *prog_fname)
 {
 	int ret;
 
@@ -42,8 +42,7 @@ static int ensure_udp_prog(const struct kxsk_iface *iface, const char *prog_fnam
 	/* Use libbpf for extracting BPF byte-code from BPF-ELF object, and
 	 * loading this into the kernel via bpf-syscall */
 	int prog_fd;
-	struct bpf_object *obj; // TODO: leak or what?
-	ret = bpf_prog_load(prog_fname, BPF_PROG_TYPE_XDP, &obj, &prog_fd);
+	ret = bpf_prog_load(prog_fname, BPF_PROG_TYPE_XDP, &iface->prog_obj, &prog_fd);
 	if (ret) {
 		fprintf(stderr, "[kxsk] failed loading BPF program (%s) (%d): %s\n",
 			prog_fname, ret, strerror(-ret));
@@ -81,7 +80,7 @@ static int array2file(char *filename, const uint8_t *array, unsigned len)
 	return KNOT_EOK;
 }
 
-static int ensure_udp_prog_builtin(const struct kxsk_iface *iface)
+static int ensure_udp_prog_builtin(struct kxsk_iface *iface)
 {
 	if (bpf_kernel_o_len < 2) {
 		return KNOT_ENOTSUP;
@@ -228,15 +227,15 @@ struct kxsk_iface * kxsk_iface_new(const char *ifname)
 	iface->ifname = strdup(iface->ifname);
 	return iface;
 }
-int kxsk_iface_free(struct kxsk_iface *iface, bool unload_bpf)
+void kxsk_iface_free(struct kxsk_iface *iface, bool unload_bpf)
 {
 	unget_bpf_maps(iface);
+
 	if (unload_bpf) {
 		int ret = bpf_set_link_xdp_fd(iface->ifindex, -1, 0);
-		if (ret) return ret;
+		printf("set link fd %d (%s) %d\n", ret, strerror(errno), iface->ifindex);
+		(void)bpf_object__close(iface->prog_obj);
 	}
 	free((char *)/*const-cast*/iface->ifname);
 	free(iface);
-	return 0;
 }
-
