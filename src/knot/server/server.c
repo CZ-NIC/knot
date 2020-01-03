@@ -364,6 +364,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			log_warning("failed to init XDP (%s)", knot_strerror(ret));
 		} else {
 			new_if->fd_xdp[i] = knot_xsk_get_poll_fd(new_if->sock_xdp[i]);
+			new_if->fd_xdp_count += 1;
 		}
 #endif
 	}
