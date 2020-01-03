@@ -33,13 +33,13 @@ Result:
 
 .. code-block:: console
 
-   $ kdig AAAA dynamic-2620-0000-0b61-0100-0000-0000-0000-0001.test.
+   $ kdig AAAA dynamic-2620-0-b61-100--1.test.
    ...
    ;; QUESTION SECTION:
-   ;; dynamic-2620-0000-0b61-0100-0000-0000-0000-0001.test. IN AAAA
+   ;; dynamic-2620-0-b61-100--1.test. IN AAAA
 
    ;; ANSWER SECTION:
-   dynamic-2620-0000-0b61-0100-0000-0000-0000-0001.test. 400 IN AAAA 2620:0:b61:100::1
+   dynamic-2620-0-b61-100--1.test. 400 IN AAAA 2620:0:b61:100::1
 
 You can also have CNAME aliases to the dynamic records, which are going to be
 further resolved:
@@ -52,8 +52,8 @@ further resolved:
    ;; alias.test. IN AAAA
 
    ;; ANSWER SECTION:
-   alias.test. 3600 IN CNAME dynamic-2620-0000-0b61-0100-0000-0000-0000-0002.test.
-   dynamic-2620-0000-0b61-0100-0000-0000-0000-0002.test. 400 IN AAAA 2620:0:b61:100::2
+   alias.test. 3600 IN CNAME dynamic-2620-0-b61-100--2.test.
+   dynamic-2620-0-b61-100--2.test. 400 IN AAAA 2620:0:b61:100::2
 
 Automatic reverse records
 .........................
@@ -83,8 +83,7 @@ Result:
    ;; 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. IN PTR
 
    ;; ANSWER SECTION:
-   1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 400 IN PTR
-                                  dynamic-2620-0000-0b61-0000-0000-0000-0000-0001.test.
+   1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 400 IN PTR dynamic-2620-0-b61--1.test.
 
 Module reference
 ----------------
