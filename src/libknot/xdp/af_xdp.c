@@ -163,7 +163,7 @@ void knot_xsk_deinit(struct knot_xsk_socket *socket)
 	xsk_socket__delete(socket->xsk);
 	xsk_umem__delete(socket->umem->umem);
 
-	kxsk_iface_free((struct kxsk_iface *)/*const-cast*/socket->iface, false);
+	kxsk_iface_free((struct kxsk_iface *)/*const-cast*/socket->iface, true);
 	free(socket);
 }
 
