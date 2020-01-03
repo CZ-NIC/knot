@@ -55,6 +55,8 @@ struct kxsk_iface {
 	/* File-descriptors to BPF maps for the program running on the interface. */
 	int qidconf_map_fd;
 	int xsks_map_fd;
+
+	struct bpf_object *prog_obj;
 };
 
 struct xsk_umem_info {
@@ -101,7 +103,7 @@ struct kxsk_iface * kxsk_iface_new(const char *ifname);
  * Unloading the BPF program is optional, as keeping it only adds some overhead,
  * and in case of multi-process it isn't easy to find that we're the last instance.
  */
-int kxsk_iface_free(struct kxsk_iface *iface, bool unload_bpf);
+void kxsk_iface_free(struct kxsk_iface *iface, bool unload_bpf);
 
 /** Activate this AF_XDP socket through the BPF maps. */
 int kxsk_socket_start(const struct kxsk_iface *iface, int queue_id,
