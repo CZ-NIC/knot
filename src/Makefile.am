@@ -19,7 +19,3 @@ include $(srcdir)/libknot/Makefile.inc
 include $(srcdir)/libzscanner/Makefile.inc
 include $(srcdir)/knot/Makefile.inc
 include $(srcdir)/utils/Makefile.inc
-
-if ENABLE_XDP
-SUBDIRS = libknot/xdp
-endif ENABLE_XDP

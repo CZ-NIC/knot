@@ -1,2 +1,0 @@
-unsigned char bpf_kernel_o[] = { 0x00 };
-unsigned int bpf_kernel_o_len = 0;

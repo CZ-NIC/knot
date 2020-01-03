@@ -364,7 +364,6 @@ src/libknot/tsig.h
 src/libknot/wire.h
 src/libknot/xdp/af_xdp.c
 src/libknot/xdp/af_xdp.h
-src/libknot/xdp/bpf-kernel-obj.c.default
 src/libknot/xdp/bpf-kernel-obj.h
 src/libknot/xdp/bpf-kernel.c
 src/libknot/xdp/bpf-user.c
