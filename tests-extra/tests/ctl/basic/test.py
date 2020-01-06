@@ -215,6 +215,33 @@ isset("TXT" not in resp[ZONE_NAME][ZONE_NAME], "rrset TXT absence in apex")
 isset("A" not in resp[ZONE_NAME]["rrset." + ZONE_NAME], "rrset A absence")
 isset(("node." + ZONE_NAME) not in resp[ZONE_NAME], "node absence")
 
+# Check for proper handling of upper letter-case in the owner name.
+ctl.send_block(cmd="zone-begin")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-set", zone=ZONE_NAME, owner="lETter", ttl="3600", rtype="TXT", data="text")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-commit")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-read", zone=ZONE_NAME, owner="letter")
+resp = ctl.receive_block()
+isset("letter." + ZONE_NAME in resp[ZONE_NAME], "lower-cased and inserted node lETter")
+
+ctl.send_block(cmd="zone-begin")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-unset", zone=ZONE_NAME, owner="lETter")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-commit")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-read", zone=ZONE_NAME)
+resp = ctl.receive_block()
+isset("letter." + ZONE_NAME not in resp[ZONE_NAME], "lower-cased and removed node lETter")
+
 # Purge the zone data.
 ctl.send_block(cmd="zone-purge")
 resp = ctl.receive_block()
