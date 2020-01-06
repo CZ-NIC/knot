@@ -361,7 +361,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 
 		ret = knot_xsk_init(new_if->sock_xdp + i, dev, i,
-		                    sockaddr_port(addr));
+		                    sockaddr_port(addr), i == 0);
 		free(dev);
 		if (ret != KNOT_EOK) {
 			log_warning("failed to init XDP (%s)", knot_strerror(ret));
