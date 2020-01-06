@@ -202,11 +202,6 @@ AS_CASE([$enable_xdp],
 )
 
 AS_IF([test "$enable_xdp" = "yes"],[
-   AC_CHECK_PROG([have_clang],[clang],[yes],[no])
-   AS_IF([test "$have_clang" != "yes"],[AC_MSG_ERROR([clang not available])])
-   AC_CHECK_PROG([have_llc],[llc],[yes],[no])
-   AS_IF([test "$have_llc" != "yes"],[AC_MSG_ERROR([llc not available])])
-
    save_CFLAGS=$CFLAGS
    save_LIBS=$LIBS
    CFLAGS="$CFLAGS $libbpf_CFLAGS"
