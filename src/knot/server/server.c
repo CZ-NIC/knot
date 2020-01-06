@@ -212,6 +212,9 @@ static int iface_addr2name(const struct sockaddr_storage *add, char **out)
 
 	for (ifas = orig; ifas != NULL; ifas = ifas->ifa_next) {
 		const struct sockaddr_storage *ifss = (struct sockaddr_storage *)ifas->ifa_addr; // ??
+		if (!ifss) { // allowed; observed on interfaces without any address
+			continue;
+		}
 
 		if ((ifss->ss_family == add->ss_family && sockaddr_is_any(add)) ||
 		    sockaddr_net_match(ifss, add, 64)) { // sockaddr_cmp() compares also port numbers
