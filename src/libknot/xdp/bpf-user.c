@@ -30,19 +30,10 @@
 
 static int ensure_udp_prog(struct kxsk_iface *iface, const char *prog_fname)
 {
-	int ret;
-
-	uint32_t prog_id;
-	ret = bpf_get_link_xdp_id(iface->ifindex, &prog_id, 0);
-	if (ret)
-		return -abs(ret);
-	if (prog_id)
-		return bpf_prog_get_fd_by_id(prog_id);
-
 	/* Use libbpf for extracting BPF byte-code from BPF-ELF object, and
 	 * loading this into the kernel via bpf-syscall */
 	int prog_fd;
-	ret = bpf_prog_load(prog_fname, BPF_PROG_TYPE_XDP, &iface->prog_obj, &prog_fd);
+	int ret = bpf_prog_load(prog_fname, BPF_PROG_TYPE_XDP, &iface->prog_obj, &prog_fd);
 	if (ret) {
 		fprintf(stderr, "[kxsk] failed loading BPF program (%s) (%d): %s\n",
 			prog_fname, ret, strerror(-ret));
@@ -54,7 +45,7 @@ static int ensure_udp_prog(struct kxsk_iface *iface, const char *prog_fname)
 		fprintf(stderr, "bpf_set_link_xdp_fd() == %d\n", ret);
 		return -abs(ret);
 	} else {
-		fprintf(stderr, "[kxsk] loaded BPF program\n");
+		fprintf(stderr, "[kxsk] loaded BPF program %d %d\n", iface->ifindex, prog_fd);
 	}
 
 	return prog_fd;
@@ -199,9 +190,9 @@ int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id)
 	return err;
 }
 
-struct kxsk_iface * kxsk_iface_new(const char *ifname)
+struct kxsk_iface * kxsk_iface_new(const char *ifname, bool load_bpf)
 {
-	struct kxsk_iface *iface = malloc(sizeof(*iface));
+	struct kxsk_iface *iface = calloc(1, sizeof(*iface));
 	if (!iface) {
 		errno = ENOMEM;
 		return NULL;
@@ -214,7 +205,19 @@ struct kxsk_iface * kxsk_iface_new(const char *ifname)
 	}
 	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
 
-	int ret = ensure_udp_prog_builtin(iface);
+	int ret;
+	if (load_bpf) {
+		ret = ensure_udp_prog_builtin(iface);
+		printf("fd1 %d\n", ret);
+	} else {
+		uint32_t prog_id = 0;
+		ret = bpf_get_link_xdp_id(iface->ifindex, &prog_id, 0);
+		if (!ret && prog_id) {
+			ret = bpf_prog_get_fd_by_id(prog_id);
+		}
+		printf("fd2 %d\n", ret);
+	}
+
 	if (ret >= 0)
 		ret = get_bpf_maps(ret, iface);
 
@@ -227,15 +230,14 @@ struct kxsk_iface * kxsk_iface_new(const char *ifname)
 	iface->ifname = strdup(iface->ifname);
 	return iface;
 }
-void kxsk_iface_free(struct kxsk_iface *iface, bool unload_bpf)
+void kxsk_iface_free(struct kxsk_iface *iface)
 {
 	unget_bpf_maps(iface);
 
-	if (unload_bpf) {
-		int ret = bpf_set_link_xdp_fd(iface->ifindex, -1, 0);
-		printf("set link fd %d (%s) %d\n", ret, strerror(errno), iface->ifindex);
+	if (iface->prog_obj != NULL) {
 		(void)bpf_object__close(iface->prog_obj);
 	}
+
 	free((char *)/*const-cast*/iface->ifname);
 	free(iface);
 }
