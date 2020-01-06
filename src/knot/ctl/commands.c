@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -956,6 +956,7 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 		ret = KNOT_EPARSEFAIL;
 		goto parser_failed;
 	}
+	knot_dname_to_lower(scanner->r_owner);
 
 	// Create output rrset.
 	*rrset = knot_rrset_new(scanner->r_owner, scanner->r_type,
