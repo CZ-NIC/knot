@@ -251,6 +251,15 @@ Options
   (%u or specify hours). OCSP responses older than the specified period are
   considered invalid.
 
+**+**\ [\ **no**\ ]\ **https**\[\ =\ *URL*\]
+  Use HTTPS (DNS-over-HTTPS) in wire format (:rfc:`1035#section-4.2.1`).
+  It is also possible to specify URL=\[authority\]\[/path\] where request
+  will be send.
+
+**+**\ [\ **no**\ ]\ **https-method**\[\ =\ *METHOD*\]
+  Use HTTPS with specified HTTP METHOD=(*get*\|\ *post*). The default method
+  is GET for queries of less than 1024 bytes and POST for longer queries.
+
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
