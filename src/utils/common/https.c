@@ -24,6 +24,36 @@
 #include "utils/common/https.h"
 #include "utils/common/msg.h"
 
+int https_params_copy(https_params_t *dst, const https_params_t *src)
+{
+	if (dst == NULL || src == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	dst->enable = src->enable;
+	dst->method = src->method;
+	if (src->path != NULL) {
+		dst->path = strdup(src->path);
+		if (dst->path == NULL) {
+			return KNOT_ENOMEM;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+void https_params_clean(https_params_t *params)
+{
+	if (params == NULL) {
+		return;
+	}
+
+	params->enable = false;
+	params->method = GET;
+	free(params->path);
+	params->path = NULL;
+}
+
 #ifdef LIBNGHTTP2
 
 #define HTTP_STATUS_SUCCESS	200
@@ -183,36 +213,6 @@ static int https_on_header_callback(nghttp2_session *session, const nghttp2_fram
 		return https_send_dns_query(ctx, ctx->send_buf, ctx->send_buflen);
 	}
 	return KNOT_EOK;
-}
-
-int https_params_copy(https_params_t *dst, const https_params_t *src)
-{
-	if (dst == NULL || src == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	dst->enable = src->enable;
-	dst->method = src->method;
-	if (src->path != NULL) {
-		dst->path = strdup(src->path);
-		if (dst->path == NULL) {
-			return KNOT_ENOMEM;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-void https_params_clean(https_params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->enable = false;
-	params->method = GET;
-	free(params->path);
-	params->path = NULL;
 }
 
 int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *params)

@@ -251,6 +251,16 @@ Options
   (%u or specify hours). OCSP responses older than the specified period are
   considered invalid.
 
+**+**\ [\ **no**\ ]\ **https**\[\ =\ *URL*\]
+  Use HTTPS (DNS-over-HTTPS) in wire format (:rfc:`1035#section-4.2.1`).
+  It is also possible to specify URL=\[authority\]\[/path\] where request
+  will be send. Authority might also be specified as server name (parameter `@`).
+  Library *libnghttp2* is required.
+
+**+**\ [\ **no**\ ]\ **https-get**
+  Use HTTPS with HTTP/GET method instead of the default HTTP/POST method.
+  Library *libnghttp2* is required.
+
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
@@ -337,6 +347,12 @@ Examples
 
      $ kdig -d @185.49.141.38 +tls-ca +tls-host=getdnsapi.net \
        +tls-pin=foxZRnIh9gZpWnl+zEiKa0EJ2rdCGroMWm02gaxSc9S= soa example.com
+
+5. DNS over HTTPS examples (various DoH implementations)::
+
+     $ kdig @1.1.1.1 +https example.com.
+     $ kdig @193.17.47.1 +https=/doh example.com.
+     $ kdig @8.8.4.4 +https +https-get example.com.
 
 Files
 -----
