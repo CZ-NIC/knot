@@ -602,6 +602,7 @@ void print_packet(const knot_pkt_t *packet,
 	if (style->show_header) {
 		if (net != NULL) {
 			print_tls(&net->tls);
+			print_https(&net->https);
 		}
 		print_header(packet, style);
 	}
