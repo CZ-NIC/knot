@@ -18,7 +18,7 @@
 
 #ifdef LIBNGHTTP2
 
-static const char https_tmp_uri[] = "/dns-query?dns=";
+//static const char https_tmp_uri[] = "/dns-query?dns=";
 
 static const gnutls_datum_t https_protocols[] = {
 	{ (unsigned char *)"h2", 2 }
@@ -287,12 +287,16 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 
 static int https_send_dns_query_get(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
 {
-	const size_t dns_query_len = sizeof(https_tmp_uri) + 1 + (buf_len * 4) / 3;
+	const char *authority = (ctx->tls->params->hostname) ? ctx->tls->params->hostname : ctx->authority;
+	const char *path = (ctx->params->path) ? ctx->params->path : "/dns-query";
+	const size_t dns_query_len = strlen(path) + sizeof("?dns=") + 1 + (buf_len * 4) / 3;
 	uint8_t dns_query[dns_query_len];
-	memcpy(dns_query, https_tmp_uri, sizeof(https_tmp_uri));
+	strncpy(dns_query, path, dns_query_len);
+	strncat(dns_query, "?dns=", dns_query_len);
 
+	size_t tmp_strlen = strlen(dns_query);
 	int32_t ret = base64url_encode(buf, buf_len,
-		dns_query + sizeof(https_tmp_uri) - 1, dns_query_len - (sizeof(https_tmp_uri) - 2)
+		dns_query + tmp_strlen, dns_query_len - (tmp_strlen - 1)
 	);
 	if (ret < 0) {
 		return KNOT_EINVAL;
@@ -301,13 +305,14 @@ static int https_send_dns_query_get(https_ctx_t *ctx, const uint8_t *buf, const 
 	nghttp2_nv hdrs[] = {
 		MAKE_STATIC_NV(":method", "GET"),
 		MAKE_STATIC_NV(":scheme", "https"),
-		MAKE_NV(":authority", 10, ctx->authority, strlen(ctx->authority)),
-		MAKE_NV(":path", 5, dns_query, sizeof(https_tmp_uri) + ret - 2),
+		MAKE_NV(":authority", 10, authority, strlen(authority)),
+		MAKE_NV(":path", 5, dns_query, tmp_strlen + ret - 1),
 		MAKE_STATIC_NV("accept", "application/dns-message"),
 	};
 
 	const int id = nghttp2_submit_request(ctx->session, NULL, hdrs,
-	                                      sizeof(hdrs) / sizeof(*hdrs), NULL, NULL);
+	                                      sizeof(hdrs) / sizeof(*hdrs),
+										  NULL, NULL);
 	if (id < 0) {
 		return KNOT_NET_ESEND;
 	}
@@ -342,12 +347,14 @@ static int https_send_dns_query_post(https_ctx_t *ctx, const uint8_t *buf, const
 {
 	char content_length[sizeof(size_t) * 3 + 1];
 	int content_length_len = sprintf(content_length, "%ld", buf_len);
+	const char *authority = (ctx->tls->params->hostname) ? ctx->tls->params->hostname : ctx->authority;
+	const char *path = (ctx->params->path) ? ctx->params->path : "/dns-query";
 
 	nghttp2_nv hdrs[] = {
 		MAKE_STATIC_NV(":method", "POST"),
 		MAKE_STATIC_NV(":scheme", "https"),
-		MAKE_NV(":authority", 10, ctx->authority, strlen(ctx->authority)),
-		MAKE_STATIC_NV(":path", "/dns-query"),
+		MAKE_NV(":authority", 10, authority, strlen(authority)),
+		MAKE_NV(":path", 5, path, strlen(path)),
 		MAKE_STATIC_NV("accept", "application/dns-message"),
 		MAKE_STATIC_NV("content-type", "application/dns-message"),
 		MAKE_NV("content-length", 14, content_length, content_length_len)
@@ -365,7 +372,7 @@ static int https_send_dns_query_post(https_ctx_t *ctx, const uint8_t *buf, const
 
 	const int id = nghttp2_submit_request(ctx->session, NULL, hdrs,
 	                                      sizeof(hdrs) / sizeof(nghttp2_nv),
-	                                      &data_prd, NULL); //TODO POST
+	                                      &data_prd, NULL);
 	if (id < 0) {
 		return KNOT_NET_ESEND;
 	}
@@ -384,7 +391,7 @@ int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_
 		return KNOT_EINVAL;
 	}
 
-	if (HTTPS_USE_POST(buf_len)) {
+	if (ctx->params->method == POST || HTTPS_USE_POST(ctx->params->method, buf_len)) {
 		return https_send_dns_query_post(ctx, buf, buf_len);
 	} else {
 		return https_send_dns_query_get(ctx, buf, buf_len);
@@ -422,6 +429,18 @@ void https_ctx_deinit(https_ctx_t *ctx)
 
 	nghttp2_session_del(ctx->session);
 	pthread_mutex_destroy(&ctx->recv_mx);
+}
+
+
+void print_https(const https_ctx_t *ctx)
+{
+	if (ctx == NULL) {
+		return;
+	}
+
+	const char *authority = (ctx->tls->params->hostname) ? ctx->tls->params->hostname : ctx->authority;
+	const char *path = (ctx->params->path) ? ctx->params->path : "/dns-query";
+	printf(";; HTTPS session (HTTP/2)-(%s%s)\n", authority, path);
 }
 
 #endif //LIBNGHTTP2
