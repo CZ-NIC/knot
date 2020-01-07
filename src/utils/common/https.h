@@ -18,10 +18,21 @@
 
 #include <stdbool.h>
 
+/*! \brief HTTP method to transfer query. */
+typedef enum {
+	DEFAULT, //Pick one using default algorithm
+	GET,
+	POST
+} https_method_t;
+
 /*! \brief HTTPS parameters. */
 typedef struct {
 	/*! Use HTTPS indicator. */
 	bool enable;
+	/*! HTTP method to transfer query. */
+	https_method_t method;
+	/*! Path */
+	char *path;
 } https_params_t;
 
 #ifdef LIBNGHTTP2
@@ -51,7 +62,7 @@ typedef struct {
 #define HTTPS_AUTHORITY_LEN (INET6_ADDRSTRLEN + 2)
 
 #define HTTPS_POST_THRESHOLD 1024UL
-#define HTTPS_USE_POST(S) (S >= HTTPS_POST_THRESHOLD)
+#define HTTPS_USE_POST(M, S) (M == DEFAULT && S >= HTTPS_POST_THRESHOLD)
 
 /*! \brief Structure that stores data source for DATA frames. */
 typedef struct {
@@ -138,5 +149,12 @@ int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len
  * \param ctx  HTTPS context.
  */
 void https_ctx_deinit(https_ctx_t *ctx);
+
+/*!
+ * \brief Prints information about HTTPS context.
+ *
+ * \param ctx  HTTPS context.
+ */
+void print_https(const https_ctx_t *ctx);
 
 #endif //LIBNGHTTP2
