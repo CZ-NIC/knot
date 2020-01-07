@@ -18,8 +18,6 @@
 
 #ifdef LIBNGHTTP2
 
-//static const char https_tmp_uri[] = "/dns-query?dns=";
-
 static const gnutls_datum_t https_protocols[] = {
 	{ (unsigned char *)"h2", 2 }
 };
@@ -290,13 +288,13 @@ static int https_send_dns_query_get(https_ctx_t *ctx, const uint8_t *buf, const 
 	const char *authority = (ctx->tls->params->hostname) ? ctx->tls->params->hostname : ctx->authority;
 	const char *path = (ctx->params->path) ? ctx->params->path : "/dns-query";
 	const size_t dns_query_len = strlen(path) + sizeof("?dns=") + 1 + (buf_len * 4) / 3;
-	uint8_t dns_query[dns_query_len];
+	char dns_query[dns_query_len];
 	strncpy(dns_query, path, dns_query_len);
 	strncat(dns_query, "?dns=", dns_query_len);
 
 	size_t tmp_strlen = strlen(dns_query);
 	int32_t ret = base64url_encode(buf, buf_len,
-		dns_query + tmp_strlen, dns_query_len - (tmp_strlen - 1)
+		(uint8_t *)dns_query + tmp_strlen, dns_query_len - (tmp_strlen - 1)
 	);
 	if (ret < 0) {
 		return KNOT_EINVAL;
