@@ -469,6 +469,10 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp, void 
 
 		size_t xdp_wrk_id = thread_id - udp_wrk - tcp_wrk;
 
+		if (xdp_wrk_id > iface->fd_xdp_count) {
+			return -1;
+		}
+
 		*socket_ctx = iface->sock_xdp[xdp_wrk_id];
 		return iface->fd_xdp[xdp_wrk_id];
 #else
@@ -510,6 +514,9 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, struct po
 
 	for (size_t i = 0; i < n_ifaces; i++) {
 		fds[i].fd = iface_udp_fd(&ifaces[i], thread_id, use_xdp, &socket_ctxs[i]);
+		if (fds[i].fd < 0) {
+			return 0;
+		}
 		fds[i].events = POLLIN;
 		fds[i].revents = 0;
 	}
