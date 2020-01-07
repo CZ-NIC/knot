@@ -34,6 +34,9 @@ typedef struct {
 	char *path;
 } https_params_t;
 
+int https_params_copy(https_params_t *dst, const https_params_t *src);
+void https_params_clean(https_params_t *params);
+
 #ifdef LIBNGHTTP2
 
 #include <netinet/in.h>
@@ -74,9 +77,6 @@ typedef struct {
 	bool read;
 	int32_t stream;
 } https_ctx_t;
-
-int https_params_copy(https_params_t *dst, const https_params_t *src);
-void https_params_clean(https_params_t *params);
 
 /*!
  * \brief Initialize HTTPS context.
