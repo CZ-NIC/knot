@@ -368,8 +368,7 @@ int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 	memcpy(h->eth.h_source, msg->eth_from, sizeof(msg->eth_from));
 	h->eth.h_proto = BS16(ETH_P_IP);
 
-	uint32_t eth_len = FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len + 4/*CRC*/;
-	// TODO compute eth CRC (also for IPv6)
+	uint32_t eth_len = FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len;
 
 	return pkt_send(socket, h->bytes - socket->umem->frames->bytes, eth_len);
 }
@@ -420,7 +419,7 @@ int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 	memcpy(h->eth.h_source, msg->eth_from, sizeof(msg->eth_from));
 	h->eth.h_proto = BS16(ETH_P_IPV6);
 
-	uint32_t eth_len = FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len + 4/*CRC*/;
+	uint32_t eth_len = FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len;
 
 	return pkt_send(socket, h->bytes - socket->umem->frames->bytes, eth_len);
 }
