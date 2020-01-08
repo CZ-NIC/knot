@@ -494,6 +494,7 @@ static int process_line(char *lp, void *arg)
 	if (ret != KNOT_EOK) {
 		DBG("operation '%s' failed (%s) on line '%s'\n",
 		    TOK_S(cmd), knot_strerror(ret), lp);
+		params->parser.error.counter = 0;
 	}
 
 	return ret;
