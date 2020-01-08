@@ -523,20 +523,15 @@ static int process_lines(knsupdate_params_t *params, FILE *input)
 	while (!params->stop && knot_getline(&buf, &buflen, input) != -1) {
 		/* Remove leading and trailing white space. */
 		char *line = strstrip(buf);
-		int call_ret = process_line(line, params);
+		ret = process_line(line, params);
 		memset(line, 0, strlen(line));
 		free(line);
-		if (call_ret != KNOT_EOK) {
-			/* Return the first error. */
-			if (ret == KNOT_EOK) {
-				ret = call_ret;
-			}
-
-			/* Exit if error and not interactive. */
-			if (!interactive) {
-				break;
-			}
+		/* Exit if error and not interactive. */
+		if (ret != KNOT_EOK && !interactive) {
+			break;
 		}
+		/* Line errors are not reported on exit when interactive. */
+		ret = KNOT_EOK;
 
 		/* Print program prompt if interactive. */
 		if (interactive && !params->stop) {
