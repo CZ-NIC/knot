@@ -813,15 +813,15 @@ static int opt_https(const char *arg, void *query)
 	q->https.enable = true;
 
 	if (arg) {
-		q->https.path = strchr(arg, '/');
-		if (q->https.path) {
-			free(q->tls.hostname);
-			q->tls.hostname = malloc((size_t)(q->https.path - arg + 1));
-			if (q->tls.hostname == NULL) {
-				return KNOT_EINVAL;
+		char *tmp_path = strchr(arg, '/');
+		if (tmp_path) {
+			free(q->https.path);
+			q->https.path = strdup(tmp_path);
+
+			if (tmp_path != arg) {
+				free(q->tls.hostname);
+				q->tls.hostname = strndup(arg, (size_t)(tmp_path - arg)); //TODO 
 			}
-			strncpy(q->tls.hostname, arg, (size_t)(q->https.path - arg));
-			q->tls.hostname[q->https.path - arg + 1] = '\0';
 			return opt_tls(NULL, query);
 		} else {
 			return opt_tls_hostname(arg, q);

@@ -100,12 +100,38 @@ static int https_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t f
 	assert(user_data);
 
 	https_ctx_t *ctx = (https_ctx_t *)user_data;
+	if (ctx->stream == stream_id) {
+		//TODO recv len bigger than buffer
+		memcpy(ctx->recv_buf, data, len);
+		ctx->recv_buflen = len;
+		ctx->read = false;
+		ctx->stream = 0;
+	}
+	return KNOT_EOK;
+}
 
-	//TODO recv len bigger than buffer
-	memcpy(ctx->buf, data, len);
-	ctx->buflen = len;
-	ctx->read = false;
+static int https_on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
+									const uint8_t *name, size_t namelen,
+									const uint8_t *value, size_t valuelen,
+									uint8_t flags, void *user_data)
+{
+	assert(user_data);
 
+	if (!strncmp("location", (const char *)name, namelen)) {
+		https_ctx_t *ctx = (https_ctx_t *)user_data;
+		struct http_parser_url redirect_url;
+
+		http_parser_parse_url(value, valuelen, 0, &redirect_url);
+		
+		if (redirect_url.field_set & (1 << UF_HOST)) {
+			snprintf(ctx->authority, redirect_url.field_data[UF_HOST].len + 1, "%s", &value[redirect_url.field_data[UF_HOST].off]);
+		}
+		if (redirect_url.field_set & (1 << UF_PATH)) {
+			ctx->path = (char*)calloc(redirect_url.field_data[UF_PATH].len + 1, sizeof(char));
+			snprintf(ctx->path, redirect_url.field_data[UF_PATH].len + 1, "%s", &value[redirect_url.field_data[UF_PATH].off]);
+		}
+		https_send_dns_query(ctx, ctx->send_buf, ctx->send_buflen);
+	}
 	return KNOT_EOK;
 }
 
@@ -127,6 +153,7 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
 	nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, https_on_frame_send_callback);
 	nghttp2_session_callbacks_set_recv_callback(callbacks, https_recv_callback);
 	nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, https_on_data_chunk_recv_callback);
+	nghttp2_session_callbacks_set_on_header_callback(callbacks, https_on_header_callback);
 
 	int ret = nghttp2_session_client_new(&(ctx->session), callbacks, ctx);
 	if (ret != 0) {
@@ -308,10 +335,10 @@ static int https_send_dns_query_get(https_ctx_t *ctx, const uint8_t *buf, const 
 		MAKE_STATIC_NV("accept", "application/dns-message"),
 	};
 
-	const int id = nghttp2_submit_request(ctx->session, NULL, hdrs,
+	ctx->stream= nghttp2_submit_request(ctx->session, NULL, hdrs,
 	                                      sizeof(hdrs) / sizeof(*hdrs),
 										  NULL, NULL);
-	if (id < 0) {
+	if (ctx->stream < 0) {
 		return KNOT_NET_ESEND;
 	}
 
@@ -368,10 +395,10 @@ static int https_send_dns_query_post(https_ctx_t *ctx, const uint8_t *buf, const
 		.read_callback = https_send_data_callback
 	};
 
-	const int id = nghttp2_submit_request(ctx->session, NULL, hdrs,
+	ctx->stream = nghttp2_submit_request(ctx->session, NULL, hdrs,
 	                                      sizeof(hdrs) / sizeof(nghttp2_nv),
 	                                      &data_prd, NULL);
-	if (id < 0) {
+	if (ctx->stream < 0) {
 		return KNOT_NET_ESEND;
 	}
 
@@ -389,6 +416,9 @@ int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_
 		return KNOT_EINVAL;
 	}
 
+	ctx->send_buf = buf;
+	ctx->send_buflen = buf_len;
+
 	if (ctx->params->method == POST || HTTPS_USE_POST(ctx->params->method, buf_len)) {
 		return https_send_dns_query_post(ctx, buf, buf_len);
 	} else {
@@ -403,8 +433,8 @@ int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len
 	}
 
 	pthread_mutex_lock(&ctx->recv_mx);
-	ctx->buf = buf;
-	ctx->buflen = buf_len;
+	ctx->recv_buf = buf;
+	ctx->recv_buflen = buf_len;
 
 	int ret = nghttp2_session_recv(ctx->session);
 	if (ret != 0) {
@@ -412,11 +442,11 @@ int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len
 		return KNOT_NET_ERECV;
 	}
 
-	ctx->buf = NULL;
+	ctx->recv_buf = NULL;
 
 	pthread_mutex_unlock(&ctx->recv_mx);
 
-	return ctx->buflen;
+	return ctx->recv_buflen;
 }
 
 void https_ctx_deinit(https_ctx_t *ctx)
