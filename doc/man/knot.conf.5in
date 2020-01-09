@@ -268,6 +268,21 @@ over TCP.
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fIDefault:\fP equal to the number of online CPUs, default value is at least 10
+.SS xdp\-workers
+.sp
+A number of XDP workers (threads) used to process incoming queries
+over UDP with the use of eXpress Data Path, bypassing Linux network stack.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+If set to zero, XDP is not initialized at all.
+.sp
+Pre\-requisite: compiled\-in support for XDP.
+.sp
+It\(aqs recommended to be set only if the server listens on one interface.
+The number of workers should match the number of network interface RX queues.
+.sp
+\fIDefault:\fP 0
 .SS background\-workers
 .sp
 A number of workers (threads) used to execute background operations (zone
