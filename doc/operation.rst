@@ -949,3 +949,49 @@ it is possible to create an arbitrary script (Python is supported at the moment)
 which could, for example, publish the data in the JSON format via HTTP(S)
 or upload the data to a more efficient time series database. Take a look into
 the python folder of the project for these scripts.
+
+.. _eXpress Data Path:
+
+eXpress Data Path
+=================
+
+This is an optional method to significantly improve the server's performance
+(queries per second) by bypassing Linux network stack. It works only with simple
+UDP queries, the rest is processed as usual by UDP and TCP workers.
+
+Pre-requisites
+--------------
+
+Linux kernel 5.x+, libbpf.
+
+Recommended new ixgbe or i40e network card drivers.
+
+Start knotd as root (it may drop to unpriv user after init).
+
+Notes
+-----
+
+The number of configured :ref:`server_xdp-workers` shall match the number of network
+card's queues.
+
+Don't attempt settings like::
+
+   # ip link set mtu $mtu dev $dev
+
+Troubleshooting
+---------------
+
+"Can't create socket" ... probably another instance is already using XDP on the same interface.
+
+"Invalid parameter" ... the network card driver is in an incosistent state. Try removing
+and inserting the kernel modules (ixgbe...) or rebooting the whole server.
+
+Re-building BPF program
+-----------------------
+
+The BPF program bytecode is (as a binary blob) part of Knot DNS source codes, in file
+``src/libknot/xdp/bpf-kernel-obj.c``. It may be re-generated with::
+
+   $ make -C src/libknot/xdp
+
+Pre-requisites: clang, llc, kernel-headers.
