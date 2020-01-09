@@ -147,7 +147,7 @@ See the following examples and :ref:`ACL section`.
           action: update
           update-type: [A, AAAA, MX] # Updates are only allowed to update records of the specified types
           update-owner: name         # The allowed owners are specified by the list on the next line
-          update-owner-name: [a.example.com, b.example.com, c.example.com]
+          update-owner-name: [a, b.example.com.] # Non-FQDN names are relative to the effective zone name
           update-owner-match: equal  # The owners of records in an update must be exactly equal to the names in the list
 
 .. NOTE::

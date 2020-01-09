@@ -458,8 +458,9 @@ acl:
 An ACL rule identifier.
 .SS address
 .sp
-An ordered list of IP addresses, network subnets, or network ranges. The query
-must match one of them. Empty value means that address match is not required.
+An ordered list of IP addresses, network subnets, or network ranges. The query\(aqs
+source address must match one of them. Empty value means that address match is not
+required.
 .sp
 \fIDefault:\fP not set
 .SS key
@@ -537,7 +538,10 @@ one domain set by \fI\%update\-owner\fP\&.
 .SS update\-owner\-name
 .sp
 A list of allowed owners of RRs in a zone update used with \fI\%update\-owner\fP
-set to \fBname\fP\&.
+set to \fBname\fP\&. Every listed owner name which is not FQDN (i.e. it doesn\(aqt end
+in a dot) is considered as if it was appended with the target zone name.
+Such a relative owner name specification allows better ACL rule reusability across
+multiple zones.
 .sp
 \fIDefault:\fP not set
 .SH CONTROL SECTION
