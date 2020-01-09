@@ -40,6 +40,7 @@ typedef struct {
 #include <poll.h>
 #include <assert.h>
 #include <pthread.h>
+#include <string.h>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -47,6 +48,8 @@ typedef struct {
 #include <nghttp2/nghttp2.h>
 
 #include "contrib/base64url.h"
+#include "contrib/url-parser/url_parser.h"
+
 #include "libknot/errcode.h"
 
 #include "utils/common/tls.h"
@@ -78,15 +81,23 @@ typedef struct {
 	//Contexts
 	nghttp2_session *session;
 	tls_ctx_t *tls;
-	char authority[HTTPS_AUTHORITY_LEN];
+	char *authority;
+	bool authority_alloc;
+	char *path;
+	bool path_alloc;
 
-	//Read locks
+	//Send destination
+	uint8_t *send_buf;
+	size_t send_buflen;
+
+	//Recv destination
+	uint8_t *recv_buf;
+	size_t recv_buflen;
+
+	//Recv locks
 	pthread_mutex_t recv_mx;
 	bool read;
-
-	//Read destination
-	uint8_t *buf;
-	size_t buflen;
+	int32_t stream;
 } https_ctx_t;
 
 /*!
