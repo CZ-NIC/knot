@@ -602,7 +602,9 @@ void print_packet(const knot_pkt_t *packet,
 	if (style->show_header) {
 		if (net != NULL) {
 			print_tls(&net->tls);
+#ifdef LIBNGHTTP2
 			print_https(&net->https);
+#endif
 		}
 		print_header(packet, style);
 	}

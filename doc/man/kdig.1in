@@ -275,7 +275,8 @@ It is also possible to specify URL=[authority][/path] where request
 will be send.
 .TP
 \fB+\fP[\fBno\fP]\fBhttps\-method\fP[=\fIMETHOD\fP]
-Use HTTPS with specified HTTP METHOD=(\fIget\fP|\fIpost\fP).
+Use HTTPS with specified HTTP METHOD=(\fIget\fP|\fIpost\fP). The default method
+is GET for queries of less than 1024 bytes and POST for longer queries.
 .TP
 \fB+\fP[\fBno\fP]\fBnsid\fP
 Request the nameserver identifier (NSID).

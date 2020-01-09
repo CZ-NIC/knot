@@ -18,7 +18,7 @@
 
 #ifdef LIBNGHTTP2
 
-//static const char https_tmp_uri[] = "/dns-query?dns=";
+static const char *default_path = "/dns-query";
 
 static const gnutls_datum_t https_protocols[] = {
 	{ (unsigned char *)"h2", 2 }
@@ -102,18 +102,51 @@ static int https_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t f
 	assert(user_data);
 
 	https_ctx_t *ctx = (https_ctx_t *)user_data;
+	if (ctx->stream == stream_id) {
+		//TODO recv len bigger than buffer
+		memcpy(ctx->recv_buf, data, len);
+		ctx->recv_buflen = len;
+		ctx->read = false;
+		ctx->stream = 0;
+	}
+	return KNOT_EOK;
+}
 
-	//TODO recv len bigger than buffer
-	memcpy(ctx->buf, data, len);
-	ctx->buflen = len;
-	ctx->read = false;
+static int https_on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
+									const uint8_t *name, size_t namelen,
+									const uint8_t *value, size_t valuelen,
+									uint8_t flags, void *user_data)
+{
+	assert(user_data);
 
+	if (!strncmp("location", (const char *)name, namelen)) {
+		https_ctx_t *ctx = (https_ctx_t *)user_data;
+		struct http_parser_url redirect_url;
+
+		http_parser_parse_url((const char *)value, valuelen, 0, &redirect_url);
+		
+		if (redirect_url.field_set & (1 << UF_HOST)) {
+			if (ctx->authority_alloc) {
+				free(ctx->authority);
+			}
+			ctx->authority = strndup((const char *)(value + redirect_url.field_data[UF_HOST].off), redirect_url.field_data[UF_HOST].len);
+			ctx->authority_alloc = true;
+		}
+		if (redirect_url.field_set & (1 << UF_PATH)) {
+			if(ctx->path_alloc) {
+				free(ctx->path);
+			}
+			ctx->path = strndup((const char *)(value + redirect_url.field_data[UF_PATH].off), redirect_url.field_data[UF_PATH].len);
+			ctx->path_alloc = true;
+		}
+		https_send_dns_query(ctx, ctx->send_buf, ctx->send_buflen);
+	}
 	return KNOT_EOK;
 }
 
 int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *params)
 {
-	if (ctx == NULL || params == NULL) {
+	if (ctx == NULL || tls_ctx == NULL || params == NULL) {
 		return KNOT_EINVAL;
 	}
 	if (ctx->session != NULL) { //Already set
@@ -129,6 +162,7 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
 	nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, https_on_frame_send_callback);
 	nghttp2_session_callbacks_set_recv_callback(callbacks, https_recv_callback);
 	nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, https_on_data_chunk_recv_callback);
+	nghttp2_session_callbacks_set_on_header_callback(callbacks, https_on_header_callback);
 
 	int ret = nghttp2_session_client_new(&(ctx->session), callbacks, ctx);
 	if (ret != 0) {
@@ -143,6 +177,10 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
 	}
 
 	ctx->params = params;
+	ctx->authority = (tls_ctx->params->hostname) ? tls_ctx->params->hostname : NULL;
+	ctx->authority_alloc = false;
+	ctx->path = (ctx->params->path) ? ctx->params->path : (char *)default_path;
+	ctx->path_alloc = false;
 	ctx->tls = tls_ctx;
 	ctx->read = true;
 
@@ -277,6 +315,11 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 	}
 
 	// Save authority server
+	if (ctx->authority_alloc) {
+		free(ctx->authority);
+	}
+	ctx->authority = (char*)calloc(HTTPS_AUTHORITY_LEN, sizeof(char));
+	ctx->authority_alloc = true;
 	ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, address);
 	if (ret != KNOT_EOK) {
 		return KNOT_EINVAL;
@@ -287,16 +330,14 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 
 static int https_send_dns_query_get(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
 {
-	const char *authority = (ctx->tls->params->hostname) ? ctx->tls->params->hostname : ctx->authority;
-	const char *path = (ctx->params->path) ? ctx->params->path : "/dns-query";
-	const size_t dns_query_len = strlen(path) + sizeof("?dns=") + 1 + (buf_len * 4) / 3;
-	uint8_t dns_query[dns_query_len];
-	strncpy(dns_query, path, dns_query_len);
+	const size_t dns_query_len = strlen(ctx->path) + sizeof("?dns=") + 1 + (buf_len * 4) / 3;
+	char dns_query[dns_query_len];
+	strncpy(dns_query, ctx->path, dns_query_len);
 	strncat(dns_query, "?dns=", dns_query_len);
 
 	size_t tmp_strlen = strlen(dns_query);
 	int32_t ret = base64url_encode(buf, buf_len,
-		dns_query + tmp_strlen, dns_query_len - (tmp_strlen - 1)
+		(uint8_t *)dns_query + tmp_strlen, dns_query_len - (tmp_strlen - 1)
 	);
 	if (ret < 0) {
 		return KNOT_EINVAL;
@@ -305,15 +346,15 @@ static int https_send_dns_query_get(https_ctx_t *ctx, const uint8_t *buf, const 
 	nghttp2_nv hdrs[] = {
 		MAKE_STATIC_NV(":method", "GET"),
 		MAKE_STATIC_NV(":scheme", "https"),
-		MAKE_NV(":authority", 10, authority, strlen(authority)),
+		MAKE_NV(":authority", 10, ctx->authority, strlen(ctx->authority)),
 		MAKE_NV(":path", 5, dns_query, tmp_strlen + ret - 1),
 		MAKE_STATIC_NV("accept", "application/dns-message"),
 	};
 
-	const int id = nghttp2_submit_request(ctx->session, NULL, hdrs,
+	ctx->stream= nghttp2_submit_request(ctx->session, NULL, hdrs,
 	                                      sizeof(hdrs) / sizeof(*hdrs),
 										  NULL, NULL);
-	if (id < 0) {
+	if (ctx->stream < 0) {
 		return KNOT_NET_ESEND;
 	}
 
@@ -347,14 +388,12 @@ static int https_send_dns_query_post(https_ctx_t *ctx, const uint8_t *buf, const
 {
 	char content_length[sizeof(size_t) * 3 + 1];
 	int content_length_len = sprintf(content_length, "%ld", buf_len);
-	const char *authority = (ctx->tls->params->hostname) ? ctx->tls->params->hostname : ctx->authority;
-	const char *path = (ctx->params->path) ? ctx->params->path : "/dns-query";
 
 	nghttp2_nv hdrs[] = {
 		MAKE_STATIC_NV(":method", "POST"),
 		MAKE_STATIC_NV(":scheme", "https"),
-		MAKE_NV(":authority", 10, authority, strlen(authority)),
-		MAKE_NV(":path", 5, path, strlen(path)),
+		MAKE_NV(":authority", 10, ctx->authority, strlen(ctx->authority)),
+		MAKE_NV(":path", 5, ctx->path, strlen(ctx->path)),
 		MAKE_STATIC_NV("accept", "application/dns-message"),
 		MAKE_STATIC_NV("content-type", "application/dns-message"),
 		MAKE_NV("content-length", 14, content_length, content_length_len)
@@ -370,10 +409,10 @@ static int https_send_dns_query_post(https_ctx_t *ctx, const uint8_t *buf, const
 		.read_callback = https_send_data_callback
 	};
 
-	const int id = nghttp2_submit_request(ctx->session, NULL, hdrs,
+	ctx->stream = nghttp2_submit_request(ctx->session, NULL, hdrs,
 	                                      sizeof(hdrs) / sizeof(nghttp2_nv),
 	                                      &data_prd, NULL);
-	if (id < 0) {
+	if (ctx->stream < 0) {
 		return KNOT_NET_ESEND;
 	}
 
@@ -391,6 +430,9 @@ int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_
 		return KNOT_EINVAL;
 	}
 
+	ctx->send_buf = buf;
+	ctx->send_buflen = buf_len;
+
 	if (ctx->params->method == POST || HTTPS_USE_POST(ctx->params->method, buf_len)) {
 		return https_send_dns_query_post(ctx, buf, buf_len);
 	} else {
@@ -405,8 +447,8 @@ int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len
 	}
 
 	pthread_mutex_lock(&ctx->recv_mx);
-	ctx->buf = buf;
-	ctx->buflen = buf_len;
+	ctx->recv_buf = buf;
+	ctx->recv_buflen = buf_len;
 
 	int ret = nghttp2_session_recv(ctx->session);
 	if (ret != 0) {
@@ -414,11 +456,11 @@ int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len
 		return KNOT_NET_ERECV;
 	}
 
-	ctx->buf = NULL;
+	ctx->recv_buf = NULL;
 
 	pthread_mutex_unlock(&ctx->recv_mx);
 
-	return ctx->buflen;
+	return ctx->recv_buflen;
 }
 
 void https_ctx_deinit(https_ctx_t *ctx)
@@ -429,6 +471,18 @@ void https_ctx_deinit(https_ctx_t *ctx)
 
 	nghttp2_session_del(ctx->session);
 	pthread_mutex_destroy(&ctx->recv_mx);
+
+	free(ctx->params->path);
+	if(ctx->path_alloc) {
+		free(ctx->path);
+		ctx->path = NULL;
+		ctx->path_alloc = false;
+	}
+	if(ctx->authority_alloc) {
+		free(ctx->authority);
+		ctx->authority = NULL;
+		ctx->authority_alloc = false;
+	}
 }
 
 
@@ -438,9 +492,7 @@ void print_https(const https_ctx_t *ctx)
 		return;
 	}
 
-	const char *authority = (ctx->tls->params->hostname) ? ctx->tls->params->hostname : ctx->authority;
-	const char *path = (ctx->params->path) ? ctx->params->path : "/dns-query";
-	printf(";; HTTPS session (HTTP/2)-(%s%s)\n", authority, path);
+	printf(";; HTTPS session (HTTP/2)-(%s%s)\n", ctx->authority, ctx->path);
 }
 
 #endif //LIBNGHTTP2
