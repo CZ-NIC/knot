@@ -87,7 +87,7 @@ typedef struct {
 	bool path_alloc;
 
 	//Send destination
-	uint8_t *send_buf;
+	const uint8_t *send_buf;
 	size_t send_buflen;
 
 	//Recv destination

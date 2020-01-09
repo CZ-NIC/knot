@@ -123,20 +123,20 @@ static int https_on_header_callback(nghttp2_session *session, const nghttp2_fram
 		https_ctx_t *ctx = (https_ctx_t *)user_data;
 		struct http_parser_url redirect_url;
 
-		http_parser_parse_url(value, valuelen, 0, &redirect_url);
+		http_parser_parse_url((const char *)value, valuelen, 0, &redirect_url);
 		
 		if (redirect_url.field_set & (1 << UF_HOST)) {
 			if (ctx->authority_alloc) {
 				free(ctx->authority);
 			}
-			ctx->authority = strndup(value + redirect_url.field_data[UF_HOST].off, redirect_url.field_data[UF_HOST].len);
+			ctx->authority = strndup((const char *)(value + redirect_url.field_data[UF_HOST].off), redirect_url.field_data[UF_HOST].len);
 			ctx->authority_alloc = true;
 		}
 		if (redirect_url.field_set & (1 << UF_PATH)) {
 			if(ctx->path_alloc) {
 				free(ctx->path);
 			}
-			ctx->path = strndup(value + redirect_url.field_data[UF_PATH].off, redirect_url.field_data[UF_PATH].len);
+			ctx->path = strndup((const char *)(value + redirect_url.field_data[UF_PATH].off), redirect_url.field_data[UF_PATH].len);
 			ctx->path_alloc = true;
 		}
 		https_send_dns_query(ctx, ctx->send_buf, ctx->send_buflen);
@@ -179,7 +179,7 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
 	ctx->params = params;
 	ctx->authority = (tls_ctx->params->hostname) ? tls_ctx->params->hostname : NULL;
 	ctx->authority_alloc = false;
-	ctx->path = (ctx->params->path) ? ctx->params->path : default_path;
+	ctx->path = (ctx->params->path) ? ctx->params->path : (char *)default_path;
 	ctx->path_alloc = false;
 	ctx->tls = tls_ctx;
 	ctx->read = true;
