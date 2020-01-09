@@ -486,8 +486,9 @@ An ACL rule identifier.
 address
 -------
 
-An ordered list of IP addresses, network subnets, or network ranges. The query
-must match one of them. Empty value means that address match is not required.
+An ordered list of IP addresses, network subnets, or network ranges. The query's
+source address must match one of them. Empty value means that address match is not
+required.
 
 *Default:* not set
 
@@ -581,7 +582,9 @@ update-owner-name
 -----------------
 
 A list of allowed owners of RRs in a zone update used with :ref:`update-owner<acl_update_owner>`
-set to ``name``.
+set to ``name``. Every listed owner name must either be a FQDN name (i.e. it ends in a dot),
+or if the trailing dot is missing, the target zone name is automatically appended to it to
+create a FQDN name.
 
 *Default:* not set
 
