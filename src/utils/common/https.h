@@ -81,7 +81,6 @@ typedef struct {
 	//Contexts
 	nghttp2_session *session;
 	tls_ctx_t *tls;
-	//char authority[HTTPS_AUTHORITY_LEN];
 	char *authority;
 	bool authority_alloc;
 	char *path;
