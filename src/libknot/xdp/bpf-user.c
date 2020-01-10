@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,17 +35,12 @@ static int ensure_udp_prog(struct kxsk_iface *iface, const char *prog_fname)
 	int prog_fd;
 	int ret = bpf_prog_load(prog_fname, BPF_PROG_TYPE_XDP, &iface->prog_obj, &prog_fd);
 	if (ret) {
-		fprintf(stderr, "[kxsk] failed loading BPF program (%s) (%d): %s\n",
-			prog_fname, ret, strerror(-ret));
-		return -abs(ret);
+		return KNOT_EPROGRAM;
 	}
 
 	ret = bpf_set_link_xdp_fd(iface->ifindex, prog_fd, 0);
 	if (ret) {
-		fprintf(stderr, "bpf_set_link_xdp_fd() == %d\n", ret);
-		return -abs(ret);
-	} else {
-		fprintf(stderr, "[kxsk] loaded BPF program %d %d\n", iface->ifindex, prog_fd);
+		return KNOT_EFD;
 	}
 
 	return prog_fd;
@@ -102,30 +97,35 @@ static int get_bpf_maps(int prog_fd, struct kxsk_iface *iface)
 	int fd, err;
 
 	err = bpf_obj_get_info_by_fd(prog_fd, &prog_info, &prog_len);
-	if (err)
+	if (err) {
 		return err;
+	}
 
 	num_maps = prog_info.nr_map_ids;
 
 	map_ids = calloc(prog_info.nr_map_ids, sizeof(*map_ids));
-	if (!map_ids)
-		return -ENOMEM;
+	if (map_ids == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	memset(&prog_info, 0, prog_len);
 	prog_info.nr_map_ids = num_maps;
 	prog_info.map_ids = (__u64)(unsigned long)map_ids;
 
 	err = bpf_obj_get_info_by_fd(prog_fd, &prog_info, &prog_len);
-	if (err)
+	if (err) {
 		goto out_map_ids;
+	}
 
 	for (i = 0; i < prog_info.nr_map_ids; ++i) {
-		if (iface->qidconf_map_fd >= 0 && iface->xsks_map_fd >= 0)
+		if (iface->qidconf_map_fd >= 0 && iface->xsks_map_fd >= 0) {
 			break;
+		}
 
 		fd = bpf_map_get_fd_by_id(map_ids[i]);
-		if (fd < 0)
+		if (fd < 0) {
 			continue;
+		}
 
 		err = bpf_obj_get_info_by_fd(fd, &map_info, &map_len);
 		if (err) {
@@ -147,19 +147,20 @@ static int get_bpf_maps(int prog_fd, struct kxsk_iface *iface)
 	}
 
 	if (iface->qidconf_map_fd < 0 || iface->xsks_map_fd < 0) {
-		err = -ENOENT;
+		err = KNOT_ENOENT;
 		close(iface->qidconf_map_fd);
 		close(iface->xsks_map_fd);
 		iface->qidconf_map_fd = iface->xsks_map_fd = -1;
 		goto out_map_ids;
 	}
 
-	err = 0; // success!
+	err = KNOT_EOK; // success!
 
 out_map_ids:
 	free(map_ids);
 	return err;
 }
+
 static void unget_bpf_maps(struct kxsk_iface *iface)
 {
 	close(iface->qidconf_map_fd);
@@ -172,15 +173,18 @@ int kxsk_socket_start(const struct kxsk_iface *iface, int queue_id,
 {
 	int fd = xsk_socket__fd(xsk);
 	int err = bpf_map_update_elem(iface->xsks_map_fd, &queue_id, &fd, 0);
-	if (err)
+	if (err) {
 		return err;
+	}
 
 	int qid = htobe16(listen_port);
 	err = bpf_map_update_elem(iface->qidconf_map_fd, &queue_id, &qid, 0);
-	if (err)
+	if (err) {
 		bpf_map_delete_elem(iface->xsks_map_fd, &queue_id);
+	}
 	return err;
 }
+
 int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id)
 {
 	int qid = false;
@@ -190,18 +194,17 @@ int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id)
 	return err;
 }
 
-struct kxsk_iface * kxsk_iface_new(const char *ifname, bool load_bpf)
+int kxsk_iface_new(const char *ifname, bool load_bpf, struct kxsk_iface **out_iface)
 {
 	struct kxsk_iface *iface = calloc(1, sizeof(*iface));
-	if (!iface) {
-		errno = ENOMEM;
-		return NULL;
+	if (iface == NULL) {
+		return KNOT_ENOMEM;
 	}
 	iface->ifname = ifname; // we strdup it later
 	iface->ifindex = if_nametoindex(ifname);
 	if (!iface->ifindex) {
 		free(iface);
-		return NULL;
+		return knot_map_errno();
 	}
 	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
 
@@ -216,18 +219,19 @@ struct kxsk_iface * kxsk_iface_new(const char *ifname, bool load_bpf)
 		}
 	}
 
-	if (ret >= 0)
+	if (ret >= 0) {
 		ret = get_bpf_maps(ret, iface);
-
+	}
 	if (ret < 0) {
-		errno = abs(ret);
 		free(iface);
-		return NULL;
-	} // else
+		return ret;
+	}
 
 	iface->ifname = strdup(iface->ifname);
-	return iface;
+	*out_iface = iface;
+	return KNOT_EOK;
 }
+
 void kxsk_iface_free(struct kxsk_iface *iface)
 {
 	unget_bpf_maps(iface);

@@ -141,6 +141,10 @@ static const struct error errors[] = {
 	/* Another general errors. */
 	{ KNOT_ELOOP,                 "loop detected" },
 
+	/* XDP errors. */
+	{ KNOT_EPROGRAM,              "program not loaded" },
+	{ KNOT_EFD,                   "file descriptor error" },
+
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
 
