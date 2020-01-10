@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,6 +72,7 @@ struct xsk_umem_info {
 	uint32_t free_count; /**< The number of free frames. */
 	uint32_t *free_indices; /**< Stack of indices of the free frames. */
 };
+
 typedef struct knot_xsk_socket {
 	/** Receive queue: passing arrived packets from kernel. */
 	struct xsk_ring_cons rx;
@@ -88,27 +89,29 @@ typedef struct knot_xsk_socket {
 	int if_queue;
 } knot_xsk_socket_t;
 
-
-/* eBPF stuff (user-space part), implemented in ./bpf-user.c */
-
-/** Ensure the BPF program and maps are set up.  On failure return NULL + errno.
+/*!
+ * \brief Set up BPF program and map for one XDP socket.
  *
- * Note: if one is loaded on the interface already, we assume it's ours.
- * LATER: it might be possible to check, e.g. by naming our maps unusually.
+ * \param ifname       Name of the net iface (e.g. eth0).
+ * \param load_bpf     Insert BPF program into packet processing.
+ * \param out_iface    Output: created interface context.
+ *
+ * \return KNOT_E*
  */
-struct kxsk_iface * kxsk_iface_new(const char *ifname, bool load_bpf);
+int kxsk_iface_new(const char *ifname, bool load_bpf, struct kxsk_iface **out_iface);
 
-/** Undo kxsk_iface_new().  It's always freed, even if some problems happen.
+/*!
+ * \brief Unload BPF maps for a socket.
  *
- * Unloading the BPF program is optional, as keeping it only adds some overhead,
- * and in case of multi-process it isn't easy to find that we're the last instance.
+ * \param iface   Interface context to be freed.
+ *
+ * \note This keeps the loaded BPF program. We don't care.
  */
 void kxsk_iface_free(struct kxsk_iface *iface);
 
-/** Activate this AF_XDP socket through the BPF maps. */
+/*! \brief Activate this AF_XDP socket through the BPF maps. */
 int kxsk_socket_start(const struct kxsk_iface *iface, int queue_id,
                       uint16_t listen_port, struct xsk_socket *xsk);
 
-/** Deactivate this AF_XDP socket through the BPF maps. */
+/*! \brief Deactivate this AF_XDP socket through the BPF maps. */
 int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id);
-
