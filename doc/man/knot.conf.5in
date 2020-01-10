@@ -538,9 +538,10 @@ one domain set by \fI\%update\-owner\fP\&.
 .SS update\-owner\-name
 .sp
 A list of allowed owners of RRs in a zone update used with \fI\%update\-owner\fP
-set to \fBname\fP\&. Every listed owner name must either be a FQDN name (i.e. it ends in a dot),
-or if the trailing dot is missing, the target zone name is automatically appended to it to
-create a FQDN name.
+set to \fBname\fP\&. Every listed owner name which is not FQDN (i.e. it doesn\(aqt end
+in a dot) is considered as if it was appended with the target zone name.
+Such a relative owner name specification allows better ACL rule reusability across
+multiple zones.
 .sp
 \fIDefault:\fP not set
 .SH CONTROL SECTION

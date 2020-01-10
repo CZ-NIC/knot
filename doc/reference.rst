@@ -582,9 +582,10 @@ update-owner-name
 -----------------
 
 A list of allowed owners of RRs in a zone update used with :ref:`update-owner<acl_update_owner>`
-set to ``name``. Every listed owner name must either be a FQDN name (i.e. it ends in a dot),
-or if the trailing dot is missing, the target zone name is automatically appended to it to
-create a FQDN name.
+set to ``name``. Every listed owner name which is not FQDN (i.e. it doesn't end
+in a dot) is considered as if it was appended with the target zone name.
+Such a relative owner name specification allows better ACL rule reusability across
+multiple zones.
 
 *Default:* not set
 

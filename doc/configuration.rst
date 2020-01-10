@@ -147,15 +147,12 @@ See the following examples and :ref:`ACL section`.
           action: update
           update-type: [A, AAAA, MX] # Updates are only allowed to update records of the specified types
           update-owner: name         # The allowed owners are specified by the list on the next line
-          update-owner-name: [a.example.com., b.example.com., c.example.com.]
+          update-owner-name: [a.example.com., b, c] # Non-FQDN names are relative to effective zone name
           update-owner-match: equal  # The owners of records in an update must be exactly equal to the names in the list
 
 .. NOTE::
    If more conditions (address ranges and/or a key)
    are given in a single ACL rule, all of them have to be satisfied for the rule to match.
-
-   The specified owner names may be FQDN names (name ending in a dot), otherwise the effective zone name
-   is appended to the name automatically, see the :ref:`update-owner-name<acl_update_owner_name>` option.
 
 Slave zone
 ==========
