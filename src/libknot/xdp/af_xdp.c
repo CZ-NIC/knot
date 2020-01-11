@@ -115,17 +115,33 @@ static struct umem_frame *kxsk_alloc_umem_frame(struct xsk_umem_info *umem)
 }
 
 _public_
-struct iovec knot_xsk_alloc_frame(struct knot_xsk_socket *socket, bool ipv6)
+int knot_xsk_alloc_packet(struct knot_xsk_socket *socket, bool ipv6,
+                          knot_xsk_msg_t *out, const knot_xsk_msg_t *in_reply_to)
 {
-	struct iovec res = { 0 };
 	size_t ofs = ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4;
 
 	struct umem_frame *uframe = kxsk_alloc_umem_frame(socket->umem);
-	if (uframe != NULL) {
-		res.iov_len = MIN(UINT16_MAX, FRAME_SIZE - ofs);
-		res.iov_base = ipv6 ? uframe->udpv6.data : uframe->udpv4.data;
+	if (uframe == NULL) {
+		return KNOT_ENOENT;
 	}
-	return res;
+
+	memset(out, 0, sizeof(*out));
+
+	out->payload.iov_base = ipv6 ? uframe->udpv6.data : uframe->udpv4.data;
+	out->payload.iov_len = MIN(UINT16_MAX, FRAME_SIZE - ofs);
+
+	const struct ethhdr *eth = (struct ethhdr *)uframe;
+	out->eth_from = (void *)&eth->h_source;
+	out->eth_to = (void *)&eth->h_dest;
+
+	if (in_reply_to != NULL) {
+		memcpy(out->eth_from, in_reply_to->eth_to, ETH_ALEN);
+		memcpy(out->eth_to, in_reply_to->eth_from, ETH_ALEN);
+
+		memcpy(&out->ip_from, &in_reply_to->ip_to, sizeof(out->ip_from));
+		memcpy(&out->ip_to, &in_reply_to->ip_from, sizeof(out->ip_to));
+	}
+	return KNOT_EOK;
 }
 
 static void kxsk_dealloc_umem_frame(struct xsk_umem_info *umem, uint8_t *uframe_p)
@@ -343,8 +359,8 @@ int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 	h->ipv4.check = pkt_ipv4_checksum_2(&h->ipv4);
 #pragma GCC diagnostic pop
 
-	memcpy(h->eth.h_dest, msg->eth_to, sizeof(msg->eth_to));
-	memcpy(h->eth.h_source, msg->eth_from, sizeof(msg->eth_from));
+	assert(&h->eth.h_dest == (void *)msg->eth_to);
+	assert(&h->eth.h_source == (void *)msg->eth_from);
 	h->eth.h_proto = htobe16(ETH_P_IP);
 
 	uint32_t eth_len = FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len;
@@ -394,8 +410,8 @@ int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 	udp_checksum_finish(&chk);
 	h->udp.check = chk;
 
-	memcpy(h->eth.h_dest, msg->eth_to, sizeof(msg->eth_to));
-	memcpy(h->eth.h_source, msg->eth_from, sizeof(msg->eth_from));
+	assert(&h->eth.h_dest == (void *)msg->eth_to);
+	assert(&h->eth.h_source == (void *)msg->eth_from);
 	h->eth.h_proto = htobe16(ETH_P_IPV6);
 
 	uint32_t eth_len = FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len;
@@ -515,8 +531,8 @@ static int rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,
 	msg->payload.iov_base = (uint8_t *)udp + sizeof(struct udphdr);
 	msg->payload.iov_len = be16toh(udp->len) - sizeof(struct udphdr);
 
-	memcpy(msg->eth_from, eth->h_source, sizeof(msg->eth_from));
-	memcpy(msg->eth_to, eth->h_dest, sizeof(msg->eth_to));
+	msg->eth_from = (void *)&eth->h_source;
+	msg->eth_to = (void *)&eth->h_dest;
 
 	// process the packet; ownership is passed on, but beware of holding frames
 	if (ipv4) {
@@ -589,7 +605,7 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 	}
 
 	/* Initialize shared packet_buffer for umem usage */
-	struct xsk_umem_info *umem;
+	struct xsk_umem_info *umem = NULL;
 	ret = configure_xsk_umem(&global_umem_config, UMEM_FRAME_COUNT, &umem);
 	if (ret != KNOT_EOK) {
 		kxsk_iface_free(iface);
