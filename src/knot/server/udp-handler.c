@@ -403,20 +403,14 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
-		struct iovec *rx = &rq->msgs_rx[i].payload;
-		struct iovec *tx = &rq->msgs_tx[i].payload;
-
-		*tx = knot_xsk_alloc_frame(xdp_sock, rq->msgs_rx[i].ip_to.ss_family == AF_INET6);
-		if (tx->iov_base == NULL) {
-			return KNOT_ERROR;
+		int ret = knot_xsk_alloc_packet(xdp_sock, rq->msgs_rx[i].ip_to.ss_family == AF_INET6,
+		                                &rq->msgs_tx[i], &rq->msgs_rx[i]);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 
-		udp_handle(ctx, 0 /* TODO ? */, &rq->msgs_rx[i].ip_from, rx, tx);
-
-		memcpy(rq->msgs_tx[i].eth_from, rq->msgs_rx[i].eth_to, sizeof(rq->msgs_tx[i].eth_from));
-		memcpy(rq->msgs_tx[i].eth_to, rq->msgs_rx[i].eth_from, sizeof(rq->msgs_tx[i].eth_to));
-		memcpy(&rq->msgs_tx[i].ip_from, &rq->msgs_rx[i].ip_to, sizeof(rq->msgs_tx[i].ip_from));
-		memcpy(&rq->msgs_tx[i].ip_to, &rq->msgs_rx[i].ip_from, sizeof(rq->msgs_tx[i].ip_to));
+		udp_handle(ctx, knot_xsk_get_poll_fd(xdp_sock), &rq->msgs_rx[i].ip_from,
+		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload);
 
 		knot_xsk_free_recvd(xdp_sock, &rq->msgs_rx[i]);
 
