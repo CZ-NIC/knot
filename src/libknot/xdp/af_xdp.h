@@ -25,8 +25,8 @@
 typedef struct {
 	struct sockaddr_storage ip_from;
 	struct sockaddr_storage ip_to;
-	uint8_t eth_from[6];
-	uint8_t eth_to[6];
+	uint8_t *eth_from;
+	uint8_t *eth_to;
 	struct iovec payload;
 } knot_xsk_msg_t;
 
@@ -55,10 +55,13 @@ void knot_xsk_deinit(struct knot_xsk_socket *socket);
  *
  * \param socket   XDP socket.
  * \param ipv6     The packet will use IPv6 (IPv4 otherwise).
+ * \param out      Output: the allocated packet info.
+ * \param in_reply_to   Optional: fill in addresses from a query.
  *
- * \return Pointer and size to UDP payload, or { NULL, 0 }.
+ * \return KNOT_E*
  */
-struct iovec knot_xsk_alloc_frame(struct knot_xsk_socket *socket, bool ipv6);
+int knot_xsk_alloc_packet(struct knot_xsk_socket *socket, bool ipv6,
+                          knot_xsk_msg_t *out, const knot_xsk_msg_t *in_reply_to);
 
 /*!
  * \brief Send single packet thru XDP.
@@ -66,7 +69,7 @@ struct iovec knot_xsk_alloc_frame(struct knot_xsk_socket *socket, bool ipv6);
  * \param socket   XDP socket.
  * \param msg      Packet to be sent.
  *
- * \note The packet payload must have been allocated by knot_xsk_alloc_frame()!
+ * \note The packet must have been allocated by knot_xsk_alloc_frame()!
  * \note Do not free the packet payload afterwards.
  *
  * \return KNOT_E*
@@ -80,7 +83,7 @@ int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg);
  * \param msgs     Packets to be sent.
  * \param count    Number of packets.
  *
- * \note The packets payloads all must have been allocated by knot_xsk_alloc_frame()!
+ * \note The packets all must have been allocated by knot_xsk_alloc_frame()!
  * \note Do not free the packets payloads afterwards.
  * \note Packets with zero length will be skipped.
  *
