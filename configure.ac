@@ -196,33 +196,31 @@ AS_CASE([$enable_recvmmsg],
 AS_IF([test "$enable_recvmmsg" = yes],[
    AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
 
+# XDP support
 AC_ARG_ENABLE([xdp],
-   AS_HELP_STRING([--enable-xdp=auto|yes|no], [enable eXpress Data Path, requires libBPF [default=auto]]),
+   AS_HELP_STRING([--enable-xdp=auto|yes|no], [enable eXpress Data Path [default=auto]]),
    [], [enable_xdp=auto])
 
 AS_CASE([$enable_xdp],
-   [auto],[PKG_CHECK_MODULES([libbpf],[libbpf >= 0.0.2],[enable_xdp=yes],[enable_xdp=no])],
-   [yes],[PKG_CHECK_MODULES([libbpf],[libbpf >= 0.0.2],[enable_xdp=yes])],
+   [auto],[PKG_CHECK_MODULES([libbpf],[libbpf >= 0.0.6],[enable_xdp=yes],[enable_xdp=no])],
+   [yes],[PKG_CHECK_MODULES([libelf],[libelf],[
+     enable_xdp=embedded
+     embedded_libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf/include -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"
+     embedded_libbpf_LIBS=$libelf_LIBS
+     libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"
+   ],[AC_MSG_ERROR([libelf is required])])],
    [no],[],
-   [*],[AC_MSG_ERROR([Invalid value of --enable-xdp.])]
-)
+   [*],[AC_MSG_ERROR([Invalid value of --enable-xdp.]
+ )])
+AM_CONDITIONAL([EMBEDDED_LIBBPF], [test "$enable_xdp" = "embedded"])
+AM_CONDITIONAL([ENABLE_XDP], [test "$enable_xdp" != "no"])
+AC_SUBST([embedded_libbpf_CFLAGS])
+AC_SUBST([embedded_libbpf_LIBS])
+AC_SUBST([libbpf_CFLAGS])
+AC_SUBST([libbpf_LIBS])
 
-AS_IF([test "$enable_xdp" = "yes"],[
-   save_CFLAGS=$CFLAGS
-   save_LIBS=$LIBS
-   CFLAGS="$CFLAGS $libbpf_CFLAGS"
-   LIBS="$LIBS $libbpf_LIBS"
-
-   AC_CHECK_FUNC([bpf_prog_load],[],[AC_MSG_ERROR([bpf_prog_load not available])])
-   AC_CHECK_FUNC([bpf_set_link_xdp_fd],[],[AC_MSG_ERROR([bpf_set_link_xdp_fd not available])])
-
-   CFLAGS=$save_CFLAGS
-   LIBS=$save_LIBS
-
-   AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])
-])
-
-AM_CONDITIONAL([ENABLE_XDP], [test "$enable_xdp" = "yes"])
+AS_IF([test "$enable_xdp" != "no"],[
+    AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])])
 
 # Reuseport support
 AS_CASE([$host_os],
@@ -741,7 +739,7 @@ result_msg_base="  Knot DNS $VERSION
 
     Use recvmmsg:           ${enable_recvmmsg}
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
-    Use XDP:                ${enable_xdp}
+    XDP support:            ${enable_xdp}
     Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}

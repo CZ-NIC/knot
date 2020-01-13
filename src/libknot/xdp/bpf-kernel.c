@@ -20,8 +20,8 @@
 #include <linux/ipv6.h>
 #include <linux/udp.h>
 
-#include "bpf/bpf_helpers.h"
-#include "bpf/bpf_endian.h"
+#include "contrib/libbpf/bpf_helpers.h"
+#include "contrib/libbpf/bpf_endian.h"
 #include "bpf/parsing_helpers.h"
 
 /** Assume netdev has no more than 64 queues
