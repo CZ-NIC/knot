@@ -200,6 +200,7 @@ static int enable_fastopen(int sock, int backlog)
 	return KNOT_EOK;
 }
 
+__attribute__((unused)) // ifndef ENABLE_REUSEPORT
 static int iface_addr2name(const struct sockaddr_storage *add, char **out)
 {
 	struct ifaddrs *ifas = NULL, *orig = NULL;
