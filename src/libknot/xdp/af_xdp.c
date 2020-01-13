@@ -321,7 +321,7 @@ static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_
 	return uframe_p;
 }
 
-int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+static int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = msg_uframe_p(socket, msg);
 	if (uframe_p == NULL) {
@@ -368,7 +368,7 @@ int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 	return pkt_send(socket, h->bytes - socket->umem->frames->bytes, eth_len);
 }
 
-int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+static int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = msg_uframe_p(socket, msg);
 	if (uframe_p == NULL) {
