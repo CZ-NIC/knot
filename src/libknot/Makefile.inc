@@ -1,9 +1,9 @@
 lib_LTLIBRARIES += libknot.la
 pkgconfig_DATA  += libknot.pc
 
-libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS) $(libbpf_CFLAGS)
+libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
 libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS)
-libknot_la_LIBADD   = libcontrib.la libdnssec.la $(math_LIBS) $(lmdb_LIBS) $(libbpf_LIBS)
+libknot_la_LIBADD   = libcontrib.la libdnssec.la $(math_LIBS) $(lmdb_LIBS)
 
 include_libknotdir = $(includedir)
 nobase_include_libknot_HEADERS = \
@@ -79,7 +79,9 @@ libknot_la_SOURCES = \
 	libknot/yparser/yptrafo.c
 
 if ENABLE_XDP
-libknot_la_SOURCES += \
+libknot_la_CPPFLAGS += $(libbpf_CFLAGS)
+libknot_la_LIBADD   += $(libbpf_LIBS)
+libknot_la_SOURCES  += \
 	libknot/xdp/af_xdp.c                    \
 	libknot/xdp/bpf-kernel-obj.c		\
 	libknot/xdp/bpf-kernel-obj.h		\
