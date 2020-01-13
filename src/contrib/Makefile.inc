@@ -12,6 +12,11 @@ libcontrib_la_CPPFLAGS += $(gnutls_CFLAGS)
 libcontrib_la_LIBADD   += $(gnutls_LIBS)
 endif USE_GNUTLS_MEMSET
 
+if ENABLE_XDP
+libcontrib_la_CPPFLAGS += $(internal_libbpf_CFLAGS)
+libcontrib_la_LIBADD += $(libbpf_LIBS)
+endif ENABLE_XDP
+
 EXTRA_DIST += \
 	contrib/licenses/0BSD			\
 	contrib/licenses/BSD-3-Clause		\
@@ -79,6 +84,52 @@ libcontrib_la_SOURCES += \
 	contrib/lmdb/midl.h			\
 	contrib/lmdb/mute_warnings.h
 endif !HAVE_LMDB
+
+if ENABLE_XDP
+libcontrib_la_SOURCES += \
+	contrib/libbpf/include/asm/barrier.h	\
+	contrib/libbpf/include/linux/compiler.h	\
+	contrib/libbpf/include/linux/err.h	\
+	contrib/libbpf/include/linux/filter.h	\
+	contrib/libbpf/include/linux/kernel.h	\
+	contrib/libbpf/include/linux/list.h	\
+	contrib/libbpf/include/linux/overflow.h	\
+	contrib/libbpf/include/linux/ring_buffer.h	\
+	contrib/libbpf/include/linux/types.h		\
+	contrib/libbpf/include/tools/libc_compat.h	\
+	contrib/libbpf/include/uapi/linux/bpf_common.h	\
+	contrib/libbpf/include/uapi/linux/bpf.h		\
+	contrib/libbpf/include/uapi/linux/btf.h		\
+	contrib/libbpf/include/uapi/linux/if_link.h	\
+	contrib/libbpf/include/uapi/linux/if_xdp.h	\
+	contrib/libbpf/include/uapi/linux/netlink.h	\
+	contrib/libbpf/bpf/bpf.c			\
+	contrib/libbpf/bpf/bpf.h			\
+	contrib/libbpf/bpf/bpf_core_read.h		\
+	contrib/libbpf/bpf/bpf_endian.h			\
+	contrib/libbpf/bpf/bpf_helper_defs.h		\
+	contrib/libbpf/bpf/bpf_helpers.h		\
+	contrib/libbpf/bpf/bpf_prog_linfo.c		\
+	contrib/libbpf/bpf/bpf_tracing.h		\
+	contrib/libbpf/bpf/btf.c			\
+	contrib/libbpf/bpf/btf.h			\
+	contrib/libbpf/bpf/btf_dump.c			\
+	contrib/libbpf/bpf/hashmap.c			\
+	contrib/libbpf/bpf/hashmap.h			\
+	contrib/libbpf/bpf/libbpf.c			\
+	contrib/libbpf/bpf/libbpf.h			\
+	contrib/libbpf/bpf/libbpf_errno.c		\
+	contrib/libbpf/bpf/libbpf_internal.h		\
+	contrib/libbpf/bpf/libbpf_probes.c		\
+	contrib/libbpf/bpf/libbpf_util.h		\
+	contrib/libbpf/bpf/netlink.c			\
+	contrib/libbpf/bpf/nlattr.c			\
+	contrib/libbpf/bpf/nlattr.h			\
+	contrib/libbpf/bpf/str_error.c			\
+	contrib/libbpf/bpf/str_error.h			\
+	contrib/libbpf/bpf/xsk.c			\
+	contrib/libbpf/bpf/xsk.h
+endif ENABLE_XDP
 
 if HAVE_LIBDNSTAP
 noinst_LTLIBRARIES += libdnstap.la
