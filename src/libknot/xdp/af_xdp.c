@@ -406,7 +406,11 @@ int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 	__be16 version = htobe16(h->ipv6.nexthdr);
 	udp_checksum1(&chk, &version, sizeof(version));
 	udp_checksum1(&chk, &h->udp, sizeof(h->udp));
-	udp_checksum1(&chk, msg->payload.iov_base, msg->payload.iov_len);
+	size_t padded_len = msg->payload.iov_len;
+	if (padded_len & 1) {
+		((uint8_t *)msg->payload.iov_base)[padded_len++] = 0;
+	}
+	udp_checksum1(&chk, msg->payload.iov_base, padded_len);
 	udp_checksum_finish(&chk);
 	h->udp.check = chk;
 
@@ -477,7 +481,7 @@ int knot_xsk_check(struct knot_xsk_socket *socket)
 	for (int i = 0; i < completed; ++i, ++idx_cq) {
 		uint8_t *uframe_p = (uint8_t *)socket->umem->frames
 		                    + *xsk_ring_cons__comp_addr(cq, idx_cq)
-		                    - offsetof(struct umem_frame, udpv4); // TODO!!! IPv6
+		                    - offsetof(struct umem_frame, udpv4); // udpv6 has same offset
 		kxsk_dealloc_umem_frame(socket->umem, uframe_p);
 	}
 
