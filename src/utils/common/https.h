@@ -41,6 +41,7 @@ typedef struct {
 #include <assert.h>
 #include <pthread.h>
 #include <string.h>
+#include <strings.h>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
