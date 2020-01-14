@@ -97,6 +97,7 @@ Module reference
      origin: DNAME
      ttl: INT
      network: ADDR[/INT] | ADDR-ADDR ...
+     reverse-short: BOOL
 
 .. _mod-synthrecord_id:
 
@@ -158,3 +159,12 @@ network
 An IP address, a network subnet, or a network range the query must match.
 
 *Required*
+
+.. _mod-synthrecord_reverse-short:
+
+reverse-short
+.............
+
+If enabled, a shortened IPv6 address can be used for reverse record rdata synthesis.
+
+*Default:* on
