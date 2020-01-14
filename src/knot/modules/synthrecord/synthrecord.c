@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #define MOD_PREFIX	"\x06""prefix"
 #define MOD_TTL		"\x03""ttl"
 #define MOD_TYPE	"\x04""type"
+#define MOD_SHORT	"\x0d""reverse-short"
 
 /*! \brief Supported answer synthesis template types. */
 enum synth_template_type {
@@ -55,6 +56,7 @@ const yp_item_t synth_record_conf[] = {
 	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
 	{ MOD_NET,    YP_TNET,   YP_VNONE, YP_FMULTI },
+	{ MOD_SHORT,  YP_TBOOL,  YP_VBOOL = { true } },
 	{ NULL }
 };
 
@@ -86,6 +88,13 @@ int synth_record_conf_check(knotd_conf_check_args_t *args)
 	}
 	knotd_conf_free(&net);
 
+	// Check reverse-short parameter is only for reverse synthrecord.
+	knotd_conf_t reverse_short = knotd_conf_check_item(args, MOD_SHORT);
+	if (reverse_short.count != 0 && type.single.option == SYNTH_FORWARD) {
+		args->err_str = "reverse-short not allowed with forward type";
+		return KNOT_EINVAL;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -113,6 +122,7 @@ typedef struct {
 	uint32_t ttl;
 	size_t addr_count;
 	synth_templ_addr_t *addr;
+	bool reverse_short_flag;
 } synth_template_t;
 
 typedef union {
@@ -183,7 +193,7 @@ static bool query_satisfied_by_family(uint16_t qtype, int family)
 }
 
 /*! \brief Parse address from reverse query QNAME and return address family. */
-static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_family)
+static int reverse_addr_parse(knotd_qdata_t *qdata,	const synth_template_t *tpl, char *addr_str, int *addr_family)
 {
 	/* QNAME required format is [address].[subnet/zone]
 	 * f.e.  [1.0...0].[h.g.f.e.0.0.0.0.d.c.b.a.ip6.arpa] represents
@@ -224,7 +234,7 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 		return KNOT_EOK;
 	case IPV6_ADDR_LABELS + ARPA_ZONE_LABELS:
 		*addr_family = AF_INET6;
-
+		
 		addr_block_t blocks[8];
 		int compr_start = -1, compr_end = -1;
 
@@ -251,7 +261,7 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 			                      0 0 0
 			                      0 0
 			 */
-			if (i < 2 || i > 5) {
+			if (!tpl->reverse_short_flag || i < 2 || i > 5) {
 				continue;
 			}
 			const uint64_t *bi_block = (const uint64_t *)block;
@@ -275,7 +285,13 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 		for (int i = 0; i < 8; i++) {
 			if (compr_start == -1 || i < compr_start || i > compr_end) {
 				// Write regular address block.
-				addr_len += block_write(&blocks[i], addr_str + addr_len);
+				if (tpl->reverse_short_flag) {
+					addr_len += block_write(&blocks[i], addr_str + addr_len);
+				} else {
+					memcpy(addr_str + addr_len, &blocks[i], 4);
+					addr_len += 4;
+				}
+				// Write separator
 				if (i < 7) {
 					addr_str[addr_len++] = ':';
 				}
@@ -340,7 +356,7 @@ static int addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl, char *a
                       int *addr_family)
 {
 	switch (tpl->type) {
-	case SYNTH_REVERSE: return reverse_addr_parse(qdata, addr_str, addr_family);
+	case SYNTH_REVERSE: return reverse_addr_parse(qdata, tpl, addr_str, addr_family);
 	case SYNTH_FORWARD: return forward_addr_parse(qdata, tpl, addr_str, addr_family);
 	default:            return KNOT_EINVAL;
 	}
@@ -570,6 +586,12 @@ int synth_record_load(knotd_mod_t *mod)
 		tpl->addr[i].addr_mask = conf.multi[i].addr_mask;
 	}
 	knotd_conf_free(&conf);
+
+	// Set shortening
+	if (tpl->type == SYNTH_REVERSE) {
+		conf = knotd_conf_mod(mod, MOD_SHORT);
+		tpl->reverse_short_flag = conf.single.boolean;
+	}
 
 	knotd_mod_ctx_set(mod, tpl);
 
