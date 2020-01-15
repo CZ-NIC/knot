@@ -43,6 +43,12 @@ struct bpf_map_def SEC("maps") xsks_map = {
 	.max_entries = QUEUE_MAX,
 };
 
+struct ipv6_frag_hdr {
+	unsigned char nexthdr;
+	unsigned char whatever[7];
+} __attribute__((packed));
+static const size_t frag_hdr_len = sizeof(struct ipv6_frag_hdr);
+
 SEC("xdp_redirect_udp")
 int xdp_redirect_udp_func(struct xdp_md *ctx)
 {
@@ -54,24 +60,31 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	void *data_end = (void *)(long)ctx->data_end;
 	struct hdr_cursor nh = { .pos = (void *)(long)ctx->data };
 
-	int ip_type, eth_type;
+	int ip_type, eth_type, fragmented = 0;
 	eth_type = bpf_ntohs(parse_ethhdr(&nh, data_end, &eth));
 	switch (eth_type) {
 		case ETH_P_IP:
 			ip_type = parse_iphdr(&nh, data_end, &iphdr);
 			if (iphdr != NULL && iphdr->frag_off != 0 &&
 			    iphdr->frag_off != 0x0040 /* htons(IP_DF) */) {
-				return XDP_PASS;
+				fragmented = 1;
 			}
 			break;
 		case ETH_P_IPV6:
 			ip_type = parse_ip6hdr(&nh, data_end, &ipv6hdr);
+			if (ip_type == IPPROTO_FRAGMENT &&
+			    nh.pos + frag_hdr_len < data_end) {
+				fragmented = 1;
+				struct ipv6_frag_hdr *frag_hdr = nh.pos;
+				ip_type = frag_hdr->nexthdr;
+				nh.pos += frag_hdr_len;
+			}
 			break;
 		default:
 			return XDP_PASS;
 	}
 
-	if (ip_type != IPPROTO_UDP) { // for IPv6, this also covers fragmented pkts
+	if (ip_type != IPPROTO_UDP) {
 		return XDP_PASS;
 	}
 
@@ -87,6 +100,10 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 
 	if (udphdr->dest != *qidconf) {
 		return XDP_PASS;
+	}
+
+	if (fragmented) {
+		return XDP_DROP;
 	}
 
 	return bpf_redirect_map(&xsks_map, index, 0);
