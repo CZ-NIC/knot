@@ -20,8 +20,8 @@
 #include <linux/ipv6.h>
 #include <linux/udp.h>
 
-#include "contrib/libbpf/bpf_helpers.h"
-#include "contrib/libbpf/bpf_endian.h"
+#include "../../contrib/libbpf/bpf/bpf_helpers.h"
+#include "../../contrib/libbpf/bpf/bpf_endian.h"
 #include "bpf/parsing_helpers.h"
 
 /** Assume netdev has no more than 64 queues
@@ -46,16 +46,17 @@ struct bpf_map_def SEC("maps") xsks_map = {
 SEC("xdp_redirect_udp")
 int xdp_redirect_udp_func(struct xdp_md *ctx)
 {
-	struct ethhdr *eth;
-	struct iphdr *iphdr;
-	struct ipv6hdr *ipv6hdr;
-	struct udphdr *udphdr;
+	struct ethhdr *eth = NULL;
+	struct iphdr *iphdr = NULL;
+	struct ipv6hdr *ipv6hdr = NULL;
+	struct udphdr *udphdr = NULL;
 
 	void *data_end = (void *)(long)ctx->data_end;
 	struct hdr_cursor nh = { .pos = (void *)(long)ctx->data };
 
-	int ip_type;
-	switch (parse_ethhdr(&nh, data_end, &eth)) {
+	int ip_type, eth_type;
+	eth_type = bpf_ntohs(parse_ethhdr(&nh, data_end, &eth));
+	switch (eth_type) {
 		case ETH_P_IP:
 			ip_type = parse_iphdr(&nh, data_end, &iphdr);
 			break;
