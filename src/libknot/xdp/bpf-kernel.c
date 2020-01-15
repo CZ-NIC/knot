@@ -14,21 +14,19 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../contrib/libbpf/include/uapi/linux/bpf.h"
-#include <linux/in.h>
 #include <linux/if_ether.h>
+#include <linux/in.h>
+#include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/udp.h>
 
+#include "../../contrib/libbpf/include/uapi/linux/bpf.h"
 #include "../../contrib/libbpf/bpf/bpf_helpers.h"
-#include "../../contrib/libbpf/bpf/bpf_endian.h"
-#include "bpf/parsing_helpers.h"
 
-/** Assume netdev has no more than 64 queues
- * LATER: it might be better to detect this on startup time (per-device). */
-#define QUEUE_MAX 64
+/* Assume netdev has no more than 128 queues. */
+#define QUEUE_MAX 128
 
-/** A set entry here means that the corresponding queue_id
+/* A set entry here means that the corresponding queue_id
  * has an active AF_XDP socket bound to it. */
 struct bpf_map_def SEC("maps") qidconf_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
@@ -46,36 +44,54 @@ struct bpf_map_def SEC("maps") xsks_map = {
 SEC("xdp_redirect_udp")
 int xdp_redirect_udp_func(struct xdp_md *ctx)
 {
-	struct ethhdr *eth = NULL;
-	struct iphdr *iphdr = NULL;
-	struct ipv6hdr *ipv6hdr = NULL;
-	struct udphdr *udphdr = NULL;
-
+	void *data = (void *)(long)ctx->data;
 	void *data_end = (void *)(long)ctx->data_end;
-	struct hdr_cursor nh = { .pos = (void *)(long)ctx->data };
 
-	int ip_type, eth_type;
-	eth_type = bpf_ntohs(parse_ethhdr(&nh, data_end, &eth));
-	switch (eth_type) {
-		case ETH_P_IP:
-			ip_type = parse_iphdr(&nh, data_end, &iphdr);
-			if (iphdr != NULL && iphdr->frag_off != 0 &&
-			    iphdr->frag_off != 0x0040 /* htons(IP_DF) */) {
+	struct ethhdr *eth = data;
+	struct iphdr *ip4;
+	struct ipv6hdr *ip6;
+	struct udphdr *udp;
+
+	__u8 ip_proto;
+
+	/* Parse Ethernet header (VLAN not supported). */
+	if ((void *)eth + sizeof(*eth) > data_end) {
+		return XDP_PASS;
+	}
+	data += sizeof(*eth);
+
+	/* Parse IPv4 or IPv6 header. */
+	switch (eth->h_proto) {
+		case 0x0008: /* htons(ETH_P_IP) */
+			ip4 = data;
+			if ((void *)ip4 + sizeof(*ip4) > data_end) {
 				return XDP_PASS;
 			}
+			if (ip4->frag_off != 0 && ip4->frag_off != 0x0040) { /* htons(IP_DF) */
+				return XDP_PASS;
+			}
+			ip_proto = ip4->protocol;
+			udp = data + ip4->ihl * 4;
 			break;
-		case ETH_P_IPV6:
-			ip_type = parse_ip6hdr(&nh, data_end, &ipv6hdr);
+		case 0xDD86: /* htons(ETH_P_IPV6) */
+			ip6 = data;
+			if ((void *)ip6 + sizeof(*ip6) > data_end) {
+				return XDP_PASS;
+			}
+			ip_proto = ip6->nexthdr;
+			udp = data + sizeof(ip6);
 			break;
 		default:
 			return XDP_PASS;
 	}
 
-	if (ip_type != IPPROTO_UDP) { // for IPv6, this also covers fragmented pkts
+	/* Check for UDP. This also covers fragmented IPv6 packets. */
+	if (ip_proto != IPPROTO_UDP) {
 		return XDP_PASS;
 	}
 
-	if (parse_udphdr(&nh, data_end, &udphdr) < 1) {
+	/* Parse UDP header. */
+	if ((void *)udp + sizeof(*udp) > data_end) {
 		return XDP_PASS;
 	}
 
@@ -85,7 +101,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		return XDP_ABORTED;
 	}
 
-	if (udphdr->dest != *qidconf) {
+	if (udp->dest != *qidconf) {
 		return XDP_PASS;
 	}
 
