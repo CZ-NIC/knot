@@ -14,7 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <linux/bpf.h>
+#include "../../contrib/libbpf/include/uapi/linux/bpf.h"
 #include <linux/in.h>
 #include <linux/if_ether.h>
 #include <linux/ipv6.h>

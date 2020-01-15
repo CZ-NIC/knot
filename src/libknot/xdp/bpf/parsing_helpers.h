@@ -25,10 +25,7 @@
 #include <linux/if_packet.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
-#include <linux/icmp.h>
-#include <linux/icmpv6.h>
 #include <linux/udp.h>
-#include <linux/tcp.h>
 
 /* Header cursor to keep track of current parsing position */
 struct hdr_cursor {
@@ -43,16 +40,6 @@ struct hdr_cursor {
 struct vlan_hdr {
 	__be16	h_vlan_TCI;
 	__be16	h_vlan_encapsulated_proto;
-};
-
-/*
- * Struct icmphdr_common represents the common part of the icmphdr and icmp6hdr
- * structures.
- */
-struct icmphdr_common {
-	__u8		type;
-	__u8		code;
-	__sum16	cksum;
 };
 
 /* Allow users of header file to redefine VLAN max depth */
@@ -151,51 +138,6 @@ static __always_inline int parse_iphdr(struct hdr_cursor *nh,
 	return iph->protocol;
 }
 
-static __always_inline int parse_icmp6hdr(struct hdr_cursor *nh,
-					  void *data_end,
-					  struct icmp6hdr **icmp6hdr)
-{
-	struct icmp6hdr *icmp6h = nh->pos;
-
-	if (icmp6h + 1 > data_end)
-		return -1;
-
-	nh->pos   = icmp6h + 1;
-	*icmp6hdr = icmp6h;
-
-	return icmp6h->icmp6_type;
-}
-
-static __always_inline int parse_icmphdr(struct hdr_cursor *nh,
-					 void *data_end,
-					 struct icmphdr **icmphdr)
-{
-	struct icmphdr *icmph = nh->pos;
-
-	if (icmph + 1 > data_end)
-		return -1;
-
-	nh->pos  = icmph + 1;
-	*icmphdr = icmph;
-
-	return icmph->type;
-}
-
-static __always_inline int parse_icmphdr_common(struct hdr_cursor *nh,
-						void *data_end,
-						struct icmphdr_common **icmphdr)
-{
-	struct icmphdr_common *h = nh->pos;
-
-	if (h + 1 > data_end)
-		return -1;
-
-	nh->pos  = h + 1;
-	*icmphdr = h;
-
-	return h->type;
-}
-
 /*
  * parse_udphdr: parse the udp header and return the length of the udp payload
  */
@@ -215,29 +157,6 @@ static __always_inline int parse_udphdr(struct hdr_cursor *nh,
 	len = bpf_ntohs(h->len) - sizeof(struct udphdr);
 	if (len < 0)
 		return -1;
-
-	return len;
-}
-
-/*
- * parse_tcphdr: parse and return the length of the tcp header
- */
-static __always_inline int parse_tcphdr(struct hdr_cursor *nh,
-					void *data_end,
-					struct tcphdr **tcphdr)
-{
-	int len;
-	struct tcphdr *h = nh->pos;
-
-	if (h + 1 > data_end)
-		return -1;
-
-	len = h->doff * 4;
-	if ((void *) h + len > data_end)
-		return -1;
-
-	nh->pos  = h + 1;
-	*tcphdr = h;
 
 	return len;
 }
