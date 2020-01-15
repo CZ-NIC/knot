@@ -190,6 +190,7 @@ AS_CASE([$enable_recvmmsg],
 AS_IF([test "$enable_recvmmsg" = yes],[
    AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
 
+# XDP support
 AC_ARG_ENABLE([xdp],
    AS_HELP_STRING([--enable-xdp=auto|yes|no], [enable eXpress Data Path [default=auto]]),
    [], [enable_xdp=auto])
@@ -201,20 +202,19 @@ AS_CASE([$enable_xdp],
      embedded_libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf/include -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"
      embedded_libbpf_LIBS=$libelf_LIBS
      libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"
-   ],[enable_xdp=no])],
+   ],[AC_MSG_ERROR([libelf is required])])],
    [no],[],
    [*],[AC_MSG_ERROR([Invalid value of --enable-xdp.]
  )])
-
-AS_IF([test "$enable_xdp" != "no"],[
-    AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])
-])
 AM_CONDITIONAL([EMBEDDED_LIBBPF], [test "$enable_xdp" = "embedded"])
 AM_CONDITIONAL([ENABLE_XDP], [test "$enable_xdp" != "no"])
 AC_SUBST([embedded_libbpf_CFLAGS])
 AC_SUBST([embedded_libbpf_LIBS])
 AC_SUBST([libbpf_CFLAGS])
 AC_SUBST([libbpf_LIBS])
+
+AS_IF([test "$enable_xdp" != "no"],[
+    AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])])
 
 # Reuseport support
 AS_CASE([$host_os],
