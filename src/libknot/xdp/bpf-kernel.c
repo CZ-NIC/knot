@@ -59,6 +59,10 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	switch (eth_type) {
 		case ETH_P_IP:
 			ip_type = parse_iphdr(&nh, data_end, &iphdr);
+			if (iphdr != NULL && iphdr->frag_off != 0 &&
+			    iphdr->frag_off != 0x0040 /* htons(IP_DF) */) {
+				return XDP_PASS;
+			}
 			break;
 		case ETH_P_IPV6:
 			ip_type = parse_ip6hdr(&nh, data_end, &ipv6hdr);
@@ -67,7 +71,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 			return XDP_PASS;
 	}
 
-	if (ip_type != IPPROTO_UDP) {
+	if (ip_type != IPPROTO_UDP) { // for IPv6, this also covers fragmented pkts
 		return XDP_PASS;
 	}
 
