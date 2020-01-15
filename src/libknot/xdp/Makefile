@@ -1,8 +1,9 @@
 
 all: bpf-kernel.o
 
+# Fix missing asm/types.h
 bpf-kernel.ll: bpf-kernel.c
-	clang -S -target bpf -Wall -O2 -emit-llvm -c -DNDEBUG -o bpf-kernel.ll bpf-kernel.c
+	clang -S -target bpf -Wall -O2 -emit-llvm -c -DNDEBUG -o bpf-kernel.ll -I/usr/include/x86_64-linux-gnu bpf-kernel.c
 
 bpf-kernel.o: bpf-kernel.ll
 	llc -march=bpf -filetype=obj -o bpf-kernel.o bpf-kernel.ll
