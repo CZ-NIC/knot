@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #define MOD_PREFIX	"\x06""prefix"
 #define MOD_TTL		"\x03""ttl"
 #define MOD_TYPE	"\x04""type"
+#define MOD_SHORT	"\x0d""reverse-short"
 
 /*! \brief Supported answer synthesis template types. */
 enum synth_template_type {
@@ -55,6 +56,7 @@ const yp_item_t synth_record_conf[] = {
 	{ MOD_ORIGIN, YP_TDNAME, YP_VNONE },
 	{ MOD_TTL,    YP_TINT,   YP_VINT = { 0, UINT32_MAX, 3600, YP_STIME } },
 	{ MOD_NET,    YP_TNET,   YP_VNONE, YP_FMULTI },
+	{ MOD_SHORT,  YP_TBOOL,  YP_VBOOL = { true } },
 	{ NULL }
 };
 
@@ -86,6 +88,13 @@ int synth_record_conf_check(knotd_conf_check_args_t *args)
 	}
 	knotd_conf_free(&net);
 
+	// Check reverse-short parameter is only for reverse synthrecord.
+	knotd_conf_t reverse_short = knotd_conf_check_item(args, MOD_SHORT);
+	if (reverse_short.count != 0 && type.single.option == SYNTH_FORWARD) {
+		args->err_str = "reverse-short not allowed with forward type";
+		return KNOT_EINVAL;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -113,7 +122,48 @@ typedef struct {
 	uint32_t ttl;
 	size_t addr_count;
 	synth_templ_addr_t *addr;
+	bool reverse_short;
 } synth_template_t;
+
+typedef union {
+	uint32_t b32;
+	uint8_t b4[4];
+} addr_block_t;
+
+/*! \brief Create one IPV6 address block from four reverse address labels. */
+static int block_fill(addr_block_t *block, const uint8_t *label)
+{
+	// Check for 1-char labels.
+	if (label[0] != 1 || label[2] != 1 || label[4] != 1 || label[6] != 1) {
+		return KNOT_EINVAL;
+	}
+
+	block->b4[0] = label[7];
+	block->b4[1] = label[5];
+	block->b4[2] = label[3];
+	block->b4[3] = label[1];
+
+	return KNOT_EOK;
+}
+
+/*! \brief Write one IPV4 address block without redundant leading zeros. */
+static unsigned block_write(addr_block_t *block, char *addr_str)
+{
+	unsigned len = 0;
+
+	if (block->b4[0] != '0') {
+		addr_str[len++] = block->b4[0];
+	}
+	if (len > 0 || block->b4[1] != '0') {
+		addr_str[len++] = block->b4[1];
+	}
+	if (len > 0 || block->b4[2] != '0') {
+		addr_str[len++] = block->b4[2];
+	}
+	addr_str[len++] = block->b4[3];
+
+	return len;
+}
 
 /*! \brief Substitute all occurrences of given character. */
 static void str_subst(char *str, size_t len, char from, char to)
@@ -128,10 +178,7 @@ static void str_subst(char *str, size_t len, char from, char to)
 /*! \brief Separator character for address family. */
 static char str_separator(int addr_family)
 {
-	if (addr_family == AF_INET6) {
-		return ':';
-	}
-	return '.';
+	return (addr_family == AF_INET6) ? ':' : '.';
 }
 
 /*! \brief Return true if query type is satisfied with provided address family. */
@@ -146,7 +193,8 @@ static bool query_satisfied_by_family(uint16_t qtype, int family)
 }
 
 /*! \brief Parse address from reverse query QNAME and return address family. */
-static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_family)
+static int reverse_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
+                              char *addr_str, int *addr_family)
 {
 	/* QNAME required format is [address].[subnet/zone]
 	 * f.e.  [1.0...0].[h.g.f.e.0.0.0.0.d.c.b.a.ip6.arpa] represents
@@ -188,20 +236,74 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, char *addr_str, int *addr_fa
 	case IPV6_ADDR_LABELS + ARPA_ZONE_LABELS:
 		*addr_family = AF_INET6;
 
-		// 1-char labels + separators.
-		const int addr_len = IPV6_ADDR_LABELS + 7;
-		for (int i = 1; i <= addr_len; i++) {
-			if (i % 5 == 0) {
-				addr_str[addr_len - i] = ':';
-			} else if (label[0] == 1) {
-				addr_str[addr_len - i] = label[1];
-				label = knot_wire_next_label(label, wire);
-				assert(label);
+		addr_block_t blocks[8];
+		int compr_start = -1, compr_end = -1;
+
+		// Process 32 1-char labels.
+		const uint8_t *l = label;
+		for (int i = 0; i < 8; i++) {
+			addr_block_t *block = &blocks[7 - i];
+			int ret = block_fill(block, l);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			l += 8;
+
+			/* The Unicode string MUST NOT contain "--" in the third and fourth
+			   character positions and MUST NOT start or end with a "-".
+			   So we will not compress first, second, and last address blocks
+			   for simplicity. And we will not compress a single block.
+
+			   i:             0 1 2 3 4 5 6 7
+			   label block:   H:G:F:E:D:C:B:A
+			   address block: A B C D E F G H
+			   compressibles:     0 0 0 0 0
+			                      0 0 0 0
+			                      0 0 0
+			                      0 0
+			 */
+			if (!tpl->reverse_short || i < 2 || i > 5) {
+				continue;
+			}
+			const uint64_t *bi_block = (const uint64_t *)block;
+			// Check for trailing zero dual-blocks.
+			if (*bi_block == 0x3030303030303030ULL) {
+				if (compr_end == -1) { // Set compression end.
+					compr_end = 8 - i;
+				} else if (i == 5 && compr_start == -1) { // Set max compression start.
+					compr_start = 7 - i;
+				}
 			} else {
-				return KNOT_EINVAL;
+				// Set compression start.
+				if (compr_end != -1 && compr_start == -1) {
+					compr_start = 8 - i;
+				}
+			}
+		}
+
+		// Write address blocks.
+		unsigned addr_len = 0;
+		for (int i = 0; i < 8; i++) {
+			if (compr_start == -1 || i < compr_start || i > compr_end) {
+				// Write regular address block.
+				if (tpl->reverse_short) {
+					addr_len += block_write(&blocks[i], addr_str + addr_len);
+				} else {
+					assert(sizeof(blocks[i]) == 4);
+					memcpy(addr_str + addr_len, &blocks[i], 4);
+					addr_len += 4;
+				}
+				// Write separator
+				if (i < 7) {
+					addr_str[addr_len++] = ':';
+				}
+			} else if (compr_start != -1 && compr_end == i) {
+				// Write compression double colon.
+				addr_str[addr_len++] = ':';
 			}
 		}
 		addr_str[addr_len] = '\0';
+		label += 8 * 8;
 
 		if (!knot_dname_is_equal(label, IPV6_ARPA_DNAME)) {
 			return KNOT_EINVAL;
@@ -225,14 +327,25 @@ static int forward_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 	}
 
 	// Copy address part.
-	int addr_len = label[0] - tpl->prefix_len;
+	unsigned addr_len = label[0] - tpl->prefix_len;
 	memcpy(addr_str, label + 1 + tpl->prefix_len, addr_len);
 	addr_str[addr_len] = '\0';
 
-	// Determine query family: v6 if *-ABCD.zone.
-	const char *last_octet = addr_str + addr_len;
-	while (last_octet > addr_str && is_xdigit(*--last_octet));
-	*addr_family = (last_octet + 5 == addr_str + addr_len ? AF_INET6 : AF_INET);
+	// Determine address family.
+	unsigned hyphen_cnt = 0;
+	const char *ch = addr_str;
+	while (hyphen_cnt < 4 && ch < addr_str + addr_len) {
+		if (*ch == '-') {
+			hyphen_cnt++;
+			if (*++ch == '-') { // Check for shortened IPv6 notation.
+				hyphen_cnt = 4;
+				break;
+			}
+		}
+		ch++;
+	}
+	// Valid IPv4 address looks like A-B-C-D.
+	*addr_family = (hyphen_cnt == 3) ? AF_INET : AF_INET6;
 
 	// Restore correct address format.
 	const char sep = str_separator(*addr_family);
@@ -245,7 +358,7 @@ static int addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl, char *a
                       int *addr_family)
 {
 	switch (tpl->type) {
-	case SYNTH_REVERSE: return reverse_addr_parse(qdata, addr_str, addr_family);
+	case SYNTH_REVERSE: return reverse_addr_parse(qdata, tpl, addr_str, addr_family);
 	case SYNTH_FORWARD: return forward_addr_parse(qdata, tpl, addr_str, addr_family);
 	default:            return KNOT_EINVAL;
 	}
@@ -279,7 +392,7 @@ static knot_dname_t *synth_ptrname(uint8_t *out, const char *addr_str,
 static int reverse_rr(char *addr_str, const synth_template_t *tpl, knot_pkt_t *pkt,
                       knot_rrset_t *rr, int addr_family)
 {
-	// Synthetize PTR record data.
+	// Synthesize PTR record data.
 	knot_dname_storage_t ptrname;
 	if (synth_ptrname(ptrname, addr_str, tpl, addr_family) == NULL) {
 		return KNOT_EINVAL;
@@ -393,7 +506,7 @@ static knotd_in_state_t template_match(knotd_in_state_t state, const synth_templ
 		return state;
 	}
 
-	// Synthetise record from template.
+	// Synthesize record from template.
 	knot_rrset_t *rr = synth_rr(addr_str, tpl, pkt, qdata, provided_af);
 	if (rr == NULL) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
@@ -475,6 +588,12 @@ int synth_record_load(knotd_mod_t *mod)
 		tpl->addr[i].addr_mask = conf.multi[i].addr_mask;
 	}
 	knotd_conf_free(&conf);
+
+	// Set address shortening.
+	if (tpl->type == SYNTH_REVERSE) {
+		conf = knotd_conf_mod(mod, MOD_SHORT);
+		tpl->reverse_short = conf.single.boolean;
+	}
 
 	knotd_mod_ctx_set(mod, tpl);
 
