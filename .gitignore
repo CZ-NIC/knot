@@ -61,7 +61,6 @@ version.h
 
 # xdp
 /src/libknot/xdp/bpf-kernel.ll
-!/src/libknot/xdp/Makefile
 
 # Binaries
 /src/kdig
