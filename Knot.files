@@ -410,6 +410,8 @@ src/libknot/xdp/bpf-kernel-obj.h
 src/libknot/xdp/bpf-kernel.c
 src/libknot/xdp/bpf-user.c
 src/libknot/xdp/bpf-user.h
+src/libknot/xdp/eth-tools.c
+src/libknot/xdp/eth-tools.h
 src/libknot/yparser/yparser.c
 src/libknot/yparser/yparser.h
 src/libknot/yparser/ypbody.c
