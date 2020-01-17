@@ -88,3 +88,5 @@ libknot_la_SOURCES += \
 	libknot/xdp/eth-tools.c			\
 	libknot/xdp/eth-tools.h
 endif ENABLE_XDP
+
+DIST_SUBDIRS = libknot/xdp
