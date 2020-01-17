@@ -21,6 +21,7 @@ EXTRA_DIST += \
 	contrib/licenses/0BSD			\
 	contrib/licenses/BSD-3-Clause		\
 	contrib/licenses/LGPL-2.0		\
+	contrib/licenses/LGPL-2.1		\
 	contrib/licenses/OLDAP-2.8		\
 	contrib/lmdb/LICENSE			\
 	contrib/openbsd/LICENSE			\
@@ -96,7 +97,6 @@ libcontrib_la_SOURCES += \
 	contrib/libbpf/include/linux/overflow.h		\
 	contrib/libbpf/include/linux/ring_buffer.h	\
 	contrib/libbpf/include/linux/types.h		\
-	contrib/libbpf/include/tools/libc_compat.h	\
 	contrib/libbpf/include/uapi/linux/bpf_common.h	\
 	contrib/libbpf/include/uapi/linux/bpf.h		\
 	contrib/libbpf/include/uapi/linux/btf.h		\
