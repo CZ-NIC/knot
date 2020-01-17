@@ -463,7 +463,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp, void 
 
 		size_t xdp_wrk_id = thread_id - udp_wrk - tcp_wrk;
 
-		if (xdp_wrk_id > iface->fd_xdp_count) {
+		if (xdp_wrk_id >= iface->fd_xdp_count) {
 			return -1;
 		}
 
