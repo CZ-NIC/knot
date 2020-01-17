@@ -25,6 +25,7 @@
 #include "libknot/errcode.h"
 #ifdef ENABLE_XDP
 #include "libknot/xdp/af_xdp.h"
+#include "libknot/xdp/eth-tools.h"
 #endif
 #include "libknot/yparser/ypschema.h"
 #include "knot/common/log.h"
@@ -289,10 +290,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
 	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
-	new_if->fd_xdp = malloc(xdp_socket_count * sizeof(int));
-	new_if->sock_xdp = calloc(xdp_socket_count, sizeof(*new_if->sock_xdp));
-	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL ||
-	    new_if->fd_xdp == NULL || new_if->sock_xdp == NULL) {
+
+	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL) {
 		log_error("failed to initialize interface");
 		server_deinit_iface(new_if);
 		return NULL;
@@ -345,7 +344,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		new_if->fd_udp_count += 1;
 	}
 
-	for (int i = 0; i < xdp_socket_count; i++) {
+	if (xdp_socket_count > 0) {
 #ifndef ENABLE_XDP
 		assert(0);
 #else
@@ -354,24 +353,42 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		if (ret != KNOT_EOK) {
 			if (dev != NULL) {
 				log_warning("XDP failed: address %s corresponds to %s net devices", dev, ret == KNOT_EADDRNOTAVAIL ? "none" : "more");
-				free(dev);
 			} else {
 				log_warning("failed to find dev for address (%s)", knot_strerror(ret));
 			}
-			continue;
+			goto skip_xdp;
 		}
 
-		ret = knot_xsk_init(new_if->sock_xdp + i, dev, i,
-		                    sockaddr_port(addr), i == 0);
+		int rx_queues = knot_eth_get_rx_queues(dev);
+		if (rx_queues < 0) {
+			log_warning("failed to obtain RX queue count for iface %s (%s)\n", dev, knot_strerror(rx_queues));
+			goto skip_xdp;
+		}
+
+		assert(new_if->fd_xdp == NULL);
+		assert(new_if->sock_xdp == NULL);
+		new_if->fd_xdp = malloc(rx_queues * sizeof(int));
+		new_if->sock_xdp = calloc(rx_queues, sizeof(*new_if->sock_xdp));
+		if (new_if->fd_xdp == NULL || new_if->sock_xdp == NULL) {
+			log_warning("failed to init XDP: not enough memory\n");
+			goto skip_xdp;
+		}
+
+		for (int i = 0; i < rx_queues; i++) {
+			ret = knot_xsk_init(new_if->sock_xdp + i, dev, i,
+			                    sockaddr_port(addr), i == 0);
+
+			if (ret != KNOT_EOK) {
+				log_warning("failed to init XDP in dev %s queue %d (%s)", dev, i, knot_strerror(ret));
+				new_if->fd_xdp[i] = -1;
+			} else {
+				new_if->fd_xdp[i] = knot_xsk_get_poll_fd(new_if->sock_xdp[i]);
+
+			}
+			new_if->fd_xdp_count++;
+		}
+skip_xdp:
 		free(dev);
-		if (ret != KNOT_EOK) {
-			log_warning("failed to init XDP (%s)", knot_strerror(ret));
-			new_if->fd_xdp[i] = -1;
-		} else {
-			new_if->fd_xdp[i] = knot_xsk_get_poll_fd(new_if->sock_xdp[i]);
-
-		}
-		new_if->fd_xdp_count++;
 #endif
 	}
 
