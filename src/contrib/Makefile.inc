@@ -96,7 +96,6 @@ libcontrib_la_SOURCES += \
 	contrib/libbpf/include/linux/overflow.h		\
 	contrib/libbpf/include/linux/ring_buffer.h	\
 	contrib/libbpf/include/linux/types.h		\
-	contrib/libbpf/include/tools/libc_compat.h	\
 	contrib/libbpf/include/uapi/linux/bpf_common.h	\
 	contrib/libbpf/include/uapi/linux/bpf.h		\
 	contrib/libbpf/include/uapi/linux/btf.h		\

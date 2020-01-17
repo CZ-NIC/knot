@@ -41,7 +41,6 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 #include <sys/utsname.h>
-#include <tools/libc_compat.h>
 #include <libelf.h>
 #include <gelf.h>
 
