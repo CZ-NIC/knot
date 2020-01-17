@@ -84,5 +84,7 @@ libknot_la_SOURCES += \
 	libknot/xdp/af_xdp.c                    \
 	libknot/xdp/bpf-kernel-obj.c		\
 	libknot/xdp/bpf-kernel-obj.h		\
-        libknot/xdp/bpf-user.c
+	libknot/xdp/bpf-user.c			\
+	libknot/xdp/eth-tools.c			\
+	libknot/xdp/eth-tools.h
 endif ENABLE_XDP
