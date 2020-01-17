@@ -23,6 +23,7 @@ EXTRA_DIST += \
 	contrib/licenses/LGPL-2.0		\
 	contrib/licenses/LGPL-2.1		\
 	contrib/licenses/OLDAP-2.8		\
+	contrib/libbpf/LICENSE			\
 	contrib/lmdb/LICENSE			\
 	contrib/openbsd/LICENSE			\
 	contrib/ucw/LICENSE			\
