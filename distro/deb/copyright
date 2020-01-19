@@ -45,7 +45,7 @@ Copyright: 2013-2015 Alexei Starovoitov <ast@kernel.org>
            2003-2013 Thomas Graf <tgraf@suug.ch>
            2018-2019 Intel Corporation.
            2018-2019 Facebook
-License: LGPL-2.0
+License: LGPL-2.1
 
 Files: src/contrib/lmdb/lmdb.h src/contrib/lmdb/mdb.c src/contrib/lmdb/midl.*
 Copyright: 2000-2018 The OpenLDAP Foundation
