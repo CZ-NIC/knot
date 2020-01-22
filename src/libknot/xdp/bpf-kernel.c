@@ -118,7 +118,8 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	}
 
 	/* Treat destination (DNS) port only. */
-	if (udp->dest != *qidconf) {
+	__u32 port_info = *qidconf;
+	if (!(port_info & (1 << 16)) && udp->dest != port_info) {
 		return XDP_PASS;
 	}
 

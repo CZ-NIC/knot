@@ -169,7 +169,7 @@ static void unget_bpf_maps(struct kxsk_iface *iface)
 }
 
 int kxsk_socket_start(const struct kxsk_iface *iface, int queue_id,
-                      uint16_t listen_port, struct xsk_socket *xsk)
+                      uint32_t listen_port, struct xsk_socket *xsk)
 {
 	int fd = xsk_socket__fd(xsk);
 	int err = bpf_map_update_elem(iface->xsks_map_fd, &queue_id, &fd, 0);
@@ -177,7 +177,7 @@ int kxsk_socket_start(const struct kxsk_iface *iface, int queue_id,
 		return err;
 	}
 
-	int qid = htobe16(listen_port);
+	int qid = (listen_port & 0xffff0000) | htobe16(listen_port & 0xffff);
 	err = bpf_map_update_elem(iface->qidconf_map_fd, &queue_id, &qid, 0);
 	if (err) {
 		bpf_map_delete_elem(iface->xsks_map_fd, &queue_id);
