@@ -39,7 +39,7 @@ struct knot_xsk_socket;
  * \param socket        Socket ctx.
  * \param ifname        Name of the net iface (e.g. eth0).
  * \param if_queue      Network card queue to be used (normally 1 socket per each queue).
- * \param listen_port   Port to listen on.
+ * \param listen_port   Port to listen on, or (1 << 16) to listen on all ports.
  * \param load_bpf      Insert BPF program into packet processing.
  *
  * \return KNOT_E*
