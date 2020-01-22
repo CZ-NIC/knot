@@ -375,6 +375,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 
 		for (int i = 0; i < rx_queues; i++) {
+			assert(sockaddr_port(addr) < (1 << 16));
 			ret = knot_xsk_init(new_if->sock_xdp + i, dev, i,
 			                    sockaddr_port(addr), i == 0);
 
