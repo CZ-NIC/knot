@@ -50,9 +50,6 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 /*! \brief De-init XDP socket. */
 void knot_xsk_deinit(struct knot_xsk_socket *socket);
 
-/*! \brief Stop RX on XDP socket, still possilble to TX. */
-void knot_xsk_stop(struct knot_xsk_socket *socket);
-
 /*!
  * \brief Allocate one buffer for outgoing packet in shared umem.
  *

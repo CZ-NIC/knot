@@ -168,12 +168,6 @@ void knot_xsk_deinit(struct knot_xsk_socket *socket)
 	free(socket);
 }
 
-_public_
-void knot_xsk_stop(struct knot_xsk_socket *socket)
-{
-	kxsk_socket_stop(socket->iface, socket->if_queue);
-}
-
 /** Add some free frames into the RX fill queue (possibly zero, etc.) */
 static int kxsk_umem_refill(struct xsk_umem_info *umem)
 {
