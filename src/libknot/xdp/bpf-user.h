@@ -111,7 +111,7 @@ void kxsk_iface_free(struct kxsk_iface *iface);
 
 /*! \brief Activate this AF_XDP socket through the BPF maps. */
 int kxsk_socket_start(const struct kxsk_iface *iface, int queue_id,
-                      uint16_t listen_port, struct xsk_socket *xsk);
+                      uint32_t listen_port, struct xsk_socket *xsk);
 
 /*! \brief Deactivate this AF_XDP socket through the BPF maps. */
 int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id);
