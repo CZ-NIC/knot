@@ -636,7 +636,8 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 AC_LINK_IFELSE(
   [AC_LANG_PROGRAM([[#include <stdint.h>]],
                    [[uint64_t val = 0; __atomic_add_fetch(&val, 1, __ATOMIC_RELAXED);]])],
-  [AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])]
+  [AS_IF([test -z "$CC_CLANG_VERSION" -o $host_cpu != "i386"],
+         [AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])])]
 )
 
 # Check for '__sync' compiler builtin atomic functions.
