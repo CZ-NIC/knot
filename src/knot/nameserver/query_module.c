@@ -30,7 +30,7 @@
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
 
-#ifdef HAVE_ATOMIC
+#ifndef HAVE_ATOMIC
  #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
  #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
  #define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
