@@ -23,7 +23,7 @@
 #include "contrib/string.h"
 #include "libdnssec/random.h"
 
-#ifdef HAVE_ATOMIC
+#ifndef HAVE_ATOMIC
 #define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
 #define ATOMIC_GET(src)      __atomic_load_n(&(src), __ATOMIC_RELAXED)
 #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
