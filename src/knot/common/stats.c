@@ -59,7 +59,7 @@ const stats_item_t server_stats[] = {
 static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr)
 {
 	for (uint32_t j = 0; j < ctr->count; j++) {
-		uint64_t counter = __atomic_load_n(&(ctr->counters[j]), __ATOMIC_RELAXED);
+		uint64_t counter = ATOMIC_GET(ctr->counters[j]);
 
 		// Skip empty counters.
 		if (counter == 0) {
