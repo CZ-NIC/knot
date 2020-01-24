@@ -76,7 +76,7 @@ man_SPHINXOPTS = $(_SPHINXOPTS) \
 	         $(SPHINXOPTS) \
 	         $(srcdir)
 
-.PHONY: html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local
+.PHONY: html-local singlehtml pdf-local info-local epub man install-html-local install-singlehtml install-pdf-local install-info-local install-epub
 
 man_MANS =
 
@@ -155,6 +155,15 @@ install-singlehtml: singlehtml
 	$(INSTALL_DATA) $(SPHINXBUILDDIR)/singlehtml/*.html $(DESTDIR)/$(docdir)/
 	$(INSTALL_DATA) $(SPHINXBUILDDIR)/singlehtml/_static/* $(DESTDIR)/$(docdir)/_static/
 
+epub:
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b epub -A today=$(RELEASE_DATE) -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/epub
+	$(AM_V_ECHO)
+	$(AM_V_ECHO) "Build finished. The EPUB file is in $(SPHINXBUILDDIR)/epub/."
+
+install-epub:
+	$(INSTALL) -d $(DESTDIR)/$(docdir)
+	$(INSTALL_DATA) $(SPHINXBUILDDIR)/epub/KnotDNS.epub $(DESTDIR)/$(docdir)/
+
 if HAVE_PDFLATEX
 pdf-local:
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
@@ -201,7 +210,7 @@ $(MANPAGES_IN): $(MANPAGES_RST)
 	$(AM_V_ECHO) "Build finished. The man pages are in man/."
 
 else
-html-local singlehtml pdf-local info-local man install-html-local install-singlehtml install-pdf-local install-info-local:
+html-local singlehtml pdf-local info-local epub man install-html-local install-singlehtml install-pdf-local install-info-local install-epub:
 	$(AM_V_ECHO) "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
 endif # HAVE_SPHINXBUILD
 
