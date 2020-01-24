@@ -82,6 +82,7 @@ int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg);
  * \param socket   XDP socket.
  * \param msgs     Packets to be sent.
  * \param count    Number of packets.
+ * \param sent     Out: number of packet successfully sent.
  *
  * \note The packets all must have been allocated by knot_xsk_alloc_frame()!
  * \note Do not free the packets payloads afterwards.
@@ -89,7 +90,7 @@ int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg);
  *
  * \return KNOT_E*
  */
-int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count);
+int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count, uint32_t *sent);
 
 /*!
  * \brief Receive multiple packets thru XDP.
