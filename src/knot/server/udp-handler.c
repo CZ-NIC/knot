@@ -431,7 +431,7 @@ static int xdp_recvmmsg_send(void *d, void *xdp_sock)
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 	uint32_t sent = rq->rcvd;
 
-	int ret = knot_xsk_sendmmsg(xdp_sock, rq->msgs_tx, sent);
+	int ret = knot_xsk_sendmmsg(xdp_sock, rq->msgs_tx, sent, &sent);
 
 	memset(rq, 0, sizeof(*rq));
 
