@@ -437,12 +437,14 @@ int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 }
 
 _public_
-int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count)
+int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count, uint32_t *sent)
 {
 	int ret = KNOT_EOK;
+	*sent = 0;
 	for (int i = 0; i < count && ret == KNOT_EOK; i++) {
 		if (msgs[i].payload.iov_len > 0) {
 			ret = knot_xsk_sendmsg(socket, &msgs[i]);
+			*sent += (ret == KNOT_EOK ? 1 : 0);
 		}
 	}
 	return ret;
