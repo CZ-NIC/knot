@@ -787,7 +787,7 @@ fail:
 /*! \brief Synthesize RRSIG for given parameters, store in 'qdata' for later use */
 static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
                      const knot_rrset_t *rrsigs, knot_rrinfo_t *rrinfo,
-                     knotd_qdata_t *qdata)
+                     uint32_t ttl_limit, knotd_qdata_t *qdata)
 {
 	knot_rdataset_t synth_rrs;
 	knot_rdataset_init(&synth_rrs);
@@ -814,8 +814,9 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
+	uint32_t orig_ttl = knot_rrsig_original_ttl(synth_rrs.rdata);
 	knot_rrset_init(&info->synth_rrsig, owner_copy, rrsigs->type,
-	                rrsigs->rclass, rrsigs->ttl);
+	                rrsigs->rclass, MIN(orig_ttl, ttl_limit));
 	/* Store filtered signature. */
 	info->synth_rrsig.rrs = synth_rrs;
 
@@ -871,12 +872,17 @@ int process_query_put_rr(knot_pkt_t *pkt, knotd_qdata_t *qdata,
 		return ret;
 	}
 
+	uint32_t rrsig_ttl_limit = UINT32_MAX;
+	if ((flags & KNOT_PF_SOAMINTTL) && to_add.type == KNOT_RRTYPE_SOA) {
+		rrsig_ttl_limit = knot_soa_minimum(to_add.rrs.rdata);
+	}
+
 	const bool inserted = (prev_count != pkt->rrset_count);
 	if (inserted &&
 	    !knot_rrset_empty(rrsigs) && rr->type != KNOT_RRTYPE_RRSIG) {
 		// Get rrinfo of just inserted RR.
 		knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count - 1];
-		ret = put_rrsig(rr->owner, rr->type, rrsigs, rrinfo, qdata);
+		ret = put_rrsig(rr->owner, rr->type, rrsigs, rrinfo, rrsig_ttl_limit, qdata);
 	}
 
 	return ret;

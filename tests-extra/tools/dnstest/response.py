@@ -358,6 +358,31 @@ class Response(object):
         soa = str(sect[0].to_rdataset())
         return int(soa.split()[5])
 
+    def check_auth_soa_ttl(self, dnssec=False):
+        if self.count("SOA", "authority") != 1:
+            set_err("CHECK SOA PRESENCE")
+            detail_log("SOA not present in response section authority")
+
+        soa = str(self.resp.authority[0].to_rdataset()).split()
+        if int(soa[0]) > int(soa[9]):
+            set_err("AUTHORITY SOA TTL")
+            detail_log("SOA TTL %d is higher that its minimum-ttl %d" % (int(soa[0]), int(soa[9])))
+
+        if dnssec:
+            rrsig = None
+            for record in self.resp.authority:
+                candidate = str(record.to_rdataset()).split()
+                if candidate[2] == "RRSIG" and candidate[3] == "SOA":
+                    rrsig = candidate
+
+            if rrsig is None:
+                set_err("CHECK RRSIG PRESENCE")
+                detail_log("SOA not signed in response section authority")
+
+            elif int(rrsig[0]) != int(soa[0]):
+                set_err("AUTHORITY SOA RRSIG TTL")
+                detail_log("RRSIG TTL %d differs from SOA TTL %d" % (int(rrsig[0]), int(soa[0])))
+
     def check_nsec(self, nsec3=False, nonsec=False):
         '''Checks if the response contains NSEC(3) records.'''
 
