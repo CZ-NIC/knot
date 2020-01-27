@@ -186,6 +186,8 @@ static const yp_item_t desc_server[] = {
 	{ C_PIDFILE,              YP_TSTR,  YP_VSTR = { "knot.pid" } },
 	{ C_UDP_WORKERS,          YP_TINT,  YP_VINT = { 1, CONF_MAX_UDP_WORKERS, YP_NIL } },
 	{ C_TCP_WORKERS,          YP_TINT,  YP_VINT = { 1, CONF_MAX_TCP_WORKERS, YP_NIL } },
+	{ C_TLS_WORKERS,          YP_TINT,  YP_VINT = { 1, 255, YP_NIL } },
+
 	{ C_BG_WORKERS,           YP_TINT,  YP_VINT = { 1, CONF_MAX_BG_WORKERS, YP_NIL } },
 	{ C_ASYNC_START,          YP_TBOOL, YP_VNONE },
 	{ C_TCP_IDLE_TIMEOUT,     YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },
@@ -208,6 +210,10 @@ static const yp_item_t desc_server[] = {
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
+	{ C_TLS_PORT,             YP_TINT,  YP_VINT = { 1, UINT16_MAX, 853 } },
+	{ C_TLS_SERVICE_KEY,      YP_TSTR,  YP_VSTR = { "cert.key" } },
+	{ C_TLS_SERVICE_PEM,      YP_TSTR,  YP_VSTR = { "cert.pem" } },
+	{ C_TLS_SERVICE_OCSP,     YP_TSTR,  YP_VSTR = { "cert-ocsp.key" } },
 	// Legacy items.
 	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp_listen_old } },
 	{ C_MAX_TCP_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },

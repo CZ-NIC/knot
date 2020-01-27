@@ -117,7 +117,7 @@ static void init_cache(
 	bool reinit_cache)
 {
 	/*
-	 * For UDP, TCP, XDP, and background workers, cache the number of running
+	 * For UDP, TCP, XDP, TLS, and background workers, cache the number of running
 	 * workers. Cache the setting of TCP reuseport too. These values
 	 * can't change in runtime, while config data can.
 	 */
@@ -130,6 +130,7 @@ static void init_cache(
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
 	static size_t running_xdp_threads;
+	static size_t running_tls_threads;
 	static size_t running_bg_threads;
 
 	if (first_init || reinit_cache) {
@@ -140,6 +141,7 @@ static void init_cache(
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
+		running_tls_threads = conf_tls_threads(conf);
 		running_bg_threads = conf_bg_threads(conf);
 
 		first_init = false;
@@ -178,6 +180,8 @@ static void init_cache(
 	conf->cache.srv_tcp_threads = running_tcp_threads;
 
 	conf->cache.srv_xdp_threads = running_xdp_threads;
+
+	conf->cache.srv_tls_threads = running_tls_threads;
 
 	conf->cache.srv_bg_threads = running_bg_threads;
 

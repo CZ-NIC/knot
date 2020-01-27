@@ -729,3 +729,40 @@ ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 
 	return recv_data(sock, &msg, false, &timeout_ms);
 }
+
+//TODO unused
+ssize_t net_dns_tls_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
+{
+	if (sock < 0 || buffer == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	struct iovec iov = { 0 };
+	struct msghdr msg = { 0 };
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	/* Receive size. */
+	uint16_t pktsize = 0;
+	iov.iov_base = &pktsize;
+	iov.iov_len = sizeof(pktsize);
+
+	int ret = recv_data(sock, &msg, false, &timeout_ms);
+	if (ret != sizeof(pktsize)) {
+		return ret;
+	}
+	pktsize = ntohs(pktsize);
+
+	/* Check packet size */
+	if (size < pktsize) {
+		return KNOT_ESPACE;
+	}
+
+	/* Receive payload. */
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	iov.iov_base = buffer;
+	iov.iov_len = pktsize;
+
+	return recv_data(sock, &msg, false, &timeout_ms);
+}

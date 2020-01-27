@@ -35,6 +35,7 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
+#include "knot/server/tls-handler.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
@@ -93,6 +94,16 @@ static void server_deinit_iface(iface_t *iface, bool dealloc)
 			}
 		}
 		free(iface->fd_tcp);
+	}
+
+	/* Free TLS handler. */
+	if (iface->fd_tls != NULL) {
+		for (int i = 0; i < iface->fd_tls_count; i++) {
+			if (iface->fd_tls[i] > -1) {
+				close(iface->fd_tls[i]);
+			}
+		}
+		free(iface->fd_tls);
 	}
 
 	if (dealloc) {
@@ -301,6 +312,7 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
  * \param addr              Socket address.
  * \param udp_thread_count  Number of created UDP workers.
  * \param tcp_thread_count  Number of created TCP workers.
+ * \param tls_thread_count  Number of created TLS workers.
  * \param tcp_reuseport     Indication if reuseport on TCP is enabled.
  * \param socket_affinity   Indication if CBPF should be attached.
  *
@@ -309,7 +321,8 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
  */
 static iface_t *server_init_iface(struct sockaddr_storage *addr,
                                   int udp_thread_count, int tcp_thread_count,
-                                  bool tcp_reuseport, bool socket_affinity)
+                                  int tls_thread_count, bool tcp_reuseport,
+                                  bool socket_affinity)
 {
 	iface_t *new_if = calloc(1, sizeof(*new_if));
 	if (new_if == NULL) {
@@ -326,6 +339,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	int udp_bind_flags = 0;
 	int tcp_socket_count = 1;
 	int tcp_bind_flags = 0;
+	int tls_socket_count = 1;
+	int tls_bind_flags = 0;
 
 #ifdef ENABLE_REUSEPORT
 	udp_socket_count = udp_thread_count;
@@ -334,12 +349,16 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	if (tcp_reuseport) {
 		tcp_socket_count = tcp_thread_count;
 		tcp_bind_flags |= NET_BIND_MULTIPLE;
+
+		tls_socket_count = tls_thread_count;
+		tls_bind_flags |= NET_BIND_MULTIPLE;
 	}
 #endif
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
 	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
-	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL) {
+	new_if->fd_tls = malloc(tls_socket_count * sizeof(int));
+	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL || new_if->fd_tls == NULL) {
 		log_error("failed to initialize interface");
 		server_deinit_iface(new_if, true);
 		return NULL;
@@ -459,6 +478,59 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 	}
 
+	/* Create bound TLS sockets. */
+	warn_bind = true;
+	warn_bufsize = true;
+	warn_flag_misc = true;
+
+	sockaddr_port_set(addr, 50853);
+	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
+	for (int i = 0; i < tls_socket_count; i++) {
+		int sock = net_bound_socket(SOCK_STREAM, addr, tls_bind_flags);
+		if (sock == KNOT_EADDRNOTAVAIL) {
+			tls_bind_flags |= NET_BIND_NONLOCAL;
+			sock = net_bound_socket(SOCK_STREAM, addr, tls_bind_flags);
+			if (sock >= 0 && warn_bind) {
+				log_warning("address %s TLS bound, but required nonlocal bind", addr_str);
+				warn_bind = false;
+			}
+		}
+
+		if (sock < 0) {
+			log_error("cannot bind address %s TLS (%s)", addr_str,
+			          knot_strerror(sock));
+			server_deinit_iface(new_if, true);
+			return NULL;
+		}
+
+		// TLS is same protocol as TCP on TCP/IP transport layer
+		if (!enlarge_net_buffers(sock, TCP_MIN_RCVSIZE, TCP_MIN_SNDSIZE) &&
+		    warn_bufsize) {
+			log_warning("failed to set network buffer sizes for TLS");
+			warn_bufsize = false;
+		}
+
+		new_if->fd_tls[new_if->fd_tls_count++] = sock;
+
+		/* Listen for incoming connections. */
+		int ret = listen(sock, TLS_BACKLOG_SIZE); //TODO GnuTLS
+		if (ret < 0) {
+			log_error("failed to listen on TCP interface %s", addr_str);
+			server_deinit_iface(new_if, true);
+			return NULL;
+		}
+
+		/* TCP Fast Open. */
+		ret = enable_fastopen(sock, TLS_BACKLOG_SIZE);
+		if (ret < 0 && warn_flag_misc) {
+			log_warning("failed to enable TCP Fast Open on %s (%s)",
+			            addr_str, knot_strerror(ret));
+			warn_flag_misc = false;
+		}
+
+		// TODO GnuTLS initialization
+	}
+
 	return new_if;
 }
 
@@ -539,6 +611,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	/* Normal UDP and TCP sockets. */
 	unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
 	unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
+	unsigned size_tls = s->handlers[IO_TLS].handler.unit->size;
 	bool tcp_reuseport = conf->cache.srv_tcp_reuseport;
 	bool socket_affinity = conf->cache.srv_socket_affinity;
 	char *rundir = conf_abs_path(&rundir_val, NULL);
@@ -549,7 +622,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		log_info("binding to interface %s", addr_str);
 
 		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp,
-		                                    tcp_reuseport, socket_affinity);
+		                                    size_tls, tcp_reuseport, socket_affinity);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			free(rundir);
@@ -592,7 +665,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 	/* Assign thread identifiers unique per all handlers. */
 	unsigned thread_count = 0;
-	for (unsigned proto = IO_UDP; proto <= IO_XDP; ++proto) {
+	for (unsigned proto = IO_UDP; proto <= IO_HANDLERS_SIZE; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;
 		for (unsigned i = 0; tu != NULL && i < tu->size; ++i) {
 			s->handlers[proto].handler.thread_id[i] = thread_count++;
@@ -780,7 +853,7 @@ int server_start(server_t *server, bool async)
 
 	/* Start I/O handlers. */
 	server->state |= ServerRunning;
-	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
+	for (int proto = IO_UDP; proto <= IO_HANDLERS_SIZE; ++proto) {
 		if (server->handlers[proto].size > 0) {
 			int ret = dt_start(server->handlers[proto].handler.unit);
 			if (ret != KNOT_EOK) {
@@ -927,6 +1000,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_socket_affinity = true;
 	static bool warn_udp = true;
 	static bool warn_tcp = true;
+	static bool warn_tls = true;
 	static bool warn_bg = true;
 	static bool warn_listen = true;
 	static bool warn_xdp_tcp = true;
@@ -950,6 +1024,11 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_tcp && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
 		log_warning(msg, &C_TCP_WORKERS[1]);
 		warn_tcp = false;
+	}
+
+	if (warn_tls && server->handlers[IO_TLS].size != conf_tls_threads(conf)) {
+		log_warning(msg, "tls-workers");
+		warn_tls = false;
 	}
 
 	if (warn_bg && conf->cache.srv_bg_threads != conf_bg_threads(conf)) {
@@ -1097,7 +1176,12 @@ static int configure_threads(conf_t *conf, server_t *server)
 		}
 	}
 
-	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
+	ret = set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return set_handler(server, IO_TLS, conf->cache.srv_tls_threads, tls_master);
 }
 
 static int reconfigure_journal_db(conf_t *conf, server_t *server)
