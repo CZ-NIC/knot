@@ -3,10 +3,6 @@ noinst_LTLIBRARIES += libcontrib.la
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libcontrib_la_LIBADD   =
-if !HAVE_LMDB
-libcontrib_la_CPPFLAGS += -include contrib/lmdb/mute_warnings.h
-libcontrib_la_LIBADD   += $(pthread_LIBS)
-endif !HAVE_LMDB
 if USE_GNUTLS_MEMSET
 libcontrib_la_CPPFLAGS += $(gnutls_CFLAGS)
 libcontrib_la_LIBADD   += $(gnutls_LIBS)
@@ -17,7 +13,6 @@ EXTRA_DIST += \
 	contrib/licenses/BSD-3-Clause		\
 	contrib/licenses/LGPL-2.0		\
 	contrib/licenses/OLDAP-2.8		\
-	contrib/lmdb/LICENSE			\
 	contrib/openbsd/LICENSE			\
 	contrib/ucw/LICENSE			\
 	contrib/dnstap/dnstap.proto
@@ -70,15 +65,6 @@ libcontrib_la_SOURCES = \
 	contrib/ucw/mempool.h			\
 	contrib/vpool/vpool.c			\
 	contrib/vpool/vpool.h
-
-if !HAVE_LMDB
-libcontrib_la_SOURCES += \
-	contrib/lmdb/lmdb.h			\
-	contrib/lmdb/mdb.c			\
-	contrib/lmdb/midl.c			\
-	contrib/lmdb/midl.h			\
-	contrib/lmdb/mute_warnings.h
-endif !HAVE_LMDB
 
 if HAVE_LIBDNSTAP
 noinst_LTLIBRARIES += libdnstap.la
