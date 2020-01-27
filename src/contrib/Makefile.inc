@@ -12,7 +12,6 @@ EXTRA_DIST += \
 	contrib/licenses/0BSD			\
 	contrib/licenses/BSD-3-Clause		\
 	contrib/licenses/LGPL-2.0		\
-	contrib/licenses/OLDAP-2.8		\
 	contrib/openbsd/LICENSE			\
 	contrib/ucw/LICENSE			\
 	contrib/dnstap/dnstap.proto
