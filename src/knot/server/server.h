@@ -56,13 +56,17 @@ typedef struct iface {
 	int fd_udp_count;
 	int *fd_tcp;
 	int fd_tcp_count;
+	int *fd_tls; //TODO init
+	int fd_tls_count; // TODO setup
 	struct sockaddr_storage addr;
 } iface_t;
 
 /* Handler indexes. */
 enum {
 	IO_UDP = 0,
-	IO_TCP = 1
+	IO_TCP = 1,
+	IO_TLS = 2,
+	IO_HANDLERS_SIZE
 };
 
 /*!
@@ -85,7 +89,7 @@ typedef struct server {
 	struct {
 		unsigned size;
 		iohandler_t handler;
-	} handlers[2];
+	} handlers[IO_HANDLERS_SIZE];
 
 	/*! \brief Background jobs. */
 	worker_pool_t *workers;
