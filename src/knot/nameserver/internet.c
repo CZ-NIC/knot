@@ -182,7 +182,8 @@ static int put_authority_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata,
 	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 	return process_query_put_rr(pkt, qdata, &soa, &rrsigs,
-	                            KNOT_COMPR_HINT_NONE, KNOT_PF_NOTRUNC);
+	                            KNOT_COMPR_HINT_NONE,
+	                            KNOT_PF_NOTRUNC | KNOT_PF_SOAMINTTL);
 }
 
 /*! \brief Put the delegation NS RRSet to the Authority section. */

@@ -649,7 +649,8 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)
 	WALK_LIST(info, qdata->extra->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
 		uint16_t compr_hint = info->rrinfo->compress_ptr[KNOT_COMPR_HINT_OWNER];
-		ret = knot_pkt_put(pkt, compr_hint, rrsig, flags);
+		uint32_t flags_mask = (info->rrinfo->flags & KNOT_PF_SOAMINTTL) ? KNOT_PF_ORIGTTL : 0;
+		ret = knot_pkt_put(pkt, compr_hint, rrsig, flags & ~flags_mask);
 		if (ret != KNOT_EOK) {
 			break;
 		}
