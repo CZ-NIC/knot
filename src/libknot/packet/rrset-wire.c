@@ -23,6 +23,7 @@
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/rrtype/naptr.h"
 #include "libknot/rrtype/rrsig.h"
+#include "libknot/rrtype/soa.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/tolower.h"
@@ -329,6 +330,9 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 	if ((flags & KNOT_PF_ORIGTTL) && rrset->type == KNOT_RRTYPE_RRSIG) {
 		const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
 		wire_ctx_write_u32(&write, knot_rrsig_original_ttl(rdata));
+	} else if ((flags & KNOT_PF_SOAMINTTL) && rrset->type == KNOT_RRTYPE_SOA) {
+		const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
+		wire_ctx_write_u32(&write, MIN(knot_soa_minimum(rdata), rrset->ttl));
 	} else {
 		wire_ctx_write_u32(&write, rrset->ttl);
 	}
