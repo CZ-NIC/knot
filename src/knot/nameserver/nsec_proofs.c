@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -640,7 +640,7 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)
 {
 	int ret = KNOT_EOK;
-	uint32_t flags = optional ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;
+	uint16_t flags = optional ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;
 	flags |= KNOT_PF_FREE; // Free all RRSIGs, they are synthesized
 	flags |= KNOT_PF_ORIGTTL;
 
@@ -649,7 +649,8 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)
 	WALK_LIST(info, qdata->extra->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
 		uint16_t compr_hint = info->rrinfo->compress_ptr[KNOT_COMPR_HINT_OWNER];
-		ret = knot_pkt_put(pkt, compr_hint, rrsig, flags);
+		uint16_t flags_mask = (info->rrinfo->flags & KNOT_PF_SOAMINTTL) ? KNOT_PF_ORIGTTL : 0;
+		ret = knot_pkt_put(pkt, compr_hint, rrsig, flags & ~flags_mask);
 		if (ret != KNOT_EOK) {
 			break;
 		}

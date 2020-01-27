@@ -29,6 +29,10 @@ resp = knot.dig("nxdomain.flags", "A", udp=True)
 resp.check(rcode="NXDOMAIN", flags="QR AA", noflags="TC AD RA")
 resp.cmp(bind)
 
+# Check that SOA TTL is limited by minimum-ttl field.
+resp = knot.dig("nxdomain.flags", "A", udp=True)
+resp.check_auth_soa_ttl(dnssec=False)
+
 ''' Positive answers. '''
 
 # Positive (SOA)
