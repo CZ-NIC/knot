@@ -183,3 +183,26 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeo
  * \see net_base_recv
  */
 ssize_t net_dns_tcp_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
+
+
+/*!
+ * \brief Send a DNS message on a TCP socket (cyphered by TLS).
+ *
+ * The outgoing message is prefixed with a two-byte value carrying the DNS
+ * message size according to the specification. These two bytes are not
+ * reflected in the return value.
+ *
+ * \see net_base_send
+ */
+ssize_t net_dns_tls_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms);
+
+/*!
+ * \brief Receive a DNS message from a TCP socket (cyphered by TLS).
+ *
+ * The first two bytes of the incoming message are interpreted as a DNS message
+ * size according to the specification. These two bytes are not included in
+ * the returned size. Only a complete DNS message is retrieved.
+ *
+ * \see net_base_recv
+ */
+ssize_t net_dns_tls_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);

@@ -117,6 +117,7 @@ typedef struct {
 		size_t srv_udp_threads;
 		size_t srv_tcp_threads;
 		size_t srv_xdp_threads;
+		size_t srv_tls_threads;
 		size_t srv_bg_threads;
 		size_t srv_tcp_max_clients;
 		int ctl_timeout;

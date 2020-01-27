@@ -39,6 +39,7 @@
 #define DBG_LOG(err) CONF_LOG(LOG_DEBUG, "%s (%s)", __func__, knot_strerror((err)));
 
 #define DFLT_TCP_WORKERS_MIN		10
+#define DFLT_TLS_WORKERS_MIN		10
 #define DFLT_BG_WORKERS_MAX		10
 #define FALLBACK_MAX_TCP_CLIENTS	100
 
@@ -1215,6 +1216,19 @@ size_t conf_xdp_threads_txn(
 			workers += iface.queues;
 		}
 		conf_val_next(&val);
+	}
+
+	return workers;
+}
+
+size_t conf_tls_threads_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TLS_WORKERS);
+	int64_t workers = conf_int(&val);
+	if (workers == YP_NIL) {
+		return MAX(dt_optimal_size(), DFLT_TLS_WORKERS_MIN);
 	}
 
 	return workers;
