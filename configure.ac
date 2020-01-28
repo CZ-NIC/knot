@@ -681,7 +681,7 @@ result_msg_base="  Knot DNS $VERSION
     LibURCU:  ${liburcu_LIBS} ${liburcu_CFLAGS}
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
     Libedit:  ${libedit_LIBS} ${libedit_CFLAGS}
-    LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
+    LMDB:     ${lmdb_LIBS} ${lmdb_CFLAGS}
     Config:   ${conf_mapsize} MiB default mapsize
 
     Prefix:      ${knot_prefix}
