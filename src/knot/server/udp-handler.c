@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,14 +62,15 @@ static bool udp_state_active(int state)
 }
 
 static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
-                       struct iovec *rx, struct iovec *tx)
+                       struct iovec *rx, struct iovec *tx, bool use_xdp)
 {
 	/* Create query processing parameter. */
 	knotd_qdata_params_t params = {
 		.remote = ss,
 		.flags = KNOTD_QUERY_FLAG_NO_AXFR | KNOTD_QUERY_FLAG_NO_IXFR | /* No transfers. */
 		         KNOTD_QUERY_FLAG_LIMIT_SIZE | /* Enforce UDP packet size limit. */
-		         KNOTD_QUERY_FLAG_LIMIT_ANY,  /* Limit ANY over UDP (depends on zone as well). */
+		         KNOTD_QUERY_FLAG_LIMIT_ANY | /* Limit ANY over UDP (depends on zone as well). */
+		         (use_xdp ? KNOTD_QUERY_FLAG_XDP : 0), /* Mark XDP processing. */
 		.socket = fd,
 		.server = udp->server,
 		.thread_id = udp->thread_id
@@ -215,7 +216,7 @@ static int udp_recvfrom_handle(udp_context_t *ctx, void *d, void *unused)
 	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
 
 	/* Process received pkt. */
-	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
+	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX], false);
 
 	return KNOT_EOK;
 }
@@ -324,7 +325,7 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d, void *unused)
 
 		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr, &rq->msgs[TX][i].msg_hdr);
 
-		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
+		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx, false);
 		rq->msgs[TX][i].msg_len = tx->iov_len;
 		rq->msgs[TX][i].msg_hdr.msg_namelen = 0;
 		if (tx->iov_len > 0) {
@@ -410,7 +411,7 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 		}
 
 		udp_handle(ctx, knot_xsk_get_poll_fd(xdp_sock), &rq->msgs_rx[i].ip_from,
-		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload);
+		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload, true);
 
 		knot_xsk_free_recvd(xdp_sock, &rq->msgs_rx[i]);
 
