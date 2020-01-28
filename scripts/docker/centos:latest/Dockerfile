@@ -6,6 +6,7 @@ RUN dnf -y install epel-release
 RUN dnf -y --enablerepo PowerTools install \
 	'autoconf' \
 	'automake' \
+	'diffutils' \
 	'libtool' \
 	'make' \
 	'pkgconfig' \
