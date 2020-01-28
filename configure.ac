@@ -439,11 +439,7 @@ AS_IF([test "$with_lmdb" != "no"],[
               AC_MSG_ERROR([Unable to determine lmdb version from MDB_VERSION_FULL]))
           AS_IF([test "$lmdb_VERSION_FULL" -ge "$lmdb_MIN_VERSION_FULL"],[
               lmdb_LIBS="$lmdb_LIBS -llmdb"
-              have_lmdb=yes],[
-              unset lmdb_CFLAGS
-              unset lmdb_LIBS
-              AC_MSG_WARN([lmdb version 0.9.15 and higher not found, using embedded version])
-              ])
+              have_lmdb=yes])
           break
           ])
 
@@ -466,9 +462,6 @@ AS_IF([test "$have_lmdb" != "no"],[
     AC_SUBST([lmdb_LIBS])
     enable_lmdb=shared
     external_lmdb_LIBS=$lmdb_LIBS
-    ],[
-    enable_lmdb=embedded
-    lmdb_CFLAGS="-I\$(top_srcdir)/src/contrib/lmdb"
     ])
 AM_CONDITIONAL([HAVE_LMDB], test "$enable_lmdb" = "shared")
 AC_SUBST([lmdb_CFLAGS])
