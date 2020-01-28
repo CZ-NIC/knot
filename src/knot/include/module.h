@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -380,6 +380,7 @@ typedef enum {
 	KNOTD_QUERY_FLAG_LIMIT_ANY  = 1 << 2, /*!< Limit ANY QTYPE (respond with TC=1). */
 	KNOTD_QUERY_FLAG_LIMIT_SIZE = 1 << 3, /*!< Apply UDP size limit. */
 	KNOTD_QUERY_FLAG_COOKIE     = 1 << 4, /*!< Valid DNS Cookie indication. */
+	KNOTD_QUERY_FLAG_XDP        = 1 << 5, /*!< Processing over XDP indication. */
 } knotd_query_flag_t;
 
 /*! Query processing data context parameters. */
