@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,6 +54,7 @@ typedef struct {
 	knot_layer_t layer; /*!< Query processing layer. */
 	server_t *server;   /*!< Name server structure. */
 	unsigned thread_id; /*!< Thread identifier. */
+	bool use_xdp;       /*!< UDP processed over XDP indication. */
 } udp_context_t;
 
 static bool udp_state_active(int state)
@@ -69,7 +70,8 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		.remote = ss,
 		.flags = KNOTD_QUERY_FLAG_NO_AXFR | KNOTD_QUERY_FLAG_NO_IXFR | /* No transfers. */
 		         KNOTD_QUERY_FLAG_LIMIT_SIZE | /* Enforce UDP packet size limit. */
-		         KNOTD_QUERY_FLAG_LIMIT_ANY,  /* Limit ANY over UDP (depends on zone as well). */
+		         KNOTD_QUERY_FLAG_LIMIT_ANY | /* Limit ANY over UDP (depends on zone as well). */
+		         (udp->use_xdp ? KNOTD_QUERY_FLAG_XDP : 0), /* Mark XDP processing. */
 		.socket = fd,
 		.server = udp->server,
 		.thread_id = udp->thread_id
@@ -558,7 +560,8 @@ int udp_master(dthread_t *thread)
 	/* Create UDP answering context. */
 	udp_context_t udp = {
 		.server = handler->server,
-		.thread_id = handler->thread_id[thr_id]
+		.thread_id = handler->thread_id[thr_id],
+		.use_xdp = handler->use_xdp
 	};
 	knot_layer_init(&udp.layer, &mm, process_query_layer());
 
