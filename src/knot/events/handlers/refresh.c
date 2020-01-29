@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1184,7 +1184,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	knot_requestor_clear(&requestor);
 
 	if (ret == KNOT_EOK) {
-		trctx->send_notify = data.updated;
+		trctx->send_notify = data.updated && !master->block_notify_after_xfr;
 	}
 
 	return ret;

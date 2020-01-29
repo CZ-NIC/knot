@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 #define C_ASYNC_START		"\x0B""async-start"
 #define C_BACKEND		"\x07""backend"
 #define C_BG_WORKERS		"\x12""background-workers"
+#define C_BLOCK_NOTIFY_XFR	"\x1B""block-notify-after-transfer"
 #define C_CDS_CDNSKEY		"\x13""cds-cdnskey-publish"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
 #define C_COMMENT		"\x07""comment"

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1271,6 +1271,9 @@ conf_remote_t conf_remote_txn(
 	}
 
 	free(rundir);
+
+	val = conf_id_get_txn(conf, txn, C_RMT, C_BLOCK_NOTIFY_XFR, id);
+	out.block_notify_after_xfr = conf_bool(&val);
 
 	return out;
 }
