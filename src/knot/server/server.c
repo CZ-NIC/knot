@@ -467,7 +467,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 	/* Update bound interfaces. */
-	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 
 	size_t nifs = conf_val_count(&listen_val), real_n = 0;
@@ -483,6 +483,14 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 		log_info("binding to interface %s", addr_str);
+
+		// WIP
+		if (addr.ss_family == AF_UNIX) {
+			struct sockaddr_storage relative_addr = conf_addr(&listen_val, NULL);
+			struct sockaddr_un *iface = (struct sockaddr_un *)&relative_addr;
+			const char *iface_name = iface->sun_path;
+			printf("<%s>\n", iface_name);
+		}
 
 		/* Create new interface. */
 		unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
