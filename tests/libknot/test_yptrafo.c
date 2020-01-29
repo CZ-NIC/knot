@@ -362,6 +362,7 @@ int main(int argc, char *argv[])
 	addr_test("2001:db8::1", true);
 	addr_test("::1@12345", false);
 	addr_test("/tmp/test.sock", true);
+	addr_test("eth1@53", true);
 	addr_bad_test("192.168.123.x", KNOT_EINVAL);
 	addr_bad_test("192.168.123.1@", KNOT_EINVAL);
 	addr_bad_test("192.168.123.1@1x", KNOT_EINVAL);

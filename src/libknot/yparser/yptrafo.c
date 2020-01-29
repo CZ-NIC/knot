@@ -455,18 +455,25 @@ int yp_addr_to_bin(
 	// Store address type position.
 	uint8_t *type = out->position;
 
-	// Write address (UNIX socket can't have a port).
-	int ret = yp_addr_noport_to_bin(in, out, pos, pos == NULL);
+	// Write the address without a port.
+	int ret = yp_addr_noport_to_bin(in, out, pos, true);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	if (pos != NULL) {
-		// Skip the separator.
-		wire_ctx_skip(in, sizeof(uint8_t));
+		if (*type == 0) {
+			// Rewrite string terminator.
+			wire_ctx_skip(out, -1);
+			// Append the rest (separator and port) as a string.
+			ret = yp_str_to_bin(in, out, stop);
+		} else {
+			// Skip the separator.
+			wire_ctx_skip(in, sizeof(uint8_t));
 
-		// Write port.
-		ret = yp_int_to_bin(in, out, stop, 0, UINT16_MAX, YP_SNONE);
+			// Write the port as a number.
+			ret = yp_int_to_bin(in, out, stop, 0, UINT16_MAX, YP_SNONE);
+		}
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
