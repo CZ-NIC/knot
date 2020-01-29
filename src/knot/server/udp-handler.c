@@ -450,21 +450,36 @@ static udp_api_t xdp_recvmmsg_api = {
 };
 #endif /* ENABLE_XDP */
 
-/*! \brief Get interface UDP descriptor for a given thread. */
-static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp, void **socket_ctx)
+static bool is_xdp_iface(const iface_t *iface)
 {
-	if (use_xdp) {
+	bool is_xdp1 = (iface->fd_xdp_count > 0);
+	bool is_xdp2 = (iface->fd_udp_count == 0 && iface->fd_tcp_count == 0);
+	assert(is_xdp1 == is_xdp2);
+	return is_xdp1 || is_xdp2;
+}
+
+static bool is_xdp_thread(const iface_t *iface_zero, int thread_id)
+{
+	return (thread_id >= iface_zero->fd_udp_count + iface_zero->fd_tcp_count);
+}
+
+/*! \brief Get interface UDP descriptor for a given thread. */
+static int iface_udp_fd(const iface_t *iface, const iface_t *iface_zero, int thread_id, void **socket_ctx)
+{
+	assert(!is_xdp_iface(iface_zero));
+
+	bool xdp_iface = is_xdp_iface(iface);
+	bool xdp_thread = is_xdp_thread(iface_zero, thread_id);
+	assert(xdp_thread || thread_id < iface_zero->fd_udp_count);
+
+	if (xdp_iface != xdp_thread) {
+		return -1;
+	}
+
+	if (xdp_thread) {
 #ifdef ENABLE_XDP
-		size_t udp_wrk = conf()->cache.srv_udp_threads;
-		size_t tcp_wrk = conf()->cache.srv_tcp_threads;
-		size_t xdp_wrk = conf()->cache.srv_xdp_threads;
-		// XDP worker thread follow after UDP and TCP worker threads
-		assert(thread_id >= udp_wrk + tcp_wrk);
-		assert(thread_id < udp_wrk + tcp_wrk + xdp_wrk);
-
-		size_t xdp_wrk_id = thread_id - udp_wrk - tcp_wrk;
-
-		if (xdp_wrk_id >= iface->fd_xdp_count) {
+		size_t xdp_wrk_id = thread_id - iface->fd_thread_ids;
+		if (thread_id < iface->fd_thread_ids || xdp_wrk_id >= iface->fd_xdp_count) {
 			return -1;
 		}
 
@@ -494,7 +509,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp, void 
  * \return Number of watched descriptors, zero on error.
  */
 static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, struct pollfd **fds_ptr,
-                               int thread_id, bool use_xdp, void **socket_ctxs)
+                               int thread_id, void **socket_ctxs)
 {
 	memset(socket_ctxs, 0, n_ifaces * sizeof(*socket_ctxs));
 
@@ -508,9 +523,9 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, struct po
 	}
 
 	for (size_t i = 0; i < n_ifaces; i++) {
-		fds[i].fd = iface_udp_fd(&ifaces[i], thread_id, use_xdp, &socket_ctxs[i]);
+		fds[i].fd = iface_udp_fd(&ifaces[i], &ifaces[0], thread_id, &socket_ctxs[i]);
 		if (fds[i].fd < 0) {
-			return 0;
+			continue;
 		}
 		fds[i].events = POLLIN;
 		fds[i].revents = 0;
@@ -536,8 +551,12 @@ int udp_master(dthread_t *thread)
 	/* Prepare structures for bound sockets. */
 	unsigned thr_id = dt_get_id(thread);
 	iohandler_t *handler = (iohandler_t *)thread->data;
+	if (handler->server->n_ifaces == 0) {
+		return KNOT_EOK;
+	}
+
 	udp_api_t *api = NULL;
-	if (handler->use_xdp) {
+	if (is_xdp_thread(&handler->server->ifaces[0], handler->thread_id[thr_id])) {
 #ifndef ENABLE_XDP
 		assert(0);
 #else
@@ -570,7 +589,7 @@ int udp_master(dthread_t *thread)
 	size_t nifs = handler->server->n_ifaces;
 	void *socket_ctxs[nifs]; // only for XDP: pointers on knot_xsk_socket
 	unsigned nfds = udp_set_ifaces(handler->server->ifaces, handler->server->n_ifaces, &fds,
-	                               udp.thread_id, handler->use_xdp, socket_ctxs);
+	                               udp.thread_id, socket_ctxs);
 	if (nfds == 0) {
 		goto finish;
 	}

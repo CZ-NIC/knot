@@ -240,6 +240,113 @@ static int iface_addr2name(const struct sockaddr_storage *add, char **out)
 	return matches == 0 ? KNOT_EADDRNOTAVAIL : KNOT_ELIMIT;
 }
 
+// returns >= 0: the number of RX queues; < 0 : error
+static int get_xdp_iface(struct sockaddr_storage *addr, char **out_devname, uint16_t *out_port)
+{
+#ifndef ENABLE_XDP
+	return 0;
+#else
+
+	char *dev = NULL;
+	int port = 0;
+	if (addr->ss_family == AF_UNIX) {
+		dev = strdup(((struct sockaddr_un *)addr)->sun_path);
+		if (dev == NULL) {
+			log_warning("%s", knot_strerror(KNOT_ENOMEM));
+			return KNOT_ENOMEM;
+		}
+		char *sport = strchr(dev, '@');
+		if (sport == NULL || (port = atoi(sport + 1)) < 1 || port > 0xffff) {
+			log_warning("Wrong format of XDP listen, expected 'dev@port': '%s'", dev);
+			free(dev);
+			return KNOT_EINVAL;
+		}
+		*sport = '\0';
+	} else {
+		int ret = iface_addr2name(addr, &dev);
+		if (ret != KNOT_EOK) {
+			if (dev != NULL) {
+				log_warning("XDP failed: address %s corresponds to %s net devices", dev, ret == KNOT_EADDRNOTAVAIL ? "none" : "more");
+			} else {
+				log_warning("failed to find dev for address (%s)", knot_strerror(ret));
+			}
+			return ret;
+		}
+		port = sockaddr_port(addr);
+		if (port < 1 || port > 0xffff) {
+			log_warning("port out of range");
+			free(dev);
+			return KNOT_ELIMIT;
+		}
+	}
+
+	int rx_queues = knot_eth_get_rx_queues(dev);
+	if (rx_queues < 0) {
+		log_warning("failed to obtain RX queue count for iface %s (%s)\n", dev, knot_strerror(rx_queues));
+		free(dev);
+		return rx_queues;
+	}
+
+	if (out_devname != NULL) {
+		*out_devname = dev;
+	} else {
+		free(dev);
+	}
+	if (out_port != NULL) {
+		*out_port = port;
+	}
+	return rx_queues;
+#endif
+}
+
+static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *thread_id_start)
+{
+#ifndef ENABLE_XDP
+	assert(0);
+	return NULL;
+#else
+	char *dev = NULL;
+	uint16_t port = 0;
+	int rx_queues = get_xdp_iface(addr, &dev, &port);
+	if (rx_queues < 0) {
+		return NULL;
+	}
+
+	iface_t *new_if = calloc(1, sizeof(*new_if));
+	if (new_if == NULL) {
+		log_error("failed to initialize interface");
+		free(dev);
+		return NULL;
+	}
+	memcpy(&new_if->addr, addr, sizeof(*addr));
+
+	new_if->fd_xdp = malloc(rx_queues * sizeof(int));
+	new_if->sock_xdp = calloc(rx_queues, sizeof(*new_if->sock_xdp));
+	if (new_if->fd_xdp == NULL || new_if->sock_xdp == NULL) {
+		log_warning("failed to init XDP: not enough memory\n");
+		free(new_if);
+		free(dev);
+		return NULL;
+	}
+	new_if->fd_thread_ids = *thread_id_start;
+	*thread_id_start += rx_queues;
+
+	for (int i = 0; i < rx_queues; i++) {
+		int ret = knot_xsk_init(new_if->sock_xdp + i, dev, i, port, i == 0);
+
+		if (ret != KNOT_EOK) {
+			log_warning("failed to init XDP in dev %s queue %d (%s)", dev, i, knot_strerror(ret));
+			new_if->fd_xdp[i] = -1;
+		} else {
+			new_if->fd_xdp[i] = knot_xsk_get_poll_fd(new_if->sock_xdp[i]);
+
+		}
+		new_if->fd_xdp_count++;
+	}
+	return new_if;
+#endif
+}
+
 /*!
  * \brief Create and initialize new interface.
  *
@@ -255,7 +362,7 @@ static int iface_addr2name(const struct sockaddr_storage *add, char **out)
  */
 static iface_t *server_init_iface(struct sockaddr_storage *addr,
                                   int udp_thread_count, int tcp_thread_count,
-                                  int xdp_thread_count, bool tcp_reuseport)
+                                  bool tcp_reuseport)
 {
 	iface_t *new_if = calloc(1, sizeof(*new_if));
 	if (new_if == NULL) {
@@ -272,7 +379,6 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	int udp_bind_flags = 0;
 	int tcp_socket_count = 1;
 	int tcp_bind_flags = 0;
-	int xdp_socket_count = 0;
 
 #ifdef ENABLE_REUSEPORT
 	udp_socket_count = udp_thread_count;
@@ -282,10 +388,6 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		tcp_socket_count = tcp_thread_count;
 		tcp_bind_flags |= NET_BIND_MULTIPLE;
 	}
-#endif
-
-#ifdef ENABLE_XDP
-	xdp_socket_count = xdp_thread_count;
 #endif
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
@@ -343,56 +445,6 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
 		new_if->fd_udp_count += 1;
 	}
-
-	if (xdp_socket_count > 0) {
-#ifndef ENABLE_XDP
-		assert(0);
-#else
-		char *dev = NULL;
-		int ret = iface_addr2name(addr, &dev);
-		if (ret != KNOT_EOK) {
-			if (dev != NULL) {
-				log_warning("XDP failed: address %s corresponds to %s net devices", dev, ret == KNOT_EADDRNOTAVAIL ? "none" : "more");
-			} else {
-				log_warning("failed to find dev for address (%s)", knot_strerror(ret));
-			}
-			goto skip_xdp;
-		}
-
-		int rx_queues = knot_eth_get_rx_queues(dev);
-		if (rx_queues < 0) {
-			log_warning("failed to obtain RX queue count for iface %s (%s)\n", dev, knot_strerror(rx_queues));
-			goto skip_xdp;
-		}
-
-		assert(new_if->fd_xdp == NULL);
-		assert(new_if->sock_xdp == NULL);
-		new_if->fd_xdp = malloc(rx_queues * sizeof(int));
-		new_if->sock_xdp = calloc(rx_queues, sizeof(*new_if->sock_xdp));
-		if (new_if->fd_xdp == NULL || new_if->sock_xdp == NULL) {
-			log_warning("failed to init XDP: not enough memory\n");
-			goto skip_xdp;
-		}
-
-		for (int i = 0; i < rx_queues; i++) {
-			assert(sockaddr_port(addr) < (1 << 16));
-			ret = knot_xsk_init(new_if->sock_xdp + i, dev, i,
-			                    sockaddr_port(addr), i == 0);
-
-			if (ret != KNOT_EOK) {
-				log_warning("failed to init XDP in dev %s queue %d (%s)", dev, i, knot_strerror(ret));
-				new_if->fd_xdp[i] = -1;
-			} else {
-				new_if->fd_xdp[i] = knot_xsk_get_poll_fd(new_if->sock_xdp[i]);
-
-			}
-			new_if->fd_xdp_count++;
-		}
-skip_xdp:
-		free(dev);
-#endif
-	}
-
 
 	warn_bind = true;
 	warn_bufsize = true;
@@ -458,7 +510,12 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	log_info("using reuseport for UDP%s", conf->cache.srv_tcp_reuseport ? " and TCP" : "");
 #endif
 
-	if (conf->cache.srv_xdp_threads > 0) {
+	/* Update bound interfaces. */
+	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
+
+	if (lisxdp_val.code == KNOT_EOK) {
 		struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY };
 		int ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
 		if (ret) {
@@ -466,11 +523,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		}
 	}
 
-	/* Update bound interfaces. */
-	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
-	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
-
-	size_t nifs = conf_val_count(&listen_val), real_n = 0;
+	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val), real_n = 0;
 	iface_t *newlist = calloc(nifs, sizeof(*newlist));
 	if (newlist == NULL) {
 		return KNOT_ENOMEM;
@@ -488,13 +541,27 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
 		unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
 		bool tcp_reuseport = conf->cache.srv_tcp_reuseport;
-		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp, conf->cache.srv_xdp_threads, tcp_reuseport);
+		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp, tcp_reuseport);
 		if (new_if != NULL) {
 			memcpy(&newlist[real_n++], new_if, sizeof(*newlist));
 			free(new_if);
 		}
 
 		conf_val_next(&listen_val);
+	}
+	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size + s->handlers[IO_TCP].handler.unit->size;
+	while (lisxdp_val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
+		char addr_str[SOCKADDR_STRLEN] = { 0 };
+		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
+		log_info("binding to xdp interface %s", addr_str);
+
+		iface_t *new_if = server_init_xdp_iface(&addr, &thread_id);
+		if (new_if != NULL) {
+			memcpy(&newlist[real_n++], new_if, sizeof(*newlist));
+			free(new_if);
+		}
+		conf_val_next(&lisxdp_val);
 	}
 	assert(real_n <= nifs);
 	nifs = real_n;
@@ -514,6 +581,22 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 	return KNOT_EOK;
+}
+
+int server_count_xdp_threads(conf_t *conf)
+{
+	int res = 0, ret;
+	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	while (lisxdp_val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
+		ret = get_xdp_iface(&addr, NULL, NULL);
+		if (ret < 0) {
+			return ret;
+		}
+		res += ret;
+		conf_val_next(&lisxdp_val);
+	}
+	return res;
 }
 
 int server_init(server_t *server, int bg_workers)
@@ -782,7 +865,6 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 
 	static bool warn_tcp_reuseport = true;
 	static bool warn_udp = true;
-	static bool warn_xdp = true;
 	static bool warn_tcp = true;
 	static bool warn_bg = true;
 	static bool warn_listen = true;
@@ -795,11 +877,6 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_udp && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {
 		log_warning(msg, "udp-workers");
 		warn_udp = false;
-	}
-
-	if (warn_xdp && server->handlers[IO_XDP].size != conf_xdp_threads(conf)) {
-		log_warning(msg, "xdp-workers");
-		warn_xdp = false;
 	}
 
 	if (warn_tcp && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
@@ -907,7 +984,7 @@ void server_stop(server_t *server)
 	server->state &= ~ServerRunning;
 }
 
-static int set_handler(server_t *server, int index, unsigned size, bool use_xdp, runnable_t run)
+static int set_handler(server_t *server, int index, unsigned size, runnable_t run)
 {
 	/* Initialize I/O handlers. */
 	int ret = server_init_handler(server, index, size, run, NULL);
@@ -916,27 +993,26 @@ static int set_handler(server_t *server, int index, unsigned size, bool use_xdp,
 	}
 
 	server->handlers[index].size = size;
-	server->handlers[index].handler.use_xdp = use_xdp;
 
 	return KNOT_EOK;
 }
 
 /*! \brief Reconfigure UDP and TCP query processing threads. */
-static int configure_threads(conf_t *conf, server_t *server)
+static int configure_threads(conf_t *conf, server_t *server, size_t xdp_threads)
 {
-	int ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, false, udp_master);
+	int ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	if (conf->cache.srv_xdp_threads > 0) {
-		ret = set_handler(server, IO_XDP, conf->cache.srv_xdp_threads, true, udp_master);
+	if (xdp_threads > 0) {
+		ret = set_handler(server, IO_XDP, xdp_threads, udp_master);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
 
-	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, false, tcp_master);
+	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
 }
 
 static int reconfigure_journal_db(conf_t *conf, server_t *server)
@@ -996,8 +1072,14 @@ void server_reconfigure(conf_t *conf, server_t *server)
 			         knot_db_lmdb_get_path(conf->db));
 		}
 
+		if ((ret = server_count_xdp_threads(conf)) < 0) {
+			log_error("failed to configure XDP thread count (%s)",
+				  knot_strerror(ret));
+			ret = 0;
+		}
+
 		/* Configure server threads. */
-		if ((ret = configure_threads(conf, server)) != KNOT_EOK) {
+		if ((ret = configure_threads(conf, server, ret)) != KNOT_EOK) {
 			log_error("failed to configure server threads (%s)",
 			          knot_strerror(ret));
 		}

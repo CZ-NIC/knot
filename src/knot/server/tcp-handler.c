@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -133,6 +133,9 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *
 	fdset_clear(fds);
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
 		int tcp_id = 0;
+		if (i->fd_tcp_count < 1) {
+			continue;
+		}
 #ifdef ENABLE_REUSEPORT
 		if (conf()->cache.srv_tcp_reuseport) {
 			/* Note: thread_ids start with UDP threads, TCP threads follow. */
