@@ -147,6 +147,7 @@ General options related to the server.
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      listen: ADDR[@INT] ...
+     listen-xdp: STR ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -243,25 +244,6 @@ over TCP.
 Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* equal to the number of online CPUs, default value is at least 10
-
-.. _server_xdp-workers:
-
-xdp-workers
------------
-
-A number of XDP workers (threads) used to process incoming queries
-over UDP with the use of eXpress Data Path, bypassing Linux network stack.
-
-Change of this parameter requires restart of the Knot server to take effect.
-
-If set to zero, XDP is not initialized at all.
-
-Pre-requisite: compiled-in support for XDP.
-
-It's recommended to be set only if the server listens on one interface.
-The number of workers should match the number of network interface RX queues.
-
-*Default:* 0
 
 .. _server_background-workers:
 
@@ -418,6 +400,27 @@ Optional port specification (default is 53) can be appended to each address
 using ``@`` separator. Use ``0.0.0.0`` for all configured IPv4 addresses or
 ``::`` for all configured IPv6 addresses. Non-local address binding is
 automatically enabled if supported by the operating system.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* not set
+
+.. _server_listen-xdp:
+
+listen-xdp
+----------
+
+One or more specifications in the form ``eth_dev@port``, e.g. ``eth1@53``.
+Alternatively, an IP address can be used instead of a device name, but Knot
+will still listen on all addresses belonging to the same interface!
+
+If specified, Knot will create additional XDP workers, listening
+on specified interface(s) and port(s) on UDP protocol, with enhanced
+performance. The number of XDP workers is equal to the sum of the
+interfaces' RX queues.
+
+It is strongly recommended to also :ref:`server_listen` on all those
+addresses, at least to fulfill the requirement of working TCP fallback.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
