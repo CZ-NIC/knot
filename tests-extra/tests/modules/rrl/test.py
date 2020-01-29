@@ -40,8 +40,15 @@ def send_queries(server, name, run_time=1.0, query_time=0.05):
             dropped += 1
         elif response.flags & dns.flags.TC:
             slipped += 1
+            if not response.flags & dns.flags.AA:
+                detail_log("missing AA flag")
+                set_err("RRL ERROR")
         else:
             replied += 1
+
+        if response is not None and response.rcode() != dns.rcode.NOERROR:
+            detail_log("unexpected RCODE %s, wanted NOERROR" % response.rcode())
+            set_err("RRL ERROR")
 
     return dict(replied=replied, slipped=slipped, dropped=dropped)
 
