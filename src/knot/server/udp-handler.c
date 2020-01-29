@@ -457,10 +457,8 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp, void 
 #ifdef ENABLE_XDP
 		size_t udp_wrk = conf()->cache.srv_udp_threads;
 		size_t tcp_wrk = conf()->cache.srv_tcp_threads;
-		size_t xdp_wrk = conf()->cache.srv_xdp_threads;
 		// XDP worker thread follow after UDP and TCP worker threads
 		assert(thread_id >= udp_wrk + tcp_wrk);
-		assert(thread_id < udp_wrk + tcp_wrk + xdp_wrk);
 
 		size_t xdp_wrk_id = thread_id - udp_wrk - tcp_wrk;
 
@@ -468,12 +466,16 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool use_xdp, void 
 			return -1;
 		}
 
+		printf("if udp fd thr %d xdp %d udps %zu tcps %zu fd udp cnt %d\n", thread_id, use_xdp, conf()->cache.srv_udp_threads, conf()->cache.srv_tcp_threads, iface->fd_udp_count);
+
 		*socket_ctx = iface->sock_xdp[xdp_wrk_id];
 		return iface->fd_xdp[xdp_wrk_id];
 #else
 		assert(0);
 #endif
 	}
+
+	printf("if udp fd thr %d xdp %d udps %zu tcps %zu fd udp cnt %d\n", thread_id, use_xdp, conf()->cache.srv_udp_threads, conf()->cache.srv_tcp_threads, iface->fd_udp_count);
 
 #ifdef ENABLE_REUSEPORT
 	assert(thread_id < iface->fd_udp_count);
@@ -508,6 +510,9 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, struct po
 	}
 
 	for (size_t i = 0; i < n_ifaces; i++) {
+		if (ifaces[i].fd_udp_count < 1 && !use_xdp) {
+			continue;
+		}
 		fds[i].fd = iface_udp_fd(&ifaces[i], thread_id, use_xdp, &socket_ctxs[i]);
 		if (fds[i].fd < 0) {
 			return 0;
