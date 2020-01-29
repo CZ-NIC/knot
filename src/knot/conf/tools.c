@@ -312,13 +312,6 @@ int check_server(
 	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV4_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV4);
 	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV6_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV6);
 
-#ifndef ENABLE_XDP
-	if (conf_xdp_threads_txn(args->extra->conf, args->extra->txn) > 0) {
-		args->err_str = "not compiled with XDP support";
-		return KNOT_EINVAL;
-	}
-#endif
-
 	return KNOT_EOK;
 }
 

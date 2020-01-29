@@ -39,7 +39,6 @@ typedef struct iohandler {
 	dt_unit_t          *unit;   /*!< Threading unit */
 	unsigned           *thread_state; /*!< Thread state */
 	unsigned           *thread_id; /*!< Thread identifier. */
-	bool               use_xdp; /*!< Using XDP. */
 } iohandler_t;
 
 /*! \brief Server state flags.
@@ -59,6 +58,7 @@ typedef struct iface {
 	int fd_tcp_count;
 	int *fd_xdp;
 	int fd_xdp_count;
+	unsigned fd_thread_ids;
 	struct knot_xsk_socket **sock_xdp;
 	struct sockaddr_storage addr;
 } iface_t;
