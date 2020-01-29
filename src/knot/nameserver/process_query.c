@@ -456,6 +456,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Set TC bit if required. */
 	if (qdata->err_truncated) {
+		knot_wire_set_aa(pkt->wire);
 		knot_wire_set_tc(pkt->wire);
 	}
 
