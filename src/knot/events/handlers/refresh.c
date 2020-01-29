@@ -1184,7 +1184,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	knot_requestor_clear(&requestor);
 
 	if (ret == KNOT_EOK) {
-		trctx->send_notify = data.updated;
+		trctx->send_notify = data.updated && !master->suppr_notify_after_xfr;
 	}
 
 	return ret;

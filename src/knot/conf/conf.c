@@ -1272,5 +1272,8 @@ conf_remote_t conf_remote_txn(
 
 	free(rundir);
 
+	val = conf_id_get_txn(conf, txn, C_RMT, C_SNAX, id);
+	out.suppr_notify_after_xfr = conf_bool(&val);
+
 	return out;
 }

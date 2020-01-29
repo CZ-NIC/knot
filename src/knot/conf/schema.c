@@ -269,6 +269,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_VIA,     YP_TADDR, YP_VNONE, YP_FMULTI },
 	{ C_KEY,     YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
 	{ C_COMMENT, YP_TSTR,  YP_VNONE },
+	{ C_SNAX,    YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 

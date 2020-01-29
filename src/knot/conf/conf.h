@@ -29,6 +29,8 @@ typedef struct {
 	struct sockaddr_storage via;
 	/*! TSIG key. */
 	knot_tsig_key_t key;
+	/*! See doc reference. */
+	bool suppr_notify_after_xfr;
 } conf_remote_t;
 
 /*! Configuration section iterator. */

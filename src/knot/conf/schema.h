@@ -94,6 +94,7 @@
 #define C_SERVER		"\x06""server"
 #define C_SIGNING_THREADS	"\x0F""signing-threads"
 #define C_SINGLE_TYPE_SIGNING	"\x13""single-type-signing"
+#define C_SNAX			"\x16""suppr-notify-after-xfr"
 #define C_SRV			"\x06""server"
 #define C_STATS			"\x0A""statistics"
 #define C_STORAGE		"\x07""storage"
