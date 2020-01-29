@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@
 #define C_KSK_SHARED		"\x0a""ksk-shared"
 #define C_KSK_SIZE		"\x08""ksk-size"
 #define C_LISTEN		"\x06""listen"
+#define C_LISTEN_XDP		"\x0A""listen-xdp"
 #define C_LOG			"\x03""log"
 #define C_MANUAL		"\x06""manual"
 #define C_MASTER		"\x06""master"
