@@ -1277,6 +1277,7 @@ transfer, target for a notification, etc.).
      address: ADDR[@INT] ...
      via: ADDR[@INT] ...
      key: key_id
+     block-notify-after-transfer: BOOL
 
 .. _remote_id:
 
@@ -1321,6 +1322,16 @@ A :ref:`reference<key_id>` to the TSIG key which is used to authenticate
 the communication with the remote server.
 
 *Default:* not set
+
+.. _remote_block-notify-after-transfer:
+
+block-notify-after-transfer
+---------------------------
+
+When incoming AXFR/IXFR from this remote (as a master), suppress sending
+NOTIFY messages to all configured slaves.
+
+*Default:* off
 
 .. _Template section:
 

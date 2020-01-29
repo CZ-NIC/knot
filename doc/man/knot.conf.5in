@@ -1162,6 +1162,7 @@ remote:
     address: ADDR[@INT] ...
     via: ADDR[@INT] ...
     key: key_id
+    block\-notify\-after\-transfer: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -1198,6 +1199,12 @@ A \fI\%reference\fP to the TSIG key which is used to authenticate
 the communication with the remote server.
 .sp
 \fIDefault:\fP not set
+.SS block\-notify\-after\-transfer
+.sp
+When incoming AXFR/IXFR from this remote (as a master), suppress sending
+NOTIFY messages to all configured slaves.
+.sp
+\fIDefault:\fP off
 .SH TEMPLATE SECTION
 .sp
 A template is shareable zone settings, which can simplify configuration by
