@@ -907,9 +907,6 @@ Start knotd as root (it may drop to unpriv user after init).
 Notes
 -----
 
-The number of configured :ref:`server_xdp-workers` shall match the number of network
-card's queues.
-
 Don't attempt settings like::
 
    # ip link set mtu $mtu dev $dev

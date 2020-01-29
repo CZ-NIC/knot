@@ -196,6 +196,7 @@ server:
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
     listen: ADDR[@INT] ...
+    listen\-xdp: STR ...
 .ft P
 .fi
 .UNINDENT
@@ -268,21 +269,6 @@ over TCP.
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fIDefault:\fP equal to the number of online CPUs, default value is at least 10
-.SS xdp\-workers
-.sp
-A number of XDP workers (threads) used to process incoming queries
-over UDP with the use of eXpress Data Path, bypassing Linux network stack.
-.sp
-Change of this parameter requires restart of the Knot server to take effect.
-.sp
-If set to zero, XDP is not initialized at all.
-.sp
-Pre\-requisite: compiled\-in support for XDP.
-.sp
-It\(aqs recommended to be set only if the server listens on one interface.
-The number of workers should match the number of network interface RX queues.
-.sp
-\fIDefault:\fP 0
 .SS background\-workers
 .sp
 A number of workers (threads) used to execute background operations (zone
@@ -386,6 +372,23 @@ Optional port specification (default is 53) can be appended to each address
 using \fB@\fP separator. Use \fB0.0.0.0\fP for all configured IPv4 addresses or
 \fB::\fP for all configured IPv6 addresses. Non\-local address binding is
 automatically enabled if supported by the operating system.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP not set
+.SS listen\-xdp
+.sp
+One or more specifications in the form \fBeth_dev@port\fP, e.g. \fBeth1@53\fP\&.
+Alternatively, an IP address can be used instead of a device name, but Knot
+will still listen on all addresses belonging to the same interface!
+.sp
+If specified, Knot will create additional XDP workers, listening
+on specified interface(s) and port(s) on UDP protocol, with enhanced
+performance. The number of XDP workers is equal to the sum of the
+interfaces\(aq RX queues.
+.sp
+It is strongly recommended to also \fI\%listen\fP on all those
+addresses, at least to fulfill the requirement of working TCP fallback.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
