@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -474,10 +474,6 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Set final RCODE to packet. */
-	if (qdata->rcode == KNOT_RCODE_NOERROR) {
-		/* Default RCODE is SERVFAIL if not otherwise specified. */
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
-	}
 	set_rcode_to_packet(pkt, qdata);
 
 	/* Transaction security (if applicable). */

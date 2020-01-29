@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ static knotd_state_t queryacl_process(knotd_state_t state, knot_pkt_t *pkt,
 	socklen_t iface_len = sizeof(iface);
 	if (getsockname(qdata->params->socket, (struct sockaddr *)&iface, &iface_len) != 0) {
 		knotd_mod_log(mod, LOG_ERR, "failed to get interface address");
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_STATE_FAIL;
 	}
 

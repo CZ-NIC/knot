@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -203,11 +203,13 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 
 			ret = knot_edns_cookie_server_generate(&sc, &cc, &params);
 			if (ret != KNOT_EOK) {
+				qdata->rcode = KNOT_RCODE_SERVFAIL;
 				return KNOTD_STATE_FAIL;
 			}
 
 			ret = put_cookie(qdata, pkt, &cc, &sc);
 			if (ret != KNOT_EOK) {
+				qdata->rcode = KNOT_RCODE_SERVFAIL;
 				return KNOTD_STATE_FAIL;
 			}
 
@@ -219,6 +221,7 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 	// Reuse valid server cookie.
 	ret = put_cookie(qdata, pkt, &cc, &sc);
 	if (ret != KNOT_EOK) {
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_STATE_FAIL;
 	}
 
