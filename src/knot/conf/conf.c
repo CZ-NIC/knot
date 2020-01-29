@@ -1114,19 +1114,6 @@ size_t conf_udp_threads_txn(
 	return workers;
 }
 
-size_t conf_xdp_threads_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn)
-{
-	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_XDP_WORKERS);
-	int64_t workers = conf_int(&val);
-	if (workers == YP_NIL) {
-		return 0;
-	}
-
-	return workers;
-}
-
 size_t conf_tcp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
