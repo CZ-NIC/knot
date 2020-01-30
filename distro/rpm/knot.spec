@@ -150,6 +150,9 @@ install -p -m 0644 -D %{repodir}/samples/%{name}.sample.conf %{buildroot}%{_sysc
 # install systemd files
 install -p -m 0644 -D %{repodir}/distro/common/%{name}.service %{buildroot}%{_unitdir}/%{name}.service
 install -p -m 0644 -D %{repodir}/distro/common/%{name}.tmpfiles %{buildroot}%{_tmpfilesdir}/%{name}.conf
+%if 0%{?suse_version}
+ln -s service %{buildroot}/%{_sbindir}/rcknot
+%endif
 
 # create storage dir and key dir
 install -d %{buildroot}%{_sharedstatedir}
@@ -216,6 +219,9 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_sbindir}/keymgr
 %{_sbindir}/knotc
 %{_sbindir}/knotd
+%if 0%{?suse_version}
+%{_sbindir}/rcknot
+%endif
 %{_mandir}/man1/kzonecheck.*
 %{_mandir}/man5/knot.conf.*
 %{_mandir}/man8/kjournalprint.*
