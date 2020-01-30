@@ -412,12 +412,19 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 	}
 
 	// Set packet question if available.
-	knot_dname_t *qname = knot_dname_from_str_alloc(query->owner);
-	if (qname != NULL) {
-		int ret = knot_pkt_put_question(packet, qname, query->class_num,
+	knot_dname_t *qname = NULL;
+	if (query->owner != NULL) {
+		qname = knot_dname_from_str_alloc(query->owner);
+		if (qname != NULL) {
+			int ret = knot_pkt_put_question(packet, qname, query->class_num,
 		                                query->type_num);
-		if (ret != KNOT_EOK) {
-			knot_dname_free(qname, NULL);
+			if (ret != KNOT_EOK) {
+				knot_dname_free(qname, NULL);
+				knot_pkt_free(packet);
+				return NULL;
+			}
+		} else {
+			ERR("'%s' is not a legal name\n", query->owner);
 			knot_pkt_free(packet);
 			return NULL;
 		}
