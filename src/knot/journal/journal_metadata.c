@@ -101,6 +101,22 @@ bool get_metadata64(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 	return get_metadata_numeric(txn, zone, metadata, result, sizeof(*result));
 }
 
+bool get_metadata64or32(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
+			const char *metadata, uint64_t *result)
+{
+	if (txn->ret != KNOT_EOK) {
+		return false;
+	}
+	bool ret = get_metadata64(txn, zone, metadata, result);
+	if (txn->ret == KNOT_EMALF) {
+		uint32_t res32 = 0;
+		txn->ret = KNOT_EOK;
+		ret = get_metadata32(txn, zone, metadata, &res32);
+		*result = res32;
+	}
+	return ret;
+}
+
 void set_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const char *metadata,
                   const void *valp, size_t val_size, bool numeric)
 {
@@ -212,7 +228,7 @@ void journal_store_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, cons
 	set_metadata(txn, NULL, "version", "2.0", 4, false);
 	if (md->_new_zone) {
 		uint64_t journal_count = 0;
-		(void)get_metadata64(txn, NULL, "journal_count", &journal_count);
+		(void)get_metadata64or32(txn, NULL, "journal_count", &journal_count);
 		++journal_count;
 		set_metadata(txn, NULL, "journal_count", &journal_count, sizeof(journal_count), true);
 	}
