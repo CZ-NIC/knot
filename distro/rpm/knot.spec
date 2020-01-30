@@ -9,7 +9,7 @@ Summary:	High-performance authoritative DNS server
 Name:		knot
 Version:	%{VERSION}
 Release:	1%{?dist}
-License:	GPLv3
+License:	GPL-3.0-or-later
 URL:		https://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
 
@@ -92,7 +92,6 @@ The package contains DNS client utilities shipped with the Knot DNS server.
 
 %package doc
 Summary:	Documentation for the Knot DNS server
-License:	GPLv3 and BSD and MIT
 BuildArch:	noarch
 Provides:	bundled(jquery) = 3.1.0
 
@@ -151,6 +150,9 @@ install -p -m 0644 -D %{repodir}/samples/%{name}.sample.conf %{buildroot}%{_sysc
 # install systemd files
 install -p -m 0644 -D %{repodir}/distro/common/%{name}.service %{buildroot}%{_unitdir}/%{name}.service
 install -p -m 0644 -D %{repodir}/distro/common/%{name}.tmpfiles %{buildroot}%{_tmpfilesdir}/%{name}.conf
+%if 0%{?suse_version}
+ln -s service %{buildroot}/%{_sbindir}/rcknot
+%endif
 
 # create storage dir and key dir
 install -d %{buildroot}%{_sharedstatedir}
@@ -217,12 +219,16 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_sbindir}/keymgr
 %{_sbindir}/knotc
 %{_sbindir}/knotd
+%if 0%{?suse_version}
+%{_sbindir}/rcknot
+%endif
 %{_mandir}/man1/kzonecheck.*
 %{_mandir}/man5/knot.conf.*
 %{_mandir}/man8/kjournalprint.*
 %{_mandir}/man8/keymgr.*
 %{_mandir}/man8/knotc.*
 %{_mandir}/man8/knotd.*
+%ghost /run/knot
 
 %files utils
 %{_bindir}/kdig
