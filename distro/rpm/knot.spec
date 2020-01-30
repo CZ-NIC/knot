@@ -9,7 +9,7 @@ Summary:	High-performance authoritative DNS server
 Name:		knot
 Version:	%{VERSION}
 Release:	1%{?dist}
-License:	GPLv3
+License:	GPL-3.0-or-later
 URL:		https://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
 
@@ -92,7 +92,6 @@ The package contains DNS client utilities shipped with the Knot DNS server.
 
 %package doc
 Summary:	Documentation for the Knot DNS server
-License:	GPLv3 and BSD and MIT
 BuildArch:	noarch
 Provides:	bundled(jquery) = 3.1.0
 
