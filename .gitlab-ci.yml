@@ -374,6 +374,7 @@ deploy:documentation:
   only:
     variables:
       - $OBS_REPO =~ /^knot-dns-devel|knot-dns-latest|knot-dns-testing$/
+  dependencies: []
   when: delayed
   start_in: 3 minutes  # give OBS build some time
   tags:
