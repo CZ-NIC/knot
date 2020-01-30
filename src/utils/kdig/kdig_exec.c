@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -412,8 +412,15 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 	}
 
 	// Set packet question if available.
-	knot_dname_t *qname = knot_dname_from_str_alloc(query->owner);
-	if (qname != NULL) {
+	knot_dname_t *qname = NULL;
+	if (query->owner != NULL) {
+		qname = knot_dname_from_str_alloc(query->owner);
+		if (qname == NULL) {
+			ERR("'%s' is not a valid domain name\n", query->owner);
+			knot_pkt_free(packet);
+			return NULL;
+		}
+
 		int ret = knot_pkt_put_question(packet, qname, query->class_num,
 		                                query->type_num);
 		if (ret != KNOT_EOK) {
