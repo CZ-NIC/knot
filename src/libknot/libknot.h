@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,5 +62,7 @@
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/wire.h"
+#include "libknot/xdp/af_xdp.h"
+#include "libknot/xdp/eth-tools.h"
 
 /*! @} */
