@@ -46,7 +46,7 @@ nobase_include_libknot_HEADERS = \
 	libknot/tsig.h				\
 	libknot/wire.h				\
 	libknot/xdp/af_xdp.h			\
-	libknot/xdp/bpf-user.h			\
+	libknot/xdp/eth-tools.h			\
 	libknot/yparser/yparser.h		\
 	libknot/yparser/ypformat.h		\
 	libknot/yparser/ypschema.h		\
@@ -86,8 +86,8 @@ libknot_la_SOURCES  += \
 	libknot/xdp/bpf-kernel-obj.c		\
 	libknot/xdp/bpf-kernel-obj.h		\
 	libknot/xdp/bpf-user.c			\
-	libknot/xdp/eth-tools.c			\
-	libknot/xdp/eth-tools.h
+	libknot/xdp/bpf-user.h			\
+	libknot/xdp/eth-tools.c
 endif ENABLE_XDP
 
 DIST_SUBDIRS = libknot/xdp
