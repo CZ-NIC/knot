@@ -71,7 +71,7 @@ support.
      - |yes|
    * - `Ultra Electronics CIS Keyper Plus (Model 9860-2) <https://www.ultra-cis.com/capabilities/key-management/keyper-plus>`_
      - |yes|
-     - |yes|
+     - RSA only
      - |no|
      - |yes|
      - |yes|
