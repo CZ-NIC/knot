@@ -162,6 +162,12 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
         [enable_ed25519=no],
         [#include <gnutls/gnutls.h>])
 
+    AC_CHECK_DECL([GNUTLS_SIGN_EDDSA_ED448],
+        [AC_DEFINE([HAVE_ED448], [1], [GnuTLS ED448 support available])
+         enable_ed448=yes],
+        [enable_ed448=no],
+        [#include <gnutls/gnutls.h>])
+
     AC_CHECK_FUNC([gnutls_privkey_sign_data2],
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
 
@@ -716,6 +722,7 @@ result_msg_base="  Knot DNS $VERSION
     POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
     Ed25519 support:        ${enable_ed25519}
+    Ed448 support:          ${enable_ed448}
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
     LibFuzzer:              ${with_fuzzer}
