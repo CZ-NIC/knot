@@ -913,7 +913,7 @@ DNSSEC policy configuration.
      keystore: STR
      manual: BOOL
      single-type-signing: BOOL
-     algorithm: rsasha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519
+     algorithm: rsasha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519 | ed448
      ksk-size: SIZE
      zsk-size: SIZE
      ksk-shared: BOOL
@@ -992,9 +992,12 @@ Possible values:
 - ``ecdsap256sha256``
 - ``ecdsap384sha384``
 - ``ed25519``
+- ``ed448``
 
 .. NOTE::
-   Ed25519 algorithm is only available when compiled with GnuTLS 3.6.0+.
+   Ed25519 algorithm is only available if compiled with GnuTLS 3.6.0+.
+
+   Ed448 algorithm is only available if compiled with GnuTLS 3.6.12+ and Nettle 3.6+.
 
 *Default:* ecdsap256sha256
 
@@ -1006,7 +1009,7 @@ ksk-size
 A length of newly generated :abbr:`KSK (Key Signing Key)` or
 :abbr:`CSK (Combined Signing Key)` keys.
 
-*Default:* 2048 (rsa*), 256 (ecdsap256), 384 (ecdsap384), 256 (ed25519)
+*Default:* 2048 (rsa*), 256 (ecdsap256), 384 (ecdsap384), 256 (ed25519), 456 (ed448)
 
 .. _policy_zsk-size:
 
