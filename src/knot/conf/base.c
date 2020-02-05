@@ -185,6 +185,12 @@ static void init_cache(
 
 	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
 
+	val = conf_get(conf, C_SRV, C_TLS_IDLE_TIMEOUT);
+	conf->cache.srv_tls_idle_timeout = conf_int(&val);
+
+	val = conf_get(conf, C_SRV, C_TLS_IO_TIMEOUT);
+	conf->cache.srv_tls_io_timeout = infinite_adjust(conf_int(&val));
+
 	conf->cache.srv_udp_threads = running_udp_threads;
 
 	conf->cache.srv_tcp_threads = running_tcp_threads;
@@ -196,6 +202,8 @@ static void init_cache(
 	conf->cache.srv_bg_threads = running_bg_threads;
 
 	conf->cache.srv_tcp_max_clients = conf_tcp_max_clients(conf);
+
+	conf->cache.srv_tls_max_clients = conf_tls_max_clients(conf);
 
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;

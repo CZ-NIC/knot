@@ -910,14 +910,19 @@ static void test_conf_io_list(void)
 	      "server.tcp-reuseport\n"
 	      "server.udp-workers\n"
 	      "server.tcp-workers\n"
+	      "server.tls-workers\n"
 	      "server.background-workers\n"
 	      "server.udp-max-payload\n"
 	      "server.udp-max-payload-ipv4\n"
 	      "server.udp-max-payload-ipv6\n"
 	      "server.edns-client-subnet\n"
 	      "server.answer-rotation\n"
+	      "server.tls-idle-timeout\n"
+	      "server.tls-io-timeout\n"
+	      "server.tls-max-clients\n"
 	      "server.max-tcp-clients\n"
-	      "server.max-udp-payload";
+	      "server.max-udp-payload\n"
+	      "server.max-tls-clients";
 	ok(strcmp(ref, out) == 0, "compare result");
 }
 
@@ -932,15 +937,20 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_REUSEPORT,	  YP_TBOOL, YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
+	{ C_TLS_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_BG_WORKERS,		  YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD,      YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD_IPV4, YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD_IPV6, YP_TINT,  YP_VNONE },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
+	{ C_TLS_IDLE_TIMEOUT,     YP_TINT,  YP_VNONE },
+	{ C_TLS_IO_TIMEOUT,       YP_TINT,  YP_VNONE },
+	{ C_TLS_MAX_CLIENTS,      YP_TINT,  YP_VNONE },
 	// Legacy items.
 	{ C_MAX_TCP_CLIENTS,      YP_TINT,  YP_VNONE },
 	{ C_MAX_UDP_PAYLOAD,      YP_TINT,  YP_VNONE },
+	{ C_MAX_TLS_CLIENTS,      YP_TINT,  YP_VNONE },
 	{ NULL }
 };
 

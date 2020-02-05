@@ -114,12 +114,15 @@ typedef struct {
 		int srv_tcp_io_timeout;
 		int srv_tcp_remote_io_timeout;
 		bool srv_tcp_reuseport;
+		int srv_tls_idle_timeout;
+		int srv_tls_io_timeout;
 		size_t srv_udp_threads;
 		size_t srv_tcp_threads;
 		size_t srv_xdp_threads;
 		size_t srv_tls_threads;
 		size_t srv_bg_threads;
 		size_t srv_tcp_max_clients;
+		size_t srv_tls_max_clients;
 		int ctl_timeout;
 		conf_val_t srv_nsid;
 		bool srv_ecs;

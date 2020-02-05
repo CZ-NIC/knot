@@ -1272,6 +1272,31 @@ size_t conf_tcp_max_clients_txn(
 	return clients;
 }
 
+size_t conf_tls_max_clients_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TLS_MAX_CLIENTS);
+	if (val.code != KNOT_EOK) {
+		val = conf_get_txn(conf, txn, C_SRV, C_MAX_TLS_CLIENTS);
+	}
+
+	int64_t clients = conf_int(&val);
+	if (clients == YP_NIL) {
+		static size_t permval = 0;
+		if (permval == 0) {
+			struct rlimit numfiles;
+			if (getrlimit(RLIMIT_NOFILE, &numfiles) == 0) {
+				permval = (size_t)numfiles.rlim_cur / 2;
+			} else {
+				permval = FALLBACK_MAX_TCP_CLIENTS;
+			}
+		}
+		return permval;
+	}
+	return clients;
+}
+
 int conf_user_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
