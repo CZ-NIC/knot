@@ -71,18 +71,17 @@ static void update_sweep_timer(struct timespec *timer)
 static void update_tls_conf(tls_context_t *tls)
 {
 	rcu_read_lock();
-	//TODO TLS conf
 	tls->max_worker_fds = tls->client_threshold +
-		MAX(conf()->cache.srv_tcp_max_clients / conf()->cache.srv_tcp_threads, 1);
-	tls->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
-	tls->io_timeout = conf()->cache.srv_tcp_io_timeout;
-	//TODO END
+		MAX(conf()->cache.srv_tls_max_clients / conf()->cache.srv_tls_threads, 1);
+	tls->idle_timeout = conf()->cache.srv_tls_idle_timeout;
+	tls->io_timeout = conf()->cache.srv_tls_io_timeout;
 	rcu_read_unlock();
 }
 
-/*! \brief Sweep TCP connection. */
+/*! \brief Sweep TLS connection. */
 static enum fdset_sweep_state tls_sweep(fdset_t *set, int i, void *data)
 {
+	//TODO take a look for free 'set->pfd[i].ctx'
 	UNUSED(data);
 	assert(set && i < set->n && i >= 0);
 	int fd = set->pfd[i].fd;
@@ -213,7 +212,7 @@ static int tls_handle(tls_context_t *tls, int i, struct iovec *rx, struct iovec 
 			gnutls_record_send(*session, &size, sizeof(uint16_t));
 			int sent = gnutls_record_send(*session, ans->wire, ans->size);
 			while (gnutls_record_check_corked(*session) > 0) {
-				int ret = gnutls_record_uncork(*session, GNUTLS_RECORD_WAIT);
+				ret = gnutls_record_uncork(*session, GNUTLS_RECORD_WAIT);
 				if (ret < 0 && gnutls_error_is_fatal(ret) != 0) {
 					tls_log_error(&ss, "send", sent);
 					ret = KNOT_EOF;
@@ -349,7 +348,6 @@ int tls_master(dthread_t *thread)
 	if (thread == NULL || thread->data == NULL) {
 		return KNOT_EINVAL;
 	}
-
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	int ret = KNOT_EOK;
 
@@ -369,13 +367,32 @@ int tls_master(dthread_t *thread)
 
 	/* Prepare certificates */
 	assert(gnutls_certificate_allocate_credentials(&tls.credentials) >= 0);
-	if (/*TODO has certificate*/0) {
-		assert(gnutls_certificate_set_x509_trust_file(tls.credentials, "/etc/ssl/certs/ca-certificates.crt", GNUTLS_X509_FMT_PEM) >= 0);
-	} else {
+
+	conf_val_t val = conf_get(conf(), C_SRV, C_TLS_TRUST_FILE);
+	const char *trust = conf_str(&val);
+	if (trust) {
+		if (gnutls_certificate_set_x509_trust_file(tls.credentials, trust, GNUTLS_X509_FMT_PEM) <= 0) {
+			log_error("TLS, unable to load trust file %s", trust);
+			return KNOT_EINVAL; //TODO better shutdown (there will be more workers to shutdown) or load system trust instead
+		}
+	}
+	else {
 		assert(gnutls_certificate_set_x509_system_trust(tls.credentials) >= 0);
 	}
+
 	//assert(gnutls_certificate_set_x509_crl_file(tls.credentials, "crl.pem", GNUTLS_X509_FMT_PEM) >= 0);
-	assert(gnutls_certificate_set_x509_key_file(tls.credentials, "/home/jhak/Work/knot-dns/cert.pem", "/home/jhak/Work/knot-dns/key.pem", GNUTLS_X509_FMT_PEM) >= 0);
+
+	val = conf_get(conf(), C_SRV, C_TLS_CERT_FILE);
+	const char *certificate = conf_str(&val);
+	val = conf_get(conf(), C_SRV, C_TLS_KEY_FILE);
+	const char *key = conf_str(&val);
+	if (certificate && key) {
+		if (gnutls_certificate_set_x509_key_file(tls.credentials, certificate, key, GNUTLS_X509_FMT_PEM) != GNUTLS_E_SUCCESS) {
+			log_error("TLS, unable to load certificate pair [%s, %s]", certificate, key);
+			return KNOT_EINVAL; //TODO better shutdown (there will be more workers to shutdown) or load system trust instead
+		}
+	}
+
 	//assert(gnutls_certificate_set_ocsp_status_request_file(tls.credentials, "ocsp-status.der", 0) >= 0);
 
 	assert(gnutls_priority_init(&tls.prority_cache, NULL, NULL) >= 0);
