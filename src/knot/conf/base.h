@@ -126,6 +126,8 @@ typedef struct {
 		bool srv_tcp_reuseport;
 		bool srv_tcp_fastopen;
 		bool srv_socket_affinity;
+		int srv_tls_idle_timeout;
+		int srv_tls_io_timeout;
 		size_t srv_udp_threads;
 		size_t srv_tcp_threads;
 		size_t srv_xdp_threads;
@@ -138,6 +140,7 @@ typedef struct {
 		uint32_t xdp_tcp_idle_reset;
 		bool xdp_tcp;
 		bool xdp_route_check;
+		size_t srv_tls_max_clients;
 		int ctl_timeout;
 		conf_val_t srv_nsid;
 		bool srv_ecs;

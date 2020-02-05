@@ -913,12 +913,16 @@ static void test_conf_io_list(void)
 	      "server.socket-affinity\n"
 	      "server.udp-workers\n"
 	      "server.tcp-workers\n"
+	      "server.tls-workers\n"
 	      "server.background-workers\n"
 	      "server.udp-max-payload\n"
 	      "server.udp-max-payload-ipv4\n"
 	      "server.udp-max-payload-ipv6\n"
 	      "server.edns-client-subnet\n"
-	      "server.answer-rotation";
+	      "server.answer-rotation\n"
+	      "server.tls-idle-timeout\n"
+	      "server.tls-io-timeout\n"
+	      "server.tls-max-clients";
 	ok(strcmp(ref, out) == 0, "compare result");
 }
 
@@ -935,12 +939,16 @@ static const yp_item_t desc_server[] = {
 	{ C_SOCKET_AFFINITY,	  YP_TBOOL, YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
+	{ C_TLS_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_BG_WORKERS,		  YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD,      YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD_IPV4, YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD_IPV6, YP_TINT,  YP_VNONE },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
+	{ C_TLS_IDLE_TIMEOUT,     YP_TINT,  YP_VNONE },
+	{ C_TLS_IO_TIMEOUT,       YP_TINT,  YP_VNONE },
+	{ C_TLS_MAX_CLIENTS,      YP_TINT,  YP_VNONE },
 	{ NULL }
 };
 
