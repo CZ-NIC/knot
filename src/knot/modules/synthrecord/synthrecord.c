@@ -236,7 +236,7 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 	case IPV6_ADDR_LABELS + ARPA_ZONE_LABELS:
 		*addr_family = AF_INET6;
 
-		addr_block_t blocks[8];
+		addr_block_t blocks[8] = { 0 };
 		int compr_start = -1, compr_end = -1;
 
 		// Process 32 1-char labels.
