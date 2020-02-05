@@ -243,6 +243,7 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 		const uint8_t *l = label;
 		for (int i = 0; i < 8; i++) {
 			addr_block_t *block = &blocks[7 - i];
+			assert(block);
 			int ret = block_fill(block, l);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -267,7 +268,6 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 			}
 			const uint64_t *bi_block = (const uint64_t *)block;
 			// Check for trailing zero dual-blocks.
-			assert(bi_block);
 			if (*bi_block == 0x3030303030303030ULL) {
 				if (compr_end == -1) { // Set compression end.
 					compr_end = 8 - i;
