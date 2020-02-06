@@ -36,7 +36,7 @@ struct knot_xsk_socket;
 /*!
  * \brief Initialize XDP socket.
  *
- * \param socket        Socket ctx.
+ * \param socket        Socket ctx; call with *socket == NULL.
  * \param ifname        Name of the net iface (e.g. eth0).
  * \param if_queue      Network card queue to be used (normally 1 socket per each queue).
  * \param listen_port   Port to listen on, or (1 << 16) to listen on all ports.

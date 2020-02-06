@@ -361,8 +361,7 @@ static int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t
 	h->ipv4.check = pkt_ipv4_checksum_2(&h->ipv4);
 #pragma GCC diagnostic pop
 
-	assert(&h->eth.h_dest == (void *)msg->eth_to);
-	assert(&h->eth.h_source == (void *)msg->eth_from);
+	// MAC addresses are assumed to be already there.
 	h->eth.h_proto = htobe16(ETH_P_IP);
 
 	uint32_t eth_len = FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len;
@@ -416,8 +415,7 @@ static int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t
 	udp_checksum_finish(&chk);
 	h->udp.check = chk;
 
-	assert(&h->eth.h_dest == (void *)msg->eth_to);
-	assert(&h->eth.h_source == (void *)msg->eth_from);
+	// MAC addresses are assumed to be already there.
 	h->eth.h_proto = htobe16(ETH_P_IPV6);
 
 	uint32_t eth_len = FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len;
