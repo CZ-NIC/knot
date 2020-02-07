@@ -162,7 +162,11 @@ void knot_xsk_deinit(struct knot_xsk_socket *socket)
 
 	kxsk_socket_stop(socket->iface, socket->if_queue);
 	xsk_socket__delete(socket->xsk);
+	// undo configure_xsk_umem()
 	xsk_umem__delete(socket->umem->umem);
+	free(socket->umem->frames);
+	free(socket->umem->free_indices);
+	free(socket->umem);
 
 	kxsk_iface_free((struct kxsk_iface *)/*const-cast*/socket->iface);
 	free(socket);
