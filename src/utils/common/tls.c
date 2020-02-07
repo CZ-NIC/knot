@@ -331,7 +331,7 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 		}
 
 		uint8_t *txt_pin;
-		ret = base64_encode_alloc(cert_pin, sizeof(cert_pin), &txt_pin);
+		ret = knot_base64_encode_alloc(cert_pin, sizeof(cert_pin), &txt_pin);
 		if (ret < 0) {
 			gnutls_x509_crt_deinit(cert);
 			return ret;

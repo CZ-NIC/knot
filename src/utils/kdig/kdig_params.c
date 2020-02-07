@@ -662,7 +662,7 @@ static int opt_tls_pin(const char *arg, void *query)
 
 	uint8_t pin[64] = { 0 };
 
-	int ret = base64_decode((const uint8_t *)arg, strlen(arg), pin, sizeof(pin));
+	int ret = knot_base64_decode((const uint8_t *)arg, strlen(arg), pin, sizeof(pin));
 	if (ret < 0) {
 		ERR("invalid +tls-pin=%s\n", arg);
 		return ret;

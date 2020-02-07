@@ -131,7 +131,7 @@ int dnssec_binary_from_base64(const dnssec_binary_t *base64,
 	}
 
 	uint8_t *data;
-	int32_t size = base64_decode_alloc(base64->data, base64->size, &data);
+	int32_t size = knot_base64_decode_alloc(base64->data, base64->size, &data);
 	if (size < 0) {
 		return DNSSEC_EINVAL;
 	}
@@ -151,7 +151,7 @@ int dnssec_binary_to_base64(const dnssec_binary_t *binary,
 	}
 
 	uint8_t *data;
-	int32_t size = base64_encode_alloc(binary->data, binary->size, &data);
+	int32_t size = knot_base64_encode_alloc(binary->data, binary->size, &data);
 	if (size < 0) {
 		return DNSSEC_EINVAL;
 	}

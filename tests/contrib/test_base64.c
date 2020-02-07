@@ -35,51 +35,51 @@ int main(int argc, char *argv[])
 	uint32_t in_len, ref_len;
 
 	// 0. test invalid input
-	ret = base64_encode(NULL, 0, out, BUF_LEN);
-	is_int(KNOT_EINVAL, ret, "base64_encode: NULL input buffer");
-	ret = base64_encode(in, BUF_LEN, NULL, 0);
-	is_int(KNOT_EINVAL, ret, "base64_encode: NULL output buffer");
-	ret = base64_encode(in, MAX_BIN_DATA_LEN + 1, out, BUF_LEN);
-	is_int(KNOT_ERANGE, ret, "base64_encode: input buffer too large");
-	ret = base64_encode(in, BUF_LEN, out, BUF_LEN);
-	is_int(KNOT_ERANGE, ret, "base64_encode: output buffer too small");
+	ret = knot_base64_encode(NULL, 0, out, BUF_LEN);
+	is_int(KNOT_EINVAL, ret, "knot_base64_encode: NULL input buffer");
+	ret = knot_base64_encode(in, BUF_LEN, NULL, 0);
+	is_int(KNOT_EINVAL, ret, "knot_base64_encode: NULL output buffer");
+	ret = knot_base64_encode(in, MAX_BIN_DATA_LEN + 1, out, BUF_LEN);
+	is_int(KNOT_ERANGE, ret, "knot_base64_encode: input buffer too large");
+	ret = knot_base64_encode(in, BUF_LEN, out, BUF_LEN);
+	is_int(KNOT_ERANGE, ret, "knot_base64_encode: output buffer too small");
 
-	ret = base64_encode_alloc(NULL, 0, &out3);
-	is_int(KNOT_EINVAL, ret, "base64_encode_alloc: NULL input buffer");
-	ret = base64_encode_alloc(in, MAX_BIN_DATA_LEN + 1, &out3);
-	is_int(KNOT_ERANGE, ret, "base64_encode_alloc: input buffer too large");
-	ret = base64_encode_alloc(in, BUF_LEN, NULL);
-	is_int(KNOT_EINVAL, ret, "base64_encode_alloc: NULL output buffer");
+	ret = knot_base64_encode_alloc(NULL, 0, &out3);
+	is_int(KNOT_EINVAL, ret, "knot_base64_encode_alloc: NULL input buffer");
+	ret = knot_base64_encode_alloc(in, MAX_BIN_DATA_LEN + 1, &out3);
+	is_int(KNOT_ERANGE, ret, "knot_base64_encode_alloc: input buffer too large");
+	ret = knot_base64_encode_alloc(in, BUF_LEN, NULL);
+	is_int(KNOT_EINVAL, ret, "knot_base64_encode_alloc: NULL output buffer");
 
-	ret = base64_decode(NULL, 0, out, BUF_LEN);
-	is_int(KNOT_EINVAL, ret, "base64_decode: NULL input buffer");
-	ret = base64_decode(in, BUF_LEN, NULL, 0);
-	is_int(KNOT_EINVAL, ret, "base64_decode: NULL output buffer");
-	ret = base64_decode(in, UINT32_MAX, out, BUF_LEN);
-	is_int(KNOT_ERANGE, ret, "base64_decode: input buffer too large");
-	ret = base64_decode(in, BUF_LEN, out, 0);
-	is_int(KNOT_ERANGE, ret, "base64_decode: output buffer too small");
+	ret = knot_base64_decode(NULL, 0, out, BUF_LEN);
+	is_int(KNOT_EINVAL, ret, "knot_base64_decode: NULL input buffer");
+	ret = knot_base64_decode(in, BUF_LEN, NULL, 0);
+	is_int(KNOT_EINVAL, ret, "knot_base64_decode: NULL output buffer");
+	ret = knot_base64_decode(in, UINT32_MAX, out, BUF_LEN);
+	is_int(KNOT_ERANGE, ret, "knot_base64_decode: input buffer too large");
+	ret = knot_base64_decode(in, BUF_LEN, out, 0);
+	is_int(KNOT_ERANGE, ret, "knot_base64_decode: output buffer too small");
 
-	ret = base64_decode_alloc(NULL, 0, &out3);
-	is_int(KNOT_EINVAL, ret, "base64_decode_alloc: NULL input buffer");
-	ret = base64_decode_alloc(in, UINT32_MAX, &out3);
-	is_int(KNOT_ERANGE, ret, "base64_decode_aloc: input buffer too large");
-	ret = base64_decode_alloc(in, BUF_LEN, NULL);
-	is_int(KNOT_EINVAL, ret, "base64_decode_alloc: NULL output buffer");
+	ret = knot_base64_decode_alloc(NULL, 0, &out3);
+	is_int(KNOT_EINVAL, ret, "knot_base64_decode_alloc: NULL input buffer");
+	ret = knot_base64_decode_alloc(in, UINT32_MAX, &out3);
+	is_int(KNOT_ERANGE, ret, "knot_base64_decode_aloc: input buffer too large");
+	ret = knot_base64_decode_alloc(in, BUF_LEN, NULL);
+	is_int(KNOT_EINVAL, ret, "knot_base64_decode_alloc: NULL output buffer");
 
 	// 1. test vector -> ENC -> DEC
 	strlcpy((char *)in, "", BUF_LEN);
 	in_len = strlen((char *)in);
 	strlcpy((char *)ref, "", BUF_LEN);
 	ref_len = strlen((char *)ref);
-	ret = base64_encode(in, in_len, out, BUF_LEN);
+	ret = knot_base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "1. test vector - ENC output length");
 	if (ret < 0) {
 		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "1. test vector - ENC output content");
 	}
-	ret = base64_decode(out, ret, out2, BUF_LEN);
+	ret = knot_base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "1. test vector - DEC output length");
 	if (ret < 0) {
 		skip("Decode err");
@@ -92,14 +92,14 @@ int main(int argc, char *argv[])
 	in_len = strlen((char *)in);
 	strlcpy((char *)ref, "Zg==", BUF_LEN);
 	ref_len = strlen((char *)ref);
-	ret = base64_encode(in, in_len, out, BUF_LEN);
+	ret = knot_base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "2. test vector - ENC output length");
 	if (ret < 0) {
 		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "2. test vector - ENC output content");
 	}
-	ret = base64_decode(out, ret, out2, BUF_LEN);
+	ret = knot_base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "2. test vector - DEC output length");
 	if (ret < 0) {
 		skip("Decode err");
@@ -112,14 +112,14 @@ int main(int argc, char *argv[])
 	in_len = strlen((char *)in);
 	strlcpy((char *)ref, "Zm8=", BUF_LEN);
 	ref_len = strlen((char *)ref);
-	ret = base64_encode(in, in_len, out, BUF_LEN);
+	ret = knot_base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "3. test vector - ENC output length");
 	if (ret < 0) {
 		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "3. test vector - ENC output content");
 	}
-	ret = base64_decode(out, ret, out2, BUF_LEN);
+	ret = knot_base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "3. test vector - DEC output length");
 	if (ret < 0) {
 		skip("Decode err");
@@ -132,14 +132,14 @@ int main(int argc, char *argv[])
 	in_len = strlen((char *)in);
 	strlcpy((char *)ref, "Zm9v", BUF_LEN);
 	ref_len = strlen((char *)ref);
-	ret = base64_encode(in, in_len, out, BUF_LEN);
+	ret = knot_base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "4. test vector - ENC output length");
 	if (ret < 0) {
 		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "4. test vector - ENC output content");
 	}
-	ret = base64_decode(out, ret, out2, BUF_LEN);
+	ret = knot_base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "4. test vector - DEC output length");
 	if (ret < 0) {
 		skip("Decode err");
@@ -152,14 +152,14 @@ int main(int argc, char *argv[])
 	in_len = strlen((char *)in);
 	strlcpy((char *)ref, "Zm9vYg==", BUF_LEN);
 	ref_len = strlen((char *)ref);
-	ret = base64_encode(in, in_len, out, BUF_LEN);
+	ret = knot_base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "5. test vector - ENC output length");
 	if (ret < 0) {
 		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "5. test vector - ENC output content");
 	}
-	ret = base64_decode(out, ret, out2, BUF_LEN);
+	ret = knot_base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "5. test vector - DEC output length");
 	if (ret < 0) {
 		skip("Decode err");
@@ -172,14 +172,14 @@ int main(int argc, char *argv[])
 	in_len = strlen((char *)in);
 	strlcpy((char *)ref, "Zm9vYmE=", BUF_LEN);
 	ref_len = strlen((char *)ref);
-	ret = base64_encode(in, in_len, out, BUF_LEN);
+	ret = knot_base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "6. test vector - ENC output length");
 	if (ret < 0) {
 		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "6. test vector - ENC output content");
 	}
-	ret = base64_decode(out, ret, out2, BUF_LEN);
+	ret = knot_base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "6. test vector - DEC output length");
 	if (ret < 0) {
 		skip("Decode err");
@@ -192,14 +192,14 @@ int main(int argc, char *argv[])
 	in_len = strlen((char *)in);
 	strlcpy((char *)ref, "Zm9vYmFy", BUF_LEN);
 	ref_len = strlen((char *)ref);
-	ret = base64_encode(in, in_len, out, BUF_LEN);
+	ret = knot_base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "7. test vector - ENC output length");
 	if (ret < 0) {
 		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "7. test vector - ENC output content");
 	}
-	ret = base64_decode(out, ret, out2, BUF_LEN);
+	ret = knot_base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "7. test vector - DEC output length");
 	if (ret < 0) {
 		skip("Decode err");
@@ -208,29 +208,29 @@ int main(int argc, char *argv[])
 	}
 
 	// Bad paddings
-	ret = base64_decode((uint8_t *)"A===", 4, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"A===", 4, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 3");
-	ret = base64_decode((uint8_t *)"====", 4, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"====", 4, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 4");
-	ret = base64_decode((uint8_t *)"AA=A", 4, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"AA=A", 4, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Bad padding character on position 2");
-	ret = base64_decode((uint8_t *)"Zg==Zg==", 8, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"Zg==Zg==", 8, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Two quartets with padding");
 
 	// Bad data length
-	ret = base64_decode((uint8_t *)"A", 1, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"A", 1, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ESIZE, "Bad data length 1");
-	ret = base64_decode((uint8_t *)"AA", 2, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"AA", 2, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ESIZE, "Bad data length 2");
-	ret = base64_decode((uint8_t *)"AAA", 3, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"AAA", 3, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ESIZE, "Bad data length 3");
-	ret = base64_decode((uint8_t *)"AAAAA", 5, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"AAAAA", 5, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ESIZE, "Bad data length 5");
 
 	// Bad data character
-	ret = base64_decode((uint8_t *)"AAA$", 4, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"AAA$", 4, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Bad data character dollar");
-	ret = base64_decode((uint8_t *)"AAA ", 4, out, BUF_LEN);
+	ret = knot_base64_decode((uint8_t *)"AAA ", 4, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Bad data character space");
 
 	return 0;
