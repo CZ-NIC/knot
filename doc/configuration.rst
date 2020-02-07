@@ -45,8 +45,9 @@ For detailed description of all configuration items see
 Zone templates
 ==============
 
-A zone template allows a single zone configuration to be shared among several zones.
-The ``default`` template identifier is reserved for the default template::
+A zone template allows a single zone configuration to be shared among several
+zones. There is no inheritance between templates; they are exclusive. The
+``default`` template identifier is reserved for the default template::
 
     template:
       - id: default
