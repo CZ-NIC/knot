@@ -826,7 +826,7 @@ int yp_base64_to_bin(
 	// Reserve some space for data length.
 	wire_ctx_skip(out, sizeof(uint16_t));
 
-	int ret = base64_decode(in->position, YP_LEN, out->position,
+	int ret = knot_base64_decode(in->position, YP_LEN, out->position,
 	                        wire_ctx_available(out));
 	if (ret < 0) {
 		return ret;
@@ -850,7 +850,7 @@ int yp_base64_to_txt(
 	// Read the data length.
 	uint16_t len = wire_ctx_read_u16(in);
 
-	int ret = base64_encode(in->position, len, out->position,
+	int ret = knot_base64_encode(in->position, len, out->position,
 	                        wire_ctx_available(out));
 	if (ret < 0) {
 		return ret;

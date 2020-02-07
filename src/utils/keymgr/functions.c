@@ -896,7 +896,7 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 	}
 
 	uint8_t *base64_output = NULL;
-	int len = base64_encode_alloc(pubkey.data, pubkey.size, &base64_output);
+	int len = knot_base64_encode_alloc(pubkey.data, pubkey.size, &base64_output);
 	if (len < 0) {
 		free(name);
 		return len;

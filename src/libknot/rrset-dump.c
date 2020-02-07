@@ -1104,7 +1104,7 @@ static void wire_gateway_to_str(rrset_dump_params_t *p)
 		CHECK_PRET
 
 		// Write ipsec key.
-		wire_data_encode_to_str(p, &base64_encode, &base64_encode_alloc);
+		wire_data_encode_to_str(p, &knot_base64_encode, &knot_base64_encode_alloc);
 		CHECK_PRET
 	}
 }
@@ -1301,13 +1301,13 @@ static void dnskey_info(const uint8_t *rdata,
 #define DUMP_TYPE	wire_type_to_str(p); CHECK_RET(p);
 #define DUMP_HEX	wire_data_encode_to_str(p, &hex_encode, \
 				&hex_encode_alloc); CHECK_RET(p);
-#define DUMP_BASE64	wire_data_encode_to_str(p, &base64_encode, \
-				&base64_encode_alloc); CHECK_RET(p);
+#define DUMP_BASE64	wire_data_encode_to_str(p, &knot_base64_encode, \
+				&knot_base64_encode_alloc); CHECK_RET(p);
 #define DUMP_HASH	wire_len_data_encode_to_str(p, &base32hex_encode, \
 				1, false, ""); CHECK_RET(p);
 #define DUMP_SALT	wire_len_data_encode_to_str(p, &hex_encode, \
 				1, false, "-"); CHECK_RET(p);
-#define DUMP_TSIG_DGST	wire_len_data_encode_to_str(p, &base64_encode, \
+#define DUMP_TSIG_DGST	wire_len_data_encode_to_str(p, &knot_base64_encode, \
 				2, true, ""); CHECK_RET(p);
 #define DUMP_TSIG_DATA	wire_len_data_encode_to_str(p, &num48_encode, \
 				2, true, ""); CHECK_RET(p);
