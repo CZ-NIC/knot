@@ -276,8 +276,12 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 static gnutls_ecc_curve_t choose_ecdsa_curve(size_t pubkey_size)
 {
 	switch (pubkey_size) {
+#ifdef HAVE_ED25519
 	case 32: return GNUTLS_ECC_CURVE_ED25519;
+#endif
+#ifdef HAVE_ED448
 	case 57: return GNUTLS_ECC_CURVE_ED448;
+#endif
 	case 64: return GNUTLS_ECC_CURVE_SECP256R1;
 	case 96: return GNUTLS_ECC_CURVE_SECP384R1;
 	default: return GNUTLS_ECC_CURVE_INVALID;
@@ -374,9 +378,15 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return ecdsa_params_to_pem(key, params, pem);
+#ifdef HAVE_ED25519
 	case DNSSEC_KEY_ALGORITHM_ED25519:
+#endif
+#ifdef HAVE_ED448
 	case DNSSEC_KEY_ALGORITHM_ED448:
+#endif
+#if defined(HAVE_ED25519) || defined(HAVE_ED448)
 		return eddsa_params_to_pem(key, params, pem);
+#endif
 	default:
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
