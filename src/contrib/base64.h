@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,9 +37,9 @@
  * \retval KNOT_E*	if error.
  */
 int32_t knot_base64_encode(const uint8_t  *in,
-                      const uint32_t in_len,
-                      uint8_t        *out,
-                      const uint32_t out_len);
+                           const uint32_t in_len,
+                           uint8_t        *out,
+                           const uint32_t out_len);
 
 /*!
  * \brief Encodes binary data using Base64 and output stores to own buffer.
@@ -57,8 +57,8 @@ int32_t knot_base64_encode(const uint8_t  *in,
  * \retval KNOT_E*	if error.
  */
 int32_t knot_base64_encode_alloc(const uint8_t  *in,
-                            const uint32_t in_len,
-                            uint8_t        **out);
+                                 const uint32_t in_len,
+                                 uint8_t        **out);
 
 /*!
  * \brief Decodes text data using Base64.
@@ -76,9 +76,9 @@ int32_t knot_base64_encode_alloc(const uint8_t  *in,
  * \retval KNOT_E*	if error.
  */
 int32_t knot_base64_decode(const uint8_t  *in,
-                      const uint32_t in_len,
-                      uint8_t        *out,
-                      const uint32_t out_len);
+                           const uint32_t in_len,
+                           uint8_t        *out,
+                           const uint32_t out_len);
 
 /*!
  * \brief Decodes text data using Base64 and output stores to own buffer.
@@ -97,7 +97,7 @@ int32_t knot_base64_decode(const uint8_t  *in,
  * \retval KNOT_E*	if error.
  */
 int32_t knot_base64_decode_alloc(const uint8_t  *in,
-                            const uint32_t in_len,
-                            uint8_t        **out);
+                                 const uint32_t in_len,
+                                 uint8_t        **out);
 
 /*! @} */

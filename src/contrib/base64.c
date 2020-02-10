@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -82,9 +82,9 @@ static const uint8_t base64_dec[256] = {
 };
 
 int32_t knot_base64_encode(const uint8_t  *in,
-                      const uint32_t in_len,
-                      uint8_t        *out,
-                      const uint32_t out_len)
+                           const uint32_t in_len,
+                           uint8_t        *out,
+                           const uint32_t out_len)
 {
 	// Checking inputs.
 	if (in == NULL || out == NULL) {
@@ -130,8 +130,8 @@ int32_t knot_base64_encode(const uint8_t  *in,
 }
 
 int32_t knot_base64_encode_alloc(const uint8_t  *in,
-                            const uint32_t in_len,
-                            uint8_t        **out)
+                                 const uint32_t in_len,
+                                 uint8_t        **out)
 {
 	// Checking inputs.
 	if (out == NULL) {
@@ -161,9 +161,9 @@ int32_t knot_base64_encode_alloc(const uint8_t  *in,
 }
 
 int32_t knot_base64_decode(const uint8_t  *in,
-                      const uint32_t in_len,
-                      uint8_t        *out,
-                      const uint32_t out_len)
+                           const uint32_t in_len,
+                           uint8_t        *out,
+                           const uint32_t out_len)
 {
 	// Checking inputs.
 	if (in == NULL || out == NULL) {
@@ -244,8 +244,8 @@ int32_t knot_base64_decode(const uint8_t  *in,
 }
 
 int32_t knot_base64_decode_alloc(const uint8_t  *in,
-                            const uint32_t in_len,
-                            uint8_t        **out)
+                                 const uint32_t in_len,
+                                 uint8_t        **out)
 {
 	// Checking inputs.
 	if (out == NULL) {
