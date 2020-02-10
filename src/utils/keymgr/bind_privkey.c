@@ -276,6 +276,8 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 static gnutls_ecc_curve_t choose_ecdsa_curve(size_t pubkey_size)
 {
 	switch (pubkey_size) {
+	case 32: return GNUTLS_ECC_CURVE_ED25519;
+	case 57: return GNUTLS_ECC_CURVE_ED448;
 	case 64: return GNUTLS_ECC_CURVE_SECP256R1;
 	case 96: return GNUTLS_ECC_CURVE_SECP384R1;
 	default: return GNUTLS_ECC_CURVE_INVALID;
@@ -323,6 +325,43 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	return dnssec_pem_from_x509(key, pem);
 }
 
+static void eddsa_extract_public_params(dnssec_key_t *key, gnutls_ecc_curve_t *curve,
+					gnutls_datum_t *x)
+{
+	dnssec_binary_t pubkey = { 0 };
+	dnssec_key_get_pubkey(key, &pubkey);
+
+	*curve = choose_ecdsa_curve(pubkey.size);
+
+	x->data = pubkey.data;
+	x->size = pubkey.size;
+}
+
+static int eddsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *params,
+			       dnssec_binary_t *pem)
+{
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	int result = gnutls_x509_privkey_init(&key);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
+
+	gnutls_ecc_curve_t curve = 0;
+	gnutls_datum_t x = { 0 };
+	eddsa_extract_public_params(dnskey, &curve, &x);
+
+	gnutls_datum_t k = binary_to_datum(&params->private_key);
+
+	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, NULL, &k);
+	if (result != DNSSEC_EOK) {
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	gnutls_x509_privkey_fix(key);
+
+	return dnssec_pem_from_x509(key, pem);
+}
+
 int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary_t *pem)
 {
 	dnssec_key_algorithm_t algorithm = dnssec_key_get_algorithm(key);
@@ -335,6 +374,9 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return ecdsa_params_to_pem(key, params, pem);
+	case DNSSEC_KEY_ALGORITHM_ED25519:
+	case DNSSEC_KEY_ALGORITHM_ED448:
+		return eddsa_params_to_pem(key, params, pem);
 	default:
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
