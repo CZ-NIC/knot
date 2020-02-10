@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,10 +39,10 @@
  * \retval >=0		length of output string.
  * \retval KNOT_E*	if error.
  */
-int32_t base32hex_encode(const uint8_t  *in,
-                         const uint32_t in_len,
-                         uint8_t        *out,
-                         const uint32_t out_len);
+int32_t knot_base32hex_encode(const uint8_t  *in,
+                              const uint32_t in_len,
+                              uint8_t        *out,
+                              const uint32_t out_len);
 
 /*!
  * \brief Encodes binary data using Base32hex and output stores to own buffer.
@@ -59,9 +59,9 @@ int32_t base32hex_encode(const uint8_t  *in,
  * \retval >=0		length of output string.
  * \retval KNOT_E*	if error.
  */
-int32_t base32hex_encode_alloc(const uint8_t  *in,
-                               const uint32_t in_len,
-                               uint8_t        **out);
+int32_t knot_base32hex_encode_alloc(const uint8_t  *in,
+                                    const uint32_t in_len,
+                                    uint8_t        **out);
 
 /*!
  * \brief Decodes text data using Base32hex.
@@ -78,10 +78,10 @@ int32_t base32hex_encode_alloc(const uint8_t  *in,
  * \retval >=0		length of output data.
  * \retval KNOT_E*	if error.
  */
-int32_t base32hex_decode(const uint8_t  *in,
-                         const uint32_t in_len,
-                         uint8_t        *out,
-                         const uint32_t out_len);
+int32_t knot_base32hex_decode(const uint8_t  *in,
+                              const uint32_t in_len,
+                              uint8_t        *out,
+                              const uint32_t out_len);
 
 /*!
  * \brief Decodes text data using Base32hex and output stores to own buffer.
@@ -99,6 +99,6 @@ int32_t base32hex_decode(const uint8_t  *in,
  * \retval >=0		length of output data.
  * \retval KNOT_E*	if error.
  */
-int32_t base32hex_decode_alloc(const uint8_t  *in,
-                               const uint32_t in_len,
-                               uint8_t        **out);
+int32_t knot_base32hex_decode_alloc(const uint8_t  *in,
+                                    const uint32_t in_len,
+                                    uint8_t        **out);

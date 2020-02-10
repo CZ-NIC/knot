@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ int knot_nsec3_hash_to_dname(uint8_t *out, size_t out_size, const uint8_t *hash,
 
 	// Encode raw hash to the first label.
 	uint8_t label[KNOT_DNAME_MAXLABELLEN];
-	int32_t label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
+	int32_t label_size = knot_base32hex_encode(hash, hash_size, label, sizeof(label));
 	if (label_size <= 0) {
 		return label_size;
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	r = base32hex_encode_alloc(digest.data, digest.size, &digest_print.data);
+	r = knot_base32hex_encode_alloc(digest.data, digest.size, &digest_print.data);
 	if (r < 0) {
 		error("Cannot encode computed hash, %s.", knot_strerror(r));
 		goto fail;

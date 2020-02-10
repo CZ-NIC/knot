@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,10 +80,10 @@ static const uint8_t base32hex_dec[256] = {
 	[ 42] = KO, ['U'] = 30, [128] = KO, [171] = KO, [214] = KO,
 };
 
-int32_t base32hex_encode(const uint8_t  *in,
-                         const uint32_t in_len,
-                         uint8_t        *out,
-                         const uint32_t out_len)
+int32_t knot_base32hex_encode(const uint8_t  *in,
+                              const uint32_t in_len,
+                              uint8_t        *out,
+                              const uint32_t out_len)
 {
 	// Checking inputs.
 	if (in == NULL || out == NULL) {
@@ -162,9 +162,9 @@ int32_t base32hex_encode(const uint8_t  *in,
 	return (text - out);
 }
 
-int32_t base32hex_encode_alloc(const uint8_t  *in,
-                               const uint32_t in_len,
-                               uint8_t        **out)
+int32_t knot_base32hex_encode_alloc(const uint8_t  *in,
+                                    const uint32_t in_len,
+                                    uint8_t        **out)
 {
 	// Checking inputs.
 	if (out == NULL) {
@@ -184,7 +184,7 @@ int32_t base32hex_encode_alloc(const uint8_t  *in,
 	}
 
 	// Encode data.
-	int32_t ret = base32hex_encode(in, in_len, *out, out_len);
+	int32_t ret = knot_base32hex_encode(in, in_len, *out, out_len);
 	if (ret < 0) {
 		free(*out);
 		*out = NULL;
@@ -193,10 +193,10 @@ int32_t base32hex_encode_alloc(const uint8_t  *in,
 	return ret;
 }
 
-int32_t base32hex_decode(const uint8_t  *in,
-                         const uint32_t in_len,
-                         uint8_t        *out,
-                         const uint32_t out_len)
+int32_t knot_base32hex_decode(const uint8_t  *in,
+                              const uint32_t in_len,
+                              uint8_t        *out,
+                              const uint32_t out_len)
 {
 	// Checking inputs.
 	if (in == NULL || out == NULL) {
@@ -324,9 +324,9 @@ int32_t base32hex_decode(const uint8_t  *in,
 	return (bin - out);
 }
 
-int32_t base32hex_decode_alloc(const uint8_t  *in,
-                               const uint32_t in_len,
-                               uint8_t        **out)
+int32_t knot_base32hex_decode_alloc(const uint8_t  *in,
+                                    const uint32_t in_len,
+                                    uint8_t        **out)
 {
 	// Checking inputs.
 	if (out == NULL) {
@@ -343,7 +343,7 @@ int32_t base32hex_decode_alloc(const uint8_t  *in,
 	}
 
 	// Decode data.
-	int32_t ret = base32hex_decode(in, in_len, *out, out_len);
+	int32_t ret = knot_base32hex_decode(in, in_len, *out, out_len);
 	if (ret < 0) {
 		free(*out);
 		*out = NULL;

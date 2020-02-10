@@ -1303,7 +1303,7 @@ static void dnskey_info(const uint8_t *rdata,
 				&hex_encode_alloc); CHECK_RET(p);
 #define DUMP_BASE64	wire_data_encode_to_str(p, &knot_base64_encode, \
 				&knot_base64_encode_alloc); CHECK_RET(p);
-#define DUMP_HASH	wire_len_data_encode_to_str(p, &base32hex_encode, \
+#define DUMP_HASH	wire_len_data_encode_to_str(p, &knot_base32hex_encode, \
 				1, false, ""); CHECK_RET(p);
 #define DUMP_SALT	wire_len_data_encode_to_str(p, &hex_encode, \
 				1, false, "-"); CHECK_RET(p);

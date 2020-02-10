@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -289,7 +289,7 @@ static int connect_nsec3_base(knot_rdataset_t *a_rrs, const knot_dname_t *b_name
 	assert(b_name);
 	uint8_t b32_length = b_name[0];
 	const uint8_t *b32_hash = &(b_name[1]);
-	int32_t written = base32hex_decode(b32_hash, b32_length, raw_hash, raw_length);
+	int32_t written = knot_base32hex_decode(b32_hash, b32_length, raw_hash, raw_length);
 	if (written != raw_length) {
 		return KNOT_EINVAL;
 	}

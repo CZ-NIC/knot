@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1020,9 +1020,9 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 	                                                              next_dname);
 	if (next_nsec3 == NULL || node_prev(next_nsec3) != nsec3_node) {
 		uint8_t *next = NULL;
-		int32_t next_len = base32hex_encode_alloc(next_dname_str,
-		                                          next_dname_str_size,
-		                                          &next);
+		int32_t next_len = knot_base32hex_encode_alloc(next_dname_str,
+		                                               next_dname_str_size,
+		                                               &next);
 		char *hash_info = NULL;
 		if (next != NULL) {
 			hash_info = sprintf_alloc("(next hash %.*s)", next_len, next);
