@@ -484,6 +484,9 @@ src/utils/knsupdate/knsupdate_params.h
 src/utils/kzonecheck/main.c
 src/utils/kzonecheck/zone_check.c
 src/utils/kzonecheck/zone_check.h
+src/utils/xdp-gun/load_queries.c
+src/utils/xdp-gun/load_queries.h
+src/utils/xdp-gun/main.c
 tests-fuzz/fuzz_dname_from_str.c
 tests-fuzz/fuzz_dname_to_str.c
 tests-fuzz/fuzz_packet.c
