@@ -72,6 +72,7 @@ version.h
 /src/knsec3hash
 /src/knsupdate
 /src/kzonecheck
+/src/xdp-gun
 
 # Generated tarballs
 /knot-*.tar.xz
