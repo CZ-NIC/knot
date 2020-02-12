@@ -30,6 +30,19 @@ typedef struct {
 	struct iovec payload;
 } knot_xsk_msg_t;
 
+/*! \brief Styles of loading BPF program.
+ *
+ * \note In *all* the cases loading can only succeed if at the end
+ *   a compatible BPF program is loaded on the interface.
+ */
+typedef enum {
+	KNOT_XSK_LOAD_BPF_NEVER,  /*!< Do not load; error out if not loaded already. */
+	KNOT_XSK_LOAD_BPF_ALWAYS, /*!< Always load a program (overwrite it). */
+	KNOT_XSK_LOAD_BPF_MAYBE,  /*!< Try with present program or load if none. */
+	/* Implementation caveat: when re-using program in _MAYBE case, we get a message:
+	 * libbpf: Kernel error message: XDP program already attached */
+} knot_xsk_load_bpf_t;
+
 /*! \brief Context structure for une XDP socket. */
 struct knot_xsk_socket;
 
@@ -45,7 +58,7 @@ struct knot_xsk_socket;
  * \return KNOT_E*
  */
 int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue,
-                  int listen_port, bool load_bpf);
+                  int listen_port, knot_xsk_load_bpf_t load_bpf);
 
 /*! \brief De-init XDP socket. */
 void knot_xsk_deinit(struct knot_xsk_socket *socket);
