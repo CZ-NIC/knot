@@ -26,9 +26,10 @@
 #include <unistd.h>
 
 #include <bpf/bpf.h>
+#include <linux/if_link.h>
 #include <net/if.h>
 
-static int ensure_udp_prog(struct kxsk_iface *iface, const char *prog_fname)
+static int ensure_udp_prog(struct kxsk_iface *iface, const char *prog_fname, bool overwrite)
 {
 	/* Use libbpf for extracting BPF byte-code from BPF-ELF object, and
 	 * loading this into the kernel via bpf-syscall */
@@ -38,12 +39,23 @@ static int ensure_udp_prog(struct kxsk_iface *iface, const char *prog_fname)
 		return KNOT_EPROGRAM;
 	}
 
-	ret = bpf_set_link_xdp_fd(iface->ifindex, prog_fd, 0);
+	ret = bpf_set_link_xdp_fd(iface->ifindex, prog_fd,
+			overwrite ? 0 : XDP_FLAGS_UPDATE_IF_NOEXIST);
 	if (ret) {
-		return KNOT_EFD;
+		close(prog_fd);
 	}
-
-	return prog_fd;
+	if (ret == -EBUSY && !overwrite) { /* We try accepting the present program. */
+		uint32_t prog_id = 0;
+		ret = bpf_get_link_xdp_id(iface->ifindex, &prog_id, 0);
+		if (!ret && prog_id) {
+			ret = prog_fd = bpf_prog_get_fd_by_id(prog_id);
+		}
+	}
+	if (ret < 0) {
+		return KNOT_EFD;
+	} else {
+		return prog_fd;
+	}
 }
 
 static int array2file(char *filename, const uint8_t *array, unsigned len)
@@ -66,7 +78,7 @@ static int array2file(char *filename, const uint8_t *array, unsigned len)
 	return KNOT_EOK;
 }
 
-static int ensure_udp_prog_builtin(struct kxsk_iface *iface)
+static int ensure_udp_prog_builtin(struct kxsk_iface *iface, bool overwrite)
 {
 	if (bpf_kernel_o_len < 2) {
 		return KNOT_ENOTSUP;
@@ -78,7 +90,7 @@ static int ensure_udp_prog_builtin(struct kxsk_iface *iface)
 		return ret;
 	}
 
-	ret = ensure_udp_prog(iface, filename);
+	ret = ensure_udp_prog(iface, filename, overwrite);
 	unlink(filename);
 	return ret;
 }
@@ -194,7 +206,8 @@ int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id)
 	return err;
 }
 
-int kxsk_iface_new(const char *ifname, bool load_bpf, struct kxsk_iface **out_iface)
+int kxsk_iface_new(const char *ifname, knot_xsk_load_bpf_t load_bpf,
+		   struct kxsk_iface **out_iface)
 {
 	struct kxsk_iface *iface = calloc(1, sizeof(*iface));
 	if (iface == NULL) {
@@ -209,14 +222,23 @@ int kxsk_iface_new(const char *ifname, bool load_bpf, struct kxsk_iface **out_if
 	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
 
 	int ret;
-	if (load_bpf) {
-		ret = ensure_udp_prog_builtin(iface);
-	} else {
+	switch (load_bpf) {
+	case KNOT_XSK_LOAD_BPF_NEVER:
+		(void)0;
 		uint32_t prog_id = 0;
 		ret = bpf_get_link_xdp_id(iface->ifindex, &prog_id, 0);
 		if (!ret && prog_id) {
 			ret = bpf_prog_get_fd_by_id(prog_id);
 		}
+		break;
+	case KNOT_XSK_LOAD_BPF_ALWAYS:
+		ret = ensure_udp_prog_builtin(iface, true);
+		break;
+	case KNOT_XSK_LOAD_BPF_MAYBE:
+		ret = ensure_udp_prog_builtin(iface, false);
+		break;
+	default:
+		return KNOT_EINVAL;
 	}
 
 	if (ret >= 0) {

@@ -16,7 +16,9 @@
 
 #pragma once
 
-#include  <stdint.h>
+#include <stdint.h>
+
+#include "libknot/xdp/af_xdp.h"
 
 #include <bpf/xsk.h>
 
@@ -98,7 +100,8 @@ typedef struct knot_xsk_socket {
  *
  * \return KNOT_E*
  */
-int kxsk_iface_new(const char *ifname, bool load_bpf, struct kxsk_iface **out_iface);
+int kxsk_iface_new(const char *ifname, knot_xsk_load_bpf_t load_bpf,
+		   struct kxsk_iface **out_iface);
 
 /*!
  * \brief Unload BPF maps for a socket.
