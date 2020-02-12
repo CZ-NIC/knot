@@ -35,7 +35,6 @@
 #include <linux/if_link.h>
 #include <linux/filter.h>
 
-#include "contrib/ucw/mempool.h"
 #include "contrib/macros.h"
 
 #define FRAME_SIZE 4096
@@ -89,8 +88,6 @@ static int configure_xsk_umem(const struct xsk_umem_config *umem_config,
 		umem->free_indices[i] = i;
 	}
 
-	// NOTE: we don't need a fill queue (fq), but the API won't allow us to call
-	// with NULL - perhaps it doesn't matter that we don't utilize it later.
 	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * frame_count,
 	                       &umem->fq, &umem->cq, umem_config);
 	if (ret != KNOT_EOK) {
@@ -222,10 +219,6 @@ static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
                                                     const struct kxsk_iface *iface,
                                                     int if_queue)
 {
-	/* Put a couple RX buffers into the fill queue.
-	 * Even if we don't need them, it silences a dmesg line,
-	 * and it avoids 100% CPU usage of ksoftirqd/i for each queue i!
-	 */
 	errno = -kxsk_umem_refill(umem);
 	if (errno) {
 		return NULL;
@@ -463,10 +456,7 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 _public_
 int knot_xsk_check(struct knot_xsk_socket *socket)
 {
-	/* Trigger sending queued packets.
-	 * LATER(opt.): the periodical epoll due to the uv_poll* stuff
-	 * is probably enough to wake the kernel even for sending
-	 * (though AFAIK it might be specific to driver and/or kernel version). */
+	/* Trigger sending queued packets. */
 	if (socket->kernel_needs_wakeup) {
 		int sendret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
 		bool is_ok = (sendret != -1);
@@ -478,6 +468,11 @@ int knot_xsk_check(struct knot_xsk_socket *socket)
 		if (!is_ok && !is_again) {
 			return KNOT_EAGAIN;
 		}
+		/* This syscall might be avoided with a newer kernel feature (>= 5.4):
+		   https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-use-need-wakeup-bind-flag
+		   Unfortunately it's not easy to continue supporting older kernels
+		   when using this feature on newer ones.
+		 */
 	}
 
 	/* Collect completed packets. */
