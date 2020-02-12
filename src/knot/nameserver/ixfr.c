@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
 		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA) {
 			ixfr->in_remove_section = !ixfr->in_remove_section;
 		}
-		knot_rrset_clear(&ixfr->cur_rr, NULL);
+		journal_read_clear_rrset(&ixfr->cur_rr);
 	}
 
 	return journal_read_get_error(read, KNOT_EOK);
@@ -171,11 +171,11 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 	*serial_from = knot_soa_serial(their_soa->rrs.rdata);
 
 	knot_mm_t *mm = qdata->mm;
-	struct ixfr_proc *xfer = mm_alloc(mm, sizeof(struct ixfr_proc));
+	struct ixfr_proc *xfer = mm_alloc(mm, sizeof(*xfer));
 	if (xfer == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(xfer, 0, sizeof(struct ixfr_proc));
+	memset(xfer, 0, sizeof(*xfer));
 
 	int ret = ixfr_load_chsets(&xfer->journal_ctx, (zone_t *)qdata->extra->zone,
 	                           qdata->extra->contents, their_soa);
